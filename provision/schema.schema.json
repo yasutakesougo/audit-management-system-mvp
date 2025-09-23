@@ -1,0 +1,60 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "SharePoint Lists Provision Schema",
+  "type": "object",
+  "required": ["lists"],
+  "properties": {
+    "lists": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": ["title", "fields"],
+        "properties": {
+          "title": { "type": "string", "minLength": 1 },
+          "fields": {
+            "type": "array",
+            "minItems": 1,
+            "items": {
+              "type": "object",
+              "required": ["displayName", "internalName", "type"],
+              "properties": {
+                "displayName": { "type": "string", "minLength": 1 },
+                "internalName": { "type": "string", "minLength": 1 },
+                "type": {
+                  "type": "string",
+                  "enum": ["Text", "Note", "DateTime", "Number", "Boolean", "User", "URL", "Choice", "Lookup"]
+                },
+                "addToDefaultView": { "type": "boolean" },
+                "description": { "type": "string" },
+                "required": { "type": "boolean" },
+                "enforceUnique": { "type": "boolean" },
+                "maxLength": { "type": "integer", "minimum": 1 },
+                "choices": {
+                  "type": "array",
+                  "items": { "type": "string" }
+                },
+                "choicesPolicy": {
+                  "type": "string",
+                  "enum": ["additive", "replace"],
+                  "description": "Choice 更新ポリシー。既定は 'additive'（不足だけ追加、既存は保持）。'replace' は将来拡張用。"
+                },
+                "lookupListTitle": { "type": "string", "minLength": 1 },
+                "lookupField": { "type": "string", "minLength": 1 },
+                "allowMultiple": { "type": "boolean" },
+                "principalType": {
+                  "type": "string",
+                  "enum": ["User", "SecurityGroup", "SharePointGroup", "All"],
+                  "description": "User列の対象種別。User=PeopleOnly, その他=PeopleAndGroups"
+                }
+              },
+              "additionalProperties": true
+            }
+          }
+        },
+        "additionalProperties": true
+      }
+    }
+  },
+  "additionalProperties": true
+}

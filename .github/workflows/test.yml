@@ -1,0 +1,44 @@
+name: Quality Gates
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main, develop ]
+
+jobs:
+  quality:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+      - name: Install deps
+        run: npm ci
+      - name: Typecheck
+        run: npm run typecheck
+      - name: Lint
+        run: npm run lint
+      - name: Test (coverage)
+        run: npm run test:coverage -- --reporter=default
+      - name: Upload coverage artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: lcov.info
+          path: coverage/lcov.info
+          if-no-files-found: error
+      - name: Coverage summary
+        if: always()
+        run: |
+          if [ -f coverage/coverage-summary.json ]; then
+            pct=$(node -e "const s=require('./coverage/coverage-summary.json');console.log(s.total.lines.pct)")
+            echo "### Coverage" >> $GITHUB_STEP_SUMMARY
+            echo "**Lines:** ${pct}%  " >> $GITHUB_STEP_SUMMARY
+          else
+            echo "### Coverage" >> $GITHUB_STEP_SUMMARY
+            echo "coverage summary not found" >> $GITHUB_STEP_SUMMARY
+          fi

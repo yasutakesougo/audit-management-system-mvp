@@ -1,0 +1,163 @@
+name: Backfill entry_hash (Smoke)
+
+on:
+  pull_request:
+    paths:
+      - 'scripts/backfill-entry-hash.ps1'
+      - '.github/workflows/provision-backfill.yml'
+  workflow_dispatch:
+    inputs:
+      siteRelativeUrl:
+        description: "Target site relative URL (e.g. /sites/welfare)"
+        required: true
+        default: "/sites/welfare"
+      whatIf:
+        description: "Run in WhatIf (dry-run) mode"
+        required: true
+        default: true
+        type: boolean
+      batchSize:
+        description: "Update batch size"
+        required: true
+        default: "100"
+
+jobs:
+  backfill:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install PowerShell modules (PnP.PowerShell)
+        shell: pwsh
+        run: |
+          Set-PSRepository -Name "PSGallery" -InstallationPolicy Trusted
+          Install-Module PnP.PowerShell -Scope CurrentUser -Force -AllowClobber
+
+      - name: Connect to SharePoint
+        shell: pwsh
+        env:
+          SPO_RESOURCE: ${{ secrets.SPO_RESOURCE }}
+          AAD_TENANT_ID: ${{ secrets.AAD_TENANT_ID }}
+          AAD_APP_ID: ${{ secrets.AAD_APP_ID }}
+          SPO_CERT_BASE64: ${{ secrets.SPO_CERT_BASE64 }}
+          SPO_CERT_PASSWORD: ${{ secrets.SPO_CERT_PASSWORD }}
+          SPO_CLIENT_SECRET: ${{ secrets.SPO_CLIENT_SECRET }}
+        run: |
+          if (-not $env:SPO_RESOURCE) { throw "Secret SPO_RESOURCE is required (e.g. https://contoso.sharepoint.com)" }
+          $targetSiteUrl = "$($env:SPO_RESOURCE)$(${ { inputs.siteRelativeUrl } })"
+          $certPath = "$env:HOME/spoCert.pfx"
+          if ($env:SPO_CERT_BASE64) {
+            [IO.File]::WriteAllBytes($certPath, [Convert]::FromBase64String($env:SPO_CERT_BASE64))
+            if (-not $env:SPO_CERT_PASSWORD) { throw 'SPO_CERT_PASSWORD required with SPO_CERT_BASE64' }
+            Connect-PnPOnline -Url $targetSiteUrl `
+              -Tenant $env:AAD_TENANT_ID `
+              -ClientId $env:AAD_APP_ID `
+              -CertificatePath $certPath `
+              -CertificatePassword (ConvertTo-SecureString -String $env:SPO_CERT_PASSWORD -AsPlainText -Force)
+          } elseif ($env:SPO_CLIENT_SECRET) {
+            Connect-PnPOnline -Url $targetSiteUrl `
+              -Tenant $env:AAD_TENANT_ID `
+              -ClientId $env:AAD_APP_ID `
+              -ClientSecret (ConvertTo-SecureString -String $env:SPO_CLIENT_SECRET -AsPlainText -Force)
+          } else {
+            throw 'Provide certificate (SPO_CERT_BASE64 + SPO_CERT_PASSWORD) or SPO_CLIENT_SECRET.'
+          }
+
+      - name: Optional schema validation
+        shell: pwsh
+        run: |
+          if (Test-Path "provision/schema.json" -and Test-Path "provision/schema.schema.json") {
+            $ok = Test-Json -Json (Get-Content -Raw provision/schema.json) -SchemaFile provision/schema.schema.json
+            if (-not $ok) { throw 'Schema validation failed.' }
+          } else {
+            Write-Host 'Schema files not found; skipping.'
+          }
+
+      - name: Backfill (WhatIf / Apply)
+        shell: pwsh
+        run: |
+          $targetSiteUrl = "$env:SPO_RESOURCE${{ inputs.siteRelativeUrl }}"
+          pwsh -File scripts/backfill-entry-hash.ps1 `
+            -SiteUrl $targetSiteUrl `
+            -BatchSize ([int]'${{ inputs.batchSize }}') `
+            -PageSize 1000 `
+            -VerboseMetrics `
+            -WhatIfMode:(${{ inputs.whatIf }})
+
+      - name: Upload metrics (WhatIf only)
+        if: ${{ inputs.whatIf == true }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: backfill-metrics
+          path: artifacts/backfill-metrics.json
+          if-no-files-found: ignore
+
+      - name: Summary
+        shell: pwsh
+        run: |
+          $mode = if (${{ inputs.whatIf }}) { 'WHATIF' } else { 'APPLY' }
+          $lines = @()
+          if (Test-Path artifacts/backfill-metrics.json) {
+            $m = Get-Content -Raw artifacts/backfill-metrics.json | ConvertFrom-Json
+            $lines += '### Backfill entry_hash (Smoke)'
+            $lines += "- Site: ${{ inputs.siteRelativeUrl }}"
+            $lines += "- Mode: $mode"
+            $lines += "- BatchSize: ${{ inputs.batchSize }}"
+            $lines += ''
+            $failCount = (($m.failures)|Measure-Object).Count
+            $ok = $m.total - $failCount
+            $rate = if ($m.total -gt 0) { [math]::Round( (100.0 * $ok / $m.total), 2) } else { 100 }
+            $lines += '**Metrics**'
+            $lines += "| total | updated | skipped | conflict409 | failures | duration(s) | success % |"
+            $lines += "|-----:|-------:|-------:|-----------:|--------:|------------:|----------:|"
+            $lines += "| $($m.total) | $($m.updated) | $($m.skipped) | $($m.conflict409) | $failCount | $($m.durationSec) | $rate |"
+            $lines += ''
+            $lines += 'Artifact: backfill-metrics'
+          } else {
+            $lines += '### Backfill entry_hash (Smoke)'
+            $lines += "- Site: ${{ inputs.siteRelativeUrl }}"
+            $lines += "- Mode: $mode"
+            $lines += '(No metrics file produced)'
+          }
+          $lines -join "`n" | Out-File -FilePath $env:GITHUB_STEP_SUMMARY -Encoding utf8 -Append
+
+      - name: Validate metrics JSON against schema
+        if: always()
+        shell: pwsh
+        run: |
+          if (Test-Path artifacts/backfill-metrics.json) {
+            $json = Get-Content artifacts/backfill-metrics.json -Raw
+            $ok = Test-Json -Json $json -SchemaFile docs/backfill-metrics.schema.json -ErrorAction SilentlyContinue
+            if (-not $ok) { Write-Error "::error::backfill-metrics.json does not conform to docs/backfill-metrics.schema.json" } else { Write-Host 'Schema validation: OK' }
+          } else { Write-Host 'No metrics file to validate.' }
+
+      - name: Gate on failures count (non-PR)
+        if: ${{ github.event_name != 'pull_request' && always() }}
+        shell: bash
+        run: |
+          if [ -f artifacts/backfill-metrics.json ]; then
+            METRICS=$(cat artifacts/backfill-metrics.json)
+            FAILS=$(jq '.failures | length' <<<"$METRICS")
+            echo "failures=$FAILS"
+            if [ "$FAILS" -gt 0 ]; then
+              echo "::error::Backfill failures detected ($FAILS). See metrics artifact for details." >&2
+              exit 1
+            fi
+          else
+            echo "No metrics file present; skipping failure gate.";
+          fi
+
+      # - name: Notify on failures (Teams/Slack)
+      #   if: failure()
+      #   env:
+      #     WEBHOOK_URL: ${{ secrets.NOTIFY_WEBHOOK }}
+      #   run: |
+      #     if [ -n "$WEBHOOK_URL" ]; then
+      #       MSG="Backfill failures detected in $GITHUB_WORKFLOW ($GITHUB_REF_NAME)."
+      #       curl -sS -X POST -H 'Content-type: application/json' --data "{\"text\":\"$MSG\"}" "$WEBHOOK_URL" || true
+      #     else
+      #       echo "No WEBHOOK_URL secret provided. Skipping notification.";
+      #     fi

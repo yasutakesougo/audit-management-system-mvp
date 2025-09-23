@@ -1,0 +1,149 @@
+name: Provision SharePoint Lists
+
+on:
+  workflow_dispatch:
+    inputs:
+      siteRelativeUrl:
+        description: "Site relative url (e.g. /sites/welfare)"
+        required: true
+        default: "/sites/welfare"
+      recreateExisting:
+        description: "Recreate lists if they already exist (DANGEROUS: deletes contents)"
+        required: false
+        default: "false"
+      applyFieldUpdates:
+        description: "Apply safe field updates (display name, description, choices)"
+        required: false
+        default: "true"
+      forceTypeReplace:
+        description: "If a field type mismatches, create *_v2 and migrate values (best-effort)"
+        required: false
+        default: "false"
+      whatIf:
+        description: "Dry-run (no writes). Only report the planned changes."
+        required: false
+        default: "false"
+      backfillEntryHash:
+        description: "Backfill empty entry_hash values after provisioning (true/false)"
+        required: false
+        default: "false"
+      schemaPath:
+        description: "Path to schema JSON"
+        required: false
+        default: "provision/schema.json"
+
+jobs:
+  provision:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Validate schema.json structure
+        shell: pwsh
+        env:
+          SCHEMA_PATH: ${{ github.event.inputs.schemaPath }}
+        run: |
+          $ErrorActionPreference = "Stop"
+            $schemaPath = if ($env:SCHEMA_PATH) { $env:SCHEMA_PATH } else { "provision/schema.json" }
+            if (-not (Test-Path $schemaPath)) { throw "Schema file not found: $schemaPath" }
+            $schemaDef = "provision/schema.schema.json"
+            if (-not (Test-Path $schemaDef)) { throw "Schema definition not found: $schemaDef" }
+            $ok = Test-Json -Path $schemaPath -SchemaFile $schemaDef
+            if (-not $ok) { throw "schema.json does not conform to schema.schema.json" }
+
+      - name: Install PnP.PowerShell
+        shell: pwsh
+        run: |
+          Set-PSRepository -Name PSGallery -InstallationPolicy Trusted
+          Install-Module PnP.PowerShell -Scope CurrentUser -Force
+
+      - name: Decode certificate (if provided)
+        env:
+          RAW_CERT: ${{ secrets.SPO_CERT_BASE64 }}
+          CERT_OUT: ${{ runner.temp }}/spoCert.pfx
+        shell: pwsh
+        run: |
+          if ([string]::IsNullOrWhiteSpace($env:RAW_CERT)) {
+            Write-Host 'No certificate secret provided. Skipping.'
+          } else {
+            $bytes = [Convert]::FromBase64String($env:RAW_CERT)
+            [IO.File]::WriteAllBytes($env:CERT_OUT, $bytes)
+            Write-Host "Certificate written to $env:CERT_OUT"
+          }
+
+      - name: Provision lists
+        shell: pwsh
+        env:
+          AAD_TENANT_ID: ${{ secrets.AAD_TENANT_ID }}
+          AAD_APP_ID: ${{ secrets.AAD_APP_ID }}
+          SPO_CERT_PASSWORD: ${{ secrets.SPO_CERT_PASSWORD }}
+          SPO_CLIENT_SECRET: ${{ secrets.SPO_CLIENT_SECRET }}
+          SPO_RESOURCE: ${{ secrets.SPO_RESOURCE }}
+          SPO_CERT_PATH: ${{ runner.temp }}/spoCert.pfx
+          SITE_RELATIVE_URL: ${{ github.event.inputs.siteRelativeUrl }}
+          RECREATE_EXISTING: ${{ github.event.inputs.recreateExisting }}
+          APPLY_FIELD_UPDATES: ${{ github.event.inputs.applyFieldUpdates }}
+          FORCE_TYPE_REPLACE: ${{ github.event.inputs.forceTypeReplace }}
+          WHAT_IF: ${{ github.event.inputs.whatIf }}
+          SCHEMA_PATH: ${{ github.event.inputs.schemaPath }}
+          BACKFILL_ENTRY_HASH: ${{ github.event.inputs.backfillEntryHash }}
+        run: |
+          $ErrorActionPreference = "Stop"
+          if (-not $env:SPO_RESOURCE) { throw "SPO_RESOURCE secret is required (e.g. https://<tenant>.sharepoint.com)" }
+          $siteUrl = "$($env:SPO_RESOURCE)$($env:SITE_RELATIVE_URL)"
+
+          if ((Test-Path $env:SPO_CERT_PATH) -and $env:SPO_CERT_PASSWORD) {
+            $sec = ConvertTo-SecureString $env:SPO_CERT_PASSWORD -AsPlainText -Force
+            Connect-PnPOnline -Url $siteUrl -ClientId $env:AAD_APP_ID -Tenant $env:AAD_TENANT_ID -CertificatePath $env:SPO_CERT_PATH -CertificatePassword $sec
+          } elseif ($env:SPO_CLIENT_SECRET) {
+            $sec = ConvertTo-SecureString $env:SPO_CLIENT_SECRET -AsPlainText -Force
+            Connect-PnPOnline -Url $siteUrl -ClientId $env:AAD_APP_ID -Tenant $env:AAD_TENANT_ID -ClientSecret $sec
+          } else {
+            throw "Provide SPO_CERT_BASE64+SPO_CERT_PASSWORD or SPO_CLIENT_SECRET as GitHub Secrets."
+          }
+
+          ./scripts/provision-spo.ps1 `
+            -SiteUrl $siteUrl `
+            -RecreateExisting:[bool]::Parse($env:RECREATE_EXISTING) `
+            -ApplyFieldUpdates:[bool]::Parse($env:APPLY_FIELD_UPDATES) `
+            -ForceTypeReplace:[bool]::Parse($env:FORCE_TYPE_REPLACE) `
+            -WhatIfMode:[bool]::Parse($env:WHAT_IF) `
+            -SchemaPath $env:SCHEMA_PATH `
+            -ChangesOutPath "provision/changes.json" `
+            -EmitChanges
+
+          if ([bool]::Parse($env:BACKFILL_ENTRY_HASH)) {
+            Write-Host "Starting entry_hash backfill..." -ForegroundColor Cyan
+            ./scripts/backfill-entry-hash.ps1 -SiteUrl $siteUrl -WhatIfMode:([bool]::Parse($env:WHAT_IF))
+          } else {
+            Write-Host "Skipping entry_hash backfill (BACKFILL_ENTRY_HASH=false)" -ForegroundColor DarkGray
+          }
+
+      - name: Comment provisioning summary to PR
+        if: ${{ github.event_name == 'pull_request' }}
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const summaryPath = process.env.GITHUB_STEP_SUMMARY;
+            const pr = context.payload.pull_request?.number;
+            if (!pr) { core.setFailed('No pull_request context'); return; }
+            let body = 'No summary produced.';
+            if (summaryPath && fs.existsSync(summaryPath)) {
+              body = fs.readFileSync(summaryPath, 'utf8');
+            }
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: pr,
+              body: `### SharePoint Provision Result\n\n${body}`
+            });
+
+      - name: Upload WhatIf changes artifact
+        if: ${{ fromJSON(github.event.inputs.whatIf || 'false') == true }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: provision-changes
+          path: provision/changes.json
+          if-no-files-found: ignore

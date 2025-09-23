@@ -1,0 +1,117 @@
+name: Provision WhatIf (PR)
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, labeled]
+    paths:
+      - 'provision/**'
+      - 'scripts/provision-spo.ps1'
+      - '.github/workflows/provision-whatif-pr.yml'
+      - 'docs/provisioning.md'
+
+jobs:
+  provision-whatif:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write
+    # If no matching path changes AND PR lacks 'schema' label, skip early
+    if: >-
+      contains(github.event.pull_request.labels.*.name, 'schema') ||
+      github.event_name == 'pull_request'
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install PnP.PowerShell
+        shell: pwsh
+        run: |
+          Set-PSRepository -Name PSGallery -InstallationPolicy Trusted
+          Install-Module PnP.PowerShell -Scope CurrentUser -Force
+
+      - name: Decode certificate (if provided)
+        env:
+          RAW_CERT: ${{ secrets.SPO_CERT_BASE64 }}
+          CERT_OUT: ${{ runner.temp }}/spoCert.pfx
+        shell: pwsh
+        run: |
+          if ([string]::IsNullOrWhiteSpace($env:RAW_CERT)) {
+            Write-Host 'No certificate secret provided. Skipping.'
+          } else {
+            $bytes = [Convert]::FromBase64String($env:RAW_CERT)
+            [IO.File]::WriteAllBytes($env:CERT_OUT, $bytes)
+            Write-Host "Certificate written to $env:CERT_OUT"
+          }
+
+      - name: Provision (WhatIf)
+        shell: pwsh
+        env:
+          AAD_TENANT_ID: ${{ secrets.AAD_TENANT_ID }}
+          AAD_APP_ID: ${{ secrets.AAD_APP_ID }}
+          SPO_CERT_PASSWORD: ${{ secrets.SPO_CERT_PASSWORD }}
+          SPO_CLIENT_SECRET: ${{ secrets.SPO_CLIENT_SECRET }}
+          SPO_RESOURCE: ${{ secrets.SPO_RESOURCE }}
+          SPO_CERT_PATH: ${{ runner.temp }}/spoCert.pfx
+          # Using default site path; adjust here if a different PR staging site is desired
+        run: |
+          $ErrorActionPreference = 'Stop'
+          if (-not $env:SPO_RESOURCE) { throw 'SPO_RESOURCE secret is required (e.g. https://<tenant>.sharepoint.com)' }
+          $siteRel = if ($env:SITE_RELATIVE_URL_SECRET) { $env:SITE_RELATIVE_URL_SECRET } else { '/sites/welfare' }
+          $siteUrl = "$($env:SPO_RESOURCE)$siteRel"
+          if ((Test-Path $env:SPO_CERT_PATH) -and $env:SPO_CERT_PASSWORD) {
+            $sec = ConvertTo-SecureString $env:SPO_CERT_PASSWORD -AsPlainText -Force
+            Connect-PnPOnline -Url $siteUrl -ClientId $env:AAD_APP_ID -Tenant $env:AAD_TENANT_ID -CertificatePath $env:SPO_CERT_PATH -CertificatePassword $sec
+          } elseif ($env:SPO_CLIENT_SECRET) {
+            $sec = ConvertTo-SecureString $env:SPO_CLIENT_SECRET -AsPlainText -Force
+            Connect-PnPOnline -Url $siteUrl -ClientId $env:AAD_APP_ID -Tenant $env:AAD_TENANT_ID -ClientSecret $sec
+          } else {
+            throw 'Provide SPO_CERT_BASE64+SPO_CERT_PASSWORD or SPO_CLIENT_SECRET as GitHub Secrets.'
+          }
+          ./scripts/provision-spo.ps1 \
+            -SiteUrl $siteUrl \
+            -RecreateExisting:$false \
+            -ApplyFieldUpdates:$true \
+            -ForceTypeReplace:$false \
+            -WhatIfMode:$true \
+            -SchemaPath provision/schema.json \
+            -ChangesOutPath 'provision/changes.json' \
+            -EmitChanges
+
+      - name: Upload WhatIf changes artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: provision-changes
+          path: provision/changes.json
+          if-no-files-found: warn
+
+      - name: Comment / Update PR with WhatIf summary
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const pr = context.payload.pull_request?.number;
+            if (!pr) { core.warning('No PR context'); return; }
+            let summary = 'Provision script produced no summary.';
+            if (process.env.GITHUB_STEP_SUMMARY && fs.existsSync(process.env.GITHUB_STEP_SUMMARY)) {
+              summary = fs.readFileSync(process.env.GITHUB_STEP_SUMMARY, 'utf8');
+            }
+            let changesJson = null;
+            if (fs.existsSync('provision/changes.json')) {
+              try { changesJson = JSON.parse(fs.readFileSync('provision/changes.json','utf8')); } catch(e) { /* ignore */ }
+            }
+            const header = '### SharePoint Provision WhatIf';
+            let body = header + '\n';
+            if (changesJson) {
+              const kindLines = (changesJson.summary?.byKind || []).map(k => `- ${k.kind}: ${k.count}`).join('\n');
+              body += `Total Changes: ${changesJson.summary?.total}\n\n${kindLines}\n\n`;
+            }
+            body += '\n<details><summary>Full Summary</summary>\n\n' + summary + '\n\n</details>';
+            // Try to find existing bot comment to update
+            const { data: comments } = await github.rest.issues.listComments({ owner: context.repo.owner, repo: context.repo.repo, issue_number: pr, per_page: 100 });
+            const botLogin = context.actor;
+            const existing = comments.find(c => c.user?.login === botLogin && c.body?.startsWith(header));
+            if (existing) {
+              await github.rest.issues.updateComment({ owner: context.repo.owner, repo: context.repo.repo, comment_id: existing.id, body });
+            } else {
+              await github.rest.issues.createComment({ owner: context.repo.owner, repo: context.repo.repo, issue_number: pr, body });
+            }

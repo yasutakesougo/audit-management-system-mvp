@@ -1,0 +1,25 @@
+{
+  "lists": [
+    {
+      "title": "SupportRecord_Daily",
+      "fields": [
+        { "displayName": "記録日",   "internalName": "cr013_recorddate",  "type": "DateTime", "addToDefaultView": true },
+  { "displayName": "特記事項", "internalName": "cr013_specialnote", "type": "Note",     "addToDefaultView": true, "description": "自由記述", "required": false }
+      ]
+    },
+    {
+      "title": "Audit_Events",
+      "fields": [
+  { "displayName": "ts",          "internalName": "ts",          "type": "DateTime", "addToDefaultView": true, "description": "ISO日時" },
+  { "displayName": "actor",       "internalName": "actor",       "type": "Text",     "addToDefaultView": true, "maxLength": 255, "required": false },
+        { "displayName": "action",      "internalName": "action",      "type": "Text",     "addToDefaultView": true },
+  { "displayName": "entity",      "internalName": "entity",      "type": "Text",     "addToDefaultView": true, "enforceUnique": false },
+        { "displayName": "entity_id",   "internalName": "entity_id",   "type": "Text" },
+        { "displayName": "channel",     "internalName": "channel",     "type": "Text" },
+        { "displayName": "before_json", "internalName": "before_json", "type": "Note" },
+        { "displayName": "after_json",  "internalName": "after_json",  "type": "Note" },
+        { "displayName": "Entry Hash", "internalName": "entry_hash", "type": "Text", "maxLength": 128, "required": false, "enforceUnique": true, "addToDefaultView": false, "description": "ts,actor,action,entity,entity_id,after_json ハッシュ" }
+      ]
+    }
+  ]
+}
