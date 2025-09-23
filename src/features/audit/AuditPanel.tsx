@@ -1,8 +1,10 @@
 import React, { useState } from 'react';
 import { readAudit, AuditEvent } from '../../lib/audit';
+import { buildAuditCsv, downloadCsv } from './exportCsv';
 import { useAuditSync } from './useAuditSync';
 import { useAuditSyncBatch } from './useAuditSyncBatch';
 import { AuditBatchMetrics } from './types';
+import { auditMetricLabels } from './labels';
 
 const AuditPanel: React.FC = () => {
   const [logs, setLogs] = useState<AuditEvent[]>(readAudit());
@@ -20,25 +22,17 @@ const AuditPanel: React.FC = () => {
   const [lastTotal, setLastTotal] = useState<AuditBatchMetrics['total'] | undefined>();
   const [showMetrics, setShowMetrics] = useState(false);
 
-  const handleExport = () => {
-    const header = ['日時','実行者','操作','対象エンティティ','対象ID','チャネル','変更後データ'];
-  const rows = logs.map((log: AuditEvent) => [
-      new Date(log.ts).toLocaleString(),
-      log.actor,
-      log.action,
-      log.entity,
-      log.entity_id || '',
-      log.channel,
-      JSON.stringify(log.after || {})
-    ].map(f => `"${String(f).replace(/"/g,'""')}"`).join(','));
-    const csvContent = [header.join(','), ...rows].join('\n');
-    const blob = new Blob([csvContent], { type: 'text/csv' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = 'audit_logs.csv';
-    a.click();
-    URL.revokeObjectURL(url);
+  const handleExport: React.MouseEventHandler<HTMLButtonElement> = () => {
+    const rows = logs.map(l => ({
+      ts: new Date(l.ts).toISOString(),
+      actor: l.actor,
+      action: l.action,
+      entity: l.entity,
+      entity_id: l.entity_id,
+      details: l.after
+    }));
+    const csv = buildAuditCsv(rows);
+    downloadCsv(csv, 'audit_logs.csv');
   };
 
   return (
@@ -46,10 +40,27 @@ const AuditPanel: React.FC = () => {
       <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 4 }}>
         <h2 style={{ margin: 0 }}>監査ログ</h2>
         {(lastTotal !== undefined) && (
-          <div data-testid="audit-metrics" style={{ display: 'flex', gap: 6, fontSize: 11 }}>
-            <span style={{ padding: '2px 6px', borderRadius: 12, background: '#1976d2', color: '#fff' }}>新規 {typeof lastSuccess === 'number' ? Math.max(0,(lastSuccess - (lastDuplicates||0))) : 0}</span>
-            <span style={{ padding: '2px 6px', borderRadius: 12, background: '#0288d1', color: '#fff' }}>重複 {lastDuplicates || 0}</span>
-            <span style={{ padding: '2px 6px', borderRadius: 12, background: (lastFailed && lastFailed>0) ? '#d32f2f' : '#2e7d32', color: '#fff' }}>失敗 {lastFailed || 0}</span>
+          <div
+            data-testid="audit-metrics"
+            data-new={typeof lastSuccess === 'number' ? Math.max(0,(lastSuccess - (lastDuplicates||0))) : 0}
+            data-duplicates={lastDuplicates || 0}
+            data-failed={lastFailed || 0}
+            data-success={lastSuccess || 0}
+            data-success-raw={lastSuccess || 0}
+            data-total={lastTotal || 0}
+            {...(import.meta.env.DEV ? { 'data-debug-failed': lastFailed || 0, 'data-debug-duplicates': lastDuplicates || 0 } : {})}
+            style={{ display: 'flex', gap: 6, fontSize: 11 }}
+          >
+            {/* Stable metric pill order for tests: New / Duplicates / Failed */}
+            <span data-metric="new" style={{ padding: '2px 6px', borderRadius: 12, background: '#1976d2', color: '#fff' }}>
+              {auditMetricLabels.new} {typeof lastSuccess === 'number' ? Math.max(0,(lastSuccess - (lastDuplicates||0))) : 0}
+            </span>
+            <span data-metric="duplicates" style={{ padding: '2px 6px', borderRadius: 12, background: '#0288d1', color: '#fff' }}>
+              {auditMetricLabels.duplicates} {lastDuplicates || 0}
+            </span>
+            <span data-metric="failed" style={{ padding: '2px 6px', borderRadius: 12, background: (lastFailed && lastFailed>0) ? '#d32f2f' : '#2e7d32', color: '#fff' }}>
+              {auditMetricLabels.failed} {lastFailed || 0}
+            </span>
           </div>
         )}
         {import.meta.env.DEV && (

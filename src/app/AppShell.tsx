@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import AppBar from '@mui/material/AppBar';
 import Toolbar from '@mui/material/Toolbar';
 import Typography from '@mui/material/Typography';
@@ -7,29 +7,22 @@ import Stack from '@mui/material/Stack';
 import Button from '@mui/material/Button';
 import Container from '@mui/material/Container';
 import HistoryIcon from '@mui/icons-material/History';
-import DarkModeIcon from '@mui/icons-material/DarkMode';
-import LightModeIcon from '@mui/icons-material/LightMode';
+import { useSP } from '../lib/spClient';
 import { Link as RouterLink, useLocation } from 'react-router-dom';
-import { ColorModeContext } from './theme';
 
 const AppShell: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const location = useLocation();
-  const { mode, toggle } = React.useContext(ColorModeContext);
   return (
     <>
       <AppBar position="static" color="primary" enableColorOnDark>
-        <Toolbar>
+        <Toolbar sx={{ gap: 1 }}>
           <Typography variant="h6" component="div" sx={{ flexGrow: 1 }}>
             運営指導・記録管理
           </Typography>
-          <Stack direction="row" spacing={1} alignItems="center">
-            <IconButton color="inherit" onClick={toggle} aria-label="配色切替">
-              {mode === 'dark' ? <LightModeIcon /> : <DarkModeIcon />}
-            </IconButton>
-            <IconButton color="inherit" aria-label="監査ログ (未実装アイコンボタン)">
-              <HistoryIcon />
-            </IconButton>
-          </Stack>
+          <ConnectionStatus />
+          <IconButton component={RouterLink} to="/audit" color="inherit" aria-label="監査ログ">
+            <HistoryIcon />
+          </IconButton>
         </Toolbar>
       </AppBar>
       <Container maxWidth="lg" sx={{ py: 4 }}>
@@ -44,4 +37,27 @@ const AppShell: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   );
 };
 
+const ConnectionStatus: React.FC = () => {
+  const { spFetch } = useSP();
+  const [state, setState] = useState<'idle'|'ok'|'fail'>('idle');
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await spFetch('/?$select=Title'); // minimal call
+        if (cancelled) return;
+        setState(res.ok ? 'ok' : 'fail');
+      } catch {
+        if (!cancelled) setState('fail');
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [spFetch]);
+  const color = state === 'ok' ? '#2e7d32' : state === 'fail' ? '#d32f2f' : '#ffb300';
+  const label = state === 'ok' ? 'SP Connected' : state === 'fail' ? 'SP Error' : 'Checking…';
+  return <span style={{ background: color, color: '#fff', padding: '2px 8px', borderRadius: 12, fontSize: 12 }}>{label}</span>;
+};
+
+// Integrate ConnectionStatus into shell header (placeholder integration)
+// ...existing export / component logic remains below
 export default AppShell;

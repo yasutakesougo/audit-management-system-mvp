@@ -3,20 +3,17 @@ import path from 'path';
 
 export default defineConfig({
   resolve: {
-    alias: {
-      '@': path.resolve(__dirname, 'src')
-    }
+    alias: { '@': path.resolve(__dirname, 'src') }
   },
   test: {
-    // Fastest path: no DOM needed yet
-    environment: 'node',
-  include: ['src/**/*.?(test|spec).{ts,tsx}', 'tests/unit/**/*.?(test|spec).{ts,tsx}'],
-  exclude: ['tests/e2e/', 'node_modules/', 'dist/**', 'src/lib/spClient.retry*.spec.*'],
+    setupFiles: ['./vitest.setup.ts'],
+    environment: 'jsdom',
+    include: ['src/**/*.?(test|spec).{ts,tsx}', 'tests/unit/**/*.?(test|spec).{ts,tsx}'],
+    exclude: ['tests/e2e/', 'node_modules/', 'dist/**', 'src/lib/spClient.retry*.spec.*'],
     coverage: {
       provider: 'v8',
       reportsDirectory: 'coverage',
       reporter: ['text', 'lcov', 'json-summary'],
-      // Staged adoption: only count covered files now
       all: false,
       include: ['src/**/*.{ts,tsx}'],
       exclude: [
