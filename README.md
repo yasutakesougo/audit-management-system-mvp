@@ -9,6 +9,9 @@
 ![TypeCheck](https://img.shields.io/badge/types-pass-informational)
 ![Coverage Lines](https://img.shields.io/badge/coverage-70%25%2B-green)
 
+> Quality Gate (Phase 3 Baseline): Lines >= 70% / Functions >= 70% / Statements >= 70% / Branches >= 65%  
+> Current (local latest): Lines ~78% / Functions ~73% / Statements ~78% / Branches ~76% (headroom maintained before next phase)
+
 本プロジェクトは、React, TypeScript, Vite, MUIを使用し、SharePoint OnlineをバックエンドとするSPAアプリケーションのMVP実装です。
 
 ## Tech Stack
@@ -39,17 +42,107 @@ src/
 ```
 
 ## Environment Variables (.env)
-Create a `.env` file in the project root (never commit secrets):
+### Quick Setup
+1. Copy example: `cp .env.example .env`
+2. Edit the placeholders:
+   - `<yourtenant>` → SharePoint tenant host (no protocol changes)
+   - `<SiteName>`  → Target site path segment(s)
+3. Restart dev server (`npm run dev`).
+
 ```
 VITE_MSAL_CLIENT_ID=<YOUR_APP_CLIENT_ID>
 VITE_MSAL_TENANT_ID=<YOUR_TENANT_ID>
 VITE_SP_RESOURCE=https://<yourtenant>.sharepoint.com
 VITE_SP_SITE_RELATIVE=/sites/<SiteName>
 ```
-Notes:
-- Do NOT include trailing slash on `VITE_SP_RESOURCE`. The code normalizes it.
-- `VITE_SP_SITE_RELATIVE` must start with `/` (code auto-fixes if missing) and not end with `/`.
-- Placeholders like `<yourtenant>` or `<SiteName>` will trigger a validation error until replaced.
+
+### Rules / Validation Logic
+| Key | Requirement | Auto-Normalization | Error If |
+|-----|-------------|--------------------|----------|
+| VITE_SP_RESOURCE | `https://*.sharepoint.com` / no trailing slash | Trailing slash trimmed | Not matching regex / placeholder present |
+| VITE_SP_SITE_RELATIVE | Starts with `/`, no trailing slash | Adds leading `/`, trims trailing slashes | Placeholder present / empty |
+
+Placeholders recognized as invalid: `<yourtenant>`, `<SiteName>`, `__FILL_ME__`.
+
+### Debugging Misconfiguration
+If misconfigured, `ensureConfig` (in `src/lib/spClient.ts`) throws with a multi-line guidance message and the error boundary (`ConfigErrorBoundary`) renders a remediation panel.
+
+To confirm loaded values during development:
+```ts
+if (import.meta.env.DEV) {
+  console.log('[ENV]', import.meta.env.VITE_SP_RESOURCE, import.meta.env.VITE_SP_SITE_RELATIVE);
+}
+```
+
+### Common Pitfalls & Fixes
+| Symptom | Cause | Fix |
+|---------|-------|-----|
+| "SharePoint 接続設定が未完了です" | Placeholders still present | Replace `<yourtenant>` / `<SiteName>` with real values |
+| 401 after sign-in | Permissions not admin-consented | Grant admin consent to SharePoint delegated permissions |
+| 404 `_api/web` | Wrong site relative path | Double-check `/sites/<SiteName>` casing & existence |
+| `VITE_SP_RESOURCE の形式が不正` | Added trailing slash or missing host | Remove trailing `/`, ensure `https://tenant.sharepoint.com` |
+
+### Optional Flags
+```
+# Verbose debug for audit & SharePoint client
+VITE_AUDIT_DEBUG=1
+
+# Retry tuning (keep defaults unless diagnosing throttling)
+VITE_SP_RETRY_MAX=4
+VITE_SP_RETRY_BASE_MS=400
+VITE_SP_RETRY_MAX_DELAY_MS=5000
+```
+
+> Security: Never put client secrets in `.env` (frontend). Only `VITE_` prefixed public config belongs here.
+
+## Audit Metrics (Testing Contract)
+`AuditPanel` exposes a stable, test-focused metrics container after executing a batch sync.
+
+Selector:
+```
+[data-testid="audit-metrics"]
+```
+
+Exposed data attributes (stringified numbers):
+| Attribute | Meaning |
+|-----------|---------|
+| `data-new` | Newly inserted items (success - duplicates) |
+| `data-duplicates` | Duplicate (409) item count (idempotent successes) |
+| `data-failed` | Failed (non-2xx except 409) items remaining after last attempt |
+| `data-success` | Successful count including duplicates |
+| `data-total` | Total items attempted in last batch |
+
+Each pill also has `data-metric` = `new` / `duplicates` / `failed` in stable order for ordering assertions.
+
+### Example (Playwright)
+```ts
+const metrics = page.getByTestId('audit-metrics');
+await expect(metrics).toHaveAttribute('data-total', '6');
+await expect(metrics).toHaveAttribute('data-success', '5');
+await expect(metrics).toHaveAttribute('data-duplicates', '2');
+await expect(metrics).toHaveAttribute('data-new', '3');
+await expect(metrics).toHaveAttribute('data-failed', '1');
+const order = await metrics.locator('[data-metric]').evaluateAll(ns => ns.map(n => n.getAttribute('data-metric')));
+expect(order).toEqual(['new','duplicates','failed']);
+```
+
+Rationale: Avoid brittle regex on localized labels (新規/重複/失敗) and ensure i18n or stylistic changes don't break tests.
+
+> i18n Note: Metric pill labels are centralized in `src/features/audit/labels.ts` for future localization. Only data-* attributes are used by tests, so translating the labels will not break assertions.
+
+### Helper Utility (Optional)
+`tests/e2e/utils/metrics.ts` provides `readAuditMetrics(page)` and `expectConsistent(snapshot)`:
+```ts
+import { readAuditMetrics, expectConsistent } from '../utils/metrics';
+
+test('batch metrics math', async ({ page }) => {
+  await page.goto('/audit');
+  // ... seed logs & trigger batch ...
+  const snap = await readAuditMetrics(page);
+  expectConsistent(snap); // validates newItems === success - duplicates
+  expect(snap.order).toEqual(['new','duplicates','failed']);
+});
+```
 
 ## Authentication Flow
 1. MSAL instance configured in `src/auth/msalConfig.ts`
@@ -108,6 +201,12 @@ npm run dev
 
 ### Test & Coverage
 
+### Strategy
+- **Unit (厚め)**: 同期ロジック、リトライ、バッチパーサ、CSV 生成などの純粋ロジックは **Vitest** で網羅。UI 断面も **React Testing Library (jsdom)** でコンポーネント単位を検証。  
+- **E2E (最小)**: **Playwright** は「失敗のみ再送」「429/503 リトライ」など **重要シナリオの最小数** に絞り、ページ全体のフレーク回避と実行時間を抑制。
+- **カバレッジ・ゲート**: Phase 3 固定（Lines/Funcs/Stmts **70%** / Branches **65%**）。  
+  ロジックの追加時はユニットテストを先に整備して緑化→E2E 追加は必要最小に留めます。
+
 現在の固定品質ゲート (Phase 3 固定化):
 ```
 Lines >= 70%, Statements >= 70%, Functions >= 70%, Branches >= 65%
@@ -135,6 +234,21 @@ Lines >= 70%, Statements >= 70%, Functions >= 70%, Branches >= 65%
 npm run test:coverage -- --reporter=text
 ```
 CI では text / lcov / json-summary を生成。将来的にバッジ or PR コメント自動化を計画。
+
+### Utility: `safeRandomUUID`
+依存注入オプション付き UUID 生成ヘルパ。優先順: (1) 注入実装 (2) `crypto.randomUUID` (3) `crypto.getRandomValues` v4 生成 (4) `Math.random` フォールバック。
+
+```ts
+import { safeRandomUUID } from '@/lib/uuid';
+
+// 通常利用
+const id = safeRandomUUID();
+
+// テストや特殊用途で固定値を注入
+const predictable = safeRandomUUID({ randomUUID: () => 'fixed-uuid-1234' });
+```
+
+> 注入によりグローバル `crypto` を差し替えずテストを安定化。
 
 ```
 
@@ -516,5 +630,4 @@ API permissions should include delegated permissions to SharePoint (e.g. `Sites.
 
 ## License
 Internal / TBD.
-# CI smoke
 # CI smoke

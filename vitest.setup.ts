@@ -1,5 +1,6 @@
 // Vitest global setup: polyfill crypto.randomUUID if absent (Node < 19 environments)
 import { webcrypto } from 'crypto';
+import '@testing-library/jest-dom/vitest';
 
 if (!(globalThis as any).crypto) {
   (globalThis as any).crypto = webcrypto as any;
