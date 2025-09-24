@@ -30,7 +30,8 @@ jobs:
     if: >
       github.event_name == 'workflow_dispatch' ||
       (github.event_name == 'pull_request' &&
-       contains(toJson(github.event.pull_request.labels), 'apply'))
+       contains(github.event.pull_request.labels.*.name, 'apply')) ||
+      (github.event_name == 'push' && github.ref == 'refs/heads/main')
     runs-on: ubuntu-latest
 
     # 事故防止に「環境」保護を推奨（Settings > Environments で reviewers を設定）
@@ -123,5 +124,5 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: provision-changes
-          path: provision/changes.json
+          path: ${{ github.workspace }}/provision/changes.json
           if-no-files-found: ignore

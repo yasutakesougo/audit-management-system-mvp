@@ -20,9 +20,7 @@ $ErrorActionPreference = 'Stop'
 $SummaryPath = $env:GITHUB_STEP_SUMMARY
 $GLOBAL:Changes = New-Object System.Collections.Generic.List[string]
 
-# WhatIf wiring: local flag and default propagation to cmdlets
-$whatIf = $WhatIfMode.IsPresent
-$PSDefaultParameterValues["*:WhatIf"] = $whatIf
+# WhatIf wiring handled via explicit $WhatIfMode checks per operation
 
 function Note([string]$msg) {
   Write-Host $msg
@@ -196,27 +194,25 @@ function EnsureUserField {
   }
 }
 
-# Safe setter ensuring Indexed=true before EnforceUniqueValues=true, honoring -WhatIf
+# Safe setter ensuring Indexed=true before EnforceUniqueValues=true (relies on PSDefaultParameterValues)
 function Set-ListFieldSafe {
   param(
     [Parameter(Mandatory=$true)][string]$ListTitle,
     [Parameter(Mandatory=$true)][string]$InternalName,
-    [Parameter(Mandatory=$true)][hashtable]$Values,
-    [bool]$WhatIf
+    [Parameter(Mandatory=$true)][hashtable]$Values
   )
   $vals = @{}
   $Values.GetEnumerator() | ForEach-Object { $vals[$_.Key] = $_.Value }
-  $wif = [bool]$WhatIf
   $wantsUnique = $false
   if ($vals.ContainsKey('EnforceUniqueValues') -and $vals['EnforceUniqueValues'] -eq $true) { $wantsUnique = $true }
   $isIndexedProvided = $vals.ContainsKey('Indexed')
   $isIndexedTrue = $isIndexedProvided -and ($vals['Indexed'] -eq $true)
   if ($wantsUnique -and -not $isIndexedTrue) {
     Write-Host "Indexing field '$InternalName' on list '$ListTitle' before enabling uniqueness..."
-    Set-PnPField -List $ListTitle -Identity $InternalName -Values @{ Indexed = $true } -WhatIf:$wif | Out-Null
+    Set-PnPField -List $ListTitle -Identity $InternalName -Values @{ Indexed = $true } | Out-Null
     $vals['Indexed'] = $true
   }
-  Set-PnPField -List $ListTitle -Identity $InternalName -Values $vals -WhatIf:$wif | Out-Null
+  Set-PnPField -List $ListTitle -Identity $InternalName -Values $vals | Out-Null
 }
 
 function SetFieldMetaSafe {
@@ -234,12 +230,12 @@ function SetFieldMetaSafe {
   $f = Get-PnPField -List $ListTitle -Identity $InternalName -ErrorAction SilentlyContinue
   if (-not $f) { return }
   $changed = $false
-  if ($DisplayName -and $f.Title -ne $DisplayName) { if ($WhatIfMode) { LogChange ("  - Title: {0} -> {1}" -f $InternalName, $DisplayName); $changed = $true } else { Set-ListFieldSafe -ListTitle $ListTitle -InternalName $InternalName -Values @{ Title = $DisplayName } -WhatIf:$whatIf; $changed = $true } }
-  if ($Description -and $f.Description -ne $Description) { if ($WhatIfMode) { LogChange ("  - Description update: {0}" -f $InternalName); $changed = $true } else { Set-ListFieldSafe -ListTitle $ListTitle -InternalName $InternalName -Values @{ Description = $Description } -WhatIf:$whatIf; $changed = $true } }
-  if ($Choices -and $f.TypeAsString -eq 'Choice') { if ($WhatIfMode) { LogChange ("  - Choices: {0} -> {1}" -f $InternalName, ($Choices -join ', ')); $changed = $true } else { Set-ListFieldSafe -ListTitle $ListTitle -InternalName $InternalName -Values @{ Choices = $Choices } -WhatIf:$whatIf; $changed = $true } }
-  if ($null -ne $Required) { $reqVal = [bool]$Required; if ($WhatIfMode) { LogChange ("  - Required: {0} -> {1}" -f $InternalName, $reqVal); $changed = $true } else { Set-ListFieldSafe -ListTitle $ListTitle -InternalName $InternalName -Values @{ Required = $reqVal } -WhatIf:$whatIf; $changed = $true } }
-  if ($null -ne $EnforceUnique -and $f.TypeAsString -in @('Text','Number','URL')) { $uniqVal = [bool]$EnforceUnique; if ($WhatIfMode) { LogChange ("  - EnforceUnique: {0} -> {1}" -f $InternalName, $uniqVal); $changed = $true } else { Set-ListFieldSafe -ListTitle $ListTitle -InternalName $InternalName -Values @{ EnforceUniqueValues = $uniqVal } -WhatIf:$whatIf; $changed = $true } }
-  if ($null -ne $MaxLength -and $f.TypeAsString -eq 'Text') { $lenVal = [int]$MaxLength; if ($WhatIfMode) { LogChange ("  - MaxLength: {0} -> {1}" -f $InternalName, $lenVal); $changed = $true } else { Set-ListFieldSafe -ListTitle $ListTitle -InternalName $InternalName -Values @{ MaxLength = $lenVal } -WhatIf:$whatIf; $changed = $true } }
+  if ($DisplayName -and $f.Title -ne $DisplayName) { if ($WhatIfMode) { LogChange ("  - Title: {0} -> {1}" -f $InternalName, $DisplayName); $changed = $true } else { Set-ListFieldSafe -ListTitle $ListTitle -InternalName $InternalName -Values @{ Title = $DisplayName }; $changed = $true } }
+  if ($Description -and $f.Description -ne $Description) { if ($WhatIfMode) { LogChange ("  - Description update: {0}" -f $InternalName); $changed = $true } else { Set-ListFieldSafe -ListTitle $ListTitle -InternalName $InternalName -Values @{ Description = $Description }; $changed = $true } }
+  if ($Choices -and $f.TypeAsString -eq 'Choice') { if ($WhatIfMode) { LogChange ("  - Choices: {0} -> {1}" -f $InternalName, ($Choices -join ', ')); $changed = $true } else { Set-ListFieldSafe -ListTitle $ListTitle -InternalName $InternalName -Values @{ Choices = $Choices }; $changed = $true } }
+  if ($null -ne $Required) { $reqVal = [bool]$Required; if ($WhatIfMode) { LogChange ("  - Required: {0} -> {1}" -f $InternalName, $reqVal); $changed = $true } else { Set-ListFieldSafe -ListTitle $ListTitle -InternalName $InternalName -Values @{ Required = $reqVal }; $changed = $true } }
+  if ($null -ne $EnforceUnique -and $f.TypeAsString -in @('Text','Number','URL')) { $uniqVal = [bool]$EnforceUnique; if ($WhatIfMode) { LogChange ("  - EnforceUnique: {0} -> {1}" -f $InternalName, $uniqVal); $changed = $true } else { Set-ListFieldSafe -ListTitle $ListTitle -InternalName $InternalName -Values @{ EnforceUniqueValues = $uniqVal }; $changed = $true } }
+  if ($null -ne $MaxLength -and $f.TypeAsString -eq 'Text') { $lenVal = [int]$MaxLength; if ($WhatIfMode) { LogChange ("  - MaxLength: {0} -> {1}" -f $InternalName, $lenVal); $changed = $true } else { Set-ListFieldSafe -ListTitle $ListTitle -InternalName $InternalName -Values @{ MaxLength = $lenVal }; $changed = $true } }
   if ($changed -and -not $WhatIfMode) { LogChange ("  - Field meta updated: {0}" -f $InternalName) }
 }
 
@@ -293,86 +289,95 @@ function DumpListFields([string]$ListTitle) {
   }
 }
 
-Note '# SharePoint Provision Summary'
-Note ''
-Note "Site: $SiteUrl"
-Note "Flags: RecreateExisting=$RecreateExisting ApplyFieldUpdates=$ApplyFieldUpdates ForceTypeReplace=$ForceTypeReplace WhatIf=$($WhatIfMode.IsPresent)"
-Note "Schema: $SchemaPath"
-Note ''
+$shouldEmit = $WhatIfMode -or $EmitChanges
+$failed = $false
+$caughtError = $null
 
-if (-not (Test-Path $SchemaPath)) { throw "Schema file not found: $SchemaPath" }
-$schemaJson = Get-Content -Path $SchemaPath -Raw | ConvertFrom-Json
-ValidateSchema $schemaJson
+try {
+  Note '# SharePoint Provision Summary'
+  Note ''
+  Note "Site: $SiteUrl"
+  Note "Flags: RecreateExisting=$RecreateExisting ApplyFieldUpdates=$ApplyFieldUpdates ForceTypeReplace=$ForceTypeReplace WhatIf=$($WhatIfMode.IsPresent)"
+  Note "Schema: $SchemaPath"
+  Note ''
 
-foreach ($listDef in $schemaJson.lists) {
-  $title = $listDef.title
-  if (-not $title) { continue }
-  EnsureList -Title $title
-  if ($WhatIfMode) { DumpListFields -ListTitle $title }
-  foreach ($f in $listDef.fields) {
-    if (-not $f.internalName -or -not $f.type) { continue }
-    $dn = $f.displayName
-    $in = $f.internalName
-    $ty = $f.type
-    $add = $false
-    if ($null -ne $f.addToDefaultView -and [bool]$f.addToDefaultView) { $add = $true }
-    $desc = $null; if ($f.PSObject.Properties.Match('description').Count -gt 0) { $desc = $f.description }
-    $req = $null; if ($f.PSObject.Properties.Match('required').Count -gt 0) { $req = $f.required }
-    $uniq = $null; if ($f.PSObject.Properties.Match('enforceUnique').Count -gt 0) { $uniq = $f.enforceUnique }
-    $max = $null; if ($f.PSObject.Properties.Match('maxLength').Count -gt 0) { $max = $f.maxLength }
-    $ch = $null; if ($f.PSObject.Properties.Match('choices').Count -gt 0) { $ch = [string[]]$f.choices }
-    if ($ty -eq 'Lookup') {
-      $lkList = if ($f.PSObject.Properties.Match('lookupListTitle').Count -gt 0) { $f.lookupListTitle } else { $null }
-      $lkField = if ($f.PSObject.Properties.Match('lookupField').Count -gt 0) { $f.lookupField } else { 'Title' }
-      $lkMulti = $false; if ($f.PSObject.Properties.Match('allowMultiple').Count -gt 0) { $lkMulti = [bool]$f.allowMultiple }
-      if (-not $lkList) { LogChange ("  - Lookup missing lookupListTitle: {0}" -f $in) }
-      else { EnsureLookupField -ListTitle $title -DisplayName $dn -InternalName $in -LookupListTitle $lkList -LookupField $lkField -AllowMultiple:$lkMulti -AddToDefaultView:([switch]$add) }
-    } elseif ($ty -eq 'User') {
-      $uMulti = $false; if ($f.PSObject.Properties.Match('allowMultiple').Count -gt 0) { $uMulti = [bool]$f.allowMultiple }
-      $princip = 'User'; if ($f.PSObject.Properties.Match('principalType').Count -gt 0) { $princip = $f.principalType }
-      EnsureUserField -ListTitle $title -DisplayName $dn -InternalName $in -AllowMultiple:$uMulti -PrincipalType $princip -AddToDefaultView:([switch]$add)
-    } else {
-      EnsureField -ListTitle $title -DisplayName $dn -InternalName $in -Type $ty -Description $desc -Required $req -EnforceUnique $uniq -MaxLength $max -Choices $ch -AddToDefaultView:([switch]$add)
-    }
-    if ($ApplyFieldUpdates -and $ty -eq 'Choice' -and $ch) {
-      $policy = if ($f.PSObject.Properties.Match('choicesPolicy').Count -gt 0) { $f.choicesPolicy } else { 'additive' }
-      try {
-        if ($policy -eq 'additive') {
-          $lines = Update-ChoiceFieldAdditive -ListTitle $title -InternalName $in -DesiredChoices $ch -WhatIfMode:$WhatIfMode
-          foreach ($l in $lines) { LogChange ("  - {0}" -f $l) }
-        } elseif ($policy -eq 'replace') {
-          $lines = Update-ChoiceFieldReplace -ListTitle $title -InternalName $in -DesiredChoices $ch -WhatIfMode:$WhatIfMode
-          foreach ($l in $lines) { LogChange ("  - {0}" -f $l) }
-        } else { LogChange ("  - Unknown choicesPolicy '{0}' for {1}" -f $policy, $in) }
-      } catch {
-        LogChange ("  - Error applying choicesPolicy for {0}: {1}" -f $in, $_.Exception.Message)
+  if (-not (Test-Path $SchemaPath)) { throw "Schema file not found: $SchemaPath" }
+  $schemaJson = Get-Content -Path $SchemaPath -Raw | ConvertFrom-Json
+  ValidateSchema $schemaJson
+
+  foreach ($listDef in $schemaJson.lists) {
+    $title = $listDef.title
+    if (-not $title) { continue }
+    EnsureList -Title $title
+    if ($WhatIfMode) { DumpListFields -ListTitle $title }
+    foreach ($f in $listDef.fields) {
+      if (-not $f.internalName -or -not $f.type) { continue }
+      $dn = $f.displayName
+      $in = $f.internalName
+      $ty = $f.type
+      $add = $false
+      if ($null -ne $f.addToDefaultView -and [bool]$f.addToDefaultView) { $add = $true }
+      $desc = $null; if ($f.PSObject.Properties.Match('description').Count -gt 0) { $desc = $f.description }
+      $req = $null; if ($f.PSObject.Properties.Match('required').Count -gt 0) { $req = $f.required }
+      $uniq = $null; if ($f.PSObject.Properties.Match('enforceUnique').Count -gt 0) { $uniq = $f.enforceUnique }
+      $max = $null; if ($f.PSObject.Properties.Match('maxLength').Count -gt 0) { $max = $f.maxLength }
+      $ch = $null; if ($f.PSObject.Properties.Match('choices').Count -gt 0) { $ch = [string[]]$f.choices }
+      if ($ty -eq 'Lookup') {
+        $lkList = if ($f.PSObject.Properties.Match('lookupListTitle').Count -gt 0) { $f.lookupListTitle } else { $null }
+        $lkField = if ($f.PSObject.Properties.Match('lookupField').Count -gt 0) { $f.lookupField } else { 'Title' }
+        $lkMulti = $false; if ($f.PSObject.Properties.Match('allowMultiple').Count -gt 0) { $lkMulti = [bool]$f.allowMultiple }
+        if (-not $lkList) { LogChange ("  - Lookup missing lookupListTitle: {0}" -f $in) }
+        else { EnsureLookupField -ListTitle $title -DisplayName $dn -InternalName $in -LookupListTitle $lkList -LookupField $lkField -AllowMultiple:$lkMulti -AddToDefaultView:([switch]$add) }
+      } elseif ($ty -eq 'User') {
+        $uMulti = $false; if ($f.PSObject.Properties.Match('allowMultiple').Count -gt 0) { $uMulti = [bool]$f.allowMultiple }
+        $princip = 'User'; if ($f.PSObject.Properties.Match('principalType').Count -gt 0) { $princip = $f.principalType }
+        EnsureUserField -ListTitle $title -DisplayName $dn -InternalName $in -AllowMultiple:$uMulti -PrincipalType $princip -AddToDefaultView:([switch]$add)
+      } else {
+        EnsureField -ListTitle $title -DisplayName $dn -InternalName $in -Type $ty -Description $desc -Required $req -EnforceUnique $uniq -MaxLength $max -Choices $ch -AddToDefaultView:([switch]$add)
+      }
+      if ($ApplyFieldUpdates -and $ty -eq 'Choice' -and $ch) {
+        $policy = if ($f.PSObject.Properties.Match('choicesPolicy').Count -gt 0) { $f.choicesPolicy } else { 'additive' }
+        try {
+          if ($policy -eq 'additive') {
+            $lines = Update-ChoiceFieldAdditive -ListTitle $title -InternalName $in -DesiredChoices $ch -WhatIfMode:$WhatIfMode
+            foreach ($l in $lines) { LogChange ("  - {0}" -f $l) }
+          } elseif ($policy -eq 'replace') {
+            $lines = Update-ChoiceFieldReplace -ListTitle $title -InternalName $in -DesiredChoices $ch -WhatIfMode:$WhatIfMode
+            foreach ($l in $lines) { LogChange ("  - {0}" -f $l) }
+          } else { LogChange ("  - Unknown choicesPolicy '{0}' for {1}" -f $policy, $in) }
+        } catch {
+          LogChange ("  - Error applying choicesPolicy for {0}: {1}" -f $in, $_.Exception.Message)
+        }
       }
     }
   }
+
+  Note ''
+  Note 'Changes:'
+  if ($GLOBAL:Changes.Count -eq 0) { Note '- No changes (already up-to-date)' }
 }
-
-Note ''
-Note 'Changes:'
-if ($GLOBAL:Changes.Count -eq 0) { Note '- No changes (already up-to-date)' }
-
-function Get-ChangeKind([string]$line) {
-  if ($line -match '^(Create list:)') { return 'CreateList' }
-  if ($line -match '^(Recreate list:)') { return 'RecreateList' }
-  if ($line -match 'Add lookup field') { return 'EnsureField' }
-  if ($line -match 'Add user field') { return 'EnsureField' }
-  if ($line -match 'Add field') { return 'EnsureField' }
-  if ($line -match 'Type mismatch') { return 'TypeMismatch' }
-  if ($line -match 'Field meta updated') { return 'MetaUpdate' }
-  if ($line -match 'Title: ') { return 'MetaUpdate' }
-  if ($line -match 'Description update') { return 'MetaUpdate' }
-  if ($line -match 'Choices: ') { return 'MetaUpdate' }
-  if ($line -match 'multi enabled') { return 'MetaUpdate' }
-  if ($line -match 'Error applying choicesPolicy') { return 'Warning' }
-  return 'Info'
+catch {
+  $failed = $true
+  $caughtError = $_
+  Note "ERROR: $($_.Exception.Message)"
 }
+finally {
+  function Get-ChangeKind([string]$line) {
+    if ($line -match '^(Create list:)') { return 'CreateList' }
+    if ($line -match '^(Recreate list:)') { return 'RecreateList' }
+    if ($line -match 'Add lookup field') { return 'EnsureField' }
+    if ($line -match 'Add user field') { return 'EnsureField' }
+    if ($line -match 'Add field') { return 'EnsureField' }
+    if ($line -match 'Type mismatch') { return 'TypeMismatch' }
+    if ($line -match 'Field meta updated') { return 'MetaUpdate' }
+    if ($line -match 'Title: ') { return 'MetaUpdate' }
+    if ($line -match 'Description update') { return 'MetaUpdate' }
+    if ($line -match 'Choices: ') { return 'MetaUpdate' }
+    if ($line -match 'multi enabled') { return 'MetaUpdate' }
+    if ($line -match 'Error applying choicesPolicy') { return 'Warning' }
+    return 'Info'
+  }
 
-$shouldEmit = $WhatIfMode -or $EmitChanges
-if ($shouldEmit) {
   $summaryCounts = @{}
   foreach ($c in $GLOBAL:Changes) {
     $kind = Get-ChangeKind $c
@@ -383,7 +388,6 @@ if ($shouldEmit) {
   foreach ($key in $summaryCounts.Keys) {
     $byKind += [pscustomobject]@{ kind = $key; count = $summaryCounts[$key] }
   }
-
   if ($summaryCounts.Count -eq 0) {
     $byKind += [pscustomobject]@{ kind = 'Info'; count = 0 }
   }
@@ -393,6 +397,7 @@ if ($shouldEmit) {
     timestamp = (Get-Date).ToUniversalTime().ToString('o')
     site      = $SiteUrl
     whatIf    = $whatIf
+    status    = if ($failed) { 'error' } else { 'ok' }
     recreate  = [bool]$RecreateExisting
     applyMeta = [bool]$ApplyFieldUpdates
     forceType = [bool]$ForceTypeReplace
@@ -402,23 +407,29 @@ if ($shouldEmit) {
 
   try {
     $writtenPath = Write-ChangesJson -Path $ChangesOutPath -Payload $payload
-    if ($env:GITHUB_STEP_SUMMARY) {
+    if ($env:GITHUB_STEP_SUMMARY -and ($shouldEmit -or $failed)) {
       $jsonPreview = $payload | ConvertTo-Json -Depth 3
       $lines = @(
         '### Provision Changes',
         "- Written: $writtenPath",
         "- Total: $($GLOBAL:Changes.Count)",
+        "- Status: $($payload.status)",
         '',
         '```json',
         $jsonPreview,
         '```'
       )
       $lines -join "`n" | Out-File -FilePath $env:GITHUB_STEP_SUMMARY -Encoding utf8 -Append
+    } elseif (-not $shouldEmit) {
+      Write-Host 'changes.json emitted (WhatIf/EmitChanges disabled).'
     }
   }
   catch {
     Write-Warning "Failed to write changes JSON: $($_.Exception.Message)"
   }
-} else {
-  Write-Host 'EmitChanges not requested and WhatIf disabled; skipping changes.json generation.'
+
+  if ($failed) {
+    if ($caughtError) { throw $caughtError }
+    throw
+  }
 }
