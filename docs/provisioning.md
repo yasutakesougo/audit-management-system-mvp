@@ -274,3 +274,4 @@ WhatIf 実行 (推奨): アーティファクト `backfill-metrics` を確認し
 
 
 Trigger WhatIf smoke 2025-09-24T06:23:25Z.
+Trigger Apply test 2025-09-24T09:23:59Z
