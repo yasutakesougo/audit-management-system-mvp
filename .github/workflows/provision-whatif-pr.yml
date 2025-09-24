@@ -22,6 +22,17 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Assert script version
+        shell: pwsh
+        run: |
+          Write-Host "Script SHA: $env:GITHUB_SHA"
+          Get-Content scripts/provision-spo.ps1 | Select-Object -First 40
+          if (-not (Select-String -Path scripts/provision-spo.ps1 -Pattern '\[bool\]\$WhatIf' -Quiet)) {
+            throw 'Set-ListFieldSafe does not accept [bool]$WhatIf (old script version used)'
+          }
 
       - name: Install PnP.PowerShell
         shell: pwsh
