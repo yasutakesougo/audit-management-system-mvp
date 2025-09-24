@@ -5,7 +5,7 @@ param(
   [bool]$RecreateExisting = $false,
   [bool]$ApplyFieldUpdates = $true,
   [bool]$ForceTypeReplace = $false,
-  [bool]$WhatIfMode = $false,
+  [switch]$WhatIfMode,
   [string]$SchemaPath = 'provision/schema.json',
   [string]$ChangesOutPath = 'provision/changes.json',
   [switch]$EmitChanges
@@ -51,14 +51,14 @@ function EnsureList {
     $msg = "Recreate list: $Title (delete & create)"
     if ($WhatIfMode) { LogChange $msg; return }
     LogChange $msg
-    Remove-PnPList -Identity $Title -Force
+  Remove-PnPList -Identity $Title -Force -WhatIf:$WhatIfMode.IsPresent
     $list = $null
   }
   if (-not $list) {
     $msg = "Create list: $Title"
     if ($WhatIfMode) { LogChange $msg; return }
     LogChange $msg
-    New-PnPList -Title $Title -Template GenericList -OnQuickLaunch | Out-Null
+  New-PnPList -Title $Title -Template GenericList -OnQuickLaunch -WhatIf:$WhatIfMode.IsPresent | Out-Null
   } else {
     LogChange ("List exists: {0}" -f $Title)
   }
@@ -90,7 +90,7 @@ function EnsureLookupField {
     LogChange $msg
     $multiAttr = if ($AllowMultiple) { 'TRUE' } else { 'FALSE' }
     $xml = "<Field Type='Lookup' DisplayName='$DisplayName' Required='FALSE' EnforceUniqueValues='FALSE' List='$LookupListTitle' ShowField='$LookupField' StaticName='$InternalName' Name='$InternalName' AllowMultipleValues='$multiAttr' />"
-    Add-PnPFieldFromXml -List $ListTitle -FieldXml $xml -AddToDefaultView:$AddToDefaultView.IsPresent | Out-Null
+  Add-PnPFieldFromXml -List $ListTitle -FieldXml $xml -AddToDefaultView:$AddToDefaultView.IsPresent -WhatIf:$WhatIfMode.IsPresent | Out-Null
     return
   }
   if ($existingType -ne 'Lookup') {
@@ -100,7 +100,7 @@ function EnsureLookupField {
       if ($WhatIfMode) { LogChange ("    - Replacement: {0} (Lookup)" -f $newName); return }
       $multiAttr = if ($AllowMultiple) { 'TRUE' } else { 'FALSE' }
       $xml = "<Field Type='Lookup' DisplayName='$DisplayName' List='$LookupListTitle' ShowField='$LookupField' StaticName='$newName' Name='$newName' AllowMultipleValues='$multiAttr' />"
-      Add-PnPFieldFromXml -List $ListTitle -FieldXml $xml -AddToDefaultView:$AddToDefaultView.IsPresent | Out-Null
+  Add-PnPFieldFromXml -List $ListTitle -FieldXml $xml -AddToDefaultView:$AddToDefaultView.IsPresent -WhatIf:$WhatIfMode.IsPresent | Out-Null
       LogChange ("    - Replacement added: {0}" -f $newName)
     } else { LogChange '    - Skipped type change (forceTypeReplace=false)' }
   } else {
@@ -111,7 +111,7 @@ function EnsureLookupField {
         if ($WhatIfMode) { LogChange ("  - Lookup multi enable: {0}" -f $InternalName) }
         else {
           $xml = $f.SchemaXml -replace 'AllowMultipleValues="FALSE"','AllowMultipleValues="TRUE"'
-          Set-PnPField -List $ListTitle -Identity $InternalName -Values @{ SchemaXml = $xml } | Out-Null
+          Set-PnPField -List $ListTitle -Identity $InternalName -Values @{ SchemaXml = $xml } -WhatIf:$WhatIfMode.IsPresent | Out-Null
           LogChange ("  - Lookup multi enabled: {0}" -f $InternalName)
         }
       } elseif (-not $AllowMultiple -and $currentMulti) {
@@ -139,7 +139,7 @@ function EnsureUserField {
     LogChange $msg
     $multiAttr = if ($AllowMultiple) { 'TRUE' } else { 'FALSE' }
     $xml = "<Field Type='User' DisplayName='$DisplayName' List='UserInfo' ShowField='ImnName' StaticName='$InternalName' Name='$InternalName' UserSelectionScope='0' UserSelectionMode='$selectionMode' AllowMultipleValues='$multiAttr' />"
-    Add-PnPFieldFromXml -List $ListTitle -FieldXml $xml -AddToDefaultView:$AddToDefaultView.IsPresent | Out-Null
+  Add-PnPFieldFromXml -List $ListTitle -FieldXml $xml -AddToDefaultView:$AddToDefaultView.IsPresent -WhatIf:$WhatIfMode.IsPresent | Out-Null
     return
   }
   if ($existingType -ne 'User') {
@@ -149,7 +149,7 @@ function EnsureUserField {
       if ($WhatIfMode) { LogChange ("    - Replacement: {0} (User)" -f $newName); return }
       $multiAttr = if ($AllowMultiple) { 'TRUE' } else { 'FALSE' }
       $xml = "<Field Type='User' DisplayName='$DisplayName' StaticName='$newName' Name='$newName' UserSelectionMode='$selectionMode' AllowMultipleValues='$multiAttr' />"
-      Add-PnPFieldFromXml -List $ListTitle -FieldXml $xml -AddToDefaultView:$AddToDefaultView.IsPresent | Out-Null
+  Add-PnPFieldFromXml -List $ListTitle -FieldXml $xml -AddToDefaultView:$AddToDefaultView.IsPresent -WhatIf:$WhatIfMode.IsPresent | Out-Null
       LogChange ("    - Replacement added: {0}" -f $newName)
     } else { LogChange '    - Skipped type change (forceTypeReplace=false)' }
   } else {
@@ -160,7 +160,7 @@ function EnsureUserField {
         if ($WhatIfMode) { LogChange ("  - User multi enable: {0}" -f $InternalName) }
         else {
           $xml = $f.SchemaXml -replace 'AllowMultipleValues="FALSE"','AllowMultipleValues="TRUE"'
-          Set-PnPField -List $ListTitle -Identity $InternalName -Values @{ SchemaXml = $xml } | Out-Null
+          Set-PnPField -List $ListTitle -Identity $InternalName -Values @{ SchemaXml = $xml } -WhatIf:$WhatIfMode.IsPresent | Out-Null
           LogChange ("  - User multi enabled: {0}" -f $InternalName)
         }
       } elseif (-not $AllowMultiple -and $currentMulti) {
@@ -168,6 +168,29 @@ function EnsureUserField {
       }
     }
   }
+}
+
+# Safe setter ensuring Indexed=true before EnforceUniqueValues=true, honoring -WhatIf
+function Set-ListFieldSafe {
+  param(
+    [Parameter(Mandatory=$true)][string]$ListTitle,
+    [Parameter(Mandatory=$true)][string]$InternalName,
+    [Parameter(Mandatory=$true)][hashtable]$Values,
+    [switch]$WhatIfMode
+  )
+  $vals = @{}
+  $Values.GetEnumerator() | ForEach-Object { $vals[$_.Key] = $_.Value }
+  $wif = $WhatIfMode.IsPresent
+  $wantsUnique = $false
+  if ($vals.ContainsKey('EnforceUniqueValues') -and $vals['EnforceUniqueValues'] -eq $true) { $wantsUnique = $true }
+  $isIndexedProvided = $vals.ContainsKey('Indexed')
+  $isIndexedTrue = $isIndexedProvided -and ($vals['Indexed'] -eq $true)
+  if ($wantsUnique -and -not $isIndexedTrue) {
+    Write-Host "Indexing field '$InternalName' on list '$ListTitle' before enabling uniqueness..."
+    Set-PnPField -List $ListTitle -Identity $InternalName -Values @{ Indexed = $true } -WhatIf:$wif | Out-Null
+    $vals['Indexed'] = $true
+  }
+  Set-PnPField -List $ListTitle -Identity $InternalName -Values $vals -WhatIf:$wif | Out-Null
 }
 
 function SetFieldMetaSafe {
@@ -185,33 +208,12 @@ function SetFieldMetaSafe {
   $f = Get-PnPField -List $ListTitle -Identity $InternalName -ErrorAction SilentlyContinue
   if (-not $f) { return }
   $changed = $false
-  if ($DisplayName -and $f.Title -ne $DisplayName) {
-    if ($WhatIfMode) { LogChange ("  - Title: {0} -> {1}" -f $InternalName, $DisplayName); $changed = $true }
-    else { Set-PnPField -List $ListTitle -Identity $InternalName -Values @{ Title = $DisplayName } | Out-Null; $changed = $true }
-  }
-  if ($Description -and $f.Description -ne $Description) {
-    if ($WhatIfMode) { LogChange ("  - Description update: {0}" -f $InternalName); $changed = $true }
-    else { Set-PnPField -List $ListTitle -Identity $InternalName -Values @{ Description = $Description } | Out-Null; $changed = $true }
-  }
-  if ($Choices -and $f.TypeAsString -eq 'Choice') {
-    if ($WhatIfMode) { LogChange ("  - Choices: {0} -> {1}" -f $InternalName, ($Choices -join ', ')); $changed = $true }
-    else { Set-PnPField -List $ListTitle -Identity $InternalName -Values @{ Choices = $Choices } | Out-Null; $changed = $true }
-  }
-  if ($null -ne $Required) {
-    $reqVal = [bool]$Required
-    if ($WhatIfMode) { LogChange ("  - Required: {0} -> {1}" -f $InternalName, $reqVal); $changed = $true }
-    else { Set-PnPField -List $ListTitle -Identity $InternalName -Values @{ Required = $reqVal } | Out-Null; $changed = $true }
-  }
-  if ($null -ne $EnforceUnique -and $f.TypeAsString -in @('Text','Number','URL')) {
-    $uniqVal = [bool]$EnforceUnique
-    if ($WhatIfMode) { LogChange ("  - EnforceUnique: {0} -> {1}" -f $InternalName, $uniqVal); $changed = $true }
-    else { Set-PnPField -List $ListTitle -Identity $InternalName -Values @{ EnforceUniqueValues = $uniqVal } | Out-Null; $changed = $true }
-  }
-  if ($null -ne $MaxLength -and $f.TypeAsString -eq 'Text') {
-    $lenVal = [int]$MaxLength
-    if ($WhatIfMode) { LogChange ("  - MaxLength: {0} -> {1}" -f $InternalName, $lenVal); $changed = $true }
-    else { Set-PnPField -List $ListTitle -Identity $InternalName -Values @{ MaxLength = $lenVal } | Out-Null; $changed = $true }
-  }
+  if ($DisplayName -and $f.Title -ne $DisplayName) { if ($WhatIfMode) { LogChange ("  - Title: {0} -> {1}" -f $InternalName, $DisplayName); $changed = $true } else { Set-ListFieldSafe -ListTitle $ListTitle -InternalName $InternalName -Values @{ Title = $DisplayName } -WhatIfMode:$WhatIfMode; $changed = $true } }
+  if ($Description -and $f.Description -ne $Description) { if ($WhatIfMode) { LogChange ("  - Description update: {0}" -f $InternalName); $changed = $true } else { Set-ListFieldSafe -ListTitle $ListTitle -InternalName $InternalName -Values @{ Description = $Description } -WhatIfMode:$WhatIfMode; $changed = $true } }
+  if ($Choices -and $f.TypeAsString -eq 'Choice') { if ($WhatIfMode) { LogChange ("  - Choices: {0} -> {1}" -f $InternalName, ($Choices -join ', ')); $changed = $true } else { Set-ListFieldSafe -ListTitle $ListTitle -InternalName $InternalName -Values @{ Choices = $Choices } -WhatIfMode:$WhatIfMode; $changed = $true } }
+  if ($null -ne $Required) { $reqVal = [bool]$Required; if ($WhatIfMode) { LogChange ("  - Required: {0} -> {1}" -f $InternalName, $reqVal); $changed = $true } else { Set-ListFieldSafe -ListTitle $ListTitle -InternalName $InternalName -Values @{ Required = $reqVal } -WhatIfMode:$WhatIfMode; $changed = $true } }
+  if ($null -ne $EnforceUnique -and $f.TypeAsString -in @('Text','Number','URL')) { $uniqVal = [bool]$EnforceUnique; if ($WhatIfMode) { LogChange ("  - EnforceUnique: {0} -> {1}" -f $InternalName, $uniqVal); $changed = $true } else { Set-ListFieldSafe -ListTitle $ListTitle -InternalName $InternalName -Values @{ EnforceUniqueValues = $uniqVal } -WhatIfMode:$WhatIfMode; $changed = $true } }
+  if ($null -ne $MaxLength -and $f.TypeAsString -eq 'Text') { $lenVal = [int]$MaxLength; if ($WhatIfMode) { LogChange ("  - MaxLength: {0} -> {1}" -f $InternalName, $lenVal); $changed = $true } else { Set-ListFieldSafe -ListTitle $ListTitle -InternalName $InternalName -Values @{ MaxLength = $lenVal } -WhatIfMode:$WhatIfMode; $changed = $true } }
   if ($changed -and -not $WhatIfMode) { LogChange ("  - Field meta updated: {0}" -f $InternalName) }
 }
 
@@ -233,7 +235,7 @@ function EnsureField {
     $msg = ("  - Add field: {0} ({1})" -f $InternalName, $Type)
     if ($WhatIfMode) { LogChange $msg; return }
     LogChange $msg
-    Add-PnPField -List $ListTitle -DisplayName $DisplayName -InternalName $InternalName -Type $Type -AddToDefaultView:$AddToDefaultView.IsPresent | Out-Null
+  Add-PnPField -List $ListTitle -DisplayName $DisplayName -InternalName $InternalName -Type $Type -AddToDefaultView:$AddToDefaultView.IsPresent -WhatIf:$WhatIfMode.IsPresent | Out-Null
     return
   }
   if ($existingType -ne $Type) {
@@ -241,12 +243,12 @@ function EnsureField {
     if ($ForceTypeReplace) {
       $newName = "${InternalName}_v2"
       if ($WhatIfMode) { LogChange ("    - Replacement: {0} ({1}) & migrate" -f $newName, $Type); return }
-      Add-PnPField -List $ListTitle -DisplayName $DisplayName -InternalName $newName -Type $Type -AddToDefaultView:$AddToDefaultView.IsPresent | Out-Null
+  Add-PnPField -List $ListTitle -DisplayName $DisplayName -InternalName $newName -Type $Type -AddToDefaultView:$AddToDefaultView.IsPresent -WhatIf:$WhatIfMode.IsPresent | Out-Null
       $items = Get-PnPListItem -List $ListTitle -PageSize 2000
       foreach ($it in $items) {
         $val = $it[$InternalName]
         if ($null -ne $val -and $val -ne '') {
-          Set-PnPListItem -List $ListTitle -Identity $it.Id -Values @{ $newName = $val } | Out-Null
+          Set-PnPListItem -List $ListTitle -Identity $it.Id -Values @{ $newName = $val } -WhatIf:$WhatIfMode.IsPresent | Out-Null
         }
       }
       LogChange ("    - Migration done: {0} -> {1}" -f $InternalName, $newName)
@@ -268,7 +270,7 @@ function DumpListFields([string]$ListTitle) {
 Note '# SharePoint Provision Summary'
 Note ''
 Note "Site: $SiteUrl"
-Note "Flags: RecreateExisting=$RecreateExisting ApplyFieldUpdates=$ApplyFieldUpdates ForceTypeReplace=$ForceTypeReplace WhatIf=$WhatIfMode"
+Note "Flags: RecreateExisting=$RecreateExisting ApplyFieldUpdates=$ApplyFieldUpdates ForceTypeReplace=$ForceTypeReplace WhatIf=$($WhatIfMode.IsPresent)"
 Note "Schema: $SchemaPath"
 Note ''
 
@@ -355,7 +357,7 @@ if ( ($WhatIfMode -or $EmitChanges) -and $GLOBAL:Changes.Count -gt 0 ) {
     $structured = [pscustomobject]@{}
     $structured | Add-Member -NotePropertyName timestamp -NotePropertyValue ((Get-Date).ToString('o'))
     $structured | Add-Member -NotePropertyName site -NotePropertyValue $SiteUrl
-    $structured | Add-Member -NotePropertyName whatIf -NotePropertyValue ([bool]$WhatIfMode)
+  $structured | Add-Member -NotePropertyName whatIf -NotePropertyValue ([bool]$WhatIfMode.IsPresent)
     $structured | Add-Member -NotePropertyName recreate -NotePropertyValue ([bool]$RecreateExisting)
     $structured | Add-Member -NotePropertyName applyMeta -NotePropertyValue ([bool]$ApplyFieldUpdates)
     $structured | Add-Member -NotePropertyName forceType -NotePropertyValue ([bool]$ForceTypeReplace)
