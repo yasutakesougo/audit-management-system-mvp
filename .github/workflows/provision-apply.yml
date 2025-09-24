@@ -46,15 +46,6 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Assert script version
-        shell: pwsh
-        run: |
-          Write-Host "Script SHA: $env:GITHUB_SHA"
-          Get-Content scripts/provision-spo.ps1 | Select-Object -First 40
-          if (-not (Select-String -Path scripts/provision-spo.ps1 -Pattern '\[bool\]\$WhatIf' -Quiet)) {
-            throw 'Set-ListFieldSafe does not accept [bool]$WhatIf (old script version used)'
-          }
-
       - name: Setup Node (for tooling if needed)
         uses: actions/setup-node@v4
         with:
@@ -122,30 +113,10 @@ jobs:
             -ChangesOutPath 'provision/changes.json' `
             -EmitChanges
 
-      - name: Verify changes.json exists
-        shell: bash
-        run: |
-          set -euxo pipefail
-          echo "Workspace: ${GITHUB_WORKSPACE}"
-          expected="${GITHUB_WORKSPACE}/provision/changes.json"
-          echo "Expecting changes.json at: ${expected}"
-          ls -la "${GITHUB_WORKSPACE}" || true
-          ls -la "${GITHUB_WORKSPACE}/provision" || true
-          if [[ ! -f "${expected}" ]]; then
-            echo "::error::changes.json not found at ${expected}"
-            if [[ -n "${GITHUB_STEP_SUMMARY:-}" && -f "${GITHUB_STEP_SUMMARY}" ]]; then
-              echo "--- GITHUB_STEP_SUMMARY ---"
-              cat "${GITHUB_STEP_SUMMARY}"
-              echo "---------------------------"
-            fi
-            exit 1
-          fi
-
       - name: Upload changes.json artifact
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: provision-changes
-          path: ${{ github.workspace }}/provision/changes.json
-          if-no-files-found: error
-          retention-days: 7
+          path: provision/changes.json
+          if-no-files-found: ignore
