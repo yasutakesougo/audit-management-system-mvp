@@ -115,11 +115,27 @@ export const useAuditSyncBatch = () => {
       while (!done && attempt < MAX_RETRY) {
         const { body, boundary } = buildBatchInsertBody(AUDIT_LIST_NAME, chunk);
         try {
-          const res = await postBatch(body, boundary);
-            const parsed = await parseBatchInsertResponse(res.clone());
-            _lastParse = parsed;
+            let parsed: Awaited<ReturnType<typeof parseBatchInsertResponse>> | null = null;
+            if (typeof window !== 'undefined' && (window as any).__E2E_FORCE_BATCH__) {
+              // Test hook supplies a synthetic multipart body + status objects
+              const synthetic = await (window as any).__E2E_FORCE_BATCH__(chunk);
+              if (synthetic && typeof synthetic.body === 'string') {
+                const blob = new Blob([synthetic.body], { type: 'multipart/mixed' });
+                const fakeRes = new Response(blob, { status: 202, headers: { 'Content-Type': 'multipart/mixed; boundary=e2e_forced' } });
+                parsed = await parseBatchInsertResponse(fakeRes);
+              }
+            }
+            if (!parsed) {
+              const res = await postBatch(body, boundary);
+              parsed = await parseBatchInsertResponse(res.clone());
+            }
+              const resParsed = parsed;
+            if (typeof window !== 'undefined') {
+                (window as any).__E2E_LAST_PARSED__ = resParsed;
+            }
+              _lastParse = resParsed;
             // 失敗の中にトランジェント（429/503/504）が含まれるか簡易判定（errors の status 走査）
-            const transientErrors = parsed.errors.filter(e => transientStatus(e.status));
+              const transientErrors = resParsed.errors.filter(e => transientStatus(e.status));
             if (transientErrors.length && attempt < MAX_RETRY - 1) {
               // リトライ対象: 全体を再送 (細粒度リトライは将来拡張)
               attempt++;
@@ -129,11 +145,11 @@ export const useAuditSyncBatch = () => {
               continue;
             }
             // 成果を集約
-            success += parsed.success;
-            failed += parsed.failed;
+              success += resParsed.success;
+              failed += resParsed.failed;
             // Collect failed original indices via Content-ID mapping
-            if (parsed.failed && parsed.errors.length) {
-              for (const err of parsed.errors) {
+              if (resParsed.failed && resParsed.errors.length) {
+                for (const err of resParsed.errors) {
                 if (!isNaN(err.contentId)) {
                   const localIdx = (err.contentId - 1); // within chunk
                   const originalIdx = processedOffset + localIdx;
@@ -141,16 +157,16 @@ export const useAuditSyncBatch = () => {
                 }
               }
             }
-            duplicates += parsed.duplicates || 0;
-            if (parsed.categories) {
-              for (const [k, v] of Object.entries(parsed.categories)) {
+              duplicates += resParsed.duplicates || 0;
+              if (resParsed.categories) {
+                for (const [k, v] of Object.entries(resParsed.categories)) {
                 categoryAgg[k] = (categoryAgg[k] || 0) + v;
               }
             }
-            if (parsed.errors.length) {
-              errorAgg.push(...parsed.errors.map(e => ({ contentId: e.contentId, status: e.status, statusText: e.statusText })));
+              if (resParsed.errors.length) {
+                errorAgg.push(...resParsed.errors.map(e => ({ contentId: e.contentId, status: e.status, statusText: e.statusText })));
             }
-            auditLog.debug('chunk', { size: chunk.length, boundary, parsed, attempt });
+              auditLog.debug('chunk', { size: chunk.length, boundary, parsed: resParsed, attempt });
             done = true;
         } catch (e) {
           if (attempt < MAX_RETRY - 1) {
@@ -168,6 +184,11 @@ export const useAuditSyncBatch = () => {
       }
       processedOffset += chunk.length;
     }
+
+      // Test-only hook: signal completion for E2E polling if present
+      if (typeof window !== 'undefined' && (window as any).__TEST_BATCH_DONE__) {
+        try { (window as any).__TEST_BATCH_DONE__(); } catch {}
+      }
 
     if (success === logs.length) {
       clearAudit();
@@ -196,3 +217,19 @@ export const useAuditSyncBatch = () => {
 
   return { syncAllBatch };
 };
+
+  // DEV/E2E helper to inject a one-off sync call without going through component button (optional)
+  if (import.meta.env.DEV && typeof window !== 'undefined') {
+    (window as any).__E2E_INVOKE_SYNC_BATCH__ = async (size?: number) => {
+      try {
+        const mod = await import('./useAuditSyncBatch');
+        // This indirect import re-runs factory each call; acceptable for test hook.
+        const hook = (mod as any).useAuditSyncBatch?.();
+        if (hook?.syncAllBatch) {
+          return await hook.syncAllBatch(size);
+        }
+      } catch (e) {
+        return { error: String(e) };
+      }
+    };
+  }

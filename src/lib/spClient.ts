@@ -87,7 +87,9 @@ export function createSpClient(acquireToken: () => Promise<string | null>, baseU
         }
       }
       if (waitMs == null) waitMs = computeBackoff(attempt);
-      dbg('retrying', { status: response.status, attempt: attempt + 1, waitMs });
+      if (debugEnabled) {
+        console.warn('[spRetry]', JSON.stringify({ phase: 'single', status: response.status, nextAttempt: attempt + 1, waitMs }));
+      }
       await sleep(waitMs);
       attempt += 1;
       response = await doFetch(token1);
@@ -163,6 +165,13 @@ export function createSpClient(acquireToken: () => Promise<string | null>, baseU
         'Content-Type': `multipart/mixed; boundary=${boundary}`
       });
       const res = await fetch(`${apiRoot}/$batch`, { method: 'POST', headers, body: batchBody });
+      // E2E instrumentation (non-production impact): expose attempt count & last URL for debugging
+      if (typeof window !== 'undefined') {
+        try {
+          (window as any).__E2E_BATCH_URL__ = `${apiRoot}/$batch`;
+          (window as any).__E2E_BATCH_ATTEMPTS__ = ((window as any).__E2E_BATCH_ATTEMPTS__ || 0) + 1;
+        } catch {}
+      }
       if (res.ok) return res;
       if ([429,503,504].includes(res.status) && attempt < maxAttempts) {
         let waitMs: number | null = null;
@@ -174,7 +183,7 @@ export function createSpClient(acquireToken: () => Promise<string | null>, baseU
           }
         }
         if (waitMs == null) waitMs = computeBackoff(attempt);
-        if (debugEnabled) console.warn('[spClient] $batch retry', { status: res.status, attempt: attempt + 1, waitMs });
+  if (debugEnabled) console.warn('[spRetry]', JSON.stringify({ phase: 'batch', status: res.status, nextAttempt: attempt + 1, waitMs }));
         await sleep(waitMs);
         attempt += 1;
         continue;
