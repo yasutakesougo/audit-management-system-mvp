@@ -3,8 +3,8 @@
 > 📌 クイックリンク: [プロビジョニング手順 / WhatIf レビュー](docs/provisioning.md#whatif-ドライラン-と-job-summary) ｜ [SharePoint スキーマ定義](provision/schema.json)
 
 <!-- Badges -->
-![CI Tests](https://github.com/ORG/REPO/actions/workflows/test.yml/badge.svg)
-![Provision WhatIf](https://github.com/ORG/REPO/actions/workflows/provision-sharepoint.yml/badge.svg)
+![Quality Gates](https://github.com/yasutakesougo/audit-management-system-mvp/actions/workflows/test.yml/badge.svg)
+![Provision WhatIf](https://github.com/yasutakesougo/audit-management-system-mvp/actions/workflows/provision-sharepoint.yml/badge.svg)
 ![Lint](https://img.shields.io/badge/lint-pass-brightgreen)
 ![TypeCheck](https://img.shields.io/badge/types-pass-informational)
 ![Coverage Lines](https://img.shields.io/badge/coverage-70%25%2B-green)
