@@ -20,6 +20,10 @@ $ErrorActionPreference = 'Stop'
 $SummaryPath = $env:GITHUB_STEP_SUMMARY
 $GLOBAL:Changes = New-Object System.Collections.Generic.List[string]
 
+# WhatIf wiring: local flag and default propagation to cmdlets
+$whatIf = $WhatIfMode.IsPresent
+$PSDefaultParameterValues["*:WhatIf"] = $whatIf
+
 function Note([string]$msg) {
   Write-Host $msg
   if ($SummaryPath) { Add-Content -Path $SummaryPath -Value $msg }
@@ -176,11 +180,11 @@ function Set-ListFieldSafe {
     [Parameter(Mandatory=$true)][string]$ListTitle,
     [Parameter(Mandatory=$true)][string]$InternalName,
     [Parameter(Mandatory=$true)][hashtable]$Values,
-    [switch]$WhatIfMode
+    [bool]$WhatIf
   )
   $vals = @{}
   $Values.GetEnumerator() | ForEach-Object { $vals[$_.Key] = $_.Value }
-  $wif = $WhatIfMode.IsPresent
+  $wif = [bool]$WhatIf
   $wantsUnique = $false
   if ($vals.ContainsKey('EnforceUniqueValues') -and $vals['EnforceUniqueValues'] -eq $true) { $wantsUnique = $true }
   $isIndexedProvided = $vals.ContainsKey('Indexed')
@@ -208,12 +212,12 @@ function SetFieldMetaSafe {
   $f = Get-PnPField -List $ListTitle -Identity $InternalName -ErrorAction SilentlyContinue
   if (-not $f) { return }
   $changed = $false
-  if ($DisplayName -and $f.Title -ne $DisplayName) { if ($WhatIfMode) { LogChange ("  - Title: {0} -> {1}" -f $InternalName, $DisplayName); $changed = $true } else { Set-ListFieldSafe -ListTitle $ListTitle -InternalName $InternalName -Values @{ Title = $DisplayName } -WhatIfMode:$WhatIfMode; $changed = $true } }
-  if ($Description -and $f.Description -ne $Description) { if ($WhatIfMode) { LogChange ("  - Description update: {0}" -f $InternalName); $changed = $true } else { Set-ListFieldSafe -ListTitle $ListTitle -InternalName $InternalName -Values @{ Description = $Description } -WhatIfMode:$WhatIfMode; $changed = $true } }
-  if ($Choices -and $f.TypeAsString -eq 'Choice') { if ($WhatIfMode) { LogChange ("  - Choices: {0} -> {1}" -f $InternalName, ($Choices -join ', ')); $changed = $true } else { Set-ListFieldSafe -ListTitle $ListTitle -InternalName $InternalName -Values @{ Choices = $Choices } -WhatIfMode:$WhatIfMode; $changed = $true } }
-  if ($null -ne $Required) { $reqVal = [bool]$Required; if ($WhatIfMode) { LogChange ("  - Required: {0} -> {1}" -f $InternalName, $reqVal); $changed = $true } else { Set-ListFieldSafe -ListTitle $ListTitle -InternalName $InternalName -Values @{ Required = $reqVal } -WhatIfMode:$WhatIfMode; $changed = $true } }
-  if ($null -ne $EnforceUnique -and $f.TypeAsString -in @('Text','Number','URL')) { $uniqVal = [bool]$EnforceUnique; if ($WhatIfMode) { LogChange ("  - EnforceUnique: {0} -> {1}" -f $InternalName, $uniqVal); $changed = $true } else { Set-ListFieldSafe -ListTitle $ListTitle -InternalName $InternalName -Values @{ EnforceUniqueValues = $uniqVal } -WhatIfMode:$WhatIfMode; $changed = $true } }
-  if ($null -ne $MaxLength -and $f.TypeAsString -eq 'Text') { $lenVal = [int]$MaxLength; if ($WhatIfMode) { LogChange ("  - MaxLength: {0} -> {1}" -f $InternalName, $lenVal); $changed = $true } else { Set-ListFieldSafe -ListTitle $ListTitle -InternalName $InternalName -Values @{ MaxLength = $lenVal } -WhatIfMode:$WhatIfMode; $changed = $true } }
+  if ($DisplayName -and $f.Title -ne $DisplayName) { if ($WhatIfMode) { LogChange ("  - Title: {0} -> {1}" -f $InternalName, $DisplayName); $changed = $true } else { Set-ListFieldSafe -ListTitle $ListTitle -InternalName $InternalName -Values @{ Title = $DisplayName } -WhatIf:$whatIf; $changed = $true } }
+  if ($Description -and $f.Description -ne $Description) { if ($WhatIfMode) { LogChange ("  - Description update: {0}" -f $InternalName); $changed = $true } else { Set-ListFieldSafe -ListTitle $ListTitle -InternalName $InternalName -Values @{ Description = $Description } -WhatIf:$whatIf; $changed = $true } }
+  if ($Choices -and $f.TypeAsString -eq 'Choice') { if ($WhatIfMode) { LogChange ("  - Choices: {0} -> {1}" -f $InternalName, ($Choices -join ', ')); $changed = $true } else { Set-ListFieldSafe -ListTitle $ListTitle -InternalName $InternalName -Values @{ Choices = $Choices } -WhatIf:$whatIf; $changed = $true } }
+  if ($null -ne $Required) { $reqVal = [bool]$Required; if ($WhatIfMode) { LogChange ("  - Required: {0} -> {1}" -f $InternalName, $reqVal); $changed = $true } else { Set-ListFieldSafe -ListTitle $ListTitle -InternalName $InternalName -Values @{ Required = $reqVal } -WhatIf:$whatIf; $changed = $true } }
+  if ($null -ne $EnforceUnique -and $f.TypeAsString -in @('Text','Number','URL')) { $uniqVal = [bool]$EnforceUnique; if ($WhatIfMode) { LogChange ("  - EnforceUnique: {0} -> {1}" -f $InternalName, $uniqVal); $changed = $true } else { Set-ListFieldSafe -ListTitle $ListTitle -InternalName $InternalName -Values @{ EnforceUniqueValues = $uniqVal } -WhatIf:$whatIf; $changed = $true } }
+  if ($null -ne $MaxLength -and $f.TypeAsString -eq 'Text') { $lenVal = [int]$MaxLength; if ($WhatIfMode) { LogChange ("  - MaxLength: {0} -> {1}" -f $InternalName, $lenVal); $changed = $true } else { Set-ListFieldSafe -ListTitle $ListTitle -InternalName $InternalName -Values @{ MaxLength = $lenVal } -WhatIf:$whatIf; $changed = $true } }
   if ($changed -and -not $WhatIfMode) { LogChange ("  - Field meta updated: {0}" -f $InternalName) }
 }
 

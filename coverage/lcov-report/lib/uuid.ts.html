@@ -23,16 +23,16 @@
         <div class='clearfix'>
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">100% </span>
+                <span class="strong">20.83% </span>
                 <span class="quiet">Statements</span>
-                <span class='fraction'>9/9</span>
+                <span class='fraction'>5/24</span>
             </div>
         
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">100% </span>
+                <span class="strong">71.42% </span>
                 <span class="quiet">Branches</span>
-                <span class='fraction'>7/7</span>
+                <span class='fraction'>5/7</span>
             </div>
         
             
@@ -44,9 +44,9 @@
         
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">100% </span>
+                <span class="strong">20.83% </span>
                 <span class="quiet">Lines</span>
-                <span class='fraction'>9/9</span>
+                <span class='fraction'>5/24</span>
             </div>
         
             
@@ -61,7 +61,7 @@
             </div>
         </template>
     </div>
-    <div class='status-line high'></div>
+    <div class='status-line low'></div>
     <pre><table class="coverage">
 <tr><td class="line-count quiet"><a name='L1'></a><a href='#L1'>1</a>
 <a name='L2'></a><a href='#L2'>2</a>
@@ -74,28 +74,115 @@
 <a name='L9'></a><a href='#L9'>9</a>
 <a name='L10'></a><a href='#L10'>10</a>
 <a name='L11'></a><a href='#L11'>11</a>
-<a name='L12'></a><a href='#L12'>12</a></td><td class="line-coverage quiet"><span class="cline-any cline-neutral">&nbsp;</span>
+<a name='L12'></a><a href='#L12'>12</a>
+<a name='L13'></a><a href='#L13'>13</a>
+<a name='L14'></a><a href='#L14'>14</a>
+<a name='L15'></a><a href='#L15'>15</a>
+<a name='L16'></a><a href='#L16'>16</a>
+<a name='L17'></a><a href='#L17'>17</a>
+<a name='L18'></a><a href='#L18'>18</a>
+<a name='L19'></a><a href='#L19'>19</a>
+<a name='L20'></a><a href='#L20'>20</a>
+<a name='L21'></a><a href='#L21'>21</a>
+<a name='L22'></a><a href='#L22'>22</a>
+<a name='L23'></a><a href='#L23'>23</a>
+<a name='L24'></a><a href='#L24'>24</a>
+<a name='L25'></a><a href='#L25'>25</a>
+<a name='L26'></a><a href='#L26'>26</a>
+<a name='L27'></a><a href='#L27'>27</a>
+<a name='L28'></a><a href='#L28'>28</a>
+<a name='L29'></a><a href='#L29'>29</a>
+<a name='L30'></a><a href='#L30'>30</a>
+<a name='L31'></a><a href='#L31'>31</a>
+<a name='L32'></a><a href='#L32'>32</a>
+<a name='L33'></a><a href='#L33'>33</a>
+<a name='L34'></a><a href='#L34'>34</a>
+<a name='L35'></a><a href='#L35'>35</a>
+<a name='L36'></a><a href='#L36'>36</a>
+<a name='L37'></a><a href='#L37'>37</a>
+<a name='L38'></a><a href='#L38'>38</a>
+<a name='L39'></a><a href='#L39'>39</a>
+<a name='L40'></a><a href='#L40'>40</a>
+<a name='L41'></a><a href='#L41'>41</a></td><td class="line-coverage quiet"><span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-yes">1x</span>
-<span class="cline-any cline-yes">6x</span>
-<span class="cline-any cline-yes">6x</span>
-<span class="cline-any cline-yes">5x</span>
-<span class="cline-any cline-yes">155x</span>
-<span class="cline-any cline-yes">155x</span>
-<span class="cline-any cline-yes">155x</span>
-<span class="cline-any cline-yes">5x</span>
-<span class="cline-any cline-yes">5x</span>
-<span class="cline-any cline-neutral">&nbsp;</span></td><td class="text"><pre class="prettyprint lang-js">// Shared UUID helper with crypto.randomUUID fallback
-// Provides consistent behavior across browser, Node, and test environments.
-export function safeRandomUUID(): string {
-  const cr = (globalThis as unknown as { crypto?: { randomUUID?: () =&gt; string } }).crypto;
-  if (cr?.randomUUID) return cr.randomUUID();
-  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (c) =&gt; {
-    const r = (Math.random() * 16) | 0;
-    const v = c === 'x' ? r : (r &amp; 0x3) | 0x8;
-    return v.toString(16);
-  });
+<span class="cline-any cline-yes">50007x</span>
+<span class="cline-any cline-yes">50006x</span>
+<span class="cline-any cline-yes">50007x</span>
+<span class="cline-any cline-yes">50007x</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span></td><td class="text"><pre class="prettyprint lang-js">// Shared UUID helper with layered fallbacks.
+// Order:
+// 1. Injected implementation (for tests)
+// 2. globalThis.crypto.randomUUID (native)
+// 3. crypto.getRandomValues based RFC4122 v4 generation
+// 4. Math.random based (least strong; last resort)
+&nbsp;
+export interface SafeUUIDOptions {
+  randomUUID?: () =&gt; string;
 }
+&nbsp;
+export function safeRandomUUID(opts?: SafeUUIDOptions): string {
+  if (opts?.randomUUID) return opts.randomUUID();
+  const cr = (globalThis as unknown as { crypto?: { randomUUID?: () =&gt; string; getRandomValues?: (buf: Uint8Array) =&gt; Uint8Array } }).crypto;
+  if (cr?.randomUUID) return cr.randomUUID(<span class="branch-0 cbranch-no" title="branch not covered" >);</span>
+  if (cr?.getRandomValues) <span class="branch-0 cbranch-no" title="branch not covered" >{</span>
+<span class="cstat-no" title="statement not covered" >    const bytes = new Uint8Array(16);</span>
+<span class="cstat-no" title="statement not covered" >    cr.getRandomValues(bytes);</span>
+    // Per RFC 4122 section 4.4
+<span class="cstat-no" title="statement not covered" >    bytes[6] = (bytes[6] &amp; 0x0f) | 0x40; // version 4</span>
+<span class="cstat-no" title="statement not covered" >    bytes[8] = (bytes[8] &amp; 0x3f) | 0x80; // variant 10xxxxxx</span>
+<span class="cstat-no" title="statement not covered" >    const hex: string[] = [];</span>
+<span class="cstat-no" title="statement not covered" >    for (let i = 0; i &lt; 256; i++) hex.push((i + 0x100).toString(16).slice(1));</span>
+<span class="cstat-no" title="statement not covered" >    return (</span>
+<span class="cstat-no" title="statement not covered" >      hex[bytes[0]] + hex[bytes[1]] + hex[bytes[2]] + hex[bytes[3]] + '-' +</span>
+<span class="cstat-no" title="statement not covered" >      hex[bytes[4]] + hex[bytes[5]] + '-' +</span>
+<span class="cstat-no" title="statement not covered" >      hex[bytes[6]] + hex[bytes[7]] + '-' +</span>
+<span class="cstat-no" title="statement not covered" >      hex[bytes[8]] + hex[bytes[9]] + '-' +</span>
+<span class="cstat-no" title="statement not covered" >      hex[bytes[10]] + hex[bytes[11]] + hex[bytes[12]] + hex[bytes[13]] + hex[bytes[14]] + hex[bytes[15]]</span>
+    );
+<span class="cstat-no" title="statement not covered" >  }</span>
+  // Math.random fallback
+<span class="cstat-no" title="statement not covered" >  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (c) =&gt; {</span>
+<span class="cstat-no" title="statement not covered" >    const r = (Math.random() * 16) | 0;</span>
+<span class="cstat-no" title="statement not covered" >    const v = c === 'x' ? r : (r &amp; 0x3) | 0x8;</span>
+<span class="cstat-no" title="statement not covered" >    return v.toString(16);</span>
+<span class="cstat-no" title="statement not covered" >  });</span>
+<span class="cstat-no" title="statement not covered" >}</span>
+&nbsp;
+&nbsp;
 &nbsp;</pre></td></tr></table></pre>
 
                 <div class='push'></div><!-- for sticky footer -->
@@ -103,7 +190,7 @@ export function safeRandomUUID(): string {
             <div class='footer quiet pad2 space-top1 center small'>
                 Code coverage generated by
                 <a href="https://istanbul.js.org/" target="_blank" rel="noopener noreferrer">istanbul</a>
-                at 2025-09-23T10:40:01.422Z
+                at 2025-09-24T01:50:38.258Z
             </div>
         <script src="../prettify.js"></script>
         <script>

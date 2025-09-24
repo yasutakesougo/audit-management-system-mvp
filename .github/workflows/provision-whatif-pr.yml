@@ -71,14 +71,17 @@ jobs:
           } else {
             throw 'Provide SPO_CERT_BASE64+SPO_CERT_PASSWORD or SPO_CLIENT_SECRET as GitHub Secrets.'
           }
-          ./scripts/provision-spo.ps1 \
-            -SiteUrl $siteUrl \
-            -RecreateExisting:$false \
-            -ApplyFieldUpdates:$true \
-            -ForceTypeReplace:$false \
-            -WhatIfMode:$true \
-            -SchemaPath provision/schema.json \
-            -ChangesOutPath 'provision/changes.json' \
+          Write-Host "Script SHA: $env:GITHUB_SHA"
+          Write-Host "Top of scripts/provision-spo.ps1:"
+          Get-Content scripts/provision-spo.ps1 | Select-Object -First 40
+          ./scripts/provision-spo.ps1 `
+            -SiteUrl $siteUrl `
+            -RecreateExisting:$false `
+            -ApplyFieldUpdates:$true `
+            -ForceTypeReplace:$false `
+            -WhatIfMode:$true `
+            -SchemaPath provision/schema.json `
+            -ChangesOutPath 'provision/changes.json' `
             -EmitChanges
 
       - name: Upload WhatIf changes artifact
