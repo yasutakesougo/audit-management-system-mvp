@@ -3,3 +3,9 @@ dist
 .vite
 .DS_Store
 .env
+
+# Local certificates/keys (do NOT commit)
+key.pem
+cert.pem
+cert.pfx
+cert.pfx.b64
