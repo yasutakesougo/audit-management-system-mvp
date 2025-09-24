@@ -3,32 +3,83 @@ name: Label Schema Changes
 on:
   pull_request:
     types: [opened, synchronize, reopened]
+    # 必要ならパスで事前フィルタ（任意）
+    # paths:
+    #   - 'provision/**'
+    #   - 'docs/**'
+
+# 403 対策：必要最小の権限を明示付与
+permissions:
+  contents: read
+  pull-requests: write
+  issues: write
 
 jobs:
   label:
+    name: label
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-      - name: Detect schema-related changes
-        id: filter
-        uses: dorny/paths-filter@v3
-        with:
-          filters: |
-            schema:
-              - 'provision/**'
-              - 'scripts/provision-spo.ps1'
-              - '.github/workflows/provision-sharepoint.yml'
-      - name: Add schema label
-        if: steps.filter.outputs.schema == 'true'
+      - name: Add `schema` label when schema-related files changed
         uses: actions/github-script@v7
         with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
           script: |
-            const pr = context.payload.pull_request?.number;
-            if (!pr) return;
+            const pr = context.payload.pull_request;
+            if (!pr) {
+              core.info('No pull_request payload; skipping.');
+              return;
+            }
+
+            const owner = context.repo.owner;
+            const repo  = context.repo.repo;
+            const number = pr.number;
+
+            // 変更ファイルを取得（ページネーション対応）
+            const files = await github.paginate(
+              github.rest.pulls.listFiles,
+              { owner, repo, pull_number: number, per_page: 100 }
+            );
+
+            // スキーマ変更とみなすパターンをここで定義
+            // 例：provision 配下、または docs 下の *.schema.json / schema.json
+            const schemaMatchers = [
+              /^provision\//,
+              /^docs\/.*\.schema\.json$/i,
+              /^docs\/schema\.json$/i
+            ];
+
+            const touchedSchema = files.some(f =>
+              schemaMatchers.some(rx => rx.test(f.filename))
+            );
+
+            if (!touchedSchema) {
+              core.info('No schema-related changes detected; nothing to label.');
+              return;
+            }
+
+            const LABEL = 'schema';
+
+            // ラベルが無ければ作成（存在すれば 422 が返るので握りつぶす）
+            try {
+              await github.rest.issues.createLabel({
+                owner, repo, name: LABEL, color: '0e8a16',
+                description: 'PR touches provisioning/schema files'
+              });
+              core.info(`Label '${LABEL}' created (or already exists).`);
+            } catch (e) {
+              if (e.status === 422) {
+                core.info(`Label '${LABEL}' already exists.`);
+              } else {
+                core.warning(`createLabel failed (ignored): ${e.message}`);
+              }
+            }
+
+            // PR にラベルを付与
             await github.rest.issues.addLabels({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              issue_number: pr,
-              labels: ['schema']
+              owner,
+              repo,
+              issue_number: number,
+              labels: [LABEL]
             });
+
+            core.info(`Label '${LABEL}' added to PR #${number}.`)
