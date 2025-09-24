@@ -273,3 +273,4 @@ WhatIf 実行 (推奨): アーティファクト `backfill-metrics` を確認し
 本実行後（`whatIf=false`）は Updated が Needed と一致していれば全補完完了。差異が残る場合はバッチサイズ調整や再実行を検討。
 
 
+Trigger WhatIf smoke 2025-09-24T06:23:25Z.
