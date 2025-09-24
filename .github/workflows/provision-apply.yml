@@ -126,8 +126,20 @@ jobs:
         shell: bash
         run: |
           set -euxo pipefail
+          echo "Workspace: ${GITHUB_WORKSPACE}"
+          expected="${GITHUB_WORKSPACE}/provision/changes.json"
+          echo "Expecting changes.json at: ${expected}"
+          ls -la "${GITHUB_WORKSPACE}" || true
           ls -la "${GITHUB_WORKSPACE}/provision" || true
-          test -f "${GITHUB_WORKSPACE}/provision/changes.json"
+          if [[ ! -f "${expected}" ]]; then
+            echo "::error::changes.json not found at ${expected}"
+            if [[ -n "${GITHUB_STEP_SUMMARY:-}" && -f "${GITHUB_STEP_SUMMARY}" ]]; then
+              echo "--- GITHUB_STEP_SUMMARY ---"
+              cat "${GITHUB_STEP_SUMMARY}"
+              echo "---------------------------"
+            fi
+            exit 1
+          fi
 
       - name: Upload changes.json artifact
         if: always()
@@ -135,5 +147,5 @@ jobs:
         with:
           name: provision-changes
           path: ${{ github.workspace }}/provision/changes.json
-          if-no-files-found: warn
+          if-no-files-found: error
           retention-days: 7

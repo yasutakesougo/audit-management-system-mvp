@@ -41,12 +41,18 @@ function Write-ChangesJson {
     [Parameter(Mandatory = $true)][string]$Path,
     [Parameter(Mandatory = $true)]$Payload
   )
-  $full = [System.IO.Path]::GetFullPath($Path)
+  $workspace = if ($env:GITHUB_WORKSPACE) { $env:GITHUB_WORKSPACE } else { (Get-Location).Path }
+  if (-not [System.IO.Path]::IsPathRooted($Path)) {
+    $full = Join-Path -Path $workspace -ChildPath $Path
+  } else {
+    $full = $Path
+  }
+  $full = [System.IO.Path]::GetFullPath($full)
   $dir = Split-Path -Parent $full
   if ($dir -and -not (Test-Path $dir)) {
     New-Item -ItemType Directory -Force -Path $dir | Out-Null
   }
-  $Payload | ConvertTo-Json -Depth 10 | Set-Content -Path $full -Encoding utf8
+  $Payload | ConvertTo-Json -Depth 12 | Set-Content -Path $full -Encoding utf8
   $item = Get-Item $full
   Write-Host "::notice:: Changes JSON written to $($item.FullName)"
   return $item.FullName
@@ -365,45 +371,54 @@ function Get-ChangeKind([string]$line) {
   return 'Info'
 }
 
-$summaryCounts = @{}
-foreach ($c in $GLOBAL:Changes) {
-  $kind = Get-ChangeKind $c
-  if (-not $summaryCounts.ContainsKey($kind)) { $summaryCounts[$kind] = 0 }
-  $summaryCounts[$kind]++
-}
-$byKind = @()
-foreach ($key in $summaryCounts.Keys) {
-  $byKind += [pscustomobject]@{ kind = $key; count = $summaryCounts[$key] }
-}
-
-$summaryObj = [pscustomobject]@{ total = $GLOBAL:Changes.Count; byKind = $byKind }
-$payload = [pscustomobject]@{
-  timestamp = (Get-Date).ToUniversalTime().ToString('o')
-  site      = $SiteUrl
-  whatIf    = $whatIf
-  recreate  = [bool]$RecreateExisting
-  applyMeta = [bool]$ApplyFieldUpdates
-  forceType = [bool]$ForceTypeReplace
-  summary   = $summaryObj
-  changes   = $GLOBAL:Changes
-}
-
-try {
-  $writtenPath = Write-ChangesJson -Path $ChangesOutPath -Payload $payload
-  if ($env:GITHUB_STEP_SUMMARY) {
-    $jsonPreview = $payload | ConvertTo-Json -Depth 3
-    $lines = @(
-      '### Provision Changes',
-      "- Written: $writtenPath",
-      "- Total: $($GLOBAL:Changes.Count)",
-      '',
-      '```json',
-      $jsonPreview,
-      '```'
-    )
-    $lines -join "`n" | Out-File -FilePath $env:GITHUB_STEP_SUMMARY -Encoding utf8 -Append
+$shouldEmit = $WhatIfMode -or $EmitChanges
+if ($shouldEmit) {
+  $summaryCounts = @{}
+  foreach ($c in $GLOBAL:Changes) {
+    $kind = Get-ChangeKind $c
+    if (-not $summaryCounts.ContainsKey($kind)) { $summaryCounts[$kind] = 0 }
+    $summaryCounts[$kind]++
   }
-}
-catch {
-  Write-Warning "Failed to write changes JSON: $($_.Exception.Message)"
+  $byKind = @()
+  foreach ($key in $summaryCounts.Keys) {
+    $byKind += [pscustomobject]@{ kind = $key; count = $summaryCounts[$key] }
+  }
+
+  if ($summaryCounts.Count -eq 0) {
+    $byKind += [pscustomobject]@{ kind = 'Info'; count = 0 }
+  }
+
+  $summaryObj = [pscustomobject]@{ total = $GLOBAL:Changes.Count; byKind = $byKind }
+  $payload = [pscustomobject]@{
+    timestamp = (Get-Date).ToUniversalTime().ToString('o')
+    site      = $SiteUrl
+    whatIf    = $whatIf
+    recreate  = [bool]$RecreateExisting
+    applyMeta = [bool]$ApplyFieldUpdates
+    forceType = [bool]$ForceTypeReplace
+    summary   = $summaryObj
+    changes   = $GLOBAL:Changes
+  }
+
+  try {
+    $writtenPath = Write-ChangesJson -Path $ChangesOutPath -Payload $payload
+    if ($env:GITHUB_STEP_SUMMARY) {
+      $jsonPreview = $payload | ConvertTo-Json -Depth 3
+      $lines = @(
+        '### Provision Changes',
+        "- Written: $writtenPath",
+        "- Total: $($GLOBAL:Changes.Count)",
+        '',
+        '```json',
+        $jsonPreview,
+        '```'
+      )
+      $lines -join "`n" | Out-File -FilePath $env:GITHUB_STEP_SUMMARY -Encoding utf8 -Append
+    }
+  }
+  catch {
+    Write-Warning "Failed to write changes JSON: $($_.Exception.Message)"
+  }
+} else {
+  Write-Host 'EmitChanges not requested and WhatIf disabled; skipping changes.json generation.'
 }
