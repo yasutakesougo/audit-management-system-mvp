@@ -1,0 +1,122 @@
+name: Provision Apply (PR/Main)
+
+on:
+  # 明示実行（安全）
+  workflow_dispatch:
+    inputs:
+      siteRelativeUrl:
+        description: "SITE_RELATIVE_URL (e.g. /sites/welfare)"
+        required: false
+  # PRに 'apply' ラベルが付いているときだけ実行
+  pull_request:
+    types: [opened, reopened, synchronize, labeled]
+    branches: [ main ]
+    paths:
+      - 'provision/**'
+      - 'scripts/provision-spo.ps1'
+      - '.github/workflows/provision-apply.yml'
+      - 'docs/provisioning.md'
+  # main へマージされたら自動適用（任意・要件に応じてコメントアウト可）
+  push:
+    branches: [ main ]
+    paths:
+      - 'provision/**'
+      - 'scripts/provision-spo.ps1'
+
+jobs:
+  provision-apply:
+    # PRの場合は 'apply' ラベルが必須。手動 dispatch は常にOK。
+    if: >
+      github.event_name == 'workflow_dispatch' ||
+      (github.event_name == 'pull_request' &&
+       contains(toJson(github.event.pull_request.labels), 'apply'))
+    runs-on: ubuntu-latest
+
+    # 事故防止に「環境」保護を推奨（Settings > Environments で reviewers を設定）
+    environment: sharepoint-prod
+
+    permissions:
+      contents: read
+      pull-requests: write
+      issues: write
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node (for tooling if needed)
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install PowerShell module (PnP v3)
+        shell: pwsh
+        run: |
+          Set-PSRepository -Name PSGallery -InstallationPolicy Trusted
+          Install-Module PnP.PowerShell -Scope CurrentUser -Force -AllowClobber
+          Import-Module PnP.PowerShell
+          Write-Host "PnP.PowerShell version:"; (Get-Module PnP.PowerShell).Version
+          Write-Host "Has New-PnPList?"; Get-Command -Module PnP.PowerShell New-PnPList | Format-Table -AutoSize
+
+      - name: Decode certificate (if provided)
+        id: cert
+        shell: bash
+        env:
+          SPO_CERT_BASE64: ${{ secrets.SPO_CERT_BASE64 }}
+        run: |
+          if [ -n "${SPO_CERT_BASE64}" ]; then
+            echo "$SPO_CERT_BASE64" | base64 -d > "$RUNNER_TEMP/spoCert.pfx"
+            echo "path=$RUNNER_TEMP/spoCert.pfx" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: "Provision (APPLY: WhatIf=false)"
+        shell: pwsh
+        env:
+          AAD_TENANT_ID: ${{ secrets.AAD_TENANT_ID }}
+          AAD_APP_ID: ${{ secrets.AAD_APP_ID }}
+          SPO_CERT_PASSWORD: ${{ secrets.SPO_CERT_PASSWORD }}
+          SPO_CLIENT_SECRET: ${{ secrets.SPO_CLIENT_SECRET }}
+          SPO_RESOURCE: ${{ secrets.SPO_RESOURCE }}
+          SPO_CERT_PATH: ${{ steps.cert.outputs.path }}
+          SITE_RELATIVE_URL_SECRET: ${{ github.event.inputs.siteRelativeUrl }}
+        run: |
+          $ErrorActionPreference = 'Stop'
+          Import-Module PnP.PowerShell -ErrorAction Stop
+
+          if (-not $env:SPO_RESOURCE) { throw 'SPO_RESOURCE secret is required (e.g. https://<tenant>.sharepoint.com)' }
+          $siteRel = if ($env:SITE_RELATIVE_URL_SECRET) { $env:SITE_RELATIVE_URL_SECRET } else { '/sites/welfare' }
+          $siteUrl = "$($env:SPO_RESOURCE)$siteRel"
+
+          if ((Test-Path $env:SPO_CERT_PATH) -and $env:SPO_CERT_PASSWORD) {
+            $sec = ConvertTo-SecureString $env:SPO_CERT_PASSWORD -AsPlainText -Force
+            Connect-PnPOnline -Url $siteUrl -ClientId $env:AAD_APP_ID -Tenant $env:AAD_TENANT_ID -CertificatePath $env:SPO_CERT_PATH -CertificatePassword $sec
+          } elseif ($env:SPO_CLIENT_SECRET) {
+            $sec = ConvertTo-SecureString $env:SPO_CLIENT_SECRET -AsPlainText -Force
+            Connect-PnPOnline -Url $siteUrl -ClientId $env:AAD_APP_ID -Tenant $env:AAD_TENANT_ID -ClientSecret $sec
+          } else {
+            throw 'Provide SPO_CERT_BASE64+SPO_CERT_PASSWORD or SPO_CLIENT_SECRET as GitHub Secrets.'
+          }
+
+          Write-Host "Script SHA: $env:GITHUB_SHA"
+          Write-Host "Top of scripts/provision-spo.ps1:"
+          Get-Content scripts/provision-spo.ps1 | Select-Object -First 40
+
+          ./scripts/provision-spo.ps1 `
+            -SiteUrl $siteUrl `
+            -RecreateExisting:$false `
+            -ApplyFieldUpdates:$true `
+            -ForceTypeReplace:$false `
+            -WhatIfMode:$false `
+            -SchemaPath provision/schema.json `
+            -ChangesOutPath 'provision/changes.json' `
+            -EmitChanges
+
+      - name: Upload changes.json artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: provision-changes
+          path: provision/changes.json
+          if-no-files-found: ignore
