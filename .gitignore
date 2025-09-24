@@ -3,3 +3,14 @@ dist
 .vite
 .DS_Store
 .env
+
+# Test/coverage outputs
+coverage
+test-results
+
+# Local certificates/keys (do NOT commit)
+key.pem
+cert.pem
+cert.pfx
+cert.pfx.b64
+*.cer

@@ -27,7 +27,10 @@ jobs:
         shell: pwsh
         run: |
           Set-PSRepository -Name PSGallery -InstallationPolicy Trusted
-          Install-Module PnP.PowerShell -Scope CurrentUser -Force
+          Install-Module PnP.PowerShell -Scope CurrentUser -Force -AllowClobber
+          Import-Module PnP.PowerShell
+          Write-Host "PnP.PowerShell version:"; (Get-Module PnP.PowerShell).Version
+          Write-Host "Has New-PnPList?"; Get-Command -Module PnP.PowerShell New-PnPList | Format-Table -AutoSize
 
       - name: Decode certificate (if provided)
         env:
@@ -55,6 +58,7 @@ jobs:
           # Using default site path; adjust here if a different PR staging site is desired
         run: |
           $ErrorActionPreference = 'Stop'
+          Import-Module PnP.PowerShell -ErrorAction Stop
           if (-not $env:SPO_RESOURCE) { throw 'SPO_RESOURCE secret is required (e.g. https://<tenant>.sharepoint.com)' }
           $siteRel = if ($env:SITE_RELATIVE_URL_SECRET) { $env:SITE_RELATIVE_URL_SECRET } else { '/sites/welfare' }
           $siteUrl = "$($env:SPO_RESOURCE)$siteRel"
@@ -67,14 +71,17 @@ jobs:
           } else {
             throw 'Provide SPO_CERT_BASE64+SPO_CERT_PASSWORD or SPO_CLIENT_SECRET as GitHub Secrets.'
           }
-          ./scripts/provision-spo.ps1 \
-            -SiteUrl $siteUrl \
-            -RecreateExisting:$false \
-            -ApplyFieldUpdates:$true \
-            -ForceTypeReplace:$false \
-            -WhatIfMode:$true \
-            -SchemaPath provision/schema.json \
-            -ChangesOutPath 'provision/changes.json' \
+          Write-Host "Script SHA: $env:GITHUB_SHA"
+          Write-Host "Top of scripts/provision-spo.ps1:"
+          Get-Content scripts/provision-spo.ps1 | Select-Object -First 40
+          ./scripts/provision-spo.ps1 `
+            -SiteUrl $siteUrl `
+            -RecreateExisting:$false `
+            -ApplyFieldUpdates:$true `
+            -ForceTypeReplace:$false `
+            -WhatIfMode:$true `
+            -SchemaPath provision/schema.json `
+            -ChangesOutPath 'provision/changes.json' `
             -EmitChanges
 
       - name: Upload WhatIf changes artifact

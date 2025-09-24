@@ -1,10 +1,14 @@
 name: actionlint
 on:
   pull_request:
-    paths: [".github/workflows/**"]
+    paths:
+      - .github/workflows/**
   push:
-    branches: [main, develop]
-    paths: [".github/workflows/**"]
+    branches:
+      - main
+      - develop
+    paths:
+      - .github/workflows/**
 
 jobs:
   lint:
