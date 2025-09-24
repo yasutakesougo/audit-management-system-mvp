@@ -36,6 +36,22 @@ function LogChange([string]$line) {
 
 . "$PSScriptRoot/provision-choice.ps1"
 
+function Write-ChangesJson {
+  param(
+    [Parameter(Mandatory = $true)][string]$Path,
+    [Parameter(Mandatory = $true)]$Payload
+  )
+  $full = [System.IO.Path]::GetFullPath($Path)
+  $dir = Split-Path -Parent $full
+  if ($dir -and -not (Test-Path $dir)) {
+    New-Item -ItemType Directory -Force -Path $dir | Out-Null
+  }
+  $Payload | ConvertTo-Json -Depth 10 | Set-Content -Path $full -Encoding utf8
+  $item = Get-Item $full
+  Write-Host "::notice:: Changes JSON written to $($item.FullName)"
+  return $item.FullName
+}
+
 function ValidateSchema($schema) {
   if (-not $schema.lists) { throw "schema.json: 'lists' missing" }
   foreach ($l in $schema.lists) {
@@ -349,43 +365,45 @@ function Get-ChangeKind([string]$line) {
   return 'Info'
 }
 
-if ( ($WhatIfMode -or $EmitChanges) -and $GLOBAL:Changes.Count -gt 0 ) {
-  try {
-    $counts = @{}
-    foreach ($c in $GLOBAL:Changes) {
-      $k = Get-ChangeKind $c
-      if (-not $counts.ContainsKey($k)) { $counts[$k] = 0 }
-      $counts[$k]++
-    }
-    $byKind = @(); foreach ($k in $counts.Keys) { $byKind += [pscustomobject]@{ kind = $k; count = $counts[$k] } }
-    $structured = [pscustomobject]@{}
-    $structured | Add-Member -NotePropertyName timestamp -NotePropertyValue ((Get-Date).ToString('o'))
-    $structured | Add-Member -NotePropertyName site -NotePropertyValue $SiteUrl
-  $structured | Add-Member -NotePropertyName whatIf -NotePropertyValue ([bool]$WhatIfMode.IsPresent)
-    $structured | Add-Member -NotePropertyName recreate -NotePropertyValue ([bool]$RecreateExisting)
-    $structured | Add-Member -NotePropertyName applyMeta -NotePropertyValue ([bool]$ApplyFieldUpdates)
-    $structured | Add-Member -NotePropertyName forceType -NotePropertyValue ([bool]$ForceTypeReplace)
-    $summaryObj = [pscustomobject]@{ total = $GLOBAL:Changes.Count; byKind = $byKind }
-    $structured | Add-Member -NotePropertyName summary -NotePropertyValue $summaryObj
-    $structured | Add-Member -NotePropertyName changes -NotePropertyValue $GLOBAL:Changes
-    $outDir = Split-Path -Parent $ChangesOutPath
-    if ($outDir -and -not (Test-Path $outDir)) { New-Item -ItemType Directory -Path $outDir | Out-Null }
-    $structured | ConvertTo-Json -Depth 6 | Out-File -FilePath $ChangesOutPath -Encoding utf8
-    Write-Host "::notice:: Changes JSON written to $ChangesOutPath"
-    if ($env:GITHUB_STEP_SUMMARY) {
-      $jsonPreview = $structured | ConvertTo-Json -Depth 3
-      $lines = @(
-        '### Provision WhatIf Changes',
-        "- Written: `$ChangesOutPath",
-        "- Total: $($GLOBAL:Changes.Count)",
-        '',
-        '```json',
-        $jsonPreview,
-        '```'
-      )
-      $lines -join "`n" | Out-File -FilePath $env:GITHUB_STEP_SUMMARY -Encoding utf8 -Append
-    }
-  } catch {
-    Write-Warning "Failed to write changes JSON: $($_.Exception.Message)"
+$summaryCounts = @{}
+foreach ($c in $GLOBAL:Changes) {
+  $kind = Get-ChangeKind $c
+  if (-not $summaryCounts.ContainsKey($kind)) { $summaryCounts[$kind] = 0 }
+  $summaryCounts[$kind]++
+}
+$byKind = @()
+foreach ($key in $summaryCounts.Keys) {
+  $byKind += [pscustomobject]@{ kind = $key; count = $summaryCounts[$key] }
+}
+
+$summaryObj = [pscustomobject]@{ total = $GLOBAL:Changes.Count; byKind = $byKind }
+$payload = [pscustomobject]@{
+  timestamp = (Get-Date).ToUniversalTime().ToString('o')
+  site      = $SiteUrl
+  whatIf    = $whatIf
+  recreate  = [bool]$RecreateExisting
+  applyMeta = [bool]$ApplyFieldUpdates
+  forceType = [bool]$ForceTypeReplace
+  summary   = $summaryObj
+  changes   = $GLOBAL:Changes
+}
+
+try {
+  $writtenPath = Write-ChangesJson -Path $ChangesOutPath -Payload $payload
+  if ($env:GITHUB_STEP_SUMMARY) {
+    $jsonPreview = $payload | ConvertTo-Json -Depth 3
+    $lines = @(
+      '### Provision Changes',
+      "- Written: $writtenPath",
+      "- Total: $($GLOBAL:Changes.Count)",
+      '',
+      '```json',
+      $jsonPreview,
+      '```'
+    )
+    $lines -join "`n" | Out-File -FilePath $env:GITHUB_STEP_SUMMARY -Encoding utf8 -Append
   }
+}
+catch {
+  Write-Warning "Failed to write changes JSON: $($_.Exception.Message)"
 }

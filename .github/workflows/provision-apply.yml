@@ -122,6 +122,13 @@ jobs:
             -ChangesOutPath 'provision/changes.json' `
             -EmitChanges
 
+      - name: Verify changes.json exists
+        shell: bash
+        run: |
+          set -euxo pipefail
+          ls -la "${GITHUB_WORKSPACE}/provision" || true
+          test -f "${GITHUB_WORKSPACE}/provision/changes.json"
+
       - name: Upload changes.json artifact
         if: always()
         uses: actions/upload-artifact@v4
