@@ -127,5 +127,6 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: provision-changes
-          path: provision/changes.json
-          if-no-files-found: ignore
+          path: ${{ github.workspace }}/provision/changes.json
+          if-no-files-found: warn
+          retention-days: 7
