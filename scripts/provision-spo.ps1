@@ -58,7 +58,7 @@ function EnsureList {
     $msg = "Create list: $Title"
     if ($WhatIfMode) { LogChange $msg; return }
     LogChange $msg
-    Add-PnPList -Title $Title -Template GenericList -OnQuickLaunch | Out-Null
+    New-PnPList -Title $Title -Template GenericList -OnQuickLaunch | Out-Null
   } else {
     LogChange ("List exists: {0}" -f $Title)
   }

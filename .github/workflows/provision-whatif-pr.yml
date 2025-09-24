@@ -30,7 +30,7 @@ jobs:
           Install-Module PnP.PowerShell -Scope CurrentUser -Force -AllowClobber
           Import-Module PnP.PowerShell
           Write-Host "PnP.PowerShell version:"; (Get-Module PnP.PowerShell).Version
-          Write-Host "Has Add-PnPList?"; Get-Command -Module PnP.PowerShell Add-PnPList | Format-Table -AutoSize
+          Write-Host "Has New-PnPList?"; Get-Command -Module PnP.PowerShell New-PnPList | Format-Table -AutoSize
 
       - name: Decode certificate (if provided)
         env:
