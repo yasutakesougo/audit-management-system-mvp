@@ -7,6 +7,7 @@ on:
       siteRelativeUrl:
         description: "SITE_RELATIVE_URL (e.g. /sites/welfare)"
         required: false
+        default: "/sites/welfare"
   # PRに 'apply' ラベルが付いているときだけ実行
   pull_request:
     types: [opened, reopened, synchronize, labeled]
@@ -86,7 +87,11 @@ jobs:
           Import-Module PnP.PowerShell -ErrorAction Stop
 
           if (-not $env:SPO_RESOURCE) { throw 'SPO_RESOURCE secret is required (e.g. https://<tenant>.sharepoint.com)' }
-          $siteRel = if ($env:SITE_RELATIVE_URL_SECRET) { $env:SITE_RELATIVE_URL_SECRET } else { '/sites/welfare' }
+          # workflow_dispatch の入力を最優先し、空ならシークレット/既定値を使用
+          $siteRel = '${{ inputs.siteRelativeUrl }}'
+          if ([string]::IsNullOrWhiteSpace($siteRel)) {
+            $siteRel = if ($env:SITE_RELATIVE_URL_SECRET) { $env:SITE_RELATIVE_URL_SECRET } else { '/sites/welfare' }
+          }
           $siteUrl = "$($env:SPO_RESOURCE)$siteRel"
 
           if ((Test-Path $env:SPO_CERT_PATH) -and $env:SPO_CERT_PASSWORD) {
