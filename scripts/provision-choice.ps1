@@ -83,7 +83,55 @@ function Invoke-ProvisionTemplateIfXml {
       LogChange "Would apply XML template: $SchemaPath"
     }
     else {
-      Invoke-PnPSiteTemplate -Path $resolved.Path -ErrorAction Stop
+      $schemaPathResolved = $resolved.Path
+      $patchedPath = Join-Path -Path (Split-Path -Parent $schemaPathResolved) -ChildPath 'schema.withids.xml'
+
+      [xml]$doc = Get-Content -LiteralPath $schemaPathResolved -Raw
+      $ns = New-Object System.Xml.XmlNamespaceManager($doc.NameTable)
+      $ns.AddNamespace('pnp', 'http://schemas.dev.office.com/PnP/2021/03/ProvisioningSchema')
+
+      function New-DeterministicGuid([string]$seed) {
+        $md5 = [System.Security.Cryptography.MD5]::Create()
+        try {
+          $bytes = [System.Text.Encoding]::UTF8.GetBytes($seed)
+          $hash = $md5.ComputeHash($bytes)
+        }
+        finally {
+          $md5.Dispose()
+        }
+        return [Guid]::new($hash)
+      }
+
+      $added = 0
+      $nodes = $doc.SelectNodes("//pnp:ListInstance/pnp:Fields/pnp:Field[not(@ID)]", $ns)
+  foreach ($f in $nodes) {
+    $list = $f.SelectSingleNode("ancestor::pnp:ListInstance[1]", $ns)
+    $listTitle = $list.GetAttribute('Title')
+    $fn = if ($f.HasAttribute('Name')) { $f.GetAttribute('Name') } elseif ($f.HasAttribute('StaticName')) { $f.GetAttribute('StaticName') } else { $null }
+    if (-not $fn) { continue }
+
+    $guidSeed = '{0}|{1}' -f $listTitle, $fn
+    $guid = (New-DeterministicGuid $guidSeed).ToString()
+    $attr = $doc.CreateAttribute('ID')
+    $attr.Value = "{$guid}"
+    $null = $f.Attributes.Append($attr)
+    $added++
+  }
+
+      $boolAttrs = @('Indexed', 'EnforceUniqueValues', 'Required', 'EnableVersioning')
+      foreach ($fieldNode in $doc.SelectNodes("//pnp:Field", $ns)) {
+        foreach ($attrName in $boolAttrs) {
+          if ($fieldNode.HasAttribute($attrName)) {
+            $normalized = $fieldNode.GetAttribute($attrName).ToLower() -replace '^(true|false).*', '$1'
+            $fieldNode.SetAttribute($attrName, $normalized)
+          }
+        }
+      }
+
+      $doc.Save($patchedPath)
+      Note "Auto-assigned $added Field IDs → $patchedPath"
+
+      Invoke-PnPSiteTemplate -Path $patchedPath -ErrorAction Stop
       LogChange "Applied XML template: $SchemaPath"
     }
     return $true

@@ -53,13 +53,13 @@ function Write-ChangesJson {
 }
 
 function ValidateSchema($schema) {
-  if (-not $schema.lists) { throw "schema.json: 'lists' missing" }
+  if (-not $schema.lists) { throw "Schema (JSON): 'lists' missing" }
   foreach ($l in $schema.lists) {
-    if (-not $l.title) { throw "schema.json: list.title missing" }
-    if (-not $l.fields) { throw "schema.json: list '$($l.title)' fields missing" }
+    if (-not $l.title) { throw "Schema (JSON): list.title missing" }
+    if (-not $l.fields) { throw "Schema (JSON): list '$($l.title)' fields missing" }
     foreach ($f in $l.fields) {
       if (-not $f.displayName -or -not $f.internalName -or -not $f.type) {
-        throw "schema.json: list '$($l.title)' field missing displayName/internalName/type" }
+        throw "Schema (JSON): list '$($l.title)' field missing displayName/internalName/type" }
     }
   }
 }
@@ -319,20 +319,13 @@ $changesPayload = [ordered]@{
 try {
   # XML なら PnP テンプレートを適用、JSON なら従来処理
   if ($SchemaPath -match '\.xml$') {
-    Note "Applying PnP XML template: $SchemaPath"
-    if (-not $WhatIfMode.IsPresent) {
-      try {
-        Invoke-PnPSiteTemplate -Path $schemaPathResolved -ErrorAction Stop
-        LogChange "Applied XML template: $SchemaPath"
-      }
-      catch {
-        $lastErrorLine = "ERROR: XML template apply failed - $($_.Exception.Message)"
-        LogChange $lastErrorLine
-        throw
-      }
-    } else {
-      Note "WhatIf=true: skipping actual XML apply"
-      LogChange "Would apply XML template: $SchemaPath"
+    try {
+      $null = Invoke-ProvisionTemplateIfXml -SchemaPath $SchemaPath -WhatIfMode:$WhatIfMode.IsPresent
+    }
+    catch {
+      $lastErrorLine = "ERROR: XML template apply failed - $($_.Exception.Message)"
+      LogChange $lastErrorLine
+      throw
     }
   }
   else {
