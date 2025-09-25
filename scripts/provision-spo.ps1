@@ -314,91 +314,113 @@ $changesPayload = [ordered]@{
   changes      = @()
 }
 
-# XML なら PnP テンプレートを適用、JSON なら従来処理
-if ($SchemaPath -match '\.xml$') {
-  Note "Applying PnP XML template: $SchemaPath"
-  if (-not $WhatIfMode.IsPresent) {
-    Invoke-PnPSiteTemplate -Path $schemaPathResolved -ErrorAction Stop
-    LogChange "Applied XML template: $SchemaPath"
-  } else {
-    Note "WhatIf=true: skipping actual XML apply"
-    LogChange "Would apply XML template: $SchemaPath"
-  }
-}
-else {
-  try {
-    $schemaJson = Get-Content -Path $schemaPathResolved -Raw | ConvertFrom-Json
-  }
-  catch {
-    throw "Failed to parse JSON schema at '$SchemaPath': $($_.Exception.Message)"
-  }
+ $lastErrorLine = $null
 
-  ValidateSchema $schemaJson
-
-  foreach ($listDef in $schemaJson.lists) {
-    $title = $listDef.title
-    if (-not $title) { continue }
-    EnsureList -Title $title
-    if ($WhatIfMode) { DumpListFields -ListTitle $title }
-    foreach ($f in $listDef.fields) {
-      if (-not $f.internalName -or -not $f.type) { continue }
-      $dn = $f.displayName
-      $in = $f.internalName
-      $ty = $f.type
-      $add = $false
-      if ($null -ne $f.addToDefaultView -and [bool]$f.addToDefaultView) { $add = $true }
-      $desc = $null; if ($f.PSObject.Properties.Match('description').Count -gt 0) { $desc = $f.description }
-      $req = $null; if ($f.PSObject.Properties.Match('required').Count -gt 0) { $req = $f.required }
-      $uniq = $null; if ($f.PSObject.Properties.Match('enforceUnique').Count -gt 0) { $uniq = $f.enforceUnique }
-      $max = $null; if ($f.PSObject.Properties.Match('maxLength').Count -gt 0) { $max = $f.maxLength }
-      $ch = $null; if ($f.PSObject.Properties.Match('choices').Count -gt 0) { $ch = [string[]]$f.choices }
-      if ($ty -eq 'Lookup') {
-        $lkList = if ($f.PSObject.Properties.Match('lookupListTitle').Count -gt 0) { $f.lookupListTitle } else { $null }
-        $lkField = if ($f.PSObject.Properties.Match('lookupField').Count -gt 0) { $f.lookupField } else { 'Title' }
-        $lkMulti = $false; if ($f.PSObject.Properties.Match('allowMultiple').Count -gt 0) { $lkMulti = [bool]$f.allowMultiple }
-        if (-not $lkList) { LogChange ("  - Lookup missing lookupListTitle: {0}" -f $in) }
-        else { EnsureLookupField -ListTitle $title -DisplayName $dn -InternalName $in -LookupListTitle $lkList -LookupField $lkField -AllowMultiple:$lkMulti -AddToDefaultView:([switch]$add) }
-      } elseif ($ty -eq 'User') {
-        $uMulti = $false; if ($f.PSObject.Properties.Match('allowMultiple').Count -gt 0) { $uMulti = [bool]$f.allowMultiple }
-        $princip = 'User'; if ($f.PSObject.Properties.Match('principalType').Count -gt 0) { $princip = $f.principalType }
-        EnsureUserField -ListTitle $title -DisplayName $dn -InternalName $in -AllowMultiple:$uMulti -PrincipalType $princip -AddToDefaultView:([switch]$add)
-      } else {
-        EnsureField -ListTitle $title -DisplayName $dn -InternalName $in -Type $ty -Description $desc -Required $req -EnforceUnique $uniq -MaxLength $max -Choices $ch -AddToDefaultView:([switch]$add)
+try {
+  # XML なら PnP テンプレートを適用、JSON なら従来処理
+  if ($SchemaPath -match '\.xml$') {
+    Note "Applying PnP XML template: $SchemaPath"
+    if (-not $WhatIfMode.IsPresent) {
+      try {
+        Invoke-PnPSiteTemplate -Path $schemaPathResolved -ErrorAction Stop
+        LogChange "Applied XML template: $SchemaPath"
       }
-      if ($ApplyFieldUpdates -and $ty -eq 'Choice' -and $ch) {
-        $policy = if ($f.PSObject.Properties.Match('choicesPolicy').Count -gt 0) { $f.choicesPolicy } else { 'additive' }
-        try {
-          if ($policy -eq 'additive') {
-            $lines = Update-ChoiceFieldAdditive -ListTitle $title -InternalName $in -DesiredChoices $ch -WhatIfMode:$WhatIfMode
-            foreach ($l in $lines) { LogChange ("  - {0}" -f $l) }
-          } elseif ($policy -eq 'replace') {
-            $lines = Update-ChoiceFieldReplace -ListTitle $title -InternalName $in -DesiredChoices $ch -WhatIfMode:$WhatIfMode
-            foreach ($l in $lines) { LogChange ("  - {0}" -f $l) }
-          } else { LogChange ("  - Unknown choicesPolicy '{0}' for {1}" -f $policy, $in) }
+      catch {
+        $lastErrorLine = "ERROR: XML template apply failed - $($_.Exception.Message)"
+        LogChange $lastErrorLine
+        throw
+      }
+    } else {
+      Note "WhatIf=true: skipping actual XML apply"
+      LogChange "Would apply XML template: $SchemaPath"
+    }
+  }
+  else {
+    try {
+      $schemaJson = Get-Content -Path $schemaPathResolved -Raw | ConvertFrom-Json
+    }
+    catch {
+      $lastErrorLine = "ERROR: Failed to parse JSON schema at '$SchemaPath': $($_.Exception.Message)"
+      LogChange $lastErrorLine
+      throw
+    }
+
+    ValidateSchema $schemaJson
+
+    foreach ($listDef in $schemaJson.lists) {
+      $title = $listDef.title
+      if (-not $title) { continue }
+      EnsureList -Title $title
+      if ($WhatIfMode) { DumpListFields -ListTitle $title }
+      foreach ($f in $listDef.fields) {
+        if (-not $f.internalName -or -not $f.type) { continue }
+        $dn = $f.displayName
+        $in = $f.internalName
+        $ty = $f.type
+        $add = $false
+        if ($null -ne $f.addToDefaultView -and [bool]$f.addToDefaultView) { $add = $true }
+        $desc = $null; if ($f.PSObject.Properties.Match('description').Count -gt 0) { $desc = $f.description }
+        $req = $null; if ($f.PSObject.Properties.Match('required').Count -gt 0) { $req = $f.required }
+        $uniq = $null; if ($f.PSObject.Properties.Match('enforceUnique').Count -gt 0) { $uniq = $f.enforceUnique }
+        $max = $null; if ($f.PSObject.Properties.Match('maxLength').Count -gt 0) { $max = $f.maxLength }
+        $ch = $null; if ($f.PSObject.Properties.Match('choices').Count -gt 0) { $ch = [string[]]$f.choices }
+        if ($ty -eq 'Lookup') {
+          $lkList = if ($f.PSObject.Properties.Match('lookupListTitle').Count -gt 0) { $f.lookupListTitle } else { $null }
+          $lkField = if ($f.PSObject.Properties.Match('lookupField').Count -gt 0) { $f.lookupField } else { 'Title' }
+          $lkMulti = $false; if ($f.PSObject.Properties.Match('allowMultiple').Count -gt 0) { $lkMulti = [bool]$f.allowMultiple }
+          if (-not $lkList) { LogChange ("  - Lookup missing lookupListTitle: {0}" -f $in) }
+          else { EnsureLookupField -ListTitle $title -DisplayName $dn -InternalName $in -LookupListTitle $lkList -LookupField $lkField -AllowMultiple:$lkMulti -AddToDefaultView:([switch]$add) }
+        } elseif ($ty -eq 'User') {
+          $uMulti = $false; if ($f.PSObject.Properties.Match('allowMultiple').Count -gt 0) { $uMulti = [bool]$f.allowMultiple }
+          $princip = 'User'; if ($f.PSObject.Properties.Match('principalType').Count -gt 0) { $princip = $f.principalType }
+          EnsureUserField -ListTitle $title -DisplayName $dn -InternalName $in -AllowMultiple:$uMulti -PrincipalType $princip -AddToDefaultView:([switch]$add)
+        } else {
+          EnsureField -ListTitle $title -DisplayName $dn -InternalName $in -Type $ty -Description $desc -Required $req -EnforceUnique $uniq -MaxLength $max -Choices $ch -AddToDefaultView:([switch]$add)
         }
-        catch {
-          LogChange ("  - Error applying choicesPolicy for {0}: {1}" -f $in, $_.Exception.Message)
+        if ($ApplyFieldUpdates -and $ty -eq 'Choice' -and $ch) {
+          $policy = if ($f.PSObject.Properties.Match('choicesPolicy').Count -gt 0) { $f.choicesPolicy } else { 'additive' }
+          try {
+            if ($policy -eq 'additive') {
+              $lines = Update-ChoiceFieldAdditive -ListTitle $title -InternalName $in -DesiredChoices $ch -WhatIfMode:$WhatIfMode
+              foreach ($l in $lines) { LogChange ("  - {0}" -f $l) }
+            } elseif ($policy -eq 'replace') {
+              $lines = Update-ChoiceFieldReplace -ListTitle $title -InternalName $in -DesiredChoices $ch -WhatIfMode:$WhatIfMode
+              foreach ($l in $lines) { LogChange ("  - {0}" -f $l) }
+            } else { LogChange ("  - Unknown choicesPolicy '{0}' for {1}" -f $policy, $in) }
+          }
+          catch {
+            LogChange ("  - Error applying choicesPolicy for {0}: {1}" -f $in, $_.Exception.Message)
+          }
         }
       }
     }
   }
 }
+catch {
+  $changesPayload.status = "error"
+  if (-not $lastErrorLine) {
+    $lastErrorLine = "ERROR: $($_.Exception.Message)"
+    LogChange $lastErrorLine
+  }
+  throw
+}
+finally {
+  Note ''
+  Note 'Changes:'
+  if ($GLOBAL:Changes.Count -eq 0) { Note '- No changes (already up-to-date)' }
 
-# 変更件数の集計（簡易版）
-Note ''
-Note 'Changes:'
-if ($GLOBAL:Changes.Count -eq 0) { Note '- No changes (already up-to-date)' }
+  $changesPayload.summary.total = $GLOBAL:Changes.Count
+  $kindCounts = $GLOBAL:Changes |
+    ForEach-Object {
+      if ($_ -like 'ERROR:*') { 'Error' }
+      elseif ($_ -like "  - Field meta updated:*") { 'MetaUpdate' }
+      elseif ($_ -like "Create list:*") { 'Create' }
+      elseif ($_ -like "Recreate list:*") { 'Recreate' }
+      else { 'Info' }
+    } | Group-Object | ForEach-Object { @{ kind=$_.Name; count=$_.Count } }
+  $changesPayload.summary.byKind = $kindCounts
+  $changesPayload.changes = $GLOBAL:Changes
 
-$changesPayload.summary.total = $GLOBAL:Changes.Count
-$kindCounts = $GLOBAL:Changes |
-  ForEach-Object {
-    if ($_ -like "  - Field meta updated:*") { "MetaUpdate" }
-    elseif ($_ -like "List exists:*") { "Info" }
-    elseif ($_ -like "Create list:*") { "Info" }
-    else { "Info" }
-  } | Group-Object | ForEach-Object { @{ kind=$_.Name; count=$_.Count } }
-$changesPayload.summary.byKind = $kindCounts
-$changesPayload.changes = $GLOBAL:Changes
-
-Write-ChangesJson -Path $ChangesOutPath -Payload $changesPayload
+  Write-ChangesJson -Path $ChangesOutPath -Payload $changesPayload
+}
 # --- スキーマ適用ブロック ここまで ---
