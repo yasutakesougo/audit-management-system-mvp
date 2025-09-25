@@ -176,23 +176,25 @@ jobs:
           }
           $siteUrl = "$($env:SPO_RESOURCE)$siteRel"
 
-          $arguments = @('-SiteUrl', $siteUrl, '-TenantId', $env:AAD_TENANT_ID, '-ClientId', $env:AAD_APP_ID)
+          $arguments = @{
+            SiteUrl  = $siteUrl
+            TenantId = $env:AAD_TENANT_ID
+            ClientId = $env:AAD_APP_ID
+          }
 
           if ($env:SPO_CLIENT_SECRET) {
-            $arguments += @('-ClientSecret', $env:SPO_CLIENT_SECRET)
+            $arguments.ClientSecret = $env:SPO_CLIENT_SECRET
           }
 
           if ($env:SPO_CERT_PATH -and (Test-Path $env:SPO_CERT_PATH)) {
+            $arguments.CertificatePath = $env:SPO_CERT_PATH
             if ($env:SPO_CERT_PASSWORD) {
-              $secureCert = ConvertTo-SecureString $env:SPO_CERT_PASSWORD -AsPlainText -Force
-              $arguments += @('-CertificatePath', $env:SPO_CERT_PATH, '-CertificatePassword', $secureCert)
-            } else {
-              $arguments += @('-CertificatePath', $env:SPO_CERT_PATH)
+              $arguments.CertificatePassword = ConvertTo-SecureString $env:SPO_CERT_PASSWORD -AsPlainText -Force
             }
           }
 
           if ([string]::Equals($env:ADD_TOP_NAV, 'true', [System.StringComparison]::OrdinalIgnoreCase)) {
-            $arguments += '-AddTopNav'
+            $arguments.AddTopNav = $true
           }
 
           & ./scripts/add-nav.ps1 @arguments
