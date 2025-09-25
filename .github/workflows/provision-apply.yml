@@ -8,6 +8,12 @@ on:
         description: "SITE_RELATIVE_URL (e.g. /sites/welfare)"
         required: false
         default: "/sites/welfare"
+      addTopNavigation:
+        description: "Also add links to Top Navigation"
+        required: false
+        type: boolean      # ← これでUIがチェックボックス表示になる
+        default: false
+
   # PRに 'apply' ラベルが付いているときだけ実行
   pull_request:
     types: [opened, reopened, synchronize, labeled]
@@ -17,7 +23,8 @@ on:
       - 'scripts/provision-spo.ps1'
       - '.github/workflows/provision-apply.yml'
       - 'docs/provisioning.md'
-  # main へマージされたら自動適用（任意・要件に応じてコメントアウト可）
+
+  # main へマージされたら自動適用（任意）
   push:
     branches: [ main ]
     paths:
