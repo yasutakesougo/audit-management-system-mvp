@@ -410,14 +410,16 @@ finally {
   if ($GLOBAL:Changes.Count -eq 0) { Note '- No changes (already up-to-date)' }
 
   $changesPayload.summary.total = $GLOBAL:Changes.Count
-  $kindCounts = $GLOBAL:Changes |
-    ForEach-Object {
-      if ($_ -like 'ERROR:*') { 'Error' }
-      elseif ($_ -like "  - Field meta updated:*") { 'MetaUpdate' }
-      elseif ($_ -like "Create list:*") { 'Create' }
-      elseif ($_ -like "Recreate list:*") { 'Recreate' }
-      else { 'Info' }
-    } | Group-Object | ForEach-Object { @{ kind=$_.Name; count=$_.Count } }
+  $kindCounts = @(
+    $GLOBAL:Changes |
+      ForEach-Object {
+        if ($_ -like 'ERROR:*') { 'Error' }
+        elseif ($_ -like "  - Field meta updated:*") { 'MetaUpdate' }
+        elseif ($_ -like "Create list:*") { 'Create' }
+        elseif ($_ -like "Recreate list:*") { 'Recreate' }
+        else { 'Info' }
+      } | Group-Object | ForEach-Object { [pscustomobject]@{ kind=$_.Name; count=$_.Count } }
+  )
   $changesPayload.summary.byKind = $kindCounts
   $changesPayload.changes = $GLOBAL:Changes
 
