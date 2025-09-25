@@ -10,9 +10,8 @@ on:
       addTopNavigation:
         description: "Also add links to Top Navigation"
         required: false
-        type: boolean      # ← これでUIがチェックボックス表示になる
+        type: boolean
         default: false
-
 
   # PRに 'apply' ラベルが付いているときだけ実行
   pull_request:
@@ -60,6 +59,16 @@ jobs:
         with:
           node-version: '20'
 
+      - name: Guard Set-ListFieldSafe signature
+        shell: pwsh
+        run: |
+          if (Select-String -Path scripts/provision-spo.ps1 -Pattern '\[bool\]\$WhatIf' -Quiet) {
+            throw 'Set-ListFieldSafe still accepts [bool]$WhatIf (old script)'
+          }
+          if (Select-String -Path scripts/provision-spo.ps1 -Pattern 'Set-ListFieldSafe[^\n]*-WhatIf' -Quiet) {
+            throw 'Set-ListFieldSafe call still passes -WhatIf (old script)'
+          }
+
       - name: Install PowerShell module (PnP v3)
         shell: pwsh
         run: |
@@ -71,14 +80,30 @@ jobs:
 
       - name: Decode certificate (if provided)
         id: cert
-        shell: bash
+        shell: pwsh
         env:
-          SPO_CERT_BASE64: ${{ secrets.SPO_CERT_BASE64 }}
+          RAW_CERT: ${{ secrets.SPO_CERT_BASE64 }}
         run: |
-          if [ -n "${SPO_CERT_BASE64}" ]; then
-            echo "$SPO_CERT_BASE64" | base64 -d > "$RUNNER_TEMP/spoCert.pfx"
-            echo "path=$RUNNER_TEMP/spoCert.pfx" >> "$GITHUB_OUTPUT"
-          fi
+          if ([string]::IsNullOrWhiteSpace($env:RAW_CERT)) {
+            Write-Host 'No certificate secret provided. Skipping.'
+            return
+          }
+
+          $normalized = ($env:RAW_CERT -replace '\s', '')
+          try {
+            $bytes = [Convert]::FromBase64String($normalized)
+          } catch {
+            throw "Failed to decode SPO_CERT_BASE64: $($_.Exception.Message)"
+          }
+
+          $outPath = Join-Path $env:RUNNER_TEMP 'spoCert.pfx'
+          [IO.File]::WriteAllBytes($outPath, $bytes)
+
+          if (-not (Test-Path $outPath) -or (Get-Item $outPath).Length -eq 0) {
+            throw 'Decoded certificate file is empty.'
+          }
+
+          "path=$outPath" | Out-File -FilePath $env:GITHUB_OUTPUT -Encoding utf8 -Append
 
       - name: "Provision (APPLY: WhatIf=false)"
         shell: pwsh
@@ -90,6 +115,7 @@ jobs:
           SPO_RESOURCE: ${{ secrets.SPO_RESOURCE }}
           SPO_CERT_PATH: ${{ steps.cert.outputs.path }}
           SITE_RELATIVE_URL_SECRET: ${{ github.event.inputs.siteRelativeUrl }}
+          ADD_TOP_NAV: ${{ github.event_name == 'workflow_dispatch' && inputs.addTopNavigation }}
         run: |
           $ErrorActionPreference = 'Stop'
           Import-Module PnP.PowerShell -ErrorAction Stop
@@ -122,9 +148,54 @@ jobs:
             -ApplyFieldUpdates:$true `
             -ForceTypeReplace:$false `
             -WhatIfMode:$false `
-            -SchemaPath provision/schema.json `
+            -SchemaPath provision/schema.xml `
             -ChangesOutPath 'provision/changes.json' `
             -EmitChanges
+
+      - name: Update navigation links
+        if: success()
+        shell: pwsh
+        env:
+          AAD_TENANT_ID: ${{ secrets.AAD_TENANT_ID }}
+          AAD_APP_ID: ${{ secrets.AAD_APP_ID }}
+          SPO_CERT_PASSWORD: ${{ secrets.SPO_CERT_PASSWORD }}
+          SPO_CLIENT_SECRET: ${{ secrets.SPO_CLIENT_SECRET }}
+          SPO_RESOURCE: ${{ secrets.SPO_RESOURCE }}
+          SPO_CERT_PATH: ${{ steps.cert.outputs.path }}
+          SITE_RELATIVE_URL_SECRET: ${{ github.event.inputs.siteRelativeUrl }}
+          ADD_TOP_NAV: ${{ github.event_name == 'workflow_dispatch' && inputs.addTopNavigation }}
+        run: |
+          $ErrorActionPreference = 'Stop'
+          Import-Module PnP.PowerShell -ErrorAction Stop
+
+          if (-not $env:SPO_RESOURCE) { throw 'SPO_RESOURCE secret is required (e.g. https://<tenant>.sharepoint.com)' }
+
+          $siteRel = '${{ inputs.siteRelativeUrl }}'
+          if ([string]::IsNullOrWhiteSpace($siteRel)) {
+            $siteRel = if ($env:SITE_RELATIVE_URL_SECRET) { $env:SITE_RELATIVE_URL_SECRET } else { '/sites/welfare' }
+          }
+          $siteUrl = "$($env:SPO_RESOURCE)$siteRel"
+
+          $arguments = @('-SiteUrl', $siteUrl, '-TenantId', $env:AAD_TENANT_ID, '-ClientId', $env:AAD_APP_ID)
+
+          if ($env:SPO_CLIENT_SECRET) {
+            $arguments += @('-ClientSecret', $env:SPO_CLIENT_SECRET)
+          }
+
+          if ($env:SPO_CERT_PATH -and (Test-Path $env:SPO_CERT_PATH)) {
+            if ($env:SPO_CERT_PASSWORD) {
+              $secureCert = ConvertTo-SecureString $env:SPO_CERT_PASSWORD -AsPlainText -Force
+              $arguments += @('-CertificatePath', $env:SPO_CERT_PATH, '-CertificatePassword', $secureCert)
+            } else {
+              $arguments += @('-CertificatePath', $env:SPO_CERT_PATH)
+            }
+          }
+
+          if ([string]::Equals($env:ADD_TOP_NAV, 'true', [System.StringComparison]::OrdinalIgnoreCase)) {
+            $arguments += '-AddTopNav'
+          }
+
+          & ./scripts/add-nav.ps1 @arguments
 
       - name: Upload changes.json artifact
         if: always()
