@@ -1,7 +1,6 @@
 name: Provision Apply (PR/Main)
 
 on:
-  # 明示実行（安全）
   workflow_dispatch:
     inputs:
       siteRelativeUrl:
@@ -13,6 +12,7 @@ on:
         required: false
         type: boolean      # ← これでUIがチェックボックス表示になる
         default: false
+
 
   # PRに 'apply' ラベルが付いているときだけ実行
   pull_request:
