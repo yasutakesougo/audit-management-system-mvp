@@ -67,14 +67,28 @@ function Update-ChoiceFieldReplace {
 
 function Invoke-ProvisionTemplateIfXml {
   param(
-    [Parameter(Mandatory = $true)][string]$SchemaPath
+    [Parameter(Mandatory = $true)][string]$SchemaPath,
+    [string]$DisplayPath
   )
 
   $ext = [IO.Path]::GetExtension($SchemaPath)
   if ($ext -ieq '.xml') {
-    Note "Applying PnP XML template: $SchemaPath"
-    Invoke-PnPSiteTemplate -Path $SchemaPath -ErrorAction Stop
-    LogChange "Applied XML template: $SchemaPath"
+    $resolved = Resolve-Path -Path $SchemaPath -ErrorAction Stop
+    $fullPath = $resolved.ProviderPath
+    $display = if ($DisplayPath) { $DisplayPath } else { $SchemaPath }
+    if (-not $DisplayPath -and $env:GITHUB_WORKSPACE) {
+      try {
+        $workspaceRoot = [System.IO.Path]::GetFullPath($env:GITHUB_WORKSPACE)
+        $relative = [System.IO.Path]::GetRelativePath($workspaceRoot, $fullPath)
+        if ($relative -and -not $relative.StartsWith('..')) {
+          $display = $relative
+        }
+      } catch {}
+    }
+    $display = $display -replace '\\','/'
+    Note "Applying PnP XML template: $display"
+    Invoke-PnPSiteTemplate -Path $fullPath -ErrorAction Stop
+    LogChange "Applied XML template: $display"
     return $true
   }
 

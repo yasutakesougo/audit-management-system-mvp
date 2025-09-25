@@ -6,7 +6,7 @@ param(
   [bool]$ApplyFieldUpdates = $true,
   [bool]$ForceTypeReplace = $false,
   [switch]$WhatIfMode,
-  [string]$SchemaPath = 'provision/schema.json',
+  [string]$SchemaPath = 'provision/schema.xml',
   [string]$ChangesOutPath = 'provision/changes.json',
   [switch]$EmitChanges
 )
@@ -294,18 +294,41 @@ $failed = $false
 $caughtError = $null
 
 try {
+  $whatIf = [bool]$WhatIfMode.IsPresent
+  if (-not (Test-Path $SchemaPath)) { throw "Schema file not found: $SchemaPath" }
+  $schemaResolved = Resolve-Path -Path $SchemaPath -ErrorAction Stop
+  $schemaFullPath = $schemaResolved.ProviderPath
+  $workspaceRoot = $null
+  if ($env:GITHUB_WORKSPACE) {
+    try { $workspaceRoot = [System.IO.Path]::GetFullPath($env:GITHUB_WORKSPACE) } catch {}
+  }
+  $schemaDisplayPath = $schemaFullPath
+  if ($workspaceRoot) {
+    try {
+      $relative = [System.IO.Path]::GetRelativePath($workspaceRoot, $schemaFullPath)
+      if ($relative -and -not $relative.StartsWith('..')) {
+        $schemaDisplayPath = $relative
+      }
+    } catch {}
+  }
+  $schemaDisplayPath = $schemaDisplayPath -replace '\\','/'
+
   Note '# SharePoint Provision Summary'
   Note ''
   Note "Site: $SiteUrl"
   Note "Flags: RecreateExisting=$RecreateExisting ApplyFieldUpdates=$ApplyFieldUpdates ForceTypeReplace=$ForceTypeReplace WhatIf=$($WhatIfMode.IsPresent)"
-  Note "Schema: $SchemaPath"
+  Note "Schema: $schemaDisplayPath"
   Note ''
 
-  if (-not (Test-Path $SchemaPath)) { throw "Schema file not found: $SchemaPath" }
-  $schemaJson = Get-Content -Path $SchemaPath -Raw | ConvertFrom-Json
-  ValidateSchema $schemaJson
+  $appliedXml = Invoke-ProvisionTemplateIfXml -SchemaPath $schemaFullPath -DisplayPath $schemaDisplayPath
+  $schemaJson = $null
+  if (-not $appliedXml) {
+    $schemaJson = Get-Content -Path $schemaFullPath -Raw | ConvertFrom-Json
+    ValidateSchema $schemaJson
+  }
 
-  foreach ($listDef in $schemaJson.lists) {
+  if ($schemaJson) {
+    foreach ($listDef in $schemaJson.lists) {
     $title = $listDef.title
     if (-not $title) { continue }
     EnsureList -Title $title

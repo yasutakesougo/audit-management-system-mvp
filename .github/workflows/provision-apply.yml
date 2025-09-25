@@ -59,7 +59,7 @@ jobs:
         with:
           node-version: '20'
 
-      - name: Guard Set-ListFieldSafe signature
+      - name: Guard provisioning script shape
         shell: pwsh
         run: |
           if (Select-String -Path scripts/provision-spo.ps1 -Pattern '\[bool\]\$WhatIf' -Quiet) {
@@ -67,6 +67,12 @@ jobs:
           }
           if (Select-String -Path scripts/provision-spo.ps1 -Pattern 'Set-ListFieldSafe[^\n]*-WhatIf' -Quiet) {
             throw 'Set-ListFieldSafe call still passes -WhatIf (old script)'
+          }
+          if (-not (Select-String -Path scripts/provision-spo.ps1 -Pattern "SchemaPath = 'provision/schema.xml'" -Quiet)) {
+            throw 'provision-spo.ps1 default SchemaPath must match provision/schema.xml'
+          }
+          if (-not (Select-String -Path scripts/provision-spo.ps1 -Pattern 'Invoke-ProvisionTemplateIfXml' -Quiet)) {
+            throw 'provision-spo.ps1 must call Invoke-ProvisionTemplateIfXml for XML support'
           }
 
       - name: Install PowerShell module (PnP v3)
@@ -105,7 +111,7 @@ jobs:
 
           "path=$outPath" | Out-File -FilePath $env:GITHUB_OUTPUT -Encoding utf8 -Append
 
-      - name: "Provision (APPLY: WhatIf=false)"
+  - name: "Provision (apply; XML)"
         shell: pwsh
         env:
           AAD_TENANT_ID: ${{ secrets.AAD_TENANT_ID }}
