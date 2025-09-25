@@ -1,7 +1,6 @@
 name: Provision Apply (PR/Main)
 
 on:
-  # 明示実行（安全）
   workflow_dispatch:
     inputs:
       siteRelativeUrl:
@@ -13,6 +12,7 @@ on:
         required: false
         type: boolean
         default: false
+
   # PRに 'apply' ラベルが付いているときだけ実行
   pull_request:
     types: [opened, reopened, synchronize, labeled]
@@ -22,7 +22,8 @@ on:
       - 'scripts/provision-spo.ps1'
       - '.github/workflows/provision-apply.yml'
       - 'docs/provisioning.md'
-  # main へマージされたら自動適用（任意・要件に応じてコメントアウト可）
+
+  # main へマージされたら自動適用（任意）
   push:
     branches: [ main ]
     paths:
