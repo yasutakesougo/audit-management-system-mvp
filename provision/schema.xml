@@ -1,87 +1,296 @@
-<?xml version="1.0" encoding="utf-8"?>
-<pnp:Provisioning xmlns:pnp="http://schemas.dev.office.com/PnP/2021/03/ProvisioningSchema"
-                  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
-  <pnp:Preferences />
+﻿<?xml version="1.0" encoding="utf-8"?>
+<pnp:Provisioning xmlns:pnp="http://schemas.dev.office.com/PnP/2021/03/ProvisioningSchema">
+  <pnp:Preferences Generator="PnP.PowerShell" />
   <pnp:Templates>
-    <pnp:ProvisioningTemplate ID="AuditManagementSchema" Version="1.0">
+    <pnp:ProvisioningTemplate ID="MainTemplate" Version="1">
       <pnp:Lists>
-        <pnp:ListInstance Title="SupportRecord_Daily"
-                  Url="Lists/SupportRecord_Daily"
-                  TemplateType="100"
-                  EnableAttachments="false">
+        <!-- =========================
+             1) マスタ（ハブ）
+           ========================= -->
+        <!-- Users_Master: 利用者マスタ（ハブ） -->
+        <pnp:ListInstance Title="Users_Master" Description="利用者マスタ" TemplateType="100" Url="Lists/Users_Master">
           <pnp:Fields>
-            <pnp:Field ID="{BA08C2C8-8051-46E6-AFA3-9DCFBE7063CA}"
-                       Type="DateTime"
-                       DisplayName="記録日"
-                       InternalName="cr013_recorddate"
-                       AddToDefaultView="true"
-                       Required="false"
-                       Format="DateOnly" />
-            <pnp:Field ID="{902F8BC6-71DD-4180-80E5-12586E1A250F}"
-                       Type="Note"
-                       DisplayName="特記事項"
-                       InternalName="cr013_specialnote"
-                       AddToDefaultView="true"
-                       Required="false"
-                       RichText="false"
-                       Description="自由記述" />
+            <pnp:Field ID="{5C64B786-8831-4DAD-81B5-54CE5A0EA22D}" Type="Text" DisplayName="UserID" Required="TRUE" EnforceUniqueValues="TRUE" Indexed="TRUE" StaticName="UserID" Name="UserID" />
+            <pnp:Field ID="{0D9FDE0A-5B65-4B14-9DDD-31C4370E6D56}" Type="Text" DisplayName="利用者氏名" Required="TRUE" StaticName="FullName" Name="FullName" />
+            <pnp:Field ID="{6D595E88-882D-470E-9989-7A1D5B5B1E42}" Type="DateTime" DisplayName="契約日" StaticName="ContractDate" Name="ContractDate" Format="DateOnly" />
+            <pnp:Field ID="{FFB5E312-3E25-4B6C-AF87-6A4E1A7D29F4}" Type="DateTime" DisplayName="サービス開始日" StaticName="ServiceStartDate" Name="ServiceStartDate" Format="DateOnly" />
+            <pnp:Field ID="{8CF3F51F-97D3-4B3F-AB1F-77C45916B4CE}" Type="DateTime" DisplayName="サービス終了日" StaticName="ServiceEndDate" Name="ServiceEndDate" Format="DateOnly" />
+            <pnp:Field ID="{94C4F1EC-6B34-4DB7-988D-7E0D7F492691}" Type="Boolean" DisplayName="強度行動障害支援対象" StaticName="IsHighIntensitySupportTarget" Name="IsHighIntensitySupportTarget">
+              <Default>0</Default>
+            </pnp:Field>
           </pnp:Fields>
-  </pnp:ListInstance>
-  <pnp:ListInstance Title="Audit_Events"
-                  Url="Lists/Audit_Events"
-                  TemplateType="100"
-                  EnableAttachments="false">
+        </pnp:ListInstance>
+        <!-- Staff_Master: 職員マスタ（ハブ） -->
+        <pnp:ListInstance Title="Staff_Master" Description="職員マスタ" TemplateType="100" Url="Lists/Staff_Master">
           <pnp:Fields>
-            <pnp:Field ID="{5E6D7E12-DD2C-42D6-98BB-5B6882D38BCD}"
-                       Type="DateTime"
-                       DisplayName="ts"
-                       InternalName="ts"
-                       AddToDefaultView="true"
-                       Format="DateTime" />
-            <pnp:Field ID="{F2CEF52D-FA32-4499-98EC-CA9A02A103F9}"
-                       Type="Text"
-                       DisplayName="actor"
-                       InternalName="actor"
-                       AddToDefaultView="true"
-                       Required="false"
-                       MaxLength="255" />
-            <pnp:Field ID="{5112BBD4-D00F-4A9A-A71A-23DE5130B62B}"
-                       Type="Text"
-                       DisplayName="action"
-                       InternalName="action"
-                       AddToDefaultView="true" />
-            <pnp:Field ID="{78732E49-0255-4A10-BE56-4041A932B33C}"
-                       Type="Text"
-                       DisplayName="entity"
-                       InternalName="entity"
-                       AddToDefaultView="true"
-                       EnforceUniqueValues="false" />
-            <pnp:Field ID="{45D00761-1A5E-45BB-BFE3-3ED0B4B1C96B}"
-                       Type="Text"
-                       DisplayName="entity_id"
-                       InternalName="entity_id" />
-            <pnp:Field ID="{AFEEFAAB-578C-4A62-A3D8-E1F249AE7F69}"
-                       Type="Text"
-                       DisplayName="channel"
-                       InternalName="channel" />
-            <pnp:Field ID="{EB0976CD-7335-44E9-8648-48082C7EA8C4}"
-                       Type="Note"
-                       DisplayName="before_json"
-                       InternalName="before_json" />
-            <pnp:Field ID="{0A994831-5FAB-401F-B9A9-93F5952FB44F}"
-                       Type="Note"
-                       DisplayName="after_json"
-                       InternalName="after_json" />
-            <pnp:Field ID="{889E0558-5661-4061-94B5-742B7F632104}"
-                       Type="Text"
-                       DisplayName="Entry Hash"
-                       InternalName="entry_hash"
-                       Required="false"
-                       EnforceUniqueValues="true"
-                       Indexed="true"
-                       MaxLength="128"
-                       AddToDefaultView="false"
-                       Description="ts,actor,action,entity,entity_id,after_json ハッシュ" />
+            <pnp:Field ID="{C4B399C9-6CBB-4F6B-B27C-1E0D8A700A3E}" Type="Text" DisplayName="StaffID" Required="TRUE" EnforceUniqueValues="TRUE" Indexed="TRUE" StaticName="StaffID" Name="StaffID" />
+            <pnp:Field ID="{4C6E8F1D-6F4B-45F0-8D32-3DE6D2B93C14}" Type="Text" DisplayName="職員氏名" Required="TRUE" StaticName="FullName" Name="FullName" />
+            <pnp:Field ID="{A3A4BDB4-1330-4DDF-BCC2-0F964F35E71D}" Type="Choice" DisplayName="職種" StaticName="JobTitle" Name="JobTitle">
+              <pnp:Choices>
+                <pnp:Choice>管理者</pnp:Choice>
+                <pnp:Choice>サービス管理責任者</pnp:Choice>
+                <pnp:Choice>生活支援員</pnp:Choice>
+                <pnp:Choice>看護職員</pnp:Choice>
+                <pnp:Choice>事務</pnp:Choice>
+              </pnp:Choices>
+            </pnp:Field>
+            <pnp:Field ID="{514C60AA-9C54-4F92-B6AA-5D2C4AC1F0CC}" Type="Choice" DisplayName="雇用形態" StaticName="EmploymentType" Name="EmploymentType">
+              <pnp:Choices>
+                <pnp:Choice>常勤</pnp:Choice>
+                <pnp:Choice>非常勤</pnp:Choice>
+              </pnp:Choices>
+            </pnp:Field>
+            <pnp:Field ID="{B6850453-8AA9-43C4-B957-94AC434B96C5}" Type="Text" DisplayName="権限ロール" StaticName="RBACRole" Name="RBACRole" />
+          </pnp:Fields>
+        </pnp:ListInstance>
+        <!-- =========================
+             2) ルール
+           ========================= -->
+        <!-- Billing_ServiceCodes: サービスコード定義 -->
+        <pnp:ListInstance Title="Billing_ServiceCodes" Description="給付サービスコード定義" TemplateType="100" Url="Lists/Billing_ServiceCodes">
+          <pnp:Fields>
+            <pnp:Field ID="{165B7D19-5E2B-4BB6-875A-2DF7393E7B45}" Type="Text" DisplayName="ServiceCode" Required="TRUE" EnforceUniqueValues="TRUE" Indexed="TRUE" StaticName="ServiceCode" Name="ServiceCode" />
+            <pnp:Field Type="Text" DisplayName="サービス名" Required="TRUE" StaticName="ServiceName" Name="ServiceName" />
+            <pnp:Field Type="Number" DisplayName="単位価格" StaticName="UnitPrice" Name="UnitPrice" />
+            <pnp:Field Type="Text" DisplayName="単位" StaticName="Unit" Name="Unit" />
+            <pnp:Field Type="Boolean" DisplayName="有効" StaticName="IsActive" Name="IsActive">
+              <Default>1</Default>
+            </pnp:Field>
+            <pnp:Field Type="DateTime" DisplayName="適用開始日" StaticName="ValidFrom" Name="ValidFrom" Format="DateOnly" />
+            <pnp:Field Type="DateTime" DisplayName="適用終了日" StaticName="ValidTo" Name="ValidTo" Format="DateOnly" />
+          </pnp:Fields>
+        </pnp:ListInstance>
+        <!-- Billing_AddonRules: 加算ルール -->
+        <pnp:ListInstance Title="Billing_AddonRules" Description="加算ルール定義" TemplateType="100" Url="Lists/Billing_AddonRules">
+          <pnp:Fields>
+            <pnp:Field ID="{63E30C4A-138C-45D7-9D11-6EFB8FBB3C7C}" Type="Text" DisplayName="RuleCode" Required="TRUE" EnforceUniqueValues="TRUE" Indexed="TRUE" StaticName="RuleCode" Name="RuleCode" />
+            <pnp:Field Type="Text" DisplayName="ルール名" Required="TRUE" StaticName="RuleName" Name="RuleName" />
+            <pnp:Field Type="Lookup" DisplayName="対象サービス" List="Lists/Billing_ServiceCodes" ShowField="ServiceCode" StaticName="TargetServiceCode" Name="TargetServiceCode" />
+            <pnp:Field Type="Note" DisplayName="条件式(JSON)" StaticName="ConditionsJSON" Name="ConditionsJSON" NumLines="6" RichText="FALSE" />
+            <pnp:Field Type="DateTime" DisplayName="適用開始日" StaticName="ValidFrom" Name="ValidFrom" Format="DateOnly" />
+            <pnp:Field Type="DateTime" DisplayName="適用終了日" StaticName="ValidTo" Name="ValidTo" Format="DateOnly" />
+          </pnp:Fields>
+        </pnp:ListInstance>
+        <!-- Compliance_CheckRules: コンプライアンスチェック -->
+        <pnp:ListInstance Title="Compliance_CheckRules" Description="コンプライアンスチェックルール" TemplateType="100" Url="Lists/Compliance_CheckRules">
+          <pnp:Fields>
+            <pnp:Field ID="{8A5A7D00-7B4E-45F4-8AB8-2EBDA68CF2B1}" Type="Text" DisplayName="RuleID" Required="TRUE" EnforceUniqueValues="TRUE" Indexed="TRUE" StaticName="RuleID" Name="RuleID" />
+            <pnp:Field Type="Text" DisplayName="ルール名" Required="TRUE" StaticName="RuleName" Name="RuleName" />
+            <pnp:Field Type="Note" DisplayName="要件式（評価ロジック）" StaticName="EvaluationLogic" Name="EvaluationLogic" NumLines="6" RichText="FALSE" />
+            <pnp:Field Type="DateTime" DisplayName="適用開始日" StaticName="ValidFrom" Name="ValidFrom" Format="DateOnly" />
+            <pnp:Field Type="DateTime" DisplayName="適用終了日" StaticName="ValidTo" Name="ValidTo" Format="DateOnly" />
+            <pnp:Field Type="Choice" DisplayName="警告レベル" StaticName="SeverityLevel" Name="SeverityLevel">
+              <pnp:Choices>
+                <pnp:Choice>INFO</pnp:Choice>
+                <pnp:Choice>WARN</pnp:Choice>
+                <pnp:Choice>ERROR</pnp:Choice>
+              </pnp:Choices>
+            </pnp:Field>
+          </pnp:Fields>
+        </pnp:ListInstance>
+        <!-- =========================
+             3) ガバナンス
+           ========================= -->
+        <!-- CommitteeMeetings: 委員会会議 -->
+        <pnp:ListInstance Title="CommitteeMeetings" Description="委員会会議記録" TemplateType="100" Url="Lists/CommitteeMeetings">
+          <pnp:Fields>
+            <pnp:Field Type="DateTime" DisplayName="開催日" Required="TRUE" Indexed="TRUE" StaticName="MeetingDate" Name="MeetingDate" Format="DateOnly" />
+            <pnp:Field Type="Text" DisplayName="議題/タイトル" StaticName="TitleText" Name="TitleText" />
+            <pnp:Field Type="Lookup" DisplayName="議長" List="Lists/Staff_Master" ShowField="StaffID" StaticName="ChairStaffID" Name="ChairStaffID" />
+            <pnp:Field Type="Lookup" DisplayName="参加者" List="Lists/Staff_Master" ShowField="StaffID" StaticName="Participants" Name="Participants" Mult="TRUE" />
+            <pnp:Field Type="Note" DisplayName="議事録" StaticName="Minutes" Name="Minutes" NumLines="10" RichText="FALSE" />
+          </pnp:Fields>
+        </pnp:ListInstance>
+        <!-- Governance_Docs: 規程・文書 -->
+        <pnp:ListInstance Title="Governance_Docs" Description="規程・手順書・通知等" TemplateType="100" Url="Lists/Governance_Docs">
+          <pnp:Fields>
+            <pnp:Field Type="Text" DisplayName="DocID" Required="TRUE" EnforceUniqueValues="TRUE" Indexed="TRUE" StaticName="DocID" Name="DocID" />
+            <pnp:Field Type="Text" DisplayName="タイトル" StaticName="TitleText" Name="TitleText" />
+            <pnp:Field Type="Choice" DisplayName="区分" StaticName="Category" Name="Category">
+              <pnp:Choices>
+                <pnp:Choice>規程</pnp:Choice>
+                <pnp:Choice>手順</pnp:Choice>
+                <pnp:Choice>通知</pnp:Choice>
+                <pnp:Choice>その他</pnp:Choice>
+              </pnp:Choices>
+            </pnp:Field>
+            <pnp:Field Type="DateTime" DisplayName="施行日" Indexed="TRUE" StaticName="EffectiveDate" Name="EffectiveDate" Format="DateOnly" />
+            <pnp:Field Type="URL" DisplayName="参照リンク" StaticName="FileLink" Name="FileLink" />
+          </pnp:Fields>
+        </pnp:ListInstance>
+        <!-- TrainingRecords: 研修記録 -->
+        <pnp:ListInstance Title="TrainingRecords" Description="職員研修記録" TemplateType="100" Url="Lists/TrainingRecords">
+          <pnp:Fields>
+            <pnp:Field Type="Lookup" DisplayName="職員ID" List="Lists/Staff_Master" ShowField="StaffID" StaticName="StaffID" Name="StaffID" Required="TRUE" />
+            <pnp:Field Type="Text" DisplayName="研修名" Required="TRUE" StaticName="CourseName" Name="CourseName" />
+            <pnp:Field Type="DateTime" DisplayName="受講日" Indexed="TRUE" StaticName="TrainingDate" Name="TrainingDate" Format="DateOnly" />
+            <pnp:Field Type="Number" DisplayName="時間(hrs)" StaticName="Hours" Name="Hours" />
+            <pnp:Field Type="URL" DisplayName="証明書リンク" StaticName="CertificateLink" Name="CertificateLink" />
+          </pnp:Fields>
+        </pnp:ListInstance>
+        <!-- PhysicalRestraintLog: 身体拘束記録 -->
+        <pnp:ListInstance Title="PhysicalRestraintLog" Description="身体拘束等の記録" TemplateType="100" Url="Lists/PhysicalRestraintLog">
+          <pnp:Fields>
+            <pnp:Field Type="DateTime" DisplayName="発生日" Required="TRUE" Indexed="TRUE" StaticName="OccurredAt" Name="OccurredAt" />
+            <pnp:Field Type="Lookup" DisplayName="利用者ID" Required="TRUE" List="Lists/Users_Master" ShowField="UserID" StaticName="UserID" Name="UserID" />
+            <pnp:Field Type="Lookup" DisplayName="対応職員" List="Lists/Staff_Master" ShowField="StaffID" StaticName="InvolvedStaff" Name="InvolvedStaff" Mult="TRUE" />
+            <pnp:Field Type="Number" DisplayName="対応時間(分)" StaticName="DurationMinutes" Name="DurationMinutes" />
+            <pnp:Field Type="Note" DisplayName="理由・状況" StaticName="Reason" Name="Reason" NumLines="8" RichText="FALSE" />
+            <pnp:Field Type="Lookup" DisplayName="承認者" List="Lists/Staff_Master" ShowField="StaffID" StaticName="ApprovedBy" Name="ApprovedBy" />
+            <pnp:Field Type="DateTime" DisplayName="報告日" StaticName="ReportedAt" Name="ReportedAt" Format="DateOnly" />
+          </pnp:Fields>
+        </pnp:ListInstance>
+        <!-- =========================
+             4) 計画管理
+           ========================= -->
+        <!-- Assessment_Records: アセスメント -->
+        <pnp:ListInstance Title="Assessment_Records" Description="アセスメント記録" TemplateType="100" Url="Lists/Assessment_Records">
+          <pnp:Fields>
+            <pnp:Field Type="Lookup" DisplayName="利用者ID" Required="TRUE" List="Lists/Users_Master" ShowField="UserID" StaticName="UserID" Name="UserID" />
+            <pnp:Field Type="DateTime" DisplayName="評価日" Required="TRUE" Indexed="TRUE" StaticName="AssessmentDate" Name="AssessmentDate" Format="DateOnly" />
+            <pnp:Field Type="Lookup" DisplayName="評価者(職員)" List="Lists/Staff_Master" ShowField="StaffID" StaticName="AssessorStaffID" Name="AssessorStaffID" />
+            <pnp:Field Type="Number" DisplayName="スコア" StaticName="Score" Name="Score" />
+            <pnp:Field Type="Note" DisplayName="要約" StaticName="Summary" Name="Summary" NumLines="8" RichText="FALSE" />
+          </pnp:Fields>
+        </pnp:ListInstance>
+        <!-- Plan_Versions: 個別支援計画（版管理） -->
+        <pnp:ListInstance Title="Plan_Versions" Description="個別支援計画（版管理）" TemplateType="100" Url="Lists/Plan_Versions" EnableVersioning="true">
+          <pnp:Fields>
+            <pnp:Field Type="Text" DisplayName="PlanID" Required="TRUE" Indexed="TRUE" StaticName="PlanID" Name="PlanID" />
+            <pnp:Field ID="{BE5CB3B5-4331-46E4-88B3-70A245C303C2}" Type="Text" DisplayName="VersionID（GUID+rev）" Required="true" EnforceUniqueValues="true" Indexed="true" StaticName="VersionID" Name="VersionID" />
+            <pnp:Field Type="Lookup" DisplayName="利用者ID" Required="TRUE" List="Lists/Users_Master" ShowField="UserID" StaticName="UserID" Name="UserID" />
+            <pnp:Field Type="Lookup" DisplayName="作成者(職員)" List="Lists/Staff_Master" ShowField="StaffID" StaticName="PlanAuthorID" Name="PlanAuthorID" />
+            <pnp:Field Type="DateTime" DisplayName="次回モニタリング期限" Indexed="TRUE" StaticName="NextMonitoringDueDate" Name="NextMonitoringDueDate" Format="DateOnly" />
+            <pnp:Field Type="Choice" DisplayName="ステータス" StaticName="PlanStatus" Name="PlanStatus">
+              <pnp:Choices>
+                <pnp:Choice>Draft</pnp:Choice>
+                <pnp:Choice>Approved</pnp:Choice>
+                <pnp:Choice>Expired</pnp:Choice>
+              </pnp:Choices>
+            </pnp:Field>
+          </pnp:Fields>
+        </pnp:ListInstance>
+        <!-- Behavior_Support_Plans: 行動支援計画（計画版への参照） -->
+        <pnp:ListInstance Title="Behavior_Support_Plans" Description="行動支援計画" TemplateType="100" Url="Lists/Behavior_Support_Plans">
+          <pnp:Fields>
+            <pnp:Field Type="Lookup" DisplayName="利用者ID" Required="TRUE" List="Lists/Users_Master" ShowField="UserID" StaticName="UserID" Name="UserID" />
+            <pnp:Field Type="Lookup" DisplayName="計画VersionID" Required="TRUE" List="Lists/Plan_Versions" ShowField="VersionID" StaticName="PlanVersionID" Name="PlanVersionID" />
+            <pnp:Field Type="DateTime" DisplayName="適用開始日" Indexed="TRUE" StaticName="StartDate" Name="StartDate" Format="DateOnly" />
+            <pnp:Field Type="DateTime" DisplayName="適用終了日" StaticName="EndDate" Name="EndDate" Format="DateOnly" />
+            <pnp:Field Type="Note" DisplayName="支援方針(JSON)" StaticName="StrategyJSON" Name="StrategyJSON" NumLines="10" RichText="FALSE" />
+          </pnp:Fields>
+        </pnp:ListInstance>
+        <!-- ServiceMeetings: サービス会議 -->
+        <pnp:ListInstance Title="ServiceMeetings" Description="サービス会議記録" TemplateType="100" Url="Lists/ServiceMeetings">
+          <pnp:Fields>
+            <pnp:Field Type="Lookup" DisplayName="利用者ID" List="Lists/Users_Master" ShowField="UserID" StaticName="UserID" Name="UserID" />
+            <pnp:Field Type="DateTime" DisplayName="開催日" Required="TRUE" Indexed="TRUE" StaticName="MeetingDate" Name="MeetingDate" Format="DateOnly" />
+            <pnp:Field Type="Lookup" DisplayName="参加者" List="Lists/Staff_Master" ShowField="StaffID" StaticName="Participants" Name="Participants" Mult="TRUE" />
+            <pnp:Field Type="Note" DisplayName="議事概要" StaticName="Summary" Name="Summary" NumLines="8" RichText="FALSE" />
+          </pnp:Fields>
+        </pnp:ListInstance>
+        <!-- MonitoringReports: モニタリング報告 -->
+        <pnp:ListInstance Title="MonitoringReports" Description="モニタリング報告" TemplateType="100" Url="Lists/MonitoringReports">
+          <pnp:Fields>
+            <pnp:Field Type="Lookup" DisplayName="利用者ID" List="Lists/Users_Master" ShowField="UserID" StaticName="UserID" Name="UserID" />
+            <pnp:Field Type="Lookup" DisplayName="関連VersionID" List="Lists/Plan_Versions" ShowField="VersionID" StaticName="RelatedPlanVersion" Name="RelatedPlanVersion" />
+            <pnp:Field Type="DateTime" DisplayName="報告日" Indexed="TRUE" StaticName="ReportDate" Name="ReportDate" Format="DateOnly" />
+            <pnp:Field Type="Note" DisplayName="評価・所見" StaticName="Outcome" Name="Outcome" NumLines="10" RichText="FALSE" />
+            <pnp:Field Type="Note" DisplayName="フォローアップ" StaticName="Followups" Name="Followups" NumLines="8" RichText="FALSE" />
+          </pnp:Fields>
+        </pnp:ListInstance>
+        <!-- Consent_Records: 同意・交付・参加 -->
+        <pnp:ListInstance Title="Consent_Records" Description="同意・交付・参加記録" TemplateType="100" Url="Lists/Consent_Records">
+          <pnp:Fields>
+            <pnp:Field Type="Lookup" DisplayName="利用者ID" List="Lists/Users_Master" ShowField="UserID" StaticName="UserID" Name="UserID" />
+            <pnp:Field Type="Lookup" DisplayName="関連計画" List="Lists/Plan_Versions" ShowField="PlanID" StaticName="PlanID" Name="PlanID" />
+            <pnp:Field Type="Choice" DisplayName="種別" StaticName="ConsentType" Name="ConsentType">
+              <pnp:Choices>
+                <pnp:Choice>計画同意</pnp:Choice>
+                <pnp:Choice>計画交付</pnp:Choice>
+                <pnp:Choice>契約同意</pnp:Choice>
+                <pnp:Choice>会議参加</pnp:Choice>
+              </pnp:Choices>
+            </pnp:Field>
+            <pnp:Field Type="DateTime" DisplayName="実施日時" Required="TRUE" Indexed="TRUE" StaticName="ConsentDate" Name="ConsentDate" />
+            <pnp:Field Type="Text" DisplayName="方法" StaticName="Method" Name="Method" />
+            <pnp:Field Type="Text" DisplayName="同意者/参加者" StaticName="Signer" Name="Signer" />
+            <pnp:Field Type="Note" DisplayName="記録詳細" StaticName="Notes" Name="Notes" NumLines="8" RichText="FALSE" />
+          </pnp:Fields>
+        </pnp:ListInstance>
+        <!-- =========================
+             5) 日次記録・実績
+           ========================= -->
+        <!-- DailyRecord_A: 一般観察 -->
+        <pnp:ListInstance Title="DailyRecord_A" Description="日次記録A（一般観察）" TemplateType="100" Url="Lists/DailyRecord_A">
+          <pnp:Fields>
+            <pnp:Field Type="Lookup" DisplayName="利用者ID" Required="TRUE" List="Lists/Users_Master" ShowField="UserID" StaticName="UserID" Name="UserID" />
+            <pnp:Field Type="DateTime" DisplayName="記録日" Required="TRUE" Indexed="TRUE" StaticName="RecordDate" Name="RecordDate" Format="DateOnly" />
+            <pnp:Field Type="Note" DisplayName="AM活動" StaticName="AMActivity" Name="AMActivity" NumLines="4" RichText="FALSE" />
+            <pnp:Field Type="Note" DisplayName="PM活動" StaticName="PMActivity" Name="PMActivity" NumLines="4" RichText="FALSE" />
+            <pnp:Field Type="Note" DisplayName="問題行動チェック(JSON)" StaticName="BehaviorChecklistJSON" Name="BehaviorChecklistJSON" NumLines="6" RichText="FALSE" />
+            <pnp:Field Type="Note" DisplayName="問題行動詳細" StaticName="BehaviorDetails" Name="BehaviorDetails" NumLines="6" RichText="FALSE" />
+            <pnp:Field Type="Boolean" DisplayName="発作有無" StaticName="SeizureOccurred" Name="SeizureOccurred">
+              <Default>0</Default>
+            </pnp:Field>
+            <pnp:Field Type="Note" DisplayName="発作状況" StaticName="SeizureNote" Name="SeizureNote" NumLines="4" RichText="FALSE" />
+          </pnp:Fields>
+        </pnp:ListInstance>
+        <!-- DailyRecord_B: 計画手順版 -->
+        <pnp:ListInstance Title="DailyRecord_B" Description="日次記録B（計画手順版）" TemplateType="100" Url="Lists/DailyRecord_B">
+          <pnp:Fields>
+            <pnp:Field Type="Lookup" DisplayName="利用者ID" Required="TRUE" List="Lists/Users_Master" ShowField="UserID" StaticName="UserID" Name="UserID" />
+            <pnp:Field Type="DateTime" DisplayName="記録日" Required="TRUE" Indexed="TRUE" StaticName="RecordDate" Name="RecordDate" Format="DateOnly" />
+            <pnp:Field Type="Text" DisplayName="活動ID" Required="TRUE" StaticName="ActivityID" Name="ActivityID" />
+            <pnp:Field Type="Lookup" DisplayName="計画VersionID" Required="TRUE" List="Lists/Plan_Versions" ShowField="VersionID" StaticName="PlanVersionID" Name="PlanVersionID" />
+            <pnp:Field Type="Boolean" DisplayName="実施(Done)" StaticName="IsDone" Name="IsDone">
+              <Default>0</Default>
+            </pnp:Field>
+            <pnp:Field Type="Boolean" DisplayName="逸脱(Deviated)" StaticName="IsDeviated" Name="IsDeviated">
+              <Default>0</Default>
+            </pnp:Field>
+            <pnp:Field Type="Note" DisplayName="逸脱理由" StaticName="DeviationReason" Name="DeviationReason" NumLines="4" RichText="FALSE" />
+            <pnp:Field Type="Note" DisplayName="観察記録" StaticName="ObservationNote" Name="ObservationNote" NumLines="6" RichText="FALSE" />
+          </pnp:Fields>
+        </pnp:ListInstance>
+        <!-- Performance_Slips: サービス提供実績 -->
+        <pnp:ListInstance Title="Performance_Slips" Description="サービス提供実績記録票" TemplateType="100" Url="Lists/Performance_Slips">
+          <pnp:Fields>
+            <pnp:Field Type="Lookup" DisplayName="利用者ID" Required="TRUE" List="Lists/Users_Master" ShowField="UserID" StaticName="UserID" Name="UserID" />
+            <pnp:Field Type="DateTime" DisplayName="日付" Required="TRUE" Indexed="TRUE" StaticName="SlipDate" Name="SlipDate" Format="DateOnly" />
+            <pnp:Field Type="Choice" DisplayName="提供状況" StaticName="Status" Name="Status">
+              <pnp:Choices>
+                <pnp:Choice>通所</pnp:Choice>
+                <pnp:Choice>欠席</pnp:Choice>
+                <pnp:Choice>オンライン</pnp:Choice>
+              </pnp:Choices>
+            </pnp:Field>
+            <pnp:Field Type="Text" DisplayName="開始時刻" StaticName="StartTime" Name="StartTime" />
+            <pnp:Field Type="Text" DisplayName="終了時刻" StaticName="EndTime" Name="EndTime" />
+            <pnp:Field Type="Number" DisplayName="算定時間(自動)" StaticName="CalculatedHours" Name="CalculatedHours" />
+            <pnp:Field Type="Note" DisplayName="加算情報(JSON)" StaticName="AddonsJSON" Name="AddonsJSON" NumLines="6" RichText="FALSE" />
+            <pnp:Field Type="Note" DisplayName="欠席時対応加算記録" StaticName="AbsenceSupportNote" Name="AbsenceSupportNote" NumLines="6" RichText="FALSE" />
+          </pnp:Fields>
+        </pnp:ListInstance>
+        <!-- =========================
+             6) 監査証跡
+           ========================= -->
+        <!-- Audit_Events: 監査ログ（entry_hash 一意制約） -->
+        <pnp:ListInstance Title="Audit_Events" Description="監査ログ" TemplateType="100" Url="Lists/Audit_Events">
+          <pnp:Fields>
+            <pnp:Field Type="DateTime" DisplayName="タイムスタンプ" Required="TRUE" Indexed="TRUE" StaticName="ts" Name="ts" />
+            <pnp:Field Type="Text" DisplayName="実行者(UPN)" Required="TRUE" StaticName="actor" Name="actor" />
+            <pnp:Field Type="Text" DisplayName="操作" Required="TRUE" StaticName="action" Name="action" />
+            <pnp:Field Type="Text" DisplayName="対象エンティティ" Required="TRUE" StaticName="entity" Name="entity" />
+            <pnp:Field Type="Text" DisplayName="対象ID" StaticName="entity_id" Name="entity_id" />
+            <pnp:Field Type="Text" DisplayName="チャネル" StaticName="channel" Name="channel" />
+            <pnp:Field ID="{E7EFC804-00AF-44E9-A86F-0EAA90C962C4}" Type="Text" DisplayName="エントリハッシュ" EnforceUniqueValues="TRUE" Indexed="TRUE" StaticName="entry_hash" Name="entry_hash" MaxLength="128" />
+            <pnp:Field Type="Note" DisplayName="変更前データ(JSON)" StaticName="before_json" Name="before_json" NumLines="6" RichText="FALSE" />
+            <pnp:Field Type="Note" DisplayName="変更後データ(JSON)" StaticName="after_json" Name="after_json" NumLines="6" RichText="FALSE" />
+            <pnp:Field Type="Text" DisplayName="変更前ハッシュ" StaticName="before_hash" Name="before_hash" MaxLength="128" />
+            <pnp:Field Type="Text" DisplayName="変更後ハッシュ" StaticName="after_hash" Name="after_hash" MaxLength="128" />
+            <pnp:Field Type="Note" DisplayName="差分サマリ" StaticName="diff_summary" Name="diff_summary" NumLines="6" RichText="FALSE" />
+            <pnp:Field Type="Note" DisplayName="クライアント情報" StaticName="client_info" Name="client_info" NumLines="4" RichText="FALSE" />
           </pnp:Fields>
         </pnp:ListInstance>
       </pnp:Lists>
