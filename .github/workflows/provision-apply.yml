@@ -10,8 +10,10 @@ on:
       addTopNavigation:
         description: "Also add links to Top Navigation"
         required: false
-        type: boolean      # ← これでチェックボックス表示
+        type: boolean      # ← これでUIがチェックボックス表示になる
         default: false
+
+
   # PRに 'apply' ラベルが付いているときだけ実行
   pull_request:
     types: [opened, reopened, synchronize, labeled]
@@ -21,7 +23,8 @@ on:
       - 'scripts/provision-spo.ps1'
       - '.github/workflows/provision-apply.yml'
       - 'docs/provisioning.md'
-  # main へマージされたら自動適用（任意・要件に応じてコメントアウト可）
+
+  # main へマージされたら自動適用（任意）
   push:
     branches: [ main ]
     paths:
