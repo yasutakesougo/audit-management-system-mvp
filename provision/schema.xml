@@ -1,0 +1,79 @@
+<?xml version="1.0" encoding="utf-8"?>
+<pnp:Provisioning xmlns:pnp="http://schemas.dev.office.com/PnP/2021/03/ProvisioningSchema"
+                  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+  <pnp:Preferences />
+  <pnp:Templates>
+    <pnp:ProvisioningTemplate ID="AuditManagementSchema" Version="1.0">
+      <pnp:Lists>
+        <pnp:List Title="SupportRecord_Daily"
+                  Url="Lists/SupportRecord_Daily"
+                  TemplateType="100"
+                  EnableAttachments="false">
+          <pnp:Fields>
+            <pnp:Field Type="DateTime"
+                       DisplayName="記録日"
+                       InternalName="cr013_recorddate"
+                       AddToDefaultView="true"
+                       Required="false"
+                       Format="DateOnly" />
+            <pnp:Field Type="Note"
+                       DisplayName="特記事項"
+                       InternalName="cr013_specialnote"
+                       AddToDefaultView="true"
+                       Required="false"
+                       RichText="false"
+                       Description="自由記述" />
+          </pnp:Fields>
+        </pnp:List>
+        <pnp:List Title="Audit_Events"
+                  Url="Lists/Audit_Events"
+                  TemplateType="100"
+                  EnableAttachments="false">
+          <pnp:Fields>
+            <pnp:Field Type="DateTime"
+                       DisplayName="ts"
+                       InternalName="ts"
+                       AddToDefaultView="true"
+                       Format="DateTime" />
+            <pnp:Field Type="Text"
+                       DisplayName="actor"
+                       InternalName="actor"
+                       AddToDefaultView="true"
+                       Required="false"
+                       MaxLength="255" />
+            <pnp:Field Type="Text"
+                       DisplayName="action"
+                       InternalName="action"
+                       AddToDefaultView="true" />
+            <pnp:Field Type="Text"
+                       DisplayName="entity"
+                       InternalName="entity"
+                       AddToDefaultView="true"
+                       EnforceUniqueValues="false" />
+            <pnp:Field Type="Text"
+                       DisplayName="entity_id"
+                       InternalName="entity_id" />
+            <pnp:Field Type="Text"
+                       DisplayName="channel"
+                       InternalName="channel" />
+            <pnp:Field Type="Note"
+                       DisplayName="before_json"
+                       InternalName="before_json" />
+            <pnp:Field Type="Note"
+                       DisplayName="after_json"
+                       InternalName="after_json" />
+            <pnp:Field Type="Text"
+                       DisplayName="Entry Hash"
+                       InternalName="entry_hash"
+                       Required="false"
+                       EnforceUniqueValues="true"
+                       Indexed="true"
+                       MaxLength="128"
+                       AddToDefaultView="false"
+                       Description="ts,actor,action,entity,entity_id,after_json ハッシュ" />
+          </pnp:Fields>
+        </pnp:List>
+      </pnp:Lists>
+    </pnp:ProvisioningTemplate>
+  </pnp:Templates>
+</pnp:Provisioning>

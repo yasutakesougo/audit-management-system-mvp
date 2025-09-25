@@ -64,3 +64,19 @@ function Update-ChoiceFieldReplace {
   $log += Update-ChoiceFieldAdditive -ListTitle $ListTitle -InternalName $InternalName -DesiredChoices $DesiredChoices -WhatIfMode:$WhatIfMode
   return $log
 }
+
+function Invoke-ProvisionTemplateIfXml {
+  param(
+    [Parameter(Mandatory = $true)][string]$SchemaPath
+  )
+
+  $ext = [IO.Path]::GetExtension($SchemaPath)
+  if ($ext -ieq '.xml') {
+    Note "Applying PnP XML template: $SchemaPath"
+    Invoke-PnPSiteTemplate -Path $SchemaPath -ErrorAction Stop
+    LogChange "Applied XML template: $SchemaPath"
+    return $true
+  }
+
+  return $false
+}
