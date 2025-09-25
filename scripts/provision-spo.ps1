@@ -6,7 +6,7 @@ param(
   [bool]$ApplyFieldUpdates = $true,
   [bool]$ForceTypeReplace = $false,
   [switch]$WhatIfMode,
-  [string]$SchemaPath = 'provision/schema.json',
+  [string]$SchemaPath = 'provision/schema.xml',
   [string]$ChangesOutPath = 'provision/changes.json',
   [switch]$EmitChanges
 )

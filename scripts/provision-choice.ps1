@@ -67,14 +67,25 @@ function Update-ChoiceFieldReplace {
 
 function Invoke-ProvisionTemplateIfXml {
   param(
-    [Parameter(Mandatory = $true)][string]$SchemaPath
+    [Parameter(Mandatory = $true)][string]$SchemaPath,
+    [switch]$WhatIfMode
   )
 
   $ext = [IO.Path]::GetExtension($SchemaPath)
   if ($ext -ieq '.xml') {
+    $resolved = Resolve-Path -Path $SchemaPath -ErrorAction SilentlyContinue
+    if (-not $resolved) {
+      throw "Schema file not found: $SchemaPath"
+    }
+
     Note "Applying PnP XML template: $SchemaPath"
-    Invoke-PnPSiteTemplate -Path $SchemaPath -ErrorAction Stop
-    LogChange "Applied XML template: $SchemaPath"
+    if ($WhatIfMode) {
+      LogChange "Would apply XML template: $SchemaPath"
+    }
+    else {
+      Invoke-PnPSiteTemplate -Path $resolved.Path -ErrorAction Stop
+      LogChange "Applied XML template: $SchemaPath"
+    }
     return $true
   }
 

@@ -28,9 +28,9 @@ on:
         required: false
         default: "false"
       schemaPath:
-        description: "Path to schema JSON"
+        description: "Path to schema (XML or JSON)"
         required: false
-        default: "provision/schema.json"
+        default: "provision/schema.xml"
 
 jobs:
   provision:
@@ -39,18 +39,24 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Validate schema.json structure
+      - name: Validate schema path
         shell: pwsh
         env:
           SCHEMA_PATH: ${{ github.event.inputs.schemaPath }}
         run: |
           $ErrorActionPreference = "Stop"
-            $schemaPath = if ($env:SCHEMA_PATH) { $env:SCHEMA_PATH } else { "provision/schema.json" }
-            if (-not (Test-Path $schemaPath)) { throw "Schema file not found: $schemaPath" }
+          $schemaPath = if ($env:SCHEMA_PATH) { $env:SCHEMA_PATH } else { "provision/schema.xml" }
+          if (-not (Test-Path $schemaPath)) { throw "Schema file not found: $schemaPath" }
+
+          $ext = [IO.Path]::GetExtension($schemaPath)
+          if ($ext -ieq '.json') {
             $schemaDef = "provision/schema.schema.json"
             if (-not (Test-Path $schemaDef)) { throw "Schema definition not found: $schemaDef" }
             $ok = Test-Json -Path $schemaPath -SchemaFile $schemaDef
             if (-not $ok) { throw "schema.json does not conform to schema.schema.json" }
+          } else {
+            Write-Host "Schema is XML (or non-JSON); skipping JSON schema validation."
+          }
 
       - name: Install PnP.PowerShell
         shell: pwsh
