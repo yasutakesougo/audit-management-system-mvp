@@ -39,21 +39,17 @@ function Write-ChangesJson {
     [Parameter(Mandatory = $true)][string]$Path,
     [Parameter(Mandatory = $true)]$Payload
   )
-  $workspace = if ($env:GITHUB_WORKSPACE) { $env:GITHUB_WORKSPACE } else { (Get-Location).Path }
-  if (-not [System.IO.Path]::IsPathRooted($Path)) {
-    $full = Join-Path -Path $workspace -ChildPath $Path
-  } else {
-    $full = $Path
+  try {
+    $dir = [IO.Path]::GetDirectoryName($Path)
+    if ($dir -and -not (Test-Path $dir)) {
+      New-Item -Type Directory -Path $dir -Force | Out-Null
+    }
+    $json = $Payload | ConvertTo-Json -Depth 10
+    Set-Content -Path $Path -Value $json -Encoding UTF8
   }
-  $full = [System.IO.Path]::GetFullPath($full)
-  $dir = Split-Path -Parent $full
-  if ($dir -and -not (Test-Path $dir)) {
-    New-Item -ItemType Directory -Force -Path $dir | Out-Null
+  catch {
+    Write-Warning "Failed to write changes JSON: $($_.Exception.Message)"
   }
-  $Payload | ConvertTo-Json -Depth 12 | Set-Content -Path $full -Encoding utf8
-  $item = Get-Item $full
-  Write-Host "::notice:: Changes JSON written to $($item.FullName)"
-  return $item.FullName
 }
 
 function ValidateSchema($schema) {
@@ -289,20 +285,54 @@ function DumpListFields([string]$ListTitle) {
   }
 }
 
-$shouldEmit = $WhatIfMode -or $EmitChanges
-$failed = $false
-$caughtError = $null
+# --- ここからスキーマ適用ブロック ---
+Note '# SharePoint Provision Summary'
+Note ''
+Note "Site: $SiteUrl"
+Note "Flags: RecreateExisting=$RecreateExisting ApplyFieldUpdates=$ApplyFieldUpdates ForceTypeReplace=$ForceTypeReplace WhatIf=$($WhatIfMode.IsPresent)"
+Note "Schema: $SchemaPath"
+Note ''
+# SchemaPath は repo ルート相対でも絶対でも OK にする
+$schemaPathResolved = Resolve-Path -Path $SchemaPath -ErrorAction SilentlyContinue
+if (-not $schemaPathResolved) {
+  throw "Schema file not found: $SchemaPath"
+}
+$schemaPathResolved = $schemaPathResolved.Path
 
-try {
-  Note '# SharePoint Provision Summary'
-  Note ''
-  Note "Site: $SiteUrl"
-  Note "Flags: RecreateExisting=$RecreateExisting ApplyFieldUpdates=$ApplyFieldUpdates ForceTypeReplace=$ForceTypeReplace WhatIf=$($WhatIfMode.IsPresent)"
-  Note "Schema: $SchemaPath"
-  Note ''
+$changesPayload = [ordered]@{
+  timestamp    = (Get-Date).ToUniversalTime().ToString("o")
+  site         = $SiteUrl
+  whatIf       = $WhatIfMode.IsPresent
+  status       = "ok"
+  recreate     = $RecreateExisting
+  applyMeta    = $ApplyFieldUpdates
+  forceType    = $ForceTypeReplace
+  summary      = @{
+    total  = 0
+    byKind = @()
+  }
+  changes      = @()
+}
 
-  if (-not (Test-Path $SchemaPath)) { throw "Schema file not found: $SchemaPath" }
-  $schemaJson = Get-Content -Path $SchemaPath -Raw | ConvertFrom-Json
+# XML なら PnP テンプレートを適用、JSON なら従来処理
+if ($SchemaPath -match '\.xml$') {
+  Note "Applying PnP XML template: $SchemaPath"
+  if (-not $WhatIfMode.IsPresent) {
+    Invoke-PnPSiteTemplate -Path $schemaPathResolved -ErrorAction Stop
+    LogChange "Applied XML template: $SchemaPath"
+  } else {
+    Note "WhatIf=true: skipping actual XML apply"
+    LogChange "Would apply XML template: $SchemaPath"
+  }
+}
+else {
+  try {
+    $schemaJson = Get-Content -Path $schemaPathResolved -Raw | ConvertFrom-Json
+  }
+  catch {
+    throw "Failed to parse JSON schema at '$SchemaPath': $($_.Exception.Message)"
+  }
+
   ValidateSchema $schemaJson
 
   foreach ($listDef in $schemaJson.lists) {
@@ -345,91 +375,30 @@ try {
             $lines = Update-ChoiceFieldReplace -ListTitle $title -InternalName $in -DesiredChoices $ch -WhatIfMode:$WhatIfMode
             foreach ($l in $lines) { LogChange ("  - {0}" -f $l) }
           } else { LogChange ("  - Unknown choicesPolicy '{0}' for {1}" -f $policy, $in) }
-        } catch {
+        }
+        catch {
           LogChange ("  - Error applying choicesPolicy for {0}: {1}" -f $in, $_.Exception.Message)
         }
       }
     }
   }
-
-  Note ''
-  Note 'Changes:'
-  if ($GLOBAL:Changes.Count -eq 0) { Note '- No changes (already up-to-date)' }
 }
-catch {
-  $failed = $true
-  $caughtError = $_
-  Note "ERROR: $($_.Exception.Message)"
-}
-finally {
-  function Get-ChangeKind([string]$line) {
-    if ($line -match '^(Create list:)') { return 'CreateList' }
-    if ($line -match '^(Recreate list:)') { return 'RecreateList' }
-    if ($line -match 'Add lookup field') { return 'EnsureField' }
-    if ($line -match 'Add user field') { return 'EnsureField' }
-    if ($line -match 'Add field') { return 'EnsureField' }
-    if ($line -match 'Type mismatch') { return 'TypeMismatch' }
-    if ($line -match 'Field meta updated') { return 'MetaUpdate' }
-    if ($line -match 'Title: ') { return 'MetaUpdate' }
-    if ($line -match 'Description update') { return 'MetaUpdate' }
-    if ($line -match 'Choices: ') { return 'MetaUpdate' }
-    if ($line -match 'multi enabled') { return 'MetaUpdate' }
-    if ($line -match 'Error applying choicesPolicy') { return 'Warning' }
-    return 'Info'
-  }
 
-  $summaryCounts = @{}
-  foreach ($c in $GLOBAL:Changes) {
-    $kind = Get-ChangeKind $c
-    if (-not $summaryCounts.ContainsKey($kind)) { $summaryCounts[$kind] = 0 }
-    $summaryCounts[$kind]++
-  }
-  $byKind = @()
-  foreach ($key in $summaryCounts.Keys) {
-    $byKind += [pscustomobject]@{ kind = $key; count = $summaryCounts[$key] }
-  }
-  if ($summaryCounts.Count -eq 0) {
-    $byKind += [pscustomobject]@{ kind = 'Info'; count = 0 }
-  }
+# 変更件数の集計（簡易版）
+Note ''
+Note 'Changes:'
+if ($GLOBAL:Changes.Count -eq 0) { Note '- No changes (already up-to-date)' }
 
-  $summaryObj = [pscustomobject]@{ total = $GLOBAL:Changes.Count; byKind = $byKind }
-  $payload = [pscustomobject]@{
-    timestamp = (Get-Date).ToUniversalTime().ToString('o')
-    site      = $SiteUrl
-    whatIf    = $whatIf
-    status    = if ($failed) { 'error' } else { 'ok' }
-    recreate  = [bool]$RecreateExisting
-    applyMeta = [bool]$ApplyFieldUpdates
-    forceType = [bool]$ForceTypeReplace
-    summary   = $summaryObj
-    changes   = $GLOBAL:Changes
-  }
+$changesPayload.summary.total = $GLOBAL:Changes.Count
+$kindCounts = $GLOBAL:Changes |
+  ForEach-Object {
+    if ($_ -like "  - Field meta updated:*") { "MetaUpdate" }
+    elseif ($_ -like "List exists:*") { "Info" }
+    elseif ($_ -like "Create list:*") { "Info" }
+    else { "Info" }
+  } | Group-Object | ForEach-Object { @{ kind=$_.Name; count=$_.Count } }
+$changesPayload.summary.byKind = $kindCounts
+$changesPayload.changes = $GLOBAL:Changes
 
-  try {
-    $writtenPath = Write-ChangesJson -Path $ChangesOutPath -Payload $payload
-    if ($env:GITHUB_STEP_SUMMARY -and ($shouldEmit -or $failed)) {
-      $jsonPreview = $payload | ConvertTo-Json -Depth 3
-      $lines = @(
-        '### Provision Changes',
-        "- Written: $writtenPath",
-        "- Total: $($GLOBAL:Changes.Count)",
-        "- Status: $($payload.status)",
-        '',
-        '```json',
-        $jsonPreview,
-        '```'
-      )
-      $lines -join "`n" | Out-File -FilePath $env:GITHUB_STEP_SUMMARY -Encoding utf8 -Append
-    } elseif (-not $shouldEmit) {
-      Write-Host 'changes.json emitted (WhatIf/EmitChanges disabled).'
-    }
-  }
-  catch {
-    Write-Warning "Failed to write changes JSON: $($_.Exception.Message)"
-  }
-
-  if ($failed) {
-    if ($caughtError) { throw $caughtError }
-    throw
-  }
-}
+Write-ChangesJson -Path $ChangesOutPath -Payload $changesPayload
+# --- スキーマ適用ブロック ここまで ---
