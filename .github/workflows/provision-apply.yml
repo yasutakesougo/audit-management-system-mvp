@@ -52,7 +52,24 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
         with:
+          ref: ${{ github.sha }}
           fetch-depth: 0
+
+      - name: 'Guard: XML helper wired'
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $spo    = Get-Content 'scripts/provision-spo.ps1' -Raw
+          $choice = Get-Content 'scripts/provision-choice.ps1' -Raw
+
+          if ($spo -notmatch 'Invoke-ProvisionTemplateIfXml') {
+            throw 'provision-spo.ps1 does not call Invoke-ProvisionTemplateIfXml'
+          }
+          if ($choice -notmatch 'function\s+Invoke-ProvisionTemplateIfXml') {
+            throw 'provision-choice.ps1 does not define Invoke-ProvisionTemplateIfXml'
+          }
+
+          Write-Host 'XML helper guard passed.'
 
       - name: Setup Node (for tooling if needed)
         uses: actions/setup-node@v4
@@ -205,4 +222,5 @@ jobs:
         with:
           name: provision-changes
           path: ${{ github.workspace }}/provision/changes.json
+          retention-days: 90
           if-no-files-found: ignore
