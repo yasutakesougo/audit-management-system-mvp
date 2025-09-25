@@ -1,13 +1,17 @@
 name: Provision Apply (PR/Main)
 
 on:
-  # 明示実行（安全）
   workflow_dispatch:
     inputs:
       siteRelativeUrl:
         description: "SITE_RELATIVE_URL (e.g. /sites/welfare)"
         required: false
         default: "/sites/welfare"
+      addTopNavigation:
+        description: "Also add links to Top Navigation"
+        required: false
+        type: boolean      # ← これでチェックボックス表示
+        default: false
   # PRに 'apply' ラベルが付いているときだけ実行
   pull_request:
     types: [opened, reopened, synchronize, labeled]
