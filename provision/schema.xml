@@ -5,7 +5,7 @@
   <pnp:Templates>
     <pnp:ProvisioningTemplate ID="AuditManagementSchema" Version="1.0">
       <pnp:Lists>
-        <pnp:List Title="SupportRecord_Daily"
+        <pnp:ListInstance Title="SupportRecord_Daily"
                   Url="Lists/SupportRecord_Daily"
                   TemplateType="100"
                   EnableAttachments="false">
@@ -24,8 +24,8 @@
                        RichText="false"
                        Description="自由記述" />
           </pnp:Fields>
-        </pnp:List>
-        <pnp:List Title="Audit_Events"
+  </pnp:ListInstance>
+  <pnp:ListInstance Title="Audit_Events"
                   Url="Lists/Audit_Events"
                   TemplateType="100"
                   EnableAttachments="false">
@@ -72,7 +72,7 @@
                        AddToDefaultView="false"
                        Description="ts,actor,action,entity,entity_id,after_json ハッシュ" />
           </pnp:Fields>
-        </pnp:List>
+        </pnp:ListInstance>
       </pnp:Lists>
     </pnp:ProvisioningTemplate>
   </pnp:Templates>
