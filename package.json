@@ -4,9 +4,16 @@
 	"private": true,
 	"scripts": {
 		"dev": "vite",
+		"lint:cookies": "scripts/check-cookies.sh",
+		"lint:docs": "node scripts/lint-docs.cjs",
+		"certs:mkcert": "mkdir -p .certs && mkcert -key-file ./.certs/localhost-key.pem -cert-file ./.certs/localhost.pem localhost 127.0.0.1 ::1",
+		"dev:https": "vite --https --host 127.0.0.1 --port 3000",
+		"smoke:https": "lsof -tiTCP:3000 -sTCP:LISTEN | xargs -r kill -TERM && npm run certs:mkcert && npm run dev:https",
+		"ports:clean": "lsof -tiTCP:3000,3001,5173 -sTCP:LISTEN | xargs -r kill -TERM",
 		"dev:e2e": "VITE_MSAL_CLIENT_ID=dummy VITE_MSAL_TENANT_ID=dummy VITE_SP_RESOURCE=https://contoso.sharepoint.com VITE_SP_SITE_RELATIVE=/sites/Audit vite --port=5173 --strictPort",
 		"build": "vite build",
 		"preview": "vite preview",
+		"config:print": "VITE_CONFIG_DEBUG=1 vite --force",
 		"test": "vitest run",
 		"test:ui": "vitest",
 		"test:coverage": "vitest run --coverage",
@@ -14,8 +21,10 @@
 		"test:e2e:headed": "playwright test --headed",
 		"e2e:install": "playwright install --with-deps",
 		"typecheck": "tsc --noEmit",
-		"lint": "eslint --ext .ts,.tsx src",
-		"preflight": "node scripts/preflight.cjs"
+		"lint": "eslint --ext .ts,.tsx src --max-warnings=0",
+		"preci": "npm run lint && npm run typecheck && npm run lint:cookies",
+		"preflight": "node scripts/preflight.cjs",
+		"prepare": "husky install"
 	},
 	"dependencies": {
 		"@azure/msal-browser": "2.39.0",
@@ -35,15 +44,20 @@
 		"@types/node": "^20.11.30",
 		"@types/react": "^18.2.41",
 		"@types/react-dom": "^18.2.17",
-		"@typescript-eslint/eslint-plugin": "^7.16.0",
-		"@typescript-eslint/parser": "^7.16.0",
+		"@typescript-eslint/eslint-plugin": "^8.44.1",
+		"@typescript-eslint/parser": "^8.44.1",
 		"@vitejs/plugin-react": "^4.2.1",
 		"@vitest/coverage-v8": "^2.0.5",
 		"eslint": "^8.57.0",
 		"eslint-config-prettier": "^9.1.0",
+		"husky": "^9.1.7",
 		"jsdom": "^26.1.0",
+		"lint-staged": "^15.5.2",
 		"typescript": "^5.4.5",
 		"vite": "^4.4.9",
 		"vitest": "^2.0.5"
+	},
+	"lint-staged": {
+		"**/*.{js,jsx,ts,tsx}": "eslint --fix"
 	}
 }

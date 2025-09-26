@@ -707,21 +707,38 @@ Existing fields snapshot: Audit_Events
 | Module not found '@/*' | Path alias not applied | Check `tsconfig.json` and `vite.config.ts` alignment |
 | Type errors for 'path' or 'url' | Missing node types | Ensure `"types": ["vite/client", "node"]` in `tsconfig.json` |
 
+> ローカルで PWA/Service Worker を試したことがある場合は、DevTools → Application → Service Workers で **Unregister** すると TLS エラーが消えるケースがあります。
+
 ## ローカル Vite HTTPS: ERR_SSL_VERSION_OR_CIPHER_MISMATCH 完全解決ガイド
 
 TL;DR（最短復旧フロー）
 1. https://localhost:3000 / https://127.0.0.1:3000 で開く
-2. Chrome の HSTS を削除：chrome://net-internals/#hsts → Delete domain localhost → Delete → ブラウザを完全終了（⌘Q）
+2. Chrome の HSTS を削除：[chrome://net-internals/#hsts](chrome://net-internals/#hsts) → Delete domain localhost → Delete → **ブラウザを完全終了（⌘Q）**（再読み込みでは復旧しない）
 3. Service Worker とキャッシュ：DevTools → Network → “Disable cache”、Application → Service Workers → Unregister
 4. プロキシ/セキュリティ製品をバイパス（localhost,127.0.0.1 を除外）
 5. 証明書を mkcert で作成（プロジェクト直下）
+
+macOS (Homebrew):
+
+```bash
+brew install mkcert nss && mkcert -install
+```
+
+Windows (PowerShell / Chocolatey):
+
+```powershell
+choco install mkcert -y
+mkcert -install
+```
+
+> Windows で一時的に `npm run dev` を動かす際は、PowerShell で `$env:HTTPS = 1` を設定してから実行すると HTTPS が強制されます。
 
 ```bash
 mkdir -p .certs
 mkcert -key-file ./.certs/localhost-key.pem -cert-file ./.certs/localhost.pem localhost 127.0.0.1 ::1
 ```
 
-6. Vite を HTTPS で起動
+6. Vite を HTTPS (127.0.0.1) で起動
 
 ```ts
 // vite.config.ts
@@ -732,26 +749,47 @@ import fs from 'fs'
 export default defineConfig({
   plugins: [react()],
   server: {
-    host: 'localhost',
-    https: {
-      key: fs.readFileSync('./.certs/localhost-key.pem'),
-      cert: fs.readFileSync('./.certs/localhost.pem'),
-    },
+    host: '127.0.0.1',
     port: 3000,
+    https: {
+      cert: fs.readFileSync('.certs/localhost.pem'),
+      key: fs.readFileSync('.certs/localhost-key.pem'),
+      ALPNProtocols: ['http/1.1'],
+    },
+    hmr: {
+      protocol: 'wss',
+      host: '127.0.0.1',
+      port: 3000,
+    },
   },
 })
 ```
 
 ```bash
-# 例: package.json に "dev:https": "vite --https --host localhost"
+# 例: package.json に登録済み
+npm run certs:mkcert
 npm run dev:https
 ```
+
+> ポート 3000 が塞がっている場合、Vite が自動で 3001 へフォールバックすることがあります。ブラウザも `https://127.0.0.1:3001/` に切り替えて再読み込みしてください。
+
+> 认证フローでクロスサイト Cookie を扱う場合は `cookiePolicy` ヘルパーを使うと `SameSite=None; Secure` を自動で付与でき、Chrome の警告を避けられます。
 
 7. ポートの競合を掃除
 
 ```bash
 lsof -tiTCP:3000 -sTCP:LISTEN | xargs -r kill -TERM
 lsof -tiTCP:5173 -sTCP:LISTEN | xargs -r kill -TERM
+```
+
+### 1分スモークテスト
+
+```bash
+lsof -tiTCP:3000 -sTCP:LISTEN | xargs -r kill -TERM
+npm run certs:mkcert
+npm run dev:https
+# 別シェルで:
+curl -I https://127.0.0.1:3000/  # HTTP/2 200 と TLSv1.3 を確認
 ```
 
 なぜ起きる？（要因別の対処）
