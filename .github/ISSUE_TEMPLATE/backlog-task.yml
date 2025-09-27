@@ -1,0 +1,47 @@
+name: "📌 Backlog Task"
+description: "小さく始めて効果を出すバックログタスクを登録します"
+labels:
+  - Backlog
+  - S工数
+title: "[Backlog] <短い件名>"
+body:
+  - type: textarea
+    id: purpose
+    attributes:
+      label: 目的（なぜやるか／価値）
+      description: プロジェクトに与える効果（品質・安全性・開発効率など）
+      placeholder: 例）MSAL ログインの最短動線に安全網を張る（E2Eスモーク）
+    validations:
+      required: true
+  - type: textarea
+    id: acceptance
+    attributes:
+      label: 受け入れ基準（Definition of Done）
+      description: 「どうなれば完了か」を箇条書きで
+      placeholder: 例）CIで E2E 緑／/me 取得成功ログを保存 など
+    validations:
+      required: true
+  - type: dropdown
+    id: effort
+    attributes:
+      label: 目安工数
+      options:
+        - S（小）
+        - M（中）
+        - L（大）
+      default: 0
+    validations:
+      required: true
+  - type: textarea
+    id: tasks
+    attributes:
+      label: タスク例（任意）
+      description: 着手時に調整可。チェックボックスで書くと便利です
+      placeholder: |
+        - [ ] 〇〇を設定
+        - [ ] 〇〇のテストを追加
+  - type: textarea
+    id: notes
+    attributes:
+      label: 備考（任意）
+      placeholder: 関連チケット／参考リンク など

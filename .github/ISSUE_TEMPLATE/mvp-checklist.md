@@ -41,7 +41,7 @@ assignees: []
 
 ## 6. ドキュメント整合
 - [ ] README と `docs/provisioning.md` が現行仕様と一致  
-- [ ] schema.json の編集ルール（internalName・Choice 更新方針）が記載されている  
+- [ ] schema.xml の更新手順（PnP テンプレート、internalName・Choice 方針）が記載されている  
 
 ## 7. 受け入れ / E2E（任意）
 - [ ] 手動チェックリストを通して全体動作を確認  
