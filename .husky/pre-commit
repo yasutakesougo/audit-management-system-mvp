@@ -1,0 +1,3 @@
+#!/usr/bin/env sh
+
+npm run lint && npm run typecheck && npm run lint:cookies && npx lint-staged

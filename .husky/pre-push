@@ -1,0 +1,11 @@
+#!/usr/bin/env sh
+
+# --- guard: disallow raw import.meta.env outside config layer ---
+bash -lc '! grep -RIn \
+  --exclude-dir=node_modules \
+  --exclude-dir=dist \
+  --exclude-dir=build \
+  --exclude-dir=coverage \
+  --exclude-dir=.husky \
+  --exclude-dir=src/config \
+  -E "import\\.meta\\.env" src || (echo "❌ Use getAppConfig() or env helpers instead of import.meta.env"; exit 1)'
