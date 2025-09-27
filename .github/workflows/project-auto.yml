@@ -2,16 +2,40 @@ name: Auto add issues to project
 
 on:
   issues:
-    types: [opened, reopened]
+    types: [opened, reopened, edited, labeled]
 
 jobs:
   add-to-project:
+    if: |
+      contains(github.event.issue.labels.*.name, 'Backlog') ||
+      contains(github.event.issue.labels.*.name, '📌 Backlog Task')
     runs-on: ubuntu-latest
     permissions:
       issues: write
       contents: read
       repository-projects: write
     steps:
+      - name: Ensure labels exist
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const wanted = ['Backlog', 'S工数'];
+            const { data: existing } = await github.issues.listLabelsForRepo({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              per_page: 100,
+            });
+            const names = new Set(existing.map((label) => label.name));
+            for (const name of wanted) {
+              if (!names.has(name)) {
+                await github.issues.createLabel({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  name,
+                });
+              }
+            }
       - name: Label the issue
         uses: actions-ecosystem/action-add-labels@v1
         with:
