@@ -1,6 +1,7 @@
 ## Backlog候補
 
-> 新規タスク作成時は GitHub Issue で「📌 Backlog Task」テンプレートを使用してください。
+> 新規タスク作成時は GitHub Issue で「📌 Backlog Task」テンプレートを使用してください。  
+> テンプレートを使用すると、自動的にプロジェクトボードに追加されます。詳細は [プロジェクトボード自動連携](docs/project-auto-integration.md) を参照してください。
 
 ### 複合ページ axe スイープ（ストレッチゴール）
 
