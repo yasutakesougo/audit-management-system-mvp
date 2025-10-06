@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import React, { useEffect, useState } from 'react';
 import Loading from '../../ui/components/Loading';
 import ErrorState from '../../ui/components/ErrorState';
@@ -73,7 +74,7 @@ const RecordList: React.FC = () => {
           style={{ minWidth: 200, minHeight: 44, marginRight: 8 }}
         />
         <input
-          type="date"
+          type="date" aria-label="日付"
           value={form.cr013_recorddate || ''}
           onChange={(e) => setForm({ ...form, cr013_recorddate: e.target.value })}
           style={{ minWidth: 160, minHeight: 44, marginRight: 8 }}

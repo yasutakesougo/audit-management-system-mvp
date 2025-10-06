@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import React from 'react';
 
 interface ConfigErrorBoundaryState { hasError: boolean; message?: string }

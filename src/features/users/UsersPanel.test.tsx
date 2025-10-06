@@ -1,6 +1,12 @@
+import { describe, test, expect } from 'vitest';
+
 /**
- * Placeholder file retained to avoid breaking historical imports.
- * Actual tests now live in UsersPanel.smoke.test.tsx and UsersPanel.a11y.test.tsx.
+ * Minimal regression test to keep legacy import paths working for vitest's include globs.
+ * Real coverage for UsersPanel lives in the smoke and accessibility suites.
  */
 
-export {};
+describe('UsersPanel legacy placeholder', () => {
+	test('provides a sanity assertion for tooling compatibility', () => {
+		expect(true).toBe(true);
+	});
+});

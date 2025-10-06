@@ -72,6 +72,22 @@ src/
 
 > Override precedence: values passed directly to `ensureConfig` (e.g. in tests) always win. `VITE_SP_RESOURCE` / `VITE_SP_SITE_RELATIVE` from the env override `VITE_SP_SITE_URL`, and the full URL fallback is only used when both override values are omitted.
 
+### Runtime overrides (production)
+- `src/main.tsx` now hydrates `window.__ENV__` **before** the app mounts, merging runtime data with `import.meta.env` fallbacks.
+- Provide runtime values via either of the following (executed before `main.tsx` runs):
+  - Inline script: `<script>window.__ENV__ = { VITE_MSAL_CLIENT_ID: '...' };</script>`
+  - JSON file: host `/env.runtime.json` (or set `window.__ENV__.RUNTIME_ENV_PATH` / `VITE_RUNTIME_ENV_PATH` to point elsewhere). Example:
+
+```json
+{
+  "VITE_MSAL_CLIENT_ID": "00000000-0000-0000-0000-000000000000",
+  "VITE_MSAL_TENANT_ID": "11111111-2222-3333-4444-555555555555",
+  "VITE_SP_RESOURCE": "https://tenant.sharepoint.com"
+}
+```
+
+- Keys supplied at runtime override build-time placeholders; missing keys fall back to the compiled `.env` values. Fetch failures are non-fatal (logged only in dev).
+
 #### Testing with overrides
 - Call config helpers with an override object instead of mutating `import.meta.env`.
 - Example: `resolveSpCacheSettings({ VITE_SP_GET_SWR: '1', VITE_SP_GET_SWR_TTL_MS: '120000' })`.

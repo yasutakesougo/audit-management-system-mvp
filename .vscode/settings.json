@@ -1,0 +1,55 @@
+{
+  // Allow automatic tasks without extra prompts.
+  "task.allowAutomaticTasks": "on",
+  "task.startOnFolderOpen": "Test (vitest watch)",
+  "task.alwaysRevealTask": false,
+  // Open untrusted files in the current window (adjust if your policy differs).
+  "security.workspace.trust.untrustedFiles": "open",
+
+  // Linting & formatting defaults.
+  "eslint.validate": ["javascript", "javascriptreact", "typescript", "typescriptreact"],
+  "editor.formatOnSave": true,
+  "editor.codeActionsOnSave": {
+    "source.fixAll.eslint": "explicit",
+    "source.organizeImports": "explicit"
+  },
+  // Copilot / Chat
+  "github.copilot.inlineSuggest.enable": true,
+  "github.copilot.suggestionDelayMs": 80,
+  // "github.copilot.chat.terminalAutoExecute": true, // enable only if you want auto-run
+  // Uncomment if you have Prettier installed locally.
+  // "editor.defaultFormatter": "esbenp.prettier-vscode",
+  "[markdown]": {
+    "editor.wordWrap": "on"
+  },
+  "[jsonc]": {
+    "editor.formatOnSave": true
+  },
+  "typescript.tsdk": "node_modules/typescript/lib",
+  "typescript.suggest.completeFunctionCalls": true,
+  "typescript.preferences.importModuleSpecifier": "non-relative",
+  "vitest.enable": true,
+
+  // Git & diff comfort tweaks.
+  "git.confirmSync": false,
+  "git.autofetch": true,
+  "git.enableSmartCommit": true,
+  "diffEditor.ignoreTrimWhitespace": false,
+  "workbench.editor.enablePreview": false,
+
+  // Terminal tweaks.
+  "terminal.integrated.scrollback": 10000,
+  // Git / save hygiene
+  "files.trimFinalNewlines": true,
+  "files.trimTrailingWhitespace": true,
+  "files.watcherExclude": {
+    "**/node_modules/**": true,
+    "**/.git/**": true,
+    "**/dist/**": true
+  },
+  "search.exclude": {
+    "**/node_modules": true,
+    "**/dist": true
+  },
+  "files.eol": "\n"
+}

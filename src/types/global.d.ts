@@ -16,8 +16,19 @@ interface AuditBatchMetricsWindow {
   };
 }
 
+type SharePointDebugRequest = {
+  url: string;
+  list?: string;
+  select?: string;
+  status?: number;
+  errorSnippet?: string;
+  ts?: number;
+};
+
 declare global {
-  interface Window extends AuditBatchMetricsWindow {}
+  interface Window extends AuditBatchMetricsWindow {
+    __SP_DEBUG_REQUESTS__?: SharePointDebugRequest[];
+  }
 }
 
 export {};

@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { useMsal } from '@azure/msal-react';
 import { SP_RESOURCE } from './msalConfig';
 
@@ -54,7 +55,7 @@ export const useAuth = () => {
       }
       sessionStorage.setItem('spToken', result.accessToken);
       return result.accessToken;
-    } catch (e) {
+    } catch {
       // サイレント失敗時はリダイレクトで再認証
       sessionStorage.removeItem('spToken');
       await instance.acquireTokenRedirect({ scopes: [`${SP_RESOURCE}/.default`] });

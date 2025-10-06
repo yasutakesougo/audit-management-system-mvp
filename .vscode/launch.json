@@ -1,0 +1,46 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    
+    {
+      "name": "Web (Vite) in Chrome",
+      "type": "pwa-chrome",
+      "request": "launch",
+      "url": "http://localhost:5173",
+      "webRoot": "${workspaceFolder}",
+      "preLaunchTask": "Dev (Vite)",          // 既存タスク名に一致
+      "postDebugTask": "Terminate All"        // 任意: 終了時に子プロセスを止める
+    },
+    {
+      "name": "Vitest (watch)",
+      "type": "node",
+      "request": "launch",
+      "runtimeExecutable": "npx",
+      "runtimeArgs": ["vitest", "--watch"],
+      "cwd": "${workspaceFolder}",
+      "autoAttachChildProcesses": true,
+      "smartStep": true,
+      "console": "integratedTerminal",
+      "skipFiles": ["<node_internals>/**", "**/node_modules/**"]
+    },
+    {
+      "name": "Vitest (current file, single run)",
+      "type": "node",
+      "request": "launch",
+      "runtimeExecutable": "npx",
+      "runtimeArgs": ["vitest", "run", "${relativeFile}"],
+      "cwd": "${workspaceFolder}",
+      "autoAttachChildProcesses": true,
+      "smartStep": true,
+      "console": "integratedTerminal",
+      "skipFiles": ["<node_internals>/**", "**/node_modules/**"]
+    }
+  ],
+  "compounds": [
+    {
+      "name": "Dev: web + tests (debug)",
+      "configurations": ["Web (Vite) in Chrome", "Vitest (watch)"],
+      "stopAll": true
+    }
+  ]
+}

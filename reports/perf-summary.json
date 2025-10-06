@@ -1,0 +1,23 @@
+{
+  "generatedAt": "2025-10-09T10:31:22.944Z",
+  "lighthouse": {
+    "score": {
+      "performance": 97,
+      "accessibility": 100,
+      "bestPractices": 100,
+      "seo": 90,
+      "pwa": null
+    },
+    "urls": [
+      "http://localhost:57155/index.html"
+    ]
+  },
+  "webVitals": {
+    "FID": null,
+    "INP": null,
+    "LCP": null,
+    "CLS": null,
+    "TTFB": null,
+    "samples": 0
+  }
+}

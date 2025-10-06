@@ -1,0 +1,60 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "Test (vitest watch)",
+      "type": "shell",
+      "command": "npx vitest --watch",
+      "isBackground": true,
+      "problemMatcher": []
+    },
+    {
+      "label": "Lint",
+      "type": "shell",
+      "command": "npm run lint",
+      "isBackground": false,
+      "problemMatcher": []
+    },
+    {
+      "label": "Typecheck",
+      "type": "shell",
+      "command": "npm run typecheck",
+      "isBackground": false,
+      "problemMatcher": "$tsc"
+    },
+    {
+      "label": "Health",
+      "type": "shell",
+      "command": "npm run health",
+      "isBackground": false,
+      "problemMatcher": []
+    },
+    {
+      "label": "QA Health",
+      "type": "shell",
+      "command": "npm run health && npx playwright test",
+      "isBackground": false,
+      "problemMatcher": []
+    },
+    {
+      "label": "Perf: Report (Lighthouse + WebVitals)",
+      "type": "shell",
+      "command": "npm run -s perf:report",
+      "isBackground": false,
+      "problemMatcher": []
+    },
+    {
+      "label": "Heal: try",
+      "type": "shell",
+      "command": "npm run heal:try",
+      "isBackground": false,
+      "problemMatcher": []
+    },
+    {
+      "label": "Dev: web + tests",
+      "dependsOrder": "parallel",
+      "dependsOn": ["Dev (Vite)", "Test (vitest watch)"],
+      "isBackground": true
+    }
+  ]
+}

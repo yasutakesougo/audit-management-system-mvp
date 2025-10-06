@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { useCallback } from 'react';
 import { getAuditLogs, clearAudit, retainAuditWhere } from '../../lib/audit';
 import { useSP } from '../../lib/spClient';

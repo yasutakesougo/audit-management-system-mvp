@@ -67,7 +67,14 @@ export function useUsersApi() {
       };
       const created = await sp.addItemByTitle<typeof payload, IUserMaster>(LIST_TITLE, payload);
       const { pushAudit } = await import("../../lib/audit");
-      await pushAudit("Users_Master", "create", created.Id, payload);
+      await pushAudit({
+        actor: "system",
+        action: "create",
+        entity: LIST_TITLE,
+        entity_id: String(created.Id),
+        channel: "SPO",
+        after: payload,
+      });
       return created;
     };
 
@@ -81,16 +88,30 @@ export function useUsersApi() {
       if (patch.ServiceStartDate !== undefined) payload[FIELD_MAP.Users_Master.serviceStartDate] = patch.ServiceStartDate;
       if (patch.ServiceEndDate !== undefined) payload[FIELD_MAP.Users_Master.serviceEndDate] = patch.ServiceEndDate;
 
-      const updated = await sp.updateItemByTitle<IUserMaster>(LIST_TITLE, id, payload);
+      const updated = await sp.updateItemByTitle<typeof payload, IUserMaster>(LIST_TITLE, id, payload);
       const { pushAudit } = await import("../../lib/audit");
-      await pushAudit("Users_Master", "update", id, payload);
+      await pushAudit({
+        actor: "system",
+        action: "update",
+        entity: LIST_TITLE,
+        entity_id: String(id),
+        channel: "SPO",
+        after: payload,
+      });
       return updated;
     };
 
     const deleteUser = async (id: number) => {
       await sp.deleteItemByTitle(LIST_TITLE, id);
       const { pushAudit } = await import("../../lib/audit");
-      await pushAudit("Users_Master", "delete", id, {});
+      await pushAudit({
+        actor: "system",
+        action: "delete",
+        entity: LIST_TITLE,
+        entity_id: String(id),
+        channel: "SPO",
+        before: {},
+      });
     };
 
     return {
