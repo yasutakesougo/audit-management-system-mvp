@@ -48,6 +48,21 @@
 - 成功時: ワークフローが緑色で表示され、Issue がプロジェクトボードに追加されます
 - 失敗時: Issue に警告コメントが投稿され、手動での追加が必要です
 
+### 自動連携の検証手順
+
+このリポジトリの Issue "[Backlog] テスト自動連携" が、自動連携機能のテストケースとして機能します：
+
+1. Issue に `Backlog` ラベルが付いていることを確認
+2. GitHub Actions タブで該当する `Auto add issues to project` ワークフローを確認：
+   - URL: `https://github.com/yasutakesougo/audit-management-system-mvp/actions/workflows/project-auto.yml`
+3. ワークフローが成功（緑色）していることを確認
+4. プロジェクトボードで Issue が追加されていることを確認：
+   - URL: `https://github.com/users/yasutakesougo/projects/1`
+   - Status: `Inbox`
+   - Priority: `P3`
+
+この検証により、CI で自動的にプロジェクトボードに追加される機能が正しく動作していることを確認できます。
+
 ## トラブルシューティング
 
 ### Issue がプロジェクトボードに追加されない
