@@ -1,15 +1,10 @@
-import { env } from '../env';
+import { getRuntimeEnv } from '../env';
 
 type Primitive = string | number | boolean | undefined | null;
 export type EnvRecord = Record<string, Primitive>;
 
 const TRUTHY = new Set(['1', 'true', 'yes', 'y', 'on', 'enabled']);
 const FALSY = new Set(['0', 'false', 'no', 'n', 'off', 'disabled']);
-
-const getMetaEnv = (): Record<string, Primitive> => {
-  const meta = (import.meta as unknown as { env?: Record<string, Primitive> })?.env;
-  return meta ?? {};
-};
 
 const normalizeString = (value: Primitive): string => {
   if (value === undefined || value === null) return '';
@@ -34,9 +29,9 @@ const getEnvValue = (key: string, envOverride?: EnvRecord): Primitive => {
   if (envOverride && key in envOverride) {
     return envOverride[key];
   }
-  const meta = getMetaEnv();
-  if (key in meta) {
-    return meta[key];
+  const runtime = getRuntimeEnv() as EnvRecord;
+  if (key in runtime) {
+    return runtime[key];
   }
   if (typeof process !== 'undefined' && process.env && key in process.env) {
     return process.env[key] as Primitive;
@@ -60,15 +55,17 @@ export const readBool = (key: string, fallback = false, envOverride?: EnvRecord)
   coerceBoolean(getEnvValue(key, envOverride), fallback);
 
 export const isDevMode = (envOverride?: EnvRecord): boolean => {
-  if (envOverride && 'DEV' in envOverride) {
-    return coerceBoolean(envOverride.DEV, false);
+  const explicit = getEnvValue('DEV', envOverride);
+  if (explicit !== undefined) {
+    return coerceBoolean(explicit, false);
   }
-  const meta = getMetaEnv();
-  if ('DEV' in meta) {
-    return coerceBoolean(meta.DEV, false);
+  const runtime = getRuntimeEnv();
+  const mode = runtime.MODE ?? runtime.NODE_ENV;
+  if (typeof mode === 'string' && mode.toLowerCase() === 'development') {
+    return true;
   }
-  if (typeof process !== 'undefined' && process.env && 'DEV' in process.env) {
-    return coerceBoolean(process.env.DEV as Primitive, false);
+  if (typeof process !== 'undefined' && process.env && 'NODE_ENV' in process.env) {
+    return String(process.env.NODE_ENV).toLowerCase() === 'development';
   }
   return false;
 };
@@ -190,7 +187,8 @@ export const getSharePointResource = (envOverride?: EnvRecord): string => {
   if (resource) {
     return resource.replace(/\/+$/, '');
   }
-  return env.VITE_SP_RESOURCE;
+  const runtime = getRuntimeEnv();
+  return (runtime.VITE_SP_RESOURCE ?? '').replace(/\/+$/, '');
 };
 
 export const getSharePointSiteRelative = (envOverride?: EnvRecord): string => {
@@ -199,7 +197,13 @@ export const getSharePointSiteRelative = (envOverride?: EnvRecord): string => {
     const normalized = override.startsWith('/') ? override : `/${override}`;
     return normalized.replace(/\/+$/, '');
   }
-  return env.VITE_SP_SITE_RELATIVE;
+  const runtime = getRuntimeEnv();
+  const fromEnv = (runtime.VITE_SP_SITE_RELATIVE ?? '').trim();
+  if (!fromEnv) {
+    return '';
+  }
+  const normalized = fromEnv.startsWith('/') ? fromEnv : `/${fromEnv}`;
+  return normalized.replace(/\/+$/, '');
 };
 
 export const getSharePointBaseUrl = (envOverride?: EnvRecord): string => {

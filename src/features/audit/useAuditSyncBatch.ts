@@ -1,5 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { useCallback } from 'react';
+import { get, getNumber, isDev } from '@/env';
 import { getAuditLogs, clearAudit, retainAuditWhere } from '../../lib/audit';
 import { useSP } from '../../lib/spClient';
 import { buildBatchInsertBody, parseBatchInsertResponse } from './batchUtil';
@@ -56,7 +57,7 @@ export const useAuditSyncBatch = () => {
   const syncAllBatch = useCallback(async (chunkSize?: number): Promise<SyncResult> => {
   const start = performance.now();
   // 環境変数優先 (1-500 clamp)
-    const envSizeRaw = import.meta.env.VITE_AUDIT_BATCH_SIZE;
+  const envSizeRaw = get('VITE_AUDIT_BATCH_SIZE', '');
     let effective = chunkSize ?? (envSizeRaw ? parseInt(envSizeRaw, 10) : DEFAULT_CHUNK_SIZE);
     if (isNaN(effective) || effective <= 0) effective = DEFAULT_CHUNK_SIZE;
     if (effective > 500) effective = 500;
@@ -101,9 +102,10 @@ export const useAuditSyncBatch = () => {
 
   const transientStatus = (s: number) => s === 429 || s === 503 || s === 504;
   const sleep = (ms: number) => new Promise(r => setTimeout(r, ms));
-  const envRetry = import.meta.env.VITE_AUDIT_RETRY_MAX ? parseInt(import.meta.env.VITE_AUDIT_RETRY_MAX, 10) : NaN;
+  const envRetryRaw = get('VITE_AUDIT_RETRY_MAX', '');
+  const envRetry = envRetryRaw ? parseInt(envRetryRaw, 10) : NaN;
   const MAX_RETRY = (!isNaN(envRetry) && envRetry > 0 && envRetry <= 5) ? envRetry : 3;
-  const backoffBase = import.meta.env.VITE_AUDIT_RETRY_BASE ? parseInt(import.meta.env.VITE_AUDIT_RETRY_BASE, 10) : 200;
+  const backoffBase = getNumber('VITE_AUDIT_RETRY_BASE', 200);
 
     // Keep original logs for retention mapping
     let processedOffset = 0; // offset in original logs for current chunk start
@@ -199,7 +201,7 @@ export const useAuditSyncBatch = () => {
     }
     const durationMs = Math.round(performance.now() - start);
     // Debug metrics exposure (DEV only)
-    if (auditLog.enabled) {
+    if (auditLog.enabled && typeof window !== 'undefined') {
       window.__AUDIT_BATCH_METRICS__ = {
         total: logs.length,
         success,
@@ -220,7 +222,7 @@ export const useAuditSyncBatch = () => {
 };
 
   // DEV/E2E helper to inject a one-off sync call without going through component button (optional)
-  if (import.meta.env.DEV && typeof window !== 'undefined') {
+  if (isDev && typeof window !== 'undefined') {
     (window as any).__E2E_INVOKE_SYNC_BATCH__ = async (size?: number) => {
       try {
         const mod = await import('./useAuditSyncBatch');

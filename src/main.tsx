@@ -2,6 +2,7 @@
 
 import React from "react";
 import ReactDOM from "react-dom/client";
+import { getRuntimeEnv, isDev } from "./env";
 
 type EnvRecord = Record<string, string | undefined>;
 
@@ -13,27 +14,11 @@ declare global {
   }
 }
 
-const buildEnvFromImportMeta = (): EnvRecord => ({
-  MODE: import.meta.env.MODE,
-  BASE_URL: import.meta.env.BASE_URL,
-  VITE_MSAL_CLIENT_ID: import.meta.env.VITE_MSAL_CLIENT_ID,
-  VITE_MSAL_TENANT_ID: import.meta.env.VITE_MSAL_TENANT_ID,
-  VITE_MSAL_REDIRECT_URI: import.meta.env.VITE_MSAL_REDIRECT_URI,
-  VITE_MSAL_AUTHORITY: import.meta.env.VITE_MSAL_AUTHORITY,
-  VITE_SP_BASE_URL: import.meta.env.VITE_SP_BASE_URL,
-  VITE_SP_SITE_RELATIVE: import.meta.env.VITE_SP_SITE_RELATIVE,
-  VITE_FEATURE_SCHEDULES: import.meta.env.VITE_FEATURE_SCHEDULES,
-  VITE_SP_RESOURCE: import.meta.env.VITE_SP_RESOURCE,
-  VITE_LOGIN_SCOPES: import.meta.env.VITE_LOGIN_SCOPES,
-  VITE_MSAL_SCOPES: import.meta.env.VITE_MSAL_SCOPES,
-  VITE_RUNTIME_ENV_PATH: import.meta.env.VITE_RUNTIME_ENV_PATH,
-});
-
 const getRuntimeEnvPath = (runtimeEnv: EnvRecord): string => {
   if (typeof window === "undefined") return "";
   const fromWindow = window.__ENV__?.RUNTIME_ENV_PATH ?? window.__ENV__?.VITE_RUNTIME_ENV_PATH;
   const fromRuntime = runtimeEnv.RUNTIME_ENV_PATH ?? runtimeEnv.VITE_RUNTIME_ENV_PATH;
-  return fromWindow || fromRuntime || import.meta.env.VITE_RUNTIME_ENV_PATH || "/env.runtime.json";
+  return fromWindow || fromRuntime || "/env.runtime.json";
 };
 
 const loadRuntimeEnvFile = async (runtimeEnv: EnvRecord): Promise<EnvRecord> => {
@@ -44,7 +29,7 @@ const loadRuntimeEnvFile = async (runtimeEnv: EnvRecord): Promise<EnvRecord> => 
   try {
     const response = await fetch(path, { cache: "no-store" });
     if (!response.ok) {
-      if (import.meta.env.DEV) {
+      if (isDev) {
         // eslint-disable-next-line no-console
         console.warn(`[env] runtime config fetch failed: ${response.status} ${response.statusText}`);
       }
@@ -54,7 +39,7 @@ const loadRuntimeEnvFile = async (runtimeEnv: EnvRecord): Promise<EnvRecord> => 
     const data = (await response.json()) as EnvRecord;
     return data ?? {};
   } catch (error) {
-    if (import.meta.env.DEV) {
+    if (isDev) {
       // eslint-disable-next-line no-console
       console.warn("[env] runtime config fetch error", error);
     }
@@ -65,19 +50,22 @@ const loadRuntimeEnvFile = async (runtimeEnv: EnvRecord): Promise<EnvRecord> => 
 const RUNTIME_PATH_KEYS = new Set(["RUNTIME_ENV_PATH", "VITE_RUNTIME_ENV_PATH"]);
 
 const ensureRuntimeEnv = async (): Promise<EnvRecord> => {
-  if (typeof window === "undefined") return {};
+  const baseEnv = getRuntimeEnv();
+
+  if (typeof window === "undefined") {
+    return baseEnv;
+  }
 
   const existing = window.__ENV__ ?? {};
-  const fromImportMeta = buildEnvFromImportMeta();
   const hasRuntimeOverrides = Object.keys(existing).some((key) => !RUNTIME_PATH_KEYS.has(key));
   const runtimeOverrides = hasRuntimeOverrides
-    ? existing
-    : { ...existing, ...(await loadRuntimeEnvFile({ ...fromImportMeta, ...existing })) };
+    ? { ...existing }
+    : await loadRuntimeEnvFile({ ...baseEnv, ...existing });
 
-  const merged = { ...fromImportMeta, ...runtimeOverrides } satisfies EnvRecord;
+  const merged = { ...baseEnv, ...runtimeOverrides } satisfies EnvRecord;
   window.__ENV__ = merged;
 
-  if (import.meta.env.DEV) {
+  if (isDev) {
     // eslint-disable-next-line no-console
     console.info("[env]", merged);
   }
@@ -87,7 +75,7 @@ const ensureRuntimeEnv = async (): Promise<EnvRecord> => {
 
 // 以降の重い import は動的にまとめて実行
 (async () => {
-  await ensureRuntimeEnv();
+  const envSnapshot = await ensureRuntimeEnv();
 
   const [{ ConfigErrorBoundary }, { auditLog }, { FeatureFlagsProvider, getFeatureFlags }] = await Promise.all([
     import("./app/ConfigErrorBoundary"),
@@ -103,7 +91,7 @@ const ensureRuntimeEnv = async (): Promise<EnvRecord> => {
 
   const flags = getFeatureFlags();
   auditLog.info("flags", flags);
-  if (typeof window !== "undefined" && import.meta.env.MODE !== "production") {
+  if (typeof window !== "undefined" && (envSnapshot.MODE ?? "").toLowerCase() !== "production") {
     window.__FLAGS__ = flags;
     // eslint-disable-next-line no-console
     console.info("[flags]", flags);

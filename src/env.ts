@@ -1,26 +1,44 @@
-type EnvShape = ImportMetaEnv & Record<string, string | boolean | number | undefined>;
+type EnvDict = Record<string, string | undefined>;
 
-const resolveImportMetaEnv = (): Partial<EnvShape> => {
+const INLINE_ENV: EnvDict = (() => {
   try {
     if (typeof import.meta !== 'undefined' && (import.meta as ImportMeta)?.env) {
-      return (import.meta as ImportMeta).env as EnvShape;
+      return ((import.meta as ImportMeta).env ?? {}) as unknown as EnvDict;
     }
   } catch {
-    // ignore access errors (e.g., older tooling)
+    // ignore environments where import.meta is unavailable (e.g., unit tests hoisting)
   }
   return {};
+})();
+
+const getWindowEnv = (): EnvDict | undefined => {
+  if (typeof window === 'undefined') return undefined;
+  const candidate = (window as typeof window & { __ENV__?: EnvDict }).__ENV__;
+  return candidate ? { ...candidate } : undefined;
 };
 
-const resolveProcessEnv = (): Partial<EnvShape> => {
-  if (typeof process !== 'undefined' && process.env) {
-    return process.env as unknown as EnvShape;
+export function getRuntimeEnv(): EnvDict {
+  const fromWindow = getWindowEnv();
+  return fromWindow ? { ...INLINE_ENV, ...fromWindow } : { ...INLINE_ENV };
+}
+
+export function get(name: string, fallback = ''): string {
+  const value = getRuntimeEnv()[name];
+  if (value === undefined || value === null) {
+    return fallback;
   }
-  return {};
-};
+  return typeof value === 'string' ? value : String(value);
+}
 
-const merged = {
-  ...resolveProcessEnv(),
-  ...resolveImportMetaEnv(),
-};
+export function getNumber(name: string, fallback: number): number {
+  const raw = get(name, String(fallback));
+  const numeric = Number(raw);
+  return Number.isFinite(numeric) ? numeric : fallback;
+}
 
-export const env = Object.freeze(merged) as EnvShape;
+export function getFlag(name: string, fallback = false): boolean {
+  const raw = get(name, fallback ? '1' : '0').toLowerCase();
+  return raw === '1' || raw === 'true';
+}
+
+export const isDev = get('MODE') === 'development' || getFlag('DEV', false);

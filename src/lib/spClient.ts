@@ -1,11 +1,12 @@
 // NOTE: Avoid path alias here to keep ts-jest / vitest resolution simple without extra config
 import { useAuth } from '../auth/useAuth';
 import { useMemo } from 'react';
+import { getFlag, getNumber, getRuntimeEnv, isDev } from '../env';
 import { SharePointItemNotFoundError, SharePointMissingEtagError } from './errors';
 
 export function ensureConfig(envOverride?: { VITE_SP_RESOURCE?: string; VITE_SP_SITE_RELATIVE?: string }) {
-  // Allow tests to pass override values since Vite inlines import.meta.env at build time.
-  const envRecord = getImportMetaEnv();
+  // Allow tests to pass override values since Vite inlines environment variables at build time.
+  const envRecord = getRuntimeEnv();
   const rawResource = (envOverride?.VITE_SP_RESOURCE ?? envRecord.VITE_SP_RESOURCE ?? '').trim();
   const rawSiteRel  = (envOverride?.VITE_SP_SITE_RELATIVE ?? envRecord.VITE_SP_SITE_RELATIVE ?? '').trim();
   const isPlaceholder = (s: string) => !s || /<yourtenant>|<SiteName>/i.test(s) || s === '__FILL_ME__';
@@ -141,14 +142,6 @@ const buildFieldSchema = (def: SpFieldDef): string => {
 };
 
 const sanitizeEnvValue = (value: unknown): string => (typeof value === 'string' ? value.trim() : '');
-
-type OptionalEnvRecord = Record<string, string | undefined>;
-
-const getImportMetaEnv = (): OptionalEnvRecord => {
-  const meta = import.meta as ImportMeta & { env?: OptionalEnvRecord };
-  const env = typeof meta === 'object' ? meta.env : undefined;
-  return env && typeof env === 'object' ? env : {};
-};
 
 const DEFAULT_USERS_LIST_TITLE = 'Users_Master';
 const DEFAULT_STAFF_LIST_TITLE = 'Staff_Master';
@@ -371,7 +364,7 @@ export interface SpClientWritable {
 }
 
 export function createSpClient(acquireToken: () => Promise<string | null>, baseUrl: string): SpClientWritable {
-  const debugEnabled = import.meta.env.VITE_AUDIT_DEBUG === '1';
+  const debugEnabled = getFlag('VITE_AUDIT_DEBUG', false);
   function dbg(...a: unknown[]) { if (debugEnabled) console.debug('[spClient]', ...a); }
   const tokenMetricsCarrier = globalThis as { __TOKEN_METRICS__?: Record<string, unknown> };
   const spFetch = async (path: string, init: RequestInit = {}): Promise<Response> => {
@@ -397,16 +390,16 @@ export function createSpClient(acquireToken: () => Promise<string | null>, baseU
       if (init.method === 'POST' || init.method === 'PUT' || init.method === 'PATCH' || init.method === 'MERGE') {
         headers.set('Content-Type', 'application/json;odata=nometadata');
       }
-      if (import.meta.env.DEV) console.debug('[SPFetch] URL:', url);
+      if (isDev) console.debug('[SPFetch] URL:', url);
       return fetch(url, { ...init, headers });
     };
 
     let response = await doFetch(token1);
 
     // Retry transient (throttle/server) BEFORE auth refresh, but only if not 401/403.
-    const maxAttempts = Number(import.meta.env.VITE_SP_RETRY_MAX || '4');
-    const baseDelay = Number(import.meta.env.VITE_SP_RETRY_BASE_MS || '400');
-    const capDelay = Number(import.meta.env.VITE_SP_RETRY_MAX_DELAY_MS || '5000');
+    const maxAttempts = getNumber('VITE_SP_RETRY_MAX', 4);
+    const baseDelay = getNumber('VITE_SP_RETRY_BASE_MS', 400);
+    const capDelay = getNumber('VITE_SP_RETRY_MAX_DELAY_MS', 5000);
     const sleep = (ms: number) => new Promise(r => setTimeout(r, ms));
     const computeBackoff = (attempt: number) => {
       const expo = Math.min(capDelay, baseDelay * Math.pow(2, attempt - 1));
@@ -717,10 +710,10 @@ export function createSpClient(acquireToken: () => Promise<string | null>, baseU
 
   // $batch 投稿ヘルパー (429/503/504 リトライ対応)
   const postBatch = async (batchBody: string, boundary: string): Promise<Response> => {
-    const apiRoot = baseUrl.replace(/\/web\/?$/, '');
-    const maxAttempts = Number(import.meta.env.VITE_SP_RETRY_MAX || '4');
-    const baseDelay = Number(import.meta.env.VITE_SP_RETRY_BASE_MS || '400');
-    const capDelay = Number(import.meta.env.VITE_SP_RETRY_MAX_DELAY_MS || '5000');
+  const apiRoot = baseUrl.replace(/\/web\/?$/, '');
+  const maxAttempts = getNumber('VITE_SP_RETRY_MAX', 4);
+  const baseDelay = getNumber('VITE_SP_RETRY_BASE_MS', 400);
+  const capDelay = getNumber('VITE_SP_RETRY_MAX_DELAY_MS', 5000);
     const sleep = (ms: number) => new Promise(r => setTimeout(r, ms));
     const computeBackoff = (attempt: number) => {
       const expo = Math.min(capDelay, baseDelay * Math.pow(2, attempt - 1));
@@ -801,7 +794,7 @@ const clampTop = (value: number | undefined): number => {
 };
 
 export async function getUsersMaster<TRow = Record<string, unknown>>(client: ListClient, top?: number): Promise<TRow[]> {
-  const env = getImportMetaEnv();
+  const env = getRuntimeEnv();
   const listTitle = sanitizeEnvValue(env.VITE_SP_LIST_USERS) || DEFAULT_USERS_LIST_TITLE;
   const rows = await fetchListItemsWithFallback<TRow>(
     client,
@@ -814,7 +807,7 @@ export async function getUsersMaster<TRow = Record<string, unknown>>(client: Lis
 }
 
 export async function getStaffMaster<TRow = Record<string, unknown>>(client: ListClient, top?: number): Promise<TRow[]> {
-  const env = getImportMetaEnv();
+  const env = getRuntimeEnv();
   const listTitleCandidate = sanitizeEnvValue(env.VITE_SP_LIST_STAFF) || DEFAULT_STAFF_LIST_TITLE;
   const listGuidCandidate = sanitizeEnvValue(env.VITE_SP_LIST_STAFF_GUID);
   const identifier = resolveStaffListIdentifier(listTitleCandidate, listGuidCandidate);

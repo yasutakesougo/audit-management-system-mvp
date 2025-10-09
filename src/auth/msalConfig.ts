@@ -1,9 +1,10 @@
 // MSAL config (tolerant env reader + clear errors)
-// - window.__ENV__ (main.tsx 注入) → import.meta.env の順で読む
+// - window.__ENV__ (main.tsx 注入) → Vite inline env の順で読む
 // - VITE_MSAL_* / VITE_AAD_* の両方を許容
 // - Redirect URI / Authority も __ENV__ を優先
 
 import { PublicClientApplication } from '@azure/msal-browser';
+import { getRuntimeEnv } from '@/env';
 
 declare global {
   interface Window {
@@ -24,12 +25,7 @@ const isPlaceholder = (value: unknown, placeholders: Set<string>): boolean => {
   return placeholders.has(value.trim().toLowerCase());
 };
 
-const getEnv = (): Record<string, string | undefined> => {
-  const win = typeof window !== 'undefined' ? window : undefined;
-  const injected = win?.__ENV__ ?? {};
-  const meta = (import.meta as unknown as { env?: Record<string, string | undefined> })?.env ?? {};
-  return { ...meta, ...injected };
-};
+const getEnv = (): Record<string, string | undefined> => getRuntimeEnv();
 
 const resolveClientId = (): string => {
   const env = getEnv();
@@ -109,7 +105,7 @@ export const REDIRECT_URI = resolveRedirectUri();
 export const LOGIN_SCOPES = getScopes(getEnv().VITE_LOGIN_SCOPES, 'openid profile');
 export const MSAL_SCOPES = getScopes(getEnv().VITE_MSAL_SCOPES);
 
-export const SP_RESOURCE = getEnv().VITE_SP_RESOURCE ?? import.meta.env.VITE_SP_RESOURCE;
+export const SP_RESOURCE = getEnv().VITE_SP_RESOURCE ?? '';
 
 export const msalConfig = {
   auth: {

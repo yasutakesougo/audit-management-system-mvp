@@ -1,5 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { useMsal } from '@azure/msal-react';
+import { getFlag, getNumber } from '@/env';
 import { SP_RESOURCE } from './msalConfig';
 
 // Simple global metrics object (not exposed on window unless debug)
@@ -9,7 +10,7 @@ const tokenMetrics = {
   lastRefreshEpoch: 0,
 };
 
-const debugEnabled = import.meta.env.VITE_AUDIT_DEBUG === '1';
+const debugEnabled = getFlag('VITE_AUDIT_DEBUG', false);
 function debugLog(...args: unknown[]) {
   if (debugEnabled) console.debug('[auth]', ...args);
 }
@@ -22,7 +23,7 @@ export const useAuth = () => {
     if (!account) return null;
     try {
       // Inspect cached token and expiry for soft refresh threshold
-      const thresholdSec = Number(import.meta.env.VITE_MSAL_TOKEN_REFRESH_MIN || '300'); // default 5 min
+  const thresholdSec = getNumber('VITE_MSAL_TOKEN_REFRESH_MIN', 300); // default 5 min
   const cacheItems = (instance as any).getTokenCache()?.storage?.getAllTokens?.() || [];
       const spScope = `${SP_RESOURCE}/.default`;
       let exp = 0;
