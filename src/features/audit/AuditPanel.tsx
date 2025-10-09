@@ -5,7 +5,7 @@ import { useAuditSync } from './useAuditSync';
 import { useAuditSyncBatch } from './useAuditSyncBatch';
 import { AuditBatchMetrics } from './types';
 import { auditMetricLabels } from './labels';
-import { isDevMode } from '../../config/env';
+import { isDevMode } from '@/lib/env';
 
 const AuditPanel: React.FC = () => {
   const [logs, setLogs] = useState<AuditEvent[]>(readAudit());

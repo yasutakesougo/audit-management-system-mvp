@@ -1,0 +1,10 @@
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "extends": ["config:base"],
+  "schedule": ["before 3am on Sunday"],
+  "rangeStrategy": "replace",
+  "automerge": false,
+  "labels": ["dependencies"],
+  "prHourlyLimit": 2,
+  "timezone": "Asia/Tokyo"
+}

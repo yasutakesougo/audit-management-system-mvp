@@ -1,0 +1,9 @@
+
+> audit-management-system-mvp@0.1.0 dev
+> vite --port 3000 --host 127.0.0.1
+
+
+  VITE v4.5.14  ready in 113 ms
+
+  ➜  Local:   http://127.0.0.1:3000/
+  ➜  press h to show help

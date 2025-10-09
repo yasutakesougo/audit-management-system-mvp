@@ -1,4 +1,7 @@
-const enabled = import.meta.env.VITE_AUDIT_DEBUG === '1' || import.meta.env.VITE_AUDIT_DEBUG === 'true';
+/* eslint-disable @typescript-eslint/no-explicit-any */
+import { getFlag } from '@/env';
+
+const enabled = getFlag('VITE_AUDIT_DEBUG', false);
 
 type Level = 'debug' | 'info' | 'warn' | 'error';
 

@@ -1,64 +1,275 @@
-// SharePoint フィールド/リスト定義（本番スキーマ対応）
+import type { SpDailyItem, SpScheduleItem, SpStaffItem, SpUserItem } from '@/types';
 
-// === Interfaces ===
+// SharePoint フィールド定義（暫定安全セット）
+
+export type UserRow = SpUserItem;
+export type StaffRow = SpStaffItem;
+export type ScheduleRow = SpScheduleItem;
+export type DailyRow = SpDailyItem;
+
 export interface IUserMaster {
-  Id: number;                 // SP Item ID
+  Id: number;
+  Title?: string | null;
   UserID: string;
   FullName: string;
-  ContractDate?: string;      // ISO (yyyy-MM-dd or ISO 8601)
-  IsHighIntensitySupportTarget?: boolean;
-  ServiceStartDate?: string;
+  Furigana?: string | null;
+  FullNameKana?: string | null;
+  ContractDate?: string | null;
+  ServiceStartDate?: string | null;
   ServiceEndDate?: string | null;
+  IsHighIntensitySupportTarget?: boolean | null;
+  severeFlag?: boolean | null;
+  IsActive?: boolean | null;
+  TransportToDays?: string[] | null;
+  TransportFromDays?: string[] | null;
+  AttendanceDays?: string[] | null;
+  RecipientCertNumber?: string | null;
+  RecipientCertExpiry?: string | null;
+  Modified?: string | null;
+  Created?: string | null;
 }
 
 export interface IUserMasterCreateDto {
   UserID: string;
   FullName: string;
-  ContractDate?: string;
-  IsHighIntensitySupportTarget?: boolean;
-  ServiceStartDate?: string;
+  Furigana?: string | null;
+  FullNameKana?: string | null;
+  ContractDate?: string | null;
+  ServiceStartDate?: string | null;
   ServiceEndDate?: string | null;
+  IsHighIntensitySupportTarget?: boolean | null;
+  severeFlag?: boolean | null;
+  IsActive?: boolean | null;
+  TransportToDays?: string[] | null;
+  TransportFromDays?: string[] | null;
+  AttendanceDays?: string[] | null;
+  RecipientCertNumber?: string | null;
+  RecipientCertExpiry?: string | null;
 }
 
-// ほかのモデルを追加する場合はここに
+export const joinSelect = (arr: readonly string[]) => arr.join(',');
 
-// === List Keys ===
 export enum ListKeys {
-  UsersMaster = "Users_Master",
-  // StaffMaster = "Staff_Master",
-  // PerformanceSlips = "Performance_Slips",
+  UsersMaster = 'Users_Master',
+  StaffMaster = 'Staff_Master',
 }
 
-// === リスト表示名設定 ===
 export const LIST_CONFIG: Record<ListKeys, { title: string }> = {
-  [ListKeys.UsersMaster]: { title: "Users_Master" },
-  // [ListKeys.StaffMaster]: { title: "Staff_Master" },
-  // [ListKeys.PerformanceSlips]: { title: "Performance_Slips" },
+  [ListKeys.UsersMaster]: { title: 'Users_Master' },
+  [ListKeys.StaffMaster]: { title: 'Staff_Master' },
 };
 
-// === 論理名 → SP 内部列名マップ ===
-// 内部列名は PnP テンプレートの StaticName/PascalCase を使用
 export const FIELD_MAP = {
   Users_Master: {
-    id: "Id",
-    userId: "UserID",
-    fullName: "FullName",
-    contractDate: "ContractDate",
-    isHighIntensitySupportTarget: "IsHighIntensitySupportTarget",
-    serviceStartDate: "ServiceStartDate",
-    serviceEndDate: "ServiceEndDate",
+    id: 'Id',
+    title: 'Title',
+    userId: 'UserID',
+    fullName: 'FullName',
+    furigana: 'Furigana',
+    fullNameKana: 'FullNameKana',
+    contractDate: 'ContractDate',
+    serviceStartDate: 'ServiceStartDate',
+    serviceEndDate: 'ServiceEndDate',
+    isHighIntensitySupportTarget: 'IsHighIntensitySupportTarget',
+    severeFlag: 'severeFlag',
+    isActive: 'IsActive',
+    transportToDays: 'TransportToDays',
+    transportFromDays: 'TransportFromDays',
+    attendanceDays: 'AttendanceDays',
+    recipientCertNumber: 'RecipientCertNumber',
+    recipientCertExpiry: 'RecipientCertExpiry',
+    modified: 'Modified',
+    created: 'Created',
+    // 400s or optional columns intentionally omitted for now
   },
-  // Staff_Master: { ... },
-  // Performance_Slips: { ... },
+  Staff_Master: {
+    id: 'Id',
+    title: 'Title',
+    staffId: 'StaffID',
+    fullName: 'FullName',
+    furigana: 'Furigana',
+    fullNameKana: 'FullNameKana',
+    jobTitle: 'JobTitle',
+    employmentType: 'EmploymentType',
+    rbacRole: 'RBACRole',
+  role: 'Role',
+  isActive: 'IsActive',
+    department: 'Department',
+    workDaysText: 'Work_x0020_Days',
+  workDays: 'WorkDays',
+  baseShiftStartTime: 'BaseShiftStartTime',
+  baseShiftEndTime: 'BaseShiftEndTime',
+  baseWorkingDays: 'BaseWorkingDays',
+    hireDate: 'HireDate',
+    resignDate: 'ResignDate',
+    email: 'Email',
+    phone: 'Phone',
+    certifications: 'Certifications',
+  },
+  Schedules: {
+    id: 'Id',
+    title: 'Title',
+    start: 'StartDateTime',
+    end: 'EndDateTime',
+    status: 'Status',
+    notes: 'Note',
+    serviceType: 'ServiceType',
+    staffIds: 'AssignedStaffId',
+    billingFlags: 'BillingFlags',
+    relatedResourceIds: 'RelatedResourceId',
+    targetUserIds: 'TargetUserId',
+    created: 'Created',
+    modified: 'Modified',
+    createdAt: 'CreatedAt',
+    updatedAt: 'UpdatedAt',
+    rowKey: 'RowKey',
+    dayKey: 'Date',
+    monthKey: 'MonthKey',
+  },
 } as const;
 
-// SELECT に使う既定列（Users）
-export const USERS_SELECT_FIELDS = [
-  "Id",
-  "UserID",
-  "FullName",
-  "ContractDate",
-  "IsHighIntensitySupportTarget",
-  "ServiceStartDate",
-  "ServiceEndDate",
+export const USERS_SELECT_FIELDS_SAFE = [
+  FIELD_MAP.Users_Master.id,
+  FIELD_MAP.Users_Master.title,
+  FIELD_MAP.Users_Master.userId,
+  FIELD_MAP.Users_Master.fullName,
+  FIELD_MAP.Users_Master.furigana,
+  FIELD_MAP.Users_Master.fullNameKana,
+  FIELD_MAP.Users_Master.contractDate,
+  FIELD_MAP.Users_Master.serviceStartDate,
+  FIELD_MAP.Users_Master.serviceEndDate,
+  FIELD_MAP.Users_Master.isHighIntensitySupportTarget,
+  FIELD_MAP.Users_Master.severeFlag,
+  FIELD_MAP.Users_Master.isActive,
+  FIELD_MAP.Users_Master.transportToDays,
+  FIELD_MAP.Users_Master.transportFromDays,
+  FIELD_MAP.Users_Master.attendanceDays,
+  FIELD_MAP.Users_Master.recipientCertNumber,
+  FIELD_MAP.Users_Master.recipientCertExpiry,
+  FIELD_MAP.Users_Master.modified,
+  FIELD_MAP.Users_Master.created,
 ] as const;
+
+export const STAFF_SELECT_FIELDS_CANONICAL = [
+  FIELD_MAP.Staff_Master.id,
+  FIELD_MAP.Staff_Master.title,
+  FIELD_MAP.Staff_Master.staffId,
+  FIELD_MAP.Staff_Master.fullName,
+  FIELD_MAP.Staff_Master.jobTitle,
+  FIELD_MAP.Staff_Master.employmentType,
+  FIELD_MAP.Staff_Master.rbacRole,
+  FIELD_MAP.Staff_Master.department,
+  FIELD_MAP.Staff_Master.hireDate,
+  FIELD_MAP.Staff_Master.resignDate,
+  FIELD_MAP.Staff_Master.certifications,
+  FIELD_MAP.Staff_Master.email,
+  FIELD_MAP.Staff_Master.phone,
+  FIELD_MAP.Staff_Master.furigana,
+  FIELD_MAP.Staff_Master.fullNameKana,
+  FIELD_MAP.Staff_Master.workDaysText,
+] as const;
+
+export const USERS_SELECT_SAFE = joinSelect(USERS_SELECT_FIELDS_SAFE as readonly string[]);
+export const STAFF_SELECT = joinSelect(STAFF_SELECT_FIELDS_CANONICAL as readonly string[]);
+
+// Backwards compatibility exports (legacy names still in use)
+export const USERS_SELECT_FIELDS = USERS_SELECT_FIELDS_SAFE;
+
+// ──────────────────────────────────────────────────────────────
+// Daily record list fields
+// ──────────────────────────────────────────────────────────────
+
+export const DAILY_FIELD_DATE = 'Date' as const;
+export const DAILY_FIELD_START_TIME = 'StartTime' as const;
+export const DAILY_FIELD_END_TIME = 'EndTime' as const;
+export const DAILY_FIELD_LOCATION = 'Location' as const;
+export const DAILY_FIELD_STAFF_ID = 'StaffIdId' as const;
+export const DAILY_FIELD_USER_ID = 'UserIdId' as const;
+export const DAILY_FIELD_NOTES = 'Notes' as const;
+export const DAILY_FIELD_MEAL_LOG = 'MealLog' as const;
+export const DAILY_FIELD_BEHAVIOR_LOG = 'BehaviorLog' as const;
+export const DAILY_FIELD_DRAFT = 'Draft' as const;
+export const DAILY_FIELD_STATUS = 'Status' as const;
+
+// ──────────────────────────────────────────────────────────────
+// Schedule list fields
+// ──────────────────────────────────────────────────────────────
+
+export const SCHEDULE_FIELD_START = 'StartDateTime' as const;
+export const SCHEDULE_FIELD_END = 'EndDateTime' as const;
+export const SCHEDULE_FIELD_STATUS = 'Status' as const;
+export const SCHEDULE_FIELD_CATEGORY = 'cr014_category' as const;
+export const SCHEDULE_FIELD_SERVICE_TYPE = 'ServiceType' as const;
+export const SCHEDULE_FIELD_PERSON_TYPE = 'cr014_personType' as const;
+export const SCHEDULE_FIELD_PERSON_ID = 'cr014_personId' as const;
+export const SCHEDULE_FIELD_PERSON_NAME = 'cr014_personName' as const;
+export const SCHEDULE_FIELD_EXTERNAL_NAME = 'cr014_externalPersonName' as const;
+export const SCHEDULE_FIELD_EXTERNAL_ORG = 'cr014_externalPersonOrg' as const;
+export const SCHEDULE_FIELD_EXTERNAL_CONTACT = 'cr014_externalPersonContact' as const;
+export const SCHEDULE_FIELD_STAFF_IDS = 'cr014_staffIds' as const;
+export const SCHEDULE_FIELD_STAFF_NAMES = 'cr014_staffNames' as const;
+export const SCHEDULE_FIELD_BILLING_FLAGS = 'BillingFlags' as const;
+export const SCHEDULE_FIELD_NOTE = 'Note' as const;
+export const SCHEDULE_FIELD_ASSIGNED_STAFF = 'AssignedStaff' as const;
+export const SCHEDULE_FIELD_ASSIGNED_STAFF_ID = 'AssignedStaffId' as const;
+export const SCHEDULE_FIELD_TARGET_USER = 'TargetUser' as const;
+export const SCHEDULE_FIELD_TARGET_USER_ID = 'TargetUserId' as const;
+export const SCHEDULE_FIELD_RELATED_RESOURCE = 'RelatedResource' as const;
+export const SCHEDULE_FIELD_RELATED_RESOURCE_ID = 'RelatedResourceId' as const;
+export const SCHEDULE_FIELD_ROW_KEY = 'RowKey' as const;
+export const SCHEDULE_FIELD_DAY_KEY = 'cr014_dayKey' as const;
+export const SCHEDULE_FIELD_FISCAL_YEAR = 'cr014_fiscalYear' as const;
+export const SCHEDULE_FIELD_MONTH_KEY = 'MonthKey' as const;
+export const SCHEDULE_FIELD_SUB_TYPE = 'SubType' as const;
+export const SCHEDULE_FIELD_ORG_AUDIENCE = 'cr014_orgAudience' as const;
+export const SCHEDULE_FIELD_ORG_RESOURCE_ID = 'cr014_resourceId' as const;
+export const SCHEDULE_FIELD_ORG_EXTERNAL_NAME = 'ExternalOrgName' as const;
+export const SCHEDULE_FIELD_DAY_PART = 'cr014_dayPart' as const;
+export const SCHEDULE_FIELD_CREATED_AT = 'CreatedAt' as const;
+export const SCHEDULE_FIELD_UPDATED_AT = 'UpdatedAt' as const;
+
+export const SCHEDULES_BASE_FIELDS = [
+  'Id',
+  'Title',
+  SCHEDULE_FIELD_START,
+  SCHEDULE_FIELD_END,
+  SCHEDULE_FIELD_STATUS,
+  SCHEDULE_FIELD_CATEGORY,
+  SCHEDULE_FIELD_SERVICE_TYPE,
+  SCHEDULE_FIELD_PERSON_TYPE,
+  SCHEDULE_FIELD_PERSON_ID,
+  SCHEDULE_FIELD_PERSON_NAME,
+  SCHEDULE_FIELD_EXTERNAL_NAME,
+  SCHEDULE_FIELD_EXTERNAL_ORG,
+  SCHEDULE_FIELD_EXTERNAL_CONTACT,
+  SCHEDULE_FIELD_STAFF_IDS,
+  SCHEDULE_FIELD_STAFF_NAMES,
+  SCHEDULE_FIELD_BILLING_FLAGS,
+  SCHEDULE_FIELD_NOTE,
+  SCHEDULE_FIELD_ASSIGNED_STAFF,
+  SCHEDULE_FIELD_ASSIGNED_STAFF_ID,
+  SCHEDULE_FIELD_TARGET_USER,
+  SCHEDULE_FIELD_TARGET_USER_ID,
+  SCHEDULE_FIELD_RELATED_RESOURCE,
+  SCHEDULE_FIELD_RELATED_RESOURCE_ID,
+  SCHEDULE_FIELD_ROW_KEY,
+  SCHEDULE_FIELD_DAY_KEY,
+  SCHEDULE_FIELD_FISCAL_YEAR,
+  SCHEDULE_FIELD_MONTH_KEY,
+  SCHEDULE_FIELD_SUB_TYPE,
+  SCHEDULE_FIELD_ORG_AUDIENCE,
+  SCHEDULE_FIELD_ORG_RESOURCE_ID,
+  SCHEDULE_FIELD_ORG_EXTERNAL_NAME,
+  SCHEDULE_FIELD_DAY_PART,
+  SCHEDULE_FIELD_CREATED_AT,
+  SCHEDULE_FIELD_UPDATED_AT,
+  'Created',
+  'Modified',
+  '@odata.etag',
+] as const;
+
+export const SCHEDULES_COMMON_OPTIONAL_FIELDS = [] as const;
+
+export const SCHEDULES_STAFF_TEXT_FIELDS = [] as const;
+
+export const SCHEDULES_SELECT_FIELDS = joinSelect(SCHEDULES_BASE_FIELDS as readonly string[]);

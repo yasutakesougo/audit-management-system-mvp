@@ -1,0 +1,7 @@
+[
+  { "key": "cmd+shift+t", "command": "workbench.action.tasks.runTask", "args": "Test (vitest run)" },
+  { "key": "cmd+shift+l", "command": "workbench.action.tasks.runTask", "args": "Lint" },
+  { "key": "cmd+shift+y", "command": "workbench.action.tasks.runTask", "args": "Typecheck" },
+  { "key": "cmd+shift+w", "command": "workbench.action.tasks.runTask", "args": "Test (vitest watch)" },
+  { "key": "cmd+shift+d", "command": "workbench.action.tasks.runTask", "args": "Dev: web + tests" }
+]

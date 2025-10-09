@@ -1,0 +1,45 @@
+name: Nightly Health
+
+on:
+  schedule:
+    - cron: '0 18 * * *' # JST 03:00
+  workflow_dispatch:
+
+jobs:
+  health:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - run: npm ci
+      - run: npm run health
+      - run: npx playwright install --with-deps chromium
+      - run: npm run ci:e2e
+        env:
+          NOTIFY_WEBHOOK_URL: ${{ secrets.NOTIFY_WEBHOOK_URL }}
+      - name: Perf report (LHCI + Web Vitals)
+        run: npm run -s ci:perf-report
+        env:
+          NOTIFY_WEBHOOK_URL: ${{ secrets.NOTIFY_WEBHOOK_URL }}
+      - name: Upload perf summary artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: perf-summary
+          path: |
+            reports/perf-summary.md
+            reports/perf-summary.json
+            lhci-results.json
+      - name: Notify failure
+        if: failure()
+        env:
+          WEBHOOK_URL: ${{ secrets.NOTIFY_WEBHOOK_URL }}
+        run: |
+          if [ -z "$WEBHOOK_URL" ]; then
+            echo "notification webhook not configured"
+            exit 0
+          fi
+          payload=$(jq -n --arg repo "${GITHUB_REPOSITORY}" --arg run "${GITHUB_RUN_ID}" --arg url "${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}" '{text: "🚨 Nightly health failed", repository: $repo, runId: $run, url: $url}')
+          curl -X POST -H "Content-Type: application/json" -d "$payload" "$WEBHOOK_URL"

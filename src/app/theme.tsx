@@ -12,7 +12,7 @@ const base = {
   },
 } as const;
 
-export const ColorModeContext = createContext<{ mode: 'light' | 'dark'; toggle: () => void }>({ mode: 'light', toggle: () => {} });
+export const ColorModeContext = createContext<{ mode: 'light' | 'dark'; toggle: () => void; sticky?: boolean }>({ mode: 'light', toggle: () => {} });
 
 export const ThemeRoot: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [mode, setMode] = useState<'light' | 'dark'>(() => (localStorage.getItem('app_color_mode') as 'light' | 'dark') || 'light');
@@ -24,7 +24,7 @@ export const ThemeRoot: React.FC<{ children: React.ReactNode }> = ({ children })
       : { mode: 'light', primary: { main: '#00529B' }, secondary: { main: '#4CAF50' }, background: { default: '#F5F5F5' } },
     ...base,
   }), [mode]);
-  const ctx = useMemo(() => ({ mode, toggle }), [mode, toggle]);
+  const ctx = useMemo(() => ({ mode, toggle, sticky: false }), [mode, toggle]);
   return <ColorModeContext.Provider value={ctx}><MUIThemeProvider theme={theme}>{children}</MUIThemeProvider></ColorModeContext.Provider>;
 };
 

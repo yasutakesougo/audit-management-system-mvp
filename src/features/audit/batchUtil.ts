@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { safeRandomUUID } from '../../lib/uuid';
 import { AuditInsertItemDTO } from './types';
 export function buildBatchInsertBody(listTitle: string, items: AuditInsertItemDTO[], apiRelativeSite?: string): { body: string; boundary: string; idMap: number[] } {
