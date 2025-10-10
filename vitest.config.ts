@@ -1,9 +1,12 @@
-import { defineConfig } from 'vitest/config';
 import path from 'path';
+import { defineConfig } from 'vitest/config';
 
 export default defineConfig({
   resolve: {
-    alias: { '@': path.resolve(__dirname, 'src') }
+    alias: {
+      '@': path.resolve(__dirname, 'src'),
+      '@fluentui/react': path.resolve(__dirname, 'src/stubs/fluentui-react.tsx'),
+    }
   },
   test: {
     setupFiles: ['./vitest.setup.ts'],
@@ -25,10 +28,10 @@ export default defineConfig({
         'src/lib/spClient.retry429.spec.ts'
       ],
       thresholds: {
-        lines: 70,
-        functions: 70,
-        statements: 70,
-        branches: 65
+        lines: 90,
+        functions: 75,
+        statements: 75,
+        branches: 85
       }
     }
   }
