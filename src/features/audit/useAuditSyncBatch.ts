@@ -1,6 +1,8 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { useCallback } from 'react';
 import { getAuditLogs, clearAudit, retainAuditWhere } from '../../lib/audit';
 import { useSP } from '../../lib/spClient';
+import { getAppConfig } from '../../lib/env';
 import { buildBatchInsertBody, parseBatchInsertResponse } from './batchUtil';
 import { auditLog } from '../../lib/debugLogger';
 import { canonicalJSONStringify, computeEntryHash } from '../../lib/hashUtil';
@@ -53,9 +55,10 @@ export const useAuditSyncBatch = () => {
   const { postBatch } = useSP();
 
   const syncAllBatch = useCallback(async (chunkSize?: number): Promise<SyncResult> => {
-  const start = performance.now();
-  // 環境変数優先 (1-500 clamp)
-    const envSizeRaw = import.meta.env.VITE_AUDIT_BATCH_SIZE;
+    const start = performance.now();
+    // 環境変数優先 (1-500 clamp)
+    const batchConfig = getAppConfig();
+    const envSizeRaw = batchConfig.VITE_AUDIT_BATCH_SIZE;
     let effective = chunkSize ?? (envSizeRaw ? parseInt(envSizeRaw, 10) : DEFAULT_CHUNK_SIZE);
     if (isNaN(effective) || effective <= 0) effective = DEFAULT_CHUNK_SIZE;
     if (effective > 500) effective = 500;
@@ -87,22 +90,23 @@ export const useAuditSyncBatch = () => {
     }));
 
     // チャンク分割
-  const chunks: AuditInsertItemDTO[][] = [];
+    const chunks: AuditInsertItemDTO[][] = [];
     for (let i = 0; i < dtoList.length; i += effective) {
       chunks.push(dtoList.slice(i, i + effective));
     }
 
-  let success = 0;
-  let failed = 0;
-  let duplicates = 0;
-  const errorAgg: { contentId: number; status: number; statusText: string }[] = [];
-  const categoryAgg: Record<string, number> = {};
+    let success = 0;
+    let failed = 0;
+    let duplicates = 0;
+    const errorAgg: { contentId: number; status: number; statusText: string }[] = [];
+    const categoryAgg: Record<string, number> = {};
 
-  const transientStatus = (s: number) => s === 429 || s === 503 || s === 504;
-  const sleep = (ms: number) => new Promise(r => setTimeout(r, ms));
-  const envRetry = import.meta.env.VITE_AUDIT_RETRY_MAX ? parseInt(import.meta.env.VITE_AUDIT_RETRY_MAX, 10) : NaN;
-  const MAX_RETRY = (!isNaN(envRetry) && envRetry > 0 && envRetry <= 5) ? envRetry : 3;
-  const backoffBase = import.meta.env.VITE_AUDIT_RETRY_BASE ? parseInt(import.meta.env.VITE_AUDIT_RETRY_BASE, 10) : 200;
+    const transientStatus = (s: number) => s === 429 || s === 503 || s === 504;
+    const sleep = (ms: number) => new Promise(r => setTimeout(r, ms));
+    const envRetry = batchConfig.VITE_AUDIT_RETRY_MAX ? parseInt(batchConfig.VITE_AUDIT_RETRY_MAX, 10) : NaN;
+    const MAX_RETRY = (!isNaN(envRetry) && envRetry > 0 && envRetry <= 5) ? envRetry : 3;
+    const backoffBaseRaw = batchConfig.VITE_AUDIT_RETRY_BASE ? parseInt(batchConfig.VITE_AUDIT_RETRY_BASE, 10) : NaN;
+    const backoffBase = (!isNaN(backoffBaseRaw) && backoffBaseRaw > 0) ? backoffBaseRaw : 200;
 
     // Keep original logs for retention mapping
     let processedOffset = 0; // offset in original logs for current chunk start

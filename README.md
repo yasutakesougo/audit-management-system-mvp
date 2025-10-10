@@ -14,6 +14,10 @@
 
 本プロジェクトは、React, TypeScript, Vite, MUIを使用し、SharePoint OnlineをバックエンドとするSPAアプリケーションのMVP実装です。
 
+## 開発時のよくある落とし穴
+- `import.meta.env` を直接参照すると lint / pre-push の制御に阻まれるので、必ず `src/lib/env.ts` のヘルパー経由で値を取得する
+- VS Code の Problems が急増したときは `src/lib/env.ts` や `.env` 差分をまず確認すると、型/エラーの原因を素早く特定できる
+
 ## Tech Stack
 - React 18 + TypeScript + Vite
 - MSAL (@azure/msal-browser, @azure/msal-react)
@@ -85,7 +89,11 @@ VITE_SP_SITE_RELATIVE=/sites/<SiteName>
 
 ### Reading environment config
 
-- **App/runtime code:** read configuration via `getAppConfig()` from `src/config/appConfig.ts`.
+- **App/runtime code:** read configuration via `getAppConfig()` (exported from `src/lib/env.ts`).
+  - 新しい環境変数を追加するときは、以下の順序で反映します。
+    1. `src/lib/env.ts` の `AppConfig` 型と `getAppConfig()` のデフォルト値を更新する
+    2. 補助リーダーが必要なら同ファイルに `read*` 系ヘルパーを追加する
+    3. `.env.example` と README の表にプレースホルダー/説明を追記する
 - **Config layer / adapters only:** low-level reads belong in `src/config/**` and should use the helpers exported from `env.ts`.
 - **Never** call `import.meta.env` directly in feature or lib code—the linter and pre-push/CI guard will fail the build.
 
@@ -109,6 +117,28 @@ VITE_SP_SITE_RELATIVE=/sites/<SiteName>
 | VITE_GRAPH_SCOPES *(optional)* | Graph delegated scopes | — | useSP must support Graph path |
 
 Placeholders recognized as invalid: `<yourtenant>`, `<SiteName>`, `__FILL_ME__`.
+
+## スケジュール機能のフラグ
+
+| 変数 | 例 | 意味 |
+|---|---|---|
+| `VITE_FEATURE_SCHEDULES` | `1` | `/schedule` ルートとナビゲーションを有効化 |
+| `VITE_FEATURE_SCHEDULES_GRAPH` | `1` | スケジュールのデータ取得を **Demo** → **Microsoft Graph** に切替 |
+| `VITE_SCHEDULES_TZ` | `Asia/Tokyo` | Graphから取得したイベントの表示タイムゾーン（任意） |
+
+> 実行時は `src/config/featureFlags.ts` と `env.ts` の `getAppConfig()` 経由で評価されます。
+
+### ローカルでの有効化例
+
+```bash
+VITE_FEATURE_SCHEDULES=1 \
+VITE_FEATURE_SCHEDULES_GRAPH=1 \
+npm run dev
+```
+
+### Playwright での強制有効化（CI/E2E）
+
+E2E は `localStorage["feature:schedules"]="1"` を事前注入してルートを開通します（環境変数未設定でもOK）。
 
 ### Debugging Misconfiguration
 If misconfigured, `ensureConfig` (in `src/lib/spClient.ts`) throws with a multi-line guidance message and the error boundary (`ConfigErrorBoundary`) renders a remediation panel.

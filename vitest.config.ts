@@ -1,11 +1,11 @@
-import path from 'path';
+import { resolve } from 'node:path';
 import { defineConfig } from 'vitest/config';
 
 export default defineConfig({
   resolve: {
     alias: {
-      '@': path.resolve(__dirname, 'src'),
-      '@fluentui/react': path.resolve(__dirname, 'src/stubs/fluentui-react.tsx'),
+      '@': resolve(__dirname, 'src'),
+      '@fluentui/react': resolve(__dirname, 'src/stubs/fluentui-react.tsx'),
     }
   },
   test: {

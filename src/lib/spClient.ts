@@ -1,11 +1,14 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 // NOTE: Avoid path alias here to keep ts-jest / vitest resolution simple without extra config
 import { useAuth } from '../auth/useAuth';
 import { useMemo } from 'react';
+import { getAppConfig, type EnvRecord } from './env';
 
 export function ensureConfig(envOverride?: { VITE_SP_RESOURCE?: string; VITE_SP_SITE_RELATIVE?: string }) {
-  // Allow tests to pass override values since Vite inlines import.meta.env at build time.
-  const rawResource = (envOverride?.VITE_SP_RESOURCE ?? (import.meta as any).env?.VITE_SP_RESOURCE ?? '').trim();
-  const rawSiteRel  = (envOverride?.VITE_SP_SITE_RELATIVE ?? (import.meta as any).env?.VITE_SP_SITE_RELATIVE ?? '').trim();
+  const overrideRecord = envOverride as EnvRecord | undefined;
+  const config = getAppConfig(overrideRecord);
+  const rawResource = (config.VITE_SP_RESOURCE ?? '').trim();
+  const rawSiteRel = (config.VITE_SP_SITE_RELATIVE ?? '').trim();
   const isPlaceholder = (s: string) => !s || /<yourtenant>|<SiteName>/i.test(s) || s === '__FILL_ME__';
   if (isPlaceholder(rawResource) || isPlaceholder(rawSiteRel)) {
     throw new Error([
@@ -31,7 +34,17 @@ export function ensureConfig(envOverride?: { VITE_SP_RESOURCE?: string; VITE_SP_
  * - baseUrl: 例) https://contoso.sharepoint.com/sites/Audit/_api/web
  */
 export function createSpClient(acquireToken: () => Promise<string | null>, baseUrl: string) {
-  const debugEnabled = import.meta.env.VITE_AUDIT_DEBUG === '1';
+  const config = getAppConfig();
+  const parsePositiveNumber = (raw: string, fallback: number): number => {
+    const numeric = Number(raw);
+    return Number.isFinite(numeric) && numeric > 0 ? numeric : fallback;
+  };
+  const retrySettings = {
+    maxAttempts: parsePositiveNumber(config.VITE_SP_RETRY_MAX, 4),
+    baseDelay: parsePositiveNumber(config.VITE_SP_RETRY_BASE_MS, 400),
+    capDelay: parsePositiveNumber(config.VITE_SP_RETRY_MAX_DELAY_MS, 5000),
+  } as const;
+  const debugEnabled = config.VITE_AUDIT_DEBUG === '1' || config.VITE_AUDIT_DEBUG === 'true';
   function dbg(...a: unknown[]) { if (debugEnabled) console.debug('[spClient]', ...a); }
   const spFetch = async (path: string, init: RequestInit = {}): Promise<Response> => {
     const token1 = await acquireToken();
@@ -57,16 +70,16 @@ export function createSpClient(acquireToken: () => Promise<string | null>, baseU
       if (init.method === 'POST' || init.method === 'PUT' || init.method === 'PATCH' || init.method === 'MERGE') {
         headers.set('Content-Type', 'application/json;odata=nometadata');
       }
-      if (import.meta.env.DEV) console.debug('[SPFetch] URL:', url);
+      if (process.env.NODE_ENV === 'development') console.debug('[SPFetch] URL:', url);
       return fetch(url, { ...init, headers });
     };
 
     let response = await doFetch(token1);
 
     // Retry transient (throttle/server) BEFORE auth refresh, but only if not 401/403.
-    const maxAttempts = Number(import.meta.env.VITE_SP_RETRY_MAX || '4');
-    const baseDelay = Number(import.meta.env.VITE_SP_RETRY_BASE_MS || '400');
-    const capDelay = Number(import.meta.env.VITE_SP_RETRY_MAX_DELAY_MS || '5000');
+    const maxAttempts = retrySettings.maxAttempts;
+    const baseDelay = retrySettings.baseDelay;
+    const capDelay = retrySettings.capDelay;
     const sleep = (ms: number) => new Promise(r => setTimeout(r, ms));
     const computeBackoff = (attempt: number) => {
       const expo = Math.min(capDelay, baseDelay * Math.pow(2, attempt - 1));
@@ -146,9 +159,9 @@ export function createSpClient(acquireToken: () => Promise<string | null>, baseU
   // $batch 投稿ヘルパー (429/503/504 リトライ対応)
   const postBatch = async (batchBody: string, boundary: string): Promise<Response> => {
     const apiRoot = baseUrl.replace(/\/web\/?$/, '');
-    const maxAttempts = Number(import.meta.env.VITE_SP_RETRY_MAX || '4');
-    const baseDelay = Number(import.meta.env.VITE_SP_RETRY_BASE_MS || '400');
-    const capDelay = Number(import.meta.env.VITE_SP_RETRY_MAX_DELAY_MS || '5000');
+    const maxAttempts = retrySettings.maxAttempts;
+    const baseDelay = retrySettings.baseDelay;
+    const capDelay = retrySettings.capDelay;
     const sleep = (ms: number) => new Promise(r => setTimeout(r, ms));
     const computeBackoff = (attempt: number) => {
       const expo = Math.min(capDelay, baseDelay * Math.pow(2, attempt - 1));
@@ -156,7 +169,8 @@ export function createSpClient(acquireToken: () => Promise<string | null>, baseU
       return Math.round(jitter);
     };
     let attempt = 1;
-    while (true) {
+  // eslint-disable-next-line no-constant-condition
+  while (true) {
       const token = await acquireToken();
       if (!token) throw new Error('SharePoint のアクセストークン取得に失敗しました。');
       const headers = new Headers({

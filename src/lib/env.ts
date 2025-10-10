@@ -3,8 +3,32 @@ import { getRuntimeEnv } from '../env';
 type Primitive = string | number | boolean | undefined | null;
 export type EnvRecord = Record<string, Primitive>;
 
+export type AppConfig = {
+  VITE_SP_RESOURCE: string;
+  VITE_SP_SITE_RELATIVE: string;
+  VITE_SP_RETRY_MAX: string;
+  VITE_SP_RETRY_BASE_MS: string;
+  VITE_SP_RETRY_MAX_DELAY_MS: string;
+  VITE_MSAL_CLIENT_ID: string;
+  VITE_MSAL_TENANT_ID: string;
+  VITE_MSAL_TOKEN_REFRESH_MIN: string;
+  VITE_AUDIT_DEBUG: string;
+  VITE_AUDIT_BATCH_SIZE: string;
+  VITE_AUDIT_RETRY_MAX: string;
+  VITE_AUDIT_RETRY_BASE: string;
+  schedulesCacheTtlSec: number;
+  graphRetryMax: number;
+  graphRetryBaseMs: number;
+  graphRetryCapMs: number;
+};
+
 const TRUTHY = new Set(['1', 'true', 'yes', 'y', 'on', 'enabled']);
 const FALSY = new Set(['0', 'false', 'no', 'n', 'off', 'disabled']);
+
+const parseNumber = (value: string, fallback: number): number => {
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : fallback;
+};
 
 const normalizeString = (value: Primitive): string => {
   if (value === undefined || value === null) return '';
@@ -25,6 +49,7 @@ const coerceBoolean = (value: Primitive, fallback = false): boolean => {
   return fallback;
 };
 
+
 const getEnvValue = (key: string, envOverride?: EnvRecord): Primitive => {
   if (envOverride && key in envOverride) {
     return envOverride[key];
@@ -43,6 +68,43 @@ export const readEnv = (key: string, fallback = '', envOverride?: EnvRecord): st
   const raw = getEnvValue(key, envOverride);
   const normalized = normalizeString(raw);
   return normalized === '' ? fallback : normalized;
+};
+
+let appConfigCache: AppConfig | null = null;
+
+export const getAppConfig = (envOverride?: EnvRecord): AppConfig => {
+  if (!envOverride && appConfigCache) {
+    return appConfigCache;
+  }
+
+  const cfg: AppConfig = {
+    VITE_SP_RESOURCE: readEnv('VITE_SP_RESOURCE', '', envOverride),
+    VITE_SP_SITE_RELATIVE: readEnv('VITE_SP_SITE_RELATIVE', '', envOverride),
+    VITE_SP_RETRY_MAX: readEnv('VITE_SP_RETRY_MAX', '4', envOverride),
+    VITE_SP_RETRY_BASE_MS: readEnv('VITE_SP_RETRY_BASE_MS', '400', envOverride),
+    VITE_SP_RETRY_MAX_DELAY_MS: readEnv('VITE_SP_RETRY_MAX_DELAY_MS', '5000', envOverride),
+    VITE_MSAL_CLIENT_ID: readEnv('VITE_MSAL_CLIENT_ID', '', envOverride),
+    VITE_MSAL_TENANT_ID: readEnv('VITE_MSAL_TENANT_ID', '', envOverride),
+    VITE_MSAL_TOKEN_REFRESH_MIN: readEnv('VITE_MSAL_TOKEN_REFRESH_MIN', '300', envOverride),
+    VITE_AUDIT_DEBUG: readEnv('VITE_AUDIT_DEBUG', '', envOverride),
+    VITE_AUDIT_BATCH_SIZE: readEnv('VITE_AUDIT_BATCH_SIZE', '', envOverride),
+    VITE_AUDIT_RETRY_MAX: readEnv('VITE_AUDIT_RETRY_MAX', '', envOverride),
+    VITE_AUDIT_RETRY_BASE: readEnv('VITE_AUDIT_RETRY_BASE', '', envOverride),
+    schedulesCacheTtlSec: parseNumber(readEnv('VITE_SCHEDULES_CACHE_TTL', '60', envOverride), 60),
+    graphRetryMax: parseNumber(readEnv('VITE_GRAPH_RETRY_MAX', '2', envOverride), 2),
+    graphRetryBaseMs: parseNumber(readEnv('VITE_GRAPH_RETRY_BASE_MS', '300', envOverride), 300),
+    graphRetryCapMs: parseNumber(readEnv('VITE_GRAPH_RETRY_CAP_MS', '2000', envOverride), 2000),
+  };
+
+  if (!envOverride) {
+    appConfigCache = cfg;
+  }
+
+  return cfg;
+};
+
+export const __resetAppConfigForTests = (): void => {
+  appConfigCache = null;
 };
 
 export const readOptionalEnv = (key: string, envOverride?: EnvRecord): string | undefined => {

@@ -19,7 +19,7 @@ type UpdateContext<TItem> = {
   listName: string;
 };
 
-type ListStubConfig<TItem = Record<string, unknown>> = {
+type ListStubConfig<TItem extends Record<string, unknown> = Record<string, unknown>> = {
   name: string;
   aliases?: readonly string[];
   items?: TItem[];
@@ -37,7 +37,7 @@ type SetupSharePointStubsOptions = {
   debug?: boolean;
 };
 
-type ListState<TItem = Record<string, unknown>> = {
+type ListState<TItem extends Record<string, unknown> = Record<string, unknown>> = {
   config: ListStubConfig<TItem>;
   items: TItem[];
   nextId: number;
@@ -64,6 +64,21 @@ const computeNextId = (items: Array<Record<string, unknown>>): number => {
     }
   }
   return max + 1;
+};
+
+const cloneRecord = <T extends Record<string, unknown>>(value: T): T => {
+  if (typeof structuredClone === 'function') {
+    try {
+      return structuredClone(value);
+    } catch {
+      // fall back to JSON cloning below
+    }
+  }
+  try {
+    return JSON.parse(JSON.stringify(value)) as T;
+  } catch {
+    return { ...value } as T;
+  }
 };
 
 const toJsonBody = (body: unknown): string => {
@@ -137,7 +152,7 @@ const applyFilter = (items: Array<Record<string, unknown>>, filterRaw: string | 
       const fieldName = field;
       const valueText = valueRaw.trim();
       if (op === 'eq') {
-        const stringMatch = valueText.match(/^'(.*)'$/s);
+  const stringMatch = valueText.match(/^'([\s\S]*)'$/);
         if (stringMatch) {
           const expected = stringMatch[1]?.replace(/''/g, "'") ?? '';
           result = result.filter((item) => String(item[fieldName] ?? '').toLowerCase() === expected.toLowerCase());
@@ -192,13 +207,13 @@ const matchListPath = (pathname: string) => {
 
 const prepareItemsResponse = (state: ListState, query: URLSearchParams): Record<string, unknown>[] => {
   const filtered = applyFilter(state.items as Array<Record<string, unknown>>, query.get('$filter'));
-  const sorted = state.config.sort ? state.config.sort(filtered.slice()) : filtered;
+  const sorted = state.config.sort ? state.config.sort(filtered.slice() as Array<Record<string, unknown>>) : filtered;
   const topRaw = query.get('$top');
   const top = topRaw ? Number(topRaw) : Number.NaN;
   if (Number.isFinite(top) && top > 0) {
-    return sorted.slice(0, top);
+    return sorted.slice(0, top).map((item) => cloneRecord(item));
   }
-  return sorted;
+  return sorted.map((item) => cloneRecord(item));
 };
 
 export async function setupSharePointStubs(page: Page, options: SetupSharePointStubsOptions = {}): Promise<void> {
@@ -206,10 +221,9 @@ export async function setupSharePointStubs(page: Page, options: SetupSharePointS
   const debug = options.debug ?? false;
 
   for (const config of options.lists ?? []) {
-    const baseItems = Array.isArray(config.items) ? config.items : [];
-    const items = baseItems;
-    const nextId = Number.isFinite(config.nextId ?? Number.NaN) ? Number(config.nextId) : computeNextId(items as Array<Record<string, unknown>>);
-    const state: ListState = { config, items: items as Array<Record<string, unknown>>, nextId };
+  const baseItems = Array.isArray(config.items) ? config.items.map((item) => cloneRecord(item)) : [];
+  const nextId = Number.isFinite(config.nextId ?? Number.NaN) ? Number(config.nextId) : computeNextId(baseItems as Array<Record<string, unknown>>);
+  const state: ListState = { config, items: baseItems as Array<Record<string, unknown>>, nextId };
     nameMap.set(normalizeName(config.name), state);
     for (const alias of config.aliases ?? []) {
       nameMap.set(normalizeName(alias), state);
@@ -269,13 +283,13 @@ export async function setupSharePointStubs(page: Page, options: SetupSharePointS
           await fulfill(route, { status: 400, body: { error: 'Invalid id' } });
           return;
         }
-  const index = state.items.findIndex((item) => Number(item['Id']) === id);
+        const index = state.items.findIndex((item) => Number(item['Id']) === id);
         if (index === -1) {
           await fulfill(route, { status: 404, body: {} });
           return;
         }
         if (method === 'GET') {
-          await fulfill(route, { status: 200, body: state.items[index] });
+          await fulfill(route, { status: 200, body: cloneRecord(state.items[index] as Record<string, unknown>) });
           return;
         }
         if (method === 'PATCH' || method === 'MERGE') {
@@ -284,7 +298,7 @@ export async function setupSharePointStubs(page: Page, options: SetupSharePointS
           const nextValue = state.config.onUpdate
             ? state.config.onUpdate(id, payload, { request, previous, listName: state.config.name })
             : { ...previous, ...payload };
-          state.items[index] = nextValue;
+          state.items[index] = cloneRecord(nextValue as Record<string, unknown>);
           await fulfill(route, { status: 204, body: '' });
           return;
         }
@@ -298,10 +312,10 @@ export async function setupSharePointStubs(page: Page, options: SetupSharePointS
       if (/\/items\/?$/i.test(remainder)) {
         if (method === 'GET') {
           const items = prepareItemsResponse(state, url.searchParams);
-            if (debug) {
-              console.log(`[stub] GET ${url.href} -> ${items.length} item(s)`);
-            }
-            await fulfill(route, { status: 200, body: { value: items } });
+          if (debug) {
+            console.log(`[stub] GET ${url.href} -> ${items.length} item(s)`);
+          }
+          await fulfill(route, { status: 200, body: { value: items } });
           return;
         }
         if (method === 'POST') {
@@ -314,18 +328,19 @@ export async function setupSharePointStubs(page: Page, options: SetupSharePointS
           const created = state.config.onCreate
             ? state.config.onCreate(payload, { takeNextId, listName: state.config.name, request, items: state.items })
             : { Id: takeNextId(), ...(normalizeBody(payload)) };
-          if (typeof (created as Record<string, unknown>)['Id'] !== 'number') {
-            (created as Record<string, unknown>)['Id'] = takeNextId();
+          const createdRecord = cloneRecord(normalizeBody(created));
+          if (typeof createdRecord['Id'] !== 'number') {
+            createdRecord['Id'] = takeNextId();
           }
           if (state.config.insertPosition === 'start') {
-            state.items.unshift(created as Record<string, unknown>);
+            state.items.unshift(cloneRecord(createdRecord));
           } else {
-            state.items.push(created as Record<string, unknown>);
+            state.items.push(cloneRecord(createdRecord));
           }
           if (debug) {
-            console.log(`[stub] POST ${url.href} -> ${JSON.stringify(created)}`);
+            console.log(`[stub] POST ${url.href} -> ${JSON.stringify(createdRecord)}`);
           }
-          await fulfill(route, { status: 201, body: created });
+          await fulfill(route, { status: 201, body: createdRecord });
           return;
         }
       }

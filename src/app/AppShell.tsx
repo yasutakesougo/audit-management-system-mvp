@@ -9,9 +9,11 @@ import Container from '@mui/material/Container';
 import HistoryIcon from '@mui/icons-material/History';
 import { useSP } from '../lib/spClient';
 import { Link as RouterLink, useLocation } from 'react-router-dom';
+import { useFeatureFlags } from '@/config/featureFlags';
 
 const AppShell: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const location = useLocation();
+  const { schedules: schedulesEnabled } = useFeatureFlags();
   return (
     <>
       <AppBar position="static" color="primary" enableColorOnDark>
@@ -30,6 +32,17 @@ const AppShell: React.FC<{ children: React.ReactNode }> = ({ children }) => {
           <Button component={RouterLink} to="/" variant={location.pathname === '/' ? 'contained' : 'outlined'} size="small">日次記録</Button>
           <Button component={RouterLink} to="/checklist" variant={location.pathname.startsWith('/checklist') ? 'contained' : 'outlined'} size="small">自己点検</Button>
           <Button component={RouterLink} to="/audit" variant={location.pathname.startsWith('/audit') ? 'contained' : 'outlined'} size="small">監査ログ</Button>
+          {schedulesEnabled ? (
+            <Button
+              component={RouterLink}
+              to="/schedule"
+              variant={location.pathname.startsWith('/schedule') ? 'contained' : 'outlined'}
+              size="small"
+              data-testid="nav-schedule"
+            >
+              スケジュール
+            </Button>
+          ) : null}
         </Stack>
         {children}
       </Container>

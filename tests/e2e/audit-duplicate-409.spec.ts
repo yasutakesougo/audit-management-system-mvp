@@ -1,33 +1,13 @@
 import { test, expect } from '@playwright/test';
 
-// Revised test: assert functional behavior (resend excludes duplicates) rather than strict UI phrasing.
+type WindowHooks = Window & {
+  __TEST_BATCH_DONE__?: () => void;
+  __BATCH_DONE_FLAG__?: number;
+  __E2E_FORCE_BATCH__?: (chunk: unknown[]) => { body: string };
+  __E2E_INVOKE_SYNC_BATCH__?: () => Promise<void> | void;
+};
 
-function buildMultipartBatch(parts: { id: number; status: number }[]) {
-  const boundary = 'batch_x';
-  const changeset = 'changeset_x';
-  const segs: string[] = [];
-  for (const p of parts) {
-    segs.push(`--${changeset}`);
-    segs.push('Content-Type: application/http');
-    segs.push('Content-Transfer-Encoding: binary');
-    segs.push(`Content-ID: ${p.id}`);
-    segs.push('');
-    segs.push(`HTTP/1.1 ${p.status} ${p.status === 201 ? 'Created' : p.status === 409 ? 'Conflict' : p.status === 500 ? 'Internal Server Error' : 'Other'}`);
-    segs.push('Content-Type: application/json;odata=nometadata');
-    segs.push('');
-    segs.push(`{"d":{"Id":${p.id}}}`);
-  }
-  segs.push(`--${changeset}--`);
-  const body = [
-    `--${boundary}`,
-    `Content-Type: multipart/mixed; boundary=${changeset}`,
-    '',
-    ...segs,
-    `--${boundary}--`,
-    ''
-  ].join('\r\n');
-  return { body, boundary };
-}
+// Revised test: assert functional behavior (resend excludes duplicates) rather than strict UI phrasing.
 
 test.skip('Audit duplicate (409) handling — retries only failures', async ({ page }) => {
 
@@ -45,10 +25,13 @@ test.skip('Audit duplicate (409) handling — retries only failures', async ({ p
       after: { v: i }
     }));
     window.localStorage.setItem(key, JSON.stringify(logs));
-    (window as any).__TEST_BATCH_DONE__ = () => { (window as any).__BATCH_DONE_FLAG__ = (window as any).__BATCH_DONE_FLAG__ + 1 || 1; };
+    const hookedWindow = window as WindowHooks;
+    hookedWindow.__TEST_BATCH_DONE__ = () => {
+      hookedWindow.__BATCH_DONE_FLAG__ = (hookedWindow.__BATCH_DONE_FLAG__ ?? 0) + 1;
+    };
     // Force deterministic batch responses (first + resend)
     let first = true;
-    (window as any).__E2E_FORCE_BATCH__ = (chunk: any[]) => {
+    hookedWindow.__E2E_FORCE_BATCH__ = (_chunk: unknown[]) => {
       if (first) {
         first = false;
         // 201,409,201,409,201,500
@@ -63,11 +46,19 @@ test.skip('Audit duplicate (409) handling — retries only failures', async ({ p
   await page.goto('/audit');
 
   // Invoke synthetic batch directly
-  await page.evaluate(async () => { await (window as any).__E2E_INVOKE_SYNC_BATCH__?.(); });
+  await page.evaluate(async () => {
+    const hookedWindow = window as WindowHooks;
+    await hookedWindow.__E2E_INVOKE_SYNC_BATCH__?.();
+  });
 
   const metrics = page.getByTestId('audit-metrics');
   await expect(metrics).toBeVisible();
-  await expect.poll(async () => await page.evaluate(() => (window as any).__BATCH_DONE_FLAG__ || 0)).toBeGreaterThan(0);
+  await expect.poll(async () => {
+    return await page.evaluate(() => {
+      const hookedWindow = window as WindowHooks;
+      return hookedWindow.__BATCH_DONE_FLAG__ ?? 0;
+    });
+  }).toBeGreaterThan(0);
   await expect.poll(async () => await metrics.getAttribute('data-success')).toBe('5');
   // First batch: statuses 201,409,201,409,201,500
   // success (includes duplicates) = 5 (three 201 + two 409) ; duplicates = 2; new = 3; failed = 1; total = 6
@@ -79,7 +70,12 @@ test.skip('Audit duplicate (409) handling — retries only failures', async ({ p
   // Click resend failed-only (uses hook again with synthetic second response)
   await page.getByRole('button', { name: '失敗のみ再送' }).click();
   // After resend: last failed item success => success 6, duplicates remain 2, new becomes 4, failed 0
-  await expect.poll(async () => await page.evaluate(() => (window as any).__BATCH_DONE_FLAG__ || 0)).toBeGreaterThan(1);
+  await expect.poll(async () => {
+    return await page.evaluate(() => {
+      const hookedWindow = window as WindowHooks;
+      return hookedWindow.__BATCH_DONE_FLAG__ ?? 0;
+    });
+  }).toBeGreaterThan(1);
   await expect.poll(async () => await metrics.getAttribute('data-success')).toBe('6');
   await expect(metrics).toHaveAttribute('data-duplicates', '2');
   await expect(metrics).toHaveAttribute('data-new', '4');

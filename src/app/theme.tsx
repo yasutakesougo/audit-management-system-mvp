@@ -31,3 +31,12 @@ export const ThemeRoot: React.FC<{ children: React.ReactNode }> = ({ children })
 // Simple hook for convenience (optional)
 export const useColorMode = () => React.useContext(ColorModeContext);
 // (end of file)
+
+export const uiTokens = {
+  containerMaxWidth: 1120,
+  spacingYSection: 16,
+  heading: {
+    h1: 28,
+    h2: 22,
+  },
+} as const;

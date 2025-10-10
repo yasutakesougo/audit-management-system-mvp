@@ -11,17 +11,28 @@
     "skipLibCheck": true,
     "resolveJsonModule": true,
     "allowSyntheticDefaultImports": true,
-  "types": ["vite/client", "node"],
+  "types": ["vite/client", "node", "vitest/globals", "@testing-library/jest-dom"],
     "baseUrl": ".",
     "paths": {
       "@/*": ["src/*"],
       "@/app/*": ["src/app/*"],
       "@/auth/*": ["src/auth/*"],
       "@/lib/*": ["src/lib/*"],
-      "@/features/*": ["src/features/*"],
-      "@/ui/*": ["src/ui/*"]
+  "@/features/*": ["src/features/*"],
+  "@/config/*": ["src/config/*"],
+      "@/ui/*": ["src/ui/*"],
+      "@/adapters/*": ["src/adapters/*"]
     }
   },
-  "include": ["src", "tests"],
-  "exclude": ["node_modules", "dist", "coverage", "tests/e2e"]
+  "include": ["src", "tests", "types"],
+  "exclude": [
+    "node_modules",
+    "dist",
+    "coverage",
+    ".vite",
+    ".vitest",
+    "test-results",
+    "public",
+    "tests/e2e"
+  ]
 }

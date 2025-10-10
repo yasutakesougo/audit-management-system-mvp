@@ -1,0 +1,69 @@
+name: CI Preflight
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    types: [ opened, synchronize, reopened ]
+
+concurrency:
+  group: ci-preflight-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  preflight:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    strategy:
+      fail-fast: false
+      matrix:
+        graph: [ "0", "1" ]
+    env:
+      CI: true
+      VITE_FEATURE_SCHEDULES_GRAPH: ${{ matrix.graph }}
+      VITE_SCHEDULES_TZ: "Asia/Tokyo"
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - run: npm ci
+
+      - name: Preflight (typecheck, lint, unit, build)
+        run: npm run preflight
+
+  e2e:
+    name: E2E (Playwright, opt-in)
+    runs-on: ubuntu-latest
+    needs: preflight
+    timeout-minutes: 45
+    if: contains(github.event.pull_request.labels.*.name, 'e2e')
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - run: npm ci
+
+      - run: npx playwright install --with-deps
+        name: Install Playwright browsers
+
+      - run: npm run test:e2e -- --reporter=line
+        name: Playwright smoke
+
+      - name: Upload Playwright artifacts
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-artifacts
+          path: |
+            test-results/**
+            playwright-report/**

@@ -1,10 +1,11 @@
 import { Page } from '@playwright/test';
-import axe from 'axe-core';
+import * as axe from 'axe-core';
+import type { ElementContext, RunOnly, RunOptions } from 'axe-core';
 
 type RunA11ySmokeOptions = {
   includeBestPractices?: boolean;
   selectors?: string | string[];
-  runOptions?: axe.RunOptions;
+  runOptions?: RunOptions;
 };
 
 type AxeViolationSummary = {
@@ -49,7 +50,7 @@ export async function runA11ySmoke(page: Page, label: string, options: RunA11ySm
       return null;
     }
 
-    const mergedOptions = { ...(runOptions ?? {}) } as axe.RunOptions & { runOnly?: unknown };
+  const mergedOptions = { ...(runOptions ?? {}) } as RunOptions & { runOnly?: unknown };
     const runOnly = mergedOptions.runOnly;
     if (!runOnly) {
       mergedOptions.runOnly = {
@@ -57,16 +58,16 @@ export async function runA11ySmoke(page: Page, label: string, options: RunA11ySm
         values: includeBestPractices
           ? ['wcag2a', 'wcag2aa', 'wcag21aa', 'best-practice']
           : ['wcag2a', 'wcag2aa', 'wcag21aa'],
-      } as axe.RunOnly;
+      } as RunOnly;
     } else if (includeBestPractices) {
       if (typeof runOnly === 'string') {
         mergedOptions.runOnly = {
           type: 'tag',
           values: [runOnly, 'best-practice'],
-        } as axe.RunOnly;
+        } as RunOnly;
       } else if (Array.isArray(runOnly)) {
         const values = Array.from(new Set([...runOnly, 'best-practice']));
-        mergedOptions.runOnly = { type: 'tag', values } as axe.RunOnly;
+        mergedOptions.runOnly = { type: 'tag', values } as RunOnly;
       } else if (runOnly && typeof runOnly === 'object') {
         const record = runOnly as { values?: string | string[] };
         if (record.values !== undefined) {
@@ -74,18 +75,18 @@ export async function runA11ySmoke(page: Page, label: string, options: RunA11ySm
           const list = Array.isArray(raw) ? raw : [raw];
           const baseValues = list.filter((value): value is string => typeof value === 'string' && value.trim().length > 0);
           const values = Array.from(new Set([...baseValues, 'best-practice']));
-          mergedOptions.runOnly = { type: 'tag', values } as axe.RunOnly;
+          mergedOptions.runOnly = { type: 'tag', values } as RunOnly;
         }
       }
     }
 
-    const context: axe.ElementContext | Document = selectors.length === 0
+    const context: ElementContext = selectors.length === 0
       ? document
       : selectors.length === 1
         ? selectors[0]
-        : selectors;
+        : { include: selectors.map((selector) => [selector]) };
 
-    const outcome = await axeRuntime.run(context as axe.ElementContext, mergedOptions);
+    const outcome = await axeRuntime.run(context as ElementContext, mergedOptions);
 
     const rawViolations = Array.isArray((outcome as { violations?: unknown[] }).violations)
       ? (outcome as { violations: unknown[] }).violations

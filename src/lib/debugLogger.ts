@@ -1,4 +1,8 @@
-const enabled = import.meta.env.VITE_AUDIT_DEBUG === '1' || import.meta.env.VITE_AUDIT_DEBUG === 'true';
+/* eslint-disable @typescript-eslint/no-explicit-any */
+import { getAppConfig } from './env';
+
+const debugConfig = getAppConfig();
+const enabled = debugConfig.VITE_AUDIT_DEBUG === '1' || debugConfig.VITE_AUDIT_DEBUG === 'true';
 
 type Level = 'debug' | 'info' | 'warn' | 'error';
 
