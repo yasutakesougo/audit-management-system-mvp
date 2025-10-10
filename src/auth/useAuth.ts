@@ -1,5 +1,6 @@
 import { useMsal } from '@azure/msal-react';
-import { getAppConfig } from '../lib/env';
+import { getAppConfig, isE2eMsalMockEnabled } from '../lib/env';
+import { createE2EMsalAccount, persistMsalToken } from '../lib/msal';
 import { SP_RESOURCE } from './msalConfig';
 
 // Simple global metrics object (not exposed on window unless debug)
@@ -16,6 +17,24 @@ function debugLog(...args: unknown[]) {
 }
 
 export const useAuth = () => {
+  if (isE2eMsalMockEnabled()) {
+    const account = createE2EMsalAccount();
+    const acquireToken = async (resource: string = SP_RESOURCE): Promise<string> => {
+      const scopeBase = resource.replace(/\/+$/, '');
+      const token = `mock-token:${scopeBase}/.default`;
+      persistMsalToken(token);
+      return token;
+    };
+
+    return {
+      isAuthenticated: true,
+      account,
+      signIn: () => Promise.resolve(),
+      signOut: () => Promise.resolve(),
+      acquireToken,
+    };
+  }
+
   const { instance, accounts } = useMsal();
   const account = accounts[0];
 
