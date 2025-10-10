@@ -14,3 +14,13 @@ cert.pem
 cert.pfx
 cert.pfx.b64
 *.cer
+.lighthouseci/
+lhci-results.json
+reports/
+logs/
+.vite.pid
+.vitest.pid
+public/env.runtime.json
+.env.local
+
+.env
