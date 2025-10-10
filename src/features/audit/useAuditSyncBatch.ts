@@ -223,7 +223,7 @@ export const useAuditSyncBatch = () => {
 };
 
   // DEV/E2E helper to inject a one-off sync call without going through component button (optional)
-  if (import.meta.env.DEV && typeof window !== 'undefined') {
+  if (process.env.NODE_ENV !== 'production' && typeof window !== 'undefined') {
     (window as any).__E2E_INVOKE_SYNC_BATCH__ = async (size?: number) => {
       try {
         const mod = await import('./useAuditSyncBatch');
