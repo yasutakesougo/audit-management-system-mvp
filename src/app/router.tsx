@@ -6,6 +6,7 @@ import ChecklistPage from '../features/compliance-checklist/ChecklistPage';
 import AuditPanel from '../features/audit/AuditPanel';
 import { UsersPanel } from '@/features/users';
 import ProtectedRoute from '@/app/ProtectedRoute';
+import { routerFutureFlags } from './routerFuture';
 
 const WeekPage = React.lazy(() => import('@/features/schedule/WeekPage'));
 const MonthPage = React.lazy(() => import('@/features/schedule/views/MonthView'));
@@ -127,12 +128,9 @@ const routes: RouteObject[] = [
 ];
 
 export const router = createBrowserRouter(routes, {
-  future: (
-    {
-      v7_startTransition: true,
-      v7_relativeSplatPath: true,
-    } as Record<string, boolean>
-  ),
+  future: routerFutureFlags,
 });
 
-export default router;
+const RouterPlaceholder: React.FC = () => null;
+
+export default RouterPlaceholder;

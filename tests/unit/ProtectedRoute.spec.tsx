@@ -4,6 +4,7 @@ import { MemoryRouter, Route, Routes, useLocation } from 'react-router-dom';
 import { afterEach, describe, expect, it } from 'vitest';
 import ProtectedRoute from '@/app/ProtectedRoute';
 import { FeatureFlagsProvider, type FeatureFlagSnapshot } from '@/config/featureFlags';
+import { routerFutureFlags } from '@/app/routerFuture';
 
 const defaultFlags: FeatureFlagSnapshot = {
   schedules: true,
@@ -19,7 +20,7 @@ const LocationProbe: React.FC<{ testId: string }> = ({ testId }) => {
 const renderWithFlags = (flags: FeatureFlagSnapshot) =>
   render(
     <FeatureFlagsProvider value={flags}>
-      <MemoryRouter initialEntries={['/guarded']}>
+  <MemoryRouter initialEntries={['/guarded']} future={routerFutureFlags}>
         <Routes>
           <Route
             path="/guarded"

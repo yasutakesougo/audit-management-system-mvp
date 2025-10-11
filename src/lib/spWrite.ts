@@ -42,11 +42,14 @@ async function parseJsonSafe(res: Response): Promise<unknown> {
 
 const buildErrorResult = (response: Response | undefined, message?: string): SpWriteResult<never> => {
   const status = response?.status;
-  const error: SpWriteError = Object.assign(new Error(message ?? (status ? `SharePoint write failed (${status})` : 'SharePoint write failed')), {
-    status,
-    code: status ? String(status) : undefined,
-    response,
-  });
+  const error: SpWriteError = Object.assign(
+    new Error(message ?? (status ? `SharePoint write failed (${status})` : 'SharePoint write failed')),
+    {
+      status,
+      code: status ? String(status) : undefined,
+      response,
+    },
+  );
   return {
     ok: false,
     status,

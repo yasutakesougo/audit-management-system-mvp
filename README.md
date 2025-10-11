@@ -14,6 +14,10 @@
 
 本プロジェクトは、React, TypeScript, Vite, MUIを使用し、SharePoint OnlineをバックエンドとするSPAアプリケーションのMVP実装です。
 
+## 開発時のよくある落とし穴
+- `import.meta.env` を直接参照すると lint / pre-push の制御に阻まれるので、必ず `src/lib/env.ts` のヘルパー経由で値を取得する
+- VS Code の Problems が急増したときは `src/lib/env.ts` や `.env` 差分をまず確認すると、型/エラーの原因を素早く特定できる
+
 ## Tech Stack
 - React 18 + TypeScript + Vite
 - MSAL (@azure/msal-browser, @azure/msal-react)
@@ -101,7 +105,11 @@ VITE_SP_SITE_RELATIVE=/sites/<SiteName>
 
 ### Reading environment config
 
-- **App/runtime code:** read configuration via `getAppConfig()` from `src/config/appConfig.ts`.
+- **App/runtime code:** read configuration via `getAppConfig()` (exported from `src/lib/env.ts`).
+  - 新しい環境変数を追加するときは、以下の順序で反映します。
+    1. `src/lib/env.ts` の `AppConfig` 型と `getAppConfig()` のデフォルト値を更新する
+    2. 補助リーダーが必要なら同ファイルに `read*` 系ヘルパーを追加する
+    3. `.env.example` と README の表にプレースホルダー/説明を追記する
 - **Config layer / adapters only:** low-level reads belong in `src/config/**` and should use the helpers exported from `env.ts`.
 - **Never** call `import.meta.env` directly in feature or lib code—the linter and pre-push/CI guard will fail the build.
 
@@ -125,6 +133,29 @@ VITE_SP_SITE_RELATIVE=/sites/<SiteName>
 | VITE_GRAPH_SCOPES *(optional)* | Graph delegated scopes | — | useSP must support Graph path |
 
 Placeholders recognized as invalid: `<yourtenant>`, `<SiteName>`, `__FILL_ME__`.
+
+## スケジュール機能のフラグ
+
+| 変数 | 例 | 意味 |
+|---|---|---|
+| `VITE_FEATURE_SCHEDULES` | `1` | `/schedule` ルートとナビゲーションを有効化 |
+| `VITE_FEATURE_SCHEDULES_GRAPH` | `1` | スケジュールのデータ取得を **Demo** → **Microsoft Graph** に切替 |
+| `VITE_SCHEDULES_TZ` | `Asia/Tokyo` | Graphから取得したイベントの表示タイムゾーン（任意） |
+| `VITE_SCHEDULES_WEEK_START` | `1` | 週の起点（0=Sun ... 6=Sat、規定は月曜=1） |
+
+> 実行時は `src/config/featureFlags.ts` と `env.ts` の `getAppConfig()` 経由で評価されます。
+
+### ローカルでの有効化例
+
+```bash
+VITE_FEATURE_SCHEDULES=1 \
+VITE_FEATURE_SCHEDULES_GRAPH=1 \
+npm run dev
+```
+
+### Playwright での強制有効化（CI/E2E）
+
+E2E は `localStorage["feature:schedules"]="1"` を事前注入してルートを開通します（環境変数未設定でもOK）。
 
 ### Debugging Misconfiguration
 If misconfigured, `ensureConfig` (in `src/lib/spClient.ts`) throws with a multi-line guidance message and the error boundary (`ConfigErrorBoundary`) renders a remediation panel.
@@ -155,6 +186,20 @@ if (import.meta.env.DEV) {
 - `VITE_SP_MAX_CONCURRENCY` — Max simultaneous SharePoint requests (default 6).
 - `VITE_SP_NETWORK_RETRIES` — Network-layer retry attempts for transport failures (default 3).
 - `VITE_SP_RETRY_MAX`, `VITE_SP_RETRY_BASE_MS`, `VITE_SP_RETRY_MAX_DELAY_MS` — 429/503/504 backoff tuning knobs shared by GET and $batch flows.
+
+## タイムゾーン方針（Schedules）
+
+**原則:** `YYYY-MM-DD` の文字列を基軸に「壁時計（ローカル 00:00 / 23:59:59.999）」を IANA タイムゾーンで UTC Instant へ確定させます。フローは **日付文字列 → 壁時計 in TZ → UTC** の順に統一しています。
+
+**禁止事項:** `Date#setHours` など、ローカルタイムゾーンに依存する丸めは使用しません。DST・地域差で破綻するため、常に文字列 → `zonedTimeToUtc`（`date-fns-tz` では `fromZonedTime`）の経路を用いて確定します。
+
+**設定:**
+- `VITE_SCHEDULES_TZ` — 表示タイムゾーン。未設定または不正な場合は `Intl.DateTimeFormat().resolvedOptions().timeZone`、それも不可なら `Asia/Tokyo` へフォールバックします（警告ログ付き）。
+- `VITE_SCHEDULES_WEEK_START` — 週の開始曜日（0=日曜〜6=土曜）。デフォルトは 1（=月曜）。
+
+**テスト:** `tests/unit/schedule` 配下で JST / DST 地域の月末・年末・閏日・夏時間切替をカバーし、CI preflight で常時実行されます。
+
+テストでタイムゾーンを固定する場合は `tests/unit/schedule/helpers/loadDateutils.ts` の `loadDateutilsWithTz()` を利用し、返される `restore()` を各テスト後に呼び出して `Intl.DateTimeFormat` / `import.meta.env` の差し替え状態を元に戻してください。
 
 ### Stale-While-Revalidate & Scoped Bust (opt-in)
 - Flip `VITE_SP_GET_SWR=1` to opt into background refresh with SharePoint ETag reuse. Hard TTL is controlled by `VITE_SP_GET_SWR_TTL_MS`; the additional grace window comes from `VITE_SP_GET_SWR_WINDOW_MS`.

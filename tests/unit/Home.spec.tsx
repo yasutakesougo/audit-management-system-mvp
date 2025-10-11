@@ -5,6 +5,7 @@ import { ThemeProvider, createTheme } from '@mui/material/styles';
 import { describe, expect, it, vi, beforeEach } from 'vitest';
 import Home from '@/app/Home';
 import { FeatureFlagsProvider, type FeatureFlagSnapshot } from '@/config/featureFlags';
+import { routerFutureFlags } from '@/app/routerFuture';
 
 const isDemoModeEnabledMock = vi.fn((): boolean => false);
 const featureFlagsState = vi.hoisted<FeatureFlagSnapshot>(() => ({
@@ -25,7 +26,7 @@ const renderHome = () =>
   render(
     <FeatureFlagsProvider value={{ ...featureFlagsState }}>
       <ThemeProvider theme={createTheme()}>
-        <MemoryRouter>
+        <MemoryRouter future={routerFutureFlags}>
           <Home />
         </MemoryRouter>
       </ThemeProvider>

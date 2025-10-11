@@ -27,9 +27,8 @@
 		"lint": "eslint --ext .ts,.tsx src --max-warnings=0",
 		"lint:dev": "eslint --ext .ts,.tsx src --max-warnings=999",
 		"preci": "npm run lint && npm run typecheck && npm run lint:cookies",
-		"preflight": "node scripts/preflight.cjs",
+		"preflight": "bash scripts/preflight.sh",
 		"validate:project-auto": "bash scripts/validate-project-auto.sh",
-
 		"prepare": "husky install",
 		"health": "npm run typecheck || npm run --if-present build:types; npm run lint:dev; npx vitest run",
 		"fix:a11y-dates": "node scripts/fix-a11y-dates.mjs",
@@ -51,6 +50,7 @@
 		"@mui/icons-material": "^7.3.2",
 		"@mui/material": "^7.3.2",
 		"date-fns": "^4.1.0",
+		"date-fns-tz": "^3.2.0",
 		"react": "^18.2.0",
 		"react-dom": "^18.2.0",
 		"react-router-dom": "^6.21.1",
@@ -58,9 +58,9 @@
 		"zod": "^4.1.12"
 	},
 	"devDependencies": {
-		"@lhci/cli": "^0.14.0",
-		"@playwright/test": "^1.56.0",
-		"@testing-library/jest-dom": "^6.9.1",
+		"@microsoft/microsoft-graph-types": "^2.43.1",
+		"@playwright/test": "^1.47.2",
+		"@testing-library/jest-dom": "^6.4.2",
 		"@testing-library/react": "^14.2.1",
 		"@types/jest-axe": "^3.5.9",
 		"@types/node": "^20.11.30",

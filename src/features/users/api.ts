@@ -1,4 +1,5 @@
 import { useMemo } from "react";
+import { pushAudit } from "../../lib/audit";
 import { useSP } from "../../lib/spClient";
 import {
   FIELD_MAP,
@@ -36,25 +37,36 @@ type GetUsersOptions = { top?: number; signal?: AbortSignal };
 
 // API フック（useSP を1回だけ初期化）
 export function useUsersApi() {
-  const sp = useSP();
+  const { spFetch, getListItemsByTitle, addListItemByTitle } = useSP();
   const LIST_TITLE = LIST_CONFIG[ListKeys.UsersMaster].title;
   const SELECT_FIELDS = USERS_SELECT_FIELDS as readonly string[];
   return useMemo(() => {
     const select = SELECT_FIELDS as unknown as string[];
+    const encodeTitle = (title: string) => encodeURIComponent(title);
+    const itemPath = (id: number) =>
+      `/_api/web/lists/getbytitle('${encodeTitle(LIST_TITLE)}')/items(${id})`;
 
     const getUsers = async (filter?: string, opt: GetUsersOptions = {}) => {
       const top = opt.top ?? 50;
-      return sp.getListItemsByTitle<IUserMaster>(
+      return getListItemsByTitle<IUserMaster>(
         LIST_TITLE,
         select,
         filter ?? buildDefaultActiveFilter(),
         undefined,
-        top,
-        opt.signal
+        top
       );
     };
 
-    const getUserById = (id: number) => sp.getItemById<IUserMaster>(LIST_TITLE, id, select);
+    const getUserById = async (id: number) => {
+      const results = await getListItemsByTitle<IUserMaster>(
+        LIST_TITLE,
+        select,
+        `Id eq ${id}`,
+        undefined,
+        1
+      );
+      return results[0] ?? null;
+    };
 
     const createUser = async (dto: IUserMasterCreateDto) => {
       const payload = {
@@ -65,15 +77,14 @@ export function useUsersApi() {
         [FIELD_MAP.Users_Master.serviceStartDate]: dto.ServiceStartDate,
         [FIELD_MAP.Users_Master.serviceEndDate]: dto.ServiceEndDate ?? null,
       };
-      const created = await sp.addItemByTitle<typeof payload, IUserMaster>(LIST_TITLE, payload);
-      const { pushAudit } = await import("../../lib/audit");
+      const created = await addListItemByTitle<typeof payload, IUserMaster>(LIST_TITLE, payload);
       await pushAudit({
-        actor: "system",
+        actor: "user",
+        entity: "Users_Master",
         action: "create",
-        entity: LIST_TITLE,
-        entity_id: String(created.Id),
-        channel: "SPO",
-        after: payload,
+        entity_id: created?.Id != null ? String(created.Id) : undefined,
+        channel: "UI",
+        after: { item: created },
       });
       return created;
     };
@@ -88,29 +99,38 @@ export function useUsersApi() {
       if (patch.ServiceStartDate !== undefined) payload[FIELD_MAP.Users_Master.serviceStartDate] = patch.ServiceStartDate;
       if (patch.ServiceEndDate !== undefined) payload[FIELD_MAP.Users_Master.serviceEndDate] = patch.ServiceEndDate;
 
-      const updated = await sp.updateItemByTitle<typeof payload, IUserMaster>(LIST_TITLE, id, payload);
-      const { pushAudit } = await import("../../lib/audit");
-      await pushAudit({
-        actor: "system",
-        action: "update",
-        entity: LIST_TITLE,
-        entity_id: String(id),
-        channel: "SPO",
-        after: payload,
+      await spFetch(itemPath(id), {
+        method: "PATCH",
+        headers: {
+          "IF-MATCH": "*",
+          "Content-Type": "application/json;odata=nometadata",
+        },
+        body: JSON.stringify(payload),
       });
-      return updated;
+      await pushAudit({
+        actor: "user",
+        entity: "Users_Master",
+        action: "update",
+        entity_id: String(id),
+        channel: "UI",
+        after: { patch: payload },
+      });
+      return getUserById(id);
     };
 
     const deleteUser = async (id: number) => {
-      await sp.deleteItemByTitle(LIST_TITLE, id);
-      const { pushAudit } = await import("../../lib/audit");
+      await spFetch(itemPath(id), {
+        method: "DELETE",
+        headers: {
+          "IF-MATCH": "*",
+        },
+      });
       await pushAudit({
-        actor: "system",
+        actor: "user",
+        entity: "Users_Master",
         action: "delete",
-        entity: LIST_TITLE,
         entity_id: String(id),
-        channel: "SPO",
-        before: {},
+        channel: "UI",
       });
     };
 
@@ -122,6 +142,6 @@ export function useUsersApi() {
       updateUser,
       deleteUser,
     };
-  }, [sp]);
+  }, [LIST_TITLE, SELECT_FIELDS, addListItemByTitle, getListItemsByTitle, spFetch]);
 }
 

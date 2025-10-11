@@ -1,18 +1,33 @@
+import { resolve } from 'node:path';
 import { defineConfig } from 'vitest/config';
-import path from 'path';
 
 export default defineConfig({
   resolve: {
     alias: {
-      '@': path.resolve(__dirname, 'src'),
-      '@fluentui/react': path.resolve(__dirname, 'src/stubs/fluentui-react.tsx'),
+      '@': resolve(__dirname, 'src'),
+      '@fluentui/react': resolve(__dirname, 'src/stubs/fluentui-react.tsx'),
     }
   },
   test: {
     setupFiles: ['./vitest.setup.ts'],
     environment: 'jsdom',
-    include: ['src/**/*.?(test|spec).{ts,tsx}', 'tests/unit/**/*.?(test|spec).{ts,tsx}'],
-    exclude: ['tests/e2e/', 'node_modules/', 'dist/**', 'src/lib/spClient.retry*.spec.*'],
+    include: [
+      'tests/unit/**/*.spec.ts',
+      'tests/unit/**/*.spec.tsx',
+      'src/**/*.spec.ts',
+      'src/**/*.spec.tsx',
+      'src/**/*.test.ts',
+      'src/**/*.test.tsx'
+    ],
+    exclude: [
+      'tests/e2e/**',
+      'node_modules/**',
+      'dist/**',
+      '.git/**',
+      '**/*.git',
+      'src/lib/spClient.retry*.spec.*'
+    ],
+    watch: true,
     coverage: {
       provider: 'v8',
       reportsDirectory: 'coverage',

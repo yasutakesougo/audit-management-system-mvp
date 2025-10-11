@@ -6,6 +6,7 @@ import { describe, expect, it, vi, beforeEach, afterEach } from 'vitest';
 import AppShell from '@/app/AppShell';
 import { ColorModeContext } from '@/app/theme';
 import { FeatureFlagsProvider, type FeatureFlagSnapshot } from '@/config/featureFlags';
+import { routerFutureFlags } from '@/app/routerFuture';
 
 const spFetchMock = vi.fn(async (_path: string, _init?: RequestInit) => ({ ok: true }));
 
@@ -59,7 +60,7 @@ describe('AppShell navigation', () => {
       <ThemeProvider theme={theme}>
         <FeatureFlagsProvider value={defaultFlags}>
           <ColorModeContext.Provider value={{ mode: 'light', toggle: toggleMock, sticky: false }}>
-            <MemoryRouter initialEntries={['/users']}>
+            <MemoryRouter initialEntries={['/users']} future={routerFutureFlags}>
               <AppShell>
                 <div />
               </AppShell>
@@ -123,7 +124,7 @@ describe('AppShell navigation', () => {
       <ThemeProvider theme={theme}>
         <FeatureFlagsProvider value={defaultFlags}>
           <ColorModeContext.Provider value={{ mode: 'light', toggle: toggleMock, sticky: false }}>
-            <MemoryRouter initialEntries={['/']}>
+            <MemoryRouter initialEntries={['/']} future={routerFutureFlags}>
               <AppShell>
                 <div />
               </AppShell>

@@ -1,10 +1,10 @@
-import { allowWriteFallback, isDemoModeEnabled } from '../../lib/env';
-import { toSafeError, type SafeError } from '../../lib/errors';
-import { withUserMessage } from '../../lib/notice';
-import * as demo from './demo';
-import * as sharepoint from './sharepoint';
+import { allowWriteFallback, isDemoModeEnabled } from '@/lib/env';
+import { toSafeError, type SafeError } from '@/lib/errors';
+import { withUserMessage } from '@/lib/notice';
+import * as demo from '@/adapters/schedules/demo';
+import * as sharepoint from '@/adapters/schedules/sharepoint';
 
-export type { Schedule, ScheduleDraft } from './demo';
+export type { Schedule, ScheduleDraft } from '@/adapters/schedules/demo';
 
 export type Source = 'demo' | 'sharepoint';
 

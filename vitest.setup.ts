@@ -1,8 +1,8 @@
 // Vitest global setup: polyfill crypto.randomUUID if absent (Node < 19 environments)
-import { webcrypto } from 'crypto';
 import '@testing-library/jest-dom/vitest';
-import { expect } from 'vitest';
+import { webcrypto } from 'crypto';
 import { toHaveNoViolations } from 'jest-axe';
+import { expect } from 'vitest';
 
 // Provide safe defaults for MSAL-dependent modules during unit tests
 process.env.VITE_MSAL_CLIENT_ID ??= '11111111-2222-3333-4444-555555555555';

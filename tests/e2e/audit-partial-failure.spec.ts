@@ -1,10 +1,21 @@
 import { test, expect } from '@playwright/test';
 
+type WindowHooks = Window & {
+  __TEST_BATCH_DONE__?: () => void;
+  __BATCH_DONE_FLAG__?: number;
+  __E2E_BATCH_ATTEMPTS__?: number;
+  __E2E_BATCH_URL__?: string;
+  __E2E_LAST_PARSED__?: unknown;
+  __AUDIT_BATCH_METRICS__?: unknown;
+};
+
+type BatchPart = { contentId: number; status: number; body?: unknown };
+
 // This test simulates a batch with partial failures + duplicates then verifies resend of only failed ones.
 // It mocks the SharePoint $batch endpoint responses.
 // Updated to align with current AuditPanel UI (Japanese labels) and seeds localStorage audit logs.
 
-function buildBatchMultipart(parts: { contentId: number; status: number; body?: any }[]) {
+function buildBatchMultipart(parts: BatchPart[]) {
   // Craft a body mimicking SharePoint style: outer batch -> changeset with multiple responses.
   const boundary = 'batch_mockboundary';
   const changeset = 'changeset_mockboundary';
@@ -21,15 +32,14 @@ function buildBatchMultipart(parts: { contentId: number; status: number; body?: 
     segments.push(JSON.stringify(p.body || { d: { Id: p.contentId } }));
   }
   segments.push(`--${changeset}--`);
-  const bodyLines = [
+  return [
     `--${boundary}`,
     `Content-Type: multipart/mixed; boundary=${changeset}`,
     '',
     ...segments,
     `--${boundary}--`,
     ''
-  ];
-  return { body: bodyLines.join('\r\n'), boundary };
+  ].join('\r\n');
 }
 
 test.describe('Audit batch partial failure flow', () => {
@@ -44,7 +54,7 @@ test.describe('Audit batch partial failure flow', () => {
       const req = route.request();
       if (firstCall) {
         firstCall = false;
-        const { body, boundary } = buildBatchMultipart([
+        const body = buildBatchMultipart([
           { contentId: 1, status: 201 },
           { contentId: 2, status: 201 },
           { contentId: 3, status: 500 },
@@ -65,7 +75,7 @@ test.describe('Audit batch partial failure flow', () => {
         if (changeRequestCount !== 2) {
           return route.fulfill({ status: 400, body: 'Unexpected resend batch size' });
         }
-        const { body, boundary } = buildBatchMultipart([
+        const body = buildBatchMultipart([
           { contentId: 1, status: 201 }, // reused local indexes remapped, treat as success
           { contentId: 2, status: 201 },
         ]);
@@ -90,26 +100,31 @@ test.describe('Audit batch partial failure flow', () => {
         after: { value: i }
       }));
       window.localStorage.setItem(key, JSON.stringify(logs));
-      (window as any).__TEST_BATCH_DONE__ = () => { (window as any).__BATCH_DONE_FLAG__ = (window as any).__BATCH_DONE_FLAG__ + 1 || 1; };
+      const hookedWindow = window as WindowHooks;
+      hookedWindow.__TEST_BATCH_DONE__ = () => {
+        hookedWindow.__BATCH_DONE_FLAG__ = (hookedWindow.__BATCH_DONE_FLAG__ ?? 0) + 1;
+      };
     });
 
     await page.goto('/audit');
 
     // Instead of clicking button (which currently yields no batch attempt), directly invoke syncAllBatch via the component hook.
     await page.evaluate(() => {
-      const btn = [...document.querySelectorAll('button')].find(b => /一括同期/.test(b.textContent||''));
-      if (btn) (btn as HTMLButtonElement).click();
+      const buttons = Array.from(document.querySelectorAll('button')) as HTMLButtonElement[];
+      const btn = buttons.find(b => /一括同期/.test(b.textContent ?? ''));
+      btn?.click();
     });
     // Fallback wait: poll for data-total attribute to become 5
     const metricsLoc = page.getByTestId('audit-metrics');
     await expect.poll(async () => await metricsLoc.getAttribute('data-total')).toBe('5');
     // Attempt to read instrumentation (may be null)
     await page.evaluate(() => {
+      const hookedWindow = window as WindowHooks;
       console.log('E2E_DEBUG_AFTER_TOTAL', {
-        attempts: (window as any).__E2E_BATCH_ATTEMPTS__,
-        batchUrl: (window as any).__E2E_BATCH_URL__,
-        parsed: (window as any).__E2E_LAST_PARSED__,
-        metrics: (window as any).__AUDIT_BATCH_METRICS__
+        attempts: hookedWindow.__E2E_BATCH_ATTEMPTS__,
+        batchUrl: hookedWindow.__E2E_BATCH_URL__,
+        parsed: hookedWindow.__E2E_LAST_PARSED__,
+        metrics: hookedWindow.__AUDIT_BATCH_METRICS__
       });
     });
 

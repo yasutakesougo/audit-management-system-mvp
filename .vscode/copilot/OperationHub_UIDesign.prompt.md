@@ -10,6 +10,33 @@ tags: UI/UX, SPFx, React, Mockup, Requirement Definition, Architecture, MSAL, us
 
 本ドキュメントは、利用者約30名、職員約20名が利用する障がい福祉事業所の複雑なスケジュール管理課題を解決するためのUI/UX設計、推奨されるReactファイル構成、および既存のシステムアーキテクチャ（React + SharePoint SPA）を定義する。
 
+## 目次
+
+1. [設計の核心思想と原則](#section-core-principles)
+2. [技術スタックとデザインシステム](#section-tech-stack)
+  1. [推奨ファイル構成](#section-file-structure)
+  2. [デザイントークンとテーマ](#section-design-tokens)
+3. [ユーザーペルソナと要求](#section-personas)
+  1. [代表タスクとKPI](#section-personas-kpi)
+4. [UIデザイン提案](#section-ui-design)
+  1. [全体構造とナビゲーション](#section-layout-nav)
+  2. [ダッシュボード](#section-dashboard)
+  3. [マスタースケジュール](#section-master-schedule)
+  4. [予定追加モーダル](#section-schedule-modal)
+  5. [モバイルビュー](#section-mobile-view)
+5. [現状システム情報と開発ガイドライン](#section-existing-system)
+6. [情報アーキテクチャとナビゲーションマップ](#section-information-architecture)
+7. [主要ユースケース別ユーザーフロー](#section-user-flows)
+8. [インタラクション設計と状態管理](#section-interaction)
+9. [SPFx/SharePoint連携アーキテクチャ](#section-spfx-architecture)
+10. [データモデルとAPIコントラクト](#section-data-model)
+11. [アクセシビリティと国際化ガイドライン](#section-a11y-i18n)
+12. [性能・運用監視と品質指標](#section-performance)
+13. [リリース計画と段階的導入](#section-roadmap)
+14. [開発プロセスとワークフロー](#section-process)
+15. [付録](#section-appendix)
+
+<a id="section-core-principles"></a>
 ## 1. 設計の核心思想と原則
 
 目標は、スケジュール管理システムを「静的な記録簿」から「動的なオペレーションハブ」へと昇華させること。
@@ -20,6 +47,7 @@ tags: UI/UX, SPFx, React, Mockup, Requirement Definition, Architecture, MSAL, us
 3.  **能動的なエラー防止（Proactive Error Prevention）**: ダブルブッキング等を、入力段階で未然に防ぐガイド機能と視覚的フィードバックを提供。
 4.  **人間中心設計 (Human-Centered Design):** 特に現場職員の操作性を最優先し、「迷わない」「素早く操作できる」UIを目指す。
 
+<a id="section-tech-stack"></a>
 ## 2. 技術スタックとデザインシステム
 
 既存のシステム構成に基づき、以下の技術スタックを採用する。
@@ -31,6 +59,7 @@ tags: UI/UX, SPFx, React, Mockup, Requirement Definition, Architecture, MSAL, us
 *   **アイコンライブラリ:** Material UI Icons (`@mui/icons-material`) ← 操作性向上のため全面的に採用
 *   **バックエンド:** SharePoint Online リスト (SharePoint REST API経由)
 
+<a id="section-file-structure"></a>
 ## 2.1. 推奨されるファイル構成 (React ベストプラクティス)
 
 React開発では、機能やコンポーネントごとにファイルを分割することが推奨される。これにより、保守性、再利用性、可読性が向上する。
@@ -60,6 +89,25 @@ src/
     └── shared/
 ```
 
+<a id="section-design-tokens"></a>
+## 2.2. デザイントークンとテーマガイド
+
+| カテゴリ | トークン | 値 (例) | 使用箇所 | 備考 |
+|----------|----------|---------|----------|------|
+| Color | `color.primary` | `#0078D4` | プライマリボタン、リンク強調 | Fluent UI `theme.palette.themePrimary` と同期 |
+| Color | `color.danger` | `#A80000` | 警告、競合アラート | アクセシビリティ比 5.4:1 |
+| Color | `color.success` | `#107C10` | 成功トースト、完了タグ | WCAG AA 準拠 |
+| Spacing | `space.xs` | `4px` | アイコンとテキスト間隔 | 4px グリッドの倍数 |
+| Spacing | `space.md` | `12px` | カード内余白 | | 
+| Radius | `radius.card` | `4px` | カード / モーダル | Fluent Design の丸み |
+| Typography | `font.heading` | `'Segoe UI', 'Meiryo', sans-serif` | 見出し | `theme.fonts.xLarge` などへ紐づけ |
+| Shadow | `shadow.card` | `0 1.6px 3.6px rgba(0,0,0,0.1)` | KPI カード | 影の段階は 2 レベルまで |
+
+- すべてのトークンは `src/app/theme.tsx` で定義し、MUI `createTheme` と Fluent `ThemeProvider` のブリッジレイヤーを提供。
+- ダークモード導入に備え、カラートークンは `semanticColors` 辞書で抽象化。
+- Figma との同期は `tokens.json` (Style Dictionary) を将来的に追加し、自動エクスポートを検討。
+
+<a id="section-personas"></a>
 ## 3. ユーザーペルソナと主要な要求
 
 | ペルソナ | 役割と目標 | UIへの主要な要求 |
@@ -68,8 +116,19 @@ src/
 | **常勤職員** | 日々の支援業務、記録、情報共有。 | シンプルな個人用ビュー（マイデイ）、スマートフォン完全対応、予定と支援記録のシームレスな連携。 |
 | **非常勤職員**| 定められた時間内での支援業務、報告。 | アイコン中心の直感的UI、モバイルファースト設計、ワンタップでのアクション実行（記録・打刻）、アクセス制限。 |
 
+<a id="section-personas-kpi"></a>
+### 3.1. 代表タスクとKPI
+
+| ペルソナ | 代表タスク | 成功指標 (KPI) | 現状課題 | 改善アイデア |
+|-----------|------------|---------------|-----------|--------------|
+| 施設長 | 当日のリソース配分確認、競合解消、レポートエクスポート | 競合解消時間 ≤ 5分、未割り当て依頼ゼロ | 複数ツール横断が必要 | ダッシュボードで一元化、フィルタプリセット保存 |
+| 常勤職員 | 日次記録入力、予定の確認と更新 | 記録未提出件数ゼロ、予定確認時間 ≤ 2分 | 外出時のモバイル操作が煩雑 | 大きなタップ領域、音声入力補助、オフライン下書き |
+| 非常勤職員 | 送迎チェックイン、緊急連絡対応 | 遅延報告件数 -30%、通知到達率 95% | スマホ操作不慣れ、通知見落とし | アイコン中心 UI、バイブ通知、タスク順序自動並び替え |
+
+<a id="section-ui-design"></a>
 ## 4. UIデザイン提案（モックアップ）
 
+<a id="section-layout-nav"></a>
 ### 4.1. 全体構造とナビゲーション
 
 Fluent UI/MUIの標準レイアウトを採用。左側に固定ナビゲーション、上部にヘッダー。
@@ -109,6 +168,7 @@ Fluent UI/MUIの標準レイアウトを採用。左側に固定ナビゲーシ�
 </svg>
 ```
 
+<a id="section-dashboard"></a>
 ### 4.2. ダッシュボード（施設長向け）
 
 「作戦司令室」として機能。KPI（人員充足率、未割り当て依頼）、緊急度に応じたアラート、本日の重要イベントを表示。
@@ -182,6 +242,7 @@ Fluent UI/MUIの標準レイアウトを採用。左側に固定ナビゲーシ�
 </svg>
 ```
 
+<a id="section-master-schedule"></a>
 ### 4.3. マスタースケジュール：タイムライン（リソース）ビュー
 
 中核機能。複雑なリソース（職員、車両）の重複と空き状況を一目で把握する。実装には `FullCalendar (Resource Timeline View)` 等の利用を想定。
@@ -303,6 +364,7 @@ Fluent UI/MUIの標準レイアウトを採用。左側に固定ナビゲーシ�
 </svg>
 ```
 
+<a id="section-schedule-modal"></a>
 ### 4.4. 予定の追加・編集フォーム（モーダル）
 
 モーダルダイアログ（`Modal`）またはパネル（`Panel`）で実装。
@@ -371,6 +433,7 @@ Fluent UI/MUIの標準レイアウトを採用。左側に固定ナビゲーシ�
 </svg>
 ```
 
+<a id="section-mobile-view"></a>
 ### 4.5. モバイルビュー（非常勤・現場職員向け） - 操作性重視・MUIアイコン導入版
 
 スマートフォン利用を前提とした、タスク指向のUI。現場職員が「迷わない」「素早く操作できる」ことを目指し、MUIアイコンを活用した直感的なデザインを採用。
@@ -431,6 +494,7 @@ Fluent UI/MUIの標準レイアウトを採用。左側に固定ナビゲーシ�
 
 ---
 
+<a id="section-existing-system"></a>
 ## 5. 現状のシステム情報と開発ガイドライン (React + SharePoint SPA)
 
 以下の情報は、既存のMVP実装（運営指導・記録管理システム）のアーキテクチャと開発規約である。新規開発はこの構造と整合性を保つ必要がある。
@@ -835,4 +899,193 @@ npm run test:coverage  # カバレッジ付き
 | SharePoint Lists | `provision-sharepoint.yml` WhatIf → Apply | WhatIf 差分を必ず PR でレビュー |
 | Provision schema | `provision/schema.xml` | WhatIf/Apply の両ワークフローが共通参照。古い `schema.json` は使用しません |
 | Top Navigation (手動 Apply) | `addTopNavigation` チェックボックス | デフォルト OFF。手動実行で ON にすると Quick/Nav 両方へリンク追加 |
-| `changes.json` telemetry | `summary.total` / `summary.byKind[]` | Apply/WhatIf 共通で生成。監査証
+| `changes.json` telemetry | `summary.total` / `summary.byKind[]` | Apply/WhatIf 共通で生成。監査証跡として `reports/` に保存し、内部監査対応時に提出できるようにする |
+
+<a id="section-information-architecture"></a>
+## 6. 情報アーキテクチャとナビゲーションマップ
+
+### 6.1 メインナビゲーション（デスクトップ）
+- **ホーム / ダッシュボード**: 施設長を中心に、全体の KPI とアラートを即座に確認。
+- **スケジュール**: マスタースケジュール（リソースタイムライン）と個人別ビューのタブを切替。既定はロールに応じ自動選択。
+- **利用者管理**: 利用者の基本情報、計画、注意事項が閲覧・更新可能。
+- **職員管理**: シフト、資格、稼働状況を確認し、シフト草案を連携。
+- **レポート**: CSV/PDF エクスポート、月次集計、請求連携用データ出力。
+- **監査ログ**: すべてのアクションの追跡、再送、CSV エクスポート。
+- **設定**: マスターデータ、機能フラグ、通知設定。
+
+### 6.2 コンテクスチュアルナビゲーション（モバイル）
+- 下部タブ: `ホーム` / `記録` / `通知` / `プロフィール`。
+- タスクカード内ショートカット: 「サービス記録」→ 記録フォーム、「緊急連絡」→ 担当者電話発信（`tel:`リンク）。
+- コンテンツ規模が大きい場合は横スクロールではなくセクション折りたたみを採用。
+
+### 6.3 情報設計
+| 階層 | コンテンツ | 表示粒度 | 備考 |
+|------|------------|----------|------|
+| Level 0 | KPI / アラート / 未処理タスク | 集約値 | ロールベースのサマリカード |
+| Level 1 | スケジュール日単位 | 時間帯 + リソース | カレンダー / タイムライン切替 |
+| Level 2 | 予定詳細 | タスク詳細、関連記録 | 予定ID/リストID をキーに遷移 |
+| Level 3 | 記録・請求データ | 履歴タイムライン | 変更履歴は監査ログへリンク |
+
+<a id="section-user-flows"></a>
+## 7. 主要ユースケース別ユーザーフロー
+
+### 7.1 施設長: ダブルブッキング解消フロー
+1. ダッシュボードで「競合あり」アラートをクリック。
+2. スケジュール画面が競合行にスクロールし、打ち消し線と赤背景で強調。
+3. ドラッグ＆ドロップで代替職員に割り当て。競合が解消されるとチェックマークに変化。
+4. 変更内容は `useSP().updateListItem` で SharePoint に反映し、監査ログへ `SCHEDULE_UPDATE` として記録。
+
+### 7.2 常勤職員: 日次タスク遂行
+1. モバイルでログイン → 今日のタスク一覧を確認。
+2. タスクカードの「サービス記録」をタップ → 必須項目にハイライト。
+3. 記録送信でトースト表示（成功: 緑 / 失敗: 赤）。
+4. 通信エラー時は一時保存し、バナーで再送促進。
+
+### 7.3 非常勤職員: 送迎含む予定参加
+1. 通知センターから送迎予定をタップし詳細へ。
+2. 「開始打刻」ボタンでチェックイン、`navigator.geolocation` 許諾時は位置情報を添付。
+3. 終了後に「送迎完了」を押し、車両チェックリストに署名。
+
+<a id="section-interaction"></a>
+## 8. インタラクション設計と状態管理ポリシー
+
+- **状態の分類**
+  - `local state`: フォーム入力、モーダル開閉（React state + `useReducer`）。
+  - `server cache`: SharePoint データは `@tanstack/react-query` + `useSP` でキャッシュ。
+  - `global context`: ロール、Feature Flags、MSAL 認証ステータス（`LayoutContext` + `MsalProvider`）。
+- **フィードバック原則**
+  - 300ms 以内の処理はインラインスピナー、長時間処理はプログレスバー＋キャンセル。
+  - エラーは `callout` もしくは `Snackbar` 表示。再試行可能なリンクを添付。
+- **ドラッグ＆ドロップ**
+  - `@fullcalendar/resource-timeline` の DnD API や `@dnd-kit/core` を使用。
+  - 移動中は潜在競合をヒートマップ表示（赤→オレンジ→緑）。
+- **オフライン/回線不安定**
+  - `navigator.onLine` 監視でバナー表示。主要 API 呼び出しは指数バックオフ。
+  - 作成済みタスクは IndexedDB（`idb-keyval`）で最大50件までローカル保存。
+
+<a id="section-spfx-architecture"></a>
+## 9. SPFx/SharePoint連携アーキテクチャ
+
+### 9.1 全体構造
+```mermaid
+flowchart LR
+    A[React SPA (Vite)] -- MSAL acquireToken --> B[Azure AD]
+    A -- REST + Retry --> C[SharePoint Online]
+    C -- Lists: SupportRecord_Daily / Schedules --> D[(SharePoint Lists)]
+    A -- Telemetry --> E[App Insights]
+    A -- Feature Flags --> F[Public JSON Config]
+```
+
+- SPA は独立デプロイ（Azure Static Web Apps 等）または SPFx WebPart としてホスト。
+- SPFx 埋め込み時は `withSpfxContext` HOC で `SPFxContext` を注入し、`useSP` が `SPHttpClient` にフォールバック。
+- 認証: MSAL でトークン取得 → SharePoint REST `_api` 呼び出し。Sites.Selected を推奨。
+
+### 9.2 耐障害設計
+- SharePoint 停止時は `maintenance` バナーと読み取り専用モードに自動切替。
+- `VITE_SP_RETRY_MAX` と `VITE_SP_RETRY_BASE_MS` により指数バックオフ調整。
+- `$batch` API 利用時は 80件/changeset を上限に設定し、409 重複は成功扱い。
+
+<a id="section-data-model"></a>
+## 10. データモデルとAPIコントラクト
+
+### 10.1 SharePoint リスト主要スキーマ
+| リスト名 | 用途 | 主要列 | 備考 |
+|----------|------|--------|------|
+| `Schedules_Master` | 予定管理 | `Title`, `ServiceType` (Choice), `Start`, `End`, `AssignedStaff` (Lookup), `Vehicle` (Lookup), `Status` (Choice), `Notes` (Note), `EntryHash` (Text, Unique) | `EntryHash` で冪等性担保 |
+| `SupportRecord_Daily` | 支援記録 | `Title`, `Participant` (Lookup), `ServiceDate`, `Summary` (Note), `SubmittedBy`, `Attachments` | 送信時点の予定IDを保持 |
+| `Vehicles_Master` | 車両管理 | `Title`, `Type`, `Capacity`, `IsAccessible` | 送迎選択肢に利用 |
+
+### 10.2 API コントラクト（例）
+```ts
+type ScheduleItem = {
+  id: string;
+  title: string;
+  serviceType: 'DayCare' | 'ShortStay' | 'Respite' | 'Transport';
+  start: string; // ISO 8601 (tz aware)
+  end: string;
+  resourceId: string; // staffId or vehicleId
+  location?: string;
+  status: 'Scheduled' | 'InProgress' | 'Completed' | 'Cancelled';
+  entryHash: string;
+};
+
+type ScheduleConflict = {
+  scheduleId: string;
+  conflictingResourceId: string;
+  reason: 'Overlap' | 'CapacityExceeded' | 'QualificationMissing';
+};
+```
+
+### 10.3 バリデーション
+- 時間帯重複はバックエンドでも `ensureNoOverlap(resourceId, start, end)` を実行。
+- `QualificationMissing` 判定のため `Staff_Master` に `Certifications` Choice 列を保持し、`ServiceType` に要求される資格テーブルを `lib/rules/qualification.ts` に定義。
+
+<a id="section-a11y-i18n"></a>
+## 11. アクセシビリティと国際化ガイドライン
+
+- **キーボード**: 全ての操作は Tab / Shift+Tab / Enter / Space で完結。DnD は `aria-grabbed` と矢印キー操作の代替を提供。
+- **コントラスト**: WCAG AA (明度比 4.5:1) を満たすカラーパレット（Fluent Default + MUI Extended）。
+- **フォントサイズ**: デスクトップ 14–18px、モバイル 16px 以上。等価 `rem` 定義を `theme.tsx` に集約。
+- **言語切替**: ja-JP を既定、将来の多言語化に備え `@formatjs/intl` ベースの message catalog を `src/i18n/` に保持。
+- **スクリーンリーダー配慮**: 予定バーには `aria-label="10:00-12:00 生活介護 担当: 鈴木"` を付与。競合発生時は `aria-live="assertive"` で通知。
+
+<a id="section-performance"></a>
+## 12. 性能・運用監視と品質指標
+
+- **パフォーマンス指標**: LCP < 2.5s、INP < 200ms、CLS < 0.1 を目標。メインビューはコード分割し、遅延ロード。
+- **ローデータ追跡**: `web-vitals` ライブラリを使い、Application Insights に送信。UX 改善 KPI として週次でモニタ。
+- **バックエンド監視**: SharePoint API エラー率 > 2% / 5分で PagerDuty 通知。
+- **テレメトリイベント例**: `schedule conflict resolved`, `record submitted`, `offline cache used`。
+- **QA Gate**: `npm run health` で lint・typecheck・unit を統合。Playwright スモークは CI 夜間実行。
+
+<a id="section-roadmap"></a>
+## 13. リリース計画と段階的導入ロードマップ
+
+| フェーズ | 機能 | 対象ユーザー | 成功指標 |
+|----------|------|--------------|----------|
+| Phase 0 (Pilot) | モバイルアジェンダ、監査ログ改善 | 非常勤 5名 | 週間アクティブ率 80% |
+| Phase 1 | マスタースケジュール、競合アラート | 常勤 10名 | ダブルブッキング件数 -60% |
+| Phase 2 | ダッシュボード、レポート | 施設長 / 管理職 | KPI 可視化で週次会議時間 -20% |
+| Phase 3 | 送迎チェックイン + 車両連携 | 送迎担当全員 | 遅刻報告件数 -30% |
+
+- フィードバックループ: 各フェーズ後に 1 週間の現場ヒアリングを実施し、Backlog へ反映。
+- 機能フラグ (`featureFlags.ts`) で段階的ロールアウトを制御。
+
+<a id="section-process"></a>
+## 14. 開発プロセスとワークフロー
+
+- **ブランチ戦略**: `main`（安定）と `develop`（統合）。機能ごとに `feature/*` を派生し、PR でコードレビュー。
+- **デザインレビュー**: Figma コンポーネントライブラリと本ドキュメントを照合。主要画面は UX リードが週次レビュー。
+- **テスト戦略**
+  - Unit: Vitest (`tests/unit/**`)
+  - Integration: React Testing Library (`tests/unit/ui/**`)
+  - E2E: Playwright (`tests/e2e/**`)、SharePoint モックは MSW + Playwright Fixtures
+- **CI/CD**: GitHub Actions (`test.yml`, `provision-sharepoint.yml`) に加え、`release.sh` でタグ付けと changelog 更新。
+- **コード規約**: ESLint + Prettier + Stylelint。コミット前に `lint-staged` 実行。
+
+<a id="section-appendix"></a>
+## 15. 付録（チェックリストと参考資料）
+
+### 15.1 UAT チェックリスト（一部抜粋）
+- [ ] ダッシュボード KPI が正しいロールでフィルタされる
+- [ ] 競合のある予定を解消するとアラートが消える
+- [ ] モバイル通知から直接タスクに遷移できる
+- [ ] オフライン状態で記録送信すると再送キューに積まれる
+- [ ] 監査ログ CSV 出力に最新アクションが含まれる
+
+### 15.2 デザインシステム参照
+- Fluent UI Web Controls: https://developer.microsoft.com/en-us/fluentui
+- Material UI: https://mui.com/
+- FullCalendar Resource Timeline: https://fullcalendar.io/docs/resource-timeline
+
+### 15.3 用語集
+| 用語 | 説明 |
+|------|------|
+| オペレーションハブ | 障がい福祉事業所の運営業務を統合するシステムの呼称 |
+| 競合アラート | リソース（職員/車両）の二重予約や資格不一致を検知する仕組み |
+| Briefing | 朝夕のスタッフ向け予定まとめ機能 |
+| EntryHash | SharePoint で重複登録を防ぐためのハッシュ列 |
+
+---
+
+本仕様は、既存の React + SharePoint SPA 実装を土台に、施設規模の拡張や現場オペレーションの負荷軽減を両立させるための指針である。新規機能追加時は、本ドキュメントの原則・アーキテクチャ・品質ゲートを参照し、持続可能な運用とユーザー体験の最適化を継続すること。

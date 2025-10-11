@@ -32,5 +32,34 @@ module.exports = {
     node: true,
     es2022: true
   },
-  ignorePatterns: ['dist', 'coverage', 'node_modules']
+  ignorePatterns: ['dist', 'coverage', 'node_modules'],
+  overrides: [
+    {
+      files: ['src/features/schedule/utils/**', 'src/features/schedules/utils/**'],
+      rules: {
+        // Schedules: TZ安全のため Date#setHours 系は禁止（壁時計→UTC 変換は dateutils 経由）
+        '@typescript-eslint/no-restricted-call': 'off',
+        'no-restricted-properties': [
+          'error',
+          { object: 'Date', property: 'setHours', message: '壁時計→UTCはdateutils経由で' },
+          { object: 'Date', property: 'setMinutes', message: '壁時計→UTCはdateutils経由で' },
+          { object: 'Date', property: 'setSeconds', message: '壁時計→UTCはdateutils経由で' },
+          { object: 'Date', property: 'setMilliseconds', message: '壁時計→UTCはdateutils経由で' },
+          { object: 'Date', property: 'setUTCHours', message: '壁時計→UTCはdateutils経由で' },
+          { object: 'Date', property: 'setUTCMinutes', message: '壁時計→UTCはdateutils経由で' },
+          { object: 'Date', property: 'setUTCSeconds', message: '壁時計→UTCはdateutils経由で' },
+          { object: 'Date', property: 'setUTCMilliseconds', message: '壁時計→UTCはdateutils経由で' }
+        ],
+        'no-restricted-syntax': [
+          'error',
+          {
+            selector:
+              "NewExpression[callee.name='Date'] > :matches(Literal, TemplateLiteral):first-child",
+            message:
+              '文字列から Date を直接作らないでください（TZ安全な dateutils 経由で）'
+          }
+        ]
+      }
+    }
+  ]
 };

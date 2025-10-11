@@ -1,14 +1,16 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 // NOTE: Avoid path alias here to keep ts-jest / vitest resolution simple without extra config
 import { useAuth } from '../auth/useAuth';
 import { useMemo } from 'react';
-import { getFlag, getNumber, getRuntimeEnv, isDev } from '../env';
+import { getRuntimeEnv as getRuntimeEnvRoot } from '../env';
+import { getAppConfig, type EnvRecord } from './env';
 import { SharePointItemNotFoundError, SharePointMissingEtagError } from './errors';
 
 export function ensureConfig(envOverride?: { VITE_SP_RESOURCE?: string; VITE_SP_SITE_RELATIVE?: string }) {
-  // Allow tests to pass override values since Vite inlines environment variables at build time.
-  const envRecord = getRuntimeEnv();
-  const rawResource = (envOverride?.VITE_SP_RESOURCE ?? envRecord.VITE_SP_RESOURCE ?? '').trim();
-  const rawSiteRel  = (envOverride?.VITE_SP_SITE_RELATIVE ?? envRecord.VITE_SP_SITE_RELATIVE ?? '').trim();
+  const overrideRecord = envOverride as EnvRecord | undefined;
+  const config = getAppConfig(overrideRecord);
+  const rawResource = (config.VITE_SP_RESOURCE ?? '').trim();
+  const rawSiteRel = (config.VITE_SP_SITE_RELATIVE ?? '').trim();
   const isPlaceholder = (s: string) => !s || /<yourtenant>|<SiteName>/i.test(s) || s === '__FILL_ME__';
   if (isPlaceholder(rawResource) || isPlaceholder(rawSiteRel)) {
     throw new Error([
@@ -256,7 +258,7 @@ const raiseHttpError = async (res: Response): Promise<never> => {
 };
 
 const fetchListItemsWithFallback = async <TRow>(
-  client: Pick<SpClientWritable, 'spFetch'>,
+  client: Pick<ReturnType<typeof createSpClient>, 'spFetch'>,
   listTitle: string,
   baseFields: readonly string[],
   optionalFields: readonly string[],
@@ -316,55 +318,18 @@ const resolveStaffListIdentifier = (titleOverride: string, guidOverride: string)
  * - acquireToken: トークン取得関数（MSAL由来を想定）
  * - baseUrl: 例) https://contoso.sharepoint.com/sites/Audit/_api/web
  */
-export interface SpClientWritable {
-  spFetch: (path: string, init?: RequestInit) => Promise<Response>;
-  getListItemsByTitle: <T>(
-    listTitle: string,
-    select?: string[],
-    filter?: string,
-    orderby?: string,
-    top?: number,
-    signal?: AbortSignal
-  ) => Promise<T[]>;
-  addListItemByTitle: <TBody extends object, TResult = unknown>(
-    listTitle: string,
-    body: TBody
-  ) => Promise<TResult>;
-  addItemByTitle: <TBody extends object, TResult = unknown>(
-    listTitle: string,
-    body: TBody
-  ) => Promise<TResult>;
-  updateItemByTitle: <TBody extends object, TResult = unknown>(
-    listTitle: string,
-    id: number,
-    body: TBody,
-    options?: { ifMatch?: string }
-  ) => Promise<TResult>;
-  deleteItemByTitle: (listTitle: string, id: number) => Promise<void>;
-  getItemById: <T>(listTitle: string, id: number, select?: string[], signal?: AbortSignal) => Promise<T>;
-  getItemByIdWithEtag: <T>(
-    listTitle: string,
-    id: number,
-    select?: string[],
-    signal?: AbortSignal
-  ) => Promise<{ item: T; etag: string | null }>;
-  createItem: <TBody extends object, TResult = unknown>(
-    listTitle: string,
-    body: TBody
-  ) => Promise<TResult>;
-  updateItem: <TBody extends object, TResult = unknown>(
-    listTitle: string,
-    id: number,
-    body: TBody,
-    options?: { ifMatch?: string }
-  ) => Promise<TResult>;
-  deleteItem: (listTitle: string, id: number) => Promise<void>;
-  postBatch: (batchBody: string, boundary: string) => Promise<Response>;
-  ensureListExists: (listTitle: string, fields: SpFieldDef[], options?: EnsureListOptions) => Promise<EnsureListResult>;
-}
-
-export function createSpClient(acquireToken: () => Promise<string | null>, baseUrl: string): SpClientWritable {
-  const debugEnabled = getFlag('VITE_AUDIT_DEBUG', false);
+export function createSpClient(acquireToken: () => Promise<string | null>, baseUrl: string) {
+  const config = getAppConfig();
+  const parsePositiveNumber = (raw: string, fallback: number): number => {
+    const numeric = Number(raw);
+    return Number.isFinite(numeric) && numeric > 0 ? numeric : fallback;
+  };
+  const retrySettings = {
+    maxAttempts: parsePositiveNumber(config.VITE_SP_RETRY_MAX, 4),
+    baseDelay: parsePositiveNumber(config.VITE_SP_RETRY_BASE_MS, 400),
+    capDelay: parsePositiveNumber(config.VITE_SP_RETRY_MAX_DELAY_MS, 5000),
+  } as const;
+  const debugEnabled = config.VITE_AUDIT_DEBUG === '1' || config.VITE_AUDIT_DEBUG === 'true';
   function dbg(...a: unknown[]) { if (debugEnabled) console.debug('[spClient]', ...a); }
   const tokenMetricsCarrier = globalThis as { __TOKEN_METRICS__?: Record<string, unknown> };
   const spFetch = async (path: string, init: RequestInit = {}): Promise<Response> => {
@@ -390,16 +355,16 @@ export function createSpClient(acquireToken: () => Promise<string | null>, baseU
       if (init.method === 'POST' || init.method === 'PUT' || init.method === 'PATCH' || init.method === 'MERGE') {
         headers.set('Content-Type', 'application/json;odata=nometadata');
       }
-      if (isDev) console.debug('[SPFetch] URL:', url);
+      if (process.env.NODE_ENV === 'development') console.debug('[SPFetch] URL:', url);
       return fetch(url, { ...init, headers });
     };
 
     let response = await doFetch(token1);
 
     // Retry transient (throttle/server) BEFORE auth refresh, but only if not 401/403.
-    const maxAttempts = getNumber('VITE_SP_RETRY_MAX', 4);
-    const baseDelay = getNumber('VITE_SP_RETRY_BASE_MS', 400);
-    const capDelay = getNumber('VITE_SP_RETRY_MAX_DELAY_MS', 5000);
+    const maxAttempts = retrySettings.maxAttempts;
+    const baseDelay = retrySettings.baseDelay;
+    const capDelay = retrySettings.capDelay;
     const sleep = (ms: number) => new Promise(r => setTimeout(r, ms));
     const computeBackoff = (attempt: number) => {
       const expo = Math.min(capDelay, baseDelay * Math.pow(2, attempt - 1));
@@ -710,17 +675,19 @@ export function createSpClient(acquireToken: () => Promise<string | null>, baseU
 
   // $batch 投稿ヘルパー (429/503/504 リトライ対応)
   const postBatch = async (batchBody: string, boundary: string): Promise<Response> => {
-  const apiRoot = baseUrl.replace(/\/web\/?$/, '');
-  const maxAttempts = getNumber('VITE_SP_RETRY_MAX', 4);
-  const baseDelay = getNumber('VITE_SP_RETRY_BASE_MS', 400);
-  const capDelay = getNumber('VITE_SP_RETRY_MAX_DELAY_MS', 5000);
+    const apiRoot = baseUrl.replace(/\/web\/?$/, '');
+    const maxAttempts = retrySettings.maxAttempts;
+    const baseDelay = retrySettings.baseDelay;
+    const capDelay = retrySettings.capDelay;
     const sleep = (ms: number) => new Promise(r => setTimeout(r, ms));
     const computeBackoff = (attempt: number) => {
       const expo = Math.min(capDelay, baseDelay * Math.pow(2, attempt - 1));
       const jitter = Math.random() * expo; // full jitter
       return Math.round(jitter);
     };
-    for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
+    let attempt = 1;
+  // eslint-disable-next-line no-constant-condition
+  while (true) {
       const token = await acquireToken();
       if (!token) throw new Error('SharePoint のアクセストークン取得に失敗しました。');
       const headers = new Headers({
@@ -754,6 +721,7 @@ export function createSpClient(acquireToken: () => Promise<string | null>, baseU
         if (waitMs == null) waitMs = computeBackoff(attempt);
         if (debugEnabled) console.warn('[spRetry]', JSON.stringify({ phase: 'batch', status: res.status, nextAttempt: attempt + 1, waitMs }));
         await sleep(waitMs);
+        attempt += 1;
         continue;
       }
       const text = await res.text();
@@ -783,7 +751,7 @@ export function createSpClient(acquireToken: () => Promise<string | null>, baseU
   };
 }
 
-type ListClient = Pick<SpClientWritable, 'spFetch'>;
+type ListClient = Pick<ReturnType<typeof createSpClient>, 'spFetch'>;
 
 const clampTop = (value: number | undefined): number => {
   if (!Number.isFinite(value)) return 100;
@@ -794,7 +762,7 @@ const clampTop = (value: number | undefined): number => {
 };
 
 export async function getUsersMaster<TRow = Record<string, unknown>>(client: ListClient, top?: number): Promise<TRow[]> {
-  const env = getRuntimeEnv();
+  const env = getRuntimeEnvRoot();
   const listTitle = sanitizeEnvValue(env.VITE_SP_LIST_USERS) || DEFAULT_USERS_LIST_TITLE;
   const rows = await fetchListItemsWithFallback<TRow>(
     client,
@@ -807,7 +775,7 @@ export async function getUsersMaster<TRow = Record<string, unknown>>(client: Lis
 }
 
 export async function getStaffMaster<TRow = Record<string, unknown>>(client: ListClient, top?: number): Promise<TRow[]> {
-  const env = getRuntimeEnv();
+  const env = getRuntimeEnvRoot();
   const listTitleCandidate = sanitizeEnvValue(env.VITE_SP_LIST_STAFF) || DEFAULT_STAFF_LIST_TITLE;
   const listGuidCandidate = sanitizeEnvValue(env.VITE_SP_LIST_STAFF_GUID);
   const identifier = resolveStaffListIdentifier(listTitleCandidate, listGuidCandidate);

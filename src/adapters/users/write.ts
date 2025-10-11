@@ -1,4 +1,6 @@
-import { spWriteResilient, type SpWriteResult, type WithStatusError } from "@/lib/spWrite";
+import { spWriteResilient, type SpWriteResult, type WithStatusError } from "../../lib/spWrite";
+
+type FailedResult<T> = Extract<SpWriteResult<T>, { ok: false }>;
 
 type CreateUserInput = {
   Title: string;
@@ -14,25 +16,27 @@ const fetcher = (path: string, init?: RequestInit) => fetch(path, init);
 const buildUsersUrl = (_list: string, itemId?: number) =>
   typeof itemId === "number" ? `${SITE}/${USERS_LIST}(${itemId})` : `${SITE}/${USERS_LIST}`;
 
+const isFailure = <T>(result: SpWriteResult<T>): result is FailedResult<T> => !result.ok;
+
 function assertOk<T>(result: SpWriteResult<T>): T {
-  if (result.ok) {
-    return result.data as T;
+  if (isFailure(result)) {
+    const status = result.status ?? result.error.status;
+    const error: WithStatusError = Object.assign(
+      result.error ?? new Error(`Write failed${status ? ` (${status})` : ""}`),
+      {
+        status,
+        code: result.error.code ?? (status ? String(status) : undefined),
+        response: result.raw,
+      },
+    );
+    throw error;
   }
 
-  const status = result.status ?? result.error.status;
-  const error: WithStatusError = Object.assign(
-    result.error ?? new Error(`Write failed${status ? ` (${status})` : ""}`),
-    {
-      status,
-      code: result.error.code ?? (status ? String(status) : undefined),
-      response: result.raw,
-    },
-  );
-  throw error;
+  return result.data as T;
 }
 
 export async function createUser(input: CreateUserInput) {
-  const result = await spWriteResilient<unknown>({
+  const result = await spWriteResilient({
     list: USERS_LIST,
     method: "POST",
     body: input,
@@ -44,7 +48,7 @@ export async function createUser(input: CreateUserInput) {
 }
 
 export async function updateUser(id: number, input: UpdateUserInput, etag?: string) {
-  const result = await spWriteResilient<unknown>({
+  const result = await spWriteResilient({
     list: USERS_LIST,
     itemId: id,
     method: "PATCH",
@@ -58,7 +62,7 @@ export async function updateUser(id: number, input: UpdateUserInput, etag?: stri
 }
 
 export async function deleteUser(id: number, etag: string = "*") {
-  const result = await spWriteResilient<unknown>({
+  const result = await spWriteResilient({
     list: USERS_LIST,
     itemId: id,
     method: "DELETE",

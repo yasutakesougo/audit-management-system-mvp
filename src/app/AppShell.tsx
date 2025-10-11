@@ -12,73 +12,74 @@ import Brightness4Icon from '@mui/icons-material/Brightness4';
 import Brightness7Icon from '@mui/icons-material/Brightness7';
 import Box from '@mui/material/Box';
 import { Link as RouterLink, useLocation } from 'react-router-dom';
-import { useFeatureFlags, type FeatureFlagSnapshot } from '@/config/featureFlags';
+import { useFeatureFlags } from '@/config/featureFlags';
+import { ColorModeContext } from './theme';
+import { useSP } from '@/lib/spClient';
 import SignInButton from '@/ui/components/SignInButton';
-import { ColorModeContext } from '@/app/theme';
-import { useSP } from '../lib/spClient';
 
 type NavItem = {
   label: string;
   to: string;
-  isActive: (path: string) => boolean;
-};
-
-const buildNavItems = (flags: FeatureFlagSnapshot): NavItem[] => {
-  const { schedules, schedulesCreate, complianceForm } = flags;
-  const items: NavItem[] = [
-    {
-      label: '日次記録',
-      to: '/',
-      isActive: (path) => path === '/',
-    },
-    {
-      label: '利用者',
-      to: '/users',
-      isActive: (path) => path.startsWith('/users'),
-    },
-  ];
-
-  if (schedules) {
-    if (schedulesCreate) {
-      items.push({
-        label: '新規予定',
-        to: '/schedules/create',
-        isActive: (path) => path.startsWith('/schedules/create'),
-      });
-    }
-    items.push({
-      label: 'スケジュール（週表示）',
-      to: '/schedules/week',
-      isActive: (path) => path.startsWith('/schedules/week'),
-    });
-    items.push({
-      label: 'スケジュール（月表示）',
-      to: '/schedules/month',
-      isActive: (path) => path.startsWith('/schedules/month'),
-    });
-  }
-  if (complianceForm) {
-    items.push({
-      label: 'コンプラ報告',
-      to: '/compliance',
-      isActive: (path) => path.startsWith('/compliance'),
-    });
-  }
-
-  items.push({
-    label: '監査ログ',
-    to: '/audit',
-    isActive: (path) => path.startsWith('/audit'),
-  });
-
-  return items;
+  isActive: (pathname: string) => boolean;
+  testId?: string;
 };
 
 const AppShell: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const location = useLocation();
-  const flags = useFeatureFlags();
+  const { schedules, schedulesCreate, complianceForm } = useFeatureFlags();
   const { mode, toggle } = useContext(ColorModeContext);
-  const navItems = useMemo(() => buildNavItems(flags), [flags, location.pathname]);
+
+  const navItems = useMemo(() => {
+    const items: NavItem[] = [
+      {
+        label: '日次記録',
+        to: '/',
+        isActive: (pathname) => pathname === '/' || pathname.startsWith('/records'),
+      },
+      {
+        label: '自己点検',
+        to: '/checklist',
+        isActive: (pathname) => pathname.startsWith('/checklist'),
+      },
+      {
+        label: '監査ログ',
+        to: '/audit',
+        isActive: (pathname) => pathname.startsWith('/audit'),
+      },
+      {
+        label: '利用者',
+        to: '/users',
+        isActive: (pathname) => pathname.startsWith('/users'),
+      },
+    ];
+
+    if (schedules) {
+      items.push({
+        label: 'スケジュール',
+        to: '/schedules/week',
+  isActive: (pathname) => pathname.startsWith('/schedule') || pathname.startsWith('/schedules'),
+        testId: 'nav-schedule',
+      });
+    }
+
+    if (schedulesCreate) {
+      items.push({
+        label: '新規予定',
+        to: '/schedules/create',
+        isActive: (pathname) => pathname.startsWith('/schedules/create'),
+      });
+    }
+
+    if (complianceForm) {
+      items.push({
+        label: 'コンプラ報告',
+        to: '/checklist',
+        isActive: (pathname) => pathname.startsWith('/compliance'),
+      });
+    }
+
+    return items;
+  }, [schedules, schedulesCreate, complianceForm]);
 
   return (
     <>
@@ -100,20 +101,21 @@ const AppShell: React.FC<{ children: React.ReactNode }> = ({ children }) => {
         </Toolbar>
       </AppBar>
       <Container maxWidth="lg" sx={{ py: 4 }}>
-        <Box component="nav" aria-label="主要ナビゲーション" role="navigation" sx={{ mb: 2 }}>
+        <Box component="nav" role="navigation" aria-label="主要ナビゲーション" mb={2}>
           <Stack direction="row" spacing={1} flexWrap="wrap">
-            {navItems.map((item) => {
-              const active = item.isActive(location.pathname);
+            {navItems.map(({ label, to, isActive, testId }) => {
+              const active = isActive(location.pathname);
               return (
                 <Button
-                  key={item.to}
+                  key={label}
                   component={RouterLink}
-                  to={item.to}
+                  to={to}
                   variant={active ? 'contained' : 'outlined'}
                   size="small"
+                  data-testid={testId}
                   aria-current={active ? 'page' : undefined}
                 >
-                  {item.label}
+                  {label}
                 </Button>
               );
             })}
@@ -130,19 +132,23 @@ const ConnectionStatus: React.FC = () => {
   const [state, setState] = useState<'checking' | 'ok' | 'error'>('checking');
 
   useEffect(() => {
-    let disposed = false;
+    let cancelled = false;
     const controller = new AbortController();
 
     (async () => {
       try {
-  const result = await spFetch('/currentuser?$select=Id', { signal: controller.signal });
-  if (disposed) return;
-  const ok = typeof result === 'object' && result !== null && 'ok' in result && Boolean((result as { ok?: unknown }).ok);
+        const result = await spFetch('/currentuser?$select=Id', { signal: controller.signal });
+        if (cancelled) return;
+        let ok = false;
+        if (result instanceof Response) {
+          ok = result.ok;
+        } else if (result && typeof result === 'object' && 'ok' in result) {
+          ok = Boolean((result as { ok?: unknown }).ok);
+        }
         setState(ok ? 'ok' : 'error');
-      } catch (error: unknown) {
-        if (disposed) return;
-        const name = (error as { name?: string } | null)?.name;
-        if (name === 'AbortError') {
+      } catch (error) {
+        if (cancelled) return;
+        if (error instanceof DOMException && error.name === 'AbortError') {
           setState('checking');
           return;
         }
@@ -151,12 +157,12 @@ const ConnectionStatus: React.FC = () => {
     })();
 
     return () => {
-      disposed = true;
+      cancelled = true;
       controller.abort();
     };
   }, [spFetch]);
 
-  const { label, background } = (() => {
+  const { label, background } = useMemo(() => {
     switch (state) {
       case 'ok':
         return { label: 'SP Connected', background: '#2e7d32' };
@@ -165,7 +171,7 @@ const ConnectionStatus: React.FC = () => {
       default:
         return { label: 'Checking', background: '#ffb300' };
     }
-  })();
+  }, [state]);
 
   return (
     <Box

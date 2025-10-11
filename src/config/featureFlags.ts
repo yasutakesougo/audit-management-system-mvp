@@ -1,5 +1,10 @@
+import {
+  isComplianceFormEnabled,
+  isSchedulesCreateEnabled,
+  isSchedulesFeatureEnabled,
+  type EnvRecord,
+} from '../lib/env';
 import { createContext, createElement, useContext, useMemo, type ReactNode } from 'react';
-import { isComplianceFormEnabled, isSchedulesCreateEnabled, isSchedulesFeatureEnabled, type EnvRecord } from '@/lib/env';
 
 export type FeatureFlagSnapshot = {
   schedules: boolean;
@@ -17,7 +22,7 @@ const initialSnapshot = resolveFeatureFlags();
 
 let currentSnapshot = initialSnapshot;
 
-export const featureFlags = initialSnapshot;
+export const featureFlags: FeatureFlagSnapshot = initialSnapshot;
 
 export const getFeatureFlags = (envOverride?: EnvRecord): FeatureFlagSnapshot => {
   if (envOverride) {
@@ -28,7 +33,7 @@ export const getFeatureFlags = (envOverride?: EnvRecord): FeatureFlagSnapshot =>
 
 export const FeatureFlagsContext = createContext<FeatureFlagSnapshot>(initialSnapshot);
 
-type FeatureFlagsProviderProps = {
+export type FeatureFlagsProviderProps = {
   value?: FeatureFlagSnapshot;
   children: ReactNode;
 };

@@ -1,7 +1,8 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { getFlag } from '@/env';
+import { getAppConfig } from './env';
 
-const enabled = getFlag('VITE_AUDIT_DEBUG', false);
+const debugConfig = getAppConfig();
+const enabled = debugConfig.VITE_AUDIT_DEBUG === '1' || debugConfig.VITE_AUDIT_DEBUG === 'true';
 
 type Level = 'debug' | 'info' | 'warn' | 'error';
 
