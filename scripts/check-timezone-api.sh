@@ -10,27 +10,41 @@ PATTERN="(setHours|setUTCHours|toLocaleString)"
 # Allow known safe utility folders to use low-level Date mutation APIs.
 ALLOWED_SUBSTRING="/utils/"
 
-mapfile -t matches < <(rg -n --no-heading --color never "${PATTERN}" src || true)
+tmpfile=$(mktemp)
+trap 'rm -f "${tmpfile}"' EXIT
 
-if [ ${#matches[@]} -eq 0 ]; then
-  exit 0
-fi
-
-violations=()
-for hit in "${matches[@]}"; do
-  if [[ "${hit}" != *"${ALLOWED_SUBSTRING}"* ]]; then
-    violations+=("${hit}")
+if ! rg -n --no-heading --color never "${PATTERN}" src >"${tmpfile}"; then
+  status=$?
+  # ripgrep exits with status 1 when no matches are found; treat that as success.
+  if [ ${status} -ne 1 ]; then
+    echo "[timezone-guard] ripgrep failed" >&2
+    exit 1
   fi
-done
+fi
 
-if [ ${#violations[@]} -eq 0 ]; then
+if [ ! -s "${tmpfile}" ]; then
   exit 0
 fi
 
-echo "\n🚫 Found forbidden Date API usage outside approved utils folders:" >&2
-for violation in "${violations[@]}"; do
-  echo "  ${violation}" >&2
-done
+violations_output=""
+while IFS= read -r hit; do
+  [ -z "${hit}" ] && continue
+  case "${hit}" in
+    *"${ALLOWED_SUBSTRING}"*)
+      continue
+      ;;
+    *)
+      violations_output="${violations_output}  ${hit}
 
-echo "\nUse timezone helpers (formatInTimeZone/fromZonedTime) instead of raw Date mutations." >&2
+      ;;
+  esac
+done <"${tmpfile}"
+
+if [ -z "${violations_output}" ]; then
+  exit 0
+fi
+
+printf '\n🚫 Found forbidden Date API usage outside approved utils folders:\n' >&2
+printf '%s' "${violations_output}" >&2
+printf '\nUse timezone helpers (formatInTimeZone/fromZonedTime) instead of raw Date mutations.\n' >&2
 exit 1

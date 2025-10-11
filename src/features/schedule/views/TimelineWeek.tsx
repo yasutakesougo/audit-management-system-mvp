@@ -311,6 +311,7 @@ export default function TimelineWeek({ events, startDate, onEventMove }: Timelin
                     {dayEvents.length ? (
                       dayEvents.map((event) => {
                         const baseContainerProps = {
+                          'data-testid': 'schedule-item',
                           'data-schedule-event': 'true',
                           'data-id': event.id,
                           'data-status': event.status,
