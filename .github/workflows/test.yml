@@ -1,5 +1,4 @@
 name: Quality Gates
-
 on:
   push:
     branches: [ main, develop ]
@@ -9,6 +8,16 @@ on:
   workflow_dispatch:
     inputs:
       ref:
+        description: "Target ref (branch or tag)"
+        required: false
+        default: ""
+
+concurrency:
+  group: quality-gates-${{ github.ref }}
+  cancel-in-progress: true
+  workflow_dispatch:
+    inputs:
+  quality:
         description: 'Target ref (branch or tag)'
         required: false
         default: ''
