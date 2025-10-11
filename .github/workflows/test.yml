@@ -5,6 +5,12 @@ on:
     branches: [ main, develop ]
   pull_request:
     branches: [ main, develop ]
+  workflow_dispatch:
+    inputs:
+      ref:
+        description: 'Target ref (branch or tag)'
+        required: false
+        default: ''
 
 jobs:
   quality:
@@ -12,6 +18,8 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.inputs.ref || github.head_ref || github.ref }}
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
@@ -72,6 +80,8 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.inputs.ref || github.head_ref || github.ref }}
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
