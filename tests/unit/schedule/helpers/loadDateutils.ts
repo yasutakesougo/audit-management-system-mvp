@@ -17,6 +17,8 @@ export async function loadDateutilsWithTz(tz: string) {
   const previous = process.env.VITE_SCHEDULES_TZ;
   process.env.VITE_SCHEDULES_TZ = tz;
   vi.resetModules();
+  const { __resetAppConfigForTests } = await import('@/lib/env');
+  __resetAppConfigForTests();
   const mod = await import('@/features/schedule/dateutils.local');
 
   const restore = () => {
@@ -26,6 +28,7 @@ export async function loadDateutilsWithTz(tz: string) {
       process.env.VITE_SCHEDULES_TZ = previous;
     }
     vi.resetModules();
+    __resetAppConfigForTests();
   };
 
   return { ...mod, restore };
