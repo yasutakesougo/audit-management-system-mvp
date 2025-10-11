@@ -46,10 +46,38 @@ jobs:
           npm run preflight
           npx vitest run tests/unit/schedule --reporter=basic
 
+  schedule-unit:
+    name: Schedule unit (TZ matrix)
+    runs-on: ubuntu-latest
+    needs: preflight
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        tz: ["Asia/Tokyo", "America/Los_Angeles"]
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.inputs.ref || github.ref }}
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - run: npm ci
+
+      - name: Schedule specs (${{ matrix.tz }})
+        env:
+          CI: true
+          VITE_SCHEDULES_TZ: ${{ matrix.tz }}
+        run: npx vitest run tests/unit/schedule --reporter=basic
+
   e2e:
     name: E2E (Playwright, opt-in)
     runs-on: ubuntu-latest
-    needs: preflight
+    needs: [preflight, schedule-unit]
     timeout-minutes: 45
     if: contains(github.event.pull_request.labels.*.name, 'e2e')
 

@@ -1,5 +1,5 @@
 import { addDays } from 'date-fns';
-import { format, fromZonedTime } from 'date-fns-tz';
+import { formatInTimeZone, fromZonedTime } from 'date-fns-tz';
 import { getAppConfig } from '@/lib/env';
 import { resolveSchedulesTz, assertValidTz } from '@/utils/scheduleTz';
 
@@ -33,7 +33,7 @@ const resolveWeekStart = (override?: number): number => {
 };
 
 function ymdInTz(date: Date, tz: string): string {
-  return format(date, 'yyyy-MM-dd', { timeZone: tz });
+  return formatInTimeZone(date, tz, 'yyyy-MM-dd');
 }
 
 function localWallClockToUtc(ymd: string, time: string, tz: string): Date {
@@ -88,7 +88,7 @@ export function startOfWeekUtc(input: Date | string, timeZone?: string, weekStar
   }
   const tz = resolveTz(timeZone);
   const resolvedWeekStart = resolveWeekStart(weekStartsOn);
-  const isoDay = Number(format(date, 'i', { timeZone: tz })); // 1 (Mon) .. 7 (Sun)
+  const isoDay = Number(formatInTimeZone(date, tz, 'i')); // 1 (Mon) .. 7 (Sun)
   const dayIndex = normalizeWeekIndex(isoDay);
   const startIndex = normalizeWeekIndex(resolvedWeekStart);
   const deltaBack = -normalizeWeekIndex(dayIndex - startIndex);

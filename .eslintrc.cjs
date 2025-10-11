@@ -48,7 +48,8 @@ module.exports = {
           { object: 'Date', property: 'setUTCHours', message: '壁時計→UTCはdateutils経由で' },
           { object: 'Date', property: 'setUTCMinutes', message: '壁時計→UTCはdateutils経由で' },
           { object: 'Date', property: 'setUTCSeconds', message: '壁時計→UTCはdateutils経由で' },
-          { object: 'Date', property: 'setUTCMilliseconds', message: '壁時計→UTCはdateutils経由で' }
+          { object: 'Date', property: 'setUTCMilliseconds', message: '壁時計→UTCはdateutils経由で' },
+          { object: 'Date', property: 'toLocaleString', message: 'Use formatInTimeZone() instead' }
         ],
         'no-restricted-syntax': [
           'error',
@@ -58,6 +59,17 @@ module.exports = {
             message:
               '文字列から Date を直接作らないでください（TZ安全な dateutils 経由で）'
           }
+        ]
+      }
+    },
+    {
+      files: ['src/lib/date/**', 'src/features/audit/utils/**'],
+      rules: {
+        'no-restricted-properties': [
+          'error',
+          { object: 'Date', property: 'toLocaleString', message: 'Use formatInTimeZone() instead' },
+          { object: 'Date', property: 'setHours', message: 'Use fromZonedTime() helpers instead' },
+          { object: 'Date', property: 'setUTCHours', message: 'Use fromZonedTime() helpers instead' }
         ]
       }
     }

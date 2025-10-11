@@ -16,6 +16,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 - _TBD_
 
+## [0.9.1] – 2025-10-11
+
+### Added
+- Scaffolded release flow: npm alias for reusable release helper.
+
+### Changed
+- Prepared changelog section for the next patch release using Keep a Changelog format.
+
+### Fixed
+- (none)
+
 ## [0.9.0] – 2025-10-11
 
 ### Added
@@ -39,5 +50,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
-[Unreleased]: https://github.com/yasutakesougo/audit-management-system-mvp/compare/v0.9.0...HEAD
+[Unreleased]: https://github.com/yasutakesougo/audit-management-system-mvp/compare/v0.9.1...HEAD
+[0.9.1]: https://github.com/yasutakesougo/audit-management-system-mvp/compare/v0.9.0...v0.9.1
 [0.9.0]: https://github.com/yasutakesougo/audit-management-system-mvp/releases/tag/v0.9.0
