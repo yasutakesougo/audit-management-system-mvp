@@ -59,6 +59,7 @@ export const useAuditSyncBatch = () => {
     // 環境変数優先 (1-500 clamp)
     const batchConfig = getAppConfig();
     const envSizeRaw = batchConfig.VITE_AUDIT_BATCH_SIZE;
+    const devMode = batchConfig.isDev;
     let effective = chunkSize ?? (envSizeRaw ? parseInt(envSizeRaw, 10) : DEFAULT_CHUNK_SIZE);
     if (isNaN(effective) || effective <= 0) effective = DEFAULT_CHUNK_SIZE;
     if (effective > 500) effective = 500;
@@ -114,8 +115,8 @@ export const useAuditSyncBatch = () => {
     for (const chunk of chunks) {
       let attempt = 0;
       let done = false;
-  // _lastParse: retained for potential future diagnostics (unused currently)
-  let _lastParse: Awaited<ReturnType<typeof parseBatchInsertResponse>> | null = null;
+      // _lastParse: retained for potential future diagnostics (unused currently)
+      let _lastParse: Awaited<ReturnType<typeof parseBatchInsertResponse>> | null = null;
       while (!done && attempt < MAX_RETRY) {
         const { body, boundary } = buildBatchInsertBody(AUDIT_LIST_NAME, chunk);
         try {
@@ -202,7 +203,7 @@ export const useAuditSyncBatch = () => {
     }
     const durationMs = Math.round(performance.now() - start);
     // Debug metrics exposure (DEV only)
-    if (auditLog.enabled && typeof window !== 'undefined') {
+    if (auditLog.enabled && devMode && typeof window !== 'undefined') {
       window.__AUDIT_BATCH_METRICS__ = {
         total: logs.length,
         success,
@@ -223,7 +224,7 @@ export const useAuditSyncBatch = () => {
 };
 
   // DEV/E2E helper to inject a one-off sync call without going through component button (optional)
-  if (process.env.NODE_ENV !== 'production' && typeof window !== 'undefined') {
+  if (getAppConfig().isDev && typeof window !== 'undefined') {
     (window as any).__E2E_INVOKE_SYNC_BATCH__ = async (size?: number) => {
       try {
         const mod = await import('./useAuditSyncBatch');

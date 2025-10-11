@@ -1,4 +1,4 @@
-import { getRuntimeEnv } from '../env';
+import { getRuntimeEnv, isDev as runtimeIsDev } from '../env';
 
 type Primitive = string | number | boolean | undefined | null;
 export type EnvRecord = Record<string, Primitive>;
@@ -22,6 +22,7 @@ export type AppConfig = {
   graphRetryCapMs: number;
   schedulesTz: string;
   schedulesWeekStart: number;
+  isDev: boolean;
 };
 
 const TRUTHY = new Set(['1', 'true', 'yes', 'y', 'on', 'enabled']);
@@ -73,6 +74,18 @@ const getEnvValue = (key: string, envOverride?: EnvRecord): Primitive => {
   return undefined;
 };
 
+const resolveIsDev = (envOverride?: EnvRecord): boolean => {
+  const modeValue = getEnvValue('MODE', envOverride);
+  if (typeof modeValue === 'string' && modeValue.trim()) {
+    return modeValue.trim().toLowerCase() === 'development';
+  }
+  const devValue = getEnvValue('DEV', envOverride);
+  if (devValue !== undefined) {
+    return coerceBoolean(devValue, runtimeIsDev);
+  }
+  return runtimeIsDev;
+};
+
 export const readEnv = (key: string, fallback = '', envOverride?: EnvRecord): string => {
   const raw = getEnvValue(key, envOverride);
   const normalized = normalizeString(raw);
@@ -105,6 +118,7 @@ export const getAppConfig = (envOverride?: EnvRecord): AppConfig => {
     graphRetryCapMs: parseNumber(readEnv('VITE_GRAPH_RETRY_CAP_MS', '2000', envOverride), 2000),
     schedulesTz: readEnv('VITE_SCHEDULES_TZ', '', envOverride).trim(),
     schedulesWeekStart: clampWeekStart(parseNumber(readEnv('VITE_SCHEDULES_WEEK_START', '1', envOverride), 1)),
+    isDev: resolveIsDev(envOverride),
   };
 
   if (!envOverride) {
