@@ -1,4 +1,5 @@
 import { test, expect } from "@playwright/test";
+import { enableSchedulesFeature } from "./_helpers/flags";
 
 const BASE_URL = "http://localhost:5173";
 
@@ -21,9 +22,7 @@ test.describe("schedule feature flag", () => {
   });
 
   test("shows navigation and loads schedule month when flag enabled", async ({ page }) => {
-    await page.addInitScript(() => {
-      window.localStorage.setItem("feature:schedules", "true");
-    });
+    await enableSchedulesFeature(page);
 
     await page.goto(`${BASE_URL}/`);
 

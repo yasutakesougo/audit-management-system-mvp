@@ -24,6 +24,8 @@ const clampWeekStartValue = (value?: number): number => {
   return normalized;
 };
 
+const ymdFormatterCache = new Map<string, Intl.DateTimeFormat>();
+
 const resolveWeekStart = (override?: number): number => {
   if (override !== undefined) {
     return clampWeekStartValue(override);
@@ -32,8 +34,41 @@ const resolveWeekStart = (override?: number): number => {
   return clampWeekStartValue(config.schedulesWeekStart);
 };
 
+const getYmdFormatter = (tz: string): Intl.DateTimeFormat => {
+  const cached = ymdFormatterCache.get(tz);
+  if (cached) {
+    return cached;
+  }
+  const formatter = new Intl.DateTimeFormat('en-CA', {
+    timeZone: tz,
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit'
+  });
+  ymdFormatterCache.set(tz, formatter);
+  return formatter;
+};
+
 function ymdInTz(date: Date, tz: string): string {
-  return formatInTimeZone(date, tz, 'yyyy-MM-dd');
+  const fallback = formatInTimeZone(date, tz, 'yyyy-MM-dd');
+  try {
+    const formatted = getYmdFormatter(tz).format(date);
+    if (formatted !== fallback) {
+      console.warn('[schedule dateutils] Intl formatter mismatch; using date-fns-tz fallback.', {
+        tz,
+        formatted,
+        fallback
+      });
+      return fallback;
+    }
+    return formatted;
+  } catch (error) {
+    console.warn('[schedule dateutils] Failed to format date in tz; falling back to date-fns-tz formatter.', {
+      tz,
+      error
+    });
+    return fallback;
+  }
 }
 
 function localWallClockToUtc(ymd: string, time: string, tz: string): Date {

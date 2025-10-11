@@ -1,6 +1,6 @@
 import { useCallback, useMemo } from 'react';
 import { formatInTimeZone } from '@/lib/tz';
-import { addMinutes, differenceInCalendarDays, differenceInMinutes, isAfter, isBefore } from 'date-fns';
+import { addMinutes, differenceInCalendarDays, differenceInMinutes, isAfter, isBefore, set } from 'date-fns';
 import type { Staff, User } from '@/types';
 import type { Schedule } from '@/lib/mappers';
 import { useSchedules } from '@/stores/useSchedules';
@@ -488,10 +488,8 @@ export function useOperationHubData(): OperationHubData {
     }
 
     if (!minStart || !maxEnd) {
-      const defaultStart = new Date(now);
-      defaultStart.setHours(9, 0, 0, 0);
-      const defaultEnd = new Date(defaultStart);
-      defaultEnd.setHours(18, 0, 0, 0);
+      const defaultStart = set(now, { hours: 9, minutes: 0, seconds: 0, milliseconds: 0 });
+      const defaultEnd = set(defaultStart, { hours: 18, minutes: 0, seconds: 0, milliseconds: 0 });
       minStart = defaultStart;
       maxEnd = defaultEnd;
     }

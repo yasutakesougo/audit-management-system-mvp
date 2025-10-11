@@ -1,3 +1,5 @@
+import { set } from 'date-fns';
+
 type AbortableOptions = { signal?: AbortSignal } | undefined;
 
 export type ScheduleStatus = 'planned' | 'confirmed' | 'absent' | 'holiday';
@@ -71,8 +73,7 @@ const abortIfNeeded = (options?: AbortableOptions) => {
 };
 
 const seed = () => {
-	const base = new Date();
-	base.setHours(9, 0, 0, 0);
+	const base = set(new Date(), { hours: 9, minutes: 0, seconds: 0, milliseconds: 0 });
 	const item: Schedule = {
 		id: generateId(),
 		assignee: 'staff-001',

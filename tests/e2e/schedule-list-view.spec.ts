@@ -4,6 +4,7 @@ import { setupSharePointStubs } from './_helpers/setupSharePointStubs';
 import { mockEnsureScheduleList } from './_helpers/mockEnsureScheduleList';
 import { clickEnabledFilterAction } from './utils/waiters';
 import { runA11ySmoke } from './utils/a11y';
+import { enableSchedulesFeature } from './_helpers/flags';
 
 const TEST_NOW = '2025-10-08T03:00:00.000Z';
 
@@ -126,6 +127,8 @@ test.describe('schedule list view', () => {
   test('filters, sorts, paginates, and shows details', async ({ page }) => {
     const consoleGuard = hookConsole(page);
 
+    await enableSchedulesFeature(page);
+
     await page.addInitScript(({ now }) => {
       const fixedNow = new Date(now).getTime();
       const RealDate = Date;
@@ -144,12 +147,11 @@ test.describe('schedule list view', () => {
         static UTC = RealDate.UTC;
       }
       Object.setPrototypeOf(MockDate, RealDate);
-      (window as any).Date = MockDate;
+  (window as typeof window & { Date: DateConstructor }).Date = MockDate as unknown as DateConstructor;
 
       window.localStorage.setItem('skipLogin', '1');
       window.localStorage.setItem('demo', '0');
       window.localStorage.setItem('writeEnabled', '1');
-      window.localStorage.setItem('feature:schedules', '1');
       (window as typeof window & { __TEST_NOW__?: string }).__TEST_NOW__ = now;
     }, { now: TEST_NOW });
 

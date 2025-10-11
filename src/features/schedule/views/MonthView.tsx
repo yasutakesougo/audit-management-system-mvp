@@ -195,7 +195,12 @@ export default function MonthView() {
         ))}
       </div>
 
-      <div className="grid grid-cols-7 gap-2" role="grid" aria-label="月間スケジュール">
+      <div
+        className="grid grid-cols-7 gap-2"
+        role="grid"
+        aria-label="月間スケジュール"
+        data-testid="schedule-month-grid"
+      >
         {calendarDays.map(({ date, key, isCurrentMonth, entries: dayEntries }) => (
           <div
             key={key}
@@ -215,7 +220,11 @@ export default function MonthView() {
             ) : dayEntries.length ? (
               <ul className="mt-2 space-y-1">
                 {dayEntries.slice(0, 3).map((item) => (
-                  <li key={`${item.id}-${item.startIso}`} className="truncate rounded-sm bg-indigo-50 px-1 py-0.5 text-[11px] text-indigo-700">
+                  <li
+                    key={`${item.id}-${item.startIso}`}
+                    className="truncate rounded-sm bg-indigo-50 px-1 py-0.5 text-[11px] text-indigo-700"
+                    data-testid="schedule-item"
+                  >
                     {item.title}
                   </li>
                 ))}

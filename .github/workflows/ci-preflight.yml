@@ -41,10 +41,17 @@ jobs:
 
       - run: npm ci
 
+      - name: Timezone guard (ripgrep)
+        run: RG_REQUIRED=1 npm run guard:tz
+
       - name: Preflight (typecheck, lint, unit, build)
-        run: |
-          npm run preflight
-          npx vitest run tests/unit/schedule --reporter=basic
+        run: npm run preflight
+
+      - name: Unit (coverage)
+        run: npx vitest run --coverage --reporter=basic
+
+      - name: Schedule unit suite (coverage)
+        run: npx vitest run tests/unit/schedule --coverage --reporter=basic --coverage.reportsDirectory=coverage-schedule
 
   schedule-unit:
     name: Schedule unit (TZ matrix)
@@ -67,6 +74,9 @@ jobs:
           cache: npm
 
       - run: npm ci
+
+      - name: Timezone guard (ripgrep)
+        run: RG_REQUIRED=1 npm run guard:tz
 
       - name: Schedule specs (${{ matrix.tz }})
         env:
@@ -92,6 +102,9 @@ jobs:
           cache: npm
 
       - run: npm ci
+
+      - name: Timezone guard (ripgrep)
+        run: RG_REQUIRED=1 npm run guard:tz
 
       - run: npx playwright install --with-deps
         name: Install Playwright browsers

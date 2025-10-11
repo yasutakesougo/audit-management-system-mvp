@@ -2,6 +2,7 @@ import { expect, test } from '@playwright/test';
 import { hookConsole } from './utils/console';
 import { setupSharePointStubs } from './_helpers/setupSharePointStubs';
 import { mockEnsureScheduleList } from './_helpers/mockEnsureScheduleList';
+import { enableSchedulesFeature } from './_helpers/flags';
 
 const TEST_NOW = '2025-10-08T03:00:00.000Z';
 
@@ -111,9 +112,11 @@ const scheduleResponseHeaders = {
 
 test.describe('schedule day timeline', () => {
   test('renders 24 hour slots and clamps cross-day events', async ({ page }) => {
-    const consoleGuard = hookConsole(page);
+  const consoleGuard = hookConsole(page);
 
-    await page.addInitScript(({ now }) => {
+  await enableSchedulesFeature(page);
+
+  await page.addInitScript(({ now }) => {
       const fixedNow = new Date(now).getTime();
       const RealDate = Date;
       class MockDate extends RealDate {
@@ -131,12 +134,11 @@ test.describe('schedule day timeline', () => {
         static UTC = RealDate.UTC;
       }
       Object.setPrototypeOf(MockDate, RealDate);
-      (window as any).Date = MockDate;
+  (window as typeof window & { Date: DateConstructor }).Date = MockDate as unknown as DateConstructor;
 
       window.localStorage.setItem('skipLogin', '1');
       window.localStorage.setItem('demo', '0');
       window.localStorage.setItem('writeEnabled', '1');
-      window.localStorage.setItem('feature:schedules', '1');
       (window as typeof window & { __TEST_NOW__?: string }).__TEST_NOW__ = now;
     }, { now: TEST_NOW });
 

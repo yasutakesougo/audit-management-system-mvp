@@ -201,6 +201,18 @@ if (import.meta.env.DEV) {
 
 テストでタイムゾーンを固定する場合は `tests/unit/schedule/helpers/loadDateutils.ts` の `loadDateutilsWithTz()` を利用し、返される `restore()` を各テスト後に呼び出して `Intl.DateTimeFormat` / `import.meta.env` の差し替え状態を元に戻してください。
 
+### Timezone Guard Rails
+- `npm run guard:tz` で `setHours` / `setUTCHours` / `toLocaleString` を全検索し、`/utils/` および既存の `src/features/schedule/**` / `src/features/schedules/**` を除くモジュールでの利用を禁止しています（段階的移行のため暫定許可）。CI では `RG_REQUIRED=1 npm run guard:tz` が必須で、ripgrep 未インストール時は失敗します。
+- pre-commit フックが同じチェックを実行するため、コミット前に必ずガードが走ります。
+- UI 層などで例外的に許可する場合は直前 3 行以内に `// SCHEDULES-TZ-ALLOW: reason=...` を残し、レビュアが理由を確認できるようにしてください。
+- 例外タグの使用例:
+
+```ts
+// SCHEDULES-TZ-ALLOW: reason=justified_display (human-readable, non-calculation)
+const displayLabel = formatInTimeZone(event.start, displayTz, 'yyyy-MM-dd HH:mm');
+```
+- 既存の許可済み Date 演算は `src/features/**/utils/` または `src/lib/date/**` に集約し、ヘルパー経由で利用します。
+
 ### Stale-While-Revalidate & Scoped Bust (opt-in)
 - Flip `VITE_SP_GET_SWR=1` to opt into background refresh with SharePoint ETag reuse. Hard TTL is controlled by `VITE_SP_GET_SWR_TTL_MS`; the additional grace window comes from `VITE_SP_GET_SWR_WINDOW_MS`.
 - Fresh hits (<= TTL) return immediately from cache. Between TTL and TTL + SWR window, cached data is returned instantly while a single background refresh revalidates the entry. Beyond that window the entry is treated as cold and a network fetch occurs.

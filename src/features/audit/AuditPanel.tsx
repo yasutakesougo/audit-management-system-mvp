@@ -1,4 +1,4 @@
-import React, { useCallback, useState } from 'react';
+import React, { useCallback, useMemo, useState } from 'react';
 import { readAudit, AuditEvent } from '../../lib/audit';
 import { buildAuditCsv, downloadCsv } from './exportCsv';
 import { useAuditSync } from './useAuditSync';
@@ -6,6 +6,7 @@ import { useAuditSyncBatch } from './useAuditSyncBatch';
 import { AuditBatchMetrics } from './types';
 import { auditMetricLabels } from './labels';
 import { isDevMode } from '../../lib/env';
+import { formatInTimeZone } from 'date-fns-tz';
 
 const AuditPanel: React.FC = () => {
   const [logs, setLogs] = useState<AuditEvent[]>(readAudit());
@@ -22,6 +23,25 @@ const AuditPanel: React.FC = () => {
   const [lastDuplicates, setLastDuplicates] = useState<AuditBatchMetrics['duplicates'] | undefined>();
   const [lastTotal, setLastTotal] = useState<AuditBatchMetrics['total'] | undefined>();
   const [showMetrics, setShowMetrics] = useState(false);
+  const displayTimeZone = useMemo(() => {
+    try {
+      return Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC';
+    } catch (error) {
+      console.warn('[audit] Failed to resolve local time zone, falling back to UTC', error);
+      return 'UTC';
+    }
+  }, []);
+  const formatTimestamp = useCallback(
+    (timestamp: string) => {
+      try {
+        return formatInTimeZone(timestamp, displayTimeZone, 'yyyy-MM-dd HH:mm:ss');
+      } catch (error) {
+        console.warn('[audit] Failed to format timestamp, returning raw value', { timestamp, error });
+        return timestamp;
+      }
+    },
+    [displayTimeZone]
+  );
   const closeMetrics = useCallback(() => setShowMetrics(false), []);
   const handleMetricsOverlayClick = useCallback((event: React.MouseEvent<HTMLDivElement>) => {
     if (event.target === event.currentTarget) {
@@ -228,7 +248,7 @@ ${JSON.stringify(window.__AUDIT_BATCH_METRICS__, null, 2)}
         <tbody>
           {logs.filter(l => actionFilter === 'ALL' || l.action === actionFilter).map((log: AuditEvent, i: number) => (
             <tr key={i}>
-              <td>{new Date(log.ts).toLocaleString()}</td>
+              <td>{formatTimestamp(log.ts)}</td>
               <td>{log.actor}</td>
               <td>{log.action}</td>
               <td>{log.entity}</td>

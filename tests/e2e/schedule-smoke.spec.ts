@@ -1,4 +1,5 @@
 import { expect, test } from '@playwright/test';
+import { enableSchedulesFeature } from './_helpers/flags';
 
 const buildGraphEvents = (startIso: string | null, endIso: string | null) => {
   const fallbackStart = new Date();
@@ -50,8 +51,9 @@ test.describe('Schedule smoke', () => {
         VITE_E2E_MSAL_MOCK: '1',
         VITE_SKIP_LOGIN: '1',
       };
-      window.localStorage.setItem('feature:schedules', '1');
     });
+
+    await enableSchedulesFeature(page);
 
     await page.route('https://graph.microsoft.com/v1.0/me/calendarView*', async (route) => {
       const request = route.request();
@@ -89,11 +91,11 @@ test.describe('Schedule smoke', () => {
     });
   });
 
-  test('shows tabs and demo appointments on week view', async ({ page }) => {
-    await page.goto('/schedule');
-    await expect(page.getByTestId('tab-week')).toBeVisible();
-    await expect(page.getByTestId('tab-day')).toBeVisible();
-    await expect(page.getByTestId('tab-timeline')).toBeVisible();
+  test('shows demo appointments on month view', async ({ page }) => {
+    await page.goto('/schedules/month');
+
+    await expect(page.getByRole('heading', { name: 'スケジュール（月表示）' })).toBeVisible();
+    await expect(page.getByTestId('schedule-month-grid')).toBeVisible();
 
     const items = page.getByTestId('schedule-item');
     await expect(items.first()).toBeVisible();
