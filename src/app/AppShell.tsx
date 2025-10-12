@@ -100,7 +100,7 @@ const AppShell: React.FC<{ children: React.ReactNode }> = ({ children }) => {
           <SignInButton />
         </Toolbar>
       </AppBar>
-      <Container maxWidth="lg" sx={{ py: 4 }}>
+      <Container component="main" role="main" maxWidth="lg" sx={{ py: 4 }}>
         <Box component="nav" role="navigation" aria-label="主要ナビゲーション" mb={2}>
           <Stack direction="row" spacing={1} flexWrap="wrap">
             {navItems.map(({ label, to, isActive, testId }) => {

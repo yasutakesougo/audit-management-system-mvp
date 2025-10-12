@@ -50,12 +50,14 @@ export const ToastProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 				role: 'status',
 				'aria-atomic': 'true',
 				className: 'fixed bottom-4 right-4 z-50 space-y-2',
+				'data-testid': 'toast-announcer',
 			},
 			items.map((toast) =>
 				React.createElement(
 					'div',
 					{
 						key: toast.id,
+						'data-testid': 'toast-message',
 						className: `rounded px-3 py-2 text-sm font-medium text-white shadow transition-opacity duration-200 ${
 							toast.kind === 'success'
 								? 'bg-green-600'

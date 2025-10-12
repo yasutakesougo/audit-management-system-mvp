@@ -68,8 +68,9 @@ exports[`AppShell snapshot 1`] = `
       </button>
     </div>
   </header>
-  <div
+  <main
     class="MuiContainer-root MuiContainer-maxWidthLg css-xsov46-MuiContainer-root"
+    role="main"
   >
     <nav
       aria-label="主要ナビゲーション"
@@ -123,6 +124,6 @@ exports[`AppShell snapshot 1`] = `
     >
       content
     </div>
-  </div>
+  </main>
 </div>
 `;

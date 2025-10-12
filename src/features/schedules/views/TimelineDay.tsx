@@ -36,7 +36,10 @@ export default function TimelineDay() {
           {items.map((item) => (
             <li key={item.id} className="relative pl-6">
               <span className="absolute left-0 top-2 h-3 w-3 rounded-full bg-indigo-400" />
-              <div className="rounded-md border border-indigo-200 bg-white px-4 py-3 shadow-sm">
+              <div
+                data-testid="schedule-item"
+                className="rounded-md border border-indigo-200 bg-white px-4 py-3 shadow-sm"
+              >
                 <p className="text-xs font-semibold uppercase tracking-wide text-indigo-600">
                   {formatTime(item.start)} – {formatTime(item.end)}
                 </p>

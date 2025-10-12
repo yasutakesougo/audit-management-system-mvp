@@ -5,6 +5,7 @@ import ErrorState from '../../ui/components/ErrorState';
 import { pushAudit } from '../../lib/audit';
 import { useRecordsApi } from './api';
 import { mapToRecordItem, RecordItem, SupportRecordInsertDTO, SupportRecordItem } from './types';
+import { useToast } from '@/hooks/useToast';
 
 const RecordList: React.FC = () => {
   const [records, setRecords] = useState<RecordItem[]>([]);
@@ -12,6 +13,7 @@ const RecordList: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [form, setForm] = useState<SupportRecordInsertDTO>({ Title: '' });
   const { list, add } = useRecordsApi();
+  const { show } = useToast();
 
   const loadRecords = async () => {
     setLoading(true);
@@ -23,6 +25,7 @@ const RecordList: React.FC = () => {
       setError(null);
     } catch (e: any) {
       setError(e.message);
+      show('error', e instanceof Error ? e.message : '日次記録の取得に失敗しました');
     } finally {
       setLoading(false);
     }
@@ -51,8 +54,11 @@ const RecordList: React.FC = () => {
       });
       setForm({ Title: '' });
       setError(null);
+      show('success', '保存しました');
     } catch (e: any) {
       setError(e.message);
+      const message = e instanceof Error ? e.message : '保存に失敗しました。時間をおいて再度お試しください。';
+      show('error', message);
     } finally {
       setLoading(false);
     }
