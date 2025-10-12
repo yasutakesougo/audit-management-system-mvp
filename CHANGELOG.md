@@ -11,7 +11,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - _TBD_
 
 ### Changed
-- _TBD_
+- SP client: wired retry telemetry into debug logger and tightened abort semantics to skip redundant retries.
+- feat(spClient): retry hooks + batch/paging.
 
 ### Fixed
 - _TBD_
