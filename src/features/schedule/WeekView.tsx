@@ -199,6 +199,7 @@ export function WeekView({ weekStart, schedules, onSelectSlot, onSelectEvent, lo
                     style={{ top: position.top, height: position.height }}
                     onClick={() => onSelectEvent(schedule)}
                     aria-label={label}
+                    data-testid="schedule-item"
                   >
                     <span className="font-medium leading-tight">{schedule.title || '予定'}</span>
                     {start && end ? (

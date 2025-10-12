@@ -1,7 +1,15 @@
 import { expect, test } from '@playwright/test';
+import { mockEnsureScheduleList } from './_helpers/mockEnsureScheduleList';
+import { setupSharePointStubs } from './_helpers/setupSharePointStubs';
+
+const TEST_NOW = (() => {
+  const now = new Date();
+  now.setHours(3, 0, 0, 0);
+  return now.toISOString();
+})();
 
 const buildGraphEvents = (startIso: string | null, endIso: string | null) => {
-  const fallbackStart = new Date();
+  const fallbackStart = new Date(TEST_NOW);
   fallbackStart.setHours(9, 0, 0, 0);
 
   const rangeStart = startIso ? new Date(startIso) : fallbackStart;
@@ -41,17 +49,127 @@ const buildGraphEvents = (startIso: string | null, endIso: string | null) => {
   return events.filter((event) => new Date(event.start.dateTime).getTime() < endTs);
 };
 
+const buildScheduleFixtures = () => {
+  const today = new Date(TEST_NOW);
+  today.setHours(0, 0, 0, 0);
+
+  const slot = (dayOffset: number, startHour: number, durationHours: number) => {
+    const start = new Date(today);
+    start.setDate(start.getDate() + dayOffset);
+    start.setHours(startHour, 0, 0, 0);
+    const end = new Date(start.getTime() + durationHours * 60 * 60 * 1000);
+    const month = start.getMonth() + 1;
+    const day = start.getDate();
+    const dayKey = `${start.getFullYear()}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+    const fiscalYear = month >= 4 ? start.getFullYear() : start.getFullYear() - 1;
+    return {
+      startIso: start.toISOString(),
+      endIso: end.toISOString(),
+      dayKey,
+      fiscalYear: String(fiscalYear),
+    };
+  };
+
+  const morningVisit = slot(0, 9, 1);
+  const staffMeeting = slot(1, 11, 1.5);
+  const orgEvent = slot(2, 14, 1);
+
+  return [
+    {
+      Id: 9101,
+      Title: '訪問リハビリ',
+      EventDate: morningVisit.startIso,
+      EndDate: morningVisit.endIso,
+      AllDay: false,
+      Status: 'approved',
+      Location: '利用者宅A',
+      cr014_category: 'User',
+      cr014_serviceType: '一時ケア',
+      cr014_personType: 'Internal',
+      cr014_personId: 'U-201',
+      cr014_personName: '田中 実',
+      cr014_staffIds: ['301'],
+      cr014_staffNames: ['阿部 真央'],
+      cr014_dayKey: morningVisit.dayKey,
+      cr014_fiscalYear: morningVisit.fiscalYear,
+      '@odata.etag': '"1"',
+    },
+    {
+      Id: 9201,
+      Title: '週次カンファレンス',
+      EventDate: staffMeeting.startIso,
+      EndDate: staffMeeting.endIso,
+      AllDay: false,
+      Status: 'submitted',
+      Location: '会議室A',
+      cr014_category: 'Staff',
+      cr014_personType: 'Internal',
+      cr014_personName: '吉田 千尋',
+      cr014_staffIds: ['401'],
+      cr014_staffNames: ['吉田 千尋'],
+      cr014_dayKey: staffMeeting.dayKey,
+      cr014_fiscalYear: staffMeeting.fiscalYear,
+      '@odata.etag': '"2"',
+    },
+    {
+      Id: 9301,
+      Title: '地域連携ミーティング',
+      EventDate: orgEvent.startIso,
+      EndDate: orgEvent.endIso,
+      AllDay: false,
+      Status: 'approved',
+      Location: '本部ホール',
+      cr014_category: 'Org',
+      cr014_personType: 'Internal',
+      cr014_personName: '調整担当',
+      cr014_dayKey: orgEvent.dayKey,
+      cr014_fiscalYear: orgEvent.fiscalYear,
+      '@odata.etag': '"3"',
+    },
+  ];
+};
+
+const scheduleFixtures = buildScheduleFixtures();
+
 test.describe('Schedule smoke', () => {
   test.beforeEach(async ({ page }) => {
+    await page.addInitScript(({ now }) => {
+      const fixedNow = new Date(now).getTime();
+      const RealDate = Date;
+      class MockDate extends RealDate {
+        constructor(...args: Array<number | string | Date>) {
+          if (args.length === 0) {
+            super(fixedNow);
+            return;
+          }
+          super(...(args as ConstructorParameters<typeof Date>));
+        }
+        static now() {
+          return fixedNow;
+        }
+        static parse = RealDate.parse;
+        static UTC = RealDate.UTC;
+      }
+      Object.setPrototypeOf(MockDate, RealDate);
+      (window as unknown as { Date: typeof Date }).Date = MockDate;
+    }, { now: TEST_NOW });
+
     await page.addInitScript(() => {
       const globalWithEnv = window as typeof window & { __ENV__?: Record<string, string> };
       globalWithEnv.__ENV__ = {
         ...(globalWithEnv.__ENV__ ?? {}),
         VITE_E2E_MSAL_MOCK: '1',
         VITE_SKIP_LOGIN: '1',
+        VITE_FEATURE_SCHEDULES: '1',
+        VITE_FEATURE_SCHEDULES_GRAPH: '1',
+        VITE_DEMO_MODE: '0',
       };
+      window.localStorage.setItem('skipLogin', '1');
+      window.localStorage.setItem('demo', '0');
       window.localStorage.setItem('feature:schedules', '1');
     });
+
+    await page.route('**/login.microsoftonline.com/**', (route) => route.fulfill({ status: 204, body: '' }));
 
     await page.route('https://graph.microsoft.com/v1.0/me/calendarView*', async (route) => {
       const request = route.request();
@@ -87,13 +205,37 @@ test.describe('Schedule smoke', () => {
         body: JSON.stringify({ value }),
       });
     });
+
+    await mockEnsureScheduleList(page);
+
+    await setupSharePointStubs(page, {
+      currentUser: { status: 200, body: { Id: 5678 } },
+      fallback: { status: 404, body: 'not mocked' },
+      debug: true,
+      lists: [
+        { name: 'Schedules', aliases: ['ScheduleEvents'], items: scheduleFixtures },
+        { name: 'SupportRecord_Daily', items: [] },
+        { name: 'StaffDirectory', items: [] },
+      ],
+    });
   });
 
   test('shows tabs and demo appointments on week view', async ({ page }) => {
+    page.on('request', (request) => {
+      if (request.url().includes('/_api/web/')) {
+        console.log('[sp-request]', request.method(), request.url());
+      }
+    });
+
     await page.goto('/schedule');
-    await expect(page.getByTestId('tab-week')).toBeVisible();
-    await expect(page.getByTestId('tab-day')).toBeVisible();
-    await expect(page.getByTestId('tab-timeline')).toBeVisible();
+
+  const viewToggle = page.getByRole('navigation', { name: 'ビュー切替' });
+  const weekTab = viewToggle.getByRole('button', { name: '週', exact: true });
+  await expect(weekTab).toBeVisible();
+  await expect(viewToggle.getByRole('button', { name: '日', exact: true })).toBeVisible();
+  await expect(viewToggle.getByRole('button', { name: /リスト|タイムライン/ })).toBeVisible();
+
+    await weekTab.click();
 
     const items = page.getByTestId('schedule-item');
     await expect(items.first()).toBeVisible();
