@@ -170,7 +170,10 @@ export default function SchedulePage() {
         />
       </div>
 
-      <div className="p-4" role="region" aria-label="スケジュールビュー">
+      <section className="p-4" role="region" aria-labelledby="schedule-view-heading">
+        <h2 id="schedule-view-heading" className="sr-only">
+          スケジュールビュー
+        </h2>
         {timelineError ? (
           <div className="rounded border border-red-200 bg-red-50 p-3 text-sm text-red-700">
             {timelineError.message}
@@ -180,7 +183,7 @@ export default function SchedulePage() {
           <TimelineWeek events={annotatedTimelineEvents} startDate={range.start} onEventMove={handleEventMove} />
         )}
         {view === 'day' && <TimelineDay events={annotatedTimelineEvents} date={dayViewDate} />}
-  {view === 'list' && <ScheduleListView />}
+        {view === 'list' && <ScheduleListView />}
         {view === 'userCare' && (
           <section className="space-y-6">
             <BriefingPanel />
@@ -194,7 +197,7 @@ export default function SchedulePage() {
             予定を読み込んでいます…
           </div>
         )}
-      </div>
+      </section>
     </div>
   );
 }

@@ -1,4 +1,4 @@
-import { useEffect, useId, useMemo, useState, type ReactNode } from 'react';
+import { useCallback, useEffect, useId, useMemo, useState, type ReactNode } from 'react';
 import Button from '@mui/material/Button';
 import TextField from '@mui/material/TextField';
 import InputAdornment from '@mui/material/InputAdornment';
@@ -63,6 +63,14 @@ export default function FilterToolbar({
   const generatedHelpId = useId();
   const helperTextId = searchHelpId ?? `${generatedHelpId}-help`;
 
+  const updateQuery = useCallback(
+    (nextValue: string) => {
+      setInputValue(nextValue);
+      onQueryChange(nextValue);
+    },
+    [onQueryChange]
+  );
+
   const buttons = useMemo(
     () =>
       (statusOptions ?? []).map((option) => (
@@ -98,8 +106,16 @@ export default function FilterToolbar({
           value={inputValue}
           onChange={(event) => {
             const nextValue = event.target.value;
-            setInputValue(nextValue);
-            onQueryChange(nextValue);
+            const native = event.nativeEvent as { isComposing?: boolean };
+            if (native?.isComposing) {
+              setInputValue(nextValue);
+              return;
+            }
+            updateQuery(nextValue);
+          }}
+          onCompositionEnd={(event) => {
+            const nextValue = (event.currentTarget as HTMLInputElement).value;
+            updateQuery(nextValue);
           }}
           helperText={resolvedHelperText}
           FormHelperTextProps={{ id: helperTextId, sx: { m: 0 } }}
@@ -112,8 +128,7 @@ export default function FilterToolbar({
                   aria-label="検索条件をクリア"
                   title="検索条件をクリア"
                   onClick={() => {
-                    setInputValue('');
-                    onQueryChange('');
+                    updateQuery('');
                   }}
                   disabled={!hasQuery}
                   data-filter-action="clear-search"

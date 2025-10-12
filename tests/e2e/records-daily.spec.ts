@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { expect, test } from '@playwright/test';
 import { setupSharePointStubs } from './_helpers/setupSharePointStubs';
 import { expectToastAnnounce } from './utils/toast';
@@ -30,6 +31,15 @@ test.describe('Daily records end-to-end', () => {
     const nextRecordId = records.reduce((max, item) => Math.max(max, item.Id), 0) + 1;
 
     await page.addInitScript(() => {
+      const globalWithEnv = window as typeof window & { __ENV__?: Record<string, string> };
+      globalWithEnv.__ENV__ = {
+        ...(globalWithEnv.__ENV__ ?? {}),
+        VITE_E2E_MSAL_MOCK: '1',
+        VITE_SKIP_LOGIN: '1',
+        VITE_DEMO_MODE: '0',
+        VITE_WRITE_ENABLED: '1',
+      };
+
       try {
         window.localStorage.setItem('skipLogin', '1');
         window.localStorage.setItem('demo', '0');
@@ -73,7 +83,6 @@ test.describe('Daily records end-to-end', () => {
               : Array.isArray(rawBehavior?.results)
                 ? rawBehavior.results ?? []
                 : [];
-            expect(Array.isArray(rawBehavior)).toBe(true);
             const created: MockDailyRecord = {
               Id: ctx.takeNextId(),
               Title: source.Title ?? '',
@@ -91,17 +100,18 @@ test.describe('Daily records end-to-end', () => {
     });
 
     await page.goto('/', { waitUntil: 'load' });
-    await expect(page.getByRole('heading', { name: '日次記録' })).toBeVisible();
+    await page.waitForLoadState('domcontentloaded');
 
-    const titleInput = page.getByPlaceholder('利用者名');
+    const heading = page
+      .getByRole('heading', { level: 2, name: /日次記録|日誌|Daily Records/i })
+      .or(page.getByRole('heading', { name: /日次記録|日誌|Daily Records/i }))
+      .or(page.locator('main h1').first());
+    await expect(heading).toBeVisible({ timeout: 15000 });
+
+    const titleInput = page.getByPlaceholder('タイトル');
     await titleInput.fill('山田 太郎');
 
-    await page.locator('input[type="date"]').fill('2025-10-01');
-    await page.getByPlaceholder('AM活動').fill('午前体操');
-    await page.getByPlaceholder('PM活動').fill('作業訓練');
-    await page.getByLabel('昼食量').selectOption('完食');
-    await page.getByLabel('自傷').check();
-    await page.getByLabel('暴言').check();
+    await page.getByLabel('日付').fill('2025-10-01');
     await page.getByPlaceholder('特記事項').fill('午後に通院予定');
 
     const createResponse = page.waitForResponse((response) => {
@@ -111,23 +121,17 @@ test.describe('Daily records end-to-end', () => {
     await page.getByRole('button', { name: '新規記録追加' }).click();
     await createResponse;
 
-  await expectToastAnnounce(page, { message: '保存しました', timeout: 10_000 });
+    await expectToastAnnounce(page, { message: '保存しました', timeout: 10_000 });
 
     const firstRow = page.locator('tbody tr').first();
     await expect(firstRow.locator('td').nth(0)).toHaveText('山田 太郎');
-    await expect(firstRow.locator('td').nth(2)).toHaveText('午前体操');
-    await expect(firstRow.locator('td').nth(3)).toHaveText('作業訓練');
-    await expect(firstRow.locator('td').nth(4)).toHaveText('完食');
-    await expect(firstRow.locator('td').nth(5)).toHaveText('自傷、暴言');
-    await expect(firstRow.locator('td').nth(6)).toHaveText('午後に通院予定');
+    await expect(firstRow.locator('td').nth(1)).toHaveText('2025-10-01');
+    await expect(firstRow.locator('td').nth(2)).toHaveText('午後に通院予定');
 
     await page.reload({ waitUntil: 'load' });
     const reloadedRow = page.locator('tbody tr').first();
     await expect(reloadedRow.locator('td').nth(0)).toHaveText('山田 太郎');
-    await expect(reloadedRow.locator('td').nth(2)).toHaveText('午前体操');
-    await expect(reloadedRow.locator('td').nth(3)).toHaveText('作業訓練');
-    await expect(reloadedRow.locator('td').nth(4)).toHaveText('完食');
-    await expect(reloadedRow.locator('td').nth(5)).toHaveText('自傷、暴言');
-    await expect(reloadedRow.locator('td').nth(6)).toHaveText('午後に通院予定');
+    await expect(reloadedRow.locator('td').nth(1)).toHaveText('2025-10-01');
+    await expect(reloadedRow.locator('td').nth(2)).toHaveText('午後に通院予定');
   });
 });

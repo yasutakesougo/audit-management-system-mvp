@@ -28,6 +28,7 @@ jobs:
       CI: true
       VITE_FEATURE_SCHEDULES_GRAPH: ${{ matrix.graph }}
       VITE_SCHEDULES_TZ: "Asia/Tokyo"
+      TZ: "Asia/Tokyo"
 
     steps:
       - uses: actions/checkout@v4

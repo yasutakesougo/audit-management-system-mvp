@@ -84,6 +84,7 @@ export default function TimelineDay({ events, date }: TimelineDayProps) {
 
           {laneOrder.map((category) => {
             const laneEvents = buckets[category] ?? [];
+            const laneKey = category.toLowerCase();
             return (
               <div
                 key={category}
@@ -100,6 +101,7 @@ export default function TimelineDay({ events, date }: TimelineDayProps) {
                 <div
                   role="gridcell"
                   aria-label={`${laneLabels[category]}・${rangeLabel}`}
+                  data-testid={`lane-${laneKey}`}
                   className={cn(
                     'flex min-h-[140px] flex-col gap-2 p-3',
                     isToday ? 'bg-indigo-50/40 ring-1 ring-indigo-100 ring-inset' : 'bg-white'

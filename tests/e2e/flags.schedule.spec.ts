@@ -2,7 +2,7 @@ import { test, expect } from "@playwright/test";
 
 const BASE_URL = "http://localhost:5173";
 
-const scheduleNavLabel = "スケジュール（月表示）";
+const scheduleNavLabel = /スケジュール/;
 
 test.beforeEach(async ({ page }) => {
   await page.addInitScript(() => {
@@ -20,7 +20,7 @@ test.describe("schedule feature flag", () => {
     await expect(page).toHaveURL(`${BASE_URL}/`);
   });
 
-  test("shows navigation and loads schedule month when flag enabled", async ({ page }) => {
+  test("shows navigation and loads schedule when flag enabled", async ({ page }) => {
     await page.addInitScript(() => {
       window.localStorage.setItem("feature:schedules", "true");
     });
@@ -32,7 +32,7 @@ test.describe("schedule feature flag", () => {
 
     await monthNav.click();
 
-    await expect(page).toHaveURL(`${BASE_URL}/schedules/month`);
+    await expect(page).toHaveURL(`${BASE_URL}/schedules/week`);
     await expect(page.getByRole("heading", { name: scheduleNavLabel })).toBeVisible();
   });
 });

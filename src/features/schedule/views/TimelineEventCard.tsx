@@ -73,6 +73,7 @@ const TimelineEventCard = memo(function TimelineEventCard({
   const subtitleLine = subtitle ? `${subtitle} ・ ${timeRange}` : timeRange;
 
   const { className: containerClassName, style: containerStyle, ...restContainerProps } = containerProps ?? {};
+  const dataTestId = (containerProps as { ['data-testid']?: string } | undefined)?.['data-testid'] ?? 'schedule-item';
 
   const className = cn(
     'relative overflow-hidden rounded-xl border p-2 shadow-sm outline-none transition',
@@ -92,8 +93,9 @@ const TimelineEventCard = memo(function TimelineEventCard({
 
   return (
     <article
-      {...restContainerProps}
-      tabIndex={restContainerProps.tabIndex ?? 0}
+  {...restContainerProps}
+  data-testid={dataTestId}
+  tabIndex={restContainerProps.tabIndex ?? 0}
       aria-label={(restContainerProps['aria-label'] as string | undefined) ?? aria}
       className={className}
       style={mergedStyle}

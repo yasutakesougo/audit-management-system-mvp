@@ -179,8 +179,9 @@ export default function ScheduleListView() {
   const schedules = useMemo(() => (data ?? []).slice(), [data]);
 
   const filtered = useMemo(() => {
-    const query = normalizeQuery(debounced.q);
-    const { status, range } = debounced;
+    const activeFilters = isDebouncing ? filters : debounced;
+    const query = normalizeQuery(activeFilters.q);
+    const { status, range } = activeFilters;
     const canonicalStatus = status !== 'all' ? normalizeStatus(status) : null;
 
     return schedules.filter((item) => {
@@ -211,7 +212,7 @@ export default function ScheduleListView() {
         .toLowerCase();
       return candidate.includes(query);
     });
-  }, [debounced, schedules, todayKey, weekBounds.end, weekBounds.start]);
+  }, [debounced, filters, isDebouncing, schedules, todayKey, weekBounds.end, weekBounds.start]);
 
   const sorted = useMemo(() => {
     const base = filtered.slice();
@@ -443,9 +444,13 @@ export default function ScheduleListView() {
               })}
             </tbody>
           </table>
-          {visibleCount < sorted.length ? (
-            <div ref={sentinelRef} data-testid="list-sentinel" aria-hidden="true" className="h-10 w-full" />
-          ) : null}
+          <div
+            ref={sentinelRef}
+            data-testid="list-sentinel"
+            aria-hidden="true"
+            data-active={visibleCount < sorted.length ? '1' : '0'}
+            className={visibleCount < sorted.length ? 'h-10 w-full' : 'h-0 w-full'}
+          />
         </div>
       )}
 
