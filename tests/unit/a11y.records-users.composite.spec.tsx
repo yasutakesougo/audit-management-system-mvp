@@ -6,6 +6,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import RecordList from '@/features/records/RecordList';
 import UsersPanel from '@/features/users/UsersPanel';
+import { ToastProvider } from '@/hooks/useToast';
 
 const noop = async () => undefined;
 const mockRecordsList = vi.fn();
@@ -79,10 +80,12 @@ suite('Composite accessibility smoke (records + users)', () => {
 
   it('has no detectable violations when RecordList and UsersPanel render together', async () => {
     const { container } = render(
-      <div>
-        <RecordList />
-        <UsersPanel />
-      </div>
+      <ToastProvider>
+        <div>
+          <RecordList />
+          <UsersPanel />
+        </div>
+      </ToastProvider>
     );
 
     await screen.findByRole('table');
