@@ -7,6 +7,7 @@ import AuditPanel from '../features/audit/AuditPanel';
 import { UsersPanel } from '@/features/users';
 import ProtectedRoute from '@/app/ProtectedRoute';
 import { routerFutureFlags } from './routerFuture';
+import SchedulesGate from './SchedulesGate';
 
 const WeekPage = React.lazy(() => import('@/features/schedule/WeekPage'));
 const MonthPage = React.lazy(() => import('@/features/schedule/views/MonthView'));
@@ -69,49 +70,61 @@ const childRoutes: RouteObject[] = [
   {
     path: 'schedule',
     element: (
-      <ProtectedRoute flag="schedules">
-        <SuspendedSchedulePage />
-      </ProtectedRoute>
+      <SchedulesGate>
+        <ProtectedRoute flag="schedules">
+          <SuspendedSchedulePage />
+        </ProtectedRoute>
+      </SchedulesGate>
     ),
   },
   {
     path: 'schedule/*',
     element: (
-      <ProtectedRoute flag="schedules">
-        <Navigate to="/schedules/week" replace />
-      </ProtectedRoute>
+      <SchedulesGate>
+        <ProtectedRoute flag="schedules">
+          <Navigate to="/schedules/week" replace />
+        </ProtectedRoute>
+      </SchedulesGate>
     ),
   },
   {
     path: 'schedules',
     element: (
-      <ProtectedRoute flag="schedules">
-        <Navigate to="/schedules/week" replace />
-      </ProtectedRoute>
+      <SchedulesGate>
+        <ProtectedRoute flag="schedules">
+          <Navigate to="/schedules/week" replace />
+        </ProtectedRoute>
+      </SchedulesGate>
     ),
   },
   {
     path: 'schedules/week',
     element: (
-      <ProtectedRoute flag="schedules">
-        <SuspendedWeekPage />
-      </ProtectedRoute>
+      <SchedulesGate>
+        <ProtectedRoute flag="schedules">
+          <SuspendedWeekPage />
+        </ProtectedRoute>
+      </SchedulesGate>
     ),
   },
   {
     path: 'schedules/month',
     element: (
-      <ProtectedRoute flag="schedules">
-        <SuspendedMonthPage />
-      </ProtectedRoute>
+      <SchedulesGate>
+        <ProtectedRoute flag="schedules">
+          <SuspendedMonthPage />
+        </ProtectedRoute>
+      </SchedulesGate>
     ),
   },
   {
     path: 'schedules/create',
     element: (
-      <ProtectedRoute flag="schedulesCreate">
-        <SuspendedCreatePage />
-      </ProtectedRoute>
+      <SchedulesGate>
+        <ProtectedRoute flag="schedulesCreate">
+          <SuspendedCreatePage />
+        </ProtectedRoute>
+      </SchedulesGate>
     ),
   },
 ];
