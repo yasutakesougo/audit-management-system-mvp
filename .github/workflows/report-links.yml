@@ -3,53 +3,90 @@ on:
   workflow_dispatch:
   push:
   pull_request:
+env:
+  COVERAGE_URL: ${{ vars.COVERAGE_URL }}
+  LIGHTHOUSE_URL: ${{ vars.LIGHTHOUSE_URL }}
+  SENTRY_URL: ${{ vars.SENTRY_URL }}
 jobs:
   links:
+    runs-on: ubuntu-latest
     permissions:
       contents: read
       pull-requests: write
-    runs-on: ubuntu-latest
-    env:
-      COVERAGE_URL: ${{ vars.COVERAGE_URL }}
-      LIGHTHOUSE_URL: ${{ vars.LIGHTHOUSE_URL }}
-      SENTRY_URL: ${{ vars.SENTRY_URL }}
     steps:
-      - name: Summary
+      - name: Normalize variables
+        id: norm
+        shell: bash
         run: |
-          echo "## レポートリンク" | tee -a "$GITHUB_STEP_SUMMARY"
-          echo "- カバレッジ: $COVERAGE_URL"   | tee -a "$GITHUB_STEP_SUMMARY"
-          echo "- Lighthouse: $LIGHTHOUSE_URL" | tee -a "$GITHUB_STEP_SUMMARY"
-          echo "- Sentry: $SENTRY_URL"         | tee -a "$GITHUB_STEP_SUMMARY"
-      - name: PR comment
+          cov="${COVERAGE_URL:-}"
+          lh="${LIGHTHOUSE_URL:-}"
+          se="${SENTRY_URL:-}"
+          [[ -z "$cov" ]] && cov="(未設定)"
+          [[ -z "$lh" ]] && lh="(未設定)"
+          [[ -z "$se" ]] && se="(未設定)"
+          echo "cov=$cov" >> "$GITHUB_OUTPUT"
+          echo "lh=$lh" >> "$GITHUB_OUTPUT"
+          echo "se=$se" >> "$GITHUB_OUTPUT"
+      - name: Add report links to Summary
+        run: |
+          echo "## レポートリンク" >> "$GITHUB_STEP_SUMMARY"
+          echo "- カバレッジ: ${{ steps.norm.outputs.cov }}" >> "$GITHUB_STEP_SUMMARY"
+          echo "- Lighthouse: ${{ steps.norm.outputs.lh }}" >> "$GITHUB_STEP_SUMMARY"
+          echo "- Sentry: ${{ steps.norm.outputs.se }}" >> "$GITHUB_STEP_SUMMARY"
+      - name: Print normalized links to logs
+        env:
+          COVERAGE_URL: ${{ steps.norm.outputs.cov }}
+          LIGHTHOUSE_URL: ${{ steps.norm.outputs.lh }}
+          SENTRY_URL: ${{ steps.norm.outputs.se }}
+        run: |
+          echo "::group::Report links (bullets)"
+          echo "- カバレッジ: ${COVERAGE_URL}"
+          echo "- Lighthouse: ${LIGHTHOUSE_URL}"
+          echo "- Sentry: ${SENTRY_URL}"
+          echo "::endgroup::"
+      - name: Print report links to log
+        run: |
+          echo "::group::Report Links (echo)"
+          echo "COVERAGE_URL=${{ steps.norm.outputs.cov }}"
+          echo "LIGHTHOUSE_URL=${{ steps.norm.outputs.lh }}"
+          echo "SENTRY_URL=${{ steps.norm.outputs.se }}"
+          echo "::endgroup::"
+      - name: Upsert PR comment with links
         if: github.event_name == 'pull_request'
         uses: actions/github-script@v7
+        env:
+          COVERAGE_LINK: ${{ steps.norm.outputs.cov }}
+          LIGHTHOUSE_LINK: ${{ steps.norm.outputs.lh }}
+          SENTRY_LINK: ${{ steps.norm.outputs.se }}
         with:
           script: |
-            const body = [
+            const marker = '<!-- report-links-bot -->';
+            const lines = [
               '## レポートリンク',
-              `- カバレッジ: ${process.env.COVERAGE_URL}`,
-              `- Lighthouse: ${process.env.LIGHTHOUSE_URL}`,
-              `- Sentry: ${process.env.SENTRY_URL}`
-            ].join('\n');
+              `- カバレッジ: ${process.env.COVERAGE_LINK}`,
+              `- Lighthouse: ${process.env.LIGHTHOUSE_LINK}`,
+              `- Sentry: ${process.env.SENTRY_LINK}`,
+              marker
+            ];
+            const body = lines.join('\n');
             const { data: comments } = await github.rest.issues.listComments({
               owner: context.repo.owner,
               repo: context.repo.repo,
               issue_number: context.issue.number
             });
-            const marker = '<!-- report-links -->';
-            const prev = comments.find(c => c.body && c.body.includes(marker));
+            const prev = comments.find(comment => comment.body && comment.body.includes(marker));
             if (prev) {
               await github.rest.issues.updateComment({
                 owner: context.repo.owner,
                 repo: context.repo.repo,
                 comment_id: prev.id,
-                body: body + '\n' + marker
+                body
               });
             } else {
               await github.rest.issues.createComment({
                 owner: context.repo.owner,
                 repo: context.repo.repo,
                 issue_number: context.issue.number,
-                body: body + '\n' + marker
+                body
               });
             }
