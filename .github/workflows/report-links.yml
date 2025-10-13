@@ -27,29 +27,26 @@ jobs:
           echo "cov=$cov" >> "$GITHUB_OUTPUT"
           echo "lh=$lh" >> "$GITHUB_OUTPUT"
           echo "se=$se" >> "$GITHUB_OUTPUT"
-      - name: Add report links to Summary
+      - name: Write report links to summary
+        env:
+          COVERAGE_URL: ${{ steps.norm.outputs.cov }}
+          LIGHTHOUSE_URL: ${{ steps.norm.outputs.lh }}
+          SENTRY_URL: ${{ steps.norm.outputs.se }}
         run: |
-          echo "## レポートリンク" >> "$GITHUB_STEP_SUMMARY"
-          echo "- カバレッジ: ${{ steps.norm.outputs.cov }}" >> "$GITHUB_STEP_SUMMARY"
-          echo "- Lighthouse: ${{ steps.norm.outputs.lh }}" >> "$GITHUB_STEP_SUMMARY"
-          echo "- Sentry: ${{ steps.norm.outputs.se }}" >> "$GITHUB_STEP_SUMMARY"
+          echo "## レポートリンク" | tee -a "$GITHUB_STEP_SUMMARY"
+          echo "- カバレッジ: ${COVERAGE_URL}"   | tee -a "$GITHUB_STEP_SUMMARY"
+          echo "- Lighthouse: ${LIGHTHOUSE_URL}" | tee -a "$GITHUB_STEP_SUMMARY"
+          echo "- Sentry: ${SENTRY_URL}"         | tee -a "$GITHUB_STEP_SUMMARY"
       - name: Print normalized links to logs
         env:
           COVERAGE_URL: ${{ steps.norm.outputs.cov }}
           LIGHTHOUSE_URL: ${{ steps.norm.outputs.lh }}
           SENTRY_URL: ${{ steps.norm.outputs.se }}
         run: |
-          echo "::group::Report links (bullets)"
+          echo "::group::Report Links"
           echo "- カバレッジ: ${COVERAGE_URL}"
           echo "- Lighthouse: ${LIGHTHOUSE_URL}"
           echo "- Sentry: ${SENTRY_URL}"
-          echo "::endgroup::"
-      - name: Print report links to log
-        run: |
-          echo "::group::Report Links (echo)"
-          echo "COVERAGE_URL=${{ steps.norm.outputs.cov }}"
-          echo "LIGHTHOUSE_URL=${{ steps.norm.outputs.lh }}"
-          echo "SENTRY_URL=${{ steps.norm.outputs.se }}"
           echo "::endgroup::"
       - name: Upsert PR comment with links
         if: github.event_name == 'pull_request'
