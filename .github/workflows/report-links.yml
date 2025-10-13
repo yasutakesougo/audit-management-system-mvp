@@ -1,0 +1,55 @@
+name: Report Links
+on:
+  workflow_dispatch:
+  push:
+  pull_request:
+jobs:
+  links:
+    permissions:
+      contents: read
+      pull-requests: write
+    runs-on: ubuntu-latest
+    env:
+      COVERAGE_URL: ${{ vars.COVERAGE_URL }}
+      LIGHTHOUSE_URL: ${{ vars.LIGHTHOUSE_URL }}
+      SENTRY_URL: ${{ vars.SENTRY_URL }}
+    steps:
+      - name: Summary
+        run: |
+          echo "## レポートリンク" | tee -a "$GITHUB_STEP_SUMMARY"
+          echo "- カバレッジ: $COVERAGE_URL"   | tee -a "$GITHUB_STEP_SUMMARY"
+          echo "- Lighthouse: $LIGHTHOUSE_URL" | tee -a "$GITHUB_STEP_SUMMARY"
+          echo "- Sentry: $SENTRY_URL"         | tee -a "$GITHUB_STEP_SUMMARY"
+      - name: PR comment
+        if: github.event_name == 'pull_request'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const body = [
+              '## レポートリンク',
+              `- カバレッジ: ${process.env.COVERAGE_URL}`,
+              `- Lighthouse: ${process.env.LIGHTHOUSE_URL}`,
+              `- Sentry: ${process.env.SENTRY_URL}`
+            ].join('\n');
+            const { data: comments } = await github.rest.issues.listComments({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number
+            });
+            const marker = '<!-- report-links -->';
+            const prev = comments.find(c => c.body && c.body.includes(marker));
+            if (prev) {
+              await github.rest.issues.updateComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                comment_id: prev.id,
+                body: body + '\n' + marker
+              });
+            } else {
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: context.issue.number,
+                body: body + '\n' + marker
+              });
+            }

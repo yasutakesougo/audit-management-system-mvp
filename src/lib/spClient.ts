@@ -5,6 +5,7 @@ import { useMemo } from 'react';
 import { getRuntimeEnv as getRuntimeEnvRoot } from '../env';
 import { getAppConfig, type EnvRecord } from './env';
 import { SharePointItemNotFoundError, SharePointMissingEtagError } from './errors';
+import { auditLog } from './debugLogger';
 
 export function ensureConfig(envOverride?: { VITE_SP_RESOURCE?: string; VITE_SP_SITE_RELATIVE?: string }) {
   const overrideRecord = envOverride as EnvRecord | undefined;
@@ -31,6 +32,51 @@ export function ensureConfig(envOverride?: { VITE_SP_RESOURCE?: string; VITE_SP_
 }
 
 const DEFAULT_LIST_TEMPLATE = 100;
+
+type JsonRecord = Record<string, unknown>;
+
+export type SharePointBatchOperation =
+  | {
+      kind: 'create';
+      list: string;
+      body: JsonRecord;
+      headers?: Record<string, string>;
+    }
+  | {
+      kind: 'update';
+      list: string;
+      id: number;
+      body: JsonRecord;
+      etag?: string;
+      method?: 'PATCH' | 'MERGE';
+      headers?: Record<string, string>;
+    }
+  | {
+      kind: 'delete';
+      list: string;
+      id: number;
+      etag?: string;
+      headers?: Record<string, string>;
+    };
+
+export type SharePointBatchResult<T = unknown> = {
+  ok: boolean;
+  status: number;
+  data?: T | string;
+};
+
+type RetryReason = 'throttle' | 'timeout' | 'server';
+
+export type SharePointRetryMeta = {
+  attempt: number;
+  status?: number;
+  reason: RetryReason;
+  delayMs: number;
+};
+
+export interface SpClientOptions {
+  onRetry?: (response: Response, meta: SharePointRetryMeta) => void;
+}
 
 type SpFieldType =
   | 'Text'
@@ -318,7 +364,11 @@ const resolveStaffListIdentifier = (titleOverride: string, guidOverride: string)
  * - acquireToken: トークン取得関数（MSAL由来を想定）
  * - baseUrl: 例) https://contoso.sharepoint.com/sites/Audit/_api/web
  */
-export function createSpClient(acquireToken: () => Promise<string | null>, baseUrl: string) {
+export function createSpClient(
+  acquireToken: () => Promise<string | null>,
+  baseUrl: string,
+  options: SpClientOptions = {}
+) {
   const config = getAppConfig();
   const parsePositiveNumber = (raw: string, fallback: number): number => {
     const numeric = Number(raw);
@@ -332,7 +382,48 @@ export function createSpClient(acquireToken: () => Promise<string | null>, baseU
   const debugEnabled = config.VITE_AUDIT_DEBUG === '1' || config.VITE_AUDIT_DEBUG === 'true';
   function dbg(...a: unknown[]) { if (debugEnabled) console.debug('[spClient]', ...a); }
   const tokenMetricsCarrier = globalThis as { __TOKEN_METRICS__?: Record<string, unknown> };
+  const { onRetry } = options;
+  const baseUrlInfo = new URL(baseUrl);
+  const normalizePath = (value: string): string => {
+    if (!value) return value;
+    if (/^https?:\/\//i.test(value)) {
+      try {
+        const target = new URL(value);
+        if (target.origin === baseUrlInfo.origin) {
+          const basePath = baseUrlInfo.pathname.replace(/\/+$|$/u, '');
+          const fullPath = `${target.pathname}${target.search}`;
+          if (fullPath.startsWith(basePath)) {
+            const slice = fullPath.slice(basePath.length);
+            return slice.startsWith('/') ? slice : `/${slice}`;
+          }
+          return `${target.pathname}${target.search}`;
+        }
+        return value;
+      } catch {
+        return value;
+      }
+    }
+    return value.startsWith('/') ? value : `/${value}`;
+  };
+  const classifyRetry = (status: number): RetryReason | null => {
+    if (status === 408) return 'timeout';
+    if (status === 429) return 'throttle';
+    if ([500, 502, 503, 504].includes(status)) return 'server';
+    return null;
+  };
+
+  type ListItemsOptions = {
+    select?: string[];
+    filter?: string;
+    orderby?: string;
+    expand?: string;
+    top?: number;
+    pageCap?: number;
+    signal?: AbortSignal;
+  };
+
   const spFetch = async (path: string, init: RequestInit = {}): Promise<Response> => {
+    const resolvedPath = normalizePath(path);
     const token1 = await acquireToken();
     if (debugEnabled && tokenMetricsCarrier.__TOKEN_METRICS__) {
       dbg('token metrics snapshot', tokenMetricsCarrier.__TOKEN_METRICS__);
@@ -347,8 +438,9 @@ export function createSpClient(acquireToken: () => Promise<string | null>, baseU
       ].join('\n'));
     }
 
+    const resolveUrl = (targetPath: string) => (/^https?:\/\//i.test(targetPath) ? targetPath : `${baseUrl}${targetPath}`);
     const doFetch = async (token: string) => {
-      const url = `${baseUrl}${path}`;
+      const url = resolveUrl(resolvedPath);
       const headers = new Headers(init.headers || {});
       headers.set('Authorization', `Bearer ${token}`);
       headers.set('Accept', 'application/json;odata=nometadata');
@@ -366,29 +458,44 @@ export function createSpClient(acquireToken: () => Promise<string | null>, baseU
     const baseDelay = retrySettings.baseDelay;
     const capDelay = retrySettings.capDelay;
     const sleep = (ms: number) => new Promise(r => setTimeout(r, ms));
-    const computeBackoff = (attempt: number) => {
-      const expo = Math.min(capDelay, baseDelay * Math.pow(2, attempt - 1));
-      const jitter = Math.random() * expo; // full jitter
-      return Math.round(jitter);
-    };
-    let attempt = 1;
-    while (!response.ok && [429,503,504].includes(response.status) && attempt < maxAttempts) {
-      let waitMs: number | null = null;
-      const ra = response.headers.get('Retry-After');
+    const computeDelay = (attempt: number, res: Response): number => {
+      const ra = res.headers.get('Retry-After');
       if (ra) {
         const sec = Number(ra);
-        if (!isNaN(sec) && sec > 0) {
-          waitMs = sec * 1000;
-        } else {
-          const ts = Date.parse(ra);
-            if (!isNaN(ts)) waitMs = Math.max(0, ts - Date.now());
+        if (!Number.isNaN(sec) && sec > 0) {
+          return Math.max(0, Math.round(sec * 1000));
+        }
+        const ts = Date.parse(ra);
+        if (!Number.isNaN(ts)) {
+          return Math.max(0, ts - Date.now());
         }
       }
-      if (waitMs == null) waitMs = computeBackoff(attempt);
-      if (debugEnabled) {
-        console.warn('[spRetry]', JSON.stringify({ phase: 'single', status: response.status, nextAttempt: attempt + 1, waitMs }));
+      const expo = Math.min(capDelay, baseDelay * Math.pow(2, attempt - 1));
+      const jitter = Math.random() * expo;
+      return Math.max(0, Math.round(jitter));
+    };
+
+    let attempt = 1;
+    while (!response.ok && attempt < maxAttempts) {
+      const reason = classifyRetry(response.status);
+      if (!reason) break;
+      const delayMs = computeDelay(attempt, response);
+      if (onRetry) {
+        try {
+          onRetry(response, { attempt, status: response.status, reason, delayMs });
+        } catch (error) {
+          if (debugEnabled) console.warn('[spClient] onRetry callback failed', error);
+        }
       }
-      await sleep(waitMs);
+      auditLog.debug('sp:retry', { attempt, status: response.status, reason, delayMs });
+      if (debugEnabled) {
+        console.warn('[spRetry]', JSON.stringify({ phase: 'single', status: response.status, nextAttempt: attempt + 1, waitMs: delayMs }));
+      }
+      if (delayMs > 0) {
+        await sleep(delayMs);
+      } else {
+        await Promise.resolve();
+      }
       attempt += 1;
       response = await doFetch(token1);
     }
@@ -423,6 +530,50 @@ export function createSpClient(acquireToken: () => Promise<string | null>, baseU
     const res = await spFetch(path, signal ? { signal } : undefined);
     const data = await res.json();
     return data.value || [];
+  };
+
+  const listItems = async <TRow = JsonRecord>(
+    listIdentifier: string,
+    options: ListItemsOptions = {}
+  ): Promise<TRow[]> => {
+    const { select, filter, orderby, expand, top = 100, pageCap, signal } = options;
+    const params = new URLSearchParams();
+    if (select?.length) params.append('$select', select.join(','));
+    if (filter) params.append('$filter', filter);
+    if (orderby) params.append('$orderby', orderby);
+    if (expand) params.append('$expand', expand);
+    params.append('$top', String(top));
+    const basePath = resolveListPath(listIdentifier);
+    const query = params.toString();
+    const initialPath = query ? `${basePath}/items?${query}` : `${basePath}/items`;
+    const rows: TRow[] = [];
+    let nextPath: string | null = initialPath;
+    let pages = 0;
+    const maxPages = typeof pageCap === 'number' && pageCap > 0 ? Math.floor(pageCap) : Number.POSITIVE_INFINITY;
+
+    while (nextPath && pages < maxPages) {
+      const res = await spFetch(nextPath, signal ? { signal } : {});
+      const payload = await res.json().catch(() => ({}) as Record<string, unknown>) as {
+        value?: unknown[];
+        '@odata.nextLink'?: string;
+        nextLink?: string;
+      };
+      const batch = (Array.isArray(payload.value) ? payload.value : []) as TRow[];
+      rows.push(...batch);
+      pages += 1;
+      const nextLinkRaw = typeof payload['@odata.nextLink'] === 'string'
+        ? payload['@odata.nextLink']
+        : typeof payload.nextLink === 'string'
+          ? payload.nextLink
+          : null;
+      if (!nextLinkRaw) {
+        nextPath = null;
+        continue;
+      }
+      nextPath = normalizePath(nextLinkRaw);
+    }
+
+    return rows;
   };
 
   const addListItemByTitle = async <TBody extends object, TResult = unknown>(
@@ -734,9 +885,93 @@ export function createSpClient(acquireToken: () => Promise<string | null>, baseU
     throw new Error('Batch API が最大リトライ回数に達しました。');
   };
 
+  const buildBatchPayload = (operations: SharePointBatchOperation[], boundary: string): string => {
+    const lines: string[] = [];
+    for (const operation of operations) {
+      const method = operation.kind === 'create'
+        ? 'POST'
+        : operation.kind === 'update'
+          ? (operation.method ?? 'PATCH')
+          : 'DELETE';
+      const targetPath = normalizePath(
+        operation.kind === 'create'
+          ? buildItemPath(operation.list)
+          : buildItemPath(operation.list, operation.id)
+      );
+      const headers: Record<string, string> = {
+        Accept: 'application/json;odata=nometadata',
+        ...(operation.headers ?? {}),
+      };
+      if (method === 'POST' || method === 'PATCH' || method === 'MERGE') {
+        headers['Content-Type'] = headers['Content-Type'] ?? 'application/json;odata=nometadata';
+      }
+      if ((operation.kind === 'update' || operation.kind === 'delete') && !headers['If-Match']) {
+        headers['If-Match'] = operation.etag ?? '*';
+      }
+
+      lines.push(`--${boundary}`);
+      lines.push('Content-Type: application/http');
+      lines.push('Content-Transfer-Encoding: binary');
+      lines.push('');
+      lines.push(`${method} ${targetPath} HTTP/1.1`);
+      for (const [key, value] of Object.entries(headers)) {
+        lines.push(`${key}: ${value}`);
+      }
+      lines.push('');
+      if (operation.kind === 'create' || operation.kind === 'update') {
+        lines.push(JSON.stringify(operation.body ?? {}));
+        lines.push('');
+      }
+    }
+    lines.push(`--${boundary}--`);
+    lines.push('');
+    return lines.join('\r\n');
+  };
+
+  const parseBatchResponse = (payload: string, boundary: string): SharePointBatchResult[] => {
+    const results: SharePointBatchResult[] = [];
+    const segments = payload.split(`--${boundary}`);
+    for (const segment of segments) {
+      const trimmed = segment.trim();
+      if (!trimmed || trimmed === '--') continue;
+      const httpIndex = trimmed.indexOf('HTTP/1.1');
+      if (httpIndex === -1) continue;
+      const httpPayload = trimmed.slice(httpIndex);
+      const [statusLine] = httpPayload.split('\r\n');
+      const statusMatch = /HTTP\/1\.1\s+(\d{3})/i.exec(statusLine ?? '');
+      if (!statusMatch) continue;
+      const status = Number(statusMatch[1]);
+      const bodyIndex = httpPayload.indexOf('\r\n\r\n');
+      const rawBody = bodyIndex >= 0 ? httpPayload.slice(bodyIndex + 4).trim() : '';
+      let data: unknown;
+      if (rawBody) {
+        try {
+          data = JSON.parse(rawBody);
+        } catch {
+          data = rawBody;
+        }
+      }
+      results.push({ ok: status >= 200 && status < 300, status, data });
+    }
+    return results;
+  };
+
+  const batch = async (operations: SharePointBatchOperation[]): Promise<SharePointBatchResult[]> => {
+    if (!operations.length) return [];
+    const boundary = `batch_${Math.random().toString(36).slice(2)}`;
+    const requestBody = buildBatchPayload(operations, boundary);
+    const res = await postBatch(requestBody, boundary);
+    const contentType = res.headers.get('Content-Type') ?? '';
+    const match = /boundary=([^;]+)/i.exec(contentType);
+    const responseBoundary = match ? match[1].trim() : boundary;
+    const text = await res.text();
+    return parseBatchResponse(text, responseBoundary);
+  };
+
   return {
     spFetch,
     getListItemsByTitle,
+    listItems,
     addListItemByTitle,
     addItemByTitle,
     updateItemByTitle,
@@ -746,6 +981,7 @@ export function createSpClient(acquireToken: () => Promise<string | null>, baseU
     createItem,
     updateItem,
     deleteItem,
+    batch,
     postBatch,
     ensureListExists,
   };
