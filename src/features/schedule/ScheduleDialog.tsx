@@ -1,12 +1,34 @@
-import { useEffect, useId, useMemo, useRef, useState, type ChangeEvent, type FormEvent } from 'react';
-import { createPortal } from 'react-dom';
-import type { ScheduleForm, ScheduleStatus } from './types';
+import CloseRoundedIcon from '@mui/icons-material/CloseRounded';
+import SaveRoundedIcon from '@mui/icons-material/SaveRounded';
+import WarningAmberRoundedIcon from '@mui/icons-material/WarningAmberRounded';
+import {
+    Alert,
+    Box,
+    Button,
+    Dialog,
+    DialogActions,
+    DialogContent,
+    DialogTitle,
+    FormControl,
+    InputLabel,
+    MenuItem,
+    Select,
+    SelectChangeEvent,
+    Stack,
+    TextField,
+    Typography,
+} from '@mui/material';
+import { useCallback, useEffect, useMemo, useState, type ChangeEvent, type FormEvent } from 'react';
+import { checkScheduleConflicts, getConflictSeverity, type ConflictCheck } from './conflictChecker';
+import type { Category, DayPart, ExtendedScheduleForm, PersonType, Schedule, ScheduleForm, ScheduleStatus, ServiceType } from './types';
+import { laneLabels } from './views/TimelineWeek';
 
 type ScheduleDialogProps = {
 	open: boolean;
-	initial?: ScheduleForm;
+	initial?: ExtendedScheduleForm;
+	existingSchedules?: Schedule[];
 	onClose(): void;
-	onSubmit(values: ScheduleForm): Promise<void>;
+	onSubmit(values: ExtendedScheduleForm): Promise<void>;
 };
 
 const STATUS_LABELS: Record<ScheduleStatus, string> = {
@@ -16,6 +38,7 @@ const STATUS_LABELS: Record<ScheduleStatus, string> = {
 	holiday: '休暇',
 };
 
+// Helper function for date-time local input formatting
 const toLocalInputValue = (iso: string): string => {
 	if (!iso) return '';
 	const date = new Date(iso);
@@ -31,52 +54,81 @@ const fromLocalInputValue = (value: string): string => {
 	return Number.isNaN(date.getTime()) ? '' : date.toISOString();
 };
 
-const defaultForm = (): ScheduleForm => {
+const defaultForm = (): ExtendedScheduleForm => {
 	const start = new Date();
 	start.setMinutes(0, 0, 0);
 	const end = new Date(start);
 	end.setHours(start.getHours() + 1);
 	return {
-		userId: '',
+		category: 'User', // デフォルトは利用者
 		status: 'planned',
 		start: start.toISOString(),
 		end: end.toISOString(),
 		title: '',
 		note: '',
+		allDay: false,
+		location: '',
+		// User defaults
+		userId: '',
+		serviceType: '一時ケア',
+		personType: 'Internal',
+		// Staff defaults
+		staffIds: [],
+		// Org defaults
+		subType: '会議',
+		audience: [],
 	};
 };
 
-const focusSelector = [
-	'a[href]',
-	'button:not([disabled])',
-	'textarea:not([disabled])',
-	'input:not([type="hidden"]):not([disabled])',
-	'select:not([disabled])',
-	'[tabindex]:not([tabindex="-1"])',
-].join(',');
-
-const getFocusableElements = (root: HTMLElement | null): HTMLElement[] => {
-	if (!root) return [];
-	return Array.from(root.querySelectorAll<HTMLElement>(focusSelector));
-};
-
-const cloneForm = (input: ScheduleForm): ScheduleForm => ({
+const cloneForm = (input: ExtendedScheduleForm): ExtendedScheduleForm => ({
 	id: input.id,
-	userId: input.userId ?? '',
+	category: input.category ?? 'User',
 	title: input.title ?? '',
 	note: input.note ?? '',
 	status: input.status ?? 'planned',
 	start: input.start,
 	end: input.end,
+	allDay: input.allDay ?? false,
+	location: input.location ?? '',
+	// User fields
+	userId: input.userId ?? '',
+	serviceType: input.serviceType ?? '一時ケア',
+	personType: input.personType ?? 'Internal',
+	personId: input.personId,
+	personName: input.personName,
+	externalPersonName: input.externalPersonName,
+	externalPersonOrg: input.externalPersonOrg,
+	externalPersonContact: input.externalPersonContact,
+	// Staff fields
+	staffIds: input.staffIds ?? [],
+	staffNames: input.staffNames,
+	dayPart: input.dayPart,
+	// Org fields
+	subType: input.subType ?? '会議',
+	audience: input.audience ?? [],
+	resourceId: input.resourceId,
+	externalOrgName: input.externalOrgName,
 });
 
-export function ScheduleDialog({ open, initial, onClose, onSubmit }: ScheduleDialogProps) {
-	const [form, setForm] = useState<ScheduleForm>(() => cloneForm(defaultForm()));
+export function ScheduleDialog({ open, initial, existingSchedules = [], onClose, onSubmit }: ScheduleDialogProps) {
+	const [form, setForm] = useState<ExtendedScheduleForm>(() => cloneForm(defaultForm()));
 	const [submitting, setSubmitting] = useState(false);
 	const [submitError, setSubmitError] = useState<string | null>(null);
-	const containerRef = useRef<HTMLDivElement | null>(null);
-	const headingId = useId();
 
+	// 競合チェック
+	const conflictCheck = useMemo((): ConflictCheck => {
+		if (!form.start || !form.end) {
+			return { hasConflict: false, conflicts: [] };
+		}
+		// 一時的にScheduleFormにキャスト（競合チェック関数の制限のため）
+		const tempForm = {
+			...form,
+			userId: form.userId ?? '',
+		} as ScheduleForm;
+		return checkScheduleConflicts(tempForm, existingSchedules, form.id?.toString());
+	}, [form, existingSchedules]);
+
+	// Update form when dialog opens with initial data
 	useEffect(() => {
 		if (!open) return;
 		const payload = initial ? cloneForm(initial) : cloneForm(defaultForm());
@@ -85,76 +137,63 @@ export function ScheduleDialog({ open, initial, onClose, onSubmit }: ScheduleDia
 		setSubmitError(null);
 	}, [open, initial]);
 
-	useEffect(() => {
-		if (!open) return;
-		const container = containerRef.current;
-		const previous = document.activeElement as HTMLElement | null;
-		const focusables = getFocusableElements(container);
-		focusables[0]?.focus();
-		const originalOverflow = document.body.style.overflow;
-		document.body.style.overflow = 'hidden';
-
-		const handleKeyDown = (event: KeyboardEvent) => {
-			if (!container?.contains(event.target as Node)) {
-				return;
-			}
-			if (event.key === 'Escape') {
-				event.preventDefault();
-				onClose();
-				return;
-			}
-			if (event.key === 'Tab') {
-				const elements = getFocusableElements(container);
-				if (elements.length === 0) {
-					event.preventDefault();
-					return;
-				}
-				const first = elements[0];
-				const last = elements[elements.length - 1];
-				const active = document.activeElement as HTMLElement | null;
-
-				if (event.shiftKey) {
-					if (!active || active === first) {
-						last.focus();
-						event.preventDefault();
-					}
-				} else if (active === last) {
-					first.focus();
-					event.preventDefault();
-				}
-			}
-		};
-
-		document.addEventListener('keydown', handleKeyDown, true);
-
-		return () => {
-			document.removeEventListener('keydown', handleKeyDown, true);
-			document.body.style.overflow = originalOverflow;
-			previous?.focus();
-		};
-	}, [open, onClose]);
-
+	// Time validation
 	const timeValidation = useMemo(() => {
-		const startMs = new Date(form.start).getTime();
-		const endMs = new Date(form.end).getTime();
-		if (!Number.isFinite(startMs) || !Number.isFinite(endMs)) {
-			return '開始と終了の日時を入力してください。';
-		}
-		if (endMs <= startMs) {
+		if (!form.start || !form.end) return null;
+		const startTime = new Date(form.start).getTime();
+		const endTime = new Date(form.end).getTime();
+		if (endTime <= startTime) {
 			return '終了時刻は開始時刻より後に設定してください。';
 		}
 		return null;
 	}, [form.start, form.end]);
 
-		const handleChange = (field: keyof ScheduleForm) => (event: ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
+	const handleChange = useCallback((field: keyof ExtendedScheduleForm) => (
+		event: ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
+	) => {
 		const value = event.target.value;
-			setForm((prev: ScheduleForm) => ({
+		setForm((prev) => ({
 			...prev,
 			[field]: field === 'start' || field === 'end' ? fromLocalInputValue(value) : value,
 		}));
-	};
+	}, []);
 
-	const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
+	const handleStatusChange = useCallback((event: SelectChangeEvent<ScheduleStatus>) => {
+		const value = event.target.value as ScheduleStatus;
+		setForm((prev) => ({ ...prev, status: value }));
+	}, []);
+
+	const handleCategoryChange = useCallback((event: SelectChangeEvent<Category>) => {
+		const category = event.target.value as Category;
+		setForm((prev) => {
+			// カテゴリ変更時にデフォルト値をセット
+			const base = { ...prev, category };
+
+			if (category === 'User') {
+				return {
+					...base,
+					userId: prev.userId || '',
+					serviceType: prev.serviceType || '一時ケア',
+					personType: prev.personType || 'Internal',
+				};
+			} else if (category === 'Staff') {
+				return {
+					...base,
+					staffIds: prev.staffIds || [],
+					subType: prev.subType || '会議',
+				};
+			} else if (category === 'Org') {
+				return {
+					...base,
+					subType: prev.subType || '会議',
+					audience: prev.audience || [],
+				};
+			}
+			return base;
+		});
+	}, []);
+
+	const handleSubmit = useCallback(async (event: FormEvent<HTMLFormElement>) => {
 		event.preventDefault();
 		if (timeValidation) {
 			return;
@@ -165,144 +204,379 @@ export function ScheduleDialog({ open, initial, onClose, onSubmit }: ScheduleDia
 			await onSubmit(form);
 			onClose();
 		} catch (error) {
-			const message = (error as { userMessage?: string; message?: string } | null)?.userMessage || (error as Error | null)?.message || '保存に失敗しました。';
+			const message = (error as { userMessage?: string; message?: string } | null)?.userMessage
+				|| (error as Error | null)?.message
+				|| '保存に失敗しました。';
 			setSubmitError(message);
 			setSubmitting(false);
 		}
-	};
+	}, [form, timeValidation, onSubmit, onClose]);
 
-	if (!open) {
-		return null;
-	}
+	const handleClose = useCallback(() => {
+		if (submitting) return;
+		onClose();
+	}, [submitting, onClose]);
 
-	return createPortal(
-		<div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 p-4" role="presentation">
-			<div
-				ref={containerRef}
-				role="dialog"
-				aria-modal="true"
-				aria-labelledby={headingId}
-				className="w-full max-w-xl rounded-lg bg-white shadow-xl focus:outline-none"
-			>
-				<form onSubmit={handleSubmit} className="flex flex-col gap-4 p-6">
-					<header className="flex items-center justify-between">
-						<h2 id={headingId} className="text-lg font-semibold text-slate-900">
+	const hasConflictError = conflictCheck.hasConflict &&
+		conflictCheck.conflicts.some(c => getConflictSeverity(c.reason) === 'error');
+	const hasConflictWarning = conflictCheck.hasConflict &&
+		conflictCheck.conflicts.some(c => getConflictSeverity(c.reason) === 'warning');
+
+	return (
+		<Dialog
+			open={open}
+			onClose={handleClose}
+			maxWidth="md"
+			fullWidth
+			scroll="body"
+			PaperProps={{
+				sx: { borderRadius: 2 }
+			}}
+		>
+			<form onSubmit={handleSubmit}>
+				<DialogTitle sx={{ pb: 1 }}>
+					<Stack direction="row" alignItems="center" spacing={1}>
+						<Typography variant="h6" component="span">
 							{form.id ? '予定を編集' : '予定を作成'}
-						</h2>
-						<button
-							type="button"
-							onClick={onClose}
-							className="rounded-md px-3 py-1 text-sm text-slate-600 transition hover:bg-slate-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-500"
-						>
-							閉じる
-						</button>
-					</header>
+						</Typography>
+					</Stack>
+				</DialogTitle>
 
-					{submitError ? (
-						<div className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700" role="alert">
-							{submitError}
-						</div>
-					) : null}
+				<DialogContent dividers>
+					<Stack spacing={3}>
+						{submitError && (
+							<Alert severity="error" variant="outlined">
+								{submitError}
+							</Alert>
+						)}
 
-					<div className="grid grid-cols-1 gap-4">
-						<label className="flex flex-col gap-1 text-sm text-slate-700">
-							利用者 ID
-							<input
-								type="text"
-								value={form.userId}
-								onChange={handleChange('userId')}
-								required
-								className="rounded-md border border-slate-300 px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-200"
-							/>
-						</label>
+						{conflictCheck.hasConflict && (
+							<Alert
+								severity={hasConflictError ? "error" : "warning"}
+								variant="outlined"
+								icon={<WarningAmberRoundedIcon />}
+							>
+								<Typography variant="subtitle2" sx={{ fontWeight: 600, mb: 1 }}>
+									スケジュール競合が検出されました
+								</Typography>
+								<Box component="ul" sx={{ m: 0, pl: 2 }}>
+									{conflictCheck.conflicts.map((conflict, index) => {
+										const severity = getConflictSeverity(conflict.reason);
+										return (
+											<Box component="li" key={index} sx={{ mb: 0.5 }}>
+												<Typography variant="body2" sx={{ fontWeight: 500 }}>
+													{conflict.schedule.title}
+												</Typography>
+												<Typography variant="caption" display="block">
+													{new Date(conflict.schedule.start).toLocaleString('ja-JP', {
+														month: 'short', day: 'numeric',
+														hour: '2-digit', minute: '2-digit'
+													})} - {new Date(conflict.schedule.end).toLocaleString('ja-JP', {
+														hour: '2-digit', minute: '2-digit'
+													})}
+												</Typography>
+												<Typography
+													variant="caption"
+													color={severity === 'error' ? 'error' : severity === 'warning' ? 'warning.main' : 'info.main'}
+													sx={{ fontWeight: 500 }}
+												>
+													{conflict.message}
+												</Typography>
+											</Box>
+										);
+									})}
+								</Box>
+							</Alert>
+						)}
 
-						<label className="flex flex-col gap-1 text-sm text-slate-700">
-							ステータス
-							<select
+						<FormControl fullWidth>
+							<InputLabel>カテゴリ</InputLabel>
+							<Select
+								value={form.category}
+								label="カテゴリ"
+								onChange={handleCategoryChange}
+							>
+								{Object.entries(laneLabels).map(([category, config]) => {
+									const IconComponent = config.icon;
+									return (
+										<MenuItem key={category} value={category}>
+											<Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+												<IconComponent sx={{ fontSize: 18, color: `${config.color}.main` }} />
+												<Typography>{config.label.replace('レーン', '').replace('イベント', '')}</Typography>
+											</Box>
+										</MenuItem>
+									);
+								})}
+							</Select>
+						</FormControl>
+
+						{/* カテゴリ別フィールド */}
+						{form.category === 'User' && (
+							<>
+								<TextField
+									label="利用者 ID"
+									value={form.userId || ''}
+									onChange={handleChange('userId')}
+									required
+									fullWidth
+									placeholder="U-001"
+								/>
+								<FormControl fullWidth>
+									<InputLabel>サービス種別</InputLabel>
+									<Select
+										value={form.serviceType || '一時ケア'}
+										label="サービス種別"
+										onChange={(e) => setForm(prev => ({ ...prev, serviceType: e.target.value as ServiceType }))}
+									>
+										<MenuItem value="一時ケア">一時ケア</MenuItem>
+										<MenuItem value="ショートステイ">ショートステイ</MenuItem>
+									</Select>
+								</FormControl>
+								<FormControl fullWidth>
+									<InputLabel>利用者タイプ</InputLabel>
+									<Select
+										value={form.personType || 'Internal'}
+										label="利用者タイプ"
+										onChange={(e) => setForm(prev => ({ ...prev, personType: e.target.value as PersonType }))}
+									>
+										<MenuItem value="Internal">内部利用者</MenuItem>
+										<MenuItem value="External">外部利用者</MenuItem>
+									</Select>
+								</FormControl>
+								{form.personType === 'Internal' ? (
+									<>
+										<TextField
+											label="利用者名"
+											value={form.personName || ''}
+											onChange={handleChange('personName')}
+											fullWidth
+											placeholder="山田太郎"
+										/>
+									</>
+								) : (
+									<>
+										<TextField
+											label="外部利用者名"
+											value={form.externalPersonName || ''}
+											onChange={handleChange('externalPersonName')}
+											fullWidth
+											placeholder="外部利用者名"
+										/>
+										<TextField
+											label="外部団体名"
+											value={form.externalPersonOrg || ''}
+											onChange={handleChange('externalPersonOrg')}
+											fullWidth
+											placeholder="団体名"
+										/>
+										<TextField
+											label="連絡先"
+											value={form.externalPersonContact || ''}
+											onChange={handleChange('externalPersonContact')}
+											fullWidth
+											placeholder="電話番号やメールアドレス"
+										/>
+									</>
+								)}
+							</>
+						)}
+
+						{form.category === 'Staff' && (
+							<>
+								<TextField
+									label="職員ID (カンマ区切りで複数可)"
+									value={form.staffIds?.join(',') || ''}
+									onChange={(e) => setForm(prev => ({
+										...prev,
+										staffIds: e.target.value.split(',').filter(id => id.trim())
+									}))}
+									fullWidth
+									placeholder="S-001,S-002"
+									helperText="複数の職員IDをカンマで区切って入力してください"
+								/>
+								<FormControl fullWidth>
+									<InputLabel>サブタイプ</InputLabel>
+									<Select
+										value={form.subType || '会議'}
+										label="サブタイプ"
+										onChange={(e) => setForm(prev => ({ ...prev, subType: e.target.value }))}
+									>
+										<MenuItem value="会議">会議</MenuItem>
+										<MenuItem value="研修">研修</MenuItem>
+										<MenuItem value="来客対応">来客対応</MenuItem>
+										<MenuItem value="年休">年休</MenuItem>
+									</Select>
+								</FormControl>
+								{form.subType === '年休' && (
+									<FormControl fullWidth>
+										<InputLabel>時間帯</InputLabel>
+										<Select
+											value={form.dayPart || 'Full'}
+											label="時間帯"
+											onChange={(e) => setForm(prev => ({ ...prev, dayPart: e.target.value as DayPart }))}
+										>
+											<MenuItem value="Full">終日</MenuItem>
+											<MenuItem value="AM">午前</MenuItem>
+											<MenuItem value="PM">午後</MenuItem>
+										</Select>
+									</FormControl>
+								)}
+							</>
+						)}
+
+						{form.category === 'Org' && (
+							<>
+								<FormControl fullWidth>
+									<InputLabel>イベントタイプ</InputLabel>
+									<Select
+										value={form.subType || '会議'}
+										label="イベントタイプ"
+										onChange={(e) => setForm(prev => ({ ...prev, subType: e.target.value }))}
+									>
+										<MenuItem value="会議">会議</MenuItem>
+										<MenuItem value="研修">研修</MenuItem>
+										<MenuItem value="監査">監査</MenuItem>
+										<MenuItem value="余暇イベント">余暇イベント</MenuItem>
+										<MenuItem value="外部団体利用">外部団体利用</MenuItem>
+									</Select>
+								</FormControl>
+								{form.subType === '外部団体利用' && (
+									<TextField
+										label="外部団体名"
+										value={form.externalOrgName || ''}
+										onChange={handleChange('externalOrgName')}
+										fullWidth
+										placeholder="さつき会、パレットクラブなど"
+									/>
+								)}
+								<TextField
+									label="対象者 (カンマ区切り)"
+									value={form.audience?.join(',') || ''}
+									onChange={(e) => setForm(prev => ({
+										...prev,
+										audience: e.target.value.split(',').filter(item => item.trim())
+									}))}
+									fullWidth
+									placeholder="全職員,看護,生活介護"
+									helperText="対象者をカンマで区切って入力してください"
+								/>
+								<TextField
+									label="リソースID"
+									value={form.resourceId || ''}
+									onChange={handleChange('resourceId')}
+									fullWidth
+									placeholder="プレイルーム、会議室Aなど"
+									helperText="使用する部屋や設備を指定してください"
+								/>
+							</>
+						)}
+
+						<FormControl fullWidth>
+							<InputLabel>ステータス</InputLabel>
+							<Select
 								value={form.status}
-								onChange={handleChange('status')}
-								className="rounded-md border border-slate-300 px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-200"
+								label="ステータス"
+								onChange={handleStatusChange}
 							>
 								{(Object.keys(STATUS_LABELS) as ScheduleStatus[]).map((status) => (
-									<option key={status} value={status}>
+									<MenuItem key={status} value={status}>
 										{STATUS_LABELS[status]}
-									</option>
+									</MenuItem>
 								))}
-							</select>
-						</label>
+							</Select>
+						</FormControl>
 
-						<div className="grid gap-4 md:grid-cols-2">
-							<label className="flex flex-col gap-1 text-sm text-slate-700">
-								開始
-								<input
-									type="datetime-local"
-									value={toLocalInputValue(form.start)}
-									onChange={handleChange('start')}
-									required
-									className="rounded-md border border-slate-300 px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-200"
-								/>
-							</label>
-
-							<label className="flex flex-col gap-1 text-sm text-slate-700">
-								終了
-								<input
-									type="datetime-local"
-									value={toLocalInputValue(form.end)}
-									onChange={handleChange('end')}
-									required
-									aria-invalid={Boolean(timeValidation)}
-									className="rounded-md border border-slate-300 px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-200"
-								/>
-							</label>
-						</div>
-						{timeValidation ? (
-							<p className="text-sm text-red-600" role="alert">
-								{timeValidation}
-							</p>
-						) : null}
-
-						<label className="flex flex-col gap-1 text-sm text-slate-700">
-							タイトル
-							<input
-								type="text"
-								value={form.title ?? ''}
-								onChange={handleChange('title')}
-								placeholder="予定名"
-								className="rounded-md border border-slate-300 px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-200"
+						<Stack direction={{ xs: 'column', sm: 'row' }} spacing={2}>
+							<TextField
+								label="開始日時"
+								type="datetime-local"
+								value={toLocalInputValue(form.start)}
+								onChange={handleChange('start')}
+								required
+								fullWidth
+								InputLabelProps={{ shrink: true }}
 							/>
-						</label>
-
-						<label className="flex flex-col gap-1 text-sm text-slate-700">
-							メモ
-							<textarea
-								value={form.note ?? ''}
-								onChange={handleChange('note')}
-								rows={4}
-								className="rounded-md border border-slate-300 px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-200"
+							<TextField
+								label="終了日時"
+								type="datetime-local"
+								value={toLocalInputValue(form.end)}
+								onChange={handleChange('end')}
+								required
+								fullWidth
+								InputLabelProps={{ shrink: true }}
+								error={Boolean(timeValidation)}
+								helperText={timeValidation}
 							/>
-						</label>
-					</div>
+						</Stack>
 
-					<footer className="flex items-center justify-end gap-2 pt-2">
-						<button
-							type="button"
-							onClick={onClose}
-							className="rounded-md border border-slate-300 px-4 py-2 text-sm text-slate-700 transition hover:bg-slate-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-500"
-						>
-							キャンセル
-						</button>
-						<button
-							type="submit"
-							disabled={submitting || Boolean(timeValidation)}
-							className="rounded-md bg-indigo-600 px-4 py-2 text-sm font-medium text-white shadow-sm transition enabled:hover:bg-indigo-700 enabled:focus-visible:outline enabled:focus-visible:outline-2 enabled:focus-visible:outline-offset-2 enabled:focus-visible:outline-indigo-500 disabled:opacity-50"
-						>
-							{submitting ? '保存中…' : '保存'}
-						</button>
-					</footer>
-				</form>
-			</div>
-		</div>,
-		document.body
+						<TextField
+							label="タイトル"
+							value={form.title ?? ''}
+							onChange={handleChange('title')}
+							placeholder="予定名を入力"
+							fullWidth
+						/>
+
+						<TextField
+							label="場所"
+							value={form.location ?? ''}
+							onChange={handleChange('location')}
+							placeholder="会議室、訪問先など"
+							fullWidth
+						/>
+
+						<FormControl component="fieldset">
+							<Box display="flex" alignItems="center">
+								<input
+									type="checkbox"
+									id="allDay"
+									checked={form.allDay ?? false}
+									onChange={(e) => setForm(prev => ({ ...prev, allDay: e.target.checked }))}
+									style={{ marginRight: 8 }}
+								/>
+								<label htmlFor="allDay">終日</label>
+							</Box>
+						</FormControl>
+
+						<TextField
+							label="メモ"
+							value={form.note ?? ''}
+							onChange={handleChange('note')}
+							multiline
+							rows={4}
+							placeholder="詳細やメモを入力"
+							fullWidth
+						/>
+					</Stack>
+				</DialogContent>
+
+				<DialogActions sx={{ px: 3, py: 2 }}>
+					<Button
+						onClick={handleClose}
+						startIcon={<CloseRoundedIcon />}
+						disabled={submitting}
+					>
+						キャンセル
+					</Button>
+					<Button
+						type="submit"
+						variant="contained"
+						startIcon={<SaveRoundedIcon />}
+						disabled={submitting || Boolean(timeValidation)}
+						color={hasConflictError ? "error" : hasConflictWarning ? "warning" : "primary"}
+					>
+						{submitting
+							? '保存中…'
+							: hasConflictError
+							? '競合を承知で保存'
+							: hasConflictWarning
+							? '注意して保存'
+							: '保存'
+						}
+					</Button>
+				</DialogActions>
+			</form>
+		</Dialog>
 	);
 }
 

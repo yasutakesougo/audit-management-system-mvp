@@ -1,34 +1,35 @@
-import React from 'react';
-import { Link as RouterLink } from 'react-router-dom';
-import Container from '@mui/material/Container';
+import { useFeatureFlags } from '@/config/featureFlags';
+import MobileAgendaView from '@/features/schedule/components/MobileAgendaView';
+import NextActionCard from '@/features/schedule/components/NextActionCard';
+import { useSchedulesToday } from '@/features/schedule/useSchedulesToday';
+import { isDemoModeEnabled } from '@/lib/env';
+import UnsynedAuditBadge from '@/ui/components/UnsynedAuditBadge';
+import ArrowForwardRoundedIcon from '@mui/icons-material/ArrowForwardRounded';
+import AssignmentTurnedInRoundedIcon from '@mui/icons-material/AssignmentTurnedInRounded';
+import ChecklistRoundedIcon from '@mui/icons-material/ChecklistRounded';
+import EventAvailableRoundedIcon from '@mui/icons-material/EventAvailableRounded';
+import FiberManualRecordRoundedIcon from '@mui/icons-material/FiberManualRecordRounded';
+import PeopleAltRoundedIcon from '@mui/icons-material/PeopleAltRounded';
+import PhonelinkRoundedIcon from '@mui/icons-material/PhonelinkRounded';
+import SpaceDashboardRoundedIcon from '@mui/icons-material/SpaceDashboardRounded';
+import Box from '@mui/material/Box';
 import Card from '@mui/material/Card';
 import CardActionArea from '@mui/material/CardActionArea';
-import CardContent from '@mui/material/CardContent';
 import CardActions from '@mui/material/CardActions';
-import Typography from '@mui/material/Typography';
-import Stack from '@mui/material/Stack';
+import CardContent from '@mui/material/CardContent';
 import Chip from '@mui/material/Chip';
-import Box from '@mui/material/Box';
-import Paper from '@mui/material/Paper';
+import Container from '@mui/material/Container';
+import Divider from '@mui/material/Divider';
 import List from '@mui/material/List';
 import ListItem from '@mui/material/ListItem';
 import ListItemIcon from '@mui/material/ListItemIcon';
 import ListItemText from '@mui/material/ListItemText';
-import Divider from '@mui/material/Divider';
-import ArrowForwardRoundedIcon from '@mui/icons-material/ArrowForwardRounded';
-import PeopleAltRoundedIcon from '@mui/icons-material/PeopleAltRounded';
-import EventAvailableRoundedIcon from '@mui/icons-material/EventAvailableRounded';
-import PhonelinkRoundedIcon from '@mui/icons-material/PhonelinkRounded';
-import AssignmentTurnedInRoundedIcon from '@mui/icons-material/AssignmentTurnedInRounded';
-import ChecklistRoundedIcon from '@mui/icons-material/ChecklistRounded';
-import FiberManualRecordRoundedIcon from '@mui/icons-material/FiberManualRecordRounded';
-import SpaceDashboardRoundedIcon from '@mui/icons-material/SpaceDashboardRounded';
+import Paper from '@mui/material/Paper';
+import Stack from '@mui/material/Stack';
 import type { Theme } from '@mui/material/styles';
 import { alpha, useTheme } from '@mui/material/styles';
-import { isDemoModeEnabled } from '@/lib/env';
-import { useSchedulesToday } from '@/features/schedule/useSchedulesToday';
-import { useFeatureFlags } from '@/config/featureFlags';
-import UnsynedAuditBadge from '@/ui/components/UnsynedAuditBadge';
+import Typography from '@mui/material/Typography';
+import { Link as RouterLink } from 'react-router-dom';
 
 type TileTone = 'primary' | 'success' | 'info' | 'warning' | 'secondary' | 'neutral';
 
@@ -48,6 +49,13 @@ const tiles: Tile[] = [
     caption: '利用者情報を閲覧・管理',
     Icon: PeopleAltRoundedIcon,
     tone: 'primary',
+  },
+  {
+    to: '/staff',
+    label: '職員マスタ',
+    caption: '職員情報と勤務パターンを管理',
+    Icon: PeopleAltRoundedIcon,
+    tone: 'success',
   },
   {
     to: '/dashboard',
@@ -145,6 +153,7 @@ export default function Home() {
   const filteredTiles = tiles.filter((tile) => schedulesEnabled || tile.to !== '/schedule');
   const activeTiles = demoModeEnabled ? [tabletDemoTile, ...filteredTiles] : filteredTiles;
   const {
+    data: todaySchedules,
     source: scheduleSource,
     fallbackError: scheduleFallbackError,
   } = useSchedulesToday(5);
@@ -217,6 +226,25 @@ export default function Home() {
             </Paper>
           ) : null}
         </Stack>
+
+        {/* 次のアクションカード - スマートフォン最適化 */}
+        {schedulesEnabled && (
+          <Box
+            component="section"
+            aria-label="次のアクション"
+            sx={{ display: { xs: 'block', md: 'none' } }} // スマートフォンのみ表示
+          >
+            <NextActionCard
+              schedules={todaySchedules.map(mini => ({
+                id: mini.id.toString(),
+                title: mini.title,
+                start: mini.startText,
+                end: mini.startText, // MiniScheduleには終了時刻がないため暫定
+                status: mini.status || '承認済み',
+              }))}
+            />
+          </Box>
+        )}
 
         <Box
           component="section"
@@ -305,6 +333,15 @@ export default function Home() {
             );
           })}
         </Box>
+
+        {/* 今日の予定セクション（タブレット・デスクトップでの詳細表示） */}
+        {schedulesEnabled && (
+          <Box sx={{ display: { xs: 'none', md: 'block' } }}>
+            <Paper component="section" variant="outlined" sx={{ p: 0, overflow: 'hidden' }}>
+              <MobileAgendaView maxItems={8} />
+            </Paper>
+          </Box>
+        )}
 
         <Paper component="section" variant="outlined" sx={{ p: { xs: 2.5, md: 3 } }}>
           <Stack spacing={2}>

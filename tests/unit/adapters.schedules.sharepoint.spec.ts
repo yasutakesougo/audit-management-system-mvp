@@ -1,5 +1,5 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
 import type { Schedule, ScheduleDraft } from '@/adapters/schedules/demo';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const listSpy = vi.fn();
 const createSpy = vi.fn();

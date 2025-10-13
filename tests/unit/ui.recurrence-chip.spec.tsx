@@ -1,6 +1,6 @@
+import { RecurrenceChip } from '@/ui/components/RecurrenceChip';
 import { render, screen } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
-import { RecurrenceChip } from '@/ui/components/RecurrenceChip';
 
 describe('RecurrenceChip', () => {
   it('returns null when no metadata is provided', () => {

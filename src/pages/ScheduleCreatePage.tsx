@@ -1,34 +1,34 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { useLocation, useNavigate } from 'react-router-dom';
-import {
-  Alert,
-  Box,
-  Button,
-  FormControlLabel,
-  MenuItem,
-  Paper,
-  Stack,
-  Switch,
-  TextField,
-  Typography,
-} from '@mui/material';
-import Autocomplete from '@mui/material/Autocomplete';
+import type { CloneStrategy, ScheduleCloneDraft } from '@/features/schedule/clone';
+import { STATUS_DEFAULT, STATUS_LABELS, normalizeStatus } from '@/features/schedule/statusDictionary';
+import { SCHEDULE_STATUSES, type Status } from '@/features/schedule/types';
+import { useUsersStore } from '@/features/users/store';
+import { useToast } from '@/hooks/useToast';
+import { createSchedule, useSP } from '@/lib/spClient';
+import { formatInTimeZone, fromZonedTime } from '@/lib/tz';
+import { SCHEDULE_FIELD_SERVICE_TYPE } from '@/sharepoint/fields';
+import { useStaff } from '@/stores/useStaff';
+import type { Staff, User } from '@/types';
+import { formatRangeLocal } from '@/utils/datetime';
+import { MessageBar, MessageBarType } from '@fluentui/react';
 import ArrowBackRoundedIcon from '@mui/icons-material/ArrowBackRounded';
 import SaveRoundedIcon from '@mui/icons-material/SaveRounded';
 import WarningAmberIcon from '@mui/icons-material/WarningAmber';
+import {
+    Alert,
+    Box,
+    Button,
+    FormControlLabel,
+    MenuItem,
+    Paper,
+    Stack,
+    Switch,
+    TextField,
+    Typography,
+} from '@mui/material';
+import Autocomplete from '@mui/material/Autocomplete';
 import { addDays, addMinutes, differenceInMinutes } from 'date-fns';
-import { formatInTimeZone, fromZonedTime } from '@/lib/tz';
-import type { ScheduleCloneDraft, CloneStrategy } from '@/features/schedule/clone';
-import { formatRangeLocal } from '@/utils/datetime';
-import { useToast } from '@/hooks/useToast';
-import { createSchedule, useSP } from '@/lib/spClient';
-import { SCHEDULE_STATUSES, type Status } from '@/features/schedule/types';
-import { STATUS_LABELS, STATUS_DEFAULT, normalizeStatus } from '@/features/schedule/statusDictionary';
-import { useStaff } from '@/stores/useStaff';
-import type { Staff, User } from '@/types';
-import { MessageBar, MessageBarType } from '@fluentui/react';
-import { SCHEDULE_FIELD_SERVICE_TYPE } from '@/sharepoint/fields';
-import { useUsers as useUsersStore } from '@/stores/useUsers';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useLocation, useNavigate } from 'react-router-dom';
 
 const TIMEZONE = 'Asia/Tokyo';
 const ROUND_STEP_MINUTES = 5;
@@ -226,7 +226,8 @@ export default function ScheduleCreatePage() {
   const sp = useSP();
   const { show } = useToast();
   const { data: staff, loading: staffLoading, error: staffError } = useStaff();
-  const { data: users, loading: usersLoading, error: usersError } = useUsersStore();
+  const { data: users, status, error: usersError } = useUsersStore();
+  const usersLoading = status === 'loading';
 
   const locationState = (state ?? {}) as ScheduleCloneState;
   const draft = locationState.draft;
@@ -326,8 +327,8 @@ export default function ScheduleCreatePage() {
   const userOptions = useMemo(() => {
     if (!Array.isArray(users)) return [] as User[];
     return users.slice().sort((a, b) => {
-      const ax = a.furigana || a.nameKana || a.name || a.userId;
-      const bx = b.furigana || b.nameKana || b.name || b.userId;
+      const ax = a.Furigana || a.FullNameKana || a.FullName || a.UserID;
+      const bx = b.Furigana || b.FullNameKana || b.FullName || b.UserID;
       return ax.localeCompare(bx, 'ja');
     });
   }, [users]);
@@ -339,7 +340,14 @@ export default function ScheduleCreatePage() {
 
   const selectedUser = useMemo(() => {
     if (form.userId == null) return null;
-    return userOptions.find((candidate) => candidate.id === form.userId) ?? null;
+    return userOptions.find((candidate) => {
+      // IUserMaster型の場合
+      if ('Id' in candidate) {
+        return candidate.Id === form.userId;
+      }
+      // User型の場合
+      return candidate.id === form.userId;
+    }) ?? null;
   }, [form.userId, userOptions]);
 
   const requiresDrivingLicense = form.usesVehicle || form.serviceType === '送迎';
@@ -536,8 +544,8 @@ export default function ScheduleCreatePage() {
             </TextField>
 
             <Autocomplete<User, false, false, false>
-              options={userOptions}
-              value={selectedUser}
+              options={userOptions as User[]}
+              value={selectedUser as User | null}
               onChange={handleUserSelect}
               loading={usersLoading}
               noOptionsText={usersLoading ? '読み込み中…' : '該当する利用者が見つかりません'}
@@ -557,7 +565,7 @@ export default function ScheduleCreatePage() {
                     error={Boolean(usersError)}
                     helperText={
                       usersError
-                        ? `利用者リストの取得に失敗しました: ${usersError.message}`
+                        ? `利用者リストの取得に失敗しました: ${String(usersError)}`
                         : selectedUser
                           ? '対象の利用者を選択しました'
                           : '対象の利用者を選択してください'

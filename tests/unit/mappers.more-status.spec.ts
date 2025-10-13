@@ -1,12 +1,12 @@
-import { describe, expect, it } from 'vitest';
 import { mapSchedule, mapScheduleToSp } from '@/lib/mappers';
 import {
-  SCHEDULE_FIELD_START,
-  SCHEDULE_FIELD_END,
-  SCHEDULE_FIELD_NOTE,
-  SCHEDULE_FIELD_TARGET_USER_ID,
-  SCHEDULE_FIELD_BILLING_FLAGS,
+    SCHEDULE_FIELD_BILLING_FLAGS,
+    SCHEDULE_FIELD_END,
+    SCHEDULE_FIELD_NOTE,
+    SCHEDULE_FIELD_START,
+    SCHEDULE_FIELD_TARGET_USER_ID,
 } from '@/sharepoint/fields';
+import { describe, expect, it } from 'vitest';
 
 describe('mapSchedule status normalization', () => {
   const baseRow = (status: string | null | undefined) => ({

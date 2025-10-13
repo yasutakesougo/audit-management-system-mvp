@@ -1,5 +1,5 @@
-import { beforeAll, beforeEach, describe, expect, it, vi, type Mock } from 'vitest';
 import type { Schedule } from '@/adapters/schedules/demo';
+import { beforeAll, beforeEach, describe, expect, it, vi, type Mock } from 'vitest';
 
 vi.mock('@/lib/env', () => ({
   isDemoModeEnabled: vi.fn(() => false),

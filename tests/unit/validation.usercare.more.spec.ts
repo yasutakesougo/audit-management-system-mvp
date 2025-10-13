@@ -1,6 +1,6 @@
-import { describe, expect, it } from 'vitest';
-import { validateUserCare } from '@/features/schedule/validation';
 import type { ScheduleUserCare } from '@/features/schedule/types';
+import { validateUserCare } from '@/features/schedule/validation';
+import { describe, expect, it } from 'vitest';
 
 const buildDraft = (overrides: Partial<ScheduleUserCare> = {}): Partial<ScheduleUserCare> => ({
   category: 'User',

@@ -1,5 +1,5 @@
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { createSpClient } from '@/lib/spClient';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 const textPayload = 'Internal Boom (plain text)';
 

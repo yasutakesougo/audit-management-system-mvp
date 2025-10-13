@@ -10,11 +10,11 @@ vi.mock('@/lib/env', () => envMock);
 const { allowWriteFallback, isDemoModeEnabled } = envMock;
 
 import {
-  getRegisteredNotifier,
-  notify,
-  registerNotifier,
-  showDemoWriteDisabled,
-  withUserMessage,
+    getRegisteredNotifier,
+    notify,
+    registerNotifier,
+    showDemoWriteDisabled,
+    withUserMessage,
 } from '@/lib/notice';
 
 describe('withUserMessage', () => {

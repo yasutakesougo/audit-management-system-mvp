@@ -1,14 +1,19 @@
-import { ChangeEvent, FormEvent, useCallback, useEffect, useMemo, useState } from 'react';
 import Autocomplete from '@mui/material/Autocomplete';
 import Avatar from '@mui/material/Avatar';
 import Box from '@mui/material/Box';
+import Button from '@mui/material/Button';
 import TextField from '@mui/material/TextField';
+import Typography from '@mui/material/Typography';
+import { ChangeEvent, FormEvent, useCallback, useEffect, useMemo, useState } from 'react';
+// MUI Icons
+import { useUsersStore } from '@/features/users/store';
 import { useDaily } from '@/hooks/useDaily';
-import { useUsers } from '@/stores/useUsers';
-import type { DailyStatus, DailyUpsert, SpDailyItem } from '@/types';
-import { DAILY_STATUS_OPTIONS } from '@/types';
 import { useToast } from '@/hooks/useToast';
 import { isDevMode } from '@/lib/env';
+import type { DailyStatus, DailyUpsert, SpDailyItem } from '@/types';
+import { DAILY_STATUS_OPTIONS } from '@/types';
+import EditRoundedIcon from '@mui/icons-material/EditRounded';
+import SaveRoundedIcon from '@mui/icons-material/SaveRounded';
 
 export type DailyFormMode = 'create' | 'edit';
 
@@ -100,7 +105,8 @@ const toInitialFromItem = (item: SpDailyItem, etag?: string | null): DailyFormIn
 
 export default function DailyForm({ mode, initial, onDone, prefillNotice, prefillError }: DailyFormProps) {
   const { createDaily, updateDaily, getDailyWithEtag } = useDaily();
-  const { data: users, loading: usersLoading } = useUsers();
+  const { data: users, status } = useUsersStore();
+  const usersLoading = status === 'loading';
   const { show } = useToast();
 
   const [form, setForm] = useState<DailyUpsert>(() => toFormState(initial));
@@ -116,15 +122,15 @@ export default function DailyForm({ mode, initial, onDone, prefillNotice, prefil
   const userOptions = useMemo<UserOption[]>(() => {
     return (users ?? [])
       .map((user) => {
-        const id = Number(user.id);
+        const id = Number(user.Id);
         if (!Number.isFinite(id)) return null;
-        const labelBase = user.name?.trim() ? user.name.trim() : '(無名)';
-        const userCode = user.userId?.trim() ? user.userId.trim() : String(user.id ?? id);
+        const labelBase = user.FullName?.trim() ? user.FullName.trim() : '(無名)';
+        const userCode = user.UserID?.trim() ? user.UserID.trim() : String(user.Id ?? id);
         return {
           id,
           name: labelBase,
           code: userCode,
-          active: user.active !== false,
+          active: user.IsActive !== false,
           initials: labelBase.charAt(0).toUpperCase(),
         } satisfies UserOption;
       })
@@ -515,18 +521,22 @@ export default function DailyForm({ mode, initial, onDone, prefillNotice, prefil
         />
       </label>
 
-      <div className="flex flex-col gap-2">
-        <button
+      <Box sx={{ mt: 3 }}>
+        <Button
           type="submit"
-          className="rounded-md bg-indigo-600 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2"
+          variant="contained"
+          size="large"
+          startIcon={mode === 'create' ? <SaveRoundedIcon /> : <EditRoundedIcon />}
           disabled={isSubmitDisabled}
+          fullWidth
+          sx={{ mb: 1 }}
         >
           {submitLabel}
-        </button>
-        <span className="text-xs text-gray-500">
+        </Button>
+        <Typography variant="caption" color="text.secondary" display="block" textAlign="center">
           保存すると一覧画面に戻ります。
-        </span>
-      </div>
+        </Typography>
+      </Box>
     </form>
   );
 }

@@ -165,3 +165,37 @@ export type AttendanceRecord = {
   Absent?: boolean;
   Notes?: string;
 };
+
+// 拡張されたフォーム型 - すべてのカテゴリに対応
+export interface ExtendedScheduleForm {
+  id?: number;
+  category: Category;
+  title?: string;
+  note?: string;
+  status: ScheduleStatus;
+  start: string;
+  end: string;
+  allDay?: boolean;
+  location?: string;
+
+  // User-specific fields
+  userId?: string;
+  serviceType?: ServiceType;
+  personType?: PersonType;
+  personId?: string;
+  personName?: string;
+  externalPersonName?: string;
+  externalPersonOrg?: string;
+  externalPersonContact?: string;
+
+  // Staff-specific fields
+  staffIds?: string[];
+  staffNames?: string[];
+  dayPart?: DayPart;
+
+  // Org-specific fields
+  subType?: string;
+  audience?: string[];
+  resourceId?: string;
+  externalOrgName?: string;
+}

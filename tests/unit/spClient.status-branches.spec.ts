@@ -1,5 +1,5 @@
-import { afterAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import { createSpClient } from '@/lib/spClient';
+import { afterAll, beforeEach, describe, expect, it, vi } from 'vitest';
 
 vi.mock('@/lib/env', () => {
   const baseConfig = {

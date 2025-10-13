@@ -1,7 +1,7 @@
+import type { ScheduleOrg, ScheduleStaff, ScheduleUserCare } from '@/features/schedule/types';
+import TimelineDay from '@/features/schedule/views/TimelineDay';
 import { cleanup, render, screen } from '@testing-library/react';
 import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
-import TimelineDay from '@/features/schedule/views/TimelineDay';
-import type { ScheduleOrg, ScheduleStaff, ScheduleUserCare } from '@/features/schedule/types';
 
 vi.mock('@/features/schedule/views/TimelineEventCard', () => ({
   default: ({
@@ -116,8 +116,9 @@ describe('TimelineDay rendering branches', () => {
     const orgCard = eventCards.find((node) => node.getAttribute('data-category') === 'Org');
     expect(orgCard?.getAttribute('data-end')).toBe('2025-03-10T15:00:00.000Z');
 
-    const todayHeader = screen.getAllByRole('columnheader')[1];
-    expect(todayHeader.className).toContain('bg-indigo-50');
+    expect(screen.getByRole('rowheader', { name: '利用者レーン' })).toBeInTheDocument();
+    expect(screen.getByRole('rowheader', { name: '職員レーン' })).toBeInTheDocument();
+    expect(screen.getByRole('rowheader', { name: '組織イベント' })).toBeInTheDocument();
   });
 
   it('shows empty states and scroll reset behaviour', () => {
@@ -130,7 +131,7 @@ describe('TimelineDay rendering branches', () => {
     const scrollSpy = vi.fn();
     Object.defineProperty(scrollContainer, 'scrollTo', { value: scrollSpy, configurable: true });
 
-    screen.getByRole('button', { name: '今日へ移動' }).click();
+    screen.getByRole('button', { name: '先頭へ戻る' }).click();
     expect(scrollSpy).toHaveBeenCalledWith({ left: 0, top: 0, behavior: 'smooth' });
   });
 });

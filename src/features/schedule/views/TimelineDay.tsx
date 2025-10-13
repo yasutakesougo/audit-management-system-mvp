@@ -1,27 +1,36 @@
-import { useCallback, useId, useMemo, useRef, type HTMLAttributes } from 'react';
 import { format } from 'date-fns';
 import { ja } from 'date-fns/locale';
+import { useCallback, useId, useMemo, useRef, type HTMLAttributes, type MouseEvent } from 'react';
+// MUI Components
+import Box from '@mui/material/Box';
+import Button from '@mui/material/Button';
+import Paper from '@mui/material/Paper';
+import Stack from '@mui/material/Stack';
+import Typography from '@mui/material/Typography';
+// Icons
+import RefreshRoundedIcon from '@mui/icons-material/RefreshRounded';
+import TodayRoundedIcon from '@mui/icons-material/TodayRounded';
+
+import { startOfDay } from '../dateutils.local';
+import type { Schedule } from '../types';
 import TimelineEventCard from './TimelineEventCard';
 import { getTimelineSubtitle, laneLabels, laneOrder } from './TimelineWeek';
-import type { Schedule } from '../types';
-import { getLocalDateKey, startOfDay } from '../dateutils.local';
-import { cn } from '@/utils/cn';
 
 type TimelineDayProps = {
   events: Schedule[];
   date: Date;
+  onEventCreate?: (payload: { category: Schedule['category']; date: string }) => void;
+  onEventEdit?: (event: Schedule) => void;
 };
 
 type LaneBuckets = Record<Schedule['category'], Schedule[]>;
 
 const ONE_DAY_MS = 24 * 60 * 60 * 1000;
 
-export default function TimelineDay({ events, date }: TimelineDayProps) {
+export default function TimelineDay({ events, date, onEventCreate, onEventEdit }: TimelineDayProps) {
   const dayStart = useMemo(() => startOfDay(date), [date]);
   const dayEnd = useMemo(() => new Date(dayStart.getTime() + ONE_DAY_MS), [dayStart]);
   const buckets = useMemo(() => buildDayBuckets(events, dayStart, dayEnd), [events, dayStart, dayEnd]);
-  const dayKey = useMemo(() => getLocalDateKey(dayStart) ?? format(dayStart, 'yyyy-MM-dd'), [dayStart]);
-  const isToday = useMemo(() => getLocalDateKey(new Date()) === dayKey, [dayKey]);
   const rangeLabel = useMemo(() => format(dayStart, 'yyyy年M月d日 (EEE)', { locale: ja }), [dayStart]);
   const rangeLabelId = useId();
   const hourSlots = useMemo(() => buildHourSlots(dayStart), [dayStart]);
@@ -33,129 +42,309 @@ export default function TimelineDay({ events, date }: TimelineDayProps) {
     node.scrollTo({ left: 0, top: 0, behavior: 'smooth' });
   }, []);
 
-  return (
-    <section aria-label={`日タイムライン (${rangeLabel})`} className="space-y-4">
-      <header className="flex flex-wrap items-center justify-between gap-3">
-        <div>
-          <h2 className="text-base font-semibold text-gray-900">日タイムライン</h2>
-          <p id={rangeLabelId} className="text-xs text-gray-600">
-            {rangeLabel}
-          </p>
-        </div>
-        <div className="flex items-center gap-2">
-          <button
-            type="button"
-            onClick={handleScrollReset}
-            className={cn(
-              'rounded-md border border-indigo-200 bg-indigo-50 px-3 py-1 text-xs font-medium text-indigo-700 transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-2',
-              'hover:bg-indigo-100'
-            )}
-          >
-            今日へ移動
-          </button>
-        </div>
-      </header>
+  const handleScrollToNow = useCallback(() => {
+    const node = scrollRef.current;
+    if (!node) return;
 
-      <div className="overflow-x-auto" ref={scrollRef} data-testid="day-scroll-container">
-        <div
+    const now = new Date();
+    const currentHour = now.getHours();
+
+    // 6時以前は6時に、23時以降は23時にスクロール
+    const targetHour = Math.max(6, Math.min(23, currentHour));
+    // 6:00からのオフセットを計算（80px per hour）
+    const hourOffset = targetHour - 6;
+    const scrollLeft = Math.max(0, (hourOffset * 80) - 160); // 多少手前から表示
+
+    node.scrollTo({ left: scrollLeft, behavior: 'smooth' });
+  }, []);
+
+  // セルクリックでイベント作成
+  const handleCellClick = useCallback(
+    (category: Schedule['category']) => (event: MouseEvent<HTMLDivElement>) => {
+      if ((event.target as HTMLElement).closest('[data-schedule-event="true"]')) {
+        return;
+      }
+
+      if (onEventCreate) {
+        const dateString = format(date, 'yyyy-MM-dd');
+        onEventCreate({ category, date: dateString });
+      }
+    },
+    [onEventCreate, date]
+  );
+
+  // イベントクリックで編集
+  const handleEventClick = useCallback(
+    (event: Schedule) => (clickEvent: MouseEvent<HTMLDivElement>) => {
+      clickEvent.stopPropagation();
+      if (onEventEdit) {
+        onEventEdit(event);
+      }
+    },
+    [onEventEdit]
+  );
+
+  return (
+    <Box component="section" aria-label={`日タイムライン (${rangeLabel})`}>
+      {/* Header */}
+      <Stack direction="row" alignItems="center" justifyContent="space-between" mb={3}>
+        <Box>
+          <Typography variant="h6" component="h2" sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+            <TodayRoundedIcon />
+            日タイムライン
+          </Typography>
+          <Typography variant="body2" color="text.secondary" id={rangeLabelId}>
+            {rangeLabel}
+          </Typography>
+        </Box>
+
+        <Stack direction="row" spacing={1}>
+          <Button
+            variant="outlined"
+            size="small"
+            onClick={handleScrollToNow}
+            startIcon={<TodayRoundedIcon />}
+          >
+            現在時刻へ
+          </Button>
+          <Button
+            variant="outlined"
+            size="small"
+            onClick={handleScrollReset}
+            startIcon={<RefreshRoundedIcon />}
+          >
+            先頭へ戻る
+          </Button>
+        </Stack>
+      </Stack>
+
+      <Paper elevation={2} sx={{ borderRadius: 3, overflow: 'hidden', border: 1, borderColor: 'divider' }}>
+        <Box
+          ref={scrollRef}
+          data-testid="day-scroll-container"
           role="grid"
           aria-label="指定日の予定一覧"
           aria-describedby={rangeLabelId}
-          className="min-w-max rounded-xl border border-gray-200 bg-white shadow-sm"
+          sx={{
+            overflow: 'auto',
+            maxHeight: '70vh'
+          }}
         >
-          <div
-            role="row"
-            className="grid border-b border-gray-200 text-xs font-medium text-gray-600"
-            style={{ gridTemplateColumns: '140px minmax(320px, 1fr)' }}
-          >
-            <div role="columnheader" className="px-3 py-2 text-left text-gray-500">
-              カテゴリ
-            </div>
-            <div
-              role="columnheader"
-              className={cn(
-                'px-3 py-2 text-left',
-                isToday ? 'bg-indigo-50 text-indigo-700 ring-1 ring-indigo-200 ring-inset' : 'bg-gray-50 text-gray-700'
-              )}
+          {/* Time Grid Header - スクロール内 */}
+          <Box sx={{ position: 'sticky', top: 0, zIndex: 10, borderBottom: 1, borderColor: 'divider' }}>
+            <Box
+              sx={{
+                display: 'grid',
+                gridTemplateColumns: '160px repeat(18, minmax(80px, 1fr))',
+                minWidth: 1600, // 160 + (18 * 80)
+                bgcolor: 'grey.50'
+              }}
             >
-              {rangeLabel}
-            </div>
-          </div>
+              <Box
+                sx={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  py: 2,
+                  px: 3,
+                  borderRight: 1,
+                  borderColor: 'divider',
+                  bgcolor: 'background.paper',
+                  position: 'sticky',
+                  left: 0,
+                  zIndex: 11
+                }}
+              >
+                <Typography variant="subtitle2" fontWeight="600" color="text.secondary">
+                  カテゴリ
+                </Typography>
+              </Box>
+              {hourSlots.map((slot, index) => (
+                <Box
+                  key={slot.startEpoch}
+                  data-testid="hour-slot"
+                  data-hour={slot.label}
+                  data-iso={slot.iso}
+                  data-dst-repeat={slot.isDstRepeat ? '1' : undefined}
+                  sx={{
+                    py: 1.5,
+                    px: 1,
+                    borderRight: index === 17 ? 0 : 1, // 最後は17番目（18時間目）
+                    borderColor: 'divider',
+                    textAlign: 'center',
+                    bgcolor: (index + 6) % 6 === 0 ? 'primary.light' : 'transparent', // 6時間間隔調整
+                    minWidth: 80,
+                    whiteSpace: 'nowrap'
+                  }}
+                >
+                  <Typography
+                    variant="caption"
+                    fontWeight={index % 6 === 0 ? 600 : 400}
+                    color={index % 6 === 0 ? 'primary.dark' : 'text.secondary'}
+                    sx={{ fontSize: '0.75rem' }}
+                  >
+                    {slot.label}
+                  </Typography>
+                </Box>
+              ))}
+            </Box>
+          </Box>
 
-          {laneOrder.map((category) => {
+          {laneOrder.map((category, categoryIndex) => {
             const laneEvents = buckets[category] ?? [];
             const laneKey = category.toLowerCase();
+            const laneConfig = laneLabels[category];
+            const IconComponent = laneConfig.icon;
             return (
-              <div
+              <Box
                 key={category}
                 role="row"
-                className="grid border-b last:border-b-0 border-gray-100"
-                style={{ gridTemplateColumns: '140px minmax(320px, 1fr)' }}
+                onClick={handleCellClick(category)}
+                sx={{
+                  position: 'relative',
+                  borderBottom: categoryIndex === laneOrder.length - 1 ? 0 : 1,
+                  borderColor: 'divider',
+                  minHeight: 120,
+                  cursor: 'pointer',
+                  '&:hover': {
+                    bgcolor: 'action.hover'
+                  }
+                }}
               >
-                <div
-                  role="rowheader"
-                  className="flex items-center bg-gray-50 px-3 py-3 text-sm font-medium text-gray-700"
+                {/* Grid Background */}
+                <Box
+                  sx={{
+                    display: 'grid',
+                    gridTemplateColumns: '160px repeat(18, minmax(80px, 1fr))',
+                    minWidth: 1600,
+                    height: '100%'
+                  }}
                 >
-                  {laneLabels[category]}
-                </div>
-                <div
+                  <Box
+                    role="rowheader"
+                    sx={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: 1.5,
+                      bgcolor: laneConfig.color === 'primary' ? 'primary.light' :
+                              laneConfig.color === 'secondary' ? 'secondary.light' :
+                              laneConfig.color === 'info' ? 'info.light' : 'grey.100',
+                      px: 3,
+                      py: 3,
+                      borderRight: 1,
+                      borderColor: 'divider',
+                      position: 'sticky',
+                      left: 0,
+                      zIndex: 5
+                    }}
+                  >
+                    <IconComponent sx={{ fontSize: 20, color: `${laneConfig.color}.dark` }} />
+                    <Typography variant="subtitle2" fontWeight="600" color={`${laneConfig.color}.dark`}>
+                      {laneConfig.label}
+                    </Typography>
+                  </Box>
+
+                  {/* Time Grid Background */}
+                  {Array.from({ length: 18 }, (_, hourIndex) => (
+                    <Box
+                      key={hourIndex}
+                      sx={{
+                        borderRight: hourIndex === 17 ? 0 : 1,
+                        borderColor: 'divider',
+                        bgcolor: (hourIndex + 6) % 6 === 0 ? 'grey.50' : 'background.paper',
+                        minWidth: 80
+                      }}
+                    />
+                  ))}
+                </Box>
+
+                {/* Events Overlay */}
+                <Box
                   role="gridcell"
-                  aria-label={`${laneLabels[category]}・${rangeLabel}`}
+                  aria-label={`${laneConfig.label}・${rangeLabel}`}
                   data-testid={`lane-${laneKey}`}
-                  className={cn(
-                    'flex min-h-[140px] flex-col gap-2 p-3',
-                    isToday ? 'bg-indigo-50/40 ring-1 ring-indigo-100 ring-inset' : 'bg-white'
-                  )}
+                  sx={{
+                    position: 'absolute',
+                    left: 160,
+                    right: 0,
+                    top: 0,
+                    bottom: 0,
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: 1.5,
+                    p: 2,
+                    pointerEvents: 'none',
+                    zIndex: 3
+                  }}
                 >
-                  <ul aria-label="24時間スロット" className="sr-only">
-                    {hourSlots.map((slot, index) => {
-                      const keyBase = Number.isFinite(slot.startEpoch) ? slot.startEpoch : Date.parse(slot.iso);
-                      const key = Number.isFinite(keyBase) ? `${keyBase}-${index}` : `${index}`;
-                      return (
-                        <li
-                          key={key}
-                          data-testid="day-hour-slot"
-                          data-hour={slot.label}
-                          data-dst-repeat={slot.isDstRepeat ? '1' : undefined}
-                        >
-                          {slot.label}
-                        </li>
-                      );
-                    })}
-                  </ul>
                   {laneEvents.length ? (
-                    laneEvents.map((event) => (
-                      <TimelineEventCard
-                        key={event.id}
-                        title={event.title}
-                        startISO={event.start}
-                        endISO={event.end}
-                        allDay={event.allDay}
-                        status={event.status}
-                        recurrenceRule={event.recurrenceRule}
-                        subtitle={getTimelineSubtitle(event)}
-                        dayPart={event.category === 'Staff' ? event.dayPart : undefined}
-                        baseShiftWarnings={event.baseShiftWarnings}
-                        containerProps={{
-                          'data-schedule-event': 'true',
-                          'data-id': event.id,
-                          'data-status': event.status,
-                          'data-category': event.category,
-                          'data-all-day': event.allDay ? '1' : '0',
-                          'data-recurrence': event.recurrenceRule ? '1' : '0',
-                        } as HTMLAttributes<HTMLElement>}
-                      />
-                    ))
+                    <Stack spacing={1.5} sx={{ py: 1, pointerEvents: 'auto' }}>
+                      {laneEvents.map((event) => (
+                        <Box
+                          key={event.id}
+                          sx={{
+                            position: 'relative',
+                            '&:hover': {
+                              transform: 'translateY(-2px)',
+                              transition: 'transform 0.2s ease-in-out'
+                            }
+                          }}
+                        >
+                          <TimelineEventCard
+                            title={event.title}
+                            startISO={event.start}
+                            endISO={event.end}
+                            allDay={event.allDay}
+                            status={event.status}
+                            recurrenceRule={event.recurrenceRule}
+                            subtitle={getTimelineSubtitle(event)}
+                            dayPart={event.category === 'Staff' ? event.dayPart : undefined}
+                            baseShiftWarnings={event.baseShiftWarnings}
+                            containerProps={{
+                              'data-schedule-event': 'true',
+                              'data-id': event.id,
+                              'data-status': event.status,
+                              'data-category': event.category,
+                              'data-all-day': event.allDay ? '1' : '0',
+                              'data-recurrence': event.recurrenceRule ? '1' : '0',
+                              onClick: handleEventClick(event),
+                              sx: {
+                                boxShadow: 2,
+                                borderRadius: 2,
+                                border: 2,
+                                borderColor: `${laneConfig.color}.main`,
+                                bgcolor: 'background.paper',
+                                cursor: 'pointer',
+                                '&:hover': {
+                                  boxShadow: 4,
+                                  borderColor: `${laneConfig.color}.dark`
+                                }
+                              }
+                            } as HTMLAttributes<HTMLElement>}
+                          />
+                        </Box>
+                      ))}
+                    </Stack>
                   ) : (
-                    <p className="text-[11px] text-gray-400">予定なし</p>
+                    <Box sx={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      height: '100%',
+                      opacity: 0.5
+                    }}>
+                      <Typography variant="body2" color="text.disabled" fontStyle="italic">
+                        予定なし
+                      </Typography>
+                    </Box>
                   )}
-                </div>
-              </div>
+                </Box>
+              </Box>
             );
           })}
-        </div>
-      </div>
-    </section>
+        </Box>
+      </Paper>
+    </Box>
   );
 }
 
@@ -199,7 +388,9 @@ type HourSlot = {
 
 function buildHourSlots(dayStart: Date): HourSlot[] {
   const seenEpochCounts = new Map<number, number>();
-  return Array.from({ length: 24 }, (_, hour) => {
+  // 6:00から23:00まで（18時間）
+  return Array.from({ length: 18 }, (_, index) => {
+    const hour = index + 6; // 6から23まで
     const slot = new Date(dayStart.getTime());
     slot.setHours(hour, 0, 0, 0);
     const startEpoch = slot.getTime();

@@ -109,15 +109,27 @@ jobs:
             throw "Provide SPO_CERT_BASE64+SPO_CERT_PASSWORD or SPO_CLIENT_SECRET as GitHub Secrets."
           }
 
-          ./scripts/provision-spo.ps1 `
-            -SiteUrl $siteUrl `
-            -RecreateExisting:[bool]::Parse($env:RECREATE_EXISTING) `
-            -ApplyFieldUpdates:[bool]::Parse($env:APPLY_FIELD_UPDATES) `
-            -ForceTypeReplace:[bool]::Parse($env:FORCE_TYPE_REPLACE) `
-            -WhatIfMode:[bool]::Parse($env:WHAT_IF) `
-            -SchemaPath $env:SCHEMA_PATH `
-            -ChangesOutPath "provision/changes.json" `
-            -EmitChanges
+          $recreateExisting = [bool]::Parse($env:RECREATE_EXISTING)
+          $applyFieldUpdates = [bool]::Parse($env:APPLY_FIELD_UPDATES)
+          $forceTypeReplace = [bool]::Parse($env:FORCE_TYPE_REPLACE)
+          $whatIfMode = [bool]::Parse($env:WHAT_IF)
+
+          $args = @(
+            '-SiteUrl', $siteUrl,
+            '-RecreateExisting', $recreateExisting,
+            '-ApplyFieldUpdates', $applyFieldUpdates,
+            '-ForceTypeReplace', $forceTypeReplace,
+            '-SchemaPath', $env:SCHEMA_PATH,
+            '-ChangesOutPath', 'provision/changes.json'
+          )
+
+          if ($whatIfMode) {
+            $args += '-WhatIfMode'
+          }
+
+          $args += '-EmitChanges'
+
+          & ./scripts/provision-spo.ps1 @args
 
           if ([bool]::Parse($env:BACKFILL_ENTRY_HASH)) {
             Write-Host "Starting entry_hash backfill..." -ForegroundColor Cyan

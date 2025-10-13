@@ -1,27 +1,37 @@
-import React, { useContext, useEffect, useMemo, useState } from 'react';
-import AppBar from '@mui/material/AppBar';
-import Toolbar from '@mui/material/Toolbar';
-import Typography from '@mui/material/Typography';
-import IconButton from '@mui/material/IconButton';
-import Stack from '@mui/material/Stack';
-import Button from '@mui/material/Button';
-import Container from '@mui/material/Container';
-import Tooltip from '@mui/material/Tooltip';
-import HistoryIcon from '@mui/icons-material/History';
 import Brightness4Icon from '@mui/icons-material/Brightness4';
 import Brightness7Icon from '@mui/icons-material/Brightness7';
+import HistoryIcon from '@mui/icons-material/History';
+import AppBar from '@mui/material/AppBar';
 import Box from '@mui/material/Box';
-import { Link as RouterLink, useLocation } from 'react-router-dom';
+import Button from '@mui/material/Button';
+import Container from '@mui/material/Container';
+import IconButton from '@mui/material/IconButton';
+import Stack from '@mui/material/Stack';
+import Toolbar from '@mui/material/Toolbar';
+import Tooltip from '@mui/material/Tooltip';
+import Typography from '@mui/material/Typography';
+import React, { useContext, useEffect, useMemo, useState } from 'react';
+// Navigation Icons
 import { useFeatureFlags } from '@/config/featureFlags';
-import { ColorModeContext } from './theme';
 import { useSP } from '@/lib/spClient';
 import SignInButton from '@/ui/components/SignInButton';
+import AddCircleOutlineRoundedIcon from '@mui/icons-material/AddCircleOutlineRounded';
+import AssessmentRoundedIcon from '@mui/icons-material/AssessmentRounded';
+import AssignmentTurnedInRoundedIcon from '@mui/icons-material/AssignmentTurnedInRounded';
+import BadgeRoundedIcon from '@mui/icons-material/BadgeRounded';
+import ChecklistRoundedIcon from '@mui/icons-material/ChecklistRounded';
+import EventAvailableRoundedIcon from '@mui/icons-material/EventAvailableRounded';
+import PeopleAltRoundedIcon from '@mui/icons-material/PeopleAltRounded';
+import SettingsRoundedIcon from '@mui/icons-material/SettingsRounded';
+import { Link as RouterLink, useLocation } from 'react-router-dom';
+import { ColorModeContext } from './theme';
 
 type NavItem = {
   label: string;
   to: string;
   isActive: (pathname: string) => boolean;
   testId?: string;
+  icon?: React.ElementType;
 };
 
 const AppShell: React.FC<{ children: React.ReactNode }> = ({ children }) => {
@@ -32,24 +42,46 @@ const AppShell: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const navItems = useMemo(() => {
     const items: NavItem[] = [
       {
-        label: '日次記録',
+        label: '記録一覧',
         to: '/',
         isActive: (pathname) => pathname === '/' || pathname.startsWith('/records'),
+        icon: AssignmentTurnedInRoundedIcon,
+      },
+      {
+        label: '日次記録',
+        to: '/daily',
+        isActive: (pathname) => pathname.startsWith('/daily'),
+        icon: AssignmentTurnedInRoundedIcon,
       },
       {
         label: '自己点検',
         to: '/checklist',
         isActive: (pathname) => pathname.startsWith('/checklist'),
+        icon: ChecklistRoundedIcon,
       },
       {
         label: '監査ログ',
         to: '/audit',
         isActive: (pathname) => pathname.startsWith('/audit'),
+        icon: AssessmentRoundedIcon,
       },
       {
         label: '利用者',
         to: '/users',
         isActive: (pathname) => pathname.startsWith('/users'),
+        icon: PeopleAltRoundedIcon,
+      },
+      {
+        label: '職員',
+        to: '/staff',
+        isActive: (pathname) => pathname.startsWith('/staff'),
+        icon: BadgeRoundedIcon,
+      },
+      {
+        label: '設定管理',
+        to: '/admin/templates',
+        isActive: (pathname) => pathname.startsWith('/admin'),
+        icon: SettingsRoundedIcon,
       },
     ];
 
@@ -57,8 +89,9 @@ const AppShell: React.FC<{ children: React.ReactNode }> = ({ children }) => {
       items.push({
         label: 'スケジュール',
         to: '/schedules/week',
-  isActive: (pathname) => pathname.startsWith('/schedule') || pathname.startsWith('/schedules'),
+        isActive: (pathname) => pathname.startsWith('/schedule') || pathname.startsWith('/schedules'),
         testId: 'nav-schedule',
+        icon: EventAvailableRoundedIcon,
       });
     }
 
@@ -67,6 +100,7 @@ const AppShell: React.FC<{ children: React.ReactNode }> = ({ children }) => {
         label: '新規予定',
         to: '/schedules/create',
         isActive: (pathname) => pathname.startsWith('/schedules/create'),
+        icon: AddCircleOutlineRoundedIcon,
       });
     }
 
@@ -75,6 +109,7 @@ const AppShell: React.FC<{ children: React.ReactNode }> = ({ children }) => {
         label: 'コンプラ報告',
         to: '/checklist',
         isActive: (pathname) => pathname.startsWith('/compliance'),
+        icon: ChecklistRoundedIcon,
       });
     }
 
@@ -86,7 +121,7 @@ const AppShell: React.FC<{ children: React.ReactNode }> = ({ children }) => {
       <AppBar position="static" color="primary" enableColorOnDark>
         <Toolbar sx={{ gap: 1 }}>
           <Typography variant="h6" component="div" sx={{ flexGrow: 1 }}>
-            運営指導・記録管理
+            磯子区障害者地域活動ホーム
           </Typography>
           <ConnectionStatus />
           <Tooltip title={mode === 'dark' ? 'ライトテーマに切り替え' : 'ダークテーマに切り替え'}>
@@ -103,7 +138,7 @@ const AppShell: React.FC<{ children: React.ReactNode }> = ({ children }) => {
       <Container component="main" role="main" maxWidth="lg" sx={{ py: 4 }}>
         <Box component="nav" role="navigation" aria-label="主要ナビゲーション" mb={2}>
           <Stack direction="row" spacing={1} flexWrap="wrap">
-            {navItems.map(({ label, to, isActive, testId }) => {
+            {navItems.map(({ label, to, isActive, testId, icon: IconComponent }) => {
               const active = isActive(location.pathname);
               return (
                 <Button
@@ -114,6 +149,17 @@ const AppShell: React.FC<{ children: React.ReactNode }> = ({ children }) => {
                   size="small"
                   data-testid={testId}
                   aria-current={active ? 'page' : undefined}
+                  startIcon={IconComponent ? <IconComponent /> : undefined}
+                  sx={{
+                    minWidth: 'auto',
+                    px: 2,
+                    py: 1,
+                    gap: 1,
+                    '& .MuiButton-startIcon': {
+                      marginRight: '6px',
+                      marginLeft: 0,
+                    },
+                  }}
                 >
                   {label}
                 </Button>
@@ -132,6 +178,16 @@ const ConnectionStatus: React.FC = () => {
   const [state, setState] = useState<'checking' | 'ok' | 'error'>('checking');
 
   useEffect(() => {
+    const isDevelopment = import.meta.env.DEV;
+    const isVitest = typeof process !== 'undefined' && Boolean(process.env?.VITEST);
+
+    // 開発モード本番ブラウザのみ SharePoint 接続チェックを省略（テストでは実行）
+    if (isDevelopment && !isVitest) {
+      console.info('開発環境: SharePoint接続チェックをスキップし、モック状態に設定');
+      setState('ok'); // 開発環境では常に OK として扱う
+      return;
+    }
+
     let cancelled = false;
     const controller = new AbortController();
 
@@ -152,6 +208,7 @@ const ConnectionStatus: React.FC = () => {
           setState('checking');
           return;
         }
+        console.warn('SharePoint 接続エラー:', error);
         setState('error');
       }
     })();

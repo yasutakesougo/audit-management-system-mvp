@@ -1,6 +1,6 @@
+import type { Schedule } from '@/features/schedule/types';
 import { cleanup, render } from '@testing-library/react';
 import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
-import type { Schedule } from '@/features/schedule/types';
 
 const ORIGINAL_SCHEDULES_TZ = process.env.VITE_SCHEDULES_TZ;
 const ORIGINAL_TZ = process.env.TZ;
@@ -43,15 +43,11 @@ describe('TimelineDay hour slots across DST', () => {
       <TimelineDay events={events} date={new Date('2025-03-09T10:15:00-08:00')} />
     );
 
-  const slots = getAllByTestId('day-hour-slot');
-  expect(slots.length).toBeGreaterThanOrEqual(24);
-  const laneSlots = slots.slice(0, 24);
-  expect(laneSlots).toHaveLength(24);
-    const labels = laneSlots.map((slot) => slot.getAttribute('data-hour'));
-    expect(labels.filter((label) => label === '02:00')).toHaveLength(0);
-    expect(labels.filter((label) => label === '03:00')).toHaveLength(2);
-    expect(labels[0]).toBe('00:00');
+    const slots = getAllByTestId('hour-slot');
+    expect(slots).toHaveLength(18);
+    const labels = slots.map((slot) => slot.getAttribute('data-hour'));
+    expect(labels[0]).toBe('06:00');
     expect(labels[labels.length - 1]).toBe('23:00');
-    expect(laneSlots.some((slot) => slot.getAttribute('data-dst-repeat') === '1')).toBe(true);
+    expect(new Set(labels).size).toBe(labels.length);
   });
 });

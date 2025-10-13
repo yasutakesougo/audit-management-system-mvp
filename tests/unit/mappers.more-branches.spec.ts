@@ -1,15 +1,15 @@
 import { describe, expect, it } from 'vitest';
 import { detectAllDay, mapSchedule, toLocalRange } from '../../src/lib/mappers';
 import {
-  SCHEDULE_FIELD_ASSIGNED_STAFF,
-  SCHEDULE_FIELD_ASSIGNED_STAFF_ID,
-  SCHEDULE_FIELD_BILLING_FLAGS,
-  SCHEDULE_FIELD_END,
-  SCHEDULE_FIELD_NOTE,
-  SCHEDULE_FIELD_START,
-  SCHEDULE_FIELD_STATUS,
-  SCHEDULE_FIELD_TARGET_USER_ID,
-  type ScheduleRow,
+    SCHEDULE_FIELD_ASSIGNED_STAFF,
+    SCHEDULE_FIELD_ASSIGNED_STAFF_ID,
+    SCHEDULE_FIELD_BILLING_FLAGS,
+    SCHEDULE_FIELD_END,
+    SCHEDULE_FIELD_NOTE,
+    SCHEDULE_FIELD_START,
+    SCHEDULE_FIELD_STATUS,
+    SCHEDULE_FIELD_TARGET_USER_ID,
+    type ScheduleRow,
 } from '../../src/sharepoint/fields';
 
 describe('lib/mappers additional branch coverage', () => {
@@ -25,8 +25,6 @@ describe('lib/mappers additional branch coverage', () => {
       [SCHEDULE_FIELD_ASSIGNED_STAFF]: [{ Title: '  Ann ' }, { Title: 'Ann' }, { Title: '' }],
       [SCHEDULE_FIELD_TARGET_USER_ID]: { results: ['21', '  21', 'NaN'] } as unknown as number[],
       [SCHEDULE_FIELD_BILLING_FLAGS]: 'Alpha;# ;#Beta;#Alpha',
-      EventDate: undefined,
-      EndDate: undefined,
       Notes: ' note ',
       StaffIdId: '5',
       UserIdId: '24',

@@ -1,7 +1,7 @@
-import { renderHook, act } from '@testing-library/react';
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { Schedule } from '@/lib/mappers';
 import type { Staff, User } from '@/types';
+import { act, renderHook } from '@testing-library/react';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 type StoreResult<T> = {
   data: T | undefined;

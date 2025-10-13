@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
-import type { SpScheduleItem } from '../../src/types';
-import type { ScheduleOrg } from '../../src/features/schedule/types';
 import { fromSpSchedule } from '../../src/features/schedule/spMap';
+import type { ScheduleOrg } from '../../src/features/schedule/types';
+import type { SpScheduleItem } from '../../src/types';
 
 describe('schedule spMap additional branches', () => {
   const baseOrg = {

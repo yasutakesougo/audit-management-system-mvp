@@ -1,11 +1,11 @@
-import { describe, expect, it } from 'vitest';
-import { formatInTimeZone } from 'date-fns-tz';
 import {
-  assignLocalDateKey,
-  endOfWeekUtc,
-  getLocalDateKey,
-  startOfWeekUtc,
+    assignLocalDateKey,
+    endOfWeekUtc,
+    getLocalDateKey,
+    startOfWeekUtc,
 } from '@/features/schedule/dateutils.local';
+import { formatInTimeZone } from 'date-fns-tz';
+import { describe, expect, it } from 'vitest';
 
 describe('dateutils.local week helpers', () => {
   it('computes week start at Monday 00:00 UTC equivalent', () => {

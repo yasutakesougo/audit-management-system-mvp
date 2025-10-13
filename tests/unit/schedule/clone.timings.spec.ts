@@ -1,6 +1,6 @@
-import { afterEach, describe, expect, it, vi } from 'vitest';
 import { buildClonedDraft } from '@/features/schedule/clone';
 import type { Schedule } from '@/lib/mappers';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 
 const makeSchedule = (overrides: Partial<Schedule> = {}): Schedule => ({
   id: 1,

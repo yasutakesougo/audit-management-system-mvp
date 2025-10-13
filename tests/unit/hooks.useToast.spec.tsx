@@ -1,4 +1,4 @@
-import { act, fireEvent, render, screen } from '@testing-library/react';
+import { act, fireEvent, render, renderHook, screen } from '@testing-library/react';
 import React from 'react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -16,12 +16,7 @@ describe('useToast', () => {
   });
 
   it('throws when used outside of provider', () => {
-    const Consumer: React.FC = () => {
-      useToast();
-      return null;
-    };
-
-    expect(() => render(<Consumer />)).toThrow('useToast must be used within a <ToastProvider>');
+    expect(() => renderHook(() => useToast())).toThrowError('useToast must be used within a <ToastProvider>');
   });
 
   it('creates toast entries using crypto.randomUUID when available and removes after timeout', () => {

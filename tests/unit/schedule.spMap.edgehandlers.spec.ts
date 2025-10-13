@@ -1,16 +1,16 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { toSpScheduleFields } from '@/features/schedule/spMap';
 import type { ScheduleOrg, ScheduleStaff, ScheduleUserCare } from '@/features/schedule/types';
 import {
-  SCHEDULE_FIELD_DAY_PART,
-  SCHEDULE_FIELD_STAFF_IDS,
-  SCHEDULE_FIELD_STAFF_NAMES,
-  SCHEDULE_FIELD_PERSON_ID,
-  SCHEDULE_FIELD_PERSON_NAME,
-  SCHEDULE_FIELD_EXTERNAL_NAME,
-  SCHEDULE_FIELD_ORG_AUDIENCE,
-  SCHEDULE_FIELD_SUB_TYPE,
+    SCHEDULE_FIELD_DAY_PART,
+    SCHEDULE_FIELD_EXTERNAL_NAME,
+    SCHEDULE_FIELD_ORG_AUDIENCE,
+    SCHEDULE_FIELD_PERSON_ID,
+    SCHEDULE_FIELD_PERSON_NAME,
+    SCHEDULE_FIELD_STAFF_IDS,
+    SCHEDULE_FIELD_STAFF_NAMES,
+    SCHEDULE_FIELD_SUB_TYPE,
 } from '@/sharepoint/fields';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 vi.mock('@/features/schedule/scheduleFeatures', () => ({
   isScheduleStaffTextColumnsEnabled: vi.fn(() => true),

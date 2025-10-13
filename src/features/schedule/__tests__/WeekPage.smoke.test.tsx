@@ -109,7 +109,7 @@ describe('WeekPage smoke test', () => {
 
     expect(await screen.findByRole('heading', { name: '予定を作成' })).toBeInTheDocument();
 
-    fireEvent.change(screen.getByLabelText('利用者 ID'), { target: { value: 'NEW-001' } });
+  fireEvent.change(screen.getByLabelText(/利用者\s*ID/), { target: { value: 'NEW-001' } });
     fireEvent.change(screen.getByLabelText('タイトル'), { target: { value: '新しい予定' } });
     fireEvent.change(screen.getByLabelText('メモ'), { target: { value: '詳細メモ' } });
 
@@ -131,7 +131,7 @@ describe('WeekPage smoke test', () => {
     fireEvent.click(editTrigger);
 
     expect(await screen.findByRole('heading', { name: '予定を編集' })).toBeInTheDocument();
-    expect((screen.getByLabelText('利用者 ID') as HTMLInputElement).value).toBe('U-001');
+  expect((screen.getByLabelText(/利用者\s*ID/) as HTMLInputElement).value).toBe('U-001');
 
     fireEvent.change(screen.getByLabelText('メモ'), { target: { value: '更新済みメモ' } });
     fireEvent.click(screen.getByRole('button', { name: '保存' }));

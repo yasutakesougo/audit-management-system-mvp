@@ -1,5 +1,5 @@
+import { getMsalLoginScopes, isComplianceFormEnabled, isSchedulesCreateEnabled, isSchedulesFeatureEnabled, shouldSkipLogin, type EnvRecord } from '@/lib/env';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { isSchedulesFeatureEnabled, isSchedulesCreateEnabled, isComplianceFormEnabled, shouldSkipLogin, getMsalLoginScopes, type EnvRecord } from '@/lib/env';
 
 describe('env feature toggles', () => {
   beforeEach(() => {

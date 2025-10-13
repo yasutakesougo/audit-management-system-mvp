@@ -1,8 +1,8 @@
-import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { ScheduleDraft } from '@/adapters/schedules/demo';
 import * as demo from '@/adapters/schedules/demo';
 import { mapSchedule } from '@/lib/mappers';
 import { SCHEDULE_FIELD_END, SCHEDULE_FIELD_START, type ScheduleRow } from '@/sharepoint/fields';
+import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 
 const isDemoModeEnabled = vi.fn();
 const allowWriteFallback = vi.fn();

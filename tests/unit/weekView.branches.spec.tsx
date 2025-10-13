@@ -1,7 +1,7 @@
-import { cleanup, fireEvent, render, screen } from '@testing-library/react';
-import { afterEach, describe, expect, it, vi } from 'vitest';
 import WeekView, { getWeekRange } from '@/features/schedule/WeekView';
 import type { Schedule } from '@/lib/mappers';
+import { cleanup, fireEvent, render, screen } from '@testing-library/react';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 
 const buildSchedule = (overrides: Partial<Schedule> = {}): Schedule => ({
   id: overrides.id ?? 1,

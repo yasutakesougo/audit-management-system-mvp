@@ -1,5 +1,5 @@
-import { describe, expect, it } from 'vitest';
 import { formatOrgSubtitle } from '@/features/schedule/presenters/format';
+import { describe, expect, it } from 'vitest';
 
 describe('formatOrgSubtitle', () => {
   it('prefers audience list and trims location when present', () => {

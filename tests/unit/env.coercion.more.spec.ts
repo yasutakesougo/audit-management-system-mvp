@@ -8,6 +8,7 @@ const TRACKED_ENV_KEYS = [
   'VITE_LOGIN_SCOPES',
   'VITE_MSAL_LOGIN_SCOPES',
   'VITE_SKIP_LOGIN',
+  'VITE_DEMO_MODE',
 ] as const;
 
 const originalEnv = TRACKED_ENV_KEYS.reduce<Record<string, string | undefined>>((acc, key) => {

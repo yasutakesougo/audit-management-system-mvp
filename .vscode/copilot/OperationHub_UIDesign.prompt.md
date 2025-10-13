@@ -98,7 +98,7 @@ src/
 | Color | `color.danger` | `#A80000` | 警告、競合アラート | アクセシビリティ比 5.4:1 |
 | Color | `color.success` | `#107C10` | 成功トースト、完了タグ | WCAG AA 準拠 |
 | Spacing | `space.xs` | `4px` | アイコンとテキスト間隔 | 4px グリッドの倍数 |
-| Spacing | `space.md` | `12px` | カード内余白 | | 
+| Spacing | `space.md` | `12px` | カード内余白 | |
 | Radius | `radius.card` | `4px` | カード / モーダル | Fluent Design の丸み |
 | Typography | `font.heading` | `'Segoe UI', 'Meiryo', sans-serif` | 見出し | `theme.fonts.xLarge` などへ紐づけ |
 | Shadow | `shadow.card` | `0 1.6px 3.6px rgba(0,0,0,0.1)` | KPI カード | 影の段階は 2 レベルまで |
@@ -812,7 +812,7 @@ function Example() {
 ### 運用メモ（Choice フィールドの変更ポリシー）
 
 - `choicesPolicy` は 既定 `additive`：不足選択肢のみ追加し、既存は削除しません。
-  - Summary 出力例: `+ Add choices ...`, `! Keep existing (not removing) ...`
+  - Summary 出力例: `+ Add choi験の最適化を継続すること。ces ...`, `! Keep existing (not removing) ...`
 - `replace` は将来拡張用で、現バージョンでは警告ログを出し `additive` と同じ動作です。
 - 選択肢削除が必要な場合は、ユーザー影響とデータ整合性を精査し、移行計画（新列 *_v2 作成など）を検討してください。
 
@@ -1088,4 +1088,4 @@ type ScheduleConflict = {
 
 ---
 
-本仕様は、既存の React + SharePoint SPA 実装を土台に、施設規模の拡張や現場オペレーションの負荷軽減を両立させるための指針である。新規機能追加時は、本ドキュメントの原則・アーキテクチャ・品質ゲートを参照し、持続可能な運用とユーザー体験の最適化を継続すること。
+本仕様は、既存の React + SharePoint SPA 実装を土台に、施設規模の拡張や現場オペレーションの負荷軽減を両立させるための指針である。新規機能追加時は、本ドキュメントの原則・アーキテクチャ・品質ゲートを参照し、持続可能な運用とユーザー体

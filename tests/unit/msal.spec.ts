@@ -1,5 +1,5 @@
-import { afterEach, describe, expect, it, vi } from 'vitest';
 import { createE2EMsalAccount, persistMsalToken } from '@/lib/msal';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 
 type SessionWindow = { sessionStorage: { setItem: (key: string, value: string) => void } };
 

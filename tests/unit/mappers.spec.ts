@@ -1,18 +1,18 @@
 import { describe, expect, it } from 'vitest';
-import { mapUser, mapStaff, mapDaily, toLocalRange, detectAllDay } from '../../src/lib/mappers';
-import type { UserRow, StaffRow, DailyRow } from '../../src/sharepoint/fields';
+import { detectAllDay, mapDaily, mapStaff, mapUser, toLocalRange } from '../../src/lib/mappers';
+import type { DailyRow, StaffRow, UserRow } from '../../src/sharepoint/fields';
 import {
-  DAILY_FIELD_BEHAVIOR_LOG,
-  DAILY_FIELD_DATE,
-  DAILY_FIELD_DRAFT,
-  DAILY_FIELD_END_TIME,
-  DAILY_FIELD_LOCATION,
-  DAILY_FIELD_MEAL_LOG,
-  DAILY_FIELD_NOTES,
-  DAILY_FIELD_START_TIME,
-  DAILY_FIELD_STATUS,
-  DAILY_FIELD_STAFF_ID,
-  DAILY_FIELD_USER_ID,
+    DAILY_FIELD_BEHAVIOR_LOG,
+    DAILY_FIELD_DATE,
+    DAILY_FIELD_DRAFT,
+    DAILY_FIELD_END_TIME,
+    DAILY_FIELD_LOCATION,
+    DAILY_FIELD_MEAL_LOG,
+    DAILY_FIELD_NOTES,
+    DAILY_FIELD_STAFF_ID,
+    DAILY_FIELD_START_TIME,
+    DAILY_FIELD_STATUS,
+    DAILY_FIELD_USER_ID,
 } from '../../src/sharepoint/fields';
 
 describe('lib/mappers', () => {

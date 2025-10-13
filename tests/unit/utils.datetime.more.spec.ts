@@ -1,5 +1,5 @@
-import { describe, it, expect, vi } from 'vitest';
 import { formatRangeLocal } from '@/utils/datetime';
+import { describe, expect, it, vi } from 'vitest';
 
 // These cases hit: no inputs, equal start/end, reversed range, rounding edge,
 // explicit tz override (different from defaults), and minute boundary behavior.

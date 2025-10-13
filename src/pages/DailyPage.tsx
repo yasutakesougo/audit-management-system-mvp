@@ -1,21 +1,21 @@
-import { useCallback, useEffect, useMemo, useRef, useState, useId } from 'react';
-import Chip from '@mui/material/Chip';
+import { useDensity, useDisplayMode } from '@/app/LayoutContext';
+import { useUsersStore } from '@/features/users/store';
+import { useFiltersSync } from '@/hooks/useFiltersSync';
+import { usePersistedFilters } from '@/hooks/usePersistedFilters';
+import { useDaily } from '@/stores/useDaily';
+import { useStaff } from '@/stores/useStaff';
+import FilterToolbar, { type StatusOption } from '@/ui/filters/FilterToolbar';
+import { buildSearchParams as buildSearchParamsUtil, normalizeFilters as normalizeFiltersUtil } from '@/utils/filters';
+import { formatCount } from '@/utils/formatCount';
+import { getNow } from '@/utils/getNow';
+import { normalizeRange } from '@/utils/range';
 import Button from '@mui/material/Button';
+import Chip from '@mui/material/Chip';
 import FormControlLabel from '@mui/material/FormControlLabel';
 import Switch from '@mui/material/Switch';
 import TextField from '@mui/material/TextField';
+import { useCallback, useEffect, useId, useMemo, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { useDaily } from '@/stores/useDaily';
-import { useStaff } from '@/stores/useStaff';
-import { useUsers } from '@/stores/useUsers';
-import { useDensity, useDisplayMode } from '@/app/LayoutContext';
-import { formatCount } from '@/utils/formatCount';
-import { getNow } from '@/utils/getNow';
-import FilterToolbar, { type StatusOption } from '@/ui/filters/FilterToolbar';
-import { usePersistedFilters } from '@/hooks/usePersistedFilters';
-import { useFiltersSync } from '@/hooks/useFiltersSync';
-import { buildSearchParams as buildSearchParamsUtil, normalizeFilters as normalizeFiltersUtil } from '@/utils/filters';
-import { normalizeRange } from '@/utils/range';
 
 const FILTER_OPTIONS = ['all', 'draft', 'submitted', 'approved'] as const;
 type FilterKey = (typeof FILTER_OPTIONS)[number];
@@ -102,7 +102,8 @@ const StatusChip = ({ status }: { status?: string | null }) => {
 export default function DailyPage() {
   const { data, error, loading, reload } = useDaily();
   const { data: staff, loading: staffLoading } = useStaff();
-  const { data: users, loading: usersLoading } = useUsers();
+  const { data: users, status } = useUsersStore();
+  const usersLoading = status === 'loading';
   const density = useDensity();
   const displayMode = useDisplayMode();
   const [compact, setCompact] = useState(() => density === 'compact');
@@ -230,9 +231,9 @@ export default function DailyPage() {
   const userNameMap = useMemo(() => {
     const map = new Map<number, string>();
     (users ?? []).forEach((user) => {
-      const key = Number(user.id);
+      const key = Number(user.Id);
       if (Number.isFinite(key)) {
-        map.set(key, user.name || `#${user.id}`);
+        map.set(key, user.FullName || `#${user.Id}`);
       }
     });
     return map;

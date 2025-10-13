@@ -1,25 +1,41 @@
-import { useCallback, useId, useMemo, useRef, useState } from 'react';
-import type { DragEvent, KeyboardEvent, HTMLAttributes } from 'react';
-import { addDays, format } from 'date-fns';
+import { addDays, format, startOfWeek } from 'date-fns';
 import { ja } from 'date-fns/locale';
-import TimelineEventCard from './TimelineEventCard';
+import type { DragEvent, HTMLAttributes, KeyboardEvent, MouseEvent } from 'react';
+import { useCallback, useId, useMemo, useRef, useState } from 'react';
+// MUI Components
+import Box from '@mui/material/Box';
+import Button from '@mui/material/Button';
+import Paper from '@mui/material/Paper';
+import Stack from '@mui/material/Stack';
+import Typography from '@mui/material/Typography';
+
+// Icons
+import BadgeRoundedIcon from '@mui/icons-material/BadgeRounded';
+import BusinessRoundedIcon from '@mui/icons-material/BusinessRounded';
+import CalendarViewWeekRoundedIcon from '@mui/icons-material/CalendarViewWeekRounded';
+import PersonRoundedIcon from '@mui/icons-material/PersonRounded';
+import RefreshRoundedIcon from '@mui/icons-material/RefreshRounded';
+import TodayRoundedIcon from '@mui/icons-material/TodayRounded';
+
+import { getLocalDateKey } from '../dateutils.local';
+import { formatOrgSubtitle } from '../presenters/format';
 import type { Schedule, ScheduleStaff } from '../types';
 import { isOrg, isStaff, isUserCare } from '../types';
-import { formatOrgSubtitle } from '../presenters/format';
-import { getLocalDateKey, startOfDay } from '../dateutils.local';
-import { cn } from '@/utils/cn';
+import TimelineEventCard from './TimelineEventCard';
 
 export const laneOrder: Array<Schedule['category']> = ['User', 'Staff', 'Org'];
-export const laneLabels: Record<Schedule['category'], string> = {
-  User: '利用者レーン',
-  Staff: '職員レーン',
-  Org: '組織イベント',
+export const laneLabels: Record<Schedule['category'], { label: string; icon: React.ElementType; color: 'primary' | 'secondary' | 'success' | 'warning' | 'error' | 'info' }> = {
+  User: { label: '利用者レーン', icon: PersonRoundedIcon, color: 'success' }, // 緑系 - 利用者（メインユーザー）
+  Staff: { label: '職員レーン', icon: BadgeRoundedIcon, color: 'warning' }, // オレンジ系 - 職員（サポート役）
+  Org: { label: '組織イベント', icon: BusinessRoundedIcon, color: 'primary' }, // 青系 - 組織（重要度高）
 };
 
 type TimelineWeekProps = {
   events: Schedule[];
   startDate?: Date;
   onEventMove?: (payload: EventMovePayload) => void;
+  onEventCreate?: (payload: { category: Schedule['category']; date: string }) => void;
+  onEventEdit?: (event: Schedule) => void;
 };
 
 type WeekDay = {
@@ -38,11 +54,21 @@ export type EventMovePayload = {
   to: { category: Schedule['category']; dayKey: string };
 };
 
-export default function TimelineWeek({ events, startDate, onEventMove }: TimelineWeekProps) {
-  const baseDate = useMemo(() => startOfDay(startDate ?? guessWeekStart(events)), [events, startDate]);
+export default function TimelineWeek({ events, startDate, onEventMove, onEventCreate, onEventEdit }: TimelineWeekProps) {
+  const baseDate = useMemo(() => {
+    if (startDate) {
+      // 指定された日付の週の月曜日を取得
+      return startOfWeek(startDate, { weekStartsOn: 1 });
+    }
+    return guessWeekStart(events);
+  }, [events, startDate]);
   const weekDays = useMemo(() => buildWeekDays(baseDate), [baseDate]);
   const columnTemplate = useMemo(
-    () => `140px repeat(${weekDays.length}, minmax(0, 1fr))`,
+    () => `160px repeat(${weekDays.length}, 200px)`, // 固定幅に変更
+    [weekDays.length]
+  );
+  const minGridWidth = useMemo(
+    () => 160 + (weekDays.length * 200), // カテゴリ列 + 各日列
     [weekDays.length]
   );
   const laneMatrix = useMemo(() => buildLaneMatrix(events, weekDays), [events, weekDays]);
@@ -58,6 +84,7 @@ export default function TimelineWeek({ events, startDate, onEventMove }: Timelin
     return ids.length ? ids.join(' ') : undefined;
   }, [dragInstructionsId, onEventMove, rangeLabel, rangeLabelId]);
   const enableDrag = Boolean(onEventMove);
+  const scrollRef = useRef<HTMLDivElement | null>(null);
 
   const handleTodayJump = useCallback(() => {
     if (!hasToday) return;
@@ -69,6 +96,12 @@ export default function TimelineWeek({ events, startDate, onEventMove }: Timelin
       target.focus({ preventScroll: true });
     }
   }, [hasToday]);
+
+  const handleScrollReset = useCallback(() => {
+    const node = scrollRef.current;
+    if (!node) return;
+    node.scrollTo({ left: 0, top: 0, behavior: 'smooth' });
+  }, []);
 
   const handleDragStart = useCallback(
     (eventId: string) => (event: DragEvent<HTMLElement>) => {
@@ -205,52 +238,155 @@ export default function TimelineWeek({ events, startDate, onEventMove }: Timelin
     [onEventMove, weekDays]
   );
 
+  // セルクリックでイベント作成
+  const handleCellClick = useCallback(
+    (category: Schedule['category'], dayKey: string) => (event: MouseEvent<HTMLDivElement>) => {
+      // ドラッグ中やイベント要素の場合は無視
+      if (draggingId || (event.target as HTMLElement).closest('[data-schedule-event="true"]')) {
+        return;
+      }
+
+      if (onEventCreate) {
+        // dayKeyから日付文字列を生成
+        const day = weekDays.find(d => d.key === dayKey);
+        if (day) {
+          const dateString = format(day.date, 'yyyy-MM-dd');
+          onEventCreate({ category, date: dateString });
+        }
+      }
+    },
+    [onEventCreate, weekDays, draggingId]
+  );
+
+  // イベントクリックで編集
+  const handleEventClick = useCallback(
+    (event: Schedule) => (clickEvent: MouseEvent<HTMLDivElement>) => {
+      clickEvent.stopPropagation(); // セルクリックの伝播を防ぐ
+      if (onEventEdit) {
+        onEventEdit(event);
+      }
+    },
+    [onEventEdit]
+  );
+
   return (
-    <section aria-label="週タイムライン" className="space-y-4">
-      <header className="flex flex-wrap items-center justify-between gap-3" aria-label="タイムラインのヘッダー">
-        <div>
-          <h2 className="text-base font-semibold text-gray-900">週タイムライン</h2>
-          <p id={rangeLabelId} className="text-xs text-gray-600">
+    <Box component="section" aria-label="週タイムライン">
+      {/* Header */}
+      <Stack direction="row" alignItems="center" justifyContent="space-between" mb={3}>
+        <Box>
+          <Typography variant="h6" component="h2" sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+            <CalendarViewWeekRoundedIcon />
+            週タイムライン
+          </Typography>
+          <Typography variant="body2" color="text.secondary" id={rangeLabelId}>
             {rangeLabel}
-          </p>
-        </div>
-        <div className="flex items-center gap-2">
-          <button
-            type="button"
-            aria-label="今日の列に移動"
+          </Typography>
+        </Box>
+
+        <Stack direction="row" spacing={1}>
+          <Button
+            variant="outlined"
+            size="small"
             onClick={handleTodayJump}
             disabled={!hasToday}
-            className={cn(
-              'rounded-md border border-indigo-200 bg-indigo-50 px-3 py-1 text-xs font-medium text-indigo-700 transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-2',
-              hasToday ? 'hover:bg-indigo-100' : 'cursor-not-allowed opacity-60'
-            )}
+            startIcon={<TodayRoundedIcon />}
+            aria-label="今日の列に移動"
           >
             今日へ移動
-          </button>
-        </div>
-      </header>
+          </Button>
+          <Button
+            variant="outlined"
+            size="small"
+            onClick={handleScrollReset}
+            startIcon={<RefreshRoundedIcon />}
+          >
+            先頭へ戻る
+          </Button>
+        </Stack>
+      </Stack>
 
-      {enableDrag ? (
-        <p id={dragInstructionsId} className="sr-only">
+      {enableDrag && (
+        <Typography
+          component="div"
+          sx={{
+            position: 'absolute',
+            width: '1px',
+            height: '1px',
+            padding: 0,
+            margin: -1,
+            overflow: 'hidden',
+            clip: 'rect(0, 0, 0, 0)',
+            whiteSpace: 'nowrap',
+            borderWidth: 0
+          }}
+          id={dragInstructionsId}
+        >
           Shiftキーと左右矢印キーで予定の日付を移動できます。ドラッグ＆ドロップにも対応しています。
-        </p>
-      ) : null}
+        </Typography>
+      )}
 
-      <div className="overflow-x-auto">
-        <div
+      <Paper
+        elevation={2}
+        sx={{
+          borderRadius: 3,
+          overflow: 'hidden',
+          border: 1,
+          borderColor: 'divider',
+          width: '100%',
+          maxWidth: '100vw'
+        }}
+      >
+        <Box
+          ref={scrollRef}
           role="grid"
           aria-label="週ごとの予定一覧"
           aria-describedby={gridDescribedBy}
-          className="min-w-max rounded-xl border border-gray-200 bg-white shadow-sm"
+          sx={{
+            overflowX: 'auto',
+            overflowY: 'auto',
+            maxHeight: '70vh',
+            width: '100%'
+          }}
         >
-          <div role="row" className="grid border-b border-gray-200 text-xs font-medium text-gray-600" style={{ gridTemplateColumns: columnTemplate }}>
-            <div role="columnheader" className="px-3 py-2 text-left text-gray-500">カテゴリ</div>
+          <Box sx={{ minWidth: minGridWidth, width: 'max-content' }}>
+          {/* Header Row */}
+          <Box
+            role="row"
+            sx={{
+              position: 'sticky',
+              top: 0,
+              zIndex: 10,
+              display: 'grid',
+              gridTemplateColumns: columnTemplate,
+              width: minGridWidth,
+              borderBottom: 1,
+              borderColor: 'divider',
+              bgcolor: 'grey.50'
+            }}
+          >
+            <Box
+              role="columnheader"
+              sx={{
+                px: 3,
+                py: 1.5,
+                position: 'sticky',
+                left: 0,
+                zIndex: 11,
+                bgcolor: 'background.paper',
+                borderRight: 1,
+                borderColor: 'divider'
+              }}
+            >
+              <Typography variant="subtitle2" fontWeight="600" color="text.secondary">
+                カテゴリ
+              </Typography>
+            </Box>
             {weekDays.map((day, index) => (
-              <div
+              <Box
                 key={day.key}
                 role="columnheader"
                 id={`timeline-week-header-${day.key}`}
-                ref={(node) => {
+                ref={(node: HTMLDivElement | null) => {
                   if (node) {
                     headersRef.current[day.key] = node;
                   } else {
@@ -258,109 +394,171 @@ export default function TimelineWeek({ events, startDate, onEventMove }: Timelin
                   }
                 }}
                 tabIndex={-1}
-                className={cn(
-                  'flex flex-col gap-0.5 px-3 py-2 text-left outline-none transition focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-2',
-                  index > 0 ? 'border-l border-gray-200' : 'border-l-0',
-                  day.isToday
-                    ? 'bg-indigo-50 text-indigo-700 ring-1 ring-indigo-200 ring-inset'
-                    : 'bg-gray-50 text-gray-700'
-                )}
+                sx={{
+                  px: 2,
+                  py: 1.5,
+                  borderLeft: index > 0 ? 1 : 0,
+                  borderColor: 'divider',
+                  bgcolor: day.isToday ? 'primary.light' : 'grey.50',
+                  color: day.isToday ? 'primary.contrastText' : 'text.primary',
+                  '&:focus-visible': {
+                    outline: 2,
+                    outlineColor: 'primary.main',
+                    outlineOffset: 2
+                  }
+                }}
               >
-                <span className={cn('text-[11px] font-medium tracking-wide', day.isToday ? 'text-indigo-600' : 'text-gray-500')}>
+                <Typography
+                  variant="caption"
+                  color={day.isToday ? 'primary.contrastText' : 'text.secondary'}
+                  sx={{ display: 'block', fontWeight: 'medium', letterSpacing: '0.5px' }}
+                >
                   {day.weekday}
-                </span>
-                <span className="text-sm font-semibold text-gray-900">{day.label}</span>
-              </div>
+                </Typography>
+                <Typography variant="body2" fontWeight="bold">
+                  {day.label}
+                </Typography>
+              </Box>
             ))}
-          </div>
+          </Box>
 
-          {laneOrder.map((category) => (
-            <div
-              key={category}
-              role="row"
-              className="grid border-b last:border-b-0 border-gray-100"
-              style={{ gridTemplateColumns: columnTemplate }}
-            >
-              <div
-                role="rowheader"
-                className="flex items-center bg-gray-50 px-3 py-3 text-sm font-medium text-gray-700"
+          {/* Lane Rows */}
+          {laneOrder.map((category) => {
+            const laneConfig = laneLabels[category];
+            const IconComponent = laneConfig.icon;
+            return (
+              <Box
+                key={category}
+                role="row"
+                sx={{
+                  display: 'grid',
+                  gridTemplateColumns: columnTemplate,
+                  width: minGridWidth,
+                  borderBottom: 1,
+                  borderColor: 'divider',
+                  '&:last-child': { borderBottom: 0 }
+                }}
               >
-                {laneLabels[category]}
-              </div>
-              {weekDays.map((day, index) => {
-                const dayEvents = laneMatrix[category]?.[day.key] ?? [];
-                const ariaLabel = `${laneLabels[category]}・${format(day.date, 'M月d日 (EEE)', { locale: ja })}`;
-                const dropKey = `${category}-${day.key}`;
-                return (
-                  <div
-                    key={day.key}
-                    role="gridcell"
-                    aria-label={ariaLabel}
-                    className={cn(
-                      'flex min-h-[120px] flex-col gap-2 p-3 align-top transition-colors',
-                      index > 0 ? 'border-l border-gray-100' : 'border-l-0',
-                      day.isToday ? 'bg-indigo-50/40 ring-1 ring-indigo-100 ring-inset' : 'bg-white',
-                      enableDrag && activeDropKey === dropKey ? 'ring-2 ring-indigo-300 ring-inset' : null
-                    )}
-                    onDragOver={enableDrag ? handleDragOver : undefined}
-                    onDragEnter={enableDrag ? handleDragEnter(dropKey) : undefined}
-                    onDragLeave={enableDrag ? handleDragLeave : undefined}
-                    onDrop={enableDrag ? handleDrop(category, day.key) : undefined}
-                    aria-dropeffect={enableDrag ? 'move' : undefined}
-                  >
-                    {dayEvents.length ? (
-                      dayEvents.map((event) => {
-                        const baseContainerProps = {
-                          'data-testid': 'schedule-item',
-                          'data-schedule-event': 'true',
-                          'data-id': event.id,
-                          'data-status': event.status,
-                          'data-category': event.category,
-                          'data-all-day': event.allDay ? '1' : '0',
-                          'data-recurrence': event.recurrenceRule ? '1' : '0',
-                        } as HTMLAttributes<HTMLElement>;
+                <Box
+                  role="rowheader"
+                  sx={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 1.5,
+                    bgcolor: laneConfig.color === 'success' ? 'success.light' :
+                            laneConfig.color === 'warning' ? 'warning.light' :
+                            laneConfig.color === 'primary' ? 'primary.light' :
+                            laneConfig.color === 'secondary' ? 'secondary.light' :
+                            laneConfig.color === 'info' ? 'info.light' : 'grey.100',
+                    px: 3,
+                    py: 3,
+                    position: 'sticky',
+                    left: 0,
+                    zIndex: 5,
+                    borderRight: 1,
+                    borderColor: 'divider'
+                  }}
+                >
+                  <IconComponent sx={{ fontSize: 20, color: `${laneConfig.color}.dark` }} />
+                  <Typography variant="subtitle2" fontWeight="600" color={`${laneConfig.color}.dark`}>
+                    {laneConfig.label}
+                  </Typography>
+                </Box>
+                {weekDays.map((day, index) => {
+                  const dayEvents = laneMatrix[category]?.[day.key] ?? [];
+                  const ariaLabel = `${laneConfig.label}・${format(day.date, 'M月d日 (EEE)', { locale: ja })}`;
+                  const dropKey = `${category}-${day.key}`;
+                  return (
+                    <Box
+                      key={day.key}
+                      role="gridcell"
+                      aria-label={ariaLabel}
+                      sx={{
+                        display: 'flex',
+                        flexDirection: 'column',
+                        gap: 1,
+                        p: 1.5,
+                        minHeight: 120,
+                        borderLeft: index > 0 ? 1 : 0,
+                        borderColor: 'divider',
+                        bgcolor: activeDropKey === dropKey ? 'action.hover' :
+                                 laneConfig.color === 'success' ? 'rgba(76, 175, 80, 0.04)' : // 薄い緑
+                                 laneConfig.color === 'warning' ? 'rgba(255, 152, 0, 0.04)' : // 薄いオレンジ
+                                 laneConfig.color === 'primary' ? 'rgba(25, 118, 210, 0.04)' : 'background.paper', // 薄い青
+                        transition: 'background-color 0.2s ease-in-out',
+                        cursor: 'pointer',
+                        '&:hover': {
+                          bgcolor: 'action.hover'
+                        }
+                      }}
+                      onDragOver={enableDrag ? handleDragOver : undefined}
+                      onDragEnter={enableDrag ? handleDragEnter(dropKey) : undefined}
+                      onDragLeave={enableDrag ? handleDragLeave : undefined}
+                      onDrop={enableDrag ? handleDrop(category, day.key) : undefined}
+                      onClick={handleCellClick(category, day.key)}
+                      aria-dropeffect={enableDrag ? 'move' : undefined}
+                    >
+                      {dayEvents.length > 0 ? (
+                        dayEvents.map((event) => {
+                          const baseContainerProps = {
+                            'data-testid': 'schedule-item',
+                            'data-schedule-event': 'true',
+                            'data-id': event.id,
+                            'data-status': event.status,
+                            'data-category': event.category,
+                            'data-all-day': event.allDay ? '1' : '0',
+                            'data-recurrence': event.recurrenceRule ? '1' : '0',
+                          } as HTMLAttributes<HTMLElement>;
 
-                        const containerProps = enableDrag
-                          ? {
-                              ...baseContainerProps,
-                              draggable: true,
-                              onDragStart: handleDragStart(event.id),
-                              onDragEnd: handleDragEnd,
-                              onKeyDown: (keyboardEvent: KeyboardEvent<HTMLElement>) =>
-                                handleKeyboardMove(keyboardEvent, event, category, day.key),
-                              'aria-grabbed': draggingId === event.id,
-                              'aria-describedby': dragInstructionsId,
-                              'aria-roledescription': 'ドラッグ可能な予定',
-                            }
-                          : baseContainerProps;
+                          const containerProps = enableDrag
+                            ? {
+                                ...baseContainerProps,
+                                draggable: true,
+                                onDragStart: handleDragStart(event.id),
+                                onDragEnd: handleDragEnd,
+                                onKeyDown: (keyboardEvent: KeyboardEvent<HTMLElement>) =>
+                                  handleKeyboardMove(keyboardEvent, event, category, day.key),
+                                onClick: handleEventClick(event),
+                                'aria-grabbed': draggingId === event.id,
+                                'aria-describedby': dragInstructionsId,
+                                'aria-roledescription': 'ドラッグ可能な予定',
+                              }
+                            : {
+                                ...baseContainerProps,
+                                onClick: handleEventClick(event),
+                              };
 
-                        return (
-                          <TimelineEventCard
-                            key={event.id}
-                            title={event.title}
-                            startISO={event.start}
-                            endISO={event.end}
-                            allDay={event.allDay}
-                            status={event.status}
-                            recurrenceRule={event.recurrenceRule}
-                            subtitle={getTimelineSubtitle(event)}
-                            dayPart={event.category === 'Staff' ? event.dayPart : undefined}
-                            baseShiftWarnings={event.baseShiftWarnings}
-                            containerProps={containerProps}
-                          />
-                        );
-                      })
-                    ) : (
-                      <p className="text-[11px] text-gray-400">予定なし</p>
-                    )}
-                  </div>
-                );
-              })}
-            </div>
-          ))}
-        </div>
-      </div>
-    </section>
+                          return (
+                            <TimelineEventCard
+                              key={event.id}
+                              title={event.title}
+                              startISO={event.start}
+                              endISO={event.end}
+                              allDay={event.allDay}
+                              status={event.status}
+                              recurrenceRule={event.recurrenceRule}
+                              subtitle={getTimelineSubtitle(event)}
+                              dayPart={event.category === 'Staff' ? event.dayPart : undefined}
+                              baseShiftWarnings={event.baseShiftWarnings}
+                              containerProps={containerProps}
+                            />
+                          );
+                        })
+                      ) : (
+                        <Typography variant="caption" color="text.disabled" textAlign="center">
+                          予定なし
+                        </Typography>
+                      )}
+                    </Box>
+                  );
+                })}
+              </Box>
+            );
+          })}
+          </Box>
+        </Box>
+      </Paper>
+    </Box>
   );
 }
 
@@ -373,7 +571,9 @@ function guessWeekStart(events: Schedule[]): Date {
       earliestTs = ts;
     }
   }
-  return startOfDay(earliestTs !== null ? new Date(earliestTs) : new Date());
+  const baseDate = earliestTs !== null ? new Date(earliestTs) : new Date();
+  // 月曜始まりの週の開始日を取得
+  return startOfWeek(baseDate, { weekStartsOn: 1 }); // 1 = Monday
 }
 
 function buildWeekDays(start: Date, days: number = 7): WeekDay[] {

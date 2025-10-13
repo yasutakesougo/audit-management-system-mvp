@@ -49,14 +49,33 @@ export type BaseDaily = z.infer<typeof BaseDailyZ>;
 export const MealAmountZ = z.enum(['完食', '多め', '半分', '少なめ', 'なし']);
 export type MealAmount = z.infer<typeof MealAmountZ>;
 
+export const ProblemBehaviorZ = z.object({
+  selfHarm: z.boolean().default(false), // 自傷
+  violence: z.boolean().default(false), // 暴力
+  loudVoice: z.boolean().default(false), // 大声
+  pica: z.boolean().default(false), // 異食
+  other: z.boolean().default(false), // その他
+  otherDetail: z.string().optional(), // その他詳細
+});
+export type ProblemBehavior = z.infer<typeof ProblemBehaviorZ>;
+
+export const SeizureRecordZ = z.object({
+  occurred: z.boolean().default(false), // 発作の有無
+  time: z.string().optional(), // 発作時刻
+  duration: z.string().optional(), // 持続時間
+  severity: z.enum(['軽度', '中等度', '重度']).optional(), // 重症度
+  notes: z.string().optional(), // 発作メモ
+});
+export type SeizureRecord = z.infer<typeof SeizureRecordZ>;
+
 export const DailyADataZ = z.object({
   amActivities: StringList,
   amNotes: z.string().optional(),
   pmActivities: StringList,
   pmNotes: z.string().optional(),
-  mealMain: MealAmountZ.optional(),
-  mealSide: MealAmountZ.optional(),
-  problemBehavior: z.enum(['あり', 'なし']).optional(),
+  mealAmount: MealAmountZ.optional(),
+  problemBehavior: ProblemBehaviorZ.optional(),
+  seizureRecord: SeizureRecordZ.optional(),
   specialNotes: z.string().optional(),
 });
 export type DailyAData = z.infer<typeof DailyADataZ>;

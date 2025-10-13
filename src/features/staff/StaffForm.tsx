@@ -1,6 +1,26 @@
-import { createRef, FormEvent, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useStaff } from "@/stores/useStaff";
 import type { Staff, StaffUpsert } from "@/types";
+import {
+    Close as CloseIcon,
+    Person as PersonIcon,
+    Save as SaveIcon,
+    Work as WorkIcon,
+} from "@mui/icons-material";
+import {
+    Alert,
+    Box,
+    Button,
+    Checkbox,
+    Chip,
+    CircularProgress,
+    FormControlLabel,
+    IconButton,
+    Paper,
+    Snackbar,
+    TextField,
+    Typography,
+} from "@mui/material";
+import { createRef, FormEvent, useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 type StaffFormProps = {
   staff?: Staff;
@@ -70,28 +90,6 @@ const toUpsert = (values: FormValues): StaffUpsert => ({
   BaseWorkingDays: values.BaseWorkingDays,
 });
 
-const Spinner = () => (
-  <span
-    className="inline-block h-4 w-4 animate-spin rounded-full border border-current border-t-transparent align-[-2px]"
-    aria-hidden="true"
-  />
-);
-
-const Toast = ({ text, onDone }: { text: string; onDone?: () => void }) => {
-  const [open, setOpen] = useState(true);
-
-  useEffect(() => {
-    const t = window.setTimeout(() => {
-      setOpen(false);
-      onDone?.();
-    }, 2200);
-    return () => window.clearTimeout(t);
-  }, [onDone]);
-
-  if (!open) return null;
-
-  return <div className="fixed right-3 top-3 z-[9999] rounded-md bg-black/85 px-3 py-2 text-sm text-white shadow">{text}</div>;
-};
 
 const CERTIFICATION_OPTIONS: { value: string; label: string }[] = [
   { value: "普通運転免許", label: "普通運転免許" },
@@ -347,322 +345,343 @@ export function StaffForm({ staff, mode = staff ? "update" : "create", onSuccess
   );
 
   return (
-    <form
-      ref={formRef}
-      data-form="staff"
-      onSubmit={handleSubmit}
-      aria-busy={isSaving}
-      className="grid gap-4 rounded-md bg-white p-4 shadow"
-    >
-      {message && (
-        <div
-          className={`rounded-md border px-3 py-2 text-sm ${
-            message.type === "success"
-              ? "border-green-200 bg-green-50 text-green-800"
-              : "border-red-200 bg-red-50 text-red-800"
-          }`}
-          role="status"
-        >
-          {message.text}
-        </div>
-      )}
-
-      <div className="grid gap-1">
-        <label htmlFor="staff-id" className="text-sm font-medium text-gray-700">
-          スタッフID
-        </label>
-        <input
-          id="staff-id"
-          value={values.StaffID}
-          onChange={(event) => setField("StaffID", event.target.value)}
-          className="rounded-md border border-gray-300 px-3 py-2 shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
-          placeholder="例: ST-001"
-          autoComplete="off"
-        />
-      </div>
-
-      <div className="grid gap-1">
-        <label htmlFor="full-name" className="text-sm font-medium text-gray-700">
-          氏名
-        </label>
-        <input
-          id="full-name"
-          ref={errRefs.fullName}
-          value={values.FullName}
-          onChange={(event) => setField("FullName", event.target.value)}
-          className={`rounded-md border px-3 py-2 shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500 ${
-            errors.fullName ? "border-red-500" : "border-gray-300"
-          }`}
-          data-invalid={Boolean(errors.fullName)}
-          aria-invalid={Boolean(errors.fullName)}
-          aria-describedby={errors.fullName ? "err-full-name" : undefined}
-          placeholder="山田 太郎"
-        />
-        {errors.fullName && (
-          <p id="err-full-name" className="text-xs text-red-600">
-            {errors.fullName}
-          </p>
+    <Paper elevation={2} sx={{ p: 3, borderRadius: 2 }}>
+      {/* Header */}
+      <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 3 }}>
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+          <PersonIcon color="primary" />
+          <Typography variant="h6" component="h2">
+            {mode === 'create' ? '新規職員登録' : '職員情報編集'}
+          </Typography>
+        </Box>
+        {onClose && (
+          <IconButton onClick={handleClose} size="small">
+            <CloseIcon />
+          </IconButton>
         )}
-      </div>
+      </Box>
 
-      <div className="grid gap-1">
-        <label htmlFor="email" className="text-sm font-medium text-gray-700">
-          メール
-        </label>
-        <input
-          id="email"
-          type="email"
-          ref={errRefs.email}
-          value={values.Email}
-          onChange={(event) => setField("Email", event.target.value)}
-          className={`rounded-md border px-3 py-2 shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500 ${
-            errors.email ? "border-red-500" : "border-gray-300"
-          }`}
-          data-invalid={Boolean(errors.email)}
-          aria-invalid={Boolean(errors.email)}
-          aria-describedby={errors.email ? "err-email" : undefined}
-          placeholder="taro.yamada@example.com"
-          autoComplete="email"
-        />
-        {errors.email && (
-          <p id="err-email" className="text-xs text-red-600">
-            {errors.email}
-          </p>
+      <form
+        ref={formRef}
+        data-form="staff"
+        onSubmit={handleSubmit}
+      >
+        {/* Status Messages */}
+        {message && (
+          <Alert
+            severity={message.type === "success" ? "success" : "error"}
+            sx={{ mb: 2 }}
+            onClose={() => setMessage(null)}
+          >
+            {message.text}
+          </Alert>
         )}
-      </div>
 
-      <div className="grid gap-1">
-        <label htmlFor="phone" className="text-sm font-medium text-gray-700">
-          電話番号
-        </label>
-        <input
-          id="phone"
-          ref={errRefs.phone}
-          value={values.Phone}
-          onChange={(event) => setField("Phone", event.target.value)}
-          className={`rounded-md border px-3 py-2 shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500 ${
-            errors.phone ? "border-red-500" : "border-gray-300"
-          }`}
-          data-invalid={Boolean(errors.phone)}
-          aria-invalid={Boolean(errors.phone)}
-          aria-describedby={errors.phone ? "err-phone" : undefined}
-          placeholder="09012345678"
-          autoComplete="tel"
-        />
-        {errors.phone && (
-          <p id="err-phone" className="text-xs text-red-600">
-            {errors.phone}
-          </p>
-        )}
-      </div>
+        {/* 基本情報 */}
+        <Box sx={{ mb: 3 }}>
+          <Typography variant="h6" sx={{ mb: 2, color: 'primary.main', display: 'flex', alignItems: 'center' }}>
+            <PersonIcon sx={{ mr: 1 }} />
+            基本情報
+          </Typography>
 
-      <div className="grid gap-1">
-        <label htmlFor="role" className="text-sm font-medium text-gray-700">
-          役職
-        </label>
-        <input
-          id="role"
-          value={values.Role}
-          onChange={(event) => setField("Role", event.target.value)}
-          className="rounded-md border border-gray-300 px-3 py-2 shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
-          placeholder="サービス管理責任者"
-        />
-      </div>
+          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+            <TextField
+              fullWidth
+              label="スタッフID"
+              value={values.StaffID}
+              onChange={(event) => setField("StaffID", event.target.value)}
+              placeholder="例: ST-001"
+              autoComplete="off"
+              variant="outlined"
+              size="small"
+            />
 
-      <fieldset className="grid gap-2 rounded-md border border-gray-200 p-3">
-        <legend className="px-1 text-sm font-semibold text-gray-700">基本勤務パターン</legend>
-        <div className="grid gap-3 md:grid-cols-2">
-          <div className="grid gap-1">
-            <label htmlFor="base-shift-start" className="text-sm font-medium text-gray-700">
-              開始時刻
-            </label>
-            <input
-              id="base-shift-start"
+            <TextField
+              fullWidth
+              required
+              label="氏名"
+              inputRef={errRefs.fullName}
+              value={values.FullName}
+              onChange={(event) => setField("FullName", event.target.value)}
+              error={Boolean(errors.fullName)}
+              helperText={errors.fullName}
+              placeholder="山田 太郎"
+              variant="outlined"
+              size="small"
+            />
+          </Box>
+        </Box>
+        {/* 連絡先情報 */}
+        <Box sx={{ mb: 3 }}>
+          <Typography variant="h6" sx={{ mb: 2, color: 'primary.main' }}>
+            連絡先情報
+          </Typography>
+
+          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+            <TextField
+              fullWidth
+              type="email"
+              label="メール"
+              inputRef={errRefs.email}
+              value={values.Email}
+              onChange={(event) => setField("Email", event.target.value)}
+              error={Boolean(errors.email)}
+              helperText={errors.email}
+              placeholder="taro.yamada@example.com"
+              autoComplete="email"
+              variant="outlined"
+              size="small"
+            />
+
+            <TextField
+              fullWidth
+              label="電話番号"
+              inputRef={errRefs.phone}
+              value={values.Phone}
+              onChange={(event) => setField("Phone", event.target.value)}
+              error={Boolean(errors.phone)}
+              helperText={errors.phone}
+              placeholder="09012345678"
+              autoComplete="tel"
+              variant="outlined"
+              size="small"
+            />
+
+            <TextField
+              fullWidth
+              label="役職"
+              value={values.Role}
+              onChange={(event) => setField("Role", event.target.value)}
+              placeholder="サービス管理責任者"
+              variant="outlined"
+              size="small"
+            />
+          </Box>
+        </Box>
+
+        {/* 基本勤務パターン */}
+        <Box sx={{ mb: 3, border: '1px solid', borderColor: 'grey.300', borderRadius: 1, p: 2 }}>
+          <Typography variant="h6" sx={{ mb: 2, color: 'primary.main', display: 'flex', alignItems: 'center' }}>
+            <WorkIcon sx={{ mr: 1 }} />
+            基本勤務パターン
+          </Typography>
+
+          <Box sx={{ display: 'flex', gap: 2, mb: 2 }}>
+            <TextField
+              label="開始時刻"
               type="time"
-              ref={errRefs.baseShift}
+              inputRef={errRefs.baseShift}
               value={values.BaseShiftStartTime}
               onChange={(event) => setField("BaseShiftStartTime", event.target.value)}
-              className={`rounded-md border px-3 py-2 shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500 ${
-                errors.baseShift ? "border-red-500" : "border-gray-300"
-              }`}
-              step={300}
-              aria-invalid={Boolean(errors.baseShift)}
+              error={Boolean(errors.baseShift)}
+              helperText={errors.baseShift}
+              variant="outlined"
+              size="small"
+              InputLabelProps={{ shrink: true }}
             />
-          </div>
-          <div className="grid gap-1">
-            <label htmlFor="base-shift-end" className="text-sm font-medium text-gray-700">
-              終了時刻
-            </label>
-            <input
-              id="base-shift-end"
+
+            <TextField
+              label="終了時刻"
               type="time"
               value={values.BaseShiftEndTime}
               onChange={(event) => setField("BaseShiftEndTime", event.target.value)}
-              className={`rounded-md border px-3 py-2 shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500 ${
-                errors.baseShift ? "border-red-500" : "border-gray-300"
-              }`}
-              step={300}
-              aria-invalid={Boolean(errors.baseShift)}
+              error={Boolean(errors.baseShift)}
+              variant="outlined"
+              size="small"
+              InputLabelProps={{ shrink: true }}
             />
-          </div>
-        </div>
-        <div className="grid gap-1">
-          <span className="text-sm font-medium text-gray-700">勤務曜日</span>
-          <div className="flex flex-wrap gap-2">
-            {BASE_WEEKDAY_OPTIONS.map((day) => {
-              const checked = values.BaseWorkingDays.includes(day.value);
-              return (
-                <label
-                  key={day.value}
-                  className={`inline-flex items-center gap-2 rounded border px-2 py-1 ${
-                    checked ? "border-indigo-500 bg-indigo-50" : "border-gray-300"
-                  }`}
-                >
-                  <input
-                    type="checkbox"
-                    checked={checked}
-                    onChange={() => toggleBaseWorkingDay(day.value)}
-                    className="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
+          </Box>
+          <Box>
+            <Typography variant="body2" sx={{ mb: 1, fontWeight: 'medium' }}>
+              基本勤務曜日
+            </Typography>
+            <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
+              {BASE_WEEKDAY_OPTIONS.map((day) => {
+                const checked = values.BaseWorkingDays.includes(day.value);
+                return (
+                  <FormControlLabel
+                    key={day.value}
+                    control={
+                      <Checkbox
+                        checked={checked}
+                        onChange={() => toggleBaseWorkingDay(day.value)}
+                        size="small"
+                      />
+                    }
+                    label={day.label}
+                    sx={{
+                      border: '1px solid',
+                      borderColor: checked ? 'primary.main' : 'grey.300',
+                      backgroundColor: checked ? 'primary.light' : 'transparent',
+                      borderRadius: 1,
+                      px: 1,
+                      py: 0.5,
+                      m: 0,
+                      '& .MuiFormControlLabel-label': { fontSize: '0.875rem' }
+                    }}
                   />
-                  <span className="text-sm text-gray-700">{day.label}</span>
-                </label>
+                );
+              })}
+            </Box>
+            <Typography variant="caption" color="text.secondary" sx={{ mt: 1, display: 'block' }}>
+              標準勤務時間を設定すると、シフト作成時の過剰割当を検知しやすくなります。
+            </Typography>
+          </Box>
+        </Box>
+
+        {/* 出勤曜日 */}
+        <Box sx={{ mb: 3 }}>
+          <Typography variant="h6" sx={{ mb: 2, color: 'primary.main' }}>
+            出勤曜日
+          </Typography>
+          <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
+            {DAYS.map((day) => {
+              const checked = values.WorkDays.includes(day.value);
+              return (
+                <FormControlLabel
+                  key={day.value}
+                  control={
+                    <Checkbox
+                      checked={checked}
+                      onChange={() => toggleWorkDay(day.value)}
+                      size="small"
+                    />
+                  }
+                  label={day.label}
+                  sx={{
+                    border: '1px solid',
+                    borderColor: checked ? 'primary.main' : 'grey.300',
+                    backgroundColor: checked ? 'primary.light' : 'transparent',
+                    borderRadius: 1,
+                    px: 1,
+                    py: 0.5,
+                    m: 0,
+                    '& .MuiFormControlLabel-label': { fontSize: '0.875rem' }
+                  }}
+                />
               );
             })}
-          </div>
-        </div>
-        {errors.baseShift ? (
-          <p className="text-xs text-red-600">{errors.baseShift}</p>
-        ) : (
-          <p className="text-xs text-gray-500">標準勤務時間を設定すると、シフト作成時の過剰割当を検知しやすくなります。</p>
-        )}
-      </fieldset>
+          </Box>
+        </Box>
 
-      <div className="grid gap-1">
-        <span className="text-sm font-medium text-gray-700">出勤曜日</span>
-        <div className="flex flex-wrap gap-2">
-          {DAYS.map((day) => {
-            const checked = values.WorkDays.includes(day.value);
-            return (
-              <label
-                key={day.value}
-                className={`inline-flex items-center gap-2 rounded border px-2 py-1 ${
-                  checked ? "border-indigo-500 bg-indigo-50" : "border-gray-300"
-                }`}
-              >
-                <input
-                  type="checkbox"
-                  checked={checked}
-                  onChange={() => toggleWorkDay(day.value)}
-                  className="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
+        {/* 資格 */}
+        <Box sx={{ mb: 3 }}>
+          <Typography variant="h6" sx={{ mb: 2, color: 'primary.main' }}>
+            資格
+          </Typography>
+
+          <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1, mb: 2 }}>
+            {CERTIFICATION_OPTIONS.map((option) => {
+              const checked = values.Certifications.includes(option.value);
+              return (
+                <Chip
+                  key={option.value}
+                  label={option.label}
+                  onClick={() => toggleCertification(option.value)}
+                  variant={checked ? "filled" : "outlined"}
+                  color={checked ? "primary" : "default"}
+                  sx={{ cursor: 'pointer' }}
                 />
-                <span className="text-sm text-gray-700">{day.label}</span>
-              </label>
-            );
-          })}
-        </div>
-      </div>
+              );
+            })}
+          </Box>
 
-      <div className="grid gap-1">
-        <span className="text-sm font-medium text-gray-700">資格</span>
-        <div className="flex flex-wrap gap-2">
-          {CERTIFICATION_OPTIONS.map((option) => {
-            const checked = values.Certifications.includes(option.value);
-            return (
-              <button
-                key={option.value}
-                type="button"
-                onClick={() => toggleCertification(option.value)}
-                className={`inline-flex items-center gap-2 rounded border px-3 py-1 text-sm transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-500 ${
-                  checked ? "border-indigo-500 bg-indigo-50 text-indigo-700" : "border-gray-300 text-gray-700"
-                }`}
-              >
-                <span aria-hidden="true">{checked ? "✓" : ""}</span>
-                {option.label}
-              </button>
-            );
-          })}
-        </div>
-        <div className="flex flex-wrap items-center gap-2 pt-2">
-          <input
-            value={customCertification}
-            onChange={(event) => setCustomCertification(event.target.value)}
-            onKeyDown={(event) => {
-              if (event.key === "Enter") {
-                event.preventDefault();
-                handleAddCustomCertification();
-              }
-            }}
-            placeholder="例: 介護支援専門員"
-            aria-label="資格を追加"
-            className="flex-1 min-w-[200px] rounded-md border border-gray-300 px-3 py-2 shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+          <Box sx={{ display: 'flex', gap: 1, alignItems: 'flex-end' }}>
+            <TextField
+              fullWidth
+              label="カスタム資格を追加"
+              value={customCertification}
+              onChange={(event) => setCustomCertification(event.target.value)}
+              onKeyDown={(event) => {
+                if (event.key === "Enter") {
+                  event.preventDefault();
+                  handleAddCustomCertification();
+                }
+              }}
+              placeholder="例: 介護支援専門員"
+              variant="outlined"
+              size="small"
+            />
+            <Button
+              variant="contained"
+              onClick={handleAddCustomCertification}
+              disabled={!customCertification.trim()}
+              sx={{ minWidth: 'auto', px: 2 }}
+            >
+              追加
+            </Button>
+          </Box>
+        {values.Certifications.length > 0 && (
+            <Box sx={{ mt: 2 }}>
+              <Typography variant="body2" sx={{ mb: 1, fontWeight: 'medium' }}>
+                選択された資格:
+              </Typography>
+              <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
+                {values.Certifications.map((cert) => (
+                  <Chip
+                    key={cert}
+                    label={cert}
+                    onDelete={() => removeCertification(cert)}
+                    color="success"
+                    variant="filled"
+                    size="small"
+                  />
+                ))}
+              </Box>
+            </Box>
+          )}
+        </Box>
+
+        {/* 在籍ステータス */}
+        <Box sx={{ mb: 3 }}>
+          <FormControlLabel
+            control={
+              <Checkbox
+                checked={values.IsActive}
+                onChange={(event) => setField("IsActive", event.target.checked)}
+              />
+            }
+            label="在籍中"
           />
-          <button
-            type="button"
-            onClick={handleAddCustomCertification}
-            className="rounded-md bg-indigo-600 px-3 py-2 text-sm font-medium text-white shadow-sm transition hover:bg-indigo-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-500"
-          >
-            追加
-          </button>
-        </div>
-        {values.Certifications.length ? (
-          <div className="flex flex-wrap gap-2 pt-2">
-            {values.Certifications.map((cert) => (
-              <span
-                key={cert}
-                className="inline-flex items-center gap-2 rounded-full border border-gray-200 bg-gray-100 px-3 py-1 text-xs font-medium text-gray-700"
-              >
-                {cert}
-                <button
-                  type="button"
-                  onClick={() => removeCertification(cert)}
-                  className="rounded-full bg-white/60 px-1 text-xs text-gray-500 transition hover:bg-white hover:text-gray-700"
-                  aria-label={`${cert} を削除`}
-                >
-                  ×
-                </button>
-              </span>
-            ))}
-          </div>
-        ) : (
-          <p className="text-xs text-gray-500">資格を追加してください（例: 普通運転免許）。</p>
-        )}
-      </div>
+        </Box>
 
-      <label className="inline-flex items-center gap-2">
-        <input
-          type="checkbox"
-          checked={values.IsActive}
-          onChange={(event) => setField("IsActive", event.target.checked)}
-          className="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
-        />
-        <span className="text-sm text-gray-700">在籍中</span>
-      </label>
-
-      <div className="flex items-center gap-2">
-        <button
-          type="submit"
-          disabled={isSaving}
-          aria-disabled={isSaving}
-          className="inline-flex items-center gap-2 rounded-md bg-indigo-600 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 disabled:opacity-60"
-        >
-          {isSaving ? <Spinner /> : null}
-          {mode === "create" ? "作成" : "保存"}
-        </button>
-        {onClose && (
-          <button
-            type="button"
-            onClick={handleClose}
+        {/* アクションボタン */}
+        <Box sx={{ display: 'flex', gap: 2, pt: 2, borderTop: '1px solid', borderColor: 'grey.200' }}>
+          <Button
+            type="submit"
+            variant="contained"
             disabled={isSaving}
-            aria-disabled={isSaving}
-            className="rounded-md border border-gray-300 px-3 py-2 text-sm font-medium text-gray-700 shadow-sm hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 disabled:opacity-60"
+            startIcon={isSaving ? <CircularProgress size={16} /> : <SaveIcon />}
+            sx={{ minWidth: 120 }}
           >
-            閉じる
-          </button>
-        )}
-      </div>
+            {mode === "create" ? "作成" : "保存"}
+          </Button>
 
-      {message?.type === "success" ? <Toast text={message.text} onDone={() => setMessage(null)} /> : null}
-    </form>
+          {onClose && (
+            <Button
+              type="button"
+              variant="outlined"
+              onClick={handleClose}
+              disabled={isSaving}
+              startIcon={<CloseIcon />}
+            >
+              閉じる
+            </Button>
+          )}
+        </Box>
+
+        {/* Success Snackbar */}
+        <Snackbar
+          open={message?.type === "success"}
+          autoHideDuration={3000}
+          onClose={() => setMessage(null)}
+        >
+          <Alert severity="success" onClose={() => setMessage(null)}>
+            {message?.text}
+          </Alert>
+        </Snackbar>
+      </form>
+    </Paper>
   );
 }
 
