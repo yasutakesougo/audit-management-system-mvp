@@ -92,9 +92,33 @@ export const useAuth = () => {
 
       sessionStorage.setItem('spToken', first.accessToken);
       return first.accessToken;
-    } catch {
-      // サイレント失敗時はリダイレクトで再認証
+    } catch (error: any) {
+      // MSAL エラーの詳細な処理
+      debugLog('acquireTokenSilent failed', { 
+        errorName: error?.name, 
+        errorCode: error?.errorCode,
+        message: error?.message || 'Unknown error' 
+      });
+      
       sessionStorage.removeItem('spToken');
+
+      // InteractionRequiredAuthError (MFA、同意、パスワード変更など)を詳細に判定
+      const isInteractionRequired = 
+        error?.name === 'InteractionRequiredAuthError' || 
+        error?.errorCode === 'interaction_required' ||
+        error?.errorCode === 'consent_required' ||
+        error?.errorCode === 'login_required' ||
+        error?.errorCode === 'mfa_required';
+
+      if (isInteractionRequired) {
+        debugLog('Interaction required (MFA/consent/login), redirecting to authentication...');
+        // MFA対応: 明示的な対話型認証が必要な場合はリダイレクト
+        await instance.acquireTokenRedirect({ scopes: [scope] });
+        return null;
+      }
+
+      // その他のエラー（ネットワークエラーなど）もリダイレクトで再認証
+      debugLog('Other authentication error, redirecting...');
       await instance.acquireTokenRedirect({ scopes: [scope] });
       return null;
     }

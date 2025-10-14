@@ -281,7 +281,7 @@
             <pnp:Field Type="DateTime" DisplayName="タイムスタンプ" Required="TRUE" Indexed="TRUE" StaticName="ts" Name="ts" />
             <pnp:Field Type="Text" DisplayName="実行者(UPN)" Required="TRUE" StaticName="actor" Name="actor" />
             <pnp:Field Type="Text" DisplayName="操作" Required="TRUE" StaticName="action" Name="action" />
-            <pnp:Field Type="Text" DisplayName="対象エンティティ" Required="TRUE" StaticName="entity" Name="entity" />
+            <pnp:Field Type="Text" DisplayName="対象エンティティ" Required="TRUE" Indexed="TRUE" StaticName="entity" Name="entity" />
             <pnp:Field Type="Text" DisplayName="対象ID" StaticName="entity_id" Name="entity_id" />
             <pnp:Field Type="Text" DisplayName="チャネル" StaticName="channel" Name="channel" />
             <pnp:Field ID="{E7EFC804-00AF-44E9-A86F-0EAA90C962C4}" Type="Text" DisplayName="エントリハッシュ" EnforceUniqueValues="TRUE" Indexed="TRUE" StaticName="entry_hash" Name="entry_hash" MaxLength="128" />
