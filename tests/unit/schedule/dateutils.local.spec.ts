@@ -45,4 +45,52 @@ describe('schedule dateutils.local helpers', () => {
       restore();
     }
   });
+
+  it('returns safe defaults for invalid inputs and clamps overrides', async () => {
+    const {
+      getLocalDateKey,
+      startOfDayUtc,
+      endOfDayUtc,
+      startOfWeekUtc,
+      endOfWeekUtc,
+      assignLocalDateKey,
+      restore,
+    } = await loadDateutilsWithTz(TZ);
+
+    try {
+      expect(getLocalDateKey('not-a-date')).toBe('');
+      expect(startOfDayUtc('not-a-date').toISOString()).toBe(new Date(0).toISOString());
+      expect(endOfDayUtc('not-a-date').toISOString()).toBe(new Date(0).toISOString());
+  expect(endOfWeekUtc('not-a-date').toISOString()).toBe('1970-01-07T14:59:59.999Z');
+
+      const base = '2025-08-13T11:45:00Z';
+      const defaultStart = startOfWeekUtc(base);
+      const clampedFromNan = startOfWeekUtc(base, undefined, Number.NaN);
+      const clampedFromNegative = startOfWeekUtc(base, undefined, -3 as number);
+
+      expect(clampedFromNan.toISOString()).toBe(defaultStart.toISOString());
+      expect(clampedFromNegative.toISOString()).toBe(defaultStart.toISOString());
+
+      const blankCandidate = assignLocalDateKey({ start: 'invalid-value' });
+      expect(blankCandidate.localDateKey).toBe('');
+
+      const inferredFromOverride = getLocalDateKey('2025-09-01T00:00:00Z', 'UTC');
+      expect(inferredFromOverride).toBe('2025-09-01');
+    } finally {
+      restore();
+    }
+  });
+
+  it('defaults to a Monday week start when overrides are omitted', async () => {
+    const { startOfWeekUtc, restore } = await loadDateutilsWithTz(TZ);
+
+    try {
+      const target = '2025-07-06T03:30:00Z';
+      const start = startOfWeekUtc(target);
+      const startLocal = formatInTimeZone(start, TZ, 'yyyy-MM-dd');
+      expect(startLocal).toBe('2025-06-30');
+    } finally {
+      restore();
+    }
+  });
 });

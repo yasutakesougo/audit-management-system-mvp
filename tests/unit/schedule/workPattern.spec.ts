@@ -41,6 +41,14 @@ describe('workPattern helpers', () => {
       expect(summarizeBaseShiftWarnings([])).toBe('');
       expect(summarizeBaseShiftWarnings([{ staffId: '', reasons: ['day'] }])).toBe('');
     });
+
+    it('falls back to staffId when names are missing', () => {
+      const summary = summarizeBaseShiftWarnings([
+        { staffId: '201', staffName: undefined, reasons: ['day'] },
+        { staffId: '202', staffName: undefined, reasons: ['time'] },
+      ]);
+      expect(summary).toBe('201、202のシフトに注意が必要です');
+    });
   });
 
   describe('collectBaseShiftWarnings', () => {
@@ -62,6 +70,20 @@ describe('workPattern helpers', () => {
         { id: 1, staffId: '101', name: '佐藤 花子', certifications: [], workDays: [], baseWorkingDays: [] },
       ] as Staff[]);
       expect(collectBaseShiftWarnings(schedule, index)).toEqual([]);
+    });
+
+    it('returns empty list when index is absent or schedule has no staffIds array', () => {
+      const minimalSchedule = { id: 'sched-0' } as unknown as Schedule;
+      expect(collectBaseShiftWarnings(minimalSchedule, null)).toEqual([]);
+      expect(collectBaseShiftWarnings(minimalSchedule, undefined)).toEqual([]);
+    });
+
+    it('ignores falsy staff entries within staffIds array', () => {
+      const schedule = makeSchedule({ staffIds: ['101', '', undefined as unknown as string] });
+      const warnings = collectBaseShiftWarnings(schedule, {});
+      expect(warnings).toEqual([
+        { staffId: '101', staffName: undefined, reasons: ['day'] },
+      ]);
     });
   });
 
@@ -86,6 +108,24 @@ describe('workPattern helpers', () => {
           baseWorkingDays: ['月', '火', '水', '木', '金'],
         },
       });
+    });
+
+    it('returns null when staff collection is empty or missing', () => {
+      expect(buildStaffPatternIndex([])).toBeNull();
+      expect(buildStaffPatternIndex(null)).toBeNull();
+      expect(buildStaffPatternIndex(undefined)).toBeNull();
+    });
+
+    it('skips staff entries without usable identifiers and falls back to id when staffId missing', () => {
+      const staff: Staff[] = [
+        { id: 5, staffId: undefined as unknown as string, name: 'Fallback Id', certifications: [], workDays: [], baseWorkingDays: [] },
+        { id: undefined as unknown as number, staffId: undefined as unknown as string, name: 'No Key', certifications: [], workDays: [], baseWorkingDays: [] },
+      ];
+      const index = buildStaffPatternIndex(staff);
+      expect(index).not.toBeNull();
+      const keys = Object.keys(index!);
+      expect(keys).toContain('5');
+      expect(keys).not.toContain('');
     });
   });
 });
