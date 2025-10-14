@@ -6,6 +6,7 @@ import { useAuditSyncBatch } from './useAuditSyncBatch';
 import { AuditBatchMetrics } from './types';
 import { auditMetricLabels } from './labels';
 import { isDevMode } from '../../lib/env';
+import UnsynedAuditBadge from '../../ui/components/UnsynedAuditBadge';
 
 const AuditPanel: React.FC = () => {
   const [logs, setLogs] = useState<AuditEvent[]>(readAudit());
@@ -52,6 +53,12 @@ const AuditPanel: React.FC = () => {
     <div>
       <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 4 }}>
         <h2 style={{ margin: 0 }}>監査ログ</h2>
+        <UnsynedAuditBadge 
+          style={{ 
+            // 監査ページでクリックした場合のカスタム動作を追加するための準備
+            // TODO: 将来的に現在のページでの動作をカスタマイズする場合に使用
+          }} 
+        />
         {(lastTotal !== undefined) && (
           <div
             data-testid="audit-metrics"

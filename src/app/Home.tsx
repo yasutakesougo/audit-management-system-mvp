@@ -28,6 +28,7 @@ import { alpha, useTheme } from '@mui/material/styles';
 import { isDemoModeEnabled } from '@/lib/env';
 import { useSchedulesToday } from '@/features/schedule/useSchedulesToday';
 import { useFeatureFlags } from '@/config/featureFlags';
+import UnsynedAuditBadge from '@/ui/components/UnsynedAuditBadge';
 
 type TileTone = 'primary' | 'success' | 'info' | 'warning' | 'secondary' | 'neutral';
 
@@ -185,6 +186,7 @@ export default function Home() {
                 sx={{ fontWeight: 600 }}
               />
             ) : null}
+            <UnsynedAuditBadge size="small" data-testid="home-unsync-badge" />
             {!demoModeEnabled && (
               <Typography variant="body2" color="text.secondary">
                 <Box component="code" sx={codeSx}>
