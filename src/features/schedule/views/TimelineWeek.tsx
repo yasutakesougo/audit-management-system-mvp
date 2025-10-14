@@ -65,8 +65,12 @@ export default function TimelineWeek({ events, startDate, onEventMove }: Timelin
     if (!todayKey) return;
     const target = headersRef.current[todayKey];
     if (target) {
-      target.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
-      target.focus({ preventScroll: true });
+      if (typeof target.scrollIntoView === 'function') {
+        target.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
+      }
+      if (typeof target.focus === 'function') {
+        target.focus({ preventScroll: true });
+      }
     }
   }, [hasToday]);
 

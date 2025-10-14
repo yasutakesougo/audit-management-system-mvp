@@ -8,6 +8,7 @@ import { toHaveNoViolations } from 'jest-axe';
 import { expect } from 'vitest';
 
 // Provide safe defaults for MSAL-dependent modules during unit tests
+process.env.TZ = 'Asia/Tokyo';
 process.env.VITE_SCHEDULES_TZ ??= 'Asia/Tokyo';
 process.env.VITE_SCHEDULES_TZ ||= 'Asia/Tokyo';
 process.env.VITE_MSAL_CLIENT_ID ??= '11111111-2222-3333-4444-555555555555';
@@ -46,4 +47,15 @@ if (!globalWithCrypto.crypto.randomUUID) {
 		});
 		return uuid as ReturnType<Crypto['randomUUID']>;
 	};
+}
+
+if (typeof HTMLElement !== 'undefined') {
+	const proto = HTMLElement.prototype as HTMLElement & {
+		scrollIntoView?: (arg?: ScrollIntoViewOptions) => void;
+	};
+	if (typeof proto.scrollIntoView !== 'function') {
+		proto.scrollIntoView = function scrollIntoViewMock() {
+			// jsdom lacks this DOM API; tests may stub it per element.
+		};
+	}
 }
