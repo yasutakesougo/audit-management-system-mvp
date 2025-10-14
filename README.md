@@ -3,28 +3,44 @@
 > 📌 クイックリンク: [プロビジョニング手順 / WhatIf レビュー](docs/provisioning.md#whatif-ドライラン-と-job-summary) ｜ [SharePoint スキーマ定義](provision/schema.xml) ｜ [プロジェクトボード自動連携](docs/project-auto-integration.md)
 
 <!-- Badges -->
+
 ![Quality Gates](https://github.com/yasutakesougo/audit-management-system-mvp/actions/workflows/test.yml/badge.svg)
 ![Provision WhatIf](https://github.com/yasutakesougo/audit-management-system-mvp/actions/workflows/provision-sharepoint.yml/badge.svg)
 ![Lint](https://img.shields.io/badge/lint-pass-brightgreen)
 ![TypeCheck](https://img.shields.io/badge/types-pass-informational)
 ![Coverage Lines](https://img.shields.io/badge/coverage-70%25%2B-green)
 
-> Quality Gate (Phase 3 Baseline): Lines >= 70% / Functions >= 70% / Statements >= 70% / Branches >= 65%  
+> Quality Gate (Phase 3 Baseline): Lines >= 70% / Functions >= 70% / Statements >= 70% / Branches >= 65%
 > Current (local latest): Lines ~78% / Functions ~73% / Statements ~78% / Branches ~76% (headroom maintained before next phase)
 
-本プロジェクトは、React, TypeScript, Vite, MUIを使用し、SharePoint OnlineをバックエンドとするSPAアプリケーションのMVP実装です。
+> **QA snapshot (v0.9.2):** Coverage 88.27% • Branch 71.70% • Lighthouse Perf 97 • A11y 100 • Errors 0.07%/mo
+
+## レポートリンク
+**CI ダッシュボード**
+
+- カバレッジ: https://your.real.coverage.url
+- Lighthouse: https://your.real.lighthouse.url
+- Sentry: https://your.real.sentry.url
+
+> 注記: これらの URL はリポジトリ変数 (`COVERAGE_URL`, `LIGHTHOUSE_URL`, `SENTRY_URL`) と同一です。
+> Actions の “Report Links” ワークフローは、PR コメントとジョブ Summary に同じリンクを自動掲示します。
+
+本プロジェクトは、React, TypeScript, Vite, MUI を使用し、SharePoint Online をバックエンドとする SPA アプリケーションの MVP 実装です。
 
 ## 開発時のよくある落とし穴
+
 - `import.meta.env` を直接参照すると lint / pre-push の制御に阻まれるので、必ず `src/lib/env.ts` のヘルパー経由で値を取得する
 - VS Code の Problems が急増したときは `src/lib/env.ts` や `.env` 差分をまず確認すると、型/エラーの原因を素早く特定できる
 
 ## Tech Stack
+
 - React 18 + TypeScript + Vite
 - MSAL (@azure/msal-browser, @azure/msal-react)
 - SharePoint Online REST API
 - LocalStorage (temporary audit log persistence)
 
 ## Key Features
+
 - Azure AD (Entra ID) login and token acquisition
 - SharePoint list access via a custom hook (`useSP`)
 - Record listing & creation against a SharePoint list
@@ -34,7 +50,23 @@
 - Manual MSAL sign-in/out control surfaced in the app header
 - Users master smoke UI for create / rename / delete sanity checks
 
+## Local Operation Mode
+
+> 拠点内 LAN でのロータッチ運用を想定した「ローカル運用モード」の概要です。完全な手順書は `docs/local-mode.md` を参照してください。
+
+- 🏠 **Overview** — SharePoint と OneDrive の同期枠内で動作するオフライン・ファーストなモード。監査ログは端末内に保持され、ネットワーク復帰後に一括同期します。
+- ⚙️ **Key Requirements** — 現場オペレーション用タブレット（iPad 等）とバックオフィス PC、SharePoint Online サイト、OneDrive またはファイルサーバーの自動バックアップ先、日報同期用の Power Automate フローもしくは cron 相当。
+- 🧩 **QA Baseline** — 品質保証の指標は [`CHANGELOG.md` の Target Metrics 表](CHANGELOG.md#target-metrics) を参照し、ライン/ブランチカバレッジや Lighthouse/axe-core のしきい値を達成したビルドのみを展開します。
+- 💾 **Backup & Recovery** — 監査ログ CSV と SharePoint リストを日次でエクスポートし、30 日以上のローテーションで保管します。障害時はローカル端末から直近の CSV を復元して SharePoint に再投入できます。
+- 🔐 **Access & Security** — データは Microsoft 365 テナントと拠点内ファイルサーバー内に閉じ、LAN 外への持ち出しは禁止。MSAL 設定は本番テナントのアプリ登録を利用し、権限は最小限に絞ります。
+- �️ **Architecture** — [ローカル運用モード概要図](docs/assets/local-mode-architecture.svg) で端末 ⇄ SharePoint ⇄ OneDrive のデータフローを視覚化。
+- �🔍 **Full Guide** — 詳細手順・トラブルシュート・保守運用は [`docs/local-mode.md`](docs/local-mode.md) を参照してください。
+- 🧾 **Daily SOP** — 日次チェックリストは [`docs/local-mode-sop.md`](docs/local-mode-sop.md) を活用し、オペレーションの抜け漏れを防ぎます。
+
+Opsフィードバックはこちら → [docs/ops-feedback.md](docs/ops-feedback.md)
+
 ## Users Master Smoke Test
+
 > 目的: SharePoint `Users_Master` リストとの CRUD 経路（hook → API → Audit ログ書き込み）を手動で検証するミニフローです。
 
 1. `npm run dev` でアプリを起動し、MSAL サインインを完了させます。
@@ -45,11 +77,13 @@
 6. ハッピーケース後は監査ログ (`/audit`) で該当アクションが記録されているかを確認し、必要なら CSV をエクスポートします。
 
 補足:
+
 - 上部の `status:` 表示は `useUsers` の内部状態のまま (`loading`/`success`/`error`) です。
 - `Refresh` ボタンは競合試験や多端末検証の際に手動で再フェッチできます。
 - 失敗時は `ErrorState` コンポーネントが SharePoint エラー本文をメッセージ化して表示します。
 
 ## Project Structure (excerpt)
+
 ```
 src/
   auth/              MSAL config & hook
@@ -63,20 +97,27 @@ src/
 ```
 
 ## Environment Variables (.env)
+
 ### Quick Setup
+
 1. Copy example: `cp .env.example .env`
 2. Choose either of the following configuration styles:
-  - **Simple**: set both `VITE_SP_RESOURCE` and `VITE_SP_SITE_RELATIVE`
-  - **Full URL**: set `VITE_SP_SITE_URL` (auto-derives the values above)
+
+- **Simple**: set both `VITE_SP_RESOURCE` and `VITE_SP_SITE_RELATIVE`
+- **Full URL**: set `VITE_SP_SITE_URL` (auto-derives the values above)
+
 3. Edit the placeholders:
-  - `<yourtenant>` → SharePoint tenant host (no protocol changes)
-  - `<SiteName>`  → Target site path segment(s)
+
+- `<yourtenant>` → SharePoint tenant host (no protocol changes)
+- `<SiteName>` → Target site path segment(s)
+
 4. Provision MSAL SPA credentials: `VITE_MSAL_CLIENT_ID`, `VITE_MSAL_TENANT_ID`, optionally `VITE_MSAL_REDIRECT_URI` / `VITE_MSAL_AUTHORITY` / `VITE_MSAL_SCOPES`
 5. Restart dev server (`npm run dev`).
 
 > Override precedence: values passed directly to `ensureConfig` (e.g. in tests) always win. `VITE_SP_RESOURCE` / `VITE_SP_SITE_RELATIVE` from the env override `VITE_SP_SITE_URL`, and the full URL fallback is only used when both override values are omitted.
 
 ### Runtime overrides (production)
+
 - `src/main.tsx` now hydrates `window.__ENV__` **before** the app mounts, merging runtime data with `import.meta.env` fallbacks.
 - Provide runtime values via either of the following (executed before `main.tsx` runs):
   - Inline script: `<script>window.__ENV__ = { VITE_MSAL_CLIENT_ID: '...' };</script>`
@@ -93,6 +134,7 @@ src/
 - Keys supplied at runtime override build-time placeholders; missing keys fall back to the compiled `.env` values. Fetch failures are non-fatal (logged only in dev).
 
 #### Testing with overrides
+
 - Call config helpers with an override object instead of mutating `import.meta.env`.
 - Example: `resolveSpCacheSettings({ VITE_SP_GET_SWR: '1', VITE_SP_GET_SWR_TTL_MS: '120000' })`.
 
@@ -118,30 +160,31 @@ VITE_SP_SITE_RELATIVE=/sites/<SiteName>
 > Override these values if you point the app at a different Azure AD tenant or application.
 
 ### Rules / Validation Logic
-| Key | Requirement | Auto-Normalization | Error If |
-|-----|-------------|--------------------|----------|
-| VITE_SP_RESOURCE | `https://*.sharepoint.com` / no trailing slash | Trailing slash trimmed | Not matching regex / placeholder present |
-| VITE_SP_SITE_RELATIVE | Starts with `/`, no trailing slash | Adds leading `/`, trims trailing slashes | Placeholder present / empty |
-| VITE_SP_SITE_URL *(optional)* | Full site URL | Splits into RESOURCE + SITE_RELATIVE | Missing scheme/host/path |
-| VITE_SP_SITE *(optional)* | Full site URL alias | Splits into RESOURCE + SITE_RELATIVE | Missing scheme/host/path |
-| VITE_SP_LIST_USERS_MASTER *(optional)* | List title override | Whitespace trimmed | Placeholder present / empty |
-| VITE_MSAL_CLIENT_ID | Azure AD app (SPA) client ID | — | Placeholder / empty |
-| VITE_MSAL_TENANT_ID | Azure AD tenant ID (GUID) | — | Placeholder / empty |
-| VITE_MSAL_REDIRECT_URI *(optional)* | Redirect URI for SPA | Defaults to `window.location.origin` | Invalid URI |
-| VITE_MSAL_AUTHORITY *(optional)* | Authority URL | Defaults to `https://login.microsoftonline.com/<tenant>` | Non-HTTPS / mismatched tenant |
-| VITE_MSAL_SCOPES *(optional)* | Token scopes list (space/comma separated) | Defaults to `${VITE_SP_RESOURCE}/.default` | Empty / unsupported scope |
-| VITE_GRAPH_SCOPES *(optional)* | Graph delegated scopes | — | useSP must support Graph path |
+
+| Key                                    | Requirement                                    | Auto-Normalization                                       | Error If                                 |
+| -------------------------------------- | ---------------------------------------------- | -------------------------------------------------------- | ---------------------------------------- |
+| VITE_SP_RESOURCE                       | `https://*.sharepoint.com` / no trailing slash | Trailing slash trimmed                                   | Not matching regex / placeholder present |
+| VITE_SP_SITE_RELATIVE                  | Starts with `/`, no trailing slash             | Adds leading `/`, trims trailing slashes                 | Placeholder present / empty              |
+| VITE_SP_SITE_URL _(optional)_          | Full site URL                                  | Splits into RESOURCE + SITE_RELATIVE                     | Missing scheme/host/path                 |
+| VITE_SP_SITE _(optional)_              | Full site URL alias                            | Splits into RESOURCE + SITE_RELATIVE                     | Missing scheme/host/path                 |
+| VITE_SP_LIST_USERS_MASTER _(optional)_ | List title override                            | Whitespace trimmed                                       | Placeholder present / empty              |
+| VITE_MSAL_CLIENT_ID                    | Azure AD app (SPA) client ID                   | —                                                        | Placeholder / empty                      |
+| VITE_MSAL_TENANT_ID                    | Azure AD tenant ID (GUID)                      | —                                                        | Placeholder / empty                      |
+| VITE_MSAL_REDIRECT_URI _(optional)_    | Redirect URI for SPA                           | Defaults to `window.location.origin`                     | Invalid URI                              |
+| VITE_MSAL_AUTHORITY _(optional)_       | Authority URL                                  | Defaults to `https://login.microsoftonline.com/<tenant>` | Non-HTTPS / mismatched tenant            |
+| VITE_MSAL_SCOPES _(optional)_          | Token scopes list (space/comma separated)      | Defaults to `${VITE_SP_RESOURCE}/.default`               | Empty / unsupported scope                |
+| VITE_GRAPH_SCOPES _(optional)_         | Graph delegated scopes                         | —                                                        | useSP must support Graph path            |
 
 Placeholders recognized as invalid: `<yourtenant>`, `<SiteName>`, `__FILL_ME__`.
 
 ## スケジュール機能のフラグ
 
-| 変数 | 例 | 意味 |
-|---|---|---|
-| `VITE_FEATURE_SCHEDULES` | `1` | `/schedule` ルートとナビゲーションを有効化 |
-| `VITE_FEATURE_SCHEDULES_GRAPH` | `1` | スケジュールのデータ取得を **Demo** → **Microsoft Graph** に切替 |
-| `VITE_SCHEDULES_TZ` | `Asia/Tokyo` | Graphから取得したイベントの表示タイムゾーン（任意） |
-| `VITE_SCHEDULES_WEEK_START` | `1` | 週の起点（0=Sun ... 6=Sat、規定は月曜=1） |
+| 変数                           | 例           | 意味                                                             |
+| ------------------------------ | ------------ | ---------------------------------------------------------------- |
+| `VITE_FEATURE_SCHEDULES`       | `1`          | `/schedule` ルートとナビゲーションを有効化                       |
+| `VITE_FEATURE_SCHEDULES_GRAPH` | `1`          | スケジュールのデータ取得を **Demo** → **Microsoft Graph** に切替 |
+| `VITE_SCHEDULES_TZ`            | `Asia/Tokyo` | Graph から取得したイベントの表示タイムゾーン（任意）             |
+| `VITE_SCHEDULES_WEEK_START`    | `1`          | 週の起点（0=Sun ... 6=Sat、規定は月曜=1）                        |
 
 > 実行時は `src/config/featureFlags.ts` と `env.ts` の `getAppConfig()` 経由で評価されます。
 
@@ -155,29 +198,37 @@ npm run dev
 
 ### Playwright での強制有効化（CI/E2E）
 
-E2E は `localStorage["feature:schedules"]="1"` を事前注入してルートを開通します（環境変数未設定でもOK）。
+E2E は `localStorage["feature:schedules"]="1"` を事前注入してルートを開通します（環境変数未設定でも OK）。
 
 ### Debugging Misconfiguration
+
 If misconfigured, `ensureConfig` (in `src/lib/spClient.ts`) throws with a multi-line guidance message and the error boundary (`ConfigErrorBoundary`) renders a remediation panel.
 
 To confirm loaded values during development:
+
 ```ts
 if (import.meta.env.DEV) {
-  console.log('[ENV]', import.meta.env.VITE_SP_RESOURCE, import.meta.env.VITE_SP_SITE_RELATIVE);
+  console.log(
+    "[ENV]",
+    import.meta.env.VITE_SP_RESOURCE,
+    import.meta.env.VITE_SP_SITE_RELATIVE
+  );
 }
 ```
 
 ### Common Pitfalls & Fixes
-| Symptom | Cause | Fix |
-|---------|-------|-----|
-| "SharePoint 接続設定が未完了です" | Placeholders still present | Replace `<yourtenant>` / `<SiteName>` with real values |
-| 401 after sign-in | Permissions not admin-consented | Grant admin consent to SharePoint delegated permissions |
-| 404 `_api/web` | Wrong site relative path | Double-check `/sites/<SiteName>` casing & existence |
-| `VITE_SP_RESOURCE の形式が不正` | Added trailing slash or missing host | Remove trailing `/`, ensure `https://tenant.sharepoint.com` |
-| `VITE_SP_SITE_URL の形式が不正` | Missing path or non-SharePoint host | Use full URL like `https://tenant.sharepoint.com/sites/Example` |
-| `AcquireTokenSilent` scope warnings | Graph scopes configured but useSP still targets REST | Remove `VITE_GRAPH_SCOPES` or update implementation |
+
+| Symptom                             | Cause                                                | Fix                                                             |
+| ----------------------------------- | ---------------------------------------------------- | --------------------------------------------------------------- |
+| "SharePoint 接続設定が未完了です"   | Placeholders still present                           | Replace `<yourtenant>` / `<SiteName>` with real values          |
+| 401 after sign-in                   | Permissions not admin-consented                      | Grant admin consent to SharePoint delegated permissions         |
+| 404 `_api/web`                      | Wrong site relative path                             | Double-check `/sites/<SiteName>` casing & existence             |
+| `VITE_SP_RESOURCE の形式が不正`     | Added trailing slash or missing host                 | Remove trailing `/`, ensure `https://tenant.sharepoint.com`     |
+| `VITE_SP_SITE_URL の形式が不正`     | Missing path or non-SharePoint host                  | Use full URL like `https://tenant.sharepoint.com/sites/Example` |
+| `AcquireTokenSilent` scope warnings | Graph scopes configured but useSP still targets REST | Remove `VITE_GRAPH_SCOPES` or update implementation             |
 
 ### Cache & Concurrency Knobs
+
 - `VITE_SP_GET_SWR` — Enable stale-while-revalidate + ETag reuse (`0` = off, `1` = opt-in).
 - `VITE_SP_GET_SWR_TTL_MS` — Hard TTL for cached GET responses (ms). Overrides legacy `VITE_SP_GET_TTL_MS` / `VITE_SP_GET_CACHE_TTL` when present.
 - `VITE_SP_GET_SWR_WINDOW_MS` — Additional SWR window (ms) after TTL expires before treating entries as cold misses.
@@ -194,6 +245,7 @@ if (import.meta.env.DEV) {
 **禁止事項:** `Date#setHours` など、ローカルタイムゾーンに依存する丸めは使用しません。DST・地域差で破綻するため、常に文字列 → `zonedTimeToUtc`（`date-fns-tz` では `fromZonedTime`）の経路を用いて確定します。
 
 **設定:**
+
 - `VITE_SCHEDULES_TZ` — 表示タイムゾーン。未設定または不正な場合は `Intl.DateTimeFormat().resolvedOptions().timeZone`、それも不可なら `Asia/Tokyo` へフォールバックします（警告ログ付き）。
 - `VITE_SCHEDULES_WEEK_START` — 週の開始曜日（0=日曜〜6=土曜）。デフォルトは 1（=月曜）。
 
@@ -202,6 +254,7 @@ if (import.meta.env.DEV) {
 テストでタイムゾーンを固定する場合は `tests/unit/schedule/helpers/loadDateutils.ts` の `loadDateutilsWithTz()` を利用し、返される `restore()` を各テスト後に呼び出して `Intl.DateTimeFormat` / `import.meta.env` の差し替え状態を元に戻してください。
 
 ### Stale-While-Revalidate & Scoped Bust (opt-in)
+
 - Flip `VITE_SP_GET_SWR=1` to opt into background refresh with SharePoint ETag reuse. Hard TTL is controlled by `VITE_SP_GET_SWR_TTL_MS`; the additional grace window comes from `VITE_SP_GET_SWR_WINDOW_MS`.
 - Fresh hits (<= TTL) return immediately from cache. Between TTL and TTL + SWR window, cached data is returned instantly while a single background refresh revalidates the entry. Beyond that window the entry is treated as cold and a network fetch occurs.
 - When SharePoint responds `304 Not Modified`, the client resets the TTL without touching the JSON payload. New `If-None-Match` headers are attached automatically whenever a cached ETag exists.
@@ -209,6 +262,7 @@ if (import.meta.env.DEV) {
 - Mutations and `$batch` calls invalidate only the affected cache keys using tags such as `list:Records` / `list:Records:item:42`. If parsing a batch payload fails to detect targets, the client falls back to a global bust.
 
 ### Optional Flags
+
 ```
 # Verbose debug for audit & SharePoint client
 VITE_AUDIT_DEBUG=1
@@ -220,10 +274,12 @@ VITE_SP_RETRY_MAX_DELAY_MS=5000
 ```
 
 ### Dev Tips
+
 - After changing auth settings (MSAL config, scopes, or cookie policy), clear site cookies once to flush stale MSAL state.
 - Inspect cache stats in DevTools via `window.__SP_DBG__()` — it now reports `{ size, hits, cacheHits, staleHits, swrRefreshes, _304s, lruKeysSample }`. Individual counters (`window.__SP_GET_HITS__`, `__SP_GET_CACHE_HITS__`, `__SP_GET_STALE_HITS__`, `__SP_GET_SWR_REFRESHES__`, `__SP_GET_304s__`) remain available for quick console pokes.
 
 ### Bypass cache (for debugging)
+
 - Add header `x-sp-bypass-cache: 1` on a GET to force a network fetch.
 - Or pass `opt: { bypassCache: true }` to `getListItemsByTitle` if you opt into the helper flag (suppresses both cache usage and automatic `If-None-Match`).
 
@@ -240,11 +296,13 @@ Use `cookiePolicy({ crossSite })` to derive **SameSite** and **Secure** automati
 - After switching dev to HTTPS, **clear cookies** to remove stale warnings.
 
 Utilities:
+
 - `buildSetCookie(name, value, options)` → single `Set-Cookie` string.
 - `buildCookieBundle(base, items)` → several cookies at once.
 - `appendSetCookies(headers, cookies)` → append multiple cookies (Edge-friendly).
 
 Types:
+
 - Reuse `SameSite` union (`'none' | 'lax' | 'strict'`) across frameworks (Express/Next/Hono).
 - Pair this helper with your CSP / CSRF strategy—MDN’s [`Set-Cookie` security guide](https://developer.mozilla.org/docs/Web/HTTP/Cookies#security) has an excellent checklist for hardening those headers.
 - Set `COOKIE_DEV_WARN=1` in your dev shell to fire `onDevFallbackWarn` whenever a cross-site cookie request falls back to `SameSite=Lax; Secure=false` locally (helps catch stray prod-only expectations).
@@ -252,9 +310,11 @@ Types:
 - Local commits run `npm run lint`, `npm run typecheck`, `npm run lint:cookies`, and `lint-staged` automatically via Husky’s pre-commit hook—only use the documented ESLint disable for adapters when absolutely necessary.
 
 ## Audit Metrics (Testing Contract)
+
 `AuditPanel` exposes a stable, test-focused metrics container after executing a batch sync.
 
 Selector:
+
 ```
 [data-testid="audit-metrics"]
 ```
@@ -271,36 +331,42 @@ Exposed data attributes (stringified numbers):
 Each pill also has `data-metric` = `new` / `duplicates` / `failed` in stable order for ordering assertions.
 
 ### Example (Playwright)
+
 ```ts
-const metrics = page.getByTestId('audit-metrics');
-await expect(metrics).toHaveAttribute('data-total', '6');
-await expect(metrics).toHaveAttribute('data-success', '5');
-await expect(metrics).toHaveAttribute('data-duplicates', '2');
-await expect(metrics).toHaveAttribute('data-new', '3');
-await expect(metrics).toHaveAttribute('data-failed', '1');
-const order = await metrics.locator('[data-metric]').evaluateAll(ns => ns.map(n => n.getAttribute('data-metric')));
-expect(order).toEqual(['new','duplicates','failed']);
+const metrics = page.getByTestId("audit-metrics");
+await expect(metrics).toHaveAttribute("data-total", "6");
+await expect(metrics).toHaveAttribute("data-success", "5");
+await expect(metrics).toHaveAttribute("data-duplicates", "2");
+await expect(metrics).toHaveAttribute("data-new", "3");
+await expect(metrics).toHaveAttribute("data-failed", "1");
+const order = await metrics
+  .locator("[data-metric]")
+  .evaluateAll((ns) => ns.map((n) => n.getAttribute("data-metric")));
+expect(order).toEqual(["new", "duplicates", "failed"]);
 ```
 
 Rationale: Avoid brittle regex on localized labels (新規/重複/失敗) and ensure i18n or stylistic changes don't break tests.
 
-> i18n Note: Metric pill labels are centralized in `src/features/audit/labels.ts` for future localization. Only data-* attributes are used by tests, so translating the labels will not break assertions.
+> i18n Note: Metric pill labels are centralized in `src/features/audit/labels.ts` for future localization. Only data-\* attributes are used by tests, so translating the labels will not break assertions.
 
 ### Helper Utility (Optional)
-`tests/e2e/utils/metrics.ts` provides `readAuditMetrics(page)` and `expectConsistent(snapshot)`:
-```ts
-import { readAuditMetrics, expectConsistent } from '../utils/metrics';
 
-test('batch metrics math', async ({ page }) => {
-  await page.goto('/audit');
+`tests/e2e/utils/metrics.ts` provides `readAuditMetrics(page)` and `expectConsistent(snapshot)`:
+
+```ts
+import { readAuditMetrics, expectConsistent } from "../utils/metrics";
+
+test("batch metrics math", async ({ page }) => {
+  await page.goto("/audit");
   // ... seed logs & trigger batch ...
   const snap = await readAuditMetrics(page);
   expectConsistent(snap); // validates newItems === success - duplicates
-  expect(snap.order).toEqual(['new','duplicates','failed']);
+  expect(snap.order).toEqual(["new", "duplicates", "failed"]);
 });
 ```
 
 ## Authentication Flow
+
 1. MSAL instance configured in `src/auth/msalConfig.ts`
 2. `src/lib/msal.ts` boots a shared `PublicClientApplication` instance and initialization
 3. App root is wrapped by `MsalProvider` in `src/main.tsx`, and the header shows a `Sign in` / `Sign out` control (`src/ui/components/SignInButton.tsx`)
@@ -310,33 +376,37 @@ test('batch metrics math', async ({ page }) => {
 > ヒント: 自動ログインが無い環境では、右上の「サインイン」ボタンから `loginPopup` を実行できます。既存セッションがある場合は起動時に `ssoSilent` が働き、自動復元されます。
 
 ## SharePoint Access: `useSP`
+
 Located in `src/lib/spClient.ts`.
 
 ### Responsibilities
+
 - Validate environment & normalize base SharePoint URL
-- Provide `spFetch` (authenticated REST calls with retry on 401) 
+- Provide `spFetch` (authenticated REST calls with retry on 401)
 - Provide convenience helpers:
   - `getListItemsByTitle(title, odataQuery?)`
   - `addListItemByTitle(title, payload)`
 
 ### Usage Example
+
 ```tsx
-import { useSP } from '../lib/spClient';
+import { useSP } from "../lib/spClient";
 
 function Example() {
   const { getListItemsByTitle, addListItemByTitle } = useSP();
 
   useEffect(() => {
-    getListItemsByTitle('Records').then(items => console.log(items));
+    getListItemsByTitle("Records").then((items) => console.log(items));
   }, []);
 
-  const add = () => addListItemByTitle('Records', { Title: 'New Item' });
+  const add = () => addListItemByTitle("Records", { Title: "New Item" });
 
   return <button onClick={add}>Add</button>;
 }
 ```
 
 ### Error Handling
+
 - Misconfigured env throws early, describing what to fix.
 - 401 responses trigger a silent re-acquire of token (once) before failing.
 - Errors bubble with contextual JSON snippet (truncated) for easier debugging.
@@ -346,14 +416,17 @@ function Example() {
 - `choicesPolicy` は 既定 `additive`：不足選択肢のみ追加し、既存は削除しません。
   - Summary 出力例: `+ Add choices ...`, `! Keep existing (not removing) ...`
 - `replace` は将来拡張用で、現バージョンでは警告ログを出し `additive` と同じ動作です。
-- 選択肢削除が必要な場合は、ユーザー影響とデータ整合性を精査し、移行計画（新列 *_v2 作成など）を検討してください。
+- 選択肢削除が必要な場合は、ユーザー影響とデータ整合性を精査し、移行計画（新列 \*\_v2 作成など）を検討してください。
 
 ## Migration Notes
+
 Legacy helper `spRequest` and old `records/api.ts` have been removed / deprecated.
 Use `useSP()` directly in components or create thin feature-specific wrappers if needed.
 
 ## Development
+
 Install dependencies and start dev server (port 3000):
+
 ```
 npm install
 npm run dev
@@ -361,15 +434,18 @@ npm run dev
 ### Test & Coverage
 
 ### Strategy
-- **Unit (厚め)**: 同期ロジック、リトライ、バッチパーサ、CSV 生成などの純粋ロジックは **Vitest** で網羅。UI 断面も **React Testing Library (jsdom)** でコンポーネント単位を検証。  
+- **Unit (厚め)**: 同期ロジック、リトライ、バッチパーサ、CSV 生成などの純粋ロジックは **Vitest** で網羅。UI 断面も **React Testing Library (jsdom)** でコンポーネント単位を検証。
 - **E2E (最小)**: **Playwright** は「失敗のみ再送」「429/503 リトライ」など **重要シナリオの最小数** に絞り、ページ全体のフレーク回避と実行時間を抑制。
-- **カバレッジ・ゲート**: Phase 3 固定（Lines/Funcs/Stmts **70%** / Branches **65%**）。  
+- **カバレッジ・ゲート**: Phase 3 固定（Lines/Funcs/Stmts **70%** / Branches **65%**）。
   ロジックの追加時はユニットテストを先に整備して緑化→E2E 追加は必要最小に留めます。
 - Vitest suites that touch `ensureConfig` reset `import.meta.env` per test to avoid leaking real tenant URLs into assertions; keep this pattern when adding new cases.
 
 現在の固定品質ゲート (Phase 3 固定化):
+
 ```
+
 Lines >= 70%, Statements >= 70%, Functions >= 70%, Branches >= 65%
+
 ```
 `vitest.config.ts` の `thresholds` を将来引き上げる際は、CI 3 連続グリーン後に 5–10pt 程度ずつ。急激な引き上げは避けてください。
 
@@ -391,8 +467,10 @@ Lines >= 70%, Statements >= 70%, Functions >= 70%, Branches >= 65%
 
 ローカル詳細メトリクス確認:
 ```
+
 npm run test:coverage -- --reporter=text
-```
+
+````
 CI では text / lcov / json-summary を生成。将来的にバッジ or PR コメント自動化を計画。
 
 ### Utility: `safeRandomUUID`
@@ -406,7 +484,7 @@ const id = safeRandomUUID();
 
 // テストや特殊用途で固定値を注入
 const predictable = safeRandomUUID({ randomUUID: () => 'fixed-uuid-1234' });
-```
+````
 
 > 注入によりグローバル `crypto` を差し替えずテストを安定化。
 
@@ -415,10 +493,12 @@ const predictable = safeRandomUUID({ randomUUID: () => 'fixed-uuid-1234' });
 ### Quality Gates (Local)
 以下をローカルで実行することで、CI と同じ早期フィードバックを得られます:
 ```
-npm run typecheck   # 型不整合の検出
-npm run lint        # コードスタイル/潜在バグ検出 (ESLint + @typescript-eslint)
-npm run test        # ユニットテスト (最小)
-npm run test:coverage  # カバレッジ付き
+
+npm run typecheck # 型不整合の検出
+npm run lint # コードスタイル/潜在バグ検出 (ESLint + @typescript-eslint)
+npm run test # ユニットテスト (最小)
+npm run test:coverage # カバレッジ付き
+
 ```
 推奨フロー: 変更後すぐ `typecheck` / `lint`、安定したら `test:coverage`。PR 前にすべて PASS を確認してください。
 
@@ -446,7 +526,9 @@ npm run test:coverage  # カバレッジ付き
 ### E2E Tests (Playwright)
 初期スモークとして Playwright を導入しています。
 ```
+
 npm run test:e2e
+
 ```
 `tests/e2e/audit-basic.spec.ts` がアプリシェルと監査ログ表示の最低限を確認します。拡張する場合は同ディレクトリに追加してください。
 
@@ -456,6 +538,7 @@ npm run test:e2e
 ### デバッグログ制御
 `.env` に `VITE_AUDIT_DEBUG=1` を設定すると、バッチ同期内部の以下情報が出力されます。
 - リトライ試行 (`[audit:retry]`)
+- SharePoint リトライ (`[sp:retry]`): attempt / status / reason / delay （トークンや URL パラメータは出力されません）
 - チャンク解析結果 (`[audit:chunk]`)
 - フェータルエラー (`[audit:fatal]`)
 OFF 時は `debug` レベルのみ抑制し、warn/error は常に出力されます。
@@ -465,8 +548,10 @@ OFF 時は `debug` レベルのみ抑制し、warn/error は常に出力され�
 
 UI 指標例:
 ```
-New: 10  Duplicate: 3  Failed: 2  Duration: 420ms
+
+New: 10 Duplicate: 3 Failed: 2 Duration: 420ms
 Categories: { throttle:1, server:1 }
+
 ```
 
 - New: 新規 201
@@ -485,11 +570,13 @@ MSAL のキャッシュされたアクセストークン有効期限が閾値（
 
 メトリクス (debug 有効時 `window.__TOKEN_METRICS__`):
 ```
+
 {
-  acquireCount: <acquireTokenSilent 総呼出回数>,
-  refreshCount: <soft refresh 実行回数>,
-  lastRefreshEpoch: <最後の refresh UNIX 秒>
+acquireCount: <acquireTokenSilent 総呼出回数>,
+refreshCount: <soft refresh 実行回数>,
+lastRefreshEpoch: <最後の refresh UNIX 秒>
 }
+
 ```
 `VITE_AUDIT_DEBUG=1` のとき `spClient` 側で snapshot を `[spClient] token metrics snapshot` として出力します。
 
@@ -503,8 +590,10 @@ MSAL のキャッシュされたアクセストークン有効期限が閾値（
 
 ローカル / 手動実行例 (接続後):
 ```
+
 pwsh -File ./scripts/backfill-entry-hash.ps1 -SiteUrl https://contoso.sharepoint.com/sites/Audit -WhatIfMode
 pwsh -File ./scripts/backfill-entry-hash.ps1 -SiteUrl https://contoso.sharepoint.com/sites/Audit
+
 ```
 オプション:
 - `-BatchSize`: まとめて更新する件数 (既定 50)
@@ -519,9 +608,11 @@ SharePoint から 429 (Throttle) / 503 / 504 が返った場合は指数バッ�
 
 環境変数 (既定値):
 ```
-VITE_SP_RETRY_MAX=4              # 最大試行回数 (初回+再試行含む)
-VITE_SP_RETRY_BASE_MS=400        # バックオフ基準 ms (指数 2^(attempt-1))
-VITE_SP_RETRY_MAX_DELAY_MS=5000  # 1 回あたり待機時間上限
+
+VITE_SP_RETRY_MAX=4 # 最大試行回数 (初回+再試行含む)
+VITE_SP_RETRY_BASE_MS=400 # バックオフ基準 ms (指数 2^(attempt-1))
+VITE_SP_RETRY_MAX_DELAY_MS=5000 # 1 回あたり待機時間上限
+
 ```
 アルゴリズム:
 1. 応答が 429/503/504 → attempt < max なら待機
@@ -531,8 +622,10 @@ VITE_SP_RETRY_MAX_DELAY_MS=5000  # 1 回あたり待機時間上限
 
 デバッグ例 (`VITE_AUDIT_DEBUG=1`):
 ```
+
 [spClient] retrying { status: 429, attempt: 2, waitMs: 317 }
-```
+
+````
 
 ## CSV Export (Audit Panel)
 Found in `src/features/audit/AuditPanel.tsx` – quoting & escaping ensures RFC4180-compatible output for Excel.
@@ -623,29 +716,28 @@ Found in `src/features/audit/AuditPanel.tsx` – quoting & escaping ensures RFC4
   "timestamp": "2025-09-23T09:00:00.000Z",
   "categories": { "bad_request": 1, "server": 1 }
 }
-```
+````
 
 ### 失敗のみ再送の動作
+
 1. 部分失敗時、Content-ID から元インデックスを特定し失敗行のみローカル保持。
 2. 「失敗のみ再送」ボタンで残存分を再バッチ送信。
 3. 全件成功（重複含む）でローカル監査ログをクリア。
 
-
-
 ## 受け入れ基準確認
 
-  - [x] `npm run dev` 起動 → サインインできる。
-  - [x] 「日次記録」で SharePoint から一覧取得できる。
-  - [x] Title を入力して「追加」→ 正常終了後、一覧に追加される（read-backによる整合性確保）。
-  - [x] ヘッダーの履歴アイコンから監査ログを開き、「CREATE_SUCCESS」ログが記録されていることを確認できる。
-  - [x] 主要ボタンが 44px 以上あり、Tab 移動でフォーカス可視。
-  - [x] プロジェクトが指定ディレクトリ構成で生成されている。
+- [x] `npm run dev` 起動 → サインインできる。
+- [x] 「日次記録」で SharePoint から一覧取得できる。
+- [x] Title を入力して「追加」→ 正常終了後、一覧に追加される（read-back による整合性確保）。
+- [x] ヘッダーの履歴アイコンから監査ログを開き、「CREATE_SUCCESS」ログが記録されていることを確認できる。
+- [x] 主要ボタンが 44px 以上あり、Tab 移動でフォーカス可視。
+- [x] プロジェクトが指定ディレクトリ構成で生成されている。
 
 ---
 
 ## SharePoint リストの自動プロビジョニング
 
-本プロジェクトは **GitHub Actions + PnP.PowerShell** を用いて、PnP Provisioning Template (`provision/schema.xml`) から SharePoint リストをプロビジョニングします。  
+本プロジェクトは **GitHub Actions + PnP.PowerShell** を用いて、PnP Provisioning Template (`provision/schema.xml`) から SharePoint リストをプロビジョニングします。
 **WhatIf（ドライラン）**に対応し、**Job Summary** に差分と現況スナップショットを出力します。JSON スキーマはレガシー互換用としてのみ残しています。
 
 ### 仕組みの概要
@@ -654,21 +746,21 @@ Found in `src/features/audit/AuditPanel.tsx` – quoting & escaping ensures RFC4
 - スクリプト: `scripts/provision-spo.ps1`
 - スキーマ: `provision/schema.xml`（PnP Provisioning Template）
 
-> 認証は **アプリケーション権限**（Entra ID アプリ＋証明書 or クライアントシークレット）を想定。  
+> 認証は **アプリケーション権限**（Entra ID アプリ＋証明書 or クライアントシークレット）を想定。
 > SharePoint の **Sites.FullControl.All** 等、必要権限に管理者同意が必要です。
 
 ---
 
 ### GitHub Secrets（必須）
 
-| Secret 名             | 説明例                                           |
-|-----------------------|--------------------------------------------------|
-| `AAD_TENANT_ID`       | `650ea331-3451-4bd8-8b5d-b88cc49e6144`          |
-| `AAD_APP_ID`          | `0d704aa1-d263-4e76-afac-f96d92dce620`          |
-| `SPO_RESOURCE`        | `https://<tenant>.sharepoint.com`               |
-| `SPO_CERT_BASE64`     | （証明書認証を使う場合）PFX の Base64 文字列     |
-| `SPO_CERT_PASSWORD`   | （証明書認証を使う場合）PFX パスワード           |
-| `SPO_CLIENT_SECRET`   | （クライアントシークレット認証を使う場合のみ）   |
+| Secret 名           | 説明例                                         |
+| ------------------- | ---------------------------------------------- |
+| `AAD_TENANT_ID`     | `650ea331-3451-4bd8-8b5d-b88cc49e6144`         |
+| `AAD_APP_ID`        | `0d704aa1-d263-4e76-afac-f96d92dce620`         |
+| `SPO_RESOURCE`      | `https://<tenant>.sharepoint.com`              |
+| `SPO_CERT_BASE64`   | （証明書認証を使う場合）PFX の Base64 文字列   |
+| `SPO_CERT_PASSWORD` | （証明書認証を使う場合）PFX パスワード         |
+| `SPO_CLIENT_SECRET` | （クライアントシークレット認証を使う場合のみ） |
 
 > 証明書とクライアントシークレットは **どちらか一方**を設定。
 
@@ -678,14 +770,14 @@ Found in `src/features/audit/AuditPanel.tsx` – quoting & escaping ensures RFC4
 
 Actions →「Provision SharePoint Lists」→ **Run workflow** で以下を指定します。
 
-| 入力名             | 既定値                 | 説明                                                                                      |
-|--------------------|------------------------|-------------------------------------------------------------------------------------------|
-| `siteRelativeUrl`  | `/sites/welfare`       | 対象サイトの相対パス                                                                       |
-| `schemaPath`       | `provision/schema.xml` | スキーマのパス（省略時は XML。`.json` も互換サポート）                                      |
-| `whatIf`           | `true`                 | **ドライラン**（計画のみ、変更は加えない）                                                 |
-| `applyFieldUpdates`| `true`                 | 型が一致している既存列に対して **表示名/説明/選択肢/必須/一意/最大長** を安全に更新        |
-| `forceTypeReplace` | `false`                | 型不一致時に `*_v2` 列を新規作成し、**値をコピーして移行**（旧列は残す）                   |
-| `recreateExisting` | `false`                | 既存リストを **削除→再作成**（破壊的。データ消失に注意）                                   |
+| 入力名              | 既定値                 | 説明                                                                                |
+| ------------------- | ---------------------- | ----------------------------------------------------------------------------------- |
+| `siteRelativeUrl`   | `/sites/welfare`       | 対象サイトの相対パス                                                                |
+| `schemaPath`        | `provision/schema.xml` | スキーマのパス（省略時は XML。`.json` も互換サポート）                              |
+| `whatIf`            | `true`                 | **ドライラン**（計画のみ、変更は加えない）                                          |
+| `applyFieldUpdates` | `true`                 | 型が一致している既存列に対して **表示名/説明/選択肢/必須/一意/最大長** を安全に更新 |
+| `forceTypeReplace`  | `false`                | 型不一致時に `*_v2` 列を新規作成し、**値をコピーして移行**（旧列は残す）            |
+| `recreateExisting`  | `false`                | 既存リストを **削除 → 再作成**（破壊的。データ消失に注意）                          |
 
 ---
 
@@ -719,8 +811,8 @@ Actions →「Provision SharePoint Lists」→ **Run workflow** で以下を指�
 
 ### WhatIf（ドライラン）と Job Summary
 
-* `whatIf: true` で 計画のみを出力（変更なし）
-* Summary 例（抜粋）:
+- `whatIf: true` で 計画のみを出力（変更なし）
+- Summary 例（抜粋）:
 
 ```
 List exists: SupportRecord_Daily
@@ -739,40 +831,42 @@ Existing fields snapshot: Audit_Events
 
 ### FAQ
 
-| 質問 | 回答 |
-|------|------|
+| 質問                     | 回答                                                                                     |
+| ------------------------ | ---------------------------------------------------------------------------------------- |
 | 既存リストを壊したくない | 既定 `recreateExisting=false`, `forceTypeReplace=false`, `applyFieldUpdates=true` を維持 |
-| 型が違っていた | まず `whatIf: true` で確認 → 問題なければ `forceTypeReplace: true` で *_v2 移行 |
-| 一意制約を付けたい | 重複データがあると失敗。事前に重複を排除 |
-| 大量アイテム移行が遅い | 今後バッチ最適化予定。現状は逐次更新 |
+| 型が違っていた           | まず `whatIf: true` で確認 → 問題なければ `forceTypeReplace: true` で \*\_v2 移行        |
+| 一意制約を付けたい       | 重複データがあると失敗。事前に重複を排除                                                 |
+| 大量アイテム移行が遅い   | 今後バッチ最適化予定。現状は逐次更新                                                     |
 
 ---
 
 ### 依存・前提
 
-| 項目 | 内容 |
-|------|------|
-| ランナー | ubuntu-latest |
-| モジュール | PnP.PowerShell |
-| 権限 | Entra アプリ (Sites.FullControl.All など) + 管理者同意 |
+| 項目       | 内容                                                   |
+| ---------- | ------------------------------------------------------ |
+| ランナー   | ubuntu-latest                                          |
+| モジュール | PnP.PowerShell                                         |
+| 権限       | Entra アプリ (Sites.FullControl.All など) + 管理者同意 |
 
 ---
 
 より詳細なガイドは `docs/provisioning.md` を参照してください。
 
 ## Troubleshooting
-| Symptom | Likely Cause | Fix |
-|---------|--------------|-----|
-| URL parse / 400 errors | Placeholder env values | Update `.env` with real tenant/site values |
-| 401 from SharePoint | Token expired / missing scope | Ensure `acquireToken` runs, user signed in, correct API permissions granted |
-| Module not found '@/*' | Path alias not applied | Check `tsconfig.json` and `vite.config.ts` alignment |
-| Type errors for 'path' or 'url' | Missing node types | Ensure `"types": ["vite/client", "node"]` in `tsconfig.json` |
+
+| Symptom                         | Likely Cause                  | Fix                                                                         |
+| ------------------------------- | ----------------------------- | --------------------------------------------------------------------------- |
+| URL parse / 400 errors          | Placeholder env values        | Update `.env` with real tenant/site values                                  |
+| 401 from SharePoint             | Token expired / missing scope | Ensure `acquireToken` runs, user signed in, correct API permissions granted |
+| Module not found '@/\*'         | Path alias not applied        | Check `tsconfig.json` and `vite.config.ts` alignment                        |
+| Type errors for 'path' or 'url' | Missing node types            | Ensure `"types": ["vite/client", "node"]` in `tsconfig.json`                |
 
 > ローカルで PWA/Service Worker を試したことがある場合は、DevTools → Application → Service Workers で **Unregister** すると TLS エラーが消えるケースがあります。
 
 ## ローカル Vite HTTPS: ERR_SSL_VERSION_OR_CIPHER_MISMATCH 完全解決ガイド
 
 TL;DR（最短復旧フロー）
+
 1. https://localhost:3000 / https://127.0.0.1:3000 で開く
 2. Chrome の HSTS を削除：[chrome://net-internals/#hsts](chrome://net-internals/#hsts) → Delete domain localhost → Delete → **ブラウザを完全終了（⌘Q）**（再読み込みでは復旧しない）
 3. Service Worker とキャッシュ：DevTools → Network → “Disable cache”、Application → Service Workers → Unregister
@@ -803,27 +897,27 @@ mkcert -key-file ./.certs/localhost-key.pem -cert-file ./.certs/localhost.pem lo
 
 ```ts
 // vite.config.ts
-import { defineConfig } from 'vite'
-import react from '@vitejs/plugin-react'
-import fs from 'fs'
+import { defineConfig } from "vite";
+import react from "@vitejs/plugin-react";
+import fs from "fs";
 
 export default defineConfig({
   plugins: [react()],
   server: {
-    host: '127.0.0.1',
+    host: "127.0.0.1",
     port: 3000,
     https: {
-      cert: fs.readFileSync('.certs/localhost.pem'),
-      key: fs.readFileSync('.certs/localhost-key.pem'),
-      ALPNProtocols: ['http/1.1'],
+      cert: fs.readFileSync(".certs/localhost.pem"),
+      key: fs.readFileSync(".certs/localhost-key.pem"),
+      ALPNProtocols: ["http/1.1"],
     },
     hmr: {
-      protocol: 'wss',
-      host: '127.0.0.1',
+      protocol: "wss",
+      host: "127.0.0.1",
       port: 3000,
     },
   },
-})
+});
 ```
 
 ```bash
@@ -843,7 +937,7 @@ lsof -tiTCP:3000 -sTCP:LISTEN | xargs -r kill -TERM
 lsof -tiTCP:5173 -sTCP:LISTEN | xargs -r kill -TERM
 ```
 
-### 1分スモークテスト
+### 1 分スモークテスト
 
 ```bash
 lsof -tiTCP:3000 -sTCP:LISTEN | xargs -r kill -TERM
@@ -854,7 +948,8 @@ curl -I https://127.0.0.1:3000/  # HTTP/2 200 と TLSv1.3 を確認
 ```
 
 なぜ起きる？（要因別の対処）
-- ブラウザ状態（主犯）：HSTS・Service Worker・HTTP/HTTPS取り違え
+
+- ブラウザ状態（主犯）：HSTS・Service Worker・HTTP/HTTPS 取り違え
 - 環境の妨害：企業プロキシ/セキュリティソフトの MITM
 - 証明書チェーン：mkcert ルート CA が「常に信頼」になっていない
 - ポート競合：ゴーストプロセスが 3000/5173 を占有
@@ -871,11 +966,12 @@ curl -vk https://127.0.0.1:3000/ | head -n 20
 curl で 200 OK & TLSv1.3 が見えればサーバ側は健全。→ ブラウザ状態/環境要因の疑いが濃厚。
 
 チェックリスト
+
 - [ ] https:// でアクセスしている
-- [ ] chrome://net-internals/#hsts で localhost を Delete（完全終了→再起動）
+- [ ] chrome://net-internals/#hsts で localhost を Delete（完全終了 → 再起動）
 - [ ] DevTools: Disable cache / Service Worker Unregister
 - [ ] システムプロキシ OFF または localhost,127.0.0.1 除外
-- [ ] mkcert CA が「常に信頼」、.certs/localhost*.pem が存在
+- [ ] mkcert CA が「常に信頼」、.certs/localhost\*.pem が存在
 - [ ] lsof でポート掃除 → プロジェクト直下で npm run dev:https
 - [ ] それでもダメ → 別ブラウザ（Firefox/Edge）で切り分け
 
@@ -887,9 +983,32 @@ npm run dev
 ```
 
 ## Azure AD / Entra App Requirements
+
 API permissions should include delegated permissions to SharePoint (e.g. `Sites.Read.All` and `Sites.ReadWrite.All` if writing). Admin consent must be granted. The `${resource}/.default` scope relies on these pre-consented permissions.
 
 ## License
+
 Internal / TBD.
+
 # CI smoke
 
+## Highlights
+- SharePoint client hardened (retry telemetry, preserved nextLink parameters, sturdier batch parsing).
+- Local Operation Mode documentation, SOP set, and architecture diagrams published.
+
+## Quality Assurance
+- Coverage — Statements: 88.27% • Branches: 71.70% • Functions: 90.43% • Lines: 88.27%
+- Lighthouse (desktop) — Perf: 97 • A11y: 100 • Best Practices: 100 • SEO: 90
+- Error budget — Critical workflow errors: 0.07% (monthly)
+- Usability — Core actions: <=3 clicks • Satisfaction: 4.6/5
+
+## Links
+- Coverage: <coverage_report_link>
+- Lighthouse: <lighthouse_report_link>
+- Error dashboard: <sentry_dashboard_link>
+
+## Docs
+- Local Operation Mode: `docs/local-mode.md` (plus architecture PNG/SVG, SOPs, validation form)
+- Metrics: `docs/releases/v0.9.2.metrics.yaml`
+
+gh workflow view .github/workflows/report-links.yml --yaml

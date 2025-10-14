@@ -108,11 +108,20 @@ export default function TimelineDay({ events, date }: TimelineDayProps) {
                   )}
                 >
                   <ul aria-label="24時間スロット" className="sr-only">
-                    {hourSlots.map((slot) => (
-                      <li key={slot.iso} data-testid="day-hour-slot" data-hour={slot.label}>
-                        {slot.label}
-                      </li>
-                    ))}
+                    {hourSlots.map((slot, index) => {
+                      const keyBase = Number.isFinite(slot.startEpoch) ? slot.startEpoch : Date.parse(slot.iso);
+                      const key = Number.isFinite(keyBase) ? `${keyBase}-${index}` : `${index}`;
+                      return (
+                        <li
+                          key={key}
+                          data-testid="day-hour-slot"
+                          data-hour={slot.label}
+                          data-dst-repeat={slot.isDstRepeat ? '1' : undefined}
+                        >
+                          {slot.label}
+                        </li>
+                      );
+                    })}
                   </ul>
                   {laneEvents.length ? (
                     laneEvents.map((event) => (
@@ -184,15 +193,24 @@ function overlapsDay(event: Schedule, dayStart: Date, dayEnd: Date): boolean {
 type HourSlot = {
   label: string;
   iso: string;
+  startEpoch: number;
+  isDstRepeat?: boolean;
 };
 
 function buildHourSlots(dayStart: Date): HourSlot[] {
+  const seenEpochCounts = new Map<number, number>();
   return Array.from({ length: 24 }, (_, hour) => {
     const slot = new Date(dayStart.getTime());
     slot.setHours(hour, 0, 0, 0);
+    const startEpoch = slot.getTime();
+    const iso = slot.toISOString();
+    const priorCount = seenEpochCounts.get(startEpoch) ?? 0;
+    seenEpochCounts.set(startEpoch, priorCount + 1);
     return {
       label: format(slot, 'HH:mm'),
-      iso: slot.toISOString(),
+      iso,
+      startEpoch,
+      isDstRepeat: priorCount > 0,
     } satisfies HourSlot;
   });
 }
