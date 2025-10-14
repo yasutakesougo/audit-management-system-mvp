@@ -2,7 +2,13 @@
   "ci": {
     "collect": {
       "staticDistDir": "dist",
-      "numberOfRuns": 1
+      "numberOfRuns": 1,
+      "settings": {
+        "preset": "desktop",
+        "throttling": {
+          "cpuSlowdownMultiplier": 1
+        }
+      }
     },
     "assert": {
       "assertions": {
