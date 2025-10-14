@@ -12,9 +12,16 @@ export default defineConfig({
     trace: isCI ? 'on-first-retry' : 'off',
     video: isCI ? 'retain-on-failure' : 'off',
     screenshot: 'only-on-failure',
+    timezoneId: 'Asia/Tokyo',
   },
   projects: [
-    { name: 'chromium', use: { ...devices['Desktop Chrome'] } },
+    {
+      name: 'chromium',
+      use: {
+        ...devices['Desktop Chrome'],
+        timezoneId: 'Asia/Tokyo',
+      },
+    },
   ],
   webServer: {
     command: 'npm run dev:e2e',
