@@ -16,7 +16,7 @@ import { useFeatureFlags } from '@/config/featureFlags';
 import SharePointListDebug from '@/debug/SharePointListDebug';
 import { useSchedulesToday } from '@/features/schedule/useSchedulesToday';
 import { useUsersStore } from '@/features/users/store';
-import { isDemoModeEnabled } from '@/lib/env';
+import { getAppConfig, isDemoModeEnabled } from '@/lib/env';
 import { useStaff } from '@/stores/useStaff';
 import ArrowForwardRoundedIcon from '@mui/icons-material/ArrowForwardRounded';
 import AssignmentTurnedInRoundedIcon from '@mui/icons-material/AssignmentTurnedInRounded';
@@ -323,8 +323,8 @@ export default function Home() {
           </Box>
         </Box>
 
-        {/* SharePoint デバッグ（開発時のみ表示） */}
-        {import.meta.env.DEV && <SharePointListDebug />}
+  {/* SharePoint デバッグ（開発時のみ表示） */}
+  {getAppConfig().isDev && <SharePointListDebug />}
       </Stack>
     </Container>
   );

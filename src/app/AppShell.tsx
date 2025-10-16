@@ -13,6 +13,7 @@ import Typography from '@mui/material/Typography';
 import React, { useContext, useEffect, useMemo, useState } from 'react';
 // Navigation Icons
 import { useFeatureFlags } from '@/config/featureFlags';
+import { getAppConfig } from '@/lib/env';
 import { useSP } from '@/lib/spClient';
 import SignInButton from '@/ui/components/SignInButton';
 import AddCircleOutlineRoundedIcon from '@mui/icons-material/AddCircleOutlineRounded';
@@ -178,7 +179,7 @@ const ConnectionStatus: React.FC = () => {
   const [state, setState] = useState<'checking' | 'ok' | 'error'>('checking');
 
   useEffect(() => {
-    const isDevelopment = import.meta.env.DEV;
+    const { isDev: isDevelopment } = getAppConfig();
     const isVitest = typeof process !== 'undefined' && Boolean(process.env?.VITEST);
 
     // 開発モード本番ブラウザのみ SharePoint 接続チェックを省略（テストでは実行）
