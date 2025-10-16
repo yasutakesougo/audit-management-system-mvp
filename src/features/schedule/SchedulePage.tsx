@@ -31,6 +31,7 @@ import StaffTab from '@/features/schedule/views/StaffTab';
 import TimelineDay from '@/features/schedule/views/TimelineDay';
 import TimelineWeek, { type EventMovePayload } from '@/features/schedule/views/TimelineWeek';
 import UserTab from '@/features/schedule/views/UserTab';
+import { getAppConfig } from '@/lib/env';
 import { useSP } from '@/lib/spClient';
 import { useStaff } from '@/stores/useStaff';
 import FilterToolbar from '@/ui/filters/FilterToolbar';
@@ -91,8 +92,8 @@ export default function SchedulePage() {
     setTimelineLoading(true);
     setTimelineError(null);
 
-    // 開発環境での無限エラーを防ぐため、CORS エラーが発生した場合はモックデータに切り替える
-    const isDevelopment = import.meta.env.DEV;
+  // 開発環境での無限エラーを防ぐため、CORS エラーが発生した場合はモックデータに切り替える
+  const { isDev: isDevelopment } = getAppConfig();
 
     try {
       const [userRows, orgRows, staffRows] = await Promise.all([
@@ -443,7 +444,7 @@ export default function SchedulePage() {
               <Typography variant="body2" sx={{ fontSize: '0.875rem', opacity: 0.8 }}>
                 ページをリフレッシュ (Cmd+R / Ctrl+R) して再度お試しください。
               </Typography>
-              {import.meta.env.DEV && (
+              {getAppConfig().isDev && (
                 <Typography variant="body2" sx={{ fontSize: '0.875rem', opacity: 0.8, mt: 1 }}>
                   開発環境: SharePoint への接続に問題がある場合、モックデータが使用されます。
                 </Typography>

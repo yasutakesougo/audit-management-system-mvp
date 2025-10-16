@@ -428,7 +428,7 @@ export function createSpClient(
     const isVitest = typeof process !== 'undefined' && Boolean(process.env.VITEST);
 
     // 開発環境でのモック応答
-    if (import.meta.env.DEV && !isVitest) {
+  if (config.isDev && !isVitest) {
       console.info(`[DevMock] SharePoint API モック: ${init.method || 'GET'} ${resolvedPath}`);
 
       // モックレスポンスを作成

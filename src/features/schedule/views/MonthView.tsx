@@ -19,6 +19,7 @@ import NavigateNextRoundedIcon from '@mui/icons-material/NavigateNextRounded';
 import TodayRoundedIcon from '@mui/icons-material/TodayRounded';
 
 import { getMonthlySchedule } from '@/features/schedule/spClient.schedule';
+import { getAppConfig } from '@/lib/env';
 import { useSP } from '@/lib/spClient';
 import { useSchedules } from '@/stores/useSchedules';
 import { addMonths, eachDayOfInterval, endOfMonth, endOfWeek, format, isSameMonth, isToday, startOfMonth, startOfWeek } from 'date-fns';
@@ -124,7 +125,7 @@ export default function MonthView({ onDateClick, onEventClick }: MonthViewProps 
 
   const load = useCallback(
     async (target: Date) => {
-      const isDevelopment = import.meta.env.DEV;
+      const { isDev: isDevelopment } = getAppConfig();
       setState((prev) => ({ ...prev, loading: true, error: null }));
 
       try {
@@ -159,8 +160,6 @@ export default function MonthView({ onDateClick, onEventClick }: MonthViewProps 
   );
 
   useEffect(() => {
-    const isDevelopment = import.meta.env.DEV;
-
     const loadData = async () => {
       try {
         await load(referenceDate);
@@ -169,7 +168,7 @@ export default function MonthView({ onDateClick, onEventClick }: MonthViewProps 
         console.warn('MonthView load error:', error);
 
         // 開発環境でSharePointエラーの場合、再試行を避ける
-        if (isDevelopment) {
+        if (getAppConfig().isDev) {
           console.info('開発環境: MonthView エラー発生のため、再試行をスキップします');
         }
       }

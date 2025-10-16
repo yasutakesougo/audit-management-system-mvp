@@ -114,22 +114,21 @@ jobs:
           $forceTypeReplace = [bool]::Parse($env:FORCE_TYPE_REPLACE)
           $whatIfMode = [bool]::Parse($env:WHAT_IF)
 
-          $args = @(
-            '-SiteUrl', $siteUrl,
-            '-RecreateExisting', $recreateExisting,
-            '-ApplyFieldUpdates', $applyFieldUpdates,
-            '-ForceTypeReplace', $forceTypeReplace,
-            '-SchemaPath', $env:SCHEMA_PATH,
-            '-ChangesOutPath', 'provision/changes.json'
-          )
-
-          if ($whatIfMode) {
-            $args += '-WhatIfMode'
+          $params = @{
+            SiteUrl = $siteUrl
+            RecreateExisting = $recreateExisting
+            ApplyFieldUpdates = $applyFieldUpdates
+            ForceTypeReplace = $forceTypeReplace
+            SchemaPath = $env:SCHEMA_PATH
+            ChangesOutPath = 'provision/changes.json'
+            EmitChanges = $true
           }
 
-          $args += '-EmitChanges'
+          if ($whatIfMode) {
+            $params['WhatIfMode'] = $true
+          }
 
-          & ./scripts/provision-spo.ps1 @args
+          & ./scripts/provision-spo.ps1 @params
 
           if ([bool]::Parse($env:BACKFILL_ENTRY_HASH)) {
             Write-Host "Starting entry_hash backfill..." -ForegroundColor Cyan
