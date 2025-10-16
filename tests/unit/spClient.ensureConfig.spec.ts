@@ -1,6 +1,6 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { ensureConfig } from '@/lib/spClient';
 import { getAppConfig } from '@/lib/env';
+import { ensureConfig } from '@/lib/spClient';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const baseConfig = {
   VITE_SP_RESOURCE: 'https://contoso.sharepoint.com',

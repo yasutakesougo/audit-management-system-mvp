@@ -1,6 +1,6 @@
-import { describe, expect, it, afterEach, beforeEach, vi } from 'vitest';
 import * as rootEnv from '@/env';
-import { getUsersMaster, getStaffMaster, __test__ } from '@/lib/spClient';
+import { __test__, getStaffMaster, getUsersMaster } from '@/lib/spClient';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 const buildResponse = (payload: unknown) =>
   new Response(JSON.stringify(payload), {

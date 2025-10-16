@@ -1,5 +1,5 @@
-import { afterEach, describe, expect, it, vi } from 'vitest';
 import { formatRangeLocal } from '@/utils/datetime';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 
 describe('utils/datetime branch coverage', () => {
   const originalFormatToParts = Intl.DateTimeFormat.prototype.formatToParts;

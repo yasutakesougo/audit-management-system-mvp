@@ -1,7 +1,7 @@
-import { afterAll, afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { createSchedule, createSpClient } from '@/lib/spClient';
-import type { UseSP } from '@/lib/spClient';
 import { getAppConfig } from '@/lib/env';
+import type { UseSP } from '@/lib/spClient';
+import { createSchedule, createSpClient } from '@/lib/spClient';
+import { afterAll, afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 const baseConfig = {
   VITE_SP_RESOURCE: 'https://contoso.sharepoint.com',

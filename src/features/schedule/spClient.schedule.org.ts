@@ -1,14 +1,14 @@
-import { fromSpSchedule, toSpScheduleFields } from './spMap';
-import { buildScheduleSelectClause, handleScheduleOptionalFieldError } from './scheduleFeatures';
-import type { ScheduleOrg } from './types';
-import { STATUS_DEFAULT } from './statusDictionary';
-import { SCHEDULE_FIELD_CATEGORY } from '@/sharepoint/fields';
-import type { SpScheduleItem } from '@/types';
+import { readEnv } from '@/lib/env';
 import type { UseSP } from '@/lib/spClient';
 import { spWriteResilient, type SpWriteResult } from '@/lib/spWrite';
-import { readEnv } from '@/lib/env';
+import { SCHEDULE_FIELD_CATEGORY } from '@/sharepoint/fields';
+import type { SpScheduleItem } from '@/types';
+import { buildScheduleSelectClause, handleScheduleOptionalFieldError } from './scheduleFeatures';
+import { fromSpSchedule, toSpScheduleFields } from './spMap';
+import { STATUS_DEFAULT } from './statusDictionary';
+import type { ScheduleOrg } from './types';
 
-const DEFAULT_LIST_TITLE = 'Schedules';
+const DEFAULT_LIST_TITLE = 'ScheduleEvents';
 const LIST_TITLE = (() => {
   const override = readEnv('VITE_SP_LIST_SCHEDULES', '').trim();
   return override || DEFAULT_LIST_TITLE;
@@ -225,11 +225,31 @@ export async function getOrgSchedules(
     search.set('$orderby', 'EventDate asc,Id asc');
     search.set('$select', buildScheduleSelectClause());
 
-    const res = await sp.spFetch(`${LIST_PATH}?${search.toString()}`, {
-      headers: getHeadersWithPrefs(),
-    });
-    const payload = await res.json();
-    return mapResponseItems(payload).map((item) => ensureOrgSchedule(fromSpSchedule(item)));
+    const path = `${LIST_PATH}?${search.toString()}`;
+
+    // 開発環境での無限リトライ防止
+    const isDevelopment = typeof process !== 'undefined' && process.env.NODE_ENV === 'development';
+
+    try {
+      const res = await sp.spFetch(path, {
+        headers: getHeadersWithPrefs(),
+      });
+
+      // 開発環境で400エラーの場合、SharePointフィールド問題として早期に例外を投げる
+      if (isDevelopment && !res.ok && res.status === 400) {
+        throw new Error(`SharePoint API 400 Bad Request: フィールド設定またはリスト構造の問題 (Org) (URL: ${path.substring(0, 200)}...)`);
+      }
+
+      const payload = await res.json();
+      return mapResponseItems(payload).map((item) => ensureOrgSchedule(fromSpSchedule(item)));
+    } catch (error) {
+      // 開発環境でのネットワークエラーも早期に例外化
+      if (isDevelopment) {
+        const errMsg = error instanceof Error ? error.message : String(error);
+        throw new Error(`SharePoint接続エラー (開発環境/Org): ${errMsg}`);
+      }
+      throw error;
+    }
   };
 
   return withScheduleFieldFallback(execute);

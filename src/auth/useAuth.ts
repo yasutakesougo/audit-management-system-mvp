@@ -1,5 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { useMsal } from '@azure/msal-react';
+import { useCallback } from 'react';
 import { getAppConfig, isE2eMsalMockEnabled } from '../lib/env';
 import { createE2EMsalAccount, persistMsalToken } from '../lib/msal';
 import { SP_RESOURCE } from './msalConfig';
@@ -20,12 +21,12 @@ function debugLog(...args: unknown[]) {
 export const useAuth = () => {
   if (isE2eMsalMockEnabled()) {
     const account = createE2EMsalAccount();
-    const acquireToken = async (resource: string = SP_RESOURCE): Promise<string> => {
+    const acquireToken = useCallback(async (resource: string = SP_RESOURCE): Promise<string> => {
       const scopeBase = resource.replace(/\/+$/, '');
       const token = `mock-token:${scopeBase}/.default`;
       persistMsalToken(token);
       return token;
-    };
+    }, []);
 
     return {
       isAuthenticated: true,
@@ -39,7 +40,7 @@ export const useAuth = () => {
   const { instance, accounts } = useMsal();
   const account = accounts[0];
 
-  const acquireToken = async (resource: string = SP_RESOURCE): Promise<string | null> => {
+  const acquireToken = useCallback(async (resource: string = SP_RESOURCE): Promise<string | null> => {
     if (!account) return null;
 
     // しきい値（秒）。既定 5 分。
@@ -92,13 +93,37 @@ export const useAuth = () => {
 
       sessionStorage.setItem('spToken', first.accessToken);
       return first.accessToken;
-    } catch {
-      // サイレント失敗時はリダイレクトで再認証
+    } catch (error: any) {
+      // MSAL エラーの詳細な処理
+      debugLog('acquireTokenSilent failed', {
+        errorName: error?.name,
+        errorCode: error?.errorCode,
+        message: error?.message || 'Unknown error'
+      });
+
       sessionStorage.removeItem('spToken');
+
+      // InteractionRequiredAuthError (MFA、同意、パスワード変更など)を詳細に判定
+      const isInteractionRequired =
+        error?.name === 'InteractionRequiredAuthError' ||
+        error?.errorCode === 'interaction_required' ||
+        error?.errorCode === 'consent_required' ||
+        error?.errorCode === 'login_required' ||
+        error?.errorCode === 'mfa_required';
+
+      if (isInteractionRequired) {
+        debugLog('Interaction required (MFA/consent/login), redirecting to authentication...');
+        // MFA対応: 明示的な対話型認証が必要な場合はリダイレクト
+        await instance.acquireTokenRedirect({ scopes: [scope] });
+        return null;
+      }
+
+      // その他のエラー（ネットワークエラーなど）もリダイレクトで再認証
+      debugLog('Other authentication error, redirecting...');
       await instance.acquireTokenRedirect({ scopes: [scope] });
       return null;
     }
-  };
+  }, [instance, account]);
 
   return {
     isAuthenticated: !!account,

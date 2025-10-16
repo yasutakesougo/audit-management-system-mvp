@@ -55,15 +55,20 @@ export function useUsers(initialFilter?: string): UsersHookReturn {
   }, []);
 
   const fetchList = useCallback(async (signal?: AbortSignal) => {
+    console.log('[useUsers] fetchList called, setting status to loading');
     setStatus('loading');
     setError(null);
     try {
+      console.log('[useUsers] Calling api.getUsers with filter:', filter);
       const rows = await api.getUsers(filter, { signal });
       if (signal?.aborted) return;
+      console.log('[useUsers] Received rows:', rows?.length, 'items');
       setDataIfChanged(rows);
+      console.log('[useUsers] Setting status to success');
       setStatus('success');
     } catch (e) {
       if (signal?.aborted) return;
+      console.log('[useUsers] Error occurred:', e);
       setError(e);
       setStatus('error');
     }
@@ -129,10 +134,18 @@ export function useUsers(initialFilter?: string): UsersHookReturn {
     await fetchList();
   }, [fetchList]);
 
-  return useMemo(
+  const result = useMemo(
     () => ({ data, status, error, refresh, create, update, remove }),
     [create, data, error, refresh, remove, status, update]
   );
+
+  console.log('[useUsers] Returning result:', {
+    dataCount: result.data?.length,
+    status: result.status,
+    hasError: !!result.error
+  });
+
+  return result;
 }
 
 export function useUser(id?: number | string): UserHookReturn {

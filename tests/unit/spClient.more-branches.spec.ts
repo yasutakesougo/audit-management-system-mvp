@@ -1,5 +1,5 @@
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { AppConfig } from '@/lib/env';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 const baseAppConfig = vi.hoisted(() => ({
   VITE_SP_RESOURCE: 'https://contoso.sharepoint.com',
@@ -35,17 +35,17 @@ vi.mock('@/env', () => ({
   getRuntimeEnv: vi.fn(() => ({})),
 }));
 
-import {
-  __ensureListInternals,
-  __test__,
-  createSpClient,
-  getStaffMaster,
-  getUsersMaster,
-  type SharePointBatchOperation,
-} from '@/lib/spClient';
-import { getAppConfig } from '@/lib/env';
 import { getRuntimeEnv } from '@/env';
+import { getAppConfig } from '@/lib/env';
 import { SharePointItemNotFoundError, SharePointMissingEtagError } from '@/lib/errors';
+import {
+    __ensureListInternals,
+    __test__,
+    createSpClient,
+    getStaffMaster,
+    getUsersMaster,
+    type SharePointBatchOperation,
+} from '@/lib/spClient';
 
 const mockGetAppConfig = vi.mocked(getAppConfig);
 const mockGetRuntimeEnv = vi.mocked(getRuntimeEnv);

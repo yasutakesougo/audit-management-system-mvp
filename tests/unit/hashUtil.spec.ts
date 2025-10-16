@@ -1,5 +1,5 @@
-import { describe, it, expect } from 'vitest';
 import { canonicalJSONStringify, computeEntryHash } from '@/lib/hashUtil';
+import { describe, expect, it } from 'vitest';
 
 describe('hashUtil canonicalization', () => {
   it('canonicalJSONStringify stable for different key orders', () => {

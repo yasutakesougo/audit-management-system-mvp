@@ -1,5 +1,5 @@
-import { afterEach, describe, expect, it, vi } from 'vitest';
 import { spWriteResilient } from '@/lib/spWrite';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 
 const buildResponse = (body: unknown, init: ResponseInit) =>
   new Response(body != null ? JSON.stringify(body) : null, {

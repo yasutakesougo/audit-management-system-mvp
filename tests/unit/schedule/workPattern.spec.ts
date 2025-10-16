@@ -1,11 +1,11 @@
-import { describe, expect, it } from 'vitest';
-import {
-  buildStaffPatternIndex,
-  collectBaseShiftWarnings,
-  summarizeBaseShiftWarnings,
-} from '@/features/schedule/workPattern';
 import type { Schedule, ScheduleUserCare } from '@/features/schedule/types';
+import {
+    buildStaffPatternIndex,
+    collectBaseShiftWarnings,
+    summarizeBaseShiftWarnings,
+} from '@/features/schedule/workPattern';
 import type { Staff } from '@/types';
+import { describe, expect, it } from 'vitest';
 
 const makeSchedule = (overrides: Partial<ScheduleUserCare> = {}): Schedule => ({
   id: overrides.id ?? 'schedule-1',

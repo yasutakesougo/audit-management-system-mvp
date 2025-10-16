@@ -1,6 +1,6 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { getBriefingForDay } from '@/features/schedule/briefing';
 import type { ScheduleOrg, ScheduleStaff, ScheduleUserCare } from '@/features/schedule/types';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 vi.mock('@/features/schedule/spClient.schedule', () => ({
   getUserCareSchedules: vi.fn(),

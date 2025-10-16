@@ -1,7 +1,7 @@
+import type { BaseShiftWarning } from '@/features/schedule/types';
+import TimelineEventCard from '@/features/schedule/views/TimelineEventCard';
 import { cleanup, render, screen } from '@testing-library/react';
 import { afterEach, describe, expect, it } from 'vitest';
-import TimelineEventCard from '@/features/schedule/views/TimelineEventCard';
-import type { BaseShiftWarning } from '@/features/schedule/types';
 
 describe('TimelineEventCard', () => {
   afterEach(() => {

@@ -1,20 +1,21 @@
-import { afterEach, describe, expect, it, vi } from 'vitest';
 import {
-  getMsalTokenRefreshMin,
-  getSharePointResource,
-  getSharePointSiteRelative,
-  getSharePointBaseUrl,
-  getSharePointDefaultScope,
-  getMsalLoginScopes,
-  isSchedulesFeatureEnabled,
-  type EnvRecord,
+    getMsalLoginScopes,
+    getMsalTokenRefreshMin,
+    getSharePointBaseUrl,
+    getSharePointDefaultScope,
+    getSharePointResource,
+    getSharePointSiteRelative,
+    isSchedulesFeatureEnabled,
+    type EnvRecord,
 } from '@/lib/env';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 
 const baseEnv = (overrides: Partial<EnvRecord> = {}): EnvRecord => ({
   VITE_FEATURE_SCHEDULES: 'false',
   VITE_MSAL_TOKEN_REFRESH_MIN: '300',
   VITE_SP_RESOURCE: 'https://contoso.sharepoint.com',
   VITE_SP_SITE_RELATIVE: '/sites/App',
+  VITE_DEMO_MODE: '0',
   ...overrides,
 });
 

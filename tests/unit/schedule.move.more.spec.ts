@@ -1,6 +1,6 @@
-import { describe, expect, it } from 'vitest';
 import { moveScheduleToDay } from '@/features/schedule/move';
 import type { Schedule, ScheduleUserCare } from '@/features/schedule/types';
+import { describe, expect, it } from 'vitest';
 
 const baseSchedule = (overrides: Partial<ScheduleUserCare> = {}) => ({
   id: overrides.id ?? 'demo-1',

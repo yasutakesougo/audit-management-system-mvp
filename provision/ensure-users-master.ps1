@@ -1,10 +1,14 @@
 # Users_Master Ensure Script
 param(
     [Parameter(Mandatory = $true)]
-    [string]$SiteUrl
+    [string]$SiteUrl,
+    [Parameter(Mandatory = $false)]
+    [string]$ListTitle = 'Users_Master'
 )
 
 $ErrorActionPreference = 'Stop'
+
+$listTitle = $ListTitle
 
 function Write-Info {
     param([string]$Message)
@@ -27,14 +31,14 @@ catch {
 }
 
 try {
-    $list = Get-PnPList -Identity "Users_Master" -ErrorAction Stop
-    Write-Info "Found existing list: Users_Master"
+    $list = Get-PnPList -Identity $listTitle -ErrorAction Stop
+    Write-Info "Found existing list: $listTitle"
 }
 catch {
-    Write-Info "List Users_Master not found. Creating..."
+    Write-Info "List $listTitle not found. Creating..."
     try {
-        $list = Add-PnPList -Title "Users_Master" -Template GenericList -OnQuickLaunch:$false
-        Write-Info "Created list Users_Master"
+        $list = Add-PnPList -Title $listTitle -Template GenericList -OnQuickLaunch:$false
+        Write-Info "Created list $listTitle"
     }
     catch {
         Write-Warn "Failed to create list Users_Master. $_"
@@ -73,7 +77,7 @@ $fieldsToEnsure = @(
 foreach ($fieldSpec in $fieldsToEnsure) {
     $internalName = $fieldSpec.InternalName
     try {
-        $field = Get-PnPField -List $list -Identity $internalName -ErrorAction Stop
+    $field = Get-PnPField -List $list -Identity $internalName -ErrorAction Stop
         $updates = @{}
 
         if ($field.Required -ne $fieldSpec.Required) {
@@ -128,4 +132,38 @@ foreach ($fieldSpec in $fieldsToEnsure) {
     }
 }
 
-Write-Info "Users_Master ensure complete."
+$additionalTextColumns = @(
+    @{ InternalName = 'furigana'; DisplayName = 'ふりがな'; MaxLength = 255 },
+    @{ InternalName = 'phone'; DisplayName = '電話番号'; MaxLength = 64 },
+    @{ InternalName = 'email'; DisplayName = 'メール'; MaxLength = 255 }
+)
+
+foreach ($column in $additionalTextColumns) {
+    if (-not (Get-PnPField -List $listTitle -Identity $column.InternalName -ErrorAction SilentlyContinue)) {
+        Add-PnPField -List $listTitle -DisplayName $column.DisplayName -InternalName $column.InternalName -Type Text -AddToDefaultView -Values @{ MaxLength = $column.MaxLength } | Out-Null
+        Write-Info "Added Text field: $($column.InternalName)"
+    }
+    else {
+        Write-Info "Field already exists: $($column.InternalName)"
+    }
+}
+
+if (-not (Get-PnPField -List $listTitle -Identity 'isActive' -ErrorAction SilentlyContinue)) {
+    Add-PnPField -List $listTitle -DisplayName '有効' -InternalName 'isActive' -Type Boolean -AddToDefaultView -Values @{ DefaultValue = '1' } | Out-Null
+    Write-Info 'Added Boolean field: isActive (Default=true)'
+}
+else {
+    Write-Info 'Field already exists: isActive'
+}
+
+$items = Get-PnPListItem -List $listTitle -PageSize 2000
+foreach ($item in $items) {
+    $titleValue = $item['Title']
+    $fullNameValue = $item['FullName']
+    if ([string]::IsNullOrEmpty($titleValue) -and -not [string]::IsNullOrEmpty($fullNameValue)) {
+        Set-PnPListItem -List $listTitle -Identity $item.Id -Values @{ 'Title' = $fullNameValue } | Out-Null
+        Write-Info "Backfilled Title for item $($item.Id)"
+    }
+}
+
+Write-Info 'Users_Master ensure complete.'

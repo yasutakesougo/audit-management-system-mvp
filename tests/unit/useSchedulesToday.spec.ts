@@ -1,6 +1,6 @@
+import type { SafeError } from '@/lib/errors';
 import { act, renderHook } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import type { SafeError } from '@/lib/errors';
 
 type ListResult = {
   items: Array<Record<string, unknown>>;

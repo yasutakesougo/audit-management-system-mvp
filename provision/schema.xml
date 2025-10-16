@@ -18,6 +18,12 @@
             <pnp:Field ID="{94C4F1EC-6B34-4DB7-988D-7E0D7F492691}" Type="Boolean" DisplayName="強度行動障害支援対象" StaticName="IsHighIntensitySupportTarget" Name="IsHighIntensitySupportTarget">
               <Default>0</Default>
             </pnp:Field>
+            <pnp:Field ID="{D6F430F4-6F18-4DA8-9AFB-CEB90F86B563}" Type="Text" DisplayName="ふりがな" StaticName="furigana" Name="furigana" MaxLength="255" />
+            <pnp:Field ID="{FC6D0E53-81F1-4FBB-94DC-5C708C55C7C5}" Type="Text" DisplayName="電話番号" StaticName="phone" Name="phone" MaxLength="64" />
+            <pnp:Field ID="{B16AF94A-EB93-4D85-92E7-AB01CD847B13}" Type="Text" DisplayName="メール" StaticName="email" Name="email" MaxLength="255" />
+            <pnp:Field ID="{C0B9C86A-9AFB-4F2C-A2BB-59D72DE0B628}" Type="Boolean" DisplayName="有効" StaticName="isActive" Name="isActive">
+              <Default>1</Default>
+            </pnp:Field>
           </pnp:Fields>
         </pnp:ListInstance>
         <!-- Staff_Master: 職員マスタ（ハブ） -->
@@ -143,6 +149,46 @@
         <!-- =========================
              4) 計画管理
            ========================= -->
+        <!-- SupportTemplate_TEMPL: 支援活動テンプレ -->
+        <pnp:ListInstance Title="SupportTemplate_TEMPL" Description="支援活動テンプレート" TemplateType="100" Url="Lists/SupportTemplate_TEMPL">
+          <pnp:Fields>
+            <pnp:Field Type="Text" DisplayName="時刻" StaticName="specificTime" Name="specificTime" MaxLength="16" />
+            <pnp:Field Type="Text" DisplayName="活動名" StaticName="activityName" Name="activityName" MaxLength="255" />
+            <pnp:Field Type="Choice" DisplayName="カテゴリ" StaticName="category" Name="category" Format="Dropdown">
+              <pnp:Choices>
+                <pnp:Choice>Work</pnp:Choice>
+                <pnp:Choice>Creative</pnp:Choice>
+                <pnp:Choice>SelfReliance</pnp:Choice>
+                <pnp:Choice>Shopping</pnp:Choice>
+                <pnp:Choice>Leisure</pnp:Choice>
+              </pnp:Choices>
+            </pnp:Field>
+            <pnp:Field Type="Note" DisplayName="説明" StaticName="description" Name="description" NumLines="6" RichText="FALSE" />
+            <pnp:Field Type="Note" DisplayName="本人のやること" StaticName="userExpectedActions" Name="userExpectedActions" NumLines="6" RichText="FALSE" />
+            <pnp:Field Type="Note" DisplayName="支援者のやること" StaticName="staffSupportMethods" Name="staffSupportMethods" NumLines="6" RichText="FALSE" />
+            <pnp:Field Type="Number" DisplayName="所要時間(分)" StaticName="duration" Name="duration" Decimals="0" />
+            <pnp:Field Type="Choice" DisplayName="重要度" StaticName="importance" Name="importance" Format="Dropdown">
+              <pnp:Choices>
+                <pnp:Choice>Low</pnp:Choice>
+                <pnp:Choice>Medium</pnp:Choice>
+                <pnp:Choice>High</pnp:Choice>
+              </pnp:Choices>
+            </pnp:Field>
+            <pnp:Field Type="Text" DisplayName="アイコン" StaticName="iconEmoji" Name="iconEmoji" MaxLength="16" />
+          </pnp:Fields>
+          <pnp:Views>
+            <pnp:View BaseViewID="1" Type="HTML" DisplayName="すべてのアイテム" DefaultView="TRUE">
+              <pnp:ViewFields>
+                <pnp:FieldRef Name="Title" />
+                <pnp:FieldRef Name="specificTime" />
+                <pnp:FieldRef Name="activityName" />
+                <pnp:FieldRef Name="category" />
+                <pnp:FieldRef Name="duration" />
+                <pnp:FieldRef Name="importance" />
+              </pnp:ViewFields>
+            </pnp:View>
+          </pnp:Views>
+        </pnp:ListInstance>
         <!-- Assessment_Records: アセスメント -->
         <pnp:ListInstance Title="Assessment_Records" Description="アセスメント記録" TemplateType="100" Url="Lists/Assessment_Records">
           <pnp:Fields>
@@ -281,7 +327,7 @@
             <pnp:Field Type="DateTime" DisplayName="タイムスタンプ" Required="TRUE" Indexed="TRUE" StaticName="ts" Name="ts" />
             <pnp:Field Type="Text" DisplayName="実行者(UPN)" Required="TRUE" StaticName="actor" Name="actor" />
             <pnp:Field Type="Text" DisplayName="操作" Required="TRUE" StaticName="action" Name="action" />
-            <pnp:Field Type="Text" DisplayName="対象エンティティ" Required="TRUE" StaticName="entity" Name="entity" />
+            <pnp:Field Type="Text" DisplayName="対象エンティティ" Required="TRUE" Indexed="TRUE" StaticName="entity" Name="entity" />
             <pnp:Field Type="Text" DisplayName="対象ID" StaticName="entity_id" Name="entity_id" />
             <pnp:Field Type="Text" DisplayName="チャネル" StaticName="channel" Name="channel" />
             <pnp:Field ID="{E7EFC804-00AF-44E9-A86F-0EAA90C962C4}" Type="Text" DisplayName="エントリハッシュ" EnforceUniqueValues="TRUE" Indexed="TRUE" StaticName="entry_hash" Name="entry_hash" MaxLength="128" />

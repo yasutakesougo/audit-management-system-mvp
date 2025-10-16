@@ -1,10 +1,10 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { getBriefingForDay } from '@/features/schedule/briefing';
 import { getUserCareSchedules } from '@/features/schedule/spClient.schedule';
 import { getOrgSchedules } from '@/features/schedule/spClient.schedule.org';
 import { getStaffSchedules } from '@/features/schedule/spClient.schedule.staff';
 import type { ScheduleOrg, ScheduleStaff, ScheduleUserCare } from '@/features/schedule/types';
 import type { UseSP } from '@/lib/spClient';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 vi.mock('@/features/schedule/spClient.schedule', () => ({
   getUserCareSchedules: vi.fn(),

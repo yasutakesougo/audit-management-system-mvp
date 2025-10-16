@@ -1,17 +1,21 @@
+import { Box, Button, Paper, Stack, TextField, Typography } from '@mui/material';
 import * as React from 'react';
-import { Box, Stack, TextField, Button, Typography, Paper } from '@mui/material';
-import { useChecklistApi } from './api';
-import type { ChecklistItem, ChecklistInsertDTO } from './types';
+// MUI Icons
+import AddTaskRoundedIcon from '@mui/icons-material/AddTaskRounded';
+import AssignmentTurnedInRoundedIcon from '@mui/icons-material/AssignmentTurnedInRounded';
 import { pushAudit } from '../../lib/audit';
+import { useChecklistApi } from './api';
+import type { ChecklistInsertDTO, ChecklistItem } from './types';
 
 export default function ChecklistPage() {
   const { list, add } = useChecklistApi();
   const [items, setItems] = React.useState<ChecklistItem[]>([]);
   const [form, setForm] = React.useState<ChecklistInsertDTO>({
     Title: '',
-    cr013_key: '',
-    cr013_value: '',
-    cr013_note: '',
+    RuleID: '',
+    RuleName: '',
+    EvaluationLogic: '',
+    SeverityLevel: 'INFO',
   });
   const [busy, setBusy] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
@@ -22,7 +26,7 @@ export default function ChecklistPage() {
       .then((rows) => alive && setItems(rows))
       .catch((e) => alive && setError(String(e)));
     return () => { alive = false; };
-  }, [list]);
+  }, []); // 依存配列を空にして、初回のみ実行されるようにする
 
   const onChange = (k: keyof ChecklistInsertDTO) => (e: React.ChangeEvent<HTMLInputElement>) => {
     setForm(prev => ({ ...prev, [k]: e.target.value }));
@@ -37,12 +41,12 @@ export default function ChecklistPage() {
       pushAudit({
         actor: 'current',
         action: 'checklist.create',
-        entity: 'Compliance_Checklist',
+        entity: 'Compliance_CheckRules',
         entity_id: created.id,
         channel: 'UI',
         after: { item: created },
       });
-      setForm({ Title: '', cr013_key: '', cr013_value: '', cr013_note: '' });
+      setForm({ Title: '', RuleID: '', RuleName: '', EvaluationLogic: '', SeverityLevel: 'INFO' });
     } catch (e) {
       setError(String(e));
     } finally {
@@ -52,41 +56,49 @@ export default function ChecklistPage() {
 
   return (
     <Stack spacing={2} sx={{ p: 2 }}>
-      <Typography variant="h5" component="h1">監査チェックリスト</Typography>
+      <Stack direction="row" alignItems="center" spacing={1}>
+        <AssignmentTurnedInRoundedIcon color="primary" />
+        <Typography variant="h5" component="h1">監査チェックリスト</Typography>
+      </Stack>
 
       <Paper sx={{ p: 2 }}>
         <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2}>
           <TextField
-            label="項目名(Title)"
+            label="タイトル"
             value={form.Title}
             onChange={onChange('Title')}
-            inputProps={{ 'aria-label': '項目名' }}
+            inputProps={{ 'aria-label': 'タイトル' }}
           />
           <TextField
-            label="キー(cr013_key)"
-            value={form.cr013_key}
-            onChange={onChange('cr013_key')}
-            inputProps={{ 'aria-label': 'キー' }}
+            label="ルールID"
+            value={form.RuleID}
+            onChange={onChange('RuleID')}
+            inputProps={{ 'aria-label': 'ルールID' }}
+            required
           />
           <TextField
-            label="値(cr013_value)"
-            value={form.cr013_value ?? ''}
-            onChange={onChange('cr013_value')}
-            inputProps={{ 'aria-label': '値' }}
+            label="ルール名"
+            value={form.RuleName}
+            onChange={onChange('RuleName')}
+            inputProps={{ 'aria-label': 'ルール名' }}
+            required
           />
           <TextField
-            label="備考(cr013_note)"
-            value={form.cr013_note ?? ''}
-            onChange={onChange('cr013_note')}
-            inputProps={{ 'aria-label': '備考' }}
+            label="評価ロジック"
+            value={form.EvaluationLogic ?? ''}
+            onChange={onChange('EvaluationLogic')}
+            inputProps={{ 'aria-label': '評価ロジック' }}
+            multiline
+            rows={3}
           />
           <Button
             variant="contained"
+            startIcon={<AddTaskRoundedIcon />}
             onClick={onAdd}
-            disabled={busy || !form.Title || !form.cr013_key}
-            sx={{ minHeight: 44 }}
+            disabled={busy || !form.Title || !form.RuleID || !form.RuleName}
+            sx={{ minHeight: 44, minWidth: 120 }}
           >
-            追加
+            {busy ? '追加中…' : '追加'}
           </Button>
         </Stack>
         {error && (

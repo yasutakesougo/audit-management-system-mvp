@@ -1,10 +1,10 @@
-import { useMemo, useState } from 'react';
 import type { Schedule } from '@/lib/mappers';
-import type { ScheduleForm, ScheduleStatus } from './types';
-import { getWeekRange, WeekView } from './WeekView';
-import ScheduleDialog from './ScheduleDialog';
-import { createSchedule, updateSchedule } from './adapter';
 import { useSchedules } from '@/stores/useSchedules';
+import { useMemo, useState } from 'react';
+import { createSchedule, updateSchedule } from './adapter';
+import ScheduleDialog from './ScheduleDialog';
+import type { Category, ExtendedScheduleForm, ScheduleForm, ScheduleStatus } from './types';
+import { getWeekRange, WeekView } from './WeekView';
 
 const formatRangeLabel = (start: Date, end: Date): string => {
   const fmt = new Intl.DateTimeFormat('ja-JP', { year: 'numeric', month: '2-digit', day: '2-digit' });
@@ -13,8 +13,9 @@ const formatRangeLabel = (start: Date, end: Date): string => {
   return `${startLabel} – ${endLabel}`;
 };
 
-const buildDraft = (start: Date, end: Date, seed?: Partial<ScheduleForm>): ScheduleForm => ({
+const buildDraft = (start: Date, end: Date, seed?: Partial<ExtendedScheduleForm>): ExtendedScheduleForm => ({
   id: seed?.id,
+  category: 'User', // デフォルトはUser
   userId: seed?.userId ?? '',
   status: seed?.status ?? 'planned',
   start: start.toISOString(),
@@ -58,25 +59,26 @@ const scheduleOverlapsRange = (schedule: Schedule, start: Date, end: Date): bool
   return eventStart <= end && eventEnd >= start;
 };
 
-const toScheduleForm = (schedule: Schedule): ScheduleForm => {
+const toScheduleForm = (schedule: Schedule): ExtendedScheduleForm => {
   const startIso = schedule.startUtc ?? schedule.startLocal ?? new Date().toISOString();
   const endIso = schedule.endUtc ?? schedule.endLocal ?? startIso;
   return {
     id: schedule.id,
+    category: (schedule.category as Category) || 'User',
     userId: schedule.personId ?? (schedule.userId != null ? String(schedule.userId) : ''),
     status: STATUS_MAP[schedule.status] ?? 'planned',
     start: startIso,
     end: endIso,
     title: schedule.title ?? '',
     note: schedule.notes ?? undefined,
-  } satisfies ScheduleForm;
+  } satisfies ExtendedScheduleForm;
 };
 
 export default function WeekPage() {
   const [weekStart, setWeekStart] = useState<Date>(() => getWeekRange(new Date()).start);
   const weekRange = useMemo(() => getWeekRange(weekStart), [weekStart]);
   const [dialogOpen, setDialogOpen] = useState(false);
-  const [dialogInitial, setDialogInitial] = useState<ScheduleForm | undefined>(undefined);
+  const [dialogInitial, setDialogInitial] = useState<ExtendedScheduleForm | undefined>(undefined);
   const [actionError, setActionError] = useState<string | null>(null);
 
   const { data: scheduleData, loading: schedulesLoading, error: schedulesError, reload } = useSchedules();
@@ -132,13 +134,24 @@ export default function WeekPage() {
     setActionError(null);
   };
 
-  const handleDialogSubmit = async (values: ScheduleForm) => {
+  const handleDialogSubmit = async (values: ExtendedScheduleForm) => {
     try {
       setActionError(null);
-      if (values.id != null) {
-        await updateSchedule(values.id, values);
+      // ExtendedScheduleFormからScheduleFormに変換
+      const scheduleForm: ScheduleForm = {
+        id: values.id,
+        userId: values.userId || '',
+        title: values.title,
+        note: values.note,
+        status: values.status,
+        start: values.start,
+        end: values.end,
+      };
+
+      if (scheduleForm.id != null) {
+        await updateSchedule(scheduleForm.id, scheduleForm);
       } else {
-        await createSchedule(values);
+        await createSchedule(scheduleForm);
       }
       await reload();
     } catch (cause) {

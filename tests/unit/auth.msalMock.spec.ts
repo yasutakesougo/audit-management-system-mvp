@@ -1,5 +1,5 @@
-import { describe, expect, it } from 'vitest';
 import { initMsalMock, resetMsalMockSignal } from '@/auth/msalMock';
+import { describe, expect, it } from 'vitest';
 
 describe('msal mock helpers', () => {
   it('exposes initMsalMock without throwing', () => {

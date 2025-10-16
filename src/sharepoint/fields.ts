@@ -18,6 +18,7 @@ export interface IUserMaster {
   ServiceStartDate?: string | null;
   ServiceEndDate?: string | null;
   IsHighIntensitySupportTarget?: boolean | null;
+  IsSupportProcedureTarget?: boolean | null;  // 支援手順記録対象フラグ
   severeFlag?: boolean | null;
   IsActive?: boolean | null;
   TransportToDays?: string[] | null;
@@ -38,6 +39,7 @@ export interface IUserMasterCreateDto {
   ServiceStartDate?: string | null;
   ServiceEndDate?: string | null;
   IsHighIntensitySupportTarget?: boolean | null;
+  IsSupportProcedureTarget?: boolean | null;  // 支援手順記録対象フラグ
   severeFlag?: boolean | null;
   IsActive?: boolean | null;
   TransportToDays?: string[] | null;
@@ -52,11 +54,13 @@ export const joinSelect = (arr: readonly string[]) => arr.join(',');
 export enum ListKeys {
   UsersMaster = 'Users_Master',
   StaffMaster = 'Staff_Master',
+  ComplianceCheckRules = 'Compliance_CheckRules',
 }
 
 export const LIST_CONFIG: Record<ListKeys, { title: string }> = {
   [ListKeys.UsersMaster]: { title: 'Users_Master' },
   [ListKeys.StaffMaster]: { title: 'Staff_Master' },
+  [ListKeys.ComplianceCheckRules]: { title: 'Compliance_CheckRules' },
 };
 
 export const FIELD_MAP = {
@@ -195,8 +199,8 @@ export const DAILY_FIELD_STATUS = 'Status' as const;
 // Schedule list fields
 // ──────────────────────────────────────────────────────────────
 
-export const SCHEDULE_FIELD_START = 'StartDateTime' as const;
-export const SCHEDULE_FIELD_END = 'EndDateTime' as const;
+export const SCHEDULE_FIELD_START = 'EventDate' as const;
+export const SCHEDULE_FIELD_END = 'EndDate' as const;
 export const SCHEDULE_FIELD_STATUS = 'Status' as const;
 export const SCHEDULE_FIELD_CATEGORY = 'cr014_category' as const;
 export const SCHEDULE_FIELD_SERVICE_TYPE = 'ServiceType' as const;
@@ -268,8 +272,34 @@ export const SCHEDULES_BASE_FIELDS = [
   '@odata.etag',
 ] as const;
 
+// SharePoint OData URL制限対応：最小限のフィールドセット（フィルター条件に必要なフィールドを含む）
+// 開発環境では存在しない可能性のあるカスタムフィールドを除外
+export const SCHEDULES_MINIMAL_FIELDS = [
+  'Id',           // SharePoint既定フィールド（必須）
+  'Title',        // SharePoint既定フィールド（必須）
+  'Created',      // SharePoint既定フィールド（必須）
+  'Modified',     // SharePoint既定フィールド（必須）
+  '@odata.etag',  // データ更新で必要
+] as const;
+
+// 開発環境で利用可能な場合に追加で試行するフィールド
+export const SCHEDULES_DEVELOPMENT_OPTIONAL_FIELDS = [
+  'EventDate',    // フィルター条件で必要（存在する場合）
+  'EndDate',      // フィルター条件で必要（存在する場合）
+  SCHEDULE_FIELD_CATEGORY, // フィルター条件で必要（存在する場合）
+] as const;
+
 export const SCHEDULES_COMMON_OPTIONAL_FIELDS = [] as const;
 
 export const SCHEDULES_STAFF_TEXT_FIELDS = [] as const;
 
-export const SCHEDULES_SELECT_FIELDS = joinSelect(SCHEDULES_BASE_FIELDS as readonly string[]);
+// URL制限対応：開発環境では短いフィールドセットを使用
+const isVitestRuntime = typeof process !== 'undefined' && process.env?.VITEST === 'true';
+const shouldUseMinimalScheduleFields =
+  typeof window !== 'undefined' && window.location?.hostname === 'localhost' && !isVitestRuntime;
+
+export const SCHEDULES_SELECT_FIELDS = joinSelect(
+  shouldUseMinimalScheduleFields
+    ? SCHEDULES_MINIMAL_FIELDS as readonly string[]
+    : SCHEDULES_BASE_FIELDS as readonly string[]
+);

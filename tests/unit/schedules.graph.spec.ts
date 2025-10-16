@@ -1,7 +1,7 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
-import type { Event as GraphEvent } from '@microsoft/microsoft-graph-types';
 import { makeGraphSchedulesPort } from '@/features/schedules/data';
 import * as env from '@/lib/env';
+import type { Event as GraphEvent } from '@microsoft/microsoft-graph-types';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const from = '2025-10-10T00:00:00Z';
 const to = '2025-10-11T00:00:00Z';

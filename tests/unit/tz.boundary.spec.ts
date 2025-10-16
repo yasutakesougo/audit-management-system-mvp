@@ -1,7 +1,7 @@
-import { describe, it, expect } from 'vitest';
+import { describe, expect, it } from 'vitest';
 
 // NOTE: these are the same imports used in the app (ScheduleCreatePage, spMap, etc.)
-import { formatInTimeZone, fromZonedTime, toZonedTime, toZonedDate } from '@/lib/tz';
+import { formatInTimeZone, fromZonedTime, toZonedDate, toZonedTime } from '@/lib/tz';
 
 describe('tz: boundary & error surfaces', () => {
   it('formats valid IANA zone deterministically', () => {

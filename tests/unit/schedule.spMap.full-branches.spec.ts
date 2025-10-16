@@ -1,27 +1,27 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { fromSpSchedule, toSpScheduleFields } from '@/features/schedule/spMap';
 import * as features from '@/features/schedule/scheduleFeatures';
+import { fromSpSchedule, toSpScheduleFields } from '@/features/schedule/spMap';
 import { toSharePointStatus } from '@/features/schedule/statusDictionary';
 import {
-  SCHEDULE_FIELD_CATEGORY,
-  SCHEDULE_FIELD_SERVICE_TYPE,
-  SCHEDULE_FIELD_PERSON_TYPE,
-  SCHEDULE_FIELD_PERSON_ID,
-  SCHEDULE_FIELD_PERSON_NAME,
-  SCHEDULE_FIELD_EXTERNAL_NAME,
-  SCHEDULE_FIELD_EXTERNAL_ORG,
-  SCHEDULE_FIELD_EXTERNAL_CONTACT,
-  SCHEDULE_FIELD_STAFF_IDS,
-  SCHEDULE_FIELD_STAFF_NAMES,
-  SCHEDULE_FIELD_SUB_TYPE,
-  SCHEDULE_FIELD_ORG_AUDIENCE,
-  SCHEDULE_FIELD_ORG_RESOURCE_ID,
-  SCHEDULE_FIELD_ORG_EXTERNAL_NAME,
-  SCHEDULE_FIELD_DAY_PART,
-  SCHEDULE_FIELD_DAY_KEY,
-  SCHEDULE_FIELD_FISCAL_YEAR,
+    SCHEDULE_FIELD_CATEGORY,
+    SCHEDULE_FIELD_DAY_KEY,
+    SCHEDULE_FIELD_DAY_PART,
+    SCHEDULE_FIELD_EXTERNAL_CONTACT,
+    SCHEDULE_FIELD_EXTERNAL_NAME,
+    SCHEDULE_FIELD_EXTERNAL_ORG,
+    SCHEDULE_FIELD_FISCAL_YEAR,
+    SCHEDULE_FIELD_ORG_AUDIENCE,
+    SCHEDULE_FIELD_ORG_EXTERNAL_NAME,
+    SCHEDULE_FIELD_ORG_RESOURCE_ID,
+    SCHEDULE_FIELD_PERSON_ID,
+    SCHEDULE_FIELD_PERSON_NAME,
+    SCHEDULE_FIELD_PERSON_TYPE,
+    SCHEDULE_FIELD_SERVICE_TYPE,
+    SCHEDULE_FIELD_STAFF_IDS,
+    SCHEDULE_FIELD_STAFF_NAMES,
+    SCHEDULE_FIELD_SUB_TYPE,
 } from '@/sharepoint/fields';
 import type { SpScheduleItem } from '@/types';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 vi.mock('@/features/schedule/statusDictionary', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/features/schedule/statusDictionary')>();

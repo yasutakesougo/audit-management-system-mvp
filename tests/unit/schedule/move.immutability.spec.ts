@@ -1,6 +1,6 @@
-import { describe, it, expect } from 'vitest';
 import { moveScheduleToDay } from '@/features/schedule/move';
 import type { ScheduleUserCare } from '@/features/schedule/types';
+import { describe, expect, it } from 'vitest';
 
 const createSchedule = (): ScheduleUserCare => ({
   id: 'id1',

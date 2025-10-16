@@ -1,19 +1,19 @@
 import { describe, expect, it } from 'vitest';
 import { detectAllDay, mapSchedule, toLocalRange } from '../../src/lib/mappers';
 import {
-  SCHEDULE_FIELD_ASSIGNED_STAFF,
-  SCHEDULE_FIELD_ASSIGNED_STAFF_ID,
-  SCHEDULE_FIELD_BILLING_FLAGS,
-  SCHEDULE_FIELD_END,
-  SCHEDULE_FIELD_NOTE,
-  SCHEDULE_FIELD_RELATED_RESOURCE,
-  SCHEDULE_FIELD_RELATED_RESOURCE_ID,
-  SCHEDULE_FIELD_ROW_KEY,
-  SCHEDULE_FIELD_START,
-  SCHEDULE_FIELD_STATUS,
-  SCHEDULE_FIELD_TARGET_USER,
-  SCHEDULE_FIELD_TARGET_USER_ID,
-  type ScheduleRow,
+    SCHEDULE_FIELD_ASSIGNED_STAFF,
+    SCHEDULE_FIELD_ASSIGNED_STAFF_ID,
+    SCHEDULE_FIELD_BILLING_FLAGS,
+    SCHEDULE_FIELD_END,
+    SCHEDULE_FIELD_NOTE,
+    SCHEDULE_FIELD_RELATED_RESOURCE,
+    SCHEDULE_FIELD_RELATED_RESOURCE_ID,
+    SCHEDULE_FIELD_ROW_KEY,
+    SCHEDULE_FIELD_START,
+    SCHEDULE_FIELD_STATUS,
+    SCHEDULE_FIELD_TARGET_USER,
+    SCHEDULE_FIELD_TARGET_USER_ID,
+    type ScheduleRow,
 } from '../../src/sharepoint/fields';
 
 describe('lib/mappers branch coverage', () => {
@@ -51,8 +51,6 @@ describe('lib/mappers branch coverage', () => {
       [SCHEDULE_FIELD_RELATED_RESOURCE]: [{ Title: ' Room 1 ' }],
       [SCHEDULE_FIELD_BILLING_FLAGS]: 'Flag1;#Flag2;#Flag1',
       [SCHEDULE_FIELD_ROW_KEY]: 'rk',
-      EventDate: undefined,
-      EndDate: undefined,
       AllDay: undefined,
       Location: '  Room  ',
       StaffIdId: '9',

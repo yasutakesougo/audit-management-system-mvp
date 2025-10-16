@@ -1,5 +1,5 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { createSpClient } from '@/lib/spClient';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 const mockFetchResponse = (body: unknown, status = 500): Response => ({
   ok: false,

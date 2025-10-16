@@ -1,6 +1,6 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { EnvRecord } from '@/lib/env';
 import { isSchedulesFeatureEnabled } from '@/lib/env';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const createStorage = (): Storage => {
   const store: Record<string, string> = {};

@@ -1,12 +1,12 @@
-import { afterEach, describe, expect, it, vi } from 'vitest';
 import * as scheduleFeatures from '@/features/schedule/scheduleFeatures';
 import { toSpScheduleFields } from '@/features/schedule/spMap';
-import {
-  SCHEDULE_FIELD_CATEGORY,
-  SCHEDULE_FIELD_STAFF_IDS,
-  SCHEDULE_FIELD_STAFF_NAMES,
-} from '@/sharepoint/fields';
 import type { ScheduleUserCare } from '@/features/schedule/types';
+import {
+    SCHEDULE_FIELD_CATEGORY,
+    SCHEDULE_FIELD_STAFF_IDS,
+    SCHEDULE_FIELD_STAFF_NAMES,
+} from '@/sharepoint/fields';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 
 const staffTextSpy = vi.spyOn(scheduleFeatures, 'isScheduleStaffTextColumnsEnabled');
 

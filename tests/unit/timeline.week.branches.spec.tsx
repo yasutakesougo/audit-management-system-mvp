@@ -1,7 +1,7 @@
+import type { ScheduleOrg, ScheduleStaff, ScheduleUserCare } from '@/features/schedule/types';
+import TimelineWeek from '@/features/schedule/views/TimelineWeek';
 import { cleanup, fireEvent, render, screen } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import TimelineWeek from '@/features/schedule/views/TimelineWeek';
-import type { ScheduleOrg, ScheduleStaff, ScheduleUserCare } from '@/features/schedule/types';
 
 vi.mock('@/features/schedule/views/TimelineEventCard', () => ({
   default: ({
@@ -155,16 +155,16 @@ describe('TimelineWeek branch coverage', () => {
 
   it('ignores keyboard moves without the modifier and keeps subtitles per category', () => {
     vi.useFakeTimers();
-    vi.setSystemTime(new Date('2025-03-01T00:00:00.000Z'));
+    vi.setSystemTime(new Date('2025-03-03T00:00:00.000Z'));
 
     const onEventMove = vi.fn();
     const events = [
-      buildUserEvent({ id: 'user', staffNames: ['A', 'B'], start: '2025-03-01T02:00:00.000Z', dayKey: '2025-03-01' }),
+      buildUserEvent({ id: 'user', staffNames: ['A', 'B'], start: '2025-03-04T02:00:00.000Z', dayKey: '2025-03-04' }),
       buildStaffEvent({ id: 'staff', dayPart: 'AM', subType: '年休', staffNames: ['C'], start: '2025-03-03T00:00:00.000Z', dayKey: '2025-03-03' }),
-      buildOrgEvent({ id: 'org', start: '2025-03-02T03:00:00.000Z', dayKey: '2025-03-02' }),
+      buildOrgEvent({ id: 'org', start: '2025-03-05T03:00:00.000Z', dayKey: '2025-03-05' }),
     ];
 
-    render(<TimelineWeek events={events} onEventMove={onEventMove} />);
+    render(<TimelineWeek events={events} onEventMove={onEventMove} startDate={new Date('2025-03-03T00:00:00.000Z')} />);
 
     const cards = screen.getAllByTestId('schedule-item');
     const userCard = cards.find((card) => card.getAttribute('data-id') === 'user');
@@ -195,7 +195,7 @@ describe('TimelineWeek branch coverage', () => {
 
     render(<TimelineWeek events={events} onEventMove={onEventMove} />);
 
-  const targetCell = screen.getAllByLabelText(/利用者レーン・/)[0];
+  const targetCell = screen.getByLabelText(/利用者レーン・3月1日/);
     fireEvent.drop(targetCell, {
       preventDefault: () => {},
       dataTransfer: { getData: vi.fn(() => '') },
@@ -217,7 +217,7 @@ describe('TimelineWeek branch coverage', () => {
     render(<TimelineWeek events={[validEvent, invalidEvent]} onEventMove={onEventMove} />);
 
     const userNode = screen.getAllByTestId('schedule-item').find((node) => node.getAttribute('data-id') === 'user-y');
-  const staffCell = screen.getAllByLabelText(/職員レーン・/)[0];
+  const staffCell = screen.getByLabelText(/職員レーン・3月1日/);
 
     const dataTransfer = {
       setData: vi.fn(),
@@ -245,7 +245,7 @@ describe('TimelineWeek branch coverage', () => {
     render(<TimelineWeek events={[event]} onEventMove={onEventMove} />);
 
     const node = screen.getByTestId('schedule-item');
-  const cell = screen.getAllByLabelText(/利用者レーン・/)[0];
+  const cell = screen.getByLabelText(/利用者レーン・3月1日/);
 
     const dataTransfer = {
       setData: vi.fn(),

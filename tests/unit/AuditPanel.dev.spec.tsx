@@ -1,6 +1,5 @@
-import React from 'react';
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import AuditPanel from '../../src/features/audit/AuditPanel';
 
 type AuditLogEntry = {
@@ -115,8 +114,7 @@ describe('AuditPanel dev mode interactions', () => {
     const dialog = await screen.findByRole('dialog');
     expect(dialog).toHaveTextContent('Batch Metrics');
 
-    const overlay = document.querySelector('[role="button"][tabindex="0"]') as HTMLElement;
-    expect(overlay).toBeTruthy();
+    const overlay = screen.getByTestId('audit-metrics-overlay');
 
     fireEvent.keyDown(overlay, { key: 'Escape' });
     await waitFor(() => {
@@ -125,8 +123,7 @@ describe('AuditPanel dev mode interactions', () => {
 
     fireEvent.click(infoButton);
     await screen.findByRole('dialog');
-    const reopenedOverlay = document.querySelector('[role="button"][tabindex="0"]') as HTMLElement;
-    expect(reopenedOverlay).toBeTruthy();
+    const reopenedOverlay = screen.getByTestId('audit-metrics-overlay');
     fireEvent.click(reopenedOverlay);
     await waitFor(() => {
       expect(screen.queryByRole('dialog')).toBeNull();

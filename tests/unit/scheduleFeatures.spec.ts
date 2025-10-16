@@ -1,5 +1,5 @@
+import { SCHEDULES_BASE_FIELDS, SCHEDULES_SELECT_FIELDS, SCHEDULES_STAFF_TEXT_FIELDS } from '@/sharepoint/fields';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { SCHEDULES_BASE_FIELDS, SCHEDULES_STAFF_TEXT_FIELDS, SCHEDULES_SELECT_FIELDS } from '@/sharepoint/fields';
 
 type EnvMock = {
   readEnv: ReturnType<typeof vi.fn>;

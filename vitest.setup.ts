@@ -1,6 +1,6 @@
-import '@formatjs/intl-getcanonicallocales';
-import '@formatjs/intl-datetimeformat/polyfill';
 import '@formatjs/intl-datetimeformat/add-all-tz';
+import '@formatjs/intl-datetimeformat/polyfill';
+import '@formatjs/intl-getcanonicallocales';
 // Vitest global setup: polyfill crypto.randomUUID if absent (Node < 19 environments)
 import '@testing-library/jest-dom/vitest';
 import { webcrypto } from 'crypto';

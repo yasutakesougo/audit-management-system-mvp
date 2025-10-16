@@ -1,12 +1,12 @@
-import { describe, expect, it } from 'vitest';
 import {
-  AuthRequiredError,
-  SharePointBatchParseError,
-  SharePointItemNotFoundError,
-  SharePointMissingEtagError,
-  toSafeError,
-  type SafeError,
+    AuthRequiredError,
+    SharePointBatchParseError,
+    SharePointItemNotFoundError,
+    SharePointMissingEtagError,
+    toSafeError,
+    type SafeError,
 } from '@/lib/errors';
+import { describe, expect, it } from 'vitest';
 
 describe('errors: custom error classes', () => {
   it('AuthRequiredError sets name and default message', () => {

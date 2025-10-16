@@ -1,21 +1,64 @@
 import { useCallback, useMemo, useState } from 'react';
-import { useUsers } from './useUsers';
-import type { IUserMasterCreateDto } from './types';
-import Loading from '../../ui/components/Loading';
-import ErrorState from '../../ui/components/ErrorState';
+// MUI Components
+import Box from '@mui/material/Box';
+import Button from '@mui/material/Button';
+import Dialog from '@mui/material/Dialog';
+import DialogContent from '@mui/material/DialogContent';
+import IconButton from '@mui/material/IconButton';
+import Paper from '@mui/material/Paper';
+import Stack from '@mui/material/Stack';
+import Table from '@mui/material/Table';
+import TableBody from '@mui/material/TableBody';
+import TableCell from '@mui/material/TableCell';
+import TableContainer from '@mui/material/TableContainer';
+import TableHead from '@mui/material/TableHead';
+import TableRow from '@mui/material/TableRow';
+import TextField from '@mui/material/TextField';
+import Typography from '@mui/material/Typography';
+// MUI Icons
+import DeleteRoundedIcon from '@mui/icons-material/DeleteRounded';
+import EditRoundedIcon from '@mui/icons-material/EditRounded';
+import PersonAddRoundedIcon from '@mui/icons-material/PersonAddRounded';
+import PostAddIcon from '@mui/icons-material/PostAdd';
+import RefreshRoundedIcon from '@mui/icons-material/RefreshRounded';
+// Local imports
 import { AuthRequiredError } from '../../lib/errors';
-import { FormField } from '../../ui/components/FormField';
+import ErrorState from '../../ui/components/ErrorState';
+import Loading from '../../ui/components/Loading';
+import { useUsersStore } from './store';
+import type { IUserMaster, IUserMasterCreateDto } from './types';
+import UserForm from './UserForm';
 
 export default function UsersPanel() {
-  const { data, status, create, update, remove, refresh, error } = useUsers();
+  const { data, status, create, remove, refresh, error } = useUsersStore();
   const [userId, setUserId] = useState('');
   const [fullName, setFullName] = useState('');
   const [busyId, setBusyId] = useState<number | null>(null);
+  const [showCreateForm, setShowCreateForm] = useState(false);
+  const [showEditForm, setShowEditForm] = useState(false);
+  const [selectedUser, setSelectedUser] = useState<IUserMaster | null>(null);
+
+
 
   const canCreate = useMemo(
     () => !!userId.trim() && !!fullName.trim() && busyId === null,
     [userId, fullName, busyId]
   );
+
+  // 簡易作成用のID自動生成
+  const generateSimpleUserID = useCallback(() => {
+    const existingIds = data.map(user => user.UserID).filter(Boolean);
+
+    let nextNumber = 1;
+    let newId = '';
+
+    do {
+      newId = `U-${nextNumber.toString().padStart(3, '0')}`;
+      nextNumber++;
+    } while (existingIds.includes(newId));
+
+    setUserId(newId);
+  }, [data]);
 
   const handleCreate = useCallback(async () => {
     if (!canCreate) return;
@@ -34,15 +77,7 @@ export default function UsersPanel() {
     }
   }, [canCreate, create, fullName, userId]);
 
-  const handleRename = useCallback(async (id: number | string, currentName: string) => {
-    const next = `${currentName} *`;
-    setBusyId(Number(id));
-    try {
-      await update(id, { FullName: next });
-    } finally {
-      setBusyId(null);
-    }
-  }, [update]);
+
 
   const handleDelete = useCallback(async (id: number | string) => {
     if (!window.confirm('Delete this user?')) return;
@@ -68,6 +103,31 @@ export default function UsersPanel() {
     if (e.key === 'Enter') void handleCreate();
   }, [handleCreate]);
 
+  const handleCreateFormSuccess = useCallback((newUser: IUserMaster) => {
+    console.log('利用者が作成されました:', newUser);
+    setShowCreateForm(false);
+    refresh();
+  }, [refresh]);
+
+  const handleEditFormSuccess = useCallback((updatedUser: IUserMaster) => {
+    console.log('利用者情報が更新されました:', updatedUser);
+    setShowEditForm(false);
+    setSelectedUser(null);
+    refresh();
+  }, [refresh]);
+
+  const handleEditClick = useCallback((user: IUserMaster) => {
+    setSelectedUser(user);
+    setShowEditForm(true);
+  }, []);
+
+    const handleCloseForm = () => {
+    console.log('handleCloseForm called');
+    setShowCreateForm(false);
+    setShowEditForm(false);
+    setSelectedUser(null);
+  };
+
   if (status === 'loading' && !data.length) {
     return <Loading />;
   }
@@ -83,103 +143,175 @@ export default function UsersPanel() {
   }
 
   return (
-    <div className="p-4 space-y-4">
-      <h2 className="text-xl font-bold">Users</h2>
-
-      <div className="flex flex-wrap gap-4 items-end" aria-label="User creation form">
-        <FormField label="User ID" required className="min-w-[180px]" labelClassName="text-xs">
-          {(id) => (
-            <input
-              id={id}
-              className="border p-2"
-              aria-label="User ID"
-              placeholder="ユーザーID"
+    <Box sx={{ p: 3 }}>
+      <Paper variant="outlined" sx={{ p: 3, mb: 3 }}>
+        <Typography variant="h6" component="h3" gutterBottom>
+          新規利用者登録
+        </Typography>
+        <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2} alignItems="end" sx={{ mb: 2 }}>
+          <Box sx={{ display: 'flex', gap: 1, alignItems: 'flex-end' }}>
+            <TextField
+              label="ユーザーID"
+              placeholder="U-001"
+              size="small"
               value={userId}
               onChange={(e) => setUserId(e.target.value)}
               onKeyDown={onCreateKeyDown}
               required
+              sx={{ minWidth: 150 }}
             />
-          )}
-        </FormField>
-        <FormField label="氏名" required className="min-w-[180px]" labelClassName="text-xs">
-          {(id) => (
-            <input
-              id={id}
-              className="border p-2"
-              aria-label="氏名"
-              placeholder="氏名"
-              value={fullName}
-              onChange={(e) => setFullName(e.target.value)}
-              onKeyDown={onCreateKeyDown}
-              required
-            />
-          )}
-        </FormField>
-        <button
-          className="border px-3 py-2 bg-blue-600 text-white disabled:opacity-60"
-          onClick={handleCreate}
-          disabled={!canCreate}
-        >
-          {busyId === -1 ? 'Creating…' : 'Create'}
-        </button>
-        <button
-          className="border px-3 py-2 disabled:opacity-60"
-          onClick={handleRefresh}
-          disabled={busyId !== null}
-        >
-          {busyId === -2 ? 'Refreshing…' : 'Refresh'}
-        </button>
-      </div>
+            <Button
+              variant="outlined"
+              onClick={generateSimpleUserID}
+              size="small"
+              sx={{ minWidth: 'auto', px: 1.5 }}
+            >
+              自動
+            </Button>
+          </Box>
+          <TextField
+            label="氏名"
+            placeholder="山田太郎"
+            size="small"
+            value={fullName}
+            onChange={(e) => setFullName(e.target.value)}
+            onKeyDown={onCreateKeyDown}
+            required
+            sx={{ minWidth: 200 }}
+          />
+          <Button
+            variant="contained"
+            startIcon={<PersonAddRoundedIcon />}
+            onClick={handleCreate}
+            disabled={!canCreate}
+            sx={{ minWidth: 120 }}
+          >
+            {busyId === -1 ? '作成中…' : '簡易作成'}
+          </Button>
+          <Button
+            variant="outlined"
+            startIcon={<RefreshRoundedIcon />}
+            onClick={handleRefresh}
+            disabled={busyId !== null}
+          >
+            {busyId === -2 ? '更新中…' : '更新'}
+          </Button>
+        </Stack>
 
-      <div className="text-sm text-gray-500">status: {status}</div>
+        <Box sx={{ borderTop: '1px solid', borderColor: 'grey.300', pt: 2 }}>
+          <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
+            詳細情報を含む新規登録はこちら：
+          </Typography>
+          <Button
+            variant="contained"
+            color="primary"
+            startIcon={<PostAddIcon />}
+            onClick={() => setShowCreateForm(true)}
+            sx={{ minWidth: 160 }}
+          >
+            詳細登録フォーム
+          </Button>
+        </Box>
+      </Paper>
 
-      <div className="overflow-auto">
-        <table className="min-w-full border border-gray-300">
-          <thead className="bg-gray-100">
-            <tr>
-              <th className="border px-2 py-1 text-left">ID</th>
-              <th className="border px-2 py-1 text-left">UserID</th>
-              <th className="border px-2 py-1 text-left">FullName</th>
-              <th className="border px-2 py-1 text-left">Actions</th>
-            </tr>
-          </thead>
-          <tbody>
+      <Typography variant="caption" color="text.secondary" sx={{ mb: 2, display: 'block' }}>
+        ステータス: {status}
+      </Typography>
+
+      <TableContainer component={Paper} variant="outlined">
+        <Table>
+          <TableHead>
+            <TableRow>
+              <TableCell>ID</TableCell>
+              <TableCell>ユーザーID</TableCell>
+              <TableCell>氏名</TableCell>
+              <TableCell align="center">操作</TableCell>
+            </TableRow>
+          </TableHead>
+          <TableBody>
             {data.map((u) => {
               const rowBusy = busyId === Number(u.Id);
               return (
-                <tr key={u.Id} className="odd:bg-white even:bg-gray-50">
-                <td className="border px-2 py-1">{u.Id}</td>
-                <td className="border px-2 py-1">{u.UserID}</td>
-                <td className="border px-2 py-1">{u.FullName}</td>
-                <td className="border px-2 py-1 space-x-2">
-                  <button
-                    className="underline text-blue-600 disabled:text-gray-400"
-                    onClick={() => handleRename(u.Id, u.FullName)}
-                    disabled={rowBusy}
-                  >
-                    {rowBusy ? 'Renaming…' : 'Rename*'}
-                  </button>
-                  <button
-                    className="underline text-red-600 disabled:text-gray-400"
-                    onClick={() => handleDelete(u.Id)}
-                    disabled={rowBusy}
-                  >
-                    {rowBusy ? 'Deleting…' : 'Delete'}
-                  </button>
-                </td>
-                </tr>
+                <TableRow key={u.Id} hover>
+                  <TableCell>{u.Id}</TableCell>
+                  <TableCell>{u.UserID}</TableCell>
+                  <TableCell>{u.FullName}</TableCell>
+                  <TableCell align="center">
+                    <Stack direction="row" spacing={1} justifyContent="center">
+                      <IconButton
+                        size="small"
+                        color="primary"
+                        onClick={() => handleEditClick(u)}
+                        disabled={rowBusy}
+                        title="編集"
+                      >
+                        <EditRoundedIcon fontSize="small" />
+                      </IconButton>
+                      <IconButton
+                        size="small"
+                        color="error"
+                        onClick={() => handleDelete(u.Id)}
+                        disabled={rowBusy}
+                        title="削除"
+                      >
+                        <DeleteRoundedIcon fontSize="small" />
+                      </IconButton>
+                    </Stack>
+                  </TableCell>
+                </TableRow>
               );
             })}
             {data.length === 0 && (
-              <tr>
-                <td className="border px-2 py-4 text-center text-gray-400" colSpan={4}>
-                  No users yet.
-                </td>
-              </tr>
+              <TableRow>
+                <TableCell colSpan={4} align="center" sx={{ py: 4, color: 'text.secondary' }}>
+                  データがありません
+                </TableCell>
+              </TableRow>
             )}
-          </tbody>
-        </table>
-      </div>
-    </div>
+          </TableBody>
+        </Table>
+      </TableContainer>
+
+      {/* 新規作成フォームダイアログ */}
+      <Dialog
+        open={showCreateForm}
+        onClose={handleCloseForm}
+        maxWidth="md"
+        fullWidth
+        disableEscapeKeyDown={false}
+        disableAutoFocus={false}
+        disableEnforceFocus={false}
+        disableRestoreFocus={false}
+      >
+        <DialogContent sx={{ p: 0 }}>
+          <UserForm
+            mode="create"
+            onSuccess={handleCreateFormSuccess}
+            onClose={handleCloseForm}
+          />
+        </DialogContent>
+      </Dialog>
+
+      {/* 編集フォームダイアログ */}
+      <Dialog
+        open={showEditForm}
+        onClose={handleCloseForm}
+        maxWidth="md"
+        fullWidth
+        disableEscapeKeyDown={false}
+        disableAutoFocus={false}
+        disableEnforceFocus={false}
+        disableRestoreFocus={false}
+      >
+        <DialogContent sx={{ p: 0 }}>
+          <UserForm
+            user={selectedUser || undefined}
+            mode="update"
+            onSuccess={handleEditFormSuccess}
+            onClose={handleCloseForm}
+          />
+        </DialogContent>
+      </Dialog>
+    </Box>
   );
 }

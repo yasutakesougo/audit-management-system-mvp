@@ -43,7 +43,7 @@ jobs:
           LIGHTHOUSE_URL: ${{ steps.norm.outputs.lh }}
           SENTRY_URL: ${{ steps.norm.outputs.se }}
         run: |
-          echo "::group::Report Links"
+          echo "::group::Report links (bullets)"
           echo "- カバレッジ: ${COVERAGE_URL}"
           echo "- Lighthouse: ${LIGHTHOUSE_URL}"
           echo "- Sentry: ${SENTRY_URL}"

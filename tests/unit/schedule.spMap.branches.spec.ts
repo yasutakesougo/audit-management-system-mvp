@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import type { SpScheduleItem } from '../../src/types';
 import type { ScheduleOrg, ScheduleUserCare } from '../../src/features/schedule/types';
 import { SCHEDULE_FIELD_STAFF_IDS, SCHEDULE_FIELD_STAFF_NAMES } from '../../src/sharepoint/fields';
+import type { SpScheduleItem } from '../../src/types';
 
 const isScheduleStaffTextColumnsEnabledMock = vi.fn(() => false);
 

@@ -1,11 +1,12 @@
-import React, { useCallback, useState } from 'react';
-import { readAudit, AuditEvent } from '../../lib/audit';
+import React, { useCallback, useEffect, useState } from 'react';
+import { AuditEvent, readAudit } from '../../lib/audit';
+import { isDevMode } from '../../lib/env';
+import UnsynedAuditBadge from '../../ui/components/UnsynedAuditBadge';
 import { buildAuditCsv, downloadCsv } from './exportCsv';
+import { auditMetricLabels } from './labels';
+import { AuditBatchMetrics } from './types';
 import { useAuditSync } from './useAuditSync';
 import { useAuditSyncBatch } from './useAuditSyncBatch';
-import { AuditBatchMetrics } from './types';
-import { auditMetricLabels } from './labels';
-import { isDevMode } from '../../lib/env';
 
 const AuditPanel: React.FC = () => {
   const [logs, setLogs] = useState<AuditEvent[]>(readAudit());
@@ -23,6 +24,25 @@ const AuditPanel: React.FC = () => {
   const [lastTotal, setLastTotal] = useState<AuditBatchMetrics['total'] | undefined>();
   const [showMetrics, setShowMetrics] = useState(false);
   const closeMetrics = useCallback(() => setShowMetrics(false), []);
+
+  useEffect(() => {
+    if (!showMetrics) {
+      return;
+    }
+
+    const handleGlobalKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        event.preventDefault();
+        closeMetrics();
+      }
+    };
+
+    const listenerOptions: AddEventListenerOptions = { capture: true };
+    window.addEventListener('keydown', handleGlobalKeyDown, listenerOptions);
+    return () => {
+      window.removeEventListener('keydown', handleGlobalKeyDown, listenerOptions);
+    };
+  }, [showMetrics, closeMetrics]);
   const handleMetricsOverlayClick = useCallback((event: React.MouseEvent<HTMLDivElement>) => {
     if (event.target === event.currentTarget) {
       closeMetrics();
@@ -52,6 +72,12 @@ const AuditPanel: React.FC = () => {
     <div>
       <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 4 }}>
         <h2 style={{ margin: 0 }}>監査ログ</h2>
+        <UnsynedAuditBadge
+          style={{
+            // 監査ページでクリックした場合のカスタム動作を追加するための準備
+            // TODO: 将来的に現在のページでの動作をカスタマイズする場合に使用
+          }}
+        />
         {(lastTotal !== undefined) && (
           <div
             data-testid="audit-metrics"
@@ -97,6 +123,7 @@ const AuditPanel: React.FC = () => {
           tabIndex={0}
           onClick={handleMetricsOverlayClick}
           onKeyDown={handleMetricsOverlayKeyDown}
+          data-testid="audit-metrics-overlay"
           style={{ position: 'fixed', top: 0, left:0, right:0, bottom:0, background: 'rgba(0,0,0,0.35)', display:'flex', alignItems:'center', justifyContent:'center', zIndex: 9999 }}
         >
           <div role="dialog" aria-modal="true" style={{ background:'#fff', padding:16, width: 480, maxHeight:'80vh', overflow:'auto', borderRadius: 8 }}>

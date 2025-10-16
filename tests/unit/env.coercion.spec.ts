@@ -139,6 +139,7 @@ describe('getSharePointDefaultScope fallbacks', () => {
       VITE_SP_SCOPE_DEFAULT: '   ',
       VITE_SP_RESOURCE: 'https://contoso.sharepoint.com/',
       VITE_MSAL_SCOPES: '  ',
+      VITE_DEMO_MODE: '0',
     } as EnvRecord);
 
     expect(scope).toBe('https://contoso.sharepoint.com/AllSites.Read');
@@ -168,6 +169,7 @@ describe('getSharePointDefaultScope fallbacks', () => {
         'https://contoso.sharepoint.com/AllSites.Read',
         'https://fabrikam.sharepoint.com/AllSites.FullControl',
       ].join(' '),
+      VITE_DEMO_MODE: '0',
     } as EnvRecord);
 
     expect(scope).toBe('https://contoso.sharepoint.com/AllSites.Read');

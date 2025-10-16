@@ -1,7 +1,7 @@
-import { useEffect, useMemo } from 'react';
 import { useToast } from '@/hooks/useToast';
 import { readBool, readEnv } from '@/lib/env';
 import type { SpFieldDef, UseSP } from '@/lib/spClient';
+import { useEffect, useMemo } from 'react';
 
 type ScheduleSpClient = Pick<UseSP, 'spFetch' | 'ensureListExists'>;
 
@@ -9,7 +9,7 @@ type GuidIdentifier = { type: 'guid'; value: string } | { type: 'title'; value: 
 
 const GUID_REGEX = /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/;
 
-const DEFAULT_SCHEDULE_LIST_TITLE = 'Schedules';
+const DEFAULT_SCHEDULE_LIST_TITLE = 'ScheduleEvents';
 const DEFAULT_USERS_LIST_TITLE = 'Users_Master';
 const DEFAULT_STAFF_LIST_TITLE = 'Staff_Master';
 

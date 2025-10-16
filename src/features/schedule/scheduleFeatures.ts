@@ -1,5 +1,5 @@
-import { SCHEDULES_BASE_FIELDS, SCHEDULES_COMMON_OPTIONAL_FIELDS, SCHEDULES_SELECT_FIELDS, SCHEDULES_STAFF_TEXT_FIELDS } from '@/sharepoint/fields';
-import { readEnv, isDevMode } from '@/lib/env';
+import { isDevMode, readEnv } from '@/lib/env';
+import { SCHEDULES_BASE_FIELDS, SCHEDULES_COMMON_OPTIONAL_FIELDS, SCHEDULES_MINIMAL_FIELDS, SCHEDULES_SELECT_FIELDS, SCHEDULES_STAFF_TEXT_FIELDS } from '@/sharepoint/fields';
 
 const isDevRuntime = isDevMode();
 
@@ -42,7 +42,13 @@ export const disableScheduleStaffTextColumns = (reason?: string): boolean => {
 };
 
 export const buildScheduleSelectFields = (): string[] => {
-  const fields = [...SCHEDULES_BASE_FIELDS, ...SCHEDULES_COMMON_OPTIONAL_FIELDS] as string[];
+  // 開発環境ではURL制限回避のために最小限のフィールドセットを使用
+  const useMinimalFields =
+    typeof window !== 'undefined' && window.location?.hostname === 'localhost' &&
+    !(typeof process !== 'undefined' && process.env?.VITEST === 'true');
+  const baseFields = useMinimalFields ? SCHEDULES_MINIMAL_FIELDS : SCHEDULES_BASE_FIELDS;
+
+  const fields = [...baseFields, ...SCHEDULES_COMMON_OPTIONAL_FIELDS] as string[];
   if (staffTextColumnsEnabled) {
     fields.push(...SCHEDULES_STAFF_TEXT_FIELDS);
   }

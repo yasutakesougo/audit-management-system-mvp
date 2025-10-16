@@ -1,5 +1,5 @@
-import { beforeEach, describe, expect, it } from 'vitest';
 import * as demo from '@/adapters/schedules/demo';
+import { beforeEach, describe, expect, it } from 'vitest';
 
 const iso = (day: string, hour: number) => `${day}T${String(hour).padStart(2, '0')}:00:00.000Z`;
 

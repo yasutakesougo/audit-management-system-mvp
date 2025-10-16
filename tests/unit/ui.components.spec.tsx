@@ -1,9 +1,9 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { render, screen, fireEvent } from '@testing-library/react';
 import EmptyState from '@/ui/components/EmptyState';
 import ErrorState from '@/ui/components/ErrorState';
 import { FormField } from '@/ui/components/FormField';
 import SignInButton from '@/ui/components/SignInButton';
+import { fireEvent, render, screen } from '@testing-library/react';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const mockUseAuth = vi.fn();
 

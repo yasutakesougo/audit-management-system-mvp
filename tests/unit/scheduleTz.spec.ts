@@ -1,5 +1,5 @@
-import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { AppConfig } from '@/lib/env';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 
 vi.mock('@/lib/env', () => ({
   getAppConfig: vi.fn(),

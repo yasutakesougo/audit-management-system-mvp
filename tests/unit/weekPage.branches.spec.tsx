@@ -1,7 +1,7 @@
+import type { ScheduleForm } from '@/features/schedule/types';
+import type { Schedule } from '@/lib/mappers';
 import { act, cleanup, fireEvent, render, screen } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import type { Schedule } from '@/lib/mappers';
-import type { ScheduleForm } from '@/features/schedule/types';
 
 const { mockUseSchedules, mockCreateSchedule, mockUpdateSchedule } = vi.hoisted(() => {
   return {

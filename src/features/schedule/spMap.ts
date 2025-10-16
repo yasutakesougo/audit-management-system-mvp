@@ -1,39 +1,39 @@
+import { detectAllDay, toLocalRange } from '@/lib/mappers';
 import { formatInTimeZone } from '@/lib/tz';
-import type { SpScheduleItem } from '@/types';
 import {
-  SCHEDULE_FIELD_CATEGORY,
-  SCHEDULE_FIELD_SERVICE_TYPE,
-  SCHEDULE_FIELD_PERSON_TYPE,
-  SCHEDULE_FIELD_PERSON_ID,
-  SCHEDULE_FIELD_PERSON_NAME,
-  SCHEDULE_FIELD_EXTERNAL_NAME,
-  SCHEDULE_FIELD_EXTERNAL_ORG,
-  SCHEDULE_FIELD_EXTERNAL_CONTACT,
-  SCHEDULE_FIELD_STAFF_IDS,
-  SCHEDULE_FIELD_STAFF_NAMES,
-  SCHEDULE_FIELD_DAY_KEY,
-  SCHEDULE_FIELD_FISCAL_YEAR,
-  SCHEDULE_FIELD_SUB_TYPE,
-  SCHEDULE_FIELD_ORG_AUDIENCE,
-  SCHEDULE_FIELD_ORG_RESOURCE_ID,
-  SCHEDULE_FIELD_ORG_EXTERNAL_NAME,
-  SCHEDULE_FIELD_DAY_PART,
+    SCHEDULE_FIELD_CATEGORY,
+    SCHEDULE_FIELD_DAY_KEY,
+    SCHEDULE_FIELD_DAY_PART,
+    SCHEDULE_FIELD_EXTERNAL_CONTACT,
+    SCHEDULE_FIELD_EXTERNAL_NAME,
+    SCHEDULE_FIELD_EXTERNAL_ORG,
+    SCHEDULE_FIELD_FISCAL_YEAR,
+    SCHEDULE_FIELD_ORG_AUDIENCE,
+    SCHEDULE_FIELD_ORG_EXTERNAL_NAME,
+    SCHEDULE_FIELD_ORG_RESOURCE_ID,
+    SCHEDULE_FIELD_PERSON_ID,
+    SCHEDULE_FIELD_PERSON_NAME,
+    SCHEDULE_FIELD_PERSON_TYPE,
+    SCHEDULE_FIELD_SERVICE_TYPE,
+    SCHEDULE_FIELD_STAFF_IDS,
+    SCHEDULE_FIELD_STAFF_NAMES,
+    SCHEDULE_FIELD_SUB_TYPE,
 } from '@/sharepoint/fields';
+import type { SpScheduleItem } from '@/types';
+import { isScheduleStaffTextColumnsEnabled } from './scheduleFeatures';
+import { normalizeStatus, toSharePointStatus } from './statusDictionary';
 import {
-  BaseSchedule,
-  Category,
-  PersonType,
-  DayPart,
-  Schedule,
-  ScheduleOrg,
-  ScheduleStaff,
-  ScheduleUserCare,
-  ServiceType,
+    BaseSchedule,
+    Category,
+    DayPart,
+    PersonType,
+    Schedule,
+    ScheduleOrg,
+    ScheduleStaff,
+    ScheduleUserCare,
+    ServiceType,
 } from './types';
 import { validateUserCare } from './validation';
-import { isScheduleStaffTextColumnsEnabled } from './scheduleFeatures';
-import { detectAllDay, toLocalRange } from '@/lib/mappers';
-import { normalizeStatus, toSharePointStatus } from './statusDictionary';
 
 const SCHEDULE_TIME_ZONE = 'Asia/Tokyo';
 
@@ -316,8 +316,12 @@ const extractLookupTitles = (value: unknown): string[] => {
 };
 
 const buildBaseSchedule = (item: SpScheduleItem): BaseSchedule => {
-  const startUtcRaw = toUtcIso(item.EventDate);
-  const endUtcRaw = toUtcIso(item.EndDate ?? item.EventDate) ?? startUtcRaw;
+  // SharePointリストの構造に応じて柔軟にフィールドを処理
+  const eventDate = item.EventDate || item.StartDateTime || item.Created;
+  const endDate = item.EndDate || item.EndDateTime || item.EventDate || item.StartDateTime || item.Created;
+
+  const startUtcRaw = toUtcIso(eventDate);
+  const endUtcRaw = toUtcIso(endDate) ?? startUtcRaw;
   const range = toLocalRange(startUtcRaw ?? null, endUtcRaw ?? null);
   const allDay = detectAllDay(item.AllDay, startUtcRaw ?? null, endUtcRaw ?? null, range);
 
@@ -457,11 +461,13 @@ const normalizeRecurrenceField = (schedule: Schedule): Record<string, unknown> =
 export const toSpScheduleFields = (schedule: Schedule): Record<string, unknown> => {
   const base: Record<string, unknown> = {
     Title: schedule.title,
+    // 基本的にはEventDate/EndDateを使用するが、存在しない場合は代替フィールドへ
     EventDate: schedule.start,
     EndDate: schedule.end,
+    // オプショナルフィールド（存在しない場合はnull/未定義）
     AllDay: Boolean(schedule.allDay),
     Location: schedule.location ?? null,
-  Status: toSharePointStatus(schedule.status),
+    Status: toSharePointStatus(schedule.status),
     Notes: schedule.notes ?? null,
     [SCHEDULE_FIELD_CATEGORY]: schedule.category,
     [SCHEDULE_FIELD_DAY_KEY]: schedule.dayKey ?? computeDayKey(schedule.start) ?? null,

@@ -1,11 +1,11 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 // NOTE: Avoid path alias here to keep ts-jest / vitest resolution simple without extra config
-import { useAuth } from '../auth/useAuth';
 import { useMemo } from 'react';
+import { useAuth } from '../auth/useAuth';
 import { getRuntimeEnv as getRuntimeEnvRoot } from '../env';
+import { auditLog } from './debugLogger';
 import { getAppConfig, type EnvRecord } from './env';
 import { SharePointItemNotFoundError, SharePointMissingEtagError } from './errors';
-import { auditLog } from './debugLogger';
 
 export function ensureConfig(envOverride?: { VITE_SP_RESOURCE?: string; VITE_SP_SITE_RELATIVE?: string }) {
   const overrideRecord = envOverride as EnvRecord | undefined;
@@ -346,7 +346,7 @@ type StaffIdentifier = { type: 'guid' | 'title'; value: string };
 const resolveStaffListIdentifier = (titleOverride: string, guidOverride: string): StaffIdentifier => {
   const normalizedGuid = trimGuidBraces(guidOverride);
   if (normalizedGuid) {
-    return { type: 'guid', value: normalizedGuid }; 
+    return { type: 'guid', value: normalizedGuid };
   }
   const trimmedTitle = titleOverride.trim();
   if (/^guid:/i.test(trimmedTitle)) {
@@ -424,6 +424,44 @@ export function createSpClient(
 
   const spFetch = async (path: string, init: RequestInit = {}): Promise<Response> => {
     const resolvedPath = normalizePath(path);
+
+    const isVitest = typeof process !== 'undefined' && Boolean(process.env.VITEST);
+
+    // 開発環境でのモック応答
+  if (config.isDev && !isVitest) {
+      console.info(`[DevMock] SharePoint API モック: ${init.method || 'GET'} ${resolvedPath}`);
+
+      // モックレスポンスを作成
+      const mockResponse = (data: any, status = 200) => {
+        const response = new Response(JSON.stringify(data), {
+          status,
+          statusText: status === 200 ? 'OK' : 'Error',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+        });
+        return Promise.resolve(response);
+      };
+
+      // パスに応じたモックデータ
+      if (resolvedPath.includes('/currentuser')) {
+        return mockResponse({ Id: 1, Title: 'Development User' });
+      }
+
+      if (resolvedPath.includes('/lists/getbytitle') && resolvedPath.includes('/items')) {
+        // スケジュールリストのモック（空データ）
+        return mockResponse({ value: [] });
+      }
+
+      if (resolvedPath.includes('/lists')) {
+        // その他のリストのモック
+        return mockResponse({ value: [] });
+      }
+
+      // デフォルトの空レスポンス
+      return mockResponse({ value: [] });
+    }
+
     const token1 = await acquireToken();
     if (debugEnabled && tokenMetricsCarrier.__TOKEN_METRICS__) {
       dbg('token metrics snapshot', tokenMetricsCarrier.__TOKEN_METRICS__);

@@ -1,6 +1,6 @@
-import { describe, it, expect } from 'vitest';
-import { validateUserCare } from '@/features/schedule/validation';
 import type { ScheduleUserCare } from '@/features/schedule/types';
+import { validateUserCare } from '@/features/schedule/validation';
+import { describe, expect, it } from 'vitest';
 
 describe('validation(UserCare) – happy path', () => {
   const baseDraft: Partial<ScheduleUserCare> = {

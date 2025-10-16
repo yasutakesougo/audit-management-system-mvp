@@ -1,5 +1,5 @@
-import { describe, expect, it } from 'vitest';
 import { cn } from '@/utils/cn';
+import { describe, expect, it } from 'vitest';
 
 describe('cn utility', () => {
   it('flattens nested arrays and objects while deduplicating values', () => {
