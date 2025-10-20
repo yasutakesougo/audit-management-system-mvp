@@ -2,6 +2,7 @@ import {
   isComplianceFormEnabled,
   isSchedulesCreateEnabled,
   isSchedulesFeatureEnabled,
+  isTimeflowV2Enabled,
   type EnvRecord,
 } from '../lib/env';
 import { createContext, createElement, useContext, useMemo, type ReactNode } from 'react';
@@ -10,12 +11,14 @@ export type FeatureFlagSnapshot = {
   schedules: boolean;
   schedulesCreate: boolean;
   complianceForm: boolean;
+  timeflowV2: boolean;
 };
 
 export const resolveFeatureFlags = (envOverride?: EnvRecord): FeatureFlagSnapshot => ({
   schedules: isSchedulesFeatureEnabled(envOverride),
   schedulesCreate: isSchedulesCreateEnabled(envOverride),
   complianceForm: isComplianceFormEnabled(envOverride),
+  timeflowV2: isTimeflowV2Enabled(envOverride),
 });
 
 const initialSnapshot = resolveFeatureFlags();

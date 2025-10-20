@@ -69,6 +69,7 @@ export const useAuditSyncBatch = () => {
     // ローカル構造 -> ListItem DTO
     const dtoList: AuditInsertItemDTO[] = await Promise.all(logs.map(async ev => {
       const after_json = ev.after ? canonicalJSONStringify(ev.after) : null;
+      const before_json = ev.before ? canonicalJSONStringify(ev.before) : null;
       const insert: Omit<AuditInsertItemDTO, 'entry_hash'> = {
         Title: `${ev.action} ${ev.entity}${ev.entity_id ? ' #' + ev.entity_id : ''}`,
         ts: new Date(ev.ts).toISOString(),
@@ -77,6 +78,7 @@ export const useAuditSyncBatch = () => {
         entity: ev.entity,
         entity_id: ev.entity_id ?? null,
         channel: ev.channel,
+        before_json,
         after_json
       };
       const entry_hash = await computeEntryHash({

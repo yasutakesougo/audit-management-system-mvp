@@ -1,11 +1,12 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import React, { useEffect, useState } from 'react';
-import Loading from '../../ui/components/Loading';
-import ErrorState from '../../ui/components/ErrorState';
+import { useToast } from '@/hooks/useToast';
+import { withAudit } from '@/lib/auditWrap';
+import React, { useCallback, useEffect, useState } from 'react';
 import { pushAudit } from '../../lib/audit';
+import ErrorState from '../../ui/components/ErrorState';
+import Loading from '../../ui/components/Loading';
 import { useRecordsApi } from './api';
 import { mapToRecordItem, RecordItem, SupportRecordInsertDTO, SupportRecordItem } from './types';
-import { useToast } from '@/hooks/useToast';
 
 const RecordList: React.FC = () => {
   const [records, setRecords] = useState<RecordItem[]>([]);
@@ -15,7 +16,7 @@ const RecordList: React.FC = () => {
   const { list, add } = useRecordsApi();
   const { show } = useToast();
 
-  const loadRecords = async () => {
+  const loadRecords = useCallback(async () => {
     setLoading(true);
     try {
       const items = await list();
@@ -29,9 +30,9 @@ const RecordList: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [list, show]);
 
-  useEffect(() => { loadRecords(); }, []);
+  useEffect(() => { loadRecords(); }, [loadRecords]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -42,7 +43,7 @@ const RecordList: React.FC = () => {
         cr013_recorddate: form.cr013_recorddate || undefined,
         cr013_specialnote: form.cr013_specialnote || undefined
       };
-      const created: SupportRecordItem = await add(insert);
+      const created: SupportRecordItem = await withAudit({ baseAction: 'CREATE', entity: 'SupportRecord_Daily', before: { insert } }, () => add(insert));
       setRecords(prev => [mapToRecordItem(created), ...prev]);
       pushAudit({
         actor: 'user',

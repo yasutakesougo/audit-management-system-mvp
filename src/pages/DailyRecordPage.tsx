@@ -1,17 +1,24 @@
 import {
-    Add as AddIcon,
-    Search as SearchIcon
+    Search as SearchIcon,
+    Person as PersonIcon,
+    Warning as WarningIcon,
+    AccessTime as AccessTimeIcon,
+    CheckCircle as CheckCircleIcon
 } from '@mui/icons-material';
 import {
     Box,
+    Avatar,
     Button,
     Card,
     CardContent,
     Chip,
     Container,
-    Fab,
     FormControl,
     InputLabel,
+    List,
+    ListItemAvatar,
+    ListItemButton,
+    ListItemText,
     MenuItem,
     Paper,
     Select,
@@ -19,10 +26,9 @@ import {
     TextField,
     Typography
 } from '@mui/material';
-import { useMemo, useState } from 'react';
-import { PersonDaily } from '../domain/daily/types';
+import { ReactElement, useCallback, useEffect, useMemo, useState } from 'react';
+import { DailyStatus, PersonDaily } from '../domain/daily/types';
 import { DailyRecordForm } from '../features/daily/DailyRecordForm';
-import { DailyRecordList } from '../features/daily/DailyRecordList';
 import { useUsersDemo } from '../features/users/usersStoreDemo';
 import { useSchedules } from '../stores/useSchedules';
 import { calculateAttendanceRate, getExpectedAttendeeCount } from '../utils/attendanceUtils';
@@ -183,16 +189,33 @@ const generateTodayRecords = (): PersonDaily[] => {
   });
 };
 
+const statusPriority: Record<DailyStatus, number> = {
+  '未作成': 0,
+  '作成中': 1,
+  '完了': 2,
+};
+
+const statusChipPalette: Record<DailyStatus, 'default' | 'warning' | 'success'> = {
+  '未作成': 'default',
+  '作成中': 'warning',
+  '完了': 'success',
+};
+
+const statusIconMap: Record<DailyStatus, ReactElement> = {
+  '未作成': <WarningIcon fontSize="small" />,
+  '作成中': <AccessTimeIcon fontSize="small" />,
+  '完了': <CheckCircleIcon fontSize="small" />,
+};
+
 export default function DailyRecordPage() {
   // 利用者マスタとスケジュールデータ
   const { data: usersData } = useUsersDemo();
   const { data: schedulesData } = useSchedules();
 
   const [records, setRecords] = useState<PersonDaily[]>(mockRecords);
-  const [formOpen, setFormOpen] = useState(false);
-  const [editingRecord, setEditingRecord] = useState<PersonDaily | undefined>();
+  const [selectedRecordId, setSelectedRecordId] = useState<number | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
-  const [statusFilter, setStatusFilter] = useState('all');
+  const [statusFilter, setStatusFilter] = useState<'all' | DailyStatus>('all');
   const [dateFilter, setDateFilter] = useState('');
 
   // 今日の予定通所者数を計算
@@ -238,31 +261,34 @@ export default function DailyRecordPage() {
     return { expectedCount, attendanceRate, actualCount, absentUserIds };
   }, [usersData, schedulesData, records]);
 
+  const handleSaveRecord = (updatedRecord: PersonDaily) => {
+    setRecords((prevRecords) => {
+      const nextRecords = prevRecords.map((record) =>
+        record.id === updatedRecord.id ? updatedRecord : record
+      );
+      const filteredNext = orderRecords(applyFilters(nextRecords));
+      const nextIncomplete = (() => {
+        const currentIndex = filteredNext.findIndex((record) => record.id === updatedRecord.id);
+        const searchOrder =
+          currentIndex >= 0
+            ? [
+                ...filteredNext.slice(currentIndex + 1),
+                ...filteredNext.slice(0, currentIndex),
+              ]
+            : filteredNext;
+        return searchOrder.find((record) => record.status !== '完了') ?? null;
+      })();
 
-  const handleOpenForm = () => {
-    setEditingRecord(undefined);
-    setFormOpen(true);
-  };
+      if (nextIncomplete) {
+        setSelectedRecordId(nextIncomplete.id);
+      } else if (filteredNext.length > 0) {
+        setSelectedRecordId(filteredNext[0].id);
+      } else {
+        setSelectedRecordId(null);
+      }
 
-  const handleEditRecord = (record: PersonDaily) => {
-    setEditingRecord(record);
-    setFormOpen(true);
-  };
-
-  const handleCloseForm = () => {
-    setFormOpen(false);
-    setEditingRecord(undefined);
-  };
-
-  const handleSaveRecord = (record: Omit<PersonDaily, 'id'>) => {
-    console.log('保存:', record);
-    // ここで実際の保存処理を実装
-    handleCloseForm();
-  };
-
-  const handleDeleteRecord = (recordId: number) => {
-    console.log('削除:', recordId);
-    setRecords(prev => prev.filter(record => record.id !== recordId));
+      return nextRecords;
+    });
   };
 
   const handleGenerateTodayRecords = () => {
@@ -337,17 +363,53 @@ export default function DailyRecordPage() {
     }));
   };
 
-  // フィルタリング
-  const filteredRecords = records.filter(record => {
-    const matchesSearch = !searchQuery ||
-      record.personName.includes(searchQuery) ||
-      record.personId.includes(searchQuery);
+  const applyFilters = useCallback(
+    (source: PersonDaily[]) =>
+      source.filter((record) => {
+        const matchesSearch =
+          !searchQuery ||
+          record.personName.includes(searchQuery) ||
+          record.personId.includes(searchQuery);
 
-    const matchesStatus = statusFilter === 'all' || record.status === statusFilter;
-    const matchesDate = !dateFilter || record.date === dateFilter;
+        const matchesStatus = statusFilter === 'all' || record.status === statusFilter;
+        const matchesDate = !dateFilter || record.date === dateFilter;
 
-    return matchesSearch && matchesStatus && matchesDate;
-  });
+        return matchesSearch && matchesStatus && matchesDate;
+      }),
+    [searchQuery, statusFilter, dateFilter]
+  );
+
+  const orderRecords = useCallback(
+    (list: PersonDaily[]) =>
+      [...list].sort((a, b) => {
+        const statusDiff = statusPriority[a.status] - statusPriority[b.status];
+        if (statusDiff !== 0) return statusDiff;
+        const nameDiff = a.personName.localeCompare(b.personName, 'ja');
+        if (nameDiff !== 0) return nameDiff;
+        return a.personId.localeCompare(b.personId, 'ja');
+      }),
+    []
+  );
+
+  const filteredRecords = useMemo(() => applyFilters(records), [applyFilters, records]);
+  const sortedRecords = useMemo(() => orderRecords(filteredRecords), [orderRecords, filteredRecords]);
+  const selectedRecord = useMemo(
+    () => (selectedRecordId != null ? sortedRecords.find((record) => record.id === selectedRecordId) ?? null : sortedRecords[0] ?? null),
+    [selectedRecordId, sortedRecords]
+  );
+
+  useEffect(() => {
+    if (sortedRecords.length === 0) {
+      if (selectedRecordId !== null) {
+        setSelectedRecordId(null);
+      }
+      return;
+    }
+    const exists = selectedRecordId != null && sortedRecords.some((record) => record.id === selectedRecordId);
+    if (!exists) {
+      setSelectedRecordId(sortedRecords[0].id);
+    }
+  }, [selectedRecordId, sortedRecords]);
 
   return (
     <Container maxWidth="lg">
@@ -457,7 +519,7 @@ export default function DailyRecordPage() {
                 <InputLabel>ステータス</InputLabel>
                 <Select
                   value={statusFilter}
-                  onChange={(e) => setStatusFilter(e.target.value)}
+                  onChange={(e) => setStatusFilter(e.target.value as 'all' | DailyStatus)}
                   label="ステータス"
                 >
                   <MenuItem value="all">すべて</MenuItem>
@@ -523,34 +585,104 @@ export default function DailyRecordPage() {
           </CardContent>
         </Card>
 
-        {/* 記録リスト */}
-        <DailyRecordList
-          records={filteredRecords}
-          onEdit={handleEditRecord}
-          onDelete={handleDeleteRecord}
-        />
-
-        {/* フォームダイアログ */}
-        <DailyRecordForm
-          open={formOpen}
-          onClose={handleCloseForm}
-          record={editingRecord}
-          onSave={handleSaveRecord}
-        />
-
-        {/* 新規作成FAB */}
-        <Fab
-          color="primary"
-          aria-label="add"
-          onClick={handleOpenForm}
-          sx={{
-            position: 'fixed',
-            bottom: 16,
-            right: 16,
-          }}
+        <Stack
+          direction={{ xs: 'column', md: 'row' }}
+          spacing={2}
+          alignItems="stretch"
+          sx={{ mt: 3 }}
         >
-          <AddIcon />
-        </Fab>
+          <Paper
+            elevation={0}
+            sx={{
+              width: { xs: '100%', md: 300 },
+              maxHeight: 520,
+              overflowY: 'auto',
+              border: '1px solid',
+              borderColor: 'divider',
+              flexShrink: 0,
+            }}
+          >
+            <Box sx={{ p: 2, borderBottom: '1px solid', borderColor: 'divider' }}>
+              <Typography variant="subtitle1" sx={{ fontWeight: 'bold' }}>
+                利用者一覧
+              </Typography>
+              <Typography variant="caption" color="text.secondary">
+                ステータス順に並び替えています
+              </Typography>
+            </Box>
+            {sortedRecords.length === 0 ? (
+              <Box sx={{ py: 4, textAlign: 'center', color: 'text.secondary' }}>
+                <Typography variant="body2">条件に合致する利用者がいません</Typography>
+              </Box>
+            ) : (
+              <List disablePadding>
+                {sortedRecords.map((record) => {
+                  const selected = selectedRecord?.id === record.id;
+                  return (
+                    <ListItemButton
+                      key={record.id}
+                      selected={selected}
+                      onClick={() => setSelectedRecordId(record.id)}
+                      alignItems="flex-start"
+                      sx={{
+                        py: 1.5,
+                        borderBottom: '1px solid',
+                        borderColor: 'divider',
+                      }}
+                    >
+                      <ListItemAvatar>
+                        <Avatar
+                          sx={{
+                            bgcolor:
+                              record.status === '完了'
+                                ? 'success.light'
+                                : record.status === '作成中'
+                                  ? 'warning.light'
+                                  : 'grey.400',
+                            color:
+                              record.status === '未作成'
+                                ? 'grey.900'
+                                : record.status === '作成中'
+                                  ? 'warning.contrastText'
+                                  : 'white',
+                          }}
+                        >
+                          <PersonIcon fontSize="small" />
+                        </Avatar>
+                      </ListItemAvatar>
+                      <ListItemText
+                        primary={record.personName}
+                        secondary={`ID: ${record.personId}`}
+                        primaryTypographyProps={{
+                          fontWeight: selected ? 'bold' : undefined,
+                        }}
+                        secondaryTypographyProps={{
+                          color: 'text.secondary',
+                        }}
+                      />
+                      <Chip
+                        icon={statusIconMap[record.status]}
+                        label={record.status}
+                        color={statusChipPalette[record.status]}
+                        size="small"
+                        sx={{ ml: 1 }}
+                      />
+                    </ListItemButton>
+                  );
+                })}
+              </List>
+            )}
+          </Paper>
+
+          <Card sx={{ flex: 1, minHeight: { xs: 320, md: 520 } }}>
+            <CardContent sx={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
+              <DailyRecordForm
+                record={selectedRecord}
+                onSave={handleSaveRecord}
+              />
+            </CardContent>
+          </Card>
+        </Stack>
       </Box>
     </Container>
   );

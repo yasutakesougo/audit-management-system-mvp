@@ -75,6 +75,7 @@ export const FIELD_MAP = {
     serviceStartDate: 'ServiceStartDate',
     serviceEndDate: 'ServiceEndDate',
     isHighIntensitySupportTarget: 'IsHighIntensitySupportTarget',
+    isSupportProcedureTarget: 'IsSupportProcedureTarget',
     severeFlag: 'severeFlag',
     isActive: 'IsActive',
     transportToDays: 'TransportToDays',
@@ -143,6 +144,7 @@ export const USERS_SELECT_FIELDS_SAFE = [
   FIELD_MAP.Users_Master.serviceStartDate,
   FIELD_MAP.Users_Master.serviceEndDate,
   FIELD_MAP.Users_Master.isHighIntensitySupportTarget,
+  FIELD_MAP.Users_Master.isSupportProcedureTarget,
   FIELD_MAP.Users_Master.severeFlag,
   FIELD_MAP.Users_Master.isActive,
   FIELD_MAP.Users_Master.transportToDays,
@@ -152,6 +154,11 @@ export const USERS_SELECT_FIELDS_SAFE = [
   FIELD_MAP.Users_Master.recipientCertExpiry,
   FIELD_MAP.Users_Master.modified,
   FIELD_MAP.Users_Master.created,
+  // Provisioned lowercase aliases (tolerant reads)
+  'furigana',
+  'email',
+  'phone',
+  'isActive',
 ] as const;
 
 export const STAFF_SELECT_FIELDS_CANONICAL = [

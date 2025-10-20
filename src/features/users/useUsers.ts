@@ -1,10 +1,24 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { buildDefaultActiveFilter, useUsersApi } from './api';
 import type { IUserMaster, IUserMasterCreateDto } from './types';
+import {
+  getMockSupportPlanSnapshot,
+  type SupportPlanSnapshot
+} from '@/domain/compliance/mock';
+import type { ComplianceRiskFlag } from '@/domain/compliance/entities';
 
 type IUserMasterUpdateDto = Partial<IUserMasterCreateDto>;
 
 export type AsyncStatus = 'idle' | 'loading' | 'success' | 'error';
+
+export interface UserComplianceSummary {
+  snapshot: SupportPlanSnapshot;
+  hasExpiredPlan: boolean;
+  requiresMonitoring: boolean;
+  requiresConsentRenewal: boolean;
+  unlinkedActivities: number;
+  riskFlags: ComplianceRiskFlag[];
+}
 
 type UsersHookReturn = {
   data: IUserMaster[];
@@ -14,6 +28,8 @@ type UsersHookReturn = {
   create: (payload: IUserMasterCreateDto) => Promise<IUserMaster>;
   update: (id: number | string, payload: IUserMasterUpdateDto) => Promise<IUserMaster>;
   remove: (id: number | string) => Promise<void>;
+  complianceByUserCode: Map<string, UserComplianceSummary>;
+  complianceRiskFlags: ComplianceRiskFlag[];
 };
 
 type UserHookReturn = {
@@ -134,9 +150,30 @@ export function useUsers(initialFilter?: string): UsersHookReturn {
     await fetchList();
   }, [fetchList]);
 
+  const complianceByUserCode = useMemo(() => {
+    const map = new Map<string, UserComplianceSummary>();
+    data.forEach((row) => {
+      if (!row.UserID) return;
+      const snapshot = getMockSupportPlanSnapshot(row.UserID);
+      map.set(row.UserID, {
+        snapshot,
+        hasExpiredPlan: snapshot.outstandingActions.hasExpiredPlan,
+        requiresMonitoring: snapshot.outstandingActions.requiresMonitoring,
+        requiresConsentRenewal: snapshot.outstandingActions.requiresConsentRenewal,
+        unlinkedActivities: snapshot.unlinkedActivities,
+        riskFlags: snapshot.riskFlags,
+      });
+    });
+    return map;
+  }, [data]);
+
+  const complianceRiskFlags = useMemo(() => {
+    return Array.from(complianceByUserCode.values()).flatMap((summary) => summary.riskFlags);
+  }, [complianceByUserCode]);
+
   const result = useMemo(
-    () => ({ data, status, error, refresh, create, update, remove }),
-    [create, data, error, refresh, remove, status, update]
+    () => ({ data, status, error, refresh, create, update, remove, complianceByUserCode, complianceRiskFlags }),
+    [complianceByUserCode, complianceRiskFlags, create, data, error, refresh, remove, status, update]
   );
 
   console.log('[useUsers] Returning result:', {

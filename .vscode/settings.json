@@ -80,5 +80,6 @@
     "**/dist": true,
     "**/coverage": true,
     "**/test-results": true
-  }
+  },
+  "chatgpt.openOnStartup": false
 }

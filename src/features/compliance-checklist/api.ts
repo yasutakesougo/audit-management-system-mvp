@@ -18,12 +18,12 @@ export function useChecklistApi() {
       200
     );
     return rows.map(mapToChecklistItem);
-  }, []); // 依存配列を空にして、関数参照を安定化
+  }, [getListItemsByTitle]);
 
   const add = useCallback(async (body: ChecklistInsertDTO): Promise<ChecklistItem> => {
     const created = await addListItemByTitle<ChecklistInsertDTO, ChecklistItemDTO>(LIST_TITLE, body);
     return mapToChecklistItem(created);
-  }, []); // 依存配列を空にして、関数参照を安定化
+  }, [addListItemByTitle]);
 
   return { list, add };
 }

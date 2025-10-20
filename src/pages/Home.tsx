@@ -20,12 +20,16 @@ import { getAppConfig, isDemoModeEnabled } from '@/lib/env';
 import { useStaff } from '@/stores/useStaff';
 import ArrowForwardRoundedIcon from '@mui/icons-material/ArrowForwardRounded';
 import AssignmentTurnedInRoundedIcon from '@mui/icons-material/AssignmentTurnedInRounded';
+import BookRoundedIcon from '@mui/icons-material/BookRounded';
 import ChecklistRoundedIcon from '@mui/icons-material/ChecklistRounded';
 import DashboardRoundedIcon from '@mui/icons-material/DashboardRounded';
 import EventAvailableRoundedIcon from '@mui/icons-material/EventAvailableRounded';
 import FiberManualRecordRoundedIcon from '@mui/icons-material/FiberManualRecordRounded';
+import HealingRoundedIcon from '@mui/icons-material/HealingRounded';
 import PeopleAltRoundedIcon from '@mui/icons-material/PeopleAltRounded';
 import PhonelinkRoundedIcon from '@mui/icons-material/PhonelinkRounded';
+import BottomNavigation from '@mui/material/BottomNavigation';
+import BottomNavigationAction from '@mui/material/BottomNavigationAction';
 
 type SectionCardProps = {
   title: string;
@@ -60,6 +64,7 @@ const SectionCard = ({ title, to, children }: SectionCardProps) => (
 export default function Home() {
   const demoModeEnabled = isDemoModeEnabled();
   const { schedules: schedulesEnabled } = useFeatureFlags();
+  // 個別支援計画書フラグ（デフォルト表示、明示的に無効化された場合のみ非表示）
   const { data: users, status: usersStatus, error: usersError } = useUsersStore();
 
   // デバッグ情報をコンソールに出力
@@ -111,8 +116,9 @@ export default function Home() {
   const staffItems = staff ?? [];
 
   return (
-    <Container maxWidth="xl" component="main" sx={{ py: 4 }}>
-      <Stack spacing={4}>
+    <Box sx={{ position: 'relative', minHeight: '100vh', bgcolor: 'background.default' }}>
+      <Container maxWidth="xl" component="main" sx={{ py: 4, pb: 10 }}>
+        <Stack spacing={4}>
         {/* ヘッダーセクション */}
         <Box component="section" aria-labelledby="home-heading">
           <Typography variant="h3" component="h1" fontWeight={700} gutterBottom id="home-heading">
@@ -323,9 +329,24 @@ export default function Home() {
           </Box>
         </Box>
 
-  {/* SharePoint デバッグ（開発時のみ表示） */}
-  {getAppConfig().isDev && <SharePointListDebug />}
-      </Stack>
-    </Container>
+        {/* SharePoint デバッグ（開発時のみ表示） */}
+        {getAppConfig().isDev && <SharePointListDebug />}
+        </Stack>
+      </Container>
+      {/* 画面下部フッターに日次記録ナビを固定化 */}
+      <Box sx={{ position: 'fixed', left: 0, right: 0, bottom: 0, zIndex: 1200, bgcolor: 'background.paper', boxShadow: 3 }}>
+        <BottomNavigation showLabels>
+          <BottomNavigationAction label="通所実績" icon={<EventAvailableRoundedIcon />} href="/daily/attendance" />
+          <BottomNavigationAction label="活動日誌" icon={<BookRoundedIcon />} href="/records/diary" />
+          <BottomNavigationAction label="支援手順記録" icon={<AssignmentTurnedInRoundedIcon />} href="/records/support-procedures" />
+          <BottomNavigationAction label="健康記録" icon={<HealingRoundedIcon />} href="/health-record-tablet-mock" />
+          <BottomNavigationAction
+            label="スケジュール"
+            icon={<EventAvailableRoundedIcon />}
+            href="/schedule"
+          />
+        </BottomNavigation>
+      </Box>
+    </Box>
   );
 }

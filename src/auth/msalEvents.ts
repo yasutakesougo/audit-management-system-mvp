@@ -1,4 +1,5 @@
 import { EventType, type EventMessage, type IPublicClientApplication } from '@azure/msal-browser';
+import { pushAudit } from '@/lib/audit';
 
 const CLEAR_ROLE_EVENTS = new Set<EventType>([
   EventType.LOGOUT_SUCCESS,
@@ -22,6 +23,9 @@ export function wireMsalRoleInvalidation(instance: IPublicClientApplication) {
       } catch (error) {
         console.warn('[msal] failed to clear stored role', error);
       }
+      try {
+        pushAudit({ actor: 'current', action: 'AUTH_SIGN_OUT', entity: 'MSAL', channel: 'MSAL' });
+      } catch {}
     }
 
     if (event.eventType === EventType.LOGIN_SUCCESS || event.eventType === EventType.ACQUIRE_TOKEN_SUCCESS) {
@@ -29,6 +33,9 @@ export function wireMsalRoleInvalidation(instance: IPublicClientApplication) {
       if (account) {
         instance.setActiveAccount(account);
       }
+      try {
+        pushAudit({ actor: 'current', action: 'AUTH_SIGN_IN', entity: 'MSAL', channel: 'MSAL' });
+      } catch {}
     }
   });
 }

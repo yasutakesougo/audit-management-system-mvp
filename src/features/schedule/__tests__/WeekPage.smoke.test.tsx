@@ -1,7 +1,7 @@
- import '@testing-library/jest-dom/vitest';
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
-import { describe, expect, it, beforeEach, afterEach, vi } from 'vitest';
-import type { Schedule } from '@/lib/mappers';
+ import type { Schedule } from '@/lib/mappers';
+import '@testing-library/jest-dom/vitest';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import WeekPage from '../WeekPage';
 
 const MOCK_WEEK_START_ISO = '2025-01-06T00:00:00Z';

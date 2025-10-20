@@ -19,7 +19,7 @@ export function useSchedules(range: Range): UseSchedulesResult {
   const [loading, setLoading] = useState<boolean>(true);
   const port = useSchedulesPort();
 
-  const normalizedRange = useMemo(() => normalizeRange(range), [range.from, range.to]);
+    const normalizedRange = useMemo(() => normalizeRange(range), [range]);
 
   useEffect(() => {
     let alive = true;
@@ -39,7 +39,7 @@ export function useSchedules(range: Range): UseSchedulesResult {
     return () => {
       alive = false;
     };
-  }, [normalizedRange.from, normalizedRange.to, port]);
+    }, [normalizedRange, port]);
 
   return { items, loading };
 }

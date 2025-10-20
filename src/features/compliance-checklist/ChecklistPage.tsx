@@ -1,6 +1,7 @@
 import { Box, Button, Paper, Stack, TextField, Typography } from '@mui/material';
 import * as React from 'react';
 // MUI Icons
+import { withAudit } from '@/lib/auditWrap';
 import AddTaskRoundedIcon from '@mui/icons-material/AddTaskRounded';
 import AssignmentTurnedInRoundedIcon from '@mui/icons-material/AssignmentTurnedInRounded';
 import { pushAudit } from '../../lib/audit';
@@ -26,7 +27,7 @@ export default function ChecklistPage() {
       .then((rows) => alive && setItems(rows))
       .catch((e) => alive && setError(String(e)));
     return () => { alive = false; };
-  }, []); // 依存配列を空にして、初回のみ実行されるようにする
+  }, [list]); // listを依存に追加
 
   const onChange = (k: keyof ChecklistInsertDTO) => (e: React.ChangeEvent<HTMLInputElement>) => {
     setForm(prev => ({ ...prev, [k]: e.target.value }));
@@ -36,7 +37,7 @@ export default function ChecklistPage() {
     setBusy(true);
     setError(null);
     try {
-      const created = await add(form);
+      const created = await withAudit({ baseAction: 'CREATE', entity: 'Compliance_CheckRules', before: { form } }, () => add(form));
       setItems(prev => [created, ...prev]);
       pushAudit({
         actor: 'current',

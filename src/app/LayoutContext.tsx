@@ -91,39 +91,39 @@ export const LayoutProvider: React.FC<LayoutProviderProps> = ({ children, forceD
 
 	const rafId = useRef<number>(0);
 
-	useEffect(() => {
-		if (typeof window === 'undefined') return;
+useEffect(() => {
+	if (typeof window === 'undefined') return;
 
-		const update = () => {
-			cancelAnimationFrame(rafId.current);
-			rafId.current = requestAnimationFrame(() => {
-				const { width, height } = readViewport();
-				setState(prev => {
-					const next = computeState(width, height, bp, forceDensity);
-					return safeEquals(prev, next) ? prev : next;
-				});
+	const update = () => {
+		cancelAnimationFrame(rafId.current);
+		rafId.current = requestAnimationFrame(() => {
+			const { width, height } = readViewport();
+			setState(prev => {
+				const next = computeState(width, height, bp, forceDensity);
+				return safeEquals(prev, next) ? prev : next;
 			});
-		};
+		});
+	};
 
-		update();
+	update();
 
-		const onResize = () => update();
-		const onOrientation = () => update();
+	const onResize = () => update();
+	const onOrientation = () => update();
 
-		window.addEventListener('resize', onResize, { passive: true });
-		window.addEventListener('orientationchange', onOrientation, { passive: true });
-		const vv = window.visualViewport;
-		vv?.addEventListener('resize', onResize, { passive: true });
-		vv?.addEventListener('scroll', onResize, { passive: true });
+	window.addEventListener('resize', onResize, { passive: true });
+	window.addEventListener('orientationchange', onOrientation, { passive: true });
+	const vv = window.visualViewport;
+	vv?.addEventListener('resize', onResize, { passive: true });
+	vv?.addEventListener('scroll', onResize, { passive: true });
 
-		return () => {
-			cancelAnimationFrame(rafId.current);
-			window.removeEventListener('resize', onResize);
-			window.removeEventListener('orientationchange', onOrientation);
-			vv?.removeEventListener('resize', onResize);
-			vv?.removeEventListener('scroll', onResize);
-		};
-	}, [bp.sceneA, bp.sceneB, forceDensity]);
+	return () => {
+		cancelAnimationFrame(rafId.current);
+		window.removeEventListener('resize', onResize);
+		window.removeEventListener('orientationchange', onOrientation);
+		vv?.removeEventListener('resize', onResize);
+		vv?.removeEventListener('scroll', onResize);
+	};
+}, [bp, forceDensity]);
 
 	return <LayoutContext.Provider value={state}>{children}</LayoutContext.Provider>;
 };

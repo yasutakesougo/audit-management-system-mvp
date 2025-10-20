@@ -71,6 +71,8 @@ export default function SchedulePage() {
   const [dialogInitial, setDialogInitial] = useState<ExtendedScheduleForm | undefined>(undefined);
 
 
+  const start = range.start;
+  const end = range.end;
   const staffPatterns = useMemo(() => buildStaffPatternIndex(staffData), [staffData]);
 
   const annotatedTimelineEvents = useMemo(() => {
@@ -84,11 +86,11 @@ export default function SchedulePage() {
   }, [timelineEvents, staffPatterns]);
 
   const rangeLabel = useMemo(() => {
-    return formatRangeLocal(range.start.toISOString(), range.end.toISOString());
-  }, [range.start.getTime(), range.end.getTime()]);
+    return formatRangeLocal(start.toISOString(), end.toISOString());
+  }, [start, end]);
   const loadTimeline = useCallback(async () => {
-    const startIso = range.start.toISOString();
-    const endIso = range.end.toISOString();
+    const startIso = start.toISOString();
+    const endIso = end.toISOString();
     setTimelineLoading(true);
     setTimelineError(null);
 
@@ -122,19 +124,16 @@ export default function SchedulePage() {
     } finally {
       setTimelineLoading(false);
     }
-  }, [range.start.getTime(), range.end.getTime(), sp]);
+  }, [start, end, sp]);
 
   // データ読み込み用の useEffect（状態更新の重複を避けるため、loadTimeline内部の状態管理に委ねる）
   useEffect(() => {
-    // loadTimeline()内でエラーハンドリングと状態更新が完結しているので、
-    // useEffectでは追加の状態更新は行わない
     loadTimeline().catch(() => {
       // エラーはloadTimeline内で既に処理済み
-      // 追加の状態更新は行わない（無限ループを防ぐため）
     });
-  }, [range.start.getTime(), range.end.getTime(), sp]);
+  }, [loadTimeline, start, end]);
 
-  const dayViewDate = useMemo(() => new Date(range.start.getTime()), [range.start.getTime()]);
+  const dayViewDate = useMemo(() => new Date(start.getTime()), [start]);
 
   const handleEventMove = useCallback(({ id, to }: EventMovePayload) => {
     setTimelineEvents((prev) => {
@@ -416,7 +415,7 @@ export default function SchedulePage() {
             />
             <Tab
               value="list"
-              label="リスト"
+              label="空室予約"
               icon={<ListAltRoundedIcon />}
               iconPosition="start"
               sx={{ minHeight: 48, textTransform: 'none' }}

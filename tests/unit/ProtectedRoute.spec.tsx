@@ -10,6 +10,7 @@ const defaultFlags: FeatureFlagSnapshot = {
   schedules: true,
   schedulesCreate: true,
   complianceForm: false,
+  timeflowV2: false,
 };
 
 const LocationProbe: React.FC<{ testId: string }> = ({ testId }) => {
@@ -20,7 +21,7 @@ const LocationProbe: React.FC<{ testId: string }> = ({ testId }) => {
 const renderWithFlags = (flags: FeatureFlagSnapshot) =>
   render(
     <FeatureFlagsProvider value={flags}>
-  <MemoryRouter initialEntries={['/guarded']} future={routerFutureFlags}>
+      <MemoryRouter initialEntries={['/guarded']} future={routerFutureFlags}>
         <Routes>
           <Route
             path="/guarded"

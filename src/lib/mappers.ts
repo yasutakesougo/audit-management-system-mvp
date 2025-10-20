@@ -125,10 +125,10 @@ export function mapUser(item: UserRow): User {
 	const attendanceRaw = pickField<unknown>(record, 'AttendanceDays');
 	const certNumberRaw = pickField<string | null>(record, 'RecipientCertNumber');
 	const certExpiryRaw = pickField<string | null>(record, 'RecipientCertExpiry');
-	const isActive = pickField<boolean>(record, 'IsActive');
+    const isActive = pickField<boolean>(record, 'IsActive', 'isActive');
 	const modified = pickField<string>(record, 'Modified');
 	const created = pickField<string>(record, 'Created');
-	const furigana = pickField<string>(record, 'Furigana');
+    const furigana = pickField<string>(record, 'Furigana', 'furigana');
 	const fullNameKana = pickField<string>(record, 'FullNameKana');
 	return {
 		id: item.Id,

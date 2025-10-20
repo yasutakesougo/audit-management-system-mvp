@@ -156,7 +156,7 @@ export default function MonthView({ onDateClick, onEventClick }: MonthViewProps 
         }
       }
     },
-    [sp] // fallbackEntriesへの依存を削除
+    [sp, fallbackEntries]
   );
 
   useEffect(() => {
@@ -175,7 +175,7 @@ export default function MonthView({ onDateClick, onEventClick }: MonthViewProps 
     };
 
     loadData();
-  }, [referenceDate.getTime(), sp]); // loadへの依存を削除し、referenceDateのtimeを使用
+  }, [load, referenceDate]);
 
   const calendarDays = useMemo(() => {
     const monthStart = startOfMonth(referenceDate);

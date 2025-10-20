@@ -1,4 +1,5 @@
 import {
+    AccessTime as AttendanceIcon,
     EventNote as ActivityIcon,
     Assignment as AssignmentIcon,
     People as PeopleIcon,
@@ -46,11 +47,63 @@ const DailyRecordMenuPage: React.FC = () => {
         </Box>
 
         {/* メニューカード */}
-        <Stack
-          direction={{ xs: 'column', md: 'row' }}
-          spacing={4}
-          sx={{ mb: 4 }}
-        >
+        <Stack direction={{ xs: 'column', md: 'row' }} spacing={4} sx={{ mb: 4, flexWrap: 'wrap' }}>
+          {/* 通所実績 */}
+          <Card
+            sx={{
+              flex: 1,
+              display: 'flex',
+              flexDirection: 'column',
+              minWidth: { md: '30%' },
+              transition: 'transform 0.2s, box-shadow 0.2s',
+              '&:hover': {
+                transform: 'translateY(-4px)',
+                boxShadow: 6
+              }
+            }}
+          >
+            <CardContent sx={{ flexGrow: 1, p: 3 }}>
+              <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
+                <AttendanceIcon sx={{ fontSize: 32, color: 'primary.main', mr: 2 }} />
+                <Typography variant="h5" component="h2">
+                  通所実績
+                </Typography>
+              </Box>
+
+              <Typography variant="body1" color="text.secondary" sx={{ mb: 2 }}>
+                通所・送迎・欠席加算をその場で入力し、国保連請求の根拠となる実績データを整えます
+              </Typography>
+
+              <Stack spacing={1}>
+                <Typography variant="body2" color="text.secondary">
+                  • 1人1日1レコード（BusinessKey重複防止）
+                </Typography>
+                <Typography variant="body2" color="text.secondary">
+                  • 通所/退所と送迎（行き・帰り）がタップで即時更新
+                </Typography>
+                <Typography variant="body2" color="text.secondary">
+                  • 欠席加算は朝連絡＋夕方様子で月4件まで自動判定
+                </Typography>
+                <Typography variant="body2" color="text.secondary">
+                  • 16:00以前の退所は早退チップで可視化
+                </Typography>
+              </Stack>
+            </CardContent>
+
+            <CardActions sx={{ p: 3, pt: 0 }}>
+              <Button
+                variant="contained"
+                size="large"
+                fullWidth
+                color="primary"
+                onClick={() => navigate('/daily/attendance')}
+                startIcon={<AttendanceIcon />}
+              >
+                通所実績を開く
+              </Button>
+            </CardActions>
+          </Card>
+
           {/* 活動日誌 */}
           <Card
             sx={{
@@ -106,7 +159,7 @@ const DailyRecordMenuPage: React.FC = () => {
                 variant="contained"
                 size="large"
                 fullWidth
-                onClick={() => navigate('/daily/activity')}
+                onClick={() => navigate('/records/diary')}
                 startIcon={<ActivityIcon />}
               >
                 活動日誌を開く
@@ -176,7 +229,7 @@ const DailyRecordMenuPage: React.FC = () => {
                 size="large"
                 fullWidth
                 color="secondary"
-                onClick={() => navigate('/daily/support')}
+                onClick={() => navigate('/records/support-procedures')}
                 startIcon={<SupportIcon />}
               >
                 支援手順記録を開く

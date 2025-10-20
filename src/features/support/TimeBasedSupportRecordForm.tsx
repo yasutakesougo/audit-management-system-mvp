@@ -14,6 +14,7 @@ import {
     Box,
     Button,
     Chip,
+    Checkbox,
     Dialog,
     DialogActions,
     DialogContent,
@@ -22,6 +23,7 @@ import {
     FormControl,
     FormControlLabel,
     FormLabel,
+    FormGroup,
     Paper,
     Radio,
     RadioGroup,
@@ -30,7 +32,61 @@ import {
     Typography
 } from '@mui/material';
 import React, { useState } from 'react';
-import { SupportRecord, SupportRecordTimeSlot } from './types';
+import { type ExecutionStatus, SupportRecord, SupportRecordTimeSlot } from './types';
+
+const normalizeExecutionStatus = (status?: ExecutionStatus): ExecutionStatus => ({
+  client: {
+    performed: status?.client.performed ?? false,
+    memo: status?.client.memo ?? '',
+  },
+  supporter: {
+    performed: status?.supporter.performed ?? false,
+    memo: status?.supporter.memo ?? '',
+  },
+  followUp: status?.followUp
+    ? {
+        improvementMemo: status.followUp.improvementMemo ?? '',
+        nextAttention: status.followUp.nextAttention ?? '',
+      }
+    : undefined,
+});
+
+const hasFollowUpContent = (status: ExecutionStatus) =>
+  Boolean(status.followUp?.improvementMemo?.trim() || status.followUp?.nextAttention?.trim());
+
+const sanitizeExecutionStatus = (status: ExecutionStatus): ExecutionStatus => {
+  const normalized = normalizeExecutionStatus(status);
+  const shouldKeepFollowUp =
+    !normalized.client.performed ||
+    !normalized.supporter.performed ||
+    hasFollowUpContent(normalized);
+
+  const sanitized: ExecutionStatus = {
+    client: {
+      performed: normalized.client.performed,
+      ...(normalized.client.memo?.trim() ? { memo: normalized.client.memo.trim() } : {}),
+    },
+    supporter: {
+      performed: normalized.supporter.performed,
+      ...(normalized.supporter.memo?.trim() ? { memo: normalized.supporter.memo.trim() } : {}),
+    },
+  };
+
+  if (shouldKeepFollowUp) {
+    const followUp: Record<string, string> = {};
+    if (normalized.followUp?.improvementMemo?.trim()) {
+      followUp.improvementMemo = normalized.followUp.improvementMemo.trim();
+    }
+    if (normalized.followUp?.nextAttention?.trim()) {
+      followUp.nextAttention = normalized.followUp.nextAttention.trim();
+    }
+    if (Object.keys(followUp).length > 0) {
+      sanitized.followUp = followUp;
+    }
+  }
+
+  return sanitized;
+};
 
 interface SupportRecordFormProps {
   open: boolean;
@@ -81,12 +137,117 @@ const TimeBasedSupportRecordForm: React.FC<SupportRecordFormProps> = ({
       achievements: initialData?.specialNotes?.achievements || '',
       nextTimeConsiderations: initialData?.specialNotes?.nextTimeConsiderations || ''
     },
+    executionStatus: normalizeExecutionStatus(initialData?.executionStatus),
     reporter: {
       name: initialData?.reporter?.name || '',
       role: initialData?.reporter?.role || ''
     },
     status: initialData?.status || '未記録'
   });
+
+  const updateExecutionStatus = (updater: (current: ExecutionStatus) => ExecutionStatus) => {
+    setFormData((prev) => ({
+      ...prev,
+      executionStatus: updater(normalizeExecutionStatus(prev.executionStatus)),
+    }));
+  };
+
+  const handleExecutionToggle = (role: 'client' | 'supporter') => (
+    event: React.ChangeEvent<HTMLInputElement>
+  ) => {
+    const checked = event.target.checked;
+    updateExecutionStatus((current) => {
+      const updated: ExecutionStatus = {
+        client: role === 'client'
+          ? { performed: checked, memo: current.client.memo ?? '' }
+          : { performed: current.client.performed, memo: current.client.memo ?? '' },
+        supporter: role === 'supporter'
+          ? { performed: checked, memo: current.supporter.memo ?? '' }
+          : { performed: current.supporter.performed, memo: current.supporter.memo ?? '' },
+        followUp: current.followUp
+          ? {
+              improvementMemo: current.followUp.improvementMemo ?? '',
+              nextAttention: current.followUp.nextAttention ?? '',
+            }
+          : undefined,
+      };
+      const shouldKeepFollowUp =
+        !updated.client.performed ||
+        !updated.supporter.performed ||
+        hasFollowUpContent(updated);
+      updated.followUp = shouldKeepFollowUp
+        ? {
+            improvementMemo: updated.followUp?.improvementMemo ?? '',
+            nextAttention: updated.followUp?.nextAttention ?? '',
+          }
+        : undefined;
+      return updated;
+    });
+  };
+
+  const handleExecutionMemoChange = (role: 'client' | 'supporter') => (
+    event: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
+  ) => {
+    const value = event.target.value;
+    updateExecutionStatus((current) => {
+      const updated: ExecutionStatus = {
+        client: role === 'client'
+          ? { performed: current.client.performed, memo: value }
+          : { performed: current.client.performed, memo: current.client.memo ?? '' },
+        supporter: role === 'supporter'
+          ? { performed: current.supporter.performed, memo: value }
+          : { performed: current.supporter.performed, memo: current.supporter.memo ?? '' },
+        followUp: current.followUp
+          ? {
+              improvementMemo: current.followUp.improvementMemo ?? '',
+              nextAttention: current.followUp.nextAttention ?? '',
+            }
+          : undefined,
+      };
+      const shouldKeepFollowUp =
+        !updated.client.performed ||
+        !updated.supporter.performed ||
+        hasFollowUpContent(updated);
+      updated.followUp = shouldKeepFollowUp
+        ? {
+            improvementMemo: updated.followUp?.improvementMemo ?? '',
+            nextAttention: updated.followUp?.nextAttention ?? '',
+          }
+        : undefined;
+      return updated;
+    });
+  };
+
+  const handleFollowUpChange = (field: 'improvementMemo' | 'nextAttention') => (
+    event: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
+  ) => {
+    const value = event.target.value;
+    updateExecutionStatus((current) => {
+      const nextFollowUp = {
+        improvementMemo: field === 'improvementMemo'
+          ? value
+          : current.followUp?.improvementMemo ?? '',
+        nextAttention: field === 'nextAttention'
+          ? value
+          : current.followUp?.nextAttention ?? '',
+      };
+      const shouldAttachFollowUp =
+        !current.client.performed ||
+        !current.supporter.performed ||
+        Boolean(nextFollowUp.improvementMemo.trim() || nextFollowUp.nextAttention.trim());
+      return {
+        client: { performed: current.client.performed, memo: current.client.memo ?? '' },
+        supporter: { performed: current.supporter.performed, memo: current.supporter.memo ?? '' },
+        followUp: shouldAttachFollowUp ? nextFollowUp : undefined,
+      };
+    });
+  };
+
+  const execution = normalizeExecutionStatus(formData.executionStatus);
+  const needsFollowUp =
+    !execution.client.performed ||
+    !execution.supporter.performed ||
+    hasFollowUpContent(execution);
 
   const handleSave = () => {
     // 記録内容に応じてステータスを自動設定
@@ -99,6 +260,7 @@ const TimeBasedSupportRecordForm: React.FC<SupportRecordFormProps> = ({
 
     onSave({
       ...formData,
+      executionStatus: sanitizeExecutionStatus(formData.executionStatus ?? normalizeExecutionStatus()),
       status
     });
     onClose();
@@ -139,6 +301,75 @@ const TimeBasedSupportRecordForm: React.FC<SupportRecordFormProps> = ({
           <Alert severity="info" sx={{ mb: 2 }}>
             この時間帯（{timeSlot}）の記録を入力してください。本人のやること、職員のやること、本人の様子、特記事項を記録します。
           </Alert>
+
+          <Paper elevation={1} sx={{ p: 2 }}>
+            <Stack spacing={1.5}>
+              <Typography variant="h6">実施状況チェック</Typography>
+              <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1} alignItems={{ sm: 'center' }}>
+                <FormGroup row>
+                  <FormControlLabel
+                    control={
+                      <Checkbox
+                        checked={execution.client.performed}
+                        onChange={handleExecutionToggle('client')}
+                      />
+                    }
+                    label="本人実施"
+                  />
+                  <FormControlLabel
+                    control={
+                      <Checkbox
+                        checked={execution.supporter.performed}
+                        onChange={handleExecutionToggle('supporter')}
+                      />
+                    }
+                    label="支援者実施"
+                  />
+                </FormGroup>
+                {needsFollowUp ? (
+                  <Chip color="warning" label="フォローアップ要" size="small" />
+                ) : (
+                  <Chip color="success" label="予定どおり" size="small" />
+                )}
+              </Stack>
+              {!execution.client.performed ? (
+                <TextField
+                  label="本人未実施の理由"
+                  value={execution.client.memo ?? ''}
+                  onChange={handleExecutionMemoChange('client')}
+                  multiline
+                  minRows={1}
+                />
+              ) : null}
+              {!execution.supporter.performed ? (
+                <TextField
+                  label="支援者未実施の理由"
+                  value={execution.supporter.memo ?? ''}
+                  onChange={handleExecutionMemoChange('supporter')}
+                  multiline
+                  minRows={1}
+                />
+              ) : null}
+              {needsFollowUp ? (
+                <Stack spacing={1}>
+                  <TextField
+                    label="改善メモ"
+                    value={execution.followUp?.improvementMemo ?? ''}
+                    onChange={handleFollowUpChange('improvementMemo')}
+                    multiline
+                    minRows={1}
+                  />
+                  <TextField
+                    label="次回注意点"
+                    value={execution.followUp?.nextAttention ?? ''}
+                    onChange={handleFollowUpChange('nextAttention')}
+                    multiline
+                    minRows={1}
+                  />
+                </Stack>
+              ) : null}
+            </Stack>
+          </Paper>
 
           {/* 本人のやること */}
           <Paper elevation={1} sx={{ p: 2 }}>

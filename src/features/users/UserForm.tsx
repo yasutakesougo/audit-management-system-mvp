@@ -1,27 +1,27 @@
 import {
-    Close as CloseIcon,
-    LocalHospital as MedicalIcon,
-    Person as PersonIcon,
-    Save as SaveIcon,
-    DirectionsBus as TransportIcon,
+  Close as CloseIcon,
+  LocalHospital as MedicalIcon,
+  Person as PersonIcon,
+  Save as SaveIcon,
+  DirectionsBus as TransportIcon,
 } from "@mui/icons-material";
 import {
-    Alert,
-    Box,
-    Button,
-    Checkbox,
-    CircularProgress,
-    Dialog,
-    DialogActions,
-    DialogContent,
-    DialogContentText,
-    DialogTitle,
-    FormControlLabel,
-    IconButton,
-    Paper,
-    Snackbar,
-    TextField,
-    Typography,
+  Alert,
+  Box,
+  Button,
+  Checkbox,
+  CircularProgress,
+  Dialog,
+  DialogActions,
+  DialogContent,
+  DialogContentText,
+  DialogTitle,
+  FormControlLabel,
+  IconButton,
+  Paper,
+  Snackbar,
+  TextField,
+  Typography,
 } from "@mui/material";
 import { createRef, FormEvent, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useUsersStore } from "./store";
@@ -172,7 +172,7 @@ export function UserForm({ user, mode = user ? "update" : "create", onSuccess, o
     []
   );
 
-  const handleClose = () => {
+  const handleClose = useCallback(() => {
     console.log('UserForm handleClose called, isDirty:', isDirty);
     if (isDirty) {
       setShowConfirmDialog(true);
@@ -180,7 +180,7 @@ export function UserForm({ user, mode = user ? "update" : "create", onSuccess, o
       console.log('Calling onClose callback');
       onClose?.();
     }
-  };
+  }, [isDirty, onClose]);
 
   useEffect(() => {
     const onBeforeUnload = (event: BeforeUnloadEvent) => {

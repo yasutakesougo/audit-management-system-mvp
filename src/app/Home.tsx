@@ -1,6 +1,7 @@
 import { useFeatureFlags } from '@/config/featureFlags';
 import MobileAgendaView from '@/features/schedule/components/MobileAgendaView';
 import NextActionCard from '@/features/schedule/components/NextActionCard';
+import { toTileTestId } from '@/features/home/toTileTestId';
 import { useSchedulesToday } from '@/features/schedule/useSchedulesToday';
 import { isDemoModeEnabled } from '@/lib/env';
 import UnsynedAuditBadge from '@/ui/components/UnsynedAuditBadge';
@@ -65,7 +66,7 @@ const tiles: Tile[] = [
     tone: 'info',
   },
   {
-    to: '/schedule',
+    to: '/schedules/week',
     label: 'マスタースケジュール',
     caption: '事業所スケジュールをチェック',
     Icon: EventAvailableRoundedIcon,
@@ -79,7 +80,7 @@ const tiles: Tile[] = [
     tone: 'warning',
   },
   {
-    to: '/records',
+    to: '/daily',
     label: '日次記録',
     caption: '今日の記録入力を開始',
     Icon: AssignmentTurnedInRoundedIcon,
@@ -150,19 +151,20 @@ export default function Home() {
   const demoModeEnabled = isDemoModeEnabled();
   const { schedules: schedulesEnabled } = useFeatureFlags();
   const bullets = demoModeEnabled ? demoBullets : productionBullets;
-  const filteredTiles = tiles.filter((tile) => schedulesEnabled || tile.to !== '/schedule');
+  const filteredTiles = tiles.filter((tile) => schedulesEnabled || !tile.to.startsWith('/schedules'));
   const activeTiles = demoModeEnabled ? [tabletDemoTile, ...filteredTiles] : filteredTiles;
   const {
     data: todaySchedules,
     source: scheduleSource,
     fallbackError: scheduleFallbackError,
   } = useSchedulesToday(5);
-  const dataSourceChip = schedulesEnabled && scheduleSource
-    ? {
-        label: scheduleSource === 'sharepoint' ? 'SharePoint' : 'Demo',
-        color: scheduleSource === 'sharepoint' ? 'success' : 'info',
-      }
-    : null;
+  const dataSourceChip: null | { label: 'SharePoint' | 'Demo'; color: 'success' | 'info' } =
+    schedulesEnabled && scheduleSource
+      ? {
+          label: scheduleSource === 'sharepoint' ? 'SharePoint' : 'Demo',
+          color: scheduleSource === 'sharepoint' ? 'success' : 'info',
+        }
+      : null;
 
   return (
     <Container component="main" maxWidth="lg" sx={{ py: { xs: 4, md: 6 } }}>
@@ -188,7 +190,7 @@ export default function Home() {
             {dataSourceChip ? (
               <Chip
                 size="small"
-                color={dataSourceChip.color as 'success' | 'info'}
+                color={dataSourceChip.color}
                 variant="outlined"
                 label={`データソース: ${dataSourceChip.label}`}
                 data-testid="home-data-source-chip"
@@ -235,11 +237,11 @@ export default function Home() {
             sx={{ display: { xs: 'block', md: 'none' } }} // スマートフォンのみ表示
           >
             <NextActionCard
-              schedules={todaySchedules.map(mini => ({
+              schedules={todaySchedules.map((mini) => ({
                 id: mini.id.toString(),
                 title: mini.title,
                 start: mini.startText,
-                end: mini.startText, // MiniScheduleには終了時刻がないため暫定
+                end: (mini as unknown as { endText?: string }).endText ?? mini.startText,
                 status: mini.status || '承認済み',
               }))}
             />
@@ -263,7 +265,7 @@ export default function Home() {
                 key={to}
                 role="listitem"
                 variant="outlined"
-                data-testid={`home-tile-${to.replace(/^\//, '')}`}
+                data-testid={toTileTestId(to)}
                 sx={{
                   height: '100%',
                   display: 'flex',

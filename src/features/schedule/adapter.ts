@@ -1,4 +1,5 @@
 import { isDemoModeEnabled, isDevMode } from '@/lib/env';
+import { withAudit } from '@/lib/auditWrap';
 import type { ScheduleForm } from './types';
 
 type UserMessageError = Error & { userMessage?: string };
@@ -125,7 +126,7 @@ export async function createSchedule(input: ScheduleForm): Promise<void> {
 		}
 	}
 
-	await createScheduleInDemo(input);
+	await withAudit({ baseAction: 'CREATE', entity: 'Schedules', before: { input } }, () => createScheduleInDemo(input));
 }
 
 export async function updateSchedule(id: number, patch: Partial<ScheduleForm>): Promise<void> {
@@ -140,5 +141,5 @@ export async function updateSchedule(id: number, patch: Partial<ScheduleForm>): 
 		}
 	}
 
-	await updateScheduleInDemo(id, patch);
+	await withAudit({ baseAction: 'UPDATE', entity: 'Schedules', before: { id, patch } }, () => updateScheduleInDemo(id, patch));
 }

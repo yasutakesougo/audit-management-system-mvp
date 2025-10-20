@@ -14,6 +14,7 @@ describe('featureFlags config', () => {
     const schedules = vi.spyOn(env, 'isSchedulesFeatureEnabled').mockReturnValue(true);
     const schedulesCreate = vi.spyOn(env, 'isSchedulesCreateEnabled').mockReturnValue(false);
     const compliance = vi.spyOn(env, 'isComplianceFormEnabled').mockReturnValue(true);
+    const timeflow = vi.spyOn(env, 'isTimeflowV2Enabled').mockReturnValue(false);
 
     const snapshot = resolveFeatureFlags();
 
@@ -21,11 +22,13 @@ describe('featureFlags config', () => {
       schedules: true,
       schedulesCreate: false,
       complianceForm: true,
+      timeflowV2: false,
     });
 
     expect(schedules).toHaveBeenCalledTimes(1);
     expect(schedulesCreate).toHaveBeenCalledTimes(1);
     expect(compliance).toHaveBeenCalledTimes(1);
+    expect(timeflow).toHaveBeenCalledTimes(1);
   });
 
   it('passes env override through to helper functions', () => {
@@ -33,12 +36,14 @@ describe('featureFlags config', () => {
     const schedules = vi.spyOn(env, 'isSchedulesFeatureEnabled').mockReturnValue(true);
     const schedulesCreate = vi.spyOn(env, 'isSchedulesCreateEnabled').mockReturnValue(false);
     const compliance = vi.spyOn(env, 'isComplianceFormEnabled').mockReturnValue(false);
+    const timeflow = vi.spyOn(env, 'isTimeflowV2Enabled').mockReturnValue(false);
 
     resolveFeatureFlags(override);
 
     expect(schedules).toHaveBeenCalledWith(override);
     expect(schedulesCreate).toHaveBeenCalledWith(override);
     expect(compliance).toHaveBeenCalledWith(override);
+    expect(timeflow).toHaveBeenCalledWith(override);
   });
 
   it('exports a default snapshot computed at module load', () => {
@@ -59,6 +64,7 @@ describe('featureFlags config', () => {
       schedules: false,
       schedulesCreate: true,
       complianceForm: false,
+      timeflowV2: false,
     });
   });
 
@@ -75,6 +81,7 @@ describe('featureFlags config', () => {
       schedules: true,
       schedulesCreate: false,
       complianceForm: true,
+      timeflowV2: false,
     } satisfies FeatureFlagSnapshot;
 
   render(createElement(FeatureFlagsProvider, { value: nextSnapshot, children: createElement(Probe) }));

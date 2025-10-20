@@ -223,6 +223,25 @@ export const isComplianceFormEnabled = (envOverride?: EnvRecord): boolean => {
   return false;
 };
 
+export const isTimeflowV2Enabled = (envOverride?: EnvRecord): boolean => {
+  if (readBool('VITE_FEATURE_TIMEFLOW_V2', false, envOverride)) {
+    return true;
+  }
+  if (typeof window !== 'undefined') {
+    try {
+      const flag = window.localStorage.getItem('feature:timeflowV2');
+      if (flag != null) {
+        const normalized = flag.trim().toLowerCase();
+        if (TRUTHY.has(normalized)) return true;
+        if (FALSY.has(normalized)) return false;
+      }
+    } catch {
+      // ignore storage access issues
+    }
+  }
+  return false;
+};
+
 export const shouldSkipLogin = (envOverride?: EnvRecord): boolean => {
   if (isDemoModeEnabled(envOverride) || readBool('VITE_SKIP_LOGIN', false, envOverride)) {
     return true;

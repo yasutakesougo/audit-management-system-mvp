@@ -41,9 +41,26 @@ export interface SupportRecord {
     name: string;
     role: string;
   };
+  executionStatus?: ExecutionStatus;
   status: '未記録' | '記録済み' | '要確認';
   createdAt: string;
   updatedAt: string;
+}
+
+export interface ExecutionRoleStatus {
+  performed: boolean;
+  memo?: string;
+}
+
+export interface ExecutionFollowUpNotes {
+  improvementMemo?: string;
+  nextAttention?: string;
+}
+
+export interface ExecutionStatus {
+  client: ExecutionRoleStatus;
+  supporter: ExecutionRoleStatus;
+  followUp?: ExecutionFollowUpNotes;
 }
 
 // 日別支援記録の型定義

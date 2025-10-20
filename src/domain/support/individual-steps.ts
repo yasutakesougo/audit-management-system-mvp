@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { TimeSlotZ } from './step-templates';
+import { TimeSlotZ, type SupportStepTemplate } from './step-templates';
 
 /**
  * 利用者ごとの個別支援手順
@@ -79,7 +79,7 @@ export type UserSupportPlan = z.infer<typeof UserSupportPlanZ>;
  * テンプレートから個別支援手順への変換ヘルパー
  */
 export const createIndividualStepFromTemplate = (
-  template: Omit<import('./step-templates').SupportStepTemplate, 'id'>,
+  template: Omit<SupportStepTemplate, 'id'>,
   userId: string,
   userName: string,
   templateId?: string

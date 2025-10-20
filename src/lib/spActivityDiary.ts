@@ -59,11 +59,11 @@ const LUNCH_AMOUNT_MAP: Record<ActivityDiaryMealAmount, '完食' | '8割' | '半
   'なし': 'なし',
 };
 
-const BEHAVIOR_TYPE_CHOICES = new Set(['暴言', '離席', 'その他']);
-const CATEGORY_CHOICES: readonly ActivityDiaryCategory[] = ['請負', '個別', '外活動', '余暇'];
-const SHIFT_CHOICES = ['AM', 'PM', '1日'] as const;
-const LUNCH_CHOICES = ['完食', '8割', '半分', '少量', 'なし'] as const;
 const BEHAVIOR_CHOICES = ['暴言', '離席', 'その他'] as const;
+const BEHAVIOR_TYPE_CHOICES = new Set<string>(BEHAVIOR_CHOICES);
+const CATEGORY_CHOICES: readonly ActivityDiaryCategory[] = ['請負', '個別', '外活動', '余暇'];
+const SHIFT_CHOICES = ['AM', 'PM'] as const;
+const LUNCH_CHOICES = ['完食', '8割', '半分', '少量', 'なし'] as const;
 
 async function fetchListIdByTitle(sp: Pick<UseSP, 'spFetch'>, listTitle: string): Promise<string> {
   const encoded = encodeURIComponent(listTitle);

@@ -1,0 +1,109 @@
+name: Contracts :: Pact Consumer
+
+on:
+  push:
+    branches: [ main, develop ]
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: "Target environment for can-i-deploy (eg. dev, staging, prod)"
+        required: true
+        default: "staging"
+      participant:
+        description: "Override consumer pacticipant name (optional)"
+        required: false
+        default: ""
+      version:
+        description: "Override consumer version (defaults to commit SHA)"
+        required: false
+        default: ""
+      allowBrokerFallback:
+        description: "Allow deploy when broker is unreachable (not recommended)"
+        required: false
+        default: "false"
+
+concurrency:
+  group: pact-consumer-${{ github.ref || github.run_id }}
+  cancel-in-progress: true
+
+env:
+  NODE_VERSION: "20"
+
+jobs:
+  publish:
+    if: github.event_name == 'push'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: "npm"
+      - name: Install deps
+        run: npm ci
+      - name: Publish consumer pacts
+        env:
+          PACT_BROKER_BASE_URL: ${{ secrets.PACT_BROKER_BASE_URL }}
+          PACT_BROKER_TOKEN: ${{ secrets.PACT_BROKER_TOKEN }}
+          PACT_PACTICIPANT: ${{ vars.PACT_CONSUMER_NAME }}
+          PACT_APP_VERSION: ${{ github.sha }}
+          PACT_BRANCH: ${{ github.ref_name }}
+          PACT_ENV: ${{ github.ref == 'refs/heads/main' && 'staging' || 'dev' }}
+          PACT_ADDITIONAL_TAGS: env:${{ github.ref == 'refs/heads/main' && 'staging' || 'dev' }},build:${{ github.run_number }}
+          PACT_ALLOW_PUBLISH_ON_BROKER_FAILURE: ${{ vars.PACT_ALLOW_PUBLISH_ON_BROKER_FAILURE != '' && vars.PACT_ALLOW_PUBLISH_ON_BROKER_FAILURE || 'false' }}
+        run: npm run contracts:pact:publish
+      - name: Publish summary
+        if: always()
+        env:
+          SUMMARY_ENV: ${{ github.ref == 'refs/heads/main' && 'staging' || 'dev' }}
+          SUMMARY_BRANCH: ${{ github.ref_name }}
+          SUMMARY_VERSION: ${{ github.sha }}
+        run: |
+          {
+            echo "## Pact publish (consumer)";
+            echo "";
+            echo "- Branch: ${SUMMARY_BRANCH}";
+            echo "- Environment tag: ${SUMMARY_ENV}";
+            echo "- Version: ${SUMMARY_VERSION}";
+          } >> "${GITHUB_STEP_SUMMARY}"
+
+  can_i_deploy:
+    if: github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: "npm"
+      - name: Install deps
+        run: npm ci
+      - name: can-i-deploy (consumer)
+        env:
+          PACT_BROKER_BASE_URL: ${{ secrets.PACT_BROKER_BASE_URL }}
+          PACT_BROKER_TOKEN: ${{ secrets.PACT_BROKER_TOKEN }}
+          PACT_PACTICIPANT: ${{ github.event.inputs.participant != '' && github.event.inputs.participant || vars.PACT_CONSUMER_NAME }}
+          PACT_APP_VERSION: ${{ github.event.inputs.version != '' && github.event.inputs.version || github.sha }}
+          PACT_ENV: ${{ github.event.inputs.environment }}
+          PACT_CAN_I_DEPLOY_ALLOW_BROKER_FAILURE: ${{ github.event.inputs.allowBrokerFallback == 'true' || vars.PACT_CAN_I_DEPLOY_ALLOW_BROKER_FAILURE == 'true' }}
+        run: npm run contracts:pact:can-i-deploy
+      - name: can-i-deploy summary
+        if: always()
+        env:
+          SUMMARY_ENV: ${{ github.event.inputs.environment }}
+          SUMMARY_VERSION: ${{ github.event.inputs.version != '' && github.event.inputs.version || github.sha }}
+        run: |
+          {
+            echo "## can-i-deploy (consumer)";
+            echo "";
+            echo "- Environment: ${SUMMARY_ENV}";
+            echo "- Version: ${SUMMARY_VERSION}";
+          } >> "${GITHUB_STEP_SUMMARY}"

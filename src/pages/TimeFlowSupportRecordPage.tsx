@@ -1,3 +1,4 @@
+import { useUsersStore } from '@/features/users/store';
 import {
   AccessTime as AccessTimeIcon,
   Assignment as AssignmentIcon,
@@ -6,7 +7,6 @@ import {
   ExpandMore as ExpandMoreIcon,
   Person as PersonIcon,
   Schedule as ScheduleIcon,
-  Search as SearchIcon,
   TrendingUp as TrendingUpIcon
 } from '@mui/icons-material';
 import {
@@ -14,16 +14,18 @@ import {
   AccordionDetails,
   AccordionSummary,
   Alert,
-  Avatar,
   Box,
   Button,
+  ButtonBase,
   Card,
   CardContent,
-  CardActionArea,
+  Checkbox,
   Chip,
   Collapse,
   Container,
   Divider,
+  FormControlLabel,
+  FormGroup,
   Paper,
   Stack,
   Tab,
@@ -34,19 +36,28 @@ import {
 import LinearProgress from '@mui/material/LinearProgress';
 import ToggleButton from '@mui/material/ToggleButton';
 import ToggleButtonGroup from '@mui/material/ToggleButtonGroup';
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useNavigate, useParams } from 'react-router-dom';
+import type { MoodId } from '../config/master';
 import {
-  resolveSupportFlowForUser,
+  abcOptionMap as abcCatalog,
+  coerceMoodId,
+  moodOptions as moodCatalog,
+  moodsById,
+} from '../config/master';
+import {
+  defaultSupportActivities,
+  SupportActivityTemplate as MasterSupportActivityTemplate,
+  SupportActivityTemplateZ
+} from '../domain/support/types';
+import {
   fallbackSupportActivities,
   SupportActivityTemplate as FlowSupportActivityTemplate,
+  resolveSupportFlowForUser,
   SupportPlanDeployment,
   SupportStrategyStage
 } from '../features/planDeployment/supportFlow';
-import {
-  SupportActivityTemplate as MasterSupportActivityTemplate,
-  SupportActivityTemplateZ,
-  defaultSupportActivities
-} from '../domain/support/types';
+import UserSideNav, { type UserProgressInfo } from './UserSideNav';
 // 時間フロー支援記録の型定義
 interface SupportRecord {
   id: number;
@@ -66,7 +77,7 @@ interface SupportRecord {
     notes: string;
   };
   userCondition: {
-    mood?: '良好' | '普通' | '不安定';
+    mood?: string;
     behavior: string;
     communication?: string;
     physicalState?: string;
@@ -86,6 +97,9 @@ interface SupportRecord {
   updatedAt: string;
   activityKey?: string;
   activityName?: string;
+  personTaskCompleted?: boolean;
+  supporterTaskCompleted?: boolean;
+  moodMemo?: string;
   abc?: {
     antecedent?: string;
     behavior?: string;
@@ -114,7 +128,7 @@ interface DailySupportRecord {
   status: '未作成' | '作成中' | '完了';
 }
 
-interface SupportUser {
+export interface SupportUser {
   id: string;
   name: string;
   planType: string;
@@ -153,6 +167,33 @@ const buildDefaultMasterTemplates = (): MasterSupportActivityTemplate[] =>
     iconEmoji: template.iconEmoji ?? '📋',
     id: `default-${index + 1}`
   }));
+
+const countRecordedTimeSlots = (records: SupportRecord[]): number =>
+  records.reduce(
+    (count, record) => count + (record.status === '記録済み' ? 1 : 0),
+    0
+  );
+
+const ensureSummarySlotCounts = (
+  summary: DailySupportRecord['summary'],
+  records: SupportRecord[],
+  totalSlots: number
+): DailySupportRecord['summary'] => {
+  const recordedCount = countRecordedTimeSlots(records);
+
+  if (
+    summary.totalTimeSlots === totalSlots &&
+    summary.recordedTimeSlots === recordedCount
+  ) {
+    return summary;
+  }
+
+  return {
+    ...summary,
+    totalTimeSlots: totalSlots,
+    recordedTimeSlots: recordedCount,
+  };
+};
 
 const normalizeTemplateTime = (rawTime: string): string => {
   const trimmed = rawTime?.trim();
@@ -264,18 +305,13 @@ interface TimeFlowSupportRecordListProps {
   dailyRecord: DailySupportRecord;
   onAddRecord: (record: SupportRecord) => void;
   onUpdateRecord: (record: SupportRecord) => void;
+  focusActivityKey?: string | null;
+  listRef?: React.MutableRefObject<HTMLDivElement | null>;
 }
 
-const moodOptions = ['落ち着いている', '楽しそう', '集中している', '不安そう', 'イライラ'];
-
-const abcOptionMap: Record<'antecedent' | 'behavior' | 'consequence', string[]> = {
-  antecedent: ['課題中', '要求があった', '感覚刺激', '他者との関わり'],
-  behavior: ['大声を出す', '物を叩く', '自傷行為', '他害行為'],
-  consequence: ['クールダウン', '要求に応えた', '無視(意図的)', '場所移動'],
-};
-
 type SlotFormState = {
-  mood: string;
+  mood: MoodId | '';
+  moodMemo: string;
   notes: string;
   intensity: '軽度' | '中度' | '重度' | '';
   showABC: boolean;
@@ -284,6 +320,8 @@ type SlotFormState = {
     behavior: string;
     consequence: string;
   };
+  personTaskCompleted: boolean;
+  supporterTaskCompleted: boolean;
   error: string | null;
 };
 
@@ -292,7 +330,17 @@ const TimeFlowSupportRecordList: React.FC<TimeFlowSupportRecordListProps> = ({
   dailyRecord,
   onAddRecord,
   onUpdateRecord,
+  focusActivityKey,
+  listRef,
 }) => {
+  const internalListRef = useRef<HTMLDivElement | null>(null);
+  const resolvedListRef = listRef ?? internalListRef;
+  const assignResolvedListRef = useCallback(
+    (node: HTMLDivElement | null) => {
+      resolvedListRef.current = node;
+    },
+    [resolvedListRef],
+  );
   const recordsByKey = useMemo(() => {
     const map = new Map<string, SupportRecord>();
     dailyRecord.records.forEach((record) => {
@@ -307,8 +355,10 @@ const TimeFlowSupportRecordList: React.FC<TimeFlowSupportRecordListProps> = ({
   const initialFormState = useMemo(() => {
     return activities.reduce<Record<string, SlotFormState>>((acc, activity) => {
       const record = recordsByKey.get(activity.time);
+      const moodId = coerceMoodId(record?.userCondition.mood);
       acc[activity.time] = {
-        mood: record?.userCondition.mood ?? '',
+        mood: moodId ?? '',
+        moodMemo: record?.moodMemo ?? '',
         notes: record?.userActivities.notes ?? '',
         intensity: record?.abc?.intensity ?? '',
         showABC: Boolean(record?.abc),
@@ -317,6 +367,8 @@ const TimeFlowSupportRecordList: React.FC<TimeFlowSupportRecordListProps> = ({
           behavior: record?.abc?.behavior ?? '',
           consequence: record?.abc?.consequence ?? '',
         },
+        personTaskCompleted: Boolean(record?.personTaskCompleted ?? false),
+        supporterTaskCompleted: Boolean(record?.supporterTaskCompleted ?? false),
         error: null,
       };
       return acc;
@@ -330,17 +382,64 @@ const TimeFlowSupportRecordList: React.FC<TimeFlowSupportRecordListProps> = ({
     setFormState(initialFormState);
   }, [initialFormState]);
 
+  useEffect(() => {
+    if (!focusActivityKey) {
+      return;
+    }
+    setExpanded(focusActivityKey);
+    const root = resolvedListRef.current;
+    if (!root) {
+      return;
+    }
+    const target = root.querySelector<HTMLElement>(
+      `[data-accordion-key="${focusActivityKey}"]`
+    );
+    if (!target) {
+      return;
+    }
+    if (typeof target.scrollIntoView === 'function') {
+      target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+    const focusElement = () => {
+      try {
+        target.focus({ preventScroll: true });
+      } catch {
+        target.focus();
+      }
+    };
+    if (typeof window !== 'undefined' && typeof window.requestAnimationFrame === 'function') {
+      window.requestAnimationFrame(focusElement);
+    } else {
+      focusElement();
+    }
+  }, [focusActivityKey, resolvedListRef]);
+
   const handleAccordionToggle = (panel: string) => (_event: React.SyntheticEvent, isExpanded: boolean) => {
     setExpanded(isExpanded ? panel : false);
   };
 
-  const handleMoodSelect = (key: string, mood: string) => {
+  const handleMoodSelect = (key: string, mood: MoodId | '') => {
+    setFormState((prev) => {
+      const current = prev[key];
+      const nextMood =
+        mood === '' ? '' : current?.mood === mood ? '' : mood;
+      return {
+        ...prev,
+        [key]: {
+          ...current,
+          mood: nextMood,
+          error: null,
+        },
+      };
+    });
+  };
+
+  const handleMoodMemoChange = (key: string, value: string) => {
     setFormState((prev) => ({
       ...prev,
       [key]: {
         ...prev[key],
-        mood,
-        error: null,
+        moodMemo: value,
       },
     }));
   };
@@ -351,6 +450,19 @@ const TimeFlowSupportRecordList: React.FC<TimeFlowSupportRecordListProps> = ({
       [key]: {
         ...prev[key],
         notes: value,
+      },
+    }));
+  };
+
+  const handleTaskCompletionToggle = (
+    key: string,
+    target: 'personTaskCompleted' | 'supporterTaskCompleted',
+  ) => (_event: React.ChangeEvent<HTMLInputElement>, checked: boolean) => {
+    setFormState((prev) => ({
+      ...prev,
+      [key]: {
+        ...prev[key],
+        [target]: checked,
       },
     }));
   };
@@ -391,7 +503,8 @@ const TimeFlowSupportRecordList: React.FC<TimeFlowSupportRecordListProps> = ({
   const handleSubmit = (activity: FlowSupportActivityTemplate) => (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     const state = formState[activity.time];
-    if (!state.mood) {
+    const moodId = coerceMoodId(state.mood);
+    if (!moodId) {
       setFormState((prev) => ({
         ...prev,
         [activity.time]: {
@@ -427,6 +540,7 @@ const TimeFlowSupportRecordList: React.FC<TimeFlowSupportRecordListProps> = ({
       state.abc.consequence ||
       state.intensity
     );
+    const moodLabel = moodsById[moodId]?.label ?? state.mood;
 
     const updatedRecord: SupportRecord = {
       ...baseRecord,
@@ -444,11 +558,14 @@ const TimeFlowSupportRecordList: React.FC<TimeFlowSupportRecordListProps> = ({
         notes: '',
       },
       userCondition: {
-        mood: state.mood as SupportRecord['userCondition']['mood'],
+        mood: moodLabel,
         behavior: state.notes || '特記事項なし',
         communication: baseRecord.userCondition.communication,
         physicalState: baseRecord.userCondition.physicalState,
       },
+      personTaskCompleted: state.personTaskCompleted,
+      supporterTaskCompleted: state.supporterTaskCompleted,
+      moodMemo: state.moodMemo || undefined,
       specialNotes: baseRecord.specialNotes ?? {},
       reporter: baseRecord.reporter ?? { name: dailyRecord.completedBy, role: undefined },
       status: '記録済み',
@@ -481,11 +598,13 @@ const TimeFlowSupportRecordList: React.FC<TimeFlowSupportRecordListProps> = ({
   };
 
   return (
-    <Stack spacing={2}>
-  {activities.map((activity) => {
+    <Stack spacing={2} ref={assignResolvedListRef}>
+      {activities.map((activity) => {
         const state = formState[activity.time];
         const record = recordsByKey.get(activity.time);
         const isRecorded = record?.status === '記録済み';
+        const selectedMoodLabel =
+          state?.mood ? moodsById[state.mood as MoodId]?.label ?? '' : '';
 
         return (
           <Accordion
@@ -503,7 +622,10 @@ const TimeFlowSupportRecordList: React.FC<TimeFlowSupportRecordListProps> = ({
           >
             <AccordionSummary
               expandIcon={<ExpandMoreIcon />}
+              id={`${activity.time}-summary`}
+              aria-controls={`${activity.time}-panel`}
               sx={{ px: 3, py: 2 }}
+              data-accordion-key={activity.time}
             >
               <Stack direction="row" spacing={2} alignItems="center" flexGrow={1}>
                 <Typography variant="h6" color="primary">
@@ -518,9 +640,15 @@ const TimeFlowSupportRecordList: React.FC<TimeFlowSupportRecordListProps> = ({
                   size="small"
                   variant="outlined"
                 />
-                {state?.mood && (
+                {state?.personTaskCompleted && (
+                  <Chip label="本人手順完了" color="success" size="small" variant="outlined" />
+                )}
+                {state?.supporterTaskCompleted && (
+                  <Chip label="支援手順完了" color="success" size="small" variant="outlined" />
+                )}
+                {selectedMoodLabel && (
                   <Chip
-                    label={state.mood}
+                    label={selectedMoodLabel}
                     color="primary"
                     size="small"
                     variant="outlined"
@@ -544,7 +672,11 @@ const TimeFlowSupportRecordList: React.FC<TimeFlowSupportRecordListProps> = ({
                 </Stack>
               )}
             </AccordionSummary>
-            <AccordionDetails sx={{ px: { xs: 2, md: 3 }, py: { xs: 2, md: 3 } }}>
+            <AccordionDetails
+              id={`${activity.time}-panel`}
+              aria-labelledby={`${activity.time}-summary`}
+              sx={{ px: { xs: 2, md: 3 }, py: { xs: 2, md: 3 } }}
+            >
               <Stack spacing={3}>
                 <Stack spacing={1}>
                   <Typography variant="subtitle2" color="success.main" sx={{ fontWeight: 600 }}>
@@ -553,6 +685,17 @@ const TimeFlowSupportRecordList: React.FC<TimeFlowSupportRecordListProps> = ({
                   <Typography variant="body2" color="text.secondary">
                     {activity.personTodo}
                   </Typography>
+                  <FormGroup row sx={{ pl: 0.5 }}>
+                    <FormControlLabel
+                      control={
+                        <Checkbox
+                          checked={Boolean(state?.personTaskCompleted)}
+                          onChange={handleTaskCompletionToggle(activity.time, 'personTaskCompleted')}
+                        />
+                      }
+                      label="予定通り実施を確認"
+                    />
+                  </FormGroup>
                 </Stack>
                 <Stack spacing={1}>
                   <Typography variant="subtitle2" color="secondary.main" sx={{ fontWeight: 600 }}>
@@ -561,6 +704,17 @@ const TimeFlowSupportRecordList: React.FC<TimeFlowSupportRecordListProps> = ({
                   <Typography variant="body2" color="text.secondary">
                     {activity.supporterTodo}
                   </Typography>
+                  <FormGroup row sx={{ pl: 0.5 }}>
+                    <FormControlLabel
+                      control={
+                        <Checkbox
+                          checked={Boolean(state?.supporterTaskCompleted)}
+                          onChange={handleTaskCompletionToggle(activity.time, 'supporterTaskCompleted')}
+                        />
+                      }
+                      label="支援手順どおり実施"
+                    />
+                  </FormGroup>
                 </Stack>
                 <Divider />
                 <Box component="form" onSubmit={handleSubmit(activity)} noValidate>
@@ -570,17 +724,27 @@ const TimeFlowSupportRecordList: React.FC<TimeFlowSupportRecordListProps> = ({
                         本人の様子 *
                       </Typography>
                       <Stack direction="row" spacing={1} flexWrap="wrap" mt={1}>
-                        {moodOptions.map((option) => (
+                        {moodCatalog.map((option) => (
                           <Chip
-                            key={option}
-                            label={option}
+                            key={option.id}
+                            label={option.label}
                             clickable
-                            color={state?.mood === option ? 'primary' : 'default'}
-                            variant={state?.mood === option ? 'filled' : 'outlined'}
-                            onClick={() => handleMoodSelect(activity.time, option)}
+                            color={state?.mood === option.id ? 'primary' : 'default'}
+                            variant={state?.mood === option.id ? 'filled' : 'outlined'}
+                            onClick={() => handleMoodSelect(activity.time, option.id)}
                           />
                         ))}
                       </Stack>
+                      <TextField
+                        label="様子メモ"
+                        placeholder="本人の様子について補足があれば入力してください"
+                        value={state?.moodMemo ?? ''}
+                        onChange={(event) => handleMoodMemoChange(activity.time, event.target.value)}
+                        fullWidth
+                        sx={{ mt: 2 }}
+                        multiline
+                        minRows={2}
+                      />
                     </Box>
                     <Box>
                       <Typography variant="subtitle2" sx={{ fontWeight: 600 }}>
@@ -601,12 +765,18 @@ const TimeFlowSupportRecordList: React.FC<TimeFlowSupportRecordListProps> = ({
                         variant={state?.showABC ? 'outlined' : 'text'}
                         onClick={() => handleToggleABC(activity.time)}
                         startIcon={<AutoAwesomeIcon fontSize="small" />}
+                        aria-expanded={state?.showABC || false}
+                        aria-controls={`${activity.time}-abc`}
                       >
                         行動をABC分析で詳しく記録する
                       </Button>
-                      <Collapse in={Boolean(state?.showABC)} unmountOnExit>
+                      <Collapse
+                        in={Boolean(state?.showABC)}
+                        unmountOnExit
+                        id={`${activity.time}-abc`}
+                      >
                         <Stack spacing={2} mt={2}>
-                          {(Object.keys(abcOptionMap) as Array<keyof typeof abcOptionMap>).map((field) => (
+                          {(Object.keys(abcCatalog) as Array<keyof typeof abcCatalog>).map((field) => (
                             <Box key={field}>
                               <Typography variant="subtitle2" sx={{ fontWeight: 600 }}>
                                 {field === 'antecedent' && 'A: 先行事象'}
@@ -614,7 +784,7 @@ const TimeFlowSupportRecordList: React.FC<TimeFlowSupportRecordListProps> = ({
                                 {field === 'consequence' && 'C: 結果'}
                               </Typography>
                               <Stack direction="row" spacing={1} flexWrap="wrap" mt={1}>
-                                {abcOptionMap[field].map((option) => (
+                                {abcCatalog[field].map((option) => (
                                   <Chip
                                     key={option}
                                     label={option}
@@ -655,8 +825,18 @@ const TimeFlowSupportRecordList: React.FC<TimeFlowSupportRecordListProps> = ({
                         {state.error}
                       </Alert>
                     )}
-                    <Box display="flex" justifyContent="flex-end">
-                      <Button type="submit" variant="contained">
+                    <Box
+                      display="flex"
+                      justifyContent="space-between"
+                      alignItems="center"
+                      gap={2}
+                    >
+                      {!state?.mood && (
+                        <Typography variant="caption" color="text.secondary">
+                          「本人の様子」を選ぶと記録できます
+                        </Typography>
+                      )}
+                      <Button type="submit" variant="contained" disabled={!state?.mood}>
                         この時間の様子を記録する
                       </Button>
                     </Box>
@@ -733,7 +913,13 @@ const SupportRecordReviewList: React.FC<{ dailyRecord: DailySupportRecord }> = (
 
   return (
     <Stack spacing={2}>
-      {recorded.map((record) => (
+      {recorded.map((record) => {
+        const recordMoodId = coerceMoodId(record.userCondition.mood);
+        const recordMoodLabel = recordMoodId
+          ? moodsById[recordMoodId]?.label ?? ''
+          : (record.userCondition.mood ?? '');
+
+        return (
         <Paper key={record.id} variant="outlined" sx={{ p: 2.5 }}>
           <Stack spacing={1.5}>
             <Stack direction="row" spacing={1} alignItems="center" justifyContent="space-between">
@@ -758,13 +944,18 @@ const SupportRecordReviewList: React.FC<{ dailyRecord: DailySupportRecord }> = (
               <Typography variant="subtitle2" color="primary" sx={{ fontWeight: 600 }}>
                 👤 本人の様子
               </Typography>
-              {record.userCondition.mood && (
+              {recordMoodLabel && (
                 <Chip
-                  label={`気分: ${record.userCondition.mood}`}
-                  color={record.userCondition.mood === '良好' ? 'success' : 'default'}
+                  label={`気分: ${recordMoodLabel}`}
+                  color={recordMoodId === 'calm' ? 'success' : recordMoodId === 'happy' ? 'info' : 'default'}
                   size="small"
                   sx={{ alignSelf: 'flex-start' }}
                 />
+              )}
+              {record.moodMemo && (
+                <Typography variant="body2" color="text.secondary">
+                  メモ: {record.moodMemo}
+                </Typography>
               )}
               {record.abc?.intensity && (
                 <Chip
@@ -790,6 +981,20 @@ const SupportRecordReviewList: React.FC<{ dailyRecord: DailySupportRecord }> = (
               <Typography variant="body2">
                 {record.staffActivities.actual || '支援内容の記録はありません。'}
               </Typography>
+              <Stack direction="row" spacing={1} flexWrap="wrap">
+                <Chip
+                  label={record.personTaskCompleted ? '本人の手順: 実施' : '本人の手順: 未確認'}
+                  size="small"
+                  color={record.personTaskCompleted ? 'success' : 'default'}
+                  variant={record.personTaskCompleted ? 'filled' : 'outlined'}
+                />
+                <Chip
+                  label={record.supporterTaskCompleted ? '支援者の手順: 実施' : '支援者の手順: 未確認'}
+                  size="small"
+                  color={record.supporterTaskCompleted ? 'success' : 'default'}
+                  variant={record.supporterTaskCompleted ? 'filled' : 'outlined'}
+                />
+              </Stack>
             </Stack>
 
             {(record.specialNotes.achievements || record.specialNotes.concerns || record.specialNotes.incidents) && (
@@ -830,7 +1035,8 @@ const SupportRecordReviewList: React.FC<{ dailyRecord: DailySupportRecord }> = (
             )}
           </Stack>
         </Paper>
-      ))}
+        );
+      })}
     </Stack>
   );
 };
@@ -896,12 +1102,10 @@ const DailyInsightsPanel: React.FC<{ dailyRecord: DailySupportRecord }> = ({ dai
     const totalSlots = dailyRecord.summary.totalTimeSlots;
     const recorded = dailyRecord.records.filter((record) => record.status === '記録済み').length;
     const completionRate = totalSlots > 0 ? Math.round((recorded / totalSlots) * 100) : 0;
-    const moodCount: Record<'良好' | '普通' | '不安定' | '未記録', number> = {
-      良好: 0,
-      普通: 0,
-      不安定: 0,
-      未記録: 0,
-    };
+    const moodCount = Object.fromEntries(
+      moodCatalog.map((option) => [option.id, 0]),
+    ) as Record<MoodId, number>;
+    let unknownMoodCount = 0;
     const intensityCount: Record<'軽度' | '中度' | '重度', number> = {
       軽度: 0,
       中度: 0,
@@ -909,9 +1113,11 @@ const DailyInsightsPanel: React.FC<{ dailyRecord: DailySupportRecord }> = ({ dai
     };
 
     dailyRecord.records.forEach((record) => {
-      const mood = record.userCondition.mood ?? '未記録';
-      if (moodCount[mood] !== undefined) {
-        moodCount[mood] += 1;
+      const moodId = coerceMoodId(record.userCondition.mood);
+      if (moodId) {
+        moodCount[moodId] = (moodCount[moodId] ?? 0) + 1;
+      } else {
+        unknownMoodCount += 1;
       }
 
       if (record.abc?.intensity) {
@@ -927,6 +1133,7 @@ const DailyInsightsPanel: React.FC<{ dailyRecord: DailySupportRecord }> = ({ dai
     return {
       completionRate,
       moodCount,
+      unknownMoodCount,
       intensityCount,
       abcCoverage,
       incidents: dailyRecord.summary.concerningIncidents,
@@ -962,18 +1169,18 @@ const DailyInsightsPanel: React.FC<{ dailyRecord: DailySupportRecord }> = ({ dai
                 <Typography variant="body2" color="text.secondary">
                   気分分布
                 </Typography>
-                {(['良好', '普通', '不安定'] as const).map((label) => (
-                  <Stack key={label} direction="row" justifyContent="space-between">
-                    <Typography variant="body2">{label}</Typography>
+                {moodCatalog.map((option) => (
+                  <Stack key={option.id} direction="row" justifyContent="space-between">
+                    <Typography variant="body2">{option.label}</Typography>
                     <Typography variant="body2" color="text.secondary">
-                      {metrics.moodCount[label]} 件
+                      {metrics.moodCount[option.id]} 件
                     </Typography>
                   </Stack>
                 ))}
                 <Stack direction="row" justifyContent="space-between">
                   <Typography variant="body2">未記録</Typography>
                   <Typography variant="body2" color="text.secondary">
-                    {metrics.moodCount['未記録']} 件
+                    {metrics.unknownMoodCount} 件
                   </Typography>
                 </Stack>
               </Stack>
@@ -1009,7 +1216,11 @@ const DailyInsightsPanel: React.FC<{ dailyRecord: DailySupportRecord }> = ({ dai
   );
 };
 
-const SupportPlanQuickView: React.FC<{ dailyRecord: DailySupportRecord; activities: FlowSupportActivityTemplate[] }> = ({ dailyRecord, activities }) => {
+const SupportPlanQuickView: React.FC<{
+  dailyRecord: DailySupportRecord;
+  activities: FlowSupportActivityTemplate[];
+  onSelectActivity: (activity: FlowSupportActivityTemplate) => void;
+}> = ({ dailyRecord, activities, onSelectActivity }) => {
   const { pendingActivities, nextActivity } = useMemo(() => {
     const pending = activities.filter((activity) => {
       const record = dailyRecord.records.find((entry) => entry.activityKey === activity.time);
@@ -1036,7 +1247,27 @@ const SupportPlanQuickView: React.FC<{ dailyRecord: DailySupportRecord; activiti
           </Stack>
 
           {nextActivity ? (
-            <Box sx={{ p: 2, borderRadius: 2, bgcolor: 'background.default', border: '1px dashed', borderColor: 'divider', display: 'flex', flexDirection: 'column', gap: 0.75 }}>
+            <ButtonBase
+              onClick={() => onSelectActivity(nextActivity)}
+              component="div"
+              sx={{
+                p: 2,
+                borderRadius: 2,
+                bgcolor: 'background.default',
+                border: '1px dashed',
+                borderColor: 'divider',
+                display: 'flex',
+                flexDirection: 'column',
+                gap: 0.75,
+                alignItems: 'flex-start',
+                textAlign: 'left',
+                '&:hover, &:focus-visible': {
+                  borderColor: 'primary.main',
+                  boxShadow: (theme) => theme.shadows[2],
+                },
+              }}
+              aria-label={`「${nextActivity.title}」の入力ステップを開く`}
+            >
               <Typography variant="subtitle2" color="primary" sx={{ fontWeight: 600 }}>
                 次の候補: {nextActivity.time} {nextActivity.title}
               </Typography>
@@ -1052,7 +1283,7 @@ const SupportPlanQuickView: React.FC<{ dailyRecord: DailySupportRecord; activiti
               <Typography variant="body2" color="text.secondary">
                 支援者: {nextActivity.supporterTodo}
               </Typography>
-            </Box>
+            </ButtonBase>
           ) : (
             <Alert severity="success" variant="outlined">
               すべての時間帯が記録済みです。お疲れさまでした！
@@ -1060,7 +1291,27 @@ const SupportPlanQuickView: React.FC<{ dailyRecord: DailySupportRecord; activiti
           )}
 
           {pendingActivities.slice(1, 4).map((activity) => (
-            <Box key={activity.time} sx={{ borderRadius: 2, border: '1px solid', borderColor: 'divider', p: 1.5, display: 'flex', flexDirection: 'column', gap: 0.5 }}>
+            <ButtonBase
+              key={activity.time}
+              onClick={() => onSelectActivity(activity)}
+              component="div"
+              sx={{
+                borderRadius: 2,
+                border: '1px solid',
+                borderColor: 'divider',
+                p: 1.5,
+                display: 'flex',
+                flexDirection: 'column',
+                gap: 0.5,
+                alignItems: 'flex-start',
+                textAlign: 'left',
+                '&:hover, &:focus-visible': {
+                  borderColor: 'primary.main',
+                  boxShadow: (theme) => theme.shadows[1],
+                },
+              }}
+              aria-label={`「${activity.title}」の入力ステップを開く`}
+            >
               <Typography variant="subtitle2" sx={{ fontWeight: 600 }}>
                 {activity.time} {activity.title}
               </Typography>
@@ -1070,7 +1321,7 @@ const SupportPlanQuickView: React.FC<{ dailyRecord: DailySupportRecord; activiti
               <Typography variant="caption" color="text.secondary">
                 本人: {activity.personTodo}
               </Typography>
-            </Box>
+            </ButtonBase>
           ))}
 
           {pendingActivities.length > 4 && (
@@ -1146,118 +1397,17 @@ const PlanDeploymentSummary: React.FC<{
   );
 };
 
-const SupportUserPicker: React.FC<{
-  users: SupportUser[];
-  selectedUserId: string;
-  planTypeOptions: Array<{ value: string; count: number }>;
-  selectedPlanType: string;
-  totalAvailableCount: number;
-  onPlanTypeSelect: (planType: string) => void;
-  onSelect: (userId: string) => void;
-}> = ({ users, selectedUserId, planTypeOptions, selectedPlanType, totalAvailableCount, onPlanTypeSelect, onSelect }) => {
-  return (
-    <Stack spacing={2} sx={{ mt: 3 }}>
-      <Stack direction="row" spacing={1} flexWrap="wrap">
-        <Chip
-          label={`すべて (${totalAvailableCount})`}
-          clickable
-          color={selectedPlanType === '' ? 'primary' : 'default'}
-          variant={selectedPlanType === '' ? 'filled' : 'outlined'}
-          onClick={() => onPlanTypeSelect('')}
-        />
-        {planTypeOptions.map(({ value, count }) => (
-          <Chip
-            key={value}
-            label={`${value} (${count})`}
-            clickable
-            color={selectedPlanType === value ? 'primary' : 'default'}
-            variant={selectedPlanType === value ? 'filled' : 'outlined'}
-            onClick={() => onPlanTypeSelect(value)}
-          />
-        ))}
-      </Stack>
-
-      {users.length === 0 ? (
-        <Alert severity="info">
-          条件に一致する利用者が見つかりません。検索条件やフィルタを調整してください。
-        </Alert>
-      ) : (
-        <Box
-          sx={{
-            display: 'grid',
-            gridTemplateColumns: {
-              xs: 'repeat(1, minmax(0, 1fr))',
-              sm: 'repeat(2, minmax(0, 1fr))',
-              lg: 'repeat(3, minmax(0, 1fr))',
-            },
-            gap: 2,
-          }}
-        >
-          {users.map((user) => {
-            const isSelected = user.id === selectedUserId;
-            return (
-              <Card
-                key={user.id}
-                variant="outlined"
-                sx={{
-                  borderWidth: isSelected ? 2 : 1,
-                  borderColor: isSelected ? 'primary.main' : 'divider',
-                  boxShadow: isSelected ? 6 : 1,
-                  transition: 'border-color 0.2s ease, box-shadow 0.2s ease',
-                }}
-              >
-                <CardActionArea onClick={() => onSelect(user.id)} sx={{ p: 2 }}>
-                  <Stack direction="row" spacing={2} alignItems="center">
-                    <Avatar sx={{ bgcolor: 'primary.main' }}>
-                      {user.name.charAt(0)}
-                    </Avatar>
-                    <Box flex={1}>
-                      <Typography variant="subtitle1" sx={{ fontWeight: 600 }}>
-                        {user.name}
-                      </Typography>
-                      <Typography variant="body2" color="text.secondary">
-                        {user.planType}
-                      </Typography>
-                    </Box>
-                    {isSelected && (
-                      <Chip
-                        label="選択中"
-                        color="primary"
-                        size="small"
-                        icon={<CheckCircleIcon fontSize="small" />}
-                        sx={{ ml: 'auto' }}
-                      />
-                    )}
-                  </Stack>
-                </CardActionArea>
-              </Card>
-            );
-          })}
-        </Box>
-      )}
-    </Stack>
-  );
-};
-
 // モックデータ（支援対象者）
-const mockSupportUsers: SupportUser[] = [
-  { id: '001', name: '田中太郎', planType: '日常生活', isActive: true },
-  { id: '005', name: '佐藤花子', planType: '作業活動', isActive: true },
-  { id: '012', name: '山田一郎', planType: 'コミュニケーション', isActive: true },
-  { id: '018', name: '鈴木美子', planType: '健康管理', isActive: true },
-  { id: '023', name: '高橋次郎', planType: '社会生活', isActive: true },
-  { id: '030', name: '中村勇気', planType: '作業活動', isActive: true },
-  { id: '032', name: '小林さくら', planType: 'コミュニケーション', isActive: true }
-];
-
 // モック日次記録生成（時間フロー対応）
 const generateMockTimeFlowDailyRecord = (
-  user: typeof mockSupportUsers[0],
+  user: SupportUser,
   date: string,
   activities: FlowSupportActivityTemplate[],
   deployment: SupportPlanDeployment | null
 ): DailySupportRecord => {
-  const moodSamples: Array<SupportRecord['userCondition']['mood']> = ['良好', '普通', '良好', '良好'];
+  const moodSamples: string[] = moodCatalog.length > 0
+    ? moodCatalog.map((option) => option.label)
+    : ['落ち着いている'];
   const behaviorSamples = [
     '朝の会で落ち着いて参加できました',
     '課題に集中し、質問も適切に行えています',
@@ -1296,6 +1446,9 @@ const generateMockTimeFlowDailyRecord = (
         communication: undefined,
         physicalState: '体調良好',
       },
+      personTaskCompleted: true,
+      supporterTaskCompleted: true,
+      moodMemo: '安定して過ごせていました',
       specialNotes: {},
       reporter: {
         name: '支援員A',
@@ -1348,6 +1501,27 @@ const TimeFlowSupportRecordPage: React.FC = () => {
   const [activeTab, setActiveTab] = useState<'input' | 'review'>('input');
   const [selectionClearedNotice, setSelectionClearedNotice] = useState<boolean>(false);
   const recordSectionRef = useRef<HTMLDivElement | null>(null);
+  const recordListRef = useRef<HTMLDivElement | null>(null);
+  const [focusActivityKey, setFocusActivityKey] = useState<string | null>(null);
+  const lastFocusedUserRef = useRef<string | null>(null);
+  const navigate = useNavigate();
+  const { userId: routeUserId } = useParams<{ userId?: string }>();
+  const { data: masterUsers = [] } = useUsersStore();
+  const supportUsers = useMemo<SupportUser[]>(() => {
+    return (masterUsers ?? [])
+      .filter((user) => user && user.IsActive !== false && user.IsSupportProcedureTarget === true)
+      .map((user) => {
+        const baseName = user.FullName?.trim() || user.UserID?.trim() || `ID:${user.Id}`;
+        return {
+          id: String(user.Id),
+          name: baseName,
+          planType: '個別',
+          isActive: user.IsActive !== false,
+        };
+      })
+      .sort((a, b) => a.name.localeCompare(b.name, 'ja'));
+  }, [masterUsers]);
+  const baseRoute = '/records/support-procedures';
 
   useEffect(() => {
     setMasterSupportActivities(loadMasterSupportActivities());
@@ -1389,11 +1563,10 @@ const TimeFlowSupportRecordPage: React.FC = () => {
 
   const searchMatchedUsers = useMemo<SupportUser[]>(() => {
     const normalizedTerm = searchTerm.trim().toLowerCase();
-    return mockSupportUsers.filter((user) =>
-      user.isActive &&
-      user.name.toLowerCase().includes(normalizedTerm)
+    return supportUsers.filter(
+      (user) => user.isActive && user.name.toLowerCase().includes(normalizedTerm)
     );
-  }, [searchTerm]);
+  }, [searchTerm, supportUsers]);
 
   const planTypeOptions = useMemo(() => {
     const counts = new Map<string, number>();
@@ -1413,69 +1586,151 @@ const TimeFlowSupportRecordPage: React.FC = () => {
     );
   }, [searchMatchedUsers, selectedPlanType]);
 
+  const userProgressInfo = useMemo<Record<string, UserProgressInfo>>(() => {
+    return supportUsers.reduce<Record<string, UserProgressInfo>>((acc, user) => {
+      const recordKey = `${user.id}-${selectedDate}`;
+      const record = dailyRecords[recordKey];
+      const total =
+        record?.summary.totalTimeSlots ??
+        supportActivities.length;
+      const safeTotal = Math.max(total, supportActivities.length || 1);
+      const completed = record
+        ? Math.min(
+            record.records.filter((entry) => entry.status === '記録済み').length,
+            safeTotal
+          )
+        : 0;
+      acc[user.id] = {
+        completed,
+        total: safeTotal,
+      };
+      return acc;
+    }, {});
+  }, [dailyRecords, selectedDate, supportActivities.length, supportUsers]);
+
   useEffect(() => {
     if (selectedUser && !filteredUsers.some((user) => user.id === selectedUser)) {
       setSelectedUser('');
       setSelectionClearedNotice(true);
+      setFocusActivityKey(null);
+      navigate(baseRoute, { replace: true });
     }
-  }, [filteredUsers, selectedUser]);
+  }, [filteredUsers, selectedUser, navigate, baseRoute]);
 
   const handleUserSelect = (userId: string) => {
+    setFocusActivityKey(null);
     setSelectedUser(userId);
     setActiveTab('input');
     setSelectionClearedNotice(false);
+    if (routeUserId !== userId) {
+      navigate(`${baseRoute}/${userId}`, { replace: false });
+    }
   };
 
-  // 現在の日次記録を取得または生成
-  const currentDailyRecord = useMemo(() => {
-    if (!selectedUser) return null;
-
-    const user = mockSupportUsers.find(u => u.id === selectedUser);
-    if (!user) return null;
-
-    const recordKey = `${selectedUser}-${selectedDate}`;
-
-    if (!dailyRecords[recordKey]) {
-      // 新しい日次記録を生成
-  const newRecord = generateMockTimeFlowDailyRecord(user, selectedDate, supportActivities, supportDeployment);
-      setDailyRecords(prev => ({
-        ...prev,
-        [recordKey]: newRecord
-      }));
-      return newRecord;
+  useEffect(() => {
+    if (!routeUserId) {
+      if (selectedUser) {
+        setSelectedUser('');
+        setSelectionClearedNotice(false);
+        setFocusActivityKey(null);
+      }
+      return;
     }
 
-    const existingRecord = dailyRecords[recordKey];
-    if (
-      existingRecord.summary.totalTimeSlots !== supportActivities.length ||
-      (supportDeployment && existingRecord.supportPlanId !== supportDeployment.planId)
-    ) {
-      const updatedPlanId = supportDeployment?.planId ?? existingRecord.supportPlanId;
+    if (supportUsers.length === 0) {
+      return;
+    }
 
-      const adjustedRecord: DailySupportRecord = {
-        ...existingRecord,
-        supportPlanId: updatedPlanId,
-        records: supportDeployment && existingRecord.supportPlanId !== updatedPlanId
-          ? existingRecord.records.map((record) => ({
-              ...record,
-              supportPlanId: updatedPlanId,
-            }))
-          : existingRecord.records,
-        summary: {
-          ...existingRecord.summary,
-          totalTimeSlots: supportActivities.length,
-        },
+    const match = supportUsers.find((user) => user.id === routeUserId);
+    if (match) {
+      if (selectedUser !== match.id) {
+        setSelectedUser(match.id);
+        setSelectionClearedNotice(false);
+      }
+      return;
+    }
+
+    setSelectedUser('');
+    setSelectionClearedNotice(true);
+    setFocusActivityKey(null);
+    navigate(baseRoute, { replace: true });
+  }, [routeUserId, supportUsers, selectedUser, navigate, baseRoute]);
+
+  const recordKey = selectedUser ? `${selectedUser}-${selectedDate}` : null;
+
+  const currentDailyRecord = recordKey ? dailyRecords[recordKey] ?? null : null;
+
+  useEffect(() => {
+    if (!recordKey || !selectedUser) {
+      return;
+    }
+
+    const user = supportUsers.find((candidate) => candidate.id === selectedUser);
+    if (!user) {
+      return;
+    }
+
+    setDailyRecords((prev) => {
+      const existing = prev[recordKey];
+      const totalSlots = supportActivities.length;
+      const desiredPlanId = supportDeployment?.planId ?? existing?.supportPlanId ?? `plan-${selectedUser}`;
+
+      if (!existing) {
+        const newRecord = generateMockTimeFlowDailyRecord(
+          user,
+          selectedDate,
+          supportActivities,
+          supportDeployment
+        );
+        const summary = ensureSummarySlotCounts(newRecord.summary, newRecord.records, totalSlots);
+        return {
+          ...prev,
+          [recordKey]: {
+            ...newRecord,
+            summary,
+          },
+        };
+      }
+
+      let nextRecord = existing;
+      let changed = false;
+
+      if (existing.supportPlanId !== desiredPlanId) {
+        nextRecord = {
+          ...nextRecord,
+          supportPlanId: desiredPlanId,
+          records: nextRecord.records.map((record) => ({
+            ...record,
+            supportPlanId: desiredPlanId,
+          })),
+        };
+        changed = true;
+      }
+
+      const updatedSummary = ensureSummarySlotCounts(
+        nextRecord.summary,
+        nextRecord.records,
+        totalSlots
+      );
+
+      if (updatedSummary !== nextRecord.summary) {
+        nextRecord = {
+          ...nextRecord,
+          summary: updatedSummary,
+        };
+        changed = true;
+      }
+
+      if (!changed) {
+        return prev;
+      }
+
+      return {
+        ...prev,
+        [recordKey]: nextRecord,
       };
-
-      setDailyRecords(prev => ({
-        ...prev,
-        [recordKey]: adjustedRecord,
-      }));
-      return adjustedRecord;
-    }
-
-    return existingRecord;
-  }, [dailyRecords, selectedDate, selectedUser, supportActivities]);
+    });
+  }, [recordKey, selectedUser, selectedDate, supportActivities, supportDeployment, supportUsers]);
 
   const pendingCount = useMemo(() => {
     if (!selectedUser || !currentDailyRecord) {
@@ -1494,15 +1749,16 @@ const TimeFlowSupportRecordPage: React.FC = () => {
     if (!currentDailyRecord) return;
 
     const recordKey = `${selectedUser}-${selectedDate}`;
+    const nextRecords = [...currentDailyRecord.records, record];
     const updatedDailyRecord: DailySupportRecord = {
       ...currentDailyRecord,
-      records: [...currentDailyRecord.records, record],
+      records: nextRecords,
       status: '作成中',
-      summary: {
-        ...currentDailyRecord.summary,
-        totalTimeSlots: supportActivities.length,
-        recordedTimeSlots: currentDailyRecord.records.length + 1
-      }
+      summary: ensureSummarySlotCounts(
+        currentDailyRecord.summary,
+        nextRecords,
+        supportActivities.length
+      ),
     };
 
     setDailyRecords(prev => ({
@@ -1522,11 +1778,11 @@ const TimeFlowSupportRecordPage: React.FC = () => {
     const updatedDailyRecord: DailySupportRecord = {
       ...currentDailyRecord,
       records: updatedRecords,
-      summary: {
-        ...currentDailyRecord.summary,
-        totalTimeSlots: supportActivities.length,
-        recordedTimeSlots: updatedRecords.length
-      }
+      summary: ensureSummarySlotCounts(
+        currentDailyRecord.summary,
+        updatedRecords,
+        supportActivities.length
+      ),
     };
 
     setDailyRecords(prev => ({
@@ -1549,11 +1805,11 @@ const TimeFlowSupportRecordPage: React.FC = () => {
         ...target,
         status: '完了',
         completedAt: new Date().toISOString(),
-        summary: {
-          ...target.summary,
-          totalTimeSlots: supportActivities.length,
-          recordedTimeSlots: target.summary.recordedTimeSlots,
-        },
+        summary: ensureSummarySlotCounts(
+          target.summary,
+          target.records,
+          supportActivities.length
+        ),
       };
 
       return {
@@ -1563,22 +1819,78 @@ const TimeFlowSupportRecordPage: React.FC = () => {
     });
   };
 
+  const handleQuickViewSelect = (activity: FlowSupportActivityTemplate) => {
+    setActiveTab('input');
+    setFocusActivityKey(activity.time);
+    const target = recordListRef.current ?? recordSectionRef.current;
+    if (target && typeof target.scrollIntoView === 'function') {
+      target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+  };
+
+  useEffect(() => {
+    if (activeTab !== 'input') {
+      setFocusActivityKey(null);
+    }
+  }, [activeTab]);
+
+  useEffect(() => {
+    setFocusActivityKey(null);
+  }, [selectedDate]);
+
+  useEffect(() => {
+    if (!selectedUser || !currentDailyRecord || supportActivities.length === 0) {
+      return;
+    }
+    if (lastFocusedUserRef.current === selectedUser) {
+      return;
+    }
+    lastFocusedUserRef.current = selectedUser;
+    const pendingActivity =
+      supportActivities.find((activity) => {
+        const record = currentDailyRecord.records.find(
+          (entry) => entry.activityKey === activity.time
+        );
+        return !(record && record.status === '記録済み');
+      }) ?? supportActivities[0];
+
+    if (pendingActivity) {
+      setFocusActivityKey(pendingActivity.time);
+    }
+    if (recordSectionRef.current) {
+      recordSectionRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+  }, [selectedUser, currentDailyRecord, supportActivities]);
+
   const generateAutoSchedule = () => {
     if (!selectedUser) return;
 
-    const user = mockSupportUsers.find(u => u.id === selectedUser);
+    const user = supportUsers.find((u) => u.id === selectedUser);
     if (!user) return;
 
     const recordKey = `${selectedUser}-${selectedDate}`;
-  const autoRecord = generateMockTimeFlowDailyRecord(user, selectedDate, supportActivities, supportDeployment);
+    const autoRecord = generateMockTimeFlowDailyRecord(
+      user,
+      selectedDate,
+      supportActivities,
+      supportDeployment
+    );
+    const summary = ensureSummarySlotCounts(
+      autoRecord.summary,
+      autoRecord.records,
+      supportActivities.length
+    );
 
     setDailyRecords(prev => ({
       ...prev,
-      [recordKey]: autoRecord
+      [recordKey]: {
+        ...autoRecord,
+        summary,
+      }
     }));
   };
 
-  const getActiveUsersCount = () => mockSupportUsers.filter(u => u.isActive).length;
+  const getActiveUsersCount = () => supportUsers.filter((u) => u.isActive).length;
 
   const handleTabChange = (_event: React.SyntheticEvent, value: 'input' | 'review') => {
     setActiveTab(value);
@@ -1643,145 +1955,119 @@ const TimeFlowSupportRecordPage: React.FC = () => {
           </Stack>
         </Paper>
 
-        {/* フィルター・検索 */}
-        <Card sx={{ mb: 4 }} elevation={2}>
-          <CardContent>
-            <Typography variant="h6" gutterBottom display="flex" alignItems="center" gap={1}>
-              <SearchIcon color="primary" />
-              記録対象選択
-            </Typography>
-
-            <Stack direction={{ xs: 'column', md: 'row' }} spacing={2} alignItems={{ xs: 'stretch', md: 'flex-end' }}>
-              <TextField
-                label="利用者名で検索"
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                sx={{ minWidth: 200 }}
-                size="small"
-              />
-
-              <TextField
-                label="記録日"
-                type="date"
-                value={selectedDate}
-                onChange={(e) => setSelectedDate(e.target.value)}
-                InputLabelProps={{ shrink: true }}
-                sx={{ minWidth: 160 }}
-                size="small"
-              />
-
-              {selectedUser && (
-                <Button
-                  onClick={generateAutoSchedule}
-                  startIcon={<AutoAwesomeIcon />}
-                  variant="outlined"
-                  color="secondary"
-                >
-                  サンプル生成
-                </Button>
-              )}
-            </Stack>
-
-            <Typography variant="body2" color="text.secondary" sx={{ mt: 2 }}>
-              利用者カードをクリックすると対象者が選択されます。検索条件やプラン種別フィルタを切り替えると一覧がリアルタイムに絞り込まれます。
-            </Typography>
-
-            <Collapse in={selectionClearedNotice}>
-              <Alert severity="info" sx={{ mt: 2 }} onClose={() => setSelectionClearedNotice(false)}>
-                絞り込み条件により選択中の利用者が一覧から外れたため、選択を解除しました。
-              </Alert>
-            </Collapse>
-
-            <SupportUserPicker
+        <Stack direction={{ xs: 'column', md: 'row' }} spacing={4} alignItems="flex-start">
+          <Stack
+            component="aside"
+            spacing={2}
+            sx={{
+              width: '100%',
+              flexBasis: { md: '32%' },
+              maxWidth: { md: 360 },
+              position: { md: 'sticky' },
+              top: { md: 32 },
+            }}
+          >
+            <UserSideNav
               users={filteredUsers}
+              userProgress={userProgressInfo}
               selectedUserId={selectedUser}
+              selectedDate={selectedDate}
+              searchTerm={searchTerm}
+              onSearchTermChange={setSearchTerm}
               planTypeOptions={planTypeOptions}
               selectedPlanType={selectedPlanType}
-              totalAvailableCount={searchMatchedUsers.length}
               onPlanTypeSelect={setSelectedPlanType}
-              onSelect={handleUserSelect}
+              onSelectUser={handleUserSelect}
+              onDateChange={setSelectedDate}
+              selectionClearedNotice={selectionClearedNotice}
+              onDismissClearedNotice={() => setSelectionClearedNotice(false)}
             />
-
             {selectedUser && (
               <PlanDeploymentSummary
                 deployment={supportDeployment}
                 activities={supportActivities}
               />
             )}
-          </CardContent>
-        </Card>
+          </Stack>
+          <Box component="main" sx={{ flexGrow: 1, minWidth: 0 }}>
+            {selectedUser && currentDailyRecord ? (
+              <Box ref={recordSectionRef}>
+                <Stack spacing={3}>
+                  <QuickActionToolbar
+                    pendingCount={pendingCount}
+                    onGenerateSample={generateAutoSchedule}
+                    onMarkComplete={handleMarkComplete}
+                    isComplete={Boolean(isComplete)}
+                  />
 
-        {/* メイン記録エリア */}
-        {selectedUser && currentDailyRecord ? (
-          <Box ref={recordSectionRef}>
-            <QuickActionToolbar
-              pendingCount={pendingCount}
-              onGenerateSample={generateAutoSchedule}
-              onMarkComplete={handleMarkComplete}
-              isComplete={Boolean(isComplete)}
-            />
+                  <MonitoringInfo
+                    personName={currentDailyRecord.personName}
+                    currentDate={selectedDate}
+                  />
 
-            <MonitoringInfo
-              personName={currentDailyRecord.personName}
-              currentDate={selectedDate}
-            />
+                  <Paper elevation={1}>
+                    <Tabs
+                      value={activeTab}
+                      onChange={handleTabChange}
+                      variant="fullWidth"
+                      aria-label="支援手順兼記録タブ"
+                    >
+                      <Tab value="input" label="記録入力" />
+                      <Tab value="review" label="記録閲覧" />
+                    </Tabs>
 
-            <Paper elevation={1} sx={{ mb: 4 }}>
-              <Tabs
-                value={activeTab}
-                onChange={handleTabChange}
-                variant="fullWidth"
-                aria-label="支援手順兼記録タブ"
-              >
-                <Tab value="input" label="記録入力" />
-                <Tab value="review" label="記録閲覧" />
-              </Tabs>
+                    <Box sx={{ p: { xs: 2, md: 3 }, display: 'flex', flexDirection: 'column', gap: 3 }}>
+                      <RecordSummaryCard record={currentDailyRecord} date={selectedDate} />
 
-              <Box sx={{ p: { xs: 2, md: 3 }, display: 'flex', flexDirection: 'column', gap: 3 }}>
-                <RecordSummaryCard record={currentDailyRecord} date={selectedDate} />
-
-                {activeTab === 'input' ? (
-                  <Stack direction={{ xs: 'column', lg: 'row' }} spacing={3} alignItems="stretch">
-                    <Box sx={{ flexGrow: 1 }}>
-                      <TimeFlowSupportRecordList
-                        activities={supportActivities}
-                        dailyRecord={currentDailyRecord}
-                        onAddRecord={handleAddRecord}
-                        onUpdateRecord={handleUpdateRecord}
-                      />
+                      {activeTab === 'input' ? (
+                        <Stack direction={{ xs: 'column', lg: 'row' }} spacing={3} alignItems="stretch">
+                          <Box sx={{ flexGrow: 1 }}>
+                            <TimeFlowSupportRecordList
+                              activities={supportActivities}
+                              dailyRecord={currentDailyRecord}
+                              onAddRecord={handleAddRecord}
+                              onUpdateRecord={handleUpdateRecord}
+                              focusActivityKey={focusActivityKey}
+                              listRef={recordListRef}
+                            />
+                          </Box>
+                          <Stack spacing={3} sx={{ flexBasis: { lg: '35%' }, flexGrow: 1 }}>
+                            <DailyInsightsPanel dailyRecord={currentDailyRecord} />
+                            <SupportPlanQuickView
+                              dailyRecord={currentDailyRecord}
+                              activities={supportActivities}
+                              onSelectActivity={handleQuickViewSelect}
+                            />
+                          </Stack>
+                        </Stack>
+                      ) : (
+                        <Stack direction={{ xs: 'column', lg: 'row' }} spacing={3} alignItems="stretch">
+                          <Box sx={{ flexGrow: 1 }}>
+                            <SupportRecordReviewList dailyRecord={currentDailyRecord} />
+                          </Box>
+                          <Stack spacing={3} sx={{ flexBasis: { lg: '35%' }, flexGrow: 1 }}>
+                            <DailyInsightsPanel dailyRecord={currentDailyRecord} />
+                            <SupportPlanQuickView
+                              dailyRecord={currentDailyRecord}
+                              activities={supportActivities}
+                              onSelectActivity={handleQuickViewSelect}
+                            />
+                          </Stack>
+                        </Stack>
+                      )}
                     </Box>
-                    <Stack spacing={3} sx={{ flexBasis: { lg: '32%' }, flexGrow: 1 }}>
-                      <DailyInsightsPanel dailyRecord={currentDailyRecord} />
-                      <SupportPlanQuickView dailyRecord={currentDailyRecord} activities={supportActivities} />
-                    </Stack>
-                  </Stack>
-                ) : (
-                  <Stack direction={{ xs: 'column', lg: 'row' }} spacing={3} alignItems="stretch">
-                    <Box sx={{ flexGrow: 1 }}>
-                      <SupportRecordReviewList dailyRecord={currentDailyRecord} />
-                    </Box>
-                    <Stack spacing={3} sx={{ flexBasis: { lg: '32%' }, flexGrow: 1 }}>
-                      <DailyInsightsPanel dailyRecord={currentDailyRecord} />
-                      <SupportPlanQuickView dailyRecord={currentDailyRecord} activities={supportActivities} />
-                    </Stack>
-                  </Stack>
-                )}
+                  </Paper>
+                </Stack>
               </Box>
-            </Paper>
+            ) : (
+              <Paper sx={{ p: 4, display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '50vh' }}>
+                <Typography variant="h6" color="text.secondary">
+                  左のリストから記録する利用者を選択してください。
+                </Typography>
+              </Paper>
+            )}
           </Box>
-        ) : (
-          <Alert severity="info" sx={{ p: 3 }}>
-            <Typography variant="h6" gutterBottom>
-              支援手順兼記録を開始
-            </Typography>
-            <Typography>
-              利用者と記録日を選択して、支援手順兼記録を開始してください。<br />
-              <strong>開所時間 9:30-16:00</strong>の具体的な時間と活動内容がカードで表示されます。<br />
-              各カードには「本人のやること」「職員のやること」が明確に示され、直感的に記録できます。<br />
-              モニタリング周期は<strong>三ヶ月ごと</strong>に設定されています。
-            </Typography>
-          </Alert>
-        )}
+        </Stack>
       </Box>
     </Container>
   );

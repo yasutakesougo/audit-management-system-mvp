@@ -77,7 +77,7 @@ $fieldsToEnsure = @(
 foreach ($fieldSpec in $fieldsToEnsure) {
     $internalName = $fieldSpec.InternalName
     try {
-    $field = Get-PnPField -List $list -Identity $internalName -ErrorAction Stop
+        $field = Get-PnPField -List $list -Identity $internalName -ErrorAction Stop
         $updates = @{}
 
         if ($field.Required -ne $fieldSpec.Required) {
@@ -95,17 +95,18 @@ foreach ($fieldSpec in $fieldsToEnsure) {
         if ($updates.Count -gt 0) {
             Set-PnPField -List $list -Identity $internalName -Values $updates
             Write-Info "Updated $($fieldSpec.Type): $internalName"
-        } else {
+        }
+        else {
             Write-Info "No changes needed for $($fieldSpec.Type): $internalName"
         }
     }
     catch {
         try {
             $params = @{
-                List = $list
-                DisplayName = $fieldSpec.DisplayName
+                List         = $list
+                DisplayName  = $fieldSpec.DisplayName
                 InternalName = $internalName
-                Type = $fieldSpec.Type
+                Type         = $fieldSpec.Type
             }
 
             if ($fieldSpec.Type -eq "DateTime") {

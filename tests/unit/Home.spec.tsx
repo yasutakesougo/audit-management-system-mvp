@@ -12,6 +12,7 @@ const featureFlagsState = vi.hoisted<FeatureFlagSnapshot>(() => ({
   schedules: false,
   schedulesCreate: false,
   complianceForm: false,
+  timeflowV2: false,
 }));
 
 vi.mock('@/lib/env', () => ({
@@ -19,6 +20,7 @@ vi.mock('@/lib/env', () => ({
   isSchedulesFeatureEnabled: () => featureFlagsState.schedules,
   isSchedulesCreateEnabled: () => featureFlagsState.schedulesCreate,
   isComplianceFormEnabled: () => featureFlagsState.complianceForm,
+  isTimeflowV2Enabled: () => featureFlagsState.timeflowV2,
   shouldSkipLogin: () => false,
 }));
 
@@ -40,11 +42,12 @@ describe('Home', () => {
     featureFlagsState.schedules = false;
     featureFlagsState.schedulesCreate = false;
     featureFlagsState.complianceForm = false;
+    featureFlagsState.timeflowV2 = false;
   });
 
   it('hides schedule tiles and chips when schedule flag disabled', () => {
     renderHome();
-    expect(screen.queryByTestId('home-tile-schedule')).toBeNull();
+    expect(screen.queryByTestId('home-tile-schedules-week')).toBeNull();
     expect(screen.queryByRole('link', { name: 'マスタースケジュールへ移動' })).toBeNull();
     expect(screen.getByRole('list', { name: '主要機能のタイル一覧' })).toBeInTheDocument();
     expect(screen.getByTestId('home-mode-chip')).toHaveTextContent('本番モード（MSAL 認証あり）');
@@ -55,7 +58,7 @@ describe('Home', () => {
   it('shows schedule tiles and chips when flag enabled', () => {
     featureFlagsState.schedules = true;
     renderHome();
-    expect(screen.getByTestId('home-tile-schedule')).toBeVisible();
+    expect(screen.getByTestId('home-tile-schedules-week')).toBeVisible();
     const chips = screen.getAllByTestId('home-data-source-chip');
     expect(chips[0]).toHaveTextContent('データソース: Demo');
   });

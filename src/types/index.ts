@@ -159,6 +159,8 @@ export type SpScheduleItem = {
   cr014_fiscalYear?: string | null;
 };
 
+export type { BehaviorSupportPlan, FlowSupportActivityTemplate } from './behaviorPlan';
+
 export type ScheduleRecurrence = {
   rule: string;
   timezone?: string;

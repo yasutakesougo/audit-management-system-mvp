@@ -1,30 +1,38 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import type { MouseEvent, KeyboardEvent as ReactKeyboardEvent } from 'react';
-import Button from '@mui/material/Button';
-import Chip from '@mui/material/Chip';
-import Tooltip from '@mui/material/Tooltip';
-import IconButton from '@mui/material/IconButton';
-import ContentCopyRoundedIcon from '@mui/icons-material/ContentCopyRounded';
-import { formatInTimeZone } from '@/lib/tz';
-import { endOfWeek, startOfWeek } from 'date-fns';
-import { useNavigate } from 'react-router-dom';
-import { useSchedules } from '@/stores/useSchedules';
-import { useSP, type UseSP } from '@/lib/spClient';
-import FilterToolbar, { type StatusOption } from '@/ui/filters/FilterToolbar';
-import { usePersistedFilters } from '@/hooks/usePersistedFilters';
-import { formatCount } from '@/utils/formatCount';
-import { getNow } from '@/utils/getNow';
 import { AllDayChip } from '@/features/schedule/AllDayChip';
-import { RecurrenceChip, type RecurrenceMeta } from '@/ui/components/RecurrenceChip';
-import type { Schedule } from '@/lib/mappers';
-import { formatRangeLocal } from '@/utils/datetime';
 import { buildClonedDraft, type CloneStrategy } from '@/features/schedule/clone';
+import { normalizeStatus, STATUS_DEFAULT, STATUS_LABELS } from '@/features/schedule/statusDictionary';
 import { SCHEDULE_STATUSES, type Status } from '@/features/schedule/types';
-import { normalizeStatus, STATUS_LABELS, STATUS_DEFAULT } from '@/features/schedule/statusDictionary';
+import { updateSchedule } from '@/features/schedule/write';
+import { usePersistedFilters } from '@/hooks/usePersistedFilters';
 import { ui } from '@/i18n/ui';
 import { shouldSkipLogin } from '@/lib/env';
-import { updateSchedule } from '@/features/schedule/write';
+import type { Schedule } from '@/lib/mappers';
 import { showDemoWriteDisabled, SUCCESS_UPDATED_MSG } from '@/lib/notice';
+import { useSP, type UseSP } from '@/lib/spClient';
+import { formatInTimeZone } from '@/lib/tz';
+import { useSchedules } from '@/stores/useSchedules';
+import { RecurrenceChip, type RecurrenceMeta } from '@/ui/components/RecurrenceChip';
+import FilterToolbar, { type StatusOption } from '@/ui/filters/FilterToolbar';
+import { formatRangeLocal } from '@/utils/datetime';
+import { formatCount } from '@/utils/formatCount';
+import { getNow } from '@/utils/getNow';
+import ContentCopyRoundedIcon from '@mui/icons-material/ContentCopyRounded';
+import Box from '@mui/material/Box';
+import Button from '@mui/material/Button';
+import Chip from '@mui/material/Chip';
+import FormControl from '@mui/material/FormControl';
+import IconButton from '@mui/material/IconButton';
+import InputLabel from '@mui/material/InputLabel';
+import MenuItem from '@mui/material/MenuItem';
+import Select from '@mui/material/Select';
+import Stack from '@mui/material/Stack';
+import TextField from '@mui/material/TextField';
+import Tooltip from '@mui/material/Tooltip';
+import Typography from '@mui/material/Typography';
+import { endOfWeek, startOfWeek } from 'date-fns';
+import type { MouseEvent, KeyboardEvent as ReactKeyboardEvent } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 
 const FILTER_STORAGE_KEY = 'schedules.list.v1';
 const FILTER_DEBOUNCE_MS = 250;
@@ -176,7 +184,15 @@ export default function ScheduleListView() {
   const todayKey = useMemo(resolveToday, []);
   const weekBounds = useMemo(resolveWeekBounds, []);
 
-  const schedules = useMemo(() => (data ?? []).slice(), [data]);
+  const [localSchedules, setLocalSchedules] = useState<Schedule[]>([]);
+
+  const schedules = useMemo(() => {
+    const base = data ?? [];
+    if (localSchedules.length === 0) {
+      return base.slice();
+    }
+    return [...localSchedules, ...base];
+  }, [data, localSchedules]);
 
   const filtered = useMemo(() => {
     const activeFilters = isDebouncing ? filters : debounced;
@@ -295,8 +311,128 @@ export default function ScheduleListView() {
   const filteredCount = sorted.length;
   const shouldShowEmpty = !loadingNotice && !filteredCount;
 
+  const [newReservation, setNewReservation] = useState({
+    location: '',
+    userName: '',
+    start: '',
+    end: '',
+  });
+  const [creating, setCreating] = useState(false);
+  const [createError, setCreateError] = useState('');
+
+  const handleCreateReservation = async () => {
+    setCreateError('');
+    if (!newReservation.location || !newReservation.userName || !newReservation.start || !newReservation.end) {
+      setCreateError('全ての項目を入力してください');
+      return;
+    }
+    const startUtc = toIsoStringFromLocal(newReservation.start);
+    const endUtc = toIsoStringFromLocal(newReservation.end);
+    if (!startUtc || !endUtc) {
+      setCreateError('日時の形式が正しくありません');
+      return;
+    }
+
+    setCreating(true);
+    try {
+      // 仮のローカル追加（本来はAPI呼び出し）
+      const nowIso = new Date().toISOString();
+      const startDate = newReservation.start.split('T')[0] ?? null;
+      const endDate = newReservation.end.split('T')[0] ?? startDate;
+      const placeholder: Schedule = {
+        id: Date.now(),
+        title: `${newReservation.userName} 予約`,
+        location: newReservation.location,
+        startUtc,
+        endUtc,
+        startLocal: newReservation.start,
+        endLocal: newReservation.end,
+        startDate,
+        endDate,
+        etag: null,
+        allDay: false,
+        status: 'draft',
+        notes: '',
+        staffId: null,
+        userId: null,
+        recurrenceRaw: null,
+        category: 'Org',
+        personName: newReservation.userName,
+        dayKey: startDate ? startDate.replace(/-/g, '') : null,
+        monthKey: startDate ? startDate.slice(0, 7).replace('-', '') : null,
+        created: nowIso,
+        modified: nowIso,
+        createdAt: nowIso,
+        updatedAt: nowIso,
+      };
+
+      setLocalSchedules((prev) => [placeholder, ...prev]);
+      setNewReservation({ location: '', userName: '', start: '', end: '' });
+      await reload();
+    } catch (error) {
+      console.error(error);
+      setCreateError('登録に失敗しました');
+    } finally {
+      setCreating(false);
+    }
+  };
+
   return (
-    <div className="space-y-4" aria-live={loading ? 'polite' : 'off'} data-testid="schedule-list-root">
+  <Box className="space-y-4" aria-live={loading ? 'polite' : 'off'} data-testid="schedule-list-root">
+      <Box sx={{ mb: 2, p: 2, bgcolor: 'background.paper', borderRadius: 2, boxShadow: 1 }}>
+        <Typography variant="h6" gutterBottom>新規空室予約</Typography>
+        <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2} alignItems="center">
+            <FormControl sx={{ minWidth: 120 }} size="small">
+              <InputLabel>場所</InputLabel>
+              <Select
+                value={newReservation.location}
+                label="場所"
+                onChange={e => setNewReservation(r => ({ ...r, location: e.target.value }))}
+              >
+                <MenuItem value="">選択してください</MenuItem>
+                <MenuItem value="プレイルーム">プレイルーム</MenuItem>
+                <MenuItem value="和室">和室</MenuItem>
+              </Select>
+            </FormControl>
+            <FormControl sx={{ minWidth: 120 }} size="small">
+              <InputLabel>利用者名</InputLabel>
+              <Select
+                value={newReservation.userName}
+                label="利用者名"
+                onChange={e => setNewReservation(r => ({ ...r, userName: e.target.value }))}
+              >
+                <MenuItem value="">選択してください</MenuItem>
+                <MenuItem value="生活支援">生活支援</MenuItem>
+                <MenuItem value="さつき会">さつき会</MenuItem>
+                <MenuItem value="リバティー">リバティー</MenuItem>
+                <MenuItem value="日中活動">日中活動</MenuItem>
+                <MenuItem value="その他">その他</MenuItem>
+              </Select>
+            </FormControl>
+            <TextField
+              label="開始日時"
+              type="datetime-local"
+              size="small"
+              value={newReservation.start}
+              onChange={e => setNewReservation(r => ({ ...r, start: e.target.value }))}
+              InputLabelProps={{ shrink: true }}
+              sx={{ minWidth: 180 }}
+            />
+            <TextField
+              label="終了日時"
+              type="datetime-local"
+              size="small"
+              value={newReservation.end}
+              onChange={e => setNewReservation(r => ({ ...r, end: e.target.value }))}
+              InputLabelProps={{ shrink: true }}
+              sx={{ minWidth: 180 }}
+            />
+            <Button variant="contained" color="primary" onClick={handleCreateReservation} disabled={creating} sx={{ minWidth: 120 }}>
+              予約登録
+            </Button>
+          </Stack>
+        {createError && <Typography color="error" variant="body2" sx={{ mt: 1 }}>{createError}</Typography>}
+      </Box>
       <FilterToolbar
         toolbarLabel={ui.filters.schedule}
         query={filters.q}
@@ -457,7 +593,13 @@ export default function ScheduleListView() {
       {selected ? (
         <DetailDialog schedule={selected} onClose={() => setSelected(null)} />
       ) : null}
-    </div>
+      {/* 画面下部フッター */}
+      <Box component="footer" sx={{ mt: 4, py: 2, bgcolor: 'background.default', textAlign: 'center', borderTop: 1, borderColor: 'divider' }}>
+        <Typography variant="body2" color="text.secondary">
+          &copy; {new Date().getFullYear()} Audit Management System MVP | Powered by Mirai-Canvas
+        </Typography>
+      </Box>
+  </Box>
   );
 }
 

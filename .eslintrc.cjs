@@ -7,7 +7,7 @@ module.exports = {
     sourceType: 'module',
     ecmaFeatures: { jsx: true }
   },
-  plugins: ['@typescript-eslint'],
+  plugins: ['@typescript-eslint', 'react-hooks'],
   extends: [
     'eslint:recommended',
     'plugin:@typescript-eslint/recommended',
@@ -25,7 +25,8 @@ module.exports = {
       { argsIgnorePattern: '^_', varsIgnorePattern: '^_' }
     ],
     'no-empty': ['warn', { allowEmptyCatch: true }],
-    'no-constant-condition': 'warn'
+  'no-constant-condition': 'warn',
+  'react-hooks/exhaustive-deps': 'warn'
   },
   env: {
     browser: true,

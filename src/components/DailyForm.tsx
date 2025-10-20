@@ -204,7 +204,7 @@ export default function DailyForm({ mode, initial, onDone, prefillNotice, prefil
     if (mode !== 'edit') return;
     const next = initial?.etag ?? (initial as (DailyFormInitial & { __etag?: string | null }) | undefined)?.__etag ?? null;
     setEtag(next ?? null);
-  }, [initial?.etag, initial?.id, mode]);
+  }, [initial, initial?.etag, initial?.id, mode]);
 
   const refreshLatestFromServer = useCallback(async (): Promise<{ ok: boolean; error?: string; etag?: string | null }> => {
     if (mode !== 'edit' || !initial?.id) {

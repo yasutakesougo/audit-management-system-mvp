@@ -1,0 +1,45 @@
+name: contracts:check
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+
+jobs:
+  contracts-check:
+    runs-on: ubuntu-latest
+    env:
+      NODE_ENV: test
+      PROVIDER_BASE_URL: http://localhost:3000
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Start provider
+        run: npm run provider:start &
+
+      - name: Wait for healthz
+        run: bash scripts/wait-for-healthz.sh "${{ env.PROVIDER_BASE_URL }}/healthz" 45 2
+
+      - name: Verify provider pact
+        env:
+          PROVIDER_BASE_URL: ${{ env.PROVIDER_BASE_URL }}
+        run: npm run contracts:pact:provider
+
+      - name: Prepare diff base (origin/main)
+        run: npm run contracts:diff:prepare
+
+      - name: OpenAPI breaking change check
+        run: npm run contracts:diff:openapi
+
+      - name: JSON Schema compatibility check
+        run: npm run contracts:diff:schema

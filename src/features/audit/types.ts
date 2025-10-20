@@ -22,6 +22,7 @@ export interface AuditListItemDTO {
   entity?: string;
   entity_id?: string | null;
   channel?: AuditChannel;
+  before_json?: string | null;
   after_json?: string | null;
   entry_hash?: string;
 }
@@ -36,6 +37,7 @@ export interface AuditInsertItemDTO {
   entity: string;
   entity_id: string | null; // normalized null when absent
   channel: AuditChannel;
+  before_json?: string | null; // optional (column provisioned)
   after_json: string | null; // canonical JSON or null
   entry_hash: string; // deterministic hash for idempotency / duplicate detection
 }

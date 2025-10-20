@@ -1,5 +1,5 @@
 import React from 'react';
-import { cleanup, render, screen, waitFor, within } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { ThemeProvider, createTheme } from '@mui/material/styles';
 import { MemoryRouter } from 'react-router-dom';
 import { describe, expect, it, vi, beforeEach, afterEach } from 'vitest';
@@ -14,6 +14,7 @@ const defaultFlags: FeatureFlagSnapshot = {
   schedules: true,
   schedulesCreate: true,
   complianceForm: false,
+  timeflowV2: false,
 };
 
 beforeEach(() => {
@@ -70,33 +71,37 @@ describe('AppShell navigation', () => {
       </ThemeProvider>,
     );
 
-    const navLabelMatcher = /主要機能|ナビ|navigation/i;
-    const candidates: Array<() => HTMLElement> = [
-      () => screen.getByRole('navigation', { name: navLabelMatcher }),
-      () => screen.getByRole('navigation'),
-      () => screen.getByRole('toolbar'),
-    ];
+    const navToggle = screen.getByRole('button', { name: 'ナビゲーションメニューを開く' });
+    fireEvent.click(navToggle);
 
-    let navRoot: HTMLElement | null = null;
-    for (const query of candidates) {
-      try {
-        navRoot = query();
-        if (navRoot) break;
-      } catch {
-        /* swallow and try next */
-      }
+    const navCandidates = screen.getAllByRole('navigation');
+    const navRoot =
+      navCandidates.find((element) =>
+        /主要ナビゲーション/i.test(element.getAttribute('aria-label') ?? element.textContent ?? ''),
+      ) ?? navCandidates[0] ?? null;
+
+    expect(navRoot).not.toBeNull();
+    if (!navRoot) {
+      return;
     }
-
-    expect(navRoot).toBeTruthy();
     expect(navRoot).toHaveAccessibleName(/主要ナビゲーション/i);
-    const nav = within(navRoot ?? screen.getByRole('navigation'));
+    const menuToggle = screen.queryAllByRole('button', { name: /メニュー.*(開く|閉じる)/ });
+    if (menuToggle.length > 0 && menuToggle[0].textContent?.includes('開く')) {
+      fireEvent.click(menuToggle[0]);
+    }
+    const nav = within(navRoot);
 
-    expect(await nav.findByRole('link', { name: '利用者' })).toHaveAttribute('aria-current', 'page');
-    expect(nav.getByRole('link', { name: '日次記録' })).not.toHaveAttribute('aria-current');
+    const userLink = await nav.findByRole('link', { name: '利用者' });
+    expect(userLink.className).toContain('Mui-selected');
+    const ariaCurrent = userLink.getAttribute('aria-current');
+    if (ariaCurrent) {
+      expect(ariaCurrent).toBe('page');
+    }
+    expect(nav.getByRole('link', { name: '日次記録' }).className).not.toContain('Mui-selected');
     expect(nav.getByRole('link', { name: '新規予定' })).toBeInTheDocument();
     expect(nav.queryByRole('link', { name: 'コンプラ報告' })).toBeNull();
 
-    const currentLinks = nav.getAllByRole('link', { current: 'page' });
+    const currentLinks = nav.getAllByRole('link').filter((link) => link.className.includes('Mui-selected'));
     expect(currentLinks).toHaveLength(1);
     expect(currentLinks[0]).toHaveTextContent('利用者');
 

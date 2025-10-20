@@ -23,6 +23,8 @@ export interface SupportPlanDeployment {
   references?: Array<{ label: string; value: string }>;
 }
 
+const SUPPORT_PLAN_GUIDE_STORAGE_KEY = 'support-plan-guide.v2';
+
 const createTimedTemplate = (
   baseTime: string,
   _index: number,
@@ -197,5 +199,102 @@ const deployedPlans: Record<string, SupportPlanDeployment> = {
 };
 
 export const resolveSupportFlowForUser = (userId: string): SupportPlanDeployment | null => {
-  return deployedPlans[userId] ?? null;
+  const deployed = deployedPlans[userId];
+  if (deployed) {
+    return deployed;
+  }
+  const draftDeployment = resolveDraftDeployment(userId);
+  return draftDeployment ?? null;
+};
+
+type StoredDraft = {
+  id?: string;
+  name?: string;
+  updatedAt?: string;
+  userId?: number | string | null;
+  userCode?: string | null;
+  data?: {
+    longTermGoal?: string;
+    shortTermGoals?: string;
+    dailySupports?: string;
+    monitoringPlan?: string;
+    riskManagement?: string;
+    serviceUserName?: string;
+  };
+};
+
+const resolveDraftDeployment = (userId: string): SupportPlanDeployment | null => {
+  if (typeof window === 'undefined') {
+    return null;
+  }
+
+  try {
+    const raw = window.localStorage.getItem(SUPPORT_PLAN_GUIDE_STORAGE_KEY);
+    if (!raw) {
+      return null;
+    }
+    const parsed = JSON.parse(raw);
+    const drafts: Record<string, StoredDraft> | StoredDraft[] | undefined = parsed?.drafts;
+    if (!drafts) {
+      return null;
+    }
+    const draftList: StoredDraft[] = Array.isArray(drafts) ? drafts : Object.values(drafts);
+    const match = draftList.find((entry) => {
+      if (!entry) return false;
+      const entryUserId = entry.userId != null ? String(entry.userId) : null;
+      const entryUserCode = entry.userCode?.toString().trim();
+      if (entryUserId && entryUserId === userId) {
+        return true;
+      }
+      if (entryUserCode && entryUserCode === userId) {
+        return true;
+      }
+      return false;
+    });
+
+    if (!match) {
+      return null;
+    }
+
+    const planName = (typeof match.name === 'string' && match.name.trim())
+      ? match.name.trim()
+      : '個別支援計画ドラフト';
+    const deployedAt = match.updatedAt && !Number.isNaN(Date.parse(match.updatedAt))
+      ? match.updatedAt
+      : new Date().toISOString();
+
+    const summarySource =
+      match.data?.longTermGoal?.trim() ||
+      match.data?.shortTermGoals?.trim() ||
+      match.data?.dailySupports?.trim() ||
+      'ローカルで作成した個別支援計画ドラフトです。';
+
+    const references: Array<{ label: string; value: string }> = [];
+    if (match.data?.longTermGoal) {
+      references.push({ label: '長期目標', value: match.data.longTermGoal });
+    }
+    if (match.data?.shortTermGoals) {
+      references.push({ label: '短期目標', value: match.data.shortTermGoals });
+    }
+    if (match.data?.monitoringPlan) {
+      references.push({ label: 'モニタリング', value: match.data.monitoringPlan });
+    }
+    if (match.data?.riskManagement) {
+      references.push({ label: 'リスク対策', value: match.data.riskManagement });
+    }
+
+    return {
+      planId: `draft-${match.id ?? userId}`,
+      planName,
+      version: match.updatedAt ? `draft-${new Date(match.updatedAt).toISOString().split('T')[0]}` : 'draft-latest',
+      deployedAt,
+      author: 'ローカルドラフト',
+      summary: summarySource,
+      references: references.length ? references.slice(0, 4) : undefined,
+      activities: fallbackSupportActivities,
+    };
+  } catch (error) {
+    console.warn('Failed to read support plan guide drafts from storage', error);
+    return null;
+  }
 };

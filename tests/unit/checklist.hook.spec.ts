@@ -1,5 +1,5 @@
 import { renderHook } from '@testing-library/react';
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { useChecklistApi } from '../../src/features/compliance-checklist/api';
 import type { ChecklistInsertDTO, ChecklistItemDTO } from '../../src/features/compliance-checklist/types';
 

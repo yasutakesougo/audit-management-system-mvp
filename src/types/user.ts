@@ -26,16 +26,25 @@ export function toUserItem(input: UserUpsert): Record<string, unknown> {
   const payload: Record<string, unknown> = {};
   payload.Title = sanitizeString(input.Title) ?? '';
   if (Object.prototype.hasOwnProperty.call(input, 'Furigana')) {
-    payload.Furigana = toNullable(input.Furigana ?? undefined);
+    const v = toNullable(input.Furigana ?? undefined);
+    payload.Furigana = v; // canonical (PascalCase)
+    payload.furigana = v; // provisioned (lowercase)
   }
   if (Object.prototype.hasOwnProperty.call(input, 'Phone')) {
-    payload.Phone = toNullable(input.Phone ?? undefined);
+    const v = toNullable(input.Phone ?? undefined);
+    payload.Phone = v;
+    payload.phone = v;
   }
   if (Object.prototype.hasOwnProperty.call(input, 'Email')) {
-    payload.Email = toNullable(input.Email ?? undefined);
+    const v = toNullable(input.Email ?? undefined);
+    payload.Email = v;
+    payload.email = v;
   }
   if (Object.prototype.hasOwnProperty.call(input, 'IsActive')) {
-    payload.IsActive = toNullableBoolean(input.IsActive ?? undefined);
+    const v = toNullableBoolean(input.IsActive ?? undefined);
+    payload.IsActive = v;
+    // SharePoint boolean nullability: send explicit null when absent/empty
+    payload.isActive = v as boolean | null;
   }
   return payload;
 }

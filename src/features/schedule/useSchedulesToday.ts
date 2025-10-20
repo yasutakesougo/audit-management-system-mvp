@@ -8,6 +8,7 @@ export type MiniSchedule = {
   id: number;
   title: string;
   startText: string;
+  endText?: string;
   status?: string;
   allDay?: boolean;
 };
@@ -26,6 +27,19 @@ const resolveStartIso = (input: Record<string, unknown>): string | null => {
   }
   if (typeof input.start === 'string' && input.start.trim()) {
     return input.start;
+  }
+  return null;
+};
+
+const resolveEndIso = (input: Record<string, unknown>): string | null => {
+  if (typeof input.endUtc === 'string' && input.endUtc.trim()) {
+    return input.endUtc;
+  }
+  if (typeof input.endLocal === 'string' && input.endLocal.trim()) {
+    return input.endLocal;
+  }
+  if (typeof input.end === 'string' && input.end.trim()) {
+    return input.end;
   }
   return null;
 };
@@ -101,6 +115,7 @@ export function useSchedulesToday(max: number = 5) {
             const record = row as Record<string, unknown>;
             const startIso = resolveStartIso(record);
             let startText = '—';
+            let endText: string | undefined;
             if (record.allDay === true) {
               startText = '終日';
             } else if (typeof startIso === 'string' && startIso.trim()) {
@@ -112,6 +127,18 @@ export function useSchedulesToday(max: number = 5) {
               }
             }
 
+            const endIso = resolveEndIso(record);
+            if (record.allDay !== true && typeof endIso === 'string' && endIso.trim()) {
+              try {
+                endText = formatInTimeZone(new Date(endIso), TIMEZONE, 'HH:mm');
+              } catch {
+                const d = new Date(endIso);
+                endText = Number.isNaN(d.getTime())
+                  ? undefined
+                  : `${pad(d.getHours())}:${pad(d.getMinutes())}`;
+              }
+            }
+
             return {
               id: coerceId(record, index + 1),
               title: typeof record.title === 'string' && record.title.trim().length
@@ -120,6 +147,7 @@ export function useSchedulesToday(max: number = 5) {
                   ? '終日の予定'
                   : '予定',
               startText,
+              endText,
               status: typeof record.statusLabel === 'string'
                 ? record.statusLabel
                 : typeof record.status === 'string'

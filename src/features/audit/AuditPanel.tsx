@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { AuditEvent, readAudit } from '../../lib/audit';
+import { AuditEvent, pushAudit, readAudit } from '../../lib/audit';
 import { isDevMode } from '../../lib/env';
 import UnsynedAuditBadge from '../../ui/components/UnsynedAuditBadge';
 import { buildAuditCsv, downloadCsv } from './exportCsv';
@@ -65,7 +65,18 @@ const AuditPanel: React.FC = () => {
       details: l.after
     }));
     const csv = buildAuditCsv(rows);
-    downloadCsv(csv, 'audit_logs.csv');
+    downloadCsv('audit_logs.csv', csv);
+    try {
+      pushAudit({
+        actor: 'user',
+        action: 'EXPORT',
+        entity: 'Audit_Events',
+        channel: 'UI',
+        after: { rows: rows.length }
+      });
+    } catch {
+      // ignore audit write failures
+    }
   };
 
   return (

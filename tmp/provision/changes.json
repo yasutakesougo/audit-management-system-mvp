@@ -1,0 +1,21 @@
+{
+  "timestamp": "2025-10-16T00:43:12.6160064Z",
+  "site": "https://isogokatudouhome.sharepoint.com/sites/welfare",
+  "whatIf": true,
+  "status": "ok",
+  "recreate": false,
+  "applyMeta": true,
+  "forceType": false,
+  "summary": {
+    "byKind": [
+      {
+        "kind": "Info",
+        "count": 1
+      }
+    ],
+    "total": 1
+  },
+  "changes": [
+    "Would apply XML template: provision/schema.xml"
+  ]
+}

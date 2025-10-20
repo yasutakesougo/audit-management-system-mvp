@@ -51,6 +51,19 @@
 - Manual MSAL sign-in/out control surfaced in the app header
 - Users master smoke UI for create / rename / delete sanity checks
 
+## Pact Broker / Contract Testing
+
+- `npm run contracts:pact:publish` で `contracts/pacts` (もしくは `PACT_PUBLISH_DIR`) 配下の Pact を自動検出し、`service:<name>` / `branch:<branch>` / `env:<env>` タグと併せて Pact Broker に公開します。
+- `npm run contracts:pact:can-i-deploy` は `PACT_PACTICIPANT` と `PACT_ENV` を元に `can-i-deploy` を実行し、pending pacts を含む環境横断チェックを行います。Broker 到達不可時のフォールバックは `PACT_CAN_I_DEPLOY_ALLOW_BROKER_FAILURE=true` で明示許可できます。
+- CI には 2 つのワークフローを追加しています。
+  - **Contracts :: Pact Consumer** (`.github/workflows/contracts-pact-consumer.yml`) — `main` / `develop` push で publish、`workflow_dispatch` で任意環境に対する `can-i-deploy` を実行。
+  - **Contracts :: Pact Provider** (`.github/workflows/contracts-pact-provider.yml`) — `main` push や手動トリガーでプロバイダ版 `can-i-deploy` を実行。Stage ごとの環境タグは入力 `environment` で制御します。
+- リポジトリ Secrets / Variables 例:
+  - `secrets.PACT_BROKER_BASE_URL` / `secrets.PACT_BROKER_TOKEN` — Broker への接続情報
+  - `vars.PACT_CONSUMER_NAME`, `vars.PACT_PROVIDER_NAME` — Pacticipant 名の明示設定 (未設定なら `package.json` の `name` が使用されます)
+  - `vars.PACT_ALLOW_PUBLISH_ON_BROKER_FAILURE`, `vars.PACT_CAN_I_DEPLOY_ALLOW_BROKER_FAILURE` — Broker 不達時の挙動フラグ (`true` にすると許容)
+- `PACT_ENV` はタグ付けと pending 有効化に利用されます。CI では `main` push を `staging`、その他を `dev` としてタグ付けしていますが、`workflow_dispatch` 入力で随時上書きが可能です。
+
 ## Local Operation Mode
 
 > 拠点内 LAN でのロータッチ運用を想定した「ローカル運用モード」の概要です。完全な手順書は `docs/local-mode.md` を参照してください。
@@ -166,28 +179,28 @@ VITE_SP_SCOPE_DEFAULT=https://<yourtenant>.sharepoint.com/AllSites.Read
 
 ### Rules / Validation Logic
 
-| Key                                     | Requirement                                    | Auto-Normalization                                       | Error If                                 |
-| --------------------------------------- | ---------------------------------------------- | -------------------------------------------------------- | ---------------------------------------- |
-| VITE_SP_RESOURCE                        | `https://*.sharepoint.com` / no trailing slash | Trailing slash trimmed                                   | Not matching regex / placeholder present |
-| VITE_SP_SITE_RELATIVE                   | Starts with `/`, no trailing slash             | Adds leading `/`, trims trailing slashes                 | Placeholder present / empty              |
-| VITE*SP_SITE_URL *(optional)\_          | Full site URL                                  | Splits into RESOURCE + SITE_RELATIVE                     | Missing scheme/host/path                 |
-| VITE*SP_SITE *(optional)\_              | Full site URL alias                            | Splits into RESOURCE + SITE_RELATIVE                     | Missing scheme/host/path                 |
-| VITE*SP_LIST_SCHEDULES *(optional)\_    | Schedules list title override                  | Whitespace trimmed                                       | Placeholder present / empty              |
-| VITE*SP_LIST_USERS *(optional)\_        | Users list title override                      | Whitespace trimmed                                       | Placeholder present / empty              |
-| VITE*SP_LIST_STAFF *(optional)\_        | Staff list title override                      | Whitespace trimmed                                       | Placeholder present / empty              |
-| VITE*SP_LIST_STAFF_GUID *(optional)\_   | Staff list GUID override                       | Lower-case/brace trimming                                | Invalid GUID format                      |
-| VITE*SP_LIST_ACTIVITY_DIARY *(optional)\_| Activity diary list title                      | Whitespace trimmed                                       | Placeholder present / empty              |
-| VITE*SP_LIST_DAILY *(optional)\_        | Daily record list title                        | Whitespace trimmed                                       | Placeholder present / empty              |
-| VITE*SP_LIST_PLAN_GOAL *(optional)\_     | Plan goal list title                           | Whitespace trimmed                                       | Placeholder present / empty              |
-| VITE_MSAL_CLIENT_ID                     | Azure AD app (SPA) client ID                   | —                                                        | Placeholder / empty                      |
-| VITE_MSAL_TENANT_ID                     | Azure AD tenant ID (GUID)                      | —                                                        | Placeholder / empty                      |
-| VITE*MSAL_REDIRECT_URI *(optional)\_    | Redirect URI for SPA                           | Defaults to `window.location.origin`                     | Invalid URI                              |
-| VITE*MSAL_AUTHORITY *(optional)\_       | Authority URL                                  | Defaults to `https://login.microsoftonline.com/<tenant>` | Non-HTTPS / mismatched tenant            |
-| VITE*MSAL_SCOPES *(optional)\_          | Token scopes list (space/comma separated)      | Defaults to `${VITE_SP_RESOURCE}/.default`               | Empty / unsupported scope                |
-| VITE*LOGIN_SCOPES *(optional)\_         | Identity scopes (openid/profile)               | Filters to allowed identity scopes                      | Empty / unsupported scope                |
-| VITE*MSAL_LOGIN_SCOPES *(optional)\_    | Identity scopes alias                          | Filters to allowed identity scopes                      | Empty / unsupported scope                |
-| VITE*SP_SCOPE_DEFAULT *(optional)\_     | SharePoint default scope                       | Derives from resource / MSAL scopes                     | Missing scope and no derivation          |
-| VITE*GRAPH_SCOPES *(optional)\_         | Graph delegated scopes                         | —                                                        | useSP must support Graph path            |
+| Key                                       | Requirement                                    | Auto-Normalization                                       | Error If                                 |
+| ----------------------------------------- | ---------------------------------------------- | -------------------------------------------------------- | ---------------------------------------- |
+| VITE_SP_RESOURCE                          | `https://*.sharepoint.com` / no trailing slash | Trailing slash trimmed                                   | Not matching regex / placeholder present |
+| VITE_SP_SITE_RELATIVE                     | Starts with `/`, no trailing slash             | Adds leading `/`, trims trailing slashes                 | Placeholder present / empty              |
+| VITE*SP_SITE_URL *(optional)\_            | Full site URL                                  | Splits into RESOURCE + SITE_RELATIVE                     | Missing scheme/host/path                 |
+| VITE*SP_SITE *(optional)\_                | Full site URL alias                            | Splits into RESOURCE + SITE_RELATIVE                     | Missing scheme/host/path                 |
+| VITE*SP_LIST_SCHEDULES *(optional)\_      | Schedules list title override                  | Whitespace trimmed                                       | Placeholder present / empty              |
+| VITE*SP_LIST_USERS *(optional)\_          | Users list title override                      | Whitespace trimmed                                       | Placeholder present / empty              |
+| VITE*SP_LIST_STAFF *(optional)\_          | Staff list title override                      | Whitespace trimmed                                       | Placeholder present / empty              |
+| VITE*SP_LIST_STAFF_GUID *(optional)\_     | Staff list GUID override                       | Lower-case/brace trimming                                | Invalid GUID format                      |
+| VITE*SP_LIST_ACTIVITY_DIARY *(optional)\_ | Activity diary list title                      | Whitespace trimmed                                       | Placeholder present / empty              |
+| VITE*SP_LIST_DAILY *(optional)\_          | Daily record list title                        | Whitespace trimmed                                       | Placeholder present / empty              |
+| VITE*SP_LIST_PLAN_GOAL *(optional)\_      | Plan goal list title                           | Whitespace trimmed                                       | Placeholder present / empty              |
+| VITE_MSAL_CLIENT_ID                       | Azure AD app (SPA) client ID                   | —                                                        | Placeholder / empty                      |
+| VITE_MSAL_TENANT_ID                       | Azure AD tenant ID (GUID)                      | —                                                        | Placeholder / empty                      |
+| VITE*MSAL_REDIRECT_URI *(optional)\_      | Redirect URI for SPA                           | Defaults to `window.location.origin`                     | Invalid URI                              |
+| VITE*MSAL_AUTHORITY *(optional)\_         | Authority URL                                  | Defaults to `https://login.microsoftonline.com/<tenant>` | Non-HTTPS / mismatched tenant            |
+| VITE*MSAL_SCOPES *(optional)\_            | Token scopes list (space/comma separated)      | Defaults to `${VITE_SP_RESOURCE}/.default`               | Empty / unsupported scope                |
+| VITE*LOGIN_SCOPES *(optional)\_           | Identity scopes (openid/profile)               | Filters to allowed identity scopes                       | Empty / unsupported scope                |
+| VITE*MSAL_LOGIN_SCOPES *(optional)\_      | Identity scopes alias                          | Filters to allowed identity scopes                       | Empty / unsupported scope                |
+| VITE*SP_SCOPE_DEFAULT *(optional)\_       | SharePoint default scope                       | Derives from resource / MSAL scopes                      | Missing scope and no derivation          |
+| VITE*GRAPH_SCOPES *(optional)\_           | Graph delegated scopes                         | —                                                        | useSP must support Graph path            |
 
 Placeholders recognized as invalid: `<yourtenant>`, `<SiteName>`, `__FILL_ME__`.
 
@@ -239,7 +252,7 @@ if (import.meta.env.DEV) {
 | 404 `_api/web`                      | Wrong site relative path                             | Double-check `/sites/<SiteName>` casing & existence             |
 | `VITE_SP_RESOURCE の形式が不正`     | Added trailing slash or missing host                 | Remove trailing `/`, ensure `https://tenant.sharepoint.com`     |
 | `VITE_SP_SITE_URL の形式が不正`     | Missing path or non-SharePoint host                  | Use full URL like `https://tenant.sharepoint.com/sites/Example` |
-| SharePoint list missing override   | One of `VITE_SP_LIST_*` pointed to an absent list    | Correct the list title or remove the override                   |
+| SharePoint list missing override    | One of `VITE_SP_LIST_*` pointed to an absent list    | Correct the list title or remove the override                   |
 | `AcquireTokenSilent` scope warnings | Graph scopes configured but useSP still targets REST | Remove `VITE_GRAPH_SCOPES` or update implementation             |
 
 ### Cache & Concurrency Knobs

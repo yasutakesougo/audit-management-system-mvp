@@ -77,16 +77,19 @@ export function useUsersApi() {
         [FIELD_MAP.Users_Master.serviceStartDate]: dto.ServiceStartDate,
         [FIELD_MAP.Users_Master.serviceEndDate]: dto.ServiceEndDate ?? null,
       };
-      const created = await addListItemByTitle<typeof payload, IUserMaster>(LIST_TITLE, payload);
-      await pushAudit({
-        actor: "user",
-        entity: "Users_Master",
-        action: "create",
-        entity_id: created?.Id != null ? String(created.Id) : undefined,
-        channel: "UI",
-        after: { item: created },
+      return withAudit({ baseAction: 'CREATE', entity: 'Users_Master', before: { payload } }, async () => {
+        const created = await addListItemByTitle<typeof payload, IUserMaster>(LIST_TITLE, payload);
+        // keep legacy simple audit for compatibility
+        await pushAudit({
+          actor: 'user',
+          entity: 'Users_Master',
+          action: 'create',
+          entity_id: created?.Id != null ? String(created.Id) : undefined,
+          channel: 'UI',
+          after: { item: created },
+        });
+        return created;
       });
-      return created;
     };
 
     const updateUser = async (id: number, patch: Partial<IUserMasterCreateDto>) => {
@@ -99,38 +102,42 @@ export function useUsersApi() {
       if (patch.ServiceStartDate !== undefined) payload[FIELD_MAP.Users_Master.serviceStartDate] = patch.ServiceStartDate;
       if (patch.ServiceEndDate !== undefined) payload[FIELD_MAP.Users_Master.serviceEndDate] = patch.ServiceEndDate;
 
-      await spFetch(itemPath(id), {
-        method: "PATCH",
-        headers: {
-          "IF-MATCH": "*",
-          "Content-Type": "application/json;odata=nometadata",
-        },
-        body: JSON.stringify(payload),
+      return withAudit({ baseAction: 'UPDATE', entity: 'Users_Master', before: { id, payload } }, async () => {
+        await spFetch(itemPath(id), {
+          method: 'PATCH',
+          headers: {
+            'IF-MATCH': '*',
+            'Content-Type': 'application/json;odata=nometadata',
+          },
+          body: JSON.stringify(payload),
+        });
+        await pushAudit({
+          actor: 'user',
+          entity: 'Users_Master',
+          action: 'update',
+          entity_id: String(id),
+          channel: 'UI',
+          after: { patch: payload },
+        });
+        return getUserById(id);
       });
-      await pushAudit({
-        actor: "user",
-        entity: "Users_Master",
-        action: "update",
-        entity_id: String(id),
-        channel: "UI",
-        after: { patch: payload },
-      });
-      return getUserById(id);
     };
 
     const deleteUser = async (id: number) => {
-      await spFetch(itemPath(id), {
-        method: "DELETE",
-        headers: {
-          "IF-MATCH": "*",
-        },
-      });
-      await pushAudit({
-        actor: "user",
-        entity: "Users_Master",
-        action: "delete",
-        entity_id: String(id),
-        channel: "UI",
+      return withAudit({ baseAction: 'DELETE', entity: 'Users_Master', before: { id } }, async () => {
+        await spFetch(itemPath(id), {
+          method: 'DELETE',
+          headers: {
+            'IF-MATCH': '*',
+          },
+        });
+        await pushAudit({
+          actor: 'user',
+          entity: 'Users_Master',
+          action: 'delete',
+          entity_id: String(id),
+          channel: 'UI',
+        });
       });
     };
 
@@ -144,4 +151,4 @@ export function useUsersApi() {
     };
   }, [LIST_TITLE, SELECT_FIELDS, addListItemByTitle, getListItemsByTitle, spFetch]);
 }
-
+import { withAudit } from "@/lib/auditWrap";

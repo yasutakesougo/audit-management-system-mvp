@@ -10,7 +10,7 @@ type UseFiltersSyncOptions<T> = {
 };
 
 export function useFiltersSync<T>(options: UseFiltersSyncOptions<T>): { hydratingRef: MutableRefObject<boolean> } {
-  const { filters, debouncedFilters, setFilters, parseFilters, buildSearchParams, normalizeFilters } = options;
+  const { filters, debouncedFilters, setFilters: _setFilters, parseFilters, buildSearchParams, normalizeFilters } = options;
   const hydratingRef = useRef(false);
 
   useEffect(() => {
@@ -20,7 +20,7 @@ export function useFiltersSync<T>(options: UseFiltersSyncOptions<T>): { hydratin
   useMemo(() => debouncedFilters, [debouncedFilters]);
   useMemo(() => parseFilters, [parseFilters]);
   useMemo(() => buildSearchParams, [buildSearchParams]);
-  useMemo(() => normalizeFilters, [normalizeFilters, filters, setFilters]);
+  useMemo(() => normalizeFilters, [normalizeFilters]);
 
   return { hydratingRef };
 }
