@@ -97,7 +97,7 @@ describe('AppShell navigation', () => {
     if (ariaCurrent) {
       expect(ariaCurrent).toBe('page');
     }
-    expect(nav.getByRole('link', { name: '日次記録' }).className).not.toContain('Mui-selected');
+  expect(nav.getByRole('link', { name: '日次記録' })).not.toHaveAttribute('aria-current', 'page');
     expect(nav.getByRole('link', { name: '新規予定' })).toBeInTheDocument();
     expect(nav.queryByRole('link', { name: 'コンプラ報告' })).toBeNull();
 

@@ -51,8 +51,10 @@ import { getUserProfile } from '@/adapters/userProfile.api';
 import { profileToAssessmentLiteDefaults } from '@/features/assessment/bridge';
 import type { BehaviorSupportPlan, FlowSupportActivityTemplate } from '../types/behaviorPlan';
 
+
+import { readBool } from '@/lib/env';
 // Feature flag (default off)
-const FEATURE_SUPPORT_CDS = String(import.meta.env.VITE_FEATURE_SUPPORT_CDS || 'false') === 'true';
+const FEATURE_SUPPORT_CDS = readBool('VITE_FEATURE_SUPPORT_CDS', false);
 
 type TabValue = 'plan' | 'records' | 'createPlan' | 'updatePlan';
 

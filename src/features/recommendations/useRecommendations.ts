@@ -24,8 +24,11 @@ type RecommendationInput = {
   moodId?: MoodId;
 };
 
+
+import { readBool } from '@/lib/env';
+
 export const useRecommendations = (input: RecommendationInput): Recommendation[] => {
-  const featureEnabled = String(import.meta.env.VITE_FEATURE_SUPPORT_CDS || 'false') === 'true';
+  const featureEnabled = readBool('VITE_FEATURE_SUPPORT_CDS', false);
   if (!featureEnabled) {
     return [];
   }

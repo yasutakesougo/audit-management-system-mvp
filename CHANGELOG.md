@@ -8,7 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
-
+	- E2E安定化・CIトレース保存・ドキュメント更新
 - _TBD_
 
 ### Changed

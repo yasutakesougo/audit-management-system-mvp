@@ -1,3 +1,7 @@
+/**
+ * 管理ダッシュボード候補ページ。
+ * 現場向けではなく、全体進捗や統計の可視化・管理者向けUIとして再利用予定。
+ */
 import {
     Add as AddIcon,
     Assignment as AssignmentIcon,
@@ -254,7 +258,7 @@ const SupportRecordPage: React.FC = () => {
   };
 
   return (
-    <Container maxWidth="lg">
+    <Container maxWidth="lg" data-testid="dashboard-records">
       <Box sx={{ py: 3 }}>
         {/* ヘッダー */}
         <Box sx={{ mb: 3 }}>

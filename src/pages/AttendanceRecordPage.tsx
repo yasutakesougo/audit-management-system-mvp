@@ -1,46 +1,108 @@
+import React, { useMemo, useState } from 'react';
+import { Snackbar } from '@mui/material';
+// --- Exported for tests ---
+export const computeAbsenceEligibility = (
+  user: AttendanceUser,
+  morningContacted: boolean,
+  eveningChecked: boolean,
+  monthlyLimit: number
+): boolean => {
+  if (!morningContacted || !eveningChecked) return false;
+  return user.absenceClaimedThisMonth < monthlyLimit;
+};
+
+export const buildAbsentVisit = (
+  base: AttendanceVisit,
+  args: {
+    morningContacted: boolean;
+    morningMethod: AbsentMethod;
+    eveningChecked: boolean;
+    eveningNote: string;
+    eligible: boolean;
+  }
+): AttendanceVisit => ({
+  ...base,
+  status: '当日欠席',
+  cntAttendIn: 0,
+  cntAttendOut: 0,
+  checkInAt: undefined,
+  checkOutAt: undefined,
+  transportTo: false,
+  transportFrom: false,
+  absentMorningContacted: args.morningContacted,
+  absentMorningMethod: args.morningMethod,
+  eveningChecked: args.eveningChecked,
+  eveningNote: args.eveningNote,
+  isAbsenceAddonClaimable: args.eligible,
+  providedMinutes: 0,
+  userConfirmedAt: undefined,
+  isEarlyLeave: false,
+});
+
+import { DISCREPANCY_THRESHOLD, ABSENCE_MONTHLY_LIMIT, FACILITY_CLOSE_TIME } from '@/config/serviceRecords';
+// 乖離件数カウントユーティリティ
+const getDiscrepancyCount = (
+  visits: Record<string, AttendanceVisit>,
+  users: AttendanceUser[],
+  threshold = DISCREPANCY_THRESHOLD
+): number => {
+  if (!visits || !users?.length) return 0;
+  const userMap = new Map(users.map(u => [u.userCode, u]));
+  let cnt = 0;
+  for (const v of Object.values(visits)) {
+    const u = userMap.get(v.userCode);
+    if (!u) continue;
+    const provided = v.providedMinutes ?? 0;
+    if (provided > 0 && u.standardMinutes && provided < u.standardMinutes * threshold) {
+      cnt++;
+    }
+  }
+  return cnt;
+};
 import {
-    CancelScheduleSend as AbsenceIcon,
-    AssignmentInd as AttendanceIcon,
-    DirectionsBus as BusIcon,
-    CheckCircle as CheckIcon,
-    WbTwilight as EveningIcon,
-    School as MorningIcon,
-    Replay as ResetIcon,
-    AirportShuttle as TransportIcon
+  CancelScheduleSend as AbsenceIcon,
+  AssignmentInd as AttendanceIcon,
+  DirectionsBus as BusIcon,
+  CheckCircle as CheckIcon,
+  WbTwilight as EveningIcon,
+  School as MorningIcon,
+  Replay as ResetIcon,
+  AirportShuttle as TransportIcon,
 } from '@mui/icons-material';
 import {
-    Alert,
-    Button,
-    Card,
-    CardContent,
-    Chip,
-    Container,
-    Dialog,
-    DialogActions,
-    DialogContent,
-    DialogTitle,
-    FormControl,
-    FormControlLabel,
-    InputLabel,
-    MenuItem,
-    Select,
-    Stack,
-    Switch,
-    TextField,
-    Tooltip,
-    Typography
+  Alert,
+  Button,
+  Card,
+  CardContent,
+  Chip,
+  Container,
+  Dialog,
+  DialogActions,
+  DialogContent,
+  DialogTitle,
+  FormControl,
+  FormControlLabel,
+  InputLabel,
+  MenuItem,
+  Select,
+  Stack,
+  Switch,
+  TextField,
+  Tooltip,
+  Typography,
 } from '@mui/material';
-import React, { useMemo, useState } from 'react';
 
 type AttendanceStatus = '未' | '通所中' | '退所済' | '当日欠席';
 
 type AbsentMethod = '電話' | 'SMS' | '家族' | 'その他' | '';
+
 
 interface AttendanceUser {
   userCode: string;
   userName: string;
   isTransportTarget: boolean;
   absenceClaimedThisMonth: number;
+  standardMinutes: number; // 追加：算定時間（分）
 }
 
 interface AttendanceVisit {
@@ -59,6 +121,8 @@ interface AttendanceVisit {
   eveningChecked: boolean;
   eveningNote: string;
   isAbsenceAddonClaimable: boolean;
+  providedMinutes?: number;    // 追加：実提供（分）
+  userConfirmedAt?: string;    // 追加：利用者確認（ISO）
 }
 
 interface AbsenceDialogState {
@@ -70,12 +134,11 @@ interface AbsenceDialogState {
   eveningNote: string;
 }
 
-const FACILITY_CLOSE_TIME = '16:00';
 
 const initialUsers: AttendanceUser[] = [
-  { userCode: 'I001', userName: '田中太郎', isTransportTarget: true, absenceClaimedThisMonth: 2 },
-  { userCode: 'I002', userName: '佐藤花子', isTransportTarget: false, absenceClaimedThisMonth: 4 },
-  { userCode: 'I003', userName: '鈴木一郎', isTransportTarget: true, absenceClaimedThisMonth: 1 }
+  { userCode: 'I001', userName: '田中太郎', isTransportTarget: true,  absenceClaimedThisMonth: 2, standardMinutes: 360 },
+  { userCode: 'I002', userName: '佐藤花子', isTransportTarget: false, absenceClaimedThisMonth: 4, standardMinutes: 300 },
+  { userCode: 'I003', userName: '鈴木一郎', isTransportTarget: true,  absenceClaimedThisMonth: 1, standardMinutes: 420 }
 ];
 
 const buildInitialVisits = (users: AttendanceUser[], recordDate: string): Record<string, AttendanceVisit> => {
@@ -93,7 +156,9 @@ const buildInitialVisits = (users: AttendanceUser[], recordDate: string): Record
       absentMorningMethod: '',
       eveningChecked: false,
       eveningNote: '',
-      isAbsenceAddonClaimable: false
+      isAbsenceAddonClaimable: false,
+      providedMinutes: 0,
+      userConfirmedAt: undefined,
     };
     return acc;
   }, {});
@@ -101,6 +166,7 @@ const buildInitialVisits = (users: AttendanceUser[], recordDate: string): Record
 
 const formatTime = (iso?: string) =>
   iso ? new Date(iso).toLocaleTimeString('ja-JP', { hour: '2-digit', minute: '2-digit' }) : '--:--';
+
 
 const isBeforeCloseTime = (date: Date) => {
   const [hours, minutes] = FACILITY_CLOSE_TIME.split(':').map(Number);
@@ -112,7 +178,29 @@ const isBeforeCloseTime = (date: Date) => {
   return date.getTime() < closeDate.getTime();
 };
 
+// 実提供分の計算
+export const diffMinutes = (start?: string, end?: string) => {
+  if (!start || !end) return 0;
+  const s = new Date(start).getTime();
+  const e = new Date(end).getTime();
+  return Math.max(0, Math.floor((e - s) / 60000));
+};
+
+// 退所可否ガード関数
+export const canCheckOut = (v?: AttendanceVisit) =>
+  !!v && v.status === '通所中' && v.cntAttendOut === 0;
+
 const AttendanceRecordPage: React.FC = () => {
+  // Snackbar state for toast notifications
+  const [snackbar, setSnackbar] = useState<{ open: boolean; message: string; severity: 'success' | 'error' } | null>(null);
+
+  const openToast = (message: string, severity: 'success' | 'error') => {
+    setSnackbar({ open: true, message, severity });
+  };
+
+  const handleSnackbarClose = () => {
+    setSnackbar((prev) => (prev ? { ...prev, open: false } : prev));
+  };
   const today = useMemo(() => new Date().toISOString().split('T')[0], []);
   const [users, setUsers] = useState<AttendanceUser[]>(initialUsers);
   const [visits, setVisits] = useState<Record<string, AttendanceVisit>>(() =>
@@ -120,15 +208,26 @@ const AttendanceRecordPage: React.FC = () => {
   );
   const [absenceDialog, setAbsenceDialog] = useState<AbsenceDialogState | null>(null);
 
+  // 乖離件数（サマリー用）
+  const discrepancyCount = useMemo(
+    () => getDiscrepancyCount(visits, users, DISCREPANCY_THRESHOLD),
+    [visits, users]
+  );
+
   const summary = useMemo(() => {
-    const values = Object.values(visits);
+  const values = Object.values(visits) as AttendanceVisit[];
     const attendIn = values.filter((visit) => visit.cntAttendIn === 1).length;
     const attendOut = values.filter((visit) => visit.cntAttendOut === 1).length;
     const transportTo = values.filter((visit) => visit.transportTo).length;
     const transportFrom = values.filter((visit) => visit.transportFrom).length;
     const absenceAddon = values.filter((visit) => visit.isAbsenceAddonClaimable).length;
-    return { attendIn, attendOut, transportTo, transportFrom, absenceAddon };
-  }, [visits]);
+    const warnDiff = values.filter((v) => {
+      const provided = v.providedMinutes ?? 0;
+      const u = users.find(u => u.userCode === v.userCode);
+  return provided > 0 && u && provided < u.standardMinutes * DISCREPANCY_THRESHOLD;
+    }).length;
+    return { attendIn, attendOut, transportTo, transportFrom, absenceAddon, warnDiff };
+  }, [visits, users]);
 
   const handleCheckIn = (user: AttendanceUser) => {
     setVisits((prev) => {
@@ -152,7 +251,7 @@ const AttendanceRecordPage: React.FC = () => {
   const handleCheckOut = (user: AttendanceUser) => {
     setVisits((prev) => {
       const current = prev[user.userCode];
-      if (!current || current.status !== '通所中' || current.cntAttendOut === 1) {
+      if (!canCheckOut(current)) {
         return prev;
       }
       const now = new Date();
@@ -160,10 +259,10 @@ const AttendanceRecordPage: React.FC = () => {
         ...prev,
         [user.userCode]: {
           ...current,
-          status: '退所済',
           checkOutAt: now.toISOString(),
           cntAttendOut: 1,
-          isEarlyLeave: isBeforeCloseTime(now)
+          isEarlyLeave: isBeforeCloseTime(now),
+          providedMinutes: diffMinutes(current.checkInAt, now.toISOString()),
         }
       };
     });
@@ -204,28 +303,22 @@ const AttendanceRecordPage: React.FC = () => {
     if (!absenceDialog) return;
     const { user, visit, morningContacted, morningMethod, eveningChecked, eveningNote } =
       absenceDialog;
-    const eligible =
-      morningContacted &&
-      eveningChecked &&
-      user.absenceClaimedThisMonth < 4;
+    const eligible = computeAbsenceEligibility(
+      user,
+      morningContacted,
+      eveningChecked,
+      ABSENCE_MONTHLY_LIMIT
+    );
 
     setVisits((prev) => ({
       ...prev,
-      [user.userCode]: {
-        ...visit,
-        status: '当日欠席',
-        cntAttendIn: 0,
-        cntAttendOut: 0,
-        checkInAt: undefined,
-        checkOutAt: undefined,
-        transportTo: false,
-        transportFrom: false,
-        absentMorningContacted: morningContacted,
-        absentMorningMethod: morningMethod,
+      [user.userCode]: buildAbsentVisit(visit, {
+        morningContacted,
+        morningMethod,
         eveningChecked,
         eveningNote,
-        isAbsenceAddonClaimable: eligible
-      }
+        eligible,
+      }),
     }));
 
     if (eligible) {
@@ -238,7 +331,9 @@ const AttendanceRecordPage: React.FC = () => {
       );
     }
 
-    closeAbsenceDialog();
+  // E2Eが待つ「保存しました」トーストをここで発火（UI非ブロッキング）
+  openToast('保存しました', 'success');
+  closeAbsenceDialog();
   };
 
   const handleReset = (user: AttendanceUser) => {
@@ -249,10 +344,18 @@ const AttendanceRecordPage: React.FC = () => {
   };
 
   return (
-    <Container maxWidth="lg" sx={{ py: 4 }}>
+  <Container maxWidth="lg" sx={{ py: 4 }} data-testid="attendance-page">
+    {/* Snackbar for save/failure notifications */}
+    {snackbar && (
+      <Snackbar open={snackbar.open} autoHideDuration={4000} onClose={handleSnackbarClose} anchorOrigin={{ vertical: 'top', horizontal: 'center' }}>
+        <Alert onClose={handleSnackbarClose} severity={snackbar.severity} sx={{ width: '100%' }} data-testid="toast">
+          {snackbar.message}
+        </Alert>
+      </Snackbar>
+    )}
       <Stack spacing={3}>
         <Stack spacing={1}>
-          <Typography variant="h3" component="h1">
+          <Typography variant="h3" component="h1" data-testid="heading-attendance">
             通所実績入力（サンプル）
           </Typography>
           <Typography color="text.secondary">
@@ -267,11 +370,8 @@ const AttendanceRecordPage: React.FC = () => {
               <Chip icon={<CheckIcon />} color="success" label={`退所 ${summary.attendOut}`} />
               <Chip icon={<BusIcon />} color="secondary" label={`送迎 行き ${summary.transportTo}`} />
               <Chip icon={<BusIcon />} color="secondary" label={`送迎 帰り ${summary.transportFrom}`} />
-              <Chip
-                icon={<AbsenceIcon />}
-                color="warning"
-                label={`欠席加算 ${summary.absenceAddon}`}
-              />
+              <Chip icon={<AbsenceIcon />} color="warning" label={`欠席加算 ${summary.absenceAddon}`} />
+          <Chip label={`乖離あり ${discrepancyCount}`} variant="outlined" data-testid="chip-discrepancy" />
             </Stack>
           </CardContent>
         </Card>
@@ -280,12 +380,12 @@ const AttendanceRecordPage: React.FC = () => {
           {users.map((user) => {
             const visit = visits[user.userCode];
             const disableCheckIn = visit.status === '当日欠席' || visit.cntAttendIn === 1;
-            const disableCheckOut = visit.status !== '通所中';
+            const disableCheckOut = !canCheckOut(visit);
             const disableAbsence = visit.status !== '未' && visit.status !== '当日欠席';
-            const absenceLimitReached = user.absenceClaimedThisMonth >= 4;
+            const absenceLimitReached = user.absenceClaimedThisMonth >= ABSENCE_MONTHLY_LIMIT;
 
             return (
-              <Card key={user.userCode} sx={{ border: '1px solid', borderColor: 'divider' }}>
+              <Card key={user.userCode} data-testid={`card-${user.userCode}`} sx={{ border: '1px solid', borderColor: 'divider' }}>
                 <CardContent>
                   <Stack spacing={2}>
                     <Stack direction={{ xs: 'column', md: 'row' }} spacing={2} alignItems="center">
@@ -300,11 +400,22 @@ const AttendanceRecordPage: React.FC = () => {
                           <Chip label={`ステータス: ${visit.status}`} color="info" />
                           <Chip label={`通所 ${formatTime(visit.checkInAt)}`} />
                           <Chip label={`退所 ${formatTime(visit.checkOutAt)}`} />
+                          <Chip label={`実提供 ${visit.providedMinutes ?? 0}分`} />
+                          <Chip label={`算定 ${user.standardMinutes}分`} />
+                          { (visit.providedMinutes ?? 0) > 0 && visit.providedMinutes! < user.standardMinutes * DISCREPANCY_THRESHOLD && (
+                            <Chip label="乖離あり（備考推奨）" color="warning" variant="outlined" />
+                          )}
                           {visit.isEarlyLeave && (
                             <Chip label="早退" color="warning" variant="outlined" />
                           )}
                           {visit.isAbsenceAddonClaimable && (
                             <Chip label="欠席加算対象" color="warning" />
+                          )}
+                          {visit.userConfirmedAt && (
+                            <Chip
+                              label={`確認 ${new Date(visit.userConfirmedAt).toLocaleTimeString('ja-JP', { hour: '2-digit', minute: '2-digit' })}`}
+                              color="success"
+                            />
                           )}
                         </Stack>
                       </Stack>
@@ -315,6 +426,7 @@ const AttendanceRecordPage: React.FC = () => {
                               variant="contained"
                               onClick={() => handleCheckIn(user)}
                               disabled={disableCheckIn}
+                              data-testid={`btn-checkin-${user.userCode}`}
                             >
                               通所
                             </Button>
@@ -327,6 +439,7 @@ const AttendanceRecordPage: React.FC = () => {
                               color="success"
                               onClick={() => handleCheckOut(user)}
                               disabled={disableCheckOut}
+                              data-testid={`btn-checkout-${user.userCode}`}
                             >
                               退所
                             </Button>
@@ -340,8 +453,39 @@ const AttendanceRecordPage: React.FC = () => {
                               onClick={() => openAbsenceDialog(user)}
                               disabled={disableAbsence}
                               startIcon={<AbsenceIcon />}
+                              data-testid={`btn-absence-${user.userCode}`}
                             >
                               欠席
+                            </Button>
+                          </span>
+                        </Tooltip>
+                        <Tooltip
+                          title={
+                            visit.userConfirmedAt
+                              ? `確認済: ${new Date(visit.userConfirmedAt).toLocaleTimeString('ja-JP', { hour: '2-digit', minute: '2-digit' })}`
+                              : (visit.status === '退所済' || visit.status === '当日欠席'
+                                ? '確認できます'
+                                : '退所または欠席確定後に確認可能')
+                          }
+                        >
+                          <span>
+                            <Button
+                              variant="outlined"
+                              color="success"
+                              onClick={() =>
+                                setVisits(prev => ({
+                                  ...prev,
+                                  [user.userCode]: {
+                                    ...prev[user.userCode],
+                                    userConfirmedAt: prev[user.userCode].userConfirmedAt ?? new Date().toISOString()
+                                  }
+                                }))
+                              }
+                              disabled={!!visit.userConfirmedAt || (visit.status !== '退所済' && visit.status !== '当日欠席')}
+                              startIcon={<CheckIcon />}
+                              data-testid={`btn-confirm-${user.userCode}`}
+                            >
+                              利用者確認
                             </Button>
                           </span>
                         </Tooltip>
@@ -352,6 +496,7 @@ const AttendanceRecordPage: React.FC = () => {
                               color="inherit"
                               onClick={() => handleReset(user)}
                               startIcon={<ResetIcon />}
+                              data-testid={`btn-reset-${user.userCode}`}
                             >
                               リセット
                             </Button>
@@ -413,7 +558,7 @@ const AttendanceRecordPage: React.FC = () => {
                 対象: {absenceDialog.user.userName}（{absenceDialog.user.userCode}）
               </Typography>
               <Alert severity="info" icon={<AbsenceIcon />}>
-                当月欠席加算確定 {absenceDialog.user.absenceClaimedThisMonth} 件 / 4 件
+                当月欠席加算確定 {absenceDialog.user.absenceClaimedThisMonth} 件 / {ABSENCE_MONTHLY_LIMIT} 件
               </Alert>
               <FormControlLabel
                 control={

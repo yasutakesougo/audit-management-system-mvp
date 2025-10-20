@@ -87,8 +87,10 @@ const deriveActivityKey = (record: SupportRecord, fallbackKey: string): string =
   return fallbackKey;
 };
 
+import { isDevMode } from '@/lib/env';
+
 const incrementDebugCounter = (label: string): void => {
-  if (!import.meta.env.DEV) return;
+  if (!isDevMode()) return;
   if (typeof window === 'undefined') return;
   const target = (window as { __TIMEFLOW_DBG__?: Record<string, number> }).__TIMEFLOW_DBG__;
   if (!target) return;

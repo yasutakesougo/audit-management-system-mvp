@@ -1,3 +1,46 @@
+#
+
+## 支援手順・記録: 役割分担（現状の方針）
+
+- **現場（日次記録）**: `SupportProcedurePage`（実体は `TimeFlowSupportRecordPage`）
+- **計画（作成/編集）**: `IndividualSupportManagementPage` 由来の Plan/Act を将来的に **`/plans/new`**, **`/plans/:planId/edit`** へ分離予定
+- **管理（ダッシュボード）**: `SupportRecordPage` の統計UIを **`/dashboard`** へ再利用予定
+
+**ルーティング方針**: *「エントリは薄いPage、実体は実装Pageに委譲」*。  
+例) `/records/support-procedures` は `SupportProcedurePage` をエントリとし、中身は `TimeFlowSupportRecordPage` に委譲。
+
+### E2E 到達表（最小判定）
+
+| 画面               | ルート                         | data-testid 例      |
+|--------------------|-------------------------------|---------------------|
+| 日次記録（現場）   | `/records/support-procedures` | `attendance-page`   |
+| ダッシュボード     | `/dashboard/records`          | `dashboard-records` |
+| 計画作成           | `/plans/new`                  | `plan-create-page`  |
+| 計画編集           | `/plans/:planId/edit`         | `plan-edit-page`    |
+
+> E2E は「到達（ルート遷移）+ 見出し or ルート固有の testid の可視」を最小判定とし、テストの安定性を確保します。
+
+### 今後のタスク（雛形・チケット用）
+
+- [ ] **`/plans/new`** 支援計画新規作成ページの切り出し（PlanWizard / BehaviorSupportPlanBuilder の分離）
+- [ ] **`/plans/:planId/edit`** 支援計画編集ページの切り出し（承認フロー入り口も設計）
+- [ ] **`/dashboard/records`** 管理ダッシュボード作成（`SupportRecordPage` の統計カードを移植）
+- [ ] **E2E**: 各新ルートの最小到達確認（route到達 + 見出しの `data-testid` で検証）
+#
+# トラブルシューティング（E2E到達できない時）
+
+- `/e2e/attendance` ルートにアクセスしても `data-testid="attendance-page"` が見えない場合は、`.env` の `VITE_APP_E2E=1` 設定やサーバ再起動を確認してください。
+- Playwright/E2Eが失敗する場合は `npx playwright show-trace trace.zip` で詳細なトレースを確認できます。
+- SharePoint認証やAPI接続エラー時は `.env` のURLや権限、MSAL設定を再確認してください。
+#
+# E2E/CI Tips
+
+- Playwrightは `playwright.config.ts` で `trace: 'on-first-retry'`, `video: 'retain-on-failure'` を指定し、失敗時のみトレース・動画を保存します。
+- すべての `expect` のデフォルトタイムアウトは 10秒 (`expect: { timeout: 10_000 }`) でネットワーク遅延にも強い設計です。
+- トースト通知は `<Alert data-testid="toast">` でE2Eから確実に検出できます。
+- `.env.example` が環境変数の正規リファレンスです。新規セットアップ時は `cp .env.example .env` でコピーしてください。
+- E2E専用ルートやCI用の挙動切り替えは `VITE_APP_E2E=1` で有効化できます（`playwright.config.ts` の webServer.env 参照）。
+
 # 磯子区障害者地域活動ホーム (React + SharePoint SPA)
 
 > 📌 クイックリンク: [プロビジョニング手順 / WhatIf レビュー](docs/provisioning.md#whatif-ドライラン-と-job-summary) ｜ [SharePoint スキーマ定義](provision/schema.xml) ｜ [プロジェクトボード自動連携](docs/project-auto-integration.md)
@@ -111,6 +154,11 @@ src/
 ```
 
 ## Environment Variables (.env)
+
+### E2E/CI用の環境変数
+
+- `.env.example` を参照し、必要に応じて `VITE_APP_E2E=1` などを有効化してください。
+- E2E/CI時は `VITE_DEMO_MODE=1` `VITE_SKIP_LOGIN=1` も有効化されます（`playwright.config.ts` 参照）。
 
 ### Quick Setup
 

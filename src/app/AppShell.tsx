@@ -276,6 +276,8 @@ const AppShell: React.FC<{ children: React.ReactNode }> = ({ children }) => {
         >
           {section.items.map(({ label, to, isActive, testId, icon: IconComponent }) => {
             const active = isActive(location.pathname);
+            // 最小・安全: /records/diary だけaria-labelを追加
+            const ariaLabel = to === '/records/diary' ? '日次記録' : undefined;
             return (
               <ListItemButton
                 key={label}
@@ -284,6 +286,7 @@ const AppShell: React.FC<{ children: React.ReactNode }> = ({ children }) => {
                 selected={active}
                 data-testid={testId}
                 aria-current={active ? 'page' : undefined}
+                aria-label={ariaLabel}
               >
                 {IconComponent ? (
                   <ListItemIcon sx={{ minWidth: 36 }}>

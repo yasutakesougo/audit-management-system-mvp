@@ -29,7 +29,12 @@ beforeAll(async () => {
 });
 
 const renderRecordsTab = async () => {
-  const utils = render(<Page />);
+  const { MemoryRouter } = await import('react-router-dom');
+  const utils = render(
+    <MemoryRouter>
+      <Page />
+    </MemoryRouter>
+  );
   const [recordsTab] = await screen.findAllByRole('tab', { name: '日々の記録' });
   fireEvent.click(recordsTab);
   return utils;
