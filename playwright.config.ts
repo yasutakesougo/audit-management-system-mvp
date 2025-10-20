@@ -2,7 +2,7 @@
 import { defineConfig, devices } from '@playwright/test';
 
 export default defineConfig({
-  testDir: 'tests',
+  testDir: 'tests/e2e',
   timeout: 30 * 1000,
   expect: { timeout: 10_000 },
   retries: process.env.CI ? 1 : 0,
@@ -23,6 +23,7 @@ export default defineConfig({
       VITE_SKIP_LOGIN: '1',
     },
   },
+  testMatch: /.*\.e2e\.(ts|tsx|js)$/,
   projects: [
     { name: 'chromium', use: { ...devices['Desktop Chrome'] } },
   ],
