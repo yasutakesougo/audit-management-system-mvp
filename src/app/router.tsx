@@ -11,6 +11,7 @@ import RecordList from '../features/records/RecordList';
 import AppShell from './AppShell';
 import { routerFutureFlags } from './routerFuture';
 import SchedulesGate from './SchedulesGate';
+import { readEnv } from '@/lib/env';
 const HealthRecordTabletMock = React.lazy(() => import('@/pages/HealthRecordTabletMock'));
 const DailyCareRecordEntryDemoPage = React.lazy(() => import('@/pages/DailyCareRecordEntryDemo'));
 
@@ -21,7 +22,6 @@ const HomePage = React.lazy(() => import('@/app/Home'));
 const DailyRecordPage = React.lazy(() => import('@/pages/DailyRecordPage'));
 const DailyRecordMenuPage = React.lazy(() => import('@/pages/DailyRecordMenuPage'));
 const AttendanceRecordPage = React.lazy(() => import('@/pages/AttendanceRecordPage'));
-const TimeFlowSupportRecordPage = React.lazy(() => import('@/pages/TimeFlowSupportRecordPage'));
 const DashboardPage = React.lazy(() => import('@/pages/DashboardPage'));
 const SupportActivityMasterPage = React.lazy(() => import('@/pages/SupportActivityMasterPage'));
 const SupportStepMasterPage = React.lazy(() => import('@/pages/SupportStepMasterPage'));
@@ -107,17 +107,6 @@ const SuspendedAttendanceRecordPage: React.FC = () => (
   </React.Suspense>
 );
 
-const SuspendedTimeFlowSupportRecordPage: React.FC = () => (
-  <React.Suspense
-    fallback={(
-      <div className="p-4 text-sm text-slate-600" role="status">
-        支援手順兼記録を読み込んでいます…
-      </div>
-    )}
-  >
-    <TimeFlowSupportRecordPage />
-  </React.Suspense>
-);
 
 const SuspendedSupportProcedurePage: React.FC = () => (
   <React.Suspense
@@ -276,6 +265,10 @@ const SuspendedIndividualSupportManagementPage: React.FC = () => (
 );
 
 const childRoutes: RouteObject[] = [
+// E2E専用ルート: VITE_APP_E2E=1 のときだけ追加
+...(readEnv('VITE_APP_E2E') === '1'
+  ? [{ path: 'e2e/attendance', element: <SuspendedAttendanceRecordPage /> }]
+  : []),
   { path: 'health-record-tablet-mock', element: (
     <React.Suspense fallback={<div className="p-4 text-sm text-slate-600" role="status">健康記録UIを読み込んでいます…</div>}>
       <HealthRecordTabletMock />
@@ -288,8 +281,8 @@ const childRoutes: RouteObject[] = [
   { path: 'records', element: <RecordList /> },
   { path: 'records/diary', element: <SuspendedDailyRecordPage /> },
   { path: 'records/diary/:userId', element: <SuspendedDailyRecordPage /> },
-  { path: 'records/support-procedures', element: <SuspendedTimeFlowSupportRecordPage /> },
-  { path: 'records/support-procedures/:userId', element: <SuspendedTimeFlowSupportRecordPage /> },
+  { path: 'records/support-procedures', element: <SuspendedSupportProcedurePage /> },
+  { path: 'records/support-procedures/:userId', element: <SuspendedSupportProcedurePage /> },
   { path: 'checklist', element: <ChecklistPage /> },
   { path: 'audit', element: <AuditPanel /> },
   { path: 'users', element: (
@@ -410,6 +403,10 @@ const childRoutes: RouteObject[] = [
 ];
 
 const routes: RouteObject[] = [
+  // E2E専用ルート: VITE_APP_E2E=1 のときだけトップレベルに追加
+  ...(readEnv('VITE_APP_E2E') === '1'
+    ? [{ path: '/e2e/attendance', element: <SuspendedAttendanceRecordPage /> }]
+    : []),
   {
     element: (
       <AppShell>
