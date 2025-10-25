@@ -1,4 +1,93 @@
-import { getRuntimeEnv, isDev as runtimeIsDev } from '../env';
+// --- DEBUG START ---
+try {
+  const e = getEnv();
+  // 最小限だけ出力
+  console.info('[env.runtime.json loaded]', {
+    MODE: (e as any).MODE,
+    VITE_SP_BASE_URL: (e as any).VITE_SP_BASE_URL,
+    VITE_SP_SITE_URL: (e as any).VITE_SP_SITE_URL,
+    VITE_SP_RESOURCE: (e as any).VITE_SP_RESOURCE,
+  });
+} catch (err) {
+  console.warn('[env.debug] failed to print env', err);
+}
+// --- DEBUG END ---
+// src/lib/env.ts
+// どの実行環境（Vite/Node/テスト/CJS）でも安全に環境変数を読むためのユーティリティ。
+// import.meta / process.env を**トップレベル**で一切参照しない。
+
+export type EnvDict = Record<string, string | undefined>;
+
+// キャッシュ（1プロセスで1回だけ解決）
+let _envCache: EnvDict | null = null;
+
+/**
+ * 実行時に安全に環境変数を解決。
+ * 優先順位:
+ *  1) Vite の import.meta.env（あれば） ← ランタイム eval 経由で安全に評価
+ *  2) process.env（Node/テスト）
+ *  3) globalThis.__ENV（任意の注入口。テストやE2Eで上書きしたい場合に使用）
+ */
+export function getEnv(): EnvDict {
+  if (_envCache) return _envCache;
+
+  const out: EnvDict = {};
+
+  // 1) Vite import.meta.env を “eval” 経由で**ランタイム**取得（CJS でもパースエラーにならない）
+  try {
+    // eslint-disable-next-line no-new-func
+    const getImportMeta = Function('try { return import.meta; } catch { return undefined; }');
+    const im = getImportMeta() as any;
+    if (im?.env && typeof im.env === 'object') {
+      Object.assign(out, im.env as Record<string, string | undefined>);
+    }
+  } catch {
+    // ignore
+  }
+
+  // 2) Node (process.env)
+  try {
+    const pe = (globalThis as any)?.process?.env;
+    if (pe && typeof pe === 'object') {
+      Object.assign(out, pe as Record<string, string | undefined>);
+    }
+  } catch {
+    // ignore
+  }
+
+  // 3) 任意注入（テスト・E2Eで上書きしたいとき）
+  try {
+    const injected = (globalThis as any)?.__ENV;
+    if (injected && typeof injected === 'object') {
+      Object.assign(out, injected as Record<string, string | undefined>);
+    }
+  } catch {
+    // ignore
+  }
+
+  _envCache = out;
+  return _envCache;
+}
+
+// 文字列
+export function readString(key: string, fallback = ''): string {
+  const v = getEnv()[key];
+  return typeof v === 'string' && v.length > 0 ? v : fallback;
+}
+
+// 真偽（"1","true","on","yes" を true）
+// (legacy readBool removed; use new universal implementation below)
+
+// 数値
+export function readNumber(key: string, fallback = 0): number {
+  const v = getEnv()[key];
+  if (v == null) return fallback;
+  const n = Number(v);
+  return Number.isFinite(n) ? n : fallback;
+}
+
+// アプリ共通設定（必要に応じてここに寄せる）
+// (legacy getAppConfig removed; use new universal implementation below)
 
 type Primitive = string | number | boolean | undefined | null;
 export type EnvRecord = Record<string, Primitive>;
@@ -64,12 +153,9 @@ const getEnvValue = (key: string, envOverride?: EnvRecord): Primitive => {
   if (envOverride && key in envOverride) {
     return envOverride[key];
   }
-  const runtime = getRuntimeEnv() as EnvRecord;
+  const runtime = getEnv() as EnvRecord;
   if (key in runtime) {
     return runtime[key];
-  }
-  if (typeof process !== 'undefined' && process.env && key in process.env) {
-    return process.env[key] as Primitive;
   }
   return undefined;
 };
@@ -81,9 +167,14 @@ const resolveIsDev = (envOverride?: EnvRecord): boolean => {
   }
   const devValue = getEnvValue('DEV', envOverride);
   if (devValue !== undefined) {
-    return coerceBoolean(devValue, runtimeIsDev);
+    return coerceBoolean(devValue, false);
   }
-  return runtimeIsDev;
+  const runtime = getEnv();
+  const mode = runtime.MODE ?? runtime.NODE_ENV;
+  if (typeof mode === 'string' && mode.toLowerCase() === 'development') {
+    return true;
+  }
+  return false;
 };
 
 export const readEnv = (key: string, fallback = '', envOverride?: EnvRecord): string => {
@@ -146,13 +237,10 @@ export const isDevMode = (envOverride?: EnvRecord): boolean => {
   if (explicit !== undefined) {
     return coerceBoolean(explicit, false);
   }
-  const runtime = getRuntimeEnv();
+  const runtime = getEnv();
   const mode = runtime.MODE ?? runtime.NODE_ENV;
   if (typeof mode === 'string' && mode.toLowerCase() === 'development') {
     return true;
-  }
-  if (typeof process !== 'undefined' && process.env && 'NODE_ENV' in process.env) {
-    return String(process.env.NODE_ENV).toLowerCase() === 'development';
   }
   return false;
 };
@@ -289,26 +377,29 @@ export const allowWriteFallback = (envOverride?: EnvRecord): boolean =>
   readBool('VITE_ALLOW_WRITE_FALLBACK', false, envOverride);
 
 export const getSharePointResource = (envOverride?: EnvRecord): string => {
-  const resource = readEnv('VITE_SP_RESOURCE', '', envOverride).trim();
-  if (resource) {
-    return resource.replace(/\/+$/, '');
+  const resourceVal = readEnv('VITE_SP_RESOURCE', '', envOverride).trim();
+  if (resourceVal) {
+    return resourceVal.replace(/\/+$/, '');
   }
-  const runtime = getRuntimeEnv();
-  return (runtime.VITE_SP_RESOURCE ?? '').replace(/\/+$/, '');
+  const envObj = getEnv();
+  const envRaw = envObj.VITE_SP_RESOURCE;
+  const envStr = typeof envRaw === 'string' ? envRaw : String(envRaw ?? '');
+  return envStr.replace(/\/+$/, '');
 };
 
 export const getSharePointSiteRelative = (envOverride?: EnvRecord): string => {
-  const override = readEnv('VITE_SP_SITE_RELATIVE', '', envOverride).trim();
-  if (override) {
-    const normalized = override.startsWith('/') ? override : `/${override}`;
+  const siteVal = readEnv('VITE_SP_SITE_RELATIVE', '', envOverride).trim();
+  if (siteVal) {
+    const normalized = siteVal.startsWith('/') ? siteVal : `/${siteVal}`;
     return normalized.replace(/\/+$/, '');
   }
-  const runtime = getRuntimeEnv();
-  const fromEnv = (runtime.VITE_SP_SITE_RELATIVE ?? '').trim();
-  if (!fromEnv) {
+  const envObj = getEnv();
+  const envRaw = envObj.VITE_SP_SITE_RELATIVE;
+  const fromEnvStr = typeof envRaw === 'string' ? envRaw.trim() : String(envRaw ?? '').trim();
+  if (!fromEnvStr) {
     return '';
   }
-  const normalized = fromEnv.startsWith('/') ? fromEnv : `/${fromEnv}`;
+  const normalized = fromEnvStr.startsWith('/') ? fromEnvStr : `/${fromEnvStr}`;
   return normalized.replace(/\/+$/, '');
 };
 

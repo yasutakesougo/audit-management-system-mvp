@@ -1,4 +1,51 @@
-name: e2e
+name: E2E Tests
+
+on:
+  push:
+    branches: [main, chore/provision-schema]
+  pull_request:
+    branches: [main, chore/provision-schema]
+
+jobs:
+  e2e:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - name: Use Node.js 20.x
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+      - name: Install dependencies
+        run: npm ci
+      - name: Install Playwright Browsers
+        run: npx playwright install --with-deps
+      - name: Typecheck
+        run: npm run typecheck
+      - name: Lint
+        run: npm run lint
+      - name: Start Vite server
+        run: npm run dev &
+        env:
+          VITE_APP_E2E: '1'
+          VITE_DEMO_MODE: '1'
+          VITE_SKIP_LOGIN: '1'
+      - name: Wait for server
+        run: npx wait-on http://localhost:5173
+      - name: Run Playwright E2E
+        run: npx playwright test --reporter=dot
+      - name: Upload Playwright Artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-artifacts
+          path: |
+            test-results/
+            playwright-report/
+            **/trace.zip
+            **/screenshot.png
+            **/video.webmname: e2e
 on:
   push:
     branches: [main, develop]

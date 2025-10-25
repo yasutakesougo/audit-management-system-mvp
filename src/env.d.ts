@@ -31,6 +31,7 @@ interface ImportMetaEnv {
   readonly VITE_MSAL_SCOPES?: string;
   readonly VITE_MSAL_TOKEN_REFRESH_MIN?: string;
   readonly VITE_RUNTIME_ENV_PATH?: string;
+  readonly RUNTIME_ENV_PATH?: string;
   readonly VITE_SCHEDULES_CACHE_TTL?: string;
   readonly VITE_SCHEDULES_TZ?: string;
   readonly VITE_SCHEDULES_WEEK_START?: string;

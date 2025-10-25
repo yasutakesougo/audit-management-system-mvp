@@ -1,0 +1,96 @@
+name: CI
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main, develop ]
+    types: [opened, synchronize, ready_for_review, reopened]
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build-and-test:
+    if: ${{ github.event_name != 'pull_request' || github.event.pull_request.draft == false }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install deps
+        run: npm ci
+
+      - name: Typecheck (app)
+        run: npm run typecheck
+
+      - name: Typecheck (tests)
+        run: npm run typecheck:test
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Install Playwright browsers
+        run: npx playwright install --with-deps
+
+      - name: E2E Smoke (start dev server)
+        run: |
+          nohup npm run dev -- --port 5173 --strictPort=true >/dev/null 2>&1 &
+          npx wait-on --timeout 120000 http://localhost:5173
+
+      - name: Run E2E (smoke) with JUnit
+        run: npx playwright test --reporter=junit,line --output test-results
+        env:
+          CI: true
+
+      - name: Kill dev server (always)
+        if: always()
+        run: pkill -f "vite" || true
+
+      - name: Upload Playwright/JUnit artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: e2e-artifacts
+          path: |
+            test-results/*.xml
+            playwright-report/**
+          if-no-files-found: ignore
+          retention-days: 14
+
+      - name: Upload traces & media (on failure)
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: e2e-failure-media
+          path: |
+            **/trace.zip
+            **/video.webm
+            **/*.png
+          if-no-files-found: ignore
+          retention-days: 14
+
+      - name: Run unit tests (JUnit)
+        run: npx vitest run --reporter=junit --reporter=verbose --outputFile junit-unit.xml
+        env:
+          CI: true
+
+      - name: Upload unit test artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: unit-artifacts
+          path: |
+            junit-unit.xml
+            coverage/**
+          if-no-files-found: ignore
+          retention-days: 14

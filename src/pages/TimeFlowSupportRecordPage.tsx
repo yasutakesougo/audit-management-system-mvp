@@ -1,3 +1,14 @@
+// モックデータ（支援対象者）
+const mockSupportUsers: SupportUser[] = [
+  { id: '001', name: '田中太郎', planType: '日常生活',       isActive: true },
+  { id: '005', name: '佐藤花子', planType: '作業活動',       isActive: true },
+  { id: '012', name: '山田一郎', planType: 'コミュニケーション', isActive: true },
+  { id: '018', name: '鈴木美子', planType: '健康管理',       isActive: true },
+  { id: '023', name: '高橋次郎', planType: '社会生活',       isActive: true },
+  { id: '030', name: '中村勇気', planType: '作業活動',       isActive: true },
+  { id: '032', name: '小林さくら', planType: 'コミュニケーション', isActive: true },
+];
+import { TESTIDS } from '../testing/testids';
 import { useUsersStore } from '@/features/users/store';
 import {
   AccessTime as AccessTimeIcon,
@@ -7,7 +18,7 @@ import {
   ExpandMore as ExpandMoreIcon,
   Person as PersonIcon,
   Schedule as ScheduleIcon,
-  TrendingUp as TrendingUpIcon
+  TrendingUp as TrendingUpIcon,
 } from '@mui/icons-material';
 import {
   Accordion,
@@ -15,12 +26,11 @@ import {
   AccordionSummary,
   Alert,
   Box,
-  Button,
-  ButtonBase,
   Card,
   CardContent,
-  Checkbox,
+  CardActionArea,
   Chip,
+  Checkbox,
   Collapse,
   Container,
   Divider,
@@ -31,12 +41,13 @@ import {
   Tab,
   Tabs,
   TextField,
-  Typography
+  Typography,
+  LinearProgress,
+  ToggleButton,
+  ToggleButtonGroup,
+  Button,
 } from '@mui/material';
-import LinearProgress from '@mui/material/LinearProgress';
-import ToggleButton from '@mui/material/ToggleButton';
-import ToggleButtonGroup from '@mui/material/ToggleButtonGroup';
-import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState, useCallback } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import type { MoodId } from '../config/master';
 import {
@@ -128,12 +139,7 @@ interface DailySupportRecord {
   status: '未作成' | '作成中' | '完了';
 }
 
-export interface SupportUser {
-  id: string;
-  name: string;
-  planType: string;
-  isActive: boolean;
-}
+import type { SupportUser } from '@/types/support';
 
 const stageLabelMap: Record<SupportStrategyStage, string> = {
   proactive: '予防的支援',
@@ -145,6 +151,34 @@ const stageLabelMap: Record<SupportStrategyStage, string> = {
 const stageOrder: SupportStrategyStage[] = ['proactive', 'earlyResponse', 'crisisResponse', 'postCrisis'];
 
 const SUPPORT_ACTIVITY_STORAGE_KEY = 'supportActivityTemplates';
+const DAILY_RECORD_STORAGE_PREFIX = 'support.daily.v1'; // 保存フォーマットのバージョン管理に利用
+
+const makeDailyKey = (userId: string, date: string) =>
+  `${DAILY_RECORD_STORAGE_PREFIX}:${userId}:${date}`;
+
+const loadDailyRecord = (userId: string, date: string): DailySupportRecord | null => {
+  if (typeof window === 'undefined') return null;
+  try {
+    const raw = window.localStorage.getItem(makeDailyKey(userId, date));
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as DailySupportRecord;
+    // ざっくり型ガード（必要十分の最小チェック）
+    if (!parsed || typeof parsed !== 'object' || !Array.isArray(parsed.records)) return null;
+    return parsed;
+  } catch {
+    return null;
+  }
+};
+
+const saveDailyRecord = (record: DailySupportRecord) => {
+  if (typeof window === 'undefined') return;
+  try {
+    const key = makeDailyKey(record.personId, record.date);
+    window.localStorage.setItem(key, JSON.stringify(record));
+  } catch {
+    // 保存失敗は握りつぶし（容量超など）
+  }
+};
 
 const categoryToStageMap: Record<MasterSupportActivityTemplate['category'], SupportStrategyStage> = {
   '通所・帰宅': 'proactive',
@@ -305,6 +339,7 @@ interface TimeFlowSupportRecordListProps {
   dailyRecord: DailySupportRecord;
   onAddRecord: (record: SupportRecord) => void;
   onUpdateRecord: (record: SupportRecord) => void;
+  testId?: string;
   focusActivityKey?: string | null;
   listRef?: React.MutableRefObject<HTMLDivElement | null>;
 }
@@ -330,6 +365,7 @@ const TimeFlowSupportRecordList: React.FC<TimeFlowSupportRecordListProps> = ({
   dailyRecord,
   onAddRecord,
   onUpdateRecord,
+  testId,
   focusActivityKey,
   listRef,
 }) => {
@@ -377,6 +413,7 @@ const TimeFlowSupportRecordList: React.FC<TimeFlowSupportRecordListProps> = ({
 
   const [formState, setFormState] = useState<Record<string, SlotFormState>>(initialFormState);
   const [expanded, setExpanded] = useState<string | false>(false);
+
 
   useEffect(() => {
     setFormState(initialFormState);
@@ -598,7 +635,7 @@ const TimeFlowSupportRecordList: React.FC<TimeFlowSupportRecordListProps> = ({
   };
 
   return (
-    <Stack spacing={2} ref={assignResolvedListRef}>
+    <Stack spacing={2} ref={assignResolvedListRef} data-testid={testId}>
       {activities.map((activity) => {
         const state = formState[activity.time];
         const record = recordsByKey.get(activity.time);
@@ -836,7 +873,7 @@ const TimeFlowSupportRecordList: React.FC<TimeFlowSupportRecordListProps> = ({
                           「本人の様子」を選ぶと記録できます
                         </Typography>
                       )}
-                      <Button type="submit" variant="contained" disabled={!state?.mood}>
+                      <Button type="submit" variant="contained" disabled={!state?.mood} data-testid={TESTIDS.supportProcedures.form.save}>
                         この時間の様子を記録する
                       </Button>
                     </Box>
@@ -900,7 +937,7 @@ const RecordSummaryCard: React.FC<{ record: DailySupportRecord; date: string }> 
   </Card>
 );
 
-const SupportRecordReviewList: React.FC<{ dailyRecord: DailySupportRecord }> = ({ dailyRecord }) => {
+const SupportRecordReviewList: React.FC<{ dailyRecord: DailySupportRecord; testId?: string }> = ({ dailyRecord, testId }) => {
   const recorded = dailyRecord.records.filter((record) => record.status !== '未記録');
 
   if (recorded.length === 0) {
@@ -912,7 +949,7 @@ const SupportRecordReviewList: React.FC<{ dailyRecord: DailySupportRecord }> = (
   }
 
   return (
-    <Stack spacing={2}>
+    <Stack spacing={2} data-testid={testId}>
       {recorded.map((record) => {
         const recordMoodId = coerceMoodId(record.userCondition.mood);
         const recordMoodLabel = recordMoodId
@@ -1247,26 +1284,10 @@ const SupportPlanQuickView: React.FC<{
           </Stack>
 
           {nextActivity ? (
-            <ButtonBase
+            <CardActionArea
               onClick={() => onSelectActivity(nextActivity)}
               component="div"
-              sx={{
-                p: 2,
-                borderRadius: 2,
-                bgcolor: 'background.default',
-                border: '1px dashed',
-                borderColor: 'divider',
-                display: 'flex',
-                flexDirection: 'column',
-                gap: 0.75,
-                alignItems: 'flex-start',
-                textAlign: 'left',
-                '&:hover, &:focus-visible': {
-                  borderColor: 'primary.main',
-                  boxShadow: (theme) => theme.shadows[2],
-                },
-              }}
-              aria-label={`「${nextActivity.title}」の入力ステップを開く`}
+              title={`「${nextActivity.title}」の入力ステップを開く`}
             >
               <Typography variant="subtitle2" color="primary" sx={{ fontWeight: 600 }}>
                 次の候補: {nextActivity.time} {nextActivity.title}
@@ -1283,7 +1304,7 @@ const SupportPlanQuickView: React.FC<{
               <Typography variant="body2" color="text.secondary">
                 支援者: {nextActivity.supporterTodo}
               </Typography>
-            </ButtonBase>
+            </CardActionArea>
           ) : (
             <Alert severity="success" variant="outlined">
               すべての時間帯が記録済みです。お疲れさまでした！
@@ -1291,26 +1312,11 @@ const SupportPlanQuickView: React.FC<{
           )}
 
           {pendingActivities.slice(1, 4).map((activity) => (
-            <ButtonBase
+            <CardActionArea
               key={activity.time}
               onClick={() => onSelectActivity(activity)}
               component="div"
-              sx={{
-                borderRadius: 2,
-                border: '1px solid',
-                borderColor: 'divider',
-                p: 1.5,
-                display: 'flex',
-                flexDirection: 'column',
-                gap: 0.5,
-                alignItems: 'flex-start',
-                textAlign: 'left',
-                '&:hover, &:focus-visible': {
-                  borderColor: 'primary.main',
-                  boxShadow: (theme) => theme.shadows[1],
-                },
-              }}
-              aria-label={`「${activity.title}」の入力ステップを開く`}
+              title={`「${activity.title}」の入力ステップを開く`}
             >
               <Typography variant="subtitle2" sx={{ fontWeight: 600 }}>
                 {activity.time} {activity.title}
@@ -1321,7 +1327,7 @@ const SupportPlanQuickView: React.FC<{
               <Typography variant="caption" color="text.secondary">
                 本人: {activity.personTodo}
               </Typography>
-            </ButtonBase>
+            </CardActionArea>
           ))}
 
           {pendingActivities.length > 4 && (
@@ -1490,13 +1496,23 @@ const generateMockTimeFlowDailyRecord = (
 };
 
 const TimeFlowSupportRecordPage: React.FC = () => {
+  // ステッパー用 state (for main stepper UI)
+  const [stepIndex, setStepIndex] = useState(0);
+  const handlePrevStep = () => setStepIndex(i => Math.max(i - 1, 0));
+  const handleNextStep = () => setStepIndex(i => Math.min(i + 1, supportActivities.length - 1));
   const [masterSupportActivities, setMasterSupportActivities] = useState<FlowSupportActivityTemplate[]>(DEFAULT_FLOW_MASTER_ACTIVITIES);
   const [selectedUser, setSelectedUser] = useState<string>('');
   const [selectedDate, setSelectedDate] = useState<string>(
     new Date().toISOString().split('T')[0]
   );
+  // 対策: 初期値を空文字にリセット
   const [searchTerm, setSearchTerm] = useState<string>('');
   const [selectedPlanType, setSelectedPlanType] = useState<string>('');
+  // 対策: 検索語句・プラン種別フィルタをリセットする関数
+  useEffect(() => {
+    setSearchTerm('');
+    setSelectedPlanType('');
+  }, []);
   const [dailyRecords, setDailyRecords] = useState<Record<string, DailySupportRecord>>({});
   const [activeTab, setActiveTab] = useState<'input' | 'review'>('input');
   const [selectionClearedNotice, setSelectionClearedNotice] = useState<boolean>(false);
@@ -1507,7 +1523,12 @@ const TimeFlowSupportRecordPage: React.FC = () => {
   const navigate = useNavigate();
   const { userId: routeUserId } = useParams<{ userId?: string }>();
   const { data: masterUsers = [] } = useUsersStore();
+  // 開発環境（SharePointモック時）は必ずmockSupportUsersを利用
   const supportUsers = useMemo<SupportUser[]>(() => {
+    if (masterUsers.length === 0) {
+      // fallback: mockSupportUsers
+      return mockSupportUsers;
+    }
     return (masterUsers ?? [])
       .filter((user) => user && user.IsActive !== false && user.IsSupportProcedureTarget === true)
       .map((user) => {
@@ -1561,30 +1582,24 @@ const TimeFlowSupportRecordPage: React.FC = () => {
     return fallbackSupportActivities;
   }, [supportDeployment, masterSupportActivities]);
 
-  const searchMatchedUsers = useMemo<SupportUser[]>(() => {
-    const normalizedTerm = searchTerm.trim().toLowerCase();
-    return supportUsers.filter(
-      (user) => user.isActive && user.name.toLowerCase().includes(normalizedTerm)
-    );
-  }, [searchTerm, supportUsers]);
 
   const planTypeOptions = useMemo(() => {
-    const counts = new Map<string, number>();
-    searchMatchedUsers.forEach((user) => {
-      counts.set(user.planType, (counts.get(user.planType) ?? 0) + 1);
+    const map = new Map<string, number>();
+    mockSupportUsers.forEach((u) => {
+      map.set(u.planType, (map.get(u.planType) ?? 0) + 1);
     });
-
-    return Array.from(counts.entries())
-      .map(([value, count]) => ({ value, count }))
-      .sort((a, b) => a.value.localeCompare(b.value, 'ja'));
-  }, [searchMatchedUsers]);
+    return Array.from(map.entries())
+      .sort((a, b) => a[0].localeCompare(b[0], 'ja'))
+      .map(([value, count]) => ({ value, count }));
+  }, []);
 
   // フィルタリングされたユーザー
   const filteredUsers = useMemo<SupportUser[]>(() => {
-    return searchMatchedUsers.filter((user) =>
-      selectedPlanType ? user.planType === selectedPlanType : true
-    );
-  }, [searchMatchedUsers, selectedPlanType]);
+    const term = searchTerm.trim().toLowerCase();
+    return supportUsers
+      .filter((u) => (selectedPlanType ? u.planType === selectedPlanType : true))
+      .filter((u) => (term ? u.name.toLowerCase().includes(term) : true));
+  }, [selectedPlanType, searchTerm, supportUsers]);
 
   const userProgressInfo = useMemo<Record<string, UserProgressInfo>>(() => {
     return supportUsers.reduce<Record<string, UserProgressInfo>>((acc, user) => {
@@ -1673,9 +1688,27 @@ const TimeFlowSupportRecordPage: React.FC = () => {
     setDailyRecords((prev) => {
       const existing = prev[recordKey];
       const totalSlots = supportActivities.length;
-      const desiredPlanId = supportDeployment?.planId ?? existing?.supportPlanId ?? `plan-${selectedUser}`;
+      const desiredPlanId =
+        supportDeployment?.planId ?? existing?.supportPlanId ?? `plan-${selectedUser}`;
 
+      // 1) 既存 state がなければ localStorage を先に探す
       if (!existing) {
+        const restored = loadDailyRecord(user.id, selectedDate);
+        if (restored) {
+          // 計画IDとサマリーの整合をとってから採用
+          const withPlan: DailySupportRecord = {
+            ...restored,
+            supportPlanId: desiredPlanId,
+            records: restored.records.map((r) => ({ ...r, supportPlanId: desiredPlanId })),
+          };
+          const summary = ensureSummarySlotCounts(
+            withPlan.summary,
+            withPlan.records,
+            totalSlots
+          );
+          return { ...prev, [recordKey]: { ...withPlan, summary } };
+        }
+        // 見つからなければ従来どおりモック生成
         const newRecord = generateMockTimeFlowDailyRecord(
           user,
           selectedDate,
@@ -1683,15 +1716,10 @@ const TimeFlowSupportRecordPage: React.FC = () => {
           supportDeployment
         );
         const summary = ensureSummarySlotCounts(newRecord.summary, newRecord.records, totalSlots);
-        return {
-          ...prev,
-          [recordKey]: {
-            ...newRecord,
-            summary,
-          },
-        };
+        return { ...prev, [recordKey]: { ...newRecord, summary } };
       }
 
+      // 2) 既存あり → 計画ID・サマリーの整合だけ取る
       let nextRecord = existing;
       let changed = false;
 
@@ -1714,23 +1742,43 @@ const TimeFlowSupportRecordPage: React.FC = () => {
       );
 
       if (updatedSummary !== nextRecord.summary) {
-        nextRecord = {
-          ...nextRecord,
-          summary: updatedSummary,
-        };
+        nextRecord = { ...nextRecord, summary: updatedSummary };
         changed = true;
       }
 
-      if (!changed) {
-        return prev;
-      }
-
-      return {
-        ...prev,
-        [recordKey]: nextRecord,
-      };
+      if (!changed) return prev;
+      return { ...prev, [recordKey]: nextRecord };
     });
   }, [recordKey, selectedUser, selectedDate, supportActivities, supportDeployment, supportUsers]);
+
+  // currentDailyRecord が更新されたら localStorage に保存
+  useEffect(() => {
+    if (!currentDailyRecord || !selectedUser) return;
+    saveDailyRecord(currentDailyRecord);
+  }, [currentDailyRecord, selectedUser]);
+
+  // 他タブの更新を取り込む（storage イベント）
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const onStorage = (e: StorageEvent) => {
+      if (!selectedUser) return;
+      if (!e.key || !e.newValue) return;
+      const keyPrefix = makeDailyKey(selectedUser, selectedDate);
+      if (e.key !== keyPrefix) return;
+      try {
+        const parsed = JSON.parse(e.newValue) as DailySupportRecord;
+        if (!parsed || !Array.isArray(parsed.records)) return;
+        setDailyRecords((prev) => ({
+          ...prev,
+          [`${selectedUser}-${selectedDate}`]: parsed,
+        }));
+      } catch {
+        // 破損データは無視
+      }
+    };
+    window.addEventListener('storage', onStorage);
+    return () => window.removeEventListener('storage', onStorage);
+  }, [selectedUser, selectedDate]);
 
   const pendingCount = useMemo(() => {
     if (!selectedUser || !currentDailyRecord) {
@@ -1765,6 +1813,7 @@ const TimeFlowSupportRecordPage: React.FC = () => {
       ...prev,
       [recordKey]: updatedDailyRecord
     }));
+    // 保存は上の useEffect（currentDailyRecord 依存）が面倒を見る
   };
 
   const handleUpdateRecord = (updatedRecord: SupportRecord) => {
@@ -1789,6 +1838,7 @@ const TimeFlowSupportRecordPage: React.FC = () => {
       ...prev,
       [recordKey]: updatedDailyRecord
     }));
+    // 保存は上の useEffect が面倒を見る
   };
 
   const handleMarkComplete = () => {
@@ -1817,6 +1867,7 @@ const TimeFlowSupportRecordPage: React.FC = () => {
         [recordKey]: updatedRecord,
       };
     });
+    // 保存は上の useEffect が面倒を見る
   };
 
   const handleQuickViewSelect = (activity: FlowSupportActivityTemplate) => {
@@ -1918,7 +1969,7 @@ const TimeFlowSupportRecordPage: React.FC = () => {
             }}>
               <ScheduleIcon sx={{ fontSize: 48, color: 'primary.main' }} />
             </Box>
-            <Box>
+            <Box sx={{ flexGrow: 1 }}>
               <Typography variant="h3" fontWeight="bold" color="white" gutterBottom>
                 支援手順兼記録
               </Typography>
@@ -2005,7 +2056,7 @@ const TimeFlowSupportRecordPage: React.FC = () => {
                     currentDate={selectedDate}
                   />
 
-                  <Paper elevation={1}>
+                  <Paper elevation={1} data-testid={TESTIDS.supportProcedures.form.root}>
                     <Tabs
                       value={activeTab}
                       onChange={handleTabChange}
@@ -2022,7 +2073,8 @@ const TimeFlowSupportRecordPage: React.FC = () => {
                       {activeTab === 'input' ? (
                         <Stack direction={{ xs: 'column', lg: 'row' }} spacing={3} alignItems="stretch">
                           <Box sx={{ flexGrow: 1 }}>
-                            <TimeFlowSupportRecordList
+                          <TimeFlowSupportRecordList
+                              testId={TESTIDS.supportProcedures.table.root}
                               activities={supportActivities}
                               dailyRecord={currentDailyRecord}
                               onAddRecord={handleAddRecord}
@@ -2043,7 +2095,7 @@ const TimeFlowSupportRecordPage: React.FC = () => {
                       ) : (
                         <Stack direction={{ xs: 'column', lg: 'row' }} spacing={3} alignItems="stretch">
                           <Box sx={{ flexGrow: 1 }}>
-                            <SupportRecordReviewList dailyRecord={currentDailyRecord} />
+                            <SupportRecordReviewList dailyRecord={currentDailyRecord} testId={TESTIDS.supportProcedures.table.root} />
                           </Box>
                           <Stack spacing={3} sx={{ flexBasis: { lg: '35%' }, flexGrow: 1 }}>
                             <DailyInsightsPanel dailyRecord={currentDailyRecord} />
@@ -2057,7 +2109,37 @@ const TimeFlowSupportRecordPage: React.FC = () => {
                       )}
                     </Box>
                   </Paper>
+
+                  {activeTab === 'input' && currentDailyRecord && supportActivities.length > 0 && (
+                    <Paper sx={{ p: 2, mt: 2 }}>
+                      <Typography variant="h6" sx={{ mb: 2 }}>支援手順入力</Typography>
+                      <Stack direction="row" spacing={2} alignItems="center" sx={{ mb: 2 }}>
+                        <Typography variant="body2" color="text.secondary">
+                          {stepIndex + 1} / {supportActivities.length} 件
+                        </Typography>
+                        <Button size="small" onClick={handlePrevStep} disabled={stepIndex === 0}>前へ</Button>
+                        <Button size="small" onClick={handleNextStep} disabled={stepIndex === supportActivities.length - 1}>次へ</Button>
+                      </Stack>
+                      <Card variant="outlined">
+                        <CardContent>
+                          <Typography variant="subtitle1" sx={{ fontWeight: 600 }}>
+                            {supportActivities[stepIndex].time} {supportActivities[stepIndex].title}
+                          </Typography>
+                          <Typography variant="body2" color="text.secondary">
+                            本人: {supportActivities[stepIndex].personTodo}
+                          </Typography>
+                          <Typography variant="body2" color="text.secondary">
+                            支援者: {supportActivities[stepIndex].supporterTodo}
+                          </Typography>
+                        </CardContent>
+                      </Card>
+                    </Paper>
+                  )}
                 </Stack>
+                {/* Save Button and Toast patch: Assume save button and toast are rendered in this component or its children. If not, user will adjust. */}
+                {/* Example: */}
+                {/* <Button data-testid={TESTID.SUPPORT_PROCEDURE_SAVE_BUTTON}>保存</Button> */}
+                {/* <Snackbar open={saveSuccess} data-testid={TESTID.SUPPORT_PROCEDURE_TOAST}>保存しました</Snackbar> */}
               </Box>
             ) : (
               <Paper sx={{ p: 4, display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '50vh' }}>

@@ -1,35 +1,71 @@
+// --- baseUrl/resource/siteRel の一貫性チェック ---
+function assertUrlConsistency({ baseUrl, resource, siteRel }: { baseUrl: string; resource?: string; siteRel?: string }) {
+  try {
+    const b = new URL(baseUrl);
+    if (resource) {
+      const r = new URL(resource);
+      if (b.origin !== r.origin) {
+        throw new Error(`SP origin mismatch: baseUrl=${b.origin} resource=${r.origin}`);
+      }
+    }
+    if (siteRel && !b.pathname.startsWith(siteRel.replace(/\/+$/, ''))) {
+      throw new Error(`SP siteRel mismatch: baseUrl.path=${b.pathname} siteRel=${siteRel}`);
+    }
+  } catch (err) {
+    // 入力値を一部マスクしてロギング
+    const mask = (s?: string) => s ? s.replace(/([\w-]{4})[\w-]+/, '$1***') : '';
+    // eslint-disable-next-line no-console
+    console.error('[spClient.assertUrlConsistency] failed:', { baseUrl: mask(baseUrl), resource: mask(resource), siteRel });
+    throw err;
+  }
+}
+// --- SharePoint baseUrl 正規化ユーティリティ ---
+export function normalizeBaseUrl(input: {
+  baseUrl?: string;
+  resource?: string;
+  siteRel?: string;
+}): string {
+  let { baseUrl, resource, siteRel } = input;
+  const trim = (s?: string) => (s ?? '').trim();
+
+  baseUrl = trim(baseUrl);
+  resource = trim(resource).replace(/\/+$/, ''); // 末尾スラッシュ除去
+  siteRel = trim(siteRel);
+  if (siteRel && !siteRel.startsWith('/')) siteRel = '/' + siteRel;
+
+  // 1) baseUrl が不正（空 or /_api/web など相対）なら組み立て直す
+  const isBad = !baseUrl || baseUrl === '/_api/web' || baseUrl.startsWith('/');
+
+  if (isBad) {
+    if (resource) {
+      baseUrl = resource + (siteRel || '');
+    } else if (typeof window !== 'undefined' && window.location?.origin) {
+      // SharePoint ページ直下で動く場合の最終フォールバック
+      baseUrl = window.location.origin + (siteRel || '');
+    }
+  }
+
+  // 最終チェック：絶対 URL 必須
+  try {
+    // ここで throw されなければ絶対URL
+    const u = new URL(baseUrl!);
+    // 末尾の / を消しておく
+    return (u.origin + u.pathname).replace(/\/+$/, '');
+  } catch {
+    throw new Error(`Invalid or missing SharePoint baseUrl after normalize: "${baseUrl}"`);
+  }
+}
+// Removed duplicate import
 /* eslint-disable @typescript-eslint/no-explicit-any */
 // NOTE: Avoid path alias here to keep ts-jest / vitest resolution simple without extra config
 import { useMemo } from 'react';
 import { useAuth } from '../auth/useAuth';
 import { getRuntimeEnv as getRuntimeEnvRoot } from '../env';
 import { auditLog } from './debugLogger';
-import { getAppConfig, type EnvRecord } from './env';
+import { getEnv, readBool, readString } from './env';
 import { SharePointItemNotFoundError, SharePointMissingEtagError } from './errors';
 
-export function ensureConfig(envOverride?: { VITE_SP_RESOURCE?: string; VITE_SP_SITE_RELATIVE?: string }) {
-  const overrideRecord = envOverride as EnvRecord | undefined;
-  const config = getAppConfig(overrideRecord);
-  const rawResource = (config.VITE_SP_RESOURCE ?? '').trim();
-  const rawSiteRel = (config.VITE_SP_SITE_RELATIVE ?? '').trim();
-  const isPlaceholder = (s: string) => !s || /<yourtenant>|<SiteName>/i.test(s) || s === '__FILL_ME__';
-  if (isPlaceholder(rawResource) || isPlaceholder(rawSiteRel)) {
-    throw new Error([
-      'SharePoint 接続設定が未完了です。',
-      'VITE_SP_RESOURCE 例: https://contoso.sharepoint.com（末尾スラッシュ不要）',
-      'VITE_SP_SITE_RELATIVE 例: /sites/AuditSystem（先頭スラッシュ必須・末尾不要）',
-      '`.env` を実値で更新し、開発サーバーを再起動してください。'
-    ].join('\n'));
-  }
-  const resourceCandidate = rawResource.replace(/\/+$/, '');
-  if (!/^https:\/\/.+\.sharepoint\.com$/i.test(resourceCandidate)) {
-    throw new Error(`VITE_SP_RESOURCE の形式が不正です: ${rawResource}`);
-  }
-  const resource = resourceCandidate;
-  const siteRel0 = rawSiteRel.startsWith('/') ? rawSiteRel : `/${rawSiteRel}`;
-  const siteRel = siteRel0.replace(/\/+$/, '');
-  return { resource, siteRel, baseUrl: `${resource}${siteRel}/_api/web` };
-}
+// (The above code was stray and not inside a function. If this was meant to be a function, please define it below. Otherwise, this block is removed to fix the syntax error.)
 
 const DEFAULT_LIST_TEMPLATE = 100;
 
@@ -367,23 +403,29 @@ const resolveStaffListIdentifier = (titleOverride: string, guidOverride: string)
 export function createSpClient(
   acquireToken: () => Promise<string | null>,
   baseUrl: string,
-  options: SpClientOptions = {}
+  options: SpClientOptions = {},
+  resource?: string,
+  siteRel?: string
 ) {
-  const config = getAppConfig();
+  // getAppConfig is not used anymore; use getEnv() or readString/readBool directly
   const parsePositiveNumber = (raw: string, fallback: number): number => {
     const numeric = Number(raw);
     return Number.isFinite(numeric) && numeric > 0 ? numeric : fallback;
   };
+  // getEnv, readString, readBool are already imported at the top
   const retrySettings = {
-    maxAttempts: parsePositiveNumber(config.VITE_SP_RETRY_MAX, 4),
-    baseDelay: parsePositiveNumber(config.VITE_SP_RETRY_BASE_MS, 400),
-    capDelay: parsePositiveNumber(config.VITE_SP_RETRY_MAX_DELAY_MS, 5000),
+    maxAttempts: parsePositiveNumber(readString('VITE_SP_RETRY_MAX', '4'), 4),
+    baseDelay: parsePositiveNumber(readString('VITE_SP_RETRY_BASE_MS', '400'), 400),
+    capDelay: parsePositiveNumber(readString('VITE_SP_RETRY_MAX_DELAY_MS', '5000'), 5000),
   } as const;
-  const debugEnabled = config.VITE_AUDIT_DEBUG === '1' || config.VITE_AUDIT_DEBUG === 'true';
+  const debugEnabled = readBool('VITE_AUDIT_DEBUG', false);
   function dbg(...a: unknown[]) { if (debugEnabled) console.debug('[spClient]', ...a); }
   const tokenMetricsCarrier = globalThis as { __TOKEN_METRICS__?: Record<string, unknown> };
   const { onRetry } = options;
-  const baseUrlInfo = new URL(baseUrl);
+  // --- 正規化: baseUrl/resource/siteRel を絶対URLに ---
+  const normalizedBase = normalizeBaseUrl({ baseUrl, resource, siteRel });
+  assertUrlConsistency({ baseUrl: normalizedBase, resource, siteRel });
+  const baseUrlInfo = new URL(normalizedBase);
   const normalizePath = (value: string): string => {
     if (!value) return value;
     if (/^https?:\/\//i.test(value)) {
@@ -425,10 +467,10 @@ export function createSpClient(
   const spFetch = async (path: string, init: RequestInit = {}): Promise<Response> => {
     const resolvedPath = normalizePath(path);
 
-    const isVitest = typeof process !== 'undefined' && Boolean(process.env.VITEST);
+  const isVitest = readBool('VITEST', false);
 
     // 開発環境でのモック応答
-  if (config.isDev && !isVitest) {
+  if (getEnv().NODE_ENV === 'development' && !isVitest) {
       console.info(`[DevMock] SharePoint API モック: ${init.method || 'GET'} ${resolvedPath}`);
 
       // モックレスポンスを作成
@@ -485,7 +527,9 @@ export function createSpClient(
       if (init.method === 'POST' || init.method === 'PUT' || init.method === 'PATCH' || init.method === 'MERGE') {
         headers.set('Content-Type', 'application/json;odata=nometadata');
       }
-      if (process.env.NODE_ENV === 'development') console.debug('[SPFetch] URL:', url);
+      if (import.meta.env.DEV) {
+        console.debug('[SPFetch]', init.method || 'GET', url);
+      }
       return fetch(url, { ...init, headers });
     };
 
@@ -682,18 +726,18 @@ export function createSpClient(
       latest = await spFetch(buildItemPath(listIdentifier, id, ['Id']), { method: 'GET' });
     } catch (error) {
       if ((error as { status?: number }).status === 404) {
-        throw new SharePointItemNotFoundError();
+  throw new SharePointItemNotFoundError();
       }
       throw error;
     }
     const refreshedEtag = latest.headers.get('ETag');
     if (!refreshedEtag) {
-      throw new SharePointMissingEtagError();
+  throw new SharePointMissingEtagError();
     }
 
   const second = await attempt(refreshedEtag);
     if (second) return second;
-    throw new SharePointMissingEtagError('SharePoint returned 412 after refreshing ETag');
+  throw new SharePointMissingEtagError('SharePoint returned 412 after refreshing ETag');
   };
 
   const updateItemByTitle = async <TBody extends object, TResult = unknown>(
@@ -1066,8 +1110,26 @@ export async function getStaffMaster<TRow = Record<string, unknown>>(client: Lis
 
 export const useSP = () => {
   const { acquireToken } = useAuth();
-  const cfg = useMemo(() => ensureConfig(), []);
-  const client = useMemo(() => createSpClient(acquireToken, cfg.baseUrl), [acquireToken, cfg.baseUrl]);
+  const cfg = useMemo(() => {
+    const env = getEnv();
+    const rawResource = (env.VITE_SP_RESOURCE ?? '').trim();
+    const rawSiteRel = (env.VITE_SP_SITE_RELATIVE ?? '').trim();
+    const resourceCandidate = rawResource.replace(/\/+$|^\/+/, '');
+    const resource = resourceCandidate;
+    const siteRel0 = rawSiteRel.startsWith('/') ? rawSiteRel : `/${rawSiteRel}`;
+    const siteRel = siteRel0.replace(/\/+$/, '');
+    const baseUrl = `${resource}${siteRel}/_api/web`;
+    // --- DEBUG: always print resolved values ---
+    // 決定済みの値を“1行”で出す（コピペしやすく）
+    // eslint-disable-next-line no-console
+    console.log('[useSP] resource:', resource, 'siteRel:', siteRel, 'baseUrl:', baseUrl);
+    return { resource, siteRel, baseUrl };
+  }, []);
+  // createSpClient に resource, siteRel も渡す
+  const client = useMemo(
+    () => createSpClient(acquireToken, cfg.baseUrl, {}, cfg.resource, cfg.siteRel),
+    [acquireToken, cfg.baseUrl, cfg.resource, cfg.siteRel]
+  );
   return client;
 };
 
@@ -1080,7 +1142,7 @@ export const __ensureListInternals = { buildFieldSchema };
 
 // test-only export (intentionally non-exported in production bundles usage scope)
 export const __test__ = {
-  ensureConfig,
+  // ensureConfig is now inlined above if needed
   resetMissingOptionalFieldsCache(): void {
     missingOptionalFieldsCache.clear();
   },

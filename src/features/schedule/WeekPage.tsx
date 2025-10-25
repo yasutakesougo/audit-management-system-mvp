@@ -175,7 +175,7 @@ export default function WeekPage() {
   const displayError = actionError ?? normalizedScheduleError ?? null;
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6" data-testid="week-page">
       <header className="flex flex-col gap-4 rounded-lg border border-slate-200 bg-white p-6 shadow-sm md:flex-row md:items-center md:justify-between">
         <div>
           <h1 className="text-xl font-semibold text-slate-900">スケジュール（週表示）</h1>

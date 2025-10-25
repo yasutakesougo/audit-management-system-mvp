@@ -30,7 +30,7 @@ describe('retainAuditWhere', () => {
     localStorage.setItem(AUDIT_KEY, JSON.stringify(sampleEvents));
     const audit = await import('@/lib/audit');
 
-    audit.retainAuditWhere((event) => event.channel === 'UI');
+  audit.retainAuditWhere((event: any) => event.channel === 'UI');
 
     const stored = localStorage.getItem(AUDIT_KEY);
     expect(stored).not.toBeNull();

@@ -1,0 +1,40 @@
+# metrics.template.yaml — リリース品質メトリクス テンプレート
+# 各リリースで自動生成・手動追記する品質指標のサンプル
+
+release:
+  version: vX.Y.Z
+  date: YYYY-MM-DD
+  author: github-id
+  pr: [123, 456]
+
+qa:
+  typecheck: pass
+  lint: pass
+  unit:
+    total: 120
+    passed: 120
+  coverage:
+    lines: 78
+    functions: 80
+    statements: 77
+    branches: 68
+  e2e:
+    smoke: pass
+    routes: ["/dashboard", "/schedules/week", "/audit"]
+  build: pass
+  docs: pass
+
+metrics:
+  audit:
+    total: 42
+    success: 40
+    failed: 2
+    duplicates: 5
+    duration_ms: 420
+    success_rate: 0.95
+
+notes:
+  - "Flaky test: audit-metrics.e2e.ts (intermittent timeout)"
+  - "Feature flag: VITE_FEATURE_SCHEDULES=1"
+
+# Mermaid可視化例（CHANGELOG.template.md参照）

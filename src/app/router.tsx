@@ -1,9 +1,11 @@
+import WeekPage from '@/features/schedule/WeekPage';
+import React from 'react';
+const MeetingGuidePage = React.lazy(() => import('@/pages/MeetingGuidePage'));
 import ProtectedRoute from '@/app/ProtectedRoute';
 import RoleRoute from '@/app/RoleRoute';
 import { getArchiveYears } from '@/features/archive/archiveUtils';
 import { StaffPanel } from '@/features/staff';
 import { UsersPanel } from '@/features/users';
-import React from 'react';
 import { createBrowserRouter, Navigate, Outlet, type RouteObject } from 'react-router-dom';
 import AuditPanel from '../features/audit/AuditPanel';
 import ChecklistPage from '../features/compliance-checklist/ChecklistPage';
@@ -83,6 +85,7 @@ const SuspendedDailyRecordPage: React.FC = () => (
   </React.Suspense>
 );
 
+
 const SuspendedDailyRecordMenuPage: React.FC = () => (
   <React.Suspense
     fallback={(
@@ -92,6 +95,18 @@ const SuspendedDailyRecordMenuPage: React.FC = () => (
     )}
   >
     <DailyRecordMenuPage />
+  </React.Suspense>
+);
+
+const SuspendedMeetingGuidePage: React.FC = () => (
+  <React.Suspense
+    fallback={(
+      <div className="p-4 text-sm text-slate-600" role="status">
+        ミーティングガイドを読み込んでいます…
+      </div>
+    )}
+  >
+    <MeetingGuidePage />
   </React.Suspense>
 );
 
@@ -265,10 +280,31 @@ const SuspendedIndividualSupportManagementPage: React.FC = () => (
 );
 
 const childRoutes: RouteObject[] = [
+  {
+    path: 'profile',
+    element: (
+      <div style={{ padding: 24 }}>
+        <h1 style={{ margin: 0, fontSize: 20 }}>統合利用者プロファイル</h1>
+        <p style={{ marginTop: 8 }}>この画面は開発中です（プレースホルダー）。</p>
+      </div>
+    ),
+  },
+  { path: 'health', element: <React.Suspense fallback={<div className="p-4 text-sm text-slate-600" role="status">健康管理を読み込んでいます…</div>}><HealthRecordTabletMock /></React.Suspense> },
 // E2E専用ルート: VITE_APP_E2E=1 のときだけ追加
 ...(readEnv('VITE_APP_E2E') === '1'
   ? [{ path: 'e2e/attendance', element: <SuspendedAttendanceRecordPage /> }]
   : []),
+    {
+      path: 'attendance',
+      element: (
+        <div style={{ padding: 24 }}>
+          <h1 style={{ margin: 0, fontSize: 20 }}>通所・送迎</h1>
+          <p style={{ marginTop: 8 }}>この画面は開発中です（プレースホルダー）。</p>
+        </div>
+      ),
+    },
+    // キャッチオール: 未定義URLは/planにリダイレクト
+    { path: '*', element: <Navigate to="/plan" replace /> },
   { path: 'health-record-tablet-mock', element: (
     <React.Suspense fallback={<div className="p-4 text-sm text-slate-600" role="status">健康記録UIを読み込んでいます…</div>}>
       <HealthRecordTabletMock />
@@ -277,6 +313,7 @@ const childRoutes: RouteObject[] = [
   { path: 'dailycare/record-entry-demo', element: <SuspendedDailyCareRecordEntryDemoPage /> },
   { index: true, element: <SuspendedHomePage /> },
   { path: 'dashboard', element: <SuspendedDashboardPage /> },
+  { path: 'meeting-guide', element: <SuspendedMeetingGuidePage /> },
   { path: 'albums', element: <SuspendedActivityAlbumPage /> },
   { path: 'records', element: <RecordList /> },
   { path: 'records/diary', element: <SuspendedDailyRecordPage /> },
@@ -365,7 +402,7 @@ const childRoutes: RouteObject[] = [
     element: (
       <SchedulesGate>
         <ProtectedRoute flag="schedules">
-          <SuspendedSchedulePage />
+          <WeekPage />
         </ProtectedRoute>
       </SchedulesGate>
     ),

@@ -1,4 +1,5 @@
 import { readEnv } from '@/lib/env';
+import { readString } from '@/lib/env';
 import type { UseSP } from '@/lib/spClient';
 import { spWriteResilient, type SpWriteResult } from '@/lib/spWrite';
 import { SCHEDULE_FIELD_CATEGORY } from '@/sharepoint/fields';
@@ -107,7 +108,7 @@ const parseSharePointJson = async (response: Response): Promise<unknown> => {
 
 const ensureWriteSuccess = <T>(result: SpWriteResult<T>): SpWriteResult<T> & { ok: true; raw: Response } => {
   if (!result.ok) {
-    throw result.error ?? new Error('SharePoint write failed');
+    throw (result as Extract<typeof result, { ok: false }>).error ?? new Error('SharePoint write failed');
   }
   return result as SpWriteResult<T> & { ok: true; raw: Response };
 };

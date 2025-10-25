@@ -2,6 +2,15 @@
 <html lang="ja">
   <head>
     <meta charset="UTF-8" />
+    <link rel="preconnect" href="https://login.microsoftonline.com" crossorigin />
+    <link rel="preconnect" href="%VITE_SP_RESOURCE%" crossorigin />
+    <script>
+      // env.runtime.json をグローバルに注入
+      fetch('/env.runtime.json')
+        .then(r => r.ok ? r.json() : null)
+        .then(env => { if (env) globalThis.__ENV = env })
+        .catch(() => {});
+    </script>
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Audit Management MVP</title>
   </head>

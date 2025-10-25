@@ -1,3 +1,4 @@
+import { useEffect } from 'react';
 import { useFeatureFlags } from '@/config/featureFlags';
 import MobileAgendaView from '@/features/schedule/components/MobileAgendaView';
 import NextActionCard from '@/features/schedule/components/NextActionCard';
@@ -5,6 +6,8 @@ import { toTileTestId } from '@/features/home/toTileTestId';
 import { useSchedulesToday } from '@/features/schedule/useSchedulesToday';
 import { isDemoModeEnabled } from '@/lib/env';
 import UnsynedAuditBadge from '@/ui/components/UnsynedAuditBadge';
+import { NavLinkPrefetch } from '@/components/NavLinkPrefetch';
+import { scheduleHomeWarmup } from '@/app/idle-preload';
 import ArrowForwardRoundedIcon from '@mui/icons-material/ArrowForwardRounded';
 import AssignmentTurnedInRoundedIcon from '@mui/icons-material/AssignmentTurnedInRounded';
 import ChecklistRoundedIcon from '@mui/icons-material/ChecklistRounded';
@@ -30,7 +33,6 @@ import Stack from '@mui/material/Stack';
 import type { Theme } from '@mui/material/styles';
 import { alpha, useTheme } from '@mui/material/styles';
 import Typography from '@mui/material/Typography';
-import { Link as RouterLink } from 'react-router-dom';
 
 type TileTone = 'primary' | 'success' | 'info' | 'warning' | 'secondary' | 'neutral';
 
@@ -41,6 +43,8 @@ type Tile = {
   Icon: typeof PeopleAltRoundedIcon;
   tone: TileTone;
   ariaLabel?: string;
+  preload?: () => Promise<unknown>;
+  preloadKey?: string;
 };
 
 const tiles: Tile[] = [
@@ -67,10 +71,12 @@ const tiles: Tile[] = [
   },
   {
     to: '/schedules/week',
-    label: 'マスタースケジュール',
+    label: 'スケジュール',
     caption: '事業所スケジュールをチェック',
     Icon: EventAvailableRoundedIcon,
     tone: 'secondary',
+    preload: () => import('@/features/schedule/SchedulePage'),
+    preloadKey: 'route:schedules',
   },
   {
     to: '/mobile',
@@ -85,6 +91,8 @@ const tiles: Tile[] = [
     caption: '今日の記録入力を開始',
     Icon: AssignmentTurnedInRoundedIcon,
     tone: 'info',
+    preload: () => import('@/pages/DailyRecordMenuPage'),
+    preloadKey: 'route:records',
   },
   {
     to: '/checklist',
@@ -166,9 +174,14 @@ export default function Home() {
         }
       : null;
 
+  useEffect(() => {
+    scheduleHomeWarmup();
+  }, []);
+
   return (
     <Container component="main" maxWidth="lg" sx={{ py: { xs: 4, md: 6 } }}>
       <Stack spacing={4}>
+        <span data-testid="flag-schedules-enabled" style={{ display: 'none' }}>{String(schedulesEnabled)}</span>
         <Stack component="section" spacing={2}>
           <div>
             <Typography variant="h3" component="h1" fontWeight={700} gutterBottom>
@@ -258,7 +271,7 @@ export default function Home() {
             gridTemplateColumns: { xs: 'repeat(1, minmax(0, 1fr))', sm: 'repeat(2, minmax(0, 1fr))' },
           }}
         >
-          {activeTiles.map(({ to, label, caption, Icon, tone, ariaLabel }) => {
+          {activeTiles.map(({ to, label, caption, Icon, tone, ariaLabel, preload, preloadKey }) => {
             const palette = toneStyles(tone, theme);
             return (
               <Card
@@ -274,8 +287,10 @@ export default function Home() {
                 }}
               >
                 <CardActionArea
-                  component={RouterLink}
+                  component={NavLinkPrefetch}
                   to={to}
+                  preload={preload}
+                  preloadKey={preloadKey}
                   sx={{
                     height: '100%',
                     display: 'flex',

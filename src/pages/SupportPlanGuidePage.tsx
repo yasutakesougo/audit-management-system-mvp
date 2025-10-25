@@ -1,3 +1,12 @@
+declare global {
+  interface Window {
+    __ORG_NAME__?: string;
+    __ORG_ADDRESS__?: string;
+    __ORG_TEL__?: string;
+    __ORG_FAX__?: string;
+    __AVAILABLE_ROUTES__?: string[];
+  }
+}
 import ArticleRoundedIcon from '@mui/icons-material/ArticleRounded';
 import CheckCircleRoundedIcon from '@mui/icons-material/CheckCircleRounded';
 import ContentCopyRoundedIcon from '@mui/icons-material/ContentCopyRounded';
@@ -8,6 +17,15 @@ import FileUploadRoundedIcon from '@mui/icons-material/FileUploadRounded';
 import PersonAddRoundedIcon from '@mui/icons-material/PersonAddRounded';
 import RestartAltRoundedIcon from '@mui/icons-material/RestartAltRounded';
 import VerifiedUserRoundedIcon from '@mui/icons-material/VerifiedUserRounded';
+import HomeRoundedIcon from '@mui/icons-material/HomeRounded';
+import TodayRoundedIcon from '@mui/icons-material/TodayRounded';
+import NoteAltRoundedIcon from '@mui/icons-material/NoteAltRounded';
+import FactCheckRoundedIcon from '@mui/icons-material/FactCheckRounded';
+import LinkRoundedIcon from '@mui/icons-material/LinkRounded';
+import DownloadRoundedIcon from '@mui/icons-material/DownloadRounded';
+import PrintRoundedIcon from '@mui/icons-material/PrintRounded';
+import AddRoundedIcon from '@mui/icons-material/AddRounded';
+import CleaningServicesRoundedIcon from '@mui/icons-material/CleaningServicesRounded';
 import {
   Alert,
   Box,
@@ -32,10 +50,16 @@ import {
   Typography,
   useMediaQuery,
   useTheme,
+  BottomNavigation,
+  BottomNavigationAction,
+  SpeedDial,
+  SpeedDialAction,
+  SpeedDialIcon,
+  Badge,
 } from '@mui/material';
 import { visuallyHidden } from '@mui/utils';
 import React from 'react';
-import { useLocation } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { useUsersStore } from '@/features/users/store';
@@ -58,6 +82,7 @@ type SupportPlanForm = {
   riskManagement: string;
   complianceControls: string;
   improvementIdeas: string;
+  lastMonitoringDate: string; // 直近のモニタ実施日 (YYYY/MM/DD)
 };
 
 const defaultFormState: SupportPlanForm = {
@@ -77,6 +102,7 @@ const defaultFormState: SupportPlanForm = {
   riskManagement: '',
   complianceControls: '',
   improvementIdeas: '',
+  lastMonitoringDate: '',
 };
 
 type SectionKey =
@@ -146,6 +172,7 @@ const FIELD_LIMITS: Record<keyof SupportPlanForm, number> = {
   riskManagement: 700,
   complianceControls: 700,
   improvementIdeas: 900,
+  lastMonitoringDate: 20,
 };
 
 const REQUIRED_FIELDS: Array<keyof SupportPlanForm> = [
@@ -162,7 +189,91 @@ const REQUIRED_FIELDS: Array<keyof SupportPlanForm> = [
 ];
 
 const FIELD_KEYS = Object.keys(defaultFormState) as Array<keyof SupportPlanForm>;
+
 const TOTAL_FIELDS = FIELD_KEYS.length;
+
+// --- Deadline helpers (計画開始+30日 / 6か月モニタ) ---
+const toDate = (s: string | undefined) => {
+  if (!s) return undefined;
+    const m = s.match(/(\d{4})[/.-](\d{1,2})[/.-](\d{1,2})/);
+  if (!m) return undefined;
+  const [_, y, mo, d] = m;
+  const dt = new Date(Number(y), Number(mo) - 1, Number(d));
+  return Number.isNaN(dt.getTime()) ? undefined : dt;
+};
+
+const parsePlanPeriod = (period: string): { start?: Date; end?: Date } => {
+  if (!period) return {};
+  const parts = period.split(/~|〜/).map((s) => s.trim());
+  return { start: toDate(parts[0]), end: toDate(parts[1]) };
+};
+
+const addMonths = (date: Date, months: number) => {
+  const d = new Date(date);
+  const day = d.getDate();
+  d.setMonth(d.getMonth() + months);
+  // handle month-end overflow
+  if (d.getDate() < day) d.setDate(0);
+  return d;
+};
+
+const formatDateJP = (d?: Date) =>
+  d ? `${d.getFullYear()}/${String(d.getMonth() + 1).padStart(2, '0')}/${String(d.getDate()).padStart(2, '0')}` : '';
+
+const daysDiff = (a: Date, b: Date) => Math.round((a.getTime() - b.getTime()) / (1000 * 60 * 60 * 24));
+
+type DeadlineInfo = {
+  label: string;
+  date?: Date;
+  daysLeft?: number; // 正数: 期限までの日数 / 負数: 経過日数
+  color: 'default' | 'success' | 'warning' | 'error';
+  tooltip?: string;
+};
+
+const computeDeadlineInfo = (form: SupportPlanForm): { creation: DeadlineInfo; monitoring: DeadlineInfo } => {
+  const now = new Date();
+  const { start, end } = parsePlanPeriod(form.planPeriod);
+
+  // 作成期限: 計画期間の開始日 + 30日
+  let creationDate: Date | undefined = start ? new Date(start) : undefined;
+  if (creationDate) creationDate = new Date(creationDate.getTime() + 30 * 24 * 60 * 60 * 1000);
+  const creationDaysLeft = creationDate ? daysDiff(creationDate, now) : undefined;
+  let creationColor: DeadlineInfo['color'] = 'default';
+  if (creationDaysLeft !== undefined) {
+    if (creationDaysLeft < 0) creationColor = 'error';
+    else if (creationDaysLeft <= 7) creationColor = 'warning';
+    else creationColor = 'success';
+  }
+
+  // 次回モニタ期限: 直近モニタ実施日 + 6か月（無ければ計画開始 + 6か月）
+  const lastMon = toDate(form.lastMonitoringDate);
+  let monitoringDate: Date | undefined = lastMon ? addMonths(lastMon, 6) : start ? addMonths(start, 6) : undefined;
+  if (monitoringDate && end && end.getTime() < monitoringDate.getTime()) monitoringDate = end;
+  const monitoringDaysLeft = monitoringDate ? daysDiff(monitoringDate, now) : undefined;
+  let monitoringColor: DeadlineInfo['color'] = 'default';
+  if (monitoringDaysLeft !== undefined) {
+    if (monitoringDaysLeft < 0) monitoringColor = 'error';
+    else if (monitoringDaysLeft <= 14) monitoringColor = 'warning';
+    else monitoringColor = 'success';
+  }
+
+  return {
+    creation: {
+      label: '作成期限(開始+30日)',
+      date: creationDate,
+      daysLeft: creationDaysLeft,
+      color: creationColor,
+      tooltip: creationDate ? `期限: ${formatDateJP(creationDate)} / 残り: ${creationDaysLeft}日` : '計画期間(開始日)が未入力',
+    },
+    monitoring: {
+      label: '次回モニタ期限(6か月)',
+      date: monitoringDate,
+      daysLeft: monitoringDaysLeft,
+      color: monitoringColor,
+      tooltip: monitoringDate ? `期限: ${formatDateJP(monitoringDate)} / 残り: ${monitoringDaysLeft}日` : '計画期間(開始日)が未入力',
+    },
+  };
+};
 
 const SECTIONS: SectionConfig[] = [
   {
@@ -324,6 +435,13 @@ const SECTIONS: SectionConfig[] = [
         helper: '法定期限・臨時見直し条件・代替案の検討フローなど。',
         quickPhrases: ['定期見直し: 6か月ごと', '臨時見直し:  ／ トリガー: 参加率◯%未満／事故報告 等'],
       },
+      {
+        key: 'lastMonitoringDate',
+        label: '直近のモニタ実施日',
+        placeholder: '例: 2025/10/21（YYYY/MM/DD）',
+        helper: '次回モニタ期限は「直近のモニタ実施日 + 6か月」で自動算出（未入力時は計画開始日から算出）。',
+        quickPhrases: ['YYYY/MM/DD'],
+      },
     ],
   },
   {
@@ -474,6 +592,7 @@ const buildMarkdown = (form: SupportPlanForm) => {
       lines: [
         form.monitoringPlan && `モニタリング手法: ${form.monitoringPlan}`,
         form.reviewTiming && `見直しタイミング: ${form.reviewTiming}`,
+        form.lastMonitoringDate && `直近モニタ実施日: ${form.lastMonitoringDate}`,
       ].filter(Boolean) as string[],
     },
     {
@@ -534,6 +653,36 @@ export default function SupportPlanGuidePage() {
   const { data: masterUsers = [] } = useUsersStore();
   const location = useLocation();
   const [selectedMasterUserId, setSelectedMasterUserId] = React.useState('');
+  const navigate = useNavigate();
+  const [bottomNav, setBottomNav] = React.useState('plan');
+  const safeNavigate = (path: string) => {
+    const allowList = Array.isArray(window.__AVAILABLE_ROUTES__) ? window.__AVAILABLE_ROUTES__ : null;
+
+    // Conservative fallback allowlist when no explicit routes are provided
+    const fallbackAllow = new Set<string>([
+      location.pathname, // always allow current screen
+      '/',               // home/root
+      '/plan',           // this screen is most likely mounted under /plan
+    ]);
+
+    const isAllowed = allowList ? allowList.includes(path) : fallbackAllow.has(path);
+
+    if (!isAllowed) {
+      setToast({ open: true, message: 'この画面はまだ未実装です（開発中）', severity: 'info' });
+      return;
+    }
+    navigate(path);
+  };
+  const openRoute = (path: string) => () => safeNavigate(path);
+
+  React.useEffect(() => {
+    const p = location.pathname;
+    if (p === '/' || p === '/home') setBottomNav('home');
+    else if (p.startsWith('/attendance')) setBottomNav('attendance');
+    else if (p.startsWith('/daily-record')) setBottomNav('daily');
+    else if (p.startsWith('/audit')) setBottomNav('audit');
+    else if (p.startsWith('/plan')) setBottomNav('plan');
+  }, [location.pathname]);
   const userOptions = React.useMemo<UserOption[]>(() => {
     return (masterUsers ?? [])
       .filter((user) => user && user.IsActive !== false)
@@ -558,6 +707,15 @@ export default function SupportPlanGuidePage() {
   const activeDraft = activeDraftId ? drafts[activeDraftId] : undefined;
   const form = activeDraft?.data ?? createEmptyForm();
   const markdown = React.useMemo(() => buildMarkdown(form), [form]);
+
+  const deadlines = React.useMemo(() => computeDeadlineInfo(form), [form]);
+
+  const auditAlertCount = React.useMemo(() => {
+    let count = 0;
+    if (deadlines.creation.daysLeft !== undefined && deadlines.creation.daysLeft < 0) count += 1;
+    if (deadlines.monitoring.daysLeft !== undefined && deadlines.monitoring.daysLeft < 0) count += 1;
+    return count;
+  }, [deadlines]);
 
   React.useEffect(() => {
     try {
@@ -1131,6 +1289,27 @@ export default function SupportPlanGuidePage() {
             fullWidth
             inputProps={{ maxLength: limit }}
           />
+          {field.key === 'lastMonitoringDate' ? (
+            <Stack direction="row" spacing={1} alignItems="center">
+              <Button
+                size="small"
+                variant="outlined"
+                onClick={() => handleFieldChange('lastMonitoringDate', formatDateJP(new Date()))}
+              >
+                本日を記録
+              </Button>
+              <Button
+                size="small"
+                variant="text"
+                onClick={() => handleFieldChange('lastMonitoringDate', '')}
+              >
+                クリア
+              </Button>
+              <Typography variant="caption" sx={{ color: 'text.secondary' }}>
+                入力形式: YYYY/MM/DD（半角）
+              </Typography>
+            </Stack>
+          ) : null}
         </Stack>
       </Paper>
     );
@@ -1183,6 +1362,14 @@ export default function SupportPlanGuidePage() {
             >
               Markdownコピー
             </Button>
+            <Button
+              variant="contained"
+              size="small"
+              startIcon={<ArticleRoundedIcon />}
+              onClick={() => openPrintView(form, form.serviceUserName || activeDraft?.name || 'support-plan')}
+            >
+              PDFプレビュー/印刷
+            </Button>
           </Stack>
         </Stack>
         <Divider />
@@ -1214,8 +1401,152 @@ export default function SupportPlanGuidePage() {
     </Paper>
   );
 
+// PDFプレビュー/印刷（表組み・ロゴ・ページ番号・押印枠 + 事業所情報 + セクション見出し）
+const openPrintView = (data: SupportPlanForm, title: string) => {
+  // HTMLエスケープ
+  const esc = (s: string) =>
+    String(s || '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]!));
+
+  // 1行（空はスキップ）
+  const row = (label: string, value?: string) =>
+    value && value.trim()
+      ? `<tr><th>${esc(label)}</th><td>${esc(value).replace(/\n/g, '<br/>')}</td></tr>`
+      : '';
+
+  // セクション見出し＋中身（空なら非表示）
+  const section = (titleText: string, inner: string) =>
+    inner && inner.trim()
+      ? `<tr class="section"><th colspan="2">${esc(titleText)}</th></tr>${inner}`
+      : '';
+
+  // 事業所情報（window から一時上書き可）
+  const org = {
+    name: window.__ORG_NAME__ ?? '磯子区障害者地域活動ホーム',
+    address: window.__ORG_ADDRESS__ ?? '〒000-0000 神奈川県横浜市磯子区○○○○',
+    tel: window.__ORG_TEL__ ?? 'TEL 045-000-0000',
+    fax: window.__ORG_FAX__ ?? 'FAX 045-000-0001',
+  };
+
+  // 各セクションの行を構築
+  const secBasic =
+    row('利用者名 / ID', data.serviceUserName) +
+    row('支援区分・医療リスク等', data.supportLevel) +
+    row('計画期間', data.planPeriod);
+
+  const secAssessment =
+    row('ニーズ・課題の要約', data.assessmentSummary) +
+    row('強み・活用資源', data.strengths);
+
+  const secGoals =
+    row('長期目標（6か月以上）', data.longTermGoal) +
+    row('短期目標（3か月目安）', data.shortTermGoals);
+
+  const secSupports =
+    row('日中支援（身体介護・相談等）', data.dailySupports) +
+    row('創作・生産 / 機能訓練', data.creativeActivities);
+
+  const secDecision =
+    row('意思決定支援の工夫', data.decisionSupport) +
+    row('サービス担当者会議・同意の記録', data.conferenceNotes);
+
+  const secMonitoring =
+    row('モニタリング手法', data.monitoringPlan) +
+    row('見直しタイミング・判断基準', data.reviewTiming) +
+    row('直近モニタ実施日', data.lastMonitoringDate);
+
+  const secRisk =
+    row('主なリスクと対応策', data.riskManagement) +
+    row('証跡・ダブルチェック手順', data.complianceControls);
+
+  const secExcellence =
+    row('改善提案 / 次のアクション', data.improvementIdeas);
+
+  // 表（30%/70%）
+  const table = `
+    <table class="kv">
+      ${section('基本情報', secBasic)}
+      ${section('アセスメント', secAssessment)}
+      ${section('目標（SMART）', secGoals)}
+      ${section('具体的支援', secSupports)}
+      ${section('意思決定支援・会議記録', secDecision)}
+      ${section('モニタリングと見直し', secMonitoring)}
+      ${section('減算リスク対策', secRisk)}
+      ${section('卓越性・改善提案', secExcellence)}
+    </table>
+  `;
+
+  // 完成HTML（ここで定義してから window へ書き込む）
+  const html = `<!doctype html>
+<html>
+<head>
+<meta charset="utf-8" />
+<title>${esc(title)}</title>
+<style>
+  @page { size: A4; margin: 16mm 16mm 18mm; }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Hiragino Kaku Gothic ProN', 'Noto Sans JP', 'Yu Gothic UI', 'YuGothic', Meiryo, sans-serif; font-size: 12pt; color: #111; counter-reset: page; }
+  header { display: flex; align-items: center; justify-content: space-between; gap: 12pt; margin-bottom: 8pt; }
+  .h-left { display: flex; align-items: center; gap: 10pt; }
+  header img.logo { height: 28pt; }
+  header .title { font-size: 18pt; font-weight: 700; }
+  .org { text-align: right; line-height: 1.4; }
+  .org .name { font-weight: 600; }
+  .org .meta { font-size: 10pt; color: #555; }
+  .meta { color: #555; font-size: 10pt; margin-bottom: 10pt; }
+  h2 { font-size: 13pt; margin: 14pt 0 8pt; border-bottom: 1px solid #ccc; padding-bottom: 2pt; }
+  table.kv { width: 100%; border-collapse: collapse; table-layout: fixed; }
+  table.kv th, table.kv td { border: 1px solid #bbb; vertical-align: top; padding: 6pt 8pt; word-break: break-word; }
+  table.kv th { width: 30%; background: #f7f7f7; }
+  table.kv td { width: 70%; }
+  table.kv tr.section th { background: #e9f2ff; font-weight: 700; text-align: left; width: auto; padding: 8pt; }
+  .signatures { display: grid; grid-template-columns: 1fr 1fr; gap: 12pt; margin-top: 18pt; }
+  .box { border: 1px solid #000; height: 48mm; padding: 6pt; position: relative; }
+  .box h3 { font-size: 11pt; margin: 0 0 6pt; }
+  .stamp { position: absolute; top: 6pt; right: 6pt; border: 1px dashed #f00; width: 28mm; height: 28mm; display: inline-block; text-align: center; line-height: 28mm; font-size: 10pt; color: #f00; }
+  footer { position: fixed; bottom: 8mm; left: 16mm; right: 16mm; font-size: 9pt; color: #666; display: flex; justify-content: space-between; }
+  .pageno:after { content: counter(page); }
+</style>
+</head>
+<body>
+  <header>
+    <div class="h-left">
+      <img class="logo" src="/public/logo.png" alt="logo" />
+      <div class="title">個別支援計画書（生活介護）</div>
+    </div>
+    <div class="org">
+      <div class="name">${esc(org.name)}</div>
+      <div class="meta">${esc(org.address)}<br/>${esc(org.tel)} ／ ${esc(org.fax)}</div>
+    </div>
+  </header>
+  <div class="meta">対象: ${esc(title)} ／ 作成日: ${formatDateJP(new Date())}</div>
+  ${table}
+  <h2>署名・職印欄</h2>
+  <div class="signatures">
+    <div class="box"><h3>本人</h3></div>
+    <div class="box"><h3>家族／代理人</h3></div>
+    <div class="box"><h3>サービス管理責任者</h3><span class="stamp">職印</span></div>
+    <div class="box"><h3>事業所 管理者</h3><span class="stamp">職印</span></div>
+  </div>
+  <footer>
+    <div>© ${new Date().getFullYear()} 事業所</div>
+    <div>Page <span class="pageno"></span></div>
+  </footer>
+</body>
+</html>`;
+
+  // 印刷ウィンドウを開いて書き込み
+  const win = window.open('', '_blank');
+  if (!win) return;
+  win.document.open();
+  win.document.write(html);
+  win.document.close();
+  const timer = setTimeout(() => {
+    try { win.focus(); win.print(); } catch { /* noop */ }
+  }, 500);
+  win.addEventListener('beforeunload', () => clearTimeout(timer));
+};
+
   return (
-    <Stack spacing={3}>
+    <Stack spacing={3} sx={{ pb: { xs: 9, md: 11 } }}>
       <Stack direction={{ xs: 'column', sm: 'row' }} alignItems={{ xs: 'flex-start', sm: 'center' }} spacing={1}>
         <DescriptionRoundedIcon color="primary" fontSize="large" />
         <Box sx={{ flex: 1 }}>
@@ -1240,6 +1571,33 @@ export default function SupportPlanGuidePage() {
           </Button>
         </Tooltip>
       </Stack>
+
+      <Paper variant="outlined" sx={{ p: 2 }}>
+        <Stack spacing={1.5}>
+          {/* 状態の可視化（信号） */}
+          {(() => {
+            const creationSeverity = deadlines.creation.color === 'error' ? 'error' : deadlines.creation.color === 'warning' ? 'warning' : deadlines.creation.color === 'success' ? 'success' : 'info';
+            const monitoringSeverity = deadlines.monitoring.color === 'error' ? 'error' : deadlines.monitoring.color === 'warning' ? 'warning' : deadlines.monitoring.color === 'success' ? 'success' : 'info';
+            return (
+              <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1} alignItems={{ xs: 'stretch', sm: 'center' }} justifyContent="space-between">
+                <Alert severity={creationSeverity as any} variant="outlined">
+                  {deadlines.creation.label}: {formatDateJP(deadlines.creation.date)}{deadlines.creation.daysLeft !== undefined ? `（${deadlines.creation.daysLeft >= 0 ? '残' : '超過'}${Math.abs(deadlines.creation.daysLeft)}日）` : '（開始日未入力）'}
+                </Alert>
+                <Alert severity={monitoringSeverity as any} variant="outlined">
+                  {deadlines.monitoring.label}: {formatDateJP(deadlines.monitoring.date)}{deadlines.monitoring.daysLeft !== undefined ? `（${deadlines.monitoring.daysLeft >= 0 ? '残' : '超過'}${Math.abs(deadlines.monitoring.daysLeft)}日）` : '（開始日未入力）'}
+                </Alert>
+              </Stack>
+            );
+          })()}
+          {/* “金の糸”クイックリンク */}
+          <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
+            <Chip icon={<LinkRoundedIcon fontSize="small" />} clickable onClick={openRoute('/attendance')} label="通所・送迎へ" variant="outlined" />
+            <Chip icon={<LinkRoundedIcon fontSize="small" />} clickable onClick={openRoute('/daily-record')} label="日次記録へ" variant="outlined" />
+            <Chip icon={<LinkRoundedIcon fontSize="small" />} clickable onClick={openRoute('/plan')} label="計画一覧へ" variant="outlined" />
+            <Chip icon={<LinkRoundedIcon fontSize="small" />} clickable onClick={openRoute('/audit')} label="監査ダッシュボードへ" variant="outlined" />
+          </Stack>
+        </Stack>
+      </Paper>
 
       <Paper variant="outlined" sx={{ p: 2 }}>
         <Stack spacing={2}>
@@ -1387,6 +1745,29 @@ export default function SupportPlanGuidePage() {
               </Tooltip>
             </Stack>
           </Stack>
+          {/* Deadlines row */}
+          <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
+            <Tooltip title={deadlines.creation.tooltip || ''}>
+              <Chip
+                icon={<VerifiedUserRoundedIcon fontSize="small" />}
+                color={deadlines.creation.color === 'error' ? 'error' : deadlines.creation.color === 'warning' ? 'warning' : deadlines.creation.color === 'success' ? 'success' : 'default'}
+                variant={deadlines.creation.color === 'default' ? 'outlined' : 'filled'}
+                label={`${deadlines.creation.label}: ${formatDateJP(deadlines.creation.date)}${deadlines.creation.daysLeft !== undefined ? `（${deadlines.creation.daysLeft >= 0 ? '残' : '超過'}${Math.abs(deadlines.creation.daysLeft)}日）` : ''}`}
+              />
+            </Tooltip>
+            <Tooltip title={deadlines.monitoring.tooltip || ''}>
+              <Chip
+                icon={<CheckCircleRoundedIcon fontSize="small" />}
+                color={deadlines.monitoring.color === 'error' ? 'error' : deadlines.monitoring.color === 'warning' ? 'warning' : deadlines.monitoring.color === 'success' ? 'success' : 'default'}
+                variant={deadlines.monitoring.color === 'default' ? 'outlined' : 'filled'}
+                label={`${deadlines.monitoring.label}: ${formatDateJP(deadlines.monitoring.date)}${deadlines.monitoring.daysLeft !== undefined ? `（${deadlines.monitoring.daysLeft >= 0 ? '残' : '超過'}${Math.abs(deadlines.monitoring.daysLeft)}日）` : ''}`}
+              />
+            </Tooltip>
+            <Chip
+              variant="outlined"
+              label={`直近モニタ: ${form.lastMonitoringDate || '未記録'}`}
+            />
+          </Stack>
           <LinearProgress variant="determinate" value={completionPercent} />
         </Stack>
       </Paper>
@@ -1499,6 +1880,39 @@ export default function SupportPlanGuidePage() {
         </Paper>
       )}
 
+      <SpeedDial ariaLabel="クイックアクション" sx={{ position: 'fixed', bottom: { xs: 72, md: 88 }, right: 16 }} icon={<SpeedDialIcon />}>
+        <SpeedDialAction
+          icon={<PrintRoundedIcon />}
+          tooltipTitle="PDFプレビュー/印刷"
+          onClick={() => openPrintView(form, form.serviceUserName || activeDraft?.name || 'support-plan')}
+          FabProps={{ 'aria-label': 'PDFプレビュー/印刷' }}
+        />
+        <SpeedDialAction
+          icon={<DownloadRoundedIcon />}
+          tooltipTitle="Markdown保存"
+          onClick={handleDownloadMarkdown}
+          FabProps={{ 'aria-label': 'Markdown保存' }}
+        />
+        <SpeedDialAction
+          icon={<ContentCopyRoundedIcon />}
+          tooltipTitle="Markdownコピー"
+          onClick={handleCopyMarkdown}
+          FabProps={{ 'aria-label': 'Markdownコピー' }}
+        />
+        <SpeedDialAction
+          icon={<AddRoundedIcon />}
+          tooltipTitle="利用者ドラフトを追加"
+          onClick={handleAddDraft}
+          FabProps={{ 'aria-label': '利用者ドラフトを追加' }}
+        />
+        <SpeedDialAction
+          icon={<CleaningServicesRoundedIcon />}
+          tooltipTitle="フォームをリセット"
+          onClick={handleReset}
+          FabProps={{ 'aria-label': 'フォームをリセット' }}
+        />
+      </SpeedDial>
+
       <Snackbar
         open={toast.open}
         autoHideDuration={4000}
@@ -1512,6 +1926,20 @@ export default function SupportPlanGuidePage() {
           {toast.message}
         </Alert>
       </Snackbar>
+
+      <Paper elevation={8} sx={{ position: 'fixed', bottom: 0, left: 0, right: 0 }}>
+        <BottomNavigation
+          showLabels
+          value={bottomNav}
+          onChange={(_e, v) => setBottomNav(v)}
+        >
+          <BottomNavigationAction value="home" label="ホーム" aria-label="ホーム" aria-current={bottomNav === 'home' ? 'page' : undefined} icon={<HomeRoundedIcon />} onClick={openRoute('/')} />
+          <BottomNavigationAction value="attendance" label="通所" aria-label="通所・送迎" aria-current={bottomNav === 'attendance' ? 'page' : undefined} icon={<TodayRoundedIcon />} onClick={openRoute('/attendance')} />
+          <BottomNavigationAction value="daily" label="日次記録" aria-label="日次記録" aria-current={bottomNav === 'daily' ? 'page' : undefined} icon={<NoteAltRoundedIcon />} onClick={openRoute('/daily-record')} />
+          <BottomNavigationAction value="plan" label="計画" aria-label="計画" aria-current={bottomNav === 'plan' ? 'page' : undefined} icon={<DescriptionRoundedIcon />} onClick={openRoute('/plan')} />
+          <BottomNavigationAction value="audit" label="監査" aria-label="監査ダッシュボード" aria-current={bottomNav === 'audit' ? 'page' : undefined} icon={<Badge badgeContent={auditAlertCount} color="error" invisible={!auditAlertCount}><FactCheckRoundedIcon /></Badge>} onClick={openRoute('/audit')} />
+        </BottomNavigation>
+      </Paper>
     </Stack>
   );
 }

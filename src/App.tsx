@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, type ReactNode } from 'react';
+import React, { useEffect, useMemo } from 'react';
 import CssBaseline from '@mui/material/CssBaseline';
 import { RouterProvider } from 'react-router-dom';
 import { MsalProvider } from './auth/MsalProvider';
@@ -14,55 +14,65 @@ import { GRAPH_RESOURCE } from './auth/msalConfig';
 import { readBool } from './lib/env';
 
 type BridgeProps = {
-  children: ReactNode;
+	children: React.ReactNode;
 };
 
 const graphEnabled = readBool('VITE_FEATURE_SCHEDULES_GRAPH', false);
 
 function SchedulesProviderBridge({ children }: BridgeProps) {
-  const { acquireToken } = useAuth();
+	const { acquireToken } = useAuth();
 
-  const port = useMemo(() => {
-    if (!graphEnabled) return demoSchedulesPort;
-    return makeGraphSchedulesPort(() => acquireToken(GRAPH_RESOURCE));
-  }, [acquireToken]);
+	const port = useMemo(() => {
+		if (!graphEnabled) return demoSchedulesPort;
+		return makeGraphSchedulesPort(() => acquireToken(GRAPH_RESOURCE));
+	}, [acquireToken]);
 
-  return <SchedulesProvider value={port}>{children}</SchedulesProvider>;
+	return <SchedulesProvider value={port}>{children}</SchedulesProvider>;
 }
 
 export const ToastNotifierBridge: React.FC = () => {
-  const { show } = useToast();
+	const { show } = useToast();
 
-  useEffect(() => {
-    registerNotifier((message) => {
-      if (typeof message === 'string' && message.trim().length > 0) {
-        show('info', message);
-      }
-    });
-    return () => {
-      registerNotifier(null);
-    };
-  }, [show]);
+	useEffect(() => {
+		registerNotifier((message) => {
+			if (typeof message === 'string' && message.trim().length > 0) {
+				show('info', message);
+			}
+		});
+		return () => {
+			registerNotifier(null);
+		};
+	}, [show]);
 
-  return null;
+	return null;
 };
 
 function App() {
-  return (
-    <FeatureFlagsProvider>
-      <MsalProvider>
-        <ThemeRoot>
-          <CssBaseline />
-          <ToastProvider>
-            <SchedulesProviderBridge>
-              <ToastNotifierBridge />
-              <RouterProvider router={router} future={routerFutureFlags} />
-            </SchedulesProviderBridge>
-          </ToastProvider>
-        </ThemeRoot>
-      </MsalProvider>
-    </FeatureFlagsProvider>
-  );
+	React.useEffect(() => {
+		if (typeof window !== 'undefined') {
+			(window as any).__APP_READY__ = true;
+			window.dispatchEvent(new Event('app:ready'));
+		}
+	}, []);
+	return (
+		<div data-testid="app-root">
+			<FeatureFlagsProvider>
+				<MsalProvider>
+					<ThemeRoot>
+						<CssBaseline />
+						<ToastProvider>
+							<SchedulesProviderBridge>
+								<ToastNotifierBridge />
+								<div data-testid="app-router-outlet">
+									<RouterProvider router={router} future={routerFutureFlags} />
+								</div>
+							</SchedulesProviderBridge>
+						</ToastProvider>
+					</ThemeRoot>
+				</MsalProvider>
+			</FeatureFlagsProvider>
+		</div>
+	);
 }
 
 export default App;

@@ -94,7 +94,9 @@ function buildBatchMultipart(parts: { contentId: number; status: number }[]) {
   const initial = await readAuditMetrics(page);
   expectConsistent(initial);
   expect(initial).toMatchObject({ total: 4, success: 2, duplicates: 1, newItems: 1, failed: 2 });
-  expect(initial.order).toEqual(['new','duplicates','failed']);
+  // Check order of metric pills by DOM attribute, not BadgeMetrics type
+  const initialOrder = await metrics.locator('[data-metric]').evaluateAll((ns) => ns.map((n) => n.getAttribute('data-metric')));
+  expect(initialOrder).toEqual(['new','duplicates','failed']);
 
   // Trigger resend (should appear because failures remain)
   await page.getByRole('button', { name: '失敗のみ再送' }).click();
@@ -105,5 +107,7 @@ function buildBatchMultipart(parts: { contentId: number; status: number }[]) {
   expect(after.failed).toBe(0);
   // success becomes 4 (all), duplicates still 1, newItems 3
   expect(after).toMatchObject({ total: 4, success: 4, duplicates: 1, newItems: 3, failed: 0 });
+  const afterOrder = await metrics.locator('[data-metric]').evaluateAll((ns) => ns.map((n) => n.getAttribute('data-metric')));
+  expect(afterOrder).toEqual(['new','duplicates','failed']);
   });
 });

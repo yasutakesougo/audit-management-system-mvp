@@ -40,7 +40,7 @@ const parseSharePointJson = async (response: Response): Promise<unknown> => {
 
 const ensureWriteSuccess = <T>(result: SpWriteResult<T>): SpWriteResult<T> & { ok: true; raw: Response } => {
   if (!result.ok) {
-    throw result.error ?? new Error('SharePoint write failed');
+    throw (result as Extract<typeof result, { ok: false }>).error ?? new Error('SharePoint write failed');
   }
   return result as SpWriteResult<T> & { ok: true; raw: Response };
 };

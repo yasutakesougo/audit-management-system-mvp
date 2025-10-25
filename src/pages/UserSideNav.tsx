@@ -13,7 +13,7 @@ import {
   Typography,
   Alert,
 } from '@mui/material';
-import type { SupportUser } from './TimeFlowSupportRecordPage';
+import type { SupportUser } from '@/types/support';
 
 export type UserProgressInfo = {
   completed: number;

@@ -1,0 +1,43 @@
+name: Publish E2E Report to Pages
+on:
+  workflow_run:
+    workflows: [ "E2E Smoke Test" ]
+    types: [ "completed" ]
+permissions:
+  pages: write
+  id-token: write
+  contents: read
+concurrency:
+  group: pages-e2e-${{ github.event.workflow_run.id }}
+  cancel-in-progress: true
+jobs:
+  publish:
+    if: ${{ github.event.workflow_run.conclusion == 'success' }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download latest E2E report artifacts
+        uses: dawidd6/action-download-artifact@v3
+        with:
+          workflow: test-e2e.yml
+          run_id: ${{ github.event.workflow_run.id }}
+          name: ''
+          path: ./_e2e_artifacts
+      - name: Prepare report (pick first artifact with playwright-report)
+        run: |
+          set -e
+          dest=./_site/e2e
+          mkdir -p "$dest"
+          found=$(find _e2e_artifacts -type d -name "playwright-report" | head -n 1 || true)
+          if [ -z "$found" ]; then
+            echo "No playwright-report found; exiting."
+            exit 0
+          fi
+          cp -a "$found"/. "$dest"/
+      - name: Upload Pages artifact
+        if: success()
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: ./_site
+      - name: Deploy to GitHub Pages
+        if: success()
+        uses: actions/deploy-pages@v4

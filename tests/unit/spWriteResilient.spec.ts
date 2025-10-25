@@ -111,7 +111,12 @@ describe('spWriteResilient', () => {
   expect(fetcher).toHaveBeenCalledTimes(2);
   expect(result.ok).toBe(false);
   if (result.ok) throw new Error('expected failure result');
-  expect(result.error).toBe(error);
+  if (!result.ok) {
+    const errorResult = result as Extract<typeof result, { ok: false }>;
+    expect(errorResult.error).toBe(error);
+  } else {
+    throw new Error('expected failure result');
+  }
   });
 
   it('applies conditional headers and MERGE override for patch methods', async () => {
@@ -153,7 +158,10 @@ describe('spWriteResilient', () => {
     expect(result.ok).toBe(false);
     expect(result.status).toBe(500);
     if (!result.ok) {
-      expect(result.error.status).toBe(500);
+      const errorResult = result as Extract<typeof result, { ok: false }>;
+      expect(errorResult.error.status).toBe(500);
+    } else {
+      throw new Error('expected failure result');
     }
   });
 
@@ -195,10 +203,10 @@ describe('spWriteResilient', () => {
       spWriteResilient({
         list: 'Broken',
         method: 'POST',
-        // @ts-expect-error intentional to exercise runtime guard
         fetcher: undefined,
       }),
     ).rejects.toThrow('SharePoint fetcher is required');
+    // (removed @ts-expect-error, no longer needed)
   });
 
   it('wraps non-error rejection with fallback message', async () => {
@@ -215,9 +223,14 @@ describe('spWriteResilient', () => {
     expect(result.ok).toBe(false);
     if (result.ok) throw new Error('expected failure result');
     expect(result.status).toBeUndefined();
-    expect(result.error).toBeInstanceOf(Error);
-    expect(result.error.message).toBe('SharePoint write failed');
-    expect(result.error.code).toBeUndefined();
+    if (!result.ok) {
+      const errorResult = result as Extract<typeof result, { ok: false }>;
+      expect(errorResult.error).toBeInstanceOf(Error);
+      expect(errorResult.error.message).toBe('SharePoint write failed');
+      expect(errorResult.error.code).toBeUndefined();
+    } else {
+      throw new Error('expected failure result');
+    }
     expect(result.raw).toBeUndefined();
   });
 

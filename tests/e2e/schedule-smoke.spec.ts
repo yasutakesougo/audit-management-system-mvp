@@ -150,8 +150,8 @@ test.describe('Schedule smoke', () => {
         static parse = RealDate.parse;
         static UTC = RealDate.UTC;
       }
-      Object.setPrototypeOf(MockDate, RealDate);
-      (window as unknown as { Date: typeof Date }).Date = MockDate;
+  Object.setPrototypeOf(MockDate, RealDate);
+  (window as any).Date = MockDate;
     }, { now: TEST_NOW });
 
     await page.addInitScript(() => {

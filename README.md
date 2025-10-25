@@ -1,4 +1,95 @@
 #
+## data-testid Reference (E2E)
+
+| Category        | Example                              | Source File         |
+|-----------------|--------------------------------------|--------------------|
+| App Root        | `app-root`                           | App.tsx            |
+| Router Outlet   | `app-router-outlet`                  | App.tsx            |
+| Toast           | `toast-announcer`, `toast-message`   | useToast.ts        |
+| Record List     | `record-form`, `record-table`, `record-row` | RecordList.tsx    |
+| Support Procedures | `support-procedures/form`, `support-procedures/table`, `support-procedures/toast` | testids.ts,各画面 |
+
+**Type-safe selectors for Playwright**
+
+`tests/e2e/utils/selectors.ts` の型安全ヘルパーを利用すると、testid のタイプミス防止と実装負荷の軽減ができます：
+
+```ts
+// tests/e2e/app-smoke.e2e.ts
+import { test } from '@playwright/test';
+import { expectVisible } from './utils/selectors';
+
+test('App root and router outlet are visible', async ({ page }) => {
+  await page.goto('/');
+  await expectVisible(page, 'app-root');
+  await expectVisible(page, 'app-router-outlet');
+});
+```
+
+---
+
+### Minimal E2E Smoke Test Example
+
+```typescript
+// tests/e2e/app-smoke.e2e.ts
+import { test, expect } from '@playwright/test';
+test('App root and router outlet are visible', async ({ page }) => {
+  await page.goto('/');
+  await expect(page.getByTestId('app-root')).toBeVisible();
+  await expect(page.getByTestId('app-router-outlet')).toBeVisible();
+});
+```
+
+Run with:
+
+```sh
+npx playwright test tests/e2e/app-smoke.e2e.ts --project=chromium
+```
+
+---
+
+### GitHub Actions (E2E Smoke CI)
+
+![E2E Smoke](https://github.com/yasutakesougo/audit-management-system-mvp/actions/workflows/test-e2e.yml/badge.svg)
+
+Sample workflow: `.github/workflows/test-e2e.yml`
+
+```yaml
+name: E2E Smoke Test
+on:
+  push:
+    branches: [ main, chore/provision-schema ]
+  pull_request:
+jobs:
+  e2e:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - uses: actions/setup-node@v3
+        with:
+          node-version: '18'
+      - run: corepack enable
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm build
+      - run: pnpx playwright install --with-deps
+      - run: pnpx playwright test tests/e2e/app-smoke.e2e.ts --project=chromium
+      - name: Upload Playwright Artifacts
+        uses: actions/upload-artifact@v3
+        with:
+          name: e2e-artifacts
+          path: playwright-report/
+```
+# audit-management-system-mvp
+
+## E2E/CIベストプラクティス
+
+- Playwrightは `tests/e2e/*.e2e.ts` のみをE2E対象とし、unit/smokeは除外
+- 失敗時は自動でtrace/screenshot/videoを保存
+- CIではGitHub Actionsでtypecheck/lint/E2E/アーティファクト保存まで自動化
+- テスト用識別子は `data-testid` 属性を推奨（例: `<button data-testid="submit-btn">`）
+- 画面要素のE2E安定化のため、主要ボタンや入力欄には `data-testid` を付与
+
+---
+#
 
 ## 支援手順・記録: 役割分担（現状の方針）
 
@@ -958,11 +1049,10 @@ brew install mkcert nss && mkcert -install
 Windows (PowerShell / Chocolatey):
 
 ```powershell
+
 choco install mkcert -y
 mkcert -install
 ```
-
-> Windows で一時的に `npm run dev` を動かす際は、PowerShell で `$env:HTTPS = 1` を設定してから実行すると HTTPS が強制されます。
 
 ```bash
 mkdir -p .certs
@@ -1039,28 +1129,12 @@ node -p "process.versions.openssl"
 curl -vk https://127.0.0.1:3000/ | head -n 20
 ```
 
-curl で 200 OK & TLSv1.3 が見えればサーバ側は健全。→ ブラウザ状態/環境要因の疑いが濃厚。
+ブラウザでのアクセスが失敗する場合、上記コマンドでの結果を確認し、サーバー側の問題かブラウザ設定の問題かを切り分けてください。
 
-チェックリスト
-
-- [ ] https:// でアクセスしている
-- [ ] chrome://net-internals/#hsts で localhost を Delete（完全終了 → 再起動）
-- [ ] DevTools: Disable cache / Service Worker Unregister
-- [ ] システムプロキシ OFF または localhost,127.0.0.1 除外
-- [ ] mkcert CA が「常に信頼」、.certs/localhost\*.pem が存在
-- [ ] lsof でポート掃除 → プロジェクト直下で npm run dev:https
-- [ ] それでもダメ → 別ブラウザ（Firefox/Edge）で切り分け
-
-付録（PowerShell）
-
-```powershell
-$env:HTTPS="true"
-npm run dev
-```
-
-## Azure AD / Entra App Requirements
-
-API permissions should include delegated permissions to SharePoint (e.g. `Sites.Read.All` and `Sites.ReadWrite.All` if writing). Admin consent must be granted. The `${resource}/.default` scope relies on these pre-consented permissions.
+## Architecture Docs
+- System Map → `docs/architecture/system-map.md`
+- Flows: [Meeting](docs/architecture/flows/meeting.md) / [Daily Records](docs/architecture/flows/records.md) / [Support Plan](docs/architecture/flows/plan.md)
+- Components Index → `docs/architecture/components-index.md`
 
 ## License
 

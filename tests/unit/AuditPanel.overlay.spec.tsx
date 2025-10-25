@@ -1,7 +1,9 @@
+
 import React from 'react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
 import AuditPanel from '../../src/features/audit/AuditPanel';
+import { getEnv } from '../../src/lib/env';
 
 // Mock hooks
 vi.mock('../../src/features/audit/useAuditSync', () => ({ useAuditSync: () => ({ syncAll: vi.fn() }) }));
@@ -16,9 +18,10 @@ vi.mock('../../src/lib/hashUtil', () => ({ canonicalJSONStringify: (o: any) => J
 vi.mock('../../src/lib/debugLogger', () => ({ auditLog: { debug: () => {}, error: () => {}, enabled: false } }));
 
 describe('AuditPanel metrics overlay (DEV button)', () => {
+
   beforeEach(() => {
     // Ensure DEV flag so the info button renders
-    (import.meta as any).env.DEV = true;
+    globalThis.__ENV = { ...(globalThis.__ENV || {}), DEV: 'true' };
   });
 
   it('opens and closes overlay', () => {

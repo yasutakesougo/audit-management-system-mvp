@@ -1,0 +1,23 @@
+name: E2E Smoke Test
+on:
+  push:
+    branches: [ main, chore/provision-schema ]
+  pull_request:
+jobs:
+  e2e:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - uses: actions/setup-node@v3
+        with:
+          node-version: '18'
+      - run: corepack enable
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm build
+      - run: pnpx playwright install --with-deps
+      - run: pnpx playwright test tests/e2e/app-smoke.e2e.ts --project=chromium
+      - name: Upload Playwright Artifacts
+        uses: actions/upload-artifact@v3
+        with:
+          name: e2e-artifacts
+          path: playwright-report/

@@ -10,7 +10,6 @@ afterEach(() => {
   if (realWindow) {
     globalThis.window = realWindow;
   } else {
-    // @ts-expect-error restoring absence of window for Node-like env
     delete globalThis.window;
   }
 });
