@@ -4,12 +4,13 @@ import { StaffPanel } from '@/features/staff';
 import { UsersPanel } from '@/features/users';
 import React from 'react';
 import { createBrowserRouter, Navigate, Outlet, type RouteObject } from 'react-router-dom';
-import AuditPanel from '../features/audit/AuditPanel';
-import ChecklistPage from '../features/compliance-checklist/ChecklistPage';
-import RecordList from '../features/records/RecordList';
 import AppShell from './AppShell';
 import { routerFutureFlags } from './routerFuture';
 import SchedulesGate from './SchedulesGate';
+
+const RecordList = React.lazy(() => import('@/features/records/RecordList'));
+const ChecklistPage = React.lazy(() => import('@/features/compliance-checklist/ChecklistPage'));
+const AuditPanel = React.lazy(() => import('@/features/audit/AuditPanel'));
 
 const MonthPage = React.lazy(() => import('@/features/schedule/MonthPage'));
 const SchedulePage = React.lazy(() => import('@/features/schedule/SchedulePage'));
@@ -120,6 +121,48 @@ const SuspendedDashboardPage: React.FC = () => (
   </RouteHydrationErrorBoundary>
 );
 
+const SuspendedRecordList: React.FC = () => (
+  <RouteHydrationErrorBoundary>
+    <React.Suspense
+      fallback={(
+        <div className="p-4 text-sm text-slate-600" role="status">
+          記録一覧を読み込んでいます…
+        </div>
+      )}
+    >
+      <RecordList />
+    </React.Suspense>
+  </RouteHydrationErrorBoundary>
+);
+
+const SuspendedChecklistPage: React.FC = () => (
+  <RouteHydrationErrorBoundary>
+    <React.Suspense
+      fallback={(
+        <div className="p-4 text-sm text-slate-600" role="status">
+          自己点検ページを読み込んでいます…
+        </div>
+      )}
+    >
+      <ChecklistPage />
+    </React.Suspense>
+  </RouteHydrationErrorBoundary>
+);
+
+const SuspendedAuditPanel: React.FC = () => (
+  <RouteHydrationErrorBoundary>
+    <React.Suspense
+      fallback={(
+        <div className="p-4 text-sm text-slate-600" role="status">
+          監査ログを読み込んでいます…
+        </div>
+      )}
+    >
+      <AuditPanel />
+    </React.Suspense>
+  </RouteHydrationErrorBoundary>
+);
+
 const SuspendedSupportActivityMasterPage: React.FC = () => (
   <RouteHydrationErrorBoundary>
     <React.Suspense
@@ -164,9 +207,9 @@ const SuspendedIndividualSupportManagementPage: React.FC = () => (
 
 const childRoutes: RouteObject[] = [
   { index: true, element: <SuspendedDashboardPage /> },
-  { path: 'records', element: <RecordList /> },
-  { path: 'checklist', element: <ChecklistPage /> },
-  { path: 'audit', element: <AuditPanel /> },
+  { path: 'records', element: <SuspendedRecordList /> },
+  { path: 'checklist', element: <SuspendedChecklistPage /> },
+  { path: 'audit', element: <SuspendedAuditPanel /> },
   { path: 'users', element: <UsersPanel /> },
   { path: 'staff', element: <StaffPanel /> },
   { path: 'daily', element: <SuspendedDailyRecordMenuPage /> },
