@@ -1,5 +1,5 @@
 import { render, screen, waitFor } from "@testing-library/react";
-import { MemoryRouter } from "react-router-dom";
+import { Outlet, RouterProvider, createMemoryRouter } from "react-router-dom";
 import { expect, test, vi } from "vitest";
 
 import AppShell from "@/app/AppShell";
@@ -14,15 +14,29 @@ vi.mock("@/lib/spClient", () => ({
 
 // Wrap with MemoryRouter since AppShell renders navigation links using router context.
 test("AppShell snapshot", async () => {
-  const { container } = render(
-    <FeatureFlagsProvider value={{ ...featureFlags, schedules: true }}>
-      <MemoryRouter future={routerFutureFlags}>
-        <AppShell>
-          <div data-testid="snapshot-content">content</div>
-        </AppShell>
-      </MemoryRouter>
-    </FeatureFlagsProvider>
+  const router = createMemoryRouter(
+    [
+      {
+        path: "/",
+        element: (
+          <FeatureFlagsProvider value={{ ...featureFlags, schedules: true }}>
+            <AppShell>
+              <Outlet />
+            </AppShell>
+          </FeatureFlagsProvider>
+        ),
+        children: [
+          {
+            index: true,
+            element: <div data-testid="snapshot-content">content</div>,
+          },
+        ],
+      },
+    ],
+    { initialEntries: ["/"], future: routerFutureFlags }
   );
+
+  const { container } = render(<RouterProvider router={router} />);
 
   await waitFor(() => {
     expect(screen.getByRole("status")).toHaveTextContent("SP Connected");

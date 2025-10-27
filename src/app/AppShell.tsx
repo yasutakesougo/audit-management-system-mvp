@@ -12,10 +12,6 @@ import Tooltip from '@mui/material/Tooltip';
 import Typography from '@mui/material/Typography';
 import React, { useContext, useEffect, useMemo, useState } from 'react';
 // Navigation Icons
-import { useFeatureFlags } from '@/config/featureFlags';
-import { getAppConfig } from '@/lib/env';
-import { useSP } from '@/lib/spClient';
-import SignInButton from '@/ui/components/SignInButton';
 import AddCircleOutlineRoundedIcon from '@mui/icons-material/AddCircleOutlineRounded';
 import AssessmentRoundedIcon from '@mui/icons-material/AssessmentRounded';
 import AssignmentTurnedInRoundedIcon from '@mui/icons-material/AssignmentTurnedInRounded';
@@ -25,6 +21,13 @@ import EventAvailableRoundedIcon from '@mui/icons-material/EventAvailableRounded
 import PeopleAltRoundedIcon from '@mui/icons-material/PeopleAltRounded';
 import SettingsRoundedIcon from '@mui/icons-material/SettingsRounded';
 import { Link as RouterLink, useLocation } from 'react-router-dom';
+import NavLinkPrefetch from '@/components/NavLinkPrefetch';
+import { useFeatureFlags } from '@/config/featureFlags';
+import RouteHydrationListener from '@/hydration/RouteHydrationListener';
+import { getAppConfig } from '@/lib/env';
+import { useSP } from '@/lib/spClient';
+import { PREFETCH_KEYS, type PrefetchKey } from '@/prefetch/routes';
+import SignInButton from '@/ui/components/SignInButton';
 import { ColorModeContext } from './theme';
 
 type NavItem = {
@@ -33,6 +36,7 @@ type NavItem = {
   isActive: (pathname: string) => boolean;
   testId?: string;
   icon?: React.ElementType;
+  prefetchKey?: PrefetchKey;
 };
 
 const AppShell: React.FC<{ children: React.ReactNode }> = ({ children }) => {
@@ -47,42 +51,50 @@ const AppShell: React.FC<{ children: React.ReactNode }> = ({ children }) => {
         to: '/',
         isActive: (pathname) => pathname === '/' || pathname.startsWith('/records'),
         icon: AssignmentTurnedInRoundedIcon,
+        prefetchKey: PREFETCH_KEYS.dashboard,
       },
       {
         label: '日次記録',
         to: '/daily',
         isActive: (pathname) => pathname.startsWith('/daily'),
         icon: AssignmentTurnedInRoundedIcon,
+        prefetchKey: PREFETCH_KEYS.dailyMenu,
       },
       {
         label: '自己点検',
         to: '/checklist',
         isActive: (pathname) => pathname.startsWith('/checklist'),
         icon: ChecklistRoundedIcon,
+        prefetchKey: PREFETCH_KEYS.checklist,
       },
       {
         label: '監査ログ',
         to: '/audit',
         isActive: (pathname) => pathname.startsWith('/audit'),
+        testId: 'nav-audit',
         icon: AssessmentRoundedIcon,
+        prefetchKey: PREFETCH_KEYS.audit,
       },
       {
         label: '利用者',
         to: '/users',
         isActive: (pathname) => pathname.startsWith('/users'),
         icon: PeopleAltRoundedIcon,
+        prefetchKey: PREFETCH_KEYS.users,
       },
       {
         label: '職員',
         to: '/staff',
         isActive: (pathname) => pathname.startsWith('/staff'),
         icon: BadgeRoundedIcon,
+        prefetchKey: PREFETCH_KEYS.staff,
       },
       {
         label: '設定管理',
         to: '/admin/templates',
         isActive: (pathname) => pathname.startsWith('/admin'),
         icon: SettingsRoundedIcon,
+        prefetchKey: PREFETCH_KEYS.adminTemplates,
       },
     ];
 
@@ -91,8 +103,9 @@ const AppShell: React.FC<{ children: React.ReactNode }> = ({ children }) => {
         label: 'スケジュール',
         to: '/schedules/week',
         isActive: (pathname) => pathname.startsWith('/schedule') || pathname.startsWith('/schedules'),
-        testId: 'nav-schedule',
+        testId: 'nav-schedules',
         icon: EventAvailableRoundedIcon,
+        prefetchKey: PREFETCH_KEYS.schedulesWeek,
       });
     }
 
@@ -118,7 +131,7 @@ const AppShell: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   }, [schedules, schedulesCreate, complianceForm]);
 
   return (
-    <>
+    <RouteHydrationListener>
       <AppBar position="static" color="primary" enableColorOnDark>
         <Toolbar sx={{ gap: 1 }}>
           <Typography variant="h6" component="div" sx={{ flexGrow: 1 }}>
@@ -139,28 +152,49 @@ const AppShell: React.FC<{ children: React.ReactNode }> = ({ children }) => {
       <Container component="main" role="main" maxWidth="lg" sx={{ py: 4 }}>
         <Box component="nav" role="navigation" aria-label="主要ナビゲーション" mb={2}>
           <Stack direction="row" spacing={1} flexWrap="wrap">
-            {navItems.map(({ label, to, isActive, testId, icon: IconComponent }) => {
+            {navItems.map(({ label, to, isActive, testId, icon: IconComponent, prefetchKey }) => {
               const active = isActive(location.pathname);
+              const sx = {
+                minWidth: 'auto',
+                px: 2,
+                py: 1,
+                gap: 1,
+                '& .MuiButton-startIcon': {
+                  marginRight: '6px',
+                  marginLeft: 0,
+                },
+              } as const;
+
+              if (prefetchKey) {
+                return (
+                  <Button
+                    key={label}
+                    component={NavLinkPrefetch as unknown as React.ElementType}
+                    to={to}
+                    variant={active ? 'contained' : 'outlined'}
+                    size="small"
+                    data-testid={testId}
+                    aria-current={active ? 'page' : undefined}
+                    startIcon={IconComponent ? <IconComponent /> : undefined}
+                    sx={sx}
+                    {...({ preloadKey: prefetchKey, meta: { label } } as Record<string, unknown>)}
+                  >
+                    {label}
+                  </Button>
+                );
+              }
+
               return (
                 <Button
                   key={label}
-                  component={RouterLink}
+                  component={RouterLink as unknown as React.ElementType}
                   to={to}
                   variant={active ? 'contained' : 'outlined'}
                   size="small"
                   data-testid={testId}
                   aria-current={active ? 'page' : undefined}
                   startIcon={IconComponent ? <IconComponent /> : undefined}
-                  sx={{
-                    minWidth: 'auto',
-                    px: 2,
-                    py: 1,
-                    gap: 1,
-                    '& .MuiButton-startIcon': {
-                      marginRight: '6px',
-                      marginLeft: 0,
-                    },
-                  }}
+                  sx={sx}
                 >
                   {label}
                 </Button>
@@ -170,7 +204,7 @@ const AppShell: React.FC<{ children: React.ReactNode }> = ({ children }) => {
         </Box>
         {children}
       </Container>
-    </>
+    </RouteHydrationListener>
   );
 };
 

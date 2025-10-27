@@ -1,12 +1,25 @@
-// src/main.tsx まるごと置き換え
-
-import React from "react";
-import ReactDOM from "react-dom/client";
-import { getRuntimeEnv, isDev } from "./env";
+import React from 'react';
+import ReactDOM from 'react-dom/client';
+import { getRuntimeEnv, isDev } from './env';
+import { beginHydrationSpan, finalizeHydrationSpan } from './lib/hydrationHud';
+import { resolveHydrationEntry } from './hydration/routes';
 
 type EnvRecord = Record<string, string | undefined>;
 
-// --- dev用デバッグフィールドを window に生やす型定義 ---
+type IdleDeadline = {
+  didTimeout: boolean;
+  timeRemaining: () => number;
+};
+
+type IdleCallback = (deadline: IdleDeadline) => void;
+
+type IdleHandle = number;
+
+type IdleWindow = Window & {
+  requestIdleCallback?: (callback: IdleCallback, options?: { timeout: number }) => IdleHandle;
+  cancelIdleCallback?: (handle: IdleHandle) => void;
+};
+
 declare global {
   interface Window {
     __ENV__?: EnvRecord;
@@ -14,20 +27,36 @@ declare global {
   }
 }
 
+const RUNTIME_PATH_KEYS = new Set(['RUNTIME_ENV_PATH', 'VITE_RUNTIME_ENV_PATH']);
+
+const runOnIdle = (callback: () => void, timeout = 200): void => {
+  if (typeof window === 'undefined') {
+    callback();
+    return;
+  }
+  const idleWindow = window as IdleWindow;
+  const requestIdle = idleWindow.requestIdleCallback;
+  if (typeof requestIdle === 'function') {
+    requestIdle(() => callback(), { timeout });
+    return;
+  }
+  window.setTimeout(callback, timeout);
+};
+
 const getRuntimeEnvPath = (runtimeEnv: EnvRecord): string => {
-  if (typeof window === "undefined") return "";
+  if (typeof window === 'undefined') return '';
   const fromWindow = window.__ENV__?.RUNTIME_ENV_PATH ?? window.__ENV__?.VITE_RUNTIME_ENV_PATH;
   const fromRuntime = runtimeEnv.RUNTIME_ENV_PATH ?? runtimeEnv.VITE_RUNTIME_ENV_PATH;
-  return fromWindow || fromRuntime || "/env.runtime.json";
+  return fromWindow || fromRuntime || '/env.runtime.json';
 };
 
 const loadRuntimeEnvFile = async (runtimeEnv: EnvRecord): Promise<EnvRecord> => {
-  if (typeof window === "undefined") return {};
+  if (typeof window === 'undefined') return {};
   const path = getRuntimeEnvPath(runtimeEnv);
   if (!path) return {};
 
   try {
-    const response = await fetch(path, { cache: "no-store" });
+    const response = await fetch(path, { cache: 'no-store' });
     if (!response.ok) {
       if (isDev) {
         // eslint-disable-next-line no-console
@@ -41,18 +70,16 @@ const loadRuntimeEnvFile = async (runtimeEnv: EnvRecord): Promise<EnvRecord> => 
   } catch (error) {
     if (isDev) {
       // eslint-disable-next-line no-console
-      console.warn("[env] runtime config fetch error", error);
+      console.warn('[env] runtime config fetch error', error);
     }
     return {};
   }
 };
 
-const RUNTIME_PATH_KEYS = new Set(["RUNTIME_ENV_PATH", "VITE_RUNTIME_ENV_PATH"]);
-
 const ensureRuntimeEnv = async (): Promise<EnvRecord> => {
   const baseEnv = getRuntimeEnv();
 
-  if (typeof window === "undefined") {
+  if (typeof window === 'undefined') {
     return baseEnv;
   }
 
@@ -67,47 +94,151 @@ const ensureRuntimeEnv = async (): Promise<EnvRecord> => {
 
   if (isDev) {
     // eslint-disable-next-line no-console
-    console.info("[env]", merged);
+    console.info('[env]', merged);
   }
 
   return merged;
 };
 
-// 以降の重い import は動的にまとめて実行
-(async () => {
-  const envSnapshot = await ensureRuntimeEnv();
+const run = async (): Promise<void> => {
+  const hasWindow = typeof window !== 'undefined';
+  const initialPathname = hasWindow ? window.location.pathname : '';
+  const initialSearch = hasWindow ? window.location.search ?? '' : '';
+  const initialRouteEntry = hasWindow ? resolveHydrationEntry(initialPathname, initialSearch) : null;
+  const completeInitialRoute = initialRouteEntry
+    ? beginHydrationSpan(initialRouteEntry.id, {
+        id: initialRouteEntry.id,
+        label: initialRouteEntry.label,
+        group: 'hydration:route',
+        meta: {
+          budget: initialRouteEntry.budget,
+          path: initialPathname,
+          search: initialSearch,
+          status: 'bootstrap',
+        },
+      })
+    : null;
 
-  const [{ ConfigErrorBoundary }, { auditLog }, { FeatureFlagsProvider, getFeatureFlags }] = await Promise.all([
-    import("./app/ConfigErrorBoundary"),
-    import("./lib/debugLogger"),
-    import("./config/featureFlags"),
-  ]);
+  const completeBootstrap = beginHydrationSpan('route:bootstrap', { group: 'hydration', meta: { budget: 100 } });
+  const completeEnv = beginHydrationSpan('bootstrap:env', { group: 'hydration', meta: { budget: 20 } });
 
-  // metrics は副作用のみ
-  await import("./metrics");
+  const envPromise = ensureRuntimeEnv()
+    .then((env) => {
+      finalizeHydrationSpan(completeEnv);
+      return env;
+    })
+    .catch((error) => {
+      finalizeHydrationSpan(completeEnv, error);
+      throw error;
+    });
 
-  // App は最後に
-  const { default: App } = await import("./App");
+  const completeImports = beginHydrationSpan('bootstrap:imports', { group: 'hydration', meta: { budget: 30 } });
 
-  const flags = getFeatureFlags();
-  auditLog.info("flags", flags);
-  if (typeof window !== "undefined" && (envSnapshot.MODE ?? "").toLowerCase() !== "production") {
-    window.__FLAGS__ = flags;
-    // eslint-disable-next-line no-console
-    console.info("[flags]", flags);
+  const modulesPromise = (Promise.all([
+    import('./app/ConfigErrorBoundary'),
+    import('./lib/debugLogger'),
+    import('./config/featureFlags'),
+  ]) as Promise<[
+    typeof import('./app/ConfigErrorBoundary'),
+    typeof import('./lib/debugLogger'),
+    typeof import('./config/featureFlags')
+  ]>)
+    .then((modules) => {
+      finalizeHydrationSpan(completeImports);
+      return modules;
+    })
+    .catch((error) => {
+      finalizeHydrationSpan(completeImports, error);
+      throw error;
+    });
+
+  const completeAppImport = beginHydrationSpan('bootstrap:app-module', { group: 'hydration', meta: { budget: 20 } });
+
+  const appPromise = (import('./App') as Promise<{ default: typeof import('./App').default }> )
+    .then((module) => {
+      finalizeHydrationSpan(completeAppImport);
+      return module;
+    })
+    .catch((error) => {
+      finalizeHydrationSpan(completeAppImport, error);
+      throw error;
+    });
+
+  const completeMetrics = beginHydrationSpan('bootstrap:metrics', { group: 'hydration', meta: { budget: 10 } });
+  void import('./metrics')
+    .then(() => {
+      finalizeHydrationSpan(completeMetrics);
+    })
+    .catch((error) => {
+      finalizeHydrationSpan(completeMetrics, error);
+    });
+
+  let envSnapshot: EnvRecord | null = null;
+
+  try {
+    const [snapshot, modules, appModule] = await Promise.all([envPromise, modulesPromise, appPromise]);
+    envSnapshot = snapshot;
+    const [{ ConfigErrorBoundary }, { auditLog }, featureFlagsModule] = modules;
+    const { default: App } = appModule;
+    const { FeatureFlagsProvider, resolveFeatureFlags } = featureFlagsModule;
+    const flags = resolveFeatureFlags(envSnapshot ?? undefined);
+
+  const completeRender = beginHydrationSpan('bootstrap:render', { group: 'hydration', meta: { budget: 60 } });
+
+    ReactDOM.createRoot(document.getElementById('root')!).render(
+      <React.StrictMode>
+        <ConfigErrorBoundary>
+          <FeatureFlagsProvider value={flags}>
+            <App />
+          </FeatureFlagsProvider>
+        </ConfigErrorBoundary>
+      </React.StrictMode>
+    );
+
+    const settle = (error?: unknown) => {
+      finalizeHydrationSpan(completeRender, error);
+      finalizeHydrationSpan(completeBootstrap, error);
+      if (initialRouteEntry) {
+        finalizeHydrationSpan(completeInitialRoute, error, {
+          budget: initialRouteEntry.budget,
+          path: initialPathname,
+          search: initialSearch,
+          status: error ? 'failed' : 'completed',
+        });
+      }
+    };
+
+    if (typeof window !== 'undefined' && typeof window.requestAnimationFrame === 'function') {
+      window.requestAnimationFrame(() => settle());
+    } else {
+      settle();
+    }
+
+    runOnIdle(() => {
+      if (envSnapshot && typeof window !== 'undefined' && (envSnapshot.MODE ?? '').toLowerCase() !== 'production') {
+        window.__FLAGS__ = flags;
+        if (isDev) {
+          // eslint-disable-next-line no-console
+          console.info('[flags]', flags);
+        }
+      }
+      auditLog.info('flags', flags);
+    });
+  } catch (error) {
+    finalizeHydrationSpan(completeBootstrap, error);
+    if (initialRouteEntry) {
+      finalizeHydrationSpan(completeInitialRoute, error, {
+        budget: initialRouteEntry.budget,
+        path: initialPathname,
+        search: initialSearch,
+        status: 'failed',
+      });
+    }
+    throw error;
   }
+};
 
-  ReactDOM.createRoot(document.getElementById("root")!).render(
-    <React.StrictMode>
-      <ConfigErrorBoundary>
-        <FeatureFlagsProvider>
-          <App />
-        </FeatureFlagsProvider>
-      </ConfigErrorBoundary>
-    </React.StrictMode>
-  );
-})().catch((e) => {
-  // 起動時の例外も気づけるように
+run().catch((error) => {
   // eslint-disable-next-line no-console
-  console.error("[bootstrap error]", e);
+  console.error('[bootstrap error]', error);
 });

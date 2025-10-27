@@ -1,4 +1,5 @@
 import ProtectedRoute from '@/app/ProtectedRoute';
+import { RouteHydrationErrorBoundary } from '@/hydration/RouteHydrationListener';
 import { StaffPanel } from '@/features/staff';
 import { UsersPanel } from '@/features/users';
 import React from 'react';
@@ -22,123 +23,143 @@ const SupportStepMasterPage = React.lazy(() => import('@/pages/SupportStepMaster
 const IndividualSupportManagementPage = React.lazy(() => import('@/pages/IndividualSupportManagementPage'));
 
 const SuspendedMonthPage: React.FC = () => (
-  <React.Suspense
-    fallback={(
-      <div className="p-4 text-sm text-slate-600" role="status">
-        月表示を読み込んでいます…
-      </div>
-    )}
-  >
-    <MonthPage />
-  </React.Suspense>
+  <RouteHydrationErrorBoundary>
+    <React.Suspense
+      fallback={(
+        <div className="p-4 text-sm text-slate-600" role="status">
+          月表示を読み込んでいます…
+        </div>
+      )}
+    >
+      <MonthPage />
+    </React.Suspense>
+  </RouteHydrationErrorBoundary>
 );
 
 const SuspendedSchedulePage: React.FC = () => (
-  <React.Suspense
-    fallback={(
-      <div className="p-4 text-sm text-slate-600" role="status">
-        スケジュールを読み込んでいます…
-      </div>
-    )}
-  >
-    <SchedulePage />
-  </React.Suspense>
+  <RouteHydrationErrorBoundary>
+    <React.Suspense
+      fallback={(
+        <div className="p-4 text-sm text-slate-600" role="status">
+          スケジュールを読み込んでいます…
+        </div>
+      )}
+    >
+      <SchedulePage />
+    </React.Suspense>
+  </RouteHydrationErrorBoundary>
 );
 
 const SuspendedCreatePage: React.FC = () => (
-  <React.Suspense
-    fallback={(
-      <div className="p-4 text-sm text-slate-600" role="status">
-        新規予定を読み込んでいます…
-      </div>
-    )}
-  >
-    <ScheduleCreatePage />
-  </React.Suspense>
+  <RouteHydrationErrorBoundary>
+    <React.Suspense
+      fallback={(
+        <div className="p-4 text-sm text-slate-600" role="status">
+          新規予定を読み込んでいます…
+        </div>
+      )}
+    >
+      <ScheduleCreatePage />
+    </React.Suspense>
+  </RouteHydrationErrorBoundary>
 );
 
 const SuspendedDailyRecordPage: React.FC = () => (
-  <React.Suspense
-    fallback={(
-      <div className="p-4 text-sm text-slate-600" role="status">
-        活動日誌を読み込んでいます…
-      </div>
-    )}
-  >
-    <DailyRecordPage />
-  </React.Suspense>
+  <RouteHydrationErrorBoundary>
+    <React.Suspense
+      fallback={(
+        <div className="p-4 text-sm text-slate-600" role="status">
+          活動日誌を読み込んでいます…
+        </div>
+      )}
+    >
+      <DailyRecordPage />
+    </React.Suspense>
+  </RouteHydrationErrorBoundary>
 );
 
 const SuspendedDailyRecordMenuPage: React.FC = () => (
-  <React.Suspense
-    fallback={(
-      <div className="p-4 text-sm text-slate-600" role="status">
-        日次記録メニューを読み込んでいます…
-      </div>
-    )}
-  >
-    <DailyRecordMenuPage />
-  </React.Suspense>
+  <RouteHydrationErrorBoundary>
+    <React.Suspense
+      fallback={(
+        <div className="p-4 text-sm text-slate-600" role="status">
+          日次記録メニューを読み込んでいます…
+        </div>
+      )}
+    >
+      <DailyRecordMenuPage />
+    </React.Suspense>
+  </RouteHydrationErrorBoundary>
 );
 
 const SuspendedTimeFlowSupportRecordPage: React.FC = () => (
-  <React.Suspense
-    fallback={(
-      <div className="p-4 text-sm text-slate-600" role="status">
-        支援手順兼記録を読み込んでいます…
-      </div>
-    )}
-  >
-    <TimeFlowSupportRecordPage />
-  </React.Suspense>
+  <RouteHydrationErrorBoundary>
+    <React.Suspense
+      fallback={(
+        <div className="p-4 text-sm text-slate-600" role="status">
+          支援手順兼記録を読み込んでいます…
+        </div>
+      )}
+    >
+      <TimeFlowSupportRecordPage />
+    </React.Suspense>
+  </RouteHydrationErrorBoundary>
 );
 
 const SuspendedDashboardPage: React.FC = () => (
-  <React.Suspense
-    fallback={(
-      <div className="p-4 text-sm text-slate-600" role="status">
-        ダッシュボードを読み込んでいます…
-      </div>
-    )}
-  >
-    <DashboardPage />
-  </React.Suspense>
+  <RouteHydrationErrorBoundary>
+    <React.Suspense
+      fallback={(
+        <div className="p-4 text-sm text-slate-600" role="status">
+          ダッシュボードを読み込んでいます…
+        </div>
+      )}
+    >
+      <DashboardPage />
+    </React.Suspense>
+  </RouteHydrationErrorBoundary>
 );
 
 const SuspendedSupportActivityMasterPage: React.FC = () => (
-  <React.Suspense
-    fallback={(
-      <div className="p-4 text-sm text-slate-600" role="status">
-        支援活動テンプレート管理を読み込んでいます…
-      </div>
-    )}
-  >
-    <SupportActivityMasterPage />
-  </React.Suspense>
+  <RouteHydrationErrorBoundary>
+    <React.Suspense
+      fallback={(
+        <div className="p-4 text-sm text-slate-600" role="status">
+          支援活動テンプレート管理を読み込んでいます…
+        </div>
+      )}
+    >
+      <SupportActivityMasterPage />
+    </React.Suspense>
+  </RouteHydrationErrorBoundary>
 );
 
 const SuspendedSupportStepMasterPage: React.FC = () => (
-  <React.Suspense
-    fallback={(
-      <div className="p-4 text-sm text-slate-600" role="status">
-        支援手順テンプレート管理を読み込んでいます…
-      </div>
-    )}
-  >
-    <SupportStepMasterPage />
-  </React.Suspense>
+  <RouteHydrationErrorBoundary>
+    <React.Suspense
+      fallback={(
+        <div className="p-4 text-sm text-slate-600" role="status">
+          支援手順テンプレート管理を読み込んでいます…
+        </div>
+      )}
+    >
+      <SupportStepMasterPage />
+    </React.Suspense>
+  </RouteHydrationErrorBoundary>
 );
 
 const SuspendedIndividualSupportManagementPage: React.FC = () => (
-  <React.Suspense
-    fallback={(
-      <div className="p-4 text-sm text-slate-600" role="status">
-        個別支援手順管理を読み込んでいます…
-      </div>
-    )}
-  >
-    <IndividualSupportManagementPage />
-  </React.Suspense>
+  <RouteHydrationErrorBoundary>
+    <React.Suspense
+      fallback={(
+        <div className="p-4 text-sm text-slate-600" role="status">
+          個別支援手順管理を読み込んでいます…
+        </div>
+      )}
+    >
+      <IndividualSupportManagementPage />
+    </React.Suspense>
+  </RouteHydrationErrorBoundary>
 );
 
 const childRoutes: RouteObject[] = [

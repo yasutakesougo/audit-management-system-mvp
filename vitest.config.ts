@@ -27,6 +27,20 @@ export default defineConfig({
       '**/*.git',
       'src/lib/spClient.retry*.spec.*'
     ],
+    onConsoleLog(log, _type) {
+      if (process.env.VERBOSE_TESTS === '1') return;
+
+      const suppressPatterns = [
+        /(Schedule adapter .* fell back|falling back to demo)/i,
+        /MSAL.* mock/i,
+        /SharePoint.* mock/i,
+        /prefetch/i,
+        /hydration/i
+      ];
+
+      if (suppressPatterns.some((pattern) => pattern.test(log))) return false;
+
+    },
     watch: true,
     coverage: {
       provider: 'v8',

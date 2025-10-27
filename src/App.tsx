@@ -5,13 +5,13 @@ import { MsalProvider } from './auth/MsalProvider';
 import { ThemeRoot } from './app/theme';
 import { router } from './app/router';
 import { routerFutureFlags } from './app/routerFuture';
-import { FeatureFlagsProvider } from './config/featureFlags';
 import { ToastProvider, useToast } from './hooks/useToast';
 import { registerNotifier } from './lib/notice';
 import { SchedulesProvider, demoSchedulesPort, makeGraphSchedulesPort } from '@/features/schedules/data';
 import { useAuth } from './auth/useAuth';
 import { GRAPH_RESOURCE } from './auth/msalConfig';
 import { readBool } from './lib/env';
+import { HydrationHud } from '@/debug/HydrationHud';
 
 type BridgeProps = {
   children: ReactNode;
@@ -49,19 +49,18 @@ export const ToastNotifierBridge: React.FC = () => {
 
 function App() {
   return (
-    <FeatureFlagsProvider>
-      <MsalProvider>
-        <ThemeRoot>
-          <CssBaseline />
-          <ToastProvider>
-            <SchedulesProviderBridge>
-              <ToastNotifierBridge />
-              <RouterProvider router={router} future={routerFutureFlags} />
-            </SchedulesProviderBridge>
-          </ToastProvider>
-        </ThemeRoot>
-      </MsalProvider>
-    </FeatureFlagsProvider>
+    <MsalProvider>
+      <ThemeRoot>
+        <CssBaseline />
+        <ToastProvider>
+          <SchedulesProviderBridge>
+            <ToastNotifierBridge />
+            <RouterProvider router={router} future={routerFutureFlags} />
+          </SchedulesProviderBridge>
+        </ToastProvider>
+        <HydrationHud />
+      </ThemeRoot>
+    </MsalProvider>
   );
 }
 
