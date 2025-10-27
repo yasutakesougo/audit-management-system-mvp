@@ -149,6 +149,7 @@ exports[`AppShell snapshot 1`] = `
         </a>
         <a
           class="MuiButtonBase-root MuiButton-root MuiButton-outlined MuiButton-outlinedPrimary MuiButton-sizeSmall MuiButton-outlinedSizeSmall MuiButton-colorPrimary MuiButton-root MuiButton-outlined MuiButton-outlinedPrimary MuiButton-sizeSmall MuiButton-outlinedSizeSmall MuiButton-colorPrimary css-1go7da8-MuiButtonBase-root-MuiButton-root"
+          data-testid="nav-audit"
           href="/audit"
           tabindex="0"
         >
@@ -277,5 +278,12 @@ exports[`AppShell snapshot 1`] = `
       content
     </div>
   </main>
+  <div
+    aria-atomic="true"
+    aria-live="polite"
+    class="fixed bottom-4 right-4 z-50 space-y-2"
+    data-testid="toast-announcer"
+    role="status"
+  />
 </div>
 `;

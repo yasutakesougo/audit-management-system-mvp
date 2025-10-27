@@ -1,12 +1,12 @@
 import React from 'react';
-import { fireEvent, render } from '@testing-library/react';
+import { fireEvent } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { MemoryRouter } from 'react-router-dom';
 
 import NavLinkPrefetch from '@/components/NavLinkPrefetch';
 import { PREFETCH_KEYS } from '@/prefetch/routes';
 import * as routesModule from '@/prefetch/routes';
 import type { PrefetchHandle } from '@/prefetch/prefetch';
+import { renderWithAppProviders } from '../helpers/renderWithAppProviders';
 
 const createHandle = (): PrefetchHandle => ({
   cancel: vi.fn(),
@@ -25,21 +25,19 @@ describe('NavLinkPrefetch keyboard intents', () => {
       .spyOn(routesModule, 'prefetchByKey')
       .mockReturnValue(createHandle());
 
-  const { getAllByRole } = render(
-      <MemoryRouter>
-        <NavLinkPrefetch
-          to="/schedules/week"
-          preloadKey={PREFETCH_KEYS.schedulesWeek}
-          prefetchOnViewport={false}
-          prefetchOnHover={false}
-          prefetchOnFocus={false}
-        >
-          Schedules
-        </NavLinkPrefetch>
-      </MemoryRouter>,
+    const { getAllByRole } = renderWithAppProviders(
+      <NavLinkPrefetch
+        to="/schedules/week"
+        preloadKey={PREFETCH_KEYS.schedulesWeek}
+        prefetchOnViewport={false}
+        prefetchOnHover={false}
+        prefetchOnFocus={false}
+      >
+        Schedules
+      </NavLinkPrefetch>
     );
 
-  const [link] = getAllByRole('link', { name: /schedules/i });
+    const [link] = getAllByRole('link', { name: /schedules/i });
 
     fireEvent.focus(link);
     fireEvent.keyDown(link, { key: 'Enter' });
@@ -57,21 +55,19 @@ describe('NavLinkPrefetch keyboard intents', () => {
       .spyOn(routesModule, 'prefetchByKey')
       .mockReturnValue(createHandle());
 
-  const { getAllByRole } = render(
-      <MemoryRouter>
-        <NavLinkPrefetch
-          to="/schedules/week"
-          preloadKey={PREFETCH_KEYS.schedulesWeek}
-          prefetchOnViewport={false}
-          prefetchOnHover={false}
-          prefetchOnFocus={false}
-        >
-          Schedules
-        </NavLinkPrefetch>
-      </MemoryRouter>,
+    const { getAllByRole } = renderWithAppProviders(
+      <NavLinkPrefetch
+        to="/schedules/week"
+        preloadKey={PREFETCH_KEYS.schedulesWeek}
+        prefetchOnViewport={false}
+        prefetchOnHover={false}
+        prefetchOnFocus={false}
+      >
+        Schedules
+      </NavLinkPrefetch>
     );
 
-  const [link] = getAllByRole('link', { name: /schedules/i });
+    const [link] = getAllByRole('link', { name: /schedules/i });
 
     fireEvent.focus(link);
     fireEvent.keyDown(link, { key: 'ArrowLeft' });

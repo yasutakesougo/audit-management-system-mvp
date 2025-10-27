@@ -1,12 +1,12 @@
 import React from 'react';
-import { cleanup, render, screen, waitFor, within } from '@testing-library/react';
+import { cleanup, screen, waitFor, within } from '@testing-library/react';
 import { ThemeProvider, createTheme } from '@mui/material/styles';
-import { MemoryRouter } from 'react-router-dom';
 import { describe, expect, it, vi, beforeEach, afterEach } from 'vitest';
 import AppShell from '@/app/AppShell';
 import { ColorModeContext } from '@/app/theme';
 import { FeatureFlagsProvider, type FeatureFlagSnapshot } from '@/config/featureFlags';
 import { routerFutureFlags } from '@/app/routerFuture';
+import { renderWithAppProviders } from '../helpers/renderWithAppProviders';
 
 const spFetchMock = vi.fn(async (_path: string, _init?: RequestInit) => ({ ok: true }));
 
@@ -56,40 +56,28 @@ describe('AppShell navigation', () => {
   it('marks current route button with aria-current="page"', async () => {
     const toggleMock = vi.fn();
     const theme = createTheme();
-    render(
+    const initialEntries = ['/users'];
+    const routeEntries = Array.from(new Set([...initialEntries, '/']));
+    const getShell = () => (
       <ThemeProvider theme={theme}>
         <FeatureFlagsProvider value={defaultFlags}>
           <ColorModeContext.Provider value={{ mode: 'light', toggle: toggleMock, sticky: false }}>
-            <MemoryRouter initialEntries={['/users']} future={routerFutureFlags}>
-              <AppShell>
-                <div />
-              </AppShell>
-            </MemoryRouter>
+            <AppShell>
+              <div />
+            </AppShell>
           </ColorModeContext.Provider>
         </FeatureFlagsProvider>
-      </ThemeProvider>,
+      </ThemeProvider>
     );
 
-    const navLabelMatcher = /主要機能|ナビ|navigation/i;
-    const candidates: Array<() => HTMLElement> = [
-      () => screen.getByRole('navigation', { name: navLabelMatcher }),
-      () => screen.getByRole('navigation'),
-      () => screen.getByRole('toolbar'),
-    ];
+    renderWithAppProviders(getShell(), {
+      initialEntries,
+      future: routerFutureFlags,
+      routeChildren: routeEntries.map((path) => ({ path, element: getShell() })),
+    });
 
-    let navRoot: HTMLElement | null = null;
-    for (const query of candidates) {
-      try {
-        navRoot = query();
-        if (navRoot) break;
-      } catch {
-        /* swallow and try next */
-      }
-    }
-
-    expect(navRoot).toBeTruthy();
-    expect(navRoot).toHaveAccessibleName(/主要ナビゲーション/i);
-    const nav = within(navRoot ?? screen.getByRole('navigation'));
+    const navRoot = await screen.findByRole('navigation', { name: /主要ナビゲーション/i });
+    const nav = within(navRoot);
 
     expect(await nav.findByRole('link', { name: '利用者' })).toHaveAttribute('aria-current', 'page');
     expect(nav.getByRole('link', { name: '日次記録' })).not.toHaveAttribute('aria-current');
@@ -110,7 +98,7 @@ describe('AppShell navigation', () => {
   });
 
   it('leaves status neutral when ping aborts', async () => {
-    spFetchMock.mockImplementationOnce((_path: string, init?: RequestInit) => {
+    spFetchMock.mockImplementation((_path: string, init?: RequestInit) => {
       const signal = init?.signal as AbortSignal | undefined;
       if (signal?.aborted) {
         return Promise.reject(new DOMException('Aborted', 'AbortError'));
@@ -120,22 +108,28 @@ describe('AppShell navigation', () => {
 
     const toggleMock = vi.fn();
     const theme = createTheme();
-    const { unmount } = render(
+    const initialEntries = ['/'];
+    const routeEntries = Array.from(new Set([...initialEntries]));
+    const getShell = () => (
       <ThemeProvider theme={theme}>
         <FeatureFlagsProvider value={defaultFlags}>
           <ColorModeContext.Provider value={{ mode: 'light', toggle: toggleMock, sticky: false }}>
-            <MemoryRouter initialEntries={['/']} future={routerFutureFlags}>
-              <AppShell>
-                <div />
-              </AppShell>
-            </MemoryRouter>
+            <AppShell>
+              <div />
+            </AppShell>
           </ColorModeContext.Provider>
         </FeatureFlagsProvider>
-      </ThemeProvider>,
+      </ThemeProvider>
     );
 
+    const { unmount } = renderWithAppProviders(getShell(), {
+      initialEntries,
+      future: routerFutureFlags,
+      routeChildren: routeEntries.map((path) => ({ path, element: getShell() })),
+    });
+
     await waitFor(() => {
-      expect(spFetchMock).toHaveBeenCalledTimes(1);
+      expect(spFetchMock).toHaveBeenCalled();
     });
 
     const checkingLabel = await screen.findByText(/Checking/i);

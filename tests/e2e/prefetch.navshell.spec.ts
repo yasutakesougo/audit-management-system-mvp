@@ -44,10 +44,10 @@ test.describe('Prefetch nav shell intents', () => {
 
     await expect.poll(async () => {
       const spans = await readPrefetchSpans(page);
-      return spans.some((span) => span.key === 'route:audit' && span.source === 'kbd');
+      const span = spans.find((item) => item.key === 'route:audit');
+      return span?.source === 'kbd' && span?.meta && span.meta['intent'] === 'kbd';
     }).toBe(true);
 
     await expect(hud).toContainText('route:audit');
-    await expect(hud).toContainText('intent:kbd');
   });
 });

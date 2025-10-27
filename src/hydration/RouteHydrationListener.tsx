@@ -1,5 +1,6 @@
 import React, { createContext, useCallback, useContext, useEffect, useRef } from 'react';
 import { useLocation, useNavigation } from 'react-router-dom';
+import { getFlag, isDev } from '@/env';
 import {
   beginHydrationSpan,
   finalizeHydrationSpan,
@@ -88,7 +89,15 @@ type RouteHydrationListenerProps = {
 };
 
 const RouteHydrationListener: React.FC<RouteHydrationListenerProps> = ({ children }) => {
-  const navigation = useNavigation();
+  let navigation: ReturnType<typeof useNavigation>;
+  try {
+    navigation = useNavigation();
+  } catch (error) {
+    if (isDev || getFlag('VITE_E2E', false)) {
+      throw new Error('RouteHydrationListener requires a React Router context');
+    }
+    throw error;
+  }
   const location = useLocation();
   const currentKey = makeKey(location.pathname, location.search ?? '');
   const pendingRef = useRef<ActiveSpan | null>(null);

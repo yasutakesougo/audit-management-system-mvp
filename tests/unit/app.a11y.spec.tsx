@@ -1,20 +1,21 @@
 import { describe, it, expect } from "vitest";
-import { render, screen } from "@testing-library/react";
-import { MemoryRouter } from "react-router-dom";
+import { screen } from "@testing-library/react";
 import AppShell from "@/app/AppShell";
 import { FeatureFlagsProvider, featureFlags } from "@/config/featureFlags";
 import { routerFutureFlags } from "@/app/routerFuture";
+import { renderWithAppProviders } from "../helpers/renderWithAppProviders";
 
 describe("AppShell accessibility landmarks", () => {
   it("has single <main> landmark", () => {
-    render(
+    renderWithAppProviders(
       <FeatureFlagsProvider value={{ ...featureFlags, schedules: true }}>
-        <MemoryRouter future={routerFutureFlags}>
-          <AppShell>
-            <div data-testid="app-shell-children">child content</div>
-          </AppShell>
-        </MemoryRouter>
-      </FeatureFlagsProvider>
+        <AppShell>
+          <div data-testid="app-shell-children">child content</div>
+        </AppShell>
+      </FeatureFlagsProvider>,
+      {
+        future: routerFutureFlags,
+      }
     );
 
     expect(screen.getAllByRole("main")).toHaveLength(1);
