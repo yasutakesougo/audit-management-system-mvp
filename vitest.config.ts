@@ -9,7 +9,7 @@ export default defineConfig({
     }
   },
   test: {
-    setupFiles: ['./vitest.setup.ts'],
+    setupFiles: ['tests/setup/msal-react.mock.ts', './vitest.setup.ts'],
     environment: 'jsdom',
     env: {
       TZ: 'Asia/Tokyo',
