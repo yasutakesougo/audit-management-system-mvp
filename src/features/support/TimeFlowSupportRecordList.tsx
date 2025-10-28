@@ -1,30 +1,26 @@
-import {
-    Add as AddIcon,
-    Edit as EditIcon,
-    ExpandLess as ExpandLessIcon,
-    ExpandMore as ExpandMoreIcon,
-    Note as NoteIcon,
-    Person as PersonIcon,
-    Schedule as ScheduleIcon,
-    Visibility as VisibilityIcon,
-    Work as WorkIcon
-} from '@mui/icons-material';
-import {
-    Alert,
-    Avatar,
-    Box,
-    Button,
-    Card,
-    CardContent,
-    Chip,
-    Collapse,
-    Divider,
-    IconButton,
-    LinearProgress,
-    Paper,
-    Stack,
-    Typography
-} from '@mui/material';
+import AddIcon from '@mui/icons-material/Add';
+import EditIcon from '@mui/icons-material/Edit';
+import ExpandLessIcon from '@mui/icons-material/ExpandLess';
+import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
+import NoteIcon from '@mui/icons-material/Note';
+import PersonIcon from '@mui/icons-material/Person';
+import ScheduleIcon from '@mui/icons-material/Schedule';
+import VisibilityIcon from '@mui/icons-material/Visibility';
+import WorkIcon from '@mui/icons-material/Work';
+import Alert from '@mui/material/Alert';
+import Avatar from '@mui/material/Avatar';
+import Box from '@mui/material/Box';
+import Button from '@mui/material/Button';
+import Card from '@mui/material/Card';
+import CardContent from '@mui/material/CardContent';
+import Chip from '@mui/material/Chip';
+import Collapse from '@mui/material/Collapse';
+import Divider from '@mui/material/Divider';
+import IconButton from '@mui/material/IconButton';
+import LinearProgress from '@mui/material/LinearProgress';
+import Paper from '@mui/material/Paper';
+import Stack from '@mui/material/Stack';
+import Typography from '@mui/material/Typography';
 import React, { useState } from 'react';
 import TimeBasedSupportRecordForm from './TimeBasedSupportRecordForm';
 import { DailySupportRecord, SupportRecord, SupportRecordTimeSlot } from './types';

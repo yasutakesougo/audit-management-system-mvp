@@ -1,11 +1,11 @@
 import React from 'react';
-import { render, screen } from '@testing-library/react';
-import { MemoryRouter } from 'react-router-dom';
+import { screen } from '@testing-library/react';
 import { ThemeProvider, createTheme } from '@mui/material/styles';
 import { describe, expect, it, vi, beforeEach } from 'vitest';
 import Home from '@/app/Home';
 import { FeatureFlagsProvider, type FeatureFlagSnapshot } from '@/config/featureFlags';
 import { routerFutureFlags } from '@/app/routerFuture';
+import { renderWithAppProviders } from '../helpers/renderWithAppProviders';
 
 const isDemoModeEnabledMock = vi.fn((): boolean => false);
 const featureFlagsState = vi.hoisted<FeatureFlagSnapshot>(() => ({
@@ -23,14 +23,13 @@ vi.mock('@/lib/env', () => ({
 }));
 
 const renderHome = () =>
-  render(
+  renderWithAppProviders(
     <FeatureFlagsProvider value={{ ...featureFlagsState }}>
       <ThemeProvider theme={createTheme()}>
-        <MemoryRouter future={routerFutureFlags}>
-          <Home />
-        </MemoryRouter>
+        <Home />
       </ThemeProvider>
     </FeatureFlagsProvider>,
+    { future: routerFutureFlags },
   );
 
 describe('Home', () => {

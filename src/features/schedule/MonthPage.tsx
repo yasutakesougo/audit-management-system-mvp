@@ -6,7 +6,7 @@ import Typography from '@mui/material/Typography';
 import React from 'react';
 
 const MonthPage: React.FC = () => (
-  <Box sx={{ p: 2 }}>
+  <Box sx={{ p: 2 }} data-testid="schedule-month-root">
     <Stack direction="row" spacing={1} alignItems="center" sx={{ mb: 2 }}>
       <CalendarMonthRoundedIcon color="primary" />
       <Typography variant="h5" component="h1">

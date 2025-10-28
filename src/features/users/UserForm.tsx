@@ -1,10 +1,8 @@
-import {
-    Close as CloseIcon,
-    LocalHospital as MedicalIcon,
-    Person as PersonIcon,
-    Save as SaveIcon,
-    DirectionsBus as TransportIcon,
-} from "@mui/icons-material";
+import CloseIcon from '@mui/icons-material/Close';
+import MedicalIcon from '@mui/icons-material/LocalHospital';
+import PersonIcon from '@mui/icons-material/Person';
+import SaveIcon from '@mui/icons-material/Save';
+import TransportIcon from '@mui/icons-material/DirectionsBus';
 import {
     Alert,
     Box,

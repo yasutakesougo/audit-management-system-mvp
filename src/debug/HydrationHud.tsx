@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, type CSSProperties } from 'react';
+import { useCallback, useEffect, useMemo, useState, type CSSProperties } from 'react';
 import { isDev } from '@/env';
 import {
   getHydrationSpans,
@@ -11,6 +11,13 @@ import {
   subscribePrefetchEntries,
   type PrefetchEntry
 } from '@/prefetch/tracker';
+import {
+  getTelemetrySampleRate,
+  sendHydrationSpans,
+  toTelemetrySpan,
+  type HydrationTelemetrySpan,
+} from '@/telemetry/hydrationBeacon';
+import { getServiceThresholds } from '@/serviceRecords';
 
 const STORAGE_KEY = 'prefetch:hud:visible';
 const STATUS_COLORS: Record<'good' | 'warn' | 'bad', string> = {
@@ -99,6 +106,26 @@ const rowStyle: CSSProperties = {
   border: '1px solid rgba(148, 163, 184, 0.2)',
   backgroundColor: 'rgba(30, 41, 59, 0.7)',
   position: 'relative',
+};
+
+const telemetryRowStyle: CSSProperties = {
+  ...rowStyle,
+  display: 'flex',
+  flexDirection: 'column',
+  alignItems: 'flex-start',
+  gap: 6,
+};
+
+const thresholdsRowStyle: CSSProperties = {
+  display: 'flex',
+  flexDirection: 'column',
+  gap: 4,
+  fontSize: 12,
+  lineHeight: 1.4,
+  padding: '6px 8px 6px 10px',
+  borderRadius: 8,
+  border: '1px solid rgba(148, 163, 184, 0.2)',
+  backgroundColor: 'rgba(30, 41, 59, 0.7)',
 };
 
 const emptyStateStyle: CSSProperties = {
@@ -217,6 +244,16 @@ export const HydrationHud: React.FC = () => {
   const [visible, setVisible] = useState(() => readInitialVisibility(hudEnabled));
   const [spans, setSpans] = useState<HydrationSpan[]>(() => getHydrationSpans());
   const [prefetchEntries, setPrefetchEntries] = useState<PrefetchEntry[]>(() => getPrefetchEntries());
+  const [telemetryStats, setTelemetryStats] = useState({
+    sent: 0,
+    skipped: 0,
+    failed: 0,
+    lastCount: 0,
+    lastReason: null as 'manual' | 'beforeunload' | null,
+  });
+  const sampleDisplay = useMemo(() => Math.round(getTelemetrySampleRate() * 100), []);
+  const completedSpans = useMemo(() => spans.filter((span) => span.end !== undefined), [spans]);
+  const thresholds = useMemo(() => getServiceThresholds(), []);
 
   useEffect(() => {
     if (!hudEnabled) {
@@ -246,6 +283,88 @@ export const HydrationHud: React.FC = () => {
     }
     persistVisibility(visible);
   }, [hudEnabled, visible]);
+
+  useEffect(() => {
+    if (!hudEnabled || typeof window === 'undefined') {
+      return;
+    }
+    const target = window as typeof window & {
+      __HYDRATION_HUD__?: Record<string, unknown>;
+    };
+    if (!target.__HYDRATION_HUD__) {
+      target.__HYDRATION_HUD__ = {};
+    }
+    target.__HYDRATION_HUD__.telemetry = {
+      pending: completedSpans.length,
+      stats: telemetryStats,
+      sample: getTelemetrySampleRate(),
+    };
+  }, [completedSpans.length, hudEnabled, telemetryStats]);
+
+  const flushTelemetry = useCallback((reason: 'manual' | 'beforeunload') => {
+    if (!hudEnabled) {
+      return false;
+    }
+    const snapshot = getHydrationSpans();
+    const payload: HydrationTelemetrySpan[] = snapshot
+      .map((span) => toTelemetrySpan(span))
+      .filter((value): value is HydrationTelemetrySpan => Boolean(value));
+
+    if (payload.length === 0) {
+      setTelemetryStats((prev) => ({
+        ...prev,
+        skipped: prev.skipped + 1,
+        lastCount: 0,
+        lastReason: reason,
+      }));
+      return false;
+    }
+
+    const sample = getTelemetrySampleRate();
+    if (sample <= 0) {
+      setTelemetryStats((prev) => ({
+        ...prev,
+        skipped: prev.skipped + 1,
+        lastCount: payload.length,
+        lastReason: reason,
+      }));
+      return false;
+    }
+
+    const rng = Math.random();
+    if (sample < 1 && rng > sample) {
+      setTelemetryStats((prev) => ({
+        ...prev,
+        skipped: prev.skipped + 1,
+        lastCount: payload.length,
+        lastReason: reason,
+      }));
+      return false;
+    }
+
+    const result = sendHydrationSpans(payload, { rand: () => rng });
+    setTelemetryStats((prev) => ({
+      sent: prev.sent + (result ? 1 : 0),
+      failed: prev.failed + (result ? 0 : 1),
+      skipped: prev.skipped,
+      lastCount: payload.length,
+      lastReason: reason,
+    }));
+    return result;
+  }, [hudEnabled]);
+
+  useEffect(() => {
+    if (!hudEnabled) {
+      return undefined;
+    }
+    const handler = () => {
+      flushTelemetry('beforeunload');
+    };
+    window.addEventListener('beforeunload', handler);
+    return () => {
+      window.removeEventListener('beforeunload', handler);
+    };
+  }, [flushTelemetry, hudEnabled]);
 
   if (!hudEnabled) {
     return null;
@@ -305,6 +424,17 @@ export const HydrationHud: React.FC = () => {
             )}
             </div>
             <div style={sectionLabelStyle}>
+              <span style={{ textTransform: 'uppercase', letterSpacing: 0.8 }}>Thresholds</span>
+            </div>
+            <div data-testid="hud-thresholds" style={{ ...listStyle, gap: 0 }}>
+              <div style={thresholdsRowStyle}>
+                <span>
+                  discrepancy={thresholds.discrepancyMinutes}m / absenceLimit={thresholds.absenceMonthlyLimit} / closeTime=
+                  {thresholds.facilityCloseTime}
+                </span>
+              </div>
+            </div>
+            <div style={sectionLabelStyle}>
             <span style={{ textTransform: 'uppercase', letterSpacing: 0.8 }}>Prefetch</span>
             <span style={totalStyle}>{prefetchEntries.length}</span>
             </div>
@@ -335,6 +465,32 @@ export const HydrationHud: React.FC = () => {
                 );
               })
             )}
+            </div>
+          </div>
+          <div style={sectionLabelStyle}>
+            <span style={{ textTransform: 'uppercase', letterSpacing: 0.8 }}>Telemetry</span>
+            <span style={totalStyle}>{completedSpans.length}</span>
+          </div>
+          <div data-testid="hud-telemetry" style={{ ...listStyle, gap: 8 }}>
+            <div style={telemetryRowStyle}>
+              <span style={{ fontWeight: 600 }}>Pending spans: {completedSpans.length}</span>
+              <span>Sent: {telemetryStats.sent} / Skipped: {telemetryStats.skipped} / Failed: {telemetryStats.failed}</span>
+              <span>Sample: {sampleDisplay}%</span>
+              {telemetryStats.lastCount > 0 ? (
+                <span style={{ opacity: 0.7 }}>
+                  Last payload: {telemetryStats.lastCount} spans
+                  {telemetryStats.lastReason ? ` (${telemetryStats.lastReason})` : ''}
+                </span>
+              ) : null}
+              <button
+                type="button"
+                data-testid="hud-telemetry-flush"
+                style={{ ...buttonStyle, padding: '4px 12px', alignSelf: 'flex-start' }}
+                onClick={() => flushTelemetry('manual')}
+                disabled={completedSpans.length === 0}
+              >
+                Flush Telemetry
+              </button>
             </div>
           </div>
         </div>

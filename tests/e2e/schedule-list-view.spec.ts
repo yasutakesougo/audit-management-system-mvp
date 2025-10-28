@@ -101,6 +101,11 @@ test.describe('schedule list view', () => {
         VITE_FEATURE_SCHEDULES: '1',
         VITE_WRITE_ENABLED: '1',
         VITE_SCHEDULES_TZ: timezone,
+        MODE: 'production',
+        DEV: '0',
+        VITE_SP_RESOURCE: 'https://contoso.sharepoint.com',
+        VITE_SP_SITE_RELATIVE: '/sites/Audit',
+        VITE_SP_SCOPE_DEFAULT: 'https://contoso.sharepoint.com/AllSites.Read',
       };
     }, { timezone: TIME_ZONE });
 
@@ -127,14 +132,10 @@ test.describe('schedule list view', () => {
       ],
     });
 
-    await page.goto('/schedule', { waitUntil: 'domcontentloaded' });
-    await page.waitForLoadState('load');
-
-    await expect(page.getByRole('heading', { name: 'スケジュール', exact: true })).toBeVisible();
-    const viewToggle = page.getByRole('navigation', { name: 'ビュー切替' });
-    await viewToggle
-      .getByRole('button', { name: 'リスト' })
-      .evaluate((button) => (button as HTMLButtonElement).click());
+  await page.goto('/schedule', { waitUntil: 'load' });
+  await expect(page.getByTestId('schedule-page-root')).toBeVisible({ timeout: 15_000 });
+    const listTab = page.getByRole('tab', { name: 'リスト', exact: true });
+    await listTab.click();
 
     await page.evaluate(() => {
       const globalWithMocks = window as typeof window & {

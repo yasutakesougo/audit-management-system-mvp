@@ -1,9 +1,9 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { useMsal } from '@azure/msal-react';
 import { useCallback } from 'react';
 import { getAppConfig, isE2eMsalMockEnabled } from '../lib/env';
 import { createE2EMsalAccount, persistMsalToken } from '../lib/msal';
 import { SP_RESOURCE } from './msalConfig';
+import { useMsalContext } from './MsalProvider';
 
 // Simple global metrics object (not exposed on window unless debug)
 const tokenMetrics = {
@@ -37,7 +37,7 @@ export const useAuth = () => {
     };
   }
 
-  const { instance, accounts } = useMsal();
+  const { instance, accounts } = useMsalContext();
   const account = accounts[0];
 
   const acquireToken = useCallback(async (resource: string = SP_RESOURCE): Promise<string | null> => {

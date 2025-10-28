@@ -1,29 +1,25 @@
-import {
-    Assignment as AssignmentIcon,
-    Psychology as BehaviorIcon,
-    Dashboard as DashboardIcon,
-    LocalHospital as MedicalIcon,
-    Person as PersonIcon,
-    Restaurant as RestaurantIcon,
-    TrendingUp as TrendingUpIcon,
-    Warning as WarningIcon
-} from '@mui/icons-material';
-import {
-    Alert,
-    Box,
-    Button,
-    Card,
-    CardContent,
-    Chip,
-    Container,
-    Divider,
-    LinearProgress,
-    Paper,
-    Stack,
-    Tab,
-    Tabs,
-    Typography
-} from '@mui/material';
+import AssignmentIcon from '@mui/icons-material/Assignment';
+import BehaviorIcon from '@mui/icons-material/Psychology';
+import DashboardIcon from '@mui/icons-material/Dashboard';
+import MedicalIcon from '@mui/icons-material/LocalHospital';
+import PersonIcon from '@mui/icons-material/Person';
+import RestaurantIcon from '@mui/icons-material/Restaurant';
+import TrendingUpIcon from '@mui/icons-material/TrendingUp';
+import WarningIcon from '@mui/icons-material/Warning';
+import Alert from '@mui/material/Alert';
+import Box from '@mui/material/Box';
+import Button from '@mui/material/Button';
+import Card from '@mui/material/Card';
+import CardContent from '@mui/material/CardContent';
+import Chip from '@mui/material/Chip';
+import Container from '@mui/material/Container';
+import Divider from '@mui/material/Divider';
+import LinearProgress from '@mui/material/LinearProgress';
+import Paper from '@mui/material/Paper';
+import Stack from '@mui/material/Stack';
+import Tab from '@mui/material/Tab';
+import Tabs from '@mui/material/Tabs';
+import Typography from '@mui/material/Typography';
 import React, { useMemo, useState } from 'react';
 import { PersonDaily, SeizureRecord } from '../domain/daily/types';
 import { useUsersDemo } from '../features/users/usersStoreDemo';
@@ -154,7 +150,7 @@ const DashboardPage: React.FC = () => {
   };
 
   return (
-    <Container maxWidth="lg">
+    <Container maxWidth="lg" data-testid="dashboard-page">
       <Box sx={{ py: 3 }}>
         {/* ヘッダー */}
         <Box sx={{ mb: 3 }}>

@@ -1,34 +1,48 @@
 import { test, expect } from '@playwright/test';
-
-// Base values aligned with dev:e2e env vars
-const SP_BASE = 'https://contoso.sharepoint.com/sites/Audit/_api';
+import { setupSharePointStubs } from './_helpers/setupSharePointStubs';
+import { mockSharePointThrottle } from './_helpers/mockSharePointThrottle';
 
 test.beforeEach(async ({ page }) => {
-  // Intercept list GET: first 429, then 200
-  let getHit = 0;
-  await page.route(/https:\/\/contoso\.sharepoint\.com\/sites\/Audit\/.*\/lists\/getbytitle.*items.*/i, async route => {
-    if (getHit++ === 0) {
-      return route.fulfill({ status: 429, headers: { 'Retry-After': '0' } });
+  await page.addInitScript(() => {
+    const globalWithEnv = window as typeof window & { __ENV__?: Record<string, string> };
+    globalWithEnv.__ENV__ = {
+      ...(globalWithEnv.__ENV__ ?? {}),
+      VITE_E2E_MSAL_MOCK: '1',
+      VITE_SKIP_LOGIN: '1',
+      VITE_DEMO_MODE: '0',
+    };
+    try {
+      window.localStorage.setItem('skipLogin', '1');
+      window.localStorage.setItem('demo', '0');
+    } catch {
+      // ignore storage failures in unsupported environments
     }
-    return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ value: [] }) });
   });
 
-  // Intercept $batch: first 503 then 200 with 201 marker
-  let batchHit = 0;
-  await page.route(/https:\/\/contoso\.sharepoint\.com\/sites\/Audit\/.*\/\$batch/i, async route => {
-    if (batchHit++ === 0) {
-      return route.fulfill({ status: 503 });
-    }
-    return route.fulfill({ status: 200, contentType: 'text/plain', body: 'HTTP/1.1 201 Created' });
+  await page.route('**/login.microsoftonline.com/**', (route) => route.fulfill({ status: 204, body: '' }));
+  await page.route('https://graph.microsoft.com/**', (route) =>
+    route.fulfill({ status: 200, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ value: [] }) })
+  );
+
+  await setupSharePointStubs(page, {
+    currentUser: { status: 200, body: { Id: 1234 } },
+    lists: [
+      { name: 'Users_Master', items: [] },
+      { name: 'Schedules', aliases: ['ScheduleEvents'], items: [] },
+      { name: 'SupportRecord_Daily', items: [] },
+    ],
+    fallback: { status: 200, body: { value: [] } },
   });
+
+  await mockSharePointThrottle(page);
 });
 
 test('GET 429 -> retry success (no fatal error)', async ({ page }) => {
-  await page.goto('/');
-  await expect(page.locator('text=運営指導・記録管理').first()).toBeVisible();
+  await page.goto('/', { waitUntil: 'networkidle' });
+  await expect(page.getByTestId('dashboard-page')).toBeVisible({ timeout: 15000 });
 });
 
 test('$batch 503 -> retry success (no crash)', async ({ page }) => {
-  await page.goto('/');
-  await expect(page.locator('text=運営指導・記録管理').first()).toBeVisible();
+  await page.goto('/', { waitUntil: 'networkidle' });
+  await expect(page.getByTestId('dashboard-page')).toBeVisible({ timeout: 15000 });
 });

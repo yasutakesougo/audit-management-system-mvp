@@ -305,7 +305,7 @@ export default function SchedulePage() {
   }, []);
 
   return (
-    <Container maxWidth="xl" sx={{ py: 3 }}>
+    <Container maxWidth="xl" sx={{ py: 3 }} data-testid="schedule-page-root">
       <Paper elevation={0} sx={{ borderRadius: 2, overflow: 'hidden' }}>
         {/* Header with title and period navigation */}
         <Box sx={{ p: 3, pb: 0 }}>

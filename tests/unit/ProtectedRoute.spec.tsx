@@ -1,6 +1,6 @@
 import React from 'react';
 import { cleanup, render, screen, waitFor } from '@testing-library/react';
-import { MemoryRouter, Route, Routes, useLocation } from 'react-router-dom';
+import { Outlet, RouterProvider, createMemoryRouter, useLocation, type RouteObject } from 'react-router-dom';
 import { afterEach, describe, expect, it } from 'vitest';
 import ProtectedRoute from '@/app/ProtectedRoute';
 import { FeatureFlagsProvider, type FeatureFlagSnapshot } from '@/config/featureFlags';
@@ -17,24 +17,39 @@ const LocationProbe: React.FC<{ testId: string }> = ({ testId }) => {
   return <span data-testid={testId}>{location.pathname}</span>;
 };
 
-const renderWithFlags = (flags: FeatureFlagSnapshot) =>
-  render(
-    <FeatureFlagsProvider value={flags}>
-  <MemoryRouter initialEntries={['/guarded']} future={routerFutureFlags}>
-        <Routes>
-          <Route
-            path="/guarded"
-            element={(
-              <ProtectedRoute flag="schedules">
-                <div data-testid="allowed">allowed</div>
-              </ProtectedRoute>
-            )}
-          />
-          <Route path="/" element={<LocationProbe testId="location" />} />
-        </Routes>
-      </MemoryRouter>
-    </FeatureFlagsProvider>,
-  );
+const renderWithFlags = (flags: FeatureFlagSnapshot, initialEntries: string[] = ['/guarded']) => {
+  const routes: RouteObject[] = [
+    {
+      path: '/',
+      element: (
+        <FeatureFlagsProvider value={flags}>
+          <Outlet />
+        </FeatureFlagsProvider>
+      ),
+      children: [
+        {
+          index: true,
+          element: <LocationProbe testId="location" />,
+        },
+        {
+          path: 'guarded',
+          element: (
+            <ProtectedRoute flag="schedules">
+              <div data-testid="allowed">allowed</div>
+            </ProtectedRoute>
+          ),
+        },
+      ],
+    },
+  ];
+
+  const router = createMemoryRouter(routes, {
+    initialEntries,
+    future: routerFutureFlags,
+  });
+
+  return render(<RouterProvider router={router} />);
+};
 
 afterEach(() => {
   cleanup();

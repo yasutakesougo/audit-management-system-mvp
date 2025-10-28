@@ -85,7 +85,7 @@ export default function TimelineDay({ events, date, onEventCreate, onEventEdit }
   );
 
   return (
-    <Box component="section" aria-label={`日タイムライン (${rangeLabel})`}>
+    <Box component="section" aria-label={`日タイムライン (${rangeLabel})`} data-testid="schedule-day-root">
       {/* Header */}
       <Stack direction="row" alignItems="center" justifyContent="space-between" mb={3}>
         <Box>

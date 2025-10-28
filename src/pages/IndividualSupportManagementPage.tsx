@@ -1,31 +1,27 @@
-import {
-    CheckCircle as CheckCircleIcon,
-    ExpandMore as ExpandMoreIcon,
-    Favorite as FavoriteIcon,
-    HealthAndSafety as HealthIcon,
-    Info as InfoIcon,
-    Psychology as PsychologyIcon,
-    Schedule as ScheduleIcon,
-    Support as SupportIcon,
-} from '@mui/icons-material';
-import {
-    Accordion,
-    AccordionDetails,
-    AccordionSummary,
-    Alert,
-    Box,
-    Button,
-    Chip,
-    Collapse,
-    Divider,
-    Paper,
-    Snackbar,
-    Stack,
-    Tab,
-    Tabs,
-    TextField,
-    Typography,
-} from '@mui/material';
+import CheckCircleIcon from '@mui/icons-material/CheckCircle';
+import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
+import FavoriteIcon from '@mui/icons-material/Favorite';
+import HealthIcon from '@mui/icons-material/HealthAndSafety';
+import InfoIcon from '@mui/icons-material/Info';
+import PsychologyIcon from '@mui/icons-material/Psychology';
+import ScheduleIcon from '@mui/icons-material/Schedule';
+import SupportIcon from '@mui/icons-material/Support';
+import Accordion from '@mui/material/Accordion';
+import AccordionDetails from '@mui/material/AccordionDetails';
+import AccordionSummary from '@mui/material/AccordionSummary';
+import Alert from '@mui/material/Alert';
+import Box from '@mui/material/Box';
+import Button from '@mui/material/Button';
+import Chip from '@mui/material/Chip';
+import Collapse from '@mui/material/Collapse';
+import Divider from '@mui/material/Divider';
+import Paper from '@mui/material/Paper';
+import Snackbar from '@mui/material/Snackbar';
+import Stack from '@mui/material/Stack';
+import Tab from '@mui/material/Tab';
+import Tabs from '@mui/material/Tabs';
+import TextField from '@mui/material/TextField';
+import Typography from '@mui/material/Typography';
 import React, { useMemo, useState } from 'react';
 
 type TabValue = 'plan' | 'records';

@@ -1,16 +1,12 @@
-import {
-    Home as HomeIcon,
-    Settings as SettingsIcon,
-} from '@mui/icons-material';
-import {
-    Alert,
-    Box,
-    Breadcrumbs,
-    Container,
-    Link,
-    Snackbar,
-    Typography,
-} from '@mui/material';
+import HomeIcon from '@mui/icons-material/Home';
+import SettingsIcon from '@mui/icons-material/Settings';
+import Alert from '@mui/material/Alert';
+import Box from '@mui/material/Box';
+import Breadcrumbs from '@mui/material/Breadcrumbs';
+import Container from '@mui/material/Container';
+import Link from '@mui/material/Link';
+import Snackbar from '@mui/material/Snackbar';
+import Typography from '@mui/material/Typography';
 import React, { useCallback, useEffect, useState } from 'react';
 import { SupportActivityTemplate, defaultSupportActivities } from '../domain/support/types';
 import { SupportActivityTemplateForm } from '../features/support/SupportActivityTemplateForm';
