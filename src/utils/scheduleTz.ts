@@ -1,3 +1,4 @@
+import { fromZonedTime } from 'date-fns-tz';
 import { getAppConfig } from '@/lib/env';
 
 const DEFAULT_TZ = 'Asia/Tokyo';
@@ -8,7 +9,12 @@ export function isValidTimeZone(tz: string): boolean {
     new Intl.DateTimeFormat('en-US', { timeZone: tz }).format(new Date());
     return true;
   } catch {
-    return false;
+    try {
+      fromZonedTime('1970-01-01T00:00:00', tz);
+      return true;
+    } catch {
+      return false;
+    }
   }
 }
 
