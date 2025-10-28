@@ -20,6 +20,7 @@
     "test": "vitest run",
     "test:ci": "vitest run --run --reporter=basic",
     "test:hydration": "vitest run tests/unit/hydration --reporter=basic",
+  "test:store": "vitest run tests/unit/users.store.spec.ts tests/unit/operation-hub.useOperationHubData.spec.ts tests/unit/operation-hub.useOperationHubData.branches.spec.ts tests/unit/operation-hub.useOperationHubData.full.spec.tsx --reporter=basic",
     "test:schedule:jst": "VITE_SCHEDULES_TZ=Asia/Tokyo vitest run tests/unit/schedule --reporter=basic",
     "test:schedule:la": "VITE_SCHEDULES_TZ=America/Los_Angeles vitest run tests/unit/schedule --reporter=basic",
     "test:ui": "vitest",
