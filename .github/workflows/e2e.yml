@@ -14,8 +14,6 @@ jobs:
       matrix:
         tz: ['Asia/Tokyo', 'America/Los_Angeles']
     runs-on: ubuntu-latest
-    env:
-      TZ: ${{ matrix.tz }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -25,15 +23,22 @@ jobs:
       - run: npm run e2e:install
       - name: Run Playwright E2E
         run: npm run e2e
+        env:
+          TZ: ${{ matrix.tz }}
+      - name: Prepare artifact suffix
+        id: artifact
+        run: echo "suffix=${TZ//\//-}" >> "$GITHUB_OUTPUT"
+        env:
+          TZ: ${{ matrix.tz }}
       - name: Upload Playwright report
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: playwright-report-${{ replace(matrix.tz, '/', '-') }}
+          name: playwright-report-${{ steps.artifact.outputs.suffix }}
           path: playwright-report
       - name: Upload E2E results
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: junit-${{ replace(matrix.tz, '/', '-') }}
+          name: junit-${{ steps.artifact.outputs.suffix }}
           path: test-results
