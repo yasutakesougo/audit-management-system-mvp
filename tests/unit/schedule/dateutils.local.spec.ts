@@ -69,11 +69,11 @@ describe('schedule dateutils.local helpers', () => {
 
     try {
       expect(getLocalDateKey('not-a-date')).toBe('');
-      expect(startOfDayUtc('not-a-date').toISOString()).toBe(new Date(0).toISOString());
-      expect(endOfDayUtc('not-a-date').toISOString()).toBe(new Date(0).toISOString());
-  const fallbackStartLocal = formatInTimeZone(new Date(0), TZ, 'yyyy-MM-dd');
-  const fallbackEndLocal = `${shiftYmd(fallbackStartLocal, 6)}T23:59:59.999`;
-  expect(endOfWeekUtc('not-a-date').toISOString()).toBe(fromZonedTime(fallbackEndLocal, TZ).toISOString());
+    expect(startOfDayUtc('not-a-date').toISOString()).toBe(new Date(0).toISOString());
+    expect(endOfDayUtc('not-a-date').toISOString()).toBe(new Date(0).toISOString());
+    const fallbackStartLocal = formatInTimeZone(new Date(0), TZ, 'yyyy-MM-dd');
+    const fallbackEndLocal = `${shiftYmd(fallbackStartLocal, 6)}T23:59:59.999`;
+    expect(endOfWeekUtc('not-a-date').toISOString()).toBe(fromZonedTime(fallbackEndLocal, TZ).toISOString());
 
       const base = '2025-08-13T11:45:00Z';
       const defaultStart = startOfWeekUtc(base);
@@ -127,6 +127,40 @@ describe('schedule dateutils.local helpers', () => {
       expect(endLa('2025-10-28').toISOString()).toBe(endLaUtc.toISOString());
     } finally {
       restoreLa();
+    }
+  });
+
+  it('handles minute-precision inputs, blank strings, and Date objects', async () => {
+    const {
+      assignLocalDateKey,
+      endOfDay,
+      getLocalDateKey,
+      startOfDayUtc,
+      restore,
+    } = await loadDateutilsWithTz(TZ);
+
+    try {
+      const zonedMidnight = fromZonedTime('2025-11-16T00:00:00.000', TZ);
+      expect(startOfDayUtc('2025-11-16T05:30').toISOString()).toBe(zonedMidnight.toISOString());
+
+      const sameDay = getLocalDateKey('2025-11-17T06:15:00');
+      expect(sameDay).toBe('2025-11-17');
+
+      expect(getLocalDateKey('   ')).toBe('');
+      expect(getLocalDateKey(42 as unknown as string)).toBe('');
+
+      const fromDate = getLocalDateKey(new Date('2025-11-18T00:00:00Z'));
+      const expectedFromDate = formatInTimeZone('2025-11-18T00:00:00Z', TZ, 'yyyy-MM-dd');
+      expect(fromDate).toBe(expectedFromDate);
+
+      const endOfDayIso = endOfDay('2025-11-19T03:45').toISOString();
+      const expectedEnd = fromZonedTime('2025-11-19T23:59:59.999', TZ).toISOString();
+      expect(endOfDayIso).toBe(expectedEnd);
+
+      const emptyAssigned = assignLocalDateKey({});
+      expect(emptyAssigned.localDateKey).toBe('');
+    } finally {
+      restore();
     }
   });
 });
