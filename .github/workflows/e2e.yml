@@ -29,11 +29,11 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: playwright-report-${{ matrix.tz }}
+          name: playwright-report-${{ replace(matrix.tz, '/', '-') }}
           path: playwright-report
       - name: Upload E2E results
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: junit-${{ matrix.tz }}
+          name: junit-${{ replace(matrix.tz, '/', '-') }}
           path: test-results

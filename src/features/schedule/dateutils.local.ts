@@ -5,8 +5,39 @@ import { resolveSchedulesTz, assertValidTz } from '@/utils/scheduleTz';
 
 const DEFAULT_WEEK_START = 1; // Monday
 
-const toDate = (input: Date | string): Date =>
-  input instanceof Date ? new Date(input.getTime()) : new Date(input);
+const OFFSET_PATTERN = /(?:Z|[+-]\d{2}:?\d{2})$/i;
+
+const normalizeNaiveIso = (value: string): string => {
+  if (!value.includes('T')) {
+    return `${value}T00:00:00`;
+  }
+  if (/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/.test(value)) {
+    return `${value}:00`;
+  }
+  return value;
+};
+
+const toDate = (input: Date | string, tz: string): Date => {
+  if (input instanceof Date) {
+    return new Date(input.getTime());
+  }
+
+  if (typeof input !== 'string') {
+    return new Date(Number.NaN);
+  }
+
+  const trimmed = input.trim();
+  if (!trimmed) {
+    return new Date(Number.NaN);
+  }
+
+  if (OFFSET_PATTERN.test(trimmed)) {
+    return new Date(trimmed);
+  }
+
+  const normalized = normalizeNaiveIso(trimmed);
+  return fromZonedTime(normalized, tz);
+};
 
 const isValidDate = (date: Date): boolean => !Number.isNaN(date.getTime());
 
@@ -51,42 +82,42 @@ function shiftYmd(ymd: string, deltaDays: number): string {
 }
 
 export function getLocalDateKey(input: Date | string, timeZone?: string): string {
-  const date = toDate(input);
+  const tz = resolveTz(timeZone);
+  const date = toDate(input, tz);
   if (!isValidDate(date)) {
     return '';
   }
-  const tz = resolveTz(timeZone);
   return ymdInTz(date, tz);
 }
 
 export function startOfDayUtc(input: Date | string, timeZone?: string): Date {
-  const date = toDate(input);
+  const tz = resolveTz(timeZone);
+  const date = toDate(input, tz);
   if (!isValidDate(date)) {
     return new Date(0);
   }
-  const tz = resolveTz(timeZone);
   const ymd = ymdInTz(date, tz);
   const utc = localWallClockToUtc(ymd, '00:00:00.000', tz);
   return isValidDate(utc) ? utc : new Date(0);
 }
 
 export function endOfDayUtc(input: Date | string, timeZone?: string): Date {
-  const date = toDate(input);
+  const tz = resolveTz(timeZone);
+  const date = toDate(input, tz);
   if (!isValidDate(date)) {
     return new Date(0);
   }
-  const tz = resolveTz(timeZone);
   const ymd = ymdInTz(date, tz);
   const utc = localWallClockToUtc(ymd, '23:59:59.999', tz);
   return isValidDate(utc) ? utc : new Date(0);
 }
 
 export function startOfWeekUtc(input: Date | string, timeZone?: string, weekStartsOn = DEFAULT_WEEK_START): Date {
-  const date = toDate(input);
+  const tz = resolveTz(timeZone);
+  const date = toDate(input, tz);
   if (!isValidDate(date)) {
     return new Date(0);
   }
-  const tz = resolveTz(timeZone);
   const resolvedWeekStart = resolveWeekStart(weekStartsOn);
   const isoDay = Number(formatInTimeZone(date, tz, 'i')); // 1 (Mon) .. 7 (Sun)
   const dayIndex = normalizeWeekIndex(isoDay);

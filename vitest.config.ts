@@ -48,21 +48,23 @@ export default defineConfig({
     coverage: {
       provider: 'v8',
       reportsDirectory: 'coverage',
-      reporter: ['text', 'lcov', 'json-summary'],
-      all: false,
+      reporter: ['text', 'lcov'],
+      all: true,
       include: ['src/**/*.{ts,tsx}'],
       exclude: [
         '**/*.d.ts',
-        'src/main.tsx',
-        'src/App.tsx',
-        'src/**/types.ts',
-        'src/lib/spClient.retry.spec.ts',
-        'src/lib/spClient.retry429.spec.ts'
+        'src/**/*.stories.*',
+        'src/**/__mocks__/**',
+        'src/**/__fixtures__/**',
+        'src/**/mocks/**',
+        'src/**/types/**',
+        'src/**/index.ts',
+        'src/main.tsx'
       ],
       thresholds: {
         lines: 90,
-        functions: 75,
-        statements: 75,
+        statements: 90,
+        functions: 90,
         branches: 85
       }
     }
