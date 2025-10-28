@@ -9,6 +9,9 @@ const srcDir = fileURLToPath(new URL('./src', import.meta.url))
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-expect-error -- import.meta is supported in the Vite Node runtime
 const fluentStub = fileURLToPath(new URL('./src/stubs/fluentui-react.tsx', import.meta.url))
+// eslint-disable-next-line @typescript-eslint/ban-ts-comment
+// @ts-expect-error -- import.meta is supported in the Vite Node runtime
+const emptyShim = fileURLToPath(new URL('./src/shims/empty.ts', import.meta.url))
 
 export default defineConfig({
   plugins: [react()],
@@ -17,6 +20,8 @@ export default defineConfig({
       '@': srcDir,
       '@/adapters': resolve(srcDir, 'adapters'),
       '@fluentui/react': fluentStub,
+      'node:fs': emptyShim,
+      crypto: emptyShim,
     },
   },
   server: {

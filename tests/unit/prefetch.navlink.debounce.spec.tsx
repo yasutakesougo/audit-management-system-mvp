@@ -1,12 +1,12 @@
 import React from 'react';
-import { act, fireEvent, render } from '@testing-library/react';
+import { act, fireEvent } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { MemoryRouter } from 'react-router-dom';
 
 import NavLinkPrefetch from '@/components/NavLinkPrefetch';
 import { PREFETCH_KEYS } from '@/prefetch/routes';
 import * as routesModule from '@/prefetch/routes';
 import type { PrefetchHandle } from '@/prefetch/prefetch';
+import { renderWithAppProviders } from '../helpers/renderWithAppProviders';
 
 const createHandle = (): PrefetchHandle => ({
   cancel: vi.fn(),
@@ -27,12 +27,10 @@ describe('NavLinkPrefetch debounce behaviour', () => {
       .spyOn(routesModule, 'prefetchByKey')
       .mockReturnValue(createHandle());
 
-    const { getByRole } = render(
-      <MemoryRouter>
-        <NavLinkPrefetch to="/schedules/week" preloadKey={PREFETCH_KEYS.schedulesWeek} prefetchOnViewport={false}>
-          Schedules
-        </NavLinkPrefetch>
-      </MemoryRouter>,
+    const { getByRole } = renderWithAppProviders(
+      <NavLinkPrefetch to="/schedules/week" preloadKey={PREFETCH_KEYS.schedulesWeek} prefetchOnViewport={false}>
+        Schedules
+      </NavLinkPrefetch>
     );
 
     const link = getByRole('link', { name: /schedules/i });

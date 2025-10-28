@@ -1,10 +1,10 @@
-import { render, screen } from '@testing-library/react';
-import { MemoryRouter } from 'react-router-dom';
+import { screen } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 import AppShell from '@/app/AppShell';
 import Router from '@/app/router';
 import { FeatureFlagsProvider, type FeatureFlagSnapshot } from '@/config/featureFlags';
 import { routerFutureFlags } from '@/app/routerFuture';
+import { renderWithAppProviders } from '../helpers/renderWithAppProviders';
 
 vi.mock('@/lib/spClient', () => ({
   useSP: () => ({
@@ -13,14 +13,13 @@ vi.mock('@/lib/spClient', () => ({
 }));
 
 const renderWithFlags = (flags: FeatureFlagSnapshot) =>
-  render(
+  renderWithAppProviders(
     <FeatureFlagsProvider value={flags}>
-      <MemoryRouter future={routerFutureFlags}>
-        <AppShell>
-          <Router />
-        </AppShell>
-      </MemoryRouter>
-    </FeatureFlagsProvider>
+      <AppShell>
+        <Router />
+      </AppShell>
+    </FeatureFlagsProvider>,
+    { future: routerFutureFlags }
   );
 
 describe('AppShell schedule flag', () => {

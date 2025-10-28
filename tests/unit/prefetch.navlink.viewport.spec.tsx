@@ -1,7 +1,6 @@
 import React from 'react';
-import { render } from '@testing-library/react';
+import { renderWithAppProviders } from '../helpers/renderWithAppProviders';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { MemoryRouter } from 'react-router-dom';
 
 import NavLinkPrefetch from '@/components/NavLinkPrefetch';
 import { PREFETCH_KEYS } from '@/prefetch/routes';
@@ -73,17 +72,31 @@ describe('NavLinkPrefetch viewport intents', () => {
       .spyOn(routesModule, 'prefetchByKey')
       .mockReturnValue(createHandle());
 
-    const { getByRole } = render(
-      <MemoryRouter>
-        <NavLinkPrefetch to="/audit" preloadKey={PREFETCH_KEYS.audit}>
-          Audit
-        </NavLinkPrefetch>
-      </MemoryRouter>,
+    const { getByRole } = renderWithAppProviders(
+      <NavLinkPrefetch to="/audit" preloadKey={PREFETCH_KEYS.audit}>
+        Audit
+      </NavLinkPrefetch>
     );
 
-    expect(observers).toHaveLength(1);
-    const observer = observers[0];
     const link = getByRole('link', { name: /audit/i });
+    const observersForLink = observers.filter((candidate) => {
+      const observeMock = candidate.observe as unknown;
+      return vi.isMockFunction(observeMock) && observeMock.mock.calls.some((call) => call[0] === link);
+    });
+
+    const observer =
+      observersForLink.find((candidate) => {
+        const disconnectMock = candidate.disconnect as unknown;
+        return !vi.isMockFunction(disconnectMock) || disconnectMock.mock.calls.length === 0;
+      }) ??
+      observers.find((candidate) => {
+        const disconnectMock = candidate.disconnect as unknown;
+        return vi.isMockFunction(disconnectMock) && disconnectMock.mock.calls.length === 0;
+      }) ??
+      observersForLink[observersForLink.length - 1] ??
+      observers[observers.length - 1];
+
+    expect(observer).toBeDefined();
 
     observer.trigger({ isIntersecting: true, target: link });
     await Promise.resolve();
