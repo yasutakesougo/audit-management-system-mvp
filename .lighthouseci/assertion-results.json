@@ -1,1 +1,61 @@
-[]
+[
+  {
+    "name": "maxNumericValue",
+    "expected": 2500,
+    "actual": 2971.574399999998,
+    "values": [
+      2971.574399999998
+    ],
+    "operator": "<=",
+    "passed": false,
+    "auditId": "first-contentful-paint",
+    "level": "warn",
+    "url": "http://localhost:56183/",
+    "auditTitle": "First Contentful Paint",
+    "auditDocumentationLink": "https://developer.chrome.com/docs/lighthouse/performance/first-contentful-paint/"
+  },
+  {
+    "name": "maxNumericValue",
+    "expected": 3000,
+    "actual": 4391.6115999999965,
+    "values": [
+      4391.6115999999965
+    ],
+    "operator": "<=",
+    "passed": false,
+    "auditId": "largest-contentful-paint",
+    "level": "warn",
+    "url": "http://localhost:56183/",
+    "auditTitle": "Largest Contentful Paint",
+    "auditDocumentationLink": "https://developer.chrome.com/docs/lighthouse/performance/lighthouse-largest-contentful-paint/"
+  },
+  {
+    "name": "maxNumericValue",
+    "expected": 4000,
+    "actual": 4391.6115999999965,
+    "values": [
+      4391.6115999999965
+    ],
+    "operator": "<=",
+    "passed": false,
+    "auditId": "interactive",
+    "level": "warn",
+    "url": "http://localhost:56183/",
+    "auditTitle": "Time to Interactive",
+    "auditDocumentationLink": "https://developer.chrome.com/docs/lighthouse/performance/interactive/"
+  },
+  {
+    "name": "minScore",
+    "expected": 0.8,
+    "actual": 0.79,
+    "values": [
+      0.79
+    ],
+    "operator": ">=",
+    "passed": false,
+    "auditProperty": "performance",
+    "auditId": "categories",
+    "level": "warn",
+    "url": "http://localhost:56183/"
+  }
+]

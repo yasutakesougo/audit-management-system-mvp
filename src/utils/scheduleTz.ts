@@ -1,4 +1,4 @@
-import { getTimezoneOffset } from 'date-fns-tz';
+import { fromZonedTime } from 'date-fns-tz';
 import { getAppConfig } from '@/lib/env';
 
 export const DEFAULT_TZ = 'Asia/Tokyo';
@@ -34,8 +34,11 @@ const intlAcceptsTimeZone = (tz: string): boolean => {
 
 const dateFnsAcceptsTimeZone = (tz: string): boolean => {
   try {
-    getTimezoneOffset(tz, new Date());
-    return true;
+    // Attempt to convert a known timestamp using the provided zone. This mirrors
+    // how downstream utilities rely on fromZonedTime and will surface invalid
+    // IANA identifiers the same way.
+    const probe = fromZonedTime('2000-01-01T00:00:00.000', tz);
+    return Number.isFinite(probe.getTime());
   } catch {
     return false;
   }
@@ -48,11 +51,11 @@ export function isValidTimeZone(tz?: string): boolean {
     return false;
   }
 
-  if (hasIntlSupport()) {
-    return intlAcceptsTimeZone(normalized);
+  if (hasIntlSupport() && intlAcceptsTimeZone(normalized)) {
+    return true;
   }
 
-  // Fallback for environments without Intl (e.g., restricted CI containers).
+  // Fallback for environments where Intl is unavailable or lacks the zone data.
   return dateFnsAcceptsTimeZone(normalized);
 }
 
