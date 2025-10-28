@@ -1,26 +1,39 @@
 name: e2e
 on:
-  push:
-    branches: [main, develop]
   pull_request:
+    branches: [main]
+
+concurrency:
+  group: e2e-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
   e2e:
+    strategy:
+      fail-fast: false
+      matrix:
+        tz: ['Asia/Tokyo', 'America/Los_Angeles']
     runs-on: ubuntu-latest
+    env:
+      TZ: ${{ matrix.tz }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
-          node-version: '20'
+          node-version: 20
       - run: npm ci
       - run: npm run e2e:install
       - name: Run Playwright E2E
-        run: npm run test:e2e
-      - name: Upload artifacts
+        run: npm run e2e
+      - name: Upload Playwright report
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: playwright-artifacts
-          path: |
-            playwright-report
-            test-results
+          name: playwright-report-${{ matrix.tz }}
+          path: playwright-report
+      - name: Upload E2E results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: junit-${{ matrix.tz }}
+          path: test-results
