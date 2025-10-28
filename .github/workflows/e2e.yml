@@ -16,20 +16,33 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      - name: Prepare artifact suffix
+        id: artifact
+        shell: bash
+        run: |
+          suffix="${{ matrix.tz }}"
+          suffix="${suffix//\//-}"
+          echo "suffix=$suffix" >> "$GITHUB_OUTPUT"
       - uses: actions/setup-node@v4
         with:
           node-version: 20
+          cache: npm
       - run: npm ci
       - run: npm run e2e:install
       - name: Run Playwright E2E
         run: npm run e2e
         env:
           TZ: ${{ matrix.tz }}
-      - name: Prepare artifact suffix
-        id: artifact
-        run: echo "suffix=${TZ//\//-}" >> "$GITHUB_OUTPUT"
-        env:
-          TZ: ${{ matrix.tz }}
+          PLAYWRIGHT_JUNIT_OUTPUT: junit/junit-${{ steps.artifact.outputs.suffix }}.xml
+      - name: Check JUnit exists
+        id: junit
+        shell: bash
+        run: |
+          if compgen -G "junit/*.xml" > /dev/null; then
+            echo "exists=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "exists=false" >> "$GITHUB_OUTPUT"
+          fi
       - name: Upload Playwright report
         if: always()
         uses: actions/upload-artifact@v4
@@ -37,7 +50,7 @@ jobs:
           name: playwright-report-${{ steps.artifact.outputs.suffix }}
           path: playwright-report
       - name: Upload E2E results
-        if: always()
+        if: always() && steps.junit.outputs.exists == 'true'
         uses: actions/upload-artifact@v4
         with:
           name: junit-${{ steps.artifact.outputs.suffix }}
