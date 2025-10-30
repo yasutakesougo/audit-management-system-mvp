@@ -56,6 +56,9 @@ jobs:
       - name: HUD thresholds E2E
         run: npx playwright test tests/e2e/hud.thresholds.spec.ts --reporter=line
 
+      - name: Users detail flow E2E
+        run: npm run test:e2e:users -- --reporter=line
+
       - name: Build + bundle guards
         run: npm run build:ci
 

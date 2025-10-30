@@ -1,0 +1,633 @@
+import ArrowBackRoundedIcon from '@mui/icons-material/ArrowBackRounded';
+import AssessmentRoundedIcon from '@mui/icons-material/AssessmentRounded';
+import BadgeRoundedIcon from '@mui/icons-material/BadgeRounded';
+import DescriptionRoundedIcon from '@mui/icons-material/DescriptionRounded';
+import FactCheckRoundedIcon from '@mui/icons-material/FactCheckRounded';
+import PeopleAltRoundedIcon from '@mui/icons-material/PeopleAltRounded';
+import PersonAddRoundedIcon from '@mui/icons-material/PersonAddRounded';
+import PsychologyIcon from '@mui/icons-material/Psychology';
+import SupportIcon from '@mui/icons-material/Support';
+import Alert from '@mui/material/Alert';
+import Avatar from '@mui/material/Avatar';
+import Box from '@mui/material/Box';
+import Button from '@mui/material/Button';
+import Chip from '@mui/material/Chip';
+import Divider from '@mui/material/Divider';
+import Grid from '@mui/material/Grid';
+import Paper from '@mui/material/Paper';
+import Stack from '@mui/material/Stack';
+import Tab from '@mui/material/Tab';
+import Tabs from '@mui/material/Tabs';
+import Typography from '@mui/material/Typography';
+import React, { useCallback, useMemo, useRef, useState } from 'react';
+import { Link as RouterLink, useNavigate } from 'react-router-dom';
+import { TESTIDS } from '@/testids';
+import type { IUserMaster } from './types';
+
+type MenuSection = {
+  key: 'create-user' | 'basic' | 'support-plan' | 'service-records' | 'support-procedure' | 'assessment' | 'monitoring';
+  anchor: string;
+  title: string;
+  description: string;
+  icon: React.ElementType;
+  avatarColor: string;
+  status: 'available' | 'coming-soon';
+  highlights: string[];
+  actionLabel?: string;
+};
+
+const menuSections: MenuSection[] = [
+  {
+    key: 'create-user',
+    anchor: 'create-user',
+    title: '利用者新規登録',
+    description: 'ユーザーIDと氏名の登録から開始し、詳細フォームで追加情報を入力できます。',
+    icon: PersonAddRoundedIcon,
+    avatarColor: 'info.main',
+    status: 'available',
+    actionLabel: '新規登録',
+    highlights: [
+      'ユーザーIDと氏名の必須項目を素早く登録',
+      '詳細フォームで通所予定や支援区分を一括入力',
+      '登録完了後は一覧に自動反映',
+    ],
+  },
+  {
+    key: 'basic',
+    anchor: 'basic-info',
+    title: '基本情報',
+    description: '契約情報や緊急連絡先など利用者の基礎データを確認できます。',
+    icon: BadgeRoundedIcon,
+    avatarColor: 'primary.main',
+    status: 'available',
+    highlights: [
+      '氏名・ふりがな・利用者IDなどのマスタ情報管理',
+      '契約日・利用開始日の確認と履歴把握',
+      '緊急連絡先や通所・送迎設定の把握',
+    ],
+  },
+  {
+    key: 'support-plan',
+    anchor: 'support-plan',
+    title: '個別支援計画書',
+    description: '次期評価に向けた個別支援計画書のドラフトと確定版を参照します。',
+    icon: DescriptionRoundedIcon,
+    avatarColor: 'secondary.main',
+    status: 'coming-soon',
+    highlights: [
+      '短期・中期目標の設定と進捗レビュー',
+      '支援内容の見直しや家族との合意記録',
+      '評価コメントと次期課題の整理',
+    ],
+  },
+  {
+    key: 'service-records',
+    anchor: 'service-records',
+    title: 'サービス提供実績記録',
+    description: '国保連向けサービス提供実績記録票の入力と突合状況を管理します。',
+    icon: FactCheckRoundedIcon,
+    avatarColor: 'success.main',
+    status: 'coming-soon',
+    highlights: [
+      '通所予定と提供実績の差分チェック',
+      '加算・減算の算定履歴とエビデンス添付',
+      '月次請求帳票のダウンロード',
+    ],
+  },
+  {
+    key: 'support-procedure',
+    anchor: 'support-procedure',
+    title: '支援手順兼記録',
+    description: '強度行動障害対象者の個別支援手順と日々の実施記録を管理します。',
+    icon: SupportIcon,
+    avatarColor: 'warning.main',
+    status: 'coming-soon',
+    highlights: [
+      '支援手順テンプレートと実施履歴の一元管理',
+      '本人の様子・ABC記録・改善メモの整理',
+      '職員間での申し送り・改善点の共有',
+    ],
+  },
+  {
+    key: 'assessment',
+    anchor: 'assessment',
+    title: 'アセスメントシート',
+    description: 'アセスメントシートの入力・承認ステータスと評価ポイントを俯瞰します。',
+    icon: PsychologyIcon,
+    avatarColor: 'info.main',
+    status: 'coming-soon',
+    highlights: [
+      '領域ごとの評価スコアと改善ポイントの把握',
+      '家族・多職種からのヒアリング記録整理',
+      '前回評価との差分と課題管理',
+    ],
+  },
+  {
+    key: 'monitoring',
+    anchor: 'monitoring',
+    title: 'モニタリングシート',
+    description: '個別支援計画のモニタリング記録を時系列で整理します。',
+    icon: AssessmentRoundedIcon,
+    avatarColor: 'error.main',
+    status: 'coming-soon',
+    highlights: [
+      '訪問・電話・ケース会議でのモニタリング履歴',
+      '目標達成度と評価者コメントの蓄積',
+      '次のアクションとフォローアップ予定の管理',
+    ],
+  },
+];
+
+const TAB_SECTION_KEYS: MenuSection['key'][] = [
+  'basic',
+  'support-plan',
+  'service-records',
+  'support-procedure',
+  'assessment',
+];
+
+const TAB_SECTIONS: MenuSection[] = TAB_SECTION_KEYS
+  .map((key) => menuSections.find((section) => section.key === key))
+  .filter((section): section is MenuSection => Boolean(section));
+
+const NON_TABBED_SECTIONS: MenuSection[] = menuSections.filter(
+  (section) => !TAB_SECTION_KEYS.includes(section.key) && section.key !== 'create-user'
+);
+
+const QUICK_ACCESS_KEYS: MenuSection['key'][] = [
+  'create-user',
+  'basic',
+  'support-plan',
+  'support-procedure',
+  'monitoring',
+];
+
+const DEFAULT_TAB_KEY: MenuSection['key'] = TAB_SECTIONS[0]?.key ?? menuSections[0].key;
+
+type BackLinkProps =
+  | { label?: string; to: string }
+  | { label?: string; onClick: () => void }
+  | undefined;
+
+type UserDetailSectionsProps = {
+  user: IUserMaster;
+  backLink?: BackLinkProps;
+  variant?: 'page' | 'embedded';
+};
+
+const formatDateLabel = (value?: string | null) => {
+  if (!value) return '未設定';
+  const [year, month, day] = value.split('T')[0]?.split('-') ?? [];
+  if (year && month && day) {
+    return `${Number(year)}年${Number(month)}月${Number(day)}日`;
+  }
+  return value;
+};
+
+const resolveUserIdentifier = (user: IUserMaster) => user.UserID || String(user.Id);
+
+const renderHighlights = (items: string[]) => (
+  <Box component="ul" sx={{ m: 0, pl: 3, display: 'grid', gap: 1 }}>
+    {items.map((item, index) => (
+      <Typography key={index} component="li" variant="body2" color="text.secondary">
+        {item}
+      </Typography>
+    ))}
+  </Box>
+);
+
+const renderSectionDetails = (section: MenuSection, user: IUserMaster, attendanceLabel: string) => {
+  if (section.key === 'basic') {
+    const detailRows = [
+      { label: '氏名', value: user.FullName || '未設定' },
+      { label: 'ふりがな', value: user.Furigana || user.FullNameKana || '未登録' },
+      { label: '利用者ID', value: resolveUserIdentifier(user) },
+      { label: '契約日', value: formatDateLabel(user.ContractDate) },
+      { label: '利用開始日', value: formatDateLabel(user.ServiceStartDate) },
+      { label: '利用終了日', value: user.ServiceEndDate ? formatDateLabel(user.ServiceEndDate) : '継続利用中' },
+      { label: '在籍状況', value: user.IsActive === false ? '退所' : '在籍' },
+      { label: '支援区分', value: user.IsHighIntensitySupportTarget ? '強度行動障害支援対象者' : '通常支援' },
+      { label: '支援手順記録', value: user.IsSupportProcedureTarget ? '対象' : '対象外' },
+      { label: '通所予定日', value: attendanceLabel },
+      { label: '受給者証番号', value: user.RecipientCertNumber || '未登録' },
+      { label: '受給者証期限', value: formatDateLabel(user.RecipientCertExpiry) },
+    ];
+
+    return (
+      <Stack spacing={2}>
+        <Box
+          component="dl"
+          sx={{
+            m: 0,
+            display: 'grid',
+            gridTemplateColumns: { xs: '1fr', sm: '160px 1fr' },
+            columnGap: 3,
+            rowGap: 1.5,
+          }}
+        >
+          {detailRows.map(({ label, value }) => (
+            <React.Fragment key={label}>
+              <Typography component="dt" variant="subtitle2" color="text.secondary">
+                {label}
+              </Typography>
+              <Typography component="dd" variant="body1" sx={{ m: 0 }}>
+                {value}
+              </Typography>
+            </React.Fragment>
+          ))}
+        </Box>
+        <Divider />
+        <Typography variant="subtitle2" color="text.secondary">
+          このセクションでできること
+        </Typography>
+        {renderHighlights(section.highlights)}
+      </Stack>
+    );
+  }
+
+  const supportProcedureWarning = section.key === 'support-procedure' && !user.IsSupportProcedureTarget;
+
+  return (
+    <Stack spacing={2}>
+      <Typography variant="subtitle2" color="text.secondary">
+        想定されるコンテンツ
+      </Typography>
+      {renderHighlights(section.highlights)}
+      {supportProcedureWarning && (
+        <Alert severity="warning">
+          この利用者は支援手順記録の対象に設定されていません。
+        </Alert>
+      )}
+      {section.status === 'coming-soon' && (
+        <Alert severity="info">
+          このセクションの詳細画面は今後の開発で提供予定です。
+        </Alert>
+      )}
+    </Stack>
+  );
+};
+
+const UserDetailSections: React.FC<UserDetailSectionsProps> = ({ user, backLink, variant = 'page' }) => {
+  const [activeTab, setActiveTab] = useState<MenuSection['key']>(DEFAULT_TAB_KEY);
+  const tabPanelRef = useRef<HTMLDivElement | null>(null);
+  const navigate = useNavigate();
+  const quickAccessSections = useMemo(
+    () => menuSections.filter((section) => QUICK_ACCESS_KEYS.includes(section.key)),
+    []
+  );
+
+  const attendanceLabel = user.AttendanceDays?.length ? user.AttendanceDays.join('・') : '未設定';
+  const supportLabel = user.IsHighIntensitySupportTarget ? '強度行動障害支援対象者' : '通常支援';
+  const isActive = user.IsActive !== false;
+
+  const handleCardNavigate = useCallback(
+    (section: MenuSection) => {
+      if (section.key === 'create-user') {
+        navigate('/users', { state: { tab: 'create' } });
+        return;
+      }
+
+      if (TAB_SECTION_KEYS.includes(section.key)) {
+        setActiveTab(section.key);
+        if (typeof window !== 'undefined') {
+          window.requestAnimationFrame(() => {
+            if (tabPanelRef.current) {
+              tabPanelRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            }
+          });
+        }
+        return;
+      }
+
+      if (typeof document !== 'undefined') {
+        const target = document.getElementById(section.anchor);
+        if (target) {
+          target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+      }
+    },
+    [navigate]
+  );
+
+  const backControl = useMemo(() => {
+    if (!backLink) return null;
+    if ('to' in backLink) {
+      return (
+        <Button
+          component={RouterLink as unknown as React.ElementType}
+          to={backLink.to}
+          startIcon={<ArrowBackRoundedIcon />}
+          variant="text"
+          sx={{ alignSelf: 'flex-start' }}
+        >
+          {backLink.label ?? '一覧に戻る'}
+        </Button>
+      );
+    }
+
+    if ('onClick' in backLink) {
+      return (
+        <Button
+          onClick={backLink.onClick}
+          startIcon={<ArrowBackRoundedIcon />}
+          variant="text"
+          sx={{ alignSelf: 'flex-start' }}
+        >
+          {backLink.label ?? '一覧に戻る'}
+        </Button>
+      );
+    }
+
+    return null;
+  }, [backLink]);
+
+  const instructionText =
+    variant === 'embedded'
+      ? '利用者一覧を確認するか、新規利用者登録・基本情報・個別支援計画書・支援手順兼記録・モニタリングシートを選択してください。'
+      : '利用者一覧を確認するか、新規利用者登録・基本情報・個別支援計画書・支援手順兼記録・モニタリングシートを選択してください。';
+
+  return (
+  <Stack spacing={3} data-testid={TESTIDS['user-detail-sections']}>
+      {backControl}
+
+      <Paper variant="outlined" sx={{ p: { xs: 2.5, md: 3 }, borderRadius: 3 }}>
+        <Stack spacing={2}>
+          <Stack
+            direction={{ xs: 'column', sm: 'row' }}
+            spacing={2}
+            alignItems={{ xs: 'flex-start', sm: 'center' }}
+          >
+            <Avatar sx={{ bgcolor: 'primary.main', color: '#fff', width: 56, height: 56 }}>
+              <PeopleAltRoundedIcon />
+            </Avatar>
+            <Box>
+              <Typography variant="overline" color="text.secondary">
+                利用者プロフィール
+              </Typography>
+              <Typography variant="h4" component="h1" sx={{ fontWeight: 600 }}>
+                {user.FullName || '氏名未登録'}
+              </Typography>
+              <Typography variant="body2" color="text.secondary">
+                利用者ID: {resolveUserIdentifier(user)}
+              </Typography>
+            </Box>
+          </Stack>
+
+          <Stack direction="row" spacing={1} flexWrap="wrap">
+            <Chip label={`利用者ID: ${resolveUserIdentifier(user)}`} size="small" />
+            <Chip label={supportLabel} color={user.IsHighIntensitySupportTarget ? 'warning' : 'default'} size="small" />
+            {user.IsSupportProcedureTarget && (
+              <Chip label="支援手順対象" color="secondary" size="small" />
+            )}
+            <Chip label={isActive ? '在籍' : '退所'} color={isActive ? 'success' : 'default'} size="small" />
+            <Chip label={`契約日: ${formatDateLabel(user.ContractDate)}`} size="small" variant="outlined" />
+            <Chip label={`利用開始日: ${formatDateLabel(user.ServiceStartDate)}`} size="small" variant="outlined" />
+            {user.ServiceEndDate && (
+              <Chip label={`利用終了日: ${formatDateLabel(user.ServiceEndDate)}`} size="small" variant="outlined" />
+            )}
+          </Stack>
+
+          <Divider />
+
+          <Stack direction={{ xs: 'column', md: 'row' }} spacing={2}>
+            <Box flex={1}>
+              <Typography variant="subtitle2" color="text.secondary">
+                通所予定日
+              </Typography>
+              <Typography variant="body1">{attendanceLabel}</Typography>
+            </Box>
+            <Box flex={1}>
+              <Typography variant="subtitle2" color="text.secondary">
+                メモ
+              </Typography>
+              <Typography variant="body1" color="text.secondary">
+                利用者関連の主要帳票へアクセスするためのメニューです。
+              </Typography>
+            </Box>
+          </Stack>
+        </Stack>
+      </Paper>
+
+      <Paper variant="outlined" sx={{ p: { xs: 2.5, md: 3 }, borderRadius: 3 }}>
+        <Stack spacing={3}>
+          <Box>
+            <Typography variant="h6" component="h2" sx={{ fontWeight: 600 }}>
+              利用者メニュー
+            </Typography>
+            <Typography variant="body2" color="text.secondary">
+              {instructionText}
+            </Typography>
+          </Box>
+          <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1} flexWrap="wrap">
+            {quickAccessSections.map((section) => (
+              <Button
+                key={`quick-${section.key}`}
+                data-testid={`${TESTIDS['users-quick-prefix']}${section.key}`}
+                variant={section.key === 'create-user' ? 'contained' : 'outlined'}
+                color={section.key === 'create-user' ? 'primary' : 'inherit'}
+                size="small"
+                onClick={() => handleCardNavigate(section)}
+              >
+                {section.title}
+              </Button>
+            ))}
+          </Stack>
+          <Grid container spacing={2.5}>
+            {menuSections.map((section) => {
+              const IconComponent = section.icon;
+              const cardIsTab = TAB_SECTION_KEYS.includes(section.key);
+              const cardActionLabel = section.actionLabel ?? (cardIsTab ? 'タブを開く' : '詳細へ');
+              const chipProps = (() => {
+                if (section.key === 'support-procedure') {
+                  return {
+                    label: user.IsSupportProcedureTarget ? '対象' : '対象外',
+                    color: user.IsSupportProcedureTarget ? 'secondary' : 'default',
+                    variant: user.IsSupportProcedureTarget ? 'filled' : 'outlined',
+                  } as const;
+                }
+                if (section.status === 'coming-soon') {
+                  return {
+                    label: '準備中',
+                    color: 'default',
+                    variant: 'outlined',
+                  } as const;
+                }
+                return {
+                  label: '利用可',
+                  color: 'success',
+                  variant: 'outlined',
+                } as const;
+              })();
+
+              return (
+                <Grid key={section.key} size={{ xs: 12, sm: 6, md: 4 }}>
+                  <Paper
+                    data-testid={`${TESTIDS['user-menu-card-prefix']}${section.key}`}
+                    variant="outlined"
+                    sx={{
+                      p: 2.5,
+                      height: '100%',
+                      borderRadius: 2,
+                      display: 'flex',
+                      flexDirection: 'column',
+                      gap: 1.5,
+                    }}
+                  >
+                    <Stack direction="row" spacing={1.5} alignItems="center">
+                      <Avatar sx={{ bgcolor: section.avatarColor, color: '#fff', width: 44, height: 44 }}>
+                        <IconComponent fontSize="small" />
+                      </Avatar>
+                      <Box>
+                        <Typography variant="subtitle1" sx={{ fontWeight: 600 }}>
+                          {section.title}
+                        </Typography>
+                        <Typography variant="body2" color="text.secondary">
+                          {section.description}
+                        </Typography>
+                      </Box>
+                    </Stack>
+                    <Stack direction="row" spacing={1} alignItems="center" justifyContent="space-between" mt="auto">
+                      <Chip size="small" {...chipProps} />
+                      <Button variant="contained" color="primary" size="small" onClick={() => handleCardNavigate(section)}>
+                        {cardActionLabel}
+                      </Button>
+                    </Stack>
+                  </Paper>
+                </Grid>
+              );
+            })}
+          </Grid>
+          <Tabs
+            value={activeTab}
+            onChange={(_, value) => setActiveTab(value as MenuSection['key'])}
+            variant="scrollable"
+            scrollButtons="auto"
+            aria-label="利用者メニュータブ"
+          >
+            {TAB_SECTIONS.map((section) => {
+              const IconComponent = section.icon;
+              return (
+                <Tab
+                  key={section.key}
+                  value={section.key}
+                  label={section.title}
+                  icon={<IconComponent fontSize="small" />}
+                  iconPosition="start"
+                  id={`user-menu-tab-${section.key}`}
+                  aria-controls={`user-menu-tabpanel-${section.key}`}
+                />
+              );
+            })}
+          </Tabs>
+
+          {TAB_SECTIONS.map((section) => {
+            const IconComponent = section.icon;
+            const chipProps = (() => {
+              if (section.key === 'support-procedure') {
+                return {
+                  label: user.IsSupportProcedureTarget ? '対象' : '対象外',
+                  color: user.IsSupportProcedureTarget ? 'secondary' : 'default',
+                  variant: user.IsSupportProcedureTarget ? 'filled' : 'outlined',
+                } as const;
+              }
+              if (section.status === 'coming-soon') {
+                return {
+                  label: '準備中',
+                  color: 'default',
+                  variant: 'outlined',
+                } as const;
+              }
+              return {
+                label: '利用可',
+                color: 'success',
+                variant: 'outlined',
+              } as const;
+            })();
+
+            const isActive = activeTab === section.key;
+
+            return (
+              <Box
+                key={section.key}
+                ref={isActive ? tabPanelRef : undefined}
+                role="tabpanel"
+                hidden={!isActive}
+                id={`user-menu-tabpanel-${section.key}`}
+                data-testid={`${TESTIDS['user-menu-tabpanel-prefix']}${section.key}`}
+                aria-labelledby={`user-menu-tab-${section.key}`}
+                sx={{ mt: 2 }}
+              >
+                {isActive && (
+                  <Stack spacing={2.5}>
+                    <Stack
+                      direction={{ xs: 'column', md: 'row' }}
+                      spacing={2}
+                      alignItems={{ xs: 'flex-start', md: 'center' }}
+                    >
+                      <Stack direction="row" spacing={2} alignItems="center" sx={{ flexGrow: 1 }}>
+                        <Avatar sx={{ bgcolor: section.avatarColor, color: '#fff', width: 48, height: 48 }}>
+                          <IconComponent fontSize="medium" />
+                        </Avatar>
+                        <Box>
+                          <Typography variant="h6" component="h3" sx={{ fontWeight: 600 }}>
+                            {section.title}
+                          </Typography>
+                          <Typography variant="body2" color="text.secondary">
+                            {section.description}
+                          </Typography>
+                        </Box>
+                      </Stack>
+                      <Chip size="small" {...chipProps} />
+                    </Stack>
+                    <Divider />
+                    {renderSectionDetails(section, user, attendanceLabel)}
+                  </Stack>
+                )}
+              </Box>
+            );
+          })}
+        </Stack>
+      </Paper>
+
+      {NON_TABBED_SECTIONS.map((section) => {
+        const IconComponent = section.icon;
+        return (
+          <Paper
+            key={section.key}
+            id={section.anchor}
+            data-testid={`${TESTIDS['user-menu-section-prefix']}${section.key}`}
+            variant="outlined"
+            sx={{
+              p: { xs: 2.5, md: 3 },
+              borderRadius: 3,
+              scrollMarginTop: 120,
+            }}
+          >
+            <Stack spacing={2}>
+              <Stack direction="row" spacing={2} alignItems="center">
+                <Avatar sx={{ bgcolor: section.avatarColor, color: '#fff', width: 48, height: 48 }}>
+                  <IconComponent fontSize="medium" />
+                </Avatar>
+                <Box flex={1}>
+                  <Typography variant="h5" component="h3" sx={{ fontWeight: 600 }}>
+                    {section.title}
+                  </Typography>
+                  <Typography variant="body2" color="text.secondary">
+                    {section.description}
+                  </Typography>
+                </Box>
+                {section.status === 'coming-soon' && <Chip label="準備中" size="small" variant="outlined" />}
+              </Stack>
+              <Divider />
+              {renderSectionDetails(section, user, attendanceLabel)}
+            </Stack>
+          </Paper>
+        );
+      })}
+    </Stack>
+  );
+};
+
+export type { MenuSection };
+export { DEFAULT_TAB_KEY, NON_TABBED_SECTIONS, TAB_SECTION_KEYS, TAB_SECTIONS, menuSections };
+export default UserDetailSections;
