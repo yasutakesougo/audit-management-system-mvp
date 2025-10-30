@@ -1,28 +1,50 @@
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+
+beforeEach(() => {
+  vi.resetModules();
+});
 
 afterEach(() => {
+  vi.restoreAllMocks();
   vi.resetModules();
-  vi.resetAllMocks();
-  vi.unmock('@/lib/env');
-  vi.unmock('@/features/users/useUsers');
-  vi.unmock('@/features/users/usersStoreDemo');
 });
 
 const setupStore = async (options: { demo: boolean; skipLogin: boolean; isDev?: boolean }) => {
-  vi.resetModules();
+  const envModule = (await import('@/lib/env')) as typeof import('@/lib/env');
+  envModule.__resetAppConfigForTests();
 
-  vi.doMock('@/lib/env', () => ({
-    getAppConfig: vi.fn(() => ({ isDev: options.isDev ?? false })),
-    isDemoModeEnabled: vi.fn(() => options.demo),
-    shouldSkipLogin: vi.fn(() => options.skipLogin),
-  }));
+  const originalGetAppConfig = envModule.getAppConfig.bind(envModule);
+  vi.spyOn(envModule, 'getAppConfig').mockImplementation((envOverride) => {
+    const base = originalGetAppConfig(envOverride);
+    if (typeof options.isDev === 'boolean') {
+      return { ...base, isDev: options.isDev };
+    }
+    return base;
+  });
+
+  const originalIsDemoModeEnabled = envModule.isDemoModeEnabled.bind(envModule);
+  vi.spyOn(envModule, 'isDemoModeEnabled').mockImplementation((envOverride) => {
+    if (typeof options.demo === 'boolean') {
+      return options.demo;
+    }
+    return originalIsDemoModeEnabled(envOverride);
+  });
+
+  const originalShouldSkipLogin = envModule.shouldSkipLogin.bind(envModule);
+  vi.spyOn(envModule, 'shouldSkipLogin').mockImplementation((envOverride) => {
+    if (typeof options.skipLogin === 'boolean') {
+      return options.skipLogin;
+    }
+    return originalShouldSkipLogin(envOverride);
+  });
 
   const liveHook = vi.fn(() => 'live-result');
+  const demoHook = vi.fn(() => 'demo-result');
+
   vi.doMock('@/features/users/useUsers', () => ({
     useUsers: liveHook,
   }));
 
-  const demoHook = vi.fn(() => 'demo-result');
   vi.doMock('@/features/users/usersStoreDemo', () => ({
     useUsersDemo: demoHook,
   }));
