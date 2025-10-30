@@ -1,6 +1,9 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+echo "▶ TESTIDS guard"
+npm run guard:testids --silent
+
 echo "▶ Typecheck"
 npm run typecheck
 

@@ -38,6 +38,9 @@ jobs:
       - name: Install Playwright (Chromium only)
         run: npx playwright install --with-deps chromium
 
+      - name: TESTIDS guard
+        run: npm run guard:testids
+
       - name: Typecheck
         run: npm run typecheck
 
