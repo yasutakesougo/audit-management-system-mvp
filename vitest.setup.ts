@@ -7,6 +7,7 @@ import { webcrypto } from 'crypto';
 import { toHaveNoViolations } from 'jest-axe';
 import { expect } from 'vitest';
 
+process.env.TZ ??= 'Asia/Tokyo';
 // Provide safe defaults for MSAL-dependent modules during unit tests
 process.env.VITE_SCHEDULES_TZ ??= 'Asia/Tokyo';
 process.env.VITE_SCHEDULES_TZ ||= 'Asia/Tokyo';

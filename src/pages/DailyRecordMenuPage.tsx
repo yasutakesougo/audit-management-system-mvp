@@ -1,21 +1,17 @@
-import {
-    EventNote as ActivityIcon,
-    Assignment as AssignmentIcon,
-    People as PeopleIcon,
-    AssignmentTurnedIn as SupportIcon
-} from '@mui/icons-material';
-import {
-    Box,
-    Button,
-    Card,
-    CardActions,
-    CardContent,
-    Chip,
-    Container,
-    Paper,
-    Stack,
-    Typography
-} from '@mui/material';
+import ActivityIcon from '@mui/icons-material/EventNote';
+import AssignmentIcon from '@mui/icons-material/Assignment';
+import PeopleIcon from '@mui/icons-material/People';
+import SupportIcon from '@mui/icons-material/AssignmentTurnedIn';
+import Box from '@mui/material/Box';
+import Button from '@mui/material/Button';
+import Card from '@mui/material/Card';
+import CardActions from '@mui/material/CardActions';
+import CardContent from '@mui/material/CardContent';
+import Chip from '@mui/material/Chip';
+import Container from '@mui/material/Container';
+import Paper from '@mui/material/Paper';
+import Stack from '@mui/material/Stack';
+import Typography from '@mui/material/Typography';
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useUsersDemo } from '../features/users/usersStoreDemo';

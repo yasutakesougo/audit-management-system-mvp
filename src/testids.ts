@@ -9,6 +9,7 @@ export const TESTIDS = {
   // Pages
   'meeting-guide': 'meeting-guide',
   'meeting-guide-page': 'meeting-guide-page',
+  'dashboard-page': 'dashboard-page',
   'dashboard-records': 'dashboard-records',
   'attendance-page': 'attendance-page',
   'plan-create-page': 'plan-create-page',

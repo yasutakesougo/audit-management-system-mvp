@@ -1,20 +1,16 @@
-import {
-    Assessment as AssessmentIcon,
-    DateRange as DateRangeIcon,
-    Schedule as ScheduleIcon,
-    Timeline as TimelineIcon
-} from '@mui/icons-material';
-import {
-    Alert,
-    Box,
-    Card,
-    CardContent,
-    Chip,
-    Divider,
-    LinearProgress,
-    Stack,
-    Typography
-} from '@mui/material';
+import AssessmentIcon from '@mui/icons-material/Assessment';
+import DateRangeIcon from '@mui/icons-material/DateRange';
+import ScheduleIcon from '@mui/icons-material/Schedule';
+import TimelineIcon from '@mui/icons-material/Timeline';
+import Alert from '@mui/material/Alert';
+import Box from '@mui/material/Box';
+import Card from '@mui/material/Card';
+import CardContent from '@mui/material/CardContent';
+import Chip from '@mui/material/Chip';
+import Divider from '@mui/material/Divider';
+import LinearProgress from '@mui/material/LinearProgress';
+import Stack from '@mui/material/Stack';
+import Typography from '@mui/material/Typography';
 import React from 'react';
 
 interface MonitoringInfoProps {

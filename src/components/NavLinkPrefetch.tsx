@@ -29,6 +29,7 @@ const recordIntent = (key: string, source: PrefetchSource): boolean => {
 
 export type NavLinkPrefetchProps = LinkProps & {
   preloadKey: PrefetchKey;
+  preloadKeys?: PrefetchKey[];
   preload?: () => Promise<unknown>;
   prefetchOnViewport?: boolean;
   prefetchOnHover?: boolean;
@@ -55,7 +56,8 @@ const DEFAULT_OPTIONS = {
 const NavLinkPrefetch = forwardRef<HTMLAnchorElement, NavLinkPrefetchProps>((props, ref) => {
   const {
     preloadKey,
-  preload,
+    preloadKeys = [],
+    preload,
     prefetchOnViewport = DEFAULT_OPTIONS.prefetchOnViewport,
     prefetchOnHover = DEFAULT_OPTIONS.prefetchOnHover,
     prefetchOnFocus = DEFAULT_OPTIONS.prefetchOnFocus,
@@ -63,9 +65,9 @@ const NavLinkPrefetch = forwardRef<HTMLAnchorElement, NavLinkPrefetchProps>((pro
     prefetchOnKeyboard = DEFAULT_OPTIONS.prefetchOnKeyboard,
     disablePrefetch = DEFAULT_OPTIONS.disablePrefetch,
     viewportMargin = DEFAULT_OPTIONS.viewportMargin,
-  ttlMs,
-  meta,
-  signal,
+    ttlMs,
+    meta,
+    signal,
     onPointerEnter,
     onPointerLeave,
     onFocus,
@@ -81,25 +83,29 @@ const NavLinkPrefetch = forwardRef<HTMLAnchorElement, NavLinkPrefetchProps>((pro
 
   const firePrefetch = useCallback((source: PrefetchSource) => {
     if (disablePrefetch) return;
-    if ((source === 'hover' || source === 'kbd') && !recordIntent(preloadKey, source)) {
-      return;
-    }
-  const payloadMeta = meta ? { intent: source, ...meta } : { intent: source };
-    if (preload) {
-      warmRoute(preload, preloadKey, {
-        source,
+    const keys = new Set<PrefetchKey>([preloadKey, ...preloadKeys]);
+    const payloadMeta = meta ? { intent: source, ...meta } : { intent: source };
+
+    for (const key of keys) {
+      if ((source === 'hover' || source === 'kbd') && !recordIntent(key, source)) {
+        continue;
+      }
+      if (preload && key === preloadKey) {
+        warmRoute(preload, key, {
+          source,
+          ttlMs,
+          meta: payloadMeta,
+          signal,
+        });
+        continue;
+      }
+      prefetchByKey(key, source, {
         ttlMs,
         meta: payloadMeta,
         signal,
       });
-    } else {
-      prefetchByKey(preloadKey, source, {
-        ttlMs,
-        meta: payloadMeta,
-        signal,
-      });
     }
-  }, [disablePrefetch, meta, preload, preloadKey, signal, ttlMs]);
+  }, [disablePrefetch, meta, preload, preloadKey, preloadKeys, signal, ttlMs]);
 
   const scheduleHoverPrefetch = useCallback(() => {
     if (!prefetchOnHover) {

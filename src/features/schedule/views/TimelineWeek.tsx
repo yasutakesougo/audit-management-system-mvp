@@ -270,7 +270,7 @@ export default function TimelineWeek({ events, startDate, onEventMove, onEventCr
   );
 
   return (
-    <Box component="section" aria-label="週タイムライン">
+    <Box component="section" aria-label="週タイムライン" data-testid="schedule-week-root">
       {/* Header */}
       <Stack direction="row" alignItems="center" justifyContent="space-between" mb={3}>
         <Box>

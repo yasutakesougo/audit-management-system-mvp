@@ -1,31 +1,27 @@
-import {
-    Person as PersonIcon,
-    Preview as PreviewIcon,
-    AccessTime as TimeIcon,
-    Work as WorkIcon,
-} from '@mui/icons-material';
-import {
-    Alert,
-    Box,
-    Button,
-    Card,
-    CardContent,
-    Chip,
-    Dialog,
-    DialogActions,
-    DialogContent,
-    DialogTitle,
-    Divider,
-    FormControl,
-    InputAdornment,
-    InputLabel,
-    MenuItem,
-    Select,
-    Slider,
-    Stack,
-    TextField,
-    Typography,
-} from '@mui/material';
+import PersonIcon from '@mui/icons-material/Person';
+import PreviewIcon from '@mui/icons-material/Preview';
+import TimeIcon from '@mui/icons-material/AccessTime';
+import WorkIcon from '@mui/icons-material/Work';
+import Alert from '@mui/material/Alert';
+import Box from '@mui/material/Box';
+import Button from '@mui/material/Button';
+import Card from '@mui/material/Card';
+import CardContent from '@mui/material/CardContent';
+import Chip from '@mui/material/Chip';
+import Dialog from '@mui/material/Dialog';
+import DialogActions from '@mui/material/DialogActions';
+import DialogContent from '@mui/material/DialogContent';
+import DialogTitle from '@mui/material/DialogTitle';
+import Divider from '@mui/material/Divider';
+import FormControl from '@mui/material/FormControl';
+import InputAdornment from '@mui/material/InputAdornment';
+import InputLabel from '@mui/material/InputLabel';
+import MenuItem from '@mui/material/MenuItem';
+import Select from '@mui/material/Select';
+import Slider from '@mui/material/Slider';
+import Stack from '@mui/material/Stack';
+import TextField from '@mui/material/TextField';
+import Typography from '@mui/material/Typography';
 import React, { useEffect, useState } from 'react';
 import { z } from 'zod';
 import { SupportActivityTemplate, SupportActivityTemplateZ } from '../../domain/support/types';

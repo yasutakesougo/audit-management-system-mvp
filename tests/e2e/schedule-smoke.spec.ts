@@ -136,22 +136,27 @@ test.describe('Schedule smoke', () => {
     await page.addInitScript(({ now }) => {
       const fixedNow = new Date(now).getTime();
       const RealDate = Date;
-      class MockDate extends RealDate {
-        constructor(...args: Array<number | string | Date>) {
+      const MockDate = new Proxy(RealDate, {
+        construct(target, args) {
           if (args.length === 0) {
-            super(fixedNow);
-            return;
+            return new target(fixedNow);
           }
-          super(...(args as ConstructorParameters<typeof Date>));
-        }
-        static now() {
-          return fixedNow;
-        }
-        static parse = RealDate.parse;
-        static UTC = RealDate.UTC;
-      }
-      Object.setPrototypeOf(MockDate, RealDate);
-      (window as unknown as { Date: typeof Date }).Date = MockDate;
+          return new target(...(args as ConstructorParameters<typeof Date>));
+        },
+        apply(target, thisArg, argArray) {
+          if (!argArray || argArray.length === 0) {
+            return new target(fixedNow).toString();
+          }
+          return target.apply(thisArg, argArray as Parameters<typeof Date>);
+        },
+        get(target, prop, receiver) {
+          if (prop === 'now') {
+            return () => fixedNow;
+          }
+          return Reflect.get(target, prop, receiver);
+        },
+      }) as DateConstructor;
+      (window as typeof window & { Date: DateConstructor }).Date = MockDate;
     }, { now: TEST_NOW });
 
     await page.addInitScript(() => {
@@ -163,6 +168,11 @@ test.describe('Schedule smoke', () => {
         VITE_FEATURE_SCHEDULES: '1',
         VITE_FEATURE_SCHEDULES_GRAPH: '1',
         VITE_DEMO_MODE: '0',
+        MODE: 'production',
+        DEV: '0',
+        VITE_SP_RESOURCE: 'https://contoso.sharepoint.com',
+        VITE_SP_SITE_RELATIVE: '/sites/Audit',
+        VITE_SP_SCOPE_DEFAULT: 'https://contoso.sharepoint.com/AllSites.Read',
       };
       window.localStorage.setItem('skipLogin', '1');
       window.localStorage.setItem('demo', '0');
@@ -227,15 +237,16 @@ test.describe('Schedule smoke', () => {
       }
     });
 
-    await page.goto('/schedule');
+  await page.goto('/schedule', { waitUntil: 'load' });
+  await expect(page.getByTestId('schedule-page-root')).toBeVisible({ timeout: 15000 });
 
-  const viewToggle = page.getByRole('navigation', { name: 'ビュー切替' });
-  const weekTab = viewToggle.getByRole('button', { name: '週', exact: true });
+  const weekTab = page.getByRole('tab', { name: '週', exact: true });
   await expect(weekTab).toBeVisible();
-  await expect(viewToggle.getByRole('button', { name: '日', exact: true })).toBeVisible();
-  await expect(viewToggle.getByRole('button', { name: /リスト|タイムライン/ })).toBeVisible();
+  await expect(page.getByRole('tab', { name: '日', exact: true })).toBeVisible();
+  await expect(page.getByRole('tab', { name: /リスト|タイムライン/ })).toBeVisible();
 
-    await weekTab.click();
+  await weekTab.click();
+  await expect(page.getByTestId('schedule-week-root')).toBeVisible({ timeout: 15000 });
 
     const items = page.getByTestId('schedule-item');
     await expect(items.first()).toBeVisible();

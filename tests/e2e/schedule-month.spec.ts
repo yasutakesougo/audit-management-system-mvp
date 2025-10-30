@@ -10,8 +10,6 @@ test('Schedule month view renders (placeholder: hit /schedule until month route 
       /* ignore */
     }
   });
-  await page.goto('/schedule');
-  await page.waitForLoadState('networkidle');
-  const heading = page.getByRole('heading', { name: 'スケジュール', exact: true });
-  await expect(heading).toBeVisible();
+    await page.goto('/schedule', { waitUntil: 'networkidle' });
+    await expect(page.getByTestId('schedule-page-root')).toBeVisible({ timeout: 15_000 });
 });

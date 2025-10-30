@@ -1,22 +1,18 @@
-import {
-    Add as AddIcon,
-    Person as PersonIcon,
-    Search as SearchIcon,
-    Visibility as ViewIcon,
-} from '@mui/icons-material';
-import {
-    Avatar,
-    Box,
-    Button,
-    Card,
-    CardContent,
-    Chip,
-    IconButton,
-    InputAdornment,
-    TextField,
-    Tooltip,
-    Typography,
-} from '@mui/material';
+import AddIcon from '@mui/icons-material/Add';
+import PersonIcon from '@mui/icons-material/Person';
+import SearchIcon from '@mui/icons-material/Search';
+import ViewIcon from '@mui/icons-material/Visibility';
+import Avatar from '@mui/material/Avatar';
+import Box from '@mui/material/Box';
+import Button from '@mui/material/Button';
+import Card from '@mui/material/Card';
+import CardContent from '@mui/material/CardContent';
+import Chip from '@mui/material/Chip';
+import IconButton from '@mui/material/IconButton';
+import InputAdornment from '@mui/material/InputAdornment';
+import TextField from '@mui/material/TextField';
+import Tooltip from '@mui/material/Tooltip';
+import Typography from '@mui/material/Typography';
 import React, { useMemo, useState } from 'react';
 import { UserBasicInfo, sampleUsers } from '../../domain/support/individual-steps';
 

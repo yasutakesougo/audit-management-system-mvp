@@ -28,6 +28,11 @@ export const HYDRATION_KEYS = {
     label: 'Admin Individual Support',
     budget: 120,
   },
+  supportPlanGuideMarkdown: {
+    id: 'route:support-plan-guide:md',
+    label: 'Support Plan Guide Markdown',
+    budget: 90,
+  },
 } as const satisfies Record<string, HydrationRouteEntry>;
 
 type Matcher = {

@@ -1,31 +1,27 @@
-import {
-    Add as AddIcon,
-    Delete as DeleteIcon,
-    Edit as EditIcon,
-    FilterList as FilterIcon,
-    Person as PersonIcon,
-    Search as SearchIcon,
-    AccessTime as TimeIcon,
-    Work as WorkIcon,
-} from '@mui/icons-material';
-import {
-    Avatar,
-    Box,
-    Card,
-    CardContent,
-    Chip,
-    Divider,
-    Fab,
-    FormControl,
-    IconButton,
-    InputLabel,
-    MenuItem,
-    Select,
-    Stack,
-    TextField,
-    Tooltip,
-    Typography,
-} from '@mui/material';
+import AddIcon from '@mui/icons-material/Add';
+import DeleteIcon from '@mui/icons-material/Delete';
+import EditIcon from '@mui/icons-material/Edit';
+import FilterIcon from '@mui/icons-material/FilterList';
+import PersonIcon from '@mui/icons-material/Person';
+import SearchIcon from '@mui/icons-material/Search';
+import TimeIcon from '@mui/icons-material/AccessTime';
+import WorkIcon from '@mui/icons-material/Work';
+import Avatar from '@mui/material/Avatar';
+import Box from '@mui/material/Box';
+import Card from '@mui/material/Card';
+import CardContent from '@mui/material/CardContent';
+import Chip from '@mui/material/Chip';
+import Divider from '@mui/material/Divider';
+import Fab from '@mui/material/Fab';
+import FormControl from '@mui/material/FormControl';
+import IconButton from '@mui/material/IconButton';
+import InputLabel from '@mui/material/InputLabel';
+import MenuItem from '@mui/material/MenuItem';
+import Select from '@mui/material/Select';
+import Stack from '@mui/material/Stack';
+import TextField from '@mui/material/TextField';
+import Tooltip from '@mui/material/Tooltip';
+import Typography from '@mui/material/Typography';
 import React, { useMemo, useState } from 'react';
 import { SupportActivityTemplate, defaultSupportActivities } from '../../domain/support/types';
 

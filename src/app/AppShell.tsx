@@ -37,6 +37,7 @@ type NavItem = {
   testId?: string;
   icon?: React.ElementType;
   prefetchKey?: PrefetchKey;
+  prefetchKeys?: PrefetchKey[];
 };
 
 const AppShell: React.FC<{ children: React.ReactNode }> = ({ children }) => {
@@ -52,6 +53,8 @@ const AppShell: React.FC<{ children: React.ReactNode }> = ({ children }) => {
         isActive: (pathname) => pathname === '/' || pathname.startsWith('/records'),
         icon: AssignmentTurnedInRoundedIcon,
         prefetchKey: PREFETCH_KEYS.dashboard,
+        prefetchKeys: [PREFETCH_KEYS.muiData, PREFETCH_KEYS.muiFeedback],
+        testId: 'nav-dashboard',
       },
       {
         label: '日次記録',
@@ -95,6 +98,8 @@ const AppShell: React.FC<{ children: React.ReactNode }> = ({ children }) => {
         isActive: (pathname) => pathname.startsWith('/admin'),
         icon: SettingsRoundedIcon,
         prefetchKey: PREFETCH_KEYS.adminTemplates,
+        prefetchKeys: [PREFETCH_KEYS.muiForms, PREFETCH_KEYS.muiOverlay],
+        testId: 'nav-admin',
       },
     ];
 
@@ -106,6 +111,7 @@ const AppShell: React.FC<{ children: React.ReactNode }> = ({ children }) => {
         testId: 'nav-schedules',
         icon: EventAvailableRoundedIcon,
         prefetchKey: PREFETCH_KEYS.schedulesWeek,
+        prefetchKeys: [PREFETCH_KEYS.muiForms, PREFETCH_KEYS.muiOverlay],
       });
     }
 
@@ -152,7 +158,7 @@ const AppShell: React.FC<{ children: React.ReactNode }> = ({ children }) => {
       <Container component="main" role="main" maxWidth="lg" sx={{ py: 4 }}>
         <Box component="nav" role="navigation" aria-label="主要ナビゲーション" mb={2}>
           <Stack direction="row" spacing={1} flexWrap="wrap">
-            {navItems.map(({ label, to, isActive, testId, icon: IconComponent, prefetchKey }) => {
+            {navItems.map(({ label, to, isActive, testId, icon: IconComponent, prefetchKey, prefetchKeys }) => {
               const active = isActive(location.pathname);
               const sx = {
                 minWidth: 'auto',
@@ -177,7 +183,7 @@ const AppShell: React.FC<{ children: React.ReactNode }> = ({ children }) => {
                     aria-current={active ? 'page' : undefined}
                     startIcon={IconComponent ? <IconComponent /> : undefined}
                     sx={sx}
-                    {...({ preloadKey: prefetchKey, meta: { label } } as Record<string, unknown>)}
+                    {...({ preloadKey: prefetchKey, preloadKeys: prefetchKeys, meta: { label } } as Record<string, unknown>)}
                   >
                     {label}
                   </Button>

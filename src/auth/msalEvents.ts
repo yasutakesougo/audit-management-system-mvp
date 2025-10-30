@@ -1,22 +1,31 @@
-import { EventType, type EventMessage, type IPublicClientApplication } from '@azure/msal-browser';
+import type { EventMessage, EventType, IPublicClientApplication } from '@azure/msal-browser';
 
-const CLEAR_ROLE_EVENTS = new Set<EventType>([
-  EventType.LOGOUT_SUCCESS,
-  EventType.ACCOUNT_REMOVED,
-  EventType.ACQUIRE_TOKEN_FAILURE,
-]);
+export type MsalEventMap = Pick<
+  typeof import('@azure/msal-browser')['EventType'],
+  | 'LOGOUT_SUCCESS'
+  | 'ACCOUNT_REMOVED'
+  | 'ACQUIRE_TOKEN_FAILURE'
+  | 'LOGIN_SUCCESS'
+  | 'ACQUIRE_TOKEN_SUCCESS'
+>;
 
-export function wireMsalRoleInvalidation(instance: IPublicClientApplication) {
+export function wireMsalRoleInvalidation(instance: IPublicClientApplication, eventTypes: MsalEventMap) {
   if (typeof instance?.addEventCallback !== 'function') {
     return;
   }
+
+  const clearRoleEvents = new Set<EventType>([
+    eventTypes.LOGOUT_SUCCESS,
+    eventTypes.ACCOUNT_REMOVED,
+    eventTypes.ACQUIRE_TOKEN_FAILURE,
+  ]);
 
   instance.addEventCallback((event: EventMessage | null) => {
     if (!event) {
       return;
     }
 
-    if (CLEAR_ROLE_EVENTS.has(event.eventType)) {
+    if (clearRoleEvents.has(event.eventType)) {
       try {
         window.localStorage.removeItem('role');
       } catch (error) {
@@ -24,7 +33,7 @@ export function wireMsalRoleInvalidation(instance: IPublicClientApplication) {
       }
     }
 
-    if (event.eventType === EventType.LOGIN_SUCCESS || event.eventType === EventType.ACQUIRE_TOKEN_SUCCESS) {
+    if (event.eventType === eventTypes.LOGIN_SUCCESS || event.eventType === eventTypes.ACQUIRE_TOKEN_SUCCESS) {
       const account = (event.payload as { account?: Parameters<IPublicClientApplication['setActiveAccount']>[0] })?.account;
       if (account) {
         instance.setActiveAccount(account);

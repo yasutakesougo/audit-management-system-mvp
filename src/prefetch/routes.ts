@@ -18,6 +18,11 @@ export const PREFETCH_KEYS = {
   adminSteps: 'route:admin:step-templates',
   adminIndividual: 'route:admin:individual-support',
   supportProcedures: 'route:support-procedures',
+  supportPlanGuideMarkdown: 'route:support-plan-guide:md',
+  muiForms: 'mui:forms',
+  muiOverlay: 'mui:overlay',
+  muiFeedback: 'mui:feedback',
+  muiData: 'mui:data',
 } as const;
 
 export type PrefetchKey = (typeof PREFETCH_KEYS)[keyof typeof PREFETCH_KEYS];
@@ -42,6 +47,11 @@ export const ROUTE_IMPORTERS: PrefetchRegistry = {
   [PREFETCH_KEYS.adminSteps]: () => import('@/pages/SupportStepMasterPage'),
   [PREFETCH_KEYS.adminIndividual]: () => import('@/pages/IndividualSupportManagementPage'),
   [PREFETCH_KEYS.supportProcedures]: () => import('@/pages/TimeFlowSupportRecordPage'),
+  [PREFETCH_KEYS.supportPlanGuideMarkdown]: () => import('@/pages/SupportPlanGuidePage.Markdown'),
+  [PREFETCH_KEYS.muiForms]: () => import('@/mui/forms.entry').then((mod) => mod.warm?.()),
+  [PREFETCH_KEYS.muiOverlay]: () => import('@/mui/overlay.entry').then((mod) => mod.warm?.()),
+  [PREFETCH_KEYS.muiFeedback]: () => import('@/mui/feedback.entry').then((mod) => mod.warm?.()),
+  [PREFETCH_KEYS.muiData]: () => import('@/mui/data.entry').then((mod) => mod.warm?.()),
 };
 
 const registry: PrefetchRegistry = ROUTE_IMPORTERS;

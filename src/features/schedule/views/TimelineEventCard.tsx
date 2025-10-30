@@ -7,6 +7,8 @@ import { RecurrenceChip } from '@/ui/components/RecurrenceChip';
 import { cn } from '@/ui/cn';
 import type { BaseShiftWarning, DayPart, Status } from '../types';
 import { summarizeBaseShiftWarnings } from '../workPattern';
+import { formatScheduleRange } from '@/utils/formatScheduleTime';
+import { resolveSchedulesTz } from '@/utils/scheduleTz';
 
 type Props = {
   title: string;
@@ -49,28 +51,37 @@ const TimelineEventCard = memo(function TimelineEventCard({
     return summarizeBaseShiftWarnings(baseShiftWarnings);
   }, [baseShiftWarnings]);
   const hasWarning = warningsSummary.length > 0;
+  const scheduleTz = useMemo(() => resolveSchedulesTz(), []);
 
-  const timeRange = useMemo(() => {
+  const { displayTimeRange, ariaTimeRange } = useMemo(() => {
     if (showAllDay) {
-      return '終日';
+      const suffix = scheduleTz ? ` (${scheduleTz})` : '';
+      return { displayTimeRange: '終日', ariaTimeRange: `終日${suffix}` };
     }
-    return `${hhmm(startISO)}–${hhmm(endISO)}`;
-  }, [showAllDay, startISO, endISO]);
+
+    const range = formatScheduleRange(startISO, endISO, scheduleTz);
+    const display = range.valid && range.tz ? `${range.text} (${range.tz})` : range.text;
+
+    return {
+      displayTimeRange: display,
+      ariaTimeRange: range.aria,
+    };
+  }, [showAllDay, startISO, endISO, scheduleTz]);
 
   const aria = useMemo(() => {
     const segments = [
       `件名 ${title}`,
       subtitle ? `補足 ${subtitle}` : '',
       halfDay ? `区分 ${halfDayLabel(dayPart)}` : '',
-      `時間 ${timeRange}`,
+      `時間 ${ariaTimeRange}`,
       status ? `状態 ${status}` : '',
       recurrenceRule ? '繰り返しあり' : '',
       hasWarning && warningsSummary ? `注意 ${warningsSummary}` : '',
     ].filter(Boolean);
     return segments.join('、');
-  }, [title, subtitle, halfDay, dayPart, timeRange, status, recurrenceRule, hasWarning, warningsSummary]);
+  }, [title, subtitle, halfDay, dayPart, ariaTimeRange, status, recurrenceRule, hasWarning, warningsSummary]);
 
-  const subtitleLine = subtitle ? `${subtitle} ・ ${timeRange}` : timeRange;
+  const subtitleLine = subtitle ? `${subtitle} ・ ${displayTimeRange}` : displayTimeRange;
 
   const { className: containerClassName, style: containerStyle, ...restContainerProps } = containerProps ?? {};
   const dataTestId = (containerProps as { ['data-testid']?: string } | undefined)?.['data-testid'] ?? 'schedule-item';
@@ -93,10 +104,11 @@ const TimelineEventCard = memo(function TimelineEventCard({
 
   return (
     <article
-  {...restContainerProps}
-  data-testid={dataTestId}
-  tabIndex={restContainerProps.tabIndex ?? 0}
+      {...restContainerProps}
+      data-testid={dataTestId}
+      tabIndex={restContainerProps.tabIndex ?? 0}
       aria-label={(restContainerProps['aria-label'] as string | undefined) ?? aria}
+      title={(restContainerProps.title as string | undefined) ?? ariaTimeRange}
       className={className}
       style={mergedStyle}
     >
@@ -163,14 +175,4 @@ function InlineTag({ label, ariaLabel }: { label: string; ariaLabel?: string }) 
       {label}
     </span>
   );
-}
-
-function hhmm(iso: string) {
-  const date = new Date(iso);
-  if (Number.isNaN(date.getTime())) {
-    return '--:--';
-  }
-  const hours = String(date.getHours()).padStart(2, '0');
-  const minutes = String(date.getMinutes()).padStart(2, '0');
-  return `${hours}:${minutes}`;
 }

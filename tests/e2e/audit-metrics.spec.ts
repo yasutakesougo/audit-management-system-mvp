@@ -1,6 +1,12 @@
 import { test, expect } from '@playwright/test';
 import { readAuditMetrics, expectConsistent } from './utils/metrics';
 
+type BatchHarnessWindow = Window & {
+  __BATCH_DONE_FLAG__?: number;
+  __TEST_BATCH_DONE__?: () => void;
+  __E2E_FORCE_BATCH__?: () => { body: string };
+};
+
 // Verifies badge metrics (data-testid="audit-metrics") reflect new / duplicate / failed counts after a batch sync & resend.
 // Updated: uses stable data-* attributes (data-new, data-duplicates, data-failed, data-success, data-total) instead of
 // localized text matching, making the test resilient to i18n or formatting changes.
@@ -32,11 +38,11 @@ function buildBatchMultipart(parts: { contentId: number; status: number }[]) {
   return { body, boundary };
 }
 
- test.describe('Audit metrics badge', () => {
+test.describe('Audit metrics badge', () => {
   test.skip('shows new/duplicate/failed counts and updates after resend', async ({ page }) => {
     let first = true;
-  // NOTE: Must escape the $ in "$batch"; previous regex /\/$batch$/ incorrectly anchored end-of-string before 'batch'
-  await page.route(/\/\$batch$/, async route => {
+    // NOTE: Must escape the $ in "$batch"; previous regex /\/$batch$/ incorrectly anchored end-of-string before 'batch'
+    await page.route(/\/\$batch$/, async (route) => {
       if (first) {
         first = false;
         const { body } = buildBatchMultipart([
@@ -69,9 +75,12 @@ function buildBatchMultipart(parts: { contentId: number; status: number }[]) {
         after: { n: i }
       }));
       window.localStorage.setItem(key, JSON.stringify(logs));
-      (window as any).__TEST_BATCH_DONE__ = () => { (window as any).__BATCH_DONE_FLAG__ = (window as any).__BATCH_DONE_FLAG__ + 1 || 1; };
+      const harness = window as unknown as BatchHarnessWindow;
+      harness.__TEST_BATCH_DONE__ = () => {
+        harness.__BATCH_DONE_FLAG__ = (harness.__BATCH_DONE_FLAG__ ?? 0) + 1;
+      };
       let first = true;
-      (window as any).__E2E_FORCE_BATCH__ = () => {
+      harness.__E2E_FORCE_BATCH__ = () => {
         if (first) {
           first = false;
           // success=2 (201,409), duplicates=1, failed=2 (500,503) total=4
@@ -87,23 +96,30 @@ function buildBatchMultipart(parts: { contentId: number; status: number }[]) {
     // Perform batch sync
     await page.getByRole('button', { name: /一括同期/ }).click();
 
-  // Wait until success attribute reflects expected initial success (2)
-  const metrics = page.getByTestId('audit-metrics');
-  await expect.poll(async () => await page.evaluate(() => (window as any).__BATCH_DONE_FLAG__ || 0)).toBeGreaterThan(0);
-  await expect.poll(async () => await metrics.getAttribute('data-success')).toBe('2');
-  const initial = await readAuditMetrics(page);
-  expectConsistent(initial);
-  expect(initial).toMatchObject({ total: 4, success: 2, duplicates: 1, newItems: 1, failed: 2 });
-  expect(initial.order).toEqual(['new','duplicates','failed']);
+    // Wait until success attribute reflects expected initial success (2)
+    const metrics = page.getByTestId('audit-metrics');
+    await expect.poll(() =>
+      page.evaluate(() => (window as unknown as BatchHarnessWindow).__BATCH_DONE_FLAG__ ?? 0)
+    ).toBeGreaterThan(0);
+    await expect.poll(async () => await metrics.getAttribute('data-success')).toBe('2');
+    const initial = await readAuditMetrics(page);
+    expectConsistent(initial);
+    expect(initial).toMatchObject({ total: 4, success: 2, duplicates: 1, newItems: 1, failed: 2 });
+    const metricOrder = await metrics.evaluate((el) =>
+      Array.from(el.querySelectorAll('[data-metric]')).map((node) => node.getAttribute('data-metric') ?? '')
+    );
+    expect(metricOrder).toEqual(['new', 'duplicates', 'failed']);
 
-  // Trigger resend (should appear because failures remain)
-  await page.getByRole('button', { name: '失敗のみ再送' }).click();
-  await expect.poll(async () => await page.evaluate(() => (window as any).__BATCH_DONE_FLAG__ || 0)).toBeGreaterThan(1);
-  await expect.poll(async () => await metrics.getAttribute('data-success')).toBe('4');
-  const after = await readAuditMetrics(page);
-  expectConsistent(after);
-  expect(after.failed).toBe(0);
-  // success becomes 4 (all), duplicates still 1, newItems 3
-  expect(after).toMatchObject({ total: 4, success: 4, duplicates: 1, newItems: 3, failed: 0 });
+    // Trigger resend (should appear because failures remain)
+    await page.getByRole('button', { name: '失敗のみ再送' }).click();
+    await expect.poll(() =>
+      page.evaluate(() => (window as unknown as BatchHarnessWindow).__BATCH_DONE_FLAG__ ?? 0)
+    ).toBeGreaterThan(1);
+    await expect.poll(async () => await metrics.getAttribute('data-success')).toBe('4');
+    const after = await readAuditMetrics(page);
+    expectConsistent(after);
+    expect(after.failed).toBe(0);
+    // success becomes 4 (all), duplicates still 1, newItems 3
+    expect(after).toMatchObject({ total: 4, success: 4, duplicates: 1, newItems: 3, failed: 0 });
   });
 });

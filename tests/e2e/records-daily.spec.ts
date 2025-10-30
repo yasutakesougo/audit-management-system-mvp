@@ -37,7 +37,12 @@ test.describe('Daily records end-to-end', () => {
         VITE_E2E_MSAL_MOCK: '1',
         VITE_SKIP_LOGIN: '1',
         VITE_DEMO_MODE: '0',
-        VITE_WRITE_ENABLED: '1',
+    VITE_WRITE_ENABLED: '1',
+    MODE: 'production',
+    DEV: '0',
+        VITE_SP_RESOURCE: 'https://contoso.sharepoint.com',
+        VITE_SP_SITE_RELATIVE: '/sites/Audit',
+        VITE_SP_SCOPE_DEFAULT: 'https://contoso.sharepoint.com/AllSites.Read',
       };
 
       try {
@@ -99,14 +104,8 @@ test.describe('Daily records end-to-end', () => {
       ],
     });
 
-    await page.goto('/', { waitUntil: 'load' });
-    await page.waitForLoadState('domcontentloaded');
-
-    const heading = page
-      .getByRole('heading', { level: 2, name: /日次記録|日誌|Daily Records/i })
-      .or(page.getByRole('heading', { name: /日次記録|日誌|Daily Records/i }))
-      .or(page.locator('main h1').first());
-    await expect(heading).toBeVisible({ timeout: 15000 });
+    await page.goto('/records', { waitUntil: 'load' });
+    await expect(page.getByRole('heading', { name: '日次記録' })).toBeVisible({ timeout: 15000 });
 
     const titleInput = page.getByPlaceholder('タイトル');
     await titleInput.fill('山田 太郎');

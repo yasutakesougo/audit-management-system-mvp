@@ -1,17 +1,13 @@
-import {
-    Add as AddIcon,
-    LibraryBooks as TemplatesIcon,
-} from '@mui/icons-material';
-import {
-    Alert,
-    Box,
-    Button,
-    Paper,
-    Snackbar,
-    Tab,
-    Tabs,
-    Typography,
-} from '@mui/material';
+import AddIcon from '@mui/icons-material/Add';
+import TemplatesIcon from '@mui/icons-material/LibraryBooks';
+import Alert from '@mui/material/Alert';
+import Box from '@mui/material/Box';
+import Button from '@mui/material/Button';
+import Paper from '@mui/material/Paper';
+import Snackbar from '@mui/material/Snackbar';
+import Tab from '@mui/material/Tab';
+import Tabs from '@mui/material/Tabs';
+import Typography from '@mui/material/Typography';
 import React, { useMemo, useState } from 'react';
 import { SupportStepTemplate, defaultSupportStepTemplates } from '../domain/support/step-templates';
 import { SupportStepTemplateForm } from '../features/support/SupportStepTemplateForm';

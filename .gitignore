@@ -23,4 +23,8 @@ logs/
 public/env.runtime.json
 .env.local
 
+# build artifacts
+vite-profile-*.cpuprofile
+*.tsbuildinfo
+
 .env

@@ -5,3 +5,5 @@
 declare module 'spWrite';
 declare module '@/stores/*';
 declare module '@/lib/*';
+declare module 'react-markdown';
+declare module 'remark-gfm';

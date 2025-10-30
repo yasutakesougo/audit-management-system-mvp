@@ -14,6 +14,12 @@ export type MiniSchedule = {
 
 const TIMEZONE = 'Asia/Tokyo';
 const MAX_SAFE_ITEMS = 10;
+const FALLBACK_MINI_SCHEDULE: Pick<MiniSchedule, 'title' | 'startText' | 'status' | 'allDay'> = {
+  title: '予定',
+  startText: '—',
+  status: undefined,
+  allDay: false,
+};
 
 const pad = (value: number) => (value < 10 ? `0${value}` : `${value}`);
 
@@ -100,7 +106,7 @@ export function useSchedulesToday(max: number = 5) {
           .map((row, index) => {
             const record = row as Record<string, unknown>;
             const startIso = resolveStartIso(record);
-            let startText = '—';
+            let startText = FALLBACK_MINI_SCHEDULE.startText;
             if (record.allDay === true) {
               startText = '終日';
             } else if (typeof startIso === 'string' && startIso.trim()) {
@@ -108,7 +114,7 @@ export function useSchedulesToday(max: number = 5) {
                 startText = formatInTimeZone(new Date(startIso), TIMEZONE, 'HH:mm');
               } catch {
                 const d = new Date(startIso);
-                startText = Number.isNaN(d.getTime()) ? '—' : `${pad(d.getHours())}:${pad(d.getMinutes())}`;
+                startText = Number.isNaN(d.getTime()) ? FALLBACK_MINI_SCHEDULE.startText : `${pad(d.getHours())}:${pad(d.getMinutes())}`;
               }
             }
 
@@ -118,14 +124,14 @@ export function useSchedulesToday(max: number = 5) {
                 ? record.title
                 : record.allDay === true
                   ? '終日の予定'
-                  : '予定',
+                  : FALLBACK_MINI_SCHEDULE.title,
               startText,
               status: typeof record.statusLabel === 'string'
                 ? record.statusLabel
                 : typeof record.status === 'string'
                   ? record.status
                   : undefined,
-              allDay: record.allDay === true,
+              allDay: record.allDay === true ? true : FALLBACK_MINI_SCHEDULE.allDay,
             } satisfies MiniSchedule;
           });
 

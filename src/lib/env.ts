@@ -64,12 +64,12 @@ const getEnvValue = (key: string, envOverride?: EnvRecord): Primitive => {
   if (envOverride && key in envOverride) {
     return envOverride[key];
   }
+  if (typeof process !== 'undefined' && process.env && key in process.env) {
+    return process.env[key] as Primitive;
+  }
   const runtime = getRuntimeEnv() as EnvRecord;
   if (key in runtime) {
     return runtime[key];
-  }
-  if (typeof process !== 'undefined' && process.env && key in process.env) {
-    return process.env[key] as Primitive;
   }
   return undefined;
 };

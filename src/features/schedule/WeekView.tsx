@@ -24,6 +24,7 @@ const STATUS_STYLES: Record<Schedule['status'], string> = {
 };
 
 const WEEKDAY_LABELS = ['月', '火', '水', '木', '金', '土', '日'];
+const MAX_EVENTS_PER_DAY = 4;
 
 const parseIso = (value?: string | null): Date | null => {
   if (!value) return null;
@@ -175,7 +176,7 @@ export function WeekView({ weekStart, schedules, onSelectSlot, onSelectEvent, lo
                 );
               })}
 
-              {schedulesForDay.map((schedule) => {
+              {schedulesForDay.slice(0, MAX_EVENTS_PER_DAY).map((schedule) => {
                 const position = resolveEventPosition(schedule, day, columnHeight);
                 if (!position) {
                   return null;

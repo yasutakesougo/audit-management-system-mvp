@@ -1,24 +1,20 @@
-import {
-    Add as AddIcon,
-    Search as SearchIcon
-} from '@mui/icons-material';
-import {
-    Box,
-    Button,
-    Card,
-    CardContent,
-    Chip,
-    Container,
-    Fab,
-    FormControl,
-    InputLabel,
-    MenuItem,
-    Paper,
-    Select,
-    Stack,
-    TextField,
-    Typography
-} from '@mui/material';
+import AddIcon from '@mui/icons-material/Add';
+import SearchIcon from '@mui/icons-material/Search';
+import Box from '@mui/material/Box';
+import Button from '@mui/material/Button';
+import Card from '@mui/material/Card';
+import CardContent from '@mui/material/CardContent';
+import Chip from '@mui/material/Chip';
+import Container from '@mui/material/Container';
+import Fab from '@mui/material/Fab';
+import FormControl from '@mui/material/FormControl';
+import InputLabel from '@mui/material/InputLabel';
+import MenuItem from '@mui/material/MenuItem';
+import Paper from '@mui/material/Paper';
+import Select from '@mui/material/Select';
+import Stack from '@mui/material/Stack';
+import TextField from '@mui/material/TextField';
+import Typography from '@mui/material/Typography';
 import { useMemo, useState } from 'react';
 import { PersonDaily } from '../domain/daily/types';
 import { DailyRecordForm } from '../features/daily/DailyRecordForm';
@@ -350,7 +346,7 @@ export default function DailyRecordPage() {
   });
 
   return (
-    <Container maxWidth="lg">
+    <Container maxWidth="lg" data-testid="records-daily-root">
       <Box sx={{ py: 3 }}>
         {/* ヘッダー */}
         <Box sx={{ mb: 3 }}>

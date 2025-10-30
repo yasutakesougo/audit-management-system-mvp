@@ -1,26 +1,22 @@
-import {
-    AccessTime as AccessTimeIcon,
-    CheckCircle as CheckCircleIcon,
-    Delete as DeleteIcon,
-    Edit as EditIcon,
-    MoreVert as MoreVertIcon,
-    Person as PersonIcon,
-    Restaurant as RestaurantIcon,
-    Warning as WarningIcon
-} from '@mui/icons-material';
-import {
-    Avatar,
-    Box,
-    Card,
-    CardContent,
-    Chip,
-    Divider,
-    IconButton,
-    Menu,
-    MenuItem,
-    Stack,
-    Typography
-} from '@mui/material';
+import AccessTimeIcon from '@mui/icons-material/AccessTime';
+import CheckCircleIcon from '@mui/icons-material/CheckCircle';
+import DeleteIcon from '@mui/icons-material/Delete';
+import EditIcon from '@mui/icons-material/Edit';
+import MoreVertIcon from '@mui/icons-material/MoreVert';
+import PersonIcon from '@mui/icons-material/Person';
+import RestaurantIcon from '@mui/icons-material/Restaurant';
+import WarningIcon from '@mui/icons-material/Warning';
+import Avatar from '@mui/material/Avatar';
+import Box from '@mui/material/Box';
+import Card from '@mui/material/Card';
+import CardContent from '@mui/material/CardContent';
+import Chip from '@mui/material/Chip';
+import Divider from '@mui/material/Divider';
+import IconButton from '@mui/material/IconButton';
+import Menu from '@mui/material/Menu';
+import MenuItem from '@mui/material/MenuItem';
+import Stack from '@mui/material/Stack';
+import Typography from '@mui/material/Typography';
 import React from 'react';
 import { DailyStatus, PersonDaily } from '../../domain/daily/types';
 

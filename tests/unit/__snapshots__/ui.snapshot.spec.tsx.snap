@@ -83,6 +83,7 @@ exports[`AppShell snapshot 1`] = `
         <a
           aria-current="page"
           class="MuiButtonBase-root MuiButton-root MuiButton-contained MuiButton-containedPrimary MuiButton-sizeSmall MuiButton-containedSizeSmall MuiButton-colorPrimary MuiButton-root MuiButton-contained MuiButton-containedPrimary MuiButton-sizeSmall MuiButton-containedSizeSmall MuiButton-colorPrimary css-1y1eefy-MuiButtonBase-root-MuiButton-root"
+          data-testid="nav-dashboard"
           href="/"
           tabindex="0"
         >
@@ -227,6 +228,7 @@ exports[`AppShell snapshot 1`] = `
         </a>
         <a
           class="MuiButtonBase-root MuiButton-root MuiButton-outlined MuiButton-outlinedPrimary MuiButton-sizeSmall MuiButton-outlinedSizeSmall MuiButton-colorPrimary MuiButton-root MuiButton-outlined MuiButton-outlinedPrimary MuiButton-sizeSmall MuiButton-outlinedSizeSmall MuiButton-colorPrimary css-1go7da8-MuiButtonBase-root-MuiButton-root"
+          data-testid="nav-admin"
           href="/admin/templates"
           tabindex="0"
         >

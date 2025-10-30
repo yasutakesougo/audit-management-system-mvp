@@ -25,7 +25,28 @@ module.exports = {
       { argsIgnorePattern: '^_', varsIgnorePattern: '^_' }
     ],
     'no-empty': ['warn', { allowEmptyCatch: true }],
-    'no-constant-condition': 'warn'
+    'no-constant-condition': 'warn',
+    'no-restricted-imports': [
+      'error',
+      {
+        patterns: [
+          {
+            group: [
+              '**/features/users/UsersPanel{,.ts,.tsx,.js,.jsx}',
+              '**/UsersPanel{,.ts,.tsx,.js,.jsx}'
+            ],
+            message: 'Use features/users/UsersPanel/index.tsx'
+          },
+          {
+            group: [
+              '**/features/users/UserDetailSections{,.ts,.tsx,.js,.jsx}',
+              '**/UserDetailSections{,.ts,.tsx,.js,.jsx}'
+            ],
+            message: 'Use features/users/UserDetailSections/index.tsx'
+          }
+        ]
+      }
+    ]
   },
   env: {
     browser: true,

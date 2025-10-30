@@ -1,11 +1,9 @@
 import { useStaff } from "@/stores/useStaff";
 import type { Staff, StaffUpsert } from "@/types";
-import {
-    Close as CloseIcon,
-    Person as PersonIcon,
-    Save as SaveIcon,
-    Work as WorkIcon,
-} from "@mui/icons-material";
+import CloseIcon from '@mui/icons-material/Close';
+import PersonIcon from '@mui/icons-material/Person';
+import SaveIcon from '@mui/icons-material/Save';
+import WorkIcon from '@mui/icons-material/Work';
 import {
     Alert,
     Box,

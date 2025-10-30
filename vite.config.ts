@@ -24,6 +24,61 @@ export default defineConfig({
       crypto: emptyShim,
     },
   },
+  build: {
+    rollupOptions: {
+      output: {
+        manualChunks(id) {
+          if (!id.includes('node_modules')) {
+            return undefined;
+          }
+          const normalized = id.replace(/\\/g, '/');
+          if (
+            normalized.includes('/@babel/runtime/')
+          ) {
+            return 'babel-helpers'
+          }
+          if (
+            normalized.includes('/node_modules/react/') ||
+            normalized.includes('/node_modules/react-dom/') ||
+            normalized.includes('/node_modules/scheduler/') ||
+            normalized.includes('/@emotion/')
+          ) {
+            return 'react';
+          }
+          if (normalized.includes('/@mui/icons-material/')) {
+            return 'mui-icons';
+          }
+          if (normalized.includes('/@mui/material/')) {
+            return undefined;
+          }
+          if (
+            normalized.includes('/@mui/system/') ||
+            normalized.includes('/@mui/base/') ||
+            normalized.includes('/@mui/styled-engine/') ||
+            normalized.includes('/@mui/utils/') ||
+            normalized.includes('/@mui/private-')
+          ) {
+            return undefined;
+          }
+          if (normalized.includes('/@mui/x-data-grid')) {
+            return 'datagrid';
+          }
+          if (
+            normalized.includes('/react-markdown/') ||
+            normalized.includes('/remark-') ||
+            normalized.includes('/rehype-') ||
+            normalized.includes('/micromark/')
+          ) {
+            return 'markdown';
+          }
+          if (normalized.includes('recharts')) {
+            return 'charting';
+          }
+          return undefined;
+        },
+      },
+    },
+  },
   server: {
     host: 'localhost',
     port: 3000,
