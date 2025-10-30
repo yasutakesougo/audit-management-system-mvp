@@ -30,7 +30,8 @@ export const TESTIDS = {
   'users-list-table': 'users-list-table',
   'users-detail-pane': 'users-detail-pane',
   'user-detail-sections': 'user-detail-sections',
-  'users-quick-prefix': 'users-quick-','user-menu-card-prefix': 'user-menu-card-',
+  'users-quick-prefix': 'users-quick-',
+  'user-menu-card-prefix': 'user-menu-card-',
   'user-menu-tabpanel-prefix': 'user-menu-tabpanel-',
   'user-menu-section-prefix': 'user-menu-section-',
 } as const;
