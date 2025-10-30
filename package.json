@@ -38,6 +38,7 @@
     "typecheck": "tsc --noEmit",
     "lint": "eslint --ext .ts,.tsx src --max-warnings=0",
     "lint:dev": "eslint --ext .ts,.tsx src --max-warnings=999",
+    "guard:testids": "node scripts/verify-testids.mjs",
     "guard:tz": "sh ./scripts/check-timezone-api.sh",
     "preci": "npm run lint && npm run typecheck && npm run lint:cookies",
     "preflight": "bash scripts/preflight.sh",
