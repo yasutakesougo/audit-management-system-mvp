@@ -2,12 +2,15 @@ import { defineConfig, devices } from '@playwright/test';
 import type { ReporterDescription } from '@playwright/test';
 
 const isCI = !!process.env.CI;
+const skipBuild = process.env.PLAYWRIGHT_SKIP_BUILD === '1';
 const junitOutput = process.env.PLAYWRIGHT_JUNIT_OUTPUT ?? 'junit/results.xml';
 const ciReporters: ReporterDescription[] = [
   ['list'],
   ['junit', { outputFile: junitOutput }],
   ['html', { outputFolder: 'playwright-report' }],
 ];
+
+const webServerCommand = skipBuild ? 'npx serve -s dist -l 3000' : 'sh -c "npm run build && npx serve -s dist -l 3000"';
 
 export default defineConfig({
   testDir: 'tests/e2e',
@@ -24,7 +27,7 @@ export default defineConfig({
     { name: 'chromium', use: { ...devices['Desktop Chrome'] } },
   ],
   webServer: {
-    command: 'sh -c "npm run build && npx serve -s dist -l 3000"',
+    command: webServerCommand,
     url: 'http://localhost:3000',
     reuseExistingServer: !isCI,
     timeout: 120_000,

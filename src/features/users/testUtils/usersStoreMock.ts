@@ -40,9 +40,9 @@ const createEntity = (dto: IUserMasterCreateDto): MockUser => ({
 
 type AsyncStatus = 'idle' | 'loading' | 'success' | 'error';
 
-vi.mock('../useUsers', () => {
+const createMockStoreHook = () => {
 
-  function useUsers() {
+  function useUsersLike() {
     const data = React.useSyncExternalStore(subscribe, snapshot, snapshot);
     const [status, setStatus] = React.useState<AsyncStatus>('success');
     const error = null;
@@ -109,11 +109,25 @@ vi.mock('../useUsers', () => {
     );
   }
 
+  return useUsersLike;
+};
+
+vi.mock('../useUsers', () => {
+  const useUsersLike = createMockStoreHook();
+
   return {
-    useUsers,
+    useUsers: useUsersLike,
     __usersStore: {
       reset: resetStore,
     },
+  };
+});
+
+vi.mock('../usersStoreDemo', () => {
+  const useUsersLike = createMockStoreHook();
+
+  return {
+    useUsersDemo: useUsersLike,
   };
 });
 

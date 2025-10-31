@@ -183,4 +183,36 @@ describe('WeekView branches', () => {
 
     expect(screen.getByText('予定を読み込んでいます…')).toBeVisible();
   });
+
+  it('clamps overnight events to Tokyo day boundaries without duplication', () => {
+    const weekStart = new Date(Date.UTC(2025, 2, 3));
+    const overnight = buildSchedule({
+      id: 10,
+      title: '夜間支援',
+      status: 'submitted',
+      startLocal: '2025-03-04T23:30:00+09:00',
+      endLocal: '2025-03-05T01:30:00+09:00',
+    });
+
+    render(
+      <WeekView
+        weekStart={weekStart}
+        schedules={[overnight]}
+        onSelectSlot={vi.fn()}
+        onSelectEvent={vi.fn()}
+      />
+    );
+
+    const rendered = screen.getAllByRole('button', { name: /夜間支援/ });
+    expect(rendered).toHaveLength(2);
+
+    const [tuesdayEvent, wednesdayEvent] = rendered;
+    const tuesdayTop = Number.parseFloat(tuesdayEvent.style.top);
+    const tuesdayHeight = Number.parseFloat(tuesdayEvent.style.height);
+    const wednesdayTop = Number.parseFloat(wednesdayEvent.style.top);
+
+    expect(tuesdayTop).toBeGreaterThanOrEqual(660); // near the bottom of the column (20:00 clamp)
+    expect(tuesdayHeight).toBeGreaterThan(20);
+    expect(wednesdayTop).toBeLessThanOrEqual(1); // starts at the top of the next day column
+  });
 });

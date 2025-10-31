@@ -6,6 +6,7 @@ import Box from '@mui/material/Box';
 import Button from '@mui/material/Button';
 import Container from '@mui/material/Container';
 import IconButton from '@mui/material/IconButton';
+import Paper from '@mui/material/Paper';
 import Stack from '@mui/material/Stack';
 import Toolbar from '@mui/material/Toolbar';
 import Tooltip from '@mui/material/Tooltip';
@@ -155,7 +156,7 @@ const AppShell: React.FC<{ children: React.ReactNode }> = ({ children }) => {
           <SignInButton />
         </Toolbar>
       </AppBar>
-      <Container component="main" role="main" maxWidth="lg" sx={{ py: 4 }}>
+      <Container component="main" role="main" maxWidth="lg" sx={{ py: 4, pb: { xs: 18, sm: 14 } }}>
         <Box component="nav" role="navigation" aria-label="主要ナビゲーション" mb={2}>
           <Stack direction="row" spacing={1} flexWrap="wrap">
             {navItems.map(({ label, to, isActive, testId, icon: IconComponent, prefetchKey, prefetchKeys }) => {
@@ -210,6 +211,7 @@ const AppShell: React.FC<{ children: React.ReactNode }> = ({ children }) => {
         </Box>
         {children}
       </Container>
+      <FooterQuickActions />
     </RouteHydrationListener>
   );
 };
@@ -288,6 +290,101 @@ const ConnectionStatus: React.FC = () => {
       }}
     >
       {label}
+    </Box>
+  );
+};
+
+const FooterQuickActions: React.FC = () => {
+  const location = useLocation();
+
+  type FooterAction = {
+    key: string;
+    label: string;
+    to: string;
+    color: 'primary' | 'secondary' | 'info';
+    variant: 'contained' | 'outlined';
+  };
+
+  const actions: FooterAction[] = [
+    {
+      key: 'daily-attendance',
+      label: '通所管理',
+      to: '/daily/attendance',
+      color: 'info' as const,
+      variant: 'contained' as const,
+    },
+    {
+      key: 'daily-activity',
+      label: '活動日誌入力',
+      to: '/daily/activity',
+      color: 'primary' as const,
+      variant: 'contained' as const,
+    },
+    {
+      key: 'daily-support',
+      label: '支援手順記録入力',
+      to: '/daily/support',
+      color: 'primary' as const,
+      variant: 'outlined' as const,
+    },
+    {
+      key: 'health-log',
+      label: '健康記録',
+      to: '/daily/health',
+      color: 'secondary' as const,
+      variant: 'outlined' as const,
+    },
+  ] as const;
+
+  return (
+    <Box
+      component="footer"
+      role="contentinfo"
+      sx={{
+        position: 'fixed',
+        bottom: { xs: 8, sm: 16 },
+        left: 0,
+        width: '100%',
+        pointerEvents: 'none',
+        zIndex: (theme) => theme.zIndex.appBar,
+      }}
+    >
+      <Container maxWidth="lg" sx={{ pointerEvents: 'auto' }}>
+        <Paper
+          elevation={6}
+          sx={{
+            borderRadius: { xs: 3, sm: 5 },
+            px: { xs: 2, sm: 3 },
+            py: { xs: 1.5, sm: 2 },
+            backdropFilter: 'blur(6px)',
+            backgroundColor: (theme) =>
+              theme.palette.mode === 'dark'
+                ? 'rgba(33, 33, 33, 0.85)'
+                : 'rgba(255, 255, 255, 0.9)',
+          }}
+        >
+          <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1.5}>
+            {actions.map(({ key, label, to, color, variant }) => {
+              const isActive = location.pathname.startsWith(to);
+
+              return (
+                <Button
+                  key={key}
+                  component={RouterLink as unknown as React.ElementType}
+                  to={to}
+                  variant={isActive ? 'contained' : variant}
+                  color={color}
+                  size="large"
+                  fullWidth
+                  sx={{ flex: 1, fontWeight: 600 }}
+                >
+                  {label}
+                </Button>
+              );
+            })}
+          </Stack>
+        </Paper>
+      </Container>
     </Box>
   );
 };

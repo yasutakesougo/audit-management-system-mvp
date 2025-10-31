@@ -1,5 +1,6 @@
 import ActivityIcon from '@mui/icons-material/EventNote';
 import AssignmentIcon from '@mui/icons-material/Assignment';
+import AttendanceIcon from '@mui/icons-material/AssignmentInd';
 import PeopleIcon from '@mui/icons-material/People';
 import SupportIcon from '@mui/icons-material/AssignmentTurnedIn';
 import Box from '@mui/material/Box';
@@ -26,6 +27,7 @@ const DailyRecordMenuPage: React.FC = () => {
 
   // モック記録状況（実際のデータと連携予定）
   const mockActivityProgress = Math.floor(totalUsers * 0.75); // 75%完了
+  const mockAttendanceProgress = Math.floor(totalUsers * 0.68); // 68%完了
   const mockSupportProgress = Math.floor(intensiveSupportUsers * 0.6); // 60%完了
 
   return (
@@ -45,7 +47,7 @@ const DailyRecordMenuPage: React.FC = () => {
         <Stack
           direction={{ xs: 'column', md: 'row' }}
           spacing={4}
-          sx={{ mb: 4 }}
+          sx={{ mb: 4, flexWrap: 'wrap' }}
         >
           {/* 活動日誌 */}
           <Card
@@ -106,6 +108,67 @@ const DailyRecordMenuPage: React.FC = () => {
                 startIcon={<ActivityIcon />}
               >
                 活動日誌を開く
+              </Button>
+            </CardActions>
+          </Card>
+
+          {/* 通所管理 */}
+          <Card
+            sx={{
+              flex: 1,
+              display: 'flex',
+              flexDirection: 'column',
+              transition: 'transform 0.2s, elevation 0.2s',
+              '&:hover': {
+                transform: 'translateY(-4px)',
+                elevation: 8
+              }
+            }}
+          >
+            <CardContent sx={{ flexGrow: 1, p: 3 }}>
+              <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
+                <AttendanceIcon sx={{ fontSize: 32, color: 'info.main', mr: 2 }} />
+                <Typography variant="h5" component="h2">
+                  通所管理
+                </Typography>
+              </Box>
+
+              <Typography variant="body1" color="text.secondary" sx={{ mb: 2 }}>
+                通所・退所・欠席加算など、当日の通所状況を一元管理します
+              </Typography>
+
+              <Stack spacing={1}>
+                <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                  <PeopleIcon sx={{ fontSize: 16, mr: 1, color: 'text.secondary' }} />
+                  <Typography variant="body2" color="text.secondary">
+                    対象：日次通所者（{totalUsers}名）
+                  </Typography>
+                </Box>
+                <Typography variant="body2" color="text.secondary">
+                  • 通所・退所のワンタップ操作
+                </Typography>
+                <Typography variant="body2" color="text.secondary">
+                  • 欠席連絡・夕方確認の記録
+                </Typography>
+                <Typography variant="body2" color="text.secondary">
+                  • 送迎状況や欠席加算の管理
+                </Typography>
+                <Typography variant="body2" color="text.secondary">
+                  • 実提供時間と算定時間の乖離チェック
+                </Typography>
+              </Stack>
+            </CardContent>
+
+            <CardActions sx={{ p: 3, pt: 0 }}>
+              <Button
+                variant="contained"
+                size="large"
+                fullWidth
+                color="info"
+                onClick={() => navigate('/daily/attendance')}
+                startIcon={<AttendanceIcon />}
+              >
+                通所管理を開く
               </Button>
             </CardActions>
           </Card>
@@ -201,6 +264,18 @@ const DailyRecordMenuPage: React.FC = () => {
               </Typography>
               <Typography variant="caption" color="success.main">
                 {Math.round((mockActivityProgress / totalUsers) * 100)}% 完了
+              </Typography>
+            </Box>
+
+            <Box sx={{ textAlign: 'center', flex: 1 }}>
+              <Typography variant="h4" color="info.main">
+                {mockAttendanceProgress} / {totalUsers}
+              </Typography>
+              <Typography variant="body2" color="text.secondary">
+                通所管理 進捗
+              </Typography>
+              <Typography variant="caption" color="info.main">
+                {Math.round((mockAttendanceProgress / totalUsers) * 100)}% 完了
               </Typography>
             </Box>
 

@@ -77,12 +77,47 @@ const getEnvValue = (key: string, envOverride?: EnvRecord): Primitive => {
 const resolveIsDev = (envOverride?: EnvRecord): boolean => {
   const modeValue = getEnvValue('MODE', envOverride);
   if (typeof modeValue === 'string' && modeValue.trim()) {
-    return modeValue.trim().toLowerCase() === 'development';
+    const normalized = modeValue.trim().toLowerCase();
+    if (normalized === 'development' || normalized === 'dev') {
+      return true;
+    }
+    // treat test as dev-like so demo paths stay enabled under Vitest and Playwright
+    if (normalized === 'test') {
+      return true;
+    }
   }
+
+  const viteDev = getEnvValue('VITE_DEV', envOverride);
+  if (viteDev !== undefined) {
+    return coerceBoolean(viteDev, runtimeIsDev);
+  }
+
   const devValue = getEnvValue('DEV', envOverride);
   if (devValue !== undefined) {
     return coerceBoolean(devValue, runtimeIsDev);
   }
+
+  const nodeEnv = getEnvValue('NODE_ENV', envOverride);
+  if (typeof nodeEnv === 'string' && nodeEnv.trim()) {
+    const normalized = nodeEnv.trim().toLowerCase();
+    if (normalized === 'development' || normalized === 'dev') {
+      return true;
+    }
+    if (normalized === 'test') {
+      return true;
+    }
+  }
+
+  if (typeof process !== 'undefined' && process.env && 'NODE_ENV' in process.env) {
+    const normalized = String(process.env.NODE_ENV).toLowerCase();
+    if (normalized === 'development' || normalized === 'dev') {
+      return true;
+    }
+    if (normalized === 'test') {
+      return true;
+    }
+  }
+
   return runtimeIsDev;
 };
 
@@ -141,24 +176,44 @@ export const readOptionalEnv = (key: string, envOverride?: EnvRecord): string | 
 export const readBool = (key: string, fallback = false, envOverride?: EnvRecord): boolean =>
   coerceBoolean(getEnvValue(key, envOverride), fallback);
 
-export const isDevMode = (envOverride?: EnvRecord): boolean => {
-  const explicit = getEnvValue('DEV', envOverride);
-  if (explicit !== undefined) {
-    return coerceBoolean(explicit, false);
-  }
-  const runtime = getRuntimeEnv();
-  const mode = runtime.MODE ?? runtime.NODE_ENV;
-  if (typeof mode === 'string' && mode.toLowerCase() === 'development') {
+export const isDevMode = (envOverride?: EnvRecord): boolean => resolveIsDev(envOverride);
+
+export const isDemoModeEnabled = (envOverride?: EnvRecord): boolean => {
+  if (readBool('VITE_FORCE_DEMO', false, envOverride)) {
     return true;
   }
-  if (typeof process !== 'undefined' && process.env && 'NODE_ENV' in process.env) {
-    return String(process.env.NODE_ENV).toLowerCase() === 'development';
+  return readBool('VITE_DEMO_MODE', false, envOverride);
+};
+
+const resolveIsTest = (envOverride?: EnvRecord): boolean => {
+  const modeValue = getEnvValue('MODE', envOverride);
+  if (typeof modeValue === 'string' && modeValue.trim()) {
+    const normalized = modeValue.trim().toLowerCase();
+    if (normalized === 'test') {
+      return true;
+    }
   }
+
+  const nodeEnv = getEnvValue('NODE_ENV', envOverride);
+  if (typeof nodeEnv === 'string' && nodeEnv.trim()) {
+    if (nodeEnv.trim().toLowerCase() === 'test') {
+      return true;
+    }
+  }
+
+  if (typeof process !== 'undefined' && process.env && 'NODE_ENV' in process.env) {
+    if (String(process.env.NODE_ENV).toLowerCase() === 'test') {
+      return true;
+    }
+  }
+
   return false;
 };
 
-export const isDemoModeEnabled = (envOverride?: EnvRecord): boolean =>
-  readBool('VITE_DEMO_MODE', false, envOverride);
+export const isTestMode = (envOverride?: EnvRecord): boolean => resolveIsTest(envOverride);
+
+export const isForceDemoEnabled = (envOverride?: EnvRecord): boolean =>
+  readBool('VITE_FORCE_DEMO', false, envOverride);
 
 export const isWriteEnabled = (envOverride?: EnvRecord): boolean =>
   readBool('VITE_WRITE_ENABLED', false, envOverride);
