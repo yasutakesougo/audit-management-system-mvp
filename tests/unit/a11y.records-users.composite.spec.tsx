@@ -5,8 +5,9 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import fs from 'node:fs';
 import path from 'node:path';
 import RecordList from '@/features/records/RecordList';
-import UsersPanel from '@/features/users/UsersPanel';
+import { UsersPanel } from '@/features/users';
 import { ToastProvider } from '@/hooks/useToast';
+import { MemoryRouter } from 'react-router-dom';
 
 const noop = async () => undefined;
 const mockRecordsList = vi.fn();
@@ -80,12 +81,14 @@ suite('Composite accessibility smoke (records + users)', () => {
 
   it('has no detectable violations when RecordList and UsersPanel render together', async () => {
     const { container } = render(
-      <ToastProvider>
-        <div>
-          <RecordList />
-          <UsersPanel />
-        </div>
-      </ToastProvider>
+      <MemoryRouter>
+        <ToastProvider>
+          <div>
+            <RecordList />
+            <UsersPanel />
+          </div>
+        </ToastProvider>
+      </MemoryRouter>
     );
 
     await screen.findByRole('table');

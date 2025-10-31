@@ -29,10 +29,27 @@ jobs:
           cache: npm
       - run: npm ci
       - run: npm run e2e:install
+      - name: Build app
+        run: npm run build
+      - name: Create runtime env for SPA
+        env:
+          VITE_SP_RESOURCE: ${{ secrets.VITE_SP_RESOURCE }}
+          VITE_SP_SITE_RELATIVE: ${{ secrets.VITE_SP_SITE_RELATIVE }}
+        run: |
+          mkdir -p dist
+          cat > dist/env.runtime.json <<'JSON'
+          {
+            "VITE_SP_RESOURCE": "${VITE_SP_RESOURCE:-}",
+            "VITE_SP_SITE_RELATIVE": "${VITE_SP_SITE_RELATIVE:-}"
+          }
+          JSON
+          echo "Created dist/env.runtime.json (keys only):"
+          jq 'keys' dist/env.runtime.json || cat dist/env.runtime.json
       - name: Run Playwright E2E
         run: npm run e2e
         env:
           TZ: ${{ matrix.tz }}
+          PLAYWRIGHT_SKIP_BUILD: '1'
           PLAYWRIGHT_JUNIT_OUTPUT: junit/junit-${{ steps.artifact.outputs.suffix }}.xml
       - name: Check JUnit exists
         id: junit

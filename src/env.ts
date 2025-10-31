@@ -41,4 +41,42 @@ export function getFlag(name: string, fallback = false): boolean {
   return raw === '1' || raw === 'true';
 }
 
-export const isDev = get('MODE') === 'development' || getFlag('DEV', false);
+export function resolveIsDev(): boolean {
+  const inlineMode = (() => {
+    try {
+      if (typeof import.meta !== 'undefined' && (import.meta as ImportMeta)?.env?.MODE) {
+        return ((import.meta as ImportMeta).env.MODE ?? '') as string;
+      }
+    } catch {
+      // ignore environments where import.meta is unavailable (e.g., unit tests)
+    }
+    return undefined;
+  })();
+
+  if (typeof inlineMode === 'string' && inlineMode.toLowerCase() === 'development') {
+    return true;
+  }
+
+  if (get('MODE')?.toLowerCase() === 'development') {
+    return true;
+  }
+
+  if (getFlag('DEV', false)) {
+    return true;
+  }
+
+  if (typeof process !== 'undefined' && process.env) {
+    const nodeMode = process.env.NODE_ENV ?? process.env.MODE ?? '';
+    if (nodeMode.toLowerCase() === 'development') {
+      return true;
+    }
+    const viteDev = process.env.VITE_DEV ?? '';
+    if (viteDev.toLowerCase() === 'true') {
+      return true;
+    }
+  }
+
+  return false;
+}
+
+export const isDev = resolveIsDev();

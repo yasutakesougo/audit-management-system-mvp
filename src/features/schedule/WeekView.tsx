@@ -16,6 +16,27 @@ export const getWeekRange = (input: Date): { start: Date; end: Date } => {
 
 const HOURS = Array.from({ length: 12 }, (_, index) => 8 + index);
 const HOUR_HEIGHT = 56;
+const TIMEZONE = 'Asia/Tokyo';
+const TIMEZONE_OFFSET = '+09:00';
+const dateKeyFormatter = new Intl.DateTimeFormat('en-CA', {
+  timeZone: TIMEZONE,
+  year: 'numeric',
+  month: '2-digit',
+  day: '2-digit',
+});
+const timeFormatter = new Intl.DateTimeFormat('ja-JP', {
+  timeZone: TIMEZONE,
+  hour: '2-digit',
+  minute: '2-digit',
+  hour12: false,
+});
+const monthDayFormatter = new Intl.DateTimeFormat('ja-JP', {
+  timeZone: TIMEZONE,
+  month: 'numeric',
+  day: 'numeric',
+});
+
+const pad = (value: number) => String(value).padStart(2, '0');
 
 const STATUS_STYLES: Record<Schedule['status'], string> = {
   draft: 'bg-sky-100 border-sky-300 text-sky-900',
@@ -32,17 +53,24 @@ const parseIso = (value?: string | null): Date | null => {
   return Number.isNaN(date.getTime()) ? null : date;
 };
 
-const formatTime = (date: Date): string =>
-  date.toLocaleTimeString('ja-JP', { hour: '2-digit', minute: '2-digit', hour12: false });
+const formatTime = (date: Date): string => timeFormatter.format(date);
+
+const getDateKey = (date: Date): string => dateKeyFormatter.format(date);
+
+const makeZonedDate = (date: Date, hour: number, minute = 0, second = 0): Date => {
+  const key = getDateKey(date);
+  return new Date(`${key}T${pad(hour)}:${pad(minute)}:${pad(second)}${TIMEZONE_OFFSET}`);
+};
 
 const clamp = (value: number, min: number, max: number): number => Math.min(Math.max(value, min), max);
 
 const buildSlotLabel = (day: Date, hour: number): string => {
-  const start = new Date(day);
-  start.setHours(hour, 0, 0, 0);
-  const end = new Date(start);
-  end.setHours(start.getHours() + 1);
-  return `${start.getMonth() + 1}月${start.getDate()}日 ${formatTime(start)} から ${formatTime(end)} の枠`;
+  const start = makeZonedDate(day, hour, 0, 0);
+  const end = makeZonedDate(day, hour + 1, 0, 0);
+  const [month, dayNumber] = monthDayFormatter.format(start).split('/');
+  const startLabel = timeFormatter.format(start);
+  const endLabel = timeFormatter.format(end);
+  return `${Number(month)}月${Number(dayNumber)}日 ${startLabel} から ${endLabel} の枠`;
 };
 
 const eventOverlapsDay = (schedule: Schedule, dayStart: Date, dayEnd: Date): boolean => {
@@ -59,10 +87,8 @@ const resolveEventPosition = (schedule: Schedule, day: Date, columnHeight: numbe
     return { top: 6, height: Math.max(HOUR_HEIGHT / 1.5, columnHeight * 0.18) };
   }
 
-  const dayStart = new Date(day);
-  dayStart.setHours(HOURS[0], 0, 0, 0);
-  const dayEnd = new Date(dayStart);
-  dayEnd.setHours(HOURS[HOURS.length - 1] + 1, 0, 0, 0);
+  const dayStart = makeZonedDate(day, HOURS[0], 0, 0);
+  const dayEnd = makeZonedDate(day, HOURS[HOURS.length - 1] + 1, 0, 0);
 
   const start = parseIso(schedule.startLocal ?? schedule.startUtc ?? undefined);
   const end = parseIso(schedule.endLocal ?? schedule.endUtc ?? schedule.startLocal ?? schedule.startUtc ?? undefined) ?? start;
@@ -72,14 +98,16 @@ const resolveEventPosition = (schedule: Schedule, day: Date, columnHeight: numbe
 
   const visibleStart = start < dayStart ? dayStart : start;
   const visibleEnd = end > dayEnd ? dayEnd : end;
-  const totalSpanHours = HOURS[HOURS.length - 1] + 1 - HOURS[0];
 
-  const startHour = (visibleStart.getHours() + visibleStart.getMinutes() / 60) - HOURS[0];
-  const endHour = (visibleEnd.getHours() + visibleEnd.getMinutes() / 60) - HOURS[0];
-  const top = clamp(startHour * HOUR_HEIGHT, 0, columnHeight);
-  const rawHeight = Math.max((endHour - startHour) * HOUR_HEIGHT, HOUR_HEIGHT / 3);
+  const spanMinutes = (visibleEnd.getTime() - visibleStart.getTime()) / (60 * 1000);
+  const startOffsetMinutes = (visibleStart.getTime() - dayStart.getTime()) / (60 * 1000);
+  const totalSpanMinutes = (dayEnd.getTime() - dayStart.getTime()) / (60 * 1000);
+
+  const top = clamp((startOffsetMinutes / totalSpanMinutes) * columnHeight, 0, columnHeight);
+  const effectiveSpanMinutes = Math.max(spanMinutes, 30);
+  const rawHeight = Math.max((effectiveSpanMinutes / totalSpanMinutes) * columnHeight, HOUR_HEIGHT / 3);
   const maxHeight = columnHeight - top;
-  const height = clamp(rawHeight, HOUR_HEIGHT / 2, maxHeight || columnHeight / totalSpanHours);
+  const height = clamp(rawHeight, HOUR_HEIGHT / 2, maxHeight || columnHeight / HOURS.length);
 
   return { top, height };
 };
@@ -105,10 +133,8 @@ export function WeekView({ weekStart, schedules, onSelectSlot, onSelectEvent, lo
 
   const eventsByDay = useMemo(() => {
     return days.map((day) => {
-      const dayStart = new Date(day);
-      dayStart.setHours(0, 0, 0, 0);
-      const dayEnd = new Date(dayStart);
-      dayEnd.setHours(23, 59, 59, 999);
+      const dayStart = makeZonedDate(day, 0, 0, 0);
+      const dayEnd = makeZonedDate(day, 23, 59, 59);
       return schedules.filter((schedule) => eventOverlapsDay(schedule, dayStart, dayEnd));
     });
   }, [days, schedules]);
@@ -144,7 +170,7 @@ export function WeekView({ weekStart, schedules, onSelectSlot, onSelectEvent, lo
         <div className="relative border-r border-slate-200 bg-slate-50/60">
           {HOURS.map((hour) => (
             <div key={hour} className="flex h-14 items-start justify-end border-b border-slate-100 pr-3 text-xs text-slate-500">
-              {`${String(hour).padStart(2, '0')}:00`}
+                {`${pad(hour)}:00`}
             </div>
           ))}
         </div>

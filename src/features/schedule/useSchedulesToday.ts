@@ -20,6 +20,12 @@ const FALLBACK_MINI_SCHEDULE: Pick<MiniSchedule, 'title' | 'startText' | 'status
   status: undefined,
   allDay: false,
 };
+const fallbackTimeFormatter = new Intl.DateTimeFormat('ja-JP', {
+  timeZone: TIMEZONE,
+  hour: '2-digit',
+  minute: '2-digit',
+  hour12: false,
+});
 
 const pad = (value: number) => (value < 10 ? `0${value}` : `${value}`);
 
@@ -114,7 +120,9 @@ export function useSchedulesToday(max: number = 5) {
                 startText = formatInTimeZone(new Date(startIso), TIMEZONE, 'HH:mm');
               } catch {
                 const d = new Date(startIso);
-                startText = Number.isNaN(d.getTime()) ? FALLBACK_MINI_SCHEDULE.startText : `${pad(d.getHours())}:${pad(d.getMinutes())}`;
+                startText = Number.isNaN(d.getTime())
+                  ? FALLBACK_MINI_SCHEDULE.startText
+                  : fallbackTimeFormatter.format(d);
               }
             }
 

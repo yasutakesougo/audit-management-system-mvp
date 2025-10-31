@@ -151,6 +151,37 @@ describe('useSchedulesToday', () => {
     ]);
   });
 
+  it('falls back to Asia/Tokyo time formatting when formatter throws', async () => {
+    listMock.mockResolvedValue({
+      items: [
+        {
+          id: 40,
+          startLocal: '2025-05-03T09:30:00+09:00',
+          title: 'フォールバック確認',
+        },
+      ],
+      source: 'sharepoint',
+    });
+
+    formatInTimeZoneMock.mockImplementation(() => {
+      throw new Error('formatter unavailable');
+    });
+
+    const useSchedulesToday = await importHook();
+    const { result } = renderHook(() => useSchedulesToday());
+
+    await flushAsync();
+
+    expect(result.current.error).toBeNull();
+    expect(result.current.data).toEqual([
+      expect.objectContaining({
+        id: 40,
+        title: 'フォールバック確認',
+        startText: '09:30',
+      }),
+    ]);
+  });
+
   it('defaults to demo source when adapter returns raw array', async () => {
     const rows = [
       { id: 1, startLocal: '2025-05-04T08:00:00+09:00', title: 'デモ予定' },

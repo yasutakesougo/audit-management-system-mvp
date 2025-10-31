@@ -69,7 +69,7 @@ exports[`AppShell snapshot 1`] = `
     </div>
   </header>
   <main
-    class="MuiContainer-root MuiContainer-maxWidthLg css-xsov46-MuiContainer-root"
+    class="MuiContainer-root MuiContainer-maxWidthLg css-18zj4a3-MuiContainer-root"
     role="main"
   >
     <nav
@@ -280,6 +280,52 @@ exports[`AppShell snapshot 1`] = `
       content
     </div>
   </main>
+  <footer
+    class="MuiBox-root css-1c1ti6f"
+    role="contentinfo"
+  >
+    <div
+      class="MuiContainer-root MuiContainer-maxWidthLg css-puci8u-MuiContainer-root"
+    >
+      <div
+        class="MuiPaper-root MuiPaper-elevation MuiPaper-rounded MuiPaper-elevation6 css-oxfp1h-MuiPaper-root"
+        style="--Paper-shadow: 0px 3px 5px -1px rgba(0,0,0,0.2),0px 6px 10px 0px rgba(0,0,0,0.14),0px 1px 18px 0px rgba(0,0,0,0.12);"
+      >
+        <div
+          class="MuiStack-root css-10svwat-MuiStack-root"
+        >
+          <a
+            class="MuiButtonBase-root MuiButton-root MuiButton-contained MuiButton-containedInfo MuiButton-sizeLarge MuiButton-containedSizeLarge MuiButton-colorInfo MuiButton-fullWidth MuiButton-root MuiButton-contained MuiButton-containedInfo MuiButton-sizeLarge MuiButton-containedSizeLarge MuiButton-colorInfo MuiButton-fullWidth css-1h9i99u-MuiButtonBase-root-MuiButton-root"
+            href="/daily/attendance"
+            tabindex="0"
+          >
+            通所管理
+          </a>
+          <a
+            class="MuiButtonBase-root MuiButton-root MuiButton-contained MuiButton-containedPrimary MuiButton-sizeLarge MuiButton-containedSizeLarge MuiButton-colorPrimary MuiButton-fullWidth MuiButton-root MuiButton-contained MuiButton-containedPrimary MuiButton-sizeLarge MuiButton-containedSizeLarge MuiButton-colorPrimary MuiButton-fullWidth css-9i5bd4-MuiButtonBase-root-MuiButton-root"
+            href="/daily/activity"
+            tabindex="0"
+          >
+            活動日誌入力
+          </a>
+          <a
+            class="MuiButtonBase-root MuiButton-root MuiButton-outlined MuiButton-outlinedPrimary MuiButton-sizeLarge MuiButton-outlinedSizeLarge MuiButton-colorPrimary MuiButton-fullWidth MuiButton-root MuiButton-outlined MuiButton-outlinedPrimary MuiButton-sizeLarge MuiButton-outlinedSizeLarge MuiButton-colorPrimary MuiButton-fullWidth css-13di261-MuiButtonBase-root-MuiButton-root"
+            href="/daily/support"
+            tabindex="0"
+          >
+            支援手順記録入力
+          </a>
+          <a
+            class="MuiButtonBase-root MuiButton-root MuiButton-outlined MuiButton-outlinedSecondary MuiButton-sizeLarge MuiButton-outlinedSizeLarge MuiButton-colorSecondary MuiButton-fullWidth MuiButton-root MuiButton-outlined MuiButton-outlinedSecondary MuiButton-sizeLarge MuiButton-outlinedSizeLarge MuiButton-colorSecondary MuiButton-fullWidth css-4xzl9k-MuiButtonBase-root-MuiButton-root"
+            href="/daily/health"
+            tabindex="0"
+          >
+            健康記録
+          </a>
+        </div>
+      </div>
+    </div>
+  </footer>
   <div
     aria-atomic="true"
     aria-live="polite"
