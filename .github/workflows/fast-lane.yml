@@ -71,8 +71,16 @@ jobs:
       - name: Build + bundle guards
         run: npm run build:ci
 
+      - name: E2E smoke • home tiles
+        if: ${{ github.ref == 'refs/heads/main' || github.event_name == 'push' || (github.event_name == 'pull_request' && contains(join(github.event.pull_request.labels.*.name, ','), 'run-e2e')) }}
+        run: npm run e2e:home-tiles -- --reporter=junit,line --output=test-results/home-tiles --retries=1
+
+      - name: E2E smoke • dashboard tabs
+        if: ${{ github.ref == 'refs/heads/main' || github.event_name == 'push' || (github.event_name == 'pull_request' && contains(join(github.event.pull_request.labels.*.name, ','), 'run-e2e')) }}
+        run: npm run e2e:dashboard-smoke -- --reporter=junit,line --output=test-results/dashboard --retries=1
+
       - name: Upload Playwright artifacts
-        if: failure()
+        if: always()
         uses: actions/upload-artifact@v4
         with:
           name: playwright-artifacts
