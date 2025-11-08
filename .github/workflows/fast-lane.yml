@@ -2,9 +2,9 @@ name: fast-lane
 
 on:
   push:
-    branches: [ port/flags, main ]
+    branches: [port/flags, main]
   pull_request:
-    branches: [ main ]
+    branches: [main]
 
 concurrency:
   group: fast-lane-${{ github.ref }}
@@ -29,8 +29,8 @@ jobs:
       - name: Use Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '20'
-          cache: 'npm'
+          node-version: "20"
+          cache: "npm"
 
       - name: Install deps
         run: npm ci
@@ -50,6 +50,9 @@ jobs:
       - name: Store unit tests (focused)
         run: npm run test:store -- --reporter=dot
 
+      - name: Unit (telemetry fast)
+        run: npm run test -- --run tests/unit/nurse.telemetry.spec.ts --reporter=verbose
+
       - name: Hydration unit budget suite
         run: npm run test:hydration -- --reporter=dot
 
@@ -62,11 +65,22 @@ jobs:
       - name: Users detail flow E2E
         run: npm run test:e2e:users -- --reporter=line
 
+      - name: E2E (nurse BP sync)
+        run: VITE_FEATURE_NURSE=1 VITE_SKIP_LOGIN=1 npx playwright test tests/e2e/nurse.bp.sync.spec.ts --reporter=line
+
       - name: Build + bundle guards
         run: npm run build:ci
 
+      - name: E2E smoke • home tiles
+        if: ${{ github.ref == 'refs/heads/main' || github.event_name == 'push' || (github.event_name == 'pull_request' && contains(join(github.event.pull_request.labels.*.name, ','), 'run-e2e')) }}
+        run: npm run e2e:home-tiles -- --reporter=junit,line --output=test-results/home-tiles --retries=1
+
+      - name: E2E smoke • dashboard tabs
+        if: ${{ github.ref == 'refs/heads/main' || github.event_name == 'push' || (github.event_name == 'pull_request' && contains(join(github.event.pull_request.labels.*.name, ','), 'run-e2e')) }}
+        run: npm run e2e:dashboard-smoke -- --reporter=junit,line --output=test-results/dashboard --retries=1
+
       - name: Upload Playwright artifacts
-        if: failure()
+        if: always()
         uses: actions/upload-artifact@v4
         with:
           name: playwright-artifacts

@@ -18,10 +18,13 @@ const ScheduleCreatePage = React.lazy(() => import('@/pages/ScheduleCreatePage')
 const DailyRecordPage = React.lazy(() => import('@/pages/DailyRecordPage'));
 const DailyRecordMenuPage = React.lazy(() => import('@/pages/DailyRecordMenuPage'));
 const TimeFlowSupportRecordPage = React.lazy(() => import('@/pages/TimeFlowSupportRecordPage'));
+const TimeBasedSupportRecordPage = React.lazy(() => import('@/pages/TimeBasedSupportRecordPage'));
+const AttendanceRecordPage = React.lazy(() => import('@/pages/AttendanceRecordPage'));
 const DashboardPage = React.lazy(() => import('@/pages/DashboardPage'));
 const SupportActivityMasterPage = React.lazy(() => import('@/pages/SupportActivityMasterPage'));
 const SupportStepMasterPage = React.lazy(() => import('@/pages/SupportStepMasterPage'));
 const IndividualSupportManagementPage = React.lazy(() => import('@/pages/IndividualSupportManagementPage'));
+const UserDetailPage = React.lazy(() => import('@/pages/UserDetailPage'));
 
 const SuspendedMonthPage: React.FC = () => (
   <RouteHydrationErrorBoundary>
@@ -93,6 +96,20 @@ const SuspendedDailyRecordMenuPage: React.FC = () => (
   </RouteHydrationErrorBoundary>
 );
 
+const SuspendedAttendanceRecordPage: React.FC = () => (
+  <RouteHydrationErrorBoundary>
+    <React.Suspense
+      fallback={(
+        <div className="p-4 text-sm text-slate-600" role="status">
+          通所管理ページを読み込んでいます…
+        </div>
+      )}
+    >
+      <AttendanceRecordPage />
+    </React.Suspense>
+  </RouteHydrationErrorBoundary>
+);
+
 const SuspendedTimeFlowSupportRecordPage: React.FC = () => (
   <RouteHydrationErrorBoundary>
     <React.Suspense
@@ -103,6 +120,20 @@ const SuspendedTimeFlowSupportRecordPage: React.FC = () => (
       )}
     >
       <TimeFlowSupportRecordPage />
+    </React.Suspense>
+  </RouteHydrationErrorBoundary>
+);
+
+const SuspendedTimeBasedSupportRecordPage: React.FC = () => (
+  <RouteHydrationErrorBoundary>
+    <React.Suspense
+      fallback={(
+        <div className="p-4 text-sm text-slate-600" role="status">
+          健康記録を読み込んでいます…
+        </div>
+      )}
+    >
+      <TimeBasedSupportRecordPage />
     </React.Suspense>
   </RouteHydrationErrorBoundary>
 );
@@ -205,16 +236,33 @@ const SuspendedIndividualSupportManagementPage: React.FC = () => (
   </RouteHydrationErrorBoundary>
 );
 
+const SuspendedUserDetailPage: React.FC = () => (
+  <RouteHydrationErrorBoundary>
+    <React.Suspense
+      fallback={(
+        <div className="p-4 text-sm text-slate-600" role="status">
+          利用者ページを読み込んでいます…
+        </div>
+      )}
+    >
+      <UserDetailPage />
+    </React.Suspense>
+  </RouteHydrationErrorBoundary>
+);
+
 const childRoutes: RouteObject[] = [
   { index: true, element: <SuspendedDashboardPage /> },
   { path: 'records', element: <SuspendedRecordList /> },
   { path: 'checklist', element: <SuspendedChecklistPage /> },
   { path: 'audit', element: <SuspendedAuditPanel /> },
-  { path: 'users', element: <UsersPanel /> },
+  { path: '/users', element: <UsersPanel /> },
+  { path: '/users/:userId', element: <SuspendedUserDetailPage /> },
   { path: 'staff', element: <StaffPanel /> },
   { path: 'daily', element: <SuspendedDailyRecordMenuPage /> },
   { path: 'daily/activity', element: <SuspendedDailyRecordPage /> },
+  { path: 'daily/attendance', element: <SuspendedAttendanceRecordPage /> },
   { path: 'daily/support', element: <SuspendedTimeFlowSupportRecordPage /> },
+  { path: 'daily/health', element: <SuspendedTimeBasedSupportRecordPage /> },
   { path: 'admin/templates', element: <SuspendedSupportActivityMasterPage /> },
   { path: 'admin/step-templates', element: <SuspendedSupportStepMasterPage /> },
   { path: 'admin/individual-support', element: <SuspendedIndividualSupportManagementPage /> },
@@ -304,7 +352,6 @@ const routes: RouteObject[] = [
 export const router = createBrowserRouter(routes, {
   future: routerFutureFlags,
 });
-
 const RouterPlaceholder: React.FC = () => null;
 
 export default RouterPlaceholder;

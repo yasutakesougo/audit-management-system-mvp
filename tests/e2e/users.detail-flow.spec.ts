@@ -47,6 +47,7 @@ test.describe('users detail menu', () => {
 
     await page.goto('/users/U-002', { waitUntil: 'load' });
     await page.waitForLoadState('networkidle');
+  await page.waitForSelector(`[data-testid="${TESTIDS['user-detail-sections']}"]`, { timeout: 10000 });
 
     const detailSections = page.getByTestId(TESTIDS['user-detail-sections']);
     await expect(detailSections).toBeVisible();
@@ -71,6 +72,7 @@ test.describe('users detail menu', () => {
 
     await page.goto('/users/U-002', { waitUntil: 'load' });
     await page.waitForLoadState('networkidle');
+  await page.waitForSelector(`[data-testid="${TESTIDS['user-detail-sections']}"]`, { timeout: 10000 });
     const detailSectionsAgain = page.getByTestId(TESTIDS['user-detail-sections']);
     await expect(detailSectionsAgain).toBeVisible();
     await expect(detailSectionsAgain).toContainText('鈴木 美子');

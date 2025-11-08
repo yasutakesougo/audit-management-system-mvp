@@ -16,7 +16,12 @@ describe('useToast', () => {
   });
 
   it('throws when used outside of provider', () => {
-    expect(() => renderHook(() => useToast())).toThrowError('useToast must be used within a <ToastProvider>');
+    const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {});
+    try {
+      expect(() => renderHook(() => useToast())).toThrowError('useToast must be used within a <ToastProvider>');
+    } finally {
+      consoleError.mockRestore();
+    }
   });
 
   it('creates toast entries using crypto.randomUUID when available and removes after timeout', () => {

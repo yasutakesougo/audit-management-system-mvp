@@ -29,16 +29,21 @@ export const ROUTE_BUDGETS: Record<string, number> = {
 export async function prepareHydrationApp(page: Page, options: { delaySchedules?: boolean } = {}): Promise<void> {
   await page.addInitScript(() => {
     const win = window as typeof window & { __ENV__?: Record<string, string | undefined> };
-    win.__ENV__ = {
-      ...(win.__ENV__ ?? {}),
-      VITE_E2E: '1',
-      VITE_E2E_MSAL_MOCK: '1',
-      VITE_SKIP_LOGIN: '1',
-      VITE_DEMO_MODE: '0',
-      VITE_FEATURE_SCHEDULES: '1',
-      VITE_FEATURE_SCHEDULES_CREATE: '1',
-      VITE_PREFETCH_HUD: '1',
-    };
+    const env = { ...(win.__ENV__ ?? {}) };
+    if (!env.VITE_SP_RESOURCE) {
+      env.VITE_SP_RESOURCE = 'https://example.sharepoint.com';
+    }
+    if (!env.VITE_SP_SITE_RELATIVE) {
+      env.VITE_SP_SITE_RELATIVE = '/sites/demo';
+    }
+    env.VITE_E2E = '1';
+    env.VITE_E2E_MSAL_MOCK = '1';
+    env.VITE_SKIP_LOGIN = '1';
+    env.VITE_DEMO_MODE = '0';
+    env.VITE_FEATURE_SCHEDULES = '1';
+    env.VITE_FEATURE_SCHEDULES_CREATE = '1';
+    env.VITE_PREFETCH_HUD = '1';
+    win.__ENV__ = env;
     window.localStorage.setItem('skipLogin', '1');
     window.localStorage.setItem('demo', '0');
     window.localStorage.setItem('writeEnabled', '1');
