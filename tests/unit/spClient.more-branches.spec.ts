@@ -511,6 +511,7 @@ describe('postBatch retry logic and parser', () => {
       VITE_SP_RETRY_MAX_DELAY_MS: '10',
     });
 
+    const originalFetch = globalThis.fetch;
     const fetchMock = vi
       .fn()
       .mockResolvedValueOnce(new Response('', { status: 429, headers: { 'Retry-After': '0.001' } }))
@@ -518,20 +519,31 @@ describe('postBatch retry logic and parser', () => {
     globalThis.fetch = fetchMock as unknown as typeof fetch;
     const acquireToken = vi.fn().mockResolvedValue('token');
     const previousWindow = (globalThis as Record<string, unknown>).window;
-    (globalThis as Record<string, unknown>).window = {};
-    const client = createSpClient(acquireToken, baseUrl);
+    const timersSpy = vi.spyOn(globalThis, 'setTimeout');
+    vi.useFakeTimers();
 
-    const operations: SharePointBatchOperation[] = [
-      { kind: 'create', list: 'Users', body: { Title: 'A' } },
-    ];
+    try {
+      (globalThis as Record<string, unknown>).window = {};
+      const client = createSpClient(acquireToken, baseUrl);
 
-    await client.batch(operations);
-    if (previousWindow === undefined) {
-      delete (globalThis as Record<string, unknown>).window;
-    } else {
-      (globalThis as Record<string, unknown>).window = previousWindow;
+      const operations: SharePointBatchOperation[] = [
+        { kind: 'create', list: 'Users', body: { Title: 'A' } },
+      ];
+
+      const pending = client.batch(operations);
+      await vi.runAllTimersAsync();
+      await pending;
+      expect(fetchMock).toHaveBeenCalledTimes(2);
+    } finally {
+      globalThis.fetch = originalFetch;
+      timersSpy.mockRestore();
+      vi.useRealTimers();
+      if (previousWindow === undefined) {
+        delete (globalThis as Record<string, unknown>).window;
+      } else {
+        (globalThis as Record<string, unknown>).window = previousWindow;
+      }
     }
-    expect(fetchMock).toHaveBeenCalledTimes(2);
   });
 
   it('parses batch responses into structured results', async () => {

@@ -1,11 +1,15 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import type { MockInstance } from 'vitest';
 import { pushAudit, readAudit, retainAuditWhere } from '../../src/lib/audit';
 
 describe('audit localStorage error branches', () => {
-  const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {});
-
+  let consoleError: MockInstance;
   beforeEach(() => {
-    consoleError.mockClear();
+    consoleError = vi.spyOn(console, 'error').mockImplementation(() => {});
+  });
+
+  afterEach(() => {
+    consoleError.mockRestore();
   });
 
   it('readAudit handles malformed JSON and clears corrupt entry', () => {
@@ -38,7 +42,7 @@ describe('audit localStorage error branches', () => {
 
     expect(() => pushAudit({ actor: 'u', action: 'TEST', entity: 'X', channel: 'UI' })).not.toThrow();
     expect(getItem).toHaveBeenCalled();
-    expect(consoleError).toHaveBeenCalledWith(expect.stringContaining('Failed to write audit log'), expect.any(Error));
+  expect(consoleError).toHaveBeenCalledWith(expect.stringContaining('Failed to write audit log'), expect.any(Error));
   });
 
   it('retainAuditWhere removes all entries when predicate filters everything out', () => {
