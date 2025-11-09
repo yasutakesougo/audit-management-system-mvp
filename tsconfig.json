@@ -11,15 +11,15 @@
     "skipLibCheck": true,
     "resolveJsonModule": true,
     "allowSyntheticDefaultImports": true,
-  "types": ["vite/client", "node", "vitest/globals", "@testing-library/jest-dom"],
+    "types": ["vite/client", "node", "vitest/globals", "@testing-library/jest-dom"],
     "baseUrl": ".",
     "paths": {
       "@/*": ["src/*"],
       "@/app/*": ["src/app/*"],
       "@/auth/*": ["src/auth/*"],
       "@/lib/*": ["src/lib/*"],
-  "@/features/*": ["src/features/*"],
-  "@/config/*": ["src/config/*"],
+      "@/features/*": ["src/features/*"],
+      "@/config/*": ["src/config/*"],
       "@/ui/*": ["src/ui/*"],
       "@/adapters/*": ["src/adapters/*"]
     }
@@ -33,6 +33,10 @@
     ".vitest",
     "test-results",
     "public",
-    "tests/e2e"
+    "tests/e2e",
+    ".vscode",
+    ".vscode/**/*",
+    "docs/**/*",
+    "reports/**/*"
   ]
 }

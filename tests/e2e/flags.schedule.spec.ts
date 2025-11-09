@@ -1,7 +1,5 @@
 import { test, expect } from "@playwright/test";
 
-const BASE_URL = "http://localhost:5173";
-
 const scheduleNavLabel = /スケジュール/;
 
 test.beforeEach(async ({ page }) => {
@@ -15,19 +13,23 @@ test.beforeEach(async ({ page }) => {
       ...(globalWithEnv.__ENV__ ?? {}),
       VITE_FEATURE_SCHEDULES: '0',
       VITE_FEATURE_SCHEDULES_CREATE: '0',
+      VITE_SKIP_LOGIN: '1',
+      VITE_E2E_MSAL_MOCK: '1',
+      VITE_SP_RESOURCE: 'https://contoso.sharepoint.com',
+      VITE_SP_SITE_RELATIVE: '/sites/Audit',
     };
   });
 });
 
 test.describe("schedule feature flag", () => {
   test("hides schedule navigation and redirects deep links when flag disabled", async ({ page }) => {
-    await page.goto(`${BASE_URL}/`);
+    await page.goto("/");
 
     await expect(page.getByRole("link", { name: scheduleNavLabel })).toHaveCount(0);
 
-    await page.goto(`${BASE_URL}/schedules/month`);
-    await page.waitForURL(`${BASE_URL}/`, { waitUntil: "commit" });
-    await expect(page).toHaveURL(`${BASE_URL}/`);
+    await page.goto("/schedules/month");
+    await page.waitForURL("**/", { waitUntil: "commit" });
+    await expect(page).toHaveURL(/\/$/);
     await expect(page.getByRole("heading", { name: scheduleNavLabel })).toHaveCount(0);
   });
 
@@ -38,17 +40,21 @@ test.describe("schedule feature flag", () => {
       globalWithEnv.__ENV__ = {
         ...(globalWithEnv.__ENV__ ?? {}),
         VITE_FEATURE_SCHEDULES: '1',
+        VITE_SKIP_LOGIN: '1',
+        VITE_E2E_MSAL_MOCK: '1',
+        VITE_SP_RESOURCE: 'https://contoso.sharepoint.com',
+        VITE_SP_SITE_RELATIVE: '/sites/Audit',
       };
     });
 
-    await page.goto(`${BASE_URL}/`);
+    await page.goto("/");
 
     const monthNav = page.getByRole("link", { name: scheduleNavLabel });
     await expect(monthNav).toBeVisible();
 
     await monthNav.click();
 
-    await expect(page).toHaveURL(`${BASE_URL}/schedules/week`);
+  await expect(page).toHaveURL(/\/schedules\/week$/);
     await expect(page.getByRole("heading", { name: scheduleNavLabel })).toBeVisible();
   });
 });

@@ -19,7 +19,7 @@ const ScheduleCreatePage = React.lazy(() => import('@/pages/ScheduleCreatePage')
 const DailyRecordPage = React.lazy(() => import('@/pages/DailyRecordPage'));
 const DailyRecordMenuPage = React.lazy(() => import('@/pages/DailyRecordMenuPage'));
 const TimeFlowSupportRecordPage = React.lazy(() => import('@/pages/TimeFlowSupportRecordPage'));
-const TimeBasedSupportRecordPage = React.lazy(() => import('@/pages/TimeBasedSupportRecordPage'));
+const HealthObservationPage = React.lazy(() => import('@/pages/HealthObservationPage'));
 const AttendanceRecordPage = React.lazy(() => import('@/pages/AttendanceRecordPage'));
 const DashboardPage = React.lazy(() => import('@/pages/DashboardPage'));
 const SupportActivityMasterPage = React.lazy(() => import('@/pages/SupportActivityMasterPage'));
@@ -125,16 +125,16 @@ const SuspendedTimeFlowSupportRecordPage: React.FC = () => (
   </RouteHydrationErrorBoundary>
 );
 
-const SuspendedTimeBasedSupportRecordPage: React.FC = () => (
+const SuspendedHealthObservationPage: React.FC = () => (
   <RouteHydrationErrorBoundary>
     <React.Suspense
       fallback={(
         <div className="p-4 text-sm text-slate-600" role="status">
-          健康記録を読み込んでいます…
+          健康記録入力画面を読み込んでいます…
         </div>
       )}
     >
-      <TimeBasedSupportRecordPage />
+      <HealthObservationPage />
     </React.Suspense>
   </RouteHydrationErrorBoundary>
 );
@@ -263,7 +263,7 @@ const childRoutes: RouteObject[] = [
   { path: 'daily/activity', element: <SuspendedDailyRecordPage /> },
   { path: 'daily/attendance', element: <SuspendedAttendanceRecordPage /> },
   { path: 'daily/support', element: <SuspendedTimeFlowSupportRecordPage /> },
-  { path: 'daily/health', element: <SuspendedTimeBasedSupportRecordPage /> },
+  { path: 'daily/health', element: <SuspendedHealthObservationPage /> },
   { path: 'admin/templates', element: <SuspendedSupportActivityMasterPage /> },
   { path: 'admin/step-templates', element: <SuspendedSupportStepMasterPage /> },
   { path: 'admin/individual-support', element: <SuspendedIndividualSupportManagementPage /> },

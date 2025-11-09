@@ -7,6 +7,7 @@ import { batchUpsertObservations, type ObservationUpsertEnvelope, type Observati
 import { queue, type NurseQueueItem, BACKOFF_SECONDS } from './offlineQueue';
 import { emitTelemetry } from '@/features/nurse/telemetry/telemetry';
 import { formatFlushSummaryToast } from '@/features/nurse/toast/formatFlushSummaryToast';
+import { isDevMode } from '@/lib/env';
 import {
   markSyncFailure,
   markSyncPending,
@@ -155,7 +156,7 @@ const buildSummary = (entries: FlushEntrySummary[], source: SyncSource, override
 };
 
 const resolveSummaryOverride = (source: SyncSource): FlushSummary | null => {
-  if (typeof window === 'undefined' || import.meta.env.MODE === 'production') {
+  if (typeof window === 'undefined' || !isDevMode()) {
     return null;
   }
   const mswHost = window as typeof window & {

@@ -148,7 +148,7 @@ export const Offline: Story = {
 export const SlowSuccessPlay: Story = {
   name: 'Success (play: focus & toast)',
   render: SlowSuccess.render,
-  play: async ({ canvasElement }) => {
+  play: async ({ canvasElement }: { canvasElement: HTMLElement }) => {
     const canvas = within(canvasElement);
     const button = await canvas.findByRole('button', { name: /同期/ });
     await userEvent.click(button);

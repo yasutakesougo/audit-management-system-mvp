@@ -5,7 +5,17 @@ import { createTheme, ThemeProvider as MUIThemeProvider } from '@mui/material/st
 const base = {
   typography: { fontSize: 15 },
   components: {
-    MuiButton: { styleOverrides: { root: { minHeight: 44, padding: '8px 16px' } } },
+    MuiButton: {
+      styleOverrides: {
+        root: { minHeight: 44, padding: '8px 16px' },
+        containedInfo: { color: '#ffffff' },
+        outlinedSecondary: {
+          color: '#3b3b44',
+          borderColor: '#3b3b44',
+          '&:hover': { borderColor: '#2a2a31' },
+        },
+      },
+    },
     MuiIconButton: { styleOverrides: { root: { minWidth: 44, minHeight: 44 } } },
     MuiTextField: { styleOverrides: { root: { '& .MuiInputBase-root': { minHeight: 44 } } } },
     MuiCssBaseline: { styleOverrides: `*:focus-visible{outline:3px solid #0078d4;outline-offset:2px}` },
@@ -20,8 +30,19 @@ export const ThemeRoot: React.FC<{ children: React.ReactNode }> = ({ children })
   const toggle = useCallback(() => setMode(m => (m === 'light' ? 'dark' : 'light')), []);
   const theme = useMemo(() => createTheme({
     palette: mode === 'dark'
-      ? { mode: 'dark', primary: { main: '#7BB8FF' }, secondary: { main: '#7AD48A' } }
-      : { mode: 'light', primary: { main: '#00529B' }, secondary: { main: '#4CAF50' }, background: { default: '#F5F5F5' } },
+      ? {
+          mode: 'dark',
+          primary: { main: '#7BB8FF' },
+          secondary: { main: '#7AD48A' },
+          info: { main: '#58A6FF', contrastText: '#0A1929' },
+        }
+      : {
+          mode: 'light',
+          primary: { main: '#00529B' },
+          secondary: { main: '#3b3b44', contrastText: '#ffffff' },
+          info: { main: '#026aa2', dark: '#01507a', contrastText: '#ffffff' },
+          background: { default: '#F5F5F5' },
+        },
     ...base,
   }), [mode]);
   const ctx = useMemo(() => ({ mode, toggle, sticky: false }), [mode, toggle]);

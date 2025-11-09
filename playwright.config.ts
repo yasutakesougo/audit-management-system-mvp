@@ -3,6 +3,7 @@ import type { ReporterDescription } from '@playwright/test';
 
 const isCI = !!process.env.CI;
 const skipBuild = process.env.PLAYWRIGHT_SKIP_BUILD === '1';
+const DEV_PORT = Number(process.env.DEV_SERVER_PORT ?? 3000);
 const junitOutput = process.env.PLAYWRIGHT_JUNIT_OUTPUT ?? 'junit/results.xml';
 const ciReporters: ReporterDescription[] = [
   ['list'],
@@ -10,7 +11,9 @@ const ciReporters: ReporterDescription[] = [
   ['html', { outputFolder: 'playwright-report' }],
 ];
 
-const webServerCommand = skipBuild ? 'npx serve -s dist -l 3000' : 'sh -c "npm run build && npx serve -s dist -l 3000"';
+const devServerCommand = `npm run dev -- --port ${DEV_PORT} --clearScreen=false`;
+const previewCommand = `sh -c "npm run build && npx serve -s dist -l ${DEV_PORT}"`;
+const webServerCommand = skipBuild ? devServerCommand : previewCommand;
 
 export default defineConfig({
   testDir: 'tests/e2e',
@@ -18,7 +21,7 @@ export default defineConfig({
   retries: isCI ? 2 : 0,
   reporter: isCI ? ciReporters : 'list',
   use: {
-    baseURL: 'http://localhost:3000',
+    baseURL: `http://localhost:${DEV_PORT}`,
     trace: isCI ? 'on-first-retry' : 'off',
     video: isCI ? 'retain-on-failure' : 'off',
     screenshot: 'only-on-failure',
@@ -28,7 +31,7 @@ export default defineConfig({
   ],
   webServer: {
     command: webServerCommand,
-    url: 'http://localhost:3000',
+    url: `http://localhost:${DEV_PORT}`,
     reuseExistingServer: !isCI,
     timeout: 120_000,
   },

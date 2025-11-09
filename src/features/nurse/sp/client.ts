@@ -1,3 +1,5 @@
+import { readBool } from '@/lib/env';
+
 export type ListItem = Record<string, unknown>;
 
 export interface SharePointListApi {
@@ -132,7 +134,7 @@ export async function resilientFetch(
   throw lastError instanceof Error ? lastError : new Error('resilientFetch exhausted');
 }
 
-const useSharePointClient = () => import.meta.env.VITE_NURSE_SYNC_SP === '1';
+const useSharePointClient = () => readBool('VITE_NURSE_SYNC_SP', false);
 
 const stubApi: SharePointListApi = {
   mode: 'stub',

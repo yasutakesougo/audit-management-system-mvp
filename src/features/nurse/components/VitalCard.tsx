@@ -26,6 +26,7 @@ type VitalCardProps = {
   describedById?: string;
   testId?: string;
   inputTestId?: string;
+  readOnly?: boolean;
 };
 
 const VitalCard: React.FC<VitalCardProps> = ({
@@ -39,6 +40,7 @@ const VitalCard: React.FC<VitalCardProps> = ({
   describedById,
   testId,
   inputTestId,
+  readOnly = false,
 }) => {
   const reactId = useId();
   const fieldId = `${reactId}-field`;
@@ -60,21 +62,18 @@ const VitalCard: React.FC<VitalCardProps> = ({
     [inputRef]
   );
 
-  const sharedInputProps: React.InputHTMLAttributes<HTMLInputElement> & { 'data-testid'?: string } = {
+  const defaultTestId = isWeightCard ? TESTIDS.NURSE_OBS_WEIGHT_INPUT : TESTIDS.NURSE_VITAL_VALUE;
+  const resolvedInputTestId = inputTestId ?? defaultTestId;
+  const sharedInputProps: React.InputHTMLAttributes<HTMLInputElement> & { 'data-testid': string } = {
     inputMode: 'decimal',
     pattern: '[0-9.]*',
-    readOnly: true,
+    'data-testid': resolvedInputTestId,
   };
-  const resolvedInputTestId = inputTestId ?? (isWeightCard ? TESTIDS.NURSE_OBS_WEIGHT_INPUT : TESTIDS.NURSE_VITAL_VALUE);
-  sharedInputProps['data-testid'] = resolvedInputTestId;
   if (isDanger) {
     sharedInputProps['aria-invalid'] = 'true';
   }
   if (describedById) {
     sharedInputProps['aria-describedby'] = describedById;
-  }
-  if (isWeightCard) {
-    sharedInputProps['data-testid'] = TESTIDS.NURSE_OBS_WEIGHT_INPUT;
   }
 
   const focusBackToInput = useCallback(() => {
@@ -185,8 +184,9 @@ const VitalCard: React.FC<VitalCardProps> = ({
               error={isDanger}
               inputRef={assignInputRef}
               inputProps={sharedInputProps}
+              type="tel"
               InputProps={{
-                readOnly: true,
+                readOnly,
                 sx: {
                   '& .MuiOutlinedInput-input': {
                     textAlign: 'center',

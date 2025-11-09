@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest';
 import { HYDRATION_KEYS, resolveHydrationEntry } from '@/hydration/routes';
 
 describe('resolveHydrationEntry', () => {
-  it.each([
+  it.each<[string, string, string]>([
     ['/', '', HYDRATION_KEYS.dashboard],
     ['/records', '', HYDRATION_KEYS.records],
     ['/records/support-procedures', '', HYDRATION_KEYS.supportProcedures],
@@ -21,7 +21,7 @@ describe('resolveHydrationEntry', () => {
     ['/admin/templates', '', HYDRATION_KEYS.adminTemplates],
     ['/admin/step-templates', '', HYDRATION_KEYS.adminSteps],
     ['/admin/individual-support', '', HYDRATION_KEYS.adminIndividualSupport],
-  ])('resolves %s%s to %s', (pathname, search, expected) => {
+  ])('resolves %s%s to %s', (pathname: string, search: string, expected: string) => {
     const entry = resolveHydrationEntry(pathname, search);
     expect(entry).toEqual(expected);
   });
