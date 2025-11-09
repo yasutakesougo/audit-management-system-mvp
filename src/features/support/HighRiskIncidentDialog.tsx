@@ -16,6 +16,7 @@ import Grid from '@mui/material/PigmentGrid';
 import InputLabel from '@mui/material/InputLabel';
 import MenuItem from '@mui/material/MenuItem';
 import Select from '@mui/material/Select';
+import type { SelectChangeEvent } from '@mui/material/Select';
 import Slider, { type SliderProps } from '@mui/material/Slider';
 import Stack from '@mui/material/Stack';
 import Step from '@mui/material/Step';
@@ -27,6 +28,7 @@ import ToggleButton from '@mui/material/ToggleButton';
 import ToggleButtonGroup from '@mui/material/ToggleButtonGroup';
 import Typography from '@mui/material/Typography';
 import { useEffect, useMemo, useState } from 'react';
+import type { ChangeEvent, SyntheticEvent } from 'react';
 import {
   antecedentValues,
   behaviorValues,
@@ -134,7 +136,7 @@ export const HighRiskIncidentDialog: React.FC<HighRiskIncidentDialogProps> = ({
     key: K,
     value: HighRiskIncidentDraft['behavior'][K],
   ) => {
-    setDraft(prev => ({
+    setDraft((prev: HighRiskIncidentDraft) => ({
       ...prev,
       behavior: {
         ...prev.behavior,
@@ -147,7 +149,7 @@ export const HighRiskIncidentDialog: React.FC<HighRiskIncidentDialogProps> = ({
     key: K,
     value: HighRiskIncidentDraft['antecedent'][K],
   ) => {
-    setDraft(prev => ({
+    setDraft((prev: HighRiskIncidentDraft) => ({
       ...prev,
       antecedent: {
         ...prev.antecedent,
@@ -160,7 +162,7 @@ export const HighRiskIncidentDialog: React.FC<HighRiskIncidentDialogProps> = ({
     key: K,
     value: HighRiskIncidentDraft['consequence'][K],
   ) => {
-    setDraft(prev => ({
+    setDraft((prev: HighRiskIncidentDraft) => ({
       ...prev,
       consequence: {
         ...prev.consequence,
@@ -173,7 +175,7 @@ export const HighRiskIncidentDialog: React.FC<HighRiskIncidentDialogProps> = ({
     key: K,
     value: HighRiskIncidentDraft['hypothesis'][K],
   ) => {
-    setDraft(prev => ({
+    setDraft((prev: HighRiskIncidentDraft) => ({
       ...prev,
       hypothesis: {
         ...prev.hypothesis,
@@ -183,12 +185,12 @@ export const HighRiskIncidentDialog: React.FC<HighRiskIncidentDialogProps> = ({
   };
 
   const handleToggleConsequence = (value: ConsequenceValue) => {
-    setDraft(prev => ({
+    setDraft((prev: HighRiskIncidentDraft) => ({
       ...prev,
       consequence: {
         ...prev.consequence,
         consequenceReceived: prev.consequence.consequenceReceived.includes(value)
-          ? (prev.consequence.consequenceReceived.filter(item => item !== value) as ConsequenceValue[])
+          ? (prev.consequence.consequenceReceived.filter((item) => item !== value) as ConsequenceValue[])
           : ([...prev.consequence.consequenceReceived, value] as ConsequenceValue[]),
       },
     }));
@@ -244,18 +246,20 @@ export const HighRiskIncidentDialog: React.FC<HighRiskIncidentDialogProps> = ({
         fullWidth
         label="事象の概要 / ターゲット行動"
         value={draft.targetBehavior}
-        onChange={(event) => setDraft(prev => ({ ...prev, targetBehavior: event.target.value }))}
+        onChange={(event: ChangeEvent<HTMLInputElement>) =>
+          setDraft((prev: HighRiskIncidentDraft) => ({ ...prev, targetBehavior: event.target.value }))
+        }
         required
         helperText="例：活動の切り替え時に教材を投げる"
       />
       <Grid container spacing={3}>
-  <Grid size={{ xs: 12, md: 6 }}>
+        <Grid size={{ xs: 12, md: 6 }}>
           <FormControl fullWidth>
             <InputLabel>観察された行動</InputLabel>
             <Select
               label="観察された行動"
               value={draft.behavior.behaviorObserved}
-              onChange={(event) => handleBehaviorChange('behaviorObserved', event.target.value)}
+              onChange={(event: SelectChangeEvent<string>) => handleBehaviorChange('behaviorObserved', event.target.value)}
             >
               {behaviorValues.map(option => (
                 <MenuItem key={option} value={option}>
@@ -264,7 +268,7 @@ export const HighRiskIncidentDialog: React.FC<HighRiskIncidentDialogProps> = ({
               ))}
             </Select>
           </FormControl>
-        </Grid>
+  </Grid>
   <Grid size={{ xs: 12, md: 6 }}>
           <Typography variant="subtitle2" gutterBottom>
             重症度
@@ -272,7 +276,15 @@ export const HighRiskIncidentDialog: React.FC<HighRiskIncidentDialogProps> = ({
           <ToggleButtonGroup
             exclusive
             value={draft.severity}
-            onChange={(_, value) => value && setDraft(prev => ({ ...prev, severity: value }))}
+            onChange={(
+              _event: SyntheticEvent,
+              value: (typeof severityValues)[number] | null,
+            ) =>
+              value &&
+              setDraft((prev: HighRiskIncidentDraft) => ({
+                ...prev,
+                severity: value,
+              }))}
             aria-label="重症度"
           >
             {severityValues.map(severity => (
@@ -284,16 +296,17 @@ export const HighRiskIncidentDialog: React.FC<HighRiskIncidentDialogProps> = ({
         </Grid>
       </Grid>
       <Grid container spacing={3}>
-  <Grid size={{ xs: 12, md: 6 }}>
+        <Grid size={{ xs: 12, md: 6 }}>
           <TextField
             fullWidth
             type="number"
             label="行動の継続時間 (分)"
             value={draft.behavior.durationMinutes}
             inputProps={{ min: 0, max: 240 }}
-            onChange={(event) => handleBehaviorChange('durationMinutes', Number(event.target.value))}
+            onChange={(event: ChangeEvent<HTMLInputElement>) =>
+              handleBehaviorChange('durationMinutes', Number(event.target.value))}
           />
-        </Grid>
+  </Grid>
   <Grid size={{ xs: 12, md: 6 }}>
           <Typography variant="subtitle2">行動の強度</Typography>
           <Slider
@@ -303,7 +316,7 @@ export const HighRiskIncidentDialog: React.FC<HighRiskIncidentDialogProps> = ({
             step={1}
             marks={intensityMarks}
             valueLabelDisplay="auto"
-            onChange={(_, value) => {
+            onChange={(_event: Event, value) => {
               const nextValue = Array.isArray(value) ? value[0] : value;
               if (typeof nextValue === 'number') {
                 const clamped = Math.max(1, Math.min(5, nextValue)) as IntensityLevel;
@@ -326,7 +339,7 @@ export const HighRiskIncidentDialog: React.FC<HighRiskIncidentDialogProps> = ({
         <Select
           label="先行事象"
           value={draft.antecedent.antecedentType}
-          onChange={(event) => handleAntecedentChange('antecedentType', event.target.value)}
+          onChange={(event: SelectChangeEvent<string>) => handleAntecedentChange('antecedentType', event.target.value)}
         >
           {antecedentValues.map(option => (
             <MenuItem key={option} value={option}>
@@ -339,17 +352,17 @@ export const HighRiskIncidentDialog: React.FC<HighRiskIncidentDialogProps> = ({
         fullWidth
         multiline
         rows={3}
-        label="状況メモ"
-        value={draft.antecedent.contextNotes}
-        onChange={(event) => handleAntecedentChange('contextNotes', event.target.value)}
+    label="状況メモ"
+    value={draft.antecedent.contextNotes}
+    onChange={(event: ChangeEvent<HTMLInputElement>) => handleAntecedentChange('contextNotes', event.target.value)}
         placeholder="例：活動終了を告げたが本人は作業を継続したい様子だった"
       />
       <Autocomplete
         multiple
         freeSolo
         options={[]}
-        value={draft.antecedent.relatedIcebergFactors}
-        onChange={(_, value) => handleAntecedentChange('relatedIcebergFactors', value)}
+    value={draft.antecedent.relatedIcebergFactors}
+    onChange={(_event: SyntheticEvent, value: string[]) => handleAntecedentChange('relatedIcebergFactors', value)}
         renderTags={(value, getTagProps) =>
           value.map((option, index) => (
             <Chip label={option} size="small" {...getTagProps({ index })} />
@@ -389,9 +402,9 @@ export const HighRiskIncidentDialog: React.FC<HighRiskIncidentDialogProps> = ({
         fullWidth
         multiline
         rows={3}
-        label="職員の介入・状況"
-        value={draft.consequence.staffInterventionNotes}
-        onChange={(event) => handleConsequenceChange('staffInterventionNotes', event.target.value)}
+    label="職員の介入・状況"
+    value={draft.consequence.staffInterventionNotes}
+    onChange={(event: ChangeEvent<HTMLInputElement>) => handleConsequenceChange('staffInterventionNotes', event.target.value)}
         placeholder="例：別室へ移動し落ち着くまで声かけ、視覚支援カードを提示"
       />
     </Stack>
@@ -414,7 +427,8 @@ export const HighRiskIncidentDialog: React.FC<HighRiskIncidentDialogProps> = ({
         <Select
           label="推定される行動機能"
           value={draft.hypothesis.hypothesizedFunction}
-          onChange={(event) => handleHypothesisChange('hypothesizedFunction', event.target.value as FunctionValue)}
+          onChange={(event: SelectChangeEvent<FunctionValue>) =>
+            handleHypothesisChange('hypothesizedFunction', event.target.value as FunctionValue)}
         >
           {functionValues.map(option => (
             <MenuItem key={option} value={option}>
@@ -438,7 +452,7 @@ export const HighRiskIncidentDialog: React.FC<HighRiskIncidentDialogProps> = ({
             { value: 3, label: '3' },
           ]}
           valueLabelDisplay="auto"
-          onChange={(_, value) => {
+          onChange={(_event: Event, value) => {
             const nextValue = Array.isArray(value) ? value[0] : value;
             if (nextValue === 1 || nextValue === 2 || nextValue === 3) {
               handleHypothesisChange('confidenceLevel', nextValue as ConfidenceLevel);
@@ -461,7 +475,7 @@ export const HighRiskIncidentDialog: React.FC<HighRiskIncidentDialogProps> = ({
               control={(
                 <Switch
                   checked={overrideTimestamp}
-                  onChange={(_, checked) => setOverrideTimestamp(checked)}
+                  onChange={(_event: SyntheticEvent, checked: boolean) => setOverrideTimestamp(checked)}
                 />
               )}
               label="発生時刻を手動で調整"
@@ -470,7 +484,8 @@ export const HighRiskIncidentDialog: React.FC<HighRiskIncidentDialogProps> = ({
               <TextField
                 type="datetime-local"
                 value={toLocalInputValue(customTimestamp)}
-                onChange={(event) => setCustomTimestamp(fromLocalInputValue(event.target.value, draft.incidentTimestamp))}
+                onChange={(event: ChangeEvent<HTMLInputElement>) =>
+                  setCustomTimestamp(fromLocalInputValue(event.target.value, draft.incidentTimestamp))}
                 InputLabelProps={{ shrink: true }}
               />
             )}

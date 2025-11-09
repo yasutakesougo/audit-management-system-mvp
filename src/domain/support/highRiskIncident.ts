@@ -33,7 +33,7 @@ const consequenceSchema = z.object({
 });
 
 const hypothesisSchema = z.object({
-  hypothesizedFunction: z.union([z.literal(''), z.string()]).default(''),
+  hypothesizedFunction: z.enum(functionValues).default('特定不能'),
   confidenceLevel: z.number().min(1).max(3).default(1),
 });
 
