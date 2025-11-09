@@ -12,9 +12,7 @@ import { useUsersStore } from '@/features/users/store';
 import lazyWithPreload from '@/utils/lazyWithPreload';
 import { cancelIdle, runOnIdle } from '@/utils/runOnIdle';
 
-const WeeklySummaryChartLazy = lazyWithPreload(() =>
-  import('@/features/records/dashboard/WeeklySummaryChart').then((module) => ({ default: module.WeeklySummaryChart })),
-);
+const WeeklySummaryChartLazy = lazyWithPreload(() => import('@/features/records/dashboard/WeeklySummaryChart'));
 
 const TABS = [
   { label: '運営管理情報', value: 'management' },

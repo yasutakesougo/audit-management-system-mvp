@@ -39,7 +39,7 @@ import {
   type ConsequenceValue,
   type FunctionValue,
   type HighRiskIncidentDraft,
-} from '../../domain/support/highRiskIncident';
+} from '@/domain/support/highRiskIncident';
 import { TESTIDS, tid } from '../../testids';
 
 const steps = [

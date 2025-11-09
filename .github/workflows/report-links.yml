@@ -24,9 +24,11 @@ jobs:
           [[ -z "$cov" ]] && cov="(未設定)"
           [[ -z "$lh" ]] && lh="(未設定)"
           [[ -z "$se" ]] && se="(未設定)"
-          echo "cov=$cov" >> "$GITHUB_OUTPUT"
-          echo "lh=$lh" >> "$GITHUB_OUTPUT"
-          echo "se=$se" >> "$GITHUB_OUTPUT"
+          {
+            echo "cov=$cov"
+            echo "lh=$lh"
+            echo "se=$se"
+          } >> "$GITHUB_OUTPUT"
       - name: Write report links to summary
         env:
           COVERAGE_URL: ${{ steps.norm.outputs.cov }}

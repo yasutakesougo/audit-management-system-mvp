@@ -67,11 +67,15 @@ jobs:
         run: |
           if [ -f coverage/coverage-summary.json ]; then
             pct=$(node -e "const s=require('./coverage/coverage-summary.json');console.log(s.total.lines.pct)")
-            echo "### Coverage" >> $GITHUB_STEP_SUMMARY
-            echo "**Lines:** ${pct}%  " >> $GITHUB_STEP_SUMMARY
+            {
+              echo "### Coverage"
+              echo "**Lines:** ${pct}%  "
+            } >> "$GITHUB_STEP_SUMMARY"
           else
-            echo "### Coverage" >> $GITHUB_STEP_SUMMARY
-            echo "coverage summary not found" >> $GITHUB_STEP_SUMMARY
+            {
+              echo "### Coverage"
+              echo "coverage summary not found"
+            } >> "$GITHUB_STEP_SUMMARY"
           fi
 
   canary:
@@ -101,24 +105,24 @@ jobs:
 
           npm run ci:e2e
           exit_code=$?
-          if [ $exit_code -ne 0 ]; then
-            status=$exit_code
+          if [ "$exit_code" -ne 0 ]; then
+            status="$exit_code"
           fi
 
           npm run ci:lh
           exit_code=$?
-          if [ $exit_code -ne 0 ] && [ $status -eq 0 ]; then
-            status=$exit_code
+          if [ "$exit_code" -ne 0 ] && [ "$status" -eq 0 ]; then
+            status="$exit_code"
           fi
 
           npm run perf:summary
           exit_code=$?
-          if [ $exit_code -ne 0 ] && [ $status -eq 0 ]; then
-            status=$exit_code
+          if [ "$exit_code" -ne 0 ] && [ "$status" -eq 0 ]; then
+            status="$exit_code"
           fi
 
-          if [ $status -ne 0 ]; then
-            exit $status
+          if [ "$status" -ne 0 ]; then
+            exit "$status"
           fi
       - name: Notify canary failure
         if: failure()
