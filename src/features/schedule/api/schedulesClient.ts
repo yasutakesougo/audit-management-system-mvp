@@ -28,22 +28,8 @@ const TTL_MS = 15_000;
 type CacheValue<T> = { at: number; data: T };
 const cache = new Map<string, CacheValue<ScheduleEvent[]>>();
 
-type ScheduleEnv = ImportMetaEnv & {
-  readonly VITE_SCHEDULE_FIXTURES?: string;
-  readonly VITE_SP_SITE_ID?: string;
-  readonly VITE_SP_SITE_URL?: string;
-  readonly VITE_SP_BASE_URL?: string;
-  readonly VITE_SP_RESOURCE?: string;
-  readonly VITE_SP_SITE_RELATIVE?: string;
-  readonly VITE_SP_LIST_SCHEDULES?: string;
-  readonly VITE_SP_USE_PROXY?: string;
-  readonly VITE_E2E_MSAL_MOCK?: string;
-};
-
-const env = import.meta.env as ScheduleEnv;
 const PROXY_PREFIX = '/sharepoint-api';
-const TRUTHY = new Set(['1', 'true', 'yes', 'on']);
-const preferProxyFetch = TRUTHY.has((env.VITE_SP_USE_PROXY ?? '').trim().toLowerCase());
+const preferProxyFetch = readBool('VITE_SP_USE_PROXY', false);
 const siteBaseUrl = resolveSiteBaseUrl();
 
 export function clearSchedulesCache() {
@@ -69,12 +55,8 @@ function resolveFixturesMode(): boolean {
   if (readBool('VITE_SCHEDULE_FIXTURES', false)) {
     return true;
   }
-  const siteIdInline = (env.VITE_SP_SITE_ID ?? '').trim();
-  if (siteIdInline) {
-    return false;
-  }
-  const siteIdRuntime = readEnv('VITE_SP_SITE_ID', '').trim();
-  return !siteIdRuntime;
+  const siteId = readEnv('VITE_SP_SITE_ID', '').trim();
+  return !siteId;
 }
 
 export function isScheduleFixturesMode(): boolean {
@@ -247,7 +229,7 @@ function buildSpQueryPath(category: ScheduleCategory, r: Range): string {
 }
 
 function resolveSchedulesListIdentifier(): string {
-  const raw = (env.VITE_SP_LIST_SCHEDULES ?? 'ScheduleEvents').trim();
+  const raw = readEnv('VITE_SP_LIST_SCHEDULES', 'ScheduleEvents').trim();
   if (!raw) return "lists/getbytitle('ScheduleEvents')";
   if (/^guid:/i.test(raw)) {
     const guid = raw.replace(/^guid:/i, '').replace(/[{}]/g, '').trim();
@@ -258,14 +240,15 @@ function resolveSchedulesListIdentifier(): string {
 }
 
 function resolveSiteBaseUrl(): string {
-  const candidates = [env.VITE_SP_SITE_URL, env.VITE_SP_BASE_URL];
+  const candidates = [readEnv('VITE_SP_SITE_URL', ''), readEnv('VITE_SP_BASE_URL', '')];
   const siteRelative = (() => {
-    const raw = env.VITE_SP_SITE_RELATIVE ?? '';
+    const raw = readEnv('VITE_SP_SITE_RELATIVE', '');
     if (!raw.trim()) return '';
     return raw.startsWith('/') ? raw : `/${raw}`;
   })();
-  if (!candidates[0] && env.VITE_SP_RESOURCE && siteRelative) {
-    candidates.push(`${env.VITE_SP_RESOURCE.replace(/\/?$/, '')}${siteRelative}`);
+  const resource = readEnv('VITE_SP_RESOURCE', '').replace(/\/?$/, '');
+  if (!candidates[0] && resource && siteRelative) {
+    candidates.push(`${resource}${siteRelative}`);
   }
   const resolved = candidates.find((value) => value && value.trim());
   const normalized = (resolved ?? 'https://contoso.sharepoint.com/sites/Audit').replace(/\/?$/, '');

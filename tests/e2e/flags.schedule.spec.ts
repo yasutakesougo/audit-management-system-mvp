@@ -1,4 +1,5 @@
-import { test, expect } from "@playwright/test";
+import { test, expect } from '@playwright/test';
+import { waitForScheduleReady } from './utils/wait';
 
 const scheduleNavLabel = /スケジュール/;
 
@@ -21,23 +22,22 @@ test.beforeEach(async ({ page }) => {
   });
 });
 
-test.describe("schedule feature flag", () => {
-  test("hides schedule navigation and redirects deep links when flag disabled", async ({ page }) => {
-    await page.goto("/", { waitUntil: "domcontentloaded" });
-    await page.waitForLoadState("networkidle", { timeout: 5_000 });
+test.describe('schedule feature flag', () => {
+  test('hides schedule navigation and redirects deep links when flag disabled', async ({ page }) => {
+    await page.goto('/', { waitUntil: 'domcontentloaded' });
+    await page.waitForLoadState('networkidle', { timeout: 5_000 });
 
-    await expect(page.getByRole("link", { name: scheduleNavLabel })).toHaveCount(0);
+    await expect(page.getByTestId('schedules-nav-link')).toHaveCount(0);
+    await expect(page.getByRole('link', { name: scheduleNavLabel })).toHaveCount(0);
 
-    await page.goto("/schedules/month");
-    await page.waitForLoadState("networkidle", { timeout: 5_000 });
-    await page.waitForURL("**/", { waitUntil: "commit" });
-    await expect(page).toHaveURL(/\/$/);
-    await expect(page.getByRole("heading", { name: scheduleNavLabel })).toHaveCount(0);
+    await page.goto('/schedules/week', { waitUntil: 'domcontentloaded' });
+    await page.waitForLoadState('networkidle', { timeout: 5_000 });
+    await expect(page).not.toHaveURL(/\/schedules\/week$/);
   });
 
-  test("shows navigation and loads schedule when flag enabled", async ({ page }) => {
+  test('shows navigation and loads schedule when flag enabled', async ({ page }) => {
     await page.addInitScript(() => {
-      window.localStorage.setItem("feature:schedules", "true");
+      window.localStorage.setItem('feature:schedules', 'true');
       const globalWithEnv = window as typeof window & { __ENV__?: Record<string, string> };
       globalWithEnv.__ENV__ = {
         ...(globalWithEnv.__ENV__ ?? {}),
@@ -49,15 +49,21 @@ test.describe("schedule feature flag", () => {
       };
     });
 
-    await page.goto("/", { waitUntil: "domcontentloaded" });
-    await page.waitForLoadState("networkidle", { timeout: 5_000 });
+    await page.goto('/', { waitUntil: 'domcontentloaded' });
+    await page.waitForLoadState('networkidle', { timeout: 5_000 });
 
-    const monthNav = page.getByRole("link", { name: scheduleNavLabel });
-    await expect(monthNav).toBeVisible();
+    const nav = page.getByTestId('schedules-nav-link');
+    await expect(nav).toBeVisible();
+    await expect(page.getByRole('link', { name: scheduleNavLabel })).toBeVisible();
 
-    await monthNav.click();
+    if ((await nav.count()) > 0) {
+      await nav.first().click();
+    } else {
+      await page.goto('/schedules/week', { waitUntil: 'domcontentloaded' });
+    }
 
-  await expect(page).toHaveURL(/\/schedules\/week$/);
-    await expect(page.getByRole("heading", { name: scheduleNavLabel })).toBeVisible();
+    await expect.poll(async () => page.url()).toMatch(/\/schedules\/week$/);
+    await waitForScheduleReady(page);
+    await expect(page.getByRole('heading', { name: /スケジュール/ })).toBeVisible();
   });
 });

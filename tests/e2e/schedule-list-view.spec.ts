@@ -156,6 +156,11 @@ test.describe('schedule list view', () => {
     const listRoot = page.getByTestId('schedule-list-root');
     await expect(listRoot).toBeVisible();
 
+  const titleColumn = listRoot.locator('th[data-sort-field="title"]');
+  const datetimeColumn = listRoot.locator('th[data-sort-field="datetime"]');
+  await expect(titleColumn).toHaveAttribute('aria-sort', 'none');
+  await expect(datetimeColumn).toHaveAttribute('aria-sort', 'ascending');
+
     await expect
       .poll(
         async () =>
@@ -229,7 +234,11 @@ test.describe('schedule list view', () => {
     await runA11ySmoke(page, 'ScheduleListView', { includeBestPractices: true });
 
     await toolbar.getByRole('button', { name: '申請中' }).click();
-    await expect(page.getByText('No schedules found for the selected filters.')).toBeVisible();
+    const emptyState = page.getByTestId('schedule-list-empty-state');
+    await expect(emptyState).toBeVisible();
+    await expect(emptyState).toHaveAttribute('role', 'status');
+    await expect(emptyState).toHaveAttribute('aria-live', 'polite');
+  await runA11ySmoke(page, 'ScheduleListViewEmptyState', { includeBestPractices: true });
 
     await clickEnabledFilterAction(page, 'reset', { scope: 'schedule' });
     await expect(rows).toHaveCount(todayCount);
@@ -260,14 +269,17 @@ test.describe('schedule list view', () => {
   const sentinel = listRoot.getByTestId('list-sentinel');
   await expect(sentinel).toBeAttached();
 
-    const titleSort = listRoot.getByRole('button', { name: 'タイトルで並べ替え' });
+  const titleSort = listRoot.getByRole('button', { name: 'タイトルで並べ替え' });
     const beforeSort = await rows.first().innerText();
-    await titleSort.click();
+  await titleSort.click();
+  await expect(titleColumn).toHaveAttribute('aria-sort', 'ascending');
     const afterSortAsc = await rows.first().innerText();
     await titleSort.click();
+  await expect(titleColumn).toHaveAttribute('aria-sort', 'descending');
     const afterSortDesc = await rows.first().innerText();
     expect(afterSortAsc).not.toEqual(afterSortDesc);
     expect([afterSortAsc, afterSortDesc]).toContain(beforeSort);
+    await runA11ySmoke(page, 'ScheduleListViewSorted', { includeBestPractices: true });
 
     await rows.first().click();
     const detailDialog = page.getByTestId('schedule-detail-dialog');

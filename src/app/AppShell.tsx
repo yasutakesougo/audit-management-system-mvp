@@ -25,7 +25,8 @@ import { Link as RouterLink, useLocation, useNavigate } from 'react-router-dom';
 import NavLinkPrefetch from '@/components/NavLinkPrefetch';
 import { useFeatureFlags } from '@/config/featureFlags';
 import RouteHydrationListener from '@/hydration/RouteHydrationListener';
-import { getAppConfig } from '@/lib/env';
+import { getAppConfig, shouldSkipLogin } from '@/lib/env';
+import { TESTIDS } from '@/testids';
 import { useSP } from '@/lib/spClient';
 import { PREFETCH_KEYS, type PrefetchKey } from '@/prefetch/routes';
 import SignInButton from '@/ui/components/SignInButton';
@@ -41,7 +42,7 @@ type NavItem = {
   prefetchKeys?: PrefetchKey[];
 };
 
-const SKIP_LOGIN = import.meta.env.VITE_SKIP_LOGIN === '1';
+const SKIP_LOGIN = shouldSkipLogin();
 
 const AppShell: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const location = useLocation();
@@ -190,7 +191,7 @@ const AppShell: React.FC<{ children: React.ReactNode }> = ({ children }) => {
                     to={to}
                     variant={active ? 'contained' : 'outlined'}
                     size="small"
-                    data-testid={testId}
+                    data-testid={testId === 'nav-schedules' ? TESTIDS['schedules-nav-link'] : testId}
                     aria-current={active ? 'page' : undefined}
                     startIcon={IconComponent ? <IconComponent /> : undefined}
                     sx={sx}

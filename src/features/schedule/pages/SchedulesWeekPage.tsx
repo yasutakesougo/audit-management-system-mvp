@@ -92,7 +92,7 @@ export default function SchedulesWeekPage(): JSX.Element {
         data-testid="schedules-week-heading"
         aria-live="polite"
       >
-        週間予定（{range.label}）
+        週間スケジュール（{range.label}）
       </Typography>
 
       <Stack direction="row" spacing={1} sx={{ my: 1 }}>

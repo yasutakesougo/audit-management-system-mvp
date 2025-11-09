@@ -23,6 +23,7 @@ export const TESTIDS = {
   'toast-announcer': 'toast-announcer',
   'toast-message': 'toast-message',
   'nav-schedules': 'nav-schedules',
+    'schedules-nav-link': 'schedules-nav-link',
   'app-bottom-nav': 'app-bottom-nav',
   'support-incident-dialog': 'support-incident-dialog',
   'support-incident-stepper': 'support-incident-stepper',

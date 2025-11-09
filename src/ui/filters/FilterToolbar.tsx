@@ -1,9 +1,9 @@
-import { useCallback, useEffect, useId, useMemo, useState, type ReactNode } from 'react';
-import Button from '@mui/material/Button';
-import TextField from '@mui/material/TextField';
-import InputAdornment from '@mui/material/InputAdornment';
-import IconButton from '@mui/material/IconButton';
 import ClearRounded from '@mui/icons-material/ClearRounded';
+import Button from '@mui/material/Button';
+import IconButton from '@mui/material/IconButton';
+import InputAdornment from '@mui/material/InputAdornment';
+import TextField from '@mui/material/TextField';
+import { useCallback, useEffect, useId, useMemo, useState, type ReactNode } from 'react';
 
 export type StatusOption = { value: string; label: string };
 
@@ -78,6 +78,7 @@ export default function FilterToolbar({
           key={option.value}
           size="small"
           variant={activeStatus === option.value ? 'contained' : 'outlined'}
+          color="secondary"
           onClick={() => onStatusChange?.(option.value)}
           aria-pressed={activeStatus === option.value}
           type="button"

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useId, useMemo, useRef, useState } from 'react';
 import type { MouseEvent, KeyboardEvent as ReactKeyboardEvent } from 'react';
 import Button from '@mui/material/Button';
 import Chip from '@mui/material/Chip';
@@ -52,6 +52,13 @@ type SortState = {
   field: SortField;
   direction: SortDirection;
 };
+
+function resolveAriaSort(sortState: SortState, field: SortField): 'ascending' | 'descending' | 'none' {
+  if (sortState.field !== field) {
+    return 'none';
+  }
+  return sortState.direction === 'asc' ? 'ascending' : 'descending';
+}
 
 function normalizeQuery(q: string): string {
   return q.trim().toLowerCase();
@@ -161,6 +168,7 @@ export default function ScheduleListView() {
   const navigate = useNavigate();
   const { data, error, loading, reload } = useSchedules();
   const sp = useSP();
+  const tableLabelId = useId();
 
   const { filters, debounced, update, reset, isDebouncing } = usePersistedFilters<Filters>({
     storageKey: FILTER_STORAGE_KEY,
@@ -369,7 +377,13 @@ export default function ScheduleListView() {
           <div className="h-64 w-full animate-pulse rounded bg-gray-200" />
         </div>
       ) : shouldShowEmpty ? (
-        <div className="space-y-2 rounded border border-dashed border-gray-300 p-4 text-sm text-gray-600">
+        <div
+          className="space-y-2 rounded border border-dashed border-gray-300 p-4 text-sm text-gray-600"
+          role="status"
+          aria-live="polite"
+          aria-atomic="true"
+          data-testid="schedule-list-empty-state"
+        >
           <div>条件に一致する予定が見つかりませんでした。/ No schedules found for the selected filters.</div>
           <div className="flex flex-wrap gap-2">
             <Button variant="outlined" size="small" onClick={() => void reload()} disabled={loading}>
@@ -382,14 +396,16 @@ export default function ScheduleListView() {
         </div>
       ) : (
         <div className="overflow-x-auto" data-testid="schedule-list-view">
-          <table
-            className="min-w-full border border-gray-300 text-sm"
-            aria-busy={loading ? 'true' : 'false'}
-            aria-label="予定一覧"
-          >
+          <table className="min-w-full border border-gray-300 text-sm" aria-busy={loading ? 'true' : 'false'} aria-labelledby={tableLabelId}>
+            <caption id={tableLabelId} className="sr-only">スケジュール一覧</caption>
             <thead className="bg-gray-50">
               <tr>
-                <th className="border px-2 py-1 text-left" scope="col">
+                <th
+                  className="border px-2 py-1 text-left"
+                  scope="col"
+                  data-sort-field="title"
+                  aria-sort={resolveAriaSort(sort, 'title')}
+                >
                   <button
                     type="button"
                     className="flex items-center gap-1"
@@ -400,7 +416,12 @@ export default function ScheduleListView() {
                     <SortIndicator active={sort.field === 'title'} direction={sort.field === 'title' ? sort.direction : undefined} />
                   </button>
                 </th>
-                <th className="border px-2 py-1 text-left" scope="col">
+                <th
+                  className="border px-2 py-1 text-left"
+                  scope="col"
+                  data-sort-field="datetime"
+                  aria-sort={resolveAriaSort(sort, 'datetime')}
+                >
                   <button
                     type="button"
                     className="flex items-center gap-1"
@@ -411,11 +432,11 @@ export default function ScheduleListView() {
                     <SortIndicator active={sort.field === 'datetime'} direction={sort.field === 'datetime' ? sort.direction : undefined} />
                   </button>
                 </th>
-                <th className="border px-2 py-1 text-left" scope="col">場所</th>
-                <th className="border px-2 py-1 text-left" scope="col">担当</th>
-                <th className="border px-2 py-1 text-left" scope="col">利用者</th>
-                <th className="border px-2 py-1 text-left" scope="col">状態</th>
-                <th className="border px-2 py-1 text-left" scope="col">操作</th>
+                <th className="border px-2 py-1 text-left" scope="col" aria-sort="none">場所</th>
+                <th className="border px-2 py-1 text-left" scope="col" aria-sort="none">担当</th>
+                <th className="border px-2 py-1 text-left" scope="col" aria-sort="none">利用者</th>
+                <th className="border px-2 py-1 text-left" scope="col" aria-sort="none">状態</th>
+                <th className="border px-2 py-1 text-left" scope="col" aria-sort="none">操作</th>
               </tr>
             </thead>
             <tbody>

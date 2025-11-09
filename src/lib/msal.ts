@@ -2,7 +2,7 @@ import { PublicClientApplication } from '@azure/msal-browser';
 import type { AccountInfo } from '@azure/msal-common';
 import { msalConfig } from '@/auth/msalConfig';
 import { buildMsalScopes } from '@/auth/scopes';
-import { isE2eMsalMockEnabled } from './env';
+import { getSharePointResource, isE2eMsalMockEnabled, readEnv } from './env';
 
 export const createE2EMsalAccount = (): AccountInfo => ({
   homeAccountId: 'e2e-home-account',
@@ -56,12 +56,12 @@ export const getSharePointScopes = (): string[] => {
   if (configured.length > 0) {
     return configured;
   }
-  const resource = (import.meta.env.VITE_SP_RESOURCE ?? '').trim().replace(/\/?$/, '');
+  const resource = getSharePointResource().trim().replace(/\/?$/, '');
   return resource ? [`${resource}/.default`] : [];
 };
 
 const ensureScopes = (scopes?: string[]): string[] => {
-  const parsed = Array.isArray(scopes) && scopes.length ? scopes : parseScopes((import.meta.env.VITE_MSAL_SCOPES ?? '').trim());
+  const parsed = Array.isArray(scopes) && scopes.length ? scopes : parseScopes(readEnv('VITE_MSAL_SCOPES', '').trim());
   const resolved = parsed.length ? parsed : getSharePointScopes();
   if (!resolved.length) {
     throw new Error('SharePoint scopes are not configured. Set VITE_MSAL_SCOPES or VITE_SP_RESOURCE.');
