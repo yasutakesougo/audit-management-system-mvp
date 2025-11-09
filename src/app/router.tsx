@@ -2,6 +2,7 @@ import ProtectedRoute from '@/app/ProtectedRoute';
 import { RouteHydrationErrorBoundary } from '@/hydration/RouteHydrationListener';
 import { StaffPanel } from '@/features/staff';
 import { UsersPanel } from '@/features/users';
+import { nurseRoutes } from '@/features/nurse/routes/NurseRoutes';
 import React from 'react';
 import { createBrowserRouter, Navigate, Outlet, type RouteObject } from 'react-router-dom';
 import AppShell from './AppShell';
@@ -336,6 +337,7 @@ const childRoutes: RouteObject[] = [
       </SchedulesGate>
     ),
   },
+  nurseRoutes(),
 ];
 
 const routes: RouteObject[] = [
