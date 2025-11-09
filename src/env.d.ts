@@ -1,6 +1,8 @@
 /// <reference types="vite/client" />
 
 interface ImportMetaEnv {
+  readonly VITE_AAD_CLIENT_ID?: string;
+  readonly VITE_AAD_TENANT_ID?: string;
   readonly VITE_MSAL_CLIENT_ID: string;
   readonly VITE_MSAL_TENANT_ID: string;
   readonly VITE_SP_RESOURCE: string;
@@ -31,6 +33,7 @@ interface ImportMetaEnv {
   readonly VITE_MSAL_TOKEN_REFRESH_MIN?: string;
   readonly VITE_RUNTIME_ENV_PATH?: string;
   readonly VITE_SCHEDULES_CACHE_TTL?: string;
+  readonly VITE_SCHEDULE_FIXTURES?: string;
   readonly VITE_SCHEDULES_TZ?: string;
   readonly VITE_SCHEDULES_WEEK_START?: string;
   readonly VITE_SKIP_LOGIN?: string;
@@ -42,10 +45,14 @@ interface ImportMetaEnv {
   readonly VITE_SP_LIST_STAFF_GUID?: string;
   readonly VITE_SP_LIST_USERS?: string;
   readonly VITE_SP_LIST_PLAN_GOAL?: string;
+  readonly VITE_SP_BASE_URL?: string;
   readonly VITE_SP_RETRY_BASE_MS?: string;
   readonly VITE_SP_RETRY_MAX?: string;
   readonly VITE_SP_RETRY_MAX_DELAY_MS?: string;
   readonly VITE_SP_SCOPE_DEFAULT?: string;
+  readonly VITE_SP_SITE_ID?: string;
+  readonly VITE_SP_SITE_URL?: string;
+  readonly VITE_SP_USE_PROXY?: string;
   readonly VITE_WRITE_ENABLED?: string;
 }
 

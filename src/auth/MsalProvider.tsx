@@ -17,6 +17,10 @@ const MsalContext = React.createContext<MsalContextValue | null>(null);
 let loadMsalInstancePromise: Promise<MsalInstance> | null = null;
 let loadMsalReactPromise: Promise<MsalReactModule> | null = null;
 
+const globalCarrier = globalThis as typeof globalThis & {
+  __MSAL_PUBLIC_CLIENT__?: IPublicClientApplication;
+};
+
 async function loadMsalInstance(): Promise<MsalInstance> {
   if (!loadMsalInstancePromise) {
     loadMsalInstancePromise = (async () => {
@@ -29,6 +33,8 @@ async function loadMsalInstance(): Promise<MsalInstance> {
 
       const instance = new PublicClientApplication(msalConfig);
       wireMsalRoleInvalidation(instance, EventType);
+
+      globalCarrier.__MSAL_PUBLIC_CLIENT__ = instance;
 
       return instance;
     })();

@@ -1,6 +1,7 @@
-import { test, expect } from '@playwright/test';
+import { test } from '@playwright/test';
 import { setupSharePointStubs } from './_helpers/setupSharePointStubs';
 import { mockSharePointThrottle } from './_helpers/mockSharePointThrottle';
+import { waitForTestId } from './utils/wait';
 
 test.beforeEach(async ({ page }) => {
   await page.addInitScript(() => {
@@ -38,11 +39,13 @@ test.beforeEach(async ({ page }) => {
 });
 
 test('GET 429 -> retry success (no fatal error)', async ({ page }) => {
-  await page.goto('/', { waitUntil: 'networkidle' });
-  await expect(page.getByTestId('dashboard-page')).toBeVisible({ timeout: 15000 });
+  await page.goto('/', { waitUntil: 'domcontentloaded' });
+  await page.waitForLoadState('networkidle', { timeout: 5_000 });
+  await waitForTestId(page, 'dashboard-page');
 });
 
 test('$batch 503 -> retry success (no crash)', async ({ page }) => {
-  await page.goto('/', { waitUntil: 'networkidle' });
-  await expect(page.getByTestId('dashboard-page')).toBeVisible({ timeout: 15000 });
+  await page.goto('/', { waitUntil: 'domcontentloaded' });
+  await page.waitForLoadState('networkidle', { timeout: 5_000 });
+  await waitForTestId(page, 'dashboard-page');
 });

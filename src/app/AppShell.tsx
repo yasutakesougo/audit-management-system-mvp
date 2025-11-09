@@ -21,7 +21,7 @@ import ChecklistRoundedIcon from '@mui/icons-material/ChecklistRounded';
 import EventAvailableRoundedIcon from '@mui/icons-material/EventAvailableRounded';
 import PeopleAltRoundedIcon from '@mui/icons-material/PeopleAltRounded';
 import SettingsRoundedIcon from '@mui/icons-material/SettingsRounded';
-import { Link as RouterLink, useLocation } from 'react-router-dom';
+import { Link as RouterLink, useLocation, useNavigate } from 'react-router-dom';
 import NavLinkPrefetch from '@/components/NavLinkPrefetch';
 import { useFeatureFlags } from '@/config/featureFlags';
 import RouteHydrationListener from '@/hydration/RouteHydrationListener';
@@ -41,10 +41,19 @@ type NavItem = {
   prefetchKeys?: PrefetchKey[];
 };
 
+const SKIP_LOGIN = import.meta.env.VITE_SKIP_LOGIN === '1';
+
 const AppShell: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const location = useLocation();
+  const navigate = useNavigate();
   const { schedules, schedulesCreate, complianceForm } = useFeatureFlags();
   const { mode, toggle } = useContext(ColorModeContext);
+
+  useEffect(() => {
+    if (SKIP_LOGIN && location.pathname === '/login') {
+      navigate('/', { replace: true });
+    }
+  }, [navigate, location.pathname]);
 
   const navItems = useMemo(() => {
     const items: NavItem[] = [
@@ -139,7 +148,8 @@ const AppShell: React.FC<{ children: React.ReactNode }> = ({ children }) => {
 
   return (
     <RouteHydrationListener>
-      <AppBar position="static" color="primary" enableColorOnDark>
+      <div data-testid="app-shell">
+        <AppBar position="static" color="primary" enableColorOnDark>
         <Toolbar sx={{ gap: 1 }}>
           <Typography variant="h6" component="div" sx={{ flexGrow: 1 }}>
             磯子区障害者地域活動ホーム
@@ -155,8 +165,8 @@ const AppShell: React.FC<{ children: React.ReactNode }> = ({ children }) => {
           </IconButton>
           <SignInButton />
         </Toolbar>
-      </AppBar>
-      <Container component="main" role="main" maxWidth="lg" sx={{ py: 4, pb: { xs: 18, sm: 14 } }}>
+        </AppBar>
+        <Container component="main" role="main" maxWidth="lg" sx={{ py: 4, pb: { xs: 18, sm: 14 } }}>
         <Box component="nav" role="navigation" aria-label="主要ナビゲーション" mb={2}>
           <Stack direction="row" spacing={1} flexWrap="wrap">
             {navItems.map(({ label, to, isActive, testId, icon: IconComponent, prefetchKey, prefetchKeys }) => {
@@ -209,9 +219,10 @@ const AppShell: React.FC<{ children: React.ReactNode }> = ({ children }) => {
             })}
           </Stack>
         </Box>
-        {children}
-      </Container>
-      <FooterQuickActions />
+          {children}
+        </Container>
+        <FooterQuickActions />
+      </div>
     </RouteHydrationListener>
   );
 };

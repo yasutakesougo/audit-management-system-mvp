@@ -11,8 +11,9 @@ const ciReporters: ReporterDescription[] = [
   ['html', { outputFolder: 'playwright-report' }],
 ];
 
-const devServerCommand = `npm run dev -- --port ${DEV_PORT} --clearScreen=false`;
-const previewCommand = `sh -c "npm run build && npx serve -s dist -l ${DEV_PORT}"`;
+const defaultE2eEnv = 'VITE_FEATURE_SCHEDULES=1 VITE_E2E_MSAL_MOCK=1 VITE_SKIP_LOGIN=1';
+const devServerCommand = `${defaultE2eEnv} npm run dev -- --port ${DEV_PORT} --clearScreen=false`;
+const previewCommand = `${defaultE2eEnv} sh -c "npm run build && npx serve -s dist -l ${DEV_PORT}"`;
 const webServerCommand = skipBuild ? devServerCommand : previewCommand;
 
 export default defineConfig({

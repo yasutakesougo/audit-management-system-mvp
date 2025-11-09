@@ -23,11 +23,13 @@ test.beforeEach(async ({ page }) => {
 
 test.describe("schedule feature flag", () => {
   test("hides schedule navigation and redirects deep links when flag disabled", async ({ page }) => {
-    await page.goto("/");
+    await page.goto("/", { waitUntil: "domcontentloaded" });
+    await page.waitForLoadState("networkidle", { timeout: 5_000 });
 
     await expect(page.getByRole("link", { name: scheduleNavLabel })).toHaveCount(0);
 
     await page.goto("/schedules/month");
+    await page.waitForLoadState("networkidle", { timeout: 5_000 });
     await page.waitForURL("**/", { waitUntil: "commit" });
     await expect(page).toHaveURL(/\/$/);
     await expect(page.getByRole("heading", { name: scheduleNavLabel })).toHaveCount(0);
@@ -47,7 +49,8 @@ test.describe("schedule feature flag", () => {
       };
     });
 
-    await page.goto("/");
+    await page.goto("/", { waitUntil: "domcontentloaded" });
+    await page.waitForLoadState("networkidle", { timeout: 5_000 });
 
     const monthNav = page.getByRole("link", { name: scheduleNavLabel });
     await expect(monthNav).toBeVisible();

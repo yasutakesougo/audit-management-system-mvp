@@ -15,6 +15,7 @@ const AuditPanel = React.lazy(() => import('@/features/audit/AuditPanel'));
 
 const MonthPage = React.lazy(() => import('@/features/schedule/MonthPage'));
 const SchedulePage = React.lazy(() => import('@/features/schedule/SchedulePage'));
+const SchedulesWeekPage = React.lazy(() => import('@/features/schedule/pages/SchedulesWeekPage'));
 const ScheduleCreatePage = React.lazy(() => import('@/pages/ScheduleCreatePage'));
 const DailyRecordPage = React.lazy(() => import('@/pages/DailyRecordPage'));
 const DailyRecordMenuPage = React.lazy(() => import('@/pages/DailyRecordMenuPage'));
@@ -51,6 +52,20 @@ const SuspendedSchedulePage: React.FC = () => (
       )}
     >
       <SchedulePage />
+    </React.Suspense>
+  </RouteHydrationErrorBoundary>
+);
+
+const SuspendedSchedulesWeekPage: React.FC = () => (
+  <RouteHydrationErrorBoundary>
+    <React.Suspense
+      fallback={(
+        <div className="p-4 text-sm text-slate-600" role="status">
+          週間予定を読み込んでいます…
+        </div>
+      )}
+    >
+      <SchedulesWeekPage />
     </React.Suspense>
   </RouteHydrationErrorBoundary>
 );
@@ -302,7 +317,7 @@ const childRoutes: RouteObject[] = [
     element: (
       <SchedulesGate>
         <ProtectedRoute flag="schedules">
-          <SuspendedSchedulePage />
+          <SuspendedSchedulesWeekPage />
         </ProtectedRoute>
       </SchedulesGate>
     ),
