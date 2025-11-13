@@ -1,10 +1,10 @@
-import {
-  isComplianceFormEnabled,
-  isSchedulesCreateEnabled,
-  isSchedulesFeatureEnabled,
-  type EnvRecord,
-} from '../lib/env';
 import { createContext, createElement, useContext, useMemo, type ReactNode } from 'react';
+import {
+    isComplianceFormEnabled,
+    isSchedulesCreateEnabled,
+    isSchedulesFeatureEnabled,
+    type EnvRecord,
+} from '../lib/env';
 
 export type FeatureFlagSnapshot = {
   schedules: boolean;

@@ -2,8 +2,11 @@ import CloseRoundedIcon from '@mui/icons-material/CloseRounded';
 import SaveRoundedIcon from '@mui/icons-material/SaveRounded';
 import WarningAmberRoundedIcon from '@mui/icons-material/WarningAmberRounded';
 import Alert from '@mui/material/Alert';
+import Autocomplete from '@mui/material/Autocomplete';
 import Box from '@mui/material/Box';
 import Button from '@mui/material/Button';
+import Chip from '@mui/material/Chip';
+import CircularProgress from '@mui/material/CircularProgress';
 import Dialog from '@mui/material/Dialog';
 import DialogActions from '@mui/material/DialogActions';
 import DialogContent from '@mui/material/DialogContent';
@@ -20,6 +23,13 @@ import { useCallback, useEffect, useMemo, useState, type ChangeEvent, type FormE
 import { checkScheduleConflicts, getConflictSeverity, type ConflictCheck } from './conflictChecker';
 import type { Category, DayPart, ExtendedScheduleForm, PersonType, Schedule, ScheduleForm, ScheduleStatus, ServiceType } from './types';
 import { laneLabels } from './views/TimelineWeek';
+import { useStaff } from '@/stores/useStaff';
+
+type StaffOption = {
+	id: string;
+	name: string;
+	label: string;
+};
 
 type ScheduleDialogProps = {
 	open: boolean;
@@ -112,6 +122,45 @@ export function ScheduleDialog({ open, initial, existingSchedules = [], onClose,
 	const [form, setForm] = useState<ExtendedScheduleForm>(() => cloneForm(defaultForm()));
 	const [submitting, setSubmitting] = useState(false);
 	const [submitError, setSubmitError] = useState<string | null>(null);
+	const { data: staffData, loading: staffLoading, error: staffError } = useStaff();
+
+	const staffOptions = useMemo<StaffOption[]>(() => {
+		if (!Array.isArray(staffData)) return [];
+		return staffData
+			.filter((item) => item && (item.id != null || item.staffId))
+			.map((item) => {
+				const numericId = item.id != null ? String(item.id) : String(item.staffId ?? '').trim();
+				const readableName = item.name?.trim() ?? '';
+				const secondary = item.staffId?.trim() ?? numericId;
+				const labelParts = [readableName || secondary];
+				if (readableName && secondary && secondary !== readableName) {
+					labelParts.push(`(${secondary})`);
+				}
+				return {
+					id: numericId,
+					name: readableName || secondary,
+					label: labelParts.join(' '),
+				};
+			})
+			.filter((option, index, array) => option.id.length > 0 && array.findIndex((candidate) => candidate.id === option.id) === index)
+			.sort((a, b) => a.name.localeCompare(b.name, 'ja'));
+	}, [staffData]);
+
+	const staffOptionMap = useMemo(() => {
+		const map = new Map<string, StaffOption>();
+		for (const option of staffOptions) {
+			map.set(option.id, option);
+		}
+		return map;
+	}, [staffOptions]);
+
+	const selectedStaffOptions = useMemo<StaffOption[]>(() => {
+		const ids = Array.isArray(form.staffIds) ? form.staffIds : [];
+		return ids.map((raw) => {
+			const key = String(raw);
+			return staffOptionMap.get(key) ?? { id: key, name: key, label: key };
+		});
+	}, [form.staffIds, staffOptionMap]);
 
 	// 競合チェック
 	const conflictCheck = useMemo((): ConflictCheck => {
@@ -153,6 +202,27 @@ export function ScheduleDialog({ open, initial, existingSchedules = [], onClose,
 		setForm((prev) => ({
 			...prev,
 			[field]: field === 'start' || field === 'end' ? fromLocalInputValue(value) : value,
+		}));
+	}, []);
+
+	const handleManualStaffInput = useCallback((event: ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+		const value = event.target.value;
+		const ids = value
+			.split(/[,\s\u3001\uFF0C]+/)
+			.map((part) => part.trim())
+			.filter((part) => part.length > 0);
+		setForm((prev) => ({
+			...prev,
+			staffIds: ids,
+			staffNames: ids,
+		}));
+	}, []);
+
+	const handleStaffSelect = useCallback((_: unknown, next: StaffOption[]) => {
+		setForm((prev) => ({
+			...prev,
+			staffIds: next.map((option) => option.id),
+			staffNames: next.map((option) => option.name),
 		}));
 	}, []);
 
@@ -219,6 +289,9 @@ export function ScheduleDialog({ open, initial, existingSchedules = [], onClose,
 		conflictCheck.conflicts.some(c => getConflictSeverity(c.reason) === 'error');
 	const hasConflictWarning = conflictCheck.hasConflict &&
 		conflictCheck.conflicts.some(c => getConflictSeverity(c.reason) === 'warning');
+
+	const staffSelectionRequired = form.category === 'User';
+	const staffSelectionMissing = staffSelectionRequired && (!form.staffIds || form.staffIds.length === 0);
 
 	return (
 		<Dialog
@@ -376,6 +449,56 @@ export function ScheduleDialog({ open, initial, existingSchedules = [], onClose,
 										/>
 									</>
 								)}
+
+								{(!staffLoading && staffOptions.length === 0) ? (
+									<TextField
+										label="担当職員ID (カンマ区切り)"
+										value={(form.staffIds ?? []).join(',')}
+										onChange={handleManualStaffInput}
+										fullWidth
+										placeholder="1,2,3"
+										helperText={staffError ? '職員情報の取得に失敗しました。IDを直接入力してください。' : '担当職員を入力してください (複数可)'}
+										error={Boolean(staffError) || staffSelectionMissing}
+									/>
+								) : (
+									<Autocomplete
+										multiple
+										options={staffOptions}
+										value={selectedStaffOptions}
+										onChange={handleStaffSelect}
+										disableCloseOnSelect
+										loading={staffLoading}
+										isOptionEqualToValue={(option, value) => option.id === value.id}
+										getOptionLabel={(option) => option.label}
+										renderTags={(value, getTagProps) =>
+											value.map((option, index) => (
+												<Chip
+													{...getTagProps({ index })}
+													key={option.id}
+													label={option.label}
+												/>
+											))
+										}
+										renderInput={(params) => (
+											<TextField
+												{...params}
+												label="担当職員"
+												placeholder="担当職員を選択"
+												helperText={staffError ? '職員情報の取得に失敗しました。検索できない場合はIDを直接入力してください。' : '担当職員を1名以上選択してください'}
+												error={Boolean(staffError) || staffSelectionMissing}
+												InputProps={{
+													...params.InputProps,
+													endAdornment: (
+														<>
+															{staffLoading ? <CircularProgress color="inherit" size={16} sx={{ mr: 1 }} /> : null}
+															{params.InputProps.endAdornment}
+														</>
+													),
+												}}
+											/>
+										)}
+									/>
+								)}
 							</>
 						)}
 
@@ -383,11 +506,8 @@ export function ScheduleDialog({ open, initial, existingSchedules = [], onClose,
 							<>
 								<TextField
 									label="職員ID (カンマ区切りで複数可)"
-									value={form.staffIds?.join(',') || ''}
-									onChange={(e) => setForm(prev => ({
-										...prev,
-										staffIds: e.target.value.split(',').filter(id => id.trim())
-									}))}
+									value={(form.staffIds ?? []).join(',')}
+									onChange={handleManualStaffInput}
 									fullWidth
 									placeholder="S-001,S-002"
 									helperText="複数の職員IDをカンマで区切って入力してください"
@@ -560,7 +680,7 @@ export function ScheduleDialog({ open, initial, existingSchedules = [], onClose,
 						type="submit"
 						variant="contained"
 						startIcon={<SaveRoundedIcon />}
-						disabled={submitting || Boolean(timeValidation)}
+						disabled={submitting || Boolean(timeValidation) || staffSelectionMissing}
 						color={hasConflictError ? "error" : hasConflictWarning ? "warning" : "primary"}
 					>
 						{submitting

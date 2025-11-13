@@ -1,8 +1,8 @@
 import ProtectedRoute from '@/app/ProtectedRoute';
-import { RouteHydrationErrorBoundary } from '@/hydration/RouteHydrationListener';
+import { nurseRoutes } from '@/features/nurse/routes/NurseRoutes';
 import { StaffPanel } from '@/features/staff';
 import { UsersPanel } from '@/features/users';
-import { nurseRoutes } from '@/features/nurse/routes/NurseRoutes';
+import { RouteHydrationErrorBoundary } from '@/hydration/RouteHydrationListener';
 import React from 'react';
 import { createBrowserRouter, Navigate, Outlet, type RouteObject } from 'react-router-dom';
 import AppShell from './AppShell';
@@ -15,6 +15,7 @@ const AuditPanel = React.lazy(() => import('@/features/audit/AuditPanel'));
 
 const MonthPage = React.lazy(() => import('@/features/schedule/MonthPage'));
 const SchedulePage = React.lazy(() => import('@/features/schedule/SchedulePage'));
+const SchedulesDayPage = React.lazy(() => import('@/features/schedule/pages/SchedulesDayPage'));
 const SchedulesWeekPage = React.lazy(() => import('@/features/schedule/pages/SchedulesWeekPage'));
 const ScheduleCreatePage = React.lazy(() => import('@/pages/ScheduleCreatePage'));
 const DailyRecordPage = React.lazy(() => import('@/pages/DailyRecordPage'));
@@ -66,6 +67,20 @@ const SuspendedSchedulesWeekPage: React.FC = () => (
       )}
     >
       <SchedulesWeekPage />
+    </React.Suspense>
+  </RouteHydrationErrorBoundary>
+);
+
+const SuspendedSchedulesDayPage: React.FC = () => (
+  <RouteHydrationErrorBoundary>
+    <React.Suspense
+      fallback={(
+        <div className="p-4 text-sm text-slate-600" role="status">
+          日次予定を読み込んでいます…
+        </div>
+      )}
+    >
+      <SchedulesDayPage />
     </React.Suspense>
   </RouteHydrationErrorBoundary>
 );
@@ -318,6 +333,16 @@ const childRoutes: RouteObject[] = [
       <SchedulesGate>
         <ProtectedRoute flag="schedules">
           <SuspendedSchedulesWeekPage />
+        </ProtectedRoute>
+      </SchedulesGate>
+    ),
+  },
+  {
+    path: 'schedules/day',
+    element: (
+      <SchedulesGate>
+        <ProtectedRoute flag="schedules">
+          <SuspendedSchedulesDayPage />
         </ProtectedRoute>
       </SchedulesGate>
     ),

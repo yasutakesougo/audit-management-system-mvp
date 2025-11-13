@@ -1,5 +1,5 @@
 import pLimit from 'p-limit';
-import type { SharePointListApi, HttpishError } from './client';
+import type { HttpishError, SharePointListApi } from './client';
 import type { ObservationListItem } from './map';
 
 const BATCH_MAX = 100;

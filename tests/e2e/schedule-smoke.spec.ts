@@ -1,3 +1,4 @@
+import '@/test/captureSp400';
 import { expect, test } from '@playwright/test';
 import { mockEnsureScheduleList } from './_helpers/mockEnsureScheduleList';
 import { setupSharePointStubs } from './_helpers/setupSharePointStubs';

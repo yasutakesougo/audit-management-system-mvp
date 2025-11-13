@@ -1,7 +1,7 @@
-import { PublicClientApplication } from '@azure/msal-browser';
-import type { AccountInfo } from '@azure/msal-common';
 import { msalConfig } from '@/auth/msalConfig';
 import { buildMsalScopes } from '@/auth/scopes';
+import { PublicClientApplication } from '@azure/msal-browser';
+import type { AccountInfo } from '@azure/msal-common';
 import { getSharePointResource, isE2eMsalMockEnabled, readEnv } from './env';
 
 export const createE2EMsalAccount = (): AccountInfo => ({
@@ -72,12 +72,14 @@ const ensureScopes = (scopes?: string[]): string[] => {
 type PopupLoginRequest = {
   scopes: string[];
   prompt?: string;
+  redirectStartPage?: string;
 };
 
 type PopupAcquireRequest = {
   scopes: string[];
   prompt?: string;
   account: AccountInfo;
+  redirectStartPage?: string;
 };
 
 type PopupAuthResult = {
@@ -90,6 +92,62 @@ const toPopupClient = (instance: PublicClientApplication) =>
     loginPopup(request: PopupLoginRequest): Promise<PopupAuthResult>;
     acquireTokenPopup(request: PopupAcquireRequest): Promise<PopupAuthResult>;
   };
+
+const LOGIN_FLOW_POPUP = 'popup';
+const LOGIN_FLOW_REDIRECT = 'redirect';
+
+const getPreferredLoginFlow = (): 'popup' | 'redirect' => {
+  const raw = readEnv('VITE_MSAL_LOGIN_FLOW', LOGIN_FLOW_POPUP).trim().toLowerCase();
+  return raw === LOGIN_FLOW_REDIRECT ? LOGIN_FLOW_REDIRECT : LOGIN_FLOW_POPUP;
+};
+
+const createRedirectPendingPromise = <T>(): Promise<T> => new Promise<T>(() => undefined);
+
+const addRedirectStartPage = <T extends PopupLoginRequest | PopupAcquireRequest>(request: T): T => {
+  if (typeof window === 'undefined') {
+    return request;
+  }
+  return { ...request, redirectStartPage: window.location.href };
+};
+
+const startLoginRedirect = async (
+  instance: PublicClientApplication,
+  request: PopupLoginRequest,
+): Promise<AccountInfo> => {
+  await instance.loginRedirect(addRedirectStartPage(request) as never);
+  return createRedirectPendingPromise<AccountInfo>();
+};
+
+const startAcquireRedirect = async (
+  instance: PublicClientApplication,
+  request: PopupAcquireRequest,
+): Promise<string> => {
+  await instance.acquireTokenRedirect(addRedirectStartPage(request) as never);
+  return createRedirectPendingPromise<string>();
+};
+
+const isPopupBlockedError = (error: unknown): boolean => {
+  if (!error) {
+    return false;
+  }
+  const parts: string[] = [];
+  if (typeof error === 'string') {
+    parts.push(error);
+  } else if (typeof error === 'object') {
+    const candidate = error as { message?: string; errorMessage?: string };
+    if (candidate.message) {
+      parts.push(candidate.message);
+    }
+    if (candidate.errorMessage) {
+      parts.push(candidate.errorMessage);
+    }
+  }
+  if (!parts.length) {
+    return false;
+  }
+  const merged = parts.join(' ').toLowerCase();
+  return merged.includes('cross-origin-opener-policy') || merged.includes('window.closed');
+};
 
 const isInteractionRequiredError = (error: unknown): boolean => {
   if (!error || typeof error !== 'object') {
@@ -144,6 +202,7 @@ export const ensureMsalSignedIn = async (scopes?: string[]): Promise<AccountInfo
   const instance = ensureClient();
   const resolvedScopes = ensureScopes(scopes);
   const popupClient = toPopupClient(instance);
+  const preferRedirectLogin = getPreferredLoginFlow() === LOGIN_FLOW_REDIRECT;
 
   let account = (instance.getActiveAccount() as AccountInfo | null) ?? null;
   if (!account) {
@@ -151,13 +210,24 @@ export const ensureMsalSignedIn = async (scopes?: string[]): Promise<AccountInfo
     account = (first as AccountInfo | undefined) ?? null;
   }
   if (!account) {
-  const request: PopupLoginRequest = { scopes: resolvedScopes, prompt: 'select_account' };
-  const response = await popupClient.loginPopup(request);
-    account = (response.account as AccountInfo | null) ?? null;
-    if (!account) {
-      throw new Error('MSAL login did not yield an account.');
+    const request: PopupLoginRequest = { scopes: resolvedScopes, prompt: 'select_account' };
+    if (preferRedirectLogin) {
+      return startLoginRedirect(instance, request);
     }
-    instance.setActiveAccount(account);
+    try {
+      const response = await popupClient.loginPopup(request);
+      account = (response.account as AccountInfo | null) ?? null;
+      if (!account) {
+        throw new Error('MSAL login did not yield an account.');
+      }
+      instance.setActiveAccount(account);
+    } catch (error) {
+      if (preferRedirectLogin || isPopupBlockedError(error)) {
+        console.warn('[msal] loginPopup blocked; falling back to redirect.', error);
+        return startLoginRedirect(instance, request);
+      }
+      throw error;
+    }
   }
   if (!account) {
     throw new Error('MSAL account resolution failed.');
@@ -179,25 +249,36 @@ export const acquireSpAccessToken = async (scopes?: string[]): Promise<string> =
   const resolvedScopes = ensureScopes(scopes);
   const account = await ensureMsalSignedIn(resolvedScopes);
   const popupClient = toPopupClient(instance);
+  const preferRedirectAuth = getPreferredLoginFlow() === LOGIN_FLOW_REDIRECT;
 
   try {
-  const result = await instance.acquireTokenSilent({ account, scopes: resolvedScopes });
+    const result = await instance.acquireTokenSilent({ account, scopes: resolvedScopes });
     persistMsalToken(result.accessToken);
     return result.accessToken;
   } catch (error) {
-  const request: PopupAcquireRequest = { account, scopes: resolvedScopes, prompt: 'select_account' };
+    const request: PopupAcquireRequest = { account, scopes: resolvedScopes, prompt: 'select_account' };
     if (!isInteractionRequiredError(error)) {
       console.warn('[msal] acquireTokenSilent failed; falling back to popup.', error);
     }
-    const result = await popupClient.acquireTokenPopup(request);
-    const token = result.accessToken ?? '';
-    if (!token) {
-      throw new Error('MSAL popup did not provide an access token.');
+    if (preferRedirectAuth) {
+      return startAcquireRedirect(instance, request);
     }
-    persistMsalToken(token);
-    return token;
+    try {
+      const result = await popupClient.acquireTokenPopup(request);
+      const token = result.accessToken ?? '';
+      if (!token) {
+        throw new Error('MSAL popup did not provide an access token.');
+      }
+      persistMsalToken(token);
+      return token;
+    } catch (popupError) {
+      if (preferRedirectAuth || isPopupBlockedError(popupError)) {
+        console.warn('[msal] acquireTokenPopup blocked; falling back to redirect.', popupError);
+        return startAcquireRedirect(instance, request);
+      }
+      throw popupError;
+    }
   }
 };
 
 export const getMsalInstance = (): PublicClientApplication => ensureClient();
-

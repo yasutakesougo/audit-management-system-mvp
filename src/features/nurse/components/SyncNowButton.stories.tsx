@@ -1,10 +1,9 @@
-import type { Meta, StoryObj } from '@storybook/react';
-import React from 'react';
+import type { FlushEntrySummary, FlushSummary } from '@/features/nurse/state/useNurseSync';
 import Alert from '@mui/material/Alert';
 import Box from '@mui/material/Box';
 import Typography from '@mui/material/Typography';
+import type { Meta, StoryObj } from '@storybook/react';
 import { expect, screen, userEvent, within } from '@storybook/test';
-import type { FlushEntrySummary, FlushSummary } from '@/features/nurse/state/useNurseSync';
 import SyncNowButton from './SyncNowButton';
 
 const meta: Meta<typeof SyncNowButton> = {

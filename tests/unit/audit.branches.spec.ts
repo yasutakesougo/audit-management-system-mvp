@@ -1,5 +1,5 @@
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { MockInstance } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { pushAudit, readAudit, retainAuditWhere } from '../../src/lib/audit';
 
 describe('audit localStorage error branches', () => {

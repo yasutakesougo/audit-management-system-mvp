@@ -1,26 +1,11 @@
 import { useSyncExternalStore } from 'react';
+import type { FlushSummary } from './useNurseSync';
 
 export type SyncSource = 'manual' | 'online' | 'auto';
 export type SyncStatus = 'idle' | 'pending' | 'success' | 'error';
 
-export type SyncSummaryEntry = {
-  userId: string;
-  status: 'ok' | 'partial' | 'error';
-  kind: string;
-  error?: unknown;
-};
-
-export type SyncSummary = {
-  sent: number;
-  remaining: number;
-  okCount: number;
-  errorCount: number;
-  partialCount: number;
-  totalCount: number;
-  entries: SyncSummaryEntry[];
-  source: SyncSource;
-  bpSent?: number;
-};
+export type SyncSummary = FlushSummary;
+export type SyncSummaryEntry = SyncSummary['entries'][number];
 
 export type LastSyncState = {
   status: SyncStatus;
@@ -126,3 +111,15 @@ export const formatLastSyncCaption = (snapshot: LastSyncState): string => {
       return '未同期';
   }
 };
+
+// Test exports
+export const __resetLastSyncStoreForTests = () => {
+  assignState({
+    status: 'idle',
+    source: 'manual',
+    sent: 0,
+    remaining: 0,
+  });
+};
+
+export const getLastSyncSnapshot = (): LastSyncState => getSnapshot();

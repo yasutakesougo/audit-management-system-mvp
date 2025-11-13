@@ -18,6 +18,7 @@ cert.pfx.b64
 lhci-results.json
 reports/
 logs/
+csp-reports/
 .vite.pid
 .vitest.pid
 public/env.runtime.json

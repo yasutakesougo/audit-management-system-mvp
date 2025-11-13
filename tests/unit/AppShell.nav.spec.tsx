@@ -1,11 +1,10 @@
-import React from 'react';
-import { cleanup, screen, waitFor, within } from '@testing-library/react';
-import { ThemeProvider, createTheme } from '@mui/material/styles';
-import { describe, expect, it, vi, beforeEach, afterEach } from 'vitest';
 import AppShell from '@/app/AppShell';
+import { routerFutureFlags } from '@/app/routerFuture';
 import { ColorModeContext } from '@/app/theme';
 import { FeatureFlagsProvider, type FeatureFlagSnapshot } from '@/config/featureFlags';
-import { routerFutureFlags } from '@/app/routerFuture';
+import { ThemeProvider, createTheme } from '@mui/material/styles';
+import { cleanup, screen, waitFor, within } from '@testing-library/react';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { renderWithAppProviders } from '../helpers/renderWithAppProviders';
 
 const spFetchMock = vi.fn(async (_path: string, _init?: RequestInit) => ({ ok: true }));

@@ -1,7 +1,7 @@
-import React from 'react';
 import { act, cleanup, render } from '@testing-library/react';
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import React from 'react';
 import { Outlet, RouterProvider, createMemoryRouter } from 'react-router-dom';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import RouteHydrationListener, { RouteHydrationErrorBoundary } from '@/hydration/RouteHydrationListener';
 import * as hydrationHud from '@/lib/hydrationHud';

@@ -4,11 +4,48 @@ import { useMemo } from 'react';
 import { useAuth } from '../auth/useAuth';
 import { getRuntimeEnv as getRuntimeEnvRoot } from '../env';
 import { auditLog } from './debugLogger';
-import { getAppConfig, type EnvRecord } from './env';
+import { getAppConfig, getSchedulesListIdFromEnv, isDemoModeEnabled, isE2eMsalMockEnabled, readBool, readEnv, type EnvRecord } from './env';
 import { SharePointItemNotFoundError, SharePointMissingEtagError } from './errors';
+import { sha256Hex } from './hashUtil';
+import { SCHEDULE_FIELD_ENTRY_HASH, SCHEDULE_FIELD_SERVICE_TYPE } from '../sharepoint/fields';
+import type { SpScheduleItem } from '../types';
+
+const FALLBACK_SP_RESOURCE = 'https://example.sharepoint.com';
+const FALLBACK_SP_SITE_RELATIVE = '/sites/demo';
+const MAX_SP_ERROR_BODY_PREVIEW = 2000;
+
+const shouldBypassSharePointConfig = (envOverride?: EnvRecord): boolean => {
+  if (isE2eMsalMockEnabled(envOverride)) {
+    return true;
+  }
+  if (readBool('VITE_E2E', false, envOverride)) {
+    return true;
+  }
+  if (typeof process !== 'undefined' && process.env?.PLAYWRIGHT_TEST === '1') {
+    return true;
+  }
+  return false;
+};
+
+const normalizeSiteRelative = (value: string): string => {
+  const trimmed = value.trim();
+  const prefixed = trimmed.startsWith('/') ? trimmed : `/${trimmed}`;
+  return prefixed.replace(/\/+$/, '');
+};
+
+const normalizeResource = (value: string): string => value.trim().replace(/\/+$/, '');
 
 export function ensureConfig(envOverride?: { VITE_SP_RESOURCE?: string; VITE_SP_SITE_RELATIVE?: string }) {
   const overrideRecord = envOverride as EnvRecord | undefined;
+
+  if (shouldBypassSharePointConfig(overrideRecord)) {
+    const rawResource = readEnv('VITE_SP_RESOURCE', FALLBACK_SP_RESOURCE, overrideRecord);
+    const rawSiteRel = readEnv('VITE_SP_SITE_RELATIVE', FALLBACK_SP_SITE_RELATIVE, overrideRecord);
+    const resource = normalizeResource(rawResource || FALLBACK_SP_RESOURCE) || FALLBACK_SP_RESOURCE;
+    const siteRel = normalizeSiteRelative(rawSiteRel || FALLBACK_SP_SITE_RELATIVE) || FALLBACK_SP_SITE_RELATIVE;
+    return { resource, siteRel, baseUrl: `${resource}${siteRel}/_api/web` };
+  }
+
   const config = getAppConfig(overrideRecord);
   const rawResource = (config.VITE_SP_RESOURCE ?? '').trim();
   const rawSiteRel = (config.VITE_SP_SITE_RELATIVE ?? '').trim();
@@ -21,13 +58,12 @@ export function ensureConfig(envOverride?: { VITE_SP_RESOURCE?: string; VITE_SP_
       '`.env` を実値で更新し、開発サーバーを再起動してください。'
     ].join('\n'));
   }
-  const resourceCandidate = rawResource.replace(/\/+$/, '');
+  const resourceCandidate = normalizeResource(rawResource);
   if (!/^https:\/\/.+\.sharepoint\.com$/i.test(resourceCandidate)) {
     throw new Error(`VITE_SP_RESOURCE の形式が不正です: ${rawResource}`);
   }
   const resource = resourceCandidate;
-  const siteRel0 = rawSiteRel.startsWith('/') ? rawSiteRel : `/${rawSiteRel}`;
-  const siteRel = siteRel0.replace(/\/+$/, '');
+  const siteRel = normalizeSiteRelative(rawSiteRel);
   return { resource, siteRel, baseUrl: `${resource}${siteRel}/_api/web` };
 }
 
@@ -546,6 +582,28 @@ export function createSpClient(
     }
 
     if (!response.ok) {
+      const isPlaywright = typeof process !== 'undefined' && process.env?.PLAYWRIGHT_TEST === '1';
+      const shouldLogSpError = (config.isDev || isPlaywright) && process.env?.NODE_ENV !== 'production';
+      if (shouldLogSpError && response.status >= 400 && response.status < 500) {
+        let preview = '<no-text-body>';
+        try {
+          const body = await response.clone().text();
+          preview = body ? body.slice(0, MAX_SP_ERROR_BODY_PREVIEW) : '<empty>';
+        } catch {
+          preview = '<no-text-body>';
+        }
+        const failedUrl = resolveUrl(resolvedPath);
+        const trimmedPreview = preview.trim();
+        // eslint-disable-next-line no-console
+        console.error(
+          '[SP ERROR]',
+          response.status,
+          failedUrl,
+          '\n--- response preview ---\n',
+          trimmedPreview || '<empty>',
+          '\n-------------------------\n',
+        );
+      }
       await raiseHttpError(response);
     }
     return response;
@@ -1071,9 +1129,154 @@ export const useSP = () => {
   return client;
 };
 
-export async function createSchedule(_sp: UseSP, _payload: unknown): Promise<void> {
-  // placeholder: real implementation will map payload to SharePoint list mutation
-  return;
+type ScheduleCreatePayload = Readonly<{
+  Title: string;
+  EventDate: string;
+  EndDate: string;
+  AllDay: boolean;
+  Location: string | null;
+  Status: string;
+  Notes: string | null;
+  StaffIdId: number | null;
+  UserIdId: number | null;
+  ServiceType: string | null;
+}> & Record<string, unknown>;
+
+const scheduleDemoStore: SpScheduleItem[] = [];
+let scheduleDemoCounter = 0;
+
+const normalizeForHash = (value: unknown): string => {
+  if (value === null || value === undefined) return '';
+  if (typeof value === 'string') return value.trim();
+  if (typeof value === 'number') {
+    if (!Number.isFinite(value)) return '';
+    return String(value);
+  }
+  if (typeof value === 'boolean') {
+    return value ? '1' : '0';
+  }
+  return String(value).trim();
+};
+
+const resolveServiceType = (payload: ScheduleCreatePayload): string => {
+  if (typeof payload.ServiceType === 'string') {
+    const trimmed = payload.ServiceType.trim();
+    if (trimmed) {
+      return trimmed;
+    }
+  }
+  const mapped = (payload as Record<string, unknown>)[SCHEDULE_FIELD_SERVICE_TYPE];
+  if (typeof mapped === 'string') {
+    return mapped.trim();
+  }
+  if (mapped === null || mapped === undefined) {
+    return '';
+  }
+  return String(mapped).trim();
+};
+
+const computeScheduleEntryHash = async (payload: ScheduleCreatePayload): Promise<string> => {
+  const parts = [
+    normalizeForHash(payload.Title),
+    normalizeForHash(payload.EventDate),
+    normalizeForHash(payload.EndDate),
+    normalizeForHash(payload.Status),
+    normalizeForHash(payload.AllDay),
+    normalizeForHash(payload.Location),
+    normalizeForHash(payload.Notes),
+    normalizeForHash(payload.UserIdId),
+    normalizeForHash(payload.StaffIdId),
+    resolveServiceType(payload),
+  ];
+  return sha256Hex(parts.join('|'));
+};
+
+const createScheduleInDemo = (payload: ScheduleCreatePayload, entryHash: string): SpScheduleItem => {
+  const existing = scheduleDemoStore.find((item) => item.EntryHash === entryHash);
+  if (existing) {
+    return existing;
+  }
+
+  const nextId = ++scheduleDemoCounter;
+  const nowIso = new Date().toISOString();
+  const serviceType = resolveServiceType(payload) || null;
+  const draft: SpScheduleItem = {
+    Id: nextId,
+    Title: payload.Title ?? null,
+    EventDate: payload.EventDate ?? null,
+    EndDate: payload.EndDate ?? null,
+    AllDay: Boolean(payload.AllDay),
+    Status: payload.Status ?? null,
+    Location: typeof payload.Location === 'string' ? payload.Location : null,
+    Notes: typeof payload.Notes === 'string' ? payload.Notes : null,
+    StaffIdId: payload.StaffIdId ?? null,
+    UserIdId: payload.UserIdId ?? null,
+    ServiceType: serviceType,
+    cr014_serviceType: serviceType,
+    EntryHash: entryHash,
+    Created: nowIso,
+    Modified: nowIso,
+    '@odata.etag': `"demo-${nextId}"`,
+  };
+
+  scheduleDemoStore.push(draft);
+  return draft;
+};
+
+const isDuplicateScheduleError = (error: unknown): boolean => {
+  if (!error) {
+    return false;
+  }
+  const status = (error as { status?: number }).status;
+  if (status === 409) {
+    return true;
+  }
+  const message = (error as Error).message ?? '';
+  if (!message) {
+    return false;
+  }
+  return /duplicate|conflict|409/i.test(message);
+};
+
+const findScheduleByEntryHash = async (sp: UseSP, listTitle: string, entryHash: string): Promise<SpScheduleItem | null> => {
+  const escapedHash = entryHash.replace(/'/g, "''");
+  const filter = `${SCHEDULE_FIELD_ENTRY_HASH} eq '${escapedHash}'`;
+  const select = ['Id', 'Title', 'EventDate', 'EndDate', '@odata.etag', SCHEDULE_FIELD_ENTRY_HASH];
+  try {
+    const items = await sp.listItems<SpScheduleItem>(listTitle, { filter, select, top: 1 });
+    return items[0] ?? null;
+  } catch (error) {
+    auditLog.warn('schedule.create.lookupFailed', { entryHash, error });
+    return null;
+  }
+};
+
+export async function createSchedule(sp: UseSP, payload: ScheduleCreatePayload): Promise<SpScheduleItem> {
+  ensureConfig();
+  const listTitle = getSchedulesListIdFromEnv();
+  const entryHash = await computeScheduleEntryHash(payload);
+  const body = { ...payload, [SCHEDULE_FIELD_ENTRY_HASH]: entryHash };
+
+  if (isDemoModeEnabled()) {
+    const draft = createScheduleInDemo(payload, entryHash);
+    auditLog.debug('schedule.create.demo', { entryHash, id: draft.Id });
+    return draft;
+  }
+
+  try {
+    const created = await sp.addListItemByTitle<typeof body, SpScheduleItem>(listTitle, body);
+    auditLog.debug('schedule.create.success', { entryHash, id: created?.Id ?? null });
+    return created;
+  } catch (error) {
+    if (isDuplicateScheduleError(error)) {
+      const existing = await findScheduleByEntryHash(sp, listTitle, entryHash);
+      if (existing) {
+        auditLog.debug('schedule.create.duplicate', { entryHash, id: existing.Id ?? null });
+        return existing;
+      }
+    }
+    throw error;
+  }
 }
 
 export const __ensureListInternals = { buildFieldSchema };

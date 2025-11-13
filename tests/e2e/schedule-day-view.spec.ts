@@ -1,3 +1,4 @@
+import '@/test/captureSp400';
 import { expect, test } from '@playwright/test';
 import { hookConsole } from './utils/console';
 import { registerScheduleMocks, TIME_ZONE } from './utils/spMock';

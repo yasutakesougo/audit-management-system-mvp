@@ -12,7 +12,16 @@ import Toolbar from '@mui/material/Toolbar';
 import Tooltip from '@mui/material/Tooltip';
 import Typography from '@mui/material/Typography';
 import React, { useContext, useEffect, useMemo, useState } from 'react';
+import LiveAnnouncer from '@/a11y/LiveAnnouncer';
 // Navigation Icons
+import NavLinkPrefetch from '@/components/NavLinkPrefetch';
+import { useFeatureFlags } from '@/config/featureFlags';
+import RouteHydrationListener from '@/hydration/RouteHydrationListener';
+import { getAppConfig, shouldSkipLogin } from '@/lib/env';
+import { useSP } from '@/lib/spClient';
+import { PREFETCH_KEYS, type PrefetchKey } from '@/prefetch/routes';
+import { TESTIDS } from '@/testids';
+import SignInButton from '@/ui/components/SignInButton';
 import AddCircleOutlineRoundedIcon from '@mui/icons-material/AddCircleOutlineRounded';
 import AssessmentRoundedIcon from '@mui/icons-material/AssessmentRounded';
 import AssignmentTurnedInRoundedIcon from '@mui/icons-material/AssignmentTurnedInRounded';
@@ -22,14 +31,6 @@ import EventAvailableRoundedIcon from '@mui/icons-material/EventAvailableRounded
 import PeopleAltRoundedIcon from '@mui/icons-material/PeopleAltRounded';
 import SettingsRoundedIcon from '@mui/icons-material/SettingsRounded';
 import { Link as RouterLink, useLocation, useNavigate } from 'react-router-dom';
-import NavLinkPrefetch from '@/components/NavLinkPrefetch';
-import { useFeatureFlags } from '@/config/featureFlags';
-import RouteHydrationListener from '@/hydration/RouteHydrationListener';
-import { getAppConfig, shouldSkipLogin } from '@/lib/env';
-import { TESTIDS } from '@/testids';
-import { useSP } from '@/lib/spClient';
-import { PREFETCH_KEYS, type PrefetchKey } from '@/prefetch/routes';
-import SignInButton from '@/ui/components/SignInButton';
 import { ColorModeContext } from './theme';
 
 type NavItem = {
@@ -149,7 +150,8 @@ const AppShell: React.FC<{ children: React.ReactNode }> = ({ children }) => {
 
   return (
     <RouteHydrationListener>
-      <div data-testid="app-shell">
+      <LiveAnnouncer>
+        <div data-testid="app-shell">
         <AppBar position="static" color="primary" enableColorOnDark>
         <Toolbar sx={{ gap: 1 }}>
           <Typography variant="h6" component="div" sx={{ flexGrow: 1 }}>
@@ -224,6 +226,7 @@ const AppShell: React.FC<{ children: React.ReactNode }> = ({ children }) => {
         </Container>
         <FooterQuickActions />
       </div>
+      </LiveAnnouncer>
     </RouteHydrationListener>
   );
 };

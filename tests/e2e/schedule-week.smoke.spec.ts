@@ -1,4 +1,5 @@
-import { test, expect } from '@playwright/test';
+import '@/test/captureSp400';
+import { expect, test } from '@playwright/test';
 import { runA11ySmoke } from './utils/a11y';
 import { waitForTestId } from './utils/wait';
 
@@ -41,9 +42,15 @@ test.describe('Schedule week smoke', () => {
     // Page mounts with stable test id
     await waitForTestId(page, 'schedules-week-page');
 
-    // Heading or period label should be present (implement with data-testid="schedules-week-heading")
-    const heading = page.getByTestId('schedules-week-heading').or(page.getByRole('heading', { level: 1 }));
-    await expect(heading.first()).toBeVisible();
+  // Heading or period label should be present (implement with data-testid="schedules-week-heading")
+  const heading = page.getByTestId('schedules-week-heading').or(page.getByRole('heading', { level: 1 }));
+  await expect(heading.first()).toBeVisible();
+
+  const headingByTestId = page.getByTestId('schedules-week-heading');
+  await expect(headingByTestId).toHaveAttribute('id', 'schedules-week-heading');
+
+  const region = page.locator('section[aria-labelledby="schedules-week-heading"]');
+  await expect(region).toBeVisible();
 
     // Either a grid with items or an explicit empty state is rendered (both should be stable)
     const grid = page.getByTestId('schedules-week-grid');
@@ -68,8 +75,8 @@ test.describe('Schedule week smoke', () => {
       }
     }
 
-  // A11y baseline (no violations)
-  await runA11ySmoke(page, 'Schedules Week', { selectors: '[data-testid="schedules-week-page"]' });
+    // A11y baseline (no violations)
+    await runA11ySmoke(page, 'Schedules Week', { selectors: '[data-testid="schedules-week-page"]' });
   });
 
   test('week navigation remains stable (prev/next)', async ({ page }) => {
@@ -78,8 +85,8 @@ test.describe('Schedule week smoke', () => {
     await waitForTestId(page, 'schedules-week-page');
 
     // Use stable test ids for nav buttons (add them in your UI)
-    const prev = page.getByTestId('schedules-week-prev');
-    const next = page.getByTestId('schedules-week-next');
+    const prev = page.getByTestId('schedules-prev');
+    const next = page.getByTestId('schedules-next');
 
     // If buttons exist, they should navigate without layout thrash or empties
     if ((await prev.count()) > 0) {

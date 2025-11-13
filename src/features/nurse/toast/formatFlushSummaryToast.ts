@@ -1,5 +1,5 @@
-import type { FlushSummary } from '@/features/nurse/state/useNurseSync';
 import type { SyncSource } from '@/features/nurse/state/useLastSync';
+import type { FlushSummary } from '@/features/nurse/state/useNurseSync';
 
 export type SnackbarSeverity = 'success' | 'info' | 'warning' | 'error';
 

@@ -17,11 +17,14 @@
       "@/*": ["src/*"],
       "@/app/*": ["src/app/*"],
       "@/auth/*": ["src/auth/*"],
-      "@/lib/*": ["src/lib/*"],
-      "@/features/*": ["src/features/*"],
+  "@/lib/*": ["src/lib/*"],
+  "@/features/*": ["src/features/*"],
+  "@/features/users/*": ["src/features/users/*"],
+  "@/features/users/components/*": ["src/features/users/components/*"],
       "@/config/*": ["src/config/*"],
       "@/ui/*": ["src/ui/*"],
-      "@/adapters/*": ["src/adapters/*"]
+      "@/adapters/*": ["src/adapters/*"],
+      "@/test/*": ["tests/*"]
     }
   },
   "include": ["src", "tests", "types"],

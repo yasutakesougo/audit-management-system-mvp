@@ -360,7 +360,7 @@ export const getSchedulesListIdFromEnv = (envOverride?: EnvRecord): string => {
   if (override) {
     return override;
   }
-  return 'Schedules';
+  return 'ScheduleEvents';
 };
 
 const parseScopeList = (raw: string): string[] => {

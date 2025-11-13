@@ -1,8 +1,8 @@
-import { describe, it, expect } from "vitest";
-import { screen } from "@testing-library/react";
 import AppShell from "@/app/AppShell";
-import { FeatureFlagsProvider, featureFlags } from "@/config/featureFlags";
 import { routerFutureFlags } from "@/app/routerFuture";
+import { FeatureFlagsProvider, featureFlags } from "@/config/featureFlags";
+import { screen } from "@testing-library/react";
+import { describe, expect, it } from "vitest";
 import { renderWithAppProviders } from "../helpers/renderWithAppProviders";
 
 describe("AppShell accessibility landmarks", () => {

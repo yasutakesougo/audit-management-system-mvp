@@ -1,4 +1,4 @@
-import { test, expect } from '@playwright/test';
+import { expect, test } from '@playwright/test';
 
 test('Dashboard tabs render and switch', async ({ page }) => {
   await page.goto('/');

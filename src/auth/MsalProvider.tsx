@@ -1,5 +1,5 @@
-import React, { useEffect, useMemo, useState } from 'react';
 import type { IPublicClientApplication } from '@azure/msal-browser';
+import React, { useEffect, useMemo, useState } from 'react';
 import { msalConfig } from './msalConfig';
 
 type MsalInstance = IPublicClientApplication;

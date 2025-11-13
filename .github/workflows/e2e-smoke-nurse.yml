@@ -1,0 +1,25 @@
+name: e2e-smoke (nurse)
+
+on:
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - run: npm ci
+      - run: npx playwright install --with-deps
+      - name: Run nurse smokes
+        env:
+          VITE_FEATURE_NURSE_UI: "1"
+        run: |
+          npm run build --if-present
+          npx playwright test tests/e2e/nurse.roster-handshake.spec.ts
+          npx playwright test tests/e2e/nurse.query-normalization.spec.ts
+          npx playwright test tests/e2e/nurse.sync-status.spec.ts

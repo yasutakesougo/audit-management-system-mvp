@@ -1,5 +1,5 @@
-import type { Meta, StoryObj } from '@storybook/react';
 import HealthObservationPage from '@/pages/HealthObservationPage';
+import type { Meta, StoryObj } from '@storybook/react';
 
 const meta = {
   title: 'Nurse/Pages/Observation Workspace',

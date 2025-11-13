@@ -1,9 +1,9 @@
-import { screen } from '@testing-library/react';
-import { describe, expect, it, vi } from 'vitest';
 import AppShell from '@/app/AppShell';
 import Router from '@/app/router';
-import { FeatureFlagsProvider, type FeatureFlagSnapshot } from '@/config/featureFlags';
 import { routerFutureFlags } from '@/app/routerFuture';
+import { FeatureFlagsProvider, type FeatureFlagSnapshot } from '@/config/featureFlags';
+import { screen } from '@testing-library/react';
+import { describe, expect, it, vi } from 'vitest';
 import { renderWithAppProviders } from '../helpers/renderWithAppProviders';
 
 vi.mock('@/lib/spClient', () => ({

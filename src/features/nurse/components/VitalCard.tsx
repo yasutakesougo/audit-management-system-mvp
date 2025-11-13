@@ -1,10 +1,10 @@
-import React, { useCallback, useId, useRef, useState } from 'react';
-import Box from '@mui/material/Box';
+import { TESTIDS } from '@/testids';
 import AddIcon from '@mui/icons-material/Add';
 import RemoveIcon from '@mui/icons-material/Remove';
+import Box from '@mui/material/Box';
+import Button from '@mui/material/Button';
 import Card from '@mui/material/Card';
 import CardContent from '@mui/material/CardContent';
-import Button from '@mui/material/Button';
 import Dialog from '@mui/material/Dialog';
 import DialogActions from '@mui/material/DialogActions';
 import DialogContent from '@mui/material/DialogContent';
@@ -13,7 +13,7 @@ import IconButton from '@mui/material/IconButton';
 import Stack from '@mui/material/Stack';
 import TextField from '@mui/material/TextField';
 import Typography from '@mui/material/Typography';
-import { TESTIDS } from '@/testids';
+import React, { useCallback, useId, useRef, useState } from 'react';
 
 type VitalCardProps = {
   label: string;

@@ -445,6 +445,20 @@ Install dependencies and start dev server (port 3000):
 ```
 npm install
 npm run dev
+```
+
+### Type Safety
+
+We maintain strict TypeScript coverage with two-tier validation:
+
+- **`npm run typecheck`** - Production code only (CI main check)
+- **`npm run typecheck:full`** - Includes stories and tests (nightly monitoring)
+
+The nightly health workflow runs comprehensive type checking to surface any issues in development utilities and documentation code. View results at: [Actions > Nightly Health](https://github.com/yasutakesougo/audit-management-system-mvp/actions/workflows/nightly-health.yml)
+
+**To promote comprehensive checking to CI** (when nightly is consistently clean):
+1. Add `npm run typecheck:full` to `scripts/preflight.sh` 
+2. This ensures stories, tests, and utilities maintain type safety in CI
 
 ### Test & Coverage
 

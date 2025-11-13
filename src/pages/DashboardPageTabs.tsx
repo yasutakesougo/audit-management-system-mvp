@@ -1,16 +1,16 @@
-import React, { Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import MeetingGuidePage from '@/features/records/dashboard/MeetingGuidePage';
+import { useUsersStore } from '@/features/users/store';
+import { TESTIDS } from '@/testids';
+import lazyWithPreload from '@/utils/lazyWithPreload';
+import { cancelIdle, runOnIdle } from '@/utils/runOnIdle';
 import Box from '@mui/material/Box';
 import Container from '@mui/material/Container';
 import Paper from '@mui/material/Paper';
 import Stack from '@mui/material/Stack';
-import Typography from '@mui/material/Typography';
-import Tabs from '@mui/material/Tabs';
 import Tab from '@mui/material/Tab';
-import MeetingGuidePage from '@/features/records/dashboard/MeetingGuidePage';
-import { TESTIDS } from '@/testids';
-import { useUsersStore } from '@/features/users/store';
-import lazyWithPreload from '@/utils/lazyWithPreload';
-import { cancelIdle, runOnIdle } from '@/utils/runOnIdle';
+import Tabs from '@mui/material/Tabs';
+import Typography from '@mui/material/Typography';
+import React, { Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 const WeeklySummaryChartLazy = lazyWithPreload(() => import('@/features/records/dashboard/WeeklySummaryChart'));
 
@@ -121,9 +121,14 @@ const DashboardPageTabs: React.FC = () => {
             <Typography variant="body2" color="text.secondary">
               施設全体の記録状況（週次KPI）を俯瞰できます。
             </Typography>
-            <Stack spacing={3} sx={{ mt: 2 }}>
+            <Stack
+              spacing={3}
+              sx={{ mt: 2 }}
+              data-week-start={weekStartYYYYMMDD}
+              data-users={activeUserIds.join(',')}
+            >
               <Suspense fallback={null}>
-                <WeeklySummaryChartLazy userIds={activeUserIds} weekStartYYYYMMDD={weekStartYYYYMMDD} />
+                <WeeklySummaryChartLazy />
               </Suspense>
             </Stack>
           </Paper>

@@ -3,6 +3,8 @@ import { resolve } from 'node:path'
 import { fileURLToPath, URL } from 'node:url'
 import { defineConfig, loadEnv } from 'vite'
 
+import { buildCspConfig } from './scripts/csp-headers.mjs'
+
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-expect-error -- import.meta is supported in the Vite Node runtime
 const srcDir = fileURLToPath(new URL('./src', import.meta.url))
@@ -23,6 +25,17 @@ export default defineConfig(({ mode }) => {
       ? `${env.VITE_SP_RESOURCE.replace(/\/?$/, '')}${env.VITE_SP_SITE_RELATIVE}`.replace(/\/?$/, '')
       : undefined) ??
     'https://isogokatudouhome.sharepoint.com/sites/welfare';
+
+  const { headerName: cspHeaderName, headerValue: cspHeaderValue, reportToValue } = buildCspConfig({
+    siteUrl,
+    spResource: env.VITE_SP_RESOURCE,
+    spBaseUrl: env.VITE_SP_BASE_URL,
+    collectorOrigin: process.env.CSP_COLLECTOR_ORIGIN,
+    collectorPrefix: process.env.CSP_PREFIX,
+    collectorPort: process.env.CSP_PORT,
+    enforce: process.env.CSP_ENFORCE === '1',
+    disabled: process.env.CSP_DISABLE === '1',
+  });
 
   return {
     plugins: [react()],
@@ -99,6 +112,10 @@ export default defineConfig(({ mode }) => {
       port: 3000,
       strictPort: true,
       https: false,
+      headers: {
+        'Cross-Origin-Opener-Policy': 'same-origin-allow-popups',
+        'Cross-Origin-Embedder-Policy': 'unsafe-none',
+      },
       proxy: {
         '/sharepoint-api': {
           target: siteUrl,
@@ -106,6 +123,21 @@ export default defineConfig(({ mode }) => {
           secure: true,
           rewrite: (path) => path.replace(/^\/sharepoint-api/, ''),
         },
+      },
+    },
+    preview: {
+      host: '127.0.0.1',
+      port: 4173,
+      strictPort: true,
+      headers: {
+        'Cross-Origin-Opener-Policy': 'same-origin-allow-popups',
+        'Cross-Origin-Embedder-Policy': 'unsafe-none',
+        ...(cspHeaderName && cspHeaderValue
+          ? {
+              [cspHeaderName]: cspHeaderValue,
+              'Report-To': reportToValue,
+            }
+          : {}),
       },
     },
   };

@@ -1,5 +1,5 @@
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { resilientFetch } from '@/features/nurse/sp/client';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 const buildResponse = (body: unknown, init: ResponseInit) =>
   new Response(JSON.stringify(body), {

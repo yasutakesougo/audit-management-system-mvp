@@ -1,18 +1,18 @@
-import { NURSE_LISTS } from '../sp/constants';
-import { NURSE_USERS } from '@/features/nurse/users';
-import { TESTIDS } from '@/testids';
-import { makeSharePointListApi, type SharePointListApi } from '../sp/client';
-import { toObservationItem } from '../sp/map';
-import { batchUpsertObservations, type ObservationUpsertEnvelope, type ObservationUpsertResult } from '../sp/upsert';
-import { queue, type NurseQueueItem, BACKOFF_SECONDS } from './offlineQueue';
 import { emitTelemetry } from '@/features/nurse/telemetry/telemetry';
 import { formatFlushSummaryToast } from '@/features/nurse/toast/formatFlushSummaryToast';
+import { NURSE_USERS } from '@/features/nurse/users';
 import { isDevMode } from '@/lib/env';
+import { TESTIDS } from '@/testids';
+import { makeSharePointListApi, type SharePointListApi } from '../sp/client';
+import { NURSE_LISTS } from '../sp/constants';
+import { toObservationItem } from '../sp/map';
+import { batchUpsertObservations, type ObservationUpsertEnvelope, type ObservationUpsertResult } from '../sp/upsert';
+import { BACKOFF_SECONDS, queue, type NurseQueueItem } from './offlineQueue';
 import {
-  markSyncFailure,
-  markSyncPending,
-  markSyncResult,
-  type SyncSource,
+    markSyncFailure,
+    markSyncPending,
+    markSyncResult,
+    type SyncSource,
 } from './useLastSync';
 
 export type FlushEntrySummary = {
@@ -377,3 +377,8 @@ export const nurseSync = {
   flush: flushNurseQueue,
   queue,
 };
+
+// Re-export types and functions that are used by tests
+export type { NurseQueueItem } from './offlineQueue';
+export type { SharePointListApi } from '../sp/client';
+export { upsertObservation } from '../sp/upsert';

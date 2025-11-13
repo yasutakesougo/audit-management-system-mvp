@@ -1,9 +1,9 @@
 import { expect, test } from '@playwright/test';
 
 import {
-  expectRouteSpan,
-  prepareHydrationApp,
-  readHydrationSpans,
+    expectRouteSpan,
+    prepareHydrationApp,
+    readHydrationSpans,
 } from './_helpers/hydrationHud';
 
 const ADMIN_CHUNK_GLOBS = ['**/SupportActivityMasterPage-*.js', '**/SupportActivityMasterPage.tsx'];

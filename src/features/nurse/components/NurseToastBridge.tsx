@@ -1,5 +1,5 @@
-import { useEffect, type FC } from 'react';
 import type { AlertColor } from '@mui/material/Alert';
+import { useEffect, type FC } from 'react';
 
 export type NurseToastPayload = {
   message: string;

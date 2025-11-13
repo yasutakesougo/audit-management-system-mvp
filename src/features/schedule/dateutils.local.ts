@@ -1,7 +1,7 @@
+import { getAppConfig } from '@/lib/env';
+import { assertValidTz, resolveSchedulesTz } from '@/utils/scheduleTz';
 import { addDays } from 'date-fns';
 import { formatInTimeZone, fromZonedTime } from 'date-fns-tz';
-import { getAppConfig } from '@/lib/env';
-import { resolveSchedulesTz, assertValidTz } from '@/utils/scheduleTz';
 
 const DEFAULT_WEEK_START = 1; // Monday
 
@@ -89,6 +89,14 @@ export function getLocalDateKey(input: Date | string, timeZone?: string): string
   }
   return ymdInTz(date, tz);
 }
+
+export function getLocalDateMonthKey(input: Date | string, timeZone?: string): string {
+  const dateKey = getLocalDateKey(input, timeZone);
+  return dateKey ? dateKey.slice(0, 7) : '';
+}
+
+// Backward compatibility alias
+export { getLocalDateMonthKey as getLocalMonthKey };
 
 export function startOfDayUtc(input: Date | string, timeZone?: string): Date {
   const tz = resolveTz(timeZone);

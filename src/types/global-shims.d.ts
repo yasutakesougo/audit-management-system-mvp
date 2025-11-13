@@ -6,11 +6,6 @@ declare module "@/utils/cn" {
   export default cnDefault;
 }
 
-declare module "@/*" {
-  const anyExport: any;
-  export = anyExport;
-}
-
 declare module "@azure/msal-browser" {
   export enum EventType {
     LOGIN_SUCCESS = "LOGIN_SUCCESS",

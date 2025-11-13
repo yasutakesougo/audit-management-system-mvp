@@ -1,4 +1,7 @@
-import React, { useEffect, useId, useMemo, useRef, useState } from 'react';
+import { NURSE_USERS } from '@/features/nurse/users';
+import { usePrefersReducedMotion } from '@/lib/a11y/usePrefersReducedMotion';
+import { notify } from '@/lib/notice';
+import { TESTIDS } from '@/testids';
 import Box from '@mui/material/Box';
 import Button from '@mui/material/Button';
 import Card from '@mui/material/Card';
@@ -13,15 +16,12 @@ import Paper from '@mui/material/Paper';
 import Stack from '@mui/material/Stack';
 import TextField from '@mui/material/TextField';
 import Typography from '@mui/material/Typography';
-import { TESTIDS } from '@/testids';
-import { notify } from '@/lib/notice';
-import { thresholds } from '../constants/thresholds';
-import { NURSE_USERS } from '@/features/nurse/users';
-import VitalCard from '../components/VitalCard';
+import React, { useEffect, useId, useMemo, useRef, useState } from 'react';
 import TagPills from '../components/TagPills';
 import { useToast } from '../components/ToastContext';
-import { queue, buildIdempotencyKey, QUEUE_MAX } from '../state/offlineQueue';
-import { usePrefersReducedMotion } from '@/lib/a11y/usePrefersReducedMotion';
+import VitalCard from '../components/VitalCard';
+import { thresholds } from '../constants/thresholds';
+import { buildIdempotencyKey, queue, QUEUE_MAX } from '../state/offlineQueue';
 
 const TAGS = ['顔色良好', 'やや眠気', '食欲低下', '咳あり', '便秘傾向'];
 

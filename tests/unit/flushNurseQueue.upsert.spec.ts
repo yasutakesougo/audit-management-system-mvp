@@ -1,6 +1,6 @@
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import type { NurseQueueItem } from '@/features/nurse/state/offlineQueue';
 import type { SharePointListApi } from '@/features/nurse/sp/client';
+import type { NurseQueueItem } from '@/features/nurse/state/offlineQueue';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 const queueState = vi.hoisted(() => [] as NurseQueueItem[]);
 
@@ -27,8 +27,8 @@ vi.mock('@/features/nurse/sp/upsert', () => ({
   upsertObservation: upsertObservationMock,
 }));
 
-import { flushNurseQueue } from '@/features/nurse/state/useNurseSync';
 import { upsertObservation } from '@/features/nurse/sp/upsert';
+import { flushNurseQueue } from '@/features/nurse/state/useNurseSync';
 
 describe('flushNurseQueue idempotent observation flow', () => {
   const fakeSp = { kind: 'stub' } as unknown as SharePointListApi;

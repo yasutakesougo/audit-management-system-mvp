@@ -1,6 +1,7 @@
 import { useToast } from '@/hooks/useToast';
 import { readBool, readEnv } from '@/lib/env';
 import type { SpFieldDef, UseSP } from '@/lib/spClient';
+import { syncServiceTypeChoices } from './ensureScheduleList.syncServiceTypes';
 import { useEffect, useMemo } from 'react';
 
 type ScheduleSpClient = Pick<UseSP, 'spFetch' | 'ensureListExists'>;
@@ -154,6 +155,15 @@ const ensureScheduleListInternal = async (sp: ScheduleSpClient): Promise<void> =
   const fieldDefs = buildScheduleFieldDefs(userListId, staffListId);
   const listTitle = resolveScheduleListTitle();
   await sp.ensureListExists(listTitle, fieldDefs);
+
+  try {
+    const syncResult = await syncServiceTypeChoices(sp, listTitle);
+    if (syncResult.updated) {
+      console.info('[Schedule] ServiceType choices synced', syncResult.choices);
+    }
+  } catch (error) {
+    console.warn('[Schedule] ServiceType choice sync skipped', error);
+  }
 };
 
 export const ensureScheduleList = async (sp: ScheduleSpClient): Promise<void> => {

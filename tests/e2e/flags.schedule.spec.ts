@@ -1,4 +1,5 @@
-import { test, expect } from '@playwright/test';
+import { TESTIDS } from '@/testids';
+import { expect, test } from '@playwright/test';
 import { waitForScheduleReady } from './utils/wait';
 
 const scheduleNavLabel = /スケジュール/;
@@ -27,6 +28,11 @@ test.describe('schedule feature flag', () => {
     await page.goto('/', { waitUntil: 'domcontentloaded' });
     await page.waitForLoadState('networkidle', { timeout: 5_000 });
 
+    const maybeWeek = page.getByTestId(TESTIDS['schedules-week-page']);
+    if ((await maybeWeek.count()) > 0) {
+      await waitForScheduleReady(page);
+    }
+
     await expect(page.getByTestId('schedules-nav-link')).toHaveCount(0);
     await expect(page.getByRole('link', { name: scheduleNavLabel })).toHaveCount(0);
 
@@ -51,6 +57,11 @@ test.describe('schedule feature flag', () => {
 
     await page.goto('/', { waitUntil: 'domcontentloaded' });
     await page.waitForLoadState('networkidle', { timeout: 5_000 });
+
+    const maybeWeek = page.getByTestId(TESTIDS['schedules-week-page']);
+    if ((await maybeWeek.count()) > 0) {
+      await waitForScheduleReady(page);
+    }
 
     const nav = page.getByTestId('schedules-nav-link');
     await expect(nav).toBeVisible();

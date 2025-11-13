@@ -1,5 +1,5 @@
-import { expect, type Page } from '@playwright/test';
 import { TESTIDS } from '@/testids';
+import { expect, type Page } from '@playwright/test';
 
 export async function waitForSyncFeedback(page: Page, opts?: { timeout?: number }) {
   const timeout = opts?.timeout ?? 6000;

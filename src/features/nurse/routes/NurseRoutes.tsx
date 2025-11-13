@@ -1,17 +1,17 @@
-import React, { useCallback, useEffect, useState } from 'react';
-import { Navigate, Outlet, useSearchParams, type RouteObject } from 'react-router-dom';
+import NurseToastBridge from '@/features/nurse/components/NurseToastBridge';
+import { useSnackbarHost } from '@/features/nurse/components/SnackbarHost';
+import VitalCard from '@/features/nurse/components/VitalCard';
+import { buildIdempotencyKey, queue, type NurseQueueItem } from '@/features/nurse/state/offlineQueue';
+import { flushNurseQueue } from '@/features/nurse/state/useNurseSync';
+import { TESTIDS } from '@/testids';
 import Box from '@mui/material/Box';
 import Button from '@mui/material/Button';
 import Divider from '@mui/material/Divider';
 import Paper from '@mui/material/Paper';
 import Stack from '@mui/material/Stack';
 import Typography from '@mui/material/Typography';
-import { flushNurseQueue } from '@/features/nurse/state/useNurseSync';
-import { queue, buildIdempotencyKey, type NurseQueueItem } from '@/features/nurse/state/offlineQueue';
-import NurseToastBridge from '@/features/nurse/components/NurseToastBridge';
-import { useSnackbarHost } from '@/features/nurse/components/SnackbarHost';
-import { TESTIDS } from '@/testids';
-import VitalCard from '@/features/nurse/components/VitalCard';
+import React, { useCallback, useEffect, useState } from 'react';
+import { Navigate, Outlet, useSearchParams, type RouteObject } from 'react-router-dom';
 
 const pulseRange = { min: 40, max: 180 } as const;
 const sysRange = { min: 70, max: 220 } as const;

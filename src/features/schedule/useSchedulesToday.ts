@@ -1,8 +1,8 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
-import { formatInTimeZone } from '@/lib/tz';
 import * as ScheduleAdapter from '@/adapters/schedules';
 import { isSchedulesFeatureEnabled } from '@/lib/env';
 import type { SafeError } from '@/lib/errors';
+import { formatInTimeZone } from '@/lib/tz';
+import { useEffect, useMemo, useRef, useState } from 'react';
 
 export type MiniSchedule = {
   id: number;

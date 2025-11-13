@@ -1,5 +1,5 @@
-import React from 'react';
 import ObservationBridge from '@/features/nurse/observation/ObservationBridge';
+import React from 'react';
 
 const HealthObservationPage: React.FC = () => <ObservationBridge />;
 

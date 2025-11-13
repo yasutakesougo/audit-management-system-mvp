@@ -1,10 +1,10 @@
-import React from 'react';
+import ProtectedRoute from '@/app/ProtectedRoute';
+import { routerFutureFlags } from '@/app/routerFuture';
+import { FeatureFlagsProvider, type FeatureFlagSnapshot } from '@/config/featureFlags';
 import { cleanup, render, screen, waitFor } from '@testing-library/react';
+import React from 'react';
 import { Outlet, RouterProvider, createMemoryRouter, useLocation, type RouteObject } from 'react-router-dom';
 import { afterEach, describe, expect, it } from 'vitest';
-import ProtectedRoute from '@/app/ProtectedRoute';
-import { FeatureFlagsProvider, type FeatureFlagSnapshot } from '@/config/featureFlags';
-import { routerFutureFlags } from '@/app/routerFuture';
 
 const defaultFlags: FeatureFlagSnapshot = {
   schedules: true,

@@ -1,5 +1,5 @@
-import { expect, test, type Page, type TestInfo } from '@playwright/test';
 import { TESTIDS } from '@/testids';
+import { expect, test, type Page, type TestInfo } from '@playwright/test';
 import { enableNurseFlag } from './utils/enableNurseFlag';
 import { waitForSyncFeedback } from './utils/nurse';
 

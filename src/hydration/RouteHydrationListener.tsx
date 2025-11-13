@@ -399,7 +399,18 @@ export const RouteHydrationErrorBoundary: React.FC<RouteHydrationErrorBoundaryPr
 }) => {
   const handleError = useRouteHydrationErrorHandler();
   const location = useLocation();
-  const resetKey = `${location.pathname}|${location.search}|${location.hash}`;
+  let resetKey: string;
+  if (typeof window !== 'undefined') {
+    const scope = window as typeof window & { __suppressRouteReset__?: boolean };
+    if (scope.__suppressRouteReset__) {
+      resetKey = `${location.pathname}|${location.hash}`;
+      scope.__suppressRouteReset__ = false;
+    } else {
+      resetKey = `${location.pathname}|${location.search}|${location.hash}`;
+    }
+  } else {
+    resetKey = `${location.pathname}|${location.search}|${location.hash}`;
+  }
 
   return (
     <RouteHydrationErrorBoundaryInner key={resetKey} onError={handleError} fallback={fallback}>

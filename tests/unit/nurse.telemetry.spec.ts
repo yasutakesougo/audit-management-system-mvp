@@ -1,9 +1,9 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import {
-  emitTelemetry,
-  setTelemetryTransport,
-  type NurseTelemetryEvent,
+    emitTelemetry,
+    setTelemetryTransport,
+    type NurseTelemetryEvent,
 } from '@/features/nurse/telemetry/telemetry';
 
 describe('nurse telemetry', () => {

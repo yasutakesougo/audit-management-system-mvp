@@ -1,0 +1,29 @@
+name: storybook-a11y
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+
+jobs:
+  sb-a11y:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Install deps
+        run: npm ci
+
+      - name: Build Storybook
+        run: npm run build-storybook
+
+      - name: Serve Storybook
+        run: npx http-server storybook-static -p 6006 & sleep 2
+
+      - name: Run Storybook test-runner (a11y + interactions)
+        run: npx @storybook/test-runner --url http://127.0.0.1:6006 --maxWorkers=2

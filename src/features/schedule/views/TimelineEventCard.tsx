@@ -1,14 +1,14 @@
-import { memo, useMemo, type HTMLAttributes } from 'react';
-import AccessTimeRoundedIcon from '@mui/icons-material/AccessTimeRounded';
-import Chip from '@mui/material/Chip';
-import type { ChipProps } from '@mui/material/Chip';
 import { AllDayChip } from '@/features/schedule/AllDayChip';
-import { RecurrenceChip } from '@/ui/components/RecurrenceChip';
 import { cn } from '@/ui/cn';
-import type { BaseShiftWarning, DayPart, Status } from '../types';
-import { summarizeBaseShiftWarnings } from '../workPattern';
+import { RecurrenceChip } from '@/ui/components/RecurrenceChip';
 import { formatScheduleRange } from '@/utils/formatScheduleTime';
 import { resolveSchedulesTz } from '@/utils/scheduleTz';
+import AccessTimeRoundedIcon from '@mui/icons-material/AccessTimeRounded';
+import type { ChipProps } from '@mui/material/Chip';
+import Chip from '@mui/material/Chip';
+import { memo, useMemo, type HTMLAttributes } from 'react';
+import type { BaseShiftWarning, DayPart, Status } from '../types';
+import { summarizeBaseShiftWarnings } from '../workPattern';
 
 type Props = {
   title: string;

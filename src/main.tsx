@@ -1,8 +1,8 @@
 import React from 'react';
 import ReactDOM from 'react-dom/client';
 import { getRuntimeEnv, isDev } from './env';
-import { beginHydrationSpan, finalizeHydrationSpan } from './lib/hydrationHud';
 import { resolveHydrationEntry } from './hydration/routes';
+import { beginHydrationSpan, finalizeHydrationSpan } from './lib/hydrationHud';
 
 type EnvRecord = Record<string, string | undefined>;
 

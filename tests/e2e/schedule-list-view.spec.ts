@@ -1,10 +1,10 @@
 import { expect, test } from '@playwright/test';
-import { hookConsole } from './utils/console';
-import { setupSharePointStubs } from './_helpers/setupSharePointStubs';
 import { mockEnsureScheduleList } from './_helpers/mockEnsureScheduleList';
-import { clickEnabledFilterAction } from './utils/waiters';
+import { setupSharePointStubs } from './_helpers/setupSharePointStubs';
 import { runA11ySmoke } from './utils/a11y';
+import { hookConsole } from './utils/console';
 import { registerScheduleMocks, TIME_ZONE, type ScheduleItem } from './utils/spMock';
+import { clickEnabledFilterAction } from './utils/waiters';
 
 const TEST_NOW = '2025-10-08T03:00:00.000Z';
 

@@ -19,11 +19,12 @@ import NavigateNextRoundedIcon from '@mui/icons-material/NavigateNextRounded';
 import PersonRoundedIcon from '@mui/icons-material/PersonRounded';
 import TodayRoundedIcon from '@mui/icons-material/TodayRounded';
 
+import { useAuth } from '@/auth/useAuth';
 import BriefingPanel from '@/features/schedule/components/BriefingPanel';
 import { assignLocalDateKey } from '@/features/schedule/dateutils.local';
 import { moveScheduleToDay } from '@/features/schedule/move';
 import ScheduleDialog from '@/features/schedule/ScheduleDialog';
-import type { ExtendedScheduleForm, Schedule, ScheduleStatus, Status } from '@/features/schedule/types';
+import type { ExtendedScheduleForm, Schedule, ScheduleOrg, ScheduleStaff, ScheduleStatus, ScheduleUserCare, Status } from '@/features/schedule/types';
 import ScheduleListView from '@/features/schedule/views/ListView';
 import MonthView from '@/features/schedule/views/MonthView';
 import OrgTab from '@/features/schedule/views/OrgTab';
@@ -32,14 +33,15 @@ import TimelineDay from '@/features/schedule/views/TimelineDay';
 import TimelineWeek, { type EventMovePayload } from '@/features/schedule/views/TimelineWeek';
 import UserTab from '@/features/schedule/views/UserTab';
 import { getAppConfig } from '@/lib/env';
+import { useSnackbarHost } from '@/features/nurse/components/SnackbarHost';
 import { useSP } from '@/lib/spClient';
 import { useStaff } from '@/stores/useStaff';
 import FilterToolbar from '@/ui/filters/FilterToolbar';
 import { formatRangeLocal } from '@/utils/datetime';
 import { useEnsureScheduleList } from './ensureScheduleList';
-import { getUserCareSchedules } from './spClient.schedule';
-import { getOrgSchedules } from './spClient.schedule.org';
-import { getStaffSchedules } from './spClient.schedule.staff';
+import { createUserCare, getUserCareSchedules, updateUserCare } from './spClient.schedule';
+import { createOrgSchedule, getOrgSchedules, updateOrgSchedule } from './spClient.schedule.org';
+import { createStaffSchedule, getStaffSchedules, updateStaffSchedule } from './spClient.schedule.staff';
 import { buildStaffPatternIndex, collectBaseShiftWarnings } from './workPattern';
 
 type ViewMode = 'month' | 'week' | 'day' | 'list' | 'userCare';
@@ -49,10 +51,94 @@ type RangeState = {
   end: Date;
 };
 
+const DIALOG_TO_DOMAIN_STATUS: Record<ScheduleStatus, Status> = {
+  planned: '下書き',
+  confirmed: '承認済み',
+  absent: '申請中',
+  holiday: '完了',
+};
+
+const DOMAIN_TO_DIALOG_STATUS: Record<Status, ScheduleStatus> = {
+  下書き: 'planned',
+  申請中: 'planned',
+  承認済み: 'confirmed',
+  完了: 'confirmed',
+};
+
+const toDomainStatus = (status: ScheduleStatus | undefined): Status => DIALOG_TO_DOMAIN_STATUS[status ?? 'planned'];
+
+const toDialogStatus = (status: Status | undefined): ScheduleStatus => DOMAIN_TO_DIALOG_STATUS[status ?? '下書き'];
+
+const toNumericId = (id?: string | number): number | undefined => {
+  if (typeof id === 'number' && Number.isFinite(id)) {
+    return Math.trunc(id);
+  }
+  if (typeof id === 'string') {
+    const parsed = Number(id);
+    if (Number.isFinite(parsed)) {
+      return Math.trunc(parsed);
+    }
+  }
+  return undefined;
+};
+
+const scheduleToExtendedForm = (schedule: Schedule): ExtendedScheduleForm => {
+  const base: ExtendedScheduleForm = {
+    category: schedule.category,
+    id: toNumericId(schedule.id),
+    title: schedule.title ?? '',
+    note: schedule.notes ?? '',
+    status: toDialogStatus(schedule.status),
+    start: schedule.start,
+    end: schedule.end,
+    allDay: schedule.allDay,
+    location: schedule.location ?? '',
+  };
+
+  if (schedule.category === 'User') {
+    return {
+      ...base,
+      userId: schedule.personId ?? '',
+      serviceType: schedule.serviceType,
+      personType: schedule.personType,
+      personId: schedule.personId,
+      personName: schedule.personName,
+      externalPersonName: schedule.externalPersonName,
+      externalPersonOrg: schedule.externalPersonOrg,
+      externalPersonContact: schedule.externalPersonContact,
+      staffIds: [...schedule.staffIds],
+      staffNames: schedule.staffNames ? [...schedule.staffNames] : undefined,
+    } satisfies ExtendedScheduleForm;
+  }
+
+  if (schedule.category === 'Org') {
+    return {
+      ...base,
+      subType: schedule.subType,
+      audience: schedule.audience ? [...schedule.audience] : undefined,
+      resourceId: schedule.resourceId,
+      externalOrgName: schedule.externalOrgName,
+    } satisfies ExtendedScheduleForm;
+  }
+
+  return {
+    ...base,
+    subType: schedule.subType,
+    staffIds: [...schedule.staffIds],
+    staffNames: schedule.staffNames ? [...schedule.staffNames] : undefined,
+    dayPart: schedule.dayPart,
+  } satisfies ExtendedScheduleForm;
+};
+
 export default function SchedulePage() {
+  const { account } = useAuth();
   const sp = useSP();
+  const snackbarHost = useSnackbarHost();
+  const showSnackbar = snackbarHost.show;
+  const snackbarUi = snackbarHost.ui;
   useEnsureScheduleList(sp);
   const { data: staffData } = useStaff();
+  const [dialogEditing, setDialogEditing] = useState<Schedule | null>(null);
   const [view, setView] = useState<ViewMode>('week');
   const [query, setQuery] = useState('');
   const [range, setRange] = useState<RangeState>(() => {
@@ -70,8 +156,205 @@ export default function SchedulePage() {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [dialogInitial, setDialogInitial] = useState<ExtendedScheduleForm | undefined>(undefined);
 
+  const staffNameMap = useMemo(() => {
+    const map = new Map<string, string>();
+    if (Array.isArray(staffData)) {
+      for (const staff of staffData) {
+        if (!staff) continue;
+        const key = staff.id != null ? String(staff.id) : (staff.staffId ?? '').trim();
+        if (!key) continue;
+        const name = staff.name?.trim() ?? staff.staffId?.trim() ?? key;
+        map.set(key, name);
+      }
+    }
+    return map;
+  }, [staffData]);
+
+  const defaultStaffId = useMemo(() => {
+    if (!Array.isArray(staffData) || !staffData.length) return undefined;
+    const candidates = new Set<string>();
+    const pushCandidate = (raw: unknown) => {
+      if (typeof raw !== 'string') return;
+      const trimmed = raw.trim();
+      if (!trimmed) return;
+      candidates.add(trimmed.toLowerCase());
+    };
+
+    pushCandidate((account as { username?: string } | undefined)?.username);
+    pushCandidate((account as { name?: string } | undefined)?.name);
+    const idTokenClaims = (account as { idTokenClaims?: Record<string, unknown> } | undefined)?.idTokenClaims;
+    if (idTokenClaims) {
+      pushCandidate((idTokenClaims as { email?: string }).email);
+      pushCandidate((idTokenClaims as { preferred_username?: string }).preferred_username);
+      pushCandidate((idTokenClaims as { upn?: string }).upn);
+    }
+
+    if (!candidates.size) return undefined;
+
+    const normalize = (value: unknown) => (typeof value === 'string' ? value.trim().toLowerCase() : undefined);
+
+    for (const staff of staffData) {
+      if (!staff) continue;
+      const email = normalize(staff.email);
+      const staffCode = normalize(staff.staffId);
+      const name = normalize(staff.name);
+      if ((email && candidates.has(email)) || (staffCode && candidates.has(staffCode)) || (name && candidates.has(name))) {
+        const key = staff.id != null ? String(staff.id) : (staff.staffId ?? '').trim();
+        if (key) {
+          return key;
+        }
+      }
+    }
+
+    return undefined;
+  }, [account, staffData]);
+
+  const defaultUserStaffIds = useMemo(() => (defaultStaffId ? [defaultStaffId] : []), [defaultStaffId]);
+
+  const defaultUserStaffNames = useMemo(() => {
+    if (!defaultStaffId) return undefined;
+    const name = staffNameMap.get(defaultStaffId)?.trim();
+    return name ? [name] : undefined;
+  }, [defaultStaffId, staffNameMap]);
+
 
   const staffPatterns = useMemo(() => buildStaffPatternIndex(staffData), [staffData]);
+
+  const buildUserCarePayload = useCallback((form: ExtendedScheduleForm, base?: ScheduleUserCare): ScheduleUserCare => {
+    if (!form.start || !form.end) {
+      throw new Error('開始と終了の日時を入力してください。');
+    }
+
+    const staffIds = (form.staffIds ?? base?.staffIds ?? [])
+      .map((id) => String(id).trim())
+      .filter((id) => id.length > 0);
+
+    const staffNamesFromForm = (form.staffNames ?? [])
+      .map((name) => (name ?? '').trim())
+      .filter((name) => name.length > 0);
+
+    const staffNamesFromLookup = staffIds
+      .map((id) => (staffNameMap.get(id) ?? '').trim())
+      .filter((name) => name.length > 0);
+
+    const hasTitleInput = form.title !== undefined;
+    const rawTitle = (form.title ?? '').trim();
+    const title = hasTitleInput ? rawTitle : (base?.title ?? '');
+    const location = (form.location ?? '').trim();
+    const note = (form.note ?? '').trim();
+
+    const personType = (form.personType ?? base?.personType ?? 'Internal') as ScheduleUserCare['personType'];
+    const serviceType = (form.serviceType ?? base?.serviceType ?? '一時ケア') as ScheduleUserCare['serviceType'];
+
+    return {
+      id: base?.id ?? '',
+      etag: base?.etag ?? '',
+      category: 'User',
+      title,
+      start: form.start,
+      end: form.end,
+      allDay: Boolean(form.allDay),
+      status: toDomainStatus(form.status),
+      location: location.length ? location : undefined,
+      notes: note.length ? note : undefined,
+      recurrenceRule: base?.recurrenceRule,
+      dayKey: base?.dayKey,
+      fiscalYear: base?.fiscalYear,
+      serviceType,
+      personType,
+      personId: personType === 'Internal' ? (form.personId ?? form.userId ?? base?.personId) ?? undefined : undefined,
+      personName: personType === 'Internal' ? (form.personName ?? base?.personName) ?? undefined : undefined,
+      externalPersonName: personType === 'External' ? (form.externalPersonName ?? base?.externalPersonName) ?? undefined : undefined,
+      externalPersonOrg: personType === 'External' ? (form.externalPersonOrg ?? base?.externalPersonOrg) ?? undefined : undefined,
+      externalPersonContact: personType === 'External' ? (form.externalPersonContact ?? base?.externalPersonContact) ?? undefined : undefined,
+      staffIds,
+      staffNames: staffNamesFromForm.length ? staffNamesFromForm : (staffNamesFromLookup.length ? staffNamesFromLookup : base?.staffNames),
+    } satisfies ScheduleUserCare;
+  }, [staffNameMap]);
+
+  const buildStaffPayload = useCallback((form: ExtendedScheduleForm, base?: ScheduleStaff): ScheduleStaff => {
+    if (!form.start || !form.end) {
+      throw new Error('開始と終了の日時を入力してください。');
+    }
+
+    const staffIds = (form.staffIds ?? base?.staffIds ?? [])
+      .map((id) => String(id).trim())
+      .filter((id) => id.length > 0);
+
+    const staffNamesFromForm = (form.staffNames ?? [])
+      .map((name) => (name ?? '').trim())
+      .filter((name) => name.length > 0);
+
+    const staffNamesFromLookup = staffIds
+      .map((id) => (staffNameMap.get(id) ?? '').trim())
+      .filter((name) => name.length > 0);
+
+    const subType = (form.subType ?? base?.subType ?? '会議') as ScheduleStaff['subType'];
+    const location = (form.location ?? '').trim();
+    const note = (form.note ?? '').trim();
+    const hasTitleInput = form.title !== undefined;
+    const rawTitle = (form.title ?? '').trim();
+    const title = hasTitleInput ? rawTitle : (base?.title ?? '');
+    const dayPart = subType === '年休'
+      ? ((form.dayPart ?? base?.dayPart ?? 'Full') as ScheduleStaff['dayPart'])
+      : undefined;
+
+    return {
+      id: base?.id ?? '',
+      etag: base?.etag ?? '',
+      category: 'Staff',
+      title,
+      start: form.start,
+      end: form.end,
+      allDay: Boolean(form.allDay),
+      status: toDomainStatus(form.status),
+      location: location.length ? location : undefined,
+      notes: note.length ? note : undefined,
+      recurrenceRule: base?.recurrenceRule,
+      dayKey: base?.dayKey,
+      fiscalYear: base?.fiscalYear,
+      subType,
+      staffIds,
+      staffNames: staffNamesFromForm.length ? staffNamesFromForm : (staffNamesFromLookup.length ? staffNamesFromLookup : base?.staffNames),
+      dayPart,
+    } satisfies ScheduleStaff;
+  }, [staffNameMap]);
+
+  const buildOrgPayload = useCallback((form: ExtendedScheduleForm, base?: ScheduleOrg): ScheduleOrg => {
+    if (!form.start || !form.end) {
+      throw new Error('開始と終了の日時を入力してください。');
+    }
+
+    const subType = (form.subType ?? base?.subType ?? '会議') as ScheduleOrg['subType'];
+    const location = (form.location ?? '').trim();
+    const note = (form.note ?? '').trim();
+    const hasTitleInput = form.title !== undefined;
+    const rawTitle = (form.title ?? '').trim();
+    const title = hasTitleInput ? rawTitle : (base?.title ?? '');
+    const audience = form.audience ?? base?.audience;
+    const resourceId = (form.resourceId ?? base?.resourceId ?? '').trim();
+    const externalOrgName = (form.externalOrgName ?? base?.externalOrgName ?? '').trim();
+
+    return {
+      id: base?.id ?? '',
+      etag: base?.etag ?? '',
+      category: 'Org',
+      title,
+      start: form.start,
+      end: form.end,
+      allDay: Boolean(form.allDay),
+      status: toDomainStatus(form.status),
+      location: location.length ? location : undefined,
+      notes: note.length ? note : undefined,
+      recurrenceRule: base?.recurrenceRule,
+      dayKey: base?.dayKey,
+      fiscalYear: base?.fiscalYear,
+      subType,
+      audience: audience && audience.length ? [...audience] : undefined,
+      resourceId: resourceId.length ? resourceId : undefined,
+      externalOrgName: externalOrgName.length ? externalOrgName : undefined,
+    } satisfies ScheduleOrg;
+  }, []);
 
   const annotatedTimelineEvents = useMemo(() => {
     if (!staffPatterns) {
@@ -92,8 +375,8 @@ export default function SchedulePage() {
     setTimelineLoading(true);
     setTimelineError(null);
 
-  // 開発環境での無限エラーを防ぐため、CORS エラーが発生した場合はモックデータに切り替える
-  const { isDev: isDevelopment } = getAppConfig();
+    // 開発環境での無限エラーを防ぐため、CORS エラーが発生した場合はモックデータに切り替える
+    const { isDev: isDevelopment } = getAppConfig();
 
     try {
       const [userRows, orgRows, staffRows] = await Promise.all([
@@ -160,6 +443,7 @@ export default function SchedulePage() {
     now.setMinutes(0, 0, 0);
     const end = new Date(now.getTime() + 60 * 60 * 1000); // 1 hour later
 
+    setDialogEditing(null);
     setDialogInitial({
       category: 'User',
       userId: '',
@@ -168,67 +452,77 @@ export default function SchedulePage() {
       end: end.toISOString(),
       title: '',
       note: '',
+      allDay: false,
+      location: '',
+      serviceType: '一時ケア',
+      personType: 'Internal',
+      staffIds: [...defaultUserStaffIds],
+      staffNames: defaultUserStaffNames ? [...defaultUserStaffNames] : undefined,
     });
     setDialogOpen(true);
-  }, []);
-
-  const _handleEditSchedule = useCallback((schedule: Schedule) => {
-    // Convert Schedule to ScheduleForm
-    // Extract userId from different schedule categories
-    let userId = '';
-    if (schedule.category === 'User') {
-      userId = schedule.personId ?? '';
-    } else if (schedule.category === 'Staff') {
-      userId = schedule.staffIds?.[0] ?? '';
-    }
-
-    // Map Status to ScheduleStatus
-    const statusMap: Record<Status, ScheduleStatus> = {
-      '下書き': 'planned',
-      '申請中': 'planned',
-      '承認済み': 'confirmed',
-      '完了': 'confirmed'
-    };
-
-    setDialogInitial({
-      category: schedule.category,
-      id: parseInt(schedule.id) || undefined,
-      userId,
-      status: statusMap[schedule.status] || 'planned',
-      start: schedule.start,
-      end: schedule.end,
-      title: schedule.title,
-      note: schedule.notes || '',
-    });
-    setDialogOpen(true);
-  }, []);
+  }, [defaultUserStaffIds, defaultUserStaffNames]);
 
   const handleDialogClose = useCallback(() => {
     setDialogOpen(false);
     setDialogInitial(undefined);
+    setDialogEditing(null);
   }, []);
 
   const handleDialogSubmit = useCallback(async (values: ExtendedScheduleForm) => {
-    try {
-      console.log('Schedule submission:', values);
-      // TODO: Implement actual API calls for create/update
+    const category = values.category;
+    const editing = dialogEditing && dialogEditing.category === category ? dialogEditing : null;
 
-      // For now, simulate success and close dialog
+    try {
+      switch (category) {
+        case 'User': {
+          const payload = buildUserCarePayload(values, editing as ScheduleUserCare | undefined);
+          if (editing) {
+            await updateUserCare(sp, payload);
+          } else {
+            await createUserCare(sp, payload);
+          }
+          break;
+        }
+        case 'Org': {
+          const payload = buildOrgPayload(values, editing as ScheduleOrg | undefined);
+          if (editing) {
+            await updateOrgSchedule(sp, payload);
+          } else {
+            await createOrgSchedule(sp, payload);
+          }
+          break;
+        }
+        case 'Staff': {
+          const payload = buildStaffPayload(values, editing as ScheduleStaff | undefined);
+          if (editing) {
+            await updateStaffSchedule(sp, payload);
+          } else {
+            await createStaffSchedule(sp, payload);
+          }
+          break;
+        }
+        default:
+          throw new Error('対応していないカテゴリの予定です。');
+      }
+
       setDialogOpen(false);
       setDialogInitial(undefined);
+      setDialogEditing(null);
+      showSnackbar(editing ? '予定を更新しました' : '予定を作成しました', 'success');
 
-      // Reload timeline data to reflect changes
       await loadTimeline();
     } catch (error) {
-      console.error('Failed to save schedule:', error);
-      throw error; // Re-throw to allow ScheduleDialog to handle error display
+  const message = error instanceof Error ? error.message : '予定の保存に失敗しました。';
+      showSnackbar(message, 'error');
+      throw error;
     }
-  }, [loadTimeline]);
+  }, [dialogEditing, buildUserCarePayload, buildOrgPayload, buildStaffPayload, sp, showSnackbar, loadTimeline]);
 
   const handleDateClick = useCallback((date: Date) => {
     const start = date.toISOString();
     const end = new Date(date.getTime() + 60 * 60 * 1000).toISOString(); // 1時間後
 
+    setDialogEditing(null);
     setDialogInitial({
       category: 'User',
       userId: '',
@@ -237,9 +531,15 @@ export default function SchedulePage() {
       end,
       title: '',
       note: '',
+      allDay: false,
+      location: '',
+      serviceType: '一時ケア',
+      personType: 'Internal',
+      staffIds: [...defaultUserStaffIds],
+      staffNames: defaultUserStaffNames ? [...defaultUserStaffNames] : undefined,
     });
     setDialogOpen(true);
-  }, []);
+  }, [defaultUserStaffIds, defaultUserStaffNames]);
 
   // Timeline specific handlers
   const handleEventCreate = useCallback((payload: { category: Schedule['category']; date: string }) => {
@@ -247,62 +547,89 @@ export default function SchedulePage() {
     startDate.setHours(9, 0, 0, 0); // デフォルトで9:00から開始
     const endDate = new Date(startDate.getTime() + 60 * 60 * 1000); // 1時間後
 
-    setDialogInitial({
-      category: payload.category,
-      userId: '',
-      status: 'planned',
-      start: startDate.toISOString(),
-      end: endDate.toISOString(),
-      title: '',
-      note: '',
-    });
+    const startIso = startDate.toISOString();
+    const endIso = endDate.toISOString();
+    setDialogEditing(null);
+
+    if (payload.category === 'User') {
+      setDialogInitial({
+        category: 'User',
+        status: 'planned',
+        start: startIso,
+        end: endIso,
+        title: '',
+        note: '',
+        allDay: false,
+        location: '',
+        userId: '',
+        personType: 'Internal',
+        serviceType: '一時ケア',
+        staffIds: [...defaultUserStaffIds],
+        staffNames: defaultUserStaffNames ? [...defaultUserStaffNames] : undefined,
+      });
+    } else if (payload.category === 'Org') {
+      setDialogInitial({
+        category: 'Org',
+        status: 'planned',
+        start: startIso,
+        end: endIso,
+        title: '',
+        note: '',
+        allDay: false,
+        location: '',
+        subType: '会議',
+        audience: [],
+      });
+    } else {
+      setDialogInitial({
+        category: 'Staff',
+        status: 'planned',
+        start: startIso,
+        end: endIso,
+        title: '',
+        note: '',
+        allDay: false,
+        location: '',
+        subType: '会議',
+        staffIds: [],
+      });
+    }
     setDialogOpen(true);
-  }, []);
+  }, [defaultUserStaffIds, defaultUserStaffNames]);
 
   const handleEventEdit = useCallback((schedule: Schedule) => {
-    // Convert Schedule to ScheduleForm
-    let userId = '';
-    if (schedule.category === 'User') {
-      userId = schedule.personId ?? '';
-    } else if (schedule.category === 'Staff') {
-      userId = schedule.staffIds?.[0] ?? '';
-    }
-
-    // Map Status to ScheduleStatus
-    const statusMap: Record<Status, ScheduleStatus> = {
-      '下書き': 'planned',
-      '申請中': 'planned',
-      '承認済み': 'confirmed',
-      '完了': 'confirmed'
-    };
-
-    setDialogInitial({
-      category: schedule.category,
-      id: parseInt(schedule.id) || undefined,
-      userId,
-      status: statusMap[schedule.status] || 'planned',
-      start: schedule.start,
-      end: schedule.end,
-      title: schedule.title,
-      note: schedule.notes || '',
-    });
+    setDialogEditing(schedule);
+    setDialogInitial(scheduleToExtendedForm(schedule));
     setDialogOpen(true);
   }, []);
 
   const handleEventClick = useCallback((event: { id: string; title: string; startIso: string }) => {
-    // 既存の予定を編集モードで開く
-    setDialogInitial({
-      category: 'User',
-      id: event.id ? parseInt(event.id) : undefined,
-      userId: '',
-      status: 'planned',
-      start: event.startIso,
-      end: new Date(new Date(event.startIso).getTime() + 60 * 60 * 1000).toISOString(),
-      title: event.title,
-      note: '',
-    });
+    const target = timelineEvents.find((item) => item.id === String(event.id));
+
+    if (target) {
+      setDialogEditing(target);
+      setDialogInitial(scheduleToExtendedForm(target));
+    } else {
+      const startIso = event.startIso;
+      const fallbackEnd = new Date(new Date(event.startIso).getTime() + 60 * 60 * 1000).toISOString();
+      setDialogEditing(null);
+      setDialogInitial({
+        category: 'User',
+        status: 'planned',
+        start: startIso,
+        end: fallbackEnd,
+        title: event.title,
+        note: '',
+        userId: '',
+        personType: 'Internal',
+        serviceType: '一時ケア',
+        staffIds: [...defaultUserStaffIds],
+        staffNames: defaultUserStaffNames ? [...defaultUserStaffNames] : undefined,
+      });
+    }
+
     setDialogOpen(true);
-  }, []);
+  }, [timelineEvents, defaultUserStaffIds, defaultUserStaffNames]);
 
   return (
     <Container maxWidth="xl" sx={{ py: 3 }} data-testid="schedule-page-root">
@@ -502,6 +829,7 @@ export default function SchedulePage() {
         onClose={handleDialogClose}
         onSubmit={handleDialogSubmit}
       />
+      {snackbarUi}
     </Container>
   );
 }

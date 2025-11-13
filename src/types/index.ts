@@ -120,6 +120,7 @@ export type SpScheduleItem = {
   RelatedResourceId?: number[] | string | { results?: number[] | string[] } | null;
   RelatedResource?: unknown;
   RowKey?: string | null;
+  EntryHash?: string | null;
   Date?: string | null;
   MonthKey?: string | null;
   CreatedAt?: string | null;

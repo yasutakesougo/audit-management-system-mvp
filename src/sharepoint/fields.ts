@@ -224,6 +224,7 @@ export const SCHEDULE_FIELD_ROW_KEY = 'RowKey' as const;
 export const SCHEDULE_FIELD_DAY_KEY = 'cr014_dayKey' as const;
 export const SCHEDULE_FIELD_FISCAL_YEAR = 'cr014_fiscalYear' as const;
 export const SCHEDULE_FIELD_MONTH_KEY = 'MonthKey' as const;
+export const SCHEDULE_FIELD_ENTRY_HASH = 'EntryHash' as const;
 export const SCHEDULE_FIELD_SUB_TYPE = 'SubType' as const;
 export const SCHEDULE_FIELD_ORG_AUDIENCE = 'cr014_orgAudience' as const;
 export const SCHEDULE_FIELD_ORG_RESOURCE_ID = 'cr014_resourceId' as const;
@@ -257,6 +258,7 @@ export const SCHEDULES_BASE_FIELDS = [
   SCHEDULE_FIELD_RELATED_RESOURCE,
   SCHEDULE_FIELD_RELATED_RESOURCE_ID,
   SCHEDULE_FIELD_ROW_KEY,
+  SCHEDULE_FIELD_ENTRY_HASH,
   SCHEDULE_FIELD_DAY_KEY,
   SCHEDULE_FIELD_FISCAL_YEAR,
   SCHEDULE_FIELD_MONTH_KEY,

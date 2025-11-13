@@ -1,5 +1,5 @@
-import { fetchSp } from '@/lib/fetchSp';
 import { isE2eMsalMockEnabled, readBool, readEnv } from '@/lib/env';
+import { fetchSp } from '@/lib/fetchSp';
 import { acquireSpAccessToken } from '@/lib/msal';
 
 // Lightweight schedules client with TTL cache + optional dev fixtures.
@@ -15,9 +15,14 @@ export interface ScheduleEvent {
   allDay?: boolean;
   category: ScheduleCategory;
   personName?: string;
+  targetUserNames?: string[];
+  targetUserEmails?: string[];
+  targetUserIds?: string[];
   staffIds?: string[];
   staffNames?: string[];
+  staffEmails?: string[];
   dayKey?: string; // e.g., '2025-10-06'
+  etag?: string;
   // keep room for SharePoint fields if needed
   // raw?: unknown;
 }
@@ -31,6 +36,10 @@ const cache = new Map<string, CacheValue<ScheduleEvent[]>>();
 const PROXY_PREFIX = '/sharepoint-api';
 const preferProxyFetch = readBool('VITE_SP_USE_PROXY', false);
 const siteBaseUrl = resolveSiteBaseUrl();
+const scheduleCategoryField = resolveScheduleCategoryField();
+// Keep select/expand lists tightly scoped so SharePoint accepts the query.
+const scheduleSelectFields = createScheduleSelectFields(scheduleCategoryField);
+const scheduleExpandFields = ['AssignedStaff', 'TargetUser', 'Author', 'Editor'] as const;
 
 export function clearSchedulesCache() {
   cache.clear();
@@ -144,10 +153,8 @@ export async function getSchedules(
       },
     };
 
-    const res = await executeSharePointFetch(category, request, requestInit);
-    if (!res.ok) throw new Error(`SP fetch failed: ${res.status}`);
-    const json = (await res.json()) as SharePointResponse;
-    data = (json.value ?? []).map(spToEvent).map(coerceAllDay).sort(sortByStartAsc);
+    const items = await fetchSharePointItems(category, request, requestInit);
+    data = items.map(spToEvent).map(coerceAllDay).sort(sortByStartAsc);
   }
 
   cache.set(key, { at: now(), data });
@@ -204,6 +211,46 @@ async function executeSharePointFetch(category: ScheduleCategory, request: Retur
   return directRes;
 }
 
+async function fetchSharePointItems(
+  category: ScheduleCategory,
+  request: ReturnType<typeof buildSharePointRequest>,
+  init: RequestInit,
+): Promise<ScheduleSpItem[]> {
+  const collected: ScheduleSpItem[] = [];
+  const firstResponse = await executeSharePointFetch(category, request, init);
+  if (!firstResponse.ok) {
+    throw new Error(`SP fetch failed: ${firstResponse.status}`);
+  }
+  const firstBody = (await firstResponse.json()) as SharePointResponse;
+  collected.push(...(firstBody.value ?? []));
+
+  let next = resolveNextLink(firstBody);
+  while (next) {
+    const normalizedNext = normalizeNextLink(next);
+    const pageResponse = await fetchSp(normalizedNext, init);
+    console.info('[schedulesClient] fetch', { category, url: normalizedNext, via: 'direct', status: pageResponse.status });
+    if (!pageResponse.ok) {
+      throw new Error(`SP fetch failed (page): ${pageResponse.status}`);
+    }
+    const body = (await pageResponse.json()) as SharePointResponse;
+    collected.push(...(body.value ?? []));
+    next = resolveNextLink(body);
+  }
+
+  return collected;
+}
+
+function normalizeNextLink(value: string): string {
+  if (/^https?:/i.test(value)) {
+    return value;
+  }
+  if (!value.trim()) {
+    return value;
+  }
+  const suffix = value.startsWith('/') ? value : `/${value}`;
+  return `${siteBaseUrl}${suffix}`;
+}
+
 function buildProxyInit(init: RequestInit, accessToken: string): RequestInit {
   const headers = new Headers(init.headers);
   if (!headers.has('Accept')) {
@@ -217,13 +264,13 @@ function buildSpQueryPath(category: ScheduleCategory, r: Range): string {
   const listKey = resolveSchedulesListIdentifier();
   const fromUtc = new Date(r.fromISO).toISOString();
   const toUtc = new Date(r.toISO).toISOString();
-  const filter = `(cr014_category eq '${category}') and (EventDate le datetime'${toUtc}') and (EndDate ge datetime'${fromUtc}')`;
-  const select = 'Id,Title,EventDate,EndDate,AllDay,cr014_category,cr014_personName,cr014_staffIds,cr014_staffNames,@odata.etag';
+  const filter = `(${scheduleCategoryField} eq '${category}') and (EventDate lt datetime'${toUtc}') and (EndDate ge datetime'${fromUtc}')`;
   const params = new URLSearchParams({
     $top: '500',
     $filter: filter,
     $orderby: 'EventDate asc,Id asc',
-    $select: select,
+    $select: scheduleSelectFields.join(','),
+    $expand: scheduleExpandFields.join(','),
   });
   return `/_api/web/${listKey}/items?${params.toString()}`;
 }
@@ -237,6 +284,36 @@ function resolveSchedulesListIdentifier(): string {
   }
   const escaped = raw.replace(/'/g, "''");
   return `lists/getbytitle('${escaped}')`;
+}
+
+function resolveScheduleCategoryField(): string {
+  const raw = readEnv('VITE_SP_SCHEDULE_CATEGORY', '').trim();
+  return raw || 'cr014_category';
+}
+
+function createScheduleSelectFields(categoryField: string): string[] {
+  const fields: string[] = ['Id', 'Title', 'EventDate', 'EndDate', 'AllDay'];
+  const ensure = (value: string) => {
+    if (!value || fields.includes(value)) {
+      return;
+    }
+    fields.push(value);
+  };
+  ensure(categoryField);
+  ensure('Category');
+  [
+    'AssignedStaffId',
+    'TargetUserId',
+    'AssignedStaff/Id',
+    'AssignedStaff/Title',
+    'AssignedStaff/EMail',
+    'TargetUser/Id',
+    'TargetUser/Title',
+    'TargetUser/EMail',
+    'Author/Title',
+    'Editor/Title',
+  ].forEach(ensure);
+  return fields;
 }
 
 function resolveSiteBaseUrl(): string {
@@ -257,20 +334,93 @@ function resolveSiteBaseUrl(): string {
 
 interface SharePointResponse {
   readonly value?: ReadonlyArray<ScheduleSpItem>;
+  readonly '@odata.nextLink'?: string;
+  readonly ['odata.nextLink']?: string;
 }
+
+type SharePointUser = {
+  readonly Id?: number;
+  readonly Title?: string;
+  readonly EMail?: string;
+  readonly Email?: string;
+};
 
 type ScheduleSpItem = {
   readonly Id: string | number;
   readonly Title: string;
-  readonly EventDate: string;
-  readonly EndDate: string;
+  readonly EventDate?: string;
+  readonly EndDate?: string;
+  readonly Start?: string;
+  readonly End?: string;
+  readonly StartUtc?: string;
+  readonly EndUtc?: string;
   readonly AllDay?: boolean;
-  readonly cr014_category: ScheduleCategory;
+  readonly Category?: string;
+  readonly cr014_category?: string;
   readonly cr014_personName?: string;
   readonly cr014_staffIds?: string[];
   readonly cr014_staffNames?: string[];
   readonly cr014_dayKey?: string;
+  readonly UserId?: string | number | null;
+  readonly StaffId?: string | number | null;
+  readonly AssignedStaffId?: number | readonly number[] | null;
+  readonly TargetUserId?: number | readonly number[] | null;
+  readonly AssignedStaff?: SharePointUser | SharePointUser[] | null;
+  readonly TargetUser?: SharePointUser | SharePointUser[] | null;
+  readonly Author?: SharePointUser | null;
+  readonly Editor?: SharePointUser | null;
+  readonly '@odata.etag'?: string;
 };
+
+function resolveNextLink(payload: SharePointResponse): string | undefined {
+  return payload['@odata.nextLink'] ?? payload['odata.nextLink'];
+}
+
+function normalizeIso(value: string): string {
+  const trimmed = value.trim();
+  const parsed = Date.parse(trimmed);
+  if (Number.isNaN(parsed)) {
+    return trimmed;
+  }
+  return new Date(parsed).toISOString();
+}
+
+function toUserArray(value: SharePointUser | SharePointUser[] | null | undefined): SharePointUser[] {
+  if (!value) return [];
+  if (Array.isArray(value)) {
+    return value.slice();
+  }
+  return [value as SharePointUser];
+}
+
+function toLookupIdList(value: unknown): string[] | undefined {
+  if (value == null) return undefined;
+  if (Array.isArray(value)) {
+    const parsed = value
+      .map((entry) => (typeof entry === 'number' ? entry : Number.parseInt(`${entry}`, 10)))
+      .filter((num) => Number.isFinite(num))
+      .map((num) => String(num));
+    return parsed.length ? parsed : undefined;
+  }
+  if (typeof value === 'number' && Number.isFinite(value)) {
+    return [String(value)];
+  }
+  const raw = `${value}`.trim();
+  if (!raw) return undefined;
+  const segments = raw.split(/;#|,/).map((segment) => segment.trim()).filter(Boolean);
+  return segments.length ? segments : undefined;
+}
+
+function userIdentifierList(users: SharePointUser[]): string[] {
+  const identifiers = users
+    .map((user) => user?.EMail?.trim() || user?.Email?.trim() || (typeof user?.Id === 'number' ? String(user.Id) : ''))
+    .filter((value): value is string => Boolean(value && value.trim()));
+  return [...new Set(identifiers.map((value) => value.trim()))];
+}
+
+function extractUserNames(users: SharePointUser[]): string[] {
+  return [...new Set(users.map((user) => user?.Title?.trim()).filter((value): value is string => Boolean(value)))];
+}
 
 function normalizeCategory(value: string | null | undefined): ScheduleCategory {
   if (!value) return 'Org';
@@ -295,18 +445,58 @@ function coerceAllDay(event: ScheduleEvent): ScheduleEvent {
   return event;
 }
 
+function pickDate(...values: ReadonlyArray<string | undefined>): string {
+  const match = values.find((value) => typeof value === 'string' && value.trim());
+  if (!match) {
+    throw new Error('SharePoint item missing required date fields.');
+  }
+  return normalizeIso(match);
+}
+
+function deriveDayKey(iso: string | undefined): string | undefined {
+  if (!iso) return undefined;
+  const time = Date.parse(iso);
+  if (Number.isNaN(time)) return undefined;
+  const date = new Date(time);
+  const year = date.getUTCFullYear();
+  const month = String(date.getUTCMonth() + 1).padStart(2, '0');
+  const day = String(date.getUTCDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}
+
 function spToEvent(item: ScheduleSpItem): ScheduleEvent {
+  const start = pickDate(item.StartUtc, item.Start, item.EventDate);
+  const end = pickDate(item.EndUtc, item.End, item.EndDate);
+  const dynamicCategory = (item as Record<string, unknown>)[scheduleCategoryField];
+  const categoryRaw = (typeof dynamicCategory === 'string' ? dynamicCategory : undefined) ?? item.cr014_category ?? item.Category ?? null;
+  const assignedUsers = toUserArray(item.AssignedStaff);
+  const targetUsers = toUserArray(item.TargetUser);
+  const staffLookupIds = toLookupIdList(item.AssignedStaffId);
+  const targetLookupIds = toLookupIdList(item.TargetUserId);
+  const staffIdentifiers = userIdentifierList(assignedUsers);
+  const staffIds = item.cr014_staffIds ?? staffLookupIds ?? staffIdentifiers;
+  const staffNames = item.cr014_staffNames ?? extractUserNames(assignedUsers);
+  const staffEmails = staffIdentifiers.length ? staffIdentifiers : undefined;
+  const targetUserIdentifiers = userIdentifierList(targetUsers);
+  const targetUserEmails = targetUserIdentifiers;
+  const targetUserNames = extractUserNames(targetUsers);
+  const personName = item.cr014_personName ?? targetUserNames[0] ?? undefined;
   return {
     id: item.Id,
     title: item.Title,
-    start: item.EventDate,
-    end: item.EndDate,
+    start,
+    end,
     allDay: !!item.AllDay,
-    category: normalizeCategory(item.cr014_category),
-    personName: item.cr014_personName,
-    staffIds: item.cr014_staffIds,
-    staffNames: item.cr014_staffNames,
-    dayKey: (item.cr014_dayKey as string) ?? undefined,
+    category: normalizeCategory(categoryRaw),
+    personName,
+    targetUserNames: targetUserNames.length ? targetUserNames : undefined,
+  targetUserEmails: targetUserEmails.length ? targetUserEmails : undefined,
+  targetUserIds: targetLookupIds?.length ? targetLookupIds : undefined,
+    staffIds,
+    staffNames: staffNames && staffNames.length ? staffNames : undefined,
+    staffEmails,
+    dayKey: (item.cr014_dayKey as string) ?? deriveDayKey(start),
+    etag: item['@odata.etag'],
     // raw: item,
   };
 }

@@ -76,6 +76,7 @@ declare module '@/features/schedule/components/BriefingPanel' {
 
 declare module '@/features/schedule/dateutils.local' {
   export function getLocalDateKey(input: Date | string, timeZone?: string): string;
+  export function getLocalDateMonthKey(input: Date | string, timeZone?: string): string;
   export function startOfDay(input: Date | string, timeZone?: string): Date;
   export function endOfDay(input: Date | string, timeZone?: string): Date;
   export function startOfDayUtc(input: Date | string, timeZone?: string): Date;

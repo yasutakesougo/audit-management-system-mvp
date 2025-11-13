@@ -19,3 +19,19 @@ export async function waitForScheduleReady(page: Page, timeout = 15_000): Promis
 
   await expect(grid.or(emptyState)).toBeVisible({ timeout });
 }
+
+export async function waitForDayScheduleReady(page: Page, timeout = 15_000): Promise<void> {
+  const pageRoot = page.getByTestId('schedules-day-page');
+  const skeleton = page.getByTestId('schedules-day-skeleton');
+  const list = page.getByTestId('schedules-day-list');
+  const emptyState = page.getByTestId('schedules-empty');
+
+  await expect(pageRoot).toBeVisible({ timeout });
+  await expect(list.or(emptyState).or(skeleton)).toBeVisible({ timeout });
+
+  if (await skeleton.isVisible().catch(() => false)) {
+    await skeleton.waitFor({ state: 'detached', timeout }).catch(() => undefined);
+  }
+
+  await expect(list.or(emptyState)).toBeVisible({ timeout });
+}

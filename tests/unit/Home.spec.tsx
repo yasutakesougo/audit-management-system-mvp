@@ -1,10 +1,9 @@
-import React from 'react';
-import { screen } from '@testing-library/react';
-import { ThemeProvider, createTheme } from '@mui/material/styles';
-import { describe, expect, it, vi, beforeEach } from 'vitest';
 import Home from '@/app/Home';
-import { FeatureFlagsProvider, type FeatureFlagSnapshot } from '@/config/featureFlags';
 import { routerFutureFlags } from '@/app/routerFuture';
+import { FeatureFlagsProvider, type FeatureFlagSnapshot } from '@/config/featureFlags';
+import { ThemeProvider, createTheme } from '@mui/material/styles';
+import { screen } from '@testing-library/react';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { renderWithAppProviders } from '../helpers/renderWithAppProviders';
 
 const isDemoModeEnabledMock = vi.fn((): boolean => false);

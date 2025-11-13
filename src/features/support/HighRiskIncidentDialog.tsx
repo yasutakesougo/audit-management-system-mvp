@@ -1,3 +1,16 @@
+import {
+  antecedentValues,
+  behaviorValues,
+  consequenceValues,
+  createEmptyIncidentDraft,
+  deriveSuggestedFunction,
+  functionValues,
+  highRiskIncidentDraftSchema,
+  severityValues,
+  type ConsequenceValue,
+  type FunctionValue,
+  type HighRiskIncidentDraft,
+} from '../../domain/support/highRiskIncident';
 import Alert from '@mui/material/Alert';
 import Autocomplete from '@mui/material/Autocomplete';
 import Box from '@mui/material/Box';
@@ -12,11 +25,11 @@ import Divider from '@mui/material/Divider';
 import FormControl from '@mui/material/FormControl';
 import FormControlLabel from '@mui/material/FormControlLabel';
 import FormGroup from '@mui/material/FormGroup';
-import Grid from '@mui/material/PigmentGrid';
 import InputLabel from '@mui/material/InputLabel';
 import MenuItem from '@mui/material/MenuItem';
-import Select from '@mui/material/Select';
+import Grid from '@mui/material/PigmentGrid';
 import type { SelectChangeEvent } from '@mui/material/Select';
+import Select from '@mui/material/Select';
 import Slider, { type SliderProps } from '@mui/material/Slider';
 import Stack from '@mui/material/Stack';
 import Step from '@mui/material/Step';
@@ -27,21 +40,8 @@ import TextField from '@mui/material/TextField';
 import ToggleButton from '@mui/material/ToggleButton';
 import ToggleButtonGroup from '@mui/material/ToggleButtonGroup';
 import Typography from '@mui/material/Typography';
-import { useEffect, useMemo, useState } from 'react';
 import type { ChangeEvent, SyntheticEvent } from 'react';
-import {
-  antecedentValues,
-  behaviorValues,
-  consequenceValues,
-  createEmptyIncidentDraft,
-  deriveSuggestedFunction,
-  functionValues,
-  highRiskIncidentDraftSchema,
-  severityValues,
-  type ConsequenceValue,
-  type FunctionValue,
-  type HighRiskIncidentDraft,
-} from '@/domain/support/highRiskIncident';
+import { useEffect, useMemo, useState } from 'react';
 import { TESTIDS, tid } from '../../testids';
 
 const steps = [
@@ -190,8 +190,8 @@ export const HighRiskIncidentDialog: React.FC<HighRiskIncidentDialogProps> = ({
       consequence: {
         ...prev.consequence,
         consequenceReceived: prev.consequence.consequenceReceived.includes(value)
-          ? (prev.consequence.consequenceReceived.filter((item) => item !== value) as ConsequenceValue[])
-          : ([...prev.consequence.consequenceReceived, value] as ConsequenceValue[]),
+          ? prev.consequence.consequenceReceived.filter(item => item !== value)
+          : [...prev.consequence.consequenceReceived, value],
       },
     }));
   };
@@ -316,7 +316,7 @@ export const HighRiskIncidentDialog: React.FC<HighRiskIncidentDialogProps> = ({
             step={1}
             marks={intensityMarks}
             valueLabelDisplay="auto"
-            onChange={(_event: Event, value) => {
+            onChange={(_event: Event, value: number | number[]) => {
               const nextValue = Array.isArray(value) ? value[0] : value;
               if (typeof nextValue === 'number') {
                 const clamped = Math.max(1, Math.min(5, nextValue)) as IntensityLevel;
@@ -452,7 +452,7 @@ export const HighRiskIncidentDialog: React.FC<HighRiskIncidentDialogProps> = ({
             { value: 3, label: '3' },
           ]}
           valueLabelDisplay="auto"
-          onChange={(_event: Event, value) => {
+          onChange={(_event: Event, value: number | number[]) => {
             const nextValue = Array.isArray(value) ? value[0] : value;
             if (nextValue === 1 || nextValue === 2 || nextValue === 3) {
               handleHypothesisChange('confidenceLevel', nextValue as ConfidenceLevel);

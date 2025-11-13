@@ -1,0 +1,20 @@
+name: schedule-guardrails
+
+on: [push, pull_request]
+
+jobs:
+  schedule:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - run: npm ci
+      - name: Unit (week overlap)
+        run: npm run test:schedule:unit
+      - name: E2E (ARIA smoke, fixtures)
+        env:
+          VITE_SCHEDULE_FIXTURES: "1"
+          VITE_SKIP_LOGIN: "1"
+        run: npm run test:schedule:e2e
