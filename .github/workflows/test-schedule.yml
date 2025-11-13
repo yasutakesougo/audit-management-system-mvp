@@ -11,6 +11,10 @@ jobs:
         with:
           node-version: 20
       - run: npm ci
+      - name: Verify dependencies (early detection)
+        run: |
+          npm ls dayjs || true
+          node -e "console.log('dayjs resolved:', require.resolve('dayjs'))"
       - name: Unit (week overlap)
         run: npm run test:schedule:unit
       - name: E2E (ARIA smoke, fixtures)
