@@ -2,7 +2,7 @@ import { getAppConfig } from '../lib/env';
 
 const appConfig = getAppConfig();
 
-if (import.meta.env.DEV) {
+if (appConfig.isDev) {
   const clientId = appConfig.VITE_MSAL_CLIENT_ID;
   const tenantId = appConfig.VITE_MSAL_TENANT_ID;
   if (!clientId || !tenantId || /dummy/i.test(`${clientId ?? ''}${tenantId ?? ''}`)) {
