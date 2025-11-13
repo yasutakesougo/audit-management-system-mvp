@@ -45,3 +45,24 @@ jobs:
           fi
           payload=$(jq -n --arg repo "${GITHUB_REPOSITORY}" --arg run "${GITHUB_RUN_ID}" --arg url "${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}" '{text: "🚨 Nightly health failed", repository: $repo, runId: $run, url: $url}')
           curl -X POST -H "Content-Type: application/json" -d "$payload" "$WEBHOOK_URL"
+
+  typecheck-monitoring:
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - run: npm ci
+      - name: Comprehensive TypeCheck
+        id: typecheck
+        continue-on-error: true
+        run: npm run typecheck:full 2>&1 | tee typecheck-errors.txt
+      - name: Upload typecheck errors artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: typecheck-errors
+          path: typecheck-errors.txt
+          if-no-files-found: ignore
