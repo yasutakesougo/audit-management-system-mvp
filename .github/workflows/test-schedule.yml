@@ -17,6 +17,8 @@ jobs:
           node -e "console.log('dayjs resolved:', require.resolve('dayjs'))"
       - name: Unit (week overlap)
         run: npm run test:schedule:unit
+      - name: Install Playwright browsers
+        run: npx playwright install chromium
       - name: E2E (ARIA smoke, fixtures)
         env:
           VITE_SCHEDULE_FIXTURES: "1"
