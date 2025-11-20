@@ -1,5 +1,6 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { HYDRATION_FEATURES, estimatePayloadSize, startFeatureSpan } from '@/hydration/features';
 import dayjs, { type Dayjs } from 'dayjs';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 
 const PARAM_FMT = 'YYYY-MM-DD';
@@ -147,14 +148,27 @@ export function useAnchoredPeriod(kind: PeriodKind) {
   }, [anchor, kind, searchParams, setSearchParams]);
 
   const range = useMemo(() => {
-    const from = startOf(kind, anchor);
-    const to = endOf(kind, from);
-    return {
-      fromISO: from.toDate().toISOString(),
-      toISO: to.toDate().toISOString(),
-      label: formatLabel(kind, anchor),
-      param: fmtParam(anchor),
-    };
+    const span = startFeatureSpan(HYDRATION_FEATURES.schedules.range, {
+      kind,
+    });
+    try {
+      const from = startOf(kind, anchor);
+      const to = endOf(kind, from);
+      const payload = {
+        fromISO: from.toDate().toISOString(),
+        toISO: to.toDate().toISOString(),
+        label: formatLabel(kind, anchor),
+        param: fmtParam(anchor),
+      };
+      span({ meta: { status: 'ok', bytes: estimatePayloadSize(payload) } });
+      return payload;
+    } catch (error) {
+      span({
+        meta: { status: 'error' },
+        error: error instanceof Error ? error.message : String(error),
+      });
+      throw error;
+    }
   }, [anchor, kind]);
 
   const navigate = useCallback(

@@ -17,12 +17,14 @@ declare module '@/features/schedule/AllDayChip' {
 
 declare module '@/features/schedule/write' {
   import type { UseSP } from '@/lib/spClient';
+
   export type UpdateScheduleRequest = {
     id: number;
     etag?: string;
     patch: Record<string, unknown>;
   };
-  export async function updateSchedule(sp: UseSP, request: UpdateScheduleRequest): Promise<void>;
+
+  export function updateSchedule(sp: UseSP, request: UpdateScheduleRequest): Promise<void>;
 }
 
 declare module '@/hooks/useFiltersSync' {
@@ -99,8 +101,7 @@ declare module '@/features/schedule/move' {
 }
 
 declare module '@/features/schedule/workPattern' {
-  import type { BaseShiftWarning } from '@/features/schedule/types';
-  import type { Schedule } from '@/features/schedule/types';
+  import type { BaseShiftWarning, Schedule } from '@/features/schedule/types';
   import type { Staff } from '@/types';
   export type StaffPatternIndex = Record<string, {
     staffId: string;
@@ -170,6 +171,7 @@ declare module '@fluentui/react' {
     error = 2,
     severeWarning = 3,
     success = 4,
+    blocked = 5,
   }
   export const MessageBar: FC<{
     messageBarType?: MessageBarType;

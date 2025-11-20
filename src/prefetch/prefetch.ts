@@ -26,6 +26,13 @@ export type PrefetchHandle = {
 
 const controllers = new Map<string, AbortController>();
 
+/**
+ * Aborts a prefetch operation by key.
+ * @param key The prefetch key to abort
+ * @note Only aborts the most recently started prefetch for the given key.
+ * If multiple prefetch operations were started with the same key,
+ * only the latest one will be aborted.
+ */
 export const abortPrefetch = (key: string): void => {
   const controller = controllers.get(key);
   if (!controller) {
@@ -35,6 +42,13 @@ export const abortPrefetch = (key: string): void => {
   controller.abort();
 };
 
+/**
+ * Initiates a prefetch operation with caching, abort handling, and network conditions.
+ * @param request The prefetch request configuration
+ * @returns A handle to monitor and control the prefetch operation
+ * @note If a prefetch with the same key is already fresh (within TTL),
+ * returns a reused handle without starting a new operation.
+ */
 export const prefetch = ({ key, importer, source, ttlMs, meta, signal }: PrefetchRequest): PrefetchHandle => {
   if (isPrefetchFresh(key, ttlMs)) {
     markPrefetchReuse(key, source, meta);
@@ -70,7 +84,6 @@ export const prefetch = ({ key, importer, source, ttlMs, meta, signal }: Prefetc
     }
   }
 
-  let cancelled = false;
   beginPrefetch(key, source, meta, ttlMs);
 
   const wrappedImport = async () => {
@@ -81,8 +94,12 @@ export const prefetch = ({ key, importer, source, ttlMs, meta, signal }: Prefetc
           controller.signal.addEventListener(
             'abort',
             () => {
-              cancelled = true;
-              reject(controller.signal.reason ?? new DOMException('Prefetch aborted', 'AbortError'));
+              const abortError =
+                controller.signal.reason ??
+                (typeof DOMException !== 'undefined'
+                  ? new DOMException('Prefetch aborted', 'AbortError')
+                  : new Error('Prefetch aborted'));
+              reject(abortError);
             },
             { once: true }
           );
@@ -92,7 +109,7 @@ export const prefetch = ({ key, importer, source, ttlMs, meta, signal }: Prefetc
       finalizePrefetch(key, 'completed');
       return race;
     } catch (error) {
-      if (controller.signal.aborted || cancelled) {
+      if (controller.signal.aborted) {
         finalizePrefetch(key, 'aborted', error);
       } else {
         finalizePrefetch(key, 'error', error);

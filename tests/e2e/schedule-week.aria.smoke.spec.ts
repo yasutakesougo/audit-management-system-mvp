@@ -1,4 +1,4 @@
-import { test, expect } from '@playwright/test';
+import { expect, test } from '@playwright/test';
 
 test.describe('Schedules week ARIA smoke', () => {
   test('announces heading and exposes list semantics', async ({ page }) => {

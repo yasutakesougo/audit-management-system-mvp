@@ -1,8 +1,16 @@
 import { shouldTriggerNavShellHud } from '@/app/AppShell';
 import { describe, expect, it } from 'vitest';
 
-const createEvent = (init: Partial<KeyboardEvent> = {}) =>
-  new KeyboardEvent('keydown', { altKey: true, key: 'p', ...init });
+const createEvent = (init: Partial<KeyboardEvent> = {}, target?: HTMLElement) => {
+  const event = new KeyboardEvent('keydown', { altKey: true, key: 'p', ...init });
+  if (target) {
+    Object.defineProperty(event, 'target', {
+      value: target,
+      configurable: true
+    });
+  }
+  return event;
+};
 
 describe('shouldTriggerNavShellHud', () => {
   it('fires on Alt+P without editable focus', () => {
@@ -19,7 +27,7 @@ describe('shouldTriggerNavShellHud', () => {
     const input = document.createElement('input');
     document.body.appendChild(input);
     input.focus();
-    expect(shouldTriggerNavShellHud(createEvent())).toBe(false);
+    expect(shouldTriggerNavShellHud(createEvent({}, input))).toBe(false);
     input.remove();
   });
 

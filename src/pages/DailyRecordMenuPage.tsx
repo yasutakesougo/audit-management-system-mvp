@@ -1,8 +1,9 @@
-import ActivityIcon from '@mui/icons-material/EventNote';
 import AssignmentIcon from '@mui/icons-material/Assignment';
 import AttendanceIcon from '@mui/icons-material/AssignmentInd';
-import PeopleIcon from '@mui/icons-material/People';
 import SupportIcon from '@mui/icons-material/AssignmentTurnedIn';
+import ActivityIcon from '@mui/icons-material/EventNote';
+import GroupIcon from '@mui/icons-material/Group';
+import PeopleIcon from '@mui/icons-material/People';
 import Box from '@mui/material/Box';
 import Button from '@mui/material/Button';
 import Card from '@mui/material/Card';
@@ -13,15 +14,20 @@ import Container from '@mui/material/Container';
 import Paper from '@mui/material/Paper';
 import Stack from '@mui/material/Stack';
 import Typography from '@mui/material/Typography';
-import React from 'react';
+import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { BulkDailyRecordForm } from '../features/daily/BulkDailyRecordForm';
 import { useUsersDemo } from '../features/users/usersStoreDemo';
 
 const DailyRecordMenuPage: React.FC = () => {
   const navigate = useNavigate();
-  const { data: users } = useUsersDemo();
+  const { data: usersRaw } = useUsersDemo();
+  const users = usersRaw ?? []; // ← 常に配列にしておく
 
-  // 統計計算
+  // 複数利用者フォーム状態
+  const [bulkFormOpen, setBulkFormOpen] = useState(false);
+
+  // 統計計算（安全ガード付き）
   const totalUsers = users.length;
   const intensiveSupportUsers = users.filter(user => user.IsSupportProcedureTarget).length;
 
@@ -30,8 +36,42 @@ const DailyRecordMenuPage: React.FC = () => {
   const mockAttendanceProgress = Math.floor(totalUsers * 0.68); // 68%完了
   const mockSupportProgress = Math.floor(intensiveSupportUsers * 0.6); // 60%完了
 
+  // 安全な割合計算
+  const activityPercent =
+    totalUsers > 0 ? Math.round((mockActivityProgress / totalUsers) * 100) : 0;
+  const attendancePercent =
+    totalUsers > 0 ? Math.round((mockAttendanceProgress / totalUsers) * 100) : 0;
+  const supportPercent =
+    intensiveSupportUsers > 0 ? Math.round((mockSupportProgress / intensiveSupportUsers) * 100) : 0;
+
+  // 複数利用者記録保存ハンドラ
+  const handleBulkSave = async (data: {
+    date: string;
+    reporter: { name: string; role: string };
+    commonActivities: {
+      amActivities: string[];
+      pmActivities: string[];
+      amNotes: string;
+      pmNotes: string;
+    };
+    individualNotes: Record<string, { specialNotes?: string }>;
+  }, selectedUserIds: string[]) => {
+    console.log('複数利用者記録保存:', { data, selectedUserIds });
+
+    // TODO: 実際の保存処理を実装
+    // 1. 各利用者に対して個別の記録を作成
+    // 2. 共通活動データと個別メモを結合
+    // 3. SharePoint または API に保存
+
+    // モック保存処理
+    await new Promise(resolve => setTimeout(resolve, 1000));
+
+    alert(`${selectedUserIds.length}人分の活動記録を保存しました`);
+    setBulkFormOpen(false);
+  };
+
   return (
-    <Container maxWidth="lg">
+    <Container maxWidth="lg" data-testid="daily-record-menu">
       <Box sx={{ py: 4 }}>
         {/* ヘッダー */}
         <Box sx={{ mb: 4, textAlign: 'center' }}>
@@ -49,8 +89,79 @@ const DailyRecordMenuPage: React.FC = () => {
           spacing={4}
           sx={{ mb: 4, flexWrap: 'wrap' }}
         >
-          {/* 活動日誌 */}
+          {/* 一覧形式ケース記録 IMPROVED */}
           <Card
+            data-testid="daily-card-table-activity"
+            sx={{
+              flex: 1,
+              display: 'flex',
+              flexDirection: 'column',
+              transition: 'transform 0.2s, elevation 0.2s',
+              border: '2px solid',
+              borderColor: 'primary.main',
+              '&:hover': {
+                transform: 'translateY(-4px)',
+                elevation: 8
+              }
+            }}
+          >
+            <CardContent sx={{ flexGrow: 1, p: 3 }}>
+              <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
+                <GroupIcon sx={{ fontSize: 32, color: 'primary.main', mr: 2 }} />
+                <Typography variant="h5" component="h2">
+                  一覧形式ケース記録
+                </Typography>
+                <Chip
+                  label="IMPROVED"
+                  size="small"
+                  color="primary"
+                  sx={{ ml: 1 }}
+                />
+              </Box>
+
+              <Typography variant="body1" color="text.secondary" sx={{ mb: 2 }}>
+                利用者を行として表形式で並べて効率的に一覧入力できます
+              </Typography>
+
+              <Stack spacing={1}>
+                <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                  <PeopleIcon sx={{ fontSize: 16, mr: 1, color: 'text.secondary' }} />
+                  <Typography variant="body2" color="text.secondary">
+                    対象：選択した複数利用者
+                  </Typography>
+                </Box>
+                <Typography variant="body2" color="text.secondary">
+                  📋 利用者＝行、項目＝列の表形式
+                </Typography>
+                <Typography variant="body2" color="text.secondary">
+                  ⚡ AM活動・PM活動・昼食・問題行動を横並び
+                </Typography>
+                <Typography variant="body2" color="text.secondary">
+                  🎯 タブ移動でサクサク入力
+                </Typography>
+                <Typography variant="body2" color="text.secondary">
+                  🔍 検索・フィルタで利用者選択
+                </Typography>
+              </Stack>
+            </CardContent>
+
+            <CardActions sx={{ p: 3, pt: 0 }}>
+              <Button
+                variant="contained"
+                size="large"
+                fullWidth
+                onClick={() => navigate('/daily/table')}
+                startIcon={<GroupIcon />}
+                data-testid="btn-open-table-activity"
+              >
+                一覧形式で記録作成
+              </Button>
+            </CardActions>
+          </Card>
+
+          {/* 支援記録（ケース記録） */}
+          <Card
+            data-testid="daily-card-activity"
             sx={{
               flex: 1,
               display: 'flex',
@@ -66,12 +177,12 @@ const DailyRecordMenuPage: React.FC = () => {
               <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
                 <ActivityIcon sx={{ fontSize: 32, color: 'primary.main', mr: 2 }} />
                 <Typography variant="h5" component="h2">
-                  活動日誌
+                  支援記録（ケース記録）
                 </Typography>
               </Box>
 
               <Typography variant="body1" color="text.secondary" sx={{ mb: 2 }}>
-                利用者全員の日々の活動状況を記録します
+                利用者を1人ずつ選択して詳細な記録を作成します
               </Typography>
 
                 <Stack spacing={1}>
@@ -106,14 +217,16 @@ const DailyRecordMenuPage: React.FC = () => {
                 fullWidth
                 onClick={() => navigate('/daily/activity')}
                 startIcon={<ActivityIcon />}
+                data-testid="btn-open-activity"
               >
-                活動日誌を開く
+                支援記録（ケース記録）を開く
               </Button>
             </CardActions>
           </Card>
 
           {/* 通所管理 */}
           <Card
+            data-testid="daily-card-attendance"
             sx={{
               flex: 1,
               display: 'flex',
@@ -167,6 +280,7 @@ const DailyRecordMenuPage: React.FC = () => {
                 color="info"
                 onClick={() => navigate('/daily/attendance')}
                 startIcon={<AttendanceIcon />}
+                data-testid="btn-open-attendance"
               >
                 通所管理を開く
               </Button>
@@ -175,6 +289,7 @@ const DailyRecordMenuPage: React.FC = () => {
 
           {/* 支援手順記録 */}
           <Card
+            data-testid="daily-card-support"
             sx={{
               flex: 1,
               display: 'flex',
@@ -237,6 +352,7 @@ const DailyRecordMenuPage: React.FC = () => {
                 color="secondary"
                 onClick={() => navigate('/daily/support')}
                 startIcon={<SupportIcon />}
+                data-testid="btn-open-support"
               >
                 支援手順記録を開く
               </Button>
@@ -245,7 +361,7 @@ const DailyRecordMenuPage: React.FC = () => {
         </Stack>
 
         {/* 統計情報（簡易版） */}
-        <Paper sx={{ p: 3 }}>
+        <Paper sx={{ p: 3 }} data-testid="daily-stats-summary">
           <Typography variant="h6" gutterBottom>
             本日の記録状況
           </Typography>
@@ -255,19 +371,19 @@ const DailyRecordMenuPage: React.FC = () => {
             spacing={3}
             divider={<Box sx={{ borderLeft: '1px solid', borderColor: 'divider', height: '60px', display: { xs: 'none', sm: 'block' } }} />}
           >
-            <Box sx={{ textAlign: 'center', flex: 1 }}>
+            <Box sx={{ textAlign: 'center', flex: 1 }} data-testid="daily-stats-activity">
               <Typography variant="h4" color="primary.main">
                 {mockActivityProgress} / {totalUsers}
               </Typography>
               <Typography variant="body2" color="text.secondary">
-                活動日誌 記録済み
+                支援記録（ケース記録） 記録済み
               </Typography>
               <Typography variant="caption" color="success.main">
-                {Math.round((mockActivityProgress / totalUsers) * 100)}% 完了
+                {activityPercent}% 完了
               </Typography>
             </Box>
 
-            <Box sx={{ textAlign: 'center', flex: 1 }}>
+            <Box sx={{ textAlign: 'center', flex: 1 }} data-testid="daily-stats-attendance">
               <Typography variant="h4" color="info.main">
                 {mockAttendanceProgress} / {totalUsers}
               </Typography>
@@ -275,11 +391,11 @@ const DailyRecordMenuPage: React.FC = () => {
                 通所管理 進捗
               </Typography>
               <Typography variant="caption" color="info.main">
-                {Math.round((mockAttendanceProgress / totalUsers) * 100)}% 完了
+                {attendancePercent}% 完了
               </Typography>
             </Box>
 
-            <Box sx={{ textAlign: 'center', flex: 1 }}>
+            <Box sx={{ textAlign: 'center', flex: 1 }} data-testid="daily-stats-support">
               <Typography variant="h4" color="secondary.main">
                 {mockSupportProgress} / {intensiveSupportUsers}
               </Typography>
@@ -287,11 +403,19 @@ const DailyRecordMenuPage: React.FC = () => {
                 支援手順記録 記録済み
               </Typography>
               <Typography variant="caption" color="warning.main">
-                {intensiveSupportUsers > 0 ? Math.round((mockSupportProgress / intensiveSupportUsers) * 100) : 0}% 完了
+                {supportPercent}% 完了
               </Typography>
             </Box>
           </Stack>
         </Paper>
+
+        {/* 複数利用者支援記録（ケース記録）フォーム（旧版） */}
+        <BulkDailyRecordForm
+          open={bulkFormOpen}
+          onClose={() => setBulkFormOpen(false)}
+          onSave={handleBulkSave}
+        />
+
       </Box>
     </Container>
   );

@@ -1,22 +1,22 @@
 import { useStaff } from "@/stores/useStaff";
-import type { Staff, StaffUpsert } from "@/types";
+import type { Staff } from "@/types";
 import CloseIcon from '@mui/icons-material/Close';
 import PersonIcon from '@mui/icons-material/Person';
 import SaveIcon from '@mui/icons-material/Save';
 import WorkIcon from '@mui/icons-material/Work';
 import {
-    Alert,
-    Box,
-    Button,
-    Checkbox,
-    Chip,
-    CircularProgress,
-    FormControlLabel,
-    IconButton,
-    Paper,
-    Snackbar,
-    TextField,
-    Typography,
+  Alert,
+  Box,
+  Button,
+  Checkbox,
+  Chip,
+  CircularProgress,
+  FormControlLabel,
+  IconButton,
+  Paper,
+  Snackbar,
+  TextField,
+  Typography,
 } from "@mui/material";
 import { createRef, FormEvent, useCallback, useEffect, useMemo, useRef, useState } from "react";
 
@@ -74,19 +74,25 @@ const sanitize = (value: string) => {
   return trimmed.length ? trimmed : undefined;
 };
 
-const toUpsert = (values: FormValues): StaffUpsert => ({
-  StaffID: sanitize(values.StaffID),
-  FullName: sanitize(values.FullName),
-  Email: sanitize(values.Email),
-  Phone: sanitize(values.Phone),
-  Role: sanitize(values.Role),
-  WorkDays: values.WorkDays.length ? values.WorkDays : undefined,
-  Certifications: values.Certifications.length ? values.Certifications : undefined,
-  IsActive: values.IsActive,
-  BaseShiftStartTime: values.BaseShiftStartTime.trim() ? values.BaseShiftStartTime.trim() : null,
-  BaseShiftEndTime: values.BaseShiftEndTime.trim() ? values.BaseShiftEndTime.trim() : null,
-  BaseWorkingDays: values.BaseWorkingDays,
-});
+const toStaffStorePayload = (values: FormValues): Partial<Staff> => {
+  const baseStart = values.BaseShiftStartTime.trim();
+  const baseEnd = values.BaseShiftEndTime.trim();
+  const workingDays = values.BaseWorkingDays.filter(Boolean);
+
+  return {
+    staffId: sanitize(values.StaffID),
+    name: sanitize(values.FullName),
+    email: sanitize(values.Email),
+    phone: sanitize(values.Phone),
+    role: sanitize(values.Role),
+    workDays: values.WorkDays.length ? [...values.WorkDays] : undefined,
+    certifications: values.Certifications.length ? [...values.Certifications] : undefined,
+    active: values.IsActive,
+    baseShiftStartTime: baseStart ? baseStart : undefined,
+    baseShiftEndTime: baseEnd ? baseEnd : undefined,
+    baseWorkingDays: workingDays.length ? [...workingDays] : undefined,
+  };
+};
 
 
 const CERTIFICATION_OPTIONS: { value: string; label: string }[] = [
@@ -300,7 +306,7 @@ export function StaffForm({ staff, mode = staff ? "update" : "create", onSuccess
       setMessage(null);
       setErrors({});
 
-      const payload = toUpsert(values);
+      const payload = toStaffStorePayload(values);
 
       try {
         let result: Staff | null = null;

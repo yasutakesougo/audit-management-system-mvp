@@ -14,7 +14,7 @@ import Tabs from '@mui/material/Tabs';
 import Typography from '@mui/material/Typography';
 import React, { useCallback, useMemo, useRef, useState } from 'react';
 import { Link as RouterLink, useNavigate } from 'react-router-dom';
-import { TESTIDS } from '@/testids';
+import { TESTIDS, tidWithSuffix } from '@/testids';
 import type { IUserMaster } from '../types';
 import { formatDateLabel, renderHighlights, resolveUserIdentifier } from './helpers';
 import {
@@ -264,7 +264,7 @@ const UserDetailSections: React.FC<UserDetailSectionsProps> = ({ user, backLink,
             {quickAccessSections.map((section) => (
               <Button
                 key={`quick-${section.key}`}
-                data-testid={`${TESTIDS['users-quick-prefix']}${section.key}`}
+                {...tidWithSuffix(TESTIDS['users-quick-prefix'], section.key)}
                 variant={section.key === 'create-user' ? 'contained' : 'outlined'}
                 color={section.key === 'create-user' ? 'primary' : 'inherit'}
                 size="small"
@@ -304,7 +304,7 @@ const UserDetailSections: React.FC<UserDetailSectionsProps> = ({ user, backLink,
               return (
                 <Grid key={section.key} size={{ xs: 12, sm: 6, md: 4 }}>
                   <Paper
-                    data-testid={`${TESTIDS['user-menu-card-prefix']}${section.key}`}
+                    {...tidWithSuffix(TESTIDS['user-menu-card-prefix'], section.key)}
                     variant="outlined"
                     sx={{
                       p: 2.5,
@@ -395,7 +395,7 @@ const UserDetailSections: React.FC<UserDetailSectionsProps> = ({ user, backLink,
                 role="tabpanel"
                 hidden={!isTabActive}
                 id={`user-menu-tabpanel-${section.key}`}
-                data-testid={`${TESTIDS['user-menu-tabpanel-prefix']}${section.key}`}
+                {...tidWithSuffix(TESTIDS['user-menu-tabpanel-prefix'], section.key)}
                 aria-labelledby={`user-menu-tab-${section.key}`}
                 sx={{ mt: 2 }}
               >
@@ -437,7 +437,7 @@ const UserDetailSections: React.FC<UserDetailSectionsProps> = ({ user, backLink,
           <Paper
             key={section.key}
             id={section.anchor}
-            data-testid={`${TESTIDS['user-menu-section-prefix']}${section.key}`}
+            {...tidWithSuffix(TESTIDS['user-menu-section-prefix'], section.key)}
             variant="outlined"
             sx={{
               p: { xs: 2.5, md: 3 },

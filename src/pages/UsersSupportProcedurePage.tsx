@@ -107,7 +107,7 @@ const UsersSupportProcedurePage: FC = () => (
       <Paper elevation={1} sx={{ p: { xs: 3, md: 4 } }}>
         <Stack spacing={3}>
           <Box>
-            <Typography variant="h4" component="h2" fontWeight={600}>
+            <Typography variant="h4" component="h2" fontWeight={600} data-testid="support-procedure-section-scenarios">
               導入シナリオと業務ゴール
             </Typography>
             <Typography variant="body2" color="text.secondary">
@@ -127,40 +127,42 @@ const UsersSupportProcedurePage: FC = () => (
       <Paper elevation={1} sx={{ p: { xs: 3, md: 4 } }}>
         <Stack spacing={3}>
           <Box>
-            <Typography variant="h4" component="h2" fontWeight={600}>
+            <Typography variant="h4" component="h2" fontWeight={600} data-testid="support-procedure-section-workflow">
               ランブック視点のワークフロー
             </Typography>
             <Typography variant="body2" color="text.secondary">
               支援の準備から振り返りまでのフェーズを標準化し、各段階で必要なコラボレーションと記録の粒度を定義します。
             </Typography>
           </Box>
-          <Table size="small" sx={{ minWidth: 360 }}>
-            <TableHead>
-              <TableRow>
-                <TableCell sx={{ fontWeight: 600 }}>フェーズ</TableCell>
-                <TableCell>目的と着目点</TableCell>
-                <TableCell>連携・通知</TableCell>
-                <TableCell>ログ・証跡</TableCell>
-              </TableRow>
-            </TableHead>
-            <TableBody>
-              {workflowRows.map((row) => (
-                <TableRow key={row.phase}>
-                  <TableCell sx={{ fontWeight: 600 }}>{row.phase}</TableCell>
-                  <TableCell>{row.focus}</TableCell>
-                  <TableCell>{row.collaboration}</TableCell>
-                  <TableCell>{row.evidence}</TableCell>
+          <Box sx={{ width: '100%', overflowX: 'auto' }} data-testid="support-procedure-workflow-table">
+            <Table size="small" sx={{ minWidth: 600 }}>
+              <TableHead>
+                <TableRow>
+                  <TableCell sx={{ fontWeight: 600 }}>フェーズ</TableCell>
+                  <TableCell>目的と着目点</TableCell>
+                  <TableCell>連携・通知</TableCell>
+                  <TableCell>ログ・証跡</TableCell>
                 </TableRow>
-              ))}
-            </TableBody>
-          </Table>
+              </TableHead>
+              <TableBody>
+                {workflowRows.map((row) => (
+                  <TableRow key={row.phase}>
+                    <TableCell sx={{ fontWeight: 600 }}>{row.phase}</TableCell>
+                    <TableCell>{row.focus}</TableCell>
+                    <TableCell>{row.collaboration}</TableCell>
+                    <TableCell>{row.evidence}</TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </Box>
         </Stack>
       </Paper>
 
       <Paper elevation={1} sx={{ p: { xs: 3, md: 4 } }}>
         <Stack spacing={3}>
           <Box>
-            <Typography variant="h4" component="h2" fontWeight={600}>
+            <Typography variant="h4" component="h2" fontWeight={600} data-testid="support-procedure-section-checklist">
               データ連携チェックリスト
             </Typography>
             <Typography variant="body2" color="text.secondary">
@@ -180,7 +182,7 @@ const UsersSupportProcedurePage: FC = () => (
       <Paper elevation={1} sx={{ p: { xs: 3, md: 4 } }}>
         <Stack spacing={3}>
           <Box>
-            <Typography variant="h4" component="h2" fontWeight={600}>
+            <Typography variant="h4" component="h2" fontWeight={600} data-testid="support-procedure-section-training">
               運用支援と育成プログラム
             </Typography>
             <Typography variant="body2" color="text.secondary">
@@ -196,6 +198,7 @@ const UsersSupportProcedurePage: FC = () => (
                 md: 'repeat(3, 1fr)',
               },
             }}
+            data-testid="support-procedure-training-modules"
           >
             {trainingModules.map((module) => {
               const [title, ...rest] = module.split(':');
@@ -219,7 +222,7 @@ const UsersSupportProcedurePage: FC = () => (
       <Paper elevation={1} sx={{ p: { xs: 3, md: 4 } }}>
         <Stack spacing={3}>
           <Box>
-            <Typography variant="h4" component="h2" fontWeight={600}>
+            <Typography variant="h4" component="h2" fontWeight={600} data-testid="support-procedure-section-roadmap">
               ロードマップと今後の整備ポイント
             </Typography>
             <Typography variant="body2" color="text.secondary">

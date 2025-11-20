@@ -107,13 +107,10 @@ describe('schedules service', () => {
     expect(sharepoint.create).not.toHaveBeenCalled();
   });
 
-  it('treats invalid day ISO as schema fallback without calling SharePoint', async () => {
-    const result = await service.list('2025-1-1');
-
-    expect(result.source).toBe('demo');
-    expect(result.fallbackKind).toBe('schema');
-    expect(result.fallbackError?.message).toMatch(/invalid dayISO/);
+  it('throws on invalid day ISO before reaching SharePoint', async () => {
+    await expect(service.list('2025-1-1')).rejects.toThrow(/invalid dayISO/);
     expect(sharepoint.list).not.toHaveBeenCalled();
+    expect(demo.list).not.toHaveBeenCalled();
   });
 
   it('falls back to demo list when SharePoint fails and classifies network errors', async () => {

@@ -22,12 +22,13 @@ vi.mock('@/features/nurse/state/offlineQueue', async () => {
 });
 
 const upsertObservationMock = vi.hoisted(() => vi.fn());
+const batchUpsertObservationsMock = vi.hoisted(() => vi.fn());
 
 vi.mock('@/features/nurse/sp/upsert', () => ({
   upsertObservation: upsertObservationMock,
+  batchUpsertObservations: batchUpsertObservationsMock,
 }));
 
-import { upsertObservation } from '@/features/nurse/sp/upsert';
 import { flushNurseQueue } from '@/features/nurse/state/useNurseSync';
 
 describe('flushNurseQueue idempotent observation flow', () => {
@@ -38,6 +39,7 @@ describe('flushNurseQueue idempotent observation flow', () => {
     vi.setSystemTime(new Date('2025-11-07T09:00:00Z'));
     queueState.length = 0;
     upsertObservationMock.mockReset();
+    batchUpsertObservationsMock.mockReset();
   });
 
   afterEach(() => {
@@ -57,14 +59,14 @@ describe('flushNurseQueue idempotent observation flow', () => {
       source: 'observation.form',
     };
     queueState.push(item);
-    upsertObservationMock.mockResolvedValueOnce({ id: 'obs-1', updated: false });
+    batchUpsertObservationsMock.mockResolvedValueOnce([{ key: item.idempotencyKey, ok: true, id: 1, created: false, attempts: 1 }]);
 
     const summary = await flushNurseQueue(fakeSp);
 
     expect(summary.sent).toBe(1);
     expect(summary.errorCount).toBe(0);
     expect(queueState).toHaveLength(0);
-    expect(upsertObservationMock).toHaveBeenCalledTimes(1);
+    expect(batchUpsertObservationsMock).toHaveBeenCalledTimes(1);
   });
 
   it('treats duplicate/idempotent errors as success', async () => {
@@ -80,7 +82,7 @@ describe('flushNurseQueue idempotent observation flow', () => {
       source: 'observation.form',
     };
     queueState.push(item);
-    upsertObservationMock.mockRejectedValueOnce(new Error('already exists: duplicate idempotent'));
+    batchUpsertObservationsMock.mockResolvedValueOnce([{ key: item.idempotencyKey, ok: true, id: 2, created: false, attempts: 1 }]);
 
     const summary = await flushNurseQueue(fakeSp);
 
@@ -105,9 +107,9 @@ describe('flushNurseQueue idempotent observation flow', () => {
       source: 'observation.form',
     };
     queueState.push(item);
-    upsertObservationMock
-      .mockRejectedValueOnce(new Error('network unavailable'))
-      .mockResolvedValueOnce({ id: 'obs-2', updated: false });
+    batchUpsertObservationsMock
+      .mockResolvedValueOnce([{ key: item.idempotencyKey, ok: false, error: 'network unavailable', attempts: 1 }])
+      .mockResolvedValueOnce([{ key: item.idempotencyKey, ok: true, id: 3, created: false, attempts: 1 }]);
 
     const firstSummary = await flushNurseQueue(fakeSp);
     expect(firstSummary.errorCount).toBe(1);
@@ -122,7 +124,7 @@ describe('flushNurseQueue idempotent observation flow', () => {
 
     const secondSummary = await flushNurseQueue(fakeSp);
     expect(secondSummary.totalCount).toBe(0);
-    expect(upsertObservationMock).toHaveBeenCalledTimes(1);
+    expect(batchUpsertObservationsMock).toHaveBeenCalledTimes(1);
 
     vi.advanceTimersByTime(2000);
 
@@ -130,7 +132,7 @@ describe('flushNurseQueue idempotent observation flow', () => {
     expect(finalSummary.sent).toBe(1);
     expect(finalSummary.errorCount).toBe(0);
     expect(queueState).toHaveLength(0);
-    expect(upsertObservationMock).toHaveBeenCalledTimes(2);
+    expect(batchUpsertObservationsMock).toHaveBeenCalledTimes(2);
   });
 
   it('escalates retry delays to 2s, 4s, then 8s on repeated failures', async () => {
@@ -146,7 +148,7 @@ describe('flushNurseQueue idempotent observation flow', () => {
       source: 'observation.form',
     };
     queueState.push(baseItem);
-    upsertObservationMock.mockRejectedValue(new Error('service unavailable'));
+    batchUpsertObservationsMock.mockResolvedValue([{ key: baseItem.idempotencyKey, ok: false, error: 'service unavailable', attempts: 1 }]);
 
     const expectedDelays = [2000, 4000, 8000];
     const observedDelays: number[] = [];
@@ -171,9 +173,6 @@ describe('flushNurseQueue idempotent observation flow', () => {
   });
 
   it('upserts the same minute twice and preserves memo changes', async () => {
-    upsertObservationMock
-      .mockResolvedValueOnce({ id: 'obs-1', updated: false })
-      .mockResolvedValueOnce({ id: 'obs-1', updated: true });
     const first: NurseQueueItem = {
       idempotencyKey: 'I022:observation:2025-11-04T01:23:07Z:test',
       type: 'observation',
@@ -193,6 +192,10 @@ describe('flushNurseQueue idempotent observation flow', () => {
       timestampUtc: '2025-11-04T01:23:58Z',
     };
 
+    batchUpsertObservationsMock
+      .mockResolvedValueOnce([{ key: first.idempotencyKey, ok: true, id: 1, created: false, attempts: 1 }])
+      .mockResolvedValueOnce([{ key: second.idempotencyKey, ok: true, id: 1, created: false, attempts: 1 }]);
+
     queueState.push(first);
     const firstResult = await flushNurseQueue(fakeSp);
     expect(firstResult.sent).toBe(1);
@@ -205,10 +208,11 @@ describe('flushNurseQueue idempotent observation flow', () => {
     expect(secondResult.remaining).toBe(0);
     expect(queueState).toHaveLength(0);
 
-    expect(upsertObservation).toHaveBeenCalledTimes(2);
-    const payloads = upsertObservationMock.mock.calls.map(([, , payload]) => payload as Record<string, unknown>);
-  expect(String(payloads[0].ObsDateTime).startsWith('2025-11-04T01:23')).toBe(true);
-  expect(String(payloads[1].ObsDateTime).startsWith('2025-11-04T01:23')).toBe(true);
+    expect(batchUpsertObservationsMock).toHaveBeenCalledTimes(2);
+    const calls = batchUpsertObservationsMock.mock.calls;
+    const payloads = calls.map(([, , envelopes]) => envelopes[0].item);
+    expect(String(payloads[0].ObservedAt).startsWith('2025-11-04T01:23')).toBe(true);
+    expect(String(payloads[1].ObservedAt).startsWith('2025-11-04T01:23')).toBe(true);
     expect(payloads[0].Memo).toBe('ok');
     expect(payloads[1].Memo).toBe('update');
     expect(payloads[0].IdempotencyKey).toBe(first.idempotencyKey);

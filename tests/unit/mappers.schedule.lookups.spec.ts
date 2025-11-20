@@ -85,7 +85,8 @@ describe('mapSchedule lookup expansions', () => {
     expect(schedule.relatedResourceIds).toEqual([3001, 3002]);
     expect(schedule.relatedResourceNames).toEqual(['会議室A']);
     expect(schedule.billingFlags).toEqual(['夜間', '長時間']);
-    expect(schedule.serviceType).toBe('通常');
+    // mapSchedule normalizes missing/blank serviceType to null
+    expect(schedule.serviceType).toBeNull();
     expect(schedule.rowKey).toBe('row-key');
     expect(schedule.dayKey).toBe('2025-07-01');
     expect(schedule.monthKey).toBe('2025-07');
@@ -117,6 +118,7 @@ describe('mapSchedule lookup expansions', () => {
     expect(schedule.rowKey).toBeNull();
     expect(schedule.dayKey).toBeNull();
     expect(schedule.monthKey).toBeNull();
+    // serviceType should normalize to null once the SharePoint value is missing
     expect(schedule.serviceType).toBeNull();
   });
 });

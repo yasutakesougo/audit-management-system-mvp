@@ -8,22 +8,38 @@ export async function expectUserCardStatusEnum(page: Page, containsText: string,
     .filter({ hasText: containsText })
     .first();
 
-  await expect(card).toBeVisible({ timeout: 10_000 });
+  await expect(card, `User card containing "${containsText}" not found`).toBeVisible({ timeout: 10_000 });
 
   const chip = card.getByTestId('status-chip');
-  await expect(chip).toHaveAttribute('data-status-enum', expectedEnum);
+  await expect(chip, `User card(${containsText}) status should be ${expectedEnum}`).toHaveAttribute(
+    'data-status-enum',
+    expectedEnum
+  );
 
   return card;
 }
 
-export async function enableLiveEnv(page: Page): Promise<void> {
-  await page.addInitScript(() => {
+/**
+ * Live環境設定でのE2Eサンドボックスを準備
+ *
+ * NOTE: "live" 設定だが、SharePoint APIはfetchモックで完全スタブ。
+ * 実際の本番SPには一切リクエストを飛ばさない "Live-config E2E sandbox" 用。
+ * 外向きは live 設定、内側は e2e サンドボックスとして動作する。
+ *
+ * @param page - Playwright Page オブジェクト
+ * @param options - 設定オプション
+ */
+export async function enableLiveEnv(page: Page, options?: { mockSharePoint?: boolean }): Promise<void> {
+  const { mockSharePoint = true } = options ?? {};
+
+  await page.addInitScript(({ mockSharePoint }) => {
     const w = window as typeof window & { __ENV__?: Record<string, string> };
     w.__ENV__ = {
       ...(w.__ENV__ ?? {}),
       VITE_E2E_MSAL_MOCK: '0',
       VITE_SKIP_LOGIN: '0',
       VITE_FEATURE_SCHEDULES: '1',
+      // NOTE: 移行期互換のため、旧VITE_SCHEDULE_FIXTURES / 新VITE_SCHEDULES_FIXTURES の両方をOFF
       VITE_SCHEDULE_FIXTURES: '0',
       VITE_SCHEDULES_FIXTURES: '0',
       VITE_SP_RESOURCE: 'https://isogokatudouhome.sharepoint.com',
@@ -103,24 +119,26 @@ export async function enableLiveEnv(page: Page): Promise<void> {
       };
     }
 
-    const originalFetch = window.fetch.bind(window);
-    window.fetch = async (input, init) => {
-      const url = (() => {
-        if (typeof input === 'string') return input;
-        if (input instanceof URL) return input.href;
-        if (typeof Request !== 'undefined' && input instanceof Request) return input.url;
-        return '';
-      })();
-      if (/\/(_api\/web|sharepoint-api)\//.test(url)) {
-        const body = JSON.stringify({ value: [] });
-        return new Response(body, {
-          status: 200,
-          headers: {
-            'Content-Type': 'application/json;odata=nometadata',
-          },
-        });
-      }
-      return originalFetch(input, init);
-    };
-  });
+    if (mockSharePoint) {
+      const originalFetch = window.fetch.bind(window);
+      window.fetch = async (input, init) => {
+        const url = (() => {
+          if (typeof input === 'string') return input;
+          if (input instanceof URL) return input.href;
+          if (typeof Request !== 'undefined' && input instanceof Request) return input.url;
+          return '';
+        })();
+        if (/\/(_api\/web|sharepoint-api)\//.test(url)) {
+          const body = JSON.stringify({ value: [] });
+          return new Response(body, {
+            status: 200,
+            headers: {
+              'Content-Type': 'application/json;odata=nometadata',
+            },
+          });
+        }
+        return originalFetch(input, init);
+      };
+    }
+  }, { mockSharePoint });
 }

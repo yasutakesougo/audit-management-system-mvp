@@ -1,6 +1,6 @@
 import { format } from 'date-fns';
 import { ja } from 'date-fns/locale';
-import { useCallback, useId, useMemo, useRef, type HTMLAttributes, type MouseEvent } from 'react';
+import { useCallback, useId, useMemo, useRef, type MouseEvent } from 'react';
 // MUI Components
 import Box from '@mui/material/Box';
 import Button from '@mui/material/Button';
@@ -13,6 +13,7 @@ import TodayRoundedIcon from '@mui/icons-material/TodayRounded';
 
 import { startOfDay } from '../dateutils.local';
 import type { Schedule } from '../types';
+import { buildScheduleColorSource, getScheduleServiceLabel } from '../colorSource';
 import TimelineEventCard from './TimelineEventCard';
 import { getTimelineSubtitle, laneLabels, laneOrder } from './TimelineWeek';
 
@@ -298,7 +299,9 @@ export default function TimelineDay({ events, date, onEventCreate, onEventEdit }
                             status={event.status}
                             recurrenceRule={event.recurrenceRule}
                             subtitle={getTimelineSubtitle(event)}
+                            serviceLabel={getScheduleServiceLabel(event)}
                             dayPart={event.category === 'Staff' ? event.dayPart : undefined}
+                            colorSource={buildScheduleColorSource(event)}
                             baseShiftWarnings={event.baseShiftWarnings}
                             containerProps={{
                               'data-schedule-event': 'true',
@@ -307,20 +310,8 @@ export default function TimelineDay({ events, date, onEventCreate, onEventEdit }
                               'data-category': event.category,
                               'data-all-day': event.allDay ? '1' : '0',
                               'data-recurrence': event.recurrenceRule ? '1' : '0',
-                              onClick: handleEventClick(event),
-                              sx: {
-                                boxShadow: 2,
-                                borderRadius: 2,
-                                border: 2,
-                                borderColor: `${laneConfig.color}.main`,
-                                bgcolor: 'background.paper',
-                                cursor: 'pointer',
-                                '&:hover': {
-                                  boxShadow: 4,
-                                  borderColor: `${laneConfig.color}.dark`
-                                }
-                              }
-                            } as HTMLAttributes<HTMLElement>}
+                              onClick: handleEventClick(event)
+                            }}
                           />
                         </Box>
                       ))}

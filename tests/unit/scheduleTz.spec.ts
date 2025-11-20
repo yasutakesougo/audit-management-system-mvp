@@ -20,6 +20,7 @@ const makeConfig = (overrides: Partial<AppConfig>): AppConfig => ({
   VITE_AUDIT_BATCH_SIZE: '',
   VITE_AUDIT_RETRY_MAX: '',
   VITE_AUDIT_RETRY_BASE: '',
+  VITE_E2E: '',
   schedulesCacheTtlSec: 60,
   graphRetryMax: 2,
   graphRetryBaseMs: 300,
@@ -121,7 +122,7 @@ describe('scheduleTz utilities', () => {
   mockedGetAppConfig.mockReturnValue(makeConfig({ schedulesTz: '' }));
 
     const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
-    const dtSpy = mockDateTimeFormat({ intlTz: 'Bad/Tz', invalidZones: ['Bad/Tz'] });
+    const dtSpy = mockDateTimeFormat({ intlTz: 'Bad/Tz', invalidZones: ['Bad/Tz', 'America/New_York'] });
 
     const result = scheduleLib.resolveSchedulesTz();
 
@@ -144,7 +145,7 @@ describe('scheduleTz utilities', () => {
     it('warns and returns fallback when provided timezone is invalid but fallback is valid', () => {
       const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
 
-      const dtSpy = mockDateTimeFormat({ invalidZones: ['Invalid/Zone'] });
+      const dtSpy = mockDateTimeFormat({ invalidZones: ['Invalid/Zone', 'America/New_York', 'Asia/Tokyo'] });
 
       const result = scheduleLib.assertValidTz('Invalid/Zone', 'UTC');
 
@@ -160,7 +161,7 @@ describe('scheduleTz utilities', () => {
     it('returns default timezone when neither value is valid', () => {
       const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
 
-      const dtSpy = mockDateTimeFormat({ invalidZones: ['Invalid/Zone', 'Bad/Tz'] });
+      const dtSpy = mockDateTimeFormat({ invalidZones: ['Invalid/Zone', 'Bad/Tz', 'America/New_York'] });
 
       const result = scheduleLib.assertValidTz('Invalid/Zone', 'Bad/Tz');
 

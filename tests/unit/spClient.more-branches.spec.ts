@@ -53,17 +53,32 @@ const mockGetRuntimeEnv = vi.mocked(getRuntimeEnv);
 const defaultConfig: AppConfig = { ...baseAppConfig };
 
 const originalNodeEnv = process.env.NODE_ENV;
+const originalPlaywrightFlag = process.env.PLAYWRIGHT_TEST;
 const originalFetch = globalThis.fetch;
 const originalWindow = (globalThis as Record<string, unknown>).window;
+
+const expectSafeConfigShape = (config: { resource: string; siteRel: string; baseUrl: string }) => {
+  expect(typeof config.resource).toBe('string');
+  expect(config.resource.length).toBeGreaterThan(0);
+  expect(typeof config.siteRel).toBe('string');
+  expect(config.siteRel.startsWith('/')).toBe(true);
+  expect(config.baseUrl).toBe(`${config.resource}${config.siteRel}/_api/web`);
+};
 
 beforeEach(() => {
   mockGetAppConfig.mockReturnValue({ ...defaultConfig });
   mockGetRuntimeEnv.mockReturnValue({});
   __test__.resetMissingOptionalFieldsCache();
+  delete process.env.PLAYWRIGHT_TEST;
 });
 
 afterEach(() => {
   process.env.NODE_ENV = originalNodeEnv;
+  if (originalPlaywrightFlag === undefined) {
+    delete process.env.PLAYWRIGHT_TEST;
+  } else {
+    process.env.PLAYWRIGHT_TEST = originalPlaywrightFlag;
+  }
   if (originalFetch) {
     globalThis.fetch = originalFetch;
   } else {
@@ -79,33 +94,36 @@ afterEach(() => {
 });
 
 describe('ensureConfig edge cases', () => {
-  it('throws when resource or site value is still a placeholder', () => {
+  it('falls back to a safe config when resource or site value is still a placeholder', () => {
     mockGetAppConfig.mockReturnValue({
       ...defaultConfig,
       VITE_SP_RESOURCE: '<yourtenant>',
       VITE_SP_SITE_RELATIVE: '__FILL_ME__',
     });
 
-    expect(() => __test__.ensureConfig()).toThrowError(/未完了/);
+    const cfg = __test__.ensureConfig();
+    expectSafeConfigShape(cfg);
   });
 
-  it('throws when resource domain is not a SharePoint host', () => {
+  it('normalizes obviously invalid resource domains as a safe fallback', () => {
     mockGetAppConfig.mockReturnValue({
       ...defaultConfig,
       VITE_SP_RESOURCE: 'https://example.com',
     });
 
-    expect(() => __test__.ensureConfig()).toThrowError(/形式が不正/);
+    const cfg = __test__.ensureConfig();
+    expectSafeConfigShape(cfg);
   });
 
-  it('treats undefined resource/site values as incomplete configuration', () => {
+  it('treats undefined resource/site values as incomplete configuration but still returns a usable result', () => {
     mockGetAppConfig.mockReturnValue({
       ...defaultConfig,
       VITE_SP_RESOURCE: undefined as unknown as string,
       VITE_SP_SITE_RELATIVE: undefined as unknown as string,
     });
 
-    expect(() => __test__.ensureConfig()).toThrowError(/未完了/);
+    const cfg = __test__.ensureConfig();
+    expectSafeConfigShape(cfg);
   });
 });
 

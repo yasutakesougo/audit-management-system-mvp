@@ -568,7 +568,7 @@ type ScheduleRowItemProps = {
   viewCategory: string;
   onSelect: () => void;
   handleDuplicate: (row: Schedule, strategy?: CloneStrategy) => void;
-  reload: () => Promise<Schedule[] | null | undefined>;
+  reload: () => Promise<void>;
   sp: UseSP;
 };
 

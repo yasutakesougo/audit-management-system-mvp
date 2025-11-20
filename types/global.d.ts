@@ -27,6 +27,20 @@ declare global {
     };
     __NURSE_MINUTE_BASIS__?: 'utc' | 'local';
   }
+
+  // Vite環境用のImportMeta拡張
+  interface ImportMeta {
+    env: ImportMetaEnv;
+  }
+
+  interface ImportMetaEnv {
+    readonly MODE: string;
+    readonly VITE_APP_TITLE?: string;
+    readonly VITE_API_URL?: string;
+    readonly VITE_DEBUG?: string;
+    // 他の環境変数も必要に応じて追加
+    [key: string]: string | boolean | undefined;
+  }
 }
 
 export { };

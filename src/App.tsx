@@ -1,23 +1,24 @@
-import React, { useEffect, useMemo, type ReactNode } from 'react';
+import { HydrationHud } from '@/debug/HydrationHud';
+import { SchedulesProvider, demoSchedulesPort, makeGraphSchedulesPort } from '@/features/schedules/data';
 import CssBaseline from '@mui/material/CssBaseline';
+import React, { useEffect, useMemo, type ReactNode } from 'react';
 import { RouterProvider } from 'react-router-dom';
-import { MsalProvider } from './auth/MsalProvider';
-import { ThemeRoot } from './app/theme';
 import { router } from './app/router';
 import { routerFutureFlags } from './app/routerFuture';
-import { ToastProvider, useToast } from './hooks/useToast';
-import { registerNotifier } from './lib/notice';
-import { SchedulesProvider, demoSchedulesPort, makeGraphSchedulesPort } from '@/features/schedules/data';
-import { useAuth } from './auth/useAuth';
+import { ThemeRoot } from './app/theme';
 import { GRAPH_RESOURCE } from './auth/msalConfig';
+import { MsalProvider } from './auth/MsalProvider';
+import { useAuth } from './auth/useAuth';
+import { ToastProvider, useToast } from './hooks/useToast';
 import { readBool } from './lib/env';
-import { HydrationHud } from '@/debug/HydrationHud';
+import { registerNotifier } from './lib/notice';
 
 type BridgeProps = {
   children: ReactNode;
 };
 
 const graphEnabled = readBool('VITE_FEATURE_SCHEDULES_GRAPH', false);
+const hydrationHudEnabled = readBool('VITE_FEATURE_HYDRATION_HUD', false);
 
 function SchedulesProviderBridge({ children }: BridgeProps) {
   const { acquireToken } = useAuth();
@@ -25,7 +26,7 @@ function SchedulesProviderBridge({ children }: BridgeProps) {
   const port = useMemo(() => {
     if (!graphEnabled) return demoSchedulesPort;
     return makeGraphSchedulesPort(() => acquireToken(GRAPH_RESOURCE));
-  }, [acquireToken]);
+  }, [acquireToken, graphEnabled]);
 
   return <SchedulesProvider value={port}>{children}</SchedulesProvider>;
 }
@@ -50,15 +51,20 @@ export const ToastNotifierBridge: React.FC = () => {
 function App() {
   return (
     <MsalProvider>
+      {/* 🔐 認証コンテキスト */}
       <ThemeRoot>
         <CssBaseline />
+        {/* 🎨 MUIテーマ + グローバルスタイル */}
         <ToastProvider>
+          {/* 📢 グローバルトースト通知 */}
           <SchedulesProviderBridge>
+            {/* 📅 スケジュール機能のデータポート（Graph / デモ切替） */}
             <ToastNotifierBridge />
             <RouterProvider router={router} future={routerFutureFlags} />
           </SchedulesProviderBridge>
         </ToastProvider>
-        <HydrationHud />
+        {/* 🔍 開発/検証用 HUD（本番では非表示可能） */}
+        {hydrationHudEnabled && <HydrationHud />}
       </ThemeRoot>
     </MsalProvider>
   );

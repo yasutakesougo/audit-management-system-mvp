@@ -26,8 +26,11 @@ export const ROUTE_BUDGETS: Record<string, number> = {
   'route:admin:templates': 110,
 };
 
+// SharePoint API遅延テスト用の定数
+const SCHEDULE_DELAY_MS = 250;
+
 export async function prepareHydrationApp(page: Page, options: { delaySchedules?: boolean } = {}): Promise<void> {
-  await page.addInitScript(() => {
+  const initScript = () => {
     const win = window as typeof window & { __ENV__?: Record<string, string | undefined> };
     const env = { ...(win.__ENV__ ?? {}) };
     if (!env.VITE_SP_RESOURCE) {
@@ -51,7 +54,11 @@ export async function prepareHydrationApp(page: Page, options: { delaySchedules?
     window.localStorage.setItem('VITE_PREFETCH_HUD', '1');
     window.localStorage.setItem('feature:schedules', '1');
     window.localStorage.setItem('feature:schedulesCreate', '1');
-  });
+  };
+
+  // 既存ページと新規ページ両方に設定を適用
+  await page.context().addInitScript(initScript);
+  await page.addInitScript(initScript);
 
   await page.route('**/login.microsoftonline.com/**', (route) => route.fulfill({ status: 204, body: '' }));
   await page.route('https://graph.microsoft.com/**', (route) =>
@@ -60,7 +67,7 @@ export async function prepareHydrationApp(page: Page, options: { delaySchedules?
 
   if (options.delaySchedules) {
     await page.route("**/_api/web/lists/getbytitle('Schedules')/items**", async (route) => {
-      await new Promise((resolve) => setTimeout(resolve, 250));
+      await new Promise((resolve) => setTimeout(resolve, SCHEDULE_DELAY_MS));
       await route.fallback();
     });
   }
@@ -111,24 +118,39 @@ export async function expectRouteSpan(page: Page, id: string, expectation: Route
 
       if (expectation.status && status !== expectation.status) {
         if (allowedStatuses && allowedStatuses.includes(status)) {
-          return { reason: 'transient', status } as const;
+          return { reason: 'transient', status, meta } as const;
         }
-        return { reason: 'status', status } as const;
+        return { reason: 'status', status, expected: expectation.status, meta } as const;
       }
 
       if (!expectation.status && allowedStatuses && !allowedStatuses.includes(status)) {
-        return { reason: 'status', status } as const;
+        return { reason: 'status', status, allowedStatuses, meta } as const;
       }
       if (expectation.path && path !== expectation.path) {
-        return { reason: 'path', path } as const;
+        return { reason: 'path', path, expected: expectation.path, meta } as const;
       }
       if (expectation.budget !== undefined && budget !== expectation.budget) {
-        return { reason: 'budget', budget } as const;
+        return { reason: 'budget', budget, expected: expectation.budget, meta } as const;
       }
       if (!expectation.allowErrors && error) {
-        return { reason: 'error', error } as const;
+        return { reason: 'error', error, meta } as const;
       }
       return { reason: 'ok' } as const;
     }, { timeout: 10_000 })
-    .toEqual({ reason: 'ok' });
+    .toMatchObject({ reason: 'ok' });
+}
+
+/**
+ * ROUTE_BUDGETS を使用したルートパフォーマンステスト用ヘルパー
+ */
+export async function expectRouteBudget(
+  page: Page,
+  routeId: keyof typeof ROUTE_BUDGETS,
+  overrides: Omit<RouteSpanExpectation, 'budget'> = {}
+): Promise<void> {
+  await expectRouteSpan(page, routeId, {
+    status: 'completed',
+    ...overrides,
+    budget: ROUTE_BUDGETS[routeId],
+  });
 }

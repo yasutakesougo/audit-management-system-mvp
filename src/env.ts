@@ -17,17 +17,20 @@ const getWindowEnv = (): EnvDict | undefined => {
   return candidate ? { ...candidate } : undefined;
 };
 
+// 🚀 パフォーマンス最適化：軽量キャッシュ付き getRuntimeEnv
+let cachedEnv: EnvDict | null = null;
+
 export function getRuntimeEnv(): EnvDict {
+  if (cachedEnv) return cachedEnv;
+
   const fromWindow = getWindowEnv();
-  return fromWindow ? { ...INLINE_ENV, ...fromWindow } : { ...INLINE_ENV };
+  cachedEnv = fromWindow ? { ...INLINE_ENV, ...fromWindow } : { ...INLINE_ENV };
+  return cachedEnv;
 }
 
 export function get(name: string, fallback = ''): string {
   const value = getRuntimeEnv()[name];
-  if (value === undefined || value === null) {
-    return fallback;
-  }
-  return typeof value === 'string' ? value : String(value);
+  return value ?? fallback;
 }
 
 export function getNumber(name: string, fallback: number): number {
@@ -37,8 +40,9 @@ export function getNumber(name: string, fallback: number): number {
 }
 
 export function getFlag(name: string, fallback = false): boolean {
-  const raw = get(name, fallback ? '1' : '0').toLowerCase();
-  return raw === '1' || raw === 'true';
+  const raw = get(name, fallback ? '1' : '0');
+  const normalized = String(raw).toLowerCase();
+  return normalized === '1' || normalized === 'true';
 }
 
 export function resolveIsDev(): boolean {
@@ -80,3 +84,7 @@ export function resolveIsDev(): boolean {
 }
 
 export const isDev = resolveIsDev();
+
+// 🔧 命名統一：環境フラグを定数化
+export const isE2E = getFlag('VITE_E2E', false);
+export const isDemo = getFlag('VITE_DEMO', false);

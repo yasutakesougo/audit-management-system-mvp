@@ -1,3 +1,4 @@
+import { HYDRATION_FEATURES, estimatePayloadSize, startFeatureSpan } from '@/hydration/features';
 import { readEnv } from '@/lib/env';
 import type { UseSP } from '@/lib/spClient';
 import { spWriteResilient, type SpWriteResult } from '@/lib/spWrite';
@@ -218,6 +219,9 @@ export async function getOrgSchedules(
     top?: number;
   }
 ): Promise<ScheduleOrg[]> {
+  const span = startFeatureSpan(HYDRATION_FEATURES.schedules.load, {
+    scope: 'org',
+  });
   const execute = async () => {
     const search = new URLSearchParams();
     search.set('$top', String(params.top ?? 500));
@@ -252,7 +256,17 @@ export async function getOrgSchedules(
     }
   };
 
-  return withScheduleFieldFallback(execute);
+  try {
+    const result = await withScheduleFieldFallback(execute);
+    span({ meta: { status: 'ok', count: result.length, bytes: estimatePayloadSize(result) } });
+    return result;
+  } catch (error) {
+    span({
+      meta: { status: 'error' },
+      error: error instanceof Error ? error.message : String(error),
+    });
+    throw error;
+  }
 }
 
 export async function createOrgSchedule(sp: UseSP, draft: ScheduleOrgDraft): Promise<ScheduleOrg> {

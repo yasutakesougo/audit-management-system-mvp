@@ -29,6 +29,10 @@ const importEnvModule = async () => {
 beforeEach(() => {
   vi.resetModules();
   localStorage.clear();
+  // skipLoginフラグを明示的にクリア
+  if (typeof window !== 'undefined' && window.localStorage) {
+    window.localStorage.removeItem('skipLogin');
+  }
   for (const key of trackedEnvKeys) {
     delete process.env[key];
   }
@@ -112,6 +116,11 @@ describe('scope sanitisation helpers', () => {
 describe('getSharePointDefaultScope fallbacks', () => {
   const loadEnvWithResource = async (resource?: string, msalScopes?: string) => {
     vi.resetModules();
+
+    // デモモードとログインスキップを明示的に無効化
+    process.env.VITE_DEMO_MODE = '0';
+    process.env.VITE_SKIP_LOGIN = '0';
+
     if (resource) {
       process.env.VITE_SP_RESOURCE = resource;
     } else {
@@ -129,6 +138,8 @@ describe('getSharePointDefaultScope fallbacks', () => {
   afterEach(() => {
     delete process.env.VITE_SP_RESOURCE;
     delete process.env.VITE_MSAL_SCOPES;
+    delete process.env.VITE_DEMO_MODE;
+    delete process.env.VITE_SKIP_LOGIN;
   });
 
   it('derives scope from resource when explicit value is missing', async () => {
@@ -139,7 +150,8 @@ describe('getSharePointDefaultScope fallbacks', () => {
       VITE_SP_SCOPE_DEFAULT: '   ',
       VITE_SP_RESOURCE: 'https://contoso.sharepoint.com/',
       VITE_MSAL_SCOPES: '  ',
-      VITE_DEMO_MODE: '0',
+      VITE_DEMO_MODE: '0',  // デモモードを明示的に無効化
+      VITE_SKIP_LOGIN: '0',  // ログインスキップを無効化
     } as EnvRecord);
 
     expect(scope).toBe('https://contoso.sharepoint.com/AllSites.Read');
@@ -169,7 +181,8 @@ describe('getSharePointDefaultScope fallbacks', () => {
         'https://contoso.sharepoint.com/AllSites.Read',
         'https://fabrikam.sharepoint.com/AllSites.FullControl',
       ].join(' '),
-      VITE_DEMO_MODE: '0',
+      VITE_DEMO_MODE: '0',  // デモモードを明示的に無効化
+      VITE_SKIP_LOGIN: '0',  // ログインスキップを無効化
     } as EnvRecord);
 
     expect(scope).toBe('https://contoso.sharepoint.com/AllSites.Read');

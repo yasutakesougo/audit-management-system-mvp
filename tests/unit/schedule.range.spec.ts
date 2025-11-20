@@ -1,7 +1,7 @@
-import { describe, it, expect } from 'vitest';
+import { overlapsWeek, type EventRange, type WeekISO } from '@/features/schedule/range';
 import dayjs from 'dayjs';
 import utc from 'dayjs/plugin/utc';
-import { overlapsWeek, type EventRange, type WeekISO } from '@/features/schedule/range';
+import { describe, expect, it } from 'vitest';
 
 dayjs.extend(utc);
 

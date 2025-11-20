@@ -5,10 +5,11 @@ import { useUsersStore } from '@/features/users/store';
 import { useToast } from '@/hooks/useToast';
 import { createSchedule, useSP } from '@/lib/spClient';
 import { formatInTimeZone, fromZonedTime } from '@/lib/tz';
+import type { IUserMaster } from '@/sharepoint/fields';
 import { SCHEDULE_FIELD_SERVICE_TYPE } from '@/sharepoint/fields';
 import { SERVICE_TYPE_OPTIONS, normalizeServiceType, type ServiceType } from '@/sharepoint/serviceTypes';
 import { useStaff } from '@/stores/useStaff';
-import type { Staff, User } from '@/types';
+import type { Staff } from '@/types';
 import { formatRangeLocal } from '@/utils/datetime';
 import { MessageBar, MessageBarType } from '@fluentui/react';
 import ArrowBackRoundedIcon from '@mui/icons-material/ArrowBackRounded';
@@ -39,6 +40,49 @@ const statusOptions: { value: Status; label: string }[] = SCHEDULE_STATUSES.map(
   value: status,
   label: STATUS_LABELS[status],
 }));
+
+/** 利用者選択用のViewModel型 */
+type UserOption = {
+  id: number;
+  displayName: string;
+  code: string;
+  furigana: string;
+};
+
+/** 生データをUserOptionに変換する共通関数 */
+const mapRawUserToOption = (user: unknown): UserOption => {
+  // IUserMaster型の場合
+  if (user && typeof user === 'object' && 'UserID' in user && 'FullName' in user) {
+    const userMaster = user as IUserMaster;
+    return {
+      id: userMaster.Id,
+      displayName: userMaster.FullName,
+      code: userMaster.UserID,
+      furigana: userMaster.Furigana || userMaster.FullNameKana || userMaster.FullName,
+    };
+  }
+
+  // 他の型の場合（後方互換性のため）
+  if (user && typeof user === 'object') {
+    const record = user as Record<string, unknown>;
+    const id = (record.Id as number) ?? (record.id as number) ?? 0;
+    const name = (record.FullName as string) ?? (record.name as string) ?? '氏名未登録';
+    const code = (record.UserID as string) ?? (record.userId as string) ?? `ID:${id}`;
+    const furigana = (record.Furigana as string) ??
+                    (record.FullNameKana as string) ??
+                    name;
+
+    return {
+      id: Number(id),
+      displayName: String(name),
+      code: String(code),
+      furigana: String(furigana)
+    };
+  }
+
+  // フォールバック
+  return { id: 0, displayName: '氏名未登録', code: 'ID:0', furigana: '氏名未登録' };
+};
 
 type FormState = {
   title: string;
@@ -87,14 +131,24 @@ const SERVICE_TYPE_GROUP_LABELS: Record<ServiceTypeGroup, string> = {
 const formatDateInput = (date: Date) => formatInTimeZone(date, TIMEZONE, 'yyyy-MM-dd');
 const formatTimeInput = (date: Date) => formatInTimeZone(date, TIMEZONE, 'HH:mm');
 
-const roundUpToStep = (date: Date, minutes: number) => {
+const roundUpToStep = (date: Date, stepMinutes: number): Date => {
   const result = new Date(date);
-  result.setSeconds(0, 0);
-  const remainder = result.getMinutes() % minutes;
-  if (remainder !== 0) {
-    result.setMinutes(result.getMinutes() + (minutes - remainder));
-  }
+  result.setSeconds(0, 0); // 秒・ミリ秒をクリアして時間のブレを防止
+  const minutes = result.getMinutes();
+  const rounded = Math.ceil(minutes / stepMinutes) * stepMinutes;
+  result.setMinutes(rounded);
   return result;
+};
+
+/** 現在時刻ベースのデフォルト時間範囲を計算 */
+const buildDefaultTimeRange = (): { startTime: string; endTime: string } => {
+  const now = new Date();
+  const start = roundUpToStep(now, ROUND_STEP_MINUTES);
+  const end = addMinutes(start, DEFAULT_DURATION_MINUTES);
+  return {
+    startTime: formatTimeInput(start),
+    endTime: formatTimeInput(end),
+  };
 };
 
 const buildDefaultForm = (): FormState => {
@@ -289,13 +343,20 @@ export default function ScheduleCreatePage() {
           endDate: ensureEndDateForAllDay(prev.startDate, prev.endDate),
         };
       }
-      const fallbackStart = lastTimedRangeRef.current.startTime || '09:00';
-      const fallbackEnd = lastTimedRangeRef.current.endTime || '10:00';
+      // lastTimedRangeRefに値があればそれを優先、なければ現在時刻ベースのデフォルト
+      const hasLastRange = lastTimedRangeRef.current.startTime && lastTimedRangeRef.current.endTime;
+      const timeRange = hasLastRange
+        ? {
+            startTime: lastTimedRangeRef.current.startTime,
+            endTime: lastTimedRangeRef.current.endTime
+          }
+        : buildDefaultTimeRange();
+
       return {
         ...prev,
         allDay: false,
-        startTime: fallbackStart,
-        endTime: fallbackEnd,
+        startTime: timeRange.startTime,
+        endTime: timeRange.endTime,
       };
     });
   }, []);
@@ -308,7 +369,7 @@ export default function ScheduleCreatePage() {
     }));
   }, []);
 
-  const handleUserSelect = useCallback((_: unknown, option: User | null) => {
+  const handleUserSelect = useCallback((_: unknown, option: UserOption | null) => {
     setForm((prev) => ({
       ...prev,
       userId: option ? option.id : null,
@@ -364,13 +425,14 @@ export default function ScheduleCreatePage() {
     return staff.slice().sort((a, b) => a.name.localeCompare(b.name, 'ja'));
   }, [staff]);
 
-  const userOptions = useMemo(() => {
-    if (!Array.isArray(users)) return [] as User[];
-    return users.slice().sort((a, b) => {
-      const ax = a.Furigana || a.FullNameKana || a.FullName || a.UserID;
-      const bx = b.Furigana || b.FullNameKana || b.FullName || b.UserID;
-      return ax.localeCompare(bx, 'ja');
-    });
+  const userOptions = useMemo<UserOption[]>(() => {
+    if (!Array.isArray(users)) return [];
+
+    // 型安全にUserOptionに変換
+    return users
+      .filter((raw): raw is NonNullable<typeof raw> => raw != null)
+      .map(mapRawUserToOption)
+      .sort((a, b) => a.furigana.localeCompare(b.furigana, 'ja'));
   }, [users]);
 
   const selectedStaff = useMemo(() => {
@@ -380,14 +442,7 @@ export default function ScheduleCreatePage() {
 
   const selectedUser = useMemo(() => {
     if (form.userId == null) return null;
-    return userOptions.find((candidate) => {
-      // IUserMaster型の場合
-      if ('Id' in candidate) {
-        return candidate.Id === form.userId;
-      }
-      // User型の場合
-      return candidate.id === form.userId;
-    }) ?? null;
+    return userOptions.find((candidate) => candidate.id === form.userId) ?? null;
   }, [form.userId, userOptions]);
 
   const requiresDrivingLicense = form.usesVehicle || form.serviceType === '送迎';
@@ -444,8 +499,8 @@ export default function ScheduleCreatePage() {
       setSubmitting(true);
       setErrors({});
       await createSchedule(sp, payload);
-  show('success', '予定を作成しました');
-  navigate('/schedules/week', { replace: true });
+      show('success', '予定を作成しました');
+      navigate('/schedules/week', { replace: true });
     } catch (error) {
       const message = error instanceof Error ? error.message : '保存に失敗しました。時間をおいて再実行してください。';
       setSubmitError(message);
@@ -607,17 +662,15 @@ export default function ScheduleCreatePage() {
               }}
             />
 
-            <Autocomplete<User, false, false, false>
-              options={userOptions as User[]}
-              value={selectedUser as User | null}
+            <Autocomplete<UserOption, false, false, false>
+              options={userOptions}
+              value={selectedUser}
               onChange={handleUserSelect}
               loading={usersLoading}
               noOptionsText={usersLoading ? '読み込み中…' : '該当する利用者が見つかりません'}
               isOptionEqualToValue={(option, value) => option.id === value.id}
               getOptionLabel={(option) => {
-                const name = option.name || '氏名未登録';
-                const code = option.userId || `ID:${option.id}`;
-                return `${name}（${code}）`;
+                return `${option.displayName}（${option.code}）`;
               }}
               renderInput={(params) => {
                 params.inputProps.autoComplete = 'off';

@@ -1,6 +1,6 @@
 import { addDays, format, startOfWeek } from 'date-fns';
 import { ja } from 'date-fns/locale';
-import type { DragEvent, HTMLAttributes, KeyboardEvent, MouseEvent } from 'react';
+import type { DragEvent, KeyboardEvent, MouseEvent } from 'react';
 import { useCallback, useId, useMemo, useRef, useState } from 'react';
 // MUI Components
 import Box from '@mui/material/Box';
@@ -22,6 +22,7 @@ import { formatOrgSubtitle } from '../presenters/format';
 import type { Schedule, ScheduleStaff } from '../types';
 import { isOrg, isStaff, isUserCare } from '../types';
 import TimelineEventCard from './TimelineEventCard';
+import { buildScheduleColorSource, getScheduleServiceLabel } from '../colorSource';
 
 export const laneOrder: Array<Schedule['category']> = ['User', 'Staff', 'Org'];
 export const laneLabels: Record<Schedule['category'], { label: string; icon: React.ElementType; color: 'primary' | 'secondary' | 'success' | 'warning' | 'error' | 'info' }> = {
@@ -500,6 +501,9 @@ export default function TimelineWeek({ events, startDate, onEventMove, onEventCr
                     >
                       {dayEvents.length > 0 ? (
                         dayEvents.map((event) => {
+                          const serviceLabel = getScheduleServiceLabel(event);
+                          const colorSource = buildScheduleColorSource(event);
+
                           const baseContainerProps = {
                             'data-testid': 'schedule-item',
                             'data-schedule-event': 'true',
@@ -508,7 +512,7 @@ export default function TimelineWeek({ events, startDate, onEventMove, onEventCr
                             'data-category': event.category,
                             'data-all-day': event.allDay ? '1' : '0',
                             'data-recurrence': event.recurrenceRule ? '1' : '0',
-                          } as HTMLAttributes<HTMLElement>;
+                          };
 
                           const containerProps = enableDrag
                             ? {
@@ -538,7 +542,9 @@ export default function TimelineWeek({ events, startDate, onEventMove, onEventCr
                               status={event.status}
                               recurrenceRule={event.recurrenceRule}
                               subtitle={getTimelineSubtitle(event)}
+                              serviceLabel={serviceLabel}
                               dayPart={event.category === 'Staff' ? event.dayPart : undefined}
+                              colorSource={colorSource}
                               baseShiftWarnings={event.baseShiftWarnings}
                               containerProps={containerProps}
                             />

@@ -30,6 +30,7 @@ const srOnly = {
 
 type TabKey = 'bulk' | 'records' | 'form';
 const TAB_PARAM = 'tab' as const;
+const ALLOWED_TABS: TabKey[] = ['bulk', 'records', 'form'];
 
 type PersonDailyUpsert = Omit<PersonDaily, 'id'> & { id?: number };
 
@@ -54,9 +55,8 @@ const DailyRecordWorkspace: React.FC<DailyRecordWorkspaceProps> = ({
   const [formOpen, setFormOpen] = React.useState(false);
   const [editingRecord, setEditingRecord] = React.useState<PersonDaily | undefined>();
 
-  const allowedTabs: TabKey[] = ['bulk', 'records', 'form'];
   const rawTab = (params.get(TAB_PARAM) as TabKey | null) ?? 'bulk';
-  const tab: TabKey = allowedTabs.includes(rawTab) ? rawTab : 'bulk';
+  const tab: TabKey = ALLOWED_TABS.includes(rawTab) ? rawTab : 'bulk';
 
   React.useEffect(() => {
     if (rawTab !== tab) {
@@ -68,12 +68,12 @@ const DailyRecordWorkspace: React.FC<DailyRecordWorkspaceProps> = ({
 
   const setTab = React.useCallback(
     (next: TabKey) => {
-      const normalized = allowedTabs.includes(next) ? next : 'bulk';
+      const normalized = ALLOWED_TABS.includes(next) ? next : 'bulk';
       const nextParams = new URLSearchParams(params);
       nextParams.set(TAB_PARAM, normalized);
       setParams(nextParams, { replace: true });
     },
-    [allowedTabs, params, setParams],
+    [params, setParams],
   );
 
   const handleEdit = React.useCallback(
@@ -162,10 +162,13 @@ const DailyRecordWorkspace: React.FC<DailyRecordWorkspaceProps> = ({
           >
             <Box>
               <Typography variant="h4" component="h2" gutterBottom>
-                活動日誌ワークスペース
+                支援記録（ケース記録）ワークスペース
               </Typography>
-              <Typography variant="body1" color="text.secondary">
+              <Typography variant="body1" color="text.secondary" gutterBottom>
                 利用者全員の日々の活動状況を効率的に管理・記録します
+              </Typography>
+              <Typography variant="caption" color="text.secondary">
+                ショートカット: Ctrl+N / ⌘+N で新しい記録を作成
               </Typography>
             </Box>
             <Button
@@ -180,7 +183,7 @@ const DailyRecordWorkspace: React.FC<DailyRecordWorkspaceProps> = ({
         </Box>
 
         {/* 統計情報 */}
-        <Paper sx={{ mb: 3, p: { xs: 2, md: 3 } }}>
+        <Paper sx={{ mb: 3, p: { xs: 2, md: 3 } }} data-testid="daily-stats-panel">
           <Stack spacing={2}>
             <Stack
               direction={{ xs: 'column', sm: 'row' }}
@@ -195,6 +198,7 @@ const DailyRecordWorkspace: React.FC<DailyRecordWorkspaceProps> = ({
                 size="small"
                 label={`完了率 ${todayStats.completionRate}%`}
                 color={todayStats.completionRate >= 90 ? 'success' : todayStats.completionRate >= 70 ? 'warning' : 'error'}
+                data-testid="daily-completion-rate"
               />
               <Typography component="p" sx={srOnly} aria-live="polite">
                 完了率は{todayStats.completionRate}%です
@@ -211,7 +215,7 @@ const DailyRecordWorkspace: React.FC<DailyRecordWorkspaceProps> = ({
                 },
               }}
             >
-              <Paper variant="outlined" sx={{ p: 2 }}>
+              <Paper variant="outlined" sx={{ p: 2 }} data-testid="daily-stats-total">
                 <Stack spacing={0.5}>
                   <Typography variant="caption" color="text.secondary">
                     総記録数
@@ -221,7 +225,7 @@ const DailyRecordWorkspace: React.FC<DailyRecordWorkspaceProps> = ({
                   </Typography>
                 </Stack>
               </Paper>
-              <Paper variant="outlined" sx={{ p: 2 }}>
+              <Paper variant="outlined" sx={{ p: 2 }} data-testid="daily-stats-completed">
                 <Stack spacing={0.5}>
                   <Typography variant="caption" color="text.secondary">
                     完了
@@ -231,7 +235,7 @@ const DailyRecordWorkspace: React.FC<DailyRecordWorkspaceProps> = ({
                   </Typography>
                 </Stack>
               </Paper>
-              <Paper variant="outlined" sx={{ p: 2 }}>
+              <Paper variant="outlined" sx={{ p: 2 }} data-testid="daily-stats-inprogress">
                 <Stack spacing={0.5}>
                   <Typography variant="caption" color="text.secondary">
                     作成中
@@ -241,7 +245,7 @@ const DailyRecordWorkspace: React.FC<DailyRecordWorkspaceProps> = ({
                   </Typography>
                 </Stack>
               </Paper>
-              <Paper variant="outlined" sx={{ p: 2 }}>
+              <Paper variant="outlined" sx={{ p: 2 }} data-testid="daily-stats-notstarted">
                 <Stack spacing={0.5}>
                   <Typography variant="caption" color="text.secondary">
                     未作成
@@ -259,10 +263,10 @@ const DailyRecordWorkspace: React.FC<DailyRecordWorkspaceProps> = ({
         <Tabs
           value={tab}
           onChange={(_, value: TabKey) => {
-            if (!allowedTabs.includes(value) || value === tab) return;
+            if (!ALLOWED_TABS.includes(value) || value === tab) return;
             setTab(value);
           }}
-          aria-label="活動日誌ワークスペースタブ"
+          aria-label="支援記録（ケース記録）ワークスペースタブ"
           data-testid="daily-workspace-tabs"
           sx={{ position: 'sticky', top: 0, bgcolor: 'background.paper', zIndex: 1, mb: 2 }}
         >
@@ -296,13 +300,13 @@ const DailyRecordWorkspace: React.FC<DailyRecordWorkspaceProps> = ({
           id="daily-tabpanel-bulk"
           aria-labelledby="daily-tab-bulk"
         >
-          <Box component="section" aria-label="活動日誌一覧入力">
+          <Box component="section" aria-label="支援記録（ケース記録）一覧入力">
             <Typography component="p" sx={srOnly}>
-              全利用者の活動日誌を一覧形式で効率的に入力できます。
+              全利用者の支援記録（ケース記録）を一覧形式で効率的に入力できます。
             </Typography>
             <BulkDailyRecordList
               selectedDate={currentDate}
-              onSave={onBulkSave}
+              onSave={onBulkSave ?? (async () => {})}
             />
           </Box>
         </Box>
@@ -316,7 +320,7 @@ const DailyRecordWorkspace: React.FC<DailyRecordWorkspaceProps> = ({
         >
           <Box component="section" aria-label="記録一覧表示">
             <Typography component="p" sx={srOnly}>
-              過去の活動日誌記録を検索・確認・編集できます。
+              過去の支援記録（ケース記録）記録を検索・確認・編集できます。
             </Typography>
             <DailyRecordList
               records={records}
@@ -335,7 +339,7 @@ const DailyRecordWorkspace: React.FC<DailyRecordWorkspaceProps> = ({
         >
           <Box component="section" aria-label="個別記録入力">
             <Typography component="p" sx={srOnly}>
-              詳細な活動日誌を個別に作成・編集できます。
+              詳細な支援記録（ケース記録）を個別に作成・編集できます。
             </Typography>
             <Box sx={{ display: 'flex', justifyContent: 'center', py: 4 }}>
               <Paper sx={{ p: { xs: 2, md: 4 }, textAlign: 'center', maxWidth: 420 }}>
@@ -367,7 +371,7 @@ const DailyRecordWorkspace: React.FC<DailyRecordWorkspaceProps> = ({
         />
 
         <Divider flexItem sx={{ mt: 3 }}>
-          活動日誌管理システム
+          支援記録（ケース記録）管理システム
         </Divider>
       </Box>
     </Container>

@@ -11,6 +11,7 @@
     "skipLibCheck": true,
     "resolveJsonModule": true,
     "allowSyntheticDefaultImports": true,
+    "downlevelIteration": true,
     "types": ["vite/client", "node", "vitest/globals", "@testing-library/jest-dom"],
     "baseUrl": ".",
     "paths": {
@@ -27,7 +28,12 @@
       "@/test/*": ["tests/*"]
     }
   },
-  "include": ["src", "tests", "types"],
+  "ts-node": {
+    "compilerOptions": {
+      "module": "CommonJS"
+    }
+  },
+  "include": ["src", "tests", "types", "debug.tsx"],
   "exclude": [
     "node_modules",
     "dist",

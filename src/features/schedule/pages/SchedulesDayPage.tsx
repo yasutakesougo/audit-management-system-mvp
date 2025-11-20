@@ -1,15 +1,22 @@
 import { useAnnounce } from '@/a11y/LiveAnnouncer';
 import { useRouteFocusManager } from '@/a11y/useRouteFocusManager';
 import {
-  getComposedWeek,
-  isScheduleFixturesMode,
-  type ScheduleEvent,
+    getComposedWeek,
+    isScheduleFixturesMode,
+    type ScheduleEvent,
 } from '@/features/schedule/api/schedulesClient';
-import { useAnchoredPeriod } from '@/features/schedule/hooks/useAnchoredPeriod';
+import { ScheduleConflictGuideDialog, type SuggestionAction } from '@/features/schedule/components/ScheduleConflictGuideDialog';
+import {
+    buildConflictIndex
+} from '@/features/schedule/conflictChecker';
 import { FOCUS_GUARD_MS } from '@/features/schedule/focusGuard';
+import { useAnchoredPeriod } from '@/features/schedule/hooks/useAnchoredPeriod';
+import { useApplyScheduleSuggestion } from '@/features/schedule/hooks/useApplyScheduleSuggestion';
+import type { BaseSchedule, Category } from '@/features/schedule/types';
+import { useToast } from '@/hooks/useToast';
 import { shouldSkipLogin } from '@/lib/env';
 import { ensureMsalSignedIn, getSharePointScopes } from '@/lib/msal';
-import { TESTIDS } from '@/testids';
+import { TESTIDS, tid } from '@/testids';
 import Box from '@mui/material/Box';
 import Button from '@mui/material/Button';
 import Container from '@mui/material/Container';
@@ -18,12 +25,21 @@ import Stack from '@mui/material/Stack';
 import Typography from '@mui/material/Typography';
 import dayjs from 'dayjs';
 import {
-  useCallback,
-  useEffect,
-  useRef,
-  useState,
-  type KeyboardEvent as ReactKeyboardEvent,
+    useCallback,
+    useEffect,
+    useMemo,
+    useRef,
+    useState,
+    type KeyboardEvent as ReactKeyboardEvent,
 } from 'react';
+import { useNavigate } from 'react-router-dom';
+// Icons for navigation
+import AddRoundedIcon from '@mui/icons-material/AddRounded';
+import CalendarMonthRoundedIcon from '@mui/icons-material/CalendarMonthRounded';
+import CalendarViewWeekRoundedIcon from '@mui/icons-material/CalendarViewWeekRounded';
+// Additional MUI components
+import Tab from '@mui/material/Tab';
+import Tabs from '@mui/material/Tabs';
 
 type Status = 'idle' | 'loading' | 'ready' | 'empty' | 'error';
 
@@ -108,8 +124,130 @@ function isEditableTarget(target: EventTarget | null): boolean {
 
 export default function SchedulesDayPage(): JSX.Element {
   const { range, navigate } = useAnchoredPeriod('day');
+  const navigateToRoute = useNavigate();
   const [status, setStatus] = useState<Status>('idle');
   const [events, setEvents] = useState<ScheduleEvent[]>([]);
+
+  // ScheduleEvent を BaseSchedule に変換するヘルパー
+  const convertToBaseSchedules = useCallback((events: ScheduleEvent[]): BaseSchedule[] => {
+    return events.map(event => ({
+      id: String(event.id),
+      etag: event.etag || '',
+      category: event.category as Category,
+      title: event.title,
+      start: event.start,
+      end: event.end,
+      allDay: event.allDay || false,
+      status: '申請中' as const, // デフォルト値
+      location: undefined,
+      notes: undefined,
+      dayKey: event.dayKey,
+      // スケジュールカテゴリに応じた追加フィールド
+      ...(event.category === 'User' && {
+        serviceType: '一時ケア' as const,
+        personType: 'Internal' as const,
+        staffIds: event.staffIds || [],
+        staffNames: event.staffNames,
+      }),
+      ...(event.category === 'Org' && {
+        subType: '会議' as const,
+        audience: undefined,
+        resourceId: undefined,
+        externalOrgName: undefined,
+      }),
+      ...(event.category === 'Staff' && {
+        subType: '会議' as const,
+        staffIds: event.staffIds || [],
+        staffNames: event.staffNames,
+        dayPart: undefined,
+      }),
+    }));
+  }, []);
+
+  // Generate conflict detection index
+  const baseSchedules = useMemo(() => convertToBaseSchedules(events), [events, convertToBaseSchedules]);
+  const conflicts = useMemo(() => {
+    // 車両代替案機能のため、一時的にconflict検出を無効化
+    return [];
+  }, [baseSchedules]);
+  const conflictIndex = useMemo(() => buildConflictIndex(conflicts), [conflicts]);
+
+  // Guide dialog state management
+  const [guideOpen, setGuideOpen] = useState(false);
+  const [guideTargetId, setGuideTargetId] = useState<string | null>(null);
+
+  const guideTargetSchedule = useMemo(
+    () => events.find((e) => String(e.id) === guideTargetId) ?? null,
+    [guideTargetId, events],
+  );
+
+  // Convert to BaseSchedule for dialog
+  const guideTargetBaseSchedule = useMemo(() => {
+    if (!guideTargetSchedule) return null;
+    const converted = convertToBaseSchedules([guideTargetSchedule]);
+    return converted[0] || null;
+  }, [guideTargetSchedule, convertToBaseSchedules]);
+
+  const guideConflicts = useMemo(
+    () => (guideTargetId && conflictIndex?.[guideTargetId]) || [],
+    [guideTargetId, conflictIndex],
+  );
+
+  // 修正案適用ハンドラー（実装）
+  const { show: showToast } = useToast();
+
+  // データ再取得関数（既存のuseEffectロジックをコールバック化）
+  const refetchSchedules = useCallback(async () => {
+    const controller = new AbortController();
+    try {
+      setStatus('loading');
+      const skipAuth = isScheduleFixturesMode() || shouldSkipLogin();
+      if (!skipAuth) {
+        const scopes = getSharePointScopes();
+        await ensureMsalSignedIn(scopes);
+      }
+      if (controller.signal.aborted) {
+        return;
+      }
+      const all = await getComposedWeek(
+        { fromISO: range.fromISO, toISO: range.toISO },
+        { signal: controller.signal },
+      );
+      if (controller.signal.aborted) {
+        return;
+      }
+      const dayStart = dayjs(range.fromISO);
+      const dayEnd = dayjs(range.toISO);
+      const filtered = all.filter((event) => {
+        const start = dayjs(event.start);
+        const end = dayjs(event.end);
+        return !start.isAfter(dayEnd) && !end.isBefore(dayStart);
+      });
+      setEvents(filtered);
+      setStatus(filtered.length ? 'ready' : 'empty');
+    } catch (error) {
+      if (!controller.signal.aborted) {
+        console.error('[SchedulesDayPage] Failed to reload schedules:', error);
+        setStatus('error');
+      }
+    }
+  }, [range.fromISO, range.toISO]);
+
+  const { applyScheduleSuggestion } = useApplyScheduleSuggestion({
+    allSchedules: events,
+    onSuccess: (message) => {
+      showToast('success', message);
+    },
+    onError: (message) => {
+      showToast('error', message);
+    },
+    onRefresh: refetchSchedules,
+  });
+
+  const handleApplySuggestion = async (action: SuggestionAction) => {
+    setGuideOpen(false);
+    await applyScheduleSuggestion(action);
+  };
 
   const announce = useAnnounce();
   const lastKeyAtRef = useRef<number>(0);
@@ -439,6 +577,46 @@ export default function SchedulesDayPage(): JSX.Element {
         日次スケジュール（{range.label}）
       </Typography>
 
+      {/* Navigation Tabs and Actions */}
+      <Box sx={{ borderBottom: 1, borderColor: 'divider', my: 2 }}>
+        <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 1 }}>
+          <Tabs value="day" aria-label="スケジュールビュー切り替え">
+            <Tab
+              label="週間"
+              value="week"
+              icon={<CalendarViewWeekRoundedIcon />}
+              iconPosition="start"
+              sx={{ textTransform: 'none' }}
+              onClick={() => navigateToRoute('/schedules/week')}
+            />
+            <Tab
+              label="月間"
+              value="month"
+              icon={<CalendarMonthRoundedIcon />}
+              iconPosition="start"
+              sx={{ textTransform: 'none' }}
+              onClick={() => navigateToRoute('/schedules/month')}
+            />
+            <Tab
+              label="日間"
+              value="day"
+              icon={<Box component="span">📅</Box>}
+              iconPosition="start"
+              sx={{ textTransform: 'none' }}
+            />
+          </Tabs>
+
+          <Button
+            variant="contained"
+            startIcon={<AddRoundedIcon />}
+            onClick={() => navigateToRoute('/schedules/create')}
+            sx={{ ml: 2 }}
+          >
+            新規作成
+          </Button>
+        </Stack>
+      </Box>
+
       <Stack direction="row" spacing={1} sx={{ my: 1 }}>
         <Button
           ref={prevButtonRef}
@@ -490,25 +668,62 @@ export default function SchedulesDayPage(): JSX.Element {
             aria-label="日次予定一覧"
             sx={{ display: 'grid', gap: 8, my: 1 }}
           >
-            {events.map((event) => (
-              <Box
-                key={`${event.category}-${event.id}`}
-                role="listitem"
-                data-testid="schedule-item"
-                sx={{
-                  p: 1.25,
-                  border: '1px solid #e5e7eb',
-                  borderRadius: 2,
-                }}
-                aria-label={`${event.title} ${dayjs(event.start).format('MM/DD HH:mm')} - ${dayjs(event.end).format('HH:mm')}`}
-              >
-                <Typography variant="subtitle2">{event.title}</Typography>
-                <Typography variant="body2" color="text.secondary">
-                  {dayjs(event.start).format('MM/DD HH:mm')} – {dayjs(event.end).format('HH:mm')}
-                  {'　'}[{event.category}]
-                </Typography>
-              </Box>
-            ))}
+            {events.map((event) => {
+              // Check for conflicts
+              const conflicted = conflictIndex[event.id]?.length > 0;
+
+              // Handle click - if conflicted, show guide dialog
+              const handleClick = () => {
+                if (conflicted) {
+                  setGuideTargetId(String(event.id));
+                  setGuideOpen(true);
+                }
+              };
+
+              return (
+                <Box
+                  key={`${event.category}-${event.id}`}
+                  role="listitem"
+                  {...tid(
+                    conflicted
+                      ? TESTIDS['schedules-event-conflicted']
+                      : TESTIDS['schedules-event-normal'],
+                  )}
+                  data-schedule-id={event.id}
+                  onClick={conflicted ? handleClick : undefined}
+                  sx={{
+                    p: 1.25,
+                    border: '1px solid #e5e7eb',
+                    borderRadius: 2,
+                    borderLeft: conflicted ? '4px solid #ef4444' : undefined,
+                    backgroundColor: conflicted ? '#fef2f2' : undefined,
+                    cursor: conflicted ? 'pointer' : 'default',
+                    '&:hover': conflicted ? {
+                      backgroundColor: '#fee2e2',
+                    } : undefined,
+                  }}
+                  aria-label={`${event.title} ${dayjs(event.start).format('MM/DD HH:mm')} - ${dayjs(event.end).format('HH:mm')}`}
+                >
+                  <Typography variant="subtitle2">
+                    {conflicted && '⚠️ '}
+                    {event.title}
+                  </Typography>
+                  <Typography variant="body2" color="text.secondary">
+                    {dayjs(event.start).format('MM/DD HH:mm')} – {dayjs(event.end).format('HH:mm')}
+                    {'　'}[{event.category}]
+                    {conflicted && (
+                      <Typography
+                        component="span"
+                        variant="caption"
+                        sx={{ ml: 1, color: 'error.main' }}
+                      >
+                        重複あり
+                      </Typography>
+                    )}
+                  </Typography>
+                </Box>
+              );
+            })}
           </Box>
         )}
 
@@ -529,6 +744,14 @@ export default function SchedulesDayPage(): JSX.Element {
           </Box>
         )}
       </Box>
+
+      <ScheduleConflictGuideDialog
+        open={guideOpen}
+        onClose={() => setGuideOpen(false)}
+        schedule={guideTargetBaseSchedule}
+        conflicts={guideConflicts}
+        onApplySuggestion={handleApplySuggestion}
+      />
     </Container>
   );
 }

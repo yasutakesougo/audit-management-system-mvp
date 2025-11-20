@@ -1,14 +1,22 @@
 import AnalyticsIcon from '@mui/icons-material/Analytics';
+import CloudDownloadIcon from '@mui/icons-material/CloudDownload';
 import PictureAsPdfIcon from '@mui/icons-material/PictureAsPdf';
 import TableViewIcon from '@mui/icons-material/TableView';
 import Box from '@mui/material/Box';
+import Button from '@mui/material/Button';
+import Card from '@mui/material/Card';
+import CardContent from '@mui/material/CardContent';
 import Container from '@mui/material/Container';
+import Stack from '@mui/material/Stack';
 import Tab from '@mui/material/Tab';
 import Tabs from '@mui/material/Tabs';
+import TextField from '@mui/material/TextField';
 import Typography from '@mui/material/Typography';
 import React from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { MonthlySummaryTable } from '../features/records/monthly/MonthlySummaryTable';
+import { UserKpiCards } from '../features/records/monthly/UserKpiCards';
+import { UserProgressChart } from '../features/records/monthly/UserProgressChart';
 import { getCurrentYearMonth } from '../features/records/monthly/map';
 import type { MonthlySummary, YearMonth } from '../features/records/monthly/types';
 import { TESTIDS } from '../testids';
@@ -90,6 +98,28 @@ export default function MonthlyRecordPage() {
   const [summaries] = React.useState<MonthlySummary[]>(mockMonthlySummaries);
   const [loading] = React.useState(false);
 
+  const [selectedMonth, setSelectedMonth] = React.useState<YearMonth>(getCurrentYearMonth());
+  const [keyword, setKeyword] = React.useState('');
+
+  const monthOptions = React.useMemo<YearMonth[]>(
+    () => Array.from(new Set(summaries.map((s) => s.yearMonth))) as YearMonth[],
+    [summaries],
+  );
+
+  const filteredSummaries = React.useMemo(
+    () =>
+      summaries.filter((s) => {
+        if (s.yearMonth !== selectedMonth) return false;
+        if (!keyword.trim()) return true;
+        const lower = keyword.toLowerCase();
+        return (
+          s.displayName.toLowerCase().includes(lower) ||
+          s.userId.toLowerCase().includes(lower)
+        );
+      }),
+    [summaries, selectedMonth, keyword],
+  );
+
   // URLパラメータからタブを決定
   const tab = (params.get('tab') as TabKey) || 'summary';
   const allowedTabs: TabKey[] = ['summary', 'user-detail', 'pdf'];
@@ -104,18 +134,27 @@ export default function MonthlyRecordPage() {
 
   // 統計情報
   const stats = React.useMemo(() => {
-    const currentMonth = getCurrentYearMonth();
-    const currentMonthSummaries = summaries.filter(s => s.yearMonth === currentMonth);
+    if (filteredSummaries.length === 0) {
+      return {
+        totalUsers: 0,
+        avgCompletionRate: 0,
+        highPerformers: 0,
+        needsAttention: 0,
+      };
+    }
 
     return {
-      totalUsers: currentMonthSummaries.length,
-      avgCompletionRate: currentMonthSummaries.length > 0
-        ? Math.round(currentMonthSummaries.reduce((sum, s) => sum + s.completionRate, 0) / currentMonthSummaries.length * 100) / 100
-        : 0,
-      highPerformers: currentMonthSummaries.filter(s => s.completionRate >= 90).length,
-      needsAttention: currentMonthSummaries.filter(s => s.completionRate < 70).length,
+      totalUsers: filteredSummaries.length,
+      avgCompletionRate:
+        Math.round(
+          (filteredSummaries.reduce((sum, s) => sum + s.completionRate, 0) /
+            filteredSummaries.length) *
+            100,
+        ) / 100,
+      highPerformers: filteredSummaries.filter((s) => s.completionRate >= 90).length,
+      needsAttention: filteredSummaries.filter((s) => s.completionRate < 70).length,
     };
-  }, [summaries]);
+  }, [filteredSummaries]);
 
   const handleReaggregate = async (userId: string, yearMonth: YearMonth) => {
     console.log(`再集計開始: ${userId} - ${yearMonth}`);
@@ -125,11 +164,25 @@ export default function MonthlyRecordPage() {
   };
 
   const handleUserSelect = (userId: string, yearMonth: YearMonth) => {
+    // 選択されたユーザーの月に合わせてフィルタを調整
+    setSelectedMonth(yearMonth);
+
+    // タブを user-detail に切り替え、URLパラメータにユーザー情報を設定
     const newParams = new URLSearchParams(params);
     newParams.set('tab', 'user-detail');
     newParams.set('user', userId);
     newParams.set('month', yearMonth);
     setParams(newParams);
+  };
+
+  const handleGenerateMonthlyPdf = async () => {
+    console.log(`PDF生成開始: ${selectedMonth} - 対象利用者数: ${filteredSummaries.length}`);
+    // TODO: Power Automate API呼び出し実装
+    // - 選択月のデータを準備
+    // - フィルター条件を含めたリクエスト作成
+    // - Power Automate フローをトリガー
+    await new Promise(resolve => setTimeout(resolve, 2000)); // モック遅延
+    console.log(`PDF生成完了: ${selectedMonth}`);
   };
 
   return (
@@ -145,10 +198,39 @@ export default function MonthlyRecordPage() {
           </Typography>
         </Box>
 
+        {/* フィルターバー */}
+        <Box sx={{ mb: 2 }}>
+          <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2} alignItems="center">
+            <TextField
+              select
+              size="small"
+              label="対象月"
+              value={selectedMonth}
+              onChange={(event) => setSelectedMonth(event.target.value as YearMonth)}
+              helperText="集計対象の月を選択"
+              sx={{ minWidth: 180 }}
+            >
+              {monthOptions.map((month) => (
+                <option key={month} value={month}>
+                  {month}
+                </option>
+              ))}
+            </TextField>
+            <TextField
+              size="small"
+              label="利用者名 / コードで絞り込み"
+              value={keyword}
+              onChange={(event) => setKeyword(event.target.value)}
+              placeholder="例: 田中 / I001"
+              sx={{ minWidth: 220 }}
+            />
+          </Stack>
+        </Box>
+
         {/* 統計サマリー */}
         <Box sx={{ mb: 3, p: 2, bgcolor: 'background.paper', borderRadius: 1, border: 1, borderColor: 'divider' }}>
           <Typography variant="h6" gutterBottom>
-            今月の全体状況 ({getCurrentYearMonth()})
+            今月の全体状況 ({selectedMonth})
           </Typography>
           <Box sx={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>
             <Box>
@@ -235,7 +317,7 @@ export default function MonthlyRecordPage() {
               全利用者の月次記録完了状況を一覧表示し、再集計や詳細確認ができます。
             </Typography>
             <MonthlySummaryTable
-              summaries={summaries}
+              summaries={filteredSummaries}
               loading={loading}
               onReaggregate={handleReaggregate}
               onUserSelect={handleUserSelect}
@@ -254,21 +336,62 @@ export default function MonthlyRecordPage() {
             <Typography component="p" sx={srOnly}>
               選択した利用者の月次記録詳細とKPIカードを表示します。
             </Typography>
-            <Box sx={{ display: 'flex', justifyContent: 'center', py: 8 }}>
-              <Box sx={{ textAlign: 'center' }}>
-                <Typography variant="h6" gutterBottom>
-                  利用者別詳細
-                </Typography>
-                <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
-                  組織サマリーから利用者を選択してください
-                </Typography>
-                {params.get('user') && (
-                  <Typography variant="body1">
-                    選択中: {params.get('user')} ({params.get('month')})
-                  </Typography>
-                )}
-              </Box>
-            </Box>
+
+            {(() => {
+              const selectedUserId = params.get('user');
+              const selectedUserMonth = params.get('month') as YearMonth | null;
+
+              if (!selectedUserId || !selectedUserMonth) {
+                return (
+                  <Box sx={{ display: 'flex', justifyContent: 'center', py: 8 }}>
+                    <Box sx={{ textAlign: 'center' }}>
+                      <Typography variant="h6" gutterBottom>
+                        利用者別詳細
+                      </Typography>
+                      <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
+                        組織サマリーから利用者を選択してください
+                      </Typography>
+                    </Box>
+                  </Box>
+                );
+              }
+
+              // filteredSummaries から該当ユーザーを検索
+              const selectedUserSummary = filteredSummaries.find(
+                summary => summary.userId === selectedUserId && summary.yearMonth === selectedUserMonth
+              );
+
+              if (!selectedUserSummary) {
+                return (
+                  <Box sx={{ display: 'flex', justifyContent: 'center', py: 8 }}>
+                    <Box sx={{ textAlign: 'center' }}>
+                      <Typography variant="h6" gutterBottom>
+                        利用者が見つかりません
+                      </Typography>
+                      <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
+                        選択した利用者 ({selectedUserId}) の {selectedUserMonth} のデータが見つかりませんでした。
+                      </Typography>
+                      <Typography variant="body2" color="text.secondary">
+                        フィルター条件を確認してください。
+                      </Typography>
+                    </Box>
+                  </Box>
+                );
+              }
+
+              return (
+                <Stack spacing={3}>
+                  {/* KPIカード表示 */}
+                  <UserKpiCards
+                    summary={selectedUserSummary}
+                    avgCompletionRate={stats.avgCompletionRate}
+                  />
+
+                  {/* プログレスチャート表示 */}
+                  <UserProgressChart summary={selectedUserSummary} />
+                </Stack>
+              );
+            })()}
           </Box>
         </Box>
 
@@ -283,15 +406,101 @@ export default function MonthlyRecordPage() {
             <Typography component="p" sx={srOnly}>
               月次記録をPDF形式で出力・ダウンロードできます。
             </Typography>
-            <Box sx={{ display: 'flex', justifyContent: 'center', py: 8 }}>
-              <Box sx={{ textAlign: 'center' }}>
-                <Typography variant="h6" gutterBottom>
-                  月次PDF出力
-                </Typography>
-                <Typography variant="body2" color="text.secondary">
-                  この機能は将来実装予定です
-                </Typography>
-              </Box>
+
+            <Box sx={{ maxWidth: 600, mx: 'auto' }}>
+              <Stack spacing={3}>
+                {/* PDF出力情報カード */}
+                <Card>
+                  <CardContent>
+                    <Stack spacing={2}>
+                      <Typography variant="h6" gutterBottom>
+                        月次記録PDF出力
+                      </Typography>
+
+                      <Typography variant="body2" color="text.secondary">
+                        選択した条件に基づいて月次記録のPDFレポートを生成します。
+                      </Typography>
+
+                      {/* 出力条件サマリー */}
+                      <Box sx={{ p: 2, bgcolor: 'action.hover', borderRadius: 1 }}>
+                        <Typography variant="subtitle2" gutterBottom>
+                          出力対象
+                        </Typography>
+
+                        <Stack spacing={1}>
+                          <Stack direction="row" justifyContent="space-between">
+                            <Typography variant="body2">対象月:</Typography>
+                            <Typography variant="body2" color="primary.main">
+                              {selectedMonth}
+                            </Typography>
+                          </Stack>
+
+                          <Stack direction="row" justifyContent="space-between">
+                            <Typography variant="body2">対象利用者数:</Typography>
+                            <Typography variant="body2" color="primary.main">
+                              {filteredSummaries.length}名
+                            </Typography>
+                          </Stack>
+
+                          {keyword && (
+                            <Stack direction="row" justifyContent="space-between">
+                              <Typography variant="body2">絞り込み条件:</Typography>
+                              <Typography variant="body2" color="primary.main">
+                                "{keyword}"
+                              </Typography>
+                            </Stack>
+                          )}
+
+                          <Stack direction="row" justifyContent="space-between">
+                            <Typography variant="body2">平均完了率:</Typography>
+                            <Typography variant="body2" color="info.main">
+                              {stats.avgCompletionRate}%
+                            </Typography>
+                          </Stack>
+                        </Stack>
+                      </Box>
+
+                      {/* PDF生成ボタン */}
+                      <Button
+                        variant="contained"
+                        size="large"
+                        startIcon={<CloudDownloadIcon />}
+                        onClick={handleGenerateMonthlyPdf}
+                        disabled={filteredSummaries.length === 0}
+                        sx={{ mt: 2 }}
+                      >
+                        月次PDFレポートを生成
+                      </Button>
+
+                      {filteredSummaries.length === 0 && (
+                        <Typography variant="caption" color="warning.main" textAlign="center">
+                          対象データがありません。フィルター条件を確認してください。
+                        </Typography>
+                      )}
+                    </Stack>
+                  </CardContent>
+                </Card>
+
+                {/* Power Automate 連携情報 */}
+                <Card variant="outlined">
+                  <CardContent>
+                    <Stack spacing={1}>
+                      <Typography variant="subtitle2" color="text.secondary">
+                        🔧 Power Automate 連携
+                      </Typography>
+
+                      <Typography variant="body2" color="text.secondary">
+                        PDFレポート生成は Power Automate ワークフローを通じて処理されます。
+                        生成が完了すると、メール通知またはダウンロードリンクが提供されます。
+                      </Typography>
+
+                      <Typography variant="caption" color="text.secondary">
+                        ※ 現在は開発中のため、実際のPDF生成は行われません
+                      </Typography>
+                    </Stack>
+                  </CardContent>
+                </Card>
+              </Stack>
             </Box>
           </Box>
         </Box>

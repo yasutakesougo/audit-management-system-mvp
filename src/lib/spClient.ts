@@ -3,12 +3,13 @@
 import { useMemo } from 'react';
 import { useAuth } from '../auth/useAuth';
 import { getRuntimeEnv as getRuntimeEnvRoot } from '../env';
-import { auditLog } from './debugLogger';
-import { getAppConfig, getSchedulesListIdFromEnv, isDemoModeEnabled, isE2eMsalMockEnabled, readBool, readEnv, type EnvRecord } from './env';
-import { SharePointItemNotFoundError, SharePointMissingEtagError } from './errors';
-import { sha256Hex } from './hashUtil';
+import type { UnifiedResourceEvent } from '../features/resources/types';
 import { SCHEDULE_FIELD_ENTRY_HASH, SCHEDULE_FIELD_SERVICE_TYPE } from '../sharepoint/fields';
 import type { SpScheduleItem } from '../types';
+import { auditLog } from './debugLogger';
+import { getAppConfig, getSchedulesListIdFromEnv, isDemo, isDemoModeEnabled, isE2E, isE2eMsalMockEnabled, readBool, readEnv, skipSharePoint, type EnvRecord } from './env';
+import { SharePointItemNotFoundError, SharePointMissingEtagError } from './errors';
+import { sha256Hex } from './hashUtil';
 
 const FALLBACK_SP_RESOURCE = 'https://example.sharepoint.com';
 const FALLBACK_SP_SITE_RELATIVE = '/sites/demo';
@@ -47,6 +48,14 @@ export function ensureConfig(envOverride?: { VITE_SP_RESOURCE?: string; VITE_SP_
   }
 
   const config = getAppConfig(overrideRecord);
+
+  // E2E テスト環境では SharePoint 設定チェックをスキップ
+  if (config.VITE_E2E === '1') {
+    const resource = FALLBACK_SP_RESOURCE;
+    const siteRel = FALLBACK_SP_SITE_RELATIVE;
+    return { resource, siteRel, baseUrl: `${resource}${siteRel}/_api/web` };
+  }
+
   const rawResource = (config.VITE_SP_RESOURCE ?? '').trim();
   const rawSiteRel = (config.VITE_SP_SITE_RELATIVE ?? '').trim();
   const isPlaceholder = (s: string) => !s || /<yourtenant>|<SiteName>/i.test(s) || s === '__FILL_ME__';
@@ -1280,6 +1289,114 @@ export async function createSchedule(sp: UseSP, payload: ScheduleCreatePayload):
 }
 
 export const __ensureListInternals = { buildFieldSchema };
+
+// =============================================================================
+// IRC E2E用モッククライアント
+// =============================================================================
+
+/**
+ * E2E/Demo用の統合リソースイベントモックデータ
+ * 実績ありイベント（ロック対象）と編集可能イベントを含む
+ */
+const mockUnifiedEventsForE2E: UnifiedResourceEvent[] = [
+  {
+    id: 'locked-event-1',
+    resourceId: 'staff-1',
+    title: '利用者宅訪問 (実績あり)',
+    start: '2025-11-16T09:00:00', // 固定日付
+    end: '2025-11-16T10:00:00',
+    editable: false,
+    extendedProps: {
+      planId: 'plan-locked-1',
+      planType: 'visit',
+      recordId: 'record-locked-1',
+      actualStart: '2025-11-16T09:05:00', // 実績あり
+      actualEnd: '2025-11-16T10:10:00',
+      status: 'completed',
+      percentComplete: 100,
+      diffMinutes: 10,
+      notes: '正常完了'
+    }
+  },
+  {
+    id: 'editable-event-1',
+    resourceId: 'staff-1',
+    title: 'デイサービス送迎 (計画のみ)',
+    start: '2025-11-16T11:00:00', // 固定日付
+    end: '2025-11-16T12:00:00',
+    editable: true,
+    extendedProps: {
+      planId: 'plan-editable-1',
+      planType: 'travel',
+      status: 'waiting'
+      // actualStart なし = 編集可能
+    }
+  },
+  {
+    id: 'staff2-overwork',
+    resourceId: 'staff-2',
+    title: '長時間作業A',
+    start: '2025-11-16T08:00:00', // 固定日付
+    end: '2025-11-16T14:00:00', // 6時間
+    editable: true,
+    extendedProps: {
+      planId: 'plan-staff2-1',
+      planType: 'center',
+      status: 'waiting'
+    }
+  },
+  {
+    id: 'staff2-additional',
+    resourceId: 'staff-2',
+    title: '追加作業B',
+    start: '2025-11-16T14:30:00', // 固定日付
+    end: '2025-11-16T17:00:00', // 2.5時間 = 合計8.5時間
+    editable: true,
+    extendedProps: {
+      planId: 'plan-staff2-2',
+      planType: 'admin',
+      status: 'waiting'
+    }
+  }
+];
+
+/**
+ * IRC E2E/Demo用SpClientインターface
+ */
+export interface IrcSpClient {
+  getUnifiedEvents: () => Promise<UnifiedResourceEvent[]>;
+  // 必要に応じて他のメソッドも追加
+}
+
+/**
+ * E2E/Demo用モックSpClient
+ */
+const createMockIrcSpClient = (): IrcSpClient => ({
+  async getUnifiedEvents() {
+    // E2E環境では固定のテスト用データを返す
+    return mockUnifiedEventsForE2E;
+  }
+});
+
+/**
+ * 本番用実SpClient（将来実装）
+ */
+const createRealIrcSpClient = (): IrcSpClient => ({
+  async getUnifiedEvents() {
+    // TODO: 実際のSharePointからUnifiedResourceEventを取得
+    throw new Error('Real SharePoint IRC client not implemented yet');
+  }
+});
+
+/**
+ * 環境に応じてIRC用SpClientを作成
+ */
+export const createIrcSpClient = (): IrcSpClient => {
+  if (isE2E() || isDemo() || skipSharePoint()) {
+    return createMockIrcSpClient();
+  }
+  return createRealIrcSpClient();
+};
 
 // test-only export (intentionally non-exported in production bundles usage scope)
 export const __test__ = {

@@ -1,6 +1,6 @@
 // ---- Single source of truth for data-testid ----
 
-// 値は常に文字列。キーと同じ値を返すことでテストコードからの参照を簡易化。
+// 値は常に文字列。テストコードからは TESTIDS.xxx を経由して参照する（文字列リテラルは直書きしない）。
 export const TESTIDS = {
   // Shell / Router
   'app-root': 'app-root',
@@ -10,7 +10,15 @@ export const TESTIDS = {
   'meeting-guide': 'meeting-guide',
   'meeting-guide-page': 'meeting-guide-page',
   'dashboard-page': 'dashboard-page',
+  'dashboard-page-tabs': 'dashboard-page-tabs', // 🧪 黒ノート機能タブ専用（日次ダッシュボードと区別）
   'dashboard-records': 'dashboard-records',
+
+  // Dashboard Tabs (黒ノート機能個別タブ) 🌱 E2Eでタブ切替を細かく検査用
+  'dashboard-tab-management': 'dashboard-tab-management',
+  'dashboard-tab-timeline': 'dashboard-tab-timeline',
+  'dashboard-tab-weekly': 'dashboard-tab-weekly',
+  'dashboard-tab-meeting': 'dashboard-tab-meeting',
+  'dashboard-tab-profile': 'dashboard-tab-profile',
   'attendance-page': 'attendance-page',
   'plan-create-page': 'plan-create-page',
   'plan-edit-page': 'plan-edit-page',
@@ -22,8 +30,31 @@ export const TESTIDS = {
   'record-row': 'record-row',
   'toast-announcer': 'toast-announcer',
   'toast-message': 'toast-message',
+  'handoff-footer-quicknote': 'handoff-footer-quicknote',
+  'nav-daily': 'nav-daily',
+  'daily-footer-attendance': 'daily-footer-attendance',
+  'daily-footer-activity': 'daily-footer-activity',
+  'daily-footer-support': 'daily-footer-support',
+  'daily-footer-health': 'daily-footer-health',
+  'daily-table-record-form': 'daily-table-record-form',
+  'daily-table-record-form-user-list': 'daily-table-record-form-user-list',
+  'daily-table-record-form-table': 'daily-table-record-form-table',
+  'bulk-daily-record-form': 'bulk-daily-record-form',
+  'bulk-daily-record-user-list': 'bulk-daily-record-user-list',
+  'bulk-daily-record-user-row-prefix': 'bulk-daily-record-user-row-',
+  'bulk-daily-record-search': 'bulk-daily-record-search',
+  'bulk-daily-record-select-all': 'bulk-daily-record-select-all',
+  'bulk-daily-record-clear-all': 'bulk-daily-record-clear-all',
+  'bulk-daily-record-activity-input-am': 'bulk-daily-record-activity-input-am',
+  'bulk-daily-record-activity-input-pm': 'bulk-daily-record-activity-input-pm',
+  'bulk-daily-record-activity-chip-am': 'bulk-daily-record-activity-chip-am',
+  'bulk-daily-record-activity-chip-pm': 'bulk-daily-record-activity-chip-pm',
+  'bulk-daily-record-activity-delete-am': 'bulk-daily-record-activity-delete-am',
+  'bulk-daily-record-activity-delete-pm': 'bulk-daily-record-activity-delete-pm',
+  'bulk-daily-record-individual-notes': 'bulk-daily-record-individual-notes',
   'nav-schedules': 'nav-schedules',
   'schedules-nav-link': 'schedules-nav-link',
+  'home-tile-schedule': 'home-tile-schedule',
   'schedules-day-page': 'schedules-day-page',
   'schedules-day-heading': 'schedules-day-heading',
   'schedules-day-list': 'schedules-day-list',
@@ -35,6 +66,77 @@ export const TESTIDS = {
   'schedules-prev': 'schedules-prev',
   'schedules-next': 'schedules-next',
   'schedules-week-live': 'schedules-week-live',
+  'schedules-event-conflicted': 'schedules-event-conflicted',
+  'schedules-event-normal': 'schedules-event-normal',
+  'schedule-create-quick-button': 'schedule-create-quick-button',
+  'schedule-create-dialog': 'schedule-create-dialog',
+  'schedule-create-error-alert': 'schedule-create-error-alert',
+  'schedule-create-user-input': 'schedule-create-user-input',
+  'schedule-create-start': 'schedule-create-start',
+  'schedule-create-end': 'schedule-create-end',
+  'schedule-create-service-type': 'schedule-create-service-type',
+  'schedule-create-location': 'schedule-create-location',
+  'schedule-create-notes': 'schedule-create-notes',
+  'schedule-create-save': 'schedule-create-save',
+
+  // Operations Dashboard
+  'operations-dashboard-page': 'operations-dashboard-page',
+  'operations-safety-hud': 'operations-safety-hud',
+  'operations-safety-hud-total': 'operations-safety-hud-total',
+  'operations-safety-hud-kind-list': 'operations-safety-hud-kind-list',
+  'operations-staff-load-panel': 'operations-staff-load-panel',
+  'operations-staff-load-row': 'operations-staff-load-row',
+  'operations-vehicle-panel': 'operations-vehicle-panel',
+  'operations-vehicle-row': 'operations-vehicle-row',
+
+  // Daily Dashboard (Stage 9)
+  'dashboard-safety-hud': 'dashboard-safety-hud',
+  'dashboard-handoff-summary': 'dashboard-handoff-summary',
+  'dashboard-daily-status-card-通所記録': 'dashboard-daily-status-card-通所記録',
+  'dashboard-daily-status-card-日誌': 'dashboard-daily-status-card-日誌',
+  'dashboard-daily-status-card-支援手順': 'dashboard-daily-status-card-支援手順',
+
+  // Morning/Evening Meeting System
+  'dashboard-briefing-panel': 'dashboard-briefing-panel',
+  'briefing-safety-summary': 'briefing-safety-summary',
+  'briefing-progress-summary': 'briefing-progress-summary',
+  'briefing-priority-users': 'briefing-priority-users',
+  'briefing-handoff-summary': 'briefing-handoff-summary',
+  'dashboard-next-action-card': 'dashboard-next-action-card',
+  'next-action-main-button': 'next-action-main-button',
+  'meeting-progress-memo': 'meeting-progress-memo',
+  'meeting-guide-morning': 'meeting-guide-morning',
+  'meeting-guide-evening': 'meeting-guide-evening',
+  'meeting-guide-checklist': 'meeting-guide-checklist',
+  'meeting-guide-clear': 'meeting-guide-clear',
+
+  'schedule-conflict-guide-dialog': 'schedule-conflict-guide-dialog',
+  'schedule-conflict-guide-title': 'schedule-conflict-guide-title',
+  'schedule-conflict-guide-content': 'schedule-conflict-guide-content',
+  'schedule-conflict-guide-item': 'schedule-conflict-guide-item',
+  'schedule-conflict-guide-actions': 'schedule-conflict-guide-actions',
+  'schedule-conflict-guide-close': 'schedule-conflict-guide-close',
+  'schedule-conflict-guide-apply-30min-later': 'schedule-conflict-guide-apply-30min-later',
+  // ミニ時間提案エンジン用のテストID
+  'schedule-conflict-guide-apply-30min-earlier': 'schedule-conflict-guide-apply-30min-earlier',
+  'schedule-conflict-guide-apply-60min-later': 'schedule-conflict-guide-apply-60min-later',
+  'schedule-conflict-guide-suggestion-buttons': 'schedule-conflict-guide-suggestion-buttons',
+  // 職員代替案エンジン用のテストID
+  'schedule-conflict-guide-staff-alternatives': 'schedule-conflict-guide-staff-alternatives',
+  'schedule-conflict-guide-staff-alternative': 'schedule-conflict-guide-staff-alternative',
+  'schedule-conflict-guide-apply-staff': 'schedule-conflict-guide-apply-staff',
+  // 車両代替案エンジン用のテストID（Stage 7）
+  'schedule-conflict-guide-vehicle-alternatives': 'schedule-conflict-guide-vehicle-alternatives',
+  'schedule-conflict-guide-vehicle-alternative': 'schedule-conflict-guide-vehicle-alternative',
+  'schedule-conflict-guide-apply-vehicle': 'schedule-conflict-guide-apply-vehicle',
+  // 部屋代替案エンジン用のテストID（Stage 8）
+  'schedule-conflict-guide-room-alternatives': 'schedule-conflict-guide-room-alternatives',
+  'schedule-conflict-guide-room-alternative': 'schedule-conflict-guide-room-alternative',
+  'schedule-conflict-guide-apply-room': 'schedule-conflict-guide-apply-room',
+  // 設備代替案エンジン用のテストID（Stage 8）
+  'schedule-conflict-guide-equipment-alternatives': 'schedule-conflict-guide-equipment-alternatives',
+  'schedule-conflict-guide-equipment-alternative': 'schedule-conflict-guide-equipment-alternative',
+  'schedule-conflict-guide-apply-equipment': 'schedule-conflict-guide-apply-equipment',
   'app-bottom-nav': 'app-bottom-nav',
   'support-incident-dialog': 'support-incident-dialog',
   'support-incident-stepper': 'support-incident-stepper',
@@ -129,7 +231,8 @@ export const TESTIDS = {
   'users-quick-prefix': 'users-quick-',
   'user-menu-card-prefix': 'user-menu-card-',
   'user-menu-tabpanel-prefix': 'user-menu-tabpanel-',
-    // User Menu関連
+
+  // User Menu関連
   'user-menu-trigger': 'user-menu-trigger',
   'user-menu-popup': 'user-menu-popup',
   'user-menu-profile-item': 'user-menu-profile-item',
@@ -152,11 +255,28 @@ export const TESTIDS = {
   'monthly-detail-month-select': 'monthly-detail-month-select',
   'monthly-detail-records-table': 'monthly-detail-records-table',
   'monthly-pdf-generate-btn': 'monthly-pdf-generate-btn',
-} as const;
 
+  // Mobile Agenda View
+  'mobile-agenda-loading': 'mobile-agenda-loading',
+  'mobile-agenda-error': 'mobile-agenda-error',
+  'mobile-agenda-empty': 'mobile-agenda-empty',
+  'mobile-agenda-container': 'mobile-agenda-container',
+  'mobile-agenda-schedule-item': 'mobile-agenda-schedule-item',
+  'mobile-agenda-schedule-conflict': 'mobile-agenda-schedule-conflict',
 
+  // Support Plan Guide HUD
+  'support-plan-hud': 'support-plan-hud',
+} as const satisfies Record<string, string>;
 
-// React で使うお手軽ヘルパー（型はstringで十分）
-export function tid(id: string) {
+// 🔧 型安全なTestID型を定義
+export type TestId = (typeof TESTIDS)[keyof typeof TESTIDS];
+
+// React で使うお手軽ヘルパー（型安全版でタイポ防止）
+export function tid(id: TestId) {
   return { 'data-testid': id } as const;
+}
+
+// プレフィックス + サフィックスを安全に扱うヘルパー
+export function tidWithSuffix(id: TestId, suffix: string) {
+  return { 'data-testid': `${id}${suffix}` };
 }

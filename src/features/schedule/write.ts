@@ -1,3 +1,4 @@
+import { HYDRATION_FEATURES, estimatePayloadSize, startFeatureSpan } from '@/hydration/features';
 import type { UseSP } from '@/lib/spClient';
 
 export type UpdateScheduleRequest = {
@@ -7,5 +8,18 @@ export type UpdateScheduleRequest = {
 };
 
 export async function updateSchedule(_sp: UseSP, _request: UpdateScheduleRequest): Promise<void> {
-  // Demo environment stub – real implementation will call SharePoint.
+  const span = startFeatureSpan(HYDRATION_FEATURES.schedules.write, {
+    operation: 'updateSchedule',
+    bytes: estimatePayloadSize(_request),
+  });
+  try {
+    // Demo environment stub – real implementation will call SharePoint.
+    span({ meta: { status: 'noop' } });
+  } catch (error) {
+    span({
+      meta: { status: 'error' },
+      error: error instanceof Error ? error.message : String(error),
+    });
+    throw error;
+  }
 }

@@ -3,9 +3,10 @@ import '@formatjs/intl-datetimeformat/polyfill';
 import '@formatjs/intl-getcanonicallocales';
 // Vitest global setup: polyfill crypto.randomUUID if absent (Node < 19 environments)
 import '@testing-library/jest-dom/vitest';
+import { cleanup } from '@testing-library/react';
 import { webcrypto } from 'crypto';
 import { toHaveNoViolations } from 'jest-axe';
-import { expect } from 'vitest';
+import { afterEach, expect } from 'vitest';
 
 process.env.TZ ??= 'Asia/Tokyo';
 // Provide safe defaults for MSAL-dependent modules during unit tests
@@ -18,6 +19,10 @@ process.env.VITE_MSAL_REDIRECT_URI ??= 'http://localhost:5173';
 type JestLikeMatcher = (this: unknown, ...args: unknown[]) => { pass: boolean; message(): string };
 
 expect.extend(toHaveNoViolations as unknown as Record<string, JestLikeMatcher>);
+
+afterEach(() => {
+	cleanup();
+});
 
 declare module 'vitest' {
 	interface Assertion {

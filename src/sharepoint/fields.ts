@@ -28,6 +28,22 @@ export interface IUserMaster {
   RecipientCertExpiry?: string | null;
   Modified?: string | null;
   Created?: string | null;
+
+  // 事業所との契約情報 / 利用ステータス
+  UsageStatus?: string | null;
+
+  // 支給決定情報
+  GrantMunicipality?: string | null;
+  GrantPeriodStart?: string | null;
+  GrantPeriodEnd?: string | null;
+  DisabilitySupportLevel?: string | null;
+  GrantedDaysPerMonth?: string | null;
+  UserCopayLimit?: string | null;
+
+  // 請求・加算関連情報
+  TransportAdditionType?: string | null;
+  MealAddition?: string | null;
+  CopayPaymentMethod?: string | null;
 }
 
 export interface IUserMasterCreateDto {
@@ -47,6 +63,22 @@ export interface IUserMasterCreateDto {
   AttendanceDays?: string[] | null;
   RecipientCertNumber?: string | null;
   RecipientCertExpiry?: string | null;
+
+  // 事業所との契約情報 / 利用ステータス
+  UsageStatus?: string | null;
+
+  // 支給決定情報
+  GrantMunicipality?: string | null;
+  GrantPeriodStart?: string | null;
+  GrantPeriodEnd?: string | null;
+  DisabilitySupportLevel?: string | null;
+  GrantedDaysPerMonth?: string | null;
+  UserCopayLimit?: string | null;
+
+  // 請求・加算関連情報
+  TransportAdditionType?: string | null;
+  MealAddition?: string | null;
+  CopayPaymentMethod?: string | null;
 }
 
 export const joinSelect = (arr: readonly string[]) => arr.join(',');
@@ -75,6 +107,7 @@ export const FIELD_MAP = {
     serviceStartDate: 'ServiceStartDate',
     serviceEndDate: 'ServiceEndDate',
     isHighIntensitySupportTarget: 'IsHighIntensitySupportTarget',
+    isSupportProcedureTarget: 'IsSupportProcedureTarget',
     severeFlag: 'severeFlag',
     isActive: 'IsActive',
     transportToDays: 'TransportToDays',
@@ -143,6 +176,7 @@ export const USERS_SELECT_FIELDS_SAFE = [
   FIELD_MAP.Users_Master.serviceStartDate,
   FIELD_MAP.Users_Master.serviceEndDate,
   FIELD_MAP.Users_Master.isHighIntensitySupportTarget,
+  FIELD_MAP.Users_Master.isSupportProcedureTarget,
   FIELD_MAP.Users_Master.severeFlag,
   FIELD_MAP.Users_Master.isActive,
   FIELD_MAP.Users_Master.transportToDays,
@@ -162,6 +196,8 @@ export const STAFF_SELECT_FIELDS_CANONICAL = [
   FIELD_MAP.Staff_Master.jobTitle,
   FIELD_MAP.Staff_Master.employmentType,
   FIELD_MAP.Staff_Master.rbacRole,
+  FIELD_MAP.Staff_Master.role,
+  FIELD_MAP.Staff_Master.isActive,
   FIELD_MAP.Staff_Master.department,
   FIELD_MAP.Staff_Master.hireDate,
   FIELD_MAP.Staff_Master.resignDate,
@@ -171,6 +207,10 @@ export const STAFF_SELECT_FIELDS_CANONICAL = [
   FIELD_MAP.Staff_Master.furigana,
   FIELD_MAP.Staff_Master.fullNameKana,
   FIELD_MAP.Staff_Master.workDaysText,
+  FIELD_MAP.Staff_Master.workDays,
+  FIELD_MAP.Staff_Master.baseShiftStartTime,
+  FIELD_MAP.Staff_Master.baseShiftEndTime,
+  FIELD_MAP.Staff_Master.baseWorkingDays,
 ] as const;
 
 export const USERS_SELECT_SAFE = joinSelect(USERS_SELECT_FIELDS_SAFE as readonly string[]);

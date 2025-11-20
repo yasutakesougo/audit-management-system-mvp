@@ -13,6 +13,7 @@ const defaultFlags: FeatureFlagSnapshot = {
   schedules: true,
   schedulesCreate: true,
   complianceForm: false,
+  schedulesWeekV2: false,
 };
 
 beforeEach(() => {
@@ -80,12 +81,17 @@ describe('AppShell navigation', () => {
 
     expect(await nav.findByRole('link', { name: '利用者' })).toHaveAttribute('aria-current', 'page');
     expect(nav.getByRole('link', { name: '日次記録' })).not.toHaveAttribute('aria-current');
-    expect(nav.getByRole('link', { name: '新規予定' })).toBeInTheDocument();
+    expect(nav.getByRole('link', { name: 'スケジュール' })).toBeInTheDocument();
     expect(nav.queryByRole('link', { name: 'コンプラ報告' })).toBeNull();
 
     const currentLinks = nav.getAllByRole('link', { current: 'page' });
     expect(currentLinks).toHaveLength(1);
     expect(currentLinks[0]).toHaveTextContent('利用者');
+
+    // Footer actions should include schedules create when flag is enabled
+    const footer = await screen.findByRole('contentinfo');
+    const footerWithin = within(footer);
+    expect(footerWithin.getByRole('link', { name: '新規予定' })).toBeInTheDocument();
 
     await waitFor(() => {
       expect(spFetchMock).toHaveBeenCalled();

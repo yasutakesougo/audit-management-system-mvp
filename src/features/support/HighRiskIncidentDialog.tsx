@@ -7,10 +7,11 @@ import {
   functionValues,
   highRiskIncidentDraftSchema,
   severityValues,
+  type AntecedentValue,
   type ConsequenceValue,
   type FunctionValue,
   type HighRiskIncidentDraft,
-} from '../../domain/support/highRiskIncident';
+} from '@/domain/support/highRiskIncident';
 import Alert from '@mui/material/Alert';
 import Autocomplete from '@mui/material/Autocomplete';
 import Box from '@mui/material/Box';
@@ -190,7 +191,7 @@ export const HighRiskIncidentDialog: React.FC<HighRiskIncidentDialogProps> = ({
       consequence: {
         ...prev.consequence,
         consequenceReceived: prev.consequence.consequenceReceived.includes(value)
-          ? prev.consequence.consequenceReceived.filter(item => item !== value)
+          ? prev.consequence.consequenceReceived.filter((item: ConsequenceValue) => item !== value)
           : [...prev.consequence.consequenceReceived, value],
       },
     }));
@@ -261,7 +262,7 @@ export const HighRiskIncidentDialog: React.FC<HighRiskIncidentDialogProps> = ({
               value={draft.behavior.behaviorObserved}
               onChange={(event: SelectChangeEvent<string>) => handleBehaviorChange('behaviorObserved', event.target.value)}
             >
-              {behaviorValues.map(option => (
+              {behaviorValues.map((option: string) => (
                 <MenuItem key={option} value={option}>
                   {option}
                 </MenuItem>
@@ -287,7 +288,7 @@ export const HighRiskIncidentDialog: React.FC<HighRiskIncidentDialogProps> = ({
               }))}
             aria-label="重症度"
           >
-            {severityValues.map(severity => (
+            {severityValues.map((severity: string) => (
               <ToggleButton key={severity} value={severity} sx={{ textTransform: 'none' }}>
                 <Chip size="small" color={severityColors[severity]} label={severity} />
               </ToggleButton>
@@ -339,9 +340,12 @@ export const HighRiskIncidentDialog: React.FC<HighRiskIncidentDialogProps> = ({
         <Select
           label="先行事象"
           value={draft.antecedent.antecedentType}
-          onChange={(event: SelectChangeEvent<string>) => handleAntecedentChange('antecedentType', event.target.value)}
+          onChange={(event: SelectChangeEvent<AntecedentValue | ''>) => {
+            const nextValue = event.target.value as AntecedentValue | '';
+            handleAntecedentChange('antecedentType', nextValue);
+          }}
         >
-          {antecedentValues.map(option => (
+          {antecedentValues.map((option: string) => (
             <MenuItem key={option} value={option}>
               {option}
             </MenuItem>
@@ -385,7 +389,7 @@ export const HighRiskIncidentDialog: React.FC<HighRiskIncidentDialogProps> = ({
         行動の結果、環境や本人にどのような変化が生じたかを記録します。介入内容も忘れずに。
       </Alert>
       <FormGroup row>
-        {consequenceValues.map(option => (
+        {consequenceValues.map((option: ConsequenceValue) => (
           <FormControlLabel
             key={option}
             control={(
@@ -430,7 +434,7 @@ export const HighRiskIncidentDialog: React.FC<HighRiskIncidentDialogProps> = ({
           onChange={(event: SelectChangeEvent<FunctionValue>) =>
             handleHypothesisChange('hypothesizedFunction', event.target.value as FunctionValue)}
         >
-          {functionValues.map(option => (
+          {functionValues.map((option: FunctionValue) => (
             <MenuItem key={option} value={option}>
               {option}
             </MenuItem>

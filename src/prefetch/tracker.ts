@@ -1,4 +1,4 @@
-import { scheduleIdle, cancelIdle } from './util';
+import { cancelIdle, scheduleIdle } from './util';
 
 type PrefetchStatus = 'pending' | 'completed' | 'error' | 'aborted' | 'skipped' | 'reused';
 export type PrefetchSource = 'hover' | 'nav' | 'viewport' | 'idle' | 'kbd';
@@ -21,6 +21,13 @@ const entries = new Map<string, PrefetchEntry>();
 const listeners = new Set<Listener>();
 let idleHandle: ReturnType<typeof scheduleIdle> | null = null;
 
+/**
+ * Creates a sorted snapshot of all prefetch entries.
+ * @returns Array of entries sorted by startedAt timestamp
+ */
+const snapshotEntries = (): PrefetchEntry[] =>
+  Array.from(entries.values()).sort((a, b) => a.startedAt - b.startedAt);
+
 const readTtl = (): number => {
   const raw = (import.meta as ImportMeta).env?.VITE_PREFETCH_TTL_MS;
   const parsed = typeof raw === 'string' ? Number.parseInt(raw, 10) : NaN;
@@ -31,7 +38,7 @@ const readTtl = (): number => {
 };
 
 const publish = (): void => {
-  const snapshot = Array.from(entries.values()).sort((a, b) => a.startedAt - b.startedAt);
+  const snapshot = snapshotEntries();
   if (typeof window !== 'undefined') {
     const target = window as typeof window & { __PREFETCH_HUD__?: { spans?: PrefetchEntry[] } };
     if (!target.__PREFETCH_HUD__) {
@@ -56,6 +63,7 @@ const scheduleCleanup = (): void => {
     idleHandle = null;
     const now = Date.now();
     let changed = false;
+    // クリーンアップは completed エントリのみ。error/aborted/skipped は履歴として保持
     entries.forEach((entry, key) => {
       if (entry.status === 'completed' && entry.finishedAt && now - entry.finishedAt > entry.ttlMs * 4) {
         entries.delete(key);
@@ -79,7 +87,7 @@ export const resetPrefetchEntries = (): void => {
 
 export const subscribePrefetchEntries = (listener: Listener): (() => void) => {
   listeners.add(listener);
-  listener(Array.from(entries.values()));
+  listener(snapshotEntries());
   return () => {
     listeners.delete(listener);
   };
@@ -87,14 +95,33 @@ export const subscribePrefetchEntries = (listener: Listener): (() => void) => {
 
 export const getPrefetchEntries = (): PrefetchEntry[] => Array.from(entries.values());
 
+/**
+ * Checks if a prefetch result is still fresh within the TTL period.
+ * @param key The prefetch key to check
+ * @param ttlMs Time-to-live in milliseconds (defaults to VITE_PREFETCH_TTL_MS)
+ * @returns true if the prefetch is fresh and can be reused without re-importing
+ * @note Considers both 'completed' and 'reused' status as fresh for consistent caching behavior
+ */
 export const isPrefetchFresh = (key: string, ttlMs = readTtl()): boolean => {
   const existing = entries.get(key);
-  if (!existing || existing.status !== 'completed' || !existing.finishedAt) {
+  if (
+    !existing ||
+    // completed か reused を「成功した prefetched」と扱う
+    (existing.status !== 'completed' && existing.status !== 'reused') ||
+    !existing.finishedAt
+  ) {
     return false;
   }
   return Date.now() - existing.finishedAt <= ttlMs;
 };
 
+/**
+ * Marks an existing prefetch as reused, updating source and metadata.
+ * @param key The prefetch key
+ * @param source The new source triggering the reuse
+ * @param meta Additional metadata to merge with existing meta
+ * @note Changes status to 'reused' but preserves finishedAt for TTL calculations
+ */
 export const markPrefetchReuse = (key: string, source: PrefetchSource, meta?: Record<string, unknown>): void => {
   const now = Date.now();
   const existing = entries.get(key);

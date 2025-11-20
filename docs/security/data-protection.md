@@ -1,6 +1,6 @@
 # 🧾 データ保護ポリシー
 
-> 対象: 個人情報保護責任者 / 開発・運用チーム  
+> 対象: 個人情報保護責任者 / 開発・運用チーム
 > 関連: [playbook.md](./playbook.md#2-方針の全体構造)
 
 ---
@@ -35,29 +35,29 @@
 
 ## 4. アクセス管理
 
-- Microsoft Entra ID グループで職員権限を統制。  
-- 機密データは「管理者」「支援員」ロールのみ参照可。  
+- Microsoft Entra ID グループで職員権限を統制。
+- 機密データは「管理者」「支援員」ロールのみ参照可。
 - 退職時はアカウント無効化＋自動アクセス剥奪。
 
 ---
 
 ## 5. バックアップと復旧
 
-- SharePoint バージョン履歴を 500 件まで保持。  
-- Power Automate による日次バックアップを OneDrive へ。  
+- SharePoint バージョン履歴を 500 件まで保持。
+- Power Automate による日次バックアップを OneDrive へ。
 - 復旧テストを年 2 回実施（春・秋）。
 
 ---
 
 ## 6. 監査・記録
 
-- ログは NDJSON 形式で `/logs/YYYY/` に保管。  
-- 内部監査では `data-protection-checklist.xlsx` を利用。  
+- ログは NDJSON 形式で `/logs/YYYY/` に保管。
+- 内部監査では `data-protection-checklist.xlsx` を利用。
 - 不正アクセス検出時は即時 Teams 通知 → 管理者承認。
 
 ---
 
 ## 7. 参考文献
 
-- [個人情報保護委員会 ガイドライン](https://www.ppc.go.jp/)  
+- [個人情報保護委員会 ガイドライン](https://www.ppc.go.jp/)
 - [Microsoft 365 Data Loss Prevention (DLP)](https://learn.microsoft.com/microsoft-365/compliance/dlp-learn-about-dlp)

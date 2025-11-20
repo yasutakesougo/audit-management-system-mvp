@@ -1,5 +1,60 @@
-import { alpha, createTheme, ThemeProvider as MUIThemeProvider, type ThemeOptions } from '@mui/material/styles';
+import CssBaseline from '@mui/material/CssBaseline';
+import { alpha, createTheme, ThemeProvider as MUIThemeProvider, type Theme, type ThemeOptions } from '@mui/material/styles';
 import React, { createContext, useCallback, useEffect, useMemo, useState } from 'react';
+
+type ServiceTypeKey = 'normal' | 'transport' | 'respite' | 'nursing' | 'absence' | 'other';
+
+export type ServiceTypeColorTokens = {
+  bg: string;
+  border: string;
+  pillBg: string;
+  pillText: string;
+  accent: string;
+};
+
+declare module '@mui/material/styles' {
+  interface Theme {
+    serviceTypeColors: Record<ServiceTypeKey, ServiceTypeColorTokens>;
+  }
+
+  interface ThemeOptions {
+    serviceTypeColors?: Partial<Record<ServiceTypeKey, Partial<ServiceTypeColorTokens>>>;
+  }
+}
+
+const SERVICE_COLOR_BASE: Record<ServiceTypeKey, { main: string; accent?: string; pillText?: string }> = {
+  normal: { main: '#0EA5E9', accent: '#0369A1' },
+  transport: { main: '#16A34A', accent: '#15803D' },
+  respite: { main: '#F59E0B', accent: '#B45309', pillText: '#1C1917' },
+  nursing: { main: '#A855F7', accent: '#7C3AED' },
+  absence: { main: '#94A3B8', accent: '#475569', pillText: '#F8FAFC' },
+  other: { main: '#14B8A6', accent: '#0F766E' },
+};
+
+const buildServiceTypeColors = (theme: Theme): Record<ServiceTypeKey, ServiceTypeColorTokens> => {
+  const backgroundAlpha = theme.palette.mode === 'dark' ? 0.35 : 0.18;
+  const borderAlpha = theme.palette.mode === 'dark' ? 0.75 : 0.5;
+
+  const createTokens = (config: { main: string; accent?: string; pillText?: string }): ServiceTypeColorTokens => {
+    const accent = config.accent ?? config.main;
+    return {
+      bg: alpha(config.main, backgroundAlpha),
+      border: alpha(accent, borderAlpha),
+      pillBg: accent,
+      pillText: config.pillText ?? theme.palette.getContrastText(accent),
+      accent,
+    };
+  };
+
+  return {
+    normal: createTokens(SERVICE_COLOR_BASE.normal),
+    transport: createTokens(SERVICE_COLOR_BASE.transport),
+    respite: createTokens(SERVICE_COLOR_BASE.respite),
+    nursing: createTokens(SERVICE_COLOR_BASE.nursing),
+    absence: createTokens(SERVICE_COLOR_BASE.absence),
+    other: createTokens(SERVICE_COLOR_BASE.other),
+  };
+};
 
 // Base (shared) design tokens
 const base: ThemeOptions = {
@@ -72,29 +127,65 @@ const base: ThemeOptions = {
 
 export const ColorModeContext = createContext<{ mode: 'light' | 'dark'; toggle: () => void; sticky?: boolean }>({ mode: 'light', toggle: () => {} });
 
+/**
+ * SSR-safe initial mode detection
+ */
+const getInitialMode = (): 'light' | 'dark' => {
+  if (typeof window === 'undefined') return 'light';
+  const saved = localStorage.getItem('app_color_mode');
+  return (saved as 'light' | 'dark') || 'light';
+};
+
 export const ThemeRoot: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [mode, setMode] = useState<'light' | 'dark'>(() => (localStorage.getItem('app_color_mode') as 'light' | 'dark') || 'light');
-  useEffect(() => { localStorage.setItem('app_color_mode', mode); }, [mode]);
-  const toggle = useCallback(() => setMode(m => (m === 'light' ? 'dark' : 'light')), []);
-  const theme = useMemo(() => createTheme({
-    palette: mode === 'dark'
-      ? {
-          mode: 'dark',
-          primary: { main: '#7BB8FF' },
-          secondary: { main: '#7AD48A' },
-          info: { main: '#58A6FF', contrastText: '#0A1929' },
-        }
-      : {
-          mode: 'light',
-          primary: { main: '#00529B' },
-          secondary: { main: '#3b3b44', contrastText: '#ffffff' },
-          info: { main: '#026aa2', dark: '#01507a', contrastText: '#ffffff' },
-          background: { default: '#F5F5F5' },
-        },
-    ...base,
-  }), [mode]);
-  const ctx = useMemo(() => ({ mode, toggle, sticky: false }), [mode, toggle]);
-  return <ColorModeContext.Provider value={ctx}><MUIThemeProvider theme={theme}>{children}</MUIThemeProvider></ColorModeContext.Provider>;
+  const [mode, setMode] = useState<'light' | 'dark'>(getInitialMode);
+
+  useEffect(() => {
+    localStorage.setItem('app_color_mode', mode);
+  }, [mode]);
+
+  const toggle = useCallback(
+    () => setMode((m) => (m === 'light' ? 'dark' : 'light')),
+    [],
+  );
+
+  const theme = useMemo(() => {
+    const baseTheme = createTheme({
+      palette:
+        mode === 'dark'
+          ? {
+              mode: 'dark',
+              primary: { main: '#7BB8FF' },
+              secondary: { main: '#7AD48A' },
+              info: { main: '#58A6FF', contrastText: '#0A1929' },
+            }
+          : {
+              mode: 'light',
+              primary: { main: '#00529B' },
+              secondary: { main: '#3b3b44', contrastText: '#ffffff' },
+              info: { main: '#026aa2', dark: '#01507a', contrastText: '#ffffff' },
+              background: { default: '#F5F5F5' },
+            },
+      ...base,
+    });
+
+    return createTheme(baseTheme, {
+      serviceTypeColors: buildServiceTypeColors(baseTheme),
+    });
+  }, [mode]);
+
+  const ctx = useMemo(
+    () => ({ mode, toggle, sticky: false }),
+    [mode, toggle],
+  );
+
+  return (
+    <ColorModeContext.Provider value={ctx}>
+      <MUIThemeProvider theme={theme}>
+        <CssBaseline />
+        {children}
+      </MUIThemeProvider>
+    </ColorModeContext.Provider>
+  );
 };
 
 // Simple hook for convenience (optional)

@@ -1,4 +1,4 @@
-import type { HydrationSpan } from '@/lib/hydrationHud';
+import type { HydrationSpan } from '../lib/hydrationHud';
 
 export type HydrationRouteEntry = {
   id: HydrationSpan['id'];
@@ -8,6 +8,12 @@ export type HydrationRouteEntry = {
 
 export const HYDRATION_KEYS = {
   dashboard: { id: 'route:dashboard', label: 'Dashboard', budget: 80 },
+  meetingGuide: { id: 'route:meeting-guide', label: 'Meeting Guide', budget: 70 },
+  handoffTimeline: {
+    id: 'route:handoff-timeline',
+    label: '引継ぎタイムライン',
+    budget: 120,
+  },
   records: { id: 'route:records', label: 'Records', budget: 90 },
   checklist: { id: 'route:checklist', label: 'Checklist', budget: 90 },
   audit: { id: 'route:audit', label: 'Audit', budget: 90 },
@@ -21,19 +27,23 @@ export const HYDRATION_KEYS = {
   dailyMenu: { id: 'route:daily', label: 'Daily Menu', budget: 90 },
   dailyActivity: { id: 'route:daily:activity', label: 'Daily Activity', budget: 110 },
   dailySupport: { id: 'route:daily:support', label: 'Daily Support', budget: 110 },
-  adminTemplates: { id: 'route:admin:templates', label: 'Admin Templates', budget: 110 },
-  adminSteps: { id: 'route:admin:step-templates', label: 'Admin Step Templates', budget: 110 },
+  adminTemplates: { id: 'route:admin:templates', label: '支援テンプレート管理', budget: 110 },
+  adminDashboard: { id: 'route:admin:dashboard', label: '管理者ダッシュボード', budget: 110 },
+  adminSteps: { id: 'route:admin:step-templates', label: '支援ステップ管理', budget: 110 },
   adminIndividualSupport: {
     id: 'route:admin:individual-support',
-    label: 'Admin Individual Support',
+    label: '個別支援計画管理',
     budget: 120,
   },
-  supportPlanGuideMarkdown: {
-    id: 'route:support-plan-guide:md',
-    label: 'Support Plan Guide Markdown',
-    budget: 90,
+  adminIntegratedResourceCalendar: {
+    id: 'route:admin:integrated-resource-calendar',
+    label: '統合リソースカレンダー管理',
+    budget: 140,
   },
 } as const satisfies Record<string, HydrationRouteEntry>;
+
+// 型安全なroute IDのunion型 - ハードコードミス防止用
+export type HydrationRouteId = (typeof HYDRATION_KEYS)[keyof typeof HYDRATION_KEYS]['id'];
 
 type Matcher = {
   match: (pathname: string, search: string) => boolean;
@@ -52,11 +62,15 @@ const includesQuery = (search: string, key: string, expected: string): boolean =
 };
 
 const MATCHERS: Matcher[] = [
+  { match: (path) => path === '/dashboard', entry: HYDRATION_KEYS.dashboard },
+  { match: (path) => path === '/' || path === '', entry: HYDRATION_KEYS.dashboard },
+  { match: (path) => path.startsWith('/handoff-timeline'), entry: HYDRATION_KEYS.handoffTimeline },
+  { match: (path) => path.startsWith('/schedules/day'), entry: HYDRATION_KEYS.schedulesDay },
   {
     match: (path, search) => path.startsWith('/schedules') && includesQuery(search, 'view', 'day'),
     entry: HYDRATION_KEYS.schedulesDay,
   },
-  { match: (path) => path === '/' || path === '', entry: HYDRATION_KEYS.dashboard },
+  { match: (path) => path.startsWith('/meeting-guide'), entry: HYDRATION_KEYS.meetingGuide },
   { match: (path) => path.startsWith('/records/support-procedures'), entry: HYDRATION_KEYS.supportProcedures },
   { match: (path) => path.startsWith('/records'), entry: HYDRATION_KEYS.records },
   { match: (path) => path.startsWith('/checklist'), entry: HYDRATION_KEYS.checklist },
@@ -70,6 +84,12 @@ const MATCHERS: Matcher[] = [
   { match: (path) => path.startsWith('/daily/activity'), entry: HYDRATION_KEYS.dailyActivity },
   { match: (path) => path.startsWith('/daily/support'), entry: HYDRATION_KEYS.dailySupport },
   { match: (path) => path.startsWith('/daily'), entry: HYDRATION_KEYS.dailyMenu },
+  { match: (path) => path.startsWith('/admin/dashboard'), entry: HYDRATION_KEYS.adminDashboard },
+  {
+    match: (path) => path.startsWith('/admin/integrated-resource-calendar'),
+    entry: HYDRATION_KEYS.adminIntegratedResourceCalendar,
+  },
+  { match: (path) => path.startsWith('/admin/templates'), entry: HYDRATION_KEYS.adminTemplates },
   { match: (path) => path.startsWith('/admin/step-templates'), entry: HYDRATION_KEYS.adminSteps },
   {
     match: (path) => path.startsWith('/admin/individual-support'),
@@ -78,6 +98,12 @@ const MATCHERS: Matcher[] = [
   { match: (path) => path.startsWith('/admin'), entry: HYDRATION_KEYS.adminTemplates },
 ];
 
+/**
+ * パスとクエリからHydrationRouteEntryを解決
+ * @param pathname URL pathname (正規化される)
+ * @param search URLSearchParams文字列 (オプション)
+ * @returns マッチしたエントリ、またはnull
+ */
 export const resolveHydrationEntry = (
   pathname: string,
   search = '',
@@ -85,10 +111,22 @@ export const resolveHydrationEntry = (
   const lowered = pathname.toLowerCase();
   const normalizedPath = trimTrailingSlash(lowered.startsWith('/') ? lowered : `/${lowered}`);
   const normalizedSearch = search ?? '';
+
   for (const matcher of MATCHERS) {
     if (matcher.match(normalizedPath, normalizedSearch)) {
       return matcher.entry;
     }
   }
   return null;
+};
+
+/**
+ * 未使用のHYDRATION_KEYSを検出するためのヘルパー
+ * 開発時のデバッグ用 - MATCHERSで参照されていないエントリを返す
+ */
+export const getUnmatchedHydrationKeys = (): string[] => {
+  const usedEntries = new Set(MATCHERS.map(m => m.entry));
+  return Object.keys(HYDRATION_KEYS).filter(
+    key => !usedEntries.has(HYDRATION_KEYS[key as keyof typeof HYDRATION_KEYS])
+  );
 };

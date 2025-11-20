@@ -15,6 +15,8 @@ import Button from '@mui/material/Button';
 import Chip from '@mui/material/Chip';
 import Collapse from '@mui/material/Collapse';
 import Divider from '@mui/material/Divider';
+import FormControlLabel from '@mui/material/FormControlLabel';
+import Switch from '@mui/material/Switch';
 import Paper from '@mui/material/Paper';
 import Snackbar from '@mui/material/Snackbar';
 import Stack from '@mui/material/Stack';
@@ -173,8 +175,13 @@ const IndividualSupportManagementPage: React.FC = () => {
   const [snackbar, setSnackbar] = useState<{ open: boolean; message: string; severity: 'success' | 'error' }>(
     { open: false, message: '', severity: 'success' },
   );
+  const [showOnlyUnrecorded, setShowOnlyUnrecorded] = useState(false);
 
   const recordedCount = useMemo(() => scheduleSlots.filter((slot) => slot.isRecorded).length, [scheduleSlots]);
+  const visibleScheduleSlots = useMemo(
+    () => (showOnlyUnrecorded ? scheduleSlots.filter((slot) => !slot.isRecorded) : scheduleSlots),
+    [showOnlyUnrecorded, scheduleSlots],
+  );
 
   const handleTabChange = (_event: React.SyntheticEvent, value: TabValue) => {
     setTab(value);
@@ -347,8 +354,21 @@ const IndividualSupportManagementPage: React.FC = () => {
             <Typography variant="h6" sx={{ fontWeight: 600 }}>
               時系列の記録リスト
             </Typography>
+
+            <Box sx={{ display: 'flex', justifyContent: 'flex-end' }}>
+              <FormControlLabel
+                control={
+                  <Switch
+                    checked={showOnlyUnrecorded}
+                    onChange={(_event, checked) => setShowOnlyUnrecorded(checked)}
+                  />
+                }
+                label="未記録のみ表示"
+              />
+            </Box>
+
             <Stack spacing={2}>
-              {scheduleSlots.map((slot) => {
+              {visibleScheduleSlots.map((slot) => {
                 const state = formState[slot.id];
                 const hasError = Boolean(state?.error);
 

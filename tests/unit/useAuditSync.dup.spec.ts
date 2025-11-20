@@ -75,7 +75,7 @@ describe('useAuditSync', () => {
 
     const result = await syncAll();
 
-    expect(result).toEqual({ total: 0, success: 0 });
+    expect(result).toEqual({ total: 0, success: 0, failed: 0 });
   expect(mocks.addListItemMock).not.toHaveBeenCalled();
   expect(mocks.clearAuditMock).not.toHaveBeenCalled();
   });
@@ -94,7 +94,7 @@ describe('useAuditSync', () => {
     const { syncAll } = useAuditSync();
     const result = await syncAll();
 
-    expect(result).toEqual({ total: 2, success: 2 });
+    expect(result).toEqual({ total: 2, success: 2, failed: 0 });
     expect(mocks.addListItemMock).toHaveBeenCalledTimes(2);
     expect(mocks.addListItemMock).toHaveBeenCalledWith(
       'Audit_Events',
@@ -118,7 +118,7 @@ describe('useAuditSync', () => {
     const { syncAll } = useAuditSync();
     const result = await syncAll();
 
-    expect(result).toEqual({ total: 1, success: 1 });
+    expect(result).toEqual({ total: 1, success: 1, failed: 0 });
   expect(mocks.addListItemMock).toHaveBeenCalledTimes(1);
   expect(mocks.clearAuditMock).toHaveBeenCalledTimes(1);
   });
@@ -134,7 +134,7 @@ describe('useAuditSync', () => {
     const { syncAll } = useAuditSync();
     const result = await syncAll();
 
-    expect(result).toEqual({ total: 1, success: 0 });
+    expect(result).toEqual({ total: 1, success: 0, failed: 1 });
   expect(mocks.clearAuditMock).not.toHaveBeenCalled();
     expect(consoleSpy).toHaveBeenCalledWith(
       'Audit sync failed for item',

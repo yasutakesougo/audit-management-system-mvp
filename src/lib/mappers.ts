@@ -1,38 +1,40 @@
-import type { ScheduleRecurrence, Staff, User } from '@/types';
 import {
-	DAILY_FIELD_BEHAVIOR_LOG,
-	DAILY_FIELD_DATE,
-	DAILY_FIELD_DRAFT,
-	DAILY_FIELD_END_TIME,
-	DAILY_FIELD_LOCATION,
-	DAILY_FIELD_MEAL_LOG,
-	DAILY_FIELD_NOTES,
-	DAILY_FIELD_START_TIME,
-	DAILY_FIELD_STATUS,
-	DAILY_FIELD_STAFF_ID,
-	DAILY_FIELD_USER_ID,
-	type DailyRow,
-	type ScheduleRow,
-	type StaffRow,
-	type UserRow,
-	SCHEDULE_FIELD_ASSIGNED_STAFF,
-	SCHEDULE_FIELD_ASSIGNED_STAFF_ID,
-	SCHEDULE_FIELD_BILLING_FLAGS,
-	SCHEDULE_FIELD_CREATED_AT,
-	SCHEDULE_FIELD_DAY_KEY,
-	SCHEDULE_FIELD_END,
-	SCHEDULE_FIELD_MONTH_KEY,
-	SCHEDULE_FIELD_NOTE,
-	SCHEDULE_FIELD_RELATED_RESOURCE,
-	SCHEDULE_FIELD_RELATED_RESOURCE_ID,
-	SCHEDULE_FIELD_ROW_KEY,
-	SCHEDULE_FIELD_SERVICE_TYPE,
-	SCHEDULE_FIELD_STATUS,
-	SCHEDULE_FIELD_START,
-	SCHEDULE_FIELD_TARGET_USER,
-	SCHEDULE_FIELD_TARGET_USER_ID,
-	SCHEDULE_FIELD_UPDATED_AT,
+    DAILY_FIELD_BEHAVIOR_LOG,
+    DAILY_FIELD_DATE,
+    DAILY_FIELD_DRAFT,
+    DAILY_FIELD_END_TIME,
+    DAILY_FIELD_LOCATION,
+    DAILY_FIELD_MEAL_LOG,
+    DAILY_FIELD_NOTES,
+    DAILY_FIELD_STAFF_ID,
+    DAILY_FIELD_START_TIME,
+    DAILY_FIELD_STATUS,
+    DAILY_FIELD_USER_ID,
+    SCHEDULE_FIELD_ASSIGNED_STAFF,
+    SCHEDULE_FIELD_ASSIGNED_STAFF_ID,
+    SCHEDULE_FIELD_BILLING_FLAGS,
+    SCHEDULE_FIELD_CREATED_AT,
+    SCHEDULE_FIELD_DAY_KEY,
+    SCHEDULE_FIELD_END,
+    SCHEDULE_FIELD_MONTH_KEY,
+    SCHEDULE_FIELD_NOTE,
+    SCHEDULE_FIELD_RELATED_RESOURCE,
+    SCHEDULE_FIELD_RELATED_RESOURCE_ID,
+    SCHEDULE_FIELD_ROW_KEY,
+    SCHEDULE_FIELD_SERVICE_TYPE,
+    SCHEDULE_FIELD_START,
+    SCHEDULE_FIELD_STATUS,
+    SCHEDULE_FIELD_TARGET_USER,
+    SCHEDULE_FIELD_TARGET_USER_ID,
+    SCHEDULE_FIELD_UPDATED_AT,
+    type DailyRow,
+    type ScheduleRow,
+    type StaffRow,
+    type UserRow,
 } from '@/sharepoint/fields';
+import type { ServiceType } from '@/sharepoint/serviceTypes';
+import { normalizeServiceType } from '@/sharepoint/serviceTypes';
+import type { ScheduleRecurrence, Staff, User } from '@/types';
 
 const normalizeStringArray = (input: unknown): string[] => {
 	if (!input) {
@@ -503,7 +505,7 @@ export type Schedule = {
 	created?: string;
 	modified?: string;
 	category?: string | null;
-	serviceType?: string | null;
+	serviceType?: ServiceType | null;
 	personType?: string | null;
 	personId?: string | null;
 	personName?: string | null;
@@ -637,7 +639,7 @@ export function mapSchedule(item: ScheduleRow): Schedule {
 		modified: typeof item.Modified === 'string' ? item.Modified : undefined,
 		created: typeof item.Created === 'string' ? item.Created : undefined,
 		category,
-		serviceType: toNullableString(record[SCHEDULE_FIELD_SERVICE_TYPE] ?? item.ServiceType),
+		serviceType: normalizeServiceType(toNullableString(record[SCHEDULE_FIELD_SERVICE_TYPE] ?? item.ServiceType)),
 		personType,
 		personId,
 		personName,
@@ -716,5 +718,5 @@ export const mapScheduleToSp = (input: ScheduleUpsertInput): Record<string, unkn
 	return payload;
 };
 
+export { detectAllDay, toLocalRange };
 export type { LocalRange };
-export { toLocalRange, detectAllDay };

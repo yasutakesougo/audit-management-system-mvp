@@ -17,6 +17,8 @@ export default defineConfig({
     include: [
       'tests/unit/**/*.spec.ts',
       'tests/unit/**/*.spec.tsx',
+      'tests/rtl/**/*.test.ts',
+      'tests/rtl/**/*.test.tsx',
       'src/**/*.spec.ts',
       'src/**/*.spec.tsx',
       'src/**/*.test.ts',

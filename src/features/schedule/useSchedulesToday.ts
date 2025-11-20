@@ -1,3 +1,4 @@
+import { HYDRATION_FEATURES, estimatePayloadSize, startFeatureSpan } from '@/hydration/features';
 import * as ScheduleAdapter from '@/adapters/schedules';
 import { isSchedulesFeatureEnabled } from '@/lib/env';
 import type { SafeError } from '@/lib/errors';
@@ -85,6 +86,16 @@ export function useSchedulesToday(max: number = 5) {
     const controller = new AbortController();
     abortRef.current?.abort();
     abortRef.current = controller;
+    const span = startFeatureSpan(HYDRATION_FEATURES.schedules.load, {
+      scope: 'today',
+      max: safeMax,
+    });
+    let spanEnded = false;
+    const endSpan = (payload?: Parameters<typeof span>[0]) => {
+      if (spanEnded) return;
+      span(payload);
+      spanEnded = true;
+    };
 
     (async () => {
       try {
@@ -146,17 +157,34 @@ export function useSchedulesToday(max: number = 5) {
         if (alive) {
           setData(items);
         }
+
+        endSpan({
+          meta: {
+            status: 'ok',
+            itemCount: items.length,
+            totalCount: rows.length,
+            source: listResult.source,
+            fallbackKind: listResult.fallbackKind,
+            bytes: estimatePayloadSize(rows),
+          },
+        });
       } catch (err) {
         if (!alive) return;
         if (controller.signal.aborted) {
           setLoading(false);
+          endSpan({ meta: { status: 'cancelled' } });
           return;
         }
         if ((err as Error)?.name === 'AbortError') {
           setLoading(false);
+          endSpan({ meta: { status: 'cancelled' } });
           return;
         }
         setError(err instanceof Error ? err : new Error(String(err)));
+        endSpan({
+          meta: { status: 'error' },
+          error: err instanceof Error ? err.message : String(err),
+        });
       } finally {
         if (alive) {
           setLoading(false);
@@ -165,6 +193,9 @@ export function useSchedulesToday(max: number = 5) {
     })();
 
     return () => {
+      if (!spanEnded) {
+        endSpan({ meta: { status: 'cancelled' } });
+      }
       alive = false;
       controller.abort();
     };

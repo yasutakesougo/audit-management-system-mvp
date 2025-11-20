@@ -41,7 +41,7 @@ test.describe('Route hydration lazy-load failures', () => {
       await page.unroute(glob);
     }
 
-    const recordsLink = page.getByRole('link', { name: '記録一覧', exact: true }).first();
+    const recordsLink = page.getByRole('link', { name: '黒ノート', exact: true }).first();
     await recordsLink.click();
     await expect(page).toHaveURL('/');
 

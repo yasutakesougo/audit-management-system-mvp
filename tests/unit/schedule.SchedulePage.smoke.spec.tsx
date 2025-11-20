@@ -1,11 +1,12 @@
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import * as snackbarHost from '@/features/nurse/components/SnackbarHost';
 import SchedulePage from '@/features/schedule/SchedulePage';
-import type { ScheduleUserCare } from '@/features/schedule/types';
 import * as spUserCare from '@/features/schedule/spClient.schedule';
 import * as spOrg from '@/features/schedule/spClient.schedule.org';
 import * as spStaff from '@/features/schedule/spClient.schedule.staff';
-import * as snackbarHost from '@/features/nurse/components/SnackbarHost';
+import type { ScheduleUserCare } from '@/features/schedule/types';
+import { TESTIDS } from '@/testids';
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 vi.mock('@/auth/useAuth', () => ({
   useAuth: () => ({
@@ -40,6 +41,21 @@ vi.mock('@/stores/useStaff', () => ({
 
 vi.mock('@/features/schedule/ensureScheduleList', () => ({
   useEnsureScheduleList: () => undefined,
+}));
+
+vi.mock('@/features/users/store', () => ({
+  useUsersStore: () => ({
+    data: [
+      { Id: 1, UserID: 'user-1', FullName: '利用者 一郎' },
+      { Id: 2, UserID: 'user-2', FullName: '利用者 二郎' },
+    ],
+    status: 'success',
+    error: null,
+    refresh: vi.fn(),
+    create: vi.fn(),
+    update: vi.fn(),
+    remove: vi.fn(),
+  }),
 }));
 
 vi.mock('@/lib/env', async () => {
@@ -87,7 +103,13 @@ vi.mock('@/ui/filters/FilterToolbar', () => ({
 
 describe('SchedulePage user schedule smoke', () => {
   beforeEach(() => {
+    vi.useFakeTimers({ toFake: ['Date'] });
+    vi.setSystemTime(new Date('2025-11-12T09:00:00+09:00'));
     vi.clearAllMocks();
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
   });
 
   it('creates and updates user schedules through existing helpers and shows snackbars', async () => {
@@ -100,7 +122,7 @@ describe('SchedulePage user schedule smoke', () => {
       end: '2025-11-11T01:00:00.000Z',
       allDay: false,
       status: '下書き',
-      location: undefined,
+      location: '第1作業室',
       notes: undefined,
       recurrenceRule: undefined,
       dayKey: '2025-11-11',
@@ -138,6 +160,34 @@ describe('SchedulePage user schedule smoke', () => {
 
     render(<SchedulePage />);
 
+    const quickButton = await screen.findByTestId(TESTIDS['schedule-create-quick-button']);
+    fireEvent.click(quickButton);
+
+    const quickDialog = await screen.findByTestId(TESTIDS['schedule-create-dialog']);
+    const serviceTypeCombo = within(quickDialog).getByRole('combobox', { name: 'サービス種別' });
+    fireEvent.mouseDown(serviceTypeCombo);
+    const serviceTypeList = await screen.findByRole('listbox');
+    fireEvent.click(within(serviceTypeList).getByText('送迎'));
+
+    fireEvent.change(within(quickDialog).getByTestId(TESTIDS['schedule-create-location']), {
+      target: { value: '生活介護室' },
+    });
+    fireEvent.change(within(quickDialog).getByTestId(TESTIDS['schedule-create-notes']), {
+      target: { value: '送迎後に看護対応' },
+    });
+
+    fireEvent.click(within(quickDialog).getByTestId(TESTIDS['schedule-create-save']));
+
+    await waitFor(() => expect(createUserCareSpy).toHaveBeenCalledTimes(1));
+    const quickPayload = createUserCareSpy.mock.calls[0][1];
+    expect(quickPayload).toMatchObject({
+      personId: 'user-1',
+      personName: '利用者 一郎',
+      serviceType: '送迎',
+      location: '生活介護室',
+      notes: '送迎後に看護対応',
+    });
+
     const createButton = await screen.findByRole('button', { name: /新規作成/ });
     fireEvent.click(createButton);
 
@@ -156,20 +206,22 @@ describe('SchedulePage user schedule smoke', () => {
   expect(saveButton).not.toBeDisabled();
   fireEvent.click(saveButton);
 
-    await waitFor(() => expect(createUserCareSpy).toHaveBeenCalledTimes(1));
+    await waitFor(() => expect(createUserCareSpy).toHaveBeenCalledTimes(2));
     expect(showMock).toHaveBeenCalledWith('予定を作成しました', 'success');
 
-    const createPayload = createUserCareSpy.mock.calls[0][1];
+    const createPayload = createUserCareSpy.mock.calls[1][1];
     expect(Array.isArray(createPayload.staffIds)).toBe(true);
     expect(createPayload.staffIds.length).toBeGreaterThan(0);
 
     const timelineItems = await screen.findAllByTestId('schedule-item');
+    expect(timelineItems[0]).toHaveTextContent('一時ケア');
     fireEvent.click(timelineItems[0]);
 
-    const editTitleInput = await screen.findByLabelText('タイトル');
-    fireEvent.change(editTitleInput, { target: { value: '更新後' } });
+    const editQuickDialog = await screen.findByTestId(TESTIDS['schedule-create-dialog']);
+    const notesInput = within(editQuickDialog).getByTestId(TESTIDS['schedule-create-notes']);
+    fireEvent.change(notesInput, { target: { value: '更新メモ' } });
 
-    const updateButton = screen.getByRole('button', { name: '保存' });
+    const updateButton = within(editQuickDialog).getByTestId(TESTIDS['schedule-create-save']);
     fireEvent.click(updateButton);
 
     await waitFor(() => expect(updateUserCareSpy).toHaveBeenCalledTimes(1));

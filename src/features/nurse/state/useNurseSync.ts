@@ -379,6 +379,6 @@ export const nurseSync = {
 };
 
 // Re-export types and functions that are used by tests
-export type { NurseQueueItem } from './offlineQueue';
 export type { SharePointListApi } from '../sp/client';
 export { upsertObservation } from '../sp/upsert';
+export type { NurseQueueItem } from './offlineQueue';

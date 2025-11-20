@@ -1,5 +1,5 @@
-import { describe, expect, it } from 'vitest';
 import { normalizeServiceType, SERVICE_TYPE_OPTIONS } from '@/sharepoint/serviceTypes';
+import { describe, expect, it } from 'vitest';
 
 describe('serviceTypes.normalizeServiceType', () => {
   it('returns exact matches for canonical values', () => {

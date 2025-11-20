@@ -4,12 +4,22 @@ import { FeatureFlagsProvider, type FeatureFlagSnapshot } from '@/config/feature
 import { cleanup, render, screen, waitFor } from '@testing-library/react';
 import React from 'react';
 import { Outlet, RouterProvider, createMemoryRouter, useLocation, type RouteObject } from 'react-router-dom';
-import { afterEach, describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
+
+// Mock the env module to disable E2E mode for testing
+vi.mock('@/env', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/env')>();
+  return {
+    ...actual,
+    isE2E: false,
+  };
+});
 
 const defaultFlags: FeatureFlagSnapshot = {
   schedules: true,
   schedulesCreate: true,
   complianceForm: false,
+  schedulesWeekV2: false,
 };
 
 const LocationProbe: React.FC<{ testId: string }> = ({ testId }) => {

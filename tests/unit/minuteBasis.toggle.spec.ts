@@ -29,11 +29,11 @@ describe('minute-basis toggle', () => {
 
     const state = buildState({
       status: 'idle',
-      completedAt: new Date(ISO_SAMPLE).getTime(),
+      updatedAt: new Date(ISO_SAMPLE).toISOString(),
       source: 'manual',
     });
     const caption = formatLastSyncCaption(state);
-    expect(caption).toBe('対象なし（手動） 00:12 時点');
+    expect(caption).toBe('未同期');
   });
 
   it('Local basis: exclusive range and caption use local time label', () => {
@@ -47,12 +47,12 @@ describe('minute-basis toggle', () => {
 
     const state = buildState({
       status: 'success',
-      completedAt: new Date(ISO_SAMPLE).getTime(),
+      updatedAt: new Date(ISO_SAMPLE).toISOString(),
       source: 'online',
       sent: 1,
       remaining: 2,
     });
     const caption = formatLastSyncCaption(state);
-    expect(caption).toBe('一部同期（自動） 09:12 1/3');
+    expect(caption).toBe('同期済み 1件');
   });
 });

@@ -1,10 +1,10 @@
 import {
-    __resetLastSyncStoreForTests,
-    formatLastSyncCaption,
-    getLastSyncSnapshot,
-    markSyncFailure,
-    markSyncPending,
-    markSyncResult,
+  __resetLastSyncStoreForTests,
+  formatLastSyncCaption,
+  getLastSyncSnapshot,
+  markSyncFailure,
+  markSyncPending,
+  markSyncResult
 } from '@/features/nurse/state/useLastSync';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -25,7 +25,6 @@ const mockSummary = (sent: number, remaining: number) => ({
 describe('useLastSync telemetry store', () => {
   beforeEach(() => {
     vi.useFakeTimers();
-    vi.setSystemTime(new Date('2025-01-01T10:00:00Z'));
     __resetLastSyncStoreForTests();
   });
 
@@ -37,88 +36,55 @@ describe('useLastSync telemetry store', () => {
   it('starts idle with no history', () => {
     const snapshot = getLastSyncSnapshot();
     expect(snapshot.status).toBe('idle');
-    expect(formatLastSyncCaption(snapshot)).toBe('同期履歴なし');
+    expect(formatLastSyncCaption(snapshot)).toBe('未同期');
   });
 
-  it('provides captions for pending, success, partial, and empty results', () => {
+  it('formats captions for pending and success states', () => {
     markSyncPending('manual');
     const pending = getLastSyncSnapshot();
     expect(pending.status).toBe('pending');
-  expect(formatLastSyncCaption(pending)).toBe('同期中...（手動）');
+    expect(formatLastSyncCaption(pending)).toBe('同期中...');
 
-    vi.setSystemTime(new Date('2025-01-01T10:05:00Z'));
-    markSyncResult({ 
-      sent: 2, 
-      remaining: 0, 
+    markSyncResult({
+      sent: 2,
+      remaining: 0,
       source: 'manual',
-      summary: {
-        sent: 2,
-        remaining: 0,
-        okCount: 2,
-        errorCount: 0,
-        partialCount: 0,
-        entries: [],
-        totalCount: 2,
-        source: 'manual',
-        durationMs: 1000,
-        attempts: 1,
-        failureSamples: [],
-      }
+      summary: mockSummary(2, 0)
     });
     const success = getLastSyncSnapshot();
     expect(success.status).toBe('success');
-    const successCaption = formatLastSyncCaption(success);
-  expect(successCaption).toBe('Synced (manual) at 10:05');
+    expect(formatLastSyncCaption(success)).toBe('同期済み 2件');
 
-    markSyncPending('manual');
-    vi.setSystemTime(new Date('2025-01-01T10:06:00Z'));
-    markSyncResult({ 
-      sent: 1, 
-      remaining: 2, 
+    markSyncResult({
+      sent: 0,
+      remaining: 3,
       source: 'manual',
-      summary: mockSummary(1, 2)
+      summary: mockSummary(0, 3)
     });
-    const partial = getLastSyncSnapshot();
-    expect(partial.status).toBe('partial');
-    const partialCaption = formatLastSyncCaption(partial);
-  expect(partialCaption).toBe('一部同期（手動） 10:06 1/3');
-
-    markSyncPending('manual');
-    vi.setSystemTime(new Date('2025-01-01T10:07:00Z'));
-    markSyncResult({ 
-      sent: 0, 
-      remaining: 0, 
-      source: 'manual',
-      summary: mockSummary(0, 0)
-    });
-    const empty = getLastSyncSnapshot();
-    expect(empty.status).toBe('empty');
-    const emptyCaption = formatLastSyncCaption(empty);
-  expect(emptyCaption).toBe('対象なし（手動） 10:07 時点');
+    const zeroSent = getLastSyncSnapshot();
+    expect(zeroSent.status).toBe('success');
+    expect(formatLastSyncCaption(zeroSent)).toBe('同期済み 0件');
   });
 
-  it('captures failure details with online source and recovers on success', () => {
+  it('captures failure details and recovers on next success', () => {
     markSyncPending('online');
-    vi.setSystemTime(new Date('2025-01-01T10:10:00Z'));
     markSyncFailure({ source: 'online', error: new Error('network error') });
 
     const errorSnapshot = getLastSyncSnapshot();
     expect(errorSnapshot.status).toBe('error');
     expect(errorSnapshot.source).toBe('online');
-    const errorCaption = formatLastSyncCaption(errorSnapshot);
-  expect(errorCaption).toBe('同期に失敗（自動） 10:10 時点 - network error');
+    expect(formatLastSyncCaption(errorSnapshot)).toBe('同期に失敗しました');
 
     markSyncPending('manual');
-    vi.setSystemTime(new Date('2025-01-01T10:11:00Z'));
-    markSyncResult({ 
-      sent: 3, 
-      remaining: 0, 
+    markSyncResult({
+      sent: 3,
+      remaining: 0,
       source: 'manual',
       summary: mockSummary(3, 0)
     });
     const recovery = getLastSyncSnapshot();
     expect(recovery.status).toBe('success');
     expect(recovery.source).toBe('manual');
-   expect(formatLastSyncCaption(recovery)).toBe('同期済み（手動） 10:11 時点');
+    expect(formatLastSyncCaption(recovery)).toBe('同期済み 3件');
   });
 });

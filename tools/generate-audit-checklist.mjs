@@ -1,9 +1,9 @@
 // tools/generate-audit-checklist.mjs
 // Usage: node tools/generate-audit-checklist.mjs [--year 2025] [--out dist/audit-checklist-2025.xlsx]
-import { fileURLToPath } from 'node:url';
-import { dirname, resolve } from 'node:path';
-import { mkdir } from 'node:fs/promises';
 import ExcelJS from 'exceljs';
+import { mkdir } from 'node:fs/promises';
+import { dirname, resolve } from 'node:path';
+import { fileURLToPath } from 'node:url';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const args =process.argv.slice(2);

@@ -63,6 +63,9 @@ export default function FilterToolbar({
   const generatedHelpId = useId();
   const helperTextId = searchHelpId ?? `${generatedHelpId}-help`;
 
+  // NOTE:
+  // debounceMs は helperText の文言表示専用パラメータです。
+  // 実際のデバウンス処理は親コンポーネント側で onQueryChange をラップして行う想定。
   const updateQuery = useCallback(
     (nextValue: string) => {
       setInputValue(nextValue);
@@ -71,23 +74,22 @@ export default function FilterToolbar({
     [onQueryChange]
   );
 
-  const buttons = useMemo(
-    () =>
-      (statusOptions ?? []).map((option) => (
-        <Button
-          key={option.value}
-          size="small"
-          variant={activeStatus === option.value ? 'contained' : 'outlined'}
-          color="secondary"
-          onClick={() => onStatusChange?.(option.value)}
-          aria-pressed={activeStatus === option.value}
-          type="button"
-        >
-          {option.label}
-        </Button>
-      )),
-    [statusOptions, activeStatus, onStatusChange],
-  );
+  const buttons = useMemo(() => {
+    const list = statusOptions ?? [];
+    return list.map((option) => (
+      <Button
+        key={option.value}
+        size="small"
+        variant={activeStatus === option.value ? 'contained' : 'outlined'}
+        color="secondary"
+        onClick={() => onStatusChange?.(option.value)}
+        aria-pressed={activeStatus === option.value}
+        type="button"
+      >
+        {option.label}
+      </Button>
+    ));
+  }, [statusOptions, activeStatus, onStatusChange]);
 
   return (
     <div className="rounded border border-gray-200 bg-white p-3 shadow-sm">
@@ -168,8 +170,7 @@ export default function FilterToolbar({
             size="small"
             variant="text"
             onClick={onReset}
-            disabled={Boolean(isResetDisabled)}
-            aria-disabled={Boolean(isResetDisabled)}
+            disabled={!!isResetDisabled}
             title={isResetDisabled ? 'リセットできる条件がありません' : '条件をリセット'}
             type="button"
             data-focus-order="4"

@@ -1,10 +1,16 @@
+import LiveAnnouncer from '@/a11y/LiveAnnouncer';
 import Brightness4Icon from '@mui/icons-material/Brightness4';
 import Brightness7Icon from '@mui/icons-material/Brightness7';
+import CloseIcon from '@mui/icons-material/Close';
+import EditNoteIcon from '@mui/icons-material/EditNote';
 import HistoryIcon from '@mui/icons-material/History';
 import AppBar from '@mui/material/AppBar';
 import Box from '@mui/material/Box';
 import Button from '@mui/material/Button';
 import Container from '@mui/material/Container';
+import Dialog from '@mui/material/Dialog';
+import DialogContent from '@mui/material/DialogContent';
+import DialogTitle from '@mui/material/DialogTitle';
 import IconButton from '@mui/material/IconButton';
 import Paper from '@mui/material/Paper';
 import Stack from '@mui/material/Stack';
@@ -12,9 +18,11 @@ import Toolbar from '@mui/material/Toolbar';
 import Tooltip from '@mui/material/Tooltip';
 import Typography from '@mui/material/Typography';
 import React, { useContext, useEffect, useMemo, useState } from 'react';
-import LiveAnnouncer from '@/a11y/LiveAnnouncer';
 // Navigation Icons
 import NavLinkPrefetch from '@/components/NavLinkPrefetch';
+import { setCurrentUserRole, useAuthStore } from '@/features/auth/store';
+import { useDashboardPath } from '@/features/dashboard/dashboardRouting';
+import { HandoffQuickNoteCard } from '@/features/handoff/HandoffQuickNoteCard';
 import { useFeatureFlags } from '@/config/featureFlags';
 import RouteHydrationListener from '@/hydration/RouteHydrationListener';
 import { getAppConfig, shouldSkipLogin } from '@/lib/env';
@@ -22,7 +30,6 @@ import { useSP } from '@/lib/spClient';
 import { PREFETCH_KEYS, type PrefetchKey } from '@/prefetch/routes';
 import { TESTIDS } from '@/testids';
 import SignInButton from '@/ui/components/SignInButton';
-import AddCircleOutlineRoundedIcon from '@mui/icons-material/AddCircleOutlineRounded';
 import AssessmentRoundedIcon from '@mui/icons-material/AssessmentRounded';
 import AssignmentTurnedInRoundedIcon from '@mui/icons-material/AssignmentTurnedInRounded';
 import BadgeRoundedIcon from '@mui/icons-material/BadgeRounded';
@@ -48,8 +55,10 @@ const SKIP_LOGIN = shouldSkipLogin();
 const AppShell: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const location = useLocation();
   const navigate = useNavigate();
-  const { schedules, schedulesCreate, complianceForm } = useFeatureFlags();
+  const { schedules, complianceForm } = useFeatureFlags();
   const { mode, toggle } = useContext(ColorModeContext);
+  const dashboardPath = useDashboardPath();
+  const currentRole = useAuthStore((s) => s.currentUserRole);
 
   useEffect(() => {
     if (SKIP_LOGIN && location.pathname === '/login') {
@@ -57,12 +66,25 @@ const AppShell: React.FC<{ children: React.ReactNode }> = ({ children }) => {
     }
   }, [navigate, location.pathname]);
 
+  useEffect(() => {
+    if (location.pathname.startsWith('/admin/dashboard')) {
+      setCurrentUserRole('admin');
+    } else if (location.pathname === '/' || location.pathname.startsWith('/dashboard')) {
+      setCurrentUserRole('staff');
+    }
+  }, [location.pathname]);
+
   const navItems = useMemo(() => {
     const items: NavItem[] = [
       {
-        label: '記録一覧',
-        to: '/',
-        isActive: (pathname) => pathname === '/' || pathname.startsWith('/records'),
+        label: '黒ノート',
+        to: dashboardPath,
+        isActive: (pathname) => {
+          if (currentRole === 'admin') {
+            return pathname.startsWith('/admin/dashboard');
+          }
+          return pathname === '/' || pathname.startsWith('/dashboard') || pathname.startsWith('/records');
+        },
         icon: AssignmentTurnedInRoundedIcon,
         prefetchKey: PREFETCH_KEYS.dashboard,
         prefetchKeys: [PREFETCH_KEYS.muiData, PREFETCH_KEYS.muiFeedback],
@@ -70,10 +92,11 @@ const AppShell: React.FC<{ children: React.ReactNode }> = ({ children }) => {
       },
       {
         label: '日次記録',
-        to: '/daily',
+        to: '/daily/table',
         isActive: (pathname) => pathname.startsWith('/daily'),
         icon: AssignmentTurnedInRoundedIcon,
         prefetchKey: PREFETCH_KEYS.dailyMenu,
+        testId: 'nav-daily',
       },
       {
         label: '自己点検',
@@ -127,26 +150,17 @@ const AppShell: React.FC<{ children: React.ReactNode }> = ({ children }) => {
       });
     }
 
-    if (schedulesCreate) {
-      items.push({
-        label: '新規予定',
-        to: '/schedules/create',
-        isActive: (pathname) => pathname.startsWith('/schedules/create'),
-        icon: AddCircleOutlineRoundedIcon,
-      });
-    }
-
     if (complianceForm) {
       items.push({
         label: 'コンプラ報告',
-        to: '/checklist',
+        to: '/compliance',
         isActive: (pathname) => pathname.startsWith('/compliance'),
         icon: ChecklistRoundedIcon,
       });
     }
 
     return items;
-  }, [schedules, schedulesCreate, complianceForm]);
+  }, [dashboardPath, currentRole, schedules, complianceForm]);
 
   return (
     <RouteHydrationListener>
@@ -159,7 +173,12 @@ const AppShell: React.FC<{ children: React.ReactNode }> = ({ children }) => {
           </Typography>
           <ConnectionStatus />
           <Tooltip title={mode === 'dark' ? 'ライトテーマに切り替え' : 'ダークテーマに切り替え'}>
-            <IconButton color="inherit" onClick={toggle} aria-label="テーマ切り替え">
+            <IconButton
+              color="inherit"
+              onClick={toggle}
+              aria-label="テーマ切り替え"
+              aria-pressed={mode === 'dark' ? 'true' : 'false'}
+            >
               {mode === 'dark' ? <Brightness7Icon /> : <Brightness4Icon />}
             </IconButton>
           </Tooltip>
@@ -311,16 +330,29 @@ const ConnectionStatus: React.FC = () => {
 
 const FooterQuickActions: React.FC = () => {
   const location = useLocation();
+  const { schedulesCreate } = useFeatureFlags();
+  const [quickNoteOpen, setQuickNoteOpen] = useState(false);
+  const isHandoffTimeline =
+    location.pathname === '/handoff-timeline' || location.pathname.startsWith('/handoff-timeline/');
 
   type FooterAction = {
     key: string;
     label: string;
-    to: string;
     color: 'primary' | 'secondary' | 'info';
     variant: 'contained' | 'outlined';
+    to?: string;
+    onClick?: () => void;
   };
 
-  const actions: FooterAction[] = [
+  const footerTestIds: Record<string, keyof typeof TESTIDS> = {
+    'daily-attendance': 'daily-footer-attendance',
+    'daily-activity': 'daily-footer-activity',
+    'daily-support': 'daily-footer-support',
+    'daily-health': 'daily-footer-health',
+    'handoff-quicknote': 'handoff-footer-quicknote',
+  };
+
+  const baseActions: FooterAction[] = [
     {
       key: 'daily-attendance',
       label: '通所管理',
@@ -330,8 +362,8 @@ const FooterQuickActions: React.FC = () => {
     },
     {
       key: 'daily-activity',
-      label: '活動日誌入力',
-      to: '/daily/activity',
+      label: '支援記録（ケース記録）入力',
+      to: '/daily/table',
       color: 'primary' as const,
       variant: 'contained' as const,
     },
@@ -343,13 +375,44 @@ const FooterQuickActions: React.FC = () => {
       variant: 'outlined' as const,
     },
     {
-      key: 'health-log',
+      key: 'daily-health',
       label: '健康記録',
       to: '/daily/health',
       color: 'secondary' as const,
       variant: 'outlined' as const,
     },
   ] as const;
+
+  const actions: FooterAction[] = [...baseActions];
+
+  // スケジュール作成機能が有効な場合に新規予定を追加
+  if (schedulesCreate) {
+    actions.push({
+      key: 'schedule-create',
+      label: '新規予定',
+      to: '/schedules/create',
+      color: 'secondary' as const,
+      variant: 'contained' as const,
+    });
+  }
+
+  const handleQuickNoteClick = () => {
+    if (isHandoffTimeline) {
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent('handoff-open-quicknote'));
+      }
+      return;
+    }
+    setQuickNoteOpen(true);
+  };
+
+  actions.unshift({
+    key: 'handoff-quicknote',
+    label: '今すぐ申し送り',
+    color: 'secondary' as const,
+    variant: 'contained' as const,
+    onClick: handleQuickNoteClick,
+  });
 
   return (
     <Box
@@ -378,20 +441,40 @@ const FooterQuickActions: React.FC = () => {
                 : 'rgba(255, 255, 255, 0.9)',
           }}
         >
-          <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1.5}>
-            {actions.map(({ key, label, to, color, variant }) => {
-              const isActive = location.pathname.startsWith(to);
+          <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1.5} alignItems="stretch">
+            {actions.map(({ key, label, to, color, variant: baseVariant, onClick }) => {
+              const commonProps = {
+                color,
+                size: 'large' as const,
+                fullWidth: true,
+                sx: { flex: 1, fontWeight: 600 },
+                'data-testid': footerTestIds[key] ? TESTIDS[footerTestIds[key]] : undefined,
+              };
+
+              if (to) {
+                const targetPath = to.split('?')[0];
+                const isActive = location.pathname.startsWith(targetPath);
+                return (
+                  <Button
+                    key={key}
+                    {...commonProps}
+                    component={RouterLink as unknown as React.ElementType}
+                    to={to}
+                    variant={isActive ? 'contained' : baseVariant}
+                  >
+                    {label}
+                  </Button>
+                );
+              }
 
               return (
                 <Button
                   key={key}
-                  component={RouterLink as unknown as React.ElementType}
-                  to={to}
-                  variant={isActive ? 'contained' : variant}
-                  color={color}
-                  size="large"
-                  fullWidth
-                  sx={{ flex: 1, fontWeight: 600 }}
+                  {...commonProps}
+                  variant={baseVariant}
+                  startIcon={<EditNoteIcon />}
+                  onClick={onClick}
+                  data-testid={key === 'handoff-quicknote' ? TESTIDS['handoff-footer-quicknote'] : undefined}
                 >
                   {label}
                 </Button>
@@ -400,8 +483,51 @@ const FooterQuickActions: React.FC = () => {
           </Stack>
         </Paper>
       </Container>
+      {!isHandoffTimeline && (
+        <Dialog
+          open={quickNoteOpen}
+          onClose={() => setQuickNoteOpen(false)}
+          fullWidth
+          maxWidth="sm"
+        >
+          <DialogTitle sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+            今すぐ申し送り
+            <IconButton aria-label="申し送りダイアログを閉じる" onClick={() => setQuickNoteOpen(false)}>
+              <CloseIcon />
+            </IconButton>
+          </DialogTitle>
+          <DialogContent dividers>
+            <HandoffQuickNoteCard />
+          </DialogContent>
+        </Dialog>
+      )}
     </Box>
   );
+};
+
+export const shouldTriggerNavShellHud = (event: KeyboardEvent): boolean => {
+  // Ignore repeated key events
+  if (event.repeat) return false;
+
+  // Must be Alt+P (case insensitive)
+  if (!event.altKey || event.key.toLowerCase() !== 'p') return false;
+
+  // Must not have other modifier keys
+  if (event.ctrlKey || event.shiftKey || event.metaKey) return false;
+
+  // Check if focused element is editable
+  const target = event.target as Element;
+  if (target) {
+    const tagName = target.tagName?.toLowerCase();
+
+    // Input and textarea elements
+    if (tagName === 'input' || tagName === 'textarea') return false;
+
+    // Contenteditable elements
+    if (target instanceof HTMLElement && target.isContentEditable) return false;
+  }
+
+  return true;
 };
 
 export default AppShell;

@@ -1,12 +1,12 @@
 import {
-    getMsalLoginScopes,
-    getMsalTokenRefreshMin,
-    getSharePointBaseUrl,
-    getSharePointDefaultScope,
-    getSharePointResource,
-    getSharePointSiteRelative,
-    isSchedulesFeatureEnabled,
-    type EnvRecord,
+  getMsalLoginScopes,
+  getMsalTokenRefreshMin,
+  getSharePointBaseUrl,
+  getSharePointDefaultScope,
+  getSharePointResource,
+  getSharePointSiteRelative,
+  isSchedulesFeatureEnabled,
+  type EnvRecord,
 } from '@/lib/env';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
@@ -16,6 +16,7 @@ const baseEnv = (overrides: Partial<EnvRecord> = {}): EnvRecord => ({
   VITE_SP_RESOURCE: 'https://contoso.sharepoint.com',
   VITE_SP_SITE_RELATIVE: '/sites/App',
   VITE_DEMO_MODE: '0',
+  VITE_SKIP_LOGIN: '0',  // ログインスキップを明示的に無効化
   ...overrides,
 });
 
@@ -67,6 +68,8 @@ describe('env parsing fallbacks', () => {
     const scope = getSharePointDefaultScope(baseEnv({
       VITE_SP_SCOPE_DEFAULT: '',
       VITE_MSAL_SCOPES: 'https://tenant.sharepoint.com/AllSites.FullControl offline_access',
+      VITE_DEMO_MODE: '0',  // デモモードを明示的に無効化
+      VITE_SKIP_LOGIN: '0',  // ログインスキップを明示的に無効化
     }));
     expect(scope).toBe('https://tenant.sharepoint.com/AllSites.FullControl');
     expect(warn).toHaveBeenCalledWith(expect.stringContaining('reusing SharePoint scope'));
@@ -78,6 +81,7 @@ describe('env parsing fallbacks', () => {
       VITE_SP_SCOPE_DEFAULT: '',
       VITE_SP_RESOURCE: 'https://derived.sharepoint.com/',
       VITE_MSAL_SCOPES: '',
+      VITE_DEMO_MODE: '0',  // デモモードを明示的に無効化
       VITE_SKIP_LOGIN: 'false',
     }));
     expect(scope).toBe('https://derived.sharepoint.com/AllSites.Read');

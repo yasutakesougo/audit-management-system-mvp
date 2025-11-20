@@ -65,20 +65,9 @@ describe('schedules adapter index', () => {
     expect(spy).toHaveBeenCalled();
   });
 
-  it('rejects invalid day ISO input before calling SharePoint', async () => {
-    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
-
-    const result = await schedules.list('2025/01/10');
-
-    expect(result.source).toBe('demo');
-    expect(result.fallbackKind).toBe('schema');
-    expect(result.fallbackError?.message).toMatch(/invalid dayISO/);
+  it('throws on invalid day ISO input before calling SharePoint', async () => {
+    await expect(schedules.list('2025/01/10')).rejects.toThrow(/invalid dayISO/);
     expect(sharepointList).not.toHaveBeenCalled();
-    expect(warn).toHaveBeenCalledWith(
-      expect.stringContaining('SharePoint list failed'),
-      expect.any(String),
-      expect.objectContaining({ message: 'invalid dayISO: 2025/01/10' })
-    );
   });
 
   it('falls back to demo data on SharePoint list failure and classifies error', async () => {

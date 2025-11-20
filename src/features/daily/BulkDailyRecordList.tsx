@@ -5,6 +5,7 @@ import SaveRoundedIcon from '@mui/icons-material/SaveRounded';
 import SyncRoundedIcon from '@mui/icons-material/SyncRounded';
 import Box from '@mui/material/Box';
 import Button from '@mui/material/Button';
+import Checkbox from '@mui/material/Checkbox';
 import Chip from '@mui/material/Chip';
 import FormControl from '@mui/material/FormControl';
 import IconButton from '@mui/material/IconButton';
@@ -116,9 +117,10 @@ const validateRowData = (row: BulkDailyRow): { isValid: boolean; errors: string[
 interface BulkDailyRecordListProps {
   selectedDate?: string;
   onSave?: (records: BulkDailyRow[]) => Promise<void>;
+  onSaveRow?: (row: BulkDailyRow) => Promise<void>;
 }
 
-export default function BulkDailyRecordList({ selectedDate, onSave }: BulkDailyRecordListProps) {
+export default function BulkDailyRecordList({ selectedDate, onSave, onSaveRow }: BulkDailyRecordListProps) {
   const [rows, setRows] = React.useState<BulkDailyRow[]>(createInitialRows);
   const [isSubmitting, setIsSubmitting] = React.useState(false);
   const [announceMessage, setAnnounceMessage] = React.useState<string>('');
@@ -175,8 +177,12 @@ export default function BulkDailyRecordList({ selectedDate, onSave }: BulkDailyR
       updateRow(index, { status: 'pending' });
 
       try {
-        // ここで実際の保存処理を実装
-        await new Promise((resolve) => setTimeout(resolve, 500)); // モック
+        // 行ごと保存処理：onSaveRowが提供されていればそれを使用、なければモック
+        if (onSaveRow) {
+          await onSaveRow(row);
+        } else {
+          await new Promise((resolve) => setTimeout(resolve, 500)); // モック
+        }
         updateRow(index, { status: 'saved' });
         setAnnounceMessage(`${row.userName}の記録を保存しました。`);
         return true;
@@ -186,7 +192,7 @@ export default function BulkDailyRecordList({ selectedDate, onSave }: BulkDailyR
         return false;
       }
     },
-    [rows, updateRow],
+    [rows, updateRow, onSaveRow],
   );
 
   const handleKeyDown = React.useCallback(
@@ -228,9 +234,22 @@ export default function BulkDailyRecordList({ selectedDate, onSave }: BulkDailyR
         await onSave(filteredRows);
       }
 
-      // 保存成功時の状態更新
+      // 保存成功時の状態更新：入力がある行のみ'saved'にする
       setRows((prev) =>
-        prev.map((row) => ({ ...row, status: 'saved' as BulkRowStatus })),
+        prev.map((row) => {
+          const isTouched =
+            row.mealAmount !== '完食' ||
+            row.amNotes.trim() ||
+            row.pmNotes.trim() ||
+            row.specialNotes.trim() ||
+            row.hasProblems ||
+            row.hasSeizure;
+
+          return {
+            ...row,
+            status: isTouched ? ('saved' as BulkRowStatus) : row.status,
+          };
+        }),
       );
       setAnnounceMessage(`一括保存完了: ${filteredRows.length}件の記録を保存しました。`);
     } catch {
@@ -258,11 +277,11 @@ export default function BulkDailyRecordList({ selectedDate, onSave }: BulkDailyR
   }, [handleBulkSave]);
 
   return (
-    <Paper variant="outlined" role="region" aria-label="活動日誌一覧入力">
+    <Paper variant="outlined" role="region" aria-label="支援記録（ケース記録）一覧入力">
       <Stack direction="row" alignItems="center" justifyContent="space-between" sx={{ p: 2, gap: 2 }}>
         <Stack direction="row" spacing={2} alignItems="center">
           <Typography variant="h6" sx={{ fontWeight: 700 }}>
-            活動日誌一覧入力
+            支援記録（ケース記録）一覧入力
           </Typography>
           {selectedDate && (
             <Chip label={selectedDate} variant="outlined" size="small" />
@@ -338,7 +357,7 @@ export default function BulkDailyRecordList({ selectedDate, onSave }: BulkDailyR
         <Table
           size="small"
           role="grid"
-          aria-label="活動日誌 一覧入力"
+          aria-label="支援記録（ケース記録） 一覧入力"
           data-testid="daily-bulk-table"
           stickyHeader
         >
@@ -503,24 +522,28 @@ export default function BulkDailyRecordList({ selectedDate, onSave }: BulkDailyR
 
                   <TableCell role="gridcell" align="center">
                     <Tooltip title="問題行動ありの場合チェック">
-                      <input
-                        type="checkbox"
+                      <Checkbox
                         checked={row.hasProblems}
                         onChange={(e) => updateRow(index, { hasProblems: e.target.checked })}
-                        aria-label={`${row.userName} 問題行動`}
+                        inputProps={{
+                          'aria-label': `${row.userName} 問題行動`,
+                        }}
                         data-testid={`daily-bulk-problems-${row.userId}`}
+                        size="small"
                       />
                     </Tooltip>
                   </TableCell>
 
                   <TableCell role="gridcell" align="center">
                     <Tooltip title="発作ありの場合チェック">
-                      <input
-                        type="checkbox"
+                      <Checkbox
                         checked={row.hasSeizure}
                         onChange={(e) => updateRow(index, { hasSeizure: e.target.checked })}
-                        aria-label={`${row.userName} 発作`}
+                        inputProps={{
+                          'aria-label': `${row.userName} 発作`,
+                        }}
                         data-testid={`daily-bulk-seizure-${row.userId}`}
+                        size="small"
                       />
                     </Tooltip>
                   </TableCell>

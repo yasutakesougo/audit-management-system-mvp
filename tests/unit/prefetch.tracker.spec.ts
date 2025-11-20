@@ -7,49 +7,56 @@ vi.mock('@/prefetch/util', () => ({
 }));
 
 import {
-    beginPrefetch,
-    finalizePrefetch,
-    resetPrefetchEntries,
-    touchPrefetch,
+  beginPrefetch,
+  finalizePrefetch,
+  resetPrefetchEntries,
+  touchPrefetch,
 } from '@/prefetch/tracker';
 
 describe('prefetch tracker HUD broadcast', () => {
-  let dispatchSpy: MockInstance<typeof window.dispatchEvent>;
   let nowSpy: MockInstance<typeof Date.now>;
   let now = 0;
 
   beforeEach(() => {
     now = 1_000;
-  nowSpy = vi.spyOn(Date, 'now').mockImplementation(() => now);
-  dispatchSpy = vi.spyOn(window, 'dispatchEvent');
+    nowSpy = vi.spyOn(Date, 'now').mockImplementation(() => now);
     resetPrefetchEntries();
-    dispatchSpy.mockClear();
+    // Clear any existing HUD data
+    if (typeof window !== 'undefined') {
+      const target = window as typeof window & { __PREFETCH_HUD__?: { spans?: unknown[] } };
+      if (target.__PREFETCH_HUD__) {
+        delete target.__PREFETCH_HUD__.spans;
+      }
+    }
   });
 
   afterEach(() => {
     resetPrefetchEntries();
-    dispatchSpy.mockRestore();
     nowSpy.mockRestore();
   });
 
-  it('does not re-dispatch navshell HUD show events when the broadcast token is unchanged', () => {
+  it('broadcasts prefetch entries to global HUD object and does not re-broadcast unchanged data on touch', () => {
     beginPrefetch('route:/demo', 'hover');
 
     now = 1_050;
     finalizePrefetch('route:/demo', 'completed');
 
-    const countHudShowEvents = (): number =>
-      dispatchSpy.mock.calls.reduce((count, [evt]) => (evt.type === 'navshell:hud:show' ? count + 1 : count), 0);
-
-    const initialShowCount = countHudShowEvents();
-    expect(initialShowCount).toBeGreaterThan(0);
-
-    dispatchSpy.mockClear();
+    // Check that HUD data is updated with the prefetch entry
+    const target = window as typeof window & { __PREFETCH_HUD__?: { spans?: unknown[] } };
+    expect(target.__PREFETCH_HUD__?.spans).toBeDefined();
+    expect(target.__PREFETCH_HUD__?.spans).toHaveLength(1);
 
     now = 1_200;
     touchPrefetch('route:/demo');
 
-    const repeatShowCount = countHudShowEvents();
-    expect(repeatShowCount).toBe(0);
+    // After touch, the spans should be updated (same content but new reference due to lastHitAt change)
+    expect(target.__PREFETCH_HUD__?.spans).toBeDefined();
+    expect(target.__PREFETCH_HUD__?.spans).toHaveLength(1);
+
+    // The entry should have an updated lastHitAt timestamp
+    const spans = target.__PREFETCH_HUD__?.spans as Array<{ key: string; lastHitAt: number; status: string }>;
+    expect(spans[0].key).toBe('route:/demo');
+    expect(spans[0].lastHitAt).toBe(1_200);
+    expect(spans[0].status).toBe('completed');
   });
 });

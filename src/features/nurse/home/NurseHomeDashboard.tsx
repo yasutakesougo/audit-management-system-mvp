@@ -1,4 +1,4 @@
-import { TESTIDS } from '@/testids';
+import { TESTIDS, tidWithSuffix } from '@/testids';
 import Alert from '@mui/material/Alert';
 import Box from '@mui/material/Box';
 import Button from '@mui/material/Button';
@@ -465,7 +465,7 @@ const NurseHomeDashboard: React.FC = () => {
                         key={task.id}
                         alignItems="flex-start"
                         divider
-                        data-testid={`${TESTIDS.NURSE_HOME_TASK_ITEM}.${task.id}`}
+                        {...tidWithSuffix(TESTIDS.NURSE_HOME_TASK_ITEM, `.${task.id}`)}
                       >
                         <Stack direction="row" spacing={2} sx={{ width: '100%' }} alignItems="flex-start">
                           <Checkbox

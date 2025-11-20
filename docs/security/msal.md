@@ -1,6 +1,6 @@
 # 🔐 MSAL / Azure AD 認証ガイド
 
-> 対象: 開発チーム / Azure 管理者  
+> 対象: 開発チーム / Azure 管理者
 > 関連: [playbook.md](./playbook.md#2-方針の全体構造)
 
 ---
@@ -26,8 +26,8 @@ Azure Active Directory によるシングルサインオン (SSO) と
 
 ## 3. 実装方針
 
-- 認証フロー: **redirect-first**, fallback to popup  
-- トークン取得: `acquireTokenSilent` → `acquireTokenRedirect`  
+- 認証フロー: **redirect-first**, fallback to popup
+- トークン取得: `acquireTokenSilent` → `acquireTokenRedirect`
 - 設定: `.env.local`
   ```bash
   VITE_MSAL_CLIENT_ID=<AppID>
@@ -41,22 +41,22 @@ Azure Active Directory によるシングルサインオン (SSO) と
 
 ## 4. トークン管理・リフレッシュ
 
-- silent flow 成功率を維持するため `cacheLocation=sessionStorage` を利用。  
-- トークン更新間隔: 50 分（既定の 3600 秒 - 600 秒）。  
-- サインアウトは `logoutRedirect` に統一。  
+- silent flow 成功率を維持するため `cacheLocation=sessionStorage` を利用。
+- トークン更新間隔: 50 分（既定の 3600 秒 - 600 秒）。
+- サインアウトは `logoutRedirect` に統一。
 - `redirectStartPage` で遷移前 URL を保持し、復帰を保証。
 
 ---
 
 ## 5. 監査・検証
 
-- `msal.ts` ログに `[MSAL CONFIG]` が出ないことを確認。  
-- CSP Report で `frame-ancestors` 違反が出ないかを監視。  
+- `msal.ts` ログに `[MSAL CONFIG]` が出ないことを確認。
+- CSP Report で `frame-ancestors` 違反が出ないかを監視。
 - 失敗時は MSAL の `errorCode`, `subError` を記録し、NDJSON に残す。
 
 ---
 
 ## 6. 参考資料
 
-- [MSAL.js Docs](https://learn.microsoft.com/azure/active-directory/develop/msal-overview)  
+- [MSAL.js Docs](https://learn.microsoft.com/azure/active-directory/develop/msal-overview)
 - [SPA アプリ登録手順](https://learn.microsoft.com/azure/active-directory/develop/scenario-spa-app-registration)

@@ -3,8 +3,10 @@ import { nurseRoutes } from '@/features/nurse/routes/NurseRoutes';
 import { StaffPanel } from '@/features/staff';
 import { UsersPanel } from '@/features/users';
 import { RouteHydrationErrorBoundary } from '@/hydration/RouteHydrationListener';
+import lazyWithPreload from '@/utils/lazyWithPreload';
 import React from 'react';
 import { createBrowserRouter, Navigate, Outlet, type RouteObject } from 'react-router-dom';
+import { useFeatureFlags } from '@/config/featureFlags';
 import AppShell from './AppShell';
 import { routerFutureFlags } from './routerFuture';
 import SchedulesGate from './SchedulesGate';
@@ -14,16 +16,29 @@ const ChecklistPage = React.lazy(() => import('@/features/compliance-checklist/C
 const AuditPanel = React.lazy(() => import('@/features/audit/AuditPanel'));
 
 const MonthPage = React.lazy(() => import('@/features/schedule/MonthPage'));
-const SchedulePage = React.lazy(() => import('@/features/schedule/SchedulePage'));
 const SchedulesDayPage = React.lazy(() => import('@/features/schedule/pages/SchedulesDayPage'));
-const SchedulesWeekPage = React.lazy(() => import('@/features/schedule/pages/SchedulesWeekPage'));
+const LegacySchedulesWeekPage = lazyWithPreload(() => import('@/features/schedule/pages/SchedulesWeekPage'));
+const NewSchedulesWeekPage = lazyWithPreload(() => import('@/features/schedule/WeekPage'));
 const ScheduleCreatePage = React.lazy(() => import('@/pages/ScheduleCreatePage'));
 const DailyRecordPage = React.lazy(() => import('@/pages/DailyRecordPage'));
 const DailyRecordMenuPage = React.lazy(() => import('@/pages/DailyRecordMenuPage'));
+const TableDailyRecordPage = React.lazy(() => import('@/features/daily/TableDailyRecordPage'));
 const TimeFlowSupportRecordPage = React.lazy(() => import('@/pages/TimeFlowSupportRecordPage'));
 const HealthObservationPage = React.lazy(() => import('@/pages/HealthObservationPage'));
 const AttendanceRecordPage = React.lazy(() => import('@/pages/AttendanceRecordPage'));
-const DashboardPage = React.lazy(() => import('@/pages/DashboardPage'));
+const StaffDashboardPage = React.lazy(() =>
+  import('@/pages/DashboardPage').then((module) => ({
+    default: module.StaffDashboardPage ?? module.default,
+  })),
+);
+const AdminDashboardPage = React.lazy(() =>
+  import('@/pages/DashboardPage').then((module) => ({
+    default: module.AdminDashboardPage ?? module.default,
+  })),
+);
+const MeetingGuidePage = React.lazy(() => import('@/pages/MeetingGuidePage'));
+const HandoffTimelinePage = React.lazy(() => import('@/pages/HandoffTimelinePage'));
+const IntegratedResourceCalendarPage = React.lazy(() => import('@/pages/IntegratedResourceCalendarPage'));
 const SupportActivityMasterPage = React.lazy(() => import('@/pages/SupportActivityMasterPage'));
 const SupportStepMasterPage = React.lazy(() => import('@/pages/SupportStepMasterPage'));
 const IndividualSupportManagementPage = React.lazy(() => import('@/pages/IndividualSupportManagementPage'));
@@ -43,21 +58,7 @@ const SuspendedMonthPage: React.FC = () => (
   </RouteHydrationErrorBoundary>
 );
 
-const SuspendedSchedulePage: React.FC = () => (
-  <RouteHydrationErrorBoundary>
-    <React.Suspense
-      fallback={(
-        <div className="p-4 text-sm text-slate-600" role="status">
-          スケジュールを読み込んでいます…
-        </div>
-      )}
-    >
-      <SchedulePage />
-    </React.Suspense>
-  </RouteHydrationErrorBoundary>
-);
-
-const SuspendedSchedulesWeekPage: React.FC = () => (
+const SuspendedLegacySchedulesWeekPage: React.FC = () => (
   <RouteHydrationErrorBoundary>
     <React.Suspense
       fallback={(
@@ -66,10 +67,31 @@ const SuspendedSchedulesWeekPage: React.FC = () => (
         </div>
       )}
     >
-      <SchedulesWeekPage />
+      <LegacySchedulesWeekPage />
     </React.Suspense>
   </RouteHydrationErrorBoundary>
 );
+
+const SuspendedNewSchedulesWeekPage: React.FC = () => (
+  <RouteHydrationErrorBoundary>
+    <React.Suspense
+      fallback={(
+        <div className="p-4 text-sm text-slate-600" role="status">
+          週間予定を読み込んでいます…
+        </div>
+      )}
+    >
+      <NewSchedulesWeekPage />
+    </React.Suspense>
+  </RouteHydrationErrorBoundary>
+);
+
+const SchedulesWeekRoute: React.FC = () => {
+  const flags = useFeatureFlags();
+  const useNewWeekView = flags.schedulesWeekV2 === true;
+  const Component = useNewWeekView ? SuspendedNewSchedulesWeekPage : SuspendedLegacySchedulesWeekPage;
+  return <Component />;
+};
 
 const SuspendedSchedulesDayPage: React.FC = () => (
   <RouteHydrationErrorBoundary>
@@ -104,7 +126,7 @@ const SuspendedDailyRecordPage: React.FC = () => (
     <React.Suspense
       fallback={(
         <div className="p-4 text-sm text-slate-600" role="status">
-          活動日誌を読み込んでいます…
+          支援記録（ケース記録）を読み込んでいます…
         </div>
       )}
     >
@@ -123,6 +145,20 @@ const SuspendedDailyRecordMenuPage: React.FC = () => (
       )}
     >
       <DailyRecordMenuPage />
+    </React.Suspense>
+  </RouteHydrationErrorBoundary>
+);
+
+const SuspendedTableDailyRecordPage: React.FC = () => (
+  <RouteHydrationErrorBoundary>
+    <React.Suspense
+      fallback={(
+        <div className="p-4 text-sm text-slate-600" role="status">
+          一覧形式ケース記録を読み込んでいます…
+        </div>
+      )}
+    >
+      <TableDailyRecordPage />
     </React.Suspense>
   </RouteHydrationErrorBoundary>
 );
@@ -169,7 +205,7 @@ const SuspendedHealthObservationPage: React.FC = () => (
   </RouteHydrationErrorBoundary>
 );
 
-const SuspendedDashboardPage: React.FC = () => (
+const SuspendedStaffDashboardPage: React.FC = () => (
   <RouteHydrationErrorBoundary>
     <React.Suspense
       fallback={(
@@ -178,7 +214,21 @@ const SuspendedDashboardPage: React.FC = () => (
         </div>
       )}
     >
-      <DashboardPage />
+      <StaffDashboardPage />
+    </React.Suspense>
+  </RouteHydrationErrorBoundary>
+);
+
+const SuspendedAdminDashboardPage: React.FC = () => (
+  <RouteHydrationErrorBoundary>
+    <React.Suspense
+      fallback={(
+        <div className="p-4 text-sm text-slate-600" role="status">
+          管理者ダッシュボードを読み込んでいます…
+        </div>
+      )}
+    >
+      <AdminDashboardPage />
     </React.Suspense>
   </RouteHydrationErrorBoundary>
 );
@@ -188,7 +238,7 @@ const SuspendedRecordList: React.FC = () => (
     <React.Suspense
       fallback={(
         <div className="p-4 text-sm text-slate-600" role="status">
-          記録一覧を読み込んでいます…
+          黒ノートを読み込んでいます…
         </div>
       )}
     >
@@ -281,15 +331,62 @@ const SuspendedUserDetailPage: React.FC = () => (
   </RouteHydrationErrorBoundary>
 );
 
+const SuspendedIntegratedResourceCalendarPage: React.FC = () => (
+  <RouteHydrationErrorBoundary>
+    <React.Suspense
+      fallback={(
+        <div className="p-4 text-sm text-slate-600" role="status">
+          統合リソースカレンダーを読み込んでいます…
+        </div>
+      )}
+    >
+      <IntegratedResourceCalendarPage />
+    </React.Suspense>
+  </RouteHydrationErrorBoundary>
+);
+
+const SuspendedMeetingGuidePage: React.FC = () => (
+  <RouteHydrationErrorBoundary>
+    <React.Suspense
+      fallback={(
+        <div className="p-4 text-sm text-slate-600" role="status">
+          司会ガイドを読み込んでいます…
+        </div>
+      )}
+    >
+      <MeetingGuidePage />
+    </React.Suspense>
+  </RouteHydrationErrorBoundary>
+);
+
+const SuspendedHandoffTimelinePage: React.FC = () => (
+  <RouteHydrationErrorBoundary>
+    <React.Suspense
+      fallback={(
+        <div className="p-4 text-sm text-slate-600" role="status">
+          申し送りタイムラインを読み込んでいます…
+        </div>
+      )}
+    >
+      <HandoffTimelinePage />
+    </React.Suspense>
+  </RouteHydrationErrorBoundary>
+);
+
 const childRoutes: RouteObject[] = [
-  { index: true, element: <SuspendedDashboardPage /> },
+  { index: true, element: <Navigate to="/dashboard" replace /> },
+  { path: 'dashboard', element: <SuspendedStaffDashboardPage /> },
+  { path: 'admin/dashboard', element: <SuspendedAdminDashboardPage /> },
+  { path: 'meeting-guide', element: <SuspendedMeetingGuidePage /> },
+  { path: 'handoff-timeline', element: <SuspendedHandoffTimelinePage /> },
   { path: 'records', element: <SuspendedRecordList /> },
   { path: 'checklist', element: <SuspendedChecklistPage /> },
   { path: 'audit', element: <SuspendedAuditPanel /> },
-  { path: '/users', element: <UsersPanel /> },
-  { path: '/users/:userId', element: <SuspendedUserDetailPage /> },
+  { path: 'users', element: <UsersPanel /> },
+  { path: 'users/:userId', element: <SuspendedUserDetailPage /> },
   { path: 'staff', element: <StaffPanel /> },
   { path: 'daily', element: <SuspendedDailyRecordMenuPage /> },
+  { path: 'daily/table', element: <SuspendedTableDailyRecordPage /> },
   { path: 'daily/activity', element: <SuspendedDailyRecordPage /> },
   { path: 'daily/attendance', element: <SuspendedAttendanceRecordPage /> },
   { path: 'daily/support', element: <SuspendedTimeFlowSupportRecordPage /> },
@@ -298,11 +395,21 @@ const childRoutes: RouteObject[] = [
   { path: 'admin/step-templates', element: <SuspendedSupportStepMasterPage /> },
   { path: 'admin/individual-support', element: <SuspendedIndividualSupportManagementPage /> },
   {
+    path: 'admin/integrated-resource-calendar',
+    element: (
+      <SchedulesGate>
+        <ProtectedRoute flag="schedules">
+          <SuspendedIntegratedResourceCalendarPage />
+        </ProtectedRoute>
+      </SchedulesGate>
+    )
+  },
+  {
     path: 'schedule',
     element: (
       <SchedulesGate>
         <ProtectedRoute flag="schedules">
-          <SuspendedSchedulePage />
+          <Navigate to="/schedules/week" replace />
         </ProtectedRoute>
       </SchedulesGate>
     ),
@@ -332,7 +439,7 @@ const childRoutes: RouteObject[] = [
     element: (
       <SchedulesGate>
         <ProtectedRoute flag="schedules">
-          <SuspendedSchedulesWeekPage />
+          <SchedulesWeekRoute />
         </ProtectedRoute>
       </SchedulesGate>
     ),

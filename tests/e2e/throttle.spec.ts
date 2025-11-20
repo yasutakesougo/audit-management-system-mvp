@@ -40,38 +40,38 @@ test.beforeEach(async ({ page }) => {
 
 test('GET 429 -> retry success (no fatal error)', async ({ page }) => {
   await page.goto('/', { waitUntil: 'domcontentloaded' });
-  
+
   // Try to wait for network idle but don't fail if it takes too long
   try {
     await page.waitForLoadState('networkidle', { timeout: 8_000 });
   } catch {
     console.log('Network idle timeout - proceeding with test');
   }
-  
+
   const maybeWeek = page.getByTestId('schedules-week-page');
   if ((await maybeWeek.count()) > 0) {
     await waitForScheduleReady(page);
   }
-  
+
   // Dashboard page should be visible regardless of network state
   await waitForTestId(page, 'dashboard-page', 15_000);
 });
 
 test('$batch 503 -> retry success (no crash)', async ({ page }) => {
   await page.goto('/', { waitUntil: 'domcontentloaded' });
-  
+
   // Try to wait for network idle but don't fail if it takes too long
   try {
     await page.waitForLoadState('networkidle', { timeout: 8_000 });
   } catch {
     console.log('Network idle timeout - proceeding with test');
   }
-  
+
   const maybeWeek = page.getByTestId('schedules-week-page');
   if ((await maybeWeek.count()) > 0) {
     await waitForScheduleReady(page);
   }
-  
+
   // Dashboard page should be visible regardless of network state
   await waitForTestId(page, 'dashboard-page', 15_000);
 });

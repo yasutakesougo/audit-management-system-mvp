@@ -1,73 +1,29 @@
-import React, { useMemo, useState } from 'react';
-import Snackbar from '@mui/material/Snackbar';
+import { ABSENCE_MONTHLY_LIMIT, DISCREPANCY_THRESHOLD } from '@/config/serviceRecords';
+import { getFlag } from '@/env';
+import {
+  buildAbsentVisit,
+  buildInitialVisits,
+  canCheckOut,
+  computeAbsenceEligibility,
+  diffMinutes,
+  formatTime,
+  getDiscrepancyCount,
+  isBeforeCloseTime,
+  type AbsentMethod,
+  type AttendanceUser,
+  type AttendanceVisit,
+} from '@/features/attendance/attendance.logic';
+import { warmDataEntryComponents } from '@/mui/warm';
 import { TESTIDS } from '@/testids';
-// --- Exported for tests ---
-export const computeAbsenceEligibility = (
-  user: AttendanceUser,
-  morningContacted: boolean,
-  eveningChecked: boolean,
-  monthlyLimit: number
-): boolean => {
-  if (!morningContacted || !eveningChecked) return false;
-  return user.absenceClaimedThisMonth < monthlyLimit;
-};
-
-export const buildAbsentVisit = (
-  base: AttendanceVisit,
-  args: {
-    morningContacted: boolean;
-    morningMethod: AbsentMethod;
-    eveningChecked: boolean;
-    eveningNote: string;
-    eligible: boolean;
-  }
-): AttendanceVisit => ({
-  ...base,
-  status: '当日欠席',
-  cntAttendIn: 0,
-  cntAttendOut: 0,
-  checkInAt: undefined,
-  checkOutAt: undefined,
-  transportTo: false,
-  transportFrom: false,
-  absentMorningContacted: args.morningContacted,
-  absentMorningMethod: args.morningMethod,
-  eveningChecked: args.eveningChecked,
-  eveningNote: args.eveningNote,
-  isAbsenceAddonClaimable: args.eligible,
-  providedMinutes: 0,
-  userConfirmedAt: undefined,
-  isEarlyLeave: false,
-});
-
-import { DISCREPANCY_THRESHOLD, ABSENCE_MONTHLY_LIMIT, FACILITY_CLOSE_TIME } from '@/config/serviceRecords';
-// 乖離件数カウントユーティリティ
-const getDiscrepancyCount = (
-  visits: Record<string, AttendanceVisit>,
-  users: AttendanceUser[],
-  threshold = DISCREPANCY_THRESHOLD
-): number => {
-  if (!visits || !users?.length) return 0;
-  const userMap = new Map(users.map(u => [u.userCode, u]));
-  let cnt = 0;
-  for (const v of Object.values(visits)) {
-    const u = userMap.get(v.userCode);
-    if (!u) continue;
-    const provided = v.providedMinutes ?? 0;
-    if (provided > 0 && u.standardMinutes && provided < u.standardMinutes * threshold) {
-      cnt++;
-    }
-  }
-  return cnt;
-};
-import AbsenceIcon from '@mui/icons-material/CancelScheduleSend';
-import AttendanceIcon from '@mui/icons-material/AssignmentInd';
-import BusIcon from '@mui/icons-material/DirectionsBus';
-import CheckIcon from '@mui/icons-material/CheckCircle';
-import EveningIcon from '@mui/icons-material/WbTwilight';
-import MorningIcon from '@mui/icons-material/School';
-import ResetIcon from '@mui/icons-material/Replay';
 import TransportIcon from '@mui/icons-material/AirportShuttle';
+import AttendanceIcon from '@mui/icons-material/AssignmentInd';
+import AbsenceIcon from '@mui/icons-material/CancelScheduleSend';
+import CheckIcon from '@mui/icons-material/CheckCircle';
+import BusIcon from '@mui/icons-material/DirectionsBus';
+import ResetIcon from '@mui/icons-material/Replay';
+import MorningIcon from '@mui/icons-material/School';
+import SearchIcon from '@mui/icons-material/Search';
+import EveningIcon from '@mui/icons-material/WbTwilight';
 import Alert from '@mui/material/Alert';
 import Button from '@mui/material/Button';
 import Card from '@mui/material/Card';
@@ -83,45 +39,18 @@ import FormControlLabel from '@mui/material/FormControlLabel';
 import InputLabel from '@mui/material/InputLabel';
 import MenuItem from '@mui/material/MenuItem';
 import Select from '@mui/material/Select';
+import Snackbar from '@mui/material/Snackbar';
 import Stack from '@mui/material/Stack';
 import Switch from '@mui/material/Switch';
 import TextField from '@mui/material/TextField';
 import Tooltip from '@mui/material/Tooltip';
 import Typography from '@mui/material/Typography';
-import { getFlag } from '@/env';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 
-type AttendanceStatus = '未' | '通所中' | '退所済' | '当日欠席';
+type ToastSeverity = 'success' | 'error' | 'warning' | 'info';
 
-type AbsentMethod = '電話' | 'SMS' | '家族' | 'その他' | '';
-
-
-interface AttendanceUser {
-  userCode: string;
-  userName: string;
-  isTransportTarget: boolean;
-  absenceClaimedThisMonth: number;
-  standardMinutes: number; // 追加：算定時間（分）
-}
-
-interface AttendanceVisit {
-  userCode: string;
-  status: AttendanceStatus;
-  recordDate: string;
-  checkInAt?: string;
-  checkOutAt?: string;
-  cntAttendIn: 0 | 1;
-  cntAttendOut: 0 | 1;
-  transportTo: boolean;
-  transportFrom: boolean;
-  isEarlyLeave: boolean;
-  absentMorningContacted: boolean;
-  absentMorningMethod: AbsentMethod;
-  eveningChecked: boolean;
-  eveningNote: string;
-  isAbsenceAddonClaimable: boolean;
-  providedMinutes?: number;    // 追加：実提供（分）
-  userConfirmedAt?: string;    // 追加：利用者確認（ISO）
-}
+type FilterStatus = 'all' | 'pending' | 'completed' | 'absent';
 
 interface AbsenceDialogState {
   user: AttendanceUser;
@@ -132,71 +61,35 @@ interface AbsenceDialogState {
   eveningNote: string;
 }
 
-
 const initialUsers: AttendanceUser[] = [
   { userCode: 'I001', userName: '田中太郎', isTransportTarget: true,  absenceClaimedThisMonth: 2, standardMinutes: 360 },
   { userCode: 'I002', userName: '佐藤花子', isTransportTarget: false, absenceClaimedThisMonth: 4, standardMinutes: 300 },
   { userCode: 'I003', userName: '鈴木一郎', isTransportTarget: true,  absenceClaimedThisMonth: 1, standardMinutes: 420 }
 ];
 
-const buildInitialVisits = (users: AttendanceUser[], recordDate: string): Record<string, AttendanceVisit> => {
-  return users.reduce<Record<string, AttendanceVisit>>((acc, user) => {
-    acc[user.userCode] = {
-      userCode: user.userCode,
-      status: '未',
-      recordDate,
-      cntAttendIn: 0,
-      cntAttendOut: 0,
-      transportTo: false,
-      transportFrom: false,
-      isEarlyLeave: false,
-      absentMorningContacted: false,
-      absentMorningMethod: '',
-      eveningChecked: false,
-      eveningNote: '',
-      isAbsenceAddonClaimable: false,
-      providedMinutes: 0,
-      userConfirmedAt: undefined,
-    };
-    return acc;
-  }, {});
-};
-
-const formatTime = (iso?: string) =>
-  iso ? new Date(iso).toLocaleTimeString('ja-JP', { hour: '2-digit', minute: '2-digit' }) : '--:--';
-
-
-const isBeforeCloseTime = (date: Date) => {
-  const [hours, minutes] = FACILITY_CLOSE_TIME.split(':').map(Number);
-  const closeDate = new Date(date);
-  closeDate.setHours(hours);
-  closeDate.setMinutes(minutes);
-  closeDate.setSeconds(0);
-  closeDate.setMilliseconds(0);
-  return date.getTime() < closeDate.getTime();
-};
-
-// 実提供分の計算
-export const diffMinutes = (start?: string, end?: string) => {
-  if (!start || !end) return 0;
-  const s = new Date(start).getTime();
-  const e = new Date(end).getTime();
-  return Math.max(0, Math.floor((e - s) / 60000));
-};
-
-// 退所可否ガード関数
-export const canCheckOut = (v?: AttendanceVisit) =>
-  !!v && v.status === '通所中' && v.cntAttendOut === 0;
-
 type AttendanceRecordPageProps = {
   'data-testid'?: string;
 };
 
 const AttendanceRecordPage: React.FC<AttendanceRecordPageProps> = ({ 'data-testid': dataTestId }) => {
-  // Snackbar state for toast notifications
-  const [snackbar, setSnackbar] = useState<{ open: boolean; message: string; severity: 'success' | 'error' } | null>(null);
+  // Navigation hooks for cross-module navigation
+  const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
 
-  const openToast = (message: string, severity: 'success' | 'error') => {
+  const targetUserIdFromQuery = searchParams.get('userId') ?? '';
+  const _targetDateFromQuery = searchParams.get('date') ?? ''; // 将来の拡張用（today以外の日対応時）
+
+  // MUI コンポーネントの事前読み込み（パフォーマンス最適化）
+  useEffect(() => {
+    // Dialog、TextField、Select等の重要コンポーネントを事前ロード
+    // 欠席ダイアログ表示時の遅延を防ぐ
+    warmDataEntryComponents();
+  }, []);
+
+  // Snackbar state for toast notifications
+  const [snackbar, setSnackbar] = useState<{ open: boolean; message: string; severity: ToastSeverity } | null>(null);
+
+  const openToast = (message: string, severity: ToastSeverity) => {
     setSnackbar({ open: true, message, severity });
   };
 
@@ -209,6 +102,8 @@ const AttendanceRecordPage: React.FC<AttendanceRecordPageProps> = ({ 'data-testi
     buildInitialVisits(initialUsers, today)
   );
   const [absenceDialog, setAbsenceDialog] = useState<AbsenceDialogState | null>(null);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [filterStatus, setFilterStatus] = useState<FilterStatus>('all');
 
   // 乖離件数（サマリー用）
   const discrepancyCount = useMemo(
@@ -231,7 +126,40 @@ const AttendanceRecordPage: React.FC<AttendanceRecordPageProps> = ({ 'data-testi
     return { attendIn, attendOut, transportTo, transportFrom, absenceAddon, warnDiff };
   }, [visits, users]);
 
-  const handleCheckIn = (user: AttendanceUser) => {
+  // フィルタリングされたユーザーリスト
+  const filteredUsers = useMemo(() => {
+    let filtered = users;
+
+    // 検索フィルタ
+    if (searchQuery.trim()) {
+      const query = searchQuery.toLowerCase();
+      filtered = filtered.filter(user =>
+        user.userName.toLowerCase().includes(query) ||
+        user.userCode.toLowerCase().includes(query)
+      );
+    }
+
+    // ステータスフィルタ
+    if (filterStatus !== 'all') {
+      filtered = filtered.filter(user => {
+        const visit = visits[user.userCode];
+        switch (filterStatus) {
+          case 'pending':
+            return visit.status === '未';
+          case 'completed':
+            return visit.status === '退所済' || !!visit.userConfirmedAt;
+          case 'absent':
+            return visit.status === '当日欠席';
+          default:
+            return true;
+        }
+      });
+    }
+
+    return filtered;
+  }, [users, searchQuery, filterStatus, visits]);
+
+  const handleCheckIn = useCallback((user: AttendanceUser) => {
     setVisits((prev) => {
       const current = prev[user.userCode];
       if (!current || current.status === '当日欠席' || current.cntAttendIn === 1) {
@@ -248,9 +176,10 @@ const AttendanceRecordPage: React.FC<AttendanceRecordPageProps> = ({ 'data-testi
         }
       };
     });
-  };
+    openToast(`${user.userName}さんが通所しました`, 'success');
+  }, []);
 
-  const handleCheckOut = (user: AttendanceUser) => {
+  const handleCheckOut = useCallback((user: AttendanceUser) => {
     setVisits((prev) => {
       const current = prev[user.userCode];
       if (!canCheckOut(current)) {
@@ -268,7 +197,8 @@ const AttendanceRecordPage: React.FC<AttendanceRecordPageProps> = ({ 'data-testi
         }
       };
     });
-  };
+    openToast(`${user.userName}さんが退所しました`, 'success');
+  }, []);
 
   const handleTransportToggle = (user: AttendanceUser, field: 'transportTo' | 'transportFrom') => {
     setVisits((prev) => {
@@ -331,10 +261,10 @@ const AttendanceRecordPage: React.FC<AttendanceRecordPageProps> = ({ 'data-testi
             : entry
         )
       );
+      openToast(`${user.userName}さんの欠席を記録しました（加算対象）`, 'success');
+    } else {
+      openToast(`${user.userName}さんの欠席を記録しました（加算対象外）`, 'warning');
     }
-
-  // E2Eが待つ「保存しました」トーストをここで発火（UI非ブロッキング）
-  openToast('保存しました', 'success');
   closeAbsenceDialog();
   };
 
@@ -378,16 +308,66 @@ const AttendanceRecordPage: React.FC<AttendanceRecordPageProps> = ({ 'data-testi
           </CardContent>
         </Card>
 
+        {/* 検索・フィルタ機能 */}
+        <Card>
+          <CardContent>
+            <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2} alignItems="center">
+              <TextField
+                size="small"
+                placeholder="利用者名・IDで検索"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                InputProps={{
+                  startAdornment: <SearchIcon sx={{ mr: 1, color: 'text.secondary' }} />
+                }}
+                sx={{ flexGrow: 1 }}
+              />
+
+              <FormControl size="small" sx={{ minWidth: 120 }}>
+                <InputLabel>フィルタ</InputLabel>
+                <Select
+                  value={filterStatus}
+                  label="フィルタ"
+                  onChange={(e) => setFilterStatus(e.target.value as FilterStatus)}
+                >
+                  <MenuItem value="all">すべて</MenuItem>
+                  <MenuItem value="pending">未完了</MenuItem>
+                  <MenuItem value="completed">完了</MenuItem>
+                  <MenuItem value="absent">欠席</MenuItem>
+                </Select>
+              </FormControl>
+
+              {searchQuery && (
+                <Typography variant="body2" color="text.secondary">
+                  検索結果: {filteredUsers.length}件
+                </Typography>
+              )}
+            </Stack>
+          </CardContent>
+        </Card>
+
         <Stack spacing={2}>
-          {users.map((user) => {
+          {filteredUsers.map((user) => {
             const visit = visits[user.userCode];
             const disableCheckIn = visit.status === '当日欠席' || visit.cntAttendIn === 1;
             const disableCheckOut = !canCheckOut(visit);
             const disableAbsence = visit.status !== '未' && visit.status !== '当日欠席';
             const absenceLimitReached = user.absenceClaimedThisMonth >= ABSENCE_MONTHLY_LIMIT;
 
+            // ★ 追加: クエリで指定された利用者かどうか
+            const isFocused = targetUserIdFromQuery === user.userCode;
+
             return (
-              <Card key={user.userCode} data-testid={`card-${user.userCode}`} sx={{ border: '1px solid', borderColor: 'divider' }}>
+              <Card
+                key={user.userCode}
+                data-testid={`card-${user.userCode}`}
+                sx={{
+                  border: '2px solid',
+                  borderColor: isFocused ? 'primary.main' : 'divider',
+                  boxShadow: isFocused ? 4 : 1,
+                  transition: 'box-shadow 0.2s, border-color 0.2s',
+                }}
+              >
                 <CardContent>
                   <Stack spacing={2}>
                     <Stack direction={{ xs: 'column', md: 'row' }} spacing={2} alignItems="center">
@@ -399,24 +379,33 @@ const AttendanceRecordPage: React.FC<AttendanceRecordPageProps> = ({ 'data-testi
                           </Typography>
                         </Typography>
                         <Stack direction="row" spacing={1} flexWrap="wrap" sx={{ mt: 1 }}>
-                          <Chip label={`ステータス: ${visit.status}`} color="info" />
-                          <Chip label={`通所 ${formatTime(visit.checkInAt)}`} />
-                          <Chip label={`退所 ${formatTime(visit.checkOutAt)}`} />
-                          <Chip label={`実提供 ${visit.providedMinutes ?? 0}分`} />
-                          <Chip label={`算定 ${user.standardMinutes}分`} />
+                          <Chip
+                            label={`ステータス: ${visit.status}`}
+                            color={
+                              visit.status === '退所済' ? 'success' :
+                              visit.status === '当日欠席' ? 'error' :
+                              visit.status === '通所中' ? 'primary' : 'default'
+                            }
+                            variant={visit.status === '未' ? 'outlined' : 'filled'}
+                          />
+                          <Chip label={`通所 ${formatTime(visit.checkInAt)}`} size="small" />
+                          <Chip label={`退所 ${formatTime(visit.checkOutAt)}`} size="small" />
+                          <Chip label={`実提供 ${visit.providedMinutes ?? 0}分`} size="small" />
+                          <Chip label={`算定 ${user.standardMinutes}分`} variant="outlined" size="small" />
                           { (visit.providedMinutes ?? 0) > 0 && visit.providedMinutes! < user.standardMinutes * DISCREPANCY_THRESHOLD && (
-                            <Chip label="乖離あり（備考推奨）" color="warning" variant="outlined" />
+                            <Chip label="乖離あり（備考推奨）" color="warning" variant="outlined" size="small" />
                           )}
                           {visit.isEarlyLeave && (
-                            <Chip label="早退" color="warning" variant="outlined" />
+                            <Chip label="早退" color="warning" variant="outlined" size="small" />
                           )}
                           {visit.isAbsenceAddonClaimable && (
-                            <Chip label="欠席加算対象" color="warning" />
+                            <Chip label="欠席加算対象" color="warning" size="small" />
                           )}
                           {visit.userConfirmedAt && (
                             <Chip
                               label={`確認 ${new Date(visit.userConfirmedAt).toLocaleTimeString('ja-JP', { hour: '2-digit', minute: '2-digit' })}`}
                               color="success"
+                              size="small"
                             />
                           )}
                         </Stack>
@@ -456,6 +445,13 @@ const AttendanceRecordPage: React.FC<AttendanceRecordPageProps> = ({ 'data-testi
                               disabled={disableAbsence}
                               startIcon={<AbsenceIcon />}
                               data-testid={`btn-absence-${user.userCode}`}
+                              onMouseEnter={() => {
+                                // ダイアログ関連コンポーネントの事前読み込み
+                                // ホバー時に読み込んでクリック時の応答性を向上
+                                if (!disableAbsence) {
+                                  warmDataEntryComponents();
+                                }
+                              }}
                             >
                               欠席
                             </Button>
@@ -533,6 +529,48 @@ const AttendanceRecordPage: React.FC<AttendanceRecordPageProps> = ({ 'data-testi
                               data-testid={`btn-reset-${user.userCode}`}
                             >
                               リセット
+                            </Button>
+                          </span>
+                        </Tooltip>
+
+                        {/* ★ 追加: 支援記録（ケース記録）へのクロスリンク */}
+                        <Tooltip title="今日の支援記録（ケース記録）（/daily/activity）を開きます">
+                          <span>
+                            <Button
+                              variant="text"
+                              color="primary"
+                              size="small"
+                              onClick={() => {
+                                navigate(`/daily/activity?userId=${user.userCode}&date=${today}`);
+                              }}
+                              data-testid={`btn-activity-${user.userCode}`}
+                            >
+                              支援記録（ケース記録）を見る
+                            </Button>
+                          </span>
+                        </Tooltip>
+
+                        {/* ★ 追加: 申し送りタイムラインへのクロスリンク */}
+                        <Tooltip title="この利用者の申し送りタイムライン（/handoff-timeline）を開きます">
+                          <span>
+                            <Button
+                              variant="text"
+                              color="secondary"
+                              size="small"
+                              onClick={() => {
+                                navigate('/handoff-timeline', {
+                                  state: {
+                                    dayScope: 'today',
+                                    timeFilter: 'all',
+                                    userId: user.userCode,
+                                    date: today,
+                                    focus: true,
+                                  },
+                                });
+                              }}
+                              data-testid={`btn-handoff-${user.userCode}`}
+                            >
+                              申し送りを見る
                             </Button>
                           </span>
                         </Tooltip>

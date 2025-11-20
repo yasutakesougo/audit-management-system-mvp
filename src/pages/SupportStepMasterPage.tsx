@@ -13,6 +13,13 @@ import { SupportStepTemplate, defaultSupportStepTemplates } from '../domain/supp
 import { SupportStepTemplateForm } from '../features/support/SupportStepTemplateForm';
 import { SupportStepTemplateList } from '../features/support/SupportStepTemplateList';
 
+// デフォルトテンプレートにID付与（コンポーネント外で一度だけ生成）
+const defaultTemplatesWithIds: SupportStepTemplate[] = defaultSupportStepTemplates.map((template, index) => ({
+  ...template,
+  id: `default-${index + 1}`,
+  isDefault: true
+}));
+
 interface TabPanelProps {
   children?: React.ReactNode;
   index: number;
@@ -48,6 +55,9 @@ function a11yProps(index: number) {
 
 const SupportStepMasterPage: React.FC = () => {
   const [activeTab, setActiveTab] = useState(0);
+
+  // TODO: 将来的にはuseSupportStepTemplatesStore()などのhooksに置き換え予定
+  // 現在はローカル状態管理（SharePoint/API連携時に拡張）
   const [templates, setTemplates] = useState<SupportStepTemplate[]>([]);
   const [editingTemplate, setEditingTemplate] = useState<SupportStepTemplate | null>(null);
   const [isFormOpen, setIsFormOpen] = useState(false);
@@ -63,10 +73,6 @@ const SupportStepMasterPage: React.FC = () => {
 
   // デフォルトテンプレートとカスタムテンプレートを統合
   const allTemplates = useMemo(() => {
-    const defaultTemplatesWithIds: SupportStepTemplate[] = defaultSupportStepTemplates.map((template, index) => ({
-      ...template,
-      id: `default-${index + 1}`
-    }));
     return [...defaultTemplatesWithIds, ...templates];
   }, [templates]);
 
@@ -86,9 +92,11 @@ const SupportStepMasterPage: React.FC = () => {
     setActiveTab(1); // フォームタブに切り替え
   };
 
+  // TODO: SharePoint/API連携時は以下の操作をhooks内でAPIコールに置き換え
   const handleDeleteTemplate = (templateId: string) => {
-    // デフォルトテンプレートは削除不可
-    if (templateId.startsWith('default-')) {
+    // デフォルトテンプレートは削除不可（id prefix と isDefault の両方でチェック）
+    const template = allTemplates.find(t => t.id === templateId);
+    if (templateId.startsWith('default-') || template?.isDefault) {
       setNotification({
         open: true,
         message: 'デフォルトテンプレートは削除できません',
@@ -97,6 +105,7 @@ const SupportStepMasterPage: React.FC = () => {
       return;
     }
 
+    // TODO: 実装時は await deleteTemplate(templateId); など
     setTemplates(prev => prev.filter(template => template.id !== templateId));
     setNotification({
       open: true,
@@ -105,10 +114,11 @@ const SupportStepMasterPage: React.FC = () => {
     });
   };
 
+  // TODO: SharePoint/API連携時は以下の操作をhooks内でAPIコールに置き換え
   const handleSaveTemplate = (template: SupportStepTemplate) => {
     if (editingTemplate) {
       // 既存テンプレートの編集
-      if (template.id.startsWith('default-')) {
+      if (template.id.startsWith('default-') || template.isDefault) {
         // デフォルトテンプレートは編集不可
         setNotification({
           open: true,
@@ -118,6 +128,7 @@ const SupportStepMasterPage: React.FC = () => {
         return;
       }
 
+      // TODO: 実装時は await updateTemplate(template); など
       setTemplates(prev => prev.map(t => t.id === template.id ? template : t));
       setNotification({
         open: true,
@@ -128,8 +139,11 @@ const SupportStepMasterPage: React.FC = () => {
       // 新規テンプレートの追加
       const newTemplate = {
         ...template,
-        id: `custom-${Date.now()}`, // カスタムテンプレートのIDを生成
+        id: `custom-${Date.now()}`, // TODO: 実装時はAPI側でUUID生成
+        isDefault: false, // カスタムテンプレートは常にisDefault: false
       };
+
+      // TODO: 実装時は await createTemplate(newTemplate); など
       setTemplates(prev => [...prev, newTemplate]);
       setNotification({
         open: true,
@@ -175,6 +189,7 @@ const SupportStepMasterPage: React.FC = () => {
                 startIcon={<AddIcon />}
                 onClick={handleAddTemplate}
                 sx={{ minWidth: 180 }}
+                data-testid="support-step-templates-add-button"
               >
                 新規テンプレート作成
               </Button>
@@ -190,12 +205,14 @@ const SupportStepMasterPage: React.FC = () => {
             value={activeTab}
             onChange={handleTabChange}
             aria-label="支援手順テンプレート管理タブ"
+            data-testid="support-step-templates-tabs"
           >
             <Tab
               icon={<TemplatesIcon />}
               label="テンプレート一覧"
               iconPosition="start"
               {...a11yProps(0)}
+              data-testid="support-step-templates-tab-list"
             />
             {isFormOpen && (
               <Tab
@@ -203,6 +220,7 @@ const SupportStepMasterPage: React.FC = () => {
                 label={editingTemplate ? 'テンプレート編集' : '新規テンプレート作成'}
                 iconPosition="start"
                 {...a11yProps(1)}
+                data-testid="support-step-templates-tab-form"
               />
             )}
           </Tabs>
@@ -231,6 +249,7 @@ const SupportStepMasterPage: React.FC = () => {
               onEdit={handleEditTemplate}
               onDelete={handleDeleteTemplate}
               onAdd={handleAddTemplate}
+              data-testid="support-step-templates-list"
             />
           )}
         </TabPanel>
@@ -242,6 +261,7 @@ const SupportStepMasterPage: React.FC = () => {
               onSave={handleSaveTemplate}
               onCancel={handleCancelForm}
               isEditing={!!editingTemplate}
+              data-testid="support-step-templates-form"
             />
           </TabPanel>
         )}
@@ -253,6 +273,7 @@ const SupportStepMasterPage: React.FC = () => {
         autoHideDuration={4000}
         onClose={handleCloseNotification}
         anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
+        data-testid="support-step-templates-notification"
       >
         <Alert
           onClose={handleCloseNotification}

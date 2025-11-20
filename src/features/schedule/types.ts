@@ -1,4 +1,5 @@
 import type { SPItem } from '@/lib/sp.types';
+import type { ServiceType as SharePointServiceType } from '@/sharepoint/serviceTypes';
 import { z } from 'zod';
 
 // Domain enums kept small & literal to avoid over-typing Graph/SP values.
@@ -7,8 +8,8 @@ export type Category = 'Org' | 'User' | 'Staff';
 export const SCHEDULE_STATUSES = ['下書き', '申請中', '承認済み', '完了'] as const;
 export type Status = (typeof SCHEDULE_STATUSES)[number];
 
-// Care services in scope for "User"
-export type ServiceType = '一時ケア' | 'ショートステイ';
+// Care services in scope for "User" (align with SharePoint choices)
+export type ServiceType = SharePointServiceType;
 
 // Internal master vs. ad-hoc external person (no master record)
 export type PersonType = 'Internal' | 'External';
@@ -198,4 +199,121 @@ export interface ExtendedScheduleForm {
   audience?: string[];
   resourceId?: string;
   externalOrgName?: string;
+}
+
+/**
+ * ──────────────────────────────────────────────────────────────
+ * Staff Alternative Suggestion Engine Types
+ * ──────────────────────────────────────────────────────────────
+ */
+
+/** 職員のスキルと役割情報（代替案エンジン用） */
+export interface StaffProfile {
+  id: string;
+  name: string;
+  /** 保有スキル（生活支援・送迎・医療的ケア等） */
+  skills: readonly string[];
+  /** 職務役割（支援員・ドライバー・看護師等） */
+  roles: readonly string[];
+  /** 勤務日（月火水木金土日） */
+  workDays?: readonly string[];
+  /** 基本勤務時間 */
+  baseShiftStart?: string;
+  baseShiftEnd?: string;
+}
+
+/** 職員代替案の提案結果 */
+export interface StaffAlternative {
+  /** 職員ID */
+  staffId: string;
+  /** 職員名 */
+  staffName: string;
+  /** 提案理由（「この時間に空いています」「スキル適合」等） */
+  reason: string;
+  /** 表示優先度（数値が大きいほど上位表示） */
+  priority: number;
+  /** 適合スキル一覧 */
+  skillsMatched: readonly string[];
+  /** この時間帯に既に予定が入っているか */
+  currentlyScheduled: boolean;
+  /** 過負荷状況（連続長時間勤務等の警告） */
+  workloadWarning?: string;
+}
+
+/** 職員代替案エンジンの入力パラメータ */
+export interface StaffAlternativeRequest {
+  /** 対象スケジュール */
+  targetSchedule: Schedule;
+  /** 必須スキル（空の場合は全職員が対象） */
+  requiredSkills?: readonly string[];
+  /** 除外する職員ID（現在の担当者等） */
+  excludeStaffIds?: readonly string[];
+  /** 最大提案数 */
+  maxSuggestions?: number;
+}
+
+// ============================================================================
+// Vehicle & Resource Alternative Types (Stage 7)
+// ============================================================================
+
+/** 車両の基本情報と装備仕様 */
+export interface VehicleProfile {
+  id: string;
+  name: string;
+  /** 車両タイプ（ワゴン・軽自動車・福祉車両等） */
+  type: 'wagon' | 'compact' | 'welfare' | 'bus';
+  /** 定員数 */
+  capacity: number;
+  /** 装備・仕様 */
+  features: readonly string[];
+  /** 利用可能曜日 */
+  availableDays?: readonly string[];
+  /** メンテナンス予定 */
+  maintenanceSchedule?: readonly string[];
+  /** 現在のステータス */
+  status: 'available' | 'maintenance' | 'out-of-service';
+}
+
+/** 車両代替案の提案結果 */
+export interface VehicleAlternative {
+  vehicleId: string;
+  vehicleName: string;
+  reason: string;
+  priority: number;
+  featuresMatched: readonly string[];
+  capacityMatch: 'perfect' | 'sufficient' | 'insufficient';
+  currentlyBooked: boolean;
+  availabilityWarning?: string;
+}
+
+// ============================================================================
+// Room & Equipment Alternative Types (Stage 8)
+// ============================================================================
+
+/** 部屋代替案の提案結果 */
+export interface RoomAlternative {
+  roomId: string;
+  roomName: string;
+  reason: string;
+  priority: number;
+  equipmentMatched: readonly string[];
+  capacitySuitability: 'perfect' | 'adequate' | 'limited' | 'insufficient';
+  accessibilityMatch: readonly string[];
+  currentlyOccupied: boolean;
+  usageWarning?: string;
+  setupTimeRequired?: number;
+}
+
+/** 設備代替案の提案結果 */
+export interface EquipmentAlternative {
+  equipmentId: string;
+  equipmentName: string;
+  reason: string;
+  priority: number;
+  skillRequirementsMet: boolean;
+  availableUnits: number;
+  currentlyInUse: number;
+  locationNote: string;
+  availabilityWarning?: string;
+  setupTimeRequired?: number;
 }

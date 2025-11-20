@@ -1,14 +1,22 @@
 import { AllDayChip } from '@/features/schedule/AllDayChip';
-import { cn } from '@/ui/cn';
 import { RecurrenceChip } from '@/ui/components/RecurrenceChip';
 import { formatScheduleRange } from '@/utils/formatScheduleTime';
 import { resolveSchedulesTz } from '@/utils/scheduleTz';
 import AccessTimeRoundedIcon from '@mui/icons-material/AccessTimeRounded';
 import type { ChipProps } from '@mui/material/Chip';
 import Chip from '@mui/material/Chip';
+import Box from '@mui/material/Box';
+import Paper, { type PaperProps } from '@mui/material/Paper';
+import Typography from '@mui/material/Typography';
+import { alpha, useTheme } from '@mui/material/styles';
+import type { SxProps, Theme } from '@mui/material/styles';
 import { memo, useMemo, type HTMLAttributes } from 'react';
+import type { SystemStyleObject } from '@mui/system';
+import { getScheduleColorTokens, type ScheduleColorSource } from '../serviceColors';
 import type { BaseShiftWarning, DayPart, Status } from '../types';
 import { summarizeBaseShiftWarnings } from '../workPattern';
+
+type DataAttributes = Partial<Record<`data-${string}`, string | number | boolean | undefined>>;
 
 type Props = {
   title: string;
@@ -18,9 +26,11 @@ type Props = {
   status?: Status;
   recurrenceRule?: string | null;
   subtitle?: string;
+  serviceLabel?: string;
   dayPart?: DayPart;
+  colorSource?: ScheduleColorSource;
   baseShiftWarnings?: BaseShiftWarning[];
-  containerProps?: HTMLAttributes<HTMLElement>;
+  containerProps?: PaperProps & HTMLAttributes<HTMLDivElement> & DataAttributes;
 };
 
 const statusTones: Record<NonNullable<Props['status']>, Pick<ChipProps, 'color' | 'variant' | 'size'>> = {
@@ -38,10 +48,13 @@ const TimelineEventCard = memo(function TimelineEventCard({
   status,
   recurrenceRule,
   subtitle,
+  serviceLabel,
   dayPart,
+  colorSource,
   baseShiftWarnings,
   containerProps,
 }: Props) {
+  const theme = useTheme();
   const halfDay = isHalfDay(dayPart);
   const showAllDay = allDay && !halfDay;
   const warningsSummary = useMemo(() => {
@@ -81,70 +94,155 @@ const TimelineEventCard = memo(function TimelineEventCard({
     return segments.join('、');
   }, [title, subtitle, halfDay, dayPart, ariaTimeRange, status, recurrenceRule, hasWarning, warningsSummary]);
 
-  const subtitleLine = subtitle ? `${subtitle} ・ ${displayTimeRange}` : displayTimeRange;
+  const derivedColorSource = useMemo<ScheduleColorSource>(() => {
+    if (colorSource) return colorSource;
+    if (serviceLabel) {
+      return { serviceType: serviceLabel, title };
+    }
+    return { title };
+  }, [colorSource, serviceLabel, title]);
+  const colorTokens = getScheduleColorTokens(theme, derivedColorSource);
+  const hoverSurface = alpha(colorTokens.accent, theme.palette.mode === 'dark' ? 0.35 : 0.18);
 
-  const { className: containerClassName, style: containerStyle, ...restContainerProps } = containerProps ?? {};
-  const dataTestId = (containerProps as { ['data-testid']?: string } | undefined)?.['data-testid'] ?? 'schedule-item';
-
-  const className = cn(
-    'relative overflow-hidden rounded-xl border p-2 shadow-sm outline-none transition',
-    'focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-2',
-    hasWarning ? 'border-amber-300 bg-amber-50/90' : 'border-slate-200 bg-white/95',
-    containerClassName
-  );
-
-  const mergedStyle = hasWarning
-    ? {
-        ...containerStyle,
-        backgroundImage:
-          'repeating-linear-gradient(135deg, rgba(251, 191, 36, 0.18) 0, rgba(251, 191, 36, 0.18) 6px, transparent 6px, transparent 12px)',
-        backgroundSize: '12px 12px',
-      }
-    : containerStyle;
+  const {
+    component: containerComponent = 'article',
+    sx: containerSx,
+    elevation: containerElevation,
+    tabIndex,
+    title: titleProp,
+    ...restContainerProps
+  } = containerProps ?? {};
+  const ariaLabelProp = (containerProps as { ['aria-label']?: string } | undefined)?.['aria-label'];
+  const dataTestIdProp = (containerProps as { ['data-testid']?: string } | undefined)?.['data-testid'];
+  const baseSx: SxProps<Theme> = {
+    position: 'relative',
+    overflow: 'hidden',
+    borderRadius: 2,
+    border: '1px solid',
+    borderColor: hasWarning ? alpha(theme.palette.warning.main, 0.45) : colorTokens.border,
+    backgroundColor: hasWarning ? alpha(theme.palette.warning.light, 0.2) : colorTokens.bg,
+    boxShadow: hasWarning ? `0 0 0 1px ${alpha(theme.palette.warning.main, 0.35)}` : '0 1px 2px rgba(15, 23, 42, 0.14)',
+    padding: theme.spacing(1.25, 1.5),
+    cursor: 'pointer',
+    transition: 'background-color 120ms ease, box-shadow 150ms ease, transform 120ms ease',
+    color: theme.palette.text.primary,
+    '&:hover': {
+      backgroundColor: hasWarning ? alpha(theme.palette.warning.light, 0.35) : hoverSurface,
+      boxShadow: '0 2px 6px rgba(15, 23, 42, 0.25)',
+    },
+    '&:focus-visible': {
+      outline: `2px solid ${colorTokens.accent}`,
+      outlineOffset: 2,
+    },
+  };
+  const mergedSx: SxProps<Theme> = mergeSx(baseSx, containerSx);
 
   return (
-    <article
+    <Paper
       {...restContainerProps}
-      data-testid={dataTestId}
-      tabIndex={restContainerProps.tabIndex ?? 0}
-      aria-label={(restContainerProps['aria-label'] as string | undefined) ?? aria}
-      title={(restContainerProps.title as string | undefined) ?? ariaTimeRange}
-      className={className}
-      style={mergedStyle}
+      component={containerComponent}
+      elevation={containerElevation ?? (hasWarning ? 3 : 1)}
+      data-testid={dataTestIdProp ?? 'schedule-item'}
+      tabIndex={tabIndex ?? 0}
+      aria-label={ariaLabelProp ?? aria}
+      title={titleProp ?? ariaTimeRange}
+      sx={mergedSx}
     >
       {hasWarning ? (
-        <span
+        <Box
           aria-hidden="true"
-          className="absolute right-2 top-2 inline-flex h-6 w-6 items-center justify-center rounded-full bg-amber-500 text-white shadow-sm"
+          data-testid="schedule-warning-indicator"
+          sx={{
+            position: 'absolute',
+            top: 12,
+            right: 12,
+            width: 28,
+            height: 28,
+            borderRadius: '50%',
+            display: 'inline-flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            backgroundColor: theme.palette.warning.main,
+            color: theme.palette.getContrastText(theme.palette.warning.main),
+            boxShadow: 2,
+          }}
         >
-          <AccessTimeRoundedIcon fontSize="inherit" className="!text-[18px]" />
-        </span>
+          <AccessTimeRoundedIcon fontSize="inherit" sx={{ fontSize: 18 }} />
+        </Box>
       ) : null}
-      <div className="flex items-start justify-between gap-2">
-        <div className="min-w-0">
-          <div className="truncate text-sm font-semibold text-slate-900">{title}</div>
-          <div className="truncate text-xs text-slate-600">{subtitleLine}</div>
-        </div>
-        <div className="flex shrink-0 flex-wrap items-center gap-1">
-          {halfDay ? <InlineTag label={halfDayLabel(dayPart)} ariaLabel={`半休 ${halfDayLabel(dayPart)}`} /> : null}
-          {showAllDay ? <AllDayChip /> : null}
-          {recurrenceRule ? <RecurrenceChip meta={{ rrule: recurrenceRule }} /> : null}
-          {status ? (
-            <Chip
-              data-testid="schedule-status"
-              data-status-chip="true"
-              data-status={status}
-              label={status}
-              {...statusTones[status]}
-              aria-label={`状態 ${status}`}
-            />
+      <Box sx={{ display: 'flex', gap: 1.5 }}>
+        <Box
+          aria-hidden="true"
+          sx={{
+            width: 4,
+            borderRadius: 999,
+            backgroundColor: hasWarning ? theme.palette.warning.main : colorTokens.accent,
+            flexShrink: 0,
+          }}
+        />
+        <Box sx={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', gap: 0.75 }}>
+          <Box sx={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 1 }}>
+            <Box sx={{ minWidth: 0 }}>
+              <Typography
+                variant="body2"
+                fontWeight={600}
+                noWrap
+                sx={{ color: hasWarning ? theme.palette.warning.main : theme.palette.text.primary }}
+              >
+                {title}
+              </Typography>
+              {subtitle ? (
+                <Typography variant="body2" color="text.secondary" noWrap>
+                  {subtitle}
+                </Typography>
+              ) : null}
+            </Box>
+            <Box sx={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'flex-end', gap: 0.75 }}>
+              {halfDay ? <InlineTag label={halfDayLabel(dayPart)} ariaLabel={`半休 ${halfDayLabel(dayPart)}`} /> : null}
+              {showAllDay ? <AllDayChip /> : null}
+              {recurrenceRule ? <RecurrenceChip meta={{ rrule: recurrenceRule }} /> : null}
+              {status ? (
+                <Chip
+                  data-testid="schedule-status"
+                  data-status-chip="true"
+                  data-status={status}
+                  label={status}
+                  {...statusTones[status]}
+                  aria-label={`状態 ${status}`}
+                />
+              ) : null}
+            </Box>
+          </Box>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap' }}>
+            <Typography variant="body2" color="text.secondary">
+              {displayTimeRange}
+            </Typography>
+            {serviceLabel ? (
+              <Box
+                component="span"
+                sx={{
+                  px: 0.75,
+                  py: 0.25,
+                  borderRadius: 999,
+                  fontSize: (theme) => theme.typography.caption.fontSize,
+                  fontWeight: 600,
+                  backgroundColor: colorTokens.pillBg,
+                  color: colorTokens.pillText,
+                  whiteSpace: 'nowrap',
+                }}
+              >
+                {serviceLabel}
+              </Box>
+            ) : null}
+          </Box>
+          {hasWarning ? (
+            <Typography variant="caption" color="warning.dark" fontWeight={600} sx={{ mt: 0.5 }}>
+              基本勤務パターン外: {warningsSummary}
+            </Typography>
           ) : null}
-        </div>
-      </div>
-      {hasWarning ? (
-        <p className="mt-2 text-xs font-medium text-amber-700">基本勤務パターン外: {warningsSummary}</p>
-      ) : null}
-    </article>
+        </Box>
+      </Box>
+    </Paper>
   );
 });
 
@@ -167,12 +265,47 @@ const isHalfDay = (dayPart: DayPart | undefined): dayPart is Exclude<DayPart, 'F
 
 function InlineTag({ label, ariaLabel }: { label: string; ariaLabel?: string }) {
   return (
-    <span
+    <Box
+      component="span"
       role="status"
       aria-label={ariaLabel ?? label}
-      className="inline-flex items-center rounded-full border border-amber-300 bg-amber-50 px-2 py-0.5 text-[11px] text-amber-700"
+      sx={{
+        display: 'inline-flex',
+        alignItems: 'center',
+        borderRadius: 999,
+        border: '1px solid',
+        borderColor: 'warning.light',
+        backgroundColor: (theme) => alpha(theme.palette.warning.light, 0.2),
+        color: 'warning.dark',
+        fontSize: '0.65rem',
+        fontWeight: 600,
+        px: 1,
+        py: 0.25,
+      }}
     >
       {label}
-    </span>
+    </Box>
   );
+}
+
+function resolveSx(theme: Theme, sx: SxProps<Theme> | null | undefined): SystemStyleObject<Theme> {
+  if (!sx) return {};
+  if (Array.isArray(sx)) {
+    return sx.reduce<SystemStyleObject<Theme>>((acc, item) => ({
+      ...acc,
+      ...resolveSx(theme, item),
+    }), {});
+  }
+  if (typeof sx === 'function') {
+    return resolveSx(theme, sx(theme));
+  }
+  return sx as SystemStyleObject<Theme>;
+}
+
+function mergeSx(base: SxProps<Theme>, extra?: SxProps<Theme>): SxProps<Theme> {
+  if (!extra) return base;
+  return (theme) => ({
+    ...resolveSx(theme, base),
+    ...resolveSx(theme, extra),
+  });
 }

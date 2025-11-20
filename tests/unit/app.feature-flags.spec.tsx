@@ -24,12 +24,12 @@ const renderWithFlags = (flags: FeatureFlagSnapshot) =>
 
 describe('AppShell schedule flag', () => {
   it('hides schedule nav when flag is disabled', () => {
-    renderWithFlags({ schedules: false, schedulesCreate: false, complianceForm: false });
-    expect(screen.queryByTestId('nav-schedules')).toBeNull();
+    renderWithFlags({ schedules: false, schedulesCreate: false, complianceForm: false, schedulesWeekV2: false });
+    expect(screen.queryByTestId('schedules-nav-link')).toBeNull();
   });
 
   it('shows schedule nav when flag is enabled', async () => {
-    renderWithFlags({ schedules: true, schedulesCreate: false, complianceForm: false });
-    expect(await screen.findByTestId('nav-schedules')).toBeInTheDocument();
+    renderWithFlags({ schedules: true, schedulesCreate: false, complianceForm: false, schedulesWeekV2: true });
+    expect(await screen.findByTestId('schedules-nav-link')).toBeInTheDocument();
   });
 });

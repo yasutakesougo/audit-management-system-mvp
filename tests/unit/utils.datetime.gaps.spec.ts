@@ -18,8 +18,7 @@ describe('utils/datetime branch coverage', () => {
     const result = formatRangeLocal(new Date('invalid'), '2025-01-01T00:00:00Z', {
       tz: 'Asia/Tokyo',
     });
-    expect(result).toMatch(/--/);
-    expect(result).toMatch(/Asia\/Tokyo/);
+    expect(result).toBe('2025-01-01 09:00 (Asia/Tokyo)');
   });
 
   it('accepts options object as second argument and applies rounding', () => {

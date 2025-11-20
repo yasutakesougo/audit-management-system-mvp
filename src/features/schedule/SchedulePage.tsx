@@ -7,7 +7,7 @@ import Stack from '@mui/material/Stack';
 import Tab from '@mui/material/Tab';
 import Tabs from '@mui/material/Tabs';
 import Typography from '@mui/material/Typography';
-import { startOfWeek } from 'date-fns';
+import { startOfWeek, format as formatDate } from 'date-fns';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 // Schedule View Icons
 import AddRoundedIcon from '@mui/icons-material/AddRounded';
@@ -20,6 +20,9 @@ import PersonRoundedIcon from '@mui/icons-material/PersonRounded';
 import TodayRoundedIcon from '@mui/icons-material/TodayRounded';
 
 import { useAuth } from '@/auth/useAuth';
+import { ScheduleCreateDialog, type CreateScheduleEventInput, type ScheduleFormState, type ScheduleServiceType, type ScheduleUserOption } from '@/features/schedules/ScheduleCreateDialog';
+import { useUsersStore } from '@/features/users/store';
+import { useSnackbarHost } from '@/features/nurse/components/SnackbarHost';
 import BriefingPanel from '@/features/schedule/components/BriefingPanel';
 import { assignLocalDateKey } from '@/features/schedule/dateutils.local';
 import { moveScheduleToDay } from '@/features/schedule/move';
@@ -33,9 +36,9 @@ import TimelineDay from '@/features/schedule/views/TimelineDay';
 import TimelineWeek, { type EventMovePayload } from '@/features/schedule/views/TimelineWeek';
 import UserTab from '@/features/schedule/views/UserTab';
 import { getAppConfig } from '@/lib/env';
-import { useSnackbarHost } from '@/features/nurse/components/SnackbarHost';
 import { useSP } from '@/lib/spClient';
 import { useStaff } from '@/stores/useStaff';
+import { TESTIDS } from '@/testids';
 import FilterToolbar from '@/ui/filters/FilterToolbar';
 import { formatRangeLocal } from '@/utils/datetime';
 import { useEnsureScheduleList } from './ensureScheduleList';
@@ -64,6 +67,23 @@ const DOMAIN_TO_DIALOG_STATUS: Record<Status, ScheduleStatus> = {
   承認済み: 'confirmed',
   完了: 'confirmed',
 };
+
+const QUICK_SERVICE_TYPE_LABELS: Record<ScheduleServiceType, ScheduleUserCare['serviceType']> = {
+  normal: '通常利用',
+  transport: '送迎',
+  respite: '一時ケア・短期',
+  nursing: '看護',
+  absence: '欠席・休み',
+  other: 'その他',
+};
+
+const QUICK_SERVICE_TYPE_BY_LABEL: Record<string, ScheduleServiceType> = Object.entries(QUICK_SERVICE_TYPE_LABELS).reduce(
+  (acc, [key, label]) => {
+    acc[label] = key as ScheduleServiceType;
+    return acc;
+  },
+  {} as Record<string, ScheduleServiceType>
+);
 
 const toDomainStatus = (status: ScheduleStatus | undefined): Status => DIALOG_TO_DOMAIN_STATUS[status ?? 'planned'];
 
@@ -138,6 +158,7 @@ export default function SchedulePage() {
   const snackbarUi = snackbarHost.ui;
   useEnsureScheduleList(sp);
   const { data: staffData } = useStaff();
+  const { data: usersData } = useUsersStore();
   const [dialogEditing, setDialogEditing] = useState<Schedule | null>(null);
   const [view, setView] = useState<ViewMode>('week');
   const [query, setQuery] = useState('');
@@ -155,6 +176,12 @@ export default function SchedulePage() {
   // Schedule Dialog States
   const [dialogOpen, setDialogOpen] = useState(false);
   const [dialogInitial, setDialogInitial] = useState<ExtendedScheduleForm | undefined>(undefined);
+  const [quickDialogOpen, setQuickDialogOpen] = useState(false);
+  const [quickDialogInitialDate, setQuickDialogInitialDate] = useState<Date | null>(null);
+  const [quickDialogMode, setQuickDialogMode] = useState<'create' | 'edit'>('create');
+  const [quickDialogOverride, setQuickDialogOverride] = useState<Partial<ScheduleFormState> | null>(null);
+  const [quickDialogEditingSchedule, setQuickDialogEditingSchedule] = useState<ScheduleUserCare | null>(null);
+  const [lastQuickUserId, setLastQuickUserId] = useState<string | undefined>(undefined);
 
   const staffNameMap = useMemo(() => {
     const map = new Map<string, string>();
@@ -216,6 +243,39 @@ export default function SchedulePage() {
     const name = staffNameMap.get(defaultStaffId)?.trim();
     return name ? [name] : undefined;
   }, [defaultStaffId, staffNameMap]);
+
+  const scheduleUserOptions = useMemo<ScheduleUserOption[]>(() => {
+    if (!Array.isArray(usersData)) return [];
+    return usersData
+      .map((user) => {
+        if (!user) return null;
+        const userId = typeof user.UserID === 'string' && user.UserID.trim().length
+          ? user.UserID.trim()
+          : (user.Id != null ? String(user.Id).trim() : '');
+        const name = (user.FullName ?? '').trim() || (userId ? `利用者 ${userId}` : '');
+        if (!userId || !name) {
+          return null;
+        }
+        return { id: userId, name } satisfies ScheduleUserOption;
+      })
+      .filter((option): option is ScheduleUserOption => Boolean(option));
+  }, [usersData]);
+
+  const scheduleUserMap = useMemo(() => {
+    const map = new Map<string, ScheduleUserOption>();
+    for (const option of scheduleUserOptions) {
+      map.set(option.id, option);
+    }
+    return map;
+  }, [scheduleUserOptions]);
+
+  const defaultQuickUser = useMemo(() => {
+    if (!scheduleUserOptions.length) return null;
+    if (lastQuickUserId) {
+      return scheduleUserOptions.find((option) => option.id === lastQuickUserId) ?? scheduleUserOptions[0];
+    }
+    return scheduleUserOptions[0];
+  }, [scheduleUserOptions, lastQuickUserId]);
 
 
   const staffPatterns = useMemo(() => buildStaffPatternIndex(staffData), [staffData]);
@@ -437,6 +497,132 @@ export default function SchedulePage() {
     });
   }, []);
 
+  const toLocalInputValue = useCallback((date: Date) => formatDate(date, "yyyy-MM-dd'T'HH:mm"), []);
+
+  const buildQuickEditOverride = useCallback(
+    (schedule: ScheduleUserCare): Partial<ScheduleFormState> | null => {
+      const startDate = new Date(schedule.start);
+      const endDate = new Date(schedule.end ?? schedule.start);
+      if (Number.isNaN(startDate.getTime()) || Number.isNaN(endDate.getTime())) {
+        return null;
+      }
+      const userId = schedule.personId ?? '';
+      if (!userId) {
+        return null;
+      }
+      const inferredServiceType = QUICK_SERVICE_TYPE_BY_LABEL[schedule.serviceType ?? ''] ?? 'other';
+      return {
+        userId,
+        startLocal: toLocalInputValue(startDate),
+        endLocal: toLocalInputValue(endDate),
+        serviceType: inferredServiceType,
+        locationName: schedule.location ?? '',
+        notes: schedule.notes ?? '',
+      };
+    },
+    [toLocalInputValue]
+  );
+
+  const handleQuickDialogOpen = useCallback(() => {
+    setQuickDialogMode('create');
+    setQuickDialogEditingSchedule(null);
+    setQuickDialogOverride(null);
+    setQuickDialogInitialDate(new Date());
+    setQuickDialogOpen(true);
+  }, []);
+
+  const handleQuickDialogClose = useCallback(() => {
+    setQuickDialogOpen(false);
+    setQuickDialogInitialDate(null);
+    setQuickDialogMode('create');
+    setQuickDialogEditingSchedule(null);
+    setQuickDialogOverride(null);
+  }, []);
+
+  const openQuickEditDialog = useCallback(
+    (schedule: ScheduleUserCare) => {
+      const override = buildQuickEditOverride(schedule);
+      if (!override) {
+        return false;
+      }
+      const startDate = new Date(schedule.start);
+      setQuickDialogMode('edit');
+      setQuickDialogEditingSchedule(schedule);
+      setQuickDialogOverride(override);
+      setQuickDialogInitialDate(Number.isNaN(startDate.getTime()) ? null : startDate);
+      setQuickDialogOpen(true);
+      return true;
+    },
+    [buildQuickEditOverride]
+  );
+
+  const handleQuickDialogSubmit = useCallback(async (input: CreateScheduleEventInput) => {
+    const serviceTypeLabel = QUICK_SERVICE_TYPE_LABELS[input.serviceType] ?? QUICK_SERVICE_TYPE_LABELS.other;
+    const userOption = scheduleUserMap.get(input.userId) ?? null;
+
+    const startDate = new Date(input.startLocal);
+    const endDate = new Date(input.endLocal);
+    if (Number.isNaN(startDate.getTime()) || Number.isNaN(endDate.getTime())) {
+      throw new Error('日時の形式が正しくありません');
+    }
+
+    const basePayload: ScheduleUserCare = {
+      id: '',
+      etag: '',
+      category: 'User',
+      title: `${serviceTypeLabel} / ${userOption?.name ?? '利用者'}`,
+      start: startDate.toISOString(),
+      end: endDate.toISOString(),
+      allDay: false,
+      status: quickDialogMode === 'edit' && quickDialogEditingSchedule ? quickDialogEditingSchedule.status : '下書き',
+      location: input.locationName?.trim() ? input.locationName.trim() : undefined,
+      notes: input.notes?.trim() ? input.notes.trim() : undefined,
+      recurrenceRule: quickDialogMode === 'edit' && quickDialogEditingSchedule ? quickDialogEditingSchedule.recurrenceRule : undefined,
+      dayKey: quickDialogMode === 'edit' && quickDialogEditingSchedule ? quickDialogEditingSchedule.dayKey : undefined,
+      fiscalYear: quickDialogMode === 'edit' && quickDialogEditingSchedule ? quickDialogEditingSchedule.fiscalYear : undefined,
+      serviceType: serviceTypeLabel,
+      personType: 'Internal',
+      personId: input.userId,
+      personName: userOption?.name,
+      externalPersonName: undefined,
+      externalPersonOrg: undefined,
+      externalPersonContact: undefined,
+      staffIds: quickDialogMode === 'edit' && quickDialogEditingSchedule?.staffIds?.length
+        ? [...quickDialogEditingSchedule.staffIds]
+        : [...defaultUserStaffIds],
+      staffNames: quickDialogMode === 'edit' && quickDialogEditingSchedule?.staffNames?.length
+        ? [...quickDialogEditingSchedule.staffNames]
+        : (defaultUserStaffNames ? [...defaultUserStaffNames] : undefined),
+    } satisfies ScheduleUserCare;
+
+    try {
+      if (quickDialogMode === 'edit' && quickDialogEditingSchedule) {
+        const payload: ScheduleUserCare = {
+          ...basePayload,
+          id: quickDialogEditingSchedule.id ?? '',
+          etag: quickDialogEditingSchedule.etag ?? '',
+          personType: quickDialogEditingSchedule.personType,
+          externalPersonName: quickDialogEditingSchedule.externalPersonName,
+          externalPersonOrg: quickDialogEditingSchedule.externalPersonOrg,
+          externalPersonContact: quickDialogEditingSchedule.externalPersonContact,
+        } satisfies ScheduleUserCare;
+        await updateUserCare(sp, payload);
+        showSnackbar('予定を更新しました', 'success');
+      } else {
+        await createUserCare(sp, basePayload);
+        setLastQuickUserId(input.userId);
+        showSnackbar('予定を作成しました', 'success');
+      }
+      await loadTimeline();
+    } catch (error) {
+      const message = error instanceof Error ? error.message : quickDialogMode === 'edit'
+        ? '予定の更新に失敗しました'
+        : '予定の作成に失敗しました';
+      showSnackbar(message, 'error');
+      throw error;
+    }
+  }, [scheduleUserMap, quickDialogMode, quickDialogEditingSchedule, defaultUserStaffIds, defaultUserStaffNames, sp, showSnackbar, loadTimeline]);
+
   // Schedule Dialog Handlers
   const handleCreateSchedule = useCallback(() => {
     const now = new Date();
@@ -597,16 +783,29 @@ export default function SchedulePage() {
     setDialogOpen(true);
   }, [defaultUserStaffIds, defaultUserStaffNames]);
 
-  const handleEventEdit = useCallback((schedule: Schedule) => {
-    setDialogEditing(schedule);
-    setDialogInitial(scheduleToExtendedForm(schedule));
-    setDialogOpen(true);
-  }, []);
+  const handleEventEdit = useCallback(
+    (schedule: Schedule) => {
+      if (schedule.category === 'User') {
+        const userSchedule = schedule as ScheduleUserCare;
+        const handled = openQuickEditDialog(userSchedule);
+        if (handled) {
+          return;
+        }
+      }
+      setDialogEditing(schedule);
+      setDialogInitial(scheduleToExtendedForm(schedule));
+      setDialogOpen(true);
+    },
+    [openQuickEditDialog]
+  );
 
   const handleEventClick = useCallback((event: { id: string; title: string; startIso: string }) => {
     const target = timelineEvents.find((item) => item.id === String(event.id));
 
     if (target) {
+      if (target.category === 'User' && openQuickEditDialog(target as ScheduleUserCare)) {
+        return;
+      }
       setDialogEditing(target);
       setDialogInitial(scheduleToExtendedForm(target));
     } else {
@@ -629,30 +828,46 @@ export default function SchedulePage() {
     }
 
     setDialogOpen(true);
-  }, [timelineEvents, defaultUserStaffIds, defaultUserStaffNames]);
+  }, [timelineEvents, defaultUserStaffIds, defaultUserStaffNames, openQuickEditDialog]);
 
   return (
     <Container maxWidth="xl" sx={{ py: 3 }} data-testid="schedule-page-root">
       <Paper elevation={0} sx={{ borderRadius: 2, overflow: 'hidden' }}>
         {/* Header with title and period navigation */}
         <Box sx={{ p: 3, pb: 0 }}>
-          <Stack direction="row" alignItems="center" justifyContent="space-between" mb={2}>
-            <Typography variant="h5" component="h1" fontWeight="bold" sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+          <Stack direction="row" alignItems="center" flexWrap="wrap" gap={2} mb={2}>
+            <Typography
+              variant="h5"
+              component="h1"
+              fontWeight="bold"
+              sx={{ display: 'flex', alignItems: 'center', gap: 1, flexGrow: 1, minWidth: 240 }}
+            >
               <CalendarMonthRoundedIcon />
               スケジュール管理
             </Typography>
 
-            <Button
-              variant="contained"
-              startIcon={<AddRoundedIcon />}
-              onClick={handleCreateSchedule}
-              sx={{ ml: 'auto' }}
-            >
-              新規作成
-            </Button>
+            <Stack direction="row" spacing={1} sx={{ flexShrink: 0 }}>
+              <Button
+                variant="outlined"
+                startIcon={<AddRoundedIcon />}
+                onClick={handleQuickDialogOpen}
+                disabled={!scheduleUserOptions.length}
+                data-testid={TESTIDS['schedule-create-quick-button']}
+              >
+                かんたん登録
+              </Button>
+
+              <Button
+                variant="contained"
+                startIcon={<AddRoundedIcon />}
+                onClick={handleCreateSchedule}
+              >
+                新規作成
+              </Button>
+            </Stack>
 
             {view !== 'userCare' && (
-              <Stack direction="row" spacing={1}>
+              <Stack direction="row" spacing={1} sx={{ flexShrink: 0 }}>
                 <IconButton
                   onClick={() =>
                     setRange((prev) => {
@@ -821,6 +1036,26 @@ export default function SchedulePage() {
           )}
         </Box>
       </Paper>
+
+      <ScheduleCreateDialog
+        open={quickDialogOpen}
+        onClose={handleQuickDialogClose}
+        onSubmit={handleQuickDialogSubmit}
+        users={scheduleUserOptions}
+        initialDate={quickDialogInitialDate ?? undefined}
+        defaultUser={defaultQuickUser ?? undefined}
+        {...(quickDialogMode === 'edit' && quickDialogEditingSchedule && quickDialogOverride
+          ? {
+              mode: 'edit' as const,
+              eventId: String(quickDialogEditingSchedule.id ?? ''),
+              initialOverride: quickDialogOverride,
+            }
+          : {
+              mode: 'create' as const,
+              eventId: undefined,
+              initialOverride: quickDialogOverride ?? undefined,
+            })}
+      />
 
       <ScheduleDialog
         open={dialogOpen}

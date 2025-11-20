@@ -1,6 +1,9 @@
 import type { Schedule } from '@/lib/mappers';
 import { useSchedules } from '@/stores/useSchedules';
 import { useMemo, useState } from 'react';
+import { format } from 'date-fns';
+import { ScheduleCreateDialog, type CreateScheduleEventInput, type ScheduleFormState, type ScheduleServiceType, type ScheduleUserOption } from '@/features/schedules/ScheduleCreateDialog';
+import { useUsersStore } from '@/features/users/store';
 import { createSchedule, updateSchedule } from './adapter';
 import ScheduleDialog from './ScheduleDialog';
 import type { Category, ExtendedScheduleForm, ScheduleForm, ScheduleStatus } from './types';
@@ -44,6 +47,23 @@ const STATUS_MAP: Record<Schedule['status'], ScheduleStatus> = {
   approved: 'confirmed',
 };
 
+const QUICK_SERVICE_TYPE_LABELS: Record<ScheduleServiceType, string> = {
+  normal: '通常利用',
+  transport: '送迎',
+  respite: '一時ケア・短期',
+  nursing: '看護',
+  absence: '欠席・休み',
+  other: 'その他',
+};
+
+const QUICK_SERVICE_TYPE_BY_LABEL: Record<string, ScheduleServiceType> = Object.entries(QUICK_SERVICE_TYPE_LABELS).reduce(
+  (acc, [key, label]) => {
+    acc[label] = key as ScheduleServiceType;
+    return acc;
+  },
+  {} as Record<string, ScheduleServiceType>
+);
+
 const parseIso = (value?: string | null): Date | null => {
   if (!value) return null;
   const date = new Date(value);
@@ -80,8 +100,43 @@ export default function WeekPage() {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [dialogInitial, setDialogInitial] = useState<ExtendedScheduleForm | undefined>(undefined);
   const [actionError, setActionError] = useState<string | null>(null);
+  const [quickDialogOpen, setQuickDialogOpen] = useState(false);
+  const [quickDialogInitialDate, setQuickDialogInitialDate] = useState<Date | null>(null);
+  const [quickDialogOverride, setQuickDialogOverride] = useState<Partial<ScheduleFormState> | null>(null);
+  const [quickDialogMode, setQuickDialogMode] = useState<'create' | 'edit'>('create');
+  const [quickDialogEditingSchedule, setQuickDialogEditingSchedule] = useState<Schedule | null>(null);
 
   const { data: scheduleData, loading: schedulesLoading, error: schedulesError, reload } = useSchedules();
+  const { data: usersData } = useUsersStore();
+
+  const scheduleUserOptions = useMemo<ScheduleUserOption[]>(() => {
+    if (!Array.isArray(usersData)) {
+      return [];
+    }
+    return usersData
+      .map((user) => {
+        if (!user) return null;
+        const userId = typeof user.UserID === 'string' && user.UserID.trim().length
+          ? user.UserID.trim()
+          : (user.Id != null ? String(user.Id).trim() : '');
+        const name = (user.FullName ?? '').trim() || (userId ? `利用者 ${userId}` : '');
+        if (!userId || !name) {
+          return null;
+        }
+        return { id: userId, name } satisfies ScheduleUserOption;
+      })
+      .filter((option): option is ScheduleUserOption => Boolean(option));
+  }, [usersData]);
+
+  const scheduleUserMap = useMemo(() => {
+    const map = new Map<string, ScheduleUserOption>();
+    for (const option of scheduleUserOptions) {
+      map.set(option.id, option);
+    }
+    return map;
+  }, [scheduleUserOptions]);
+
+  const defaultQuickUser = scheduleUserOptions[0] ?? null;
 
   const weekSchedules = useMemo<Schedule[]>(() => {
     if (!scheduleData?.length) {
@@ -123,8 +178,94 @@ export default function WeekPage() {
     setDialogOpen(true);
   };
 
+  const handleQuickDialogClose = () => {
+    setQuickDialogOpen(false);
+    setQuickDialogInitialDate(null);
+    setQuickDialogOverride(null);
+    setQuickDialogMode('create');
+    setQuickDialogEditingSchedule(null);
+  };
+
+  const toLocalInputValue = (date: Date): string => format(date, "yyyy-MM-dd'T'HH:mm");
+
+  const buildQuickEditOverride = (schedule: Schedule): Partial<ScheduleFormState> | null => {
+    if ((schedule.category ?? 'User') !== 'User') {
+      return null;
+    }
+    const userId = schedule.personId?.trim() || (schedule.userId != null ? String(schedule.userId) : '');
+    if (!userId) {
+      return null;
+    }
+    const startDate = parseIso(schedule.startLocal ?? schedule.startUtc ?? undefined);
+    const endDate = parseIso(schedule.endLocal ?? schedule.endUtc ?? undefined) ?? startDate;
+    if (!startDate || !endDate) {
+      return null;
+    }
+    const serviceType = (() => {
+      const label = (schedule.serviceType ?? '').trim();
+      if (!label) return 'other';
+      return QUICK_SERVICE_TYPE_BY_LABEL[label] ?? 'other';
+    })();
+
+    return {
+      userId,
+      startLocal: toLocalInputValue(startDate),
+      endLocal: toLocalInputValue(endDate),
+      serviceType,
+      locationName: schedule.location ?? '',
+      notes: schedule.notes ?? '',
+    } satisfies Partial<ScheduleFormState>;
+  };
+
+  const openQuickEditDialog = (schedule: Schedule, override?: Partial<ScheduleFormState>): boolean => {
+    const baseOverride = buildQuickEditOverride(schedule);
+    if (!baseOverride) {
+      return false;
+    }
+    const nextOverride = override ? { ...baseOverride, ...override } : baseOverride;
+    const startInput = nextOverride.startLocal ?? baseOverride.startLocal;
+    const startDate = startInput ? new Date(startInput) : parseIso(schedule.startLocal ?? schedule.startUtc ?? undefined);
+    setQuickDialogMode('edit');
+    setQuickDialogEditingSchedule(schedule);
+    setQuickDialogInitialDate(startDate ?? null);
+    setQuickDialogOverride(nextOverride);
+    setQuickDialogOpen(true);
+    return true;
+  };
+
+  const handleSlotQuickCreate = (start: Date, end: Date) => {
+    if (!scheduleUserOptions.length) {
+      openCreateDialog(start, end);
+      return;
+    }
+    setQuickDialogMode('create');
+    setQuickDialogEditingSchedule(null);
+    setQuickDialogInitialDate(new Date(start));
+    setQuickDialogOverride({
+      startLocal: toLocalInputValue(start),
+      endLocal: toLocalInputValue(end),
+    });
+    setQuickDialogOpen(true);
+  };
+
   const openEditDialog = (schedule: Schedule) => {
+    if (openQuickEditDialog(schedule)) {
+      return;
+    }
     setDialogInitial(toScheduleForm(schedule));
+    setDialogOpen(true);
+  };
+
+  const handleEventDragEnd = (schedule: Schedule, range: { start: Date; end: Date }) => {
+    const overrides: Partial<ScheduleFormState> = {
+      startLocal: toLocalInputValue(range.start),
+      endLocal: toLocalInputValue(range.end),
+    };
+    if (openQuickEditDialog(schedule, overrides)) {
+      return;
+    }
+    const fallback = { ...toScheduleForm(schedule), start: range.start.toISOString(), end: range.end.toISOString() };
+    setDialogInitial(fallback);
     setDialogOpen(true);
   };
 
@@ -156,6 +297,40 @@ export default function WeekPage() {
       await reload();
     } catch (cause) {
       setActionError(extractErrorMessage(cause, '予定の保存に失敗しました。'));
+      throw cause;
+    }
+  };
+
+  const handleQuickDialogSubmit = async (input: CreateScheduleEventInput) => {
+    try {
+      setActionError(null);
+      const userOption = scheduleUserMap.get(input.userId);
+      const startIso = new Date(input.startLocal).toISOString();
+      const endIso = new Date(input.endLocal).toISOString();
+      const serviceLabel = QUICK_SERVICE_TYPE_LABELS[input.serviceType] ?? QUICK_SERVICE_TYPE_LABELS.other;
+      const baseStatus: ScheduleStatus = quickDialogMode === 'edit' && quickDialogEditingSchedule
+        ? STATUS_MAP[quickDialogEditingSchedule.status] ?? 'planned'
+        : 'planned';
+
+      const payload: ScheduleForm = {
+        userId: input.userId,
+        title: `${serviceLabel} / ${userOption?.name ?? '利用者'}`,
+        note: input.notes ?? undefined,
+        status: baseStatus,
+        start: startIso,
+        end: endIso,
+      } satisfies ScheduleForm;
+
+      if (quickDialogMode === 'edit' && quickDialogEditingSchedule?.id != null) {
+        payload.id = quickDialogEditingSchedule.id;
+        await updateSchedule(quickDialogEditingSchedule.id, payload);
+      } else {
+        await createSchedule(payload);
+      }
+      await reload();
+    } catch (cause) {
+      const fallback = quickDialogMode === 'edit' ? '予定の更新に失敗しました。' : '予定の作成に失敗しました。';
+      setActionError(extractErrorMessage(cause, fallback));
       throw cause;
     }
   };
@@ -231,9 +406,10 @@ export default function WeekPage() {
       <WeekView
         weekStart={weekRange.start}
         schedules={weekSchedules}
-        onSelectSlot={(start, end) => openCreateDialog(start, end)}
+        onSelectSlot={(start, end) => handleSlotQuickCreate(start, end)}
         onSelectEvent={openEditDialog}
         loading={schedulesLoading}
+        onEventDragEnd={handleEventDragEnd}
       />
 
       <div className="min-h-[1.5rem] text-sm text-slate-600" aria-live="polite">
@@ -245,6 +421,26 @@ export default function WeekPage() {
         initial={dialogInitial}
         onClose={handleDialogClose}
         onSubmit={handleDialogSubmit}
+      />
+
+      <ScheduleCreateDialog
+        open={quickDialogOpen}
+        onClose={handleQuickDialogClose}
+        onSubmit={handleQuickDialogSubmit}
+        users={scheduleUserOptions}
+        initialDate={quickDialogInitialDate ?? undefined}
+        defaultUser={defaultQuickUser}
+        {...(quickDialogMode === 'edit' && quickDialogEditingSchedule && quickDialogOverride
+          ? {
+              mode: 'edit' as const,
+              eventId: String(quickDialogEditingSchedule.id),
+              initialOverride: quickDialogOverride,
+            }
+          : {
+              mode: 'create' as const,
+              eventId: undefined,
+              initialOverride: quickDialogOverride,
+            })}
       />
     </div>
   );

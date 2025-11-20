@@ -15,11 +15,14 @@ import Select from '@mui/material/Select';
 import Stack from '@mui/material/Stack';
 import TextField from '@mui/material/TextField';
 import Typography from '@mui/material/Typography';
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
+import toast, { Toaster } from 'react-hot-toast';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { PersonDaily } from '../domain/daily/types';
 import { DailyRecordForm } from '../features/daily/DailyRecordForm';
 import { DailyRecordList } from '../features/daily/DailyRecordList';
 import { useUsersDemo } from '../features/users/usersStoreDemo';
+import { saveDailyRecord, validateDailyRecord } from '../lib/dailyRecordLogic';
 import { useSchedules } from '../stores/useSchedules';
 import { calculateAttendanceRate, getExpectedAttendeeCount } from '../utils/attendanceUtils';
 
@@ -180,6 +183,14 @@ const generateTodayRecords = (): PersonDaily[] => {
 };
 
 export default function DailyRecordPage() {
+  // Navigation hook for cross-module navigation
+  const navigate = useNavigate();
+
+  // URL query parameters for highlighting
+  const [searchParams] = useSearchParams();
+  const highlightUserId = searchParams.get('userId');
+  const highlightDate = searchParams.get('date');
+
   // 利用者マスタとスケジュールデータ
   const { data: usersData } = useUsersDemo();
   const { data: schedulesData } = useSchedules();
@@ -190,6 +201,21 @@ export default function DailyRecordPage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
   const [dateFilter, setDateFilter] = useState('');
+
+  // Effect to scroll to highlighted record when query params are present
+  useEffect(() => {
+    if (highlightUserId && highlightDate) {
+      // Scroll to highlighted record after a short delay to ensure rendering
+      const timer = setTimeout(() => {
+        const element = document.querySelector(`[data-testid*="${highlightUserId}"]`);
+        if (element) {
+          element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+      }, 500);
+
+      return () => clearTimeout(timer);
+    }
+  }, [highlightUserId, highlightDate]);
 
   // 今日の予定通所者数を計算
   const todayAttendanceInfo = useMemo(() => {
@@ -250,20 +276,92 @@ export default function DailyRecordPage() {
     setEditingRecord(undefined);
   };
 
+  const handleOpenAttendance = (record: PersonDaily) => {
+    navigate(`/daily/attendance?userId=${record.personId}&date=${record.date}`);
+  };
+
   const handleSaveRecord = (record: Omit<PersonDaily, 'id'>) => {
-    console.log('保存:', record);
-    // ここで実際の保存処理を実装
-    handleCloseForm();
+    try {
+      // バリデーション実行
+      const validationResult = validateDailyRecord(record);
+
+      if (!validationResult.isValid) {
+        // バリデーションエラーがある場合
+        const errorMessage = validationResult.errors.join('\n');
+        toast.error(`保存に失敗しました\n\n${errorMessage}`, {
+          duration: 6000,
+          style: {
+            maxWidth: '500px'
+          }
+        });
+        console.error('保存失敗 - バリデーションエラー:', validationResult.errors);
+        return;
+      }
+
+      // 保存処理実行
+      const updatedRecords = saveDailyRecord(
+        records,
+        record,
+        editingRecord?.id
+      );
+
+      setRecords(updatedRecords);
+
+      // フォームを閉じる
+      handleCloseForm();
+
+      // 成功通知
+      const operation = editingRecord ? '更新' : '新規作成';
+      toast.success(`日次記録の${operation}が完了しました\n\n利用者: ${record.personName}\n日付: ${record.date}`, {
+        duration: 4000,
+        style: {
+          maxWidth: '400px'
+        }
+      });
+
+      // 成功ログ
+      console.log('保存成功:', {
+        operation,
+        personName: record.personName,
+        date: record.date,
+        status: record.status
+      });
+
+    } catch (error) {
+      // 予期しないエラーをキャッチ
+      const errorMessage = error instanceof Error ? error.message : '不明なエラーが発生しました';
+      toast.error(`システムエラーが発生しました\n\n${errorMessage}`, {
+        duration: 8000,
+        style: {
+          maxWidth: '500px'
+        }
+      });
+      console.error('保存失敗 - システムエラー:', error);
+    }
   };
 
   const handleDeleteRecord = (recordId: number) => {
-    console.log('削除:', recordId);
+    const recordToDelete = records.find(r => r.id === recordId);
+
     setRecords(prev => prev.filter(record => record.id !== recordId));
+
+    if (recordToDelete) {
+      toast.success(`${recordToDelete.personName}さんの記録を削除しました`, {
+        duration: 3000
+      });
+    } else {
+      toast.error('削除対象の記録が見つかりませんでした', {
+        duration: 3000
+      });
+    }
   };
 
   const handleGenerateTodayRecords = () => {
     const todayRecords = generateTodayRecords();
     setRecords(todayRecords);
+    toast.success(`本日分の記録を32名分作成しました`, {
+      duration: 3000
+    });
   };
 
   const handleBulkCreateMissing = () => {
@@ -276,6 +374,14 @@ export default function DailyRecordPage() {
       const userId = String(index + 1).padStart(3, '0');
       return !existingPersonIds.includes(userId);
     });
+
+    if (missingUsers.length === 0) {
+      toast('本日分の記録は全員作成済みです', {
+        icon: 'ℹ️',
+        duration: 2000
+      });
+      return;
+    }
 
     const newRecords = missingUsers.map((name, index) => {
       const globalIndex = mockUsers.indexOf(name);
@@ -317,12 +423,18 @@ export default function DailyRecordPage() {
     });
 
     setRecords(prev => [...prev, ...newRecords]);
+    toast.success(`${missingUsers.length}名分の未作成記録を追加しました`, {
+      duration: 3000
+    });
   };
 
   const handleBulkComplete = () => {
     const today = new Date().toISOString().split('T')[0];
+    let completedCount = 0;
+
     setRecords(prev => prev.map(record => {
       if (record.date === today && record.status === '未作成') {
+        completedCount++;
         return {
           ...record,
           status: '完了' as const,
@@ -331,6 +443,17 @@ export default function DailyRecordPage() {
       }
       return record;
     }));
+
+    if (completedCount === 0) {
+      toast('本日分の記録で一括完了対象はありませんでした', {
+        icon: 'ℹ️',
+        duration: 2000
+      });
+    } else {
+      toast.success(`${completedCount}件の記録を一括完了しました`, {
+        duration: 3000
+      });
+    }
   };
 
   // フィルタリング
@@ -351,7 +474,7 @@ export default function DailyRecordPage() {
         {/* ヘッダー */}
         <Box sx={{ mb: 3 }}>
           <Typography variant="h4" component="h1" gutterBottom>
-            活動日誌
+            支援記録（ケース記録）
           </Typography>
           <Typography variant="body1" color="text.secondary">
             利用者全員の日々の活動状況、問題行動、発作記録を管理します
@@ -359,11 +482,11 @@ export default function DailyRecordPage() {
         </Box>
 
         {/* 統計情報（本日分） */}
-        <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2} sx={{ mb: 3 }}>
-          <Paper sx={{ p: 2, textAlign: 'center', flex: 1 }}>
+        <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2} sx={{ mb: 3 }} data-testid="daily-stats-panel">
+          <Paper sx={{ p: 2, textAlign: 'center', flex: 1 }} data-testid="total-records-stat">
             <Typography variant="h6" color="primary">
               <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 1 }}>
-                <span>
+                <span data-testid="total-records-count">
                   {(() => {
                     const todayStr = new Date().toISOString().split('T')[0];
                     const todayRecords = records.filter(r => r.date === todayStr);
@@ -381,6 +504,7 @@ export default function DailyRecordPage() {
                         : "error"
                   }
                   sx={{ fontSize: '0.7rem' }}
+                  data-testid="attendance-rate-chip"
                 />
               </Box>
             </Typography>
@@ -388,8 +512,8 @@ export default function DailyRecordPage() {
               本日記録数（予定通所者）
             </Typography>
           </Paper>
-          <Paper sx={{ p: 2, textAlign: 'center', flex: 1 }}>
-            <Typography variant="h6" color="success.main">
+          <Paper sx={{ p: 2, textAlign: 'center', flex: 1 }} data-testid="completed-records-stat">
+            <Typography variant="h6" color="success.main" data-testid="completed-count">
               {(() => {
                 const today = new Date().toISOString().split('T')[0];
                 return records.filter(r => r.date === today && r.status === '完了').length;
@@ -399,8 +523,8 @@ export default function DailyRecordPage() {
               完了
             </Typography>
           </Paper>
-          <Paper sx={{ p: 2, textAlign: 'center', flex: 1 }}>
-            <Typography variant="h6" color="warning.main">
+          <Paper sx={{ p: 2, textAlign: 'center', flex: 1 }} data-testid="in-progress-records-stat">
+            <Typography variant="h6" color="warning.main" data-testid="in-progress-count">
               {(() => {
                 const today = new Date().toISOString().split('T')[0];
                 return records.filter(r => r.date === today && r.status === '作成中').length;
@@ -410,8 +534,8 @@ export default function DailyRecordPage() {
               作成中
             </Typography>
           </Paper>
-          <Paper sx={{ p: 2, textAlign: 'center', flex: 1 }}>
-            <Typography variant="h6" color="text.secondary">
+          <Paper sx={{ p: 2, textAlign: 'center', flex: 1 }} data-testid="not-started-records-stat">
+            <Typography variant="h6" color="text.secondary" data-testid="not-started-count">
               {(() => {
                 const today = new Date().toISOString().split('T')[0];
                 return records.filter(r => r.date === today && r.status === '未作成').length;
@@ -421,8 +545,8 @@ export default function DailyRecordPage() {
               未作成
             </Typography>
           </Paper>
-          <Paper sx={{ p: 2, textAlign: 'center', flex: 1 }}>
-            <Typography variant="h6" color="info.main">
+          <Paper sx={{ p: 2, textAlign: 'center', flex: 1 }} data-testid="absent-records-stat">
+            <Typography variant="h6" color="info.main" data-testid="absent-count">
               {todayAttendanceInfo.absentUserIds?.length || 0}
             </Typography>
             <Typography variant="body2" color="text.secondary">
@@ -432,7 +556,7 @@ export default function DailyRecordPage() {
         </Stack>
 
         {/* フィルター */}
-        <Card sx={{ mb: 3 }}>
+        <Card sx={{ mb: 3 }} data-testid="filter-panel">
           <CardContent>
             <Typography variant="h6" gutterBottom>
               フィルター
@@ -447,6 +571,7 @@ export default function DailyRecordPage() {
                   startAdornment: <SearchIcon sx={{ mr: 1, color: 'text.secondary' }} />
                 }}
                 sx={{ minWidth: 200 }}
+                data-testid="search-input"
               />
 
               <FormControl size="small" sx={{ minWidth: 120 }}>
@@ -455,6 +580,7 @@ export default function DailyRecordPage() {
                   value={statusFilter}
                   onChange={(e) => setStatusFilter(e.target.value)}
                   label="ステータス"
+                  data-testid="status-filter-select"
                 >
                   <MenuItem value="all">すべて</MenuItem>
                   <MenuItem value="完了">完了</MenuItem>
@@ -471,6 +597,7 @@ export default function DailyRecordPage() {
                 onChange={(e) => setDateFilter(e.target.value)}
                 InputLabelProps={{ shrink: true }}
                 sx={{ minWidth: 150 }}
+                data-testid="date-filter-input"
               />
 
               <Button
@@ -480,6 +607,7 @@ export default function DailyRecordPage() {
                   setStatusFilter('all');
                   setDateFilter('');
                 }}
+                data-testid="clear-filters-button"
               >
                 クリア
               </Button>
@@ -488,7 +616,7 @@ export default function DailyRecordPage() {
         </Card>
 
         {/* 一括操作ボタン */}
-        <Card sx={{ mb: 2 }}>
+        <Card sx={{ mb: 2 }} data-testid="bulk-operations-card">
           <CardContent>
             <Typography variant="h6" gutterBottom>
               一括操作
@@ -498,6 +626,7 @@ export default function DailyRecordPage() {
                 variant="contained"
                 onClick={handleGenerateTodayRecords}
                 color="primary"
+                data-testid="bulk-generate-today-records-button"
               >
                 本日分全員作成（32名）
               </Button>
@@ -505,6 +634,7 @@ export default function DailyRecordPage() {
                 variant="outlined"
                 onClick={handleBulkCreateMissing}
                 color="secondary"
+                data-testid="bulk-create-missing-button"
               >
                 未作成分追加
               </Button>
@@ -512,6 +642,7 @@ export default function DailyRecordPage() {
                 variant="outlined"
                 onClick={handleBulkComplete}
                 color="success"
+                data-testid="bulk-complete-button"
               >
                 本日分一括完了
               </Button>
@@ -524,6 +655,10 @@ export default function DailyRecordPage() {
           records={filteredRecords}
           onEdit={handleEditRecord}
           onDelete={handleDeleteRecord}
+          onOpenAttendance={handleOpenAttendance}
+          highlightUserId={highlightUserId}
+          highlightDate={highlightDate}
+          data-testid="daily-record-list"
         />
 
         {/* フォームダイアログ */}
@@ -532,6 +667,7 @@ export default function DailyRecordPage() {
           onClose={handleCloseForm}
           record={editingRecord}
           onSave={handleSaveRecord}
+          data-testid="daily-record-form"
         />
 
         {/* 新規作成FAB */}
@@ -544,9 +680,34 @@ export default function DailyRecordPage() {
             bottom: 16,
             right: 16,
           }}
+          data-testid="add-record-fab"
         >
           <AddIcon />
         </Fab>
+
+        {/* Toast通知 */}
+        <Toaster
+          position="top-right"
+          toastOptions={{
+            duration: 4000,
+            style: {
+              background: '#363636',
+              color: '#fff',
+            },
+            success: {
+              iconTheme: {
+                primary: '#4aed88',
+                secondary: '#fff',
+              },
+            },
+            error: {
+              iconTheme: {
+                primary: '#ff6b6b',
+                secondary: '#fff',
+              },
+            },
+          }}
+        />
       </Box>
     </Container>
   );

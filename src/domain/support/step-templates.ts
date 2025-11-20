@@ -1,14 +1,51 @@
 import { z } from 'zod';
 
+// 標準営業時間（9:30-16:00）での時間帯
+export const standardTimeSlotValues = [
+  '09:30-10:30',
+  '10:30-11:30',
+  '11:30-12:30',
+  '12:30-13:30',
+  '13:30-14:30',
+  '14:30-15:30',
+  '15:30-16:00',
+] as const;
+
+// 拡張時間帯（早朝・延長対応を含む）
+export const extendedTimeSlotValues = [
+  '08:00-09:00', '09:00-10:00', '10:00-11:00', '11:00-12:00', '12:00-13:00',
+  '13:00-14:00', '14:00-15:00', '15:00-16:00', '16:00-17:00', '17:00-18:00'
+] as const;
+
+export type TimeSlot = (typeof standardTimeSlotValues)[number];
+export type ExtendedTimeSlot = (typeof extendedTimeSlotValues)[number];
+
+// 下位互換性のためのエイリアス
+export const timeSlotValues = standardTimeSlotValues;
+
+export const supportCategoryValues = [
+  '朝の準備',
+  '健康確認',
+  '活動準備',
+  'AM活動',
+  '昼食準備',
+  '昼食',
+  '休憩',
+  'PM活動',
+  '終了準備',
+  '振り返り',
+  'その他',
+] as const;
+
+export type SupportCategory = (typeof supportCategoryValues)[number];
+
+export const supportImportanceValues = ['必須', '推奨', '任意'] as const;
+export type SupportImportance = (typeof supportImportanceValues)[number];
+
 /**
  * 時間帯区分（開所時間 9:30-16:00）
  */
-export const TimeSlotZ = z.enum([
-  '09:30-10:30', '10:30-11:30', '11:30-12:30', '12:30-13:30',
-  '13:30-14:30', '14:30-15:30', '15:30-16:00'
-]);
-
-export type TimeSlot = z.infer<typeof TimeSlotZ>;
+export const TimeSlotZ = z.enum(standardTimeSlotValues);
 
 /**
  * 支援手順テンプレート（個別支援手順の雛形）
@@ -17,23 +54,22 @@ export const SupportStepTemplateZ = z.object({
   id: z.string(),
   timeSlot: TimeSlotZ, // 対象時間帯
   stepTitle: z.string(), // 支援手順のタイトル
-  category: z.enum([
-    '朝の準備', '健康確認', '活動準備', 'AM活動', '昼食準備',
-    '昼食', '休憩', 'PM活動', '終了準備', '振り返り', 'その他'
-  ]),
+  category: z.enum(supportCategoryValues),
   description: z.string(), // 支援手順の詳細説明
   targetBehavior: z.string(), // 目標とする本人の行動
   supportMethod: z.string(), // 職員の具体的支援方法
   precautions: z.string().optional(), // 注意点・配慮事項
   duration: z.number(), // 予想時間（分）
-  importance: z.enum(['必須', '推奨', '任意']), // 重要度
+  importance: z.enum(supportImportanceValues), // 重要度
   isRequired: z.boolean().default(true), // 必須実施かどうか
   iconEmoji: z.string().optional(), // 表示用アイコン絵文字
+  isDefault: z.boolean().optional(), // デフォルトテンプレートかどうか（オプショナル）
 });
 
 export type SupportStepTemplate = z.infer<typeof SupportStepTemplateZ>;
 
 // デフォルトの支援手順テンプレート（開所時間 9:30-16:00）
+// 注意: isDefaultフラグは実際のID付与時に追加されるため、ここでは含めない
 export const defaultSupportStepTemplates: Omit<SupportStepTemplate, 'id'>[] = [
   {
     timeSlot: '09:30-10:30',

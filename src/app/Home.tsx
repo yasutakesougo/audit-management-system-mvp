@@ -1,8 +1,10 @@
 import { useFeatureFlags } from '@/config/featureFlags';
+import { useDashboardPath } from '@/features/dashboard/dashboardRouting';
 import MobileAgendaView from '@/features/schedule/components/MobileAgendaView';
 import NextActionCard from '@/features/schedule/components/NextActionCard';
 import { useSchedulesToday } from '@/features/schedule/useSchedulesToday';
 import { isDemoModeEnabled } from '@/lib/env';
+import { TESTIDS, type TestId } from '@/testids';
 import UnsynedAuditBadge from '@/ui/components/UnsynedAuditBadge';
 import ArrowForwardRoundedIcon from '@mui/icons-material/ArrowForwardRounded';
 import AssignmentTurnedInRoundedIcon from '@mui/icons-material/AssignmentTurnedInRounded';
@@ -40,9 +42,12 @@ type Tile = {
   Icon: typeof PeopleAltRoundedIcon;
   tone: TileTone;
   ariaLabel?: string;
+  testId?: TestId;
 };
 
-const tiles: Tile[] = [
+const baseTiles = (
+  dashboardPath: string,
+): Tile[] => [
   {
     to: '/users',
     label: '利用者マスタ',
@@ -58,18 +63,19 @@ const tiles: Tile[] = [
     tone: 'success',
   },
   {
-    to: '/dashboard',
+    to: dashboardPath,
     label: 'オペレーションハブ',
     caption: '施設全体の運営状況を俯瞰',
     Icon: SpaceDashboardRoundedIcon,
     tone: 'info',
   },
   {
-    to: '/schedule',
+    to: '/schedules/week',
     label: 'マスタースケジュール',
     caption: '事業所スケジュールをチェック',
     Icon: EventAvailableRoundedIcon,
     tone: 'secondary',
+    testId: TESTIDS['home-tile-schedule'],
   },
   {
     to: '/mobile',
@@ -149,20 +155,25 @@ export default function Home() {
   const theme = useTheme();
   const demoModeEnabled = isDemoModeEnabled();
   const { schedules: schedulesEnabled } = useFeatureFlags();
+  const dashboardPath = useDashboardPath();
   const bullets = demoModeEnabled ? demoBullets : productionBullets;
-  const filteredTiles = tiles.filter((tile) => schedulesEnabled || tile.to !== '/schedule');
+  const filteredTiles = baseTiles(dashboardPath).filter(
+    (tile) => schedulesEnabled || tile.to !== '/schedules/week',
+  );
   const activeTiles = demoModeEnabled ? [tabletDemoTile, ...filteredTiles] : filteredTiles;
   const {
     data: todaySchedules,
     source: scheduleSource,
     fallbackError: scheduleFallbackError,
   } = useSchedulesToday(5);
-  const dataSourceChip = schedulesEnabled && scheduleSource
-    ? {
-        label: scheduleSource === 'sharepoint' ? 'SharePoint' : 'Demo',
-        color: scheduleSource === 'sharepoint' ? 'success' : 'info',
-      }
-    : null;
+
+  const dataSourceChip: { label: string; color: 'success' | 'info' } | null =
+    schedulesEnabled && scheduleSource
+      ? {
+          label: scheduleSource === 'sharepoint' ? 'SharePoint' : 'Demo',
+          color: scheduleSource === 'sharepoint' ? 'success' : 'info',
+        }
+      : null;
 
   return (
     <Container component="main" maxWidth="lg" sx={{ py: { xs: 4, md: 6 } }}>
@@ -185,16 +196,16 @@ export default function Home() {
               sx={{ fontWeight: 600 }}
               data-testid="home-mode-chip"
             />
-            {dataSourceChip ? (
+            {dataSourceChip && (
               <Chip
                 size="small"
-                color={dataSourceChip.color as 'success' | 'info'}
+                color={dataSourceChip.color}
                 variant="outlined"
                 label={`データソース: ${dataSourceChip.label}`}
                 data-testid="home-data-source-chip"
                 sx={{ fontWeight: 600 }}
               />
-            ) : null}
+            )}
             <UnsynedAuditBadge size="small" data-testid="home-unsync-badge" />
             {!demoModeEnabled && (
               <Typography variant="body2" color="text.secondary">
@@ -239,7 +250,7 @@ export default function Home() {
                 id: mini.id.toString(),
                 title: mini.title,
                 start: mini.startText,
-                end: mini.startText, // MiniScheduleには終了時刻がないため暫定
+                end: mini.startText, // TODO: MiniSchedule に endText を追加するか、NextActionCard で end を Optional 対応する
                 status: mini.status || '承認済み',
               }))}
             />
@@ -256,14 +267,17 @@ export default function Home() {
             gridTemplateColumns: { xs: 'repeat(1, minmax(0, 1fr))', sm: 'repeat(2, minmax(0, 1fr))' },
           }}
         >
-          {activeTiles.map(({ to, label, caption, Icon, tone, ariaLabel }) => {
+          {activeTiles.map(({ to, label, caption, Icon, tone, ariaLabel, testId }) => {
             const palette = toneStyles(tone, theme);
+            const fallbackTestId = `home-tile-${to
+              .replace(/^\//, '')
+              .replace(/\//g, '-')}`;
             return (
               <Card
                 key={to}
                 role="listitem"
                 variant="outlined"
-                data-testid={`home-tile-${to.replace(/^\//, '')}`}
+                data-testid={testId ?? fallbackTestId}
                 sx={{
                   height: '100%',
                   display: 'flex',

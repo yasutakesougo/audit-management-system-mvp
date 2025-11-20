@@ -1,0 +1,214 @@
+name: Regression CI
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+  workflow_dispatch:
+
+env:
+  CI: true
+  NODE_ENV: test
+
+jobs:
+  setup:
+    name: Setup (Node + Cache)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Use Node 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Cache node_modules
+        id: cache-node-modules
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.npm
+            node_modules
+          key: ${{ runner.os }}-node-${{ hashFiles('package-lock.json') }}
+
+  lint-typecheck:
+    name: "🔍 Lint & Typecheck"
+    needs: setup
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Use Node 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+
+      - name: Install deps
+        run: npm ci
+
+      - name: ESLint
+        run: npm run lint -- --max-warnings=0
+
+      - name: Typecheck
+        run: npm run typecheck -- --pretty false
+
+  vitest-core:
+    name: "🧪 Vitest (Core Units)"
+    needs: setup
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install deps
+        run: npm ci
+
+      - name: Run unit tests (core partitions)
+        run: |
+          mkdir -p junit
+          npx vitest run \
+            src/lib/**/*.spec.ts \
+            src/config/**/*.spec.ts \
+            src/components/**/*.spec.ts \
+            --reporter=default \
+            --reporter=junit \
+            --outputFile=junit/vitest-core.xml
+
+      - name: Upload Vitest core artifacts
+        if: ${{ always() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: vitest-core-${{ github.run_number }}
+          path: |
+            coverage
+            junit
+            .vitest/snapshot-failures
+          if-no-files-found: ignore
+          retention-days: 7
+
+  vitest-hydration:
+    name: "💧 Hydration / HUD Tests"
+    needs: setup
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: npm ci
+
+      - name: Run hydration tests
+        run: |
+          mkdir -p junit
+          npx vitest run \
+            src/hydration/**/*.spec.ts \
+            tests/unit/hydration/**/*.spec.ts \
+            --reporter=default \
+            --reporter=junit \
+            --outputFile=junit/vitest-hydration.xml
+
+      - name: Upload Vitest hydration artifacts
+        if: ${{ always() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: vitest-hydration-${{ github.run_number }}
+          path: |
+            coverage
+            junit
+            .vitest/snapshot-failures
+          if-no-files-found: ignore
+          retention-days: 7
+
+  vitest-schedules:
+    name: "📅 Schedule Engine Tests"
+    needs: setup
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: npm ci
+
+      - name: Run schedules suite
+        run: |
+          mkdir -p junit
+          npx vitest run \
+            src/features/schedule/**/*.spec.ts \
+            --reporter=default \
+            --reporter=junit \
+            --outputFile=junit/vitest-schedules.xml
+
+      - name: Upload Vitest schedules artifacts
+        if: ${{ always() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: vitest-schedules-${{ github.run_number }}
+          path: |
+            coverage
+            junit
+            .vitest/snapshot-failures
+          if-no-files-found: ignore
+          retention-days: 7
+
+  vitest-pages:
+    name: "📄 Pages / UI Tests"
+    needs: setup
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: npm ci
+
+      - name: Run page specs
+        run: |
+          mkdir -p junit
+          npx vitest run \
+            src/pages/**/*.test.tsx \
+            src/features/**/*.test.tsx \
+            --reporter=default \
+            --reporter=junit \
+            --outputFile=junit/vitest-pages.xml
+
+      - name: Upload Vitest pages artifacts
+        if: ${{ always() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: vitest-pages-${{ github.run_number }}
+          path: |
+            coverage
+            junit
+            .vitest/snapshot-failures
+          if-no-files-found: ignore
+          retention-days: 7
+
+  playwright:
+    name: "🎭 Playwright (Smoke)"
+    needs:
+      - lint-typecheck
+      - vitest-core
+      - vitest-hydration
+      - vitest-schedules
+      - vitest-pages
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    if: github.event_name == 'pull_request'
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install deps
+        run: npm ci
+
+      - name: Install Playwright
+        run: npx playwright install --with-deps
+
+      - name: E2E Smoke
+        run: npx playwright test --project=smoke --reporter=line
+
+      - name: Upload Playwright artifacts
+        if: ${{ always() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-smoke-${{ github.run_number }}
+          path: |
+            playwright-report
+            test-results
+            junit
+          if-no-files-found: ignore
+          retention-days: 7

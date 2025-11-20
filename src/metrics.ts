@@ -8,15 +8,19 @@ type Metric = {
 	entries: PerformanceEntry[];
 };
 
-const entries: Array<Pick<Metric, 'name' | 'value'>> = [];
+const entries: Array<Pick<Metric, 'name' | 'value' | 'delta'>> = [];
 
 const isCI = typeof process !== 'undefined' && process.env?.CI === 'true';
 const isBrowser = typeof window !== 'undefined';
 
 const persistEntries = () => {
-	if (!isCI || isBrowser) return;
+	// 🔧 ロジック明確化：CI環境かつNode実行時のみファイル出力
+	const shouldWrite = isCI && !isBrowser;
+	if (!shouldWrite) return;
+
 	void import('node:fs')
 		.then((fsModule) => {
+			// 🔧 Node.js ESM/CJS 互換性対応
 			const fs = fsModule.default ?? fsModule;
 			const payload = JSON.stringify({ entries }, null, 2);
 			fs.writeFileSync('web-vitals.json', payload);
@@ -27,9 +31,24 @@ const persistEntries = () => {
 };
 
 const handleMetric = (metric: Metric) => {
-	entries.push({ name: metric.name, value: metric.value });
-	console.log('[web-vitals]', metric.name, metric.value, metric.id);
+	// 🔧 メモリ効率化：最新結果で上書き（CI環境での肥大化回避）
+	const existingIndex = entries.findIndex(entry => entry.name === metric.name);
+	const metricEntry = {
+		name: metric.name,
+		value: metric.value,
+		delta: metric.delta
+	};
+
+	if (existingIndex >= 0) {
+		entries[existingIndex] = metricEntry;
+	} else {
+		entries.push(metricEntry);
+	}
+
+	console.log('[web-vitals]', metric.name, metric.value, metric.id, `(δ${metric.delta})`);
 	persistEntries();
 };
 
-[onLCP, onINP, onFID, onTTFB, onCLS].forEach((register) => register(handleMetric));
+// 🚀 web-vitals v3 対応：配列化で将来の metrics 追加に対応
+const metricsCollectors = [onLCP, onINP, onFID, onTTFB, onCLS];
+metricsCollectors.forEach((register) => register(handleMetric));

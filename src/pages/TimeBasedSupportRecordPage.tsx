@@ -19,10 +19,22 @@ import Stack from '@mui/material/Stack';
 import TextField from '@mui/material/TextField';
 import Typography from '@mui/material/Typography';
 import React, { useMemo, useState } from 'react';
-// 時間別支援記録の型定義
-type TimeSlot =
-  | '08:00-09:00' | '09:00-10:00' | '10:00-11:00' | '11:00-12:00' | '12:00-13:00'
-  | '13:00-14:00' | '14:00-15:00' | '15:00-16:00' | '16:00-17:00' | '17:00-18:00';
+import { ExtendedTimeSlot, extendedTimeSlotValues } from '../domain/support/step-templates';
+
+// ユーティリティ関数：決定論的ID生成
+const generateDeterministicId = (prefix: string, ...identifiers: (string | number)[]): number => {
+  const combined = `${prefix}-${identifiers.join('-')}`;
+  let hash = 0;
+  for (let i = 0; i < combined.length; i++) {
+    const char = combined.charCodeAt(i);
+    hash = ((hash << 5) - hash) + char;
+    hash = hash & hash; // 32bit整数に変換
+  }
+  return Math.abs(hash);
+};
+
+// 時間別支援記録の型定義（ExtendedTimeSlotを使用）
+// TODO: 将来的にはsrc/domain/support/types.tsなどに統合予定
 
 interface SupportRecord {
   id: number;
@@ -30,7 +42,7 @@ interface SupportRecord {
   personId: string;
   personName: string;
   date: string;
-  timeSlot?: TimeSlot;
+  timeSlot?: ExtendedTimeSlot;
   userActivities: {
     planned: string;
     actual: string;
@@ -94,11 +106,11 @@ const TimeBasedSupportRecordList: React.FC<TimeBasedSupportRecordListProps> = ({
   onAddRecord,
   onUpdateRecord: _onUpdateRecord
 }) => {
-  const [selectedTimeSlot, setSelectedTimeSlot] = useState<TimeSlot>('09:00-10:00');
+  const [selectedTimeSlot, setSelectedTimeSlot] = useState<ExtendedTimeSlot>('09:00-10:00');
 
   const handleAddNewRecord = () => {
     const newRecord: SupportRecord = {
-      id: Date.now() + Math.random(),
+      id: generateDeterministicId('time-record', dailyRecord.personId, dailyRecord.date, selectedTimeSlot),
       supportPlanId: dailyRecord.supportPlanId,
       personId: dailyRecord.personId,
       personName: dailyRecord.personName,
@@ -117,31 +129,35 @@ const TimeBasedSupportRecordList: React.FC<TimeBasedSupportRecordListProps> = ({
   };
 
   return (
-    <Card>
+    <Card data-testid="time-based-record-list-card">
       <CardContent>
         <Typography variant="h6" gutterBottom>
           時間別記録一覧
         </Typography>
 
         {/* 新規記録追加 */}
-        <Box sx={{ mb: 3, p: 2, bgcolor: 'grey.50', borderRadius: 1 }}>
+        {/* TODO: 将来的にSupportStepMasterPageからテンプレートを選択できる機能を追加予定 */}
+        <Box sx={{ mb: 3, p: 2, bgcolor: 'grey.50', borderRadius: 1 }} data-testid="add-new-record-section">
           <Stack direction="row" spacing={2} alignItems="center">
             <FormControl size="small" sx={{ minWidth: 150 }}>
               <InputLabel>時間帯選択</InputLabel>
               <Select
                 value={selectedTimeSlot}
-                onChange={(e) => setSelectedTimeSlot(e.target.value as TimeSlot)}
+                onChange={(e) => setSelectedTimeSlot(e.target.value as ExtendedTimeSlot)}
                 label="時間帯選択"
+                data-testid="timeslot-select"
               >
-                {timeSlots.map(slot => (
+                {extendedTimeSlotValues.map(slot => (
                   <MenuItem key={slot} value={slot}>
                     {slot}
                   </MenuItem>
                 ))}
               </Select>
             </FormControl>
+            {/* TODO: テンプレート選択ドロップダウンをここに追加予定 */}
             <Box sx={{ px: 2, py: 1, bgcolor: 'white', borderRadius: 1, cursor: 'pointer' }}
-                 onClick={handleAddNewRecord}>
+                 onClick={handleAddNewRecord}
+                 data-testid="add-record-button">
               <Typography variant="body2" color="primary">
                 + 記録追加
               </Typography>
@@ -154,9 +170,9 @@ const TimeBasedSupportRecordList: React.FC<TimeBasedSupportRecordListProps> = ({
           display: 'grid',
           gridTemplateColumns: 'repeat(auto-fill, minmax(400px, 1fr))',
           gap: 2
-        }}>
+        }} data-testid="records-grid">
           {dailyRecord.records.map((record) => (
-            <Card key={record.id} variant="outlined">
+            <Card key={record.id} variant="outlined" data-testid={`record-card-${record.timeSlot}`}>
               <CardContent>
                 <Typography variant="subtitle1" gutterBottom>
                   {record.timeSlot} - {record.status}
@@ -244,14 +260,11 @@ const mockSupportUsers = [
   { id: '032', name: '小林さくら', planType: 'コミュニケーション', isActive: true }
 ];
 
-const timeSlots: TimeSlot[] = [
-  '08:00-09:00', '09:00-10:00', '10:00-11:00', '11:00-12:00', '12:00-13:00',
-  '13:00-14:00', '14:00-15:00', '15:00-16:00', '16:00-17:00', '17:00-18:00'
-];
+const timeSlots: ExtendedTimeSlot[] = [...extendedTimeSlotValues];
 
 // 空の時間ベース記録生成
-const generateEmptyTimeBasedRecord = (personId: string, personName: string, date: string, timeSlot: TimeSlot): SupportRecord => ({
-  id: Date.now() + Math.random(),
+const generateEmptyTimeBasedRecord = (personId: string, personName: string, date: string, timeSlot: ExtendedTimeSlot): SupportRecord => ({
+  id: generateDeterministicId('empty-time-record', personId, date, timeSlot),
   supportPlanId: `plan-${personId}`,
   personId,
   personName,
@@ -279,42 +292,98 @@ const generateEmptyTimeBasedRecord = (personId: string, personName: string, date
   updatedAt: new Date().toISOString()
 });
 
-// モック日次記録生成（時間ベース）
+// モック日次記録生成（時間ベース）- 決定論的データ生成
 const generateMockTimeBasedDailyRecord = (user: typeof mockSupportUsers[0], date: string): DailySupportRecord => {
   const records: SupportRecord[] = [];
 
-  // いくつかの時間帯にサンプル記録を生成
+  // 決定論的な時間帯選択（ユーザーIDと日付に基づく）
+  const userIdNum = parseInt(user.id) || 1;
+  const dateNum = new Date(date).getDate();
   const sampleTimeSlots = ['09:00-10:00', '11:00-12:00', '14:00-15:00', '16:00-17:00'];
 
-  sampleTimeSlots.forEach((timeSlot, index) => {
-    const record = generateEmptyTimeBasedRecord(user.id, user.name, date, timeSlot as TimeSlot);
+  // ユーザーと日付に基づいて使用する時間帯を決定
+  const activeTimeSlots = sampleTimeSlots.filter((_, index) => (userIdNum + dateNum + index) % 3 !== 0);
 
-    // サンプルデータを設定
+  activeTimeSlots.forEach((timeSlot, index) => {
+    const record = generateEmptyTimeBasedRecord(user.id, user.name, date, timeSlot as ExtendedTimeSlot);
+
+    // 決定論的なサンプルデータを設定
     record.status = '記録済み';
+
+    // 活動データ（時間帯とインデックスに基づく）
+    const activityIndex = (userIdNum + index) % 4;
+    const activities = [
+      {
+        planned: '朝の会・健康確認',
+        actual: '健康状態確認と朝の挨拶を行いました',
+        notes: '体調良好でした',
+        staffPlanned: 'バイタルチェックと体調確認',
+        staffActual: '丁寧にバイタルチェックを実施',
+        staffNotes: '特に問題なく実施'
+      },
+      {
+        planned: '個別作業課題',
+        actual: '集中して個別課題に取り組みました',
+        notes: '集中力が続いていました',
+        staffPlanned: '個別課題の準備と声かけ',
+        staffActual: '本人のペースに合わせて課題提供',
+        staffNotes: '集中力を維持できるよう環境調整'
+      },
+      {
+        planned: '集団活動・レクリエーション',
+        actual: 'グループ活動に積極的に参加しました',
+        notes: '他の利用者との交流も見られました',
+        staffPlanned: 'グループ活動の進行と見守り',
+        staffActual: '適度な声かけで参加を促進',
+        staffNotes: '他利用者との良い関係作りを支援'
+      },
+      {
+        planned: '一日の振り返り',
+        actual: '一日の振り返りを職員と一緒に行いました',
+        notes: '満足そうな表情でした',
+        staffPlanned: '振り返りの聞き取りと記録',
+        staffActual: '本人の感想をしっかり聞き取り',
+        staffNotes: '次回への課題も確認'
+      }
+    ];
+
+    const activity = activities[activityIndex];
     record.userActivities = {
-      planned: `${timeSlot}の予定活動: ${['朝の会・健康確認', '個別作業課題', '集団活動・レクリエーション', '一日の振り返り'][index]}`,
-      actual: `実際に行った活動: ${['健康状態確認と朝の挨拶を行いました', '集中して個別課題に取り組みました', 'グループ活動に積極的に参加しました', '一日の振り返りを職員と一緒に行いました'][index]}`,
-      notes: `${['体調良好でした', '集中力が続いていました', '他の利用者との交流も見られました', '満足そうな表情でした'][index]}`
+      planned: `${timeSlot}の予定活動: ${activity.planned}`,
+      actual: `実際に行った活動: ${activity.actual}`,
+      notes: activity.notes
     };
     record.staffActivities = {
-      planned: `職員の予定支援: ${['バイタルチェックと体調確認', '個別課題の準備と声かけ', 'グループ活動の進行と見守り', '振り返りの聞き取りと記録'][index]}`,
-      actual: `実際の支援: ${['丁寧にバイタルチェックを実施', '本人のペースに合わせて課題提供', '適度な声かけで参加を促進', '本人の感想をしっかり聞き取り'][index]}`,
-      notes: `${['特に問題なく実施', '集中力を維持できるよう環境調整', '他利用者との良い関係作りを支援', '次回への課題も確認'][index]}`
+      planned: `職員の予定支援: ${activity.staffPlanned}`,
+      actual: `実際の支援: ${activity.staffActual}`,
+      notes: activity.staffNotes
     };
+
+    // 決定論的な状態データ
+    const moodIndex = (userIdNum + index) % 3;
+    const moods = ['良好', '普通', '良好'] as const;
     record.userCondition = {
-      mood: (['良好', '普通', '良好', '良好'] as const)[index],
-      behavior: `${['落ち着いて挨拶ができており、表情も明るかった', '真剣に課題に取り組み、分からない時は質問もできていた', '積極的に参加し、笑顔も多く見られた', '一日を振り返りながら、感想を話すことができた'][index]}`,
-      communication: `${['「おはようございます」と元気に挨拶', '「これでいいですか？」と確認の質問', '他の利用者と自然に会話', '「楽しかったです」と感想を表現'][index]}`,
-      physicalState: `${['体温36.5度、血圧正常', '疲労感なし、集中力良好', '適度な運動で良い汗をかいた', '疲れ過ぎず適度な達成感'][index]}`
+      mood: moods[moodIndex],
+      behavior: activity.actual.replace('実際に行った活動: ', ''),
+      communication: `適切なコミュニケーションが取れています - ${activity.notes}`,
+      physicalState: `体調：${['良好', '普通', '良好'][moodIndex]} - 特に問題なし`
     };
+
+    // 成果と懸念（決定論的）
+    const hasAchievement = (userIdNum + index) % 2 === 0;
+    const hasConcern = (userIdNum + index) % 5 === 0;
+
     record.specialNotes = {
-      incidents: index === 2 ? '他の利用者と一緒に歌を歌う場面があった' : undefined,
-      concerns: undefined,
-      achievements: `${['朝の体調確認がスムーズになってきた', '集中して課題に取り組む時間が延びた', '他の利用者との交流が自然になった', '自分の感情を言葉で表現できた'][index]}`,
-      nextTimeConsiderations: `${['引き続き体調管理に注意', '課題の難易度を少し上げても良さそう', 'グループ活動での役割を検討', '振り返りの時間をもう少し取る'][index]}`
+      incidents: index === 2 && (userIdNum % 3 === 0) ? '他の利用者と一緒に歌を歌う場面があった' : undefined,
+      concerns: hasConcern ? '少し疲労が見られたため、休憩時間を長めに取りました' : undefined,
+      achievements: hasAchievement ? activity.notes : undefined,
+      nextTimeConsiderations: `${activity.staffNotes} - 継続的な支援が必要`
     };
+
+    // 担当者（決定論的）
+    const staffNames = ['支援員A', '支援員B', '支援員C'];
     record.reporter = {
-      name: ['支援員A', '支援員B', '支援員A', '支援員C'][index],
+      name: staffNames[(userIdNum + index) % staffNames.length],
       role: '生活支援員'
     };
 
@@ -325,7 +394,7 @@ const generateMockTimeBasedDailyRecord = (user: typeof mockSupportUsers[0], date
   const completedTimeSlots = records.filter(r => r.status === '記録済み').length;
 
   return {
-    id: Date.now(),
+    id: generateDeterministicId('daily-time-record', user.id, date),
     supportPlanId: `plan-${user.id}`,
     personId: user.id,
     personName: user.name,
@@ -345,7 +414,17 @@ const generateMockTimeBasedDailyRecord = (user: typeof mockSupportUsers[0], date
   };
 };
 
+// TODO: 将来的な拡張予定
+// 1. SupportStepTemplateとの連携：テンプレート選択機能
+// 2. 定義済み支援手順の自動インポート
+// 3. 時間帯とテンプレートの適切性チェック
+// 4. SharedComponent化：SupportRecordPageとの共通部品抽出
+
 const TimeBasedSupportRecordPage: React.FC = () => {
+  // TODO: SupportStepTemplateとの連携機能
+  // const [selectedTemplate, setSelectedTemplate] = useState<SupportStepTemplate | null>(null);
+  // const [availableTemplates, setAvailableTemplates] = useState<SupportStepTemplate[]>([]);
+
   const [selectedUser, setSelectedUser] = useState<string>('');
   const [selectedDate, setSelectedDate] = useState<string>(
     new Date().toISOString().split('T')[0]
@@ -382,6 +461,24 @@ const TimeBasedSupportRecordPage: React.FC = () => {
 
     return dailyRecords[recordKey];
   }, [selectedUser, selectedDate, dailyRecords]);
+
+  // TODO: 将来的にテンプレートからの記録生成機能
+  // const handleCreateFromTemplate = (template: SupportStepTemplate) => {
+  //   const newRecord: SupportRecord = {
+  //     ...generateEmptyTimeBasedRecord(selectedUser, currentDailyRecord?.personName || '', selectedDate, template.timeSlot),
+  //     userActivities: {
+  //       planned: template.targetBehavior,
+  //       actual: '',
+  //       notes: ''
+  //     },
+  //     staffActivities: {
+  //       planned: template.supportMethod,
+  //       actual: '',
+  //       notes: template.precautions || ''
+  //     }
+  //   };
+  //   handleAddRecord(newRecord);
+  // };
 
   const handleAddRecord = (record: SupportRecord) => {
     if (!currentDailyRecord) return;
@@ -429,10 +526,10 @@ const TimeBasedSupportRecordPage: React.FC = () => {
   const getActiveUsersCount = () => mockSupportUsers.filter(u => u.isActive).length;
 
   return (
-    <Container maxWidth="lg">
+    <Container maxWidth="lg" data-testid="time-based-support-record-container">
       <Box py={4}>
         {/* ヘッダー */}
-        <Paper elevation={2} sx={{ p: 3, mb: 4, bgcolor: 'primary.50' }}>
+        <Paper elevation={2} sx={{ p: 3, mb: 4, bgcolor: 'primary.50' }} data-testid="time-based-support-record-header">
           <Box display="flex" alignItems="center" gap={2} mb={2}>
             <AccessTimeIcon color="primary" sx={{ fontSize: 40 }} />
             <Box>
@@ -468,7 +565,7 @@ const TimeBasedSupportRecordPage: React.FC = () => {
         </Paper>
 
         {/* フィルター・検索 */}
-        <Card sx={{ mb: 4 }}>
+        <Card sx={{ mb: 4 }} data-testid="time-based-support-record-filters">
           <CardContent>
             <Typography variant="h6" gutterBottom display="flex" alignItems="center" gap={1}>
               <SearchIcon />
@@ -482,6 +579,7 @@ const TimeBasedSupportRecordPage: React.FC = () => {
                 onChange={(e) => setSearchTerm(e.target.value)}
                 sx={{ minWidth: 200 }}
                 size="small"
+                data-testid="user-search-input"
               />
 
               <FormControl sx={{ minWidth: 200 }} size="small">
@@ -490,6 +588,7 @@ const TimeBasedSupportRecordPage: React.FC = () => {
                   value={selectedUser}
                   onChange={(e) => setSelectedUser(e.target.value)}
                   label="利用者選択"
+                  data-testid="user-select"
                 >
                   {filteredUsers.map((user) => (
                     <MenuItem key={user.id} value={user.id}>
@@ -507,6 +606,7 @@ const TimeBasedSupportRecordPage: React.FC = () => {
                 InputLabelProps={{ shrink: true }}
                 sx={{ minWidth: 160 }}
                 size="small"
+                data-testid="record-date-input"
               />
             </Stack>
           </CardContent>
@@ -516,7 +616,7 @@ const TimeBasedSupportRecordPage: React.FC = () => {
         {selectedUser && currentDailyRecord ? (
           <Box>
             {/* 記録サマリー */}
-            <Card sx={{ mb: 4 }}>
+            <Card sx={{ mb: 4 }} data-testid="time-based-support-record-summary">
               <CardContent>
                 <Typography variant="h6" gutterBottom>
                   記録サマリー - {currentDailyRecord.personName} ({selectedDate})
@@ -550,11 +650,13 @@ const TimeBasedSupportRecordPage: React.FC = () => {
             </Card>
 
             {/* 時間別記録リスト */}
-            <TimeBasedSupportRecordList
-              dailyRecord={currentDailyRecord}
-              onAddRecord={handleAddRecord}
-              onUpdateRecord={handleUpdateRecord}
-            />
+            <div data-testid="time-based-support-record-list">
+              <TimeBasedSupportRecordList
+                dailyRecord={currentDailyRecord}
+                onAddRecord={handleAddRecord}
+                onUpdateRecord={handleUpdateRecord}
+              />
+            </div>
           </Box>
         ) : (
           <Alert severity="info">

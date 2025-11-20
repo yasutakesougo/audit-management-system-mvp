@@ -44,8 +44,8 @@ describe('HUD thresholds section', () => {
     render(<HydrationHud />);
 
     const thresholds = screen.getByTestId('hud-thresholds');
-    expect(thresholds).toHaveTextContent('discrepancy=15m');
-    expect(thresholds).toHaveTextContent('absenceLimit=3');
-    expect(thresholds).toHaveTextContent('closeTime=18:30');
+    expect(thresholds).toHaveTextContent('乖離しきい値: 15 分');
+    expect(thresholds).toHaveTextContent('月間欠席上限: 3 回');
+    expect(thresholds).toHaveTextContent('施設閉所時刻: 18:30 (1110分)');
   });
 });

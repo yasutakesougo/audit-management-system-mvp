@@ -39,7 +39,7 @@ export const demoUsers: IUserMaster[] = [
     ServiceEndDate: null,
     AttendanceDays: ['火', '木', '金'],
   },
-  // 通常利用者（29名）- 活動日誌のみ
+  // 通常利用者（29名）- 支援記録（ケース記録）のみ
   {
     Id: 4,
     UserID: 'U-002',

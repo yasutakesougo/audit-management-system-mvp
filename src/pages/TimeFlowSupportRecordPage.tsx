@@ -1,4 +1,5 @@
 import AccessTimeIcon from '@mui/icons-material/AccessTime';
+import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import AssignmentIcon from '@mui/icons-material/Assignment';
 import AutoAwesomeIcon from '@mui/icons-material/AutoAwesome';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
@@ -31,6 +32,8 @@ import LinearProgress from '@mui/material/LinearProgress';
 import ToggleButton from '@mui/material/ToggleButton';
 import ToggleButtonGroup from '@mui/material/ToggleButtonGroup';
 import React, { useEffect, useMemo, useRef, useState } from 'react';
+import { useNavigate, useSearchParams } from 'react-router-dom';
+import { getDashboardPath } from '@/features/dashboard/dashboardRouting';
 import {
   resolveSupportFlowForUser,
   fallbackSupportActivities,
@@ -183,6 +186,9 @@ const convertMasterTemplates = (
 };
 
 const DEFAULT_FLOW_MASTER_ACTIVITIES = convertMasterTemplates(buildDefaultMasterTemplates());
+
+const countRecordedSlots = (records: SupportRecord[]): number =>
+  records.filter((record) => record.status === '記録済み').length;
 
 const loadMasterSupportActivities = (): FlowSupportActivityTemplate[] => {
   if (typeof window === 'undefined') {
@@ -890,7 +896,7 @@ const QuickActionToolbar: React.FC<{
 const DailyInsightsPanel: React.FC<{ dailyRecord: DailySupportRecord }> = ({ dailyRecord }) => {
   const metrics = useMemo(() => {
     const totalSlots = dailyRecord.summary.totalTimeSlots;
-    const recorded = dailyRecord.records.filter((record) => record.status === '記録済み').length;
+    const recorded = dailyRecord.summary.recordedTimeSlots;
     const completionRate = totalSlots > 0 ? Math.round((recorded / totalSlots) * 100) : 0;
     const moodCount: Record<'良好' | '普通' | '不安定' | '未記録', number> = {
       良好: 0,
@@ -1333,8 +1339,21 @@ const generateMockTimeFlowDailyRecord = (
 };
 
 const TimeFlowSupportRecordPage: React.FC = () => {
+  const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  
+  // URL パラメータの取得
+  const initialUserId = searchParams.get('userId');
+  type ReturnMode = 'morning' | 'evening' | 'detail' | null;
+  const returnMode = (() => {
+    const raw = searchParams.get('returnMode');
+    if (raw === 'morning' || raw === 'evening' || raw === 'detail') return raw;
+    return null;
+  })() as ReturnMode;
+  const returnUserId = searchParams.get('returnUserId'); // /users/:id に戻る用
+
   const [masterSupportActivities, setMasterSupportActivities] = useState<FlowSupportActivityTemplate[]>(DEFAULT_FLOW_MASTER_ACTIVITIES);
-  const [selectedUser, setSelectedUser] = useState<string>('');
+  const [selectedUser, setSelectedUser] = useState<string>(initialUserId || '');
   const [selectedDate, setSelectedDate] = useState<string>(
     new Date().toISOString().split('T')[0]
   );
@@ -1422,30 +1441,46 @@ const TimeFlowSupportRecordPage: React.FC = () => {
     setSelectionClearedNotice(false);
   };
 
+  const recordKey = useMemo(() => {
+    if (!selectedUser) {
+      return null;
+    }
+    return `${selectedUser}-${selectedDate}`;
+  }, [selectedDate, selectedUser]);
+
   // 現在の日次記録を取得または生成
   const currentDailyRecord = useMemo(() => {
-    if (!selectedUser) return null;
+    if (!selectedUser || !recordKey) return null;
 
     const user = mockSupportUsers.find(u => u.id === selectedUser);
     if (!user) return null;
 
-    const recordKey = `${selectedUser}-${selectedDate}`;
-
     if (!dailyRecords[recordKey]) {
       // 新しい日次記録を生成
-  const newRecord = generateMockTimeFlowDailyRecord(user, selectedDate, supportActivities, supportDeployment);
+      const newRecord = generateMockTimeFlowDailyRecord(user, selectedDate, supportActivities, supportDeployment);
+      const normalizedRecord: DailySupportRecord = {
+        ...newRecord,
+        summary: {
+          ...newRecord.summary,
+          totalTimeSlots: supportActivities.length,
+          recordedTimeSlots: countRecordedSlots(newRecord.records),
+        },
+      };
       setDailyRecords(prev => ({
         ...prev,
-        [recordKey]: newRecord
+        [recordKey]: normalizedRecord
       }));
-      return newRecord;
+      return normalizedRecord;
     }
 
     const existingRecord = dailyRecords[recordKey];
-    if (
+    const recordedCount = countRecordedSlots(existingRecord.records);
+    const needsSummaryUpdate =
       existingRecord.summary.totalTimeSlots !== supportActivities.length ||
-      (supportDeployment && existingRecord.supportPlanId !== supportDeployment.planId)
-    ) {
+      existingRecord.summary.recordedTimeSlots !== recordedCount;
+    const needsPlanUpdate = supportDeployment && existingRecord.supportPlanId !== supportDeployment.planId;
+
+    if (needsSummaryUpdate || needsPlanUpdate) {
       const updatedPlanId = supportDeployment?.planId ?? existingRecord.supportPlanId;
 
       const adjustedRecord: DailySupportRecord = {
@@ -1460,6 +1495,7 @@ const TimeFlowSupportRecordPage: React.FC = () => {
         summary: {
           ...existingRecord.summary,
           totalTimeSlots: supportActivities.length,
+          recordedTimeSlots: recordedCount,
         },
       };
 
@@ -1471,7 +1507,7 @@ const TimeFlowSupportRecordPage: React.FC = () => {
     }
 
     return existingRecord;
-  }, [dailyRecords, selectedDate, selectedUser, supportActivities]);
+  }, [dailyRecords, recordKey, selectedDate, selectedUser, supportActivities, supportDeployment]);
 
   const pendingCount = useMemo(() => {
     if (!selectedUser || !currentDailyRecord) {
@@ -1487,17 +1523,19 @@ const TimeFlowSupportRecordPage: React.FC = () => {
   const isComplete = currentDailyRecord?.status === '完了';
 
   const handleAddRecord = (record: SupportRecord) => {
-    if (!currentDailyRecord) return;
+    if (!currentDailyRecord || !recordKey) return;
 
-    const recordKey = `${selectedUser}-${selectedDate}`;
+    const updatedRecords = [...currentDailyRecord.records, record];
+    const recordedCount = countRecordedSlots(updatedRecords);
+
     const updatedDailyRecord: DailySupportRecord = {
       ...currentDailyRecord,
-      records: [...currentDailyRecord.records, record],
+      records: updatedRecords,
       status: '作成中',
       summary: {
         ...currentDailyRecord.summary,
         totalTimeSlots: supportActivities.length,
-        recordedTimeSlots: currentDailyRecord.records.length + 1
+        recordedTimeSlots: recordedCount,
       }
     };
 
@@ -1508,12 +1546,12 @@ const TimeFlowSupportRecordPage: React.FC = () => {
   };
 
   const handleUpdateRecord = (updatedRecord: SupportRecord) => {
-    if (!currentDailyRecord) return;
+    if (!currentDailyRecord || !recordKey) return;
 
-    const recordKey = `${selectedUser}-${selectedDate}`;
     const updatedRecords = currentDailyRecord.records.map((record: SupportRecord) =>
       record.id === updatedRecord.id ? updatedRecord : record
     );
+    const recordedCount = countRecordedSlots(updatedRecords);
 
     const updatedDailyRecord: DailySupportRecord = {
       ...currentDailyRecord,
@@ -1521,7 +1559,7 @@ const TimeFlowSupportRecordPage: React.FC = () => {
       summary: {
         ...currentDailyRecord.summary,
         totalTimeSlots: supportActivities.length,
-        recordedTimeSlots: updatedRecords.length
+        recordedTimeSlots: recordedCount,
       }
     };
 
@@ -1532,14 +1570,15 @@ const TimeFlowSupportRecordPage: React.FC = () => {
   };
 
   const handleMarkComplete = () => {
-    if (!selectedUser) return;
+    if (!recordKey) return;
 
-    const recordKey = `${selectedUser}-${selectedDate}`;
     setDailyRecords((prev) => {
       const target = prev[recordKey];
       if (!target) {
         return prev;
       }
+
+      const recordedCount = countRecordedSlots(target.records);
 
       const updatedRecord: DailySupportRecord = {
         ...target,
@@ -1548,7 +1587,7 @@ const TimeFlowSupportRecordPage: React.FC = () => {
         summary: {
           ...target.summary,
           totalTimeSlots: supportActivities.length,
-          recordedTimeSlots: target.summary.recordedTimeSlots,
+          recordedTimeSlots: recordedCount,
         },
       };
 
@@ -1560,17 +1599,24 @@ const TimeFlowSupportRecordPage: React.FC = () => {
   };
 
   const generateAutoSchedule = () => {
-    if (!selectedUser) return;
+    if (!selectedUser || !recordKey) return;
 
     const user = mockSupportUsers.find(u => u.id === selectedUser);
     if (!user) return;
 
-    const recordKey = `${selectedUser}-${selectedDate}`;
-  const autoRecord = generateMockTimeFlowDailyRecord(user, selectedDate, supportActivities, supportDeployment);
+    const autoRecord = generateMockTimeFlowDailyRecord(user, selectedDate, supportActivities, supportDeployment);
+    const normalizedRecord: DailySupportRecord = {
+      ...autoRecord,
+      summary: {
+        ...autoRecord.summary,
+        totalTimeSlots: supportActivities.length,
+        recordedTimeSlots: countRecordedSlots(autoRecord.records),
+      },
+    };
 
     setDailyRecords(prev => ({
       ...prev,
-      [recordKey]: autoRecord
+      [recordKey]: normalizedRecord
     }));
   };
 
@@ -1586,11 +1632,56 @@ const TimeFlowSupportRecordPage: React.FC = () => {
     }
   }, [selectedUser, currentDailyRecord]);
 
+  // 戻る機能のハンドラー
+  const handleBack = () => {
+    if (returnMode === 'morning' || returnMode === 'evening') {
+      const dashboardPath = getDashboardPath();
+      navigate(`${dashboardPath}?mode=${returnMode}`);
+      return;
+    }
+
+    if (returnMode === 'detail' && returnUserId) {
+      navigate(`/users/${returnUserId}`);
+      return;
+    }
+
+    // fallback: 日次メニュー or 支援記録トップ
+    navigate('/daily');
+  };
+
   return (
     <Container maxWidth="lg">
       <Box py={4}>
         {/* ヘッダー */}
         <Paper elevation={3} sx={{ p: 4, mb: 4, bgcolor: 'gradient.primary', background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)' }}>
+          {/* 戻るボタン */}
+          {returnMode && (
+            <Box mb={2}>
+              <Button
+                variant="outlined"
+                onClick={handleBack}
+                startIcon={<ArrowBackIcon />}
+                sx={{ 
+                  borderColor: 'white',
+                  color: 'white',
+                  '&:hover': {
+                    borderColor: 'white',
+                    backgroundColor: 'rgba(255, 255, 255, 0.1)'
+                  }
+                }}
+                data-testid="support-back"
+              >
+                {returnMode === 'morning'
+                  ? '朝会ダッシュボードに戻る'
+                  : returnMode === 'evening'
+                    ? '夕会ダッシュボードに戻る'
+                    : returnMode === 'detail'
+                      ? '利用者詳細に戻る'
+                      : '日次メニューに戻る'}
+              </Button>
+            </Box>
+          )}
+          
           <Box display="flex" alignItems="center" gap={3} mb={3}>
             <Box sx={{
               bgcolor: 'white',

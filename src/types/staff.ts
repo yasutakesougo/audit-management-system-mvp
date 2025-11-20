@@ -16,6 +16,10 @@ const normalizeStringArray = (input: readonly (string | null | undefined)[] | un
   return Array.from(new Set(normalized));
 };
 
+/**
+ * 時刻文字列をISO形式に正規化
+ * TimeOnly列用: 不正値や未入力の場合は明示的にnullを送って値をクリアする
+ */
 const normalizeTimeToIso = (value: string | null | undefined): string | null => {
   if (value === null) return null;
   if (value === undefined) return null;

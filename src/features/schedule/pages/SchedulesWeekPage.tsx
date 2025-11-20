@@ -13,7 +13,14 @@ import Stack from '@mui/material/Stack';
 import Typography from '@mui/material/Typography';
 import dayjs from 'dayjs';
 import { useCallback, useEffect, useMemo, useRef, useState, type KeyboardEvent as ReactKeyboardEvent } from 'react';
-import { useSearchParams } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
+// Icons for navigation tabs
+import AddRoundedIcon from '@mui/icons-material/AddRounded';
+import CalendarMonthRoundedIcon from '@mui/icons-material/CalendarMonthRounded';
+import TodayRoundedIcon from '@mui/icons-material/TodayRounded';
+// Additional MUI components
+import Tab from '@mui/material/Tab';
+import Tabs from '@mui/material/Tabs';
 
 type Status = 'idle' | 'loading' | 'ready' | 'empty' | 'error';
 
@@ -110,6 +117,7 @@ function setFocusActive(descriptor: string | null): void {
 let lastAnnouncedLabel: string | null = null;
 export default function SchedulesWeekPage(): JSX.Element {
   const [searchParams, setSearchParams] = useSearchParams();
+  const navigate = useNavigate();
   const [anchor, setAnchor] = useState(() => {
     const initial = parseWeekParam(searchParams.get('week'));
     return initial ?? startOfWeek();
@@ -762,6 +770,46 @@ export default function SchedulesWeekPage(): JSX.Element {
       >
         週間スケジュール（{range.label}）
       </Typography>
+
+      {/* Navigation Tabs and Actions */}
+      <Box sx={{ borderBottom: 1, borderColor: 'divider', my: 2 }}>
+        <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 1 }}>
+          <Tabs value="week" aria-label="スケジュールビュー切り替え">
+            <Tab
+              label="週間"
+              value="week"
+              icon={<Box component="span">📅</Box>}
+              iconPosition="start"
+              sx={{ textTransform: 'none' }}
+            />
+            <Tab
+              label="月間"
+              value="month"
+              icon={<CalendarMonthRoundedIcon />}
+              iconPosition="start"
+              sx={{ textTransform: 'none' }}
+              onClick={() => navigate('/schedules/month')}
+            />
+            <Tab
+              label="日間"
+              value="day"
+              icon={<TodayRoundedIcon />}
+              iconPosition="start"
+              sx={{ textTransform: 'none' }}
+              onClick={() => navigate('/schedules/day')}
+            />
+          </Tabs>
+
+          <Button
+            variant="contained"
+            startIcon={<AddRoundedIcon />}
+            onClick={() => navigate('/schedules/create')}
+            sx={{ ml: 2 }}
+          >
+            新規作成
+          </Button>
+        </Stack>
+      </Box>
 
       <Stack direction="row" spacing={1} sx={{ my: 1 }}>
         <Button

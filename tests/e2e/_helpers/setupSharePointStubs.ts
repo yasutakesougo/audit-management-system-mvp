@@ -96,9 +96,7 @@ const fulfill = async (route: Route, init: HttpResponseInit) => {
   const status = init.status ?? 200;
   const body = toJsonBody(init.body);
   const headers = { ...JSON_HEADERS, ...init.headers };
-  if (!body) {
-    headers['Content-Length'] = '0';
-  }
+  // Let Playwright handle Content-Length automatically
   await route.fulfill({ status, headers, body });
 };
 
@@ -140,6 +138,13 @@ const parseClauses = (filter: string): string[] => {
 };
 
 const applyFilter = (items: Array<Record<string, unknown>>, filterRaw: string | null): Array<Record<string, unknown>> => {
+  // 現状サポートしている OData filter:
+  // - Field eq 'string'
+  // - Field eq number
+  // - datetime'...' with lt/le/gt/ge
+  // - substringof('needle', Field)
+  // - AND での結合のみ (OR, ne, startswith, endswith などは未対応)
+
   if (!filterRaw) return items;
   const clauses = parseClauses(filterRaw);
   if (clauses.length === 0) return items;
@@ -153,7 +158,7 @@ const applyFilter = (items: Array<Record<string, unknown>>, filterRaw: string | 
       const fieldName = field;
       const valueText = valueRaw.trim();
       if (op === 'eq') {
-  const stringMatch = valueText.match(/^'([\s\S]*)'$/);
+        const stringMatch = valueText.match(/^'([\s\S]*)'$/);
         if (stringMatch) {
           const expected = stringMatch[1]?.replace(/''/g, "'") ?? '';
           result = result.filter((item) => String(item[fieldName] ?? '').toLowerCase() === expected.toLowerCase());
@@ -233,9 +238,9 @@ export async function setupSharePointStubs(page: Page, options: SetupSharePointS
   const debug = options.debug ?? false;
 
   for (const config of options.lists ?? []) {
-  const baseItems = Array.isArray(config.items) ? config.items.map((item) => cloneRecord(item)) : [];
-  const nextId = Number.isFinite(config.nextId ?? Number.NaN) ? Number(config.nextId) : computeNextId(baseItems as Array<Record<string, unknown>>);
-  const state: ListState = { config, items: baseItems as Array<Record<string, unknown>>, nextId };
+    const baseItems = Array.isArray(config.items) ? config.items.map((item) => cloneRecord(item)) : [];
+    const nextId = Number.isFinite(config.nextId ?? Number.NaN) ? Number(config.nextId) : computeNextId(baseItems as Array<Record<string, unknown>>);
+    const state: ListState = { config, items: baseItems as Array<Record<string, unknown>>, nextId };
     nameMap.set(normalizeName(config.name), state);
     for (const alias of config.aliases ?? []) {
       nameMap.set(normalizeName(alias), state);

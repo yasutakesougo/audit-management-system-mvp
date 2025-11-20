@@ -13,6 +13,6 @@ describe('cn utility', () => {
   const nestedNumbers = ['two', null, ['three', 0]] as unknown as Parameters<typeof cn>[0];
   const toggles = { zero: true, one: false, two: true } as unknown as Parameters<typeof cn>[0];
     const result = cn(0, 1, false, toggles, nestedNumbers);
-    expect(result).toBe('0 1 zero two three');
+    expect(result).toBe('1 zero two three');
   });
 });

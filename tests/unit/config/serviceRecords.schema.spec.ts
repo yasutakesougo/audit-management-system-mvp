@@ -4,11 +4,28 @@ import {
   ABSENCE_MONTHLY_LIMIT,
   DISCREPANCY_THRESHOLD,
   FACILITY_CLOSE_TIME,
-  resetServiceRecords,
   getServiceRecordsConfig,
   getServiceThresholds,
+  resetServiceRecords,
 } from '@/config/serviceRecords';
 import { resetParsedEnvForTests } from '@/lib/env.schema';
+
+/**
+ * Service Records 設定の包括的なテスト
+ *
+ * テスト範囲:
+ * 1. 不変デフォルト定数の検証
+ * 2. 環境変数 → config 解決プロセス
+ * 3. threshold 計算とオーバーライド対応
+ * 4. キャッシュ管理と状態隔離
+ * 5. エラーハンドリング・バリデーション
+ *
+ * リセット戦略:
+ * - resetParsedEnvForTests: env.schema キャッシュリセット
+ * - resetServiceRecords: serviceRecords モジュールキャッシュリセット
+ * - clearTestEnv: テスト用グローバル変数クリア
+ * - beforeEach + afterEach 双方向で実行してテスト隔離を確保
+ */
 
 type TestEnv = Record<string, unknown>;
 
@@ -55,7 +72,12 @@ describe('config/serviceRecords', () => {
     expect(config.facilityCloseTime).toBe('6:45');
 
     const thresholds = getServiceThresholds();
-    expect(thresholds).toEqual({ discrepancyMinutes: 66, absenceMonthlyLimit: 5, facilityCloseTime: '6:45' });
+    expect(thresholds).toEqual({
+      discrepancyMinutes: 66,
+      absenceMonthlyLimit: 5,
+      facilityCloseTime: '6:45',
+      facilityCloseMinutes: 405, // 6:45 = 6*60 + 45 = 405分
+    });
   });
 
   it('supports per-call overrides without disturbing cached config', () => {
@@ -71,5 +93,50 @@ describe('config/serviceRecords', () => {
     expect(baseline.discrepancyThreshold).toBe(0.8);
     expect(override.discrepancyThreshold).toBe(1.9);
     expect(getServiceRecordsConfig()).toEqual(baseline);
+  });
+
+  it('supports overrides for thresholds with proper calculations', () => {
+    setTestEnv({
+      VITE_ATTENDANCE_DISCREPANCY_THRESHOLD: '0.5', // baseline: 30 minutes
+      VITE_FACILITY_CLOSE_TIME: '17:30', // baseline: 1050 minutes from 0:00
+    });
+
+    const baseline = getServiceThresholds();
+    const override = getServiceThresholds({
+      VITE_ATTENDANCE_DISCREPANCY_THRESHOLD: 2, // 120 minutes
+      VITE_FACILITY_CLOSE_TIME: '19:45', // 1185 minutes from 0:00
+    });
+
+    expect(baseline.discrepancyMinutes).toBe(30);
+    expect(baseline.facilityCloseMinutes).toBe(1050);
+
+    expect(override.discrepancyMinutes).toBe(120);
+    expect(override.facilityCloseMinutes).toBe(1185);
+
+    // キャッシュが汚染されていないことを確認
+    expect(getServiceThresholds()).toEqual(baseline);
+  });
+
+  it('validates env values and throws descriptive errors for invalid formats', () => {
+    setTestEnv({
+      VITE_FACILITY_CLOSE_TIME: 'invalid-time',
+    });
+
+    // env.schema の Zod バリデーションで不正値が早期検出される
+    expect(() => getServiceRecordsConfig()).toThrow();
+    expect(() => getServiceThresholds()).toThrow();
+  });
+
+  it('handles edge cases in time calculations', () => {
+    setTestEnv({
+      VITE_FACILITY_CLOSE_TIME: '0:00', // 深夜0時
+      VITE_ATTENDANCE_DISCREPANCY_THRESHOLD: '0.25', // 15分
+    });
+
+    const thresholds = getServiceThresholds();
+
+    expect(thresholds.facilityCloseMinutes).toBe(0);
+    expect(thresholds.discrepancyMinutes).toBe(15);
+    expect(thresholds.facilityCloseTime).toBe('0:00');
   });
 });

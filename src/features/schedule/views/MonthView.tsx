@@ -1,24 +1,25 @@
+import { HYDRATION_FEATURES, estimatePayloadSize, startFeatureSpan } from '@/hydration/features';
 import Alert from '@mui/material/Alert';
 import Badge from '@mui/material/Badge';
 import Box from '@mui/material/Box';
 import Button from '@mui/material/Button';
 import Card from '@mui/material/Card';
 import CardContent from '@mui/material/CardContent';
-import Chip from '@mui/material/Chip';
 import IconButton from '@mui/material/IconButton';
 import Paper from '@mui/material/Paper';
 import Skeleton from '@mui/material/Skeleton';
 import Stack from '@mui/material/Stack';
 import Typography from '@mui/material/Typography';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { alpha, useTheme } from '@mui/material/styles';
+import { useCallback, useEffect, useMemo, useState, type MouseEventHandler } from 'react';
 // Icons
 import CalendarMonthRoundedIcon from '@mui/icons-material/CalendarMonthRounded';
-import EventRoundedIcon from '@mui/icons-material/EventRounded';
 import NavigateBeforeRoundedIcon from '@mui/icons-material/NavigateBeforeRounded';
 import NavigateNextRoundedIcon from '@mui/icons-material/NavigateNextRounded';
 import TodayRoundedIcon from '@mui/icons-material/TodayRounded';
 
 import { getMonthlySchedule } from '@/features/schedule/spClient.schedule';
+import { getScheduleColorTokens, type ScheduleColorSource } from '@/features/schedule/serviceColors';
 import { getAppConfig } from '@/lib/env';
 import { useSP } from '@/lib/spClient';
 import { useSchedules } from '@/stores/useSchedules';
@@ -31,14 +32,34 @@ type RawSchedule = {
   start?: string | null;
   startUtc?: string | null;
   startLocal?: string | null;
+  end?: string | null;
+  endUtc?: string | null;
+  endLocal?: string | null;
   dayKey?: string | null;
+  serviceType?: string | null;
+  category?: string | null;
+  personType?: string | null;
+  personName?: string | null;
+  userName?: string | null;
+  notes?: string | null;
+  location?: string | null;
+  billingFlags?: string[] | null;
 };
 
-type MonthEntry = {
+type MonthEntry = ScheduleColorSource & {
   id: string;
   title: string;
   startIso: string;
+  endIso?: string | null;
   dayKey: string;
+  serviceType?: string | null;
+  category?: string | null;
+  personType?: string | null;
+  personName?: string | null;
+  userName?: string | null;
+  notes?: string | null;
+  location?: string | null;
+  billingFlags?: string[] | null;
 };
 
 type MonthViewState = {
@@ -63,6 +84,12 @@ const sanitizeIso = (value: string | null | undefined): string | null => {
   return new Date(timestamp).toISOString();
 };
 
+const cleanString = (value: unknown): string | null => {
+  if (typeof value !== 'string') return null;
+  const trimmed = value.trim();
+  return trimmed || null;
+};
+
 const normalizeDayKey = (value: string | null | undefined, fallbackIso: string | null): string | null => {
   if (typeof value === 'string' && value.trim()) {
     const digits = value.replace(/[^0-9]/g, '');
@@ -77,20 +104,32 @@ const normalizeDayKey = (value: string | null | undefined, fallbackIso: string |
 const toMonthEntries = (input: readonly RawSchedule[] | null | undefined): MonthEntry[] => {
   if (!input?.length) return [];
   return input
-    .map((item, index) => {
+    .map((item, index): MonthEntry | undefined => {
       const iso = sanitizeIso(item.start ?? item.startLocal ?? item.startUtc);
+      const endIso = sanitizeIso(item.end ?? item.endLocal ?? item.endUtc);
       const dayKey = normalizeDayKey(item.dayKey ?? null, iso);
       if (!iso || !dayKey) {
-        return null;
+        return undefined;
       }
       const id = item.id ?? `anon-${index}`;
-      const rawTitle = typeof item.title === 'string' ? item.title.trim() : '';
+      const rawTitle = cleanString(item.title) ?? '';
       return {
         id: String(id),
         title: rawTitle || '予定',
         startIso: iso,
+        endIso: endIso ?? undefined,
         dayKey,
-      } satisfies MonthEntry;
+        serviceType: cleanString(item.serviceType) ?? undefined,
+        category: cleanString(item.category) ?? undefined,
+        personType: cleanString(item.personType) ?? undefined,
+        personName: cleanString(item.personName) ?? cleanString(item.userName) ?? undefined,
+        userName: cleanString(item.userName) ?? undefined,
+        notes: cleanString(item.notes) ?? undefined,
+        location: cleanString(item.location) ?? undefined,
+        billingFlags: Array.isArray(item.billingFlags)
+          ? item.billingFlags.filter((flag): flag is string => typeof flag === 'string')
+          : undefined,
+      };
     })
     .filter((entry): entry is MonthEntry => Boolean(entry));
 };
@@ -111,6 +150,7 @@ const extractDemoEntries = (raw: unknown): MonthEntry[] => {
 };
 
 export default function MonthView({ onDateClick, onEventClick }: MonthViewProps = {}) {
+  const theme = useTheme();
   const sp = useSP();
   const { data: demoSchedules } = useSchedules();
   const fallbackEntries = useMemo(() => extractDemoEntries(demoSchedules ?? []), [demoSchedules]);
@@ -178,22 +218,38 @@ export default function MonthView({ onDateClick, onEventClick }: MonthViewProps 
   }, [referenceDate.getTime(), sp]); // loadへの依存を削除し、referenceDateのtimeを使用
 
   const calendarDays = useMemo(() => {
-    const monthStart = startOfMonth(referenceDate);
-    const monthEnd = endOfMonth(referenceDate);
-    const rangeStart = startOfWeek(monthStart, { locale: ja });
-    const rangeEnd = endOfWeek(monthEnd, { locale: ja });
-    const days = eachDayOfInterval({ start: rangeStart, end: rangeEnd });
-    const grouped = groupByDayKey(entries);
-
-    return days.map((date) => {
-      const key = format(date, 'yyyyMMdd');
-      return {
-        date,
-        key,
-        isCurrentMonth: isSameMonth(date, referenceDate),
-        entries: grouped[key] ?? [],
-      };
+    const span = startFeatureSpan(HYDRATION_FEATURES.schedules.recompute, {
+      view: 'month',
+      entryCount: entries.length,
+      bytes: estimatePayloadSize(entries),
     });
+    try {
+      const monthStart = startOfMonth(referenceDate);
+      const monthEnd = endOfMonth(referenceDate);
+      const rangeStart = startOfWeek(monthStart, { locale: ja });
+      const rangeEnd = endOfWeek(monthEnd, { locale: ja });
+      const days = eachDayOfInterval({ start: rangeStart, end: rangeEnd });
+      const grouped = groupByDayKey(entries);
+
+      const mapped = days.map((date) => {
+        const key = format(date, 'yyyyMMdd');
+        return {
+          date,
+          key,
+          isCurrentMonth: isSameMonth(date, referenceDate),
+          entries: grouped[key] ?? [],
+        };
+      });
+
+      span({ meta: { status: 'ok', dayCount: mapped.length, bytes: estimatePayloadSize(mapped) } });
+      return mapped;
+    } catch (error) {
+      span({
+        meta: { status: 'error' },
+        error: error instanceof Error ? error.message : String(error),
+      });
+      throw error;
+    }
   }, [entries, referenceDate]);
 
   const monthLabel = useMemo(() => format(referenceDate, 'yyyy年 M月', { locale: ja }), [referenceDate]);
@@ -306,30 +362,147 @@ export default function MonthView({ onDateClick, onEventClick }: MonthViewProps 
                     <Skeleton variant="rectangular" height={12} sx={{ mt: 1 }} />
                   ) : dayEntries.length > 0 ? (
                     <Stack spacing={0.5}>
-                      {dayEntries.slice(0, 3).map((item) => (
-                        <Chip
-                          key={`${item.id}-${item.startIso}`}
-                          label={item.title}
-                          size="small"
-                          icon={<EventRoundedIcon />}
-                          variant="filled"
-                          color="primary"
-                          onClick={(e) => {
-                            e.stopPropagation(); // 日付クリックを防止
-                            onEventClick?.(item);
-                          }}
-                          sx={{
-                            fontSize: '0.65rem',
-                            height: 20,
-                            cursor: onEventClick ? 'pointer' : 'default',
-                            '& .MuiChip-label': { px: 1 },
-                            '& .MuiChip-icon': { fontSize: '0.75rem' },
-                            '&:hover': {
-                              bgcolor: onEventClick ? 'primary.dark' : undefined
-                            }
-                          }}
-                        />
-                      ))}
+                      {dayEntries.slice(0, 3).map((item) => {
+                        const colorTokens = getScheduleColorTokens(theme, item);
+                        const hoverBg = alpha(
+                          colorTokens.accent,
+                          theme.palette.mode === 'dark' ? 0.28 : 0.14
+                        );
+
+                        const primaryLabel = item.personName ?? item.userName ?? item.title ?? '（名称未設定）';
+
+                        const serviceLabel = item.serviceType ?? item.category ?? '';
+
+                        const timeLabel = item.startIso
+                          ? new Date(item.startIso).toLocaleTimeString('ja-JP', {
+                              hour: '2-digit',
+                              minute: '2-digit',
+                            })
+                          : '';
+
+                        const handleClick: MouseEventHandler<HTMLButtonElement> = (event) => {
+                          event.stopPropagation();
+                          onEventClick?.(item);
+                        };
+
+                        return (
+                          <Box
+                            key={`${item.id}-${item.startIso}`}
+                            component="button"
+                            type="button"
+                            onClick={handleClick}
+                            sx={{
+                              width: '100%',
+                              textAlign: 'left',
+                              display: 'flex',
+                              alignItems: 'stretch',
+                              gap: 0.75,
+                              px: 0.75,
+                              py: 0.4,
+                              borderRadius: 1.5,
+                              border: '1px solid',
+                              borderColor: colorTokens.border,
+                              backgroundColor: colorTokens.bg,
+                              cursor: onEventClick ? 'pointer' : 'default',
+                              boxShadow: '0 1px 3px rgba(15,23,42,0.08)',
+                              transition: 'background-color 120ms ease, box-shadow 150ms ease, transform 120ms ease',
+                              '&:hover': onEventClick
+                                ? {
+                                    backgroundColor: hoverBg,
+                                    boxShadow: '0 3px 8px rgba(15,23,42,0.20)',
+                                  }
+                                : undefined,
+                              '&:focus-visible': {
+                                outline: `2px solid ${colorTokens.accent}`,
+                                outlineOffset: 2,
+                              },
+                            }}
+                          >
+                            <Box
+                              sx={{
+                                width: 3,
+                                alignSelf: 'stretch',
+                                borderRadius: 999,
+                                bgcolor: colorTokens.accent,
+                                mt: 0.25,
+                                mb: 0.25,
+                              }}
+                            />
+
+                            <Box
+                              sx={{
+                                flex: 1,
+                                minWidth: 0,
+                                display: 'flex',
+                                flexDirection: 'column',
+                                gap: 0.25,
+                              }}
+                            >
+                              <Box
+                                sx={{
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  gap: 0.5,
+                                  minWidth: 0,
+                                }}
+                              >
+                                {timeLabel && (
+                                  <Typography
+                                    variant="caption"
+                                    color="text.secondary"
+                                    sx={{
+                                      whiteSpace: 'nowrap',
+                                      overflow: 'hidden',
+                                      textOverflow: 'ellipsis',
+                                    }}
+                                  >
+                                    {timeLabel}
+                                  </Typography>
+                                )}
+
+                                {serviceLabel && (
+                                  <Box
+                                    component="span"
+                                    sx={{
+                                      display: 'inline-flex',
+                                      alignItems: 'center',
+                                      justifyContent: 'center',
+                                      px: 0.75,
+                                      py: 0.1,
+                                      borderRadius: 999,
+                                      fontSize: '0.7rem',
+                                      lineHeight: 1.4,
+                                      fontWeight: 600,
+                                      backgroundColor: colorTokens.pillBg,
+                                      color: colorTokens.pillText,
+                                      whiteSpace: 'nowrap',
+                                      overflow: 'hidden',
+                                      textOverflow: 'ellipsis',
+                                      maxWidth: '100%',
+                                    }}
+                                  >
+                                    {serviceLabel}
+                                  </Box>
+                                )}
+                              </Box>
+
+                              <Typography
+                                variant="body2"
+                                sx={{
+                                  fontSize: '0.8rem',
+                                  fontWeight: 600,
+                                  whiteSpace: 'nowrap',
+                                  overflow: 'hidden',
+                                  textOverflow: 'ellipsis',
+                                }}
+                              >
+                                {primaryLabel}
+                              </Typography>
+                            </Box>
+                          </Box>
+                        );
+                      })}
+
                       {dayEntries.length > 3 && (
                         <Badge badgeContent={dayEntries.length - 3} color="secondary">
                           <Typography variant="caption" color="text.secondary">

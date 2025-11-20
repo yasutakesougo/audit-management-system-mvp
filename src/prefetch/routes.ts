@@ -1,9 +1,11 @@
-import { scheduleIdle } from './util';
-import { prefetch, type PrefetchRequest } from './prefetch';
+import { prefetch, type PrefetchHandle, type PrefetchRequest } from './prefetch';
 import type { PrefetchSource } from './tracker';
+import { scheduleIdle } from './util';
 
 export const PREFETCH_KEYS = {
   dashboard: 'route:dashboard',
+  handoffTimeline: 'route:handoff-timeline',
+  meetingGuide: 'route:meeting-guide',
   records: 'route:records',
   checklist: 'route:checklist',
   audit: 'route:audit',
@@ -18,7 +20,7 @@ export const PREFETCH_KEYS = {
   adminSteps: 'route:admin:step-templates',
   adminIndividual: 'route:admin:individual-support',
   supportProcedures: 'route:support-procedures',
-  supportPlanGuideMarkdown: 'route:support-plan-guide:md',
+  supportPlanGuideMarkdown: 'feature:support-plan-guide:markdown',
   muiForms: 'mui:forms',
   muiOverlay: 'mui:overlay',
   muiFeedback: 'mui:feedback',
@@ -33,6 +35,8 @@ type NeighborMap = Partial<Record<PrefetchKey, PrefetchKey[]>>;
 
 export const ROUTE_IMPORTERS: PrefetchRegistry = {
   [PREFETCH_KEYS.dashboard]: () => import('@/pages/DashboardPage'),
+  [PREFETCH_KEYS.handoffTimeline]: () => import('@/pages/HandoffTimelinePage'),
+  [PREFETCH_KEYS.meetingGuide]: () => import('@/pages/MeetingGuidePage'),
   [PREFETCH_KEYS.records]: () => import('@/features/records/RecordList'),
   [PREFETCH_KEYS.checklist]: () => import('@/features/compliance-checklist/ChecklistPage'),
   [PREFETCH_KEYS.audit]: () => import('@/features/audit/AuditPanel'),
@@ -54,13 +58,20 @@ export const ROUTE_IMPORTERS: PrefetchRegistry = {
   [PREFETCH_KEYS.muiData]: () => import('@/mui/data.entry').then((mod) => mod.warm?.()),
 };
 
-const registry: PrefetchRegistry = ROUTE_IMPORTERS;
+// 初期値は ROUTE_IMPORTERS だが、registerPrefetch から動的に追加・上書きされうる可変レジストリ
+const registry: PrefetchRegistry = { ...ROUTE_IMPORTERS };
 
+// 同様に、neighbors も後から registerNeighbors で拡張する前提の可変マップ
 const neighbors: NeighborMap = {
   [PREFETCH_KEYS.schedulesWeek]: [PREFETCH_KEYS.schedulesDay, PREFETCH_KEYS.schedulesList],
   [PREFETCH_KEYS.schedulesDay]: [PREFETCH_KEYS.schedulesWeek, PREFETCH_KEYS.schedulesList],
   [PREFETCH_KEYS.schedulesList]: [PREFETCH_KEYS.schedulesWeek],
-  [PREFETCH_KEYS.dashboard]: [PREFETCH_KEYS.records, PREFETCH_KEYS.audit],
+  [PREFETCH_KEYS.dashboard]: [
+    PREFETCH_KEYS.records,
+    PREFETCH_KEYS.audit,
+    PREFETCH_KEYS.supportProcedures,
+    PREFETCH_KEYS.supportPlanGuideMarkdown,
+  ],
 };
 
 export type WarmRouteOptions = {
@@ -70,13 +81,31 @@ export type WarmRouteOptions = {
   signal?: AbortSignal;
 };
 
+/**
+ * Initiates a prefetch operation with a direct importer function.
+ * @param importer The function to import the module
+ * @param key The prefetch key for tracking
+ * @param options Additional prefetch options
+ * @returns A handle to monitor and control the prefetch operation
+ */
 export const warmRoute = (
   importer: () => Promise<unknown>,
   key: PrefetchKey,
   options: WarmRouteOptions,
-) => prefetch({ key, importer, ...options });
+): PrefetchHandle => prefetch({ key, importer, ...options });
 
-export const prefetchByKey = (key: PrefetchKey, source: PrefetchSource, options?: Partial<PrefetchRequest>) => {
+/**
+ * Initiates a prefetch operation by looking up the importer from the registry.
+ * @param key The prefetch key to look up
+ * @param source The source triggering the prefetch
+ * @param options Additional prefetch options
+ * @returns A prefetch handle, or null if the key is not registered
+ */
+export const prefetchByKey = (
+  key: PrefetchKey,
+  source: PrefetchSource,
+  options?: Partial<PrefetchRequest>,
+): PrefetchHandle | null => {
   const importer = registry[key];
   if (!importer) {
     return null;
@@ -84,6 +113,11 @@ export const prefetchByKey = (key: PrefetchKey, source: PrefetchSource, options?
   return prefetch({ key, importer, source, ...options });
 };
 
+/**
+ * Prefetches neighboring routes after an idle delay.
+ * @param key The current route key to find neighbors for
+ * @note Neighbors are prefetched with 'idle' source after a 500ms timeout
+ */
 export const warmNeighbors = (key: PrefetchKey): void => {
   const list = neighbors[key];
   if (!list || list.length === 0) {
@@ -96,10 +130,20 @@ export const warmNeighbors = (key: PrefetchKey): void => {
   }, { timeout: 500 });
 };
 
+/**
+ * Dynamically registers a new prefetch importer.
+ * @param key The prefetch key to register
+ * @param loader The importer function for this key
+ */
 export const registerPrefetch = (key: PrefetchKey, loader: () => Promise<unknown>): void => {
   registry[key] = loader;
 };
 
+/**
+ * Dynamically registers neighbor relationships for a route.
+ * @param key The route key
+ * @param next Array of neighboring route keys to prefetch
+ */
 export const registerNeighbors = (key: PrefetchKey, next: PrefetchKey[]): void => {
   neighbors[key] = next;
 };

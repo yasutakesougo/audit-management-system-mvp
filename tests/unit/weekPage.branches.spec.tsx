@@ -1,4 +1,5 @@
 import type { ScheduleForm } from '@/features/schedule/types';
+import type { CreateScheduleEventInput, ScheduleFormState } from '@/features/schedules/ScheduleCreateDialog';
 import type { Schedule } from '@/lib/mappers';
 import { act, cleanup, fireEvent, render, screen } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
@@ -28,6 +29,14 @@ type ScheduleDialogStubProps = {
 
 let lastWeekViewProps: WeekViewStubProps | undefined;
 let lastDialogProps: ScheduleDialogStubProps | undefined;
+type QuickDialogProps = {
+  open: boolean;
+  mode: 'create' | 'edit';
+  onSubmit: (input: CreateScheduleEventInput) => Promise<void> | void;
+  onClose: () => void;
+  initialOverride?: Partial<ScheduleFormState> | null;
+};
+let lastQuickDialogProps: QuickDialogProps | undefined;
 
 const ensureWeekViewProps = (): WeekViewStubProps => {
   if (!lastWeekViewProps) {
@@ -43,7 +52,22 @@ const ensureDialogProps = (): ScheduleDialogStubProps => {
   return lastDialogProps;
 };
 
+const ensureQuickDialogProps = (): QuickDialogProps => {
+  if (!lastQuickDialogProps) {
+    throw new Error('Quick dialog props not captured');
+  }
+  return lastQuickDialogProps;
+};
+
 vi.mock('@/stores/useSchedules', () => ({ useSchedules: mockUseSchedules }));
+vi.mock('@/features/users/store', () => ({
+  useUsersStore: () => ({
+    data: [
+      { UserID: 'U001', FullName: '利用者A', Id: 1 },
+      { UserID: 'U002', FullName: '利用者B', Id: 2 },
+    ],
+  }),
+}));
 vi.mock('@/features/schedule/adapter', () => ({
   createSchedule: (values: ScheduleForm) => mockCreateSchedule(values),
   updateSchedule: (id: number, values: ScheduleForm) => mockUpdateSchedule(id, values),
@@ -76,6 +100,16 @@ vi.mock('@/features/schedule/ScheduleDialog', () => ({
     return props.open ? (
       <div data-testid="schedule-dialog" data-initial-id={props.initial?.id ?? 'new'}>
         {props.initial?.title ?? '新規'}
+      </div>
+    ) : null;
+  },
+}));
+vi.mock('@/features/schedules/ScheduleCreateDialog', () => ({
+  ScheduleCreateDialog: (props: QuickDialogProps) => {
+    lastQuickDialogProps = props;
+    return props.open ? (
+      <div data-testid="schedule-create-dialog" data-mode={props.mode}>
+        quick dialog
       </div>
     ) : null;
   },
@@ -134,6 +168,7 @@ describe('WeekPage branches', () => {
     mockUpdateSchedule.mockResolvedValue(undefined);
     lastWeekViewProps = undefined;
     lastDialogProps = undefined;
+    lastQuickDialogProps = undefined;
     mockUseSchedules.mockReset();
     mockCreateSchedule.mockClear();
     mockUpdateSchedule.mockClear();
@@ -173,20 +208,28 @@ describe('WeekPage branches', () => {
       ensureWeekViewProps().onSelectSlot(new Date('2025-03-06T00:00:00Z'), new Date('2025-03-06T01:00:00Z'));
     });
 
-    const dialog = ensureDialogProps();
-    expect(dialog.open).toBe(true);
-    expect(dialog.initial?.id).toBeUndefined();
+    const quickDialog = ensureQuickDialogProps();
+    expect(quickDialog.open).toBe(true);
+    expect(quickDialog.mode).toBe('create');
+    expect(quickDialog.initialOverride).toBeTruthy();
 
-    expect(dialog.initial).toBeDefined();
     await act(async () => {
-      await ensureDialogProps().onSubmit(dialog.initial!);
+      await quickDialog.onSubmit({
+        userId: 'U001',
+        startLocal: '2025-03-06T09:00',
+        endLocal: '2025-03-06T10:00',
+        serviceType: 'normal',
+        notes: '',
+        locationName: '',
+      });
     });
     expect(mockCreateSchedule).toHaveBeenCalledTimes(1);
     expect(reload).toHaveBeenCalledTimes(1);
 
     await act(async () => {
-      ensureDialogProps().onClose();
+      quickDialog.onClose();
     });
+    expect(ensureQuickDialogProps().open).toBe(false);
     expect(ensureDialogProps().open).toBe(false);
 
   });

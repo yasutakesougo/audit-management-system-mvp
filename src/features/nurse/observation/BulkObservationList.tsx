@@ -7,7 +7,7 @@ import { useLastSync } from '@/features/nurse/state/useLastSync';
 import { flushNurseQueue, type FlushSummary } from '@/features/nurse/state/useNurseSync';
 import { formatFlushSummaryToast } from '@/features/nurse/toast/formatFlushSummaryToast';
 import { NURSE_USERS, type NurseWeightGroup } from '@/features/nurse/users';
-import { TESTIDS } from '@/testids';
+import { TESTIDS, tidWithSuffix } from '@/testids';
 import CheckCircleRoundedIcon from '@mui/icons-material/CheckCircleRounded';
 import ErrorRoundedIcon from '@mui/icons-material/ErrorRounded';
 import PendingRoundedIcon from '@mui/icons-material/PendingRounded';
@@ -445,7 +445,7 @@ export default function BulkObservationList(
                   <TableRow
                     key={rowId}
                     role="row"
-                    data-testid={`${TESTIDS.NURSE_BULK_ROW_PREFIX}-${rowId}`}
+                    {...tidWithSuffix(TESTIDS.NURSE_BULK_ROW_PREFIX, `-${rowId}`)}
                     data-status={row.status}
                     onKeyDown={(event) => handleKey(rowIndex, event)}
                   >
@@ -495,7 +495,7 @@ export default function BulkObservationList(
                         onChange={(event) => updateRow(rowIndex, { memo: event.target.value })}
                         inputProps={{
                           'aria-label': `${rowId} メモ`,
-                          'data-testid': `${TESTIDS.NURSE_BULK_FIELD_PREFIX}-memo-${rowId}`,
+                          ...tidWithSuffix(TESTIDS.NURSE_BULK_FIELD_PREFIX, `-memo-${rowId}`),
                         }}
                         fullWidth
                       />
@@ -504,7 +504,7 @@ export default function BulkObservationList(
                     <TableCell role="gridcell" align="right">
                       <IconButton
                         aria-label={`${rowId} を保存`}
-                        data-testid={`${TESTIDS.NURSE_BULK_SAVE_PREFIX}-${rowId}`}
+                        {...tidWithSuffix(TESTIDS.NURSE_BULK_SAVE_PREFIX, `-${rowId}`)}
                         onClick={async () => {
                           const success = await saveRow(rowIndex);
                           if (success) {
@@ -522,7 +522,7 @@ export default function BulkObservationList(
 
                     <TableCell
                       role="gridcell"
-                      data-testid={`${TESTIDS.NURSE_BULK_STATUS_PREFIX}-${rowId}`}
+                      {...tidWithSuffix(TESTIDS.NURSE_BULK_STATUS_PREFIX, `-${rowId}`)}
                       aria-label={statusLabel}
                       data-status={row.status}
                       sx={{ minWidth: 56 }}

@@ -46,13 +46,18 @@ const buildSchedule = (overrides: Partial<Schedule> = {}): Schedule => ({
   statusLabel: overrides.statusLabel,
 });
 
-const formatSlotLabel = (day: Date, hour: number): string => {
+const formatSlotLabel = (day: Date, hour: number, minute = 0): string => {
   const start = new Date(day);
-  start.setHours(hour, 0, 0, 0);
-  const end = new Date(start);
-  end.setHours(start.getHours() + 1);
+  start.setHours(hour, minute, 0, 0);
+  const end = new Date(start.getTime() + 30 * 60 * 1000);
   const format = new Intl.DateTimeFormat('ja-JP', { hour: '2-digit', minute: '2-digit', hour12: false });
   return `${start.getMonth() + 1}月${start.getDate()}日 ${format.format(start)} から ${format.format(end)} の枠`;
+};
+
+const getNumericStyle = (element: HTMLElement, property: 'top' | 'height') => {
+  const computed = window.getComputedStyle(element);
+  const raw = computed[property];
+  return Number.parseFloat(raw ?? 'NaN');
 };
 
 describe('WeekView branches', () => {
@@ -64,10 +69,10 @@ describe('WeekView branches', () => {
     const anchor = new Date('2025-03-06T12:00:00Z');
     const range = getWeekRange(anchor);
     expect(range.start.getDay()).toBe(1);
-    expect(range.start.getHours()).toBe(0);
+    expect(range.start.getUTCHours()).toBe(0);
     expect(range.end.getDay()).toBe(0);
-    expect(range.end.getHours()).toBe(23);
-    expect(range.end.getMinutes()).toBe(59);
+    expect(range.end.getUTCHours()).toBe(23);
+    expect(range.end.getUTCMinutes()).toBe(59);
   });
 
   it('renders schedule positions, forwards selections, and clamps overflows', () => {
@@ -88,6 +93,10 @@ describe('WeekView branches', () => {
         startLocal: '2025-03-03T09:30:00+09:00',
         endLocal: '2025-03-03T11:00:00+09:00',
         notes: '持参資料',
+        personName: '山田太郎',
+        serviceType: '日中活動',
+        location: '第1作業室',
+        assignedStaffNames: ['佐藤 花子'],
       }),
       buildSchedule({
         id: 2,
@@ -131,30 +140,35 @@ describe('WeekView branches', () => {
       />
     );
 
-    const slotLabel = formatSlotLabel(monday, 9);
+    const slotLabel = formatSlotLabel(monday, 9, 0);
     fireEvent.click(screen.getByLabelText(slotLabel));
     expect(onSelectSlot).toHaveBeenCalledTimes(1);
     const [slotStart, slotEnd] = onSelectSlot.mock.calls[0]!;
     expect(slotStart).toBeInstanceOf(Date);
     expect(slotEnd).toBeInstanceOf(Date);
-    expect(slotEnd.getHours() - slotStart.getHours()).toBe(1);
+    const durationMinutes = (slotEnd.getTime() - slotStart.getTime()) / (60 * 1000);
+    expect(durationMinutes).toBe(30);
 
     const eventButtons = screen.getAllByTestId('schedule-item');
     expect(eventButtons).toHaveLength(4);
+    expect(eventButtons[0]).toHaveTextContent('山田太郎');
+    expect(eventButtons[0]).toHaveTextContent('日中活動');
+    expect(eventButtons[0]).toHaveTextContent('第1作業室');
+    expect(eventButtons[0]).toHaveTextContent('佐藤 花子');
 
-    fireEvent.click(screen.getByRole('button', { name: /朝訪問/ }));
+    fireEvent.click(screen.getByRole('button', { name: /山田太郎/ }));
     expect(onSelectEvent).toHaveBeenCalledWith(expect.objectContaining({ id: 1 }));
 
     const allDayButton = screen.getByRole('button', { name: /終日ケア/ });
-    expect(allDayButton.style.top).toBe('6px');
-    expect(Number.parseFloat(allDayButton.style.height)).toBeGreaterThan(100);
+    expect(getNumericStyle(allDayButton, 'top')).toBeCloseTo(6, 1);
+    expect(getNumericStyle(allDayButton, 'height')).toBeGreaterThan(100);
 
     const spanningButton = screen.getByRole('button', { name: /夜間帯/ });
-    expect(spanningButton.style.top).toBe('0px');
-    expect(Number.parseFloat(spanningButton.style.height)).toBeGreaterThan(300);
+    expect(getNumericStyle(spanningButton, 'top')).toBeCloseTo(0, 1);
+    expect(getNumericStyle(spanningButton, 'height')).toBeGreaterThan(300);
 
     const fallbackButton = screen.getByRole('button', { name: /バックアップ/ });
-    expect(fallbackButton.className).toMatch(/bg-sky-100/);
+    expect(fallbackButton.className).toMatch(/bg-indigo-100/);
 
     expect(screen.queryByText('破棄')).not.toBeInTheDocument();
   });
@@ -207,9 +221,9 @@ describe('WeekView branches', () => {
     expect(rendered).toHaveLength(2);
 
     const [tuesdayEvent, wednesdayEvent] = rendered;
-    const tuesdayTop = Number.parseFloat(tuesdayEvent.style.top);
-    const tuesdayHeight = Number.parseFloat(tuesdayEvent.style.height);
-    const wednesdayTop = Number.parseFloat(wednesdayEvent.style.top);
+    const tuesdayTop = getNumericStyle(tuesdayEvent, 'top');
+    const tuesdayHeight = getNumericStyle(tuesdayEvent, 'height');
+    const wednesdayTop = getNumericStyle(wednesdayEvent, 'top');
 
     expect(tuesdayTop).toBeGreaterThanOrEqual(660); // near the bottom of the column (20:00 clamp)
     expect(tuesdayHeight).toBeGreaterThan(20);

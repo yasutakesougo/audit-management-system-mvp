@@ -5,7 +5,11 @@ export function buildBatchInsertBody(listTitle: string, items: AuditInsertItemDT
   const boundary = 'batch_' + safeRandomUUID();
   const changesetBoundary = 'changeset_' + safeRandomUUID();
   // Attempt to derive /sites/... relative path if not provided
-  const apiRel = apiRelativeSite || `/sites${location.pathname.split('/_layouts')[0].split('/sites')[1] || ''}`;
+  // Add safe guard for non-browser environments (Node.js tests, SSR, etc.)
+  const apiRel = apiRelativeSite ||
+    (typeof location !== 'undefined'
+      ? `/sites${location.pathname.split('/_layouts')[0].split('/sites')[1] || ''}`
+      : '/sites');
 
   const idMap: number[] = [];
   const changesetParts = items.map((it, idx) => {
@@ -81,9 +85,16 @@ function parseBatchFallbackRaw(raw: string): __FallbackItem[] {
     i = j - 1;
   }
   if (typeof window !== 'undefined') {
-    const w: any = window as any;
-    w.__AUDIT_BATCH_METRICS__ = w.__AUDIT_BATCH_METRICS__ || {};
-    w.__AUDIT_BATCH_METRICS__.parserFallbackCount = (w.__AUDIT_BATCH_METRICS__.parserFallbackCount || 0) + 1;
+    // Use proper typing instead of any cast
+    if (!window.__AUDIT_BATCH_METRICS__) {
+      window.__AUDIT_BATCH_METRICS__ = {
+        total: 0, success: 0, duplicates: 0, newItems: 0, failed: 0,
+        retryMax: 0, categories: {}, durationMs: 0, timestamp: '',
+        parserFallbackCount: 0
+      };
+    }
+    window.__AUDIT_BATCH_METRICS__.parserFallbackCount =
+      (window.__AUDIT_BATCH_METRICS__.parserFallbackCount || 0) + 1;
   }
   return items;
 }
@@ -98,7 +109,7 @@ export async function parseBatchInsertResponse(response: Response): Promise<Pars
   // Try to capture the batch boundary from the first line
   const firstBoundaryMatch = raw.match(/^(--batch[_-][A-Za-z0-9-]+)/m);
   if (!firstBoundaryMatch) {
-    // Fallback: treat as whole success if 200 OK with no parsing
+    // No batch boundary found -> treat as "no batch operation performed"
     return { total: 0, success: 0, failed: 0, errors: [] };
   }
 
@@ -112,7 +123,8 @@ export async function parseBatchInsertResponse(response: Response): Promise<Pars
   let total = 0;
 
   for (const part of parts) {
-    const statusLine = part.match(/HTTP\/1.1\s+(\d{3})\s+([A-Za-z ]+)/);
+    // More permissive regex to handle localized or non-standard reason phrases
+    const statusLine = part.match(/HTTP\/1\.1\s+(\d{3})\s+([^\r\n]+)/);
     if (!statusLine) continue;
     const status = parseInt(statusLine[1], 10);
     const statusText = statusLine[2].trim();
@@ -126,11 +138,11 @@ export async function parseBatchInsertResponse(response: Response): Promise<Pars
       success++;
       duplicates++;
     } else {
-      // body snippet after blank line
-      const bodyStart = part.indexOf('\n\n');
+      // Extract error body snippet after blank line (handle both CRLF and LF)
+      const bodyMatch = part.match(/\r?\n\r?\n([\s\S]*)$/);
       let snippet: string | undefined;
-      if (bodyStart >= 0) {
-        snippet = part.slice(bodyStart + 2, bodyStart + 400).trim();
+      if (bodyMatch) {
+        snippet = bodyMatch[1].slice(0, 400).trim();
       }
       errors.push({ contentId, status, statusText, bodySnippet: snippet });
       // categorize

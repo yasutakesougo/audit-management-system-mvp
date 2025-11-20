@@ -1,10 +1,10 @@
 import HomeRoundedIcon from '@mui/icons-material/HomeRounded';
 import PeopleAltRoundedIcon from '@mui/icons-material/PeopleAltRounded';
 import RouteRoundedIcon from '@mui/icons-material/RouteRounded';
+import Box from '@mui/material/Box';
 import Breadcrumbs from '@mui/material/Breadcrumbs';
 import Link from '@mui/material/Link';
 import Typography from '@mui/material/Typography';
-import Box from '@mui/material/Box';
 import type { FC, ReactNode } from 'react';
 import { Link as RouterLink } from 'react-router-dom';
 

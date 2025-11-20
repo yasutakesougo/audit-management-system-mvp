@@ -1,3 +1,20 @@
+/**
+ * SharePoint Daily Records Mapping Layer
+ *
+ * This module provides a clean boundary between SharePoint list items and domain objects.
+ *
+ * Key responsibilities:
+ * 1. Field name standardization (DAILY_FIELD_* constants)
+ * 2. SP → Domain conversion (fromSpItem) with robust error handling
+ * 3. Domain → SP conversion (toSpFields) with JSON serialization safety
+ *
+ * Error handling strategy:
+ * - Status normalization: English/Japanese synonyms → Zod validation → fallback to '未作成'
+ * - JSON serialization: Size limits + custom error types for troubleshooting
+ * - Person/Reporter resolution: Multiple fallback chains to prevent "unknown" records
+ * - Type coercion: Safe parsing with sensible defaults throughout
+ */
+
 import type { SpDailyItem } from '../../types';
 import { AnyDailyZ, AxisDaily, AxisDailyZ, DailyADataZ, DailyBDataZ, DailyFilter, DailyStatusZ, DraftMetaZ, PersonDaily, PersonDailyZ, type AnyDaily } from './types';
 
@@ -34,10 +51,23 @@ export type { SpDailyItem };
 const MAX_JSON_FIELD_LENGTH = 60_000;
 
 const STATUS_SYNONYMS: Record<string, PersonDaily['status']> = {
+  // English variants
   draft: '作成中',
-  下書き: '作成中',
   pending: '作成中',
+  inprogress: '作成中',
+  'in-progress': '作成中',
   submitted: '完了',
+  completed: '完了',
+  finished: '完了',
+  done: '完了',
+
+  // Japanese variants
+  下書き: '作成中',
+  作業中: '作成中',
+  進行中: '作成中',
+  提出済み: '完了',
+  完成: '完了',
+  終了: '完了',
 };
 
 const cloneObject = <T>(value: unknown): T => {
@@ -57,6 +87,14 @@ class DailySerializationError extends Error {
   }
 }
 
+/**
+ * Safely stringify values for SharePoint JSON fields with size limits.
+ *
+ * @param field - Field name for error context
+ * @param value - Value to serialize
+ * @returns JSON string within safe length limits
+ * @throws {DailySerializationError} With detailed context for troubleshooting
+ */
 const safeStringify = (field: string, value: unknown): string => {
   let serialized: string;
   try {
@@ -73,7 +111,7 @@ const safeStringify = (field: string, value: unknown): string => {
   return serialized;
 };
 
-const asIsoString = (value: unknown) => {
+const asIsoString = (value: unknown): string | undefined => {
   if (value instanceof Date) return value.toISOString();
   return typeof value === 'string' && value.trim().length ? value : undefined;
 };
@@ -97,12 +135,27 @@ const parseJson = <T>(value: unknown, fallback: T): T => {
   return fallback;
 };
 
+/**
+ * Normalize status values with comprehensive fallback strategy.
+ *
+ * Handles:
+ * - English synonyms (draft, pending, submitted)
+ * - Japanese variants (下書き, etc.)
+ * - Case-insensitive matching
+ * - Zod schema validation as final gate
+ *
+ * @param status - Raw status value from SharePoint
+ * @returns Normalized status or '未作成' fallback
+ */
 const coerceStatus = (status: unknown): PersonDaily['status'] => {
   if (typeof status !== 'string') return '未作成';
   const trimmed = status.trim();
   if (!trimmed.length) return '未作成';
-  const synonym = STATUS_SYNONYMS[trimmed.toLowerCase()];
+
+  // Try both original and lowercase versions for synonym lookup
+  const synonym = STATUS_SYNONYMS[trimmed] ?? STATUS_SYNONYMS[trimmed.toLowerCase()];
   if (synonym) return synonym;
+
   const parsed = DailyStatusZ.safeParse(trimmed);
   return parsed.success ? parsed.data : '未作成';
 };
@@ -142,13 +195,28 @@ const parseDataB = (value: unknown) => {
   return parsed.success ? parsed.data : DailyBDataZ.parse({});
 };
 
+/**
+ * Convert SharePoint daily item to domain object with robust error handling.
+ *
+ * Conversion flow:
+ * 1. Determine kind (A/B) from stored value or fallback to argKind
+ * 2. Extract and coerce all base fields with fallbacks
+ * 3. Parse kind-specific data payload
+ * 4. Final Zod validation for type safety
+ *
+ * @param item - Raw SharePoint list item
+ * @param argKind - Fallback kind when not specified in item
+ * @returns Typed domain object (PersonDaily | AxisDaily)
+ */
 export const fromSpItem = (item: SpDailyItem, argKind: 'A' | 'B'): AnyDaily => {
   const storedKind = typeof item[DAILY_FIELD_KIND] === 'string' ? item[DAILY_FIELD_KIND] : undefined;
   const kind: 'A' | 'B' = storedKind === 'A' || storedKind === 'B' ? storedKind : argKind;
 
+  const person = coercePerson(item);
+
   const base = {
     id: typeof item.Id === 'number' ? item.Id : Number(item.Id ?? 0) || 0,
-    personId: coercePerson(item).id,
+    personId: person.id,
     personName: coercePersonName(item),
     date: typeof item[DAILY_FIELD_DATE] === 'string' ? item[DAILY_FIELD_DATE] : '',
     status: coerceStatus(item[DAILY_FIELD_STATUS]),
@@ -175,6 +243,18 @@ export const fromSpItem = (item: SpDailyItem, argKind: 'A' | 'B'): AnyDaily => {
   return candidate;
 };
 
+/**
+ * Convert domain object to SharePoint field mappings.
+ *
+ * Ensures:
+ * - Input validation through AnyDailyZ parsing
+ * - Safe JSON serialization of complex fields
+ * - Proper null handling for optional reporter ID
+ * - Title field population from personName
+ *
+ * @param daily - Validated domain object
+ * @returns SharePoint field mapping ready for SP operations
+ */
 export const toSpFields = (daily: AnyDaily): Record<string, unknown> => {
   const parsed = AnyDailyZ.parse(daily);
   const reporterId = 'reporter' in parsed && parsed.reporter && 'id' in parsed.reporter ? parsed.reporter.id : undefined;

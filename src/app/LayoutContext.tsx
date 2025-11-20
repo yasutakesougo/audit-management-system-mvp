@@ -4,11 +4,17 @@ export type DisplayMode = 'sceneA' | 'hybrid' | 'sceneB';
 export type LayoutDensity = 'spacious' | 'standard' | 'compact';
 
 type LayoutState = {
+	/** 画面幅に基づく表示モード（sceneA: ≤768px, hybrid: 768-1200px, sceneB: ≥1200px） */
 	displayMode: DisplayMode;
+	/** UI密度（sceneA→spacious, hybrid→standard, sceneB→compact, またはforceDensityで上書き） */
 	density: LayoutDensity;
+	/** ビューポート幅 */
 	width: number;
+	/** ビューポート高さ */
 	height: number;
+	/** 縦向きかどうか（height >= width） */
 	isPortrait: boolean;
+	/** 横向きかどうか（width > height） */
 	isLandscape: boolean;
 };
 
@@ -123,7 +129,7 @@ export const LayoutProvider: React.FC<LayoutProviderProps> = ({ children, forceD
 			vv?.removeEventListener('resize', onResize);
 			vv?.removeEventListener('scroll', onResize);
 		};
-	}, [bp.sceneA, bp.sceneB, forceDensity]);
+	}, [bp, forceDensity]);
 
 	return <LayoutContext.Provider value={state}>{children}</LayoutContext.Provider>;
 };
@@ -136,8 +142,28 @@ export function useDisplayMode() {
 	return useLayout().displayMode;
 }
 
+export function useDisplayFlags() {
+	const displayMode = useDisplayMode();
+	return {
+		displayMode,
+		isSceneA: displayMode === 'sceneA',
+		isSceneB: displayMode === 'sceneB',
+		isHybrid: displayMode === 'hybrid',
+	};
+}
+
 export function useDensity() {
 	return useLayout().density;
+}
+
+export function useDensityFlags() {
+	const density = useDensity();
+	return {
+		density,
+		isSpacious: density === 'spacious',
+		isStandard: density === 'standard',
+		isCompact: density === 'compact',
+	};
 }
 
 export function useViewport() {
@@ -148,6 +174,22 @@ export function useViewport() {
 export function useOrientation() {
 	const { isPortrait, isLandscape } = useLayout();
 	return { isPortrait, isLandscape };
+}
+
+/**
+ * 現在の幅がブレークポイント基準でどの範囲にあるかを判定
+ */
+export function useBreakpointFlags() {
+	const { width } = useLayout();
+	return {
+		width,
+		isXs: width <= layoutBreakpoints.sceneA,
+		isSm: width > layoutBreakpoints.sceneA && width < layoutBreakpoints.sceneB,
+		isLg: width >= layoutBreakpoints.sceneB,
+		isMobileSize: width <= layoutBreakpoints.sceneA,
+		isTabletSize: width > layoutBreakpoints.sceneA && width < layoutBreakpoints.sceneB,
+		isDesktopSize: width >= layoutBreakpoints.sceneB,
+	};
 }
 
 export const layoutBreakpoints = Object.freeze({ sceneA: defaultBreakpoints.sceneA, sceneB: defaultBreakpoints.sceneB });

@@ -13,7 +13,7 @@ test.describe('Dashboard smoke', () => {
 
   test('quick action navigates to daily activity records', async ({ page }) => {
     const quickAction = page
-      .getByRole('link', { name: /活動日誌入力/ })
+      .getByRole('link', { name: /支援記録（ケース記録）入力/ })
       .or(page.locator('a[href="/daily/activity"]'))
       .or(page.locator('a[href="/daily/activity/"]'));
 

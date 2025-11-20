@@ -7,7 +7,20 @@ export const DEFAULT_TZ_CANDIDATES: readonly string[] = ['America/New_York', 'As
 const ALIASES: Record<string, string> = {
   jst: 'Asia/Tokyo',
   jp: 'Asia/Tokyo',
+  japan: 'Asia/Tokyo',
   utc: 'UTC',
+  est: 'America/New_York',
+  pst: 'America/Los_Angeles',
+  gmt: 'UTC',
+};
+
+/**
+ * ICU の canonical timezone ID へのマッピング
+ * 将来的に Intl が返す canonical ID との差異を吸収するために使用
+ */
+const _CANONICAL_MAPPINGS: Record<string, string> = {
+  // 将来拡張: 'Europe/Belfast' -> 'Europe/London' など
+  // 現在は必要最小限のみ定義
 };
 
 const hasIntlSupport = (): boolean => typeof Intl !== 'undefined' && typeof Intl.DateTimeFormat === 'function';
@@ -89,7 +102,10 @@ export function assertValidTz(
 
   const primary = normalizeTz(tz);
   const fallback = normalizeTz(options.fallback) ?? DEFAULT_TZ;
-  const orderedCandidates = normalizeCandidates(options.candidates);
+  // DEFAULT_TZ_CANDIDATES をデフォルト候補として統合
+  const orderedCandidates = normalizeCandidates(
+    options.candidates ?? [...DEFAULT_TZ_CANDIDATES]
+  );
 
   if (primary && isValidTimeZone(primary)) {
     return primary;
@@ -119,6 +135,8 @@ const logWarn = (message: string, extra?: unknown): void => {
 };
 
 const resolveIntlTimeZone = (): string | undefined => {
+  if (!hasIntlSupport()) return undefined;
+
   try {
     return Intl.DateTimeFormat().resolvedOptions().timeZone;
   } catch {

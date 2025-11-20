@@ -7,12 +7,12 @@ test.describe('Daily – Records flow', () => {
 
     await page.goto('/daily/activity', { waitUntil: 'domcontentloaded' });
     await page.waitForLoadState('networkidle', { timeout: 15_000 }).catch(() => undefined);
-    await expect(page.getByRole('heading', { name: /活動日誌/, level: 1 })).toBeVisible({ timeout: 15_000 });
+    await expect(page.getByRole('heading', { name: /支援記録（ケース記録）/, level: 1 })).toBeVisible({ timeout: 15_000 });
 
     const root = page.getByTestId('records-daily-root');
     await expect(root).toBeVisible();
 
-    await expect(page.getByRole('heading', { name: '活動日誌', level: 1 })).toBeVisible();
+    await expect(page.getByRole('heading', { name: '支援記録（ケース記録）', level: 1 })).toBeVisible();
     await expect(page.getByRole('button', { name: '本日分全員作成（32名）' })).toBeVisible();
 
     // Wait for record cards to be visible
@@ -23,13 +23,13 @@ test.describe('Daily – Records flow', () => {
     // Verify FAB button exists (don't click it if it's not working reliably)
     const fabButton = page.getByRole('button', { name: 'add' });
     await expect(fabButton).toBeVisible();
-    
+
     // Test the bulk create button instead which should be more reliable
     await page.getByRole('button', { name: '本日分全員作成（32名）' }).click();
-    
+
     // Check if more record cards appear
     await page.waitForTimeout(1000); // Give time for any UI updates
-    
+
     const breadcrumbs = page.getByTestId('breadcrumbs');
     if (await breadcrumbs.count()) {
       await expect(breadcrumbs).toBeVisible();
