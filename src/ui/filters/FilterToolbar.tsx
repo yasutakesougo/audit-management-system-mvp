@@ -76,19 +76,24 @@ export default function FilterToolbar({
 
   const buttons = useMemo(() => {
     const list = statusOptions ?? [];
-    return list.map((option) => (
-      <Button
-        key={option.value}
-        size="small"
-        variant={activeStatus === option.value ? 'contained' : 'outlined'}
-        color="secondary"
-        onClick={() => onStatusChange?.(option.value)}
-        aria-pressed={activeStatus === option.value}
-        type="button"
-      >
-        {option.label}
-      </Button>
-    ));
+    return list.map((option) => {
+      const isActive = activeStatus === option.value;
+      const baseClass = 'inline-flex items-center rounded border px-3 py-1 text-sm font-medium focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 transition';
+      const stateClass = isActive
+        ? 'border-indigo-600 bg-indigo-600 text-white hover:bg-indigo-500 focus-visible:outline-indigo-600'
+        : 'border-slate-700 text-slate-900 hover:bg-slate-50 focus-visible:outline-slate-800 dark:border-slate-200 dark:text-slate-100 dark:hover:bg-slate-800';
+      return (
+        <button
+          key={option.value}
+          type="button"
+          aria-pressed={isActive}
+          className={`${baseClass} ${stateClass}`}
+          onClick={() => onStatusChange?.(option.value)}
+        >
+          {option.label}
+        </button>
+      );
+    });
   }, [statusOptions, activeStatus, onStatusChange]);
 
   return (

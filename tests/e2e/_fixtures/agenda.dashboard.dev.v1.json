@@ -1,0 +1,63 @@
+{
+  "date": "2025-02-02",
+  "handoffTimeline": [
+    {
+      "id": 10001,
+      "title": "朝の体調フォロー",
+      "message": "佐藤さんが軽い頭痛を訴えているため、午前の作業は様子を見ながら進めています。",
+      "userCode": "U-001",
+      "userDisplayName": "佐藤 太郎",
+      "category": "体調",
+      "severity": "要注意",
+      "status": "未対応",
+      "timeBand": "朝",
+      "createdByName": "夜勤担当",
+      "isDraft": false,
+      "createdAt": "2025-02-02T08:15:00+09:00"
+    },
+    {
+      "id": 10002,
+      "title": "訪問看護の時間調整",
+      "message": "午後の訪問看護が15:00開始に変更。スタッフBが同席予定です。",
+      "userCode": "U-014",
+      "userDisplayName": "山田 花子",
+      "category": "支援の工夫",
+      "severity": "通常",
+      "status": "対応中",
+      "timeBand": "午後",
+      "createdByName": "看護師チーム",
+      "isDraft": false,
+      "createdAt": "2025-02-02T13:45:00+09:00"
+    },
+    {
+      "id": 10003,
+      "title": "行動面フォロー完了",
+      "message": "石井さんの大声が続いた件は夕方の散歩後に落ち着きました。明日も同じ時間に散歩を予定します。",
+      "userCode": "U-021",
+      "userDisplayName": "石井 遼",
+      "category": "行動面",
+      "severity": "重要",
+      "status": "対応済",
+      "timeBand": "夕方",
+      "createdByName": "生活支援チーム",
+      "isDraft": false,
+      "createdAt": "2025-02-02T17:20:00+09:00"
+    }
+  ],
+  "dashboard": {
+    "summaryChips": [
+      "未対応 1件",
+      "対応中 1件",
+      "対応済 1件",
+      "合計 3件"
+    ]
+  },
+  "schedule": {
+    "seedDate": "2025-02-02",
+    "eventTitles": [
+      "AM 検温",
+      "昼食前準備",
+      "PM 水分補給"
+    ]
+  }
+}

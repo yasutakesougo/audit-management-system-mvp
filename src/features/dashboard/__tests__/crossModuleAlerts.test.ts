@@ -1,6 +1,6 @@
+import { resolveDashboardPath } from '@/features/dashboard/dashboardRouting';
 import { describe, expect, it } from 'vitest';
 import { createCrossModuleAlertScenarios, createMockDailyUserSnapshot } from '../../cross-module/mockData';
-import { resolveDashboardPath } from '@/features/dashboard/dashboardRouting';
 import type { DailyUserSnapshot } from '../../cross-module/types';
 import { buildCrossModuleDashboardAlerts, mapIssueToDashboardAlert } from '../crossModuleAlerts';
 

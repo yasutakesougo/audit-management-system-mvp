@@ -29,8 +29,9 @@ import { Link as RouterLink, useLocation } from 'react-router-dom';
 import { AuthRequiredError } from '../../lib/errors';
 import ErrorState from '../../ui/components/ErrorState';
 import Loading from '../../ui/components/Loading';
-import { TESTIDS } from '@/testids';
+import { TESTIDS, tid, tidWithSuffix } from '@/testids';
 import { useUsersStore } from './store';
+import { useUsersDemoSeed } from './useUsersDemoSeed';
 import type { IUserMaster, IUserMasterCreateDto } from './types';
 import UserForm from './UserForm';
 import UserDetailSections from './UserDetailSections/index';
@@ -52,6 +53,7 @@ const buildErrorMessage = (error: unknown): string => {
 };
 
 export default function UsersPanel() {
+  useUsersDemoSeed();
   const location = useLocation();
   const { data, status, create, remove, refresh, error } = useUsersStore();
   const [userId, setUserId] = useState('');
@@ -292,7 +294,7 @@ export default function UsersPanel() {
             component={Paper}
             variant="outlined"
             sx={{ flex: { lg: 1.1 }, minWidth: { lg: 0 } }}
-            data-testid={TESTIDS['users-list-table']}
+            {...tid(TESTIDS['users-list-table'])}
           >
             <Table stickyHeader aria-label="利用者一覧テーブル">
             <TableHead>
@@ -310,7 +312,9 @@ export default function UsersPanel() {
                 const isSelected = detailUserKey === userKey;
                 return (
                   <TableRow key={user.Id} hover selected={isSelected}>
-                    <TableCell>{user.Id}</TableCell>
+                    <TableCell>
+                      <span {...tidWithSuffix(TESTIDS['users-list-table-row'], `-${userKey}`)}>{user.Id}</span>
+                    </TableCell>
                     <TableCell>{user.UserID}</TableCell>
                     <TableCell>{user.FullName}</TableCell>
                     <TableCell align="center">

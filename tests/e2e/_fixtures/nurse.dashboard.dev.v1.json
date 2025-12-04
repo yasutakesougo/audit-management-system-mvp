@@ -1,0 +1,35 @@
+{
+  "date": "2025-02-02",
+  "summary": {
+    "totalTasks": 3,
+    "pending": 2,
+    "inProgress": 1,
+    "completed": 0
+  },
+  "tasks": [
+    {
+      "id": "N001",
+      "userName": "佐藤 太郎",
+      "time": "09:00",
+      "type": "BP_CHECK",
+      "label": "血圧測定",
+      "status": "pending"
+    },
+    {
+      "id": "N002",
+      "userName": "山田 花子",
+      "time": "10:30",
+      "type": "MEDICATION",
+      "label": "服薬確認",
+      "status": "pending"
+    },
+    {
+      "id": "N003",
+      "userName": "石井 次郎",
+      "time": "11:00",
+      "type": "OBSERVATION",
+      "label": "体調観察",
+      "status": "inProgress"
+    }
+  ]
+}

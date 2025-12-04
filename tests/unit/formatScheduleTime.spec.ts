@@ -1,5 +1,5 @@
-import { describe, expect, it } from 'vitest';
 import { formatScheduleRange, formatScheduleTime } from '@/utils/formatScheduleTime';
+import { describe, expect, it } from 'vitest';
 
 describe('formatScheduleTime', () => {
   const TZ_JP = 'Asia/Tokyo';

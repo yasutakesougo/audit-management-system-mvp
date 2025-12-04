@@ -1,7 +1,8 @@
 import { UserDetailSections } from '@/features/users';
+import { DEMO_USERS } from '@/features/users/constants';
 import { useUsersStore } from '@/features/users/store';
+import { useUsersDemoSeed } from '@/features/users/useUsersDemoSeed';
 import type { IUserMaster } from '@/features/users/types';
-import { demoUsers } from '@/features/users/usersStoreDemo';
 import { isDemoModeEnabled, isDevMode, shouldSkipLogin } from '@/lib/env';
 import Loading from '@/ui/components/Loading';
 import Alert from '@mui/material/Alert';
@@ -12,6 +13,7 @@ import { useLocation, useParams } from 'react-router-dom';
 type UserDetailLocationState = { user?: IUserMaster } | null;
 
 const UserDetailPage: React.FC = () => {
+  useUsersDemoSeed();
   const { userId } = useParams<{ userId?: string }>();
   const location = useLocation();
   const locationState = (location.state ?? null) as UserDetailLocationState;
@@ -36,7 +38,7 @@ const UserDetailPage: React.FC = () => {
     if (!shouldSkipLogin() && !isDemoModeEnabled() && !isDevMode()) {
       return undefined;
     }
-    return demoUsers.find((item) => item.UserID === userId || String(item.Id) === userId);
+    return DEMO_USERS.find((item) => item.UserID === userId || String(item.Id) === userId);
   }, [userId]);
 
   const effectiveUser = storeUser ?? fallbackUser ?? demoFallbackUser;

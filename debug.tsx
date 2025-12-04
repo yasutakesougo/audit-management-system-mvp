@@ -1,3 +1,8 @@
+import type { ConflictKind, ScheduleConflict } from '@/features/schedule/conflictChecker';
+import { generateDemoEquipmentProfiles, generateDemoRoomProfiles, suggestEquipmentAlternatives, suggestRoomAlternatives } from '@/features/schedule/roomAlternativeEngine';
+import { generateDemoStaffProfiles, suggestStaffAlternatives } from '@/features/schedule/staffAlternativeEngine';
+import type { BaseSchedule, EquipmentAlternative, RoomAlternative, Schedule, StaffAlternative, VehicleAlternative } from '@/features/schedule/types';
+import { generateDemoVehicleProfiles, suggestVehicleAlternatives } from '@/features/schedule/vehicleAlternativeEngine';
 import {
     Box,
     Button,
@@ -14,11 +19,6 @@ import {
 } from '@mui/material';
 import dayjs from 'dayjs';
 import React, { useMemo } from 'react';
-import type { ConflictKind, ScheduleConflict } from '@/features/schedule/conflictChecker';
-import { generateDemoEquipmentProfiles, generateDemoRoomProfiles, suggestEquipmentAlternatives, suggestRoomAlternatives } from '@/features/schedule/roomAlternativeEngine';
-import { generateDemoStaffProfiles, suggestStaffAlternatives } from '@/features/schedule/staffAlternativeEngine';
-import type { BaseSchedule, EquipmentAlternative, RoomAlternative, Schedule, StaffAlternative, VehicleAlternative } from '@/features/schedule/types';
-import { generateDemoVehicleProfiles, suggestVehicleAlternatives } from '@/features/schedule/vehicleAlternativeEngine';
 
 // BaseSchedule を適切な Schedule に変換するヘルパー
 // 注意：職員代替エンジン専用。車両/部屋/設備系は使用禁止
@@ -382,7 +382,7 @@ export const ScheduleConflictGuideDialog: React.FC<Props> = ({
   // ★ 時間調整ハンドラー（任意のoffsetMinutesを使用）
   const handleApplyTimeShift = (candidate: TimeShiftCandidate) => {
     if (!schedule || !onApplySuggestion || !canApplyTimeShift) return;
-    
+
     // start/end が存在することを確認（安全ガード）
     if (!schedule.start || !schedule.end) {
       console.warn('schedule.start または schedule.end が未定義です。時間調整をスキップします。');
@@ -391,13 +391,13 @@ export const ScheduleConflictGuideDialog: React.FC<Props> = ({
 
     const start = dayjs(schedule.start);
     const end = dayjs(schedule.end);
-    
+
     // dayjs が Invalid Date を返していないことも確認
     if (!start.isValid() || !end.isValid()) {
       console.warn('schedule.start または schedule.end が無効な日時です。時間調整をスキップします。');
       return;
     }
-    
+
     const newStart = start.add(candidate.offsetMinutes, 'minute');
     const newEnd = end.add(candidate.offsetMinutes, 'minute');
 

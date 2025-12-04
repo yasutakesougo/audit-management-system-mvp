@@ -10,9 +10,13 @@ vi.mock('@/config/featureFlags', () => ({
   useFeatureFlags: () => mockUseFeatureFlags(),
 }));
 
-vi.mock('@/env', () => ({
-  isE2E: false, // E2Eモードを無効にしてテスト環境で正常動作させる
-}));
+vi.mock('@/env', async () => {
+  const actual = await vi.importActual<typeof import('@/env')>('@/env');
+  return {
+    ...actual,
+    isE2E: false, // E2Eモードを無効にしてテスト環境で正常動作させる
+  };
+});
 
 vi.mock('react-router-dom', async () => {
   const actual = await vi.importActual<typeof import('react-router-dom')>('react-router-dom');

@@ -5,6 +5,7 @@ import Box from '@mui/material/Box';
 import Button from '@mui/material/Button';
 import Card from '@mui/material/Card';
 import CardContent from '@mui/material/CardContent';
+import Chip from '@mui/material/Chip';
 import IconButton from '@mui/material/IconButton';
 import Paper from '@mui/material/Paper';
 import Skeleton from '@mui/material/Skeleton';
@@ -12,19 +13,24 @@ import Stack from '@mui/material/Stack';
 import Typography from '@mui/material/Typography';
 import { alpha, useTheme } from '@mui/material/styles';
 import { useCallback, useEffect, useMemo, useState, type MouseEventHandler } from 'react';
+import { useSearchParams } from 'react-router-dom';
 // Icons
 import CalendarMonthRoundedIcon from '@mui/icons-material/CalendarMonthRounded';
 import NavigateBeforeRoundedIcon from '@mui/icons-material/NavigateBeforeRounded';
 import NavigateNextRoundedIcon from '@mui/icons-material/NavigateNextRounded';
 import TodayRoundedIcon from '@mui/icons-material/TodayRounded';
 
+import { getComposedWeek, isScheduleFixturesMode, type ScheduleEvent } from '@/features/schedule/api/schedulesClient';
 import { getMonthlySchedule } from '@/features/schedule/spClient.schedule';
 import { getScheduleColorTokens, type ScheduleColorSource } from '@/features/schedule/serviceColors';
-import { getAppConfig } from '@/lib/env';
+import { getAppConfig, skipSharePoint } from '@/lib/env';
 import { useSP } from '@/lib/spClient';
 import { useSchedules } from '@/stores/useSchedules';
+import { TESTIDS, tid } from '@/testids';
 import { addMonths, eachDayOfInterval, endOfMonth, endOfWeek, format, isSameMonth, isToday, startOfMonth, startOfWeek } from 'date-fns';
 import { ja } from 'date-fns/locale';
+import { getOrgFilterLabel, matchesOrgFilter, normalizeOrgFilter, DEFAULT_ORG_FILTER, type OrgFilterKey } from '../orgFilters';
+import { ensureDateParam, normalizeToDayStart, pickDateParam } from '../dateQuery';
 
 type RawSchedule = {
   id?: string | number;
@@ -44,9 +50,10 @@ type RawSchedule = {
   notes?: string | null;
   location?: string | null;
   billingFlags?: string[] | null;
+  orgCode?: string | null;
 };
 
-type MonthEntry = ScheduleColorSource & {
+export type MonthEntry = ScheduleColorSource & {
   id: string;
   title: string;
   startIso: string;
@@ -60,6 +67,7 @@ type MonthEntry = ScheduleColorSource & {
   notes?: string | null;
   location?: string | null;
   billingFlags?: string[] | null;
+  orgCode?: OrgFilterKey;
 };
 
 type MonthViewState = {
@@ -75,13 +83,54 @@ type MonthViewProps = {
   onEventClick?: (event: MonthEntry) => void;
 };
 
+const pickFirst = (value: string[] | null | undefined): string | null => {
+  if (Array.isArray(value) && value.length) {
+    const [first] = value;
+    return typeof first === 'string' && first.trim() ? first : null;
+  }
+  return null;
+};
+
+const deriveDayKey = (iso: string | null | undefined): string | null => {
+  if (!iso) return null;
+  return iso.slice(0, 10).replace(/-/g, '');
+};
+
+const scheduleEventToRaw = (event: ScheduleEvent): RawSchedule => {
+  const startIso = event.start ?? null;
+  const endIso = event.end ?? null;
+  const fallbackDayKey = event.dayKey ?? deriveDayKey(startIso);
+  return {
+    id: event.id,
+    title: event.title,
+    start: startIso,
+    startLocal: startIso,
+    startUtc: startIso,
+    end: endIso,
+    endLocal: endIso,
+    endUtc: endIso,
+    dayKey: fallbackDayKey,
+    serviceType: null,
+    category: event.category,
+    personType: null,
+    personName: event.personName ?? pickFirst(event.targetUserNames),
+    userName: pickFirst(event.staffNames),
+    notes: null,
+    location: null,
+    billingFlags: null,
+    orgCode: event.orgCode ?? null,
+  };
+};
+
 const sanitizeIso = (value: string | null | undefined): string | null => {
   if (typeof value !== 'string') return null;
   const trimmed = value.trim();
   if (!trimmed) return null;
-  const timestamp = Date.parse(trimmed);
-  if (Number.isNaN(timestamp)) return null;
-  return new Date(timestamp).toISOString();
+
+  const date = new Date(trimmed);
+  if (Number.isNaN(date.getTime())) return null;
+
+  return date.toISOString();
 };
 
 const cleanString = (value: unknown): string | null => {
@@ -113,12 +162,15 @@ const toMonthEntries = (input: readonly RawSchedule[] | null | undefined): Month
       }
       const id = item.id ?? `anon-${index}`;
       const rawTitle = cleanString(item.title) ?? '';
+      const normalizedOrg = typeof item.orgCode === 'string' ? normalizeOrgFilter(item.orgCode) : undefined;
+      const orgCode = normalizedOrg === DEFAULT_ORG_FILTER ? undefined : normalizedOrg;
       return {
         id: String(id),
         title: rawTitle || '予定',
         startIso: iso,
         endIso: endIso ?? undefined,
         dayKey,
+        orgCode,
         serviceType: cleanString(item.serviceType) ?? undefined,
         category: cleanString(item.category) ?? undefined,
         personType: cleanString(item.personType) ?? undefined,
@@ -154,12 +206,27 @@ export default function MonthView({ onDateClick, onEventClick }: MonthViewProps 
   const sp = useSP();
   const { data: demoSchedules } = useSchedules();
   const fallbackEntries = useMemo(() => extractDemoEntries(demoSchedules ?? []), [demoSchedules]);
-  const [referenceDate, setReferenceDate] = useState<Date>(() => startOfMonth(new Date()));
+  const fixturesEnabled = useMemo(() => isScheduleFixturesMode() || skipSharePoint(), []);
+  const [searchParams, setSearchParams] = useSearchParams();
+  const activeOrg = normalizeOrgFilter(searchParams.get('org'));
+  const dateParam = pickDateParam(searchParams);
+  const [referenceDate, setReferenceDate] = useState<Date>(() => startOfMonth(normalizeToDayStart(dateParam)));
   const [{ entries, loading, error }, setState] = useState<MonthViewState>({
     entries: fallbackEntries,
     loading: false,
     error: null,
   });
+  const updateDateParam = useCallback(
+    (next: Date) => {
+      setSearchParams(ensureDateParam(searchParams, next), { replace: true });
+    },
+    [searchParams, setSearchParams]
+  );
+
+  useEffect(() => {
+    const next = startOfMonth(normalizeToDayStart(dateParam));
+    setReferenceDate((prev) => (prev.getTime() === next.getTime() ? prev : next));
+  }, [dateParam]);
 
   // fallbackEntries の初期化は useState で行い、useEffect は削除
 
@@ -167,13 +234,21 @@ export default function MonthView({ onDateClick, onEventClick }: MonthViewProps 
     async (target: Date) => {
       const { isDev: isDevelopment } = getAppConfig();
       setState((prev) => ({ ...prev, loading: true, error: null }));
+      const targetMonthStart = startOfMonth(target);
+      const targetMonthEnd = addMonths(targetMonthStart, 1);
 
       try {
-        const rows = await getMonthlySchedule(sp, {
-          year: target.getFullYear(),
-          month: target.getMonth() + 1,
-        });
-        const nextEntries = toMonthEntries(rows as unknown as RawSchedule[]);
+        let nextEntries: MonthEntry[] = [];
+        if (fixturesEnabled) {
+          const events = await getComposedWeek({ fromISO: targetMonthStart.toISOString(), toISO: targetMonthEnd.toISOString() });
+          nextEntries = toMonthEntries(events.map(scheduleEventToRaw));
+        } else {
+          const rows = await getMonthlySchedule(sp, {
+            year: target.getFullYear(),
+            month: target.getMonth() + 1,
+          });
+          nextEntries = toMonthEntries(rows as unknown as RawSchedule[]);
+        }
         setState({ entries: nextEntries, loading: false, error: null });
       } catch (cause) {
         const message = cause instanceof Error ? cause.message : '予定の取得に失敗しました';
@@ -196,32 +271,33 @@ export default function MonthView({ onDateClick, onEventClick }: MonthViewProps 
         }
       }
     },
-    [sp] // fallbackEntriesへの依存を削除
+    [fixturesEnabled, sp, fallbackEntries]
   );
 
   useEffect(() => {
-    const loadData = async () => {
-      try {
-        await load(referenceDate);
-      } catch (error) {
-        // エラーは load 内で処理済み
-        console.warn('MonthView load error:', error);
+    load(referenceDate).catch((error) => {
+      // エラーは load 内で処理済み
+      console.warn('MonthView load error:', error);
 
-        // 開発環境でSharePointエラーの場合、再試行を避ける
-        if (getAppConfig().isDev) {
-          console.info('開発環境: MonthView エラー発生のため、再試行をスキップします');
-        }
+      // 開発環境でSharePointエラーの場合、再試行を避ける
+      if (getAppConfig().isDev) {
+        console.info('開発環境: MonthView エラー発生のため、再試行をスキップします');
       }
-    };
+    });
+  }, [referenceDate, load]);
 
-    loadData();
-  }, [referenceDate.getTime(), sp]); // loadへの依存を削除し、referenceDateのtimeを使用
+  const filteredEntries = useMemo(() => {
+    if (activeOrg === 'all') {
+      return entries;
+    }
+    return entries.filter((entry) => matchesOrgFilter(entry.orgCode, activeOrg));
+  }, [activeOrg, entries]);
 
   const calendarDays = useMemo(() => {
     const span = startFeatureSpan(HYDRATION_FEATURES.schedules.recompute, {
       view: 'month',
-      entryCount: entries.length,
-      bytes: estimatePayloadSize(entries),
+      entryCount: filteredEntries.length,
+      bytes: estimatePayloadSize(filteredEntries),
     });
     try {
       const monthStart = startOfMonth(referenceDate);
@@ -229,7 +305,7 @@ export default function MonthView({ onDateClick, onEventClick }: MonthViewProps 
       const rangeStart = startOfWeek(monthStart, { locale: ja });
       const rangeEnd = endOfWeek(monthEnd, { locale: ja });
       const days = eachDayOfInterval({ start: rangeStart, end: rangeEnd });
-      const grouped = groupByDayKey(entries);
+      const grouped = groupByDayKey(filteredEntries);
 
       const mapped = days.map((date) => {
         const key = format(date, 'yyyyMMdd');
@@ -250,12 +326,16 @@ export default function MonthView({ onDateClick, onEventClick }: MonthViewProps 
       });
       throw error;
     }
-  }, [entries, referenceDate]);
+  }, [filteredEntries, referenceDate]);
 
   const monthLabel = useMemo(() => format(referenceDate, 'yyyy年 M月', { locale: ja }), [referenceDate]);
+  const orgSummary = useMemo(() => ({
+    label: getOrgFilterLabel(activeOrg),
+    count: filteredEntries.length,
+  }), [activeOrg, filteredEntries.length]);
 
   return (
-    <Box>
+    <Box data-testid="schedule-month-root">
       {/* Header with navigation */}
       <Stack direction="row" alignItems="center" justifyContent="space-between" mb={3}>
         <Typography variant="h6" component="h2" sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
@@ -265,7 +345,13 @@ export default function MonthView({ onDateClick, onEventClick }: MonthViewProps 
 
         <Stack direction="row" spacing={1}>
           <IconButton
-            onClick={() => setReferenceDate((prev) => addMonths(prev, -1))}
+            onClick={() => {
+              setReferenceDate((prev) => {
+                const next = addMonths(prev, -1);
+                updateDateParam(next);
+                return next;
+              });
+            }}
             aria-label="前の月へ移動"
             size="small"
           >
@@ -275,7 +361,11 @@ export default function MonthView({ onDateClick, onEventClick }: MonthViewProps 
           <Button
             variant="outlined"
             size="small"
-            onClick={() => setReferenceDate(startOfMonth(new Date()))}
+            onClick={() => {
+              const next = startOfMonth(new Date());
+              setReferenceDate(next);
+              updateDateParam(next);
+            }}
             aria-label="今月に移動"
             startIcon={<TodayRoundedIcon />}
           >
@@ -283,7 +373,13 @@ export default function MonthView({ onDateClick, onEventClick }: MonthViewProps 
           </Button>
 
           <IconButton
-            onClick={() => setReferenceDate((prev) => addMonths(prev, 1))}
+            onClick={() => {
+              setReferenceDate((prev) => {
+                const next = addMonths(prev, 1);
+                updateDateParam(next);
+                return next;
+              });
+            }}
             aria-label="次の月へ移動"
             size="small"
           >
@@ -291,6 +387,18 @@ export default function MonthView({ onDateClick, onEventClick }: MonthViewProps 
           </IconButton>
         </Stack>
       </Stack>
+
+      {orgSummary && (
+        <Box sx={{ display: 'flex', justifyContent: 'flex-end', mb: 2 }}>
+          <Chip
+            {...tid(TESTIDS.SCHEDULE_MONTH_ORG_INDICATOR)}
+            size="small"
+            variant="outlined"
+            color="primary"
+            label={`${orgSummary.label} / ${orgSummary.count}件`}
+          />
+        </Box>
+      )}
 
       {error && <Alert severity="warning" sx={{ mb: 3 }}>{error}</Alert>}
 
@@ -310,26 +418,29 @@ export default function MonthView({ onDateClick, onEventClick }: MonthViewProps 
       {/* Calendar Grid */}
       <Paper elevation={0} sx={{ borderRadius: 1, overflow: 'hidden' }}>
         <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: 1, p: 1 }}>
-          {calendarDays.map(({ date, key, isCurrentMonth, entries: dayEntries }) => (
-            <Card
-              key={key}
-              variant={isCurrentMonth ? "outlined" : "elevation"}
-              elevation={isCurrentMonth ? 0 : 1}
-              onClick={() => onDateClick?.(date)}
-              sx={{
-                minHeight: 120,
-                bgcolor: isCurrentMonth ? 'background.paper' : 'action.hover',
-                borderColor: isCurrentMonth ? 'divider' : 'transparent',
-                opacity: isCurrentMonth ? 1 : 0.6,
-                cursor: onDateClick ? 'pointer' : 'default',
-                '&:hover': {
-                  elevation: 2,
-                  transform: 'translateY(-1px)',
-                  transition: 'all 0.2s ease-in-out',
-                  bgcolor: onDateClick && isCurrentMonth ? 'action.hover' : undefined
-                }
-              }}
-            >
+          {calendarDays.map(({ date, key, isCurrentMonth, entries: dayEntries }) => {
+            const isoKey = format(date, 'yyyy-MM-dd');
+            return (
+              <Card
+                key={key}
+                data-testid={`${TESTIDS.SCHEDULES_MONTH_DAY_PREFIX}-${isoKey}`}
+                variant={isCurrentMonth ? 'outlined' : 'elevation'}
+                elevation={isCurrentMonth ? 0 : 1}
+                onClick={() => onDateClick?.(date)}
+                sx={{
+                  minHeight: 120,
+                  bgcolor: isCurrentMonth ? 'background.paper' : 'action.hover',
+                  borderColor: isCurrentMonth ? 'divider' : 'transparent',
+                  opacity: isCurrentMonth ? 1 : 0.6,
+                  cursor: onDateClick ? 'pointer' : 'default',
+                  '&:hover': {
+                    elevation: 2,
+                    transform: 'translateY(-1px)',
+                    transition: 'all 0.2s ease-in-out',
+                    bgcolor: onDateClick && isCurrentMonth ? 'action.hover' : undefined,
+                  },
+                }}
+              >
               <CardContent sx={{ p: 1.5, '&:last-child': { pb: 1.5 } }}>
                 {/* Date Header */}
                 <Stack direction="row" alignItems="center" justifyContent="space-between" mb={1}>
@@ -518,8 +629,9 @@ export default function MonthView({ onDateClick, onEventClick }: MonthViewProps 
                   )}
                 </Box>
               </CardContent>
-            </Card>
-          ))}
+              </Card>
+            );
+          })}
         </Box>
       </Paper>
     </Box>

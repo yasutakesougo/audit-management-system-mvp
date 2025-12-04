@@ -1,0 +1,238 @@
+import { z } from 'zod';
+
+import type { SchedItem, ScheduleStatus } from './port';
+
+/**
+ * SharePoint raw category values (legacy / optional).
+ * Some lists may still store a category choice in cr014_category / Category.
+ * Older tenants renamed choices to "Org" / "Staff", so we accept those too.
+ */
+export const SpScheduleCategoryRaw = z.enum(['User', 'Facility', 'Other', 'Org', 'Staff']);
+export type SpScheduleCategoryRaw = z.infer<typeof SpScheduleCategoryRaw>;
+
+/**
+ * SharePoint raw row schema.
+ * - Current Schedules list uses: Title, Start, End, UserCode, AssignedStaff, etc.
+ * - Legacy schedule list may use: EventDate, EndDate, cr014_usercode, cr014_category.
+ *
+ * We accept both to keep the adapter resilient.
+ */
+export const SpScheduleRowSchema = z
+  .object({
+    Id: z.union([z.number(), z.string()]),
+    Title: z.string().optional().nullable(),
+    Start: z.string().optional().nullable(),
+    End: z.string().optional().nullable(),
+    EventDate: z.string().optional().nullable(),
+    EndDate: z.string().optional().nullable(),
+
+    UserCode: z.string().optional().nullable(),
+    cr014_usercode: z.string().optional().nullable(),
+    cr014_personId: z.string().optional().nullable(),
+    cr014_personName: z.string().optional().nullable(),
+    TargetUserId: z.unknown().optional().nullable(),
+
+    AssignedStaff: z.union([z.number(), z.string()]).optional().nullable(),
+    ServiceType: z.string().optional().nullable(),
+    LocationName: z.string().optional().nullable(),
+    Notes: z.string().optional().nullable(),
+    Vehicle: z.union([z.number(), z.string()]).optional().nullable(),
+    Status: z.string().optional().nullable(),
+    StatusReason: z.string().optional().nullable(),
+    EntryHash: z.string().optional().nullable(),
+
+    Created: z.string().optional().nullable(),
+    Modified: z.string().optional().nullable(),
+
+    // optional legacy category columns
+    cr014_category: SpScheduleCategoryRaw.optional().nullable(),
+    Category: SpScheduleCategoryRaw.optional().nullable(),
+  })
+  .passthrough();
+
+export type SpScheduleRow = z.infer<typeof SpScheduleRowSchema>;
+
+export const parseSpScheduleRows = (input: unknown): SpScheduleRow[] =>
+  SpScheduleRowSchema.array().parse(input);
+
+/** Facility/Other → Org/Staff, User stays User */
+export function mapSpCategoryToDomain(raw?: SpScheduleCategoryRaw | null): 'Org' | 'User' | 'Staff' | undefined {
+  if (!raw) return undefined;
+  switch (raw) {
+    case 'User':
+      return 'User';
+    case 'Facility':
+    case 'Org':
+      return 'Org';
+    case 'Other':
+    case 'Staff':
+      return 'Staff';
+    default:
+      return undefined;
+  }
+}
+
+const coerceIso = (value: unknown): string | undefined => {
+  if (typeof value !== 'string' || !value.trim()) return undefined;
+  const parsed = Date.parse(value);
+  if (Number.isNaN(parsed)) return value;
+  return new Date(parsed).toISOString();
+};
+
+const coerceString = (value: unknown): string | undefined => {
+  if (typeof value !== 'string') return undefined;
+  const trimmed = value.trim();
+  return trimmed ? trimmed : undefined;
+};
+
+const coerceIdString = (value: unknown): string | undefined => {
+  if (typeof value === 'number' && Number.isFinite(value)) {
+    return String(value);
+  }
+  if (typeof value === 'string') {
+    const trimmed = value.trim();
+    return trimmed || undefined;
+  }
+  return undefined;
+};
+
+const coerceLookupIds = (value: unknown): string[] => {
+  if (Array.isArray(value)) {
+    return value
+      .map((entry) => {
+        if (entry && typeof entry === 'object' && 'Id' in (entry as { Id?: unknown })) {
+          return coerceIdString((entry as { Id?: unknown }).Id);
+        }
+        return coerceIdString(entry);
+      })
+      .filter((entry): entry is string => Boolean(entry));
+  }
+  if (value && typeof value === 'object' && 'results' in (value as { results?: unknown })) {
+    const results = (value as { results?: unknown }).results;
+    if (Array.isArray(results)) {
+      return coerceLookupIds(results);
+    }
+  }
+  const single = coerceIdString(value);
+  return single ? [single] : [];
+};
+
+/** Normalize U-001 → U001, trim + uppercase, keep alphanumerics only */
+export const normalizeUserId = (raw?: string | null): string | undefined => {
+  if (!raw) return undefined;
+  const cleaned = raw.toUpperCase().replace(/[^A-Z0-9]/g, '');
+  return cleaned || undefined;
+};
+
+const pickStart = (row: SpScheduleRow): string | undefined =>
+  coerceIso(row.Start ?? row.EventDate);
+
+const pickEnd = (row: SpScheduleRow): string | undefined =>
+  coerceIso(row.End ?? row.EndDate);
+
+const pickUserCode = (row: SpScheduleRow): string | undefined =>
+  coerceString(row.UserCode ?? row.cr014_usercode);
+
+const inferCategory = (row: SpScheduleRow): 'Org' | 'User' | 'Staff' => {
+  const rawCategory = (row.cr014_category ?? row.Category) as SpScheduleCategoryRaw | undefined;
+  const mapped = mapSpCategoryToDomain(rawCategory);
+  if (mapped) return mapped;
+
+  const userCode = pickUserCode(row) ?? coerceString(row.cr014_personId);
+  if (userCode) return 'User';
+
+  const staffId = coerceIdString(row.AssignedStaff);
+  if (staffId) return 'Staff';
+
+  return 'Org';
+};
+
+const normalizeStatusFromSp = (raw: unknown): ScheduleStatus => {
+  const value = typeof raw === 'string' ? raw.trim() : raw == null ? '' : String(raw).trim();
+  if (!value) {
+    return 'Planned';
+  }
+
+  const normalized = value.toLowerCase();
+
+  if (value === 'Planned' || normalized === 'planned' || value === '予定どおり' || value === '予定') {
+    return 'Planned';
+  }
+  if (value === 'Postponed' || normalized === 'postponed' || value === '延期') {
+    return 'Postponed';
+  }
+  if (
+    value === 'Cancelled' ||
+    normalized === 'cancelled' ||
+    normalized === 'canceled' ||
+    value === '中止' ||
+    value === 'キャンセル'
+  ) {
+    return 'Cancelled';
+  }
+
+  // eslint-disable-next-line no-console
+  console.warn('[schedules] Unknown SharePoint Status value:', value);
+  return 'Planned';
+};
+
+/**
+ * Raw SP row → Domain SchedItem
+ * Returns null if required datetime fields are missing.
+ */
+export function mapSpRowToSchedule(row: SpScheduleRow): SchedItem | null {
+  const start = pickStart(row);
+  const end = pickEnd(row);
+  if (!start || !end) return null;
+
+  const idRaw = row.Id;
+  const id =
+    typeof idRaw === 'number'
+      ? String(idRaw)
+      : typeof idRaw === 'string' && idRaw.trim()
+        ? idRaw.trim()
+        : `${start}-${end}`;
+
+  const titleField = row.Title;
+  const title = typeof titleField === 'string' && titleField.trim() ? titleField.trim() : '予定';
+  const userCodeCandidates = [coerceString(row.cr014_personId), pickUserCode(row)];
+  let normalizedUserId: string | undefined;
+  for (const candidate of userCodeCandidates) {
+    const normalized = normalizeUserId(candidate);
+    if (normalized) {
+      normalizedUserId = normalized;
+      break;
+    }
+  }
+  const userLookupIds = coerceLookupIds(row.TargetUserId);
+  if (!normalizedUserId && userLookupIds.length) {
+    normalizedUserId = normalizeUserId(userLookupIds[0]);
+  }
+  const primaryPersonName = coerceString(row.cr014_personName);
+  const assignedStaffId = coerceIdString(row.AssignedStaff);
+  const vehicleId = coerceIdString(row.Vehicle);
+
+  const category = inferCategory(row);
+
+  return {
+    id,
+    title,
+    start,
+    end,
+    category,
+    allDay: false,
+    userId: normalizedUserId,
+    serviceType: coerceString(row.ServiceType),
+    locationName: coerceString(row.LocationName),
+    notes: coerceString(row.Notes),
+    personName: primaryPersonName,
+    userLookupId: userLookupIds[0],
+    assignedStaffId: assignedStaffId ?? undefined,
+    vehicleId: vehicleId ?? undefined,
+    status: normalizeStatusFromSp(row.Status),
+    statusReason: coerceString(row.StatusReason) ?? null,
+    entryHash: coerceString(row.EntryHash),
+    createdAt: coerceIso(row.Created),
+    updatedAt: coerceIso(row.Modified),
+  } satisfies SchedItem;
+}

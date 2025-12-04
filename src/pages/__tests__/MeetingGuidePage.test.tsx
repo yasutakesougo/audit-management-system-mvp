@@ -1,10 +1,10 @@
+import { TESTIDS } from '@/testids';
 import CssBaseline from '@mui/material/CssBaseline';
 import { createTheme, ThemeProvider } from '@mui/material/styles';
 import { fireEvent, render, screen, within } from '@testing-library/react';
 import React from 'react';
 import { MemoryRouter } from 'react-router-dom';
 import { describe, expect, it } from 'vitest';
-import { TESTIDS } from '@/testids';
 import MeetingGuidePage from '../MeetingGuidePage';
 
 const theme = createTheme();

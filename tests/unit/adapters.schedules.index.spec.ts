@@ -13,10 +13,14 @@ const sharepointUpdate = vi.fn();
 const sharepointRemove = vi.fn();
 const sharepointCheckConflicts = vi.fn();
 
-vi.mock('@/lib/env', () => ({
-  isDemoModeEnabled,
-  allowWriteFallback,
-}));
+vi.mock('@/lib/env', async () => {
+  const actual = await vi.importActual<typeof import('@/lib/env')>('@/lib/env');
+  return {
+    ...actual,
+    isDemoModeEnabled,
+    allowWriteFallback,
+  };
+});
 
 vi.mock('@/adapters/schedules/sharepoint', () => ({
   list: sharepointList,

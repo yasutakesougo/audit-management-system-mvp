@@ -6,10 +6,12 @@ type MsalInstance = IPublicClientApplication;
 type MsalReactModule = typeof import('@azure/msal-react');
 type MsalProviderComponent = React.ComponentType<{ instance: MsalInstance; children: React.ReactNode }>;
 type MsalAccounts = ReturnType<MsalReactModule['useMsal']>['accounts'];
+type MsalInProgress = ReturnType<MsalReactModule['useMsal']>['inProgress'];
 
 type MsalContextValue = {
   instance: MsalInstance;
   accounts: MsalAccounts;
+  inProgress: MsalInProgress;
 };
 
 const MsalContext = React.createContext<MsalContextValue | null>(null);
@@ -32,6 +34,19 @@ async function loadMsalInstance(): Promise<MsalInstance> {
       const { PublicClientApplication, EventType } = await loadMsalBrowser();
 
       const instance = new PublicClientApplication(msalConfig);
+      await instance.initialize();
+
+      try {
+        await instance.handleRedirectPromise();
+      } catch (error) {
+        console.warn('[msal] handleRedirectPromise failed (non-fatal)', error);
+      }
+
+      const accounts = instance.getAllAccounts();
+      if (!instance.getActiveAccount() && accounts.length > 0) {
+        instance.setActiveAccount(accounts[0]);
+      }
+
       wireMsalRoleInvalidation(instance, EventType);
 
       globalCarrier.__MSAL_PUBLIC_CLIENT__ = instance;
@@ -92,8 +107,8 @@ const MsalBridge: React.FC<{ instance: MsalInstance; useMsal: MsalReactModule['u
   instance,
   useMsal,
 }) => {
-  const { accounts } = useMsal();
-  const value = useMemo(() => ({ instance, accounts }), [instance, accounts]);
+  const { accounts, inProgress } = useMsal();
+  const value = useMemo(() => ({ instance, accounts, inProgress }), [instance, accounts, inProgress]);
 
   return <MsalContext.Provider value={value}>{children}</MsalContext.Provider>;
 };

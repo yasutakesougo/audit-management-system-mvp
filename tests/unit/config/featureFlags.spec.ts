@@ -1,11 +1,11 @@
 import {
-  __resetFeatureFlagsForTest,
-  featureFlags,
-  FeatureFlagsProvider,
-  getFeatureFlags,
-  resolveFeatureFlags,
-  useFeatureFlags,
-  type FeatureFlagSnapshot
+    __resetFeatureFlagsForTest,
+    featureFlags,
+    FeatureFlagsProvider,
+    getFeatureFlags,
+    resolveFeatureFlags,
+    useFeatureFlags,
+    type FeatureFlagSnapshot
 } from '@/config/featureFlags';
 import * as env from '@/lib/env';
 import { cleanup, render } from '@testing-library/react';
@@ -45,7 +45,7 @@ describe('featureFlags config', () => {
 
     expect(snapshot).toEqual({
       schedules: true,
-      schedulesCreate: false,
+      schedulesCreate: true,
       complianceForm: true,
       schedulesWeekV2: true,
     });
@@ -88,7 +88,7 @@ describe('featureFlags config', () => {
     };
 
     expect(getFeatureFlags(override)).toEqual({
-      schedules: false,
+      schedules: true,
       schedulesCreate: true,
       complianceForm: false,
       schedulesWeekV2: true,

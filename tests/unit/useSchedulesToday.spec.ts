@@ -19,9 +19,13 @@ vi.mock('@/adapters/schedules', () => ({
   list: listMock,
 }));
 
-vi.mock('@/lib/env', () => ({
-  isSchedulesFeatureEnabled: featureFlagMock,
-}));
+vi.mock('@/lib/env', async () => {
+  const actual = await vi.importActual<typeof import('@/lib/env')>('@/lib/env');
+  return {
+    ...actual,
+    isSchedulesFeatureEnabled: () => featureFlagMock(),
+  };
+});
 
 vi.mock('@/lib/tz', () => ({
   formatInTimeZone: formatInTimeZoneMock,

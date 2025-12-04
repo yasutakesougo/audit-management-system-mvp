@@ -1,6 +1,8 @@
 import { expect, test } from '@playwright/test';
-import { applyGlobalGuards, MEDICATION_SEED_USERS, seedMedicationDemoData } from './_helpers/applyGlobalGuards';
-import { setupNurseFlags } from './_helpers/setupNurse.flags';
+import { bootNursePage } from './_helpers/bootNursePage';
+import { MEDICATION_SEED_USERS, seedMedicationDemoData } from './_helpers/nurseMedicationSeed';
+
+test.skip(true, 'Legacy nurse medication inventory UI is not part of the BP MVP surface.');
 
 const defaultUser = MEDICATION_SEED_USERS[0];
 
@@ -10,8 +12,7 @@ if (!defaultUser) {
 
 test.describe('@ci-smoke nurse medication', () => {
   test.beforeEach(async ({ page }) => {
-    await applyGlobalGuards(page);
-    await setupNurseFlags(page);
+    await bootNursePage(page, { seed: { nurseDashboard: true } });
     await seedMedicationDemoData(page);
   });
 

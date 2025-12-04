@@ -55,14 +55,21 @@ vi.mock('@/features/auth/store', () => ({
   setCurrentUserRole: vi.fn(),
 }));
 
-vi.mock('@/lib/env', () => ({
-  getAppConfig: () => ({ isDev: false }),
-  shouldSkipLogin: () => false,
-  isSchedulesFeatureEnabled: () => false,
-  isSchedulesCreateEnabled: () => false,
-  isComplianceFormEnabled: () => false,
-  isSchedulesWeekV2Enabled: () => false,
-}));
+vi.mock('@/lib/env', async () => {
+  const actual = await vi.importActual<typeof import('@/lib/env')>('@/lib/env');
+  return {
+    ...actual,
+    getAppConfig: () => ({
+      ...actual.getAppConfig(),
+      isDev: false,
+    }),
+    shouldSkipLogin: () => false,
+    isSchedulesFeatureEnabled: () => false,
+    isSchedulesCreateEnabled: () => false,
+    isComplianceFormEnabled: () => false,
+    isSchedulesWeekV2Enabled: () => false,
+  };
+});
 
 vi.mock('@/ui/components/SignInButton', () => ({
   __esModule: true,

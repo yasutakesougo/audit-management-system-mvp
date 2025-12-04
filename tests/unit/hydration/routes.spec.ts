@@ -32,7 +32,9 @@ describe('resolveHydrationEntry', () => {
       // 日次メニュー系
       ['/daily', '', HYDRATION_KEYS.dailyMenu, 'dailyMenu'],
       ['/daily/support', '', HYDRATION_KEYS.dailySupport, 'dailySupport'],
+      ['/daily/time-based', '', HYDRATION_KEYS.dailyTimeBased, 'dailyTimeBased'],
       ['/daily/activity', '', HYDRATION_KEYS.dailyActivity, 'dailyActivity'],
+      ['/analysis/dashboard', '', HYDRATION_KEYS.analysisDashboard, 'analysisDashboard'],
 
       // 管理画面系
       ['/admin/dashboard', '', HYDRATION_KEYS.adminDashboard, 'adminDashboard'],

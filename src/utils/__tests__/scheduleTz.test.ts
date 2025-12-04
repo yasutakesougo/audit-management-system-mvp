@@ -5,10 +5,16 @@
 
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
+const mockGetAppConfig = vi.fn(() => ({ schedulesTz: undefined }));
+
 // 環境変数mockを簡潔に
-vi.mock('@/lib/env', () => ({
-  getAppConfig: vi.fn(() => ({ schedulesTz: undefined })),
-}));
+vi.mock('@/lib/env', async () => {
+  const actual = await vi.importActual<typeof import('@/lib/env')>('@/lib/env');
+  return {
+    ...actual,
+    getAppConfig: () => mockGetAppConfig(),
+  };
+});
 
 import {
     assertValidTz,

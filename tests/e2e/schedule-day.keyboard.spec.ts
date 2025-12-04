@@ -1,86 +1,61 @@
-import { TESTIDS } from '@/testids';
-import { expect, test, type Page } from '@playwright/test';
-import { enableLiveEnv } from './_helpers/schedule';
-import { waitForDayScheduleReady } from './utils/wait';
+import '@/test/captureSp400';
+import { expect, test } from '@playwright/test';
+import { gotoDay } from './utils/scheduleNav';
+import { waitForDayTimeline, waitForWeekTimeline } from './utils/wait';
 
-async function assertActiveElementTestId(page: Page, testId: string): Promise<void> {
-  await expect
-    .poll(async () => {
-      const result = await page.evaluate(() => {
-        const active = document.activeElement as HTMLElement | null;
-        return {
-          id: active?.getAttribute?.('data-testid') ?? '',
-          tag: active?.tagName ?? null,
-        };
-      });
-      // eslint-disable-next-line no-console
-      console.log('day-debug poll value', result);
-      return result.id;
-    }, {
-      timeout: 10_000,
-    })
-    .toBe(testId);
-}
+const setupEnv = {
+  env: {
+    VITE_E2E_MSAL_MOCK: '1',
+    VITE_SKIP_LOGIN: '1',
+    VITE_FEATURE_SCHEDULES: '1',
+    VITE_FEATURE_SCHEDULES_WEEK_V2: '1',
+  },
+  storage: {
+    'feature:schedules': '1',
+    skipLogin: '1',
+    'feature:schedulesWeekV2': 'true',
+  },
+} as const;
 
 test.describe('Schedule day keyboard navigation', () => {
   test.beforeEach(async ({ page }) => {
-    await enableLiveEnv(page);
+    page.on('console', (message) => {
+      if (message.type() === 'info' && message.text().startsWith('[schedulesClient] fixtures=')) {
+        // eslint-disable-next-line no-console
+        console.log(`browser-console: ${message.text()}`);
+      }
+    });
+
+    await page.addInitScript(({ env, storage }) => {
+      const scope = window as typeof window & { __ENV__?: Record<string, string> };
+      scope.__ENV__ = {
+        ...(scope.__ENV__ ?? {}),
+        ...env,
+      };
+      for (const [key, value] of Object.entries(storage)) {
+        window.localStorage.setItem(key, value);
+      }
+    }, setupEnv);
   });
 
-  test('Day navigation: ArrowLeft/Right updates label/URL/focus', async ({ page }) => {
-    await page.goto('/schedules/day', { waitUntil: 'domcontentloaded' });
-    await waitForDayScheduleReady(page);
+  test('Tablist arrow keys switch day/week views', async ({ page }) => {
+    await gotoDay(page, new Date('2025-11-24'));
+    await waitForDayTimeline(page);
 
-    const container = page.getByTestId(TESTIDS['schedules-day-page']);
-    await container.focus();
+    const tablist = page.getByRole('tablist', { name: /スケジュールビュー切り替え/ });
+    const dayTab = tablist.getByRole('tab', { name: '日' });
+    const weekTab = tablist.getByRole('tab', { name: '週' });
 
-    const heading = page.getByTestId(TESTIDS['schedules-day-heading']);
-    const initialLabel = (await heading.textContent()) ?? '';
-    expect(initialLabel).toMatch(/日次スケジュール（\d{4}\/\d{2}\/\d{2}）/);
+    await dayTab.focus();
 
-    const initialParam = new URL(page.url()).searchParams.get('day');
+    await dayTab.press('ArrowLeft');
+    await weekTab.press(' ');
+    await waitForWeekTimeline(page);
+    await expect(weekTab).toHaveAttribute('aria-selected', 'true');
 
-    await page.keyboard.press('ArrowRight');
-    await waitForDayScheduleReady(page);
-
-    const debugActiveAfterNext = await page.evaluate(() => {
-      const active = document.activeElement as HTMLElement | null;
-      return {
-        tag: active?.tagName ?? null,
-        testId: active?.getAttribute?.('data-testid') ?? null,
-        html: active?.outerHTML ?? null,
-      };
-    });
-    // eslint-disable-next-line no-console
-    console.log('day-debug after ArrowRight', debugActiveAfterNext);
-
-    const nextLabel = (await heading.textContent()) ?? '';
-    expect(nextLabel).not.toBe(initialLabel);
-    await expect(page).toHaveURL(/[?&]day=\d{4}-\d{2}-\d{2}/);
-
-    const debugBeforeAssert = await page.evaluate(() => {
-      const active = document.activeElement as HTMLElement | null;
-      return {
-        tag: active?.tagName ?? null,
-        testId: active?.getAttribute?.('data-testid') ?? null,
-      };
-    });
-    // eslint-disable-next-line no-console
-    console.log('day-debug before assert', debugBeforeAssert);
-    const focusDbg = await page.evaluate(() => (window as typeof window & { __focusDbg__?: unknown }).__focusDbg__ ?? null);
-    // eslint-disable-next-line no-console
-    console.log('day-debug focusDbg', focusDbg);
-    await assertActiveElementTestId(page, TESTIDS['schedules-next']);
-
-    await page.keyboard.press('ArrowLeft');
-    await waitForDayScheduleReady(page);
-
-    await expect
-      .poll(async () => (await heading.textContent()) ?? '', { timeout: 10_000 })
-      .toBe(initialLabel);
-    if (initialParam) {
-      await expect(page).toHaveURL(new RegExp(`[?&]day=${initialParam}`));
-    }
-    await assertActiveElementTestId(page, TESTIDS['schedules-prev']);
+    await weekTab.press('ArrowRight');
+    await dayTab.press(' ');
+    await waitForDayTimeline(page);
+    await expect(dayTab).toHaveAttribute('aria-selected', 'true');
   });
 });

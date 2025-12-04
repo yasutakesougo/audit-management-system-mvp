@@ -1,10 +1,12 @@
 import { TESTIDS } from '@/testids';
 import { expect, test } from '@playwright/test';
-import { setupNurseFlags } from './_helpers/setupNurse.flags';
+import { bootNursePage } from './_helpers/bootNursePage';
+
+test.skip(true, 'Legacy nurse sync HUD is offline until v2 observation UI restores it.');
 
 test.describe('@ci-smoke nurse sync telemetry', () => {
   test.beforeEach(async ({ page }) => {
-    await setupNurseFlags(page);
+    await bootNursePage(page, { seed: { nurseDashboard: true }, stubSpApi: false });
   });
 
   test('queued observation flushes when returning online', async ({ page }) => {

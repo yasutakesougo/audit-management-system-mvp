@@ -15,10 +15,15 @@ const mockCreateE2EMsalAccount = vi.fn();
 const mockPersistMsalToken = vi.fn();
 const mockUseMsalContext = vi.fn();
 
-vi.mock('@/lib/env', () => ({
-  getAppConfig: () => mockGetAppConfig(),
-  isE2eMsalMockEnabled: () => mockIsE2eMsalMockEnabled(),
-}));
+vi.mock('@/lib/env', async () => {
+  const actual = await vi.importActual<typeof import('@/lib/env')>('@/lib/env');
+  return {
+    ...actual,
+    getAppConfig: () => mockGetAppConfig(),
+    isE2eMsalMockEnabled: () => mockIsE2eMsalMockEnabled(),
+    shouldSkipLogin: () => false,
+  };
+});
 
 vi.mock('@/lib/msal', () => ({
   createE2EMsalAccount: () => mockCreateE2EMsalAccount(),
@@ -33,16 +38,22 @@ const baseConfig: AuthConfig = {
   VITE_MSAL_TENANT_ID: 'tenant',
 };
 
-const createDefaultMsalContext = () => ({
-  accounts: [],
-  inProgress: 'none' as const,
-  instance: {
-    acquireTokenSilent: vi.fn(),
-    acquireTokenRedirect: vi.fn(),
-    loginRedirect: vi.fn(),
-    logoutRedirect: vi.fn(),
-  },
-});
+const createDefaultMsalContext = () => {
+  const accounts: Array<Record<string, unknown>> = [];
+  return {
+    accounts,
+    inProgress: 'none' as const,
+    instance: {
+      acquireTokenSilent: vi.fn(),
+      acquireTokenRedirect: vi.fn(),
+      loginRedirect: vi.fn(),
+      logoutRedirect: vi.fn(),
+      getActiveAccount: vi.fn(() => accounts[0] ?? null),
+      getAllAccounts: vi.fn(() => accounts),
+      setActiveAccount: vi.fn(),
+    },
+  };
+};
 
 type ViMock = ReturnType<typeof vi.fn>;
 
@@ -103,8 +114,9 @@ describe('useAuth hook', () => {
   });
 
   it('refreshes token when remaining lifetime is below threshold', async () => {
+    const accounts = [{ homeAccountId: '1' }];
     mockUseMsalContext.mockReturnValue({
-      accounts: [{ homeAccountId: '1' }],
+      accounts,
       inProgress: 'none' as const,
       instance: {
         acquireTokenSilent: vi
@@ -117,6 +129,9 @@ describe('useAuth hook', () => {
         acquireTokenRedirect: vi.fn(),
         loginRedirect: vi.fn(),
         logoutRedirect: vi.fn(),
+        getActiveAccount: vi.fn(() => accounts[0]),
+        getAllAccounts: vi.fn(() => accounts),
+        setActiveAccount: vi.fn(),
       },
     });
 
@@ -159,14 +174,18 @@ describe('useAuth hook', () => {
       .fn()
       .mockResolvedValue({ accessToken: 'cached', expiresOn: new Date(Date.now() + 600_000) });
 
+    const accounts = [{ id: 'cached-account' }];
     mockUseMsalContext.mockReturnValue({
-      accounts: [{ id: 'cached-account' }],
+      accounts,
       inProgress: 'none' as const,
       instance: {
         acquireTokenSilent,
         acquireTokenRedirect: vi.fn(),
         loginRedirect: vi.fn(),
         logoutRedirect: vi.fn(),
+        getActiveAccount: vi.fn(() => accounts[0]),
+        getAllAccounts: vi.fn(() => accounts),
+        setActiveAccount: vi.fn(),
       },
     });
 
@@ -192,14 +211,18 @@ describe('useAuth hook', () => {
   it('handles missing expiration gracefully', async () => {
     const acquireTokenSilent = vi.fn().mockResolvedValue({ accessToken: 'no-exp' });
 
+    const accounts = [{ id: 'no-exp' }];
     mockUseMsalContext.mockReturnValue({
-      accounts: [{ id: 'no-exp' }],
+      accounts,
       inProgress: 'none' as const,
       instance: {
         acquireTokenSilent,
         acquireTokenRedirect: vi.fn(),
         loginRedirect: vi.fn(),
         logoutRedirect: vi.fn(),
+        getActiveAccount: vi.fn(() => accounts[0]),
+        getAllAccounts: vi.fn(() => accounts),
+        setActiveAccount: vi.fn(),
       },
     });
 
@@ -223,14 +246,18 @@ describe('useAuth hook', () => {
         accessToken: 'long-lived',
         expiresOn: new Date(Date.now() + 3_600_000),
       });
+    const accounts = [{ id: 'stable' }];
     mockUseMsalContext.mockReturnValue({
-      accounts: [{ id: 'stable' }],
+      accounts,
       inProgress: 'none' as const,
       instance: {
         acquireTokenSilent,
         acquireTokenRedirect: vi.fn(),
         loginRedirect: vi.fn(),
         logoutRedirect: vi.fn(),
+        getActiveAccount: vi.fn(() => accounts[0]),
+        getAllAccounts: vi.fn(() => accounts),
+        setActiveAccount: vi.fn(),
       },
     });
 
@@ -259,14 +286,18 @@ describe('useAuth hook', () => {
     const acquireTokenSilent = vi.fn().mockRejectedValue(new Error('silent-failure'));
     const acquireTokenRedirect = vi.fn().mockResolvedValue(undefined);
 
+    const accounts = [{ id: 'broken-account' }];
     mockUseMsalContext.mockReturnValue({
-      accounts: [{ id: 'broken-account' }],
+      accounts,
       inProgress: 'none' as const,
       instance: {
         acquireTokenSilent,
         acquireTokenRedirect,
         loginRedirect: vi.fn(),
         logoutRedirect: vi.fn(),
+        getActiveAccount: vi.fn(() => accounts[0]),
+        getAllAccounts: vi.fn(() => accounts),
+        setActiveAccount: vi.fn(),
       },
     });
 
@@ -280,20 +311,26 @@ describe('useAuth hook', () => {
 
     expect(token).toBeNull();
     expect(sessionStorage.getItem('spToken')).toBeNull();
-    expect(acquireTokenRedirect).toHaveBeenCalledWith({
-      scopes: ['https://resource.example.com/.default'],
-    });
+    expect(acquireTokenRedirect).toHaveBeenCalledWith(
+      expect.objectContaining({
+        scopes: ['https://resource.example.com/.default'],
+      })
+    );
   });
 
   it('returns unauthenticated state when no accounts are present', async () => {
+    const accounts: unknown[] = [];
     mockUseMsalContext.mockReturnValue({
-      accounts: [],
+      accounts,
       inProgress: 'none' as const,
       instance: {
         acquireTokenSilent: vi.fn(),
         acquireTokenRedirect: vi.fn(),
         loginRedirect: vi.fn(),
         logoutRedirect: vi.fn(),
+        getActiveAccount: vi.fn(() => accounts[0] ?? null),
+        getAllAccounts: vi.fn(() => accounts),
+        setActiveAccount: vi.fn(),
       },
     });
 

@@ -1,49 +1,33 @@
-type MergeCandidate = { id?: unknown; Id?: unknown; ID?: unknown };
+type Mergeable = { id: string | number };
 
-const toKey = (value: unknown): string | null => {
-  if (typeof value === 'string') {
-    const trimmed = value.trim();
-    return trimmed.length ? trimmed : null;
+const toKey = (id: Mergeable['id']): string => {
+  if (typeof id === 'number') {
+    return Number.isFinite(id) ? String(id) : '';
   }
-  if (typeof value === 'number' && Number.isFinite(value)) {
-    return String(value);
-  }
-  return null;
-};
-
-const resolveKey = (item: MergeCandidate | null | undefined, fallback: string): string => {
-  if (!item || typeof item !== 'object') {
-    return fallback;
-  }
-  const key = toKey(item.id) ?? toKey(item.Id) ?? toKey(item.ID);
-  return key ?? fallback;
+  return id ?? '';
 };
 
 /**
- * Merge two collections by `id`, preferring the override array when identifiers collide.
+ * Merge schedule collections by `id`, giving precedence to drafts when collisions occur.
+ * Keeps the original fetched ordering for stable UI rendering.
  */
-export function mergeById<T extends MergeCandidate>(base: readonly T[], overrides: readonly T[]): T[] {
-  const map = new Map<string, T>();
-  const order: string[] = [];
-  const seen = new Set<string>();
+export const mergeById = <Fetched extends Mergeable, Draft extends Mergeable>(
+  fetched: readonly Fetched[],
+  drafts: readonly Draft[],
+): Array<Fetched | Draft> => {
+  const merged = new Map<string, Fetched | Draft>();
 
-  const register = (key: string, value: T) => {
-    if (!seen.has(key)) {
-      seen.add(key);
-      order.push(key);
-    }
-    map.set(key, value);
-  };
-
-  base.forEach((item, index) => {
-    const key = resolveKey(item, `base-${index}`);
-    register(key, item);
+  fetched.forEach((item) => {
+    const key = toKey(item.id);
+    if (!key) return;
+    merged.set(key, item);
   });
 
-  overrides.forEach((item, index) => {
-    const key = resolveKey(item, `override-${index}`);
-    register(key, item);
+  drafts.forEach((item) => {
+    const key = toKey(item.id);
+    if (!key) return;
+    merged.set(key, item);
   });
 
-  return order.map((key) => map.get(key)!).filter((value): value is T => value !== undefined);
-}
+  return Array.from(merged.values());
+};

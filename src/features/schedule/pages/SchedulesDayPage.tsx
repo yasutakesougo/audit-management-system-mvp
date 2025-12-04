@@ -1,45 +1,37 @@
 import { useAnnounce } from '@/a11y/LiveAnnouncer';
 import { useRouteFocusManager } from '@/a11y/useRouteFocusManager';
-import {
-    getComposedWeek,
-    isScheduleFixturesMode,
-    type ScheduleEvent,
-} from '@/features/schedule/api/schedulesClient';
+import { type ScheduleEvent } from '@/features/schedule/api/schedulesClient';
 import { ScheduleConflictGuideDialog, type SuggestionAction } from '@/features/schedule/components/ScheduleConflictGuideDialog';
-import {
-    buildConflictIndex
-} from '@/features/schedule/conflictChecker';
+import ScheduleCreateDialog, { type CreateScheduleEventInput } from '@/features/schedules/ScheduleCreateDialog';
+import { useSchedulesPort } from '@/features/schedules/data';
+import type { SchedItem } from '@/features/schedules/data';
+import { useSchedules, type InlineScheduleDraft } from '@/features/schedules/useSchedules';
+import { buildConflictIndex } from '@/features/schedule/conflictChecker';
 import { FOCUS_GUARD_MS } from '@/features/schedule/focusGuard';
 import { useAnchoredPeriod } from '@/features/schedule/hooks/useAnchoredPeriod';
 import { useApplyScheduleSuggestion } from '@/features/schedule/hooks/useApplyScheduleSuggestion';
 import type { BaseSchedule, Category } from '@/features/schedule/types';
+import { useScheduleUserOptions } from '@/features/schedules/useScheduleUserOptions';
+import { SchedulesHeader } from '@/features/schedules/components/SchedulesHeader';
+import { ScheduleEmptyHint } from '@/features/schedules/components/ScheduleEmptyHint';
+import { normalizeToDayStart, pickDateParam } from '@/features/schedule/dateQuery';
 import { useToast } from '@/hooks/useToast';
-import { shouldSkipLogin } from '@/lib/env';
-import { ensureMsalSignedIn, getSharePointScopes } from '@/lib/msal';
 import { TESTIDS, tid } from '@/testids';
 import Box from '@mui/material/Box';
-import Button from '@mui/material/Button';
 import Container from '@mui/material/Container';
 import Skeleton from '@mui/material/Skeleton';
 import Stack from '@mui/material/Stack';
 import Typography from '@mui/material/Typography';
 import dayjs from 'dayjs';
 import {
-    useCallback,
-    useEffect,
-    useMemo,
-    useRef,
-    useState,
-    type KeyboardEvent as ReactKeyboardEvent,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type KeyboardEvent as ReactKeyboardEvent,
 } from 'react';
-import { useNavigate } from 'react-router-dom';
-// Icons for navigation
-import AddRoundedIcon from '@mui/icons-material/AddRounded';
-import CalendarMonthRoundedIcon from '@mui/icons-material/CalendarMonthRounded';
-import CalendarViewWeekRoundedIcon from '@mui/icons-material/CalendarViewWeekRounded';
-// Additional MUI components
-import Tab from '@mui/material/Tab';
-import Tabs from '@mui/material/Tabs';
+import { useSearchParams } from 'react-router-dom';
 
 type Status = 'idle' | 'loading' | 'ready' | 'empty' | 'error';
 
@@ -48,6 +40,7 @@ const DAY_PAGE_TEST_ID = 'schedules-day-page';
 const DAY_HEADING_TEST_ID = 'schedules-day-heading';
 const NEXT_BUTTON_TEST_ID = TESTIDS['schedules-next'];
 const PREV_BUTTON_TEST_ID = TESTIDS['schedules-prev'];
+const DAY_RANGE_DESCRIPTION_ID = 'schedules-day-range';
 
 type FocusDbg = {
   events: string[];
@@ -122,11 +115,122 @@ function isEditableTarget(target: EventTarget | null): boolean {
   return element.getAttribute('role') === 'textbox';
 }
 
+const DEFAULT_START_TIME = '10:00';
+const DEFAULT_END_TIME = '11:00';
+
+const extractDatePart = (value?: string | null): string => {
+  if (!value) {
+    return '';
+  }
+  return value.slice(0, 10);
+};
+
+const extractTimePart = (value?: string | null): string => {
+  if (!value || value.length < 16) {
+    return '';
+  }
+  return value.slice(11, 16);
+};
+
+type DialogIntentParams = {
+  category: Category;
+  dateIso: string;
+  startTime: string;
+  endTime: string;
+};
+
+const buildDialogIntent = (
+  category: Category,
+  dateIso: string,
+  startTime = DEFAULT_START_TIME,
+  endTime = DEFAULT_END_TIME,
+): DialogIntentParams => ({
+  category,
+  dateIso,
+  startTime,
+  endTime,
+});
+
+const toScheduleEvent = (item: SchedItem): ScheduleEvent => {
+  const category = (item.category ?? 'Org') as ScheduleEvent['category'];
+  const staffIds = item.assignedStaffId ? [item.assignedStaffId] : undefined;
+  return {
+    id: item.id,
+    title: item.title,
+    start: item.start,
+    end: item.end,
+    allDay: Boolean(item.allDay),
+    category,
+    personName: item.personName,
+    targetUserIds: item.userId ? [item.userId] : undefined,
+    targetUserNames: item.personName ? [item.personName] : undefined,
+    staffIds,
+    staffNames: item.staffNames,
+    dayKey: item.start ? item.start.slice(0, 10) : undefined,
+  };
+};
+
+const filterSchedItemsForRange = (items: SchedItem[], fromISO: string, toISO: string): SchedItem[] => {
+  const dayStart = dayjs(fromISO);
+  const dayEnd = dayjs(toISO);
+  return items.filter((item) => {
+    const start = dayjs(item.start ?? fromISO);
+    const end = dayjs(item.end ?? item.start ?? toISO);
+    return !start.isAfter(dayEnd) && !end.isBefore(dayStart);
+  });
+};
+
+const DIALOG_PARAM_KEYS = ['dialog', 'dialogDate', 'dialogStart', 'dialogEnd', 'dialogCategory'] as const;
+
+const parseDialogParamsFromLocation = (params: URLSearchParams): DialogIntentParams | null => {
+  if (params.get('dialog') !== 'create') {
+    return null;
+  }
+  const dateIso = params.get('dialogDate');
+  if (!dateIso) {
+    return null;
+  }
+  const startTime = params.get('dialogStart') ?? DEFAULT_START_TIME;
+  const endTime = params.get('dialogEnd') ?? DEFAULT_END_TIME;
+  const category = (params.get('dialogCategory') as Category) ?? 'User';
+  return {
+    category,
+    dateIso,
+    startTime,
+    endTime,
+  };
+};
+
+let shouldRestoreFabFocus = false;
+
 export default function SchedulesDayPage(): JSX.Element {
-  const { range, navigate } = useAnchoredPeriod('day');
-  const navigateToRoute = useNavigate();
+  const { range, navigate, setAnchor } = useAnchoredPeriod('day');
+  const [searchParams, setSearchParams] = useSearchParams();
+  const rawDateParam = useMemo(() => pickDateParam(searchParams), [searchParams]);
+  const initialDate = useMemo(() => normalizeToDayStart(rawDateParam), [rawDateParam]);
   const [status, setStatus] = useState<Status>('idle');
   const [events, setEvents] = useState<ScheduleEvent[]>([]);
+  const scheduleUserOptions = useScheduleUserOptions();
+  const defaultScheduleUser = scheduleUserOptions.length ? scheduleUserOptions[0] : null;
+  const scheduleRange = useMemo(() => ({ from: range.fromISO, to: range.toISO }), [range.fromISO, range.toISO]);
+  const { create: createSchedule } = useSchedules(scheduleRange);
+  const schedulesPort = useSchedulesPort();
+  const mountedRef = useRef(true);
+
+  useEffect(() => () => {
+    mountedRef.current = false;
+  }, []);
+
+  useEffect(() => {
+    if (!rawDateParam) {
+      return;
+    }
+    const nextIso = initialDate.toISOString().slice(0, 10);
+    if (range.param === nextIso) {
+      return;
+    }
+    setAnchor(dayjs(initialDate));
+  }, [initialDate, range.param, rawDateParam, setAnchor]);
 
   // ScheduleEvent を BaseSchedule に変換するヘルパー
   const convertToBaseSchedules = useCallback((events: ScheduleEvent[]): BaseSchedule[] => {
@@ -198,40 +302,24 @@ export default function SchedulesDayPage(): JSX.Element {
 
   // データ再取得関数（既存のuseEffectロジックをコールバック化）
   const refetchSchedules = useCallback(async () => {
-    const controller = new AbortController();
+    setStatus('loading');
     try {
-      setStatus('loading');
-      const skipAuth = isScheduleFixturesMode() || shouldSkipLogin();
-      if (!skipAuth) {
-        const scopes = getSharePointScopes();
-        await ensureMsalSignedIn(scopes);
+      const rows = await schedulesPort.list(scheduleRange);
+      const filtered = filterSchedItemsForRange(rows, range.fromISO, range.toISO).map(toScheduleEvent);
+      if (!mountedRef.current) {
+        return filtered;
       }
-      if (controller.signal.aborted) {
-        return;
-      }
-      const all = await getComposedWeek(
-        { fromISO: range.fromISO, toISO: range.toISO },
-        { signal: controller.signal },
-      );
-      if (controller.signal.aborted) {
-        return;
-      }
-      const dayStart = dayjs(range.fromISO);
-      const dayEnd = dayjs(range.toISO);
-      const filtered = all.filter((event) => {
-        const start = dayjs(event.start);
-        const end = dayjs(event.end);
-        return !start.isAfter(dayEnd) && !end.isBefore(dayStart);
-      });
       setEvents(filtered);
       setStatus(filtered.length ? 'ready' : 'empty');
+      return filtered;
     } catch (error) {
-      if (!controller.signal.aborted) {
+      if (mountedRef.current) {
         console.error('[SchedulesDayPage] Failed to reload schedules:', error);
         setStatus('error');
       }
+      return [];
     }
-  }, [range.fromISO, range.toISO]);
+  }, [range.fromISO, range.toISO, scheduleRange, schedulesPort]);
 
   const { applyScheduleSuggestion } = useApplyScheduleSuggestion({
     allSchedules: events,
@@ -254,10 +342,104 @@ export default function SchedulesDayPage(): JSX.Element {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const prevButtonRef = useRef<HTMLButtonElement | null>(null);
   const nextButtonRef = useRef<HTMLButtonElement | null>(null);
+  const createButtonRef = useRef<HTMLButtonElement | null>(null);
   const focusGuardUntilRef = useRef<number>(0);
   const pendingFocusDirRef = useRef<-1 | 0 | 1>(0);
   const lastNavDirRef = useRef<-1 | 0 | 1>(0);
   const pendingFocusBootstrapRef = useRef(false);
+  const pendingFabFocusRef = useRef(false);
+  const anchoredDateIso = range.param;
+  const showEmptyHint = status === 'empty';
+
+  const setDialogParams = useCallback(
+    (intent: DialogIntentParams) => {
+      const next = new URLSearchParams(searchParams);
+      next.set('dialog', 'create');
+      next.set('dialogDate', intent.dateIso);
+      next.set('dialogStart', intent.startTime);
+      next.set('dialogEnd', intent.endTime);
+      next.set('dialogCategory', intent.category);
+      setSearchParams(next, { replace: true });
+    },
+    [searchParams, setSearchParams],
+  );
+
+  const clearDialogParams = useCallback(() => {
+    const next = new URLSearchParams(searchParams);
+    DIALOG_PARAM_KEYS.forEach((key) => {
+      next.delete(key);
+    });
+    setSearchParams(next, { replace: true });
+  }, [searchParams, setSearchParams]);
+
+  const dialogState = useMemo(() => {
+    const intent = parseDialogParamsFromLocation(searchParams);
+    if (!intent) {
+      return {
+        open: false,
+        initialDate: undefined,
+        initialStartTime: undefined,
+        initialEndTime: undefined,
+        override: null,
+      } as const;
+    }
+    return {
+      open: true,
+      initialDate: intent.dateIso,
+      initialStartTime: intent.startTime,
+      initialEndTime: intent.endTime,
+      override: { category: intent.category } as const,
+    };
+  }, [searchParams]);
+
+  const {
+    open: createDialogOpen,
+    initialDate: dialogInitialDate,
+    initialStartTime: dialogInitialStartTime,
+    initialEndTime: dialogInitialEndTime,
+    override: dialogInitialOverride,
+  } = dialogState;
+
+  const handleCreateDialogClose = useCallback(() => {
+    pendingFabFocusRef.current = true;
+    shouldRestoreFabFocus = true;
+    clearDialogParams();
+  }, [clearDialogParams]);
+
+  const handleCreateDialogSubmit = useCallback(
+    async (input: CreateScheduleEventInput) => {
+      const fallbackDate = dialogInitialDate ?? anchoredDateIso;
+      const dateIso = extractDatePart(input.startLocal) || fallbackDate;
+      const startTime = extractTimePart(input.startLocal) || dialogInitialStartTime || DEFAULT_START_TIME;
+      const endTime = extractTimePart(input.endLocal) || dialogInitialEndTime || DEFAULT_END_TIME;
+
+      const draft: InlineScheduleDraft = {
+        title: input.title.trim() || '新規予定',
+        dateIso,
+        startTime,
+        endTime,
+        sourceInput: input,
+      };
+
+      try {
+        await createSchedule(draft);
+        await refetchSchedules();
+        showToast('success', '予定を登録しました');
+      } catch (error) {
+        showToast('error', '予定の登録に失敗しました');
+        throw error;
+      }
+    },
+    [anchoredDateIso, createSchedule, dialogInitialDate, dialogInitialEndTime, dialogInitialStartTime, refetchSchedules, showToast],
+  );
+
+  const handleCreateButtonClick = useCallback(() => {
+    setDialogParams(buildDialogIntent('User', anchoredDateIso));
+  }, [anchoredDateIso, setDialogParams]);
+
+  const dayHref = useMemo(() => `/schedules/day?day=${range.param}`, [range.param]);
+  const weekHref = useMemo(() => `/schedules/week?date=${range.param}`, [range.param]);
+  const monthHref = useMemo(() => `/schedules/month?date=${range.param}`, [range.param]);
 
   if (!pendingFocusBootstrapRef.current && typeof window !== 'undefined') {
     const scope = window as typeof window & { __pendingDayFocus__?: -1 | 0 | 1 };
@@ -277,44 +459,21 @@ export default function SchedulesDayPage(): JSX.Element {
   });
 
   useEffect(() => {
-    const controller = new AbortController();
-
-    const load = async () => {
-      try {
-        setStatus('loading');
-        const skipAuth = isScheduleFixturesMode() || shouldSkipLogin();
-        if (!skipAuth) {
-          await ensureMsalSignedIn(getSharePointScopes());
-        }
-        const all = await getComposedWeek(
-          { fromISO: range.fromISO, toISO: range.toISO },
-          { signal: controller.signal },
-        );
-        if (controller.signal.aborted) {
-          return;
-        }
-        const dayStart = dayjs(range.fromISO);
-        const dayEnd = dayjs(range.toISO);
-        const filtered = all.filter((event) => {
-          const start = dayjs(event.start);
-          const end = dayjs(event.end);
-          return !start.isAfter(dayEnd) && !end.isBefore(dayStart);
-        });
-        setEvents(filtered);
-        setStatus(filtered.length ? 'ready' : 'empty');
-      } catch {
-        if (!controller.signal.aborted) {
-          setStatus('error');
-        }
+    if (!createDialogOpen) {
+      if ((pendingFabFocusRef.current || shouldRestoreFabFocus) && createButtonRef.current) {
+        createButtonRef.current.focus();
       }
-    };
+      pendingFabFocusRef.current = false;
+      shouldRestoreFabFocus = false;
+      return;
+    }
+    pendingFabFocusRef.current = false;
+    shouldRestoreFabFocus = false;
+  }, [createDialogOpen]);
 
-    void load();
-
-    return () => {
-      controller.abort();
-    };
-  }, [range.fromISO, range.toISO]);
+  useEffect(() => {
+    void refetchSchedules();
+  }, [refetchSchedules]);
 
   useEffect(() => {
     if (typeof window === 'undefined') {
@@ -481,6 +640,29 @@ export default function SchedulesDayPage(): JSX.Element {
     [queueButtonRefocus],
   );
 
+  const handlePrevDay = useCallback(() => {
+    primeRouteFocusGuards();
+    pendingFocusDirRef.current = -1;
+    focusGuardUntilRef.current = Date.now() + resolveGuardDuration();
+    navigate(-1);
+    queueButtonRefocus(PREV_BUTTON_TEST_ID, 'click-prev', prevButtonRef.current ?? undefined);
+  }, [navigate, primeRouteFocusGuards, queueButtonRefocus, resolveGuardDuration]);
+
+  const handleNextDay = useCallback(() => {
+    primeRouteFocusGuards();
+    pendingFocusDirRef.current = 1;
+    focusGuardUntilRef.current = Date.now() + resolveGuardDuration();
+    navigate(1);
+    queueButtonRefocus(NEXT_BUTTON_TEST_ID, 'click-next', nextButtonRef.current ?? undefined);
+  }, [navigate, primeRouteFocusGuards, queueButtonRefocus, resolveGuardDuration]);
+
+  const handleTodayClick = useCallback(() => {
+    primeRouteFocusGuards();
+    pendingFocusDirRef.current = 0;
+    focusGuardUntilRef.current = Date.now() + resolveGuardDuration();
+    setAnchor(dayjs().startOf('day'));
+  }, [primeRouteFocusGuards, resolveGuardDuration, setAnchor]);
+
   useEffect(() => {
     if (typeof window === 'undefined') {
       return undefined;
@@ -567,92 +749,60 @@ export default function SchedulesDayPage(): JSX.Element {
       onKeyDown={handleKeyDown}
       ref={containerRef}
     >
-      <Typography
-        variant="h5"
-        component="h1"
-        data-testid={DAY_HEADING_TEST_ID}
-        data-page-heading="true"
-        id={DAY_HEADING_TEST_ID}
+      <Box
+        sx={{
+          position: 'sticky',
+          top: 0,
+          zIndex: 2,
+          backgroundColor: (theme) => theme.palette.background.paper,
+          backdropFilter: 'blur(6px)',
+          borderBottom: '1px solid',
+          borderColor: 'divider',
+          py: 2,
+          mb: 3,
+        }}
       >
-        日次スケジュール（{range.label}）
-      </Typography>
-
-      {/* Navigation Tabs and Actions */}
-      <Box sx={{ borderBottom: 1, borderColor: 'divider', my: 2 }}>
-        <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 1 }}>
-          <Tabs value="day" aria-label="スケジュールビュー切り替え">
-            <Tab
-              label="週間"
-              value="week"
-              icon={<CalendarViewWeekRoundedIcon />}
-              iconPosition="start"
-              sx={{ textTransform: 'none' }}
-              onClick={() => navigateToRoute('/schedules/week')}
-            />
-            <Tab
-              label="月間"
-              value="month"
-              icon={<CalendarMonthRoundedIcon />}
-              iconPosition="start"
-              sx={{ textTransform: 'none' }}
-              onClick={() => navigateToRoute('/schedules/month')}
-            />
-            <Tab
-              label="日間"
-              value="day"
-              icon={<Box component="span">📅</Box>}
-              iconPosition="start"
-              sx={{ textTransform: 'none' }}
-            />
-          </Tabs>
-
-          <Button
-            variant="contained"
-            startIcon={<AddRoundedIcon />}
-            onClick={() => navigateToRoute('/schedules/create')}
-            sx={{ ml: 2 }}
-          >
-            新規作成
-          </Button>
-        </Stack>
+        <SchedulesHeader
+          mode="day"
+          title="日次スケジュール"
+          subLabel="日表示（詳細タイムライン）"
+          periodLabel={`表示日: ${range.label}`}
+          onPrev={handlePrevDay}
+          onNext={handleNextDay}
+          onToday={handleTodayClick}
+          onPrimaryCreate={handleCreateButtonClick}
+          headingId={DAY_HEADING_TEST_ID}
+          titleTestId={DAY_HEADING_TEST_ID}
+          rangeLabelId={DAY_RANGE_DESCRIPTION_ID}
+          dayHref={dayHref}
+          weekHref={weekHref}
+          monthHref={monthHref}
+          prevTestId={PREV_BUTTON_TEST_ID}
+          nextTestId={NEXT_BUTTON_TEST_ID}
+          prevButtonRef={prevButtonRef}
+          nextButtonRef={nextButtonRef}
+          prevButtonOnBlur={handleButtonBlur}
+          nextButtonOnBlur={handleButtonBlur}
+          primaryButtonRef={createButtonRef}
+          primaryButtonTestId={TESTIDS.SCHEDULES_FAB_CREATE}
+          primaryActionAriaLabel="今日または選択中の日に新規予定を作成"
+        >
+          <Typography variant="body2" color="text.secondary" sx={{ textAlign: 'right' }}>
+            {status === 'loading' ? '読み込み中…' : `予定 ${events.length} 件`}
+          </Typography>
+        </SchedulesHeader>
       </Box>
 
-      <Stack direction="row" spacing={1} sx={{ my: 1 }}>
-        <Button
-          ref={prevButtonRef}
-          data-testid={TESTIDS['schedules-prev']}
-          onClick={(event) => {
-            primeRouteFocusGuards();
-            pendingFocusDirRef.current = -1;
-            focusGuardUntilRef.current = Date.now() + resolveGuardDuration();
-            navigate(-1);
-            queueButtonRefocus(TESTIDS['schedules-prev'], 'click-prev', event.currentTarget);
-          }}
-          variant="outlined"
-          aria-label="前の日へ"
-          onBlur={handleButtonBlur}
-        >
-          前の日
-        </Button>
-        <Button
-          ref={nextButtonRef}
-          data-testid={TESTIDS['schedules-next']}
-          onClick={(event) => {
-            primeRouteFocusGuards();
-            pendingFocusDirRef.current = 1;
-            focusGuardUntilRef.current = Date.now() + resolveGuardDuration();
-            navigate(1);
-            queueButtonRefocus(TESTIDS['schedules-next'], 'click-next', event.currentTarget);
-          }}
-          variant="outlined"
-          aria-label="次の日へ"
-          onBlur={handleButtonBlur}
-        >
-          次の日
-        </Button>
-      </Stack>
-
-      <Box component="section" role="region" aria-labelledby={DAY_HEADING_TEST_ID} sx={{ mt: 2 }}>
+      <Box
+        component="section"
+        role="region"
+        aria-labelledby={DAY_HEADING_TEST_ID}
+        aria-describedby={DAY_RANGE_DESCRIPTION_ID}
+        sx={{ mt: 2 }}
+      >
+        {showEmptyHint ? (
+          <ScheduleEmptyHint view="day" periodLabel={range.label} sx={{ mb: 2 }} />
+        ) : null}
         {status === 'loading' && (
           <Stack data-testid="schedules-day-skeleton" aria-busy="true">
             {Array.from({ length: 4 }).map((_, index) => (
@@ -727,23 +877,25 @@ export default function SchedulesDayPage(): JSX.Element {
           </Box>
         )}
 
-        {status === 'empty' && (
-          <Box
-            data-testid="schedules-empty"
-            role="status"
-            aria-live="polite"
-            sx={{ p: 2, color: 'text.secondary' }}
-          >
-            この日の予定はありません。
-          </Box>
-        )}
-
         {status === 'error' && (
           <Box role="alert" sx={{ p: 2, color: 'error.main' }}>
             予定の取得に失敗しました。時間をおいて再度お試しください。
           </Box>
         )}
       </Box>
+
+      <ScheduleCreateDialog
+        open={createDialogOpen}
+        onClose={handleCreateDialogClose}
+        onSubmit={handleCreateDialogSubmit}
+        users={scheduleUserOptions}
+        initialDate={dialogInitialDate ?? anchoredDateIso}
+        initialStartTime={dialogInitialStartTime}
+        initialEndTime={dialogInitialEndTime}
+        defaultUser={defaultScheduleUser ?? undefined}
+        initialOverride={dialogInitialOverride ?? undefined}
+        mode="create"
+      />
 
       <ScheduleConflictGuideDialog
         open={guideOpen}

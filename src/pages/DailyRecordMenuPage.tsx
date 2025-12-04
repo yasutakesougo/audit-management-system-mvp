@@ -344,7 +344,7 @@ const DailyRecordMenuPage: React.FC = () => {
               </Stack>
             </CardContent>
 
-            <CardActions sx={{ p: 3, pt: 0 }}>
+            <CardActions sx={{ p: 3, pt: 0, display: 'flex', flexDirection: 'column', gap: 1 }}>
               <Button
                 variant="contained"
                 size="large"
@@ -355,6 +355,21 @@ const DailyRecordMenuPage: React.FC = () => {
                 data-testid="btn-open-support"
               >
                 支援手順記録を開く
+              </Button>
+
+              <Button
+                variant="text"
+                size="small"
+                color="inherit"
+                sx={{
+                  color: 'text.secondary',
+                  fontSize: '0.75rem',
+                  textDecoration: 'underline',
+                  '&:hover': { backgroundColor: 'transparent', color: 'text.primary' }
+                }}
+                onClick={() => navigate('/daily/support-checklist')}
+              >
+                ※従来のチェックリスト形式はこちら
               </Button>
             </CardActions>
           </Card>

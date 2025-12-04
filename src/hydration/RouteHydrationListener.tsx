@@ -1,8 +1,8 @@
 import { getFlag, isDemo, isDev, isE2E } from '@/env';
 import {
-  beginHydrationSpan,
-  finalizeHydrationSpan,
-  updateHydrationSpanMeta,
+    beginHydrationSpan,
+    finalizeHydrationSpan,
+    updateHydrationSpanMeta,
 } from '@/lib/hydrationHud';
 import { routingPreloadStrategy } from '@/mui/preload-strategies';
 import React, { createContext, useCallback, useContext, useEffect, useRef } from 'react';

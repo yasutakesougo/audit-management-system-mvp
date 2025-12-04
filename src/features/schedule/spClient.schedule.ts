@@ -11,7 +11,7 @@ import type { SpScheduleItem } from '@/types';
 import { buildScheduleSelectClause, handleScheduleOptionalFieldError } from './scheduleFeatures';
 import { fromSpSchedule, toSpScheduleFields } from './spMap';
 import { STATUS_DEFAULT } from './statusDictionary';
-import type { ScheduleUserCare } from './types';
+import type { ScheduleUserCare, ServiceType } from './types';
 import { validateUserCare } from './validation';
 
 type ScheduleUserCareDraft = Omit<ScheduleUserCare, 'id' | 'etag'> & {
@@ -24,11 +24,14 @@ const LIST_TITLE = (() => {
   const override = readEnv('VITE_SP_LIST_SCHEDULES', '').trim();
   return override || DEFAULT_LIST_TITLE;
 })();
-const LIST_PATH = `/lists/getbytitle('${encodeURIComponent(LIST_TITLE)}')/items` as const;
+const escapeODataString = (input: string): string => input.replace(/'/g, "''");
+const buildListPath = (title: string): string => `/lists/getbytitle('${escapeODataString(title)}')/items`;
+const LIST_PATH = buildListPath(LIST_TITLE);
 
-const buildScheduleListPath = (_list: string, id?: number): string => (
-  typeof id === 'number' ? `${LIST_PATH}(${id})` : LIST_PATH
-);
+const buildScheduleListPath = (list: string, id?: number): string => {
+  const base = buildListPath(list);
+  return typeof id === 'number' ? `${base}(${id})` : base;
+};
 
 const withScheduleFieldFallback = async <T>(operation: () => Promise<T>): Promise<T> => {
   try {
@@ -58,7 +61,7 @@ const toNumericId = (id: string | number): number => {
   return parsed;
 };
 
-const buildOverlapFilter = (startIso: string, endIso: string, keyword?: string, personType?: 'Internal' | 'External', serviceType?: '一時ケア' | 'ショートステイ'): string => {
+const buildOverlapFilter = (startIso: string, endIso: string, keyword?: string, personType?: 'Internal' | 'External', serviceType?: ServiceType): string => {
   const parts = [
     `(${SCHEDULE_FIELD_CATEGORY} eq 'User')`,
     `(EventDate lt ${encodeODataDate(endIso)})`,
@@ -97,6 +100,7 @@ const coerceUserCare = (input: Partial<ScheduleUserCare>): ScheduleUserCare => (
   personType: input.personType as ScheduleUserCare['personType'],
   personId: input.personId,
   personName: input.personName,
+  userLookupId: input.userLookupId,
   externalPersonName: input.externalPersonName,
   externalPersonOrg: input.externalPersonOrg,
   externalPersonContact: input.externalPersonContact,

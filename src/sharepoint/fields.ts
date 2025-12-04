@@ -7,6 +7,35 @@ export type StaffRow = SpStaffItem;
 export type ScheduleRow = SpScheduleItem;
 export type DailyRow = SpDailyItem;
 
+// ──────────────────────────────────────────────────────────────
+// Org master (SharePoint list: Org_Master)
+// Internal names confirmed: OrgCode / OrgType / Audience / SortOrder / IsActive / Notes
+// ──────────────────────────────────────────────────────────────
+
+export const ORG_MASTER_LIST_TITLE = 'Org_Master' as const;
+
+export const ORG_MASTER_FIELDS = {
+  id: 'Id',
+  title: 'Title',
+  orgCode: 'OrgCode',
+  orgType: 'OrgType',
+  audience: 'Audience',
+  sortOrder: 'SortOrder',
+  isActive: 'IsActive',
+  notes: 'Notes',
+} as const;
+
+export const ORG_MASTER_SELECT_FIELDS = [
+  ORG_MASTER_FIELDS.id,
+  ORG_MASTER_FIELDS.title,
+  ORG_MASTER_FIELDS.orgCode,
+  ORG_MASTER_FIELDS.orgType,
+  ORG_MASTER_FIELDS.audience,
+  ORG_MASTER_FIELDS.sortOrder,
+  ORG_MASTER_FIELDS.isActive,
+  ORG_MASTER_FIELDS.notes,
+] as const;
+
 export interface IUserMaster {
   Id: number;
   Title?: string | null;
@@ -47,7 +76,7 @@ export interface IUserMaster {
 }
 
 export interface IUserMasterCreateDto {
-  UserID: string;
+  UserID?: string | null;  // システム採番のためフロントからは基本送信しない
   FullName: string;
   Furigana?: string | null;
   FullNameKana?: string | null;
@@ -87,12 +116,18 @@ export enum ListKeys {
   UsersMaster = 'Users_Master',
   StaffMaster = 'Staff_Master',
   ComplianceCheckRules = 'Compliance_CheckRules',
+  Behaviors = 'Dat_Behaviors',
+  SurveyTokusei = 'FormsResponses_Tokusei',
+  OrgMaster = 'Org_Master',
 }
 
 export const LIST_CONFIG: Record<ListKeys, { title: string }> = {
   [ListKeys.UsersMaster]: { title: 'Users_Master' },
   [ListKeys.StaffMaster]: { title: 'Staff_Master' },
   [ListKeys.ComplianceCheckRules]: { title: 'Compliance_CheckRules' },
+  [ListKeys.Behaviors]: { title: 'Dat_Behaviors' },
+  [ListKeys.SurveyTokusei]: { title: 'FormsResponses_Tokusei' },
+  [ListKeys.OrgMaster]: { title: 'Org_Master' },
 };
 
 export const FIELD_MAP = {
@@ -143,6 +178,7 @@ export const FIELD_MAP = {
     phone: 'Phone',
     certifications: 'Certifications',
   },
+  Org_Master: ORG_MASTER_FIELDS,
   Schedules: {
     id: 'Id',
     title: 'Title',
@@ -164,6 +200,54 @@ export const FIELD_MAP = {
     monthKey: 'MonthKey',
   },
 } as const;
+
+export const FIELD_MAP_BEHAVIORS = {
+  id: 'Id',
+  userId: 'UserID',
+  timestamp: 'BehaviorDateTime',
+  antecedent: 'Antecedent',
+  behavior: 'BehaviorType',
+  consequence: 'Consequence',
+  intensity: 'Intensity',
+  duration: 'DurationMinutes',
+  memo: 'Notes',
+  created: 'Created'
+} as const;
+
+export const BEHAVIORS_SELECT_FIELDS = [
+  FIELD_MAP_BEHAVIORS.id,
+  FIELD_MAP_BEHAVIORS.userId,
+  FIELD_MAP_BEHAVIORS.timestamp,
+  FIELD_MAP_BEHAVIORS.antecedent,
+  FIELD_MAP_BEHAVIORS.behavior,
+  FIELD_MAP_BEHAVIORS.consequence,
+  FIELD_MAP_BEHAVIORS.intensity,
+  FIELD_MAP_BEHAVIORS.duration,
+  FIELD_MAP_BEHAVIORS.memo,
+  FIELD_MAP_BEHAVIORS.created
+] as const;
+
+export const FIELD_MAP_SURVEY_TOKUSEI = {
+  id: 'Id',
+  responseId: 'ResponseId',
+  responderEmail: 'ResponderEmail',
+  responderName: 'ResponderName',
+  fillDate: 'FillDate',
+  targetUserName: 'TargetUserName',
+  guardianName: 'GuardianName',
+  relation: 'Relation',
+  heightCm: 'HeightCm',
+  weightKg: 'WeightKg',
+  personality: 'Personality',
+  sensoryFeatures: 'SensoryFeatures',
+  behaviorFeatures: 'BehaviorFeatures',
+  preferences: 'Preferences',
+  strengths: 'Strengths',
+  notes: 'Notes',
+  created: 'Created'
+} as const;
+
+export const SURVEY_TOKUSEI_SELECT_FIELDS = Object.values(FIELD_MAP_SURVEY_TOKUSEI);
 
 export const USERS_SELECT_FIELDS_SAFE = [
   FIELD_MAP.Users_Master.id,

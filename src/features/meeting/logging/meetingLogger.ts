@@ -1,3 +1,5 @@
+import { getAppConfig, readBool } from '@/lib/env';
+
 /* 朝会・夕会システム専用 ログユーティリティ */
 
 export type MeetingLogLevel = 'info' | 'warn' | 'error';
@@ -17,11 +19,10 @@ export interface MeetingLogEvent {
 }
 
 // ログ出力のON/OFF（本番でも残したければVITE側で制御）
-const ENABLE_MEETING_LOG =
-  import.meta.env.VITE_ENABLE_MEETING_LOG === '1' || import.meta.env.DEV;
+const ENABLE_MEETING_LOG = readBool('VITE_ENABLE_MEETING_LOG', false) || getAppConfig().isDev;
 
 // 個人情報マスキングの有無（監査要件しだいで調整）
-const MASK_USER_ID = import.meta.env.VITE_MEETING_LOG_MASK_USER === '1';
+const MASK_USER_ID = readBool('VITE_MEETING_LOG_MASK_USER', false);
 
 /** userIdをそのまま出すか、ゆるくマスクするか */
 function formatUserId(userId: string | undefined | null): string | undefined {

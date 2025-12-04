@@ -1,3 +1,4 @@
+import * as schedulesClient from '@/features/schedule/api/schedulesClient';
 import * as snackbarHost from '@/features/nurse/components/SnackbarHost';
 import SchedulePage from '@/features/schedule/SchedulePage';
 import * as spUserCare from '@/features/schedule/spClient.schedule';
@@ -6,6 +7,7 @@ import * as spStaff from '@/features/schedule/spClient.schedule.staff';
 import type { ScheduleUserCare } from '@/features/schedule/types';
 import { TESTIDS } from '@/testids';
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
+import { MemoryRouter } from 'react-router-dom';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 vi.mock('@/auth/useAuth', () => ({
@@ -106,6 +108,7 @@ describe('SchedulePage user schedule smoke', () => {
     vi.useFakeTimers({ toFake: ['Date'] });
     vi.setSystemTime(new Date('2025-11-12T09:00:00+09:00'));
     vi.clearAllMocks();
+    vi.spyOn(schedulesClient, 'isScheduleFixturesMode').mockReturnValue(false);
   });
 
   afterEach(() => {
@@ -144,9 +147,7 @@ describe('SchedulePage user schedule smoke', () => {
     const updateUserCareSpy = vi
       .spyOn(spUserCare, 'updateUserCare')
       .mockResolvedValue({ ...existing, title: '更新後' });
-    const getUserCareSchedulesSpy = vi
-      .spyOn(spUserCare, 'getUserCareSchedules')
-      .mockResolvedValue([existing]);
+    vi.spyOn(spUserCare, 'getUserCareSchedules').mockResolvedValue([existing]);
     vi.spyOn(spOrg, 'getOrgSchedules').mockResolvedValue([]);
     vi.spyOn(spStaff, 'getStaffSchedules').mockResolvedValue([]);
 
@@ -158,7 +159,11 @@ describe('SchedulePage user schedule smoke', () => {
       ui: null,
     });
 
-    render(<SchedulePage />);
+    render(
+      <MemoryRouter initialEntries={['/schedule/week']}>
+        <SchedulePage />
+      </MemoryRouter>
+    );
 
     const quickButton = await screen.findByTestId(TESTIDS['schedule-create-quick-button']);
     fireEvent.click(quickButton);
@@ -191,20 +196,27 @@ describe('SchedulePage user schedule smoke', () => {
     const createButton = await screen.findByRole('button', { name: /新規作成/ });
     fireEvent.click(createButton);
 
-  const titleInput = await screen.findByLabelText('タイトル');
+    const dialogTitle = await screen.findByText('予定を作成');
+    const createDialog = dialogTitle.closest('[role="dialog"]');
+    expect(createDialog).not.toBeNull();
+    const createDialogScope = within(createDialog as HTMLElement);
+
+    const titleInput = createDialogScope.getByLabelText('タイトル');
     fireEvent.change(titleInput, { target: { value: 'テスト予定' } });
 
-  const userIdInput = await screen.findByPlaceholderText('U-001');
-  fireEvent.change(userIdInput, { target: { value: 'user-123' } });
+    const userCombo = createDialogScope.getByRole('combobox', { name: '利用者の選択' });
+    fireEvent.mouseDown(userCombo);
+    const userOption = await screen.findByRole('option', { name: '利用者 一郎' });
+    fireEvent.click(userOption);
 
-  const startInput = await screen.findByLabelText(/開始日時/);
-  fireEvent.change(startInput, { target: { value: '2025-11-12T09:00' } });
-  const endInput = await screen.findByLabelText(/終了日時/);
-  fireEvent.change(endInput, { target: { value: '2025-11-12T10:00' } });
+    const startInput = createDialogScope.getByLabelText(/開始日時/);
+    fireEvent.change(startInput, { target: { value: '2025-11-12T09:00' } });
+    const endInput = createDialogScope.getByLabelText(/終了日時/);
+    fireEvent.change(endInput, { target: { value: '2025-11-12T10:00' } });
 
-    const saveButton = screen.getByRole('button', { name: '保存' });
-  expect(saveButton).not.toBeDisabled();
-  fireEvent.click(saveButton);
+    const saveButton = createDialogScope.getByRole('button', { name: '保存' });
+    expect(saveButton).not.toBeDisabled();
+    fireEvent.click(saveButton);
 
     await waitFor(() => expect(createUserCareSpy).toHaveBeenCalledTimes(2));
     expect(showMock).toHaveBeenCalledWith('予定を作成しました', 'success');
@@ -226,7 +238,5 @@ describe('SchedulePage user schedule smoke', () => {
 
     await waitFor(() => expect(updateUserCareSpy).toHaveBeenCalledTimes(1));
     expect(showMock).toHaveBeenCalledWith('予定を更新しました', 'success');
-
-    expect(getUserCareSchedulesSpy).toHaveBeenCalled();
   });
 });

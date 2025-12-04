@@ -1,5 +1,5 @@
+import { getCurrentUserRole, useAuthStore, type DashboardAudience } from '@/features/auth/store';
 import { useMemo } from 'react';
-import { getCurrentUserRole, type DashboardAudience, useAuthStore } from '@/features/auth/store';
 
 const DASHBOARD_ROUTES: Record<DashboardAudience, string> = {
   staff: '/dashboard',

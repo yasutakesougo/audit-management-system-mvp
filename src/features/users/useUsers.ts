@@ -1,10 +1,16 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { buildDefaultActiveFilter, useUsersApi } from './api';
+
+import type {
+    UserRepository,
+    UserRepositoryListParams,
+    UserRepositoryUpdateDto,
+} from './domain/UserRepository';
+import { getUserRepository } from './repositoryFactory';
 import type { IUserMaster, IUserMasterCreateDto } from './types';
 
-type IUserMasterUpdateDto = Partial<IUserMasterCreateDto>;
-
 export type AsyncStatus = 'idle' | 'loading' | 'success' | 'error';
+
+export type UsersHookParams = Omit<UserRepositoryListParams, 'signal'>;
 
 type UsersHookReturn = {
   data: IUserMaster[];
@@ -12,7 +18,7 @@ type UsersHookReturn = {
   error: unknown;
   refresh: () => Promise<void>;
   create: (payload: IUserMasterCreateDto) => Promise<IUserMaster>;
-  update: (id: number | string, payload: IUserMasterUpdateDto) => Promise<IUserMaster>;
+  update: (id: number | string, payload: UserRepositoryUpdateDto) => Promise<IUserMaster>;
   remove: (id: number | string) => Promise<void>;
 };
 
@@ -21,25 +27,32 @@ type UserHookReturn = {
   status: AsyncStatus;
   error: unknown;
   refresh: () => Promise<void>;
-  update: (payload: IUserMasterUpdateDto) => Promise<IUserMaster>;
+  update: (payload: UserRepositoryUpdateDto) => Promise<IUserMaster>;
 };
 
-export function useUsers(initialFilter?: string): UsersHookReturn {
-  const api = useUsersApi();
+const snapshotRows = (rows: IUserMaster[]): string => JSON.stringify(rows);
+
+const coerceNumericId = (value?: number | string): number | undefined => {
+  if (value === undefined || value === null) {
+    return undefined;
+  }
+  const numeric = Number(value);
+  return Number.isFinite(numeric) ? numeric : undefined;
+};
+
+const useUserRepository = (): UserRepository => {
+  return useMemo(() => getUserRepository(), []);
+};
+
+export function useUsers(params?: UsersHookParams): UsersHookReturn {
+  const repository = useUserRepository();
   const [data, setData] = useState<IUserMaster[]>([]);
   const [status, setStatus] = useState<AsyncStatus>('idle');
   const [error, setError] = useState<unknown>(null);
-  const hasLoadedRef = useRef(false);
-
-  const filter = useMemo(
-    () => initialFilter ?? buildDefaultActiveFilter(),
-    [initialFilter]
-  );
-
   const lastSnapshot = useRef<string>('');
 
   const setDataIfChanged = useCallback((rows: IUserMaster[]) => {
-    const snapshot = JSON.stringify(rows);
+    const snapshot = snapshotRows(rows);
     if (snapshot !== lastSnapshot.current) {
       lastSnapshot.current = snapshot;
       setData(rows);
@@ -47,148 +60,175 @@ export function useUsers(initialFilter?: string): UsersHookReturn {
   }, []);
 
   const updateData = useCallback((updater: (prev: IUserMaster[]) => IUserMaster[]) => {
-    setData(prev => {
+    setData((prev) => {
       const next = updater(prev);
-      lastSnapshot.current = JSON.stringify(next);
+      lastSnapshot.current = snapshotRows(next);
       return next;
     });
   }, []);
 
   const fetchList = useCallback(async (signal?: AbortSignal) => {
-    console.log('[useUsers] fetchList called, setting status to loading');
     setStatus('loading');
     setError(null);
     try {
-      console.log('[useUsers] Calling api.getUsers with filter:', filter);
-      const rows = await api.getUsers(filter, { signal });
-      if (signal?.aborted) return;
-      console.log('[useUsers] Received rows:', rows?.length, 'items');
+      const listParams: UserRepositoryListParams = params
+        ? { ...params, signal }
+        : { signal };
+      const rows = await repository.getAll(listParams);
+      if (signal?.aborted) {
+        return;
+      }
       setDataIfChanged(rows);
-      console.log('[useUsers] Setting status to success');
       setStatus('success');
-    } catch (e) {
-      if (signal?.aborted) return;
-      console.log('[useUsers] Error occurred:', e);
-      setError(e);
+    } catch (err) {
+      if (signal?.aborted) {
+        return;
+      }
+      setError(err);
       setStatus('error');
     }
-  }, [api, filter, setDataIfChanged]);
+  }, [params, repository, setDataIfChanged]);
 
   useEffect(() => {
-    if (hasLoadedRef.current) {
-      return;
-    }
-    hasLoadedRef.current = true;
     const controller = new AbortController();
     void fetchList(controller.signal);
     return () => controller.abort();
+  }, [fetchList]);
+
+  const refresh = useCallback(async () => {
+    await fetchList();
   }, [fetchList]);
 
   const create = useCallback(async (payload: IUserMasterCreateDto) => {
     setStatus('loading');
     setError(null);
     try {
-      const created = await api.createUser(payload);
-      updateData(prev => [created, ...prev]);
+      const created = await repository.create(payload);
+      updateData((prev) => [created, ...prev]);
       setStatus('success');
       return created;
-    } catch (e) {
-      setError(e);
+    } catch (err) {
+      setError(err);
       setStatus('error');
-      throw e;
+      throw err;
     }
-  }, [api, updateData]);
+  }, [repository, updateData]);
 
-  const update = useCallback(async (id: number | string, payload: IUserMasterUpdateDto) => {
+  const update = useCallback(async (id: number | string, payload: UserRepositoryUpdateDto) => {
     setStatus('loading');
     setError(null);
+
+    const numericId = coerceNumericId(id);
+    if (numericId == null) {
+      const err = new Error('Invalid user ID for update.');
+      setError(err);
+      setStatus('error');
+      throw err;
+    }
+
     try {
-      const updated = await api.updateUser(Number(id), payload);
-      const numericId = Number(id);
-      updateData(prev => prev.map(item => (item.Id === numericId ? updated : item)));
+      const updated = await repository.update(numericId, payload);
+      updateData((prev) => prev.map((item) => (item.Id === numericId ? updated : item)));
       setStatus('success');
       return updated;
-    } catch (e) {
-      setError(e);
+    } catch (err) {
+      setError(err);
       setStatus('error');
-      throw e;
+      throw err;
     }
-  }, [api, updateData]);
+  }, [repository, updateData]);
 
   const remove = useCallback(async (id: number | string) => {
     setStatus('loading');
     setError(null);
-    try {
-      await api.deleteUser(Number(id));
-      const numericId = Number(id);
-      updateData(prev => prev.filter(item => item.Id !== numericId));
-      setStatus('success');
-    } catch (e) {
-      setError(e);
+
+    const numericId = coerceNumericId(id);
+    if (numericId == null) {
+      const err = new Error('Invalid user ID for remove.');
+      setError(err);
       setStatus('error');
-      throw e;
+      throw err;
     }
-  }, [api, updateData]);
 
-  const refresh = useCallback(async () => {
-    await fetchList();
-  }, [fetchList]);
+    try {
+      await repository.remove(numericId);
+      updateData((prev) => prev.filter((item) => item.Id !== numericId));
+      setStatus('success');
+    } catch (err) {
+      setError(err);
+      setStatus('error');
+      throw err;
+    }
+  }, [repository, updateData]);
 
-  const result = useMemo(
+  return useMemo(
     () => ({ data, status, error, refresh, create, update, remove }),
-    [create, data, error, refresh, remove, status, update]
+    [create, data, error, refresh, remove, status, update],
   );
-
-  console.log('[useUsers] Returning result:', {
-    dataCount: result.data?.length,
-    status: result.status,
-    hasError: !!result.error
-  });
-
-  return result;
 }
 
 export function useUser(id?: number | string): UserHookReturn {
-  const api = useUsersApi();
+  const repository = useUserRepository();
   const [data, setData] = useState<IUserMaster | null>(null);
   const [status, setStatus] = useState<AsyncStatus>('idle');
   const [error, setError] = useState<unknown>(null);
+  const numericId = coerceNumericId(id);
 
-  const numericId = id !== undefined ? Number(id) : undefined;
-
-  const load = useCallback(async () => {
-    if (numericId == null || Number.isNaN(numericId)) {
+  const load = useCallback(async (signal?: AbortSignal) => {
+    if (numericId == null) {
       setData(null);
+      setStatus('idle');
+      setError(null);
       return;
     }
     setStatus('loading');
     setError(null);
     try {
-      const row = await api.getUserById(numericId);
+      const row = await repository.getById(numericId, { signal });
+      if (signal?.aborted) {
+        return;
+      }
       setData(row);
       setStatus('success');
-    } catch (e) {
-      setError(e);
+    } catch (err) {
+      if (signal?.aborted) {
+        return;
+      }
+      setError(err);
       setStatus('error');
     }
-  }, [api, numericId]);
+  }, [numericId, repository]);
 
   useEffect(() => {
-    void load();
+    const controller = new AbortController();
+    void load(controller.signal);
+    return () => controller.abort();
   }, [load]);
 
   const refresh = useCallback(async () => {
     await load();
   }, [load]);
 
-  const update = useCallback(async (payload: IUserMasterUpdateDto) => {
-    if (numericId == null || Number.isNaN(numericId)) {
+  const update = useCallback(async (payload: UserRepositoryUpdateDto) => {
+    if (numericId == null) {
       throw new Error('User ID is required to update.');
     }
-    const updated = await api.updateUser(numericId, payload);
-    setData(updated);
-    return updated;
-  }, [api, numericId]);
+    setStatus('loading');
+    setError(null);
+    try {
+      const updated = await repository.update(numericId, payload);
+      setData(updated);
+      setStatus('success');
+      return updated;
+    } catch (err) {
+      setError(err);
+      setStatus('error');
+      throw err;
+    }
+  }, [numericId, repository]);
 
-  return useMemo(() => ({ data, status, error, refresh, update }), [data, error, refresh, status, update]);
+  return useMemo(
+    () => ({ data, status, error, refresh, update }),
+    [data, error, refresh, status, update],
+  );
 }

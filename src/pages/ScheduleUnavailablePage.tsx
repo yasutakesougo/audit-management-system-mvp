@@ -1,8 +1,11 @@
+import { getAppConfig } from '@/lib/env';
 import Alert from '@mui/material/Alert';
 import Button from '@mui/material/Button';
 import Stack from '@mui/material/Stack';
 import Typography from '@mui/material/Typography';
 import { Link } from 'react-router-dom';
+
+const isDev = getAppConfig().isDev;
 
 const ScheduleUnavailablePage = () => (
   <main
@@ -21,7 +24,7 @@ const ScheduleUnavailablePage = () => (
       </Typography>
 
       {/* 開発者／検証者向けの案内（技術情報） - 開発環境でのみ表示 */}
-      {import.meta.env.DEV && (
+      {isDev && (
         <Alert severity="info" role="status" data-testid="dev-instructions">
           <Typography variant="subtitle2" fontWeight={600} gutterBottom>
             開発・検証用メモ

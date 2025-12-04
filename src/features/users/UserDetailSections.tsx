@@ -61,7 +61,7 @@ const menuSections: MenuSection[] = [
     avatarColor: 'primary.main',
     status: 'available',
     highlights: [
-      '氏名・ふりがな・利用者IDなどのマスタ情報管理',
+      '氏名・ふりがな・利用者コードなどのマスタ情報管理',
       '契約日・利用開始日の確認と履歴把握',
       '緊急連絡先や通所・送迎設定の把握',
     ],
@@ -201,7 +201,7 @@ const renderSectionDetails = (section: MenuSection, user: IUserMaster, attendanc
     const detailRows = [
       { label: '氏名', value: user.FullName || '未設定' },
       { label: 'ふりがな', value: user.Furigana || user.FullNameKana || '未登録' },
-      { label: '利用者ID', value: resolveUserIdentifier(user) },
+      { label: '利用者コード', value: resolveUserIdentifier(user) },
       { label: '契約日', value: formatDateLabel(user.ContractDate) },
       { label: '利用開始日', value: formatDateLabel(user.ServiceStartDate) },
       { label: '利用終了日', value: user.ServiceEndDate ? formatDateLabel(user.ServiceEndDate) : '継続利用中' },
@@ -368,13 +368,13 @@ const UserDetailSections: React.FC<UserDetailSectionsProps> = ({ user, backLink,
                 {user.FullName || '氏名未登録'}
               </Typography>
               <Typography variant="body2" color="text.secondary">
-                利用者ID: {resolveUserIdentifier(user)}
+                利用者コード: {resolveUserIdentifier(user)}
               </Typography>
             </Box>
           </Stack>
 
           <Stack direction="row" spacing={1} flexWrap="wrap">
-            <Chip label={`利用者ID: ${resolveUserIdentifier(user)}`} size="small" />
+            <Chip label={`利用者コード: ${resolveUserIdentifier(user)}`} size="small" />
             <Chip label={supportLabel} color={user.IsHighIntensitySupportTarget ? 'warning' : 'default'} size="small" />
             {user.IsSupportProcedureTarget && (
               <Chip label="支援手順対象" color="secondary" size="small" />

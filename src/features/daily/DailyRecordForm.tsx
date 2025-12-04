@@ -4,6 +4,7 @@ import InfoOutlinedIcon from '@mui/icons-material/InfoOutlined';
 import PersonIcon from '@mui/icons-material/Person';
 import RestaurantIcon from '@mui/icons-material/Restaurant';
 import Alert from '@mui/material/Alert';
+import Autocomplete from '@mui/material/Autocomplete';
 import Box from '@mui/material/Box';
 import Button from '@mui/material/Button';
 import Checkbox from '@mui/material/Checkbox';
@@ -24,10 +25,12 @@ import Typography from '@mui/material/Typography';
 import { useEffect, useMemo, useState } from 'react';
 import { DailyAData, MealAmount, PersonDaily } from '../../domain/daily/types';
 import {
-  buildSpecialNotesFromImportantHandoffs,
-  shouldAutoGenerateSpecialNotes,
-  useImportantHandoffsForDaily
+    buildSpecialNotesFromImportantHandoffs,
+    shouldAutoGenerateSpecialNotes,
+    useImportantHandoffsForDaily
 } from '../handoff/hooks/useImportantHandoffsForDaily';
+import { useDailyUserOptions } from './useDailyUserOptions';
+import type { DailyUserOption } from './useDailyUserOptions';
 
 interface DailyRecordFormProps {
   open: boolean;
@@ -44,41 +47,6 @@ const mealOptions = [
   { value: 'なし' as const, label: 'なし' }
 ];
 
-// ダミーのユーザーデータ（32名の通所者）
-const mockUsers = [
-  { UserID: '001', FullName: '田中太郎' },
-  { UserID: '002', FullName: '佐藤花子' },
-  { UserID: '003', FullName: '鈴木次郎' },
-  { UserID: '004', FullName: '高橋美咲' },
-  { UserID: '005', FullName: '山田健一' },
-  { UserID: '006', FullName: '渡辺由美' },
-  { UserID: '007', FullName: '伊藤雄介' },
-  { UserID: '008', FullName: '中村恵子' },
-  { UserID: '009', FullName: '小林智子' },
-  { UserID: '010', FullName: '加藤秀樹' },
-  { UserID: '011', FullName: '吉田京子' },
-  { UserID: '012', FullName: '清水達也' },
-  { UserID: '013', FullName: '松本麻衣' },
-  { UserID: '014', FullName: '森田健二' },
-  { UserID: '015', FullName: '池田理恵' },
-  { UserID: '016', FullName: '石井大輔' },
-  { UserID: '017', FullName: '橋本真理' },
-  { UserID: '018', FullName: '藤田和也' },
-  { UserID: '019', FullName: '長谷川瞳' },
-  { UserID: '020', FullName: '村上拓海' },
-  { UserID: '021', FullName: '坂本彩香' },
-  { UserID: '022', FullName: '岡田裕太' },
-  { UserID: '023', FullName: '近藤美和' },
-  { UserID: '024', FullName: '福田誠' },
-  { UserID: '025', FullName: '前田愛' },
-  { UserID: '026', FullName: '木村康平' },
-  { UserID: '027', FullName: '内田千春' },
-  { UserID: '028', FullName: '西川雅人' },
-  { UserID: '029', FullName: '斎藤洋子' },
-  { UserID: '030', FullName: '三浦大輔' },
-  { UserID: '031', FullName: '小野寺美加' },
-  { UserID: '032', FullName: '新井智也' }
-];
 
 // 「重要申し送り」から問題行動の候補を推定するための型
 type ProblemBehaviorSuggestion = {
@@ -181,7 +149,7 @@ const createEmptyDailyRecord = (): Omit<PersonDaily, 'id'> => ({
 });
 
 export function DailyRecordForm({ open, onClose, record, onSave }: DailyRecordFormProps) {
-  const users = mockUsers;
+  const { options: userOptions, findByPersonId } = useDailyUserOptions();
 
   const [formData, setFormData] = useState<Omit<PersonDaily, 'id'>>(
     () => createEmptyDailyRecord()
@@ -193,6 +161,25 @@ export function DailyRecordForm({ open, onClose, record, onSave }: DailyRecordFo
 
   // 問題行動の提案を一度使ったかどうか
   const [problemSuggestionApplied, setProblemSuggestionApplied] = useState(false);
+
+  const selectedUserValue = useMemo<DailyUserOption | null>(() => {
+    if (!formData.personId) {
+      return null;
+    }
+    const matched = findByPersonId(formData.personId);
+    if (matched) {
+      return matched;
+    }
+    if (formData.personName) {
+      return {
+        id: formData.personId,
+        label: formData.personName,
+        lookupId: undefined,
+        furigana: null,
+      };
+    }
+    return null;
+  }, [findByPersonId, formData.personId, formData.personName]);
 
   // 🔽 Phase 9: 重要な申し送りを取得
   const {
@@ -325,13 +312,15 @@ export function DailyRecordForm({ open, onClose, record, onSave }: DailyRecordFo
     }));
   };
 
-  const handlePersonChange = (personId: string) => {
-    const selectedUser = users.find(user => user.UserID === personId);
+  const handlePersonChange = (option: DailyUserOption | null) => {
     setFormData(prev => ({
       ...prev,
-      personId,
-      personName: selectedUser?.FullName || ''
+      personId: option?.id ?? '',
+      personName: option?.label ?? ''
     }));
+    if (errors.personId) {
+      setErrors(prev => ({ ...prev, personId: '' }));
+    }
   };
 
   const handleAddActivity = (period: 'AM' | 'PM') => {
@@ -395,7 +384,7 @@ export function DailyRecordForm({ open, onClose, record, onSave }: DailyRecordFo
     const newErrors: Record<string, string> = {};
 
     if (!formData.personId) {
-      newErrors.personId = '利用者を選択してください';
+      newErrors.personId = '利用者の選択は必須です';
     }
     if (!formData.date) {
       newErrors.date = '日付を入力してください';
@@ -418,8 +407,6 @@ export function DailyRecordForm({ open, onClose, record, onSave }: DailyRecordFo
   // リアルタイムバリデーション：必須項目の入力状況をチェック
   const isFormValid = formData.personId && formData.date && formData.reporter.name.trim();
 
-  const selectedUser = users.find(user => user.UserID === formData.personId);
-
   return (
     <Dialog
       open={open}
@@ -433,14 +420,14 @@ export function DailyRecordForm({ open, onClose, record, onSave }: DailyRecordFo
     >
       <DialogTitle data-testid="daily-record-form-title">
         {record ? '日次記録の編集' : '新しい日次記録'}
-        {selectedUser && (
+        {selectedUserValue && (
           <Typography
             variant="subtitle2"
             component="div"
             color="textSecondary"
             sx={{ mt: 1 }}
           >
-            {selectedUser.FullName} ({selectedUser.UserID})
+            {selectedUserValue.label} ({selectedUserValue.id})
           </Typography>
         )}
       </DialogTitle>
@@ -456,27 +443,29 @@ export function DailyRecordForm({ open, onClose, record, onSave }: DailyRecordFo
 
             <Stack spacing={2}>
               <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2}>
-                <FormControl fullWidth error={!!errors.personId}>
-                  <InputLabel id="daily-user-label">利用者</InputLabel>
-                  <Select
-                    labelId="daily-user-label"
-                    id="daily-user-select"
-                    value={formData.personId}
-                    onChange={(e) => handlePersonChange(e.target.value)}
-                    label="利用者"
-                  >
-                    {users.map((user) => (
-                      <MenuItem key={user.UserID} value={user.UserID}>
-                        {user.FullName} ({user.UserID})
-                      </MenuItem>
-                    ))}
-                  </Select>
-                  {errors.personId && (
-                    <Typography variant="caption" color="error" sx={{ mt: 0.5 }}>
-                      {errors.personId}
-                    </Typography>
+                <Autocomplete
+                  fullWidth
+                  size="small"
+                  options={userOptions}
+                  value={selectedUserValue}
+                  onChange={(_, option) => handlePersonChange(option)}
+                  isOptionEqualToValue={(option, value) => option.id === value?.id}
+                  getOptionLabel={(option) =>
+                    option.furigana
+                      ? `${option.label}（${option.furigana}）`
+                      : option.label
+                  }
+                  renderInput={(params) => (
+                    <TextField
+                      {...params}
+                      label="利用者の選択"
+                      placeholder="氏名で検索してください"
+                      helperText={errors.personId || '氏名から利用者を検索できます'}
+                      error={!!errors.personId}
+                    />
                   )}
-                </FormControl>
+                  data-testid="daily-record-user-picker"
+                />
 
                 <TextField
                   fullWidth

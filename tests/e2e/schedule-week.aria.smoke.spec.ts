@@ -1,16 +1,41 @@
 import { expect, test } from '@playwright/test';
+import { gotoWeek } from './utils/scheduleNav';
 
-test.describe('Schedules week ARIA smoke', () => {
-  test('announces heading and exposes list semantics', async ({ page }) => {
-    await page.goto('/schedules/week?week=2025-11-10');
-    await page.getByTestId('schedules-week-page').waitFor();
+test.describe('Schedule week page – ARIA smoke', () => {
+  test('exposes main landmark, heading, tabs, and week tabpanel', async ({ page }) => {
+    await gotoWeek(page, new Date());
 
-    const heading = page.getByTestId('schedules-week-heading');
+    const main = page.getByRole('main');
+    await expect(main).toBeVisible();
+
+    const heading = main.getByRole('heading', { level: 1, name: /スケジュール/ });
     await expect(heading).toBeVisible();
-  await expect(heading).toHaveText(/週間スケジュール（\d{4}\/\d{2}\/\d{2} – \d{4}\/\d{2}\/\d{2}）/);
 
-    const list = page.locator('[data-testid="schedules-week-grid"]');
-    const empty = page.getByTestId('schedules-empty');
-    await expect(list.or(empty)).toBeVisible();
+    const tablist = main.getByRole('tablist');
+    await expect(tablist).toBeVisible();
+
+    const weekTab = tablist.getByRole('tab', { name: /週/ });
+    await expect(weekTab).toBeVisible();
+    await expect(weekTab).toHaveAttribute('aria-selected', 'true');
+
+    const weekGridHeader = page.locator('[id^="timeline-week-header-"]').first();
+    await expect(weekGridHeader).toBeVisible();
+  });
+
+  test('arrow key navigation keeps aria-selected in tablist', async ({ page }) => {
+    await gotoWeek(page, new Date());
+
+    const tablist = page.getByRole('tablist');
+    const weekTab = tablist.getByRole('tab', { name: /週/ });
+
+    await weekTab.click();
+    await expect(weekTab).toBeFocused();
+
+    await page.keyboard.press('ArrowRight');
+    const activeTab = tablist.getByRole('tab', { selected: true });
+    await expect(activeTab).toBeVisible();
+
+    await page.keyboard.press('ArrowLeft');
+    await expect(weekTab).toHaveAttribute('aria-selected', 'true');
   });
 });

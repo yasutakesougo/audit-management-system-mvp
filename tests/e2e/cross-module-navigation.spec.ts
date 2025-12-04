@@ -58,7 +58,7 @@ test.describe('C-2 クロスモジュールナビゲーション', () => {
   });
 
   test('URL契約: query parametersでのハイライト機能', async ({ page }) => {
-    // 1. 特定の利用者IDを指定してアクセス
+    // 1. 特定の利用者コードを指定してアクセス
     await page.goto('/daily/attendance?userId=I003&date=2025-11-17');
 
     // 2. ページが読み込まれることを確認

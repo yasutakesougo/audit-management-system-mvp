@@ -4,23 +4,23 @@ import MedicalIcon from '@mui/icons-material/LocalHospital';
 import PersonIcon from '@mui/icons-material/Person';
 import SaveIcon from '@mui/icons-material/Save';
 import {
-  Alert,
-  Box,
-  Button,
-  Checkbox,
-  CircularProgress,
-  Dialog,
-  DialogActions,
-  DialogContent,
-  DialogContentText,
-  DialogTitle,
-  FormControlLabel,
-  IconButton,
-  MenuItem,
-  Paper,
-  Snackbar,
-  TextField,
-  Typography,
+    Alert,
+    Box,
+    Button,
+    Checkbox,
+    CircularProgress,
+    Dialog,
+    DialogActions,
+    DialogContent,
+    DialogContentText,
+    DialogTitle,
+    FormControlLabel,
+    IconButton,
+    MenuItem,
+    Paper,
+    Snackbar,
+    TextField,
+    Typography,
 } from "@mui/material";
 import { ChangeEvent, createRef, FormEvent, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { IUserMaster, IUserMasterCreateDto } from "../../sharepoint/fields";
@@ -37,7 +37,6 @@ type UserFormProps = {
 type MessageState = { type: "success" | "error"; text: string } | null;
 
 type FormValues = {
-  UserID: string;
   FullName: string;
   Furigana: string;
   FullNameKana: string;
@@ -72,7 +71,7 @@ type FormValues = {
 
 type Errors = Partial<
   Record<
-    "userID" | "fullName" | "furigana" | "certNumber" | "dates" | "grantPeriod",
+    "fullName" | "furigana" | "certNumber" | "dates" | "grantPeriod",
     string
   >
 >;
@@ -131,7 +130,6 @@ const sanitize = (value: string) => {
 };
 
 const toCreateDto = (values: FormValues): IUserMasterCreateDto => ({
-  UserID: values.UserID.trim(),
   FullName: values.FullName.trim(),
   Furigana: sanitize(values.Furigana) || null,
   FullNameKana: sanitize(values.FullNameKana) || null,
@@ -166,11 +164,10 @@ const toCreateDto = (values: FormValues): IUserMasterCreateDto => ({
 });
 
 export function UserForm({ user, mode = user ? "update" : "create", onSuccess, onDone, onClose }: UserFormProps) {
-  const { create, data: existingUsers } = useUsersStore();
+  const { create, update: updateUser } = useUsersStore();
 
   const deriveInitialValues = useCallback(
     (): FormValues => ({
-      UserID: user?.UserID ?? "",
       FullName: user?.FullName ?? "",
       Furigana: user?.Furigana ?? "",
       FullNameKana: user?.FullNameKana ?? "",
@@ -227,7 +224,6 @@ export function UserForm({ user, mode = user ? "update" : "create", onSuccess, o
 
   const errRefs = useMemo(
     () => ({
-      userID: createRef<HTMLInputElement>(),
       fullName: createRef<HTMLInputElement>(),
       furigana: createRef<HTMLInputElement>(),
       certNumber: createRef<HTMLInputElement>(),
@@ -237,7 +233,7 @@ export function UserForm({ user, mode = user ? "update" : "create", onSuccess, o
 
   const focusFirstInvalid = useCallback(
     (nextErrors: Errors) => {
-      const order: Array<keyof typeof errRefs> = ["userID", "fullName", "furigana", "certNumber"];
+      const order: Array<keyof typeof errRefs> = ["fullName", "furigana", "certNumber"];
       for (const key of order) {
         if (nextErrors[key]) {
           const ref = errRefs[key];
@@ -251,9 +247,6 @@ export function UserForm({ user, mode = user ? "update" : "create", onSuccess, o
 
   const validate = useCallback((next: FormValues): Errors => {
     const errs: Errors = {};
-    if (!next.UserID.trim()) {
-      errs.userID = "利用者IDは必須です";
-    }
     if (!next.FullName.trim()) {
       errs.fullName = "氏名は必須です";
     }
@@ -360,22 +353,6 @@ export function UserForm({ user, mode = user ? "update" : "create", onSuccess, o
     });
   }, []);
 
-  // 利用者ID自動生成
-  const generateUserID = useCallback(() => {
-    const existingIds = existingUsers.map(user => user.UserID).filter(Boolean);
-
-    // U-001, U-002, U-003... の形式で連番を生成
-    let nextNumber = 1;
-    let newId = '';
-
-    do {
-      newId = `U-${nextNumber.toString().padStart(3, '0')}`;
-      nextNumber++;
-    } while (existingIds.includes(newId));
-
-    setField('UserID', newId);
-  }, [existingUsers, setField]);
-
   // いずれかのフラグがオンなら両方そろえる
   useEffect(() => {
     if (values.IsHighIntensitySupportTarget === values.IsSupportProcedureTarget) {
@@ -401,13 +378,6 @@ export function UserForm({ user, mode = user ? "update" : "create", onSuccess, o
     }));
   }, []);
 
-  // 新規作成時に利用者IDを自動生成
-  useEffect(() => {
-    if (mode === 'create' && !values.UserID && existingUsers.length >= 0) {
-      generateUserID();
-    }
-  }, [mode, values.UserID, existingUsers.length, generateUserID]);
-
   const handleSubmit = useCallback(
     async (event: FormEvent<HTMLFormElement>) => {
       event.preventDefault();
@@ -429,7 +399,6 @@ export function UserForm({ user, mode = user ? "update" : "create", onSuccess, o
         if (mode === "create") {
           result = await create(payload);
           const cleared: FormValues = {
-            UserID: "",
             FullName: "",
             Furigana: "",
             FullNameKana: "",
@@ -459,9 +428,10 @@ export function UserForm({ user, mode = user ? "update" : "create", onSuccess, o
           setValues(cleared);
           initialJson.current = JSON.stringify(cleared);
         } else if (mode === "update" && user) {
-          // Note: update functionality would need to be implemented in the store
-          // result = await update(user.Id, payload);
-          result = user; // Placeholder
+          if (user.Id == null) {
+            throw new Error("更新対象の利用者IDが指定されていません。");
+          }
+          result = await updateUser(user.Id, payload);
           initialJson.current = JSON.stringify(values);
         } else {
           throw new Error("更新対象の利用者IDが指定されていません。");
@@ -478,8 +448,13 @@ export function UserForm({ user, mode = user ? "update" : "create", onSuccess, o
         setIsSaving(false);
       }
     },
-    [create, focusFirstInvalid, mode, onDone, onSuccess, user, validate, values]
+    [create, focusFirstInvalid, mode, onDone, onSuccess, updateUser, user, validate, values]
   );
+
+  const systemAssignedCode =
+    mode === 'create'
+      ? '保存後に自動採番されます'
+      : user?.UserID ?? '未採番';
 
   return (
     <Paper elevation={2} sx={{ p: 3, borderRadius: 2 }}>
@@ -529,31 +504,9 @@ export function UserForm({ user, mode = user ? "update" : "create", onSuccess, o
           </Typography>
 
           <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-            <Box sx={{ display: 'flex', gap: 1, alignItems: 'flex-start' }}>
-              <TextField
-                fullWidth
-                required
-                label="利用者ID"
-                inputRef={errRefs.userID}
-                value={values.UserID}
-                onChange={(event) => setField("UserID", event.target.value)}
-                error={Boolean(errors.userID)}
-                helperText={errors.userID || (mode === 'create' ? '自動生成ボタンを使用するか手動入力してください' : '')}
-                placeholder="例: U-001"
-                variant="outlined"
-                size="small"
-              />
-              {mode === 'create' && (
-                <Button
-                  variant="outlined"
-                  onClick={generateUserID}
-                  sx={{ minWidth: 'auto', px: 2, py: 1 }}
-                  size="small"
-                >
-                  自動生成
-                </Button>
-              )}
-            </Box>
+            <Typography variant="body2" sx={{ color: 'text.secondary' }}>
+              利用者コード（システム採番）：{systemAssignedCode}
+            </Typography>
 
             <TextField
               fullWidth

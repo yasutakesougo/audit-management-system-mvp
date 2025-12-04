@@ -1,9 +1,9 @@
-import { describe, expect, it } from 'vitest';
 import {
-  evaluateMoveEvent,
-  evaluateSelectEvent,
-  type SimpleResourceEvent,
+    evaluateMoveEvent,
+    evaluateSelectEvent,
+    type SimpleResourceEvent,
 } from '@/pages/IntegratedResourceCalendarPage';
+import { describe, expect, it } from 'vitest';
 
 const mkEvent = (partial: Partial<SimpleResourceEvent> = {}): SimpleResourceEvent => ({
   id: 'e1',

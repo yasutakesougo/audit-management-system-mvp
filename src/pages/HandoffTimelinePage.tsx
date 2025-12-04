@@ -3,11 +3,12 @@ import { Box, Button, Chip, Collapse, Container, Divider, IconButton, Paper, Sta
 import { useEffect, useRef, useState } from 'react';
 import { useLocation } from 'react-router-dom';
 import HandoffCategorySummaryCard from '../features/handoff/HandoffCategorySummaryCard';
+import { HandoffQuickNoteCard } from '../features/handoff/HandoffQuickNoteCard';
 import type { HandoffDayScope, HandoffTimeFilter } from '../features/handoff/handoffTypes';
 import { HANDOFF_DAY_SCOPE_LABELS, HANDOFF_TIME_FILTER_LABELS } from '../features/handoff/handoffTypes';
-import { HandoffQuickNoteCard } from '../features/handoff/HandoffQuickNoteCard';
 import type { HandoffStats } from '../features/handoff/TodayHandoffTimelineList';
 import { TodayHandoffTimelineList } from '../features/handoff/TodayHandoffTimelineList';
+import { tid, TESTIDS } from '@/testids';
 
 /**
  * 申し送りタイムラインページ
@@ -74,7 +75,7 @@ export default function HandoffTimelinePage() {
   }, []);
 
   return (
-    <Container maxWidth="lg" sx={{ py: 3 }}>
+    <Container maxWidth="lg" sx={{ py: 3 }} {...tid(TESTIDS['agenda-page-root'])}>
       {/* ページヘッダー */}
       <Box sx={{ mb: 3 }}>
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 1 }}>
@@ -144,11 +145,11 @@ export default function HandoffTimelinePage() {
             <ToggleButton value="all">
               📅 全て
             </ToggleButton>
-            <ToggleButton value="morning">
+            <ToggleButton value="morning" {...tid(TESTIDS['agenda-filter-morning'])}>
               <MorningIcon sx={{ mr: 0.5, fontSize: '1rem' }} />
               朝〜午前
             </ToggleButton>
-            <ToggleButton value="evening">
+            <ToggleButton value="evening" {...tid(TESTIDS['agenda-filter-evening'])}>
               <EveningIcon sx={{ mr: 0.5, fontSize: '1rem' }} />
               午後〜夕方
             </ToggleButton>

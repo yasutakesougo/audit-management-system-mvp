@@ -2,6 +2,8 @@ import type { SPItem } from '@/lib/sp.types';
 import type { ServiceType as SharePointServiceType } from '@/sharepoint/serviceTypes';
 import { z } from 'zod';
 
+import type { OrgFilterKey } from './orgFilters';
+
 // Domain enums kept small & literal to avoid over-typing Graph/SP values.
 export type Category = 'Org' | 'User' | 'Staff';
 
@@ -41,6 +43,7 @@ export interface BaseSchedule {
   dayKey?: string;         // yyyymmdd (UI/grouping helper)
   fiscalYear?: string;     // '2025' etc. (for annual rollups)
   baseShiftWarnings?: BaseShiftWarning[];
+  orgCode?: OrgFilterKey;
 }
 
 /** User-care schedule (supports internal or external person) */
@@ -52,6 +55,8 @@ export interface ScheduleUserCare extends BaseSchedule {
   // Internal (master-backed)
   personId?: string;
   personName?: string;
+  /** SharePoint lookup id (TargetUserId) */
+  userLookupId?: string;
   // External (ad-hoc)
   externalPersonName?: string;
   externalPersonOrg?: string;
@@ -64,7 +69,7 @@ export interface ScheduleUserCare extends BaseSchedule {
 /** Org / Staff stubs (unchanged here; keep your existing shapes) */
 export interface ScheduleOrg extends BaseSchedule {
   category: 'Org';
-  subType: '会議' | '研修' | '監査' | '余暇イベント' | '外部団体利用';
+  subType: '会議' | '研修' | '監査' | '余暇イベント' | '外部団体利用' | 'その他';
   audience?: string[]; // e.g., 全職員/看護/生活介護
   resourceId?: string; // 例: プレイルーム（将来の部屋レーン用）
   externalOrgName?: string; // さつき会/パレットクラブ 等
@@ -72,7 +77,7 @@ export interface ScheduleOrg extends BaseSchedule {
 
 export interface ScheduleStaff extends BaseSchedule {
   category: 'Staff';
-  subType: '会議' | '研修' | '来客対応' | '年休';
+  subType: '会議' | '研修' | '来客対応' | '年休' | 'その他';
   staffIds: string[];      // owner(s)
   staffNames?: string[];
   dayPart?: DayPart;       // 年休時のみ使用
@@ -181,6 +186,7 @@ export interface ExtendedScheduleForm {
 
   // User-specific fields
   userId?: string;
+  userLookupId?: string;
   serviceType?: ServiceType;
   personType?: PersonType;
   personId?: string;

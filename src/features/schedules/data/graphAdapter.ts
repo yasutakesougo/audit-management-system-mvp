@@ -6,6 +6,10 @@ import type { SchedItem, SchedulesPort } from './port';
 
 type GetToken = () => Promise<string | null>;
 
+type GraphSchedulesPortOptions = {
+  create?: SchedulesPort['create'];
+};
+
 const DEFAULT_TIMEZONE = 'Asia/Tokyo';
 
 const resolveTimezone = (): string =>
@@ -47,7 +51,7 @@ const mapGraphEventToItem = (event: GraphEvent): SchedItem | null => {
   };
 };
 
-export const makeGraphSchedulesPort = (getToken: GetToken): SchedulesPort => {
+export const makeGraphSchedulesPort = (getToken: GetToken, options?: GraphSchedulesPortOptions): SchedulesPort => {
   const timezone = resolveTimezone();
   const { schedulesCacheTtlSec, graphRetryMax, graphRetryBaseMs, graphRetryCapMs } = getAppConfig();
   const cacheTtlMs = Math.max(0, schedulesCacheTtlSec) * 1000;
@@ -100,6 +104,10 @@ export const makeGraphSchedulesPort = (getToken: GetToken): SchedulesPort => {
     }
     return null;
   };
+
+  const createImpl = options?.create ?? (async () => {
+    throw new Error('Schedules create is not configured for Graph adapter. Provide a create handler.');
+  });
 
   return {
     async list(range) {
@@ -206,5 +214,6 @@ export const makeGraphSchedulesPort = (getToken: GetToken): SchedulesPort => {
       inflight.set(key, { controller, promise });
       return promise;
     },
+    create: (input) => createImpl(input),
   };
 };

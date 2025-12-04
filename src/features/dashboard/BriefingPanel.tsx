@@ -8,6 +8,8 @@ import Tooltip from '@mui/material/Tooltip';
 import Typography from '@mui/material/Typography';
 import React from 'react';
 
+import { TESTIDS, tid } from '../../testids';
+
 export type BriefingMode = 'morning' | 'evening' | 'normal';
 
 export type BriefingPriorityUser = {
@@ -342,39 +344,52 @@ export const BriefingPanel: React.FC<BriefingPanelProps> = ({
         </Box>
 
         {/* 申し送りサマリー */}
-        <Box sx={{ flex: 1, minWidth: 0 }} data-testid="briefing-handoff-summary">
+        <Box sx={{ flex: 1, minWidth: 0 }} {...tid(TESTIDS['briefing-handoff-summary'])}>
           <Typography
             variant="subtitle2"
             sx={{ fontWeight: 700, mb: 0.5 }}
           >
             📋 申し送りサマリー
           </Typography>
-          {handoffSummary ? (
-            <Stack spacing={0.5}>
-              <Typography variant="body2">
-                総件数: <strong>{handoffSummary.total}</strong> 件
-              </Typography>
-              <Typography variant="body2" color="error.main">
-                注意: {handoffSummary.alertCount}件
-              </Typography>
-              <Typography variant="body2" color="warning.main">
-                対応中: {handoffSummary.actionCount}件
-              </Typography>
-              <Tooltip title="詳細は下部の『申し送りタイムライン』から確認できます">
+          <Box {...tid(TESTIDS['dashboard-handoff-summary'])}>
+            {handoffSummary ? (
+              <Stack spacing={0.5}>
                 <Typography
-                  variant="caption"
-                  color="text.secondary"
-                  sx={{ mt: 0.5, display: 'block' }}
+                  variant="body2"
+                  {...tid(TESTIDS['dashboard-handoff-summary-total'])}
                 >
-                  ※ 詳細内容は「申し送りタイムライン」で確認してください
+                  総件数: <strong>{handoffSummary.total}</strong> 件
                 </Typography>
-              </Tooltip>
-            </Stack>
-          ) : (
-            <Typography variant="body2" color="text.secondary">
-              申し送りサマリー情報がありません。
-            </Typography>
-          )}
+                <Typography
+                  variant="body2"
+                  color="error.main"
+                  {...tid(TESTIDS['dashboard-handoff-summary-alert'])}
+                >
+                  注意: {handoffSummary.alertCount}件
+                </Typography>
+                <Typography
+                  variant="body2"
+                  color="warning.main"
+                  {...tid(TESTIDS['dashboard-handoff-summary-action'])}
+                >
+                  対応中: {handoffSummary.actionCount}件
+                </Typography>
+                <Tooltip title="詳細は下部の『申し送りタイムライン』から確認できます">
+                  <Typography
+                    variant="caption"
+                    color="text.secondary"
+                    sx={{ mt: 0.5, display: 'block' }}
+                  >
+                    ※ 詳細内容は「申し送りタイムライン」で確認してください
+                  </Typography>
+                </Tooltip>
+              </Stack>
+            ) : (
+              <Typography variant="body2" color="text.secondary">
+                申し送りサマリー情報がありません。
+              </Typography>
+            )}
+          </Box>
         </Box>
       </Stack>
     </Paper>

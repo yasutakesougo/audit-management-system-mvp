@@ -1,13 +1,11 @@
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
-import { describe, it, expect, vi, beforeEach } from 'vitest';
-// import { ScheduleConflictGuideDialog } from './ScheduleConflictGuideDialog';
-// import { toGuideItem, kindLabel } from './ScheduleConflictGuideDialog';
-// import type { GuideItem } from './ScheduleConflictGuideDialog';
-import type { BaseSchedule } from '../types';
-import type { ScheduleConflict, ConflictKind } from '../conflictChecker';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { kindLabel, ScheduleConflictGuideDialog, toGuideItem } from './src/features/schedule/components/ScheduleConflictGuideDialog';
+import type { ConflictKind, ScheduleConflict } from './src/features/schedule/conflictChecker';
+import type { BaseSchedule } from './src/features/schedule/types';
 
 // モック設定
-vi.mock('../staffAlternativeEngine', () => ({
+vi.mock('./src/features/schedule/staffAlternativeEngine', () => ({
   generateDemoStaffProfiles: () => [
     { id: 'staff-1', name: '田中太郎', availability: 'available', experience: 'senior' },
     { id: 'staff-2', name: '佐藤花子', availability: 'available', experience: 'junior' }
@@ -18,7 +16,7 @@ vi.mock('../staffAlternativeEngine', () => ({
   ]
 }));
 
-vi.mock('../vehicleAlternativeEngine', () => ({
+vi.mock('./src/features/schedule/vehicleAlternativeEngine', () => ({
   generateDemoVehicleProfiles: () => [
     { id: 'vehicle-1', name: '車両A', status: 'available', type: 'standard' },
     { id: 'vehicle-2', name: '車両B', status: 'available', type: 'wheelchair' }
@@ -29,7 +27,7 @@ vi.mock('../vehicleAlternativeEngine', () => ({
   ]
 }));
 
-vi.mock('../roomAlternativeEngine', () => ({
+vi.mock('./src/features/schedule/roomAlternativeEngine', () => ({
   generateDemoRoomProfiles: () => [
     { id: 'room-1', name: '会議室A', capacity: 10, equipment: [] },
     { id: 'room-2', name: '会議室B', capacity: 6, equipment: ['projector'] }
@@ -192,7 +190,7 @@ describe('toGuideItem', () => {
     };
 
     const guide = toGuideItem(conflict);
-    
+
     expect(guide.kind).toBe('vehicle-double-booking');
     expect(guide.title).toContain('車両');
     expect(guide.suggestions).toHaveLength(3);
@@ -208,7 +206,7 @@ describe('toGuideItem', () => {
     };
 
     const guide = toGuideItem(conflict);
-    
+
     expect(guide.kind).toBe('equipment-conflict');
     expect(guide.title).toContain('設備');
     expect(guide.suggestions.length).toBeGreaterThan(0);
@@ -223,7 +221,7 @@ describe('toGuideItem', () => {
     };
 
     const guide = toGuideItem(conflict);
-    
+
     expect(guide.kind).toBe('unknown-type');
     expect(guide.title).toBe('スケジュールの重複が検出されました');
     expect(guide.suggestions).toContain('重複している予定の内容を確認してください。');

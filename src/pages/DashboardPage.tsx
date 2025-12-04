@@ -1,9 +1,12 @@
-import { HYDRATION_FEATURES, estimatePayloadSize, startFeatureSpan } from '@/hydration/features';
+import { useFeatureFlags } from '@/config/featureFlags';
 import type { DashboardAudience } from '@/features/auth/store';
+import { HYDRATION_FEATURES, estimatePayloadSize, startFeatureSpan } from '@/hydration/features';
+import { TESTIDS, tid } from '@/testids';
 import type { Schedule } from '@/lib/mappers';
 import AccessTimeIcon from '@mui/icons-material/AccessTime';
 import AssignmentIcon from '@mui/icons-material/Assignment';
 import DashboardIcon from '@mui/icons-material/Dashboard';
+import EventAvailableRoundedIcon from '@mui/icons-material/EventAvailableRounded';
 import MedicalIcon from '@mui/icons-material/LocalHospital';
 import MonitorHeartIcon from '@mui/icons-material/MonitorHeart';
 import NightsStayIcon from '@mui/icons-material/NightsStay';
@@ -177,6 +180,7 @@ const STAFF_TABS = [
 
 const DashboardPage: React.FC<DashboardPageProps> = ({ audience = 'staff' }) => {
   const navigate = useNavigate();
+  const { schedules: schedulesEnabled } = useFeatureFlags();
   const [tabValue, setTabValue] = useState(0);
   const [meetingDrawerOpen, setMeetingDrawerOpen] = useState(false);
   const [meetingKind, setMeetingKind] = useState<MeetingKind>('morning');
@@ -546,9 +550,28 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ audience = 'staff' }) => 
           </Paper>
 
           <Paper elevation={3} sx={{ p: 3 }}>
-            <Typography variant="h5" sx={{ fontWeight: 700 }}>
-              今日の予定
-            </Typography>
+            <Stack
+              direction={{ xs: 'column', sm: 'row' }}
+              spacing={1}
+              alignItems={{ xs: 'flex-start', sm: 'center' }}
+              justifyContent="space-between"
+              sx={{ mb: 1.5 }}
+            >
+              <Typography variant="h5" sx={{ fontWeight: 700 }}>
+                今日の予定
+              </Typography>
+              {schedulesEnabled && (
+                <Button
+                  variant="outlined"
+                  startIcon={<EventAvailableRoundedIcon />}
+                  component={Link}
+                  to="/schedules/week"
+                  sx={{ alignSelf: { xs: 'stretch', sm: 'auto' } }}
+                >
+                  マスタースケジュールを開く
+                </Button>
+              )}
+            </Stack>
             <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
               レーンごとの進行状況を確認できます。
             </Typography>
@@ -580,7 +603,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ audience = 'staff' }) => 
             </Grid>
           </Paper>
 
-          <Paper elevation={3} sx={{ p: 3 }}>
+          <Paper elevation={3} sx={{ p: 3 }} {...tid(TESTIDS['dashboard-handoff-summary'])}>
             <Stack spacing={2}>
               <Stack
                 direction={{ xs: 'column', sm: 'row' }}
@@ -609,12 +632,14 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ audience = 'staff' }) => 
                     color="warning"
                     variant={handoffStatus['未対応'] > 0 ? 'filled' : 'outlined'}
                     label={`未対応 ${handoffStatus['未対応']}件`}
+                    {...tid(TESTIDS['dashboard-handoff-summary-alert'])}
                   />
                   <Chip
                     size="small"
                     color="info"
                     variant={handoffStatus['対応中'] > 0 ? 'filled' : 'outlined'}
                     label={`対応中 ${handoffStatus['対応中']}件`}
+                    {...tid(TESTIDS['dashboard-handoff-summary-action'])}
                   />
                   <Chip
                     size="small"
@@ -622,7 +647,12 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ audience = 'staff' }) => 
                     variant={handoffStatus['対応済'] > 0 ? 'filled' : 'outlined'}
                     label={`対応済 ${handoffStatus['対応済']}件`}
                   />
-                  <Chip size="small" variant="outlined" label={`合計 ${handoffTotal}件`} />
+                  <Chip
+                    size="small"
+                    variant="outlined"
+                    label={`合計 ${handoffTotal}件`}
+                    {...tid(TESTIDS['dashboard-handoff-summary-total'])}
+                  />
                 </Stack>
               ) : (
                 <Alert severity="info" sx={{ borderRadius: 2 }}>

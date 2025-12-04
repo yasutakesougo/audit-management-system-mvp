@@ -1,28 +1,34 @@
-import { cleanup, render, screen, fireEvent, waitFor, within } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import {
   ScheduleCreateDialog,
   createInitialScheduleFormState,
-  validateScheduleForm,
   toCreateScheduleInput,
+  validateScheduleForm,
   type ScheduleFormState,
   type ScheduleUserOption
 } from '@/features/schedules/ScheduleCreateDialog';
 import { TESTIDS } from '@/testids';
 
 const mockUsers: ScheduleUserOption[] = [
-  { id: 'user-1', name: '利用者 一郎' },
-  { id: 'user-2', name: '利用者 二郎' }
+  { id: 'user-1', name: '利用者 一郎', lookupId: 101 },
+  { id: 'user-2', name: '利用者 二郎', lookupId: 102 }
 ];
 
 const buildForm = (overrides: Partial<ScheduleFormState> = {}): ScheduleFormState => ({
+  title: 'テスト予定',
+  category: 'User',
   userId: 'user-1',
   startLocal: '2025-11-12T10:00',
   endLocal: '2025-11-12T11:00',
   serviceType: 'normal',
   locationName: '',
   notes: '',
+  assignedStaffId: '',
+  vehicleId: '',
+  status: 'Scheduled',
+  statusReason: '',
   ...overrides
 });
 
@@ -38,28 +44,28 @@ describe('createInitialScheduleFormState', () => {
       defaultUserId: 'user-2'
     });
 
+    expect(form.title).toBe('');
     expect(form.userId).toBe('user-2');
     expect(form.startLocal.startsWith('2025-11-12')).toBe(true);
     expect(form.startLocal.endsWith('10:00')).toBe(true);
     expect(form.endLocal.endsWith('11:00')).toBe(true);
+    expect(form.status).toBe('Planned');
   });
 });
 
 describe('validateScheduleForm', () => {
   it('collects errors for missing required fields', () => {
     const result = validateScheduleForm(
-      buildForm({ userId: '', startLocal: '', endLocal: '', serviceType: '' })
+      buildForm({ title: '', startLocal: '', endLocal: '', serviceType: '' })
     );
 
     expect(result.isValid).toBe(false);
-    expect(result.errors).toEqual(
-      expect.arrayContaining([
-        '利用者を選択してください',
-        '開始日時を入力してください',
-        '終了日時を入力してください',
-        'サービス種別を選択してください'
-      ])
-    );
+    expect(result.errors).toEqual([
+      '予定タイトルを入力してください',
+      '開始日時を入力してください',
+      '終了日時を入力してください',
+      'サービス種別を選択してください'
+    ]);
   });
 
   it('rejects ranges where end is not after start', () => {
@@ -81,32 +87,86 @@ describe('validateScheduleForm', () => {
 describe('toCreateScheduleInput', () => {
   it('throws when required fields are missing', () => {
     expect(() =>
-      toCreateScheduleInput(buildForm({ userId: '', serviceType: '' }))
-    ).toThrowError(/userId is required/);
+      toCreateScheduleInput(buildForm({ title: '', serviceType: 'normal' }))
+    ).toThrowError(/title is required/);
 
     expect(() =>
-      toCreateScheduleInput(buildForm({ userId: 'user-1', startLocal: '', serviceType: 'normal' }))
+      toCreateScheduleInput(buildForm({ startLocal: '', serviceType: 'normal' }))
     ).toThrowError(/startLocal and endLocal are required/);
 
     expect(() =>
-      toCreateScheduleInput(
-        buildForm({ userId: 'user-1', startLocal: 'a', endLocal: 'b', serviceType: '' })
-      )
+      toCreateScheduleInput(buildForm({ startLocal: 'a', endLocal: 'b', serviceType: '' }))
     ).toThrowError(/serviceType is required/);
   });
 
   it('maps optional fields to undefined when empty', () => {
     const result = toCreateScheduleInput(buildForm({ locationName: '', notes: '' }));
-    expect(result).toEqual({
+    expect(result).toMatchObject({
+      title: 'テスト予定',
       userId: 'user-1',
       startLocal: '2025-11-12T10:00',
       endLocal: '2025-11-12T11:00',
-      serviceType: 'normal'
+      serviceType: 'normal',
+      status: 'Scheduled',
     });
+  });
+
+  it('includes lookup metadata when the selected user is provided', () => {
+    const result = toCreateScheduleInput(buildForm(), mockUsers[0]);
+    expect(result.userLookupId).toBe('101');
+    expect(result.userName).toBe('利用者 一郎');
   });
 });
 
 describe('ScheduleCreateDialog component', () => {
+  it('links aria-labelledby/aria-describedby to heading and description test ids', () => {
+    render(
+      <ScheduleCreateDialog
+        open
+        onClose={vi.fn()}
+        onSubmit={vi.fn()}
+        users={mockUsers}
+        defaultUser={mockUsers[0]}
+        mode="create"
+      />
+    );
+
+    const dialog = screen.getByTestId(TESTIDS['schedule-create-dialog']);
+    const heading = screen.getByTestId(TESTIDS['schedule-create-heading']);
+    const description = screen.getByTestId(TESTIDS['schedule-create-description']);
+    const headingId = heading.getAttribute('id');
+    const descriptionId = description.getAttribute('id');
+
+    expect(headingId).toBeTruthy();
+    expect(descriptionId).toBeTruthy();
+    expect(dialog).toHaveAttribute('aria-labelledby', headingId ?? undefined);
+    expect(dialog).toHaveAttribute('aria-describedby', descriptionId ?? undefined);
+  });
+
+  it('extends aria-describedby with error summary id when validation fails', async () => {
+    render(
+      <ScheduleCreateDialog
+        open
+        onClose={vi.fn()}
+        onSubmit={vi.fn()}
+        users={mockUsers}
+        defaultUser={mockUsers[0]}
+        mode="create"
+      />
+    );
+
+    fireEvent.click(screen.getByTestId(TESTIDS['schedule-create-save']));
+
+    const alert = await screen.findByTestId(TESTIDS['schedule-create-error-alert']);
+    const alertId = alert.getAttribute('id');
+    const dialog = screen.getByTestId(TESTIDS['schedule-create-dialog']);
+    const expectedDescriptionId = `${TESTIDS['schedule-create-dialog']}-description`;
+
+    expect(alertId).toBe(`${TESTIDS['schedule-create-dialog']}-errors`);
+    const resolvedAlertId = alertId as string;
+    expect(dialog).toHaveAttribute('aria-describedby', `${expectedDescriptionId} ${resolvedAlertId}`);
+  });
+
   it('renders dialog with default values and selects default user', () => {
     render(
       <ScheduleCreateDialog
@@ -121,6 +181,9 @@ describe('ScheduleCreateDialog component', () => {
     );
 
     expect(screen.getByTestId(TESTIDS['schedule-create-dialog'])).toBeInTheDocument();
+
+    const titleInput = screen.getByTestId(TESTIDS['schedule-create-title']) as HTMLInputElement;
+    expect(titleInput.value).toBe('利用者 二郎の予定');
 
     const userInput = screen.getByTestId(
       TESTIDS['schedule-create-user-input']
@@ -166,10 +229,12 @@ describe('ScheduleCreateDialog component', () => {
       <ScheduleCreateDialog open onClose={vi.fn()} onSubmit={onSubmit} users={mockUsers} mode="create" />
     );
 
+    // clear title to trigger validation
+    fireEvent.change(screen.getByTestId(TESTIDS['schedule-create-title']), { target: { value: '' } });
     fireEvent.click(screen.getByTestId(TESTIDS['schedule-create-save']));
 
     const alert = await screen.findByTestId(TESTIDS['schedule-create-error-alert']);
-    expect(alert).toHaveTextContent('利用者を選択してください');
+    expect(alert).toHaveTextContent('予定タイトルを入力してください');
     expect(onSubmit).not.toHaveBeenCalled();
   });
 
@@ -213,6 +278,9 @@ describe('ScheduleCreateDialog component', () => {
       />
     );
 
+    fireEvent.change(screen.getByTestId(TESTIDS['schedule-create-title']), {
+      target: { value: '訪問看護（午前）' },
+    });
     const serviceTypeCombo = screen.getByRole('combobox', { name: 'サービス種別' });
     fireEvent.mouseDown(serviceTypeCombo);
     const listbox = await screen.findByRole('listbox');
@@ -231,6 +299,7 @@ describe('ScheduleCreateDialog component', () => {
     await waitFor(() => expect(onSubmit).toHaveBeenCalledTimes(1));
     const payload = onSubmit.mock.calls[0][0];
     expect(payload).toMatchObject({
+      title: '訪問看護（午前）',
       userId: 'user-1',
       serviceType: 'nursing',
       locationName: '生活介護室',
@@ -265,6 +334,8 @@ describe('ScheduleCreateDialog component', () => {
     const saveButton = screen.getByTestId(TESTIDS['schedule-create-save']);
     expect(saveButton).toHaveTextContent('更新');
 
+    const titleInput = screen.getByTestId(TESTIDS['schedule-create-title']) as HTMLInputElement;
+    expect(titleInput.value).toBe('利用者 二郎の予定');
     const userInput = screen.getByTestId(TESTIDS['schedule-create-user-input']) as HTMLInputElement;
     expect(userInput.value).toBe('利用者 二郎');
     expect((screen.getByTestId(TESTIDS['schedule-create-start']) as HTMLInputElement).value).toBe('2025-12-01T10:00');

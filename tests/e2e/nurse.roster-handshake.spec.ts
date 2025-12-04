@@ -1,10 +1,12 @@
 import { TESTIDS } from '@/testids';
 import { expect, test } from '@playwright/test';
-import { setupNurseFlags } from './_helpers/setupNurse.flags';
+import { bootNursePage } from './_helpers/bootNursePage';
+
+test.skip(true, 'Legacy roster handshake redirect is disabled during the BP-only phase.');
 
 test.describe('@ci-smoke nurse roster handshake', () => {
   test.beforeEach(async ({ page }) => {
-    await setupNurseFlags(page);
+    await bootNursePage(page, { seed: { nurseDashboard: true } });
   });
 
   test('navigating to /daily/health redirects to nurse observation workspace', async ({ page }) => {

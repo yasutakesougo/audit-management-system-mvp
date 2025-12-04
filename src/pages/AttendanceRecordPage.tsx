@@ -1,17 +1,17 @@
 import { ABSENCE_MONTHLY_LIMIT, DISCREPANCY_THRESHOLD } from '@/config/serviceRecords';
 import { getFlag } from '@/env';
 import {
-  buildAbsentVisit,
-  buildInitialVisits,
-  canCheckOut,
-  computeAbsenceEligibility,
-  diffMinutes,
-  formatTime,
-  getDiscrepancyCount,
-  isBeforeCloseTime,
-  type AbsentMethod,
-  type AttendanceUser,
-  type AttendanceVisit,
+    buildAbsentVisit,
+    buildInitialVisits,
+    canCheckOut,
+    computeAbsenceEligibility,
+    diffMinutes,
+    formatTime,
+    getDiscrepancyCount,
+    isBeforeCloseTime,
+    type AbsentMethod,
+    type AttendanceUser,
+    type AttendanceVisit,
 } from '@/features/attendance/attendance.logic';
 import { warmDataEntryComponents } from '@/mui/warm';
 import { TESTIDS } from '@/testids';

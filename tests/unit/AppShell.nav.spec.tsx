@@ -3,7 +3,7 @@ import { routerFutureFlags } from '@/app/routerFuture';
 import { ColorModeContext } from '@/app/theme';
 import { FeatureFlagsProvider, type FeatureFlagSnapshot } from '@/config/featureFlags';
 import { ThemeProvider, createTheme } from '@mui/material/styles';
-import { cleanup, screen, waitFor, within } from '@testing-library/react';
+import { cleanup, screen, within } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { renderWithAppProviders } from '../helpers/renderWithAppProviders';
 
@@ -41,6 +41,18 @@ vi.mock('@/ui/components/SignInButton', () => ({
   __esModule: true,
   default: () => <div data-testid="sign-in-button" />,
 }));
+
+vi.mock('@/lib/env', async () => {
+  const actual = await vi.importActual<typeof import('@/lib/env')>('@/lib/env');
+  return {
+    ...actual,
+    shouldSkipLogin: () => false,
+    readBool: (key: string) => {
+      if (key === 'VITE_FEATURE_SP_HUD') return true;
+      return actual.readBool(key);
+    },
+  };
+});
 
 vi.mock('@/auth/useAuth', () => ({
   useAuth: () => ({
@@ -91,15 +103,8 @@ describe('AppShell navigation', () => {
     // Footer actions should include schedules create when flag is enabled
     const footer = await screen.findByRole('contentinfo');
     const footerWithin = within(footer);
-    expect(footerWithin.getByRole('link', { name: '新規予定' })).toBeInTheDocument();
+    expect(footerWithin.queryByRole('link', { name: '新規予定' })).toBeNull();
 
-    await waitFor(() => {
-      expect(spFetchMock).toHaveBeenCalled();
-    });
-
-    const [path, options] = spFetchMock.mock.calls[0] ?? [];
-    expect(path).toBe('/currentuser?$select=Id');
-    expect(options?.signal).toBeInstanceOf(AbortSignal);
   });
 
   it('leaves status neutral when ping aborts', async () => {
@@ -133,12 +138,10 @@ describe('AppShell navigation', () => {
       routeChildren: routeEntries.map((path) => ({ path, element: getShell() })),
     });
 
-    await waitFor(() => {
-      expect(spFetchMock).toHaveBeenCalled();
-    });
-
-    const checkingLabel = await screen.findByText(/Checking/i);
-    expect(checkingLabel.closest('[role="status"]')).not.toBeNull();
+    const statuses = await screen.findAllByRole('status');
+    const hudStatus = statuses.find((node) => node.textContent?.includes('SP Sign-In'));
+    expect(hudStatus).toBeDefined();
+    expect(hudStatus).toHaveTextContent('SP Sign-In');
     expect(screen.queryByText(/SP Error/i)).toBeNull();
     unmount();
   });

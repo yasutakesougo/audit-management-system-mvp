@@ -5,9 +5,11 @@ import { useCallback, useId, useMemo, useRef, useState } from 'react';
 // MUI Components
 import Box from '@mui/material/Box';
 import Button from '@mui/material/Button';
+import Chip from '@mui/material/Chip';
 import Paper from '@mui/material/Paper';
 import Stack from '@mui/material/Stack';
 import Typography from '@mui/material/Typography';
+import { getHolidayLabel } from '@/sharepoint/holidays';
 
 // Icons
 import BadgeRoundedIcon from '@mui/icons-material/BadgeRounded';
@@ -17,6 +19,7 @@ import PersonRoundedIcon from '@mui/icons-material/PersonRounded';
 import RefreshRoundedIcon from '@mui/icons-material/RefreshRounded';
 import TodayRoundedIcon from '@mui/icons-material/TodayRounded';
 
+import { TESTIDS, tid } from '@/testids';
 import { getLocalDateKey } from '../dateutils.local';
 import { formatOrgSubtitle } from '../presenters/format';
 import type { Schedule, ScheduleStaff } from '../types';
@@ -30,6 +33,21 @@ export const laneLabels: Record<Schedule['category'], { label: string; icon: Rea
   Staff: { label: '職員レーン', icon: BadgeRoundedIcon, color: 'warning' }, // オレンジ系 - 職員（サポート役）
   Org: { label: '組織イベント', icon: BusinessRoundedIcon, color: 'primary' }, // 青系 - 組織（重要度高）
 };
+const WEEKDAY_LABELS = ['日', '月', '火', '水', '木', '金', '土'] as const;
+const LANE_COLOR_HEX: Record<(typeof laneLabels)['User']['color'], string> = {
+  primary: '#1976d2',
+  secondary: '#9c27b0',
+  success: '#2e7d32',
+  warning: '#ed6c02',
+  error: '#d32f2f',
+  info: '#0288d1',
+};
+const getWeekendTint = (date: Date): string | undefined => {
+  const dow = date.getDay();
+  if (dow === 0) return 'rgba(244,67,54,0.04)';   // Sun (lighter tint)
+  if (dow === 6) return 'rgba(25,118,210,0.04)';  // Sat (lighter tint)
+  return undefined;
+};
 
 type TimelineWeekProps = {
   events: Schedule[];
@@ -37,6 +55,8 @@ type TimelineWeekProps = {
   onEventMove?: (payload: EventMovePayload) => void;
   onEventCreate?: (payload: { category: Schedule['category']; date: string }) => void;
   onEventEdit?: (event: Schedule) => void;
+  onDayNavigate?: (dayKey: string) => void;
+  orgFilterLabel?: string;
 };
 
 type WeekDay = {
@@ -55,7 +75,7 @@ export type EventMovePayload = {
   to: { category: Schedule['category']; dayKey: string };
 };
 
-export default function TimelineWeek({ events, startDate, onEventMove, onEventCreate, onEventEdit }: TimelineWeekProps) {
+export default function TimelineWeek({ events, startDate, onEventMove, onEventCreate, onEventEdit, onDayNavigate, orgFilterLabel }: TimelineWeekProps) {
   const baseDate = useMemo(() => {
     if (startDate) {
       // 指定された日付の週の月曜日を取得
@@ -73,6 +93,27 @@ export default function TimelineWeek({ events, startDate, onEventMove, onEventCr
     [weekDays.length]
   );
   const laneMatrix = useMemo(() => buildLaneMatrix(events, weekDays), [events, weekDays]);
+  const eventCountByDay = useMemo(() => {
+    const map: Record<string, number> = {};
+    for (const e of events) {
+      const key = e.dayKey ?? toDateKey(e.start);
+      if (!key) continue;
+      map[key] = (map[key] ?? 0) + 1;
+    }
+    return map;
+  }, [events]);
+  const eventCountByDayByCategory = useMemo(() => {
+    const map: Record<string, Record<Schedule['category'], number>> = {};
+    for (const e of events) {
+      const key = e.dayKey ?? toDateKey(e.start);
+      if (!key) continue;
+      if (!map[key]) {
+        map[key] = { User: 0, Staff: 0, Org: 0 };
+      }
+      map[key][e.category] += 1;
+    }
+    return map;
+  }, [events]);
   const rangeLabel = useMemo(() => formatRangeLabel(weekDays), [weekDays]);
   const hasToday = useMemo(() => weekDays.some((day) => day.isToday), [weekDays]);
   const headersRef = useRef<Record<string, HTMLDivElement | null>>({});
@@ -86,17 +127,27 @@ export default function TimelineWeek({ events, startDate, onEventMove, onEventCr
   }, [dragInstructionsId, onEventMove, rangeLabel, rangeLabelId]);
   const enableDrag = Boolean(onEventMove);
   const scrollRef = useRef<HTMLDivElement | null>(null);
+  const preferredScrollKey = useMemo(() => {
+    const today = weekDays.find((d) => d.isToday)?.key;
+    if (today) return today;
+    const holiday = weekDays.find((d) => getHolidayLabel(d.key))?.key;
+    if (holiday) return holiday;
+    const weekend = weekDays.find((d) => {
+      const dow = d.date.getDay();
+      return dow === 0 || dow === 6;
+    })?.key;
+    return weekend ?? weekDays[0]?.key;
+  }, [weekDays]);
 
   const handleTodayJump = useCallback(() => {
-    if (!hasToday) return;
-    const todayKey = getLocalDateKey(new Date());
-    if (!todayKey) return;
-    const target = headersRef.current[todayKey];
+    const targetKey = preferredScrollKey ?? getLocalDateKey(new Date());
+    if (!targetKey) return;
+    const target = headersRef.current[targetKey];
     if (target) {
       target.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
       target.focus({ preventScroll: true });
     }
-  }, [hasToday]);
+  }, [preferredScrollKey]);
 
   const handleScrollReset = useCallback(() => {
     const node = scrollRef.current;
@@ -282,6 +333,16 @@ export default function TimelineWeek({ events, startDate, onEventMove, onEventCr
           <Typography variant="body2" color="text.secondary" id={rangeLabelId}>
             {rangeLabel}
           </Typography>
+          {orgFilterLabel && (
+            <Chip
+              {...tid(TESTIDS.SCHEDULE_WEEK_ORG_INDICATOR)}
+              size="small"
+              variant="outlined"
+              color="primary"
+              sx={{ mt: 0.5 }}
+              label={`${orgFilterLabel} / ${events.length}件`}
+            />
+          )}
         </Box>
 
         <Stack direction="row" spacing={1}>
@@ -382,45 +443,123 @@ export default function TimelineWeek({ events, startDate, onEventMove, onEventCr
                 カテゴリ
               </Typography>
             </Box>
-            {weekDays.map((day, index) => (
-              <Box
-                key={day.key}
-                role="columnheader"
-                id={`timeline-week-header-${day.key}`}
-                ref={(node: HTMLDivElement | null) => {
-                  if (node) {
-                    headersRef.current[day.key] = node;
-                  } else {
-                    delete headersRef.current[day.key];
-                  }
-                }}
-                tabIndex={-1}
-                sx={{
-                  px: 2,
-                  py: 1.5,
-                  borderLeft: index > 0 ? 1 : 0,
-                  borderColor: 'divider',
-                  bgcolor: day.isToday ? 'primary.light' : 'grey.50',
-                  color: day.isToday ? 'primary.contrastText' : 'text.primary',
-                  '&:focus-visible': {
-                    outline: 2,
-                    outlineColor: 'primary.main',
-                    outlineOffset: 2
-                  }
-                }}
-              >
-                <Typography
-                  variant="caption"
-                  color={day.isToday ? 'primary.contrastText' : 'text.secondary'}
-                  sx={{ display: 'block', fontWeight: 'medium', letterSpacing: '0.5px' }}
+            {weekDays.map((day, index) => {
+              const dayLabel = format(day.date, 'M月d日', { locale: ja });
+              const isTodayCol = day.isToday;
+              const crossesMonth = day.date.getMonth() !== weekDays[0]?.date.getMonth();
+              const holiday = getHolidayLabel(day.key);
+              const weekendTint = getWeekendTint(day.date);
+              const dayCount = eventCountByDay[day.key] ?? 0;
+              const catCounts = eventCountByDayByCategory[day.key];
+              return (
+                <Box
+                  key={day.key}
+                  role="columnheader"
+                  aria-label={dayLabel}
+                  id={`timeline-week-header-${day.key}`}
+                  ref={(node: HTMLDivElement | null) => {
+                    if (node) {
+                      headersRef.current[day.key] = node;
+                    } else {
+                      delete headersRef.current[day.key];
+                    }
+                  }}
+                  tabIndex={-1}
+                  onClick={() => {
+                    onDayNavigate?.(day.key);
+                  }}
+                  sx={{
+                    px: 2,
+                    py: 1.5,
+                    borderLeft: index > 0 ? 1 : 0,
+                    borderColor: 'divider',
+                    bgcolor: isTodayCol ? 'rgba(25,118,210,0.10)' : weekendTint ?? 'background.paper',
+                    color: isTodayCol ? 'primary.contrastText' : 'text.primary',
+                    boxShadow: isTodayCol ? 'inset 0 3px 0 0 rgba(25,118,210,0.9)' : 'none',
+                    cursor: 'pointer',
+                    '&:focus-visible': {
+                      outline: 2,
+                      outlineColor: 'primary.main',
+                      outlineOffset: 2
+                    }
+                  }}
                 >
-                  {day.weekday}
-                </Typography>
-                <Typography variant="body2" fontWeight="bold">
-                  {day.label}
-                </Typography>
-              </Box>
-            ))}
+                  <Stack spacing={0} alignItems="center">
+                    <Typography
+                      variant="subtitle2"
+                      sx={{
+                        fontWeight: isTodayCol ? 800 : 700,
+                        lineHeight: 1.2,
+                      }}
+                    >
+                      {crossesMonth ? format(day.date, 'M/d', { locale: ja }) : dayLabel}
+                    </Typography>
+                    <Typography
+                      variant="caption"
+                      aria-hidden
+                      sx={{
+                        fontWeight: 700,
+                        color:
+                          day.date.getDay() === 0 ? 'error.main'
+                          : day.date.getDay() === 6 ? 'primary.main'
+                          : 'text.secondary',
+                        lineHeight: 1.1,
+                      }}
+                    >
+                      {WEEKDAY_LABELS[day.date.getDay()]}
+                    </Typography>
+                    {isTodayCol && (
+                      <Chip
+                        size="small"
+                        label="今日"
+                        color="primary"
+                        sx={{ height: 18, fontSize: 11, mt: 0.25 }}
+                      />
+                      )}
+                    {dayCount > 0 && (
+                      <Chip
+                        aria-hidden
+                        size="small"
+                        label={String(dayCount)}
+                        sx={{ height: 18, fontSize: 11, fontWeight: 700, mt: 0.25, bgcolor: 'rgba(0,0,0,0.06)' }}
+                      />
+                    )}
+                    {catCounts && (
+                      <Stack direction="row" spacing={0.5} aria-hidden sx={{ mt: 0.25 }}>
+                        {laneOrder.map((cat) => {
+                          const count = catCounts[cat];
+                          if (!count) return null;
+                          const laneColor = LANE_COLOR_HEX[laneLabels[cat].color] ?? '#1976d2';
+                          return (
+                            <Chip
+                              key={`${day.key}-${cat}`}
+                              size="small"
+                              label={count}
+                              sx={{
+                                height: 18,
+                                fontSize: 10,
+                                fontWeight: 700,
+                                bgcolor: laneColor,
+                                color: '#fff',
+                                px: 0.5,
+                              }}
+                            />
+                          );
+                        })}
+                      </Stack>
+                    )}
+                    {holiday && (
+                      <Typography
+                        variant="caption"
+                        sx={{ color: 'error.main', fontWeight: 700, lineHeight: 1, mt: 0.25 }}
+                      >
+                        {holiday}
+                      </Typography>
+                    )}
+                  </Stack>
+                </Box>
+              );
+            })}
           </Box>
 
           {/* Lane Rows */}
@@ -469,6 +608,8 @@ export default function TimelineWeek({ events, startDate, onEventMove, onEventCr
                   const dayEvents = laneMatrix[category]?.[day.key] ?? [];
                   const ariaLabel = `${laneConfig.label}・${format(day.date, 'M月d日 (EEE)', { locale: ja })}`;
                   const dropKey = `${category}-${day.key}`;
+                  const weekendTint = getWeekendTint(day.date);
+                  const laneColor = LANE_COLOR_HEX[laneConfig.color] ?? '#1976d2';
                   return (
                     <Box
                       key={day.key}
@@ -483,9 +624,12 @@ export default function TimelineWeek({ events, startDate, onEventMove, onEventCr
                         borderLeft: index > 0 ? 1 : 0,
                         borderColor: 'divider',
                         bgcolor: activeDropKey === dropKey ? 'action.hover' :
-                                 laneConfig.color === 'success' ? 'rgba(76, 175, 80, 0.04)' : // 薄い緑
-                                 laneConfig.color === 'warning' ? 'rgba(255, 152, 0, 0.04)' : // 薄いオレンジ
-                                 laneConfig.color === 'primary' ? 'rgba(25, 118, 210, 0.04)' : 'background.paper', // 薄い青
+                                 day.isToday ? 'rgba(25, 118, 210, 0.06)' :
+                                 weekendTint ?? (
+                                   laneConfig.color === 'success' ? 'rgba(76, 175, 80, 0.04)' : // 薄い緑
+                                   laneConfig.color === 'warning' ? 'rgba(255, 152, 0, 0.04)' : // 薄いオレンジ
+                                   laneConfig.color === 'primary' ? 'rgba(25, 118, 210, 0.04)' : 'background.paper' // 薄い青
+                                 ),
                         transition: 'background-color 0.2s ease-in-out',
                         cursor: 'pointer',
                         '&:hover': {
@@ -503,6 +647,7 @@ export default function TimelineWeek({ events, startDate, onEventMove, onEventCr
                         dayEvents.map((event) => {
                           const serviceLabel = getScheduleServiceLabel(event);
                           const colorSource = buildScheduleColorSource(event);
+                          const isDraggingCard = draggingId === event.id;
 
                           const baseContainerProps = {
                             'data-testid': 'schedule-item',
@@ -512,6 +657,13 @@ export default function TimelineWeek({ events, startDate, onEventMove, onEventCr
                             'data-category': event.category,
                             'data-all-day': event.allDay ? '1' : '0',
                             'data-recurrence': event.recurrenceRule ? '1' : '0',
+                            style: {
+                              borderLeft: `3px solid ${laneColor}`,
+                              borderRadius: 6,
+                              paddingLeft: 6,
+                              transform: isDraggingCard ? 'scale(1.02)' : undefined,
+                              boxShadow: isDraggingCard ? '0 6px 18px rgba(0,0,0,0.18)' : undefined,
+                            },
                           };
 
                           const containerProps = enableDrag
@@ -636,8 +788,7 @@ function formatRangeLabel(days: WeekDay[]): string {
   if (!days.length) return '';
   const first = days[0].date;
   const last = days[days.length - 1].date;
-  const formatter = new Intl.DateTimeFormat('ja-JP', { month: 'numeric', day: 'numeric' });
-  return `${formatter.format(first)} 〜 ${formatter.format(last)}`;
+  return `${format(first, 'yyyy/MM/dd (EEE)', { locale: ja })} 〜 ${format(last, 'yyyy/MM/dd (EEE)', { locale: ja })}`;
 }
 
 export function getTimelineSubtitle(event: Schedule): string {
@@ -660,3 +811,10 @@ export function getTimelineSubtitle(event: Schedule): string {
 function formatDayPart(dayPart: Extract<ScheduleStaff['dayPart'], 'AM' | 'PM'>): string {
   return dayPart === 'AM' ? '午前休' : '午後休';
 }
+
+const toDateKey = (iso?: string | null): string => {
+  if (!iso) return '';
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return '';
+  return d.toISOString().slice(0, 10);
+};

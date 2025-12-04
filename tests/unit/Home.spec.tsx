@@ -15,14 +15,18 @@ const featureFlagsState = vi.hoisted<FeatureFlagSnapshot>(() => ({
   schedulesWeekV2: false,
 }));
 
-vi.mock('@/lib/env', () => ({
-  isDemoModeEnabled: () => isDemoModeEnabledMock(),
-  isSchedulesFeatureEnabled: () => featureFlagsState.schedules,
-  isSchedulesCreateEnabled: () => featureFlagsState.schedulesCreate,
-  isComplianceFormEnabled: () => featureFlagsState.complianceForm,
-  isSchedulesWeekV2Enabled: () => featureFlagsState.schedulesWeekV2,
-  shouldSkipLogin: () => false,
-}));
+vi.mock('@/lib/env', async () => {
+  const actual = await vi.importActual<typeof import('@/lib/env')>('@/lib/env');
+  return {
+    ...actual,
+    isDemoModeEnabled: () => isDemoModeEnabledMock(),
+    isSchedulesFeatureEnabled: () => featureFlagsState.schedules,
+    isSchedulesCreateEnabled: () => featureFlagsState.schedulesCreate,
+    isComplianceFormEnabled: () => featureFlagsState.complianceForm,
+    isSchedulesWeekV2Enabled: () => featureFlagsState.schedulesWeekV2,
+    shouldSkipLogin: () => false,
+  };
+});
 
 const renderHome = () =>
   renderWithAppProviders(

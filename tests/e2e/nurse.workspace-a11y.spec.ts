@@ -1,10 +1,12 @@
 import { TESTIDS } from '@/testids';
 import { expect, test } from '@playwright/test';
-import { setupNurseFlags } from './_helpers/setupNurse.flags';
+import { bootNursePage } from './_helpers/bootNursePage';
+
+test.skip(true, 'Legacy nurse workspace a11y checks are paused until the new workspace UI ships.');
 
 test.describe('@ci-smoke nurse seizure workspace a11y', () => {
   test.beforeEach(async ({ page }) => {
-    await setupNurseFlags(page);
+    await bootNursePage(page, { seed: { nurseDashboard: true } });
   });
 
   test('heading and quick log region are exposed', async ({ page }) => {

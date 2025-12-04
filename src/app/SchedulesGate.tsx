@@ -1,5 +1,6 @@
 import { useFeatureFlags } from '@/config/featureFlags';
 import { isE2E } from '@/env';
+import { getAppConfig } from '@/lib/env';
 import type { PropsWithChildren } from 'react';
 import { Navigate, useLocation } from 'react-router-dom';
 
@@ -7,7 +8,7 @@ import { Navigate, useLocation } from 'react-router-dom';
  * Development-only debug logging to avoid production noise
  */
 const debug = (...args: unknown[]) => {
-  if (import.meta.env.DEV) {
+  if (getAppConfig().isDev) {
     // eslint-disable-next-line no-console
     console.log('[SchedulesGate]', ...args);
   }

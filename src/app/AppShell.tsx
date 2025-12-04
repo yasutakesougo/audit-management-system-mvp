@@ -19,13 +19,14 @@ import Tooltip from '@mui/material/Tooltip';
 import Typography from '@mui/material/Typography';
 import React, { useContext, useEffect, useMemo, useState } from 'react';
 // Navigation Icons
+import { useMsalContext } from '@/auth/MsalProvider';
 import NavLinkPrefetch from '@/components/NavLinkPrefetch';
+import { useFeatureFlags } from '@/config/featureFlags';
 import { setCurrentUserRole, useAuthStore } from '@/features/auth/store';
 import { useDashboardPath } from '@/features/dashboard/dashboardRouting';
 import { HandoffQuickNoteCard } from '@/features/handoff/HandoffQuickNoteCard';
-import { useFeatureFlags } from '@/config/featureFlags';
 import RouteHydrationListener from '@/hydration/RouteHydrationListener';
-import { getAppConfig, shouldSkipLogin } from '@/lib/env';
+import { getAppConfig, readBool, shouldSkipLogin } from '@/lib/env';
 import { useSP } from '@/lib/spClient';
 import { PREFETCH_KEYS, type PrefetchKey } from '@/prefetch/routes';
 import { TESTIDS } from '@/testids';
@@ -35,8 +36,11 @@ import AssignmentTurnedInRoundedIcon from '@mui/icons-material/AssignmentTurnedI
 import BadgeRoundedIcon from '@mui/icons-material/BadgeRounded';
 import ChecklistRoundedIcon from '@mui/icons-material/ChecklistRounded';
 import EventAvailableRoundedIcon from '@mui/icons-material/EventAvailableRounded';
+import InsightsIcon from '@mui/icons-material/Insights';
 import PeopleAltRoundedIcon from '@mui/icons-material/PeopleAltRounded';
+import PsychologyIcon from '@mui/icons-material/Psychology';
 import SettingsRoundedIcon from '@mui/icons-material/SettingsRounded';
+import WorkspacesIcon from '@mui/icons-material/Workspaces';
 import { Link as RouterLink, useLocation, useNavigate } from 'react-router-dom';
 import { ColorModeContext } from './theme';
 
@@ -89,6 +93,36 @@ const AppShell: React.FC<{ children: React.ReactNode }> = ({ children }) => {
         prefetchKey: PREFETCH_KEYS.dashboard,
         prefetchKeys: [PREFETCH_KEYS.muiData, PREFETCH_KEYS.muiFeedback],
         testId: 'nav-dashboard',
+      },
+      {
+        label: '分析',
+        to: '/analysis/dashboard',
+        isActive: (pathname) => pathname.startsWith('/analysis/dashboard'),
+        icon: InsightsIcon,
+        prefetchKey: PREFETCH_KEYS.analysisDashboard,
+        testId: 'nav-analysis',
+      },
+      {
+        label: '氷山分析',
+        to: '/analysis/iceberg',
+        isActive: (pathname) => pathname.startsWith('/analysis/iceberg'),
+        icon: WorkspacesIcon,
+        prefetchKey: PREFETCH_KEYS.iceberg,
+        testId: 'nav-iceberg',
+      },
+      {
+        label: 'アセスメント',
+        to: '/assessment',
+        isActive: (pathname) => pathname.startsWith('/assessment'),
+        icon: PsychologyIcon,
+        prefetchKey: PREFETCH_KEYS.assessmentDashboard,
+        testId: 'nav-assessment',
+      },
+      {
+        label: '特性アンケート',
+        to: '/survey/tokusei',
+        isActive: (pathname) => pathname.startsWith('/survey/tokusei'),
+        icon: EditNoteIcon,
       },
       {
         label: '日次記録',
@@ -252,16 +286,26 @@ const AppShell: React.FC<{ children: React.ReactNode }> = ({ children }) => {
 
 const ConnectionStatus: React.FC = () => {
   const { spFetch } = useSP();
-  const [state, setState] = useState<'checking' | 'ok' | 'error'>('checking');
+  const { accounts } = useMsalContext();
+  const forceSharePoint = readBool('VITE_FORCE_SHAREPOINT', false);
+  const sharePointFeatureEnabled = readBool('VITE_FEATURE_SCHEDULES_SP', false);
+  const accountsCount = accounts.length;
+  const [state, setState] = useState<'checking' | 'ok' | 'error' | 'signedOut'>('checking');
 
   useEffect(() => {
     const { isDev: isDevelopment } = getAppConfig();
     const isVitest = typeof process !== 'undefined' && Boolean(process.env?.VITEST);
+    const shouldCheckSharePoint = !isDevelopment || isVitest || forceSharePoint || sharePointFeatureEnabled;
 
     // 開発モード本番ブラウザのみ SharePoint 接続チェックを省略（テストでは実行）
-    if (isDevelopment && !isVitest) {
+    if (!shouldCheckSharePoint) {
       console.info('開発環境: SharePoint接続チェックをスキップし、モック状態に設定');
       setState('ok'); // 開発環境では常に OK として扱う
+      return;
+    }
+
+    if (accountsCount === 0) {
+      setState('signedOut');
       return;
     }
 
@@ -270,6 +314,7 @@ const ConnectionStatus: React.FC = () => {
 
     (async () => {
       try {
+        setState('checking');
         const result = await spFetch('/currentuser?$select=Id', { signal: controller.signal });
         if (cancelled) return;
         let ok = false;
@@ -294,10 +339,12 @@ const ConnectionStatus: React.FC = () => {
       cancelled = true;
       controller.abort();
     };
-  }, [spFetch]);
+  }, [accountsCount, forceSharePoint, sharePointFeatureEnabled, spFetch]);
 
   const { label, background } = useMemo(() => {
     switch (state) {
+      case 'signedOut':
+        return { label: 'SP Sign-In', background: '#0277bd' };
       case 'ok':
         return { label: 'SP Connected', background: '#2e7d32' };
       case 'error':
@@ -330,7 +377,6 @@ const ConnectionStatus: React.FC = () => {
 
 const FooterQuickActions: React.FC = () => {
   const location = useLocation();
-  const { schedulesCreate } = useFeatureFlags();
   const [quickNoteOpen, setQuickNoteOpen] = useState(false);
   const isHandoffTimeline =
     location.pathname === '/handoff-timeline' || location.pathname.startsWith('/handoff-timeline/');
@@ -384,17 +430,6 @@ const FooterQuickActions: React.FC = () => {
   ] as const;
 
   const actions: FooterAction[] = [...baseActions];
-
-  // スケジュール作成機能が有効な場合に新規予定を追加
-  if (schedulesCreate) {
-    actions.push({
-      key: 'schedule-create',
-      label: '新規予定',
-      to: '/schedules/create',
-      color: 'secondary' as const,
-      variant: 'contained' as const,
-    });
-  }
 
   const handleQuickNoteClick = () => {
     if (isHandoffTimeline) {

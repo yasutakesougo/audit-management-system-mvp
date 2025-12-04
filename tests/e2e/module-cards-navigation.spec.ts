@@ -1,8 +1,12 @@
 import { expect, test } from '@playwright/test';
+import { bootAgenda } from './_helpers/bootAgenda';
 
 test.describe('Dashboard Module Summary Cards - Navigation E2E', () => {
   test.beforeEach(async ({ page }) => {
-    await page.goto('/');
+    await bootAgenda(page, {
+      seed: { agenda: true, schedulesToday: true },
+    });
+    await page.goto('/dashboard');
     await page.waitForLoadState('networkidle');
   });
 

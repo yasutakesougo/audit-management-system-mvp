@@ -1,10 +1,12 @@
 import { TESTIDS } from '@/testids';
 import { expect, test } from '@playwright/test';
-import { setupNurseFlags } from './_helpers/setupNurse.flags';
+import { bootNursePage } from './_helpers/bootNursePage';
+
+test.skip(true, 'Legacy nurse records UI is removed during the BP MVP phase.');
 
 test.describe('@ci-smoke nurse records', () => {
   test.beforeEach(async ({ page }) => {
-    await setupNurseFlags(page);
+    await bootNursePage(page, { seed: { nurseDashboard: true } });
   });
 
   test('search UI and export actions are visible', async ({ page }) => {

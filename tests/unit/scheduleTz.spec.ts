@@ -1,9 +1,13 @@
 import type { AppConfig } from '@/lib/env';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
-vi.mock('@/lib/env', () => ({
-  getAppConfig: vi.fn(),
-}));
+vi.mock('@/lib/env', async () => {
+  const actual = await vi.importActual<typeof import('@/lib/env')>('@/lib/env');
+  return {
+    ...actual,
+    getAppConfig: vi.fn(),
+  };
+});
 
 const RealDateTimeFormat = Intl.DateTimeFormat;
 

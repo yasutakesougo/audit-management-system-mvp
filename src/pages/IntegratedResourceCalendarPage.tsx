@@ -3,55 +3,57 @@
  * 管理者向け Plan vs Actual 統合ビュー
  */
 
-import React, { useEffect, useRef, useState, useCallback, useMemo } from 'react';
-import {
-  Box,
-  Container,
-  Typography,
-  Paper,
-  Alert,
-  Chip,
-  LinearProgress,
-  Snackbar,
-  Dialog,
-  DialogTitle,
-  DialogContent,
-  DialogActions,
-  Button,
-  Stack,
-  FormControlLabel,
-  Switch
-} from '@mui/material';
-import FullCalendar from '@fullcalendar/react';
-import resourceTimelinePlugin from '@fullcalendar/resource-timeline';
-import interactionPlugin from '@fullcalendar/interaction';
 import type {
-  EventContentArg,
-  DateSelectArg,
-  EventClickArg,
-  EventMountArg,
-  EventApi,
-  EventInput,
-  DateSpanApi,
+    DateSelectArg,
+    DateSpanApi,
+    EventApi,
+    EventClickArg,
+    EventContentArg,
+    EventInput,
+    EventMountArg,
 } from '@fullcalendar/core';
+import interactionPlugin from '@fullcalendar/interaction';
+import FullCalendar from '@fullcalendar/react';
 import type { ResourceLabelContentArg } from '@fullcalendar/resource';
+import resourceTimelinePlugin from '@fullcalendar/resource-timeline';
+import {
+    Alert,
+    Box,
+    Button,
+    Chip,
+    Container,
+    Dialog,
+    DialogActions,
+    DialogContent,
+    DialogTitle,
+    FormControlLabel,
+    LinearProgress,
+    Paper,
+    Snackbar,
+    Stack,
+    Switch,
+    Typography
+} from '@mui/material';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
-import { 
-  UnifiedResourceEvent, 
-  PvsAStatus, 
-  ResourceInfo
-} from '../features/resources/types';
+import { useFeatureFlags } from '@/config/featureFlags';
 import { HYDRATION_FEATURES, estimatePayloadSize, startFeatureSpan } from '@/hydration/features';
-import { createIrcSpClient } from '../lib/spClient';
-import { isE2E } from '../env';
+import { getAppConfig } from '@/lib/env';
 import { useLocation } from 'react-router-dom';
+import { isE2E } from '../env';
+import {
+    PvsAStatus,
+    ResourceInfo,
+    UnifiedResourceEvent
+} from '../features/resources/types';
+import { createIrcSpClient } from '../lib/spClient';
 
 /**
  * リソース警告情報
  */
-type ResourceWarning = { 
-  totalHours: number; 
-  isOver: boolean; 
+type ResourceWarning = {
+  totalHours: number;
+  isOver: boolean;
 };
 
 type EventAllowInfo = {
@@ -149,7 +151,7 @@ const fetchWarningEvents = (
       successCallback([]);
       return;
     }
-    
+
     // 本来は fetchInfo.start / end を使ってサーバ側で判定
     // ここでは「staff-1 の 09:00 - 18:00 が危険ゾーン」というモック
     const startDateStr = fetchInfo.startStr.slice(0, 10); // YYYY-MM-DD
@@ -206,10 +208,10 @@ function PvsAEventContent({ event }: EventContentArg) {
   const { status, actualStart, actualEnd, percentComplete, diffMinutes } = props;
 
   return (
-    <Box 
+    <Box
       className="pvsA-event-content"
-      sx={{ 
-        p: 0.5, 
+      sx={{
+        p: 0.5,
         fontSize: '11px',
         lineHeight: 1.2,
         overflow: 'hidden'
@@ -218,23 +220,23 @@ function PvsAEventContent({ event }: EventContentArg) {
       <Typography variant="caption" sx={{ fontWeight: 'bold', display: 'block' }}>
         {getStatusIcon(status)} {event.title}
       </Typography>
-      
+
       <Box className="time-info">
         <Typography variant="caption" sx={{ display: 'block', color: 'text.secondary' }}>
           計画: {formatTime(event.startStr)} - {formatTime(event.endStr || '')}
         </Typography>
-        
+
         {actualStart && actualEnd && (
           <Typography variant="caption" sx={{ display: 'block', color: 'primary.main' }}>
             実績: {formatTime(actualStart)} - {formatTime(actualEnd)}
           </Typography>
         )}
       </Box>
-      
+
       {status === 'in-progress' && percentComplete !== undefined && (
         <Box sx={{ mt: 0.5 }}>
-          <LinearProgress 
-            variant="determinate" 
+          <LinearProgress
+            variant="determinate"
             value={percentComplete}
             sx={{ height: 3 }}
           />
@@ -243,20 +245,20 @@ function PvsAEventContent({ event }: EventContentArg) {
           </Typography>
         </Box>
       )}
-      
+
       {status === 'delayed' && diffMinutes && diffMinutes > 0 && (
-        <Chip 
-          label={`+${diffMinutes}分`} 
-          size="small" 
+        <Chip
+          label={`+${diffMinutes}分`}
+          size="small"
           color="warning"
           sx={{ fontSize: '9px', height: 16, mt: 0.5 }}
         />
       )}
-      
+
       {status === 'completed' && (
-        <Chip 
-          label="完了" 
-          size="small" 
+        <Chip
+          label="完了"
+          size="small"
           color="success"
           sx={{ fontSize: '9px', height: 16, mt: 0.5 }}
         />
@@ -280,7 +282,7 @@ const getDynamicEventClasses = (arg: { event: { extendedProps: Record<string, un
     classes.push(`event-type-${planType}`);
   }
 
-  // PvsAステータスクラス  
+  // PvsAステータスクラス
   if (status) {
     classes.push(`event-status-${status}`);
   }
@@ -301,7 +303,7 @@ const mockResources: ResourceInfo[] = [
     maxHoursPerDay: 8
   },
   {
-    id: 'staff-2', 
+    id: 'staff-2',
     title: '佐藤 太郎（契約・介護福祉士）',
     type: 'staff',
     employmentType: 'contract',
@@ -326,6 +328,8 @@ const mockResources: ResourceInfo[] = [
  */
 export default function IntegratedResourceCalendarPage() {
   const location = useLocation();
+  const { schedules } = useFeatureFlags();
+  const appConfig = useMemo(() => getAppConfig(), []);
 
   // 1️⃣ デバッグマーカー: この関数が確実に実行されているかを確認
   console.log('[IRC] mounted', {
@@ -335,11 +339,11 @@ export default function IntegratedResourceCalendarPage() {
   });
 
   // E2E テスト用デバッグ情報
-  console.log('[IRC] Page loading with E2E flag:', import.meta.env.VITE_E2E);
+  console.log('[IRC] Page loading with E2E flag:', isE2E);
   console.log('[IRC] Current environment:', {
-    VITE_E2E: import.meta.env.VITE_E2E,
-    VITE_SP_RESOURCE: import.meta.env.VITE_SP_RESOURCE,
-    VITE_FEATURE_SCHEDULES: import.meta.env.VITE_FEATURE_SCHEDULES
+    VITE_E2E: isE2E,
+    VITE_SP_RESOURCE: appConfig.VITE_SP_RESOURCE,
+    VITE_FEATURE_SCHEDULES: schedules,
   });
 
   const ircSpClient = useMemo(() => {
@@ -356,10 +360,10 @@ export default function IntegratedResourceCalendarPage() {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [feedbackMessage, setFeedbackMessage] = useState<string | null>(null);
   const [showOnlyUnrecorded, setShowOnlyUnrecorded] = useState(false);
-  
+
   // Issue 9 & 10 用: リソース毎の総計画時間と8h超過フラグ
   const [resourceWarnings, setResourceWarnings] = useState<Record<string, ResourceWarning>>({});
-  
+
   // IRC イベントデータ読み込み
   useEffect(() => {
     const loadEvents = async () => {
@@ -409,8 +413,8 @@ export default function IntegratedResourceCalendarPage() {
   );
 
   const visibleEvents = useMemo(
-    () => (showOnlyUnrecorded 
-      ? events.filter((event) => !event.extendedProps?.actualStart) 
+    () => (showOnlyUnrecorded
+      ? events.filter((event) => !event.extendedProps?.actualStart)
       : events
     ),
     [showOnlyUnrecorded, events]
@@ -713,7 +717,7 @@ export default function IntegratedResourceCalendarPage() {
    */
   const handleEventClick = (info: EventClickArg) => {
     const props = info.event.extendedProps as UnifiedResourceEvent['extendedProps'];
-    
+
     // UnifiedResourceEventオブジェクトを構築
     const unifiedEvent: UnifiedResourceEvent = {
       id: info.event.id,
@@ -723,7 +727,7 @@ export default function IntegratedResourceCalendarPage() {
       end: info.event.endStr || '',
       extendedProps: props
     };
-    
+
     setSelectedEvent(unifiedEvent);
     setDialogOpen(true);
   };
@@ -751,7 +755,7 @@ export default function IntegratedResourceCalendarPage() {
 
     setEvents(prev => [...prev, newEvent]);
     showSnackbar('予定を作成しました');
-    
+
     // 新規作成時に未記録フィルターがONなら自動で表示されるよう調整
     if (showOnlyUnrecorded) {
       console.log('[IRC] New event created in unrecorded filter mode');
@@ -781,18 +785,18 @@ export default function IntegratedResourceCalendarPage() {
   }, []);
 
   return (
-    <Container 
-      maxWidth="xl" 
-      sx={{ py: 2 }} 
+    <Container
+      maxWidth="xl"
+      sx={{ py: 2 }}
       data-testid="irc-page"
     >
       {/* 一時的デバッグバナー：E2E環境でページが正しく表示されているかの確認 */}
       <Typography
         variant="overline"
         data-testid="irc-debug-banner"
-        sx={{ 
-          display: 'block', 
-          mb: 1, 
+        sx={{
+          display: 'block',
+          mb: 1,
           color: 'primary.main',
           fontWeight: 'bold',
           backgroundColor: 'primary.50',
@@ -847,7 +851,7 @@ export default function IntegratedResourceCalendarPage() {
             <Chip
               label={`記録済み: ${recordedEventsCount}件`}
               size="small"
-              variant="outlined" 
+              variant="outlined"
               color="success"
               data-testid="irc-recorded-events"
             />
@@ -870,55 +874,55 @@ export default function IntegratedResourceCalendarPage() {
               border-radius: 4px;
               overflow: hidden;
             }
-            
+
             .event-type-visit {
               background-color: #e3f2fd;
               border-left: 4px solid #1976d2;
             }
-            
+
             .event-type-travel {
               background-color: #f3e5f5;
               border-left: 4px solid #7b1fa2;
             }
-            
+
             .event-type-break {
               background-color: #e8f5e8;
               border-left: 4px solid #388e3c;
             }
-            
+
             .event-status-waiting {
               opacity: 0.7;
             }
-            
+
             .event-status-in-progress {
               border: 2px solid #1976d2;
               animation: pulse 2s infinite;
             }
-            
+
             .event-status-completed {
               border: 2px solid #4caf50;
             }
-            
+
             .event-status-delayed {
               border: 2px solid #ff9800;
               background-color: #fff3e0 !important;
             }
-            
+
             .event-status-cancelled {
               background-color: #ffebee !important;
               opacity: 0.5;
               text-decoration: line-through;
             }
-            
+
             .fc-event-warning-bg {
               background-color: rgba(255, 0, 0, 0.15) !important;
               border: none !important;
             }
-            
+
             .fc-event-warning-bg:hover {
               background-color: rgba(255, 0, 0, 0.25) !important;
             }
-            
+
             @keyframes pulse {
               0% { border-color: #1976d2; }
               50% { border-color: #42a5f5; }
@@ -926,7 +930,7 @@ export default function IntegratedResourceCalendarPage() {
             }
             `}
           </style>
-          
+
           <FullCalendar
             ref={calendarRef}
             key={`calendar-${visibleEvents.length}`} // visibleEvents更新時に強制再レンダー
@@ -935,15 +939,15 @@ export default function IntegratedResourceCalendarPage() {
             initialDate="2025-11-16" // 固定日付でテスト
             headerToolbar={{
               left: 'prev,next today',
-              center: 'title', 
+              center: 'title',
               right: 'resourceTimelineDay,resourceTimelineWeek'
             }}
             resources={mockResources}
             resourceAreaColumns={resourceAreaColumns}
-            
+
             // --- イベントソース（フィルタリング適用） ---
             events={visibleEvents}
-            
+
             eventSources={[
               {
                 id: 'warning-events',
@@ -953,19 +957,19 @@ export default function IntegratedResourceCalendarPage() {
                 className: 'fc-event-warning-bg',
               },
             ]}
-            
+
             eventContent={renderEventContent}
             eventClassNames={getDynamicEventClasses}
             eventDidMount={handleEventDidMount}
             editable={true}
             selectable={true}
             selectMirror={true}
-            
+
             // --- 物理的ダブルブッキング禁止 + 実績ロック ---
             eventAllow={handleEventAllow}
             selectAllow={handleSelectAllow}
             eventOverlap={true} // 判定は eventAllow に集約
-            
+
             select={handleDateSelect}
             eventClick={handleEventClick}
             height="auto"
@@ -982,8 +986,8 @@ export default function IntegratedResourceCalendarPage() {
       </Paper>
 
       {/* イベント詳細ダイアログ */}
-      <Dialog 
-        open={dialogOpen} 
+      <Dialog
+        open={dialogOpen}
         onClose={() => setDialogOpen(false)}
         maxWidth="sm"
         fullWidth
@@ -998,7 +1002,7 @@ export default function IntegratedResourceCalendarPage() {
               <Typography><strong>計画時間:</strong> {formatTime(selectedEvent.start)} - {formatTime(selectedEvent.end)}</Typography>
               <Typography><strong>種別:</strong> {selectedEvent.extendedProps.planType}</Typography>
               <Typography><strong>ステータス:</strong> {selectedEvent.extendedProps.status}</Typography>
-              
+
               {selectedEvent.extendedProps.actualStart && (
                 <>
                   <Typography><strong>実績開始:</strong> {formatTime(selectedEvent.extendedProps.actualStart)}</Typography>
@@ -1010,7 +1014,7 @@ export default function IntegratedResourceCalendarPage() {
                   )}
                 </>
               )}
-              
+
               {selectedEvent.extendedProps.notes && (
                 <Typography><strong>備考:</strong> {selectedEvent.extendedProps.notes}</Typography>
               )}
@@ -1019,8 +1023,8 @@ export default function IntegratedResourceCalendarPage() {
         </DialogContent>
         <DialogActions>
           {selectedEvent && !selectedEvent.extendedProps.actualStart && (
-            <Button 
-              color="error" 
+            <Button
+              color="error"
               onClick={() => {
                 setEvents(prev => prev.filter(e => e.id !== selectedEvent.id));
                 setDialogOpen(false);

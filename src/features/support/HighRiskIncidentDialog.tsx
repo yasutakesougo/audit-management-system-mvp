@@ -1,16 +1,16 @@
 import {
-  antecedentValues,
-  behaviorValues,
-  consequenceValues,
-  createEmptyIncidentDraft,
-  deriveSuggestedFunction,
-  functionValues,
-  highRiskIncidentDraftSchema,
-  severityValues,
-  type AntecedentValue,
-  type ConsequenceValue,
-  type FunctionValue,
-  type HighRiskIncidentDraft,
+    antecedentValues,
+    behaviorValues,
+    consequenceValues,
+    createEmptyIncidentDraft,
+    deriveSuggestedFunction,
+    functionValues,
+    highRiskIncidentDraftSchema,
+    severityValues,
+    type AntecedentValue,
+    type ConsequenceValue,
+    type FunctionValue,
+    type HighRiskIncidentDraft,
 } from '@/domain/support/highRiskIncident';
 import Alert from '@mui/material/Alert';
 import Autocomplete from '@mui/material/Autocomplete';

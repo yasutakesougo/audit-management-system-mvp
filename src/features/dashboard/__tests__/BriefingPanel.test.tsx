@@ -98,6 +98,9 @@ describe('BriefingPanel', () => {
     expect(handoffPanel).toHaveTextContent(/総件数:\s*5\s*件/);
     expect(within(handoffPanel).getByText('注意: 1件')).toBeInTheDocument();
     expect(within(handoffPanel).getByText('対応中: 2件')).toBeInTheDocument();
+    expect(screen.getByTestId('dashboard-handoff-summary-total')).toHaveTextContent('総件数: 5 件');
+    expect(screen.getByTestId('dashboard-handoff-summary-alert')).toHaveTextContent('注意: 1件');
+    expect(screen.getByTestId('dashboard-handoff-summary-action')).toHaveTextContent('対応中: 2件');
   });
 
   it('重点フォロー対象者がいない場合の表示', () => {

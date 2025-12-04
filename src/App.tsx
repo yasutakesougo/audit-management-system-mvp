@@ -1,5 +1,13 @@
 import { HydrationHud } from '@/debug/HydrationHud';
-import { SchedulesProvider, demoSchedulesPort, makeGraphSchedulesPort } from '@/features/schedules/data';
+import type { SchedulesPort } from '@/features/schedules/data';
+import {
+  SchedulesProvider,
+  demoSchedulesPort,
+  makeGraphSchedulesPort,
+  makeMockScheduleCreator,
+  makeSharePointScheduleCreator,
+  makeSharePointSchedulesPort,
+} from '@/features/schedules/data';
 import CssBaseline from '@mui/material/CssBaseline';
 import React, { useEffect, useMemo, type ReactNode } from 'react';
 import { RouterProvider } from 'react-router-dom';
@@ -10,7 +18,7 @@ import { GRAPH_RESOURCE } from './auth/msalConfig';
 import { MsalProvider } from './auth/MsalProvider';
 import { useAuth } from './auth/useAuth';
 import { ToastProvider, useToast } from './hooks/useToast';
-import { readBool } from './lib/env';
+import { getScheduleSaveMode, readBool } from './lib/env';
 import { registerNotifier } from './lib/notice';
 
 type BridgeProps = {
@@ -19,14 +27,39 @@ type BridgeProps = {
 
 const graphEnabled = readBool('VITE_FEATURE_SCHEDULES_GRAPH', false);
 const hydrationHudEnabled = readBool('VITE_FEATURE_HYDRATION_HUD', false);
+const scheduleSaveMode = getScheduleSaveMode();
+const sharePointFeatureEnabled = readBool('VITE_FEATURE_SCHEDULES_SP', scheduleSaveMode === 'real');
+const forceSharePointList = readBool('VITE_FORCE_SHAREPOINT', false);
+const sharePointCreateEnabled = sharePointFeatureEnabled;
+const sharePointListEnabled = sharePointFeatureEnabled || forceSharePointList;
 
 function SchedulesProviderBridge({ children }: BridgeProps) {
   const { acquireToken } = useAuth();
 
   const port = useMemo(() => {
-    if (!graphEnabled) return demoSchedulesPort;
-    return makeGraphSchedulesPort(() => acquireToken(GRAPH_RESOURCE));
-  }, [acquireToken, graphEnabled]);
+    const createHandler = sharePointCreateEnabled
+      ? makeSharePointScheduleCreator({ acquireToken: () => acquireToken() })
+      : makeMockScheduleCreator();
+
+    let selectedPort: SchedulesPort;
+
+    if (sharePointListEnabled) {
+      console.info('[schedules] using SharePoint port');
+      selectedPort = makeSharePointSchedulesPort({ create: createHandler });
+    } else if (graphEnabled) {
+      console.info('[schedules] using Graph port');
+      selectedPort = makeGraphSchedulesPort(() => acquireToken(GRAPH_RESOURCE), { create: createHandler });
+    } else {
+      console.info('[schedules] using Demo port');
+      selectedPort = {
+        list: (range) => demoSchedulesPort.list(range),
+        create: (input) => createHandler(input),
+        update: demoSchedulesPort.update,
+      } satisfies SchedulesPort;
+    }
+
+    return selectedPort;
+  }, [acquireToken, graphEnabled, sharePointCreateEnabled, sharePointListEnabled]);
 
   return <SchedulesProvider value={port}>{children}</SchedulesProvider>;
 }
@@ -60,6 +93,7 @@ function App() {
           <SchedulesProviderBridge>
             {/* 📅 スケジュール機能のデータポート（Graph / デモ切替） */}
             <ToastNotifierBridge />
+
             <RouterProvider router={router} future={routerFutureFlags} />
           </SchedulesProviderBridge>
         </ToastProvider>

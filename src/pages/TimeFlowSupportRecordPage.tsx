@@ -1,3 +1,4 @@
+import { getDashboardPath } from '@/features/dashboard/dashboardRouting';
 import AccessTimeIcon from '@mui/icons-material/AccessTime';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import AssignmentIcon from '@mui/icons-material/Assignment';
@@ -16,36 +17,35 @@ import Avatar from '@mui/material/Avatar';
 import Box from '@mui/material/Box';
 import Button from '@mui/material/Button';
 import Card from '@mui/material/Card';
-import CardContent from '@mui/material/CardContent';
 import CardActionArea from '@mui/material/CardActionArea';
+import CardContent from '@mui/material/CardContent';
 import Chip from '@mui/material/Chip';
 import Collapse from '@mui/material/Collapse';
 import Container from '@mui/material/Container';
 import Divider from '@mui/material/Divider';
+import LinearProgress from '@mui/material/LinearProgress';
 import Paper from '@mui/material/Paper';
 import Stack from '@mui/material/Stack';
 import Tab from '@mui/material/Tab';
 import Tabs from '@mui/material/Tabs';
 import TextField from '@mui/material/TextField';
-import Typography from '@mui/material/Typography';
-import LinearProgress from '@mui/material/LinearProgress';
 import ToggleButton from '@mui/material/ToggleButton';
 import ToggleButtonGroup from '@mui/material/ToggleButtonGroup';
+import Typography from '@mui/material/Typography';
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { getDashboardPath } from '@/features/dashboard/dashboardRouting';
 import {
-  resolveSupportFlowForUser,
-  fallbackSupportActivities,
-  SupportActivityTemplate as FlowSupportActivityTemplate,
-  SupportPlanDeployment,
-  SupportStrategyStage
-} from '../features/planDeployment/supportFlow';
-import {
-  SupportActivityTemplate as MasterSupportActivityTemplate,
-  SupportActivityTemplateZ,
-  defaultSupportActivities
+    defaultSupportActivities,
+    SupportActivityTemplate as MasterSupportActivityTemplate,
+    SupportActivityTemplateZ
 } from '../domain/support/types';
+import {
+    fallbackSupportActivities,
+    SupportActivityTemplate as FlowSupportActivityTemplate,
+    resolveSupportFlowForUser,
+    SupportPlanDeployment,
+    SupportStrategyStage
+} from '../features/planDeployment/supportFlow';
 // 時間フロー支援記録の型定義
 interface SupportRecord {
   id: number;
@@ -1341,7 +1341,7 @@ const generateMockTimeFlowDailyRecord = (
 const TimeFlowSupportRecordPage: React.FC = () => {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
-  
+
   // URL パラメータの取得
   const initialUserId = searchParams.get('userId');
   type ReturnMode = 'morning' | 'evening' | 'detail' | null;
@@ -1661,7 +1661,7 @@ const TimeFlowSupportRecordPage: React.FC = () => {
                 variant="outlined"
                 onClick={handleBack}
                 startIcon={<ArrowBackIcon />}
-                sx={{ 
+                sx={{
                   borderColor: 'white',
                   color: 'white',
                   '&:hover': {
@@ -1681,7 +1681,7 @@ const TimeFlowSupportRecordPage: React.FC = () => {
               </Button>
             </Box>
           )}
-          
+
           <Box display="flex" alignItems="center" gap={3} mb={3}>
             <Box sx={{
               bgcolor: 'white',

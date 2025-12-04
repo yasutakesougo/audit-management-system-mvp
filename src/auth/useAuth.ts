@@ -1,6 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { useCallback } from 'react';
-import { getAppConfig, isE2eMsalMockEnabled } from '../lib/env';
+import type { IPublicClientApplication } from '@azure/msal-browser';
+import { useCallback, useEffect } from 'react';
+import { getAppConfig, isE2eMsalMockEnabled, shouldSkipLogin } from '../lib/env';
 import { createE2EMsalAccount, persistMsalToken } from '../lib/msal';
 import { SP_RESOURCE } from './msalConfig';
 import { useMsalContext } from './MsalProvider';
@@ -18,6 +19,28 @@ function debugLog(...args: unknown[]) {
   if (debugEnabled) console.debug('[auth]', ...args);
 }
 
+type BasicAccountInfo = {
+  username?: string;
+  homeAccountId?: string;
+};
+
+const ensureActiveAccount = (instance: IPublicClientApplication) => {
+  let account = instance.getActiveAccount() as BasicAccountInfo | null;
+  if (!account) {
+    const all = (instance.getAllAccounts() as BasicAccountInfo[]) ?? [];
+    if (all.length > 0) {
+      const firstAccount = all[0];
+      instance.setActiveAccount(firstAccount);
+      account = firstAccount;
+      if (import.meta.env.DEV) {
+        const accountLabel = firstAccount.username ?? firstAccount.homeAccountId ?? '(unknown account)';
+        console.info('[MSAL] Active account auto-set:', accountLabel);
+      }
+    }
+  }
+  return account;
+};
+
 export const useAuth = () => {
   if (isE2eMsalMockEnabled()) {
     const account = createE2EMsalAccount();
@@ -34,24 +57,53 @@ export const useAuth = () => {
       signIn: () => Promise.resolve(),
       signOut: () => Promise.resolve(),
       acquireToken,
+      loading: false,
+      shouldSkipLogin: true,
     };
   }
 
-  const { instance, accounts } = useMsalContext();
-  const account = accounts[0];
+  const { instance, accounts, inProgress } = useMsalContext();
+  const skipLogin = shouldSkipLogin();
 
-  const acquireToken = useCallback(async (resource: string = SP_RESOURCE): Promise<string | null> => {
-    if (!account) return null;
+  useEffect(() => {
+    if (skipLogin) {
+      return;
+    }
+    const current = instance.getActiveAccount();
+    if (!current && accounts[0]) {
+      instance.setActiveAccount(accounts[0]);
+    }
+  }, [instance, accounts, skipLogin]);
+
+  if (skipLogin) {
+    return {
+      isAuthenticated: true,
+      account: null,
+      signIn: () => Promise.resolve(),
+      signOut: () => Promise.resolve(),
+      acquireToken: () => Promise.resolve(null),
+      loading: false,
+      shouldSkipLogin: true,
+    };
+  }
+
+  const normalizeResource = (resource: string): string => resource.replace(/\/+$/, '');
+  const ensureResource = (resource?: string): string => normalizeResource(resource ?? SP_RESOURCE);
+  const defaultScope = `${ensureResource()}/.default`;
+
+  const acquireToken = useCallback(async (resource?: string): Promise<string | null> => {
+    const activeAccount = ensureActiveAccount(instance) ?? (accounts[0] as BasicAccountInfo | undefined) ?? null;
+    if (!activeAccount) return null;
 
     // しきい値（秒）。既定 5 分。
     const thresholdSec = Number(authConfig.VITE_MSAL_TOKEN_REFRESH_MIN || '300') || 300;
-    const scope = `${resource}/.default`;
+    const scope = `${ensureResource(resource)}/.default`;
 
     try {
       // 1回目: 通常のサイレント取得
       const first = await instance.acquireTokenSilent({
         scopes: [scope],
-        account,
+        account: activeAccount,
         forceRefresh: false,
       });
       tokenMetrics.acquireCount += 1;
@@ -68,7 +120,7 @@ export const useAuth = () => {
         debugLog('soft refresh triggered', { secondsLeft, thresholdSec });
         const refreshed = await instance.acquireTokenSilent({
           scopes: [scope],
-          account,
+          account: activeAccount,
           forceRefresh: true,
         });
         tokenMetrics.acquireCount += 1;
@@ -113,24 +165,33 @@ export const useAuth = () => {
 
       if (isInteractionRequired) {
         debugLog('Interaction required (MFA/consent/login), redirecting to authentication...');
-        // MFA対応: 明示的な対話型認証が必要な場合はリダイレクト
-        await instance.acquireTokenRedirect({ scopes: [scope] });
+        await instance.acquireTokenRedirect({ scopes: [scope], account: activeAccount });
         return null;
       }
 
       // その他のエラー（ネットワークエラーなど）もリダイレクトで再認証
       debugLog('Other authentication error, redirecting...');
-      await instance.acquireTokenRedirect({ scopes: [scope] });
+      await instance.acquireTokenRedirect({ scopes: [scope], account: activeAccount });
       return null;
     }
-  }, [instance, account]);
+  }, [instance, accounts]);
+
+  const resolvedAccount = instance.getActiveAccount() ?? accounts[0] ?? null;
+  const isAuthenticated = !!resolvedAccount;
 
   return {
-    isAuthenticated: !!account,
-    account,
-    signIn: () => instance.loginRedirect(),
+    isAuthenticated,
+    account: resolvedAccount,
+    signIn: async () => {
+      const result = await instance.loginPopup({ scopes: [defaultScope], prompt: 'select_account' });
+      if (result?.account) {
+        instance.setActiveAccount(result.account);
+      }
+    },
     signOut: () => instance.logoutRedirect(),
     acquireToken,
+    loading: inProgress !== 'none',
+    shouldSkipLogin: false,
   };
 };
 

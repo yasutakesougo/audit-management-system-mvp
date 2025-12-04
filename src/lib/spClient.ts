@@ -15,6 +15,41 @@ const FALLBACK_SP_RESOURCE = 'https://example.sharepoint.com';
 const FALLBACK_SP_SITE_RELATIVE = '/sites/demo';
 const MAX_SP_ERROR_BODY_PREVIEW = 2000;
 
+const runtimeImportEnv: ImportMeta['env'] | undefined = (() => {
+  try {
+    if (typeof import.meta !== 'undefined' && (import.meta as ImportMeta)?.env) {
+      return (import.meta as ImportMeta).env;
+    }
+  } catch {
+    // ignore environments where import.meta is unavailable
+  }
+  return undefined;
+})();
+
+const runtimeMode = (() => {
+  if (typeof runtimeImportEnv?.MODE === 'string' && runtimeImportEnv.MODE) {
+    return runtimeImportEnv.MODE.toLowerCase();
+  }
+  if (typeof process !== 'undefined' && typeof process.env?.NODE_ENV === 'string') {
+    return process.env.NODE_ENV.toLowerCase();
+  }
+  return 'production';
+})();
+
+const isRuntimeDev = typeof runtimeImportEnv?.DEV === 'boolean'
+  ? runtimeImportEnv.DEV
+  : runtimeMode === 'development';
+
+const isVitestRuntime = (() => {
+  if (typeof runtimeImportEnv?.VITEST !== 'undefined') {
+    return Boolean(runtimeImportEnv.VITEST);
+  }
+  if (typeof process !== 'undefined') {
+    return Boolean(process.env?.VITEST);
+  }
+  return false;
+})();
+
 const shouldBypassSharePointConfig = (envOverride?: EnvRecord): boolean => {
   if (isE2eMsalMockEnabled(envOverride)) {
     return true;
@@ -415,6 +450,8 @@ export function createSpClient(
   options: SpClientOptions = {}
 ) {
   const config = getAppConfig();
+  const forceSharePoint = readBool('VITE_FORCE_SHAREPOINT', false);
+  const sharePointFeatureEnabled = readBool('VITE_FEATURE_SCHEDULES_SP', false);
   const parsePositiveNumber = (raw: string, fallback: number): number => {
     const numeric = Number(raw);
     return Number.isFinite(numeric) && numeric > 0 ? numeric : fallback;
@@ -470,10 +507,10 @@ export function createSpClient(
   const spFetch = async (path: string, init: RequestInit = {}): Promise<Response> => {
     const resolvedPath = normalizePath(path);
 
-    const isVitest = typeof process !== 'undefined' && Boolean(process.env.VITEST);
+    const isVitest = isVitestRuntime;
 
     // 開発環境でのモック応答
-  if (config.isDev && !isVitest) {
+    if (config.isDev && !forceSharePoint && !sharePointFeatureEnabled && !isVitest) {
       console.info(`[DevMock] SharePoint API モック: ${init.method || 'GET'} ${resolvedPath}`);
 
       // モックレスポンスを作成
@@ -530,7 +567,7 @@ export function createSpClient(
       if (init.method === 'POST' || init.method === 'PUT' || init.method === 'PATCH' || init.method === 'MERGE') {
         headers.set('Content-Type', 'application/json;odata=nometadata');
       }
-      if (process.env.NODE_ENV === 'development') console.debug('[SPFetch] URL:', url);
+      if (isRuntimeDev) console.debug('[SPFetch] URL:', url);
       return fetch(url, { ...init, headers });
     };
 
@@ -592,7 +629,7 @@ export function createSpClient(
 
     if (!response.ok) {
       const isPlaywright = typeof process !== 'undefined' && process.env?.PLAYWRIGHT_TEST === '1';
-      const shouldLogSpError = (config.isDev || isPlaywright) && process.env?.NODE_ENV !== 'production';
+      const shouldLogSpError = (config.isDev || isPlaywright) && runtimeMode !== 'production';
       if (shouldLogSpError && response.status >= 400 && response.status < 500) {
         let preview = '<no-text-body>';
         try {

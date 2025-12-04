@@ -1,6 +1,6 @@
-import { HYDRATION_FEATURES, startFeatureSpan } from '@/hydration/features';
 import * as demo from '@/adapters/schedules/demo';
 import * as sharepoint from '@/adapters/schedules/sharepoint';
+import { HYDRATION_FEATURES, startFeatureSpan } from '@/hydration/features';
 import { allowWriteFallback, isDemoModeEnabled } from '@/lib/env';
 import { toSafeError, type SafeError } from '@/lib/errors';
 import { withUserMessage } from '@/lib/notice';

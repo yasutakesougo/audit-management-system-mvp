@@ -1,6 +1,8 @@
-import { isE2eMsalMockEnabled, readBool, readEnv } from '@/lib/env';
+import { isE2eMsalMockEnabled, readBool, readEnv, readOptionalEnv } from '@/lib/env';
 import { fetchSp } from '@/lib/fetchSp';
 import { acquireSpAccessToken } from '@/lib/msal';
+
+import type { OrgFilterKey } from '../orgFilters';
 
 // Lightweight schedules client with TTL cache + optional dev fixtures.
 // Switches to fixtures automatically if SharePoint config is missing or VITE_SCHEDULE_FIXTURES=1.
@@ -23,6 +25,7 @@ export interface ScheduleEvent {
   staffEmails?: string[];
   dayKey?: string; // e.g., '2025-10-06'
   etag?: string;
+  orgCode?: OrgFilterKey;
   // keep room for SharePoint fields if needed
   // raw?: unknown;
 }
@@ -57,7 +60,32 @@ function isExpired(v: CacheValue<unknown>) {
   return now() - v.at > TTL_MS;
 }
 
+function resolveFixturesOverride(): boolean | null {
+  const raw = readOptionalEnv('VITE_SCHEDULE_FIXTURES');
+  if (raw == null) {
+    return null;
+  }
+  const normalized = raw.trim().toLowerCase();
+  if (!normalized || normalized === 'auto' || normalized === 'default') {
+    return null;
+  }
+  if (['1', 'true', 'yes', 'y', 'on', 'enabled'].includes(normalized)) {
+    return true;
+  }
+  if (['0', 'false', 'no', 'n', 'off', 'disabled'].includes(normalized)) {
+    return false;
+  }
+  return null;
+}
+
 function resolveFixturesMode(): boolean {
+  const override = resolveFixturesOverride();
+  if (override !== null) {
+    return override;
+  }
+  if (readBool('VITE_FORCE_SHAREPOINT', false) || readBool('VITE_FEATURE_SCHEDULES_SP', false)) {
+    return false;
+  }
   if (isE2eMsalMockEnabled()) {
     return true;
   }
@@ -76,12 +104,22 @@ export function isScheduleFixturesMode(): boolean {
 const fixtures: Record<ScheduleCategory, ScheduleEvent[]> = {
   Org: [
     {
+      id: 8301,
+      title: '連絡会議',
+      start: '2025-10-07T13:30:00+09:00',
+      end: '2025-10-07T14:30:00+09:00',
+      category: 'Org',
+      dayKey: '2025-10-07',
+      orgCode: 'main',
+    },
+    {
       id: 1001,
       title: '所内ミーティング',
       start: '2025-11-14T09:00:00+09:00',
       end: '2025-11-14T10:00:00+09:00',
       category: 'Org',
       dayKey: '2025-11-14',
+      orgCode: 'main',
     },
     {
       id: 1002,
@@ -90,9 +128,22 @@ const fixtures: Record<ScheduleCategory, ScheduleEvent[]> = {
       end: '2025-11-15T16:00:00+09:00',
       category: 'Org',
       dayKey: '2025-11-15',
+      orgCode: 'main',
     },
   ],
   Staff: [
+    {
+      id: 8201,
+      title: '午前会議',
+      start: '2025-10-07T09:00:00+09:00',
+      end: '2025-10-07T12:00:00+09:00',
+      category: 'Staff',
+      personName: '吉田 千尋',
+      staffIds: ['401'],
+      staffNames: ['吉田 千尋'],
+      dayKey: '2025-10-07',
+      orgCode: 'main',
+    },
     {
       id: 9201,
       title: '午前会議',
@@ -103,6 +154,7 @@ const fixtures: Record<ScheduleCategory, ScheduleEvent[]> = {
       staffIds: ['401'],
       staffNames: ['吉田 千尋'],
       dayKey: '2025-11-14',
+      orgCode: 'main',
     },
     {
       id: 9202,
@@ -114,9 +166,52 @@ const fixtures: Record<ScheduleCategory, ScheduleEvent[]> = {
       staffIds: ['402'],
       staffNames: ['佐藤 美穂'],
       dayKey: '2025-11-14',
+      orgCode: 'shortstay',
     },
   ],
   User: [
+    {
+      id: 8101,
+      title: '訪問リハビリ',
+      start: '2025-10-07T09:00:00+09:00',
+      end: '2025-10-07T09:30:00+09:00',
+      category: 'User',
+      personName: '川崎 朗',
+      targetUserNames: ['川崎 朗'],
+      targetUserIds: ['U-101'],
+      staffIds: ['301'],
+      staffNames: ['阿部 真央'],
+      dayKey: '2025-10-07',
+      orgCode: 'main',
+    },
+    {
+      id: 8102,
+      title: '訪問看護',
+      start: '2025-10-07T09:15:00+09:00',
+      end: '2025-10-07T10:00:00+09:00',
+      category: 'User',
+      personName: '古山 美紀',
+      targetUserNames: ['古山 美紀'],
+      targetUserIds: ['U-102'],
+      staffIds: ['302'],
+      staffNames: ['蒼井 純'],
+      dayKey: '2025-10-07',
+      orgCode: 'main',
+    },
+    {
+      id: 8103,
+      title: '夜間対応',
+      start: '2025-10-06T23:30:00+09:00',
+      end: '2025-10-07T01:00:00+09:00',
+      category: 'User',
+      personName: '斎藤 遼',
+      targetUserNames: ['斎藤 遼'],
+      targetUserIds: ['U-103'],
+      staffIds: ['303'],
+      staffNames: ['佐伯 由真'],
+      dayKey: '2025-10-06',
+      orgCode: 'main',
+    },
     // 生活介護（通所）
     {
       id: 31001,
@@ -128,6 +223,7 @@ const fixtures: Record<ScheduleCategory, ScheduleEvent[]> = {
       targetUserNames: ['田中 太郎'],
       targetUserIds: ['USER001'],
       dayKey: '2025-11-14',
+      orgCode: 'main',
     },
     // ショートステイ（生活支援） - 生活介護と重複
     {
@@ -142,6 +238,7 @@ const fixtures: Record<ScheduleCategory, ScheduleEvent[]> = {
       staffIds: ['402'],
       staffNames: ['佐藤 美穂'],
       dayKey: '2025-11-14',
+      orgCode: 'shortstay',
     },
     // 一時ケア（生活支援）
     {
@@ -156,6 +253,7 @@ const fixtures: Record<ScheduleCategory, ScheduleEvent[]> = {
       staffIds: ['403'],
       staffNames: ['鈴木 一郎'],
       dayKey: '2025-11-14',
+      orgCode: 'respite',
     },
     // 山田 花子の別の一時ケア（生活支援同士の重複）
     {
@@ -170,6 +268,7 @@ const fixtures: Record<ScheduleCategory, ScheduleEvent[]> = {
       staffIds: ['404'],
       staffNames: ['高橋 次郎'],
       dayKey: '2025-11-14',
+      orgCode: 'respite',
     },
     // 佐藤 美穂の個別支援会議と重複するショートステイ
     {
@@ -184,6 +283,7 @@ const fixtures: Record<ScheduleCategory, ScheduleEvent[]> = {
       staffIds: ['402'], // 佐藤 美穂と同じスタッフ
       staffNames: ['佐藤 美穂'],
       dayKey: '2025-11-14',
+      orgCode: 'shortstay',
     },
     // 通常の生活介護
     {
@@ -196,6 +296,7 @@ const fixtures: Record<ScheduleCategory, ScheduleEvent[]> = {
       targetUserNames: ['鈴木 四郎'],
       targetUserIds: ['USER004'],
       dayKey: '2025-11-14',
+      orgCode: 'main',
     },
   ],
 };

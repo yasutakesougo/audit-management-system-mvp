@@ -5,6 +5,8 @@ export type ScheduleItem = {
   Title: string;
   EventDate: string;
   EndDate: string;
+  Start?: string;
+  End?: string;
   AllDay: boolean;
   Status: string;
   Location?: string;

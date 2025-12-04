@@ -1,10 +1,12 @@
 import { TESTIDS } from '@/testids';
 import { expect, test } from '@playwright/test';
-import { setupNurseFlags } from './_helpers/setupNurse.flags';
+import { bootNursePage } from './_helpers/bootNursePage';
+
+test.skip(true, 'Legacy nurse observation tab routing is unavailable in the BP MVP.');
 
 test.describe('@ci-smoke nurse seizure routing', () => {
   test.beforeEach(async ({ page }) => {
-    await setupNurseFlags(page);
+    await bootNursePage(page, { seed: { nurseDashboard: true } });
   });
 
   test('legacy tab query resolves to seizure workspace', async ({ page }) => {

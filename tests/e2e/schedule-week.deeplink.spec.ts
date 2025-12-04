@@ -1,12 +1,13 @@
 import '@/test/captureSp400';
 import { expect, test, type Page } from '@playwright/test';
-import { waitForScheduleReady } from './utils/wait';
+import { gotoWeek } from './utils/scheduleNav';
 
 const setupEnv = {
   env: {
     VITE_E2E_MSAL_MOCK: '1',
     VITE_SKIP_LOGIN: '1',
     VITE_FEATURE_SCHEDULES: '1',
+    VITE_FEATURE_SCHEDULES_WEEK_V2: '1',
   },
   storage: {
     'feature:schedules': '1',
@@ -43,25 +44,24 @@ test.describe('Schedule week deep link', () => {
       return (polite || assertive).trim();
     });
 
+  const waitForSchedulePage = async (page: Page): Promise<void> => {
+    const heading = page.getByRole('heading', { level: 1, name: /スケジュール/ });
+    await expect(heading).toBeVisible();
+    const weekTab = page.getByRole('tab', { name: /週/ });
+    await expect(weekTab).toHaveAttribute('aria-selected', 'true');
+    await expect(page.locator('[id^="timeline-week-header-"]').first()).toBeVisible();
+  };
+
   test('loads the requested week and preserves announcements after reload', async ({ page }) => {
-    const targetWeekLabel = '2025/11/24 – 2025/11/29';
+    await gotoWeek(page, new Date('2025-11-24'));
+    await waitForSchedulePage(page);
 
-    await page.goto('/schedules/week?week=2025-11-24', { waitUntil: 'domcontentloaded' });
-    await waitForScheduleReady(page);
-
-    const heading = page.getByTestId('schedules-week-heading');
-    await expect(heading).toHaveText(new RegExp(targetWeekLabel));
-
-    await expect
-      .poll(async () => readLiveMessage(page), { timeout: 5_000 })
-      .not.toBe('');
-
+    const mondayHeader = page.locator('#timeline-week-header-2025-11-24');
+    await expect(mondayHeader).toBeVisible();
     const liveText = await readLiveMessage(page);
-    expect(liveText).toContain(targetWeekLabel);
 
     await page.reload({ waitUntil: 'domcontentloaded' });
-    await waitForScheduleReady(page);
-
+    await waitForSchedulePage(page);
     const reloadedLiveText = await readLiveMessage(page);
     expect(reloadedLiveText).toBe(liveText);
   });

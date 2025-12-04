@@ -1,6 +1,6 @@
-import { TESTIDS } from '@/testids';
+import { TESTIDS } from '../../src/testids';
 import { expect, test, type Page, type TestInfo } from '@playwright/test';
-import { enableNurseFlag } from './utils/enableNurseFlag';
+import { bootNursePage } from './_helpers/bootNursePage';
 import { waitForSyncFeedback } from './utils/nurse';
 
 const PAGE_URL = '/nurse/observation?user=I022&tab=bp';
@@ -137,7 +137,7 @@ const setVitalValue = async (page: Page, fieldId: string, value: string) => {
 
 test.describe('Nurse BP panel sync flow', () => {
   test.beforeEach(async ({ page }, testInfo) => {
-    await enableNurseFlag(page);
+    await bootNursePage(page, { seed: { nurseDashboard: true } });
     page.on('response', async (response) => {
       const url = response.url();
       if (!url.includes('/api/')) {
@@ -154,18 +154,6 @@ test.describe('Nurse BP panel sync flow', () => {
         body = '<no-body>';
       }
       console.log('DEBUG: API error', status, url, body.slice(0, 2000));
-    });
-    await page.route('**/api/sp/lists/**', async (route) => {
-      const method = route.request().method();
-      if (method === 'GET') {
-        await route.fulfill({
-          status: 200,
-          body: JSON.stringify({ value: [] }),
-          headers: { 'Content-Type': 'application/json' },
-        });
-        return;
-      }
-      await route.continue();
     });
     await page.route('**/api/users/**', async (route) => {
       await route.fulfill({

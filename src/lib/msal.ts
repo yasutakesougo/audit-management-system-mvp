@@ -1,8 +1,7 @@
-import { msalConfig } from '@/auth/msalConfig';
 import { buildMsalScopes } from '@/auth/scopes';
-import { PublicClientApplication } from '@azure/msal-browser';
+import type { PublicClientApplication } from '@azure/msal-browser';
 import type { AccountInfo } from '@azure/msal-common';
-import { getSharePointResource, isE2eMsalMockEnabled, readEnv } from './env';
+import { getSharePointResource, isE2eMsalMockEnabled, readEnv, shouldSkipLogin } from './env';
 
 export const createE2EMsalAccount = (): AccountInfo => ({
   homeAccountId: 'e2e-home-account',
@@ -26,23 +25,30 @@ const globalCarrier = globalThis as typeof globalThis & {
   __MSAL_PUBLIC_CLIENT__?: PublicClientApplication;
 };
 
-let clientRef: PublicClientApplication | null = null;
-let initPromise: Promise<void> | null = null;
-
-const ensureClient = (): PublicClientApplication => {
-  if (clientRef) {
-    return clientRef;
-  }
+const getPca = (): PublicClientApplication => {
   if (typeof window === 'undefined') {
     throw new Error('MSAL client is only available in the browser runtime.');
   }
-  if (globalCarrier.__MSAL_PUBLIC_CLIENT__) {
-    clientRef = globalCarrier.__MSAL_PUBLIC_CLIENT__;
-    return clientRef;
+  const instance = globalCarrier.__MSAL_PUBLIC_CLIENT__;
+  if (!instance) {
+    throw new Error(
+      '[msal] PublicClientApplication is not initialized. Ensure <MsalProvider> mounted and completed setup before calling msal helpers.'
+    );
   }
-  clientRef = new PublicClientApplication(msalConfig);
-  globalCarrier.__MSAL_PUBLIC_CLIENT__ = clientRef;
-  return clientRef;
+  return instance;
+};
+
+const ensureActiveAccountFromCache = (instance: PublicClientApplication): AccountInfo | null => {
+  const active = (instance.getActiveAccount() as AccountInfo | null) ?? null;
+  if (active) {
+    return active;
+  }
+  const [first] = instance.getAllAccounts();
+  if (first) {
+    instance.setActiveAccount(first);
+    return first as AccountInfo;
+  }
+  return null;
 };
 
 const parseScopes = (raw: string): string[] =>
@@ -168,47 +174,26 @@ const INTERACTION_REQUIRED_CODES = new Set([
   'mfa_required',
 ]);
 
-const initMsal = async (): Promise<void> => {
-  if (typeof window === 'undefined') {
-    return;
-  }
-  if (initPromise) {
-    await initPromise;
-    return;
-  }
-  const instance = ensureClient();
-  initPromise = (async () => {
-    if (typeof instance.initialize === 'function') {
-      await instance.initialize().catch(() => undefined);
-    }
-    const response = await instance.handleRedirectPromise().catch(() => null);
-    const candidate = response?.account ?? instance.getActiveAccount() ?? instance.getAllAccounts()[0] ?? null;
-    if (candidate) {
-      instance.setActiveAccount(candidate);
-    }
-  })();
-  await initPromise;
-};
-
 export const ensureMsalSignedIn = async (scopes?: string[]): Promise<AccountInfo> => {
   if (isE2eMsalMockEnabled()) {
+    return createE2EMsalAccount();
+  }
+  if (shouldSkipLogin()) {
+    if (import.meta.env.DEV) {
+      console.info('[msal] SkipLogin=1: ensureMsalSignedIn bypassed');
+    }
     return createE2EMsalAccount();
   }
   if (typeof window === 'undefined') {
     throw new Error('MSAL sign-in requires a browser environment.');
   }
 
-  await initMsal();
-  const instance = ensureClient();
+  const instance = getPca();
   const resolvedScopes = ensureScopes(scopes);
   const popupClient = toPopupClient(instance);
   const preferRedirectLogin = getPreferredLoginFlow() === LOGIN_FLOW_REDIRECT;
 
-  let account = (instance.getActiveAccount() as AccountInfo | null) ?? null;
-  if (!account) {
-    const [first] = instance.getAllAccounts();
-    account = (first as AccountInfo | undefined) ?? null;
-  }
+  let account = ensureActiveAccountFromCache(instance);
   if (!account) {
     const request: PopupLoginRequest = { scopes: resolvedScopes, prompt: 'select_account' };
     if (preferRedirectLogin) {
@@ -241,11 +226,20 @@ export const acquireSpAccessToken = async (scopes?: string[]): Promise<string> =
     persistMsalToken(token);
     return token;
   }
+  if (shouldSkipLogin()) {
+    const token = 'skip-login-placeholder-token';
+    if (import.meta.env.DEV) {
+      console.info('[msal] SkipLogin=1: acquireSpAccessToken bypassed');
+    }
+    persistMsalToken(token);
+    return token;
+  }
   if (typeof window === 'undefined') {
     throw new Error('MSAL token acquisition requires a browser environment.');
   }
 
-  const instance = ensureClient();
+  const instance = getPca();
+  ensureActiveAccountFromCache(instance);
   const resolvedScopes = ensureScopes(scopes);
   const account = await ensureMsalSignedIn(resolvedScopes);
   const popupClient = toPopupClient(instance);
@@ -281,4 +275,4 @@ export const acquireSpAccessToken = async (scopes?: string[]): Promise<string> =
   }
 };
 
-export const getMsalInstance = (): PublicClientApplication => ensureClient();
+export const getMsalInstance = (): PublicClientApplication => getPca();

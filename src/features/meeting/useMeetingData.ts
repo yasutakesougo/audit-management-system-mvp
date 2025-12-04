@@ -10,7 +10,7 @@
  * - Schedule API (src/features/schedule/spClient.schedule.staff.ts)
  */
 
-import { HYDRATION_FEATURES, estimatePayloadSize, startFeatureSpan } from '@/hydration/features';
+import { estimatePayloadSize, HYDRATION_FEATURES, startFeatureSpan } from '@/hydration/features';
 import { readOptionalEnv } from '@/lib/env';
 import { useSP } from '@/lib/spClient';
 import { useCallback, useEffect, useMemo, useState } from 'react';

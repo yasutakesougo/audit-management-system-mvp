@@ -29,3 +29,7 @@ vite-profile-*.cpuprofile
 *.tsbuildinfo
 
 .env
+
+# Local scratch/backup TS/TSX files
+*backup.tsx
+*backup.ts

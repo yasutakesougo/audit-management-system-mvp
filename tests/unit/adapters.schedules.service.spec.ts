@@ -1,10 +1,14 @@
 import type { Schedule } from '@/adapters/schedules/demo';
 import { beforeAll, beforeEach, describe, expect, it, vi, type Mock } from 'vitest';
 
-vi.mock('@/lib/env', () => ({
-  isDemoModeEnabled: vi.fn(() => false),
-  allowWriteFallback: vi.fn(() => true),
-}));
+vi.mock('@/lib/env', async () => {
+  const actual = await vi.importActual<typeof import('@/lib/env')>('@/lib/env');
+  return {
+    ...actual,
+    isDemoModeEnabled: vi.fn(() => false),
+    allowWriteFallback: vi.fn(() => true),
+  };
+});
 
 vi.mock('@/lib/errors', async () => {
   const actual = await vi.importActual<typeof import('@/lib/errors')>('@/lib/errors');

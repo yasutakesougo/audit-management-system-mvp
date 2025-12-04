@@ -27,6 +27,8 @@ export const HYDRATION_KEYS = {
   dailyMenu: { id: 'route:daily', label: 'Daily Menu', budget: 90 },
   dailyActivity: { id: 'route:daily:activity', label: 'Daily Activity', budget: 110 },
   dailySupport: { id: 'route:daily:support', label: 'Daily Support', budget: 110 },
+  dailyTimeBased: { id: 'route:daily:time-based', label: 'Iceberg PDCA', budget: 110 },
+  analysisDashboard: { id: 'route:analysis:dashboard', label: 'Analysis Dashboard', budget: 120 },
   adminTemplates: { id: 'route:admin:templates', label: '支援テンプレート管理', budget: 110 },
   adminDashboard: { id: 'route:admin:dashboard', label: '管理者ダッシュボード', budget: 110 },
   adminSteps: { id: 'route:admin:step-templates', label: '支援ステップ管理', budget: 110 },
@@ -82,7 +84,9 @@ const MATCHERS: Matcher[] = [
   { match: (path) => path.startsWith('/schedules'), entry: HYDRATION_KEYS.schedulesWeek },
   { match: (path) => path.startsWith('/schedule'), entry: HYDRATION_KEYS.schedulesWeek },
   { match: (path) => path.startsWith('/daily/activity'), entry: HYDRATION_KEYS.dailyActivity },
+  { match: (path) => path.startsWith('/daily/time-based'), entry: HYDRATION_KEYS.dailyTimeBased },
   { match: (path) => path.startsWith('/daily/support'), entry: HYDRATION_KEYS.dailySupport },
+  { match: (path) => path.startsWith('/analysis/dashboard'), entry: HYDRATION_KEYS.analysisDashboard },
   { match: (path) => path.startsWith('/daily'), entry: HYDRATION_KEYS.dailyMenu },
   { match: (path) => path.startsWith('/admin/dashboard'), entry: HYDRATION_KEYS.adminDashboard },
   {

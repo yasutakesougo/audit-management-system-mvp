@@ -1,10 +1,11 @@
 import { TESTIDS } from '@/testids';
 import type { Page } from '@playwright/test';
 import { expect, test } from '@playwright/test';
-import { setupNurseFlags } from './_helpers/setupNurse.flags';
+import { bootNursePage } from './_helpers/bootNursePage';
 import { gotoNurseBulk } from './nurse/_helpers/bulk';
 
-const SHAREPOINT_ROUTE = '**/api/sp/lists/**';
+test.skip(true, 'Legacy nurse bulk partial/error UI is paused until bulk v2 ships.');
+
 const TARGET_USERS = ['I015', 'I022', 'I031', 'I044'] as const;
 
 const fillQueuedRows = async (page: Page) => {
@@ -17,24 +18,7 @@ const fillQueuedRows = async (page: Page) => {
 
 test.describe('Nurse bulk rows reflect partial/error summaries', () => {
   test.beforeEach(async ({ page }) => {
-    await setupNurseFlags(page, { bulk: true });
-    await page.route(SHAREPOINT_ROUTE, async (route) => {
-      const request = route.request();
-      const method = request.method().toUpperCase();
-      if (method === 'GET') {
-        await route.fulfill({ status: 200, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ value: [] }) });
-        return;
-      }
-      if (method === 'POST') {
-        await route.fulfill({ status: 201, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: 1 }) });
-        return;
-      }
-      if (method === 'PATCH') {
-        await route.fulfill({ status: 204, headers: { 'Content-Type': 'application/json' }, body: '' });
-        return;
-      }
-      await route.fulfill({ status: 204, headers: { 'Content-Type': 'application/json' }, body: '' });
-    });
+    await bootNursePage(page, { seed: { nurseDashboard: true }, enableBulk: true });
     await gotoNurseBulk(page);
   });
 

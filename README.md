@@ -19,9 +19,9 @@
 
 **CI ダッシュボード**
 
-- カバレッジ: https://your.real.coverage.url
-- Lighthouse: https://your.real.lighthouse.url
-- Sentry: https://your.real.sentry.url
+- カバレッジ: (GitHub 変数 `COVERAGE_URL`)
+- Lighthouse: (GitHub 変数 `LIGHTHOUSE_URL`)
+- Sentry: (GitHub 変数 `SENTRY_URL`)
 
 > 注記: これらの URL はリポジトリ変数 (`COVERAGE_URL`, `LIGHTHOUSE_URL`, `SENTRY_URL`) と同一です。
 > Actions の “Report Links” ワークフローは、PR コメントとジョブ Summary に同じリンクを自動掲示します。
@@ -149,6 +149,22 @@ VITE_SP_RESOURCE=https://<yourtenant>.sharepoint.com
 VITE_SP_SITE_RELATIVE=/sites/<SiteName>
 VITE_SP_SCOPE_DEFAULT=https://<yourtenant>.sharepoint.com/AllSites.Read
 ```
+
+### Demo / Test Convenience Flags
+
+- `VITE_FORCE_DEMO=1` — 強制的に in-memory のデモデータ (`usersStoreDemo.ts`) を利用し、SharePoint 接続なしで UI を確認できます。
+- `VITE_SKIP_LOGIN=1` — MSAL のサインインをスキップして即座にアプリシェルへ遷移します。`VITE_FORCE_DEMO` と組み合わせるとデモ操作が 3 タップ以内に収まります。本番環境では **必ず未設定** のまま運用してください。
+- `VITE_SCHEDULES_DEBUG=1` — スケジュール系の詳細ログを有効化します。Week V2 の検証などで必要なときだけオンにし、デフォルトはオフのままにしてください。
+
+```bash
+VITE_FORCE_DEMO=1 \
+VITE_SKIP_LOGIN=1 \
+npm run dev
+```
+
+> これらのフラグはローカル開発／デモ専用です。本番検証や SharePoint 実データを扱う際は必ず無効化してください。
+
+> Note: 一部の Playwright / Vitest シナリオは `VITE_FORCE_DEMO` / `VITE_SKIP_LOGIN` を前提にしています。フラグ名や評価ロジックを変更する場合は、`src/lib/env.ts` と関連テストヘルパー (`tests/e2e/_helpers/boot*.ts` など) も併せて更新してください。
 
 ### Reading environment config
 
@@ -559,6 +575,8 @@ npm run test:coverage # カバレッジ付き
 npm run test:e2e
 
 ```
+ダッシュボード / Agenda 動線の詳細なカバレッジと `bootAgenda` ヘルパーの使い方は [`docs/testing/agenda-e2e.md`](docs/testing/agenda-e2e.md) を参照してください。
+
 `tests/e2e/audit-basic.spec.ts` がアプリシェルと監査ログ表示の最低限を確認します。拡張する場合は同ディレクトリに追加してください。
 
 ### 監査ログフィルタ (Action)
@@ -1045,7 +1063,3 @@ Internal / TBD.
 - Metrics: `docs/releases/v0.9.2.metrics.yaml`
 
 gh workflow view .github/workflows/report-links.yml --yaml
-
-### Environment variables for demo and test mode
-- VITE_FORCE_DEMO: When set to true, forces the users store to use demo user data for local development and certain test modes. Default: false.
-- VITE_SKIP_LOGIN: When set to true, bypasses the login flow for faster local development and demo runs. Default: false.

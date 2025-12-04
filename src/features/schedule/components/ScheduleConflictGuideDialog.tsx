@@ -1,20 +1,20 @@
+import { TESTIDS, tid } from '@/testids';
 import {
-  Box,
-  Button,
-  Chip,
-  Dialog,
-  DialogActions,
-  DialogContent,
-  DialogTitle,
-  List,
-  ListItem,
-  ListItemText,
-  Stack,
-  Typography,
+    Box,
+    Button,
+    Chip,
+    Dialog,
+    DialogActions,
+    DialogContent,
+    DialogTitle,
+    List,
+    ListItem,
+    ListItemText,
+    Stack,
+    Typography,
 } from '@mui/material';
 import dayjs from 'dayjs';
 import React, { useMemo } from 'react';
-import { TESTIDS, tid } from '@/testids';
 import type { ConflictKind, ScheduleConflict } from '../conflictChecker';
 import { generateDemoEquipmentProfiles, generateDemoRoomProfiles, suggestEquipmentAlternatives, suggestRoomAlternatives } from '../roomAlternativeEngine';
 import { generateDemoStaffProfiles, suggestStaffAlternatives } from '../staffAlternativeEngine';

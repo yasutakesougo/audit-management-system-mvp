@@ -1,7 +1,9 @@
 import { TESTIDS } from '@/testids';
 import { expect, test } from '@playwright/test';
-import { setupNurseFlags } from './_helpers/setupNurse.flags';
+import { bootNursePage } from './_helpers/bootNursePage';
 import { gotoNurseBulk } from './nurse/_helpers/bulk';
+
+test.skip(true, 'Legacy nurse bulk status UI pending v2 implementation.');
 
 const extractUserId = (dataTestId: string): string =>
   dataTestId.startsWith(`${TESTIDS.NURSE_BULK_ROW_PREFIX}-`)
@@ -10,28 +12,7 @@ const extractUserId = (dataTestId: string): string =>
 
 test.describe('Nurse bulk row status reacts to flush results', () => {
   test.beforeEach(async ({ page }) => {
-    await setupNurseFlags(page, { bulk: true });
-    await page.route('**/api/sp/lists/**', async (route) => {
-      const request = route.request();
-      const method = request.method().toUpperCase();
-      if (method === 'GET') {
-        await route.fulfill({ status: 200, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ value: [] }) });
-        return;
-      }
-      if (method === 'POST') {
-        await route.fulfill({
-          status: 201,
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ id: 1 }),
-        });
-        return;
-      }
-      if (method === 'PATCH') {
-        await route.fulfill({ status: 204, headers: { 'Content-Type': 'application/json' }, body: '' });
-        return;
-      }
-      await route.fulfill({ status: 204, headers: { 'Content-Type': 'application/json' }, body: '' });
-    });
+    await bootNursePage(page, { seed: { nurseDashboard: true }, enableBulk: true });
     await gotoNurseBulk(page);
   });
 

@@ -7,12 +7,14 @@ import Stack from '@mui/material/Stack';
 import Tab from '@mui/material/Tab';
 import Tabs from '@mui/material/Tabs';
 import Typography from '@mui/material/Typography';
-import { startOfWeek, format as formatDate } from 'date-fns';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { format as formatDate, startOfWeek } from 'date-fns';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 // Schedule View Icons
 import AddRoundedIcon from '@mui/icons-material/AddRounded';
 import CalendarMonthRoundedIcon from '@mui/icons-material/CalendarMonthRounded';
 import CalendarViewWeekRoundedIcon from '@mui/icons-material/CalendarViewWeekRounded';
+import DomainRoundedIcon from '@mui/icons-material/DomainRounded';
 import ListAltRoundedIcon from '@mui/icons-material/ListAltRounded';
 import NavigateBeforeRoundedIcon from '@mui/icons-material/NavigateBeforeRounded';
 import NavigateNextRoundedIcon from '@mui/icons-material/NavigateNextRounded';
@@ -20,38 +22,55 @@ import PersonRoundedIcon from '@mui/icons-material/PersonRounded';
 import TodayRoundedIcon from '@mui/icons-material/TodayRounded';
 
 import { useAuth } from '@/auth/useAuth';
-import { ScheduleCreateDialog, type CreateScheduleEventInput, type ScheduleFormState, type ScheduleServiceType, type ScheduleUserOption } from '@/features/schedules/ScheduleCreateDialog';
-import { useUsersStore } from '@/features/users/store';
 import { useSnackbarHost } from '@/features/nurse/components/SnackbarHost';
 import BriefingPanel from '@/features/schedule/components/BriefingPanel';
 import { assignLocalDateKey } from '@/features/schedule/dateutils.local';
 import { moveScheduleToDay } from '@/features/schedule/move';
-import ScheduleDialog from '@/features/schedule/ScheduleDialog';
+// ScheduleDialog is used via lane-specific wrappers (User/Staff/Org)
+import OrgScheduleModal from '@/features/schedule/OrgScheduleModal';
+import StaffScheduleModal from '@/features/schedule/StaffScheduleModal';
 import type { ExtendedScheduleForm, Schedule, ScheduleOrg, ScheduleStaff, ScheduleStatus, ScheduleUserCare, Status } from '@/features/schedule/types';
+import UserScheduleModal from '@/features/schedule/UserScheduleModal';
 import ScheduleListView from '@/features/schedule/views/ListView';
-import MonthView from '@/features/schedule/views/MonthView';
+import MonthView, { type MonthEntry } from '@/features/schedule/views/MonthView';
 import OrgTab from '@/features/schedule/views/OrgTab';
 import StaffTab from '@/features/schedule/views/StaffTab';
 import TimelineDay from '@/features/schedule/views/TimelineDay';
 import TimelineWeek, { type EventMovePayload } from '@/features/schedule/views/TimelineWeek';
 import UserTab from '@/features/schedule/views/UserTab';
-import { getAppConfig } from '@/lib/env';
+import ScheduleCreateDialog, { type CreateScheduleEventInput, type ScheduleFormState, type ScheduleServiceType, type ScheduleUserOption } from '@/features/schedules/ScheduleCreateDialog';
+import { useScheduleUserOptions } from '@/features/schedules/useScheduleUserOptions';
+import { getAppConfig, skipSharePoint } from '@/lib/env';
 import { useSP } from '@/lib/spClient';
 import { useStaff } from '@/stores/useStaff';
 import { TESTIDS } from '@/testids';
 import FilterToolbar from '@/ui/filters/FilterToolbar';
 import { formatRangeLocal } from '@/utils/datetime';
+import { getOrgFilterLabel, matchesOrgFilter, normalizeOrgFilter, type OrgFilterKey } from './orgFilters';
+import { getComposedWeek, isScheduleFixturesMode, type ScheduleEvent } from './api/schedulesClient';
+import { ensureDateParam, normalizeToDayStart, pickDateParam } from './dateQuery';
 import { useEnsureScheduleList } from './ensureScheduleList';
 import { createUserCare, getUserCareSchedules, updateUserCare } from './spClient.schedule';
 import { createOrgSchedule, getOrgSchedules, updateOrgSchedule } from './spClient.schedule.org';
 import { createStaffSchedule, getStaffSchedules, updateStaffSchedule } from './spClient.schedule.staff';
 import { buildStaffPatternIndex, collectBaseShiftWarnings } from './workPattern';
 
-type ViewMode = 'month' | 'week' | 'day' | 'list' | 'userCare';
+type ViewMode = 'month' | 'week' | 'day' | 'list' | 'userCare' | 'org';
 
 type RangeState = {
   start: Date;
   end: Date;
+};
+
+const DEFAULT_VIEW: ViewMode = 'week';
+const VIEW_TABS: ViewMode[] = ['month', 'week', 'day', 'list', 'userCare', 'org'];
+
+const resolveViewParam = (searchParams: URLSearchParams): ViewMode => {
+  const raw = searchParams.get('tab');
+  if (raw && VIEW_TABS.includes(raw as ViewMode)) {
+    return raw as ViewMode;
+  }
+  return DEFAULT_VIEW;
 };
 
 const DIALOG_TO_DOMAIN_STATUS: Record<ScheduleStatus, Status> = {
@@ -68,12 +87,14 @@ const DOMAIN_TO_DIALOG_STATUS: Record<Status, ScheduleStatus> = {
   完了: 'confirmed',
 };
 
-const QUICK_SERVICE_TYPE_LABELS: Record<ScheduleServiceType, ScheduleUserCare['serviceType']> = {
+const QUICK_SERVICE_TYPE_LABELS: Record<ScheduleServiceType, string> = {
   normal: '通常利用',
   transport: '送迎',
   respite: '一時ケア・短期',
   nursing: '看護',
   absence: '欠席・休み',
+  late: '遅刻',
+  earlyLeave: '早退',
   other: 'その他',
 };
 
@@ -84,6 +105,18 @@ const QUICK_SERVICE_TYPE_BY_LABEL: Record<string, ScheduleServiceType> = Object.
   },
   {} as Record<string, ScheduleServiceType>
 );
+
+// Quick-create(code) -> Domain(ServiceType) のマップ
+const QUICK_TO_DOMAIN_SERVICE_TYPE: Record<ScheduleServiceType, ScheduleUserCare['serviceType']> = {
+  normal: '通常利用',
+  transport: '送迎',
+  respite: '一時ケア',
+  nursing: '看護',
+  absence: '欠席・休み',
+  late: 'late',
+  earlyLeave: 'earlyLeave',
+  other: 'その他',
+};
 
 const toDomainStatus = (status: ScheduleStatus | undefined): Status => DIALOG_TO_DOMAIN_STATUS[status ?? 'planned'];
 
@@ -102,6 +135,10 @@ const toNumericId = (id?: string | number): number | undefined => {
   return undefined;
 };
 
+const FIXTURE_DEFAULT_STATUS: Status = '承認済み';
+const FIXTURE_USER_SERVICE: ScheduleUserCare['serviceType'] = '一時ケア';
+const FIXTURE_USER_PERSON_TYPE: ScheduleUserCare['personType'] = 'Internal';
+
 const scheduleToExtendedForm = (schedule: Schedule): ExtendedScheduleForm => {
   const base: ExtendedScheduleForm = {
     category: schedule.category,
@@ -119,6 +156,7 @@ const scheduleToExtendedForm = (schedule: Schedule): ExtendedScheduleForm => {
     return {
       ...base,
       userId: schedule.personId ?? '',
+      userLookupId: schedule.userLookupId,
       serviceType: schedule.serviceType,
       personType: schedule.personType,
       personId: schedule.personId,
@@ -150,6 +188,50 @@ const scheduleToExtendedForm = (schedule: Schedule): ExtendedScheduleForm => {
   } satisfies ExtendedScheduleForm;
 };
 
+const fixtureEventToSchedule = (event: ScheduleEvent): Schedule => {
+  const base = {
+    id: String(event.id),
+    etag: '',
+    title: event.title,
+    start: event.start,
+    end: event.end,
+    allDay: Boolean(event.allDay),
+    status: FIXTURE_DEFAULT_STATUS,
+    dayKey: event.dayKey,
+    orgCode: event.orgCode,
+  } satisfies Pick<Schedule, 'id' | 'etag' | 'title' | 'start' | 'end' | 'allDay' | 'status' | 'dayKey' | 'orgCode'>;
+
+  if (event.category === 'User') {
+    return {
+      ...base,
+      category: 'User',
+      serviceType: FIXTURE_USER_SERVICE,
+      personType: FIXTURE_USER_PERSON_TYPE,
+      personId: event.targetUserIds?.[0],
+      personName: event.personName ?? event.targetUserNames?.[0],
+      userLookupId: event.targetUserIds?.[0],
+      staffIds: event.staffIds ?? [],
+      staffNames: event.staffNames,
+    } satisfies ScheduleUserCare;
+  }
+
+  if (event.category === 'Org') {
+    return {
+      ...base,
+      category: 'Org',
+      subType: '会議',
+    } satisfies ScheduleOrg;
+  }
+
+  return {
+    ...base,
+    category: 'Staff',
+    subType: '会議',
+    staffIds: event.staffIds ?? [],
+    staffNames: event.staffNames,
+  } satisfies ScheduleStaff;
+};
+
 export default function SchedulePage() {
   const { account } = useAuth();
   const sp = useSP();
@@ -157,10 +239,11 @@ export default function SchedulePage() {
   const showSnackbar = snackbarHost.show;
   const snackbarUi = snackbarHost.ui;
   useEnsureScheduleList(sp);
+  const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
   const { data: staffData } = useStaff();
-  const { data: usersData } = useUsersStore();
+  const scheduleUserOptions = useScheduleUserOptions();
   const [dialogEditing, setDialogEditing] = useState<Schedule | null>(null);
-  const [view, setView] = useState<ViewMode>('week');
   const [query, setQuery] = useState('');
   const [range, setRange] = useState<RangeState>(() => {
     const now = new Date();
@@ -172,9 +255,35 @@ export default function SchedulePage() {
   const [timelineEvents, setTimelineEvents] = useState<Schedule[]>([]);
   const [timelineLoading, setTimelineLoading] = useState<boolean>(false);
   const [timelineError, setTimelineError] = useState<Error | null>(null);
+  const timelineEventsRef = useRef<Schedule[]>([]);
+
+  const view = useMemo(() => resolveViewParam(searchParams), [searchParams]);
+  const orgFilterKey = useMemo<OrgFilterKey>(() => normalizeOrgFilter(searchParams.get('org')), [searchParams]);
+  const orgFilterLabel = useMemo(() => getOrgFilterLabel(orgFilterKey), [orgFilterKey]);
+
+  useEffect(() => {
+    const raw = searchParams.get('tab');
+    if (!raw || !VIEW_TABS.includes(raw as ViewMode)) {
+      const next = new URLSearchParams(searchParams);
+      next.set('tab', DEFAULT_VIEW);
+      setSearchParams(next, { replace: true });
+    }
+  }, [searchParams, setSearchParams]);
+
+  const handleViewChange = useCallback(
+    (_event: unknown, nextValue: ViewMode) => {
+      if (view === nextValue) {
+        return;
+      }
+      const next = new URLSearchParams(searchParams);
+      next.set('tab', nextValue);
+      setSearchParams(next, { replace: true });
+    },
+    [searchParams, setSearchParams, view],
+  );
 
   // Schedule Dialog States
-  const [dialogOpen, setDialogOpen] = useState(false);
+  // dialogOpen removed — using per-lane modals
   const [dialogInitial, setDialogInitial] = useState<ExtendedScheduleForm | undefined>(undefined);
   const [quickDialogOpen, setQuickDialogOpen] = useState(false);
   const [quickDialogInitialDate, setQuickDialogInitialDate] = useState<Date | null>(null);
@@ -182,6 +291,54 @@ export default function SchedulePage() {
   const [quickDialogOverride, setQuickDialogOverride] = useState<Partial<ScheduleFormState> | null>(null);
   const [quickDialogEditingSchedule, setQuickDialogEditingSchedule] = useState<ScheduleUserCare | null>(null);
   const [lastQuickUserId, setLastQuickUserId] = useState<string | undefined>(undefined);
+  // Per-lane modal states (thin wrappers around ScheduleDialog)
+  const [userDialogOpen, setUserDialogOpen] = useState(false);
+  const [staffDialogOpen, setStaffDialogOpen] = useState(false);
+  const [orgDialogOpen, setOrgDialogOpen] = useState(false);
+
+  const rawDateParam = useMemo(() => pickDateParam(searchParams), [searchParams]);
+  const anchorDate = useMemo(() => normalizeToDayStart(rawDateParam), [rawDateParam]);
+  const anchorDateMs = anchorDate.getTime();
+  const rangeStartMs = range.start.getTime();
+  const rangeEndMs = range.end.getTime();
+
+  useEffect(() => {
+    const start = startOfWeek(anchorDate, { weekStartsOn: 1 });
+    const end = new Date(start.getTime() + 7 * 24 * 60 * 60 * 1000);
+    setRange((prev) => {
+      if (prev.start.getTime() === start.getTime() && prev.end.getTime() === end.getTime()) {
+        return prev;
+      }
+      return { start, end };
+    });
+  }, [anchorDate, anchorDateMs]);
+
+  useEffect(() => {
+    if (rawDateParam) {
+      return;
+    }
+    const next = ensureDateParam(searchParams, anchorDate);
+    setSearchParams(next, { replace: true });
+  }, [anchorDate, anchorDateMs, rawDateParam, searchParams, setSearchParams]);
+
+  const updateDateParam = useCallback((nextDate: Date) => {
+    const next = ensureDateParam(searchParams, nextDate);
+    setSearchParams(next, { replace: true });
+  }, [searchParams, setSearchParams]);
+
+  const shiftWeek = useCallback((direction: -1 | 1) => {
+    const span = rangeEndMs - rangeStartMs;
+    const next = new Date(anchorDateMs + direction * span);
+    updateDateParam(next);
+  }, [anchorDateMs, rangeEndMs, rangeStartMs, updateDateParam]);
+
+  const jumpToCurrentWeek = useCallback(() => {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    updateDateParam(today);
+  }, [updateDateParam]);
+
+  const fixturesEnabled = useMemo(() => isScheduleFixturesMode() || skipSharePoint(), []);
 
   const staffNameMap = useMemo(() => {
     const map = new Map<string, string>();
@@ -244,23 +401,6 @@ export default function SchedulePage() {
     return name ? [name] : undefined;
   }, [defaultStaffId, staffNameMap]);
 
-  const scheduleUserOptions = useMemo<ScheduleUserOption[]>(() => {
-    if (!Array.isArray(usersData)) return [];
-    return usersData
-      .map((user) => {
-        if (!user) return null;
-        const userId = typeof user.UserID === 'string' && user.UserID.trim().length
-          ? user.UserID.trim()
-          : (user.Id != null ? String(user.Id).trim() : '');
-        const name = (user.FullName ?? '').trim() || (userId ? `利用者 ${userId}` : '');
-        if (!userId || !name) {
-          return null;
-        }
-        return { id: userId, name } satisfies ScheduleUserOption;
-      })
-      .filter((option): option is ScheduleUserOption => Boolean(option));
-  }, [usersData]);
-
   const scheduleUserMap = useMemo(() => {
     const map = new Map<string, ScheduleUserOption>();
     for (const option of scheduleUserOptions) {
@@ -305,6 +445,16 @@ export default function SchedulePage() {
 
     const personType = (form.personType ?? base?.personType ?? 'Internal') as ScheduleUserCare['personType'];
     const serviceType = (form.serviceType ?? base?.serviceType ?? '一時ケア') as ScheduleUserCare['serviceType'];
+    const selectedUser = form.userId ? scheduleUserMap.get(form.userId) : undefined;
+    const resolvedLookupId = (() => {
+      const candidate = selectedUser?.lookupId ?? form.userLookupId ?? base?.userLookupId;
+      if (candidate == null) return undefined;
+      const normalized = String(candidate).trim();
+      return normalized.length ? normalized : undefined;
+    })();
+    const resolvedPersonName = personType === 'Internal'
+      ? (form.personName ?? selectedUser?.name ?? base?.personName) ?? undefined
+      : undefined;
 
     return {
       id: base?.id ?? '',
@@ -323,14 +473,15 @@ export default function SchedulePage() {
       serviceType,
       personType,
       personId: personType === 'Internal' ? (form.personId ?? form.userId ?? base?.personId) ?? undefined : undefined,
-      personName: personType === 'Internal' ? (form.personName ?? base?.personName) ?? undefined : undefined,
+      personName: resolvedPersonName,
+      userLookupId: personType === 'Internal' ? resolvedLookupId ?? undefined : undefined,
       externalPersonName: personType === 'External' ? (form.externalPersonName ?? base?.externalPersonName) ?? undefined : undefined,
       externalPersonOrg: personType === 'External' ? (form.externalPersonOrg ?? base?.externalPersonOrg) ?? undefined : undefined,
       externalPersonContact: personType === 'External' ? (form.externalPersonContact ?? base?.externalPersonContact) ?? undefined : undefined,
       staffIds,
       staffNames: staffNamesFromForm.length ? staffNamesFromForm : (staffNamesFromLookup.length ? staffNamesFromLookup : base?.staffNames),
     } satisfies ScheduleUserCare;
-  }, [staffNameMap]);
+  }, [staffNameMap, scheduleUserMap]);
 
   const buildStaffPayload = useCallback((form: ExtendedScheduleForm, base?: ScheduleStaff): ScheduleStaff => {
     if (!form.start || !form.end) {
@@ -426,6 +577,50 @@ export default function SchedulePage() {
     });
   }, [timelineEvents, staffPatterns]);
 
+  const orgScopedEvents = useMemo(() => {
+    if (orgFilterKey === 'all') {
+      return annotatedTimelineEvents;
+    }
+    return annotatedTimelineEvents.filter((item) => matchesOrgFilter(item.orgCode, orgFilterKey));
+  }, [annotatedTimelineEvents, orgFilterKey]);
+
+  useEffect(() => {
+    timelineEventsRef.current = timelineEvents;
+  }, [timelineEvents]);
+  const filteredTimelineEvents = useMemo(() => {
+    const needle = query.trim().toLowerCase();
+    if (!needle) return orgScopedEvents;
+    return orgScopedEvents.filter((item) => {
+      const haystack = [
+        item.title,
+        item.notes,
+        item.location,
+        // @ts-expect-error category-specific fields
+        item.subType,
+        // @ts-expect-error category-specific fields
+        item.serviceType,
+        // @ts-expect-error category-specific fields
+        Array.isArray(item.staffNames) ? item.staffNames.join(' ') : '',
+        // @ts-expect-error category-specific fields
+        item.personName ?? '',
+      ]
+        .filter(Boolean)
+        .join(' ')
+        .toLowerCase();
+      return haystack.includes(needle);
+    });
+  }, [orgScopedEvents, query]);
+
+  const filteredTimelineCount = filteredTimelineEvents.length;
+  const timelineOrgSummary = useMemo(
+    () => ({
+      label: orgFilterLabel,
+      count: filteredTimelineCount,
+    }),
+    [filteredTimelineCount, orgFilterLabel],
+  );
+
+
   const rangeLabel = useMemo(() => {
     return formatRangeLocal(range.start.toISOString(), range.end.toISOString());
   }, [range.start.getTime(), range.end.getTime()]);
@@ -439,14 +634,22 @@ export default function SchedulePage() {
     const { isDev: isDevelopment } = getAppConfig();
 
     try {
-      const [userRows, orgRows, staffRows] = await Promise.all([
-        getUserCareSchedules(sp, { start: startIso, end: endIso }),
-        getOrgSchedules(sp, { start: startIso, end: endIso }),
-        getStaffSchedules(sp, { start: startIso, end: endIso }),
-      ]);
-      const combined: Schedule[] = [...userRows, ...orgRows, ...staffRows]
-        .map((event) => assignLocalDateKey({ ...event }))
-        .sort((a, b) => new Date(a.start).getTime() - new Date(b.start).getTime());
+      let combined: Schedule[] = [];
+      if (fixturesEnabled) {
+        const fixtureRows = await getComposedWeek({ fromISO: startIso, toISO: endIso });
+        combined = fixtureRows
+          .map((event) => assignLocalDateKey({ ...fixtureEventToSchedule(event) }))
+          .sort((a, b) => new Date(a.start).getTime() - new Date(b.start).getTime());
+      } else {
+        const [userRows, orgRows, staffRows] = await Promise.all([
+          getUserCareSchedules(sp, { start: startIso, end: endIso }),
+          getOrgSchedules(sp, { start: startIso, end: endIso }),
+          getStaffSchedules(sp, { start: startIso, end: endIso }),
+        ]);
+        combined = [...userRows, ...orgRows, ...staffRows]
+          .map((event) => assignLocalDateKey({ ...event }))
+          .sort((a, b) => new Date(a.start).getTime() - new Date(b.start).getTime());
+      }
       setTimelineEvents(combined);
       // 成功時のリトライカウントリセットは useEffect で行う
     } catch (cause) {
@@ -465,7 +668,7 @@ export default function SchedulePage() {
     } finally {
       setTimelineLoading(false);
     }
-  }, [range.start.getTime(), range.end.getTime(), sp]);
+  }, [fixturesEnabled, range.start.getTime(), range.end.getTime(), sp]);
 
   // データ読み込み用の useEffect（状態更新の重複を避けるため、loadTimeline内部の状態管理に委ねる）
   useEffect(() => {
@@ -477,15 +680,18 @@ export default function SchedulePage() {
     });
   }, [range.start.getTime(), range.end.getTime(), sp]);
 
-  const dayViewDate = useMemo(() => new Date(range.start.getTime()), [range.start.getTime()]);
+  const dayViewDate = useMemo(() => new Date(anchorDateMs), [anchorDateMs]);
 
-  const handleEventMove = useCallback(({ id, to }: EventMovePayload) => {
+  const handleEventMove = useCallback(async ({ id, to }: EventMovePayload) => {
+    let original: Schedule | undefined;
+
+    // 楽観的更新
     setTimelineEvents((prev) => {
       const index = prev.findIndex((item) => item.id === id);
       if (index === -1) {
         return prev;
       }
-      const original = prev[index];
+      original = prev[index];
       if (original.category !== to.category) {
         return prev;
       }
@@ -495,7 +701,40 @@ export default function SchedulePage() {
       next.sort((a, b) => new Date(a.start).getTime() - new Date(b.start).getTime());
       return next;
     });
-  }, []);
+
+    if (!original || original.category !== to.category) {
+      return;
+    }
+
+    const moved = moveScheduleToDay(original, to.dayKey);
+
+    try {
+      if (moved.category === 'User') {
+        await updateUserCare(sp, moved as ScheduleUserCare);
+      } else if (moved.category === 'Org') {
+        await updateOrgSchedule(sp, moved as ScheduleOrg);
+      } else if (moved.category === 'Staff') {
+        await updateStaffSchedule(sp, moved as ScheduleStaff);
+      }
+      showSnackbar('予定を移動しました', 'success');
+    } catch (error) {
+      // 巻き戻し
+      const fallbackOriginal = timelineEventsRef.current.find((item) => item.id === id) ?? original;
+      setTimelineEvents((prev) => {
+        const index = prev.findIndex((item) => item.id === id);
+        if (index === -1) {
+          return prev;
+        }
+        const next = [...prev];
+        next.splice(index, 1, fallbackOriginal);
+        next.sort((a, b) => new Date(a.start).getTime() - new Date(b.start).getTime());
+        return next;
+      });
+
+      const message = error instanceof Error ? error.message : '予定の移動に失敗しました';
+      showSnackbar(message, 'error');
+    }
+  }, [sp, showSnackbar]);
 
   const toLocalInputValue = useCallback((date: Date) => formatDate(date, "yyyy-MM-dd'T'HH:mm"), []);
 
@@ -557,8 +796,40 @@ export default function SchedulePage() {
   );
 
   const handleQuickDialogSubmit = useCallback(async (input: CreateScheduleEventInput) => {
-    const serviceTypeLabel = QUICK_SERVICE_TYPE_LABELS[input.serviceType] ?? QUICK_SERVICE_TYPE_LABELS.other;
-    const userOption = scheduleUserMap.get(input.userId) ?? null;
+    const assignedStaffId = input.assignedStaffId?.trim();
+    const resolvedStaffIds = (() => {
+      if (assignedStaffId) {
+        return [assignedStaffId];
+      }
+      if (quickDialogMode === 'edit' && quickDialogEditingSchedule?.staffIds?.length) {
+        return [...quickDialogEditingSchedule.staffIds];
+      }
+      if (defaultUserStaffIds.length) {
+        return [...defaultUserStaffIds];
+      }
+      return [];
+    })();
+
+    const resolvedStaffNames = (() => {
+      if (assignedStaffId) {
+        const staffName = staffNameMap.get(assignedStaffId)?.trim();
+        return staffName ? [staffName] : undefined;
+      }
+      if (quickDialogMode === 'edit' && quickDialogEditingSchedule?.staffNames?.length) {
+        return [...quickDialogEditingSchedule.staffNames];
+      }
+      if (defaultUserStaffNames?.length) {
+        return [...defaultUserStaffNames];
+      }
+      return undefined;
+    })();
+
+    const serviceTypeCode = input.serviceType;
+    const serviceTypeLabel = QUICK_SERVICE_TYPE_LABELS[serviceTypeCode] ?? QUICK_SERVICE_TYPE_LABELS.other;
+    const userOption = input.userId ? scheduleUserMap.get(input.userId) ?? null : null;
+    const trimmedTitle = input.title.trim();
+    const resolvedTitle = trimmedTitle || `${serviceTypeLabel} / ${userOption?.name ?? '利用者'}`;
+    const mappedServiceType = QUICK_TO_DOMAIN_SERVICE_TYPE[serviceTypeCode] ?? '一時ケア';
 
     const startDate = new Date(input.startLocal);
     const endDate = new Date(input.endLocal);
@@ -570,7 +841,7 @@ export default function SchedulePage() {
       id: '',
       etag: '',
       category: 'User',
-      title: `${serviceTypeLabel} / ${userOption?.name ?? '利用者'}`,
+      title: resolvedTitle,
       start: startDate.toISOString(),
       end: endDate.toISOString(),
       allDay: false,
@@ -580,19 +851,16 @@ export default function SchedulePage() {
       recurrenceRule: quickDialogMode === 'edit' && quickDialogEditingSchedule ? quickDialogEditingSchedule.recurrenceRule : undefined,
       dayKey: quickDialogMode === 'edit' && quickDialogEditingSchedule ? quickDialogEditingSchedule.dayKey : undefined,
       fiscalYear: quickDialogMode === 'edit' && quickDialogEditingSchedule ? quickDialogEditingSchedule.fiscalYear : undefined,
-      serviceType: serviceTypeLabel,
+      serviceType: mappedServiceType,
       personType: 'Internal',
-      personId: input.userId,
+      personId: input.userId ?? '',
       personName: userOption?.name,
+      userLookupId: userOption?.lookupId ? String(userOption.lookupId) : undefined,
       externalPersonName: undefined,
       externalPersonOrg: undefined,
       externalPersonContact: undefined,
-      staffIds: quickDialogMode === 'edit' && quickDialogEditingSchedule?.staffIds?.length
-        ? [...quickDialogEditingSchedule.staffIds]
-        : [...defaultUserStaffIds],
-      staffNames: quickDialogMode === 'edit' && quickDialogEditingSchedule?.staffNames?.length
-        ? [...quickDialogEditingSchedule.staffNames]
-        : (defaultUserStaffNames ? [...defaultUserStaffNames] : undefined),
+      staffIds: resolvedStaffIds,
+      staffNames: resolvedStaffNames,
     } satisfies ScheduleUserCare;
 
     try {
@@ -610,7 +878,7 @@ export default function SchedulePage() {
         showSnackbar('予定を更新しました', 'success');
       } else {
         await createUserCare(sp, basePayload);
-        setLastQuickUserId(input.userId);
+        setLastQuickUserId(input.userId ?? '');
         showSnackbar('予定を作成しました', 'success');
       }
       await loadTimeline();
@@ -621,7 +889,7 @@ export default function SchedulePage() {
       showSnackbar(message, 'error');
       throw error;
     }
-  }, [scheduleUserMap, quickDialogMode, quickDialogEditingSchedule, defaultUserStaffIds, defaultUserStaffNames, sp, showSnackbar, loadTimeline]);
+  }, [scheduleUserMap, quickDialogMode, quickDialogEditingSchedule, defaultUserStaffIds, defaultUserStaffNames, staffNameMap, sp, showSnackbar, loadTimeline]);
 
   // Schedule Dialog Handlers
   const handleCreateSchedule = useCallback(() => {
@@ -645,13 +913,16 @@ export default function SchedulePage() {
       staffIds: [...defaultUserStaffIds],
       staffNames: defaultUserStaffNames ? [...defaultUserStaffNames] : undefined,
     });
-    setDialogOpen(true);
+    setUserDialogOpen(true);
   }, [defaultUserStaffIds, defaultUserStaffNames]);
 
   const handleDialogClose = useCallback(() => {
-    setDialogOpen(false);
+    // Close any lane modal and reset shared initial/editing
     setDialogInitial(undefined);
     setDialogEditing(null);
+    setUserDialogOpen(false);
+    setStaffDialogOpen(false);
+    setOrgDialogOpen(false);
   }, []);
 
   const handleDialogSubmit = useCallback(async (values: ExtendedScheduleForm) => {
@@ -659,9 +930,12 @@ export default function SchedulePage() {
     const editing = dialogEditing && dialogEditing.category === category ? dialogEditing : null;
 
     try {
-      switch (category) {
+    switch (category) {
         case 'User': {
-          const payload = buildUserCarePayload(values, editing as ScheduleUserCare | undefined);
+        const payload = buildUserCarePayload(values, editing as ScheduleUserCare | undefined);
+          /* DEBUG: exact payload from UI before SharePoint call */
+          // eslint-disable-next-line no-console
+          console.debug('[schedule:create] category=User payload=', payload);
           if (editing) {
             await updateUserCare(sp, payload);
           } else {
@@ -670,7 +944,10 @@ export default function SchedulePage() {
           break;
         }
         case 'Org': {
-          const payload = buildOrgPayload(values, editing as ScheduleOrg | undefined);
+        const payload = buildOrgPayload(values, editing as ScheduleOrg | undefined);
+          /* DEBUG: exact payload from UI before SharePoint call */
+          // eslint-disable-next-line no-console
+          console.debug('[schedule:create] category=Org payload=', payload);
           if (editing) {
             await updateOrgSchedule(sp, payload);
           } else {
@@ -679,7 +956,10 @@ export default function SchedulePage() {
           break;
         }
         case 'Staff': {
-          const payload = buildStaffPayload(values, editing as ScheduleStaff | undefined);
+        const payload = buildStaffPayload(values, editing as ScheduleStaff | undefined);
+          /* DEBUG: exact payload from UI before SharePoint call */
+          // eslint-disable-next-line no-console
+          console.debug('[schedule:create] category=Staff payload=', payload);
           if (editing) {
             await updateStaffSchedule(sp, payload);
           } else {
@@ -691,9 +971,8 @@ export default function SchedulePage() {
           throw new Error('対応していないカテゴリの予定です。');
       }
 
-      setDialogOpen(false);
-      setDialogInitial(undefined);
-      setDialogEditing(null);
+      // Close any open lane modal and reset state
+      handleDialogClose();
       showSnackbar(editing ? '予定を更新しました' : '予定を作成しました', 'success');
 
       await loadTimeline();
@@ -705,27 +984,10 @@ export default function SchedulePage() {
   }, [dialogEditing, buildUserCarePayload, buildOrgPayload, buildStaffPayload, sp, showSnackbar, loadTimeline]);
 
   const handleDateClick = useCallback((date: Date) => {
-    const start = date.toISOString();
-    const end = new Date(date.getTime() + 60 * 60 * 1000).toISOString(); // 1時間後
-
-    setDialogEditing(null);
-    setDialogInitial({
-      category: 'User',
-      userId: '',
-      status: 'planned',
-      start,
-      end,
-      title: '',
-      note: '',
-      allDay: false,
-      location: '',
-      serviceType: '一時ケア',
-      personType: 'Internal',
-      staffIds: [...defaultUserStaffIds],
-      staffNames: defaultUserStaffNames ? [...defaultUserStaffNames] : undefined,
-    });
-    setDialogOpen(true);
-  }, [defaultUserStaffIds, defaultUserStaffNames]);
+    const next = ensureDateParam(searchParams, date);
+    next.set('tab', 'day');
+    setSearchParams(next, { replace: true });
+  }, [searchParams, setSearchParams]);
 
   // Timeline specific handlers
   const handleEventCreate = useCallback((payload: { category: Schedule['category']; date: string }) => {
@@ -780,7 +1042,10 @@ export default function SchedulePage() {
         staffIds: [],
       });
     }
-    setDialogOpen(true);
+    // Open lane-specific modal
+    if (payload.category === 'User') setUserDialogOpen(true);
+    if (payload.category === 'Org') setOrgDialogOpen(true);
+    if (payload.category === 'Staff') setStaffDialogOpen(true);
   }, [defaultUserStaffIds, defaultUserStaffNames]);
 
   const handleEventEdit = useCallback(
@@ -794,41 +1059,29 @@ export default function SchedulePage() {
       }
       setDialogEditing(schedule);
       setDialogInitial(scheduleToExtendedForm(schedule));
-      setDialogOpen(true);
+      if (schedule.category === 'User') setUserDialogOpen(true);
+      if (schedule.category === 'Staff') setStaffDialogOpen(true);
+      if (schedule.category === 'Org') setOrgDialogOpen(true);
     },
     [openQuickEditDialog]
   );
 
-  const handleEventClick = useCallback((event: { id: string; title: string; startIso: string }) => {
-    const target = timelineEvents.find((item) => item.id === String(event.id));
+  const handleEventClick = useCallback(
+    (event: MonthEntry) => {
+      const iso = event.startIso;
+      if (!iso) return;
+      const yyyymmdd = iso.slice(0, 10);
+      navigate(`/schedules/day?date=${encodeURIComponent(yyyymmdd)}`);
+    },
+    [navigate]
+  );
 
-    if (target) {
-      if (target.category === 'User' && openQuickEditDialog(target as ScheduleUserCare)) {
-        return;
-      }
-      setDialogEditing(target);
-      setDialogInitial(scheduleToExtendedForm(target));
-    } else {
-      const startIso = event.startIso;
-      const fallbackEnd = new Date(new Date(event.startIso).getTime() + 60 * 60 * 1000).toISOString();
-      setDialogEditing(null);
-      setDialogInitial({
-        category: 'User',
-        status: 'planned',
-        start: startIso,
-        end: fallbackEnd,
-        title: event.title,
-        note: '',
-        userId: '',
-        personType: 'Internal',
-        serviceType: '一時ケア',
-        staffIds: [...defaultUserStaffIds],
-        staffNames: defaultUserStaffNames ? [...defaultUserStaffNames] : undefined,
-      });
-    }
-
-    setDialogOpen(true);
-  }, [timelineEvents, defaultUserStaffIds, defaultUserStaffNames, openQuickEditDialog]);
+  const handleDayNavigate = useCallback(
+    (dayKey: string) => {
+      navigate(`/schedules/day?day=${encodeURIComponent(dayKey)}`);
+    },
+    [navigate],
+  );
 
   return (
     <Container maxWidth="xl" sx={{ py: 3 }} data-testid="schedule-page-root">
@@ -869,14 +1122,7 @@ export default function SchedulePage() {
             {view !== 'userCare' && (
               <Stack direction="row" spacing={1} sx={{ flexShrink: 0 }}>
                 <IconButton
-                  onClick={() =>
-                    setRange((prev) => {
-                      const span = prev.end.getTime() - prev.start.getTime();
-                      const nextStart = new Date(prev.start.getTime() - span);
-                      const nextEnd = new Date(prev.end.getTime() - span);
-                      return { start: nextStart, end: nextEnd };
-                    })
-                  }
+                  onClick={() => shiftWeek(-1)}
                   aria-label="前の期間"
                 >
                   <NavigateBeforeRoundedIcon />
@@ -885,26 +1131,13 @@ export default function SchedulePage() {
                 <Button
                   variant="outlined"
                   size="small"
-                  onClick={() => {
-                    const now = new Date();
-                    // 月曜始まりの今週を取得
-                    const start = startOfWeek(now, { weekStartsOn: 1 });
-                    const end = new Date(start.getTime() + 7 * 24 * 60 * 60 * 1000);
-                    setRange({ start, end });
-                  }}
+                  onClick={jumpToCurrentWeek}
                 >
                   今週
                 </Button>
 
                 <IconButton
-                  onClick={() =>
-                    setRange((prev) => {
-                      const span = prev.end.getTime() - prev.start.getTime();
-                      const nextStart = new Date(prev.start.getTime() + span);
-                      const nextEnd = new Date(prev.end.getTime() + span);
-                      return { start: nextStart, end: nextEnd };
-                    })
-                  }
+                  onClick={() => shiftWeek(1)}
                   aria-label="次の期間"
                 >
                   <NavigateNextRoundedIcon />
@@ -913,7 +1146,12 @@ export default function SchedulePage() {
             )}
           </Stack>
 
-          <Typography variant="body2" color="text.secondary" mb={2}>
+          <Typography
+            variant="body2"
+            color="text.secondary"
+            mb={2}
+            data-testid={TESTIDS.SCHEDULES_RANGE_LABEL}
+          >
             {rangeLabel || '期間未設定'}
           </Typography>
 
@@ -930,7 +1168,7 @@ export default function SchedulePage() {
         <Box sx={{ borderBottom: 1, borderColor: 'divider', px: 3 }}>
           <Tabs
             value={view}
-            onChange={(_, newValue) => setView(newValue)}
+            onChange={handleViewChange}
             aria-label="スケジュールビュー切り替え"
             variant="scrollable"
             scrollButtons="auto"
@@ -970,6 +1208,14 @@ export default function SchedulePage() {
               iconPosition="start"
               sx={{ minHeight: 48, textTransform: 'none' }}
             />
+            <Tab
+              value="org"
+              label="事業所別"
+              icon={<DomainRoundedIcon />}
+              iconPosition="start"
+              data-testid="schedule-tab-org"
+              sx={{ minHeight: 48, textTransform: 'none' }}
+            />
           </Tabs>
         </Box>
 
@@ -1002,19 +1248,22 @@ export default function SchedulePage() {
           )}
           {view === 'week' && (
             <TimelineWeek
-              events={annotatedTimelineEvents}
+              events={filteredTimelineEvents}
               startDate={range.start}
               onEventMove={handleEventMove}
               onEventCreate={handleEventCreate}
               onEventEdit={handleEventEdit}
+              onDayNavigate={handleDayNavigate}
+              orgFilterLabel={orgFilterLabel}
             />
           )}
           {view === 'day' && (
             <TimelineDay
-              events={annotatedTimelineEvents}
+              events={filteredTimelineEvents}
               date={dayViewDate}
               onEventCreate={handleEventCreate}
               onEventEdit={handleEventEdit}
+              orgSummary={timelineOrgSummary}
             />
           )}
           {view === 'list' && <ScheduleListView />}
@@ -1022,10 +1271,10 @@ export default function SchedulePage() {
             <Stack spacing={3}>
               <BriefingPanel />
               <UserTab />
-              <OrgTab />
               <StaffTab />
             </Stack>
           )}
+          {view === 'org' && <OrgTab />}
 
           {timelineLoading && (
             <Box sx={{ mt: 2, textAlign: 'center' }}>
@@ -1057,8 +1306,24 @@ export default function SchedulePage() {
             })}
       />
 
-      <ScheduleDialog
-        open={dialogOpen}
+      <UserScheduleModal
+        open={userDialogOpen}
+        initial={dialogInitial}
+        existingSchedules={timelineEvents}
+        onClose={handleDialogClose}
+        onSubmit={handleDialogSubmit}
+      />
+
+      <StaffScheduleModal
+        open={staffDialogOpen}
+        initial={dialogInitial}
+        existingSchedules={timelineEvents}
+        onClose={handleDialogClose}
+        onSubmit={handleDialogSubmit}
+      />
+
+      <OrgScheduleModal
+        open={orgDialogOpen}
         initial={dialogInitial}
         existingSchedules={timelineEvents}
         onClose={handleDialogClose}

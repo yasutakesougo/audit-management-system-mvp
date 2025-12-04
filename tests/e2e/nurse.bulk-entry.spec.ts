@@ -1,7 +1,9 @@
 import { TESTIDS } from '@/testids';
 import { expect, test } from '@playwright/test';
-import { setupNurseFlags } from './_helpers/setupNurse.flags';
+import { bootNursePage } from './_helpers/bootNursePage';
 import { gotoNurseBulk } from './nurse/_helpers/bulk';
+
+test.skip(true, 'Legacy nurse bulk entry UI is offline until the v2 surface ships.');
 
 const extractUserId = (dataTestId: string): string =>
   dataTestId.startsWith(`${TESTIDS.NURSE_BULK_ROW_PREFIX}-`)
@@ -10,33 +12,11 @@ const extractUserId = (dataTestId: string): string =>
 
 test.describe('Nurse Bulk Entry', () => {
   test.beforeEach(async ({ page }) => {
-    await setupNurseFlags(page, { bulk: true });
+    await bootNursePage(page, { seed: { nurseDashboard: true }, enableBulk: true });
   });
 
   test('Enter で保存→次行フォーカス & 一括同期', async ({ page }) => {
-    await page.route('**/api/sp/lists/**', async (route) => {
-      const request = route.request();
-      const method = request.method().toUpperCase();
-      if (method === 'GET') {
-        await route.fulfill({ status: 200, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ value: [] }) });
-        return;
-      }
-      if (method === 'POST') {
-        await route.fulfill({
-          status: 201,
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ id: 1 }),
-        });
-        return;
-      }
-      if (method === 'PATCH') {
-        await route.fulfill({ status: 204, headers: { 'Content-Type': 'application/json' }, body: '' });
-        return;
-      }
-      await route.fulfill({ status: 204, headers: { 'Content-Type': 'application/json' }, body: '' });
-    });
-
-  await gotoNurseBulk(page);
+    await gotoNurseBulk(page);
 
     const firstRow = page.locator(`[data-testid^="${TESTIDS.NURSE_BULK_ROW_PREFIX}-"]`).first();
     const firstRowIdAttr = await firstRow.getAttribute('data-testid');
@@ -57,8 +37,8 @@ test.describe('Nurse Bulk Entry', () => {
     await page.keyboard.press('s');
     await page.keyboard.up('Alt');
 
-  await expect(page.getByTestId(TESTIDS.NURSE_SYNC_STATUS)).toBeVisible();
-  await expect(statusCell).toHaveAttribute('aria-label', '同期済み');
-  await expect(statusCell).toHaveAttribute('data-status', 'ok');
+    await expect(page.getByTestId(TESTIDS.NURSE_SYNC_STATUS)).toBeVisible();
+    await expect(statusCell).toHaveAttribute('aria-label', '同期済み');
+    await expect(statusCell).toHaveAttribute('data-status', 'ok');
   });
 });

@@ -1,7 +1,32 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 import { PersonDaily } from '../../../domain/daily/types';
 import { DailyRecordForm } from '../DailyRecordForm';
+import type { DailyUserOption } from '../useDailyUserOptions';
+
+const dailyUserOptions: DailyUserOption[] = [
+  {
+    id: '001',
+    lookupId: 701,
+    label: '田中太郎',
+    furigana: 'たなか たろう',
+  },
+  {
+    id: '002',
+    lookupId: 702,
+    label: '佐藤花子',
+    furigana: 'さとう はなこ',
+  },
+];
+
+vi.mock('../useDailyUserOptions', () => ({
+  useDailyUserOptions: () => ({
+    options: dailyUserOptions,
+    findByPersonId: (personId?: string | null) =>
+      dailyUserOptions.find((option) => option.id === personId),
+  }),
+}));
 
 const mockRecord: PersonDaily = {
   id: 1,
@@ -104,14 +129,19 @@ describe('DailyRecordForm', () => {
         />
       );
 
+      const user = userEvent.setup();
+
       // 利用者を選択
-      const userSelect = screen.getByRole('combobox', { name: /利用者/ });
-      fireEvent.mouseDown(userSelect);
-      fireEvent.click(screen.getByRole('option', { name: /田中太郎/ }));
+      const userSelect = screen.getByRole('combobox', { name: '利用者の選択' });
+      await user.click(userSelect);
+      await user.type(userSelect, '田中');
+      const option = await screen.findByRole('option', { name: /田中太郎/ });
+      await user.click(option);
 
       // 記録者名を入力
       const reporterInput = screen.getByRole('textbox', { name: /記録者名/ });
-      fireEvent.change(reporterInput, { target: { value: '記録者' } });
+      await user.clear(reporterInput);
+      await user.type(reporterInput, '記録者');
 
       await waitFor(() => {
         const saveButton = screen.getByRole('button', { name: /保存/ });

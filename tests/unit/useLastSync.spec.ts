@@ -1,10 +1,10 @@
 import {
-  __resetLastSyncStoreForTests,
-  formatLastSyncCaption,
-  getLastSyncSnapshot,
-  markSyncFailure,
-  markSyncPending,
-  markSyncResult
+    __resetLastSyncStoreForTests,
+    formatLastSyncCaption,
+    getLastSyncSnapshot,
+    markSyncFailure,
+    markSyncPending,
+    markSyncResult
 } from '@/features/nurse/state/useLastSync';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 

@@ -45,9 +45,13 @@ vi.mock('@/lib/spClient', () => ({
   }),
 }));
 
-vi.mock('@/lib/env', () => ({
-  getAppConfig: () => mockGetAppConfig(),
-}));
+vi.mock('@/lib/env', async () => {
+  const actual = await vi.importActual<typeof import('@/lib/env')>('@/lib/env');
+  return {
+    ...actual,
+    getAppConfig: () => mockGetAppConfig(),
+  };
+});
 
 vi.mock('@/features/audit/batchUtil', () => ({
   buildBatchInsertBody: (...args: unknown[]) => mockBuildBatchInsertBody(...args),

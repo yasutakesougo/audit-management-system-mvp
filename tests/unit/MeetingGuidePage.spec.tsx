@@ -1,7 +1,6 @@
 import MeetingGuidePage from '@/pages/MeetingGuidePage';
 import { TESTIDS } from '@/testids';
 import { render, screen, within } from '@testing-library/react';
-import React from 'react';
 import { MemoryRouter } from 'react-router-dom';
 import { describe, expect, it } from 'vitest';
 

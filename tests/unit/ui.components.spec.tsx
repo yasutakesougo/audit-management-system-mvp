@@ -2,10 +2,15 @@ import EmptyState from '@/ui/components/EmptyState';
 import ErrorState from '@/ui/components/ErrorState';
 import { FormField } from '@/ui/components/FormField';
 import SignInButton from '@/ui/components/SignInButton';
-import { fireEvent, render, screen } from '@testing-library/react';
+import { useMsalContext } from '@/auth/MsalProvider';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-const mockUseAuth = vi.fn();
+vi.mock('@/auth/MsalProvider', () => ({
+  useMsalContext: vi.fn(),
+}));
+
+const mockUseMsalContext = useMsalContext as unknown as vi.Mock;
 
 vi.mock('@mui/material/Button', () => ({
   __esModule: true,
@@ -21,13 +26,9 @@ vi.mock('@mui/material/Tooltip', () => ({
   ),
 }));
 
-vi.mock('@/auth/useAuth', () => ({
-  useAuth: () => mockUseAuth(),
-}));
-
 describe('UI components', () => {
   beforeEach(() => {
-    mockUseAuth.mockReset();
+    mockUseMsalContext.mockReset();
   });
 
   it('renders EmptyState with defaults and overrides', () => {
@@ -64,55 +65,33 @@ describe('UI components', () => {
     expect(screen.getByText('全角で入力してください')).toBeInTheDocument();
   });
 
-  it('renders sign-in button when unauthenticated', () => {
-    const signIn = vi.fn();
-    mockUseAuth.mockReturnValue({ isAuthenticated: false, signIn });
+  it('renders sign-in button when no MSAL accounts exist', async () => {
+    const loginPopup = vi.fn().mockResolvedValue({ account: { homeAccountId: 'abc' } });
+    mockUseMsalContext.mockReturnValue({
+      accounts: [],
+      instance: {
+        loginPopup,
+        loginRedirect: vi.fn(),
+        logoutRedirect: vi.fn(),
+        logoutPopup: vi.fn(),
+        acquireTokenSilent: vi.fn(),
+        acquireTokenRedirect: vi.fn(),
+        getActiveAccount: vi.fn(() => null),
+        getAllAccounts: vi.fn(() => []),
+        setActiveAccount: vi.fn(),
+      },
+    });
 
     render(<SignInButton />);
 
     const button = screen.getByRole('button', { name: 'サインイン' });
     fireEvent.click(button);
-    expect(signIn).toHaveBeenCalled();
+    await waitFor(() => {
+      expect(loginPopup).toHaveBeenCalled();
+    });
   });
 
-  it('renders sign-out button with tooltip when authenticated', () => {
-    const signOut = vi.fn();
-    mockUseAuth.mockReturnValue({
-      isAuthenticated: true,
-      account: { name: 'テストユーザー' },
-      signOut,
-    });
-
-    render(<SignInButton />);
-
-    const button = screen.getByRole('button', { name: 'サインアウト' });
-    fireEvent.click(button);
-    expect(signOut).toHaveBeenCalled();
-    expect(screen.getByTestId('tooltip')).toHaveAttribute('data-title', 'テストユーザー');
-  });
-
-  it('falls back to username or a generic tooltip when account name is missing', () => {
-    const signOut = vi.fn();
-    mockUseAuth.mockReturnValue({
-      isAuthenticated: true,
-      account: { username: 'user@example.com' },
-      signOut,
-    });
-
-    const { rerender } = render(<SignInButton />);
-  let tooltips = screen.getAllByTestId('tooltip');
-  const initialTooltip = tooltips[tooltips.length - 1];
-  expect(initialTooltip).toHaveAttribute('data-title', 'user@example.com');
-
-    const nextSignOut = vi.fn();
-    mockUseAuth.mockReturnValue({
-      isAuthenticated: true,
-      account: undefined,
-      signOut: nextSignOut,
-    });
-    rerender(<SignInButton />);
-  tooltips = screen.getAllByTestId('tooltip');
-  const fallbackTooltip = tooltips[tooltips.length - 1];
-  expect(fallbackTooltip).toHaveAttribute('data-title', 'Signed in');
-  });
+  // Sign-out tooltip tests for legacy UI are intentionally omitted until the component reintroduces
+  // authenticated states or alternative affordances. This keeps the suite focused on currently
+  // rendered behaviors.
 });

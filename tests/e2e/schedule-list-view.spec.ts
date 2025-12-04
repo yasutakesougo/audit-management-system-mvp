@@ -1,12 +1,14 @@
 import { expect, test } from '@playwright/test';
-import { mockEnsureScheduleList } from './_helpers/mockEnsureScheduleList';
-import { setupSharePointStubs } from './_helpers/setupSharePointStubs';
+import { bootSchedule } from './_helpers/bootSchedule';
+import { getWeekScheduleItems, waitForWeekViewReady } from './utils/scheduleActions';
+import { gotoWeek } from './utils/scheduleNav';
 import { runA11ySmoke } from './utils/a11y';
 import { hookConsole } from './utils/console';
 import { registerScheduleMocks, TIME_ZONE, type ScheduleItem } from './utils/spMock';
 import { clickEnabledFilterAction } from './utils/waiters';
 
 const TEST_NOW = '2025-10-08T03:00:00.000Z';
+const TEST_DATE = new Date(TEST_NOW);
 
 const buildScheduleFixtures = (count = 36) => {
   const startBase = new Date(TEST_NOW);
@@ -48,6 +50,18 @@ const buildScheduleFixtures = (count = 36) => {
 };
 
 const scheduleFixtures = buildScheduleFixtures();
+const orgMasterFixtures = [
+  {
+    Id: 501,
+    Title: '磯子区障害支援センター',
+    OrgCode: 'ORG-ISO',
+    OrgType: 'Center',
+    Audience: 'Staff,User',
+    SortOrder: 1,
+    IsActive: true,
+    Notes: 'E2E demo org',
+  },
+];
 
 const materializeScheduleItems = (items: ReturnType<typeof buildScheduleFixtures>): ScheduleItem[] =>
   items.map((item) => {
@@ -81,13 +95,16 @@ test.describe('schedule list view', () => {
         static UTC = RealDate.UTC;
       }
       Object.setPrototypeOf(MockDate, RealDate);
-    const globalWithDate = window as typeof window & { Date: DateConstructor };
-    globalWithDate.Date = MockDate as unknown as DateConstructor;
+      const globalWithDate = window as typeof window & { Date: DateConstructor };
+      globalWithDate.Date = MockDate as unknown as DateConstructor;
 
       window.localStorage.setItem('skipLogin', '1');
       window.localStorage.setItem('demo', '0');
       window.localStorage.setItem('writeEnabled', '1');
       window.localStorage.setItem('feature:schedules', '1');
+      window.localStorage.setItem('feature:schedulesSp', '1');
+      window.localStorage.setItem('feature:schedulesWeekV2', '1');
+      window.localStorage.setItem('schedules:fixtures', '0');
       (window as typeof window & { __TEST_NOW__?: string }).__TEST_NOW__ = now;
     }, { now: TEST_NOW });
 
@@ -95,17 +112,7 @@ test.describe('schedule list view', () => {
       const globalWithEnv = window as typeof window & { __ENV__?: Record<string, string> };
       globalWithEnv.__ENV__ = {
         ...(globalWithEnv.__ENV__ ?? {}),
-        VITE_E2E_MSAL_MOCK: '1',
-        VITE_SKIP_LOGIN: '1',
-        VITE_DEMO_MODE: '0',
-        VITE_FEATURE_SCHEDULES: '1',
-        VITE_WRITE_ENABLED: '1',
         VITE_SCHEDULES_TZ: timezone,
-        MODE: 'production',
-        DEV: '0',
-        VITE_SP_RESOURCE: 'https://contoso.sharepoint.com',
-        VITE_SP_SITE_RELATIVE: '/sites/Audit',
-        VITE_SP_SCOPE_DEFAULT: 'https://contoso.sharepoint.com/AllSites.Read',
       };
     }, { timezone: TIME_ZONE });
 
@@ -120,20 +127,50 @@ test.describe('schedule list view', () => {
       route.fulfill({ status: 200, body: JSON.stringify({ value: [] }), headers: { 'content-type': 'application/json' } }),
     );
 
-    await mockEnsureScheduleList(page);
-
-    await setupSharePointStubs(page, {
-      currentUser: { status: 200, body: { Id: 5678 } },
-      fallback: { status: 404, body: 'not mocked' },
-      lists: [
-        { name: 'Schedules', aliases: ['ScheduleEvents'], items: scheduleFixtures },
-        { name: 'SupportRecord_Daily', items: [] },
-        { name: 'StaffDirectory', items: [] },
-      ],
+    await bootSchedule(page, {
+      env: {
+        VITE_E2E_MSAL_MOCK: '1',
+        VITE_SKIP_LOGIN: '1',
+        VITE_DEMO_MODE: '0',
+        VITE_FEATURE_SCHEDULES: '1',
+        VITE_FEATURE_SCHEDULES_WEEK_V2: '1',
+        VITE_FEATURE_SCHEDULES_SP: '1',
+        VITE_FEATURE_SCHEDULES_GRAPH: '0',
+        VITE_FORCE_SHAREPOINT: '1',
+        VITE_SKIP_SHAREPOINT: '0',
+        VITE_SCHEDULE_FIXTURES: '0',
+        VITE_SCHEDULES_FIXTURES: '0',
+        VITE_WRITE_ENABLED: '1',
+        VITE_SCHEDULES_TZ: TIME_ZONE,
+        MODE: 'production',
+        DEV: '0',
+        VITE_SP_RESOURCE: 'https://contoso.sharepoint.com',
+        VITE_SP_SITE_RELATIVE: '/sites/Audit',
+        VITE_SP_SCOPE_DEFAULT: 'https://contoso.sharepoint.com/AllSites.Read',
+      },
+      storage: {
+        writeEnabled: '1',
+      },
+      scheduleItems: scheduleFixtures,
+      sharePoint: {
+        currentUser: { status: 200, body: { Id: 5678 } },
+        fallback: { status: 404, body: 'not mocked' },
+        lists: [
+          { name: 'Schedules', aliases: ['ScheduleEvents'], items: scheduleFixtures },
+          { name: 'SupportRecord_Daily', items: [] },
+          { name: 'StaffDirectory', items: [] },
+          { name: 'Org_Master', items: orgMasterFixtures },
+        ],
+      },
     });
 
-  await page.goto('/schedule', { waitUntil: 'load' });
-  await expect(page.getByTestId('schedule-page-root')).toBeVisible({ timeout: 15_000 });
+    await gotoWeek(page, TEST_DATE);
+    await waitForWeekViewReady(page);
+
+    const weekItems = await getWeekScheduleItems(page);
+    await expect(weekItems.first()).toBeVisible({ timeout: 15_000 });
+
+    await expect(page.getByTestId('schedule-page-root')).toBeVisible({ timeout: 15_000 });
     const listTab = page.getByRole('tab', { name: 'リスト', exact: true });
     await listTab.click();
 

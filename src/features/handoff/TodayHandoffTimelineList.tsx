@@ -27,6 +27,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import type { HandoffDayScope, HandoffRecord, HandoffTimeFilter } from './handoffTypes';
 import { getNextStatus, getSeverityColor, HANDOFF_STATUS_META } from './handoffTypes';
 import { useHandoffTimeline } from './useHandoffTimeline';
+import { tid, TESTIDS } from '@/testids';
 
 export type HandoffStats = {
   total: number;
@@ -73,11 +74,14 @@ const HandoffItem: React.FC<HandoffItemProps> = ({ item, onStatusChange }) => {
     : item.message.substring(0, 100) + '...';
 
   return (
-    <Card variant="outlined" sx={{
+    <Card variant="outlined"
+      sx={{
       borderLeft: item.severity === '重要' ? '4px solid' : '2px solid',
       borderLeftColor: item.severity === '重要' ? 'error.main' :
                       item.severity === '要注意' ? 'warning.main' : 'grey.300'
-    }}>
+      }}
+      {...tid(TESTIDS['agenda-timeline-item'])}
+    >
       <CardContent sx={{ pb: 1 }}>
         <Stack spacing={1}>
           {/* ヘッダー行：時刻・利用者・ラベル群 */}
@@ -296,7 +300,7 @@ export const TodayHandoffTimelineList: React.FC<TodayHandoffTimelineListProps> =
       </Box>
 
       {/* 申し送り一覧 */}
-      <Stack spacing={1.5}>
+      <Stack spacing={1.5} {...tid(TESTIDS['agenda-timeline-list'])}>
         {safeHandoffs.map(item => (
           <HandoffItem key={item.id} item={item} onStatusChange={updateHandoffStatus} />
         ))}

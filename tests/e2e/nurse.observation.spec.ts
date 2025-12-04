@@ -1,10 +1,15 @@
 import { TESTIDS } from '@/testids';
 import { expect, test } from '@playwright/test';
-import { setupNurseFlags } from './_helpers/setupNurse.flags';
+import { bootNursePage } from './_helpers/bootNursePage';
+
+test.skip(
+  true,
+  'Legacy nurse observation workspace is not wired in the current BP MVP; re-enable after v2 UI lands.',
+);
 
 test.describe('@ci-smoke nurse seizure workspace', () => {
   test.beforeEach(async ({ page }) => {
-    await setupNurseFlags(page);
+    await bootNursePage(page, { seed: { nurseDashboard: true } });
   });
 
   test('workspace shows seizure quick log controls', async ({ page }) => {

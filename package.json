@@ -7,8 +7,8 @@
     "lint:cookies": "scripts/check-cookies.sh",
     "lint:docs": "node scripts/lint-docs.cjs",
     "certs:mkcert": "mkdir -p .certs && mkcert -key-file ./.certs/localhost-key.pem -cert-file ./.certs/localhost.pem localhost 127.0.0.1 ::1",
-    "dev:https": "vite --https --host 127.0.0.1 --port 3000",
-    "smoke:https": "lsof -tiTCP:3000 -sTCP:LISTEN | xargs -r kill -TERM && npm run certs:mkcert && npm run dev:https",
+    "dev:https": "vite --https --host 127.0.0.1 --port 5173",
+    "smoke:https": "lsof -tiTCP:5173 -sTCP:LISTEN | xargs -r kill -TERM && npm run certs:mkcert && npm run dev:https",
     "ports:clean": "lsof -tiTCP:3000,3001,5173 -sTCP:LISTEN | xargs -r kill -TERM",
     "dev:e2e": "VITE_MSAL_CLIENT_ID=dummy VITE_MSAL_TENANT_ID=dummy VITE_SP_RESOURCE=https://contoso.sharepoint.com VITE_SP_SITE_RELATIVE=/sites/Audit vite --port=5173 --strictPort",
     "build": "vite build",
@@ -67,8 +67,8 @@
     "release": ".github/scripts/release.sh"
   },
   "dependencies": {
-    "@azure/msal-browser": "2.39.0",
-    "@azure/msal-react": "^1.4.4",
+    "@azure/msal-browser": "^2.39.0",
+    "@azure/msal-react": "^1.5.13",
     "@emotion/react": "^11.14.0",
     "@emotion/styled": "^11.14.1",
     "@fullcalendar/interaction": "^6.1.19",
@@ -76,6 +76,7 @@
     "@fullcalendar/resource-timeline": "^6.1.19",
     "@mui/icons-material": "^7.3.2",
     "@mui/material": "^7.3.2",
+    "@pnp/sp": "^4.17.0",
     "date-fns": "^4.1.0",
     "date-fns-tz": "^3.2.0",
     "dayjs": "^1.11.19",
@@ -85,6 +86,7 @@
     "react-hot-toast": "^2.6.0",
     "react-markdown": "^9.0.1",
     "react-router-dom": "^6.21.1",
+    "recharts": "^3.4.1",
     "remark-gfm": "^4.0.0",
     "web-vitals": "^4.2.0",
     "zod": "^4.1.12"

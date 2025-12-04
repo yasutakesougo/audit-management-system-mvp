@@ -285,7 +285,7 @@ export const isSchedulesWeekV2Enabled = (envOverride?: EnvRecord): boolean => {
     }
   }
 
-  return true;
+  return false;
 };
 
 export const isComplianceFormEnabled = (envOverride?: EnvRecord): boolean => {
@@ -352,6 +352,16 @@ export const isE2eMsalMockEnabled = (envOverride?: EnvRecord): boolean =>
 
 export const allowWriteFallback = (envOverride?: EnvRecord): boolean =>
   readBool('VITE_ALLOW_WRITE_FALLBACK', false, envOverride);
+
+export type ScheduleSaveMode = 'mock' | 'real';
+
+export const getScheduleSaveMode = (envOverride?: EnvRecord): ScheduleSaveMode => {
+  const raw = readEnv('VITE_SCHEDULES_SAVE_MODE', 'mock', envOverride).trim().toLowerCase();
+  return raw === 'real' ? 'real' : 'mock';
+};
+
+export const isScheduleSaveMocked = (envOverride?: EnvRecord): boolean =>
+  getScheduleSaveMode(envOverride) === 'mock';
 
 // E2E/Demo用フラグヘルパー
 export const getFlag = (name: string, envOverride?: EnvRecord): boolean => {

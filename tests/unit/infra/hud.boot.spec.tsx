@@ -10,8 +10,8 @@ describe('HUD bootstrap', () => {
     render(<App />);
 
     const statuses = await screen.findAllByRole('status');
-    const hudStatus = statuses.find((node) => node.textContent?.includes('SP Connected'));
+    const hudStatus = statuses.find((node) => node.textContent?.includes('SP Sign-In'));
     expect(hudStatus).toBeDefined();
-    expect(hudStatus).toHaveTextContent(/SP Connected/i);
+    expect(hudStatus).toHaveTextContent(/SP Sign-In/i);
   });
 });

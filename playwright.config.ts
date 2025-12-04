@@ -15,6 +15,7 @@ const webServerEnv = {
   VITE_DEMO: '1',
   VITE_SKIP_SHAREPOINT: '1',
   VITE_FEATURE_SCHEDULES: '1',
+  VITE_FEATURE_SCHEDULES_WEEK_V2: '1',
   VITE_E2E_MSAL_MOCK: '1',
   VITE_SKIP_LOGIN: '1',
   VITE_SP_RESOURCE: process.env.VITE_SP_RESOURCE || 'https://example.sharepoint.com',
@@ -37,7 +38,7 @@ export default defineConfig({
     { name: 'chromium', use: { ...devices['Desktop Chrome'] } },
   ],
   webServer: {
-    command: 'cp .env.e2e .env.local && npm run dev -- --port 3000 --clearScreen=false',
+    command: `cp .env.e2e .env.local && npm run dev -- --port ${DEV_PORT} --clearScreen=false`,
     url: `http://localhost:${DEV_PORT}`,
     reuseExistingServer: false, // E2E専用サーバーを必ず起動
     timeout: 120_000,

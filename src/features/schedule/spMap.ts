@@ -18,7 +18,10 @@ import {
     SCHEDULE_FIELD_STAFF_IDS,
     SCHEDULE_FIELD_STAFF_NAMES,
     SCHEDULE_FIELD_SUB_TYPE,
+    SCHEDULE_FIELD_TARGET_USER,
+    SCHEDULE_FIELD_TARGET_USER_ID,
 } from '@/sharepoint/fields';
+import { SERVICE_TYPE_OPTIONS } from '@/sharepoint/serviceTypes';
 import type { SpScheduleItem } from '@/types';
 import { isScheduleStaffTextColumnsEnabled } from './scheduleFeatures';
 import { normalizeStatus, toSharePointStatus } from './statusDictionary';
@@ -34,14 +37,15 @@ import {
     ServiceType,
 } from './types';
 import { validateUserCare } from './validation';
+import { inferOrgCodeFromSpItem } from './orgCodeMapping';
 
 const SCHEDULE_TIME_ZONE = 'Asia/Tokyo';
 
 const CATEGORY_VALUES: readonly Category[] = ['Org', 'User', 'Staff'];
 const PERSON_TYPE_VALUES: readonly PersonType[] = ['Internal', 'External'];
-const SERVICE_TYPE_VALUES: readonly ServiceType[] = ['一時ケア', 'ショートステイ'];
-const ORG_SUBTYPE_VALUES: readonly ScheduleOrg['subType'][] = ['会議', '研修', '監査', '余暇イベント', '外部団体利用'];
-const STAFF_SUBTYPE_VALUES: readonly ScheduleStaff['subType'][] = ['会議', '研修', '来客対応', '年休'];
+const SERVICE_TYPE_VALUES: readonly ServiceType[] = SERVICE_TYPE_OPTIONS;
+const ORG_SUBTYPE_VALUES: readonly ScheduleOrg['subType'][] = ['会議', '研修', '監査', '余暇イベント', '外部団体利用', 'その他'];
+const STAFF_SUBTYPE_VALUES: readonly ScheduleStaff['subType'][] = ['会議', '研修', '来客対応', '年休', 'その他'];
 const DAY_PART_VALUES: readonly DayPart[] = ['Full', 'AM', 'PM'];
 
 const toUtcIso = (value?: string | null): string | undefined => {
@@ -89,9 +93,9 @@ const normalizePersonType = (value: unknown): PersonType => {
 };
 
 const normalizeServiceType = (value: unknown): ServiceType => {
-  if (typeof value !== 'string') return '一時ケア';
+  if (typeof value !== 'string') return 'normal';
   const candidate = value.trim();
-  return (SERVICE_TYPE_VALUES as readonly string[]).includes(candidate) ? (candidate as ServiceType) : '一時ケア';
+  return (SERVICE_TYPE_VALUES as readonly string[]).includes(candidate) ? (candidate as ServiceType) : 'normal';
 };
 
 const normalizeOrgSubType = (value: unknown): ScheduleOrg['subType'] => {
@@ -227,11 +231,27 @@ const deriveStaffLookupValue = (ids: readonly string[]): number | null => {
   return null;
 };
 
+const deriveUserLookupValue = (value?: string): number | null => {
+  if (typeof value === 'number' && Number.isFinite(value)) {
+    return Math.trunc(value);
+  }
+  if (typeof value !== 'string') {
+    return null;
+  }
+  const trimmed = value.trim();
+  if (!trimmed.length) {
+    return null;
+  }
+  const numeric = Number(trimmed);
+  return Number.isFinite(numeric) ? Math.trunc(numeric) : null;
+};
+
 const buildStaffAssignmentPayload = (schedule: { staffIds: readonly string[]; staffNames?: readonly string[] | undefined }): Record<string, unknown> => {
   const includeTextColumns = isScheduleStaffTextColumnsEnabled();
   const lookupValue = deriveStaffLookupValue(schedule.staffIds) ?? null;
   const payload: Record<string, unknown> = {
     StaffIdId: lookupValue,
+    AssignedStaff: lookupValue ? String(lookupValue) : null,
   };
   if (includeTextColumns) {
     payload[SCHEDULE_FIELD_STAFF_IDS] = stringifyStringList(schedule.staffIds);
@@ -249,7 +269,25 @@ const toLookupArray = (input: unknown): unknown[] => {
 };
 
 const parseLookupIdList = (value: unknown): string[] => {
-  const entries = toLookupArray(value);
+  const entriesFromLookup = toLookupArray(value);
+  const entries = entriesFromLookup.length
+    ? entriesFromLookup
+    : (() => {
+        if (typeof value === 'number' && Number.isFinite(value)) {
+          return [value];
+        }
+        if (typeof value === 'string') {
+          const trimmed = value.trim();
+          return trimmed.length ? [trimmed] : [];
+        }
+        if (value && typeof value === 'object') {
+          const candidate = (value as { Id?: number | string }).Id;
+          if (candidate != null) {
+            return [candidate];
+          }
+        }
+        return [];
+      })();
   const collected: string[] = [];
 
   for (const entry of entries) {
@@ -316,9 +354,9 @@ const extractLookupTitles = (value: unknown): string[] => {
 };
 
 const buildBaseSchedule = (item: SpScheduleItem): BaseSchedule => {
-  // SharePointリストの構造に応じて柔軟にフィールドを処理
-  const eventDate = item.EventDate || item.StartDateTime || item.Created;
-  const endDate = item.EndDate || item.EndDateTime || item.EventDate || item.StartDateTime || item.Created;
+  // SharePointリストの構造に応じて柔軟にフィールドを処理（Schedules/ ScheduleEvents 両対応）
+  const eventDate = item.Start || item.EventDate || item.StartDateTime || item.Created;
+  const endDate = item.End || item.EndDate || item.EndDateTime || item.EventDate || item.StartDateTime || item.Created;
 
   const startUtcRaw = toUtcIso(eventDate);
   const endUtcRaw = toUtcIso(endDate) ?? startUtcRaw;
@@ -327,8 +365,8 @@ const buildBaseSchedule = (item: SpScheduleItem): BaseSchedule => {
 
   const title = toNullableString(item.Title) ?? '';
   const status = normalizeStatus(item.Status);
-  const notes = toNullableString(item.Notes);
-  const location = toNullableString(item.Location);
+  const notes = toNullableString(item.Notes ?? item.Note);
+  const location = toNullableString(item.LocationName ?? item.Location);
   const recurrenceRule = toNullableString(item.RRule ?? item.RecurrenceData ?? null);
 
   return {
@@ -343,15 +381,25 @@ const buildBaseSchedule = (item: SpScheduleItem): BaseSchedule => {
     location,
     notes,
     recurrenceRule: recurrenceRule ?? undefined,
-    dayKey: toNullableString(item.cr014_dayKey) ?? computeDayKey(startUtcRaw ?? undefined),
+    dayKey: toNullableString(item.cr014_dayKey ?? item.Date) ?? computeDayKey(startUtcRaw ?? undefined),
     fiscalYear: toNullableString(item.cr014_fiscalYear) ?? computeFiscalYear(startUtcRaw ?? undefined),
+    orgCode: inferOrgCodeFromSpItem(item),
   } satisfies BaseSchedule;
 };
 
 const hydrateUserCare = (item: SpScheduleItem, base: BaseSchedule): ScheduleUserCare => {
   const personType = normalizePersonType(item.cr014_personType);
   const rawStaffIds = parseStringList(item.cr014_staffIds);
-  const staffIds = rawStaffIds.length ? rawStaffIds : (() => {
+  const assignedStaffIds = parseStringList(item.AssignedStaff);
+  const assignedStaffLookupIds = parseLookupIdList(item.AssignedStaffId);
+  const targetUserLookupRaw = (item as Record<string, unknown>)[SCHEDULE_FIELD_TARGET_USER_ID];
+  const targetUserLookupIds = parseLookupIdList(targetUserLookupRaw);
+  const targetUserEntries = (item as Record<string, unknown>)[SCHEDULE_FIELD_TARGET_USER];
+  const targetUserNames = extractLookupTitles(targetUserEntries);
+  const staffIds = (() => {
+    if (rawStaffIds.length) return rawStaffIds;
+    if (assignedStaffLookupIds.length) return assignedStaffLookupIds;
+    if (assignedStaffIds.length) return assignedStaffIds;
     const fallback = toNullableString(item.StaffIdId);
     return fallback ? [fallback] : [];
   })();
@@ -359,10 +407,11 @@ const hydrateUserCare = (item: SpScheduleItem, base: BaseSchedule): ScheduleUser
   const candidate: Partial<ScheduleUserCare> = {
     ...base,
     category: 'User',
-    serviceType: normalizeServiceType(item.cr014_serviceType),
+    serviceType: normalizeServiceType(item.ServiceType ?? item.cr014_serviceType),
     personType,
     personId: toNullableString(item.cr014_personId) ?? toNullableString(item.UserIdId),
-    personName: toNullableString(item.cr014_personName) ?? toNullableString(item.Title),
+    personName: toNullableString(item.cr014_personName) ?? (targetUserNames[0] ?? undefined) ?? toNullableString(item.Title),
+    userLookupId: targetUserLookupIds[0],
     externalPersonName: toNullableString(item.cr014_externalPersonName) ?? undefined,
     externalPersonOrg: toNullableString(item.cr014_externalPersonOrg) ?? undefined,
     externalPersonContact: toNullableString(item.cr014_externalPersonContact) ?? undefined,
@@ -395,12 +444,16 @@ const hydrateOrgSchedule = (item: SpScheduleItem, base: BaseSchedule): ScheduleO
 const hydrateStaffSchedule = (item: SpScheduleItem, base: BaseSchedule): ScheduleStaff => {
   const staffIdsFromField = parseStringList(item.cr014_staffIds);
   const staffIdsFromLookup = parseLookupIdList(item.StaffLookupId);
+  const staffIdsFromAssigned = parseStringList(item.AssignedStaff);
+  const staffIdsFromAssignedLookup = parseLookupIdList(item.AssignedStaffId);
   const staffIdFallback = toNullableString(item.StaffIdId);
   const subType = normalizeStaffSubType(item.SubType);
 
   const staffIds = (() => {
     if (staffIdsFromField.length) return staffIdsFromField;
     if (staffIdsFromLookup.length) return staffIdsFromLookup;
+    if (staffIdsFromAssignedLookup.length) return staffIdsFromAssignedLookup;
+    if (staffIdsFromAssigned.length) return staffIdsFromAssigned;
     return staffIdFallback ? [staffIdFallback] : [];
   })();
 
@@ -461,17 +514,21 @@ const normalizeRecurrenceField = (schedule: Schedule): Record<string, unknown> =
 export const toSpScheduleFields = (schedule: Schedule): Record<string, unknown> => {
   const base: Record<string, unknown> = {
     Title: schedule.title,
-    // 基本的にはEventDate/EndDateを使用するが、存在しない場合は代替フィールドへ
+    // Schedules (Start/End) と ScheduleEvents (EventDate/EndDate) の両方を埋める
+    Start: schedule.start,
+    End: schedule.end,
     EventDate: schedule.start,
     EndDate: schedule.end,
     // オプショナルフィールド（存在しない場合はnull/未定義）
     AllDay: Boolean(schedule.allDay),
+    LocationName: schedule.location ?? null,
     Location: schedule.location ?? null,
     Status: toSharePointStatus(schedule.status),
     Notes: schedule.notes ?? null,
     [SCHEDULE_FIELD_CATEGORY]: schedule.category,
     [SCHEDULE_FIELD_DAY_KEY]: schedule.dayKey ?? computeDayKey(schedule.start) ?? null,
     [SCHEDULE_FIELD_FISCAL_YEAR]: schedule.fiscalYear ?? computeFiscalYear(schedule.start) ?? null,
+    [SCHEDULE_FIELD_TARGET_USER_ID]: null,
   };
 
   const recurrence = normalizeRecurrenceField(schedule);
@@ -481,13 +538,15 @@ export const toSpScheduleFields = (schedule: Schedule): Record<string, unknown> 
     return {
       ...base,
       [SCHEDULE_FIELD_SERVICE_TYPE]: schedule.serviceType,
+      cr014_serviceType: schedule.serviceType,
       [SCHEDULE_FIELD_PERSON_TYPE]: schedule.personType,
       [SCHEDULE_FIELD_PERSON_ID]: schedule.personType === 'Internal' ? schedule.personId ?? '' : null,
       [SCHEDULE_FIELD_PERSON_NAME]: schedule.personType === 'Internal' ? schedule.personName ?? '' : null,
+      [SCHEDULE_FIELD_TARGET_USER_ID]: schedule.personType === 'Internal' ? deriveUserLookupValue(schedule.userLookupId) : null,
       [SCHEDULE_FIELD_EXTERNAL_NAME]: schedule.personType === 'External' ? schedule.externalPersonName ?? '' : null,
       [SCHEDULE_FIELD_EXTERNAL_ORG]: schedule.personType === 'External' ? schedule.externalPersonOrg ?? null : null,
       [SCHEDULE_FIELD_EXTERNAL_CONTACT]: schedule.personType === 'External' ? schedule.externalPersonContact ?? null : null,
-  ...buildStaffAssignmentPayload(schedule),
+      ...buildStaffAssignmentPayload(schedule),
       [SCHEDULE_FIELD_SUB_TYPE]: null,
       [SCHEDULE_FIELD_ORG_AUDIENCE]: null,
       [SCHEDULE_FIELD_ORG_RESOURCE_ID]: null,
@@ -501,6 +560,7 @@ export const toSpScheduleFields = (schedule: Schedule): Record<string, unknown> 
     return {
       ...base,
       [SCHEDULE_FIELD_SERVICE_TYPE]: null,
+      cr014_serviceType: null,
       [SCHEDULE_FIELD_PERSON_TYPE]: null,
       [SCHEDULE_FIELD_PERSON_ID]: null,
       [SCHEDULE_FIELD_PERSON_NAME]: null,
@@ -526,6 +586,7 @@ export const toSpScheduleFields = (schedule: Schedule): Record<string, unknown> 
     return {
       ...base,
       [SCHEDULE_FIELD_SERVICE_TYPE]: null,
+      cr014_serviceType: null,
       [SCHEDULE_FIELD_PERSON_TYPE]: null,
       [SCHEDULE_FIELD_PERSON_ID]: null,
       [SCHEDULE_FIELD_PERSON_NAME]: null,
@@ -533,7 +594,7 @@ export const toSpScheduleFields = (schedule: Schedule): Record<string, unknown> 
       [SCHEDULE_FIELD_EXTERNAL_ORG]: null,
       [SCHEDULE_FIELD_EXTERNAL_CONTACT]: null,
       [SCHEDULE_FIELD_SUB_TYPE]: schedule.subType,
-  ...buildStaffAssignmentPayload(schedule),
+      ...buildStaffAssignmentPayload(schedule),
       [SCHEDULE_FIELD_ORG_AUDIENCE]: null,
       [SCHEDULE_FIELD_ORG_RESOURCE_ID]: null,
       [SCHEDULE_FIELD_ORG_EXTERNAL_NAME]: null,

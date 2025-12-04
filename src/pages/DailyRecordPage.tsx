@@ -22,7 +22,7 @@ import { PersonDaily } from '../domain/daily/types';
 import { DailyRecordForm } from '../features/daily/DailyRecordForm';
 import { DailyRecordList } from '../features/daily/DailyRecordList';
 import { useUsersDemo } from '../features/users/usersStoreDemo';
-import { saveDailyRecord, validateDailyRecord } from '../lib/dailyRecordLogic';
+import { saveDailyRecord, validateDailyRecord } from '@/features/daily/dailyRecordLogic';
 import { useSchedules } from '../stores/useSchedules';
 import { calculateAttendanceRate, getExpectedAttendeeCount } from '../utils/attendanceUtils';
 

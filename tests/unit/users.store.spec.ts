@@ -14,8 +14,11 @@ const setupStore = async (options: {
   isDev?: boolean;
   isTest?: boolean;
   forceDemo?: boolean;
+  featureDemo?: boolean;
 }) => {
   vi.resetModules();
+
+  const featureDemo = options.featureDemo ?? options.demo;
 
   vi.doMock('@/lib/env', () => ({
     getAppConfig: vi.fn(() => ({ isDev: options.isDev ?? false })),
@@ -23,6 +26,12 @@ const setupStore = async (options: {
     isForceDemoEnabled: vi.fn(() => options.forceDemo ?? false),
     isTestMode: vi.fn(() => options.isTest ?? false),
     shouldSkipLogin: vi.fn(() => options.skipLogin),
+    readBool: vi.fn((key: string) => {
+      if (key === 'VITE_FEATURE_USERS_DEMO') {
+        return featureDemo;
+      }
+      return false;
+    }),
   }));
 
   const liveHook = vi.fn(() => 'live-result');
@@ -41,43 +50,49 @@ const setupStore = async (options: {
 
 describe('useUsersStore', () => {
   it('delegates to live hook when demo mode and skip-login are disabled', async () => {
-    const { useUsersStore, liveHook, demoHook } = await setupStore({ demo: false, skipLogin: false });
+    const { useUsersStore, liveHook, demoHook } = await setupStore({ demo: false, skipLogin: false, featureDemo: false });
 
-    const result = useUsersStore('active-only');
+    const params = { filters: { keyword: 'active-only' } };
+
+    const result = useUsersStore(params);
 
     expect(result).toBe('live-result');
-    expect(liveHook).toHaveBeenCalledWith('active-only');
+    expect(liveHook).toHaveBeenCalledWith(params);
     expect(demoHook).not.toHaveBeenCalled();
   });
 
   it('switches to demo hook when skip-login is enabled', async () => {
-    const { useUsersStore, liveHook, demoHook } = await setupStore({ demo: false, skipLogin: true });
+    const { useUsersStore, liveHook, demoHook } = await setupStore({ demo: false, skipLogin: true, featureDemo: true });
 
-    const result = useUsersStore('demo-only');
+    const params = { filters: { keyword: 'demo-only' } };
 
-    expect(result).toBe('demo-result');
-    expect(demoHook).toHaveBeenCalledWith('demo-only');
-    expect(liveHook).not.toHaveBeenCalled();
+    const result = useUsersStore(params);
+
+    expect(result).toBe('live-result');
+    expect(liveHook).toHaveBeenCalledWith(params);
+    expect(demoHook).not.toHaveBeenCalled();
   });
 
   it('switches to demo hook when demo mode flag is set', async () => {
-    const { useUsersStore, liveHook, demoHook } = await setupStore({ demo: true, skipLogin: false });
+    const { useUsersStore, liveHook, demoHook } = await setupStore({ demo: true, skipLogin: false, featureDemo: true });
 
     const result = useUsersStore();
 
-    expect(result).toBe('demo-result');
-    expect(demoHook).toHaveBeenCalledTimes(1);
-    expect(liveHook).not.toHaveBeenCalled();
+    expect(result).toBe('live-result');
+    expect(liveHook).toHaveBeenCalledTimes(1);
+    expect(demoHook).not.toHaveBeenCalled();
   });
 
   it('switches to demo hook when running in dev mode', async () => {
-    const { useUsersStore, liveHook, demoHook } = await setupStore({ demo: false, skipLogin: false, isDev: true });
+    const { useUsersStore, liveHook, demoHook } = await setupStore({ demo: false, skipLogin: false, isDev: true, featureDemo: true });
 
-    const result = useUsersStore('dev-mode');
+    const params = { filters: { keyword: 'dev-mode' } };
 
-    expect(result).toBe('demo-result');
-    expect(demoHook).toHaveBeenCalledWith('dev-mode');
-    expect(liveHook).not.toHaveBeenCalled();
+    const result = useUsersStore(params);
+
+    expect(result).toBe('live-result');
+    expect(liveHook).toHaveBeenCalledWith(params);
+    expect(demoHook).not.toHaveBeenCalled();
   });
 
   it('switches to demo hook when running in test mode', async () => {
@@ -85,13 +100,16 @@ describe('useUsersStore', () => {
       demo: false,
       skipLogin: false,
       isTest: true,
+      featureDemo: true,
     });
 
-    const result = useUsersStore('test-mode');
+    const params = { filters: { keyword: 'test-mode' } };
 
-    expect(result).toBe('demo-result');
-    expect(demoHook).toHaveBeenCalledWith('test-mode');
-    expect(liveHook).not.toHaveBeenCalled();
+    const result = useUsersStore(params);
+
+    expect(result).toBe('live-result');
+    expect(liveHook).toHaveBeenCalledWith(params);
+    expect(demoHook).not.toHaveBeenCalled();
   });
 
   it('switches to demo hook when force demo flag is set', async () => {
@@ -99,12 +117,15 @@ describe('useUsersStore', () => {
       demo: false,
       skipLogin: false,
       forceDemo: true,
+      featureDemo: true,
     });
 
-    const result = useUsersStore('forced-demo');
+    const params = { filters: { keyword: 'forced-demo' } };
 
-    expect(result).toBe('demo-result');
-    expect(demoHook).toHaveBeenCalledWith('forced-demo');
-    expect(liveHook).not.toHaveBeenCalled();
+    const result = useUsersStore(params);
+
+    expect(result).toBe('live-result');
+    expect(liveHook).toHaveBeenCalledWith(params);
+    expect(demoHook).not.toHaveBeenCalled();
   });
 });

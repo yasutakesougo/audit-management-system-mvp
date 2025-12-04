@@ -5,7 +5,16 @@ const envMock = vi.hoisted(() => ({
   isDemoModeEnabled: vi.fn(),
 }));
 
-vi.mock('@/lib/env', () => envMock);
+vi.mock('@/lib/env', async () => {
+  const actual = await vi.importActual<typeof import('@/lib/env')>('@/lib/env');
+  return {
+    ...actual,
+    allowWriteFallback: (...args: Parameters<typeof actual.allowWriteFallback>) =>
+      envMock.allowWriteFallback(...args),
+    isDemoModeEnabled: (...args: Parameters<typeof actual.isDemoModeEnabled>) =>
+      envMock.isDemoModeEnabled(...args),
+  };
+});
 
 const { allowWriteFallback, isDemoModeEnabled } = envMock;
 

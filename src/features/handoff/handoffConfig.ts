@@ -3,19 +3,21 @@
  * Phase 8A: SharePoint API実装
  */
 
+import { getAppConfig, readBool, readEnv, readOptionalEnv } from '@/lib/env';
+
 /**
  * 申し送りタイムラインの設定
  */
 export const handoffConfig = {
   // SharePoint リスト設定
-  listTitle: import.meta.env.VITE_SP_HANDOFF_LIST_TITLE || 'Handoff_Timeline',
-  listId: import.meta.env.VITE_SP_HANDOFF_LIST_ID,
+  listTitle: readEnv('VITE_SP_HANDOFF_LIST_TITLE', 'Handoff_Timeline'),
+  listId: readOptionalEnv('VITE_SP_HANDOFF_LIST_ID'),
 
   // ストレージ戦略切り替え
-  storage: (import.meta.env.VITE_HANDOFF_STORAGE || 'local') as 'local' | 'sharepoint',
+  storage: (readEnv('VITE_HANDOFF_STORAGE', 'local') as 'local' | 'sharepoint'),
 
   // デバッグ設定
-  debug: import.meta.env.DEV || import.meta.env.VITE_HANDOFF_DEBUG === 'true',
+  debug: getAppConfig().isDev || readBool('VITE_HANDOFF_DEBUG', false),
 } as const;
 
 /**

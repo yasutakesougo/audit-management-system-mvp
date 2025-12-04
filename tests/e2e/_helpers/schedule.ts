@@ -1,3 +1,4 @@
+import { TESTIDS } from '@/testids';
 import type { Locator, Page } from '@playwright/test';
 import { expect } from '@playwright/test';
 
@@ -17,6 +18,25 @@ export async function expectUserCardStatusEnum(page: Page, containsText: string,
   );
 
   return card;
+}
+
+export function getWeekDayButton(page: Page, iso: string): Locator {
+  return page.getByTestId(`${TESTIDS.SCHEDULES_WEEK_DAY_PREFIX}-${iso}`);
+}
+
+export async function getActiveDateParam(page: Page): Promise<string> {
+  /**
+   * Contract: returns ?date=YYYY-MM-DD (ISO date, no time).
+   */
+  const url = new URL(page.url());
+  const value = url.searchParams.get('date') ?? '';
+  if (!value) {
+    throw new Error('Expected ?date param to be present');
+  }
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) {
+    throw new Error(`Unexpected date param format: "${value}"`);
+  }
+  return value;
 }
 
 /**

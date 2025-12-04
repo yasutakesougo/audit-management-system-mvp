@@ -1,8 +1,9 @@
+import { useEffect, useMemo } from 'react';
+import { isScheduleFixturesMode } from '@/features/schedule/api/schedulesClient';
 import { useToast } from '@/hooks/useToast';
 import { readBool, readEnv } from '@/lib/env';
 import type { SpFieldDef, UseSP } from '@/lib/spClient';
 import { syncServiceTypeChoices } from './ensureScheduleList.syncServiceTypes';
-import { useEffect, useMemo } from 'react';
 
 type ScheduleSpClient = Pick<UseSP, 'spFetch' | 'ensureListExists'>;
 
@@ -143,6 +144,10 @@ const buildScheduleFieldDefs = (userListId: string, staffListId: string): SpFiel
 ];
 
 const ensureScheduleListInternal = async (sp: ScheduleSpClient): Promise<void> => {
+  if (isScheduleFixturesMode()) {
+    console.debug('[Schedule] fixtures mode: skip ensureScheduleList SharePoint calls');
+    return;
+  }
   if (typeof window !== 'undefined') {
     try {
       const globalScope = window as Window & { __E2E_SCHEDULE_ENSURE__?: number };

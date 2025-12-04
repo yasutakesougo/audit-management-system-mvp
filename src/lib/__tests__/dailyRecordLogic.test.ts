@@ -1,17 +1,17 @@
 import { describe, expect, it } from 'vitest';
 import { PersonDaily } from '../../domain/daily/types';
 import {
-    addDailyRecord,
-    calculateDailyRecordStats,
-    deleteDailyRecord,
-    filterRecordsByDate,
-    filterRecordsByStatus,
-    generateNewRecordId,
-    saveDailyRecord,
-    searchRecordsByName,
-    updateDailyRecord,
-    validateDailyRecord
-} from '../dailyRecordLogic';
+  addDailyRecord,
+  calculateDailyRecordStats,
+  deleteDailyRecord,
+  filterRecordsByDate,
+  filterRecordsByStatus,
+  generateNewRecordId,
+  saveDailyRecord,
+  searchRecordsByName,
+  updateDailyRecord,
+  validateDailyRecord
+} from '@/features/daily/dailyRecordLogic';
 
 // テスト用のモックデータ
 const createMockRecord = (overrides: Partial<PersonDaily> = {}): PersonDaily => ({
@@ -221,7 +221,7 @@ describe('dailyRecordLogic', () => {
       expect(result.errors).toContain('利用者名は必須です');
     });
 
-    it('利用者IDが空の場合、エラーを返す', () => {
+    it('利用者の選択が空の場合、エラーを返す', () => {
       const invalidRecord = createRecordWithoutId({
         personId: ''
       });
@@ -229,7 +229,7 @@ describe('dailyRecordLogic', () => {
       const result = validateDailyRecord(invalidRecord);
 
       expect(result.isValid).toBe(false);
-      expect(result.errors).toContain('利用者IDは必須です');
+      expect(result.errors).toContain('利用者の選択は必須です');
     });
 
     it('日付が空の場合、エラーを返す', () => {
@@ -337,7 +337,7 @@ describe('dailyRecordLogic', () => {
 
       expect(result.isValid).toBe(false);
       expect(result.errors).toContain('利用者名は必須です');
-      expect(result.errors).toContain('利用者IDは必須です');
+      expect(result.errors).toContain('利用者の選択は必須です');
       expect(result.errors).toContain('日付は必須です');
     });
   });
