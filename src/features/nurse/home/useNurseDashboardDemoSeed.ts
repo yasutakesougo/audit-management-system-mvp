@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { getAppConfig } from '@/lib/env';
 
 export const NURSE_DASHBOARD_STORAGE_KEY = 'nurse.dashboard.dev.v1';
 
@@ -26,9 +27,10 @@ export type NurseDashboardFixture = {
  */
 export function useNurseDashboardDemoSeed() {
   const [fixture, setFixture] = useState<NurseDashboardFixture | null>(null);
+  const { isDev: isDevEnv } = getAppConfig();
 
   useEffect(() => {
-    if (import.meta.env.PROD) return;
+    if (!isDevEnv) return;
     if (typeof window === 'undefined') return;
 
     try {
@@ -38,7 +40,7 @@ export function useNurseDashboardDemoSeed() {
     } catch {
       // Ignore malformed fixture data; spec assertions will reveal issues.
     }
-  }, []);
+  }, [isDevEnv]);
 
   return fixture;
 }

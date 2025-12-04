@@ -3,11 +3,14 @@ import {
   SCHEDULE_FIELD_PERSON_NAME,
   SCHEDULE_FIELD_TARGET_USER_ID,
 } from '@/sharepoint/fields';
+import { readEnv } from '@/lib/env';
 
 // Centralized SharePoint schema constants for schedules.
 // Update these values (or the corresponding env vars) once the SP list is rebuilt.
-export const SCHEDULES_LIST_TITLE =
-  (import.meta.env.VITE_SP_LIST_SCHEDULES ?? 'Schedules').trim() || 'Schedules';
+export const SCHEDULES_LIST_TITLE = (() => {
+  const configured = readEnv('VITE_SP_LIST_SCHEDULES', 'Schedules').trim();
+  return configured || 'Schedules';
+})();
 
 export const SCHEDULES_FIELDS = {
   title: 'Title',

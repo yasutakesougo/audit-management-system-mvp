@@ -32,7 +32,7 @@ const ensureActiveAccount = (instance: IPublicClientApplication) => {
       const firstAccount = all[0];
       instance.setActiveAccount(firstAccount);
       account = firstAccount;
-      if (import.meta.env.DEV) {
+      if (authConfig.isDev) {
         const accountLabel = firstAccount.username ?? firstAccount.homeAccountId ?? '(unknown account)';
         console.info('[MSAL] Active account auto-set:', accountLabel);
       }

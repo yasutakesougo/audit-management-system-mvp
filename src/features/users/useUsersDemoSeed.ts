@@ -1,4 +1,5 @@
 import { useEffect } from 'react';
+import { getAppConfig } from '@/lib/env';
 import type { IUserMaster } from './types';
 import { seedDemoUsers } from './usersStoreDemo';
 import { seedInMemoryUsers } from './infra/InMemoryUserRepository';
@@ -24,9 +25,10 @@ const normalizeUsers = (payload: unknown): IUserMaster[] | null => {
 };
 
 let lastSeedSnapshot: string | null = null;
+const { isDev: isDevEnv } = getAppConfig();
 
 const seedUsersFromStorage = (): void => {
-  if (import.meta.env.PROD) return;
+  if (!isDevEnv) return;
   if (typeof window === 'undefined') return;
 
   let raw: string | null = null;

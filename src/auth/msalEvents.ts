@@ -1,5 +1,6 @@
 import type { EventMessage, EventType, IPublicClientApplication } from '@azure/msal-browser';
 import type { AccountInfo } from '@azure/msal-common';
+import { getAppConfig } from '@/lib/env';
 
 const ROLE_STORAGE_KEY = 'role';
 
@@ -44,7 +45,7 @@ export function wireMsalRoleInvalidation(instance: IPublicClientApplication, eve
     return (first as AccountInfo | undefined) ?? null;
   };
 
-  const isDevEnv = Boolean(import.meta.env?.DEV);
+  const { isDev: isDevEnv } = getAppConfig();
 
   const logAccounts = (reason: string, account?: AccountInfo | null): void => {
     if (!isDevEnv) {

@@ -1,4 +1,5 @@
 import type { PopupRequest } from '@azure/msal-browser';
+import { readEnv } from '@/lib/env';
 
 type BasicMsalConfiguration = {
   auth: {
@@ -12,8 +13,8 @@ type BasicMsalConfiguration = {
   };
 };
 
-const clientId = import.meta.env.VITE_AZURE_CLIENT_ID || 'YOUR_CLIENT_ID_PLACEHOLDER';
-const tenantId = import.meta.env.VITE_AZURE_TENANT_ID || 'common';
+const clientId = readEnv('VITE_AZURE_CLIENT_ID', 'YOUR_CLIENT_ID_PLACEHOLDER');
+const tenantId = readEnv('VITE_AZURE_TENANT_ID', 'common');
 
 export const msalConfig: BasicMsalConfiguration = {
   auth: {

@@ -1,7 +1,7 @@
 import { buildMsalScopes } from '@/auth/scopes';
 import type { PublicClientApplication } from '@azure/msal-browser';
 import type { AccountInfo } from '@azure/msal-common';
-import { getSharePointResource, isE2eMsalMockEnabled, readEnv, shouldSkipLogin } from './env';
+import { getAppConfig, getSharePointResource, isE2eMsalMockEnabled, readEnv, shouldSkipLogin } from './env';
 
 export const createE2EMsalAccount = (): AccountInfo => ({
   homeAccountId: 'e2e-home-account',
@@ -24,6 +24,8 @@ export const persistMsalToken = (token: string): void => {
 const globalCarrier = globalThis as typeof globalThis & {
   __MSAL_PUBLIC_CLIENT__?: PublicClientApplication;
 };
+
+const { isDev: isDevEnv } = getAppConfig();
 
 const getPca = (): PublicClientApplication => {
   if (typeof window === 'undefined') {
@@ -179,7 +181,7 @@ export const ensureMsalSignedIn = async (scopes?: string[]): Promise<AccountInfo
     return createE2EMsalAccount();
   }
   if (shouldSkipLogin()) {
-    if (import.meta.env.DEV) {
+    if (isDevEnv) {
       console.info('[msal] SkipLogin=1: ensureMsalSignedIn bypassed');
     }
     return createE2EMsalAccount();
@@ -228,7 +230,7 @@ export const acquireSpAccessToken = async (scopes?: string[]): Promise<string> =
   }
   if (shouldSkipLogin()) {
     const token = 'skip-login-placeholder-token';
-    if (import.meta.env.DEV) {
+    if (isDevEnv) {
       console.info('[msal] SkipLogin=1: acquireSpAccessToken bypassed');
     }
     persistMsalToken(token);

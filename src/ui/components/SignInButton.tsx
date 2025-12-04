@@ -1,6 +1,6 @@
 import { useMsalContext } from '@/auth/MsalProvider';
 import { SP_RESOURCE } from '@/auth/msalConfig';
-import { readEnv } from '@/lib/env';
+import { getAppConfig, readEnv } from '@/lib/env';
 import Button from '@mui/material/Button';
 import Tooltip from '@mui/material/Tooltip';
 import React, { useEffect, useMemo } from 'react';
@@ -8,6 +8,8 @@ import React, { useEffect, useMemo } from 'react';
 const defaultScopes = [`${SP_RESOURCE}/.default`];
 const preferredLoginFlow = readEnv('VITE_MSAL_LOGIN_FLOW', 'popup').trim().toLowerCase();
 const useRedirectLogin = preferredLoginFlow === 'redirect';
+
+const { isDev: isDevEnv } = getAppConfig();
 
 const SignInButton: React.FC = () => {
 	const { instance, accounts } = useMsalContext();
@@ -30,7 +32,7 @@ const SignInButton: React.FC = () => {
 				console.warn('[auth] login succeeded but no account returned.');
 				return;
 			}
-			if (import.meta.env.DEV) {
+			if (isDevEnv) {
 				const label = (active as { username?: string; homeAccountId?: string }).username ?? (active as { homeAccountId?: string }).homeAccountId;
 				console.info('[auth] signed in:', label ?? '(unknown account)');
 				console.info('[auth] accounts cache:', instance.getAllAccounts());
@@ -61,7 +63,7 @@ const SignInButton: React.FC = () => {
 			const [first] = accounts;
 			if (first) {
 				instance.setActiveAccount(first as never);
-				if (import.meta.env.DEV) {
+				if (isDevEnv) {
 					const label = (first as { username?: string; homeAccountId?: string }).username ?? (first as { homeAccountId?: string }).homeAccountId;
 					console.info('[auth] ensureActiveAccount effect -> setActiveAccount', label ?? '(unknown account)');
 				}

@@ -6,6 +6,7 @@ import { StaffPanel } from '@/features/staff';
 import { UsersPanel } from '@/features/users';
 import { RouteHydrationErrorBoundary } from '@/hydration/RouteHydrationListener';
 import lazyWithPreload from '@/utils/lazyWithPreload';
+import { getAppConfig } from '@/lib/env';
 import React from 'react';
 import { createBrowserRouter, Navigate, Outlet, type RouteObject } from 'react-router-dom';
 import AppShell from './AppShell';
@@ -47,7 +48,7 @@ const SupportActivityMasterPage = React.lazy(() => import('@/pages/SupportActivi
 const SupportStepMasterPage = React.lazy(() => import('@/pages/SupportStepMasterPage'));
 const IndividualSupportManagementPage = React.lazy(() => import('@/pages/IndividualSupportManagementPage'));
 const UserDetailPage = React.lazy(() => import('@/pages/UserDetailPage'));
-const devHarnessEnabled = import.meta.env.DEV || import.meta.env.MODE === 'test';
+const devHarnessEnabled = getAppConfig().isDev;
 const DevScheduleCreateDialogPage = devHarnessEnabled
   ? React.lazy(() => import('@/features/schedules/DevScheduleCreateDialogPage'))
   : null;

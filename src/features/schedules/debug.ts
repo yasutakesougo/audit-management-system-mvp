@@ -1,2 +1,3 @@
-export const SCHEDULES_DEBUG =
-  import.meta.env.DEV && import.meta.env.VITE_SCHEDULES_DEBUG === '1';
+import { getAppConfig, readBool } from '@/lib/env';
+
+export const SCHEDULES_DEBUG = getAppConfig().isDev && readBool('VITE_SCHEDULES_DEBUG', false);
