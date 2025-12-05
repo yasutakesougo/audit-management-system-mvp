@@ -10,6 +10,14 @@ type HookConsoleOptions = {
   ignore?: (message: ConsoleMessage) => boolean;
 };
 
+// Suppress intentional warnings produced by demo data so Playwright only reports unexpected console noise.
+const NOISY_MESSAGE_PATTERNS = [
+  /React Router Future Flag Warning/i,
+  /MUI: You have provided an out-of-range value/i,
+  /SharePoint のアクセストークン取得に失敗しました。/i,
+  /\[useOrgStore\] failed to load org options/i,
+];
+
 export type ConsoleGuard = {
   dispose: () => void;
   assertClean: () => Promise<void>;
@@ -22,6 +30,8 @@ export function hookConsole(page: Page, options: HookConsoleOptions = {}): Conso
 
   const handler = (message: ConsoleMessage) => {
     if (!LOUD_TYPES.has(message.type())) return;
+    const text = message.text();
+    if (text && NOISY_MESSAGE_PATTERNS.some((pattern) => pattern.test(text))) return;
     if (options.ignore?.(message)) return;
     const location = message.location();
     const locationText = location?.url

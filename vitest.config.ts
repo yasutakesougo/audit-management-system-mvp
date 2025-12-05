@@ -35,12 +35,17 @@ export default defineConfig({
     onConsoleLog(log, _type) {
       if (process.env.VERBOSE_TESTS === '1') return;
 
+      // Filter out known noisy logs so genuine warnings remain visible during CI runs.
       const suppressPatterns = [
         /(Schedule adapter .* fell back|falling back to demo)/i,
         /MSAL.* mock/i,
         /SharePoint.* mock/i,
         /prefetch/i,
-        /hydration/i
+        /hydration/i,
+        /React Router Future Flag Warning/i,
+        /MUI: You have provided an out-of-range value/i,
+        /SharePoint のアクセストークン取得に失敗しました。/,
+        /\[useOrgStore\] failed to load org options/i
       ];
 
       if (suppressPatterns.some((pattern) => pattern.test(log))) return false;
