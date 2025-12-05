@@ -1,12 +1,12 @@
 import ProtectedRoute from '@/app/ProtectedRoute';
 import { useFeatureFlags } from '@/config/featureFlags';
-import { LegacyDayRedirect, LegacyMonthRedirect } from '@/features/schedule/legacyRedirects';
 import { nurseRoutes } from '@/features/nurse/routes/NurseRoutes';
+import { LegacyDayRedirect, LegacyMonthRedirect } from '@/features/schedule/legacyRedirects';
 import { StaffPanel } from '@/features/staff';
 import { UsersPanel } from '@/features/users';
 import { RouteHydrationErrorBoundary } from '@/hydration/RouteHydrationListener';
-import lazyWithPreload from '@/utils/lazyWithPreload';
 import { getAppConfig } from '@/lib/env';
+import lazyWithPreload from '@/utils/lazyWithPreload';
 import React from 'react';
 import { createBrowserRouter, Navigate, Outlet, type RouteObject } from 'react-router-dom';
 import AppShell from './AppShell';
@@ -25,33 +25,42 @@ const DailyRecordMenuPage = React.lazy(() => import('@/pages/DailyRecordMenuPage
 const TableDailyRecordPage = React.lazy(() => import('@/features/daily/TableDailyRecordPage'));
 const TimeFlowSupportRecordPage = React.lazy(() => import('@/pages/TimeFlowSupportRecordPage'));
 const TimeBasedSupportRecordPage = React.lazy(() => import('@/pages/TimeBasedSupportRecordPage'));
+
 const HealthObservationPage = React.lazy(() => import('@/pages/HealthObservationPage'));
 const AnalysisDashboardPage = React.lazy(() => import('@/pages/AnalysisDashboardPage'));
 const AssessmentDashboardPage = React.lazy(() => import('@/pages/AssessmentDashboardPage'));
 const TokuseiSurveyResultsPage = React.lazy(() => import('@/pages/TokuseiSurveyResultsPage'));
 const IcebergAnalysisPage = React.lazy(() => import('@/pages/IcebergAnalysisPage'));
+
 const AttendanceRecordPage = React.lazy(() => import('@/pages/AttendanceRecordPage'));
+
 const StaffDashboardPage = React.lazy(() =>
   import('@/pages/DashboardPage').then((module) => ({
     default: module.StaffDashboardPage ?? module.default,
   })),
 );
+
 const AdminDashboardPage = React.lazy(() =>
   import('@/pages/DashboardPage').then((module) => ({
     default: module.AdminDashboardPage ?? module.default,
   })),
 );
+
 const MeetingGuidePage = React.lazy(() => import('@/pages/MeetingGuidePage'));
 const HandoffTimelinePage = React.lazy(() => import('@/pages/HandoffTimelinePage'));
 const IntegratedResourceCalendarPage = React.lazy(() => import('@/pages/IntegratedResourceCalendarPage'));
+
 const SupportActivityMasterPage = React.lazy(() => import('@/pages/SupportActivityMasterPage'));
 const SupportStepMasterPage = React.lazy(() => import('@/pages/SupportStepMasterPage'));
 const IndividualSupportManagementPage = React.lazy(() => import('@/pages/IndividualSupportManagementPage'));
 const UserDetailPage = React.lazy(() => import('@/pages/UserDetailPage'));
+
+// Dev harness（開発環境のみ）
 const devHarnessEnabled = getAppConfig().isDev;
 const DevScheduleCreateDialogPage = devHarnessEnabled
   ? React.lazy(() => import('@/features/schedules/DevScheduleCreateDialogPage'))
   : null;
+
 const SuspendedDevScheduleCreateDialogPage: React.FC | null = DevScheduleCreateDialogPage
   ? () => (
       <RouteHydrationErrorBoundary>
@@ -157,7 +166,6 @@ const SuspendedTableDailyRecordPage: React.FC = () => (
     </React.Suspense>
   </RouteHydrationErrorBoundary>
 );
-
 const SuspendedAttendanceRecordPage: React.FC = () => (
   <RouteHydrationErrorBoundary>
     <React.Suspense
@@ -191,7 +199,7 @@ const SuspendedTimeBasedSupportRecordPage: React.FC = () => (
     <React.Suspense
       fallback={(
         <div className="p-4 text-sm text-slate-600" role="status">
-          Iceberg-PDCAビューを読み込んでいます…
+          時間別支援記録を読み込んでいます…
         </div>
       )}
     >
@@ -437,7 +445,6 @@ const SuspendedHandoffTimelinePage: React.FC = () => (
     </React.Suspense>
   </RouteHydrationErrorBoundary>
 );
-
 const childRoutes: RouteObject[] = [
   { index: true, element: <Navigate to="/dashboard" replace /> },
   { path: 'dashboard', element: <SuspendedStaffDashboardPage /> },

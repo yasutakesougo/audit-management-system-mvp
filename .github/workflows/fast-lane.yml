@@ -5,12 +5,6 @@ on:
     branches: [port/flags, main]
   pull_request:
     branches: [main]
-  workflow_dispatch:
-    inputs:
-      reason:
-        description: "Why running manually?"
-        required: false
-        default: "preflight on main"
 
 concurrency:
   group: fast-lane-${{ github.ref }}

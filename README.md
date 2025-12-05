@@ -1063,3 +1063,7 @@ Internal / TBD.
 - Metrics: `docs/releases/v0.9.2.metrics.yaml`
 
 gh workflow view .github/workflows/report-links.yml --yaml
+
+### Environment variables for demo and test mode
+- VITE_FORCE_DEMO: When set to true, forces the users store to use demo user data for local development and certain test modes. Default: false.
+- VITE_SKIP_LOGIN: When set to true, bypasses the login flow for faster local development and demo runs. Default: false.
