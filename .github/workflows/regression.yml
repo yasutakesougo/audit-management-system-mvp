@@ -192,7 +192,7 @@ jobs:
         run: npx playwright install --with-deps
 
       - name: E2E Smoke
-        run: npx playwright test --project=smoke --reporter=line
+        run: npx playwright test --project=chromium --reporter=line
 
       - name: Upload Playwright artifacts
         if: ${{ always() }}
