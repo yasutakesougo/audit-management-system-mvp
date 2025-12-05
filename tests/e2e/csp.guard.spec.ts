@@ -26,11 +26,40 @@ test('serves CSP without violations', async ({ page }) => {
   const healthy = await fetchCollectorHealth();
   expect(healthy, 'CSP collector health check should succeed').toBeTruthy();
 
-  const response = await page.goto(`${PREVIEW_ORIGIN}/`, { waitUntil: 'networkidle' });
-  await expect(page.locator('body')).toBeVisible();
+  const response = await page.goto(`${PREVIEW_ORIGIN}/`, {
+    waitUntil: 'load',
+    timeout: 30_000,
+  });
 
-  const cspHeader = response?.headers()['content-security-policy'] ?? response?.headers()['content-security-policy-report-only'];
-  expect(cspHeader, 'CSP header should be present on preview responses').toBeTruthy();
+  expect(response, `Navigation to ${PREVIEW_ORIGIN}/ should return a response`).toBeTruthy();
+
+  const status = response!.status();
+  expect(status, `Expected 2xx/3xx response from preview server, got ${status}`).toBeLessThan(400);
+
+  const bodyLocator = page.locator('body');
+  try {
+    await page.waitForSelector('body', {
+      state: 'visible',
+      timeout: 10_000,
+    });
+  } catch (error) {
+    if (process.env.CI) {
+      const html = await page.content();
+      // eslint-disable-next-line no-console
+      console.error('Page HTML snapshot (CI only):', html.slice(0, 5000));
+    }
+    throw error;
+  }
+
+  const isBodyVisible = await bodyLocator.isVisible();
+  expect(isBodyVisible, 'Preview body should become visible').toBeTruthy();
+
+  const headers = response!.headers();
+  const cspHeader = headers['content-security-policy'] ?? headers['content-security-policy-report-only'];
+  expect(
+    cspHeader,
+    `CSP header should be present on preview responses (status ${status}, headers: ${JSON.stringify(headers)})`,
+  ).toBeTruthy();
   expect(cspHeader?.includes(COLLECTOR_PREFIX), 'CSP header should reference the report endpoint').toBeTruthy();
 
   await page.waitForTimeout(750);
