@@ -19,7 +19,7 @@ jobs:
       - name: Install deps
         run: npm ci
 
-      - name: Conditional: Run Storybook a11y tests if build script exists
+      - name: "Conditional: Run Storybook a11y tests if build script exists"
         run: |
           if npm run | grep -q 'build-storybook'; then
             echo "build-storybook script found. Running Storybook a11y checks..."
