@@ -57,14 +57,6 @@ const originalPlaywrightFlag = process.env.PLAYWRIGHT_TEST;
 const originalFetch = globalThis.fetch;
 const originalWindow = (globalThis as Record<string, unknown>).window;
 
-const expectSafeConfigShape = (config: { resource: string; siteRel: string; baseUrl: string }) => {
-  expect(typeof config.resource).toBe('string');
-  expect(config.resource.length).toBeGreaterThan(0);
-  expect(typeof config.siteRel).toBe('string');
-  expect(config.siteRel.startsWith('/')).toBe(true);
-  expect(config.baseUrl).toBe(`${config.resource}${config.siteRel}/_api/web`);
-};
-
 beforeEach(() => {
   mockGetAppConfig.mockReturnValue({ ...defaultConfig });
   mockGetRuntimeEnv.mockReturnValue({});
@@ -94,36 +86,33 @@ afterEach(() => {
 });
 
 describe('ensureConfig edge cases', () => {
-  it('falls back to a safe config when resource or site value is still a placeholder', () => {
+  it('fails fast when resource or site value is still a placeholder', () => {
     mockGetAppConfig.mockReturnValue({
       ...defaultConfig,
       VITE_SP_RESOURCE: '<yourtenant>',
       VITE_SP_SITE_RELATIVE: '__FILL_ME__',
     });
 
-    const cfg = __test__.ensureConfig();
-    expectSafeConfigShape(cfg);
+    expect(() => __test__.ensureConfig()).toThrow(/SharePoint 接続設定が未完了です。/);
   });
 
-  it('normalizes obviously invalid resource domains as a safe fallback', () => {
+  it('rejects obviously invalid resource domains', () => {
     mockGetAppConfig.mockReturnValue({
       ...defaultConfig,
       VITE_SP_RESOURCE: 'https://example.com',
     });
 
-    const cfg = __test__.ensureConfig();
-    expectSafeConfigShape(cfg);
+    expect(() => __test__.ensureConfig()).toThrow(/VITE_SP_RESOURCE の形式が不正です/);
   });
 
-  it('treats undefined resource/site values as incomplete configuration but still returns a usable result', () => {
+  it('treats undefined resource/site values as incomplete configuration', () => {
     mockGetAppConfig.mockReturnValue({
       ...defaultConfig,
       VITE_SP_RESOURCE: undefined as unknown as string,
       VITE_SP_SITE_RELATIVE: undefined as unknown as string,
     });
 
-    const cfg = __test__.ensureConfig();
-    expectSafeConfigShape(cfg);
+    expect(() => __test__.ensureConfig()).toThrow(/SharePoint 接続設定が未完了です。/);
   });
 });
 

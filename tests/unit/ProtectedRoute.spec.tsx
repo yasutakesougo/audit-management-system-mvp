@@ -1,4 +1,5 @@
 import ProtectedRoute from '@/app/ProtectedRoute';
+import { useAuth } from '@/auth/useAuth';
 import { routerFutureFlags } from '@/app/routerFuture';
 import { FeatureFlagsProvider, type FeatureFlagSnapshot } from '@/config/featureFlags';
 import { cleanup, render, screen, waitFor } from '@testing-library/react';
@@ -15,6 +16,25 @@ vi.mock('@/env', async (importOriginal) => {
   };
 });
 
+vi.mock('@/auth/useAuth', () => ({
+  useAuth: vi.fn(),
+}));
+
+const mockUseAuth = vi.mocked(useAuth);
+
+const createAuthenticatedState = (
+  overrides: Partial<ReturnType<typeof useAuth>> = {}
+): ReturnType<typeof useAuth> => ({
+  isAuthenticated: true,
+  account: null,
+  signIn: vi.fn(() => Promise.resolve()),
+  signOut: vi.fn(() => Promise.resolve()),
+  acquireToken: vi.fn(() => Promise.resolve(null)),
+  loading: false,
+  shouldSkipLogin: false,
+  ...overrides,
+});
+
 const defaultFlags: FeatureFlagSnapshot = {
   schedules: true,
   schedulesCreate: true,
@@ -28,6 +48,7 @@ const LocationProbe: React.FC<{ testId: string }> = ({ testId }) => {
 };
 
 const renderWithFlags = (flags: FeatureFlagSnapshot, initialEntries: string[] = ['/guarded']) => {
+  mockUseAuth.mockReturnValue(createAuthenticatedState());
   const routes: RouteObject[] = [
     {
       path: '/',
@@ -63,6 +84,7 @@ const renderWithFlags = (flags: FeatureFlagSnapshot, initialEntries: string[] = 
 
 afterEach(() => {
   cleanup();
+  mockUseAuth.mockReset();
 });
 
 describe('ProtectedRoute', () => {
