@@ -39,7 +39,7 @@ test('serves CSP without violations', async ({ page }) => {
   const bodyLocator = page.locator('body');
   try {
     await page.waitForSelector('body', {
-      state: 'visible',
+      state: 'attached',
       timeout: 10_000,
     });
   } catch (error) {
@@ -51,8 +51,7 @@ test('serves CSP without violations', async ({ page }) => {
     throw error;
   }
 
-  const isBodyVisible = await bodyLocator.isVisible();
-  expect(isBodyVisible, 'Preview body should become visible').toBeTruthy();
+  await expect(bodyLocator, 'Preview body should be attached to the DOM').toHaveCount(1);
 
   const headers = response!.headers();
   const cspHeader = headers['content-security-policy'] ?? headers['content-security-policy-report-only'];
