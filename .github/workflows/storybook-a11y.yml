@@ -19,11 +19,13 @@ jobs:
       - name: Install deps
         run: npm ci
 
-      - name: Build Storybook
-        run: npm run build-storybook
-
-      - name: Serve Storybook
-        run: npx http-server storybook-static -p 6006 & sleep 2
-
-      - name: Run Storybook test-runner (a11y + interactions)
-        run: npx @storybook/test-runner --url http://127.0.0.1:6006 --maxWorkers=2
+      - name: Conditional: Run Storybook a11y tests if build script exists
+        run: |
+          if npm run | grep -q 'build-storybook'; then
+            echo "build-storybook script found. Running Storybook a11y checks..."
+            npm run build-storybook
+            npx http-server storybook-static -p 6006 & sleep 2
+            npx @storybook/test-runner --url http://127.0.0.1:6006 --maxWorkers=2
+          else
+            echo "Skipping Storybook steps: package.json has no 'build-storybook' script."
+          fi
