@@ -69,10 +69,8 @@ jobs:
       - name: Run unit tests (core partitions)
         run: |
           mkdir -p junit
+          npx vitest list --runInBand | head -n 200
           npx vitest run \
-            src/lib/**/*.spec.ts \
-            src/config/**/*.spec.ts \
-            src/components/**/*.spec.ts \
             --reporter=default \
             --reporter=junit \
             --outputFile=junit/vitest-core.xml
@@ -101,8 +99,6 @@ jobs:
         run: |
           mkdir -p junit
           npx vitest run \
-            src/hydration/**/*.spec.ts \
-            tests/unit/hydration/**/*.spec.ts \
             --reporter=default \
             --reporter=junit \
             --outputFile=junit/vitest-hydration.xml
@@ -131,7 +127,6 @@ jobs:
         run: |
           mkdir -p junit
           npx vitest run \
-            src/features/schedule/**/*.spec.ts \
             --reporter=default \
             --reporter=junit \
             --outputFile=junit/vitest-schedules.xml
@@ -160,8 +155,6 @@ jobs:
         run: |
           mkdir -p junit
           npx vitest run \
-            src/pages/**/*.test.tsx \
-            src/features/**/*.test.tsx \
             --reporter=default \
             --reporter=junit \
             --outputFile=junit/vitest-pages.xml
