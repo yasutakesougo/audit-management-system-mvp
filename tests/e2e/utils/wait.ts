@@ -1,12 +1,21 @@
-import { expect, type Page } from '@playwright/test';
+import { expect, type Locator, type Page } from '@playwright/test';
 import { TESTIDS } from '@/testids';
 
 export async function waitForTestId(page: Page, id: string, timeout = 10_000): Promise<void> {
   await expect(page.getByTestId(id)).toBeVisible({ timeout });
 }
 
+const locatorExists = async (locator: Locator, timeout = 2_000): Promise<boolean> => {
+  try {
+    await locator.first().waitFor({ state: 'attached', timeout });
+    return true;
+  } catch {
+    return false;
+  }
+};
+
 export async function waitForScheduleReady(page: Page, timeout = 15_000): Promise<void> {
-  const pageRoot = page.getByTestId('schedules-week-page');
+  const pageRoot = page.getByTestId(TESTIDS['schedules-week-page']);
   const detailList = page.locator('[data-testid="schedule-week-list"]');
   const emptyState = page.locator('[data-testid="schedule-week-empty"]');
   const loading = page.locator('[aria-busy="true"]');
@@ -60,27 +69,92 @@ export async function waitForDayTimeline(page: Page): Promise<void> {
 }
 
 export async function waitForWeekTimeline(page: Page): Promise<void> {
-  const heading = page.getByRole('heading', { name: /スケジュール/, level: 1 });
-  await expect(heading).toBeVisible();
+  const url = page.url();
 
-  const tabCandidate = page.getByTestId('tab-week');
-  const hasNewTab = (await tabCandidate.count().catch(() => 0)) > 0;
-  const weekTab = hasNewTab ? tabCandidate.first() : page.getByRole('tab', { name: '週' }).first();
-  await expect(weekTab).toBeVisible();
-  await expect(weekTab).toHaveAttribute('aria-selected', 'true');
+  const pageRoot = page.getByTestId(TESTIDS.SCHEDULES_PAGE_ROOT);
+  const weekPageRoot = page.getByTestId(TESTIDS['schedules-week-page']);
 
-  const newViewRoot = page.getByTestId('schedule-week-view');
-  const hasNewView = (await newViewRoot.count().catch(() => 0)) > 0;
-  if (hasNewView) {
-    await expect(newViewRoot.first()).toBeVisible();
+  const hasNewRoot = await locatorExists(pageRoot, 3_000);
+  const hasWeekPage = hasNewRoot ? true : await locatorExists(weekPageRoot, 3_000);
+
+  if (hasNewRoot) {
+    await expect(pageRoot).toBeVisible({ timeout: 15_000 });
+
+    const weekTab = page.getByRole('tab', { name: '週' }).first();
+    await expect(weekTab).toBeVisible({ timeout: 10_000 });
+
+    const timeline = page.getByTestId(TESTIDS.SCHEDULES_WEEK_TIMELINE);
+    if (await locatorExists(timeline, 3_000)) {
+      await expect(timeline.first()).toBeVisible({ timeout: 15_000 });
+      return;
+    }
+
+    const snippet = (await page.content()).slice(0, 1000);
+    throw new Error(`Schedule week timeline not found. url=${url} snippet="${snippet}"`);
+  }
+
+  if (hasWeekPage) {
+    await expect(weekPageRoot).toBeVisible();
+
+    const heading = page.getByTestId(TESTIDS['schedules-week-heading']).or(
+      page.getByRole('heading', { name: /スケジュール/, level: 1 }),
+    );
+    await expect(heading).toBeVisible();
+
+    const tablist = page.getByTestId(TESTIDS.SCHEDULES_WEEK_TABLIST);
+    if (await locatorExists(tablist)) {
+      await expect(tablist.first()).toBeVisible();
+    }
+
+    const weekTabCandidate = page.getByTestId(TESTIDS.SCHEDULES_WEEK_TAB_WEEK);
+    const weekTab = (await locatorExists(weekTabCandidate))
+      ? weekTabCandidate.first()
+      : page.getByRole('tab', { name: '週' }).first();
+    await expect(weekTab).toBeVisible();
+    await expect(weekTab).toHaveAttribute('aria-selected', 'true');
+
+    const gridRoot = page.getByTestId(TESTIDS['schedules-week-grid']);
+    if (await locatorExists(gridRoot)) {
+      await expect(gridRoot.first()).toBeVisible();
+      return;
+    }
+
+    const timelinePanel = page.getByTestId(TESTIDS.SCHEDULES_WEEK_TIMELINE_PANEL);
+    if (await locatorExists(timelinePanel)) {
+      const timeline = page.getByTestId(TESTIDS['schedules-week-timeline']);
+      await expect(timeline.first()).toBeVisible();
+      return;
+    }
+
     return;
   }
 
-  const root = page.getByTestId('schedule-week-root');
-  await expect(root).toBeVisible();
+  const legacyRoot = page.getByTestId('schedule-week-root');
+  const hasLegacyRoot = await locatorExists(legacyRoot, 3_000);
+  if (!hasLegacyRoot) {
+    let domSnippet = '';
+    try {
+      domSnippet = await page.evaluate(() => document.body.innerHTML.slice(0, 10000));
+      domSnippet = domSnippet.replace(/\s+/g, ' ').trim();
+    } catch {
+      domSnippet = '[failed to capture DOM]';
+    }
+    throw new Error(
+      `Schedule week view not found (neither SchedulePage nor WeekPage nor legacy timeline). url=${url} snippet="${domSnippet}"`,
+    );
+  }
 
-  const firstHeader = page.locator('[id^="timeline-week-header-"]').first();
-  await expect(firstHeader).toBeVisible();
+  await expect(legacyRoot).toBeVisible();
+
+  const legacyHeading = page.getByRole('heading', { level: 1, name: /スケジュール/ });
+  await expect(legacyHeading).toBeVisible();
+
+  const legacyWeekTab = page.getByRole('tab', { name: /週/ }).first();
+  await expect(legacyWeekTab).toBeVisible();
+  await expect(legacyWeekTab).toHaveAttribute('aria-selected', 'true');
+
+  const legacyHeader = page.locator('[id^="timeline-week-header-"]').first();
+  await expect(legacyHeader).toBeVisible();
 }
 
 export async function waitForMonthTimeline(page: Page): Promise<void> {

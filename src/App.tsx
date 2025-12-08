@@ -1,5 +1,5 @@
 import { HydrationHud } from '@/debug/HydrationHud';
-import type { SchedulesPort } from '@/features/schedules/data';
+import type { CreateScheduleEventInput, SchedItem, SchedulesPort } from '@/features/schedules/data';
 import {
   SchedulesProvider,
   demoSchedulesPort,
@@ -33,13 +33,15 @@ const forceSharePointList = readBool('VITE_FORCE_SHAREPOINT', false);
 const sharePointCreateEnabled = sharePointFeatureEnabled;
 const sharePointListEnabled = sharePointFeatureEnabled || forceSharePointList;
 
+type ScheduleCreateHandler = (input: CreateScheduleEventInput) => Promise<SchedItem>;
+
 function SchedulesProviderBridge({ children }: BridgeProps) {
   const { acquireToken } = useAuth();
 
   const port = useMemo(() => {
-    const createHandler = sharePointCreateEnabled
-      ? makeSharePointScheduleCreator({ acquireToken: () => acquireToken() })
-      : makeMockScheduleCreator();
+    const createHandler: ScheduleCreateHandler = sharePointCreateEnabled
+      ? (makeSharePointScheduleCreator({ acquireToken: () => acquireToken() }) as ScheduleCreateHandler)
+      : (makeMockScheduleCreator() as ScheduleCreateHandler);
 
     let selectedPort: SchedulesPort;
 

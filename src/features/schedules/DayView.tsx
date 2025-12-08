@@ -5,7 +5,8 @@ import { useId, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import type { SchedItem, ScheduleStatus } from './data';
 import { getScheduleStatusMeta } from './statusMetadata';
-import { makeRange, useSchedules, type DateRange } from './useSchedules';
+import { type DateRange } from './data';
+import { makeRange, useSchedules } from './useSchedules';
 
 type ExtendedSchedItem = SchedItem & Partial<{
   location: string;

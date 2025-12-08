@@ -1,40 +1,13 @@
 import '@/test/captureSp400';
 import { expect, test, type Page } from '@playwright/test';
+import { TESTIDS } from '@/testids';
+import { bootstrapScheduleEnv } from './utils/scheduleEnv';
 import { gotoWeek } from './utils/scheduleNav';
-
-const setupEnv = {
-  env: {
-    VITE_E2E_MSAL_MOCK: '1',
-    VITE_SKIP_LOGIN: '1',
-    VITE_FEATURE_SCHEDULES: '1',
-    VITE_FEATURE_SCHEDULES_WEEK_V2: '1',
-  },
-  storage: {
-    'feature:schedules': '1',
-    skipLogin: '1',
-  },
-} as const;
+import { waitForWeekTimeline } from './utils/wait';
 
 test.describe('Schedule week deep link', () => {
   test.beforeEach(async ({ page }) => {
-    page.on('console', (message) => {
-      if (message.type() === 'info' && message.text().startsWith('[schedulesClient] fixtures=')) {
-        // Surface fixture warnings when mocks change.
-        // eslint-disable-next-line no-console
-        console.log(`browser-console: ${message.text()}`);
-      }
-    });
-
-    await page.addInitScript(({ env, storage }) => {
-      const scope = window as typeof window & { __ENV__?: Record<string, string> };
-      scope.__ENV__ = {
-        ...(scope.__ENV__ ?? {}),
-        ...env,
-      };
-      for (const [key, value] of Object.entries(storage)) {
-        window.localStorage.setItem(key, value);
-      }
-    }, setupEnv);
+    await bootstrapScheduleEnv(page);
   });
 
   const readLiveMessage = async (page: Page): Promise<string> =>
@@ -44,24 +17,35 @@ test.describe('Schedule week deep link', () => {
       return (polite || assertive).trim();
     });
 
-  const waitForSchedulePage = async (page: Page): Promise<void> => {
-    const heading = page.getByRole('heading', { level: 1, name: /スケジュール/ });
+  const waitForSchedulePage = async (page: Page, iso?: string): Promise<void> => {
+    await waitForWeekTimeline(page);
+
+    const heading = page.getByTestId(TESTIDS['schedules-week-heading']).or(
+      page.getByRole('heading', { level: 1, name: /スケジュール/ }),
+    );
     await expect(heading).toBeVisible();
-    const weekTab = page.getByRole('tab', { name: /週/ });
+
+    const weekTab = page.getByTestId(TESTIDS.SCHEDULES_WEEK_TAB_WEEK).or(page.getByRole('tab', { name: /週/ }));
     await expect(weekTab).toHaveAttribute('aria-selected', 'true');
-    await expect(page.locator('[id^="timeline-week-header-"]').first()).toBeVisible();
+
+    if (iso) {
+      await expect(page.getByTestId(`${TESTIDS.SCHEDULES_WEEK_DAY_PREFIX}-${iso}`)).toBeVisible();
+    } else {
+      await expect(page.getByTestId(TESTIDS['schedules-week-grid'])).toBeVisible();
+    }
   };
 
   test('loads the requested week and preserves announcements after reload', async ({ page }) => {
-    await gotoWeek(page, new Date('2025-11-24'));
-    await waitForSchedulePage(page);
+    const targetIso = '2025-11-24';
+    await gotoWeek(page, new Date(targetIso));
+    await waitForSchedulePage(page, targetIso);
 
-    const mondayHeader = page.locator('#timeline-week-header-2025-11-24');
-    await expect(mondayHeader).toBeVisible();
+    const mondayButton = page.getByTestId(`${TESTIDS.SCHEDULES_WEEK_DAY_PREFIX}-${targetIso}`);
+    await expect(mondayButton).toBeVisible();
     const liveText = await readLiveMessage(page);
 
     await page.reload({ waitUntil: 'domcontentloaded' });
-    await waitForSchedulePage(page);
+    await waitForSchedulePage(page, targetIso);
     const reloadedLiveText = await readLiveMessage(page);
     expect(reloadedLiveText).toBe(liveText);
   });

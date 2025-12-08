@@ -102,19 +102,20 @@ src/
 ### Quick Setup
 
 1. Copy example: `cp .env.example .env`
-2. Choose either of the following configuration styles:
+1. Choose either of the following configuration styles:
 
 - **Simple**: set both `VITE_SP_RESOURCE` and `VITE_SP_SITE_RELATIVE`
 - **Full URL**: set `VITE_SP_SITE_URL` (auto-derives the values above)
 
-3. Edit the placeholders:
+1. Edit the placeholders:
+   - `<yourtenant>` → SharePoint tenant host (no protocol changes)
+   - `<SiteName>` → Target site path segment(s)
+   - `VITE_SP_SCOPE_DEFAULT` → e.g. `https://<yourtenant>.sharepoint.com/AllSites.Read`
 
-- `<yourtenant>` → SharePoint tenant host (no protocol changes)
-- `<SiteName>` → Target site path segment(s)
-- `VITE_SP_SCOPE_DEFAULT` → e.g. `https://<yourtenant>.sharepoint.com/AllSites.Read`
+1. Provision MSAL SPA credentials: `VITE_MSAL_CLIENT_ID`, `VITE_MSAL_TENANT_ID`, optionally `VITE_MSAL_REDIRECT_URI` / `VITE_MSAL_AUTHORITY` / `VITE_MSAL_SCOPES` / `VITE_LOGIN_SCOPES` / `VITE_MSAL_LOGIN_SCOPES`.
+   - Backward-compat: if `VITE_MSAL_*` is empty, `VITE_AAD_CLIENT_ID` / `VITE_AAD_TENANT_ID` will be used.
 
-4. Provision MSAL SPA credentials: `VITE_MSAL_CLIENT_ID`, `VITE_MSAL_TENANT_ID`, optionally `VITE_MSAL_REDIRECT_URI` / `VITE_MSAL_AUTHORITY` / `VITE_MSAL_SCOPES` / `VITE_LOGIN_SCOPES` / `VITE_MSAL_LOGIN_SCOPES`
-5. Restart dev server (`npm run dev`).
+1. Restart dev server (`npm run dev`).
 
 > Override precedence: values passed directly to `ensureConfig` (e.g. in tests) always win. `VITE_SP_RESOURCE` / `VITE_SP_SITE_RELATIVE` from the env override `VITE_SP_SITE_URL`, and the full URL fallback is only used when both override values are omitted.
 
@@ -140,14 +141,32 @@ src/
 #### Testing with overrides
 
 - Call config helpers with an override object instead of mutating `import.meta.env`.
-- Example: `resolveSpCacheSettings({ VITE_SP_GET_SWR: '1', VITE_SP_GET_SWR_TTL_MS: '120000' })`.
+  Example: `resolveSpCacheSettings({ VITE_SP_GET_SWR: '1', VITE_SP_GET_SWR_TTL_MS: '120000' })`.
 
-```
+```text
 VITE_MSAL_CLIENT_ID=<YOUR_APP_CLIENT_ID>
 VITE_MSAL_TENANT_ID=<YOUR_TENANT_ID>
+VITE_AAD_CLIENT_ID=<YOUR_APP_CLIENT_ID> # optional fallback
+VITE_AAD_TENANT_ID=<YOUR_TENANT_ID>     # optional fallback
 VITE_SP_RESOURCE=https://<yourtenant>.sharepoint.com
 VITE_SP_SITE_RELATIVE=/sites/<SiteName>
 VITE_SP_SCOPE_DEFAULT=https://<yourtenant>.sharepoint.com/AllSites.Read
+```
+
+## Azure AD / MSAL configuration
+
+This app prefers `VITE_MSAL_CLIENT_ID` / `VITE_MSAL_TENANT_ID` for MSAL. If these are empty, `VITE_AAD_CLIENT_ID` / `VITE_AAD_TENANT_ID` are used as a fallback so older env files keep working.
+
+Recommended `.env.local` fragment:
+
+```text
+# Primary (preferred)
+VITE_MSAL_CLIENT_ID=<your app registration client id>
+VITE_MSAL_TENANT_ID=<your tenant id>
+
+# Backward-compatible aliases (optional)
+VITE_AAD_CLIENT_ID=<same as VITE_MSAL_CLIENT_ID>
+VITE_AAD_TENANT_ID=<same as VITE_MSAL_TENANT_ID>
 ```
 
 ### Demo / Test Convenience Flags
@@ -257,6 +276,74 @@ if (import.meta.env.DEV) {
 | `VITE_SP_SITE_URL の形式が不正`     | Missing path or non-SharePoint host                  | Use full URL like `https://tenant.sharepoint.com/sites/Example` |
 | SharePoint list missing override   | One of `VITE_SP_LIST_*` pointed to an absent list    | Correct the list title or remove the override                   |
 | `AcquireTokenSilent` scope warnings | Graph scopes configured but useSP still targets REST | Remove `VITE_GRAPH_SCOPES` or update implementation             |
+
+### Schedules をローカルで動かすための `.env.local` 最小例
+
+```dotenv
+# ===== SharePoint リスト名 =====
+VITE_SP_LIST_COMPLIANCE=guid:576f882f-446f-4f7e-8444-d15ba746c681
+VITE_SP_LIST_USERS=Users_Master
+VITE_SP_LIST_STAFF=Staff_Master
+VITE_SP_LIST_OFFICES=Offices
+VITE_SP_LIST_SCHEDULES=ScheduleEvents
+VITE_SP_LIST_DAILY=SupportRecord_Daily
+VITE_SP_LIST_ATTENDANCE=Daily_Attendance
+
+# ===== 機能フラグ =====
+VITE_FEATURE_SCHEDULES=1
+VITE_FEATURE_SCHEDULES_SP=1
+VITE_SKIP_ENSURE_SCHEDULE=1
+VITE_WRITE_ENABLED=1
+
+# ▼ ローカル UI 確認用（ログインスキップ＋SharePoint 強制オフ）
+VITE_FORCE_SHAREPOINT=0
+VITE_SKIP_LOGIN=1
+VITE_DEMO_MODE=0
+
+# ===== Azure AD / MSAL =====
+VITE_AAD_CLIENT_ID=0d704aa1-d263-4e76-afac-f96d92dce620
+VITE_AAD_TENANT_ID=650ea331-3451-4bd8-8b5d-b88cc49e6144
+VITE_MSAL_CLIENT_ID=0d704aa1-d263-4e76-afac-f96d92dce620
+VITE_MSAL_TENANT_ID=650ea331-3451-4bd8-8b5d-b88cc49e6144
+VITE_MSAL_REDIRECT_URI=http://localhost:3000/auth/callback
+
+# 初回ログインで要求する OIDC + SharePoint 委任スコープ
+VITE_LOGIN_SCOPES=openid profile
+VITE_MSAL_SCOPES=https://isogokatudouhome.sharepoint.com/AllSites.Read
+VITE_SP_SCOPE_DEFAULT=https://isogokatudouhome.sharepoint.com/AllSites.Read
+
+# ===== SharePoint サイト =====
+VITE_SP_RESOURCE=https://isogokatudouhome.sharepoint.com
+VITE_SP_SITE_RELATIVE=/sites/welfare
+VITE_SP_BASE_URL=https://isogokatudouhome.sharepoint.com/sites/welfare
+```
+
+フラグの意味（要点）
+
+- `VITE_FEATURE_SCHEDULES` / `VITE_FEATURE_SCHEDULES_SP`: スケジュール機能と SharePoint ポートを有効化。
+- `VITE_FORCE_SHAREPOINT`: `0` なら接続失敗時はモックにフォールバック、`1` なら接続失敗をエラー扱い。
+- `VITE_SKIP_LOGIN`: `1` で MSAL ログインをスキップして UI だけ確認、`0` で本番同等の認証を要求。
+- `VITE_DEMO_MODE`: `1` でデモポート（完全モック）、`0` で SharePoint 設定を使用。
+
+おすすめモード
+
+- **UI だけ先に確認（ログインなし）**: `VITE_FORCE_SHAREPOINT=0`, `VITE_SKIP_LOGIN=1`, `VITE_DEMO_MODE=0` で `npm run dev -- --port 5175` → `/schedules/week` へアクセス。
+- **本番に近い動作**: `VITE_FORCE_SHAREPOINT=1`, `VITE_SKIP_LOGIN=0`, `VITE_DEMO_MODE=0` にし、Azure Portal で SPA Redirect URI を登録し、SharePoint Delegated (`AllSites.Read` など) に管理者同意後にサインイン。
+
+ショートカット（推奨）
+
+```bash
+npm run dev:schedules
+```
+
+`VITE_SKIP_LOGIN=1` / `VITE_FORCE_SHAREPOINT=0` 前提でポート 5175 で起動し、`/schedules/week` をすぐ確認できます。
+
+その他の開発ショートカット
+
+- `npm run dev:attendance` … 5176 `/daily/attendance`
+- `npm run dev:daily` … 5177 `/daily/support`
+- `npm run dev:users` … 5178 `/users`（利用者マスタ UI）
+- `npm run dev:nurse` … 5179 `/nurse`（バイタル・投薬 UI）
 
 ### Cache & Concurrency Knobs
 
@@ -472,29 +559,41 @@ We maintain strict TypeScript coverage with two-tier validation:
 
 The nightly health workflow runs comprehensive type checking to surface any issues in development utilities and documentation code. View results at: [Actions > Nightly Health](https://github.com/yasutakesougo/audit-management-system-mvp/actions/workflows/nightly-health.yml)
 
-**To promote comprehensive checking to CI** (when nightly is consistently clean):
-1. Add `npm run typecheck:full` to `scripts/preflight.sh` 
-2. This ensures stories, tests, and utilities maintain type safety in CI
+#### Promote comprehensive checking to CI (when nightly is consistently clean)
+
+1. Add `npm run typecheck:full` to `scripts/preflight.sh`
+1. This ensures stories, tests, and utilities maintain type safety in CI
 
 ### Test & Coverage
 
-### Strategy
+#### Strategy
+
 - **Unit (厚め)**: 同期ロジック、リトライ、バッチパーサ、CSV 生成などの純粋ロジックは **Vitest** で網羅。UI 断面も **React Testing Library (jsdom)** でコンポーネント単位を検証。
 - **E2E (最小)**: **Playwright** は「失敗のみ再送」「429/503 リトライ」など **重要シナリオの最小数** に絞り、ページ全体のフレーク回避と実行時間を抑制。
 - **カバレッジ・ゲート**: Phase 3 固定（Lines/Funcs/Stmts **70%** / Branches **65%**）。
   ロジックの追加時はユニットテストを先に整備して緑化→E2E 追加は必要最小に留めます。
 - Vitest suites that touch `ensureConfig` reset `import.meta.env` per test to avoid leaking real tenant URLs into assertions; keep this pattern when adding new cases.
 
+### Schedule Week E2E
+
+新しいスケジュール週表示 (Week V2) の E2E スモークは次でまとめて実行できます:
+
+```bash
+npm run test:schedule-week
+```
+
+Playwright + `VITE_FEATURE_SCHEDULES_WEEK_V2=1` 環境で `schedule-week.*.spec.ts` をまとめて実行するワンライナーです。
+
 現在の固定品質ゲート (Phase 3 固定化):
 
-```
-
+```text
 Lines >= 70%, Statements >= 70%, Functions >= 70%, Branches >= 65%
-
 ```
+
 `vitest.config.ts` の `thresholds` を将来引き上げる際は、CI 3 連続グリーン後に 5–10pt 程度ずつ。急激な引き上げは避けてください。
 
 ### Coverage Roadmap (Historical / Plan)
+
 現在: Phase 3 (安定運用ベースライン達成)
 
 | Phase | 目標 (Lines/Fn/Stmts \| Branches) | 達成基準 | 主なアクション | 想定タイミング |
@@ -507,6 +606,7 @@ Lines >= 70%, Statements >= 70%, Functions >= 70%, Branches >= 65%
 | 5 | 85+/85+/85+ \| 70+ | コスト/リターン再評価 | Snapshot 最適化 / Flaky 監視 | 後期 |
 
 運用ポリシー (固定化後):
+
 - 閾値は Phase 3 値を維持。新規機能は同等以上のカバレッジを伴って追加。
 - Flaky 発生時は引き上げ計画を一旦停止し要因除去 (jitter/タイマー/ランダム化の deterministic 化)。
 

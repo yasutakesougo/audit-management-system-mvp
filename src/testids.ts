@@ -5,6 +5,7 @@ export const TESTIDS = {
   // Shell / Router
   'app-root': 'app-root',
   'app-router-outlet': 'app-router-outlet',
+  'sp-connection-status': 'sp-connection-status',
 
   // Pages
   'meeting-guide': 'meeting-guide',
@@ -59,10 +60,17 @@ export const TESTIDS = {
   'schedules-day-heading': 'schedules-day-heading',
   'schedules-day-list': 'schedules-day-list',
   'schedules-day-skeleton': 'schedules-day-skeleton',
+  SCHEDULES_PAGE_ROOT: 'schedules-page-root',
   'schedules-week-page': 'schedules-week-page',
   'schedules-week-heading': 'schedules-week-heading',
   'schedules-week-grid': 'schedules-week-grid',
+  SCHEDULES_WEEK_TIMELINE: 'schedules-week-timeline',
   'schedules-week-timeline': 'schedules-week-timeline',
+  SCHEDULES_WEEK_TABLIST: 'schedules-week-tablist',
+  SCHEDULES_WEEK_TAB_WEEK: 'schedules-week-tab-week',
+  SCHEDULES_WEEK_TAB_DAY: 'schedules-week-tab-day',
+  SCHEDULES_WEEK_TAB_TIMELINE: 'schedules-week-tab-timeline',
+  SCHEDULES_WEEK_TIMELINE_PANEL: 'schedules-week-timeline-panel',
   SCHEDULE_WEEK_ORG_INDICATOR: 'schedule-week-org-indicator',
   SCHEDULE_DAY_ORG_INDICATOR: 'schedule-day-org-indicator',
   SCHEDULE_MONTH_ORG_INDICATOR: 'schedule-month-org-indicator',

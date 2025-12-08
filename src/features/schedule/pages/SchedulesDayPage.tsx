@@ -5,7 +5,8 @@ import { ScheduleConflictGuideDialog, type SuggestionAction } from '@/features/s
 import ScheduleCreateDialog, { type CreateScheduleEventInput } from '@/features/schedules/ScheduleCreateDialog';
 import { useSchedulesPort } from '@/features/schedules/data';
 import type { SchedItem } from '@/features/schedules/data';
-import { useSchedules, type InlineScheduleDraft } from '@/features/schedules/useSchedules';
+import type { InlineScheduleDraft } from '@/features/schedules/data/inlineScheduleDraft';
+import { useSchedules } from '@/features/schedules/useSchedules';
 import { buildConflictIndex } from '@/features/schedule/conflictChecker';
 import { FOCUS_GUARD_MS } from '@/features/schedule/focusGuard';
 import { useAnchoredPeriod } from '@/features/schedule/hooks/useAnchoredPeriod';
@@ -415,6 +416,10 @@ export default function SchedulesDayPage(): JSX.Element {
 
       const draft: InlineScheduleDraft = {
         title: input.title.trim() || '新規予定',
+        start: input.startLocal,
+        end: input.endLocal,
+        serviceType: input.serviceType,
+        notes: input.notes,
         dateIso,
         startTime,
         endTime,

@@ -20,6 +20,8 @@ exports[`AppShell snapshot 1`] = `
         <div
           aria-live="polite"
           class="MuiBox-root css-1rbdyuo"
+          data-connection-state="signedOut"
+          data-testid="sp-connection-status"
           role="status"
         >
           SP Sign-In

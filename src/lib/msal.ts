@@ -1,7 +1,12 @@
 import { buildMsalScopes } from '@/auth/scopes';
-import type { PublicClientApplication } from '@azure/msal-browser';
+import type { PublicClientApplication, PopupRequest } from '@azure/msal-browser';
 import type { AccountInfo } from '@azure/msal-common';
+
 import { getAppConfig, getSharePointResource, isE2eMsalMockEnabled, readEnv, shouldSkipLogin } from './env';
+
+const { isDev } = getAppConfig();
+
+type GlobalCarrier = typeof globalThis & { __MSAL_PUBLIC_CLIENT__?: PublicClientApplication };
 
 export const createE2EMsalAccount = (): AccountInfo => ({
   homeAccountId: 'e2e-home-account',
@@ -21,41 +26,9 @@ export const persistMsalToken = (token: string): void => {
   }
 };
 
-const globalCarrier = globalThis as typeof globalThis & {
-  __MSAL_PUBLIC_CLIENT__?: PublicClientApplication;
-};
-
-const { isDev: isDevEnv } = getAppConfig();
-
-const getPca = (): PublicClientApplication => {
-  if (typeof window === 'undefined') {
-    throw new Error('MSAL client is only available in the browser runtime.');
-  }
-  const instance = globalCarrier.__MSAL_PUBLIC_CLIENT__;
-  if (!instance) {
-    throw new Error(
-      '[msal] PublicClientApplication is not initialized. Ensure <MsalProvider> mounted and completed setup before calling msal helpers.'
-    );
-  }
-  return instance;
-};
-
-const ensureActiveAccountFromCache = (instance: PublicClientApplication): AccountInfo | null => {
-  const active = (instance.getActiveAccount() as AccountInfo | null) ?? null;
-  if (active) {
-    return active;
-  }
-  const [first] = instance.getAllAccounts();
-  if (first) {
-    instance.setActiveAccount(first);
-    return first as AccountInfo;
-  }
-  return null;
-};
-
 const parseScopes = (raw: string): string[] =>
   raw
-    .split(/[,\s]+/)
+    .split(/[\s,]+/)
     .map((scope) => scope.trim())
     .filter(Boolean);
 
@@ -69,211 +42,97 @@ export const getSharePointScopes = (): string[] => {
 };
 
 const ensureScopes = (scopes?: string[]): string[] => {
-  const parsed = Array.isArray(scopes) && scopes.length ? scopes : parseScopes(readEnv('VITE_MSAL_SCOPES', '').trim());
-  const resolved = parsed.length ? parsed : getSharePointScopes();
+  const explicit = Array.isArray(scopes) && scopes.length ? scopes : parseScopes(readEnv('VITE_MSAL_SCOPES', '').trim());
+  const resolved = explicit.length ? explicit : getSharePointScopes();
   if (!resolved.length) {
     throw new Error('SharePoint scopes are not configured. Set VITE_MSAL_SCOPES or VITE_SP_RESOURCE.');
   }
   return resolved;
 };
 
-type PopupLoginRequest = {
-  scopes: string[];
-  prompt?: string;
-  redirectStartPage?: string;
-};
-
-type PopupAcquireRequest = {
-  scopes: string[];
-  prompt?: string;
-  account: AccountInfo;
-  redirectStartPage?: string;
-};
-
-type PopupAuthResult = {
-  account?: AccountInfo | null;
-  accessToken?: string;
-};
-
-const toPopupClient = (instance: PublicClientApplication) =>
-  instance as unknown as {
-    loginPopup(request: PopupLoginRequest): Promise<PopupAuthResult>;
-    acquireTokenPopup(request: PopupAcquireRequest): Promise<PopupAuthResult>;
-  };
-
-const LOGIN_FLOW_POPUP = 'popup';
-const LOGIN_FLOW_REDIRECT = 'redirect';
-
-const getPreferredLoginFlow = (): 'popup' | 'redirect' => {
-  const raw = readEnv('VITE_MSAL_LOGIN_FLOW', LOGIN_FLOW_POPUP).trim().toLowerCase();
-  return raw === LOGIN_FLOW_REDIRECT ? LOGIN_FLOW_REDIRECT : LOGIN_FLOW_POPUP;
-};
-
-const createRedirectPendingPromise = <T>(): Promise<T> => new Promise<T>(() => undefined);
-
-const addRedirectStartPage = <T extends PopupLoginRequest | PopupAcquireRequest>(request: T): T => {
+const getPca = (): PublicClientApplication => {
   if (typeof window === 'undefined') {
-    return request;
+    throw new Error('MSAL client is only available in the browser runtime.');
   }
-  return { ...request, redirectStartPage: window.location.href };
+  const instance = (globalThis as GlobalCarrier).__MSAL_PUBLIC_CLIENT__;
+  if (!instance) {
+    throw new Error('[msal] PublicClientApplication is not initialized. Ensure <MsalProvider> completed setup.');
+  }
+  return instance;
 };
 
-const startLoginRedirect = async (
-  instance: PublicClientApplication,
-  request: PopupLoginRequest,
-): Promise<AccountInfo> => {
-  await instance.loginRedirect(addRedirectStartPage(request) as never);
-  return createRedirectPendingPromise<AccountInfo>();
+type PopupCapableClient = PublicClientApplication & {
+  acquireTokenPopup: (request: PopupRequest) => Promise<{ accessToken?: string }>;
+  loginPopup: (request: PopupRequest) => Promise<{ account?: AccountInfo | null }>;
 };
 
-const startAcquireRedirect = async (
-  instance: PublicClientApplication,
-  request: PopupAcquireRequest,
-): Promise<string> => {
-  await instance.acquireTokenRedirect(addRedirectStartPage(request) as never);
-  return createRedirectPendingPromise<string>();
+const toPopupClient = (instance: PublicClientApplication): PopupCapableClient => instance as PopupCapableClient;
+
+const ensureActiveAccount = (instance: PublicClientApplication): AccountInfo | null => {
+  const active = (instance.getActiveAccount() as AccountInfo | null) ?? null;
+  if (active) return active;
+  const [first] = instance.getAllAccounts();
+  if (first) {
+    instance.setActiveAccount(first);
+    return first as AccountInfo;
+  }
+  return null;
 };
 
-const isPopupBlockedError = (error: unknown): boolean => {
-  if (!error) {
-    return false;
-  }
-  const parts: string[] = [];
-  if (typeof error === 'string') {
-    parts.push(error);
-  } else if (typeof error === 'object') {
-    const candidate = error as { message?: string; errorMessage?: string };
-    if (candidate.message) {
-      parts.push(candidate.message);
-    }
-    if (candidate.errorMessage) {
-      parts.push(candidate.errorMessage);
-    }
-  }
-  if (!parts.length) {
-    return false;
-  }
-  const merged = parts.join(' ').toLowerCase();
-  return merged.includes('cross-origin-opener-policy') || merged.includes('window.closed');
-};
-
-const isInteractionRequiredError = (error: unknown): boolean => {
-  if (!error || typeof error !== 'object') {
-    return false;
-  }
-  const candidate = error as { errorCode?: string; name?: string };
-  const code = (candidate.errorCode ?? '').toLowerCase();
-  if (code) {
-    return INTERACTION_REQUIRED_CODES.has(code);
-  }
-  return (candidate.name ?? '') === 'InteractionRequiredAuthError';
-};
-
-const INTERACTION_REQUIRED_CODES = new Set([
-  'interaction_required',
-  'consent_required',
-  'login_required',
-  'mfa_required',
-]);
+const toPopupRequest = (scopes: string[], account?: AccountInfo): PopupRequest => ({
+  scopes,
+  prompt: 'select_account',
+  account,
+});
 
 export const ensureMsalSignedIn = async (scopes?: string[]): Promise<AccountInfo> => {
-  if (isE2eMsalMockEnabled()) {
-    return createE2EMsalAccount();
-  }
-  if (shouldSkipLogin()) {
-    if (isDevEnv) {
-      console.info('[msal] SkipLogin=1: ensureMsalSignedIn bypassed');
+  if (isE2eMsalMockEnabled() || shouldSkipLogin()) {
+    if (isDev) {
+      console.info('[msal] using E2E/dummy account');
     }
     return createE2EMsalAccount();
   }
-  if (typeof window === 'undefined') {
-    throw new Error('MSAL sign-in requires a browser environment.');
-  }
-
   const instance = getPca();
-  const resolvedScopes = ensureScopes(scopes);
   const popupClient = toPopupClient(instance);
-  const preferRedirectLogin = getPreferredLoginFlow() === LOGIN_FLOW_REDIRECT;
+  const resolvedScopes = ensureScopes(scopes);
+  const cached = ensureActiveAccount(instance);
+  if (cached) return cached;
 
-  let account = ensureActiveAccountFromCache(instance);
+  const response = await popupClient.loginPopup(toPopupRequest(resolvedScopes));
+  const account = (response.account as AccountInfo | null) ?? null;
   if (!account) {
-    const request: PopupLoginRequest = { scopes: resolvedScopes, prompt: 'select_account' };
-    if (preferRedirectLogin) {
-      return startLoginRedirect(instance, request);
-    }
-    try {
-      const response = await popupClient.loginPopup(request);
-      account = (response.account as AccountInfo | null) ?? null;
-      if (!account) {
-        throw new Error('MSAL login did not yield an account.');
-      }
-      instance.setActiveAccount(account);
-    } catch (error) {
-      if (preferRedirectLogin || isPopupBlockedError(error)) {
-        console.warn('[msal] loginPopup blocked; falling back to redirect.', error);
-        return startLoginRedirect(instance, request);
-      }
-      throw error;
-    }
+    throw new Error('MSAL login did not yield an account.');
   }
-  if (!account) {
-    throw new Error('MSAL account resolution failed.');
-  }
+  instance.setActiveAccount(account);
   return account;
 };
 
 export const acquireSpAccessToken = async (scopes?: string[]): Promise<string> => {
-  if (isE2eMsalMockEnabled()) {
+  if (isE2eMsalMockEnabled() || shouldSkipLogin()) {
     const token = 'mock-token:sharepoint';
-    persistMsalToken(token);
-    return token;
-  }
-  if (shouldSkipLogin()) {
-    const token = 'skip-login-placeholder-token';
-    if (isDevEnv) {
+    if (isDev) {
       console.info('[msal] SkipLogin=1: acquireSpAccessToken bypassed');
     }
     persistMsalToken(token);
     return token;
   }
-  if (typeof window === 'undefined') {
-    throw new Error('MSAL token acquisition requires a browser environment.');
-  }
-
   const instance = getPca();
-  ensureActiveAccountFromCache(instance);
   const resolvedScopes = ensureScopes(scopes);
   const account = await ensureMsalSignedIn(resolvedScopes);
-  const popupClient = toPopupClient(instance);
-  const preferRedirectAuth = getPreferredLoginFlow() === LOGIN_FLOW_REDIRECT;
 
   try {
     const result = await instance.acquireTokenSilent({ account, scopes: resolvedScopes });
     persistMsalToken(result.accessToken);
     return result.accessToken;
   } catch (error) {
-    const request: PopupAcquireRequest = { account, scopes: resolvedScopes, prompt: 'select_account' };
-    if (!isInteractionRequiredError(error)) {
-      console.warn('[msal] acquireTokenSilent failed; falling back to popup.', error);
+    const popupClient = toPopupClient(instance);
+    const result = await popupClient.acquireTokenPopup(toPopupRequest(resolvedScopes, account));
+    const token = result.accessToken ?? '';
+    if (!token) {
+      throw error instanceof Error ? error : new Error('MSAL popup did not provide an access token.');
     }
-    if (preferRedirectAuth) {
-      return startAcquireRedirect(instance, request);
-    }
-    try {
-      const result = await popupClient.acquireTokenPopup(request);
-      const token = result.accessToken ?? '';
-      if (!token) {
-        throw new Error('MSAL popup did not provide an access token.');
-      }
-      persistMsalToken(token);
-      return token;
-    } catch (popupError) {
-      if (preferRedirectAuth || isPopupBlockedError(popupError)) {
-        console.warn('[msal] acquireTokenPopup blocked; falling back to redirect.', popupError);
-        return startAcquireRedirect(instance, request);
-      }
-      throw popupError;
-    }
+    persistMsalToken(token);
+    return token;
   }
 };
 

@@ -1,24 +1,34 @@
 import Button from '@mui/material/Button';
+import Chip from '@mui/material/Chip';
+import IconButton from '@mui/material/IconButton';
+import Menu from '@mui/material/Menu';
+import MenuItem from '@mui/material/MenuItem';
 import { useTheme } from '@mui/material/styles';
+import MoreVertIcon from '@mui/icons-material/MoreVert';
 import type { MouseEvent } from 'react';
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 
 import { TESTIDS } from '@/testids';
 
 import type { SchedItem } from './data';
 import { SCHEDULES_DEBUG } from './debug';
 import { getScheduleStatusMeta } from './statusMetadata';
+import { SERVICE_TYPE_META, type ServiceTypeKey } from './serviceTypeMetadata';
 import { getDayChipSx } from './theme/dateStyles';
-import { type DateRange, makeRange, useSchedules } from './useSchedules';
+import { type DateRange } from './data';
+import { makeRange, useSchedules } from './useSchedules';
 
 export type WeekViewProps = {
-  items?: SchedItem[];
+  items?: WeekSchedItem[];
   loading?: boolean;
   range?: DateRange;
   onDayClick?: (dayIso: string, event?: MouseEvent<HTMLButtonElement>) => void;
   activeDateIso?: string | null;
-  onItemSelect?: (item: SchedItem) => void;
+  onItemSelect?: (item: WeekSchedItem) => void;
+  onItemAccept?: (item: WeekSchedItem) => void;
 };
+
+type WeekSchedItem = SchedItem & { staffNames?: string[]; location?: string };
 
 const startOfWeek = (date: Date): Date => {
   const next = new Date(date);
@@ -49,11 +59,17 @@ const formatEventTimeRange = (startIso: string, endIso?: string | null): string 
   return `${start} – ${formatTime(endIso)}`;
 };
 
-const buildWeekEventAriaLabel = (item: SchedItem, timeRange: string, statusLabel?: string): string => {
+const buildWeekEventAriaLabel = (
+  item: SchedItem & { staffNames?: string[]; location?: string },
+  timeRange: string,
+  statusLabel?: string,
+): string => {
+  const itemAny = item as Record<string, unknown>;
   const service = item.subType ?? item.serviceType ?? '';
   const person = item.personName ?? '';
-  const staffNames = Array.isArray(item.staffNames) ? item.staffNames.filter(Boolean).join('、') : '';
-  const location = item.locationName ?? item.location ?? '';
+  const staffNamesRaw = itemAny.staffNames as string[] | undefined;
+  const staffNames = Array.isArray(staffNamesRaw) ? staffNamesRaw.filter(Boolean).join('、') : '';
+  const location = item.locationName ?? (itemAny.location as string | undefined) ?? '';
   const reason = item.statusReason?.trim() ?? '';
 
   const segments = [
@@ -88,17 +104,23 @@ const toDateIsoLocal = (date: Date): string => {
   return `${year}-${month}-${day}`;
 };
 
-type ServiceTypeKey = 'normal' | 'transport' | 'respite' | 'nursing' | 'absence' | 'other';
+type ThemeServiceTypeKey = 'absence' | 'late' | 'earlyLeave' | 'other';
 
-const resolveServiceTypeKey = (rawCategory?: string | null): ServiceTypeKey => {
-  if (!rawCategory) return 'normal';
-  const value = rawCategory.toLowerCase();
-  if (value.includes('送迎') || value.includes('transport')) return 'transport';
-  if (value.includes('短期') || value.includes('respite')) return 'respite';
-  if (value.includes('看護') || value.includes('nurse') || value.includes('medical')) return 'nursing';
-  if (value.includes('欠席') || value.includes('absent') || value.includes('absence')) return 'absence';
-  return 'normal';
+const mapServiceTypeToThemeKey = (value?: ServiceTypeKey | null): ThemeServiceTypeKey => {
+  switch (value) {
+    case 'absence':
+      return 'absence';
+    case 'late':
+      return 'late';
+    case 'earlyLeave':
+      return 'earlyLeave';
+    case 'other':
+    default:
+      return 'other';
+  }
 };
+
+const getServiceTypeMeta = (value?: ServiceTypeKey | null) => (value ? SERVICE_TYPE_META[value] : undefined);
 
 export default function WeekView(props: WeekViewProps) {
   const hasExternalData = props.items !== undefined && props.loading !== undefined;
@@ -120,12 +142,13 @@ export default function WeekView(props: WeekViewProps) {
 }
 
 type WeekViewContentProps = {
-  items: SchedItem[];
+  items: WeekSchedItem[];
   loading: boolean;
   range?: DateRange;
   onDayClick?: (dayIso: string, event?: MouseEvent<HTMLButtonElement>) => void;
   activeDateIso?: string | null;
-  onItemSelect?: (item: SchedItem) => void;
+  onItemSelect?: (item: WeekSchedItem) => void;
+  onItemAccept?: (item: WeekSchedItem) => void;
 };
 
 const WeekViewWithData = (props: WeekViewProps) => {
@@ -140,13 +163,39 @@ const WeekViewWithData = (props: WeekViewProps) => {
       onDayClick={props.onDayClick}
       activeDateIso={props.activeDateIso}
       onItemSelect={props.onItemSelect}
+      onItemAccept={props.onItemAccept}
     />
   );
 };
 
-const WeekViewContent = ({ items, loading, onDayClick, activeDateIso, range, onItemSelect }: WeekViewContentProps) => {
+const WeekViewContent = ({ items, loading, onDayClick, activeDateIso, range, onItemSelect, onItemAccept }: WeekViewContentProps) => {
   const theme = useTheme();
+  const [menuAnchor, setMenuAnchor] = useState<HTMLElement | null>(null);
+  const [menuItem, setMenuItem] = useState<WeekSchedItem | null>(null);
   const resolvedRange = useMemo(() => range ?? defaultWeekRange(), [range]);
+
+  const fallbackServiceTokens: Record<ThemeServiceTypeKey, { bg: string; border: string; accent: string }> = {
+    absence: {
+      bg: theme.palette.error.light,
+      border: theme.palette.error.main,
+      accent: theme.palette.error.dark,
+    },
+    late: {
+      bg: theme.palette.warning.light,
+      border: theme.palette.warning.main,
+      accent: theme.palette.warning.dark,
+    },
+    earlyLeave: {
+      bg: theme.palette.info.light,
+      border: theme.palette.info.main,
+      accent: theme.palette.info.dark,
+    },
+    other: {
+      bg: theme.palette.grey[100],
+      border: theme.palette.grey[300],
+      accent: theme.palette.grey[500],
+    },
+  };
 
   if (SCHEDULES_DEBUG) {
     // eslint-disable-next-line no-console -- diagnostics for E2E/dev only
@@ -194,6 +243,31 @@ const WeekViewContent = ({ items, loading, onDayClick, activeDateIso, range, onI
     onDayClick?.(iso, event);
   };
 
+  const handleMenuOpen = (event: MouseEvent<HTMLElement>, item: WeekSchedItem) => {
+    event.stopPropagation();
+    setMenuAnchor(event.currentTarget);
+    setMenuItem(item);
+  };
+
+  const handleMenuClose = () => {
+    setMenuAnchor(null);
+    setMenuItem(null);
+  };
+
+  const handleMenuEdit = () => {
+    if (menuItem) {
+      onItemSelect?.(menuItem);
+    }
+    handleMenuClose();
+  };
+
+  const handleMenuAccept = () => {
+    if (menuItem && onItemAccept) {
+      onItemAccept(menuItem);
+    }
+    handleMenuClose();
+  };
+
   const rangeLabel = `${rangeFormatter.format(new Date(resolvedRange.from))} – ${rangeFormatter.format(
     new Date(resolvedRange.to),
   )}`;
@@ -207,91 +281,101 @@ const WeekViewContent = ({ items, loading, onDayClick, activeDateIso, range, onI
       <div
         aria-label="週ごとの予定一覧"
         role="grid"
+        aria-rowcount={1}
+        aria-colcount={weekDays.length}
         data-testid={TESTIDS['schedules-week-grid']}
-        className="grid grid-cols-2 gap-2 sm:grid-cols-4 md:grid-cols-7"
+        className="w-full"
       >
-        {weekDays.map((day) => {
-          const isToday = day.iso === todayIso;
-          const isActive = day.iso === resolvedActiveIso;
-          const dayItems = groupedItems.get(day.iso) ?? [];
-          const ariaLabel = `${day.label}${isToday ? '（今日）' : ''} 予定${dayItems.length}件`;
-          return (
-            <div key={day.iso} role="gridcell" className="min-w-0">
-              <Button
-                type="button"
-                aria-label={ariaLabel}
-                aria-current={isActive ? 'date' : undefined}
-                onClick={(event) => handleClick(day.iso, event as MouseEvent<HTMLButtonElement>)}
-                data-testid={`${TESTIDS.SCHEDULES_WEEK_DAY_PREFIX}-${day.iso}`}
-                variant="outlined"
-                sx={{ ...dayChipBaseSx, ...getDayChipSx({ isToday, isSelected: isActive }) }}
+        <div role="row" aria-rowindex={1} className="grid grid-cols-2 gap-2 sm:grid-cols-4 md:grid-cols-7">
+          {weekDays.map((day, index) => {
+            const isToday = day.iso === todayIso;
+            const isActive = day.iso === resolvedActiveIso;
+            const dayItems = groupedItems.get(day.iso) ?? [];
+            const ariaLabel = `${day.label}${isToday ? '（今日）' : ''} 予定${dayItems.length}件`;
+            return (
+              <div
+                key={day.iso}
+                role="gridcell"
+                aria-colindex={index + 1}
+                aria-selected={isActive}
+                className="min-w-0"
               >
-                <div style={{ display: 'flex', alignItems: 'center', gap: 6, width: '100%' }}>
-                  <span style={{ fontSize: 12, fontWeight: 600, color: 'rgba(0,0,0,0.65)' }}>{day.label}</span>
-                  {isToday && (
-                    <span
-                      style={{
-                        fontSize: 10,
-                        padding: '1px 6px',
-                        borderRadius: 999,
-                        background: '#E3F2FD',
-                        color: '#0D47A1',
-                        fontWeight: 700,
-                      }}
-                    >
-                      今日
-                    </span>
-                  )}
-                </div>
-                <div style={{ marginTop: 6, display: 'flex', flexDirection: 'column', gap: 4, width: '100%' }}>
-                  {dayItems.length === 0 ? (
-                    <span style={{ fontSize: 11, color: 'rgba(31,41,55,0.9)' }}>予定なし</span>
-                  ) : (
-                    dayItems.slice(0, 3).map((item) => {
-                      const statusMeta = getScheduleStatusMeta(item.status);
-                      const showStatus = item.status && item.status !== 'Planned' && statusMeta;
-                      const label = showStatus ? `${item.title}（${statusMeta!.label}）` : item.title;
-                      return (
-                        <span
-                          key={item.id}
-                          style={{
-                            display: 'inline-flex',
-                            alignItems: 'center',
-                            gap: 6,
-                            padding: '2px 6px',
-                            borderRadius: 999,
-                            fontSize: 11,
-                            background: 'rgba(0,0,0,0.04)',
-                            color: 'rgba(0,0,0,0.75)',
-                            maxWidth: '100%',
-                            overflow: 'hidden',
-                            textOverflow: 'ellipsis',
-                            whiteSpace: 'nowrap',
-                          }}
-                        >
+                <Button
+                  type="button"
+                  aria-label={ariaLabel}
+                  aria-current={isActive ? 'date' : undefined}
+                  onClick={(event) => handleClick(day.iso, event as MouseEvent<HTMLButtonElement>)}
+                  data-testid={`${TESTIDS.SCHEDULES_WEEK_DAY_PREFIX}-${day.iso}`}
+                  variant="outlined"
+                  sx={{ ...dayChipBaseSx, ...getDayChipSx({ isToday, isSelected: isActive }) }}
+                >
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 6, width: '100%' }}>
+                    <span style={{ fontSize: 12, fontWeight: 600, color: 'rgba(0,0,0,0.65)' }}>{day.label}</span>
+                    {isToday && (
+                      <span
+                        style={{
+                          fontSize: 10,
+                          padding: '1px 6px',
+                          borderRadius: 999,
+                          background: '#E3F2FD',
+                          color: '#0D47A1',
+                          fontWeight: 700,
+                        }}
+                      >
+                        今日
+                      </span>
+                    )}
+                  </div>
+                  <div style={{ marginTop: 6, display: 'flex', flexDirection: 'column', gap: 4, width: '100%' }}>
+                    {dayItems.length === 0 ? (
+                      <span style={{ fontSize: 11, color: 'rgba(31,41,55,0.9)' }}>予定なし</span>
+                    ) : (
+                      dayItems.slice(0, 3).map((item) => {
+                        const statusMeta = getScheduleStatusMeta(item.status);
+                        const showStatus = item.status && item.status !== 'Planned' && statusMeta;
+                        const label = showStatus ? `${item.title}（${statusMeta!.label}）` : item.title;
+                        return (
                           <span
-                            aria-hidden="true"
+                            key={item.id}
                             style={{
-                              width: 6,
-                              height: 6,
-                              borderRadius: '50%',
-                              background: statusMeta?.dotColor ?? 'rgba(76,175,80,0.9)',
-                              flexShrink: 0,
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              gap: 6,
+                              padding: '2px 6px',
+                              borderRadius: 999,
+                              fontSize: 11,
+                              background: 'rgba(0,0,0,0.04)',
+                              color: 'rgba(0,0,0,0.75)',
+                              maxWidth: '100%',
+                              overflow: 'hidden',
+                              textOverflow: 'ellipsis',
+                              whiteSpace: 'nowrap',
                             }}
-                          />
-                          {label}
-                        </span>
-                      );
-                    })
-                  )}
-                  {dayItems.length > 3 && (
-                    <span style={{ fontSize: 10, color: 'rgba(0,0,0,0.5)' }}>+{dayItems.length - 3} 件</span>
-                  )}
-                </div>
-              </Button>
-            </div>
-          );
-        })}
+                          >
+                            <span
+                              aria-hidden="true"
+                              style={{
+                                width: 6,
+                                height: 6,
+                                borderRadius: '50%',
+                                background: statusMeta?.dotColor ?? 'rgba(76,175,80,0.9)',
+                                flexShrink: 0,
+                              }}
+                            />
+                            {label}
+                          </span>
+                        );
+                      })
+                    )}
+                    {dayItems.length > 3 && (
+                      <span style={{ fontSize: 10, color: 'rgba(0,0,0,0.5)' }}>+{dayItems.length - 3} 件</span>
+                    )}
+                  </div>
+                </Button>
+              </div>
+            );
+          })}
+        </div>
       </div>
       {loading ? (
         <p className="rounded-lg border border-dashed border-slate-300 bg-white p-6 text-center text-slate-500" aria-busy="true">
@@ -317,9 +401,15 @@ const WeekViewContent = ({ items, loading, onDayClick, activeDateIso, range, onI
               if (isDisabled) return;
               onItemSelect?.(item);
             };
-            const serviceTypeKey = resolveServiceTypeKey(item.serviceType ?? item.category);
-            const serviceTokens = theme.serviceTypeColors?.[serviceTypeKey];
+            const serviceTypeKey = mapServiceTypeToThemeKey(item.serviceType as ServiceTypeKey);
+            const serviceTypeColors = (theme as unknown as {
+              serviceTypeColors?: Record<string, { bg?: string; border?: string; accent?: string }>;
+            }).serviceTypeColors;
+            const serviceTokens = serviceTypeColors?.[serviceTypeKey] ?? fallbackServiceTokens[serviceTypeKey];
             const timeRange = formatEventTimeRange(item.start, item.end);
+            const serviceTypeMeta = getServiceTypeMeta(item.serviceType as ServiceTypeKey);
+            const showServiceChip = Boolean(serviceTypeMeta);
+            const isAccepted = Boolean(item.acceptedOn || item.acceptedBy || item.acceptedNote);
             const ariaLabel = buildWeekEventAriaLabel(item, timeRange, statusLabel);
 
             return (
@@ -347,43 +437,57 @@ const WeekViewContent = ({ items, loading, onDayClick, activeDateIso, range, onI
                   aria-label={ariaLabel}
                   title={timeRange}
                 >
-                  <p className="text-sm font-semibold text-slate-900 flex items-center gap-2">
-                    {serviceTokens ? (
-                      <span
-                        aria-hidden="true"
-                        className="inline-block h-4 w-1 rounded-full"
-                        style={{ backgroundColor: serviceTokens.accent }}
-                      />
-                    ) : null}
-                    <span>{item.title}</span>
-                    {statusLabel && statusMeta && (
-                      <span
-                        className="text-[11px] px-2 py-0.5 rounded-full"
-                        style={{
-                          background: statusMeta.chipBg,
-                          color: statusMeta.chipColor,
-                          fontWeight: 600,
-                        }}
-                      >
-                        {statusLabel}
-                      </span>
-                    )}
-                  </p>
+                  <div className="flex items-start justify-between gap-2">
+                    <p className="text-sm font-semibold text-slate-900 flex items-center gap-2">
+                      {serviceTokens ? (
+                        <span
+                          aria-hidden="true"
+                          className="inline-block h-4 w-1 rounded-full"
+                          style={{ backgroundColor: serviceTokens.accent }}
+                        />
+                      ) : null}
+                      <span>{item.title}</span>
+                      {statusLabel && statusMeta && (
+                        <span
+                          className="text-[11px] px-2 py-0.5 rounded-full"
+                          style={{
+                            background: statusMeta.chipBg,
+                            color: statusMeta.chipColor,
+                            fontWeight: 600,
+                          }}
+                        >
+                          {statusLabel}
+                        </span>
+                      )}
+                    </p>
+                    <IconButton
+                      aria-label="行の操作"
+                      size="small"
+                      onClick={(event) => handleMenuOpen(event, item)}
+                      sx={{ ml: 0.5 }}
+                    >
+                      <MoreVertIcon fontSize="small" />
+                    </IconButton>
+                  </div>
                   <p className="text-xs text-slate-600 flex flex-wrap gap-2 items-center">
                     <span>{timeRange}</span>
-                    {item.locationName ?? item.location ? (
+                    {item.locationName ?? (item as Record<string, unknown>).location ? (
                       <span aria-label="場所" className="truncate">
-                        {item.locationName ?? item.location}
+                        {item.locationName ?? String((item as Record<string, unknown>).location ?? '')}
                       </span>
                     ) : null}
                   </p>
-                  {(item.personName ?? item.serviceType ?? item.subType) && (
-                    <p className="text-xs text-slate-500">
-                      {[item.personName, item.serviceType ?? item.subType]
-                        .filter(Boolean)
-                        .join(' / ')}
-                    </p>
+                  {item.personName && (
+                    <p className="text-xs text-slate-500">{item.personName}</p>
                   )}
+                  {(showServiceChip && serviceTypeMeta) || isAccepted ? (
+                    <div className="mt-1 flex flex-wrap items-center gap-1.5">
+                      {showServiceChip && serviceTypeMeta ? (
+                        <Chip size="small" label={serviceTypeMeta.label} color={serviceTypeMeta.color} variant="outlined" />
+                      ) : null}
+                      {isAccepted ? <Chip size="small" label="受け入れ済" color="success" variant="filled" /> : null}
+                    </div>
+                  ) : null}
                   {statusReason && (
                     <p className="text-xs text-slate-500 mt-1" data-testid="schedule-status-reason">
                       {statusReason}
@@ -395,6 +499,13 @@ const WeekViewContent = ({ items, loading, onDayClick, activeDateIso, range, onI
           })}
         </ul>
       )}
+
+      <Menu anchorEl={menuAnchor} open={Boolean(menuAnchor)} onClose={handleMenuClose} elevation={3}>
+        <MenuItem onClick={handleMenuEdit}>編集</MenuItem>
+        <MenuItem onClick={handleMenuAccept} disabled={!onItemAccept}>
+          受け入れ登録
+        </MenuItem>
+      </Menu>
     </div>
   );
 };

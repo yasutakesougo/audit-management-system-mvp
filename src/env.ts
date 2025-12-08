@@ -1,20 +1,72 @@
 type EnvDict = Record<string, string | undefined>;
 
+const TRUTHY_RUNTIME_VALUES = new Set(['1', 'true', 'yes', 'y', 'on', 'enabled']);
+
 const INLINE_ENV: EnvDict = (() => {
+  let fromImportMeta: EnvDict = {};
   try {
     if (typeof import.meta !== 'undefined' && (import.meta as ImportMeta)?.env) {
-      return ((import.meta as ImportMeta).env ?? {}) as unknown as EnvDict;
+      fromImportMeta = ((import.meta as ImportMeta).env ?? {}) as unknown as EnvDict;
     }
   } catch {
     // ignore environments where import.meta is unavailable (e.g., unit tests hoisting)
   }
-  return {};
+
+  const fromProcess: EnvDict = (() => {
+    if (typeof process === 'undefined' || !process.env) return {};
+    // Ensure everything is stringified for consistent merging.
+    return Object.fromEntries(
+      Object.entries(process.env).map(([key, value]) => [key, value === undefined ? value : String(value)]),
+    );
+  })();
+
+  // Prefer process.env (Vitest stub/env file) over import.meta to honor test/runtime overrides.
+  return { ...fromImportMeta, ...fromProcess };
 })();
 
 const getWindowEnv = (): EnvDict | undefined => {
   if (typeof window === 'undefined') return undefined;
   const candidate = (window as typeof window & { __ENV__?: EnvDict }).__ENV__;
   return candidate ? { ...candidate } : undefined;
+};
+
+const E2E_OVERRIDE_KEYS = ['VITE_E2E', 'VITE_SKIP_LOGIN', 'VITE_SKIP_SHAREPOINT', 'VITE_E2E_MSAL_MOCK'];
+
+const normalizeRuntimeString = (value: string | undefined): string | undefined => {
+  if (typeof value !== 'string') return undefined;
+  const normalized = value.trim().toLowerCase();
+  return normalized || undefined;
+};
+
+const isTruthyRuntimeValue = (value: string | undefined): boolean => {
+  const normalized = normalizeRuntimeString(value);
+  return normalized ? TRUTHY_RUNTIME_VALUES.has(normalized) : false;
+};
+
+const isE2eOrTestHint = (value: string | undefined): boolean => {
+  const normalized = normalizeRuntimeString(value);
+  if (!normalized) return false;
+  return normalized === 'e2e' || normalized === 'test';
+};
+
+const shouldAllowRuntimeFlagOverrides = (runtimeEnv?: EnvDict): boolean => {
+  if (!runtimeEnv) return false;
+  if (isTruthyRuntimeValue(runtimeEnv.__ALLOW_RUNTIME_FLAG_OVERRIDES__)) {
+    return true;
+  }
+  if (isTruthyRuntimeValue(runtimeEnv.VITE_E2E)) {
+    return true;
+  }
+  if (isTruthyRuntimeValue(runtimeEnv.PLAYWRIGHT_TEST)) {
+    return true;
+  }
+  if (isE2eOrTestHint(runtimeEnv.VITE_APP_ENV) || isE2eOrTestHint(runtimeEnv.APP_ENV)) {
+    return true;
+  }
+  if (isE2eOrTestHint(runtimeEnv.MODE) || isE2eOrTestHint(runtimeEnv.NODE_ENV)) {
+    return true;
+  }
+  return false;
 };
 
 // 🚀 パフォーマンス最適化：軽量キャッシュ付き getRuntimeEnv
@@ -24,7 +76,18 @@ export function getRuntimeEnv(): EnvDict {
   if (cachedEnv) return cachedEnv;
 
   const fromWindow = getWindowEnv();
-  cachedEnv = fromWindow ? { ...INLINE_ENV, ...fromWindow } : { ...INLINE_ENV };
+  const allowRuntimeOverrides = shouldAllowRuntimeFlagOverrides(fromWindow);
+  const merged = fromWindow ? { ...INLINE_ENV, ...fromWindow } : { ...INLINE_ENV };
+
+  if (fromWindow && !allowRuntimeOverrides) {
+    for (const key of E2E_OVERRIDE_KEYS) {
+      if (INLINE_ENV[key] !== undefined) {
+        merged[key] = INLINE_ENV[key];
+      }
+    }
+  }
+
+  cachedEnv = merged;
   return cachedEnv;
 }
 

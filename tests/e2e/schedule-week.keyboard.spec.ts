@@ -1,40 +1,9 @@
 import '@/test/captureSp400';
-import { expect, test, type Locator, type Page } from '@playwright/test';
+import { expect, test, type Locator } from '@playwright/test';
+import { TESTIDS } from '@/testids';
+import { bootstrapScheduleEnv } from './utils/scheduleEnv';
 import { gotoWeek } from './utils/scheduleNav';
-
-const setupEnv = {
-  env: {
-    VITE_E2E_MSAL_MOCK: '1',
-    VITE_SKIP_LOGIN: '1',
-    VITE_FEATURE_SCHEDULES: '1',
-    VITE_FEATURE_SCHEDULES_WEEK_V2: '1',
-  },
-  storage: {
-    'feature:schedules': '1',
-    skipLogin: '1',
-  },
-} as const;
-
-const waitForWeekTimeline = async (page: Page): Promise<void> => {
-  const heading = page.getByRole('heading', { level: 1, name: /スケジュール/ });
-  await expect(heading).toBeVisible();
-
-  const weekTab = page.getByRole('tab', { name: /週/ });
-  await expect(weekTab).toHaveAttribute('aria-selected', 'true');
-
-  await expect(page.getByTestId('schedule-week-root')).toBeVisible();
-  await expect(page.locator('[id^="timeline-week-header-"]').first()).toBeVisible();
-};
-
-const readFirstTimelineHeaderId = async (page: Page): Promise<string> => {
-  const firstHeader = page.locator('[id^="timeline-week-header-"]').first();
-  await expect(firstHeader).toBeVisible();
-  const id = await firstHeader.getAttribute('id');
-  if (!id) {
-    throw new Error('Timeline header id missing');
-  }
-  return id;
-};
+import { waitForWeekTimeline } from './utils/wait';
 
 const focusLocator = async (locator: Locator): Promise<void> => {
   await locator.scrollIntoViewIfNeeded();
@@ -44,11 +13,6 @@ const focusLocator = async (locator: Locator): Promise<void> => {
 test.describe('Schedule week keyboard navigation', () => {
   test.beforeEach(async ({ page }) => {
     page.on('console', (message) => {
-      if (message.type() === 'info' && message.text().startsWith('[schedulesClient] fixtures=')) {
-        // Forward fixture logs to the Playwright reporter to aid debugging when the mock layer changes.
-        // eslint-disable-next-line no-console
-        console.log(`browser-console: ${message.text()}`);
-      }
       if (message.type() === 'error' && message.text().includes('SharePoint')) {
         // eslint-disable-next-line no-console
         console.log(`browser-console:error ${message.text()}`);
@@ -69,25 +33,15 @@ test.describe('Schedule week keyboard navigation', () => {
       }
     });
 
-    await page.addInitScript(({ env, storage }) => {
-      const scope = window as typeof window & { __ENV__?: Record<string, string> };
-      scope.__ENV__ = {
-        ...(scope.__ENV__ ?? {}),
-        ...env,
-      };
-      for (const [key, value] of Object.entries(storage)) {
-        window.localStorage.setItem(key, value);
-      }
-    }, setupEnv);
+    await bootstrapScheduleEnv(page);
   });
 
   test('keyboard focus moves across tabs and restores the week timeline', async ({ page }) => {
     await gotoWeek(page, new Date('2025-11-24'));
     await waitForWeekTimeline(page);
 
-    const tablist = page.getByRole('tablist', { name: 'スケジュールビュー切り替え' });
-    const weekTab = tablist.getByRole('tab', { name: '週' });
-    const dayTab = tablist.getByRole('tab', { name: '日' });
+    const weekTab = page.getByTestId(TESTIDS.SCHEDULES_WEEK_TAB_WEEK);
+    const dayTab = page.getByTestId(TESTIDS.SCHEDULES_WEEK_TAB_DAY);
 
     await weekTab.click();
     await focusLocator(weekTab);
@@ -96,51 +50,51 @@ test.describe('Schedule week keyboard navigation', () => {
     await page.keyboard.press('ArrowRight');
     await page.keyboard.press('Enter');
     await expect(dayTab).toHaveAttribute('aria-selected', 'true');
-    await expect(page.getByTestId('schedule-day-root')).toBeVisible();
+    await expect(page.getByTestId(TESTIDS['schedules-day-page'])).toBeVisible();
 
     await focusLocator(dayTab);
     await page.keyboard.press('ArrowLeft');
     await page.keyboard.press('Enter');
     await expect(weekTab).toHaveAttribute('aria-selected', 'true');
-    await expect(page.getByTestId('schedule-week-root')).toBeVisible();
-    await expect(page.locator('[id^="timeline-week-header-"]').first()).toBeVisible();
+    await expect(page.getByTestId(TESTIDS['schedules-week-grid'])).toBeVisible();
   });
 
   test('period navigation buttons respond to keyboard activation', async ({ page }) => {
     await gotoWeek(page, new Date('2025-11-24'));
     await waitForWeekTimeline(page);
 
-    const readHeader = () => readFirstTimelineHeaderId(page);
-    const initialHeaderId = await readHeader();
+    const rangeLabel = page.getByTestId(TESTIDS.SCHEDULES_RANGE_LABEL);
+    const readRange = async () => (await rangeLabel.textContent())?.trim() ?? '';
+    const initialRange = await readRange();
 
     const prevButton = page.getByRole('button', { name: '前の期間' });
     await focusLocator(prevButton);
     await page.keyboard.press('Enter');
-    await expect.poll(readHeader, { timeout: 10_000 }).not.toBe(initialHeaderId);
+    await expect.poll(readRange, { timeout: 10_000 }).not.toBe(initialRange);
 
     const nextButton = page.getByRole('button', { name: '次の期間' });
     await focusLocator(nextButton);
     await page.keyboard.press('Enter');
-    await expect.poll(readHeader, { timeout: 10_000 }).toBe(initialHeaderId);
+    await expect.poll(readRange, { timeout: 10_000 }).toBe(initialRange);
   });
 
   test('search interactions do not change the active week timeline', async ({ page }) => {
     await gotoWeek(page, new Date('2025-11-24'));
     await waitForWeekTimeline(page);
 
-    const weekTab = page.getByRole('tab', { name: '週' });
-    const readHeader = () => readFirstTimelineHeaderId(page);
-    const initialHeaderId = await readHeader();
+    const weekTab = page.getByTestId(TESTIDS.SCHEDULES_WEEK_TAB_WEEK);
+    const activeDay = page.getByTestId(`${TESTIDS.SCHEDULES_WEEK_DAY_PREFIX}-2025-11-24`);
+    await expect(activeDay).toHaveAttribute('aria-current', 'date');
 
-    const searchInput = page.getByPlaceholder('予定名、メモ、担当など');
+    const searchInput = page.getByTestId(TESTIDS['schedules-filter-query']);
     await focusLocator(searchInput);
-    await searchInput.type('ABC');
+    await searchInput.type('ABC', { delay: 10 });
     await page.keyboard.press('ArrowLeft');
     await page.keyboard.press('ArrowRight');
     await page.keyboard.press('Enter');
 
-    expect(await readHeader()).toBe(initialHeaderId);
+    await expect(activeDay).toHaveAttribute('aria-current', 'date');
     await expect(weekTab).toHaveAttribute('aria-selected', 'true');
-    await expect(page.getByTestId('schedule-week-root')).toBeVisible();
+    await expect(page.getByTestId(TESTIDS['schedules-week-grid'])).toBeVisible();
   });
 });

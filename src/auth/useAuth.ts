@@ -183,9 +183,31 @@ export const useAuth = () => {
     isAuthenticated,
     account: resolvedAccount,
     signIn: async () => {
-      const result = await instance.loginPopup({ scopes: [defaultScope], prompt: 'select_account' });
-      if (result?.account) {
-        instance.setActiveAccount(result.account);
+      try {
+        const result = await instance.loginPopup({ scopes: [defaultScope], prompt: 'select_account' });
+        if (result?.account) {
+          instance.setActiveAccount(result.account);
+        }
+      } catch (error: any) {
+        const popupIssues = new Set([
+          'user_cancelled',
+          'popup_window_error',
+          'monitor_window_timeout',
+        ]);
+
+        const message = typeof error?.message === 'string' ? error.message.toLowerCase() : '';
+        const coopBlocked = message.includes('cross-origin-opener-policy') || message.includes('window.closed');
+
+        if (popupIssues.has(error?.errorCode) || coopBlocked) {
+          debugLog('loginPopup failed; falling back to redirect', {
+            name: error?.name,
+            code: error?.errorCode,
+          });
+          await instance.loginRedirect({ scopes: [defaultScope], prompt: 'select_account' });
+          return;
+        }
+
+        throw error;
       }
     },
     signOut: () => instance.logoutRedirect(),

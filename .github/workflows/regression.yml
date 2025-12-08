@@ -192,7 +192,12 @@ jobs:
         run: npx playwright install --with-deps
 
       - name: E2E Smoke
-        run: npx playwright test --project=chromium --reporter=line
+        run: npx playwright test --config=playwright.smoke.config.ts --project=smoke --reporter=line
+
+      - name: Schedule Week E2E (V2)
+        env:
+          PLAYWRIGHT_SKIP_BUILD: '1'
+        run: npm run test:schedule-week
 
       - name: Upload Playwright artifacts
         if: ${{ always() }}

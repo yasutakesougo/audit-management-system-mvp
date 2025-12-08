@@ -13,6 +13,8 @@ export default defineConfig({
     environment: 'jsdom',
     env: {
       TZ: 'Asia/Tokyo',
+      VITE_SKIP_LOGIN: '0',
+      VITE_SKIP_SHAREPOINT: '0',
     },
     include: [
       'tests/unit/**/*.spec.ts',

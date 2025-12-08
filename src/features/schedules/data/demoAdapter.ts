@@ -59,6 +59,23 @@ const toIsoString = (value: string): string => {
 
 const normalizeLocal = (value: string): string => (value.length === 16 ? `${value}:00` : value);
 
+const normalizeOptionalLocal = (value?: string | null): string | undefined => {
+  if (!value) return undefined;
+  return toIsoString(normalizeLocal(value));
+};
+
+const normalizeOptionalText = (value?: string | null): string | undefined => {
+  if (typeof value !== 'string') return undefined;
+  const trimmed = value.trim();
+  return trimmed || undefined;
+};
+
+const normalizeNote = (value?: string | null): string | null => {
+  if (typeof value !== 'string') return null;
+  const trimmed = value.trim();
+  return trimmed || null;
+};
+
 const resolveTitle = (input: CreateScheduleEventInput): string =>
   (input.title ?? '').trim() || '新規予定';
 
@@ -72,6 +89,9 @@ export const demoSchedulesPort: SchedulesPort = {
     const end = toIsoString(normalizeLocal(input.endLocal));
     const status = input.status ?? 'Planned';
     const statusReason = normalizeStatusReason(input.statusReason);
+    const acceptedOn = normalizeOptionalLocal(input.acceptedOn);
+    const acceptedBy = normalizeOptionalText(input.acceptedBy);
+    const acceptedNote = normalizeNote(input.acceptedNote);
     const entryHash = createHash({
       title,
       userId: input.userId ?? null,
@@ -99,6 +119,9 @@ export const demoSchedulesPort: SchedulesPort = {
       vehicleId: input.vehicleId,
       status,
       statusReason,
+      acceptedOn,
+      acceptedBy,
+      acceptedNote,
       entryHash,
       createdAt: now,
       updatedAt: now,
@@ -117,6 +140,10 @@ export const demoSchedulesPort: SchedulesPort = {
     const end = toIsoString(normalizeLocal(input.endLocal));
     const title = resolveTitle(input);
     const updatedAt = new Date().toISOString();
+    const acceptedOn = normalizeOptionalLocal(input.acceptedOn) ?? demoItems[index].acceptedOn;
+    const acceptedBy = normalizeOptionalText(input.acceptedBy) ?? demoItems[index].acceptedBy;
+    const acceptedNote =
+      input.acceptedNote !== undefined ? normalizeNote(input.acceptedNote) : demoItems[index].acceptedNote ?? null;
 
     const next: SchedItem = {
       ...demoItems[index],
@@ -139,6 +166,9 @@ export const demoSchedulesPort: SchedulesPort = {
           ? normalizeStatusReason(input.statusReason)
           : demoItems[index].statusReason ?? null,
       updatedAt,
+      acceptedOn,
+      acceptedBy,
+      acceptedNote,
     };
 
     demoItems[index] = next;

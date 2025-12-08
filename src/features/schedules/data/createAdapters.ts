@@ -1,6 +1,5 @@
 import { createSpClient, ensureConfig } from '@/lib/spClient';
-import { createHash } from '@/utils/createHash';
-import type { CreateScheduleEventInput, SchedItem, ScheduleStatus, SchedulesPort } from './port';
+import type { CreateScheduleEventInput, SchedItem, ScheduleServiceType, ScheduleStatus, SchedulesPort } from './port';
 import { SCHEDULES_FIELDS, SCHEDULES_LIST_TITLE } from './spSchema';
 
 const DEFAULT_TITLE = '新規予定';
@@ -15,37 +14,7 @@ const trimText = (value?: string | null): string | undefined => {
   return trimmed ? trimmed : undefined;
 };
 
-const coerceString = (value: unknown): string | undefined => trimText(typeof value === 'string' ? value : undefined);
-
-const coerceLookupIdString = (value: unknown): string | undefined => {
-  if (typeof value === 'number' && Number.isFinite(value)) {
-    return String(value);
-  }
-  if (typeof value === 'string') {
-    const trimmed = value.trim();
-    return trimmed.length ? trimmed : undefined;
-  }
-  if (value && typeof value === 'object') {
-    const results = (value as { results?: unknown[] }).results;
-    if (Array.isArray(results) && results.length > 0) {
-      return coerceLookupIdString(results[0]);
-    }
-  }
-  return undefined;
-};
-
-const normalizeStatusReason = (value?: string | null): string | null => {
-  if (typeof value !== 'string') {
-    return null;
-  }
-  const trimmed = value.trim();
-  return trimmed ? trimmed : null;
-};
-
-const resolveCategoryFields = (input: CreateScheduleEventInput): {
-  normalizedUserId?: string;
-  assignedStaffId?: string;
-} => {
+const resolveCategoryFields = (input: CreateScheduleEventInput): { normalizedUserId?: string; assignedStaffId?: string } => {
   const normalizedUserId = input.userId ? normalizeUserId(input.userId) : undefined;
   const assignedStaffId = trimText(input.assignedStaffId);
 
@@ -79,74 +48,64 @@ const toIsoString = (value: string): string => {
   return date.toISOString();
 };
 
-const resolveTitle = (input: CreateScheduleEventInput): string =>
-  (input.title ?? '').trim() || DEFAULT_TITLE;
+const jpServiceLabel = (serviceType?: ScheduleServiceType | null): string => {
+  switch (serviceType) {
+    case 'absence':
+      return '欠席';
+    case 'late':
+      return '遅刻';
+    case 'earlyLeave':
+      return '早退';
+    default:
+      return 'その他';
+  }
+};
+
+const buildUserTitle = (startLocal: string, userName: string, serviceType: ScheduleServiceType): string => {
+  const date = startLocal.slice(0, 10);
+  const label = jpServiceLabel(serviceType);
+  return `${date} ${userName}（${label}）`;
+};
+
+const resolveTitle = (input: CreateScheduleEventInput): string => {
+  const rawTitle = trimText(input.title);
+  const userName = trimText((input as { userName?: string }).userName);
+
+  if (input.category === 'User' && userName) {
+    return buildUserTitle(input.startLocal, userName, input.serviceType);
+  }
+
+  return rawTitle || DEFAULT_TITLE;
+};
 
 type SharePointPayload = {
   body: Record<string, unknown>;
   title: string;
   startIso: string;
   endIso: string;
-  status: string;
-  statusReason: string | null;
-  serviceType: CreateScheduleEventInput['serviceType'];
-  normalizedUserId?: string;
-  userLookupId?: number;
-  userName?: string;
-  assignedStaffId?: string;
-  locationName?: string;
-  notes?: string;
-  vehicleId?: string;
-  entryHash: string;
 };
 
 export const toSharePointPayload = (input: CreateScheduleEventInput): SharePointPayload => {
-  const { normalizedUserId, assignedStaffId } = resolveCategoryFields(input);
+  resolveCategoryFields(input);
   const title = resolveTitle(input);
   const startIso = toIsoString(appendSeconds(input.startLocal));
   const endIso = toIsoString(appendSeconds(input.endLocal));
-  const status = input.status ?? 'Planned';
-  const statusReason = normalizeStatusReason(input.statusReason);
+  const serviceType = trimText(input.serviceType);
   const locationName = trimText(input.locationName);
   const notes = trimText(input.notes);
-  const vehicleId = trimText(input.vehicleId);
-  const userLookupId = (() => {
-    if (!input.userLookupId) {
-      return undefined;
-    }
-    const numeric = Number(input.userLookupId);
-    return Number.isFinite(numeric) ? Number(numeric) : undefined;
-  })();
-  const userName = trimText(input.userName);
-  const entryHash = createHash({
-    title,
-    userId: normalizedUserId ?? null,
-    start: startIso,
-    end: endIso,
-    serviceType: input.serviceType,
-    assignedStaffId: assignedStaffId ?? null,
-    vehicleId: vehicleId ?? null,
-    status,
-    statusReason,
-  });
+  const acceptedOn = trimText(input.acceptedOn);
+  const acceptedBy = trimText(input.acceptedBy);
+  const acceptedNote = trimText(input.acceptedNote);
   const body: Record<string, unknown> = {
     [SCHEDULES_FIELDS.title]: title,
     [SCHEDULES_FIELDS.start]: startIso,
     [SCHEDULES_FIELDS.end]: endIso,
-    [SCHEDULES_FIELDS.status]: status,
-    [SCHEDULES_FIELDS.entryHash]: entryHash,
+    // SharePoint choice/text column. We start with a fixed value known to exist.
+    [SCHEDULES_FIELDS.status]: 'Scheduled',
   };
-  body[SCHEDULES_FIELDS.serviceType] = input.serviceType;
-  if (normalizedUserId) {
-    body[SCHEDULES_FIELDS.personId] = normalizedUserId;
-  }
-  if (input.category === 'User') {
-    body[SCHEDULES_FIELDS.personName] = userName ?? null;
-    body[SCHEDULES_FIELDS.targetUserId] = userLookupId ?? null;
-  } else {
-    body[SCHEDULES_FIELDS.personId] = null;
-    body[SCHEDULES_FIELDS.personName] = null;
-    body[SCHEDULES_FIELDS.targetUserId] = null;
+
+  if (serviceType) {
+    body[SCHEDULES_FIELDS.serviceType] = serviceType;
   }
   if (locationName) {
     body[SCHEDULES_FIELDS.locationName] = locationName;
@@ -154,11 +113,14 @@ export const toSharePointPayload = (input: CreateScheduleEventInput): SharePoint
   if (notes) {
     body[SCHEDULES_FIELDS.notes] = notes;
   }
-  if (assignedStaffId) {
-    body[SCHEDULES_FIELDS.assignedStaff] = assignedStaffId;
+  if (acceptedOn) {
+    body[SCHEDULES_FIELDS.acceptedOn] = acceptedOn;
   }
-  if (vehicleId) {
-    body[SCHEDULES_FIELDS.vehicle] = vehicleId;
+  if (acceptedBy) {
+    body[SCHEDULES_FIELDS.acceptedBy] = acceptedBy;
+  }
+  if (input.acceptedNote !== undefined) {
+    body[SCHEDULES_FIELDS.acceptedNote] = acceptedNote ?? null;
   }
 
   return {
@@ -166,17 +128,6 @@ export const toSharePointPayload = (input: CreateScheduleEventInput): SharePoint
     title,
     startIso,
     endIso,
-    status,
-    statusReason,
-    serviceType: input.serviceType,
-    normalizedUserId,
-    userLookupId,
-    userName,
-    assignedStaffId,
-    locationName,
-    notes,
-    vehicleId,
-    entryHash,
   };
 };
 
@@ -199,6 +150,9 @@ type BuildSchedItemArgs = {
   createdAt?: string;
   updatedAt?: string;
   personName?: string;
+  acceptedOn?: string;
+  acceptedBy?: string;
+  acceptedNote?: string | null;
 };
 
 const buildSchedItem = (args: BuildSchedItemArgs): SchedItem => ({
@@ -209,7 +163,7 @@ const buildSchedItem = (args: BuildSchedItemArgs): SchedItem => ({
   userId: args.userId,
   userLookupId: args.userLookupId,
   category: args.category,
-  serviceType: args.serviceType,
+  serviceType: args.serviceType as SchedItem['serviceType'],
   locationName: args.locationName,
   notes: args.notes,
   personName: args.personName,
@@ -220,6 +174,9 @@ const buildSchedItem = (args: BuildSchedItemArgs): SchedItem => ({
   entryHash: args.entryHash,
   createdAt: args.createdAt,
   updatedAt: args.updatedAt,
+  acceptedOn: args.acceptedOn,
+  acceptedBy: args.acceptedBy,
+  acceptedNote: args.acceptedNote ?? null,
 });
 
 export const makeMockScheduleCreator = (): SchedulesPort['create'] => async (input) => {
@@ -227,21 +184,6 @@ export const makeMockScheduleCreator = (): SchedulesPort['create'] => async (inp
   const title = resolveTitle(input);
   const start = toIsoString(appendSeconds(input.startLocal));
   const end = toIsoString(appendSeconds(input.endLocal));
-  const status = input.status ?? 'Planned';
-  const statusReason = normalizeStatusReason(input.statusReason);
-  const locationName = trimText(input.locationName);
-  const notes = trimText(input.notes);
-  const vehicleId = trimText(input.vehicleId);
-  const entryHash = createHash({
-    title,
-    userId: normalizedUserId ?? null,
-    start,
-    end,
-    serviceType: input.serviceType,
-    assignedStaffId: assignedStaffId ?? null,
-    vehicleId: vehicleId ?? null,
-    status,
-  });
   const now = new Date().toISOString();
   return buildSchedItem({
     id: `mock-${Date.now()}`,
@@ -253,15 +195,18 @@ export const makeMockScheduleCreator = (): SchedulesPort['create'] => async (inp
     personName: input.userName,
     category: input.category,
     serviceType: input.serviceType,
-    locationName,
-    notes,
+    locationName: trimText(input.locationName),
+    notes: trimText(input.notes),
     assignedStaffId,
-    vehicleId,
-    status,
-    statusReason,
-    entryHash,
+    vehicleId: trimText(input.vehicleId),
+    status: input.status ?? 'Planned',
+    statusReason: null,
+    entryHash: undefined,
     createdAt: now,
     updatedAt: now,
+    acceptedOn: trimText(input.acceptedOn),
+    acceptedBy: trimText(input.acceptedBy),
+    acceptedNote: input.acceptedNote ?? null,
   });
 };
 
@@ -287,40 +232,29 @@ export const makeSharePointScheduleCreator = ({ acquireToken }: SharePointCreato
     const persistedTitleRaw = created?.[SCHEDULES_FIELDS.title];
     const persistedStartRaw = created?.[SCHEDULES_FIELDS.start];
     const persistedEndRaw = created?.[SCHEDULES_FIELDS.end];
-    const persistedStatusRaw = created?.[SCHEDULES_FIELDS.status];
-    const persistedNotesRaw = created?.[SCHEDULES_FIELDS.notes];
-    const persistedLocationRaw = created?.[SCHEDULES_FIELDS.locationName];
-    const persistedServiceTypeRaw = created?.[SCHEDULES_FIELDS.serviceType];
-    const persistedPersonIdRaw = created?.[SCHEDULES_FIELDS.personId];
-    const persistedPersonNameRaw = created?.[SCHEDULES_FIELDS.personName];
-    const persistedTargetUserIdRaw = created?.[SCHEDULES_FIELDS.targetUserId];
-    const persistedAssignedRaw = created?.[SCHEDULES_FIELDS.assignedStaff];
-    const persistedVehicleRaw = created?.[SCHEDULES_FIELDS.vehicle];
-    const persistedEntryHashRaw = created?.[SCHEDULES_FIELDS.entryHash];
+    const serviceType = trimText(input.serviceType);
+    const locationNameValue = trimText(input.locationName);
+    const notesValue = trimText(input.notes);
+    const acceptedOnValue = trimText(input.acceptedOn);
+    const acceptedByValue = trimText(input.acceptedBy);
+    const acceptedNoteValue = input.acceptedNote ?? null;
 
     return buildSchedItem({
       id,
       title: typeof persistedTitleRaw === 'string' && persistedTitleRaw.trim() ? persistedTitleRaw : payload.title,
       start: typeof persistedStartRaw === 'string' && persistedStartRaw ? persistedStartRaw : payload.startIso,
       end: typeof persistedEndRaw === 'string' && persistedEndRaw ? persistedEndRaw : payload.endIso,
-      userId: coerceString(persistedPersonIdRaw) ?? payload.normalizedUserId,
-      userLookupId: (() => {
-        const rawString = coerceLookupIdString(persistedTargetUserIdRaw);
-        if (rawString) return rawString;
-        return payload.userLookupId != null ? String(payload.userLookupId) : undefined;
-      })(),
-      personName: coerceString(persistedPersonNameRaw) ?? payload.userName,
       category: input.category,
-      serviceType: coerceString(persistedServiceTypeRaw) ?? payload.serviceType,
-      locationName: coerceString(persistedLocationRaw) ?? payload.locationName,
-      notes: coerceString(persistedNotesRaw) ?? payload.notes,
-      assignedStaffId: coerceString(persistedAssignedRaw) ?? payload.assignedStaffId,
-      vehicleId: coerceString(persistedVehicleRaw) ?? payload.vehicleId,
-      status: typeof persistedStatusRaw === 'string' && persistedStatusRaw ? persistedStatusRaw : payload.status,
-      statusReason: payload.statusReason,
-      entryHash: typeof persistedEntryHashRaw === 'string' && persistedEntryHashRaw ? persistedEntryHashRaw : payload.entryHash,
+      serviceType,
+      locationName: locationNameValue ?? undefined,
+      notes: notesValue ?? undefined,
+      status: input.status ?? 'Planned',
+      statusReason: null,
       createdAt: created?.Created,
       updatedAt: created?.Modified,
+      acceptedOn: acceptedOnValue,
+      acceptedBy: acceptedByValue,
+      acceptedNote: acceptedNoteValue,
     });
   };
 };

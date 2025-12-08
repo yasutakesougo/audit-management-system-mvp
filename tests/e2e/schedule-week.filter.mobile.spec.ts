@@ -1,43 +1,13 @@
 import '@/test/captureSp400';
-import { expect, test, type Page } from '@playwright/test';
+import { expect, test } from '@playwright/test';
+import { TESTIDS } from '@/testids';
+import { bootstrapScheduleEnv } from './utils/scheduleEnv';
 import { gotoWeek } from './utils/scheduleNav';
-
-const setupEnv = {
-  env: {
-    VITE_E2E_MSAL_MOCK: '1',
-    VITE_SKIP_LOGIN: '1',
-    VITE_FEATURE_SCHEDULES: '1',
-    VITE_FEATURE_SCHEDULES_WEEK_V2: '1',
-  },
-  storage: {
-    'feature:schedules': '1',
-    skipLogin: '1',
-  },
-} as const;
-
-const waitForWeekTimeline = async (page: Page): Promise<void> => {
-  const heading = page.getByRole('heading', { level: 1, name: /スケジュール/ });
-  await expect(heading).toBeVisible();
-
-  const tab = page.getByRole('tab', { name: /週/ });
-  await expect(tab).toHaveAttribute('aria-selected', 'true');
-
-  await expect(page.getByTestId('schedule-week-root')).toBeVisible();
-  await expect(page.locator('[id^="timeline-week-header-"]').first()).toBeVisible();
-};
+import { waitForWeekTimeline } from './utils/wait';
 
 test.describe('Schedule week – mobile toolbar/search', () => {
   test.beforeEach(async ({ page }) => {
-    await page.addInitScript(({ env, storage }) => {
-      const scope = window as typeof window & { __ENV__?: Record<string, string> };
-      scope.__ENV__ = {
-        ...(scope.__ENV__ ?? {}),
-        ...env,
-      };
-      for (const [key, value] of Object.entries(storage)) {
-        window.localStorage.setItem(key, value);
-      }
-    }, setupEnv);
+    await bootstrapScheduleEnv(page);
   });
 
   test('keeps the timeline visible while using the mobile search toolbar', async ({ page }) => {
@@ -46,20 +16,24 @@ test.describe('Schedule week – mobile toolbar/search', () => {
     await gotoWeek(page, new Date('2025-11-24'));
     await waitForWeekTimeline(page);
 
-    const toolbar = page.getByRole('toolbar', { name: 'スケジュールの検索とフィルタ' });
-    await expect(toolbar).toBeVisible();
+    const filterToggle = page.getByTestId(TESTIDS.SCHEDULES_FILTER_TOGGLE);
+    await expect(filterToggle).toBeVisible();
+    await filterToggle.click();
 
-    const searchInput = page.getByRole('textbox', { name: '検索' });
+    const filterDialog = page.getByTestId(TESTIDS.SCHEDULES_FILTER_DIALOG);
+    await expect(filterDialog).toBeVisible();
+
+    const searchInput = filterDialog.getByTestId(TESTIDS['schedules-filter-query']);
     await expect(searchInput).toBeVisible();
     await searchInput.fill('早番');
     await expect(searchInput).toHaveValue('早番');
 
-    const clearButton = page.getByRole('button', { name: '検索条件をクリア' });
-    await expect(clearButton).toBeEnabled();
-    await clearButton.click();
-    await expect(searchInput).toHaveValue('');
+    const closeButton = filterDialog.getByRole('button', { name: '閉じる' });
+    await expect(closeButton).toBeEnabled();
+    await closeButton.click();
 
-    await expect(page.getByTestId('schedule-week-root')).toBeVisible();
-    await expect(page.locator('[id^="timeline-week-header-"]').first()).toBeVisible();
+    await expect(
+      page.getByTestId(TESTIDS['schedules-week-grid']).or(page.getByTestId(TESTIDS.SCHEDULES_WEEK_TIMELINE)),
+    ).toBeVisible();
   });
 });

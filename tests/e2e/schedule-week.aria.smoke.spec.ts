@@ -1,32 +1,45 @@
+import '@/test/captureSp400';
 import { expect, test } from '@playwright/test';
-import { gotoWeek } from './utils/scheduleNav';
+import { TESTIDS } from '@/testids';
+import { bootstrapScheduleEnv } from './utils/scheduleEnv';
+import { gotoScheduleWeek } from './utils/scheduleWeek';
 
 test.describe('Schedule week page – ARIA smoke', () => {
+  test.beforeEach(async ({ page }) => {
+    await bootstrapScheduleEnv(page);
+  });
+
   test('exposes main landmark, heading, tabs, and week tabpanel', async ({ page }) => {
-    await gotoWeek(page, new Date());
+    await gotoScheduleWeek(page, new Date());
 
-    const main = page.getByRole('main');
-    await expect(main).toBeVisible();
+    const section = page.getByTestId(TESTIDS.SCHEDULES_PAGE_ROOT).or(page.getByTestId(TESTIDS['schedules-week-page']));
+    await expect(section).toBeVisible();
+    await expect(section).toHaveAttribute('aria-label', '週間スケジュール');
 
-    const heading = main.getByRole('heading', { level: 1, name: /スケジュール/ });
+    const heading = page.getByTestId(TESTIDS['schedules-week-heading']);
     await expect(heading).toBeVisible();
 
-    const tablist = main.getByRole('tablist');
+    const tablist = page.getByTestId(TESTIDS.SCHEDULES_WEEK_TABLIST);
     await expect(tablist).toBeVisible();
 
-    const weekTab = tablist.getByRole('tab', { name: /週/ });
+    const weekTab = page.getByTestId(TESTIDS.SCHEDULES_WEEK_TAB_WEEK);
     await expect(weekTab).toBeVisible();
     await expect(weekTab).toHaveAttribute('aria-selected', 'true');
 
-    const weekGridHeader = page.locator('[id^="timeline-week-header-"]').first();
-    await expect(weekGridHeader).toBeVisible();
+    const weekPanel = page.locator('#panel-week');
+    await expect(weekPanel).toBeVisible();
+    await expect(weekPanel).toHaveAttribute('role', 'tabpanel');
+
+    const grid = page.getByTestId(TESTIDS['schedules-week-grid']);
+    await expect(grid).toBeVisible();
+    await expect(grid).toHaveAttribute('role', 'grid');
   });
 
   test('arrow key navigation keeps aria-selected in tablist', async ({ page }) => {
-    await gotoWeek(page, new Date());
+    await gotoScheduleWeek(page, new Date());
 
-    const tablist = page.getByRole('tablist');
-    const weekTab = tablist.getByRole('tab', { name: /週/ });
+    const tablist = page.getByTestId(TESTIDS.SCHEDULES_WEEK_TABLIST);
+    const weekTab = page.getByTestId(TESTIDS.SCHEDULES_WEEK_TAB_WEEK);
 
     await weekTab.click();
     await expect(weekTab).toBeFocused();

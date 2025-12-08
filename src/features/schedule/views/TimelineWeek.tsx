@@ -127,6 +127,8 @@ export default function TimelineWeek({ events, startDate, onEventMove, onEventCr
   }, [dragInstructionsId, onEventMove, rangeLabel, rangeLabelId]);
   const enableDrag = Boolean(onEventMove);
   const scrollRef = useRef<HTMLDivElement | null>(null);
+  const rowCount = laneOrder.length + 1; // header row + lane rows
+  const colCount = weekDays.length + 1; // category column + day columns
   const preferredScrollKey = useMemo(() => {
     const today = weekDays.find((d) => d.isToday)?.key;
     if (today) return today;
@@ -400,9 +402,6 @@ export default function TimelineWeek({ events, startDate, onEventMove, onEventCr
       >
         <Box
           ref={scrollRef}
-          role="grid"
-          aria-label="週ごとの予定一覧"
-          aria-describedby={gridDescribedBy}
           sx={{
             overflowX: 'auto',
             overflowY: 'auto',
@@ -410,7 +409,14 @@ export default function TimelineWeek({ events, startDate, onEventMove, onEventCr
             width: '100%'
           }}
         >
-          <Box sx={{ minWidth: minGridWidth, width: 'max-content' }}>
+          <Box
+            role="grid"
+            aria-label="週ごとの予定一覧"
+            aria-describedby={gridDescribedBy}
+            aria-rowcount={rowCount}
+            aria-colcount={colCount}
+            sx={{ minWidth: minGridWidth, width: 'max-content' }}
+          >
           {/* Header Row */}
           <Box
             role="row"

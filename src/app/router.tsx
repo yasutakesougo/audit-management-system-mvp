@@ -108,7 +108,8 @@ const SuspendedSchedulePage: React.FC = () => (
 // 週間スケジュールの表示は feature flag で新旧UIを出し分ける
 const SchedulesWeekRoute: React.FC = () => {
   const { schedulesWeekV2 } = useFeatureFlags();
-  return schedulesWeekV2 ? <SuspendedSchedulePage /> : <SuspendedNewSchedulesWeekPage />;
+  // schedulesWeekV2=true should surface the v2 WeekPage; keep legacy page as fallback when disabled.
+  return schedulesWeekV2 ? <SuspendedNewSchedulesWeekPage /> : <SuspendedSchedulePage />;
 };
 
 const SuspendedCreatePage: React.FC = () => (

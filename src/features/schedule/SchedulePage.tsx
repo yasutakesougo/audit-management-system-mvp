@@ -87,12 +87,13 @@ const DOMAIN_TO_DIALOG_STATUS: Record<Status, ScheduleStatus> = {
   完了: 'confirmed',
 };
 
-const QUICK_SERVICE_TYPE_LABELS: Record<ScheduleServiceType, string> = {
-  normal: '通常利用',
+const QUICK_SERVICE_TYPE_LABELS: Partial<Record<ScheduleServiceType, string>> = {
+  normal: '通所',
   transport: '送迎',
-  respite: '一時ケア・短期',
-  nursing: '看護',
-  absence: '欠席・休み',
+  respite: 'レスパイト',
+  meeting: '会議',
+  training: '研修',
+  absence: '欠席',
   late: '遅刻',
   earlyLeave: '早退',
   other: 'その他',
@@ -107,11 +108,12 @@ const QUICK_SERVICE_TYPE_BY_LABEL: Record<string, ScheduleServiceType> = Object.
 );
 
 // Quick-create(code) -> Domain(ServiceType) のマップ
-const QUICK_TO_DOMAIN_SERVICE_TYPE: Record<ScheduleServiceType, ScheduleUserCare['serviceType']> = {
+const QUICK_TO_DOMAIN_SERVICE_TYPE: Partial<Record<ScheduleServiceType, ScheduleUserCare['serviceType']>> = {
   normal: '通常利用',
   transport: '送迎',
   respite: '一時ケア',
-  nursing: '看護',
+  meeting: '会議',
+  training: '研修',
   absence: '欠席・休み',
   late: 'late',
   earlyLeave: 'earlyLeave',
@@ -825,7 +827,7 @@ export default function SchedulePage() {
     })();
 
     const serviceTypeCode = input.serviceType;
-    const serviceTypeLabel = QUICK_SERVICE_TYPE_LABELS[serviceTypeCode] ?? QUICK_SERVICE_TYPE_LABELS.other;
+    const serviceTypeLabel = QUICK_SERVICE_TYPE_LABELS[serviceTypeCode] ?? QUICK_SERVICE_TYPE_LABELS.other ?? 'その他';
     const userOption = input.userId ? scheduleUserMap.get(input.userId) ?? null : null;
     const trimmedTitle = input.title.trim();
     const resolvedTitle = trimmedTitle || `${serviceTypeLabel} / ${userOption?.name ?? '利用者'}`;
@@ -1084,7 +1086,7 @@ export default function SchedulePage() {
   );
 
   return (
-    <Container maxWidth="xl" sx={{ py: 3 }} data-testid="schedule-page-root">
+    <Container maxWidth="xl" sx={{ py: 3 }} data-testid={TESTIDS.SCHEDULES_PAGE_ROOT}>
       <Paper elevation={0} sx={{ borderRadius: 2, overflow: 'hidden' }}>
         {/* Header with title and period navigation */}
         <Box sx={{ p: 3, pb: 0 }}>
@@ -1247,15 +1249,17 @@ export default function SchedulePage() {
             />
           )}
           {view === 'week' && (
-            <TimelineWeek
-              events={filteredTimelineEvents}
-              startDate={range.start}
-              onEventMove={handleEventMove}
-              onEventCreate={handleEventCreate}
-              onEventEdit={handleEventEdit}
-              onDayNavigate={handleDayNavigate}
-              orgFilterLabel={orgFilterLabel}
-            />
+            <Box data-testid={TESTIDS.SCHEDULES_WEEK_TIMELINE}>
+              <TimelineWeek
+                events={filteredTimelineEvents}
+                startDate={range.start}
+                onEventMove={handleEventMove}
+                onEventCreate={handleEventCreate}
+                onEventEdit={handleEventEdit}
+                onDayNavigate={handleDayNavigate}
+                orgFilterLabel={orgFilterLabel}
+              />
+            </Box>
           )}
           {view === 'day' && (
             <TimelineDay

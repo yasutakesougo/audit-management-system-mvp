@@ -8,12 +8,8 @@ type TimeRangeInfo = {
   isAllDay: boolean;
 };
 
-const SERVICE_TYPE_LABELS: Record<ScheduleServiceType, string> = {
-  normal: '通常利用',
-  transport: '送迎',
-  respite: '一時ケア・短期',
-  nursing: '看護',
-  absence: '欠席・休み',
+const SERVICE_TYPE_LABELS: Partial<Record<ScheduleServiceType, string>> = {
+  absence: '欠席',
   late: '遅刻',
   earlyLeave: '早退',
   other: 'その他',

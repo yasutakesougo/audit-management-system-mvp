@@ -69,12 +69,10 @@ export default defineConfig(({ mode }) => {
               normalized.includes('/node_modules/react/') ||
               normalized.includes('/node_modules/react-dom/') ||
               normalized.includes('/node_modules/scheduler/') ||
-              normalized.includes('/@emotion/')
+              normalized.includes('/@emotion/') ||
+              normalized.includes('/@mui/icons-material/')
             ) {
               return 'react';
-            }
-            if (normalized.includes('/@mui/icons-material/')) {
-              return 'mui-icons';
             }
             if (normalized.includes('/@mui/material/')) {
               return undefined;
@@ -97,10 +95,12 @@ export default defineConfig(({ mode }) => {
               normalized.includes('/rehype-') ||
               normalized.includes('/micromark/')
             ) {
-              return 'markdown';
+              return 'react';
             }
             if (normalized.includes('recharts')) {
-              return 'charting';
+              // Keep Recharts with the React bundle to avoid rollup helper cycles that
+              // can break React imports (forwardRef undefined when split).
+              return 'react';
             }
             return undefined;
           },

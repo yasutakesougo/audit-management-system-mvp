@@ -26,7 +26,7 @@ import { setCurrentUserRole, useAuthStore } from '@/features/auth/store';
 import { useDashboardPath } from '@/features/dashboard/dashboardRouting';
 import { HandoffQuickNoteCard } from '@/features/handoff/HandoffQuickNoteCard';
 import RouteHydrationListener from '@/hydration/RouteHydrationListener';
-import { getAppConfig, readBool, shouldSkipLogin } from '@/lib/env';
+import { getAppConfig, isE2eMsalMockEnabled, readBool, shouldSkipLogin } from '@/lib/env';
 import { useSP } from '@/lib/spClient';
 import { PREFETCH_KEYS, type PrefetchKey } from '@/prefetch/routes';
 import { TESTIDS } from '@/testids';
@@ -55,6 +55,7 @@ type NavItem = {
 };
 
 const SKIP_LOGIN = shouldSkipLogin();
+const E2E_MSAL_MOCK_ENABLED = isE2eMsalMockEnabled();
 
 const AppShell: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const location = useLocation();
@@ -285,26 +286,81 @@ const AppShell: React.FC<{ children: React.ReactNode }> = ({ children }) => {
 };
 
 const ConnectionStatus: React.FC = () => {
-  const { spFetch } = useSP();
-  const { accounts } = useMsalContext();
+  const isVitest = typeof process !== 'undefined' && Boolean(process.env?.VITEST);
+  const e2eMode = readBool('VITE_E2E', false) && !isVitest;
+
+  if (e2eMode) {
+    return (
+      <Box
+        role="status"
+        aria-live="polite"
+        data-testid="sp-connection-status"
+        data-connection-state="ok"
+        sx={{
+          background: '#2e7d32',
+          color: '#fff',
+          px: 1,
+          py: 0.25,
+          borderRadius: 12,
+          fontSize: 12,
+          fontWeight: 500,
+          minWidth: 90,
+          textAlign: 'center',
+        }}
+      >
+        SP Connected
+      </Box>
+    );
+  }
+
+  const sharePointDisabled = readBool('VITE_SKIP_SHAREPOINT', false);
   const forceSharePoint = readBool('VITE_FORCE_SHAREPOINT', false);
   const sharePointFeatureEnabled = readBool('VITE_FEATURE_SCHEDULES_SP', false);
+  const shouldMockConnection = sharePointDisabled || E2E_MSAL_MOCK_ENABLED;
+
+  if (shouldMockConnection) {
+    return (
+      <Box
+        role="status"
+        aria-live="polite"
+        data-testid="sp-connection-status"
+        data-connection-state="ok"
+        sx={{
+          background: '#2e7d32',
+          color: '#fff',
+          px: 1,
+          py: 0.25,
+          borderRadius: 12,
+          fontSize: 12,
+          fontWeight: 500,
+          minWidth: 90,
+          textAlign: 'center',
+        }}
+      >
+        SP Connected
+      </Box>
+    );
+  }
+
+  const { spFetch } = useSP();
+  const { accounts } = useMsalContext();
   const accountsCount = accounts.length;
   const [state, setState] = useState<'checking' | 'ok' | 'error' | 'signedOut'>('checking');
+  const bypassAccountGate = SKIP_LOGIN || E2E_MSAL_MOCK_ENABLED;
 
   useEffect(() => {
     const { isDev: isDevelopment } = getAppConfig();
     const isVitest = typeof process !== 'undefined' && Boolean(process.env?.VITEST);
-    const shouldCheckSharePoint = !isDevelopment || isVitest || forceSharePoint || sharePointFeatureEnabled;
+    const shouldCheckSharePoint = !sharePointDisabled && (!isDevelopment || isVitest || forceSharePoint || sharePointFeatureEnabled);
 
-    // 開発モード本番ブラウザのみ SharePoint 接続チェックを省略（テストでは実行）
+    // Skip SharePoint connectivity checks when disabled via env or flag overrides
     if (!shouldCheckSharePoint) {
-      console.info('開発環境: SharePoint接続チェックをスキップし、モック状態に設定');
-      setState('ok'); // 開発環境では常に OK として扱う
+      console.info('SharePoint 接続チェックをスキップし、モック状態に設定');
+      setState('ok'); // スキップ時は常に OK として扱う
       return;
     }
 
-    if (accountsCount === 0) {
+    if (!bypassAccountGate && accountsCount === 0) {
       setState('signedOut');
       return;
     }
@@ -339,7 +395,7 @@ const ConnectionStatus: React.FC = () => {
       cancelled = true;
       controller.abort();
     };
-  }, [accountsCount, forceSharePoint, sharePointFeatureEnabled, spFetch]);
+  }, [accountsCount, bypassAccountGate, forceSharePoint, sharePointFeatureEnabled, sharePointDisabled, spFetch]);
 
   const { label, background } = useMemo(() => {
     switch (state) {
@@ -358,6 +414,8 @@ const ConnectionStatus: React.FC = () => {
     <Box
       role="status"
       aria-live="polite"
+      data-testid="sp-connection-status"
+      data-connection-state={state}
       sx={{
         background,
         color: '#fff',

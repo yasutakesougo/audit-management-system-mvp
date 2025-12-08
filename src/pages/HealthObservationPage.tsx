@@ -1,6 +1,6 @@
 import { useNurseDashboardDemoSeed } from '@/features/nurse/home/useNurseDashboardDemoSeed';
 import ObservationBridge from '@/features/nurse/observation/ObservationBridge';
-import { getFlag } from '@/lib/env';
+import { getFlag } from '@/env';
 import { warmDataEntryComponents } from '@/mui/warm';
 import { tid, TESTIDS } from '@/testids';
 import type { TestId } from '@/testids';

@@ -6,7 +6,7 @@ import { SCHEDULES_DEBUG } from '../debug';
 import { makeSharePointScheduleCreator } from './createAdapters';
 import type { DateRange, SchedItem, SchedulesPort } from './port';
 import { mapSpRowToSchedule, parseSpScheduleRows } from './spRowSchema';
-import { SCHEDULES_FIELDS, SCHEDULES_LIST_TITLE } from './spSchema';
+import { SCHEDULES_FIELDS, buildSchedulesListPath } from './spSchema';
 
 type ListRangeFn = (range: DateRange) => Promise<SchedItem[]>;
 
@@ -30,6 +30,9 @@ const OPTIONAL_SELECT = [
   SCHEDULES_FIELDS.serviceType,
   SCHEDULES_FIELDS.locationName,
   SCHEDULES_FIELDS.notes,
+  SCHEDULES_FIELDS.acceptedOn,
+  SCHEDULES_FIELDS.acceptedBy,
+  SCHEDULES_FIELDS.acceptedNote,
   SCHEDULES_FIELDS.assignedStaff,
   SCHEDULES_FIELDS.vehicle,
   SCHEDULES_FIELDS.status,
@@ -60,7 +63,7 @@ const mergeSelectFields = (fallbackOnly: boolean): readonly string[] =>
 
 const fetchRange = async (range: DateRange, select: readonly string[]): Promise<ReturnType<typeof parseSpScheduleRows>> => {
   const { baseUrl } = ensureConfig();
-  const listPath = `${baseUrl}/lists/getbytitle('${escapeListTitle(SCHEDULES_LIST_TITLE)}')/items`;
+  const listPath = buildSchedulesListPath(baseUrl);
   const params = new URLSearchParams();
   params.set('$top', '500');
   params.set('$orderby', `${SCHEDULES_FIELDS.start} asc,Id asc`);
@@ -71,8 +74,6 @@ const fetchRange = async (range: DateRange, select: readonly string[]): Promise<
   const payload = (await response.json()) as SharePointResponse<unknown>;
   return parseSpScheduleRows(payload.value ?? []);
 };
-
-const escapeListTitle = (value: string): string => value.replace(/'/g, "''");
 
 const buildRangeFilter = (range: DateRange): string => {
   const fromLiteral = encodeDateLiteral(range.from);
@@ -92,7 +93,8 @@ const isMissingFieldError = (error: unknown): boolean => {
   if (!(error instanceof Error)) {
     return false;
   }
-  return /does not exist|cannot find field/i.test(error.message ?? '');
+  const message = error.message ?? '';
+  return /does not exist|cannot find field|存在しません/i.test(message);
 };
 
 const sortByStart = (items: SchedItem[]): SchedItem[] =>
@@ -100,14 +102,8 @@ const sortByStart = (items: SchedItem[]): SchedItem[] =>
 
 export const makeSharePointSchedulesPort = (options?: SharePointSchedulesPortOptions): SchedulesPort => {
   const listImpl = options?.listRange ?? defaultListRange;
-  const createImpl =
-    options?.create ??
-    (() => {
-      if (!options?.acquireToken) {
-        throw new Error('SharePoint schedules port requires acquireToken when create handler is not provided.');
-      }
-      return makeSharePointScheduleCreator({ acquireToken: options.acquireToken });
-    })();
+  const createImpl = options?.create ??
+    (options?.acquireToken ? makeSharePointScheduleCreator({ acquireToken: options.acquireToken }) : undefined);
 
   return {
     async list(range) {
@@ -120,6 +116,11 @@ export const makeSharePointSchedulesPort = (options?: SharePointSchedulesPortOpt
         );
       }
     },
-    create: (input) => createImpl(input),
+    async create(input) {
+      if (!createImpl) {
+        throw new Error('Schedule create is not configured for this environment.');
+      }
+      return createImpl(input);
+    },
   } satisfies SchedulesPort;
 };

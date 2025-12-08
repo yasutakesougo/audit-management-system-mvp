@@ -25,7 +25,13 @@ const LIST_TITLE = (() => {
   return override || DEFAULT_LIST_TITLE;
 })();
 const escapeODataString = (input: string): string => input.replace(/'/g, "''");
-const buildListPath = (title: string): string => `/lists/getbytitle('${escapeODataString(title)}')/items`;
+const buildListPath = (title: string): string => {
+  const guid = title.replace(/^guid:/i, '').replace(/[{}]/g, '').trim();
+  if (/^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/.test(guid)) {
+    return `/lists(guid'${guid}')/items`;
+  }
+  return `/lists/getbytitle('${escapeODataString(title)}')/items`;
+};
 const LIST_PATH = buildListPath(LIST_TITLE);
 
 const buildScheduleListPath = (list: string, id?: number): string => {

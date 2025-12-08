@@ -1,4 +1,5 @@
 import { test } from '@playwright/test';
+import { TESTIDS } from '@/testids';
 import { mockSharePointThrottle } from './_helpers/mockSharePointThrottle';
 import { setupSharePointStubs } from './_helpers/setupSharePointStubs';
 import { waitForScheduleReady, waitForTestId } from './utils/wait';
@@ -48,7 +49,7 @@ test('GET 429 -> retry success (no fatal error)', async ({ page }) => {
     console.log('Network idle timeout - proceeding with test');
   }
 
-  const maybeWeek = page.getByTestId('schedules-week-page');
+  const maybeWeek = page.getByTestId(TESTIDS.SCHEDULES_PAGE_ROOT).or(page.getByTestId('schedules-week-page'));
   if ((await maybeWeek.count()) > 0) {
     await waitForScheduleReady(page);
   }
@@ -67,7 +68,7 @@ test('$batch 503 -> retry success (no crash)', async ({ page }) => {
     console.log('Network idle timeout - proceeding with test');
   }
 
-  const maybeWeek = page.getByTestId('schedules-week-page');
+  const maybeWeek = page.getByTestId(TESTIDS.SCHEDULES_PAGE_ROOT).or(page.getByTestId('schedules-week-page'));
   if ((await maybeWeek.count()) > 0) {
     await waitForScheduleReady(page);
   }

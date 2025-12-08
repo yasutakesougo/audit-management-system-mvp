@@ -37,6 +37,21 @@ jobs:
         run: npm run typecheck
       - name: Lint
         run: npm run lint
+      - name: Schedules mini tests (optional)
+        run: npm run test:schedule:mini
+        continue-on-error: true
+      - name: Attendance mini tests (optional)
+        run: npm run test:attendance:mini
+        continue-on-error: true
+      - name: Daily mini tests (optional)
+        run: npm run test:daily:mini
+        continue-on-error: true
+      - name: Users mini tests (optional)
+        run: npm run test:users:mini
+        continue-on-error: true
+      - name: Nurse mini tests (optional)
+        run: npm run test:nurse:mini
+        continue-on-error: true
       - name: Test (coverage)
         run: npm run test:coverage -- --reporter=default
       - name: Playwright E2E

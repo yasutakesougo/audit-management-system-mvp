@@ -4,13 +4,13 @@ import { FormField } from '@/ui/components/FormField';
 import SignInButton from '@/ui/components/SignInButton';
 import { useMsalContext } from '@/auth/MsalProvider';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi, type Mock } from 'vitest';
 
 vi.mock('@/auth/MsalProvider', () => ({
   useMsalContext: vi.fn(),
 }));
 
-const mockUseMsalContext = useMsalContext as unknown as vi.Mock;
+const mockUseMsalContext = useMsalContext as unknown as Mock;
 
 vi.mock('@mui/material/Button', () => ({
   __esModule: true,

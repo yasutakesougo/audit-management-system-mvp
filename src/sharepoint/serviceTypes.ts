@@ -10,6 +10,8 @@ export const SERVICE_TYPE_OPTIONS = [
   'normal',
   'transport',
   'respite',
+  'meeting',
+  'training',
   'nursing',
   'absence',
   'late',        // 追加: 遅刻
@@ -33,8 +35,36 @@ export const SERVICE_TYPE_OPTIONS = [
   'その他',
 ] as const;
 
+const __ensureServiceTypeMeeting: ServiceType = 'meeting';
+
 /** サービス種別の型定義（S P Choice と互換の列挙） */
 export type ServiceType = (typeof SERVICE_TYPE_OPTIONS)[number];
+
+export type ScheduleServiceType =
+  | 'normal'
+  | 'transport'
+  | 'respite'
+  | 'meeting'
+  | 'training'
+  | 'nursing'
+  | 'absence'
+  | 'late'
+  | 'earlyLeave'
+  | 'other'
+  | '通常利用'
+  | '送迎'
+  | '一時ケア・短期'
+  | '看護'
+  | '欠席・休み'
+  | '日中活動'
+  | '一時ケア'
+  | 'ショートステイ'
+  | '面談'
+  | '会議'
+  | '研修'
+  | 'イベント'
+  | '来客'
+  | 'その他';
 
 /**
  * 入力値を標準のサービス種別に正規化する
@@ -53,6 +83,8 @@ export const SERVICE_TYPE_LABELS: Record<ServiceType, string> = {
   normal: '通常',
   transport: '送迎',
   respite: '一時ケア',
+  meeting: '会議',
+  training: '研修',
   nursing: '看護',
   absence: '休み',
   late: '遅刻',

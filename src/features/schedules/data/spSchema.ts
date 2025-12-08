@@ -12,6 +12,26 @@ export const SCHEDULES_LIST_TITLE = (() => {
   return configured || 'Schedules';
 })();
 
+const normalizeGuid = (raw: string): string => raw.replace(/^guid:/i, '').replace(/[{}]/g, '').trim();
+
+export const resolveSchedulesListIdentifier = (): { type: 'guid' | 'title'; value: string } => {
+  const trimmed = SCHEDULES_LIST_TITLE.trim();
+  const guid = normalizeGuid(trimmed);
+  if (/^[0-9a-fA-F-]{36}$/.test(guid)) {
+    return { type: 'guid', value: guid };
+  }
+  return { type: 'title', value: trimmed || 'Schedules' };
+};
+
+export const buildSchedulesListPath = (baseUrl: string): string => {
+  const identifier = resolveSchedulesListIdentifier();
+  if (identifier.type === 'guid') {
+    return `${baseUrl}/lists(guid'${identifier.value}')/items`;
+  }
+  const escaped = identifier.value.replace(/'/g, "''");
+  return `${baseUrl}/lists/getbytitle('${escaped}')/items`;
+};
+
 export const SCHEDULES_FIELDS = {
   title: 'Title',
   serviceType: 'ServiceType',
@@ -28,6 +48,9 @@ export const SCHEDULES_FIELDS = {
   locationName: 'LocationName',
   assignedStaff: 'AssignedStaff',
   vehicle: 'Vehicle',
+  acceptedOn: 'AcceptedOn',
+  acceptedBy: 'AcceptedBy',
+  acceptedNote: 'AcceptedNote',
 } as const;
 
 export type SchedulesFieldKey = keyof typeof SCHEDULES_FIELDS;

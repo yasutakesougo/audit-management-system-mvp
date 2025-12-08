@@ -105,12 +105,10 @@ function formatDateTimeLocal(date: Date): string {
 }
 
 const SERVICE_TYPE_OPTIONS: { value: ScheduleServiceType; label: string }[] = [
-  { value: 'normal', label: '通常利用' },
-  { value: 'transport', label: '送迎' },
-  { value: 'respite', label: '一時ケア・短期' },
-  { value: 'nursing', label: '看護' },
-  { value: 'absence', label: '欠席・休み' },
-  { value: 'other', label: 'その他' }
+  { value: 'absence', label: '欠席' },
+  { value: 'late', label: '遅刻' },
+  { value: 'earlyLeave', label: '早退' },
+  { value: 'other', label: 'その他' },
 ];
 
 const CATEGORY_OPTIONS: { value: ScheduleCategory; label: string; helper: string }[] = [
@@ -312,9 +310,10 @@ export function toCreateScheduleInput(
     throw new Error('assignedStaffId is required for staff schedules');
   }
 
-  const resolvedServiceType: ScheduleServiceType = form.category === 'User'
-    ? (form.serviceType || 'other')
-    : 'other';
+  const resolvedServiceType: ScheduleServiceType =
+    form.category === 'User'
+      ? (form.serviceType || 'normal')
+      : (form.serviceType || 'other');
   const statusReason = form.statusReason.trim();
   const resolvedUserLookupId = normalizeLookupId(selectedUser?.lookupId ?? undefined);
   const resolvedUserName = selectedUser?.name?.trim() || undefined;
@@ -668,7 +667,7 @@ export const ScheduleCreateDialog: React.FC<ScheduleCreateDialogProps> = (props)
             fullWidth
             value={form.title}
             onChange={(e) => handleFieldChange('title', e.target.value)}
-            placeholder="例：訪問看護 / 車両点検 など"
+            placeholder="例）午前 利用者Aさん通所"
             autoFocus
             inputProps={{
               'data-testid': TESTIDS['schedule-create-title'],
@@ -749,10 +748,10 @@ export const ScheduleCreateDialog: React.FC<ScheduleCreateDialogProps> = (props)
 
           {form.category === 'User' && (
             <FormControl fullWidth required error={Boolean(serviceTypeErrorMessage)}>
-              <InputLabel id="schedule-create-service-type-label">サービス種別</InputLabel>
+              <InputLabel id="schedule-create-service-type-label">区分</InputLabel>
               <Select
                 labelId="schedule-create-service-type-label"
-                label="サービス種別"
+                label="区分"
                 value={form.serviceType || ''}
                 onChange={e =>
                   handleFieldChange('serviceType', e.target.value as ScheduleServiceType | '')
@@ -765,9 +764,9 @@ export const ScheduleCreateDialog: React.FC<ScheduleCreateDialogProps> = (props)
                   </MenuItem>
                 ))}
               </Select>
-              {serviceTypeErrorMessage && (
-                <FormHelperText>{serviceTypeErrorMessage}</FormHelperText>
-              )}
+              <FormHelperText>
+                {serviceTypeErrorMessage ?? 'ざっくりした区分を付けておくと一覧で絞り込みやすくなります。'}
+              </FormHelperText>
             </FormControl>
           )}
 
@@ -809,11 +808,11 @@ export const ScheduleCreateDialog: React.FC<ScheduleCreateDialogProps> = (props)
             />
           ) : (
             <TextField
-              label="場所（任意）"
+              label="場所"
               fullWidth
               value={form.locationName}
               onChange={e => handleFieldChange('locationName', e.target.value)}
-              placeholder="例：生活介護室 / 訪問 / 通院先 など"
+              placeholder="例）活動室A／送迎車／会議室 など"
               inputProps={{
                 'data-testid': TESTIDS['schedule-create-location']
               }}
@@ -821,14 +820,14 @@ export const ScheduleCreateDialog: React.FC<ScheduleCreateDialogProps> = (props)
           )}
 
           <TextField
-            label="備考（任意）"
+            label="メモ"
             fullWidth
             multiline
             minRows={2}
             maxRows={4}
             value={form.notes}
             onChange={e => handleFieldChange('notes', e.target.value)}
-            placeholder="送迎や看護の補足、留意事項などがあれば入力してください"
+            placeholder="支援のポイントや、共有したい補足を記入"
             inputProps={{
               'data-testid': TESTIDS['schedule-create-notes']
             }}

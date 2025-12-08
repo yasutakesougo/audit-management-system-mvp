@@ -7,7 +7,7 @@ const baseInput: CreateScheduleEventInput = {
   category: 'User',
   startLocal: '2025-05-01T10:00',
   endLocal: '2025-05-01T11:00',
-  serviceType: 'normal',
+  serviceType: 'transport',
   userId: 'user-1',
 };
 
@@ -16,7 +16,7 @@ describe('scheduleAnnouncements', () => {
     const message = buildScheduleSuccessAnnouncement({ input: baseInput, userName: '山田太郎', mode: 'create' });
     expect(message).toContain('山田太郎さん');
     expect(message).toContain('10:00〜11:00');
-    expect(message).toContain('通常利用');
+    expect(message).toContain('送迎');
     expect(message).toContain('登録しました');
   });
 

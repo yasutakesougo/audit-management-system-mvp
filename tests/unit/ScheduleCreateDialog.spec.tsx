@@ -12,8 +12,8 @@ import {
 import { TESTIDS } from '@/testids';
 
 const mockUsers: ScheduleUserOption[] = [
-  { id: 'user-1', name: '利用者 一郎', lookupId: 101 },
-  { id: 'user-2', name: '利用者 二郎', lookupId: 102 }
+  { id: 'user-1', name: '利用者 一郎', lookupId: '101' },
+  { id: 'user-2', name: '利用者 二郎', lookupId: '102' }
 ];
 
 const buildForm = (overrides: Partial<ScheduleFormState> = {}): ScheduleFormState => ({
@@ -27,7 +27,7 @@ const buildForm = (overrides: Partial<ScheduleFormState> = {}): ScheduleFormStat
   notes: '',
   assignedStaffId: '',
   vehicleId: '',
-  status: 'Scheduled',
+  status: 'Planned',
   statusReason: '',
   ...overrides
 });
@@ -107,7 +107,7 @@ describe('toCreateScheduleInput', () => {
       startLocal: '2025-11-12T10:00',
       endLocal: '2025-11-12T11:00',
       serviceType: 'normal',
-      status: 'Scheduled',
+      status: 'Planned',
     });
   });
 
@@ -279,13 +279,13 @@ describe('ScheduleCreateDialog component', () => {
     );
 
     fireEvent.change(screen.getByTestId(TESTIDS['schedule-create-title']), {
-      target: { value: '訪問看護（午前）' },
+      target: { value: '送迎（午前）' },
     });
     const serviceTypeCombo = screen.getByRole('combobox', { name: 'サービス種別' });
     fireEvent.mouseDown(serviceTypeCombo);
     const listbox = await screen.findByRole('listbox');
-    fireEvent.click(within(listbox).getByText('看護'));
-    expect(serviceTypeCombo).toHaveTextContent('看護');
+    fireEvent.click(within(listbox).getByText('送迎'));
+    expect(serviceTypeCombo).toHaveTextContent('送迎');
 
     fireEvent.change(screen.getByTestId(TESTIDS['schedule-create-location']), {
       target: { value: '生活介護室' }
@@ -299,9 +299,9 @@ describe('ScheduleCreateDialog component', () => {
     await waitFor(() => expect(onSubmit).toHaveBeenCalledTimes(1));
     const payload = onSubmit.mock.calls[0][0];
     expect(payload).toMatchObject({
-      title: '訪問看護（午前）',
+      title: '送迎（午前）',
       userId: 'user-1',
-      serviceType: 'nursing',
+      serviceType: 'transport',
       locationName: '生活介護室',
       notes: '送迎後に看護対応'
     });
@@ -323,7 +323,7 @@ describe('ScheduleCreateDialog component', () => {
           userId: 'user-2',
           startLocal: '2025-12-01T10:00',
           endLocal: '2025-12-01T11:00',
-          serviceType: 'nursing',
+          serviceType: 'transport',
           locationName: '第1作業室',
           notes: '経管栄養',
         }}

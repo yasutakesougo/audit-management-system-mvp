@@ -18,6 +18,14 @@ export const EnvSchema = z.object({
     .string()
     .regex(TIME_24H_PATTERN, 'Facility close time must be HH:MM (24h)')
     .default('18:00'),
+
+  // Azure AD / MSAL
+  VITE_MSAL_CLIENT_ID: z.string().optional().default(''),
+  VITE_MSAL_TENANT_ID: z.string().optional().default(''),
+
+  // Backward-compatible aliases (used only when MSAL_* is empty)
+  VITE_AAD_CLIENT_ID: z.string().optional().default(''),
+  VITE_AAD_TENANT_ID: z.string().optional().default(''),
 });
 
 export type ParsedEnv = z.infer<typeof EnvSchema>;

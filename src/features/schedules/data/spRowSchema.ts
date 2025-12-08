@@ -1,6 +1,7 @@
 import { z } from 'zod';
 
 import type { SchedItem, ScheduleStatus } from './port';
+import { normalizeServiceType } from '../serviceTypeMetadata';
 
 /**
  * SharePoint raw category values (legacy / optional).
@@ -36,6 +37,9 @@ export const SpScheduleRowSchema = z
     ServiceType: z.string().optional().nullable(),
     LocationName: z.string().optional().nullable(),
     Notes: z.string().optional().nullable(),
+    AcceptedOn: z.string().optional().nullable(),
+    AcceptedBy: z.string().optional().nullable(),
+    AcceptedNote: z.string().optional().nullable(),
     Vehicle: z.union([z.number(), z.string()]).optional().nullable(),
     Status: z.string().optional().nullable(),
     StatusReason: z.string().optional().nullable(),
@@ -158,6 +162,9 @@ const normalizeStatusFromSp = (raw: unknown): ScheduleStatus => {
   if (value === 'Planned' || normalized === 'planned' || value === '予定どおり' || value === '予定') {
     return 'Planned';
   }
+  if (value === 'Scheduled' || normalized === 'scheduled') {
+    return 'Planned';
+  }
   if (value === 'Postponed' || normalized === 'postponed' || value === '延期') {
     return 'Postponed';
   }
@@ -214,7 +221,7 @@ export function mapSpRowToSchedule(row: SpScheduleRow): SchedItem | null {
 
   const category = inferCategory(row);
 
-  return {
+  const item: SchedItem = {
     id,
     title,
     start,
@@ -222,9 +229,12 @@ export function mapSpRowToSchedule(row: SpScheduleRow): SchedItem | null {
     category,
     allDay: false,
     userId: normalizedUserId,
-    serviceType: coerceString(row.ServiceType),
+    serviceType: normalizeServiceType(coerceString(row.ServiceType)),
     locationName: coerceString(row.LocationName),
     notes: coerceString(row.Notes),
+    acceptedOn: coerceIso(row.AcceptedOn),
+    acceptedBy: coerceString(row.AcceptedBy),
+    acceptedNote: coerceString(row.AcceptedNote) ?? null,
     personName: primaryPersonName,
     userLookupId: userLookupIds[0],
     assignedStaffId: assignedStaffId ?? undefined,
@@ -235,4 +245,23 @@ export function mapSpRowToSchedule(row: SpScheduleRow): SchedItem | null {
     createdAt: coerceIso(row.Created),
     updatedAt: coerceIso(row.Modified),
   } satisfies SchedItem;
+
+  if (category === 'User' && primaryPersonName) {
+    const label = (() => {
+      switch (item.serviceType) {
+        case 'absence':
+          return '欠席';
+        case 'late':
+          return '遅刻';
+        case 'earlyLeave':
+          return '早退';
+        default:
+          return 'その他';
+      }
+    })();
+    const date = item.start.slice(0, 10);
+    item.title = `${date} ${primaryPersonName}（${label}）`;
+  }
+
+  return item;
 }
