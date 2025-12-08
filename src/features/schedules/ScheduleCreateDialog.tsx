@@ -748,14 +748,15 @@ export const ScheduleCreateDialog: React.FC<ScheduleCreateDialogProps> = (props)
 
           {form.category === 'User' && (
             <FormControl fullWidth required error={Boolean(serviceTypeErrorMessage)}>
-              <InputLabel id="schedule-create-service-type-label">区分</InputLabel>
+              <InputLabel id="schedule-create-service-type-label">サービス種別</InputLabel>
               <Select
                 labelId="schedule-create-service-type-label"
-                label="区分"
+                label="サービス種別"
                 value={form.serviceType || ''}
                 onChange={e =>
                   handleFieldChange('serviceType', e.target.value as ScheduleServiceType | '')
                 }
+                inputProps={{ 'aria-label': 'サービス種別' }}
                 data-testid={TESTIDS['schedule-create-service-type']}
               >
                 {SERVICE_TYPE_OPTIONS.map((opt) => (
@@ -765,7 +766,7 @@ export const ScheduleCreateDialog: React.FC<ScheduleCreateDialogProps> = (props)
                 ))}
               </Select>
               <FormHelperText>
-                {serviceTypeErrorMessage ?? 'ざっくりした区分を付けておくと一覧で絞り込みやすくなります。'}
+                {serviceTypeErrorMessage ?? 'サービス種別を付けておくと一覧で絞り込みやすくなります。'}
               </FormHelperText>
             </FormControl>
           )}

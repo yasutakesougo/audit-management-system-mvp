@@ -12,6 +12,7 @@ const SERVICE_TYPE_LABELS: Partial<Record<ScheduleServiceType, string>> = {
   absence: '欠席',
   late: '遅刻',
   earlyLeave: '早退',
+  transport: '送迎',
   other: 'その他',
 };
 

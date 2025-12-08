@@ -99,7 +99,7 @@ export default function UserForm({ mode, initial, onDone }: UserFormProps) {
   }, [createUser, email, furigana, initial?.id, isActive, mode, onDone, phone, title, updateUser]);
 
   return (
-    <form className="mx-auto flex w-full max-w-xl flex-col gap-4 rounded-md bg-white p-4 shadow" onSubmit={handleSubmit}>
+    <form className="mx-auto flex w-full max-w-xl flex-col gap-4 rounded-md bg-white p-4 shadow" noValidate onSubmit={handleSubmit}>
       <h2 className="text-lg font-semibold">利用者{mode === 'create' ? 'の作成' : 'の編集'}</h2>
       {error ? (
         <div className="rounded-md border border-red-300 bg-red-50 px-3 py-2 text-sm text-red-800">{error}</div>

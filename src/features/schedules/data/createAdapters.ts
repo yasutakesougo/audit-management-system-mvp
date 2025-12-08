@@ -14,9 +14,20 @@ const trimText = (value?: string | null): string | undefined => {
   return trimmed ? trimmed : undefined;
 };
 
-const resolveCategoryFields = (input: CreateScheduleEventInput): { normalizedUserId?: string; assignedStaffId?: string } => {
-  const normalizedUserId = input.userId ? normalizeUserId(input.userId) : undefined;
-  const assignedStaffId = trimText(input.assignedStaffId);
+const resolveCategoryFields = (
+  input: CreateScheduleEventInput,
+): {
+  normalizedUserId: string | null;
+  assignedStaffId: string | null;
+  personName: string | null;
+  normalizedTargetUserId: number | null;
+  userLookupId: string | number | null;
+} => {
+  const normalizedUserId = input.userId ? normalizeUserId(input.userId) : null;
+  const assignedStaffId = trimText(input.assignedStaffId) ?? null;
+  const personName = trimText((input as { userName?: string }).userName) ?? null;
+  const normalizedTargetUserId = normalizeLookupId(input.userLookupId);
+  const userLookupId = input.userLookupId ?? null;
 
   if (input.category === 'User') {
     if (!normalizedUserId) {
@@ -30,7 +41,7 @@ const resolveCategoryFields = (input: CreateScheduleEventInput): { normalizedUse
     }
   }
 
-  return { normalizedUserId, assignedStaffId };
+  return { normalizedUserId, assignedStaffId, personName, normalizedTargetUserId, userLookupId };
 };
 
 const appendSeconds = (value: string): string => {
@@ -38,6 +49,12 @@ const appendSeconds = (value: string): string => {
     return `${value}T00:00:00`;
   }
   return value.length === 16 ? `${value}:00` : value;
+};
+
+const normalizeLookupId = (value: string | number | null | undefined): number | null => {
+  if (value === null || value === undefined) return null;
+  const parsed = typeof value === 'number' ? value : Number(value);
+  return Number.isFinite(parsed) ? parsed : null;
 };
 
 const toIsoString = (value: string): string => {
@@ -86,7 +103,7 @@ type SharePointPayload = {
 };
 
 export const toSharePointPayload = (input: CreateScheduleEventInput): SharePointPayload => {
-  resolveCategoryFields(input);
+  const { normalizedUserId, assignedStaffId, personName, normalizedTargetUserId } = resolveCategoryFields(input);
   const title = resolveTitle(input);
   const startIso = toIsoString(appendSeconds(input.startLocal));
   const endIso = toIsoString(appendSeconds(input.endLocal));
@@ -107,6 +124,12 @@ export const toSharePointPayload = (input: CreateScheduleEventInput): SharePoint
   if (serviceType) {
     body[SCHEDULES_FIELDS.serviceType] = serviceType;
   }
+  if (input.category === 'User') {
+    body[SCHEDULES_FIELDS.personId] = normalizedUserId ?? null;
+    body[SCHEDULES_FIELDS.personName] = personName ?? null;
+    body[SCHEDULES_FIELDS.targetUserId] = normalizedTargetUserId ?? null;
+    body[SCHEDULES_FIELDS.assignedStaff] = null;
+  }
   if (locationName) {
     body[SCHEDULES_FIELDS.locationName] = locationName;
   }
@@ -121,6 +144,17 @@ export const toSharePointPayload = (input: CreateScheduleEventInput): SharePoint
   }
   if (input.acceptedNote !== undefined) {
     body[SCHEDULES_FIELDS.acceptedNote] = acceptedNote ?? null;
+  }
+  if (input.category === 'Staff') {
+    body[SCHEDULES_FIELDS.assignedStaff] = assignedStaffId ?? null;
+    body[SCHEDULES_FIELDS.personId] = null;
+    body[SCHEDULES_FIELDS.personName] = null;
+    body[SCHEDULES_FIELDS.targetUserId] = null;
+  }
+  if (input.category === 'Org') {
+    body[SCHEDULES_FIELDS.personId] = null;
+    body[SCHEDULES_FIELDS.personName] = null;
+    body[SCHEDULES_FIELDS.targetUserId] = null;
   }
 
   return {
@@ -180,7 +214,7 @@ const buildSchedItem = (args: BuildSchedItemArgs): SchedItem => ({
 });
 
 export const makeMockScheduleCreator = (): SchedulesPort['create'] => async (input) => {
-  const { normalizedUserId, assignedStaffId } = resolveCategoryFields(input);
+  const { normalizedUserId, assignedStaffId, personName, userLookupId } = resolveCategoryFields(input);
   const title = resolveTitle(input);
   const start = toIsoString(appendSeconds(input.startLocal));
   const end = toIsoString(appendSeconds(input.endLocal));
@@ -190,14 +224,18 @@ export const makeMockScheduleCreator = (): SchedulesPort['create'] => async (inp
     title,
     start,
     end,
-    userId: normalizedUserId,
-    userLookupId: input.userLookupId,
-    personName: input.userName,
+    userId: input.category === 'User' ? normalizedUserId ?? undefined : undefined,
+    userLookupId: input.category === 'User'
+      ? userLookupId != null
+        ? String(userLookupId)
+        : undefined
+      : undefined,
+    personName: input.category === 'User' ? personName ?? undefined : undefined,
     category: input.category,
     serviceType: input.serviceType,
     locationName: trimText(input.locationName),
     notes: trimText(input.notes),
-    assignedStaffId,
+    assignedStaffId: input.category === 'Staff' ? assignedStaffId ?? undefined : undefined,
     vehicleId: trimText(input.vehicleId),
     status: input.status ?? 'Planned',
     statusReason: null,
@@ -237,6 +275,7 @@ export const makeSharePointScheduleCreator = ({ acquireToken }: SharePointCreato
     const notesValue = trimText(input.notes);
     const acceptedOnValue = trimText(input.acceptedOn);
     const acceptedByValue = trimText(input.acceptedBy);
+    const { normalizedUserId, assignedStaffId, personName, userLookupId } = resolveCategoryFields(input);
     const acceptedNoteValue = input.acceptedNote ?? null;
 
     return buildSchedItem({
@@ -246,8 +285,16 @@ export const makeSharePointScheduleCreator = ({ acquireToken }: SharePointCreato
       end: typeof persistedEndRaw === 'string' && persistedEndRaw ? persistedEndRaw : payload.endIso,
       category: input.category,
       serviceType,
+      userId: input.category === 'User' ? normalizedUserId ?? undefined : undefined,
+      userLookupId: input.category === 'User'
+        ? userLookupId != null
+          ? String(userLookupId)
+          : undefined
+        : undefined,
+      personName: input.category === 'User' ? personName ?? undefined : undefined,
       locationName: locationNameValue ?? undefined,
       notes: notesValue ?? undefined,
+      assignedStaffId: input.category === 'Staff' ? assignedStaffId ?? undefined : undefined,
       status: input.status ?? 'Planned',
       statusReason: null,
       createdAt: created?.Created,
