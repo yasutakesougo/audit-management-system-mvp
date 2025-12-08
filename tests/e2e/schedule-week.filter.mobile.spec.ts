@@ -32,8 +32,13 @@ test.describe('Schedule week – mobile toolbar/search', () => {
     await expect(closeButton).toBeEnabled();
     await closeButton.click();
 
-    await expect(
-      page.getByTestId(TESTIDS['schedules-week-grid']).or(page.getByTestId(TESTIDS.SCHEDULES_WEEK_TIMELINE)),
-    ).toBeVisible();
+    const timeline = page.getByTestId(TESTIDS.SCHEDULES_WEEK_TIMELINE);
+    if (await timeline.isVisible({ timeout: 2000 }).catch(() => false)) {
+      await expect(timeline).toBeVisible();
+      return;
+    }
+
+    const grid = page.getByTestId(TESTIDS['schedules-week-grid']);
+    await expect(grid).toBeVisible();
   });
 });

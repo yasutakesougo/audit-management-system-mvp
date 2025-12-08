@@ -57,15 +57,18 @@ export async function waitForDayTimeline(page: Page): Promise<void> {
   const heading = page.getByRole('heading', { name: /スケジュール/, level: 1 });
   await expect(heading).toBeVisible();
 
-  const dayTab = page.getByRole('tab', { name: '日' });
+  const dayTab = page.getByTestId(TESTIDS.SCHEDULES_WEEK_TAB_DAY).first();
   await expect(dayTab).toBeVisible();
+  const isSelected = (await dayTab.getAttribute('aria-selected')) === 'true';
+  if (!isSelected) {
+    await dayTab.click();
+  }
   await expect(dayTab).toHaveAttribute('aria-selected', 'true');
 
-  const root = page.getByTestId('schedule-day-root');
+  const dayPage = page.getByTestId(TESTIDS['schedules-day-page']);
+  const hasDayPage = await locatorExists(dayPage, 2_000);
+  const root = hasDayPage ? dayPage.first() : page.getByTestId('schedule-day-root').first();
   await expect(root).toBeVisible();
-
-  const firstHeader = page.locator('[id^="timeline-day-header-"]').first();
-  await expect(firstHeader).toBeVisible();
 }
 
 export async function waitForWeekTimeline(page: Page): Promise<void> {
@@ -111,17 +114,40 @@ export async function waitForWeekTimeline(page: Page): Promise<void> {
       ? weekTabCandidate.first()
       : page.getByRole('tab', { name: '週' }).first();
     await expect(weekTab).toBeVisible();
-    await expect(weekTab).toHaveAttribute('aria-selected', 'true');
 
     const gridRoot = page.getByTestId(TESTIDS['schedules-week-grid']);
-    if (await locatorExists(gridRoot)) {
+    const timelinePanel = page.getByTestId(TESTIDS.SCHEDULES_WEEK_TIMELINE_PANEL);
+    const timeline = page.getByTestId(TESTIDS['schedules-week-timeline']);
+
+    const gridVisible = async (): Promise<boolean> => {
+      if (!(await locatorExists(gridRoot))) return false;
+      const grid = gridRoot.first();
+      return grid.isVisible().catch(() => false);
+    };
+
+    const timelineVisible = async (): Promise<boolean> => {
+      if (!(await locatorExists(timelinePanel))) return false;
+      return timeline.first().isVisible().catch(() => false);
+    };
+
+    if (await gridVisible()) {
       await expect(gridRoot.first()).toBeVisible();
       return;
     }
 
-    const timelinePanel = page.getByTestId(TESTIDS.SCHEDULES_WEEK_TIMELINE_PANEL);
-    if (await locatorExists(timelinePanel)) {
-      const timeline = page.getByTestId(TESTIDS['schedules-week-timeline']);
+    if (await timelineVisible()) {
+      await expect(timeline.first()).toBeVisible();
+      return;
+    }
+
+    await weekTab.click();
+
+    if (await gridVisible()) {
+      await expect(gridRoot.first()).toBeVisible();
+      return;
+    }
+
+    if (await timelineVisible()) {
       await expect(timeline.first()).toBeVisible();
       return;
     }

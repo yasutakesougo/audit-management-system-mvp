@@ -38,9 +38,8 @@ test.describe('Schedule week smoke', () => {
   test('week tab stays active when switching views', async ({ page }) => {
     await gotoScheduleWeek(page, new Date('2025-11-24'));
 
-    const tablist = page.getByTestId(TESTIDS.SCHEDULES_WEEK_TABLIST);
     const weekTab = page.getByTestId(TESTIDS.SCHEDULES_WEEK_TAB_WEEK);
-    const dayTab = tablist.getByRole('tab', { name: '日' });
+    const dayTab = page.getByTestId(TESTIDS.SCHEDULES_WEEK_TAB_DAY);
 
     await dayTab.click();
     await expect(dayTab).toHaveAttribute('aria-selected', 'true');

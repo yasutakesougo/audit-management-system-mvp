@@ -1,6 +1,6 @@
 import '@/test/captureSp400';
 import { expect, test, type Page } from '@playwright/test';
-import { TESTIDS } from '@/testids';
+import { TESTIDS } from '../../src/testids';
 import { bootstrapScheduleEnv } from './utils/scheduleEnv';
 import { gotoWeek } from './utils/scheduleNav';
 import { waitForWeekTimeline } from './utils/wait';
@@ -25,7 +25,7 @@ test.describe('Schedule week deep link', () => {
     );
     await expect(heading).toBeVisible();
 
-    const weekTab = page.getByTestId(TESTIDS.SCHEDULES_WEEK_TAB_WEEK).or(page.getByRole('tab', { name: /週/ }));
+    const weekTab = page.getByTestId(TESTIDS.SCHEDULES_WEEK_TAB_WEEK);
     await expect(weekTab).toHaveAttribute('aria-selected', 'true');
 
     if (iso) {

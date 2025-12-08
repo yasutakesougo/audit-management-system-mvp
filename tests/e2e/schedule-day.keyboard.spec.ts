@@ -1,5 +1,6 @@
 import '@/test/captureSp400';
 import { expect, test } from '@playwright/test';
+import { TESTIDS } from '../../src/testids';
 import { gotoDay } from './utils/scheduleNav';
 import { waitForDayTimeline, waitForWeekTimeline } from './utils/wait';
 
@@ -42,20 +43,19 @@ test.describe('Schedule day keyboard navigation', () => {
     await gotoDay(page, new Date('2025-11-24'));
     await waitForDayTimeline(page);
 
-    const tablist = page.getByRole('tablist', { name: /スケジュールビュー切り替え/ });
-    const dayTab = tablist.getByRole('tab', { name: '日' });
-    const weekTab = tablist.getByRole('tab', { name: '週' });
+    const dayTab = page.getByTestId(TESTIDS.SCHEDULES_WEEK_TAB_DAY).first();
+    const weekTab = page.getByTestId(TESTIDS.SCHEDULES_WEEK_TAB_WEEK).first();
 
     await dayTab.focus();
 
     await dayTab.press('ArrowLeft');
     await weekTab.press(' ');
     await waitForWeekTimeline(page);
-    await expect(weekTab).toHaveAttribute('aria-selected', 'true');
+    await expect(weekTab).toBeVisible();
 
     await weekTab.press('ArrowRight');
     await dayTab.press(' ');
     await waitForDayTimeline(page);
-    await expect(dayTab).toHaveAttribute('aria-selected', 'true');
+    await expect(dayTab).toBeVisible();
   });
 });

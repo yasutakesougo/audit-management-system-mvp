@@ -20,6 +20,9 @@ type TimelineItemProps = {
   secondary?: string;
   status?: ScheduleStatus;
   statusReason?: string | null;
+  acceptedBy?: string | null;
+  acceptedOn?: string | null;
+  acceptedNote?: string | null;
 };
 
 const toLocalDateIso = (value?: string): string => {
@@ -292,6 +295,9 @@ const DayViewContent = ({ items, loading, range }: { items: SchedItem[]; loading
                     secondary={secondary}
                     status={item.status}
                     statusReason={item.statusReason}
+                    acceptedBy={item.acceptedBy}
+                    acceptedOn={item.acceptedOn}
+                    acceptedNote={item.acceptedNote}
                   />
                 </li>
               );
@@ -303,12 +309,33 @@ const DayViewContent = ({ items, loading, range }: { items: SchedItem[]; loading
   );
 }
 
-function TimelineItem({ title, timeLabel, secondary, status, statusReason }: TimelineItemProps) {
+function TimelineItem({ title, timeLabel, secondary, status, statusReason, acceptedBy, acceptedOn, acceptedNote }: TimelineItemProps) {
   const statusMeta = getScheduleStatusMeta(status);
   const dotColor = statusMeta?.dotColor ?? 'rgba(25,118,210,0.9)';
   const badgeLabel = status && status !== 'Planned' ? statusMeta?.label : undefined;
   const opacity = statusMeta?.opacity ?? 1;
   const reason = statusReason?.trim();
+  const hasAcceptance = Boolean(acceptedBy || acceptedOn || acceptedNote);
+  const acceptedLabel = (() => {
+    if (!hasAcceptance) return '';
+    const dateText = (() => {
+      if (!acceptedOn) return '';
+      const date = new Date(acceptedOn);
+      if (Number.isNaN(date.getTime())) return acceptedOn.slice(0, 16);
+      return new Intl.DateTimeFormat('ja-JP', {
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+        hour: '2-digit',
+        minute: '2-digit',
+      }).format(date);
+    })();
+
+    if (!acceptedBy && !dateText) return '';
+    if (acceptedBy && dateText) return `受け入れ: ${acceptedBy} / ${dateText}`;
+    if (acceptedBy) return `受け入れ: ${acceptedBy}`;
+    return `受け入れ: ${dateText}`;
+  })();
 
   return (
     <div
@@ -407,6 +434,30 @@ function TimelineItem({ title, timeLabel, secondary, status, statusReason }: Tim
             >
               {secondary && <span>{secondary}</span>}
               {reason && <span>{reason}</span>}
+            </div>
+          )}
+          {hasAcceptance ? (
+            <div
+              style={{
+                marginTop: 4,
+                fontSize: 11,
+                color: 'rgba(0,0,0,0.55)',
+              }}
+              aria-label="受け入れ情報"
+            >
+              {acceptedLabel}
+            </div>
+          ) : (
+            <div
+              style={{
+                marginTop: 4,
+                fontSize: 10,
+                color: 'rgba(0,0,0,0.38)',
+                fontStyle: 'italic',
+              }}
+              aria-label="受け入れ情報（未登録）"
+            >
+              受け入れ: 未登録
             </div>
           )}
         </div>

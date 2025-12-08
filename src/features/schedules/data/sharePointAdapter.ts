@@ -1,12 +1,12 @@
 import { toSafeError } from '@/lib/errors';
 import { fetchSp } from '@/lib/fetchSp';
 import { withUserMessage } from '@/lib/notice';
-import { ensureConfig } from '@/lib/spClient';
+import { createSpClient, ensureConfig } from '@/lib/spClient';
 import { SCHEDULES_DEBUG } from '../debug';
-import { makeSharePointScheduleCreator } from './createAdapters';
-import type { DateRange, SchedItem, SchedulesPort } from './port';
+import { makeSharePointScheduleCreator, toSharePointPayload } from './createAdapters';
+import type { DateRange, SchedItem, SchedulesPort, UpdateScheduleEventInput } from './port';
 import { mapSpRowToSchedule, parseSpScheduleRows } from './spRowSchema';
-import { SCHEDULES_FIELDS, buildSchedulesListPath } from './spSchema';
+import { SCHEDULES_FIELDS, SCHEDULES_LIST_TITLE, buildSchedulesListPath } from './spSchema';
 
 type ListRangeFn = (range: DateRange) => Promise<SchedItem[]>;
 
@@ -14,6 +14,7 @@ type SharePointSchedulesPortOptions = {
   acquireToken?: () => Promise<string | null>;
   listRange?: ListRangeFn;
   create?: SchedulesPort['create'];
+  update?: SchedulesPort['update'];
 };
 
 type SharePointResponse<T> = {
@@ -100,10 +101,47 @@ const isMissingFieldError = (error: unknown): boolean => {
 const sortByStart = (items: SchedItem[]): SchedItem[] =>
   [...items].sort((a, b) => a.start.localeCompare(b.start));
 
+const fetchItemById = async (id: number): Promise<SchedItem> => {
+  const { baseUrl } = ensureConfig();
+  const listPath = buildSchedulesListPath(baseUrl);
+  const params = new URLSearchParams();
+  params.set('$select', mergeSelectFields(false).join(','));
+
+  const response = await fetchSp(`${listPath}(${id})?${params.toString()}`);
+  const row = (await response.json()) as unknown;
+  const mapped = mapSpRowToSchedule(row as never);
+  if (!mapped) {
+    throw new Error('更新後の予定データをマッピングできませんでした');
+  }
+  return mapped;
+};
+
+const makeSharePointScheduleUpdater = (acquireToken: () => Promise<string | null>): SchedulesPort['update'] => {
+  const { baseUrl } = ensureConfig();
+  const client = createSpClient(acquireToken, baseUrl);
+
+  return async (input: UpdateScheduleEventInput) => {
+    const idNum = Number.parseInt(input.id, 10);
+    if (!Number.isFinite(idNum)) {
+      throw new Error(`Invalid schedule id for SharePoint update: ${input.id}`);
+    }
+
+    const payload = toSharePointPayload(input);
+    if (input.status) {
+      payload.body[SCHEDULES_FIELDS.status] = input.status;
+    }
+
+    await client.updateItemByTitle(SCHEDULES_LIST_TITLE, idNum, payload.body);
+    return fetchItemById(idNum);
+  };
+};
+
 export const makeSharePointSchedulesPort = (options?: SharePointSchedulesPortOptions): SchedulesPort => {
   const listImpl = options?.listRange ?? defaultListRange;
   const createImpl = options?.create ??
     (options?.acquireToken ? makeSharePointScheduleCreator({ acquireToken: options.acquireToken }) : undefined);
+  const updateImpl = options?.update ??
+    (options?.acquireToken ? makeSharePointScheduleUpdater(options.acquireToken) : undefined);
 
   return {
     async list(range) {
@@ -121,6 +159,19 @@ export const makeSharePointSchedulesPort = (options?: SharePointSchedulesPortOpt
         throw new Error('Schedule create is not configured for this environment.');
       }
       return createImpl(input);
+    },
+    async update(input) {
+      if (!updateImpl) {
+        throw new Error('Schedule update is not configured for this environment.');
+      }
+      try {
+        return await updateImpl(input);
+      } catch (error) {
+        throw withUserMessage(
+          toSafeError(error instanceof Error ? error : new Error(String(error))),
+          '予定の更新に失敗しました。時間をおいて再試行してください。',
+        );
+      }
     },
   } satisfies SchedulesPort;
 };

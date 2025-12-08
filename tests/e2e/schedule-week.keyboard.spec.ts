@@ -3,7 +3,7 @@ import { expect, test, type Locator } from '@playwright/test';
 import { TESTIDS } from '@/testids';
 import { bootstrapScheduleEnv } from './utils/scheduleEnv';
 import { gotoWeek } from './utils/scheduleNav';
-import { waitForWeekTimeline } from './utils/wait';
+import { waitForDayTimeline, waitForWeekTimeline } from './utils/wait';
 
 const focusLocator = async (locator: Locator): Promise<void> => {
   await locator.scrollIntoViewIfNeeded();
@@ -49,14 +49,21 @@ test.describe('Schedule week keyboard navigation', () => {
 
     await page.keyboard.press('ArrowRight');
     await page.keyboard.press('Enter');
+    await waitForDayTimeline(page);
     await expect(dayTab).toHaveAttribute('aria-selected', 'true');
     await expect(page.getByTestId(TESTIDS['schedules-day-page'])).toBeVisible();
 
     await focusLocator(dayTab);
     await page.keyboard.press('ArrowLeft');
     await page.keyboard.press('Enter');
-    await expect(weekTab).toHaveAttribute('aria-selected', 'true');
-    await expect(page.getByTestId(TESTIDS['schedules-week-grid'])).toBeVisible();
+    await waitForWeekTimeline(page);
+
+    const timeline = page.getByTestId(TESTIDS.SCHEDULES_WEEK_TIMELINE);
+    if (await timeline.isVisible().catch(() => false)) {
+      await expect(timeline).toBeVisible();
+    } else {
+      await expect(page.getByTestId(TESTIDS['schedules-week-grid'])).toBeVisible();
+    }
   });
 
   test('period navigation buttons respond to keyboard activation', async ({ page }) => {

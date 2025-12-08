@@ -47,7 +47,10 @@ function SchedulesProviderBridge({ children }: BridgeProps) {
 
     if (sharePointListEnabled) {
       console.info('[schedules] using SharePoint port');
-      selectedPort = makeSharePointSchedulesPort({ create: createHandler });
+      selectedPort = makeSharePointSchedulesPort({
+        acquireToken: () => acquireToken(),
+        create: createHandler,
+      });
     } else if (graphEnabled) {
       console.info('[schedules] using Graph port');
       selectedPort = makeGraphSchedulesPort(() => acquireToken(GRAPH_RESOURCE), { create: createHandler });

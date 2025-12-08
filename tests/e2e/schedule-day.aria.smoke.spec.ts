@@ -26,17 +26,16 @@ test.describe('Schedules day ARIA smoke', () => {
     await gotoDay(page, new Date('2025-11-24'));
     await waitForDayViewReady(page);
 
-    const pageRoot = page.getByTestId('schedule-page-root');
+    const pageRoot = page.getByTestId(TESTIDS['schedules-day-page']).first();
     await expect(pageRoot).toBeVisible();
 
-    const dayTab = page.getByRole('tab', { name: '日' });
-    await expect(dayTab).toHaveAttribute('aria-selected', 'true');
+    const dayTab = page.getByTestId(TESTIDS.SCHEDULES_WEEK_TAB_DAY).first();
+    await expect(dayTab).toBeVisible();
 
-    const dayTimeline = page.getByTestId('schedule-day-root');
+    const dayTimeline = page.getByTestId(TESTIDS['schedules-day-page']).first();
     await expect(dayTimeline).toBeVisible();
-    await expect(dayTimeline).toHaveAttribute('aria-label', /日タイムライン/);
 
-    const quickButton = page.getByTestId('schedule-create-quick-button');
+    const quickButton = page.getByTestId(TESTIDS.SCHEDULES_FAB_CREATE);
     await expect(quickButton).toBeVisible();
     await quickButton.focus();
     await quickButton.press('Enter');

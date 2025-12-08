@@ -134,6 +134,7 @@ export default function WeekView(props: WeekViewProps) {
         onDayClick={props.onDayClick}
         activeDateIso={props.activeDateIso}
         onItemSelect={props.onItemSelect}
+        onItemAccept={props.onItemAccept}
       />
     );
   }
@@ -502,7 +503,7 @@ const WeekViewContent = ({ items, loading, onDayClick, activeDateIso, range, onI
 
       <Menu anchorEl={menuAnchor} open={Boolean(menuAnchor)} onClose={handleMenuClose} elevation={3}>
         <MenuItem onClick={handleMenuEdit}>編集</MenuItem>
-        <MenuItem onClick={handleMenuAccept} disabled={!onItemAccept}>
+        <MenuItem onClick={handleMenuAccept}>
           受け入れ登録
         </MenuItem>
       </Menu>

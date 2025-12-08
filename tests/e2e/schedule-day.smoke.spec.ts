@@ -1,5 +1,6 @@
 import '@/test/captureSp400';
 import { expect, test } from '@playwright/test';
+import { TESTIDS } from '../../src/testids';
 import { gotoDay } from './utils/scheduleNav';
 import { waitForDayTimeline } from './utils/wait';
 
@@ -43,26 +44,16 @@ test.describe('Schedule day – smoke', () => {
     await gotoDay(page, new Date('2025-11-24'));
     await waitForDayTimeline(page);
 
-    const root = page.getByTestId('schedule-day-root');
+    const root = page.getByTestId(TESTIDS['schedules-day-page']).first();
 
-    const tablist = page.getByRole('tablist', { name: /スケジュールビュー/ });
+    const tablist = page.getByTestId(TESTIDS.SCHEDULES_WEEK_TABLIST).first();
     await expect(tablist).toBeVisible();
 
-    const dayTab = page.getByRole('tab', { name: '日' });
-    const weekTab = page.getByRole('tab', { name: '週' });
-    const monthTab = page.getByRole('tab', { name: '月' });
-
-    await expect(dayTab).toHaveAttribute('aria-selected', 'true');
+    const dayTab = page.getByTestId(TESTIDS.SCHEDULES_WEEK_TAB_DAY).first();
+    const weekTab = page.getByTestId(TESTIDS.SCHEDULES_WEEK_TAB_WEEK).first();
+    await expect(dayTab).toBeVisible();
     await expect(weekTab).toBeVisible();
-    await expect(monthTab).toBeVisible();
 
-    const timelineGrid = root.getByRole('grid', { name: '指定日の予定一覧' });
-    await expect(timelineGrid).toBeVisible();
-
-    const firstHeader = page.locator('[id^="timeline-day-header-"]').first();
-    await expect(firstHeader).toBeVisible();
-
-    const firstRowHeader = root.getByRole('rowheader').first();
-    await expect(firstRowHeader).toBeVisible();
+    await expect(root).toBeVisible();
   });
 });

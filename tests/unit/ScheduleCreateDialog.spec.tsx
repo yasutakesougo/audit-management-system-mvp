@@ -208,7 +208,7 @@ describe('ScheduleCreateDialog component', () => {
         initialOverride={{
           startLocal: '2025-12-24T14:00',
           endLocal: '2025-12-24T15:30',
-          serviceType: 'transport',
+          serviceType: 'absence',
         }}
         mode="create"
       />
@@ -219,8 +219,8 @@ describe('ScheduleCreateDialog component', () => {
     expect(startInput.value).toBe('2025-12-24T14:00');
     expect(endInput.value).toBe('2025-12-24T15:30');
 
-    const serviceTypeCombo = screen.getByRole('combobox', { name: 'サービス種別' });
-    expect(serviceTypeCombo).toHaveTextContent('送迎');
+    const serviceTypeCombo = screen.getByRole('combobox', { name: '区分' });
+    expect(serviceTypeCombo).toHaveTextContent('欠席');
   });
 
   it('shows validation errors when attempting to submit an empty form', async () => {
@@ -281,11 +281,11 @@ describe('ScheduleCreateDialog component', () => {
     fireEvent.change(screen.getByTestId(TESTIDS['schedule-create-title']), {
       target: { value: '送迎（午前）' },
     });
-    const serviceTypeCombo = screen.getByRole('combobox', { name: 'サービス種別' });
+    const serviceTypeCombo = screen.getByRole('combobox', { name: '区分' });
     fireEvent.mouseDown(serviceTypeCombo);
     const listbox = await screen.findByRole('listbox');
-    fireEvent.click(within(listbox).getByText('送迎'));
-    expect(serviceTypeCombo).toHaveTextContent('送迎');
+    fireEvent.click(within(listbox).getByText('欠席'));
+    expect(serviceTypeCombo).toHaveTextContent('欠席');
 
     fireEvent.change(screen.getByTestId(TESTIDS['schedule-create-location']), {
       target: { value: '生活介護室' }
@@ -301,7 +301,7 @@ describe('ScheduleCreateDialog component', () => {
     expect(payload).toMatchObject({
       title: '送迎（午前）',
       userId: 'user-1',
-      serviceType: 'transport',
+      serviceType: 'absence',
       locationName: '生活介護室',
       notes: '送迎後に看護対応'
     });

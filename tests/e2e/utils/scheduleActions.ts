@@ -47,7 +47,7 @@ export async function waitForMonthViewReady(page: Page) {
 }
 
 export async function openQuickUserCareDialog(page: Page) {
-  const trigger = page.getByTestId(TESTIDS['schedule-create-quick-button']);
+  const trigger = page.getByTestId(TESTIDS.SCHEDULES_FAB_CREATE);
   await expect(trigger).toBeVisible();
   await trigger.click();
   await expect(page.getByTestId(TESTIDS['schedule-create-dialog'])).toBeVisible();
