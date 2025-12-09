@@ -99,19 +99,20 @@ describe('AppShell navigation smoke test', () => {
       </MemoryRouter>
     );
 
-  it('exposes nav and footer test IDs', () => {
+  it('exposes nav and footer test IDs', async () => {
     renderWithProviders();
 
     const ids = [
       'nav-daily',
-      'daily-footer-attendance',
-      'daily-footer-activity',
+      'footer-action-daily-attendance',
+      'footer-action-daily-activity',
       'daily-footer-support',
       'daily-footer-health',
     ];
 
-    ids.forEach((testId) => {
-      expect(screen.getByTestId(testId)).toBeInTheDocument();
+    const elements = await Promise.all(ids.map((testId) => screen.findByTestId(testId)));
+    elements.forEach((node) => {
+      expect(node).toBeInTheDocument();
     });
   });
 });
