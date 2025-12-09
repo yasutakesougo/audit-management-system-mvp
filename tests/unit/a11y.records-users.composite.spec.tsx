@@ -4,7 +4,7 @@ import { ToastProvider } from '@/hooks/useToast';
 import { render, screen } from '@testing-library/react';
 import { axe } from 'jest-axe';
 import fs from 'node:fs';
-import path from 'node:path';
+import { join, resolve } from 'node:path';
 import { MemoryRouter } from 'react-router-dom';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -95,10 +95,10 @@ suite('Composite accessibility smoke (records + users)', () => {
     const results = await axe(container);
 
     if (process.env.A11Y_AXE_JSON === '1') {
-      const outDir = path.resolve('artifacts', 'axe');
+      const outDir = resolve('artifacts', 'axe');
       fs.mkdirSync(outDir, { recursive: true });
       fs.writeFileSync(
-        path.join(outDir, 'records-users-composite.json'),
+        join(outDir, 'records-users-composite.json'),
         JSON.stringify(results, null, 2),
         'utf8'
       );

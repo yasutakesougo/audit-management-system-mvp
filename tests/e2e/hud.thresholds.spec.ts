@@ -2,6 +2,33 @@ import { expect, test } from '@playwright/test';
 
 import { prepareHydrationApp } from './_helpers/hydrationHud';
 
+async function ensureHudVisible(page: import('@playwright/test').Page) {
+  const hud = page.getByTestId('prefetch-hud');
+  const hudToggleSelector = '[data-testid="prefetch-hud-toggle"]';
+
+  if ((await hud.count()) > 0) {
+    await expect(hud).toBeVisible();
+    return hud;
+  }
+
+  const toggle = await page
+    .waitForSelector(hudToggleSelector, {
+      state: 'visible',
+      timeout: 10_000,
+    })
+    .catch(() => null);
+
+  if (!toggle) {
+    throw new Error(
+      'HUD toggle (data-testid="prefetch-hud-toggle") not found or not visible after 10s. Ensure the HUD devtools are enabled and rendered on the "/" route, or increase the timeout.'
+    );
+  }
+
+  await page.click(hudToggleSelector);
+  await expect(hud).toBeVisible();
+  return hud;
+}
+
 test.describe('HUD thresholds display', () => {
   test.beforeEach(async ({ page }) => {
     await page.addInitScript(() => {
@@ -21,16 +48,11 @@ test.describe('HUD thresholds display', () => {
       win.__TEST_ENV__ = { ...(win.__TEST_ENV__ ?? {}), ...overrides };
     });
     await prepareHydrationApp(page);
-    await page.goto('/', { waitUntil: 'domcontentloaded' });
+    await page.goto('/', { waitUntil: 'networkidle' });
   });
 
   test('renders configured thresholds in HUD', async ({ page }) => {
-    const hudToggle = page.getByTestId('prefetch-hud-toggle');
-    const hud = page.getByTestId('prefetch-hud');
-    if ((await hud.count()) === 0) {
-      await hudToggle.click();
-    }
-    await expect(hud).toBeVisible();
+    await ensureHudVisible(page);
 
     const thresholds = page.getByTestId('hud-thresholds');
     await expect(thresholds).toContainText('discrepancy=15m');

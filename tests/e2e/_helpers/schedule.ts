@@ -1,4 +1,4 @@
-import { TESTIDS } from '@/testids';
+import { TESTIDS } from '../../../src/testids';
 import type { Locator, Page } from '@playwright/test';
 import { expect } from '@playwright/test';
 
