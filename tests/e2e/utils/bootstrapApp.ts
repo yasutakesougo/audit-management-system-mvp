@@ -3,12 +3,14 @@ import type { Page } from '@playwright/test';
 export type BootstrapFlags = {
   skipLogin?: boolean;
   featureSchedules?: boolean;
+  initialPath?: string;
 };
 
 export async function bootstrapDashboard(page: Page, flags: BootstrapFlags = {}): Promise<void> {
   const options = {
     skipLogin: flags.skipLogin ?? true,
     featureSchedules: flags.featureSchedules ?? true,
+    initialPath: flags.initialPath ?? '/dashboard',
   };
 
   await page.addInitScript((opts) => {
@@ -25,5 +27,5 @@ export async function bootstrapDashboard(page: Page, flags: BootstrapFlags = {})
     }
   }, options);
 
-  await page.goto('/dashboard');
+  await page.goto(options.initialPath, { waitUntil: 'networkidle' });
 }

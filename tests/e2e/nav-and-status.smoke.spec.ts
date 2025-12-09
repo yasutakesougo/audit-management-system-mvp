@@ -6,11 +6,8 @@ const APP_SHELL_ENTRY = '/dashboard';
 
 test.describe('Nav/Status/Footers basics', () => {
   test.beforeEach(async ({ page }) => {
-    const response = await bootstrapDashboard(page, { skipLogin: true, featureSchedules: true }).then(() =>
-      page.waitForResponse((r) => r.url().includes(APP_SHELL_ENTRY) && r.status() < 400, { timeout: 10_000 })
-    );
-
-    expect(response, `navigate to ${APP_SHELL_ENTRY} should return a response`).toBeTruthy();
+    await bootstrapDashboard(page, { skipLogin: true, featureSchedules: true, initialPath: APP_SHELL_ENTRY });
+    await expect(page).toHaveURL(new RegExp(`${APP_SHELL_ENTRY.replace('/', '\\/')}`));
 
   });
 
