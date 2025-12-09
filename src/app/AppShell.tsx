@@ -93,7 +93,7 @@ const AppShell: React.FC<{ children: React.ReactNode }> = ({ children }) => {
         icon: AssignmentTurnedInRoundedIcon,
         prefetchKey: PREFETCH_KEYS.dashboard,
         prefetchKeys: [PREFETCH_KEYS.muiData, PREFETCH_KEYS.muiFeedback],
-        testId: 'nav-dashboard',
+        testId: TESTIDS['nav-dashboard'],
       },
       {
         label: '分析',
@@ -139,7 +139,7 @@ const AppShell: React.FC<{ children: React.ReactNode }> = ({ children }) => {
         isActive: (pathname) => pathname.startsWith('/checklist'),
         icon: ChecklistRoundedIcon,
         prefetchKey: PREFETCH_KEYS.checklist,
-        testId: 'nav-checklist',
+        testId: TESTIDS['nav-checklist'],
       },
       {
         label: '監査ログ',
@@ -450,8 +450,8 @@ const FooterQuickActions: React.FC = () => {
   };
 
   const footerTestIds: Record<string, string> = {
-    'daily-attendance': 'footer-action-daily-attendance',
-    'daily-activity': 'footer-action-daily-activity',
+    'daily-attendance': TESTIDS['footer-action-daily-attendance'],
+    'daily-activity': TESTIDS['footer-action-daily-activity'],
     'daily-support': TESTIDS['daily-footer-support'],
     'daily-health': TESTIDS['daily-footer-health'],
     'handoff-quicknote': TESTIDS['handoff-footer-quicknote'],
@@ -537,14 +537,12 @@ const FooterQuickActions: React.FC = () => {
         >
           <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1.5} alignItems="stretch">
             {actions.map(({ key, label, to, color, variant: baseVariant, onClick }) => {
-              const dataTestId = footerTestIds[key];
-              const resolvedTestId = dataTestId && dataTestId in TESTIDS ? TESTIDS[dataTestId as keyof typeof TESTIDS] : dataTestId;
               const commonProps = {
                 color,
                 size: 'large' as const,
                 fullWidth: true,
                 sx: { flex: 1, fontWeight: 600 },
-                'data-testid': resolvedTestId,
+                'data-testid': footerTestIds[key],
               };
 
               if (to) {
