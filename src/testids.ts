@@ -1,6 +1,24 @@
 // ---- Single source of truth for data-testid ----
 
 // 値は常に文字列。テストコードからは TESTIDS.xxx を経由して参照する（文字列リテラルは直書きしない）。
+const NAV_TESTIDS = {
+  dashboard: 'nav-dashboard',
+  analysis: 'nav-analysis',
+  iceberg: 'nav-iceberg',
+  assessment: 'nav-assessment',
+  daily: 'nav-daily',
+  checklist: 'nav-checklist',
+  audit: 'nav-audit',
+  admin: 'nav-admin',
+  schedules: 'nav-schedules',
+  nurse: 'nav-nurse',
+} as const;
+
+const FOOTER_TESTIDS = {
+  dailyAttendance: 'footer-action-daily-attendance',
+  dailyActivity: 'footer-action-daily-activity',
+} as const;
+
 export const TESTIDS = {
   // Shell / Router
   'app-root': 'app-root',
@@ -32,11 +50,23 @@ export const TESTIDS = {
   'toast-announcer': 'toast-announcer',
   'toast-message': 'toast-message',
   'handoff-footer-quicknote': 'handoff-footer-quicknote',
-  'nav-dashboard': 'nav-dashboard',
-  'nav-checklist': 'nav-checklist',
-  'nav-daily': 'nav-daily',
-  'footer-action-daily-attendance': 'footer-action-daily-attendance',
-  'footer-action-daily-activity': 'footer-action-daily-activity',
+  ...NAV_TESTIDS,
+  ...FOOTER_TESTIDS,
+  nav: NAV_TESTIDS,
+  footer: FOOTER_TESTIDS,
+  // Legacy flat keys (compatibility with existing lookups)
+  'nav-dashboard': NAV_TESTIDS.dashboard,
+  'nav-analysis': NAV_TESTIDS.analysis,
+  'nav-iceberg': NAV_TESTIDS.iceberg,
+  'nav-assessment': NAV_TESTIDS.assessment,
+  'nav-daily': NAV_TESTIDS.daily,
+  'nav-checklist': NAV_TESTIDS.checklist,
+  'nav-audit': NAV_TESTIDS.audit,
+  'nav-admin': NAV_TESTIDS.admin,
+  'nav-schedules': NAV_TESTIDS.schedules,
+  'nav-nurse': NAV_TESTIDS.nurse,
+  'footer-action-daily-attendance': FOOTER_TESTIDS.dailyAttendance,
+  'footer-action-daily-activity': FOOTER_TESTIDS.dailyActivity,
   'daily-footer-attendance': 'daily-footer-attendance',
   'daily-footer-activity': 'daily-footer-activity',
   'daily-footer-support': 'daily-footer-support',
@@ -57,7 +87,6 @@ export const TESTIDS = {
   'bulk-daily-record-activity-delete-am': 'bulk-daily-record-activity-delete-am',
   'bulk-daily-record-activity-delete-pm': 'bulk-daily-record-activity-delete-pm',
   'bulk-daily-record-individual-notes': 'bulk-daily-record-individual-notes',
-  'nav-schedules': 'nav-schedules',
   'schedules-nav-link': 'schedules-nav-link',
   'home-tile-schedule': 'home-tile-schedule',
   'schedules-day-page': 'schedules-day-page',
@@ -68,6 +97,7 @@ export const TESTIDS = {
   'schedules-week-page': 'schedules-week-page',
   'schedules-week-heading': 'schedules-week-heading',
   'schedules-week-grid': 'schedules-week-grid',
+  SCHEDULES_WEEK_SERVICE_SUMMARY: 'schedules-week-service-summary',
   SCHEDULES_WEEK_TIMELINE: 'schedules-week-timeline',
   'schedules-week-timeline': 'schedules-week-timeline',
   SCHEDULES_WEEK_TABLIST: 'schedules-week-tablist',
@@ -330,10 +360,16 @@ export const TESTIDS = {
 
   // Support Plan Guide HUD
   'support-plan-hud': 'support-plan-hud',
-} as const satisfies Record<string, string>;
+} as const;
+
+type LeafValues<T> = T extends string
+  ? T
+  : T extends Record<string, unknown>
+    ? LeafValues<T[keyof T]>
+    : never;
 
 // 🔧 型安全なTestID型を定義
-export type TestId = (typeof TESTIDS)[keyof typeof TESTIDS];
+export type TestId = LeafValues<typeof TESTIDS>;
 
 // React で使うお手軽ヘルパー（型安全版でタイポ防止）
 export function tid(id: TestId) {

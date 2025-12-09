@@ -13,7 +13,7 @@ import { TESTIDS } from '@/testids';
 import type { SchedItem } from './data';
 import { SCHEDULES_DEBUG } from './debug';
 import { getScheduleStatusMeta } from './statusMetadata';
-import { SERVICE_TYPE_META, type ServiceTypeKey } from './serviceTypeMetadata';
+import { SERVICE_TYPE_META, normalizeServiceType, type ServiceTypeKey } from './serviceTypeMetadata';
 import { getDayChipSx } from './theme/dateStyles';
 import { type DateRange } from './data';
 import { makeRange, useSchedules } from './useSchedules';
@@ -104,21 +104,9 @@ const toDateIsoLocal = (date: Date): string => {
   return `${year}-${month}-${day}`;
 };
 
-type ThemeServiceTypeKey = 'absence' | 'late' | 'earlyLeave' | 'other';
+type ThemeServiceTypeKey = ServiceTypeKey;
 
-const mapServiceTypeToThemeKey = (value?: ServiceTypeKey | null): ThemeServiceTypeKey => {
-  switch (value) {
-    case 'absence':
-      return 'absence';
-    case 'late':
-      return 'late';
-    case 'earlyLeave':
-      return 'earlyLeave';
-    case 'other':
-    default:
-      return 'other';
-  }
-};
+const mapServiceTypeToThemeKey = (value?: ServiceTypeKey | null): ThemeServiceTypeKey => value ?? 'unset';
 
 const getServiceTypeMeta = (value?: ServiceTypeKey | null) => (value ? SERVICE_TYPE_META[value] : undefined);
 
@@ -176,6 +164,36 @@ const WeekViewContent = ({ items, loading, onDayClick, activeDateIso, range, onI
   const resolvedRange = useMemo(() => range ?? defaultWeekRange(), [range]);
 
   const fallbackServiceTokens: Record<ThemeServiceTypeKey, { bg: string; border: string; accent: string }> = {
+    unset: {
+      bg: theme.palette.grey[50],
+      border: theme.palette.grey[300],
+      accent: theme.palette.grey[500],
+    },
+    normal: {
+      bg: theme.palette.primary.light,
+      border: theme.palette.primary.main,
+      accent: theme.palette.primary.dark,
+    },
+    transport: {
+      bg: theme.palette.info.light,
+      border: theme.palette.info.main,
+      accent: theme.palette.info.dark,
+    },
+    meeting: {
+      bg: theme.palette.info.light,
+      border: theme.palette.info.main,
+      accent: theme.palette.info.dark,
+    },
+    training: {
+      bg: theme.palette.success.light,
+      border: theme.palette.success.main,
+      accent: theme.palette.success.dark,
+    },
+    respite: {
+      bg: theme.palette.success.light,
+      border: theme.palette.success.main,
+      accent: theme.palette.success.dark,
+    },
     absence: {
       bg: theme.palette.error.light,
       border: theme.palette.error.main,
@@ -187,9 +205,9 @@ const WeekViewContent = ({ items, loading, onDayClick, activeDateIso, range, onI
       accent: theme.palette.warning.dark,
     },
     earlyLeave: {
-      bg: theme.palette.info.light,
-      border: theme.palette.info.main,
-      accent: theme.palette.info.dark,
+      bg: theme.palette.warning.light,
+      border: theme.palette.warning.main,
+      accent: theme.palette.warning.dark,
     },
     other: {
       bg: theme.palette.grey[100],
@@ -197,6 +215,9 @@ const WeekViewContent = ({ items, loading, onDayClick, activeDateIso, range, onI
       accent: theme.palette.grey[500],
     },
   };
+  const serviceTypeColors = (theme as unknown as {
+    serviceTypeColors?: Record<string, { bg?: string; border?: string; accent?: string }>;
+  }).serviceTypeColors;
 
   if (SCHEDULES_DEBUG) {
     // eslint-disable-next-line no-console -- diagnostics for E2E/dev only
@@ -239,6 +260,34 @@ const WeekViewContent = ({ items, loading, onDayClick, activeDateIso, range, onI
   }, [items, weekDays]);
 
   const selectedItems = groupedItems.get(resolvedActiveIso) ?? [];
+
+  const serviceSummary = useMemo(() => {
+    const counts: Record<ServiceTypeKey, number> = {
+      unset: 0,
+      normal: 0,
+      transport: 0,
+      meeting: 0,
+      training: 0,
+      respite: 0,
+      absence: 0,
+      late: 0,
+      earlyLeave: 0,
+      other: 0,
+    };
+
+    selectedItems.forEach((item) => {
+      const normalizedServiceType = normalizeServiceType(item.serviceType as string | null);
+      const key = mapServiceTypeToThemeKey(normalizedServiceType);
+      counts[key] = (counts[key] ?? 0) + 1;
+    });
+
+    return (Object.keys(SERVICE_TYPE_META) as ServiceTypeKey[]).map((key) => ({
+      key,
+      count: counts[key] ?? 0,
+      meta: SERVICE_TYPE_META[key],
+      tokens: serviceTypeColors?.[key] ?? fallbackServiceTokens[key],
+    }));
+  }, [fallbackServiceTokens, selectedItems, serviceTypeColors]);
 
   const handleClick = (iso: string, event: MouseEvent<HTMLButtonElement>) => {
     onDayClick?.(iso, event);
@@ -287,6 +336,30 @@ const WeekViewContent = ({ items, loading, onDayClick, activeDateIso, range, onI
         data-testid={TESTIDS['schedules-week-grid']}
         className="w-full"
       >
+        <div className="mb-2 flex flex-wrap gap-1.5" data-testid={TESTIDS.SCHEDULES_WEEK_SERVICE_SUMMARY}>
+          {serviceSummary.filter((entry) => entry.count > 0).length === 0 ? (
+            <span className="text-xs text-slate-500">区分未設定 0件</span>
+          ) : (
+            serviceSummary
+              .filter((entry) => entry.count > 0)
+              .map((entry) => (
+                <Chip
+                  key={entry.key}
+                  size="small"
+                  label={`${entry.meta.label} ${entry.count}件`}
+                  color={entry.meta.color}
+                  variant="outlined"
+                  data-testid={`${TESTIDS.SCHEDULES_WEEK_SERVICE_SUMMARY}-${entry.key}`}
+                  sx={{
+                    borderColor: entry.tokens.border,
+                    backgroundColor: entry.tokens.bg,
+                    color: entry.tokens.accent,
+                    fontWeight: 700,
+                  }}
+                />
+              ))
+          )}
+        </div>
         <div role="row" aria-rowindex={1} className="grid grid-cols-2 gap-2 sm:grid-cols-4 md:grid-cols-7">
           {weekDays.map((day, index) => {
             const isToday = day.iso === todayIso;
@@ -402,14 +475,15 @@ const WeekViewContent = ({ items, loading, onDayClick, activeDateIso, range, onI
               if (isDisabled) return;
               onItemSelect?.(item);
             };
-            const serviceTypeKey = mapServiceTypeToThemeKey(item.serviceType as ServiceTypeKey);
+            const normalizedServiceType = normalizeServiceType(item.serviceType as string | null);
+            const serviceTypeKey = mapServiceTypeToThemeKey(normalizedServiceType);
             const serviceTypeColors = (theme as unknown as {
               serviceTypeColors?: Record<string, { bg?: string; border?: string; accent?: string }>;
             }).serviceTypeColors;
             const serviceTokens = serviceTypeColors?.[serviceTypeKey] ?? fallbackServiceTokens[serviceTypeKey];
             const timeRange = formatEventTimeRange(item.start, item.end);
-            const serviceTypeMeta = getServiceTypeMeta(item.serviceType as ServiceTypeKey);
-            const showServiceChip = Boolean(serviceTypeMeta);
+            const serviceTypeMeta = getServiceTypeMeta(normalizedServiceType);
+            const showServiceChip = Boolean(serviceTypeMeta && serviceTypeKey !== 'unset');
             const isAccepted = Boolean(item.acceptedOn || item.acceptedBy || item.acceptedNote);
             const ariaLabel = buildWeekEventAriaLabel(item, timeRange, statusLabel);
 
@@ -465,6 +539,7 @@ const WeekViewContent = ({ items, loading, onDayClick, activeDateIso, range, onI
                       aria-label="行の操作"
                       size="small"
                       onClick={(event) => handleMenuOpen(event, item)}
+                      component="span"
                       sx={{ ml: 0.5 }}
                     >
                       <MoreVertIcon fontSize="small" />
