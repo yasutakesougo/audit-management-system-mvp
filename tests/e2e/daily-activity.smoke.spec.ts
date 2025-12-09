@@ -41,4 +41,33 @@ test.describe('Daily activity smoke', () => {
     await expect(page).toHaveURL(/\/daily\/activity/);
     await expect(page.getByTestId('records-daily-root')).toBeVisible();
   });
+
+  test('opens edit dialog, cancels, and returns to list', async ({ page }) => {
+    await primeOpsEnv(page);
+
+    await page.goto('/daily/activity', { waitUntil: 'domcontentloaded' });
+    await page.waitForLoadState('networkidle', { timeout: 15_000 }).catch(() => undefined);
+    await expect(page.getByRole('heading', { name: /支援記録（ケース記録）/, level: 1 })).toBeVisible({ timeout: 15_000 });
+
+    const list = page.getByTestId('daily-record-list-container');
+    await expect(list).toBeVisible();
+
+    const firstCard = page.locator('[data-testid^="daily-record-card-"]').first();
+    await firstCard.scrollIntoViewIfNeeded();
+    await expect(firstCard).toBeVisible();
+
+    await firstCard.locator('[data-testid^="menu-button-"]').click();
+    const editMenuItem = page.locator('[data-testid^="edit-record-menu-item-"]');
+    await expect(editMenuItem).toBeVisible();
+    await editMenuItem.click();
+
+    const formDialog = page.getByTestId('daily-record-form-dialog');
+    await expect(formDialog).toBeVisible();
+
+    await page.getByTestId('cancel-button').click();
+    await expect(formDialog).toBeHidden();
+
+    await expect(list).toBeVisible();
+    await expect(firstCard).toBeVisible();
+  });
 });
