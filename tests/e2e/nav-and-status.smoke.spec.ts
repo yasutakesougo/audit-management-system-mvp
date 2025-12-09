@@ -4,6 +4,17 @@ const APP_SHELL_ENTRY = '/dashboard';
 
 test.describe('Nav/Status/Footers basics', () => {
   test.beforeEach(async ({ page }) => {
+    await page.addInitScript(() => {
+      const win = window as typeof window & { __ENV__?: Record<string, string> };
+      win.__ENV__ = {
+        ...(win.__ENV__ ?? {}),
+        VITE_SKIP_LOGIN: '1',
+        VITE_E2E: '1',
+        VITE_FEATURE_SCHEDULES: '1',
+      };
+      window.localStorage.setItem('skipLogin', '1');
+    });
+
     const response = await page.goto(APP_SHELL_ENTRY, { waitUntil: 'networkidle' });
 
     expect(response, `navigate to ${APP_SHELL_ENTRY} should return a response`).toBeTruthy();
