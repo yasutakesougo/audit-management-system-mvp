@@ -127,7 +127,7 @@ const AppShell: React.FC<{ children: React.ReactNode }> = ({ children }) => {
       },
       {
         label: '日次記録',
-        to: '/daily/table',
+        to: '/daily/activity',
         isActive: (pathname) => pathname.startsWith('/daily'),
         icon: AssignmentTurnedInRoundedIcon,
         prefetchKey: PREFETCH_KEYS.dailyMenu,
@@ -139,6 +139,7 @@ const AppShell: React.FC<{ children: React.ReactNode }> = ({ children }) => {
         isActive: (pathname) => pathname.startsWith('/checklist'),
         icon: ChecklistRoundedIcon,
         prefetchKey: PREFETCH_KEYS.checklist,
+        testId: 'nav-checklist',
       },
       {
         label: '監査ログ',
@@ -448,12 +449,12 @@ const FooterQuickActions: React.FC = () => {
     onClick?: () => void;
   };
 
-  const footerTestIds: Record<string, keyof typeof TESTIDS> = {
-    'daily-attendance': 'daily-footer-attendance',
-    'daily-activity': 'daily-footer-activity',
-    'daily-support': 'daily-footer-support',
-    'daily-health': 'daily-footer-health',
-    'handoff-quicknote': 'handoff-footer-quicknote',
+  const footerTestIds: Record<string, string> = {
+    'daily-attendance': 'footer-action-daily-attendance',
+    'daily-activity': 'footer-action-daily-activity',
+    'daily-support': TESTIDS['daily-footer-support'],
+    'daily-health': TESTIDS['daily-footer-health'],
+    'handoff-quicknote': TESTIDS['handoff-footer-quicknote'],
   };
 
   const baseActions: FooterAction[] = [
@@ -467,7 +468,7 @@ const FooterQuickActions: React.FC = () => {
     {
       key: 'daily-activity',
       label: '支援記録（ケース記録）入力',
-      to: '/daily/table',
+      to: '/daily/activity',
       color: 'primary' as const,
       variant: 'contained' as const,
     },
@@ -536,12 +537,14 @@ const FooterQuickActions: React.FC = () => {
         >
           <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1.5} alignItems="stretch">
             {actions.map(({ key, label, to, color, variant: baseVariant, onClick }) => {
+              const dataTestId = footerTestIds[key];
+              const resolvedTestId = dataTestId && dataTestId in TESTIDS ? TESTIDS[dataTestId as keyof typeof TESTIDS] : dataTestId;
               const commonProps = {
                 color,
                 size: 'large' as const,
                 fullWidth: true,
                 sx: { flex: 1, fontWeight: 600 },
-                'data-testid': footerTestIds[key] ? TESTIDS[footerTestIds[key]] : undefined,
+                'data-testid': resolvedTestId,
               };
 
               if (to) {
@@ -554,6 +557,7 @@ const FooterQuickActions: React.FC = () => {
                     component={RouterLink as unknown as React.ElementType}
                     to={to}
                     variant={isActive ? 'contained' : baseVariant}
+                    aria-current={isActive ? 'page' : undefined}
                   >
                     {label}
                   </Button>
