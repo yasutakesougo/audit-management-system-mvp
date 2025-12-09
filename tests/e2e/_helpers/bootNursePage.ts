@@ -1,8 +1,13 @@
+import { readFileSync } from 'node:fs';
+import { resolve } from 'node:path';
 import type { Page } from '@playwright/test';
-import nurseDashboardFixture from '../_fixtures/nurse.dashboard.dev.v1.json' assert { type: 'json' };
 import { setupNurseFlags } from './setupNurse.flags';
 import { setupSharePointStubs } from './setupSharePointStubs';
 import { setupPlaywrightEnv } from './setupPlaywrightEnv';
+
+const nurseDashboardFixture = JSON.parse(
+  readFileSync(resolve(__dirname, '../_fixtures/nurse.dashboard.dev.v1.json'), 'utf-8'),
+);
 
 const NURSE_FEATURE_ENV: Record<string, string> = {
   VITE_FEATURE_NURSE_UI: '1',
