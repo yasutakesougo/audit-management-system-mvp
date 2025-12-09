@@ -1,12 +1,16 @@
 import '@/test/captureSp400';
 import { expect, test } from '@playwright/test';
 import { TESTIDS } from '@/testids';
-import { bootstrapScheduleEnv } from './utils/scheduleEnv';
+import { bootstrapDashboard } from './utils/bootstrapApp';
 import { gotoScheduleWeek } from './utils/scheduleWeek';
 
 test.describe('Schedule week page – ARIA smoke', () => {
   test.beforeEach(async ({ page }) => {
-    await bootstrapScheduleEnv(page);
+    await bootstrapDashboard(page, {
+      skipLogin: true,
+      featureSchedules: true,
+      initialPath: '/schedule/week',
+    });
   });
 
   test('exposes main landmark, heading, tabs, and week tabpanel', async ({ page }) => {
