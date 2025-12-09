@@ -3,7 +3,6 @@ import Chip from '@mui/material/Chip';
 import IconButton from '@mui/material/IconButton';
 import Menu from '@mui/material/Menu';
 import MenuItem from '@mui/material/MenuItem';
-import Tooltip from '@mui/material/Tooltip';
 import { useTheme } from '@mui/material/styles';
 import MoreVertIcon from '@mui/icons-material/MoreVert';
 import type { MouseEvent } from 'react';
@@ -18,6 +17,10 @@ import { SERVICE_TYPE_META, normalizeServiceType, type ServiceTypeKey } from './
 import { getDayChipSx } from './theme/dateStyles';
 import { type DateRange } from './data';
 import { makeRange, useSchedules } from './useSchedules';
+import {
+  WeekServiceSummaryChips,
+  type WeekServiceSummaryItem,
+} from './WeekServiceSummaryChips';
 
 export type WeekViewProps = {
   items?: WeekSchedItem[];
@@ -323,6 +326,17 @@ const WeekViewContent = ({ items, loading, onDayClick, activeDateIso, range, onI
     new Date(resolvedRange.to),
   )}`;
 
+  const visibleServiceSummary = serviceSummary.filter((entry) => entry.count > 0);
+
+  const serviceSummaryItems: WeekServiceSummaryItem[] = visibleServiceSummary.map((entry) => ({
+    key: entry.key,
+    label: entry.meta.label,
+    count: entry.count,
+    color: entry.meta.color,
+    tokens: entry.tokens,
+    testId: `${TESTIDS.SCHEDULES_WEEK_SERVICE_SUMMARY}-${entry.key}`,
+  }));
+
   return (
     <div data-testid="schedule-week-view" className="space-y-3">
       <header className="flex items-center justify-between rounded-lg border border-slate-200 bg-slate-50 px-4 py-2 text-sm text-slate-700">
@@ -337,39 +351,11 @@ const WeekViewContent = ({ items, loading, onDayClick, activeDateIso, range, onI
         data-testid={TESTIDS['schedules-week-grid']}
         className="w-full"
       >
-        <div
-          className="mb-2 flex flex-wrap gap-1.5"
-          data-testid={TESTIDS.SCHEDULES_WEEK_SERVICE_SUMMARY}
-          style={{ rowGap: 6, columnGap: 6 }}
-        >
-          {serviceSummary.filter((entry) => entry.count > 0).length === 0 ? (
+        <div className="mb-2" data-testid={TESTIDS.SCHEDULES_WEEK_SERVICE_SUMMARY}>
+          {serviceSummaryItems.length === 0 ? (
             <span className="text-xs text-slate-500">区分未設定 0件</span>
           ) : (
-            serviceSummary
-              .filter((entry) => entry.count > 0)
-              .map((entry) => (
-                <Tooltip
-                  key={entry.key}
-                  title={`${entry.meta.label}: ${entry.count}件`}
-                  arrow
-                  disableInteractive
-                >
-                  <Chip
-                    size="small"
-                    label={`${entry.meta.label} ${entry.count}件`}
-                    color={entry.meta.color}
-                    variant="outlined"
-                    data-testid={`${TESTIDS.SCHEDULES_WEEK_SERVICE_SUMMARY}-${entry.key}`}
-                    sx={{
-                      borderColor: entry.tokens.border,
-                      backgroundColor: entry.tokens.bg,
-                      color: entry.tokens.accent,
-                      fontWeight: 700,
-                      flexShrink: 0,
-                    }}
-                  />
-                </Tooltip>
-              ))
+            <WeekServiceSummaryChips items={serviceSummaryItems} />
           )}
         </div>
         <div role="row" aria-rowindex={1} className="grid grid-cols-2 gap-2 sm:grid-cols-4 md:grid-cols-7">
