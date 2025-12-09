@@ -172,7 +172,7 @@ describe('SchedulePage user schedule smoke', () => {
     const serviceTypeCombo = within(quickDialog).getByRole('combobox', { name: 'サービス種別' });
     fireEvent.mouseDown(serviceTypeCombo);
     const serviceTypeList = await screen.findByRole('listbox');
-    fireEvent.click(within(serviceTypeList).getByText('送迎'));
+    fireEvent.click(within(serviceTypeList).getByText('欠席'));
 
     fireEvent.change(within(quickDialog).getByTestId(TESTIDS['schedule-create-location']), {
       target: { value: '生活介護室' },
@@ -188,7 +188,7 @@ describe('SchedulePage user schedule smoke', () => {
     expect(quickPayload).toMatchObject({
       personId: 'user-1',
       personName: '利用者 一郎',
-      serviceType: '送迎',
+      serviceType: '欠席・休み',
       location: '生活介護室',
       notes: '送迎後に看護対応',
     });

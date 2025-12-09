@@ -219,7 +219,7 @@ describe('ScheduleCreateDialog component', () => {
     expect(startInput.value).toBe('2025-12-24T14:00');
     expect(endInput.value).toBe('2025-12-24T15:30');
 
-    const serviceTypeCombo = screen.getByRole('combobox', { name: '区分' });
+    const serviceTypeCombo = screen.getByRole('combobox', { name: 'サービス種別' });
     expect(serviceTypeCombo).toHaveTextContent('欠席');
   });
 
@@ -281,7 +281,7 @@ describe('ScheduleCreateDialog component', () => {
     fireEvent.change(screen.getByTestId(TESTIDS['schedule-create-title']), {
       target: { value: '送迎（午前）' },
     });
-    const serviceTypeCombo = screen.getByRole('combobox', { name: '区分' });
+    const serviceTypeCombo = screen.getByRole('combobox', { name: 'サービス種別' });
     fireEvent.mouseDown(serviceTypeCombo);
     const listbox = await screen.findByRole('listbox');
     fireEvent.click(within(listbox).getByText('欠席'));
