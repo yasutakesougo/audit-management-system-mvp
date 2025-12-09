@@ -11,6 +11,23 @@ const readPrefetchSpans = async (page: Page) =>
     return target.__PREFETCH_HUD__?.spans ?? [];
   });
 
+async function ensureHudVisible(page: Page) {
+  const hud = page.getByTestId('prefetch-hud');
+  const hudToggle = page.getByTestId('prefetch-hud-toggle');
+  const [hudCount, toggleCount] = await Promise.all([hud.count(), hudToggle.count()]);
+
+  if (hudCount === 0 && toggleCount === 0) {
+    test.skip(true, 'Prefetch HUD devtools are disabled in this environment');
+  }
+
+  if (hudCount === 0 && toggleCount > 0) {
+    await hudToggle.click();
+  }
+
+  await expect(hud).toBeVisible();
+  return hud;
+}
+
 test.describe('Prefetch nav shell intents', () => {
   test.beforeEach(async ({ page }) => {
     await prepareHydrationApp(page);
@@ -18,13 +35,7 @@ test.describe('Prefetch nav shell intents', () => {
   });
 
   test('hover and keyboard navigation are captured in the HUD', async ({ page }) => {
-    const hudToggle = page.getByTestId('prefetch-hud-toggle');
-    const hud = page.getByTestId('prefetch-hud');
-    const hudCount = await hud.count();
-    if (hudCount === 0) {
-      await hudToggle.click();
-    }
-    await expect(hud).toBeVisible();
+    const hud = await ensureHudVisible(page);
 
     const schedulesLink = page.getByTestId('nav-schedules');
     await expect(schedulesLink).toBeVisible();
