@@ -31,6 +31,7 @@ const AnalysisDashboardPage = React.lazy(() => import('@/pages/AnalysisDashboard
 const AssessmentDashboardPage = React.lazy(() => import('@/pages/AssessmentDashboardPage'));
 const TokuseiSurveyResultsPage = React.lazy(() => import('@/pages/TokuseiSurveyResultsPage'));
 const IcebergAnalysisPage = React.lazy(() => import('@/pages/IcebergAnalysisPage'));
+const IcebergPdcaPage = React.lazy(() => import('@/features/iceberg-pdca/IcebergPdcaPage'));
 
 const AttendanceRecordPage = React.lazy(() => import('@/pages/AttendanceRecordPage'));
 
@@ -233,6 +234,20 @@ const SuspendedIcebergAnalysisPage: React.FC = () => (
       )}
     >
       <IcebergAnalysisPage />
+    </React.Suspense>
+  </RouteHydrationErrorBoundary>
+);
+
+const SuspendedIcebergPdcaPage: React.FC = () => (
+  <RouteHydrationErrorBoundary>
+    <React.Suspense
+      fallback={(
+        <div className="p-4 text-sm text-slate-600" role="status">
+          氷山 PDCA を読み込んでいます…
+        </div>
+      )}
+    >
+      <IcebergPdcaPage />
     </React.Suspense>
   </RouteHydrationErrorBoundary>
 );
@@ -468,6 +483,14 @@ const childRoutes: RouteObject[] = [
   { path: 'daily/health', element: <SuspendedHealthObservationPage /> },
   { path: 'analysis/dashboard', element: <SuspendedAnalysisDashboardPage /> },
   { path: 'analysis/iceberg', element: <SuspendedIcebergAnalysisPage /> },
+  {
+    path: 'iceberg/pdca',
+    element: (
+      <ProtectedRoute flag="icebergPdca">
+        <SuspendedIcebergPdcaPage />
+      </ProtectedRoute>
+    ),
+  },
   { path: 'assessment', element: <SuspendedAssessmentDashboardPage /> },
   { path: 'survey/tokusei', element: <SuspendedTokuseiSurveyResultsPage /> },
   { path: 'admin/templates', element: <SuspendedSupportActivityMasterPage /> },

@@ -22,6 +22,7 @@ interface ImportMetaEnv {
   readonly VITE_FEATURE_SCHEDULES_WEEK_V2?: string;
   readonly VITE_FEATURE_SCHEDULE_STAFF_TEXT_COLUMNS?: string;
   readonly VITE_FEATURE_USERS_CRUD?: string;
+  readonly VITE_FEATURE_ICEBERG_PDCA?: string;
   readonly VITE_GRAPH_RETRY_BASE_MS?: string;
   readonly VITE_GRAPH_RETRY_CAP_MS?: string;
   readonly VITE_GRAPH_RETRY_MAX?: string;

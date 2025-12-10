@@ -59,7 +59,7 @@ const E2E_MSAL_MOCK_ENABLED = isE2eMsalMockEnabled();
 const AppShell: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const location = useLocation();
   const navigate = useNavigate();
-  const { schedules, complianceForm } = useFeatureFlags();
+  const { schedules, complianceForm, icebergPdca } = useFeatureFlags();
   const { mode, toggle } = useContext(ColorModeContext);
   const dashboardPath = useDashboardPath();
   const currentRole = useAuthStore((s) => s.currentUserRole);
@@ -109,6 +109,17 @@ const AppShell: React.FC<{ children: React.ReactNode }> = ({ children }) => {
         prefetchKey: PREFETCH_KEYS.iceberg,
         testId: TESTIDS.nav.iceberg,
       },
+      ...(icebergPdca
+        ? [
+            {
+              label: '氷山 PDCA',
+              to: '/iceberg/pdca',
+              isActive: (pathname) => pathname.startsWith('/iceberg/pdca'),
+              icon: WorkspacesIcon,
+              testId: TESTIDS.nav.icebergPdca,
+            } satisfies NavItem,
+          ]
+        : []),
       {
         label: 'アセスメント',
         to: '/assessment',
@@ -194,7 +205,7 @@ const AppShell: React.FC<{ children: React.ReactNode }> = ({ children }) => {
     }
 
     return items;
-  }, [dashboardPath, currentRole, schedules, complianceForm]);
+  }, [dashboardPath, currentRole, schedules, complianceForm, icebergPdca]);
 
   return (
     <RouteHydrationListener>
