@@ -110,9 +110,7 @@ const toDateIsoLocal = (date: Date): string => {
   return `${year}-${month}-${day}`;
 };
 
-type ThemeServiceTypeKey = WeekServiceFilter;
-
-const mapServiceTypeToThemeKey = (value?: WeekServiceFilter | null): ThemeServiceTypeKey => value ?? 'unset';
+const mapServiceTypeToThemeKey = (value?: WeekServiceFilter | null): WeekServiceFilter => value ?? 'unset';
 
 const getServiceTypeMeta = (value?: WeekServiceFilter | null) =>
   value && value !== 'unset' ? SERVICE_TYPE_META[value] : undefined;
@@ -170,7 +168,7 @@ const WeekViewContent = ({ items, loading, onDayClick, activeDateIso, range, onI
   const [menuItem, setMenuItem] = useState<WeekSchedItem | null>(null);
   const resolvedRange = useMemo(() => range ?? defaultWeekRange(), [range]);
 
-  const fallbackServiceTokens: Record<ThemeServiceTypeKey, { bg: string; border: string; accent: string }> = {
+  const fallbackServiceTokens: Record<string, { bg: string; border: string; accent: string }> = {
     unset: {
       bg: theme.palette.grey[50],
       border: theme.palette.grey[300],
@@ -269,18 +267,7 @@ const WeekViewContent = ({ items, loading, onDayClick, activeDateIso, range, onI
   const selectedItems = groupedItems.get(resolvedActiveIso) ?? [];
 
   const serviceSummary: WeekServiceSummaryItem[] = useMemo(() => {
-    const counts: Partial<Record<WeekServiceFilter, number>> = {
-      unset: 0,
-      normal: 0,
-      transport: 0,
-      meeting: 0,
-      training: 0,
-      respite: 0,
-      absence: 0,
-      late: 0,
-      earlyLeave: 0,
-      other: 0,
-    };
+    const counts: Partial<Record<WeekServiceFilter, number>> = {};
 
     selectedItems.forEach((item) => {
       const normalizedServiceType = normalizeServiceType(item.serviceType as string | null);
