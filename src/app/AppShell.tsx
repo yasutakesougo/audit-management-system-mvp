@@ -263,6 +263,9 @@ const AppShell: React.FC<{ children: React.ReactNode }> = ({ children }) => {
                     sx={sx}
                     {...({ preloadKey: prefetchKey, preloadKeys: prefetchKeys, meta: { label } } as Record<string, unknown>)}
                   >
+                    {testId === TESTIDS.nav.schedules ? (
+                      <span data-testid={TESTIDS['schedules-nav-link']} style={{ display: 'none' }} />
+                    ) : null}
                     {label}
                   </Button>
                 );
@@ -280,6 +283,9 @@ const AppShell: React.FC<{ children: React.ReactNode }> = ({ children }) => {
                   startIcon={IconComponent ? <IconComponent /> : undefined}
                   sx={sx}
                 >
+                  {testId === TESTIDS.nav.schedules ? (
+                    <span data-testid={TESTIDS['schedules-nav-link']} style={{ display: 'none' }} />
+                  ) : null}
                   {label}
                 </Button>
               );

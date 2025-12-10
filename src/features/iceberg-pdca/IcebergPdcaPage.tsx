@@ -20,8 +20,8 @@ import {
   Typography,
 } from '@mui/material';
 import { useUsersStore } from '@/features/users/store';
-import type { IcebergPdcaItem, IcebergPdcaPhase } from './types';
-import { mockPdcaItems } from './mockPdcaItems';
+import type { IcebergPdcaItem, IcebergPdcaPhase } from '@/features/iceberg-pdca/types';
+import { mockPdcaItems } from '@/features/iceberg-pdca/mockPdcaItems';
 
 const PHASE_LABEL: Record<IcebergPdcaPhase, string> = {
   PLAN: 'PLAN（計画）',

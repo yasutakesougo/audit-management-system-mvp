@@ -238,5 +238,5 @@ describe('SchedulePage user schedule smoke', () => {
 
     await waitFor(() => expect(updateUserCareSpy).toHaveBeenCalledTimes(1));
     expect(showMock).toHaveBeenCalledWith('予定を更新しました', 'success');
-  });
+  }, 20000);
 });

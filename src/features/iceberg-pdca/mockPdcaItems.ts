@@ -1,4 +1,4 @@
-import type { IcebergPdcaItem } from './types';
+import type { IcebergPdcaItem } from '@/features/iceberg-pdca/types';
 
 export const mockPdcaItems: IcebergPdcaItem[] = [
   {
