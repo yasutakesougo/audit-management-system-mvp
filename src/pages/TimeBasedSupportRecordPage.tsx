@@ -11,6 +11,7 @@ import PersonIcon from '@mui/icons-material/Person';
 import Alert from '@mui/material/Alert';
 import Box from '@mui/material/Box';
 import Chip from '@mui/material/Chip';
+import type { ChipProps } from '@mui/material/Chip';
 import Container from '@mui/material/Container';
 import FormControl from '@mui/material/FormControl';
 import InputLabel from '@mui/material/InputLabel';
@@ -38,6 +39,27 @@ const TimeBasedSupportRecordPage: React.FC = () => {
   const [targetUserId, setTargetUserId] = useState('');
   const [snackbarOpen, setSnackbarOpen] = useState(false);
   const [isEditOpen, setIsEditOpen] = useState(false);
+  const pdcaTitle = searchParams.get('pdcaTitle') ?? '';
+  const pdcaPhase = searchParams.get('pdcaPhase') ?? '';
+  const pdcaPhaseLabel = useMemo(() => {
+    if (!pdcaPhase) return '';
+    const labelMap: Record<string, string> = {
+      PLAN: 'PLAN（計画）',
+      DO: 'DO（実行）',
+      CHECK: 'CHECK（評価）',
+      ACT: 'ACT（改善）',
+    };
+    return labelMap[pdcaPhase] ?? pdcaPhase;
+  }, [pdcaPhase]);
+  const pdcaPhaseChipColor = useMemo<ChipProps['color']>(() => {
+    const colorMap: Record<string, ChipProps['color']> = {
+      PLAN: 'primary',
+      DO: 'success',
+      CHECK: 'warning',
+      ACT: 'secondary',
+    };
+    return colorMap[pdcaPhase] ?? 'default';
+  }, [pdcaPhase]);
   const { add, data: behaviorRecords, fetchByUser } = useBehaviorStore();
   const { getByUser, save } = useProcedureStore();
   const { data: users } = useUsersDemo();
@@ -266,6 +288,29 @@ const TimeBasedSupportRecordPage: React.FC = () => {
               {targetUserId && recordDateLabel && ' ／ '}
               {recordDateLabel && <>{recordDateLabel} の日次支援手順記録</>}
             </Typography>
+            {(pdcaTitle || pdcaPhaseLabel) && (
+              <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap">
+                <Chip label="PDCA連携" size="small" color="info" variant="outlined" data-testid="pdca-context-chip" />
+                {pdcaTitle && (
+                  <Chip
+                    label={pdcaTitle}
+                    size="small"
+                    color="primary"
+                    variant="outlined"
+                    data-testid="pdca-title-chip"
+                  />
+                )}
+                {pdcaPhaseLabel && (
+                  <Chip
+                    label={`フェーズ: ${pdcaPhaseLabel}`}
+                    size="small"
+                    color={pdcaPhaseChipColor}
+                    variant="filled"
+                    data-testid="pdca-phase-chip"
+                  />
+                )}
+              </Stack>
+            )}
             <Typography variant="caption" color="text.secondary">
               ※ 氷山 PDCA からの遷移時に文脈を保持します
             </Typography>

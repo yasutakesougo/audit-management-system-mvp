@@ -141,6 +141,13 @@ export const IcebergPdcaPage: FC = () => {
       params.set('recordDate', ymd);
     }
 
+    if (item.title) {
+      params.set('pdcaTitle', item.title);
+    }
+    if (item.phase) {
+      params.set('pdcaPhase', item.phase);
+    }
+
     navigate(`/daily/support?${params.toString()}`);
   };
 
