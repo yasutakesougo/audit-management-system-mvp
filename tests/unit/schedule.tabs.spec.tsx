@@ -22,15 +22,17 @@ describe('WeekPage tabs', () => {
 
   it('shows demo schedule items in week view', async () => {
     renderWeekPage();
-    await screen.findByTestId('schedules-week-grid');
 
-    const dayButtons = screen.getAllByTestId(/schedules-week-day-/);
-    const hasAnyPlannedDay = dayButtons.some((btn) => {
-      const label = btn.getAttribute('aria-label') ?? '';
-      return label.includes('予定');
-    });
+    const dayButtons = await screen.findAllByRole('button', { name: /予定\d件/ });
+    const activeWithItems = dayButtons.find((btn) =>
+      ['訪問介護（午前）', 'ケース会議', '訪問介護（午後）'].every((label) => within(btn).queryByText(label)),
+    );
 
-    expect(hasAnyPlannedDay).toBe(true);
+    expect(activeWithItems).toBeDefined();
+    const withinDay = within(activeWithItems!);
+    expect(withinDay.getByText('訪問介護（午前）')).toBeInTheDocument();
+    expect(withinDay.getByText('ケース会議')).toBeInTheDocument();
+    expect(withinDay.getByText('訪問介護（午後）')).toBeInTheDocument();
   });
 
   it('switches to day view when tab clicked', async () => {
