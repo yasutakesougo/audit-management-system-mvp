@@ -22,8 +22,10 @@ describe('WeekPage tabs', () => {
 
   it('shows demo schedule items in week view', async () => {
     renderWeekPage();
-    const items = await screen.findAllByTestId('schedules-event-normal');
-    expect(items.length).toBeGreaterThanOrEqual(1);
+    const normal = await screen.findAllByTestId('schedules-event-normal');
+    const legacy = screen.queryAllByTestId('schedule-item');
+    const total = normal.length + legacy.length;
+    expect(total).toBeGreaterThanOrEqual(1);
   });
 
   it('switches to day view when tab clicked', async () => {
@@ -48,10 +50,12 @@ describe('WeekPage tabs', () => {
     const timeline = await screen.findByTestId(TESTIDS['schedules-week-timeline']);
     await waitFor(() => {
       const items = within(timeline).queryAllByTestId('schedule-item');
-      if (items.length === 0) {
+      const normal = within(timeline).queryAllByTestId('schedules-event-normal');
+      const total = items.length + normal.length;
+      if (total === 0) {
         expect(within(timeline).getAllByText(/:00/).length).toBeGreaterThan(0);
       } else {
-        expect(items.length).toBeGreaterThan(0);
+        expect(total).toBeGreaterThan(0);
       }
     });
   });
