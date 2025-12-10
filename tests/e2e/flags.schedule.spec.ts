@@ -33,7 +33,7 @@ test.describe('schedule feature flag', () => {
       await waitForScheduleReady(page);
     }
 
-    await expect(page.getByTestId('schedules-nav-link')).toHaveCount(0);
+    await expect(page.getByTestId(TESTIDS.nav.schedules)).toHaveCount(0);
     await expect(page.getByRole('link', { name: scheduleNavLabel })).toHaveCount(0);
 
     await page.goto('/schedules/week', { waitUntil: 'domcontentloaded' });
@@ -63,7 +63,7 @@ test.describe('schedule feature flag', () => {
       await waitForScheduleReady(page);
     }
 
-    const nav = page.getByTestId('schedules-nav-link');
+    const nav = page.getByTestId(TESTIDS.nav.schedules);
     await expect(nav).toBeVisible();
     await expect(page.getByRole('link', { name: scheduleNavLabel })).toBeVisible();
 
