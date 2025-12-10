@@ -1,32 +1,46 @@
 import { useMemo, useState, type FC } from 'react';
 import {
   Box,
+  Button,
   Card,
   CardContent,
   Chip,
+  Dialog,
+  DialogActions,
+  DialogContent,
+  DialogTitle,
   Divider,
   FormControl,
   InputLabel,
   MenuItem,
   Select,
   Stack,
+  TextField,
   Typography,
 } from '@mui/material';
-import type { IcebergPdcaPhase } from './types';
+import type { IcebergPdcaItem, IcebergPdcaPhase } from './types';
 import { mockPdcaItems } from './mockPdcaItems';
 
 const PHASE_LABEL: Record<IcebergPdcaPhase, string> = {
   PLAN: 'PLAN（計画）',
   DO: 'DO（実行）',
-  CHECK: 'CHECK（振り返り）',
+  CHECK: 'CHECK（評価）',
   ACT: 'ACT（改善）',
 };
 
-const PHASE_COLOR: Record<IcebergPdcaPhase, 'default' | 'primary' | 'success' | 'warning' | 'secondary'> = {
-  PLAN: 'primary',
-  DO: 'success',
-  CHECK: 'warning',
-  ACT: 'secondary',
+const phaseColor = (phase: IcebergPdcaPhase): 'default' | 'primary' | 'success' | 'warning' | 'secondary' => {
+  switch (phase) {
+    case 'PLAN':
+      return 'primary';
+    case 'DO':
+      return 'success';
+    case 'CHECK':
+      return 'warning';
+    case 'ACT':
+      return 'secondary';
+    default:
+      return 'default';
+  }
 };
 
 // TODO: 後で useUsersStore など実データに差し替え予定
@@ -48,17 +62,69 @@ const formatJpDateTime = (iso: string): string => {
 };
 
 export const IcebergPdcaPage: FC = () => {
+  const [items, setItems] = useState<IcebergPdcaItem[]>(() => mockPdcaItems);
   const [selectedUserId, setSelectedUserId] = useState<'ALL' | string>('ALL');
+  const [editingItem, setEditingItem] = useState<IcebergPdcaItem | null>(null);
+  const [isDialogOpen, setDialogOpen] = useState(false);
 
   const userOptions = useMemo(() => {
-    const ids = Array.from(new Set(mockPdcaItems.map((item) => item.userId)));
+    const ids = Array.from(new Set(items.map((item) => item.userId)));
     return ids.map((id) => ({ id, label: MOCK_USER_NAME_BY_ID[id] ?? id }));
-  }, []);
+  }, [items]);
 
   const filteredItems = useMemo(
-    () => (selectedUserId === 'ALL' ? mockPdcaItems : mockPdcaItems.filter((item) => item.userId === selectedUserId)),
-    [selectedUserId]
+    () => (selectedUserId === 'ALL' ? items : items.filter((item) => item.userId === selectedUserId)),
+    [items, selectedUserId]
   );
+
+  const isEditingExisting = Boolean(editingItem && items.some((i) => i.id === editingItem.id));
+
+  const handleOpenNew = (): void => {
+    const nowIso = new Date().toISOString();
+    const defaultUser = selectedUserId !== 'ALL' ? selectedUserId : userOptions[0]?.id ?? 'U001';
+    const draft: IcebergPdcaItem = {
+      id: `pdca-${Date.now()}`,
+      userId: defaultUser,
+      title: '',
+      phase: 'PLAN',
+      summary: '',
+      createdAt: nowIso,
+      updatedAt: nowIso,
+    };
+    setEditingItem(draft);
+    setDialogOpen(true);
+  };
+
+  const handleOpenEdit = (item: IcebergPdcaItem): void => {
+    setEditingItem(item);
+    setDialogOpen(true);
+  };
+
+  const handleCloseDialog = (): void => {
+    setDialogOpen(false);
+    setEditingItem(null);
+  };
+
+  const handleChangeField = <K extends keyof IcebergPdcaItem>(key: K, value: IcebergPdcaItem[K]): void => {
+    setEditingItem((prev) => (prev ? { ...prev, [key]: value } : prev));
+  };
+
+  const handleSave = (): void => {
+    if (!editingItem) return;
+    const nowIso = new Date().toISOString();
+    const next: IcebergPdcaItem = { ...editingItem, updatedAt: nowIso };
+
+    setItems((prev) => {
+      const exists = prev.some((i) => i.id === next.id);
+      if (exists) {
+        return prev.map((i) => (i.id === next.id ? next : i));
+      }
+      return [...prev, next];
+    });
+
+    setDialogOpen(false);
+    setEditingItem(null);
+  };
 
   return (
     <Box sx={{ p: 3 }}>
@@ -92,6 +158,10 @@ export const IcebergPdcaPage: FC = () => {
               ))}
             </Select>
           </FormControl>
+
+          <Button variant="contained" onClick={handleOpenNew} sx={{ ml: 2 }}>
+            PDCA を追加
+          </Button>
         </Box>
 
         <Divider />
@@ -100,17 +170,27 @@ export const IcebergPdcaPage: FC = () => {
         <Stack spacing={2}>
           {filteredItems.map((item) => {
             const phaseLabel = PHASE_LABEL[item.phase] ?? item.phase;
-            const phaseColor = PHASE_COLOR[item.phase] ?? 'default';
+            const chipColor = phaseColor(item.phase);
             const userName = MOCK_USER_NAME_BY_ID[item.userId] ?? item.userId;
 
             return (
-              <Card key={item.id} variant="outlined">
+              <Card
+                key={item.id}
+                variant="outlined"
+                onClick={() => handleOpenEdit(item)}
+                sx={{ cursor: 'pointer', '&:hover': { bgcolor: 'action.hover' } }}
+              >
                 <CardContent>
                   <Stack direction="row" spacing={1} alignItems="center" justifyContent="space-between" mb={1}>
                     <Typography variant="h6" component="h2">
-                      {item.title}
+                      {item.title || '（タイトル未設定）'}
                     </Typography>
-                    <Chip label={phaseLabel} color={phaseColor} size="small" sx={{ fontWeight: 'bold' }} />
+                    <Stack direction="row" spacing={1} alignItems="center">
+                      <Chip label={phaseLabel} color={chipColor} size="small" sx={{ fontWeight: 'bold' }} />
+                      <Button size="small" onClick={(e) => { e.stopPropagation(); handleOpenEdit(item); }}>
+                        編集
+                      </Button>
+                    </Stack>
                   </Stack>
 
                   <Typography variant="body2" color="text.secondary" mb={0.5}>
@@ -136,6 +216,55 @@ export const IcebergPdcaPage: FC = () => {
           )}
         </Stack>
       </Stack>
+
+      <Dialog open={isDialogOpen} onClose={handleCloseDialog} fullWidth maxWidth="sm">
+        <DialogTitle>{isEditingExisting ? 'PDCA を編集' : 'PDCA を追加'}</DialogTitle>
+        <DialogContent sx={{ display: 'flex', flexDirection: 'column', gap: 2, mt: 1 }}>
+          <TextField
+            label="タイトル"
+            value={editingItem?.title ?? ''}
+            onChange={(e) => handleChangeField('title', e.target.value)}
+            fullWidth
+          />
+          <FormControl fullWidth>
+            <InputLabel id="pdca-phase-label">フェーズ</InputLabel>
+            <Select
+              labelId="pdca-phase-label"
+              label="フェーズ"
+              value={editingItem?.phase ?? 'PLAN'}
+              onChange={(e) => handleChangeField('phase', e.target.value as IcebergPdcaPhase)}
+            >
+              <MenuItem value="PLAN">PLAN（計画）</MenuItem>
+              <MenuItem value="DO">DO（実行）</MenuItem>
+              <MenuItem value="CHECK">CHECK（評価）</MenuItem>
+              <MenuItem value="ACT">ACT（改善）</MenuItem>
+            </Select>
+          </FormControl>
+          <TextField
+            label="サマリ / 一言メモ"
+            value={editingItem?.summary ?? ''}
+            onChange={(e) => handleChangeField('summary', e.target.value)}
+            fullWidth
+            multiline
+            minRows={3}
+          />
+          {editingItem && (
+            <Typography variant="caption" color="text.secondary">
+              作成: {formatJpDateTime(editingItem.createdAt)} ／ 最終更新: {formatJpDateTime(editingItem.updatedAt)}
+            </Typography>
+          )}
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={handleCloseDialog}>キャンセル</Button>
+          <Button
+            onClick={handleSave}
+            variant="contained"
+            disabled={!editingItem || !editingItem.title.trim()}
+          >
+            保存
+          </Button>
+        </DialogActions>
+      </Dialog>
     </Box>
   );
 };
