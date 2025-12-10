@@ -132,6 +132,18 @@ export const IcebergPdcaPage: FC = () => {
     navigate(`/iceberg?${params.toString()}`);
   };
 
+  const handleOpenDailySupport = (item: IcebergPdcaItem): void => {
+    const params = new URLSearchParams();
+    params.set('user', item.userId);
+
+    if (item.createdAt) {
+      const ymd = item.createdAt.slice(0, 10);
+      params.set('recordDate', ymd);
+    }
+
+    navigate(`/daily/support?${params.toString()}`);
+  };
+
   const handleCloseDialog = (): void => {
     setDialogOpen(false);
     setEditingItem(null);
@@ -207,6 +219,7 @@ export const IcebergPdcaPage: FC = () => {
             return (
               <Card
                 key={item.id}
+                data-testid="pdca-item-card"
                 variant="outlined"
                 onClick={() => handleOpenEdit(item)}
                 sx={{ cursor: 'pointer', '&:hover': { bgcolor: 'action.hover' } }}
@@ -218,6 +231,16 @@ export const IcebergPdcaPage: FC = () => {
                     </Typography>
                     <Stack direction="row" spacing={1} alignItems="center">
                       <Chip label={phaseLabel} color={chipColor} size="small" sx={{ fontWeight: 'bold' }} />
+                      <Button
+                        size="small"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleOpenDailySupport(item);
+                        }}
+                        data-testid="pdca-open-daily-support"
+                      >
+                        日次記録を見る
+                      </Button>
                       <Button
                         size="small"
                         onClick={(e) => {

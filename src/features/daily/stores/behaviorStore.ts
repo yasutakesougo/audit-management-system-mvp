@@ -2,17 +2,29 @@ import { BehaviorIntensity, type BehaviorObservation, MOCK_OBSERVATION_MASTER } 
 import { useCallback, useState } from 'react';
 import { getBehaviorRepository, getInMemoryBehaviorRepository } from '../infra/behaviorRepositoryFactory';
 
+const buildDateRange = (dateKey?: string) => {
+  if (!dateKey) return undefined;
+  const parsed = new Date(dateKey);
+  if (Number.isNaN(parsed.getTime())) return undefined;
+  const start = new Date(parsed);
+  start.setHours(0, 0, 0, 0);
+  const end = new Date(parsed);
+  end.setHours(23, 59, 59, 999);
+  return { from: start.toISOString(), to: end.toISOString() } as const;
+};
+
 export function useBehaviorStore() {
   const [data, setData] = useState<BehaviorObservation[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<Error | null>(null);
   const repo = getBehaviorRepository();
 
-  const fetchByUser = useCallback(async (userId: string) => {
+  const fetchByUser = useCallback(async (userId: string, dateKey?: string) => {
     if (!userId) return;
     setLoading(true);
     try {
-      const result = await repo.getByUser(userId);
+      const dateRange = buildDateRange(dateKey);
+      const result = await repo.getByUser(userId, dateRange ? { dateRange } : undefined);
       setData(result);
       setError(null);
     } catch (err) {
