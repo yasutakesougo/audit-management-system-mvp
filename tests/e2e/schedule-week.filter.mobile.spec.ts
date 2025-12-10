@@ -1,13 +1,18 @@
 import '@/test/captureSp400';
 import { expect, test } from '@playwright/test';
 import { TESTIDS } from '@/testids';
-import { bootstrapScheduleEnv } from './utils/scheduleEnv';
+import { bootstrapDashboard } from './utils/bootstrapApp';
 import { gotoWeek } from './utils/scheduleNav';
 import { waitForWeekTimeline } from './utils/wait';
 
 test.describe('Schedule week – mobile toolbar/search', () => {
   test.beforeEach(async ({ page }) => {
-    await bootstrapScheduleEnv(page);
+    await bootstrapDashboard(page, {
+      skipLogin: true,
+      featureSchedules: true,
+      featureSchedulesWeekV2: true,
+      initialPath: '/schedule/week',
+    });
   });
 
   test('keeps the timeline visible while using the mobile search toolbar', async ({ page }) => {

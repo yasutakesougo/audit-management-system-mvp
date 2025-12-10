@@ -4,6 +4,7 @@ import { RecordPanel, type RecordPanelLockState } from '@/features/daily/compone
 import { SplitStreamLayout } from '@/features/daily/components/split-stream/SplitStreamLayout';
 import type { BehaviorObservation } from '@/features/daily/domain/daily/types';
 import { useBehaviorStore } from '@/features/daily/stores/behaviorStore';
+import { useSearchParams } from 'react-router-dom';
 import { useProcedureStore, type ProcedureItem } from '@/features/daily/stores/procedureStore';
 import { useUsersDemo } from '@/features/users/usersStoreDemo';
 import AccessTimeIcon from '@mui/icons-material/AccessTime';
@@ -22,6 +23,9 @@ import Stack from '@mui/material/Stack';
 import Typography from '@mui/material/Typography';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 
+const normalizeUserId = (value: string | null | undefined): string =>
+  (value ?? '').trim().toUpperCase().replace(/[^A-Z0-9]/g, '');
+
 const TimeBasedSupportRecordPage: React.FC = () => {
   const [isAcknowledged, setIsAcknowledged] = useState(false);
   const [targetUserId, setTargetUserId] = useState('');
@@ -30,6 +34,7 @@ const TimeBasedSupportRecordPage: React.FC = () => {
   const { add, data: behaviorRecords, fetchByUser } = useBehaviorStore();
   const { getByUser, save } = useProcedureStore();
   const { data: users } = useUsersDemo();
+  const [searchParams] = useSearchParams();
   const selectedUser = useMemo(() => users.find((user) => user.UserID === targetUserId), [users, targetUserId]);
   const recentObservations = useMemo(
     () => behaviorRecords.filter((behavior) => behavior.userId === targetUserId),
@@ -39,6 +44,18 @@ const TimeBasedSupportRecordPage: React.FC = () => {
     if (!targetUserId) return [];
     return getByUser(targetUserId);
   }, [getByUser, targetUserId]);
+  const [targetDate, setTargetDate] = useState(() => searchParams.get('date') ?? '');
+  const normalizedSelectedUserId = useMemo(
+    () => normalizeUserId(targetUserId || selectedUser?.UserID),
+    [selectedUser?.UserID, targetUserId]
+  );
+  
+  useEffect(() => {
+    const dateParam = searchParams.get('date');
+    if (dateParam) {
+      setTargetDate(dateParam);
+    }
+  }, [searchParams]);
   const recordLockState = useMemo<RecordPanelLockState>(() => {
     if (!targetUserId) return 'no-user';
     return isAcknowledged ? 'unlocked' : 'unconfirmed';
@@ -57,6 +74,18 @@ const TimeBasedSupportRecordPage: React.FC = () => {
     });
     setSnackbarOpen(true);
   }, [add, targetUserId]);
+
+  useEffect(() => {
+    if (targetUserId || !users?.length) return;
+    const userIdParam = searchParams.get('userId');
+    if (!userIdParam) return;
+    const normalizedParam = normalizeUserId(userIdParam);
+    const matched = users.find((user) => normalizeUserId(user.UserID) === normalizedParam);
+    if (matched) {
+      setTargetUserId(matched.UserID);
+      setIsAcknowledged(false);
+    }
+  }, [searchParams, targetUserId, users]);
 
   const handleUserChange = useCallback((event: SelectChangeEvent<string>) => {
     setTargetUserId(event.target.value);
@@ -87,6 +116,8 @@ const TimeBasedSupportRecordPage: React.FC = () => {
       disableGutters
       sx={{ height: '100vh', display: 'flex', flexDirection: 'column', bgcolor: 'grey.100' }}
       data-testid="iceberg-time-based-support-record-page"
+      data-user-id={normalizedSelectedUserId || undefined}
+      data-target-date={targetDate || undefined}
     >
       <Paper
         elevation={0}
@@ -114,7 +145,28 @@ const TimeBasedSupportRecordPage: React.FC = () => {
           </Box>
         </Stack>
 
-        <FormControl size="small" sx={{ minWidth: 220 }}>
+        <Stack direction="row" spacing={2} alignItems="center">
+          {targetDate && (
+            <Chip
+              size="small"
+              color="default"
+              label={`対象日: ${targetDate}`}
+              data-testid="support-target-date"
+            />
+          )}
+
+          {selectedUser && (
+            <Chip
+              size="small"
+              color="primary"
+              label={selectedUser.FullName}
+              data-testid="support-selected-user"
+              data-user-id={normalizedSelectedUserId || undefined}
+            />
+          )}
+        </Stack>
+
+        <FormControl size="small" sx={{ minWidth: 220 }} data-testid="support-user-select">
           <InputLabel id="iceberg-user-select-label">支援対象者</InputLabel>
           <Select
             labelId="iceberg-user-select-label"
@@ -127,7 +179,11 @@ const TimeBasedSupportRecordPage: React.FC = () => {
               <em>選択してください</em>
             </MenuItem>
             {users.map((user) => (
-              <MenuItem key={user.UserID} value={user.UserID}>
+              <MenuItem
+                key={user.UserID}
+                value={user.UserID}
+                data-user-id={normalizeUserId(user.UserID)}
+              >
                 {user.FullName}
               </MenuItem>
             ))}

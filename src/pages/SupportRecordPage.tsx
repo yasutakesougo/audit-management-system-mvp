@@ -3,6 +3,7 @@ import AssignmentIcon from '@mui/icons-material/Assignment';
 import SearchIcon from '@mui/icons-material/Search';
 import TrendingUpIcon from '@mui/icons-material/TrendingUp';
 import Alert from '@mui/material/Alert';
+import AlertTitle from '@mui/material/AlertTitle';
 import Box from '@mui/material/Box';
 import Button from '@mui/material/Button';
 import Card from '@mui/material/Card';
@@ -20,6 +21,7 @@ import Stack from '@mui/material/Stack';
 import TextField from '@mui/material/TextField';
 import Typography from '@mui/material/Typography';
 import React, { useCallback, useMemo, useState } from 'react';
+import { Link as RouterLink } from 'react-router-dom';
 
 // 支援手順記録の型定義
 // TODO: 将来的にsrc/types/support.tsなどの共通モジュールに移動予定
@@ -300,6 +302,23 @@ const SupportRecordPage: React.FC = () => {
   return (
     <Container maxWidth="lg">
       <Box sx={{ py: 3 }}>
+        <Alert severity="info" data-testid="support-record-legacy-banner" sx={{ mb: 3 }}>
+          <AlertTitle>旧支援記録画面（LEGACY）</AlertTitle>
+          現在は新しい日次支援記録画面（タイムライン/テーブル）を主に利用しています。
+          この画面は<b>過去データの参照・検証用</b>として残しています。
+          <Box mt={1}>
+            <Button
+              variant="outlined"
+              size="small"
+              component={RouterLink}
+              to="/daily/activity"
+              data-testid="support-record-legacy-back"
+            >
+              新しい支援記録画面へ戻る
+            </Button>
+          </Box>
+        </Alert>
+
         {/* ヘッダー */}
         <Box sx={{ mb: 3 }}>
           <Typography variant="h4" component="h1" gutterBottom>

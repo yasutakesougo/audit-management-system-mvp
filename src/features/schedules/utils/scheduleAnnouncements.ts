@@ -9,10 +9,16 @@ type TimeRangeInfo = {
 };
 
 const SERVICE_TYPE_LABELS: Partial<Record<ScheduleServiceType, string>> = {
+  unset: '区分未設定',
+  normal: '通常',
+  transport: '送迎',
+  meeting: '会議',
+  training: '研修',
+  respite: 'レスパイト',
+  nursing: '看護',
   absence: '欠席',
   late: '遅刻',
   earlyLeave: '早退',
-  transport: '送迎',
   other: 'その他',
 };
 
@@ -63,7 +69,7 @@ const resolveTargetLabel = (userName?: string | null, fallbackTitle?: string): s
 };
 
 const resolveServiceLabel = (serviceType?: ScheduleServiceType): string | null => {
-  if (!serviceType) return null;
+  if (!serviceType || serviceType === 'unset') return null;
   return SERVICE_TYPE_LABELS[serviceType] ?? null;
 };
 

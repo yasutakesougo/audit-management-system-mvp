@@ -1,7 +1,7 @@
 import '@/test/captureSp400';
 import { expect, test, type Locator } from '@playwright/test';
 import { TESTIDS } from '@/testids';
-import { bootstrapScheduleEnv } from './utils/scheduleEnv';
+import { bootstrapDashboard } from './utils/bootstrapApp';
 import { gotoWeek } from './utils/scheduleNav';
 import { waitForDayTimeline, waitForWeekTimeline } from './utils/wait';
 
@@ -33,7 +33,12 @@ test.describe('Schedule week keyboard navigation', () => {
       }
     });
 
-    await bootstrapScheduleEnv(page);
+    await bootstrapDashboard(page, {
+      skipLogin: true,
+      featureSchedules: true,
+      featureSchedulesWeekV2: true,
+      initialPath: '/schedule/week',
+    });
   });
 
   test('keyboard focus moves across tabs and restores the week timeline', async ({ page }) => {

@@ -41,6 +41,7 @@ const __ensureServiceTypeMeeting: ServiceType = 'meeting';
 export type ServiceType = (typeof SERVICE_TYPE_OPTIONS)[number];
 
 export type ScheduleServiceType =
+  | 'unset'
   | 'normal'
   | 'transport'
   | 'respite'

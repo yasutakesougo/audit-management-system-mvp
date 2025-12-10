@@ -150,6 +150,7 @@ export function DailyRecordList({
               key={record.id}
               variant="outlined"
               data-testid={`daily-record-card-${record.id}`}
+              data-user-id={record.personId}
               {...(isHighlighted && {
                 'data-highlighted': 'true',
               })}

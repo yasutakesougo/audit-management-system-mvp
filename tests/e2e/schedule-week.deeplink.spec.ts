@@ -1,13 +1,17 @@
 import '@/test/captureSp400';
 import { expect, test, type Page } from '@playwright/test';
 import { TESTIDS } from '../../src/testids';
-import { bootstrapScheduleEnv } from './utils/scheduleEnv';
+import { bootstrapDashboard } from './utils/bootstrapApp';
 import { gotoWeek } from './utils/scheduleNav';
 import { waitForWeekTimeline } from './utils/wait';
 
 test.describe('Schedule week deep link', () => {
   test.beforeEach(async ({ page }) => {
-    await bootstrapScheduleEnv(page);
+    await bootstrapDashboard(page, {
+      skipLogin: true,
+      featureSchedules: true,
+      initialPath: '/schedule/week',
+    });
   });
 
   const readLiveMessage = async (page: Page): Promise<string> =>

@@ -1,6 +1,7 @@
 import { expect, test } from '@playwright/test';
 import { TESTIDS } from '../../src/testids';
 import { bootNursePage } from './_helpers/bootNursePage';
+import { bootstrapDashboard } from './utils/bootstrapApp';
 
 /**
  * Nurse Dashboard – happy path (dev fixture)
@@ -16,11 +17,18 @@ import { bootNursePage } from './_helpers/bootNursePage';
  * - HealthObservationPage.tsx のレイアウト変更で testid を貼り替えたとき
  */
 test.describe('Nurse Dashboard – happy path (dev fixture)', () => {
-  test('shows seeded nurse dashboard summary and tasks', async ({ page }) => {
+  test.beforeEach(async ({ page }) => {
     await bootNursePage(page, {
       seed: { nurseDashboard: true },
     });
 
+    await bootstrapDashboard(page, {
+      skipLogin: true,
+      initialPath: '/nurse',
+    });
+  });
+
+  test('shows seeded nurse dashboard summary and tasks', async ({ page }) => {
     await page.goto('/daily/health');
 
     await expect(page).toHaveURL(/\/daily\/health$/);

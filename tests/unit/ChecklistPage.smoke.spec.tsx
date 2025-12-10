@@ -3,6 +3,7 @@ import type { ChecklistInsertDTO, ChecklistItem } from '@/features/compliance-ch
 import * as audit from '@/lib/audit';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { MemoryRouter } from 'react-router-dom';
 
 const listMock = vi.fn<() => Promise<ChecklistItem[]>>();
 const addMock = vi.fn<(body: ChecklistInsertDTO) => Promise<ChecklistItem>>();
@@ -20,10 +21,28 @@ describe('ChecklistPage', () => {
     addMock.mockReset();
   });
 
+  const renderPage = () =>
+    render(
+      <MemoryRouter>
+        <ChecklistPage />
+      </MemoryRouter>
+    );
+
+  it('shows legacy banner and back-to-home link', async () => {
+    listMock.mockResolvedValue([]);
+
+    renderPage();
+
+    expect(screen.getByTestId('checklist-legacy-banner')).toBeInTheDocument();
+    const backButton = screen.getByTestId('checklist-legacy-back');
+    expect(backButton).toBeInTheDocument();
+    expect(backButton).toHaveAttribute('href', '/');
+  });
+
   it('renders empty state when API returns no items', async () => {
     listMock.mockResolvedValue([]);
 
-    render(<ChecklistPage />);
+    renderPage();
 
     await waitFor(() => expect(listMock).toHaveBeenCalledTimes(1));
     expect(screen.getByRole('heading', { name: '監査チェックリスト' })).toBeInTheDocument();
@@ -46,7 +65,7 @@ describe('ChecklistPage', () => {
       note: body.EvaluationLogic ?? null,
     }));
     const pushAuditSpy = vi.spyOn(audit, 'pushAudit').mockImplementation(() => undefined);
-    render(<ChecklistPage />);
+    renderPage();
 
     await waitFor(() => expect(listMock).toHaveBeenCalledTimes(1));
 

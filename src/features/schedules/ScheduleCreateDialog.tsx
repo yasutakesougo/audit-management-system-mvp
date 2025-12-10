@@ -105,6 +105,12 @@ function formatDateTimeLocal(date: Date): string {
 }
 
 const SERVICE_TYPE_OPTIONS: { value: ScheduleServiceType; label: string }[] = [
+  { value: 'unset', label: '区分未設定' },
+  { value: 'normal', label: '通常' },
+  { value: 'transport', label: '送迎' },
+  { value: 'meeting', label: '会議' },
+  { value: 'training', label: '研修' },
+  { value: 'respite', label: 'レスパイト' },
   { value: 'absence', label: '欠席' },
   { value: 'late', label: '遅刻' },
   { value: 'earlyLeave', label: '早退' },
@@ -184,7 +190,7 @@ export function createInitialScheduleFormState(options?: {
     userId: options?.defaultUserId ?? '',
     startLocal: formatDateTimeLocal(start),
     endLocal: formatDateTimeLocal(end),
-    serviceType: '',
+    serviceType: 'unset',
     locationName: '',
     notes: '',
     assignedStaffId: '',
@@ -243,7 +249,7 @@ export function validateScheduleForm(form: ScheduleFormState): ScheduleFormValid
     }
   }
 
-  if (form.category === 'User' && !form.serviceType) {
+  if (form.category === 'User' && (!form.serviceType || form.serviceType === 'unset')) {
     errors.push('サービス種別を選択してください');
   }
 
@@ -272,7 +278,7 @@ export function toCreateScheduleInput(
   if (!form.startLocal || !form.endLocal) {
     throw new Error('startLocal and endLocal are required');
   }
-  if (form.category === 'User' && !form.serviceType) {
+  if (form.category === 'User' && (!form.serviceType || form.serviceType === 'unset')) {
     throw new Error('serviceType is required for user schedules');
   }
 
@@ -310,10 +316,7 @@ export function toCreateScheduleInput(
     throw new Error('assignedStaffId is required for staff schedules');
   }
 
-  const resolvedServiceType: ScheduleServiceType =
-    form.category === 'User'
-      ? (form.serviceType || 'normal')
-      : (form.serviceType || 'other');
+  const resolvedServiceType: ScheduleServiceType = (form.serviceType || 'unset') as ScheduleServiceType;
   const statusReason = form.statusReason.trim();
   const resolvedUserLookupId = normalizeLookupId(selectedUser?.lookupId ?? undefined);
   const resolvedUserName = selectedUser?.name?.trim() || undefined;

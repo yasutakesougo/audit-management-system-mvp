@@ -138,6 +138,8 @@ const mockRecords: PersonDaily[] = [
   }
 ];
 
+const normalizeUserId = (raw: string | null) => raw?.replace(/^[^0-9]*/, '') ?? null;
+
 // 今日の日付の全通所者分の記録を生成する関数
 const generateTodayRecords = (): PersonDaily[] => {
   const today = new Date().toISOString().split('T')[0];
@@ -190,6 +192,7 @@ export default function DailyRecordPage() {
   const [searchParams] = useSearchParams();
   const highlightUserId = searchParams.get('userId');
   const highlightDate = searchParams.get('date');
+  const normalizedHighlightUserId = useMemo(() => normalizeUserId(highlightUserId), [highlightUserId]);
 
   // 利用者マスタとスケジュールデータ
   const { data: usersData } = useUsersDemo();
@@ -204,10 +207,10 @@ export default function DailyRecordPage() {
 
   // Effect to scroll to highlighted record when query params are present
   useEffect(() => {
-    if (highlightUserId && highlightDate) {
+    if (normalizedHighlightUserId && highlightDate) {
       // Scroll to highlighted record after a short delay to ensure rendering
       const timer = setTimeout(() => {
-        const element = document.querySelector(`[data-testid*="${highlightUserId}"]`);
+        const element = document.querySelector(`[data-user-id="${normalizedHighlightUserId}"]`);
         if (element) {
           element.scrollIntoView({ behavior: 'smooth', block: 'center' });
         }
@@ -215,7 +218,7 @@ export default function DailyRecordPage() {
 
       return () => clearTimeout(timer);
     }
-  }, [highlightUserId, highlightDate]);
+  }, [normalizedHighlightUserId, highlightDate]);
 
   // 今日の予定通所者数を計算
   const todayAttendanceInfo = useMemo(() => {
@@ -656,7 +659,7 @@ export default function DailyRecordPage() {
           onEdit={handleEditRecord}
           onDelete={handleDeleteRecord}
           onOpenAttendance={handleOpenAttendance}
-          highlightUserId={highlightUserId}
+          highlightUserId={normalizedHighlightUserId}
           highlightDate={highlightDate}
           data-testid="daily-record-list"
         />

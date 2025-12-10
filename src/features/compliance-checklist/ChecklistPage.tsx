@@ -1,3 +1,5 @@
+import Alert from '@mui/material/Alert';
+import AlertTitle from '@mui/material/AlertTitle';
 import Box from '@mui/material/Box';
 import Button from '@mui/material/Button';
 import Paper from '@mui/material/Paper';
@@ -8,6 +10,7 @@ import * as React from 'react';
 // MUI Icons
 import AddTaskRoundedIcon from '@mui/icons-material/AddTaskRounded';
 import AssignmentTurnedInRoundedIcon from '@mui/icons-material/AssignmentTurnedInRounded';
+import { Link as RouterLink } from 'react-router-dom';
 import { pushAudit } from '../../lib/audit';
 import { useChecklistApi } from './api';
 import type { ChecklistInsertDTO, ChecklistItem } from './types';
@@ -61,6 +64,30 @@ export default function ChecklistPage() {
 
   return (
     <Stack spacing={2} sx={{ p: 2 }}>
+      <Alert severity="warning" variant="outlined" data-testid="checklist-legacy-banner">
+        <Stack
+          direction={{ xs: 'column', sm: 'row' }}
+          spacing={2}
+          alignItems={{ xs: 'flex-start', sm: 'center' }}
+          justifyContent="space-between"
+        >
+          <Box>
+            <AlertTitle>LEGACY / 参考閲覧用</AlertTitle>
+            このチェックリスト画面は旧式の運営指導チェックリストです（閲覧専用）。
+            日次記録や監査ワークフローはホームから最新UIをご利用ください。
+          </Box>
+          <Button
+            variant="contained"
+            color="primary"
+            component={RouterLink}
+            to="/"
+            data-testid="checklist-legacy-back"
+          >
+            ホームへ戻る
+          </Button>
+        </Stack>
+      </Alert>
+
       <Stack direction="row" alignItems="center" spacing={1}>
         <AssignmentTurnedInRoundedIcon color="primary" />
         <Typography variant="h5" component="h1">監査チェックリスト</Typography>

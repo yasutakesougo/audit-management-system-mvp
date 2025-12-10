@@ -67,6 +67,18 @@ const toIsoString = (value: string): string => {
 
 const jpServiceLabel = (serviceType?: ScheduleServiceType | null): string => {
   switch (serviceType) {
+    case 'unset':
+      return '区分未設定';
+    case 'normal':
+      return '通常';
+    case 'transport':
+      return '送迎';
+    case 'meeting':
+      return '会議';
+    case 'training':
+      return '研修';
+    case 'respite':
+      return 'レスパイト';
     case 'absence':
       return '欠席';
     case 'late':
@@ -107,7 +119,7 @@ export const toSharePointPayload = (input: CreateScheduleEventInput): SharePoint
   const title = resolveTitle(input);
   const startIso = toIsoString(appendSeconds(input.startLocal));
   const endIso = toIsoString(appendSeconds(input.endLocal));
-  const serviceType = trimText(input.serviceType);
+  const serviceType = trimText(input.serviceType === 'unset' ? '' : input.serviceType);
   const locationName = trimText(input.locationName);
   const notes = trimText(input.notes);
   const acceptedOn = trimText(input.acceptedOn);

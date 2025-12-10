@@ -1,7 +1,7 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
-import { MemoryRouter } from 'react-router-dom';
 import type { MockInstance } from 'vitest';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { MemoryRouter } from 'react-router-dom';
 import { usersStoreMock } from './testUtils/usersStoreMock';
 import UsersPanel from './UsersPanel/index';
 
@@ -68,13 +68,14 @@ describe('UsersPanel smoke test', () => {
       </MemoryRouter>
     );
 
-  fireEvent.click(screen.getAllByRole('tab', { name: /利用者一覧/ })[0]);
+    fireEvent.click(screen.getAllByRole('tab', { name: /利用者一覧/ })[0]);
 
-  const detailLink = screen.getByRole('link', { name: '詳細' });
-  fireEvent.click(detailLink);
+    const detailLink = screen.getByRole('link', { name: '詳細' });
+    fireEvent.click(detailLink);
 
     expect(await screen.findByRole('button', { name: '詳細表示を閉じる' })).toBeInTheDocument();
-    expect(screen.getAllByText('利用者コード: inline-001').length).toBeGreaterThan(0);
+    expect(screen.getByText('利用者コード')).toBeInTheDocument();
+    expect(screen.getAllByText('inline-001').length).toBeGreaterThan(0);
 
     fireEvent.click(screen.getByRole('button', { name: '詳細表示を閉じる' }));
     await waitFor(() => {

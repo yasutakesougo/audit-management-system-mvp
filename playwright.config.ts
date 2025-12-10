@@ -3,7 +3,7 @@ import type { ReporterDescription } from '@playwright/test';
 
 const isCI = !!process.env.CI;
 const skipBuild = process.env.PLAYWRIGHT_SKIP_BUILD === '1';
-const baseURL = process.env.PLAYWRIGHT_BASE_URL ?? 'http://localhost:3000';
+const baseURL = process.env.PLAYWRIGHT_BASE_URL ?? 'http://127.0.0.1:5173';
 const webServerCommandOverride = process.env.PLAYWRIGHT_WEB_SERVER_COMMAND;
 const webServerUrl = process.env.PLAYWRIGHT_WEB_SERVER_URL ?? baseURL;
 const junitOutput = process.env.PLAYWRIGHT_JUNIT_OUTPUT ?? 'junit/results.xml';

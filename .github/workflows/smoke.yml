@@ -64,10 +64,8 @@ jobs:
         run: PW_USE_PREVIEW=1 npx playwright install --with-deps
       - name: Build (preview server)
         run: npm run build --if-present
-      - name: e2e nav-and-status
-        run: TZ=Asia/Tokyo PW_USE_PREVIEW=1 npx playwright test tests/e2e/nav-and-status.smoke.spec.ts --trace on
-      - name: e2e schedule.status-service
-        run: TZ=Asia/Tokyo PW_USE_PREVIEW=1 npx playwright test tests/e2e/schedule.status-service.smoke.spec.ts --trace on
+      - name: e2e smoke suite
+        run: TZ=Asia/Tokyo PW_USE_PREVIEW=1 npm run test:e2e:smoke
       - if: always()
         name: Upload Playwright artifacts
         uses: actions/upload-artifact@v4
