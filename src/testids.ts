@@ -88,7 +88,8 @@ export const TESTIDS = {
   'bulk-daily-record-activity-delete-am': 'bulk-daily-record-activity-delete-am',
   'bulk-daily-record-activity-delete-pm': 'bulk-daily-record-activity-delete-pm',
   'bulk-daily-record-individual-notes': 'bulk-daily-record-individual-notes',
-  'schedules-nav-link': 'schedules-nav-link',
+  // Legacy alias kept for backward-compatible selectors; points to the canonical nav id
+  'schedules-nav-link': 'nav-schedules',
   'home-tile-schedule': 'home-tile-schedule',
   'schedules-day-page': 'schedules-day-page',
   'schedules-day-heading': 'schedules-day-heading',
