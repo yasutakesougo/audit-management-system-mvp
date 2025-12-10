@@ -1,4 +1,5 @@
 import { useMemo, useState, type FC } from 'react';
+import { useNavigate } from 'react-router-dom';
 import {
   Box,
   Button,
@@ -18,6 +19,7 @@ import {
   TextField,
   Typography,
 } from '@mui/material';
+import { useUsersStore } from '@/features/users/store';
 import type { IcebergPdcaItem, IcebergPdcaPhase } from './types';
 import { mockPdcaItems } from './mockPdcaItems';
 
@@ -43,11 +45,6 @@ const phaseColor = (phase: IcebergPdcaPhase): 'default' | 'primary' | 'success' 
   }
 };
 
-// TODO: 後で useUsersStore など実データに差し替え予定
-const MOCK_USER_NAME_BY_ID: Record<string, string> = {
-  U001: 'U001さん（仮）',
-};
-
 const formatJpDateTime = (iso: string): string => {
   const d = new Date(iso);
   if (Number.isNaN(d.getTime())) return iso;
@@ -62,15 +59,45 @@ const formatJpDateTime = (iso: string): string => {
 };
 
 export const IcebergPdcaPage: FC = () => {
+  const navigate = useNavigate();
+  const { data: users = [] } = useUsersStore();
   const [items, setItems] = useState<IcebergPdcaItem[]>(() => mockPdcaItems);
   const [selectedUserId, setSelectedUserId] = useState<'ALL' | string>('ALL');
   const [editingItem, setEditingItem] = useState<IcebergPdcaItem | null>(null);
   const [isDialogOpen, setDialogOpen] = useState(false);
 
+  const resolveUserId = (user: unknown): string | undefined => {
+    if (typeof user !== 'object' || user === null) return undefined;
+    const candidate = (user as Record<string, unknown>).UserID
+      ?? (user as Record<string, unknown>).userId
+      ?? (user as Record<string, unknown>).userCode;
+    return typeof candidate === 'string' ? candidate : undefined;
+  };
+
+  const resolveUserName = (user: unknown): string | undefined => {
+    if (typeof user !== 'object' || user === null) return undefined;
+    const record = user as Record<string, unknown>;
+    const candidate = record.FullName ?? record.fullName ?? record.displayName ?? record.shortName;
+    return typeof candidate === 'string' ? candidate : undefined;
+  };
+
+  const getUserDisplayName = (userId: string): string => {
+    const user = users.find((u) => resolveUserId(u) === userId);
+    if (!user) {
+      return `利用者ID: ${userId}`;
+    }
+    const name = resolveUserName(user);
+    return name ?? `利用者ID: ${userId}`;
+  };
+
   const userOptions = useMemo(() => {
-    const ids = Array.from(new Set(items.map((item) => item.userId)));
-    return ids.map((id) => ({ id, label: MOCK_USER_NAME_BY_ID[id] ?? id }));
-  }, [items]);
+    const mapped = users.map((u) => {
+      const id = resolveUserId(u) ?? 'unknown';
+      const label = resolveUserName(u) ?? `利用者ID: ${id}`;
+      return { value: id, label };
+    });
+    return [{ value: 'ALL', label: 'すべての利用者' }, ...mapped];
+  }, [users]);
 
   const filteredItems = useMemo(
     () => (selectedUserId === 'ALL' ? items : items.filter((item) => item.userId === selectedUserId)),
@@ -81,7 +108,7 @@ export const IcebergPdcaPage: FC = () => {
 
   const handleOpenNew = (): void => {
     const nowIso = new Date().toISOString();
-    const defaultUser = selectedUserId !== 'ALL' ? selectedUserId : userOptions[0]?.id ?? 'U001';
+    const defaultUser = selectedUserId !== 'ALL' ? selectedUserId : userOptions[1]?.value ?? 'U001';
     const draft: IcebergPdcaItem = {
       id: `pdca-${Date.now()}`,
       userId: defaultUser,
@@ -98,6 +125,11 @@ export const IcebergPdcaPage: FC = () => {
   const handleOpenEdit = (item: IcebergPdcaItem): void => {
     setEditingItem(item);
     setDialogOpen(true);
+  };
+
+  const handleOpenIceberg = (userId: string): void => {
+    const params = new URLSearchParams({ userId });
+    navigate(`/iceberg?${params.toString()}`);
   };
 
   const handleCloseDialog = (): void => {
@@ -150,10 +182,9 @@ export const IcebergPdcaPage: FC = () => {
               value={selectedUserId}
               onChange={(e) => setSelectedUserId(e.target.value)}
             >
-              <MenuItem value="ALL">すべての利用者</MenuItem>
-              {userOptions.map((user) => (
-                <MenuItem key={user.id} value={user.id}>
-                  {user.label}
+              {userOptions.map((opt) => (
+                <MenuItem key={opt.value} value={opt.value}>
+                  {opt.label}
                 </MenuItem>
               ))}
             </Select>
@@ -171,7 +202,7 @@ export const IcebergPdcaPage: FC = () => {
           {filteredItems.map((item) => {
             const phaseLabel = PHASE_LABEL[item.phase] ?? item.phase;
             const chipColor = phaseColor(item.phase);
-            const userName = MOCK_USER_NAME_BY_ID[item.userId] ?? item.userId;
+            const userName = getUserDisplayName(item.userId);
 
             return (
               <Card
@@ -187,7 +218,24 @@ export const IcebergPdcaPage: FC = () => {
                     </Typography>
                     <Stack direction="row" spacing={1} alignItems="center">
                       <Chip label={phaseLabel} color={chipColor} size="small" sx={{ fontWeight: 'bold' }} />
-                      <Button size="small" onClick={(e) => { e.stopPropagation(); handleOpenEdit(item); }}>
+                      <Button
+                        size="small"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleOpenIceberg(item.userId);
+                        }}
+                        data-testid="pdca-open-iceberg"
+                      >
+                        氷山を見る
+                      </Button>
+                      <Button
+                        size="small"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleOpenEdit(item);
+                        }}
+                        data-testid="pdca-edit"
+                      >
                         編集
                       </Button>
                     </Stack>
