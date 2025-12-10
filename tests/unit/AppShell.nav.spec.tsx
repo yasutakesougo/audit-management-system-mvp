@@ -2,6 +2,7 @@ import AppShell from '@/app/AppShell';
 import { routerFutureFlags } from '@/app/routerFuture';
 import { ColorModeContext } from '@/app/theme';
 import { FeatureFlagsProvider, type FeatureFlagSnapshot } from '@/config/featureFlags';
+import { TESTIDS } from '@/testids';
 import { ThemeProvider, createTheme } from '@mui/material/styles';
 import { cleanup, screen, within } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
@@ -14,6 +15,7 @@ const defaultFlags: FeatureFlagSnapshot = {
   schedulesCreate: true,
   complianceForm: false,
   schedulesWeekV2: false,
+  icebergPdca: false,
 };
 
 beforeEach(() => {
@@ -105,6 +107,30 @@ describe('AppShell navigation', () => {
     const footerWithin = within(footer);
     expect(footerWithin.queryByRole('link', { name: '新規予定' })).toBeNull();
 
+  });
+
+  it('shows Iceberg PDCA nav when flag is enabled', async () => {
+    const toggleMock = vi.fn();
+    const theme = createTheme();
+    const flags: FeatureFlagSnapshot = { ...defaultFlags, icebergPdca: true };
+    const getShell = () => (
+      <ThemeProvider theme={theme}>
+        <FeatureFlagsProvider value={flags}>
+          <ColorModeContext.Provider value={{ mode: 'light', toggle: toggleMock, sticky: false }}>
+            <AppShell>
+              <div />
+            </AppShell>
+          </ColorModeContext.Provider>
+        </FeatureFlagsProvider>
+      </ThemeProvider>
+    );
+
+    renderWithAppProviders(getShell(), {
+      initialEntries: ['/'],
+      future: routerFutureFlags,
+    });
+
+    expect(await screen.findByTestId(TESTIDS['nav-iceberg-pdca'])).toBeInTheDocument();
   });
 
   it('leaves status neutral when ping aborts', async () => {

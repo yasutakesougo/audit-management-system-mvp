@@ -12,6 +12,7 @@ const NAV_TESTIDS = {
   admin: 'nav-admin',
   schedules: 'nav-schedules',
   nurse: 'nav-nurse',
+  icebergPdca: 'nav-iceberg-pdca',
 } as const;
 
 const FOOTER_TESTIDS = {
@@ -65,6 +66,7 @@ export const TESTIDS = {
   'nav-audit': 'nav-audit',
   'nav-admin': 'nav-admin',
   'nav-schedules': 'nav-schedules',
+  'nav-iceberg-pdca': 'nav-iceberg-pdca',
   'nav-nurse': 'nav-nurse',
   'footer-action-daily-attendance': 'footer-action-daily-attendance',
   'footer-action-daily-activity': 'footer-action-daily-activity',

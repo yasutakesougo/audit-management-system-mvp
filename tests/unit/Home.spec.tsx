@@ -13,6 +13,7 @@ const featureFlagsState = vi.hoisted<FeatureFlagSnapshot>(() => ({
   schedulesCreate: false,
   complianceForm: false,
   schedulesWeekV2: false,
+  icebergPdca: false,
 }));
 
 vi.mock('@/lib/env', async () => {
@@ -24,6 +25,7 @@ vi.mock('@/lib/env', async () => {
     isSchedulesCreateEnabled: () => featureFlagsState.schedulesCreate,
     isComplianceFormEnabled: () => featureFlagsState.complianceForm,
     isSchedulesWeekV2Enabled: () => featureFlagsState.schedulesWeekV2,
+    isIcebergPdcaEnabled: () => featureFlagsState.icebergPdca,
     shouldSkipLogin: () => false,
   };
 });
@@ -46,6 +48,7 @@ describe('Home', () => {
     featureFlagsState.schedulesCreate = false;
     featureFlagsState.complianceForm = false;
     featureFlagsState.schedulesWeekV2 = false;
+    featureFlagsState.icebergPdca = false;
   });
 
   it('hides schedule tiles and chips when schedule flag disabled', () => {
