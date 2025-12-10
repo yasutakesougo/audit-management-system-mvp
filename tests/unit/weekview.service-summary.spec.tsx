@@ -43,8 +43,13 @@ describe('WeekView service summary chips', () => {
 
     const summary = screen.getByTestId('schedules-week-service-summary');
 
-    expect(within(summary).getByTestId('schedules-week-service-summary-normal')).toHaveTextContent('通所 2件');
-    expect(within(summary).getByTestId('schedules-week-service-summary-transport')).toHaveTextContent('送迎 1件');
-    expect(within(summary).queryByTestId('schedules-week-service-summary-meeting')).toBeNull();
+    const normalChip = within(summary).getByTestId('schedules-week-service-summary-normal');
+    expect(normalChip).toHaveTextContent('通所 2件');
+
+    const transportChip = within(summary).getByTestId('schedules-week-service-summary-transport');
+    expect(transportChip).toHaveTextContent('送迎 1件');
+
+    expect(within(summary).queryByTestId('schedules-week-service-summary-other')).not.toBeInTheDocument();
+    expect(within(summary).queryByTestId('schedules-week-service-summary-meeting')).not.toBeInTheDocument();
   });
 });
