@@ -34,7 +34,7 @@ export type WeekViewProps = {
 
 type WeekSchedItem = SchedItem & { staffNames?: string[]; location?: string };
 
-type WeekServiceFilter = ServiceTypeKey;
+type WeekServiceFilter = ServiceTypeKey | 'unset';
 
 const startOfWeek = (date: Date): Date => {
   const next = new Date(date);
@@ -110,11 +110,12 @@ const toDateIsoLocal = (date: Date): string => {
   return `${year}-${month}-${day}`;
 };
 
-type ThemeServiceTypeKey = ServiceTypeKey;
+type ThemeServiceTypeKey = WeekServiceFilter;
 
 const mapServiceTypeToThemeKey = (value?: WeekServiceFilter | null): ThemeServiceTypeKey => value ?? 'unset';
 
-const getServiceTypeMeta = (value?: WeekServiceFilter | null) => (value ? SERVICE_TYPE_META[value] : undefined);
+const getServiceTypeMeta = (value?: WeekServiceFilter | null) =>
+  value && value !== 'unset' ? SERVICE_TYPE_META[value] : undefined;
 
 export default function WeekView(props: WeekViewProps) {
   const hasExternalData = props.items !== undefined && props.loading !== undefined;
