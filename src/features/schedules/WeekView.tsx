@@ -34,6 +34,8 @@ export type WeekViewProps = {
 
 type WeekSchedItem = SchedItem & { staffNames?: string[]; location?: string };
 
+type WeekServiceFilter = ServiceTypeKey;
+
 const startOfWeek = (date: Date): Date => {
   const next = new Date(date);
   next.setHours(0, 0, 0, 0);
@@ -110,9 +112,9 @@ const toDateIsoLocal = (date: Date): string => {
 
 type ThemeServiceTypeKey = ServiceTypeKey;
 
-const mapServiceTypeToThemeKey = (value?: ServiceTypeKey | null): ThemeServiceTypeKey => value ?? 'unset';
+const mapServiceTypeToThemeKey = (value?: WeekServiceFilter | null): ThemeServiceTypeKey => value ?? 'unset';
 
-const getServiceTypeMeta = (value?: ServiceTypeKey | null) => (value ? SERVICE_TYPE_META[value] : undefined);
+const getServiceTypeMeta = (value?: WeekServiceFilter | null) => (value ? SERVICE_TYPE_META[value] : undefined);
 
 export default function WeekView(props: WeekViewProps) {
   const hasExternalData = props.items !== undefined && props.loading !== undefined;
@@ -265,8 +267,8 @@ const WeekViewContent = ({ items, loading, onDayClick, activeDateIso, range, onI
 
   const selectedItems = groupedItems.get(resolvedActiveIso) ?? [];
 
-  const serviceSummary = useMemo(() => {
-    const counts: Record<ServiceTypeKey, number> = {
+  const serviceSummary: WeekServiceSummaryItem[] = useMemo(() => {
+    const counts: Partial<Record<WeekServiceFilter, number>> = {
       unset: 0,
       normal: 0,
       transport: 0,
@@ -285,12 +287,17 @@ const WeekViewContent = ({ items, loading, onDayClick, activeDateIso, range, onI
       counts[key] = (counts[key] ?? 0) + 1;
     });
 
-    return (Object.keys(SERVICE_TYPE_META) as ServiceTypeKey[]).map((key) => ({
-      key,
-      count: counts[key] ?? 0,
-      meta: SERVICE_TYPE_META[key],
-      tokens: serviceTypeColors?.[key] ?? fallbackServiceTokens[key],
-    }));
+    return (Object.keys(SERVICE_TYPE_META) as WeekServiceFilter[]).map<WeekServiceSummaryItem>((key) => {
+      const meta = getServiceTypeMeta(key);
+
+      return {
+        key,
+        label: meta?.label ?? key,
+        count: counts[key] ?? 0,
+        color: meta?.color,
+        tokens: serviceTypeColors?.[key] ?? fallbackServiceTokens[key],
+      };
+    });
   }, [fallbackServiceTokens, selectedItems, serviceTypeColors]);
 
   const handleClick = (iso: string, event: MouseEvent<HTMLButtonElement>) => {
@@ -326,16 +333,12 @@ const WeekViewContent = ({ items, loading, onDayClick, activeDateIso, range, onI
     new Date(resolvedRange.to),
   )}`;
 
-  const visibleServiceSummary = serviceSummary.filter((entry) => entry.count > 0);
-
-  const serviceSummaryItems: WeekServiceSummaryItem[] = visibleServiceSummary.map((entry) => ({
-    key: entry.key,
-    label: entry.meta.label,
-    count: entry.count,
-    color: entry.meta.color,
-    tokens: entry.tokens,
-    testId: `${TESTIDS.SCHEDULES_WEEK_SERVICE_SUMMARY}-${entry.key}`,
-  }));
+  const serviceSummaryItems: WeekServiceSummaryItem[] = serviceSummary
+    .filter((entry) => entry.count > 0)
+    .map((entry) => ({
+      ...entry,
+      testId: `${TESTIDS.SCHEDULES_WEEK_SERVICE_SUMMARY}-${entry.key}`,
+    }));
 
   return (
     <div data-testid="schedule-week-view" className="space-y-3">
