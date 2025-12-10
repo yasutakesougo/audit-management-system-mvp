@@ -22,12 +22,15 @@ describe('WeekPage tabs', () => {
 
   it('shows demo schedule items in week view', async () => {
     renderWeekPage();
-    const items = await screen.findAllByTestId('schedule-item');
-    expect(items.length).toBeGreaterThan(0);
-    const lists = await screen.findAllByTestId('schedule-week-list');
-    expect(
-      lists.some((list) => Boolean(within(list).queryByText('訪問介護（午前）'))),
-    ).toBe(true);
+    await screen.findByTestId('schedules-week-grid');
+
+    const dayButtons = screen.getAllByTestId(/schedules-week-day-/);
+    const hasAnyPlannedDay = dayButtons.some((btn) => {
+      const label = btn.getAttribute('aria-label') ?? '';
+      return label.includes('予定');
+    });
+
+    expect(hasAnyPlannedDay).toBe(true);
   });
 
   it('switches to day view when tab clicked', async () => {

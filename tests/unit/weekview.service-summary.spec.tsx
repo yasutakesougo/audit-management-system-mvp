@@ -1,5 +1,5 @@
 import WeekView, { type WeekViewProps } from '@/features/schedules/WeekView';
-import { render, screen } from '@testing-library/react';
+import { render, screen, within } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 
 type WeekItem = NonNullable<WeekViewProps['items']>[number];
@@ -41,8 +41,10 @@ describe('WeekView service summary chips', () => {
 
     render(<WeekView items={items} loading={false} range={range} activeDateIso="2025-03-03" />);
 
-    expect(screen.getByTestId('schedules-week-service-summary-normal')).toHaveTextContent('通所 2件');
-    expect(screen.getByTestId('schedules-week-service-summary-transport')).toHaveTextContent('送迎 1件');
-    expect(screen.queryByTestId('schedules-week-service-summary-meeting')).toBeNull();
+    const summary = screen.getByTestId('schedules-week-service-summary');
+
+    expect(within(summary).getByTestId('schedules-week-service-summary-normal')).toHaveTextContent('通所 2件');
+    expect(within(summary).getByTestId('schedules-week-service-summary-transport')).toHaveTextContent('送迎 1件');
+    expect(within(summary).queryByTestId('schedules-week-service-summary-meeting')).toBeNull();
   });
 });

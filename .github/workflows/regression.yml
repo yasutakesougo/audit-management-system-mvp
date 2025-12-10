@@ -69,7 +69,7 @@ jobs:
       - name: Run unit tests (core partitions)
         run: |
           mkdir -p junit
-          npx vitest list --runInBand | head -n 200
+          npx vitest list | head -n 200
           npx vitest run \
             --reporter=default \
             --reporter=junit \

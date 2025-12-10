@@ -210,7 +210,7 @@ exports[`AppShell snapshot 1`] = `
           <a
             class="MuiButtonBase-root MuiButton-root MuiButton-outlined MuiButton-outlinedPrimary MuiButton-sizeSmall MuiButton-outlinedSizeSmall MuiButton-colorPrimary MuiButton-root MuiButton-outlined MuiButton-outlinedPrimary MuiButton-sizeSmall MuiButton-outlinedSizeSmall MuiButton-colorPrimary css-1go7da8-MuiButtonBase-root-MuiButton-root"
             data-testid="nav-daily"
-            href="/daily/table"
+            href="/daily/activity"
             tabindex="0"
           >
             <span
@@ -232,6 +232,7 @@ exports[`AppShell snapshot 1`] = `
           </a>
           <a
             class="MuiButtonBase-root MuiButton-root MuiButton-outlined MuiButton-outlinedPrimary MuiButton-sizeSmall MuiButton-outlinedSizeSmall MuiButton-colorPrimary MuiButton-root MuiButton-outlined MuiButton-outlinedPrimary MuiButton-sizeSmall MuiButton-outlinedSizeSmall MuiButton-colorPrimary css-1go7da8-MuiButtonBase-root-MuiButton-root"
+            data-testid="nav-checklist"
             href="/checklist"
             tabindex="0"
           >
@@ -355,7 +356,7 @@ exports[`AppShell snapshot 1`] = `
           </a>
           <a
             class="MuiButtonBase-root MuiButton-root MuiButton-outlined MuiButton-outlinedPrimary MuiButton-sizeSmall MuiButton-outlinedSizeSmall MuiButton-colorPrimary MuiButton-root MuiButton-outlined MuiButton-outlinedPrimary MuiButton-sizeSmall MuiButton-outlinedSizeSmall MuiButton-colorPrimary css-1go7da8-MuiButtonBase-root-MuiButton-root"
-            data-testid="schedules-nav-link"
+            data-testid="nav-schedules"
             href="/schedules/week"
             tabindex="0"
           >
@@ -423,7 +424,7 @@ exports[`AppShell snapshot 1`] = `
             </button>
             <a
               class="MuiButtonBase-root MuiButton-root MuiButton-contained MuiButton-containedInfo MuiButton-sizeLarge MuiButton-containedSizeLarge MuiButton-colorInfo MuiButton-fullWidth MuiButton-root MuiButton-contained MuiButton-containedInfo MuiButton-sizeLarge MuiButton-containedSizeLarge MuiButton-colorInfo MuiButton-fullWidth css-1h9i99u-MuiButtonBase-root-MuiButton-root"
-              data-testid="daily-footer-attendance"
+              data-testid="footer-action-daily-attendance"
               href="/daily/attendance"
               tabindex="0"
             >
@@ -431,8 +432,8 @@ exports[`AppShell snapshot 1`] = `
             </a>
             <a
               class="MuiButtonBase-root MuiButton-root MuiButton-contained MuiButton-containedPrimary MuiButton-sizeLarge MuiButton-containedSizeLarge MuiButton-colorPrimary MuiButton-fullWidth MuiButton-root MuiButton-contained MuiButton-containedPrimary MuiButton-sizeLarge MuiButton-containedSizeLarge MuiButton-colorPrimary MuiButton-fullWidth css-9i5bd4-MuiButtonBase-root-MuiButton-root"
-              data-testid="daily-footer-activity"
-              href="/daily/table"
+              data-testid="footer-action-daily-activity"
+              href="/daily/activity"
               tabindex="0"
             >
               支援記録（ケース記録）入力
