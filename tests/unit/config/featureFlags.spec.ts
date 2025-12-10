@@ -40,7 +40,7 @@ describe('featureFlags config', () => {
     const schedulesCreate = vi.spyOn(env, 'isSchedulesCreateEnabled').mockReturnValue(false);
     const compliance = vi.spyOn(env, 'isComplianceFormEnabled').mockReturnValue(true);
     const schedulesWeekV2 = vi.spyOn(env, 'isSchedulesWeekV2Enabled').mockReturnValue(true);
-
+    const icebergPdca = vi.spyOn(env, 'isIcebergPdcaEnabled').mockReturnValue(false);
     const snapshot = resolveFeatureFlags();
 
     expect(snapshot).toEqual({
@@ -48,6 +48,7 @@ describe('featureFlags config', () => {
       schedulesCreate: true,
       complianceForm: true,
       schedulesWeekV2: true,
+      icebergPdca: false,
     });
 
     // 将来のリファクタ余地を考慮して具体的な呼び出し回数は固定しない
@@ -55,6 +56,7 @@ describe('featureFlags config', () => {
     expect(schedulesCreate).toHaveBeenCalled();
     expect(compliance).toHaveBeenCalled();
     expect(schedulesWeekV2).toHaveBeenCalled();
+    expect(icebergPdca).toHaveBeenCalled();
   });
 
   it('passes env override through to helper functions', () => {
@@ -63,6 +65,7 @@ describe('featureFlags config', () => {
     const schedulesCreate = vi.spyOn(env, 'isSchedulesCreateEnabled').mockReturnValue(false);
     const compliance = vi.spyOn(env, 'isComplianceFormEnabled').mockReturnValue(false);
     const schedulesWeekV2 = vi.spyOn(env, 'isSchedulesWeekV2Enabled').mockReturnValue(true);
+    const icebergPdca = vi.spyOn(env, 'isIcebergPdcaEnabled').mockReturnValue(false);
 
     resolveFeatureFlags(override);
 
@@ -70,6 +73,7 @@ describe('featureFlags config', () => {
     expect(schedulesCreate).toHaveBeenCalledWith(override);
     expect(compliance).toHaveBeenCalledWith(override);
     expect(schedulesWeekV2).toHaveBeenCalledWith(override);
+    expect(icebergPdca).toHaveBeenCalledWith(override);
   });
 
   it('exports a default snapshot computed at module load', () => {
@@ -92,6 +96,7 @@ describe('featureFlags config', () => {
       schedulesCreate: true,
       complianceForm: false,
       schedulesWeekV2: true,
+      icebergPdca: true,
     });
   });
 
@@ -109,6 +114,7 @@ describe('featureFlags config', () => {
       schedulesCreate: false,
       complianceForm: true,
       schedulesWeekV2: false,
+      icebergPdca: false,
     } satisfies FeatureFlagSnapshot;
 
     render(
