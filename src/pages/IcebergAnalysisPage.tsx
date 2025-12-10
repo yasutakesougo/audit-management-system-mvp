@@ -3,7 +3,7 @@ import type { EnvironmentFactor } from '@/features/analysis/domain/icebergTypes'
 import { useIcebergStore } from '@/features/analysis/stores/icebergStore';
 import type { AssessmentItem } from '@/features/assessment/domain/types';
 import type { BehaviorObservation } from '@/features/daily/domain/daily/types';
-import { useUsersDemo } from '@/features/users/usersStoreDemo';
+import { useUsersStore } from '@/features/users/store';
 import AddLinkIcon from '@mui/icons-material/AddLink';
 import SaveIcon from '@mui/icons-material/Save';
 import WorkspacesIcon from '@mui/icons-material/Workspaces';
@@ -17,7 +17,8 @@ import Paper from '@mui/material/Paper';
 import Select, { type SelectChangeEvent } from '@mui/material/Select';
 import Stack from '@mui/material/Stack';
 import Typography from '@mui/material/Typography';
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 
 const createDemoBehaviors = (userId: string): BehaviorObservation[] => [
   {
@@ -68,18 +69,41 @@ const createDemoEnvironmentFactors = (): EnvironmentFactor[] => [
 ];
 
 const IcebergAnalysisPage: React.FC = () => {
+  const [searchParams] = useSearchParams();
   const { currentSession, initSession, moveNode, addNodeFromData, linkNodes } = useIcebergStore();
-  const { data: users } = useUsersDemo();
-  const [targetUserId, setTargetUserId] = useState('');
+  const { data: users } = useUsersStore();
+  const userIdFromQuery = searchParams.get('userId') ?? '';
+
+  const resolveUserName = (userId?: string) => {
+    if (!userId) return undefined;
+    const user = users.find((u) => u.UserID === userId);
+    return user?.FullName ?? userId;
+  };
+
+  const initialSelectedUserId = useMemo(() => {
+    if (userIdFromQuery) return userIdFromQuery;
+    if (users.length > 0) return users[0].UserID ?? '';
+    return '';
+  }, [userIdFromQuery, users]);
+
+  const [targetUserId, setTargetUserId] = useState(initialSelectedUserId);
   const activeSessionUserId = currentSession?.targetUserId;
+
+  useEffect(() => {
+    setTargetUserId((prev) => {
+      if (userIdFromQuery && userIdFromQuery !== prev) return userIdFromQuery;
+      if (!prev && initialSelectedUserId) return initialSelectedUserId;
+      return prev;
+    });
+  }, [initialSelectedUserId, userIdFromQuery]);
 
   useEffect(() => {
     if (!targetUserId) return;
     if (activeSessionUserId === targetUserId) return;
-    const user = users.find((u) => u.UserID === targetUserId);
-    const title = user ? `${user.FullName}さんの分析セッション` : `${targetUserId}さんの分析セッション`;
+    const resolvedName = resolveUserName(targetUserId);
+    const title = resolvedName ? `${resolvedName}さんの分析セッション` : `${targetUserId}さんの分析セッション`;
     initSession(targetUserId, title);
-  }, [activeSessionUserId, initSession, targetUserId, users]);
+  }, [activeSessionUserId, initSession, resolveUserName, targetUserId, users]);
 
   useEffect(() => {
     if (!currentSession) return;
@@ -112,6 +136,8 @@ const IcebergAnalysisPage: React.FC = () => {
     setTargetUserId(event.target.value);
   };
 
+  const selectedUserName = resolveUserName(targetUserId);
+
   return (
     <Container maxWidth="xl" sx={{ height: '100vh', py: 2, display: 'flex', flexDirection: 'column' }}>
       <Paper sx={{ p: 2, mb: 2, display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 3 }}>
@@ -120,6 +146,11 @@ const IcebergAnalysisPage: React.FC = () => {
           <Box>
             <Typography variant="h6" fontWeight="bold">
               Iceberg Workspace (氷山モデル分析)
+            </Typography>
+            <Typography variant="subtitle1" color="text.secondary" sx={{ mt: 0.5 }}>
+              {targetUserId
+                ? `${selectedUserName ?? targetUserId} さんの氷山分析`
+                : '利用者を選択すると、氷山分析を開始できます'}
             </Typography>
             <FormControl size="small" sx={{ mt: 1, minWidth: 240 }}>
               <InputLabel id="iceberg-user-select-label">分析対象</InputLabel>
@@ -135,7 +166,7 @@ const IcebergAnalysisPage: React.FC = () => {
                 </MenuItem>
                 {users.map((user) => (
                   <MenuItem key={user.UserID} value={user.UserID}>
-                    {user.FullName}
+                    {user.FullName ?? user.UserID}
                   </MenuItem>
                 ))}
               </Select>
