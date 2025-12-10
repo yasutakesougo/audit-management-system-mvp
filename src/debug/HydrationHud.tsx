@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState, type CSSProperties } from 'react';
+import { getServiceThresholds } from '@/config/serviceRecords';
 import { isDev } from '@/env';
 import {
   getHydrationSpans,
@@ -17,7 +17,7 @@ import {
   toTelemetrySpan,
   type HydrationTelemetrySpan,
 } from '@/telemetry/hydrationBeacon';
-import { getServiceThresholds } from '@/serviceRecords';
+import { useCallback, useEffect, useMemo, useState, type CSSProperties } from 'react';
 
 const STORAGE_KEY = 'prefetch:hud:visible';
 const STATUS_COLORS: Record<'good' | 'warn' | 'bad', string> = {
@@ -299,7 +299,9 @@ export const HydrationHud: React.FC = () => {
       stats: telemetryStats,
       sample: getTelemetrySampleRate(),
     };
-  }, [completedSpans.length, hudEnabled, telemetryStats]);
+    // サービス記録しきい値をコンソールからも確認可能に
+    target.__HYDRATION_HUD__.thresholds = thresholds;
+  }, [completedSpans.length, hudEnabled, telemetryStats, thresholds]);
 
   const flushTelemetry = useCallback((reason: 'manual' | 'beforeunload') => {
     if (!hudEnabled) {
@@ -426,12 +428,11 @@ export const HydrationHud: React.FC = () => {
             <div style={sectionLabelStyle}>
               <span style={{ textTransform: 'uppercase', letterSpacing: 0.8 }}>Thresholds</span>
             </div>
-            <div data-testid="hud-thresholds" style={{ ...listStyle, gap: 0 }}>
+            <div data-testid="hud-thresholds" style={{ ...listStyle, gap: 4 }}>
               <div style={thresholdsRowStyle}>
-                <span>
-                  discrepancy={thresholds.discrepancyMinutes}m / absenceLimit={thresholds.absenceMonthlyLimit} / closeTime=
-                  {thresholds.facilityCloseTime}
-                </span>
+                <span>乖離しきい値: {thresholds.discrepancyMinutes} 分</span>
+                <span>月間欠席上限: {thresholds.absenceMonthlyLimit} 回</span>
+                <span>施設閉所時刻: {thresholds.facilityCloseTime} ({thresholds.facilityCloseMinutes}分)</span>
               </div>
             </div>
             <div style={sectionLabelStyle}>

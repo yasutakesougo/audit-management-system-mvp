@@ -9,7 +9,7 @@ export const STATUS_LABELS: Record<Status, string> = Object.freeze({
   完了: '完了',
 });
 
-type SharePointStatus = '未確定' | '実施中' | '確定' | '完了';
+export type SharePointStatus = '未確定' | '実施中' | '確定' | '完了';
 
 const STATUS_TO_SHAREPOINT: Record<Status, SharePointStatus> = {
   下書き: '未確定',
@@ -78,4 +78,20 @@ export const normalizeStatus = (value: unknown): Status => {
 export const toSharePointStatus = (value: unknown): SharePointStatus => {
   const status = normalizeStatus(value);
   return STATUS_TO_SHAREPOINT[status] ?? STATUS_TO_SHAREPOINT[STATUS_DEFAULT];
+};
+
+export const toStatusEnum = (value: unknown): Status => normalizeStatus(value);
+
+export const toSpChoice = (status: Status | null | undefined): SharePointStatus => {
+  if (!status) {
+    return STATUS_TO_SHAREPOINT[STATUS_DEFAULT];
+  }
+  return STATUS_TO_SHAREPOINT[status] ?? STATUS_TO_SHAREPOINT[STATUS_DEFAULT];
+};
+
+export const fromSpChoice = (spStatus: SharePointStatus | null | undefined): Status => {
+  if (!spStatus) return STATUS_DEFAULT;
+  
+  const entry = Object.entries(STATUS_TO_SHAREPOINT).find(([_, value]) => value === spStatus);
+  return entry ? entry[0] as Status : STATUS_DEFAULT;
 };

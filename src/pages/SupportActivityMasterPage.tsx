@@ -1,18 +1,23 @@
 import HomeIcon from '@mui/icons-material/Home';
+import RestoreIcon from '@mui/icons-material/Restore';
 import SettingsIcon from '@mui/icons-material/Settings';
 import Alert from '@mui/material/Alert';
 import Box from '@mui/material/Box';
 import Breadcrumbs from '@mui/material/Breadcrumbs';
+import Button from '@mui/material/Button';
 import Container from '@mui/material/Container';
 import Link from '@mui/material/Link';
 import Snackbar from '@mui/material/Snackbar';
 import Typography from '@mui/material/Typography';
 import React, { useCallback, useEffect, useState } from 'react';
+import { Link as RouterLink } from 'react-router-dom';
 import { SupportActivityTemplate, defaultSupportActivities } from '../domain/support/types';
 import { SupportActivityTemplateForm } from '../features/support/SupportActivityTemplateForm';
 import { SupportActivityTemplateList } from '../features/support/SupportActivityTemplateList';
 
-const STORAGE_KEY = 'supportActivityTemplates';
+// LocalStorage管理: 今はローカルストレージ版の簡易マスタです。
+// 将来的にSharePointの支援活動マスタへ移行予定
+const STORAGE_KEY = 'ams.supportActivityTemplates.v1';
 
 const buildDefaultTemplates = (): SupportActivityTemplate[] =>
   defaultSupportActivities.map((template, index) => ({
@@ -88,6 +93,19 @@ const SupportActivityMasterPage: React.FC = () => {
     }
   }, []);
 
+  // デフォルトテンプレートにリセット
+  const handleResetToDefaults = useCallback(() => {
+    if (window.confirm('すべてのテンプレートをデフォルト設定に戻しますか？\n※現在の設定は失われます。')) {
+      const defaultTemplates = buildDefaultTemplates();
+      setTemplates(defaultTemplates);
+      setSnackbar({
+        open: true,
+        message: 'デフォルトテンプレートに復元しました。',
+        severity: 'success'
+      });
+    }
+  }, []);
+
   // テンプレート保存
   const handleSave = useCallback((templateData: Omit<SupportActivityTemplate, 'id'>) => {
     if (editingTemplate) {
@@ -133,11 +151,16 @@ const SupportActivityMasterPage: React.FC = () => {
   }, []);
 
   return (
-    <Container maxWidth="xl" sx={{ py: 3 }}>
+    <Container
+      maxWidth="xl"
+      sx={{ py: 3 }}
+      data-testid="support-activity-master-page"
+    >
       {/* パンくずナビ */}
       <Breadcrumbs sx={{ mb: 3 }}>
         <Link
-          href="/"
+          component={RouterLink}
+          to="/"
           sx={{ display: 'flex', alignItems: 'center', textDecoration: 'none' }}
           color="inherit"
         >
@@ -157,15 +180,33 @@ const SupportActivityMasterPage: React.FC = () => {
       </Breadcrumbs>
 
       {/* ページタイトル */}
-      <Box sx={{ mb: 4 }}>
-        <Typography variant="h4" component="h1" gutterBottom>
-          支援活動テンプレート管理
-        </Typography>
-        <Typography variant="body1" color="text.secondary">
-          支援手順記録で使用する活動テンプレートの登録・編集・削除を行います。
-          <br />
-          テンプレートを作成することで、支援記録の入力が効率化されます。
-        </Typography>
+      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 4 }}>
+        <Box>
+          <Typography variant="h4" component="h1" gutterBottom>
+            支援活動テンプレート管理
+          </Typography>
+          <Typography variant="body1" color="text.secondary">
+            支援手順記録で使用する活動テンプレートの登録・編集・削除を行います。
+            <br />
+            テンプレートを作成することで、支援記録の入力が効率化されます。
+          </Typography>
+        </Box>
+        <Button
+          variant="outlined"
+          color="secondary"
+          startIcon={<RestoreIcon />}
+          onClick={handleResetToDefaults}
+          sx={{
+            textTransform: 'none',
+            fontWeight: 600,
+            borderRadius: 2,
+            px: 3,
+            flexShrink: 0,
+            ml: 2
+          }}
+        >
+          デフォルトに戻す
+        </Button>
       </Box>
 
       {/* メインコンテンツ */}

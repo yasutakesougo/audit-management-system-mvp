@@ -1,21 +1,43 @@
+/**
+ * Legacy Support Activity Types
+ *
+ * This module provides backward compatibility for existing support activity templates.
+ * Extends base support categories with legacy-specific values while maintaining type safety.
+ */
+
 import { z } from 'zod';
+import {
+  supportCategoryValues,
+  supportImportanceValues,
+  type SupportImportance
+} from './step-templates';
 
 /**
- * 旧版支援活動テンプレート（既存コードとの互換性のため）
+ * Extended support activity categories including legacy values
+ * Combines base categories with backward compatibility additions
+ */
+export const supportActivityCategoryValues = [
+  ...supportCategoryValues,
+  '通所・帰宅', // Legacy-specific category
+] as const;
+export type SupportActivityCategory = (typeof supportActivityCategoryValues)[number];
+
+// Re-export shared importance values for convenience
+export { supportImportanceValues as supportActivityImportanceValues };
+export type SupportActivityImportance = SupportImportance;
+/**
+ * Legacy support activity template (for existing code compatibility)
  */
 export const SupportActivityTemplateZ = z.object({
   id: z.string(),
   specificTime: z.string(),
   activityName: z.string(),
-  category: z.enum([
-    '朝の準備', '健康確認', '活動準備', 'AM活動', '昼食準備',
-    '昼食', '休憩', 'PM活動', '終了準備', '振り返り', 'その他', '通所・帰宅'
-  ]),
+  category: z.enum(supportActivityCategoryValues),
   description: z.string(),
   userExpectedActions: z.string(),
   staffSupportMethods: z.string(),
   duration: z.number(),
-  importance: z.enum(['必須', '推奨', '任意']),
+  importance: z.enum(supportImportanceValues),
   iconEmoji: z.string().optional(),
 });
 

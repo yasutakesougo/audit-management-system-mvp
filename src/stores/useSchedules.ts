@@ -1,4 +1,6 @@
 import type { Schedule } from '@/lib/mappers';
+import type { ServiceType } from '@/sharepoint/serviceTypes';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 
 const now = new Date();
 const toIso = (date: Date) => date.toISOString();
@@ -38,7 +40,7 @@ const makeSchedule = (id: number, rawOverrides: Partial<Schedule>): Schedule => 
 		created: startIso,
 		modified: endIso,
 		category: 'User',
-		serviceType: '一時ケア',
+		serviceType: '一時ケア' as ServiceType,
 		personType: 'Internal',
 		personId: String(id),
 		personName: `利用者 ${id}`,
@@ -88,7 +90,7 @@ const makeSchedule = (id: number, rawOverrides: Partial<Schedule>): Schedule => 
 const DEMO_SCHEDULES: Schedule[] = [
 	makeSchedule(1, {
 		category: 'User',
-		serviceType: 'ショートステイ',
+		serviceType: 'ショートステイ' as ServiceType,
 		personType: 'Internal',
 		personName: '山田 太郎',
 		staffIds: ['101', '102'],
@@ -124,22 +126,46 @@ const DEMO_SCHEDULES: Schedule[] = [
 	}),
 ];
 
-const SCHEDULE_MAP = new Map<number, Schedule>(DEMO_SCHEDULES.map((item) => [item.id, item]));
-
-const resolveSchedules = async (): Promise<Schedule[]> => {
-	await delay();
-	return DEMO_SCHEDULES.map((item) => ({ ...item }));
+const fetchDemoSchedules = async (): Promise<Schedule[]> => {
+  await delay();
+  return DEMO_SCHEDULES.map((item) => ({ ...item }));
 };
 
 export function useSchedules() {
-	return {
-		data: DEMO_SCHEDULES,
-		loading: false,
-		error: null as Error | null,
-		reload: resolveSchedules,
-		byId: SCHEDULE_MAP,
-		schedules: DEMO_SCHEDULES,
-		isLoading: false,
-		load: resolveSchedules,
-	};
+  const [data, setData] = useState<Schedule[]>([]);
+  const [loading, setLoading] = useState<boolean>(true);
+  const [error, setError] = useState<Error | null>(null);
+
+  const reload = useCallback(async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      const next = await fetchDemoSchedules();
+      setData(next);
+    } catch (err) {
+      setError(err instanceof Error ? err : new Error(String(err)));
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    void reload();
+  }, [reload]);
+
+  const byId = useMemo(
+    () => new Map<number, Schedule>(data.map((item) => [item.id, item])),
+    [data]
+  );
+
+  return {
+    data,
+    loading,
+    error,
+    reload,
+    byId,
+    schedules: data,
+    isLoading: loading,
+    load: reload,
+  };
 }

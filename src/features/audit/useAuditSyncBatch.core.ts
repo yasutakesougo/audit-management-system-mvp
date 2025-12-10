@@ -1,11 +1,10 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 import { useCallback } from 'react';
-import { getAuditLogs, clearAudit, retainAuditWhere } from '../../lib/audit';
-import { useSP } from '../../lib/spClient';
-import { getAppConfig } from '../../lib/env';
-import { buildBatchInsertBody, parseBatchInsertResponse } from './batchUtil';
+import { clearAudit, getAuditLogs, retainAuditWhere } from '../../lib/audit';
 import { auditLog } from '../../lib/debugLogger';
+import { getAppConfig } from '../../lib/env';
 import { canonicalJSONStringify, computeEntryHash } from '../../lib/hashUtil';
+import { useSP } from '../../lib/spClient';
+import { buildBatchInsertBody, parseBatchInsertResponse } from './batchUtil';
 import { AuditInsertItemDTO } from './types';
 
 // SharePoint リスト名 (既存 EnsureList で Title: Audit_Events を作成想定)
@@ -23,15 +22,6 @@ interface SyncResult {
   durationMs?: number;   // 全体処理時間
   categories?: Record<string, number>; // 失敗カテゴリ集計
 }
-
-export interface AuditBatchMetrics {
-  success: number;
-  duplicates: number;
-  failed: number;
-  total: number;
-  parserFallbackCount?: number;
-}
-
 
 // Helper types / functions extracted for testability
 export interface BatchItemStatus { id: string; status: number; }
@@ -121,9 +111,9 @@ export const useAuditSyncBatch = () => {
         const { body, boundary } = buildBatchInsertBody(AUDIT_LIST_NAME, chunk);
         try {
             let parsed: Awaited<ReturnType<typeof parseBatchInsertResponse>> | null = null;
-            if (typeof window !== 'undefined' && (window as any).__E2E_FORCE_BATCH__) {
+            if (typeof window !== 'undefined' && window.__E2E_FORCE_BATCH__) {
               // Test hook supplies a synthetic multipart body + status objects
-              const synthetic = await (window as any).__E2E_FORCE_BATCH__(chunk);
+              const synthetic = await window.__E2E_FORCE_BATCH__(chunk);
               if (synthetic && typeof synthetic.body === 'string') {
                 const blob = new Blob([synthetic.body], { type: 'multipart/mixed' });
                 const fakeRes = new Response(blob, { status: 202, headers: { 'Content-Type': 'multipart/mixed; boundary=e2e_forced' } });
@@ -136,7 +126,7 @@ export const useAuditSyncBatch = () => {
             }
               const resParsed = parsed;
             if (typeof window !== 'undefined') {
-                (window as any).__E2E_LAST_PARSED__ = resParsed;
+                window.__E2E_LAST_PARSED__ = resParsed;
             }
               _lastParse = resParsed;
             // 失敗の中にトランジェント（429/503/504）が含まれるか簡易判定（errors の status 走査）
@@ -191,8 +181,8 @@ export const useAuditSyncBatch = () => {
     }
 
       // Test-only hook: signal completion for E2E polling if present
-      if (typeof window !== 'undefined' && (window as any).__TEST_BATCH_DONE__) {
-        try { (window as any).__TEST_BATCH_DONE__(); } catch {}
+      if (typeof window !== 'undefined' && window.__TEST_BATCH_DONE__) {
+        try { window.__TEST_BATCH_DONE__(); } catch {}
       }
 
     if (success === logs.length) {

@@ -1,10 +1,10 @@
 name: Quality Gates
 on:
   push:
-    branches: [ main, develop ]
+    branches: [main, develop]
   pull_request:
-    branches: [ main, develop ]
-    types: [ opened, synchronize, reopened, ready_for_review ]
+    branches: [main, develop]
+    types: [opened, synchronize, reopened, ready_for_review]
   workflow_dispatch:
     inputs:
       ref:
@@ -27,8 +27,8 @@ jobs:
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
-          node-version: '20'
-          cache: 'npm'
+          node-version: "20"
+          cache: "npm"
       - name: Install deps
         run: npm ci
       - name: Install Playwright browsers
@@ -37,6 +37,21 @@ jobs:
         run: npm run typecheck
       - name: Lint
         run: npm run lint
+      - name: Schedules mini tests (optional)
+        run: npm run test:schedule:mini
+        continue-on-error: true
+      - name: Attendance mini tests (optional)
+        run: npm run test:attendance:mini
+        continue-on-error: true
+      - name: Daily mini tests (optional)
+        run: npm run test:daily:mini
+        continue-on-error: true
+      - name: Users mini tests (optional)
+        run: npm run test:users:mini
+        continue-on-error: true
+      - name: Nurse mini tests (optional)
+        run: npm run test:nurse:mini
+        continue-on-error: true
       - name: Test (coverage)
         run: npm run test:coverage -- --reporter=default
       - name: Playwright E2E
@@ -67,11 +82,15 @@ jobs:
         run: |
           if [ -f coverage/coverage-summary.json ]; then
             pct=$(node -e "const s=require('./coverage/coverage-summary.json');console.log(s.total.lines.pct)")
-            echo "### Coverage" >> $GITHUB_STEP_SUMMARY
-            echo "**Lines:** ${pct}%  " >> $GITHUB_STEP_SUMMARY
+            {
+              echo "### Coverage"
+              echo "**Lines:** ${pct}%  "
+            } >> "$GITHUB_STEP_SUMMARY"
           else
-            echo "### Coverage" >> $GITHUB_STEP_SUMMARY
-            echo "coverage summary not found" >> $GITHUB_STEP_SUMMARY
+            {
+              echo "### Coverage"
+              echo "coverage summary not found"
+            } >> "$GITHUB_STEP_SUMMARY"
           fi
 
   canary:
@@ -79,7 +98,7 @@ jobs:
     needs: quality
     if: github.ref == 'refs/heads/main'
     env:
-      VITE_FEATURE_SCHEDULES: 'true'
+      VITE_FEATURE_SCHEDULES: "true"
       NOTIFY_WEBHOOK_URL: ${{ secrets.NOTIFY_WEBHOOK_URL }}
     steps:
       - name: Checkout
@@ -87,8 +106,8 @@ jobs:
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
-          node-version: '20'
-          cache: 'npm'
+          node-version: "20"
+          cache: "npm"
       - name: Install dependencies
         run: npm ci
       - name: Install Playwright browsers
@@ -101,24 +120,24 @@ jobs:
 
           npm run ci:e2e
           exit_code=$?
-          if [ $exit_code -ne 0 ]; then
-            status=$exit_code
+          if [ "$exit_code" -ne 0 ]; then
+            status="$exit_code"
           fi
 
           npm run ci:lh
           exit_code=$?
-          if [ $exit_code -ne 0 ] && [ $status -eq 0 ]; then
-            status=$exit_code
+          if [ "$exit_code" -ne 0 ] && [ "$status" -eq 0 ]; then
+            status="$exit_code"
           fi
 
           npm run perf:summary
           exit_code=$?
-          if [ $exit_code -ne 0 ] && [ $status -eq 0 ]; then
-            status=$exit_code
+          if [ "$exit_code" -ne 0 ] && [ "$status" -eq 0 ]; then
+            status="$exit_code"
           fi
 
-          if [ $status -ne 0 ]; then
-            exit $status
+          if [ "$status" -ne 0 ]; then
+            exit "$status"
           fi
       - name: Notify canary failure
         if: failure()

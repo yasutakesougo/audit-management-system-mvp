@@ -1,3 +1,4 @@
+import { tid } from '@/testids';
 import Alert from '@mui/material/Alert';
 import Box from '@mui/material/Box';
 import Card from '@mui/material/Card';
@@ -9,6 +10,7 @@ import Typography from '@mui/material/Typography';
 import { format } from 'date-fns';
 import { ja } from 'date-fns/locale';
 import React from 'react';
+import { type ScheduleConflict } from '../conflictChecker';
 import { useSchedulesToday, type MiniSchedule } from '../useSchedulesToday';
 
 interface MobileAgendaViewProps {
@@ -18,6 +20,8 @@ interface MobileAgendaViewProps {
   userId?: string;
   /** 最大表示件数 */
   maxItems?: number;
+  /** 衝突検知インデックス */
+  conflictIndex?: Record<string, ScheduleConflict[]>;
 }
 
 /**
@@ -30,6 +34,7 @@ const MobileAgendaView: React.FC<MobileAgendaViewProps> = ({
   date = new Date(),
   userId,
   maxItems = 10,
+  conflictIndex,
 }) => {
   const { data: schedules, loading, error } = useSchedulesToday(maxItems);
 
@@ -37,14 +42,17 @@ const MobileAgendaView: React.FC<MobileAgendaViewProps> = ({
   const dateLabel = format(date, 'M月d日（E）', { locale: ja });
   const isToday = format(date, 'yyyy-MM-dd') === format(new Date(), 'yyyy-MM-dd');
 
+  // schedules が undefined の場合のガード（フェッチ失敗後のリトライ途中など）
+  const rawSchedules = schedules ?? [];
+
   // ユーザーフィルタリング（指定された場合）
   // MiniScheduleには担当者情報がないため、現状は全ての予定を表示
   // 将来的にはtitle内の担当者名での部分マッチングなどを検討
   const filteredSchedules = userId
-    ? schedules.filter((schedule: MiniSchedule) =>
+    ? rawSchedules.filter((schedule: MiniSchedule) =>
         schedule.title.includes(userId) // タイトルに担当者名が含まれる場合
       )
-    : schedules;
+    : rawSchedules;
 
   // ローディング状態
   if (loading) {
@@ -56,6 +64,7 @@ const MobileAgendaView: React.FC<MobileAgendaViewProps> = ({
         minHeight="200px"
         flexDirection="column"
         gap={2}
+        {...tid('mobile-agenda-loading')}
       >
         <CircularProgress size={40} />
         <Typography variant="body2" color="text.secondary">
@@ -68,7 +77,11 @@ const MobileAgendaView: React.FC<MobileAgendaViewProps> = ({
   // エラー状態
   if (error) {
     return (
-      <Alert severity="warning" sx={{ mx: 2, mt: 2 }}>
+      <Alert
+        severity="warning"
+        sx={{ mx: 2, mt: 2 }}
+        {...tid('mobile-agenda-error')}
+      >
         予定の読み込みに失敗しました。ネットワークを確認してください。
       </Alert>
     );
@@ -77,7 +90,10 @@ const MobileAgendaView: React.FC<MobileAgendaViewProps> = ({
   // 空の状態
   if (filteredSchedules.length === 0) {
     return (
-      <Box sx={{ p: 3, textAlign: 'center' }}>
+      <Box
+        sx={{ p: 3, textAlign: 'center' }}
+        {...tid('mobile-agenda-empty')}
+      >
         <Typography variant="h6" gutterBottom>
           {isToday ? '今日' : dateLabel}の予定
         </Typography>
@@ -92,7 +108,7 @@ const MobileAgendaView: React.FC<MobileAgendaViewProps> = ({
   }
 
   return (
-    <Box sx={{ p: 2 }}>
+    <Box sx={{ p: 2 }} {...tid('mobile-agenda-container')}>
       {/* ヘッダー */}
       <Box sx={{ mb: 3, textAlign: 'center' }}>
         <Typography variant="h5" component="h1" fontWeight="bold" gutterBottom>
@@ -115,6 +131,7 @@ const MobileAgendaView: React.FC<MobileAgendaViewProps> = ({
           <AgendaCard
             key={schedule.id || index}
             schedule={schedule}
+            conflictIndex={conflictIndex}
           />
         ))}
       </Stack>
@@ -133,9 +150,10 @@ const MobileAgendaView: React.FC<MobileAgendaViewProps> = ({
 
 interface AgendaCardProps {
   schedule: MiniSchedule;
+  conflictIndex?: Record<string, ScheduleConflict[]>;
 }
 
-const AgendaCard: React.FC<AgendaCardProps> = ({ schedule }) => {
+const AgendaCard: React.FC<AgendaCardProps> = ({ schedule, conflictIndex }) => {
   const getStatusColor = (status?: string) => {
     switch (status) {
       case '確定':
@@ -170,11 +188,26 @@ const AgendaCard: React.FC<AgendaCardProps> = ({ schedule }) => {
     }
   };
 
+  // Check for conflicts - Boolean()でキャストして型安全性を向上
+  // conflictIndex は undefined の可能性があるため、適切なガードを追加
+  const conflicted = Boolean(
+    schedule.id && conflictIndex?.[schedule.id]?.length
+  );
+
   return (
     <Card
       variant="outlined"
+      {...tid(
+        conflicted
+          ? 'mobile-agenda-schedule-conflict'
+          : 'mobile-agenda-schedule-item',
+      )}
+      data-schedule-id={schedule.id}
       sx={{
         borderRadius: 2,
+        borderLeft: conflicted ? '4px solid' : undefined,
+        borderLeftColor: conflicted ? 'error.main' : undefined,
+        backgroundColor: conflicted ? 'error.light' : undefined,
         '&:hover': {
           boxShadow: 2,
           transform: 'translateY(-1px)',
@@ -205,17 +238,28 @@ const AgendaCard: React.FC<AgendaCardProps> = ({ schedule }) => {
               fontWeight="bold"
               sx={{ mb: 1, wordBreak: 'break-word' }}
             >
+              {conflicted && '⚠️ '}
               {schedule.title}
             </Typography>
 
-            {schedule.status && (
-              <Chip
-                label={getStatusLabel(schedule.status)}
-                size="small"
-                color={getStatusColor(schedule.status)}
-                variant="outlined"
-              />
-            )}
+            <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap">
+              {schedule.status && (
+                <Chip
+                  label={getStatusLabel(schedule.status)}
+                  size="small"
+                  color={getStatusColor(schedule.status)}
+                  variant="outlined"
+                />
+              )}
+              {conflicted && (
+                <Chip
+                  label="重複あり"
+                  size="small"
+                  color="error"
+                  variant="filled"
+                />
+              )}
+            </Stack>
           </Box>
         </Box>
       </CardContent>

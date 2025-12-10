@@ -11,41 +11,26 @@ import { useCallback, useMemo, useState } from 'react';
 import type { IUserMasterCreateDto } from '../types';
 
 type UsersCreateFormProps = {
-  existingUserIds: string[];
   isSubmitting: boolean;
   onCreate: (payload: IUserMasterCreateDto) => Promise<void> | void;
   onOpenDetailForm: () => void;
 };
 
-const UsersCreateForm: FC<UsersCreateFormProps> = ({ existingUserIds, isSubmitting, onCreate, onOpenDetailForm }) => {
-  const [userId, setUserId] = useState('');
+const UsersCreateForm: FC<UsersCreateFormProps> = ({ isSubmitting, onCreate, onOpenDetailForm }) => {
   const [fullName, setFullName] = useState('');
 
-  const trimmedUserId = userId.trim();
   const trimmedFullName = fullName.trim();
-  const canCreate = useMemo(() => Boolean(trimmedUserId && trimmedFullName && !isSubmitting), [isSubmitting, trimmedFullName, trimmedUserId]);
-
-  const generateSimpleUserID = useCallback(() => {
-    let nextNumber = 1;
-    let newId = '';
-    do {
-      newId = `U-${nextNumber.toString().padStart(3, '0')}`;
-      nextNumber += 1;
-    } while (existingUserIds.includes(newId));
-    setUserId(newId);
-  }, [existingUserIds]);
+  const canCreate = useMemo(() => Boolean(trimmedFullName) && !isSubmitting, [isSubmitting, trimmedFullName]);
 
   const handleCreate = useCallback(async () => {
     if (!canCreate) return;
     const payload: IUserMasterCreateDto = {
-      UserID: trimmedUserId,
       FullName: trimmedFullName,
       IsHighIntensitySupportTarget: false,
     };
     await onCreate(payload);
-    setUserId('');
     setFullName('');
-  }, [canCreate, onCreate, trimmedFullName, trimmedUserId]);
+  }, [canCreate, onCreate, trimmedFullName]);
 
   const handleKeyDown = useCallback(
     (event: KeyboardEvent<HTMLInputElement>) => {
@@ -61,37 +46,22 @@ const UsersCreateForm: FC<UsersCreateFormProps> = ({ existingUserIds, isSubmitti
       <Typography variant="h6" component="h3" sx={{ fontWeight: 600 }}>
         新規利用者登録
       </Typography>
-      <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2} alignItems="end">
-        <Box sx={{ display: 'flex', gap: 1, alignItems: 'flex-end' }}>
+      <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2} alignItems={{ xs: 'stretch', sm: 'flex-end' }}>
+        <Stack spacing={0.5} sx={{ flex: 1 }}>
           <TextField
-            label="ユーザーID"
-            placeholder="U-001"
+            label="氏名"
+            placeholder="山田太郎"
             size="small"
-            value={userId}
-            onChange={(event) => setUserId(event.target.value)}
+            value={fullName}
+            onChange={(event) => setFullName(event.target.value)}
             onKeyDown={handleKeyDown}
             required
-            sx={{ minWidth: 150 }}
+            fullWidth
           />
-          <Button
-            variant="outlined"
-            onClick={generateSimpleUserID}
-            size="small"
-            sx={{ minWidth: 'auto', px: 1.5 }}
-          >
-            自動
-          </Button>
-        </Box>
-        <TextField
-          label="氏名"
-          placeholder="山田太郎"
-          size="small"
-          value={fullName}
-          onChange={(event) => setFullName(event.target.value)}
-          onKeyDown={handleKeyDown}
-          required
-          sx={{ minWidth: 200 }}
-        />
+          <Typography variant="caption" color="text.secondary">
+            利用者コード（U-xxx）は保存後に自動採番されます
+          </Typography>
+        </Stack>
         <Button
           variant="contained"
           startIcon={<PersonAddRoundedIcon />}

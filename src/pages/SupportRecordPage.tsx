@@ -19,8 +19,10 @@ import Select from '@mui/material/Select';
 import Stack from '@mui/material/Stack';
 import TextField from '@mui/material/TextField';
 import Typography from '@mui/material/Typography';
-import React, { useMemo, useState } from 'react';
+import React, { useCallback, useMemo, useState } from 'react';
+
 // 支援手順記録の型定義
+// TODO: 将来的にsrc/types/support.tsなどの共通モジュールに移動予定
 interface SupportStep {
   id: string;
   stepNumber: number;
@@ -81,6 +83,7 @@ interface DailySupportRecord {
 }
 
 // デフォルト支援手順テンプレート
+// TODO: 将来的にsrc/constants/supportSteps.tsなどに移動予定
 const defaultSupportSteps: Omit<SupportStep, 'id'>[] = [
   { stepNumber: 1, category: '朝の準備', title: '朝の挨拶', description: '明るく挨拶をして一日を始める', targetBehavior: '自発的に挨拶する', supportMethod: '職員から先に挨拶し、応答を促す', duration: 5, importance: '必須' },
   { stepNumber: 2, category: '朝の準備', title: '持ち物確認', description: '必要な持ち物を確認する', targetBehavior: '自分で持ち物をチェックする', supportMethod: 'チェックリストを使って一緒に確認', duration: 10, importance: '必須' },
@@ -115,6 +118,9 @@ const mockSupportUsers = [
   { id: '032', name: '小林さくら', planType: 'コミュニケーション', isActive: true }
 ];
 
+// ユーティリティ関数
+// TODO: 将来的にsrc/utils/supportRecord.tsなどに移動予定
+
 // デフォルト支援手順の生成
 const generateSupportSteps = (personId: string): SupportStep[] => {
   return defaultSupportSteps.map((step, index) => ({
@@ -123,9 +129,9 @@ const generateSupportSteps = (personId: string): SupportStep[] => {
   }));
 };
 
-// 空の記録生成
+// 空の記録生成（決定論的IDを使用）
 const generateEmptyRecord = (personId: string, personName: string, date: string, step: SupportStep): SupportRecord => ({
-  id: Date.now() + Math.random(),
+  id: parseInt(`${personId.replace(/\D/g, '')}${step.stepNumber.toString().padStart(2, '0')}${date.replace(/-/g, '')}`),
   supportPlanId: `plan-${personId}`,
   personId,
   personName,
@@ -145,27 +151,33 @@ const generateEmptyRecord = (personId: string, personName: string, date: string,
   updatedAt: new Date().toISOString()
 });
 
-// モック日次記録生成
+// モック日次記録生成（決定論的データを使用）
 const generateMockDailyRecord = (user: typeof mockSupportUsers[0], date: string): DailySupportRecord => {
   const steps = generateSupportSteps(user.id);
   const records = steps.map(step => generateEmptyRecord(user.id, user.name, date, step));
 
-  // いくつかの記録を実施済みにする
-  const implementedIndices = [0, 1, 3, 4, 5, 7, 9, 10, 11, 12, 14, 16]; // 12/19実施
+  // 決定論的な実施済みインデックス（ユーザーIDベース）
+  const userIdNum = parseInt(user.id.replace(/\D/g, '')) || 1;
+  const baseImplemented = [0, 1, 3, 4, 5, 7, 9, 10, 11, 12, 14, 16];
+  const implementedIndices = baseImplemented.slice(0, Math.min(baseImplemented.length, 8 + (userIdNum % 8)));
+
   implementedIndices.forEach(index => {
     if (records[index]) {
       records[index].implemented = true;
       records[index].status = '実施済み';
       records[index].implementedAt = `${9 + Math.floor(index / 2)}:${(index % 2) * 30}`.padEnd(5, '0');
+
+      // 決定論的なレスポンス生成
+      const responseIndex = (userIdNum + index) % 3;
       records[index].userResponse = {
-        mood: ['良好', '普通', '不安定'][Math.floor(Math.random() * 3)] as SupportRecord['userResponse']['mood'],
-        participation: ['積極的', '普通', '消極的'][Math.floor(Math.random() * 3)] as SupportRecord['userResponse']['participation'],
-        understanding: ['理解良好', '部分理解'][Math.floor(Math.random() * 2)] as SupportRecord['userResponse']['understanding'],
-        notes: `Step ${index + 1}の実施記録です。本人は${['協力的', '普通', '少し困惑気味'][Math.floor(Math.random() * 3)]}でした。`
+        mood: ['良好', '普通', '不安定'][responseIndex] as SupportRecord['userResponse']['mood'],
+        participation: ['積極的', '普通', '消極的'][responseIndex] as SupportRecord['userResponse']['participation'],
+        understanding: ['理解良好', '部分理解'][(userIdNum + index) % 2] as SupportRecord['userResponse']['understanding'],
+        notes: `Step ${index + 1}の実施記録です。本人は${['協力的', '普通', '少し困惑気味'][responseIndex]}でした。`
       };
       records[index].supportEvaluation = {
-        effectiveness: ['効果的', '部分的効果'][Math.floor(Math.random() * 2)] as SupportRecord['supportEvaluation']['effectiveness'],
-        nextAction: ['継続', '方法変更'][Math.floor(Math.random() * 2)] as SupportRecord['supportEvaluation']['nextAction']
+        effectiveness: ['効果的', '部分的効果'][(userIdNum + index) % 2] as SupportRecord['supportEvaluation']['effectiveness'],
+        nextAction: ['継続', '方法変更'][(userIdNum + index) % 2] as SupportRecord['supportEvaluation']['nextAction']
       };
       records[index].reporter = {
         name: '支援員A',
@@ -175,7 +187,7 @@ const generateMockDailyRecord = (user: typeof mockSupportUsers[0], date: string)
   });
 
   return {
-    id: Date.now() + Math.random(),
+    id: parseInt(`${userIdNum}${date.replace(/-/g, '')}`),
     supportPlanId: `plan-${user.id}`,
     personId: user.id,
     personName: user.name,
@@ -184,8 +196,8 @@ const generateMockDailyRecord = (user: typeof mockSupportUsers[0], date: string)
     summary: {
       totalSteps: 19,
       implementedSteps: implementedIndices.length,
-      effectiveSteps: implementedIndices.length - 2,
-      improvementNeeded: 2,
+      effectiveSteps: implementedIndices.length - Math.min(2, implementedIndices.length),
+      improvementNeeded: Math.min(2, implementedIndices.length),
       overallProgress: implementedIndices.length >= 15 ? '良好' : implementedIndices.length >= 10 ? '順調' : '要注意'
     },
     completedBy: '支援員A',
@@ -198,24 +210,39 @@ const SupportRecordPage: React.FC = () => {
   const [dateFilter, setDateFilter] = useState(new Date().toISOString().split('T')[0]);
   const [searchQuery, setSearchQuery] = useState('');
 
-  // 今日の日付（将来の機能拡張用）
-  // const today = new Date().toISOString().split('T')[0];
+  // 安定したデータ管理のためのstate
+  const [dailyRecordCache, setDailyRecordCache] = useState<Map<string, DailySupportRecord>>(new Map());
 
   // フィルタリングされた利用者
-  const filteredUsers = mockSupportUsers.filter(user => {
+  const filteredUsers = useMemo(() => mockSupportUsers.filter(user => {
     const matchesSearch = !searchQuery ||
       user.name.includes(searchQuery) ||
       user.id.includes(searchQuery);
     return matchesSearch && user.isActive;
-  });
+  }), [searchQuery]);
+
+  // 安定したデータ取得
+  const getDailyRecord = useCallback((userId: string, date: string): DailySupportRecord | null => {
+    const cacheKey = `${userId}-${date}`;
+
+    if (dailyRecordCache.has(cacheKey)) {
+      return dailyRecordCache.get(cacheKey)!;
+    }
+
+    const user = mockSupportUsers.find(u => u.id === userId);
+    if (!user) return null;
+
+    const newRecord = generateMockDailyRecord(user, date);
+    setDailyRecordCache(prev => new Map(prev).set(cacheKey, newRecord));
+
+    return newRecord;
+  }, [dailyRecordCache]);
 
   // 選択された利用者の日次記録
   const currentDailyRecord = useMemo(() => {
     if (!selectedUser) return null;
-    const user = mockSupportUsers.find(u => u.id === selectedUser);
-    if (!user) return null;
-    return generateMockDailyRecord(user, dateFilter);
-  }, [selectedUser, dateFilter]);
+    return getDailyRecord(selectedUser, dateFilter);
+  }, [selectedUser, dateFilter, getDailyRecord]);
 
   // 支援手順（選択された利用者用）
   const supportSteps = useMemo(() => {
@@ -238,16 +265,37 @@ const SupportRecordPage: React.FC = () => {
     };
   }, [filteredUsers]);
 
-  // 記録更新機能は将来実装予定
-  // const handleUpdateRecord = (record: SupportRecord) => {
-  //   console.log('記録更新:', record);
-  //   // 実際の更新処理をここに実装
-  // };
-
-  const handleGenerateTodayRecords = () => {
+  // 記録生成・更新機能（将来の拡張用）
+  const handleGenerateTodayRecords = useCallback(() => {
     console.log('本日分の記録を一括生成');
     // 実際の生成処理をここに実装
-  };
+    // 生成後にキャッシュをクリアして最新データを表示
+    setDailyRecordCache(new Map());
+  }, []);
+
+  // 記録更新機能（将来の拡張用）
+  const _handleUpdateRecord = useCallback((record: SupportRecord) => {
+    console.log('記録更新:', record);
+    // 実際の更新処理をここに実装
+    // 更新後にキャッシュの該当項目を更新
+    const cacheKey = `${record.personId}-${record.date}`;
+    if (dailyRecordCache.has(cacheKey)) {
+      const currentRecord = dailyRecordCache.get(cacheKey)!;
+      const updatedRecords = currentRecord.records.map(r =>
+        r.id === record.id ? { ...record, updatedAt: new Date().toISOString() } : r
+      );
+      const updatedDailyRecord = {
+        ...currentRecord,
+        records: updatedRecords,
+        // サマリーも再計算
+        summary: {
+          ...currentRecord.summary,
+          implementedSteps: updatedRecords.filter(r => r.implemented).length
+        }
+      };
+      setDailyRecordCache(prev => new Map(prev).set(cacheKey, updatedDailyRecord));
+    }
+  }, [dailyRecordCache]);
 
   return (
     <Container maxWidth="lg">
@@ -438,9 +486,15 @@ const SupportRecordPage: React.FC = () => {
               ) : (
                 <Stack spacing={2}>
                   {filteredUsers.map(user => {
-                    // モック進捗データ
-                    const progress = Math.floor(Math.random() * 100);
+                    // 決定論的な進捗データ（ユーザーIDベース）
+                    const userIdNum = parseInt(user.id.replace(/\D/g, '')) || 1;
+                    const baseProgress = (userIdNum * 17) % 100; // ユーザーIDに基づく基本進捗
+                    const dateOffset = new Date(dateFilter).getDate() % 10; // 日付による微調整
+                    const progress = Math.min(95, baseProgress + dateOffset);
                     const status = progress >= 80 ? 'completed' : progress >= 40 ? 'inProgress' : 'notStarted';
+
+                    // 決定論的な実装項目数計算
+                    const implementedCount = Math.floor((progress / 100) * 19);
 
                     return (
                       <Box
@@ -467,7 +521,7 @@ const SupportRecordPage: React.FC = () => {
 
                           <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
                             <Typography variant="body2">
-                              {Math.floor((progress / 100) * 19)}/19 項目
+                              {implementedCount}/19 項目
                             </Typography>
                             <Chip
                               label={

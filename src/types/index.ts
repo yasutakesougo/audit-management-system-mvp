@@ -107,19 +107,23 @@ export type Staff = {
 export type SpScheduleItem = {
   Id: number;
   Title?: string | null;
+  Start?: string | null;
+  End?: string | null;
   StartDateTime?: string | null;
   EndDateTime?: string | null;
   Status?: string | null;
   ServiceType?: string | null;
   BillingFlags?: string[] | string | null;
   Note?: string | null;
+  LocationName?: string | null;
   AssignedStaffId?: number[] | string | { results?: number[] | string[] } | null;
-  AssignedStaff?: unknown;
+  AssignedStaff?: string[] | string | { results?: (string | number)[] } | null;
   TargetUserId?: number[] | string | { results?: number[] | string[] } | null;
   TargetUser?: unknown;
   RelatedResourceId?: number[] | string | { results?: number[] | string[] } | null;
   RelatedResource?: unknown;
   RowKey?: string | null;
+  EntryHash?: string | null;
   Date?: string | null;
   MonthKey?: string | null;
   CreatedAt?: string | null;

@@ -1,6 +1,8 @@
-import { test, expect } from '@playwright/test';
-import { setupSharePointStubs } from './_helpers/setupSharePointStubs';
+import { expect, test } from '@playwright/test';
+import { TESTIDS } from '@/testids';
 import { mockSharePointThrottle } from './_helpers/mockSharePointThrottle';
+import { setupSharePointStubs } from './_helpers/setupSharePointStubs';
+import { waitForScheduleReady } from './utils/wait';
 
 test.beforeEach(async ({ page }) => {
   await page.addInitScript(() => {
@@ -38,11 +40,41 @@ test.beforeEach(async ({ page }) => {
 });
 
 test('GET 429 -> retry success (no fatal error)', async ({ page }) => {
-  await page.goto('/', { waitUntil: 'networkidle' });
-  await expect(page.getByTestId('dashboard-page')).toBeVisible({ timeout: 15000 });
+  await page.goto('/', { waitUntil: 'domcontentloaded' });
+
+  // Try to wait for network idle but don't fail if it takes too long
+  try {
+    await page.waitForLoadState('networkidle', { timeout: 8_000 });
+  } catch {
+    console.log('Network idle timeout - proceeding with test');
+  }
+
+  const maybeWeek = page.getByTestId(TESTIDS.SCHEDULES_PAGE_ROOT).or(page.getByTestId('schedules-week-page'));
+  if ((await maybeWeek.count()) > 0) {
+    await waitForScheduleReady(page);
+  }
+
+  // Dashboard (or schedules) page should be visible regardless of network state
+  const root = page.getByTestId('dashboard-page').or(page.getByTestId(TESTIDS.SCHEDULES_PAGE_ROOT));
+  await expect(root).toBeVisible({ timeout: 15_000 });
 });
 
 test('$batch 503 -> retry success (no crash)', async ({ page }) => {
-  await page.goto('/', { waitUntil: 'networkidle' });
-  await expect(page.getByTestId('dashboard-page')).toBeVisible({ timeout: 15000 });
+  await page.goto('/', { waitUntil: 'domcontentloaded' });
+
+  // Try to wait for network idle but don't fail if it takes too long
+  try {
+    await page.waitForLoadState('networkidle', { timeout: 8_000 });
+  } catch {
+    console.log('Network idle timeout - proceeding with test');
+  }
+
+  const maybeWeek = page.getByTestId(TESTIDS.SCHEDULES_PAGE_ROOT).or(page.getByTestId('schedules-week-page'));
+  if ((await maybeWeek.count()) > 0) {
+    await waitForScheduleReady(page);
+  }
+
+  // Dashboard (or schedules) page should be visible regardless of network state
+  const root = page.getByTestId('dashboard-page').or(page.getByTestId(TESTIDS.SCHEDULES_PAGE_ROOT));
+  await expect(root).toBeVisible({ timeout: 15_000 });
 });

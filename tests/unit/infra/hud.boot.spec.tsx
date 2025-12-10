@@ -5,9 +5,13 @@ import App from '@/App';
 import { enableHudForTests } from '../../helpers/renderWithAppProviders';
 
 describe('HUD bootstrap', () => {
-  it('exposes hydration spans in test mode', async () => {
+  it('shows HUD status banner in test mode', async () => {
     enableHudForTests();
     render(<App />);
-    expect(await screen.findByTestId('hud-hydration')).toBeInTheDocument();
+
+    const statuses = await screen.findAllByRole('status');
+    const hudStatus = statuses.find((node) => node.textContent?.includes('SP Sign-In'));
+    expect(hudStatus).toBeDefined();
+    expect(hudStatus).toHaveTextContent(/SP Sign-In/i);
   });
 });

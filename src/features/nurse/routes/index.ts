@@ -1,0 +1,1 @@
+export { nurseRoutes } from './NurseRoutes';

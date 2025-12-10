@@ -32,9 +32,14 @@ vi.mock('@/lib/spWrite', () => ({
   spWriteResilient: mockSpWriteResilient,
 }));
 
-vi.mock('@/lib/env', () => ({
-  readEnv: (key: string, fallback?: string) => mockReadEnv(key, fallback ?? ''),
-}));
+vi.mock('@/lib/env', async () => {
+  const actual = await vi.importActual<typeof import('@/lib/env')>('@/lib/env');
+  return {
+    ...actual,
+    readEnv: (key: string, fallback = '', _envOverride?: unknown) =>
+      mockReadEnv(key, fallback ?? ''),
+  };
+});
 
 type FakeResponse = {
   json: () => Promise<unknown>;

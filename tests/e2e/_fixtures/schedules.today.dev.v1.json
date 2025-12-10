@@ -1,0 +1,45 @@
+{
+  "date": "2025-02-02",
+  "events": [
+    {
+      "id": "evt-001",
+      "title": "AM 検温",
+      "category": "User",
+      "start": "2025-02-02T09:00:00+09:00",
+      "end": "2025-02-02T09:30:00+09:00",
+      "careLevel": "medium",
+      "members": ["U001", "U007"],
+      "notes": "生活介護フロアにて実施"
+    },
+    {
+      "id": "evt-002",
+      "title": "昼食前準備",
+      "category": "User",
+      "start": "2025-02-02T11:30:00+09:00",
+      "end": "2025-02-02T12:00:00+09:00",
+      "careLevel": "low",
+      "members": ["U004"],
+      "notes": "送迎あり"
+    },
+    {
+      "id": "evt-003",
+      "title": "スタッフ申し送り",
+      "category": "Staff",
+      "start": "2025-02-02T13:00:00+09:00",
+      "end": "2025-02-02T13:30:00+09:00",
+      "careLevel": "medium",
+      "members": ["S101"],
+      "notes": "午後シフト交代前の共有"
+    },
+    {
+      "id": "evt-004",
+      "title": "地域連携会議",
+      "category": "Org",
+      "start": "2025-02-02T15:00:00+09:00",
+      "end": "2025-02-02T16:00:00+09:00",
+      "careLevel": "high",
+      "members": ["ORG-ISO"],
+      "notes": "外部機関連絡調整"
+    }
+  ]
+}

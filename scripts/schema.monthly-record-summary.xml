@@ -1,0 +1,241 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- MonthlyRecord_Summary List Schema Template for PnP Provisioning -->
+<!-- Compatible with SharePoint PnP PowerShell and PnP Templates -->
+<pnp:Lists xmlns:pnp="http://schemas.dev.office.com/PnP/2023/05/ProvisioningSchema">
+  <pnp:ListInstance
+    Title="MonthlyRecord_Summary"
+    Description="月次集計記録 - 利用者別の月次KPI集計データ"
+    TemplateType="100"
+    Url="Lists/MonthlyRecordSummary"
+    OnQuickLaunch="false"
+    EnableVersioning="true"
+    MaxVersionLimit="10">
+
+    <!-- フィールド定義 -->
+    <pnp:Fields>
+      <!-- ユーザー識別 -->
+      <Field ID="{7A1A8F10-2E4D-4F3B-9C5E-1234567890A1}"
+             Name="UserCode"
+             DisplayName="利用者コード"
+             Type="Text"
+             Required="TRUE"
+             MaxLength="50"
+             Indexed="TRUE"
+             Description="利用者を一意に識別するコード" />
+
+      <Field ID="{7A1A8F10-2E4D-4F3B-9C5E-1234567890A2}"
+             Name="DisplayName"
+             DisplayName="表示名"
+             Type="Text"
+             Required="TRUE"
+             MaxLength="255"
+             Description="利用者の表示用氏名" />
+
+      <!-- 集計期間 -->
+      <Field ID="{7A1A8F10-2E4D-4F3B-9C5E-1234567890A3}"
+             Name="YearMonth"
+             DisplayName="年月"
+             Type="Text"
+             Required="TRUE"
+             MaxLength="7"
+             Indexed="TRUE"
+             Description="YYYY-MM形式の集計対象年月" />
+
+      <!-- 集計KPI -->
+      <Field ID="{7A1A8F10-2E4D-4F3B-9C5E-1234567890A4}"
+             Name="TotalDays"
+             DisplayName="対象日数"
+             Type="Number"
+             Required="TRUE"
+             Description="月内の営業日数（土日祝除く）" />
+
+      <Field ID="{7A1A8F10-2E4D-4F3B-9C5E-1234567890A5}"
+             Name="PlannedRows"
+             DisplayName="予定行数"
+             Type="Number"
+             Required="TRUE"
+             Description="計画された記録行数の合計" />
+
+      <Field ID="{7A1A8F10-2E4D-4F3B-9C5E-1234567890A6}"
+             Name="CompletedRows"
+             DisplayName="完了行数"
+             Type="Number"
+             Required="TRUE"
+             Description="実際に記録された行数の合計" />
+
+      <Field ID="{7A1A8F10-2E4D-4F3B-9C5E-1234567890A7}"
+             Name="CompletionRate"
+             DisplayName="完了率"
+             Type="Number"
+             Required="TRUE"
+             Min="0"
+             Max="1"
+             Decimals="2"
+             Description="完了率（0.00-1.00の小数値）" />
+
+      <Field ID="{7A1A8F10-2E4D-4F3B-9C5E-1234567890A8}"
+             Name="SpecialNotesCount"
+             DisplayName="特記事項数"
+             Type="Number"
+             Required="FALSE"
+             Description="特記事項が記録された件数" />
+
+      <!-- 期間情報 -->
+      <Field ID="{7A1A8F10-2E4D-4F3B-9C5E-1234567890A9}"
+             Name="FirstEntryDate"
+             DisplayName="初回記録日"
+             Type="DateTime"
+             Format="DateOnly"
+             Required="FALSE"
+             Description="月内で最初に記録された日付" />
+
+      <Field ID="{7A1A8F10-2E4D-4F3B-9C5E-1234567890AA}"
+             Name="LastEntryDate"
+             DisplayName="最終記録日"
+             Type="DateTime"
+             Format="DateOnly"
+             Required="FALSE"
+             Description="月内で最後に記録された日付" />
+
+      <!-- システム管理 -->
+      <Field ID="{7A1A8F10-2E4D-4F3B-9C5E-1234567890AB}"
+             Name="LastUpdated"
+             DisplayName="最終更新"
+             Type="DateTime"
+             Format="DateTime"
+             Required="TRUE"
+             Description="集計データの最終更新日時（UTC）" />
+
+      <Field ID="{7A1A8F10-2E4D-4F3B-9C5E-1234567890AC}"
+             Name="IdempotencyKey"
+             DisplayName="冪等キー"
+             Type="Text"
+             Required="TRUE"
+             MaxLength="128"
+             Indexed="TRUE"
+             EnforceUniqueValues="TRUE"
+             Description="UserCode_YearMonth形式の一意キー" />
+
+      <Field ID="{7A1A8F10-2E4D-4F3B-9C5E-1234567890AD}"
+             Name="AggregationSource"
+             DisplayName="集計ソース"
+             Type="Text"
+             Required="FALSE"
+             MaxLength="50"
+             Description="集計実行元（UI/PowerAutomate/Batch）" />
+    </pnp:Fields>
+
+    <!-- デフォルトビュー設定 -->
+    <pnp:Views>
+      <View Name="All Items"
+            DefaultView="TRUE"
+            MobileView="TRUE"
+            Type="HTML"
+            DisplayName="すべてのアイテム"
+            Url="AllItems.aspx">
+        <Query>
+          <OrderBy>
+            <FieldRef Name="YearMonth" Ascending="FALSE" />
+            <FieldRef Name="DisplayName" Ascending="TRUE" />
+          </OrderBy>
+        </Query>
+        <ViewFields>
+          <FieldRef Name="DisplayName" />
+          <FieldRef Name="YearMonth" />
+          <FieldRef Name="CompletionRate" />
+          <FieldRef Name="TotalDays" />
+          <FieldRef Name="CompletedRows" />
+          <FieldRef Name="LastUpdated" />
+        </ViewFields>
+        <RowLimit Paged="TRUE">30</RowLimit>
+      </View>
+
+      <!-- 月別集計ビュー -->
+      <View Name="月別集計"
+            Type="HTML"
+            DisplayName="月別集計"
+            Url="MonthlyView.aspx">
+        <Query>
+          <OrderBy>
+            <FieldRef Name="YearMonth" Ascending="FALSE" />
+            <FieldRef Name="CompletionRate" Ascending="FALSE" />
+          </OrderBy>
+        </Query>
+        <ViewFields>
+          <FieldRef Name="YearMonth" />
+          <FieldRef Name="DisplayName" />
+          <FieldRef Name="CompletionRate" />
+          <FieldRef Name="PlannedRows" />
+          <FieldRef Name="CompletedRows" />
+          <FieldRef Name="SpecialNotesCount" />
+        </ViewFields>
+        <RowLimit Paged="TRUE">50</RowLimit>
+      </View>
+
+      <!-- 低完了率アラートビュー -->
+      <View Name="要注意利用者"
+            Type="HTML"
+            DisplayName="要注意利用者"
+            Url="LowCompletionView.aspx">
+        <Query>
+          <Where>
+            <Lt>
+              <FieldRef Name="CompletionRate" />
+              <Value Type="Number">0.8</Value>
+            </Lt>
+          </Where>
+          <OrderBy>
+            <FieldRef Name="CompletionRate" Ascending="TRUE" />
+            <FieldRef Name="YearMonth" Ascending="FALSE" />
+          </OrderBy>
+        </Query>
+        <ViewFields>
+          <FieldRef Name="DisplayName" />
+          <FieldRef Name="YearMonth" />
+          <FieldRef Name="CompletionRate" />
+          <FieldRef Name="PlannedRows" />
+          <FieldRef Name="CompletedRows" />
+          <FieldRef Name="LastEntryDate" />
+        </ViewFields>
+        <RowLimit Paged="TRUE">100</RowLimit>
+      </View>
+    </pnp:Views>
+
+    <!-- セキュリティ設定 -->
+    <pnp:Security BreakRoleInheritance="true" CopyRoleAssignments="false">
+      <!-- 管理者グループ: フルコントロール -->
+      <pnp:RoleAssignments>
+        <pnp:RoleAssignment Principal="サイト所有者" RoleDefinition="フル コントロール" />
+        <!-- 全員: 読み取り専用 -->
+        <pnp:RoleAssignment Principal="Everyone" RoleDefinition="読み取り" />
+        <!-- Power Automateサービスアカウント用（環境に応じて調整） -->
+        <!--<pnp:RoleAssignment Principal="PowerAutomate Service" RoleDefinition="投稿" />-->
+      </pnp:RoleAssignments>
+    </pnp:Security>
+  </pnp:ListInstance>
+</pnp:Lists>
+
+<!--
+使用方法:
+1. PnP PowerShell Template適用:
+   Apply-PnPProvisioningTemplate -Path "schema.monthly-record-summary.xml"
+
+2. PowerShell直接実行:
+   .\ensure-monthly-record-summary.ps1 -SiteUrl "https://yoursite.sharepoint.com/sites/audit"
+
+3. 集計データのupsert例:
+   POST /_api/web/lists/getbytitle('MonthlyRecord_Summary')/items
+   {
+     "UserCode": "USER001",
+     "YearMonth": "2024-11",
+     "CompletionRate": 0.85,
+     "IdempotencyKey": "USER001_2024-11",
+     "LastUpdated": "2024-11-06T12:00:00Z",
+     "AggregationSource": "PowerAutomate"
+   }
+
+4. 冪等性確認（既存レコード更新）:
+   - IdempotencyKeyでの重複チェック
+   - 既存の場合はUPDATE、新規の場合はINSERT
+   - Power AutomateのUpsert操作に最適化
+-->

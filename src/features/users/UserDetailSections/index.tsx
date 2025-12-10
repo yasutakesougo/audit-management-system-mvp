@@ -14,7 +14,7 @@ import Tabs from '@mui/material/Tabs';
 import Typography from '@mui/material/Typography';
 import React, { useCallback, useMemo, useRef, useState } from 'react';
 import { Link as RouterLink, useNavigate } from 'react-router-dom';
-import { TESTIDS } from '@/testids';
+import { TESTIDS, tidWithSuffix } from '@/testids';
 import type { IUserMaster } from '../types';
 import { formatDateLabel, renderHighlights, resolveUserIdentifier } from './helpers';
 import {
@@ -43,7 +43,7 @@ const renderSectionDetails = (section: MenuSection, user: IUserMaster, attendanc
     const detailRows = [
       { label: '氏名', value: user.FullName || '未設定' },
       { label: 'ふりがな', value: user.Furigana || user.FullNameKana || '未登録' },
-      { label: '利用者ID', value: resolveUserIdentifier(user) },
+      { label: '利用者コード', value: resolveUserIdentifier(user) },
       { label: '契約日', value: formatDateLabel(user.ContractDate) },
       { label: '利用開始日', value: formatDateLabel(user.ServiceStartDate) },
       { label: '利用終了日', value: user.ServiceEndDate ? formatDateLabel(user.ServiceEndDate) : '継続利用中' },
@@ -210,13 +210,13 @@ const UserDetailSections: React.FC<UserDetailSectionsProps> = ({ user, backLink,
                 {user.FullName || '氏名未登録'}
               </Typography>
               <Typography variant="body2" color="text.secondary">
-                利用者ID: {resolveUserIdentifier(user)}
+                利用者コード: {resolveUserIdentifier(user)}
               </Typography>
             </Box>
           </Stack>
 
           <Stack direction="row" spacing={1} flexWrap="wrap">
-            <Chip label={`利用者ID: ${resolveUserIdentifier(user)}`} size="small" />
+            <Chip label={`利用者コード: ${resolveUserIdentifier(user)}`} size="small" />
             <Chip label={supportLabel} color={user.IsHighIntensitySupportTarget ? 'warning' : 'default'} size="small" />
             {user.IsSupportProcedureTarget && (
               <Chip label="支援手順対象" color="secondary" size="small" />
@@ -243,7 +243,7 @@ const UserDetailSections: React.FC<UserDetailSectionsProps> = ({ user, backLink,
                 メモ
               </Typography>
               <Typography variant="body1" color="text.secondary">
-                利用者関連の主要帳票へアクセスするためのメニューです。
+                利用者関連の主要帳票へアクセスするためのメニューです。表示されている「利用者コード」はシステム用で、職員が覚える必要はありません。
               </Typography>
             </Box>
           </Stack>
@@ -264,7 +264,7 @@ const UserDetailSections: React.FC<UserDetailSectionsProps> = ({ user, backLink,
             {quickAccessSections.map((section) => (
               <Button
                 key={`quick-${section.key}`}
-                data-testid={`${TESTIDS['users-quick-prefix']}${section.key}`}
+                {...tidWithSuffix(TESTIDS['users-quick-prefix'], section.key)}
                 variant={section.key === 'create-user' ? 'contained' : 'outlined'}
                 color={section.key === 'create-user' ? 'primary' : 'inherit'}
                 size="small"
@@ -304,7 +304,7 @@ const UserDetailSections: React.FC<UserDetailSectionsProps> = ({ user, backLink,
               return (
                 <Grid key={section.key} size={{ xs: 12, sm: 6, md: 4 }}>
                   <Paper
-                    data-testid={`${TESTIDS['user-menu-card-prefix']}${section.key}`}
+                    {...tidWithSuffix(TESTIDS['user-menu-card-prefix'], section.key)}
                     variant="outlined"
                     sx={{
                       p: 2.5,
@@ -395,7 +395,7 @@ const UserDetailSections: React.FC<UserDetailSectionsProps> = ({ user, backLink,
                 role="tabpanel"
                 hidden={!isTabActive}
                 id={`user-menu-tabpanel-${section.key}`}
-                data-testid={`${TESTIDS['user-menu-tabpanel-prefix']}${section.key}`}
+                {...tidWithSuffix(TESTIDS['user-menu-tabpanel-prefix'], section.key)}
                 aria-labelledby={`user-menu-tab-${section.key}`}
                 sx={{ mt: 2 }}
               >
@@ -437,7 +437,7 @@ const UserDetailSections: React.FC<UserDetailSectionsProps> = ({ user, backLink,
           <Paper
             key={section.key}
             id={section.anchor}
-            data-testid={`${TESTIDS['user-menu-section-prefix']}${section.key}`}
+            {...tidWithSuffix(TESTIDS['user-menu-section-prefix'], section.key)}
             variant="outlined"
             sx={{
               p: { xs: 2.5, md: 3 },

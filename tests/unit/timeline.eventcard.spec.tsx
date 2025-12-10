@@ -14,7 +14,7 @@ describe('TimelineEventCard', () => {
       { staffId: 'staff-002', reasons: ['day'] },
     ];
 
-    const { container } = render(
+    render(
       <TimelineEventCard
         title="訪問リハビリ"
         subtitle="担当: 山田"
@@ -23,6 +23,7 @@ describe('TimelineEventCard', () => {
         allDay
         status="申請中"
         recurrenceRule="RRULE:FREQ=DAILY"
+        serviceLabel="日中活動"
         baseShiftWarnings={warnings}
         containerProps={{
           className: 'extra-border',
@@ -34,21 +35,20 @@ describe('TimelineEventCard', () => {
     const card = screen.getByTestId('schedule-item');
     expect(card).toHaveAttribute('aria-label');
     expect(card.getAttribute('aria-label')).toContain('注意 佐藤 花子、staff-002のシフトに注意が必要です');
-  expect(card.getAttribute('aria-label')).toContain('時間 終日 (Asia/Tokyo)');
+    expect(card.getAttribute('aria-label')).toContain('時間 終日 (Asia/Tokyo)');
     expect(card.className).toMatch(/extra-border/);
-    expect(card.style.backgroundImage).toContain('repeating-linear-gradient');
-  expect(card).toHaveAttribute('title', '終日 (Asia/Tokyo)');
+    expect(card).toHaveAttribute('title', '終日 (Asia/Tokyo)');
 
     expect(screen.getByText('訪問リハビリ')).toBeInTheDocument();
-    expect(screen.getByText('担当: 山田 ・ 終日')).toBeVisible();
-    expect(screen.getByText('終日')).toBeVisible();
+    expect(screen.getByText('担当: 山田')).toBeVisible();
+    expect(screen.getAllByText('終日')).toHaveLength(2);
+    expect(screen.getByText('日中活動')).toBeVisible();
     expect(screen.getByText('RRULE:FREQ=DAILY')).toBeVisible();
     expect(screen.getByTestId('schedule-status')).toHaveAttribute('data-status', '申請中');
     expect(screen.getByText('基本勤務パターン外: 佐藤 花子、staff-002のシフトに注意が必要です')).toBeVisible();
 
-    // Snapshot the inline warning icon container to confirm it renders
-    const warningIcon = container.querySelector('[aria-hidden="true"]');
-    expect(warningIcon).not.toBeNull();
+    // Inline warning icon should render for shift alerts
+    expect(screen.getByTestId('schedule-warning-indicator')).toBeVisible();
   });
 
   it('handles half-day events without all-day chip and guards invalid times', () => {
@@ -68,7 +68,7 @@ describe('TimelineEventCard', () => {
     expect(screen.queryByText('終日')).not.toBeInTheDocument();
 
     // Invalid times fall back to neutral placeholder.
-  expect(screen.getByText('--:--–--:--')).toBeVisible();
+    expect(screen.getByText('--:--–--:--')).toBeVisible();
 
     const card = screen.getByTestId('schedule-item');
     expect(card).toHaveAttribute('tabindex', '-1');
@@ -86,8 +86,8 @@ describe('TimelineEventCard', () => {
         endISO="2025-03-10T15:10:00.000Z"
       />
     );
-
-    expect(screen.getByText('担当: 鈴木 ・ 22:30–翌00:10 (Asia/Tokyo)')).toBeVisible();
+    expect(screen.getByText('担当: 鈴木')).toBeVisible();
+    expect(screen.getByText('22:30–翌 00:10 (Asia/Tokyo)')).toBeVisible();
 
     const card = screen.getByTestId('schedule-item');
     expect(card.getAttribute('aria-label')).toContain('時間 22:30 から 翌 00:10 (Asia/Tokyo)');

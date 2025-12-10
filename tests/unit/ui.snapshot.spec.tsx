@@ -25,7 +25,7 @@ test("AppShell snapshot", async () => {
 
   await waitFor(() => {
     const statuses = screen.getAllByRole("status");
-    expect(statuses.some((status) => status.textContent?.includes("SP Connected"))).toBe(true);
+    expect(statuses.some((status) => status.textContent?.includes("SP Sign-In"))).toBe(true);
   });
 
   expect(container).toMatchSnapshot();

@@ -1,0 +1,31 @@
+name: storybook-a11y
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+
+jobs:
+  sb-a11y:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Install deps
+        run: npm ci
+
+      - name: "Conditional: Run Storybook a11y tests if build script exists"
+        run: |
+          if npm run | grep -q 'build-storybook'; then
+            echo "build-storybook script found. Running Storybook a11y checks..."
+            npm run build-storybook
+            npx http-server storybook-static -p 6006 & sleep 2
+            npx @storybook/test-runner --url http://127.0.0.1:6006 --maxWorkers=2
+          else
+            echo "Skipping Storybook steps: package.json has no 'build-storybook' script."
+          fi

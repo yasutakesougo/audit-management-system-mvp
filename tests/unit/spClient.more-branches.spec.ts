@@ -53,6 +53,7 @@ const mockGetRuntimeEnv = vi.mocked(getRuntimeEnv);
 const defaultConfig: AppConfig = { ...baseAppConfig };
 
 const originalNodeEnv = process.env.NODE_ENV;
+const originalPlaywrightFlag = process.env.PLAYWRIGHT_TEST;
 const originalFetch = globalThis.fetch;
 const originalWindow = (globalThis as Record<string, unknown>).window;
 
@@ -60,10 +61,16 @@ beforeEach(() => {
   mockGetAppConfig.mockReturnValue({ ...defaultConfig });
   mockGetRuntimeEnv.mockReturnValue({});
   __test__.resetMissingOptionalFieldsCache();
+  delete process.env.PLAYWRIGHT_TEST;
 });
 
 afterEach(() => {
   process.env.NODE_ENV = originalNodeEnv;
+  if (originalPlaywrightFlag === undefined) {
+    delete process.env.PLAYWRIGHT_TEST;
+  } else {
+    process.env.PLAYWRIGHT_TEST = originalPlaywrightFlag;
+  }
   if (originalFetch) {
     globalThis.fetch = originalFetch;
   } else {
@@ -79,23 +86,23 @@ afterEach(() => {
 });
 
 describe('ensureConfig edge cases', () => {
-  it('throws when resource or site value is still a placeholder', () => {
+  it('fails fast when resource or site value is still a placeholder', () => {
     mockGetAppConfig.mockReturnValue({
       ...defaultConfig,
       VITE_SP_RESOURCE: '<yourtenant>',
       VITE_SP_SITE_RELATIVE: '__FILL_ME__',
     });
 
-    expect(() => __test__.ensureConfig()).toThrowError(/未完了/);
+    expect(() => __test__.ensureConfig()).toThrow(/SharePoint 接続設定が未完了です。/);
   });
 
-  it('throws when resource domain is not a SharePoint host', () => {
+  it('rejects obviously invalid resource domains', () => {
     mockGetAppConfig.mockReturnValue({
       ...defaultConfig,
       VITE_SP_RESOURCE: 'https://example.com',
     });
 
-    expect(() => __test__.ensureConfig()).toThrowError(/形式が不正/);
+    expect(() => __test__.ensureConfig()).toThrow(/VITE_SP_RESOURCE の形式が不正です/);
   });
 
   it('treats undefined resource/site values as incomplete configuration', () => {
@@ -105,7 +112,7 @@ describe('ensureConfig edge cases', () => {
       VITE_SP_SITE_RELATIVE: undefined as unknown as string,
     });
 
-    expect(() => __test__.ensureConfig()).toThrowError(/未完了/);
+    expect(() => __test__.ensureConfig()).toThrow(/SharePoint 接続設定が未完了です。/);
   });
 });
 

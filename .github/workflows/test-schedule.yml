@@ -1,0 +1,37 @@
+name: schedule-guardrails
+
+on: [push, pull_request]
+
+jobs:
+  schedule:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Cache Playwright browsers
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: ${{ runner.os }}-playwright-${{ hashFiles('**/package-lock.json') }}
+          restore-keys: |
+            ${{ runner.os }}-playwright-
+      - run: npm ci
+      - name: Install Playwright browsers (ensure executables present)
+        run: npx playwright install --with-deps chromium
+      - name: Verify dependencies (early detection)
+        run: |
+          npm ls dayjs || true
+          node -e "console.log('dayjs resolved:', require.resolve('dayjs'))"
+      - name: Start dev server (background)
+        run: npm run dev -- --host --port 5173 --clearScreen false &
+      - name: Wait for dev server
+        run: npx wait-on http://127.0.0.1:5173
+      - name: Unit (week overlap)
+        run: npm run test:schedule:unit
+      - name: E2E (ARIA smoke, fixtures)
+        env:
+          VITE_SCHEDULE_FIXTURES: "1"
+          VITE_SKIP_LOGIN: "1"
+        run: npm run test:schedule:e2e

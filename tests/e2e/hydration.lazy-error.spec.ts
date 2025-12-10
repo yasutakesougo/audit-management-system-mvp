@@ -1,9 +1,9 @@
 import { expect, test } from '@playwright/test';
 
 import {
-  expectRouteSpan,
-  prepareHydrationApp,
-  readHydrationSpans,
+    expectRouteSpan,
+    prepareHydrationApp,
+    readHydrationSpans,
 } from './_helpers/hydrationHud';
 
 const ADMIN_CHUNK_GLOBS = ['**/SupportActivityMasterPage-*.js', '**/SupportActivityMasterPage.tsx'];
@@ -41,7 +41,7 @@ test.describe('Route hydration lazy-load failures', () => {
       await page.unroute(glob);
     }
 
-    const recordsLink = page.getByRole('link', { name: '記録一覧', exact: true }).first();
+    const recordsLink = page.getByRole('link', { name: '黒ノート', exact: true }).first();
     await recordsLink.click();
     await expect(page).toHaveURL('/');
 

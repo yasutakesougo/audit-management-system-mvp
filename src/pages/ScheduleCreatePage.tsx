@@ -5,25 +5,28 @@ import { useUsersStore } from '@/features/users/store';
 import { useToast } from '@/hooks/useToast';
 import { createSchedule, useSP } from '@/lib/spClient';
 import { formatInTimeZone, fromZonedTime } from '@/lib/tz';
+import type { IUserMaster } from '@/sharepoint/fields';
 import { SCHEDULE_FIELD_SERVICE_TYPE } from '@/sharepoint/fields';
+import { SERVICE_TYPE_OPTIONS, normalizeServiceType, type ServiceType } from '@/sharepoint/serviceTypes';
 import { useStaff } from '@/stores/useStaff';
-import type { Staff, User } from '@/types';
+import type { Staff } from '@/types';
 import { formatRangeLocal } from '@/utils/datetime';
 import { MessageBar, MessageBarType } from '@fluentui/react';
 import ArrowBackRoundedIcon from '@mui/icons-material/ArrowBackRounded';
 import SaveRoundedIcon from '@mui/icons-material/SaveRounded';
 import WarningAmberIcon from '@mui/icons-material/WarningAmber';
 import Alert from '@mui/material/Alert';
+import Autocomplete from '@mui/material/Autocomplete';
 import Box from '@mui/material/Box';
 import Button from '@mui/material/Button';
 import FormControlLabel from '@mui/material/FormControlLabel';
+import ListSubheader from '@mui/material/ListSubheader';
 import MenuItem from '@mui/material/MenuItem';
 import Paper from '@mui/material/Paper';
 import Stack from '@mui/material/Stack';
 import Switch from '@mui/material/Switch';
 import TextField from '@mui/material/TextField';
 import Typography from '@mui/material/Typography';
-import Autocomplete from '@mui/material/Autocomplete';
 import { addDays, addMinutes, differenceInMinutes } from 'date-fns';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
@@ -38,6 +41,49 @@ const statusOptions: { value: Status; label: string }[] = SCHEDULE_STATUSES.map(
   label: STATUS_LABELS[status],
 }));
 
+/** 利用者選択用のViewModel型 */
+type UserOption = {
+  id: number;
+  displayName: string;
+  code: string;
+  furigana: string;
+};
+
+/** 生データをUserOptionに変換する共通関数 */
+const mapRawUserToOption = (user: unknown): UserOption => {
+  // IUserMaster型の場合
+  if (user && typeof user === 'object' && 'UserID' in user && 'FullName' in user) {
+    const userMaster = user as IUserMaster;
+    return {
+      id: userMaster.Id,
+      displayName: userMaster.FullName,
+      code: userMaster.UserID,
+      furigana: userMaster.Furigana || userMaster.FullNameKana || userMaster.FullName,
+    };
+  }
+
+  // 他の型の場合（後方互換性のため）
+  if (user && typeof user === 'object') {
+    const record = user as Record<string, unknown>;
+    const id = (record.Id as number) ?? (record.id as number) ?? 0;
+    const name = (record.FullName as string) ?? (record.name as string) ?? '氏名未登録';
+    const code = (record.UserID as string) ?? (record.userId as string) ?? `ID:${id}`;
+    const furigana = (record.Furigana as string) ??
+                    (record.FullNameKana as string) ??
+                    name;
+
+    return {
+      id: Number(id),
+      displayName: String(name),
+      code: String(code),
+      furigana: String(furigana)
+    };
+  }
+
+  // フォールバック
+  return { id: 0, displayName: '氏名未登録', code: 'ID:0', furigana: '氏名未登録' };
+};
+
 type FormState = {
   title: string;
   allDay: boolean;
@@ -50,7 +96,7 @@ type FormState = {
   status: Status;
   staffId: number | null;
   userId: number | null;
-  serviceType: string;
+  serviceType: ServiceType | '';
   usesVehicle: boolean;
 };
 
@@ -69,17 +115,40 @@ type ResolvedRange = {
   end: Date | null;
 };
 
+type ServiceTypeGroup = 'selected' | 'unselected';
+
+type ServiceTypeOptionItem = {
+  value: ServiceType;
+  label: ServiceType;
+  group: ServiceTypeGroup;
+};
+
+const SERVICE_TYPE_GROUP_LABELS: Record<ServiceTypeGroup, string> = {
+  selected: '選択済み',
+  unselected: '未選択',
+};
+
 const formatDateInput = (date: Date) => formatInTimeZone(date, TIMEZONE, 'yyyy-MM-dd');
 const formatTimeInput = (date: Date) => formatInTimeZone(date, TIMEZONE, 'HH:mm');
 
-const roundUpToStep = (date: Date, minutes: number) => {
+const roundUpToStep = (date: Date, stepMinutes: number): Date => {
   const result = new Date(date);
-  result.setSeconds(0, 0);
-  const remainder = result.getMinutes() % minutes;
-  if (remainder !== 0) {
-    result.setMinutes(result.getMinutes() + (minutes - remainder));
-  }
+  result.setSeconds(0, 0); // 秒・ミリ秒をクリアして時間のブレを防止
+  const minutes = result.getMinutes();
+  const rounded = Math.ceil(minutes / stepMinutes) * stepMinutes;
+  result.setMinutes(rounded);
   return result;
+};
+
+/** 現在時刻ベースのデフォルト時間範囲を計算 */
+const buildDefaultTimeRange = (): { startTime: string; endTime: string } => {
+  const now = new Date();
+  const start = roundUpToStep(now, ROUND_STEP_MINUTES);
+  const end = addMinutes(start, DEFAULT_DURATION_MINUTES);
+  return {
+    startTime: formatTimeInput(start),
+    endTime: formatTimeInput(end),
+  };
 };
 
 const buildDefaultForm = (): FormState => {
@@ -142,7 +211,7 @@ const resolveRange = (form: FormState): ResolvedRange => {
 
   try {
     const startLocalIso = `${form.startDate}T${startTime}`;
-  const startDateUtc = fromZonedTime(startLocalIso, TIMEZONE);
+    const startDateUtc = fromZonedTime(startLocalIso, TIMEZONE);
 
     let endDateLocal = form.endDate || form.startDate;
     let endTime = form.allDay ? '00:00' : form.endTime;
@@ -274,13 +343,20 @@ export default function ScheduleCreatePage() {
           endDate: ensureEndDateForAllDay(prev.startDate, prev.endDate),
         };
       }
-      const fallbackStart = lastTimedRangeRef.current.startTime || '09:00';
-      const fallbackEnd = lastTimedRangeRef.current.endTime || '10:00';
+      // lastTimedRangeRefに値があればそれを優先、なければ現在時刻ベースのデフォルト
+      const hasLastRange = lastTimedRangeRef.current.startTime && lastTimedRangeRef.current.endTime;
+      const timeRange = hasLastRange
+        ? {
+            startTime: lastTimedRangeRef.current.startTime,
+            endTime: lastTimedRangeRef.current.endTime
+          }
+        : buildDefaultTimeRange();
+
       return {
         ...prev,
         allDay: false,
-        startTime: fallbackStart,
-        endTime: fallbackEnd,
+        startTime: timeRange.startTime,
+        endTime: timeRange.endTime,
       };
     });
   }, []);
@@ -293,16 +369,43 @@ export default function ScheduleCreatePage() {
     }));
   }, []);
 
-  const handleUserSelect = useCallback((_: unknown, option: User | null) => {
+  const handleUserSelect = useCallback((_: unknown, option: UserOption | null) => {
     setForm((prev) => ({
       ...prev,
       userId: option ? option.id : null,
     }));
   }, []);
 
-  const handleServiceTypeChange = useCallback((event: React.ChangeEvent<HTMLInputElement>) => {
-    const nextValue = event.target.value;
-    setForm((prev) => ({ ...prev, serviceType: nextValue }));
+  const serviceTypeOptions = useMemo(() => {
+    const normalized = normalizeServiceType(form.serviceType);
+    const selected: ServiceTypeOptionItem[] = normalized
+      ? [
+          {
+            value: normalized,
+            label: normalized,
+            group: 'selected',
+          },
+        ]
+      : [];
+    const unselected = SERVICE_TYPE_OPTIONS.filter((option) => option !== normalized).map<ServiceTypeOptionItem>((option) => ({
+      value: option,
+      label: option,
+      group: 'unselected',
+    }));
+    return [...selected, ...unselected];
+  }, [form.serviceType]);
+
+  const selectedServiceTypeOption = useMemo(() => {
+    const normalized = normalizeServiceType(form.serviceType);
+    if (!normalized) return null;
+    return serviceTypeOptions.find((option) => option.value === normalized) ?? null;
+  }, [form.serviceType, serviceTypeOptions]);
+
+  const handleServiceTypeSelect = useCallback((_: unknown, option: ServiceTypeOptionItem | null) => {
+    setForm((prev) => ({
+      ...prev,
+      serviceType: option ? option.value : '',
+    }));
   }, []);
 
   const handleUsesVehicleChange = useCallback((event: React.ChangeEvent<HTMLInputElement>) => {
@@ -322,13 +425,14 @@ export default function ScheduleCreatePage() {
     return staff.slice().sort((a, b) => a.name.localeCompare(b.name, 'ja'));
   }, [staff]);
 
-  const userOptions = useMemo(() => {
-    if (!Array.isArray(users)) return [] as User[];
-    return users.slice().sort((a, b) => {
-      const ax = a.Furigana || a.FullNameKana || a.FullName || a.UserID;
-      const bx = b.Furigana || b.FullNameKana || b.FullName || b.UserID;
-      return ax.localeCompare(bx, 'ja');
-    });
+  const userOptions = useMemo<UserOption[]>(() => {
+    if (!Array.isArray(users)) return [];
+
+    // 型安全にUserOptionに変換
+    return users
+      .filter((raw): raw is NonNullable<typeof raw> => raw != null)
+      .map(mapRawUserToOption)
+      .sort((a, b) => a.furigana.localeCompare(b.furigana, 'ja'));
   }, [users]);
 
   const selectedStaff = useMemo(() => {
@@ -338,14 +442,7 @@ export default function ScheduleCreatePage() {
 
   const selectedUser = useMemo(() => {
     if (form.userId == null) return null;
-    return userOptions.find((candidate) => {
-      // IUserMaster型の場合
-      if ('Id' in candidate) {
-        return candidate.Id === form.userId;
-      }
-      // User型の場合
-      return candidate.id === form.userId;
-    }) ?? null;
+    return userOptions.find((candidate) => candidate.id === form.userId) ?? null;
   }, [form.userId, userOptions]);
 
   const requiresDrivingLicense = form.usesVehicle || form.serviceType === '送迎';
@@ -383,7 +480,7 @@ export default function ScheduleCreatePage() {
 
     const staffLookupId = typeof form.staffId === 'number' && Number.isFinite(form.staffId) ? form.staffId : null;
     const userLookupId = typeof form.userId === 'number' && Number.isFinite(form.userId) ? form.userId : null;
-    const serviceTypeValue = form.serviceType.trim();
+    const serviceTypeValue = normalizeServiceType(form.serviceType);
 
     const payload = {
       Title: form.title.trim(),
@@ -395,7 +492,7 @@ export default function ScheduleCreatePage() {
       Notes: form.notes.trim() || null,
       StaffIdId: staffLookupId,
       UserIdId: userLookupId,
-      [SCHEDULE_FIELD_SERVICE_TYPE]: serviceTypeValue || null,
+      [SCHEDULE_FIELD_SERVICE_TYPE]: serviceTypeValue,
     } as const;
 
     try {
@@ -403,7 +500,7 @@ export default function ScheduleCreatePage() {
       setErrors({});
       await createSchedule(sp, payload);
       show('success', '予定を作成しました');
-      navigate('/schedule', { replace: true });
+      navigate('/schedules/week', { replace: true });
     } catch (error) {
       const message = error instanceof Error ? error.message : '保存に失敗しました。時間をおいて再実行してください。';
       setSubmitError(message);
@@ -526,32 +623,54 @@ export default function ScheduleCreatePage() {
               placeholder="会議室や訪問先など"
             />
 
-            <TextField
-              select
-              label="サービス種別"
-              value={form.serviceType}
-              onChange={handleServiceTypeChange}
+            <Autocomplete<ServiceTypeOptionItem, false, false, false>
+              options={serviceTypeOptions}
+              value={selectedServiceTypeOption}
+              onChange={handleServiceTypeSelect}
+              disableClearable={false}
+              clearOnEscape
+              autoHighlight
+              filterOptions={(options, state) => {
+                const query = state.inputValue.trim().toLocaleLowerCase('ja');
+                if (!query) return options;
+                return options.filter((option) => option.label.toLocaleLowerCase('ja').includes(query));
+              }}
+              groupBy={(option) => option.group}
+              renderGroup={(params) => (
+                <li key={params.key}>
+                  <ListSubheader component="div" role="presentation" sx={{ lineHeight: '32px' }}>
+                    {SERVICE_TYPE_GROUP_LABELS[params.group as ServiceTypeGroup] ?? params.group}
+                  </ListSubheader>
+                  <ul className="m-0 p-0">{params.children}</ul>
+                </li>
+              )}
+              getOptionLabel={(option) => option.label}
+              isOptionEqualToValue={(option, value) => option.value === value.value}
+              noOptionsText="サービス種別が見つかりません"
               fullWidth
-              helperText="送迎を選択すると車両利用の警告が有効になります"
-            >
-              <MenuItem value="">未選択</MenuItem>
-              <MenuItem value="送迎">送迎</MenuItem>
-              <MenuItem value="訪問支援">訪問支援</MenuItem>
-              <MenuItem value="内勤">内勤</MenuItem>
-              <MenuItem value="外出支援">外出支援</MenuItem>
-            </TextField>
+              ListboxProps={{ style: { padding: 0 } }}
+              renderInput={(params) => {
+                params.inputProps.autoComplete = 'off';
+                return (
+                  <TextField
+                    {...params}
+                    label="サービス種別"
+                    placeholder="サービス種別を選択してください"
+                    helperText="送迎を選択すると車両利用の警告が有効になります"
+                  />
+                );
+              }}
+            />
 
-            <Autocomplete<User, false, false, false>
-              options={userOptions as User[]}
-              value={selectedUser as User | null}
+            <Autocomplete<UserOption, false, false, false>
+              options={userOptions}
+              value={selectedUser}
               onChange={handleUserSelect}
               loading={usersLoading}
               noOptionsText={usersLoading ? '読み込み中…' : '該当する利用者が見つかりません'}
               isOptionEqualToValue={(option, value) => option.id === value.id}
               getOptionLabel={(option) => {
-                const name = option.name || '氏名未登録';
-                const code = option.userId || `ID:${option.id}`;
-                return `${name}（${code}）`;
+                return `${option.displayName}（${option.code}）`;
               }}
               renderInput={(params) => {
                 params.inputProps.autoComplete = 'off';

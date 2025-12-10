@@ -117,7 +117,7 @@ async function ensureActivityDiaryList(sp: Pick<UseSP, 'spFetch' | 'ensureListEx
         await sp.ensureListExists(LIST_TITLE, fields);
       } catch (error) {
         const message = error instanceof Error ? error.message : String(error);
-        throw new Error(`活動日誌リストの作成に失敗しました: ${message}`);
+        throw new Error(`支援記録（ケース記録）リストの作成に失敗しました: ${message}`);
       }
     })();
   }

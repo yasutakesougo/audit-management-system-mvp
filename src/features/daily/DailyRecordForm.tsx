@@ -1,7 +1,10 @@
 import AccessTimeIcon from '@mui/icons-material/AccessTime';
 import DeleteIcon from '@mui/icons-material/Delete';
+import InfoOutlinedIcon from '@mui/icons-material/InfoOutlined';
 import PersonIcon from '@mui/icons-material/Person';
 import RestaurantIcon from '@mui/icons-material/Restaurant';
+import Alert from '@mui/material/Alert';
+import Autocomplete from '@mui/material/Autocomplete';
 import Box from '@mui/material/Box';
 import Button from '@mui/material/Button';
 import Checkbox from '@mui/material/Checkbox';
@@ -19,8 +22,15 @@ import Select from '@mui/material/Select';
 import Stack from '@mui/material/Stack';
 import TextField from '@mui/material/TextField';
 import Typography from '@mui/material/Typography';
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { DailyAData, MealAmount, PersonDaily } from '../../domain/daily/types';
+import {
+    buildSpecialNotesFromImportantHandoffs,
+    shouldAutoGenerateSpecialNotes,
+    useImportantHandoffsForDaily
+} from '../handoff/hooks/useImportantHandoffsForDaily';
+import { useDailyUserOptions } from './useDailyUserOptions';
+import type { DailyUserOption } from './useDailyUserOptions';
 
 interface DailyRecordFormProps {
   open: boolean;
@@ -37,81 +47,156 @@ const mealOptions = [
   { value: 'なし' as const, label: 'なし' }
 ];
 
-// ダミーのユーザーデータ（32名の通所者）
-const mockUsers = [
-  { UserID: '001', FullName: '田中太郎' },
-  { UserID: '002', FullName: '佐藤花子' },
-  { UserID: '003', FullName: '鈴木次郎' },
-  { UserID: '004', FullName: '高橋美咲' },
-  { UserID: '005', FullName: '山田健一' },
-  { UserID: '006', FullName: '渡辺由美' },
-  { UserID: '007', FullName: '伊藤雄介' },
-  { UserID: '008', FullName: '中村恵子' },
-  { UserID: '009', FullName: '小林智子' },
-  { UserID: '010', FullName: '加藤秀樹' },
-  { UserID: '011', FullName: '吉田京子' },
-  { UserID: '012', FullName: '清水達也' },
-  { UserID: '013', FullName: '松本麻衣' },
-  { UserID: '014', FullName: '森田健二' },
-  { UserID: '015', FullName: '池田理恵' },
-  { UserID: '016', FullName: '石井大輔' },
-  { UserID: '017', FullName: '橋本真理' },
-  { UserID: '018', FullName: '藤田和也' },
-  { UserID: '019', FullName: '長谷川瞳' },
-  { UserID: '020', FullName: '村上拓海' },
-  { UserID: '021', FullName: '坂本彩香' },
-  { UserID: '022', FullName: '岡田裕太' },
-  { UserID: '023', FullName: '近藤美和' },
-  { UserID: '024', FullName: '福田誠' },
-  { UserID: '025', FullName: '前田愛' },
-  { UserID: '026', FullName: '木村康平' },
-  { UserID: '027', FullName: '内田千春' },
-  { UserID: '028', FullName: '西川雅人' },
-  { UserID: '029', FullName: '斎藤洋子' },
-  { UserID: '030', FullName: '三浦大輔' },
-  { UserID: '031', FullName: '小野寺美加' },
-  { UserID: '032', FullName: '新井智也' }
-];
+
+// 「重要申し送り」から問題行動の候補を推定するための型
+type ProblemBehaviorSuggestion = {
+  selfHarm: boolean;
+  violence: boolean;
+  loudVoice: boolean;
+  pica: boolean;
+  other: boolean;
+  otherDetail: string;
+};
+
+function buildProblemBehaviorSuggestion(
+  handoffs: { message: string; category?: string }[]
+): ProblemBehaviorSuggestion {
+  const suggestion: ProblemBehaviorSuggestion = {
+    selfHarm: false,
+    violence: false,
+    loudVoice: false,
+    pica: false,
+    other: false,
+    otherDetail: ''
+  };
+
+  const text = handoffs.map(h => h.message).join('\n');
+
+  // 自傷系
+  if (text.match(/自傷|自分を叩く|頭を打つ|自分を殴る|自分.*叩く|自分.*打つ/)) {
+    suggestion.selfHarm = true;
+  }
+
+  // 暴力・他害系
+  if (text.match(/他害|職員.*殴る|職員.*蹴る|職員.*叩く|利用者.*殴る|利用者.*蹴る|利用者.*叩く|暴力/) && !suggestion.selfHarm) {
+    suggestion.violence = true;
+  }
+
+  // 大声・奇声系
+  if (text.match(/大声|叫ぶ|奇声|怒鳴る/)) {
+    suggestion.loudVoice = true;
+  }
+
+  // 異食系
+  if (text.match(/異食|口に入れる|拾い食い|食べてはいけないもの/)) {
+    suggestion.pica = true;
+  }
+
+  // その他（今は「その他詳細」に文全体を入れるだけ、将来拡張可）
+  if (!suggestion.selfHarm && !suggestion.violence && !suggestion.loudVoice && !suggestion.pica) {
+    if (text.trim().length > 0) {
+      suggestion.other = true;
+      suggestion.otherDetail = '申し送り内容に基づく行動上の注意あり';
+    }
+  }
+
+  return suggestion;
+}
+
+function isProblemBehaviorEmpty(pb: DailyAData['problemBehavior'] | undefined): boolean {
+  if (!pb) return true;
+  return (
+    !pb.selfHarm &&
+    !pb.violence &&
+    !pb.loudVoice &&
+    !pb.pica &&
+    !pb.other &&
+    !pb.otherDetail
+  );
+}
+
+const createEmptyDailyRecord = (): Omit<PersonDaily, 'id'> => ({
+  personId: '',
+  personName: '',
+  date: new Date().toISOString().split('T')[0],
+  status: '作成中',
+  reporter: { name: '' },
+  draft: { isDraft: true },
+  kind: 'A',
+  data: {
+    amActivities: [],
+    pmActivities: [],
+    amNotes: '',
+    pmNotes: '',
+    mealAmount: '完食',
+    problemBehavior: {
+      selfHarm: false,
+      violence: false,
+      loudVoice: false,
+      pica: false,
+      other: false,
+      otherDetail: ''
+    },
+    seizureRecord: {
+      occurred: false,
+      time: '',
+      duration: '',
+      severity: undefined,
+      notes: ''
+    },
+    specialNotes: ''
+  }
+});
 
 export function DailyRecordForm({ open, onClose, record, onSave }: DailyRecordFormProps) {
-  const users = mockUsers;
+  const { options: userOptions, findByPersonId } = useDailyUserOptions();
 
-  const [formData, setFormData] = useState<Omit<PersonDaily, 'id'>>({
-    personId: '',
-    personName: '',
-    date: new Date().toISOString().split('T')[0],
-    status: '作成中',
-    reporter: { name: '' },
-    draft: { isDraft: true },
-    kind: 'A',
-    data: {
-      amActivities: [],
-      pmActivities: [],
-      amNotes: '',
-      pmNotes: '',
-      mealAmount: '完食',
-      problemBehavior: {
-        selfHarm: false,
-        violence: false,
-        loudVoice: false,
-        pica: false,
-        other: false,
-        otherDetail: ''
-      },
-      seizureRecord: {
-        occurred: false,
-        time: '',
-        duration: '',
-        severity: undefined,
-        notes: ''
-      },
-      specialNotes: ''
-    }
-  });
+  const [formData, setFormData] = useState<Omit<PersonDaily, 'id'>>(
+    () => createEmptyDailyRecord()
+  );
 
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [newActivityAM, setNewActivityAM] = useState('');
   const [newActivityPM, setNewActivityPM] = useState('');
+
+  // 問題行動の提案を一度使ったかどうか
+  const [problemSuggestionApplied, setProblemSuggestionApplied] = useState(false);
+
+  const selectedUserValue = useMemo<DailyUserOption | null>(() => {
+    if (!formData.personId) {
+      return null;
+    }
+    const matched = findByPersonId(formData.personId);
+    if (matched) {
+      return matched;
+    }
+    if (formData.personName) {
+      return {
+        id: formData.personId,
+        label: formData.personName,
+        lookupId: undefined,
+        furigana: null,
+      };
+    }
+    return null;
+  }, [findByPersonId, formData.personId, formData.personName]);
+
+  // 🔽 Phase 9: 重要な申し送りを取得
+  const {
+    items: importantHandoffs,
+    loading: loadingHandoffs,
+    error: handoffError,
+    count: handoffCount
+  } = useImportantHandoffsForDaily(formData.personId, formData.date);
+
+  // Phase 11B: 問題行動の提案計算
+  const problemSuggestion = useMemo(
+    () =>
+      importantHandoffs && importantHandoffs.length > 0
+        ? buildProblemBehaviorSuggestion(importantHandoffs)
+        : null,
+    [importantHandoffs]
+  );
 
   // レコードの初期化
   useEffect(() => {
@@ -123,61 +208,65 @@ export function DailyRecordForm({ open, onClose, record, onSave }: DailyRecordFo
         status: record.status,
         reporter: record.reporter,
         draft: record.draft,
-        kind: 'A',
+        kind: record.kind,
         data: record.data
       });
     } else {
-      setFormData({
-        personId: '',
-        personName: '',
-        date: new Date().toISOString().split('T')[0],
-        status: '作成中',
-        reporter: { name: '' },
-        draft: { isDraft: true },
-        kind: 'A',
-        data: {
-          amActivities: [],
-          pmActivities: [],
-          amNotes: '',
-          pmNotes: '',
-          mealAmount: '完食',
-          problemBehavior: {
-            selfHarm: false,
-            violence: false,
-            loudVoice: false,
-            pica: false,
-            other: false,
-            otherDetail: ''
-          },
-          seizureRecord: {
-            occurred: false,
-            time: '',
-            duration: '',
-            severity: undefined,
-            notes: ''
-          },
-          specialNotes: ''
-        }
-      });
+      setFormData(createEmptyDailyRecord());
     }
   }, [record, open]);
 
-  const handleInputChange = (field: keyof typeof formData, value: string) => {
-    setFormData(prev => ({ ...prev, [field]: value }));
-    if (errors[field]) {
-      setErrors(prev => ({ ...prev, [field]: '' }));
+  // 🔽 Phase 9: 特記事項 自動下書き用エフェクト
+  useEffect(() => {
+    // 条件:
+    // - 編集ではなく「新規作成」のとき（record が undefined）
+    // - 利用者が選択されている
+    // - 重要な申し送りが1件以上ある
+    // - 特記事項がまだ空
+    if (
+      shouldAutoGenerateSpecialNotes(
+        !record,
+        formData.personId,
+        formData.data.specialNotes || '',
+        handoffCount
+      ) &&
+      !loadingHandoffs &&
+      !handoffError &&
+      importantHandoffs
+    ) {
+      setFormData(prev => ({
+        ...prev,
+        data: {
+          ...prev.data,
+          specialNotes: buildSpecialNotesFromImportantHandoffs(
+            importantHandoffs,
+            prev.data.specialNotes || ''
+          )
+        }
+      }));
+    }
+  }, [record, formData.personId, loadingHandoffs, importantHandoffs, handoffCount, handoffError]);
+
+  const handleDateChange = (value: string) => {
+    setFormData(prev => ({ ...prev, date: value }));
+    if (errors.date) {
+      setErrors(prev => ({ ...prev, date: '' }));
     }
   };
 
-    const handleDataChange = (field: keyof DailyAData, value: string | string[]) => {
+  // handleDataChangeのオーバーロード
+  function handleDataChange(field: 'amActivities' | 'pmActivities', value: string[]): void;
+  function handleDataChange(field: 'amNotes' | 'pmNotes' | 'specialNotes', value: string): void;
+  function handleDataChange(field: 'mealAmount', value: MealAmount): void;
+  function handleDataChange(field: keyof DailyAData, value: string | string[] | MealAmount) {
     setFormData(prev => ({
       ...prev,
       data: {
         ...prev.data,
-        [field]: value
-      }
+        [field]: value,
+      },
     }));
-  };
+  }
 
   const handleProblemBehaviorChange = (field: string, value: boolean | string) => {
     setFormData(prev => ({
@@ -223,13 +312,15 @@ export function DailyRecordForm({ open, onClose, record, onSave }: DailyRecordFo
     }));
   };
 
-  const handlePersonChange = (personId: string) => {
-    const selectedUser = users.find(user => user.UserID === personId);
+  const handlePersonChange = (option: DailyUserOption | null) => {
     setFormData(prev => ({
       ...prev,
-      personId,
-      personName: selectedUser?.FullName || ''
+      personId: option?.id ?? '',
+      personName: option?.label ?? ''
     }));
+    if (errors.personId) {
+      setErrors(prev => ({ ...prev, personId: '' }));
+    }
   };
 
   const handleAddActivity = (period: 'AM' | 'PM') => {
@@ -262,11 +353,38 @@ export function DailyRecordForm({ open, onClose, record, onSave }: DailyRecordFo
     }));
   };
 
+  // Phase 11B: 問題行動の提案を反映する処理
+  const applyProblemBehaviorSuggestion = () => {
+    if (!problemSuggestion) return;
+
+    setFormData(prev => ({
+      ...prev,
+      data: {
+        ...prev.data,
+        problemBehavior: {
+          selfHarm:
+            prev.data.problemBehavior?.selfHarm || problemSuggestion.selfHarm,
+          violence:
+            prev.data.problemBehavior?.violence || problemSuggestion.violence,
+          loudVoice:
+            prev.data.problemBehavior?.loudVoice || problemSuggestion.loudVoice,
+          pica: prev.data.problemBehavior?.pica || problemSuggestion.pica,
+          other: prev.data.problemBehavior?.other || problemSuggestion.other,
+          otherDetail:
+            prev.data.problemBehavior?.otherDetail ||
+            problemSuggestion.otherDetail
+        }
+      }
+    }));
+
+    setProblemSuggestionApplied(true);
+  };
+
   const validateForm = () => {
     const newErrors: Record<string, string> = {};
 
     if (!formData.personId) {
-      newErrors.personId = '利用者を選択してください';
+      newErrors.personId = '利用者の選択は必須です';
     }
     if (!formData.date) {
       newErrors.date = '日付を入力してください';
@@ -286,7 +404,8 @@ export function DailyRecordForm({ open, onClose, record, onSave }: DailyRecordFo
     }
   };
 
-  const selectedUser = users.find(user => user.UserID === formData.personId);
+  // リアルタイムバリデーション：必須項目の入力状況をチェック
+  const isFormValid = formData.personId && formData.date && formData.reporter.name.trim();
 
   return (
     <Dialog
@@ -297,20 +416,26 @@ export function DailyRecordForm({ open, onClose, record, onSave }: DailyRecordFo
       PaperProps={{
         sx: { minHeight: '80vh' }
       }}
+      data-testid="daily-record-form-dialog"
     >
-      <DialogTitle>
+      <DialogTitle data-testid="daily-record-form-title">
         {record ? '日次記録の編集' : '新しい日次記録'}
-        {selectedUser && (
-          <Typography variant="subtitle2" color="textSecondary" sx={{ mt: 1 }}>
-            {selectedUser.FullName} ({selectedUser.UserID})
+        {selectedUserValue && (
+          <Typography
+            variant="subtitle2"
+            component="div"
+            color="textSecondary"
+            sx={{ mt: 1 }}
+          >
+            {selectedUserValue.label} ({selectedUserValue.id})
           </Typography>
         )}
       </DialogTitle>
 
-      <DialogContent dividers>
+      <DialogContent dividers data-testid="daily-record-form-content">
         <Stack spacing={3}>
           {/* 基本情報 */}
-          <Paper sx={{ p: 2 }}>
+          <Paper sx={{ p: 2 }} data-testid="basic-info-section">
             <Typography variant="subtitle1" sx={{ mb: 2, display: 'flex', alignItems: 'center' }}>
               <PersonIcon sx={{ mr: 1 }} />
               基本情報
@@ -318,32 +443,36 @@ export function DailyRecordForm({ open, onClose, record, onSave }: DailyRecordFo
 
             <Stack spacing={2}>
               <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2}>
-                <FormControl fullWidth error={!!errors.personId}>
-                  <InputLabel>利用者</InputLabel>
-                  <Select
-                    value={formData.personId}
-                    onChange={(e) => handlePersonChange(e.target.value)}
-                    label="利用者"
-                  >
-                    {users.map((user) => (
-                      <MenuItem key={user.UserID} value={user.UserID}>
-                        {user.FullName} ({user.UserID})
-                      </MenuItem>
-                    ))}
-                  </Select>
-                  {errors.personId && (
-                    <Typography variant="caption" color="error" sx={{ mt: 0.5 }}>
-                      {errors.personId}
-                    </Typography>
+                <Autocomplete
+                  fullWidth
+                  size="small"
+                  options={userOptions}
+                  value={selectedUserValue}
+                  onChange={(_, option) => handlePersonChange(option)}
+                  isOptionEqualToValue={(option, value) => option.id === value?.id}
+                  getOptionLabel={(option) =>
+                    option.furigana
+                      ? `${option.label}（${option.furigana}）`
+                      : option.label
+                  }
+                  renderInput={(params) => (
+                    <TextField
+                      {...params}
+                      label="利用者の選択"
+                      placeholder="氏名で検索してください"
+                      helperText={errors.personId || '氏名から利用者を検索できます'}
+                      error={!!errors.personId}
+                    />
                   )}
-                </FormControl>
+                  data-testid="daily-record-user-picker"
+                />
 
                 <TextField
                   fullWidth
                   label="日付"
                   type="date"
                   value={formData.date}
-                  onChange={(e) => handleInputChange('date', e.target.value)}
+                  onChange={(e) => handleDateChange(e.target.value)}
                   InputLabelProps={{ shrink: true }}
                   error={!!errors.date}
                   helperText={errors.date}
@@ -478,8 +607,10 @@ export function DailyRecordForm({ open, onClose, record, onSave }: DailyRecordFo
             </Typography>
 
             <FormControl fullWidth>
-              <InputLabel>食事摂取量</InputLabel>
+              <InputLabel id="daily-meal-amount-label">食事摂取量</InputLabel>
               <Select
+                labelId="daily-meal-amount-label"
+                id="daily-meal-amount-select"
                 value={formData.data.mealAmount || '完食'}
                 onChange={(e) => handleDataChange('mealAmount', e.target.value as MealAmount)}
                 label="食事摂取量"
@@ -492,6 +623,48 @@ export function DailyRecordForm({ open, onClose, record, onSave }: DailyRecordFo
               </Select>
             </FormControl>
           </Paper>
+
+          {/* 問題行動 - 申し送りからの自動提案バナー */}
+          {formData.personId &&
+            formData.date &&
+            !loadingHandoffs &&
+            !handoffError &&
+            problemSuggestion &&
+            !problemSuggestionApplied &&
+            isProblemBehaviorEmpty(formData.data.problemBehavior) && (
+              <Alert
+                severity="info"
+                sx={{ p: 2 }}
+              >
+                <Stack spacing={1}>
+                  <Typography variant="subtitle2">
+                    💡 申し送りの内容から、問題行動の候補があります
+                  </Typography>
+                  <Typography variant="body2">
+                    必要であれば「提案を反映」を押すと、自傷・暴力・大声・異食などのチェックを
+                    自動でオンにします。不要な項目は後から外すことができます。
+                  </Typography>
+                  <Stack direction="row" spacing={1} flexWrap="wrap">
+                    {problemSuggestion.selfHarm && <Chip label="自傷（候補）" size="small" />}
+                    {problemSuggestion.violence && <Chip label="暴力（候補）" size="small" />}
+                    {problemSuggestion.loudVoice && <Chip label="大声（候補）" size="small" />}
+                    {problemSuggestion.pica && <Chip label="異食（候補）" size="small" />}
+                    {problemSuggestion.other && (
+                      <Chip label="その他（候補）" size="small" />
+                    )}
+                  </Stack>
+                  <Box>
+                    <Button
+                      variant="outlined"
+                      size="small"
+                      onClick={applyProblemBehaviorSuggestion}
+                    >
+                      提案を反映
+                    </Button>
+                  </Box>
+                </Stack>
+              </Alert>
+            )}
 
           {/* 問題行動 */}
           <Paper sx={{ p: 2 }}>
@@ -621,6 +794,29 @@ export function DailyRecordForm({ open, onClose, record, onSave }: DailyRecordFo
               特記事項
             </Typography>
 
+            {/* Phase 9: 申し送り連携の案内表示 */}
+            {!record && !loadingHandoffs && handoffCount > 0 && (
+              <Alert
+                severity="info"
+                icon={<InfoOutlinedIcon />}
+                sx={{ mb: 2 }}
+              >
+                <Typography variant="body2">
+                  重要度「重要」の申し送りが {handoffCount} 件見つかりました。
+                  特記事項に自動で下書きしていますので、不要な行は削除してご利用ください。
+                </Typography>
+              </Alert>
+            )}
+
+            {/* Phase 9: 申し送り取得エラー時の表示 */}
+            {!record && handoffError && (
+              <Alert severity="warning" sx={{ mb: 2 }}>
+                <Typography variant="body2">
+                  申し送り情報の取得に失敗しました: {handoffError}
+                </Typography>
+              </Alert>
+            )}
+
             <TextField
               fullWidth
               label="特記事項"
@@ -628,19 +824,26 @@ export function DailyRecordForm({ open, onClose, record, onSave }: DailyRecordFo
               onChange={(e) => handleDataChange('specialNotes', e.target.value)}
               placeholder="その他の重要な情報や申し送り事項"
               multiline
-              rows={3}
+              rows={6}
+              helperText={
+                !record && handoffCount > 0
+                  ? `申し送りから自動転記: ${handoffCount}件`
+                  : "その他の重要な情報や申し送り事項を記録してください"
+              }
             />
           </Paper>
         </Stack>
       </DialogContent>
 
-      <DialogActions>
-        <Button onClick={onClose}>
+      <DialogActions data-testid="daily-record-form-actions">
+        <Button onClick={onClose} data-testid="cancel-button">
           キャンセル
         </Button>
         <Button
           onClick={handleSave}
           variant="contained"
+          data-testid="save-button"
+          disabled={!isFormValid}
         >
           {record ? '更新' : '保存'}
         </Button>

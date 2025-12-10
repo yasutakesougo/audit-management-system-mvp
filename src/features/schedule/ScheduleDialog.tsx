@@ -1,9 +1,16 @@
+import { useScheduleUserOptions } from '@/features/schedules/useScheduleUserOptions';
+import type { ScheduleUserOption } from '@/features/schedules/ScheduleCreateDialog';
+import { SERVICE_TYPE_LABELS } from '@/sharepoint/serviceTypes';
+import { useStaff } from '@/stores/useStaff';
 import CloseRoundedIcon from '@mui/icons-material/CloseRounded';
 import SaveRoundedIcon from '@mui/icons-material/SaveRounded';
 import WarningAmberRoundedIcon from '@mui/icons-material/WarningAmberRounded';
 import Alert from '@mui/material/Alert';
+import Autocomplete from '@mui/material/Autocomplete';
 import Box from '@mui/material/Box';
 import Button from '@mui/material/Button';
+import Chip from '@mui/material/Chip';
+import CircularProgress from '@mui/material/CircularProgress';
 import Dialog from '@mui/material/Dialog';
 import DialogActions from '@mui/material/DialogActions';
 import DialogContent from '@mui/material/DialogContent';
@@ -11,15 +18,21 @@ import DialogTitle from '@mui/material/DialogTitle';
 import FormControl from '@mui/material/FormControl';
 import InputLabel from '@mui/material/InputLabel';
 import MenuItem from '@mui/material/MenuItem';
-import Select from '@mui/material/Select';
 import type { SelectChangeEvent } from '@mui/material/Select';
+import Select from '@mui/material/Select';
 import Stack from '@mui/material/Stack';
 import TextField from '@mui/material/TextField';
 import Typography from '@mui/material/Typography';
 import { useCallback, useEffect, useMemo, useState, type ChangeEvent, type FormEvent } from 'react';
 import { checkScheduleConflicts, getConflictSeverity, type ConflictCheck } from './conflictChecker';
-import type { Category, DayPart, ExtendedScheduleForm, PersonType, Schedule, ScheduleForm, ScheduleStatus, ServiceType } from './types';
+import type { Category, DayPart, ExtendedScheduleForm, PersonType, Schedule, ScheduleForm, ScheduleOrg, ScheduleStaff, ScheduleStatus, ServiceType } from './types';
 import { laneLabels } from './views/TimelineWeek';
+
+type StaffOption = {
+	id: string;
+	name: string;
+	label: string;
+};
 
 type ScheduleDialogProps = {
 	open: boolean;
@@ -27,6 +40,10 @@ type ScheduleDialogProps = {
 	existingSchedules?: Schedule[];
 	onClose(): void;
 	onSubmit(values: ExtendedScheduleForm): Promise<void>;
+	// ★追加: 強制カテゴリモード（optional）
+	forcedCategory?: Category;
+	// ★追加: カテゴリ選択 UI を非表示にする
+	hideCategorySelect?: boolean;
 };
 
 const STATUS_LABELS: Record<ScheduleStatus, string> = {
@@ -68,7 +85,8 @@ const defaultForm = (): ExtendedScheduleForm => {
 		location: '',
 		// User defaults
 		userId: '',
-		serviceType: '一時ケア',
+		userLookupId: undefined,
+		serviceType: 'absence',
 		personType: 'Internal',
 		// Staff defaults
 		staffIds: [],
@@ -90,7 +108,8 @@ const cloneForm = (input: ExtendedScheduleForm): ExtendedScheduleForm => ({
 	location: input.location ?? '',
 	// User fields
 	userId: input.userId ?? '',
-	serviceType: input.serviceType ?? '一時ケア',
+	userLookupId: input.userLookupId,
+	serviceType: input.serviceType ?? 'absence',
 	personType: input.personType ?? 'Internal',
 	personId: input.personId,
 	personName: input.personName,
@@ -108,10 +127,73 @@ const cloneForm = (input: ExtendedScheduleForm): ExtendedScheduleForm => ({
 	externalOrgName: input.externalOrgName,
 });
 
-export function ScheduleDialog({ open, initial, existingSchedules = [], onClose, onSubmit }: ScheduleDialogProps) {
+export function ScheduleDialog({ open, initial, existingSchedules = [], onClose, onSubmit, forcedCategory, hideCategorySelect }: ScheduleDialogProps) {
 	const [form, setForm] = useState<ExtendedScheduleForm>(() => cloneForm(defaultForm()));
 	const [submitting, setSubmitting] = useState(false);
 	const [submitError, setSubmitError] = useState<string | null>(null);
+	const { data: staffData, loading: staffLoading, error: staffError } = useStaff();
+	const scheduleUserOptions = useScheduleUserOptions();
+	const [userInputValue, setUserInputValue] = useState('');
+
+	const staffOptions = useMemo<StaffOption[]>(() => {
+		if (!Array.isArray(staffData)) return [];
+		return staffData
+			.filter((item) => item && (item.id != null || item.staffId))
+			.map((item) => {
+				const numericId = item.id != null ? String(item.id) : String(item.staffId ?? '').trim();
+				const readableName = item.name?.trim() ?? '';
+				const secondary = item.staffId?.trim() ?? numericId;
+				const labelParts = [readableName || secondary];
+				if (readableName && secondary && secondary !== readableName) {
+					labelParts.push(`(${secondary})`);
+				}
+				return {
+					id: numericId,
+					name: readableName || secondary,
+					label: labelParts.join(' '),
+				};
+			})
+			.filter((option, index, array) => option.id.length > 0 && array.findIndex((candidate) => candidate.id === option.id) === index)
+			.sort((a, b) => a.name.localeCompare(b.name, 'ja'));
+	}, [staffData]);
+
+	const staffOptionMap = useMemo(() => {
+		const map = new Map<string, StaffOption>();
+		for (const option of staffOptions) {
+			map.set(option.id, option);
+		}
+		return map;
+	}, [staffOptions]);
+
+	// カテゴリ別の候補配列（UIに表示する順序）
+	const USER_SERVICE_TYPE_VALUES: readonly ServiceType[] = ['absence', 'late', 'earlyLeave', 'other'];
+
+	const STAFF_SUBTYPE_VALUES: readonly ScheduleStaff['subType'][] = ['年休', '研修', '会議', 'その他'];
+
+	const ORG_SUBTYPE_VALUES: readonly ScheduleOrg['subType'][] = ['外部団体利用', '会議', '研修', '余暇イベント', 'その他'];
+
+	const selectedStaffOptions = useMemo<StaffOption[]>(() => {
+		const ids = Array.isArray(form.staffIds) ? form.staffIds : [];
+		return ids.map((raw) => {
+			const key = String(raw);
+			return staffOptionMap.get(key) ?? { id: key, name: key, label: key };
+		});
+	}, [form.staffIds, staffOptionMap]);
+
+	const selectedUserOption = useMemo<ScheduleUserOption | null>(() => {
+		const trimmed = form.userId?.trim();
+		if (trimmed) {
+			const matched = scheduleUserOptions.find((option) => option.id === trimmed);
+			if (matched) return matched;
+		}
+		if (form.userLookupId) {
+			const matched = scheduleUserOptions.find((option) => option.lookupId === form.userLookupId);
+			if (matched) return matched;
+		}
+		return null;
+	}, [form.userId, form.userLookupId, scheduleUserOptions]);
+
+	const userFieldValue: ScheduleUserOption | string | null = selectedUserOption ?? (form.userId?.trim() ? form.userId.trim() : null);
 
 	// 競合チェック
 	const conflictCheck = useMemo((): ConflictCheck => {
@@ -130,10 +212,23 @@ export function ScheduleDialog({ open, initial, existingSchedules = [], onClose,
 	useEffect(() => {
 		if (!open) return;
 		const payload = initial ? cloneForm(initial) : cloneForm(defaultForm());
+		// ★カテゴリ固定モードがあれば上書き
+		if (forcedCategory) {
+			payload.category = forcedCategory;
+		}
 		setForm(payload);
 		setSubmitting(false);
 		setSubmitError(null);
-	}, [open, initial]);
+	}, [open, initial, forcedCategory]);
+
+	useEffect(() => {
+		if (!open) return;
+		if (selectedUserOption) {
+			setUserInputValue(selectedUserOption.name);
+			return;
+		}
+		setUserInputValue(form.userId ?? '');
+	}, [open, selectedUserOption, form.userId]);
 
 	// Time validation
 	const timeValidation = useMemo(() => {
@@ -156,12 +251,71 @@ export function ScheduleDialog({ open, initial, existingSchedules = [], onClose,
 		}));
 	}, []);
 
+	const handleManualStaffInput = useCallback((event: ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+		const value = event.target.value;
+		const ids = value
+			.split(/[,\s\u3001\uFF0C]+/)
+			.map((part) => part.trim())
+			.filter((part) => part.length > 0);
+		setForm((prev) => ({
+			...prev,
+			staffIds: ids,
+			staffNames: ids,
+		}));
+	}, []);
+
+	const handleStaffSelect = useCallback((_: unknown, next: StaffOption[]) => {
+		setForm((prev) => ({
+			...prev,
+			staffIds: next.map((option) => option.id),
+			staffNames: next.map((option) => option.name),
+		}));
+	}, []);
+
+	const handleUserOptionChange = useCallback((_: unknown, value: ScheduleUserOption | string | null) => {
+		if (typeof value === 'string') {
+			const trimmed = value.trim();
+			setForm((prev) => ({
+				...prev,
+				userId: trimmed,
+				userLookupId: undefined,
+				personId: trimmed || prev.personId,
+			}));
+			return;
+		}
+		if (value) {
+			setForm((prev) => ({
+				...prev,
+				userId: value.id,
+				userLookupId: value.lookupId ?? prev.userLookupId,
+				personId: value.id,
+				personName: prev.personType === 'Internal'
+					? (prev.personName && prev.personName.trim().length > 0 ? prev.personName : value.name)
+					: prev.personName,
+			}));
+			setUserInputValue(value.name);
+			return;
+		}
+		setForm((prev) => ({
+			...prev,
+			userId: '',
+			userLookupId: undefined,
+			personId: '',
+		}));
+		setUserInputValue('');
+	}, []);
+
+	const handleUserInputChange = useCallback((_: unknown, value: string) => {
+		setUserInputValue(value);
+	}, []);
 	const handleStatusChange = useCallback((event: SelectChangeEvent<ScheduleStatus>) => {
 		const value = event.target.value as ScheduleStatus;
 		setForm((prev) => ({ ...prev, status: value }));
 	}, []);
 
 	const handleCategoryChange = useCallback((event: SelectChangeEvent<Category>) => {
+		// カテゴリ固定モードなら変更させない
+		if (forcedCategory) return;
 		const category = event.target.value as Category;
 		setForm((prev) => {
 			// カテゴリ変更時にデフォルト値をセット
@@ -171,7 +325,7 @@ export function ScheduleDialog({ open, initial, existingSchedules = [], onClose,
 				return {
 					...base,
 					userId: prev.userId || '',
-					serviceType: prev.serviceType || '一時ケア',
+					serviceType: prev.serviceType || 'absence',
 					personType: prev.personType || 'Internal',
 				};
 			} else if (category === 'Staff') {
@@ -189,7 +343,12 @@ export function ScheduleDialog({ open, initial, existingSchedules = [], onClose,
 			}
 			return base;
 		});
-	}, []);
+	}, [forcedCategory]);
+
+	const hasConflictError = conflictCheck.hasConflict &&
+		conflictCheck.conflicts.some(c => getConflictSeverity(c.reason) === 'error');
+	const hasConflictWarning = conflictCheck.hasConflict &&
+		conflictCheck.conflicts.some(c => getConflictSeverity(c.reason) === 'warning');
 
 	const handleSubmit = useCallback(async (event: FormEvent<HTMLFormElement>) => {
 		event.preventDefault();
@@ -208,17 +367,16 @@ export function ScheduleDialog({ open, initial, existingSchedules = [], onClose,
 			setSubmitError(message);
 			setSubmitting(false);
 		}
-	}, [form, timeValidation, onSubmit, onClose]);
+	}, [form, timeValidation, hasConflictError, onSubmit, onClose]);
 
 	const handleClose = useCallback(() => {
 		if (submitting) return;
 		onClose();
 	}, [submitting, onClose]);
 
-	const hasConflictError = conflictCheck.hasConflict &&
-		conflictCheck.conflicts.some(c => getConflictSeverity(c.reason) === 'error');
-	const hasConflictWarning = conflictCheck.hasConflict &&
-		conflictCheck.conflicts.some(c => getConflictSeverity(c.reason) === 'warning');
+
+	const staffSelectionRequired = form.category === 'User';
+	const staffSelectionMissing = staffSelectionRequired && (!form.staffIds || form.staffIds.length === 0);
 
 	return (
 		<Dialog
@@ -287,6 +445,7 @@ export function ScheduleDialog({ open, initial, existingSchedules = [], onClose,
 							</Alert>
 						)}
 
+						{!hideCategorySelect && !forcedCategory && (
 						<FormControl fullWidth>
 							<InputLabel>カテゴリ</InputLabel>
 							<Select
@@ -307,27 +466,51 @@ export function ScheduleDialog({ open, initial, existingSchedules = [], onClose,
 								})}
 							</Select>
 						</FormControl>
+						)}
 
 						{/* カテゴリ別フィールド */}
 						{form.category === 'User' && (
 							<>
-								<TextField
-									label="利用者 ID"
-									value={form.userId || ''}
-									onChange={handleChange('userId')}
-									required
-									fullWidth
-									placeholder="U-001"
+								<Autocomplete<ScheduleUserOption, false, false, true>
+									freeSolo
+									options={scheduleUserOptions}
+									value={userFieldValue}
+									inputValue={userInputValue}
+									onInputChange={handleUserInputChange}
+									onChange={handleUserOptionChange}
+									getOptionLabel={(option) => (typeof option === 'string' ? option : option.name)}
+									isOptionEqualToValue={(option, value) => {
+										if (typeof value === 'string') {
+											return option.id === value || option.name === value;
+										}
+										return option.id === value.id;
+									}}
+									renderInput={(params) => (
+										<TextField
+											{...params}
+											label="利用者"
+											required
+											placeholder="氏名で検索"
+											inputProps={{
+												...params.inputProps,
+												'aria-label': '利用者の選択',
+											}}
+											helperText="利用者コードは保存後に自動採番されます"
+										/>
+									)}
 								/>
 								<FormControl fullWidth>
 									<InputLabel>サービス種別</InputLabel>
 									<Select
-										value={form.serviceType || '一時ケア'}
+										value={form.serviceType || 'absence'}
 										label="サービス種別"
 										onChange={(e) => setForm(prev => ({ ...prev, serviceType: e.target.value as ServiceType }))}
 									>
-										<MenuItem value="一時ケア">一時ケア</MenuItem>
-										<MenuItem value="ショートステイ">ショートステイ</MenuItem>
+										{USER_SERVICE_TYPE_VALUES.map((value) => (
+											<MenuItem key={value} value={value}>
+												{SERVICE_TYPE_LABELS[value] ?? String(value)}
+											</MenuItem>
+										))}
 									</Select>
 								</FormControl>
 								<FormControl fullWidth>
@@ -376,6 +559,56 @@ export function ScheduleDialog({ open, initial, existingSchedules = [], onClose,
 										/>
 									</>
 								)}
+
+								{(!staffLoading && staffOptions.length === 0) ? (
+									<TextField
+										label="担当職員ID (カンマ区切り)"
+										value={(form.staffIds ?? []).join(',')}
+										onChange={handleManualStaffInput}
+										fullWidth
+										placeholder="1,2,3"
+										helperText={staffError ? '職員情報の取得に失敗しました。IDを直接入力してください。' : '担当職員を入力してください (複数可)'}
+										error={Boolean(staffError) || staffSelectionMissing}
+									/>
+								) : (
+									<Autocomplete
+										multiple
+										options={staffOptions}
+										value={selectedStaffOptions}
+										onChange={handleStaffSelect}
+										disableCloseOnSelect
+										loading={staffLoading}
+										isOptionEqualToValue={(option, value) => option.id === value.id}
+										getOptionLabel={(option) => option.label}
+										renderTags={(value, getTagProps) =>
+											value.map((option, index) => (
+												<Chip
+													{...getTagProps({ index })}
+													key={option.id}
+													label={option.label}
+												/>
+											))
+										}
+										renderInput={(params) => (
+											<TextField
+												{...params}
+												label="担当職員"
+												placeholder="担当職員を選択"
+												helperText={staffError ? '職員情報の取得に失敗しました。検索できない場合はIDを直接入力してください。' : '担当職員を1名以上選択してください'}
+												error={Boolean(staffError) || staffSelectionMissing}
+												InputProps={{
+													...params.InputProps,
+													endAdornment: (
+														<>
+															{staffLoading ? <CircularProgress color="inherit" size={16} sx={{ mr: 1 }} /> : null}
+															{params.InputProps.endAdornment}
+														</>
+													),
+												}}
+											/>
+										)}
+									/>
+								)}
 							</>
 						)}
 
@@ -383,11 +616,8 @@ export function ScheduleDialog({ open, initial, existingSchedules = [], onClose,
 							<>
 								<TextField
 									label="職員ID (カンマ区切りで複数可)"
-									value={form.staffIds?.join(',') || ''}
-									onChange={(e) => setForm(prev => ({
-										...prev,
-										staffIds: e.target.value.split(',').filter(id => id.trim())
-									}))}
+									value={(form.staffIds ?? []).join(',')}
+									onChange={handleManualStaffInput}
 									fullWidth
 									placeholder="S-001,S-002"
 									helperText="複数の職員IDをカンマで区切って入力してください"
@@ -399,10 +629,9 @@ export function ScheduleDialog({ open, initial, existingSchedules = [], onClose,
 										label="サブタイプ"
 										onChange={(e) => setForm(prev => ({ ...prev, subType: e.target.value }))}
 									>
-										<MenuItem value="会議">会議</MenuItem>
-										<MenuItem value="研修">研修</MenuItem>
-										<MenuItem value="来客対応">来客対応</MenuItem>
-										<MenuItem value="年休">年休</MenuItem>
+										{STAFF_SUBTYPE_VALUES.map((v) => (
+											<MenuItem key={v} value={v}>{v}</MenuItem>
+										))}
 									</Select>
 								</FormControl>
 								{form.subType === '年休' && (
@@ -431,11 +660,9 @@ export function ScheduleDialog({ open, initial, existingSchedules = [], onClose,
 										label="イベントタイプ"
 										onChange={(e) => setForm(prev => ({ ...prev, subType: e.target.value }))}
 									>
-										<MenuItem value="会議">会議</MenuItem>
-										<MenuItem value="研修">研修</MenuItem>
-										<MenuItem value="監査">監査</MenuItem>
-										<MenuItem value="余暇イベント">余暇イベント</MenuItem>
-										<MenuItem value="外部団体利用">外部団体利用</MenuItem>
+										{ORG_SUBTYPE_VALUES.map((v) => (
+											<MenuItem key={v} value={v}>{v}</MenuItem>
+										))}
 									</Select>
 								</FormControl>
 								{form.subType === '外部団体利用' && (

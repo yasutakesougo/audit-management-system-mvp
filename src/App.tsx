@@ -1,31 +1,70 @@
-import React, { useEffect, useMemo, type ReactNode } from 'react';
+import { HydrationHud } from '@/debug/HydrationHud';
+import type { CreateScheduleEventInput, SchedItem, SchedulesPort } from '@/features/schedules/data';
+import {
+  SchedulesProvider,
+  demoSchedulesPort,
+  makeGraphSchedulesPort,
+  makeMockScheduleCreator,
+  makeSharePointScheduleCreator,
+  makeSharePointSchedulesPort,
+} from '@/features/schedules/data';
 import CssBaseline from '@mui/material/CssBaseline';
+import React, { useEffect, useMemo, type ReactNode } from 'react';
 import { RouterProvider } from 'react-router-dom';
-import { MsalProvider } from './auth/MsalProvider';
-import { ThemeRoot } from './app/theme';
 import { router } from './app/router';
 import { routerFutureFlags } from './app/routerFuture';
-import { ToastProvider, useToast } from './hooks/useToast';
-import { registerNotifier } from './lib/notice';
-import { SchedulesProvider, demoSchedulesPort, makeGraphSchedulesPort } from '@/features/schedules/data';
-import { useAuth } from './auth/useAuth';
+import { ThemeRoot } from './app/theme';
 import { GRAPH_RESOURCE } from './auth/msalConfig';
-import { readBool } from './lib/env';
-import { HydrationHud } from '@/debug/HydrationHud';
+import { MsalProvider } from './auth/MsalProvider';
+import { useAuth } from './auth/useAuth';
+import { ToastProvider, useToast } from './hooks/useToast';
+import { getScheduleSaveMode, readBool } from './lib/env';
+import { registerNotifier } from './lib/notice';
 
 type BridgeProps = {
   children: ReactNode;
 };
 
 const graphEnabled = readBool('VITE_FEATURE_SCHEDULES_GRAPH', false);
+const hydrationHudEnabled = readBool('VITE_FEATURE_HYDRATION_HUD', false);
+const scheduleSaveMode = getScheduleSaveMode();
+const sharePointFeatureEnabled = readBool('VITE_FEATURE_SCHEDULES_SP', scheduleSaveMode === 'real');
+const forceSharePointList = readBool('VITE_FORCE_SHAREPOINT', false);
+const sharePointCreateEnabled = sharePointFeatureEnabled;
+const sharePointListEnabled = sharePointFeatureEnabled || forceSharePointList;
+
+type ScheduleCreateHandler = (input: CreateScheduleEventInput) => Promise<SchedItem>;
 
 function SchedulesProviderBridge({ children }: BridgeProps) {
   const { acquireToken } = useAuth();
 
   const port = useMemo(() => {
-    if (!graphEnabled) return demoSchedulesPort;
-    return makeGraphSchedulesPort(() => acquireToken(GRAPH_RESOURCE));
-  }, [acquireToken]);
+    const createHandler: ScheduleCreateHandler = sharePointCreateEnabled
+      ? (makeSharePointScheduleCreator({ acquireToken: () => acquireToken() }) as ScheduleCreateHandler)
+      : (makeMockScheduleCreator() as ScheduleCreateHandler);
+
+    let selectedPort: SchedulesPort;
+
+    if (sharePointListEnabled) {
+      console.info('[schedules] using SharePoint port');
+      selectedPort = makeSharePointSchedulesPort({
+        acquireToken: () => acquireToken(),
+        create: createHandler,
+      });
+    } else if (graphEnabled) {
+      console.info('[schedules] using Graph port');
+      selectedPort = makeGraphSchedulesPort(() => acquireToken(GRAPH_RESOURCE), { create: createHandler });
+    } else {
+      console.info('[schedules] using Demo port');
+      selectedPort = {
+        list: (range) => demoSchedulesPort.list(range),
+        create: (input) => createHandler(input),
+        update: demoSchedulesPort.update,
+      } satisfies SchedulesPort;
+    }
+
+    return selectedPort;
+  }, [acquireToken, graphEnabled, sharePointCreateEnabled, sharePointListEnabled]);
 
   return <SchedulesProvider value={port}>{children}</SchedulesProvider>;
 }
@@ -50,15 +89,21 @@ export const ToastNotifierBridge: React.FC = () => {
 function App() {
   return (
     <MsalProvider>
+      {/* 🔐 認証コンテキスト */}
       <ThemeRoot>
         <CssBaseline />
+        {/* 🎨 MUIテーマ + グローバルスタイル */}
         <ToastProvider>
+          {/* 📢 グローバルトースト通知 */}
           <SchedulesProviderBridge>
+            {/* 📅 スケジュール機能のデータポート（Graph / デモ切替） */}
             <ToastNotifierBridge />
+
             <RouterProvider router={router} future={routerFutureFlags} />
           </SchedulesProviderBridge>
         </ToastProvider>
-        <HydrationHud />
+        {/* 🔍 開発/検証用 HUD（本番では非表示可能） */}
+        {hydrationHudEnabled && <HydrationHud />}
       </ThemeRoot>
     </MsalProvider>
   );

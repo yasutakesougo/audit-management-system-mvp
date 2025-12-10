@@ -6,11 +6,12 @@ declare module "@/utils/cn" {
   export default cnDefault;
 }
 
-declare module "@/*" {
-  const anyExport: any;
-  export = anyExport;
-}
-
+//
+// NOTE: @azure/msal-browser 完全スタブ定義
+// プロジェクト内で利用している最小限の MSAL API だけを型定義する簡易スタブです。
+// 公式型定義との衝突を避けるため、@azure/msal-browser の d.ts は別途インストールしません。
+// 将来本格的なMSAL型が必要になった場合は、公式型定義に移行することを検討してください。
+//
 declare module "@azure/msal-browser" {
   export enum EventType {
     LOGIN_SUCCESS = "LOGIN_SUCCESS",
@@ -39,7 +40,7 @@ declare module "@azure/msal-browser" {
     setActiveAccount(account: unknown): void;
     getActiveAccount(): unknown;
     initialize(): Promise<void>;
-  handleRedirectPromise(): Promise<{ account?: unknown } | null>;
+    handleRedirectPromise(): Promise<{ account?: unknown } | null>;
     getAllAccounts(): unknown[];
   }
 

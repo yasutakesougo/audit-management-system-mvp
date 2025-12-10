@@ -1,5 +1,5 @@
-import { describe, expect, it } from 'vitest';
 import { formatScheduleRange, formatScheduleTime } from '@/utils/formatScheduleTime';
+import { describe, expect, it } from 'vitest';
 
 describe('formatScheduleTime', () => {
   const TZ_JP = 'Asia/Tokyo';
@@ -33,7 +33,7 @@ describe('formatScheduleRange', () => {
 
   it('returns structured data with timezone suffix', () => {
     const range = formatScheduleRange('2025-03-10T13:30:00Z', '2025-03-10T15:10:00Z', TZ_JP);
-    expect(range.text).toBe('22:30–翌00:10');
+    expect(range.text).toBe('22:30–翌 00:10');
     expect(range.aria).toBe('22:30 から 翌 00:10 (Asia/Tokyo)');
     expect(range.valid).toBe(true);
     expect(range.crossesMidnight).toBe(true);

@@ -1,8 +1,8 @@
 import React from 'react';
 import ReactDOM from 'react-dom/client';
 import { getRuntimeEnv, isDev } from './env';
-import { beginHydrationSpan, finalizeHydrationSpan } from './lib/hydrationHud';
 import { resolveHydrationEntry } from './hydration/routes';
+import { beginHydrationSpan, finalizeHydrationSpan } from './lib/hydrationHud';
 
 type EnvRecord = Record<string, string | undefined>;
 
@@ -15,11 +15,6 @@ type IdleCallback = (deadline: IdleDeadline) => void;
 
 type IdleHandle = number;
 
-type IdleWindow = Window & {
-  requestIdleCallback?: (callback: IdleCallback, options?: { timeout: number }) => IdleHandle;
-  cancelIdleCallback?: (handle: IdleHandle) => void;
-};
-
 declare global {
   interface Window {
     __ENV__?: EnvRecord;
@@ -29,12 +24,16 @@ declare global {
 
 const RUNTIME_PATH_KEYS = new Set(['RUNTIME_ENV_PATH', 'VITE_RUNTIME_ENV_PATH']);
 
+// 🔧 DOM lib との型競合回避のため、assertion ベースに変更
 const runOnIdle = (callback: () => void, timeout = 200): void => {
   if (typeof window === 'undefined') {
     callback();
     return;
   }
-  const idleWindow = window as IdleWindow;
+  const idleWindow = window as Window & {
+    requestIdleCallback?: (callback: IdleCallback, options?: { timeout: number }) => IdleHandle;
+    cancelIdleCallback?: (handle: IdleHandle) => void;
+  };
   const requestIdle = idleWindow.requestIdleCallback;
   if (typeof requestIdle === 'function') {
     requestIdle(() => callback(), { timeout });
@@ -93,8 +92,13 @@ const ensureRuntimeEnv = async (): Promise<EnvRecord> => {
   window.__ENV__ = merged;
 
   if (isDev) {
+    // 🎯 開発時ログを要点に絞って表示
+    const keyEnvKeys = Object.keys(merged).filter(key =>
+      key.startsWith('VITE_') || key === 'MODE' || key === 'NODE_ENV'
+    );
+    const keyEnv = Object.fromEntries(keyEnvKeys.map(key => [key, merged[key]]));
     // eslint-disable-next-line no-console
-    console.info('[env]', merged);
+    console.info('[env] runtime loaded:', keyEnv, `(+${Object.keys(merged).length - keyEnvKeys.length} more)`);
   }
 
   return merged;
@@ -154,7 +158,7 @@ const run = async (): Promise<void> => {
 
   const completeAppImport = beginHydrationSpan('bootstrap:app-module', { group: 'hydration', meta: { budget: 20 } });
 
-  const appPromise = (import('./App') as Promise<{ default: typeof import('./App').default }> )
+  const appPromise = (import('./App') as Promise<{ default: typeof import('./App').default }>)
     .then((module) => {
       finalizeHydrationSpan(completeAppImport);
       return module;
@@ -176,8 +180,10 @@ const run = async (): Promise<void> => {
   let envSnapshot: EnvRecord | null = null;
 
   try {
-    const [snapshot, modules, appModule] = await Promise.all([envPromise, modulesPromise, appPromise]);
-    envSnapshot = snapshot;
+    // 🔧 runtime env を最優先で適用してからモジュールを読み込み
+    envSnapshot = await envPromise;
+
+    const [modules, appModule] = await Promise.all([modulesPromise, appPromise]);
     const [{ ConfigErrorBoundary }, { auditLog }, featureFlagsModule] = modules;
     const { default: App } = appModule;
     const { FeatureFlagsProvider, resolveFeatureFlags } = featureFlagsModule;

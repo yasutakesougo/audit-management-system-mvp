@@ -1,10 +1,10 @@
 import { expect, test, type Page } from '@playwright/test';
 
 import {
-  ROUTE_BUDGETS,
-  expectRouteSpan,
-  prepareHydrationApp,
-  readHydrationSpans,
+    ROUTE_BUDGETS,
+    expectRouteSpan,
+    prepareHydrationApp,
+    readHydrationSpans,
 } from './_helpers/hydrationHud';
 
 const getSchedulesNavLink = (page: Page) => page.getByTestId('nav-schedules').first();

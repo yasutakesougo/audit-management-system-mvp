@@ -15,6 +15,7 @@ const baseConfig = {
   VITE_AUDIT_BATCH_SIZE: '',
   VITE_AUDIT_RETRY_MAX: '',
   VITE_AUDIT_RETRY_BASE: '',
+  VITE_E2E: '',
   schedulesCacheTtlSec: 60,
   graphRetryMax: 2,
   graphRetryBaseMs: 100,
@@ -24,7 +25,8 @@ const baseConfig = {
   isDev: false,
 } as const;
 
-vi.mock('@/lib/env', () => {
+vi.mock('@/lib/env', async () => {
+  const actual = await vi.importActual<typeof import('@/lib/env')>('@/lib/env');
   const defaultConfig = {
     VITE_SP_RESOURCE: 'https://contoso.sharepoint.com',
     VITE_SP_SITE_RELATIVE: '/sites/demo',
@@ -38,6 +40,7 @@ vi.mock('@/lib/env', () => {
     VITE_AUDIT_BATCH_SIZE: '',
     VITE_AUDIT_RETRY_MAX: '',
     VITE_AUDIT_RETRY_BASE: '',
+    VITE_E2E: '',
     schedulesCacheTtlSec: 60,
     graphRetryMax: 2,
     graphRetryBaseMs: 100,
@@ -47,7 +50,14 @@ vi.mock('@/lib/env', () => {
     isDev: false,
   } as const;
   const getAppConfig = vi.fn(() => ({ ...defaultConfig }));
-  return { getAppConfig };
+  const isE2eMsalMockEnabled = vi.fn(() => false);
+  const readBool: typeof actual.readBool = (key, fallback, envOverride) => {
+    if (key === 'VITE_E2E' || key === 'VITE_E2E_MSAL_MOCK') {
+      return false;
+    }
+    return actual.readBool(key, fallback, envOverride);
+  };
+  return { ...actual, getAppConfig, isE2eMsalMockEnabled, readBool };
 });
 
 describe('ensureConfig validation', () => {

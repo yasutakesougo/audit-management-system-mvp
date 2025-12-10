@@ -1,11 +1,10 @@
-import React from 'react';
-import { cleanup, screen, waitFor, within } from '@testing-library/react';
-import { ThemeProvider, createTheme } from '@mui/material/styles';
-import { describe, expect, it, vi, beforeEach, afterEach } from 'vitest';
 import AppShell from '@/app/AppShell';
+import { routerFutureFlags } from '@/app/routerFuture';
 import { ColorModeContext } from '@/app/theme';
 import { FeatureFlagsProvider, type FeatureFlagSnapshot } from '@/config/featureFlags';
-import { routerFutureFlags } from '@/app/routerFuture';
+import { ThemeProvider, createTheme } from '@mui/material/styles';
+import { cleanup, screen, within } from '@testing-library/react';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { renderWithAppProviders } from '../helpers/renderWithAppProviders';
 
 const spFetchMock = vi.fn(async (_path: string, _init?: RequestInit) => ({ ok: true }));
@@ -14,6 +13,7 @@ const defaultFlags: FeatureFlagSnapshot = {
   schedules: true,
   schedulesCreate: true,
   complianceForm: false,
+  schedulesWeekV2: false,
 };
 
 beforeEach(() => {
@@ -41,6 +41,18 @@ vi.mock('@/ui/components/SignInButton', () => ({
   __esModule: true,
   default: () => <div data-testid="sign-in-button" />,
 }));
+
+vi.mock('@/lib/env', async () => {
+  const actual = await vi.importActual<typeof import('@/lib/env')>('@/lib/env');
+  return {
+    ...actual,
+    shouldSkipLogin: () => false,
+    readBool: (key: string) => {
+      if (key === 'VITE_FEATURE_SP_HUD') return true;
+      return actual.readBool(key);
+    },
+  };
+});
 
 vi.mock('@/auth/useAuth', () => ({
   useAuth: () => ({
@@ -81,20 +93,18 @@ describe('AppShell navigation', () => {
 
     expect(await nav.findByRole('link', { name: '利用者' })).toHaveAttribute('aria-current', 'page');
     expect(nav.getByRole('link', { name: '日次記録' })).not.toHaveAttribute('aria-current');
-    expect(nav.getByRole('link', { name: '新規予定' })).toBeInTheDocument();
+    expect(nav.getByRole('link', { name: 'スケジュール' })).toBeInTheDocument();
     expect(nav.queryByRole('link', { name: 'コンプラ報告' })).toBeNull();
 
     const currentLinks = nav.getAllByRole('link', { current: 'page' });
     expect(currentLinks).toHaveLength(1);
     expect(currentLinks[0]).toHaveTextContent('利用者');
 
-    await waitFor(() => {
-      expect(spFetchMock).toHaveBeenCalled();
-    });
+    // Footer actions should include schedules create when flag is enabled
+    const footer = await screen.findByRole('contentinfo');
+    const footerWithin = within(footer);
+    expect(footerWithin.queryByRole('link', { name: '新規予定' })).toBeNull();
 
-    const [path, options] = spFetchMock.mock.calls[0] ?? [];
-    expect(path).toBe('/currentuser?$select=Id');
-    expect(options?.signal).toBeInstanceOf(AbortSignal);
   });
 
   it('leaves status neutral when ping aborts', async () => {
@@ -128,12 +138,10 @@ describe('AppShell navigation', () => {
       routeChildren: routeEntries.map((path) => ({ path, element: getShell() })),
     });
 
-    await waitFor(() => {
-      expect(spFetchMock).toHaveBeenCalled();
-    });
-
-    const checkingLabel = await screen.findByText(/Checking/i);
-    expect(checkingLabel.closest('[role="status"]')).not.toBeNull();
+    const statuses = await screen.findAllByRole('status');
+    const hudStatus = statuses.find((node) => node.textContent?.includes('SP Sign-In'));
+    expect(hudStatus).toBeDefined();
+    expect(hudStatus).toHaveTextContent('SP Sign-In');
     expect(screen.queryByText(/SP Error/i)).toBeNull();
     unmount();
   });

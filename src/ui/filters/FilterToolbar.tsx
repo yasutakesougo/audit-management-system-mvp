@@ -1,9 +1,9 @@
-import { useCallback, useEffect, useId, useMemo, useState, type ReactNode } from 'react';
-import Button from '@mui/material/Button';
-import TextField from '@mui/material/TextField';
-import InputAdornment from '@mui/material/InputAdornment';
-import IconButton from '@mui/material/IconButton';
 import ClearRounded from '@mui/icons-material/ClearRounded';
+import Button from '@mui/material/Button';
+import IconButton from '@mui/material/IconButton';
+import InputAdornment from '@mui/material/InputAdornment';
+import TextField from '@mui/material/TextField';
+import { useCallback, useEffect, useId, useMemo, useState, type ReactNode } from 'react';
 
 export type StatusOption = { value: string; label: string };
 
@@ -63,6 +63,9 @@ export default function FilterToolbar({
   const generatedHelpId = useId();
   const helperTextId = searchHelpId ?? `${generatedHelpId}-help`;
 
+  // NOTE:
+  // debounceMs は helperText の文言表示専用パラメータです。
+  // 実際のデバウンス処理は親コンポーネント側で onQueryChange をラップして行う想定。
   const updateQuery = useCallback(
     (nextValue: string) => {
       setInputValue(nextValue);
@@ -71,22 +74,27 @@ export default function FilterToolbar({
     [onQueryChange]
   );
 
-  const buttons = useMemo(
-    () =>
-      (statusOptions ?? []).map((option) => (
-        <Button
+  const buttons = useMemo(() => {
+    const list = statusOptions ?? [];
+    return list.map((option) => {
+      const isActive = activeStatus === option.value;
+      const baseClass = 'inline-flex items-center rounded border px-3 py-1 text-sm font-medium focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 transition';
+      const stateClass = isActive
+        ? 'border-indigo-600 bg-indigo-600 text-white hover:bg-indigo-500 focus-visible:outline-indigo-600'
+        : 'border-slate-700 text-slate-900 hover:bg-slate-50 focus-visible:outline-slate-800 dark:border-slate-200 dark:text-slate-100 dark:hover:bg-slate-800';
+      return (
+        <button
           key={option.value}
-          size="small"
-          variant={activeStatus === option.value ? 'contained' : 'outlined'}
-          onClick={() => onStatusChange?.(option.value)}
-          aria-pressed={activeStatus === option.value}
           type="button"
+          aria-pressed={isActive}
+          className={`${baseClass} ${stateClass}`}
+          onClick={() => onStatusChange?.(option.value)}
         >
           {option.label}
-        </Button>
-      )),
-    [statusOptions, activeStatus, onStatusChange],
-  );
+        </button>
+      );
+    });
+  }, [statusOptions, activeStatus, onStatusChange]);
 
   return (
     <div className="rounded border border-gray-200 bg-white p-3 shadow-sm">
@@ -167,8 +175,7 @@ export default function FilterToolbar({
             size="small"
             variant="text"
             onClick={onReset}
-            disabled={Boolean(isResetDisabled)}
-            aria-disabled={Boolean(isResetDisabled)}
+            disabled={!!isResetDisabled}
             title={isResetDisabled ? 'リセットできる条件がありません' : '条件をリセット'}
             type="button"
             data-focus-order="4"

@@ -1,6 +1,6 @@
-import { FormEvent, useCallback, useMemo, useState } from 'react';
 import { useUsers } from '@/hooks/useUsers';
 import type { SpUserItem, UserUpsert } from '@/types';
+import { FormEvent, useCallback, useEffect, useMemo, useState } from 'react';
 
 export type UserFormMode = 'create' | 'edit';
 
@@ -19,7 +19,7 @@ type UserFormProps = {
   onDone?: (result: SpUserItem) => void;
 };
 
-const emailPattern = /[^\s@]+@[^\s@]+\.[^\s@]+/;
+const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 export default function UserForm({ mode, initial, onDone }: UserFormProps) {
   const { createUser, updateUser } = useUsers();
@@ -32,7 +32,29 @@ export default function UserForm({ mode, initial, onDone }: UserFormProps) {
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
 
+  // initial が変更されたときにフォームを更新（一覧から別ユーザーに切り替える場合など）
+  useEffect(() => {
+    setTitle(initial?.Title ?? '');
+    setFurigana(initial?.Furigana ?? '');
+    setPhone(initial?.Phone ?? '');
+    setEmail(initial?.Email ?? '');
+    setIsActive(initial?.IsActive ?? true);
+    setError(null);
+    setSuccess(null);
+  }, [initial]);
+
   const submitLabel = useMemo(() => (mode === 'create' ? '作成' : '更新'), [mode]);
+
+  // エラークリア機能付きのハンドラー
+  const handleTitleChange = useCallback((event: React.ChangeEvent<HTMLInputElement>) => {
+    setTitle(event.target.value);
+    if (error) setError(null);
+  }, [error]);
+
+  const handleEmailChange = useCallback((event: React.ChangeEvent<HTMLInputElement>) => {
+    setEmail(event.target.value);
+    if (error) setError(null);
+  }, [error]);
 
   const handleSubmit = useCallback(async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -45,12 +67,18 @@ export default function UserForm({ mode, initial, onDone }: UserFormProps) {
       return;
     }
 
+    // 編集モードでIDが無い場合の明示的なエラー
+    if (mode === 'edit' && !initial?.id) {
+      setError('編集対象の利用者IDが取得できませんでした');
+      return;
+    }
+
     const payload: UserUpsert = {
-      Title: title,
-      Furigana: furigana || null,
-      Phone: phone || null,
-  Email: email || null,
-  IsActive: isActive,
+      Title: title.trim(),
+      Furigana: furigana.trim() || null,
+      Phone: phone.trim() || null,
+      Email: email.trim() || null,
+      IsActive: isActive,
     };
 
     try {
@@ -59,7 +87,7 @@ export default function UserForm({ mode, initial, onDone }: UserFormProps) {
       setSuccess(null);
       const result = mode === 'create'
         ? await createUser(payload)
-        : await updateUser(initial?.id ?? 0, payload);
+        : await updateUser(initial!.id!, payload);
       setSuccess('保存しました');
       onDone?.(result);
     } catch (err) {
@@ -71,7 +99,7 @@ export default function UserForm({ mode, initial, onDone }: UserFormProps) {
   }, [createUser, email, furigana, initial?.id, isActive, mode, onDone, phone, title, updateUser]);
 
   return (
-    <form className="mx-auto flex w-full max-w-xl flex-col gap-4 rounded-md bg-white p-4 shadow" onSubmit={handleSubmit}>
+    <form className="mx-auto flex w-full max-w-xl flex-col gap-4 rounded-md bg-white p-4 shadow" noValidate onSubmit={handleSubmit}>
       <h2 className="text-lg font-semibold">利用者{mode === 'create' ? 'の作成' : 'の編集'}</h2>
       {error ? (
         <div className="rounded-md border border-red-300 bg-red-50 px-3 py-2 text-sm text-red-800">{error}</div>
@@ -85,7 +113,7 @@ export default function UserForm({ mode, initial, onDone }: UserFormProps) {
         <input
           className="rounded-md border border-gray-300 px-3 py-2 shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
           value={title}
-          onChange={(event) => setTitle(event.target.value)}
+          onChange={handleTitleChange}
           required
         />
       </label>
@@ -113,7 +141,7 @@ export default function UserForm({ mode, initial, onDone }: UserFormProps) {
           <input
             className="rounded-md border border-gray-300 px-3 py-2 shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
             value={email}
-            onChange={(event) => setEmail(event.target.value)}
+            onChange={handleEmailChange}
           />
         </label>
       </div>

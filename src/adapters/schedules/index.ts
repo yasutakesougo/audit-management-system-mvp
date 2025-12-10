@@ -1,8 +1,9 @@
+import * as demo from '@/adapters/schedules/demo';
+import * as sharepoint from '@/adapters/schedules/sharepoint';
+import { HYDRATION_FEATURES, startFeatureSpan } from '@/hydration/features';
 import { allowWriteFallback, isDemoModeEnabled } from '@/lib/env';
 import { toSafeError, type SafeError } from '@/lib/errors';
 import { withUserMessage } from '@/lib/notice';
-import * as demo from '@/adapters/schedules/demo';
-import * as sharepoint from '@/adapters/schedules/sharepoint';
 
 export type { Schedule, ScheduleDraft } from '@/adapters/schedules/demo';
 
@@ -24,8 +25,13 @@ export type ListResult = {
 
 const isDemo = () => isDemoModeEnabled();
 
+/**
+ * Classify SharePoint errors into categories for better fallback handling and metrics.
+ * This helps distinguish between temporary network issues vs. permanent config problems.
+ */
 const classifyError = (error: SafeError): CreateResult['fallbackKind'] => {
 	const normalized = `${error.code ?? ''} ${error.message ?? ''}`.toLowerCase();
+	// Authentication and authorization issues
 	if (
 		normalized.includes('interaction_required') ||
 		normalized.includes('consent_required') ||
@@ -37,9 +43,11 @@ const classifyError = (error: SafeError): CreateResult['fallbackKind'] => {
 	) {
 		return 'auth';
 	}
+	// Network and temporary service issues
 	if (/429|503|504|network|fetch|timeout/.test(normalized)) {
 		return 'network';
 	}
+	// Schema and configuration issues
 	if (/does not exist|property|field|schema|invalid/.test(normalized)) {
 		return 'schema';
 	}
@@ -47,12 +55,31 @@ const classifyError = (error: SafeError): CreateResult['fallbackKind'] => {
 };
 
 const warned = new Set<string>();
+
+const beginWriteSpan = (operation: string) => {
+	const complete = startFeatureSpan(HYDRATION_FEATURES.schedules.write, { operation });
+	let closed = false;
+	return (payload?: Parameters<typeof complete>[0]) => {
+		if (closed) return;
+		closed = true;
+		complete(payload);
+	};
+};
+
+/**
+ * Warn about fallback usage, but only once per error type to avoid log spam.
+ * The warning key combines message and error kind, allowing for future metrics collection.
+ * TODO: Consider adding metricsReporter integration here for production monitoring.
+ */
 const warnOnceWith = (message: string, error: unknown): SafeError => {
 	const safe = withUserMessage(toSafeError(error));
-	const key = `${message}::${classifyError(safe)}`;
+	const kind = classifyError(safe);
+	const key = `${message}::${kind}`;
 	if (!warned.has(key)) {
 		warned.add(key);
 		console.warn(message, safe.userMessage ?? safe.message, safe);
+		// TODO: Future enhancement - report to metrics system:
+		// metricsReporter?.reportFallback({ operation: message, errorKind: kind, error: safe });
 	}
 	return safe;
 };
@@ -61,12 +88,18 @@ const isDateISO = (value?: string) => !!value && /^\d{4}-\d{2}-\d{2}$/.test(valu
 
 export async function list(dayISO?: string, options?: { signal?: AbortSignal }): Promise<ListResult> {
 	if (isDemo()) return { items: await demo.list(dayISO, options), source: 'demo' };
+
+	// Validate arguments early - developer errors should not fallback
+	if (dayISO && !isDateISO(dayISO)) {
+		throw new Error(`invalid dayISO: ${dayISO}`);
+	}
+
 	try {
-		if (dayISO && !isDateISO(dayISO)) throw new Error(`invalid dayISO: ${dayISO}`);
 		const items = await sharepoint.list(dayISO, options);
 		return { items, source: 'sharepoint' };
 	} catch (error: unknown) {
 		const safe = warnOnceWith('[schedules] SharePoint list failed, falling back to demo data.', error);
+		const kind = classifyError(safe);
 		if (options?.signal?.aborted) {
 			throw safe;
 		}
@@ -74,57 +107,107 @@ export async function list(dayISO?: string, options?: { signal?: AbortSignal }):
 			items: await demo.list(dayISO, options),
 			source: 'demo',
 			fallbackError: safe,
-			fallbackKind: classifyError(safe),
+			fallbackKind: kind,
 		};
 	}
 }
 
 export async function create(schedule: demo.ScheduleDraft, options?: { signal?: AbortSignal }): Promise<CreateResult> {
-	if (isDemo()) {
-		const result = await demo.create(schedule, options);
-		return { schedule: result, source: 'demo' };
-	}
+	const finishSpan = beginWriteSpan('create');
 	try {
-		const created = await sharepoint.create(schedule, options);
-		return { schedule: created, source: 'sharepoint' };
-	} catch (error: unknown) {
-		const safe = warnOnceWith('[schedules] SharePoint create failed, falling back to demo.', error);
-		if (!allowWriteFallback() || options?.signal?.aborted) {
-			throw safe;
+		if (isDemo()) {
+			const result = await demo.create(schedule, options);
+			finishSpan({ meta: { status: 'ok', mode: 'demo' } });
+			return { schedule: result, source: 'demo' };
 		}
-		const fallback = await demo.create(schedule, options);
-		return {
-			schedule: fallback,
-			source: 'demo',
-			fallbackError: safe,
-			fallbackKind: classifyError(safe),
-		};
+		try {
+			const created = await sharepoint.create(schedule, options);
+			finishSpan({ meta: { status: 'ok', mode: 'sharepoint' } });
+			return { schedule: created, source: 'sharepoint' };
+		} catch (error: unknown) {
+			const safe = warnOnceWith('[schedules] SharePoint create failed, falling back to demo.', error);
+			const kind = classifyError(safe);
+			if (!allowWriteFallback() || options?.signal?.aborted) {
+				finishSpan({ meta: { status: 'error', mode: 'sharepoint' }, error: safe.message });
+				throw safe;
+			}
+			const fallback = await demo.create(schedule, options);
+			finishSpan({ meta: { status: 'fallback', mode: 'demo', fallbackKind: kind } });
+			return {
+				schedule: fallback,
+				source: 'demo',
+				fallbackError: safe,
+				fallbackKind: kind,
+			};
+		}
+	} catch (error) {
+		finishSpan({
+			meta: { status: 'error' },
+			error: error instanceof Error ? error.message : String(error),
+		});
+		throw error;
 	}
 }
 
 export async function update(id: string, patch: Partial<demo.Schedule>, options?: { signal?: AbortSignal }) {
-	if (isDemo()) return demo.update(id, patch, options);
+	const finishSpan = beginWriteSpan('update');
 	try {
-		return await sharepoint.update(id, patch, options);
-	} catch (error: unknown) {
-		const safe = warnOnceWith('[schedules] SharePoint update failed, falling back to demo.', error);
-		if (!allowWriteFallback() || options?.signal?.aborted) {
-			throw safe;
+		if (isDemo()) {
+			const result = await demo.update(id, patch, options);
+			finishSpan({ meta: { status: 'ok', mode: 'demo' } });
+			return result;
 		}
-		return demo.update(id, patch, options);
+		try {
+			const result = await sharepoint.update(id, patch, options);
+			finishSpan({ meta: { status: 'ok', mode: 'sharepoint' } });
+			return result;
+		} catch (error: unknown) {
+			const safe = warnOnceWith('[schedules] SharePoint update failed, falling back to demo.', error);
+			if (!allowWriteFallback() || options?.signal?.aborted) {
+				finishSpan({ meta: { status: 'error', mode: 'sharepoint' }, error: safe.message });
+				throw safe;
+			}
+			const fallback = await demo.update(id, patch, options);
+			finishSpan({ meta: { status: 'fallback', mode: 'demo' } });
+			return fallback;
+		}
+	} catch (error) {
+		finishSpan({
+			meta: { status: 'error' },
+			error: error instanceof Error ? error.message : String(error),
+		});
+		throw error;
 	}
 }
 
 export async function remove(id: string, options?: { signal?: AbortSignal }) {
-	if (isDemo()) return demo.remove(id, options);
+	const finishSpan = beginWriteSpan('remove');
 	try {
-		return await sharepoint.remove(id, options);
-	} catch (error: unknown) {
-		const safe = warnOnceWith('[schedules] SharePoint remove failed, falling back to demo.', error);
-		if (!allowWriteFallback() || options?.signal?.aborted) {
-			throw safe;
+		if (isDemo()) {
+			const result = await demo.remove(id, options);
+			finishSpan({ meta: { status: 'ok', mode: 'demo' } });
+			return result;
 		}
-		return demo.remove(id, options);
+		try {
+			const result = await sharepoint.remove(id, options);
+			finishSpan({ meta: { status: 'ok', mode: 'sharepoint' } });
+			return result;
+		} catch (error: unknown) {
+			const safe = warnOnceWith('[schedules] SharePoint remove failed, falling back to demo.', error);
+			if (!allowWriteFallback() || options?.signal?.aborted) {
+				finishSpan({ meta: { status: 'error', mode: 'sharepoint' }, error: safe.message });
+				throw safe;
+			}
+			const fallback = await demo.remove(id, options);
+			finishSpan({ meta: { status: 'fallback', mode: 'demo' } });
+			return fallback;
+		}
+	} catch (error) {
+		finishSpan({
+			meta: { status: 'error' },
+			error: error instanceof Error ? error.message : String(error),
+		});
+		throw error;
 	}
 }
 

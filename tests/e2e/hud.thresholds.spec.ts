@@ -1,6 +1,26 @@
-import { expect, test } from '@playwright/test';
+import { expect, test, type Page } from '@playwright/test';
 
 import { prepareHydrationApp } from './_helpers/hydrationHud';
+
+async function ensureHudVisible(page: Page) {
+  const hud = page.getByTestId('prefetch-hud');
+  const hudToggle = page.getByTestId('prefetch-hud-toggle');
+
+  const [hudCount, toggleCount] = await Promise.all([hud.count(), hudToggle.count()]);
+
+  if (hudCount > 0) {
+    await expect(hud).toBeVisible();
+    return hud;
+  }
+
+  if (toggleCount === 0) {
+    test.skip(true, 'HUD devtools disabled in this environment; skipping HUD thresholds E2E.');
+  }
+
+  await hudToggle.click();
+  await expect(hud).toBeVisible();
+  return hud;
+}
 
 test.describe('HUD thresholds display', () => {
   test.beforeEach(async ({ page }) => {
@@ -21,16 +41,11 @@ test.describe('HUD thresholds display', () => {
       win.__TEST_ENV__ = { ...(win.__TEST_ENV__ ?? {}), ...overrides };
     });
     await prepareHydrationApp(page);
-    await page.goto('/', { waitUntil: 'domcontentloaded' });
+    await page.goto('/', { waitUntil: 'networkidle' });
   });
 
   test('renders configured thresholds in HUD', async ({ page }) => {
-    const hudToggle = page.getByTestId('prefetch-hud-toggle');
-    const hud = page.getByTestId('prefetch-hud');
-    if ((await hud.count()) === 0) {
-      await hudToggle.click();
-    }
-    await expect(hud).toBeVisible();
+    await ensureHudVisible(page);
 
     const thresholds = page.getByTestId('hud-thresholds');
     await expect(thresholds).toContainText('discrepancy=15m');

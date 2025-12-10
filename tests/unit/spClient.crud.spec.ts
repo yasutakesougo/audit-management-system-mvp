@@ -16,6 +16,7 @@ const baseConfig = {
   VITE_AUDIT_BATCH_SIZE: '',
   VITE_AUDIT_RETRY_MAX: '',
   VITE_AUDIT_RETRY_BASE: '',
+  VITE_E2E: '',
   schedulesCacheTtlSec: 60,
   graphRetryMax: 2,
   graphRetryBaseMs: 100,
@@ -25,7 +26,21 @@ const baseConfig = {
   isDev: false,
 } as const;
 
-vi.mock('@/lib/env', () => {
+const minimalSchedulePayload: Parameters<typeof createSchedule>[1] = {
+  Title: 'noop',
+  EventDate: '2025-01-01T00:00:00Z',
+  EndDate: '2025-01-01T01:00:00Z',
+  AllDay: false,
+  Location: null,
+  Status: 'planned',
+  Notes: null,
+  StaffIdId: null,
+  UserIdId: null,
+  ServiceType: null,
+};
+
+vi.mock('@/lib/env', async () => {
+  const actual = await vi.importActual<typeof import('@/lib/env')>('@/lib/env');
   const defaultConfig = {
     VITE_SP_RESOURCE: 'https://contoso.sharepoint.com',
     VITE_SP_SITE_RELATIVE: '/sites/demo',
@@ -39,6 +54,7 @@ vi.mock('@/lib/env', () => {
     VITE_AUDIT_BATCH_SIZE: '',
     VITE_AUDIT_RETRY_MAX: '',
     VITE_AUDIT_RETRY_BASE: '',
+    VITE_E2E: '',
     schedulesCacheTtlSec: 60,
     graphRetryMax: 2,
     graphRetryBaseMs: 100,
@@ -48,7 +64,8 @@ vi.mock('@/lib/env', () => {
     isDev: false,
   } as const;
   const getAppConfig = vi.fn(() => ({ ...defaultConfig }));
-  return { getAppConfig };
+  const isDemoModeEnabled = vi.fn(() => true);
+  return { ...actual, getAppConfig, isDemoModeEnabled };
 });
 
 vi.mock('@/lib/debugLogger', () => ({
@@ -363,7 +380,8 @@ describe('createSpClient CRUD helpers', () => {
   });
 
   it('createSchedule resolves without touching SharePoint', async () => {
-    await expect(createSchedule({} as UseSP, { Title: 'noop' })).resolves.toBeUndefined();
+    const result = await createSchedule({} as UseSP, minimalSchedulePayload);
+    expect(result).toMatchObject({ Title: minimalSchedulePayload.Title });
     expect(fetchMock).not.toHaveBeenCalled();
   });
 });

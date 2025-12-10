@@ -1,7 +1,7 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { MemoryRouter } from 'react-router-dom';
 import type { MockInstance } from 'vitest';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { MemoryRouter } from 'react-router-dom';
 import { usersStoreMock } from './testUtils/usersStoreMock';
 import UsersPanel from './UsersPanel/index';
 
@@ -24,20 +24,18 @@ describe('UsersPanel smoke test', () => {
       </MemoryRouter>
     );
 
-  fireEvent.click(screen.getByRole('tab', { name: '新規利用者登録' }));
+    fireEvent.click(screen.getByRole('tab', { name: '新規利用者登録' }));
 
-    const userIdInput = screen.getByRole('textbox', { name: /ユーザーID/ });
     const fullNameInput = screen.getByRole('textbox', { name: '氏名' });
     const createButton = screen.getByRole('button', { name: '簡易作成' });
 
-    fireEvent.change(userIdInput, { target: { value: 'u-xyz' } });
     fireEvent.change(fullNameInput, { target: { value: 'テスト太郎' } });
     fireEvent.click(createButton);
 
-  fireEvent.click(screen.getAllByRole('tab', { name: /利用者一覧/ })[0]);
+    fireEvent.click(screen.getAllByRole('tab', { name: /利用者一覧/ })[0]);
 
-  expect(await screen.findByText('テスト太郎')).toBeInTheDocument();
-    expect(screen.getByText('u-xyz')).toBeInTheDocument();
+    expect(await screen.findByText('テスト太郎')).toBeInTheDocument();
+    expect(screen.getByText('LOCAL-U-0001')).toBeInTheDocument();
 
     // テスト太郎の行を取得して削除ボタンをクリック
     const testUserRow = screen.getByText('テスト太郎').closest('tr');
@@ -47,7 +45,7 @@ describe('UsersPanel smoke test', () => {
 
     await waitFor(() => {
       expect(screen.queryByText('テスト太郎')).toBeNull();
-      expect(screen.queryByText('u-xyz')).toBeNull();
+      expect(screen.queryByText('LOCAL-U-0001')).toBeNull();
     });
   });
 
@@ -76,7 +74,7 @@ describe('UsersPanel smoke test', () => {
   fireEvent.click(detailLink);
 
     expect(await screen.findByRole('button', { name: '詳細表示を閉じる' })).toBeInTheDocument();
-    expect(screen.getAllByText('利用者ID: inline-001').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('利用者コード: inline-001').length).toBeGreaterThan(0);
 
     fireEvent.click(screen.getByRole('button', { name: '詳細表示を閉じる' }));
     await waitFor(() => {

@@ -1,4 +1,5 @@
 import type { Daily } from '@/lib/mappers';
+import { useCallback, useEffect, useState } from 'react';
 
 const baseDate = new Date();
 const toDateOnly = (date: Date) => date.toISOString().slice(0, 10);
@@ -41,16 +42,47 @@ const DAILY_DEMO: Daily[] = [
   makeDaily(3, { title: '個別支援', staffId: 103, userId: 203, notes: '作業訓練を実施' }),
 ];
 
-const reloadDaily = async (): Promise<Daily[]> => {
+/**
+ * デモ用の日次記録データを取得する
+ * 将来的にはSharePoint APIまたは他のデータソースに差し替え予定
+ */
+const fetchDailyDemo = async (): Promise<Daily[]> => {
   await delay();
+  // 破壊されないように毎回新しいオブジェクトを返す
   return DAILY_DEMO.map((row) => ({ ...row }));
 };
 
+/**
+ * 日次記録データを管理するReact Hook
+ * 状態管理とデータ取得を行い、reload()で実際にUIが更新される
+ */
 export function useDaily() {
+  const [data, setData] = useState<Daily[]>([]);
+  const [loading, setLoading] = useState<boolean>(true);
+  const [error, setError] = useState<Error | null>(null);
+
+  const reload = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      // 将来的にここをSharePoint/API呼び出しに差し替え
+      const rows = await fetchDailyDemo();
+      setData(rows);
+    } catch (err) {
+      setError(err instanceof Error ? err : new Error(String(err)));
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    void reload();
+  }, [reload]);
+
   return {
-    data: DAILY_DEMO,
-    loading: false,
-    error: null as Error | null,
-    reload: reloadDaily,
+    data,
+    loading,
+    error,
+    reload,
   };
 }

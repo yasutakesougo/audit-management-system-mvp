@@ -8,7 +8,7 @@ describe('utils/datetime: formatRangeLocal edge cases', () => {
     // both null-ish
     expect(formatRangeLocal('', '', { roundTo: 5, tz: 'Asia/Tokyo', fallback: '--' })).toBe('--');
     // one invalid ISO
-    expect(formatRangeLocal('not-a-date', '2025-01-01T00:00:00Z', { tz: 'Asia/Tokyo', fallback: '--' })).toMatch(/^-- – /);
+    expect(formatRangeLocal('not-a-date', '2025-01-01T00:00:00Z', { tz: 'Asia/Tokyo', fallback: '--' })).toBe('2025-01-01 09:00 (Asia/Tokyo)');
   });
 
   it('supports fallback-only option objects passed as second argument', () => {

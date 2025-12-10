@@ -1,7 +1,8 @@
 import { createSpClient } from '@/lib/spClient';
 import { afterAll, beforeEach, describe, expect, it, vi } from 'vitest';
 
-vi.mock('@/lib/env', () => {
+vi.mock('@/lib/env', async () => {
+  const actual = await vi.importActual<typeof import('@/lib/env')>('@/lib/env');
   const baseConfig = {
     VITE_SP_RESOURCE: 'https://contoso.sharepoint.com',
     VITE_SP_SITE_RELATIVE: '/sites/demo',
@@ -24,6 +25,7 @@ vi.mock('@/lib/env', () => {
     isDev: false,
   } as const;
   return {
+    ...actual,
     getAppConfig: vi.fn(() => baseConfig),
   };
 });

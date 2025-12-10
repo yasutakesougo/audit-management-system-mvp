@@ -1,6 +1,7 @@
 import * as React from 'react';
 import { vi } from 'vitest';
 import type { IUserMaster, IUserMasterCreateDto } from '../types';
+import { ensureUserId } from '../utils/userId';
 
 export type MockUser = IUserMaster;
 
@@ -28,15 +29,28 @@ const resetStore = (initial: MockUser[] = []) => {
   emit();
 };
 
-const createEntity = (dto: IUserMasterCreateDto): MockUser => ({
-  Id: counter++,
-  UserID: dto.UserID,
-  FullName: dto.FullName,
-  ContractDate: dto.ContractDate ?? undefined,
-  IsHighIntensitySupportTarget: dto.IsHighIntensitySupportTarget ?? false,
-  ServiceStartDate: dto.ServiceStartDate ?? undefined,
-  ServiceEndDate: dto.ServiceEndDate ?? null,
-});
+const createEntity = (dto: IUserMasterCreateDto): MockUser => {
+  const id = counter++;
+  return {
+    Id: id,
+    UserID: ensureUserId(dto.UserID, id),
+    FullName: dto.FullName,
+    ContractDate: dto.ContractDate ?? undefined,
+    IsHighIntensitySupportTarget: dto.IsHighIntensitySupportTarget ?? false,
+    ServiceStartDate: dto.ServiceStartDate ?? undefined,
+    ServiceEndDate: dto.ServiceEndDate ?? null,
+  };
+};
+
+const normalizePatch = (patch: Partial<IUserMasterCreateDto>): Partial<IUserMaster> => {
+  const normalized: Partial<IUserMaster> = { ...patch } as Partial<IUserMaster>;
+  if (patch.UserID === undefined || patch.UserID === null || patch.UserID === '') {
+    delete normalized.UserID;
+  } else {
+    normalized.UserID = patch.UserID;
+  }
+  return normalized;
+};
 
 type AsyncStatus = 'idle' | 'loading' | 'success' | 'error';
 
@@ -63,7 +77,8 @@ const createMockStoreHook = () => {
       setStatus('loading');
       try {
         const numericId = Number(id);
-        items = items.map((item) => (item.Id === numericId ? { ...item, ...patch } : item));
+        const normalizedPatch = normalizePatch(patch);
+        items = items.map((item) => (item.Id === numericId ? { ...item, ...normalizedPatch } : item));
         emit();
         const updated = items.find((item) => item.Id === numericId);
         if (!updated) {

@@ -1,17 +1,17 @@
-const sanitizeString = (value: string | null | undefined) => {
+const sanitizeString = (value: string | null | undefined): string | undefined => {
   if (typeof value !== 'string') return undefined;
   const trimmed = value.trim();
-  return trimmed.length ? trimmed : undefined;
+  return trimmed.length > 0 ? trimmed : undefined;
 };
 
-const toNullable = (value: string | null | undefined) => {
-  const sanitized = sanitizeString(value ?? undefined);
+const toNullable = (value: string | null | undefined): string | null => {
+  const sanitized = sanitizeString(value);
   return sanitized ?? null;
 };
 
-const toNullableBoolean = (value: boolean | null | undefined) => {
-  if (value === undefined) return null;
-  return value ?? null;
+const toNullableBoolean = (value: boolean | null | undefined): boolean | null => {
+  if (value === undefined || value === null) return null;
+  return value; // true または false
 };
 
 export type UserUpsert = {
@@ -24,18 +24,23 @@ export type UserUpsert = {
 
 export function toUserItem(input: UserUpsert): Record<string, unknown> {
   const payload: Record<string, unknown> = {};
-  payload.Title = sanitizeString(input.Title) ?? '';
-  if (Object.prototype.hasOwnProperty.call(input, 'Furigana')) {
-    payload.Furigana = toNullable(input.Furigana ?? undefined);
+
+  // Title は必須だが、sanitize して無ければ空文字
+  const title = sanitizeString(input.Title);
+  payload.Title = title ?? '';
+
+  if ('Furigana' in input) {
+    payload.Furigana = toNullable(input.Furigana);
   }
-  if (Object.prototype.hasOwnProperty.call(input, 'Phone')) {
-    payload.Phone = toNullable(input.Phone ?? undefined);
+  if ('Phone' in input) {
+    payload.Phone = toNullable(input.Phone);
   }
-  if (Object.prototype.hasOwnProperty.call(input, 'Email')) {
-    payload.Email = toNullable(input.Email ?? undefined);
+  if ('Email' in input) {
+    payload.Email = toNullable(input.Email);
   }
-  if (Object.prototype.hasOwnProperty.call(input, 'IsActive')) {
-    payload.IsActive = toNullableBoolean(input.IsActive ?? undefined);
+  if ('IsActive' in input) {
+    payload.IsActive = toNullableBoolean(input.IsActive);
   }
+
   return payload;
 }

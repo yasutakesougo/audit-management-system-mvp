@@ -32,7 +32,7 @@ const menuSections: MenuSection[] = [
     avatarColor: 'primary.main',
     status: 'available',
     highlights: [
-      '氏名・ふりがな・利用者IDなどのマスタ情報管理',
+      '氏名・ふりがな・利用者コードなどのマスタ情報管理',
       '契約日・利用開始日の確認と履歴把握',
       '緊急連絡先や通所・送迎設定の把握',
     ],

@@ -1,3 +1,4 @@
+import { HYDRATION_FEATURES, estimatePayloadSize, startFeatureSpan } from '@/hydration/features';
 import { readEnv } from '@/lib/env';
 import type { UseSP } from '@/lib/spClient';
 import { spWriteResilient, type SpWriteResult } from '@/lib/spWrite';
@@ -10,7 +11,7 @@ import type { SpScheduleItem } from '@/types';
 import { buildScheduleSelectClause, handleScheduleOptionalFieldError } from './scheduleFeatures';
 import { fromSpSchedule, toSpScheduleFields } from './spMap';
 import { STATUS_DEFAULT } from './statusDictionary';
-import type { ScheduleUserCare } from './types';
+import type { ScheduleUserCare, ServiceType } from './types';
 import { validateUserCare } from './validation';
 
 type ScheduleUserCareDraft = Omit<ScheduleUserCare, 'id' | 'etag'> & {
@@ -23,11 +24,20 @@ const LIST_TITLE = (() => {
   const override = readEnv('VITE_SP_LIST_SCHEDULES', '').trim();
   return override || DEFAULT_LIST_TITLE;
 })();
-const LIST_PATH = `/lists/getbytitle('${encodeURIComponent(LIST_TITLE)}')/items` as const;
+const escapeODataString = (input: string): string => input.replace(/'/g, "''");
+const buildListPath = (title: string): string => {
+  const guid = title.replace(/^guid:/i, '').replace(/[{}]/g, '').trim();
+  if (/^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/.test(guid)) {
+    return `/lists(guid'${guid}')/items`;
+  }
+  return `/lists/getbytitle('${escapeODataString(title)}')/items`;
+};
+const LIST_PATH = buildListPath(LIST_TITLE);
 
-const buildScheduleListPath = (_list: string, id?: number): string => (
-  typeof id === 'number' ? `${LIST_PATH}(${id})` : LIST_PATH
-);
+const buildScheduleListPath = (list: string, id?: number): string => {
+  const base = buildListPath(list);
+  return typeof id === 'number' ? `${base}(${id})` : base;
+};
 
 const withScheduleFieldFallback = async <T>(operation: () => Promise<T>): Promise<T> => {
   try {
@@ -57,7 +67,7 @@ const toNumericId = (id: string | number): number => {
   return parsed;
 };
 
-const buildOverlapFilter = (startIso: string, endIso: string, keyword?: string, personType?: 'Internal' | 'External', serviceType?: '一時ケア' | 'ショートステイ'): string => {
+const buildOverlapFilter = (startIso: string, endIso: string, keyword?: string, personType?: 'Internal' | 'External', serviceType?: ServiceType): string => {
   const parts = [
     `(${SCHEDULE_FIELD_CATEGORY} eq 'User')`,
     `(EventDate lt ${encodeODataDate(endIso)})`,
@@ -96,6 +106,7 @@ const coerceUserCare = (input: Partial<ScheduleUserCare>): ScheduleUserCare => (
   personType: input.personType as ScheduleUserCare['personType'],
   personId: input.personId,
   personName: input.personName,
+  userLookupId: input.userLookupId,
   externalPersonName: input.externalPersonName,
   externalPersonOrg: input.externalPersonOrg,
   externalPersonContact: input.externalPersonContact,
@@ -200,6 +211,10 @@ export async function getUserCareSchedules(
     top?: number;
   }
 ): Promise<ScheduleUserCare[]> {
+  const span = startFeatureSpan(HYDRATION_FEATURES.schedules.load, {
+    scope: 'userCare',
+    hasKeyword: Boolean(params.keyword),
+  });
   const execute = async () => {
     const search = new URLSearchParams();
     search.set('$top', String(params.top ?? 500));
@@ -232,7 +247,17 @@ export async function getUserCareSchedules(
     }
   };
 
-  return withScheduleFieldFallback(execute);
+  try {
+    const result = await withScheduleFieldFallback(execute);
+    span({ meta: { status: 'ok', count: result.length, bytes: estimatePayloadSize(result) } });
+    return result;
+  } catch (error) {
+    span({
+      meta: { status: 'error' },
+      error: error instanceof Error ? error.message : String(error),
+    });
+    throw error;
+  }
 }
 
 export async function createUserCare(sp: UseSP, draft: ScheduleUserCareDraft): Promise<ScheduleUserCare> {

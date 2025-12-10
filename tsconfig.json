@@ -11,20 +11,30 @@
     "skipLibCheck": true,
     "resolveJsonModule": true,
     "allowSyntheticDefaultImports": true,
-  "types": ["vite/client", "node", "vitest/globals", "@testing-library/jest-dom"],
+    "downlevelIteration": true,
+    "types": ["vite/client", "node", "vitest/globals", "@testing-library/jest-dom"],
     "baseUrl": ".",
     "paths": {
       "@/*": ["src/*"],
       "@/app/*": ["src/app/*"],
       "@/auth/*": ["src/auth/*"],
-      "@/lib/*": ["src/lib/*"],
+  "@/lib/*": ["src/lib/*"],
   "@/features/*": ["src/features/*"],
-  "@/config/*": ["src/config/*"],
+  "@/features/users/*": ["src/features/users/*"],
+  "@/features/users/components/*": ["src/features/users/components/*"],
+        "@/hydration/*": ["src/hydration/*"],
+      "@/config/*": ["src/config/*"],
       "@/ui/*": ["src/ui/*"],
-      "@/adapters/*": ["src/adapters/*"]
+      "@/adapters/*": ["src/adapters/*"],
+      "@/test/*": ["tests/*"]
     }
   },
-  "include": ["src", "tests", "types"],
+  "ts-node": {
+    "compilerOptions": {
+      "module": "CommonJS"
+    }
+  },
+  "include": ["src", "tests", "types", "debug.tsx"],
   "exclude": [
     "node_modules",
     "dist",
@@ -33,6 +43,10 @@
     ".vitest",
     "test-results",
     "public",
-    "tests/e2e"
+    "tests/e2e",
+    ".vscode",
+    ".vscode/**/*",
+    "docs/**/*",
+    "reports/**/*"
   ]
 }

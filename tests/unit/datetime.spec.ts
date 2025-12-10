@@ -29,6 +29,6 @@ describe('formatRangeLocal', () => {
   it('accepts options as the second argument', () => {
     const result = formatRangeLocal('2024-01-01T00:00:00Z', { tz: 'UTC' });
 
-    expect(result).toBe('2024-01-01 00:00 – 2024-01-01 00:00 (UTC)');
+    expect(result).toBe('2024-01-01 00:00 (UTC)');
   });
 });

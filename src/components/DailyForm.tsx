@@ -15,6 +15,11 @@ import { DAILY_STATUS_OPTIONS } from '@/types';
 import EditRoundedIcon from '@mui/icons-material/EditRounded';
 import SaveRoundedIcon from '@mui/icons-material/SaveRounded';
 
+/**
+ * Development environment detection helper
+ */
+const isDevEnvironment = (): boolean => isDevMode();
+
 export type DailyFormMode = 'create' | 'edit';
 
 type DailyFormInitial = {
@@ -114,6 +119,13 @@ export default function DailyForm({ mode, initial, onDone, prefillNotice, prefil
   const [busy, setBusy] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [submitErrorType, setSubmitErrorType] = useState<'general' | 'time'>('general');
+
+  // initial が変更されたときにフォームを更新（一覧から別レコードに切り替える場合など）
+  useEffect(() => {
+    setForm(toFormState(initial));
+    const nextEtag = initial?.etag ?? (initial as (DailyFormInitial & { __etag?: string | null }) | undefined)?.__etag ?? null;
+    setEtag(nextEtag);
+  }, [initial]);
 
   const submitLabel = useMemo(() => (mode === 'create' ? '作成' : '更新'), [mode]);
 
@@ -246,15 +258,15 @@ export default function DailyForm({ mode, initial, onDone, prefillNotice, prefil
     const payload: DailyUpsert = {
       ...form,
       title,
-  date: date || '',
-  startTime: form.startTime?.trim() || '',
-  endTime: form.endTime?.trim() || '',
-  location: form.location?.trim() || '',
+      date: date || '',
+      startTime: form.startTime?.trim() || '',
+      endTime: form.endTime?.trim() || '',
+      location: form.location?.trim() || '',
       staffId: form.staffId ?? null,
       userId: form.userId ?? null,
-  notes: form.notes?.trim() || '',
-  mealLog: form.mealLog?.trim() || '',
-  behaviorLog: form.behaviorLog?.trim() || '',
+      notes: form.notes?.trim() || '',
+      mealLog: form.mealLog?.trim() || '',
+      behaviorLog: form.behaviorLog?.trim() || '',
       status: form.status ?? null,
     };
 
@@ -268,7 +280,7 @@ export default function DailyForm({ mode, initial, onDone, prefillNotice, prefil
       const savedItem = rawResult as SpDailyItem & { __etag?: string | null };
       if (mode === 'edit') {
         setEtag(savedItem.__etag ?? null);
-  if (isDevMode()) {
+        if (isDevEnvironment()) {
           console.debug('[daily-conflict] resolved and saved', {
             id: initial?.id ?? null,
             etag: savedItem.__etag ?? null,
@@ -282,14 +294,14 @@ export default function DailyForm({ mode, initial, onDone, prefillNotice, prefil
         ? (err as { code?: string }).code
         : undefined;
       if (mode === 'edit' && code === 'conflict') {
-  if (isDevMode()) {
+        if (isDevEnvironment()) {
           console.debug('[daily-conflict] detected 412', {
             id: initial?.id ?? null,
             etag,
           });
         }
         const { ok, error: reloadError, etag: refreshedEtag } = await refreshLatestFromServer();
-  if (ok && isDevMode()) {
+        if (ok && isDevEnvironment()) {
           console.debug('[daily-conflict] refetched latest', {
             id: initial?.id ?? null,
             etag: refreshedEtag ?? null,
@@ -383,6 +395,9 @@ export default function DailyForm({ mode, initial, onDone, prefillNotice, prefil
               value={form.endTime ?? ''}
               onChange={setField('endTime')}
             />
+            {timeError && (
+              <p className="mt-1 text-xs text-red-600">{timeError}</p>
+            )}
           </label>
         </div>
       </div>

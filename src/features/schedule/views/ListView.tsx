@@ -1,30 +1,31 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import type { MouseEvent, KeyboardEvent as ReactKeyboardEvent } from 'react';
-import Button from '@mui/material/Button';
-import Chip from '@mui/material/Chip';
-import Tooltip from '@mui/material/Tooltip';
-import IconButton from '@mui/material/IconButton';
-import ContentCopyRoundedIcon from '@mui/icons-material/ContentCopyRounded';
-import { formatInTimeZone } from '@/lib/tz';
-import { endOfWeek, startOfWeek } from 'date-fns';
-import { useNavigate } from 'react-router-dom';
-import { useSchedules } from '@/stores/useSchedules';
-import { useSP, type UseSP } from '@/lib/spClient';
-import FilterToolbar, { type StatusOption } from '@/ui/filters/FilterToolbar';
-import { usePersistedFilters } from '@/hooks/usePersistedFilters';
-import { formatCount } from '@/utils/formatCount';
-import { getNow } from '@/utils/getNow';
 import { AllDayChip } from '@/features/schedule/AllDayChip';
-import { RecurrenceChip, type RecurrenceMeta } from '@/ui/components/RecurrenceChip';
-import type { Schedule } from '@/lib/mappers';
-import { formatRangeLocal } from '@/utils/datetime';
 import { buildClonedDraft, type CloneStrategy } from '@/features/schedule/clone';
+import { normalizeStatus, STATUS_DEFAULT, STATUS_LABELS } from '@/features/schedule/statusDictionary';
 import { SCHEDULE_STATUSES, type Status } from '@/features/schedule/types';
-import { normalizeStatus, STATUS_LABELS, STATUS_DEFAULT } from '@/features/schedule/statusDictionary';
+import { updateSchedule } from '@/features/schedule/write';
+import { usePersistedFilters } from '@/hooks/usePersistedFilters';
 import { ui } from '@/i18n/ui';
 import { shouldSkipLogin } from '@/lib/env';
-import { updateSchedule } from '@/features/schedule/write';
+import type { Schedule } from '@/lib/mappers';
 import { showDemoWriteDisabled, SUCCESS_UPDATED_MSG } from '@/lib/notice';
+import { useSP, type UseSP } from '@/lib/spClient';
+import { formatInTimeZone } from '@/lib/tz';
+import { useSchedules } from '@/stores/useSchedules';
+import { RecurrenceChip, type RecurrenceMeta } from '@/ui/components/RecurrenceChip';
+import FilterToolbar, { type StatusOption } from '@/ui/filters/FilterToolbar';
+import { formatRangeLocal } from '@/utils/datetime';
+import { formatCount } from '@/utils/formatCount';
+import { getNow } from '@/utils/getNow';
+import ContentCopyRoundedIcon from '@mui/icons-material/ContentCopyRounded';
+import Button from '@mui/material/Button';
+import Chip from '@mui/material/Chip';
+import IconButton from '@mui/material/IconButton';
+import Tooltip from '@mui/material/Tooltip';
+import { endOfWeek, startOfWeek } from 'date-fns';
+import type { MouseEvent, KeyboardEvent as ReactKeyboardEvent } from 'react';
+import { useCallback, useEffect, useId, useMemo, useRef, useState, type CSSProperties } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { useTheme } from '@mui/material/styles';
 
 const FILTER_STORAGE_KEY = 'schedules.list.v1';
 const FILTER_DEBOUNCE_MS = 250;
@@ -52,6 +53,13 @@ type SortState = {
   field: SortField;
   direction: SortDirection;
 };
+
+function resolveAriaSort(sortState: SortState, field: SortField): 'ascending' | 'descending' | 'none' {
+  if (sortState.field !== field) {
+    return 'none';
+  }
+  return sortState.direction === 'asc' ? 'ascending' : 'descending';
+}
 
 function normalizeQuery(q: string): string {
   return q.trim().toLowerCase();
@@ -118,6 +126,22 @@ function pickTitle(item: Schedule): string {
 const SHAREPOINT_STATUS_OPTIONS = ['Planned', 'InProgress', 'Done', 'Cancelled'] as const;
 type SharePointStatus = (typeof SHAREPOINT_STATUS_OPTIONS)[number];
 
+type ServiceTypeKey = 'normal' | 'transport' | 'respite' | 'nursing' | 'absence' | 'other';
+
+function resolveServiceTypeKey(rawCategory: string | null | undefined): ServiceTypeKey {
+  const category = (rawCategory ?? '').toLowerCase();
+
+  if (!category) return 'normal';
+
+  if (category.includes('送迎') || category === 'transport') return 'transport';
+  if (category.includes('短期') || category.includes('ショート') || category === 'respite') return 'respite';
+  if (category.includes('看護') || category === 'nursing') return 'nursing';
+  if (category.includes('欠席') || category.includes('休み') || category === 'absence') return 'absence';
+  if (category.includes('生活介護') || category === 'normal' || category === 'daycare') return 'normal';
+
+  return 'other';
+}
+
 const scheduleStatusToSharePoint = (status: Schedule['status'] | undefined): SharePointStatus => {
   switch (status) {
     case 'submitted':
@@ -161,6 +185,7 @@ export default function ScheduleListView() {
   const navigate = useNavigate();
   const { data, error, loading, reload } = useSchedules();
   const sp = useSP();
+  const tableLabelId = useId();
 
   const { filters, debounced, update, reset, isDebouncing } = usePersistedFilters<Filters>({
     storageKey: FILTER_STORAGE_KEY,
@@ -278,7 +303,7 @@ export default function ScheduleListView() {
   const handleDuplicate = useCallback((row: Schedule, strategy: CloneStrategy = 'nextWeekday') => {
     const draft = buildClonedDraft(row, strategy);
     if (!draft) return;
-    navigate('/schedule/new', { state: { draft, sourceId: row.id, strategy } });
+    navigate('/schedules/create', { state: { draft, sourceId: row.id, strategy } });
   }, [navigate]);
 
   const handleSort = useCallback((field: SortField) => {
@@ -369,27 +394,44 @@ export default function ScheduleListView() {
           <div className="h-64 w-full animate-pulse rounded bg-gray-200" />
         </div>
       ) : shouldShowEmpty ? (
-        <div className="space-y-2 rounded border border-dashed border-gray-300 p-4 text-sm text-gray-600">
+        <div
+          className="space-y-2 rounded border border-dashed border-gray-300 p-4 text-sm text-gray-600"
+          role="status"
+          aria-live="polite"
+          aria-atomic="true"
+          data-testid="schedule-list-empty-state"
+        >
           <div>条件に一致する予定が見つかりませんでした。/ No schedules found for the selected filters.</div>
           <div className="flex flex-wrap gap-2">
-            <Button variant="outlined" size="small" onClick={() => void reload()} disabled={loading}>
+            <button
+              type="button"
+              onClick={() => void reload()}
+              disabled={loading}
+              className="inline-flex items-center rounded border border-slate-900 px-3 py-1.5 text-sm font-semibold text-slate-900 transition hover:bg-slate-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-slate-900 disabled:opacity-60 dark:border-slate-100 dark:text-slate-100 dark:hover:bg-slate-800"
+            >
               {loading ? '更新中…' : '再読み込み'}
-            </Button>
-            <Button variant="text" size="small" onClick={() => reset()}>
+            </button>
+            <button
+              type="button"
+              onClick={() => reset()}
+              className="inline-flex items-center rounded px-2 py-1.5 text-sm font-medium text-slate-800 hover:bg-slate-100 hover:text-slate-950 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-slate-800 dark:text-slate-100 dark:hover:bg-slate-800"
+            >
               絞り込みをクリア
-            </Button>
+            </button>
           </div>
         </div>
       ) : (
         <div className="overflow-x-auto" data-testid="schedule-list-view">
-          <table
-            className="min-w-full border border-gray-300 text-sm"
-            aria-busy={loading ? 'true' : 'false'}
-            aria-label="予定一覧"
-          >
+          <table className="min-w-full border border-gray-300 text-sm" aria-busy={loading ? 'true' : 'false'} aria-labelledby={tableLabelId}>
+            <caption id={tableLabelId} className="sr-only">スケジュール一覧</caption>
             <thead className="bg-gray-50">
               <tr>
-                <th className="border px-2 py-1 text-left" scope="col">
+                <th
+                  className="border px-2 py-1 text-left"
+                  scope="col"
+                  data-sort-field="title"
+                  aria-sort={resolveAriaSort(sort, 'title')}
+                >
                   <button
                     type="button"
                     className="flex items-center gap-1"
@@ -400,7 +442,12 @@ export default function ScheduleListView() {
                     <SortIndicator active={sort.field === 'title'} direction={sort.field === 'title' ? sort.direction : undefined} />
                   </button>
                 </th>
-                <th className="border px-2 py-1 text-left" scope="col">
+                <th
+                  className="border px-2 py-1 text-left"
+                  scope="col"
+                  data-sort-field="datetime"
+                  aria-sort={resolveAriaSort(sort, 'datetime')}
+                >
                   <button
                     type="button"
                     className="flex items-center gap-1"
@@ -411,11 +458,11 @@ export default function ScheduleListView() {
                     <SortIndicator active={sort.field === 'datetime'} direction={sort.field === 'datetime' ? sort.direction : undefined} />
                   </button>
                 </th>
-                <th className="border px-2 py-1 text-left" scope="col">場所</th>
-                <th className="border px-2 py-1 text-left" scope="col">担当</th>
-                <th className="border px-2 py-1 text-left" scope="col">利用者</th>
-                <th className="border px-2 py-1 text-left" scope="col">状態</th>
-                <th className="border px-2 py-1 text-left" scope="col">操作</th>
+                <th className="border px-2 py-1 text-left" scope="col" aria-sort="none">場所</th>
+                <th className="border px-2 py-1 text-left" scope="col" aria-sort="none">担当</th>
+                <th className="border px-2 py-1 text-left" scope="col" aria-sort="none">利用者</th>
+                <th className="border px-2 py-1 text-left" scope="col" aria-sort="none">状態</th>
+                <th className="border px-2 py-1 text-left" scope="col" aria-sort="none">操作</th>
               </tr>
             </thead>
             <tbody>
@@ -547,7 +594,7 @@ type ScheduleRowItemProps = {
   viewCategory: string;
   onSelect: () => void;
   handleDuplicate: (row: Schedule, strategy?: CloneStrategy) => void;
-  reload: () => Promise<Schedule[] | null | undefined>;
+  reload: () => Promise<void>;
   sp: UseSP;
 };
 
@@ -575,6 +622,12 @@ function ScheduleRowItem({
   const [userIdInput, setUserIdInput] = useState(item.userId != null ? String(item.userId) : '');
   const [banner, setBanner] = useState<BannerState | null>(null);
   const [saving, setSaving] = useState(false);
+  const theme = useTheme();
+  const serviceTypeKey: ServiceTypeKey = resolveServiceTypeKey(viewCategory);
+  const serviceTokens = theme.serviceTypeColors?.[serviceTypeKey];
+  const rowInlineStyle: CSSProperties | undefined = serviceTokens && !isSelected
+    ? { backgroundColor: serviceTokens.bg }
+    : undefined;
 
   const resetForm = useCallback(() => {
     setTitle(item.title || '');
@@ -730,7 +783,14 @@ function ScheduleRowItem({
 
   return (
     <tr
-      className={`cursor-pointer transition focus-within:outline-none focus-within:ring-2 focus-within:ring-indigo-500 ${isSelected ? 'bg-indigo-50' : 'odd:bg-white even:bg-gray-50'}`}
+      style={rowInlineStyle}
+      className={`cursor-pointer transition focus-within:outline-none focus-within:ring-2 focus-within:ring-indigo-500 ${
+        isSelected
+          ? 'bg-indigo-50'
+          : serviceTokens
+            ? ''
+            : 'odd:bg-white even:bg-gray-50'
+      }`}
       tabIndex={0}
       onClick={handleRowClick}
       onKeyDown={handleRowKeyDown}
@@ -744,17 +804,35 @@ function ScheduleRowItem({
     >
       <td className="border px-2 py-1 font-medium text-gray-900">
         {editing ? (
-          <input
-            type="text"
-            className="w-full rounded border border-gray-300 px-2 py-1 text-sm text-gray-900 focus:border-indigo-500 focus:ring-indigo-500"
-            value={title}
-            onChange={(event) => setTitle(event.target.value)}
-            data-testid="se-title"
-            aria-label="タイトル"
-            disabled={saving}
-          />
+          <div className="flex items-center gap-2">
+            {serviceTokens ? (
+              <span
+                aria-hidden="true"
+                className="inline-block h-4 w-1 rounded-full"
+                style={{ backgroundColor: serviceTokens.accent }}
+              />
+            ) : null}
+            <input
+              type="text"
+              className="w-full rounded border border-gray-300 px-2 py-1 text-sm text-gray-900 focus:border-indigo-500 focus:ring-indigo-500"
+              value={title}
+              onChange={(event) => setTitle(event.target.value)}
+              data-testid="se-title"
+              aria-label="タイトル"
+              disabled={saving}
+            />
+          </div>
         ) : (
-          item.title || '無題の予定'
+          <div className="flex items-center gap-2">
+            {serviceTokens ? (
+              <span
+                aria-hidden="true"
+                className="inline-block h-4 w-1 rounded-full"
+                style={{ backgroundColor: serviceTokens.accent }}
+              />
+            ) : null}
+            <span>{item.title || '無題の予定'}</span>
+          </div>
         )}
       </td>
       <td className="border px-2 py-1 text-gray-700">

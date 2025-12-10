@@ -1,6 +1,8 @@
 import type { ElementType, FC, MouseEvent as ReactMouseEvent, RefObject } from 'react';
+import { useMemo, useState } from 'react';
 import Box from '@mui/material/Box';
 import Button from '@mui/material/Button';
+import Checkbox from '@mui/material/Checkbox';
 import IconButton from '@mui/material/IconButton';
 import Paper from '@mui/material/Paper';
 import Stack from '@mui/material/Stack';
@@ -10,16 +12,18 @@ import TableCell from '@mui/material/TableCell';
 import TableContainer from '@mui/material/TableContainer';
 import TableHead from '@mui/material/TableHead';
 import TableRow from '@mui/material/TableRow';
+import TextField from '@mui/material/TextField';
 import Typography from '@mui/material/Typography';
 import DeleteRoundedIcon from '@mui/icons-material/DeleteRounded';
 import EditRoundedIcon from '@mui/icons-material/EditRounded';
 import InfoOutlinedIcon from '@mui/icons-material/InfoOutlined';
 import RefreshRoundedIcon from '@mui/icons-material/RefreshRounded';
+import FormControlLabel from '@mui/material/FormControlLabel';
 import { Link as RouterLink } from 'react-router-dom';
 import Loading from '../../../ui/components/Loading';
 import ErrorState from '../../../ui/components/ErrorState';
 import UserDetailSections from '../UserDetailSections/index';
-import { TESTIDS } from '@/testids';
+import { TESTIDS, tid, tidWithSuffix } from '@/testids';
 import type { IUserMaster } from '../types';
 
 type UsersListProps = {
@@ -60,6 +64,29 @@ const UsersList: FC<UsersListProps> = ({
   }
 
   const isRefreshing = busyId === -2;
+  const [search, setSearch] = useState('');
+  const [onlyActive, setOnlyActive] = useState(false);
+  const [onlySevere, setOnlySevere] = useState(false);
+
+  const filteredUsers = useMemo(() => {
+    const needle = search.trim().toLowerCase();
+    return users.filter((user) => {
+      const matchesSearch = needle
+        ? [user.UserID, user.FullName, user.Furigana, user.FullNameKana]
+            .map((value) => (value ?? '').toString().toLowerCase())
+            .some((value) => value.includes(needle))
+        : true;
+      const isActive = user.IsActive !== false;
+      const isSevere = Boolean(user.severeFlag ?? user.IsHighIntensitySupportTarget);
+      if (onlyActive && !isActive) {
+        return false;
+      }
+      if (onlySevere && !isSevere) {
+        return false;
+      }
+      return matchesSearch;
+    });
+  }, [onlyActive, onlySevere, search, users]);
 
   return (
     <Stack spacing={2.5}>
@@ -80,6 +107,39 @@ const UsersList: FC<UsersListProps> = ({
           {isRefreshing ? '更新中…' : '一覧を更新'}
         </Button>
       </Stack>
+      <Stack spacing={1.5} alignItems="flex-start">
+        <TextField
+          size="small"
+          label="利用者検索"
+          placeholder="ID / 氏名 / フリガナ"
+          value={search}
+          onChange={(event) => setSearch(event.target.value)}
+          sx={{ minWidth: { xs: '100%', sm: 320 }, maxWidth: 420 }}
+          {...tid(TESTIDS['users-panel-search'])}
+        />
+        <Stack direction="row" spacing={1} flexWrap="wrap">
+          <FormControlLabel
+            control={
+              <Checkbox
+                checked={onlyActive}
+                onChange={(event) => setOnlyActive(event.target.checked)}
+                {...tid(TESTIDS['users-panel-filter-active'])}
+              />
+            }
+            label="利用中のみ"
+          />
+          <FormControlLabel
+            control={
+              <Checkbox
+                checked={onlySevere}
+                onChange={(event) => setOnlySevere(event.target.checked)}
+                {...tid(TESTIDS['users-panel-filter-severe'])}
+              />
+            }
+            label="重度加算対象のみ"
+          />
+        </Stack>
+      </Stack>
       <Stack direction={{ xs: 'column', lg: 'row' }} spacing={2.5} alignItems="stretch">
         <TableContainer
           component={Paper}
@@ -97,12 +157,17 @@ const UsersList: FC<UsersListProps> = ({
               </TableRow>
             </TableHead>
             <TableBody>
-              {users.map((user) => {
+              {filteredUsers.map((user) => {
                 const rowBusy = busyId === Number(user.Id);
                 const userKey = user.UserID || String(user.Id);
                 const isSelected = selectedUserKey === userKey;
                 return (
-                  <TableRow key={user.Id} hover selected={isSelected}>
+                  <TableRow
+                    key={user.Id}
+                    hover
+                    selected={isSelected}
+                    {...tidWithSuffix(TESTIDS['users-list-table-row'], `-${userKey}`)}
+                  >
                     <TableCell>{user.Id}</TableCell>
                     <TableCell>{user.UserID}</TableCell>
                     <TableCell>{user.FullName}</TableCell>
@@ -147,10 +212,10 @@ const UsersList: FC<UsersListProps> = ({
                   </TableRow>
                 );
               })}
-              {users.length === 0 && (
+              {filteredUsers.length === 0 && (
                 <TableRow>
                   <TableCell colSpan={4} align="center" sx={{ py: 4, color: 'text.secondary' }}>
-                    データがありません
+                    条件に一致する利用者がいません
                   </TableCell>
                 </TableRow>
               )}

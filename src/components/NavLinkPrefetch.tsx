@@ -13,6 +13,14 @@ const INTENT_DEBOUNCE_MS = 150;
 
 const lastIntentByKey = new Map<string, number>();
 
+/**
+ * Test-only function to reset intent tracking state.
+ * Use this in test teardown to avoid state pollution between tests.
+ */
+export const __resetNavLinkPrefetchIntentForTest = (): void => {
+  lastIntentByKey.clear();
+};
+
 const recordIntent = (key: string, source: PrefetchSource): boolean => {
   const now = Date.now();
   const last = lastIntentByKey.get(key) ?? 0;
@@ -108,9 +116,8 @@ const NavLinkPrefetch = forwardRef<HTMLAnchorElement, NavLinkPrefetchProps>((pro
   }, [disablePrefetch, meta, preload, preloadKey, preloadKeys, signal, ttlMs]);
 
   const scheduleHoverPrefetch = useCallback(() => {
-    if (!prefetchOnHover) {
-      return;
-    }
+    if (!prefetchOnHover) return;
+
     if (hoverTimerRef.current) {
       window.clearTimeout(hoverTimerRef.current);
     }
@@ -159,8 +166,9 @@ const NavLinkPrefetch = forwardRef<HTMLAnchorElement, NavLinkPrefetchProps>((pro
       observer.disconnect();
       intersectionRef.current = null;
     };
-  }, [firePrefetch, disablePrefetch, prefetchOnViewport, viewportMargin, preloadKey]);
+  }, [firePrefetch, disablePrefetch, prefetchOnViewport, viewportMargin]);
 
+  // アンマウント時のクリーンアップ（ホバータイマー + IntersectionObserver の確実な解除）
   useEffect(() => () => {
     cancelHoverPrefetch();
     const observer = intersectionRef.current;
@@ -205,7 +213,8 @@ const NavLinkPrefetch = forwardRef<HTMLAnchorElement, NavLinkPrefetchProps>((pro
       return;
     }
     const key = event.key.toLowerCase();
-    if (key === 'enter' || key === ' ' || key === 'spacebar' || key === 'arrowright' || key === 'arrowdown') {
+    if (key === 'enter' || key === ' ' || key === 'spacebar' ||
+        key === 'arrowright' || key === 'arrowdown' || key === 'arrowup') {
       firePrefetch('kbd');
     }
   }, [onKeyDown, prefetchOnKeyboard, firePrefetch]);

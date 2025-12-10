@@ -1,4 +1,5 @@
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { TESTIDS } from '@/testids';
 import { AuditEvent, readAudit } from '../../lib/audit';
 import { isDevMode } from '../../lib/env';
 import UnsynedAuditBadge from '../../ui/components/UnsynedAuditBadge';
@@ -7,6 +8,9 @@ import { auditMetricLabels } from './labels';
 import { AuditBatchMetrics } from './types';
 import { useAuditSync } from './useAuditSync';
 import { useAuditSyncBatch } from './useAuditSyncBatch';
+
+// ActionFilter type to prevent invalid action strings
+type ActionFilter = 'ALL' | AuditEvent['action'];
 
 const AuditPanel: React.FC = () => {
   const [logs, setLogs] = useState<AuditEvent[]>(readAudit());
@@ -18,15 +22,34 @@ const AuditPanel: React.FC = () => {
   const [lastFailed, setLastFailed] = useState<number | undefined>();
   const [syncing, setSyncing] = useState(false);
   const [syncMsg, setSyncMsg] = useState<string | null>(null);
-  const [actionFilter, setActionFilter] = useState<string>('ALL');
+  const [actionFilter, setActionFilter] = useState<ActionFilter>('ALL');
   const [lastSuccess, setLastSuccess] = useState<AuditBatchMetrics['success'] | undefined>();
   const [lastDuplicates, setLastDuplicates] = useState<AuditBatchMetrics['duplicates'] | undefined>();
   const [lastTotal, setLastTotal] = useState<AuditBatchMetrics['total'] | undefined>();
   const [showMetrics, setShowMetrics] = useState(false);
   const closeMetrics = useCallback(() => setShowMetrics(false), []);
 
+  // Memoized filtered logs to avoid re-filtering on every render
+  const filteredLogs = useMemo(
+    () => logs.filter(l => actionFilter === 'ALL' || l.action === actionFilter),
+    [logs, actionFilter],
+  );
+
+  // Safe metrics handling for SSR compatibility
+  const metricsJson = useMemo(() => {
+    if (typeof window === 'undefined' || !window.__AUDIT_BATCH_METRICS__) {
+      return 'no metrics';
+    }
+    return JSON.stringify(window.__AUDIT_BATCH_METRICS__, null, 2);
+  }, []);
+
+  // Common function to reload logs after sync operations
+  const reloadLogs = useCallback(() => {
+    setLogs(readAudit());
+  }, []);
+
   useEffect(() => {
-    if (!showMetrics) {
+    if (!showMetrics || typeof window === 'undefined') {
       return;
     }
 
@@ -65,13 +88,15 @@ const AuditPanel: React.FC = () => {
       details: l.after
     }));
     const csv = buildAuditCsv(rows);
-    downloadCsv(csv, 'audit_logs.csv');
+    downloadCsv('audit_logs.csv', csv);
   };
 
   return (
     <div>
       <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 4 }}>
-        <h2 style={{ margin: 0 }}>監査ログ</h2>
+        <h2 style={{ margin: 0 }} data-testid={TESTIDS['audit-heading']}>
+          監査ログ
+        </h2>
         <UnsynedAuditBadge
           style={{
             // 監査ページでクリックした場合のカスタム動作を追加するための準備
@@ -117,7 +142,7 @@ const AuditPanel: React.FC = () => {
           }} onClick={() => setShowMetrics(true)}>i</button>
         )}
       </div>
-  {showMetrics && isDevMode() && (
+      {isDevMode() && showMetrics && (
         <div
           role="button"
           tabIndex={0}
@@ -130,10 +155,10 @@ const AuditPanel: React.FC = () => {
             <h3 style={{ marginTop:0 }}>Batch Metrics</h3>
             <pre style={{ fontSize:11, background:'#f5f5f5', padding:8, borderRadius:4 }}>
 {`
-${JSON.stringify(window.__AUDIT_BATCH_METRICS__, null, 2)}
+${metricsJson}
 `}</pre>
             <div style={{ fontSize:11, color:'#555', marginTop:8 }}>
-              parserFallbackCount: {window.__AUDIT_BATCH_METRICS__?.parserFallbackCount ?? 0}
+              parserFallbackCount: {(typeof window !== 'undefined' && window.__AUDIT_BATCH_METRICS__?.parserFallbackCount) ?? 0}
             </div>
             <button type="button" style={{ marginTop:12 }} onClick={closeMetrics}>閉じる</button>
           </div>
@@ -162,7 +187,7 @@ ${JSON.stringify(window.__AUDIT_BATCH_METRICS__, null, 2)}
               setSyncMsg(`同期完了: ${success}/${total} 件`);
               if (success) {
                 // 再読込でクリア結果を表示
-                setLogs(readAudit());
+                reloadLogs();
               }
             } catch (error) {
               const msg = error instanceof Error ? error.message : String(error);
@@ -193,7 +218,7 @@ ${JSON.stringify(window.__AUDIT_BATCH_METRICS__, null, 2)}
               setLastSuccess(success);
               setLastDuplicates(duplicates);
               setLastTotal(total);
-              setLogs(readAudit());
+              reloadLogs();
             } catch (error) {
               const msg = error instanceof Error ? error.message : String(error);
               setSyncMsg(`一括同期失敗: ${msg}`);
@@ -222,7 +247,7 @@ ${JSON.stringify(window.__AUDIT_BATCH_METRICS__, null, 2)}
                 setLastSuccess(success);
                 setLastDuplicates(duplicates);
                 setLastTotal(total);
-                setLogs(readAudit());
+                reloadLogs();
               } catch (error) {
                 const msg = error instanceof Error ? error.message : String(error);
                 setSyncMsg(`再送失敗: ${msg}`);
@@ -253,8 +278,8 @@ ${JSON.stringify(window.__AUDIT_BATCH_METRICS__, null, 2)}
           </tr>
         </thead>
         <tbody>
-          {logs.filter(l => actionFilter === 'ALL' || l.action === actionFilter).map((log: AuditEvent, i: number) => (
-            <tr key={i}>
+          {filteredLogs.map((log: AuditEvent) => (
+            <tr key={`${log.ts}:${log.entity}:${log.entity_id}`}>
               <td>{new Date(log.ts).toLocaleString()}</td>
               <td>{log.actor}</td>
               <td>{log.action}</td>

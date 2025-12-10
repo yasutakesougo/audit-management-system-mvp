@@ -1,9 +1,17 @@
+import { useFeatureFlags } from '@/config/featureFlags';
+import type { DashboardAudience } from '@/features/auth/store';
+import { HYDRATION_FEATURES, estimatePayloadSize, startFeatureSpan } from '@/hydration/features';
+import { TESTIDS, tid } from '@/testids';
+import type { Schedule } from '@/lib/mappers';
+import AccessTimeIcon from '@mui/icons-material/AccessTime';
 import AssignmentIcon from '@mui/icons-material/Assignment';
-import BehaviorIcon from '@mui/icons-material/Psychology';
 import DashboardIcon from '@mui/icons-material/Dashboard';
+import EventAvailableRoundedIcon from '@mui/icons-material/EventAvailableRounded';
 import MedicalIcon from '@mui/icons-material/LocalHospital';
+import MonitorHeartIcon from '@mui/icons-material/MonitorHeart';
 import NightsStayIcon from '@mui/icons-material/NightsStay';
 import PersonIcon from '@mui/icons-material/Person';
+import BehaviorIcon from '@mui/icons-material/Psychology';
 import RestaurantIcon from '@mui/icons-material/Restaurant';
 import TrendingUpIcon from '@mui/icons-material/TrendingUp';
 import WarningIcon from '@mui/icons-material/Warning';
@@ -27,14 +35,21 @@ import Paper from '@mui/material/Paper';
 import Stack from '@mui/material/Stack';
 import Tab from '@mui/material/Tab';
 import Tabs from '@mui/material/Tabs';
-import TextField from '@mui/material/TextField';
 import Typography from '@mui/material/Typography';
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
 import { PersonDaily, SeizureRecord } from '../domain/daily/types';
+import HandoffSummaryForMeeting from '../features/handoff/HandoffSummaryForMeeting';
+import type { HandoffDayScope } from '../features/handoff/handoffTypes';
+import { useHandoffSummary } from '../features/handoff/useHandoffSummary';
+import MeetingGuideDrawer from '../features/meeting/MeetingGuideDrawer';
+import type { MeetingKind } from '../features/meeting/meetingSteps';
+import UsageStatusDashboard from '../features/users/UsageStatusDashboard.v2';
+import { calculateUsageFromDailyRecords } from '../features/users/userMasterDashboardUtils';
 import { useUsersDemo } from '../features/users/usersStoreDemo';
 import { IUserMaster } from '../sharepoint/fields';
 
-// モック活動日誌データ生成
+// モック支援記録（ケース記録）データ生成
 const generateMockActivityRecords = (users: IUserMaster[], date: string): PersonDaily[] => {
   return users.map((user, index) => {
     const hasProblems = Math.random() < 0.15; // 15%の確率で問題行動
@@ -98,17 +113,157 @@ const TabPanel: React.FC<TabPanelProps> = ({ children, value, index }) => (
   </div>
 );
 
-const DashboardPage: React.FC = () => {
+interface DashboardPageProps {
+  audience?: DashboardAudience;
+}
+
+export type StaffConflict = {
+  kind: 'staff-overlap';
+  staffId: string;
+  scheduleIds: string[];
+  message: string;
+};
+
+type ConflictSchedule = Pick<Schedule, 'id' | 'staffIds'>;
+
+export function calculateStaffConflicts(
+  schedules: readonly ConflictSchedule[] | null | undefined,
+): StaffConflict[] {
+  if (!Array.isArray(schedules) || schedules.length === 0) {
+    return [];
+  }
+
+  const perStaff = new Map<string, string[]>();
+
+  for (const schedule of schedules) {
+    if (!schedule) continue;
+    const scheduleId = schedule.id != null ? String(schedule.id) : '';
+    if (!scheduleId) continue;
+
+    const staffIds = Array.isArray(schedule.staffIds) ? schedule.staffIds : [];
+    for (const rawStaffId of staffIds) {
+      const staffId = typeof rawStaffId === 'string' ? rawStaffId.trim() : '';
+      if (!staffId) continue;
+      const bucket = perStaff.get(staffId) ?? [];
+      bucket.push(scheduleId);
+      perStaff.set(staffId, bucket);
+    }
+  }
+
+  const conflicts: StaffConflict[] = [];
+  for (const [staffId, ids] of perStaff) {
+    const uniqueIds = Array.from(new Set(ids));
+    if (uniqueIds.length <= 1) continue;
+    conflicts.push({
+      kind: 'staff-overlap',
+      staffId,
+      scheduleIds: uniqueIds,
+      message: `スタッフ ${staffId} の時間重複`,
+    });
+  }
+
+  return conflicts;
+}
+
+const ADMIN_TABS = [
+  { label: '集団傾向分析', icon: <TrendingUpIcon /> },
+  { label: '利用状況', icon: <MonitorHeartIcon /> },
+  { label: '問題行動サマリー', icon: <BehaviorIcon /> },
+  { label: '医療・健康情報', icon: <MedicalIcon /> },
+  { label: '個別支援記録', icon: <AssignmentIcon /> },
+];
+
+const STAFF_TABS = [
+  { label: '朝ミーティング 9:00', icon: <WbSunnyIcon /> },
+  { label: '夕ミーティング 17:15', icon: <NightsStayIcon /> },
+];
+
+const DashboardPage: React.FC<DashboardPageProps> = ({ audience = 'staff' }) => {
+  const navigate = useNavigate();
+  const { schedules: schedulesEnabled } = useFeatureFlags();
   const [tabValue, setTabValue] = useState(0);
+  const [meetingDrawerOpen, setMeetingDrawerOpen] = useState(false);
+  const [meetingKind, setMeetingKind] = useState<MeetingKind>('morning');
   const { data: users } = useUsersDemo();
+  const {
+    total: handoffTotal,
+    byStatus: handoffStatus,
+    criticalCount: handoffCritical,
+  } = useHandoffSummary({ dayScope: 'today' });
 
   const today = new Date().toISOString().split('T')[0];
+  const currentMonth = today.slice(0, 7);
 
-  // 活動日誌データ（モック）
-  const activityRecords = useMemo(() =>
-    generateMockActivityRecords(users, today),
-    [users, today]
-  );
+  const openTimeline = (scope: HandoffDayScope = 'today') => {
+    navigate('/handoff-timeline', {
+      state: { dayScope: scope, timeFilter: 'all' },
+    });
+  };
+
+  // 支援記録（ケース記録）データ（モック）
+  // TODO: 実データ接続時は SharePoint / PersonDaily 由来の記録で置き換える
+  const activityRecords = useMemo(() => {
+    const span = startFeatureSpan(HYDRATION_FEATURES.dashboard.activityModel, {
+      status: 'pending',
+      users: users.length,
+    });
+    try {
+      const records = generateMockActivityRecords(users, today);
+      span({
+        meta: {
+          status: 'ok',
+          recordCount: records.length,
+          bytes: estimatePayloadSize(records),
+        },
+      });
+      return records;
+    } catch (error) {
+      span({
+        meta: { status: 'error' },
+        error: error instanceof Error ? error.message : String(error),
+      });
+      throw error;
+    }
+  }, [users, today]);
+
+  // 支援記録（activityRecords）が保持する日付・利用者IDから月次利用実績を集計（完了記録のみカウント）
+  const usageMap = useMemo(() => {
+    const span = startFeatureSpan(HYDRATION_FEATURES.dashboard.usageAggregation, {
+      status: 'pending',
+      month: currentMonth,
+    });
+    try {
+      const map = calculateUsageFromDailyRecords(activityRecords, users, currentMonth, {
+        userKey: (record) => String(record.personId ?? ''),
+        dateKey: (record) => record.date ?? '',
+        countRule: (record) => record.status === '完了',
+      });
+      const entryCount = map && typeof map === 'object'
+        ? Object.keys(map as Record<string, unknown>).length
+        : 0;
+      span({
+        meta: {
+          status: 'ok',
+          entries: entryCount,
+          bytes: estimatePayloadSize(map),
+        },
+      });
+      return map;
+    } catch (error) {
+      span({
+        meta: { status: 'error' },
+        error: error instanceof Error ? error.message : String(error),
+      });
+      throw error;
+    }
+  }, [activityRecords, users, currentMonth]);
+
+  useEffect(() => {
+    if (process.env.NODE_ENV === 'development') {
+      // eslint-disable-next-line no-console
+      console.debug('[usageMap]', currentMonth, usageMap);
+    }
+  }, [usageMap, currentMonth]);
 
   // 強度行動障害対象者
   const intensiveSupportUsers = users.filter(user => user.IsSupportProcedureTarget);
@@ -214,75 +369,6 @@ const DashboardPage: React.FC = () => {
     return { userLane, staffLane, organizationLane };
   }, [users]);
 
-  type HandoffEntry = {
-    id: string;
-    time: string;
-    author: string;
-    message: string;
-    category: 'info' | 'alert' | 'action';
-  };
-
-  const categoryLabel: Record<HandoffEntry['category'], string> = {
-    info: '共有',
-    alert: '注意',
-    action: '対応中',
-  };
-
-  const categoryColor: Record<HandoffEntry['category'], 'default' | 'primary' | 'error' | 'warning' | 'success' | 'info' | 'secondary'> = {
-    info: 'info',
-    alert: 'error',
-    action: 'warning',
-  };
-
-  const [handoffTimeline, setHandoffTimeline] = useState<HandoffEntry[]>(() => [
-    {
-      id: 'handoff-1',
-      time: '08:30',
-      author: '夜勤担当',
-      message: '夜間帯に落ち着かない様子の利用者あり。午前中は個別支援のフォローをお願いします。',
-      category: 'alert',
-    },
-    {
-      id: 'handoff-2',
-      time: '09:20',
-      author: '日中活動リーダー',
-      message: '作業プログラムAの進捗は予定通り。午後は検品作業に移行予定です。',
-      category: 'info',
-    },
-    {
-      id: 'handoff-3',
-      time: '10:10',
-      author: '療法士',
-      message: '午後のリハビリは地震避難訓練と重なるため、開始時刻を15:00に変更しました。',
-      category: 'action',
-    },
-  ]);
-
-  const [newHandoffNote, setNewHandoffNote] = useState('');
-
-  const handleAddTimeline = () => {
-    const trimmed = newHandoffNote.trim();
-    if (!trimmed) return;
-    const now = new Date();
-    const time = now.toLocaleTimeString('ja-JP', { hour: '2-digit', minute: '2-digit' });
-    setHandoffTimeline((prev) => [
-      ...prev,
-      {
-        id: `handoff-${now.getTime()}`,
-        time,
-        author: '当番職員',
-        message: trimmed,
-        category: 'info',
-      },
-    ]);
-    setNewHandoffNote('');
-  };
-
-  const recentHandoffs = useMemo(() => handoffTimeline.slice(-3).reverse(), [handoffTimeline]);
-  const attentionHandoffs = useMemo(
-    () => handoffTimeline.filter((entry) => entry.category !== 'info'),
-    [handoffTimeline]
-  );
   const staffMeetingHighlights = useMemo(
     () => scheduleLanes.staffLane.slice(0, 3),
     [scheduleLanes]
@@ -314,18 +400,68 @@ const DashboardPage: React.FC = () => {
     setTabValue(newValue);
   };
 
+  useEffect(() => {
+    const maxIndex = (audience === 'admin' ? ADMIN_TABS.length : STAFF_TABS.length) - 1;
+    if (tabValue > maxIndex) {
+      setTabValue(0);
+    }
+  }, [audience, tabValue]);
+
+  const tabItems = audience === 'admin' ? ADMIN_TABS : STAFF_TABS;
+
   return (
     <Container maxWidth="lg" data-testid="dashboard-page">
       <Box sx={{ py: 3 }}>
         {/* ヘッダー */}
         <Box sx={{ mb: 3 }}>
-          <Typography variant="h4" component="h1" gutterBottom>
-            <DashboardIcon sx={{ verticalAlign: 'middle', mr: 2 }} />
-            黒ノート
-          </Typography>
-          <Typography variant="body1" color="text.secondary">
-            全利用者の活動状況と支援記録の統合的な管理・分析
-          </Typography>
+          <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 1 }}>
+            <Box>
+              <Typography variant="h4" component="h1" gutterBottom>
+                <DashboardIcon sx={{ verticalAlign: 'middle', mr: 2 }} />
+                黒ノート
+              </Typography>
+              <Typography variant="body1" color="text.secondary">
+                全利用者の活動状況と支援記録の統合的な管理・分析
+              </Typography>
+            </Box>
+
+            {/* 朝会・夕会ガイドボタン */}
+            <Stack direction="row" spacing={1}>
+              <Button
+                variant="outlined"
+                startIcon={<WbSunnyIcon />}
+                onClick={() => {
+                  setMeetingKind('morning');
+                  setMeetingDrawerOpen(true);
+                }}
+                size="small"
+              >
+                朝会ガイド
+              </Button>
+              <Button
+                variant="outlined"
+                startIcon={<NightsStayIcon />}
+                onClick={() => {
+                  setMeetingKind('evening');
+                  setMeetingDrawerOpen(true);
+                }}
+                size="small"
+                color="secondary"
+              >
+                夕会ガイド
+              </Button>
+              <Button
+                variant="contained"
+                startIcon={<AccessTimeIcon />}
+                component={Link}
+                to="/handoff-timeline"
+                size="small"
+                color="primary"
+              >
+                申し送りタイムライン
+              </Button>
+            </Stack>
+          </Box>
         </Box>
 
         <Stack spacing={3} sx={{ mb: 3 }}>
@@ -414,9 +550,28 @@ const DashboardPage: React.FC = () => {
           </Paper>
 
           <Paper elevation={3} sx={{ p: 3 }}>
-            <Typography variant="h5" sx={{ fontWeight: 700 }}>
-              今日の予定
-            </Typography>
+            <Stack
+              direction={{ xs: 'column', sm: 'row' }}
+              spacing={1}
+              alignItems={{ xs: 'flex-start', sm: 'center' }}
+              justifyContent="space-between"
+              sx={{ mb: 1.5 }}
+            >
+              <Typography variant="h5" sx={{ fontWeight: 700 }}>
+                今日の予定
+              </Typography>
+              {schedulesEnabled && (
+                <Button
+                  variant="outlined"
+                  startIcon={<EventAvailableRoundedIcon />}
+                  component={Link}
+                  to="/schedules/week"
+                  sx={{ alignSelf: { xs: 'stretch', sm: 'auto' } }}
+                >
+                  マスタースケジュールを開く
+                </Button>
+              )}
+            </Stack>
             <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
               レーンごとの進行状況を確認できます。
             </Typography>
@@ -448,46 +603,73 @@ const DashboardPage: React.FC = () => {
             </Grid>
           </Paper>
 
-          <Paper elevation={3} sx={{ p: 3 }}>
-            <Typography variant="h5" sx={{ fontWeight: 700 }}>
-              申し送りタイムライン
-            </Typography>
-            <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-              新規申し送りを追加すると全員へ共有されます。
-            </Typography>
-            <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2} sx={{ mb: 3 }}>
-              <TextField
-                label="申し送り内容"
-                placeholder="例: 午後の創作活動は体育館へ場所変更"
-                fullWidth
-                value={newHandoffNote}
-                onChange={(event) => setNewHandoffNote(event.target.value)}
-              />
-              <Button
-                variant="contained"
-                color="primary"
-                onClick={handleAddTimeline}
-                disabled={!newHandoffNote.trim()}
-                sx={{ minWidth: { xs: '100%', sm: 160 } }}
+          <Paper elevation={3} sx={{ p: 3 }} {...tid(TESTIDS['dashboard-handoff-summary'])}>
+            <Stack spacing={2}>
+              <Stack
+                direction={{ xs: 'column', sm: 'row' }}
+                spacing={1}
+                alignItems={{ xs: 'flex-start', sm: 'center' }}
               >
-                申し送りを追加
-              </Button>
-            </Stack>
-            <List dense>
-              {handoffTimeline.map((entry) => (
-                <ListItem key={entry.id} alignItems="flex-start">
-                  <ListItemAvatar>
-                    <Avatar>{entry.author.charAt(0)}</Avatar>
-                  </ListItemAvatar>
-                  <ListItemText
-                    primary={`${entry.time} ${entry.author}`}
-                    secondary={entry.message}
-                    primaryTypographyProps={{ fontWeight: 600 }}
+                <Typography variant="h5" sx={{ fontWeight: 700 }}>
+                  申し送りタイムライン
+                </Typography>
+                {handoffCritical > 0 && (
+                  <Chip
+                    size="small"
+                    color="error"
+                    variant="filled"
+                    label={`重要・未完了 ${handoffCritical}件`}
                   />
-                  <Chip size="small" label={categoryLabel[entry.category]} color={categoryColor[entry.category]} sx={{ ml: 2 }} />
-                </ListItem>
-              ))}
-            </List>
+                )}
+              </Stack>
+              <Typography variant="body2" color="text.secondary">
+                今日の申し送り状況を把握して、必要に応じてタイムラインページで詳細を確認してください。
+              </Typography>
+              {handoffTotal > 0 ? (
+                <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1} flexWrap="wrap" useFlexGap>
+                  <Chip
+                    size="small"
+                    color="warning"
+                    variant={handoffStatus['未対応'] > 0 ? 'filled' : 'outlined'}
+                    label={`未対応 ${handoffStatus['未対応']}件`}
+                    {...tid(TESTIDS['dashboard-handoff-summary-alert'])}
+                  />
+                  <Chip
+                    size="small"
+                    color="info"
+                    variant={handoffStatus['対応中'] > 0 ? 'filled' : 'outlined'}
+                    label={`対応中 ${handoffStatus['対応中']}件`}
+                    {...tid(TESTIDS['dashboard-handoff-summary-action'])}
+                  />
+                  <Chip
+                    size="small"
+                    color="success"
+                    variant={handoffStatus['対応済'] > 0 ? 'filled' : 'outlined'}
+                    label={`対応済 ${handoffStatus['対応済']}件`}
+                  />
+                  <Chip
+                    size="small"
+                    variant="outlined"
+                    label={`合計 ${handoffTotal}件`}
+                    {...tid(TESTIDS['dashboard-handoff-summary-total'])}
+                  />
+                </Stack>
+              ) : (
+                <Alert severity="info" sx={{ borderRadius: 2 }}>
+                  まだ今日の申し送りは登録されていません。気づいたことがあれば /handoff-timeline から追加できます。
+                </Alert>
+              )}
+              <Stack direction={{ xs: 'column', sm: 'row' }} justifyContent="flex-end">
+                <Button
+                  variant="contained"
+                  startIcon={<AccessTimeIcon />}
+                  onClick={() => openTimeline('today')}
+                  sx={{ minWidth: { xs: '100%', sm: 220 } }}
+                >
+                  タイムラインで詳細を見る
+                </Button>
+              </Stack>
+            </Stack>
           </Paper>
         </Stack>
 
@@ -548,400 +730,356 @@ const DashboardPage: React.FC = () => {
             variant="scrollable"
             scrollButtons="auto"
           >
-            <Tab
-              label="集団傾向分析"
-              icon={<TrendingUpIcon />}
-              iconPosition="start"
-            />
-            <Tab
-              label="問題行動サマリー"
-              icon={<BehaviorIcon />}
-              iconPosition="start"
-            />
-            <Tab
-              label="医療・健康情報"
-              icon={<MedicalIcon />}
-              iconPosition="start"
-            />
-            <Tab
-              label="個別支援記録"
-              icon={<AssignmentIcon />}
-              iconPosition="start"
-            />
-            <Tab
-              label="朝ミーティング 9:00"
-              icon={<WbSunnyIcon />}
-              iconPosition="start"
-            />
-            <Tab
-              label="夕ミーティング 17:15"
-              icon={<NightsStayIcon />}
-              iconPosition="start"
-            />
+            {tabItems.map((tab) => (
+              <Tab
+                key={tab.label}
+                label={tab.label}
+                icon={tab.icon}
+                iconPosition="start"
+              />
+            ))}
           </Tabs>
         </Card>
 
         {/* タブコンテンツ */}
 
-        {/* 集団傾向分析 */}
-        <TabPanel value={tabValue} index={0}>
-          <Stack spacing={3}>
-            <Card>
-              <CardContent>
-                <Typography variant="h6" gutterBottom>
-                  <RestaurantIcon sx={{ verticalAlign: 'middle', mr: 1 }} />
-                  昼食摂取状況
-                </Typography>
-                <Stack direction="row" spacing={2} flexWrap="wrap" sx={{ gap: 1 }}>
-                  {Object.entries(stats.lunchStats).map(([amount, count]) => (
-                    <Chip
-                      key={amount}
-                      label={`${amount}: ${count}名`}
-                      color={amount === '完食' ? 'success' : amount === 'なし' ? 'error' : 'default'}
-                      variant={amount === '完食' ? 'filled' : 'outlined'}
-                    />
-                  ))}
-                </Stack>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardContent>
-                <Typography variant="h6" gutterBottom>
-                  <BehaviorIcon sx={{ verticalAlign: 'middle', mr: 1 }} />
-                  問題行動発生状況
-                </Typography>
-                <Stack direction="row" spacing={2} flexWrap="wrap" sx={{ gap: 1 }}>
-                  <Chip
-                    label={`自傷: ${stats.problemBehaviorStats.selfHarm}件`}
-                    color={stats.problemBehaviorStats.selfHarm > 0 ? 'error' : 'default'}
-                  />
-                  <Chip
-                    label={`暴力: ${stats.problemBehaviorStats.violence}件`}
-                    color={stats.problemBehaviorStats.violence > 0 ? 'error' : 'default'}
-                  />
-                  <Chip
-                    label={`大声: ${stats.problemBehaviorStats.loudVoice}件`}
-                    color={stats.problemBehaviorStats.loudVoice > 0 ? 'warning' : 'default'}
-                  />
-                  <Chip
-                    label={`異食: ${stats.problemBehaviorStats.pica}件`}
-                    color={stats.problemBehaviorStats.pica > 0 ? 'error' : 'default'}
-                  />
-                  <Chip
-                    label={`その他: ${stats.problemBehaviorStats.other}件`}
-                    color={stats.problemBehaviorStats.other > 0 ? 'warning' : 'default'}
-                  />
-                </Stack>
-              </CardContent>
-            </Card>
-          </Stack>
-        </TabPanel>
-
-        {/* 問題行動サマリー */}
-        <TabPanel value={tabValue} index={1}>
-          <Stack spacing={2}>
-            {stats.problemBehaviorStats.selfHarm > 0 && (
-              <Alert severity="error" icon={<WarningIcon />}>
-                本日、自傷行動が{stats.problemBehaviorStats.selfHarm}件発生しています。該当者の個別対応を確認してください。
-              </Alert>
-            )}
-            {stats.problemBehaviorStats.violence > 0 && (
-              <Alert severity="error" icon={<WarningIcon />}>
-                本日、暴力行動が{stats.problemBehaviorStats.violence}件発生しています。環境調整・支援方法の見直しを検討してください。
-              </Alert>
-            )}
-            {Object.values(stats.problemBehaviorStats).every(count => count === 0) && (
-              <Alert severity="success">
-                本日は問題行動の記録がありません。良好な状態が維持されています。
-              </Alert>
-            )}
-
-            <Card>
-              <CardContent>
-                <Typography variant="h6" gutterBottom>問題行動対応履歴</Typography>
-                <Typography variant="body2" color="text.secondary">
-                  詳細な対応記録と改善傾向の分析は個別の活動日誌をご確認ください。
-                </Typography>
-              </CardContent>
-            </Card>
-          </Stack>
-        </TabPanel>
-
-        {/* 医療・健康情報 */}
-        <TabPanel value={tabValue} index={2}>
-          <Stack spacing={3}>
-            <Card>
-              <CardContent>
-                <Typography variant="h6" gutterBottom>
-                  <MedicalIcon sx={{ verticalAlign: 'middle', mr: 1 }} />
-                  発作記録サマリー
-                </Typography>
-                {stats.seizureCount > 0 ? (
-                  <Alert severity="warning">
-                    本日{stats.seizureCount}件の発作が記録されています。医療対応と記録の詳細確認をお願いします。
-                  </Alert>
-                ) : (
-                  <Alert severity="success">
-                    本日は発作の記録がありません。
-                  </Alert>
-                )}
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardContent>
-                <Typography variant="h6" gutterBottom>健康管理指標</Typography>
-                <Stack spacing={2}>
-                  <Box>
-                    <Typography variant="body2" gutterBottom>昼食摂取率</Typography>
-                    <LinearProgress
-                      variant="determinate"
-                      value={((stats.lunchStats['完食'] || 0) / stats.totalUsers) * 100}
-                      sx={{ height: 8, borderRadius: 4 }}
-                    />
-                    <Typography variant="caption">
-                      {Math.round(((stats.lunchStats['完食'] || 0) / stats.totalUsers) * 100)}%
-                      ({stats.lunchStats['完食'] || 0}名/{stats.totalUsers}名)
+        {audience === 'admin' && (
+          <>
+            {/* 集団傾向分析 */}
+            <TabPanel value={tabValue} index={0}>
+              <Stack spacing={3}>
+                <Card>
+                  <CardContent>
+                    <Typography variant="h6" gutterBottom>
+                      <RestaurantIcon sx={{ verticalAlign: 'middle', mr: 1 }} />
+                      昼食摂取状況
                     </Typography>
-                  </Box>
-                </Stack>
-              </CardContent>
-            </Card>
-          </Stack>
-        </TabPanel>
-
-        {/* 個別支援記録 */}
-        <TabPanel value={tabValue} index={3}>
-          <Stack spacing={2}>
-            <Typography variant="h6" gutterBottom>
-              <PersonIcon sx={{ verticalAlign: 'middle', mr: 1 }} />
-              強度行動障害対象者 支援手順記録
-            </Typography>
-
-            {intensiveSupportUsers.map(user => (
-              <Card key={user.Id} sx={{ border: '2px solid', borderColor: 'warning.main' }}>
-                <CardContent>
-                  <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 2 }}>
-                    <Typography variant="h6">
-                      {user.FullName}
-                    </Typography>
-                    <Stack direction="row" spacing={1}>
-                      <Chip label="強度行動障害" color="warning" size="small" />
-                      <Chip label="支援手順記録対象" color="info" size="small" />
+                    <Stack direction="row" spacing={2} flexWrap="wrap" sx={{ gap: 1 }}>
+                      {Object.entries(stats.lunchStats).map(([amount, count]) => (
+                        <Chip
+                          key={amount}
+                          label={`${amount}: ${count}名`}
+                          color={amount === '完食' ? 'success' : amount === 'なし' ? 'error' : 'default'}
+                          variant={amount === '完食' ? 'filled' : 'outlined'}
+                        />
+                      ))}
                     </Stack>
-                  </Box>
+                  </CardContent>
+                </Card>
 
-                  <Divider sx={{ my: 2 }} />
-
-                  <Stack direction="row" spacing={2} sx={{ mb: 2 }}>
-                    <Paper sx={{ p: 1, textAlign: 'center', flex: 1 }}>
-                      <Typography variant="h6" color="primary">
-                        {Math.floor(Math.random() * 15) + 10}/19
-                      </Typography>
-                      <Typography variant="caption">支援手順実施</Typography>
-                    </Paper>
-                    <Paper sx={{ p: 1, textAlign: 'center', flex: 1 }}>
-                      <Typography variant="h6" color="success.main">
-                        {Math.floor(Math.random() * 3) + 8}
-                      </Typography>
-                      <Typography variant="caption">効果的手順</Typography>
-                    </Paper>
-                    <Paper sx={{ p: 1, textAlign: 'center', flex: 1 }}>
-                      <Typography variant="h6" color="warning.main">
-                        {Math.floor(Math.random() * 3) + 1}
-                      </Typography>
-                      <Typography variant="caption">要改善手順</Typography>
-                    </Paper>
-                  </Stack>
-
-                  <Button
-                    variant="outlined"
-                    size="small"
-                    onClick={() => window.open(`/daily/support?user=${user.UserID}`, '_blank')}
-                  >
-                    詳細記録を確認
-                  </Button>
-                </CardContent>
-              </Card>
-            ))}
-
-            {intensiveSupportUsers.length === 0 && (
-              <Alert severity="info">
-                現在、支援手順記録の対象者はいません。
-              </Alert>
-            )}
-          </Stack>
-        </TabPanel>
-
-        {/* 朝ミーティング 9:00 */}
-        <TabPanel value={tabValue} index={4}>
-          <Stack spacing={3}>
-            <Card>
-              <CardContent>
-                <Typography variant="h6" gutterBottom>
-                  前日からの申し送り引き継ぎ
-                </Typography>
-                {recentHandoffs.length > 0 ? (
-                  <List dense>
-                    {recentHandoffs.map((entry) => (
-                      <ListItem key={entry.id} alignItems="flex-start">
-                        <ListItemAvatar>
-                          <Avatar>{entry.author.charAt(0)}</Avatar>
-                        </ListItemAvatar>
-                        <ListItemText
-                          primary={`${entry.time} ${entry.author}`}
-                          secondary={entry.message}
-                          primaryTypographyProps={{ fontWeight: 600 }}
-                        />
-                        <Chip
-                          size="small"
-                          label={categoryLabel[entry.category]}
-                          color={categoryColor[entry.category]}
-                          sx={{ ml: 2 }}
-                        />
-                      </ListItem>
-                    ))}
-                  </List>
-                ) : (
-                  <Alert severity="info">前日の申し送りはありません。</Alert>
-                )}
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardContent>
-                <Typography variant="h6" gutterBottom>
-                  本日の優先予定（スタッフレーン）
-                </Typography>
-                <List dense>
-                  {staffMeetingHighlights.map((item) => (
-                    <ListItem key={item.id} disableGutters>
-                      <ListItemText
-                        primary={`${item.time} ${item.title}`}
-                        secondary={item.owner ? `担当: ${item.owner}` : undefined}
-                        primaryTypographyProps={{ fontWeight: 600 }}
+                <Card>
+                  <CardContent>
+                    <Typography variant="h6" gutterBottom>
+                      <BehaviorIcon sx={{ verticalAlign: 'middle', mr: 1 }} />
+                      問題行動発生状況
+                    </Typography>
+                    <Stack direction="row" spacing={2} flexWrap="wrap" sx={{ gap: 1 }}>
+                      <Chip
+                        label={`自傷: ${stats.problemBehaviorStats.selfHarm}件`}
+                        color={stats.problemBehaviorStats.selfHarm > 0 ? 'error' : 'default'}
                       />
-                    </ListItem>
-                  ))}
-                </List>
-              </CardContent>
-            </Card>
+                      <Chip
+                        label={`暴力: ${stats.problemBehaviorStats.violence}件`}
+                        color={stats.problemBehaviorStats.violence > 0 ? 'error' : 'default'}
+                      />
+                      <Chip
+                        label={`大声: ${stats.problemBehaviorStats.loudVoice}件`}
+                        color={stats.problemBehaviorStats.loudVoice > 0 ? 'warning' : 'default'}
+                      />
+                      <Chip
+                        label={`異食: ${stats.problemBehaviorStats.pica}件`}
+                        color={stats.problemBehaviorStats.pica > 0 ? 'error' : 'default'}
+                      />
+                      <Chip
+                        label={`その他: ${stats.problemBehaviorStats.other}件`}
+                        color={stats.problemBehaviorStats.other > 0 ? 'warning' : 'default'}
+                      />
+                    </Stack>
+                  </CardContent>
+                </Card>
+              </Stack>
+            </TabPanel>
 
-            <Card>
-              <CardContent>
-                <Typography variant="h6" gutterBottom>
-                  重点フォロー利用者
-                </Typography>
-                {prioritizedUsers.length > 0 ? (
-                  <List dense>
-                    {prioritizedUsers.map((user) => (
-                      <ListItem key={user.Id} disableGutters>
-                        <ListItemAvatar>
-                          <Avatar>{user.FullName?.charAt(0) ?? '利'}</Avatar>
-                        </ListItemAvatar>
-                        <ListItemText
-                          primary={user.FullName ?? '利用者'}
-                          secondary="支援手順記録の確認をお願いします"
-                        />
-                      </ListItem>
-                    ))}
-                  </List>
-                ) : (
-                  <Alert severity="success">現在フォロー対象の利用者はありません。</Alert>
+            {/* 利用状況 */}
+            <TabPanel value={tabValue} index={1}>
+              <UsageStatusDashboard
+                users={users.filter(user => user.UsageStatus === '利用中')}
+                usageMap={usageMap}
+              />
+            </TabPanel>
+
+            {/* 問題行動サマリー */}
+            <TabPanel value={tabValue} index={2}>
+              <Stack spacing={2}>
+                {stats.problemBehaviorStats.selfHarm > 0 && (
+                  <Alert severity="error" icon={<WarningIcon />}>
+                    本日、自傷行動が{stats.problemBehaviorStats.selfHarm}件発生しています。該当者の個別対応を確認してください。
+                  </Alert>
                 )}
-              </CardContent>
-            </Card>
-          </Stack>
-        </TabPanel>
-
-        {/* 夕ミーティング 17:15 */}
-        <TabPanel value={tabValue} index={5}>
-          <Stack spacing={3}>
-            <Card>
-              <CardContent>
-                <Typography variant="h6" gutterBottom>
-                  本日の振り返り
-                </Typography>
-                <Stack spacing={2}>
-                  {dailyStatusCards.map(({ label, completed, pending, planned }) => {
-                    const total = planned;
-                    const progress = total > 0 ? Math.round((completed / total) * 100) : 0;
-                    return (
-                      <Paper key={label} variant="outlined" sx={{ p: 2 }}>
-                        <Typography variant="subtitle1" sx={{ fontWeight: 700 }}>
-                          {label}
-                        </Typography>
-                        <Typography variant="body2" color="text.secondary">
-                          完了 {completed} / 予定 {total} （残り {pending} 件）
-                        </Typography>
-                        <LinearProgress value={progress} variant="determinate" sx={{ mt: 1, height: 6, borderRadius: 3 }} />
-                      </Paper>
-                    );
-                  })}
-                </Stack>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardContent>
-                <Typography variant="h6" gutterBottom>
-                  健康・行動トピック
-                </Typography>
-                <Stack spacing={2}>
-                  {stats.seizureCount > 0 ? (
-                    <Alert severity="warning">本日 {stats.seizureCount} 件の発作対応がありました。詳細記録を確認してください。</Alert>
-                  ) : (
-                    <Alert severity="success">発作対応はありませんでした。</Alert>
-                  )}
-                  {Object.values(stats.problemBehaviorStats).some((count) => count > 0) ? (
-                    <Alert severity="error">
-                      問題行動が記録されています。対応履歴と支援手順の見直しを検討してください。
-                    </Alert>
-                  ) : (
-                    <Alert severity="info">問題行動の記録はありません。</Alert>
-                  )}
-                </Stack>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardContent>
-                <Typography variant="h6" gutterBottom>
-                  明日への申し送り候補
-                </Typography>
-                {attentionHandoffs.length > 0 ? (
-                  <List dense>
-                    {attentionHandoffs.map((entry) => (
-                      <ListItem key={entry.id} alignItems="flex-start">
-                        <ListItemAvatar>
-                          <Avatar>{entry.author.charAt(0)}</Avatar>
-                        </ListItemAvatar>
-                        <ListItemText
-                          primary={`${entry.time} ${entry.author}`}
-                          secondary={entry.message}
-                          primaryTypographyProps={{ fontWeight: 600 }}
-                        />
-                        <Chip
-                          size="small"
-                          label={categoryLabel[entry.category]}
-                          color={categoryColor[entry.category]}
-                          sx={{ ml: 2 }}
-                        />
-                      </ListItem>
-                    ))}
-                  </List>
-                ) : (
-                  <Alert severity="success">特筆すべき申し送り事項はありません。</Alert>
+                {stats.problemBehaviorStats.violence > 0 && (
+                  <Alert severity="error" icon={<WarningIcon />}>
+                    本日、暴力行動が{stats.problemBehaviorStats.violence}件発生しています。環境調整・支援方法の見直しを検討してください。
+                  </Alert>
                 )}
-              </CardContent>
-            </Card>
-          </Stack>
-        </TabPanel>
+                {Object.values(stats.problemBehaviorStats).every(count => count === 0) && (
+                  <Alert severity="success">
+                    本日は問題行動の記録がありません。良好な状態が維持されています。
+                  </Alert>
+                )}
+
+                <Card>
+                  <CardContent>
+                    <Typography variant="h6" gutterBottom>問題行動対応履歴</Typography>
+                    <Typography variant="body2" color="text.secondary">
+                      詳細な対応記録と改善傾向の分析は個別の支援記録（ケース記録）をご確認ください。
+                    </Typography>
+                  </CardContent>
+                </Card>
+              </Stack>
+            </TabPanel>
+
+            {/* 医療・健康情報 */}
+            <TabPanel value={tabValue} index={3}>
+              <Stack spacing={3}>
+                <Card>
+                  <CardContent>
+                    <Typography variant="h6" gutterBottom>
+                      <MedicalIcon sx={{ verticalAlign: 'middle', mr: 1 }} />
+                      発作記録サマリー
+                    </Typography>
+                    {stats.seizureCount > 0 ? (
+                      <Alert severity="warning">
+                        本日{stats.seizureCount}件の発作が記録されています。医療対応と記録の詳細確認をお願いします。
+                      </Alert>
+                    ) : (
+                      <Alert severity="success">
+                        本日は発作の記録がありません。
+                      </Alert>
+                    )}
+                  </CardContent>
+                </Card>
+
+                <Card>
+                  <CardContent>
+                    <Typography variant="h6" gutterBottom>健康管理指標</Typography>
+                    <Stack spacing={2}>
+                      <Box>
+                        <Typography variant="body2" gutterBottom>昼食摂取率</Typography>
+                        <LinearProgress
+                          variant="determinate"
+                          value={((stats.lunchStats['完食'] || 0) / stats.totalUsers) * 100}
+                          sx={{ height: 8, borderRadius: 4 }}
+                        />
+                        <Typography variant="caption">
+                          {Math.round(((stats.lunchStats['完食'] || 0) / stats.totalUsers) * 100)}%
+                          ({stats.lunchStats['完食'] || 0}名/{stats.totalUsers}名)
+                        </Typography>
+                      </Box>
+                    </Stack>
+                  </CardContent>
+                </Card>
+              </Stack>
+            </TabPanel>
+
+            {/* 個別支援記録 */}
+            <TabPanel value={tabValue} index={4}>
+              <Stack spacing={2}>
+                <Typography variant="h6" gutterBottom>
+                  <PersonIcon sx={{ verticalAlign: 'middle', mr: 1 }} />
+                  強度行動障害対象者 支援手順記録
+                </Typography>
+
+                {intensiveSupportUsers.map(user => (
+                  <Card key={user.Id} sx={{ border: '2px solid', borderColor: 'warning.main' }}>
+                    <CardContent>
+                      <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 2 }}>
+                        <Typography variant="h6">
+                          {user.FullName}
+                        </Typography>
+                        <Stack direction="row" spacing={1}>
+                          <Chip label="強度行動障害" color="warning" size="small" />
+                          <Chip label="支援手順記録対象" color="info" size="small" />
+                        </Stack>
+                      </Box>
+
+                      <Divider sx={{ my: 2 }} />
+
+                      <Stack direction="row" spacing={2} sx={{ mb: 2 }}>
+                        <Paper sx={{ p: 1, textAlign: 'center', flex: 1 }}>
+                          <Typography variant="h6" color="primary">
+                            {Math.floor(Math.random() * 15) + 10}/19
+                          </Typography>
+                          <Typography variant="caption">支援手順実施</Typography>
+                        </Paper>
+                        <Paper sx={{ p: 1, textAlign: 'center', flex: 1 }}>
+                          <Typography variant="h6" color="success.main">
+                            {Math.floor(Math.random() * 3) + 8}
+                          </Typography>
+                          <Typography variant="caption">効果的手順</Typography>
+                        </Paper>
+                        <Paper sx={{ p: 1, textAlign: 'center', flex: 1 }}>
+                          <Typography variant="h6" color="warning.main">
+                            {Math.floor(Math.random() * 3) + 1}
+                          </Typography>
+                          <Typography variant="caption">要改善手順</Typography>
+                        </Paper>
+                      </Stack>
+
+                      <Button
+                        variant="outlined"
+                        size="small"
+                        onClick={() => window.open(`/daily/support?user=${user.UserID}`, '_blank')}
+                      >
+                        詳細記録を確認
+                      </Button>
+                    </CardContent>
+                  </Card>
+                ))}
+
+                {intensiveSupportUsers.length === 0 && (
+                  <Alert severity="info">
+                    現在、支援手順記録の対象者はいません。
+                  </Alert>
+                )}
+              </Stack>
+            </TabPanel>
+          </>
+        )}
+
+        {audience === 'staff' && (
+          <>
+            {/* 朝ミーティング 9:00 */}
+            <TabPanel value={tabValue} index={0}>
+              <Stack spacing={3}>
+                <HandoffSummaryForMeeting
+                  dayScope="yesterday"
+                  title="前日からの申し送り引き継ぎ"
+                  description="朝会では前日までの申し送りを確認し、優先対応が必要な案件をタイムラインからピックアップします。"
+                  actionLabel="タイムラインを開く"
+                  onOpenTimeline={() => openTimeline('yesterday')}
+                />
+
+                <Card>
+                  <CardContent>
+                    <Typography variant="h6" gutterBottom>
+                      本日の優先予定（スタッフレーン）
+                    </Typography>
+                    <List dense>
+                      {staffMeetingHighlights.map((item) => (
+                        <ListItem key={item.id} disableGutters>
+                          <ListItemText
+                            primary={`${item.time} ${item.title}`}
+                            secondary={item.owner ? `担当: ${item.owner}` : undefined}
+                            primaryTypographyProps={{ fontWeight: 600 }}
+                          />
+                        </ListItem>
+                      ))}
+                    </List>
+                  </CardContent>
+                </Card>
+
+                <Card>
+                  <CardContent>
+                    <Typography variant="h6" gutterBottom>
+                      重点フォロー利用者
+                    </Typography>
+                    {prioritizedUsers.length > 0 ? (
+                      <List dense>
+                        {prioritizedUsers.map((user) => (
+                          <ListItem key={user.Id} disableGutters>
+                            <ListItemAvatar>
+                              <Avatar>{user.FullName?.charAt(0) ?? '利'}</Avatar>
+                            </ListItemAvatar>
+                            <ListItemText
+                              primary={user.FullName ?? '利用者'}
+                              secondary="支援手順記録の確認をお願いします"
+                            />
+                          </ListItem>
+                        ))}
+                      </List>
+                    ) : (
+                      <Alert severity="success">現在フォロー対象の利用者はありません。</Alert>
+                    )}
+                  </CardContent>
+                </Card>
+              </Stack>
+            </TabPanel>
+
+            {/* 夕ミーティング 17:15 */}
+            <TabPanel value={tabValue} index={1}>
+              <Stack spacing={3}>
+                <Card>
+                  <CardContent>
+                    <Typography variant="h6" gutterBottom>
+                      本日の振り返り
+                    </Typography>
+                    <Stack spacing={2}>
+                      {dailyStatusCards.map(({ label, completed, pending, planned }) => {
+                        const total = planned;
+                        const progress = total > 0 ? Math.round((completed / total) * 100) : 0;
+                        return (
+                          <Paper key={label} variant="outlined" sx={{ p: 2 }}>
+                            <Typography variant="subtitle1" sx={{ fontWeight: 700 }}>
+                              {label}
+                            </Typography>
+                            <Typography variant="body2" color="text.secondary">
+                              完了 {completed} / 予定 {total} （残り {pending} 件）
+                            </Typography>
+                            <LinearProgress value={progress} variant="determinate" sx={{ mt: 1, height: 6, borderRadius: 3 }} />
+                          </Paper>
+                        );
+                      })}
+                    </Stack>
+                  </CardContent>
+                </Card>
+
+                <Card>
+                  <CardContent>
+                    <Typography variant="h6" gutterBottom>
+                      健康・行動トピック
+                    </Typography>
+                    <Stack spacing={2}>
+                      {stats.seizureCount > 0 ? (
+                        <Alert severity="warning">本日 {stats.seizureCount} 件の発作対応がありました。詳細記録を確認してください。</Alert>
+                      ) : (
+                        <Alert severity="success">発作対応はありませんでした。</Alert>
+                      )}
+                      {Object.values(stats.problemBehaviorStats).some((count) => count > 0) ? (
+                        <Alert severity="error">
+                          問題行動が記録されています。対応履歴と支援手順の見直しを検討してください。
+                        </Alert>
+                      ) : (
+                        <Alert severity="info">問題行動の記録はありません。</Alert>
+                      )}
+                    </Stack>
+                  </CardContent>
+                </Card>
+
+                <HandoffSummaryForMeeting
+                  dayScope="today"
+                  title="明日への申し送り候補"
+                  description="夕会では今日の申し送りを最終確認し、重要なトピックをタイムラインに集約して明日へ引き継ぎます。"
+                  actionLabel="タイムラインで確認"
+                  onOpenTimeline={() => openTimeline('today')}
+                />
+              </Stack>
+            </TabPanel>
+          </>
+        )}
 
       </Box>
+
+      {/* 朝会・夕会ガイドDrawer - Phase 5B統合 */}
+      <MeetingGuideDrawer
+        open={meetingDrawerOpen}
+        kind={meetingKind}
+        onClose={() => setMeetingDrawerOpen(false)}
+      />
     </Container>
   );
 };
+
+export const AdminDashboardPage: React.FC = () => <DashboardPage audience="admin" />;
+export const StaffDashboardPage: React.FC = () => <DashboardPage audience="staff" />;
 
 export default DashboardPage;

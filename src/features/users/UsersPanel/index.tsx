@@ -17,6 +17,7 @@ import UsersMenu from './UsersMenu';
 import UserForm from '../UserForm';
 import { TESTIDS } from '@/testids';
 import { useUsersStore } from '../store';
+import { useUsersDemoSeed } from '../useUsersDemoSeed';
 import type { IUserMaster, IUserMasterCreateDto } from '../types';
 
 type UsersTab = 'menu' | 'list' | 'create';
@@ -36,6 +37,7 @@ const buildErrorMessage = (error: unknown): string => {
 };
 
 const UsersPanel = () => {
+  useUsersDemoSeed();
   const location = useLocation();
   const { data, status, create, remove, refresh, error } = useUsersStore();
   const [busyId, setBusyId] = useState<number | null>(null);
@@ -185,10 +187,6 @@ const UsersPanel = () => {
     setSelectedUser(null);
   }, []);
 
-  const existingUserIds = useMemo(
-    () => data.map((user) => user.UserID).filter((value): value is string => Boolean(value)),
-    [data]
-  );
   const errorMessage = error ? buildErrorMessage(error) : null;
   const isCreatePending = busyId === -1;
 
@@ -243,7 +241,6 @@ const UsersPanel = () => {
           )}
           {activeTab === 'create' && (
             <UsersCreateForm
-              existingUserIds={existingUserIds}
               isSubmitting={isCreatePending}
               onCreate={handleCreate}
               onOpenDetailForm={() => setShowCreateForm(true)}

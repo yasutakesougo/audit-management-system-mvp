@@ -1,16 +1,44 @@
 // ---- Single source of truth for data-testid ----
 
-// 値は常に文字列。キーと同じ値を返すことでテストコードからの参照を簡易化。
+// 値は常に文字列。テストコードからは TESTIDS.xxx を経由して参照する（文字列リテラルは直書きしない）。
+const NAV_TESTIDS = {
+  dashboard: 'nav-dashboard',
+  analysis: 'nav-analysis',
+  iceberg: 'nav-iceberg',
+  assessment: 'nav-assessment',
+  daily: 'nav-daily',
+  checklist: 'nav-checklist',
+  audit: 'nav-audit',
+  admin: 'nav-admin',
+  schedules: 'nav-schedules',
+  nurse: 'nav-nurse',
+} as const;
+
+const FOOTER_TESTIDS = {
+  dailyAttendance: 'footer-action-daily-attendance',
+  dailyActivity: 'footer-action-daily-activity',
+} as const;
+
 export const TESTIDS = {
   // Shell / Router
   'app-root': 'app-root',
   'app-router-outlet': 'app-router-outlet',
+  'sp-connection-status': 'sp-connection-status',
 
   // Pages
   'meeting-guide': 'meeting-guide',
   'meeting-guide-page': 'meeting-guide-page',
   'dashboard-page': 'dashboard-page',
+  'dashboard-page-tabs': 'dashboard-page-tabs', // 🧪 黒ノート機能タブ専用（日次ダッシュボードと区別）
   'dashboard-records': 'dashboard-records',
+  'audit-heading': 'audit-heading',
+
+  // Dashboard Tabs (黒ノート機能個別タブ) 🌱 E2Eでタブ切替を細かく検査用
+  'dashboard-tab-management': 'dashboard-tab-management',
+  'dashboard-tab-timeline': 'dashboard-tab-timeline',
+  'dashboard-tab-weekly': 'dashboard-tab-weekly',
+  'dashboard-tab-meeting': 'dashboard-tab-meeting',
+  'dashboard-tab-profile': 'dashboard-tab-profile',
   'attendance-page': 'attendance-page',
   'plan-create-page': 'plan-create-page',
   'plan-edit-page': 'plan-edit-page',
@@ -22,7 +50,171 @@ export const TESTIDS = {
   'record-row': 'record-row',
   'toast-announcer': 'toast-announcer',
   'toast-message': 'toast-message',
+  'handoff-footer-quicknote': 'handoff-footer-quicknote',
+  ...NAV_TESTIDS,
+  ...FOOTER_TESTIDS,
+  nav: NAV_TESTIDS,
+  footer: FOOTER_TESTIDS,
+  // Legacy flat keys (compatibility with existing lookups)
+  'nav-dashboard': 'nav-dashboard',
+  'nav-analysis': 'nav-analysis',
+  'nav-iceberg': 'nav-iceberg',
+  'nav-assessment': 'nav-assessment',
+  'nav-daily': 'nav-daily',
+  'nav-checklist': 'nav-checklist',
+  'nav-audit': 'nav-audit',
+  'nav-admin': 'nav-admin',
   'nav-schedules': 'nav-schedules',
+  'nav-nurse': 'nav-nurse',
+  'footer-action-daily-attendance': 'footer-action-daily-attendance',
+  'footer-action-daily-activity': 'footer-action-daily-activity',
+  'daily-footer-attendance': 'daily-footer-attendance',
+  'daily-footer-activity': 'daily-footer-activity',
+  'daily-footer-support': 'daily-footer-support',
+  'daily-footer-health': 'daily-footer-health',
+  'daily-table-record-form': 'daily-table-record-form',
+  'daily-table-record-form-user-list': 'daily-table-record-form-user-list',
+  'daily-table-record-form-table': 'daily-table-record-form-table',
+  'bulk-daily-record-form': 'bulk-daily-record-form',
+  'bulk-daily-record-user-list': 'bulk-daily-record-user-list',
+  'bulk-daily-record-user-row-prefix': 'bulk-daily-record-user-row-',
+  'bulk-daily-record-search': 'bulk-daily-record-search',
+  'bulk-daily-record-select-all': 'bulk-daily-record-select-all',
+  'bulk-daily-record-clear-all': 'bulk-daily-record-clear-all',
+  'bulk-daily-record-activity-input-am': 'bulk-daily-record-activity-input-am',
+  'bulk-daily-record-activity-input-pm': 'bulk-daily-record-activity-input-pm',
+  'bulk-daily-record-activity-chip-am': 'bulk-daily-record-activity-chip-am',
+  'bulk-daily-record-activity-chip-pm': 'bulk-daily-record-activity-chip-pm',
+  'bulk-daily-record-activity-delete-am': 'bulk-daily-record-activity-delete-am',
+  'bulk-daily-record-activity-delete-pm': 'bulk-daily-record-activity-delete-pm',
+  'bulk-daily-record-individual-notes': 'bulk-daily-record-individual-notes',
+  'schedules-nav-link': 'schedules-nav-link',
+  'home-tile-schedule': 'home-tile-schedule',
+  'schedules-day-page': 'schedules-day-page',
+  'schedules-day-heading': 'schedules-day-heading',
+  'schedules-day-list': 'schedules-day-list',
+  'schedules-day-skeleton': 'schedules-day-skeleton',
+  SCHEDULES_PAGE_ROOT: 'schedules-page-root',
+  'schedules-week-page': 'schedules-week-page',
+  'schedules-week-heading': 'schedules-week-heading',
+  'schedules-week-grid': 'schedules-week-grid',
+  SCHEDULES_WEEK_SERVICE_SUMMARY: 'schedules-week-service-summary',
+  SCHEDULES_WEEK_TIMELINE: 'schedules-week-timeline',
+  'schedules-week-timeline': 'schedules-week-timeline',
+  SCHEDULES_WEEK_TABLIST: 'schedules-week-tablist',
+  SCHEDULES_WEEK_TAB_WEEK: 'schedules-week-tab-week',
+  SCHEDULES_WEEK_TAB_DAY: 'schedules-week-tab-day',
+  SCHEDULES_WEEK_TAB_TIMELINE: 'schedules-week-tab-timeline',
+  SCHEDULES_WEEK_TIMELINE_PANEL: 'schedules-week-timeline-panel',
+  SCHEDULE_WEEK_ORG_INDICATOR: 'schedule-week-org-indicator',
+  SCHEDULE_DAY_ORG_INDICATOR: 'schedule-day-org-indicator',
+  SCHEDULE_MONTH_ORG_INDICATOR: 'schedule-month-org-indicator',
+  SCHEDULES_HEADER_ROOT: 'schedules-header-root',
+  SCHEDULES_HEADER_CREATE: 'schedules-header-create',
+  SCHEDULES_RANGE_LABEL: 'schedules-range-label',
+  SCHEDULES_EMPTY_HINT: 'schedules-empty-hint',
+  SCHEDULES_FILTER_GROUP: 'schedules-filter-group',
+  SCHEDULES_FILTER_TOGGLE: 'schedules-filter-toggle',
+  SCHEDULES_FILTER_DIALOG: 'schedules-filter-dialog',
+  'schedules-filter-category': 'schedules-filter-category',
+  'schedules-filter-query': 'schedules-filter-query',
+  SCHEDULES_WEEK_DAY_PREFIX: 'schedules-week-day',
+  'schedules-empty': 'schedules-empty',
+  'schedules-prev': 'schedules-prev',
+  'schedules-next': 'schedules-next',
+  SCHEDULES_PREV_WEEK: 'schedules-prev-week',
+  SCHEDULES_NEXT_WEEK: 'schedules-next-week',
+  SCHEDULES_FAB_CREATE: 'schedules-fab-create',
+  'schedules-week-live': 'schedules-week-live',
+  SCHEDULES_MONTH_PAGE: 'schedules-month-page',
+  SCHEDULES_MONTH_HEADING_ID: 'schedules-month-heading',
+  SCHEDULES_MONTH_RANGE_ID: 'schedules-month-range',
+  SCHEDULES_MONTH_PREV: 'schedules-month-prev',
+  SCHEDULES_MONTH_NEXT: 'schedules-month-next',
+  SCHEDULES_MONTH_DAY_PREFIX: 'schedules-month-day',
+  'schedules-event-conflicted': 'schedules-event-conflicted',
+  'schedules-event-normal': 'schedules-event-normal',
+  'schedule-create-quick-button': 'schedule-create-quick-button',
+  'schedule-create-dialog': 'schedule-create-dialog',
+  'schedule-create-heading': 'schedule-create-heading',
+  'schedule-create-description': 'schedule-create-description',
+  'schedule-create-error-alert': 'schedule-create-error-alert',
+  'schedule-create-title': 'schedule-create-title',
+  'schedule-create-user-input': 'schedule-create-user-input',
+  'schedule-create-category-select': 'schedule-create-category-select',
+  'schedule-create-start': 'schedule-create-start',
+  'schedule-create-end': 'schedule-create-end',
+  'schedule-create-service-type': 'schedule-create-service-type',
+  'schedule-create-location': 'schedule-create-location',
+  'schedule-create-notes': 'schedule-create-notes',
+  'schedule-create-staff-id': 'schedule-create-staff-id',
+  'schedule-create-vehicle-id': 'schedule-create-vehicle-id',
+  'schedule-create-status': 'schedule-create-status',
+  'schedule-create-save': 'schedule-create-save',
+  'dev-schedule-dialog-open': 'dev-schedule-dialog-open',
+  'dev-schedule-dialog-page': 'dev-schedule-dialog-page',
+
+  // Operations Dashboard
+  'operations-dashboard-page': 'operations-dashboard-page',
+  'operations-safety-hud': 'operations-safety-hud',
+  'operations-safety-hud-total': 'operations-safety-hud-total',
+  'operations-safety-hud-kind-list': 'operations-safety-hud-kind-list',
+  'operations-staff-load-panel': 'operations-staff-load-panel',
+  'operations-staff-load-row': 'operations-staff-load-row',
+  'operations-vehicle-panel': 'operations-vehicle-panel',
+  'operations-vehicle-row': 'operations-vehicle-row',
+
+  // Daily Dashboard (Stage 9)
+  'dashboard-safety-hud': 'dashboard-safety-hud',
+  'dashboard-handoff-summary': 'dashboard-handoff-summary',
+  'dashboard-handoff-summary-total': 'dashboard-handoff-summary-total',
+  'dashboard-handoff-summary-alert': 'dashboard-handoff-summary-alert',
+  'dashboard-handoff-summary-action': 'dashboard-handoff-summary-action',
+  'dashboard-daily-status-card-通所記録': 'dashboard-daily-status-card-通所記録',
+  'dashboard-daily-status-card-日誌': 'dashboard-daily-status-card-日誌',
+  'dashboard-daily-status-card-支援手順': 'dashboard-daily-status-card-支援手順',
+
+  // Morning/Evening Meeting System
+  'dashboard-briefing-panel': 'dashboard-briefing-panel',
+  'briefing-safety-summary': 'briefing-safety-summary',
+  'briefing-progress-summary': 'briefing-progress-summary',
+  'briefing-priority-users': 'briefing-priority-users',
+  'briefing-handoff-summary': 'briefing-handoff-summary',
+  'dashboard-next-action-card': 'dashboard-next-action-card',
+  'next-action-main-button': 'next-action-main-button',
+  'meeting-progress-memo': 'meeting-progress-memo',
+  'meeting-guide-morning': 'meeting-guide-morning',
+  'meeting-guide-evening': 'meeting-guide-evening',
+  'meeting-guide-checklist': 'meeting-guide-checklist',
+  'meeting-guide-clear': 'meeting-guide-clear',
+
+  'schedule-conflict-guide-dialog': 'schedule-conflict-guide-dialog',
+  'schedule-conflict-guide-title': 'schedule-conflict-guide-title',
+  'schedule-conflict-guide-content': 'schedule-conflict-guide-content',
+  'schedule-conflict-guide-item': 'schedule-conflict-guide-item',
+  'schedule-conflict-guide-actions': 'schedule-conflict-guide-actions',
+  'schedule-conflict-guide-close': 'schedule-conflict-guide-close',
+  'schedule-conflict-guide-apply-30min-later': 'schedule-conflict-guide-apply-30min-later',
+  // ミニ時間提案エンジン用のテストID
+  'schedule-conflict-guide-apply-30min-earlier': 'schedule-conflict-guide-apply-30min-earlier',
+  'schedule-conflict-guide-apply-60min-later': 'schedule-conflict-guide-apply-60min-later',
+  'schedule-conflict-guide-suggestion-buttons': 'schedule-conflict-guide-suggestion-buttons',
+  // 職員代替案エンジン用のテストID
+  'schedule-conflict-guide-staff-alternatives': 'schedule-conflict-guide-staff-alternatives',
+  'schedule-conflict-guide-staff-alternative': 'schedule-conflict-guide-staff-alternative',
+  'schedule-conflict-guide-apply-staff': 'schedule-conflict-guide-apply-staff',
+  // 車両代替案エンジン用のテストID（Stage 7）
+  'schedule-conflict-guide-vehicle-alternatives': 'schedule-conflict-guide-vehicle-alternatives',
+  'schedule-conflict-guide-vehicle-alternative': 'schedule-conflict-guide-vehicle-alternative',
+  'schedule-conflict-guide-apply-vehicle': 'schedule-conflict-guide-apply-vehicle',
+  // 部屋代替案エンジン用のテストID（Stage 8）
+  'schedule-conflict-guide-room-alternatives': 'schedule-conflict-guide-room-alternatives',
+  'schedule-conflict-guide-room-alternative': 'schedule-conflict-guide-room-alternative',
+  'schedule-conflict-guide-apply-room': 'schedule-conflict-guide-apply-room',
+  // 設備代替案エンジン用のテストID（Stage 8）
+  'schedule-conflict-guide-equipment-alternatives': 'schedule-conflict-guide-equipment-alternatives',
+  'schedule-conflict-guide-equipment-alternative': 'schedule-conflict-guide-equipment-alternative',
+  'schedule-conflict-guide-apply-equipment': 'schedule-conflict-guide-apply-equipment',
   'app-bottom-nav': 'app-bottom-nav',
   'support-incident-dialog': 'support-incident-dialog',
   'support-incident-stepper': 'support-incident-stepper',
@@ -34,6 +226,12 @@ export const TESTIDS = {
   NURSE_NAV_BULK: 'nurse.nav.bulk',
   NURSE_NAV_MEDS: 'nurse.nav.medication',
   NURSE_HOME_PAGE: 'nurse.page.home',
+  'nurse-dashboard-root': 'nurse-dashboard-root',
+  'nurse-dashboard-summary-total': 'nurse-dashboard-summary-total',
+  'nurse-dashboard-summary-pending': 'nurse-dashboard-summary-pending',
+  'nurse-dashboard-summary-in-progress': 'nurse-dashboard-summary-in-progress',
+  'nurse-dashboard-summary-completed': 'nurse-dashboard-summary-completed',
+  'nurse-dashboard-task-row': 'nurse-dashboard-task-row',
   NURSE_HOME_TASK_ITEM: 'nurse.home.task',
   NURSE_OBS_PAGE: 'nurse.page.observation',
   NURSE_BULK_PAGE: 'nurse.page.bulk',
@@ -111,13 +309,18 @@ export const TESTIDS = {
 
   // Users feature
   'users-panel-root': 'users-panel-root',
+  'users-panel-search': 'users-panel-search',
+  'users-panel-filter-active': 'users-panel-filter-active',
+  'users-panel-filter-severe': 'users-panel-filter-severe',
   'users-list-table': 'users-list-table',
+  'users-list-table-row': 'users-list-table-row',
   'users-detail-pane': 'users-detail-pane',
   'user-detail-sections': 'user-detail-sections',
   'users-quick-prefix': 'users-quick-',
   'user-menu-card-prefix': 'user-menu-card-',
   'user-menu-tabpanel-prefix': 'user-menu-tabpanel-',
-    // User Menu関連
+
+  // User Menu関連
   'user-menu-trigger': 'user-menu-trigger',
   'user-menu-popup': 'user-menu-popup',
   'user-menu-profile-item': 'user-menu-profile-item',
@@ -140,11 +343,41 @@ export const TESTIDS = {
   'monthly-detail-month-select': 'monthly-detail-month-select',
   'monthly-detail-records-table': 'monthly-detail-records-table',
   'monthly-pdf-generate-btn': 'monthly-pdf-generate-btn',
+
+  // Mobile Agenda View
+  'mobile-agenda-loading': 'mobile-agenda-loading',
+  'mobile-agenda-error': 'mobile-agenda-error',
+  'mobile-agenda-empty': 'mobile-agenda-empty',
+  'mobile-agenda-container': 'mobile-agenda-container',
+  'mobile-agenda-schedule-item': 'mobile-agenda-schedule-item',
+  'mobile-agenda-schedule-conflict': 'mobile-agenda-schedule-conflict',
+
+  // Agenda / Handoff Timeline
+  'agenda-page-root': 'agenda-page-root',
+  'agenda-timeline-list': 'agenda-timeline-list',
+  'agenda-timeline-item': 'agenda-timeline-item',
+  'agenda-filter-morning': 'agenda-filter-morning',
+  'agenda-filter-evening': 'agenda-filter-evening',
+
+  // Support Plan Guide HUD
+  'support-plan-hud': 'support-plan-hud',
 } as const;
 
+type LeafValues<T> = T extends string
+  ? T
+  : T extends Record<string, unknown>
+    ? LeafValues<T[keyof T]>
+    : never;
 
+// 🔧 型安全なTestID型を定義
+export type TestId = LeafValues<typeof TESTIDS>;
 
-// React で使うお手軽ヘルパー（型はstringで十分）
-export function tid(id: string) {
+// React で使うお手軽ヘルパー（型安全版でタイポ防止）
+export function tid(id: TestId) {
   return { 'data-testid': id } as const;
+}
+
+// プレフィックス + サフィックスを安全に扱うヘルパー
+export function tidWithSuffix(id: TestId, suffix: string) {
+  return { 'data-testid': `${id}${suffix}` };
 }

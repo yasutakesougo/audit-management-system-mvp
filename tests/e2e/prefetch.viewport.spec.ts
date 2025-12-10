@@ -10,6 +10,23 @@ const readSpanCount = (page: Page, key: string, source: string) =>
     return spans.filter((span) => span.key === targetKey && span.source === targetSource).length;
   }, { key, source });
 
+async function ensureHudVisible(page: Page) {
+  const hud = page.getByTestId('prefetch-hud');
+  const hudToggle = page.getByTestId('prefetch-hud-toggle');
+  const [hudCount, toggleCount] = await Promise.all([hud.count(), hudToggle.count()]);
+
+  if (hudCount === 0 && toggleCount === 0) {
+    test.skip(true, 'Prefetch HUD devtools are disabled in this environment');
+  }
+
+  if (hudCount === 0 && toggleCount > 0) {
+    await hudToggle.click();
+  }
+
+  await expect(hud).toBeVisible();
+  return hud;
+}
+
 test.describe('Prefetch viewport tracking', () => {
   test.beforeEach(async ({ page }) => {
     await prepareHydrationApp(page);
@@ -17,13 +34,7 @@ test.describe('Prefetch viewport tracking', () => {
   });
 
   test('captures a single viewport intent per nav item', async ({ page }) => {
-    const hudToggle = page.getByTestId('prefetch-hud-toggle');
-    const hud = page.getByTestId('prefetch-hud');
-    const hudCount = await hud.count();
-    if (hudCount === 0) {
-      await hudToggle.click();
-    }
-    await expect(hud).toBeVisible();
+    const hud = await ensureHudVisible(page);
 
     await expect
       .poll(async () => readSpanCount(page, 'route:admin:templates', 'viewport'))

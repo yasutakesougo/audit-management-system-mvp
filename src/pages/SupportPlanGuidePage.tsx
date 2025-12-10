@@ -7,43 +7,25 @@ declare global {
     __AVAILABLE_ROUTES__?: string[];
   }
 }
-import ArticleRoundedIcon from '@mui/icons-material/ArticleRounded';
-import CheckCircleRoundedIcon from '@mui/icons-material/CheckCircleRounded';
-import ContentCopyRoundedIcon from '@mui/icons-material/ContentCopyRounded';
-import DeleteOutlineRoundedIcon from '@mui/icons-material/DeleteOutlineRounded';
-import DescriptionRoundedIcon from '@mui/icons-material/DescriptionRounded';
-import FileDownloadRoundedIcon from '@mui/icons-material/FileDownloadRounded';
-import FileUploadRoundedIcon from '@mui/icons-material/FileUploadRounded';
-import PersonAddRoundedIcon from '@mui/icons-material/PersonAddRounded';
-import RestartAltRoundedIcon from '@mui/icons-material/RestartAltRounded';
-import VerifiedUserRoundedIcon from '@mui/icons-material/VerifiedUserRounded';
-import HomeRoundedIcon from '@mui/icons-material/HomeRounded';
-import TodayRoundedIcon from '@mui/icons-material/TodayRounded';
-import NoteAltRoundedIcon from '@mui/icons-material/NoteAltRounded';
-import FactCheckRoundedIcon from '@mui/icons-material/FactCheckRounded';
-import LinkRoundedIcon from '@mui/icons-material/LinkRounded';
-import DownloadRoundedIcon from '@mui/icons-material/DownloadRounded';
-import PrintRoundedIcon from '@mui/icons-material/PrintRounded';
-import AddRoundedIcon from '@mui/icons-material/AddRounded';
-import CleaningServicesRoundedIcon from '@mui/icons-material/CleaningServicesRounded';
-import { NavLinkPrefetch } from '@/components/NavLinkPrefetch';
-import { cancelIdle, runOnIdle } from '@/utils/runOnIdle';
+import { useUsersStore } from '@/features/users/store';
+import type { IUserMaster } from '@/features/users/types';
+import { HYDRATION_FEATURES, estimatePayloadSize, startFeatureSpan } from '@/hydration/features';
 import { PREFETCH_KEYS, prefetchByKey, warmRoute } from '@/prefetch/routes';
-import { beginHydrationSpan } from '@/lib/hydrationHud';
-import Alert from '@mui/material/Alert';
+import { TESTIDS, tid } from '@/testids';
+import { cancelIdle, runOnIdle } from '@/utils/runOnIdle';
+import ArticleRoundedIcon from '@mui/icons-material/ArticleRounded';
+import ContentCopyRoundedIcon from '@mui/icons-material/ContentCopyRounded';
+import FileDownloadRoundedIcon from '@mui/icons-material/FileDownloadRounded';
+import VerifiedUserRoundedIcon from '@mui/icons-material/VerifiedUserRounded';
 import Box from '@mui/material/Box';
 import Button from '@mui/material/Button';
 import Chip from '@mui/material/Chip';
 import Divider from '@mui/material/Divider';
-import FormControl from '@mui/material/FormControl';
-import InputLabel from '@mui/material/InputLabel';
 import LinearProgress from '@mui/material/LinearProgress';
-import MenuItem from '@mui/material/MenuItem';
 import Paper from '@mui/material/Paper';
-import Select from '@mui/material/Select';
 import type { SelectChangeEvent } from '@mui/material/Select';
-import Snackbar from '@mui/material/Snackbar';
 import Stack from '@mui/material/Stack';
+import { useTheme } from '@mui/material/styles';
 import Tab from '@mui/material/Tab';
 import Tabs from '@mui/material/Tabs';
 import TextField from '@mui/material/TextField';
@@ -52,18 +34,8 @@ import ToggleButtonGroup from '@mui/material/ToggleButtonGroup';
 import Tooltip from '@mui/material/Tooltip';
 import Typography from '@mui/material/Typography';
 import useMediaQuery from '@mui/material/useMediaQuery';
-import { useTheme } from '@mui/material/styles';
-import BottomNavigation from '@mui/material/BottomNavigation';
-import BottomNavigationAction from '@mui/material/BottomNavigationAction';
-import SpeedDial from '@mui/material/SpeedDial';
-import SpeedDialAction from '@mui/material/SpeedDialAction';
-import SpeedDialIcon from '@mui/material/SpeedDialIcon';
-import Badge from '@mui/material/Badge';
-import { visuallyHidden } from '@mui/utils';
 import React from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { useUsersStore } from '@/features/users/store';
-import type { IUserMaster } from '@/features/users/types';
 
 type SupportPlanForm = {
   serviceUserName: string;
@@ -192,8 +164,6 @@ const REQUIRED_FIELDS: Array<keyof SupportPlanForm> = [
 
 const FIELD_KEYS = Object.keys(defaultFormState) as Array<keyof SupportPlanForm>;
 
-const TOTAL_FIELDS = FIELD_KEYS.length;
-
 // --- Deadline helpers (計画開始+30日 / 6か月モニタ) ---
 const toDate = (s: string | undefined) => {
   if (!s) return undefined;
@@ -232,20 +202,152 @@ type DeadlineInfo = {
   tooltip?: string;
 };
 
-type AlertSeverity = 'success' | 'info' | 'warning' | 'error';
+// PDFプレビュー/印刷（表組み・ロゴ・ページ番号・押印枠 + 事業所情報 + セクション見出し）
+function openPrintView(data: SupportPlanForm, title: string) {
+  // SSR/テスト環境での安全性確保
+  if (typeof window === 'undefined') return;
 
-const toAlertSeverity = (color: DeadlineInfo['color']): AlertSeverity => {
-  switch (color) {
-    case 'success':
-      return 'success';
-    case 'warning':
-      return 'warning';
-    case 'error':
-      return 'error';
-    default:
-      return 'info';
-  }
-};
+  // HTMLエスケープ
+  const esc = (s: string) =>
+    String(s || '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]!));
+
+  // 1行（空はスキップ）
+  const row = (label: string, value?: string) =>
+    value && value.trim()
+      ? `<tr><th>${esc(label)}</th><td>${esc(value).replace(/\n/g, '<br/>')}</td></tr>`
+      : '';
+
+  // セクション見出し＋中身（空なら非表示）
+  const section = (titleText: string, inner: string) =>
+    inner && inner.trim()
+      ? `<tr class="section"><th colspan="2">${esc(titleText)}</th></tr>${inner}`
+      : '';
+
+  // 事業所情報（window から一時上書き可）
+  const org = {
+    name: window.__ORG_NAME__ ?? '磯子区障害者地域活動ホーム',
+    address: window.__ORG_ADDRESS__ ?? '〒000-0000 神奈川県横浜市磯子区○○○○',
+    tel: window.__ORG_TEL__ ?? 'TEL 045-000-0000',
+    fax: window.__ORG_FAX__ ?? 'FAX 045-000-0001',
+  };
+
+  // 各セクションの行を構築
+  const secBasic =
+    row('利用者名 / ID', data.serviceUserName) +
+    row('支援区分・医療リスク等', data.supportLevel) +
+    row('計画期間', data.planPeriod);
+
+  const secAssessment =
+    row('ニーズ・課題の要約', data.assessmentSummary) +
+    row('強み・活用資源', data.strengths);
+
+  const secGoals =
+    row('長期目標（6か月以上）', data.longTermGoal) +
+    row('短期目標（3か月目安）', data.shortTermGoals);
+
+  const secSupports =
+    row('日中支援（身体介護・相談等）', data.dailySupports) +
+    row('創作・生産 / 機能訓練', data.creativeActivities);
+
+  const secDecision =
+    row('意思決定支援の工夫', data.decisionSupport) +
+    row('サービス担当者会議・同意の記録', data.conferenceNotes);
+
+  const secMonitoring =
+    row('モニタリング手法', data.monitoringPlan) +
+    row('見直しタイミング・判断基準', data.reviewTiming) +
+    row('直近モニタ実施日', data.lastMonitoringDate);
+
+  const secRisk =
+    row('主なリスクと対応策', data.riskManagement) +
+    row('証跡・ダブルチェック手順', data.complianceControls);
+
+  const secExcellence =
+    row('改善提案 / 次のアクション', data.improvementIdeas);
+
+  // 表（30%/70%）
+  const table = `
+    <table class="kv">
+      ${section('基本情報', secBasic)}
+      ${section('アセスメント', secAssessment)}
+      ${section('目標（SMART）', secGoals)}
+      ${section('具体的支援', secSupports)}
+      ${section('意思決定支援・会議記録', secDecision)}
+      ${section('モニタリングと見直し', secMonitoring)}
+      ${section('減算リスク対策', secRisk)}
+      ${section('卓越性・改善提案', secExcellence)}
+    </table>
+  `;
+
+  // 完成HTML（ここで定義してから window へ書き込む）
+  const html = `<!doctype html>
+<html>
+<head>
+<meta charset="utf-8" />
+<title>${esc(title)}</title>
+<style>
+  @page { size: A4; margin: 16mm 16mm 18mm; }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Hiragino Kaku Gothic ProN', 'Noto Sans JP', 'Yu Gothic UI', 'YuGothic', Meiryo, sans-serif; font-size: 12pt; color: #111; counter-reset: page; }
+  header { display: flex; align-items: center; justify-content: space-between; gap: 12pt; margin-bottom: 8pt; }
+  .h-left { display: flex; align-items: center; gap: 10pt; }
+  header img.logo { height: 28pt; }
+  header .title { font-size: 18pt; font-weight: 700; }
+  .org { text-align: right; line-height: 1.4; }
+  .org .name { font-weight: 600; }
+  .org .meta { font-size: 10pt; color: #555; }
+  .meta { color: #555; font-size: 10pt; margin-bottom: 10pt; }
+  h2 { font-size: 13pt; margin: 14pt 0 8pt; border-bottom: 1px solid #ccc; padding-bottom: 2pt; }
+  table.kv { width: 100%; border-collapse: collapse; table-layout: fixed; }
+  table.kv th, table.kv td { border: 1px solid #bbb; vertical-align: top; padding: 6pt 8pt; word-break: break-word; }
+  table.kv th { background: #f8f9fa; width: 30%; font-size: 10.5pt; }
+  table.kv td { width: 70%; font-size: 10pt; line-height: 1.6; }
+  tr.section th { background: #e8f0fe; font-weight: 700; text-align: center; font-size: 11pt; color: #1565c0; }
+  .signatures { display: grid; grid-template-columns: 1fr 1fr; gap: 8pt; margin: 20pt 0; }
+  .signatures .box { border: 1px solid #999; min-height: 40pt; position: relative; padding: 6pt; }
+  .signatures .box h3 { font-size: 10pt; margin: 0; }
+  .signatures .box .stamp { position: absolute; right: 6pt; bottom: 6pt; font-size: 9pt; color: #666; }
+  footer { position: fixed; bottom: 8mm; left: 16mm; right: 16mm; display: flex; justify-content: space-between; font-size: 8pt; color: #666; }
+  footer .pageno::before { content: counter(page); }
+</style>
+</head>
+<body>
+  <header>
+    <div class="h-left">
+      <img class="logo" src="/logo.png" alt="logo" />
+      <div class="title">個別支援計画書（生活介護）</div>
+    </div>
+    <div class="org">
+      <div class="name">${esc(org.name)}</div>
+      <div class="meta">${esc(org.address)}<br/>${esc(org.tel)} ／ ${esc(org.fax)}</div>
+    </div>
+  </header>
+  <div class="meta">対象: ${esc(title)} ／ 作成日: ${formatDateJP(new Date())}</div>
+  ${table}
+  <h2>署名・職印欄</h2>
+  <div class="signatures">
+    <div class="box"><h3>本人</h3></div>
+    <div class="box"><h3>家族／代理人</h3></div>
+    <div class="box"><h3>サービス管理責任者</h3><span class="stamp">職印</span></div>
+    <div class="box"><h3>事業所 管理者</h3><span class="stamp">職印</span></div>
+  </div>
+  <footer>
+    <div>© ${new Date().getFullYear()} 事業所</div>
+    <div>Page <span class="pageno"></span></div>
+  </footer>
+</body>
+</html>`;
+
+  // 印刷ウィンドウを開いて書き込み
+  const win = window.open('', '_blank');
+  if (!win) return;
+  win.document.open();
+  win.document.write(html);
+  win.document.close();
+  const timer = setTimeout(() => {
+    try { win.focus(); win.print(); } catch { /* noop */ }
+  }, 500);
+  win.addEventListener('beforeunload', () => clearTimeout(timer));
+}
 
 const computeDeadlineInfo = (form: SupportPlanForm): { creation: DeadlineInfo; monitoring: DeadlineInfo } => {
   const now = new Date();
@@ -512,6 +614,15 @@ const SECTIONS: SectionConfig[] = [
   },
 ];
 
+const findSection = (key: SectionKey) => SECTIONS.find((section) => section.key === key);
+
+const TAB_ORDER: SectionKey[] = ['overview', 'assessment', 'smart', 'supports', 'decision', 'monitoring', 'risk', 'excellence', 'preview'];
+
+const TAB_SECTIONS = TAB_ORDER.map((key) => ({
+  key,
+  label: findSection(key)?.label ?? key,
+}));
+
 const sanitizeValue = (value: string, limit: number) => (value.length > limit ? value.slice(0, limit) : value);
 
 const createEmptyForm = (): SupportPlanForm => ({ ...defaultFormState });
@@ -659,14 +770,14 @@ export default function SupportPlanGuidePage() {
   const [activeDraftId, setActiveDraftId] = React.useState<string>('');
   const [activeTab, setActiveTab] = React.useState<SectionKey>('overview');
   const [previewMode, setPreviewMode] = React.useState<'render' | 'source'>('render');
-  const [toast, setToast] = React.useState<ToastState>({ open: false, message: '', severity: 'success' });
-  const [lastSavedAt, setLastSavedAt] = React.useState<number | null>(null);
+  const [_toast, setToast] = React.useState<ToastState>({ open: false, message: '', severity: 'success' });
+  const [_lastSavedAt, setLastSavedAt] = React.useState<number | null>(null);
   const [liveMessage, setLiveMessage] = React.useState('');
   const theme = useTheme();
-  const isDesktop = useMediaQuery(theme.breakpoints.up('md'));
+  const _isDesktop = useMediaQuery(theme.breakpoints.up('md'));
   const initialised = React.useRef(false);
   const saveTimer = React.useRef<number>();
-  const fileInputRef = React.useRef<HTMLInputElement>(null);
+  const _fileInputRef = React.useRef<HTMLInputElement>(null);
   const { data: userList = [] } = useUsersStore();
   type LegacyUserRecord = IUserMaster & { UserId?: string; DisplayName?: string };
   const masterUsers: IUserMaster[] = (userList as LegacyUserRecord[]).map((user) => ({
@@ -675,14 +786,13 @@ export default function SupportPlanGuidePage() {
     FullName: user.FullName ?? user.DisplayName ?? '',
   }));
   const location = useLocation();
-  const [selectedMasterUserId, setSelectedMasterUserId] = React.useState('');
+  const [_selectedMasterUserId, setSelectedMasterUserId] = React.useState('');
   const navigate = useNavigate();
-  const [bottomNav, setBottomNav] = React.useState('plan');
-  const markdownSpanRef = React.useRef<ReturnType<typeof beginHydrationSpan> | null>(null);
+  const [_bottomNav, setBottomNav] = React.useState('plan');
+  const markdownSpanRef = React.useRef<ReturnType<typeof startFeatureSpan> | null>(null);
   if (!markdownSpanRef.current) {
-    markdownSpanRef.current = beginHydrationSpan('route:support-plan-guide:md', {
-      group: 'hydration:route',
-      meta: { budget: 90 },
+    markdownSpanRef.current = startFeatureSpan(HYDRATION_FEATURES.supportPlanGuide.markdown, {
+      status: 'pending',
     });
   }
   const safeNavigate = (path: string) => {
@@ -703,7 +813,7 @@ export default function SupportPlanGuidePage() {
     }
     navigate(path);
   };
-  const openRoute = (path: string) => () => safeNavigate(path);
+  const _openRoute = (path: string) => () => safeNavigate(path);
 
   React.useEffect(() => {
     const p = location.pathname;
@@ -751,6 +861,7 @@ export default function SupportPlanGuidePage() {
 
   const deadlines = React.useMemo(() => computeDeadlineInfo(form), [form]);
 
+
   const auditAlertCount = React.useMemo(() => {
     let count = 0;
     if (deadlines.creation.daysLeft !== undefined && deadlines.creation.daysLeft < 0) count += 1;
@@ -759,15 +870,33 @@ export default function SupportPlanGuidePage() {
   }, [deadlines]);
 
   React.useEffect(() => {
+    const draftLoadSpan = startFeatureSpan(HYDRATION_FEATURES.supportPlanGuide.draftLoad, {
+      status: 'pending',
+      phase: 'bootstrap',
+    });
+    let spanMeta: Record<string, unknown> = { status: 'pending' };
+    let spanError: unknown;
+
     try {
       const raw = localStorage.getItem(STORAGE_KEY);
+      spanMeta = {
+        ...spanMeta,
+        rawBytes: raw ? raw.length : 0,
+      };
       if (!raw) {
         const initialDraft = createDraft('利用者 1');
-        setDrafts({ [initialDraft.id]: initialDraft });
+        const seededDrafts = { [initialDraft.id]: initialDraft };
+        setDrafts(seededDrafts);
         setActiveDraftId(initialDraft.id);
-        initialised.current = true;
+        spanMeta = {
+          status: 'seeded',
+          drafts: 1,
+          source: 'bootstrap',
+          bytes: estimatePayloadSize(seededDrafts),
+        };
         return;
       }
+
       const parsed = JSON.parse(raw);
       let loadedDrafts: Record<string, SupportPlanDraft> | null = null;
       let loadedActiveId: string | undefined;
@@ -810,6 +939,12 @@ export default function SupportPlanGuidePage() {
         if (parsed?.updatedAt) {
           setLastSavedAt(new Date(parsed.updatedAt).getTime());
         }
+        spanMeta = {
+          status: 'restored',
+          drafts: loadedDrafts ? Object.keys(loadedDrafts).length : 0,
+          source: 'v2',
+          bytes: estimatePayloadSize(loadedDrafts),
+        };
       } else if (parsed?.data || FIELD_KEYS.some((key) => typeof parsed?.[key] === 'string')) {
         const legacyData: Partial<SupportPlanForm> = parsed?.data ?? parsed;
         const legacyDraft = createDraft(
@@ -823,20 +958,48 @@ export default function SupportPlanGuidePage() {
         if (parsed?.updatedAt) {
           setLastSavedAt(new Date(parsed.updatedAt).getTime());
         }
+        spanMeta = {
+          status: 'legacy-migration',
+          drafts: 1,
+          source: 'legacy',
+          bytes: estimatePayloadSize(loadedDrafts),
+        };
       }
 
       if (!loadedDrafts || Object.keys(loadedDrafts).length === 0) {
         const fallback = createDraft('利用者 1');
         loadedDrafts = { [fallback.id]: fallback };
         loadedActiveId = fallback.id;
+        spanMeta = {
+          status: 'fallback',
+          drafts: 1,
+          source: 'bootstrap',
+          bytes: estimatePayloadSize(loadedDrafts),
+        };
       }
 
       setDrafts(loadedDrafts);
       setActiveDraftId(loadedActiveId ?? Object.values(loadedDrafts)[0]?.id ?? '');
+      if (loadedDrafts) {
+        spanMeta = {
+          ...spanMeta,
+          drafts: Object.keys(loadedDrafts).length,
+          bytes: estimatePayloadSize(loadedDrafts),
+        };
+      }
     } catch (error) {
       console.error('Failed to load draft', error);
+      spanError = error;
     } finally {
       initialised.current = true;
+      if (spanError) {
+        draftLoadSpan?.({
+          meta: { ...spanMeta, status: 'error' },
+          error: spanError instanceof Error ? spanError.message : String(spanError),
+        });
+      } else {
+        draftLoadSpan?.({ meta: spanMeta });
+      }
     }
   }, []);
 
@@ -979,7 +1142,7 @@ export default function SupportPlanGuidePage() {
     });
   };
 
-  const handleReset = () => {
+  const _handleReset = () => {
     if (!activeDraftId) {
       return;
     }
@@ -1033,7 +1196,7 @@ export default function SupportPlanGuidePage() {
     URL.revokeObjectURL(url);
   };
 
-  const handleExportJson = () => {
+  const _handleExportJson = () => {
     const payload = {
       version: 2,
       updatedAt: new Date().toISOString(),
@@ -1052,7 +1215,7 @@ export default function SupportPlanGuidePage() {
     setToast({ open: true, message: `${activeDraft.name || '利用者'}のMarkdownをダウンロードしました`, severity: 'info' });
   };
 
-  const handleImportJson = async (event: React.ChangeEvent<HTMLInputElement>) => {
+  const _handleImportJson = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (!file) {
       return;
@@ -1136,7 +1299,7 @@ export default function SupportPlanGuidePage() {
   const completionPercent = Math.round((requiredCompleted / REQUIRED_FIELDS.length) * 100);
   const maxDraftsReached = draftList.length >= MAX_DRAFTS;
 
-  const handleAddDraft = () => {
+  const _handleAddDraft = () => {
     if (maxDraftsReached) {
       setToast({ open: true, message: 'これ以上追加できません（最大32名）', severity: 'info' });
       return;
@@ -1149,7 +1312,7 @@ export default function SupportPlanGuidePage() {
     setToast({ open: true, message: `${newDraft.name}を追加しました`, severity: 'success' });
   };
 
-  const handleMasterUserChange = (event: SelectChangeEvent<string>) => {
+  const _handleMasterUserChange = (event: SelectChangeEvent<string>) => {
     const value = event.target.value;
     if (!value) {
       setSelectedMasterUserId('');
@@ -1200,7 +1363,7 @@ export default function SupportPlanGuidePage() {
     setSelectedMasterUserId('');
   };
 
-  const handleDeleteDraft = () => {
+  const _handleDeleteDraft = () => {
     if (!activeDraftId || draftList.length <= 1) {
       setToast({ open: true, message: '少なくとも1名のドラフトが必要です', severity: 'info' });
       return;
@@ -1215,7 +1378,7 @@ export default function SupportPlanGuidePage() {
     setToast({ open: true, message: `${targetName}を削除しました`, severity: 'success' });
   };
 
-  const handleRenameDraft = (name: string) => {
+  const _handleRenameDraft = (name: string) => {
     if (!activeDraftId) {
       return;
     }
@@ -1444,572 +1607,103 @@ export default function SupportPlanGuidePage() {
     </Paper>
   );
 
-// PDFプレビュー/印刷（表組み・ロゴ・ページ番号・押印枠 + 事業所情報 + セクション見出し）
-const openPrintView = (data: SupportPlanForm, title: string) => {
-  // HTMLエスケープ
-  const esc = (s: string) =>
-    String(s || '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]!));
-
-  // 1行（空はスキップ）
-  const row = (label: string, value?: string) =>
-    value && value.trim()
-      ? `<tr><th>${esc(label)}</th><td>${esc(value).replace(/\n/g, '<br/>')}</td></tr>`
-      : '';
-
-  // セクション見出し＋中身（空なら非表示）
-  const section = (titleText: string, inner: string) =>
-    inner && inner.trim()
-      ? `<tr class="section"><th colspan="2">${esc(titleText)}</th></tr>${inner}`
-      : '';
-
-  // 事業所情報（window から一時上書き可）
-  const org = {
-    name: window.__ORG_NAME__ ?? '磯子区障害者地域活動ホーム',
-    address: window.__ORG_ADDRESS__ ?? '〒000-0000 神奈川県横浜市磯子区○○○○',
-    tel: window.__ORG_TEL__ ?? 'TEL 045-000-0000',
-    fax: window.__ORG_FAX__ ?? 'FAX 045-000-0001',
-  };
-
-  // 各セクションの行を構築
-  const secBasic =
-    row('利用者名 / ID', data.serviceUserName) +
-    row('支援区分・医療リスク等', data.supportLevel) +
-    row('計画期間', data.planPeriod);
-
-  const secAssessment =
-    row('ニーズ・課題の要約', data.assessmentSummary) +
-    row('強み・活用資源', data.strengths);
-
-  const secGoals =
-    row('長期目標（6か月以上）', data.longTermGoal) +
-    row('短期目標（3か月目安）', data.shortTermGoals);
-
-  const secSupports =
-    row('日中支援（身体介護・相談等）', data.dailySupports) +
-    row('創作・生産 / 機能訓練', data.creativeActivities);
-
-  const secDecision =
-    row('意思決定支援の工夫', data.decisionSupport) +
-    row('サービス担当者会議・同意の記録', data.conferenceNotes);
-
-  const secMonitoring =
-    row('モニタリング手法', data.monitoringPlan) +
-    row('見直しタイミング・判断基準', data.reviewTiming) +
-    row('直近モニタ実施日', data.lastMonitoringDate);
-
-  const secRisk =
-    row('主なリスクと対応策', data.riskManagement) +
-    row('証跡・ダブルチェック手順', data.complianceControls);
-
-  const secExcellence =
-    row('改善提案 / 次のアクション', data.improvementIdeas);
-
-  // 表（30%/70%）
-  const table = `
-    <table class="kv">
-      ${section('基本情報', secBasic)}
-      ${section('アセスメント', secAssessment)}
-      ${section('目標（SMART）', secGoals)}
-      ${section('具体的支援', secSupports)}
-      ${section('意思決定支援・会議記録', secDecision)}
-      ${section('モニタリングと見直し', secMonitoring)}
-      ${section('減算リスク対策', secRisk)}
-      ${section('卓越性・改善提案', secExcellence)}
-    </table>
-  `;
-
-  // 完成HTML（ここで定義してから window へ書き込む）
-  const html = `<!doctype html>
-<html>
-<head>
-<meta charset="utf-8" />
-<title>${esc(title)}</title>
-<style>
-  @page { size: A4; margin: 16mm 16mm 18mm; }
-  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Hiragino Kaku Gothic ProN', 'Noto Sans JP', 'Yu Gothic UI', 'YuGothic', Meiryo, sans-serif; font-size: 12pt; color: #111; counter-reset: page; }
-  header { display: flex; align-items: center; justify-content: space-between; gap: 12pt; margin-bottom: 8pt; }
-  .h-left { display: flex; align-items: center; gap: 10pt; }
-  header img.logo { height: 28pt; }
-  header .title { font-size: 18pt; font-weight: 700; }
-  .org { text-align: right; line-height: 1.4; }
-  .org .name { font-weight: 600; }
-  .org .meta { font-size: 10pt; color: #555; }
-  .meta { color: #555; font-size: 10pt; margin-bottom: 10pt; }
-  h2 { font-size: 13pt; margin: 14pt 0 8pt; border-bottom: 1px solid #ccc; padding-bottom: 2pt; }
-  table.kv { width: 100%; border-collapse: collapse; table-layout: fixed; }
-  table.kv th, table.kv td { border: 1px solid #bbb; vertical-align: top; padding: 6pt 8pt; word-break: break-word; }
-  table.kv th { width: 30%; background: #f7f7f7; }
-  table.kv td { width: 70%; }
-  table.kv tr.section th { background: #e9f2ff; font-weight: 700; text-align: left; width: auto; padding: 8pt; }
-  .signatures { display: grid; grid-template-columns: 1fr 1fr; gap: 12pt; margin-top: 18pt; }
-  .box { border: 1px solid #000; height: 48mm; padding: 6pt; position: relative; }
-  .box h3 { font-size: 11pt; margin: 0 0 6pt; }
-  .stamp { position: absolute; top: 6pt; right: 6pt; border: 1px dashed #f00; width: 28mm; height: 28mm; display: inline-block; text-align: center; line-height: 28mm; font-size: 10pt; color: #f00; }
-  footer { position: fixed; bottom: 8mm; left: 16mm; right: 16mm; font-size: 9pt; color: #666; display: flex; justify-content: space-between; }
-  .pageno:after { content: counter(page); }
-</style>
-</head>
-<body>
-  <header>
-    <div class="h-left">
-      <img class="logo" src="/public/logo.png" alt="logo" />
-      <div class="title">個別支援計画書（生活介護）</div>
-    </div>
-    <div class="org">
-      <div class="name">${esc(org.name)}</div>
-      <div class="meta">${esc(org.address)}<br/>${esc(org.tel)} ／ ${esc(org.fax)}</div>
-    </div>
-  </header>
-  <div class="meta">対象: ${esc(title)} ／ 作成日: ${formatDateJP(new Date())}</div>
-  ${table}
-  <h2>署名・職印欄</h2>
-  <div class="signatures">
-    <div class="box"><h3>本人</h3></div>
-    <div class="box"><h3>家族／代理人</h3></div>
-    <div class="box"><h3>サービス管理責任者</h3><span class="stamp">職印</span></div>
-    <div class="box"><h3>事業所 管理者</h3><span class="stamp">職印</span></div>
-  </div>
-  <footer>
-    <div>© ${new Date().getFullYear()} 事業所</div>
-    <div>Page <span class="pageno"></span></div>
-  </footer>
-</body>
-</html>`;
-
-  // 印刷ウィンドウを開いて書き込み
-  const win = window.open('', '_blank');
-  if (!win) return;
-  win.document.open();
-  win.document.write(html);
-  win.document.close();
-  const timer = setTimeout(() => {
-    try { win.focus(); win.print(); } catch { /* noop */ }
-  }, 500);
-  win.addEventListener('beforeunload', () => clearTimeout(timer));
-};
-
   return (
-    <Stack spacing={3} sx={{ pb: { xs: 9, md: 11 } }}>
-      <Stack direction={{ xs: 'column', sm: 'row' }} alignItems={{ xs: 'flex-start', sm: 'center' }} spacing={1}>
-        <DescriptionRoundedIcon color="primary" fontSize="large" />
-        <Box sx={{ flex: 1 }}>
-          <Typography variant="h5" component="h1">
-            個別支援計画書ガイド（生活介護）
-          </Typography>
-          <Typography variant="body2" sx={{ color: 'text.secondary' }}>
-            32名までの利用者ドラフトを切り替えながら、現場で使いやすい計画書を作成できます。
-          </Typography>
-        </Box>
-        <Tooltip title="Markdownガイドを開く">
-          <Button
-            size="small"
-            variant="outlined"
-            startIcon={<ArticleRoundedIcon />}
-            component="a"
-            href="/guides/support-plan-guide.md"
-            target="_blank"
-            rel="noreferrer"
-          >
-            詳細ガイド
-          </Button>
-        </Tooltip>
-      </Stack>
-
-      <Paper variant="outlined" sx={{ p: 2 }}>
-        <Stack spacing={1.5}>
-          {/* 状態の可視化（信号） */}
-          {(() => {
-            const creationSeverity = toAlertSeverity(deadlines.creation.color);
-            const monitoringSeverity = toAlertSeverity(deadlines.monitoring.color);
-            return (
-              <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1} alignItems={{ xs: 'stretch', sm: 'center' }} justifyContent="space-between">
-                <Alert severity={creationSeverity} variant="outlined">
-                  {deadlines.creation.label}: {formatDateJP(deadlines.creation.date)}{deadlines.creation.daysLeft !== undefined ? `（${deadlines.creation.daysLeft >= 0 ? '残' : '超過'}${Math.abs(deadlines.creation.daysLeft)}日）` : '（開始日未入力）'}
-                </Alert>
-                <Alert severity={monitoringSeverity} variant="outlined">
-                  {deadlines.monitoring.label}: {formatDateJP(deadlines.monitoring.date)}{deadlines.monitoring.daysLeft !== undefined ? `（${deadlines.monitoring.daysLeft >= 0 ? '残' : '超過'}${Math.abs(deadlines.monitoring.daysLeft)}日）` : '（開始日未入力）'}
-                </Alert>
-              </Stack>
-            );
-          })()}
-          {/* “金の糸”クイックリンク */}
-          <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
-            <Chip icon={<LinkRoundedIcon fontSize="small" />} clickable onClick={openRoute('/attendance')} label="通所・送迎へ" variant="outlined" />
-            <Chip icon={<LinkRoundedIcon fontSize="small" />} clickable onClick={openRoute('/daily-record')} label="日次記録へ" variant="outlined" />
-            <Chip icon={<LinkRoundedIcon fontSize="small" />} clickable onClick={openRoute('/plan')} label="計画一覧へ" variant="outlined" />
-            <Chip
-              icon={<LinkRoundedIcon fontSize="small" />}
-              clickable
-              component={NavLinkPrefetch}
-              to="/audit"
-              preload={() => import('@/features/audit/AuditPanel')}
-              preloadKey={PREFETCH_KEYS.audit}
-              onClick={(event: React.MouseEvent<HTMLAnchorElement>) => {
-                event.preventDefault();
-                safeNavigate('/audit');
-              }}
-              label="監査ダッシュボードへ"
-              variant="outlined"
-            />
-          </Stack>
-        </Stack>
-      </Paper>
-
-      <Paper variant="outlined" sx={{ p: 2 }}>
-        <Stack spacing={2}>
-          <Stack direction={{ xs: 'column', md: 'row' }} spacing={1} alignItems={{ xs: 'flex-start', md: 'center' }}>
-            <Typography variant="subtitle1">利用者ドラフト管理</Typography>
-            <Chip size="small" label={`${draftList.length}/${MAX_DRAFTS} 名`} />
-          </Stack>
-          <Stack direction={{ xs: 'column', md: 'row' }} spacing={1}>
-            <FormControl size="small" sx={{ minWidth: 200 }}>
-              <InputLabel id="support-plan-user-select-label">利用者</InputLabel>
-              <Select
-                labelId="support-plan-user-select-label"
-                value={activeDraftId && drafts[activeDraftId] ? activeDraftId : draftList[0]?.id ?? ''}
-                label="利用者"
-                onChange={(event: SelectChangeEvent<string>) => setActiveDraftId(event.target.value)}
-              >
-                {draftList.map((draft) => (
-                  <MenuItem key={draft.id} value={draft.id}>
-                    {draft.name.trim() || '未設定の利用者'}
-                  </MenuItem>
-                ))}
-              </Select>
-            </FormControl>
-            <FormControl
-              size="small"
-              sx={{ minWidth: 240 }}
-              disabled={userOptions.length === 0}
-            >
-              <InputLabel id="support-plan-user-master-select-label">利用者マスタから追加</InputLabel>
-              <Select
-                labelId="support-plan-user-master-select-label"
-                value={selectedMasterUserId}
-                label="利用者マスタから追加"
-                onChange={handleMasterUserChange}
-                displayEmpty
-              >
-                <MenuItem value="">
-                  <em>未選択</em>
-                </MenuItem>
-                {userOptions.map((option) => (
-                  <MenuItem key={option.id} value={option.id}>
-                    {option.label}
-                  </MenuItem>
-                ))}
-              </Select>
-            </FormControl>
-            <TextField
-              size="small"
-              label="利用者の表示名"
-              value={activeDraft?.name ?? ''}
-              onChange={(event) => handleRenameDraft(event.target.value)}
-              fullWidth
-              placeholder="例: 山田 太郎"
-            />
-            <Stack direction="row" spacing={1}>
-              <Tooltip title={maxDraftsReached ? '最大32名まで' : '利用者ドラフトを追加'}>
-                <span>
-                  <Button
-                    variant="outlined"
-                    startIcon={<PersonAddRoundedIcon />}
-                    onClick={handleAddDraft}
-                    disabled={maxDraftsReached}
-                  >
-                    追加
-                  </Button>
-                </span>
-              </Tooltip>
-              <Tooltip title="この利用者ドラフトを削除">
-                <span>
-                  <Button
-                    variant="outlined"
-                    color="error"
-                    startIcon={<DeleteOutlineRoundedIcon />}
-                    onClick={handleDeleteDraft}
-                    disabled={!activeDraft || draftList.length <= 1}
-                  >
-                    削除
-                  </Button>
-                </span>
-              </Tooltip>
+    <Box sx={{ p: { xs: 2, md: 3 }, pb: 4 }}>
+      <Stack spacing={3}>
+        <Paper
+          variant="outlined"
+          sx={{ p: { xs: 2, md: 3 } }}
+          {...tid(TESTIDS['support-plan-hud'])}
+        >
+          <Stack spacing={1.5}>
+            <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
+              {draftList.length > 0 ? (
+                draftList.map(getDraftProgressChip)
+              ) : (
+                <Chip size="small" variant="outlined" label="ドラフト未作成" />
+              )}
             </Stack>
-          </Stack>
-          <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
-            {draftList.map((draft) => getDraftProgressChip(draft))}
-          </Stack>
-        </Stack>
-      </Paper>
-
-      <Paper variant="outlined" sx={{ p: 2 }}>
-        <Stack spacing={1.5}>
-          <Stack
-            direction={{ xs: 'column', md: 'row' }}
-            spacing={1}
-            justifyContent="space-between"
-            alignItems={{ xs: 'flex-start', md: 'center' }}
-          >
-            <Stack>
-              <Stack direction="row" spacing={1} alignItems="center">
-                <Typography variant="subtitle1">
-                  必須項目の完了率（{activeDraft?.name.trim() || '未設定の利用者'}）
-                </Typography>
+            <Stack
+              direction={{ xs: 'column', sm: 'row' }}
+              spacing={1}
+              alignItems={{ xs: 'flex-start', sm: 'center' }}
+              justifyContent="space-between"
+            >
+              <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap" useFlexGap>
+                <Chip size="small" variant="outlined" label={`必須達成: ${completionPercent}%`} />
                 <Chip
                   size="small"
-                  icon={<CheckCircleRoundedIcon fontSize="small" />}
-                  label={`${requiredCompleted}/${REQUIRED_FIELDS.length}`}
-                  color={completionPercent === 100 ? 'success' : 'default'}
+                  variant="outlined"
+                  label={`入力済み: ${filledCount}/${FIELD_KEYS.length}`}
                 />
+                {auditAlertCount > 0 && (
+                  <Chip
+                    size="small"
+                    color="warning"
+                    variant="filled"
+                    label={`期限超過の可能性: ${auditAlertCount}件`}
+                    sx={{ ml: 1 }}
+                  />
+                )}
               </Stack>
-              <Typography variant="body2" sx={{ color: 'text.secondary' }}>
-                入力済み: {filledCount}/{TOTAL_FIELDS} 項目
-              </Typography>
-              {lastSavedAt ? (
+              {liveMessage ? (
                 <Typography variant="caption" sx={{ color: 'text.secondary' }}>
-                  最終自動保存: {new Date(lastSavedAt).toLocaleTimeString('ja-JP')}
+                  {liveMessage}
                 </Typography>
               ) : null}
             </Stack>
-            <Stack direction="row" spacing={1} alignItems="center">
-              <input
-                type="file"
-                accept="application/json"
-                ref={fileInputRef}
-                onChange={handleImportJson}
-                style={visuallyHidden as React.CSSProperties}
-              />
-              <Tooltip title="JSONを読み込み">
-                <Button
-                  size="small"
-                  variant="outlined"
-                  startIcon={<FileUploadRoundedIcon />}
-                  onClick={() => fileInputRef.current?.click()}
-                >
-                  JSON読み込み
-                </Button>
-              </Tooltip>
-              <Tooltip title="JSONとして保存">
-                <Button
-                  size="small"
-                  variant="outlined"
-                  startIcon={<FileDownloadRoundedIcon />}
-                  onClick={handleExportJson}
-                >
-                  JSON保存
-                </Button>
-              </Tooltip>
-            </Stack>
           </Stack>
-          {/* Deadlines row */}
-          <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
-            <Tooltip title={deadlines.creation.tooltip || ''}>
-              <Chip
-                icon={<VerifiedUserRoundedIcon fontSize="small" />}
-                color={deadlines.creation.color === 'error' ? 'error' : deadlines.creation.color === 'warning' ? 'warning' : deadlines.creation.color === 'success' ? 'success' : 'default'}
-                variant={deadlines.creation.color === 'default' ? 'outlined' : 'filled'}
-                label={`${deadlines.creation.label}: ${formatDateJP(deadlines.creation.date)}${deadlines.creation.daysLeft !== undefined ? `（${deadlines.creation.daysLeft >= 0 ? '残' : '超過'}${Math.abs(deadlines.creation.daysLeft)}日）` : ''}`}
-              />
-            </Tooltip>
-            <Tooltip title={deadlines.monitoring.tooltip || ''}>
-              <Chip
-                icon={<CheckCircleRoundedIcon fontSize="small" />}
-                color={deadlines.monitoring.color === 'error' ? 'error' : deadlines.monitoring.color === 'warning' ? 'warning' : deadlines.monitoring.color === 'success' ? 'success' : 'default'}
-                variant={deadlines.monitoring.color === 'default' ? 'outlined' : 'filled'}
-                label={`${deadlines.monitoring.label}: ${formatDateJP(deadlines.monitoring.date)}${deadlines.monitoring.daysLeft !== undefined ? `（${deadlines.monitoring.daysLeft >= 0 ? '残' : '超過'}${Math.abs(deadlines.monitoring.daysLeft)}日）` : ''}`}
-              />
-            </Tooltip>
-            <Chip
-              variant="outlined"
-              label={`直近モニタ: ${form.lastMonitoringDate || '未記録'}`}
-            />
-          </Stack>
-          <LinearProgress variant="determinate" value={completionPercent} />
-        </Stack>
-      </Paper>
+        </Paper>
 
-      <Paper variant="outlined" sx={{ px: { xs: 1, sm: 2 }, pt: 1, pb: 0 }}>
-        <Tabs
-          value={activeTab}
-          onChange={(_event, next) => setActiveTab(next)}
-          variant="scrollable"
-          scrollButtons="auto"
-          aria-label="計画書セクション切り替え"
-        >
-          {SECTIONS.map((section) => {
-            const filled = section.fields.filter((field) => form[field.key].trim()).length;
-            const total = section.fields.length || 1;
-            return (
+        <Paper variant="outlined" sx={{ p: { xs: 1, md: 2 } }}>
+          <Tabs
+            value={activeTab}
+            onChange={(_event, nextValue) => setActiveTab(nextValue as SectionKey)}
+            variant="scrollable"
+            scrollButtons="auto"
+            aria-label="支援計画セクション切り替え"
+          >
+            {TAB_SECTIONS.map((tab) => (
               <Tab
-                key={section.key}
-                value={section.key}
-                id={`support-plan-tab-${section.key}`}
-                aria-controls={`support-plan-tabpanel-${section.key}`}
-                label={
-                  <Stack direction="row" spacing={1} alignItems="center">
-                    <span>{section.label}</span>
-                    {section.key !== 'preview' ? (
-                      <Chip size="small" label={`${filled}/${total}`} variant="outlined" />
-                    ) : null}
-                  </Stack>
-                }
+                key={tab.key}
+                value={tab.key}
+                label={tab.label}
+                id={`support-plan-tab-${tab.key}`}
+                aria-controls={`support-plan-tabpanel-${tab.key}`}
               />
+            ))}
+          </Tabs>
+          {TAB_SECTIONS.map((tab) => {
+            if (tab.key === 'preview') {
+              return (
+                <TabPanel key={tab.key} current={activeTab} value={tab.key}>
+                  {renderPreviewTab()}
+                </TabPanel>
+              );
+            }
+
+            const section = findSection(tab.key);
+            if (!section) {
+              return null;
+            }
+
+            return (
+              <TabPanel key={tab.key} current={activeTab} value={tab.key}>
+                <Stack spacing={2}>
+                  {section.description ? (
+                    <Typography variant="subtitle1" sx={{ color: 'text.secondary' }}>
+                      {section.description}
+                    </Typography>
+                  ) : null}
+                  <Stack spacing={2}>
+                    {section.fields.map((field) => renderFieldCard(field))}
+                  </Stack>
+                </Stack>
+              </TabPanel>
             );
           })}
-        </Tabs>
-      </Paper>
-
-      {SECTIONS.map((section) => (
-        <TabPanel key={section.key} value={section.key} current={activeTab}>
-          <Typography variant="body2" sx={{ color: 'text.secondary', mb: 2 }}>
-            {section.description}
-          </Typography>
-          {section.key === 'preview' ? (
-            renderPreviewTab()
-          ) : (
-            <Stack spacing={2}>
-              {section.fields.map((field) => renderFieldCard(field))}
-            </Stack>
-          )}
-        </TabPanel>
-      ))}
-
-      <Box
-        sx={{
-          ...visuallyHidden,
-        }}
-        aria-live="polite"
-        role="status"
-      >
-        {liveMessage}
-      </Box>
-
-      {isDesktop ? (
-        <Stack direction="row" justifyContent="flex-end" spacing={1}>
-          <Button color="inherit" startIcon={<RestartAltRoundedIcon />} onClick={handleReset} disabled={!activeDraft}>
-            リセット
-          </Button>
-          <Button
-            variant="contained"
-            startIcon={<ContentCopyRoundedIcon />}
-            onClick={handleCopyMarkdown}
-            disabled={!activeDraft}
-          >
-            Markdownコピー
-          </Button>
-        </Stack>
-      ) : (
-        <Paper
-          elevation={6}
-          sx={{
-            position: 'sticky',
-            bottom: 0,
-            left: 0,
-            right: 0,
-            py: 1,
-            px: 2,
-            borderRadius: 0,
-            display: 'flex',
-            gap: 1,
-            justifyContent: 'space-between',
-            backgroundColor: (themeArg) => themeArg.palette.background.paper,
-          }}
-        >
-          <Button
-            color="inherit"
-            startIcon={<RestartAltRoundedIcon />}
-            onClick={handleReset}
-            sx={{ flex: 1 }}
-            disabled={!activeDraft}
-          >
-            リセット
-          </Button>
-          <Button
-            variant="contained"
-            startIcon={<ContentCopyRoundedIcon />}
-            onClick={handleCopyMarkdown}
-            sx={{ flex: 1 }}
-            disabled={!activeDraft}
-          >
-            コピー
-          </Button>
         </Paper>
-      )}
-
-      <SpeedDial ariaLabel="クイックアクション" sx={{ position: 'fixed', bottom: { xs: 72, md: 88 }, right: 16 }} icon={<SpeedDialIcon />}>
-        <SpeedDialAction
-          icon={<PrintRoundedIcon />}
-          tooltipTitle="PDFプレビュー/印刷"
-          onClick={() => openPrintView(form, form.serviceUserName || activeDraft?.name || 'support-plan')}
-          FabProps={{ 'aria-label': 'PDFプレビュー/印刷' }}
-        />
-        <SpeedDialAction
-          icon={<DownloadRoundedIcon />}
-          tooltipTitle="Markdown保存"
-          onClick={handleDownloadMarkdown}
-          FabProps={{ 'aria-label': 'Markdown保存' }}
-        />
-        <SpeedDialAction
-          icon={<ContentCopyRoundedIcon />}
-          tooltipTitle="Markdownコピー"
-          onClick={handleCopyMarkdown}
-          FabProps={{ 'aria-label': 'Markdownコピー' }}
-        />
-        <SpeedDialAction
-          icon={<AddRoundedIcon />}
-          tooltipTitle="利用者ドラフトを追加"
-          onClick={handleAddDraft}
-          FabProps={{ 'aria-label': '利用者ドラフトを追加' }}
-        />
-        <SpeedDialAction
-          icon={<CleaningServicesRoundedIcon />}
-          tooltipTitle="フォームをリセット"
-          onClick={handleReset}
-          FabProps={{ 'aria-label': 'フォームをリセット' }}
-        />
-      </SpeedDial>
-
-      <Snackbar
-        open={toast.open}
-        autoHideDuration={4000}
-        onClose={() => setToast((prev) => ({ ...prev, open: false }))}
-      >
-        <Alert
-          onClose={() => setToast((prev) => ({ ...prev, open: false }))}
-          severity={toast.severity}
-          sx={{ width: '100%' }}
-        >
-          {toast.message}
-        </Alert>
-      </Snackbar>
-
-      <Paper elevation={8} sx={{ position: 'fixed', bottom: 0, left: 0, right: 0 }}>
-        <BottomNavigation
-          showLabels
-          value={bottomNav}
-          onChange={(_e, v) => setBottomNav(v)}
-        >
-          <BottomNavigationAction value="home" label="ホーム" aria-label="ホーム" aria-current={bottomNav === 'home' ? 'page' : undefined} icon={<HomeRoundedIcon />} onClick={openRoute('/')} />
-          <BottomNavigationAction value="attendance" label="通所" aria-label="通所・送迎" aria-current={bottomNav === 'attendance' ? 'page' : undefined} icon={<TodayRoundedIcon />} onClick={openRoute('/attendance')} />
-          <BottomNavigationAction value="daily" label="日次記録" aria-label="日次記録" aria-current={bottomNav === 'daily' ? 'page' : undefined} icon={<NoteAltRoundedIcon />} onClick={openRoute('/daily-record')} />
-          <BottomNavigationAction value="plan" label="計画" aria-label="計画" aria-current={bottomNav === 'plan' ? 'page' : undefined} icon={<DescriptionRoundedIcon />} onClick={openRoute('/plan')} />
-          <BottomNavigationAction
-            value="audit"
-            label="監査"
-            aria-label="監査ダッシュボード"
-            aria-current={bottomNav === 'audit' ? 'page' : undefined}
-            icon={<Badge badgeContent={auditAlertCount} color="error" invisible={!auditAlertCount}><FactCheckRoundedIcon /></Badge>}
-            component={NavLinkPrefetch}
-            to="/audit"
-            preload={() => import('@/features/audit/AuditPanel')}
-            preloadKey={PREFETCH_KEYS.audit}
-            onClick={(event: React.MouseEvent<HTMLAnchorElement>) => {
-              event.preventDefault();
-              safeNavigate('/audit');
-            }}
-          />
-        </BottomNavigation>
-      </Paper>
-    </Stack>
+      </Stack>
+    </Box>
   );
 }

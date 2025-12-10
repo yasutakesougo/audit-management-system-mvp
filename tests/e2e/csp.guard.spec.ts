@@ -1,0 +1,68 @@
+import { expect, test } from '@playwright/test';
+import { existsSync } from 'node:fs';
+import { readFile } from 'node:fs/promises';
+import { resolve } from 'node:path';
+
+const COLLECTOR_PORT = Number(process.env.CSP_PORT || 8787);
+const COLLECTOR_PREFIX = process.env.CSP_PREFIX || '/__csp__';
+const REPORT_DIR = process.env.CSP_REPORT_DIR || 'csp-reports';
+const PREVIEW_ORIGIN = process.env.CSP_PREVIEW_ORIGIN || 'http://localhost:4173';
+
+async function fetchCollectorHealth() {
+  const response = await fetch(`http://localhost:${COLLECTOR_PORT}${COLLECTOR_PREFIX}/health`);
+  return response.ok;
+}
+
+async function readViolationLog() {
+  const filePath = resolve(process.cwd(), REPORT_DIR, 'violations.ndjson');
+  if (!existsSync(filePath)) {
+    return '';
+  }
+  const content = await readFile(filePath, 'utf8');
+  return content.trim();
+}
+
+test('serves CSP without violations', async ({ page }) => {
+  const healthy = await fetchCollectorHealth();
+  expect(healthy, 'CSP collector health check should succeed').toBeTruthy();
+
+  const response = await page.goto(`${PREVIEW_ORIGIN}/`, {
+    waitUntil: 'load',
+    timeout: 30_000,
+  });
+
+  expect(response, `Navigation to ${PREVIEW_ORIGIN}/ should return a response`).toBeTruthy();
+
+  const status = response!.status();
+  expect(status, `Expected 2xx/3xx response from preview server, got ${status}`).toBeLessThan(400);
+
+  const bodyLocator = page.locator('body');
+  try {
+    await page.waitForSelector('body', {
+      state: 'attached',
+      timeout: 10_000,
+    });
+  } catch (error) {
+    if (process.env.CI) {
+      const html = await page.content();
+      // eslint-disable-next-line no-console
+      console.error('Page HTML snapshot (CI only):', html.slice(0, 5000));
+    }
+    throw error;
+  }
+
+  await expect(bodyLocator, 'Preview body should be attached to the DOM').toHaveCount(1);
+
+  const headers = response!.headers();
+  const cspHeader = headers['content-security-policy'] ?? headers['content-security-policy-report-only'];
+  expect(
+    cspHeader,
+    `CSP header should be present on preview responses (status ${status}, headers: ${JSON.stringify(headers)})`,
+  ).toBeTruthy();
+  expect(cspHeader?.includes(COLLECTOR_PREFIX), 'CSP header should reference the report endpoint').toBeTruthy();
+
+  await page.waitForTimeout(750);
+
+  const violations = await readViolationLog();
+  expect(violations, 'CSP reports should be empty').toBe('');
+});

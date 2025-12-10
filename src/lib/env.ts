@@ -16,6 +16,7 @@ export type AppConfig = {
   VITE_AUDIT_BATCH_SIZE: string;
   VITE_AUDIT_RETRY_MAX: string;
   VITE_AUDIT_RETRY_BASE: string;
+  VITE_E2E: string;
   schedulesCacheTtlSec: number;
   graphRetryMax: number;
   graphRetryBaseMs: number;
@@ -147,6 +148,7 @@ export const getAppConfig = (envOverride?: EnvRecord): AppConfig => {
     VITE_AUDIT_BATCH_SIZE: readEnv('VITE_AUDIT_BATCH_SIZE', '', envOverride),
     VITE_AUDIT_RETRY_MAX: readEnv('VITE_AUDIT_RETRY_MAX', '', envOverride),
     VITE_AUDIT_RETRY_BASE: readEnv('VITE_AUDIT_RETRY_BASE', '', envOverride),
+    VITE_E2E: readEnv('VITE_E2E', '', envOverride),
     schedulesCacheTtlSec: parseNumber(readEnv('VITE_SCHEDULES_CACHE_TTL', '60', envOverride), 60),
     graphRetryMax: parseNumber(readEnv('VITE_GRAPH_RETRY_MAX', '2', envOverride), 2),
     graphRetryBaseMs: parseNumber(readEnv('VITE_GRAPH_RETRY_BASE_MS', '300', envOverride), 300),
@@ -259,6 +261,33 @@ export const isSchedulesCreateEnabled = (envOverride?: EnvRecord): boolean => {
   return false;
 };
 
+export const isSchedulesWeekV2Enabled = (envOverride?: EnvRecord): boolean => {
+  const envValue = readOptionalEnv('VITE_FEATURE_SCHEDULES_WEEK_V2', envOverride)?.trim().toLowerCase();
+  if (envValue) {
+    if (TRUTHY.has(envValue)) {
+      return true;
+    }
+    if (FALSY.has(envValue)) {
+      return false;
+    }
+  }
+
+  if (typeof window !== 'undefined') {
+    try {
+      const flag = window.localStorage.getItem('feature:schedulesWeekV2');
+      if (flag != null) {
+        const normalized = flag.trim().toLowerCase();
+        if (TRUTHY.has(normalized)) return true;
+        if (FALSY.has(normalized)) return false;
+      }
+    } catch {
+      // ignore storage access issues
+    }
+  }
+
+  return false;
+};
+
 export const isComplianceFormEnabled = (envOverride?: EnvRecord): boolean => {
   if (readBool('VITE_FEATURE_COMPLIANCE_FORM', false, envOverride)) {
     return true;
@@ -324,6 +353,26 @@ export const isE2eMsalMockEnabled = (envOverride?: EnvRecord): boolean =>
 export const allowWriteFallback = (envOverride?: EnvRecord): boolean =>
   readBool('VITE_ALLOW_WRITE_FALLBACK', false, envOverride);
 
+export type ScheduleSaveMode = 'mock' | 'real';
+
+export const getScheduleSaveMode = (envOverride?: EnvRecord): ScheduleSaveMode => {
+  const raw = readEnv('VITE_SCHEDULES_SAVE_MODE', 'mock', envOverride).trim().toLowerCase();
+  return raw === 'real' ? 'real' : 'mock';
+};
+
+export const isScheduleSaveMocked = (envOverride?: EnvRecord): boolean =>
+  getScheduleSaveMode(envOverride) === 'mock';
+
+// E2E/Demo用フラグヘルパー
+export const getFlag = (name: string, envOverride?: EnvRecord): boolean => {
+  const value = readEnv(name, '', envOverride);
+  return value === '1' || value === 'true';
+};
+
+export const isE2E = (envOverride?: EnvRecord): boolean => getFlag('VITE_E2E', envOverride);
+export const isDemo = (envOverride?: EnvRecord): boolean => getFlag('VITE_DEMO', envOverride);
+export const skipSharePoint = (envOverride?: EnvRecord): boolean => getFlag('VITE_SKIP_SHAREPOINT', envOverride);
+
 export const getSharePointResource = (envOverride?: EnvRecord): string => {
   const resource = readEnv('VITE_SP_RESOURCE', '', envOverride).trim();
   if (resource) {
@@ -360,7 +409,7 @@ export const getSchedulesListIdFromEnv = (envOverride?: EnvRecord): string => {
   if (override) {
     return override;
   }
-  return 'Schedules';
+  return 'ScheduleEvents';
 };
 
 const parseScopeList = (raw: string): string[] => {

@@ -7,6 +7,35 @@ export type StaffRow = SpStaffItem;
 export type ScheduleRow = SpScheduleItem;
 export type DailyRow = SpDailyItem;
 
+// ──────────────────────────────────────────────────────────────
+// Org master (SharePoint list: Org_Master)
+// Internal names confirmed: OrgCode / OrgType / Audience / SortOrder / IsActive / Notes
+// ──────────────────────────────────────────────────────────────
+
+export const ORG_MASTER_LIST_TITLE = 'Org_Master' as const;
+
+export const ORG_MASTER_FIELDS = {
+  id: 'Id',
+  title: 'Title',
+  orgCode: 'OrgCode',
+  orgType: 'OrgType',
+  audience: 'Audience',
+  sortOrder: 'SortOrder',
+  isActive: 'IsActive',
+  notes: 'Notes',
+} as const;
+
+export const ORG_MASTER_SELECT_FIELDS = [
+  ORG_MASTER_FIELDS.id,
+  ORG_MASTER_FIELDS.title,
+  ORG_MASTER_FIELDS.orgCode,
+  ORG_MASTER_FIELDS.orgType,
+  ORG_MASTER_FIELDS.audience,
+  ORG_MASTER_FIELDS.sortOrder,
+  ORG_MASTER_FIELDS.isActive,
+  ORG_MASTER_FIELDS.notes,
+] as const;
+
 export interface IUserMaster {
   Id: number;
   Title?: string | null;
@@ -28,10 +57,26 @@ export interface IUserMaster {
   RecipientCertExpiry?: string | null;
   Modified?: string | null;
   Created?: string | null;
+
+  // 事業所との契約情報 / 利用ステータス
+  UsageStatus?: string | null;
+
+  // 支給決定情報
+  GrantMunicipality?: string | null;
+  GrantPeriodStart?: string | null;
+  GrantPeriodEnd?: string | null;
+  DisabilitySupportLevel?: string | null;
+  GrantedDaysPerMonth?: string | null;
+  UserCopayLimit?: string | null;
+
+  // 請求・加算関連情報
+  TransportAdditionType?: string | null;
+  MealAddition?: string | null;
+  CopayPaymentMethod?: string | null;
 }
 
 export interface IUserMasterCreateDto {
-  UserID: string;
+  UserID?: string | null;  // システム採番のためフロントからは基本送信しない
   FullName: string;
   Furigana?: string | null;
   FullNameKana?: string | null;
@@ -47,6 +92,22 @@ export interface IUserMasterCreateDto {
   AttendanceDays?: string[] | null;
   RecipientCertNumber?: string | null;
   RecipientCertExpiry?: string | null;
+
+  // 事業所との契約情報 / 利用ステータス
+  UsageStatus?: string | null;
+
+  // 支給決定情報
+  GrantMunicipality?: string | null;
+  GrantPeriodStart?: string | null;
+  GrantPeriodEnd?: string | null;
+  DisabilitySupportLevel?: string | null;
+  GrantedDaysPerMonth?: string | null;
+  UserCopayLimit?: string | null;
+
+  // 請求・加算関連情報
+  TransportAdditionType?: string | null;
+  MealAddition?: string | null;
+  CopayPaymentMethod?: string | null;
 }
 
 export const joinSelect = (arr: readonly string[]) => arr.join(',');
@@ -55,12 +116,18 @@ export enum ListKeys {
   UsersMaster = 'Users_Master',
   StaffMaster = 'Staff_Master',
   ComplianceCheckRules = 'Compliance_CheckRules',
+  Behaviors = 'Dat_Behaviors',
+  SurveyTokusei = 'FormsResponses_Tokusei',
+  OrgMaster = 'Org_Master',
 }
 
 export const LIST_CONFIG: Record<ListKeys, { title: string }> = {
   [ListKeys.UsersMaster]: { title: 'Users_Master' },
   [ListKeys.StaffMaster]: { title: 'Staff_Master' },
   [ListKeys.ComplianceCheckRules]: { title: 'Compliance_CheckRules' },
+  [ListKeys.Behaviors]: { title: 'Dat_Behaviors' },
+  [ListKeys.SurveyTokusei]: { title: 'FormsResponses_Tokusei' },
+  [ListKeys.OrgMaster]: { title: 'Org_Master' },
 };
 
 export const FIELD_MAP = {
@@ -75,6 +142,7 @@ export const FIELD_MAP = {
     serviceStartDate: 'ServiceStartDate',
     serviceEndDate: 'ServiceEndDate',
     isHighIntensitySupportTarget: 'IsHighIntensitySupportTarget',
+    isSupportProcedureTarget: 'IsSupportProcedureTarget',
     severeFlag: 'severeFlag',
     isActive: 'IsActive',
     transportToDays: 'TransportToDays',
@@ -110,6 +178,7 @@ export const FIELD_MAP = {
     phone: 'Phone',
     certifications: 'Certifications',
   },
+  Org_Master: ORG_MASTER_FIELDS,
   Schedules: {
     id: 'Id',
     title: 'Title',
@@ -132,6 +201,54 @@ export const FIELD_MAP = {
   },
 } as const;
 
+export const FIELD_MAP_BEHAVIORS = {
+  id: 'Id',
+  userId: 'UserID',
+  timestamp: 'BehaviorDateTime',
+  antecedent: 'Antecedent',
+  behavior: 'BehaviorType',
+  consequence: 'Consequence',
+  intensity: 'Intensity',
+  duration: 'DurationMinutes',
+  memo: 'Notes',
+  created: 'Created'
+} as const;
+
+export const BEHAVIORS_SELECT_FIELDS = [
+  FIELD_MAP_BEHAVIORS.id,
+  FIELD_MAP_BEHAVIORS.userId,
+  FIELD_MAP_BEHAVIORS.timestamp,
+  FIELD_MAP_BEHAVIORS.antecedent,
+  FIELD_MAP_BEHAVIORS.behavior,
+  FIELD_MAP_BEHAVIORS.consequence,
+  FIELD_MAP_BEHAVIORS.intensity,
+  FIELD_MAP_BEHAVIORS.duration,
+  FIELD_MAP_BEHAVIORS.memo,
+  FIELD_MAP_BEHAVIORS.created
+] as const;
+
+export const FIELD_MAP_SURVEY_TOKUSEI = {
+  id: 'Id',
+  responseId: 'ResponseId',
+  responderEmail: 'ResponderEmail',
+  responderName: 'ResponderName',
+  fillDate: 'FillDate',
+  targetUserName: 'TargetUserName',
+  guardianName: 'GuardianName',
+  relation: 'Relation',
+  heightCm: 'HeightCm',
+  weightKg: 'WeightKg',
+  personality: 'Personality',
+  sensoryFeatures: 'SensoryFeatures',
+  behaviorFeatures: 'BehaviorFeatures',
+  preferences: 'Preferences',
+  strengths: 'Strengths',
+  notes: 'Notes',
+  created: 'Created'
+} as const;
+
+export const SURVEY_TOKUSEI_SELECT_FIELDS = Object.values(FIELD_MAP_SURVEY_TOKUSEI);
+
 export const USERS_SELECT_FIELDS_SAFE = [
   FIELD_MAP.Users_Master.id,
   FIELD_MAP.Users_Master.title,
@@ -143,6 +260,7 @@ export const USERS_SELECT_FIELDS_SAFE = [
   FIELD_MAP.Users_Master.serviceStartDate,
   FIELD_MAP.Users_Master.serviceEndDate,
   FIELD_MAP.Users_Master.isHighIntensitySupportTarget,
+  FIELD_MAP.Users_Master.isSupportProcedureTarget,
   FIELD_MAP.Users_Master.severeFlag,
   FIELD_MAP.Users_Master.isActive,
   FIELD_MAP.Users_Master.transportToDays,
@@ -162,6 +280,8 @@ export const STAFF_SELECT_FIELDS_CANONICAL = [
   FIELD_MAP.Staff_Master.jobTitle,
   FIELD_MAP.Staff_Master.employmentType,
   FIELD_MAP.Staff_Master.rbacRole,
+  FIELD_MAP.Staff_Master.role,
+  FIELD_MAP.Staff_Master.isActive,
   FIELD_MAP.Staff_Master.department,
   FIELD_MAP.Staff_Master.hireDate,
   FIELD_MAP.Staff_Master.resignDate,
@@ -171,6 +291,10 @@ export const STAFF_SELECT_FIELDS_CANONICAL = [
   FIELD_MAP.Staff_Master.furigana,
   FIELD_MAP.Staff_Master.fullNameKana,
   FIELD_MAP.Staff_Master.workDaysText,
+  FIELD_MAP.Staff_Master.workDays,
+  FIELD_MAP.Staff_Master.baseShiftStartTime,
+  FIELD_MAP.Staff_Master.baseShiftEndTime,
+  FIELD_MAP.Staff_Master.baseWorkingDays,
 ] as const;
 
 export const USERS_SELECT_SAFE = joinSelect(USERS_SELECT_FIELDS_SAFE as readonly string[]);
@@ -224,6 +348,7 @@ export const SCHEDULE_FIELD_ROW_KEY = 'RowKey' as const;
 export const SCHEDULE_FIELD_DAY_KEY = 'cr014_dayKey' as const;
 export const SCHEDULE_FIELD_FISCAL_YEAR = 'cr014_fiscalYear' as const;
 export const SCHEDULE_FIELD_MONTH_KEY = 'MonthKey' as const;
+export const SCHEDULE_FIELD_ENTRY_HASH = 'EntryHash' as const;
 export const SCHEDULE_FIELD_SUB_TYPE = 'SubType' as const;
 export const SCHEDULE_FIELD_ORG_AUDIENCE = 'cr014_orgAudience' as const;
 export const SCHEDULE_FIELD_ORG_RESOURCE_ID = 'cr014_resourceId' as const;
@@ -257,6 +382,7 @@ export const SCHEDULES_BASE_FIELDS = [
   SCHEDULE_FIELD_RELATED_RESOURCE,
   SCHEDULE_FIELD_RELATED_RESOURCE_ID,
   SCHEDULE_FIELD_ROW_KEY,
+  SCHEDULE_FIELD_ENTRY_HASH,
   SCHEDULE_FIELD_DAY_KEY,
   SCHEDULE_FIELD_FISCAL_YEAR,
   SCHEDULE_FIELD_MONTH_KEY,

@@ -1,5 +1,18 @@
-import { describe, it, expect } from 'vitest';
-import { summarizeBatchStatuses, selectForRetry, BatchItemStatus } from './useAuditSyncBatch';
+import { describe, expect, it } from 'vitest';
+import { BatchItemStatus, selectForRetry, summarizeBatchStatuses } from './useAuditSyncBatch';
+
+/**
+ * Tests for batch status summarization and retry selection logic
+ *
+ * Status Code Classification:
+ * - 200-299: Success
+ * - 409: Duplicate (counted as success + duplicate)
+ * - Others: Failed (eligible for retry)
+ *
+ * Key Behaviors:
+ * - summarizeBatchStatuses: Counts success, duplicate, failed, total
+ * - selectForRetry: Returns IDs of failed items only (excludes 2xx and 409)
+ */
 
 describe('resend-only-failed logic', () => {
   it('retries only failed, keeps duplicates/existing as non-targets', () => {
@@ -40,5 +53,29 @@ describe('resend-only-failed logic', () => {
     expect(summary.duplicate).toBe(2);
     expect(summary.failed).toBe(1); // 404
     expect(selectForRetry(statuses)).toEqual(['d']);
+  });
+
+  it('handles empty statuses array', () => {
+    const summary = summarizeBatchStatuses([]);
+    expect(summary).toEqual({ success: 0, duplicate: 0, failed: 0, total: 0 });
+    expect(selectForRetry([])).toEqual([]);
+  });
+
+  it('tests boundary status codes', () => {
+    const statuses: BatchItemStatus[] = [
+      { id: 'boundary1', status: 199 }, // failed (< 200)
+      { id: 'boundary2', status: 200 }, // success (>= 200)
+      { id: 'boundary3', status: 299 }, // success (< 300)
+      { id: 'boundary4', status: 300 }, // failed (>= 300)
+      { id: 'boundary5', status: 409 }, // duplicate + success
+    ];
+    const summary = summarizeBatchStatuses(statuses);
+    expect(summary.success).toBe(3); // 200 + 299 + 409
+    expect(summary.duplicate).toBe(1); // 409
+    expect(summary.failed).toBe(2); // 199 + 300
+    expect(summary.total).toBe(5);
+
+    const retryIds = selectForRetry(statuses);
+    expect(retryIds).toEqual(['boundary1', 'boundary4']);
   });
 });

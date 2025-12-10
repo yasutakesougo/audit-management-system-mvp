@@ -1,15 +1,45 @@
-import React from 'react';
-import { cleanup, render, screen, waitFor } from '@testing-library/react';
-import { Outlet, RouterProvider, createMemoryRouter, useLocation, type RouteObject } from 'react-router-dom';
-import { afterEach, describe, expect, it } from 'vitest';
 import ProtectedRoute from '@/app/ProtectedRoute';
-import { FeatureFlagsProvider, type FeatureFlagSnapshot } from '@/config/featureFlags';
+import { useAuth } from '@/auth/useAuth';
 import { routerFutureFlags } from '@/app/routerFuture';
+import { FeatureFlagsProvider, type FeatureFlagSnapshot } from '@/config/featureFlags';
+import { cleanup, render, screen, waitFor } from '@testing-library/react';
+import React from 'react';
+import { Outlet, RouterProvider, createMemoryRouter, useLocation, type RouteObject } from 'react-router-dom';
+import { afterEach, describe, expect, it, vi } from 'vitest';
+
+// Mock the env module to disable E2E mode for testing
+vi.mock('@/env', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/env')>();
+  return {
+    ...actual,
+    isE2E: false,
+  };
+});
+
+vi.mock('@/auth/useAuth', () => ({
+  useAuth: vi.fn(),
+}));
+
+const mockUseAuth = vi.mocked(useAuth);
+
+const createAuthenticatedState = (
+  overrides: Partial<ReturnType<typeof useAuth>> = {}
+): ReturnType<typeof useAuth> => ({
+  isAuthenticated: true,
+  account: null,
+  signIn: vi.fn(() => Promise.resolve()),
+  signOut: vi.fn(() => Promise.resolve()),
+  acquireToken: vi.fn(() => Promise.resolve(null)),
+  loading: false,
+  shouldSkipLogin: false,
+  ...overrides,
+});
 
 const defaultFlags: FeatureFlagSnapshot = {
   schedules: true,
   schedulesCreate: true,
   complianceForm: false,
+  schedulesWeekV2: false,
 };
 
 const LocationProbe: React.FC<{ testId: string }> = ({ testId }) => {
@@ -18,6 +48,7 @@ const LocationProbe: React.FC<{ testId: string }> = ({ testId }) => {
 };
 
 const renderWithFlags = (flags: FeatureFlagSnapshot, initialEntries: string[] = ['/guarded']) => {
+  mockUseAuth.mockReturnValue(createAuthenticatedState());
   const routes: RouteObject[] = [
     {
       path: '/',
@@ -53,6 +84,7 @@ const renderWithFlags = (flags: FeatureFlagSnapshot, initialEntries: string[] = 
 
 afterEach(() => {
   cleanup();
+  mockUseAuth.mockReset();
 });
 
 describe('ProtectedRoute', () => {

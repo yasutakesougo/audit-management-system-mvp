@@ -1,0 +1,47 @@
+name: nurse e2e (minute-basis matrix)
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  nurse-e2e:
+    name: "Nurse E2E (minuteBasis=${{ matrix.minuteBasis }})"
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        minuteBasis: ["utc", "local"]
+
+    env:
+      CI: true
+      VITE_FEATURE_NURSE_UI: "1"
+      VITE_NURSE_MINUTE_BASIS: ${{ matrix.minuteBasis }}
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build app
+        run: npm run build --if-present
+
+      - name: Install Playwright browsers
+        run: npx playwright install --with-deps
+
+      - name: Run nurse smoke tests
+        run: |
+          npx playwright test \
+            tests/e2e/nurse.workspace-a11y.spec.ts \
+            tests/e2e/nurse.tabs.spec.ts \
+            tests/e2e/nurse.sync-status.spec.ts

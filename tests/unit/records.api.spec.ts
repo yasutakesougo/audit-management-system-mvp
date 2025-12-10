@@ -28,6 +28,7 @@ const DEFAULT_APP_CONFIG: AppConfig = {
   VITE_AUDIT_BATCH_SIZE: '',
   VITE_AUDIT_RETRY_MAX: '',
   VITE_AUDIT_RETRY_BASE: '',
+  VITE_E2E: '',
   schedulesCacheTtlSec: 60,
   graphRetryMax: 2,
   graphRetryBaseMs: 300,

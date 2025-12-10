@@ -1,9 +1,10 @@
 import { format } from 'date-fns';
 import { ja } from 'date-fns/locale';
-import { useCallback, useId, useMemo, useRef, type HTMLAttributes, type MouseEvent } from 'react';
+import { useCallback, useId, useMemo, useRef, type MouseEvent } from 'react';
 // MUI Components
 import Box from '@mui/material/Box';
 import Button from '@mui/material/Button';
+import Chip from '@mui/material/Chip';
 import Paper from '@mui/material/Paper';
 import Stack from '@mui/material/Stack';
 import Typography from '@mui/material/Typography';
@@ -11,8 +12,11 @@ import Typography from '@mui/material/Typography';
 import RefreshRoundedIcon from '@mui/icons-material/RefreshRounded';
 import TodayRoundedIcon from '@mui/icons-material/TodayRounded';
 
+import { TESTIDS, tid } from '@/testids';
+import { getHolidayLabel } from '@/sharepoint/holidays';
 import { startOfDay } from '../dateutils.local';
 import type { Schedule } from '../types';
+import { buildScheduleColorSource, getScheduleServiceLabel } from '../colorSource';
 import TimelineEventCard from './TimelineEventCard';
 import { getTimelineSubtitle, laneLabels, laneOrder } from './TimelineWeek';
 
@@ -21,15 +25,41 @@ type TimelineDayProps = {
   date: Date;
   onEventCreate?: (payload: { category: Schedule['category']; date: string }) => void;
   onEventEdit?: (event: Schedule) => void;
+  orgSummary?: {
+    label: string;
+    count: number;
+  } | null;
 };
 
 type LaneBuckets = Record<Schedule['category'], Schedule[]>;
 
 const ONE_DAY_MS = 24 * 60 * 60 * 1000;
+const LANE_COLOR_HEX: Record<(typeof laneLabels)['User']['color'], string> = {
+  primary: '#1976d2',
+  secondary: '#9c27b0',
+  success: '#2e7d32',
+  warning: '#ed6c02',
+  error: '#d32f2f',
+  info: '#0288d1',
+};
 
-export default function TimelineDay({ events, date, onEventCreate, onEventEdit }: TimelineDayProps) {
+const getWeekendTint = (date: Date): string | undefined => {
+  const dow = date.getDay();
+  if (dow === 0) return 'rgba(244,67,54,0.04)';   // Sun
+  if (dow === 6) return 'rgba(25,118,210,0.04)';  // Sat
+  return undefined;
+};
+
+export default function TimelineDay({ events, date, onEventCreate, onEventEdit, orgSummary }: TimelineDayProps) {
   const dayStart = useMemo(() => startOfDay(date), [date]);
   const dayEnd = useMemo(() => new Date(dayStart.getTime() + ONE_DAY_MS), [dayStart]);
+  const dayIso = useMemo(() => dayStart.toISOString().slice(0, 10), [dayStart]);
+  const isToday = useMemo(() => {
+    const now = new Date();
+    return now.toISOString().slice(0, 10) === dayIso;
+  }, [dayIso]);
+  const holidayLabel = useMemo(() => getHolidayLabel(dayIso), [dayIso]);
+  const weekendTint = useMemo(() => getWeekendTint(dayStart), [dayStart]);
   const buckets = useMemo(() => buildDayBuckets(events, dayStart, dayEnd), [events, dayStart, dayEnd]);
   const rangeLabel = useMemo(() => format(dayStart, 'yyyy年M月d日 (EEE)', { locale: ja }), [dayStart]);
   const rangeLabelId = useId();
@@ -89,13 +119,23 @@ export default function TimelineDay({ events, date, onEventCreate, onEventEdit }
       {/* Header */}
       <Stack direction="row" alignItems="center" justifyContent="space-between" mb={3}>
         <Box>
-          <Typography variant="h6" component="h2" sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+          <Typography
+            variant="h6"
+            component="h2"
+            data-testid={TESTIDS['schedules-day-heading']}
+            sx={{ display: 'flex', alignItems: 'center', gap: 1 }}
+          >
             <TodayRoundedIcon />
             日タイムライン
           </Typography>
           <Typography variant="body2" color="text.secondary" id={rangeLabelId}>
             {rangeLabel}
           </Typography>
+          {holidayLabel && (
+            <Typography variant="caption" color="error.main" sx={{ mt: 0.5, display: 'block', fontWeight: 700 }}>
+              {holidayLabel}
+            </Typography>
+          )}
         </Box>
 
         <Stack direction="row" spacing={1}>
@@ -117,6 +157,18 @@ export default function TimelineDay({ events, date, onEventCreate, onEventEdit }
           </Button>
         </Stack>
       </Stack>
+
+      {orgSummary && (
+        <Box sx={{ display: 'flex', justifyContent: 'flex-end', mb: 2 }}>
+          <Chip
+            {...tid(TESTIDS.SCHEDULE_DAY_ORG_INDICATOR)}
+            size="small"
+            variant="outlined"
+            color="primary"
+            label={`${orgSummary.label} / ${orgSummary.count}件`}
+          />
+        </Box>
+      )}
 
       <Paper elevation={2} sx={{ borderRadius: 3, overflow: 'hidden', border: 1, borderColor: 'divider' }}>
         <Box
@@ -162,6 +214,9 @@ export default function TimelineDay({ events, date, onEventCreate, onEventEdit }
               {hourSlots.map((slot, index) => (
                 <Box
                   key={slot.startEpoch}
+                  role="columnheader"
+                  aria-label={slot.label}
+                  id={`timeline-day-header-${slot.startEpoch}`}
                   data-testid="hour-slot"
                   data-hour={slot.label}
                   data-iso={slot.iso}
@@ -226,14 +281,18 @@ export default function TimelineDay({ events, date, onEventCreate, onEventEdit }
                       display: 'flex',
                       alignItems: 'center',
                       gap: 1.5,
-                      bgcolor: laneConfig.color === 'primary' ? 'primary.light' :
-                              laneConfig.color === 'secondary' ? 'secondary.light' :
-                              laneConfig.color === 'info' ? 'info.light' : 'grey.100',
-                      px: 3,
-                      py: 3,
-                      borderRight: 1,
-                      borderColor: 'divider',
-                      position: 'sticky',
+                    bgcolor: isToday
+                      ? 'rgba(25,118,210,0.08)'
+                      : weekendTint ?? (
+                          laneConfig.color === 'primary' ? 'primary.light' :
+                          laneConfig.color === 'secondary' ? 'secondary.light' :
+                          laneConfig.color === 'info' ? 'info.light' : 'grey.100'
+                        ),
+                    px: 3,
+                    py: 3,
+                    borderRight: 1,
+                    borderColor: 'divider',
+                    position: 'sticky',
                       left: 0,
                       zIndex: 5
                     }}
@@ -298,7 +357,9 @@ export default function TimelineDay({ events, date, onEventCreate, onEventEdit }
                             status={event.status}
                             recurrenceRule={event.recurrenceRule}
                             subtitle={getTimelineSubtitle(event)}
+                            serviceLabel={getScheduleServiceLabel(event)}
                             dayPart={event.category === 'Staff' ? event.dayPart : undefined}
+                            colorSource={buildScheduleColorSource(event)}
                             baseShiftWarnings={event.baseShiftWarnings}
                             containerProps={{
                               'data-schedule-event': 'true',
@@ -308,19 +369,12 @@ export default function TimelineDay({ events, date, onEventCreate, onEventEdit }
                               'data-all-day': event.allDay ? '1' : '0',
                               'data-recurrence': event.recurrenceRule ? '1' : '0',
                               onClick: handleEventClick(event),
-                              sx: {
-                                boxShadow: 2,
-                                borderRadius: 2,
-                                border: 2,
-                                borderColor: `${laneConfig.color}.main`,
-                                bgcolor: 'background.paper',
-                                cursor: 'pointer',
-                                '&:hover': {
-                                  boxShadow: 4,
-                                  borderColor: `${laneConfig.color}.dark`
-                                }
+                              style: {
+                                borderLeft: `3px solid ${LANE_COLOR_HEX[laneConfig.color] ?? '#1976d2'}`,
+                                borderRadius: 6,
+                                paddingLeft: 6,
                               }
-                            } as HTMLAttributes<HTMLElement>}
+                            }}
                           />
                         </Box>
                       ))}

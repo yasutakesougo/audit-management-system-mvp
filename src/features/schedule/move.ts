@@ -1,3 +1,4 @@
+import { HYDRATION_FEATURES, estimatePayloadSize, startFeatureSpan } from '@/hydration/features';
 import type { Schedule } from './types';
 import { getLocalDateKey } from './dateutils.local';
 
@@ -18,13 +19,27 @@ export function moveScheduleToDay(schedule: Schedule, dayKey: string): Schedule 
     return schedule;
   }
 
-  const nextStart = combineDateTime(dayKey, schedule.start) ?? schedule.start;
-  const nextEnd = combineDateTime(dayKey, schedule.end) ?? schedule.end;
+  const span = startFeatureSpan(HYDRATION_FEATURES.schedules.move, {
+    hasEnd: Boolean(schedule.end),
+    bytes: estimatePayloadSize(schedule),
+  });
 
-  return {
-    ...schedule,
-    start: nextStart,
-    end: nextEnd,
-    dayKey: getLocalDateKey(nextStart ?? dayKey) ?? dayKey,
-  };
+  try {
+    const nextStart = combineDateTime(dayKey, schedule.start) ?? schedule.start;
+    const nextEnd = combineDateTime(dayKey, schedule.end) ?? schedule.end;
+    const result: Schedule = {
+      ...schedule,
+      start: nextStart,
+      end: nextEnd,
+      dayKey: getLocalDateKey(nextStart ?? dayKey) ?? dayKey,
+    };
+    span({ meta: { status: 'ok', bytes: estimatePayloadSize(result) } });
+    return result;
+  } catch (error) {
+    span({
+      meta: { status: 'error' },
+      error: error instanceof Error ? error.message : String(error),
+    });
+    throw error;
+  }
 }
