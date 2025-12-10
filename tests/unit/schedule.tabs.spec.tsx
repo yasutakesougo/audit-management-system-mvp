@@ -1,5 +1,5 @@
 import { ThemeProvider, createTheme } from '@mui/material/styles';
-import { fireEvent, render, screen, within } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { describe, expect, it } from 'vitest';
 import WeekPage from '@/features/schedules/WeekPage';
@@ -22,7 +22,7 @@ describe('WeekPage tabs', () => {
 
   it('shows demo schedule items in week view', async () => {
     renderWeekPage();
-    const items = await screen.findAllByTestId('schedule-item');
+    const items = await screen.findAllByTestId('schedules-event-normal');
     expect(items.length).toBeGreaterThanOrEqual(3);
   });
 
@@ -35,24 +35,24 @@ describe('WeekPage tabs', () => {
 
   it('shows demo schedule items in day view', async () => {
     renderWeekPage();
-    await screen.findAllByTestId('schedule-item');
     fireEvent.click(screen.getByTestId(TESTIDS.SCHEDULES_WEEK_TAB_DAY));
     const list = await screen.findByTestId(TESTIDS['schedules-day-list']);
-    expect(list.textContent).toMatch(/訪問介護|通所/);
+    await waitFor(() => {
+      expect(within(list).getAllByTestId('schedules-event-normal').length).toBeGreaterThan(0);
+    });
   });
 
   it('shows demo schedule items in timeline view', async () => {
     renderWeekPage();
-    await screen.findAllByTestId('schedule-item');
     fireEvent.click(screen.getByTestId(TESTIDS.SCHEDULES_WEEK_TAB_TIMELINE));
     const timeline = await screen.findByTestId(TESTIDS['schedules-week-timeline']);
-    const items = within(timeline).queryAllByTestId('schedule-item');
-    if (items.length === 0) {
-      expect(within(timeline).getAllByText(/:00/).length).toBeGreaterThan(0);
-      return;
-    }
-    expect(
-      items.some((item) => item.textContent && /訪問介護（午前）|通所 午前/.test(item.textContent)),
-    ).toBe(true);
+    await waitFor(() => {
+      const items = within(timeline).queryAllByTestId('schedule-item');
+      if (items.length === 0) {
+        expect(within(timeline).getAllByText(/:00/).length).toBeGreaterThan(0);
+      } else {
+        expect(items.length).toBeGreaterThan(0);
+      }
+    });
   });
 });

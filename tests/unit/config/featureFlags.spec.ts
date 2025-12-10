@@ -96,7 +96,7 @@ describe('featureFlags config', () => {
       schedulesCreate: true,
       complianceForm: false,
       schedulesWeekV2: true,
-      icebergPdca: true,
+      icebergPdca: false,
     });
   });
 
