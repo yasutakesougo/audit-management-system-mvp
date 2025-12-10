@@ -307,6 +307,25 @@ export const isComplianceFormEnabled = (envOverride?: EnvRecord): boolean => {
   return false;
 };
 
+const ICEBERG_PDCA_LOCAL_FLAG_KEY = 'feature:icebergPdca';
+
+export const isIcebergPdcaEnabled = (envOverride?: EnvRecord): boolean => {
+  if (typeof window !== 'undefined') {
+    try {
+      const override = window.localStorage.getItem(ICEBERG_PDCA_LOCAL_FLAG_KEY);
+      if (override != null) {
+        const normalized = override.trim().toLowerCase();
+        if (TRUTHY.has(normalized)) return true;
+        if (FALSY.has(normalized)) return false;
+      }
+    } catch {
+      // ignore storage access issues
+    }
+  }
+
+  return readBool('VITE_FEATURE_ICEBERG_PDCA', false, envOverride);
+};
+
 export const shouldSkipLogin = (envOverride?: EnvRecord): boolean => {
   if (isDemoModeEnabled(envOverride) || readBool('VITE_SKIP_LOGIN', false, envOverride)) {
     return true;
