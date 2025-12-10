@@ -89,6 +89,7 @@ describe('featureFlags config', () => {
       VITE_FEATURE_SCHEDULES_CREATE: '1',
       VITE_FEATURE_COMPLIANCE_FORM: '0',
       VITE_FEATURE_SCHEDULES_WEEK_V2: '1',
+      VITE_FEATURE_ICEBERG_PDCA: '1',
     };
 
     expect(getFeatureFlags(override)).toEqual({
@@ -96,7 +97,7 @@ describe('featureFlags config', () => {
       schedulesCreate: true,
       complianceForm: false,
       schedulesWeekV2: true,
-      icebergPdca: false,
+      icebergPdca: true,
     });
   });
 
