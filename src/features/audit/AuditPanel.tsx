@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { TESTIDS } from '@/testids';
 import { AuditEvent, readAudit } from '../../lib/audit';
 import { isDevMode } from '../../lib/env';
 import UnsynedAuditBadge from '../../ui/components/UnsynedAuditBadge';
@@ -93,7 +94,9 @@ const AuditPanel: React.FC = () => {
   return (
     <div>
       <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 4 }}>
-        <h2 style={{ margin: 0 }}>監査ログ</h2>
+        <h2 style={{ margin: 0 }} data-testid={TESTIDS['audit-heading']}>
+          監査ログ
+        </h2>
         <UnsynedAuditBadge
           style={{
             // 監査ページでクリックした場合のカスタム動作を追加するための準備

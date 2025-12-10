@@ -1,5 +1,6 @@
 import { expect, test } from '@playwright/test';
 
+import { TESTIDS } from '../../src/testids';
 import { bootstrapDashboard } from './utils/bootstrapApp';
 
 const APP_SHELL_ENTRY = '/dashboard';
@@ -29,6 +30,21 @@ test.describe('Nav/Status/Footers basics', () => {
     await page.getByTestId('nav-checklist').first().click();
     await expect(page).toHaveURL(/\/checklist/);
     await expect(page.getByTestId('nav-checklist').first()).toHaveAttribute('aria-current', 'page');
+  });
+
+  test('Top nav highlights schedules / nurse / iceberg per route', async ({ page }) => {
+    await page.goto('/schedules/week');
+    await expect(page.getByTestId(TESTIDS.nav.schedules)).toHaveAttribute('aria-current', 'page');
+
+    await page.goto('/nurse');
+    const nurseNav = page.getByTestId(TESTIDS.nav.nurse);
+    if ((await nurseNav.count()) === 0) {
+      test.skip('Nurse nav entry is not visible in this build');
+    }
+    await expect(nurseNav).toHaveAttribute('aria-current', 'page');
+
+    await page.goto('/analysis/iceberg');
+    await expect(page.getByTestId(TESTIDS.nav.iceberg)).toHaveAttribute('aria-current', 'page');
   });
 
   test('Footer quick actions announce active state', async ({ page }) => {

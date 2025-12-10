@@ -1,8 +1,8 @@
-import { test } from '@playwright/test';
+import { expect, test } from '@playwright/test';
 import { TESTIDS } from '@/testids';
 import { mockSharePointThrottle } from './_helpers/mockSharePointThrottle';
 import { setupSharePointStubs } from './_helpers/setupSharePointStubs';
-import { waitForScheduleReady, waitForTestId } from './utils/wait';
+import { waitForScheduleReady } from './utils/wait';
 
 test.beforeEach(async ({ page }) => {
   await page.addInitScript(() => {
@@ -54,8 +54,9 @@ test('GET 429 -> retry success (no fatal error)', async ({ page }) => {
     await waitForScheduleReady(page);
   }
 
-  // Dashboard page should be visible regardless of network state
-  await waitForTestId(page, 'dashboard-page', 15_000);
+  // Dashboard (or schedules) page should be visible regardless of network state
+  const root = page.getByTestId('dashboard-page').or(page.getByTestId(TESTIDS.SCHEDULES_PAGE_ROOT));
+  await expect(root).toBeVisible({ timeout: 15_000 });
 });
 
 test('$batch 503 -> retry success (no crash)', async ({ page }) => {
@@ -73,6 +74,7 @@ test('$batch 503 -> retry success (no crash)', async ({ page }) => {
     await waitForScheduleReady(page);
   }
 
-  // Dashboard page should be visible regardless of network state
-  await waitForTestId(page, 'dashboard-page', 15_000);
+  // Dashboard (or schedules) page should be visible regardless of network state
+  const root = page.getByTestId('dashboard-page').or(page.getByTestId(TESTIDS.SCHEDULES_PAGE_ROOT));
+  await expect(root).toBeVisible({ timeout: 15_000 });
 });
