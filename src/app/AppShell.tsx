@@ -53,7 +53,6 @@ type NavItem = {
   prefetchKey?: PrefetchKey;
   prefetchKeys?: PrefetchKey[];
 };
-
 const SKIP_LOGIN = shouldSkipLogin();
 const E2E_MSAL_MOCK_ENABLED = isE2eMsalMockEnabled();
 
@@ -70,7 +69,6 @@ const AppShell: React.FC<{ children: React.ReactNode }> = ({ children }) => {
       navigate('/', { replace: true });
     }
   }, [navigate, location.pathname]);
-
   useEffect(() => {
     if (location.pathname.startsWith('/admin/dashboard')) {
       setCurrentUserRole('admin');
@@ -93,7 +91,7 @@ const AppShell: React.FC<{ children: React.ReactNode }> = ({ children }) => {
         icon: AssignmentTurnedInRoundedIcon,
         prefetchKey: PREFETCH_KEYS.dashboard,
         prefetchKeys: [PREFETCH_KEYS.muiData, PREFETCH_KEYS.muiFeedback],
-        testId: TESTIDS['nav-dashboard'],
+        testId: TESTIDS.nav.dashboard,
       },
       {
         label: '分析',
@@ -101,7 +99,7 @@ const AppShell: React.FC<{ children: React.ReactNode }> = ({ children }) => {
         isActive: (pathname) => pathname.startsWith('/analysis/dashboard'),
         icon: InsightsIcon,
         prefetchKey: PREFETCH_KEYS.analysisDashboard,
-        testId: 'nav-analysis',
+        testId: TESTIDS.nav.analysis,
       },
       {
         label: '氷山分析',
@@ -109,7 +107,7 @@ const AppShell: React.FC<{ children: React.ReactNode }> = ({ children }) => {
         isActive: (pathname) => pathname.startsWith('/analysis/iceberg'),
         icon: WorkspacesIcon,
         prefetchKey: PREFETCH_KEYS.iceberg,
-        testId: 'nav-iceberg',
+        testId: TESTIDS.nav.iceberg,
       },
       {
         label: 'アセスメント',
@@ -117,7 +115,7 @@ const AppShell: React.FC<{ children: React.ReactNode }> = ({ children }) => {
         isActive: (pathname) => pathname.startsWith('/assessment'),
         icon: PsychologyIcon,
         prefetchKey: PREFETCH_KEYS.assessmentDashboard,
-        testId: 'nav-assessment',
+        testId: TESTIDS.nav.assessment,
       },
       {
         label: '特性アンケート',
@@ -131,7 +129,7 @@ const AppShell: React.FC<{ children: React.ReactNode }> = ({ children }) => {
         isActive: (pathname) => pathname.startsWith('/daily'),
         icon: AssignmentTurnedInRoundedIcon,
         prefetchKey: PREFETCH_KEYS.dailyMenu,
-        testId: 'nav-daily',
+        testId: TESTIDS.nav.daily,
       },
       {
         label: '自己点検',
@@ -139,13 +137,13 @@ const AppShell: React.FC<{ children: React.ReactNode }> = ({ children }) => {
         isActive: (pathname) => pathname.startsWith('/checklist'),
         icon: ChecklistRoundedIcon,
         prefetchKey: PREFETCH_KEYS.checklist,
-        testId: TESTIDS['nav-checklist'],
+        testId: TESTIDS.nav.checklist,
       },
       {
         label: '監査ログ',
         to: '/audit',
         isActive: (pathname) => pathname.startsWith('/audit'),
-        testId: 'nav-audit',
+        testId: TESTIDS.nav.audit,
         icon: AssessmentRoundedIcon,
         prefetchKey: PREFETCH_KEYS.audit,
       },
@@ -170,7 +168,7 @@ const AppShell: React.FC<{ children: React.ReactNode }> = ({ children }) => {
         icon: SettingsRoundedIcon,
         prefetchKey: PREFETCH_KEYS.adminTemplates,
         prefetchKeys: [PREFETCH_KEYS.muiForms, PREFETCH_KEYS.muiOverlay],
-        testId: 'nav-admin',
+        testId: TESTIDS.nav.admin,
       },
     ];
 
@@ -179,7 +177,7 @@ const AppShell: React.FC<{ children: React.ReactNode }> = ({ children }) => {
         label: 'スケジュール',
         to: '/schedules/week',
         isActive: (pathname) => pathname.startsWith('/schedule') || pathname.startsWith('/schedules'),
-        testId: 'nav-schedules',
+        testId: TESTIDS.nav.schedules,
         icon: EventAvailableRoundedIcon,
         prefetchKey: PREFETCH_KEYS.schedulesWeek,
         prefetchKeys: [PREFETCH_KEYS.muiForms, PREFETCH_KEYS.muiOverlay],
@@ -248,7 +246,7 @@ const AppShell: React.FC<{ children: React.ReactNode }> = ({ children }) => {
                     to={to}
                     variant={active ? 'contained' : 'outlined'}
                     size="small"
-                    data-testid={testId === 'nav-schedules' ? TESTIDS['schedules-nav-link'] : testId}
+                    data-testid={testId}
                     aria-current={active ? 'page' : undefined}
                     startIcon={IconComponent ? <IconComponent /> : undefined}
                     sx={sx}
@@ -450,8 +448,8 @@ const FooterQuickActions: React.FC = () => {
   };
 
   const footerTestIds: Record<string, string> = {
-    'daily-attendance': TESTIDS['footer-action-daily-attendance'],
-    'daily-activity': TESTIDS['footer-action-daily-activity'],
+    'daily-attendance': TESTIDS.footer.dailyAttendance,
+    'daily-activity': TESTIDS.footer.dailyActivity,
     'daily-support': TESTIDS['daily-footer-support'],
     'daily-health': TESTIDS['daily-footer-health'],
     'handoff-quicknote': TESTIDS['handoff-footer-quicknote'],
