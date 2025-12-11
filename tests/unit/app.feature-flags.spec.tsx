@@ -2,7 +2,6 @@ import AppShell from '@/app/AppShell';
 import Router from '@/app/router';
 import { routerFutureFlags } from '@/app/routerFuture';
 import { FeatureFlagsProvider, type FeatureFlagSnapshot } from '@/config/featureFlags';
-import { TESTIDS } from '@/testids';
 import { screen } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 import { renderWithAppProviders } from '../helpers/renderWithAppProviders';
@@ -25,12 +24,12 @@ const renderWithFlags = (flags: FeatureFlagSnapshot) =>
 
 describe('AppShell schedule flag', () => {
   it('hides schedule nav when flag is disabled', () => {
-    renderWithFlags({ schedules: false, schedulesCreate: false, complianceForm: false, schedulesWeekV2: false, icebergPdca: false });
-    expect(screen.queryByTestId(TESTIDS.nav.schedules)).toBeNull();
+    renderWithFlags({ schedules: false, schedulesCreate: false, complianceForm: false, schedulesWeekV2: false });
+    expect(screen.queryByTestId('nav-schedules')).toBeNull();
   });
 
   it('shows schedule nav when flag is enabled', async () => {
-    renderWithFlags({ schedules: true, schedulesCreate: false, complianceForm: false, schedulesWeekV2: true, icebergPdca: false });
-    expect(await screen.findByTestId(TESTIDS.nav.schedules)).toBeInTheDocument();
+    renderWithFlags({ schedules: true, schedulesCreate: false, complianceForm: false, schedulesWeekV2: true });
+    expect(await screen.findByTestId('nav-schedules')).toBeInTheDocument();
   });
 });

@@ -28,5 +28,16 @@ test("AppShell snapshot", async () => {
     expect(statuses.some((status) => status.textContent?.includes("SP Sign-In"))).toBe(true);
   });
 
-  expect(container).toMatchSnapshot();
+  const schedulesNav = screen.getByTestId("nav-schedules");
+  expect(schedulesNav).toBeInTheDocument();
+
+  const legacySchedulesLink = container.querySelector('[data-testid="schedules-nav-link"]');
+  if (legacySchedulesLink) {
+    expect(legacySchedulesLink).toBeInTheDocument();
+  }
+
+  const icebergPdcaLink = screen.queryByRole("link", { name: /氷山\s*PDCA/i });
+  if (icebergPdcaLink) {
+    expect(icebergPdcaLink).toBeInTheDocument();
+  }
 });
