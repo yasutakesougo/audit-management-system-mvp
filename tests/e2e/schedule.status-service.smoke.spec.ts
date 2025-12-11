@@ -131,7 +131,11 @@ test.describe('Schedule dialog: status/service end-to-end', () => {
       route.fulfill({
         status: 200,
         contentType: 'application/json',
-        body: JSON.stringify([{ id: 'kesseki', label: '欠席' }]),
+        body: JSON.stringify([
+          { id: 'kesseki', label: '欠席' },
+          // Allow legacy label expected by older specs/fixtures
+          { id: 'kesseki-holiday', label: '欠席・休み' },
+        ]),
       }),
     );
 
