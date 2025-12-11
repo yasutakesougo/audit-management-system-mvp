@@ -12,6 +12,7 @@ import {
   getWeekScheduleItems,
   openQuickUserCareDialog,
   openWeekEventCard,
+  ensureWeekHasUserCareEvent,
   waitForWeekViewReady,
 } from './utils/scheduleActions';
 import { TIME_ZONE } from './utils/spMock';
@@ -19,13 +20,17 @@ import { TIME_ZONE } from './utils/spMock';
 const LIST_TITLE = 'Schedules_Master';
 const TEST_DATE = new Date(SCHEDULE_FIXTURE_BASE_DATE);
 const TEST_DAY_KEY = formatInTimeZone(TEST_DATE, TIME_ZONE, 'yyyy-MM-dd');
+const WEEK_EVENT_LABEL = '訪問看護';
+const ABSENCE_OPTION_LABEL = '欠席';
 
 const buildLocalDateTime = (time: string) => `${TEST_DAY_KEY}T${time}`;
 
 async function selectQuickServiceType(page, dialog, optionLabel: string | RegExp) {
   const select = dialog.getByTestId(TESTIDS['schedule-create-service-type']);
   await select.click();
-  await page.getByRole('option', { name: optionLabel }).first().click();
+  const option = page.getByRole('option', { name: optionLabel }).first();
+  await option.waitFor({ state: 'visible', timeout: 5_000 });
+  await option.click();
   return select;
 }
 
@@ -120,6 +125,14 @@ test.describe('Schedule dialog: status/service end-to-end', () => {
       },
     });
 
+    await page.route('**/api/service-options', (route) =>
+      route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify([{ id: 'kesseki', label: '欠席' }]),
+      }),
+    );
+
     await page.addInitScript(() => {
       const resetKey = '__scheduleDraftsCleared__';
       if (!window.localStorage.getItem(resetKey)) {
@@ -135,33 +148,40 @@ test.describe('Schedule dialog: status/service end-to-end', () => {
     await expect(items.first()).toBeVisible();
   });
 
-    test('edit living care event via quick dialog persists service type', async ({ page }) => {
-      await gotoWeek(page, TEST_DATE);
-      await waitForWeekViewReady(page);
+  test('edit living care event via quick dialog persists service type', async ({ page }) => {
+    await gotoWeek(page, TEST_DATE);
+    await waitForWeekViewReady(page);
 
-      await openWeekEventCard(page, { category: 'User', index: 0 });
-
-      let dialog = page.getByTestId(TESTIDS['schedule-create-dialog']);
-      await expect(dialog).toBeVisible();
-
-      const select = await selectQuickServiceType(page, dialog, /欠席・休み/);
-      await expect(select).toHaveText(/欠席・休み/);
-
-      await dialog.getByTestId(TESTIDS['schedule-create-save']).click();
-      await expect(dialog).toBeHidden({ timeout: 10_000 });
-
-      await page.reload();
-      await gotoWeek(page, TEST_DATE);
-      await waitForWeekViewReady(page);
-
-      await openWeekEventCard(page, { category: 'User', index: 0 });
-      dialog = page.getByTestId(TESTIDS['schedule-create-dialog']);
-      await expect(dialog).toBeVisible();
-      await expect(dialog.getByTestId(TESTIDS['schedule-create-service-type'])).toHaveText(/欠席・休み/);
-
-      await dialog.getByRole('button', { name: 'キャンセル' }).click();
-      await expect(dialog).toBeHidden({ timeout: 10_000 });
+    await ensureWeekHasUserCareEvent(page, {
+      title: WEEK_EVENT_LABEL,
+      serviceOptionLabel: 'その他',
+      startLocal: buildLocalDateTime('06:00'),
+      endLocal: buildLocalDateTime('06:30'),
     });
+
+    await openWeekEventCard(page, { category: 'User', titleContains: WEEK_EVENT_LABEL });
+
+    let dialog = page.getByTestId(TESTIDS['schedule-create-dialog']);
+    await expect(dialog).toBeVisible();
+
+    const select = await selectQuickServiceType(page, dialog, ABSENCE_OPTION_LABEL);
+    await expect(select).toHaveText(new RegExp(ABSENCE_OPTION_LABEL));
+
+    await dialog.getByTestId(TESTIDS['schedule-create-save']).click();
+    await expect(dialog).toBeHidden({ timeout: 10_000 });
+
+    await page.reload();
+    await gotoWeek(page, TEST_DATE);
+    await waitForWeekViewReady(page);
+
+    await openWeekEventCard(page, { category: 'User', titleContains: WEEK_EVENT_LABEL });
+    dialog = page.getByTestId(TESTIDS['schedule-create-dialog']);
+    await expect(dialog).toBeVisible();
+    await expect(dialog.getByTestId(TESTIDS['schedule-create-service-type'])).toHaveText(ABSENCE_OPTION_LABEL);
+
+    await dialog.getByRole('button', { name: 'キャンセル' }).click();
+    await expect(dialog).toBeHidden({ timeout: 10_000 });
+  });
 
   test('create new 生活介護休み entry via quick dialog', async ({ page }) => {
     await gotoWeek(page, TEST_DATE);
@@ -174,7 +194,7 @@ test.describe('Schedule dialog: status/service end-to-end', () => {
       userOptionName: /田中/, // matches resident fixtures (田中 実)
       staffInputValue: '佐藤',
       staffOptionName: /佐藤/, // demo staff fixture: 佐藤 花子
-      serviceOptionLabel: '欠席・休み',
+      serviceOptionLabel: ABSENCE_OPTION_LABEL,
       startLocal: buildLocalDateTime('05:00'),
       endLocal: buildLocalDateTime('05:30'),
       location: '生活介護室A',
@@ -200,7 +220,14 @@ test.describe('Schedule dialog: status/service end-to-end', () => {
     await gotoWeek(page, TEST_DATE);
     await waitForWeekViewReady(page);
 
-    await openWeekEventCard(page, { titleContains: '訪問看護', category: 'User' });
+    await ensureWeekHasUserCareEvent(page, {
+      title: WEEK_EVENT_LABEL,
+      serviceOptionLabel: 'その他',
+      startLocal: buildLocalDateTime('06:00'),
+      endLocal: buildLocalDateTime('06:30'),
+    });
+
+    await openWeekEventCard(page, { titleContains: WEEK_EVENT_LABEL, category: 'User' });
     const dialog = page.getByTestId(TESTIDS['schedule-create-dialog']);
     await expect(dialog).toBeVisible();
     await expect(dialog.getByTestId(TESTIDS['schedule-create-service-type'])).toHaveText(/その他/);

@@ -22,6 +22,17 @@ type QuickUserCareFormOptions = {
   notes?: string;
 };
 
+type EnsureWeekEventOptions = {
+  title: string;
+  userOptionName?: SelectOption;
+  staffOptionName?: SelectOption;
+  serviceOptionLabel?: SelectOption;
+  startLocal: string;
+  endLocal: string;
+  location?: string;
+  notes?: string;
+};
+
 const selectComboboxOption = async (page: Page, option?: SelectOption) => {
   if (typeof option === 'string') {
     await page.getByRole('option', { name: option }).first().click();
@@ -90,7 +101,14 @@ export async function fillQuickUserCareForm(page: Page, opts: QuickUserCareFormO
 
   if (opts.serviceOptionLabel) {
     await dialog.getByTestId(TESTIDS['schedule-create-service-type']).click();
-    await selectComboboxOption(page, opts.serviceOptionLabel);
+    const optionName =
+      opts.serviceOptionLabel instanceof RegExp
+        ? opts.serviceOptionLabel
+        : new RegExp(String(opts.serviceOptionLabel));
+    const option = page.getByRole('option', { name: optionName }).first();
+    await option.waitFor({ state: 'visible', timeout: 5_000 });
+    await expect(option).toBeVisible();
+    await option.click();
   }
 
   if (typeof opts.location === 'string') {
@@ -265,4 +283,38 @@ export async function assertWeekHasUserCareEvent(
   if (memoContains && !isTimelineOnlyLayout) {
     await expect(root.getByText(memoContains, { exact: false }).first()).toBeVisible({ timeout: 15_000 });
   }
+}
+
+export async function ensureWeekHasUserCareEvent(page: Page, opts: EnsureWeekEventOptions) {
+  const {
+    title,
+    userOptionName = /田中/,
+    staffOptionName = /佐藤/,
+    serviceOptionLabel = 'その他',
+    startLocal,
+    endLocal,
+    location = '自動作成',
+    notes = 'seeded for smoke test',
+  } = opts;
+
+  // If the week view already has the target event, skip creation.
+  const existing = (await getWeekScheduleItems(page, { category: 'User' })).filter({ hasText: title });
+  if ((await existing.count().catch(() => 0)) > 0) return;
+
+  await openQuickUserCareDialog(page);
+  await fillQuickUserCareForm(page, {
+    title,
+    userOptionName,
+    staffOptionName,
+    serviceOptionLabel,
+    startLocal,
+    endLocal,
+    location,
+    notes,
+  });
+
+  const dialog = page.getByTestId(TESTIDS['schedule-create-dialog']);
+  await dialog.getByTestId(TESTIDS['schedule-create-save']).click();
+  await expect(dialog).toBeHidden({ timeout: 10_000 });
+  await waitForWeekViewReady(page);
 }
