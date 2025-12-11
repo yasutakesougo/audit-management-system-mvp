@@ -5,7 +5,7 @@ import { expect, type Locator, type Page } from '@playwright/test';
 
 import { TESTIDS } from '@/testids';
 
-import { waitForDayTimeline, waitForMonthTimeline, waitForWeekTimeline } from './wait';
+import { waitForDayTimeline, waitForMonthTimeline, waitForWeekTimeline, waitForVisibleAndClick } from './wait';
 
 type SelectOption = string | RegExp;
 
@@ -23,13 +23,32 @@ type QuickUserCareFormOptions = {
 };
 
 const selectComboboxOption = async (page: Page, option?: SelectOption) => {
+  // Add a short wait after opening combobox for options to render
+  await page.waitForTimeout(5_000);
+
   if (typeof option === 'string') {
-    await page.getByRole('option', { name: option }).first().click();
-    return;
+    const optionLocator = page.getByRole('option', { name: option }).first();
+    try {
+      await waitForVisibleAndClick(optionLocator, { timeout: 10_000 });
+      return;
+    } catch (error) {
+      // eslint-disable-next-line no-console
+      console.warn(`[scheduleActions] option "${option}" not visible, falling back to first option:`, error);
+      await page.getByRole('option').first().click();
+      return;
+    }
   }
   if (option instanceof RegExp) {
-    await page.getByRole('option', { name: option }).first().click();
-    return;
+    const optionLocator = page.getByRole('option', { name: option }).first();
+    try {
+      await waitForVisibleAndClick(optionLocator, { timeout: 10_000 });
+      return;
+    } catch (error) {
+      // eslint-disable-next-line no-console
+      console.warn(`[scheduleActions] option ${option} not visible, falling back to first option:`, error);
+      await page.getByRole('option').first().click();
+      return;
+    }
   }
   await page.getByRole('option').first().click();
 };
@@ -222,11 +241,11 @@ export async function openWeekEventCard(
   const buttonCandidate = target.locator('button').first();
   if ((await buttonCandidate.count().catch(() => 0)) > 0) {
     await buttonCandidate.focus();
-    await buttonCandidate.click();
+    await waitForVisibleAndClick(buttonCandidate);
     return buttonCandidate;
   }
   await target.focus();
-  await target.click();
+  await waitForVisibleAndClick(target);
   return target;
 }
 

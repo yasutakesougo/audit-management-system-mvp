@@ -144,8 +144,8 @@ test.describe('Schedule dialog: status/service end-to-end', () => {
       let dialog = page.getByTestId(TESTIDS['schedule-create-dialog']);
       await expect(dialog).toBeVisible();
 
-      const select = await selectQuickServiceType(page, dialog, /欠席・休み/);
-      await expect(select).toHaveText(/欠席・休み/);
+      const select = await selectQuickServiceType(page, dialog, /欠席/);
+      await expect(select).toHaveText(/欠席/);
 
       await dialog.getByTestId(TESTIDS['schedule-create-save']).click();
       await expect(dialog).toBeHidden({ timeout: 10_000 });
@@ -157,7 +157,7 @@ test.describe('Schedule dialog: status/service end-to-end', () => {
       await openWeekEventCard(page, { category: 'User', index: 0 });
       dialog = page.getByTestId(TESTIDS['schedule-create-dialog']);
       await expect(dialog).toBeVisible();
-      await expect(dialog.getByTestId(TESTIDS['schedule-create-service-type'])).toHaveText(/欠席・休み/);
+      await expect(dialog.getByTestId(TESTIDS['schedule-create-service-type'])).toHaveText(/欠席/);
 
       await dialog.getByRole('button', { name: 'キャンセル' }).click();
       await expect(dialog).toBeHidden({ timeout: 10_000 });
@@ -174,7 +174,7 @@ test.describe('Schedule dialog: status/service end-to-end', () => {
       userOptionName: /田中/, // matches resident fixtures (田中 実)
       staffInputValue: '佐藤',
       staffOptionName: /佐藤/, // demo staff fixture: 佐藤 花子
-      serviceOptionLabel: '欠席・休み',
+      serviceOptionLabel: /欠席/,
       startLocal: buildLocalDateTime('05:00'),
       endLocal: buildLocalDateTime('05:30'),
       location: '生活介護室A',

@@ -194,3 +194,30 @@ export async function waitForMonthTimeline(page: Page): Promise<void> {
   const root = page.getByTestId('schedule-month-root');
   await expect(root).toBeVisible();
 }
+
+/**
+ * Wait for a locator to be visible, then click it.
+ * Reduces flakiness from clicking hidden elements in CI.
+ */
+export async function waitForVisibleAndClick(
+  locator: Locator,
+  opts: { timeout?: number } = {},
+): Promise<void> {
+  const { timeout = 10_000 } = opts;
+  await expect(locator).toBeVisible({ timeout });
+  await locator.click();
+}
+
+/**
+ * Wait for a locator to be visible, then perform a custom action.
+ * Reduces flakiness from interacting with hidden elements in CI.
+ */
+export async function waitForVisibleAndAction<T>(
+  locator: Locator,
+  action: (loc: Locator) => Promise<T>,
+  opts: { timeout?: number } = {},
+): Promise<T> {
+  const { timeout = 10_000 } = opts;
+  await expect(locator).toBeVisible({ timeout });
+  return action(locator);
+}
