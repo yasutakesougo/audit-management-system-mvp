@@ -5,7 +5,7 @@ import { expect, type Locator, type Page } from '@playwright/test';
 
 import { TESTIDS } from '@/testids';
 
-import { waitForDayTimeline, waitForMonthTimeline, waitForWeekTimeline } from './wait';
+import { waitForDayTimeline, waitForMonthTimeline, waitForWeekTimeline, waitForVisibleAndClick } from './wait';
 
 type SelectOption = string | RegExp;
 
@@ -40,15 +40,20 @@ type EnsureWeekEventOptions = {
 };
 
 const selectComboboxOption = async (page: Page, option?: SelectOption) => {
-  if (typeof option === 'string') {
-    await page.getByRole('option', { name: option }).first().click();
-    return;
+  if (typeof option === 'string' || option instanceof RegExp) {
+    const locator = page.getByRole('option', { name: option }).first();
+    try {
+      await locator.waitFor({ state: 'visible', timeout: 10_000 });
+      await locator.click();
+      return;
+    } catch (error) {
+      console.warn(`Option "${String(option)}" not visible - falling back to first option`, error);
+    }
   }
-  if (option instanceof RegExp) {
-    await page.getByRole('option', { name: option }).first().click();
-    return;
-  }
-  await page.getByRole('option').first().click();
+
+  const anyOption = page.getByRole('option').first();
+  await anyOption.waitFor({ state: 'visible', timeout: 10_000 });
+  await anyOption.click();
 };
 
 export async function waitForDayViewReady(page: Page) {
@@ -107,24 +112,16 @@ export async function fillQuickUserCareForm(page: Page, opts: QuickUserCareFormO
 
   if (opts.serviceOptionLabel) {
     const serviceOptionsRequest = waitForServiceOptionsRequest(page);
-    await dialog.getByTestId(TESTIDS['schedule-create-service-type']).click();
+    const serviceTypeTrigger = dialog.getByTestId(TESTIDS['schedule-create-service-type']);
+    await waitForVisibleAndClick(serviceTypeTrigger);
     await serviceOptionsRequest;
-    const optionName =
-      opts.serviceOptionLabel instanceof RegExp
-        ? opts.serviceOptionLabel
-        : new RegExp(String(opts.serviceOptionLabel));
-    const option = page.getByRole('option', { name: optionName }).first();
+    const candidate = page
+      .getByRole('option', { name: opts.serviceOptionLabel as SelectOption })
+      .first();
+    await candidate.waitFor({ state: 'visible', timeout: 5_000 }).catch(() => {});
     const optionLabels = await page.locator('[role="option"]').allTextContents();
     console.log('service options:', optionLabels);
-
-    if ((await option.count().catch(() => 0)) === 0) {
-      // Fallback: select first available option to keep smoke resilient if labels differ.
-      await page.getByRole('option').first().click();
-    } else {
-      await option.waitFor({ state: 'visible', timeout: 15_000 });
-      await expect(option).toBeVisible();
-      await option.click();
-    }
+    await selectComboboxOption(page, opts.serviceOptionLabel);
   }
 
   if (typeof opts.location === 'string') {

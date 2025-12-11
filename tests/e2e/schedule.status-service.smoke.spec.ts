@@ -7,6 +7,7 @@ import { TESTIDS } from '@/testids';
 import { bootSchedule } from './_helpers/bootSchedule';
 import { buildScheduleFixturesForDate, SCHEDULE_FIXTURE_BASE_DATE } from './utils/schedule.fixtures';
 import { gotoWeek } from './utils/scheduleNav';
+import { waitForVisibleAndClick } from './utils/wait';
 import {
   fillQuickUserCareForm,
   getWeekScheduleItems,
@@ -20,7 +21,7 @@ import { TIME_ZONE } from './utils/spMock';
 const LIST_TITLE = 'Schedules_Master';
 const TEST_DATE = new Date(SCHEDULE_FIXTURE_BASE_DATE);
 const TEST_DAY_KEY = formatInTimeZone(TEST_DATE, TIME_ZONE, 'yyyy-MM-dd');
-const ABSENCE_OPTION_LABEL = '欠席';
+const ABSENCE_OPTION_LABEL = /欠席/;
 
 const buildLocalDateTime = (time: string) => `${TEST_DAY_KEY}T${time}`;
 
@@ -28,7 +29,7 @@ async function selectQuickServiceType(page, dialog, optionLabel: string | RegExp
   const select = dialog.getByTestId(TESTIDS['schedule-create-service-type']);
   const serviceOptionsRequest = page.waitForRequest('**/api/service-options', { timeout: 15_000 });
   void page.evaluate(() => fetch('/api/service-options').catch(() => null));
-  await select.click();
+  await waitForVisibleAndClick(select);
   await serviceOptionsRequest;
   const option = page.getByRole('option', { name: optionLabel }).first();
   await option.waitFor({ state: 'visible', timeout: 15_000 });
@@ -171,7 +172,7 @@ test.describe('Schedule dialog: status/service end-to-end', () => {
     await expect(dialog).toBeVisible();
 
     const select = await selectQuickServiceType(page, dialog, ABSENCE_OPTION_LABEL);
-    await expect(select).toHaveText(new RegExp(ABSENCE_OPTION_LABEL));
+    await expect(select).toHaveText(ABSENCE_OPTION_LABEL);
 
     await dialog.getByTestId(TESTIDS['schedule-create-save']).click();
     await expect(dialog).toBeHidden({ timeout: 10_000 });

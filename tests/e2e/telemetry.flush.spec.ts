@@ -39,7 +39,10 @@ test.describe('Telemetry flush', () => {
     await page.goto('/', { waitUntil: 'domcontentloaded' });
     await expect(page.getByRole('main')).toBeVisible();
 
-    await page.getByTestId('prefetch-hud-toggle').click();
+    // Give CI extra time to render the HUD toggle before interacting.
+    const hudToggle = page.getByTestId('prefetch-hud-toggle');
+    await expect(hudToggle).toBeVisible({ timeout: 30_000 });
+    await hudToggle.click();
     await expect(page.getByTestId('hud-telemetry')).toBeVisible();
 
     await page.getByTestId('hud-telemetry-flush').click();

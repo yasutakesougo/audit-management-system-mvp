@@ -5,6 +5,11 @@ export async function waitForTestId(page: Page, id: string, timeout = 10_000): P
   await expect(page.getByTestId(id)).toBeVisible({ timeout });
 }
 
+export async function waitForVisibleAndClick(locator: Locator, timeout = 15_000): Promise<void> {
+  await expect(locator).toBeVisible({ timeout });
+  await locator.click();
+}
+
 const locatorExists = async (locator: Locator, timeout = 2_000): Promise<boolean> => {
   try {
     await locator.first().waitFor({ state: 'attached', timeout });
