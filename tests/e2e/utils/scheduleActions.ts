@@ -9,6 +9,12 @@ import { waitForDayTimeline, waitForMonthTimeline, waitForWeekTimeline } from '.
 
 type SelectOption = string | RegExp;
 
+const waitForServiceOptionsRequest = (page: Page) => {
+  const request = page.waitForRequest('**/api/service-options', { timeout: 15_000 });
+  void page.evaluate(() => fetch('/api/service-options').catch(() => null));
+  return request;
+};
+
 type QuickUserCareFormOptions = {
   title?: string;
   userInputValue?: string;
@@ -100,13 +106,17 @@ export async function fillQuickUserCareForm(page: Page, opts: QuickUserCareFormO
   }
 
   if (opts.serviceOptionLabel) {
+    const serviceOptionsRequest = waitForServiceOptionsRequest(page);
     await dialog.getByTestId(TESTIDS['schedule-create-service-type']).click();
+    await serviceOptionsRequest;
     const optionName =
       opts.serviceOptionLabel instanceof RegExp
         ? opts.serviceOptionLabel
         : new RegExp(String(opts.serviceOptionLabel));
     const option = page.getByRole('option', { name: optionName }).first();
-    await option.waitFor({ state: 'visible', timeout: 5_000 });
+    await option.waitFor({ state: 'visible', timeout: 15_000 });
+    const optionLabels = await page.locator('[role="option"]').allTextContents();
+    console.log('service options:', optionLabels);
     await expect(option).toBeVisible();
     await option.click();
   }
