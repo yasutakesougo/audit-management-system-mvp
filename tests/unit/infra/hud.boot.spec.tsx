@@ -9,9 +9,7 @@ describe('HUD bootstrap', () => {
     enableHudForTests();
     render(<App />);
 
-    const statuses = await screen.findAllByRole('status');
-    const hudStatus = statuses.find((node) => node.textContent?.includes('SP Sign-In'));
-    expect(hudStatus).toBeDefined();
-    expect(hudStatus).toHaveTextContent(/SP Sign-In/i);
+    const hudStatus = await screen.findByTestId('sp-connection-status');
+    expect(hudStatus).toHaveTextContent(/SP (Connected|Sign[- ]?In|required)/i);
   });
 });

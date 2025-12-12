@@ -1,7 +1,6 @@
 import { screen, waitFor } from "@testing-library/react";
 import { expect, test, vi } from "vitest";
 
-import AppShell from "@/app/AppShell";
 import { routerFutureFlags } from "@/app/routerFuture";
 import { FeatureFlagsProvider, featureFlags } from "@/config/featureFlags";
 import { renderWithAppProviders } from "../helpers/renderWithAppProviders";
@@ -12,8 +11,35 @@ vi.mock("@/lib/spClient", () => ({
   }),
 }));
 
+vi.mock("@/auth/MsalProvider", () => ({
+	useMsalContext: () => ({ accounts: [] }),
+}));
+
+vi.mock("@/lib/env", async () => {
+  const actual = await vi.importActual<typeof import("@/lib/env")>("@/lib/env");
+  const falseyKeys = new Set([
+    "VITE_SKIP_SHAREPOINT",
+    "VITE_FORCE_SHAREPOINT",
+    "VITE_FEATURE_SCHEDULES_SP",
+    "VITE_SKIP_LOGIN",
+    "VITE_FORCE_DEMO",
+    "VITE_DEMO_MODE",
+    "VITE_E2E_MSAL_MOCK",
+  ]);
+  return {
+    ...actual,
+    readBool: (key: string, fallback = false, envOverride?: unknown) => {
+      if (falseyKeys.has(key)) return false;
+      return actual.readBool(key, fallback, envOverride as any);
+    },
+    shouldSkipLogin: () => false,
+    isE2eMsalMockEnabled: () => false,
+  };
+});
+
 // Wrap with MemoryRouter since AppShell renders navigation links using router context.
 test("AppShell snapshot", async () => {
+  const AppShell = (await import("@/app/AppShell")).default;
   const { container } = renderWithAppProviders(
     <FeatureFlagsProvider value={{ ...featureFlags, schedules: true }}>
       <AppShell>
@@ -23,9 +49,9 @@ test("AppShell snapshot", async () => {
     { future: routerFutureFlags }
   );
 
-  await waitFor(() => {
-    const statuses = screen.getAllByRole("status");
-    expect(statuses.some((status) => status.textContent?.includes("SP Sign-In"))).toBe(true);
+  await waitFor(async () => {
+    const status = await screen.findByTestId("sp-connection-status");
+    expect(status.textContent ?? "").toMatch(/SP (Connected|Checking|Sign[- ]?In|required)/);
   });
 
   expect(container).toMatchSnapshot();

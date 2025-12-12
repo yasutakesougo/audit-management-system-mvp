@@ -1,4 +1,4 @@
-import type { AppConfig } from '@/lib/env';
+import { __resetAppConfigForTests, type AppConfig } from '@/lib/env';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 const baseAppConfig = vi.hoisted(() => ({
@@ -39,12 +39,12 @@ import { getRuntimeEnv } from '@/env';
 import { getAppConfig } from '@/lib/env';
 import { SharePointItemNotFoundError, SharePointMissingEtagError } from '@/lib/errors';
 import {
-    __ensureListInternals,
-    __test__,
-    createSpClient,
-    getStaffMaster,
-    getUsersMaster,
-    type SharePointBatchOperation,
+  __ensureListInternals,
+  __test__,
+  createSpClient,
+  getStaffMaster,
+  getUsersMaster,
+  type SharePointBatchOperation,
 } from '@/lib/spClient';
 
 const mockGetAppConfig = vi.mocked(getAppConfig);
@@ -58,6 +58,8 @@ const originalFetch = globalThis.fetch;
 const originalWindow = (globalThis as Record<string, unknown>).window;
 
 beforeEach(() => {
+  vi.unstubAllEnvs();
+  __resetAppConfigForTests();
   mockGetAppConfig.mockReturnValue({ ...defaultConfig });
   mockGetRuntimeEnv.mockReturnValue({});
   __test__.resetMissingOptionalFieldsCache();
@@ -65,6 +67,7 @@ beforeEach(() => {
 });
 
 afterEach(() => {
+  vi.unstubAllEnvs();
   process.env.NODE_ENV = originalNodeEnv;
   if (originalPlaywrightFlag === undefined) {
     delete process.env.PLAYWRIGHT_TEST;
@@ -86,33 +89,40 @@ afterEach(() => {
 });
 
 describe('ensureConfig edge cases', () => {
-  it('fails fast when resource or site value is still a placeholder', () => {
+  it('fails fast when resource or site value is still a placeholder', async () => {
+    vi.resetModules();
+    vi.unmock('@/lib/spClient');
+    const { __test__ } = await vi.importActual<typeof import('@/lib/spClient')>('@/lib/spClient');
+
     mockGetAppConfig.mockReturnValue({
       ...defaultConfig,
       VITE_SP_RESOURCE: '<yourtenant>',
       VITE_SP_SITE_RELATIVE: '__FILL_ME__',
     });
 
-    expect(() => __test__.ensureConfig()).toThrow(/SharePoint 接続設定が未完了です。/);
+    expect(() =>
+      __test__.ensureConfig({ VITE_SP_RESOURCE: 'https://<yourtenant>.sharepoint.com', VITE_SP_SITE_RELATIVE: '/sites/__FILL_ME__' })
+    ).toThrow(/SharePoint 接続設定が未完了です。/);
   });
 
-  it('rejects obviously invalid resource domains', () => {
-    mockGetAppConfig.mockReturnValue({
-      ...defaultConfig,
-      VITE_SP_RESOURCE: 'https://example.com',
-    });
+  it('rejects obviously invalid resource domains', async () => {
+    vi.resetModules();
+    vi.unmock('@/lib/spClient');
+    const { __test__ } = await vi.importActual<typeof import('@/lib/spClient')>('@/lib/spClient');
 
-    expect(() => __test__.ensureConfig()).toThrow(/VITE_SP_RESOURCE の形式が不正です/);
+    expect(() =>
+      __test__.ensureConfig({ VITE_SP_RESOURCE: 'https://example.com', VITE_SP_SITE_RELATIVE: '/sites/demo' })
+    ).toThrow(/VITE_SP_RESOURCE の形式が不正です/);
   });
 
-  it('treats undefined resource/site values as incomplete configuration', () => {
-    mockGetAppConfig.mockReturnValue({
-      ...defaultConfig,
-      VITE_SP_RESOURCE: undefined as unknown as string,
-      VITE_SP_SITE_RELATIVE: undefined as unknown as string,
-    });
+  it('treats undefined resource/site values as incomplete configuration', async () => {
+    vi.resetModules();
+    vi.unmock('@/lib/spClient');
+    const { __test__ } = await vi.importActual<typeof import('@/lib/spClient')>('@/lib/spClient');
 
-    expect(() => __test__.ensureConfig()).toThrow(/SharePoint 接続設定が未完了です。/);
+    expect(() =>
+      __test__.ensureConfig({ VITE_SP_RESOURCE: undefined, VITE_SP_SITE_RELATIVE: undefined })
+    ).toThrow(/SharePoint 接続設定が未完了です。/);
   });
 });
 
