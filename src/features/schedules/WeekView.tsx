@@ -4,16 +4,17 @@ import IconButton from '@mui/material/IconButton';
 import Menu from '@mui/material/Menu';
 import MenuItem from '@mui/material/MenuItem';
 import { useTheme } from '@mui/material/styles';
+import useMediaQuery from '@mui/material/useMediaQuery';
 import MoreVertIcon from '@mui/icons-material/MoreVert';
 import type { MouseEvent } from 'react';
-import { useMemo, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 
 import { TESTIDS } from '@/testids';
 
 import type { SchedItem } from './data';
 import { SCHEDULES_DEBUG } from './debug';
 import { getScheduleStatusMeta } from './statusMetadata';
-import { SERVICE_TYPE_META, normalizeServiceType, type ServiceTypeKey } from './serviceTypeMetadata';
+import { SERVICE_TYPE_COLOR, SERVICE_TYPE_META, normalizeServiceType, type ServiceTypeColor, type ServiceTypeKey } from './serviceTypeMetadata';
 import { getDayChipSx } from './theme/dateStyles';
 import { type DateRange } from './data';
 import { makeRange, useSchedules } from './useSchedules';
@@ -164,65 +165,48 @@ const WeekViewWithData = (props: WeekViewProps) => {
 
 const WeekViewContent = ({ items, loading, onDayClick, activeDateIso, range, onItemSelect, onItemAccept }: WeekViewContentProps) => {
   const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
   const [menuAnchor, setMenuAnchor] = useState<HTMLElement | null>(null);
   const [menuItem, setMenuItem] = useState<WeekSchedItem | null>(null);
   const resolvedRange = useMemo(() => range ?? defaultWeekRange(), [range]);
 
-  const fallbackServiceTokens: Record<string, { bg: string; border: string; accent: string }> = {
-    unset: {
-      bg: theme.palette.grey[50],
-      border: theme.palette.grey[300],
-      accent: theme.palette.grey[500],
-    },
-    normal: {
-      bg: theme.palette.primary.light,
-      border: theme.palette.primary.main,
-      accent: theme.palette.primary.dark,
-    },
-    transport: {
-      bg: theme.palette.info.light,
-      border: theme.palette.info.main,
-      accent: theme.palette.info.dark,
-    },
-    meeting: {
-      bg: theme.palette.info.light,
-      border: theme.palette.info.main,
-      accent: theme.palette.info.dark,
-    },
-    training: {
-      bg: theme.palette.success.light,
-      border: theme.palette.success.main,
-      accent: theme.palette.success.dark,
-    },
-    respite: {
-      bg: theme.palette.success.light,
-      border: theme.palette.success.main,
-      accent: theme.palette.success.dark,
-    },
-    absence: {
-      bg: theme.palette.error.light,
-      border: theme.palette.error.main,
-      accent: theme.palette.error.dark,
-    },
-    late: {
-      bg: theme.palette.warning.light,
-      border: theme.palette.warning.main,
-      accent: theme.palette.warning.dark,
-    },
-    earlyLeave: {
-      bg: theme.palette.warning.light,
-      border: theme.palette.warning.main,
-      accent: theme.palette.warning.dark,
-    },
-    other: {
-      bg: theme.palette.grey[100],
-      border: theme.palette.grey[300],
-      accent: theme.palette.grey[500],
-    },
-  };
+  type ServiceTokens = { bg: string; border: string; accent: string };
+
+  const baseServiceTokens = useMemo<Record<ServiceTypeKey, ServiceTokens>>(() => {
+    const buildTokens = (color: ServiceTypeColor): ServiceTokens => {
+      if (color === 'default') {
+        return {
+          bg: theme.palette.grey[50],
+          border: theme.palette.grey[300],
+          accent: theme.palette.grey[600],
+        };
+      }
+      const paletteEntry = theme.palette[color];
+      return {
+        bg: paletteEntry?.light ?? theme.palette.grey[50],
+        border: paletteEntry?.main ?? theme.palette.grey[300],
+        accent: paletteEntry?.dark ?? theme.palette.grey[700],
+      };
+    };
+
+    return (Object.keys(SERVICE_TYPE_COLOR) as ServiceTypeKey[]).reduce<Record<ServiceTypeKey, ServiceTokens>>((map, key) => {
+      map[key] = buildTokens(SERVICE_TYPE_COLOR[key]);
+      return map;
+    }, {} as Record<ServiceTypeKey, ServiceTokens>);
+  }, [theme]);
+
   const serviceTypeColors = (theme as unknown as {
-    serviceTypeColors?: Record<string, { bg?: string; border?: string; accent?: string }>;
+    serviceTypeColors?: Record<string, ServiceTokens>;
   }).serviceTypeColors;
+
+  const getServiceTokens = useCallback(
+    (key: ServiceTypeKey): ServiceTokens => {
+      const override = serviceTypeColors?.[key];
+      if (override) return override;
+      return baseServiceTokens[key];
+    },
+    [baseServiceTokens, serviceTypeColors],
+  );
 
   if (SCHEDULES_DEBUG) {
     // eslint-disable-next-line no-console -- diagnostics for E2E/dev only
@@ -283,10 +267,10 @@ const WeekViewContent = ({ items, loading, onDayClick, activeDateIso, range, onI
         label: meta?.label ?? key,
         count: counts[key] ?? 0,
         color: meta?.color,
-        tokens: serviceTypeColors?.[key] ?? fallbackServiceTokens[key],
+        tokens: getServiceTokens(key),
       };
     });
-  }, [fallbackServiceTokens, selectedItems, serviceTypeColors]);
+  }, [getServiceTokens, selectedItems]);
 
   const handleClick = (iso: string, event: MouseEvent<HTMLButtonElement>) => {
     onDayClick?.(iso, event);
@@ -396,7 +380,10 @@ const WeekViewContent = ({ items, loading, onDayClick, activeDateIso, range, onI
                       dayItems.slice(0, 3).map((item) => {
                         const statusMeta = getScheduleStatusMeta(item.status);
                         const showStatus = item.status && item.status !== 'Planned' && statusMeta;
-                        const label = showStatus ? `${item.title}（${statusMeta!.label}）` : item.title;
+                        const normalizedServiceType = normalizeServiceType(item.serviceType as string | null);
+                        const serviceTypeMeta = getServiceTypeMeta(normalizedServiceType);
+                        const compactLabel = `${formatEventTimeRange(item.start, item.end)} ${serviceTypeMeta?.label ?? item.title}`.trim();
+                        const label = isMobile ? compactLabel : showStatus ? `${item.title}（${statusMeta!.label}）` : item.title;
                         return (
                           <span
                             key={item.id}
@@ -466,15 +453,20 @@ const WeekViewContent = ({ items, loading, onDayClick, activeDateIso, range, onI
             };
             const normalizedServiceType = normalizeServiceType(item.serviceType as string | null);
             const serviceTypeKey = mapServiceTypeToThemeKey(normalizedServiceType);
-            const serviceTypeColors = (theme as unknown as {
-              serviceTypeColors?: Record<string, { bg?: string; border?: string; accent?: string }>;
-            }).serviceTypeColors;
-            const serviceTokens = serviceTypeColors?.[serviceTypeKey] ?? fallbackServiceTokens[serviceTypeKey];
+            const serviceTokens = getServiceTokens(serviceTypeKey);
             const timeRange = formatEventTimeRange(item.start, item.end);
             const serviceTypeMeta = getServiceTypeMeta(normalizedServiceType);
             const showServiceChip = Boolean(serviceTypeMeta && serviceTypeKey !== 'unset');
             const isAccepted = Boolean(item.acceptedOn || item.acceptedBy || item.acceptedNote);
             const ariaLabel = buildWeekEventAriaLabel(item, timeRange, statusLabel);
+            const rawLocation = item.locationName ?? (item as Record<string, unknown>).location;
+            const locationLabel = typeof rawLocation === 'string' && rawLocation.trim() ? rawLocation : null;
+            const primaryTitle = isMobile
+              ? item.personName?.trim() || serviceTypeMeta?.label || item.title
+              : item.title;
+            const metaLine = isMobile
+              ? [timeRange]
+              : [timeRange, locationLabel].filter(Boolean);
 
             return (
               <li
@@ -494,7 +486,7 @@ const WeekViewContent = ({ items, loading, onDayClick, activeDateIso, range, onI
               >
                 <button
                   type="button"
-                  className="flex w-full flex-col px-4 py-3 text-left"
+                  className="flex w-full flex-col gap-1.5 px-3 py-2 text-left sm:gap-2 sm:px-4 sm:py-3"
                   onClick={handleItemClick}
                   disabled={isDisabled}
                   style={{ opacity: buttonOpacity }}
@@ -510,7 +502,7 @@ const WeekViewContent = ({ items, loading, onDayClick, activeDateIso, range, onI
                           style={{ backgroundColor: serviceTokens.accent }}
                         />
                       ) : null}
-                      <span>{item.title}</span>
+                      <span>{primaryTitle}</span>
                       {statusLabel && statusMeta && (
                         <span
                           className="text-[11px] px-2 py-0.5 rounded-full"
@@ -524,36 +516,35 @@ const WeekViewContent = ({ items, loading, onDayClick, activeDateIso, range, onI
                         </span>
                       )}
                     </p>
-                    <IconButton
-                      aria-label="行の操作"
-                      size="small"
-                      onClick={(event) => handleMenuOpen(event, item)}
-                      component="span"
-                      sx={{ ml: 0.5 }}
-                    >
-                      <MoreVertIcon fontSize="small" />
-                    </IconButton>
+                    {!isMobile && (
+                      <IconButton
+                        aria-label="行の操作"
+                        size="small"
+                        onClick={(event) => handleMenuOpen(event, item)}
+                        component="span"
+                        sx={{ ml: 0.5 }}
+                      >
+                        <MoreVertIcon fontSize="small" />
+                      </IconButton>
+                    )}
                   </div>
-                  <p className="text-xs text-slate-600 flex flex-wrap gap-2 items-center">
-                    <span>{timeRange}</span>
-                    {item.locationName ?? (item as Record<string, unknown>).location ? (
-                      <span aria-label="場所" className="truncate">
-                        {item.locationName ?? String((item as Record<string, unknown>).location ?? '')}
-                      </span>
-                    ) : null}
+                  <p className="text-xs text-slate-600 flex flex-wrap gap-1.5 items-center">
+                    {metaLine.map((text, index) => (
+                      <span key={`${item.id}-meta-${index}`}>{text}</span>
+                    ))}
                   </p>
-                  {item.personName && (
+                  {!isMobile && item.personName ? (
                     <p className="text-xs text-slate-500">{item.personName}</p>
-                  )}
+                  ) : null}
                   {(showServiceChip && serviceTypeMeta) || isAccepted ? (
-                    <div className="mt-1 flex flex-wrap items-center gap-1.5">
+                    <div className="mt-0.5 flex flex-wrap items-center gap-1.5">
                       {showServiceChip && serviceTypeMeta ? (
                         <Chip size="small" label={serviceTypeMeta.label} color={serviceTypeMeta.color} variant="outlined" />
                       ) : null}
                       {isAccepted ? <Chip size="small" label="受け入れ済" color="success" variant="filled" /> : null}
                     </div>
                   ) : null}
-                  {statusReason && (
+                  {!isMobile && statusReason && (
                     <p className="text-xs text-slate-500 mt-1" data-testid="schedule-status-reason">
                       {statusReason}
                     </p>

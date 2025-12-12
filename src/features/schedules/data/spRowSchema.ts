@@ -221,6 +221,7 @@ export function mapSpRowToSchedule(row: SpScheduleRow): SchedItem | null {
 
   const category = inferCategory(row);
 
+  const serviceTypeKey = normalizeServiceType(coerceString(row.ServiceType));
   const item: SchedItem = {
     id,
     title,
@@ -229,7 +230,7 @@ export function mapSpRowToSchedule(row: SpScheduleRow): SchedItem | null {
     category,
     allDay: false,
     userId: normalizedUserId,
-    serviceType: normalizeServiceType(coerceString(row.ServiceType)),
+    serviceType: serviceTypeKey === 'unset' ? undefined : serviceTypeKey,
     locationName: coerceString(row.LocationName),
     notes: coerceString(row.Notes),
     acceptedOn: coerceIso(row.AcceptedOn),

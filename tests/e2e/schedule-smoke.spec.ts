@@ -122,11 +122,6 @@ test.describe('Schedule smoke', () => {
         VITE_FEATURE_SCHEDULES_GRAPH: '1',
         VITE_SP_SITE_RELATIVE: '/sites/Audit',
       },
-      sharePoint: {
-        currentUser: { status: 200, body: { Id: 5678 } },
-        fallback: { status: 404, body: 'not mocked' },
-        debug: true,
-      },
     });
   });
 
