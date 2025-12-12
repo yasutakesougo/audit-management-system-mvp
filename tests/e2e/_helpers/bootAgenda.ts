@@ -35,7 +35,7 @@ const AGENDA_FEATURE_STORAGE: Record<string, string> = {
 
 type HandoffSeed = Omit<HandoffRecord, 'createdAt'> & { createdAt?: string };
 
-type SetupSharePointOptions = Parameters<typeof setupSharePointStubs>[1];
+type SetupSharePointOptions = NonNullable<Parameters<typeof setupSharePointStubs>[1]>;
 type ListConfigArray = NonNullable<SetupSharePointOptions['lists']>;
 
 export type BootAgendaSeedOptions = {

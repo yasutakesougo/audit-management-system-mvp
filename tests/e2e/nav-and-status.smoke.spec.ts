@@ -38,10 +38,9 @@ test.describe('Nav/Status/Footers basics', () => {
 
     await page.goto('/nurse');
     const nurseNav = page.getByTestId(TESTIDS.nav.nurse);
-    if ((await nurseNav.count()) === 0) {
-      test.skip('Nurse nav entry is not visible in this build');
-    }
-    await expect(nurseNav).toHaveAttribute('aria-current', 'page');
+    const nurseCount = await nurseNav.count();
+    test.skip(nurseCount === 0, 'Nurse nav entry is not visible in this build');
+    await expect(nurseNav.first()).toHaveAttribute('aria-current', 'page');
 
     await page.goto('/analysis/iceberg');
     await expect(page.getByTestId(TESTIDS.nav.iceberg)).toHaveAttribute('aria-current', 'page');

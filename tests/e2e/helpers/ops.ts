@@ -103,13 +103,14 @@ export async function primeOpsEnv(page: Page): Promise<void> {
       {
         name: 'Users_Master',
         items: mockUsers,
-        sort: (items: MockUser[]) => [...items].sort((a, b) => a.UserID.localeCompare(b.UserID)),
+        // Cast items to the concrete type to satisfy ListStubConfig
+        sort: (items) => [...(items as MockUser[])].sort((a, b) => a.UserID.localeCompare(b.UserID)),
       },
       {
         name: 'SupportRecord_Daily',
         items: mockDailyRecords,
         insertPosition: 'start',
-        sort: (items: MockDailyRecord[]) => [...items].sort((a, b) => b.Id - a.Id),
+        sort: (items) => [...(items as MockDailyRecord[])].sort((a, b) => b.Id - a.Id),
       },
     ],
     fallback: { status: 200, body: { value: [] } },
