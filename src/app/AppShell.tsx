@@ -110,6 +110,14 @@ const AppShell: React.FC<{ children: React.ReactNode }> = ({ children }) => {
         testId: TESTIDS.nav.iceberg,
       },
       {
+        label: '氷山PDCA',
+        to: '/analysis/iceberg-pdca',
+        isActive: (pathname) => pathname.startsWith('/analysis/iceberg-pdca'),
+        icon: HistoryIcon,
+        prefetchKey: PREFETCH_KEYS.icebergPdcaBoard,
+        testId: TESTIDS.nav.icebergPdca,
+      },
+      {
         label: 'アセスメント',
         to: '/assessment',
         isActive: (pathname) => pathname.startsWith('/assessment'),
