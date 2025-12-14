@@ -19,6 +19,7 @@ import {
   TextField,
   Typography,
 } from '@mui/material';
+import { TESTIDS } from '@/testids';
 import { useUsersStore } from '../users/store';
 import type { IcebergPdcaItem, IcebergPdcaPhase } from './types';
 import { mockPdcaItems } from './mockPdcaItems';
@@ -178,7 +179,7 @@ export const IcebergPdcaPage: FC = () => {
   };
 
   return (
-    <Box sx={{ p: 3 }} data-testid="iceberg-pdca-page">
+    <Box sx={{ p: 3 }} data-testid={TESTIDS['iceberg-pdca-root']}>
       <Stack spacing={2}>
         {/* ヘッダー */}
         <Box>
