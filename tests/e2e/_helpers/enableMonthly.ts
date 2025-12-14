@@ -46,9 +46,9 @@ export async function gotoMonthlyRecordsPage(page: Page): Promise<void> {
   await enableMonthlyRecordsFlag(page);
   await page.goto('/records/monthly');
 
-  // React/MUIレンダリング完了を確実に待機
-  await page.waitForLoadState('networkidle');
-  await page.getByTestId(monthlyTestIds.page).waitFor();
+  // ルート到達とページの可視化を明示的に待つ（networkidle は CI で不安定なため使わない）
+  await page.waitForURL(/\/records\/monthly/, { timeout: 15_000 });
+  await page.getByTestId(monthlyTestIds.page).waitFor({ state: 'visible', timeout: 30_000 });
 }
 
 /**
