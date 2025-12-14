@@ -12,7 +12,12 @@ import {
 } from '@/sharepoint/fields';
 
 import type { IcebergPdcaItem, IcebergPdcaPhase } from '../domain/pdca';
-import type { PdcaListQuery, PdcaRepository } from '../domain/pdcaRepository';
+import type {
+  CreatePdcaInput,
+  PdcaListQuery,
+  PdcaRepository,
+  UpdatePdcaInput,
+} from '../domain/pdcaRepository';
 
 const DEFAULT_TOP = 200;
 
@@ -57,6 +62,34 @@ export class SharePointPdcaRepository implements PdcaRepository {
 
     const items = await spQuery();
     return (items ?? []).map((item: Record<string, unknown>) => this.toDomain(item));
+  }
+
+  async create(input: CreatePdcaInput): Promise<IcebergPdcaItem> {
+    const fields: Record<string, unknown> = {
+      [FIELD_MAP_ICEBERG_PDCA.title]: input.title,
+      [FIELD_MAP_ICEBERG_PDCA.userId]: input.userId,
+    };
+
+    if (input.summary !== undefined) fields[FIELD_MAP_ICEBERG_PDCA.summary] = input.summary;
+    if (input.phase !== undefined) fields[FIELD_MAP_ICEBERG_PDCA.phase] = input.phase;
+
+    const result = await this.spList.items.add(fields);
+    return this.toDomain(result.data as Record<string, unknown>);
+  }
+
+  async update(input: UpdatePdcaInput): Promise<IcebergPdcaItem> {
+    const id = Number(input.id);
+    if (Number.isNaN(id)) {
+      throw new Error(`[SharePointPdcaRepository] Invalid id: ${input.id}`);
+    }
+
+    const fields: Record<string, unknown> = {};
+    if (input.title !== undefined) fields[FIELD_MAP_ICEBERG_PDCA.title] = input.title;
+    if (input.summary !== undefined) fields[FIELD_MAP_ICEBERG_PDCA.summary] = input.summary;
+    if (input.phase !== undefined) fields[FIELD_MAP_ICEBERG_PDCA.phase] = input.phase;
+
+    const result = await this.spList.items.getById(id).update(fields, input.etag ?? '*');
+    return this.toDomain(result.data as Record<string, unknown>);
   }
 
   private get spList() {
