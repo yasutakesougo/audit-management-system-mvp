@@ -34,6 +34,7 @@ export const TESTIDS = {
   'dashboard-records': 'dashboard-records',
   'audit-heading': 'audit-heading',
   'iceberg-pdca-root': 'iceberg-pdca-root',
+  'iceberg-pdca-empty': 'iceberg-pdca-empty',
 
   // Dashboard Tabs (黒ノート機能個別タブ) 🌱 E2Eでタブ切替を細かく検査用
   'dashboard-tab-management': 'dashboard-tab-management',

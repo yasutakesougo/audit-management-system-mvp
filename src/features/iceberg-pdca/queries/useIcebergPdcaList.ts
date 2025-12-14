@@ -1,24 +1,53 @@
-import { useMemo } from 'react';
+import { useQuery } from '@tanstack/react-query';
 
-import { mockPdcaItems } from '../mockPdcaItems';
+import type { IcebergPdcaItem } from '../domain/pdca';
+import { getPdcaRepository } from '../repositoryFactory';
 
-type Result<T> = {
-  data: T;
-  isLoading: boolean;
-  error: unknown | null;
-  status: 'idle' | 'loading' | 'success' | 'error';
-};
+type Status = 'idle' | 'loading' | 'success' | 'error';
 
 type Params = {
   userId?: string | null;
 };
 
-export const useIcebergPdcaList = (params?: Params): Result<typeof mockPdcaItems> => {
-  const data = useMemo(() => {
-    const userId = params?.userId ?? undefined;
-    if (!userId) return [];
-    return mockPdcaItems.filter((item) => item.userId === userId);
-  }, [params?.userId]);
+type Result = {
+  data: IcebergPdcaItem[];
+  isLoading: boolean;
+  error: unknown | null;
+  status: Status;
+};
 
-  return { data, isLoading: false, error: null, status: 'success' };
+export const icebergPdcaQueryKeys = {
+  list: (userId: string | null | undefined) => ['icebergPdca', 'list', userId ?? 'none'] as const,
+};
+
+export const useIcebergPdcaListQuery = (userId: string | null | undefined) =>
+  useQuery({
+    queryKey: icebergPdcaQueryKeys.list(userId),
+    enabled: Boolean(userId),
+    queryFn: () => getPdcaRepository().list({ userId: userId ?? undefined }),
+    staleTime: 30_000,
+  });
+
+export const useIcebergPdcaList = (params?: Params): Result => {
+  const userId = params?.userId ?? null;
+
+  if (!userId) {
+    return { data: [], isLoading: false, error: null, status: 'idle' };
+  }
+
+  const query = useIcebergPdcaListQuery(userId);
+
+  const status: Status =
+    query.status === 'pending'
+      ? 'loading'
+      : query.status === 'error'
+        ? 'error'
+        : 'success';
+
+  return {
+    data: query.data ?? [],
+    isLoading: status === 'loading',
+    error: query.error ?? null,
+    status,
+  };
 };

@@ -117,6 +117,7 @@ export enum ListKeys {
   StaffMaster = 'Staff_Master',
   ComplianceCheckRules = 'Compliance_CheckRules',
   Behaviors = 'Dat_Behaviors',
+  IcebergPdca = 'Iceberg_PDCA',
   SurveyTokusei = 'FormsResponses_Tokusei',
   OrgMaster = 'Org_Master',
 }
@@ -126,6 +127,7 @@ export const LIST_CONFIG: Record<ListKeys, { title: string }> = {
   [ListKeys.StaffMaster]: { title: 'Staff_Master' },
   [ListKeys.ComplianceCheckRules]: { title: 'Compliance_CheckRules' },
   [ListKeys.Behaviors]: { title: 'Dat_Behaviors' },
+  [ListKeys.IcebergPdca]: { title: 'Iceberg_PDCA' },
   [ListKeys.SurveyTokusei]: { title: 'FormsResponses_Tokusei' },
   [ListKeys.OrgMaster]: { title: 'Org_Master' },
 };
@@ -214,6 +216,16 @@ export const FIELD_MAP_BEHAVIORS = {
   created: 'Created'
 } as const;
 
+export const FIELD_MAP_ICEBERG_PDCA = {
+  id: 'Id',
+  userId: 'UserID',
+  title: 'Title',
+  summary: 'Summary',
+  phase: 'Phase',
+  createdAt: 'Created',
+  updatedAt: 'Modified',
+} as const;
+
 export const BEHAVIORS_SELECT_FIELDS = [
   FIELD_MAP_BEHAVIORS.id,
   FIELD_MAP_BEHAVIORS.userId,
@@ -225,6 +237,16 @@ export const BEHAVIORS_SELECT_FIELDS = [
   FIELD_MAP_BEHAVIORS.duration,
   FIELD_MAP_BEHAVIORS.memo,
   FIELD_MAP_BEHAVIORS.created
+] as const;
+
+export const ICEBERG_PDCA_SELECT_FIELDS = [
+  FIELD_MAP_ICEBERG_PDCA.id,
+  FIELD_MAP_ICEBERG_PDCA.userId,
+  FIELD_MAP_ICEBERG_PDCA.title,
+  FIELD_MAP_ICEBERG_PDCA.summary,
+  FIELD_MAP_ICEBERG_PDCA.phase,
+  FIELD_MAP_ICEBERG_PDCA.createdAt,
+  FIELD_MAP_ICEBERG_PDCA.updatedAt,
 ] as const;
 
 export const FIELD_MAP_SURVEY_TOKUSEI = {
