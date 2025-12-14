@@ -33,6 +33,7 @@ export const TESTIDS = {
   'dashboard-page-tabs': 'dashboard-page-tabs', // 🧪 黒ノート機能タブ専用（日次ダッシュボードと区別）
   'dashboard-records': 'dashboard-records',
   'audit-heading': 'audit-heading',
+  'iceberg-pdca-empty': 'iceberg-pdca-empty',
   'iceberg-pdca-root': 'iceberg-pdca-root',
 
   // Dashboard Tabs (黒ノート機能個別タブ) 🌱 E2Eでタブ切替を細かく検査用
