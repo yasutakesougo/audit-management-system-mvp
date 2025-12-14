@@ -307,6 +307,9 @@ export const isComplianceFormEnabled = (envOverride?: EnvRecord): boolean => {
   return false;
 };
 
+export const isIcebergPdcaEnabled = (envOverride?: EnvRecord): boolean =>
+  readBool('VITE_FEATURE_ICEBERG_PDCA', false, envOverride);
+
 export const shouldSkipLogin = (envOverride?: EnvRecord): boolean => {
   if (isDemoModeEnabled(envOverride) || readBool('VITE_SKIP_LOGIN', false, envOverride)) {
     return true;
