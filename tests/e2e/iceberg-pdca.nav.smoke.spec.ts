@@ -11,10 +11,8 @@ test.describe('Iceberg PDCA nav smoke', () => {
     await expect(page).toHaveURL(/\/analysis\/iceberg-pdca/);
     await expect(page.getByTestId(TESTIDS['iceberg-pdca-root'])).toBeVisible();
 
-    const userFilter = page.getByRole('combobox', { name: '利用者で絞り込み' });
-    await userFilter.click();
-    await page.getByRole('option', { name: '田中 太郎' }).click();
-
-    await expect(page.getByText('選択された利用者のPDCAデータはまだありません。')).toBeVisible();
+    await expect(page.getByRole('combobox', { name: '利用者で絞り込み' })).toBeVisible();
+    await expect(page.getByText('利用者を選択してください')).toBeVisible();
+    await expect(page.getByTestId(TESTIDS['iceberg-pdca-empty'])).toBeVisible();
   });
 });

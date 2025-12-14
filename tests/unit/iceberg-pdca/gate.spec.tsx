@@ -5,6 +5,7 @@ import { render, screen } from '@testing-library/react';
 
 vi.mock('@/config/featureFlags', () => ({
   useFeatureFlags: () => ({ icebergPdca: true }),
+  useFeatureFlag: () => true,
 }));
 
 const authState = { currentUserRole: 'staff' as const };

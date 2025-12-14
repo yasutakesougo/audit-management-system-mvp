@@ -1,12 +1,12 @@
 import * as React from 'react';
 import { Navigate } from 'react-router-dom';
-import { useFeatureFlags } from '@/config/featureFlags';
+import { useFeatureFlag } from '@/config/featureFlags';
 import { useAuthStore } from '@/features/auth/store';
 
 type Props = { children: React.ReactNode; requireEdit?: boolean };
 
 export const IcebergPdcaGate: React.FC<Props> = ({ children, requireEdit }) => {
-  const { icebergPdca } = useFeatureFlags();
+  const icebergPdca = useFeatureFlag('icebergPdca');
   const role = useAuthStore((s) => s.currentUserRole); // 'staff' | 'admin'
 
   const canView = icebergPdca;

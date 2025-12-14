@@ -3,7 +3,7 @@ import type { IcebergPdcaItem } from './types';
 export const mockPdcaItems: IcebergPdcaItem[] = [
   {
     id: 'pdca-001',
-    userId: 'U001',
+    userId: 'U-001',
     title: '通所時の緊張を減らす',
     phase: 'PLAN',
     summary:
@@ -13,7 +13,7 @@ export const mockPdcaItems: IcebergPdcaItem[] = [
   },
   {
     id: 'pdca-002',
-    userId: 'U001',
+    userId: 'U-001',
     title: '通所時の緊張を減らす',
     phase: 'DO',
     summary:
