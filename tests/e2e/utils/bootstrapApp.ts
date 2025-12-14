@@ -3,6 +3,7 @@ import type { Page } from '@playwright/test';
 export type BootstrapFlags = {
   skipLogin?: boolean;
   featureSchedules?: boolean;
+  featureIcebergPdca?: boolean;
   initialPath?: string;
 };
 
@@ -10,6 +11,7 @@ export async function bootstrapDashboard(page: Page, flags: BootstrapFlags = {})
   const options = {
     skipLogin: flags.skipLogin ?? true,
     featureSchedules: flags.featureSchedules ?? true,
+    featureIcebergPdca: flags.featureIcebergPdca ?? true,
     initialPath: flags.initialPath ?? '/dashboard',
   };
 
@@ -20,6 +22,7 @@ export async function bootstrapDashboard(page: Page, flags: BootstrapFlags = {})
       VITE_SKIP_LOGIN: '1',
       VITE_E2E: '1',
       ...(opts.featureSchedules ? { VITE_FEATURE_SCHEDULES: '1' } : {}),
+      ...(opts.featureIcebergPdca ? { VITE_FEATURE_ICEBERG_PDCA: '1' } : {}),
     };
 
     if (opts.skipLogin) {

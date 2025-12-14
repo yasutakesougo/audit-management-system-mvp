@@ -75,11 +75,13 @@ flowchart TD
 ### 2. AppSettings 取得アクション
 
 **Get items** (SharePoint)
+
 - **リスト名**: `AppSettings`
 - **フィルタークエリ**: `startswith(Key, 'MonthlyAggregation.')`
 - **Select**: `Key,Value`
 
 **Parse JSON** - AppSettings
+
 ```json
 {
   "type": "object",
@@ -96,6 +98,7 @@ flowchart TD
 ```
 
 **Compose** - Parse Settings
+
 ```javascript
 {
   "enabled": @{first(filter(body('Get_items_-_AppSettings'), equals(item()?['Key'], 'MonthlyAggregation.Enabled')))?['Value']},
@@ -111,22 +114,27 @@ flowchart TD
 ### 3. 利用者絞り込みロジック
 
 **Condition** - Check Stage
+
 - **条件**: `@equals(outputs('Compose_-_Parse_Settings')?['stage'], 'pilot')`
 
 **If yes** - Get Pilot Users
+
 ```odata
 IsActive eq 1 and IsPilot eq 1
 ```
 
 **Else if** - Check Partial Stage
+
 - **条件**: `@equals(outputs('Compose_-_Parse_Settings')?['stage'], 'partial')`
 
 **If yes** - Get Partial Deploy Users
+
 ```odata
 IsActive eq 1 and IsPartialDeploy eq 1
 ```
 
 **Else** - Get All Active Users
+
 ```odata
 IsActive eq 1
 ```
@@ -134,10 +142,12 @@ IsActive eq 1
 ### 4. バッチ処理制御
 
 **Chunk Array** (Custom Connector or Azure Function)
+
 - **Input**: `body('Get_items_-_Users')?['value']`
 - **ChunkSize**: `@{outputs('Compose_-_Parse_Settings')?['batchSize']}`
 
 **Apply to each** - Process User Batches
+
 - **Parallel**: `true`
 - **Concurrency**: `3`
 
@@ -146,6 +156,7 @@ IsActive eq 1
 **Apply to each** - Process Users in Batch
 
 #### A. 基本データ取得
+
 ```javascript
 // userId の取得
 @{items('Apply_to_each_-_Process_Users_in_Batch')?['UserId']}
@@ -155,9 +166,12 @@ IsActive eq 1
 ```
 
 #### B. SupportRecord_Daily 取得
+
 **Get items** (SharePoint)
+
 - **リスト名**: `SupportRecord_Daily`
 - **フィルタークエリ**:
+
 ```odata
 UserId eq '@{items('Apply_to_each_-_Process_Users_in_Batch')?['UserId']}'
 and cr013_recorddate ge '@{variables('varMonthStart')}'
@@ -165,27 +179,33 @@ and cr013_recorddate lt '@{variables('varNextMonthStart')}'
 ```
 
 #### C. KPI計算
+
 **Filter array** - Completed Records
+
 ```javascript
 @equals(item()?['Completed'], true)
 ```
 
 **Filter array** - Pending Records
+
 ```javascript
 @equals(item()?['Completed'], false)
 ```
 
 **Filter array** - Incident Records
+
 ```javascript
 @equals(item()?['Incident'], true)
 ```
 
 **Filter array** - Special Note Records
+
 ```javascript
 @and(not(empty(item()?['cr013_specialnote'])), not(equals(item()?['cr013_specialnote'], '')))
 ```
 
 **Compose** - Calculate KPIs
+
 ```json
 {
   "key": "@{concat(items('Apply_to_each_-_Process_Users_in_Batch')?['UserId'], '_', variables('varYearMonth'))}",
@@ -206,17 +226,23 @@ and cr013_recorddate lt '@{variables('varNextMonthStart')}'
 ### 6. MonthlyRecord_Summary 更新
 
 #### A. 既存レコード確認
+
 **Get items** (SharePoint)
+
 - **リスト名**: `MonthlyRecord_Summary`
 - **フィルタークエリ**: `Key eq '@{outputs('Compose_-_Calculate_KPIs')?['key']}'`
 - **上位件数の制限**: `1`
 
 #### B. 条件分岐処理
+
 **Condition** - Record Exists
+
 - **条件**: `@greater(length(body('Get_items_-_Check_existing_record')?['value']), 0)`
 
 **If yes** - Update Record
+
 **Update item** (SharePoint)
+
 ```json
 {
   "TotalDays": "@{outputs('Compose_-_Calculate_KPIs')?['totalDays']}",
@@ -234,7 +260,9 @@ and cr013_recorddate lt '@{variables('varNextMonthStart')}'
 **Increment variable** - varUpdate
 
 **If no** - Create Record
+
 **Create item** (SharePoint)
+
 ```json
 {
   "Key": "@{outputs('Compose_-_Calculate_KPIs')?['key']}",
@@ -257,11 +285,14 @@ and cr013_recorddate lt '@{variables('varNextMonthStart')}'
 ### 7. エラーハンドリング
 
 **Scope** - Error Handling
+
 - **実行条件**: `@equals(result('SharePoint_Operations'), 'Failed')`
 
 **内部アクション**:
+
 1. **Increment variable** - varFail
 2. **Compose** - Error Details
+
 ```json
 {
   "userId": "@{outputs('Compose_-_Calculate_KPIs')?['userId']}",
@@ -273,14 +304,17 @@ and cr013_recorddate lt '@{variables('varNextMonthStart')}'
 ### 8. Teams通知（段階別）
 
 #### A. 通知条件チェック
+
 **Condition** - Notify Teams Enabled
+
 - **条件**: `@outputs('Compose_-_Parse_Settings')?['notifyTeams']`
 
 #### B. 段階別通知内容
 
 **Switch** - Notification by Stage
 
-**Case: 'pilot'**
+##### Case: 'pilot'
+
 ```json
 {
   "title": "🧪 月次記録集計完了 (パイロット版)",
@@ -296,7 +330,8 @@ and cr013_recorddate lt '@{variables('varNextMonthStart')}'
 }
 ```
 
-**Case: 'partial'**
+##### Case: 'partial'
+
 ```json
 {
   "title": "📈 月次記録集計完了 (部分展開)",
@@ -312,7 +347,8 @@ and cr013_recorddate lt '@{variables('varNextMonthStart')}'
 }
 ```
 
-**Case: 'full'**
+##### Case: 'full'
+
 ```json
 {
   "title": "✅ 月次記録集計完了 (本格稼働)",
@@ -333,6 +369,7 @@ and cr013_recorddate lt '@{variables('varNextMonthStart')}'
 ### Phase 0: 開発環境準備
 
 #### ✅ 事前準備
+
 1. **SharePointリスト作成**
    - `AppSettings` リスト作成
    - `Users_Master` に `IsPilot`, `IsPartialDeploy` フィールド追加
@@ -347,6 +384,7 @@ and cr013_recorddate lt '@{variables('varNextMonthStart')}'
    - 通知フォーマット確認
 
 #### 🧪 開発テスト
+
 ```powershell
 # AppSettings 初期設定
 $settings = @(
@@ -372,7 +410,8 @@ foreach ($user in $devUsers) {
 
 #### 📅 実施期間: 2週間
 
-#### ⚙️ 設定変更
+#### ⚙️ 設定変更 (パイロット)
+
 ```powershell
 # パイロット段階への切り替え
 Set-PnPListItem -List "AppSettings" -Identity (Get-PnPListItem -List "AppSettings" -Query "<View><Query><Where><Eq><FieldRef Name='Key'/><Value Type='Text'>MonthlyAggregation.Stage</Value></Eq></Where></Query></View>") -Values @{Value="pilot"}
@@ -384,13 +423,15 @@ foreach ($user in $pilotUsers) {
 }
 ```
 
-#### 📊 成功基準
+#### 📊 成功基準 (パイロット)
+
 - [ ] **実行成功率**: 95%以上
 - [ ] **データ整合性**: 手動集計との差分5%以内
 - [ ] **パフォーマンス**: 5分以内での完了
 - [ ] **利用者フィードバック**: 重大な問題報告なし
 
 #### 🔍 監視項目
+
 - 毎日のフロー実行ログ確認
 - Teams通知内容の妥当性
 - SharePointデータ整合性チェック
@@ -400,7 +441,8 @@ foreach ($user in $pilotUsers) {
 
 #### 📅 実施期間: 3週間
 
-#### ⚙️ 設定変更
+#### ⚙️ 設定変更 (部分展開)
+
 ```powershell
 # 部分展開段階への切り替え
 Set-PnPListItem -List "AppSettings" -Identity (Get-PnPListItem -List "AppSettings" -Query "<View><Query><Where><Eq><FieldRef Name='Key'/><Value Type='Text'>MonthlyAggregation.Stage</Value></Eq></Where></Query></View>") -Values @{Value="partial"}
@@ -415,7 +457,8 @@ foreach ($user in $partialUsers) {
 Set-PnPListItem -List "AppSettings" -Identity (Get-PnPListItem -List "AppSettings" -Query "<View><Query><Where><Eq><FieldRef Name='Key'/><Value Type='Text'>MonthlyAggregation.BatchSize</Value></Eq></Where></Query></View>") -Values @{Value="8"}
 ```
 
-#### 📊 成功基準
+#### 📊 成功基準 (部分展開)
+
 - [ ] **実行成功率**: 98%以上
 - [ ] **処理時間**: 8分以内
 - [ ] **リソース使用率**: SharePoint API制限の70%以内
@@ -426,6 +469,7 @@ Set-PnPListItem -List "AppSettings" -Identity (Get-PnPListItem -List "AppSetting
 #### 📅 実施期間: 継続運用
 
 #### ⚙️ 設定変更
+
 ```powershell
 # 本格稼働段階への切り替え
 Set-PnPListItem -List "AppSettings" -Identity (Get-PnPListItem -List "AppSettings" -Query "<View><Query><Where><Eq><FieldRef Name='Key'/><Value Type='Text'>MonthlyAggregation.Stage</Value></Eq></Where></Query></View>") -Values @{Value="full"}
@@ -438,6 +482,7 @@ Get-PnPListItem -List "AppSettings" | Where-Object {$_.FieldValues["Key"] -like 
 ```
 
 #### 📊 運用KPI
+
 - **実行成功率**: 99%以上
 - **平均処理時間**: 10分以内
 - **データ整合性**: 手動集計との差分2%以内
@@ -446,18 +491,21 @@ Get-PnPListItem -List "AppSettings" | Where-Object {$_.FieldValues["Key"] -like 
 ## 緊急時対応手順
 
 ### 🚨 緊急停止
+
 ```powershell
 # 機能全体の無効化
 Set-PnPListItem -List "AppSettings" -Identity (Get-PnPListItem -List "AppSettings" -Query "<View><Query><Where><Eq><FieldRef Name='Key'/><Value Type='Text'>MonthlyAggregation.Enabled</Value></Eq></Where></Query></View>") -Values @{Value="false"}
 ```
 
 ### 🔄 段階戻し
+
 ```powershell
 # パイロットに戻す
 Set-PnPListItem -List "AppSettings" -Identity (Get-PnPListItem -List "AppSettings" -Query "<View><Query><Where><Eq><FieldRef Name='Key'/><Value Type='Text'>MonthlyAggregation.Stage</Value></Eq></Where></Query></View>") -Values @{Value="pilot"}
 ```
 
 ### 📞 エスカレーション
+
 1. **Level 1**: システム管理者（30分以内）
 2. **Level 2**: 開発チーム（1時間以内）
 3. **Level 3**: ベンダー緊急対応（2時間以内）
@@ -467,6 +515,7 @@ Set-PnPListItem -List "AppSettings" -Identity (Get-PnPListItem -List "AppSetting
 ## 運用監視・メトリクス
 
 ### 📊 監視ダッシュボード項目
+
 - フロー実行成功率（日次・週次・月次）
 - 処理時間トレンド
 - エラー発生パターン分析
@@ -474,6 +523,7 @@ Set-PnPListItem -List "AppSettings" -Identity (Get-PnPListItem -List "AppSetting
 - Teams通知配信状況
 
 ### 📈 改善サイクル
+
 - **日次**: 実行ログ確認
 - **週次**: パフォーマンス分析
 - **月次**: KPI評価・改善計画策定

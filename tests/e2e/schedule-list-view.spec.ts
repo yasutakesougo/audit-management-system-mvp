@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { bootSchedule } from './_helpers/bootSchedule';
+import { bootSchedule, type ScheduleBootOptions } from './_helpers/bootSchedule';
 import { getWeekScheduleItems, waitForWeekViewReady } from './utils/scheduleActions';
 import { gotoWeek } from './utils/scheduleNav';
 import { runA11ySmoke } from './utils/a11y';
@@ -77,6 +77,17 @@ test.describe('schedule list view', () => {
   test('filters, sorts, paginates, and shows details', async ({ page }) => {
     const consoleGuard = hookConsole(page);
 
+    const sharePointOptions = {
+      currentUser: { status: 200, body: { Id: 5678 } },
+      fallback: { status: 404, body: 'not mocked' },
+      lists: [
+        { name: 'Schedules', aliases: ['ScheduleEvents'], items: scheduleFixtures },
+        { name: 'SupportRecord_Daily', items: [] },
+        { name: 'StaffDirectory', items: [] },
+        { name: 'Org_Master', items: orgMasterFixtures },
+      ],
+    } as NonNullable<ScheduleBootOptions['sharePoint']>;
+
     await page.addInitScript(({ now }) => {
       const fixedNow = new Date(now).getTime();
       const RealDate = Date;
@@ -103,7 +114,7 @@ test.describe('schedule list view', () => {
       window.localStorage.setItem('writeEnabled', '1');
       window.localStorage.setItem('feature:schedules', '1');
       window.localStorage.setItem('feature:schedulesSp', '1');
-      window.localStorage.setItem('feature:schedulesWeekV2', '1');
+      window.localStorage.setItem('feature:schedulesWeekV2', '0');
       window.localStorage.setItem('schedules:fixtures', '0');
       (window as typeof window & { __TEST_NOW__?: string }).__TEST_NOW__ = now;
     }, { now: TEST_NOW });
@@ -128,12 +139,13 @@ test.describe('schedule list view', () => {
     );
 
     await bootSchedule(page, {
+      enableWeekV2: false,
       env: {
         VITE_E2E_MSAL_MOCK: '1',
         VITE_SKIP_LOGIN: '1',
         VITE_DEMO_MODE: '0',
         VITE_FEATURE_SCHEDULES: '1',
-        VITE_FEATURE_SCHEDULES_WEEK_V2: '1',
+        VITE_FEATURE_SCHEDULES_WEEK_V2: '0',
         VITE_FEATURE_SCHEDULES_SP: '1',
         VITE_FEATURE_SCHEDULES_GRAPH: '0',
         VITE_FORCE_SHAREPOINT: '1',
@@ -151,17 +163,8 @@ test.describe('schedule list view', () => {
       storage: {
         writeEnabled: '1',
       },
-      scheduleItems: scheduleFixtures,
-      sharePoint: {
-        currentUser: { status: 200, body: { Id: 5678 } },
-        fallback: { status: 404, body: 'not mocked' },
-        lists: [
-          { name: 'Schedules', aliases: ['ScheduleEvents'], items: scheduleFixtures },
-          { name: 'SupportRecord_Daily', items: [] },
-          { name: 'StaffDirectory', items: [] },
-          { name: 'Org_Master', items: orgMasterFixtures },
-        ],
-      },
+      scheduleItems: materializeScheduleItems(scheduleFixtures),
+      sharePoint: sharePointOptions,
     });
 
     await gotoWeek(page, TEST_DATE);
@@ -170,8 +173,8 @@ test.describe('schedule list view', () => {
     const weekItems = await getWeekScheduleItems(page);
     await expect(weekItems.first()).toBeVisible({ timeout: 15_000 });
 
-    await expect(page.getByTestId('schedule-page-root')).toBeVisible({ timeout: 15_000 });
     const listTab = page.getByRole('tab', { name: 'リスト', exact: true });
+    await expect(listTab).toBeVisible({ timeout: 15_000 });
     await listTab.click();
 
     await page.evaluate(() => {

@@ -22,7 +22,7 @@ const NURSE_FEATURE_STORAGE: Record<string, string> = {
   'nurse:queue:offline': '0',
 };
 
-type SetupSharePointOptions = Parameters<typeof setupSharePointStubs>[1];
+type SetupSharePointOptions = NonNullable<Parameters<typeof setupSharePointStubs>[1]>;
 type ListConfigArray = NonNullable<SetupSharePointOptions['lists']>;
 
 const DEFAULT_LISTS: ListConfigArray = [{ name: 'Nurse_Observation', items: [] }];

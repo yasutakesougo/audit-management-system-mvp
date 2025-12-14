@@ -22,16 +22,40 @@ type QuickUserCareFormOptions = {
   notes?: string;
 };
 
+export const getVisibleListbox = (page: Page) => page.locator('[role="listbox"]:visible').first();
+
 const selectComboboxOption = async (page: Page, option?: SelectOption) => {
+  // Use the visible listbox to avoid preview UI portal differences.
+  const listbox = getVisibleListbox(page);
+  await expect(listbox).toBeVisible({ timeout: 10_000 });
+
   if (typeof option === 'string') {
-    await page.getByRole('option', { name: option }).first().click();
+    await listbox.getByRole('option', { name: option }).first().click();
     return;
   }
   if (option instanceof RegExp) {
-    await page.getByRole('option', { name: option }).first().click();
+    await listbox.getByRole('option', { name: option }).first().click();
     return;
   }
-  await page.getByRole('option').first().click();
+  await listbox.getByRole('option').first().click();
+};
+
+export const getQuickScheduleDialog = (page: Page) => {
+  const byRole = page
+    .getByRole('dialog')
+    .filter({ has: page.getByTestId(TESTIDS['schedule-create-save']) })
+    .first();
+
+  const byPresentation = page
+    .locator('[role="presentation"]')
+    .filter({ has: page.getByTestId(TESTIDS['schedule-create-save']) })
+    .first();
+
+  const legacy = page.getByTestId(TESTIDS['schedule-create-dialog']);
+
+  const fallbackSave = page.getByTestId(TESTIDS['schedule-create-save']);
+
+  return byRole.or(byPresentation).or(legacy).or(fallbackSave).first();
 };
 
 export async function waitForDayViewReady(page: Page) {
@@ -50,11 +74,13 @@ export async function openQuickUserCareDialog(page: Page) {
   const trigger = page.getByTestId(TESTIDS.SCHEDULES_FAB_CREATE);
   await expect(trigger).toBeVisible();
   await trigger.click();
-  await expect(page.getByTestId(TESTIDS['schedule-create-dialog'])).toBeVisible();
+  const dialog = getQuickScheduleDialog(page);
+  await expect(dialog).toBeVisible({ timeout: 15_000 });
 }
 
 export async function fillQuickUserCareForm(page: Page, opts: QuickUserCareFormOptions = {}) {
-  const dialog = page.getByTestId(TESTIDS['schedule-create-dialog']);
+  const dialog = getQuickScheduleDialog(page);
+  await expect(dialog).toBeVisible({ timeout: 15_000 });
 
   if (opts.title) {
     await dialog.getByTestId(TESTIDS['schedule-create-title']).fill(opts.title);
@@ -67,6 +93,7 @@ export async function fillQuickUserCareForm(page: Page, opts: QuickUserCareFormO
     } else {
       await userInput.click();
     }
+    await expect(getVisibleListbox(page)).toBeVisible({ timeout: 10_000 });
     await selectComboboxOption(page, opts.userOptionName ?? opts.userInputValue);
   }
 
@@ -77,6 +104,7 @@ export async function fillQuickUserCareForm(page: Page, opts: QuickUserCareFormO
     } else {
       await staffInput.click();
     }
+    await expect(getVisibleListbox(page)).toBeVisible({ timeout: 10_000 });
     await selectComboboxOption(page, opts.staffOptionName ?? opts.staffInputValue);
   }
 
@@ -90,6 +118,7 @@ export async function fillQuickUserCareForm(page: Page, opts: QuickUserCareFormO
 
   if (opts.serviceOptionLabel) {
     await dialog.getByTestId(TESTIDS['schedule-create-service-type']).click();
+    await expect(getVisibleListbox(page)).toBeVisible({ timeout: 10_000 });
     await selectComboboxOption(page, opts.serviceOptionLabel);
   }
 
@@ -103,9 +132,11 @@ export async function fillQuickUserCareForm(page: Page, opts: QuickUserCareFormO
 }
 
 export async function submitQuickUserCareForm(page: Page) {
-  const dialog = page.getByTestId(TESTIDS['schedule-create-dialog']);
+  const dialog = getQuickScheduleDialog(page);
+  await expect(dialog).toBeVisible({ timeout: 15_000 });
+
   await dialog.getByTestId(TESTIDS['schedule-create-save']).click();
-  await expect(dialog).toBeHidden({ timeout: 10_000 });
+  await expect(dialog).toBeHidden({ timeout: 15_000 });
   await waitForDayTimeline(page);
 }
 
@@ -207,6 +238,13 @@ export async function openWeekEventCard(
     category?: 'User' | 'Staff' | 'Org';
   } = {},
 ) {
+  // Ensure week tab/panel is active in preview UI.
+  const weekTab = page.getByRole('tab', { name: /週|Week/i });
+  if ((await weekTab.count().catch(() => 0)) > 0) {
+    await weekTab.first().click();
+  }
+  await expect(page.locator('#panel-week:not([hidden])')).toBeVisible({ timeout: 15_000 });
+
   const root = await getWeekTimelineRoot(page);
   await expect(root).toBeVisible({ timeout: 15_000 });
 

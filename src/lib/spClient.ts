@@ -71,47 +71,99 @@ const normalizeSiteRelative = (value: string): string => {
 
 const normalizeResource = (value: string): string => value.trim().replace(/\/+$/, '');
 
-export function ensureConfig(envOverride?: { VITE_SP_RESOURCE?: string; VITE_SP_SITE_RELATIVE?: string }) {
+export function ensureConfig(envOverride?: { VITE_SP_RESOURCE?: string; VITE_SP_SITE_RELATIVE?: string; VITE_SP_SITE?: string }) {
   const overrideRecord = envOverride as EnvRecord | undefined;
+  const hasExplicitOverride = envOverride !== undefined;
+
+  const pickSite = () => {
+    const primary = readEnv('VITE_SP_SITE_RELATIVE', '', overrideRecord).trim();
+    if (primary) return primary;
+    const legacy = readEnv('VITE_SP_SITE', '', overrideRecord).trim();
+    return legacy;
+  };
+
+  const isPlaceholder = (s: string) => {
+    const normalized = (s ?? '').trim();
+    if (!normalized) return true;
+
+    const lower = normalized.toLowerCase();
+    if (normalized.includes('<') || normalized.includes('__')) return true;
+    if (/<[^>]+>/.test(normalized)) return true;
+    if (lower.includes('fill') || lower.includes('your')) return true;
+
+    return false;
+  };
+
+  const validateAndNormalize = (resourceRaw: string, siteRaw: string) => {
+    const overrideResource = sanitizeEnvValue(resourceRaw);
+    const overrideSiteRel = sanitizeEnvValue(siteRaw);
+
+    if (isPlaceholder(overrideResource) || isPlaceholder(overrideSiteRel)) {
+      throw new Error([
+        'SharePoint 接続設定が未完了です。',
+        'VITE_SP_RESOURCE 例: https://contoso.sharepoint.com（末尾スラッシュ不要）',
+        'VITE_SP_SITE_RELATIVE 例: /sites/AuditSystem（先頭スラッシュ必須・末尾不要）',
+        '`.env` を実値で更新し、開発サーバーを再起動してください。'
+      ].join('\n'));
+    }
+
+    let overrideUrl: URL;
+    try {
+      overrideUrl = new URL(overrideResource);
+    } catch {
+      throw new Error(`VITE_SP_RESOURCE の形式が不正です: ${overrideResource}`);
+    }
+
+    if (overrideUrl.protocol !== 'https:' || !/\.sharepoint\.com$/i.test(overrideUrl.hostname)) {
+      throw new Error(`VITE_SP_RESOURCE の形式が不正です: ${overrideResource}`);
+    }
+
+    const siteCandidate = normalizeSiteRelative(overrideSiteRel);
+    if (!siteCandidate.startsWith('/sites/') && !siteCandidate.startsWith('/teams/')) {
+      throw new Error(`VITE_SP_SITE_RELATIVE の形式が不正です: ${overrideSiteRel}`);
+    }
+
+    const resource = normalizeResource(overrideUrl.origin);
+    const siteRel = siteCandidate;
+    return { resource, siteRel, baseUrl: `${resource}${siteRel}/_api/web` };
+  };
+
+  if (hasExplicitOverride) {
+    return validateAndNormalize(
+      envOverride?.VITE_SP_RESOURCE ?? '',
+      envOverride?.VITE_SP_SITE_RELATIVE ?? envOverride?.VITE_SP_SITE ?? ''
+    );
+  }
 
   if (shouldBypassSharePointConfig(overrideRecord)) {
     const rawResource = readEnv('VITE_SP_RESOURCE', FALLBACK_SP_RESOURCE, overrideRecord);
-    const rawSiteRel = readEnv('VITE_SP_SITE_RELATIVE', FALLBACK_SP_SITE_RELATIVE, overrideRecord);
+    const rawSiteRel = pickSite() || FALLBACK_SP_SITE_RELATIVE;
     const resource = normalizeResource(rawResource || FALLBACK_SP_RESOURCE) || FALLBACK_SP_RESOURCE;
     const siteRel = normalizeSiteRelative(rawSiteRel || FALLBACK_SP_SITE_RELATIVE) || FALLBACK_SP_SITE_RELATIVE;
     return { resource, siteRel, baseUrl: `${resource}${siteRel}/_api/web` };
   }
 
-  const config = getAppConfig(overrideRecord);
+  const baseConfig = getAppConfig(overrideRecord);
+  const config = envOverride ? { ...baseConfig, ...(envOverride as Record<string, string | undefined>) } : baseConfig;
 
-  // E2E テスト環境では SharePoint 設定チェックをスキップ
   if (config.VITE_E2E === '1') {
     const resource = FALLBACK_SP_RESOURCE;
     const siteRel = FALLBACK_SP_SITE_RELATIVE;
     return { resource, siteRel, baseUrl: `${resource}${siteRel}/_api/web` };
   }
 
-  const rawResource = (config.VITE_SP_RESOURCE ?? '').trim();
-  const rawSiteRel = (config.VITE_SP_SITE_RELATIVE ?? '').trim();
-  const isPlaceholder = (s: string) => !s || /<yourtenant>|<SiteName>/i.test(s) || s === '__FILL_ME__';
-  if (isPlaceholder(rawResource) || isPlaceholder(rawSiteRel)) {
-    throw new Error([
-      'SharePoint 接続設定が未完了です。',
-      'VITE_SP_RESOURCE 例: https://contoso.sharepoint.com（末尾スラッシュ不要）',
-      'VITE_SP_SITE_RELATIVE 例: /sites/AuditSystem（先頭スラッシュ必須・末尾不要）',
-      '`.env` を実値で更新し、開発サーバーを再起動してください。'
-    ].join('\n'));
-  }
-  const resourceCandidate = normalizeResource(rawResource);
-  if (!/^https:\/\/.+\.sharepoint\.com$/i.test(resourceCandidate)) {
-    throw new Error(`VITE_SP_RESOURCE の形式が不正です: ${rawResource}`);
-  }
-  const resource = resourceCandidate;
-  const siteRel = normalizeSiteRelative(rawSiteRel);
-  return { resource, siteRel, baseUrl: `${resource}${siteRel}/_api/web` };
+  const rawResource = sanitizeEnvValue(config.VITE_SP_RESOURCE ?? '');
+  const rawSiteRel = sanitizeEnvValue(
+    (config as unknown as { VITE_SP_SITE_RELATIVE?: string; VITE_SP_SITE?: string }).VITE_SP_SITE_RELATIVE ??
+      (config as unknown as { VITE_SP_SITE?: string }).VITE_SP_SITE ??
+      ''
+  );
+
+  return validateAndNormalize(rawResource, rawSiteRel);
 }
 
 const DEFAULT_LIST_TEMPLATE = 100;
+
 
 type JsonRecord = Record<string, unknown>;
 

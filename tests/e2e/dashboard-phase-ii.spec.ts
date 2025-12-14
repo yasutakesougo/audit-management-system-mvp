@@ -105,7 +105,8 @@ test.describe('Dashboard Phase II - Mini E2E Tests', () => {
 
     if (alertCount > 1) {
       // 複数アラートがある場合、優先度順序を確認
-      const alertSeverities = [];
+      type AlertSeverity = 'error' | 'warning' | 'info';
+      const alertSeverities: AlertSeverity[] = [];
 
       for (let i = 0; i < Math.min(alertCount, 3); i++) {
         const alert = alerts.nth(i);
@@ -113,7 +114,7 @@ test.describe('Dashboard Phase II - Mini E2E Tests', () => {
         const alertTestId = await alert.getAttribute('data-testid') || '';
 
         // severity class または test-id から重要度を判定
-        let severity = 'info';
+        let severity: AlertSeverity = 'info';
         if (alertClasses.includes('error') || alertTestId.includes('error')) {
           severity = 'error';
         } else if (alertClasses.includes('warning') || alertTestId.includes('warning')) {
@@ -124,7 +125,7 @@ test.describe('Dashboard Phase II - Mini E2E Tests', () => {
       }
 
       // error が warning より前、warning が info より前にあることを確認
-      const severityOrder = { error: 0, warning: 1, info: 2 };
+      const severityOrder: Record<AlertSeverity, number> = { error: 0, warning: 1, info: 2 };
       let isCorrectOrder = true;
 
       for (let i = 0; i < alertSeverities.length - 1; i++) {

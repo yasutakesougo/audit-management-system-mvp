@@ -38,7 +38,7 @@ const DEFAULT_ORG_FIXTURES = [
   },
 ];
 
-type SetupSharePointOptions = Parameters<typeof setupSharePointStubs>[1];
+type SetupSharePointOptions = NonNullable<Parameters<typeof setupSharePointStubs>[1]>;
 type ListConfigArray = NonNullable<SetupSharePointOptions['lists']>;
 
 export type BootUsersOptions = {

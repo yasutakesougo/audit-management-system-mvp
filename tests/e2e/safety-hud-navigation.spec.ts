@@ -78,15 +78,17 @@ test.describe('Dashboard Safety HUD - Navigation E2E', () => {
     console.log(`Found ${alertCount} alerts for priority testing`);
 
     if (alertCount > 1) {
+      type Severity = 'error' | 'warning' | 'info';
+
       // 各アラートの class や data-testid から severity を推測
-      const severities = [];
+      const severities: Severity[] = [];
 
       for (let i = 0; i < Math.min(alertCount, 3); i++) {
         const alert = alerts.nth(i);
         const classList = await alert.getAttribute('class') || '';
         const testId = await alert.getAttribute('data-testid') || '';
 
-        let severity = 'info'; // default
+        let severity: Severity = 'info'; // default
 
         if (classList.includes('error') || testId.includes('error')) {
           severity = 'error';
@@ -99,7 +101,7 @@ test.describe('Dashboard Safety HUD - Navigation E2E', () => {
       }
 
       // 順序の検証（error -> warning -> info）
-      const severityOrder = { error: 0, warning: 1, info: 2 };
+      const severityOrder: Record<Severity, number> = { error: 0, warning: 1, info: 2 };
       let isCorrectOrder = true;
 
       for (let i = 0; i < severities.length - 1; i++) {

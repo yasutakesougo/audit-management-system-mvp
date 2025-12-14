@@ -30,6 +30,7 @@ const HealthObservationPage = React.lazy(() => import('@/pages/HealthObservation
 const AnalysisDashboardPage = React.lazy(() => import('@/pages/AnalysisDashboardPage'));
 const AssessmentDashboardPage = React.lazy(() => import('@/pages/AssessmentDashboardPage'));
 const TokuseiSurveyResultsPage = React.lazy(() => import('@/pages/TokuseiSurveyResultsPage'));
+const IcebergPdcaPage = React.lazy(() => import('@/pages/IcebergPdcaPage'));
 const IcebergAnalysisPage = React.lazy(() => import('@/pages/IcebergAnalysisPage'));
 
 const AttendanceRecordPage = React.lazy(() => import('@/pages/AttendanceRecordPage'));
@@ -219,6 +220,21 @@ const SuspendedAnalysisDashboardPage: React.FC = () => (
       )}
     >
       <AnalysisDashboardPage />
+    </React.Suspense>
+  </RouteHydrationErrorBoundary>
+);
+
+import { IcebergPdcaGate } from '@/features/iceberg-pdca/IcebergPdcaGate';
+const SuspendedIcebergPdcaPage: React.FC = () => (
+  <RouteHydrationErrorBoundary>
+    <React.Suspense
+      fallback={(
+        <div className="p-4 text-sm text-slate-600" role="status">
+          氷山PDCAボードを読み込んでいます…
+        </div>
+      )}
+    >
+      <IcebergPdcaPage />
     </React.Suspense>
   </RouteHydrationErrorBoundary>
 );
@@ -467,6 +483,22 @@ const childRoutes: RouteObject[] = [
   { path: 'daily/time-based', element: <SuspendedTimeBasedSupportRecordPage /> },
   { path: 'daily/health', element: <SuspendedHealthObservationPage /> },
   { path: 'analysis/dashboard', element: <SuspendedAnalysisDashboardPage /> },
+  {
+    path: 'analysis/iceberg-pdca',
+    element: (
+      <IcebergPdcaGate>
+        <SuspendedIcebergPdcaPage />
+      </IcebergPdcaGate>
+    ),
+  },
+  {
+    path: 'analysis/iceberg-pdca/edit',
+    element: (
+      <IcebergPdcaGate requireEdit>
+        <SuspendedIcebergPdcaPage />
+      </IcebergPdcaGate>
+    ),
+  },
   { path: 'analysis/iceberg', element: <SuspendedIcebergAnalysisPage /> },
   { path: 'assessment', element: <SuspendedAssessmentDashboardPage /> },
   { path: 'survey/tokusei', element: <SuspendedTokuseiSurveyResultsPage /> },

@@ -6,7 +6,7 @@ import '@testing-library/jest-dom/vitest';
 import { cleanup } from '@testing-library/react';
 import { webcrypto } from 'crypto';
 import { toHaveNoViolations } from 'jest-axe';
-import { afterEach, expect } from 'vitest';
+import { afterEach, beforeEach, expect, vi } from 'vitest';
 
 process.env.TZ ??= 'Asia/Tokyo';
 // Provide safe defaults for MSAL-dependent modules during unit tests
@@ -16,12 +16,46 @@ process.env.VITE_MSAL_CLIENT_ID ??= '11111111-2222-3333-4444-555555555555';
 process.env.VITE_MSAL_TENANT_ID ??= 'test-tenant';
 process.env.VITE_MSAL_REDIRECT_URI ??= 'http://localhost:5173';
 
+// Snapshot baseline env to restore after each test to avoid cross-test leakage
+const ORIGINAL_ENV = { ...process.env };
+const CLEAN_ENV = { ...ORIGINAL_ENV };
+const ENV_KEYS_TO_CLEAR = [
+	'VITE_SP_RESOURCE',
+	'VITE_SP_SITE_RELATIVE',
+	'VITE_SP_SITE',
+	'VITE_SP_SCOPE_DEFAULT',
+	'VITE_MSAL_SCOPES',
+	'VITE_LOGIN_SCOPES',
+	'VITE_MSAL_LOGIN_SCOPES',
+	'VITE_SKIP_LOGIN',
+	'VITE_SKIP_SHAREPOINT',
+	'VITE_FORCE_SHAREPOINT',
+	'VITE_FORCE_DEMO',
+	'VITE_DEMO_MODE',
+	'VITE_E2E_MSAL_MOCK',
+	'VITE_E2E',
+	'VITE_FEATURE_SCHEDULES_SP',
+];
+
+for (const key of ENV_KEYS_TO_CLEAR) {
+	delete CLEAN_ENV[key];
+}
+
 type JestLikeMatcher = (this: unknown, ...args: unknown[]) => { pass: boolean; message(): string };
 
 expect.extend(toHaveNoViolations as unknown as Record<string, JestLikeMatcher>);
 
+beforeEach(() => {
+	// Ensure every test starts from a clean environment (covers vi.stubEnv/import.meta.env)
+	vi.unstubAllEnvs?.();
+	process.env = { ...CLEAN_ENV };
+});
+
 afterEach(() => {
 	cleanup();
+	vi.restoreAllMocks();
+	vi.unstubAllEnvs?.();
+	process.env = { ...CLEAN_ENV };
 });
 
 declare module 'vitest' {

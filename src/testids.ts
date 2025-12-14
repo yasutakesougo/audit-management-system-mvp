@@ -5,6 +5,7 @@ const NAV_TESTIDS = {
   dashboard: 'nav-dashboard',
   analysis: 'nav-analysis',
   iceberg: 'nav-iceberg',
+  icebergPdca: 'nav-iceberg-pdca',
   assessment: 'nav-assessment',
   daily: 'nav-daily',
   checklist: 'nav-checklist',
@@ -32,6 +33,7 @@ export const TESTIDS = {
   'dashboard-page-tabs': 'dashboard-page-tabs', // 🧪 黒ノート機能タブ専用（日次ダッシュボードと区別）
   'dashboard-records': 'dashboard-records',
   'audit-heading': 'audit-heading',
+  'iceberg-pdca-root': 'iceberg-pdca-root',
 
   // Dashboard Tabs (黒ノート機能個別タブ) 🌱 E2Eでタブ切替を細かく検査用
   'dashboard-tab-management': 'dashboard-tab-management',
@@ -59,6 +61,7 @@ export const TESTIDS = {
   'nav-dashboard': 'nav-dashboard',
   'nav-analysis': 'nav-analysis',
   'nav-iceberg': 'nav-iceberg',
+  'nav-iceberg-pdca': 'nav-iceberg-pdca',
   'nav-assessment': 'nav-assessment',
   'nav-daily': 'nav-daily',
   'nav-checklist': 'nav-checklist',
