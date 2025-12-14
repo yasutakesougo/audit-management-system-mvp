@@ -40,6 +40,7 @@ const defaultFlags: FeatureFlagSnapshot = {
   schedulesCreate: true,
   complianceForm: false,
   schedulesWeekV2: false,
+  icebergPdca: false,
 };
 
 const LocationProbe: React.FC<{ testId: string }> = ({ testId }) => {

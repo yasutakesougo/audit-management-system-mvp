@@ -9,6 +9,7 @@ import {
   makeSharePointSchedulesPort,
 } from '@/features/schedules/data';
 import CssBaseline from '@mui/material/CssBaseline';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import React, { useEffect, useMemo, type ReactNode } from 'react';
 import { RouterProvider } from 'react-router-dom';
 import { router } from './app/router';
@@ -32,6 +33,8 @@ const sharePointFeatureEnabled = readBool('VITE_FEATURE_SCHEDULES_SP', scheduleS
 const forceSharePointList = readBool('VITE_FORCE_SHAREPOINT', false);
 const sharePointCreateEnabled = sharePointFeatureEnabled;
 const sharePointListEnabled = sharePointFeatureEnabled || forceSharePointList;
+
+const queryClient = new QueryClient();
 
 type ScheduleCreateHandler = (input: CreateScheduleEventInput) => Promise<SchedItem>;
 
@@ -90,21 +93,23 @@ function App() {
   return (
     <MsalProvider>
       {/* 🔐 認証コンテキスト */}
-      <ThemeRoot>
-        <CssBaseline />
-        {/* 🎨 MUIテーマ + グローバルスタイル */}
-        <ToastProvider>
-          {/* 📢 グローバルトースト通知 */}
-          <SchedulesProviderBridge>
-            {/* 📅 スケジュール機能のデータポート（Graph / デモ切替） */}
-            <ToastNotifierBridge />
+      <QueryClientProvider client={queryClient}>
+        <ThemeRoot>
+          <CssBaseline />
+          {/* 🎨 MUIテーマ + グローバルスタイル */}
+          <ToastProvider>
+            {/* 📢 グローバルトースト通知 */}
+            <SchedulesProviderBridge>
+              {/* 📅 スケジュール機能のデータポート（Graph / デモ切替） */}
+              <ToastNotifierBridge />
 
-            <RouterProvider router={router} future={routerFutureFlags} />
-          </SchedulesProviderBridge>
-        </ToastProvider>
-        {/* 🔍 開発/検証用 HUD（本番では非表示可能） */}
-        {hydrationHudEnabled && <HydrationHud />}
-      </ThemeRoot>
+              <RouterProvider router={router} future={routerFutureFlags} />
+            </SchedulesProviderBridge>
+          </ToastProvider>
+          {/* 🔍 開発/検証用 HUD（本番では非表示可能） */}
+          {hydrationHudEnabled && <HydrationHud />}
+        </ThemeRoot>
+      </QueryClientProvider>
     </MsalProvider>
   );
 }
