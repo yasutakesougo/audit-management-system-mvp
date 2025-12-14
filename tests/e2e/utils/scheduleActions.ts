@@ -135,7 +135,11 @@ export async function submitQuickUserCareForm(page: Page) {
   const dialog = getQuickScheduleDialog(page);
   await expect(dialog).toBeVisible({ timeout: 15_000 });
 
-  await dialog.getByTestId(TESTIDS['schedule-create-save']).click();
+  const saveButton = dialog.getByTestId(TESTIDS['schedule-create-save']);
+  await expect(saveButton).toBeVisible({ timeout: 15_000 });
+  await expect(saveButton).toBeEnabled({ timeout: 15_000 });
+
+  await saveButton.click();
   await expect(dialog).toBeHidden({ timeout: 15_000 });
   await waitForDayTimeline(page);
 }
@@ -261,10 +265,12 @@ export async function openWeekEventCard(
   if ((await buttonCandidate.count().catch(() => 0)) > 0) {
     await buttonCandidate.focus();
     await buttonCandidate.click();
+    await expect(getQuickScheduleDialog(page)).toBeVisible({ timeout: 15_000 });
     return buttonCandidate;
   }
   await target.focus();
   await target.click();
+  await expect(getQuickScheduleDialog(page)).toBeVisible({ timeout: 15_000 });
   return target;
 }
 
