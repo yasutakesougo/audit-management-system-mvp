@@ -224,6 +224,7 @@ const SuspendedAnalysisDashboardPage: React.FC = () => (
   </RouteHydrationErrorBoundary>
 );
 
+import { IcebergPdcaGate } from '@/features/iceberg-pdca/IcebergPdcaGate';
 const SuspendedIcebergPdcaPage: React.FC = () => (
   <RouteHydrationErrorBoundary>
     <React.Suspense
@@ -482,7 +483,22 @@ const childRoutes: RouteObject[] = [
   { path: 'daily/time-based', element: <SuspendedTimeBasedSupportRecordPage /> },
   { path: 'daily/health', element: <SuspendedHealthObservationPage /> },
   { path: 'analysis/dashboard', element: <SuspendedAnalysisDashboardPage /> },
-  { path: 'analysis/iceberg-pdca', element: <SuspendedIcebergPdcaPage /> },
+  {
+    path: 'analysis/iceberg-pdca',
+    element: (
+      <IcebergPdcaGate>
+        <SuspendedIcebergPdcaPage />
+      </IcebergPdcaGate>
+    ),
+  },
+  {
+    path: 'analysis/iceberg-pdca/edit',
+    element: (
+      <IcebergPdcaGate requireEdit>
+        <SuspendedIcebergPdcaPage />
+      </IcebergPdcaGate>
+    ),
+  },
   { path: 'analysis/iceberg', element: <SuspendedIcebergAnalysisPage /> },
   { path: 'assessment', element: <SuspendedAssessmentDashboardPage /> },
   { path: 'survey/tokusei', element: <SuspendedTokuseiSurveyResultsPage /> },
