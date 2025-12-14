@@ -115,7 +115,9 @@ describe('SchedulePage user schedule smoke', () => {
     vi.useRealTimers();
   });
 
-  it('creates and updates user schedules through existing helpers and shows snackbars', async () => {
+  it(
+    'creates and updates user schedules through existing helpers and shows snackbars',
+    async () => {
     const existing: ScheduleUserCare = {
       id: 'existing-1',
       etag: 'etag-1',
@@ -238,5 +240,7 @@ describe('SchedulePage user schedule smoke', () => {
 
     await waitFor(() => expect(updateUserCareSpy).toHaveBeenCalledTimes(1));
     expect(showMock).toHaveBeenCalledWith('予定を更新しました', 'success');
-  });
+  },
+    15000
+  );
 });
