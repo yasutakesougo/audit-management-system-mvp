@@ -430,9 +430,15 @@ export const HydrationHud: React.FC = () => {
             </div>
             <div data-testid="hud-thresholds" style={{ ...listStyle, gap: 4 }}>
               <div style={thresholdsRowStyle}>
-                <span>乖離しきい値: {thresholds.discrepancyMinutes} 分</span>
-                <span>月間欠席上限: {thresholds.absenceMonthlyLimit} 回</span>
-                <span>施設閉所時刻: {thresholds.facilityCloseTime} ({thresholds.facilityCloseMinutes}分)</span>
+                <span data-testid="hud-threshold-discrepancy" data-value={`${thresholds.discrepancyMinutes}m`}>
+                  乖離しきい値: {thresholds.discrepancyMinutes} 分
+                </span>
+                <span data-testid="hud-threshold-absence" data-value={String(thresholds.absenceMonthlyLimit)}>
+                  月間欠席上限: {thresholds.absenceMonthlyLimit} 回
+                </span>
+                <span data-testid="hud-threshold-closeTime" data-value={thresholds.facilityCloseTime}>
+                  施設閉所時刻: {thresholds.facilityCloseTime} ({thresholds.facilityCloseMinutes}分)
+                </span>
               </div>
             </div>
             <div style={sectionLabelStyle}>

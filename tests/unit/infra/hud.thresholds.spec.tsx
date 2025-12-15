@@ -47,5 +47,9 @@ describe('HUD thresholds section', () => {
     expect(thresholds).toHaveTextContent('乖離しきい値: 15 分');
     expect(thresholds).toHaveTextContent('月間欠席上限: 3 回');
     expect(thresholds).toHaveTextContent('施設閉所時刻: 18:30 (1110分)');
+
+    expect(screen.getByTestId('hud-threshold-discrepancy')).toHaveAttribute('data-value', '15m');
+    expect(screen.getByTestId('hud-threshold-absence')).toHaveAttribute('data-value', '3');
+    expect(screen.getByTestId('hud-threshold-closeTime')).toHaveAttribute('data-value', '18:30');
   });
 });
