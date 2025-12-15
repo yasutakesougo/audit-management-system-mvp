@@ -62,31 +62,6 @@ const buildScheduleItems = () => {
     (livingCare as any).cr014_readOnly = false;
   }
 
-  // Ensure an explicit living care event exists in the list for edit targeting.
-  const startIso = `${TEST_DAY_KEY}T14:00:00+09:00`;
-  const endIso = `${TEST_DAY_KEY}T14:30:00+09:00`;
-  items.push({
-    Id: 9999,
-    Title: '生活介護 午後ケア',
-    Start: startIso,
-    EventDate: startIso,
-    End: endIso,
-    EndDate: endIso,
-    AllDay: false,
-    Status: '下書き',
-    Location: '生活介護室A',
-    cr014_category: 'User',
-    cr014_serviceType: '生活介護',
-    cr014_personType: 'Internal',
-    cr014_personId: 'U-101',
-    cr014_personName: '田中 実',
-    cr014_staffIds: ['101'],
-    cr014_staffNames: ['E2E Admin'],
-    cr014_dayKey: TEST_DAY_KEY,
-    cr014_fiscalYear: formatInTimeZone(TEST_DATE, TIME_ZONE, 'yyyy'),
-    '@odata.etag': '"e2e-living-care"',
-  } as any);
-
   const legacyPending = items.find((item) => item.Id === 9102);
   if (legacyPending) {
     legacyPending.Status = '申請中';
@@ -216,7 +191,7 @@ test.describe('Schedule dialog: status/service end-to-end', () => {
       const userItems = await getWeekScheduleItems(page, { category: 'User' });
       await expect(userItems.first()).toBeVisible({ timeout: 15_000 });
 
-    const targetRow = await getWeekRowById(page, 9_999);
+    const targetRow = await getWeekRowById(page, 9_101);
     await expect(targetRow).toBeVisible({ timeout: 15_000 });
 
     const editor = await openWeekEventEditor(page, targetRow, {

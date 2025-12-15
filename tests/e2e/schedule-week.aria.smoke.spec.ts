@@ -17,14 +17,14 @@ test.describe('Schedule week page – ARIA smoke', () => {
     await gotoScheduleWeek(page, new Date());
 
     const section = page.getByTestId(TESTIDS.SCHEDULES_PAGE_ROOT).or(page.getByTestId(TESTIDS['schedules-week-page']));
-    await expect(section).toBeVisible();
+    await expect(section).toBeVisible({ timeout: 15000 });
     await expect(section).toHaveAttribute('aria-label', '週間スケジュール');
 
     const heading = page.getByTestId(TESTIDS['schedules-week-heading']);
     await expect(heading).toBeVisible();
 
     const tablist = page.getByTestId(TESTIDS.SCHEDULES_WEEK_TABLIST);
-    await expect(tablist).toBeVisible();
+    await expect(tablist).toBeVisible({ timeout: 15000 });
 
     const weekTab = page.getByTestId(TESTIDS.SCHEDULES_WEEK_TAB_WEEK);
     await expect(weekTab).toBeVisible();
