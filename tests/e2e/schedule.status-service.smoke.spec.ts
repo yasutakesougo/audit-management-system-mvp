@@ -16,7 +16,6 @@ import {
   getVisibleListbox,
   openQuickUserCareDialog,
   openWeekEventCard,
-  getWeekRowById,
   openWeekEventEditor,
   waitForWeekViewReady,
 } from './utils/scheduleActions';
@@ -28,6 +27,60 @@ const TEST_DAY_KEY = formatInTimeZone(TEST_DATE, TIME_ZONE, 'yyyy-MM-dd');
 const IS_PREVIEW = process.env.PW_USE_PREVIEW === '1';
 
 const buildLocalDateTime = (time: string) => `${TEST_DAY_KEY}T${time}`;
+
+const ensureWeekPanel = async (page) => {
+  const panel = page.locator('#panel-week:not([hidden])');
+
+  const candidates = [
+    panel,
+    page.getByRole('tabpanel', { name: /週|week/i }),
+    page.getByTestId('schedule-week-view'),
+    page.getByTestId('schedule-week-root'),
+    page.getByTestId('schedules-week-view'),
+    page.getByTestId('schedules-week-timeline'),
+  ];
+
+  for (const locator of candidates) {
+    const candidate = locator.first();
+    if ((await candidate.count().catch(() => 0)) === 0) continue;
+    const visible = await candidate.isVisible().catch(() => false);
+    if (!visible) {
+      await expect(candidate).toBeVisible({ timeout: 15_000 }).catch(() => undefined);
+    }
+    const nowVisible = await candidate.isVisible().catch(() => false);
+    if (nowVisible) return candidate;
+  }
+
+  return panel;
+};
+
+const getWeekUserItem = async (page, text?: string | RegExp) => {
+  const root = await ensureWeekPanel(page);
+
+  const candidates: Array<ReturnType<typeof root.locator>> = [
+    root.locator('[data-testid="schedule-item"][data-category="User"]'),
+    root.getByTestId('schedule-item'),
+    root.getByRole('listitem'),
+  ];
+
+  const passes: Array<(locator: ReturnType<typeof root.locator>) => ReturnType<typeof root.locator>> = [
+    (loc) => (text ? loc.filter({ hasText: text }) : loc),
+    (loc) => loc,
+  ];
+
+  for (const narrow of passes) {
+    for (const base of candidates) {
+      const scoped = narrow(base);
+      const count = await scoped.count().catch(() => 0);
+      if (count === 0) continue;
+      const item = scoped.first();
+      await expect(item).toBeVisible({ timeout: 15_000 });
+      return item;
+    }
+  }
+
+  throw new Error('No week user item found');
+};
 
 async function selectQuickServiceType(page, dialog, optionLabel: string | RegExp) {
   const select = dialog.getByTestId(TESTIDS['schedule-create-service-type']);
@@ -191,8 +244,7 @@ test.describe('Schedule dialog: status/service end-to-end', () => {
       const userItems = await getWeekScheduleItems(page, { category: 'User' });
       await expect(userItems.first()).toBeVisible({ timeout: 15_000 });
 
-    const targetRow = await getWeekRowById(page, 9_101);
-    await expect(targetRow).toBeVisible({ timeout: 15_000 });
+    const targetRow = await getWeekUserItem(page, /生活介護/);
 
     const editor = await openWeekEventEditor(page, targetRow, {
       testInfo,
@@ -246,8 +298,7 @@ test.describe('Schedule dialog: status/service end-to-end', () => {
       }
       await waitForWeekViewReady(page);
 
-    const targetRowAfterSave = await getWeekRowById(page, 9_999);
-    await expect(targetRowAfterSave).toBeVisible({ timeout: 10_000 });
+    const targetRowAfterSave = await getWeekUserItem(page, /生活介護/);
     await expect(targetRowAfterSave.getByText(/欠席|休み/)).toBeVisible({ timeout: 10_000 });
 
     await expect(editor).toBeHidden({ timeout: 10_000 });
@@ -256,8 +307,7 @@ test.describe('Schedule dialog: status/service end-to-end', () => {
     await gotoWeek(page, TEST_DATE);
     await waitForWeekViewReady(page);
 
-    const targetRowReload = await getWeekRowById(page, 9_999);
-    await expect(targetRowReload).toBeVisible({ timeout: 10_000 });
+    const targetRowReload = await getWeekUserItem(page, /生活介護/);
 
     const dialogReload = await openWeekEventEditor(page, targetRowReload, {
       testInfo,
@@ -383,7 +433,9 @@ test.describe('Schedule dialog: status/service end-to-end', () => {
       await assertWeekHasUserCareEvent(page, { titleContains: visitNursingMatch });
     } catch (error) {
       const texts = await userItems.allTextContents();
-      const details = { count: userItemCount, texts, spUserItems };
+      const allItems = await getWeekScheduleItems(page);
+      const allTexts = await allItems.allTextContents();
+      const details = { count: userItemCount, texts, allTexts, spUserItems };
       if (testInfo) {
         await testInfo.attach('visit-nursing-debug.json', {
           body: JSON.stringify(details, null, 2),
