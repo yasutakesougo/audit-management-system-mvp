@@ -43,8 +43,9 @@ export const MonthlySummaryTable: React.FC<MonthlySummaryTableProps> = ({
   onReaggregate,
   onUserSelect,
 }) => {
+  const initialMonth = React.useMemo<YearMonth>(() => summaries[0]?.yearMonth ?? getCurrentYearMonth(), [summaries]);
   const [searchQuery, setSearchQuery] = React.useState('');
-  const [selectedMonth, setSelectedMonth] = React.useState<YearMonth>(getCurrentYearMonth());
+  const [selectedMonth, setSelectedMonth] = React.useState<YearMonth>(initialMonth);
   const [completionRateFilter, setCompletionRateFilter] = React.useState<string>('all');
   const [sort, setSort] = React.useState<MonthlyRecordSort>({
     key: 'completionRate',
@@ -52,6 +53,12 @@ export const MonthlySummaryTable: React.FC<MonthlySummaryTableProps> = ({
   });
   const [reaggregatingUsers, setReaggregatingUsers] = React.useState<Set<string>>(new Set());
   const [statusMessage, setStatusMessage] = React.useState('');
+
+  React.useEffect(() => {
+    if (summaries.length === 0) return;
+    const firstMonth = summaries[0].yearMonth;
+    setSelectedMonth((prev) => (summaries.some((s) => s.yearMonth === prev) ? prev : firstMonth));
+  }, [summaries]);
 
   // フィルタリング
   const filteredSummaries = React.useMemo(() => {

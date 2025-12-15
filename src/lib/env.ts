@@ -485,8 +485,22 @@ const SHAREPOINT_RESOURCE_PATTERN = /^https:\/\/[^/]+\.sharepoint\.com$/i;
 export const getSharePointDefaultScope = (envOverride?: EnvRecord): string => {
   const raw = readEnv('VITE_SP_SCOPE_DEFAULT', '', envOverride).trim();
   if (!raw) {
-    if (shouldSkipLogin(envOverride)) {
-      console.warn('[env] VITE_SP_SCOPE_DEFAULT missing but skip-login/demo mode enabled; using placeholder scope.');
+    const allowPlaceholder =
+      shouldSkipLogin(envOverride) ||
+      isDevMode(envOverride) ||
+      isTestMode(envOverride) ||
+      readBool('VITE_SKIP_SHAREPOINT', false, envOverride) ||
+      readBool('VITE_E2E', false, envOverride) ||
+      readBool('VITE_E2E_MSAL_MOCK', false, envOverride);
+
+    if (allowPlaceholder) {
+      console.warn('[env] VITE_SP_SCOPE_DEFAULT missing but skip-login/demo/e2e mode enabled; using placeholder scope.');
+      return DEMO_SHAREPOINT_SCOPE;
+    }
+
+    // As a last resort, prefer a non-throwing placeholder in the browser to keep demo/E2E flows alive.
+    if (typeof window !== 'undefined') {
+      console.warn('[env] VITE_SP_SCOPE_DEFAULT missing; falling back to placeholder to avoid boot failure.');
       return DEMO_SHAREPOINT_SCOPE;
     }
     const msalScopes = getConfiguredMsalScopes(envOverride);

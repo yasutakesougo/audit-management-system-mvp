@@ -283,6 +283,7 @@ const DayTimelineSection: React.FC<DayTimelineSectionProps> = ({ day, category, 
               >
                 <Paper
                   data-testid="schedule-item"
+                  data-id={item.id}
                   data-category={category}
                   elevation={3}
                   sx={{

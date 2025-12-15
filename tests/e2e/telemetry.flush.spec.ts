@@ -1,9 +1,10 @@
 import { expect, test } from '@playwright/test';
 
 import { prepareHydrationApp } from './_helpers/hydrationHud';
+import { scrollAndClick, waitForAppRoot, waitVisible } from './utils/pageReady';
 
 test.describe('Telemetry flush', () => {
-  test('flushes spans via HUD and falls back on sendBeacon failure', async ({ page }) => {
+  test('flushes spans via HUD and falls back on sendBeacon failure', async ({ page }, testInfo) => {
     await page.addInitScript(() => {
       const win = window as typeof window & { __ENV__?: Record<string, string | undefined> };
       win.__ENV__ = {
@@ -37,12 +38,16 @@ test.describe('Telemetry flush', () => {
     });
 
     await page.goto('/', { waitUntil: 'domcontentloaded' });
-    await expect(page.getByRole('main')).toBeVisible();
+    await waitForAppRoot(page, undefined, { testInfo, label: 'telemetry-app' });
 
-    await page.getByTestId('prefetch-hud-toggle').click();
-    await expect(page.getByTestId('hud-telemetry')).toBeVisible();
+    const hudToggle = page.getByTestId('prefetch-hud-toggle');
+    await scrollAndClick(hudToggle, page, { testInfo, label: 'telemetry-hud-toggle' });
 
-    await page.getByTestId('hud-telemetry-flush').click();
+    const hud = page.getByTestId('hud-telemetry');
+    await waitVisible(hud, page, { testInfo, label: 'telemetry-hud' });
+
+    const flush = page.getByTestId('hud-telemetry-flush');
+    await scrollAndClick(flush, page, { testInfo, label: 'telemetry-flush' });
     await expect.poll(() => payloads.length).toBeGreaterThanOrEqual(1);
 
     await page.evaluate(() => {
@@ -52,7 +57,7 @@ test.describe('Telemetry flush', () => {
       }
     });
 
-    await page.getByTestId('hud-telemetry-flush').click();
+    await scrollAndClick(flush, page, { testInfo, label: 'telemetry-flush-retry' });
     await expect.poll(() => payloads.length).toBeGreaterThanOrEqual(2);
 
     const telemetryCalls = await page.evaluate(() => {

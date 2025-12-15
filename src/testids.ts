@@ -130,6 +130,7 @@ export const TESTIDS = {
   SCHEDULES_NEXT_WEEK: 'schedules-next-week',
   SCHEDULES_FAB_CREATE: 'schedules-fab-create',
   'schedules-week-live': 'schedules-week-live',
+  'schedule-item-menu': 'schedule-item-menu',
   SCHEDULES_MONTH_PAGE: 'schedules-month-page',
   SCHEDULES_MONTH_HEADING_ID: 'schedules-month-heading',
   SCHEDULES_MONTH_RANGE_ID: 'schedules-month-range',
@@ -140,6 +141,7 @@ export const TESTIDS = {
   'schedules-event-normal': 'schedules-event-normal',
   'schedule-create-quick-button': 'schedule-create-quick-button',
   'schedule-create-dialog': 'schedule-create-dialog',
+  'schedule-editor-root': 'schedule-editor-root',
   'schedule-create-heading': 'schedule-create-heading',
   'schedule-create-description': 'schedule-create-description',
   'schedule-create-error-alert': 'schedule-create-error-alert',
@@ -155,6 +157,7 @@ export const TESTIDS = {
   'schedule-create-vehicle-id': 'schedule-create-vehicle-id',
   'schedule-create-status': 'schedule-create-status',
   'schedule-create-save': 'schedule-create-save',
+  'schedule-editor-save': 'schedule-editor-save',
   'dev-schedule-dialog-open': 'dev-schedule-dialog-open',
   'dev-schedule-dialog-page': 'dev-schedule-dialog-page',
 
@@ -313,6 +316,7 @@ export const TESTIDS = {
 
   // Users feature
   'users-panel-root': 'users-panel-root',
+  'users-panel-open': 'users-panel-open',
   'users-panel-search': 'users-panel-search',
   'users-panel-filter-active': 'users-panel-filter-active',
   'users-panel-filter-severe': 'users-panel-filter-severe',

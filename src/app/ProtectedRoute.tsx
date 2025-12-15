@@ -1,7 +1,7 @@
 import { useAuth } from '@/auth/useAuth';
 import { useFeatureFlag, type FeatureFlagSnapshot } from '@/config/featureFlags';
 import { isE2E } from '@/env';
-import { getAppConfig } from '@/lib/env';
+import { getAppConfig, isDemoModeEnabled, readEnv } from '@/lib/env';
 import Button from '@mui/material/Button';
 import Paper from '@mui/material/Paper';
 import Stack from '@mui/material/Stack';
@@ -25,6 +25,29 @@ const debug = (...args: unknown[]) => {
   }
 };
 
+const isAutomationRuntime = (): boolean => {
+  if (typeof navigator !== 'undefined' && navigator.webdriver) return true;
+  if (typeof window !== 'undefined') {
+    const automationHints = window as Window & { __PLAYWRIGHT__?: unknown; Cypress?: unknown };
+    if (automationHints.__PLAYWRIGHT__ || automationHints.Cypress) return true;
+  }
+  if (typeof process !== 'undefined' && process.env) {
+    if (process.env.VITEST === '1' || process.env.PLAYWRIGHT_TEST === '1') return true;
+  }
+  return false;
+};
+
+const isSkipLoginEnabled = (): boolean => readEnv('VITE_SKIP_LOGIN', '0') === '1';
+
+const isMsalConfigured = (): boolean => {
+  const clientId = readEnv('VITE_MSAL_CLIENT_ID', readEnv('VITE_AAD_CLIENT_ID', '')).trim();
+  const tenantId = readEnv('VITE_MSAL_TENANT_ID', readEnv('VITE_AAD_TENANT_ID', '')).trim();
+  if (!clientId || !tenantId) return false;
+  if (clientId.toLowerCase().includes('dummy')) return false;
+  if (tenantId.toLowerCase().includes('dummy')) return false;
+  return true;
+};
+
 /**
  * Determine if a feature flag should be bypassed in E2E environment.
  * Critical flags that need E2E testing should return false.
@@ -44,6 +67,19 @@ export default function ProtectedRoute({ flag, children, fallbackPath = '/' }: P
   const { isAuthenticated, loading, shouldSkipLogin, signIn } = useAuth();
   const location = useLocation();
   const pendingPath = useMemo(() => `${location.pathname}${location.search ?? ''}`, [location.pathname, location.search]);
+
+  const isAutomationOrDemo = isAutomationRuntime() || isDemoModeEnabled();
+  const allowBypass = isAutomationOrDemo || isSkipLoginEnabled() || !isMsalConfigured();
+
+  // Automation / Demo / Skip-login / 未設定MSALでは認証ガードをバイパス（フラグは尊重）
+  if (allowBypass) {
+    if (!enabled) {
+      debug('Bypass blocked: feature disabled for flag:', flag, '- redirecting to', fallbackPath);
+      return <Navigate to={fallbackPath} replace />;
+    }
+    debug('Bypass enabled (automation/demo/skip-login/msal-missing) for flag:', flag);
+    return children;
+  }
 
   // E2E環境では、重要でないフラグは bypass して画面テストを優先
   if (isE2E && shouldBypassInE2E(flag)) {

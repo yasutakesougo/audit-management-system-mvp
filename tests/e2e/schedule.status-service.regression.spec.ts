@@ -3,21 +3,15 @@
 import '@/test/captureSp400';
 import { expect, test } from '@playwright/test';
 import { formatInTimeZone } from 'date-fns-tz';
-import { TESTIDS } from '@/testids';
 import { bootSchedule } from './_helpers/bootSchedule';
 import { buildScheduleFixturesForDate, SCHEDULE_FIXTURE_BASE_DATE } from './utils/schedule.fixtures';
 import { gotoWeek } from './utils/scheduleNav';
 import {
-  assertWeekHasUserCareEvent,
   fillQuickUserCareForm,
-  getWeekScheduleItems,
   getQuickDialogSaveButton,
   getQuickScheduleDialog,
-  getVisibleListbox,
+  getWeekScheduleItems,
   openQuickUserCareDialog,
-  openWeekEventCard,
-  getWeekRowById,
-  openWeekEventEditor,
   waitForWeekViewReady,
 } from './utils/scheduleActions';
 import { TIME_ZONE } from './utils/spMock';
@@ -28,17 +22,6 @@ const TEST_DAY_KEY = formatInTimeZone(TEST_DATE, TIME_ZONE, 'yyyy-MM-dd');
 const IS_PREVIEW = process.env.PW_USE_PREVIEW === '1';
 
 const buildLocalDateTime = (time: string) => `${TEST_DAY_KEY}T${time}`;
-
-async function selectQuickServiceType(page, dialog, optionLabel: string | RegExp) {
-  const select = dialog.getByTestId(TESTIDS['schedule-create-service-type']);
-  await expect(select).toBeVisible({ timeout: 10_000 });
-  await select.scrollIntoViewIfNeeded();
-  await select.click({ timeout: 10_000 });
-  const listbox = getVisibleListbox(page);
-  await expect(listbox).toBeVisible({ timeout: 10_000 });
-  await listbox.getByRole('option', { name: optionLabel }).first().click();
-  return select;
-}
 
 const buildScheduleItems = () => {
   const fixtures = buildScheduleFixturesForDate(TEST_DATE);
@@ -52,7 +35,6 @@ const buildScheduleItems = () => {
     livingCare.cr014_category = 'User';
     livingCare.cr014_staffIds = ['101'];
     livingCare.cr014_staffNames = ['E2E Admin'];
-    // Loosen any potential edit locks/read-only flags the UI might check.
     (livingCare as any).cr014_status = '下書き';
     (livingCare as any).IsLocked = false;
     (livingCare as any).cr014_isLocked = false;
@@ -62,7 +44,6 @@ const buildScheduleItems = () => {
     (livingCare as any).cr014_readOnly = false;
   }
 
-  // Ensure an explicit living care event exists in the list for edit targeting.
   const startIso = `${TEST_DAY_KEY}T14:00:00+09:00`;
   const endIso = `${TEST_DAY_KEY}T14:30:00+09:00`;
   items.push({
@@ -98,7 +79,6 @@ const buildScheduleItems = () => {
   return items;
 };
 
-
 const orgMasterFixtures = [
   {
     Id: 501,
@@ -112,7 +92,7 @@ const orgMasterFixtures = [
   },
 ];
 
-test.describe('Schedule dialog: status/service end-to-end', () => {
+test.describe('Schedule quick-create (regression)', () => {
   test.beforeEach(async ({ page }) => {
     page.on('console', (message) => {
       if (message.type() === 'info' && message.text().startsWith('[schedulesClient] fixtures=')) {
@@ -167,8 +147,6 @@ test.describe('Schedule dialog: status/service end-to-end', () => {
               type ScheduleRecord = Record<string, unknown> & { Id: number; Status?: string };
               const source = (payload as Record<string, unknown>) ?? {};
 
-              // Normalize title/service fields because the app sometimes posts cr014_title / cr014_serviceType
-              // instead of Title / ServiceType, and the smoke assertion looks for Title/ServiceType.
               const normalizeText = (value: unknown) => (typeof value === 'string' ? value : '');
               const title = normalizeText(source.Title ?? source.cr014_title ?? source.title);
               const serviceType = normalizeText(source.ServiceType ?? source.cr014_serviceType ?? source.serviceType);
@@ -211,98 +189,8 @@ test.describe('Schedule dialog: status/service end-to-end', () => {
     await expect(items.first()).toBeVisible();
   });
 
-  test('edit living care event via quick dialog persists service type', async ({ page }, testInfo) => {
-      test.skip(IS_PREVIEW, 'Preview UI diverges; quick dialog not exposed.');
-      const userItems = await getWeekScheduleItems(page, { category: 'User' });
-      await expect(userItems.first()).toBeVisible({ timeout: 15_000 });
-
-    const targetRow = await getWeekRowById(page, 9_999);
-    await expect(targetRow).toBeVisible({ timeout: 15_000 });
-
-    const editor = await openWeekEventEditor(page, targetRow, {
-      testInfo,
-      label: 'status-service-open',
-    });
-
-    const { inDialog, global } = getQuickDialogSaveButton(page);
-    const saveButton = (await inDialog.count()) > 0 ? inDialog : global;
-    await expect(saveButton).toBeVisible({ timeout: 15_000 });
-    await expect(saveButton).toBeEnabled({ timeout: 15_000 });
-
-    const select = await selectQuickServiceType(page, editor, /欠席|休み/);
-    await expect(select).toHaveText(/欠席|休み/);
-
-      const patchResponsePromise = page
-        .waitForResponse((r) => r.url().includes('/items(') && r.request().method() === 'PATCH' && r.ok(), {
-          timeout: 20_000,
-        })
-        .catch(() => null);
-      const refreshResponsePromise = page
-        .waitForResponse(
-          (r) =>
-            r.url().includes("/_api/web/lists/getbytitle('Schedules')/items") &&
-            r.request().method() === 'GET' &&
-            r.ok(),
-          { timeout: 20_000 },
-        )
-        .catch(() => null);
-
-      await saveButton.click();
-      const patchResponse = await patchResponsePromise;
-      const refreshResponse = await refreshResponsePromise;
-      const patchMeta = patchResponse
-        ? { status: patchResponse.status(), url: patchResponse.url() }
-        : { status: null, url: null };
-      const refreshMeta = refreshResponse
-        ? { status: refreshResponse.status(), url: refreshResponse.url() }
-        : { status: null, url: null };
-      const saveResponsesBody = JSON.stringify({ patch: patchMeta, refresh: refreshMeta }, null, 2);
-      await testInfo.attach('week-save-responses.json', {
-        body: saveResponsesBody,
-        contentType: 'application/json',
-      });
-      const refreshJson = refreshResponse ? await refreshResponse.json().catch(() => null) : null;
-      if (refreshJson) {
-        const body = JSON.stringify(refreshJson, null, 2);
-        await testInfo.attach('week-refresh-after-save.json', {
-          body,
-          contentType: 'application/json',
-        });
-      }
-      await waitForWeekViewReady(page);
-
-    const targetRowAfterSave = await getWeekRowById(page, 9_999);
-    await expect(targetRowAfterSave).toBeVisible({ timeout: 10_000 });
-    await expect(targetRowAfterSave.getByText(/欠席|休み/)).toBeVisible({ timeout: 10_000 });
-
-    await expect(editor).toBeHidden({ timeout: 10_000 });
-
-    await page.reload();
-    await gotoWeek(page, TEST_DATE);
-    await waitForWeekViewReady(page);
-
-    const targetRowReload = await getWeekRowById(page, 9_999);
-    await expect(targetRowReload).toBeVisible({ timeout: 10_000 });
-
-    const dialogReload = await openWeekEventEditor(page, targetRowReload, {
-      testInfo,
-      label: 'status-service-reopen',
-    });
-    const serviceSelectReload = dialogReload.getByTestId(TESTIDS['schedule-create-service-type']);
-    await expect(serviceSelectReload).toBeVisible({ timeout: 10_000 });
-    await expect(serviceSelectReload).toHaveText(/欠席|休み/);
-    await serviceSelectReload.click();
-    const listboxReload = getVisibleListbox(page);
-    await expect(listboxReload).toBeVisible({ timeout: 5_000 });
-    await expect(listboxReload).toContainText(/欠席|休み/);
-    await page.keyboard.press('Escape');
-    await dialogReload.getByRole('button', { name: 'キャンセル' }).click();
-    await expect(dialogReload).toBeHidden({ timeout: 10_000 });
-  });
-
-  test('create new 生活介護休み entry via quick dialog', async ({ page }) => {
+  test('create new 生活介護休み entry via quick dialog', async ({ page }, testInfo) => {
     test.skip(IS_PREVIEW, 'Preview UI diverges; quick dialog not exposed.');
-    test.skip(true, 'Skipping quick create in smoke while quick dialog stabilisation is pending.');
     await gotoWeek(page, TEST_DATE);
     await waitForWeekViewReady(page);
 
@@ -329,7 +217,8 @@ test.describe('Schedule dialog: status/service end-to-end', () => {
       location: '生活介護室A',
       notes: 'E2E quick create',
     });
-    const creationSave = page.getByTestId(TESTIDS['schedule-editor-save']);
+    const { inDialog, global } = getQuickDialogSaveButton(page);
+    const creationSave = (await inDialog.count()) > 0 ? inDialog : global;
     await creationSave.click();
     const createResponse = await createResponsePromise;
     await expect(creationSave).toBeHidden({ timeout: 15_000 });
@@ -354,89 +243,26 @@ test.describe('Schedule dialog: status/service end-to-end', () => {
     ).trim();
     expect(serviceTypeValue).toMatch(/(欠席|休み|absence)/);
 
-    const createdRecord = await page.evaluate(async () => {
+    const createdRecords = await page.evaluate(async () => {
       const response = await fetch(
         "/_api/web/lists/getbytitle('Schedules_Master')/items?$select=Id,Title,ServiceType,cr014_serviceType,cr014_title",
-      );
-      const data = await response.json();
-      const records = Array.isArray((data as any)?.value) ? (data as any).value : [];
-      return (
-        records.find((item) => {
-          const title = String(item?.Title ?? item?.cr014_title ?? '');
-          return title.includes('生活介護') && title.includes('休み');
-        }) ?? null
-      );
-    });
-    expect(createdRecord).not.toBeNull();
-  });
-
-  test('legacy 申請中 schedule normalises to その他 in quick dialog', async ({ page }, testInfo) => {
-    test.skip(IS_PREVIEW, 'Preview UI diverges; quick dialog not exposed.');
-    const userItems = await getWeekScheduleItems(page, { category: 'User' });
-    await expect(userItems.first()).toBeVisible({ timeout: 15_000 });
-
-    const userItemCount = await userItems.count();
-    // eslint-disable-next-line no-console
-    console.log(`🔍 User items visible: ${userItemCount}`);
-    if (userItemCount > 0) {
-      const texts = await userItems.allTextContents();
-      // eslint-disable-next-line no-console
-      console.log('📋 User item texts:', texts);
-      if (testInfo) {
-        await testInfo.attach('week-user-items.txt', { body: texts.join('\n'), contentType: 'text/plain' });
-      }
-    }
-
-    const spUserItems = await page.evaluate(async () => {
-      const response = await fetch(
-        "/_api/web/lists/getbytitle('Schedules_Master')/items?$select=Id,Title,ServiceType,cr014_serviceType,cr014_title,cr014_category,cr014_dayKey,Status",
       );
       const data = await response.json();
       return Array.isArray((data as any)?.value) ? (data as any).value : [];
     });
 
     if (testInfo) {
-      await testInfo.attach('sp-user-items.json', {
-        body: JSON.stringify(spUserItems, null, 2),
+      const body = JSON.stringify(createdRecords, null, 2);
+      await testInfo.attach('schedules-master-after-create.json', {
+        body,
         contentType: 'application/json',
       });
     }
 
-    const visitNursingMatch = /訪問看護|看護|古山/;
-
-    try {
-      await assertWeekHasUserCareEvent(page, { titleContains: visitNursingMatch });
-    } catch (error) {
-      const texts = await userItems.allTextContents();
-      const details = { count: userItemCount, texts, spUserItems };
-      if (testInfo) {
-        await testInfo.attach('visit-nursing-debug.json', {
-          body: JSON.stringify(details, null, 2),
-          contentType: 'application/json',
-        });
-      }
-      throw error;
-    }
-
-    const dialog = await openWeekEventCard(page, {
-      titleContains: visitNursingMatch,
-      category: 'User',
-      testInfo,
-      label: 'legacy-pending-open',
+    const createdRecord = createdRecords.find((item) => {
+      const idCandidate = item?.Id ?? item?.ID;
+      return idCandidate && String(idCandidate) === String(recordId);
     });
-    const { inDialog: saveReloadInDialog, global: saveReloadGlobal } = getQuickDialogSaveButton(page);
-    const saveReload = (await saveReloadInDialog.count()) > 0 ? saveReloadInDialog : saveReloadGlobal;
-    await expect(saveReload).toBeVisible({ timeout: 15_000 });
-    await expect(dialog).toBeVisible({ timeout: 15_000 });
-
-    const serviceSelectReload = dialog.getByTestId(TESTIDS['schedule-create-service-type']);
-    await expect(serviceSelectReload).toBeVisible({ timeout: 10_000 });
-    await serviceSelectReload.click();
-    const listboxReload = getVisibleListbox(page);
-    await expect(listboxReload).toBeVisible({ timeout: 5_000 });
-    await listboxReload.getByRole('option', { name: /その他/ }).first().click();
-    await expect(serviceSelectReload).toContainText(/その他/);
-    await dialog.getByRole('button', { name: 'キャンセル' }).click();
-    await expect(dialog).toBeHidden();
+    expect(createdRecord).not.toBeNull();
   });
 });

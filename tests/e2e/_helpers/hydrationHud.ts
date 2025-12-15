@@ -45,12 +45,14 @@ export async function prepareHydrationApp(page: Page, options: { delaySchedules?
     env.VITE_DEMO_MODE = '0';
     env.VITE_FEATURE_SCHEDULES = '1';
     env.VITE_FEATURE_SCHEDULES_CREATE = '1';
+    env.VITE_FEATURE_HYDRATION_HUD = '1';
     env.VITE_PREFETCH_HUD = '1';
     win.__ENV__ = env;
     window.localStorage.setItem('skipLogin', '1');
     window.localStorage.setItem('demo', '0');
     window.localStorage.setItem('writeEnabled', '1');
     window.localStorage.setItem('VITE_E2E', '1');
+    window.localStorage.setItem('VITE_FEATURE_HYDRATION_HUD', '1');
     window.localStorage.setItem('VITE_PREFETCH_HUD', '1');
     window.localStorage.setItem('feature:schedules', '1');
     window.localStorage.setItem('feature:schedulesCreate', '1');

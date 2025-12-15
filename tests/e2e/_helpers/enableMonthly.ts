@@ -1,4 +1,5 @@
 import { Page } from '@playwright/test';
+import { setupPlaywrightEnv } from './setupPlaywrightEnv';
 
 /**
  * 月次記録機能のFeature Flagを有効化
@@ -43,12 +44,75 @@ export async function disableMonthlyRecordsFlag(page: Page): Promise<void> {
  * 月次記録ページに移動（Feature Flag 有効化込み）
  */
 export async function gotoMonthlyRecordsPage(page: Page): Promise<void> {
+  await setupPlaywrightEnv(page, {
+    envOverrides: {
+      VITE_FEATURE_MONTHLY_RECORDS: '1',
+    },
+    storageOverrides: {
+      'feature:monthlyRecords': '1',
+    },
+  });
   await enableMonthlyRecordsFlag(page);
+
+  // Capture browser errors to diagnose blank screens
+  page.on('pageerror', (err) => console.error('[pageerror]', err));
+  page.on('console', (msg) => {
+    if (msg.type() === 'error') {
+      console.error('[console.error]', msg.text());
+    }
+  });
+
   await page.goto('/records/monthly');
 
   // ルート到達とページの可視化を明示的に待つ（networkidle は CI で不安定なため使わない）
   await page.waitForURL(/\/records\/monthly/, { timeout: 15_000 });
-  await page.getByTestId(monthlyTestIds.page).waitFor({ state: 'visible', timeout: 30_000 });
+  await page.waitForLoadState('domcontentloaded', { timeout: 15_000 }).catch(() => undefined);
+  const monthlyRoot = page.getByTestId(monthlyTestIds.page);
+  try {
+    await monthlyRoot.waitFor({ state: 'visible', timeout: 30_000 });
+  } catch (error) {
+    const url = page.url();
+    const title = await page.title().catch(() => '(title failed)');
+    const monthlyPageCount = await monthlyRoot.count().catch(() => -1);
+    const storage = await page
+      .evaluate(() => ({
+        monthlyFlag: localStorage.getItem('feature:monthlyRecords'),
+        keys: Object.keys(localStorage),
+      }))
+      .catch(() => ({ monthlyFlag: null, keys: [] as string[] }));
+    const testIds = await page
+      .locator('[data-testid]')
+      .evaluateAll((els) =>
+        els
+          .map((el) => (el as HTMLElement).dataset.testid)
+          .filter(Boolean)
+          .slice(0, 50),
+      )
+      .catch(() => [] as string[]);
+    const bodyHead = await page.locator('body').innerText().then((t) => t.slice(0, 600)).catch(() => '');
+    const htmlHead = await page.content().then((h) => h.slice(0, 1200)).catch(() => '');
+    const rootInfo = await page
+      .evaluate(() => {
+        const root = document.querySelector('#root');
+        return {
+          hasRoot: !!root,
+          rootChildCount: root ? root.childElementCount : -1,
+          readyState: document.readyState,
+        };
+      })
+      .catch(() => ({ hasRoot: false, rootChildCount: -1, readyState: 'eval-failed' as const }));
+    console.error('[monthly] monthly-page wait failed', {
+      url,
+      title,
+      monthlyPageCount,
+      storage,
+      testIds,
+      bodyHead,
+      htmlHead,
+      rootInfo,
+    });
+    throw error;
+  }
 }
 
 /**
