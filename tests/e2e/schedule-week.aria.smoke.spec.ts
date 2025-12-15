@@ -42,10 +42,12 @@ test.describe('Schedule week page – ARIA smoke', () => {
   test('arrow key navigation keeps aria-selected in tablist', async ({ page }) => {
     await gotoScheduleWeek(page, new Date());
 
+    await expect(page.getByTestId(TESTIDS.SCHEDULES_WEEK_TABLIST)).toBeVisible({ timeout: 15_000 });
+
     const tablist = page.getByTestId(TESTIDS.SCHEDULES_WEEK_TABLIST);
     const weekTab = page.getByTestId(TESTIDS.SCHEDULES_WEEK_TAB_WEEK);
 
-    await weekTab.click();
+    await weekTab.click({ timeout: 10_000 });
     await expect(weekTab).toBeFocused();
 
     await page.keyboard.press('ArrowRight');

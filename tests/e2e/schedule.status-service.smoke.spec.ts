@@ -212,6 +212,11 @@ test.describe('Schedule dialog: status/service end-to-end', () => {
     await gotoWeek(page, TEST_DATE);
     await waitForWeekViewReady(page);
 
+    const items = await getWeekScheduleItems(page);
+    await expect(items.first()).toBeVisible({ timeout: 15_000 });
+    const ids = await items.evaluateAll((els) => els.map((el) => el.getAttribute('data-id')));
+    console.log('[week items]', ids);
+
     await assertWeekHasUserCareEvent(page, { titleContains: /訪問看護|看護/ });
     await openWeekEventCard(page, { titleContains: /訪問看護|看護/, category: 'User' });
     await expect(page.getByTestId(TESTIDS['schedule-create-save'])).toBeVisible({ timeout: 15_000 });
