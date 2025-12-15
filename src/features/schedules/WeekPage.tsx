@@ -605,9 +605,16 @@ export default function WeekPage() {
           role="tablist"
           aria-label="スケジュールビュー切り替え"
           style={{ display: 'flex', gap: 8, marginBottom: 8, flexWrap: 'wrap' }}
+          data-testid={TESTIDS.SCHEDULES_WEEK_TABLIST}
         >
           {(Object.keys(TAB_LABELS) as ScheduleTab[]).map((key) => {
             const isActive = tab === key;
+            const tabTestId =
+              key === 'week'
+                ? TESTIDS.SCHEDULES_WEEK_TAB_WEEK
+                : key === 'day'
+                  ? TESTIDS.SCHEDULES_WEEK_TAB_DAY
+                  : TESTIDS.SCHEDULES_WEEK_TAB_TIMELINE;
             return (
               <button
                 key={key}
@@ -616,7 +623,7 @@ export default function WeekPage() {
                 role="tab"
                 aria-selected={isActive}
                 aria-controls={`panel-${key}`}
-                data-testid={`tab-${key}`}
+                data-testid={tabTestId}
                 onClick={() => setTab(key)}
                 style={tabButtonStyle(isActive)}
               >
