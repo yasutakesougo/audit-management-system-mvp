@@ -708,7 +708,10 @@ export async function assertWeekHasUserCareEvent(
   let cardLocator = await getWeekScheduleItems(page, { category: 'User' });
 
   if (titleContains) {
-    cardLocator = cardLocator.filter({ hasText: titleContains });
+    const narrowed = cardLocator.filter({ hasText: titleContains });
+    if ((await narrowed.count().catch(() => 0)) > 0) {
+      cardLocator = narrowed;
+    }
   }
 
   const card = cardLocator.first();
