@@ -1,15 +1,17 @@
 import '@/test/captureSp400';
-import { expect, test } from '@playwright/test';
+import { expect, test, type Page } from '@playwright/test';
 import { TESTIDS } from '@/testids';
 import { bootstrapDashboard } from './utils/bootstrapApp';
 import { gotoScheduleWeek } from './utils/scheduleWeek';
 
-const getWeekTablist = async (page) => {
+const getWeekTablist = async (page: Page) => {
   const byTestId = page.getByTestId(TESTIDS.SCHEDULES_WEEK_TABLIST);
-  if ((await byTestId.count().catch(() => 0)) > 0) return byTestId.first();
+  const n1 = await byTestId.count().catch(() => 0);
+  if (n1 > 0) return byTestId.first();
 
   const byRole = page.getByRole('tablist', { name: /スケジュールビュー切り替え/ });
-  if ((await byRole.count().catch(() => 0)) > 0) return byRole.first();
+  const n2 = await byRole.count().catch(() => 0);
+  if (n2 > 0) return byRole.first();
 
   return byTestId;
 };
