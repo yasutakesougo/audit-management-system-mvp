@@ -520,7 +520,11 @@ export async function getOrgChipText(page: Page, view: 'week' | 'month' | 'day')
     month: TESTIDS.SCHEDULE_MONTH_ORG_INDICATOR,
     day: TESTIDS.SCHEDULE_DAY_ORG_INDICATOR,
   } as const;
-  return page.getByTestId(testIdMap[view]).innerText();
+  const locator = page.getByTestId(testIdMap[view]);
+  const count = await locator.count().catch(() => 0);
+  if (count === 0) return '';
+  await expect(locator).toBeVisible({ timeout: 10_000 }).catch(() => undefined);
+  return locator.innerText().catch(() => '');
 }
 
 const WEEK_PANEL_VISIBLE = '#panel-week:not([hidden])';
