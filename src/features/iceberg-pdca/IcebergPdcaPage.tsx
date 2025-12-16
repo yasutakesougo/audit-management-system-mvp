@@ -22,8 +22,7 @@ import { TESTIDS } from '@/testids';
 
 import { IcebergPdcaEmptyState } from './components/IcebergPdcaEmptyState';
 import type { IcebergPdcaEmptyContext } from './components/icebergPdcaEmptyCopy';
-import { useIcebergPdcaList } from './queries/useIcebergPdcaList';
-import { useCreatePdca, useUpdatePdca } from './queries/useIcebergPdcaMutations';
+import { useIcebergPdcaList, useCreatePdca, useUpdatePdca } from './queries';
 import type { IcebergPdcaItem, IcebergPdcaPhase } from './types';
 
 export const IcebergPdcaPage: React.FC = () => {
