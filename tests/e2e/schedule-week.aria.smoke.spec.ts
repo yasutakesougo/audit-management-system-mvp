@@ -1,8 +1,15 @@
 import '@/test/captureSp400';
-import { expect, test, type Page } from '@playwright/test';
+import { expect, test, type Locator, type Page } from '@playwright/test';
 import { TESTIDS } from '@/testids';
 import { bootstrapDashboard } from './utils/bootstrapApp';
 import { gotoScheduleWeek } from './utils/scheduleWeek';
+
+const pickFirstExisting = async (candidates: Locator[]): Promise<Locator> => {
+  for (const loc of candidates) {
+    if ((await loc.count()) > 0) return loc.first();
+  }
+  return candidates[0];
+};
 
 const getWeekTablist = async (page: Page) => {
   const byTestId = page.getByTestId(TESTIDS.SCHEDULES_WEEK_TABLIST);
@@ -15,6 +22,14 @@ const getWeekTablist = async (page: Page) => {
 
   return byTestId;
 };
+
+const getWeekView = async (page: Page) =>
+  pickFirstExisting([
+    page.getByTestId(TESTIDS.SCHEDULES_WEEK_GRID ?? 'schedules-week-grid'),
+    page.getByRole('grid', { name: /週ごとの予定一覧|週|week/i }),
+    page.getByTestId(TESTIDS.SCHEDULES_WEEK_VIEW ?? 'schedules-week-view'),
+    page.getByTestId(TESTIDS['schedule-week-view'] ?? 'schedule-week-view'),
+  ]);
 
 test.describe('Schedule week page – ARIA smoke', () => {
   test.beforeEach(async ({ page }) => {
@@ -45,11 +60,7 @@ test.describe('Schedule week page – ARIA smoke', () => {
     const weekSelected = tablist.getByRole('tab', { selected: true }).or(weekTab);
     await expect(weekSelected).toBeVisible({ timeout: 15_000 });
 
-    const weekView = page
-      .getByTestId(TESTIDS['schedules-week-view'] ?? 'schedules-week-view')
-      .or(page.getByTestId(TESTIDS['schedules-week-grid'] ?? 'schedules-week-grid'))
-      .or(page.getByTestId(TESTIDS['schedule-week-view'] ?? 'schedule-week-view'))
-      .or(page.getByRole('grid', { name: /週ごとの予定一覧|週|week/i }));
+    const weekView = await getWeekView(page);
     await expect(weekView).toBeVisible({ timeout: 15_000 });
   });
 
