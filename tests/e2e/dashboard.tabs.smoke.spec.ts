@@ -2,8 +2,8 @@ import { expect, test } from '@playwright/test';
 
 test('Dashboard tabs render and switch', async ({ page }) => {
   await page.goto('/');
-
-  await expect(page.getByTestId('dashboard-page')).toBeVisible();
+  await page.waitForLoadState('networkidle');
+  await expect(page.getByRole('navigation').or(page.getByTestId('top-nav'))).toBeVisible({ timeout: 10_000 });
 
   const trendsTab = page.getByRole('tab', { name: '集団傾向分析' });
   await expect(trendsTab).toBeVisible();

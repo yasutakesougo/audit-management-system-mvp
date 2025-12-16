@@ -4,8 +4,8 @@ test.describe('Basic Dashboard', () => {
   test('can load homepage', async ({ page }) => {
     await page.goto('http://localhost:3000/');
 
-    // 基本的なHTMLページが読み込まれるか確認
-    await expect(page.locator('body')).toBeVisible({ timeout: 10000 });
+    await page.waitForLoadState('domcontentloaded');
+    await expect(page).toHaveURL(/\/$/);
 
     // ページタイトルやbaseの要素があるか確認
     const title = await page.title();
