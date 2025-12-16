@@ -34,6 +34,18 @@ jobs:
       - uses: actions/checkout@v4
         with:
           ref: ${{ github.event.inputs.ref || github.ref }}
+          fetch-depth: 0
+
+      - name: Debug: checkout / testids
+        run: |
+          echo "=== git rev-parse HEAD ==="
+          git rev-parse HEAD
+          echo "=== git log -1 --oneline --decorate ==="
+          git log -1 --oneline --decorate
+          echo "=== rg iceberg-pdca-empty in src/testids.ts ==="
+          rg -n "iceberg-pdca-empty" src/testids.ts || true
+          echo "=== head of src/testids.ts (1..120) tail 20 ==="
+          sed -n '1,120p' src/testids.ts | tail -20
 
       - uses: actions/setup-node@v4
         with:
