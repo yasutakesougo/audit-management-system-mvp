@@ -4,7 +4,12 @@ import { TESTIDS } from '@/testids';
 import { bootSchedule } from './_helpers/bootSchedule';
 import { getSchedulesTodaySeedDate } from './_helpers/schedulesTodaySeed';
 import { gotoWeek } from './utils/scheduleNav';
-import { getWeekScheduleItems, openWeekEventCard, waitForWeekViewReady } from './utils/scheduleActions';
+import {
+  getWeekRowById,
+  getWeekScheduleItems,
+  openWeekEventEditor,
+  waitForWeekViewReady,
+} from './utils/scheduleActions';
 const TEST_DATE = new Date(getSchedulesTodaySeedDate());
 
 test.describe('Schedules week edit entry', () => {
@@ -23,28 +28,31 @@ test.describe('Schedules week edit entry', () => {
     });
   });
 
-  test('clicking a timeline card opens an edit dialog with data prefilled', async ({ page }) => {
+  test('clicking a timeline card opens an edit dialog with data prefilled', async ({ page }, testInfo) => {
     await gotoWeek(page, TEST_DATE);
     await waitForWeekViewReady(page);
 
     const scheduleItems = await getWeekScheduleItems(page);
     await expect(scheduleItems.first()).toBeVisible({ timeout: 15_000 });
 
-    await openWeekEventCard(page);
+    const targetRow = await getWeekRowById(page, 70_000);
+    await expect(targetRow).toBeVisible({ timeout: 15_000 });
 
-    const dialog = page.getByRole('dialog');
-    await expect(dialog).toBeVisible();
+    const editor = await openWeekEventEditor(page, targetRow, {
+      testInfo,
+      label: 'week-edit-70000',
+    });
 
-    const quickHeading = page.getByTestId(TESTIDS['schedule-create-heading']);
+    const quickHeading = editor.getByTestId(TESTIDS['schedule-create-heading']);
     const quickHeadingVisible = await quickHeading.isVisible().catch(() => false);
 
     if (quickHeadingVisible) {
       await expect(quickHeading).toHaveText(/スケジュール/);
-      const titleInput = page.getByTestId(TESTIDS['schedule-create-title']);
+      const titleInput = editor.getByTestId(TESTIDS['schedule-create-title']);
       await expect(titleInput).not.toHaveValue('');
     } else {
-      await expect(dialog).toContainText('予定を編集');
-      const titleInput = page.getByLabel('タイトル');
+      await expect(editor).toContainText('予定を編集');
+      const titleInput = editor.getByLabel('タイトル');
       await expect(titleInput).not.toHaveValue('');
     }
   });

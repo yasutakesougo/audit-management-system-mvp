@@ -14,6 +14,7 @@ const defaultFlags: FeatureFlagSnapshot = {
   schedulesCreate: true,
   complianceForm: false,
   schedulesWeekV2: false,
+  icebergPdca: false,
 };
 
 beforeEach(() => {

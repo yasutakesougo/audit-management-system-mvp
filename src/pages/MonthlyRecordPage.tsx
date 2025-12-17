@@ -79,6 +79,8 @@ const mockMonthlySummaries: MonthlySummary[] = [
   },
 ];
 
+const DEFAULT_MONTH: YearMonth = mockMonthlySummaries[0]?.yearMonth ?? getCurrentYearMonth();
+
 const srOnly = {
   border: 0,
   clip: 'rect(0 0 0 0)',
@@ -98,7 +100,7 @@ export default function MonthlyRecordPage() {
   const [summaries] = React.useState<MonthlySummary[]>(mockMonthlySummaries);
   const [loading] = React.useState(false);
 
-  const [selectedMonth, setSelectedMonth] = React.useState<YearMonth>(getCurrentYearMonth());
+  const [selectedMonth, setSelectedMonth] = React.useState<YearMonth>(DEFAULT_MONTH);
   const [keyword, setKeyword] = React.useState('');
 
   const monthOptions = React.useMemo<YearMonth[]>(
@@ -332,7 +334,11 @@ export default function MonthlyRecordPage() {
           id="monthly-tabpanel-user-detail"
           aria-labelledby="monthly-tab-user-detail"
         >
-          <Box component="section" aria-label="利用者別詳細表示">
+          <Box
+            component="section"
+            aria-label="利用者別詳細表示"
+            data-testid={TESTIDS['monthly-detail-records-table']}
+          >
             <Typography component="p" sx={srOnly}>
               選択した利用者の月次記録詳細とKPIカードを表示します。
             </Typography>
@@ -467,6 +473,7 @@ export default function MonthlyRecordPage() {
                         startIcon={<CloudDownloadIcon />}
                         onClick={handleGenerateMonthlyPdf}
                         disabled={filteredSummaries.length === 0}
+                        data-testid={TESTIDS['monthly-pdf-generate-btn']}
                         sx={{ mt: 2 }}
                       >
                         月次PDFレポートを生成

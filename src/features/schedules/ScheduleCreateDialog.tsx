@@ -624,6 +624,7 @@ export const ScheduleCreateDialog: React.FC<ScheduleCreateDialogProps> = (props)
         'data-testid': resolvedDialogTestId,
       }}
     >
+      <Box data-testid={TESTIDS['schedule-editor-root']} sx={{ display: 'contents' }}>
       <DialogTitle
         id={headingId}
         data-testid={TESTIDS['schedule-create-heading']}
@@ -935,6 +936,7 @@ export const ScheduleCreateDialog: React.FC<ScheduleCreateDialogProps> = (props)
             {submitting ? '保存中...' : primaryButtonLabel}
         </Button>
       </DialogActions>
+      </Box>
     </Dialog>
   );
 };

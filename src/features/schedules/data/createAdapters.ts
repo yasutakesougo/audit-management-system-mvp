@@ -57,8 +57,15 @@ const normalizeLookupId = (value: string | number | null | undefined): number | 
   return Number.isFinite(parsed) ? parsed : null;
 };
 
+const ensureTimeZone = (value: string): string => {
+  // Treat naive local timestamps as UTC to avoid date shifting when toISOString() is applied.
+  const hasZone = /[zZ]$|[+-]\d{2}:?\d{2}$/.test(value);
+  return hasZone ? value : `${value}Z`;
+};
+
 const toIsoString = (value: string): string => {
-  const date = new Date(value);
+  const normalized = ensureTimeZone(value);
+  const date = new Date(normalized);
   if (Number.isNaN(date.getTime())) {
     throw new Error(`Invalid datetime value: ${value}`);
   }

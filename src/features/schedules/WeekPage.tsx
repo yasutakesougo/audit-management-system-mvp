@@ -1,12 +1,3 @@
-import Button from '@mui/material/Button';
-import Chip from '@mui/material/Chip';
-import Dialog from '@mui/material/Dialog';
-import DialogActions from '@mui/material/DialogActions';
-import DialogContent from '@mui/material/DialogContent';
-import DialogTitle from '@mui/material/DialogTitle';
-import Stack from '@mui/material/Stack';
-import TextField from '@mui/material/TextField';
-import { useMsalContext } from '@/auth/MsalProvider';
 import { type CSSProperties, type MouseEvent, useCallback, useEffect, useId, useMemo, useRef, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 
@@ -19,9 +10,8 @@ import ScheduleEmptyHint from '@/features/schedules/components/ScheduleEmptyHint
 import SchedulesFilterResponsive from '@/features/schedules/components/SchedulesFilterResponsive';
 import SchedulesHeader from '@/features/schedules/components/SchedulesHeader';
 import type { SchedItem, ScheduleServiceType, UpdateScheduleEventInput } from '@/features/schedules/data';
-import type { InlineScheduleDraft } from '@/features/schedules/data/inlineScheduleDraft';
 import { useScheduleUserOptions } from '@/features/schedules/useScheduleUserOptions';
-import { makeRange, useSchedules } from '@/features/schedules/useSchedules';
+import { makeRange, useSchedules, type InlineScheduleDraft } from '@/features/schedules/useSchedules';
 import { TESTIDS } from '@/testids';
 import EmptyState from '@/ui/components/EmptyState';
 import Loading from '@/ui/components/Loading';
@@ -167,18 +157,9 @@ let pendingFabFocus = false;
 
 export default function WeekPage() {
   const announce = useAnnounce();
-  const { instance, accounts } = useMsalContext();
-  const currentUserLabel = useMemo(() => {
-    const account =
-      (instance.getActiveAccount() as { name?: string; username?: string } | null) ??
-      (accounts[0] as { name?: string; username?: string } | undefined) ??
-      null;
-    return account?.name || account?.username || '';
-  }, [accounts, instance]);
   const [tab, setTab] = useState<ScheduleTab>('week');
   const [categoryFilter, setCategoryFilter] = useState<'All' | Category>('All');
   const [query, setQuery] = useState('');
-  const [showAcceptedOnly, setShowAcceptedOnly] = useState(false);
   const [searchParams, setSearchParams] = useSearchParams();
   const rawDateParam = useMemo(() => pickDateParam(searchParams), [searchParams]);
   const focusDate = useMemo(() => normalizeToDayStart(rawDateParam), [rawDateParam]);
@@ -193,12 +174,6 @@ export default function WeekPage() {
   const fabRef = useRef<HTMLButtonElement | null>(null);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [dialogInitialValues, setDialogInitialValues] = useState<ScheduleEditDialogValues | null>(null);
-  const [acceptDialogOpen, setAcceptDialogOpen] = useState(false);
-  const [acceptTarget, setAcceptTarget] = useState<SchedItem | null>(null);
-  const [acceptSubmitting, setAcceptSubmitting] = useState(false);
-  const [acceptForm, setAcceptForm] = useState<{ acceptedOn: string; acceptedBy: string; acceptedNote: string }>(
-    () => ({ acceptedOn: '', acceptedBy: '', acceptedNote: '' }),
-  );
 
   useEffect(() => {
     if (!createDialogOpen && pendingFabFocus && fabRef.current) {
@@ -221,14 +196,11 @@ export default function WeekPage() {
   const filteredItems = useMemo(() => {
     const needle = query.trim().toLowerCase();
     return items.filter((item) => {
-      if (showAcceptedOnly && !(item.acceptedOn || item.acceptedBy || item.acceptedNote)) {
-        return false;
-      }
       if (categoryFilter !== 'All' && item.category !== categoryFilter) return false;
       if (!needle) return true;
       const haystack = [
         item.title,
-        item.notes,
+        item.note ?? item.notes,
         item.location,
         item.subType,
         item.serviceType,
@@ -240,7 +212,7 @@ export default function WeekPage() {
         .toLowerCase();
       return haystack.includes(needle);
     });
-  }, [items, categoryFilter, query, showAcceptedOnly]);
+  }, [items, categoryFilter, query]);
   const dialogMode: DialogMode = dialogIntent?.mode ?? 'create';
   const isEditMode = dialogMode === 'edit';
   const dialogEventId = dialogIntent?.eventId ?? null;
@@ -262,7 +234,7 @@ export default function WeekPage() {
         userId: editingItem.userId ?? '',
         serviceType: (editingItem.serviceType as ScheduleFormState['serviceType']) ?? '',
         locationName: editingItem.locationName ?? editingItem.location ?? '',
-        notes: editingItem.notes ?? '',
+        notes: editingItem.notes ?? editingItem.note ?? '',
         assignedStaffId: editingItem.assignedStaffId ?? '',
         vehicleId: editingItem.vehicleId ?? '',
         status: (editingItem.status as ScheduleFormState['status']) ?? 'Planned',
@@ -425,7 +397,7 @@ export default function WeekPage() {
   const handleWeekEventClick = useCallback((item: SchedItem) => {
     console.info('[WeekPage] row click', item.id);
     const category = (item.category as Category) ?? 'User';
-    const serviceType = (item.serviceType as ScheduleServiceType) ?? 'other';
+    const serviceType = (item.serviceType as ScheduleServiceType) ?? 'normal';
     const startLocal = buildLocalDateTimeInput(item.start, DEFAULT_START_TIME);
     const endLocal = buildLocalDateTimeInput(item.end, DEFAULT_END_TIME);
     const dateIso = extractDatePart(item.start) || toDateIso(new Date());
@@ -440,76 +412,13 @@ export default function WeekPage() {
       userId: item.userId ?? '',
       assignedStaffId: item.assignedStaffId ?? '',
       locationName: item.locationName ?? item.location ?? '',
-      notes: item.notes ?? '',
+      notes: item.notes ?? item.note ?? '',
       vehicleId: item.vehicleId ?? '',
       status: item.status ?? 'Planned',
       statusReason: item.statusReason ?? '',
     });
     setDialogOpen(true);
   }, []);
-
-  const handleOpenAcceptDialog = useCallback((item: SchedItem) => {
-    const fallbackTime = formatTimePart(new Date());
-    setAcceptTarget(item);
-    setAcceptForm({
-      acceptedOn: buildLocalDateTimeInput(item.acceptedOn, fallbackTime),
-      acceptedBy: item.acceptedBy ?? currentUserLabel,
-      acceptedNote: item.acceptedNote ?? '',
-    });
-    setAcceptDialogOpen(true);
-  }, [currentUserLabel]);
-
-  const handleCloseAcceptDialog = useCallback(() => {
-    setAcceptDialogOpen(false);
-    setAcceptTarget(null);
-  }, []);
-
-  const handleAcceptFieldChange = useCallback(
-    (field: 'acceptedOn' | 'acceptedBy' | 'acceptedNote', value: string) => {
-      setAcceptForm((prev) => ({ ...prev, [field]: value }));
-    },
-    [],
-  );
-
-  const handleSubmitAccept = useCallback(async () => {
-    if (!acceptTarget) return;
-
-    const acceptedOn = acceptForm.acceptedOn?.trim();
-    const acceptedBy = acceptForm.acceptedBy?.trim();
-    const acceptedNote = acceptForm.acceptedNote?.trim();
-    const startLocal = acceptTarget.start || buildLocalDateTimeInput(undefined, DEFAULT_START_TIME);
-    const endLocal = acceptTarget.end || startLocal;
-
-    const payload: UpdateScheduleEventInput = {
-      id: acceptTarget.id,
-      title: acceptTarget.title ?? '新規予定',
-      category: (acceptTarget.category as Category) ?? 'User',
-      startLocal,
-      endLocal,
-      serviceType: (acceptTarget.serviceType as ScheduleServiceType) ?? 'other',
-      userId: acceptTarget.userId ?? undefined,
-      userLookupId: acceptTarget.userLookupId,
-      userName: acceptTarget.personName ?? undefined,
-      locationName: acceptTarget.locationName ?? acceptTarget.location ?? undefined,
-      notes: acceptTarget.notes ?? acceptTarget.note ?? undefined,
-      assignedStaffId: acceptTarget.assignedStaffId ?? undefined,
-      vehicleId: acceptTarget.vehicleId ?? undefined,
-      status: acceptTarget.status ?? 'Planned',
-      statusReason: acceptTarget.statusReason ?? null,
-      acceptedOn: acceptedOn || undefined,
-      acceptedBy: acceptedBy || undefined,
-      acceptedNote: acceptedNote || null,
-    };
-
-    setAcceptSubmitting(true);
-    try {
-      await update(payload);
-      setAcceptDialogOpen(false);
-      setAcceptTarget(null);
-    } finally {
-      setAcceptSubmitting(false);
-    }
-  }, [acceptForm.acceptedBy, acceptForm.acceptedNote, acceptForm.acceptedOn, acceptTarget, update]);
 
   const handleInlineDialogClose = useCallback(() => {
     setDialogOpen(false);
@@ -588,10 +497,6 @@ export default function WeekPage() {
 
       const draft: InlineScheduleDraft = {
         title: input.title.trim() || '新規予定',
-        start: input.startLocal,
-        end: input.endLocal,
-        serviceType: input.serviceType,
-        notes: input.notes,
         dateIso,
         startTime,
         endTime,
@@ -617,7 +522,7 @@ export default function WeekPage() {
       aria-label="週間スケジュール"
       aria-describedby={rangeDescriptionId}
       aria-labelledby={headingId}
-      data-testid={TESTIDS['schedules-week-page']}
+      data-testid="schedules-week-page"
       tabIndex={-1}
       style={{ paddingBottom: 16 }}
     >
@@ -680,7 +585,7 @@ export default function WeekPage() {
                 type="search"
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
-                placeholder="タイトル／場所／担当／利用者で検索"
+                placeholder="タイトル/場所/担当/利用者で検索"
                 style={{
                   flex: '1 1 280px',
                   minWidth: 240,
@@ -690,15 +595,6 @@ export default function WeekPage() {
                 }}
                 aria-label="スケジュール検索"
                 data-testid={TESTIDS['schedules-filter-query']}
-              />
-              <Chip
-                label="受け入れ済のみ"
-                variant={showAcceptedOnly ? 'filled' : 'outlined'}
-                color={showAcceptedOnly ? 'success' : 'default'}
-                size="small"
-                onClick={() => setShowAcceptedOnly((prev) => !prev)}
-                aria-pressed={showAcceptedOnly}
-                data-testid="schedules-filter-accepted"
               />
             </div>
           </SchedulesFilterResponsive>
@@ -764,7 +660,6 @@ export default function WeekPage() {
                 onDayClick={handleDayClick}
                 activeDateIso={resolvedActiveDateIso}
                 onItemSelect={handleWeekEventClick}
-                onItemAccept={handleOpenAcceptDialog}
               />
             </div>
             <div
@@ -780,7 +675,6 @@ export default function WeekPage() {
               role="tabpanel"
               aria-labelledby={tabButtonIds.timeline}
               hidden={tab !== 'timeline'}
-              data-testid={TESTIDS.SCHEDULES_WEEK_TIMELINE_PANEL}
             >
               <WeekTimeline range={weekRange} items={filteredItems} onCreateHint={handleTimelineCreateHint} />
             </div>
@@ -824,50 +718,6 @@ export default function WeekPage() {
       >
         +
       </button>
-      <Dialog open={acceptDialogOpen} onClose={handleCloseAcceptDialog} fullWidth maxWidth="sm">
-        <DialogTitle>受け入れ登録</DialogTitle>
-        <DialogContent>
-          <Stack spacing={2} sx={{ mt: 1 }}>
-            <TextField
-              label="受け入れ日時"
-              type="datetime-local"
-              value={acceptForm.acceptedOn}
-              onChange={(event) => handleAcceptFieldChange('acceptedOn', event.target.value)}
-              InputLabelProps={{ shrink: true }}
-              fullWidth
-            />
-            <TextField
-              label="受け入れ担当者"
-              value={acceptForm.acceptedBy}
-              onChange={(event) => handleAcceptFieldChange('acceptedBy', event.target.value)}
-              placeholder="氏名や所属"
-              fullWidth
-            />
-            <TextField
-              label="メモ"
-              value={acceptForm.acceptedNote}
-              onChange={(event) => handleAcceptFieldChange('acceptedNote', event.target.value)}
-              placeholder="申し送りや注意点"
-              multiline
-              minRows={3}
-              fullWidth
-            />
-          </Stack>
-        </DialogContent>
-        <DialogActions sx={{ px: 3, pb: 2 }}>
-          <Button onClick={handleCloseAcceptDialog} disabled={acceptSubmitting}>
-            キャンセル
-          </Button>
-          <Button
-            onClick={handleSubmitAccept}
-            variant="contained"
-            disabled={!acceptTarget || acceptSubmitting}
-            data-testid="schedules-accept-submit"
-          >
-            {acceptSubmitting ? '保存中…' : '保存'}
-          </Button>
-        </DialogActions>
-      </Dialog>
       {dialogInitialValues ? (
         <ScheduleCreateDialog
           open={dialogOpen}

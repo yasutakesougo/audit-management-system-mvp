@@ -32,6 +32,7 @@ const AssessmentDashboardPage = React.lazy(() => import('@/pages/AssessmentDashb
 const TokuseiSurveyResultsPage = React.lazy(() => import('@/pages/TokuseiSurveyResultsPage'));
 const IcebergPdcaPage = React.lazy(() => import('@/pages/IcebergPdcaPage'));
 const IcebergAnalysisPage = React.lazy(() => import('@/pages/IcebergAnalysisPage'));
+const MonthlyRecordPage = React.lazy(() => import('@/pages/MonthlyRecordPage'));
 
 const AttendanceRecordPage = React.lazy(() => import('@/pages/AttendanceRecordPage'));
 
@@ -137,6 +138,20 @@ const SuspendedDailyRecordPage: React.FC = () => (
       )}
     >
       <DailyRecordPage />
+    </React.Suspense>
+  </RouteHydrationErrorBoundary>
+);
+
+const SuspendedMonthlyRecordPage: React.FC = () => (
+  <RouteHydrationErrorBoundary>
+    <React.Suspense
+      fallback={(
+        <div className="p-4 text-sm text-slate-600" role="status">
+          月次記録を読み込んでいます…
+        </div>
+      )}
+    >
+      <MonthlyRecordPage />
     </React.Suspense>
   </RouteHydrationErrorBoundary>
 );
@@ -469,6 +484,7 @@ const childRoutes: RouteObject[] = [
   { path: 'meeting-guide', element: <SuspendedMeetingGuidePage /> },
   { path: 'handoff-timeline', element: <SuspendedHandoffTimelinePage /> },
   { path: 'records', element: <SuspendedRecordList /> },
+  { path: 'records/monthly', element: <SuspendedMonthlyRecordPage /> },
   { path: 'checklist', element: <SuspendedChecklistPage /> },
   { path: 'audit', element: <SuspendedAuditPanel /> },
   { path: 'users', element: <UsersPanel /> },

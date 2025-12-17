@@ -307,6 +307,9 @@ export const isComplianceFormEnabled = (envOverride?: EnvRecord): boolean => {
   return false;
 };
 
+export const isIcebergPdcaEnabled = (envOverride?: EnvRecord): boolean =>
+  readBool('VITE_FEATURE_ICEBERG_PDCA', false, envOverride);
+
 export const shouldSkipLogin = (envOverride?: EnvRecord): boolean => {
   if (isDemoModeEnabled(envOverride) || readBool('VITE_SKIP_LOGIN', false, envOverride)) {
     return true;
@@ -482,10 +485,11 @@ const SHAREPOINT_RESOURCE_PATTERN = /^https:\/\/[^/]+\.sharepoint\.com$/i;
 export const getSharePointDefaultScope = (envOverride?: EnvRecord): string => {
   const raw = readEnv('VITE_SP_SCOPE_DEFAULT', '', envOverride).trim();
   if (!raw) {
-    if (shouldSkipLogin(envOverride)) {
+    if (shouldSkipLogin(envOverride) || readBool('VITE_SKIP_SHAREPOINT', false, envOverride)) {
       console.warn('[env] VITE_SP_SCOPE_DEFAULT missing but skip-login/demo mode enabled; using placeholder scope.');
       return DEMO_SHAREPOINT_SCOPE;
     }
+
     const msalScopes = getConfiguredMsalScopes(envOverride);
     const derived = msalScopes.find((scope) => SHAREPOINT_SCOPE_PATTERN.test(scope));
     if (derived) {
@@ -499,6 +503,16 @@ export const getSharePointDefaultScope = (envOverride?: EnvRecord): string => {
       console.warn('[env] VITE_SP_SCOPE_DEFAULT missing; deriving SharePoint scope from VITE_SP_RESOURCE.');
       return fallbackScope;
     }
+
+    const allowPlaceholder =
+      readBool('VITE_E2E', false, envOverride) ||
+      readBool('VITE_E2E_MSAL_MOCK', false, envOverride);
+
+    if (allowPlaceholder) {
+      console.warn('[env] VITE_SP_SCOPE_DEFAULT missing but skip-login/demo mode enabled; using placeholder scope.');
+      return DEMO_SHAREPOINT_SCOPE;
+    }
+
     throw new Error('VITE_SP_SCOPE_DEFAULT is required (e.g. https://{host}.sharepoint.com/AllSites.Read)');
   }
 

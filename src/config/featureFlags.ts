@@ -2,6 +2,7 @@ import { isE2E } from '@/env';
 import { createContext, createElement, useContext, useMemo, type FC, type ReactNode } from 'react';
 import {
     isComplianceFormEnabled,
+  isIcebergPdcaEnabled,
     isSchedulesCreateEnabled,
     isSchedulesFeatureEnabled,
     isSchedulesWeekV2Enabled,
@@ -14,6 +15,7 @@ export type FeatureFlagSnapshot = {
   schedulesCreate: boolean;
   complianceForm: boolean;
   schedulesWeekV2: boolean;
+  icebergPdca: boolean;
 };
 
 const isAutomationRuntime = (): boolean => {
@@ -40,6 +42,7 @@ export const resolveFeatureFlags = (envOverride?: EnvRecord): FeatureFlagSnapsho
     schedulesCreate: isSchedulesCreateEnabled(envOverride),
     complianceForm: isComplianceFormEnabled(envOverride),
     schedulesWeekV2: isSchedulesWeekV2Enabled(envOverride),
+    icebergPdca: isIcebergPdcaEnabled(envOverride),
   };
 
   if (isE2E || isTestMode(envOverride) || isAutomationRuntime()) {
@@ -47,6 +50,7 @@ export const resolveFeatureFlags = (envOverride?: EnvRecord): FeatureFlagSnapsho
       ...baseSnapshot,
       schedules: true,
       schedulesCreate: true,
+      icebergPdca: baseSnapshot.icebergPdca,
     };
   }
 
@@ -90,7 +94,7 @@ export const FeatureFlagsProvider: FC<FeatureFlagsProviderProps> = ({ value, chi
   const memoized = useMemo(() => {
     currentSnapshot = snapshot;
     return snapshot;
-  }, [snapshot.schedules, snapshot.schedulesCreate, snapshot.complianceForm, snapshot.schedulesWeekV2]);
+  }, [snapshot.schedules, snapshot.schedulesCreate, snapshot.complianceForm, snapshot.schedulesWeekV2, snapshot.icebergPdca]);
 
   return createElement(FeatureFlagsContext.Provider, { value: memoized }, children);
 };

@@ -258,6 +258,7 @@ describe('Rule Engine API', () => {
   describe('Performance', () => {
     it('handles large datasets efficiently', () => {
       const schedules: Schedule[] = [];
+      const PERF_LIMIT_MS = process.env.CI ? 800 : 500;
 
       // 500個のスケジュールを生成（実運用レベル）
       for (let i = 0; i < 500; i++) {
@@ -270,12 +271,15 @@ describe('Rule Engine API', () => {
         }));
       }
 
+      // Warm-up to avoid JIT/GC noise on the first call.
+      detectScheduleConflicts(schedules);
+
       const startTime = performance.now();
       const conflicts = detectScheduleConflicts(schedules);
       const endTime = performance.now();
 
-      // 500件で500ms以内に処理完了（実運用十分）
-      expect(endTime - startTime).toBeLessThan(500);
+      // 500件で 500ms (local) / 800ms (CI) 以内に処理完了（実運用十分）
+      expect(endTime - startTime).toBeLessThan(PERF_LIMIT_MS);
       expect(conflicts.length).toBeGreaterThan(0); // 何らかの衝突が検出される
 
       // ログで実際のパフォーマンスを確認

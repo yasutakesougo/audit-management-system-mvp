@@ -34,6 +34,8 @@ export const TESTIDS = {
   'dashboard-records': 'dashboard-records',
   'audit-heading': 'audit-heading',
   'iceberg-pdca-root': 'iceberg-pdca-root',
+  'iceberg-pdca-empty': 'iceberg-pdca-empty', // 互換: bracket参照(TESTIDS['iceberg-pdca-empty'])向け
+  ICEBERG_PDCA_EMPTY: 'iceberg-pdca-empty',
 
   // Dashboard Tabs (黒ノート機能個別タブ) 🌱 E2Eでタブ切替を細かく検査用
   'dashboard-tab-management': 'dashboard-tab-management',
@@ -101,6 +103,10 @@ export const TESTIDS = {
   'schedules-week-page': 'schedules-week-page',
   'schedules-week-heading': 'schedules-week-heading',
   'schedules-week-grid': 'schedules-week-grid',
+  'schedule-week-view': 'schedule-week-view',
+  'schedules-week-view': 'schedules-week-view',
+  SCHEDULE_WEEK_VIEW: 'schedule-week-view',
+  SCHEDULES_WEEK_VIEW: 'schedules-week-view',
   SCHEDULES_WEEK_SERVICE_SUMMARY: 'schedules-week-service-summary',
   SCHEDULES_WEEK_TIMELINE: 'schedules-week-timeline',
   'schedules-week-timeline': 'schedules-week-timeline',
@@ -129,6 +135,7 @@ export const TESTIDS = {
   SCHEDULES_NEXT_WEEK: 'schedules-next-week',
   SCHEDULES_FAB_CREATE: 'schedules-fab-create',
   'schedules-week-live': 'schedules-week-live',
+  'schedule-item-menu': 'schedule-item-menu',
   SCHEDULES_MONTH_PAGE: 'schedules-month-page',
   SCHEDULES_MONTH_HEADING_ID: 'schedules-month-heading',
   SCHEDULES_MONTH_RANGE_ID: 'schedules-month-range',
@@ -139,6 +146,7 @@ export const TESTIDS = {
   'schedules-event-normal': 'schedules-event-normal',
   'schedule-create-quick-button': 'schedule-create-quick-button',
   'schedule-create-dialog': 'schedule-create-dialog',
+  'schedule-editor-root': 'schedule-editor-root',
   'schedule-create-heading': 'schedule-create-heading',
   'schedule-create-description': 'schedule-create-description',
   'schedule-create-error-alert': 'schedule-create-error-alert',
@@ -154,6 +162,7 @@ export const TESTIDS = {
   'schedule-create-vehicle-id': 'schedule-create-vehicle-id',
   'schedule-create-status': 'schedule-create-status',
   'schedule-create-save': 'schedule-create-save',
+  'schedule-editor-save': 'schedule-editor-save',
   'dev-schedule-dialog-open': 'dev-schedule-dialog-open',
   'dev-schedule-dialog-page': 'dev-schedule-dialog-page',
 
@@ -312,6 +321,7 @@ export const TESTIDS = {
 
   // Users feature
   'users-panel-root': 'users-panel-root',
+  'users-panel-open': 'users-panel-open',
   'users-panel-search': 'users-panel-search',
   'users-panel-filter-active': 'users-panel-filter-active',
   'users-panel-filter-severe': 'users-panel-filter-severe',

@@ -519,6 +519,7 @@ const WeekViewContent = ({ items, loading, onDayClick, activeDateIso, range, onI
                     {!isMobile && (
                       <IconButton
                         aria-label="行の操作"
+                        data-testid={TESTIDS['schedule-item-menu']}
                         size="small"
                         onClick={(event) => handleMenuOpen(event, item)}
                         component="span"

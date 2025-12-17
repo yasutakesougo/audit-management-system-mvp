@@ -6,12 +6,14 @@ import Dialog from '@mui/material/Dialog';
 import DialogContent from '@mui/material/DialogContent';
 import Divider from '@mui/material/Divider';
 import IconButton from '@mui/material/IconButton';
+import FormControlLabel from '@mui/material/FormControlLabel';
 import Paper from '@mui/material/Paper';
 import Stack from '@mui/material/Stack';
 import Tab from '@mui/material/Tab';
 import Tabs from '@mui/material/Tabs';
 import Table from '@mui/material/Table';
 import TableBody from '@mui/material/TableBody';
+import Checkbox from '@mui/material/Checkbox';
 import TableCell from '@mui/material/TableCell';
 import TableContainer from '@mui/material/TableContainer';
 import TableHead from '@mui/material/TableHead';
@@ -61,6 +63,9 @@ export default function UsersPanel() {
   const [busyId, setBusyId] = useState<number | null>(null);
   const [showCreateForm, setShowCreateForm] = useState(false);
   const [showEditForm, setShowEditForm] = useState(false);
+  const [search, setSearch] = useState('');
+  const [onlyActive, setOnlyActive] = useState(false);
+  const [onlySevere, setOnlySevere] = useState(false);
   const [selectedUser, setSelectedUser] = useState<IUserMaster | null>(null);
   const isUsersTab = useCallback((value: unknown): value is UsersTab => (
     value === 'menu' || value === 'list' || value === 'create'
@@ -197,6 +202,26 @@ export default function UsersPanel() {
     setDetailUserKey(null);
   }, []);
 
+  const filteredUsers = useMemo(() => {
+    const needle = search.trim().toLowerCase();
+    return data.filter((user) => {
+      const matchesSearch = needle
+        ? [user.UserID, user.FullName, user.Furigana, user.FullNameKana]
+            .map((value) => (value ?? '').toString().toLowerCase())
+            .some((value) => value.includes(needle))
+        : true;
+      const isActive = user.IsActive !== false;
+      const isSevere = Boolean(user.severeFlag ?? user.IsHighIntensitySupportTarget);
+      if (onlyActive && !isActive) {
+        return false;
+      }
+      if (onlySevere && !isSevere) {
+        return false;
+      }
+      return matchesSearch;
+    });
+  }, [data, onlyActive, onlySevere, search]);
+
   const onCreateKeyDown = useCallback((event: React.KeyboardEvent<HTMLInputElement>) => {
     if (event.key === 'Enter') void handleCreate();
   }, [handleCreate]);
@@ -289,6 +314,39 @@ export default function UsersPanel() {
             {busyId === -2 ? '更新中…' : '一覧を更新'}
           </Button>
         </Stack>
+        <Stack spacing={1.5} alignItems="flex-start">
+          <TextField
+            size="small"
+            label="利用者検索"
+            placeholder="ID / 氏名 / フリガナ"
+            value={search}
+            onChange={(event) => setSearch(event.target.value)}
+            sx={{ minWidth: { xs: '100%', sm: 320 }, maxWidth: 420 }}
+            inputProps={{ 'data-testid': TESTIDS['users-panel-search'] }}
+          />
+          <Stack direction="row" spacing={1} flexWrap="wrap">
+            <FormControlLabel
+              control={(
+                <Checkbox
+                  checked={onlyActive}
+                  onChange={(event) => setOnlyActive(event.target.checked)}
+                  {...tid(TESTIDS['users-panel-filter-active'])}
+                />
+              )}
+              label="利用中のみ"
+            />
+            <FormControlLabel
+              control={(
+                <Checkbox
+                  checked={onlySevere}
+                  onChange={(event) => setOnlySevere(event.target.checked)}
+                  {...tid(TESTIDS['users-panel-filter-severe'])}
+                />
+              )}
+              label="重度加算対象のみ"
+            />
+          </Stack>
+        </Stack>
         <Stack direction={{ xs: 'column', lg: 'row' }} spacing={2.5} alignItems="stretch">
           <TableContainer
             component={Paper}
@@ -306,7 +364,7 @@ export default function UsersPanel() {
               </TableRow>
             </TableHead>
             <TableBody>
-              {data.map((user) => {
+              {filteredUsers.map((user) => {
                 const rowBusy = busyId === Number(user.Id);
                 const userKey = user.UserID || String(user.Id);
                 const isSelected = detailUserKey === userKey;

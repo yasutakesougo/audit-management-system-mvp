@@ -9,6 +9,7 @@ import Tab from '@mui/material/Tab';
 import Tabs from '@mui/material/Tabs';
 import PeopleAltRoundedIcon from '@mui/icons-material/PeopleAltRounded';
 import PersonAddRoundedIcon from '@mui/icons-material/PersonAddRounded';
+import ChevronRightRoundedIcon from '@mui/icons-material/ChevronRightRounded';
 import { useLocation } from 'react-router-dom';
 import { AuthRequiredError } from '../../../lib/errors';
 import UsersCreateForm from './UsersCreateForm';
@@ -64,6 +65,7 @@ const UsersPanel = () => {
   }, [isUsersTab, location.search, location.state]);
 
   const [activeTab, setActiveTab] = useState<UsersTab>(() => readTabFromLocation() ?? 'menu');
+  const panelOpenButtonRef = useRef<HTMLButtonElement | null>(null);
   const handledLocationRef = useRef<{ key: string; tab: UsersTab | null }>({
     key: location.key,
     tab: readTabFromLocation(),
@@ -248,6 +250,19 @@ const UsersPanel = () => {
           )}
         </Box>
       </Paper>
+
+      <Box sx={{ display: { xs: 'block', md: 'none' } }}>
+        <button
+          type="button"
+          ref={panelOpenButtonRef}
+          data-testid={TESTIDS['users-panel-open']}
+          onClick={() => setActiveTab('list')}
+          style={{ display: 'none' }}
+          aria-label="利用者一覧を開く"
+        >
+          <ChevronRightRoundedIcon />
+        </button>
+      </Box>
 
       <Dialog
         open={showCreateForm}

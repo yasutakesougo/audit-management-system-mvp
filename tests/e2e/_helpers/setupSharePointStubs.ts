@@ -44,6 +44,44 @@ type ListState<TItem extends Record<string, unknown> = Record<string, unknown>> 
   nextId: number;
 };
 
+type ScheduleRecord = Record<string, unknown>;
+
+// Single source of truth for schedule items across GET/PATCH/POST/DELETE.
+let scheduleStore: ScheduleRecord[] = [];
+
+export const resetScheduleStore = (next: ScheduleRecord[]): void => {
+  scheduleStore = next.map((item) => cloneRecord(item));
+};
+
+const ensureText = (value: unknown): string | undefined => (typeof value === 'string' ? value : undefined);
+
+const normalizeScheduleRecord = (rec: ScheduleRecord): ScheduleRecord => {
+  const title = ensureText(rec['Title']) ?? ensureText(rec['cr014_title']);
+  const service = ensureText(rec['ServiceType']) ?? ensureText(rec['cr014_serviceType']);
+
+  if (title) {
+    rec['Title'] = title;
+    rec['cr014_title'] = title;
+  }
+  if (service) {
+    rec['ServiceType'] = service;
+    rec['cr014_serviceType'] = service;
+  }
+  if (!rec['Status']) rec['Status'] = '予定';
+  return rec;
+};
+
+// Schedules list aliases we use in tests (ScheduleEvents/Schedules_Master/SupportSchedule etc.)
+const isScheduleList = (config: ListStubConfig): boolean => {
+  const names = [config.name, ...(config.aliases ?? [])].map(normalizeName);
+  return names.some((n) =>
+    n === 'schedules' ||
+    n === 'scheduleevents' ||
+    n === 'schedules_master' ||
+    n === 'supportschedule'
+  );
+};
+
 const JSON_HEADERS: Record<string, string> = {
   'Content-Type': 'application/json;odata=nometadata; charset=utf-8',
   'Cache-Control': 'no-store',
@@ -240,6 +278,9 @@ export async function setupSharePointStubs(page: Page, options: SetupSharePointS
   for (const config of options.lists ?? []) {
     const baseItems = Array.isArray(config.items) ? config.items.map((item) => cloneRecord(item)) : [];
     const nextId = Number.isFinite(config.nextId ?? Number.NaN) ? Number(config.nextId) : computeNextId(baseItems as Array<Record<string, unknown>>);
+    if (isScheduleList(config)) {
+      resetScheduleStore(baseItems as Array<Record<string, unknown>>);
+    }
     const state: ListState = { config, items: baseItems as Array<Record<string, unknown>>, nextId };
     nameMap.set(normalizeName(config.name), state);
     for (const alias of config.aliases ?? []) {
@@ -291,6 +332,16 @@ export async function setupSharePointStubs(page: Page, options: SetupSharePointS
         return;
       }
 
+      const isSchedule = isScheduleList(state.config);
+      const getItems = (): Array<Record<string, unknown>> => (isSchedule ? scheduleStore : state.items);
+      const setItems = (items: Array<Record<string, unknown>>) => {
+        if (isSchedule) {
+          scheduleStore = items;
+        } else {
+          state.items = items;
+        }
+      };
+
       const remainder = match.remainder ?? '';
 
       if (/\/items\((\d+)\)$/i.test(remainder)) {
@@ -300,27 +351,42 @@ export async function setupSharePointStubs(page: Page, options: SetupSharePointS
           await fulfill(route, { status: 400, body: { error: 'Invalid id' } });
           return;
         }
-        const index = state.items.findIndex((item) => Number(item['Id']) === id);
+        const items = getItems();
+        const index = items.findIndex((item) => Number(item['Id']) === id);
         if (index === -1) {
           await fulfill(route, { status: 404, body: {} });
           return;
         }
         if (method === 'GET') {
-          await fulfill(route, { status: 200, body: cloneRecord(state.items[index] as Record<string, unknown>) });
+          const item = cloneRecord(items[index] as Record<string, unknown>);
+          const responseItem = isSchedule ? normalizeScheduleRecord(item) : item;
+          await fulfill(route, { status: 200, body: responseItem });
           return;
         }
         if (method === 'PATCH' || method === 'MERGE') {
           const payload = normalizeBody(parseRequestBody(request));
-          const previous = state.items[index];
+          const previous = items[index];
+          const patchRecord = cloneRecord(payload as Record<string, unknown>);
+
+          // Normalise schedule fields so tests can read both prefixed and non-prefixed names
+          if (isSchedule) {
+            normalizeScheduleRecord(patchRecord);
+          }
+
           const nextValue = state.config.onUpdate
-            ? state.config.onUpdate(id, payload, { request, previous, listName: state.config.name })
-            : { ...previous, ...payload };
-          state.items[index] = cloneRecord(nextValue as Record<string, unknown>);
+            ? state.config.onUpdate(id, patchRecord, { request, previous, listName: state.config.name })
+            : { ...previous, ...patchRecord };
+          const nextRecord = isSchedule ? normalizeScheduleRecord(cloneRecord(nextValue as Record<string, unknown>)) : cloneRecord(nextValue as Record<string, unknown>);
+          const nextItems = getItems().slice();
+          nextItems[index] = nextRecord;
+          setItems(nextItems);
           await fulfill(route, { status: 204, body: '' });
           return;
         }
         if (method === 'DELETE') {
-          state.items.splice(index, 1);
+          const nextItems = getItems().slice();
+          nextItems.splice(index, 1);
+          setItems(nextItems);
           await fulfill(route, { status: 204, body: '' });
           return;
         }
@@ -328,7 +394,10 @@ export async function setupSharePointStubs(page: Page, options: SetupSharePointS
 
       if (/\/items\/?$/i.test(remainder)) {
         if (method === 'GET') {
-          const items = prepareItemsResponse(state, url.searchParams);
+          const itemsSource = isSchedule ? scheduleStore : state.items;
+          const items = prepareItemsResponse({ ...state, items: itemsSource }, url.searchParams).map((item) =>
+            isSchedule ? normalizeScheduleRecord(item as Record<string, unknown>) : item,
+          );
           if (debug) {
             console.log(`[stub] GET ${url.href} -> ${items.length} item(s)`);
           }
@@ -343,21 +412,24 @@ export async function setupSharePointStubs(page: Page, options: SetupSharePointS
             return current;
           };
           const created = state.config.onCreate
-            ? state.config.onCreate(payload, { takeNextId, listName: state.config.name, request, items: state.items })
+            ? state.config.onCreate(payload, { takeNextId, listName: state.config.name, request, items: getItems() })
             : { Id: takeNextId(), ...(normalizeBody(payload)) };
           const createdRecord = cloneRecord(normalizeBody(created));
           if (typeof createdRecord['Id'] !== 'number') {
             createdRecord['Id'] = takeNextId();
           }
+          const nextRecord = isSchedule ? normalizeScheduleRecord(createdRecord) : createdRecord;
+          const nextItems = getItems().slice();
           if (state.config.insertPosition === 'start') {
-            state.items.unshift(cloneRecord(createdRecord));
+            nextItems.unshift(cloneRecord(nextRecord));
           } else {
-            state.items.push(cloneRecord(createdRecord));
+            nextItems.push(cloneRecord(nextRecord));
           }
+          setItems(nextItems);
           if (debug) {
             console.log(`[stub] POST ${url.href} -> ${JSON.stringify(createdRecord)}`);
           }
-          await fulfill(route, { status: 201, body: createdRecord });
+          await fulfill(route, { status: 201, body: nextRecord });
           return;
         }
       }

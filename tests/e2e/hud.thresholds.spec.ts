@@ -48,8 +48,12 @@ test.describe('HUD thresholds display', () => {
     await ensureHudVisible(page);
 
     const thresholds = page.getByTestId('hud-thresholds');
-    await expect(thresholds).toContainText('discrepancy=15m');
-    await expect(thresholds).toContainText('absenceLimit=3');
-    await expect(thresholds).toContainText('closeTime=18:30');
+    const discrepancy = thresholds.getByTestId('hud-threshold-discrepancy');
+    const absence = thresholds.getByTestId('hud-threshold-absence');
+    const closeTime = thresholds.getByTestId('hud-threshold-closeTime');
+
+    await expect(discrepancy).toHaveAttribute('data-value', '15m');
+    await expect(absence).toHaveAttribute('data-value', '3');
+    await expect(closeTime).toHaveAttribute('data-value', '18:30');
   });
 });

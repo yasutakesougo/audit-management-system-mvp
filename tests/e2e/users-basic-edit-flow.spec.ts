@@ -1,6 +1,7 @@
 import type { Page } from '@playwright/test';
 import { expect, test } from '@playwright/test';
 import { TESTIDS } from '../../src/testids';
+import { scrollAndClick, waitForAppRoot, waitVisible } from './utils/pageReady';
 import { bootUsersPage } from './_helpers/bootUsersPage';
 
 const TARGET_USER_NAME = '田中 太郎';
@@ -22,30 +23,34 @@ test.describe('users basic info edit flow', () => {
       }),
     );
 
-    await bootUsersPage(page, {
-      seed: { usersMaster: true },
-    });
+    await bootUsersPage(page);
   });
 
-  test('edits furigana from the basic info tab', async ({ page }) => {
-    await page.getByRole('tab', { name: /利用者一覧/ }).click();
+  test('edits furigana from the basic info tab', async ({ page }, testInfo) => {
+    await waitForAppRoot(page, undefined, { testInfo, label: 'users-app' });
+    await scrollAndClick(page.getByRole('tab', { name: /利用者一覧/ }), page, {
+      testInfo,
+      label: 'users-tab-list',
+    });
 
     const listTable = page.getByTestId(TESTIDS['users-list-table']);
-    await expect(listTable).toBeVisible();
+    await waitVisible(listTable, page, { testInfo, label: 'users-table' });
     await expect(listTable).toContainText(TARGET_USER_NAME);
 
     const targetRow = buildRowLocator(page);
-    await targetRow.locator('[aria-label="詳細"]').click();
+    const detailButton = targetRow.locator('[aria-label="詳細"]');
+    await scrollAndClick(detailButton, page, { testInfo, label: 'users-detail-btn' });
 
     const detailSections = page.getByTestId(TESTIDS['user-detail-sections']);
-    await expect(detailSections).toBeVisible();
+    await waitVisible(detailSections, page, { testInfo, label: 'users-detail-sections' });
     const furiganaValue = detailSections
       .locator('dt', { hasText: 'ふりがな' })
       .first()
       .locator('xpath=following-sibling::*[1]');
     await expect(furiganaValue).toHaveText('未登録');
 
-    await targetRow.locator('[aria-label="編集"]').click();
+    const editButton = targetRow.locator('[aria-label="編集"]');
+    await scrollAndClick(editButton, page, { testInfo, label: 'users-edit-btn' });
 
     const editForm = page.getByRole('form', { name: '利用者情報編集フォーム' });
     await expect(editForm).toBeVisible();
