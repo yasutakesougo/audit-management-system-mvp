@@ -29,7 +29,7 @@ export const IcebergPdcaEmptyState: React.FC<Props> = ({
         <Button
           variant="contained"
           onClick={onSelectUser}
-          data-testid={TESTIDS['iceberg-pdca-empty']}
+          data-testid={TESTIDS.ICEBERG_PDCA_EMPTY}
         >
           {copy.actions?.[0] ?? '利用者を選ぶ'}
         </Button>
@@ -42,7 +42,7 @@ export const IcebergPdcaEmptyState: React.FC<Props> = ({
           <Button
             variant="contained"
             onClick={onCreate}
-            data-testid={TESTIDS['iceberg-pdca-empty']}
+            data-testid={TESTIDS.ICEBERG_PDCA_EMPTY}
           >
             {copy.actions?.[0] ?? 'PDCAを新規作成'}
           </Button>
