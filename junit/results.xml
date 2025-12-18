@@ -1,0 +1,10 @@
+<testsuites id="" name="" tests="3" failures="0" skipped="0" errors="0" time="28.695342">
+<testsuite name="schedule-org-filter.spec.ts" timestamp="2025-12-18T08:40:25.064Z" hostname="chromium" tests="3" failures="0" skipped="0" time="3.106" errors="0">
+<testcase name="Schedule org query param contract › org param is absent when no org selected on Org tab" classname="schedule-org-filter.spec.ts" time="0.749">
+</testcase>
+<testcase name="Schedule org query param contract › org param reflects Org tab selection and clears on all" classname="schedule-org-filter.spec.ts" time="0.938">
+</testcase>
+<testcase name="Schedule org query param contract › org param persists when switching between week, month, and day tabs" classname="schedule-org-filter.spec.ts" time="1.419">
+</testcase>
+</testsuite>
+</testsuites>
