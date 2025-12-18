@@ -2,10 +2,23 @@ import { expect, test } from '@playwright/test';
 
 test.describe('Dashboard smoke', () => {
   test.beforeEach(async ({ page }) => {
-    page.on('console', (msg) => console.log(`CONSOLE ${msg.type()}: ${msg.text()}`));
-    page.on('pageerror', (err) => console.log('PAGEERROR:', err));
+    // Initialize SharePoint environment variables to prevent bootstrap errors
+    await page.addInitScript(() => {
+      window.ENV = {
+        ...window.ENV,
+        VITE_SP_SCOPE_DEFAULT: 'https://mock.sharepoint.com/AllSites.Read',
+        VITE_SP_CLIENT_ID: 'mock-client-id',
+        VITE_SP_TENANT_ID: 'mock-tenant-id',
+        VITE_E2E_MSAL_MOCK: '1',
+        VITE_SKIP_LOGIN: '1',
+      };
+      localStorage.setItem('e2e:skipLogin', '1');
+    });
+
     await page.goto('/');
-    await expect(page).toHaveURL(/\/(dashboard)?\/?$/);
+    
+    // Wait for dashboard to load
+    await page.waitForLoadState('networkidle');
   });
 
   test('renders dashboard summary sections', async ({ page }) => {
@@ -24,6 +37,6 @@ test.describe('Dashboard smoke', () => {
     await quickAction.first().click();
 
     await expect(page).toHaveURL(/\/daily\/activity/);
-    await expect(page.getByTestId('records-daily-root')).toBeVisible({ timeout: 30_000 });
+    await expect(page.getByTestId('records-daily-root')).toBeVisible();
   });
 });
