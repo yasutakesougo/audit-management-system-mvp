@@ -10,6 +10,13 @@ type OrgFilterKey = 'all' | 'main' | 'shortstay' | 'respite' | 'other';
 
 const getOrgParam = (page: Page): string | null => new URL(page.url()).searchParams.get('org');
 
+// Tab name patterns for both Japanese and English
+const TAB_NAMES = {
+  WEEK: /週|Week/i,
+  MONTH: /月|Month/i,
+  DAY: /日|Day/i,
+} as const;
+
 const selectOrgInTab = async (page: Page, value: OrgFilterKey) => {
   const orgTab = page.getByRole('tab', { name: '事業所別' });
   await orgTab.click();
@@ -53,21 +60,21 @@ test.describe('Schedule org query param contract', () => {
     await expect(page).toHaveURL(/org=respite/);
 
     // Switch to week tab
-    const weekTab = page.getByRole('tab', { name: /週|Week/i });
+    const weekTab = page.getByRole('tab', { name: TAB_NAMES.WEEK });
     await weekTab.click();
     await page.waitForLoadState('domcontentloaded');
     expect(getOrgParam(page)).toBe('respite');
     await expect(page).toHaveURL(/org=respite/);
 
     // Switch to month tab
-    const monthTab = page.getByRole('tab', { name: /月|Month/i });
+    const monthTab = page.getByRole('tab', { name: TAB_NAMES.MONTH });
     await monthTab.click();
     await page.waitForLoadState('domcontentloaded');
     expect(getOrgParam(page)).toBe('respite');
     await expect(page).toHaveURL(/org=respite/);
 
     // Switch to day tab
-    const dayTab = page.getByRole('tab', { name: /日|Day/i });
+    const dayTab = page.getByRole('tab', { name: TAB_NAMES.DAY });
     await dayTab.click();
     await page.waitForLoadState('domcontentloaded');
     expect(getOrgParam(page)).toBe('respite');
