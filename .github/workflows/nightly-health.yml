@@ -24,7 +24,7 @@ jobs:
           VITE_SKIP_LOGIN: "1"
           VITE_E2E_MSAL_MOCK: "1"
           VITE_SKIP_SHAREPOINT: "1"
-          VITE_SP_SCOPE_DEFAULT: "https://contoso.sharepoint.com/AllSites.Read"
+          VITE_SP_SCOPE_DEFAULT: ${{ secrets.VITE_SP_SCOPE_DEFAULT }}
           NOTIFY_WEBHOOK_URL: ${{ secrets.NOTIFY_WEBHOOK_URL }}
       - name: Perf report (LHCI + Web Vitals)
         run: npm run -s ci:perf-report
