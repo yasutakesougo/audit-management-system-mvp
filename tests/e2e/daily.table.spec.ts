@@ -1,6 +1,6 @@
 import { expect, test } from '@playwright/test';
 
-test.describe('日次記録: /daily/table entry points', () => {
+test.describe('日次記録: /daily/table entry points @seed', () => {
   test('direct route loads the table form', async ({ page }) => {
     await page.goto('/daily/table');
     await expect(page.getByTestId('daily-table-record-form')).toBeVisible();

@@ -1,6 +1,6 @@
 import { expect, test } from '@playwright/test';
 
-test.describe('C-2 クロスモジュールナビゲーション', () => {
+test.describe('C-2 クロスモジュールナビゲーション @seed', () => {
   test('Activity→Attendance: 支援記録（ケース記録）から通所状況へのリンク', async ({ page }) => {
     // 1. 支援記録（ケース記録）ページを開く
     await page.goto('/daily/activity');

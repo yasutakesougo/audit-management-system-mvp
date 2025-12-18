@@ -1,6 +1,6 @@
 import { expect, test } from '@playwright/test';
 
-test.describe('C-4: Cross-Module Issues E2E', () => {
+test.describe('C-4: Cross-Module Issues E2E @seed', () => {
   test.describe('Complete Cross-Module Integration Flow', () => {
 
     test('S1: attendance_activity_mismatch alert navigates to Activity and highlights target user', async ({ page }) => {

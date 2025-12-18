@@ -6,7 +6,7 @@
 
 import { expect, test } from '@playwright/test';
 
-test.describe('Daily Record Menu Page', () => {
+test.describe('Daily Record Menu Page @seed', () => {
   test.beforeEach(async ({ page }) => {
     // Navigate to daily record menu page
     await page.goto('/daily');
