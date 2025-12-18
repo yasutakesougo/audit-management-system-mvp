@@ -56,7 +56,7 @@
     "e2e:install": "playwright install --with-deps",
     "e2e:home-tiles": "playwright test tests/e2e/home.tiles.spec.ts --reporter=line --trace=retain-on-failure",
     "e2e:dashboard-smoke": "playwright test tests/e2e/dashboard.tabs.smoke.spec.ts --reporter=line --trace=retain-on-failure",
-    "ci:e2e": "playwright test --project=chromium \"$@\" || (npm run notify -- \"❌ E2E failed on CI\" && exit 1)",
+    "ci:e2e": "sh -c 'npx playwright test --project=chromium \"$@\" || (npm run notify -- \"❌ E2E failed on CI\" && exit 1)' --",
     "typecheck": "tsc -p tsconfig.build.json --noEmit",
     "typecheck:full": "tsc -p tsconfig.ci.json --noEmit",
     "lint": "eslint --ext .ts,.tsx src --max-warnings=0",
