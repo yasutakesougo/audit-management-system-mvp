@@ -48,7 +48,7 @@ test.describe('Schedule week org filter', () => {
       }
     });
 
-    await bootSchedule(page, { date: TARGET_DATE });
+    await bootSchedule(page, { date: TARGET_DATE, enableWeekV2: false });
   });
 
   test('defaults to merged org view when org query param is absent', async ({ page }) => {
