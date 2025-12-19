@@ -37,9 +37,9 @@ const intlAcceptsTimeZone = (tz: string): boolean => {
   if (!hasIntlSupport()) return false;
 
   try {
-    const formatter = new Intl.DateTimeFormat('en-US', { timeZone: tz });
-    const resolved = formatter.resolvedOptions().timeZone;
-    return typeof resolved === 'string' && resolved.toLowerCase() === tz.toLowerCase();
+    // If Intl accepts the option without throwing, treat it as usable even on minimal ICU builds.
+    new Intl.DateTimeFormat('en-US', { timeZone: tz });
+    return true;
   } catch {
     return false;
   }
@@ -69,7 +69,12 @@ export function isValidTimeZone(tz?: string): boolean {
   }
 
   // Fallback for environments where Intl is unavailable or lacks the zone data.
-  return dateFnsAcceptsTimeZone(normalized);
+  if (dateFnsAcceptsTimeZone(normalized)) {
+    return true;
+  }
+
+  // As a last resort, trust a small whitelist of safe candidates even if the runtime cannot validate them.
+  return DEFAULT_TZ_CANDIDATES.some((candidate) => candidate.toLowerCase() === normalized.toLowerCase());
 }
 
 type AssertValidTzOptions = {
@@ -115,7 +120,7 @@ export function assertValidTz(
     console.warn(`[scheduleTz] Invalid time zone "${tz}"; falling back to "${fallback}".`);
   }
 
-  const chain = [...orderedCandidates, fallback, DEFAULT_TZ, 'UTC'];
+  const chain = [fallback, DEFAULT_TZ, ...orderedCandidates, 'UTC'];
   const seen = new Set<string>();
 
   for (const candidate of chain) {
