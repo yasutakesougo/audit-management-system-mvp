@@ -148,6 +148,7 @@ describe('TableDailyRecordForm', () => {
 
   it(
     'should auto-select todays attendees on open',
+    { timeout: 15000 },
     async () => {
       renderForm();
 
@@ -156,8 +157,7 @@ describe('TableDailyRecordForm', () => {
       if (expectedCount > 0) {
         await waitForTable();
       }
-    },
-    { timeout: 15000 }
+    }
   );
 
   it('should show table immediately with auto-selected attendees', async () => {
@@ -312,6 +312,7 @@ describe('TableDailyRecordForm', () => {
 
   it(
     'should prevent saving without reporter name',
+    { timeout: 15000 },
     async () => {
       const alertMock = vi.spyOn(window, 'alert').mockImplementation(() => undefined);
       const mockOnSave = vi.fn();
@@ -328,12 +329,12 @@ describe('TableDailyRecordForm', () => {
       expect(mockOnSave).not.toHaveBeenCalled();
 
       alertMock.mockRestore();
-    },
-    { timeout: 15000 }
+    }
   );
 
   it(
     'should handle select all functionality',
+    { timeout: 15000 },
     async () => {
       const user = createUser();
       renderForm();
@@ -347,12 +348,12 @@ describe('TableDailyRecordForm', () => {
       await user.click(selectAllButton);
 
       await waitForSelectionInfo(getDefaultSelectionCount());
-    },
-    { timeout: 15000 }
+    }
   );
 
   it(
     'should handle clear all functionality',
+    { timeout: 15000 },
     async () => {
       const user = createUser();
       renderForm();
@@ -365,8 +366,7 @@ describe('TableDailyRecordForm', () => {
       await waitFor(() => {
         expect(screen.queryByText(/人の利用者が選択されています/)).not.toBeInTheDocument();
       });
-    },
-    { timeout: 15000 }
+    }
   );
 
   describe('Attendance Day Filter', () => {
