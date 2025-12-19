@@ -46,7 +46,7 @@ jobs:
       - name: Preflight (typecheck, lint, unit, build)
         run: |
           npm run preflight
-          npx vitest run tests/unit/schedule --reporter=basic
+          npx vitest run tests/unit/schedule --reporter=verbose
 
   schedule-unit:
     name: Schedule unit (TZ matrix)
@@ -74,7 +74,7 @@ jobs:
         env:
           CI: true
           VITE_SCHEDULES_TZ: ${{ matrix.tz }}
-        run: npx vitest run tests/unit/schedule --reporter=basic
+        run: npx vitest run tests/unit/schedule --reporter=verbose
 
   e2e:
     name: E2E (Playwright, opt-in)
