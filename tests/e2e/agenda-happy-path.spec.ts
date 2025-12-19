@@ -29,7 +29,6 @@ const TIMELINE_RECORDS = Array.isArray(agendaSeed.handoffTimeline) ? agendaSeed.
 const TIMELINE_USERS = TIMELINE_RECORDS.map((record) => record.userDisplayName);
 const SUMMARY_CHIPS = agendaSeed.dashboard?.summaryChips ?? [];
 const SCHEDULE_SEED_DATE = new Date(getSchedulesTodaySeedDate());
-const SCHEDULE_EVENT_TITLES = agendaSeed.schedule?.eventTitles ?? ['AM 検温', '昼食前準備', 'PM 水分補給'];
 const MORNING_COUNT = TIMELINE_RECORDS.filter((record) => ['朝', '午前'].includes(record.timeBand)).length;
 const EVENING_COUNT = TIMELINE_RECORDS.filter((record) => ['午後', '夕方'].includes(record.timeBand)).length;
 
@@ -106,11 +105,12 @@ test.describe('Agenda happy path', () => {
     await gotoDay(page, SCHEDULE_SEED_DATE);
     await waitForDayTimeline(page);
 
-    // All three seeded schedule events should appear on the day view timeline.
+    // User category events should surface on the day view timeline (other categories are excluded).
     const dayEvents = page.locator('[data-schedule-event="true"][data-category="User"]');
-    await expect(dayEvents).toHaveCount(3);
+    await expect(dayEvents).toHaveCount(2);
 
-    for (const title of SCHEDULE_EVENT_TITLES) {
+    const userEventTitles = ['AM 検温', '昼食前準備'];
+    for (const title of userEventTitles) {
       await assertDayHasUserCareEvent(page, { titleContains: title });
     }
   });

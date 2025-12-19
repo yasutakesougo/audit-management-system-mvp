@@ -186,6 +186,15 @@ export default function ScheduleListView() {
   const { data, error, loading, reload } = useSchedules();
   const sp = useSP();
   const tableLabelId = useId();
+  const outlineButtonSx = {
+    borderColor: 'primary.main',
+    color: 'primary.main',
+    fontWeight: 600,
+    '&:hover': {
+      borderColor: 'primary.dark',
+      backgroundColor: 'action.hover',
+    },
+  } as const;
 
   const { filters, debounced, update, reset, isDebouncing } = usePersistedFilters<Filters>({
     storageKey: FILTER_STORAGE_KEY,
@@ -347,6 +356,7 @@ export default function ScheduleListView() {
             <Button
               size="small"
               variant={filters.range === 'today' ? 'contained' : 'outlined'}
+              sx={filters.range === 'today' ? undefined : outlineButtonSx}
               onClick={() => update('range', 'today')}
               aria-pressed={filters.range === 'today'}
               type="button"
@@ -356,6 +366,7 @@ export default function ScheduleListView() {
             <Button
               size="small"
               variant={filters.range === 'this-week' ? 'contained' : 'outlined'}
+              sx={filters.range === 'this-week' ? undefined : outlineButtonSx}
               onClick={() => update('range', 'this-week')}
               aria-pressed={filters.range === 'this-week'}
               type="button"
@@ -365,6 +376,7 @@ export default function ScheduleListView() {
             <Button
               size="small"
               variant={filters.range === 'all' ? 'contained' : 'outlined'}
+              sx={filters.range === 'all' ? undefined : outlineButtonSx}
               onClick={() => update('range', 'all')}
               aria-pressed={filters.range === 'all'}
               type="button"

@@ -5,8 +5,8 @@ const isCI = !!process.env.CI;
 const skipBuild = process.env.PLAYWRIGHT_SKIP_BUILD === '1';
 const baseUrlEnv = process.env.PLAYWRIGHT_BASE_URL;
 const webServerCommandOverride = process.env.PLAYWRIGHT_WEB_SERVER_COMMAND;
-const webServerUrl = process.env.PLAYWRIGHT_WEB_SERVER_URL ?? baseUrlEnv ?? 'http://localhost:3000';
-const baseURL = baseUrlEnv ?? webServerUrl;
+const baseURL = baseUrlEnv ?? 'http://127.0.0.1:5173';
+const webServerUrl = process.env.PLAYWRIGHT_WEB_SERVER_URL ?? baseURL;
 const junitOutput = process.env.PLAYWRIGHT_JUNIT_OUTPUT ?? 'junit/results.xml';
 const ciReporters: ReporterDescription[] = [
   ['list'],
@@ -25,11 +25,14 @@ const webServerEnvString = Object.entries(webServerEnvVars)
   .map(([key, value]) => `${key}=${value}`)
   .join(' ');
 
-const defaultWebServerCommand = skipBuild
-  ? `env ${webServerEnvString} npm run preview:e2e`
-  : `env ${webServerEnvString} sh -c "npm run build && npm run preview:e2e"`;
+const devCommand = `env ${webServerEnvString} npm run dev -- --host 127.0.0.1 --port 5173 --strictPort`;
+const buildAndDevCommand = `sh -c "env ${webServerEnvString} npm run build && env ${webServerEnvString} npm run dev -- --host 127.0.0.1 --port 5173 --strictPort"`;
 
-const webServerCommand = webServerCommandOverride ?? defaultWebServerCommand;
+const webServerCommand = webServerCommandOverride
+  ? webServerCommandOverride
+  : skipBuild
+    ? devCommand
+    : buildAndDevCommand;
 
 // Allow reusing an externally started server when PLAYWRIGHT_WEB_SERVER_URL is provided (e.g., guardrails workflows).
 const reuseExistingServer = process.env.PLAYWRIGHT_WEB_SERVER_URL ? true : !isCI;

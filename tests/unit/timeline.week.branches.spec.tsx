@@ -89,8 +89,9 @@ describe('TimelineWeek branch coverage', () => {
 
     render(<TimelineWeek events={events} />);
 
-  expect(screen.getByRole('button', { name: '今日の列に移動' })).toBeDisabled();
-  expect(screen.getAllByTestId('schedule-item')).toHaveLength(2);
+    const todayButtons = screen.getAllByRole('button', { name: '今日の列に移動' });
+    todayButtons.forEach((btn) => expect(btn).toBeDisabled());
+    expect(screen.getAllByTestId('schedule-item')).toHaveLength(2);
     expect(screen.getAllByText('予定なし').length).toBeGreaterThan(0);
   });
 
@@ -117,7 +118,7 @@ describe('TimelineWeek branch coverage', () => {
     Object.defineProperty(todayHeader, 'scrollIntoView', { value: scrollSpy, configurable: true });
     Object.defineProperty(todayHeader, 'focus', { value: focusSpy, configurable: true });
 
-  const todayButton = screen.getByRole('button', { name: '今日の列に移動' });
+    const todayButton = screen.getAllByRole('button', { name: '今日の列に移動' })[0];
     expect(todayButton).not.toBeDisabled();
     todayButton.click();
     expect(scrollSpy).toHaveBeenCalledTimes(1);
