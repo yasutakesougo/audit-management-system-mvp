@@ -72,7 +72,7 @@ describe('TableDailyRecordForm', () => {
     waitFor(
       () => {
         const el = screen.getByTestId('selection-count');
-        expect(el).toHaveTextContent(`${count}人`);
+        expect(el).toHaveTextContent(new RegExp(`^${count}人の利用者が選択されています`));
       },
       { timeout: 10000 }
     );
