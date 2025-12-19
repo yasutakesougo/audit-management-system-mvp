@@ -33,3 +33,6 @@ vite-profile-*.cpuprofile
 # Local scratch/backup TS/TSX files
 *backup.tsx
 *backup.ts
+
+# npm audit reports
+audit-report.json
