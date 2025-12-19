@@ -1,5 +1,11 @@
 import { defineConfig, devices } from '@playwright/test';
 import type { ReporterDescription } from '@playwright/test';
+import { config as dotenvConfig } from 'dotenv';
+import { resolve } from 'node:path';
+
+// Load E2E environment variables from .env.e2e
+// CI environments can override these by setting their own env vars
+dotenvConfig({ path: resolve(__dirname, '.env.e2e') });
 
 const isCI = !!process.env.CI;
 const skipBuild = process.env.PLAYWRIGHT_SKIP_BUILD === '1';

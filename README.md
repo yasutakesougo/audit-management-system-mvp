@@ -679,6 +679,19 @@ npm run test:e2e
 
 `tests/e2e/audit-basic.spec.ts` がアプリシェルと監査ログ表示の最低限を確認します。拡張する場合は同ディレクトリに追加してください。
 
+#### E2E Environment Configuration
+
+Playwright テストは `.env.e2e` ファイルから環境変数を自動的に読み込みます。このファイルには E2E テスト用のデフォルト設定が含まれています：
+
+- **VITE_E2E=1** - E2E モードを有効化
+- **VITE_SKIP_LOGIN=1** - ログインをスキップ
+- **VITE_E2E_MSAL_MOCK=1** - MSAL 認証をモック
+- **VITE_SKIP_SHAREPOINT=1** - SharePoint API をスキップ
+- SharePoint テスト設定 (contoso.sharepoint.com)
+- その他のテストフラグ
+
+CI 環境では、これらの変数を GitHub Actions のワークフローで上書きできます。ローカル開発では `.env.e2e` の値がそのまま使用されます。
+
 ### 監査ログフィルタ (Action)
 `監査ログ` パネル上部に Action ドロップダウンを追加。`ALL` / 個別アクションでテーブルが絞り込み表示されます。
 

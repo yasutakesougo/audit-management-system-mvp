@@ -126,6 +126,7 @@
     "axe-core": "^4.10.3",
     "baseline-browser-mapping": "^2.8.29",
     "changelogithub": "^13.16.0",
+    "dotenv": "^17.2.3",
     "eslint": "^8.57.0",
     "eslint-config-prettier": "^9.1.0",
     "husky": "^9.1.7",
