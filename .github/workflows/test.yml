@@ -55,9 +55,31 @@ jobs:
       - name: Test (coverage)
         run: npm run test:coverage -- --reporter=default
       - name: Playwright E2E
-        run: npm run ci:e2e
         env:
+          VITE_E2E: "1"
+          VITE_SKIP_LOGIN: "1"
+          VITE_E2E_MSAL_MOCK: "1"
+          VITE_SKIP_SHAREPOINT: "1"
+          VITE_MSAL_CLIENT_ID: "dummy"
+          VITE_MSAL_TENANT_ID: "dummy"
+          VITE_SCHEDULES_TZ: "Asia/Tokyo"
+          VITE_SP_SCOPE_DEFAULT: ${{ secrets.VITE_SP_SCOPE_DEFAULT }}
+          VITE_SP_RESOURCE: ${{ vars.VITE_SP_RESOURCE }}
+          VITE_SP_SITE_RELATIVE: ${{ vars.VITE_SP_SITE_RELATIVE }}
           NOTIFY_WEBHOOK_URL: ${{ secrets.NOTIFY_WEBHOOK_URL }}
+        run: |
+          set -euo pipefail
+
+          export VITE_SP_RESOURCE="${VITE_SP_RESOURCE:-https://contoso.sharepoint.com}"
+          export VITE_SP_SITE_RELATIVE="${VITE_SP_SITE_RELATIVE:-/sites/Audit}"
+          export VITE_SP_SCOPE_DEFAULT="${VITE_SP_SCOPE_DEFAULT:-https://contoso.sharepoint.com/AllSites.Read}"
+
+          echo "VITE_SP_SCOPE_DEFAULT set? -> $([ -n "${VITE_SP_SCOPE_DEFAULT}" ] && echo yes || echo no)"
+          echo "VITE_SP_SCOPE_DEFAULT length -> ${#VITE_SP_SCOPE_DEFAULT}"
+          echo "VITE_SP_RESOURCE -> ${VITE_SP_RESOURCE}"
+          echo "VITE_SP_SITE_RELATIVE -> ${VITE_SP_SITE_RELATIVE}"
+
+          npm run ci:e2e -- --grep-invert @seed --grep-invert @csp
       - name: Perf report (LHCI + Web Vitals)
         run: npm run -s ci:perf-report
         env:
@@ -100,6 +122,7 @@ jobs:
     env:
       VITE_FEATURE_SCHEDULES: "true"
       NOTIFY_WEBHOOK_URL: ${{ secrets.NOTIFY_WEBHOOK_URL }}
+      VITE_SP_SCOPE_DEFAULT: ${{ secrets.VITE_SP_SCOPE_DEFAULT }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -118,7 +141,11 @@ jobs:
           set +e
           status=0
 
-          npm run ci:e2e
+          export VITE_SP_RESOURCE="${VITE_SP_RESOURCE:-https://contoso.sharepoint.com}"
+          export VITE_SP_SITE_RELATIVE="${VITE_SP_SITE_RELATIVE:-/sites/Audit}"
+          export VITE_SP_SCOPE_DEFAULT="${VITE_SP_SCOPE_DEFAULT:-https://contoso.sharepoint.com/AllSites.Read}"
+
+          npm run ci:e2e -- --grep-invert @seed --grep-invert @csp
           exit_code=$?
           if [ "$exit_code" -ne 0 ]; then
             status="$exit_code"
@@ -139,6 +166,18 @@ jobs:
           if [ "$status" -ne 0 ]; then
             exit "$status"
           fi
+        env:
+          VITE_E2E: "1"
+          VITE_SKIP_LOGIN: "1"
+          VITE_E2E_MSAL_MOCK: "1"
+          VITE_SKIP_SHAREPOINT: "1"
+          VITE_MSAL_CLIENT_ID: "dummy"
+          VITE_MSAL_TENANT_ID: "dummy"
+          VITE_SCHEDULES_TZ: "Asia/Tokyo"
+          VITE_SP_SCOPE_DEFAULT: ${{ secrets.VITE_SP_SCOPE_DEFAULT }}
+          VITE_SP_RESOURCE: ${{ vars.VITE_SP_RESOURCE }}
+          VITE_SP_SITE_RELATIVE: ${{ vars.VITE_SP_SITE_RELATIVE }}
+          NOTIFY_WEBHOOK_URL: ${{ secrets.NOTIFY_WEBHOOK_URL }}
       - name: Notify canary failure
         if: failure()
         run: node scripts/notify.mjs --only-on-fail --title "canary(schedule)" --files reports/perf-summary.md

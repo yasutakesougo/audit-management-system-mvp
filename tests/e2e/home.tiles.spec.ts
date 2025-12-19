@@ -1,61 +1,75 @@
-import { test, expect } from '@playwright/test';
-import { setupSharePointStubs } from './helpers/setupSharePointStubs';
+import { expect, test } from '@playwright/test';
+import { setupSharePointStubs } from './_helpers/setupSharePointStubs';
+import { TESTIDS } from '../../src/testids';
 
-// Hardened E2E spec pattern:
-// - ensure MSAL/login is mocked via init script (VITE_* read on app bootstrap)
-// - stub SharePoint calls to avoid leaking network / flakiness
-// - wait for app root to be ready (dashboard or schedules) before asserting
-// - capture artifacts on failure
+test.describe('Dashboard smoke', () => {
+  test.beforeEach(async ({ page }) => {
+    await page.addInitScript(() => {
+      const globalWithEnv = window as typeof window & { __ENV__?: Record<string, string> };
+      globalWithEnv.__ENV__ = {
+        ...(globalWithEnv.__ENV__ ?? {}),
+        VITE_E2E_MSAL_MOCK: '1',
+        VITE_SKIP_LOGIN: '1',
+        VITE_DEMO_MODE: '0',
+      };
+      try {
+        window.localStorage.setItem('skipLogin', '1');
+        window.localStorage.setItem('demo', '0');
+      } catch {
+        // ignore storage failures in unsupported environments
+      }
+    });
 
-test.beforeEach(async ({ page }) => {
-  // Must be set before app code runs.
-  await page.addInitScript(() => {
-    // Vite injects import.meta.env.* at build time, but this app also reads
-    // these values from window/global to control E2E behavior.
-    (window as any).VITE_E2E_MSAL_MOCK = '1';
-    (window as any).VITE_SKIP_LOGIN = '1';
+    await page.route('**/login.microsoftonline.com/**', (route) => route.fulfill({ status: 204, body: '' }));
+    await page.route('https://graph.microsoft.com/**', (route) =>
+      route.fulfill({ status: 200, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ value: [] }) })
+    );
 
-    try {
-      window.localStorage.setItem('skipLogin', 'true');
-      window.localStorage.setItem('demo', 'true');
-    } catch {
-      // ignore
+    await setupSharePointStubs(page, {
+      currentUser: { status: 200, body: { Id: 1234 } },
+      lists: [
+        { name: 'Users_Master', items: [] },
+        { name: 'Schedules', aliases: ['ScheduleEvents'], items: [] },
+        { name: 'SupportRecord_Daily', items: [] },
+      ],
+      fallback: { status: 200, body: { value: [] } },
+    });
+
+    await page.goto('/', { waitUntil: 'domcontentloaded' });
+    await page.waitForLoadState('networkidle', { timeout: 8_000 }).catch(() => undefined);
+
+    const root = page.getByTestId(TESTIDS['dashboard-page']).or(page.getByTestId(TESTIDS.SCHEDULES_PAGE_ROOT));
+    await expect(root).toBeVisible({ timeout: 15_000 });
+  });
+
+  test.afterEach(async ({ page }, testInfo) => {
+    // eslint-disable-next-line no-console
+    console.log(`[home.tiles] final url: ${page.url()}`);
+
+    if (testInfo.status !== testInfo.expectedStatus) {
+      await page.screenshot({ path: testInfo.outputPath('failure.png'), fullPage: true });
     }
   });
 
-  await setupSharePointStubs(page);
-});
+  test('renders dashboard summary sections', async ({ page }) => {
+    await expect(page.getByTestId(TESTIDS['dashboard-page'])).toBeVisible({ timeout: 15_000 });
+    await expect(page.getByRole('heading', { name: /今日の通所/i })).toBeVisible();
+    await expect(page.getByRole('heading', { name: /日次記録状況/i })).toBeVisible();
+  });
 
-test.afterEach(async ({ page }, testInfo) => {
-  // Always log where we ended up to help debug flakes.
-  // eslint-disable-next-line no-console
-  console.log(`[home.tiles] final url: ${page.url()}`);
+  test('quick action navigates to daily activity records', async ({ page }) => {
+    const root = page.getByTestId(TESTIDS['dashboard-page']).or(page.getByTestId(TESTIDS.SCHEDULES_PAGE_ROOT));
+    await expect(root).toBeVisible({ timeout: 15_000 });
 
-  if (testInfo.status !== testInfo.expectedStatus) {
-    await page.screenshot({
-      path: testInfo.outputPath('failure.png'),
-      fullPage: true,
-    });
-  }
-});
+    const quickAction = page
+      .getByRole('link', { name: /支援記録（ケース記録）入力/ })
+      .or(page.locator('a[href="/daily/activity"]'))
+      .or(page.locator('a[href="/daily/activity/"]'));
 
-test('home tiles (hardened)', async ({ page }) => {
-  await page.goto('/', { waitUntil: 'domcontentloaded' });
+    await expect(quickAction.first()).toBeVisible({ timeout: 15_000 });
+    await quickAction.first().click();
 
-  // Best-effort network idle: don't fail if the app keeps a connection open.
-  await page
-    .waitForLoadState('networkidle', { timeout: 10_000 })
-    .catch(() => undefined);
-
-  // Wait until the app root is ready: either dashboard-page root or schedules root.
-  const appRoot = page.locator('dashboard-page, [data-testid="schedules-root"], #schedules-root');
-  await expect(appRoot.first()).toBeVisible({ timeout: 15_000 });
-
-  // Headings / tiles assertions should be stable after root is visible.
-  await expect(page.getByRole('heading', { level: 1 })).toBeVisible();
-
-  // Quick action should prefer the role link by name.
-  const quickAction = page.getByRole('link', { name: /支援記録（ケース記録）入力/ });
-  await expect(quickAction).toBeVisible({ timeout: 15_000 });
-  await expect(quickAction).toHaveAttribute('href', '/daily/activity');
+    await expect(page).toHaveURL(/\/daily\/activity/);
+    await expect(page.getByTestId('records-daily-root')).toBeVisible();
+  });
 });

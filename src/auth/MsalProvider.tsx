@@ -1,5 +1,6 @@
 import type { IPublicClientApplication } from '@azure/msal-browser';
 import React, { useEffect, useMemo, useState } from 'react';
+import { isE2eMsalMockEnabled } from '../lib/env';
 import { msalConfig } from './msalConfig';
 
 type MsalInstance = IPublicClientApplication;
@@ -67,13 +68,40 @@ async function loadMsalReact(): Promise<MsalReactModule> {
 }
 
 export const MsalProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  const isMock = isE2eMsalMockEnabled();
+
+  const mockInstance = useMemo(
+    () => ({
+      getAllAccounts: () => [],
+      getActiveAccount: () => null,
+      setActiveAccount: () => undefined,
+    }) as unknown as MsalInstance,
+    [],
+  );
+
+  const mockLogger = useMemo(
+    () => ({} as ReturnType<MsalReactModule['useMsal']>['logger']),
+    [],
+  );
+
+  const mockUseMsal: MsalReactModule['useMsal'] = () => ({
+    instance: mockInstance,
+    accounts: [],
+    inProgress: 'none',
+    logger: mockLogger,
+  });
+
+  const MockProvider: MsalProviderComponent = ({ children: mockChildren }) => <>{mockChildren}</>;
+
   const [providerState, setProviderState] = useState<{
     instance: MsalInstance;
     Provider: MsalProviderComponent;
     useMsal: MsalReactModule['useMsal'];
-  } | null>(null);
+  } | null>(isMock ? { instance: mockInstance, Provider: MockProvider, useMsal: mockUseMsal } : null);
 
   useEffect(() => {
+    if (isMock) return undefined;
+
     let isMounted = true;
 
     Promise.all([loadMsalInstance(), loadMsalReact()]).then(([instance, msalReact]) => {
@@ -85,7 +113,7 @@ export const MsalProvider: React.FC<{ children: React.ReactNode }> = ({ children
     return () => {
       isMounted = false;
     };
-  }, []);
+  }, [isMock]);
 
   if (!providerState) {
     return null;
