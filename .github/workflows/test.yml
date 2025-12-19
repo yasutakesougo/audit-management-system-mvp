@@ -55,25 +55,6 @@ jobs:
       - name: Test (coverage)
         run: npm run test:coverage -- --reporter=default
       - name: Playwright E2E
-        run: |
-          set -euo pipefail
-
-          export VITE_SP_RESOURCE="${VITE_SP_RESOURCE:-https://contoso.sharepoint.com}"
-          export VITE_SP_SITE_RELATIVE="${VITE_SP_SITE_RELATIVE:-/sites/Audit}"
-          export VITE_SP_SCOPE_DEFAULT="${VITE_SP_SCOPE_DEFAULT:-https://contoso.sharepoint.com/AllSites.Read}"
-
-          echo "VITE_SP_SCOPE_DEFAULT set? -> $([ -n "${VITE_SP_SCOPE_DEFAULT}" ] && echo yes || echo no)"
-          echo "VITE_SP_SCOPE_DEFAULT length -> ${#VITE_SP_SCOPE_DEFAULT}"
-          echo "VITE_SP_RESOURCE -> ${VITE_SP_RESOURCE}"
-          echo "VITE_SP_SITE_RELATIVE -> ${VITE_SP_SITE_RELATIVE}"
-
-          export PLAYWRIGHT_WEB_SERVER_COMMAND="env \
-VITE_SP_RESOURCE=\"${VITE_SP_RESOURCE}\" \
-VITE_SP_SITE_RELATIVE=\"${VITE_SP_SITE_RELATIVE}\" \
-VITE_SP_SCOPE_DEFAULT=\"${VITE_SP_SCOPE_DEFAULT}\" \
-npm run preview:e2e"
-
-          npm run ci:e2e -- --grep-invert @seed --grep-invert @csp
         env:
           VITE_E2E: "1"
           VITE_SKIP_LOGIN: "1"
@@ -86,6 +67,25 @@ npm run preview:e2e"
           VITE_SP_RESOURCE: ${{ vars.VITE_SP_RESOURCE }}
           VITE_SP_SITE_RELATIVE: ${{ vars.VITE_SP_SITE_RELATIVE }}
           NOTIFY_WEBHOOK_URL: ${{ secrets.NOTIFY_WEBHOOK_URL }}
+        run: |
+          set -euo pipefail
+
+          export VITE_SP_RESOURCE="${VITE_SP_RESOURCE:-https://contoso.sharepoint.com}"
+          export VITE_SP_SITE_RELATIVE="${VITE_SP_SITE_RELATIVE:-/sites/Audit}"
+          export VITE_SP_SCOPE_DEFAULT="${VITE_SP_SCOPE_DEFAULT:-https://contoso.sharepoint.com/AllSites.Read}"
+
+          echo "VITE_SP_SCOPE_DEFAULT set? -> $([ -n "${VITE_SP_SCOPE_DEFAULT}" ] && echo yes || echo no)"
+          echo "VITE_SP_SCOPE_DEFAULT length -> ${#VITE_SP_SCOPE_DEFAULT}"
+          echo "VITE_SP_RESOURCE -> ${VITE_SP_RESOURCE}"
+          echo "VITE_SP_SITE_RELATIVE -> ${VITE_SP_SITE_RELATIVE}"
+
+          export PLAYWRIGHT_WEB_SERVER_COMMAND=$'env\n'"\
+            VITE_SP_RESOURCE=${VITE_SP_RESOURCE} \
+            VITE_SP_SITE_RELATIVE=${VITE_SP_SITE_RELATIVE} \
+            VITE_SP_SCOPE_DEFAULT=${VITE_SP_SCOPE_DEFAULT} \
+            npm run preview:e2e"
+
+          npm run ci:e2e -- --grep-invert @seed --grep-invert @csp
       - name: Perf report (LHCI + Web Vitals)
         run: npm run -s ci:perf-report
         env:
@@ -151,11 +151,11 @@ npm run preview:e2e"
           export VITE_SP_SITE_RELATIVE="${VITE_SP_SITE_RELATIVE:-/sites/Audit}"
           export VITE_SP_SCOPE_DEFAULT="${VITE_SP_SCOPE_DEFAULT:-https://contoso.sharepoint.com/AllSites.Read}"
 
-          export PLAYWRIGHT_WEB_SERVER_COMMAND="env \
-VITE_SP_RESOURCE=\"${VITE_SP_RESOURCE}\" \
-VITE_SP_SITE_RELATIVE=\"${VITE_SP_SITE_RELATIVE}\" \
-VITE_SP_SCOPE_DEFAULT=\"${VITE_SP_SCOPE_DEFAULT}\" \
-npm run preview:e2e"
+          export PLAYWRIGHT_WEB_SERVER_COMMAND=$'env\n'"\
+            VITE_SP_RESOURCE=${VITE_SP_RESOURCE} \
+            VITE_SP_SITE_RELATIVE=${VITE_SP_SITE_RELATIVE} \
+            VITE_SP_SCOPE_DEFAULT=${VITE_SP_SCOPE_DEFAULT} \
+            npm run preview:e2e"
 
           npm run ci:e2e -- --grep-invert @seed --grep-invert @csp
           exit_code=$?
