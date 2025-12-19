@@ -25,9 +25,26 @@ jobs:
           npm ls dayjs || true
           node -e "console.log('dayjs resolved:', require.resolve('dayjs'))"
       - name: Start dev server (background)
-        run: npm run dev -- --host 127.0.0.1 --port 5173 --strictPort --clearScreen false &
+        run: |
+          set -euo pipefail
+          nohup npm run dev -- --host 127.0.0.1 --port 5173 --strictPort --clearScreen false > vite-dev.log 2>&1 &
+          echo $! > vite-dev.pid
+          sleep 2
+          echo "Vite PID: $(cat vite-dev.pid)"
+          ps -p "$(cat vite-dev.pid)" -o pid,cmd || true
+          echo "---- vite-dev.log (head) ----"
+          head -n 200 vite-dev.log || true
+          echo "---- vite-dev.log (tail) ----"
+          tail -n 200 vite-dev.log || true
       - name: Wait for dev server
         run: npx wait-on http://127.0.0.1:5173 --timeout 120000
+      - name: Dump dev server log on failure
+        if: failure()
+        run: |
+          echo "---- vite-dev.log (tail) ----"
+          tail -n 400 vite-dev.log || true
+          echo "---- lsof 5173 ----"
+          lsof -iTCP:5173 -sTCP:LISTEN || true
       - name: Unit (week overlap)
         run: npm run test:schedule:unit
       - name: E2E (ARIA smoke, fixtures)
