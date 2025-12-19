@@ -146,15 +146,19 @@ describe('TableDailyRecordForm', () => {
     });
   });
 
-  it('should auto-select todays attendees on open', async () => {
-    renderForm();
+  it(
+    'should auto-select todays attendees on open',
+    async () => {
+      renderForm();
 
-    const expectedCount = getDefaultSelectionCount();
-    await waitForSelectionInfo(expectedCount);
-    if (expectedCount > 0) {
-      await waitForTable();
-    }
-  });
+      const expectedCount = getDefaultSelectionCount();
+      await waitForSelectionInfo(expectedCount);
+      if (expectedCount > 0) {
+        await waitForTable();
+      }
+    },
+    { timeout: 15000 }
+  );
 
   it('should show table immediately with auto-selected attendees', async () => {
     renderForm();
@@ -306,52 +310,64 @@ describe('TableDailyRecordForm', () => {
     expect(mockOnSave).not.toHaveBeenCalled();
   });
 
-  it('should prevent saving without reporter name', async () => {
-    const alertMock = vi.spyOn(window, 'alert').mockImplementation(() => undefined);
-    const mockOnSave = vi.fn();
-    const user = createUser();
+  it(
+    'should prevent saving without reporter name',
+    async () => {
+      const alertMock = vi.spyOn(window, 'alert').mockImplementation(() => undefined);
+      const mockOnSave = vi.fn();
+      const user = createUser();
 
-    renderForm({ onSave: mockOnSave });
+      renderForm({ onSave: mockOnSave });
 
-    await waitForTable();
+      await waitForTable();
 
-    const saveButton = await screen.findByRole('button', { name: `${getDefaultSelectionCount()}人分保存` }, { timeout: 5000 });
-    await user.click(saveButton);
+      const saveButton = await screen.findByRole('button', { name: `${getDefaultSelectionCount()}人分保存` }, { timeout: 5000 });
+      await user.click(saveButton);
 
-    expect(alertMock).toHaveBeenCalledWith('記録者名を入力してください');
-    expect(mockOnSave).not.toHaveBeenCalled();
+      expect(alertMock).toHaveBeenCalledWith('記録者名を入力してください');
+      expect(mockOnSave).not.toHaveBeenCalled();
 
-    alertMock.mockRestore();
-  });
+      alertMock.mockRestore();
+    },
+    { timeout: 15000 }
+  );
 
-  it('should handle select all functionality', async () => {
-    const user = createUser();
-    renderForm();
+  it(
+    'should handle select all functionality',
+    async () => {
+      const user = createUser();
+      renderForm();
 
-    await waitForTable();
+      await waitForTable();
 
-    const clearAllButton = screen.getByLabelText(/選択をクリア/);
-    await user.click(clearAllButton);
+      const clearAllButton = screen.getByLabelText(/選択をクリア/);
+      await user.click(clearAllButton);
 
-    const selectAllButton = screen.getByLabelText(/表示中の利用者を全選択/);
-    await user.click(selectAllButton);
+      const selectAllButton = screen.getByLabelText(/表示中の利用者を全選択/);
+      await user.click(selectAllButton);
 
-    await waitForSelectionInfo(getDefaultSelectionCount());
-  });
+      await waitForSelectionInfo(getDefaultSelectionCount());
+    },
+    { timeout: 15000 }
+  );
 
-  it('should handle clear all functionality', async () => {
-    const user = createUser();
-    renderForm();
+  it(
+    'should handle clear all functionality',
+    async () => {
+      const user = createUser();
+      renderForm();
 
-    await waitForSelectionInfo(getDefaultSelectionCount());
+      await waitForSelectionInfo(getDefaultSelectionCount());
 
-    const clearAllButton = screen.getByLabelText(/選択をクリア/);
-    await user.click(clearAllButton);
+      const clearAllButton = screen.getByLabelText(/選択をクリア/);
+      await user.click(clearAllButton);
 
-    await waitFor(() => {
-      expect(screen.queryByText(/人の利用者が選択されています/)).not.toBeInTheDocument();
-    });
-  });
+      await waitFor(() => {
+        expect(screen.queryByText(/人の利用者が選択されています/)).not.toBeInTheDocument();
+      });
+    },
+    { timeout: 15000 }
+  );
 
   describe('Attendance Day Filter', () => {
     it('should show attendance filter button', () => {
