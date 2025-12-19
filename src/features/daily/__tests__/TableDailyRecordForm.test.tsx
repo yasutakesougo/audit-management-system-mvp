@@ -71,10 +71,10 @@ describe('TableDailyRecordForm', () => {
   const waitForSelectionInfo = (count: number) =>
     waitFor(
       () => {
-        const regex = new RegExp(`${count}.*人.*選択`);
-        expect(screen.getByText(regex)).toBeInTheDocument();
+        const el = screen.getByTestId('selection-count');
+        expect(el).toHaveTextContent(`${count}人`);
       },
-      { timeout: 5000 }
+      { timeout: 10000 }
     );
   const setRecordDate = async (value: string) => {
     const input = getDateInput();

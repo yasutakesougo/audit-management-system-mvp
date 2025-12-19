@@ -438,7 +438,7 @@ export function TableDailyRecordForm({
               </Alert>
             )}
             {selectedUserIds.length > 0 && (
-              <Alert severity="info" sx={{ mb: 2 }}>
+              <Alert severity="info" sx={{ mb: 2 }} data-testid="selection-count">
                 {selectedUserIds.length}人の利用者が選択されています（一覧表に表示されます）
               </Alert>
             )}
