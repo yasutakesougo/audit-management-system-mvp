@@ -79,6 +79,9 @@ npm run preview:e2e"
           VITE_SKIP_LOGIN: "1"
           VITE_E2E_MSAL_MOCK: "1"
           VITE_SKIP_SHAREPOINT: "1"
+          VITE_MSAL_CLIENT_ID: "dummy"
+          VITE_MSAL_TENANT_ID: "dummy"
+          VITE_SCHEDULES_TZ: "Asia/Tokyo"
           VITE_SP_SCOPE_DEFAULT: ${{ secrets.VITE_SP_SCOPE_DEFAULT }}
           VITE_SP_RESOURCE: ${{ vars.VITE_SP_RESOURCE }}
           VITE_SP_SITE_RELATIVE: ${{ vars.VITE_SP_SITE_RELATIVE }}
@@ -180,6 +183,9 @@ npm run preview:e2e"
           VITE_SKIP_LOGIN: "1"
           VITE_E2E_MSAL_MOCK: "1"
           VITE_SKIP_SHAREPOINT: "1"
+          VITE_MSAL_CLIENT_ID: "dummy"
+          VITE_MSAL_TENANT_ID: "dummy"
+          VITE_SCHEDULES_TZ: "Asia/Tokyo"
           VITE_SP_SCOPE_DEFAULT: ${{ secrets.VITE_SP_SCOPE_DEFAULT }}
           VITE_SP_RESOURCE: ${{ vars.VITE_SP_RESOURCE }}
           VITE_SP_SITE_RELATIVE: ${{ vars.VITE_SP_SITE_RELATIVE }}
