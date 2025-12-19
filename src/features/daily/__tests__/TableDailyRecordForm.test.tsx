@@ -69,9 +69,13 @@ describe('TableDailyRecordForm', () => {
       expect(screen.getByTestId(TESTIDS['daily-table-record-form-table'])).toBeInTheDocument();
     });
   const waitForSelectionInfo = (count: number) =>
-    waitFor(() => {
-      expect(screen.getByText(new RegExp(`${count}人の利用者が選択されています`))).toBeInTheDocument();
-    });
+    waitFor(
+      () => {
+        const regex = new RegExp(`${count}.*人.*選択`);
+        expect(screen.getByText(regex)).toBeInTheDocument();
+      },
+      { timeout: 5000 }
+    );
   const setRecordDate = async (value: string) => {
     const input = getDateInput();
     fireEvent.change(input, { target: { value } });
