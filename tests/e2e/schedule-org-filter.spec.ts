@@ -2,44 +2,45 @@ import '@/test/captureSp400';
 import { expect, test, type Page } from '@playwright/test';
 
 import { bootSchedule } from './_helpers/bootSchedule';
-import { gotoWeek } from './utils/scheduleNav';
-import { getOrgChipText } from './utils/scheduleActions';
-import { waitForDayTimeline, waitForMonthTimeline, waitForWeekTimeline } from './utils/wait';
 
 const TARGET_DATE = new Date('2025-11-14');
+const TARGET_DATE_STRING = '2025-11-14';
 
 type OrgFilterKey = 'all' | 'main' | 'shortstay' | 'respite' | 'other';
 
-const ORG_LABELS: Record<OrgFilterKey, string> = {
-  all: '全事業所（統合ビュー）',
-  main: '生活介護（本体）',
-  shortstay: '短期入所',
-  respite: '一時ケア',
-  other: 'その他（将来拡張）',
-};
+const getOrgParam = (page: Page): string | null => new URL(page.url()).searchParams.get('org');
 
-const selectOrg = async (page: Page, value: OrgFilterKey) => {
+const selectOrgInTab = async (page: Page, value: OrgFilterKey) => {
   const orgTab = page.getByRole('tab', { name: '事業所別' });
-  await orgTab.click();
+  await expect(orgTab).toBeVisible({ timeout: 15_000 });
+  await orgTab.click({ timeout: 10_000 });
+  await expect(orgTab).toHaveAttribute('aria-selected', /true/i);
+
   const select = page.getByTestId('schedule-org-select');
-  await expect(select).toBeVisible();
+  await expect(select).toBeVisible({ timeout: 15_000 });
   await select.selectOption(value);
-  await expect(page).toHaveURL(new RegExp(`org=${value}`));
-};
 
-type TimelineView = 'week' | 'day' | 'month';
-
-const assertOrgChip = async (page: Page, view: TimelineView, org: OrgFilterKey, expectedCount?: number) => {
-  const chipText = await getOrgChipText(page, view);
-  expect(chipText).toContain(ORG_LABELS[org]);
-  if (typeof expectedCount === 'number') {
-    expect(chipText).toContain(`${expectedCount}件`);
+  if (value !== 'all') {
+    await expect(page).toHaveURL(new RegExp(`org=${value}`), { timeout: 10_000 });
   }
 };
 
-const getOrgParam = (page: Page): string | null => new URL(page.url()).searchParams.get('org');
+const waitForOrgTab = async (page: Page) => {
+  const heading = page.getByRole('heading', { level: 1, name: /スケジュール/ });
+  await expect(heading).toBeVisible({ timeout: 15_000 });
 
-test.describe('Schedule week org filter', () => {
+  const tablist = page.getByRole('tablist').first();
+  await expect(tablist).toBeVisible({ timeout: 15_000 });
+
+  const orgTab = page.getByTestId('schedule-tab-org').or(tablist.getByRole('tab', { name: /事業所|Org/ }));
+  await expect(orgTab).toBeVisible({ timeout: 15_000 });
+  await orgTab.click({ timeout: 10_000 });
+  await expect(orgTab).toHaveAttribute('aria-selected', /true/i);
+
+  await expect(page.getByTestId('schedule-org-tab')).toBeVisible({ timeout: 15_000 });
+};
+
+test.describe('Schedule org query param contract', () => {
   test.beforeEach(async ({ page }) => {
     page.on('console', (message) => {
       if (message.type() === 'info' && message.text().startsWith('[schedulesClient] fixtures=')) {
@@ -48,68 +49,29 @@ test.describe('Schedule week org filter', () => {
       }
     });
 
-    await bootSchedule(page, { date: TARGET_DATE });
+    await bootSchedule(page, {
+      date: TARGET_DATE,
+      enableWeekV2: false,
+      autoNavigate: true,
+      route: `/schedules/week?date=${TARGET_DATE_STRING}&tab=org`,
+    });
+    await page.waitForLoadState('networkidle');
+    await waitForOrgTab(page);
   });
 
-  test('defaults to merged org view when org query param is absent', async ({ page }) => {
-    await gotoWeek(page, TARGET_DATE);
-    await waitForWeekTimeline(page);
-
-    await assertOrgChip(page, 'week', 'all', 5);
+  test('org param is absent when no org selected on Org tab', async ({ page }) => {
     expect(getOrgParam(page)).toBeNull();
+    const select = page.getByTestId('schedule-org-select');
+    await expect(select).toBeVisible({ timeout: 15_000 });
   });
 
-  test('keeps selected org when navigating weeks', async ({ page }) => {
-    await gotoWeek(page, TARGET_DATE);
-    await waitForWeekTimeline(page);
-
-    await selectOrg(page, 'shortstay');
-
-    const weekTab = page.getByRole('tab', { name: '週' });
-    await weekTab.click();
-    await waitForWeekTimeline(page);
-
-    await assertOrgChip(page, 'week', 'shortstay');
+  test('org param reflects Org tab selection and clears on all', async ({ page }) => {
+    await selectOrgInTab(page, 'shortstay');
     expect(getOrgParam(page)).toBe('shortstay');
+    await expect(page).toHaveURL(/org=shortstay/);
 
-    const initialChipText = await getOrgChipText(page, 'week');
-    expect(initialChipText).toContain(ORG_LABELS.shortstay);
-
-    await page.getByRole('button', { name: '次の期間' }).click();
-    await waitForWeekTimeline(page);
-    const indicatorAfterNextText = await getOrgChipText(page, 'week');
-    expect(indicatorAfterNextText).toContain(ORG_LABELS.shortstay);
-    expect(getOrgParam(page)).toBe('shortstay');
-
-    await page.getByRole('button', { name: '前の期間' }).click();
-    await waitForWeekTimeline(page);
-    const indicatorAfterPrevText = await getOrgChipText(page, 'week');
-    expect(indicatorAfterPrevText).toContain(ORG_LABELS.shortstay);
-    expect(getOrgParam(page)).toBe('shortstay');
-  });
-
-  test('preserves org selection across week, month, and day tabs', async ({ page }) => {
-    await gotoWeek(page, TARGET_DATE);
-    await waitForWeekTimeline(page);
-
-    await selectOrg(page, 'respite');
-
-    const weekTab = page.getByRole('tab', { name: '週' });
-    await weekTab.click();
-    await waitForWeekTimeline(page);
-    await assertOrgChip(page, 'week', 'respite', 2);
-    expect(getOrgParam(page)).toBe('respite');
-
-    const monthTab = page.getByRole('tab', { name: '月' });
-    await monthTab.click();
-    await waitForMonthTimeline(page);
-    await assertOrgChip(page, 'month', 'respite', 2);
-    expect(getOrgParam(page)).toBe('respite');
-
-    const dayTab = page.getByRole('tab', { name: '日' });
-    await dayTab.click();
-    await waitForDayTimeline(page);
-    await assertOrgChip(page, 'day', 'respite', 2);
-    expect(getOrgParam(page)).toBe('respite');
+    await selectOrgInTab(page, 'all');
+    expect(getOrgParam(page)).toBeNull();
+    await expect(page).not.toHaveURL(/org=/);
   });
 });

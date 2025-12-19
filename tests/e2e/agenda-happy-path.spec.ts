@@ -37,7 +37,10 @@ const EVENING_COUNT = TIMELINE_RECORDS.filter((record) => ['午後', '夕方'].i
  * Dashboard → Agenda (handoff timeline) → Schedule (day view)
  * should surface the exact same deterministic fixtures when the shared seeds are enabled.
  */
-test.describe('Agenda happy path', () => {
+// Mark seed-dependent spec so CI can exclude with --grep-invert.
+test.describe.configure({ tags: ['@seed'] });
+
+test.describe('Agenda happy path @seed', () => {
   test('links dashboard summary, timeline, and schedule day view via shared seeds', async ({ page }) => {
     await bootAgenda(page, {
       seed: {
