@@ -13,11 +13,22 @@ const ciReporters: ReporterDescription[] = [
   ['html', { outputFolder: 'playwright-report' }],
 ];
 
-const webServerCommand = webServerCommandOverride
-  ? webServerCommandOverride
-  : skipBuild
-    ? 'npm run preview:e2e'
-    : 'sh -c "npm run build && npm run preview:e2e"';
+const webServerEnvVars = {
+  VITE_SP_RESOURCE: process.env.VITE_SP_RESOURCE ?? 'https://contoso.sharepoint.com',
+  VITE_SP_SITE_RELATIVE: process.env.VITE_SP_SITE_RELATIVE ?? '/sites/Audit',
+  VITE_SP_SCOPE_DEFAULT:
+    process.env.VITE_SP_SCOPE_DEFAULT ?? 'https://contoso.sharepoint.com/AllSites.Read',
+};
+
+const webServerEnvString = Object.entries(webServerEnvVars)
+  .map(([key, value]) => `${key}=${value}`)
+  .join(' ');
+
+const defaultWebServerCommand = skipBuild
+  ? `env ${webServerEnvString} npm run preview:e2e`
+  : `env ${webServerEnvString} sh -c "npm run build && npm run preview:e2e"`;
+
+const webServerCommand = webServerCommandOverride ?? defaultWebServerCommand;
 
 // Allow reusing an externally started server when PLAYWRIGHT_WEB_SERVER_URL is provided (e.g., guardrails workflows).
 const reuseExistingServer = process.env.PLAYWRIGHT_WEB_SERVER_URL ? true : !isCI;

@@ -79,12 +79,6 @@ jobs:
           echo "VITE_SP_RESOURCE -> ${VITE_SP_RESOURCE}"
           echo "VITE_SP_SITE_RELATIVE -> ${VITE_SP_SITE_RELATIVE}"
 
-          export PLAYWRIGHT_WEB_SERVER_COMMAND=$'env\n'"\
-            VITE_SP_RESOURCE=${VITE_SP_RESOURCE} \
-            VITE_SP_SITE_RELATIVE=${VITE_SP_SITE_RELATIVE} \
-            VITE_SP_SCOPE_DEFAULT=${VITE_SP_SCOPE_DEFAULT} \
-            npm run preview:e2e"
-
           npm run ci:e2e -- --grep-invert @seed --grep-invert @csp
       - name: Perf report (LHCI + Web Vitals)
         run: npm run -s ci:perf-report
@@ -150,12 +144,6 @@ jobs:
           export VITE_SP_RESOURCE="${VITE_SP_RESOURCE:-https://contoso.sharepoint.com}"
           export VITE_SP_SITE_RELATIVE="${VITE_SP_SITE_RELATIVE:-/sites/Audit}"
           export VITE_SP_SCOPE_DEFAULT="${VITE_SP_SCOPE_DEFAULT:-https://contoso.sharepoint.com/AllSites.Read}"
-
-          export PLAYWRIGHT_WEB_SERVER_COMMAND=$'env\n'"\
-            VITE_SP_RESOURCE=${VITE_SP_RESOURCE} \
-            VITE_SP_SITE_RELATIVE=${VITE_SP_SITE_RELATIVE} \
-            VITE_SP_SCOPE_DEFAULT=${VITE_SP_SCOPE_DEFAULT} \
-            npm run preview:e2e"
 
           npm run ci:e2e -- --grep-invert @seed --grep-invert @csp
           exit_code=$?
