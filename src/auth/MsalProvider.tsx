@@ -1,5 +1,6 @@
 import type { IPublicClientApplication } from '@azure/msal-browser';
 import React, { useEffect, useMemo, useState } from 'react';
+import { isE2eMsalMockEnabled } from '../lib/env';
 import { msalConfig } from './msalConfig';
 
 type MsalInstance = IPublicClientApplication;
@@ -73,7 +74,16 @@ export const MsalProvider: React.FC<{ children: React.ReactNode }> = ({ children
     useMsal: MsalReactModule['useMsal'];
   } | null>(null);
 
+  // Skip MSAL initialization when E2E mocking is enabled
+  const shouldMock = isE2eMsalMockEnabled();
+
   useEffect(() => {
+    if (shouldMock) {
+      // When mocking is enabled, skip MSAL initialization entirely
+      // useAuth will provide mock implementations
+      return;
+    }
+
     let isMounted = true;
 
     Promise.all([loadMsalInstance(), loadMsalReact()]).then(([instance, msalReact]) => {
@@ -85,7 +95,24 @@ export const MsalProvider: React.FC<{ children: React.ReactNode }> = ({ children
     return () => {
       isMounted = false;
     };
-  }, []);
+  }, [shouldMock]);
+
+  // When mocking, provide a minimal mock context
+  if (shouldMock) {
+    const mockInstance = {
+      getAllAccounts: () => [],
+      getActiveAccount: () => null,
+      setActiveAccount: () => {},
+    } as unknown as MsalInstance;
+
+    const mockValue: MsalContextValue = {
+      instance: mockInstance,
+      accounts: [],
+      inProgress: 'none' as const,
+    };
+
+    return <MsalContext.Provider value={mockValue}>{children}</MsalContext.Provider>;
+  }
 
   if (!providerState) {
     return null;
