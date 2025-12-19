@@ -35,17 +35,8 @@ vi.mock('@/stores/useUsers', () => ({
   })
 }));
 
-const WEEKDAY_TOKENS = ['日', '月', '火', '水', '木', '金', '土'] as const;
-const getWeekdayToken = (date: Date) => WEEKDAY_TOKENS[date.getDay()];
-const getAttendingUsersForDate = (date: Date) =>
-  mockUsers.filter((user) => {
-    if (!user.attendanceDays || user.attendanceDays.length === 0) {
-      return true;
-    }
-    return user.attendanceDays.includes(getWeekdayToken(date));
-  });
 const FIXED_DATE = '2024-01-01';
-const FIXED_DATE_SELECTION_COUNT = getAttendingUsersForDate(new Date(FIXED_DATE)).length;
+const FIXED_DATE_SELECTION_COUNT = 2; // Deterministic expected auto-selection count for FIXED_DATE
 
 describe('TableDailyRecordForm', () => {
   const defaultProps = {
