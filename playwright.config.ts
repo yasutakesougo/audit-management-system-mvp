@@ -6,8 +6,8 @@ const skipBuild = process.env.PLAYWRIGHT_SKIP_BUILD === '1';
 const baseUrlEnv = process.env.PLAYWRIGHT_BASE_URL;
 const webServerCommandOverride = process.env.PLAYWRIGHT_WEB_SERVER_COMMAND;
 const devPort = 5173;
-const previewPort = 4173;
-const baseURL = baseUrlEnv ?? `http://127.0.0.1:${isCI ? previewPort : devPort}`;
+const previewPort = devPort; // align CI and local to the same port to avoid mismatches
+const baseURL = baseUrlEnv ?? `http://127.0.0.1:${devPort}`;
 const webServerUrl = process.env.PLAYWRIGHT_WEB_SERVER_URL ?? baseURL;
 const junitOutput = process.env.PLAYWRIGHT_JUNIT_OUTPUT ?? 'junit/results.xml';
 const ciReporters: ReporterDescription[] = [
@@ -44,7 +44,7 @@ const webServerCommand = webServerCommandOverride
     : buildAndPreviewCommand;
 
 // Allow reusing an externally started server when PLAYWRIGHT_WEB_SERVER_URL is provided (e.g., guardrails workflows).
-const reuseExistingServer = process.env.PLAYWRIGHT_WEB_SERVER_URL ? true : !isCI;
+const reuseExistingServer = true; // always reuse an existing server if already running at baseURL
 const SMOKE_SPEC_PATTERN = /.*smoke.*\.spec\.ts$/i;
 const desktopChrome = { ...devices['Desktop Chrome'] };
 
