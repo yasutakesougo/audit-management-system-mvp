@@ -18,6 +18,9 @@ const webServerCommand = webServerCommandOverride
   : skipBuild
     ? 'npm run preview:e2e'
     : 'sh -c "npm run build && npm run preview:e2e"';
+
+// Allow reusing an externally started server when PLAYWRIGHT_WEB_SERVER_URL is provided (e.g., guardrails workflows).
+const reuseExistingServer = process.env.PLAYWRIGHT_WEB_SERVER_URL ? true : !isCI;
 const SMOKE_SPEC_PATTERN = /.*smoke.*\.spec\.ts$/i;
 const desktopChrome = { ...devices['Desktop Chrome'] };
 
@@ -39,7 +42,7 @@ export default defineConfig({
   webServer: {
     command: webServerCommand,
     url: webServerUrl,
-    reuseExistingServer: !isCI,
+    reuseExistingServer,
     timeout: 120_000,
   },
 });
