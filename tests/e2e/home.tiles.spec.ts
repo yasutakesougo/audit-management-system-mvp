@@ -12,18 +12,17 @@ test.describe('Dashboard smoke', () => {
         VITE_SKIP_LOGIN: '1',
         VITE_DEMO_MODE: '0',
       };
-
       try {
         window.localStorage.setItem('skipLogin', '1');
         window.localStorage.setItem('demo', '0');
       } catch {
-        // ignore storage failures
+        // ignore storage failures in unsupported environments
       }
     });
 
     await page.route('**/login.microsoftonline.com/**', (route) => route.fulfill({ status: 204, body: '' }));
     await page.route('https://graph.microsoft.com/**', (route) =>
-      route.fulfill({ status: 200, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ value: [] }) }),
+      route.fulfill({ status: 200, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ value: [] }) })
     );
 
     await setupSharePointStubs(page, {
