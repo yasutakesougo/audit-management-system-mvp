@@ -37,7 +37,7 @@ jobs:
           echo "---- vite-dev.log (tail) ----"
           tail -n 200 vite-dev.log || true
       - name: Wait for dev server
-        run: npx wait-on http://127.0.0.1:5173 --timeout 120000
+        run: npx wait-on tcp:127.0.0.1:5173 --timeout 120000
       - name: Dump dev server log on failure
         if: failure()
         run: |
