@@ -54,33 +54,9 @@ jobs:
         continue-on-error: true
       - name: Test (coverage)
         run: npm run test:coverage -- --reporter=default
-      - name: Build (E2E env)
-        run: |
-          echo "VITE_SP_SCOPE_DEFAULT set? -> $([ -n \"$VITE_SP_SCOPE_DEFAULT\" ] && echo yes || echo no)"
-          echo "VITE_SP_SCOPE_DEFAULT length -> ${#VITE_SP_SCOPE_DEFAULT}"
-          npm run build
-        env:
-          VITE_E2E: "1"
-          VITE_SKIP_LOGIN: "1"
-          VITE_E2E_MSAL_MOCK: "1"
-          VITE_SKIP_SHAREPOINT: "1"
-          VITE_SP_RESOURCE: "https://contoso.sharepoint.com"
-          VITE_SP_SITE_RELATIVE: "/sites/Audit"
-          VITE_SP_SCOPE_DEFAULT: ${{ secrets.VITE_SP_SCOPE_DEFAULT }}
       - name: Playwright E2E
-        run: |
-          echo "VITE_SP_SCOPE_DEFAULT set? -> $([ -n \"$VITE_SP_SCOPE_DEFAULT\" ] && echo yes || echo no)"
-          echo "VITE_SP_SCOPE_DEFAULT length -> ${#VITE_SP_SCOPE_DEFAULT}"
-          npm run ci:e2e -- --grep-invert=@seed --grep-invert=@csp
+        run: npm run ci:e2e
         env:
-          VITE_E2E: "1"
-          VITE_SKIP_LOGIN: "1"
-          VITE_E2E_MSAL_MOCK: "1"
-          VITE_SKIP_SHAREPOINT: "1"
-          VITE_SP_RESOURCE: "https://contoso.sharepoint.com"
-          VITE_SP_SITE_RELATIVE: "/sites/Audit"
-          VITE_SP_SCOPE_DEFAULT: ${{ secrets.VITE_SP_SCOPE_DEFAULT }}
-          PLAYWRIGHT_SKIP_BUILD: "1"
           NOTIFY_WEBHOOK_URL: ${{ secrets.NOTIFY_WEBHOOK_URL }}
       - name: Perf report (LHCI + Web Vitals)
         run: npm run -s ci:perf-report
@@ -124,7 +100,6 @@ jobs:
     env:
       VITE_FEATURE_SCHEDULES: "true"
       NOTIFY_WEBHOOK_URL: ${{ secrets.NOTIFY_WEBHOOK_URL }}
-      VITE_SP_SCOPE_DEFAULT: ${{ secrets.VITE_SP_SCOPE_DEFAULT }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -137,28 +112,13 @@ jobs:
         run: npm ci
       - name: Install Playwright browsers
         run: npx playwright install --with-deps
-      - name: Build (E2E env)
-        run: |
-          echo "VITE_SP_SCOPE_DEFAULT set? -> $([ -n \"$VITE_SP_SCOPE_DEFAULT\" ] && echo yes || echo no)"
-          echo "VITE_SP_SCOPE_DEFAULT length -> ${#VITE_SP_SCOPE_DEFAULT}"
-          npm run build
-        env:
-          VITE_E2E: "1"
-          VITE_SKIP_LOGIN: "1"
-          VITE_E2E_MSAL_MOCK: "1"
-          VITE_SKIP_SHAREPOINT: "1"
-          VITE_SP_RESOURCE: "https://contoso.sharepoint.com"
-          VITE_SP_SITE_RELATIVE: "/sites/Audit"
-          VITE_SP_SCOPE_DEFAULT: ${{ secrets.VITE_SP_SCOPE_DEFAULT }}
       - name: Canary checks (E2E + LHCI + Summary)
         id: canary
         run: |
           set +e
           status=0
 
-          echo "VITE_SP_SCOPE_DEFAULT set? -> $([ -n \"$VITE_SP_SCOPE_DEFAULT\" ] && echo yes || echo no)"
-          echo "VITE_SP_SCOPE_DEFAULT length -> ${#VITE_SP_SCOPE_DEFAULT}"
-          npm run ci:e2e -- --grep-invert=@seed --grep-invert=@csp
+          npm run ci:e2e
           exit_code=$?
           if [ "$exit_code" -ne 0 ]; then
             status="$exit_code"
@@ -179,16 +139,6 @@ jobs:
           if [ "$status" -ne 0 ]; then
             exit "$status"
           fi
-        env:
-          VITE_E2E: "1"
-          VITE_SKIP_LOGIN: "1"
-          VITE_E2E_MSAL_MOCK: "1"
-          VITE_SKIP_SHAREPOINT: "1"
-          VITE_SP_RESOURCE: "https://contoso.sharepoint.com"
-          VITE_SP_SITE_RELATIVE: "/sites/Audit"
-          VITE_SP_SCOPE_DEFAULT: ${{ secrets.VITE_SP_SCOPE_DEFAULT }}
-          PLAYWRIGHT_SKIP_BUILD: "1"
-          NOTIFY_WEBHOOK_URL: ${{ secrets.NOTIFY_WEBHOOK_URL }}
       - name: Notify canary failure
         if: failure()
         run: node scripts/notify.mjs --only-on-fail --title "canary(schedule)" --files reports/perf-summary.md
