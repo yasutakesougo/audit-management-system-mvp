@@ -25,9 +25,9 @@ jobs:
           npm ls dayjs || true
           node -e "console.log('dayjs resolved:', require.resolve('dayjs'))"
       - name: Start dev server (background)
-        run: npm run dev -- --host --port 5173 --clearScreen false &
+        run: npm run dev -- --host 127.0.0.1 --port 5173 --strictPort --clearScreen false &
       - name: Wait for dev server
-        run: npx wait-on http://127.0.0.1:5173
+        run: npx wait-on http://127.0.0.1:5173 --timeout 120000
       - name: Unit (week overlap)
         run: npm run test:schedule:unit
       - name: E2E (ARIA smoke, fixtures)
