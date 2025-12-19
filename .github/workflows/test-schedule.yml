@@ -44,7 +44,13 @@ jobs:
           echo "---- vite-dev.log (tail) ----"
           tail -n 200 vite-dev.log || true
       - name: Wait for dev server
-        run: npx wait-on tcp:127.0.0.1:5173 --timeout 120000
+        run: |
+          set -euo pipefail
+          echo "probe 127.0.0.1:5173"
+          curl -v --max-time 5 http://127.0.0.1:5173/ || true
+          echo "probe localhost:5173"
+          curl -v --max-time 5 http://localhost:5173/ || true
+          npx wait-on http://127.0.0.1:5173/ --timeout 180000
       - name: Dump dev server log on failure
         if: failure()
         run: |
