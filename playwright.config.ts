@@ -1,11 +1,18 @@
 import { defineConfig, devices } from '@playwright/test';
 import type { ReporterDescription } from '@playwright/test';
 import { config as dotenvConfig } from 'dotenv';
+import { existsSync } from 'node:fs';
 import { resolve } from 'node:path';
 
 // Load E2E environment variables from .env.e2e
 // CI environments can override these by setting their own env vars
-dotenvConfig({ path: resolve(__dirname, '.env.e2e') });
+const envE2EPath = resolve(__dirname, '.env.e2e');
+if (existsSync(envE2EPath)) {
+  const result = dotenvConfig({ path: envE2EPath });
+  if (result.error) {
+    console.warn('Warning: Failed to load .env.e2e:', result.error.message);
+  }
+}
 
 const isCI = !!process.env.CI;
 const skipBuild = process.env.PLAYWRIGHT_SKIP_BUILD === '1';
