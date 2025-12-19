@@ -33,7 +33,7 @@
     "test:users:mini": "vitest run tests/unit/users.store.spec.* tests/unit/users.api.spec.* tests/unit/users.form.spec.* --reporter=verbose",
     "test:nurse:mini": "vitest run tests/unit/nurse*.spec.* tests/unit/**/nurse*.spec.* --reporter=verbose",
     "test:schedule:unit": "vitest run --run tests/unit/schedule.range.spec.ts",
-    "test:schedule:e2e": "PLAYWRIGHT_SKIP_BUILD=1 playwright test tests/e2e/schedule-week.aria.smoke.spec.ts",
+    "test:schedule:e2e": "playwright test tests/e2e/schedule-week.aria.smoke.spec.ts",
     "test:schedule-week": "PLAYWRIGHT_BASE_URL=http://localhost:5175 PLAYWRIGHT_WEB_SERVER_URL=http://localhost:5175 PLAYWRIGHT_WEB_SERVER_COMMAND=\"npm run dev:schedules\" VITE_E2E=1 VITE_SKIP_LOGIN=1 VITE_E2E_MSAL_MOCK=1 VITE_SKIP_SHAREPOINT=1 VITE_FEATURE_SCHEDULES=1 VITE_FEATURE_SCHEDULES_WEEK_V2=1 npx playwright test schedule-week --config=playwright.smoke.config.ts --project=smoke",
     "test:schedule": "npm run test:schedule:unit && npm run test:schedule:e2e",
     "test:ci": "vitest run --run --reporter=verbose",
