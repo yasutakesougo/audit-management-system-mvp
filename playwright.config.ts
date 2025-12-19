@@ -5,7 +5,9 @@ const isCI = !!process.env.CI;
 const skipBuild = process.env.PLAYWRIGHT_SKIP_BUILD === '1';
 const baseUrlEnv = process.env.PLAYWRIGHT_BASE_URL;
 const webServerCommandOverride = process.env.PLAYWRIGHT_WEB_SERVER_COMMAND;
-const baseURL = baseUrlEnv ?? 'http://127.0.0.1:5173';
+const devPort = 5173;
+const previewPort = devPort; // align CI and local to the same port to avoid mismatches
+const baseURL = baseUrlEnv ?? `http://127.0.0.1:${devPort}`;
 const webServerUrl = process.env.PLAYWRIGHT_WEB_SERVER_URL ?? baseURL;
 const junitOutput = process.env.PLAYWRIGHT_JUNIT_OUTPUT ?? 'junit/results.xml';
 const ciReporters: ReporterDescription[] = [
@@ -19,23 +21,30 @@ const webServerEnvVars = {
   VITE_SP_SITE_RELATIVE: process.env.VITE_SP_SITE_RELATIVE ?? '/sites/Audit',
   VITE_SP_SCOPE_DEFAULT:
     process.env.VITE_SP_SCOPE_DEFAULT ?? 'https://contoso.sharepoint.com/AllSites.Read',
+  ...(isCI
+    ? {
+        // E2E/MSAL モック時は SharePoint 実環境前提の検証をスキップさせる
+        VITE_E2E: process.env.VITE_E2E ?? '1',
+        VITE_E2E_MSAL_MOCK: process.env.VITE_E2E_MSAL_MOCK ?? '1',
+      }
+    : {}),
 };
 
 const webServerEnvString = Object.entries(webServerEnvVars)
   .map(([key, value]) => `${key}=${value}`)
   .join(' ');
 
-const devCommand = `env ${webServerEnvString} npm run dev -- --host 127.0.0.1 --port 5173 --strictPort`;
-const buildAndDevCommand = `sh -c "env ${webServerEnvString} npm run build && env ${webServerEnvString} npm run dev -- --host 127.0.0.1 --port 5173 --strictPort"`;
+const devCommand = `env ${webServerEnvString} npm run dev -- --host 127.0.0.1 --port ${devPort} --strictPort`;
+const buildAndPreviewCommand = `sh -c "env ${webServerEnvString} npm run build && env ${webServerEnvString} npm run preview -- --host 127.0.0.1 --port ${previewPort} --strictPort"`;
 
 const webServerCommand = webServerCommandOverride
   ? webServerCommandOverride
   : skipBuild
     ? devCommand
-    : buildAndDevCommand;
+    : buildAndPreviewCommand;
 
 // Allow reusing an externally started server when PLAYWRIGHT_WEB_SERVER_URL is provided (e.g., guardrails workflows).
-const reuseExistingServer = process.env.PLAYWRIGHT_WEB_SERVER_URL ? true : !isCI;
+const reuseExistingServer = true; // always reuse an existing server if already running at baseURL
 const SMOKE_SPEC_PATTERN = /.*smoke.*\.spec\.ts$/i;
 const desktopChrome = { ...devices['Desktop Chrome'] };
 

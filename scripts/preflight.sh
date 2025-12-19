@@ -14,7 +14,7 @@ echo "▶ Unit"
 npm test -- --run
 
 echo "▶ Schedule unit suite"
-npx vitest run tests/unit/schedule --reporter=basic
+npx vitest run tests/unit/schedule --reporter=verbose
 
 echo "▶ Build"
 npm run build
