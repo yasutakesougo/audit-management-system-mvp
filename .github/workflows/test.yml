@@ -64,6 +64,8 @@ jobs:
           VITE_SKIP_LOGIN: "1"
           VITE_E2E_MSAL_MOCK: "1"
           VITE_SKIP_SHAREPOINT: "1"
+          VITE_SP_RESOURCE: "https://contoso.sharepoint.com"
+          VITE_SP_SITE_RELATIVE: "/sites/Audit"
           VITE_SP_SCOPE_DEFAULT: ${{ secrets.VITE_SP_SCOPE_DEFAULT }}
       - name: Playwright E2E
         run: |
@@ -75,6 +77,8 @@ jobs:
           VITE_SKIP_LOGIN: "1"
           VITE_E2E_MSAL_MOCK: "1"
           VITE_SKIP_SHAREPOINT: "1"
+          VITE_SP_RESOURCE: "https://contoso.sharepoint.com"
+          VITE_SP_SITE_RELATIVE: "/sites/Audit"
           VITE_SP_SCOPE_DEFAULT: ${{ secrets.VITE_SP_SCOPE_DEFAULT }}
           PLAYWRIGHT_SKIP_BUILD: "1"
           NOTIFY_WEBHOOK_URL: ${{ secrets.NOTIFY_WEBHOOK_URL }}
@@ -143,6 +147,8 @@ jobs:
           VITE_SKIP_LOGIN: "1"
           VITE_E2E_MSAL_MOCK: "1"
           VITE_SKIP_SHAREPOINT: "1"
+          VITE_SP_RESOURCE: "https://contoso.sharepoint.com"
+          VITE_SP_SITE_RELATIVE: "/sites/Audit"
           VITE_SP_SCOPE_DEFAULT: ${{ secrets.VITE_SP_SCOPE_DEFAULT }}
       - name: Canary checks (E2E + LHCI + Summary)
         id: canary
@@ -178,6 +184,8 @@ jobs:
           VITE_SKIP_LOGIN: "1"
           VITE_E2E_MSAL_MOCK: "1"
           VITE_SKIP_SHAREPOINT: "1"
+          VITE_SP_RESOURCE: "https://contoso.sharepoint.com"
+          VITE_SP_SITE_RELATIVE: "/sites/Audit"
           VITE_SP_SCOPE_DEFAULT: ${{ secrets.VITE_SP_SCOPE_DEFAULT }}
           PLAYWRIGHT_SKIP_BUILD: "1"
           NOTIFY_WEBHOOK_URL: ${{ secrets.NOTIFY_WEBHOOK_URL }}
