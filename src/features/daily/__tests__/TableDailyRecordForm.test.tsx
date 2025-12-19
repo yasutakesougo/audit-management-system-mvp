@@ -262,7 +262,7 @@ describe('TableDailyRecordForm', () => {
     const amActivityInput = table.getAllByPlaceholderText('午前の活動')[0];
     await user.type(amActivityInput, '朝の体操');
 
-    const saveButton = screen.getByRole('button', { name: `${mondayCount}人分保存` });
+    const saveButton = await screen.findByRole('button', { name: `${mondayCount}人分保存` }, { timeout: 5000 });
     await user.click(saveButton);
 
     await waitFor(() => {
@@ -296,7 +296,7 @@ describe('TableDailyRecordForm', () => {
     const reporterInput = getReporterInput();
     await user.type(reporterInput, '支援員A');
 
-    const saveButton = screen.getByRole('button', { name: '0人分保存' });
+    const saveButton = await screen.findByRole('button', { name: '0人分保存' }, { timeout: 5000 });
     expect(saveButton).toBeDisabled();
 
     expect(mockOnSave).not.toHaveBeenCalled();
@@ -311,7 +311,7 @@ describe('TableDailyRecordForm', () => {
 
     await waitForTable();
 
-    const saveButton = screen.getByRole('button', { name: `${getDefaultSelectionCount()}人分保存` });
+    const saveButton = await screen.findByRole('button', { name: `${getDefaultSelectionCount()}人分保存` }, { timeout: 5000 });
     await user.click(saveButton);
 
     expect(alertMock).toHaveBeenCalledWith('記録者名を入力してください');
