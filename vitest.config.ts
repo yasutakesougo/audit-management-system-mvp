@@ -19,19 +19,20 @@ export default defineConfig({
         '**/types.ts',
         'src/vite-env.d.ts',
         'vite.config.ts',
-        'vitest.config.ts',
+        'vitest.config.ts'
       ],
       thresholds: {
+        // Temporary buffer after Vitest 4; raise incrementally.
         lines: 44,
         functions: 38,
         branches: 37,
-        statements: 43,
-      },
-    },
+        statements: 43
+      }
+    }
   },
   resolve: {
     alias: {
-      '@': path.resolve(__dirname, './src'),
-    },
-  },
+      '@': path.resolve(__dirname, './src')
+    }
+  }
 });
