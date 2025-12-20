@@ -3,7 +3,10 @@
     "collect": {
       "numberOfRuns": 1,
       "url": ["http://localhost:4173/"],
-      "staticDistDir": "dist"
+      "staticDistDir": "dist",
+      "startServerCommand": "npm run build && vite preview --host 127.0.0.1 --port 4173 --strictPort",
+      "startServerReadyPattern": "localhost:4173|127.0.0.1:4173",
+      "startServerTimeout": 120000
     },
     "assert": {
       "assertions": {
