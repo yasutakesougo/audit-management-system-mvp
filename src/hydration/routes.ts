@@ -68,7 +68,12 @@ const MATCHERS: Matcher[] = [
   { match: (path) => path === '/dashboard', entry: HYDRATION_KEYS.dashboard },
   { match: (path) => path === '/' || path === '', entry: HYDRATION_KEYS.dashboard },
   { match: (path) => path.startsWith('/handoff-timeline'), entry: HYDRATION_KEYS.handoffTimeline },
+  // Schedules - prefer specific view matches before generic fallback
   { match: (path) => path.startsWith('/schedules/day'), entry: HYDRATION_KEYS.schedulesDay },
+  {
+    match: (path, search) => path.startsWith('/schedules/week') || (path.startsWith('/schedules') && includesQuery(search, 'view', 'week')),
+    entry: HYDRATION_KEYS.schedulesWeek,
+  },
   {
     match: (path, search) => path.startsWith('/schedules') && includesQuery(search, 'view', 'day'),
     entry: HYDRATION_KEYS.schedulesDay,
@@ -95,12 +100,12 @@ const MATCHERS: Matcher[] = [
     match: (path) => path.startsWith('/admin/integrated-resource-calendar'),
     entry: HYDRATION_KEYS.adminIntegratedResourceCalendar,
   },
-  { match: (path) => path.startsWith('/admin/templates'), entry: HYDRATION_KEYS.adminTemplates },
-  { match: (path) => path.startsWith('/admin/step-templates'), entry: HYDRATION_KEYS.adminSteps },
   {
     match: (path) => path.startsWith('/admin/individual-support'),
     entry: HYDRATION_KEYS.adminIndividualSupport,
   },
+  { match: (path) => path.startsWith('/admin/templates'), entry: HYDRATION_KEYS.adminTemplates },
+  { match: (path) => path.startsWith('/admin/step-templates'), entry: HYDRATION_KEYS.adminSteps },
   { match: (path) => path.startsWith('/admin'), entry: HYDRATION_KEYS.adminTemplates },
 ];
 
