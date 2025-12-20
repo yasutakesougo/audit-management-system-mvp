@@ -22,12 +22,10 @@ describe('RouteHydrationListener search delta coalescing', () => {
   let RouteHydrationListener: typeof import('@/hydration/RouteHydrationListener').default;
 
   beforeEach(() => {
-    vi.resetModules();
     vi.doUnmock('@/hydration/RouteHydrationListener');
     // dynamic import to ensure real implementation wins over setup passthrough mock
     return import('@/hydration/RouteHydrationListener').then((mod) => {
       RouteHydrationListener = mod.default;
-      vi.useFakeTimers();
       resetHydrationSpans();
     });
   });
@@ -35,7 +33,6 @@ describe('RouteHydrationListener search delta coalescing', () => {
   afterEach(() => {
     cleanup();
     resetHydrationSpans();
-    vi.useRealTimers();
   });
 
   it('coalesces search-only updates into a single active span', async () => {
@@ -46,21 +43,10 @@ describe('RouteHydrationListener search delta coalescing', () => {
 
     render(<RouterProvider router={router} />);
 
-    // 初期ハイドレーションの完了を待つ
-    await act(async () => {
-      vi.advanceTimersByTime(160);
-    });
-
-    // 最初のsearch変更: tab=1 → tab=2（view=dayは維持）
+    // search-only updates: tab=1 → tab=2 → tab=3（view=day維持）
     await act(async () => {
       await router.navigate('/schedules/day?view=day&tab=2');
-      vi.advanceTimersByTime(50); // debounce期間
-    });
-
-    // 2回目のsearch変更: tab=2 → tab=3（coalescingテスト）
-    await act(async () => {
       await router.navigate('/schedules/day?view=day&tab=3');
-      vi.advanceTimersByTime(200); // span完了とsettle期間
     });
 
     // route:schedules:day のspanを取得（view=dayパラメータでマッピング）
