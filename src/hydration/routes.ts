@@ -69,16 +69,12 @@ const MATCHERS: Matcher[] = [
   { match: (path) => path === '/' || path === '', entry: HYDRATION_KEYS.dashboard },
   { match: (path) => path.startsWith('/handoff-timeline'), entry: HYDRATION_KEYS.handoffTimeline },
   // Schedules - prefer specific view matches before generic fallback
-  // Schedules - prioritize query and specific path matches before generic fallback
-  {
-    match: (path, search) => path.startsWith('/schedules') && includesQuery(search, 'view', 'day'),
-    entry: HYDRATION_KEYS.schedulesDay,
-  },
+  // Schedules - most specific to least specific (fallback last)
+  { match: (path, search) => path.startsWith('/schedules') && includesQuery(search, 'view', 'day'), entry: HYDRATION_KEYS.schedulesDay },
   { match: (path) => path.startsWith('/schedules/day'), entry: HYDRATION_KEYS.schedulesDay },
-  {
-    match: (path, search) => path.startsWith('/schedules/week') || (path.startsWith('/schedules') && includesQuery(search, 'view', 'week')),
-    entry: HYDRATION_KEYS.schedulesWeek,
-  },
+  { match: (path) => path.startsWith('/schedules/month'), entry: HYDRATION_KEYS.schedulesMonth },
+  { match: (path) => path.startsWith('/schedules/create'), entry: HYDRATION_KEYS.schedulesCreate },
+  { match: (path) => path.startsWith('/schedules/week'), entry: HYDRATION_KEYS.schedulesWeek },
   { match: (path) => path.startsWith('/schedules'), entry: HYDRATION_KEYS.schedulesWeek },
   { match: (path) => path.startsWith('/meeting-guide'), entry: HYDRATION_KEYS.meetingGuide },
   { match: (path) => path.startsWith('/records/support-procedures'), entry: HYDRATION_KEYS.supportProcedures },
