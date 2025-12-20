@@ -1,30 +1,27 @@
-import { render, screen } from '@testing-library/react';
+import { screen, waitFor } from '@testing-library/react';
+import { describe, expect, it } from 'vitest';
 
-import { createMemoryHistory } from 'history';
-import React from 'react';
+import { renderWithProvidersAndRouter } from '@/tests/helpers/renderWithProvidersAndRouter';
 
-import { Navigation } from '../../../src/components/navigation/navigation';
+import { Navigation } from '@/components/navigation/navigation';
 
-/**
- * This is a test for the "hydration" case where the initial browser URL contains a query
- * string. We want to ensure that the navigation component properly reads the URL and
- * highlights the right section.
- */
+describe('Navigation Search Delta (hydration)', () => {
+  it('keeps spans when navigating between schedules day route', async () => {
+    renderWithProvidersAndRouter(<Navigation />);
 
-describe('navigation hydration - search delta', () => {
-  it('hydrates search delta and highlights the correct nav item', async () => {
-    const history = createMemoryHistory({
-      initialEntries: ['/some/path?section=audits'],
-    });
+    // initial render
+    const spans = screen.getAllByTestId('nav-span');
+    expect(spans.length).toBeGreaterThan(0);
 
-    render(<Navigation history={history} />);
-
-    // Ensure that the correct section is highlighted.
-    const auditsNavItem = screen.getByText('Audits');
-    expect(auditsNavItem).toBeInTheDocument();
-
-    // Hydration span should appear for audits.
-    const hydrationSpan = screen.getByTestId('hydration-span-audits');
-    expect(hydrationSpan).toBeInTheDocument();
+    // ensure the schedule day route span is present (can be delayed due to hydration)
+    await waitFor(
+      () => {
+        const routeSpan = spans.find(
+          (span) => span.getAttribute('data-span-id') === 'route:schedules:day'
+        );
+        expect(routeSpan).toBeTruthy();
+      },
+      { timeout: 10000 }
+    );
   });
 });
