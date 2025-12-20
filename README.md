@@ -15,6 +15,8 @@
 
 > **QA snapshot (v0.9.2):** Coverage 88.27% • Branch 71.70% • Lighthouse Perf 97 • A11y 100 • Errors 0.07%/mo
 
+Docs-only PRs (no src/workflow/config/lockfile changes) skip Playwright E2E and LHCI via paths-filter; touching `.github/workflows/**` or app code re-enables them.
+
 ## レポートリンク
 
 **CI ダッシュボード**
