@@ -14,6 +14,8 @@ export const useMsal = vi.fn(() => ({
 	inProgress: 'none' as const
 }));
 
+export const useMsalContext = useMsal;
+
 export const useMsalAuthentication = vi.fn(() => ({
 	login: vi.fn(),
 	result: null,
