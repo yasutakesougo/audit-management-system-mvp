@@ -69,14 +69,15 @@ const MATCHERS: Matcher[] = [
   { match: (path) => path === '/' || path === '', entry: HYDRATION_KEYS.dashboard },
   { match: (path) => path.startsWith('/handoff-timeline'), entry: HYDRATION_KEYS.handoffTimeline },
   // Schedules - prefer specific view matches before generic fallback
+  // Schedules - prefer query-based view=day before week fallback
+  {
+    match: (path, search) => path.startsWith('/schedules') && includesQuery(search, 'view', 'day'),
+    entry: HYDRATION_KEYS.schedulesDay,
+  },
   { match: (path) => path.startsWith('/schedules/day'), entry: HYDRATION_KEYS.schedulesDay },
   {
     match: (path, search) => path.startsWith('/schedules/week') || (path.startsWith('/schedules') && includesQuery(search, 'view', 'week')),
     entry: HYDRATION_KEYS.schedulesWeek,
-  },
-  {
-    match: (path, search) => path.startsWith('/schedules') && includesQuery(search, 'view', 'day'),
-    entry: HYDRATION_KEYS.schedulesDay,
   },
   { match: (path) => path.startsWith('/meeting-guide'), entry: HYDRATION_KEYS.meetingGuide },
   { match: (path) => path.startsWith('/records/support-procedures'), entry: HYDRATION_KEYS.supportProcedures },
