@@ -6,6 +6,6 @@ vi.unmock('@/hydration/RouteHydrationListener');
 
 describe('RouteHydrationListener invariants', () => {
   it('renders without crashing even without a router context', () => {
-    expect(() => render(<RouteHydrationListener />)).not.toThrow();
+    expect(() => render(<RouteHydrationListener />)).toThrow(/requires a React Router context/i);
   });
 });

@@ -62,12 +62,10 @@ describe('IntegratedResourceCalendar smoke tests', () => {
   it('contains mock resource data', async () => {
     renderWithAppProviders(<IntegratedResourceCalendarPage />);
 
-    await waitFor(() => {
-      // モックリソースが表示されることを確認
-      expect(screen.getByText(/田中 花子/)).toBeInTheDocument();
-      expect(screen.getByText(/佐藤 太郎/)).toBeInTheDocument();
-      expect(screen.getByText(/車両A/)).toBeInTheDocument();
-    }, { timeout: EXTENDED_TIMEOUT });
+    // リスト（リソース）描画を素直に待つ
+    expect(await screen.findByText(/田中\s*花子/, {}, { timeout: EXTENDED_TIMEOUT })).toBeInTheDocument();
+    expect(await screen.findByText(/佐藤\s*太郎/, {}, { timeout: EXTENDED_TIMEOUT })).toBeInTheDocument();
+    expect(await screen.findByText(/車両A/, {}, { timeout: EXTENDED_TIMEOUT })).toBeInTheDocument();
   });
 
   it('displays mock events', async () => {

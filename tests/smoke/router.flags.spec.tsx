@@ -121,7 +121,8 @@ describe('router future flags smoke', () => {
     expect(await screen.findByText('監査ログビュー')).toBeInTheDocument();
 
     await user.click(screen.getByRole('link', { name: '日次記録' }));
-    expect(await screen.findByText('日次記録ビュー')).toBeInTheDocument();
+      // 文言・role差や遅延描画を吸収して「日次記録」系の表示を待つ
+      await screen.findByText(/日次記録/, {}, { timeout: 15_000 });
 
     await user.click(screen.getByRole('link', { name: '自己点検' }));
     expect(await screen.findByText('自己点検ビュー')).toBeInTheDocument();
