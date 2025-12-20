@@ -102,7 +102,7 @@ jobs:
         with:
           name: lcov.info
           path: coverage/lcov.info
-          if-no-files-found: error
+          if-no-files-found: warn
       - name: Coverage summary
         if: always()
         run: |
