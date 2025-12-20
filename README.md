@@ -1143,6 +1143,7 @@ Internal / TBD.
 
 - SharePoint client hardened (retry telemetry, preserved nextLink parameters, sturdier batch parsing).
 - Local Operation Mode documentation, SOP set, and architecture diagrams published.
+- CI paths-filter verification: docs-only change to confirm Playwright/LHCI skip behavior.
 
 ## Quality Assurance
 
