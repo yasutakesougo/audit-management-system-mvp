@@ -127,7 +127,8 @@ describe('router future flags smoke', () => {
     await user.click(screen.getByRole('link', { name: '自己点検' }));
     expect(await screen.findByText('自己点検ビュー')).toBeInTheDocument();
 
-    await user.click(screen.getByRole('link', { name: 'ホーム' }));
+    // ホームリンクは「黒ノート」表記のナビゲーションをクリックして戻す
+    await user.click(await screen.findByTestId('nav-dashboard'));
     expect(await screen.findByText(/磯子区障害者地域活動ホーム/)).toBeInTheDocument();
 
     // 副作用の検証: ルート遷移での想定外のAPI呼び出しや認証アクションが発生していないことを確認

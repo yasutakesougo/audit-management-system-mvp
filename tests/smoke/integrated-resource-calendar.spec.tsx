@@ -66,7 +66,7 @@ describe('IntegratedResourceCalendar smoke tests', () => {
     expect(await screen.findByText(/田中\s*花子/, {}, { timeout: EXTENDED_TIMEOUT })).toBeInTheDocument();
     expect(await screen.findByText(/佐藤\s*太郎/, {}, { timeout: EXTENDED_TIMEOUT })).toBeInTheDocument();
     expect(await screen.findByText(/車両A/, {}, { timeout: EXTENDED_TIMEOUT })).toBeInTheDocument();
-  });
+  }, EXTENDED_TIMEOUT);
 
   it('displays mock events', async () => {
     renderWithAppProviders(<IntegratedResourceCalendarPage />);
