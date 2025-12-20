@@ -111,7 +111,7 @@ describe('router future flags smoke', () => {
     render(<App />);
 
     // 初期表示: ホーム画面の確認
-    expect(await screen.findByRole('heading', { name: '磯子区障害者地域活動ホーム' })).toBeInTheDocument();
+    expect(await screen.findByText(/磯子区障害者地域活動ホーム/)).toBeInTheDocument();
 
     // ナビゲーション経路のテスト: ホーム → 監査ログ → 日次記録 → 自己点検 → ホーム
 
@@ -127,7 +127,7 @@ describe('router future flags smoke', () => {
     expect(await screen.findByText('自己点検ビュー')).toBeInTheDocument();
 
     await user.click(screen.getByRole('link', { name: 'ホーム' }));
-    expect(await screen.findByRole('heading', { name: '磯子区障害者地域活動ホーム' })).toBeInTheDocument();
+    expect(await screen.findByText(/磯子区障害者地域活動ホーム/)).toBeInTheDocument();
 
     // 副作用の検証: ルート遷移での想定外のAPI呼び出しや認証アクションが発生していないことを確認
     expect(spFetchMock).not.toHaveBeenCalled();

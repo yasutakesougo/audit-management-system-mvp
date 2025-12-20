@@ -2,10 +2,11 @@ import { act, cleanup, render, waitFor } from '@testing-library/react';
 import { Outlet, RouterProvider, createMemoryRouter } from 'react-router-dom';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-import RouteHydrationListener from '@/hydration/RouteHydrationListener';
 import { getHydrationSpans, resetHydrationSpans } from '@/lib/hydrationHud';
 
-const routes = [
+const buildRoutes = (
+  RouteHydrationListener: typeof import('@/hydration/RouteHydrationListener').default
+) => [
   {
     path: '/',
     element: (
@@ -22,9 +23,16 @@ const routes = [
 ];
 
 describe('RouteHydrationListener popstate handling', () => {
+  let RouteHydrationListener: typeof import('@/hydration/RouteHydrationListener').default;
+
   beforeEach(() => {
-    vi.useFakeTimers();
-    resetHydrationSpans();
+    vi.resetModules();
+    vi.doUnmock('@/hydration/RouteHydrationListener');
+    return import('@/hydration/RouteHydrationListener').then((mod) => {
+      RouteHydrationListener = mod.default;
+      vi.useFakeTimers();
+      resetHydrationSpans();
+    });
   });
 
   afterEach(() => {
@@ -34,7 +42,7 @@ describe('RouteHydrationListener popstate handling', () => {
   });
 
   it('records spans with source="history" when navigating via popstate', async () => {
-    const router = createMemoryRouter(routes, {
+    const router = createMemoryRouter(buildRoutes(RouteHydrationListener), {
       initialEntries: ['/schedules/week', '/schedules/day'],
       initialIndex: 1,
     });

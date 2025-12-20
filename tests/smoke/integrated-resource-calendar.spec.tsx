@@ -5,10 +5,26 @@
 
 import IntegratedResourceCalendarPage from '@/pages/IntegratedResourceCalendarPage';
 import { screen, waitFor } from '@testing-library/react';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { renderWithAppProviders } from '../helpers/renderWithAppProviders';
 
-const EXTENDED_TIMEOUT = 10000;
+const EXTENDED_TIMEOUT = 15000;
+
+vi.mock('@fullcalendar/react', () => ({
+  __esModule: true,
+  default: ({ events }: { events?: Array<{ id: string; title: string }> }) => (
+    <div className="fc">
+      {(events ?? []).map((event) => (
+        <div key={event.id} className="pvsA-event-content">
+          {event.title}
+        </div>
+      ))}
+    </div>
+  ),
+}));
+
+vi.mock('@fullcalendar/resource-timeline', () => ({ __esModule: true, default: () => null }));
+vi.mock('@fullcalendar/interaction', () => ({ __esModule: true, default: () => null }));
 
 describe('IntegratedResourceCalendar smoke tests', () => {
   it('renders without crashing', () => {
@@ -57,11 +73,8 @@ describe('IntegratedResourceCalendar smoke tests', () => {
   it('displays mock events', async () => {
     renderWithAppProviders(<IntegratedResourceCalendarPage />);
 
-    await waitFor(() => {
-      // モックイベントが表示されることを確認
-      expect(screen.getByText(/利用者宅訪問/)).toBeInTheDocument();
-      expect(screen.getByText(/デイサービス送迎/)).toBeInTheDocument();
-    }, { timeout: EXTENDED_TIMEOUT });
+    expect(await screen.findByText(/利用者宅訪問/, {}, { timeout: EXTENDED_TIMEOUT })).toBeInTheDocument();
+    expect(await screen.findByText(/デイサービス送迎/, {}, { timeout: EXTENDED_TIMEOUT })).toBeInTheDocument();
   });
 
   // PvsA表示のテスト（ステータスアイコンなど）

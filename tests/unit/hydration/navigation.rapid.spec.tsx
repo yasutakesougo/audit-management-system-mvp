@@ -1,16 +1,16 @@
 import { act, cleanup, render } from '@testing-library/react';
 import { Outlet, RouterProvider, createMemoryRouter } from 'react-router-dom';
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-import RouteHydrationListener from '@/hydration/RouteHydrationListener';
 import * as hydrationHud from '@/lib/hydrationHud';
 
 const { getHydrationSpans, resetHydrationSpans, subscribeHydrationSpans } = hydrationHud;
 type HydrationSpan = hydrationHud.HydrationSpan;
 
 const delay = (ms: number): Promise<void> => new Promise((resolve) => setTimeout(resolve, ms));
-
-const routes = [
+const buildRoutes = (
+  RouteHydrationListener: typeof import('@/hydration/RouteHydrationListener').default
+) => [
   {
     path: '/',
     element: (
@@ -45,8 +45,15 @@ type SnapshotEntry = {
 };
 
 describe('RouteHydrationListener rapid navigation handling', () => {
+  let RouteHydrationListener: typeof import('@/hydration/RouteHydrationListener').default;
+
   beforeEach(() => {
-    resetHydrationSpans();
+    vi.resetModules();
+    vi.doUnmock('@/hydration/RouteHydrationListener');
+    return import('@/hydration/RouteHydrationListener').then((mod) => {
+      RouteHydrationListener = mod.default;
+      resetHydrationSpans();
+    });
   });
 
   afterEach(() => {
@@ -55,7 +62,7 @@ describe('RouteHydrationListener rapid navigation handling', () => {
   });
 
   it('supersedes earlier spans when navigating rapidly to the same hydration key', async () => {
-    const router = createMemoryRouter(routes, {
+    const router = createMemoryRouter(buildRoutes(RouteHydrationListener), {
       initialEntries: ['/'],
     });
 

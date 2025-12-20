@@ -2,10 +2,11 @@ import { act, cleanup, render, waitFor } from '@testing-library/react';
 import { Outlet, RouterProvider, createMemoryRouter } from 'react-router-dom';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-import RouteHydrationListener from '@/hydration/RouteHydrationListener';
 import { getHydrationSpans, resetHydrationSpans } from '@/lib/hydrationHud';
 
-const routes = [
+const buildRoutes = (
+  RouteHydrationListener: typeof import('@/hydration/RouteHydrationListener').default
+) => [
   {
     path: '/',
     element: (
@@ -18,9 +19,17 @@ const routes = [
 ];
 
 describe('RouteHydrationListener search delta coalescing', () => {
+  let RouteHydrationListener: typeof import('@/hydration/RouteHydrationListener').default;
+
   beforeEach(() => {
-    vi.useFakeTimers();
-    resetHydrationSpans();
+    vi.resetModules();
+    vi.doUnmock('@/hydration/RouteHydrationListener');
+    // dynamic import to ensure real implementation wins over setup passthrough mock
+    return import('@/hydration/RouteHydrationListener').then((mod) => {
+      RouteHydrationListener = mod.default;
+      vi.useFakeTimers();
+      resetHydrationSpans();
+    });
   });
 
   afterEach(() => {
@@ -30,7 +39,7 @@ describe('RouteHydrationListener search delta coalescing', () => {
   });
 
   it('coalesces search-only updates into a single active span', async () => {
-    const router = createMemoryRouter(routes, {
+    const router = createMemoryRouter(buildRoutes(RouteHydrationListener), {
       // view=dayクエリパラメータを含めてroute:schedules:dayにマッピングされるようにする
       initialEntries: ['/schedules/day?view=day&tab=1'],
     });
