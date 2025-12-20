@@ -1,16 +1,16 @@
-import { act, cleanup, render } from '@testing-library/react';
+import { act, cleanup, render, waitFor } from '@testing-library/react';
 import { Outlet, RouterProvider, createMemoryRouter } from 'react-router-dom';
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-import RouteHydrationListener from '@/hydration/RouteHydrationListener';
 import * as hydrationHud from '@/lib/hydrationHud';
 
-const { getHydrationSpans, resetHydrationSpans, subscribeHydrationSpans } = hydrationHud;
-type HydrationSpan = hydrationHud.HydrationSpan;
+const { getHydrationSpans, resetHydrationSpans } = hydrationHud;
 
 const delay = (ms: number): Promise<void> => new Promise((resolve) => setTimeout(resolve, ms));
 
-const routes = [
+const buildRoutes = (
+  RouteHydrationListener: typeof import('@/hydration/RouteHydrationListener').default
+) => [
   {
     path: '/',
     element: (
@@ -37,16 +37,15 @@ const routes = [
   },
 ];
 
-type SnapshotEntry = {
-  id: string;
-  status?: string;
-  source?: string;
-  path?: string;
-};
-
 describe('RouteHydrationListener rapid navigation handling', () => {
+  let RouteHydrationListener: typeof import('@/hydration/RouteHydrationListener').default;
+
   beforeEach(() => {
-    resetHydrationSpans();
+    vi.doUnmock('@/hydration/RouteHydrationListener');
+    return import('@/hydration/RouteHydrationListener').then((mod) => {
+      RouteHydrationListener = mod.default;
+      resetHydrationSpans();
+    });
   });
 
   afterEach(() => {
@@ -55,57 +54,38 @@ describe('RouteHydrationListener rapid navigation handling', () => {
   });
 
   it('supersedes earlier spans when navigating rapidly to the same hydration key', async () => {
-    const router = createMemoryRouter(routes, {
+    const router = createMemoryRouter(buildRoutes(RouteHydrationListener), {
       initialEntries: ['/'],
     });
 
-    const snapshots: SnapshotEntry[][] = [];
-    const unsubscribe = subscribeHydrationSpans((spans: HydrationSpan[]) => {
-      snapshots.push(
-        spans.map((span) => {
-          const meta = (span.meta ?? {}) as Record<string, unknown>;
-          return {
-            id: span.id,
-            status: typeof meta.status === 'string' ? meta.status : undefined,
-            source: typeof meta.source === 'string' ? meta.source : undefined,
-            path: typeof meta.path === 'string' ? meta.path : undefined,
-          } satisfies SnapshotEntry;
-        })
-      );
+    render(<RouterProvider router={router} />);
+
+    await act(async () => {
+      await router.navigate('/schedules/week?ts=1');
     });
 
-    try {
-      render(<RouterProvider router={router} />);
+    await waitFor(() => {
+      const spans = getHydrationSpans();
+      expect(spans.some((span) => span.id === 'route:schedules:week')).toBe(true);
+    }, { timeout: 10_000 });
 
-      await act(async () => {
-        void router.navigate('/schedules/week?ts=1');
-        await delay(40);
+    await act(async () => {
+      await router.navigate('/admin/templates');
+    });
+
+    await waitFor(() => {
+      const spans = getHydrationSpans();
+      const superseded = spans.find((span) => {
+        const meta = (span.meta ?? {}) as Record<string, unknown>;
+        return span.id === 'route:schedules:week' && meta.status === 'superseded';
       });
-
-      const flattenedAfterFirst = snapshots.flat();
-      expect(flattenedAfterFirst.some((entry) => entry.id === 'route:schedules:week')).toBe(true);
-
-      await act(async () => {
-        await router.navigate('/admin/templates');
-        await delay(320);
-      });
-
+      expect(superseded).toBeDefined();
       expect(router.state.location.pathname).toBe('/admin/templates');
+    }, { timeout: 10_000 });
 
-      const flattened = snapshots.flat();
-      expect(flattened.length).toBeGreaterThan(0);
-
-      const supersededSnapshot = flattened.find(
-        (entry) => entry.id === 'route:schedules:week' && entry.status === 'superseded'
-      );
-      expect(supersededSnapshot).toBeDefined();
-
-      const currentSpan = getHydrationSpans().find((span) => span.id === 'route:admin:templates');
-      const meta = (currentSpan?.meta ?? {}) as Record<string, unknown>;
-      expect(['pending', 'completed']).toContain(meta.status);
-      expect(meta.path).toBe('/admin/templates');
-    } finally {
-      unsubscribe();
-    }
+    const currentSpan = getHydrationSpans().find((span) => span.id === 'route:admin:templates');
+    const meta = (currentSpan?.meta ?? {}) as Record<string, unknown>;
+    expect(['pending', 'completed']).toContain(meta.status);
+    expect(meta.path).toBe('/admin/templates');
   });
 });

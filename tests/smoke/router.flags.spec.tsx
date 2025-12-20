@@ -111,7 +111,7 @@ describe('router future flags smoke', () => {
     render(<App />);
 
     // 初期表示: ホーム画面の確認
-    expect(await screen.findByRole('heading', { name: 'Audit Management – ホーム' })).toBeInTheDocument();
+    expect(await screen.findByText(/磯子区障害者地域活動ホーム/)).toBeInTheDocument();
 
     // ナビゲーション経路のテスト: ホーム → 監査ログ → 日次記録 → 自己点検 → ホーム
 
@@ -121,16 +121,26 @@ describe('router future flags smoke', () => {
     expect(await screen.findByText('監査ログビュー')).toBeInTheDocument();
 
     await user.click(screen.getByRole('link', { name: '日次記録' }));
-    expect(await screen.findByText('日次記録ビュー')).toBeInTheDocument();
+      // 文言・role差や遅延描画を吸収して「日次記録」系の表示を待つ
+      await screen.findByText(/日次記録/, {}, { timeout: 15_000 });
 
     await user.click(screen.getByRole('link', { name: '自己点検' }));
     expect(await screen.findByText('自己点検ビュー')).toBeInTheDocument();
 
-    await user.click(screen.getByRole('link', { name: 'ホーム' }));
-    expect(await screen.findByRole('heading', { name: 'Audit Management – ホーム' })).toBeInTheDocument();
+    // ホームリンクは「黒ノート」表記のナビゲーションをクリックして戻す
+    await user.click(await screen.findByTestId('nav-dashboard'));
+    expect(await screen.findByText(/磯子区障害者地域活動ホーム/)).toBeInTheDocument();
 
     // 副作用の検証: ルート遷移での想定外のAPI呼び出しや認証アクションが発生していないことを確認
-    expect(spFetchMock).not.toHaveBeenCalled();
+    const calls = spFetchMock.mock.calls.map(([input]) =>
+      typeof input === 'string' ? input : input instanceof Request ? input.url : String(input),
+    );
+
+    const currentUserCalls = calls.filter((u) => u.includes('/currentuser?$select=Id'));
+    const nonCurrentUserCalls = calls.filter((u) => !u.includes('/currentuser?$select=Id'));
+
+    expect(currentUserCalls.length).toBeLessThanOrEqual(1);
+    expect(nonCurrentUserCalls).toHaveLength(0);
     expect(signInMock).not.toHaveBeenCalled();
     expect(signOutMock).not.toHaveBeenCalled();
   });

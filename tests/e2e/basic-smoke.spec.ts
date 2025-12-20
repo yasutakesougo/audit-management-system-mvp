@@ -2,7 +2,7 @@ import { expect, test } from '@playwright/test';
 
 test.describe('Basic Dashboard', () => {
   test('can load homepage', async ({ page }) => {
-    await page.goto('http://localhost:3000/');
+    await page.goto('/');
 
     await page.waitForLoadState('domcontentloaded');
     await expect(page).toHaveURL(/\/$/);
@@ -38,7 +38,7 @@ test.describe('Basic Dashboard', () => {
   });
 
   test('can navigate to dashboard', async ({ page }) => {
-    await page.goto('http://localhost:3000/dashboard');
+    await page.goto('/dashboard');
 
     await page.waitForTimeout(5000);
 

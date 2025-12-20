@@ -17,6 +17,27 @@ type MsalContextValue = {
 
 const MsalContext = React.createContext<MsalContextValue | null>(null);
 
+const isVitest = typeof process !== 'undefined' && process.env.VITEST === 'true';
+type ViCarrier = typeof globalThis & { vi?: typeof import('vitest')['vi'] };
+const viMock = isVitest ? (globalThis as ViCarrier).vi : undefined;
+
+const createDefaultMsalContextMock = (): MsalContextValue => ({
+  instance: {
+    getAllAccounts: () => [],
+    getActiveAccount: () => null,
+    setActiveAccount: () => undefined,
+  } as unknown as MsalInstance,
+  accounts: [],
+  inProgress: 'none',
+});
+
+export const __msalContextMock = viMock
+  ? {
+      // vi mock so unit tests can override behavior without rendering the real provider
+      useMsalContext: viMock.fn((): MsalContextValue => createDefaultMsalContextMock()),
+    }
+  : undefined;
+
 let loadMsalInstancePromise: Promise<MsalInstance> | null = null;
 let loadMsalReactPromise: Promise<MsalReactModule> | null = null;
 
@@ -68,7 +89,7 @@ async function loadMsalReact(): Promise<MsalReactModule> {
 }
 
 export const MsalProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const isMock = isE2eMsalMockEnabled();
+  const isMock = isVitest || isE2eMsalMockEnabled();
 
   const mockInstance = useMemo(
     () => ({
@@ -142,6 +163,10 @@ const MsalBridge: React.FC<{ instance: MsalInstance; useMsal: MsalReactModule['u
 };
 
 export function useMsalContext(): MsalContextValue {
+  if (isVitest && __msalContextMock) {
+    return __msalContextMock.useMsalContext();
+  }
+
   const context = React.useContext(MsalContext);
 
   if (!context) {

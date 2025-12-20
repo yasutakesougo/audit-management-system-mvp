@@ -5,6 +5,7 @@ import '@formatjs/intl-getcanonicallocales';
 import '@testing-library/jest-dom/vitest';
 import { cleanup } from '@testing-library/react';
 import { webcrypto } from 'crypto';
+import React from 'react';
 import { toHaveNoViolations } from 'jest-axe';
 import { afterEach, beforeEach, expect, vi } from 'vitest';
 
@@ -87,3 +88,97 @@ if (!globalWithCrypto.crypto.randomUUID) {
 		return uuid as ReturnType<Crypto['randomUUID']>;
 	};
 }
+
+// Use manual mock from src/__mocks__ for MSAL React
+vi.mock('@azure/msal-react');
+
+// Prevent SharePoint calls during tests by providing a lightweight client stub while retaining real createSpClient for unit tests
+const mockUnifiedEvents = [
+	{
+		id: 'irc-event-1',
+		resourceId: 'staff-1',
+		title: '利用者宅訪問',
+		start: '2024-01-01T09:00:00Z',
+		end: '2024-01-01T10:00:00Z',
+		extendedProps: {
+			planId: 'plan-1',
+			planType: 'visit',
+			status: 'waiting',
+			percentComplete: 0,
+			diffMinutes: 0,
+		},
+	},
+	{
+		id: 'irc-event-2',
+		resourceId: 'vehicle-1',
+		title: 'デイサービス送迎',
+		start: '2024-01-01T11:00:00Z',
+		end: '2024-01-01T12:00:00Z',
+		extendedProps: {
+			planId: 'plan-2',
+			planType: 'travel',
+			status: 'in-progress',
+			percentComplete: 50,
+			diffMinutes: 0,
+		},
+	},
+];
+
+const mockSpClient = {
+	listItems: vi.fn().mockResolvedValue([]),
+	getItem: vi.fn().mockResolvedValue(null),
+	createItem: vi.fn().mockResolvedValue({}),
+	updateItem: vi.fn().mockResolvedValue({}),
+	deleteItem: vi.fn().mockResolvedValue({}),
+	getListItemsByTitle: vi.fn().mockResolvedValue([]),
+	getListItemById: vi.fn().mockResolvedValue(null),
+	addListItemByTitle: vi.fn().mockResolvedValue({ id: '1', etag: 'mock-etag' }),
+	addItemByTitle: vi.fn().mockResolvedValue({ id: '1', etag: 'mock-etag' }),
+	updateListItem: vi.fn().mockResolvedValue({ etag: 'new-etag' }),
+	deleteListItem: vi.fn().mockResolvedValue(undefined),
+	postBatch: vi.fn().mockResolvedValue([]),
+	fetchRows: vi.fn().mockResolvedValue([]),
+	fetchRowById: vi.fn().mockResolvedValue(null),
+	spFetch: vi.fn().mockResolvedValue(new Response(JSON.stringify({}), { status: 200 })),
+	getUnifiedEvents: vi.fn().mockResolvedValue(mockUnifiedEvents),
+};
+
+vi.mock('@/lib/spClient', async () => {
+	const actual = await vi.importActual<typeof import('@/lib/spClient')>('@/lib/spClient');
+	return {
+		...actual,
+		useSP: () => mockSpClient,
+		createSpClient: actual.createSpClient,
+		createIrcSpClient: () => mockSpClient,
+		mockSpClient,
+	};
+});
+
+// Provide stable org store data to avoid SharePoint dependency in tests
+vi.mock('@/features/org/store', () => ({
+	useOrgStore: () => ({
+		items: [
+			{ id: 'org-1', label: 'デモ組織1' },
+			{ id: 'org-2', label: 'デモ組織2' },
+		],
+		loading: false,
+		error: null,
+		loadedOnce: true,
+		refresh: vi.fn(),
+	}),
+}));
+
+// Skip hydration wiring when Router context is absent in isolated renders
+vi.mock('@/hydration/RouteHydrationListener', async () => {
+	const actual = await vi.importActual<typeof import('@/hydration/RouteHydrationListener')>(
+		'@/hydration/RouteHydrationListener'
+	);
+	const Passthrough = ({ children }: { children?: React.ReactNode }) =>
+		React.createElement(React.Fragment, null, children ?? null);
+	return {
+		...actual,
+		RouteHydrationListener: Passthrough,
+		RouteHydrationErrorBoundary: actual.RouteHydrationErrorBoundary ?? Passthrough,
+		default: Passthrough,
+	};
+});
