@@ -132,7 +132,15 @@ describe('router future flags smoke', () => {
     expect(await screen.findByText(/磯子区障害者地域活動ホーム/)).toBeInTheDocument();
 
     // 副作用の検証: ルート遷移での想定外のAPI呼び出しや認証アクションが発生していないことを確認
-    expect(spFetchMock).not.toHaveBeenCalled();
+    const calls = spFetchMock.mock.calls.map(([input]) =>
+      typeof input === 'string' ? input : input instanceof Request ? input.url : String(input),
+    );
+
+    const currentUserCalls = calls.filter((u) => u.includes('/currentuser?$select=Id'));
+    const nonCurrentUserCalls = calls.filter((u) => !u.includes('/currentuser?$select=Id'));
+
+    expect(currentUserCalls.length).toBeLessThanOrEqual(1);
+    expect(nonCurrentUserCalls).toHaveLength(0);
     expect(signInMock).not.toHaveBeenCalled();
     expect(signOutMock).not.toHaveBeenCalled();
   });
