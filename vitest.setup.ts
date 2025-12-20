@@ -5,6 +5,7 @@ import '@formatjs/intl-getcanonicallocales';
 import '@testing-library/jest-dom/vitest';
 import { cleanup } from '@testing-library/react';
 import { webcrypto } from 'crypto';
+import React from 'react';
 import { toHaveNoViolations } from 'jest-axe';
 import { afterEach, beforeEach, expect, vi } from 'vitest';
 
@@ -90,3 +91,48 @@ if (!globalWithCrypto.crypto.randomUUID) {
 
 // Use manual mock from src/__mocks__ for MSAL React
 vi.mock('@azure/msal-react');
+
+// Prevent SharePoint calls during tests by providing a lightweight client stub
+const mockSpClient = {
+	listItems: vi.fn().mockResolvedValue([]),
+	getItem: vi.fn().mockResolvedValue(null),
+	createItem: vi.fn().mockResolvedValue({}),
+	updateItem: vi.fn().mockResolvedValue({}),
+	deleteItem: vi.fn().mockResolvedValue({}),
+	fetchRows: vi.fn().mockResolvedValue([]),
+	fetchRowById: vi.fn().mockResolvedValue(null),
+	spFetch: vi.fn().mockResolvedValue({ ok: true, json: async () => ({}) }),
+};
+
+vi.mock('@/lib/spClient', async () => {
+	const actual = await vi.importActual<typeof import('@/lib/spClient')>('@/lib/spClient');
+	return {
+		...actual,
+		useSP: () => mockSpClient,
+		createSpClient: () => mockSpClient,
+		createIrcSpClient: () => mockSpClient,
+		mockSpClient,
+	};
+});
+
+// Provide stable org store data to avoid SharePoint dependency in tests
+vi.mock('@/features/org/store', () => ({
+	useOrgStore: () => ({
+		items: [
+			{ id: 'org-1', label: 'デモ組織1' },
+			{ id: 'org-2', label: 'デモ組織2' },
+		],
+		loading: false,
+		error: null,
+		loadedOnce: true,
+		refresh: vi.fn(),
+	}),
+}));
+
+// Skip hydration wiring when Router context is absent in isolated renders
+vi.mock('@/hydration/RouteHydrationListener', () => ({
+	RouteHydrationListener: ({ children }: { children?: React.ReactNode }) =>
+		React.createElement(React.Fragment, null, children ?? null),
+	default: ({ children }: { children?: React.ReactNode }) =>
+		React.createElement(React.Fragment, null, children ?? null),
+}));
