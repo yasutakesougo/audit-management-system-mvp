@@ -92,16 +92,23 @@ if (!globalWithCrypto.crypto.randomUUID) {
 // Use manual mock from src/__mocks__ for MSAL React
 vi.mock('@azure/msal-react');
 
-// Prevent SharePoint calls during tests by providing a lightweight client stub
+// Prevent SharePoint calls during tests by providing a lightweight client stub while retaining real createSpClient for unit tests
 const mockSpClient = {
 	listItems: vi.fn().mockResolvedValue([]),
 	getItem: vi.fn().mockResolvedValue(null),
 	createItem: vi.fn().mockResolvedValue({}),
 	updateItem: vi.fn().mockResolvedValue({}),
 	deleteItem: vi.fn().mockResolvedValue({}),
+	getListItemsByTitle: vi.fn().mockResolvedValue([]),
+	getListItemById: vi.fn().mockResolvedValue(null),
+	addListItemByTitle: vi.fn().mockResolvedValue({ id: '1', etag: 'mock-etag' }),
+	addItemByTitle: vi.fn().mockResolvedValue({ id: '1', etag: 'mock-etag' }),
+	updateListItem: vi.fn().mockResolvedValue({ etag: 'new-etag' }),
+	deleteListItem: vi.fn().mockResolvedValue(undefined),
+	postBatch: vi.fn().mockResolvedValue([]),
 	fetchRows: vi.fn().mockResolvedValue([]),
 	fetchRowById: vi.fn().mockResolvedValue(null),
-	spFetch: vi.fn().mockResolvedValue({ ok: true, json: async () => ({}) }),
+	spFetch: vi.fn().mockResolvedValue(new Response(JSON.stringify({}), { status: 200 })),
 };
 
 vi.mock('@/lib/spClient', async () => {
@@ -109,7 +116,7 @@ vi.mock('@/lib/spClient', async () => {
 	return {
 		...actual,
 		useSP: () => mockSpClient,
-		createSpClient: () => mockSpClient,
+		createSpClient: actual.createSpClient,
 		createIrcSpClient: () => mockSpClient,
 		mockSpClient,
 	};
@@ -130,9 +137,16 @@ vi.mock('@/features/org/store', () => ({
 }));
 
 // Skip hydration wiring when Router context is absent in isolated renders
-vi.mock('@/hydration/RouteHydrationListener', () => ({
-	RouteHydrationListener: ({ children }: { children?: React.ReactNode }) =>
-		React.createElement(React.Fragment, null, children ?? null),
-	default: ({ children }: { children?: React.ReactNode }) =>
-		React.createElement(React.Fragment, null, children ?? null),
-}));
+vi.mock('@/hydration/RouteHydrationListener', async () => {
+	const actual = await vi.importActual<typeof import('@/hydration/RouteHydrationListener')>(
+		'@/hydration/RouteHydrationListener'
+	);
+	const Passthrough = ({ children }: { children?: React.ReactNode }) =>
+		React.createElement(React.Fragment, null, children ?? null);
+	return {
+		...actual,
+		RouteHydrationListener: Passthrough,
+		RouteHydrationErrorBoundary: actual.RouteHydrationErrorBoundary ?? Passthrough,
+		default: Passthrough,
+	};
+});
