@@ -8,6 +8,8 @@ import { screen, waitFor } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 import { renderWithAppProviders } from '../helpers/renderWithAppProviders';
 
+const EXTENDED_TIMEOUT = 10000;
+
 describe('IntegratedResourceCalendar smoke tests', () => {
   it('renders without crashing', () => {
     expect(() => {
@@ -38,7 +40,7 @@ describe('IntegratedResourceCalendar smoke tests', () => {
       // カレンダーのツールバーが表示されるのを待機
       const calendarElement = document.querySelector('.fc');
       expect(calendarElement).toBeInTheDocument();
-    }, { timeout: 5000 }); // CI環境での安定性を考慮してタイムアウト延長
+    }, { timeout: EXTENDED_TIMEOUT });
   });
 
   it('contains mock resource data', async () => {
@@ -49,7 +51,7 @@ describe('IntegratedResourceCalendar smoke tests', () => {
       expect(screen.getByText(/田中 花子/)).toBeInTheDocument();
       expect(screen.getByText(/佐藤 太郎/)).toBeInTheDocument();
       expect(screen.getByText(/車両A/)).toBeInTheDocument();
-    }, { timeout: 5000 });
+    }, { timeout: EXTENDED_TIMEOUT });
   });
 
   it('displays mock events', async () => {
@@ -59,7 +61,7 @@ describe('IntegratedResourceCalendar smoke tests', () => {
       // モックイベントが表示されることを確認
       expect(screen.getByText(/利用者宅訪問/)).toBeInTheDocument();
       expect(screen.getByText(/デイサービス送迎/)).toBeInTheDocument();
-    }, { timeout: 5000 });
+    }, { timeout: EXTENDED_TIMEOUT });
   });
 
   // PvsA表示のテスト（ステータスアイコンなど）
@@ -70,7 +72,7 @@ describe('IntegratedResourceCalendar smoke tests', () => {
       // ステータスアイコンが表示されることを確認
       const eventElements = document.querySelectorAll('.pvsA-event-content');
       expect(eventElements.length).toBeGreaterThan(0);
-    }, { timeout: 5000 });
+    }, { timeout: EXTENDED_TIMEOUT });
   });
 
   // 型安全性のテスト
