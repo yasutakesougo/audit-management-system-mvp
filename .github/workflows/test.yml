@@ -66,9 +66,9 @@ jobs:
           VITE_SP_SCOPE_DEFAULT: ${{ secrets.VITE_SP_SCOPE_DEFAULT }}
           VITE_SP_RESOURCE: ${{ vars.VITE_SP_RESOURCE }}
           VITE_SP_SITE_RELATIVE: ${{ vars.VITE_SP_SITE_RELATIVE }}
-          PLAYWRIGHT_BASE_URL: http://127.0.0.1:5173
-          PLAYWRIGHT_WEB_SERVER_URL: http://127.0.0.1:5173
-          PLAYWRIGHT_WEB_SERVER_COMMAND: npm run dev:e2e
+          PLAYWRIGHT_BASE_URL: http://127.0.0.1:3000
+          PLAYWRIGHT_WEB_SERVER_URL: http://127.0.0.1:3000
+          PLAYWRIGHT_WEB_SERVER_COMMAND: 'sh -c "npm run build && npm run preview:e2e"'
           NOTIFY_WEBHOOK_URL: ${{ secrets.NOTIFY_WEBHOOK_URL }}
         run: |
           set -euo pipefail
