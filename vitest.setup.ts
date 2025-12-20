@@ -4,6 +4,7 @@ import '@formatjs/intl-getcanonicallocales';
 // Vitest global setup: polyfill crypto.randomUUID if absent (Node < 19 environments)
 import '@testing-library/jest-dom/vitest';
 import { cleanup } from '@testing-library/react';
+import React from 'react';
 import { webcrypto } from 'crypto';
 import { toHaveNoViolations } from 'jest-axe';
 import { afterEach, beforeEach, expect, vi } from 'vitest';
@@ -87,3 +88,27 @@ if (!globalWithCrypto.crypto.randomUUID) {
 		return uuid as ReturnType<Crypto['randomUUID']>;
 	};
 }
+
+// Provide MSAL context defaults so auth-dependent tests do not crash
+vi.mock('@azure/msal-react', () => ({
+	useMsal: vi.fn(() => ({
+		instance: {
+			getAllAccounts: vi.fn(() => []),
+			getActiveAccount: vi.fn(() => null),
+			setActiveAccount: vi.fn(),
+			acquireTokenSilent: vi.fn(),
+			loginRedirect: vi.fn(),
+			logoutRedirect: vi.fn()
+		},
+		accounts: [],
+		inProgress: 'none'
+	})),
+	useMsalAuthentication: vi.fn(() => ({
+		login: vi.fn(),
+		result: null,
+		error: null
+	})),
+	MsalProvider: ({ children }: { children: React.ReactNode }) => children,
+	AuthenticatedTemplate: ({ children }: { children: React.ReactNode }) => children,
+	UnauthenticatedTemplate: () => null
+}));
