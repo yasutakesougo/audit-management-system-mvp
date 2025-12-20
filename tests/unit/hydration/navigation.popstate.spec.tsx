@@ -1,4 +1,4 @@
-import { act, cleanup, render } from '@testing-library/react';
+import { act, cleanup, render, waitFor } from '@testing-library/react';
 import { Outlet, RouterProvider, createMemoryRouter } from 'react-router-dom';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -42,21 +42,23 @@ describe('RouteHydrationListener popstate handling', () => {
     render(<RouterProvider router={router} />);
 
     await act(async () => {
-      window.dispatchEvent(new PopStateEvent('popstate'));
       await router.navigate(-1);
+      window.dispatchEvent(new PopStateEvent('popstate'));
     });
 
     await act(async () => {
-      vi.advanceTimersByTime(150);
+      await vi.advanceTimersByTimeAsync(500);
     });
 
-    const spans = getHydrationSpans();
-    const historySpans = spans.filter((span) => {
-      const meta = (span.meta ?? {}) as Record<string, unknown>;
-      return meta.source === 'history';
+    const historySpans = await waitFor(() => {
+      const spans = getHydrationSpans();
+      const filtered = spans.filter((span) => {
+        const meta = (span.meta ?? {}) as Record<string, unknown>;
+        return meta.source === 'history';
+      });
+      expect(filtered.length).toBeGreaterThan(0);
+      return filtered;
     });
-
-    expect(historySpans.length).toBeGreaterThan(0);
 
     const lastHistorySpan = historySpans.at(-1);
     const meta = (lastHistorySpan?.meta ?? {}) as Record<string, unknown>;

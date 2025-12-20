@@ -93,6 +93,37 @@ if (!globalWithCrypto.crypto.randomUUID) {
 vi.mock('@azure/msal-react');
 
 // Prevent SharePoint calls during tests by providing a lightweight client stub while retaining real createSpClient for unit tests
+const mockUnifiedEvents = [
+	{
+		id: 'irc-event-1',
+		resourceId: 'staff-1',
+		title: '利用者宅訪問',
+		start: '2024-01-01T09:00:00Z',
+		end: '2024-01-01T10:00:00Z',
+		extendedProps: {
+			planId: 'plan-1',
+			planType: 'visit',
+			status: 'waiting',
+			percentComplete: 0,
+			diffMinutes: 0,
+		},
+	},
+	{
+		id: 'irc-event-2',
+		resourceId: 'vehicle-1',
+		title: 'デイサービス送迎',
+		start: '2024-01-01T11:00:00Z',
+		end: '2024-01-01T12:00:00Z',
+		extendedProps: {
+			planId: 'plan-2',
+			planType: 'travel',
+			status: 'in-progress',
+			percentComplete: 50,
+			diffMinutes: 0,
+		},
+	},
+];
+
 const mockSpClient = {
 	listItems: vi.fn().mockResolvedValue([]),
 	getItem: vi.fn().mockResolvedValue(null),
@@ -109,6 +140,7 @@ const mockSpClient = {
 	fetchRows: vi.fn().mockResolvedValue([]),
 	fetchRowById: vi.fn().mockResolvedValue(null),
 	spFetch: vi.fn().mockResolvedValue(new Response(JSON.stringify({}), { status: 200 })),
+	getUnifiedEvents: vi.fn().mockResolvedValue(mockUnifiedEvents),
 };
 
 vi.mock('@/lib/spClient', async () => {
