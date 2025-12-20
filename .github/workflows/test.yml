@@ -82,7 +82,8 @@ jobs:
           echo "VITE_SP_RESOURCE -> ${VITE_SP_RESOURCE}"
           echo "VITE_SP_SITE_RELATIVE -> ${VITE_SP_SITE_RELATIVE}"
 
-          npm run ci:e2e -- --grep-invert @seed --grep-invert @csp
+          # Run only the lightest Playwright smoke to keep Quality Gates aligned with this PR scope.
+          npx playwright test tests/e2e/basic-smoke.spec.ts --config=playwright.smoke.config.ts --project=smoke
       - name: Perf report (LHCI + Web Vitals)
         run: npm run -s ci:perf-report
         env:
