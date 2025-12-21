@@ -1,6 +1,0 @@
-<testsuites id="" name="" tests="1" failures="0" skipped="0" errors="0" time="29.973431999999995">
-<testsuite name="schedule.status-service.regression.spec.ts" timestamp="2025-12-21T05:47:49.761Z" hostname="chromium" tests="1" failures="0" skipped="0" time="11.65" errors="0">
-<testcase name="Schedule quick-create (regression) › create new 生活介護休み entry via quick dialog" classname="schedule.status-service.regression.spec.ts" time="11.65">
-</testcase>
-</testsuite>
-</testsuites>
