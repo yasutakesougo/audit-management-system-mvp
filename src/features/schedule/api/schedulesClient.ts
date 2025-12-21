@@ -9,6 +9,12 @@ import type { OrgFilterKey } from '../orgFilters';
 
 export type ScheduleCategory = 'Org' | 'Staff' | 'User';
 
+export interface BaseShiftWarning {
+  staffId: string;
+  staffName?: string;
+  reasons: Array<'day' | 'time' | 'span'>;
+}
+
 export interface ScheduleEvent {
   id: string | number;
   title: string;
@@ -26,6 +32,7 @@ export interface ScheduleEvent {
   dayKey?: string; // e.g., '2025-10-06'
   etag?: string;
   orgCode?: OrgFilterKey;
+  baseShiftWarnings?: BaseShiftWarning[];
   // keep room for SharePoint fields if needed
   // raw?: unknown;
 }
@@ -98,6 +105,30 @@ function resolveFixturesMode(): boolean {
 
 export function isScheduleFixturesMode(): boolean {
   return resolveFixturesMode();
+}
+
+/**
+ * Read scenario parameter from URL for E2E testing
+ */
+function getScenarioFromUrl(): string | null {
+  if (typeof window === 'undefined') return null;
+  try {
+    const params = new URLSearchParams(window.location.search);
+    return params.get('scenario');
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Get fixtures for the given scenario or default fixtures
+ */
+function getFixturesForScenario(scenario: string | null): Record<ScheduleCategory, ScheduleEvent[]> {
+  if (scenario === 'conflicts-basic') {
+    console.info('[schedulesClient] Using conflicts-basic fixtures');
+    return conflictsBasicFixtures;
+  }
+  return fixtures;
 }
 
 // --- DEV FIXTURES (deterministic) -------------------------------------------------
@@ -301,6 +332,89 @@ const fixtures: Record<ScheduleCategory, ScheduleEvent[]> = {
   ],
 };
 
+// Conflict fixtures for testing - events with baseShiftWarnings
+const conflictsBasicFixtures: Record<ScheduleCategory, ScheduleEvent[]> = {
+  Org: [
+    {
+      id: 1001,
+      title: '所内ミーティング',
+      start: '2025-11-14T09:00:00+09:00',
+      end: '2025-11-14T10:00:00+09:00',
+      category: 'Org',
+      dayKey: '2025-11-14',
+      orgCode: 'main',
+    },
+  ],
+  Staff: [
+    {
+      id: 9201,
+      title: '午前会議',
+      start: '2025-11-14T09:00:00+09:00',
+      end: '2025-11-14T12:00:00+09:00',
+      category: 'Staff',
+      personName: '吉田 千尋',
+      staffIds: ['401'],
+      staffNames: ['吉田 千尋'],
+      dayKey: '2025-11-14',
+      orgCode: 'main',
+      // This staff event has warnings
+      baseShiftWarnings: [
+        { staffId: '401', staffName: '吉田 千尋', reasons: ['time'] },
+      ],
+    },
+    {
+      id: 9202,
+      title: '個別支援会議',
+      start: '2025-11-14T14:00:00+09:00',
+      end: '2025-11-14T15:30:00+09:00',
+      category: 'Staff',
+      personName: '佐藤 美穂',
+      staffIds: ['402'],
+      staffNames: ['佐藤 美穂'],
+      dayKey: '2025-11-14',
+      orgCode: 'shortstay',
+      baseShiftWarnings: [
+        { staffId: '402', staffName: '佐藤 美穂', reasons: ['span'] },
+      ],
+    },
+  ],
+  User: [
+    {
+      id: 31001,
+      title: '田中 太郎 - 生活介護',
+      start: '2025-11-14T09:00:00+09:00',
+      end: '2025-11-14T15:00:00+09:00',
+      category: 'User',
+      personName: '田中 太郎',
+      targetUserNames: ['田中 太郎'],
+      targetUserIds: ['USER001'],
+      dayKey: '2025-11-14',
+      orgCode: 'main',
+      // User event with conflict warning
+      baseShiftWarnings: [
+        { staffId: '301', staffName: '担当者A', reasons: ['day', 'time'] },
+      ],
+    },
+    {
+      id: 31002,
+      title: '田中 太郎 - ショートステイ',
+      start: '2025-11-14T10:00:00+09:00',
+      end: '2025-11-14T16:00:00+09:00',
+      category: 'User',
+      personName: '田中 太郎',
+      targetUserNames: ['田中 太郎'],
+      targetUserIds: ['USER001'],
+      staffIds: ['402'],
+      staffNames: ['佐藤 美穂'],
+      dayKey: '2025-11-14',
+      orgCode: 'shortstay',
+      baseShiftWarnings: [
+        { staffId: '402', staffName: '佐藤 美穂', reasons: ['time'] },
+      ],
+    },
+  ],
+};
+
 function filterByRange(data: ScheduleEvent[], r: Range) {
   const from = new Date(r.fromISO).getTime();
   const to = new Date(r.toISO).getTime();
@@ -330,8 +444,10 @@ export async function getSchedules(
   let data: ScheduleEvent[];
   const fixturesMode = resolveFixturesMode();
   if (fixturesMode) {
-    console.info('[schedulesClient] fixtures=true');
-    data = filterByRange(fixtures[category] ?? [], r).sort(sortByStartAsc);
+    const scenario = getScenarioFromUrl();
+    const fixtureData = getFixturesForScenario(scenario);
+    console.info('[schedulesClient] fixtures=true', scenario ? `scenario=${scenario}` : '');
+    data = filterByRange(fixtureData[category] ?? [], r).sort(sortByStartAsc);
   } else {
     console.info('[schedulesClient] fixtures=false');
     // Real fetch (SharePoint/Graph). Keep it minimal; wire later as needed.
