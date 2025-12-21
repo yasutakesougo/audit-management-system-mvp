@@ -1,3 +1,4 @@
+import { routerFutureFlags } from '@/app/routerFuture';
 import { ToastProvider } from '@/hooks/useToast';
 import type { FutureConfig } from '@remix-run/router';
 import { render, type RenderResult } from '@testing-library/react';
@@ -52,6 +53,9 @@ export function renderWithAppProviders(ui: React.ReactNode, opts: Options = {}):
     enableHudForTests();
   }
 
+  // Merge user-specified future flags with the project defaults used in production router
+  const mergedFuture = { ...routerFutureFlags, ...(future ?? {}) } satisfies Partial<FutureConfig>;
+
   const routes: RouteObject[] = [
     {
       path: '/',
@@ -62,7 +66,7 @@ export function renderWithAppProviders(ui: React.ReactNode, opts: Options = {}):
 
   const router = createMemoryRouter(routes, {
     initialEntries,
-    future,
+    future: mergedFuture,
   });
 
   const utils = render(
