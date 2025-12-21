@@ -86,6 +86,13 @@ export async function waitForWeekTimeline(page: Page): Promise<void> {
     const weekTab = page.getByRole('tab', { name: '週' }).first();
     await expect(weekTab).toBeVisible({ timeout: 10_000 });
 
+    // Explicitly select the week timeline tab before waiting for timeline
+    const isSelected = (await weekTab.getAttribute('aria-selected')) === 'true';
+    if (!isSelected) {
+      await weekTab.click();
+      await expect(weekTab).toHaveAttribute('aria-selected', 'true');
+    }
+
     const timeline = page.getByTestId(TESTIDS.SCHEDULES_WEEK_TIMELINE);
     if (await locatorExists(timeline, 3_000)) {
       await expect(timeline.first()).toBeVisible({ timeout: 15_000 });
@@ -115,6 +122,13 @@ export async function waitForWeekTimeline(page: Page): Promise<void> {
       : page.getByRole('tab', { name: '週' }).first();
     await expect(weekTab).toBeVisible();
 
+    // Explicitly select the week tab before checking for grid/timeline
+    const isWeekSelected = (await weekTab.getAttribute('aria-selected')) === 'true';
+    if (!isWeekSelected) {
+      await weekTab.click();
+      await expect(weekTab).toHaveAttribute('aria-selected', 'true');
+    }
+
     const gridRoot = page.getByTestId(TESTIDS['schedules-week-grid']);
     const timelinePanel = page.getByTestId(TESTIDS.SCHEDULES_WEEK_TIMELINE_PANEL);
     const timeline = page.getByTestId(TESTIDS['schedules-week-timeline']);
@@ -140,7 +154,9 @@ export async function waitForWeekTimeline(page: Page): Promise<void> {
       return;
     }
 
-    await weekTab.click();
+    // If neither are visible yet, the tab click above should trigger them
+    // Wait a bit more for the content to appear
+    await page.waitForTimeout(500);
 
     if (await gridVisible()) {
       await expect(gridRoot.first()).toBeVisible();

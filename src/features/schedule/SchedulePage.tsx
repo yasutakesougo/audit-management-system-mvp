@@ -201,7 +201,8 @@ const fixtureEventToSchedule = (event: ScheduleEvent): Schedule => {
     status: FIXTURE_DEFAULT_STATUS,
     dayKey: event.dayKey,
     orgCode: event.orgCode,
-  } satisfies Pick<Schedule, 'id' | 'etag' | 'title' | 'start' | 'end' | 'allDay' | 'status' | 'dayKey' | 'orgCode'>;
+    baseShiftWarnings: event.baseShiftWarnings,
+  } satisfies Pick<Schedule, 'id' | 'etag' | 'title' | 'start' | 'end' | 'allDay' | 'status' | 'dayKey' | 'orgCode' | 'baseShiftWarnings'>;
 
   if (event.category === 'User') {
     return {
