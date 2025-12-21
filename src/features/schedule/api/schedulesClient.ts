@@ -55,8 +55,9 @@ export function clearSchedulesCache() {
   cache.clear();
 }
 
-function keyFor(category: ScheduleCategory, r: Range) {
-  return `${category}:${r.fromISO}|${r.toISO}`;
+function keyFor(category: ScheduleCategory, r: Range, scenario?: string | null) {
+  const scenarioPart = scenario ? `:scenario=${scenario}` : '';
+  return `${category}:${r.fromISO}|${r.toISO}${scenarioPart}`;
 }
 
 function now() {
@@ -437,14 +438,14 @@ export async function getSchedules(
   r: Range,
   opts?: { signal?: AbortSignal },
 ): Promise<ScheduleEvent[]> {
-  const key = keyFor(category, r);
+  const scenario = getScenarioFromUrl();
+  const key = keyFor(category, r, scenario);
   const hit = cache.get(key);
   if (hit && !isExpired(hit)) return hit.data;
 
   let data: ScheduleEvent[];
   const fixturesMode = resolveFixturesMode();
   if (fixturesMode) {
-    const scenario = getScenarioFromUrl();
     const fixtureData = getFixturesForScenario(scenario);
     console.info('[schedulesClient] fixtures=true', scenario ? `scenario=${scenario}` : '');
     data = filterByRange(fixtureData[category] ?? [], r).sort(sortByStartAsc);
