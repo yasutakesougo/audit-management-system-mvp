@@ -13,6 +13,8 @@
 > Quality Gate (Phase 3 Baseline): Lines >= 70% / Functions >= 70% / Statements >= 70% / Branches >= 65%
 > Current (local latest): Lines ~78% / Functions ~73% / Statements ~78% / Branches ~76% (headroom maintained before next phase)
 
+> CI note: docs-only PRs (e.g., README/docs) skip Playwright smoke + LHCI; workflow/config changes trigger them for safety.
+
 > **QA snapshot (v0.9.2):** Coverage 88.27% • Branch 71.70% • Lighthouse Perf 97 • A11y 100 • Errors 0.07%/mo
 
 ## レポートリンク
