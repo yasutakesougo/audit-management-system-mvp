@@ -64,11 +64,11 @@ See [Guidelines](00_guidelines.md) for writing conventions and review checklist.
 
 | Document | Status | Last Major Update | Next Review |
 |----------|--------|-------------------|-------------|
-| 00_guidelines.md | ✅ Complete | Initial | Q1 2026 |
+| 00_guidelines.md | ✅ Complete | 2024-11-19 | Q1 2026 |
 | 01_overview.md | ✅ Complete | 2024-12-21 | Q1 2026 |
 | 02_architecture.md | ✅ Complete | 2024-12-21 | Q1 2026 |
 | 03_domain.md | ✅ Complete | 2024-12-21 | Q1 2026 |
-| 03_features/schedule.md | ✅ Complete | 2024-11 | Q1 2026 |
+| 03_features/schedule.md | ✅ Complete | 2024-11-19 | Q1 2026 |
 | 04_workflows.md | ✅ Complete | 2024-12-21 | Q1 2026 |
 | 05_operations.md | ✅ Complete | 2024-12-21 | Q1 2026 |
 | 06_security.md | ✅ Complete | 2024-12-21 | Q1 2026 |

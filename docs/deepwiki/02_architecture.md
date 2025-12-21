@@ -208,7 +208,8 @@ All persistent application data stored in SharePoint Lists:
 
 **Field Mapping**: `src/sharepoint/fields.ts`
 - Centralizes internal field name mappings
-- Prevents hardcoded `cr014_*` style names in application code
+- Prevents hardcoded internal field names in application code
+- Different lists use different prefixes (e.g., `cr013_*` for SupportRecord_Daily, `cr014_*` for other lists)
 - Example: `FIELD_MAP.RECORD_DATE` → `'cr013_recorddate'`
 
 ### Temporary Storage: LocalStorage

@@ -181,7 +181,7 @@ name: Deploy Production
 
 on:
   push:
-    branches: [main]
+    branches: [main]  # Adjust to match your default branch
 
 jobs:
   build-and-deploy:

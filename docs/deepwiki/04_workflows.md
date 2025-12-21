@@ -198,7 +198,7 @@ flowchart TD
 1. Navigate to Schedule page (Week/Month view)
 2. Initiate creation:
    - Click "Create Schedule" button, OR
-   - Drag on calendar to create time block
+   - Drag on calendar to create time slot
 3. Fill schedule dialog:
    - Title
    - Start time / End time (or All Day)
