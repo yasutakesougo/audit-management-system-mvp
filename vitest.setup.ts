@@ -1,6 +1,8 @@
 import '@formatjs/intl-datetimeformat/add-all-tz';
 import '@formatjs/intl-datetimeformat/polyfill';
 import '@formatjs/intl-getcanonicallocales';
+// Apply React Router v7 future flags globally across tests
+import './tests/setup/router-future-flags';
 // Vitest global setup: polyfill crypto.randomUUID if absent (Node < 19 environments)
 import '@testing-library/jest-dom/vitest';
 import { cleanup } from '@testing-library/react';
