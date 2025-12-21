@@ -125,12 +125,15 @@ Assertions:
 - Editing/updating a schedule does not clear `statusReason` unless the user explicitly changes/clears it.
 
 ### E2E テスト契約（壊れやすいUI契約）
-E2E は **data-testid** を契約として利用する。変更する場合はテストも同時に更新する。
+E2E は **安定した selector** を契約として利用する。変更する場合はテストも同時に更新する。
 
 - `data-testid="schedule-create-dialog"`
-- `data-testid="statusReason-input"`
-- `data-testid="schedule-save-button"`
-- `data-testid="schedule-row"`
+- `data-testid="schedule-create-save"`（保存ボタン）
+- `data-schedule-row`（一覧行。テスト側は `[data-schedule-row]` を使用）
+
+#### statusReason 入力の扱い（現状）
+現状、StatusReason の入力欄には `data-testid` が付いていないため、E2E は **label/role などのアクセシブルな属性**に依存する。  
+安定性を上げたい場合は、将来的に `data-testid` 付与を検討する（※別PRで対応）。
 
 ### フラグ/バイパス経路（注意）
 `VITE_SKIP_SHAREPOINT` や fixtures を使う場合、UI/導線の検証は安定する一方で、**SharePoint本線での監査整合（列/権限/履歴）**は別途検証が必要。
