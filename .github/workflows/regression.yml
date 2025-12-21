@@ -179,7 +179,6 @@ jobs:
       - vitest-pages
     runs-on: ubuntu-latest
     timeout-minutes: 20
-    if: github.event_name == 'pull_request'
     steps:
       - uses: actions/checkout@v4
 
@@ -189,7 +188,20 @@ jobs:
       - name: Install Playwright
         run: npx playwright install --with-deps
 
+      - name: Build app (for preview server)
+        run: npm run build
+
+      - name: Start preview server
+        run: npm run preview -- --host 127.0.0.1 --port 5173 --strictPort &
+
+      - name: Wait for server
+        run: npx wait-on http://127.0.0.1:5173
+
       - name: E2E Smoke
+        env:
+          PLAYWRIGHT_BASE_URL: http://127.0.0.1:5173
+          PLAYWRIGHT_WEB_SERVER_URL: http://127.0.0.1:5173
+          PLAYWRIGHT_SKIP_BUILD: '1'
         run: npx playwright test --config=playwright.smoke.config.ts --project=smoke --reporter=line
 
       - name: Schedule Week E2E (V2)
