@@ -6,7 +6,6 @@ const skipBuild = process.env.PLAYWRIGHT_SKIP_BUILD === '1';
 const baseUrlEnv = process.env.PLAYWRIGHT_BASE_URL;
 const webServerCommandOverride = process.env.PLAYWRIGHT_WEB_SERVER_COMMAND;
 const devPort = 5173;
-const previewPort = devPort; // align CI and local to the same port to avoid mismatches
 const baseURL = baseUrlEnv ?? `http://127.0.0.1:${devPort}`;
 const webServerUrl = process.env.PLAYWRIGHT_WEB_SERVER_URL ?? baseURL;
 const junitOutput = process.env.PLAYWRIGHT_JUNIT_OUTPUT ?? 'junit/results.xml';
@@ -35,7 +34,8 @@ const webServerEnvString = Object.entries(webServerEnvVars)
   .join(' ');
 
 const devCommand = `env ${webServerEnvString} npm run dev -- --host 127.0.0.1 --port ${devPort} --strictPort`;
-const buildAndPreviewCommand = `sh -c "env ${webServerEnvString} npm run build && env ${webServerEnvString} npm run preview -- --host 127.0.0.1 --port ${previewPort} --strictPort"`;
+// Use preview:e2e which builds, writes deterministic runtime env, and starts preview
+const buildAndPreviewCommand = `npm run preview:e2e`;
 
 const webServerCommand = webServerCommandOverride
   ? webServerCommandOverride

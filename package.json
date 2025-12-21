@@ -21,7 +21,7 @@
     "bundle:assert": "node scripts/assert-chunk-size.mjs",
     "build:ci": "vite build --profile && npm run bundle:check && npm run bundle:assert",
     "preview": "vite preview",
-    "preview:e2e": "vite preview --host 127.0.0.1 --port 3000 --strictPort",
+    "preview:e2e": "npm run build && node scripts/write-e2e-runtime-env.mjs && vite preview --host 127.0.0.1 --port 5173 --strictPort",
     "preview:csp": "node scripts/preview-csp.mjs",
     "config:print": "VITE_CONFIG_DEBUG=1 vite --force",
     "gen:system-map": "tsx scripts/generate-system-map.ts",
