@@ -64,10 +64,27 @@ jobs:
         run: PW_USE_PREVIEW=1 npx playwright install --with-deps
       - name: Build (preview server)
         run: npm run build --if-present
+      - name: Start preview server
+        run: npm run preview -- --host 127.0.0.1 --port 5173 --strictPort &
+
+      - name: Wait for preview server
+        run: npx wait-on http://127.0.0.1:5173
       - name: e2e nav-and-status
-        run: TZ=Asia/Tokyo PW_USE_PREVIEW=1 npx playwright test tests/e2e/nav-and-status.smoke.spec.ts --trace on
+        env:
+          TZ: Asia/Tokyo
+          PW_USE_PREVIEW: 1
+          PLAYWRIGHT_BASE_URL: http://127.0.0.1:5173
+          PLAYWRIGHT_WEB_SERVER_URL: http://127.0.0.1:5173
+          PLAYWRIGHT_SKIP_BUILD: '1'
+        run: npx playwright test tests/e2e/nav-and-status.smoke.spec.ts --config=playwright.smoke.config.ts --project=smoke --trace on
       - name: e2e schedule.status-service
-        run: TZ=Asia/Tokyo PW_USE_PREVIEW=1 npx playwright test tests/e2e/schedule.status-service.smoke.spec.ts --trace on
+        env:
+          TZ: Asia/Tokyo
+          PW_USE_PREVIEW: 1
+          PLAYWRIGHT_BASE_URL: http://127.0.0.1:5173
+          PLAYWRIGHT_WEB_SERVER_URL: http://127.0.0.1:5173
+          PLAYWRIGHT_SKIP_BUILD: '1'
+        run: npx playwright test tests/e2e/schedule.status-service.smoke.spec.ts --config=playwright.smoke.config.ts --project=smoke --trace on
       - if: always()
         name: Upload Playwright artifacts
         uses: actions/upload-artifact@v4
