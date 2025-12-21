@@ -37,13 +37,43 @@ const FEATURE_STORAGE: Record<string, string> = {
 const DEFAULT_ORG_FIXTURES = [
   {
     Id: 501,
-    Title: '磯子区障害支援センター',
-    OrgCode: 'ORG-ISO',
-    OrgType: 'Center',
+    Title: '生活介護（本体）',
+    OrgCode: 'main',
+    OrgType: 'DayService',
     Audience: 'Staff,User',
     SortOrder: 1,
     IsActive: true,
-    Notes: 'E2E demo org',
+    Notes: 'E2E default org (main)',
+  },
+  {
+    Id: 502,
+    Title: '短期入所',
+    OrgCode: 'shortstay',
+    OrgType: 'ShortStay',
+    Audience: 'Staff,User',
+    SortOrder: 2,
+    IsActive: true,
+    Notes: 'E2E default org (shortstay)',
+  },
+  {
+    Id: 503,
+    Title: '一時ケア',
+    OrgCode: 'respite',
+    OrgType: 'Respite',
+    Audience: 'Staff,User',
+    SortOrder: 3,
+    IsActive: true,
+    Notes: 'E2E default org (respite)',
+  },
+  {
+    Id: 504,
+    Title: 'その他（将来拡張）',
+    OrgCode: 'other',
+    OrgType: 'Other',
+    Audience: 'Staff,User',
+    SortOrder: 4,
+    IsActive: true,
+    Notes: 'E2E default org (other)',
   },
 ];
 
@@ -55,6 +85,7 @@ export type ScheduleBootOptions = {
   scheduleItems?: ScheduleItem[];
   orgItems?: Array<Record<string, unknown>>;
   mode?: 'sharepoint' | 'fixtures';
+  ui?: 'legacy' | 'weekV2' | 'auto';
   enableWeekV2?: boolean;
   ensureList?: boolean;
   env?: Record<string, string>;
@@ -87,7 +118,8 @@ export async function bootSchedule(page: Page, options: ScheduleBootOptions = {}
   const date = options.date ?? SCHEDULE_FIXTURE_BASE_DATE;
   const seedOptions = options.seed ?? {};
   const mode = options.mode ?? 'sharepoint';
-  const enableWeekV2 = options.enableWeekV2 ?? true;
+  const uiMode = options.ui ?? 'auto';
+  const enableWeekV2 = uiMode === 'legacy' ? false : uiMode === 'weekV2' ? true : options.enableWeekV2 ?? true;
   const ensureList = options.ensureList ?? true;
   const autoNavigate = options.autoNavigate ?? false;
   const route = options.route ?? '/schedules/day';
@@ -139,9 +171,23 @@ export async function bootSchedule(page: Page, options: ScheduleBootOptions = {}
     lists,
   });
 
+  await page.evaluate(({ orgItems: items }) => {
+    const codes = Array.isArray(items)
+      ? items
+          .map((item) => (item as { OrgCode?: unknown })?.OrgCode)
+          .map((code) => (typeof code === 'string' ? code : String(code ?? '')))
+      : [];
+    console.info('[bootSchedule] orgItems', { count: items?.length ?? 0, codes });
+  }, { orgItems });
+
   if (autoNavigate) {
     await page.goto(route, { waitUntil: 'load' });
     await page.waitForLoadState('networkidle');
+
+    await page.evaluate(({ ui }) => {
+      const tabs = Array.from(document.querySelectorAll('[role="tab"]')).map((el) => (el as HTMLElement).innerText.trim());
+      console.info('[bootSchedule] scheduleUi', { ui, tabs });
+    }, { ui: uiMode === 'auto' ? (enableWeekV2 ? 'weekV2' : 'legacy') : uiMode });
   }
 }
 

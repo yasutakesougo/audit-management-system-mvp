@@ -20,7 +20,11 @@ const ORG_LABELS: Record<OrgFilterKey, string> = {
 
 const selectOrg = async (page: Page, value: OrgFilterKey) => {
   const orgTab = page.getByRole('tab', { name: '事業所別' });
-  await orgTab.click();
+  const tabLabels = await page.getByRole('tab').allTextContents().catch(() => []);
+  const tabCount = await orgTab.count();
+  console.info('[selectOrg] available tabs', tabLabels);
+  expect(tabCount, 'Org tab should be present before selecting org filter').toBeGreaterThan(0);
+  await orgTab.first().click();
   const select = page.getByTestId('schedule-org-select');
   await expect(select).toBeVisible();
   await select.selectOption(value);
@@ -48,7 +52,7 @@ test.describe('Schedule week org filter', () => {
       }
     });
 
-    await bootSchedule(page, { date: TARGET_DATE });
+    await bootSchedule(page, { date: TARGET_DATE, ui: 'legacy' });
   });
 
   test('defaults to merged org view when org query param is absent', async ({ page }) => {
