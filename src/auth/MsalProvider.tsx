@@ -96,6 +96,9 @@ export const MsalProvider: React.FC<{ children: React.ReactNode }> = ({ children
       getAllAccounts: () => [],
       getActiveAccount: () => null,
       setActiveAccount: () => undefined,
+      // Provide no-op popup methods so sign-in flows in mock mode do not throw
+      loginPopup: async () => ({ account: null } as never),
+      acquireTokenPopup: async () => ({ accessToken: '' } as never),
     }) as unknown as MsalInstance,
     [],
   );

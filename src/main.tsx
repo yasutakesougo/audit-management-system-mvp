@@ -189,7 +189,7 @@ const run = async (): Promise<void> => {
     const { FeatureFlagsProvider, resolveFeatureFlags } = featureFlagsModule;
     const flags = resolveFeatureFlags(envSnapshot ?? undefined);
 
-  const completeRender = beginHydrationSpan('bootstrap:render', { group: 'hydration', meta: { budget: 60 } });
+    const completeRender = beginHydrationSpan('bootstrap:render', { group: 'hydration', meta: { budget: 60 } });
 
     ReactDOM.createRoot(document.getElementById('root')!).render(
       <React.StrictMode>

@@ -20,7 +20,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - _TBD_
 
-## [0.9.1] – 2025-10-11
+## [0.9.1] - 2025-10-11
 
 ### Added
 
@@ -34,7 +34,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - (none)
 
-## [0.9.0] – 2025-10-11
+## [0.9.0] - 2025-10-11
 
 ### Added
 
@@ -59,8 +59,3 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Safe for minor version bump → 0.8.x → 0.9.0 (backward-compatible public API, new config options).
 - No migration required: existing callers pick up defaults automatically.
 
----
-
-[Unreleased]: https://github.com/yasutakesougo/audit-management-system-mvp/compare/v0.9.1...HEAD
-[0.9.1]: https://github.com/yasutakesougo/audit-management-system-mvp/compare/v0.9.0...v0.9.1
-[0.9.0]: https://github.com/yasutakesougo/audit-management-system-mvp/releases/tag/v0.9.0

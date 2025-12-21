@@ -498,6 +498,7 @@ const childRoutes: RouteObject[] = [
   { path: 'daily/support-checklist', element: <SuspendedTimeFlowSupportRecordPage /> },
   { path: 'daily/time-based', element: <SuspendedTimeBasedSupportRecordPage /> },
   { path: 'daily/health', element: <SuspendedHealthObservationPage /> },
+  { path: 'analysis', element: <Navigate to="/analysis/dashboard" replace /> },
   { path: 'analysis/dashboard', element: <SuspendedAnalysisDashboardPage /> },
   {
     path: 'analysis/iceberg-pdca',
