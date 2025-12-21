@@ -916,6 +916,9 @@ export const ScheduleCreateDialog: React.FC<ScheduleCreateDialogProps> = (props)
                 placeholder="例：本人の体調不良のため延期など"
                 multiline
                 minRows={2}
+                inputProps={{
+                  'data-testid': TESTIDS['schedule-create-status-reason'],
+                }}
               />
             </Box>
           )}

@@ -161,6 +161,7 @@ export const TESTIDS = {
   'schedule-create-staff-id': 'schedule-create-staff-id',
   'schedule-create-vehicle-id': 'schedule-create-vehicle-id',
   'schedule-create-status': 'schedule-create-status',
+  'schedule-create-status-reason': 'schedule-create-status-reason',
   'schedule-create-save': 'schedule-create-save',
   'schedule-editor-save': 'schedule-editor-save',
   'dev-schedule-dialog-open': 'dev-schedule-dialog-open',

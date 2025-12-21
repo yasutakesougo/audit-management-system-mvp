@@ -30,4 +30,25 @@ test.describe('ScheduleCreateDialog dev harness', () => {
     await expect(dialog).toBeHidden();
     await expect(trigger).toBeFocused();
   });
+
+  test('StatusReason input has stable data-testid for E2E', async ({ page }) => {
+    await page.goto(DIALOG_ROUTE);
+    await page.getByTestId(TESTIDS['dev-schedule-dialog-page']).waitFor();
+
+    const trigger = page.getByTestId(TESTIDS['dev-schedule-dialog-open']);
+    await trigger.click();
+
+    const dialog = page.getByTestId(TESTIDS['schedule-create-dialog']);
+    await expect(dialog).toBeVisible();
+
+    // Verify StatusReason input is accessible via testid
+    const statusReasonInput = page.getByTestId(TESTIDS['schedule-create-status-reason']);
+    await expect(statusReasonInput).toBeAttached();
+
+    // Verify we can interact with the input using the testid
+    await statusReasonInput.fill('Test status reason');
+    await expect(statusReasonInput).toHaveValue('Test status reason');
+
+    await page.getByRole('button', { name: 'キャンセル' }).click();
+  });
 });
