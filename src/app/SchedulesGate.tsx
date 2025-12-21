@@ -18,8 +18,8 @@ export default function SchedulesGate({ children }: PropsWithChildren): JSX.Elem
   const flags = useFeatureFlags();
   const { pathname } = useLocation();
 
-  // E2E環境では無条件でパス
-  if (isE2E) {
+  // E2E環境では schedules フラグが有効な場合のみバイパス
+  if (isE2E && flags.schedules) {
     debug('E2E bypass enabled for path:', pathname);
     return <>{children}</>;
   }

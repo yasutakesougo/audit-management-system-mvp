@@ -45,11 +45,22 @@ export const resolveFeatureFlags = (envOverride?: EnvRecord): FeatureFlagSnapsho
     icebergPdca: isIcebergPdcaEnabled(envOverride),
   };
 
+  // E2E/automation環境ではデフォルトでschedules関連を有効にするが、
+  // 明示的な環境変数・localStorageオーバーライドは尊重する
   if (isE2E || isTestMode(envOverride) || isAutomationRuntime()) {
+    // 明示的に無効化されていない限り、デフォルトでtrueにする
+    const hasExplicitSchedulesOverride = 
+      (envOverride && 'VITE_FEATURE_SCHEDULES' in envOverride) ||
+      (typeof window !== 'undefined' && window.localStorage.getItem('feature:schedules') !== null);
+    
+    const hasExplicitCreateOverride =
+      (envOverride && 'VITE_FEATURE_SCHEDULES_CREATE' in envOverride) ||
+      (typeof window !== 'undefined' && window.localStorage.getItem('feature:schedulesCreate') !== null);
+
     return {
       ...baseSnapshot,
-      schedules: true,
-      schedulesCreate: true,
+      schedules: hasExplicitSchedulesOverride ? baseSnapshot.schedules : true,
+      schedulesCreate: hasExplicitCreateOverride ? baseSnapshot.schedulesCreate : true,
       icebergPdca: baseSnapshot.icebergPdca,
     };
   }
