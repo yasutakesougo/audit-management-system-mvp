@@ -3,6 +3,7 @@
  * 基本的な機能が動作することを確認
  */
 
+import React from 'react';
 import IntegratedResourceCalendarPage from '@/pages/IntegratedResourceCalendarPage';
 import { screen, waitFor } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
@@ -15,18 +16,25 @@ const renderPage = async () => {
   await screen.findByTestId('irc-page');
 };
 
-vi.mock('@fullcalendar/react', () => ({
-  __esModule: true,
-  default: ({ events }: { events?: Array<{ id: string; title: string }> }) => (
-    <div className="fc">
-      {(events ?? []).map((event) => (
-        <div key={event.id} className="pvsA-event-content">
-          {event.title}
-        </div>
-      ))}
-    </div>
-  ),
-}));
+vi.mock('@fullcalendar/react', () => {
+  const FullCalendarMock = React.forwardRef<HTMLDivElement, { events?: Array<{ id: string; title: string }> }>(
+    ({ events }, ref) => (
+      <div ref={ref} className="fc">
+        {(events ?? []).map((event) => (
+          <div key={event.id} className="pvsA-event-content">
+            {event.title}
+          </div>
+        ))}
+      </div>
+    )
+  );
+  FullCalendarMock.displayName = 'FullCalendarMock';
+
+  return {
+    __esModule: true,
+    default: FullCalendarMock,
+  };
+});
 
 vi.mock('@fullcalendar/resource-timeline', () => ({ __esModule: true, default: () => null }));
 vi.mock('@fullcalendar/interaction', () => ({ __esModule: true, default: () => null }));
