@@ -3,6 +3,7 @@
  * 基本的な機能が動作することを確認
  */
 
+import React from 'react';
 import IntegratedResourceCalendarPage from '@/pages/IntegratedResourceCalendarPage';
 import { screen, waitFor } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
@@ -10,31 +11,43 @@ import { renderWithAppProviders } from '../helpers/renderWithAppProviders';
 
 const EXTENDED_TIMEOUT = 15000;
 
-vi.mock('@fullcalendar/react', () => ({
-  __esModule: true,
-  default: ({ events }: { events?: Array<{ id: string; title: string }> }) => (
-    <div className="fc">
-      {(events ?? []).map((event) => (
-        <div key={event.id} className="pvsA-event-content">
-          {event.title}
-        </div>
-      ))}
-    </div>
-  ),
-}));
+const renderPage = async () => {
+  renderWithAppProviders(<IntegratedResourceCalendarPage />);
+  await screen.findByTestId('irc-page');
+};
+
+vi.mock('@fullcalendar/react', () => {
+  const FullCalendarMock = React.forwardRef<HTMLDivElement, { events?: Array<{ id: string; title: string }> }>(
+    ({ events }, ref) => (
+      <div ref={ref} className="fc">
+        {(events ?? []).map((event) => (
+          <div key={event.id} className="pvsA-event-content">
+            {event.title}
+          </div>
+        ))}
+      </div>
+    )
+  );
+  FullCalendarMock.displayName = 'FullCalendarMock';
+
+  return {
+    __esModule: true,
+    default: FullCalendarMock,
+  };
+});
 
 vi.mock('@fullcalendar/resource-timeline', () => ({ __esModule: true, default: () => null }));
 vi.mock('@fullcalendar/interaction', () => ({ __esModule: true, default: () => null }));
 
 describe('IntegratedResourceCalendar smoke tests', () => {
-  it('renders without crashing', () => {
-    expect(() => {
-      renderWithAppProviders(<IntegratedResourceCalendarPage />);
-    }).not.toThrow();
+  it('renders without crashing', async () => {
+    await renderPage();
+
+    expect(screen.getByTestId('irc-page')).toBeInTheDocument();
   });
 
   it('displays the page title', async () => {
-    renderWithAppProviders(<IntegratedResourceCalendarPage />);
+    await renderPage();
 
     // ページタイトルが表示されることを確認
     expect(screen.getByText('統合リソースカレンダー')).toBeInTheDocument();
@@ -42,14 +55,14 @@ describe('IntegratedResourceCalendar smoke tests', () => {
   });
 
   it('shows Sprint 3 implementation notice', async () => {
-    renderWithAppProviders(<IntegratedResourceCalendarPage />);
+    await renderPage();
 
     // Sprint 3実装中の通知が表示されることを確認
     expect(screen.getByText(/Sprint 3 実装中/)).toBeInTheDocument();
   });
 
   it('renders FullCalendar component', async () => {
-    renderWithAppProviders(<IntegratedResourceCalendarPage />);
+    await renderPage();
 
     // FullCalendarの基本要素が存在することを確認
     await waitFor(() => {
@@ -60,7 +73,7 @@ describe('IntegratedResourceCalendar smoke tests', () => {
   });
 
   it('contains mock resource data', async () => {
-    renderWithAppProviders(<IntegratedResourceCalendarPage />);
+    await renderPage();
 
     // FullCalendar stub が resources 列を描画しないため、イベント描画を待つ
     const eventTitles = await screen.findAllByText(/利用者宅訪問|デイサービス送迎/, {}, { timeout: EXTENDED_TIMEOUT });
@@ -68,7 +81,7 @@ describe('IntegratedResourceCalendar smoke tests', () => {
   }, EXTENDED_TIMEOUT);
 
   it('displays mock events', async () => {
-    renderWithAppProviders(<IntegratedResourceCalendarPage />);
+    await renderPage();
 
     expect(await screen.findByText(/利用者宅訪問/, {}, { timeout: EXTENDED_TIMEOUT })).toBeInTheDocument();
     expect(await screen.findByText(/デイサービス送迎/, {}, { timeout: EXTENDED_TIMEOUT })).toBeInTheDocument();
@@ -76,7 +89,7 @@ describe('IntegratedResourceCalendar smoke tests', () => {
 
   // PvsA表示のテスト（ステータスアイコンなど）
   it('shows PvsA status indicators', async () => {
-    renderWithAppProviders(<IntegratedResourceCalendarPage />);
+    await renderPage();
 
     await waitFor(() => {
       // ステータスアイコンが表示されることを確認
