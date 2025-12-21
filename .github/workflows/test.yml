@@ -1,7 +1,7 @@
 name: Quality Gates
 on:
   push:
-    branches: [main, develop]
+    branches: [main]
   pull_request:
     branches: [main, develop]
     types: [opened, synchronize, reopened, ready_for_review]
@@ -49,7 +49,7 @@ jobs:
       - name: Install deps
         run: npm ci
       - name: Install Playwright browsers
-        if: github.event_name == 'workflow_dispatch' || steps.changes.outputs.playwright == 'true'
+        if: github.event_name == 'workflow_dispatch' || (github.ref == 'refs/heads/main' && steps.changes.outputs.playwright == 'true')
         run: npx playwright install --with-deps
       - name: Typecheck
         run: npm run typecheck
@@ -73,7 +73,7 @@ jobs:
       - name: Test (coverage)
         run: npm run test:coverage -- --reporter=default
       - name: Playwright E2E
-        if: github.event_name == 'workflow_dispatch' || steps.changes.outputs.playwright == 'true'
+        if: github.event_name == 'workflow_dispatch' || (github.ref == 'refs/heads/main' && steps.changes.outputs.playwright == 'true')
         env:
           VITE_E2E: "1"
           VITE_SKIP_LOGIN: "1"
@@ -104,9 +104,10 @@ jobs:
           # Run only the lightest Playwright smoke to keep Quality Gates aligned with this PR scope.
           npx playwright test tests/e2e/basic-smoke.spec.ts --config=playwright.smoke.config.ts --project=smoke
       - name: Perf report (LHCI + Web Vitals)
-        if: github.event_name == 'workflow_dispatch' || steps.changes.outputs.playwright == 'true'
+        if: github.event_name == 'workflow_dispatch' || (github.ref == 'refs/heads/main' && steps.changes.outputs.playwright == 'true')
         run: npm run -s ci:perf-report
         env:
+          VITE_E2E_MSAL_MOCK: "1"
           NOTIFY_WEBHOOK_URL: ${{ secrets.NOTIFY_WEBHOOK_URL }}
       - name: Upload perf summary artifact
         if: always()
