@@ -51,6 +51,8 @@ flowchart TB
 ### 3.1 基本方針
 - ブラウザで MSAL によりサインインし、SharePoint 用スコープでアクセストークンを取得
 - SharePoint へのアクセスは「本線」だが、E2E/デモではバイパス経路が存在する
+- 本線：`spFetch`（SharePoint REST）中心
+- 補助：PnPjs/`SPFI`（Users / PDCA など一部リポジトリで利用）
 
 参考実装（例）：
 - `src/lib/msal.ts`：トークン取得、E2Eモックアカウント等
