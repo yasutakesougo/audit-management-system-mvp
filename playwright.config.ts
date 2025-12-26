@@ -20,21 +20,20 @@ const webServerEnvVars = {
   VITE_SP_SITE_RELATIVE: process.env.VITE_SP_SITE_RELATIVE ?? '/sites/Audit',
   VITE_SP_SCOPE_DEFAULT:
     process.env.VITE_SP_SCOPE_DEFAULT ?? 'https://contoso.sharepoint.com/AllSites.Read',
-  ...(isCI
-    ? {
-        // E2E/MSAL モック時は SharePoint 実環境前提の検証をスキップさせる
-        VITE_E2E: process.env.VITE_E2E ?? '1',
-        VITE_E2E_MSAL_MOCK: process.env.VITE_E2E_MSAL_MOCK ?? '1',
-      }
-    : {}),
+  // Ensure E2E flags use literal "true"/"false" strings so boolean parsing works consistently.
+  VITE_E2E: process.env.VITE_E2E ?? 'true',
+  VITE_E2E_MSAL_MOCK: process.env.VITE_E2E_MSAL_MOCK ?? 'true',
+  VITE_SKIP_LOGIN: process.env.VITE_SKIP_LOGIN ?? 'true',
+  VITE_SKIP_SHAREPOINT: process.env.VITE_SKIP_SHAREPOINT ?? 'true',
+  VITE_SKIP_ENSURE_SCHEDULE: process.env.VITE_SKIP_ENSURE_SCHEDULE ?? 'false',
+  VITE_DEMO_MODE: process.env.VITE_DEMO_MODE ?? 'true',
+  VITE_WRITE_ENABLED: process.env.VITE_WRITE_ENABLED ?? 'false',
+  VITE_FEATURE_SCHEDULES: process.env.VITE_FEATURE_SCHEDULES ?? 'true',
+  VITE_SCHEDULES_TZ: process.env.VITE_SCHEDULES_TZ ?? 'Asia/Tokyo',
 };
 
-const webServerEnvString = Object.entries(webServerEnvVars)
-  .map(([key, value]) => `${key}=${value}`)
-  .join(' ');
-
-const devCommand = `env ${webServerEnvString} npm run dev -- --host 127.0.0.1 --port ${devPort} --strictPort`;
-const buildAndPreviewCommand = `env ${webServerEnvString} npm run preview:e2e`;
+const devCommand = `npm run dev -- --host 127.0.0.1 --port ${devPort} --strictPort`;
+const buildAndPreviewCommand = 'npm run preview:e2e';
 
 const webServerCommand = webServerCommandOverride
   ? webServerCommandOverride
@@ -68,5 +67,9 @@ export default defineConfig({
     url: webServerUrl,
     reuseExistingServer,
     timeout: 120_000,
+    env: {
+      ...process.env,
+      ...webServerEnvVars,
+    },
   },
 });
