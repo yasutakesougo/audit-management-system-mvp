@@ -8,7 +8,7 @@ import { RouteHydrationErrorBoundary } from '@/hydration/RouteHydrationListener'
 import { getAppConfig } from '@/lib/env';
 import lazyWithPreload from '@/utils/lazyWithPreload';
 import React from 'react';
-import { createBrowserRouter, Navigate, Outlet, type RouteObject } from 'react-router-dom';
+import { createBrowserRouter, Navigate, Outlet, type RouteObject, useLocation } from 'react-router-dom';
 import AppShell from './AppShell';
 import { routerFutureFlags } from './routerFuture';
 import SchedulesGate from './SchedulesGate';
@@ -112,6 +112,11 @@ const SchedulesWeekRoute: React.FC = () => {
   const { schedulesWeekV2 } = useFeatureFlags();
   // schedulesWeekV2=true should surface the v2 WeekPage; keep legacy page as fallback when disabled.
   return schedulesWeekV2 ? <SuspendedNewSchedulesWeekPage /> : <SuspendedSchedulePage />;
+};
+
+const DashboardRedirect: React.FC = () => {
+  const location = useLocation();
+  return <Navigate to={`/dashboard${location.search}`} replace />;
 };
 
 const SuspendedCreatePage: React.FC = () => (
@@ -478,7 +483,7 @@ const SuspendedHandoffTimelinePage: React.FC = () => (
   </RouteHydrationErrorBoundary>
 );
 const childRoutes: RouteObject[] = [
-  { index: true, element: <Navigate to="/dashboard" replace /> },
+  { index: true, element: <DashboardRedirect /> },
   { path: 'dashboard', element: <SuspendedStaffDashboardPage /> },
   { path: 'admin/dashboard', element: <SuspendedAdminDashboardPage /> },
   { path: 'meeting-guide', element: <SuspendedMeetingGuidePage /> },
@@ -490,7 +495,8 @@ const childRoutes: RouteObject[] = [
   { path: 'users', element: <UsersPanel /> },
   { path: 'users/:userId', element: <SuspendedUserDetailPage /> },
   { path: 'staff', element: <StaffPanel /> },
-  { path: 'daily', element: <SuspendedDailyRecordMenuPage /> },
+  { path: 'daily', element: <Navigate to="/daily/table" replace /> },
+  { path: 'daily/menu', element: <SuspendedDailyRecordMenuPage /> },
   { path: 'daily/table', element: <SuspendedTableDailyRecordPage /> },
   { path: 'daily/activity', element: <SuspendedDailyRecordPage /> },
   { path: 'daily/attendance', element: <SuspendedAttendanceRecordPage /> },
