@@ -2,7 +2,7 @@ import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-const spFetchMock = vi.fn(async () => ({ ok: true }));
+const spFetchMock = vi.fn<(input: RequestInfo | URL | Request, init?: RequestInit) => Promise<Response | { ok: true }>>(async () => ({ ok: true }));
 const signInMock = vi.fn(async () => undefined);
 const signOutMock = vi.fn(async () => undefined);
 
@@ -132,7 +132,7 @@ describe('router future flags smoke', () => {
     expect(await screen.findByText(/磯子区障害者地域活動ホーム/)).toBeInTheDocument();
 
     // 副作用の検証: ルート遷移での想定外のAPI呼び出しや認証アクションが発生していないことを確認
-    const calls = spFetchMock.mock.calls.map(([input]) =>
+    const calls = (spFetchMock.mock.calls as Array<[RequestInfo | URL | Request, RequestInit?]>).map(([input]) =>
       typeof input === 'string' ? input : input instanceof Request ? input.url : String(input),
     );
 

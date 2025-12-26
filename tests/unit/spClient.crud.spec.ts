@@ -79,13 +79,13 @@ describe('createSpClient CRUD helpers', () => {
   const originalFetch = global.fetch;
   const mockedGetAppConfig = vi.mocked(getAppConfig);
 
-  let acquireToken: ReturnType<typeof vi.fn>;
+  let acquireToken: ReturnType<typeof vi.fn<() => Promise<string | null>>>;
   let fetchMock: ReturnType<typeof vi.fn>;
 
   beforeEach(() => {
     mockedGetAppConfig.mockClear();
     mockedGetAppConfig.mockImplementation(() => ({ ...baseConfig }));
-    acquireToken = vi.fn().mockResolvedValue('token');
+    acquireToken = vi.fn<() => Promise<string | null>>().mockResolvedValue('token');
     fetchMock = vi.fn();
     global.fetch = fetchMock as unknown as typeof fetch;
     delete (globalThis as { __TOKEN_METRICS__?: unknown }).__TOKEN_METRICS__;
@@ -311,7 +311,7 @@ describe('createSpClient CRUD helpers', () => {
   });
 
   it('throws a descriptive error when token acquisition fails', async () => {
-    acquireToken = vi.fn().mockResolvedValue(null);
+    acquireToken = vi.fn<() => Promise<string | null>>().mockResolvedValue(null);
     fetchMock.mockImplementation(async () => new Response('', { status: 200 }));
 
     const client = createSpClient(acquireToken, baseUrl);
