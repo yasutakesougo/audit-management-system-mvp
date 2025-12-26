@@ -30,12 +30,14 @@ jobs:
         run: npm ci
       
       - name: TypeScript type check
+        id: typecheck
         run: |
           echo "Running TypeScript type check..."
           npm run typecheck
           echo "✅ TypeScript type check completed successfully"
       
       - name: Run tests
+        id: tests
         run: |
           echo "Running unit tests..."
           npm run test:ci
@@ -46,8 +48,5 @@ jobs:
         run: |
           echo "## CI Results" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
-          if [ "${{ job.status }}" == "success" ]; then
-            echo "✅ All checks passed!" >> $GITHUB_STEP_SUMMARY
-          else
-            echo "❌ Some checks failed. See logs above for details." >> $GITHUB_STEP_SUMMARY
-          fi
+          echo "- TypeScript typecheck: ${{ steps.typecheck.outcome || 'not run' }}" >> $GITHUB_STEP_SUMMARY
+          echo "- Tests: ${{ steps.tests.outcome || 'not run' }}" >> $GITHUB_STEP_SUMMARY
