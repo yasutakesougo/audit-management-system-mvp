@@ -35,7 +35,6 @@ export const TESTIDS = {
   'dashboard-records': 'dashboard-records',
   'audit-heading': 'audit-heading',
   'iceberg-pdca-root': 'iceberg-pdca-root',
-  'iceberg-pdca-empty': 'iceberg-pdca-empty', // 互換: bracket参照(TESTIDS['iceberg-pdca-empty'])向け
   ICEBERG_PDCA_EMPTY: 'iceberg-pdca-empty',
 
   // Dashboard Tabs (黒ノート機能個別タブ) 🌱 E2Eでタブ切替を細かく検査用
@@ -195,9 +194,19 @@ export const TESTIDS = {
   'dashboard-handoff-summary-total': 'dashboard-handoff-summary-total',
   'dashboard-handoff-summary-alert': 'dashboard-handoff-summary-alert',
   'dashboard-handoff-summary-action': 'dashboard-handoff-summary-action',
+  'dashboard-tabs': 'dashboard-tabs',
+  'tab-overview': 'tab-overview',
+  'tab-morning': 'tab-morning',
+  'tab-evening': 'tab-evening',
+  'btn-morning-mode': 'btn-morning-mode',
+  'btn-evening-mode': 'btn-evening-mode',
   'dashboard-daily-status-card-通所記録': 'dashboard-daily-status-card-通所記録',
   'dashboard-daily-status-card-日誌': 'dashboard-daily-status-card-日誌',
   'dashboard-daily-status-card-支援手順': 'dashboard-daily-status-card-支援手順',
+  'module-summary-cards': 'module-summary-cards',
+  'module-summary-card-activity': 'module-summary-card-activity',
+  'module-summary-card-attendance': 'module-summary-card-attendance',
+  'module-summary-card-irc': 'module-summary-card-irc',
 
   // Morning/Evening Meeting System
   'dashboard-briefing-panel': 'dashboard-briefing-panel',
@@ -370,9 +379,15 @@ export const TESTIDS = {
   'monthly-detail-records-table': 'monthly-detail-records-table',
   'monthly-detail-empty-state': 'monthly-detail-empty-state',
   'monthly-detail-kpi-root': 'monthly-detail-kpi-root',
+  'monthly-user-detail-root': 'monthly-user-detail-root',
+  'monthly-user-detail-tabs': 'monthly-user-detail-tabs',
+  'monthly-user-detail-tab-basic': 'monthly-user-detail-tab-basic',
+  'monthly-user-detail-tab-billing': 'monthly-user-detail-tab-billing',
   'monthly-user-detail-mounted': 'monthly-user-detail-mounted',
   'monthly-user-detail-effective-params': 'monthly-user-detail-effective-params',
   'monthly-pdf-generate-btn': 'monthly-pdf-generate-btn',
+  'monthly-pdf-panel': 'monthly-pdf-panel',
+  'monthly-pdf-download-btn': 'monthly-pdf-download-btn',
 
   // Mobile Agenda View
   'mobile-agenda-loading': 'mobile-agenda-loading',
