@@ -39,6 +39,7 @@ import Typography from '@mui/material/Typography';
 import React, { useEffect, useMemo, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { PersonDaily, SeizureRecord } from '../domain/daily/types';
+import DashboardSafetyHUD from '@/features/dashboard/DashboardSafetyHUD';
 import HandoffSummaryForMeeting from '../features/handoff/HandoffSummaryForMeeting';
 import type { HandoffDayScope } from '../features/handoff/handoffTypes';
 import { useHandoffSummary } from '../features/handoff/useHandoffSummary';
@@ -465,6 +466,8 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ audience = 'staff' }) => 
         </Box>
 
         <Stack spacing={3} sx={{ mb: 3 }}>
+          <DashboardSafetyHUD />
+
           <Paper elevation={3} sx={{ p: 3 }}>
             <Typography variant="h5" sx={{ fontWeight: 700 }}>
               今日の通所 / 出勤状況

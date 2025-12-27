@@ -73,22 +73,28 @@ const shouldAllowRuntimeFlagOverrides = (runtimeEnv?: EnvDict): boolean => {
 let cachedEnv: EnvDict | null = null;
 
 export function getRuntimeEnv(): EnvDict {
-  if (cachedEnv) return cachedEnv;
-
   const fromWindow = getWindowEnv();
-  const allowRuntimeOverrides = shouldAllowRuntimeFlagOverrides(fromWindow);
-  const merged = fromWindow ? { ...INLINE_ENV, ...fromWindow } : { ...INLINE_ENV };
+  if (fromWindow) {
+    const allowRuntimeOverrides = shouldAllowRuntimeFlagOverrides(fromWindow);
+    const merged = { ...INLINE_ENV, ...fromWindow } as EnvDict;
 
-  if (fromWindow && !allowRuntimeOverrides) {
-    for (const key of E2E_OVERRIDE_KEYS) {
-      if (INLINE_ENV[key] !== undefined) {
-        merged[key] = INLINE_ENV[key];
+    if (!allowRuntimeOverrides) {
+      for (const key of E2E_OVERRIDE_KEYS) {
+        if (INLINE_ENV[key] !== undefined) {
+          merged[key] = INLINE_ENV[key];
+        }
       }
     }
+
+    cachedEnv = merged;
+    return merged;
   }
 
+  if (cachedEnv) return cachedEnv;
+
+  const merged = { ...INLINE_ENV } as EnvDict;
   cachedEnv = merged;
-  return cachedEnv;
+  return merged;
 }
 
 export function get(name: string, fallback = ''): string {
