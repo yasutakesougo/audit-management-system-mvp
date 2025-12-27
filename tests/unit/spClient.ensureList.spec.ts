@@ -3,11 +3,11 @@ import { createSpClient, type SpFieldDef, __ensureListInternals } from '../../sr
 
 describe('spClient ensureListExists', () => {
   let fetchSpy: ReturnType<typeof vi.spyOn>;
-  let acquireToken: ReturnType<typeof vi.fn>;
+  let acquireToken: ReturnType<typeof vi.fn<() => Promise<string | null>>>;
 
   beforeEach(() => {
     fetchSpy = vi.spyOn(global, 'fetch' as any);
-    acquireToken = vi.fn().mockResolvedValue('tok');
+    acquireToken = vi.fn<() => Promise<string | null>>().mockResolvedValue('tok');
   });
 
   afterEach(() => {
