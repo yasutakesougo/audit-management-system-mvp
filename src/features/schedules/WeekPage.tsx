@@ -10,8 +10,9 @@ import ScheduleEmptyHint from '@/features/schedules/components/ScheduleEmptyHint
 import SchedulesFilterResponsive from '@/features/schedules/components/SchedulesFilterResponsive';
 import SchedulesHeader from '@/features/schedules/components/SchedulesHeader';
 import type { SchedItem, ScheduleServiceType, UpdateScheduleEventInput } from '@/features/schedules/data';
+import type { InlineScheduleDraft } from '@/features/schedules/data/inlineScheduleDraft';
 import { useScheduleUserOptions } from '@/features/schedules/useScheduleUserOptions';
-import { makeRange, useSchedules, type InlineScheduleDraft } from '@/features/schedules/useSchedules';
+import { makeRange, useSchedules } from '@/features/schedules/useSchedules';
 import { TESTIDS } from '@/testids';
 import EmptyState from '@/ui/components/EmptyState';
 import Loading from '@/ui/components/Loading';
@@ -495,11 +496,16 @@ export default function WeekPage() {
       const startTime = extractTimePart(input.startLocal) || DEFAULT_START_TIME;
       const endTime = extractTimePart(input.endLocal) || DEFAULT_END_TIME;
 
+
+      const start = new Date(buildLocalDateTimeInput(input.startLocal, startTime)).toISOString();
+      const end = new Date(buildLocalDateTimeInput(input.endLocal, endTime)).toISOString();
       const draft: InlineScheduleDraft = {
         title: input.title.trim() || '新規予定',
         dateIso,
         startTime,
         endTime,
+        start,
+        end,
         sourceInput: input,
       };
 
@@ -539,6 +545,7 @@ export default function WeekPage() {
           borderBottom: '1px solid rgba(0,0,0,0.08)',
         }}
       >
+        <span hidden>週間スケジュール</span>
         <SchedulesHeader
           mode="week"
           title={MASTER_SCHEDULE_TITLE_JA}
@@ -647,37 +654,40 @@ export default function WeekPage() {
           </div>
         ) : (
           <>
-            <div
-              id="panel-week"
-              role="tabpanel"
-              aria-labelledby={tabButtonIds.week}
-              hidden={tab !== 'week'}
-            >
-              <WeekView
-                items={filteredItems}
-                loading={isLoading}
-                range={weekRange}
-                onDayClick={handleDayClick}
-                activeDateIso={resolvedActiveDateIso}
-                onItemSelect={handleWeekEventClick}
-              />
-            </div>
-            <div
-              id="panel-day"
-              role="tabpanel"
-              aria-labelledby={tabButtonIds.day}
-              hidden={tab !== 'day'}
-            >
-              <DayView items={filteredItems} loading={isLoading} range={activeDayRange} />
-            </div>
-            <div
-              id="panel-timeline"
-              role="tabpanel"
-              aria-labelledby={tabButtonIds.timeline}
-              hidden={tab !== 'timeline'}
-            >
-              <WeekTimeline range={weekRange} items={filteredItems} onCreateHint={handleTimelineCreateHint} />
-            </div>
+            {tab === 'week' && (
+              <div
+                id="panel-week"
+                role="tabpanel"
+                aria-labelledby={tabButtonIds.week}
+              >
+                <WeekView
+                  items={filteredItems}
+                  loading={isLoading}
+                  range={weekRange}
+                  onDayClick={handleDayClick}
+                  activeDateIso={resolvedActiveDateIso}
+                  onItemSelect={handleWeekEventClick}
+                />
+              </div>
+            )}
+            {tab === 'day' && (
+              <div
+                id="panel-day"
+                role="tabpanel"
+                aria-labelledby={tabButtonIds.day}
+              >
+                <DayView items={filteredItems} loading={isLoading} range={activeDayRange} />
+              </div>
+            )}
+            {tab === 'timeline' && (
+              <div
+                id="panel-timeline"
+                role="tabpanel"
+                aria-labelledby={tabButtonIds.timeline}
+              >
+                <WeekTimeline range={weekRange} items={filteredItems} onCreateHint={handleTimelineCreateHint} />
+              </div>
+            )}
             {filteredItems.length === 0 && (
               <EmptyState
                 title="今週の予定はありません"
@@ -723,7 +733,13 @@ export default function WeekPage() {
           open={dialogOpen}
           mode="edit"
           eventId={dialogInitialValues.id}
-          initialOverride={dialogInitialValues}
+          initialOverride={{
+            ...dialogInitialValues,
+            serviceType:
+              dialogInitialValues.serviceType === null || dialogInitialValues.serviceType === undefined
+                ? ""
+                : dialogInitialValues.serviceType,
+          }}
           onClose={handleInlineDialogClose}
           onSubmit={handleInlineDialogSubmit}
           users={scheduleUserOptions}

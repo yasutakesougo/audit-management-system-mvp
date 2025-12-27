@@ -7,6 +7,7 @@ const scheduleNavLabel = /スケジュール/;
 test.beforeEach(async ({ page }) => {
   await page.addInitScript(() => {
     window.localStorage.clear();
+    window.localStorage.setItem('feature:schedules', 'false');
   });
 
   await page.addInitScript(() => {
@@ -34,7 +35,7 @@ test.describe('schedule feature flag', () => {
     }
 
     await expect(page.getByTestId(TESTIDS.nav.schedules)).toHaveCount(0);
-    await expect(page.getByRole('link', { name: scheduleNavLabel })).toHaveCount(0);
+    await expect(page.getByRole('link', { name: scheduleNavLabel }).first()).toHaveCount(0);
 
     await page.goto('/schedules/week', { waitUntil: 'domcontentloaded' });
     await page.waitForLoadState('networkidle', { timeout: 5_000 });
@@ -65,7 +66,7 @@ test.describe('schedule feature flag', () => {
 
     const nav = page.getByTestId(TESTIDS.nav.schedules);
     await expect(nav).toBeVisible();
-    await expect(page.getByRole('link', { name: scheduleNavLabel })).toBeVisible();
+    await expect(page.getByRole('link', { name: scheduleNavLabel }).first()).toBeVisible();
 
     if ((await nav.count()) > 0) {
       await nav.first().click();

@@ -1,8 +1,12 @@
+import { fromZonedTime } from 'date-fns-tz';
+
 import { createSpClient, ensureConfig } from '@/lib/spClient';
 import type { CreateScheduleEventInput, SchedItem, ScheduleServiceType, ScheduleStatus, SchedulesPort } from './port';
 import { SCHEDULES_FIELDS, SCHEDULES_LIST_TITLE } from './spSchema';
+import { resolveSchedulesTz } from '@/utils/scheduleTz';
 
 const DEFAULT_TITLE = '新規予定';
+const SCHEDULES_TZ = resolveSchedulesTz();
 
 export const normalizeUserId = (value: string): string => value.trim().toUpperCase().replace(/[^A-Z0-9]/g, '');
 
@@ -57,18 +61,15 @@ const normalizeLookupId = (value: string | number | null | undefined): number | 
   return Number.isFinite(parsed) ? parsed : null;
 };
 
-const ensureTimeZone = (value: string): string => {
-  // Treat naive local timestamps as UTC to avoid date shifting when toISOString() is applied.
-  const hasZone = /[zZ]$|[+-]\d{2}:?\d{2}$/.test(value);
-  return hasZone ? value : `${value}Z`;
-};
+const hasTimeZone = (value: string): boolean => /[zZ]$|[+-]\d{2}:?\d{2}$/.test(value);
 
 const toIsoString = (value: string): string => {
-  const normalized = ensureTimeZone(value);
-  const date = new Date(normalized);
+  const date = hasTimeZone(value) ? new Date(value) : fromZonedTime(value, SCHEDULES_TZ);
+
   if (Number.isNaN(date.getTime())) {
     throw new Error(`Invalid datetime value: ${value}`);
   }
+
   return date.toISOString();
 };
 

@@ -34,6 +34,66 @@ let demoItems: SchedItem[] = [
   },
 ];
 
+const CONFLICTS_BASIC_DATE = '2025-11-14';
+type WarningSchedItem = SchedItem & { baseShiftWarnings?: { staffId?: string; staffName?: string }[] };
+
+const CONFLICTS_BASIC_SEED: WarningSchedItem[] = [
+  {
+    id: 'conflict-org',
+    title: '送迎便（スタッフ重複）',
+    category: 'Staff',
+    start: `${CONFLICTS_BASIC_DATE}T10:00:00`,
+    end: `${CONFLICTS_BASIC_DATE}T11:00:00`,
+    assignedStaffId: 'STF-100',
+    baseShiftWarnings: [{ staffId: 'STF-100', staffName: '佐藤' }],
+    status: 'Planned',
+    statusReason: '同時間帯に別予定',
+  },
+  {
+    id: 'conflict-user',
+    title: '個別支援（重なり）',
+    category: 'User',
+    userId: 'USR-200',
+    personName: '田中太郎',
+    start: `${CONFLICTS_BASIC_DATE}T10:30:00`,
+    end: `${CONFLICTS_BASIC_DATE}T11:30:00`,
+    assignedStaffId: 'STF-100',
+    baseShiftWarnings: [{ staffId: 'STF-100', staffName: '佐藤' }],
+    status: 'Planned',
+    statusReason: '担当者が重複',
+  },
+  {
+    id: 'conflict-org-late',
+    title: '事業所イベント調整',
+    category: 'Org',
+    start: `${CONFLICTS_BASIC_DATE}T14:00:00`,
+    end: `${CONFLICTS_BASIC_DATE}T15:00:00`,
+    locationName: '会議室A',
+    baseShiftWarnings: [{ staffId: 'STF-200', staffName: '鈴木' }],
+    status: 'Postponed',
+    statusReason: '会場準備遅延',
+  },
+];
+
+const resolveScenario = (): string | null => {
+  if (typeof window === 'undefined') return null;
+  try {
+    const params = new URLSearchParams(window.location.search);
+    return params.get('scenario');
+  } catch {
+    return null;
+  }
+};
+
+const resolveSeedForScenario = (scenario: string | null): SchedItem[] | null => {
+  switch (scenario) {
+    case 'conflicts-basic':
+      return CONFLICTS_BASIC_SEED;
+    default:
+      return null;
+  }
+};
+
 const normalizeStatusReason = (value?: string | null): string | null => {
   if (typeof value !== 'string') {
     return null;
@@ -81,7 +141,10 @@ const resolveTitle = (input: CreateScheduleEventInput): string =>
 
 export const demoSchedulesPort: SchedulesPort = {
   async list(range) {
-    return demoItems.filter((item) => withinRange(item, range));
+    const scenario = resolveScenario();
+    const scenarioSeed = resolveSeedForScenario(scenario);
+    const source = scenarioSeed ?? demoItems;
+    return source.filter((item) => withinRange(item, range));
   },
   async create(input) {
     const title = resolveTitle(input);

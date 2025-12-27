@@ -56,7 +56,7 @@ export interface ScheduleFormState {
   userId: string;
   startLocal: string;
   endLocal: string;
-  serviceType: ScheduleServiceType | '';
+  serviceType?: ScheduleServiceType | string | null;
   locationName: string;
   notes: string;
   assignedStaffId: string;
@@ -119,7 +119,7 @@ const CATEGORY_OPTIONS: { value: ScheduleCategory; label: string; helper: string
 
 function buildAutoTitle(params: {
   userName?: string;
-  serviceType?: ScheduleServiceType | '';
+  serviceType?: ScheduleServiceType | string | null;
   assignedStaffId?: string;
   vehicleId?: string;
 }): string {
@@ -310,10 +310,24 @@ export function toCreateScheduleInput(
     throw new Error('assignedStaffId is required for staff schedules');
   }
 
-  const resolvedServiceType: ScheduleServiceType =
-    form.category === 'User'
-      ? (form.serviceType || 'normal')
-      : (form.serviceType || 'other');
+  let resolvedServiceType: ScheduleServiceType;
+  if (form.category === 'User') {
+    if (typeof form.serviceType === 'string') {
+      resolvedServiceType = form.serviceType as ScheduleServiceType;
+    } else if (!form.serviceType) {
+      resolvedServiceType = 'normal';
+    } else {
+      resolvedServiceType = form.serviceType;
+    }
+  } else {
+    if (typeof form.serviceType === 'string') {
+      resolvedServiceType = form.serviceType as ScheduleServiceType;
+    } else if (!form.serviceType) {
+      resolvedServiceType = 'other';
+    } else {
+      resolvedServiceType = form.serviceType;
+    }
+  }
   const statusReason = form.statusReason.trim();
   const resolvedUserLookupId = normalizeLookupId(selectedUser?.lookupId ?? undefined);
   const resolvedUserName = selectedUser?.name?.trim() || undefined;

@@ -120,8 +120,10 @@ export function analyzeCurrentSchedule(schedules: MinimalSchedule[]): ScheduleWi
     completed: 5,
   };
 
-  return analyzed
-    .filter(item => item.status !== 'completed')
+  const activeItems = analyzed.filter(item => item.status !== 'completed');
+  const pool = activeItems.length > 0 ? activeItems : analyzed;
+
+  return pool
     .sort((a, b) => {
       const priorityDiff = priorities[a.status] - priorities[b.status];
       if (priorityDiff !== 0) return priorityDiff;
@@ -245,7 +247,10 @@ export function NextActionCard({
 
   if (!currentItem) {
     return (
-      <div className={`bg-white rounded-lg border border-gray-200 p-6 shadow-sm ${className}`}>
+      <div
+        data-testid="dashboard-next-action-card"
+        className={`bg-white rounded-lg border border-gray-200 p-6 shadow-sm ${className}`}
+      >
         <div className="text-center py-8">
           <div className="text-gray-400 text-lg mb-2">🎉</div>
           <div className="text-gray-600 text-lg font-medium">今日の予定はありません</div>
