@@ -87,7 +87,7 @@ const DOMAIN_TO_DIALOG_STATUS: Record<Status, ScheduleStatus> = {
   完了: 'confirmed',
 };
 
-const QUICK_SERVICE_TYPE_LABELS: Partial<Record<ScheduleServiceType, string>> = {
+const QUICK_SERVICE_TYPE_LABELS: Record<string, string> = {
   normal: '通所',
   transport: '送迎',
   respite: 'レスパイト',
@@ -108,7 +108,7 @@ const QUICK_SERVICE_TYPE_BY_LABEL: Record<string, ScheduleServiceType> = Object.
 );
 
 // Quick-create(code) -> Domain(ServiceType) のマップ
-const QUICK_TO_DOMAIN_SERVICE_TYPE: Partial<Record<ScheduleServiceType, ScheduleUserCare['serviceType']>> = {
+const QUICK_TO_DOMAIN_SERVICE_TYPE: Record<string, ScheduleUserCare['serviceType']> = {
   normal: '通常利用',
   transport: '送迎',
   respite: '一時ケア',
@@ -136,7 +136,6 @@ const toNumericId = (id?: string | number): number | undefined => {
   }
   return undefined;
 };
-
 const FIXTURE_DEFAULT_STATUS: Status = '承認済み';
 const FIXTURE_USER_SERVICE: ScheduleUserCare['serviceType'] = '一時ケア';
 const FIXTURE_USER_PERSON_TYPE: ScheduleUserCare['personType'] = 'Internal';

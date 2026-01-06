@@ -200,8 +200,11 @@ export function mapSpRowToSchedule(row: SpScheduleRow): SchedItem | null {
         ? idRaw.trim()
         : `${start}-${end}`;
 
+  const primaryPersonName = coerceString(row.cr014_personName);
+
   const titleField = row.Title;
-  const title = typeof titleField === 'string' && titleField.trim() ? titleField.trim() : '予定';
+  const providedTitle = typeof titleField === 'string' && titleField.trim() ? titleField.trim() : undefined;
+  const title = providedTitle ?? primaryPersonName ?? '予定';
   const userCodeCandidates = [coerceString(row.cr014_personId), pickUserCode(row)];
   let normalizedUserId: string | undefined;
   for (const candidate of userCodeCandidates) {
@@ -215,7 +218,6 @@ export function mapSpRowToSchedule(row: SpScheduleRow): SchedItem | null {
   if (!normalizedUserId && userLookupIds.length) {
     normalizedUserId = normalizeUserId(userLookupIds[0]);
   }
-  const primaryPersonName = coerceString(row.cr014_personName);
   const assignedStaffId = coerceIdString(row.AssignedStaff);
   const vehicleId = coerceIdString(row.Vehicle);
 
@@ -247,22 +249,7 @@ export function mapSpRowToSchedule(row: SpScheduleRow): SchedItem | null {
     updatedAt: coerceIso(row.Modified),
   } satisfies SchedItem;
 
-  if (category === 'User' && primaryPersonName) {
-    const label = (() => {
-      switch (item.serviceType) {
-        case 'absence':
-          return '欠席';
-        case 'late':
-          return '遅刻';
-        case 'earlyLeave':
-          return '早退';
-        default:
-          return 'その他';
-      }
-    })();
-    const date = item.start.slice(0, 10);
-    item.title = `${date} ${primaryPersonName}（${label}）`;
-  }
+  // Keep the original SharePoint title when provided; fall back to person name if missing.
 
   return item;
 }
