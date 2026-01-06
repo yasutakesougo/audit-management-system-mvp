@@ -68,6 +68,13 @@ export function analyzeCurrentSchedule(schedules: MinimalSchedule[]): ScheduleWi
       const minutesUntilStart = Math.round((startTime - currentTime) / (1000 * 60));
       const minutesSinceStart = Math.round((currentTime - startTime) / (1000 * 60));
 
+      const normalizedStatus = schedule.status?.toLowerCase().trim();
+      const isMarkedCompleted = normalizedStatus === '完了' || normalizedStatus === 'completed';
+      // 開始終了が確定した後に、終了済みかつ完了扱いの予定は除外する
+      if (isMarkedCompleted && currentTime > endTime) {
+        return null;
+      }
+
       // ステータス判定
       let status: ScheduleStatus;
       let actionType: ScheduleWithStatus['actionType'];
@@ -120,10 +127,10 @@ export function analyzeCurrentSchedule(schedules: MinimalSchedule[]): ScheduleWi
     completed: 5,
   };
 
-  const activeItems = analyzed.filter(item => item.status !== 'completed');
-  const pool = activeItems.length > 0 ? activeItems : analyzed;
+    const activeItems = analyzed.filter(item => item.status !== 'completed');
+    if (activeItems.length === 0) return null;
 
-  return pool
+    return activeItems
     .sort((a, b) => {
       const priorityDiff = priorities[a.status] - priorities[b.status];
       if (priorityDiff !== 0) return priorityDiff;
