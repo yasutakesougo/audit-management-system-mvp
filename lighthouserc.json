@@ -3,7 +3,6 @@
     "collect": {
       "numberOfRuns": 1,
       "url": ["http://127.0.0.1:4173/analysis/dashboard"],
-      "staticDistDir": "dist",
       "startServerCommand": "npm run build && vite preview --host 127.0.0.1 --port 4173 --strictPort",
       "startServerReadyPattern": "localhost:4173|127.0.0.1:4173",
       "startServerTimeout": 120000
