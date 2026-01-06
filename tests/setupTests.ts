@@ -1,7 +1,7 @@
 // Lightweight SharePoint fetch mock for unit tests.
 // Provides deterministic responses for common _api endpoints used by spClient tests.
 // Unknown endpoints fall back to { value: [] } to keep tests stable and offline.
-import { vi } from 'vitest';
+import { beforeEach, afterAll, vi } from 'vitest';
 
 type FetchImpl = (input: RequestInfo | URL, init?: RequestInit) => Promise<Response>;
 
@@ -77,3 +77,16 @@ export function uninstallSharePointFetchMock(): void {
 }
 
 installSharePointFetchMock();
+
+// Ensure the mock is present for each test and its call history does not leak across tests.
+beforeEach(() => {
+  installSharePointFetchMock();
+  const current = globalThis.fetch as any;
+  if (typeof current?.mockClear === 'function') {
+    current.mockClear();
+  }
+});
+
+afterAll(() => {
+  uninstallSharePointFetchMock();
+});
