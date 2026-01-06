@@ -28,11 +28,15 @@ const outputPath = path.join(distDir, 'env.runtime.json');
 
 // Deterministic E2E runtime environment
 const e2eRuntimeEnv = {
-  VITE_DEMO_MODE: '1',
-  VITE_E2E: '1',
-  VITE_SKIP_LOGIN: '1',
-  VITE_E2E_MSAL_MOCK: '1',
-  VITE_SKIP_SHAREPOINT: '1',
+  VITE_DEMO_MODE: 'true',
+  VITE_E2E: 'true',
+  VITE_SKIP_LOGIN: 'true',
+  VITE_E2E_MSAL_MOCK: 'true',
+  VITE_SKIP_SHAREPOINT: 'true',
+  VITE_SKIP_ENSURE_SCHEDULE: 'false',
+  VITE_WRITE_ENABLED: 'false',
+  VITE_FEATURE_SCHEDULES: 'true',
+  VITE_SCHEDULES_TZ: 'Asia/Tokyo',
   // DNS-safe SharePoint settings (no external DNS lookups)
   VITE_SP_RESOURCE: '',
   VITE_SP_SITE_RELATIVE: '',
