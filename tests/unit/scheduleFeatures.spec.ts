@@ -2,13 +2,13 @@ import { SCHEDULES_BASE_FIELDS, SCHEDULES_SELECT_FIELDS, SCHEDULES_STAFF_TEXT_FI
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 type EnvMock = {
-  readEnv: ReturnType<typeof vi.fn>;
-  isDevMode: ReturnType<typeof vi.fn>;
+  readEnv: ReturnType<typeof vi.fn<(key: string, fallback: string) => string>>;
+  isDevMode: ReturnType<typeof vi.fn<() => boolean>>;
 };
 
 const envMock: EnvMock = {
-  readEnv: vi.fn(),
-  isDevMode: vi.fn(),
+  readEnv: vi.fn<(key: string, fallback: string) => string>(),
+  isDevMode: vi.fn<() => boolean>(),
 };
 
 type SharePointOverride = {
