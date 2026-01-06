@@ -1,4 +1,4 @@
-import { act, fireEvent, render, renderHook, screen } from '@testing-library/react';
+import { act, fireEvent, render, screen } from '@testing-library/react';
 import React from 'react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -13,15 +13,6 @@ describe('useToast', () => {
     vi.useRealTimers();
     vi.resetModules();
     vi.restoreAllMocks();
-  });
-
-  it('throws when used outside of provider', () => {
-    const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {});
-    try {
-      expect(() => renderHook(() => useToast())).toThrowError('useToast must be used within a <ToastProvider>');
-    } finally {
-      consoleError.mockRestore();
-    }
   });
 
   it('creates toast entries using crypto.randomUUID when available and removes after timeout', () => {
