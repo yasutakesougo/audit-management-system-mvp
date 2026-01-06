@@ -18,6 +18,9 @@ const NAV_TESTIDS = {
 const FOOTER_TESTIDS = {
   dailyAttendance: 'footer-action-daily-attendance',
   dailyActivity: 'footer-action-daily-activity',
+  // New canonical footer ids (2024+)
+  dailyFooterAttendance: 'daily-footer-attendance',
+  dailyFooterActivity: 'daily-footer-activity',
 } as const;
 
 export const TESTIDS = {
@@ -72,6 +75,7 @@ export const TESTIDS = {
   'nav-nurse': 'nav-nurse',
   'footer-action-daily-attendance': 'footer-action-daily-attendance',
   'footer-action-daily-activity': 'footer-action-daily-activity',
+  // Compatibility: new footer ids used by AppShell (2024+)
   'daily-footer-attendance': 'daily-footer-attendance',
   'daily-footer-activity': 'daily-footer-activity',
   'daily-footer-support': 'daily-footer-support',

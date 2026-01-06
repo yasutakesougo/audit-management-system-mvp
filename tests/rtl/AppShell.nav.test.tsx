@@ -6,6 +6,8 @@ import { describe, expect, it, vi } from 'vitest';
 import AppShell from '@/app/AppShell';
 import { ColorModeContext } from '@/app/theme';
 import { FeatureFlagsContext, type FeatureFlagSnapshot } from '@/config/featureFlags';
+import { ToastProvider } from '@/hooks/useToast';
+import { TESTIDS } from '@/testids';
 
 vi.mock('@/lib/spClient', () => ({
   useSP: () => ({ spFetch: vi.fn().mockResolvedValue({ ok: true }) }),
@@ -92,9 +94,11 @@ describe('AppShell navigation smoke test', () => {
       <MemoryRouter initialEntries={['/daily']}>
         <ColorModeContext.Provider value={colorMode}>
           <FeatureFlagsContext.Provider value={featureFlags}>
-            <AppShell>
-              <div />
-            </AppShell>
+            <ToastProvider>
+              <AppShell>
+                <div />
+              </AppShell>
+            </ToastProvider>
           </FeatureFlagsContext.Provider>
         </ColorModeContext.Provider>
       </MemoryRouter>
@@ -105,8 +109,8 @@ describe('AppShell navigation smoke test', () => {
 
     const ids = [
       'nav-daily',
-      'footer-action-daily-attendance',
-      'footer-action-daily-activity',
+      TESTIDS['daily-footer-attendance'],
+      TESTIDS['daily-footer-activity'],
       'daily-footer-support',
       'daily-footer-health',
     ];

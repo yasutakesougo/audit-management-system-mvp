@@ -29,6 +29,25 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
  */
 
 describe('featureFlags config', () => {
+  beforeEach(() => {
+    delete (process as Record<string, unknown>).env?.VITE_FEATURE_SCHEDULES;
+    delete (process as Record<string, unknown>).env?.VITE_FEATURE_SCHEDULES_CREATE;
+
+    if (typeof window !== 'undefined') {
+      try {
+        window.localStorage.removeItem('feature:schedules');
+        window.localStorage.removeItem('feature:schedulesCreate');
+      } catch {
+        // ignore storage access issues in test env
+      }
+      const env = (window as unknown as { __ENV__?: Record<string, unknown> }).__ENV__;
+      if (env) {
+        delete env.VITE_FEATURE_SCHEDULES;
+        delete env.VITE_FEATURE_SCHEDULES_CREATE;
+      }
+    }
+  });
+
   afterEach(() => {
     vi.restoreAllMocks();
     cleanup();
