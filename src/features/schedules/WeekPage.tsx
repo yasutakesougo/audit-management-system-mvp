@@ -16,6 +16,8 @@ import { makeRange, useSchedules } from '@/features/schedules/useSchedules';
 import { TESTIDS } from '@/testids';
 import EmptyState from '@/ui/components/EmptyState';
 import Loading from '@/ui/components/Loading';
+import { formatInTimeZone } from 'date-fns-tz';
+import { resolveSchedulesTz } from '@/utils/scheduleTz';
 
 import DayView from './DayView';
 import WeekView from './WeekView';
@@ -31,6 +33,7 @@ const TAB_LABELS: Record<ScheduleTab, string> = {
 
 const DEFAULT_START_TIME = '10:00';
 const DEFAULT_END_TIME = '11:00';
+const SCHEDULES_TZ = resolveSchedulesTz();
 
 const startOfWeek = (date: Date): Date => {
   const next = new Date(date);
@@ -74,6 +77,17 @@ const buildLocalDateTimeInput = (value?: string | null, fallbackTime?: string): 
   const dateIso = extractDatePart(value) || toDateIso(new Date());
   const time = extractTimePart(value) || fallbackTime || DEFAULT_START_TIME;
   return `${dateIso}T${time}`;
+};
+
+const formatScheduleLocalInput = (value?: string | null, fallbackTime?: string): string => {
+  if (!value) {
+    return buildLocalDateTimeInput(value, fallbackTime);
+  }
+  const parsed = new Date(value);
+  if (Number.isNaN(parsed.getTime())) {
+    return buildLocalDateTimeInput(value, fallbackTime);
+  }
+  return formatInTimeZone(parsed, SCHEDULES_TZ, "yyyy-MM-dd'T'HH:mm");
 };
 
 const ANNOUNCE_START_FORMATTER = new Intl.DateTimeFormat('ja-JP', {
@@ -399,8 +413,8 @@ export default function WeekPage() {
     console.info('[WeekPage] row click', item.id);
     const category = (item.category as Category) ?? 'User';
     const serviceType = (item.serviceType as ScheduleServiceType) ?? 'normal';
-    const startLocal = buildLocalDateTimeInput(item.start, DEFAULT_START_TIME);
-    const endLocal = buildLocalDateTimeInput(item.end, DEFAULT_END_TIME);
+    const startLocal = formatScheduleLocalInput(item.start, DEFAULT_START_TIME);
+    const endLocal = formatScheduleLocalInput(item.end, DEFAULT_END_TIME);
     const dateIso = extractDatePart(item.start) || toDateIso(new Date());
     setActiveDateIso(dateIso);
     setDialogInitialValues({

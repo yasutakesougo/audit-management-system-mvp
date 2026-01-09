@@ -21,7 +21,7 @@ import {
 } from './utils/scheduleActions';
 import { TIME_ZONE } from './utils/spMock';
 
-const LIST_TITLE = 'Schedules_Master';
+const LIST_TITLE = 'ScheduleEvents';
 const TEST_DATE = new Date(SCHEDULE_FIXTURE_BASE_DATE);
 const TEST_DAY_KEY = formatInTimeZone(TEST_DATE, TIME_ZONE, 'yyyy-MM-dd');
 const IS_PREVIEW = process.env.PW_USE_PREVIEW === '1';
@@ -267,7 +267,7 @@ test.describe('Schedule dialog: status/service end-to-end', () => {
       const refreshResponsePromise = page
         .waitForResponse(
           (r) =>
-            r.url().includes("/_api/web/lists/getbytitle('Schedules')/items") &&
+            r.url().includes("/_api/web/lists/getbytitle('ScheduleEvents')/items") &&
             r.request().method() === 'GET' &&
             r.ok(),
           { timeout: 20_000 },
@@ -381,7 +381,7 @@ test.describe('Schedule dialog: status/service end-to-end', () => {
 
     const createdRecord = await page.evaluate(async () => {
       const response = await fetch(
-        "/_api/web/lists/getbytitle('Schedules_Master')/items?$select=Id,Title,ServiceType,cr014_serviceType,cr014_title",
+        "/_api/web/lists/getbytitle('ScheduleEvents')/items?$select=Id,Title,ServiceType,cr014_serviceType,cr014_title",
       );
       const data = await response.json();
       const records = Array.isArray((data as any)?.value) ? (data as any).value : [];
@@ -414,7 +414,7 @@ test.describe('Schedule dialog: status/service end-to-end', () => {
 
     const spUserItems = await page.evaluate(async () => {
       const response = await fetch(
-        "/_api/web/lists/getbytitle('Schedules_Master')/items?$select=Id,Title,ServiceType,cr014_serviceType,cr014_title,cr014_category,cr014_dayKey,Status",
+        "/_api/web/lists/getbytitle('ScheduleEvents')/items?$select=Id,Title,ServiceType,cr014_serviceType,cr014_title,cr014_category,cr014_dayKey,Status",
       );
       const data = await response.json();
       return Array.isArray((data as any)?.value) ? (data as any).value : [];

@@ -35,6 +35,7 @@ export const buildSchedulesListPath = (baseUrl: string): string => {
 export const SCHEDULES_FIELDS = {
   title: 'Title',
   serviceType: 'ServiceType',
+  legacyServiceType: 'cr014_serviceType',
   start: 'Start',
   end: 'End',
   status: 'Status',

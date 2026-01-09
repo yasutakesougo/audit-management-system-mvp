@@ -35,6 +35,7 @@ export const SpScheduleRowSchema = z
 
     AssignedStaff: z.union([z.number(), z.string()]).optional().nullable(),
     ServiceType: z.string().optional().nullable(),
+    cr014_serviceType: z.string().optional().nullable(),
     LocationName: z.string().optional().nullable(),
     Notes: z.string().optional().nullable(),
     AcceptedOn: z.string().optional().nullable(),
@@ -128,11 +129,13 @@ export const normalizeUserId = (raw?: string | null): string | undefined => {
   return cleaned || undefined;
 };
 
+// Prefer EventDate/EndDate so we keep the original local time (with offset)
+// when both legacy and modern columns are present. Start/End are fallback.
 const pickStart = (row: SpScheduleRow): string | undefined =>
-  coerceIso(row.Start ?? row.EventDate);
+  coerceIso(row.EventDate ?? row.Start);
 
 const pickEnd = (row: SpScheduleRow): string | undefined =>
-  coerceIso(row.End ?? row.EndDate);
+  coerceIso(row.EndDate ?? row.End);
 
 const pickUserCode = (row: SpScheduleRow): string | undefined =>
   coerceString(row.UserCode ?? row.cr014_usercode);
@@ -223,7 +226,8 @@ export function mapSpRowToSchedule(row: SpScheduleRow): SchedItem | null {
 
   const category = inferCategory(row);
 
-  const serviceTypeKey = normalizeServiceType(coerceString(row.ServiceType));
+  const rawServiceType = coerceString(row.ServiceType) ?? coerceString((row as { cr014_serviceType?: unknown }).cr014_serviceType);
+  const serviceTypeKey = normalizeServiceType(rawServiceType);
   const item: SchedItem = {
     id,
     title,

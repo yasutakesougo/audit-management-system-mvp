@@ -29,6 +29,7 @@ const OPTIONAL_SELECT = [
   SCHEDULES_FIELDS.legacyUserCode,
   SCHEDULES_FIELDS.legacyCrUserCode,
   SCHEDULES_FIELDS.serviceType,
+  SCHEDULES_FIELDS.legacyServiceType,
   SCHEDULES_FIELDS.locationName,
   SCHEDULES_FIELDS.notes,
   SCHEDULES_FIELDS.acceptedOn,
@@ -42,25 +43,36 @@ const OPTIONAL_SELECT = [
   'Modified',
 ] as const;
 
-const defaultListRange: ListRangeFn = async (range) => {
-  const fullSelect = mergeSelectFields(false);
-  try {
-    const rows = await fetchRange(range, fullSelect);
-    return sortByStart(rows.map(mapSpRowToSchedule).filter((item): item is SchedItem => Boolean(item)));
-  } catch (error) {
-    if (!isMissingFieldError(error)) {
-      throw error;
-    }
-    if (SCHEDULES_DEBUG) {
-      console.warn('[schedules] SharePoint list missing optional field, retrying with minimal select.', error);
-    }
-    const fallbackRows = await fetchRange(range, mergeSelectFields(true));
-    return sortByStart(fallbackRows.map(mapSpRowToSchedule).filter((item): item is SchedItem => Boolean(item)));
-  }
-};
-
 const mergeSelectFields = (fallbackOnly: boolean): readonly string[] =>
   fallbackOnly ? [...REQUIRED_SELECT] : [...new Set([...REQUIRED_SELECT, ...OPTIONAL_SELECT])];
+
+const ESSENTIAL_SERVICE_SELECT = [
+  ...REQUIRED_SELECT,
+  SCHEDULES_FIELDS.serviceType,
+  SCHEDULES_FIELDS.legacyServiceType,
+] as const;
+
+const SELECT_VARIANTS = [mergeSelectFields(false), ESSENTIAL_SERVICE_SELECT, mergeSelectFields(true)] as const;
+
+const defaultListRange: ListRangeFn = async (range) => {
+  for (let index = 0; index < SELECT_VARIANTS.length; index += 1) {
+    const select = SELECT_VARIANTS[index];
+    try {
+      const rows = await fetchRange(range, select);
+      return sortByStart(rows.map(mapSpRowToSchedule).filter((item): item is SchedItem => Boolean(item)));
+    } catch (error) {
+      const isLastAttempt = index === SELECT_VARIANTS.length - 1;
+      if (!isMissingFieldError(error) || isLastAttempt) {
+        throw error;
+      }
+      if (SCHEDULES_DEBUG) {
+        console.warn('[schedules] SharePoint list missing optional field, retrying with alternate select.', select, error);
+      }
+    }
+  }
+
+  return [];
+};
 
 const fetchRange = async (range: DateRange, select: readonly string[]): Promise<ReturnType<typeof parseSpScheduleRows>> => {
   const { baseUrl } = ensureConfig();
@@ -104,16 +116,32 @@ const sortByStart = (items: SchedItem[]): SchedItem[] =>
 const fetchItemById = async (id: number): Promise<SchedItem> => {
   const { baseUrl } = ensureConfig();
   const listPath = buildSchedulesListPath(baseUrl);
-  const params = new URLSearchParams();
-  params.set('$select', mergeSelectFields(false).join(','));
 
-  const response = await fetchSp(`${listPath}(${id})?${params.toString()}`);
-  const row = (await response.json()) as unknown;
-  const mapped = mapSpRowToSchedule(row as never);
-  if (!mapped) {
-    throw new Error('更新後の予定データをマッピングできませんでした');
+  for (let index = 0; index < SELECT_VARIANTS.length; index += 1) {
+    const select = SELECT_VARIANTS[index];
+    const params = new URLSearchParams();
+    params.set('$select', select.join(','));
+
+    try {
+      const response = await fetchSp(`${listPath}(${id})?${params.toString()}`);
+      const row = (await response.json()) as unknown;
+      const mapped = mapSpRowToSchedule(row as never);
+      if (!mapped) {
+        throw new Error('更新後の予定データをマッピングできませんでした');
+      }
+      return mapped;
+    } catch (error) {
+      const isLastAttempt = index === SELECT_VARIANTS.length - 1;
+      if (!isMissingFieldError(error) || isLastAttempt) {
+        throw error;
+      }
+      if (SCHEDULES_DEBUG) {
+        console.warn('[schedules] SharePoint item fetch missing optional field, retrying with alternate select.', select, error);
+      }
+    }
   }
-  return mapped;
+
+  throw new Error('予定データの取得に失敗しました');
 };
 
 const makeSharePointScheduleUpdater = (acquireToken: () => Promise<string | null>): SchedulesPort['update'] => {

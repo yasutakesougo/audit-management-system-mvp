@@ -492,9 +492,12 @@ function createScheduleSelectFields(categoryField: string): string[] {
   };
   ensure(categoryField);
   ensure('Category');
+  ensure('ServiceType');
+  ensure('Status');
   [
     'AssignedStaffId',
     'TargetUserId',
+    'cr014_serviceType',
     'AssignedStaff/Id',
     'AssignedStaff/Title',
     'AssignedStaff/EMail',

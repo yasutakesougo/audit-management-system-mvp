@@ -127,10 +127,14 @@ export const toSharePointPayload = (input: CreateScheduleEventInput): SharePoint
     [SCHEDULES_FIELDS.end]: endIso,
     // SharePoint choice/text column. We start with a fixed value known to exist.
     [SCHEDULES_FIELDS.status]: 'Scheduled',
+    // Keep legacy EventDate/EndDate in sync to preserve timezone-aware timestamps on older lists.
+    EventDate: startIso,
+    EndDate: endIso,
   };
 
   if (serviceType) {
     body[SCHEDULES_FIELDS.serviceType] = serviceType;
+    body[SCHEDULES_FIELDS.legacyServiceType] = serviceType;
   }
   if (input.category === 'User') {
     body[SCHEDULES_FIELDS.personId] = normalizedUserId ?? null;
