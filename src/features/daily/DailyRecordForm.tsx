@@ -611,6 +611,7 @@ export function DailyRecordForm({ open, onClose, record, onSave }: DailyRecordFo
               <Select
                 labelId="daily-meal-amount-label"
                 id="daily-meal-amount-select"
+                name="mealAmount"
                 value={formData.data.mealAmount || '完食'}
                 onChange={(e) => handleDataChange('mealAmount', e.target.value as MealAmount)}
                 label="食事摂取量"
@@ -768,6 +769,7 @@ export function DailyRecordForm({ open, onClose, record, onSave }: DailyRecordFo
                 <FormControl>
                   <InputLabel>重症度</InputLabel>
                   <Select
+                    name="seizureSeverity"
                     value={formData.data.seizureRecord?.severity || ''}
                     onChange={(e) => handleSeizureRecordChange('severity', e.target.value)}
                     label="重症度"
