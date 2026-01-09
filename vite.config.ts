@@ -111,7 +111,6 @@ export default defineConfig(({ mode }) => {
       host: 'localhost',
       port: 5173,
       strictPort: true,
-      https: false,
       headers: {
         'Cross-Origin-Opener-Policy': 'same-origin-allow-popups',
         'Cross-Origin-Embedder-Policy': 'unsafe-none',

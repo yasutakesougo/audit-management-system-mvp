@@ -1,5 +1,6 @@
 import { createHash } from '@/utils/createHash';
-import type { CreateScheduleEventInput, DateRange, SchedItem, SchedulesPort, UpdateScheduleEventInput } from './port';
+import type { CreateScheduleEventInput, DateRange, SchedItem, ScheduleServiceType, SchedulesPort, UpdateScheduleEventInput } from './port';
+import { normalizeServiceType as normalizeSharePointServiceType } from '@/sharepoint/serviceTypes';
 
 const formatISO = (date: Date): string => date.toISOString();
 const addHours = (date: Date, hours: number): Date => new Date(date.getTime() + hours * 60 * 60 * 1000);
@@ -136,6 +137,12 @@ const normalizeNote = (value?: string | null): string | null => {
   return trimmed || null;
 };
 
+const normalizeServiceType = (value: CreateScheduleEventInput['serviceType']): ScheduleServiceType | undefined => {
+  const raw = typeof value === 'string' ? value.trim() : value ?? undefined;
+  const normalized = normalizeSharePointServiceType(raw ?? null);
+  return (normalized ?? raw ?? undefined) as ScheduleServiceType | undefined;
+};
+
 const resolveTitle = (input: CreateScheduleEventInput): string =>
   (input.title ?? '').trim() || '新規予定';
 
@@ -152,6 +159,7 @@ export const demoSchedulesPort: SchedulesPort = {
     const end = toIsoString(normalizeLocal(input.endLocal));
     const status = input.status ?? 'Planned';
     const statusReason = normalizeStatusReason(input.statusReason);
+    const normalizedServiceType = normalizeServiceType(input.serviceType);
     const acceptedOn = normalizeOptionalLocal(input.acceptedOn);
     const acceptedBy = normalizeOptionalText(input.acceptedBy);
     const acceptedNote = normalizeNote(input.acceptedNote);
@@ -160,7 +168,7 @@ export const demoSchedulesPort: SchedulesPort = {
       userId: input.userId ?? null,
       start,
       end,
-      serviceType: input.serviceType,
+      serviceType: normalizedServiceType ?? undefined,
       assignedStaffId: input.assignedStaffId ?? null,
       vehicleId: input.vehicleId ?? null,
       status,
@@ -175,7 +183,7 @@ export const demoSchedulesPort: SchedulesPort = {
       userId: input.userId,
       userLookupId: input.userLookupId,
       personName: input.userName,
-      serviceType: input.serviceType,
+      serviceType: normalizedServiceType,
       locationName: input.locationName,
       notes: input.notes,
       assignedStaffId: input.assignedStaffId,
@@ -203,6 +211,7 @@ export const demoSchedulesPort: SchedulesPort = {
     const end = toIsoString(normalizeLocal(input.endLocal));
     const title = resolveTitle(input);
     const updatedAt = new Date().toISOString();
+    const normalizedServiceType = normalizeServiceType(input.serviceType);
     const acceptedOn = normalizeOptionalLocal(input.acceptedOn) ?? demoItems[index].acceptedOn;
     const acceptedBy = normalizeOptionalText(input.acceptedBy) ?? demoItems[index].acceptedBy;
     const acceptedNote =
@@ -218,7 +227,7 @@ export const demoSchedulesPort: SchedulesPort = {
       userId: input.userId ?? demoItems[index].userId,
       userLookupId: input.userLookupId ?? demoItems[index].userLookupId,
       personName: input.userName ?? demoItems[index].personName,
-      serviceType: input.serviceType,
+      serviceType: normalizedServiceType ?? (demoItems[index].serviceType as ScheduleServiceType | undefined),
       locationName: input.locationName ?? demoItems[index].locationName,
       notes: input.notes ?? demoItems[index].notes,
       assignedStaffId: input.assignedStaffId ?? demoItems[index].assignedStaffId,

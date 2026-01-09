@@ -18,6 +18,7 @@ import { ScheduleEmptyHint } from '@/features/schedules/components/ScheduleEmpty
 import { normalizeToDayStart, pickDateParam } from '@/features/schedule/dateQuery';
 import { useToast } from '@/hooks/useToast';
 import { TESTIDS, tid } from '@/testids';
+import { normalizeServiceType as normalizeScheduleServiceType } from '@/sharepoint/serviceTypes';
 import Box from '@mui/material/Box';
 import Container from '@mui/material/Container';
 import Skeleton from '@mui/material/Skeleton';
@@ -414,11 +415,18 @@ export default function SchedulesDayPage(): JSX.Element {
       const startTime = extractTimePart(input.startLocal) || dialogInitialStartTime || DEFAULT_START_TIME;
       const endTime = extractTimePart(input.endLocal) || dialogInitialEndTime || DEFAULT_END_TIME;
 
+      const serviceType =
+        input.serviceType == null
+          ? null
+          : typeof input.serviceType === 'string'
+            ? normalizeScheduleServiceType(input.serviceType)
+            : input.serviceType;
+
       const draft: InlineScheduleDraft = {
         title: input.title.trim() || '新規予定',
         start: input.startLocal,
         end: input.endLocal,
-        serviceType: input.serviceType,
+        serviceType,
         notes: input.notes,
         dateIso,
         startTime,

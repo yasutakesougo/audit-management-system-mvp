@@ -35,7 +35,7 @@
       "module": "CommonJS"
     }
   },
-  "include": ["src", "tests", "types", "debug.tsx"],
+  "include": ["src", "tests", "types", "debug.tsx", "vitest.setup.ts"],
   "exclude": [
     "node_modules",
     "dist",

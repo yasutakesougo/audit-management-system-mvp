@@ -25,7 +25,7 @@ const getWeekTablist = async (page: Page) => {
 
 const getWeekView = async (page: Page) =>
   pickFirstExisting([
-    page.getByTestId(TESTIDS.SCHEDULES_WEEK_GRID ?? 'schedules-week-grid'),
+    page.getByTestId(TESTIDS['schedules-week-grid'] ?? 'schedules-week-grid'),
     page.getByRole('grid', { name: /週ごとの予定一覧|週|week/i }),
     page.getByTestId(TESTIDS.SCHEDULES_WEEK_VIEW ?? 'schedules-week-view'),
     page.getByTestId(TESTIDS['schedule-week-view'] ?? 'schedule-week-view'),

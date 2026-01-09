@@ -825,12 +825,15 @@ export default function SchedulePage() {
       return undefined;
     })();
 
-    const serviceTypeCode = input.serviceType;
-    const serviceTypeLabel = QUICK_SERVICE_TYPE_LABELS[serviceTypeCode] ?? QUICK_SERVICE_TYPE_LABELS.other ?? 'その他';
+    const serviceTypeKey =
+      typeof input.serviceType === 'string' && input.serviceType.trim()
+        ? (input.serviceType.trim() as keyof typeof QUICK_SERVICE_TYPE_LABELS)
+        : 'other';
+    const serviceTypeLabel = QUICK_SERVICE_TYPE_LABELS[serviceTypeKey] ?? QUICK_SERVICE_TYPE_LABELS.other ?? 'その他';
     const userOption = input.userId ? scheduleUserMap.get(input.userId) ?? null : null;
     const trimmedTitle = input.title.trim();
     const resolvedTitle = trimmedTitle || `${serviceTypeLabel} / ${userOption?.name ?? '利用者'}`;
-    const mappedServiceType = QUICK_TO_DOMAIN_SERVICE_TYPE[serviceTypeCode] ?? '一時ケア';
+    const mappedServiceType = QUICK_TO_DOMAIN_SERVICE_TYPE[serviceTypeKey] ?? '一時ケア';
 
     const startDate = new Date(input.startLocal);
     const endDate = new Date(input.endLocal);

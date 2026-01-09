@@ -4,6 +4,7 @@ import { createSpClient, ensureConfig } from '@/lib/spClient';
 import type { CreateScheduleEventInput, SchedItem, ScheduleServiceType, ScheduleStatus, SchedulesPort } from './port';
 import { SCHEDULES_FIELDS, SCHEDULES_LIST_TITLE } from './spSchema';
 import { resolveSchedulesTz } from '@/utils/scheduleTz';
+import { normalizeServiceType as normalizeSharePointServiceType } from '@/sharepoint/serviceTypes';
 
 const DEFAULT_TITLE = '新規予定';
 const SCHEDULES_TZ = resolveSchedulesTz();
@@ -73,6 +74,11 @@ const toIsoString = (value: string): string => {
   return date.toISOString();
 };
 
+const normalizeServiceType = (value: string | ScheduleServiceType | null | undefined): ScheduleServiceType | undefined => {
+  const normalized = normalizeSharePointServiceType(value ?? null);
+  return normalized ?? undefined;
+};
+
 const jpServiceLabel = (serviceType?: ScheduleServiceType | null): string => {
   switch (serviceType) {
     case 'absence':
@@ -95,9 +101,10 @@ const buildUserTitle = (startLocal: string, userName: string, serviceType: Sched
 const resolveTitle = (input: CreateScheduleEventInput): string => {
   const rawTitle = trimText(input.title);
   const userName = trimText((input as { userName?: string }).userName);
+  const normalizedServiceType = normalizeServiceType(input.serviceType);
 
   if (input.category === 'User' && userName) {
-    return buildUserTitle(input.startLocal, userName, input.serviceType);
+    return buildUserTitle(input.startLocal, userName, normalizedServiceType ?? 'other');
   }
 
   return rawTitle || DEFAULT_TITLE;
@@ -115,7 +122,8 @@ export const toSharePointPayload = (input: CreateScheduleEventInput): SharePoint
   const title = resolveTitle(input);
   const startIso = toIsoString(appendSeconds(input.startLocal));
   const endIso = toIsoString(appendSeconds(input.endLocal));
-  const serviceType = trimText(input.serviceType);
+  const normalizedServiceType = normalizeServiceType(input.serviceType);
+  const serviceType = normalizedServiceType ?? trimText(input.serviceType);
   const locationName = trimText(input.locationName);
   const notes = trimText(input.notes);
   const acceptedOn = trimText(input.acceptedOn);
@@ -230,6 +238,7 @@ export const makeMockScheduleCreator = (): SchedulesPort['create'] => async (inp
   const title = resolveTitle(input);
   const start = toIsoString(appendSeconds(input.startLocal));
   const end = toIsoString(appendSeconds(input.endLocal));
+  const normalizedServiceType = normalizeServiceType(input.serviceType);
   const now = new Date().toISOString();
   return buildSchedItem({
     id: `mock-${Date.now()}`,
@@ -244,7 +253,7 @@ export const makeMockScheduleCreator = (): SchedulesPort['create'] => async (inp
       : undefined,
     personName: input.category === 'User' ? personName ?? undefined : undefined,
     category: input.category,
-    serviceType: input.serviceType,
+    serviceType: normalizedServiceType ?? undefined,
     locationName: trimText(input.locationName),
     notes: trimText(input.notes),
     assignedStaffId: input.category === 'Staff' ? assignedStaffId ?? undefined : undefined,

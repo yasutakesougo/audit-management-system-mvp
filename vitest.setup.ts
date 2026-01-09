@@ -7,7 +7,7 @@ import './tests/setup/router-future-flags';
 import '@testing-library/jest-dom/vitest';
 import { cleanup } from '@testing-library/react';
 import { webcrypto } from 'crypto';
-import React from 'react';
+import * as React from 'react';
 import { toHaveNoViolations } from 'jest-axe';
 import { afterEach, beforeEach, expect, vi } from 'vitest';
 

@@ -59,8 +59,8 @@ describe('spClient ensureListExists', () => {
     // Allow extra calls from auxiliary SharePoint endpoints; main sequence should be at least the mocked steps.
     expect(fetchSpy.mock.calls.length).toBeGreaterThanOrEqual(5);
 
-    const schemaCalls = fetchSpy.mock.calls.filter(([, init]) => {
-      const body = (init as RequestInit | undefined)?.body;
+    const schemaCalls = fetchSpy.mock.calls.filter(([_, init]: [RequestInfo | URL, RequestInit | undefined]) => {
+      const body = init?.body;
       return typeof body === 'string' && body.includes('SchemaXml');
     });
     expect(schemaCalls.length).toBeGreaterThanOrEqual(2);
