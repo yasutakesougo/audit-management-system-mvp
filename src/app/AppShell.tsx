@@ -295,60 +295,39 @@ const AppShell: React.FC<{ children: React.ReactNode }> = ({ children }) => {
 const ConnectionStatus: React.FC = () => {
   const isVitest = typeof process !== 'undefined' && Boolean(process.env?.VITEST);
   const e2eMode = readBool('VITE_E2E', false) && !isVitest;
-
-  if (e2eMode) {
-    return (
-      <Box
-        role="status"
-        aria-live="polite"
-        data-testid="sp-connection-status"
-        data-connection-state="ok"
-        sx={{
-          background: '#2e7d32',
-          color: '#fff',
-          px: 1,
-          py: 0.25,
-          borderRadius: 12,
-          fontSize: 12,
-          fontWeight: 500,
-          minWidth: 90,
-          textAlign: 'center',
-        }}
-      >
-        SP Connected
-      </Box>
-    );
-  }
-
   const sharePointDisabled = readBool('VITE_SKIP_SHAREPOINT', false);
+  const shouldMockConnection = e2eMode || sharePointDisabled || E2E_MSAL_MOCK_ENABLED;
+
+  return shouldMockConnection ? <ConnectionStatusMock /> : <ConnectionStatusReal sharePointDisabled={sharePointDisabled} />;
+};
+
+const ConnectionStatusMock: React.FC = () => {
+  return (
+    <Box
+      role="status"
+      aria-live="polite"
+      data-testid="sp-connection-status"
+      data-connection-state="ok"
+      sx={{
+        background: '#2e7d32',
+        color: '#fff',
+        px: 1,
+        py: 0.25,
+        borderRadius: 12,
+        fontSize: 12,
+        fontWeight: 500,
+        minWidth: 90,
+        textAlign: 'center',
+      }}
+    >
+      SP Connected
+    </Box>
+  );
+};
+
+const ConnectionStatusReal: React.FC<{ sharePointDisabled: boolean }> = ({ sharePointDisabled }) => {
   const forceSharePoint = readBool('VITE_FORCE_SHAREPOINT', false);
   const sharePointFeatureEnabled = readBool('VITE_FEATURE_SCHEDULES_SP', false);
-  const shouldMockConnection = sharePointDisabled || E2E_MSAL_MOCK_ENABLED;
-
-  if (shouldMockConnection) {
-    return (
-      <Box
-        role="status"
-        aria-live="polite"
-        data-testid="sp-connection-status"
-        data-connection-state="ok"
-        sx={{
-          background: '#2e7d32',
-          color: '#fff',
-          px: 1,
-          py: 0.25,
-          borderRadius: 12,
-          fontSize: 12,
-          fontWeight: 500,
-          minWidth: 90,
-          textAlign: 'center',
-        }}
-      >
-        SP Connected
-      </Box>
-    );
-  }
-
   const { spFetch } = useSP();
   const { accounts } = useMsalContext();
   const accountsCount = accounts.length;
@@ -358,12 +337,12 @@ const ConnectionStatus: React.FC = () => {
   useEffect(() => {
     const { isDev: isDevelopment } = getAppConfig();
     const isVitest = typeof process !== 'undefined' && Boolean(process.env?.VITEST);
-    const shouldCheckSharePoint = !sharePointDisabled && (!isDevelopment || isVitest || forceSharePoint || sharePointFeatureEnabled);
+    const shouldCheckSharePoint =
+      !sharePointDisabled && (!isDevelopment || isVitest || forceSharePoint || sharePointFeatureEnabled);
 
-    // Skip SharePoint connectivity checks when disabled via env or flag overrides
     if (!shouldCheckSharePoint) {
       console.info('SharePoint 接続チェックをスキップし、モック状態に設定');
-      setState('ok'); // スキップ時は常に OK として扱う
+      setState('ok');
       return;
     }
 
