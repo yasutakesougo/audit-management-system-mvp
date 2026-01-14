@@ -33,6 +33,9 @@ const BASE_ENV: Record<string, string> = {
   VITE_SP_RESOURCE: 'https://contoso.sharepoint.com',
   VITE_SP_SITE_RELATIVE: '/sites/Audit',
   VITE_SP_SCOPE_DEFAULT: 'https://contoso.sharepoint.com/AllSites.Read',
+  // MSAL: Mock mode, so these are just placeholders
+  VITE_MSAL_CLIENT_ID: 'e2e-mock-client-id-12345678',
+  VITE_MSAL_TENANT_ID: 'common',
 };
 
 const BASE_STORAGE: Record<string, string> = {

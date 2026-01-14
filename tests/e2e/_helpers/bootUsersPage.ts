@@ -87,6 +87,37 @@ export async function bootUsersPage(page: Page, options: BootUsersOptions = {}):
   const route = options.route ?? '/users';
   const shouldNavigate = options.autoNavigate !== false;
 
+  // 事前監視：JSロード失敗を検出
+  const reqFailed: string[] = [];
+  const consoleErr: string[] = [];
+  const pageErr: string[] = [];
+
+  page.on('requestfailed', (req) => {
+    const url = req.url();
+    const type = req.resourceType();
+    const failure = req.failure()?.errorText;
+    if (type === 'script' || type === 'document' || type === 'stylesheet') {
+      reqFailed.push(`[requestfailed] ${type} ${url} :: ${failure ?? 'unknown'}`);
+    }
+  });
+
+  page.on('response', (res) => {
+    const url = res.url();
+    if ((url.endsWith('.js') || url.includes('/assets/')) && res.status() >= 400) {
+      reqFailed.push(`[bad response] ${res.status()} ${url}`);
+    }
+  });
+
+  page.on('pageerror', (err) => {
+    pageErr.push(`[pageerror] ${String(err)}`);
+  });
+
+  page.on('console', (msg) => {
+    if (msg.type() === 'error') {
+      consoleErr.push(`[console.error] ${msg.text()}`);
+    }
+  });
+
   await setupPlaywrightEnv(page, {
     envOverrides,
     storageOverrides,
@@ -123,5 +154,26 @@ export async function bootUsersPage(page: Page, options: BootUsersOptions = {}):
   if (shouldNavigate) {
     await page.goto(route, { waitUntil: 'load' });
     await page.waitForLoadState('networkidle');
+
+    // 確認: root が実際にマウントされたか
+    await page.waitForTimeout(200);
+    const rootHtml = await page.locator('#root').innerHTML().catch(() => '');
+    if (!rootHtml || rootHtml.trim() === '') {
+      console.log('DEBUG [bootUsersPage]: root is empty after navigation');
+      console.log('DEBUG: url', page.url());
+      console.log('DEBUG: request failures', reqFailed.slice(0, 10).join('\n'));
+      console.log('DEBUG: page errors', pageErr.join('\n'));
+      console.log('DEBUG: console errors', consoleErr.join('\n'));
+
+      // module scripts を確認
+      try {
+        const moduleScripts = await page.$$eval('script[type="module"]', (els) =>
+          (els as HTMLScriptElement[]).map((e) => e.src || '[inline]'),
+        );
+        console.log('DEBUG: module scripts', moduleScripts);
+      } catch (e) {
+        console.log('DEBUG: failed to get module scripts', String(e));
+      }
+    }
   }
 }
