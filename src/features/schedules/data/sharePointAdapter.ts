@@ -1,5 +1,6 @@
 import { toSafeError } from '@/lib/errors';
 import { fetchSp } from '@/lib/fetchSp';
+import { AuthRequiredError } from '@/lib/errors';
 import { withUserMessage } from '@/lib/notice';
 import { createSpClient, ensureConfig } from '@/lib/spClient';
 import { SCHEDULES_DEBUG } from '../debug';
@@ -15,6 +16,7 @@ type SharePointSchedulesPortOptions = {
   listRange?: ListRangeFn;
   create?: SchedulesPort['create'];
   update?: SchedulesPort['update'];
+  remove?: SchedulesPort['remove'];
 };
 
 type SharePointResponse<T> = {
@@ -23,13 +25,9 @@ type SharePointResponse<T> = {
 
 const REQUIRED_SELECT = ['Id', SCHEDULES_FIELDS.title, SCHEDULES_FIELDS.start, SCHEDULES_FIELDS.end] as const;
 const OPTIONAL_SELECT = [
-  SCHEDULES_FIELDS.personId,
-  SCHEDULES_FIELDS.personName,
   SCHEDULES_FIELDS.targetUserId,
   SCHEDULES_FIELDS.legacyUserCode,
-  SCHEDULES_FIELDS.legacyCrUserCode,
   SCHEDULES_FIELDS.serviceType,
-  SCHEDULES_FIELDS.legacyServiceType,
   SCHEDULES_FIELDS.locationName,
   SCHEDULES_FIELDS.notes,
   SCHEDULES_FIELDS.acceptedOn,
@@ -49,7 +47,6 @@ const mergeSelectFields = (fallbackOnly: boolean): readonly string[] =>
 const ESSENTIAL_SERVICE_SELECT = [
   ...REQUIRED_SELECT,
   SCHEDULES_FIELDS.serviceType,
-  SCHEDULES_FIELDS.legacyServiceType,
 ] as const;
 
 const SELECT_VARIANTS = [mergeSelectFields(false), ESSENTIAL_SERVICE_SELECT, mergeSelectFields(true)] as const;
@@ -164,6 +161,20 @@ const makeSharePointScheduleUpdater = (acquireToken: () => Promise<string | null
   };
 };
 
+const makeSharePointScheduleRemover = (acquireToken: () => Promise<string | null>): SchedulesPort['remove'] => {
+  const { baseUrl } = ensureConfig();
+  const client = createSpClient(acquireToken, baseUrl);
+
+  return async (eventId: string): Promise<void> => {
+    const idNum = Number.parseInt(eventId, 10);
+    if (!Number.isFinite(idNum)) {
+      throw new Error(`Invalid schedule id for SharePoint delete: ${eventId}`);
+    }
+
+    await client.deleteItemByTitle(SCHEDULES_LIST_TITLE, idNum);
+  };
+};
+
 export const makeSharePointSchedulesPort = (options?: SharePointSchedulesPortOptions): SchedulesPort => {
   const listImpl = options?.listRange ?? defaultListRange;
   const createImpl = options?.create ??
@@ -171,15 +182,29 @@ export const makeSharePointSchedulesPort = (options?: SharePointSchedulesPortOpt
   const updateImpl = options?.update ??
     (options?.acquireToken ? makeSharePointScheduleUpdater(options.acquireToken) : undefined);
 
+  const removeImpl = ((): SchedulesPort['remove'] => {
+    if (options?.remove) {
+      return options.remove;
+    }
+    if (options?.acquireToken) {
+      return makeSharePointScheduleRemover(options.acquireToken);
+    }
+    return async () => {
+      throw new Error('No token available for delete');
+    };
+  })();
+
   return {
     async list(range) {
       try {
         return await listImpl(range);
       } catch (error) {
-        throw withUserMessage(
-          toSafeError(error instanceof Error ? error : new Error(String(error))),
-          '予定の取得に失敗しました。時間をおいて再試行してください。',
-        );
+        const safe = toSafeError(error instanceof Error ? error : new Error(String(error)));
+        const isAuthError = error instanceof AuthRequiredError || safe.code === 'AUTH_REQUIRED' || safe.name === 'AuthRequiredError';
+        const userMessage = isAuthError
+          ? 'サインインが必要です。右上の「サインイン」からログインしてください。'
+          : '予定の取得に失敗しました。時間をおいて再試行してください。';
+        throw withUserMessage(safe, userMessage);
       }
     },
     async create(input) {
@@ -198,6 +223,16 @@ export const makeSharePointSchedulesPort = (options?: SharePointSchedulesPortOpt
         throw withUserMessage(
           toSafeError(error instanceof Error ? error : new Error(String(error))),
           '予定の更新に失敗しました。時間をおいて再試行してください。',
+        );
+      }
+    },
+    async remove(eventId: string): Promise<void> {
+      try {
+        await removeImpl!(eventId);
+      } catch (error) {
+        throw withUserMessage(
+          toSafeError(error instanceof Error ? error : new Error(String(error))),
+          '予定の削除に失敗しました。時間をおいて再試行してください。',
         );
       }
     },

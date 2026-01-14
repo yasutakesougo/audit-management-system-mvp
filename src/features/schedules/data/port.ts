@@ -84,4 +84,5 @@ export interface SchedulesPort {
   list(range: DateRange): Promise<SchedItem[]>;
   create(input: CreateScheduleEventInput): Promise<SchedItem>;
   update?: (input: UpdateScheduleEventInput) => Promise<SchedItem>;
+  remove?: (eventId: string) => Promise<void>;
 }

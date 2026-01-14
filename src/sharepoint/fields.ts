@@ -269,7 +269,10 @@ export const FIELD_MAP_SURVEY_TOKUSEI = {
   created: 'Created'
 } as const;
 
-export const SURVEY_TOKUSEI_SELECT_FIELDS = Object.values(FIELD_MAP_SURVEY_TOKUSEI);
+// ResponseId is not present in some tenants; exclude from select to avoid 400s.
+export const SURVEY_TOKUSEI_SELECT_FIELDS: readonly string[] = Object.entries(FIELD_MAP_SURVEY_TOKUSEI)
+  .filter(([key]) => key !== 'responseId')
+  .map(([, value]) => value);
 
 export const USERS_SELECT_FIELDS_SAFE = [
   FIELD_MAP.Users_Master.id,

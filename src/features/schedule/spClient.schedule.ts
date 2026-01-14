@@ -19,7 +19,7 @@ type ScheduleUserCareDraft = Omit<ScheduleUserCare, 'id' | 'etag'> & {
   etag?: string;
 };
 
-const DEFAULT_LIST_TITLE = 'ScheduleEvents';
+const DEFAULT_LIST_TITLE = 'Schedules';
 const LIST_TITLE = (() => {
   const override = readEnv('VITE_SP_LIST_SCHEDULES', '').trim();
   return override || DEFAULT_LIST_TITLE;

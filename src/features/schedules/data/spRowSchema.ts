@@ -14,7 +14,7 @@ export type SpScheduleCategoryRaw = z.infer<typeof SpScheduleCategoryRaw>;
 /**
  * SharePoint raw row schema.
  * - Current Schedules list uses: Title, Start, End, UserCode, AssignedStaff, etc.
- * - Legacy schedule list may use: EventDate, EndDate, cr014_usercode, cr014_category.
+ * - Legacy schedule list may use: EventDate, EndDate, cr014_category.
  *
  * We accept both to keep the adapter resilient.
  */
@@ -28,9 +28,6 @@ export const SpScheduleRowSchema = z
     EndDate: z.string().optional().nullable(),
 
     UserCode: z.string().optional().nullable(),
-    cr014_usercode: z.string().optional().nullable(),
-    cr014_personId: z.string().optional().nullable(),
-    cr014_personName: z.string().optional().nullable(),
     TargetUserId: z.unknown().optional().nullable(),
 
     AssignedStaff: z.union([z.number(), z.string()]).optional().nullable(),
@@ -138,14 +135,14 @@ const pickEnd = (row: SpScheduleRow): string | undefined =>
   coerceIso(row.EndDate ?? row.End);
 
 const pickUserCode = (row: SpScheduleRow): string | undefined =>
-  coerceString(row.UserCode ?? row.cr014_usercode);
+  coerceString(row.UserCode);
 
 const inferCategory = (row: SpScheduleRow): 'Org' | 'User' | 'Staff' => {
   const rawCategory = (row.cr014_category ?? row.Category) as SpScheduleCategoryRaw | undefined;
   const mapped = mapSpCategoryToDomain(rawCategory);
   if (mapped) return mapped;
 
-  const userCode = pickUserCode(row) ?? coerceString(row.cr014_personId);
+  const userCode = pickUserCode(row);
   if (userCode) return 'User';
 
   const staffId = coerceIdString(row.AssignedStaff);
@@ -203,12 +200,10 @@ export function mapSpRowToSchedule(row: SpScheduleRow): SchedItem | null {
         ? idRaw.trim()
         : `${start}-${end}`;
 
-  const primaryPersonName = coerceString(row.cr014_personName);
-
   const titleField = row.Title;
   const providedTitle = typeof titleField === 'string' && titleField.trim() ? titleField.trim() : undefined;
-  const title = providedTitle ?? primaryPersonName ?? '予定';
-  const userCodeCandidates = [coerceString(row.cr014_personId), pickUserCode(row)];
+  const title = providedTitle ?? '予定';
+  const userCodeCandidates = [pickUserCode(row)];
   let normalizedUserId: string | undefined;
   for (const candidate of userCodeCandidates) {
     const normalized = normalizeUserId(candidate);
@@ -242,7 +237,7 @@ export function mapSpRowToSchedule(row: SpScheduleRow): SchedItem | null {
     acceptedOn: coerceIso(row.AcceptedOn),
     acceptedBy: coerceString(row.AcceptedBy),
     acceptedNote: coerceString(row.AcceptedNote) ?? null,
-    personName: primaryPersonName,
+    personName: undefined,
     userLookupId: userLookupIds[0],
     assignedStaffId: assignedStaffId ?? undefined,
     vehicleId: vehicleId ?? undefined,

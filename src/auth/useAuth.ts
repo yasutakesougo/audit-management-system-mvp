@@ -1,5 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import type { IPublicClientApplication } from '@azure/msal-browser';
+import { InteractionStatus } from './interactionStatus';
 import { useCallback, useEffect } from 'react';
 import { getAppConfig, isE2eMsalMockEnabled, shouldSkipLogin } from '../lib/env';
 import { createE2EMsalAccount, persistMsalToken } from '../lib/msal';
@@ -39,6 +40,13 @@ const ensureActiveAccount = (instance: IPublicClientApplication) => {
     }
   }
   return account;
+};
+
+const isInteractionRequiredError = (err: unknown): boolean => {
+  const code = typeof err === 'object' && err && 'errorCode' in err ? String((err as { errorCode?: unknown }).errorCode) : '';
+  const name = typeof err === 'object' && err && 'name' in err ? String((err as { name?: unknown }).name) : '';
+  if (name === 'InteractionRequiredAuthError') return true;
+  return ['interaction_required', 'login_required', 'consent_required', 'user_null'].includes(code);
 };
 
 export const useAuth = () => {
@@ -154,24 +162,12 @@ export const useAuth = () => {
       });
 
       sessionStorage.removeItem('spToken');
-
-      // InteractionRequiredAuthError (MFA、同意、パスワード変更など)を詳細に判定
-      const isInteractionRequired =
-        error?.name === 'InteractionRequiredAuthError' ||
-        error?.errorCode === 'interaction_required' ||
-        error?.errorCode === 'consent_required' ||
-        error?.errorCode === 'login_required' ||
-        error?.errorCode === 'mfa_required';
-
-      if (isInteractionRequired) {
-        debugLog('Interaction required (MFA/consent/login), redirecting to authentication...');
-        await instance.acquireTokenRedirect({ scopes: [scope], account: activeAccount });
+      if (isInteractionRequiredError(error)) {
+        debugLog('Token silent failed: interaction required -> return null');
         return null;
       }
 
-      // その他のエラー（ネットワークエラーなど）もリダイレクトで再認証
-      debugLog('Other authentication error, redirecting...');
-      await instance.acquireTokenRedirect({ scopes: [scope], account: activeAccount });
+      console.warn('[auth] acquireTokenSilent failed', error);
       return null;
     }
   }, [instance, accounts]);
@@ -184,6 +180,11 @@ export const useAuth = () => {
     account: resolvedAccount,
     signIn: async () => {
       try {
+        const canInteract = inProgress === InteractionStatus.None || inProgress === 'none';
+        if (!canInteract) {
+          debugLog('loginPopup skipped because another interaction is in progress');
+          return;
+        }
         const result = await instance.loginPopup({ scopes: [defaultScope], prompt: 'select_account' });
         if (result?.account) {
           instance.setActiveAccount(result.account);
@@ -203,7 +204,12 @@ export const useAuth = () => {
             name: error?.name,
             code: error?.errorCode,
           });
-          await instance.loginRedirect({ scopes: [defaultScope], prompt: 'select_account' });
+          const canInteractRedirect = inProgress === InteractionStatus.None || inProgress === 'none';
+          if (canInteractRedirect) {
+            await instance.loginRedirect({ scopes: [defaultScope], prompt: 'select_account' });
+          } else {
+            debugLog('loginRedirect skipped because another interaction is in progress');
+          }
           return;
         }
 

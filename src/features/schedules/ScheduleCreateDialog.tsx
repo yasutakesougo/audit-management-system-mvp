@@ -1,5 +1,6 @@
 import {
   Close as CloseIcon,
+  DeleteOutline as DeleteOutlineIcon,
   EventAvailable as EventIcon,
   Save as SaveIcon
 } from '@mui/icons-material';
@@ -7,6 +8,7 @@ import {
   Alert,
   Box,
   Button,
+  CircularProgress,
   Dialog,
   DialogActions,
   DialogContent,
@@ -75,6 +77,7 @@ type ScheduleCreateDialogBaseProps = {
   open: boolean;
   onClose: () => void;
   onSubmit: (input: CreateScheduleEventInput) => Promise<void> | void;
+  onDelete?: (id: string) => Promise<void> | void;
   users: ScheduleUserOption[];
   initialDate?: Date | string;
   initialStartTime?: string;
@@ -357,6 +360,7 @@ export const ScheduleCreateDialog: React.FC<ScheduleCreateDialogProps> = (props)
     open,
     onClose,
     onSubmit,
+    onDelete,
     users,
     initialDate,
     initialStartTime,
@@ -403,6 +407,7 @@ export const ScheduleCreateDialog: React.FC<ScheduleCreateDialogProps> = (props)
   );
   const [errors, setErrors] = useState<string[]>([]);
   const [submitting, setSubmitting] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
   const announce = useAnnounce();
   const wasOpenRef = useRef(open);
   const lastFocusedRef = useRef<HTMLElement | null>(null);
@@ -937,6 +942,35 @@ export const ScheduleCreateDialog: React.FC<ScheduleCreateDialogProps> = (props)
       </DialogContent>
 
       <DialogActions>
+        {mode === 'edit' && _eventId && onDelete && (
+          <Button
+            onClick={async () => {
+              const confirmed = window.confirm('この予定を削除します。よろしいですか？');
+              if (!confirmed) return;
+              try {
+                setIsDeleting(true);
+                await onDelete(_eventId);
+                onClose();
+              } catch (error) {
+                console.error('Failed to delete schedule:', error);
+              } finally {
+                setIsDeleting(false);
+              }
+            }}
+            startIcon={<DeleteOutlineIcon />}
+            color="error"
+            disabled={submitting || isDeleting}
+          >
+            {isDeleting ? (
+              <>
+                <span>削除中…</span>
+                <CircularProgress size={16} sx={{ ml: 1 }} />
+              </>
+            ) : (
+              '削除'
+            )}
+          </Button>
+        )}
         <Button onClick={handleClose} startIcon={<CloseIcon />} disabled={submitting}>
           キャンセル
         </Button>

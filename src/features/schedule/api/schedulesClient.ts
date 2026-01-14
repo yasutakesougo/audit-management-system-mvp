@@ -467,11 +467,11 @@ function buildSpQueryPath(category: ScheduleCategory, r: Range): string {
 }
 
 function resolveSchedulesListIdentifier(): string {
-  const raw = readEnv('VITE_SP_LIST_SCHEDULES', 'ScheduleEvents').trim();
-  if (!raw) return "lists/getbytitle('ScheduleEvents')";
+  const raw = readEnv('VITE_SP_LIST_SCHEDULES', 'Schedules').trim();
+  if (!raw) return "lists/getbytitle('Schedules')";
   if (/^guid:/i.test(raw)) {
     const guid = raw.replace(/^guid:/i, '').replace(/[{}]/g, '').trim();
-    return guid ? `lists(guid'${guid}')` : "lists/getbytitle('ScheduleEvents')";
+    return guid ? `lists(guid'${guid}')` : "lists/getbytitle('Schedules')";
   }
   const escaped = raw.replace(/'/g, "''");
   return `lists/getbytitle('${escaped}')`;

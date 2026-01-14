@@ -246,4 +246,11 @@ export const demoSchedulesPort: SchedulesPort = {
     demoItems[index] = next;
     return next;
   },
+  async remove(eventId: string) {
+    const index = demoItems.findIndex((item) => item.id === eventId);
+    if (index === -1) {
+      throw new Error(`Schedule not found: ${eventId}`);
+    }
+    demoItems = [...demoItems.slice(0, index), ...demoItems.slice(index + 1)];
+  },
 };

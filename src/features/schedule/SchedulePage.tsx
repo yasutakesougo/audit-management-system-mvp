@@ -41,6 +41,7 @@ import UserTab from '@/features/schedule/views/UserTab';
 import ScheduleCreateDialog, { type CreateScheduleEventInput, type ScheduleFormState, type ScheduleServiceType, type ScheduleUserOption } from '@/features/schedules/ScheduleCreateDialog';
 import { useScheduleUserOptions } from '@/features/schedules/useScheduleUserOptions';
 import { getAppConfig, skipSharePoint } from '@/lib/env';
+import { AuthRequiredError } from '@/lib/errors';
 import { useSP } from '@/lib/spClient';
 import { useStaff } from '@/stores/useStaff';
 import { TESTIDS } from '@/testids';
@@ -654,7 +655,15 @@ export default function SchedulePage() {
       setTimelineEvents(combined);
       // 成功時のリトライカウントリセットは useEffect で行う
     } catch (cause) {
-      const err = cause instanceof Error ? cause : new Error('予定の取得に失敗しました');
+      const err = (() => {
+        if (cause instanceof AuthRequiredError) {
+          return new Error('サインインが必要です。右上の「サインイン」からログインしてください。');
+        }
+        if (cause instanceof Error && cause.message === 'AUTH_REQUIRED') {
+          return new Error('サインインが必要です。右上の「サインイン」からログインしてください。');
+        }
+        return cause instanceof Error ? cause : new Error('予定の取得に失敗しました');
+      })();
       console.warn('SharePoint API エラー:', err.message);
 
       // 開発環境では SharePoint エラーの場合、無限リトライを避けて空データを使用
