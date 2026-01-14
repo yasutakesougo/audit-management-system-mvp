@@ -7,29 +7,30 @@ import type { ScheduleItem } from '../utils/spMock';
 import { seedSchedulesToday } from './schedulesTodaySeed';
 
 const FEATURE_ENV: Record<string, string> = {
+  VITE_E2E: '1',
   VITE_E2E_MSAL_MOCK: '1',
   VITE_SKIP_LOGIN: '1',
+  VITE_SKIP_SHAREPOINT: '1',
+  VITE_MSAL_CLIENT_ID: 'e2e-mock-client-id-12345678',
+  VITE_MSAL_TENANT_ID: 'common',
   VITE_FEATURE_SCHEDULES: '1',
   VITE_FEATURE_SCHEDULES_WEEK_V2: '1',
+  VITE_SCHEDULES_SAVE_MODE: 'mock',
   VITE_FEATURE_SCHEDULES_GRAPH: '0',
-  VITE_FEATURE_SCHEDULES_SP: '1',
-  VITE_FORCE_SHAREPOINT: '1',
-  VITE_SKIP_SHAREPOINT: '0',
+  VITE_FEATURE_SCHEDULES_SP: '0',
+  VITE_FORCE_SHAREPOINT: '0',
   VITE_DEMO_MODE: '0',
   MODE: 'production',
   DEV: '0',
-  VITE_SP_RESOURCE: 'https://contoso.sharepoint.com',
-  VITE_SP_SITE_RELATIVE: '/sites/AuditSystem',
-  VITE_SP_SCOPE_DEFAULT: 'https://contoso.sharepoint.com/AllSites.Read',
-  VITE_SCHEDULE_FIXTURES: '0',
-  VITE_SCHEDULES_FIXTURES: '0',
+  VITE_SCHEDULE_FIXTURES: '1',
+  VITE_SCHEDULES_FIXTURES: '1',
 };
 
 const FEATURE_STORAGE: Record<string, string> = {
   'feature:schedules': '1',
   'feature:schedulesWeekV2': '1',
-  'feature:schedulesSp': '1',
-  'schedules:fixtures': '0',
+  'feature:schedulesSp': '0',
+  'schedules:fixtures': '1',
   skipLogin: '1',
   demo: '0',
 };

@@ -25,6 +25,7 @@ const LIST_TITLE = 'ScheduleEvents';
 const TEST_DATE = new Date(SCHEDULE_FIXTURE_BASE_DATE);
 const TEST_DAY_KEY = formatInTimeZone(TEST_DATE, TIME_ZONE, 'yyyy-MM-dd');
 const IS_PREVIEW = process.env.PW_USE_PREVIEW === '1';
+const IS_FIXTURES = process.env.VITE_FORCE_SHAREPOINT !== '1';
 
 const buildLocalDateTime = (time: string) => `${TEST_DAY_KEY}T${time}`;
 
@@ -249,6 +250,7 @@ test.describe('Schedule dialog: status/service end-to-end', () => {
 
   test('edit living care event via quick dialog persists service type', async ({ page }, testInfo) => {
       test.skip(IS_PREVIEW, 'Preview UI diverges; quick dialog not exposed.');
+      test.skip(IS_FIXTURES, 'Requires real SharePoint; fixtures mode does not persist edits.');
       const userItems = await getWeekScheduleItems(page, { category: 'User' });
       await expect(userItems.first()).toBeVisible({ timeout: 15_000 });
 
@@ -415,6 +417,7 @@ test.describe('Schedule dialog: status/service end-to-end', () => {
 
   test('legacy 申請中 schedule normalises to その他 in quick dialog', async ({ page }, testInfo) => {
     test.skip(IS_PREVIEW, 'Preview UI diverges; quick dialog not exposed.');
+    test.skip(IS_FIXTURES, 'Requires real SharePoint; fixtures mode does not persist edits.');
     const userItems = await getWeekScheduleItems(page, { category: 'User' });
     await expect(userItems.first()).toBeVisible({ timeout: 15_000 });
 

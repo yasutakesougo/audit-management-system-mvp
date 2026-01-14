@@ -605,10 +605,12 @@ export async function openEditorFromRowMenu(
     )
     .first();
 
-  if ((await moreInRow.count()) === 0) {
-    await row.click({ force: true });
-  } else {
+  // Try menu-based flow first
+  if ((await moreInRow.count()) > 0) {
     await moreInRow.click({ force: true });
+  } else {
+    // On mobile/no menu button: click row directly
+    await row.click({ force: true });
   }
 
   const editor = page.getByTestId(TESTIDS['schedule-editor-root']);
@@ -625,8 +627,21 @@ export async function openEditorFromRowMenu(
     await page.waitForTimeout(150);
   }
 
+  // If editor opened directly (mobile pattern), we're done
+  const editorVisible = await editor.isVisible().catch(() => false);
+  if (editorVisible) return;
+
+  // Otherwise, expect menu and click edit item
   const menuVisible = (await menu.count().catch(() => 0)) > 0 && (await menu.isVisible().catch(() => false));
   if (!menuVisible) {
+    // Last resort: try direct row content click (title/label area)
+    const clickableInRow = row.locator('[data-testid*="title"], [role="button"], a, button').first();
+    if ((await clickableInRow.count()) > 0) {
+      await clickableInRow.click({ force: true });
+      await page.waitForTimeout(500);
+      const editorNow = await editor.isVisible().catch(() => false);
+      if (editorNow) return;
+    }
     throw new Error('Menu did not appear and editor not visible');
   }
 
