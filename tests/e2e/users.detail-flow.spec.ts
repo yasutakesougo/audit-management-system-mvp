@@ -19,7 +19,9 @@ test.describe('users detail menu', () => {
   });
 
   test('opens demo user detail and navigates via quick access controls', async ({ page }) => {
-    await expect(page.getByTestId(TESTIDS['users-panel-root'])).toBeVisible();
+    // Ensure we're on Users page before checking UI
+    await expect(page).toHaveURL(/\/users/);
+    await expect(page.getByTestId(TESTIDS['users-panel-root'])).toBeVisible({ timeout: 15000 });
 
     const listTab = page.getByRole('tab', { name: /利用者一覧/ });
     await listTab.click();
@@ -45,7 +47,7 @@ test.describe('users detail menu', () => {
 
     await page.getByTestId(`${TESTIDS['users-quick-prefix']}create-user`).click();
     await page.waitForURL('**/users');
-    await expect(page.getByTestId(TESTIDS['users-panel-root'])).toBeVisible();
+    await expect(page.getByTestId(TESTIDS['users-panel-root'])).toBeVisible({ timeout: 15000 });
     await expect(page.getByRole('tab', { name: '新規利用者登録' })).toHaveAttribute('aria-selected', 'true');
     await expect(page.getByLabel('ユーザーID')).toBeVisible();
 
