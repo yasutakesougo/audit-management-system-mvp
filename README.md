@@ -558,6 +558,11 @@ npm install
 npm run dev
 ```
 
+### 📋 CRUD 実装ガイド
+
+新規エンティティの CRUD （Users / Daily 等）を実装する際は、[docs/dev/crud-template.md](docs/dev/crud-template.md) を参照してください。  
+Port 契約設計 → Adapter 実装 → UI/UX ガード（A-1/A-2）のテンプレートが完成しており、安全で高速に量産できます。
+
 ### Type Safety
 
 We maintain strict TypeScript coverage with two-tier validation:
