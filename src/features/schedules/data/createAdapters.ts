@@ -148,10 +148,10 @@ export const toSharePointPayload = (input: CreateScheduleEventInput): SharePoint
     body[SCHEDULES_FIELDS.serviceType] = serviceType;
   }
   if (input.category === 'User') {
-    const targetIdString = asStringOrUndefined(normalizedTargetUserId);
-    if (targetIdString) {
-      body[SCHEDULES_FIELDS.targetUserId] = targetIdString;
-    }
+    // SharePoint lookup id should be a number (or null when intentionally absent)
+    body[SCHEDULES_FIELDS.targetUserId] = normalizedTargetUserId;
+    // Explicitly clear staff assignment for user schedules.
+    body[SCHEDULES_FIELDS.assignedStaff] = null;
   }
   if (locationName) {
     body[SCHEDULES_FIELDS.locationName] = locationName;
@@ -175,13 +175,25 @@ export const toSharePointPayload = (input: CreateScheduleEventInput): SharePoint
     }
   }
   if (input.category === 'Org') {
-    // No-op: org schedules do not target a user/staff
+    // Explicitly set lookup field to null so callers/tests can distinguish from "not provided".
+    body[SCHEDULES_FIELDS.targetUserId] = null;
   }
 
-  // Drop null/undefined to avoid SharePoint rejecting non-existent or text fields with nulls.
+  // Drop undefined and most nulls to avoid SharePoint rejecting text fields.
+  // Keep null for known nullable fields.
+  const keepNull = new Set<string>([
+    SCHEDULES_FIELDS.targetUserId,
+    SCHEDULES_FIELDS.acceptedNote,
+    // Some tests and callers rely on an explicit null to indicate "cleared".
+    SCHEDULES_FIELDS.assignedStaff,
+  ]);
   Object.keys(body).forEach((key) => {
     const value = body[key];
-    if (value === null || value === undefined) {
+    if (value === undefined) {
+      delete body[key];
+      return;
+    }
+    if (value === null && !keepNull.has(key)) {
       delete body[key];
     }
   });
