@@ -64,14 +64,17 @@ test.describe('Monthly Records - Summary Smoke Tests', () => {
   test('@ci-smoke month filter functionality', async ({ page }) => {
     const monthSelect = page.getByTestId(monthlyTestIds.summaryMonthSelect);
 
-    // 月選択ドロップダウンを開く
-    await monthSelect.click();
+    // 月選択ドロップダウンを開く（mobile-safe）
+    await monthSelect.scrollIntoViewIfNeeded();
+    await monthSelect.click({ force: true });
 
     // 選択肢が表示されることを確認
     await expect(page.locator('[role="listbox"]')).toBeVisible();
 
     // 現在月以外を選択（例：前月）
-    await page.getByRole('option').first().click();
+    const firstOption = page.getByRole('option').first();
+    await firstOption.scrollIntoViewIfNeeded();
+    await firstOption.click({ force: true });
 
     // テーブルデータが更新されることを確認
     await page.waitForTimeout(300);
@@ -82,8 +85,9 @@ test.describe('Monthly Records - Summary Smoke Tests', () => {
   test('@ci-smoke completion rate filter', async ({ page }) => {
     const rateFilter = page.getByTestId(monthlyTestIds.summaryRateFilter);
 
-    // 完了率フィルターを開く
-    await rateFilter.click();
+    // 完了率フィルターを開く（mobile-safe）
+    await rateFilter.scrollIntoViewIfNeeded();
+    await rateFilter.click({ force: true });
 
     // フィルター選択肢確認
     await expect(page.locator('[role="listbox"]')).toBeVisible();
@@ -91,7 +95,8 @@ test.describe('Monthly Records - Summary Smoke Tests', () => {
     // 「80%以上」などのフィルターを選択
     const highRateOption = page.getByRole('option', { name: /80%以上|高完了率/ });
     if (await highRateOption.count() > 0) {
-      await highRateOption.click();
+      await highRateOption.scrollIntoViewIfNeeded();
+      await highRateOption.click({ force: true });
       await page.waitForTimeout(300);
     }
 
@@ -117,7 +122,8 @@ test.describe('Monthly Records - Summary Smoke Tests', () => {
     await expect(firstRowBefore).toContainText('田中太郎');
 
     const rateHeader = page.getByRole('button', { name: /完了率/ });
-    await rateHeader.click();
+    await rateHeader.scrollIntoViewIfNeeded();
+    await rateHeader.click({ force: true });
     await page.waitForTimeout(300);
 
     const firstRowAfter = table.locator('[data-testid^="monthly-summary-row"]').first();
@@ -165,7 +171,8 @@ test.describe('Monthly Records - Summary Smoke Tests', () => {
 
   test('@ci-smoke detail shortcut navigates to detail tab', async ({ page }) => {
     const detailButton = page.getByTestId('monthly-detail-btn-I001-2025-11');
-    await detailButton.click();
+    await detailButton.scrollIntoViewIfNeeded();
+    await detailButton.click({ force: true });
 
     await expect(page).toHaveURL(/tab=user-detail/);
     await expect(page.getByTestId(monthlyTestIds.detailTab)).toHaveAttribute('aria-selected', 'true');

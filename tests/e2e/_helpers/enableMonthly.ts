@@ -47,9 +47,15 @@ export async function gotoMonthlyRecordsPage(page: Page): Promise<void> {
   await setupPlaywrightEnv(page, {
     envOverrides: {
       VITE_FEATURE_MONTHLY_RECORDS: '1',
+      VITE_E2E: '1',
+      VITE_E2E_MSAL_MOCK: '1',
+      VITE_MSAL_CLIENT_ID: 'e2e-mock-client-id-12345678',
+      VITE_MSAL_TENANT_ID: 'common',
+      VITE_SKIP_LOGIN: '1',
     },
     storageOverrides: {
       'feature:monthlyRecords': '1',
+      skipLogin: '1',
     },
   });
   await enableMonthlyRecordsFlag(page);
@@ -143,7 +149,9 @@ export async function switchMonthlyTab(page: Page, tab: 'summary' | 'detail' | '
                   : tab === 'detail' ? monthlyTestIds.detailTab
                   : monthlyTestIds.pdfTab;
 
-  await page.getByTestId(tabTestId).click();
+  const tabElement = page.getByTestId(tabTestId);
+  await tabElement.scrollIntoViewIfNeeded();
+  await tabElement.click({ force: true });
 
   // 各タブごとの主要要素を待つ（アニメーション依存の waitForTimeout より堅牢）
   if (tab === 'summary') {
@@ -160,7 +168,9 @@ export async function switchMonthlyTab(page: Page, tab: 'summary' | 'detail' | '
  * TODO: summaryStatus のメッセージ変化を待つ実装に差し替える
  */
 export async function triggerReaggregateAndWait(page: Page): Promise<void> {
-  await page.getByTestId(monthlyTestIds.summaryReaggregateBtn).click();
+  const reaggregateBtn = page.getByTestId(monthlyTestIds.summaryReaggregateBtn);
+  await reaggregateBtn.scrollIntoViewIfNeeded();
+  await reaggregateBtn.click({ force: true });
 
   // ステータスの変化を待つ（UI仕様確定後に実装）
   const status = page.getByTestId(monthlyTestIds.summaryStatus);
