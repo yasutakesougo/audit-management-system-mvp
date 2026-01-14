@@ -206,6 +206,8 @@ export default function WeekPage() {
   const fabRef = useRef<HTMLButtonElement | null>(null);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [dialogInitialValues, setDialogInitialValues] = useState<ScheduleEditDialogValues | null>(null);
+  const [isInlineSaving, setIsInlineSaving] = useState(false);
+  const [isInlineDeleting, setIsInlineDeleting] = useState(false);
 
   useEffect(() => {
     if (!createDialogOpen && pendingFabFocus && fabRef.current) {
@@ -469,41 +471,53 @@ export default function WeekPage() {
   }, []);
 
   const handleInlineDialogClose = useCallback(() => {
+    // 処理中は閉じられない（状態破壊防止）
+    if (isInlineSaving || isInlineDeleting) return;
     clearInlineSelection();
-  }, [clearInlineSelection]);
+  }, [clearInlineSelection, isInlineDeleting, isInlineSaving]);
 
   const inlineEditingEventId = dialogInitialValues?.id ?? null;
 
   const handleInlineDialogSubmit = useCallback(
     async (input: CreateScheduleEventInput) => {
+      // 多重実行防止
+      if (isInlineSaving || isInlineDeleting) return;
       if (!inlineEditingEventId) {
         return;
       }
       const payload = buildUpdateInput(inlineEditingEventId, input);
       try {
+        setIsInlineSaving(true);
         await update(payload);
         showSnack('success', '予定を更新しました');
         clearInlineSelection();
       } catch (e) {
         showSnack('error', '更新に失敗しました（権限・認証・ネットワークを確認）');
         throw e;
+      } finally {
+        setIsInlineSaving(false);
       }
     },
-    [clearInlineSelection, inlineEditingEventId, showSnack, update],
+    [clearInlineSelection, inlineEditingEventId, isInlineDeleting, isInlineSaving, showSnack, update],
   );
 
   const handleInlineDialogDelete = useCallback(
     async (eventId: string) => {
+      // 多重実行防止
+      if (isInlineSaving || isInlineDeleting) return;
       try {
+        setIsInlineDeleting(true);
         await remove(eventId);
         showSnack('success', '予定を削除しました');
         clearInlineSelection();
       } catch (e) {
         showSnack('error', '削除に失敗しました（権限・認証・ネットワークを確認）');
         throw e;
+      } finally {
+        setIsInlineDeleting(false);
       }
     },
-    [clearInlineSelection, remove, showSnack],
+    [clearInlineSelection, isInlineDeleting, isInlineSaving, remove, showSnack],
   );
 
   const handleTimelineCreateHint = useCallback(
@@ -817,6 +831,8 @@ export default function WeekPage() {
           onDelete={handleInlineDialogDelete}
           users={scheduleUserOptions}
           defaultUser={defaultScheduleUser ?? undefined}
+          isInlineSaving={isInlineSaving}
+          isInlineDeleting={isInlineDeleting}
         />
       ) : null}
       <ScheduleCreateDialog

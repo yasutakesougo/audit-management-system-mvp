@@ -85,6 +85,8 @@ type ScheduleCreateDialogBaseProps = {
   defaultUser?: ScheduleUserOption | null;
   dialogTestId?: string;
   submitTestId?: string;
+  isInlineSaving?: boolean;
+  isInlineDeleting?: boolean;
 };
 
 type ScheduleCreateDialogCreateProps = {
@@ -371,6 +373,8 @@ export const ScheduleCreateDialog: React.FC<ScheduleCreateDialogProps> = (props)
     initialOverride,
     dialogTestId,
     submitTestId,
+    isInlineSaving,
+    isInlineDeleting,
   } = props;
   const resolvedDialogTestId = dialogTestId ?? TESTIDS['schedule-create-dialog'];
   const headingId = `${resolvedDialogTestId}-heading`;
@@ -959,7 +963,7 @@ export const ScheduleCreateDialog: React.FC<ScheduleCreateDialogProps> = (props)
             }}
             startIcon={<DeleteOutlineIcon />}
             color="error"
-            disabled={submitting || isDeleting}
+            disabled={submitting || isDeleting || isInlineSaving || isInlineDeleting}
           >
             {isDeleting ? (
               <>
@@ -971,14 +975,14 @@ export const ScheduleCreateDialog: React.FC<ScheduleCreateDialogProps> = (props)
             )}
           </Button>
         )}
-        <Button onClick={handleClose} startIcon={<CloseIcon />} disabled={submitting}>
+        <Button onClick={handleClose} startIcon={<CloseIcon />} disabled={submitting || isInlineSaving || isInlineDeleting}>
           キャンセル
         </Button>
         <Button
           variant="contained"
           onClick={handleSubmit}
           startIcon={<SaveIcon />}
-          disabled={submitting}
+          disabled={submitting || isInlineSaving || isInlineDeleting}
           data-testid={submitTestId ?? TESTIDS['schedule-create-save']}
         >
             {submitting ? '保存中...' : primaryButtonLabel}
