@@ -23,7 +23,7 @@ flowchart LR
 ### SharePoint AppSettings リスト
 
 | Key | Value | Description | Phase |
-|-----|-------|-------------|-------|
+| --- | ----- | ----------- | ----- |
 | `MonthlyAggregation.Enabled` | `true/false` | 機能全体の有効/無効 | All |
 | `MonthlyAggregation.Stage` | `dev/pilot/partial/full` | デプロイステージ | All |
 | `MonthlyAggregation.Schedule` | `23:45` | 実行時刻 | All |

@@ -7,14 +7,14 @@
 
 ## 1. 現在のカバレッジ概要
 
-| ドメイン       | 対象 spec                          | 実行コマンド例                                                              | 状態                      | 備考                          |
-| ------------- | ---------------------------------- | --------------------------------------------------------------------------- | ------------------------- | ----------------------------- |
-| Schedule      | `tests/e2e/schedule-*.spec.ts`     | `DEV_SERVER_PORT=5173 npx playwright test tests/e2e/schedule-*.spec.ts`     | ✅ 36 tests passed        | `bootSchedule` + seededフィルター網羅 |
-| Users         | `tests/e2e/users*.spec.ts`         | `DEV_SERVER_PORT=5173 npx playwright test tests/e2e/users*.spec.ts`         | ✅ 3 tests passed         | `bootUsersPage` で統一       |
-| Dashboard     | `tests/e2e/dashboard*.spec.ts`     | `DEV_SERVER_PORT=5173 npx playwright test tests/e2e/dashboard*.spec.ts`     | ✅ 2 specs / 8 tests passed | `bootAgenda` + agenda seed |
+| ドメイン | 対象 spec | 実行コマンド例 | 状態 | 備考 |
+| --- | --- | --- | --- | --- |
+| Schedule | `tests/e2e/schedule-*.spec.ts` | `DEV_SERVER_PORT=5173 npx playwright test tests/e2e/schedule-*.spec.ts` | ✅ 36 tests passed | `bootSchedule` + seededフィルター網羅 |
+| Users | `tests/e2e/users*.spec.ts` | `DEV_SERVER_PORT=5173 npx playwright test tests/e2e/users*.spec.ts` | ✅ 3 tests passed | `bootUsersPage` で統一 |
+| Dashboard | `tests/e2e/dashboard*.spec.ts` | `DEV_SERVER_PORT=5173 npx playwright test tests/e2e/dashboard*.spec.ts` | ✅ 2 specs / 8 tests passed | `bootAgenda` + agenda seed |
 | Nurse Dashboard | `tests/e2e/nurse-dashboard-happy-path.spec.ts` | `DEV_SERVER_PORT=5173 npx playwright test tests/e2e/nurse-dashboard-happy-path.spec.ts` | ✅ 1 spec / 1 test passed | `bootNursePage` + nurse dashboard seed |
-| Nurse (BP)    | `tests/e2e/nurse.bp.sync.spec.ts`  | `DEV_SERVER_PORT=5173 npx playwright test tests/e2e/nurse*.spec.ts`         | ✅ BP 同期 3 tests passed | `bootNursePage` 利用         |
-| Nurse (legacy)| `tests/e2e/nurse.*.spec.ts` 他     | ↑ と同じ                                                                   | ⏸ `test.skip` で一時退避 | 新 UI 対応後に順次復活予定   |
+| Nurse (BP) | `tests/e2e/nurse.bp.sync.spec.ts` | `DEV_SERVER_PORT=5173 npx playwright test tests/e2e/nurse*.spec.ts` | ✅ BP 同期 3 tests passed | `bootNursePage` 利用 |
+| Nurse (legacy) | `tests/e2e/nurse.*.spec.ts` 他 | ↑ と同じ | ⏸ `test.skip` で一時退避 | 新 UI 対応後に順次復活予定 |
 
 ---
 
@@ -22,12 +22,12 @@
 
 各ドメインで「env/localStorage/SP stub 初期化」を 1 箇所に集約しています。
 
-| ドメイン   | Boot helper                               | 主な責務                                               | 詳細ドキュメント                |
-| ---------- | ------------------------------------------ | ------------------------------------------------------ | ------------------------------- |
-| Schedule   | `tests/e2e/_helpers/bootSchedule.ts`       | Schedule UI の env / localStorage / SP stub の共通化   | `docs/testing/schedule-e2e.md` |
-| Users      | `tests/e2e/_helpers/bootUsersPage.ts`      | Users UI の demo/SP モード切り替えと fixture 初期化    | `docs/testing/users-e2e.md`    |
-| Dashboard  | `tests/e2e/_helpers/bootAgenda.ts`     | Dashboard の env / handoff ローカルストア / SP stub   | 本ドキュメント（暫定）         |
-| Nurse      | `tests/e2e/_helpers/bootNursePage.ts`      | Nurse Shell + BP UI の flags / queue / SP の共通セット | `docs/testing/nurse-e2e.md`    |
+| ドメイン | Boot helper | 主な責務 | 詳細ドキュメント |
+| --- | --- | --- | --- |
+| Schedule | `tests/e2e/_helpers/bootSchedule.ts` | Schedule UI の env / localStorage / SP stub の共通化 | `docs/testing/schedule-e2e.md` |
+| Users | `tests/e2e/_helpers/bootUsersPage.ts` | Users UI の demo/SP モード切り替えと fixture 初期化 | `docs/testing/users-e2e.md` |
+| Dashboard | `tests/e2e/_helpers/bootAgenda.ts` | Dashboard の env / handoff ローカルストア / SP stub | 本ドキュメント（暫定） |
+| Nurse | `tests/e2e/_helpers/bootNursePage.ts` | Nurse Shell + BP UI の flags / queue / SP の共通セット | `docs/testing/nurse-e2e.md` |
 
 新しい spec を書くときは、基本的に **「該当ドメインの boot helper を呼んでから UI 操作に入る」** のが標準パターンです。
 
@@ -75,30 +75,30 @@
 
 ## E2E Regression Matrix (smoke)
 
-| Module   | Spec file                      | Seeds / Notes                                                      | Status |
-|----------|--------------------------------|--------------------------------------------------------------------|--------|
-| Dashboard| `tests/e2e/dashboard.smoke.spec.ts`        | `agenda.dashboard.dev.v1` + `schedules.today.dev.v1` (via `bootAgenda`) | ✅ |
-| Schedule | `tests/e2e/schedule-week.edit.aria.spec.ts`| `schedules.today.dev.v1` (via `bootSchedule`)                   | ✅ |
-| Agenda   | `tests/e2e/agenda-happy-path.spec.ts`      | `handoff.timeline.dev.v1` + summary + `schedules.today.dev.v1` shared seeds | ✅ |
-| Nurse    | `tests/e2e/nurse-dashboard-happy-path.spec.ts` | `nurse.dashboard.dev.v1` (via `bootNursePage`) | ✅ |
+| Module | Spec file | Seeds / Notes | Status |
+| --- | --- | --- | --- |
+| Dashboard | `tests/e2e/dashboard.smoke.spec.ts` | `agenda.dashboard.dev.v1` + `schedules.today.dev.v1` (via `bootAgenda`) | ✅ |
+| Schedule | `tests/e2e/schedule-week.edit.aria.spec.ts` | `schedules.today.dev.v1` (via `bootSchedule`) | ✅ |
+| Agenda | `tests/e2e/agenda-happy-path.spec.ts` | `handoff.timeline.dev.v1` + summary + `schedules.today.dev.v1` shared seeds | ✅ |
+| Nurse | `tests/e2e/nurse-dashboard-happy-path.spec.ts` | `nurse.dashboard.dev.v1` (via `bootNursePage`) | ✅ |
 
 ### Dashboard spec catalog
 
 | Spec | 目的 / カバレッジ | Seeds | 実行コマンド例 | 備考 |
-| ---- | ----------------- | ----- | -------------- | ---- |
+| --- | --- | --- | --- | --- |
 | `tests/e2e/dashboard.smoke.spec.ts` | `/`→`/dashboard` の遷移、主要カードのマウント、基本 CTA の生存確認 | `bootAgenda` で agenda dashboard / schedules seed を最小限ロード | `DEV_SERVER_PORT=5173 npx playwright test tests/e2e/dashboard.smoke.spec.ts` | 非決定的 UI（API ランダム要素）があっても落とさない設計 |
 | `tests/e2e/dashboard-happy-path.spec.ts` | 共有 seed（hand-off + schedule）を用いた determinisitic snapshot、handoff summary カウントと Schedule CTA を fixture 通りに検証 | `bootAgenda` + `agenda.dashboard.dev.v1` + `schedules.today.dev.v1` | `DEV_SERVER_PORT=5173 npx playwright test tests/e2e/dashboard-happy-path.spec.ts` | Docstring で seed 内容を明示。HUD の期待値が変わったらこの spec を更新 |
 
 ### Nurse spec catalog
 
 | Spec | 目的 / カバレッジ | Seeds | 実行コマンド例 | 備考 |
-| ---- | ----------------- | ----- | -------------- | ---- |
+| --- | --- | --- | --- | --- |
 | `tests/e2e/nurse-dashboard-happy-path.spec.ts` | HealthObservationPage（看護トップ）の vitals/tasks カードを JSON seed と 1:1 で検証 | `bootNursePage` + `nurse.dashboard.dev.v1` | `DEV_SERVER_PORT=5173 npx playwright test tests/e2e/nurse-dashboard-happy-path.spec.ts` | Nurse 朝会の幹ルート。fixture を変えたら spec も更新 |
 
 ### Users spec catalog
 
 | Spec | 目的 / カバレッジ | Seeds | 実行コマンド例 | 備考 |
-| ---- | ----------------- | ----- | -------------- | ---- |
+| --- | --- | --- | --- | --- |
 | `tests/e2e/users-dashboard-happy-path.spec.ts` | UsersPanel のシード済み一覧（Stage 1）と embedded/detail 遷移（Stage 2）を deterministic に確認 | `bootUsersPage` + `users.master.dev.v1` | `DEV_SERVER_PORT=5173 npx playwright test tests/e2e/users-dashboard-happy-path.spec.ts --reporter=line` | Users module seed の第1号。fixture を更新したら spec も合わせて同期 |
 
 ---
