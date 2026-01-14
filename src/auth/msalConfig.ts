@@ -7,9 +7,12 @@ const config = appConfig as unknown as Record<string, string | undefined>;
 
 // NOTE: In CI/unit tests we don't require real MSAL IDs; allow safe placeholders.
 const isTestEnv =
-  (typeof process !== 'undefined' && !!process.env.VITEST) ||
-  // Vite/Vitest provides import.meta.env.MODE === 'test'
-  ((import.meta as unknown as { env?: Record<string, unknown> })?.env?.MODE === 'test');
+  (typeof process !== 'undefined' &&
+    (process.env.VITEST === '1' ||
+      process.env.VITEST === 'true' ||
+      process.env.NODE_ENV === 'test')) ||
+  // Vitest also exposes a global marker in the test runtime.
+  (typeof globalThis !== 'undefined' && !!(globalThis as unknown as { __vitest__?: unknown }).__vitest__);
 
 let effectiveClientId = config.VITE_MSAL_CLIENT_ID || config.VITE_AAD_CLIENT_ID;
 let effectiveTenantId = config.VITE_MSAL_TENANT_ID || config.VITE_AAD_TENANT_ID;
