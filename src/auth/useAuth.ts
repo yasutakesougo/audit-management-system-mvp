@@ -42,12 +42,6 @@ const ensureActiveAccount = (instance: IPublicClientApplication) => {
   return account;
 };
 
-const isInteractionRequiredError = (err: unknown): boolean => {
-  const code = typeof err === 'object' && err && 'errorCode' in err ? String((err as { errorCode?: unknown }).errorCode) : '';
-  const name = typeof err === 'object' && err && 'name' in err ? String((err as { name?: unknown }).name) : '';
-  if (name === 'InteractionRequiredAuthError') return true;
-  return ['interaction_required', 'login_required', 'consent_required', 'user_null'].includes(code);
-};
 
 export const useAuth = () => {
   if (isE2eMsalMockEnabled()) {
@@ -162,15 +156,31 @@ export const useAuth = () => {
       });
 
       sessionStorage.removeItem('spToken');
-      if (isInteractionRequiredError(error)) {
-        debugLog('Token silent failed: interaction required -> return null');
-        return null;
-      }
 
       console.warn('[auth] acquireTokenSilent failed', error);
+
+      // When silent token acquisition fails, fall back to redirect.
+      // This matches our expected UX (recover via interactive auth) and unit tests.
+      const canInteractRedirect = inProgress === InteractionStatus.None || inProgress === 'none';
+      if (canInteractRedirect) {
+        try {
+          await instance.acquireTokenRedirect({
+            scopes: [scope],
+            account: activeAccount,
+          });
+        } catch (redirectError: any) {
+          debugLog('acquireTokenRedirect failed', {
+            errorName: redirectError?.name,
+            errorCode: redirectError?.errorCode,
+            message: redirectError?.message || 'Unknown error',
+          });
+        }
+      } else {
+        debugLog('acquireTokenRedirect skipped because another interaction is in progress');
+      }
       return null;
     }
-  }, [instance, accounts]);
+  }, [instance, accounts, inProgress]);
 
   const resolvedAccount = instance.getActiveAccount() ?? accounts[0] ?? null;
   const isAuthenticated = !!resolvedAccount;
