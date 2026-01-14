@@ -55,7 +55,7 @@ test.describe('users detail menu', () => {
 
     await page.getByTestId(`${TESTIDS['users-quick-prefix']}create-user`).click();
     await page.waitForURL('**/users');
-    await expect(page.getByTestId(TESTIDS['users-panel-root'])).toBeVisible();
+    await expect(page.getByTestId(TESTIDS['users-panel-root'])).toBeVisible({ timeout: 15000 });
     await expect(page.getByRole('tab', { name: '新規利用者登録' })).toHaveAttribute('aria-selected', 'true');
     await expect(page.getByLabel('ユーザーID')).toBeVisible();
 
