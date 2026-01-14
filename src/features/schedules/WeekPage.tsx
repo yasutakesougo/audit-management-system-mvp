@@ -6,6 +6,7 @@ import { useAnnounce } from '@/a11y/LiveAnnouncer';
 import { MASTER_SCHEDULE_TITLE_JA } from '@/features/schedule/constants';
 import { ensureDateParam, normalizeToDayStart, pickDateParam } from '@/features/schedule/dateQuery';
 import type { Category } from '@/features/schedule/types';
+import { notifySnackbarSuccess, notifySnackbarError } from '@/lib/notice';
 import ScheduleCreateDialog, { type CreateScheduleEventInput, type ScheduleFormState } from '@/features/schedules/ScheduleCreateDialog';
 import ScheduleEmptyHint from '@/features/schedules/components/ScheduleEmptyHint';
 import SchedulesFilterResponsive from '@/features/schedules/components/SchedulesFilterResponsive';
@@ -489,10 +490,10 @@ export default function WeekPage() {
       try {
         setIsInlineSaving(true);
         await update(payload);
-        showSnack('success', '予定を更新しました');
+        notifySnackbarSuccess(showSnack, '予定を更新しました');
         clearInlineSelection();
       } catch (e) {
-        showSnack('error', '更新に失敗しました（権限・認証・ネットワークを確認）');
+        notifySnackbarError(showSnack, e, { fallback: '更新に失敗しました（権限・認証・ネットワークを確認）' });
         throw e;
       } finally {
         setIsInlineSaving(false);
@@ -508,10 +509,10 @@ export default function WeekPage() {
       try {
         setIsInlineDeleting(true);
         await remove(eventId);
-        showSnack('success', '予定を削除しました');
+        notifySnackbarSuccess(showSnack, '予定を削除しました');
         clearInlineSelection();
       } catch (e) {
-        showSnack('error', '削除に失敗しました（権限・認証・ネットワークを確認）');
+        notifySnackbarError(showSnack, e, { fallback: '削除に失敗しました（権限・認証・ネットワークを確認）' });
         throw e;
       } finally {
         setIsInlineDeleting(false);

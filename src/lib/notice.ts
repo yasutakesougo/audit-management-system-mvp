@@ -85,3 +85,25 @@ export const notify = (message: string): void => {
 };
 
 export const getRegisteredNotifier = (): NoticeHandler => registeredHandler;
+
+/**
+ * Snackbar 通知用の薄いヘルパー
+ * - success: メッセージをそのまま表示
+ * - error: console.error 出力 + fallback メッセージを表示
+ */
+export const notifySnackbarSuccess = (
+	showSnack: (severity: 'success' | 'error' | 'info' | 'warning', message: string) => void,
+	message: string
+): void => {
+	showSnack('success', message);
+};
+
+export const notifySnackbarError = (
+	showSnack: (severity: 'success' | 'error' | 'info' | 'warning', message: string) => void,
+	error: unknown,
+	options?: { fallback?: string }
+): void => {
+	console.error('[snackbar error]', error);
+	const fallback = options?.fallback ?? DEFAULT_MESSAGE;
+	showSnack('error', fallback);
+};
