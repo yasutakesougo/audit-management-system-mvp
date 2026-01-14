@@ -2,12 +2,14 @@ import { useAuth } from '@/auth/useAuth';
 import { useFeatureFlag, type FeatureFlagSnapshot } from '@/config/featureFlags';
 import { isE2E } from '@/env';
 import { getAppConfig, isDemoModeEnabled, readEnv } from '@/lib/env';
+import { InteractionStatus } from '@/auth/interactionStatus';
 import Button from '@mui/material/Button';
 import Paper from '@mui/material/Paper';
 import Stack from '@mui/material/Stack';
 import Typography from '@mui/material/Typography';
-import { type ReactElement, useMemo, useState } from 'react';
+import { type ReactElement, useEffect, useMemo, useRef, useState } from 'react';
 import { Navigate, type NavigateProps, useLocation } from 'react-router-dom';
+import { useMsalContext } from '@/auth/MsalProvider';
 
 export type ProtectedRouteProps = {
   flag: keyof FeatureFlagSnapshot;
@@ -65,11 +67,26 @@ const shouldBypassInE2E = (flag: keyof FeatureFlagSnapshot): boolean => {
 export default function ProtectedRoute({ flag, children, fallbackPath = '/' }: ProtectedRouteProps) {
   const enabled = useFeatureFlag(flag);
   const { isAuthenticated, loading, shouldSkipLogin, signIn } = useAuth();
+  const { accounts, inProgress } = useMsalContext();
   const location = useLocation();
   const pendingPath = useMemo(() => `${location.pathname}${location.search ?? ''}`, [location.pathname, location.search]);
+  const signInAttemptedRef = useRef(false);
 
   const isAutomationOrDemo = isAutomationRuntime() || isDemoModeEnabled();
   const allowBypass = isAutomationOrDemo || isSkipLoginEnabled() || !isMsalConfigured();
+
+  // One-shot auto sign-in to avoid interaction_in_progress from multiple triggers
+  useEffect(() => {
+    if (allowBypass) return;
+    if (accounts.length > 0) {
+      signInAttemptedRef.current = false;
+      return;
+    }
+    if (inProgress !== InteractionStatus.None && inProgress !== 'none') return;
+    if (signInAttemptedRef.current) return;
+    signInAttemptedRef.current = true;
+    void signIn();
+  }, [accounts.length, allowBypass, inProgress, signIn]);
 
   // Automation / Demo / Skip-login / 未設定MSALでは認証ガードをバイパス（フラグは尊重）
   if (allowBypass) {

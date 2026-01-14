@@ -41,11 +41,15 @@ type ScheduleCreateHandler = (input: CreateScheduleEventInput) => Promise<SchedI
 function SchedulesProviderBridge({ children }: BridgeProps) {
   const { acquireToken } = useAuth();
 
-  const port = useMemo(() => {
-    const createHandler: ScheduleCreateHandler = sharePointCreateEnabled
-      ? (makeSharePointScheduleCreator({ acquireToken: () => acquireToken() }) as ScheduleCreateHandler)
-      : (makeMockScheduleCreator() as ScheduleCreateHandler);
+  const createHandler: ScheduleCreateHandler = useMemo(
+    () =>
+      sharePointCreateEnabled
+        ? (makeSharePointScheduleCreator({ acquireToken: () => acquireToken() }) as ScheduleCreateHandler)
+        : (makeMockScheduleCreator() as ScheduleCreateHandler),
+    [sharePointCreateEnabled, acquireToken],
+  );
 
+  const port = useMemo(() => {
     let selectedPort: SchedulesPort;
 
     if (sharePointListEnabled) {
@@ -54,6 +58,7 @@ function SchedulesProviderBridge({ children }: BridgeProps) {
         acquireToken: () => acquireToken(),
         create: createHandler,
       });
+
     } else if (graphEnabled) {
       console.info('[schedules] using Graph port');
       selectedPort = makeGraphSchedulesPort(() => acquireToken(GRAPH_RESOURCE), { create: createHandler });
@@ -63,11 +68,12 @@ function SchedulesProviderBridge({ children }: BridgeProps) {
         list: (range) => demoSchedulesPort.list(range),
         create: (input) => createHandler(input),
         update: demoSchedulesPort.update,
+        remove: demoSchedulesPort.remove,
       } satisfies SchedulesPort;
     }
 
     return selectedPort;
-  }, [acquireToken, graphEnabled, sharePointCreateEnabled, sharePointListEnabled]);
+  }, [createHandler, graphEnabled, sharePointCreateEnabled, sharePointListEnabled, acquireToken]);
 
   return <SchedulesProvider value={port}>{children}</SchedulesProvider>;
 }

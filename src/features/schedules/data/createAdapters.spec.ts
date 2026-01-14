@@ -60,9 +60,11 @@ describe('createAdapters helpers', () => {
     };
 
     const payload = toSharePointPayload(input);
-    expect(payload.body[SCHEDULES_FIELDS.personId]).toBe('U001');
-    expect(payload.body[SCHEDULES_FIELDS.personName]).toBe('テスト利用者');
     expect(payload.body[SCHEDULES_FIELDS.targetUserId]).toBe(42);
+    expect(payload.body[SCHEDULES_FIELDS.assignedStaff]).toBeNull();
+    expect(payload.body).not.toHaveProperty('cr014_personId');
+    expect(payload.body).not.toHaveProperty('cr014_personName');
+    expect(payload.body).not.toHaveProperty('cr014_usercode');
   });
 
   it('allows Org schedules without user or staff IDs', () => {
@@ -72,8 +74,6 @@ describe('createAdapters helpers', () => {
     };
 
     const payload = toSharePointPayload(input);
-    expect(payload.body[SCHEDULES_FIELDS.personId]).toBeNull();
-    expect(payload.body[SCHEDULES_FIELDS.personName]).toBeNull();
     expect(payload.body[SCHEDULES_FIELDS.targetUserId]).toBeNull();
     expect(payload.body[SCHEDULES_FIELDS.assignedStaff]).toBeUndefined();
   });

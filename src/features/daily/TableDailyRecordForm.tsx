@@ -370,6 +370,7 @@ export function TableDailyRecordForm({
               <FormControl sx={{ minWidth: 120 }}>
                 <InputLabel>役職</InputLabel>
                 <Select
+                  name="reporterRole"
                   value={formData.reporter.role}
                   onChange={(e) => setFormData(prev => ({
                     ...prev,
@@ -547,6 +548,7 @@ export function TableDailyRecordForm({
                         <TableCell>
                           <FormControl size="small" sx={{ minWidth: 100 }}>
                             <Select
+                              name={`lunchAmount-${row.userId}`}
                               value={row.lunchAmount}
                               onChange={(e) => handleRowDataChange(row.userId, 'lunchAmount', e.target.value)}
                               displayEmpty

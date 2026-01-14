@@ -1,3 +1,4 @@
+<!-- markdownlint-disable MD024 -->
 # Changelog
 
 All notable changes to this project will be documented in this file.
@@ -59,3 +60,4 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Safe for minor version bump → 0.8.x → 0.9.0 (backward-compatible public API, new config options).
 - No migration required: existing callers pick up defaults automatically.
 
+<!-- markdownlint-enable MD024 -->

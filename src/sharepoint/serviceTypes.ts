@@ -18,7 +18,7 @@ export const SERVICE_TYPE_OPTIONS = [
   'earlyLeave',  // 追加: 早退
   'other',
 
-  // 旧ScheduleEvents互換（日本語/既存ラベル）
+  // 旧イベントリスト互換（日本語/既存ラベル）
   '通常利用',        // 生活介護などの通常支援
   '送迎',           // 利用者の送迎サービス
   '一時ケア・短期',   // レスパイト/短期入所系

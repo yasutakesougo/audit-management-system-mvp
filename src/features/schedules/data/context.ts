@@ -1,6 +1,6 @@
 import { createContext, useContext } from 'react';
-import type { SchedulesPort } from './port';
 import { demoSchedulesPort } from './demoAdapter';
+import type { SchedulesPort } from './port';
 
 const SchedulesPortContext = createContext<SchedulesPort>(demoSchedulesPort);
 

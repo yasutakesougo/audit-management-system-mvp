@@ -46,10 +46,18 @@ const handlers: Array<{
   },
 ];
 
+type SpMockFetch = typeof fetch & {
+  __isSpMock?: boolean;
+  mockClear?: () => void;
+};
+
+const isSpMockFetch = (fn: typeof fetch | SpMockFetch): fn is SpMockFetch =>
+  typeof fn === 'function' && Boolean((fn as SpMockFetch).__isSpMock);
+
 const originalFetch = globalThis.fetch;
 
 export function installSharePointFetchMock(): void {
-  if ((globalThis.fetch as any)?.__isSpMock) return;
+  if (isSpMockFetch(globalThis.fetch)) return;
 
   const impl: FetchImpl = async (input, init) => {
     const url = String(input);
@@ -65,13 +73,13 @@ export function installSharePointFetchMock(): void {
     return jsonResponse({ value: [] }, 200);
   };
 
-  const mock = vi.fn(impl) as unknown as typeof fetch;
-  (mock as any).__isSpMock = true;
+  const mock = vi.fn(impl) as unknown as SpMockFetch;
+  mock.__isSpMock = true;
   globalThis.fetch = mock;
 }
 
 export function uninstallSharePointFetchMock(): void {
-  if ((globalThis.fetch as any)?.__isSpMock && originalFetch) {
+  if (isSpMockFetch(globalThis.fetch) && originalFetch) {
     globalThis.fetch = originalFetch;
   }
 }
@@ -81,8 +89,8 @@ installSharePointFetchMock();
 // Ensure the mock is present for each test and its call history does not leak across tests.
 beforeEach(() => {
   installSharePointFetchMock();
-  const current = globalThis.fetch as any;
-  if (typeof current?.mockClear === 'function') {
+  const current = globalThis.fetch;
+  if (isSpMockFetch(current) && typeof current.mockClear === 'function') {
     current.mockClear();
   }
 });

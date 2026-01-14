@@ -1,8 +1,4 @@
-import {
-  SCHEDULE_FIELD_PERSON_ID,
-  SCHEDULE_FIELD_PERSON_NAME,
-  SCHEDULE_FIELD_TARGET_USER_ID,
-} from '@/sharepoint/fields';
+import { SCHEDULE_FIELD_TARGET_USER_ID } from '@/sharepoint/fields';
 import { readEnv } from '@/lib/env';
 
 // Centralized SharePoint schema constants for schedules.
@@ -41,11 +37,8 @@ export const SCHEDULES_FIELDS = {
   status: 'Status',
   notes: 'Notes',
   entryHash: 'EntryHash',
-  personId: SCHEDULE_FIELD_PERSON_ID,
-  personName: SCHEDULE_FIELD_PERSON_NAME,
   targetUserId: SCHEDULE_FIELD_TARGET_USER_ID,
   legacyUserCode: 'UserCode',
-  legacyCrUserCode: 'cr014_usercode',
   locationName: 'LocationName',
   assignedStaff: 'AssignedStaff',
   vehicle: 'Vehicle',

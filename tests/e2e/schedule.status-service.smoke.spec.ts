@@ -19,7 +19,7 @@ import {
   openWeekEventEditor,
   waitForWeekViewReady,
 } from './utils/scheduleActions';
-import { TIME_ZONE } from './utils/spMock';
+import { TIME_ZONE, type ScheduleItem } from './utils/spMock';
 
 const LIST_TITLE = 'ScheduleEvents';
 const TEST_DATE = new Date(SCHEDULE_FIXTURE_BASE_DATE);
@@ -27,6 +27,16 @@ const TEST_DAY_KEY = formatInTimeZone(TEST_DATE, TIME_ZONE, 'yyyy-MM-dd');
 const IS_PREVIEW = process.env.PW_USE_PREVIEW === '1';
 
 const buildLocalDateTime = (time: string) => `${TEST_DAY_KEY}T${time}`;
+
+type MutableScheduleItem = ScheduleItem & {
+  cr014_status?: string;
+  IsLocked?: boolean;
+  cr014_isLocked?: boolean;
+  Accepted?: boolean;
+  cr014_accepted?: boolean;
+  ReadOnly?: boolean;
+  cr014_readOnly?: boolean;
+};
 
 const ensureWeekPanel = async (page) => {
   const panel = page.locator('#panel-week:not([hidden])');
@@ -99,6 +109,7 @@ const buildScheduleItems = () => {
 
   const livingCare = items.find((item) => item.Id === 9101) ?? items.find((item) => item.cr014_category === 'User');
   if (livingCare) {
+    const mutable = livingCare as MutableScheduleItem;
     livingCare.Title = '生活介護 午後ケア';
     livingCare.Status = '下書き';
     livingCare.cr014_serviceType = '生活介護';
@@ -106,13 +117,13 @@ const buildScheduleItems = () => {
     livingCare.cr014_staffIds = ['101'];
     livingCare.cr014_staffNames = ['E2E Admin'];
     // Loosen any potential edit locks/read-only flags the UI might check.
-    (livingCare as any).cr014_status = '下書き';
-    (livingCare as any).IsLocked = false;
-    (livingCare as any).cr014_isLocked = false;
-    (livingCare as any).Accepted = false;
-    (livingCare as any).cr014_accepted = false;
-    (livingCare as any).ReadOnly = false;
-    (livingCare as any).cr014_readOnly = false;
+    mutable.cr014_status = '下書き';
+    mutable.IsLocked = false;
+    mutable.cr014_isLocked = false;
+    mutable.Accepted = false;
+    mutable.cr014_accepted = false;
+    mutable.ReadOnly = false;
+    mutable.cr014_readOnly = false;
   }
 
   const legacyPending = items.find((item) => item.Id === 9102);
@@ -180,13 +191,10 @@ test.describe('Schedule dialog: status/service end-to-end', () => {
             name: LIST_TITLE,
             aliases: ['Schedules', 'ScheduleEvents', 'SupportSchedule'],
             items: scheduleItems,
-            onUpdate: (_id, payload, ctx) => {
+            onUpdate: (_id, payload: Record<string, unknown>, ctx) => {
               const ensureText = (value: unknown): string | undefined => (typeof value === 'string' ? value : undefined);
-              const merged = { ...ctx.previous, ...(payload as Record<string, unknown>) } as Record<string, unknown>;
-              const service =
-                ensureText((payload as any)?.ServiceType) ??
-                ensureText((payload as any)?.cr014_serviceType) ??
-                '欠席';
+              const merged: Record<string, unknown> = { ...ctx.previous, ...payload };
+              const service = ensureText(payload['ServiceType']) ?? ensureText(payload['cr014_serviceType']) ?? '欠席';
               merged.ServiceType = service;
               merged.cr014_serviceType = service;
               return merged;
@@ -383,8 +391,18 @@ test.describe('Schedule dialog: status/service end-to-end', () => {
       const response = await fetch(
         "/_api/web/lists/getbytitle('ScheduleEvents')/items?$select=Id,Title,ServiceType,cr014_serviceType,cr014_title",
       );
-      const data = await response.json();
-      const records = Array.isArray((data as any)?.value) ? (data as any).value : [];
+      type CreatedRecord = {
+        Id?: number;
+        ID?: number;
+        Title?: string;
+        cr014_title?: string;
+        ServiceType?: string;
+        cr014_serviceType?: string;
+      };
+
+      const data = (await response.json()) as { value?: unknown };
+      const value = Array.isArray(data.value) ? data.value : [];
+      const records = value as CreatedRecord[];
       return (
         records.find((item) => {
           const title = String(item?.Title ?? item?.cr014_title ?? '');
@@ -413,11 +431,24 @@ test.describe('Schedule dialog: status/service end-to-end', () => {
     }
 
     const spUserItems = await page.evaluate(async () => {
+      type ScheduleRecord = {
+        Id?: number;
+        ID?: number;
+        Title?: string;
+        cr014_title?: string;
+        ServiceType?: string;
+        cr014_serviceType?: string;
+        cr014_category?: string;
+        cr014_dayKey?: string;
+        Status?: string;
+      };
+
       const response = await fetch(
         "/_api/web/lists/getbytitle('ScheduleEvents')/items?$select=Id,Title,ServiceType,cr014_serviceType,cr014_title,cr014_category,cr014_dayKey,Status",
       );
-      const data = await response.json();
-      return Array.isArray((data as any)?.value) ? (data as any).value : [];
+      const data = (await response.json()) as { value?: unknown };
+      const value = Array.isArray(data.value) ? data.value : [];
+      return value as ScheduleRecord[];
     });
 
     if (testInfo) {

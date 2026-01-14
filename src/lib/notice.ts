@@ -16,6 +16,10 @@ const DEFAULT_MESSAGE = '操作に失敗しました。時間をおいて再度�
 
 const ENTRIES: ErrorEntry[] = [
 	{
+		match: (error) => error.name === 'AuthRequiredError' || error.code === 'AUTH_REQUIRED',
+		message: 'サインインが必要です。右上の「サインイン」からログインしてください。',
+	},
+	{
 		match: (error) => typeof error.code === 'string' && /timeout|network|503|504/.test(error.code.toLowerCase()),
 		message: 'ネットワークの状態を確認して、再度お試しください。',
 	},

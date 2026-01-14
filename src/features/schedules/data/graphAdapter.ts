@@ -215,5 +215,8 @@ export const makeGraphSchedulesPort = (getToken: GetToken, options?: GraphSchedu
       return promise;
     },
     create: (input) => createImpl(input),
-  };
+    async remove(_eventId: string): Promise<void> {
+      throw new Error('Graph adapter does not support schedule deletion');
+    },
+  } satisfies SchedulesPort;
 };

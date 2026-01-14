@@ -1,5 +1,6 @@
 import { type CSSProperties, type MouseEvent, useCallback, useEffect, useId, useMemo, useRef, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
+import { Alert, Snackbar } from '@mui/material';
 
 import { useAnnounce } from '@/a11y/LiveAnnouncer';
 import { MASTER_SCHEDULE_TITLE_JA } from '@/features/schedule/constants';
@@ -34,6 +35,11 @@ const TAB_LABELS: Record<ScheduleTab, string> = {
 const DEFAULT_START_TIME = '10:00';
 const DEFAULT_END_TIME = '11:00';
 const SCHEDULES_TZ = resolveSchedulesTz();
+
+const normalizeTabParam = (params: URLSearchParams): ScheduleTab => {
+  const raw = params.get('tab');
+  return raw === 'day' || raw === 'timeline' ? raw : 'week';
+};
 
 const startOfWeek = (date: Date): Date => {
   const next = new Date(date);
@@ -172,10 +178,21 @@ let pendingFabFocus = false;
 
 export default function WeekPage() {
   const announce = useAnnounce();
-  const [tab, setTab] = useState<ScheduleTab>('week');
+  const [searchParams, setSearchParams] = useSearchParams();
+  const [snack, setSnack] = useState<{
+    open: boolean;
+    severity: 'success' | 'error' | 'info' | 'warning';
+    message: string;
+  }>({ open: false, severity: 'info', message: '' });
+
+  const showSnack = useCallback(
+    (severity: 'success' | 'error' | 'info' | 'warning', message: string) =>
+      setSnack({ open: true, severity, message }),
+    []
+  );
+  const [tab, setTab] = useState<ScheduleTab>(() => normalizeTabParam(searchParams));
   const [categoryFilter, setCategoryFilter] = useState<'All' | Category>('All');
   const [query, setQuery] = useState('');
-  const [searchParams, setSearchParams] = useSearchParams();
   const rawDateParam = useMemo(() => pickDateParam(searchParams), [searchParams]);
   const focusDate = useMemo(() => normalizeToDayStart(rawDateParam), [rawDateParam]);
   const [activeDateIso, setActiveDateIso] = useState<string | null>(() => toDateIso(focusDate));
@@ -207,7 +224,7 @@ export default function WeekPage() {
     const start = startOfWeek(focusDate);
     return makeRange(start, endOfWeek(start));
   }, [focusDate]);
-  const { items, loading: isLoading, create, update } = useSchedules(weekRange);
+  const { items, loading: isLoading, create, update, remove } = useSchedules(weekRange);
   const filteredItems = useMemo(() => {
     const needle = query.trim().toLowerCase();
     return items.filter((item) => {
@@ -319,6 +336,17 @@ export default function WeekPage() {
     day: `${tablistId}-tab-day`,
     timeline: `${tablistId}-tab-timeline`,
   };
+
+  useEffect(() => {
+    const resolved = normalizeTabParam(searchParams);
+    setTab((prev) => (prev === resolved ? prev : resolved));
+    const current = searchParams.get('tab');
+    if (current !== resolved) {
+      const next = new URLSearchParams(searchParams);
+      next.set('tab', resolved);
+      setSearchParams(next, { replace: true });
+    }
+  }, [searchParams, setSearchParams]);
 
   const primeRouteReset = useCallback(() => {
     if (typeof window === 'undefined') {
@@ -435,10 +463,14 @@ export default function WeekPage() {
     setDialogOpen(true);
   }, []);
 
-  const handleInlineDialogClose = useCallback(() => {
+  const clearInlineSelection = useCallback(() => {
     setDialogOpen(false);
     setDialogInitialValues(null);
   }, []);
+
+  const handleInlineDialogClose = useCallback(() => {
+    clearInlineSelection();
+  }, [clearInlineSelection]);
 
   const inlineEditingEventId = dialogInitialValues?.id ?? null;
 
@@ -448,11 +480,30 @@ export default function WeekPage() {
         return;
       }
       const payload = buildUpdateInput(inlineEditingEventId, input);
-      await update(payload);
-      setDialogOpen(false);
-      setDialogInitialValues(null);
+      try {
+        await update(payload);
+        showSnack('success', '予定を更新しました');
+        clearInlineSelection();
+      } catch (e) {
+        showSnack('error', '更新に失敗しました（権限・認証・ネットワークを確認）');
+        throw e;
+      }
     },
-    [inlineEditingEventId, update],
+    [clearInlineSelection, inlineEditingEventId, showSnack, update],
+  );
+
+  const handleInlineDialogDelete = useCallback(
+    async (eventId: string) => {
+      try {
+        await remove(eventId);
+        showSnack('success', '予定を削除しました');
+        clearInlineSelection();
+      } catch (e) {
+        showSnack('error', '削除に失敗しました（権限・認証・ネットワークを確認）');
+        throw e;
+      }
+    },
+    [clearInlineSelection, remove, showSnack],
   );
 
   const handleTimelineCreateHint = useCallback(
@@ -561,7 +612,7 @@ export default function WeekPage() {
       >
         <span hidden>週間スケジュール</span>
         <SchedulesHeader
-          mode="week"
+          mode={tab === 'day' ? 'day' : 'week'}
           title={MASTER_SCHEDULE_TITLE_JA}
           subLabel="週表示（週間の予定一覧）"
           periodLabel={`表示期間: ${weekLabel}`}
@@ -576,6 +627,7 @@ export default function WeekPage() {
           dayHref={dayViewHref}
           weekHref={weekViewHref}
           monthHref={monthViewHref}
+          modes={[ 'day', 'week' ]}
           prevTestId={TESTIDS.SCHEDULES_PREV_WEEK}
           nextTestId={TESTIDS.SCHEDULES_NEXT_WEEK}
         >
@@ -645,7 +697,13 @@ export default function WeekPage() {
                 aria-selected={isActive}
                 aria-controls={`panel-${key}`}
                 data-testid={tabTestId}
-                onClick={() => setTab(key)}
+                onClick={() => {
+                  if (tab === key) return;
+                  setTab(key);
+                  const next = new URLSearchParams(searchParams);
+                  next.set('tab', key);
+                  setSearchParams(next, { replace: true });
+                }}
                 style={tabButtonStyle(isActive)}
               >
                 {TAB_LABELS[key]}
@@ -756,6 +814,7 @@ export default function WeekPage() {
           }}
           onClose={handleInlineDialogClose}
           onSubmit={handleInlineDialogSubmit}
+          onDelete={handleInlineDialogDelete}
           users={scheduleUserOptions}
           defaultUser={defaultScheduleUser ?? undefined}
         />
@@ -771,6 +830,22 @@ export default function WeekPage() {
         defaultUser={defaultScheduleUser ?? undefined}
         {...scheduleDialogModeProps}
       />
+
+      <Snackbar
+        open={snack.open}
+        autoHideDuration={3000}
+        onClose={() => setSnack((s) => ({ ...s, open: false }))}
+        anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
+      >
+        <Alert
+          onClose={() => setSnack((s) => ({ ...s, open: false }))}
+          severity={snack.severity}
+          variant="filled"
+          sx={{ width: '100%' }}
+        >
+          {snack.message}
+        </Alert>
+      </Snackbar>
     </section>
   );
 }

@@ -1,24 +1,16 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
-import type { CreateScheduleEventInput } from './ScheduleCreateDialog';
-import { type DateRange as DataDateRange, type SchedItem, type UpdateScheduleEventInput } from './data';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { type DateRange, type SchedItem, type UpdateScheduleEventInput } from './data';
 import { useSchedulesPort } from './data/context';
-import { SCHEDULES_DEBUG } from './debug';
+import type { InlineScheduleDraft } from './data/inlineScheduleDraft';
 
-export type DateRange = DataDateRange;
+export type { InlineScheduleDraft } from './data/inlineScheduleDraft';
 
 type UseSchedulesResult = {
   items: SchedItem[];
   loading: boolean;
-  create: (draft: InlineScheduleDraft) => Promise<SchedItem>;
-  update: (input: UpdateScheduleEventInput) => Promise<SchedItem>;
-};
-
-export type InlineScheduleDraft = {
-  title: string;
-  dateIso: string;
-  startTime: string;
-  endTime: string;
-  sourceInput?: CreateScheduleEventInput;
+  create: (draft: InlineScheduleDraft) => Promise<void>;
+  update: (input: UpdateScheduleEventInput) => Promise<void>;
+  remove: (eventId: string) => Promise<void>;
 };
 
 const normalizeRange = (range: DateRange): DateRange => ({
@@ -26,59 +18,25 @@ const normalizeRange = (range: DateRange): DateRange => ({
   to: new Date(range.to).toISOString(),
 });
 
-const inferRangeMode = (range: DateRange): 'day' | 'week' | 'month' | 'custom' => {
-  const fromTs = Date.parse(range.from);
-  const toTs = Date.parse(range.to);
-  if (Number.isNaN(fromTs) || Number.isNaN(toTs)) {
-    return 'custom';
-  }
-  const diffDays = (toTs - fromTs) / (1000 * 60 * 60 * 24);
-  if (diffDays <= 1.1) return 'day';
-  if (diffDays <= 7.1) return 'week';
-  if (diffDays <= 35) return 'month';
-  return 'custom';
-};
-
 export function useSchedules(range: DateRange): UseSchedulesResult {
   const [items, setItems] = useState<SchedItem[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
+  const lastMutationTsRef = useRef<number>(0);
   const port = useSchedulesPort();
 
   const normalizedRange = useMemo(() => normalizeRange(range), [range.from, range.to]);
 
   useEffect(() => {
-    if (!SCHEDULES_DEBUG) {
-      return;
-    }
-    const view = inferRangeMode(normalizedRange);
-    // eslint-disable-next-line no-console -- dev/test diagnostics only
-    console.log('[schedules] useSchedules', {
-      view,
-      range: {
-        from: normalizedRange.from,
-        to: normalizedRange.to,
-      },
-      items: items.length,
-    });
-  }, [items.length, normalizedRange.from, normalizedRange.to]);
-
-  const refresh = useCallback(async () => {
-    setLoading(true);
-    try {
-      const data = await port.list(normalizedRange);
-      setItems(data);
-    } finally {
-      setLoading(false);
-    }
-  }, [normalizedRange, port]);
-
-  useEffect(() => {
     let alive = true;
+    const startedAt = Date.now();
     (async () => {
       try {
         setLoading(true);
         const data = await port.list(normalizedRange);
         if (!alive) return;
+        if (lastMutationTsRef.current > startedAt) {
+          return;
+        }
         setItems(data);
       } finally {
         if (alive) {
@@ -92,66 +50,47 @@ export function useSchedules(range: DateRange): UseSchedulesResult {
     };
   }, [normalizedRange.from, normalizedRange.to, port]);
 
-  const create = useCallback(async (draft: InlineScheduleDraft) => {
-    const startIso = toIsoFromParts(draft.dateIso, draft.startTime);
-    const endIso = toIsoFromParts(draft.dateIso, draft.endTime);
-    const optimisticId = `temp-${Date.now()}`;
-    const optimistic: SchedItem = {
-      id: optimisticId,
-      title: draft.title.trim() || '新規予定',
-      start: startIso,
-      end: endIso,
-      status: 'Planned',
-      statusReason: draft.sourceInput?.statusReason ?? null,
-    };
-
-    setItems((prev) => sortByStart([...prev, optimistic]));
-
-    const input = buildCreateInputFromDraft(draft);
-
-    try {
-      const normalizedTitle = draft.title.trim() || input.title;
-      const saved = await port.create({ ...input, title: normalizedTitle });
-      setItems((prev) =>
-        sortByStart(
-          prev.map((item) => (item.id === optimisticId ? saved : item)),
-        ),
-      );
-      await refresh();
-      return saved;
-    } catch (error) {
-      setItems((prev) => prev.filter((item) => item.id !== optimisticId));
-      // eslint-disable-next-line no-console
-      console.error('Failed to create schedule', error);
-      throw error;
+  const create = async (draft: InlineScheduleDraft) => {
+    if (!port.create) {
+      throw new Error('Schedule port does not support create');
     }
-  }, [port, refresh]);
+    if (!draft.sourceInput) {
+      throw new Error('Schedule draft is missing sourceInput');
+    }
+    const created = await port.create(draft.sourceInput);
+    lastMutationTsRef.current = Date.now();
+    setItems((prev) => [...prev, created]);
+  };
 
-  const update = useCallback(async (input: UpdateScheduleEventInput) => {
+  const update = async (input: UpdateScheduleEventInput) => {
     if (!port.update) {
-      throw new Error('Schedules update is not configured for this environment.');
+      throw new Error('Schedule port does not support update');
     }
+    const updated = await port.update(input);
+    lastMutationTsRef.current = Date.now();
+    setItems((prev) =>
+      prev.map((item) => {
+        if (item.id !== updated.id) return item;
+        const nextServiceType = (updated.serviceType ?? input.serviceType ?? item.serviceType) ?? undefined;
+        return {
+          ...item,
+          ...updated,
+          serviceType: nextServiceType,
+        };
+      }),
+    );
+  };
 
-    const normalized: UpdateScheduleEventInput = {
-      ...input,
-      title: input.title?.trim() || '新規予定',
-    };
-
-    try {
-      const saved = await port.update(normalized);
-      setItems((prev) =>
-        sortByStart(prev.map((item) => (item.id === saved.id ? saved : item))),
-      );
-      await refresh();
-      return saved;
-    } catch (error) {
-      // eslint-disable-next-line no-console
-      console.error('Failed to update schedule', error);
-      throw error;
+  const remove = async (eventId: string) => {
+    if (!port.remove) {
+      throw new Error('Schedule port does not support remove');
     }
-  }, [port, refresh]);
+    await port.remove(eventId);
+    lastMutationTsRef.current = Date.now();
+    setItems((prev) => prev.filter((item) => item.id !== eventId));
+  };
 
-  return { items, loading, create, update };
+  return { items, loading, create, update, remove };
 }
 
 export const makeRange = (from: Date, to: Date): DateRange => ({
@@ -159,31 +98,4 @@ export const makeRange = (from: Date, to: Date): DateRange => ({
   to: to.toISOString(),
 });
 
-const sortByStart = (list: SchedItem[]): SchedItem[] =>
-  [...list].sort((a, b) => a.start.localeCompare(b.start));
-
-const toIsoFromParts = (dateIso: string, time: string): string => {
-  const normalizedTime = time.length === 5 ? `${time}:00` : time;
-  const value = `${dateIso}T${normalizedTime}`;
-  const date = new Date(value);
-  return Number.isNaN(date.getTime()) ? new Date().toISOString() : date.toISOString();
-};
-
-const buildCreateInputFromDraft = (draft: InlineScheduleDraft): CreateScheduleEventInput => {
-  if (draft.sourceInput) {
-    return { ...draft.sourceInput, title: draft.title };
-  }
-
-  const startLocal = `${draft.dateIso}T${draft.startTime}`;
-  const endLocal = `${draft.dateIso}T${draft.endTime}`;
-  const input: CreateScheduleEventInput = {
-    title: draft.title || '新規予定',
-    category: 'Org',
-    startLocal,
-    endLocal,
-    serviceType: 'other',
-    status: 'Planned',
-    statusReason: null,
-  };
-  return input;
-};
+export type { DateRange };

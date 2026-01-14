@@ -11,6 +11,7 @@ import React, { type FocusEventHandler } from 'react';
 import { useNavigate } from 'react-router-dom';
 
 type ViewMode = 'day' | 'week' | 'month';
+type ViewModeOption = ViewMode;
 
 type Props = {
   mode: ViewMode;
@@ -49,6 +50,7 @@ type Props = {
   prevButtonLabel?: string;
   nextButtonLabel?: string;
   todayButtonLabel?: string;
+  modes?: ViewModeOption[];
 };
 
 export const SchedulesHeader: React.FC<Props> = ({
@@ -88,6 +90,7 @@ export const SchedulesHeader: React.FC<Props> = ({
   prevButtonLabel = '前の期間',
   nextButtonLabel = '次の期間',
   todayButtonLabel = '今日へ移動',
+  modes = ['day', 'week', 'month'],
 }) => {
   const navigate = useNavigate();
   const isSmall = useMediaQuery((theme: Theme) => theme.breakpoints.down('sm'));
@@ -97,6 +100,7 @@ export const SchedulesHeader: React.FC<Props> = ({
       return;
     }
     const nextHref = { day: dayHref, week: weekHref, month: monthHref }[value];
+    if (!nextHref) return;
     navigate(nextHref);
   };
 
@@ -134,9 +138,9 @@ export const SchedulesHeader: React.FC<Props> = ({
           }}
         >
           <Tabs value={mode} onChange={handleTabChange} aria-label={tablistLabel} sx={{ flexShrink: 0 }}>
-            <Tab label="日" value="day" sx={{ minHeight: 40 }} />
-            <Tab label="週" value="week" sx={{ minHeight: 40 }} />
-            <Tab label="月" value="month" sx={{ minHeight: 40 }} />
+            {modes.includes('day') && <Tab label="日" value="day" sx={{ minHeight: 40 }} />}
+            {modes.includes('week') && <Tab label="週" value="week" sx={{ minHeight: 40 }} />}
+            {modes.includes('month') && <Tab label="月" value="month" sx={{ minHeight: 40 }} />}
           </Tabs>
         </Box>
 

@@ -8,8 +8,8 @@ describe('spClient ensureListExists', () => {
   beforeEach(() => {
     // Default to failing if an unexpected fetch call happens. Tests will override with mockResolvedValueOnce.
     fetchSpy = vi
-      .spyOn(global, 'fetch' as any)
-      .mockImplementation(() => Promise.reject(new Error('unmocked fetch call')) as any);
+      .spyOn(global, 'fetch')
+      .mockImplementation(() => Promise.reject(new Error('unmocked fetch call')) as Promise<never>);
     acquireToken = vi.fn<() => Promise<string | null>>().mockResolvedValue('tok');
   });
 

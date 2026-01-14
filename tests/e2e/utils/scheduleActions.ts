@@ -87,7 +87,13 @@ export async function captureQuickDialogDebug(page: Page, _targetSelectorOrTestI
 
         const ariaLabelOf = (el: Element | null | undefined) => norm(el?.getAttribute?.('aria-label'));
         const roleOf = (el: Element | null | undefined) => norm(el?.getAttribute?.('role'));
-        const classOf = (el: Element | null | undefined) => norm((el as HTMLElement | null)?.className as any);
+        const classOf = (el: Element | null | undefined) => {
+          if (!el) return '';
+          const cls = (el as HTMLElement | SVGElement).className;
+          if (typeof cls === 'string') return norm(cls);
+          if (typeof cls === 'object' && 'baseVal' in cls) return norm(cls.baseVal);
+          return '';
+        };
 
         const isVisibleLoose = (el: Element | null | undefined) => {
           if (!el) return false;
