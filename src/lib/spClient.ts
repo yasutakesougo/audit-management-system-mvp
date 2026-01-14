@@ -610,6 +610,14 @@ export function createSpClient(
       ].join('\n'));
     }
 
+    // AbortError helper: 正常なキャンセル判定 (latest-request-only pattern)
+    const isAbortError = (e: unknown): boolean => {
+      if (e instanceof DOMException && e.name === 'AbortError') return true;
+      // 環境差異対応: Node.js AbortSignal.abort() 等
+      return typeof e === 'object' && e !== null && 'name' in e && (e as { name: string }).name === 'AbortError';
+    };
+
+
     const resolveUrl = (targetPath: string) => (/^https?:\/\//i.test(targetPath) ? targetPath : `${baseUrl}${targetPath}`);
     const doFetch = async (token: string) => {
       const url = resolveUrl(resolvedPath);
@@ -620,10 +628,21 @@ export function createSpClient(
         headers.set('Content-Type', 'application/json;odata=nometadata');
       }
       if (isRuntimeDev) console.debug('[SPFetch] URL:', url);
-      return fetch(url, { ...init, headers });
+      return fetch(url, { ...init, headers }).catch((e: unknown) => {
+        // AbortError は正常なキャンセル: リトライ/ログ不要
+        if (isAbortError(e)) throw e;
+        throw e;
+      });
     };
 
-    let response = await doFetch(token1);
+    let response: Response;
+    try {
+      response = await doFetch(token1);
+    } catch (e) {
+      // AbortError は正常なキャンセル: 即座に throw
+      if (isAbortError(e)) throw e;
+      throw e;
+    }
 
     // Retry transient (throttle/server) BEFORE auth refresh, but only if not 401/403.
     const maxAttempts = retrySettings.maxAttempts;
@@ -669,13 +688,25 @@ export function createSpClient(
         await Promise.resolve();
       }
       attempt += 1;
-      response = await doFetch(token1);
+      try {
+        response = await doFetch(token1);
+      } catch (e) {
+        // AbortError: リトライせず即終了
+        if (isAbortError(e)) throw e;
+        throw e;
+      }
     }
 
     if (!response.ok && (response.status === 401 || response.status === 403)) {
       const token2 = await acquireToken();
       if (token2 && token2 !== token1) {
-        response = await doFetch(token2);
+        try {
+          response = await doFetch(token2);
+        } catch (e) {
+          // AbortError: token refresh 不要
+          if (isAbortError(e)) throw e;
+          throw e;
+        }
       }
     }
 
