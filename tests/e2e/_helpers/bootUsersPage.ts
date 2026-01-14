@@ -87,7 +87,9 @@ export async function bootUsersPage(page: Page, options: BootUsersOptions = {}):
   const route = options.route ?? '/users';
   const shouldNavigate = options.autoNavigate !== false;
 
-  // 事前監視：JSロード失敗を検出
+  // Bootstrap monitoring: JS/network failures only logged on failure
+  // Controlled by process.env.E2E_DEBUG for local debugging
+  const isDebug = process.env.E2E_DEBUG === '1' || process.env.CI === 'true';
   const reqFailed: string[] = [];
   const consoleErr: string[] = [];
   const pageErr: string[] = [];
@@ -155,24 +157,34 @@ export async function bootUsersPage(page: Page, options: BootUsersOptions = {}):
     await page.goto(route, { waitUntil: 'load' });
     await page.waitForLoadState('networkidle');
 
-    // 確認: root が実際にマウントされたか
+    // Verify: root element actually mounted after navigation
+    // Only log on failure (root is empty) or when E2E_DEBUG enabled
     await page.waitForTimeout(200);
     const rootHtml = await page.locator('#root').innerHTML().catch(() => '');
-    if (!rootHtml || rootHtml.trim() === '') {
-      console.log('DEBUG [bootUsersPage]: root is empty after navigation');
-      console.log('DEBUG: url', page.url());
-      console.log('DEBUG: request failures', reqFailed.slice(0, 10).join('\n'));
-      console.log('DEBUG: page errors', pageErr.join('\n'));
-      console.log('DEBUG: console errors', consoleErr.join('\n'));
+    const isMounted = rootHtml && rootHtml.trim() !== '';
 
-      // module scripts を確認
-      try {
-        const moduleScripts = await page.$$eval('script[type="module"]', (els) =>
-          (els as HTMLScriptElement[]).map((e) => e.src || '[inline]'),
-        );
-        console.log('DEBUG: module scripts', moduleScripts);
-      } catch (e) {
-        console.log('DEBUG: failed to get module scripts', String(e));
+    if (!isMounted || isDebug) {
+      if (!isMounted) {
+        console.log('\n❌ ERROR [bootUsersPage]: React root is empty after navigation');
+        console.log('  URL:', page.url());
+        console.log('  Network failures:', reqFailed.slice(0, 5).join('\n  '));
+        console.log('  Page errors:', pageErr.slice(0, 5).join('\n  '));
+        console.log('  Console errors:', consoleErr.slice(0, 5).join('\n  '));
+
+        try {
+          const moduleScripts = await page.$$eval('script[type="module"]', (els) =>
+            (els as HTMLScriptElement[]).map((e) => e.src || '[inline]'),
+          );
+          console.log('  Module scripts loaded:', moduleScripts.length);
+        } catch {
+          console.log('  Failed to inspect module scripts');
+        }
+      }
+
+      if (isDebug && isMounted) {
+        console.log('[bootUsersPage] DEBUG: Bootstrap complete, root mounted');
+        console.log('  Network failures:', reqFailed.length);
+        console.log('  Console errors:', consoleErr.length);
       }
     }
   }
