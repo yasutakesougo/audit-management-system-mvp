@@ -92,6 +92,10 @@ export async function bootUsersPage(page: Page, options: BootUsersOptions = {}):
     storageOverrides,
   });
 
+  // Ensure app is initialized by navigating to root first
+  await page.goto('/', { waitUntil: 'load' });
+  await page.waitForLoadState('networkidle');
+
   if (shouldSeedUsers && Array.isArray(seededUsers)) {
     await page.addInitScript(
       ([key, payload]) => {
