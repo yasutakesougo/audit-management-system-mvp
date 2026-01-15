@@ -450,7 +450,7 @@ export default function SchedulesDayPage(): JSX.Element {
     setDialogParams(buildDialogIntent('User', anchoredDateIso));
   }, [anchoredDateIso, setDialogParams]);
 
-  const dayHref = useMemo(() => `/schedules/day?day=${range.param}`, [range.param]);
+  const dayHref = useMemo(() => `/schedules/day?date=${encodeURIComponent(range.param)}&tab=day`, [range.param]);
   const weekHref = useMemo(() => `/schedules/week?date=${range.param}`, [range.param]);
   const monthHref = useMemo(() => `/schedules/month?date=${range.param}`, [range.param]);
 
