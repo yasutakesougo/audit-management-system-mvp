@@ -123,7 +123,10 @@ export default function MonthPage() {
 
   const headingId = TESTIDS.SCHEDULES_MONTH_HEADING_ID;
   const rangeId = TESTIDS.SCHEDULES_MONTH_RANGE_ID;
-  const dayHref = useMemo(() => `/schedules/day?day=${resolvedActiveDateIso}`, [resolvedActiveDateIso]);
+  const dayHref = useMemo(
+    () => `/schedules/day?date=${encodeURIComponent(resolvedActiveDateIso)}&tab=day`,
+    [resolvedActiveDateIso],
+  );
   const weekHref = useMemo(() => `/schedules/week?date=${resolvedActiveDateIso}`, [resolvedActiveDateIso]);
   const monthHref = useMemo(
     () => `/schedules/month?date=${resolvedActiveDateIso}`,

@@ -1091,7 +1091,7 @@ export default function SchedulePage() {
 
   const handleDayNavigate = useCallback(
     (dayKey: string) => {
-      navigate(`/schedules/day?day=${encodeURIComponent(dayKey)}`);
+      navigate(`/schedules/day?date=${encodeURIComponent(dayKey)}&tab=day`);
     },
     [navigate],
   );
