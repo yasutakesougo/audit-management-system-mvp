@@ -38,19 +38,13 @@ test.describe('Schedule week smoke', () => {
   test('week tab stays active when switching views', async ({ page }) => {
     await gotoScheduleWeek(page, new Date('2025-11-24'));
 
-    const weekTab = page
-      .locator('[role="tab"][aria-controls="panel-week"]')
-      .or(page.getByTestId(TESTIDS.SCHEDULES_WEEK_TAB_WEEK))
-      .or(page.getByRole('tab', { name: /週|Week/i }))
-      .first();
-    const dayTab = page
-      .locator('[role="tab"][aria-controls="panel-day"]')
-      .or(page.getByTestId(TESTIDS.SCHEDULES_WEEK_TAB_DAY))
-      .or(page.getByRole('tab', { name: /日|Day/i }))
-      .first();
+    const tablist = page.getByTestId(TESTIDS.SCHEDULES_WEEK_TABLIST);
+    const weekTab = tablist.getByTestId(TESTIDS.SCHEDULES_WEEK_TAB_WEEK);
+    const dayTab = tablist.getByTestId(TESTIDS.SCHEDULES_WEEK_TAB_DAY);
 
     await expect(dayTab).toBeVisible({ timeout: 15_000 });
     await dayTab.click();
+    await expect(dayTab).toHaveAttribute('aria-selected', 'true');
     const dayPanel = page.locator('#panel-day');
     const dayPanelVisible = await dayPanel.isVisible().catch(() => false);
     if (dayPanelVisible) {
@@ -60,6 +54,7 @@ test.describe('Schedule week smoke', () => {
     }
 
     await weekTab.click();
+    await expect(weekTab).toHaveAttribute('aria-selected', 'true');
     await expect(page.getByTestId(TESTIDS['schedules-week-grid'])).toBeVisible({ timeout: 15_000 });
   });
 
