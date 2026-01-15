@@ -20,6 +20,13 @@ vi.mock('@/auth/useAuth', () => ({
   useAuth: vi.fn(),
 }));
 
+vi.mock('@/auth/MsalProvider', () => ({
+  useMsalContext: vi.fn(() => ({
+    accounts: [],
+    inProgress: 'none',
+  })),
+}));
+
 const mockUseAuth = vi.mocked(useAuth);
 
 // Ensure CI env vars don't affect tests
