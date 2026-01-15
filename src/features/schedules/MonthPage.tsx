@@ -31,6 +31,7 @@ type CalendarDay = {
   inMonth: boolean;
   isToday: boolean;
   eventCount: number;
+  firstTitle?: string;
 };
 
 type CalendarWeek = {
@@ -73,15 +74,18 @@ export default function MonthPage() {
 
   const { items, loading } = useSchedules(calendarRange);
 
-  const countsByDay = useMemo(() => buildDayCounts(items), [items]);
+  const daySummaries = useMemo(() => buildDaySummaries(items), [items]);
   const weeks = useMemo(
-    () => buildCalendarWeeks(anchorDate, countsByDay),
-    [anchorDate, countsByDay],
+    () => buildCalendarWeeks(anchorDate, daySummaries.counts, daySummaries.firstTitle),
+    [anchorDate, daySummaries],
   );
 
   const monthLabel = useMemo(() => formatMonthLabel(anchorDate), [anchorDate]);
   const monthAnnouncement = useMemo(() => formatMonthAnnouncement(anchorDate), [anchorDate]);
-  const totalCount = useMemo(() => countEventsInMonth(countsByDay, anchorDate), [countsByDay, anchorDate]);
+  const totalCount = useMemo(
+    () => countEventsInMonth(daySummaries.counts, anchorDate),
+    [daySummaries.counts, anchorDate],
+  );
   const showEmptyHint = !loading && totalCount === 0;
 
   useEffect(() => {
@@ -249,7 +253,12 @@ export default function MonthPage() {
                         ) : null}
                       </span>
                     </Badge>
-                    {/* eventCount is now shown via Badge above */}
+                    {day.firstTitle ? (
+                      <Typography sx={dayTitleSx} title={day.firstTitle}>
+                        {day.firstTitle}
+                        {day.eventCount > 1 ? ` +${day.eventCount - 1}` : ''}
+                      </Typography>
+                    ) : null}
                   </Button>
                 );
               })}
@@ -309,6 +318,17 @@ const dayNumberStyle = (day: CalendarDay): CSSProperties => ({
   gap: 6,
 });
 
+const dayTitleSx = {
+  mt: 0.5,
+  fontSize: 12,
+  fontWeight: 600,
+  color: 'rgba(0,0,0,0.75)',
+  overflow: 'hidden',
+  textOverflow: 'ellipsis',
+  whiteSpace: 'nowrap',
+  width: '100%',
+};
+
 const todayDotStyle: CSSProperties = {
   width: 6,
   height: 6,
@@ -364,8 +384,12 @@ const addDays = (date: Date, days: number): Date => {
   return next;
 };
 
-const buildDayCounts = (items: SchedItem[]): Record<string, number> => {
+const buildDaySummaries = (
+  items: SchedItem[],
+): { counts: Record<string, number>; firstTitle: Record<string, string> } => {
   const counts: Record<string, number> = {};
+  const firstTitle: Record<string, string> = {};
+
   for (const item of items) {
     const start = new Date(item.start);
     if (Number.isNaN(start.getTime())) continue;
@@ -378,10 +402,17 @@ const buildDayCounts = (items: SchedItem[]): Record<string, number> => {
     while (cursor <= boundary) {
       const iso = toDateIso(cursor);
       counts[iso] = (counts[iso] ?? 0) + 1;
+      // 先頭1件だけタイトルを保持（既に存在すれば上書きしない）
+      if (firstTitle[iso] == null || firstTitle[iso] === '') {
+        const title = item.title || item.note || item.notes || '';
+        if (title) {
+          firstTitle[iso] = title;
+        }
+      }
       cursor.setDate(cursor.getDate() + 1);
     }
   }
-  return counts;
+  return { counts, firstTitle };
 };
 
 const startOfDay = (date: Date): Date => {
@@ -390,7 +421,11 @@ const startOfDay = (date: Date): Date => {
   return next;
 };
 
-const buildCalendarWeeks = (anchorDate: Date, counts: Record<string, number>): CalendarWeek[] => {
+const buildCalendarWeeks = (
+  anchorDate: Date,
+  counts: Record<string, number>,
+  firstTitle: Record<string, string>,
+): CalendarWeek[] => {
   const start = startOfCalendar(anchorDate);
   const todayIso = toDateIso(new Date());
   const weeks: CalendarWeek[] = [];
@@ -406,6 +441,7 @@ const buildCalendarWeeks = (anchorDate: Date, counts: Record<string, number>): C
         inMonth: cursor.getMonth() === anchorDate.getMonth(),
         isToday: iso === todayIso,
         eventCount: counts[iso] ?? 0,
+        firstTitle: firstTitle[iso],
       });
       cursor = addDays(cursor, 1);
     }
