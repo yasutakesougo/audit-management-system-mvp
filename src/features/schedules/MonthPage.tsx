@@ -103,7 +103,8 @@ export default function MonthPage() {
         const nextDate = parseDateParam(iso);
         setAnchorDate(startOfMonth(nextDate));
       }
-      navigate(`/schedules/day?day=${iso}`);
+      // A2: Navigate to day view with explicit tab (prevents week normalization)
+      navigate(`/schedules/day?date=${encodeURIComponent(iso)}&tab=day`);
     },
     [navigate, searchParams, setSearchParams],
   );
@@ -116,7 +117,9 @@ export default function MonthPage() {
     const next = new URLSearchParams(searchParams);
     next.set('date', todayIso);
     setSearchParams(next, { replace: true });
-  }, [searchParams, setSearchParams, setActiveDateIso, setAnchorDate]);
+    // A3: Return to today in month view
+    navigate(`/schedules/month?date=${encodeURIComponent(todayIso)}&tab=month`);
+  }, [navigate, searchParams, setSearchParams, setActiveDateIso, setAnchorDate]);
 
   const headingId = TESTIDS.SCHEDULES_MONTH_HEADING_ID;
   const rangeId = TESTIDS.SCHEDULES_MONTH_RANGE_ID;
