@@ -16,6 +16,16 @@ vi.mock('@/env', async (importOriginal) => {
   };
 });
 
+vi.mock('@/lib/env', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/lib/env')>();
+  return {
+    ...actual,
+    isDemoModeEnabled: () => false,
+    isDevMode: () => false,
+    shouldSkipLogin: () => false,
+  };
+});
+
 vi.mock('@/auth/useAuth', () => ({
   useAuth: vi.fn(),
 }));
