@@ -116,6 +116,7 @@ export const TESTIDS = {
   SCHEDULES_WEEK_TAB_WEEK: 'schedules-week-tab-week',
   SCHEDULES_WEEK_TAB_DAY: 'schedules-week-tab-day',
   SCHEDULES_WEEK_TAB_TIMELINE: 'schedules-week-tab-timeline',
+  SCHEDULES_WEEK_TAB_MONTH: 'schedules-week-tab-month',
   SCHEDULES_WEEK_TIMELINE_PANEL: 'schedules-week-timeline-panel',
   SCHEDULE_WEEK_ORG_INDICATOR: 'schedule-week-org-indicator',
   SCHEDULE_DAY_ORG_INDICATOR: 'schedule-day-org-indicator',

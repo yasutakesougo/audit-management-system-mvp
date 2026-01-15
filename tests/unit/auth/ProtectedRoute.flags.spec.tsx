@@ -5,7 +5,7 @@ import { FeatureFlagsProvider, type FeatureFlagSnapshot } from '@/config/feature
 import { cleanup, render, screen, waitFor } from '@testing-library/react';
 import React from 'react';
 import { Outlet, RouterProvider, createMemoryRouter, useLocation, type RouteObject } from 'react-router-dom';
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 // Force non-E2E mode for deterministic behavior
 vi.mock('@/env', async (importOriginal) => {
@@ -21,6 +21,13 @@ vi.mock('@/auth/useAuth', () => ({
 }));
 
 const mockUseAuth = vi.mocked(useAuth);
+
+// Ensure CI env vars don't affect tests
+beforeEach(() => {
+  vi.unstubAllEnvs();
+  vi.stubEnv('VITE_DEMO_MODE', '0');
+  vi.stubEnv('VITE_SKIP_LOGIN', '0');
+});
 
 const createAuthState = (
   overrides: Partial<ReturnType<typeof useAuth>> = {}

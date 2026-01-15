@@ -690,7 +690,9 @@ export default function WeekPage() {
                 ? TESTIDS.SCHEDULES_WEEK_TAB_WEEK
                 : key === 'day'
                   ? TESTIDS.SCHEDULES_WEEK_TAB_DAY
-                  : TESTIDS.SCHEDULES_WEEK_TAB_TIMELINE;
+                  : key === 'timeline'
+                    ? TESTIDS.SCHEDULES_WEEK_TAB_TIMELINE
+                    : TESTIDS.SCHEDULES_WEEK_TAB_MONTH;
             return (
               <button
                 key={key}
