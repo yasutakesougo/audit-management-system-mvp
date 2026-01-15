@@ -1,3 +1,4 @@
+import Badge from '@mui/material/Badge';
 import Button from '@mui/material/Button';
 import Box from '@mui/material/Box';
 import Typography from '@mui/material/Typography';
@@ -221,16 +222,34 @@ export default function MonthPage() {
                       ...getDayChipSx({ isToday: day.isToday, isSelected }),
                     } as SxProps<Theme>}
                   >
-                    <span style={dayNumberStyle(day)}>
-                      {day.day}
-                      {day.isToday ? <span style={todayDotStyle} aria-hidden="true" /> : null}
-                      {day.isToday ? (
-                        <span style={{ fontSize: 12, color: '#1e88e5', marginLeft: 4 }}>(今日)</span>
-                      ) : null}
-                    </span>
-                    <span style={eventCountStyle(day)}>
-                      {day.eventCount > 0 ? `予定 ${day.eventCount} 件` : '予定 0 件'}
-                    </span>
+                    <Badge
+                      badgeContent={day.eventCount}
+                      invisible={!day.eventCount}
+                      overlap="circular"
+                      anchorOrigin={{ vertical: 'top', horizontal: 'right' }}
+                      sx={{
+                        '& .MuiBadge-badge': {
+                          backgroundColor: '#d32f2f',
+                          color: '#fff',
+                          fontSize: 11,
+                          fontWeight: 600,
+                          minWidth: 18,
+                          height: 18,
+                          padding: '0 5px',
+                          transform: 'translate(35%, -35%)',
+                          boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
+                        },
+                      }}
+                    >
+                      <span style={dayNumberStyle(day)}>
+                        {day.day}
+                        {day.isToday ? <span style={todayDotStyle} aria-hidden="true" /> : null}
+                        {day.isToday ? (
+                          <span style={{ fontSize: 12, color: '#1e88e5', marginLeft: 4 }}>(今日)</span>
+                        ) : null}
+                      </span>
+                    </Badge>
+                    {/* eventCount is now shown via Badge above */}
                   </Button>
                 );
               })}
@@ -297,12 +316,6 @@ const todayDotStyle: CSSProperties = {
   background: '#1565c0',
   display: 'inline-block',
 };
-
-const eventCountStyle = (day: CalendarDay): CSSProperties => ({
-  fontSize: 12,
-  fontWeight: 600,
-  color: day.eventCount > 0 ? 'rgba(0,0,0,0.75)' : 'rgba(0,0,0,0.5)',
-});
 
 const startOfWeek = (date: Date): Date => {
   const next = new Date(date);
