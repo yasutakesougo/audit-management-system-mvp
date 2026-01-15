@@ -17,6 +17,10 @@ jobs:
     timeout-minutes: 15
     permissions:
       contents: read
+    env:
+      VITE_MSAL_CLIENT_ID: dummy-client-id
+      VITE_MSAL_TENANT_ID: dummy-tenant-id
+      VITE_FEATURE_SCHEDULES: "1"
     
     steps:
       - name: Checkout code
