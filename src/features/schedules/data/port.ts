@@ -7,6 +7,8 @@ export type ScheduleServiceType = SpScheduleServiceType;
 
 export type ScheduleStatus = 'Planned' | 'Postponed' | 'Cancelled';
 
+export type ScheduleVisibility = 'org' | 'team' | 'private';
+
 export type DateRange = {
   from: string;
   to: string;
@@ -35,6 +37,9 @@ export type CreateScheduleEventInput = {
   acceptedOn?: string | null;
   acceptedBy?: string | null;
   acceptedNote?: string | null;
+
+  ownerUserId?: string;
+  visibility?: ScheduleVisibility;
 };
 
 export type UpdateScheduleEventInput = CreateScheduleEventInput & { id: string };
@@ -78,6 +83,9 @@ export type SchedItem = {
   acceptedOn?: string | null;
   acceptedBy?: string | null;
   acceptedNote?: string | null;
+
+  ownerUserId?: string;
+  visibility?: ScheduleVisibility;
 };
 
 export interface SchedulesPort {

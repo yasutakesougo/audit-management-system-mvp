@@ -7,6 +7,7 @@ import {
   makeMockScheduleCreator,
   makeSharePointScheduleCreator,
   makeSharePointSchedulesPort,
+  normalizeUserId,
 } from '@/features/schedules/data';
 import CssBaseline from '@mui/material/CssBaseline';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
@@ -39,7 +40,15 @@ const queryClient = new QueryClient();
 type ScheduleCreateHandler = (input: CreateScheduleEventInput) => Promise<SchedItem>;
 
 function SchedulesProviderBridge({ children }: BridgeProps) {
-  const { acquireToken } = useAuth();
+  const { acquireToken, account } = useAuth();
+
+  // Phase 1: derive currentOwnerUserId from MSAL account.username (email → normalized staffCode)
+  // Uses normalizeUserId() to align with I022-style identifiers, making future staff master lookup easier.
+  const currentOwnerUserId = useMemo(() => {
+    if (!account?.username) return undefined;
+    const normalized = normalizeUserId(account.username);
+    return normalized || undefined;
+  }, [account?.username]);
 
   const createHandler: ScheduleCreateHandler = useMemo(
     () =>
@@ -57,6 +66,7 @@ function SchedulesProviderBridge({ children }: BridgeProps) {
       selectedPort = makeSharePointSchedulesPort({
         acquireToken: () => acquireToken(),
         create: createHandler,
+        currentOwnerUserId,
       });
 
     } else if (graphEnabled) {
@@ -73,7 +83,7 @@ function SchedulesProviderBridge({ children }: BridgeProps) {
     }
 
     return selectedPort;
-  }, [createHandler, graphEnabled, sharePointCreateEnabled, sharePointListEnabled, acquireToken]);
+  }, [createHandler, graphEnabled, sharePointListEnabled, currentOwnerUserId]);
 
   return <SchedulesProvider value={port}>{children}</SchedulesProvider>;
 }

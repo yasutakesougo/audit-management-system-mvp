@@ -43,6 +43,10 @@ export const SpScheduleRowSchema = z
     StatusReason: z.string().optional().nullable(),
     EntryHash: z.string().optional().nullable(),
 
+    // Phase 1: owner/visibility
+    OwnerUserId: z.string().optional().nullable(),
+    Visibility: z.string().optional().nullable(),
+
     Created: z.string().optional().nullable(),
     Modified: z.string().optional().nullable(),
 
@@ -246,6 +250,9 @@ export function mapSpRowToSchedule(row: SpScheduleRow): SchedItem | null {
     entryHash: coerceString(row.EntryHash),
     createdAt: coerceIso(row.Created),
     updatedAt: coerceIso(row.Modified),
+    // Phase 1: owner/visibility
+    ownerUserId: coerceString(row.OwnerUserId),
+    visibility: coerceString(row.Visibility) as SchedItem['visibility'],
   } satisfies SchedItem;
 
   // Keep the original SharePoint title when provided; fall back to person name if missing.

@@ -5,7 +5,7 @@ import { FeatureFlagsProvider, type FeatureFlagSnapshot } from '@/config/feature
 import { cleanup, render, screen, waitFor } from '@testing-library/react';
 import React from 'react';
 import { Outlet, RouterProvider, createMemoryRouter, useLocation, type RouteObject } from 'react-router-dom';
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 // Force non-E2E mode for deterministic behavior
 vi.mock('@/env', async (importOriginal) => {
@@ -16,11 +16,45 @@ vi.mock('@/env', async (importOriginal) => {
   };
 });
 
+vi.mock('@/lib/env', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/lib/env')>();
+  const fakeReadEnv = (key: string, fallback = ''): string => {
+    if (key === 'VITE_MSAL_CLIENT_ID' || key === 'VITE_MSAL_TENANT_ID' || key === 'VITE_AAD_CLIENT_ID' || key === 'VITE_AAD_TENANT_ID') {
+      return 'test-value';
+    }
+    if (key === 'VITE_SKIP_LOGIN') return '0';
+    return fallback;
+  };
+  return {
+    ...actual,
+    isDemoModeEnabled: () => false,
+    isDevMode: () => false,
+    shouldSkipLogin: () => false,
+    readEnv: fakeReadEnv,
+  };
+});
+
 vi.mock('@/auth/useAuth', () => ({
   useAuth: vi.fn(),
 }));
 
+vi.mock('@/auth/MsalProvider', () => ({
+  useMsalContext: vi.fn(() => ({
+    accounts: [],
+    inProgress: 'none',
+  })),
+}));
+
 const mockUseAuth = vi.mocked(useAuth);
+
+// Ensure CI env vars don't affect tests
+beforeEach(() => {
+  vi.unstubAllEnvs();
+  vi.stubEnv('VITE_DEMO_MODE', '0');
+  vi.stubEnv('VITE_SKIP_LOGIN', '0');
+  vi.stubEnv('VITEST', '0');
+  vi.stubEnv('PLAYWRIGHT_TEST', '0');
+});
 
 const createAuthState = (
   overrides: Partial<ReturnType<typeof useAuth>> = {}

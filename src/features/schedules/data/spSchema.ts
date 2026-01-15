@@ -45,6 +45,17 @@ export const SCHEDULES_FIELDS = {
   acceptedOn: 'AcceptedOn',
   acceptedBy: 'AcceptedBy',
   acceptedNote: 'AcceptedNote',
+  // Phase 1: owner/visibility/status support
+  ownerUserId: 'OwnerUserId',
+  visibility: 'Visibility',
 } as const;
 
 export type SchedulesFieldKey = keyof typeof SCHEDULES_FIELDS;
+
+// Phase 1 defaults for owner/visibility
+export type ScheduleVisibility = 'org' | 'team' | 'private';
+
+export const DEFAULT_SCHEDULE_VISIBILITY: ScheduleVisibility = 'org';
+
+// Special value resolved at runtime to current user's staffCode
+export const OWNER_USER_ID_ME = 'staff:me';

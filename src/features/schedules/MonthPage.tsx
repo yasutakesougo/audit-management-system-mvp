@@ -12,6 +12,7 @@ import { makeRange, useSchedules } from './useSchedules';
 import { getDayChipSx } from './theme/dateStyles';
 import { SchedulesHeader } from './components/SchedulesHeader';
 import { ScheduleEmptyHint } from './components/ScheduleEmptyHint';
+import { DayPopover } from './components/DayPopover';
 import {
   useCallback,
   useEffect,
@@ -88,6 +89,17 @@ export default function MonthPage() {
   );
   const showEmptyHint = !loading && totalCount === 0;
 
+  // Day Popover state
+  const [dayPopoverAnchor, setDayPopoverAnchor] = useState<HTMLElement | null>(null);
+  const [dayPopoverDateIso, setDayPopoverDateIso] = useState<string | null>(null);
+
+  const isDayPopoverOpen = Boolean(dayPopoverAnchor) && Boolean(dayPopoverDateIso);
+
+  const handleDayPopoverClose = useCallback(() => {
+    setDayPopoverAnchor(null);
+    setDayPopoverDateIso(null);
+  }, []);
+
   useEffect(() => {
     if (monthAnnouncement) {
       announce(monthAnnouncement);
@@ -99,16 +111,23 @@ export default function MonthPage() {
   }, [setAnchorDate]);
 
   const handleDaySelect = useCallback(
-    (iso: string, inMonth: boolean) => {
+    (e: React.MouseEvent<HTMLElement>, iso: string) => {
+      // Open popover instead of navigating directly
+      setDayPopoverAnchor(e.currentTarget);
+      setDayPopoverDateIso(iso);
+    },
+    [],
+  );
+
+  const handleOpenDay = useCallback(
+    (iso: string) => {
       setActiveDateIso(iso);
       const next = new URLSearchParams(searchParams);
       next.set('date', iso);
       setSearchParams(next, { replace: true });
-      if (!inMonth) {
-        const nextDate = parseDateParam(iso);
-        setAnchorDate(startOfMonth(nextDate));
-      }
-      // A2: Navigate to day view with explicit tab (prevents week normalization)
+      const nextDate = parseDateParam(iso);
+      setAnchorDate(startOfMonth(nextDate));
+      // Navigate to day view with explicit tab (prevents week normalization)
       navigate(`/schedules/day?date=${encodeURIComponent(iso)}&tab=day`);
     },
     [navigate, searchParams, setSearchParams],
@@ -125,6 +144,13 @@ export default function MonthPage() {
     // A3: Return to today in month view
     navigate(`/schedules/month?date=${encodeURIComponent(todayIso)}&tab=month`);
   }, [navigate, searchParams, setSearchParams, setActiveDateIso, setAnchorDate]);
+
+  const getItemsForDate = useCallback(
+    (dateIso: string): SchedItem[] => {
+      return items.filter((it) => (it.start ?? '').slice(0, 10) === dateIso);
+    },
+    [items],
+  );
 
   const headingId = TESTIDS.SCHEDULES_MONTH_HEADING_ID;
   const rangeId = TESTIDS.SCHEDULES_MONTH_RANGE_ID;
@@ -218,7 +244,7 @@ export default function MonthPage() {
                     data-testid={`${TESTIDS.SCHEDULES_MONTH_DAY_PREFIX}-${day.iso}`}
                     aria-label={ariaLabel}
                     aria-current={isSelected ? 'date' : undefined}
-                    onClick={() => handleDaySelect(day.iso, day.inMonth)}
+                    onClick={(e) => handleDaySelect(e, day.iso)}
                     variant="outlined"
                     fullWidth
                     sx={{
@@ -275,6 +301,21 @@ export default function MonthPage() {
           </div>
         ) : null}
       </div>
+
+      {dayPopoverDateIso && (
+        <DayPopover
+          open={isDayPopoverOpen}
+          anchorEl={dayPopoverAnchor as HTMLButtonElement | null}
+          date={dayPopoverDateIso}
+          dateLabel={dayPopoverDateIso}
+          items={getItemsForDate(dayPopoverDateIso)}
+          onClose={handleDayPopoverClose}
+          onOpenDay={(dateIso) => {
+            handleOpenDay(dateIso);
+            handleDayPopoverClose();
+          }}
+        />
+      )}
     </section>
   );
 }

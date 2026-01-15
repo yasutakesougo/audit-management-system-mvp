@@ -29,6 +29,9 @@ jobs:
       VITE_FEATURE_SCHEDULES_GRAPH: ${{ matrix.graph }}
       VITE_SCHEDULES_TZ: "Asia/Tokyo"
       TZ: "Asia/Tokyo"
+      VITE_MSAL_CLIENT_ID: dummy-client-id
+      VITE_MSAL_TENANT_ID: dummy-tenant-id
+      VITE_FEATURE_SCHEDULES: "1"
 
     steps:
       - uses: actions/checkout@v4

@@ -17,6 +17,8 @@ type SharePointSchedulesPortOptions = {
   create?: SchedulesPort['create'];
   update?: SchedulesPort['update'];
   remove?: SchedulesPort['remove'];
+  // Phase 1: Current user's ownerUserId for visibility filtering
+  currentOwnerUserId?: string;
 };
 
 type SharePointResponse<T> = {
@@ -37,6 +39,8 @@ const OPTIONAL_SELECT = [
   SCHEDULES_FIELDS.vehicle,
   SCHEDULES_FIELDS.status,
   SCHEDULES_FIELDS.entryHash,
+  SCHEDULES_FIELDS.ownerUserId,
+  SCHEDULES_FIELDS.visibility,
   'Created',
   'Modified',
 ] as const;
@@ -197,7 +201,24 @@ export const makeSharePointSchedulesPort = (options?: SharePointSchedulesPortOpt
   return {
     async list(range) {
       try {
-        return await listImpl(range);
+        const allItems = await listImpl(range);
+        // Phase 1: visibility filtering
+        // - 'org': all users can see
+        // - 'team': same team (not implemented yet, treat as 'org' for Phase 1)
+        // - 'private': only owner can see
+        if (!options?.currentOwnerUserId) {
+          // No user context; return all 'org' items only
+          return allItems.filter(item => !item.visibility || item.visibility === 'org');
+        }
+        return allItems.filter(item => {
+          const visibility = item.visibility ?? 'org';
+          if (visibility === 'org') return true;
+          if (visibility === 'team') return true; // Phase 1: team = org
+          if (visibility === 'private') {
+            return item.ownerUserId === options.currentOwnerUserId;
+          }
+          return true;
+        });
       } catch (error) {
         const safe = toSafeError(error instanceof Error ? error : new Error(String(error)));
         const isAuthError = error instanceof AuthRequiredError || safe.code === 'AUTH_REQUIRED' || safe.name === 'AuthRequiredError';
