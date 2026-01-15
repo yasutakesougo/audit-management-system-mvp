@@ -36,8 +36,11 @@ export const DayPopover: React.FC<DayPopoverProps> = ({
   onClose,
   onOpenDay,
 }) => {
-  const handleItemClick = () => {
-    // ListItem 行全体クリックで Day表示に遷移
+  const MAX_VISIBLE = 5;
+  const visibleItems = items.slice(0, MAX_VISIBLE);
+  const hiddenCount = Math.max(0, items.length - MAX_VISIBLE);
+
+  const openDayAndClose = () => {
     onOpenDay(date);
     onClose();
   };
@@ -69,57 +72,86 @@ export const DayPopover: React.FC<DayPopoverProps> = ({
           </Typography>
         ) : (
           <List sx={{ mb: 2, maxHeight: 240, overflowY: 'auto' }}>
-            {items.map((item, index) => (
-              <React.Fragment key={`${item.id}-${index}`}>
-                <ListItem
-                  onClick={handleItemClick}
-                  tabIndex={0}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter' || e.key === ' ') {
-                      e.preventDefault();
-                      handleItemClick();
-                    }
-                  }}
-                  sx={{
-                    flexDirection: 'column',
-                    alignItems: 'flex-start',
-                    py: 1,
-                    cursor: 'pointer',
-                    transition: 'background-color 0.2s',
-                    outline: 'none',
-                    '&:hover': {
-                      backgroundColor: 'rgba(25, 103, 210, 0.04)',
-                    },
-                    '&:active': {
-                      backgroundColor: 'rgba(25, 103, 210, 0.08)',
-                    },
-                    '&:focus-visible': {
-                      outline: '2px solid',
-                      outlineColor: 'primary.main',
-                      outlineOffset: '-2px',
-                    },
-                    '&:not(:last-child)': {
-                      borderBottom: '1px solid',
-                      borderColor: 'divider',
-                    },
-                  }}
-                  data-testid={`${TESTIDS['schedules-day-popover']}-item-${index}`}
-                >
-                  <ListItemText
-                    primary={item.title || item.note || '（タイトル未設定）'}
-                    secondary={
-                      item.category ? (
-                        <span style={{ fontSize: '0.75rem', color: 'rgba(0, 0, 0, 0.6)' }}>
-                          {item.category}
-                        </span>
-                      ) : undefined
-                    }
-                    primaryTypographyProps={{ variant: 'body2', sx: { fontWeight: 500 } }}
-                    secondaryTypographyProps={{ component: 'div', sx: { mt: 0.5 } }}
-                  />
-                </ListItem>
-              </React.Fragment>
+            {visibleItems.map((item, index) => (
+              <ListItem
+                key={item.id ?? index}
+                onClick={openDayAndClose}
+                tabIndex={0}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault();
+                    openDayAndClose();
+                  }
+                }}
+                data-testid={`day-popover-item-${index}`}
+                sx={{
+                  flexDirection: 'column',
+                  alignItems: 'flex-start',
+                  py: 1,
+                  cursor: 'pointer',
+                  transition: 'background-color 0.2s',
+                  outline: 'none',
+                  '&:hover': {
+                    backgroundColor: 'rgba(25, 103, 210, 0.04)',
+                  },
+                  '&:active': {
+                    backgroundColor: 'rgba(25, 103, 210, 0.08)',
+                  },
+                  '&:focus-visible': {
+                    outline: '2px solid',
+                    outlineColor: 'primary.main',
+                    outlineOffset: '-2px',
+                  },
+                  '&:not(:last-child)': {
+                    borderBottom: '1px solid',
+                    borderColor: 'divider',
+                  },
+                }}
+              >
+                <ListItemText
+                  primary={item.title || item.note || '（タイトル未設定）'}
+                  secondary={item.category ? item.category : undefined}
+                  primaryTypographyProps={{ variant: 'body2', sx: { fontWeight: 500 } }}
+                  secondaryTypographyProps={{ variant: 'caption' }}
+                />
+              </ListItem>
             ))}
+
+            {hiddenCount > 0 && (
+              <ListItem
+                onClick={openDayAndClose}
+                tabIndex={0}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault();
+                    openDayAndClose();
+                  }
+                }}
+                data-testid="day-popover-more"
+                sx={{
+                  py: 1,
+                  cursor: 'pointer',
+                  transition: 'background-color 0.2s',
+                  outline: 'none',
+                  '&:hover': {
+                    backgroundColor: 'rgba(25, 103, 210, 0.04)',
+                  },
+                  '&:focus-visible': {
+                    outline: '2px solid',
+                    outlineColor: 'primary.main',
+                    outlineOffset: '-2px',
+                  },
+                }}
+              >
+                <ListItemText
+                  primary={`他 ${hiddenCount} 件`}
+                  primaryTypographyProps={{
+                    variant: 'body2',
+                    sx: { fontWeight: 600, color: 'primary.main' },
+                  }}
+                />
+              </ListItem>
+            )}
           </List>
         )}
 
@@ -133,10 +165,7 @@ export const DayPopover: React.FC<DayPopoverProps> = ({
           <Button
             size="small"
             variant="contained"
-            onClick={() => {
-              onOpenDay(date);
-              onClose();
-            }}
+            onClick={openDayAndClose}
             data-testid={TESTIDS['schedules-popover-open-day']}
             startIcon={<CalendarTodayIcon />}
           >
