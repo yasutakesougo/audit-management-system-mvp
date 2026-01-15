@@ -99,6 +99,8 @@ export const TESTIDS = {
   'schedules-day-heading': 'schedules-day-heading',
   'schedules-day-list': 'schedules-day-list',
   'schedules-day-skeleton': 'schedules-day-skeleton',
+  'schedules-day-popover': 'schedules-day-popover',
+  'schedules-popover-open-day': 'schedules-popover-open-day',
   SCHEDULES_PAGE_ROOT: 'schedules-page-root',
   'schedules-week-page': 'schedules-week-page',
   'schedules-week-heading': 'schedules-week-heading',
