@@ -24,7 +24,8 @@ interface DayPopoverProps {
 /**
  * DayPopover: 月ビューの日セルをクリック時に、その日の予定一覧を表示するPopover
  * - 当日の全予定をリスト表示
- * - "Day で開く" ボタンで /schedules/day?date=... に遷移
+ * - 行全体をクリック可能に → Day表示に遷移
+ * - 或いは下部 "Day で開く" ボタンでも遷移
  */
 export const DayPopover: React.FC<DayPopoverProps> = ({
   open,
@@ -35,6 +36,12 @@ export const DayPopover: React.FC<DayPopoverProps> = ({
   onClose,
   onOpenDay,
 }) => {
+  const handleItemClick = () => {
+    // ListItem 行全体クリックで Day表示に遷移
+    onOpenDay(date);
+    onClose();
+  };
+
   return (
     <Popover
       open={open}
@@ -65,15 +72,38 @@ export const DayPopover: React.FC<DayPopoverProps> = ({
             {items.map((item, index) => (
               <React.Fragment key={`${item.id}-${index}`}>
                 <ListItem
+                  onClick={handleItemClick}
+                  tabIndex={0}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                      e.preventDefault();
+                      handleItemClick();
+                    }
+                  }}
                   sx={{
                     flexDirection: 'column',
                     alignItems: 'flex-start',
                     py: 1,
+                    cursor: 'pointer',
+                    transition: 'background-color 0.2s',
+                    outline: 'none',
+                    '&:hover': {
+                      backgroundColor: 'rgba(25, 103, 210, 0.04)',
+                    },
+                    '&:active': {
+                      backgroundColor: 'rgba(25, 103, 210, 0.08)',
+                    },
+                    '&:focus-visible': {
+                      outline: '2px solid',
+                      outlineColor: 'primary.main',
+                      outlineOffset: '-2px',
+                    },
                     '&:not(:last-child)': {
                       borderBottom: '1px solid',
                       borderColor: 'divider',
                     },
                   }}
+                  data-testid={`${TESTIDS['schedules-day-popover']}-item-${index}`}
                 >
                   <ListItemText
                     primary={item.title || item.note || '（タイトル未設定）'}
