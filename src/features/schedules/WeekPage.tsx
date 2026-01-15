@@ -22,14 +22,16 @@ import { resolveSchedulesTz } from '@/utils/scheduleTz';
 
 import DayView from './DayView';
 import WeekView from './WeekView';
+import MonthPage from './MonthPage';
 import WeekTimeline, { type WeekTimelineCreateHint } from './views/WeekTimeline';
 
-type ScheduleTab = 'week' | 'day' | 'timeline';
+type ScheduleTab = 'week' | 'day' | 'timeline' | 'month';
 
 const TAB_LABELS: Record<ScheduleTab, string> = {
   week: '週',
   day: '日',
   timeline: 'タイムライン',
+  month: '月',
 };
 
 const DEFAULT_START_TIME = '10:00';
@@ -38,7 +40,7 @@ const SCHEDULES_TZ = resolveSchedulesTz();
 
 const normalizeTabParam = (params: URLSearchParams): ScheduleTab => {
   const raw = params.get('tab');
-  return raw === 'day' || raw === 'timeline' ? raw : 'week';
+  return (raw === 'day' || raw === 'timeline' || raw === 'month') ? raw : 'week';
 };
 
 const startOfWeek = (date: Date): Date => {
@@ -335,6 +337,7 @@ export default function WeekPage() {
     week: `${tablistId}-tab-week`,
     day: `${tablistId}-tab-day`,
     timeline: `${tablistId}-tab-timeline`,
+    month: `${tablistId}-tab-month`,
   };
 
   useEffect(() => {
@@ -758,6 +761,15 @@ export default function WeekPage() {
                 aria-labelledby={tabButtonIds.timeline}
               >
                 <WeekTimeline range={weekRange} items={filteredItems} onCreateHint={handleTimelineCreateHint} />
+              </div>
+            )}
+            {tab === 'month' && (
+              <div
+                id="panel-month"
+                role="tabpanel"
+                aria-labelledby={tabButtonIds.month}
+              >
+                <MonthPage />
               </div>
             )}
             {filteredItems.length === 0 && (
