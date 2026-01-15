@@ -153,8 +153,8 @@ export const toSharePointPayload = (input: CreateScheduleEventInput): SharePoint
     body[SCHEDULES_FIELDS.serviceType] = serviceType;
   }
   if (input.category === 'User') {
-    // SharePoint lookup id should be a number (or null when intentionally absent)
-    body[SCHEDULES_FIELDS.targetUserId] = normalizedTargetUserId;
+    // Convert lookup id to string for SharePoint text field (if present)
+    body[SCHEDULES_FIELDS.targetUserId] = normalizedTargetUserId !== null ? String(normalizedTargetUserId) : null;
     // Explicitly clear staff assignment for user schedules.
     body[SCHEDULES_FIELDS.assignedStaff] = null;
   }
