@@ -39,7 +39,16 @@ const queryClient = new QueryClient();
 type ScheduleCreateHandler = (input: CreateScheduleEventInput) => Promise<SchedItem>;
 
 function SchedulesProviderBridge({ children }: BridgeProps) {
-  const { acquireToken } = useAuth();
+  const { acquireToken, account } = useAuth();
+
+  // Phase 1: derive currentOwnerUserId from MSAL account.username (staffCode or normalized email)
+  const currentOwnerUserId = useMemo(() => {
+    if (!account?.username) return undefined;
+    // If staffCode is stored in account metadata, use it directly.
+    // Otherwise, normalize username (email) to serve as fallback userId.
+    const raw = account.username.trim().toUpperCase().replace(/[^A-Z0-9]/g, '');
+    return raw || undefined;
+  }, [account]);
 
   const createHandler: ScheduleCreateHandler = useMemo(
     () =>
@@ -57,6 +66,7 @@ function SchedulesProviderBridge({ children }: BridgeProps) {
       selectedPort = makeSharePointSchedulesPort({
         acquireToken: () => acquireToken(),
         create: createHandler,
+        currentOwnerUserId,
       });
 
     } else if (graphEnabled) {
@@ -73,7 +83,7 @@ function SchedulesProviderBridge({ children }: BridgeProps) {
     }
 
     return selectedPort;
-  }, [createHandler, graphEnabled, sharePointCreateEnabled, sharePointListEnabled, acquireToken]);
+  }, [createHandler, graphEnabled, sharePointCreateEnabled, sharePointListEnabled, acquireToken, currentOwnerUserId]);
 
   return <SchedulesProvider value={port}>{children}</SchedulesProvider>;
 }

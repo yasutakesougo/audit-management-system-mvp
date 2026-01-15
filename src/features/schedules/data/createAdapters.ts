@@ -1,8 +1,8 @@
 import { fromZonedTime } from 'date-fns-tz';
 
 import { createSpClient, ensureConfig } from '@/lib/spClient';
-import type { CreateScheduleEventInput, SchedItem, ScheduleServiceType, ScheduleStatus, SchedulesPort } from './port';
-import { SCHEDULES_FIELDS, SCHEDULES_LIST_TITLE } from './spSchema';
+import type { CreateScheduleEventInput, SchedItem, ScheduleServiceType, ScheduleStatus, ScheduleVisibility, SchedulesPort } from './port';
+import { SCHEDULES_FIELDS, SCHEDULES_LIST_TITLE, DEFAULT_SCHEDULE_VISIBILITY, OWNER_USER_ID_ME } from './spSchema';
 import { resolveSchedulesTz } from '@/utils/scheduleTz';
 import { normalizeServiceType as normalizeSharePointServiceType } from '@/sharepoint/serviceTypes';
 
@@ -136,12 +136,17 @@ export const toSharePointPayload = (input: CreateScheduleEventInput): SharePoint
   const acceptedOn = trimText(input.acceptedOn);
   const acceptedBy = trimText(input.acceptedBy);
   const acceptedNote = trimText(input.acceptedNote);
+  const ownerUserId = trimText(input.ownerUserId) ?? OWNER_USER_ID_ME;
+  const visibility: ScheduleVisibility = input.visibility ?? DEFAULT_SCHEDULE_VISIBILITY;
   const body: Record<string, unknown> = {
     [SCHEDULES_FIELDS.title]: title,
     [SCHEDULES_FIELDS.start]: startIso,
     [SCHEDULES_FIELDS.end]: endIso,
     // SharePoint choice/text column. We start with a fixed value known to exist.
     [SCHEDULES_FIELDS.status]: 'Scheduled',
+    // Phase 1: owner and visibility defaults
+    [SCHEDULES_FIELDS.ownerUserId]: ownerUserId,
+    [SCHEDULES_FIELDS.visibility]: visibility,
   };
 
   if (serviceType) {
@@ -228,6 +233,8 @@ type BuildSchedItemArgs = {
   acceptedOn?: string;
   acceptedBy?: string;
   acceptedNote?: string | null;
+  ownerUserId?: string;
+  visibility?: ScheduleVisibility;
 };
 
 const buildSchedItem = (args: BuildSchedItemArgs): SchedItem => ({
@@ -252,6 +259,8 @@ const buildSchedItem = (args: BuildSchedItemArgs): SchedItem => ({
   acceptedOn: args.acceptedOn,
   acceptedBy: args.acceptedBy,
   acceptedNote: args.acceptedNote ?? null,
+  ownerUserId: args.ownerUserId,
+  visibility: args.visibility,
 });
 
 export const makeMockScheduleCreator = (): SchedulesPort['create'] => async (input) => {
@@ -262,6 +271,8 @@ export const makeMockScheduleCreator = (): SchedulesPort['create'] => async (inp
   const end = toIsoString(appendSeconds(input.endLocal));
   const normalizedServiceType = normalizeServiceType(input.serviceType);
   const now = new Date().toISOString();
+  const ownerUserId = trimText(input.ownerUserId) ?? OWNER_USER_ID_ME;
+  const visibility: ScheduleVisibility = input.visibility ?? DEFAULT_SCHEDULE_VISIBILITY;
   return buildSchedItem({
     id: `mock-${Date.now()}`,
     title,
@@ -288,6 +299,8 @@ export const makeMockScheduleCreator = (): SchedulesPort['create'] => async (inp
     acceptedOn: trimText(input.acceptedOn),
     acceptedBy: trimText(input.acceptedBy),
     acceptedNote: input.acceptedNote ?? null,
+    ownerUserId,
+    visibility,
   });
 };
 
@@ -321,6 +334,8 @@ export const makeSharePointScheduleCreator = ({ acquireToken }: SharePointCreato
     const { normalizedUserId, assignedStaffId, userLookupId } = resolveCategoryFields(input);
     const personName = trimText((input as { userName?: string }).userName) ?? null;
     const acceptedNoteValue = input.acceptedNote ?? null;
+    const ownerUserId = trimText(input.ownerUserId) ?? OWNER_USER_ID_ME;
+    const visibility: ScheduleVisibility = input.visibility ?? DEFAULT_SCHEDULE_VISIBILITY;
 
     return buildSchedItem({
       id,
@@ -346,6 +361,8 @@ export const makeSharePointScheduleCreator = ({ acquireToken }: SharePointCreato
       acceptedOn: acceptedOnValue,
       acceptedBy: acceptedByValue,
       acceptedNote: acceptedNoteValue,
+      ownerUserId,
+      visibility,
     });
   };
 };
