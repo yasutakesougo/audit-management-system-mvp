@@ -161,6 +161,7 @@ export const TESTIDS = {
   'schedule-create-service-type': 'schedule-create-service-type',
   'schedule-create-location': 'schedule-create-location',
   'schedule-create-notes': 'schedule-create-notes',
+  'schedule-create-visibility': 'schedule-create-visibility',
   'schedule-create-staff-id': 'schedule-create-staff-id',
   'schedule-create-vehicle-id': 'schedule-create-vehicle-id',
   'schedule-create-status': 'schedule-create-status',

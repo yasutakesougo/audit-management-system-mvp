@@ -2,6 +2,7 @@ import { type CSSProperties, type MouseEvent, useCallback, useEffect, useId, use
 import { useSearchParams } from 'react-router-dom';
 import { Alert, Snackbar } from '@mui/material';
 
+import { useAuth } from '@/auth/useAuth';
 import { useAnnounce } from '@/a11y/LiveAnnouncer';
 import { MASTER_SCHEDULE_TITLE_JA } from '@/features/schedule/constants';
 import { ensureDateParam, normalizeToDayStart, pickDateParam } from '@/features/schedule/dateQuery';
@@ -219,6 +220,7 @@ export default function WeekPage() {
       pendingFabFocus = false;
     }
   }, [createDialogOpen]);
+  const { account } = useAuth();
   const headingId = useId();
   const tablistId = useId();
   const rangeDescriptionId = 'schedules-week-range';
@@ -227,9 +229,20 @@ export default function WeekPage() {
     return makeRange(start, endOfWeek(start));
   }, [focusDate]);
   const { items, loading: isLoading, create, update, remove } = useSchedules(weekRange);
+  const currentOwnerUserId = useMemo(() => {
+    if (!account?.username) return null;
+    return `staff:${account.username}`;
+  }, [account?.username]);
   const filteredItems = useMemo(() => {
     const needle = query.trim().toLowerCase();
     return items.filter((item) => {
+      // Phase 1 visibility filtering
+      if (item.visibility === 'private') {
+        if (!currentOwnerUserId || item.ownerUserId !== currentOwnerUserId) {
+          return false;
+        }
+      }
+      // org and team are visible to all (Phase1: team = org)
       if (categoryFilter !== 'All' && item.category !== categoryFilter) return false;
       if (!needle) return true;
       const haystack = [
@@ -246,7 +259,7 @@ export default function WeekPage() {
         .toLowerCase();
       return haystack.includes(needle);
     });
-  }, [items, categoryFilter, query]);
+  }, [items, categoryFilter, query, currentOwnerUserId]);
   const dialogMode: DialogMode = dialogIntent?.mode ?? 'create';
   const isEditMode = dialogMode === 'edit';
   const dialogEventId = dialogIntent?.eventId ?? null;
@@ -482,7 +495,7 @@ export default function WeekPage() {
       if (!inlineEditingEventId) {
         return;
       }
-      const payload = buildUpdateInput(inlineEditingEventId, input);
+      const payload = buildUpdateInput(inlineEditingEventId, { ...input, currentOwnerUserId: currentOwnerUserId ?? undefined });
       try {
         await update(payload);
         showSnack('success', '予定を更新しました');
@@ -492,7 +505,7 @@ export default function WeekPage() {
         throw e;
       }
     },
-    [clearInlineSelection, inlineEditingEventId, showSnack, update],
+    [clearInlineSelection, inlineEditingEventId, showSnack, update, currentOwnerUserId],
   );
 
   const handleInlineDialogDelete = useCallback(
@@ -555,7 +568,7 @@ export default function WeekPage() {
   const handleScheduleDialogSubmit = useCallback(
     async (input: CreateScheduleEventInput) => {
       if (dialogMode === 'edit' && dialogEventId) {
-        const payload = buildUpdateInput(dialogEventId, input);
+        const payload = buildUpdateInput(dialogEventId, { ...input, currentOwnerUserId: currentOwnerUserId ?? undefined });
         await update(payload);
         return;
       }
@@ -574,12 +587,12 @@ export default function WeekPage() {
         endTime,
         start,
         end,
-        sourceInput: input,
+        sourceInput: { ...input, currentOwnerUserId: currentOwnerUserId ?? undefined },
       };
 
       await create(draft);
     },
-    [create, dialogEventId, dialogMode, update],
+    [create, dialogEventId, dialogMode, update, currentOwnerUserId],
   );
 
   const handleCreateDialogClose = useCallback(() => {

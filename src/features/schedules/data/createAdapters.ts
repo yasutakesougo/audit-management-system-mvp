@@ -136,7 +136,7 @@ export const toSharePointPayload = (input: CreateScheduleEventInput): SharePoint
   const acceptedOn = trimText(input.acceptedOn);
   const acceptedBy = trimText(input.acceptedBy);
   const acceptedNote = trimText(input.acceptedNote);
-  const ownerUserId = trimText(input.ownerUserId) ?? OWNER_USER_ID_ME;
+  const ownerUserId = trimText(input.ownerUserId) ?? trimText(input.currentOwnerUserId) ?? OWNER_USER_ID_ME;
   const visibility: ScheduleVisibility = input.visibility ?? DEFAULT_SCHEDULE_VISIBILITY;
   const body: Record<string, unknown> = {
     [SCHEDULES_FIELDS.title]: title,

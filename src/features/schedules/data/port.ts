@@ -39,7 +39,7 @@ export type CreateScheduleEventInput = {
   acceptedNote?: string | null;
 
   ownerUserId?: string;
-  visibility?: ScheduleVisibility;
+  currentOwnerUserId?: string;  visibility?: ScheduleVisibility;
 };
 
 export type UpdateScheduleEventInput = CreateScheduleEventInput & { id: string };
@@ -85,7 +85,7 @@ export type SchedItem = {
   acceptedNote?: string | null;
 
   ownerUserId?: string;
-  visibility?: ScheduleVisibility;
+  currentOwnerUserId?: string;  visibility?: ScheduleVisibility;
 };
 
 export interface SchedulesPort {

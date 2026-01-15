@@ -37,7 +37,9 @@ import type {
   ScheduleCategory,
   ScheduleServiceType,
   ScheduleStatus,
+  ScheduleVisibility,
 } from './data';
+import { DEFAULT_SCHEDULE_VISIBILITY } from './data/spSchema';
 import { SCHEDULE_STATUS_OPTIONS } from './statusMetadata';
 import { buildScheduleFailureAnnouncement, buildScheduleSuccessAnnouncement } from './utils/scheduleAnnouncements';
 import { useOrgOptions, type OrgOption } from './useOrgOptions';
@@ -47,7 +49,8 @@ export type {
   CreateScheduleEventInput,
   ScheduleCategory,
   ScheduleServiceType,
-  ScheduleStatus
+  ScheduleStatus,
+  ScheduleVisibility
 } from './data';
 
 // ===== Types =====
@@ -65,6 +68,7 @@ export interface ScheduleFormState {
   vehicleId: string;
   status: ScheduleStatus;
   statusReason: string;
+  visibility: ScheduleVisibility;
 }
 
 export interface ScheduleUserOption {
@@ -194,6 +198,7 @@ export function createInitialScheduleFormState(options?: {
     vehicleId: '',
     status: 'Planned',
     statusReason: '',
+    visibility: DEFAULT_SCHEDULE_VISIBILITY,
   };
 
   if (options?.override) {
@@ -201,6 +206,7 @@ export function createInitialScheduleFormState(options?: {
       ...options.override,
       status: options.override.status ?? 'Planned',
       statusReason: options.override.statusReason ?? '',
+      visibility: options.override.visibility ?? DEFAULT_SCHEDULE_VISIBILITY,
     };
     return {
       ...initial,
@@ -350,6 +356,7 @@ export function toCreateScheduleInput(
     vehicleId: normalizeLookupId(form.vehicleId),
     status: form.status,
     statusReason: statusReason ? statusReason : null,
+    visibility: form.visibility ?? DEFAULT_SCHEDULE_VISIBILITY,
   };
 }
 
@@ -853,6 +860,21 @@ export const ScheduleCreateDialog: React.FC<ScheduleCreateDialogProps> = (props)
               'data-testid': TESTIDS['schedule-create-notes']
             }}
           />
+
+          <FormControl fullWidth>
+            <InputLabel id="schedule-create-visibility-label">公開範囲</InputLabel>
+            <Select
+              labelId="schedule-create-visibility-label"
+              label="公開範囲"
+              value={form.visibility}
+              onChange={(e) => handleFieldChange('visibility', e.target.value as ScheduleVisibility)}
+              data-testid={TESTIDS['schedule-create-visibility']}
+            >
+              <MenuItem value="org">組織（全員）</MenuItem>
+              <MenuItem value="team">チーム</MenuItem>
+              <MenuItem value="private">自分のみ</MenuItem>
+            </Select>
+          </FormControl>
 
           <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2}>
             {form.category === 'User' ? (
