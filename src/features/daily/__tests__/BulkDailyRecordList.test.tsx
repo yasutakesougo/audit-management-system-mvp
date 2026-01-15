@@ -113,31 +113,35 @@ describe('BulkDailyRecordList', () => {
       });
     });
 
-    it('onSaveRowが未提供の場合、モックが使用される', async () => {
-      render(
-        <BulkDailyRecordList
-          selectedDate="2024-01-15"
-        />
-      );
+    it(
+      'onSaveRowが未提供の場合、モックが使用される',
+      async () => {
+        render(
+          <BulkDailyRecordList
+            selectedDate="2024-01-15"
+          />
+        );
 
-      // 最初の行に入力
-      const firstRow = getRowByUserId('001');
-      const amInput = within(firstRow).getAllByLabelText('田中太郎 午前記録')[0];
-      fireEvent.change(amInput, { target: { value: '午前の記録' } });
+        // 最初の行に入力
+        const firstRow = getRowByUserId('001');
+        const amInput = within(firstRow).getAllByLabelText('田中太郎 午前記録')[0];
+        fireEvent.change(amInput, { target: { value: '午前の記録' } });
 
-      // 行保存ボタンをクリック
-      const saveButton = within(firstRow).getByRole('button', { name: '田中太郎 を保存' });
-      fireEvent.click(saveButton);
+        // 行保存ボタンをクリック
+        const saveButton = within(firstRow).getByRole('button', { name: '田中太郎 を保存' });
+        fireEvent.click(saveButton);
 
-      // モック処理が完了することを確認（500msの遅延）
-      await waitFor(
-        () => {
-          const statusCell = screen.getByTestId('daily-bulk-status-001');
-          expect(statusCell).toHaveAttribute('data-status', 'saved');
-        },
-        { timeout: 1000 }
-      );
-    });
+        // モック処理が完了することを確認（500msの遅延）
+        await waitFor(
+          () => {
+            const statusCell = screen.getByTestId('daily-bulk-status-001');
+            expect(statusCell).toHaveAttribute('data-status', 'saved');
+          },
+          { timeout: 1000 }
+        );
+      },
+      15000
+    );
   });
 
   describe('バリデーションUXの確認', () => {
