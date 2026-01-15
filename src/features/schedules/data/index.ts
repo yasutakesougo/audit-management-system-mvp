@@ -1,5 +1,5 @@
 export { SchedulesProvider, useSchedulesPort } from './context';
-export { makeMockScheduleCreator, makeSharePointScheduleCreator } from './createAdapters';
+export { makeMockScheduleCreator, makeSharePointScheduleCreator, normalizeUserId } from './createAdapters';
 export { demoSchedulesPort } from './demoAdapter';
 export { makeGraphSchedulesPort } from './graphAdapter';
 export type {

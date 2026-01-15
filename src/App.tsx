@@ -7,6 +7,7 @@ import {
   makeMockScheduleCreator,
   makeSharePointScheduleCreator,
   makeSharePointSchedulesPort,
+  normalizeUserId,
 } from '@/features/schedules/data';
 import CssBaseline from '@mui/material/CssBaseline';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
@@ -41,14 +42,13 @@ type ScheduleCreateHandler = (input: CreateScheduleEventInput) => Promise<SchedI
 function SchedulesProviderBridge({ children }: BridgeProps) {
   const { acquireToken, account } = useAuth();
 
-  // Phase 1: derive currentOwnerUserId from MSAL account.username (staffCode or normalized email)
+  // Phase 1: derive currentOwnerUserId from MSAL account.username (email → normalized staffCode)
+  // Uses normalizeUserId() to align with I022-style identifiers, making future staff master lookup easier.
   const currentOwnerUserId = useMemo(() => {
     if (!account?.username) return undefined;
-    // If staffCode is stored in account metadata, use it directly.
-    // Otherwise, normalize username (email) to serve as fallback userId.
-    const raw = account.username.trim().toUpperCase().replace(/[^A-Z0-9]/g, '');
-    return raw || undefined;
-  }, [account]);
+    const normalized = normalizeUserId(account.username);
+    return normalized || undefined;
+  }, [account?.username]);
 
   const createHandler: ScheduleCreateHandler = useMemo(
     () =>
@@ -83,7 +83,7 @@ function SchedulesProviderBridge({ children }: BridgeProps) {
     }
 
     return selectedPort;
-  }, [createHandler, graphEnabled, sharePointCreateEnabled, sharePointListEnabled, acquireToken, currentOwnerUserId]);
+  }, [createHandler, graphEnabled, sharePointListEnabled, currentOwnerUserId]);
 
   return <SchedulesProvider value={port}>{children}</SchedulesProvider>;
 }
