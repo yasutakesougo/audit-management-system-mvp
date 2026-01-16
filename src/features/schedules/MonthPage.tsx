@@ -127,8 +127,8 @@ export default function MonthPage() {
       setSearchParams(next, { replace: true });
       const nextDate = parseDateParam(iso);
       setAnchorDate(startOfMonth(nextDate));
-      // Navigate to day view with explicit tab (prevents week normalization)
-      navigate(`/schedules/day?date=${encodeURIComponent(iso)}&tab=day`);
+      // Navigate to day view (now tab within week page)
+      navigate(`/schedules/week?date=${encodeURIComponent(iso)}&tab=day`);
     },
     [navigate, searchParams, setSearchParams],
   );
@@ -155,7 +155,7 @@ export default function MonthPage() {
   const headingId = TESTIDS.SCHEDULES_MONTH_HEADING_ID;
   const rangeId = TESTIDS.SCHEDULES_MONTH_RANGE_ID;
   const dayHref = useMemo(
-    () => `/schedules/day?date=${encodeURIComponent(resolvedActiveDateIso)}&tab=day`,
+    () => `/schedules/week?date=${encodeURIComponent(resolvedActiveDateIso)}&tab=day`,
     [resolvedActiveDateIso],
   );
   const weekHref = useMemo(() => `/schedules/week?date=${resolvedActiveDateIso}`, [resolvedActiveDateIso]);

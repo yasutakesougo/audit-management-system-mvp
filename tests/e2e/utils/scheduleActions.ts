@@ -589,72 +589,109 @@ export async function openEditorFromRowMenu(
   row: Locator,
   _opts: { testInfo?: TestInfo; label?: string } = {},
 ) {
-  await row.scrollIntoViewIfNeeded();
-  await row.hover().catch(() => undefined);
-
-  const moreInRow = row
-    .locator(
-      [
-        '[data-testid*="more"]',
-        '[data-testid*="menu"]',
-        'button[aria-label*="その他"]',
-        'button[aria-label*="メニュー"]',
-        'button[aria-label*="操作"]',
-        'button:has-text("…")',
-      ].join(', '),
-    )
-    .first();
-
-  // Try menu-based flow first
-  if ((await moreInRow.count()) > 0) {
-    await moreInRow.click({ force: true });
-  } else {
-    // On mobile/no menu button: click row directly
-    await row.click({ force: true });
-  }
-
   const editor = page.getByTestId(TESTIDS['schedule-editor-root']);
   const menu = page.getByRole('menu').first();
 
-  // Wait for either the menu or the editor to surface; some UIs may open the editor directly.
-  const start = Date.now();
-  const deadline = start + 5_000;
-  while (Date.now() < deadline) {
+  // Retry up to 3 times with progressive backoff
+  for (let attempt = 1; attempt <= 3; attempt++) {
+    // Ensure row is still valid/visible before clicking
+    try {
+      await row.scrollIntoViewIfNeeded({ timeout: 5000 });
+    } catch {
+      if (attempt === 3) throw new Error('Row not found or stale after retries');
+      await page.waitForTimeout(500);
+      continue;
+    }
+
+    await row.hover().catch(() => undefined);
+
+    const moreInRow = row
+      .locator(
+        [
+          '[data-testid*="more"]',
+          '[data-testid*="menu"]',
+          'button[aria-label*="その他"]',
+          'button[aria-label*="メニュー"]',
+          'button[aria-label*="操作"]',
+          'button:has-text("…")',
+        ].join(', '),
+      )
+      .first();
+
+    // Try menu-based flow first
+    try {
+      if ((await moreInRow.count()) > 0) {
+        await moreInRow.click({ force: true });
+      } else {
+        // On mobile/no menu button: click row directly
+        await row.click({ force: true });
+      }
+    } catch (e) {
+      if (attempt === 3) throw e;
+      await page.waitForTimeout(300 * attempt);
+      continue;
+    }
+
+    // Progressive timeout: 300ms, 600ms, 900ms
+    await page.waitForTimeout(300 * attempt);
+
+    // Quick check: editor already visible?
+    if (await editor.isVisible().catch(() => false)) {
+      return;
+    }
+
+    // Wait for either the menu or the editor to surface (shorter timeout for retry pattern)
+    const waitMs = 2500 + 1000 * attempt;
+    const start = Date.now();
+    const deadline = start + waitMs;
+    while (Date.now() < deadline) {
+      const editorVisible = await editor.isVisible().catch(() => false);
+      if (editorVisible) return;
+      const menuVisible = (await menu.count().catch(() => 0)) > 0 && (await menu.isVisible().catch(() => false));
+      if (menuVisible) break;
+      await page.waitForTimeout(150);
+    }
+
+    // If editor opened directly (mobile pattern), we're done
     const editorVisible = await editor.isVisible().catch(() => false);
     if (editorVisible) return;
+
+    // Otherwise, expect menu and click edit item
     const menuVisible = (await menu.count().catch(() => 0)) > 0 && (await menu.isVisible().catch(() => false));
-    if (menuVisible) break;
-    await page.waitForTimeout(150);
-  }
+    if (menuVisible) {
+      const items = menu.getByRole('menuitem');
+      const count = await items.count();
+      if (count === 0) {
+        if (attempt < 3) continue; // Retry if menu has no items
+        throw new Error('Menu opened but has no menuitems');
+      }
 
-  // If editor opened directly (mobile pattern), we're done
-  const editorVisible = await editor.isVisible().catch(() => false);
-  if (editorVisible) return;
-
-  // Otherwise, expect menu and click edit item
-  const menuVisible = (await menu.count().catch(() => 0)) > 0 && (await menu.isVisible().catch(() => false));
-  if (!menuVisible) {
-    // Last resort: try direct row content click (title/label area)
-    const clickableInRow = row.locator('[data-testid*="title"], [role="button"], a, button').first();
-    if ((await clickableInRow.count()) > 0) {
-      await clickableInRow.click({ force: true });
-      await page.waitForTimeout(500);
-      const editorNow = await editor.isVisible().catch(() => false);
-      if (editorNow) return;
+      const editLike = menu.getByRole('menuitem', { name: /編集|Edit|更新|開く|詳細/i }).first();
+      if ((await editLike.count()) > 0) {
+        await editLike.click({ force: true });
+      } else {
+        await items.first().click({ force: true });
+      }
+      return;
     }
-    throw new Error('Menu did not appear and editor not visible');
+
+    // If neither menu nor editor appeared, try one more trick before retrying
+    if (attempt < 3) {
+      // Last resort: try direct row content click (title/label area)
+      const clickableInRow = row.locator('[data-testid*="title"], [role="button"], a, button').first();
+      if ((await clickableInRow.count()) > 0) {
+        await clickableInRow.click({ force: true });
+        await page.waitForTimeout(500);
+        const editorNow = await editor.isVisible().catch(() => false);
+        if (editorNow) return;
+      }
+      // Retry next attempt
+      continue;
+    }
   }
 
-  const items = menu.getByRole('menuitem');
-  const count = await items.count();
-  if (count === 0) throw new Error('Menu opened but has no menuitems');
-
-  const editLike = menu.getByRole('menuitem', { name: /編集|Edit|更新|開く|詳細/i }).first();
-  if ((await editLike.count()) > 0) {
-    await editLike.click({ force: true });
-  } else {
-    await items.first().click({ force: true });
-  }
+  // All retries exhausted
+  throw new Error('openEditorFromRowMenu: Menu did not appear and editor not visible after 3 retries');
 }
 
 export async function openWeekEventEditor(

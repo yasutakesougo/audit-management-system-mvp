@@ -84,8 +84,13 @@ test.describe('Schedules month ARIA smoke', () => {
     await expect(dayCard).toBeVisible();
     await dayCard.click();
 
+    // Wait for popover to appear and click "Day で開く" button
+    const openDayButton = page.getByTestId(TESTIDS['schedules-popover-open-day']);
+    await expect(openDayButton).toBeVisible();
+    await openDayButton.click();
+
     await waitForDayViewReady(page);
     await expect(page).toHaveURL(/tab=day/);
-    await expect(page.getByTestId(TESTIDS['schedules-day-heading'])).toBeVisible();
+    await expect(page.getByTestId(TESTIDS['schedules-day-page'])).toBeVisible();
   });
 });

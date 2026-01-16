@@ -54,8 +54,9 @@ export async function waitForDayScheduleReady(page: Page, timeout = 15_000): Pro
 }
 
 export async function waitForDayTimeline(page: Page): Promise<void> {
-  const heading = page.getByRole('heading', { name: /スケジュール/, level: 1 });
-  await expect(heading).toBeVisible();
+  // Day view is now a tab within /schedules/week (renders DayView component, not TimelineDay)
+  await expect(page).toHaveURL(/tab=day/);
+  await expect(page.getByTestId(TESTIDS['schedules-day-page'])).toBeVisible();
 
   const dayTab = page.getByTestId(TESTIDS.SCHEDULES_WEEK_TAB_DAY).first();
   await expect(dayTab).toBeVisible();
@@ -99,9 +100,8 @@ export async function waitForWeekTimeline(page: Page): Promise<void> {
   if (hasWeekPage) {
     await expect(weekPageRoot).toBeVisible();
 
-    const heading = page.getByTestId(TESTIDS['schedules-week-heading']).or(
-      page.getByRole('heading', { name: /スケジュール/, level: 1 }),
-    );
+    // Use testid to avoid strict mode violation (month+week headings both match /スケジュール/)
+    const heading = page.getByTestId(TESTIDS['schedules-week-heading']);
     await expect(heading).toBeVisible();
 
     const tablist = page.getByTestId(TESTIDS.SCHEDULES_WEEK_TABLIST);
@@ -184,8 +184,9 @@ export async function waitForWeekTimeline(page: Page): Promise<void> {
 }
 
 export async function waitForMonthTimeline(page: Page): Promise<void> {
-  const heading = page.getByRole('heading', { name: /スケジュール/, level: 1 });
-  await expect(heading).toBeVisible();
+  // Use testid to avoid strict mode violation (month+week headings both match /スケジュール/)
+  const monthHeading = page.getByTestId('schedules-month-heading');
+  await expect(monthHeading).toBeVisible();
 
   const tablist = page.getByRole('tablist').first();
   await expect(tablist).toBeVisible({ timeout: 15_000 });

@@ -682,6 +682,21 @@ export default function WeekPage() {
           aria-label="スケジュールビュー切り替え"
           style={{ display: 'flex', gap: 8, marginBottom: 8, flexWrap: 'wrap' }}
           data-testid={TESTIDS.SCHEDULES_WEEK_TABLIST}
+          onKeyDown={(e) => {
+            // Handle arrow key navigation (ARIA Authoring Practices for tabs)
+            if (e.key === 'ArrowRight' || e.key === 'ArrowLeft') {
+              const tabs = Object.keys(TAB_LABELS) as ScheduleTab[];
+              const currentIndex = tabs.indexOf(tab);
+              const nextIndex = e.key === 'ArrowRight' 
+                ? (currentIndex + 1) % tabs.length
+                : (currentIndex - 1 + tabs.length) % tabs.length;
+              const nextTab = tabs[nextIndex];
+              const nextButton = document.getElementById(tabButtonIds[nextTab]);
+              if (nextButton) {
+                nextButton.focus();
+              }
+            }
+          }}
         >
           {(Object.keys(TAB_LABELS) as ScheduleTab[]).map((key) => {
             const isActive = tab === key;
@@ -693,6 +708,16 @@ export default function WeekPage() {
                   : key === 'timeline'
                     ? TESTIDS.SCHEDULES_WEEK_TAB_TIMELINE
                     : TESTIDS.SCHEDULES_WEEK_TAB_MONTH;
+            
+            // Activate tab logic (reused by onClick and onKeyDown)
+            const activateTab = () => {
+              if (tab === key) return;
+              setTab(key);
+              const next = new URLSearchParams(searchParams);
+              next.set('tab', key);
+              setSearchParams(next, { replace: true });
+            };
+
             return (
               <button
                 key={key}
@@ -701,13 +726,14 @@ export default function WeekPage() {
                 role="tab"
                 aria-selected={isActive}
                 aria-controls={`panel-${key}`}
+                tabIndex={isActive ? 0 : -1}
                 data-testid={tabTestId}
-                onClick={() => {
-                  if (tab === key) return;
-                  setTab(key);
-                  const next = new URLSearchParams(searchParams);
-                  next.set('tab', key);
-                  setSearchParams(next, { replace: true });
+                onClick={activateTab}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault();
+                    activateTab();
+                  }
                 }}
                 style={tabButtonStyle(isActive)}
               >
