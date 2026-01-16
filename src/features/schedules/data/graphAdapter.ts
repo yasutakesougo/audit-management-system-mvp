@@ -220,3 +220,26 @@ export const makeGraphSchedulesPort = (getToken: GetToken, options?: GraphSchedu
     },
   } satisfies SchedulesPort;
 };
+
+/**
+ * Fetch the list of group IDs the current user is a member of.
+ * Used for authorization checks (reception, admin roles).
+ */
+export const fetchMyGroupIds = async (getToken: GetToken): Promise<string[]> => {
+  const token = await getToken();
+  if (!token) return [];
+
+  const res = await fetch('https://graph.microsoft.com/v1.0/me/memberOf?$select=id', {
+    headers: {
+      Authorization: `Bearer ${token}`,
+      Accept: 'application/json',
+    },
+  });
+
+  if (!res.ok) {
+    throw new Error(`memberOf failed: ${res.status}`);
+  }
+
+  const json = await res.json();
+  return (json.value ?? []).map((v: { id?: string }) => v.id).filter(Boolean);
+};

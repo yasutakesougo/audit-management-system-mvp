@@ -3,6 +3,7 @@ import { useSearchParams } from 'react-router-dom';
 import { Alert, Snackbar } from '@mui/material';
 
 import { useAnnounce } from '@/a11y/LiveAnnouncer';
+import { useUserAuthz } from '@/auth/useUserAuthz';
 import { MASTER_SCHEDULE_TITLE_JA } from '@/features/schedule/constants';
 import { ensureDateParam, normalizeToDayStart, pickDateParam } from '@/features/schedule/dateQuery';
 import type { Category } from '@/features/schedule/types';
@@ -195,6 +196,12 @@ export default function WeekPage() {
   const [tab, setTab] = useState<ScheduleTab>(() => normalizeTabParam(searchParams));
   const [categoryFilter, setCategoryFilter] = useState<'All' | Category>('All');
   const [query, setQuery] = useState('');
+  
+  // Authorization check for Day tab editing
+  const { isReception, isAdmin, ready } = useUserAuthz();
+  const canEditDay = ready && (isReception || isAdmin);
+  const canEdit = tab === 'day' && canEditDay; // Week/Timeline/Month are always read-only
+  
   const rawDateParam = useMemo(() => pickDateParam(searchParams), [searchParams]);
   const focusDate = useMemo(() => normalizeToDayStart(rawDateParam), [rawDateParam]);
   const [activeDateIso, setActiveDateIso] = useState<string | null>(() => toDateIso(focusDate));
@@ -428,6 +435,8 @@ export default function WeekPage() {
 
   const handleFabClick = useCallback(
     (_event?: MouseEvent<HTMLButtonElement>) => {
+      if (!canEdit) return; // Guard: Day tab + authorized users only
+      
       const iso = activeDateIso ?? defaultDateIso;
       if (!activeDateIso) {
         setActiveDateIso(iso);
@@ -437,7 +446,7 @@ export default function WeekPage() {
       const end = new Date(`${iso}T${DEFAULT_END_TIME}`);
       setDialogParams(buildCreateDialogIntent('User', start, end));
     },
-    [activeDateIso, defaultDateIso, primeRouteReset, setDialogParams],
+    [canEdit, activeDateIso, defaultDateIso, primeRouteReset, setDialogParams],
   );
 
   const handleWeekEventClick = useCallback((item: SchedItem) => {
@@ -622,7 +631,7 @@ export default function WeekPage() {
           onPrev={handlePrevWeek}
           onNext={handleNextWeek}
           onToday={handleTodayWeek}
-          onPrimaryCreate={handleFabClick}
+          onPrimaryCreate={canEdit ? handleFabClick : undefined}
           primaryActionAriaLabel="この週に新規予定を作成"
           headingId={headingId}
           titleTestId={TESTIDS['schedules-week-heading']}
