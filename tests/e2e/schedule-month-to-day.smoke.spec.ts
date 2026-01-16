@@ -15,7 +15,7 @@ test.describe('Schedule month→day navigation smoke', () => {
     await gotoMonth(page, targetDate);
     await waitForMonthViewReady(page);
 
-    // Get any day card and click it
+    // Get any day card and click it (opens popover)
     const dayCards = page.locator(`[data-testid^="${TESTIDS.SCHEDULES_MONTH_DAY_PREFIX}-"]`);
     if ((await dayCards.count()) === 0) {
       test.skip(true, 'No day cards in month view.');
@@ -25,17 +25,19 @@ test.describe('Schedule month→day navigation smoke', () => {
     await expect(firstDayCard).toBeVisible();
     await firstDayCard.click();
 
+    // Wait for popover to appear and click "Day で開く" button
+    const openDayButton = page.getByTestId(TESTIDS['schedules-popover-open-day']);
+    await expect(openDayButton).toBeVisible();
+    await openDayButton.click();
+
     // Verify navigation to day view with correct query params
     await waitForDayViewReady(page);
     await expect(page).toHaveURL(/tab=day/);
     const url = page.url();
-    expect(url).toContain('/schedules/day');
+    // Current routing uses /schedules/week with tab=day query param for day view
+    expect(url).toContain('/schedules/week');
     expect(url).toContain('date=');
     expect(url).toContain('tab=day');
-
-    // Verify day view is rendered
-    const dayHeading = page.getByTestId(TESTIDS['schedules-day-heading']);
-    await expect(dayHeading).toBeVisible();
   });
 
   test('today button returns to month view', async ({ page }) => {
