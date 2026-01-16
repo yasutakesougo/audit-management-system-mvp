@@ -3,6 +3,7 @@ import { useSearchParams } from 'react-router-dom';
 import { Alert, Snackbar } from '@mui/material';
 
 import { useAnnounce } from '@/a11y/LiveAnnouncer';
+import { useAuth } from '@/auth/useAuth';
 import { useUserAuthz } from '@/auth/useUserAuthz';
 import { MASTER_SCHEDULE_TITLE_JA } from '@/features/schedule/constants';
 import { ensureDateParam, normalizeToDayStart, pickDateParam } from '@/features/schedule/dateQuery';
@@ -198,9 +199,11 @@ export default function WeekPage() {
   const [query, setQuery] = useState('');
   
   // Authorization check for Day tab editing
+  const { account } = useAuth();
+  const myUpn = (account?.username ?? '').trim().toLowerCase();
   const { isReception, isAdmin, ready } = useUserAuthz();
-  const canEditDay = ready && (isReception || isAdmin);
-  const canEdit = tab === 'day' && canEditDay; // Week/Timeline/Month are always read-only
+  const canEditByRole = ready && (isReception || isAdmin);
+  const canEdit = tab === 'day' && canEditByRole; // FAB (create) = reception/admin only
   
   const rawDateParam = useMemo(() => pickDateParam(searchParams), [searchParams]);
   const focusDate = useMemo(() => normalizeToDayStart(rawDateParam), [rawDateParam]);
@@ -451,6 +454,17 @@ export default function WeekPage() {
 
   const handleWeekEventClick = useCallback((item: SchedItem) => {
     console.info('[WeekPage] row click', item.id);
+    
+    // Authorization check: reception/admin OR assignee (Day tab only)
+    if (tab === 'day' && ready) {
+      const isAssignee = myUpn && (item.assignedTo ?? '').toLowerCase() === myUpn;
+      const canEditItem = canEditByRole || isAssignee;
+      if (!canEditItem) {
+        console.warn('[WeekPage] Edit blocked: not authorized', { myUpn, assignedTo: item.assignedTo });
+        return;
+      }
+    }
+    
     const category = (item.category as Category) ?? 'User';
     const serviceType = (item.serviceType as ScheduleServiceType) ?? 'normal';
     const startLocal = formatScheduleLocalInput(item.start, DEFAULT_START_TIME);
@@ -473,7 +487,7 @@ export default function WeekPage() {
       statusReason: item.statusReason ?? '',
     });
     setDialogOpen(true);
-  }, []);
+  }, [tab, ready, canEditByRole, myUpn]);
 
   const clearInlineSelection = useCallback(() => {
     setDialogOpen(false);

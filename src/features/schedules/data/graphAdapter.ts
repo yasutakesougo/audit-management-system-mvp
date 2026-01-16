@@ -43,11 +43,17 @@ const mapGraphEventToItem = (event: GraphEvent): SchedItem | null => {
     return null;
   }
 
+  const assignedTo =
+    event.organizer?.emailAddress?.address?.trim() ||
+    (event as { createdBy?: { user?: { email?: string } } }).createdBy?.user?.email?.trim() ||
+    null;
+
   return {
     id: fallbackId(event),
     title: normalizeTitle(event.subject ?? undefined),
     start,
     end,
+    assignedTo: assignedTo ? assignedTo.toLowerCase() : null,
   };
 };
 

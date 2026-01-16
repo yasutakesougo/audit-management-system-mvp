@@ -40,6 +40,8 @@ export type CreateScheduleEventInput = {
 
   ownerUserId?: string;
   visibility?: ScheduleVisibility;
+  // Assignee for authorization checks (UPN/email, lowercase)
+  assignedTo?: string | null;
 };
 
 export type UpdateScheduleEventInput = CreateScheduleEventInput & { id: string };
@@ -86,6 +88,8 @@ export type SchedItem = {
 
   ownerUserId?: string;
   visibility?: ScheduleVisibility;
+  // Assignee for authorization checks (UPN/email, lowercase)
+  assignedTo?: string | null;
 };
 
 export interface SchedulesPort {
