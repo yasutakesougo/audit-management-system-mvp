@@ -22,6 +22,7 @@ import { useAuth } from './auth/useAuth';
 import { ToastProvider, useToast } from './hooks/useToast';
 import { getScheduleSaveMode, readBool } from './lib/env';
 import { registerNotifier } from './lib/notice';
+import { hasSpfxContext } from './lib/runtime';
 
 type BridgeProps = {
   children: ReactNode;
@@ -33,6 +34,9 @@ const scheduleSaveMode = getScheduleSaveMode();
 const sharePointFeatureEnabled = readBool('VITE_FEATURE_SCHEDULES_SP', scheduleSaveMode === 'real');
 const forceSharePointList = readBool('VITE_FORCE_SHAREPOINT', false);
 const sharePointCreateEnabled = sharePointFeatureEnabled;
+// Runtime guard: detect SPFx context explicitly
+const spfxContextAvailable = hasSpfxContext();
+// Keep config-level enablement and combine with runtime capability at branch time
 const sharePointListEnabled = sharePointFeatureEnabled || forceSharePointList;
 
 const queryClient = new QueryClient();
@@ -61,7 +65,9 @@ function SchedulesProviderBridge({ children }: BridgeProps) {
   const port = useMemo(() => {
     let selectedPort: SchedulesPort;
 
-    if (sharePointListEnabled) {
+    const sharePointRunnable = sharePointListEnabled && spfxContextAvailable;
+
+    if (sharePointRunnable) {
       console.info('[schedules] using SharePoint port');
       selectedPort = makeSharePointSchedulesPort({
         acquireToken: () => acquireToken(),
@@ -83,7 +89,7 @@ function SchedulesProviderBridge({ children }: BridgeProps) {
     }
 
     return selectedPort;
-  }, [createHandler, graphEnabled, sharePointListEnabled, currentOwnerUserId]);
+  }, [createHandler, graphEnabled, sharePointListEnabled, spfxContextAvailable, currentOwnerUserId]);
 
   return <SchedulesProvider value={port}>{children}</SchedulesProvider>;
 }
