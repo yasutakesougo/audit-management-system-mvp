@@ -1,0 +1,18 @@
+name = "audit-management-system-mvp"
+compatibility_date = "2026-01-17"
+
+[env.production]
+route = "audit-management-system-mvp.pages.dev"
+zone_id = ""
+
+[build]
+command = "npm run build"
+cwd = "./"
+watch_paths = ["src/**/*.ts", "src/**/*.tsx"]
+
+[build.upload]
+format = "service-worker"
+
+[[assets]]
+directory = "./dist"
+binding = "ASSETS"
