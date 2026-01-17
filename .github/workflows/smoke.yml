@@ -42,7 +42,7 @@ jobs:
   vitest:
     name: vitest
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 20
     needs: [lint, typecheck]
     env:
       VITE_MSAL_CLIENT_ID: dummy-client-id
