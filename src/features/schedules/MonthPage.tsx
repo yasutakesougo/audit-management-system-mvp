@@ -6,11 +6,9 @@ import type { SxProps, Theme } from '@mui/material/styles';
 import { useAnnounce } from '@/a11y/LiveAnnouncer';
 import EmptyState from '@/ui/components/EmptyState';
 import Loading from '@/ui/components/Loading';
-import { MASTER_SCHEDULE_TITLE_JA } from '@/features/schedule/constants';
 import { TESTIDS } from '@/testids';
 import { makeRange, useSchedules } from './useSchedules';
 import { getDayChipSx } from './theme/dateStyles';
-import { SchedulesHeader } from './components/SchedulesHeader';
 import { ScheduleEmptyHint } from './components/ScheduleEmptyHint';
 import { DayPopover } from './components/DayPopover';
 import {
@@ -106,10 +104,6 @@ export default function MonthPage() {
     }
   }, [announce, monthAnnouncement]);
 
-  const handleShiftMonth = useCallback((delta: number) => {
-    setAnchorDate((prev) => addMonths(prev, delta));
-  }, [setAnchorDate]);
-
   const handleDaySelect = useCallback(
     (e: React.MouseEvent<HTMLElement>, iso: string) => {
       // Open popover instead of navigating directly
@@ -133,18 +127,6 @@ export default function MonthPage() {
     [navigate, searchParams, setSearchParams],
   );
 
-  const handleTodayClick = useCallback(() => {
-    const today = new Date();
-    const todayIso = toDateIso(today);
-    setAnchorDate(startOfMonth(today));
-    setActiveDateIso(todayIso);
-    const next = new URLSearchParams(searchParams);
-    next.set('date', todayIso);
-    setSearchParams(next, { replace: true });
-    // A3: Return to today in month view
-    navigate(`/schedules/month?date=${encodeURIComponent(todayIso)}&tab=month`);
-  }, [navigate, searchParams, setSearchParams, setActiveDateIso, setAnchorDate]);
-
   const getItemsForDate = useCallback(
     (dateIso: string): SchedItem[] => {
       return items.filter((it) => (it.start ?? '').slice(0, 10) === dateIso);
@@ -154,15 +136,6 @@ export default function MonthPage() {
 
   const headingId = TESTIDS.SCHEDULES_MONTH_HEADING_ID;
   const rangeId = TESTIDS.SCHEDULES_MONTH_RANGE_ID;
-  const dayHref = useMemo(
-    () => `/schedules/week?date=${encodeURIComponent(resolvedActiveDateIso)}&tab=day`,
-    [resolvedActiveDateIso],
-  );
-  const weekHref = useMemo(() => `/schedules/week?date=${resolvedActiveDateIso}`, [resolvedActiveDateIso]);
-  const monthHref = useMemo(
-    () => `/schedules/month?date=${resolvedActiveDateIso}`,
-    [resolvedActiveDateIso],
-  );
 
   return (
     <section
@@ -173,42 +146,10 @@ export default function MonthPage() {
       tabIndex={-1}
       style={{ paddingBottom: 32 }}
     >
-      <Box
-        sx={{
-          position: 'sticky',
-          top: 0,
-          zIndex: 2,
-          backgroundColor: (theme) => theme.palette.background.paper,
-          backdropFilter: 'blur(6px)',
-          borderBottom: '1px solid',
-          borderColor: 'divider',
-          px: 2,
-          py: 2,
-        }}
-      >
-        <SchedulesHeader
-          mode="month"
-          title={MASTER_SCHEDULE_TITLE_JA}
-          subLabel="月表示（全体カレンダー）"
-          periodLabel={`表示月: ${monthLabel}`}
-          onPrev={() => handleShiftMonth(-1)}
-          onNext={() => handleShiftMonth(1)}
-          onToday={handleTodayClick}
-          dayHref={dayHref}
-          weekHref={weekHref}
-          monthHref={monthHref}
-          headingId={headingId}
-          titleTestId={TESTIDS.SCHEDULES_MONTH_HEADING_ID}
-          rangeLabelId={rangeId}
-          rangeTestId={TESTIDS.SCHEDULES_MONTH_RANGE_ID}
-          prevTestId={TESTIDS.SCHEDULES_MONTH_PREV}
-          nextTestId={TESTIDS.SCHEDULES_MONTH_NEXT}
-          showPrimaryAction={false}
-        >
-          <Typography variant="body2" color="text.secondary" sx={{ textAlign: 'right' }}>
-            予定 {totalCount} 件
-          </Typography>
-        </SchedulesHeader>
+      <Box sx={{ px: 2, py: 1.5 }}>
+        <Typography variant="body2" color="text.secondary" sx={{ textAlign: 'right' }}>
+          予定 {totalCount} 件
+        </Typography>
       </Box>
 
       <div
