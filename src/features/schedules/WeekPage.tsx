@@ -463,7 +463,9 @@ export default function WeekPage() {
       const isAssignee = Boolean(myUpnNormalized) && assignedNormalized === myUpnNormalized;
       const canEditItem = canEditByRole || isAssignee;
       if (!canEditItem) {
-        console.warn('[WeekPage] Edit blocked: not authorized', { myUpn, assignedTo: item.assignedTo });
+        if (import.meta.env.DEV) {
+          console.warn('[WeekPage] Edit blocked: not authorized', { myUpn, assignedTo: item.assignedTo });
+        }
         if (hasAssignee && !isAssignee) {
           showSnack('info', 'この予定は担当者のみ編集できます');
         } else {
