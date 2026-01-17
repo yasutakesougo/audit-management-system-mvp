@@ -454,17 +454,25 @@ export default function WeekPage() {
 
   const handleWeekEventClick = useCallback((item: SchedItem) => {
     console.info('[WeekPage] row click', item.id);
-    
+
     // Authorization check: reception/admin OR assignee (Day tab only)
     if (tab === 'day' && ready) {
-      const isAssignee = myUpn && (item.assignedTo ?? '').toLowerCase() === myUpn;
+      const assignedNormalized = (item.assignedTo ?? '').trim().toLowerCase();
+      const hasAssignee = Boolean(assignedNormalized);
+      const myUpnNormalized = (myUpn ?? '').trim().toLowerCase();
+      const isAssignee = Boolean(myUpnNormalized) && assignedNormalized === myUpnNormalized;
       const canEditItem = canEditByRole || isAssignee;
       if (!canEditItem) {
         console.warn('[WeekPage] Edit blocked: not authorized', { myUpn, assignedTo: item.assignedTo });
+        if (hasAssignee && !isAssignee) {
+          showSnack('info', 'この予定は担当者のみ編集できます');
+        } else {
+          showSnack('info', '受付/管理者のみ編集できます');
+        }
         return;
       }
     }
-    
+
     const category = (item.category as Category) ?? 'User';
     const serviceType = (item.serviceType as ScheduleServiceType) ?? 'normal';
     const startLocal = formatScheduleLocalInput(item.start, DEFAULT_START_TIME);
@@ -487,7 +495,7 @@ export default function WeekPage() {
       statusReason: item.statusReason ?? '',
     });
     setDialogOpen(true);
-  }, [tab, ready, canEditByRole, myUpn]);
+  }, [tab, ready, canEditByRole, myUpn, showSnack]);
 
   const clearInlineSelection = useCallback(() => {
     setDialogOpen(false);
