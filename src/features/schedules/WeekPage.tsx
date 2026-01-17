@@ -637,11 +637,36 @@ export default function WeekPage() {
         }}
       >
         <span hidden>週間スケジュール</span>
-        <SchedulesHeader
-          mode={tab === 'day' ? 'day' : 'week'}
-          title={MASTER_SCHEDULE_TITLE_JA}
-          subLabel="週表示（週間の予定一覧）"
-          periodLabel={`表示期間: ${weekLabel}`}
+        {/* Tab-aware header content */}
+        {(() => {
+          // Compute monthLabel for month tab
+          const monthDate = new Date(`${resolvedActiveDateIso}T00:00:00`);
+          const monthLabel = new Intl.DateTimeFormat('ja-JP', { year: 'numeric', month: 'long' }).format(monthDate);
+
+          // Determine subLabel and periodLabel based on current tab
+          const headerSubLabel =
+            tab === 'day'
+              ? '日表示（本日の予定）'
+              : tab === 'month'
+                ? '月表示（全体カレンダー）'
+                : tab === 'timeline'
+                  ? 'タイムライン（週間）'
+                  : '週表示（週間の予定一覧）';
+
+          const headerPeriodLabel =
+            tab === 'month'
+              ? `表示月: ${monthLabel}`
+              : tab === 'day'
+                ? `表示期間: ${new Intl.DateTimeFormat('ja-JP', { year: 'numeric', month: 'short', day: 'numeric' }).format(monthDate)}`
+                : `表示期間: ${weekLabel}`;
+
+          return (
+            <>
+              <SchedulesHeader
+                mode={tab === 'day' ? 'day' : 'week'}
+                title={MASTER_SCHEDULE_TITLE_JA}
+                subLabel={headerSubLabel}
+                periodLabel={headerPeriodLabel}
           onPrev={handlePrevWeek}
           onNext={handleNextWeek}
           onToday={handleTodayWeek}
@@ -698,6 +723,9 @@ export default function WeekPage() {
             </div>
           </SchedulesFilterResponsive>
         </SchedulesHeader>
+            </>
+          );
+        })()}
 
         <div
           id={tablistId}
