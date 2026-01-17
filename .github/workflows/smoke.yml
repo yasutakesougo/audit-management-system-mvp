@@ -42,6 +42,7 @@ jobs:
   vitest:
     name: vitest
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     needs: [lint, typecheck]
     env:
       VITE_MSAL_CLIENT_ID: dummy-client-id
@@ -55,7 +56,7 @@ jobs:
           cache: npm
       - run: npm ci
       - name: vitest
-        run: TZ=Asia/Tokyo npm run test -- --run
+        run: TZ=Asia/Tokyo npm run test:ci
 
   e2e-smoke:
     name: e2e-smoke (chromium)
