@@ -3,6 +3,7 @@ import { useSearchParams } from 'react-router-dom';
 import { Alert, Snackbar } from '@mui/material';
 
 import { useAnnounce } from '@/a11y/LiveAnnouncer';
+import { isDev } from '@/env';
 import { useAuth } from '@/auth/useAuth';
 import { useUserAuthz } from '@/auth/useUserAuthz';
 import { MASTER_SCHEDULE_TITLE_JA } from '@/features/schedule/constants';
@@ -463,7 +464,7 @@ export default function WeekPage() {
       const isAssignee = Boolean(myUpnNormalized) && assignedNormalized === myUpnNormalized;
       const canEditItem = canEditByRole || isAssignee;
       if (!canEditItem) {
-        if (import.meta.env.DEV) {
+        if (isDev) {
           console.warn('[WeekPage] Edit blocked: not authorized', { myUpn, assignedTo: item.assignedTo });
         }
         if (hasAssignee && !isAssignee) {
