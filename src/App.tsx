@@ -20,7 +20,7 @@ import { GRAPH_RESOURCE } from './auth/msalConfig';
 import { MsalProvider } from './auth/MsalProvider';
 import { useAuth } from './auth/useAuth';
 import { ToastProvider, useToast } from './hooks/useToast';
-import { getScheduleSaveMode, readBool } from './lib/env';
+import { getScheduleSaveMode, readBool, readViteBool } from './lib/env';
 import { registerNotifier } from './lib/notice';
 import { hasSpfxContext } from './lib/runtime';
 
@@ -28,16 +28,14 @@ type BridgeProps = {
   children: ReactNode;
 };
 
-const graphEnabled = readBool('VITE_FEATURE_SCHEDULES_GRAPH', false);
-// Diagnostic: check env value at build time vs readBool result
-if (typeof console !== 'undefined') {
-  console.info('[env-check] import.meta.env.VITE_FEATURE_SCHEDULES_GRAPH =', (import.meta.env as Record<string, unknown>).VITE_FEATURE_SCHEDULES_GRAPH);
-  console.info('[env-check] readBool(VITE_FEATURE_SCHEDULES_GRAPH) =', graphEnabled);
-}
+// Feature flags that depend on build-time Vite variables
+// Read directly from import.meta.env to ensure Cloudflare build-time values are respected
+const graphEnabled = readViteBool('VITE_FEATURE_SCHEDULES_GRAPH', false);
+const spEnabled = readViteBool('VITE_FEATURE_SCHEDULES_SP', false);
 
 const hydrationHudEnabled = readBool('VITE_FEATURE_HYDRATION_HUD', false);
 const scheduleSaveMode = getScheduleSaveMode();
-const sharePointFeatureEnabled = readBool('VITE_FEATURE_SCHEDULES_SP', scheduleSaveMode === 'real');
+const sharePointFeatureEnabled = spEnabled || readBool('VITE_FEATURE_SCHEDULES_SP', scheduleSaveMode === 'real');
 const forceSharePointList = readBool('VITE_FORCE_SHAREPOINT', false);
 const sharePointCreateEnabled = sharePointFeatureEnabled;
 // Runtime guard: detect SPFx context explicitly
