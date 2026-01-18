@@ -49,6 +49,23 @@ const normalizeString = (value: Primitive): string => {
   return '';
 };
 
+/**
+ * Read Vite build-time environment variables directly from import.meta.env.
+ * Used for feature flags that must be determined at build time (e.g., GraphQL enablement).
+ * This bypasses runtime env handling and reads the value Vite baked into the code.
+ */
+export const readViteBool = (key: string, fallback = false): boolean => {
+  const raw = (import.meta.env as Record<string, unknown>)[key];
+  if (raw === undefined || raw === null) return fallback;
+  if (typeof raw === 'boolean') return raw;
+  if (typeof raw === 'string') {
+    const normalized = raw.trim().toLowerCase();
+    if (normalized === 'true' || normalized === '1' || normalized === 'yes') return true;
+    if (normalized === 'false' || normalized === '0' || normalized === 'no') return false;
+  }
+  return fallback;
+};
+
 const coerceBoolean = (value: Primitive, fallback = false): boolean => {
   if (value === undefined || value === null) return fallback;
   if (typeof value === 'boolean') return value;
