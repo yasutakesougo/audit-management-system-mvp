@@ -29,6 +29,12 @@ type BridgeProps = {
 };
 
 const graphEnabled = readBool('VITE_FEATURE_SCHEDULES_GRAPH', false);
+// Diagnostic: check env value at build time vs readBool result
+if (typeof console !== 'undefined') {
+  console.info('[env-check] import.meta.env.VITE_FEATURE_SCHEDULES_GRAPH =', (import.meta.env as Record<string, unknown>).VITE_FEATURE_SCHEDULES_GRAPH);
+  console.info('[env-check] readBool(VITE_FEATURE_SCHEDULES_GRAPH) =', graphEnabled);
+}
+
 const hydrationHudEnabled = readBool('VITE_FEATURE_HYDRATION_HUD', false);
 const scheduleSaveMode = getScheduleSaveMode();
 const sharePointFeatureEnabled = readBool('VITE_FEATURE_SCHEDULES_SP', scheduleSaveMode === 'real');
