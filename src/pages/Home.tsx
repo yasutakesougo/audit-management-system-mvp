@@ -63,15 +63,17 @@ export default function Home() {
   const { data: users, status: usersStatus, error: usersError } = useUsersStore();
 
   // デバッグ情報をコンソールに出力
-  console.log('[Home] Component rendered!');
-  console.log('[Home] Demo mode enabled:', demoModeEnabled);
-  console.log('[Home] Users debug:', {
-    usersStatus,
-    usersCount: users?.length,
-    usersError: usersError ? String(usersError) : null,
-    users: users?.slice(0, 3) // 最初の3件のみ表示
-  });
-  console.log('[Home] useUsersStore result:', { users, usersStatus, usersError });
+  if (import.meta.env.DEV) {
+    console.log('[Home] Component rendered!');
+    console.log('[Home] Demo mode enabled:', demoModeEnabled);
+    console.log('[Home] Users debug:', {
+      usersStatus,
+      usersCount: users?.length,
+      usersError: usersError ? String(usersError) : null,
+      users: users?.slice(0, 3) // 最初の3件のみ表示
+    });
+    console.log('[Home] useUsersStore result:', { users, usersStatus, usersError });
+  }
   const { data: staff } = useStaff();
   const {
     data: schedules,

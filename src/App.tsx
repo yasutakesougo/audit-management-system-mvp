@@ -72,7 +72,7 @@ function SchedulesProviderBridge({ children }: BridgeProps) {
     const sharePointRunnable = sharePointListEnabled && spfxContextAvailable;
 
     if (sharePointRunnable) {
-      console.info('[schedules] using SharePoint port');
+      if (import.meta.env.DEV) console.info('[schedules] using SharePoint port');
       selectedPort = makeSharePointSchedulesPort({
         acquireToken: () => acquireToken(),
         create: createHandler,
@@ -80,10 +80,10 @@ function SchedulesProviderBridge({ children }: BridgeProps) {
       });
 
     } else if (graphEnabled) {
-      console.info('[schedules] using Graph port');
+      if (import.meta.env.DEV) console.info('[schedules] using Graph port');
       selectedPort = makeGraphSchedulesPort(() => acquireToken(GRAPH_RESOURCE), { create: createHandler });
     } else {
-      console.info('[schedules] using Demo port');
+      if (import.meta.env.DEV) console.info('[schedules] using Demo port');
       selectedPort = {
         list: (range) => demoSchedulesPort.list(range),
         create: (input) => createHandler(input),
