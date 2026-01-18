@@ -81,7 +81,7 @@ const UserFormDemo: React.FC = () => {
           user={selectedUser}
           mode={selectedUser ? "update" : "create"}
           onSuccess={(user) => {
-            console.log('User saved:', user);
+            if (import.meta.env.DEV) console.log('User saved:', user);
             alert(`User ${user.FullName} saved successfully!`);
           }}
           onDone={() => {

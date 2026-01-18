@@ -267,7 +267,7 @@ const SupportRecordPage: React.FC = () => {
 
   // 記録生成・更新機能（将来の拡張用）
   const handleGenerateTodayRecords = useCallback(() => {
-    console.log('本日分の記録を一括生成');
+    if (import.meta.env.DEV) console.log('本日分の記録を一括生成');
     // 実際の生成処理をここに実装
     // 生成後にキャッシュをクリアして最新データを表示
     setDailyRecordCache(new Map());
@@ -275,7 +275,7 @@ const SupportRecordPage: React.FC = () => {
 
   // 記録更新機能（将来の拡張用）
   const _handleUpdateRecord = useCallback((record: SupportRecord) => {
-    console.log('記録更新:', record);
+    if (import.meta.env.DEV) console.log('記録更新:', record);
     // 実際の更新処理をここに実装
     // 更新後にキャッシュの該当項目を更新
     const cacheKey = `${record.personId}-${record.date}`;
