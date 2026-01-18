@@ -7,6 +7,9 @@ const enabled = debugConfig.VITE_AUDIT_DEBUG === '1' || debugConfig.VITE_AUDIT_D
 type Level = 'debug' | 'info' | 'warn' | 'error';
 
 function log(level: Level, ns: string, ...args: unknown[]) {
+  // Production: only show errors
+  // Development: show all levels (respecting VITE_AUDIT_DEBUG for debug)
+  if (!import.meta.env.DEV && level !== 'error') return;
   if (!enabled && level === 'debug') return;
   // eslint-disable-next-line no-console
   (console as any)[level](`[audit:${ns}]`, ...args);
