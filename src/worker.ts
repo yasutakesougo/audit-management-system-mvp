@@ -2,16 +2,21 @@
  * Cloudflare Workers custom handler for Assets
  * Adds COOP header to HTML responses for MSAL popup authentication
  */
+
+interface Env {
+  ASSETS: {
+    fetch: (request: Request) => Promise<Response>;
+  };
+}
+
 export default {
-  async fetch(request, env) {
+  async fetch(request: Request, env: Env): Promise<Response> {
     // Serve static assets via Workers Assets
     const response = await env.ASSETS.fetch(request);
 
     // Only modify HTML responses
     const contentType = response.headers.get('content-type') || '';
-    const isHtml = contentType.includes('text/html');
-
-    if (!isHtml) {
+    if (!contentType.includes('text/html')) {
       return response;
     }
 
@@ -22,7 +27,6 @@ export default {
 
     return new Response(response.body, {
       status: response.status,
-      statusText: response.statusText,
       headers,
     });
   },
