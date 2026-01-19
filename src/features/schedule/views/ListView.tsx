@@ -188,11 +188,21 @@ export default function ScheduleListView() {
   const tableLabelId = useId();
   const outlineButtonSx = {
     borderColor: 'primary.main',
+    borderWidth: 2,
     color: 'primary.main',
     fontWeight: 600,
     '&:hover': {
       borderColor: 'primary.dark',
+      backgroundColor: 'primary.main',
+      color: 'primary.contrastText',
+    },
+    '&:focus': {
+      borderColor: 'primary.dark',
       backgroundColor: 'action.hover',
+    },
+    '&.Mui-disabled': {
+      borderColor: 'action.disabled',
+      color: 'text.disabled',
     },
   } as const;
 

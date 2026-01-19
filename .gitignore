@@ -7,6 +7,7 @@ dist
 # Test/coverage outputs
 coverage
 test-results
+playwright-report
 
 # Local certificates/keys (do NOT commit)
 key.pem

@@ -7,4 +7,8 @@ export default defineConfig({
   ...baseConfig,
   testMatch: REGRESSION_SPEC_PATTERN,
   projects: (baseConfig.projects ?? []).filter((project) => project.name === 'chromium'),
+  webServer: {
+    ...baseConfig.webServer,
+    reuseExistingServer: false,
+  },
 });
