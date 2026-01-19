@@ -1,5 +1,6 @@
 name = "isogo-system"
 compatibility_date = "2026-01-17"
+main = "_worker.js"
 
 [assets]
 directory = "./dist"
