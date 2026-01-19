@@ -1,40 +1,41 @@
 /**
  * Cloudflare Workers custom handler for Assets
- * - Rely on not_found_handling = "single-page-application" from wrangler.toml
- * - Only attach COOP header to HTML responses
+ * - Attaches COOP header for MSAL popup authentication
+ * - Relies on wrangler.toml [assets] binding for SPA fallback
  */
 
 interface Env {
-  ASSETS: { fetch: (request: Request) => Promise<Response> };
+  ASSETS?: { fetch: (request: Request) => Promise<Response> };
 }
 
 export default {
   async fetch(request: Request, env: Env): Promise<Response> {
-    // HEAD は素通し
-    if (request.method === 'HEAD') {
-      return env.ASSETS.fetch(request);
+    // Guard: ASSETS binding must be present
+    if (!env.ASSETS?.fetch) {
+      return new Response(
+        'ASSETS binding is missing. Check wrangler.toml [assets] binding = "ASSETS".',
+        { status: 500, headers: { 'content-type': 'text/plain; charset=utf-8' } }
+      );
     }
 
     let res: Response;
-
     try {
       res = await env.ASSETS.fetch(request);
     } catch {
-      return new Response('Worker error', { status: 500 });
+      return new Response('ASSETS.fetch failed', { status: 500 });
     }
 
-    // 3xx リダイレクトは加工しない
-    if (res.status >= 300 && res.status < 400) {
-      return res;
-    }
+    // Skip modification for HEAD, 3xx, or non-HTML
+    if (request.method === 'HEAD') return res;
+    if (res.status >= 300 && res.status < 400) return res;
 
-    // HTML判定で COOP を付与
     const accept = request.headers.get('accept') || '';
     const dest = request.headers.get('sec-fetch-dest') || '';
-    const wantsHtml = accept.includes('text/html') || dest === 'document';
+    const isHtml = accept.includes('text/html') || dest === 'document';
 
-    if (!wantsHtml) return res;
+    if (!isHtml) return res;
 
+    // Attach COOP header for HTML responses
     const headers = new Headers(res.headers);
     headers.set('Cross-Origin-Opener-Policy', 'same-origin-allow-popups');
     headers.set('Cache-Control', 'no-store');
