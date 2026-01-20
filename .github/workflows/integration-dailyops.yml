@@ -42,6 +42,8 @@ jobs:
           PW_STORAGE_STATE_B64: ${{ secrets.PW_STORAGE_STATE_B64 }}
 
       - name: Run integration (DailyOpsSignals)
+        env:
+          SHAREPOINT_SITE: ${{ secrets.SHAREPOINT_SITE }}
         run: npm run ci:integration:dailyops
 
       - name: Upload test artifacts (on failure)
