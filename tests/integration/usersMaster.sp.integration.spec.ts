@@ -5,7 +5,8 @@ const SP_RESOURCE = process.env.VITE_SP_RESOURCE ?? 'https://isogokatudouhome.sh
 const SP_SITE_RELATIVE = process.env.VITE_SP_SITE_RELATIVE ?? '/sites/app-test';
 const LIST_TITLE = 'Users_Master';
 
-// Fixed key to prevent test data growth
+// NOTE: fixed key to keep nightly integration idempotent (does not grow test data)
+// If multi-tenant or parallel runs are introduced in future, suffix with tenant/env id (e.g., E2E_INTEGRATION_USER_${TENANT}_${ENV})
 const FIXED_USER_ID = 'E2E_INTEGRATION_USER_0001';
 
 async function ensureOk(res: APIResponse, label: string): Promise<void> {

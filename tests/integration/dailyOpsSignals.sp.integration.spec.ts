@@ -1,75 +1,10 @@
-import { test, expect, request, type APIResponse } from '@playwright/test';
-import { existsSync, readFileSync } from 'node:fs';
-import { resolve } from 'node:path';
+import { test, expect, type APIResponse } from '@playwright/test';
+import { loadAuthState, extractSharePointAccessToken } from './sharePointTokenExtractor';
 
-type StorageState = {
-  origins: Array<{
-    origin: string;
-    localStorage: Array<{ name: string; value: string }>;
-  }>;
-};
-
-const AUTH_STATE = resolve(process.cwd(), 'tests/.auth/storageState.json');
 const SP_RESOURCE = process.env.VITE_SP_RESOURCE ?? 'https://isogokatudouhome.sharepoint.com';
 const SP_SITE_RELATIVE = process.env.VITE_SP_SITE_RELATIVE ?? '/sites/app-test';
 const LIST_TITLE = 'DailyOpsSignals';
 const FIXED_DATE = '2000-01-01T00:00:00Z';
-
-function requireAuthState(): StorageState {
-  if (!existsSync(AUTH_STATE)) {
-    throw new Error(
-      `[integration] Missing storageState at ${AUTH_STATE}. Run: npm run auth:setup`
-    );
-  }
-  return JSON.parse(readFileSync(AUTH_STATE, 'utf-8')) as StorageState;
-}
-
-/**
- * Extract SharePoint access token from MSAL storageState.
- * MSAL stores tokens in localStorage with various formats.
- */
-function extractSharePointAccessToken(state: StorageState): string {
-  const all = state.origins.flatMap((o) => o.localStorage);
-  const originsCount = state.origins.length;
-  const localStorageCount = all.length;
-  const candidates = all
-    .map((x) => x.value)
-    .filter((v) => v.includes('accessToken') && v.includes(SP_RESOURCE));
-  const candidateCount = candidates.length;
-
-  // Try JSON-encoded tokens first
-  for (const v of candidates) {
-    try {
-      const obj = JSON.parse(v);
-      if (typeof obj?.secret === 'string' && obj.secret.length > 100) return obj.secret;
-      if (typeof obj?.accessToken === 'string' && obj.accessToken.length > 100)
-        return obj.accessToken;
-    } catch {
-      // ignore
-    }
-  }
-
-  // Fallback: scan all localStorage for token-like strings
-  for (const { value } of all) {
-    try {
-      const obj = JSON.parse(value);
-      const token = obj?.secret ?? obj?.accessToken;
-      if (typeof token === 'string' && token.length > 100 && !token.includes('refresh')) {
-        return token;
-      }
-    } catch {
-      // ignore
-    }
-  }
-
-  throw new Error(
-    [
-      '[integration] Could not extract SharePoint access token from storageState.',
-      `origins=${originsCount}, localStorageEntries=${localStorageCount}, candidateTokens=${candidateCount}`,
-      'Run: npm run auth:setup (ensure SharePoint scope is granted and token is in storageState).',
-    ].join(' ')
-  );
-}
 
 async function ensureOk(res: APIResponse, label: string): Promise<void> {
   if (res.ok()) return;
@@ -101,9 +36,9 @@ async function ensureOk(res: APIResponse, label: string): Promise<void> {
  *   npm run ci:integration:dailyops
  */
 test.describe('DailyOpsSignals (SharePoint REST) integration', () => {
-  test('List reachability / schema / idempotent upsert / resolve', async () => {
-    const state = requireAuthState();
-    const accessToken = extractSharePointAccessToken(state);
+  test('List reachability / schema / idempotent upsert / resolve', async ({ request }) => {
+    const state = loadAuthState();
+    const accessToken = extractSharePointAccessToken(state, SP_RESOURCE);
 
     const api = await request.newContext({
       baseURL: `${SP_RESOURCE}${SP_SITE_RELATIVE}`,
