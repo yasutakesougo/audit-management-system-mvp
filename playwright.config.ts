@@ -38,6 +38,7 @@ const webServerEnvVarsIntegration = {
   VITE_SP_SITE_RELATIVE: process.env.VITE_SP_SITE_RELATIVE ?? '/sites/app-test',
   VITE_SP_SCOPE_DEFAULT:
     process.env.VITE_SP_SCOPE_DEFAULT ?? 'https://isogokatudouhome.sharepoint.com/AllSites.Read',
+  VITE_E2E_INTEGRATION: '1',
   VITE_E2E: '0', // Not E2E mode
   VITE_E2E_MSAL_MOCK: 'false', // Use real MSAL
   VITE_SKIP_LOGIN: '0', // Require authentication
@@ -61,11 +62,15 @@ const envPairs = Object.entries(webServerEnvVars)
 const devCommand = `npx cross-env ${envPairs} npx vite --mode test --host 127.0.0.1 --port ${devPort} --strictPort`;
 const buildAndPreviewCommand = 'npm run preview:e2e';
 
+// Integration must run against real env (no mocks/skip-login), so force the devCommand
+// which injects integration env vars. E2E stays on the prebuilt preview command.
 const webServerCommand = webServerCommandOverride
   ? webServerCommandOverride
-  : skipBuild
+  : isIntegrationProject
     ? devCommand
-    : buildAndPreviewCommand;
+    : skipBuild
+      ? devCommand
+      : buildAndPreviewCommand;
 
 // Allow reusing an externally started server when PLAYWRIGHT_WEB_SERVER_URL is provided (e.g., guardrails workflows).
 const reuseExistingServer = true; // always reuse an existing server if already running at baseURL
@@ -84,6 +89,12 @@ export default defineConfig({
   },
   projects: [
     {
+      name: 'integration:setup',
+      testDir: 'tests/integration',
+      testMatch: 'auth.sp.setup.spec.ts',
+      use: desktopChrome,
+    },
+    {
       name: 'chromium',
       testDir: 'tests/e2e',
       use: desktopChrome,
@@ -97,6 +108,7 @@ export default defineConfig({
     {
       name: 'integration',
       testDir: 'tests/integration',
+      dependencies: ['integration:setup'],
       use: {
         ...desktopChrome,
         storageState: 'tests/.auth/storageState.json',
