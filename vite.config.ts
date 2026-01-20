@@ -16,7 +16,9 @@ const fluentStub = fileURLToPath(new URL('./src/stubs/fluentui-react.tsx', impor
 const emptyShim = fileURLToPath(new URL('./src/shims/empty.ts', import.meta.url))
 
 export default defineConfig(({ mode }) => {
+  // Load environment variables (.env.test.local will override .env.local in test mode)
   const env = loadEnv(mode, process.cwd(), '');
+  
   const normalizeBase = (value: string | undefined) => (value ? value.replace(/\/?$/, '') : undefined);
   const siteUrl =
     normalizeBase(env.VITE_SP_SITE_URL) ??

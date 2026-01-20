@@ -5,7 +5,7 @@ import { LegacyDayRedirect, LegacyMonthRedirect } from '@/features/schedule/lega
 import { StaffPanel } from '@/features/staff';
 import { UsersPanel } from '@/features/users';
 import { RouteHydrationErrorBoundary } from '@/hydration/RouteHydrationListener';
-import { getAppConfig } from '@/lib/env';
+import { getAppConfig, readBool } from '@/lib/env';
 import lazyWithPreload from '@/utils/lazyWithPreload';
 import React from 'react';
 import { createBrowserRouter, Navigate, Outlet, type RouteObject } from 'react-router-dom';
@@ -57,8 +57,12 @@ const SupportStepMasterPage = React.lazy(() => import('@/pages/SupportStepMaster
 const IndividualSupportManagementPage = React.lazy(() => import('@/pages/IndividualSupportManagementPage'));
 const UserDetailPage = React.lazy(() => import('@/pages/UserDetailPage'));
 
+// Dev/Test pages
+const DailyOpsDevPage = React.lazy(() => import('@/pages/DailyOpsDevPage'));
+const UsersDevHarnessPage = React.lazy(() => import('@/features/users/dev/UsersDevHarnessPage').then((m) => ({ default: m.UsersDevHarnessPage })));
+
 // Dev harness（開発環境のみ）
-const devHarnessEnabled = getAppConfig().isDev;
+const devHarnessEnabled = readBool('VITE_DEV_HARNESS', false) || getAppConfig().isDev;
 const DevScheduleCreateDialogPage = devHarnessEnabled
   ? React.lazy(() => import('@/features/schedules/DevScheduleCreateDialogPage'))
   : null;
@@ -621,6 +625,32 @@ const childRoutes: RouteObject[] = [
               <SuspendedDevScheduleCreateDialogPage />
             </ProtectedRoute>
           </SchedulesGate>
+        ),
+      }]
+    : []),
+  ...(devHarnessEnabled
+    ? [{
+        path: 'dev/daily-ops',
+        element: (
+          <ProtectedRoute flag="schedules">
+            <React.Suspense
+              fallback={<div className="p-4 text-sm text-slate-600">DailyOpsSignals を読み込んでいます…</div>}
+            >
+              <DailyOpsDevPage />
+            </React.Suspense>
+          </ProtectedRoute>
+        ),
+      }]
+    : []),
+  ...(devHarnessEnabled && UsersDevHarnessPage
+    ? [{
+        path: 'dev/users',
+        element: (
+          <React.Suspense
+            fallback={<div className="p-4 text-sm text-slate-600">Users Dev Harness を読み込んでいます…</div>}
+          >
+            <UsersDevHarnessPage />
+          </React.Suspense>
         ),
       }]
     : []),

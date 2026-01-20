@@ -82,6 +82,24 @@ const getEnvValue = (key: string, envOverride?: EnvRecord): Primitive => {
   if (envOverride && key in envOverride) {
     return envOverride[key];
   }
+  
+  // ✅ Browser environment: use import.meta.env directly (Vite injects at build time)
+  if (typeof window !== 'undefined' && typeof import.meta !== 'undefined' && import.meta.env && key in import.meta.env) {
+    return import.meta.env[key] as Primitive;
+  }
+  
+  // Node.js environment: use process.env or globalThis.import for SSR
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const globalImport = (globalThis as any).import;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  if (typeof globalImport !== 'undefined' && (globalImport as any).meta?.env && typeof (globalImport as any).meta.env === 'object') {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const metaEnv = (globalImport as any).meta.env as Record<string, Primitive>;
+    if (key in metaEnv) {
+      return metaEnv[key];
+    }
+  }
+  
   if (typeof process !== 'undefined' && process.env && key in process.env) {
     return process.env[key] as Primitive;
   }
@@ -93,6 +111,11 @@ const getEnvValue = (key: string, envOverride?: EnvRecord): Primitive => {
 };
 
 const resolveIsDev = (envOverride?: EnvRecord): boolean => {
+  // Vite dev server は import.meta.env.DEV が true になるので、これを最優先
+  if (import.meta.env.DEV) {
+    return true;
+  }
+
   const modeValue = getEnvValue('MODE', envOverride);
   if (typeof modeValue === 'string' && modeValue.trim()) {
     const normalized = modeValue.trim().toLowerCase();
@@ -346,6 +369,10 @@ export const shouldSkipLogin = (envOverride?: EnvRecord): boolean => {
   }
 
   return false;
+};
+
+export const shouldSkipSharePoint = (envOverride?: EnvRecord): boolean => {
+  return readBool('VITE_SKIP_SHAREPOINT', false, envOverride);
 };
 
 export const isUsersCrudEnabled = (envOverride?: EnvRecord): boolean => {

@@ -4,6 +4,7 @@ import { getAppConfig, readEnv } from '@/lib/env';
 import Button from '@mui/material/Button';
 import Tooltip from '@mui/material/Tooltip';
 import React, { useEffect, useMemo } from 'react';
+import { useNavigate } from 'react-router-dom';
 
 const defaultScopes = [`${SP_RESOURCE}/.default`];
 const preferredLoginFlow = readEnv('VITE_MSAL_LOGIN_FLOW', 'popup').trim().toLowerCase();
@@ -13,6 +14,7 @@ const { isDev: isDevEnv } = getAppConfig();
 
 const SignInButton: React.FC = () => {
 	const { instance, accounts } = useMsalContext();
+	const navigate = useNavigate();
 	const signedIn = accounts.length > 0;
 	const tooltip = useMemo(() => {
 		if (!signedIn) return '未サインイン';
@@ -32,6 +34,7 @@ const SignInButton: React.FC = () => {
 				console.warn('[auth] login succeeded but no account returned.');
 				return;
 			}
+			navigate('/dashboard', { replace: true });
 			if (isDevEnv) {
 				const label = (active as { username?: string; homeAccountId?: string }).username ?? (active as { homeAccountId?: string }).homeAccountId;
 				console.info('[auth] signed in:', label ?? '(unknown account)');
