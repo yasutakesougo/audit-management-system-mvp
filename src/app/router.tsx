@@ -59,6 +59,7 @@ const UserDetailPage = React.lazy(() => import('@/pages/UserDetailPage'));
 
 // Dev/Test pages
 const DailyOpsDevPage = React.lazy(() => import('@/pages/DailyOpsDevPage'));
+const StaffDevHarnessPage = React.lazy(() => import('@/features/staff/dev/StaffDevHarnessPage'));
 const UsersDevHarnessPage = React.lazy(() => import('@/features/users/dev/UsersDevHarnessPage').then((m) => ({ default: m.UsersDevHarnessPage })));
 
 // Dev harness（開発環境のみ）
@@ -639,6 +640,18 @@ const childRoutes: RouteObject[] = [
               <DailyOpsDevPage />
             </React.Suspense>
           </ProtectedRoute>
+        ),
+      }]
+    : []),
+  ...(devHarnessEnabled && StaffDevHarnessPage
+    ? [{
+        path: 'dev/staff',
+        element: (
+          <React.Suspense
+            fallback={<div className="p-4 text-sm text-slate-600">Staff Dev Harness を読み込んでいます…</div>}
+          >
+            <StaffDevHarnessPage />
+          </React.Suspense>
         ),
       }]
     : []),
