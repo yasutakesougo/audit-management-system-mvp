@@ -19,7 +19,8 @@ if [ -n "$CI" ]; then
 fi
 
 # Local development: check only changed files to keep it fast
-FILES=$(git diff --cached --name-only --diff-filter=ACM | grep -E '\.(ts|tsx|js|jsx)$' || true)
+# Include: Added, Created, Modified, Renamed (ACMR)
+FILES=$(git diff --cached --name-only --diff-filter=ACMR | grep -E '\.(ts|tsx|js|jsx)$' || true)
 
 # If no TypeScript/JavaScript files staged, nothing to check
 if [ -z "$FILES" ]; then
@@ -27,7 +28,8 @@ if [ -z "$FILES" ]; then
 fi
 
 echo "[pre-push] Lint staged TypeScript/JavaScript files only..."
-if ! npx eslint $FILES; then
+# Use xargs to handle long file lists (macOS has argv length limits)
+if ! echo "$FILES" | xargs npx eslint; then
   echo ""
   echo "❌ Lint failed. To run full checks locally:"
   echo "   npm run preflight"
@@ -40,7 +42,13 @@ fi
 # Guard: block NEW usage of import.meta.env (existing code is OK)
 # This prevents accumulation of direct env access outside the config layer
 # See: src/env.ts for the centralized env interface
-ADDED=$(git diff --cached -U0 | grep -E '^\+[^+].*import\.meta\.env\.' || true)
+#
+# Exclude comments and string literals to reduce false positives
+ADDED=$(git diff --cached -U0 | \
+  grep -E '^\+.*import\.meta\.env\.' | \
+  grep -vE '^\+\s*//' | \
+  grep -vE '^\+\s*/\*' || true)
+
 if [ -n "$ADDED" ]; then
   echo ""
   echo "❌ New import.meta.env detected. Use env helpers instead:"
