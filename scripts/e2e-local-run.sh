@@ -3,21 +3,27 @@
 # Usage: bash scripts/e2e-local-run.sh [--headed]
 set -euo pipefail
 
+# Ensure we're in repo root (works from any directory)
+ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+cd "$ROOT"
+
 HEADED="${1:-}"
+LOG_FILE="${ROOT}/tmp/vite-5173.log"
+mkdir -p "${ROOT}/tmp"
 
 echo "▶ Cleaning port 5173..."
 lsof -ti :5173 | xargs -r kill -9 || true
 sleep 1
 
 echo "▶ Starting dev server (nohup + TTY-free)..."
-nohup npm run dev:5173 </dev/null > /tmp/vite-5173.log 2>&1 &
+nohup npm run dev:5173 </dev/null > "$LOG_FILE" 2>&1 &
 DEV_PID=$!
 echo "  Dev server PID: $DEV_PID"
 
 echo "▶ Waiting for http://127.0.0.1:5173/ to be ready..."
 npx wait-on http://127.0.0.1:5173/ --timeout 60000 || {
   echo "❌ Dev server failed to start. Logs:"
-  tail -20 /tmp/vite-5173.log
+  tail -20 "$LOG_FILE"
   exit 1
 }
 
