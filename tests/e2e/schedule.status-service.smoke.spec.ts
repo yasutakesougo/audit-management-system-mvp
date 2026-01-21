@@ -26,6 +26,7 @@ const TEST_DATE = new Date(SCHEDULE_FIXTURE_BASE_DATE);
 const TEST_DAY_KEY = formatInTimeZone(TEST_DATE, TIME_ZONE, 'yyyy-MM-dd');
 const IS_PREVIEW = process.env.PW_USE_PREVIEW === '1';
 const IS_FIXTURES = process.env.VITE_FORCE_SHAREPOINT !== '1';
+const HAS_SCHEDULE_DATA = process.env.E2E_HAS_SCHEDULE_DATA === '1';
 
 const buildLocalDateTime = (time: string) => `${TEST_DAY_KEY}T${time}`;
 
@@ -460,8 +461,8 @@ test.describe('Schedule dialog: status/service end-to-end', () => {
         contentType: 'application/json',
       });
     }
-    if (userItemCount === 0) {
-      test.skip(true, 'No week user items present in this environment.');
+    if (!HAS_SCHEDULE_DATA && userItemCount === 0) {
+      test.skip(true, 'No week user items present (set E2E_HAS_SCHEDULE_DATA=1 to enable).');
     }
 
     await assertWeekHasUserCareEvent(page);

@@ -5,6 +5,7 @@
   "scripts": {
     "dev": "vite",
     "dev:5173": "vite --host 127.0.0.1 --port 5173 --strictPort",
+    "dev:e2e": "npm run dev:5173",
     "dev:schedules": "VITE_SKIP_LOGIN=1 VITE_FORCE_SHAREPOINT=0 vite --port 5175",
     "dev:attendance": "VITE_SKIP_LOGIN=1 VITE_FORCE_SHAREPOINT=0 vite --port 5176",
     "dev:daily": "VITE_SKIP_LOGIN=1 VITE_FORCE_SHAREPOINT=0 vite --port 5177",

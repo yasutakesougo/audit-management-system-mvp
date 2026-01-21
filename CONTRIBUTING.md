@@ -35,6 +35,7 @@ lsof -ti :5173 | xargs -r kill -9
 ```
 
 **Why this approach:**
+- **Avoid `npm run dev &` in terminal** (causes TTY suspension when stdin is not redirected)
 - `nohup ... </dev/null` prevents TTY suspension (main cause of dev server hangs)
 - `wait-on` confirms HTTP 200 before running tests
 - `curl` validates connectivity before E2E
