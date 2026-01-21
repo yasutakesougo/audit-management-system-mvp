@@ -56,17 +56,52 @@ jobs:
       - name: Hydration unit budget suite
         run: npm run test:hydration -- --reporter=dot
 
-      - name: Prefetch E2E (HUD on)
-        run: npm run test:e2e:prefetch -- --reporter=line
+      - name: Build for E2E
+        run: npm run build
+
+      - name: Dev server + Prefetch E2E
+        shell: bash
+        run: |
+          npm run dev > /tmp/dev.log 2>&1 &
+          DEV_PID=$!
+          sleep 5
+          npm run test:e2e:prefetch -- --reporter=line
+          TEST_EXIT=$?
+          kill $DEV_PID 2>/dev/null || true
+          exit $TEST_EXIT
 
       - name: HUD thresholds E2E
-        run: npx playwright test tests/e2e/hud.thresholds.spec.ts --reporter=line
+        shell: bash
+        run: |
+          npm run dev > /tmp/dev.log 2>&1 &
+          DEV_PID=$!
+          sleep 5
+          npx playwright test tests/e2e/hud.thresholds.spec.ts --reporter=line
+          TEST_EXIT=$?
+          kill $DEV_PID 2>/dev/null || true
+          exit $TEST_EXIT
 
       - name: Users detail flow E2E
-        run: npm run test:e2e:users -- --reporter=line
+        shell: bash
+        run: |
+          npm run dev > /tmp/dev.log 2>&1 &
+          DEV_PID=$!
+          sleep 5
+          npm run test:e2e:users -- --reporter=line
+          TEST_EXIT=$?
+          kill $DEV_PID 2>/dev/null || true
+          exit $TEST_EXIT
 
       - name: E2E (nurse BP sync)
-        run: VITE_FEATURE_NURSE=1 VITE_SKIP_LOGIN=1 npx playwright test tests/e2e/nurse.bp.sync.spec.ts --reporter=line
+        shell: bash
+        run: |
+          npm run dev > /tmp/dev.log 2>&1 &
+          DEV_PID=$!
+          sleep 5
+          VITE_FEATURE_NURSE=1 VITE_SKIP_LOGIN=1 npx playwright test tests/e2e/nurse.bp.sync.spec.ts --reporter=line
+          TEST_EXIT=$?
+          kill $DEV_PID 2>/dev/null || true
+          exit $TEST_EXIT
 
       - name: Build + bundle guards
         run: npm run build:ci
