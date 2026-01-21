@@ -7,6 +7,7 @@ import {
     isSchedulesFeatureEnabled,
     isSchedulesWeekV2Enabled,
     isTestMode,
+    readOptionalEnv,
     type EnvRecord,
 } from '../lib/env';
 
@@ -45,7 +46,18 @@ export const resolveFeatureFlags = (envOverride?: EnvRecord): FeatureFlagSnapsho
     icebergPdca: isIcebergPdcaEnabled(envOverride),
   };
 
+  const hasExplicitSchedules = readOptionalEnv('VITE_FEATURE_SCHEDULES', envOverride) !== undefined;
+  const hasExplicitSchedulesCreate = readOptionalEnv('VITE_FEATURE_SCHEDULES_CREATE', envOverride) !== undefined;
+
   if (isE2E || isTestMode(envOverride) || isAutomationRuntime()) {
+    // In automation, honor explicit env overrides when provided (needed for flag-off E2E scenarios).
+    if (hasExplicitSchedules || hasExplicitSchedulesCreate) {
+      return {
+        ...baseSnapshot,
+        schedules: isSchedulesFeatureEnabled(envOverride),
+        schedulesCreate: isSchedulesCreateEnabled(envOverride),
+      };
+    }
     return {
       ...baseSnapshot,
       schedules: true,

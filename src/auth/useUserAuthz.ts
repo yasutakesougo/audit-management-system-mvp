@@ -97,11 +97,14 @@ export const useUserAuthz = (): UserAuthz => {
 
   const value = useMemo(() => {
     const ids = groupIds ?? [];
-    return {
-      isReception: Boolean(receptionGroupId && ids.includes(receptionGroupId)),
-      isAdmin: Boolean(adminGroupId && ids.includes(adminGroupId)),
-      ready: groupIds !== null,
-    };
+    const hasGroupConfig = Boolean(receptionGroupId) || Boolean(adminGroupId);
+
+    // Default-open policy: if no group IDs are configured, do not block edit flows.
+    const isReception = hasGroupConfig ? Boolean(receptionGroupId && ids.includes(receptionGroupId)) : true;
+    const isAdmin = hasGroupConfig ? Boolean(adminGroupId && ids.includes(adminGroupId)) : true;
+    const ready = hasGroupConfig ? groupIds !== null : true;
+
+    return { isReception, isAdmin, ready } satisfies UserAuthz;
   }, [groupIds, receptionGroupId, adminGroupId]);
 
   if (error) {

@@ -125,6 +125,10 @@ export default defineConfig(({ mode }) => {
           rewrite: (path) => path.replace(/^\/sharepoint-api/, ''),
         },
       },
+      watch: {
+        usePolling: true,
+        interval: 1000,
+      },
     },
     preview: {
       host: '127.0.0.1',

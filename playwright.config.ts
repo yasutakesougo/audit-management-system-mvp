@@ -3,7 +3,7 @@ import type { ReporterDescription } from '@playwright/test';
 
 const isCI = !!process.env.CI;
 const skipBuild = process.env.PLAYWRIGHT_SKIP_BUILD === '1';
-const baseUrlEnv = process.env.PLAYWRIGHT_BASE_URL;
+const baseUrlEnv = process.env.PLAYWRIGHT_BASE_URL ?? process.env.BASE_URL;
 const webServerCommandOverride = process.env.PLAYWRIGHT_WEB_SERVER_COMMAND;
 const devPort = 5173; // preview also binds to this port to avoid mismatches
 const baseURL = baseUrlEnv ?? `http://127.0.0.1:${devPort}`;
@@ -30,6 +30,13 @@ const webServerEnvVarsE2E = {
   VITE_DEMO_MODE: process.env.VITE_DEMO_MODE ?? '1', // Use in-memory stores
   VITE_DEV_HARNESS: process.env.VITE_DEV_HARNESS ?? '1',
   VITE_SCHEDULES_TZ: process.env.VITE_SCHEDULES_TZ ?? 'Asia/Tokyo',
+  VITE_FEATURE_SCHEDULES: '1',  // Default: schedules feature ON
+};
+
+// E2E with schedules feature OFF (for flags.schedule.spec.ts)
+const webServerEnvVarsE2ESchedulesOff = {
+  ...webServerEnvVarsE2E,
+  VITE_FEATURE_SCHEDULES: '0',  // Disable schedules
 };
 
 // Integration: Real SharePoint/Graph communication (nightly/manual only)
@@ -51,7 +58,8 @@ const webServerEnvVarsIntegration = {
 
 // Select env vars based on PLAYWRIGHT_PROJECT
 const isIntegrationProject = process.env.PLAYWRIGHT_PROJECT === 'integration';
-const webServerEnvVars = isIntegrationProject ? webServerEnvVarsIntegration : webServerEnvVarsE2E;
+const isSchedulesOffProject = process.env.PLAYWRIGHT_PROJECT === 'chromium:schedules-off';
+const webServerEnvVars = isIntegrationProject ? webServerEnvVarsIntegration : isSchedulesOffProject ? webServerEnvVarsE2ESchedulesOff : webServerEnvVarsE2E;
 
 // Build env string for command line injection (dev mode needs this)
 // Use --mode test to load .env.test.local which overrides .env.local
@@ -60,6 +68,7 @@ const envPairs = Object.entries(webServerEnvVars)
   .join(' ');
 
 const devCommand = `npx cross-env ${envPairs} npx vite --mode test --host 127.0.0.1 --port ${devPort} --strictPort`;
+const devCommandSchedulesOff = `npx cross-env ${Object.entries(webServerEnvVarsE2ESchedulesOff).map(([key, value]) => `${key}=${value}`).join(' ')} npx vite --mode test --host 127.0.0.1 --port 5176 --strictPort`;
 const buildAndPreviewCommand = 'npm run preview:e2e';
 
 // Integration must run against real env (no mocks/skip-login), so force the devCommand
@@ -68,9 +77,11 @@ const webServerCommand = webServerCommandOverride
   ? webServerCommandOverride
   : isIntegrationProject
     ? devCommand
-    : skipBuild
-      ? devCommand
-      : buildAndPreviewCommand;
+    : isSchedulesOffProject
+      ? devCommandSchedulesOff
+      : skipBuild
+        ? devCommand
+        : buildAndPreviewCommand;
 
 // Allow reusing an externally started server when PLAYWRIGHT_WEB_SERVER_URL is provided (e.g., guardrails workflows).
 const reuseExistingServer = true; // always reuse an existing server if already running at baseURL
@@ -98,12 +109,48 @@ export default defineConfig({
       name: 'chromium',
       testDir: 'tests/e2e',
       use: desktopChrome,
+      webServer: {
+        command: webServerCommand,
+        url: webServerUrl,
+        reuseExistingServer,
+        timeout: 180_000,
+        env: {
+          ...process.env,
+          ...webServerEnvVarsE2E,
+        },
+      },
+    },
+    {
+      name: 'chromium:schedules-off',
+      testDir: 'tests/e2e',
+      testMatch: 'flags.schedule.spec.ts',
+      use: { ...desktopChrome, baseURL: 'http://127.0.0.1:5176' },
+      webServer: {
+        command: `npx cross-env ${Object.entries(webServerEnvVarsE2ESchedulesOff).map(([k, v]) => `${k}=${v}`).join(' ')} npx vite --mode test --host 127.0.0.1 --port 5176 --strictPort`,
+        url: 'http://127.0.0.1:5176',
+        reuseExistingServer,
+        timeout: 180_000,
+        env: {
+          ...process.env,
+          ...webServerEnvVarsE2ESchedulesOff,
+        },
+      },
     },
     {
       name: 'smoke',
       testDir: 'tests/e2e',
       use: desktopChrome,
       testMatch: SMOKE_SPEC_PATTERN,
+      webServer: {
+        command: webServerCommand,
+        url: webServerUrl,
+        reuseExistingServer,
+        timeout: 180_000,
+        env: {
+          ...process.env,
+          ...webServerEnvVarsE2E,
+        },
+      },
     },
     {
       name: 'integration',
@@ -113,16 +160,16 @@ export default defineConfig({
         ...desktopChrome,
         storageState: 'tests/.auth/storageState.json',
       },
+      webServer: {
+        command: webServerCommand,
+        url: webServerUrl,
+        reuseExistingServer,
+        timeout: 180_000,
+        env: {
+          ...process.env,
+          ...webServerEnvVarsIntegration,
+        },
+      },
     },
   ],
-  webServer: {
-    command: webServerCommand,
-    url: webServerUrl,
-    reuseExistingServer,
-    timeout: 180_000,
-    env: {
-      ...process.env,
-      ...webServerEnvVars,
-    },
-  },
 });

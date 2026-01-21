@@ -70,6 +70,12 @@ export async function setupPlaywrightEnv(page: Page, options: SetupPlaywrightEnv
     };
   }, envPayload);
 
+  // Inject SPFx context for E2E SharePoint adapter activation
+  await page.addInitScript(() => {
+    const scope = globalThis as typeof globalThis & { __SPFX_CONTEXT__?: unknown };
+    scope.__SPFX_CONTEXT__ = { mode: 'e2e-mock' };
+  });
+
   if (resetLocalStorage) {
     await page.addInitScript(() => {
       window.localStorage.clear();
