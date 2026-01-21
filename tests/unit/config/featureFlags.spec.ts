@@ -85,8 +85,8 @@ describe('featureFlags config', () => {
   it('returns current snapshot from getFeatureFlags', () => {
     expect(getFeatureFlags()).toEqual(featureFlags);
 
+    // automation環境では明示なし→デフォルトでtrue
     const override = {
-      VITE_FEATURE_SCHEDULES: '0',
       VITE_FEATURE_SCHEDULES_CREATE: '1',
       VITE_FEATURE_COMPLIANCE_FORM: '0',
       VITE_FEATURE_SCHEDULES_WEEK_V2: '1',
@@ -95,6 +95,24 @@ describe('featureFlags config', () => {
     expect(getFeatureFlags(override)).toEqual({
       schedules: true,
       schedulesCreate: true,
+      complianceForm: false,
+      schedulesWeekV2: true,
+      icebergPdca: false,
+    });
+  });
+
+  it('respects explicit false in automation (flag-off E2E)', () => {
+    // automation環境でも明示的な '0' は尊重してfalseにする
+    const override = {
+      VITE_FEATURE_SCHEDULES: '0',
+      VITE_FEATURE_SCHEDULES_CREATE: '0',
+      VITE_FEATURE_COMPLIANCE_FORM: '0',
+      VITE_FEATURE_SCHEDULES_WEEK_V2: '1',
+    };
+
+    expect(getFeatureFlags(override)).toEqual({
+      schedules: false,
+      schedulesCreate: false,
       complianceForm: false,
       schedulesWeekV2: true,
       icebergPdca: false,
