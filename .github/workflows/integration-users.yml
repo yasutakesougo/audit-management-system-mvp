@@ -1,0 +1,103 @@
+name: integration (users)
+
+on:
+  workflow_dispatch:
+  schedule:
+    # 02:35 JST = 17:35 UTC daily (5min after DailyOps)
+    - cron: "35 17 * * *"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: integration-users
+  cancel-in-progress: true
+
+jobs:
+  users:
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install deps
+        run: npm ci
+
+      - name: Restore Playwright storageState
+        shell: bash
+        run: |
+          mkdir -p tests/.auth
+          echo "${PW_STORAGE_STATE_B64}" | base64 -d > tests/.auth/storageState.json
+          test -s tests/.auth/storageState.json
+        env:
+          PW_STORAGE_STATE_B64: ${{ secrets.PW_STORAGE_STATE_B64 }}
+
+      - name: Run integration (Users_Master)
+        env:
+          SHAREPOINT_SITE: ${{ secrets.SHAREPOINT_SITE }}
+        run: npm run ci:integration:users
+
+      - name: Upload test artifacts (on failure)
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: integration-users-artifacts
+          path: |
+            test-results
+            playwright-report
+          if-no-files-found: ignore
+          retention-days: 7
+
+      - name: Notify Teams on failure
+        if: failure() && secrets.TEAMS_WEBHOOK_URL != ''
+        env:
+          TEAMS_WEBHOOK_URL: ${{ secrets.TEAMS_WEBHOOK_URL }}
+        run: |
+          GUID=$(grep -RhoE 'sprequestguid[^A-Za-z0-9-]*[A-Za-z0-9-]+' test-results playwright-report 2>/dev/null | head -1 | sed -E 's/.*(sprequestguid[^A-Za-z0-9-]*)([A-Za-z0-9-]+).*/\2/' || true)
+          [ -z "$GUID" ] && GUID="N/A"
+          COMMIT_SHORT="${GITHUB_SHA:0:7}"
+
+          MSG=$(cat <<JSON
+          {
+            "@type": "MessageCard",
+            "@context": "http://schema.org/extensions",
+            "summary": "Users_Master integration failed",
+            "themeColor": "FF0000",
+            "title": "❌ Users_Master integration failed",
+            "sections": [
+              { "facts": [
+                { "name": "Repo", "value": "${GITHUB_REPOSITORY}" },
+                { "name": "Workflow", "value": "${GITHUB_WORKFLOW}" },
+                { "name": "Run", "value": "${GITHUB_RUN_NUMBER}" },
+                { "name": "Branch", "value": "${GITHUB_REF_NAME}" },
+                { "name": "Commit", "value": "${COMMIT_SHORT}" },
+                { "name": "sprequestguid", "value": "${GUID}" }
+              ]}
+            ]
+            ,
+            "potentialAction": [
+              {
+                "@type": "OpenUri",
+                "name": "Open workflow run",
+                "targets": [
+                  {
+                    "os": "default",
+                    "uri": "https://github.com/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}"
+                  }
+                ]
+              }
+            ]
+          }
+JSON
+          )
+
+          curl -sS -X POST -H "Content-Type: application/json" -d "$MSG" "$TEAMS_WEBHOOK_URL"

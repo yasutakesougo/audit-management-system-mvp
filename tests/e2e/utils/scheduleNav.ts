@@ -32,7 +32,7 @@ export async function gotoWeek(page: Page, date: Date, options?: NavOptions): Pr
 export async function gotoMonth(page: Page, date: Date, options?: NavOptions): Promise<void> {
   const iso = formatIsoDate(date);
   const search = buildSearch({ date: iso, tab: 'month' }, options?.searchParams);
-  await page.goto(`/schedules/week?${search}`);
+  await page.goto(`/schedules/week?${search}`, { waitUntil: 'domcontentloaded' });
 }
 
 type OrgNavOptions = NavOptions & {

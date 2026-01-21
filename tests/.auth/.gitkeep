@@ -1,0 +1,2 @@
+# Placeholder for authentication state
+# Run `npm run auth:setup` to generate storageState.json

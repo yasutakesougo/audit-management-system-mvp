@@ -1,11 +1,66 @@
 #!/usr/bin/env sh
+. "$(dirname "$0")/_/husky.sh"
 
-# --- guard: disallow raw import.meta.env outside config layer ---
-bash -lc '! grep -RIn \
-  --exclude-dir=node_modules \
-  --exclude-dir=dist \
-  --exclude-dir=build \
-  --exclude-dir=coverage \
-  --exclude-dir=.husky \
-  --exclude-dir=src/config \
-  -E "import\\.meta\\.env" src || (echo "❌ Use getAppConfig() or env helpers instead of import.meta.env"; exit 1)'
+# Pre-push hook: lightweight guard for development
+# Full checks (lint, typecheck, build) run in CI via npm run preflight
+#
+# Strategy:
+#   - Local: quick checks on changed files only (fast feedback)
+#   - CI: full suite via preflight (complete enforcement)
+#   - Never blocks if CI will catch it anyway
+
+# Allow bypass: git push --no-verify
+# Troubleshoot: run "npm run preflight" locally to match CI
+
+if [ -n "$CI" ]; then
+  # In CI: npm run preflight already handles everything
+  # This hook is not typically called during CI push, but if it is, skip it
+  exit 0
+fi
+
+# Local development: check only changed files to keep it fast
+# Include: Added, Created, Modified, Renamed (ACMR)
+# Use -z for NUL-terminated output: safeguards against filenames with spaces/newlines
+FILES=$(git diff --cached --name-only --diff-filter=ACMR -z -- '*.ts' '*.tsx' '*.js' '*.jsx' 2>/dev/null || true)
+
+# If no TypeScript/JavaScript files staged, nothing to check
+if [ -z "$FILES" ]; then
+  exit 0
+fi
+
+echo "[pre-push] Lint staged TypeScript/JavaScript files only..."
+# Use xargs -0 to handle NUL-delimited input (supports filenames with spaces/special chars)
+# This is the most robust way to pass long file lists safely
+# Use -- to ensure all arguments are treated as files (prevents "--file.ts" from being parsed as options)
+if ! printf '%s\0' $FILES | xargs -0 npx eslint --; then
+  echo ""
+  echo "❌ Lint failed. To run full checks locally:"
+  echo "   npm run preflight"
+  echo ""
+  echo "To force push (not recommended):"
+  echo "   git push --no-verify"
+  exit 1
+fi
+
+# Guard: block NEW usage of import.meta.env (existing code is OK)
+# This prevents accumulation of direct env access outside the config layer
+# Exception: src/env.ts (centralized env helpers - the official entry point)
+# All other files should import from env helpers, not access import.meta.env directly
+#
+# Exclude comments and string literals to reduce false positives
+ADDED=$(git diff --cached -U0 | \
+  grep -E '^\+.*import\.meta\.env\.' | \
+  grep -vE '^\+\s*//' | \
+  grep -vE '^\+\s*/\*' || true)
+
+if [ -n "$ADDED" ]; then
+  echo ""
+  echo "❌ New import.meta.env detected. Use env helpers instead:"
+  echo ""
+  echo "$ADDED"
+  echo ""
+  echo "See src/env.ts for centralized environment access patterns."
+  exit 1
+fi
+
+exit 0

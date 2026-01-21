@@ -56,7 +56,7 @@ export const useAuth = () => {
     return {
       isAuthenticated: true,
       account,
-      signIn: () => Promise.resolve(),
+      signIn: () => Promise.resolve({ success: false }),
       signOut: () => Promise.resolve(),
       acquireToken,
       loading: false,
@@ -81,7 +81,7 @@ export const useAuth = () => {
     return {
       isAuthenticated: true,
       account: null,
-      signIn: () => Promise.resolve(),
+      signIn: () => Promise.resolve({ success: false }),
       signOut: () => Promise.resolve(),
       acquireToken: () => Promise.resolve(null),
       loading: false,
@@ -185,6 +185,13 @@ export const useAuth = () => {
   const resolvedAccount = instance.getActiveAccount() ?? accounts[0] ?? null;
   const isAuthenticated = !!resolvedAccount;
 
+  // Ensure active account is restored on initial load to avoid "logged-in but untreated" states
+  useEffect(() => {
+    if (!instance.getActiveAccount() && accounts.length > 0) {
+      instance.setActiveAccount(accounts[0]);
+    }
+  }, [accounts, instance]);
+
   return {
     isAuthenticated,
     account: resolvedAccount,
@@ -193,12 +200,15 @@ export const useAuth = () => {
         const canInteract = inProgress === InteractionStatus.None || inProgress === 'none';
         if (!canInteract) {
           debugLog('loginPopup skipped because another interaction is in progress');
-          return;
+          return { success: false };
         }
         const result = await instance.loginPopup({ scopes: [defaultScope], prompt: 'select_account' });
         if (result?.account) {
           instance.setActiveAccount(result.account);
+          // Return success; caller (SignInButton) handles navigation
+          return { success: true };
         }
+        return { success: false };
       } catch (error: any) {
         const popupIssues = new Set([
           'user_cancelled',
@@ -217,10 +227,11 @@ export const useAuth = () => {
           const canInteractRedirect = inProgress === InteractionStatus.None || inProgress === 'none';
           if (canInteractRedirect) {
             await instance.loginRedirect({ scopes: [defaultScope], prompt: 'select_account' });
+            return { success: true };
           } else {
             debugLog('loginRedirect skipped because another interaction is in progress');
+            return { success: false };
           }
-          return;
         }
 
         throw error;

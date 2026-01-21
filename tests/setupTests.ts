@@ -2,6 +2,11 @@
 // Provides deterministic responses for common _api endpoints used by spClient tests.
 // Unknown endpoints fall back to { value: [] } to keep tests stable and offline.
 import { beforeEach, afterAll, vi } from 'vitest';
+import { configure } from '@testing-library/react';
+
+// Prevent findBy* from waiting too long on missing elements (default is 1000ms)
+// 3000ms is enough for real async operations but prevents CI from hanging
+configure({ asyncUtilTimeout: 3000 });
 
 type FetchImpl = (input: RequestInfo | URL, init?: RequestInit) => Promise<Response>;
 

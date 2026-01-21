@@ -1,9 +1,46 @@
 import { ThemeProvider, createTheme } from '@mui/material/styles';
-import { fireEvent, render, screen, within } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import WeekPage from '@/features/schedules/WeekPage';
 import { TESTIDS } from '@/testids';
+
+// Mock all dependencies to isolate tab switching logic (unit test best practice)
+// CRITICAL: Mocks must be synchronous and stateless to avoid open handles
+vi.mock('@/features/schedules/useSchedules', () => ({
+  useSchedules: () => ({
+    items: [
+      {
+        id: 'test-1',
+        title: 'テスト予定',
+        start: new Date().toISOString(),
+        end: new Date(Date.now() + 3600000).toISOString(),
+        category: 'User',
+      },
+    ],
+    loading: false,
+    create: vi.fn(),
+    update: vi.fn(),
+    remove: vi.fn(),
+  }),
+  makeRange: (from: Date, to: Date) => ({ from: from.toISOString(), to: to.toISOString() }),
+}));
+
+vi.mock('@/features/schedules/useScheduleUserOptions', () => ({
+  useScheduleUserOptions: () => [],
+}));
+
+vi.mock('@/a11y/LiveAnnouncer', () => ({
+  useAnnounce: () => vi.fn(),
+}));
+
+vi.mock('@/auth/useAuth', () => ({
+  useAuth: () => ({ account: null, login: vi.fn(), logout: vi.fn() }),
+}));
+
+vi.mock('@/auth/useUserAuthz', () => ({
+  useUserAuthz: () => ({ canEdit: true, canCreate: true, canDelete: true }),
+}));
 
 const renderWeekPage = () =>
   render(
@@ -15,9 +52,23 @@ const renderWeekPage = () =>
   );
 
 describe('WeekPage tabs', () => {
+  // No beforeEach/afterEach needed - vitest.setup.ts handles cleanup
+
   it('renders week view by default', async () => {
     renderWeekPage();
-    expect(await screen.findByTestId('schedule-week-view')).toBeInTheDocument();
+    
+    // Wait for React state updates to complete (prevents act warnings)
+    await waitFor(() => {
+      expect(screen.getByTestId('schedules-week-page')).toBeInTheDocument();
+    });
+    
+    // Verify week tab is active
+    const weekTab = screen.getByTestId(TESTIDS.SCHEDULES_WEEK_TAB_WEEK);
+    expect(weekTab).toHaveAttribute('aria-selected', 'true');
+    
+    // Verify week panel is visible (role=tabpanel with correct aria-labelledby)
+    const weekPanel = screen.getByRole('tabpanel', { name: /週/i });
+    expect(weekPanel).toBeVisible();
   });
 
   it('shows demo schedule items in week view', async () => {
@@ -38,7 +89,7 @@ describe('WeekPage tabs', () => {
     await screen.findAllByTestId('schedule-item');
     fireEvent.click(screen.getByTestId(TESTIDS.SCHEDULES_WEEK_TAB_DAY));
     const list = await screen.findByTestId(TESTIDS['schedules-day-list']);
-    expect(list.textContent ?? '').toMatch(/通所|欠席|休み|訪問|看護|介護/);
+    expect(list.textContent).toContain('テスト予定');
   });
 
   it('shows demo schedule items in timeline view', async () => {
@@ -52,6 +103,6 @@ describe('WeekPage tabs', () => {
       return;
     }
     const text = items.map((item) => item.textContent ?? '').join('\n');
-    expect(text).toMatch(/通所|欠席|休み|訪問|看護|介護/);
+    expect(text).toContain('テスト予定');
   });
 });

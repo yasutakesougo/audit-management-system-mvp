@@ -1,6 +1,7 @@
 import React from 'react';
 import ReactDOM from 'react-dom/client';
 import { getRuntimeEnv, isDev } from './env';
+import { guardProdMisconfig } from './lib/envGuards';
 import { resolveHydrationEntry } from './hydration/routes';
 import { beginHydrationSpan, finalizeHydrationSpan } from './lib/hydrationHud';
 
@@ -21,6 +22,9 @@ declare global {
     __FLAGS__?: unknown;
   }
 }
+
+// Fail fast on misconfigurations that would blank data in production
+guardProdMisconfig();
 
 const RUNTIME_PATH_KEYS = new Set(['RUNTIME_ENV_PATH', 'VITE_RUNTIME_ENV_PATH']);
 

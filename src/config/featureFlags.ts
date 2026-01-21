@@ -7,6 +7,8 @@ import {
     isSchedulesFeatureEnabled,
     isSchedulesWeekV2Enabled,
     isTestMode,
+    readBool,
+    readOptionalEnv,
     type EnvRecord,
 } from '../lib/env';
 
@@ -36,7 +38,21 @@ const isAutomationRuntime = (): boolean => {
   return false;
 };
 
+/**
+ * Check if an environment variable explicitly contains a boolean-like value.
+ * Only returns true for actual boolean representations: '1', '0', 'true', 'false'.
+ * Empty strings and undefined are treated as "not explicitly set".
+ */
+const hasExplicitBoolEnv = (key: string, envOverride?: EnvRecord): boolean => {
+  const raw = readOptionalEnv(key, envOverride);
+  if (raw == null) return false;
+  const v = raw.trim().toLowerCase();
+  return v === '1' || v === '0' || v === 'true' || v === 'false';
+};
+
 export const resolveFeatureFlags = (envOverride?: EnvRecord): FeatureFlagSnapshot => {
+  const isAutomationEnv = isE2E || isTestMode(envOverride) || isAutomationRuntime();
+
   const baseSnapshot: FeatureFlagSnapshot = {
     schedules: isSchedulesFeatureEnabled(envOverride),
     schedulesCreate: isSchedulesCreateEnabled(envOverride),
@@ -45,12 +61,18 @@ export const resolveFeatureFlags = (envOverride?: EnvRecord): FeatureFlagSnapsho
     icebergPdca: isIcebergPdcaEnabled(envOverride),
   };
 
-  if (isE2E || isTestMode(envOverride) || isAutomationRuntime()) {
+  const explicitSchedules = hasExplicitBoolEnv('VITE_FEATURE_SCHEDULES', envOverride);
+  const explicitSchedulesCreate = hasExplicitBoolEnv('VITE_FEATURE_SCHEDULES_CREATE', envOverride);
+
+  if (isAutomationEnv) {
+    // In automation, honor explicit env overrides when provided (needed for flag-off E2E scenarios).
+    // If no explicit override, default to true for schedules/schedulesCreate.
+    const schedules = explicitSchedules ? readBool('VITE_FEATURE_SCHEDULES', true, envOverride) : true;
+    const schedulesCreate = explicitSchedulesCreate ? readBool('VITE_FEATURE_SCHEDULES_CREATE', true, envOverride) : true;
     return {
       ...baseSnapshot,
-      schedules: true,
-      schedulesCreate: true,
-      icebergPdca: baseSnapshot.icebergPdca,
+      schedules,
+      schedulesCreate,
     };
   }
 

@@ -204,17 +204,40 @@ export async function waitForMonthTimeline(page: Page): Promise<void> {
   if (selected !== 'true') {
     await monthTab.click({ timeout: 10_000 });
   }
-  const root = page
-    .getByTestId('schedule-month-root')
-    .or(page.getByTestId('schedules-month-root'));
-  try {
-    await expect(root).toBeVisible({ timeout: 15_000 });
-  } catch {
-    const tabs = await tablist.getByRole('tab').allTextContents().catch(() => [] as string[]);
-    // eslint-disable-next-line no-console
-    console.log('[waitForMonthTimeline] tabs:', tabs);
-    return;
+
+  // New implementation: check for schedules-month-page (the actual root)
+  await expect(page.getByTestId('schedules-month-page')).toBeVisible({ timeout: 15_000 });
+  await expect(page.getByTestId('schedules-month-heading')).toBeVisible({ timeout: 15_000 });
+}
+
+export async function waitForMonthViewReady(page: Page, timeout = 10_000): Promise<void> {
+  // 1) まず「月ページの外枠」が出ていること（画面違いを排除）
+  await expect(page.getByTestId('schedules-month-page')).toBeVisible({ timeout });
+
+  // 2) 次に heading（hydration/描画完了の目印）
+  await expect(page.getByTestId('schedules-month-heading')).toBeVisible({ timeout });
+}
+
+export async function waitSchedulesItemsOrEmpty(page: Page, timeout = 15_000): Promise<void> {
+  // ロード中UIがあるなら消えるまで（存在しない場合はスキップ）
+  const loading = page.getByTestId('schedules-loading');
+  if (await loading.count()) {
+    await expect(loading).toBeHidden({ timeout });
   }
 
-  // Some layouts may not update aria-selected immediately; consider the view ready once the month root is visible.
+  // items か empty state のどちらかが見えるまで待つ
+  const items = page.getByTestId('schedule-item');
+  const empty = page.getByTestId('schedules-empty-hint')
+    .or(page.getByTestId('schedules-empty'))
+    .or(page.getByTestId('schedule-month-empty'));
+
+  // items が複数ある場合があるので、count で判定
+  await expect(async () => {
+    const itemCount = await items.count();
+    const emptyCount = await empty.count();
+    if (itemCount > 0 || emptyCount > 0) {
+      return;
+    }
+    throw new Error('Neither schedule items nor empty state found');
+  }).toPass({ timeout });
 }

@@ -23,19 +23,19 @@ test.describe('Schedules month ARIA smoke', () => {
   test('shows guidance when no events exist', async ({ page }) => {
     await openMonthView(page, OCTOBER_START);
 
-    const root = page.getByTestId('schedule-month-root');
+    const root = page.getByTestId('schedules-month-page');
     if ((await root.count()) === 0) {
       test.skip(true, 'Month view not rendered when no events (CI environment).');
     }
 
     await expect(root).toBeVisible();
-    await expect(root.getByText('予定なし').first()).toBeVisible();
+    await expect(root.getByTestId('schedules-empty-hint')).toBeVisible();
   });
 
   test('exposes heading, navigation, and org indicator', async ({ page }) => {
     await openMonthView(page, NOVEMBER_TARGET);
 
-    const root = page.getByTestId('schedule-month-root');
+    const root = page.getByTestId('schedules-month-page');
     if ((await root.count()) === 0) {
       test.skip(true, 'Month view not rendered (no events in CI).');
     }

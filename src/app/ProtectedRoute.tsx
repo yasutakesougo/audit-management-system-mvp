@@ -154,7 +154,7 @@ type AuthNoticeProps = {
   flag: keyof FeatureFlagSnapshot;
   pendingPath: string;
   fallbackPath: NavigateProps['to'];
-  onSignIn?: () => Promise<void>;
+  onSignIn?: () => Promise<{ success: boolean }>;
 };
 
 const AuthRequiredNotice = ({ flag, pendingPath, onSignIn, fallbackPath }: AuthNoticeProps) => {

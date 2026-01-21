@@ -61,7 +61,7 @@ const createAuthState = (
 ): ReturnType<typeof useAuth> => ({
   isAuthenticated: true,
   account: null,
-  signIn: vi.fn(() => Promise.resolve()),
+  signIn: vi.fn(() => Promise.resolve({ success: false })),
   signOut: vi.fn(() => Promise.resolve()),
   acquireToken: vi.fn(() => Promise.resolve(null)),
   loading: false,

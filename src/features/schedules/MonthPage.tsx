@@ -147,6 +147,14 @@ export default function MonthPage() {
       style={{ paddingBottom: 32 }}
     >
       <Box sx={{ px: 2, py: 1.5 }}>
+        <Typography 
+          variant="h6" 
+          id={headingId}
+          data-testid={TESTIDS.SCHEDULES_MONTH_HEADING_ID}
+          sx={{ mb: 0.5 }}
+        >
+          {monthLabel}
+        </Typography>
         <Typography variant="body2" color="text.secondary" sx={{ textAlign: 'right' }}>
           予定 {totalCount} 件
         </Typography>

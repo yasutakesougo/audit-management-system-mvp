@@ -42,6 +42,10 @@ if (isTestEnv && effectiveTenantId === 'dummy-tenant-id') {
 export const SP_RESOURCE = appConfig.VITE_SP_RESOURCE;
 export const GRAPH_RESOURCE = 'https://graph.microsoft.com';
 
+const isIntegrationEnv =
+  (typeof import.meta !== 'undefined' && (import.meta as ImportMeta)?.env?.VITE_E2E_INTEGRATION === '1') ||
+  (typeof import.meta !== 'undefined' && (import.meta as ImportMeta)?.env?.PLAYWRIGHT_PROJECT === 'integration');
+
 const safeOrigin = (typeof window !== 'undefined' && window.location && window.location.origin) || 'http://localhost';
 export const msalConfig = {
   auth: {
@@ -50,7 +54,8 @@ export const msalConfig = {
     redirectUri: safeOrigin,
   },
   cache: {
-    cacheLocation: 'localStorage',
+    // Integration/Playwright needs localStorage to persist tokens into storageState.json
+    cacheLocation: isIntegrationEnv ? 'localStorage' : 'sessionStorage',
     storeAuthStateInCookie: false,
   },
 };

@@ -5,7 +5,7 @@ import { expect, test } from '@playwright/test';
 import { TESTIDS } from '@/testids';
 import { bootSchedule } from './_helpers/bootSchedule';
 import { gotoDay } from './utils/scheduleNav';
-import { waitForDayViewReady } from './utils/scheduleActions';
+import { waitForDayViewReady, openQuickUserCareDialog } from './utils/scheduleActions';
 
 // Mirrors the week ARIA smoke test to ensure the day view wires the shared dialog + focus semantics.
 
@@ -35,10 +35,7 @@ test.describe('Schedules day ARIA smoke', () => {
     const dayTimeline = page.getByTestId(TESTIDS['schedules-day-page']).first();
     await expect(dayTimeline).toBeVisible();
 
-    const quickButton = page.getByTestId(TESTIDS.SCHEDULES_FAB_CREATE);
-    await expect(quickButton).toBeVisible();
-    await quickButton.focus();
-    await quickButton.press('Enter');
+    await openQuickUserCareDialog(page);
 
     const dialog = page.getByTestId(TESTIDS['schedule-create-dialog']);
     await expect(dialog).toBeVisible();
@@ -48,7 +45,7 @@ test.describe('Schedules day ARIA smoke', () => {
 
     await page.getByRole('button', { name: 'キャンセル' }).click();
     await expect(dialog).toBeHidden();
-    await expect(quickButton).toBeVisible();
+    await expect(page.getByTestId(TESTIDS.SCHEDULES_FAB_CREATE)).toBeVisible();
   });
 
   test('header action uses descriptive aria-label', async ({ page }) => {

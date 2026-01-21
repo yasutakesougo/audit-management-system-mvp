@@ -71,7 +71,10 @@ const mockDailyRecords: MockDailyRecord[] = mockUsers.slice(0, 6).map((user, ind
 }));
 
 export async function bootDaily(page: Page): Promise<void> {
-  setupPlaywrightEnv(page, FEATURE_ENV, FEATURE_STORAGE);
+  await setupPlaywrightEnv(page, {
+    envOverrides: FEATURE_ENV,
+    storageOverrides: FEATURE_STORAGE,
+  });
 
   await page.route('**/login.microsoftonline.com/**', (route) => route.fulfill({ status: 204, body: '' }));
   await page.route('https://graph.microsoft.com/**', (route) =>
