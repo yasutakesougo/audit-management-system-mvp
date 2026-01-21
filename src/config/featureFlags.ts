@@ -38,6 +38,8 @@ const isAutomationRuntime = (): boolean => {
 };
 
 export const resolveFeatureFlags = (envOverride?: EnvRecord): FeatureFlagSnapshot => {
+  const isAutomationEnv = isE2E || isTestMode(envOverride) || isAutomationRuntime();
+
   const baseSnapshot: FeatureFlagSnapshot = {
     schedules: isSchedulesFeatureEnabled(envOverride),
     schedulesCreate: isSchedulesCreateEnabled(envOverride),
@@ -49,7 +51,7 @@ export const resolveFeatureFlags = (envOverride?: EnvRecord): FeatureFlagSnapsho
   const hasExplicitSchedules = readOptionalEnv('VITE_FEATURE_SCHEDULES', envOverride) !== undefined;
   const hasExplicitSchedulesCreate = readOptionalEnv('VITE_FEATURE_SCHEDULES_CREATE', envOverride) !== undefined;
 
-  if (isE2E || isTestMode(envOverride) || isAutomationRuntime()) {
+  if (isAutomationEnv) {
     // In automation, honor explicit env overrides when provided (needed for flag-off E2E scenarios).
     if (hasExplicitSchedules || hasExplicitSchedulesCreate) {
       return {
@@ -58,6 +60,7 @@ export const resolveFeatureFlags = (envOverride?: EnvRecord): FeatureFlagSnapsho
         schedulesCreate: isSchedulesCreateEnabled(envOverride),
       };
     }
+    // In automation without explicit overrides, enable schedules safely
     return {
       ...baseSnapshot,
       schedules: true,
