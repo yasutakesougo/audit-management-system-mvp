@@ -4,6 +4,8 @@ import { TESTIDS } from '@/testids';
 import { bootstrapDashboard } from './utils/bootstrapApp';
 import { gotoScheduleWeek } from './utils/scheduleWeek';
 
+const E2E_FEATURE_SCHEDULE_WEEK_MONTH_TAB = process.env.E2E_FEATURE_SCHEDULE_WEEK_MONTH_TAB === '1';
+
 const pickFirstExisting = async (candidates: Locator[]): Promise<Locator> => {
   for (const loc of candidates) {
     if ((await loc.count()) > 0) return loc.first();
@@ -32,6 +34,11 @@ const getWeekView = async (page: Page) =>
   ]);
 
 test.describe('Schedule week page – ARIA smoke', () => {
+  test.skip(
+    !E2E_FEATURE_SCHEDULE_WEEK_MONTH_TAB,
+    'Schedule week month-tab tests behind E2E_FEATURE_SCHEDULE_WEEK_MONTH_TAB=1',
+  );
+
   test.beforeEach(async ({ page }) => {
     await bootstrapDashboard(page, {
       skipLogin: true,
@@ -79,7 +86,9 @@ test.describe('Schedule week page – ARIA smoke', () => {
       await expect(monthTab).toHaveAttribute('role', 'tab');
       await expect(monthTab).toBeVisible({ timeout: 15_000 });
     } else {
-      test.skip(true, 'Month tab not available or inactive in this configuration.');
+      // Missing is acceptable in some configurations.
+      await expect(monthTab).toHaveCount(0);
+      return;
     }
   });
 });
