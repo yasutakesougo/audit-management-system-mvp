@@ -2,6 +2,9 @@ import { defineConfig } from 'vitest/config';
 import react from '@vitejs/plugin-react';
 import { resolve } from 'node:path';
 
+// Robust CI detection (handles CI=true, CI=1, CI=yes, etc.)
+const isCI = !!process.env.CI;
+
 export default defineConfig({
   plugins: [react()],
   test: {
@@ -9,10 +12,12 @@ export default defineConfig({
     environment: 'jsdom',
     setupFiles: ['./vitest.setup.ts', './tests/setupTests.ts'],
     // Vitest 4: poolOptions removed, use top-level pool config
-    pool: process.env.CI === 'true' ? 'forks' : undefined,
+    // Note: For production, prefer CLI flags (e.g., vitest run --pool=forks)
+    // Config-level CI detection can affect local devs with CI env var set
+    pool: isCI ? 'forks' : undefined,
     // forks pool: single worker for CI stability
-    maxWorkers: process.env.CI === 'true' ? 1 : undefined,
-    fileParallelism: process.env.CI === 'true' ? false : true,
+    maxWorkers: isCI ? 1 : undefined,
+    fileParallelism: isCI ? false : true,
     exclude: [
       '**/node_modules/**',
       '**/dist/**',

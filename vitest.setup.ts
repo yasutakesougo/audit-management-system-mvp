@@ -51,7 +51,18 @@ expect.extend(toHaveNoViolations as unknown as Record<string, JestLikeMatcher>);
 beforeEach(() => {
 	// Ensure every test starts from a clean environment (covers vi.stubEnv/import.meta.env)
 	vi.unstubAllEnvs?.();
-	process.env = { ...CLEAN_ENV };
+	
+	// Safe env reset: restore only tracked keys, don't clobber Vitest/Node internal vars
+	for (const key of ENV_KEYS_TO_CLEAR) {
+		if (key in process.env) {
+			delete process.env[key];
+		}
+	}
+	for (const [k, v] of Object.entries(CLEAN_ENV)) {
+		if (v !== undefined) {
+			process.env[k] = v;
+		}
+	}
 });
 
 afterEach(() => {
@@ -60,8 +71,20 @@ afterEach(() => {
 	// restoreAllMocks can interfere with module-level vi.mock() calls
 	vi.clearAllMocks();
 	vi.clearAllTimers();
+	vi.useRealTimers(); // Prevent fake timers from leaking across tests
 	vi.unstubAllEnvs?.();
-	process.env = { ...CLEAN_ENV };
+	
+	// Safe env reset: restore only tracked keys, don't clobber Vitest/Node internal vars
+	for (const key of ENV_KEYS_TO_CLEAR) {
+		if (key in process.env) {
+			delete process.env[key];
+		}
+	}
+	for (const [k, v] of Object.entries(CLEAN_ENV)) {
+		if (v !== undefined) {
+			process.env[k] = v;
+		}
+	}
 });
 
 declare module 'vitest' {
