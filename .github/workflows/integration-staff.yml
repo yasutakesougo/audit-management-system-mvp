@@ -66,7 +66,7 @@ jobs:
           [ -z "$GUID" ] && GUID="N/A"
           COMMIT_SHORT="${GITHUB_SHA:0:7}"
 
-          MSG=$(cat <<JSON
+          MSG=$(cat <<'JSON'
           {
             "@type": "MessageCard",
             "@context": "http://schema.org/extensions",
@@ -98,6 +98,7 @@ jobs:
             ]
           }
 JSON
+
           )
 
           curl -sS -X POST -H "Content-Type: application/json" -d "$MSG" "$TEAMS_WEBHOOK_URL"
