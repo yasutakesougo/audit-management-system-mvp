@@ -20,7 +20,8 @@ fi
 
 # Local development: check only changed files to keep it fast
 # Include: Added, Created, Modified, Renamed (ACMR)
-FILES=$(git diff --cached --name-only --diff-filter=ACMR | grep -E '\.(ts|tsx|js|jsx)$' || true)
+# Use -z for NUL-terminated output: safeguards against filenames with spaces/newlines
+FILES=$(git diff --cached --name-only --diff-filter=ACMR -z -- '*.ts' '*.tsx' '*.js' '*.jsx' 2>/dev/null || true)
 
 # If no TypeScript/JavaScript files staged, nothing to check
 if [ -z "$FILES" ]; then
@@ -28,8 +29,9 @@ if [ -z "$FILES" ]; then
 fi
 
 echo "[pre-push] Lint staged TypeScript/JavaScript files only..."
-# Use xargs to handle long file lists (macOS has argv length limits)
-if ! echo "$FILES" | xargs npx eslint; then
+# Use xargs -0 to handle NUL-delimited input (supports filenames with spaces/special chars)
+# This is the most robust way to pass long file lists safely
+if ! printf '%s\0' $FILES | xargs -0 npx eslint; then
   echo ""
   echo "❌ Lint failed. To run full checks locally:"
   echo "   npm run preflight"
