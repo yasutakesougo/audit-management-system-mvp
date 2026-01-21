@@ -20,9 +20,10 @@ process.env.VITE_MSAL_TENANT_ID ??= 'test-tenant';
 process.env.VITE_MSAL_REDIRECT_URI ??= 'http://localhost:5173';
 
 // Snapshot baseline env to restore after each test to avoid cross-test leakage
-const ORIGINAL_ENV = { ...process.env };
-const CLEAN_ENV = { ...ORIGINAL_ENV };
+// CRITICAL: Only restore keys that tests explicitly modify - never replace entire process.env
+// This prevents accidentally clobbering Vitest/Node/CI internal variables
 const ENV_KEYS_TO_CLEAR = [
+	// Test-specific VITE vars that should be cleared after each test
 	'VITE_SP_RESOURCE',
 	'VITE_SP_SITE_RELATIVE',
 	'VITE_SP_SITE',
@@ -40,9 +41,10 @@ const ENV_KEYS_TO_CLEAR = [
 	'VITE_FEATURE_SCHEDULES_SP',
 ];
 
-for (const key of ENV_KEYS_TO_CLEAR) {
-	delete CLEAN_ENV[key];
-}
+// Only snapshot keys that this setup explicitly manages
+// Other env vars are left untouched to preserve Vitest/Node/CI state
+const ENV_KEYS_TO_RESTORE = ['TZ', 'VITE_SCHEDULES_TZ', 'VITE_MSAL_CLIENT_ID', 'VITE_MSAL_TENANT_ID', 'VITE_MSAL_REDIRECT_URI'] as const;
+const CLEAN_ENV = Object.fromEntries(ENV_KEYS_TO_RESTORE.map((k) => [k, process.env[k]]));
 
 type JestLikeMatcher = (this: unknown, ...args: unknown[]) => { pass: boolean; message(): string };
 
@@ -52,14 +54,18 @@ beforeEach(() => {
 	// Ensure every test starts from a clean environment (covers vi.stubEnv/import.meta.env)
 	vi.unstubAllEnvs?.();
 	
-	// Safe env reset: restore only tracked keys, don't clobber Vitest/Node internal vars
+	// Clear test-specific vars: delete only keys we explicitly manage
 	for (const key of ENV_KEYS_TO_CLEAR) {
 		if (key in process.env) {
 			delete process.env[key];
 		}
 	}
+	
+	// Restore only tracked setup vars to their baseline state
 	for (const [k, v] of Object.entries(CLEAN_ENV)) {
-		if (v !== undefined) {
+		if (v === undefined) {
+			delete process.env[k];
+		} else {
 			process.env[k] = v;
 		}
 	}
@@ -74,14 +80,18 @@ afterEach(() => {
 	vi.useRealTimers(); // Prevent fake timers from leaking across tests
 	vi.unstubAllEnvs?.();
 	
-	// Safe env reset: restore only tracked keys, don't clobber Vitest/Node internal vars
+	// Clear test-specific vars: delete only keys we explicitly manage
 	for (const key of ENV_KEYS_TO_CLEAR) {
 		if (key in process.env) {
 			delete process.env[key];
 		}
 	}
+	
+	// Restore only tracked setup vars to their baseline state
 	for (const [k, v] of Object.entries(CLEAN_ENV)) {
-		if (v !== undefined) {
+		if (v === undefined) {
+			delete process.env[k];
+		} else {
 			process.env[k] = v;
 		}
 	}
