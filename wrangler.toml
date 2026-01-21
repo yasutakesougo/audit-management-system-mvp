@@ -1,4 +1,4 @@
-name = "isogo-system"
+name = "audit-management-system-mvp"
 compatibility_date = "2026-01-17"
 main = "src/worker.ts"
 
