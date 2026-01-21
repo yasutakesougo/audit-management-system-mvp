@@ -8,6 +8,7 @@ dist
 coverage
 test-results
 tests/.auth/storageState.json
+tmp/
 
 # Local certificates/keys (do NOT commit)
 key.pem
