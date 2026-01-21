@@ -22,6 +22,7 @@ export default defineConfig({
       '**/node_modules/**',
       '**/dist/**',
       'tests/e2e/**',
+      'tests/integration/**', // Playwright integration tests, not Vitest
       'tests/regression/**',
       'playwright.config.ts',
       'playwright.*.config.ts'
