@@ -4,13 +4,22 @@ Thanks for taking the time to contribute! Please follow the guidelines below to 
 
 ## Preflight before PR
 
-Run the full safety net locally before opening a Pull Request:
+Run the appropriate safety net locally before opening a Pull Request:
 
 ```bash
+# Quick check (lint + typecheck + unit tests)
 npm run preflight
+
+# Full check (includes build + E2E schedules smoke)
+npm run preflight:full
 ```
 
-The CI pipeline runs `npm run preflight:ci`, which covers type checking, linting, Users-focused unit tests, and the Users Playwright E2E suite. If a job fails, review the corresponding logs (and any generated Playwright trace/video artifacts), address the issue, and re-run the command locally before pushing new commits.
+**Recommended workflow:**
+- **Daily/PR prep:** `npm run preflight` (2-3 min)
+- **Before landing:** `npm run preflight:full` (5-8 min)
+- **CI pipeline:** Runs subset checks defined in `.github/workflows/` (type checking, Users E2E, linting)
+
+If a preflight fails, address the issue and re-run the same command locally before pushing new commits.
 
 ### Note: Test timeout during `npm run test:ci`
 
