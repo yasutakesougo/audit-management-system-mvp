@@ -1,6 +1,7 @@
 import React from 'react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, fireEvent } from '@testing-library/react';
+import { screen, fireEvent } from '@testing-library/react';
+import { renderWithRouter } from './_helpers/renderWithRouter';
 import AuditPanel from '../../src/features/audit/AuditPanel';
 
 // Mock hooks
@@ -22,7 +23,7 @@ describe('AuditPanel metrics overlay (DEV button)', () => {
   });
 
   it('opens and closes overlay', () => {
-    render(<AuditPanel />);
+    renderWithRouter(<AuditPanel />);
     const btn = screen.getByRole('button', { name: 'batch metrics' });
     fireEvent.click(btn);
     // Overlay contains heading
