@@ -8,12 +8,9 @@ export default defineConfig({
     globals: true,
     environment: 'jsdom',
     setupFiles: ['./vitest.setup.ts', './tests/setupTests.ts'],
+    // Vitest 4: poolOptions removed, use top-level pool config
     pool: process.env.CI === 'true' ? 'forks' : undefined,
-    poolOptions: {
-      forks: {
-        singleFork: process.env.CI === 'true',
-      },
-    },
+    // forks pool: single worker for CI stability
     maxWorkers: process.env.CI === 'true' ? 1 : undefined,
     fileParallelism: process.env.CI === 'true' ? false : true,
     exclude: [

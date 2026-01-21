@@ -1,13 +1,14 @@
 import { ThemeProvider, createTheme } from '@mui/material/styles';
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import WeekPage from '@/features/schedules/WeekPage';
 import { TESTIDS } from '@/testids';
 
-// Mock all async dependencies to eliminate lifecycle issues
+// Mock all dependencies to isolate tab switching logic (unit test best practice)
+// CRITICAL: Mocks must be synchronous and stateless to avoid open handles
 vi.mock('@/features/schedules/useSchedules', () => ({
-  useSchedules: vi.fn(() => ({
+  useSchedules: () => ({
     items: [
       {
         id: 'test-1',
@@ -18,27 +19,27 @@ vi.mock('@/features/schedules/useSchedules', () => ({
       },
     ],
     loading: false,
-    create: vi.fn().mockResolvedValue(undefined),
-    update: vi.fn().mockResolvedValue(undefined),
-    remove: vi.fn().mockResolvedValue(undefined),
-  })),
-  makeRange: vi.fn((from, to) => ({ from: from.toISOString(), to: to.toISOString() })),
+    create: vi.fn(),
+    update: vi.fn(),
+    remove: vi.fn(),
+  }),
+  makeRange: (from: Date, to: Date) => ({ from: from.toISOString(), to: to.toISOString() }),
 }));
 
 vi.mock('@/features/schedules/useScheduleUserOptions', () => ({
-  useScheduleUserOptions: vi.fn(() => []),
+  useScheduleUserOptions: () => [],
 }));
 
 vi.mock('@/a11y/LiveAnnouncer', () => ({
-  useAnnounce: vi.fn(() => vi.fn()),
+  useAnnounce: () => vi.fn(),
 }));
 
 vi.mock('@/auth/useAuth', () => ({
-  useAuth: vi.fn(() => ({ account: null, login: vi.fn(), logout: vi.fn() })),
+  useAuth: () => ({ account: null, login: vi.fn(), logout: vi.fn() }),
 }));
 
 vi.mock('@/auth/useUserAuthz', () => ({
-  useUserAuthz: vi.fn(() => ({ canEdit: true, canCreate: true, canDelete: true })),
+  useUserAuthz: () => ({ canEdit: true, canCreate: true, canDelete: true }),
 }));
 
 const renderWeekPage = () =>
@@ -51,15 +52,7 @@ const renderWeekPage = () =>
   );
 
 describe('WeekPage tabs', () => {
-  beforeEach(() => {
-    vi.clearAllMocks();
-  });
-
-  afterEach(() => {
-    // DO NOT call cleanup() - RTL does this automatically in vitest.setup.ts
-    vi.clearAllTimers();
-    vi.useRealTimers();
-  });
+  // No beforeEach/afterEach needed - vitest.setup.ts handles cleanup
 
   it('renders week view by default', async () => {
     renderWeekPage();

@@ -27,7 +27,9 @@
       "@/config/*": ["src/config/*"],
       "@/ui/*": ["src/ui/*"],
       "@/adapters/*": ["src/adapters/*"],
-      "@/test/*": ["tests/*"]
+      "@/test/*": ["tests/*"],
+      "vitest/browser": ["types/vitest-browser.d.ts"],
+      "vitest/browser/*": ["types/vitest-browser.d.ts"]
     }
   },
   "ts-node": {

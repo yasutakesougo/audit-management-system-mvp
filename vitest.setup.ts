@@ -56,7 +56,10 @@ beforeEach(() => {
 
 afterEach(() => {
 	cleanup();
-	vi.restoreAllMocks();
+	// Use clearAllMocks instead of restoreAllMocks to preserve vi.mock() registrations
+	// restoreAllMocks can interfere with module-level vi.mock() calls
+	vi.clearAllMocks();
+	vi.clearAllTimers();
 	vi.unstubAllEnvs?.();
 	process.env = { ...CLEAN_ENV };
 });
