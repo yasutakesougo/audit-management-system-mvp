@@ -8,6 +8,14 @@ export default defineConfig({
     globals: true,
     environment: 'jsdom',
     setupFiles: ['./vitest.setup.ts', './tests/setupTests.ts'],
+    pool: 'forks',
+    poolOptions: {
+      forks: {
+        singleFork: process.env.CI === 'true',
+      },
+    },
+    maxWorkers: process.env.CI === 'true' ? 1 : undefined,
+    fileParallelism: process.env.CI === 'true' ? false : true,
     exclude: [
       '**/node_modules/**',
       '**/dist/**',

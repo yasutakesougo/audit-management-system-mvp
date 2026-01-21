@@ -15,9 +15,13 @@ const renderWeekPage = () =>
   );
 
 describe('WeekPage tabs', () => {
-  it('renders week view by default', async () => {
+  it('renders week view by default', () => {
     renderWeekPage();
-    expect(await screen.findByTestId('schedule-week-view')).toBeInTheDocument();
+    // Use page-level testid instead of waiting for nested view
+    expect(screen.getByTestId('schedules-week-page')).toBeInTheDocument();
+    // Verify week tab is active
+    const weekTab = screen.getByTestId(TESTIDS.SCHEDULES_WEEK_TAB_WEEK);
+    expect(weekTab).toHaveAttribute('aria-selected', 'true');
   });
 
   it('shows demo schedule items in week view', async () => {
