@@ -20,6 +20,30 @@ If a test legitimately takes longer than 10 seconds to clean up (e.g., heavy asy
 HOOK_TIMEOUT=20000 npm run test:ci
 ```
 
+## Local E2E testing (Schedules smoke suite)
+
+For stable local E2E runs without TTY suspension issues, use this pattern:
+
+```bash
+# Clean up any existing port usage, start dev server (TTY-free), wait for ready, run E2E, cleanup
+lsof -ti :5173 | xargs -r kill -9 && \
+nohup npm run dev:5173 </dev/null > /tmp/vite-5173.log 2>&1 & \
+sleep 1 && npx wait-on http://127.0.0.1:5173/ --timeout 60000 && \
+curl -I http://127.0.0.1:5173/ 2>&1 | head -3 && \
+BASE_URL=http://127.0.0.1:5173 npx playwright test tests/e2e/schedule-day.aria.smoke.spec.ts --project=chromium --reporter=line && \
+lsof -ti :5173 | xargs -r kill -9
+```
+
+**Why this approach:**
+- `nohup ... </dev/null` prevents TTY suspension (main cause of dev server hangs)
+- `wait-on` confirms HTTP 200 before running tests
+- `curl` validates connectivity before E2E
+- `lsof -ti :5173 | xargs -r kill` cleans up only the dev server (not other Node processes)
+
+**Troubleshooting:**
+- If `wait-on` times out: check `/tmp/vite-5173.log` tail for startup errors
+- If playwright times out: verify curl returns HTTP 200 first
+
 - スケジュール週ビューを変更した場合: `npm run test:schedule-week`
 
 ## Nurse medication layout updates
