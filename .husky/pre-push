@@ -31,7 +31,8 @@ fi
 echo "[pre-push] Lint staged TypeScript/JavaScript files only..."
 # Use xargs -0 to handle NUL-delimited input (supports filenames with spaces/special chars)
 # This is the most robust way to pass long file lists safely
-if ! printf '%s\0' $FILES | xargs -0 npx eslint; then
+# Use -- to ensure all arguments are treated as files (prevents "--file.ts" from being parsed as options)
+if ! printf '%s\0' $FILES | xargs -0 npx eslint --; then
   echo ""
   echo "❌ Lint failed. To run full checks locally:"
   echo "   npm run preflight"
@@ -43,7 +44,8 @@ fi
 
 # Guard: block NEW usage of import.meta.env (existing code is OK)
 # This prevents accumulation of direct env access outside the config layer
-# See: src/env.ts for the centralized env interface
+# Exception: src/env.ts (centralized env helpers - the official entry point)
+# All other files should import from env helpers, not access import.meta.env directly
 #
 # Exclude comments and string literals to reduce false positives
 ADDED=$(git diff --cached -U0 | \

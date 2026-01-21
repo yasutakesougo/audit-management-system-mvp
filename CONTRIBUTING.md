@@ -12,6 +12,14 @@ npm run preflight
 
 The CI pipeline runs `npm run preflight:ci`, which covers type checking, linting, Users-focused unit tests, and the Users Playwright E2E suite. If a job fails, review the corresponding logs (and any generated Playwright trace/video artifacts), address the issue, and re-run the command locally before pushing new commits.
 
+### Note: Test timeout during `npm run test:ci`
+
+If a test legitimately takes longer than 10 seconds to clean up (e.g., heavy async fixtures), override the hook timeout:
+
+```bash
+HOOK_TIMEOUT=20000 npm run test:ci
+```
+
 - スケジュール週ビューを変更した場合: `npm run test:schedule-week`
 
 ## Nurse medication layout updates
