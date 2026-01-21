@@ -8,7 +8,7 @@ export default defineConfig({
     globals: true,
     environment: 'jsdom',
     setupFiles: ['./vitest.setup.ts', './tests/setupTests.ts'],
-    pool: 'forks',
+    pool: process.env.CI === 'true' ? 'forks' : undefined,
     poolOptions: {
       forks: {
         singleFork: process.env.CI === 'true',

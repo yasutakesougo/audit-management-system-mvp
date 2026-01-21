@@ -19,9 +19,14 @@ describe('WeekPage tabs', () => {
     renderWeekPage();
     // Use page-level testid instead of waiting for nested view
     expect(screen.getByTestId('schedules-week-page')).toBeInTheDocument();
+    
     // Verify week tab is active
     const weekTab = screen.getByTestId(TESTIDS.SCHEDULES_WEEK_TAB_WEEK);
     expect(weekTab).toHaveAttribute('aria-selected', 'true');
+    
+    // Verify week panel is visible (role=tabpanel with correct aria-labelledby)
+    const weekPanel = screen.getByRole('tabpanel', { name: /週/i });
+    expect(weekPanel).toBeVisible();
   });
 
   it('shows demo schedule items in week view', async () => {
