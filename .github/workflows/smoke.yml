@@ -32,6 +32,7 @@ jobs:
       VITE_FEATURE_SCHEDULES: "1"
       # Phase 2: E2E feature flag guards
       E2E_FEATURE_SCHEDULE_NAV: "1"
+      E2E_FEATURE_SCHEDULE_ACCEPTANCE: "1"
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -52,6 +53,7 @@ jobs:
       VITE_FEATURE_SCHEDULES: "1"
       # Phase 2: E2E feature flag guards
       E2E_FEATURE_SCHEDULE_NAV: "1"
+      E2E_FEATURE_SCHEDULE_ACCEPTANCE: "1"
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
