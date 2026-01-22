@@ -66,7 +66,7 @@ const shouldBypassInE2E = (flag: keyof FeatureFlagSnapshot): boolean => {
 
 export default function ProtectedRoute({ flag, children, fallbackPath = '/' }: ProtectedRouteProps) {
   const enabled = useFeatureFlag(flag);
-  const { isAuthenticated, loading, shouldSkipLogin, tokenReady, signIn } = useAuth();
+  const { isAuthenticated, loading, shouldSkipLogin, tokenReady, signIn, getListReadyState } = useAuth();
   const { accounts, inProgress } = useMsalContext();
   const location = useLocation();
   const pendingPath = useMemo(() => `${location.pathname}${location.search ?? ''}`, [location.pathname, location.search]);
@@ -147,7 +147,6 @@ export default function ProtectedRoute({ flag, children, fallbackPath = '/' }: P
   }
 
   // Gate: Ensure list exists before rendering children (prevents 404 cascade)
-  const { getListReadyState } = useAuth();
   const listReady = getListReadyState();
   if (listReady === false) {
     debug('List check failed (404/error) for flag:', flag);
