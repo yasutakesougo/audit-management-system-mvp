@@ -4,6 +4,7 @@ import Stack from '@mui/material/Stack';
 import Typography from '@mui/material/Typography';
 import { useMemo } from 'react';
 
+import { A11yRowButton } from '@/components/a11y';
 import { TESTIDS } from '@/testids';
 
 import type { DateRange, SchedItem } from '../data';
@@ -229,23 +230,16 @@ const DayTimelineSection: React.FC<DayTimelineSectionProps> = ({ day, category, 
         </Box>
         <Box sx={{ flex: 1, position: 'relative', minHeight: GRID_HEIGHT }}>
           {HOURS.map((hour, index) => (
-            <Box
+            <A11yRowButton
               key={`${day.toISOString()}-${category}-slot-${hour}`}
-              role="button"
-              tabIndex={0}
               onClick={() => handleSlotActivate(hour)}
-              onKeyDown={(event) => {
-                if (event.key === 'Enter' || event.key === ' ') {
-                  event.preventDefault();
-                  handleSlotActivate(hour);
-                }
-              }}
-              sx={{
+              style={{
                 height: ROW_HEIGHT,
                 borderTop: index === 0 ? 'none' : '1px dashed',
-                borderColor: 'divider',
+                borderColor: 'rgba(0,0,0,0.12)',
+                width: '100%',
+                display: 'block',
                 cursor: 'pointer',
-                '&:hover': { bgcolor: 'action.hover' },
               }}
             />
           ))}
