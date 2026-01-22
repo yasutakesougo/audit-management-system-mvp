@@ -71,7 +71,7 @@ export const DayPopover: React.FC<DayPopoverProps> = ({
         ) : (
           <A11yList style={{ marginBottom: 16, maxHeight: 240, overflowY: 'auto' }}>
             {visibleItems.map((item, index) => (
-              <A11yListItem key={item.id ?? index}>
+              <A11yListItem key={`${item.id ?? 'noid'}-${item.start ?? ''}-${item.title ?? item.note ?? ''}-${index}`}>
                 <A11yRowButton
                   onClick={openDayAndClose}
                   data-testid={`day-popover-item-${index}`}
@@ -80,9 +80,7 @@ export const DayPopover: React.FC<DayPopoverProps> = ({
                     flexDirection: 'column',
                     alignItems: 'flex-start',
                     padding: '8px 0',
-                    cursor: 'pointer',
                     transition: 'background-color 0.2s',
-                    outline: 'none',
                   }}
                 >
                   <Typography variant="body2" sx={{ fontWeight: 500 }}>
@@ -104,9 +102,7 @@ export const DayPopover: React.FC<DayPopoverProps> = ({
                   data-testid="day-popover-more"
                   style={{
                     padding: '8px 0',
-                    cursor: 'pointer',
                     transition: 'background-color 0.2s',
-                    outline: 'none',
                   }}
                 >
                   <Typography variant="body2" sx={{ fontWeight: 600, color: 'primary.main' }}>
