@@ -77,12 +77,20 @@ jobs:
         continue-on-error: true
       - name: Test (coverage)
         run: npm run test:coverage -- --reporter=default
+      - name: Free port 5173 (best-effort, lsof OR fuser)
+        if: github.event_name == 'workflow_dispatch' || (github.ref == 'refs/heads/main' && steps.changes.outputs.playwright == 'true')
+        run: |
+          (command -v lsof >/dev/null && lsof -ti :5173 | xargs -r kill -9) || true
+          (command -v fuser >/dev/null && fuser -k 5173/tcp) || true
+          sleep 1
       - name: Start dev server (5173, strict)
         if: github.event_name == 'workflow_dispatch' || (github.ref == 'refs/heads/main' && steps.changes.outputs.playwright == 'true')
         run: |
-          lsof -ti :5173 | xargs -r kill -9 || true
           nohup npm run dev:5173 </dev/null > /tmp/vite-5173.log 2>&1 &
           echo "Vite starting on port 5173..."
+          sleep 2
+          echo "=== vite log (head -20, sanity check) ==="
+          head -20 /tmp/vite-5173.log || true
       - name: Wait for dev server (5173)
         if: github.event_name == 'workflow_dispatch' || (github.ref == 'refs/heads/main' && steps.changes.outputs.playwright == 'true')
         run: |
@@ -179,11 +187,18 @@ jobs:
         run: npm ci
       - name: Install Playwright browsers
         run: npx playwright install --with-deps
+      - name: Free port 5173 (best-effort, lsof OR fuser)
+        run: |
+          (command -v lsof >/dev/null && lsof -ti :5173 | xargs -r kill -9) || true
+          (command -v fuser >/dev/null && fuser -k 5173/tcp) || true
+          sleep 1
       - name: Start dev server (5173, strict)
         run: |
-          lsof -ti :5173 | xargs -r kill -9 || true
           nohup npm run dev:5173 </dev/null > /tmp/vite-5173.log 2>&1 &
           echo "Vite starting on port 5173..."
+          sleep 2
+          echo "=== vite log (head -20, sanity check) ==="
+          head -20 /tmp/vite-5173.log || true
       - name: Wait for dev server (5173)
         run: |
           npx wait-on http://127.0.0.1:5173/ --timeout 60000
