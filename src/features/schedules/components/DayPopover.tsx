@@ -3,9 +3,7 @@ import Popover from '@mui/material/Popover';
 import Box from '@mui/material/Box';
 import Button from '@mui/material/Button';
 import Typography from '@mui/material/Typography';
-import List from '@mui/material/List';
-import ListItem from '@mui/material/ListItem';
-import ListItemText from '@mui/material/ListItemText';
+import { A11yList, A11yListItem, A11yRowButton } from '../../../components/a11y';
 import Divider from '@mui/material/Divider';
 import CalendarTodayIcon from '@mui/icons-material/CalendarToday';
 import type { SchedItem } from '../data';
@@ -71,88 +69,49 @@ export const DayPopover: React.FC<DayPopoverProps> = ({
             この日の予定はありません
           </Typography>
         ) : (
-          <List sx={{ mb: 2, maxHeight: 240, overflowY: 'auto' }}>
+          <A11yList style={{ marginBottom: 16, maxHeight: 240, overflowY: 'auto' }}>
             {visibleItems.map((item, index) => (
-              <ListItem
-                key={item.id ?? index}
-                onClick={openDayAndClose}
-                tabIndex={0}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter' || e.key === ' ') {
-                    e.preventDefault();
-                    openDayAndClose();
-                  }
-                }}
-                data-testid={`day-popover-item-${index}`}
-                sx={{
-                  flexDirection: 'column',
-                  alignItems: 'flex-start',
-                  py: 1,
-                  cursor: 'pointer',
-                  transition: 'background-color 0.2s',
-                  outline: 'none',
-                  '&:hover': {
-                    backgroundColor: 'rgba(25, 103, 210, 0.04)',
-                  },
-                  '&:active': {
-                    backgroundColor: 'rgba(25, 103, 210, 0.08)',
-                  },
-                  '&:focus-visible': {
-                    outline: '2px solid',
-                    outlineColor: 'primary.main',
-                    outlineOffset: '-2px',
-                  },
-                  '&:not(:last-child)': {
-                    borderBottom: '1px solid',
-                    borderColor: 'divider',
-                  },
-                }}
-              >
-                <ListItemText
-                  primary={item.title || item.note || '（タイトル未設定）'}
-                  secondary={item.category ? item.category : undefined}
-                  primaryTypographyProps={{ variant: 'body2', sx: { fontWeight: 500 } }}
-                  secondaryTypographyProps={{ variant: 'caption' }}
-                />
-              </ListItem>
+              <A11yListItem key={`${item.id ?? 'noid'}-${item.start ?? ''}-${item.title ?? item.note ?? ''}-${index}`}>
+                <A11yRowButton
+                  onClick={openDayAndClose}
+                  data-testid={`day-popover-item-${index}`}
+                  style={{
+                    display: 'flex',
+                    flexDirection: 'column',
+                    alignItems: 'flex-start',
+                    padding: '8px 0',
+                    transition: 'background-color 0.2s',
+                  }}
+                >
+                  <Typography variant="body2" sx={{ fontWeight: 500 }}>
+                    {item.title || item.note || '（タイトル未設定）'}
+                  </Typography>
+                  {item.category ? (
+                    <Typography variant="caption" color="text.secondary">
+                      {item.category}
+                    </Typography>
+                  ) : null}
+                </A11yRowButton>
+              </A11yListItem>
             ))}
 
             {hiddenCount > 0 && (
-              <ListItem
-                onClick={openDayAndClose}
-                tabIndex={0}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter' || e.key === ' ') {
-                    e.preventDefault();
-                    openDayAndClose();
-                  }
-                }}
-                data-testid="day-popover-more"
-                sx={{
-                  py: 1,
-                  cursor: 'pointer',
-                  transition: 'background-color 0.2s',
-                  outline: 'none',
-                  '&:hover': {
-                    backgroundColor: 'rgba(25, 103, 210, 0.04)',
-                  },
-                  '&:focus-visible': {
-                    outline: '2px solid',
-                    outlineColor: 'primary.main',
-                    outlineOffset: '-2px',
-                  },
-                }}
-              >
-                <ListItemText
-                  primary={`他 ${hiddenCount} 件`}
-                  primaryTypographyProps={{
-                    variant: 'body2',
-                    sx: { fontWeight: 600, color: 'primary.main' },
+              <A11yListItem>
+                <A11yRowButton
+                  onClick={openDayAndClose}
+                  data-testid="day-popover-more"
+                  style={{
+                    padding: '8px 0',
+                    transition: 'background-color 0.2s',
                   }}
-                />
-              </ListItem>
+                >
+                  <Typography variant="body2" sx={{ fontWeight: 600, color: 'primary.main' }}>
+                    他 {hiddenCount} 件
+                  </Typography>
+                </A11yRowButton>
+              </A11yListItem>
             )}
-          </List>
+          </A11yList>
         )}
 
         <Divider sx={{ mb: 2 }} />
