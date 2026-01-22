@@ -20,6 +20,9 @@ jobs:
   quality:
     runs-on: ubuntu-latest
     timeout-minutes: 30
+    env:
+      # Phase 2: E2E feature flag guards
+      E2E_FEATURE_SCHEDULE_NAV: "1"
     steps:
       - name: Checkout
         uses: actions/checkout@v4

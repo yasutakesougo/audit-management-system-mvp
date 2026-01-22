@@ -65,9 +65,9 @@ jobs:
           npm run dev -- --host 127.0.0.1 --port 5173 --strictPort > /tmp/dev.log 2>&1 &
           DEV_PID=$!
           npx wait-on http://127.0.0.1:5173/ --timeout 60000 || EXIT_CODE=$?
-          if [ $EXIT_CODE -ne 0 ]; then
-            kill $DEV_PID 2>/dev/null || true
-            exit $EXIT_CODE
+          if [ "${EXIT_CODE:-0}" -ne 0 ]; then
+            kill "${DEV_PID}" 2>/dev/null || true
+            exit "${EXIT_CODE}"
           fi
           npm run test:e2e:prefetch -- --reporter=line
           TEST_EXIT=$?
@@ -80,9 +80,9 @@ jobs:
           npm run dev -- --host 127.0.0.1 --port 5173 --strictPort > /tmp/dev.log 2>&1 &
           DEV_PID=$!
           npx wait-on http://127.0.0.1:5173/ --timeout 60000 || EXIT_CODE=$?
-          if [ $EXIT_CODE -ne 0 ]; then
-            kill $DEV_PID 2>/dev/null || true
-            exit $EXIT_CODE
+          if [ "${EXIT_CODE:-0}" -ne 0 ]; then
+            kill "${DEV_PID}" 2>/dev/null || true
+            exit "${EXIT_CODE}"
           fi
           npx playwright test tests/e2e/hud.thresholds.spec.ts --reporter=line
           TEST_EXIT=$?
@@ -95,9 +95,9 @@ jobs:
           npm run dev -- --host 127.0.0.1 --port 5173 --strictPort > /tmp/dev.log 2>&1 &
           DEV_PID=$!
           npx wait-on http://127.0.0.1:5173/ --timeout 60000 || EXIT_CODE=$?
-          if [ $EXIT_CODE -ne 0 ]; then
-            kill $DEV_PID 2>/dev/null || true
-            exit $EXIT_CODE
+          if [ "${EXIT_CODE:-0}" -ne 0 ]; then
+            kill "${DEV_PID}" 2>/dev/null || true
+            exit "${EXIT_CODE}"
           fi
           npm run test:e2e:users -- --reporter=line
           TEST_EXIT=$?
@@ -110,9 +110,9 @@ jobs:
           npm run dev -- --host 127.0.0.1 --port 5173 --strictPort > /tmp/dev.log 2>&1 &
           DEV_PID=$!
           npx wait-on http://127.0.0.1:5173/ --timeout 60000 || EXIT_CODE=$?
-          if [ $EXIT_CODE -ne 0 ]; then
-            kill $DEV_PID 2>/dev/null || true
-            exit $EXIT_CODE
+          if [ "${EXIT_CODE:-0}" -ne 0 ]; then
+            kill "${DEV_PID}" 2>/dev/null || true
+            exit "${EXIT_CODE}"
           fi
           VITE_FEATURE_NURSE=1 VITE_SKIP_LOGIN=1 npx playwright test tests/e2e/nurse.bp.sync.spec.ts --reporter=line
           TEST_EXIT=$?
