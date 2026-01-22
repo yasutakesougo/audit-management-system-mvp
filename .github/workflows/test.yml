@@ -77,6 +77,30 @@ jobs:
         continue-on-error: true
       - name: Test (coverage)
         run: npm run test:coverage -- --reporter=default
+      - name: Free port 5173 (best-effort, lsof OR fuser)
+        if: github.event_name == 'workflow_dispatch' || (github.ref == 'refs/heads/main' && steps.changes.outputs.playwright == 'true')
+        run: |
+          (command -v lsof >/dev/null && lsof -ti :5173 | xargs -r kill -9) || true
+          (command -v fuser >/dev/null && fuser -k 5173/tcp) || true
+          sleep 1
+      - name: Start dev server (5173, strict)
+        if: github.event_name == 'workflow_dispatch' || (github.ref == 'refs/heads/main' && steps.changes.outputs.playwright == 'true')
+        run: |
+          nohup npm run dev:5173 </dev/null > /tmp/vite-5173.log 2>&1 &
+          echo "Vite starting on port 5173..."
+          sleep 2
+          echo "=== vite log (head -20, sanity check) ==="
+          head -20 /tmp/vite-5173.log || true
+      - name: Wait for dev server (5173)
+        if: github.event_name == 'workflow_dispatch' || (github.ref == 'refs/heads/main' && steps.changes.outputs.playwright == 'true')
+        run: |
+          npx wait-on http://127.0.0.1:5173/ --timeout 60000
+          curl -I http://127.0.0.1:5173/ | head -5
+      - name: Debug server logs on failure (5173)
+        if: failure() && (github.event_name == 'workflow_dispatch' || (github.ref == 'refs/heads/main' && steps.changes.outputs.playwright == 'true'))
+        run: |
+          echo "=== /tmp/vite-5173.log (tail -200) ==="
+          tail -200 /tmp/vite-5173.log || true
       - name: Playwright E2E
         if: github.event_name == 'workflow_dispatch' || (github.ref == 'refs/heads/main' && steps.changes.outputs.playwright == 'true')
         env:
@@ -91,8 +115,6 @@ jobs:
           VITE_SP_RESOURCE: ${{ vars.VITE_SP_RESOURCE }}
           VITE_SP_SITE_RELATIVE: ${{ vars.VITE_SP_SITE_RELATIVE }}
           PLAYWRIGHT_BASE_URL: http://127.0.0.1:5173
-          PLAYWRIGHT_WEB_SERVER_URL: http://127.0.0.1:5173
-          PLAYWRIGHT_WEB_SERVER_COMMAND: "npm run preview:e2e"
           NOTIFY_WEBHOOK_URL: ${{ secrets.NOTIFY_WEBHOOK_URL }}
         run: |
           set -euo pipefail
@@ -165,6 +187,27 @@ jobs:
         run: npm ci
       - name: Install Playwright browsers
         run: npx playwright install --with-deps
+      - name: Free port 5173 (best-effort, lsof OR fuser)
+        run: |
+          (command -v lsof >/dev/null && lsof -ti :5173 | xargs -r kill -9) || true
+          (command -v fuser >/dev/null && fuser -k 5173/tcp) || true
+          sleep 1
+      - name: Start dev server (5173, strict)
+        run: |
+          nohup npm run dev:5173 </dev/null > /tmp/vite-5173.log 2>&1 &
+          echo "Vite starting on port 5173..."
+          sleep 2
+          echo "=== vite log (head -20, sanity check) ==="
+          head -20 /tmp/vite-5173.log || true
+      - name: Wait for dev server (5173)
+        run: |
+          npx wait-on http://127.0.0.1:5173/ --timeout 60000
+          curl -I http://127.0.0.1:5173/ | head -5
+      - name: Debug server logs on failure (5173)
+        if: failure()
+        run: |
+          echo "=== /tmp/vite-5173.log (tail -200) ==="
+          tail -200 /tmp/vite-5173.log || true
       - name: Canary checks (E2E + LHCI + Summary)
         id: canary
         run: |
