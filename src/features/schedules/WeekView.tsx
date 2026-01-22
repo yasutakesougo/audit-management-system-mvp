@@ -323,6 +323,13 @@ const WeekViewContent = ({ items, loading, onDayClick, activeDateIso, range, onI
           <span>今週の予定</span>
           <span>{rangeLabel}</span>
         </header>
+        <div className="mb-2" data-testid={TESTIDS.SCHEDULES_WEEK_SERVICE_SUMMARY}>
+          {serviceSummaryItems.length === 0 ? (
+            <span className="text-xs text-slate-500">区分未設定 0件</span>
+          ) : (
+            <WeekServiceSummaryChips items={serviceSummaryItems} />
+          )}
+        </div>
         <div
           aria-label="週ごとの予定一覧"
           role="grid"
@@ -331,13 +338,6 @@ const WeekViewContent = ({ items, loading, onDayClick, activeDateIso, range, onI
           data-testid={TESTIDS['schedules-week-grid']}
           className="w-full"
         >
-          <div className="mb-2" data-testid={TESTIDS.SCHEDULES_WEEK_SERVICE_SUMMARY}>
-            {serviceSummaryItems.length === 0 ? (
-              <span className="text-xs text-slate-500">区分未設定 0件</span>
-            ) : (
-              <WeekServiceSummaryChips items={serviceSummaryItems} />
-            )}
-          </div>
           <div role="row" aria-rowindex={1} className="grid grid-cols-2 gap-2 sm:grid-cols-4 md:grid-cols-7">
             {weekDays.map((day, index) => {
               const isToday = day.iso === todayIso;
@@ -441,7 +441,7 @@ const WeekViewContent = ({ items, loading, onDayClick, activeDateIso, range, onI
             選択した日の予定はまだありません。
           </p>
         ) : (
-          <ul className="space-y-2" data-testid="schedule-week-list" role="list">
+          <div className="space-y-2" data-testid="schedule-week-list" role="list">
             {selectedItems.map((item) => {
               const statusMeta = getScheduleStatusMeta(item.status);
               const statusLabel = item.status && item.status !== 'Planned' ? statusMeta?.label : undefined;
@@ -474,30 +474,36 @@ const WeekViewContent = ({ items, loading, onDayClick, activeDateIso, range, onI
                 : [timeRange, locationLabel].filter(Boolean);
 
               return (
-                <li
-                  key={item.id}
-                  data-testid="schedule-item"
-                  data-category={item.category}
-                  data-schedule-event="true"
-                  data-id={item.id}
-                  data-status={item.status ?? ''}
-                  data-all-day={item.allDay ? '1' : '0'}
-                  className="rounded-md border text-left shadow-sm"
-                  style={{
-                    backgroundColor: serviceTokens?.bg,
-                    borderColor: serviceTokens?.border,
-                  }}
-                  role="listitem"
-                >
-                  <button
-                    type="button"
-                    className="flex w-full flex-col gap-1.5 px-3 py-2 text-left sm:gap-2 sm:px-4 sm:py-3"
-                    onClick={handleItemClick}
-                    disabled={isDisabled}
-                    style={{ opacity: buttonOpacity }}
-                    aria-label={ariaLabel}
-                    title={timeRange}
+                <div key={item.id} role="listitem">
+                  <div
+                    data-testid="schedule-item"
+                    data-category={item.category}
+                    data-schedule-event="true"
+                    data-id={item.id}
+                    data-status={item.status ?? ''}
+                    data-all-day={item.allDay ? '1' : '0'}
+                    className="relative rounded-md border text-left shadow-sm"
+                    style={{
+                      backgroundColor: serviceTokens?.bg,
+                      borderColor: serviceTokens?.border,
+                    }}
                   >
+                    <div
+                      className="flex w-full flex-col gap-1.5 px-3 py-2 text-left sm:gap-2 sm:px-4 sm:py-3"
+                      onClick={handleItemClick}
+                      onKeyDown={(e) => {
+                        if (!isDisabled && (e.key === 'Enter' || e.key === ' ')) {
+                          e.preventDefault();
+                          handleItemClick();
+                        }
+                      }}
+                      role="button"
+                      tabIndex={isDisabled ? -1 : 0}
+                      aria-disabled={isDisabled}
+                      aria-label={ariaLabel}
+                      title={timeRange}
+                      style={{ opacity: buttonOpacity }}
+                    >
                     <div className="flex items-start justify-between gap-2">
                       <p className="text-sm font-semibold text-slate-900 flex items-center gap-2">
                         {serviceTokens ? (
@@ -532,18 +538,6 @@ const WeekViewContent = ({ items, loading, onDayClick, activeDateIso, range, onI
                           </span>
                         )}
                       </p>
-                      {!isMobile && (
-                        <IconButton
-                          aria-label="行の操作"
-                          data-testid={TESTIDS['schedule-item-menu']}
-                          size="small"
-                          onClick={(event) => handleMenuOpen(event, item)}
-                          component="span"
-                          sx={{ ml: 0.5 }}
-                        >
-                          <MoreVertIcon fontSize="small" />
-                        </IconButton>
-                      )}
                     </div>
                     <p className="text-xs text-slate-600 flex flex-wrap gap-1.5 items-center">
                       {metaLine.map((text, index) => (
@@ -566,11 +560,26 @@ const WeekViewContent = ({ items, loading, onDayClick, activeDateIso, range, onI
                         {statusReason}
                       </p>
                     )}
-                  </button>
-                </li>
+                  </div>
+                  {!isMobile && (
+                    <IconButton
+                      aria-label="行の操作"
+                      data-testid={TESTIDS['schedule-item-menu']}
+                      size="small"
+                      onClick={(event) => {
+                        event.stopPropagation();
+                        handleMenuOpen(event, item);
+                      }}
+                      sx={{ position: 'absolute', top: 4, right: 4, ml: 0.5 }}
+                    >
+                      <MoreVertIcon fontSize="small" />
+                    </IconButton>
+                  )}
+                </div>
+                </div>
               );
             })}
-          </ul>
+          </div>
         )}
 
         <Menu anchorEl={menuAnchor} open={Boolean(menuAnchor)} onClose={handleMenuClose} elevation={3}>

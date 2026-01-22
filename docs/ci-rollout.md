@@ -46,3 +46,8 @@ To avoid `net::ERR_CONNECTION_REFUSED`:
 
 ### Check quality job only
 `gh run view <RUN_ID> --json jobs --jq '.jobs[] | select(.name=="quality") | {name, status, conclusion}'`
+## Phase 2 closure (2026-01-22)
+- Phase 2 flags (NAV/ACCEPTANCE/WEEK_MONTH_TAB) rolled out to all workflows.
+- Quality Gates dev server stability fix (5173 start + wait-on) merged.
+- main natural trigger: Quality Gates / quality = SUCCESS (run: 21234106893).
+- Phase 2 closed.

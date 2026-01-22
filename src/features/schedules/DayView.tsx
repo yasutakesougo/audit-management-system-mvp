@@ -130,6 +130,7 @@ const DayViewContent = ({ items, loading, range }: { items: SchedItem[]; loading
 
   return (
     <section
+      id="panel-day"
       aria-labelledby={headingId}
       data-testid={TESTIDS['schedules-day-page']}
       style={{ padding: '8px 0 16px' }}

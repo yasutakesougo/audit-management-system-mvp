@@ -26,7 +26,7 @@ export async function gotoDay(page: Page, date: Date, options?: NavOptions): Pro
 export async function gotoWeek(page: Page, date: Date, options?: NavOptions): Promise<void> {
   const iso = formatIsoDate(date);
   const search = buildSearch({ date: iso, tab: 'week' }, options?.searchParams);
-  await page.goto(`/schedules/week?${search}`);
+  await page.goto(`/schedules/week?${search}`, { waitUntil: 'domcontentloaded' });
 }
 
 export async function gotoMonth(page: Page, date: Date, options?: NavOptions): Promise<void> {

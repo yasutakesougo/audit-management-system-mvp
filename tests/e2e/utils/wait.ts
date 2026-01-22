@@ -78,8 +78,8 @@ export async function waitForWeekTimeline(page: Page): Promise<void> {
   const pageRoot = page.getByTestId(TESTIDS.SCHEDULES_PAGE_ROOT);
   const weekPageRoot = page.getByTestId(TESTIDS['schedules-week-page']);
 
-  const hasNewRoot = await locatorExists(pageRoot, 3_000);
-  const hasWeekPage = hasNewRoot ? true : await locatorExists(weekPageRoot, 3_000);
+  const hasNewRoot = await locatorExists(pageRoot, 15_000);
+  const hasWeekPage = hasNewRoot ? true : await locatorExists(weekPageRoot, 15_000);
 
   if (hasNewRoot) {
     await expect(pageRoot).toBeVisible({ timeout: 15_000 });

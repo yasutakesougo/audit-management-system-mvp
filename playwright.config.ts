@@ -39,6 +39,23 @@ const webServerEnvVarsE2ESchedulesOff = {
   VITE_FEATURE_SCHEDULES: '0',  // Disable schedules
 };
 
+// E2E with SharePoint mocking (list-existence gate testing, 404 scenarios)
+// NOTE: route.route() can intercept API calls here since VITE_SKIP_SHAREPOINT=0
+const webServerEnvVarsSPIntegration = {
+  VITE_SP_RESOURCE: process.env.VITE_SP_RESOURCE ?? 'https://isogokatudouhome.sharepoint.com',
+  VITE_SP_SITE_RELATIVE: process.env.VITE_SP_SITE_RELATIVE ?? '/sites/app-test',
+  VITE_SP_SCOPE_DEFAULT:
+    process.env.VITE_SP_SCOPE_DEFAULT ?? 'https://isogokatudouhome.sharepoint.com/AllSites.Read',
+  VITE_E2E: '1',  // E2E mode enabled (no real external requests)
+  VITE_E2E_MSAL_MOCK: 'true',  // Use mock MSAL
+  VITE_SKIP_LOGIN: '1',  // Skip login (use demo auth)
+  VITE_SKIP_SHAREPOINT: '0',  // DO NOT skip SharePoint (allow route mocking)
+  VITE_FEATURE_SCHEDULES_SP: '1',  // Enable SharePoint features
+  VITE_DEMO_MODE: '1',  // Use in-memory stores for other data
+  VITE_DEV_HARNESS: process.env.VITE_DEV_HARNESS ?? '1',
+  VITE_SCHEDULES_TZ: process.env.VITE_SCHEDULES_TZ ?? 'Asia/Tokyo',
+};
+
 // Integration: Real SharePoint/Graph communication (nightly/manual only)
 const webServerEnvVarsIntegration = {
   VITE_SP_RESOURCE: process.env.VITE_SP_RESOURCE ?? 'https://isogokatudouhome.sharepoint.com',
@@ -58,8 +75,9 @@ const webServerEnvVarsIntegration = {
 
 // Select env vars based on PLAYWRIGHT_PROJECT
 const isIntegrationProject = process.env.PLAYWRIGHT_PROJECT === 'integration';
+const isSPIntegrationProject = process.env.PLAYWRIGHT_PROJECT === 'chromium-sp-integration';
 const isSchedulesOffProject = process.env.PLAYWRIGHT_PROJECT === 'chromium:schedules-off';
-const webServerEnvVars = isIntegrationProject ? webServerEnvVarsIntegration : isSchedulesOffProject ? webServerEnvVarsE2ESchedulesOff : webServerEnvVarsE2E;
+const webServerEnvVars = isIntegrationProject ? webServerEnvVarsIntegration : isSPIntegrationProject ? webServerEnvVarsSPIntegration : isSchedulesOffProject ? webServerEnvVarsE2ESchedulesOff : webServerEnvVarsE2E;
 
 // Build env string for command line injection (dev mode needs this)
 // Use --mode test to load .env.test.local which overrides .env.local
@@ -117,6 +135,22 @@ export default defineConfig({
         env: {
           ...process.env,
           ...webServerEnvVarsE2E,
+        },
+      },
+    },
+    {
+      name: 'chromium-sp-integration',
+      testDir: 'tests/e2e',
+      testMatch: '**/schedules.list-existence-gate.spec.ts',
+      use: desktopChrome,
+      webServer: {
+        command: `npx cross-env ${Object.entries(webServerEnvVarsSPIntegration).map(([k, v]) => `${k}=${v}`).join(' ')} npx vite --mode test --host 127.0.0.1 --port 5177 --strictPort`,
+        url: 'http://127.0.0.1:5177',
+        reuseExistingServer,
+        timeout: 180_000,
+        env: {
+          ...process.env,
+          ...webServerEnvVarsSPIntegration,
         },
       },
     },

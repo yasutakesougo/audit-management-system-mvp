@@ -17,6 +17,7 @@ interface ImportMetaEnv {
   readonly VITE_E2E_MSAL_MOCK?: string;
   readonly VITE_FEATURE_COMPLIANCE_FORM?: string;
   readonly VITE_FEATURE_SCHEDULES_GRAPH?: string;
+  readonly VITE_FEATURE_SCHEDULES_SP?: string;
   readonly VITE_FEATURE_SCHEDULES?: string;
   readonly VITE_FEATURE_SCHEDULES_CREATE?: string;
   readonly VITE_FEATURE_SCHEDULES_WEEK_V2?: string;
@@ -56,6 +57,7 @@ interface ImportMetaEnv {
   readonly VITE_SP_SITE_URL?: string;
   readonly VITE_SP_USE_PROXY?: string;
   readonly VITE_WRITE_ENABLED?: string;
+  readonly VITE_ALLOW_SHAREPOINT_OUTSIDE_SPFX?: string;
 
   // 🔽 新規追加（prefetch / telemetry / feature flags）
   readonly VITE_PREFETCH_TTL_MS?: string;

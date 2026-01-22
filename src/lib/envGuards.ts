@@ -1,9 +1,11 @@
 import { shouldSkipSharePoint } from './env';
+import { getFlag } from '@/env';
 
 // Guard against misconfigurations that would blank data in production
 export const guardProdMisconfig = (): void => {
   // PRODでSKIPが立っているのは「空データ運用」の事故なので即停止（E2EはVITE_E2Eで免除）
-  if (import.meta.env.PROD && !import.meta.env.VITE_E2E && shouldSkipSharePoint()) {
+  // NOTE: Use getFlag for runtime E2E value instead of import.meta.env.VITE_E2E (which is build-time)
+  if (import.meta.env.PROD && !getFlag('VITE_E2E', false) && shouldSkipSharePoint()) {
     throw new Error('[config] VITE_SKIP_SHAREPOINT=1 is not allowed in PROD. Check environment configuration.');
   }
 };

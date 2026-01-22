@@ -66,7 +66,7 @@ const shouldBypassInE2E = (flag: keyof FeatureFlagSnapshot): boolean => {
 
 export default function ProtectedRoute({ flag, children, fallbackPath = '/' }: ProtectedRouteProps) {
   const enabled = useFeatureFlag(flag);
-  const { isAuthenticated, loading, shouldSkipLogin, signIn } = useAuth();
+  const { isAuthenticated, loading, shouldSkipLogin, tokenReady, signIn } = useAuth();
   const { accounts, inProgress } = useMsalContext();
   const location = useLocation();
   const pendingPath = useMemo(() => `${location.pathname}${location.search ?? ''}`, [location.pathname, location.search]);
@@ -132,6 +132,42 @@ export default function ProtectedRoute({ flag, children, fallbackPath = '/' }: P
         fallbackPath={fallbackPath}
         pendingPath={pendingPath}
       />
+    );
+  }
+
+  // Gate: Ensure SharePoint token is ready before rendering children
+  // This prevents API calls from auto-triggering MSAL popups
+  if (!tokenReady) {
+    debug('Token acquisition in progress; waiting for completion for flag:', flag);
+    return (
+      <div style={{ padding: '2rem', textAlign: 'center' }}>
+        アクセス権限を確認しています…
+      </div>
+    );
+  }
+
+  // Gate: Ensure list exists before rendering children (prevents 404 cascade)
+  const { getListReadyState } = useAuth();
+  const listReady = getListReadyState();
+  if (listReady === false) {
+    debug('List check failed (404/error) for flag:', flag);
+    return (
+      <div style={{ padding: '2rem', textAlign: 'center', color: '#d32f2f' }}>
+        <Typography variant="body2" sx={{ fontWeight: 600, mb: 1 }}>
+          スケジュール用の SharePoint リストが見つかりません
+        </Typography>
+        <Typography variant="caption" sx={{ display: 'block', color: '#666' }}>
+          管理者に連絡してください
+        </Typography>
+      </div>
+    );
+  }
+  if (listReady === null && flag === 'schedules') {
+    debug('List existence check in progress for flag:', flag);
+    return (
+      <div style={{ padding: '2rem', textAlign: 'center' }}>
+        スケジュール用リストを確認しています…
+      </div>
     );
   }
 
