@@ -37,6 +37,7 @@ const hydrationHudEnabled = readBool('VITE_FEATURE_HYDRATION_HUD', false);
 const scheduleSaveMode = getScheduleSaveMode();
 const sharePointFeatureEnabled = spEnabled || readBool('VITE_FEATURE_SCHEDULES_SP', scheduleSaveMode === 'real');
 const forceSharePointList = readBool('VITE_FORCE_SHAREPOINT', false);
+const allowSharePointOutsideSpfx = readBool('VITE_ALLOW_SHAREPOINT_OUTSIDE_SPFX', false);
 const sharePointCreateEnabled = sharePointFeatureEnabled;
 // Runtime guard: detect SPFx context explicitly
 const spfxContextAvailable = hasSpfxContext();
@@ -69,7 +70,7 @@ function SchedulesProviderBridge({ children }: BridgeProps) {
   const port = useMemo(() => {
     let selectedPort: SchedulesPort;
 
-    const sharePointRunnable = sharePointListEnabled && spfxContextAvailable;
+    const sharePointRunnable = sharePointListEnabled && (spfxContextAvailable || allowSharePointOutsideSpfx);
 
     if (sharePointRunnable) {
       if (import.meta.env.DEV) console.info('[schedules] using SharePoint port');

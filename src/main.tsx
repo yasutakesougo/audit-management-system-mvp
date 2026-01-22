@@ -1,6 +1,6 @@
 import React from 'react';
 import ReactDOM from 'react-dom/client';
-import { getRuntimeEnv, isDev } from './env';
+import { getRuntimeEnv, isDev, clearEnvCache } from './env';
 import { guardProdMisconfig } from './lib/envGuards';
 import { resolveHydrationEntry } from './hydration/routes';
 import { beginHydrationSpan, finalizeHydrationSpan } from './lib/hydrationHud';
@@ -23,8 +23,8 @@ declare global {
   }
 }
 
-// Fail fast on misconfigurations that would blank data in production
-guardProdMisconfig();
+// NOTE: Do NOT call guardProdMisconfig() here - it needs runtime env to be loaded first!
+// Call it after ensureRuntimeEnv() completes below.
 
 const RUNTIME_PATH_KEYS = new Set(['RUNTIME_ENV_PATH', 'VITE_RUNTIME_ENV_PATH']);
 
@@ -94,6 +94,7 @@ const ensureRuntimeEnv = async (): Promise<EnvRecord> => {
 
   const merged = { ...baseEnv, ...runtimeOverrides } satisfies EnvRecord;
   window.__ENV__ = merged;
+  clearEnvCache();
 
   if (isDev) {
     // 🎯 開発時ログを要点に絞って表示
@@ -186,6 +187,9 @@ const run = async (): Promise<void> => {
   try {
     // 🔧 runtime env を最優先で適用してからモジュールを読み込み
     envSnapshot = await envPromise;
+    
+    // ✅ NOW that runtime env is loaded, check for production misconfigurations
+    guardProdMisconfig();
 
     const [modules, appModule] = await Promise.all([modulesPromise, appPromise]);
     const [{ ConfigErrorBoundary }, { auditLog }, featureFlagsModule] = modules;

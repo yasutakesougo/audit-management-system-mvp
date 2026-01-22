@@ -4,8 +4,11 @@ import { readEnv } from '@/lib/env';
 // Centralized SharePoint schema constants for schedules.
 // Update these values (or the corresponding env vars) once the SP list is rebuilt.
 export const SCHEDULES_LIST_TITLE = (() => {
-  const configured = readEnv('VITE_SP_LIST_SCHEDULES', 'Schedules').trim();
-  return configured || 'Schedules';
+  const preferred = readEnv('VITE_SCHEDULES_LIST_TITLE', '').trim();
+  if (preferred) return preferred;
+
+  const legacy = readEnv('VITE_SP_LIST_SCHEDULES', 'Schedules').trim();
+  return legacy || 'Schedules';
 })();
 
 const normalizeGuid = (raw: string): string => raw.replace(/^guid:/i, '').replace(/[{}]/g, '').trim();

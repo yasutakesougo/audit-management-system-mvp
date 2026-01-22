@@ -67,8 +67,8 @@ describe('WeekPage tabs', () => {
     expect(weekTab).toHaveAttribute('aria-selected', 'true');
     
     // Verify week panel is visible (role=tabpanel with correct aria-labelledby)
-    const weekPanel = screen.getByRole('tabpanel', { name: /週/i });
-    expect(weekPanel).toBeVisible();
+    const weekView = screen.getByTestId('schedule-week-view');
+    expect(weekView).toBeVisible();
   });
 
   it('shows demo schedule items in week view', async () => {

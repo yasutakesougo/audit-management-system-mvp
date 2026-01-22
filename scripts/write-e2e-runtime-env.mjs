@@ -36,6 +36,7 @@ const e2eRuntimeEnv = {
   VITE_SKIP_ENSURE_SCHEDULE: 'false',
   VITE_WRITE_ENABLED: 'false',
   VITE_FEATURE_SCHEDULES: 'true',
+  VITE_FEATURE_SCHEDULES_WEEK_V2: 'true',
   VITE_SCHEDULES_TZ: 'Asia/Tokyo',
   // DNS-safe SharePoint settings (no external DNS lookups)
   VITE_SP_RESOURCE: '',

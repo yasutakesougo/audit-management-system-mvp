@@ -1,5 +1,5 @@
 import { type CSSProperties, type MouseEvent, useCallback, useEffect, useId, useMemo, useRef, useState } from 'react';
-import { useSearchParams } from 'react-router-dom';
+import { useLocation, useMatch, useNavigate, useSearchParams } from 'react-router-dom';
 import { Alert, Snackbar } from '@mui/material';
 
 import { useAnnounce } from '@/a11y/LiveAnnouncer';
@@ -29,22 +29,9 @@ import MonthPage from './MonthPage';
 import WeekTimeline, { type WeekTimelineCreateHint } from './views/WeekTimeline';
 
 type ScheduleTab = 'week' | 'day' | 'timeline' | 'month';
-
-const TAB_LABELS: Record<ScheduleTab, string> = {
-  week: '週',
-  day: '日',
-  timeline: 'タイムライン',
-  month: '月',
-};
-
 const DEFAULT_START_TIME = '10:00';
 const DEFAULT_END_TIME = '11:00';
 const SCHEDULES_TZ = resolveSchedulesTz();
-
-const normalizeTabParam = (params: URLSearchParams): ScheduleTab => {
-  const raw = params.get('tab');
-  return (raw === 'day' || raw === 'timeline' || raw === 'month') ? raw : 'week';
-};
 
 const startOfWeek = (date: Date): Date => {
   const next = new Date(date);
@@ -181,9 +168,39 @@ const resolveDialogIntent = (params: URLSearchParams): DialogIntentParams | null
 let pendingFabFocus = false;
 
 
+const LEGACY_TABS = ['day', 'week', 'timeline', 'month'] as const;
+type LegacyTab = typeof LEGACY_TABS[number];
+
 export default function WeekPage() {
   const announce = useAnnounce();
+  const location = useLocation();
+  const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
+  
+  // Legacy ?tab= redirect (互換性のため)
+  // Only redirect if this came from external navigation (e.g., bookmarks)
+  // Don't redirect if we're already properly handling it via query param fallback
+  useEffect(() => {
+    const legacyTab = searchParams.get('tab');
+    if (!legacyTab) return;
+    
+    // Skip redirect if we're already on /schedules/week with a valid tab param
+    // This prevents redirect loops during tab switching
+    if (location.pathname === '/schedules/week' && LEGACY_TABS.includes(legacyTab as LegacyTab)) {
+      // Query param is already set, no need to redirect
+      return;
+    }
+    
+    const map: Record<LegacyTab, string> = {
+      day: '/schedules/day',
+      week: '/schedules/week',
+      timeline: '/schedules/timeline',
+      month: '/schedules/month',
+    };
+    const target = map[legacyTab as LegacyTab];
+    if (target) navigate(target, { replace: true });
+  }, [searchParams, navigate, location.pathname]);
+  
   const [snack, setSnack] = useState<{
     open: boolean;
     severity: 'success' | 'error' | 'info' | 'warning';
@@ -195,16 +212,34 @@ export default function WeekPage() {
       setSnack({ open: true, severity, message }),
     []
   );
-  const [tab, setTab] = useState<ScheduleTab>(() => normalizeTabParam(searchParams));
+  
+  // Route から mode を決定（useMatch で堅牢化）
+  // First check URL path (when navigation completes), then fall back to query param (during redirect)
+  const dayMatch = useMatch('/schedules/day/*');
+  const timelineMatch = useMatch('/schedules/timeline/*');
+  const monthMatch = useMatch('/schedules/month/*');
+  
+  // Fallback to query parameter for backward compatibility with redirects
+  const tabParam = searchParams.get('tab') as ScheduleTab | null;
+  
+  const mode: ScheduleTab = dayMatch
+    ? 'day'
+    : timelineMatch
+      ? 'timeline'
+      : monthMatch
+        ? 'month'
+        : tabParam && LEGACY_TABS.includes(tabParam as LegacyTab)
+          ? (tabParam as ScheduleTab)
+          : 'week';
   const [categoryFilter, setCategoryFilter] = useState<'All' | Category>('All');
   const [query, setQuery] = useState('');
   
-  // Authorization check for Day tab editing
+  // Authorization check for Day view editing
   const { account } = useAuth();
   const myUpn = (account?.username ?? '').trim().toLowerCase();
   const { isReception, isAdmin, ready } = useUserAuthz();
   const canEditByRole = ready && (isReception || isAdmin);
-  const canEdit = tab === 'day' && canEditByRole; // FAB (create) = reception/admin only
+  const canEdit = mode === 'day' && canEditByRole; // FAB (create) = reception/admin only
   
   const rawDateParam = useMemo(() => pickDateParam(searchParams), [searchParams]);
   const focusDate = useMemo(() => normalizeToDayStart(rawDateParam), [rawDateParam]);
@@ -231,7 +266,6 @@ export default function WeekPage() {
     }
   }, [createDialogOpen]);
   const headingId = useId();
-  const tablistId = useId();
   const rangeDescriptionId = 'schedules-week-range';
   const weekRange = useMemo(() => {
     const start = startOfWeek(focusDate);
@@ -344,24 +378,6 @@ export default function WeekPage() {
     setSearchParams(next, { replace: true });
   }, [searchParams, setSearchParams]);
 
-  const tabButtonIds: Record<ScheduleTab, string> = {
-    week: `${tablistId}-tab-week`,
-    day: `${tablistId}-tab-day`,
-    timeline: `${tablistId}-tab-timeline`,
-    month: `${tablistId}-tab-month`,
-  };
-
-  useEffect(() => {
-    const resolved = normalizeTabParam(searchParams);
-    setTab((prev) => (prev === resolved ? prev : resolved));
-    const current = searchParams.get('tab');
-    if (current !== resolved) {
-      const next = new URLSearchParams(searchParams);
-      next.set('tab', resolved);
-      setSearchParams(next, { replace: true });
-    }
-  }, [searchParams, setSearchParams]);
-
   const primeRouteReset = useCallback(() => {
     if (typeof window === 'undefined') {
       return;
@@ -456,8 +472,8 @@ export default function WeekPage() {
   const handleWeekEventClick = useCallback((item: SchedItem) => {
     console.info('[WeekPage] row click', item.id);
 
-    // Authorization check: reception/admin OR assignee (Day tab only)
-    if (tab === 'day' && ready) {
+    // Authorization check: reception/admin OR assignee (Day view only)
+    if (mode === 'day' && ready) {
       const assignedNormalized = (item.assignedTo ?? '').trim().toLowerCase();
       const hasAssignee = Boolean(assignedNormalized);
       const myUpnNormalized = (myUpn ?? '').trim().toLowerCase();
@@ -498,7 +514,7 @@ export default function WeekPage() {
       statusReason: item.statusReason ?? '',
     });
     setDialogOpen(true);
-  }, [tab, ready, canEditByRole, myUpn, showSnack]);
+  }, [mode, ready, canEditByRole, myUpn, showSnack]);
 
   const clearInlineSelection = useCallback(() => {
     setDialogOpen(false);
@@ -650,31 +666,31 @@ export default function WeekPage() {
         <span hidden>週間スケジュール</span>
         {/* Tab-aware header content */}
         {(() => {
-          // Compute monthLabel for month tab
+          // Compute monthLabel for month view
           const monthDate = new Date(`${resolvedActiveDateIso}T00:00:00`);
           const monthLabel = new Intl.DateTimeFormat('ja-JP', { year: 'numeric', month: 'long' }).format(monthDate);
 
-          // Determine subLabel and periodLabel based on current tab
+          // Determine subLabel and periodLabel based on current view mode
           const headerSubLabel =
-            tab === 'day'
+            mode === 'day'
               ? '日表示（本日の予定）'
-              : tab === 'month'
+              : mode === 'month'
                 ? '月表示（全体カレンダー）'
-                : tab === 'timeline'
+                : mode === 'timeline'
                   ? 'タイムライン（週間）'
                   : '週表示（週間の予定一覧）';
 
           const headerPeriodLabel =
-            tab === 'month'
+            mode === 'month'
               ? `表示月: ${monthLabel}`
-              : tab === 'day'
+              : mode === 'day'
                 ? `表示期間: ${new Intl.DateTimeFormat('ja-JP', { year: 'numeric', month: 'short', day: 'numeric' }).format(monthDate)}`
                 : `表示期間: ${weekLabel}`;
 
           return (
             <>
               <SchedulesHeader
-                mode={tab === 'day' ? 'day' : 'week'}
+                mode={mode}
                 title={MASTER_SCHEDULE_TITLE_JA}
                 subLabel={headerSubLabel}
                 periodLabel={headerPeriodLabel}
@@ -688,8 +704,9 @@ export default function WeekPage() {
           rangeLabelId={rangeDescriptionId}
           dayHref={dayViewHref}
           weekHref={weekViewHref}
+          timelineHref={`/schedules/timeline?date=${resolvedActiveDateIso}`}
           monthHref={monthViewHref}
-          modes={[ 'day', 'week' ]}
+          modes={[ 'day', 'week', 'timeline', 'month' ]}
           prevTestId={TESTIDS.SCHEDULES_PREV_WEEK}
           nextTestId={TESTIDS.SCHEDULES_NEXT_WEEK}
         >
@@ -737,73 +754,6 @@ export default function WeekPage() {
             </>
           );
         })()}
-
-        <div
-          id={tablistId}
-          role="tablist"
-          aria-label="スケジュールビュー切り替え"
-          style={{ display: 'flex', gap: 8, marginBottom: 8, flexWrap: 'wrap' }}
-          data-testid={TESTIDS.SCHEDULES_WEEK_TABLIST}
-          onKeyDown={(e) => {
-            // Handle arrow key navigation (ARIA Authoring Practices for tabs)
-            if (e.key === 'ArrowRight' || e.key === 'ArrowLeft') {
-              const tabs = Object.keys(TAB_LABELS) as ScheduleTab[];
-              const currentIndex = tabs.indexOf(tab);
-              const nextIndex = e.key === 'ArrowRight' 
-                ? (currentIndex + 1) % tabs.length
-                : (currentIndex - 1 + tabs.length) % tabs.length;
-              const nextTab = tabs[nextIndex];
-              const nextButton = document.getElementById(tabButtonIds[nextTab]);
-              if (nextButton) {
-                nextButton.focus();
-              }
-            }
-          }}
-        >
-          {(Object.keys(TAB_LABELS) as ScheduleTab[]).map((key) => {
-            const isActive = tab === key;
-            const tabTestId =
-              key === 'week'
-                ? TESTIDS.SCHEDULES_WEEK_TAB_WEEK
-                : key === 'day'
-                  ? TESTIDS.SCHEDULES_WEEK_TAB_DAY
-                  : key === 'timeline'
-                    ? TESTIDS.SCHEDULES_WEEK_TAB_TIMELINE
-                    : TESTIDS.SCHEDULES_WEEK_TAB_MONTH;
-            
-            // Activate tab logic (reused by onClick and onKeyDown)
-            const activateTab = () => {
-              if (tab === key) return;
-              setTab(key);
-              const next = new URLSearchParams(searchParams);
-              next.set('tab', key);
-              setSearchParams(next, { replace: true });
-            };
-
-            return (
-              <button
-                key={key}
-                id={tabButtonIds[key]}
-                type="button"
-                role="tab"
-                aria-selected={isActive}
-                aria-controls={`panel-${key}`}
-                tabIndex={isActive ? 0 : -1}
-                data-testid={tabTestId}
-                onClick={activateTab}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter' || e.key === ' ') {
-                    e.preventDefault();
-                    activateTab();
-                  }
-                }}
-                style={tabButtonStyle(isActive)}
-              >
-                {TAB_LABELS[key]}
-              </button>
-            );
-          })}
-        </div>
       </div>
 
       <div>
@@ -819,48 +769,24 @@ export default function WeekPage() {
           </div>
         ) : (
           <>
-            {tab === 'week' && (
-              <div
-                id="panel-week"
-                role="tabpanel"
-                aria-labelledby={tabButtonIds.week}
-              >
-                <WeekView
-                  items={filteredItems}
-                  loading={isLoading}
-                  range={weekRange}
-                  onDayClick={handleDayClick}
-                  activeDateIso={resolvedActiveDateIso}
-                  onItemSelect={handleWeekEventClick}
-                />
-              </div>
+            {mode === 'week' && (
+              <WeekView
+                items={filteredItems}
+                loading={isLoading}
+                range={weekRange}
+                onDayClick={handleDayClick}
+                activeDateIso={resolvedActiveDateIso}
+                onItemSelect={handleWeekEventClick}
+              />
             )}
-            {tab === 'day' && (
-              <div
-                id="panel-day"
-                role="tabpanel"
-                aria-labelledby={tabButtonIds.day}
-              >
-                <DayView items={filteredItems} loading={isLoading} range={activeDayRange} />
-              </div>
+            {mode === 'day' && (
+              <DayView items={filteredItems} loading={isLoading} range={activeDayRange} />
             )}
-            {tab === 'timeline' && (
-              <div
-                id="panel-timeline"
-                role="tabpanel"
-                aria-labelledby={tabButtonIds.timeline}
-              >
-                <WeekTimeline range={weekRange} items={filteredItems} onCreateHint={handleTimelineCreateHint} />
-              </div>
+            {mode === 'timeline' && (
+              <WeekTimeline range={weekRange} items={filteredItems} onCreateHint={handleTimelineCreateHint} />
             )}
-            {tab === 'month' && (
-              <div
-                id="panel-month"
-                role="tabpanel"
-                aria-labelledby={tabButtonIds.month}
-              >
-                <MonthPage />
-              </div>
+            {mode === 'month' && (
+              <MonthPage />
             )}
             {filteredItems.length === 0 && (
               <EmptyState
@@ -951,21 +877,6 @@ export default function WeekPage() {
     </section>
   );
 }
-
-const tabButtonStyle = (active: boolean): CSSProperties => ({
-  padding: '6px 12px',
-  borderRadius: 999,
-  border: active ? '1px solid rgba(25,118,210,0.7)' : '1px solid rgba(0,0,0,0.18)',
-  background: active ? 'rgba(25,118,210,0.08)' : 'rgba(255,255,255,0.8)',
-  fontWeight: active ? 700 : 500,
-  fontSize: 13,
-  color: active ? 'rgba(25,118,210,0.95)' : 'rgba(0,0,0,0.7)',
-  cursor: 'pointer',
-  display: 'inline-flex',
-  alignItems: 'center',
-  justifyContent: 'center',
-  gap: 4,
-});
 
 const skeletonStyle: CSSProperties = {
   height: 16,

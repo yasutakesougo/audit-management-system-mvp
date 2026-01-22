@@ -34,6 +34,50 @@
 
 - `import.meta.env` を直接参照すると lint / pre-push の制御に阻まれるので、必ず `src/lib/env.ts` のヘルパー経由で値を取得する
 - VS Code の Problems が急増したときは `src/lib/env.ts` や `.env` 差分をまず確認すると、型/エラーの原因を素早く特定できる
+- **React 18 開発モード (StrictMode)**: `useEffect` と認証フローが意図的に二重実行されます。MSAL の重複ログインを防ぐため、`useAuth.signIn()` は `useRef` ガードで保護されています。この動作は正常で、本番環境（StrictMode なし）には影響しません。
+
+## ⚠ Production Safety Notes
+
+**本番環境での事故防止メカニズム**
+
+このアプリケーションは以下の3段階のガードで本番運用での事故を防ぎます：
+
+1. **tokenReady gate** (`ProtectedRoute.tsx`)
+   - SharePoint token 取得完了まで子コンポーネントを実行しない
+   - MSAL popup の自動起動を防止
+
+2. **List existence check** (`useSchedules.ts`)
+   - アプリ起動時に `DailyOpsSignals` リストの存在確認
+   - 404 または permissions error の場合、ユーザーに即座に通知
+   - sessionStorage にキャッシュして同一セッション内での再チェックを回避
+   - **セッションキャッシュ戦略**: list check は同一ブラウザセッション内で1回のみ実行されます。リストを再作成した場合は再ログインが必要です
+
+3. **Clear error messaging**
+   - リストが見つからない場合: 「スケジュール用の SharePoint リストが見つかりません。管理者に連絡してください。」
+   - 現場職員が対処方法を明確に認識できる
+
+**これで防げる本番事故**
+- ✅ 初回アクセスで突然サインイン画面
+- ✅ SharePoint リスト削除後に画面が壊れる
+- ✅ 環境設定ミス（welfare vs app-test）での 404 地獄
+- ✅ 無限 API リトライ
+- ✅ 現場職員の混乱
+
+**E2E テスト戦略**
+
+ゲートの回帰を防ぐため、以下の複数プロジェクトで段階的にテストしています：
+
+- **chromium** (通常 E2E)
+  - 環境: `VITE_SKIP_SHAREPOINT=1`, `VITE_DEMO_MODE=1` (外部 API なし)
+  - テスト: 正常系（ゲートがブロックしないこと）のみ
+  - 頻度: CI での全テスト実行毎
+  - 目的: ゲート実装の回帰検知
+
+- **chromium-sp-integration** (オプション, 週1 nightly 推奨)
+  - 環境: `VITE_SKIP_SHAREPOINT=0`, 全 SharePoint API をroute.respond() でモック
+  - テスト: 404 エラーハンドリング（ゲートが確実にエラー表示すること）を含む
+  - 頻度: 定期メンテナンス・デプロイ前
+  - 目的: 実際のエラーパスの正確性を事前検証
 
 ## Tech Stack
 

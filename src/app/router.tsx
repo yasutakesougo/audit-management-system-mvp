@@ -116,7 +116,11 @@ const SuspendedSchedulePage: React.FC = () => (
 const SchedulesWeekRoute: React.FC = () => {
   const { schedulesWeekV2 } = useFeatureFlags();
   // schedulesWeekV2=true should surface the v2 WeekPage; keep legacy page as fallback when disabled.
-  return schedulesWeekV2 ? <SuspendedNewSchedulesWeekPage /> : <SuspendedSchedulePage />;
+  return (
+    <>
+      {schedulesWeekV2 ? <SuspendedNewSchedulesWeekPage /> : <SuspendedSchedulePage />}
+    </>
+  );
 };
 
 const SuspendedCreatePage: React.FC = () => (

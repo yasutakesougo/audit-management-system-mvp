@@ -6,6 +6,7 @@ export type EnvRecord = Record<string, Primitive>;
 export type AppConfig = {
   VITE_SP_RESOURCE: string;
   VITE_SP_SITE_RELATIVE: string;
+  VITE_SP_SITE_URL: string;
   VITE_SP_RETRY_MAX: string;
   VITE_SP_RETRY_BASE_MS: string;
   VITE_SP_RETRY_MAX_DELAY_MS: string;
@@ -79,15 +80,31 @@ const coerceBoolean = (value: Primitive, fallback = false): boolean => {
 
 
 const getEnvValue = (key: string, envOverride?: EnvRecord): Primitive => {
-  if (envOverride && key in envOverride) {
+  // Helper: treat undefined and empty-string-like values as "missing"
+  const isMeaningful = (v: unknown): boolean => {
+    if (v === undefined || v === null) return false;
+    if (typeof v === 'string') return v.trim().length > 0;
+    return true; // numbers/booleans considered meaningful
+  };
+
+  if (envOverride && key in envOverride && isMeaningful(envOverride[key])) {
     return envOverride[key];
   }
-  
-  // ✅ Browser environment: use import.meta.env directly (Vite injects at build time)
-  if (typeof window !== 'undefined' && typeof import.meta !== 'undefined' && import.meta.env && key in import.meta.env) {
-    return import.meta.env[key] as Primitive;
+
+  // ✅ Runtime env (window.__ENV__) should win over build-time
+  const runtime = getRuntimeEnv() as EnvRecord;
+  if (key in runtime && isMeaningful(runtime[key])) {
+    return runtime[key];
   }
-  
+
+  // Build-time env injected by Vite
+  if (typeof window !== 'undefined' && typeof import.meta !== 'undefined' && import.meta.env) {
+    const candidate = (import.meta.env as Record<string, Primitive>)[key];
+    if (isMeaningful(candidate)) {
+      return candidate as Primitive;
+    }
+  }
+
   // Node.js environment: use process.env or globalThis.import for SSR
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const globalImport = (globalThis as any).import;
@@ -95,18 +112,19 @@ const getEnvValue = (key: string, envOverride?: EnvRecord): Primitive => {
   if (typeof globalImport !== 'undefined' && (globalImport as any).meta?.env && typeof (globalImport as any).meta.env === 'object') {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const metaEnv = (globalImport as any).meta.env as Record<string, Primitive>;
-    if (key in metaEnv) {
-      return metaEnv[key];
+    const candidate = metaEnv[key];
+    if (isMeaningful(candidate)) {
+      return candidate;
     }
   }
-  
-  if (typeof process !== 'undefined' && process.env && key in process.env) {
-    return process.env[key] as Primitive;
+
+  if (typeof process !== 'undefined' && process.env) {
+    const candidate = process.env[key] as Primitive;
+    if (isMeaningful(candidate)) {
+      return candidate;
+    }
   }
-  const runtime = getRuntimeEnv() as EnvRecord;
-  if (key in runtime) {
-    return runtime[key];
-  }
+
   return undefined;
 };
 
@@ -178,6 +196,7 @@ export const getAppConfig = (envOverride?: EnvRecord): AppConfig => {
   const cfg: AppConfig = {
     VITE_SP_RESOURCE: readEnv('VITE_SP_RESOURCE', '', envOverride),
     VITE_SP_SITE_RELATIVE: readEnv('VITE_SP_SITE_RELATIVE', '', envOverride),
+    VITE_SP_SITE_URL: readEnv('VITE_SP_SITE_URL', '', envOverride),
     VITE_SP_RETRY_MAX: readEnv('VITE_SP_RETRY_MAX', '4', envOverride),
     VITE_SP_RETRY_BASE_MS: readEnv('VITE_SP_RETRY_BASE_MS', '400', envOverride),
     VITE_SP_RETRY_MAX_DELAY_MS: readEnv('VITE_SP_RETRY_MAX_DELAY_MS', '5000', envOverride),
