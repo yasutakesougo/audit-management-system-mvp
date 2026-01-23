@@ -3,6 +3,7 @@ import { useTokuseiSurveyResponses } from '@/features/assessment/hooks/useTokuse
 import RefreshRoundedIcon from '@mui/icons-material/RefreshRounded';
 import SupportAgentRoundedIcon from '@mui/icons-material/SupportAgentRounded';
 import Alert from '@mui/material/Alert';
+import { Card, CardContent, CardHeader } from '@mui/material';
 import Box from '@mui/material/Box';
 import Button from '@mui/material/Button';
 import Chip from '@mui/material/Chip';
@@ -13,6 +14,7 @@ import InputLabel from '@mui/material/InputLabel';
 import List from '@mui/material/List';
 import ListItemButton from '@mui/material/ListItemButton';
 import ListItemText from '@mui/material/ListItemText';
+import OutlinedInput from '@mui/material/OutlinedInput';
 import MenuItem from '@mui/material/MenuItem';
 import Paper from '@mui/material/Paper';
 import Select from '@mui/material/Select';
@@ -45,6 +47,60 @@ const TokuseiDetailField: React.FC<{ label: string; value?: React.ReactNode }> =
   </Box>
 );
 
+const EmptyState: React.FC<{
+  variant: 'all' | 'filtered';
+  hasFormsUrl: boolean;
+  formsUrl?: string;
+  onResetFilters?: () => void;
+}> = ({ variant, hasFormsUrl, formsUrl, onResetFilters }) => {
+  const title = variant === 'all' ? '特性アンケートの回答がまだありません' : '条件に一致する回答がありません';
+  const description =
+    variant === 'all'
+      ? 'Microsoft Formsで回答が送信されると、ここに表示されます。'
+      : '検索や日付フィルタを緩めると表示される可能性があります。';
+
+  return (
+    <Paper variant="outlined" sx={{ p: 3 }}>
+      <Stack spacing={1.5}>
+        <Typography variant="h6">{title}</Typography>
+        <Typography variant="body2" color="text.secondary">
+          {description}
+        </Typography>
+
+        <Stack direction="row" spacing={1} sx={{ pt: 1 }}>
+          {variant === 'filtered' && onResetFilters && (
+            <Button variant="outlined" onClick={onResetFilters}>
+              フィルタをリセット
+            </Button>
+          )}
+
+          {hasFormsUrl ? (
+            <Button
+              variant="contained"
+              component="a"
+              href={formsUrl}
+              target="_blank"
+              rel="noreferrer"
+            >
+              Formsで回答を送る
+            </Button>
+          ) : (
+            <Button variant="contained" disabled title="VITE_TOKUSEI_FORMS_URL が未設定です">
+              Formsで回答を送る
+            </Button>
+          )}
+        </Stack>
+
+        {!hasFormsUrl && (
+          <Typography variant="caption" color="text.secondary">
+            管理者向け: .env に VITE_TOKUSEI_FORMS_URL を設定すると、ここにFormsへの導線が表示されます。
+          </Typography>
+        )}
+      </Stack>
+    </Paper>
+  );
+};
+
 const buildUserOptions = (responses: TokuseiSurveyResponse[]): string[] => {
   const names = new Set<string>();
   responses.forEach((response) => {
@@ -58,9 +114,25 @@ const buildUserOptions = (responses: TokuseiSurveyResponse[]): string[] => {
 const TokuseiSurveyResultsPage: React.FC = () => {
   const { data, status, error, refresh } = useTokuseiSurveyResponses();
   const [selectedUser, setSelectedUser] = useState<string>('all');
+  const [searchQuery, setSearchQuery] = useState('');
+  const [fromDate, setFromDate] = useState('');
+  const [toDate, setToDate] = useState('');
   const [activeResponseId, setActiveResponseId] = useState<number | null>(null);
+  const formsUrl = typeof import.meta.env.VITE_TOKUSEI_FORMS_URL === 'string'
+    ? import.meta.env.VITE_TOKUSEI_FORMS_URL
+    : undefined;
 
-  const userOptions = useMemo(() => buildUserOptions(data), [data]);
+  const sortedData = useMemo(
+    () =>
+      [...data].sort((a, b) => {
+        const aTime = a.fillDate ? new Date(a.fillDate).getTime() : 0;
+        const bTime = b.fillDate ? new Date(b.fillDate).getTime() : 0;
+        return bTime - aTime;
+      }),
+    [data],
+  );
+
+  const userOptions = useMemo(() => buildUserOptions(sortedData), [sortedData]);
 
   useEffect(() => {
     if (selectedUser === 'all') return;
@@ -70,9 +142,29 @@ const TokuseiSurveyResultsPage: React.FC = () => {
   }, [selectedUser, userOptions]);
 
   const filteredResponses = useMemo(() => {
-    if (selectedUser === 'all') return data;
-    return data.filter((response) => response.targetUserName === selectedUser);
-  }, [data, selectedUser]);
+    const lower = searchQuery.trim().toLowerCase();
+    return sortedData.filter((response) => {
+      if (selectedUser !== 'all' && response.targetUserName !== selectedUser) return false;
+      if (lower) {
+        const haystack = [response.targetUserName, response.responderName, response.guardianName]
+          .filter(Boolean)
+          .join(' ')
+          .toLowerCase();
+        if (!haystack.includes(lower)) return false;
+      }
+      if (fromDate) {
+        const t = new Date(response.fillDate).getTime();
+        const from = new Date(fromDate).setHours(0, 0, 0, 0);
+        if (Number.isFinite(t) && t < from) return false;
+      }
+      if (toDate) {
+        const t = new Date(response.fillDate).getTime();
+        const to = new Date(toDate).setHours(23, 59, 59, 999);
+        if (Number.isFinite(t) && t > to) return false;
+      }
+      return true;
+    });
+  }, [sortedData, selectedUser, searchQuery, fromDate, toDate]);
 
   useEffect(() => {
     if (!filteredResponses.length) {
@@ -90,10 +182,20 @@ const TokuseiSurveyResultsPage: React.FC = () => {
     [filteredResponses, activeResponseId],
   );
 
-  const summary = useMemo(() => summarizeTokuseiResponses(data), [data]);
+  const summary = useMemo(() => summarizeTokuseiResponses(sortedData), [sortedData]);
 
   const showLoadingState = status === 'loading' && data.length === 0;
-  const showEmptyState = status === 'success' && data.length === 0;
+  const totalCount = data.length;
+  const filteredCount = filteredResponses.length;
+  const isEmptyAll = status === 'success' && totalCount === 0;
+  const isEmptyFiltered = status === 'success' && totalCount > 0 && filteredCount === 0;
+
+  const resetFilters = () => {
+    setSelectedUser('all');
+    setSearchQuery('');
+    setFromDate('');
+    setToDate('');
+  };
 
   return (
     <Stack spacing={3}>
@@ -123,7 +225,7 @@ const TokuseiSurveyResultsPage: React.FC = () => {
 
       <Paper sx={{ p: 3 }}>
         <Stack direction={{ xs: 'column', md: 'row' }} spacing={2} mb={2} alignItems={{ xs: 'stretch', md: 'center' }}>
-          <FormControl size="small" sx={{ minWidth: { xs: '100%', sm: 240 } }}>
+          <FormControl size="small" sx={{ minWidth: { xs: '100%', sm: 220 } }}>
             <InputLabel id="tokusei-target-label">対象者フィルター</InputLabel>
             <Select
               labelId="tokusei-target-label"
@@ -139,8 +241,56 @@ const TokuseiSurveyResultsPage: React.FC = () => {
               ))}
             </Select>
           </FormControl>
+
+          <FormControl size="small" sx={{ minWidth: { xs: '100%', sm: 240 } }}>
+            <InputLabel htmlFor="tokusei-search">検索（氏名・回答者）</InputLabel>
+            <OutlinedInput
+              id="tokusei-search"
+              label="検索（氏名・回答者）"
+              value={searchQuery}
+              onChange={(event) => setSearchQuery(event.target.value)}
+              placeholder="例: 佐藤 / 保護者"
+            />
+          </FormControl>
+
+          <FormControl size="small" sx={{ minWidth: { xs: '100%', sm: 160 } }}>
+            <InputLabel shrink>回答日(開始)</InputLabel>
+            <OutlinedInput
+              type="date"
+              notched
+              value={fromDate}
+              onChange={(event) => setFromDate(event.target.value)}
+              label="回答日(開始)"
+            />
+          </FormControl>
+
+          <FormControl size="small" sx={{ minWidth: { xs: '100%', sm: 160 } }}>
+            <InputLabel shrink>回答日(終了)</InputLabel>
+            <OutlinedInput
+              type="date"
+              notched
+              value={toDate}
+              onChange={(event) => setToDate(event.target.value)}
+              label="回答日(終了)"
+            />
+          </FormControl>
           <Button variant="outlined" startIcon={<RefreshRoundedIcon />} onClick={() => void refresh()} disabled={status === 'loading'}>
             最新の回答を取得
+          </Button>
+          <Button
+            variant="text"
+            onClick={resetFilters}
+            disabled={selectedUser === 'all' && !searchQuery && !fromDate && !toDate}
+          >
+            フィルターをリセット
+          </Button>
+          <Button
+            variant="contained"
+            color="secondary"
+            onClick={() => formsUrl && window.open(formsUrl, '_blank', 'noreferrer')}
+            disabled={!formsUrl}
+          >
+            Formsを開く
           </Button>
         </Stack>
 
@@ -161,91 +311,166 @@ const TokuseiSurveyResultsPage: React.FC = () => {
           </Alert>
         )}
 
-        {showEmptyState && (
-          <Alert severity="info">まだアンケート結果がありません。Microsoft Forms から回答が送信され次第ここに表示されます。</Alert>
+        {isEmptyAll && (
+          <EmptyState variant="all" hasFormsUrl={Boolean(formsUrl)} formsUrl={formsUrl} />
         )}
 
-        {!showLoadingState && !showEmptyState && (
-          <Box
-            mt={1}
-            display="grid"
-            gridTemplateColumns={{ xs: '1fr', md: '5fr 7fr' }}
-            gap={3}
-          >
-            <Paper variant="outlined" sx={{ height: '100%' }}>
-              <List disablePadding>
-                {filteredResponses.map((response) => {
-                  const selected = response.id === activeResponseId;
-                  return (
-                    <React.Fragment key={response.id}>
-                      <ListItemButton
-                        selected={selected}
-                        alignItems="flex-start"
-                        onClick={() => setActiveResponseId(response.id)}
-                      >
-                        <ListItemText
-                          primary={
-                            <Stack direction="row" justifyContent="space-between" alignItems="center">
-                              <Typography fontWeight={600}>{response.targetUserName || '対象者未入力'}</Typography>
-                              <Typography variant="caption" color="text.secondary">
-                                {formatDateTime(response.fillDate)}
+        {!showLoadingState && !isEmptyAll && (
+          isEmptyFiltered ? (
+            <EmptyState
+              variant="filtered"
+              hasFormsUrl={Boolean(formsUrl)}
+              formsUrl={formsUrl}
+              onResetFilters={resetFilters}
+            />
+          ) : (
+            <Box
+              mt={1}
+              display="grid"
+              gridTemplateColumns={{ xs: '1fr', md: '5fr 7fr' }}
+              gap={3}
+            >
+              <Paper variant="outlined" sx={{ height: '100%' }}>
+                <List disablePadding>
+                  {filteredResponses.map((response, index) => {
+                    const selected = response.id === activeResponseId;
+                    return (
+                      <React.Fragment key={response.id}>
+                        <ListItemButton
+                          selected={selected}
+                          alignItems="flex-start"
+                          onClick={() => setActiveResponseId(response.id)}
+                        >
+                          <ListItemText
+                            primary={
+                              <Stack direction="row" justifyContent="space-between" alignItems="center">
+                                <Typography fontWeight={600}>{response.targetUserName || '対象者未入力'}</Typography>
+                                <Typography variant="caption" color="text.secondary">
+                                  {formatDateTime(response.fillDate)}{index === 0 ? '（最新）' : ''}
+                                </Typography>
+                              </Stack>
+                            }
+                            secondary={
+                              <Typography variant="body2" color="text.secondary">
+                                {response.responderName || '回答者未設定'}
                               </Typography>
-                            </Stack>
-                          }
-                          secondary={
+                            }
+                          />
+                        </ListItemButton>
+                        <Divider component="li" />
+                      </React.Fragment>
+                    );
+                  })}
+                </List>
+              </Paper>
+
+              <Paper variant="outlined" sx={{ p: 2.5, height: '100%' }}>
+                {status === 'loading' && !activeResponse && (
+                  <Skeleton variant="rectangular" height={300} />
+                )}
+
+                {activeResponse ? (
+                  <Stack spacing={2}>
+                    {/* 基本情報 */}
+                    <Card variant="outlined">
+                      <CardHeader
+                        title="基本情報"
+                        titleTypographyProps={{ variant: 'subtitle1', fontWeight: 700 }}
+                        sx={{ pb: 0.5 }}
+                      />
+                      <CardContent sx={{ pt: 1.5 }}>
+                        <Stack spacing={1.2}>
+                          <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
+                            <Chip
+                              label={activeResponse.targetUserName || '対象者未設定'}
+                              color="primary"
+                            />
+                            <Chip
+                              label={`回答者: ${activeResponse.responderName || '未設定'}`}
+                              variant="outlined"
+                            />
+                            <Chip
+                              label={`記入日時: ${formatDateTime(activeResponse.fillDate)}`}
+                              variant="outlined"
+                            />
+                          </Stack>
+
+                          {/* もし responderEmail を見せたいなら（存在する想定） */}
+                          {activeResponse.responderEmail && (
                             <Typography variant="body2" color="text.secondary">
-                              {response.responderName || '回答者未設定'}
+                              {`メール: ${activeResponse.responderEmail}`}
                             </Typography>
-                          }
-                        />
-                      </ListItemButton>
-                      <Divider component="li" />
-                    </React.Fragment>
-                  );
-                })}
-                {filteredResponses.length === 0 && (
-                  <Box p={3} textAlign="center">
-                    <Typography variant="body2" color="text.secondary">
-                      対象者に一致する回答がありません
+                          )}
+                        </Stack>
+                      </CardContent>
+                    </Card>
+
+                    {/* 詳細（カード分割） */}
+                    <Card variant="outlined">
+                      <CardHeader
+                        title="性格・コミュニケーション"
+                        titleTypographyProps={{ variant: 'subtitle1', fontWeight: 700 }}
+                        sx={{ pb: 0.5 }}
+                      />
+                      <CardContent sx={{ pt: 1.5 }}>
+                        <TokuseiDetailField label="" value={activeResponse.personality} />
+                      </CardContent>
+                    </Card>
+
+                    <Card variant="outlined">
+                      <CardHeader
+                        title="感覚の特徴"
+                        titleTypographyProps={{ variant: 'subtitle1', fontWeight: 700 }}
+                        sx={{ pb: 0.5 }}
+                      />
+                      <CardContent sx={{ pt: 1.5 }}>
+                        <TokuseiDetailField label="" value={activeResponse.sensoryFeatures} />
+                      </CardContent>
+                    </Card>
+
+                    <Card variant="outlined">
+                      <CardHeader
+                        title="行動の特徴"
+                        titleTypographyProps={{ variant: 'subtitle1', fontWeight: 700 }}
+                        sx={{ pb: 0.5 }}
+                      />
+                      <CardContent sx={{ pt: 1.5 }}>
+                        <TokuseiDetailField label="" value={activeResponse.behaviorFeatures} />
+                      </CardContent>
+                    </Card>
+
+                    <Card variant="outlined">
+                      <CardHeader
+                        title="得意なこと・強み"
+                        titleTypographyProps={{ variant: 'subtitle1', fontWeight: 700 }}
+                        sx={{ pb: 0.5 }}
+                      />
+                      <CardContent sx={{ pt: 1.5 }}>
+                        <TokuseiDetailField label="" value={activeResponse.strengths} />
+                      </CardContent>
+                    </Card>
+
+                    <Card variant="outlined">
+                      <CardHeader
+                        title="特記事項"
+                        titleTypographyProps={{ variant: 'subtitle1', fontWeight: 700 }}
+                        sx={{ pb: 0.5 }}
+                      />
+                      <CardContent sx={{ pt: 1.5 }}>
+                        <TokuseiDetailField label="" value={activeResponse.notes} />
+                      </CardContent>
+                    </Card>
+                  </Stack>
+                ) : (
+                  <Box textAlign="center" py={6}>
+                    <Typography variant="body1" color="text.secondary">
+                      表示する回答を選択してください
                     </Typography>
                   </Box>
                 )}
-              </List>
-            </Paper>
-
-            <Paper variant="outlined" sx={{ p: 3, height: '100%' }}>
-              {status === 'loading' && !activeResponse && <Skeleton variant="rectangular" height={300} />}
-              {activeResponse ? (
-                <Stack spacing={2}>
-                  <Stack direction="row" spacing={2} flexWrap="wrap">
-                    <Chip label={activeResponse.targetUserName || '対象者未設定'} color="primary" />
-                    <Chip label={activeResponse.guardianName ? `${activeResponse.guardianName} (${activeResponse.relation ?? '関係未入力'})` : '関係者未入力'} variant="outlined" />
-                    <Chip label={`回答者: ${activeResponse.responderName || '未設定'}`} variant="outlined" />
-                  </Stack>
-
-                  <Stack direction="row" spacing={2} flexWrap="wrap">
-                    <Chip label={`身長: ${activeResponse.heightCm ? `${activeResponse.heightCm} cm` : '未入力'}`} size="small" />
-                    <Chip label={`体重: ${activeResponse.weightKg ? `${activeResponse.weightKg} kg` : '未入力'}`} size="small" />
-                    <Chip label={`記入日時: ${formatDateTime(activeResponse.fillDate)}`} size="small" />
-                  </Stack>
-
-                  <Divider />
-
-                  <TokuseiDetailField label="性格・コミュニケーション" value={activeResponse.personality} />
-                  <TokuseiDetailField label="感覚の特徴" value={activeResponse.sensoryFeatures} />
-                  <TokuseiDetailField label="行動の特徴" value={activeResponse.behaviorFeatures} />
-                  <TokuseiDetailField label="得意なこと・強み" value={activeResponse.strengths} />
-                  <TokuseiDetailField label="特記事項" value={activeResponse.notes} />
-                </Stack>
-              ) : (
-                <Box textAlign="center" py={6}>
-                  <Typography variant="body1" color="text.secondary">
-                    表示する回答を選択してください
-                  </Typography>
-                </Box>
-              )}
-            </Paper>
-          </Box>
+              </Paper>
+            </Box>
+          )
         )}
       </Paper>
     </Stack>
