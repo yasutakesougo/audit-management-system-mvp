@@ -1,6 +1,7 @@
 import { isE2eMsalMockEnabled, readBool, readEnv, readOptionalEnv } from '@/lib/env';
 import { fetchSp } from '@/lib/fetchSp';
 import { acquireSpAccessToken } from '@/lib/msal';
+import { buildScheduleSelectClause, withScheduleFieldFallback } from '../scheduleFeatures';
 
 import type { OrgFilterKey } from '../orgFilters';
 
@@ -40,8 +41,6 @@ const PROXY_PREFIX = '/sharepoint-api';
 const preferProxyFetch = readBool('VITE_SP_USE_PROXY', false);
 const siteBaseUrl = resolveSiteBaseUrl();
 const scheduleCategoryField = resolveScheduleCategoryField();
-// Keep select/expand lists tightly scoped so SharePoint accepts the query.
-const scheduleSelectFields = createScheduleSelectFields(scheduleCategoryField);
 const scheduleExpandFields = ['AssignedStaff', 'TargetUser', 'Author', 'Editor'] as const;
 
 export function clearSchedulesCache() {
@@ -387,7 +386,7 @@ export async function getSchedules(
       },
     };
 
-    const items = await fetchSharePointItems(category, request, requestInit);
+    const items = await withScheduleFieldFallback(() => fetchSharePointItems(category, request, requestInit));
     data = items.map(spToEvent).map(coerceAllDay).sort(sortByStartAsc);
   }
 
@@ -453,7 +452,18 @@ async function fetchSharePointItems(
   const collected: ScheduleSpItem[] = [];
   const firstResponse = await executeSharePointFetch(category, request, init);
   if (!firstResponse.ok) {
-    throw new Error(`SP fetch failed: ${firstResponse.status}`);
+    const errorText = await firstResponse.text().catch(() => '');
+    const error = new Error(`SP fetch failed: ${firstResponse.status} ${firstResponse.statusText}`) as Error & {
+      status?: number;
+      response?: { status: number };
+    };
+    error.status = firstResponse.status;
+    error.response = { status: firstResponse.status };
+    // Include error message from SharePoint if available
+    if (errorText) {
+      error.message += ` - ${errorText.substring(0, 200)}`;
+    }
+    throw error;
   }
   const firstBody = (await firstResponse.json()) as SharePointResponse;
   collected.push(...(firstBody.value ?? []));
@@ -464,7 +474,17 @@ async function fetchSharePointItems(
     const pageResponse = await fetchSp(normalizedNext, init);
     console.info('[schedulesClient] fetch', { category, url: normalizedNext, via: 'direct', status: pageResponse.status });
     if (!pageResponse.ok) {
-      throw new Error(`SP fetch failed (page): ${pageResponse.status}`);
+      const errorText = await pageResponse.text().catch(() => '');
+      const error = new Error(`SP fetch failed (page): ${pageResponse.status} ${pageResponse.statusText}`) as Error & {
+        status?: number;
+        response?: { status: number };
+      };
+      error.status = pageResponse.status;
+      error.response = { status: pageResponse.status };
+      if (errorText) {
+        error.message += ` - ${errorText.substring(0, 200)}`;
+      }
+      throw error;
     }
     const body = (await pageResponse.json()) as SharePointResponse;
     collected.push(...(body.value ?? []));
@@ -503,7 +523,7 @@ function buildSpQueryPath(category: ScheduleCategory, r: Range): string {
     $top: '500',
     $filter: filter,
     $orderby: 'EventDate asc,Id asc',
-    $select: scheduleSelectFields.join(','),
+    $select: buildScheduleSelectClause(),
     $expand: scheduleExpandFields.join(','),
   });
   return `/_api/web/${listKey}/items?${params.toString()}`;
@@ -523,34 +543,6 @@ function resolveSchedulesListIdentifier(): string {
 function resolveScheduleCategoryField(): string {
   const raw = readEnv('VITE_SP_SCHEDULE_CATEGORY', '').trim();
   return raw || 'cr014_category';
-}
-
-function createScheduleSelectFields(categoryField: string): string[] {
-  const fields: string[] = ['Id', 'Title', 'EventDate', 'EndDate', 'AllDay'];
-  const ensure = (value: string) => {
-    if (!value || fields.includes(value)) {
-      return;
-    }
-    fields.push(value);
-  };
-  ensure(categoryField);
-  ensure('Category');
-  ensure('ServiceType');
-  ensure('Status');
-  [
-    'AssignedStaffId',
-    'TargetUserId',
-    'cr014_serviceType',
-    'AssignedStaff/Id',
-    'AssignedStaff/Title',
-    'AssignedStaff/EMail',
-    'TargetUser/Id',
-    'TargetUser/Title',
-    'TargetUser/EMail',
-    'Author/Title',
-    'Editor/Title',
-  ].forEach(ensure);
-  return fields;
 }
 
 function resolveSiteBaseUrl(): string {
