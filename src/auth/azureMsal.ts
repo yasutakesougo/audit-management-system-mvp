@@ -17,6 +17,10 @@ export async function loadMsalBrowser(): Promise<MsalBrowserExports> {
 // 🔥 CRITICAL: Singleton PCA instance (provider-agnostic, used by main.tsx for redirect handling)
 let pcaInstance: PublicClientApplication | null = null;
 
+// dev/test only: PCA生成回数の監視（二重初期化検出）
+let __pcaCreateCount = 0;
+export const __getPcaCreateCount = () => __pcaCreateCount;
+
 export const getPcaSingleton = async (): Promise<PublicClientApplication> => {
 	if (pcaInstance) {
 		return pcaInstance;
@@ -33,6 +37,22 @@ export const getPcaSingleton = async (): Promise<PublicClientApplication> => {
 
 	// 🔍 msalConfig already includes runtime env overrides via getAppConfig()
 	const config: MsalBrowserConfiguration = msalConfig as unknown as MsalBrowserConfiguration;
+
+	// 🔍 Track PCA creation count (detect duplicate initialization)
+	__pcaCreateCount += 1;
+
+	// dev/testでは検出を強める（CIで拾える）
+	const isTest = import.meta.env.MODE === 'test';
+	const isDev = import.meta.env.DEV;
+
+	if ((isDev || isTest) && __pcaCreateCount > 1) {
+		const errorMsg = `[MSAL] Duplicate PCA creation detected: ${__pcaCreateCount} instances created`;
+		console.error(errorMsg);
+		if (isTest) {
+			// ユニットテストで落とせるように
+			throw new Error(errorMsg);
+		}
+	}
 
 	pcaInstance = new PublicClientApplication(config);
 
