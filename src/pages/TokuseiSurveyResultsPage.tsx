@@ -234,7 +234,6 @@ const TokuseiSurveyResultsPage: React.FC = () => {
                   <TokuseiDetailField label="性格・コミュニケーション" value={activeResponse.personality} />
                   <TokuseiDetailField label="感覚の特徴" value={activeResponse.sensoryFeatures} />
                   <TokuseiDetailField label="行動の特徴" value={activeResponse.behaviorFeatures} />
-                  <TokuseiDetailField label="好きなもの・安心材料" value={activeResponse.preferences} />
                   <TokuseiDetailField label="得意なこと・強み" value={activeResponse.strengths} />
                   <TokuseiDetailField label="特記事項" value={activeResponse.notes} />
                 </Stack>

@@ -1,6 +1,7 @@
 import { createTokuseiDemoResponses, type TokuseiSurveyResponse } from '@/domain/assessment/tokusei';
 import { isDemoModeEnabled } from '@/lib/env';
 import { useSP } from '@/lib/spClient';
+import type { UseSP } from '@/lib/spClient';
 import { FIELD_MAP_SURVEY_TOKUSEI, LIST_CONFIG, ListKeys, SURVEY_TOKUSEI_SELECT_FIELDS } from '@/sharepoint/fields';
 import { useCallback, useEffect, useState } from 'react';
 
@@ -18,7 +19,6 @@ type SharePointTokuseiRow = {
   [FIELD_MAP_SURVEY_TOKUSEI.personality]?: string;
   [FIELD_MAP_SURVEY_TOKUSEI.sensoryFeatures]?: string;
   [FIELD_MAP_SURVEY_TOKUSEI.behaviorFeatures]?: string;
-  [FIELD_MAP_SURVEY_TOKUSEI.preferences]?: string;
   [FIELD_MAP_SURVEY_TOKUSEI.strengths]?: string;
   [FIELD_MAP_SURVEY_TOKUSEI.notes]?: string;
   [FIELD_MAP_SURVEY_TOKUSEI.created]?: string;
@@ -80,7 +80,6 @@ const mapRowToResponse = (row: SharePointTokuseiRow): TokuseiSurveyResponse => {
     personality: sanitizeOptionalString(row[FIELD_MAP_SURVEY_TOKUSEI.personality]),
     sensoryFeatures: sanitizeOptionalString(row[FIELD_MAP_SURVEY_TOKUSEI.sensoryFeatures]),
     behaviorFeatures: sanitizeOptionalString(row[FIELD_MAP_SURVEY_TOKUSEI.behaviorFeatures]),
-    preferences: sanitizeOptionalString(row[FIELD_MAP_SURVEY_TOKUSEI.preferences]),
     strengths: sanitizeOptionalString(row[FIELD_MAP_SURVEY_TOKUSEI.strengths]),
     notes: sanitizeOptionalString(row[FIELD_MAP_SURVEY_TOKUSEI.notes]),
     createdAt: sanitizeString(row[FIELD_MAP_SURVEY_TOKUSEI.created] ?? ''),
@@ -88,18 +87,34 @@ const mapRowToResponse = (row: SharePointTokuseiRow): TokuseiSurveyResponse => {
 };
 
 export function useTokuseiSurveyResponses() {
+  console.log('[TokuseiHook] 🔍 mounted');
   const sp = useSP();
   const demoMode = isDemoModeEnabled();
   const [state, setState] = useState<HookState>({ data: [], status: 'idle', error: null });
 
   const load = useCallback(async (signal?: AbortSignal) => {
+    console.log('[TokuseiHook] 🚀 fetching FormsResponses_Tokusei', { demoMode, listTitle: SURVEY_LIST_TITLE });
     setState((prev) => ({ ...prev, status: 'loading', error: null }));
 
     try {
+      // Build select dynamically from available fields; fallback to static safe list if method missing or fails
+      const selectFields = demoMode
+        ? (SURVEY_TOKUSEI_SELECT_FIELDS as string[])
+        : await (async () => {
+            const { buildSurveyTokuseiSelectFields } = await import('../../../sharepoint/fields');
+            const getListFieldInternalNames = (sp as Partial<UseSP> & {
+              getListFieldInternalNames?: (listTitle: string) => Promise<Set<string>>;
+            }).getListFieldInternalNames;
+            if (typeof getListFieldInternalNames !== 'function') {
+              return SURVEY_TOKUSEI_SELECT_FIELDS as string[];
+            }
+            return buildSurveyTokuseiSelectFields(() => getListFieldInternalNames(SURVEY_LIST_TITLE));
+          })();
+
       const responses = demoMode
         ? createTokuseiDemoResponses()
         : await sp.listItems<SharePointTokuseiRow>(SURVEY_LIST_TITLE, {
-            select: SURVEY_TOKUSEI_SELECT_FIELDS as string[],
+            select: selectFields,
             orderby: `${FIELD_MAP_SURVEY_TOKUSEI.created} desc`,
             top: 200,
             signal,

@@ -2,11 +2,12 @@ import { spfi, SPFx, type ISPFXContext, type SPFI } from '@pnp/sp';
 import '@pnp/sp/items';
 import '@pnp/sp/lists';
 import '@pnp/sp/webs';
+import '@pnp/sp/fields';
 
 import { getAppConfig } from '@/lib/env';
 import {
+  buildIcebergPdcaSelectFields,
   FIELD_MAP_ICEBERG_PDCA,
-  ICEBERG_PDCA_SELECT_FIELDS,
   LIST_CONFIG,
   ListKeys,
 } from '@/sharepoint/fields';
@@ -46,10 +47,15 @@ export class SharePointPdcaRepository implements PdcaRepository {
     const userId = query.userId;
     if (!userId) return [];
 
+    // 🔥 動的フィールド取得：テナント差分に完全対応
+    const fields = await this.spList.fields.select('InternalName')();
+    const existingInternalNames = fields.map((f: { InternalName: string }) => f.InternalName);
+    const selectFields = buildIcebergPdcaSelectFields(existingInternalNames);
+
     const filters = [`${FIELD_MAP_ICEBERG_PDCA.userId} eq '${this.escapeSingleQuotes(userId)}'`];
 
     let spQuery = this.spList.items
-      .select(...ICEBERG_PDCA_SELECT_FIELDS)
+      .select(...selectFields)
       .orderBy(FIELD_MAP_ICEBERG_PDCA.updatedAt, false);
 
     if (this.defaultTop) {

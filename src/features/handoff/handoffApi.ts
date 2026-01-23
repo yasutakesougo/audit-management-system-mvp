@@ -1,18 +1,18 @@
 import { useMemo } from 'react';
 import type { UseSP } from '../../lib/spClient';
 import { useSP } from '../../lib/spClient';
+import { buildHandoffSelectFields } from '@/sharepoint/fields';
 import { generateTitleFromMessage } from './generateTitleFromMessage';
 import { handoffConfig } from './handoffConfig';
 import {
-    HANDOFF_TIMELINE_COLUMNS,
-    HandoffDayScope,
-    HandoffRecord,
-    HandoffTimeFilter,
-    NewHandoffInput,
-    SpHandoffItem,
-    fromSpHandoffItem,
-    toSpHandoffCreatePayload,
-    toSpHandoffUpdatePayload,
+  HandoffDayScope,
+  HandoffRecord,
+  HandoffTimeFilter,
+  NewHandoffInput,
+  SpHandoffItem,
+  fromSpHandoffItem,
+  toSpHandoffCreatePayload,
+  toSpHandoffUpdatePayload,
 } from './handoffTypes';
 
 /**
@@ -202,7 +202,11 @@ class HandoffApi {
         filterQuery = `TimeBand eq '${timeFilter}'`;
       }
 
-      const selectFields = Object.keys(HANDOFF_TIMELINE_COLUMNS).join(',');
+      // 🔥 動的フィールド取得：テナント差分に完全対応
+      // @ts-expect-error - getListFieldInternalNames exists at runtime but type may be truncated in display
+      const existingFields = await this.sp.getListFieldInternalNames(handoffConfig.listTitle);
+      const selectArray = buildHandoffSelectFields(Array.from(existingFields));
+      const selectFields = selectArray.join(',');
       let query = `?$select=${selectFields}&$orderby=CreatedAt desc`;
 
       if (filterQuery) {
@@ -303,7 +307,10 @@ class HandoffApi {
       });
 
       // 更新後のデータを取得
-      const selectFields = Object.keys(HANDOFF_TIMELINE_COLUMNS).join(',');
+      // @ts-expect-error - getListFieldInternalNames exists at runtime but type may be truncated in display
+      const existingFields = await this.sp.getListFieldInternalNames(handoffConfig.listTitle);
+      const selectArray = buildHandoffSelectFields(Array.from(existingFields));
+      const selectFields = selectArray.join(',');
       const response = await this.sp.spFetch(
         `lists/getbytitle('${handoffConfig.listTitle}')/items(${id})?$select=${selectFields}`
       );
@@ -396,7 +403,10 @@ class HandoffApi {
         filterQuery += ` and TimeBand eq '${timeFilter}'`;
       }
 
-      const selectFields = Object.keys(HANDOFF_TIMELINE_COLUMNS).join(',');
+      // @ts-expect-error - getListFieldInternalNames exists at runtime but type may be truncated in display
+      const existingFields = await this.sp.getListFieldInternalNames(handoffConfig.listTitle);
+      const selectArray = buildHandoffSelectFields(Array.from(existingFields));
+      const selectFields = selectArray.join(',');
       const query = `?$select=${selectFields}&$filter=${filterQuery}&$orderby=CreatedAt desc`;
 
       const response = await this.sp.spFetch(`lists/getbytitle('${handoffConfig.listTitle}')/items${query}`);
@@ -421,7 +431,10 @@ class HandoffApi {
   ): Promise<HandoffRecord[]> {
     try {
       const filterQuery = `MeetingSessionKey eq '${meetingSessionKey}'`;
-      const selectFields = Object.keys(HANDOFF_TIMELINE_COLUMNS).join(',');
+      // @ts-expect-error - getListFieldInternalNames exists at runtime but type may be truncated in display
+      const existingFields = await this.sp.getListFieldInternalNames(handoffConfig.listTitle);
+      const selectArray = buildHandoffSelectFields(Array.from(existingFields));
+      const selectFields = selectArray.join(',');
       const query = `?$select=${selectFields}&$filter=${filterQuery}&$orderby=CreatedAt desc`;
 
       const response = await this.sp.spFetch(`lists/getbytitle('${handoffConfig.listTitle}')/items${query}`);
