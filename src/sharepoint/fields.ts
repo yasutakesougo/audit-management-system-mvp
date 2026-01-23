@@ -263,16 +263,132 @@ export const FIELD_MAP_SURVEY_TOKUSEI = {
   personality: 'Personality',
   sensoryFeatures: 'SensoryFeatures',
   behaviorFeatures: 'BehaviorFeatures',
-  preferences: 'Preferences',
   strengths: 'Strengths',
   notes: 'Notes',
   created: 'Created'
 } as const;
 
-// ResponseId is not present in some tenants; exclude from select to avoid 400s.
+// Exclude fields we know are missing based on 400 error cascade; allow others
 export const SURVEY_TOKUSEI_SELECT_FIELDS: readonly string[] = Object.entries(FIELD_MAP_SURVEY_TOKUSEI)
-  .filter(([key]) => key !== 'responseId')
+  .filter(([key]) =>
+    key !== 'responseId' &&
+    key !== 'guardianName' &&
+    key !== 'relation' &&
+    key !== 'heightCm' &&
+    key !== 'weightKg' &&
+    key !== 'personality' &&
+    key !== 'sensoryFeatures' &&
+    key !== 'behaviorFeatures'
+  )
   .map(([, value]) => value);
+/**
+ * 動的に "存在する列だけ" を select フィールドに含める
+ * テナント列差分・列削除・列名変更に対応
+ */
+export async function buildSurveyTokuseiSelectFields(
+  getFieldNames: () => Promise<Set<string>>
+): Promise<string[]> {
+  try {
+    const availableFields = await getFieldNames();
+    const availableLower = new Set(Array.from(availableFields).map((name) => name.toLowerCase()));
+    const allCandidates = Object.values(FIELD_MAP_SURVEY_TOKUSEI);
+    const selected = allCandidates.filter((fieldName) => fieldName === 'Id' || availableLower.has(fieldName.toLowerCase()));
+    
+    // 🔍 デバッグ出力：何が存在して何が除外されたか可視化
+    console.debug('[TokuseiSelect] 📊 Fields API から取得した内部名（最初の50個）:', Array.from(availableFields).slice(0, 50));
+    console.debug('[TokuseiSelect] 📋 FIELD_MAP から candidate（全数）:', allCandidates);
+    console.debug('[TokuseiSelect] ✅ selected（存在する列）:', selected);
+    console.debug('[TokuseiSelect] ❌ dropped（見つからない列）:', allCandidates.filter(x => !selected.includes(x)));
+    
+    return selected;
+  } catch (error) {
+    // Fallback: エラー時は既知フィールドの除外版を使う
+    console.warn('[buildSurveyTokuseiSelectFields] Fields API 取得失敗、fallback を使用:', error);
+    return Array.from(SURVEY_TOKUSEI_SELECT_FIELDS);
+  }
+}
+
+/**
+ * 汎用的な動的 $select ビルダー（テナント差分に耐える）
+ * 存在するフィールドだけを $select に含めて 400 エラーを防ぐ
+ */
+export function buildSelectFieldsFromMap(
+  fieldMap: Record<string, string>,
+  existingInternalNames?: readonly string[],
+  opts?: { alwaysInclude?: readonly string[]; fallback?: readonly string[] }
+): readonly string[] {
+  const alwaysInclude = (opts?.alwaysInclude ?? ['Id']).map((s) => String(s));
+  const existing = new Set((existingInternalNames ?? []).map((x) => String(x).toLowerCase()));
+
+  const candidates = Object.values(fieldMap)
+    .map((v) => String(v))
+    .filter(Boolean);
+
+  // Fields API 取得失敗時は安全な fallback を返す（400 回避優先）
+  if (existing.size === 0) {
+    const fb = opts?.fallback ?? alwaysInclude;
+    return Array.from(new Set(fb.map((x) => (x.toLowerCase() === 'id' ? 'Id' : x))));
+  }
+
+  const selected = candidates.filter((v) => existing.has(v.toLowerCase()));
+  const merged = Array.from(
+    new Set([...alwaysInclude, ...selected].map((x) => (x.toLowerCase() === 'id' ? 'Id' : x)))
+  );
+
+  return merged;
+}
+
+/**
+ * Behaviors リスト用の動的 $select ビルダー
+ */
+export function buildBehaviorsSelectFields(existingInternalNames?: readonly string[]): readonly string[] {
+  return buildSelectFieldsFromMap(FIELD_MAP_BEHAVIORS, existingInternalNames, {
+    alwaysInclude: ['Id', 'Created', 'Modified'],
+    fallback: ['Id', 'Created'],
+  });
+}
+
+/**
+ * Iceberg PDCA リスト用の動的 $select ビルダー
+ */
+export function buildIcebergPdcaSelectFields(existingInternalNames?: readonly string[]): readonly string[] {
+  return buildSelectFieldsFromMap(FIELD_MAP_ICEBERG_PDCA, existingInternalNames, {
+    alwaysInclude: ['Id', 'Created', 'Modified'],
+    fallback: ['Id', 'Created'],
+  });
+}
+
+/**
+ * Handoff リスト用の FIELD_MAP（HANDOFF_TIMELINE_COLUMNS から抽出）
+ */
+export const FIELD_MAP_HANDOFF = {
+  id: 'Id',
+  title: 'Title',
+  message: 'Message',
+  userCode: 'UserCode',
+  userDisplayName: 'UserDisplayName',
+  category: 'Category',
+  severity: 'Severity',
+  status: 'Status',
+  timeBand: 'TimeBand',
+  meetingSessionKey: 'MeetingSessionKey',
+  createdBy: 'CreatedBy',
+  createdAt: 'CreatedAt',
+  modifiedBy: 'ModifiedBy',
+  modifiedAt: 'ModifiedAt',
+  created: 'Created',
+  modified: 'Modified',
+} as const;
+
+/**
+ * Handoff リスト用の動的 $select ビルダー
+ */
+export function buildHandoffSelectFields(existingInternalNames?: readonly string[]): readonly string[] {
+  return buildSelectFieldsFromMap(FIELD_MAP_HANDOFF, existingInternalNames, {
+    alwaysInclude: ['Id', 'Title', 'Created', 'Modified'],
+    fallback: ['Id', 'Title', 'Message', 'UserCode', 'Created'],
+  });
+}
 
 export const USERS_SELECT_FIELDS_SAFE = [
   FIELD_MAP.Users_Master.id,
