@@ -110,7 +110,6 @@ const AssessmentDashboardPage: React.FC = () => {
     const timestamp = Date.now();
     const mappings: Array<{ source?: string; category: AssessmentItem['category']; topic: string; status: AssessmentItem['status']; }> = [
       { source: response.strengths, category: 'personal', topic: '強み・得意 (アンケート)', status: 'strength' },
-      { source: response.preferences, category: 'personal', topic: 'こだわり・好み (アンケート)', status: 'neutral' },
       { source: response.sensoryFeatures, category: 'body', topic: '感覚特性 (アンケート)', status: 'challenge' },
       { source: response.behaviorFeatures, category: 'activity', topic: '行動特性 (アンケート)', status: 'neutral' },
       { source: response.notes, category: 'environment', topic: '特記事項 (アンケート)', status: 'neutral' },
