@@ -2,6 +2,7 @@ import { buildMsalScopes } from '@/auth/scopes';
 import type { PublicClientApplication, PopupRequest } from '@azure/msal-browser';
 import type { AccountInfo } from '@azure/msal-common';
 
+import { getRuntimeEnv } from '@/env';
 import { getAppConfig, getSharePointResource, isE2eMsalMockEnabled, readEnv, shouldSkipLogin } from './env';
 
 const { isDev } = getAppConfig();
@@ -86,7 +87,9 @@ const toPopupRequest = (scopes: string[], account?: AccountInfo): PopupRequest =
 });
 
 export const ensureMsalSignedIn = async (scopes?: string[]): Promise<AccountInfo> => {
-  if (isE2eMsalMockEnabled() || shouldSkipLogin()) {
+  // 🔥 CRITICAL FIX: Always read runtime env to respect env.runtime.json override
+  const runtimeEnv = getRuntimeEnv() as Record<string, string>;
+  if (isE2eMsalMockEnabled(runtimeEnv) || shouldSkipLogin(runtimeEnv)) {
     if (isDev) {
       console.info('[msal] using E2E/dummy account');
     }
@@ -108,23 +111,30 @@ export const ensureMsalSignedIn = async (scopes?: string[]): Promise<AccountInfo
 };
 
 export const acquireSpAccessToken = async (scopes?: string[]): Promise<string> => {
-  if (isE2eMsalMockEnabled() || shouldSkipLogin()) {
-    const token = 'mock-token:sharepoint';
+  // 🔥 CRITICAL FIX: Always read runtime env to respect env.runtime.json override
+  const runtimeEnv = getRuntimeEnv() as Record<string, string>;
+  if (isE2eMsalMockEnabled(runtimeEnv) || shouldSkipLogin(runtimeEnv)) {
+    // モックモード: トークン取得をスキップしてエラーを投げる（SharePointに偽トークンを送らない）
+    const errorMsg = '[msal] SkipLogin/E2E mode: acquireSpAccessToken disabled. Real SharePoint access requires VITE_SKIP_LOGIN=0';
     if (isDev) {
-      console.info('[msal] SkipLogin=1: acquireSpAccessToken bypassed');
+      console.error(errorMsg);
     }
-    persistMsalToken(token);
-    return token;
+    throw new Error(errorMsg);
   }
+
+  console.info('[msal] acquireSpAccessToken start');
   const instance = getPca();
   const resolvedScopes = ensureScopes(scopes);
   const account = await ensureMsalSignedIn(resolvedScopes);
 
   try {
+    console.info('[msal] acquireTokenSilent attempting...');
     const result = await instance.acquireTokenSilent({ account, scopes: resolvedScopes });
+    console.info('[msal] acquireTokenSilent success');
     persistMsalToken(result.accessToken);
     return result.accessToken;
   } catch (error) {
+    console.info('[msal] acquireTokenSilent failed, trying popup');
     const popupClient = toPopupClient(instance);
     const result = await popupClient.acquireTokenPopup(toPopupRequest(resolvedScopes, account));
     const token = result.accessToken ?? '';
