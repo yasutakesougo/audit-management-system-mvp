@@ -444,6 +444,10 @@ export const getSharePointResource = (envOverride?: EnvRecord): string => {
   if (resource) {
     return resource.replace(/\/+$/, '');
   }
+  // If envOverride explicitly provided (even with empty VITE_SP_RESOURCE), don't fallback to runtime
+  if (envOverride && 'VITE_SP_RESOURCE' in envOverride) {
+    return '';
+  }
   const runtime = getRuntimeEnv();
   return (runtime.VITE_SP_RESOURCE ?? '').replace(/\/+$/, '');
 };
