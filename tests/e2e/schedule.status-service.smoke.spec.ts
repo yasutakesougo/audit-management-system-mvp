@@ -177,6 +177,7 @@ test.describe('Schedule dialog: status/service end-to-end', () => {
         VITE_SP_SCOPE_DEFAULT: 'https://contoso.sharepoint.com/AllSites.Read',
         VITE_FEATURE_SCHEDULES_SP: '1',
         VITE_FEATURE_SCHEDULES_GRAPH: '0',
+        VITE_E2E_SCHEDULE_SAFE_SELECT: '1',
         VITE_FORCE_SHAREPOINT: '1',
         VITE_SKIP_SHAREPOINT: '0',
         VITE_SCHEDULE_FIXTURES: '0',

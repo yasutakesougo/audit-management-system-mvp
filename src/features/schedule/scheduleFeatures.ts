@@ -68,6 +68,17 @@ const SCHEDULES_SAFE_FALLBACK_FIELDS = [
 let scheduleSelectFieldsOverride: readonly string[] | null = null;
 let fallbackTier: 'none' | 'safe' | 'ironclad' = 'none';
 
+// Force safe select set for E2E smoke (bypasses tenant-specific columns to avoid 400s in mocks)
+const forceE2eSafeSelect = normalizeFlag(readEnv('VITE_E2E_SCHEDULE_SAFE_SELECT', '0'), '0');
+const forcePreviewSafeSelect = normalizeFlag(readEnv('PW_USE_PREVIEW', '0'), '0');
+if (forceE2eSafeSelect || forcePreviewSafeSelect) {
+  scheduleSelectFieldsOverride = [...SCHEDULES_SAFE_FALLBACK_FIELDS];
+  fallbackTier = 'safe';
+  if (isDevRuntime) {
+    console.info('[schedule] Safe select forced for E2E/preview (VITE_E2E_SCHEDULE_SAFE_SELECT or PW_USE_PREVIEW)');
+  }
+}
+
 const STAFF_TEXT_FIELDS = new Set<string>(SCHEDULES_STAFF_TEXT_FIELDS as readonly string[]);
 const STAFF_TEXT_FIELD_TOKENS = new Set<string>(
   Array.from(STAFF_TEXT_FIELDS, (value) => value.toLowerCase())
