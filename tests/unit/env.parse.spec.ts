@@ -10,6 +10,14 @@ import {
 } from '@/lib/env';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
+// Mock getRuntimeEnv to prevent .env file pollution in tests
+vi.mock('@/env', () => ({
+  getRuntimeEnv: () => ({}),
+  getFlag: vi.fn(() => false),
+  get: vi.fn((name: string, fallback = '') => fallback),
+  isE2E: false,
+}));
+
 const baseEnv = (overrides: Partial<EnvRecord> = {}): EnvRecord => ({
   VITE_FEATURE_SCHEDULES: 'false',
   VITE_MSAL_TOKEN_REFRESH_MIN: '300',
@@ -67,7 +75,13 @@ describe('env parsing fallbacks', () => {
 
   it('derives SharePoint default scope from skip-login placeholder', () => {
     const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
-    const scope = getSharePointDefaultScope(baseEnv({ VITE_SP_SCOPE_DEFAULT: '', VITE_SKIP_LOGIN: 'true' }));
+    // Ensure VITE_SP_RESOURCE and VITE_MSAL_SCOPES are cleared to avoid fallback paths
+    const scope = getSharePointDefaultScope(baseEnv({ 
+      VITE_SP_SCOPE_DEFAULT: '', 
+      VITE_SKIP_LOGIN: 'true', 
+      VITE_SP_RESOURCE: '',
+      VITE_MSAL_SCOPES: '',
+    }));
     expect(scope).toBe('https://example.sharepoint.com/AllSites.Read');
     expect(warn).toHaveBeenCalledWith(expect.stringContaining('skip-login'));
   });
