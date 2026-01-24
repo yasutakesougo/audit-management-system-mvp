@@ -29,7 +29,7 @@ const TEST_DATE_KEY = '2025-12-01';
 const TEST_DAY_KEY = formatInTimeZone(TEST_DATE, TIME_ZONE, 'yyyy-MM-dd');
 const IS_PREVIEW = process.env.PW_USE_PREVIEW === '1';
 const IS_FIXTURES = process.env.VITE_FORCE_SHAREPOINT !== '1';
-const IS_SMOKE = true; // Smoke tests always use SharePoint stubs (read-only)
+const IS_SP_STUBS = process.env.E2E_SP_STUBS === '1'; // Skip writes when using SharePoint stubs
 const HAS_SCHEDULE_DATA = process.env.E2E_HAS_SCHEDULE_DATA === '1';
 
 const buildLocalDateTime = (time: string) => `${TEST_DAY_KEY}T${time}`;
@@ -397,7 +397,7 @@ test.describe('Schedule dialog: status/service end-to-end', () => {
   test('edit living care event via quick dialog persists service type', async ({ page }, testInfo) => {
       test.skip(IS_PREVIEW, 'Preview UI diverges; quick dialog not exposed.');
       test.skip(IS_FIXTURES, 'Requires real SharePoint; fixtures mode does not persist edits.');
-      test.skip(IS_SMOKE, 'Smoke tests use stubs (read-only). Write+verify workflow requires real SharePoint.');
+      test.skip(IS_SP_STUBS, 'Write+verify requires real SharePoint backend (stubs are read-only).');
       const userItems = await getWeekScheduleItems(page, { category: 'User' });
       await expect(userItems.first()).toBeVisible({ timeout: 15_000 });
 
@@ -486,7 +486,7 @@ test.describe('Schedule dialog: status/service end-to-end', () => {
 
   test('create new 生活介護休み entry via quick dialog', async ({ page }) => {
     test.skip(IS_PREVIEW, 'Preview UI diverges; quick dialog not exposed.');
-    test.skip(IS_SMOKE, 'Smoke tests use stubs (read-only). Create workflow requires real SharePoint.');
+    test.skip(IS_SP_STUBS, 'Create requires POST endpoint (not available in stub mode).');
     await gotoWeek(page, TEST_DATE);
     await expect(page).toHaveURL(new RegExp(`/schedules/week\\?date=${TEST_DATE_KEY}&tab=week`));
     await waitForWeekViewReady(page);
