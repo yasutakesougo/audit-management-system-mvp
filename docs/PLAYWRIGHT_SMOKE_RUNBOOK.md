@@ -18,6 +18,20 @@ npx playwright test --config=playwright.smoke.config.ts --reporter=line
 
 ---
 
+## データ必須モード（最小 1 件を強制）
+
+スケジュールの smoke を「データ必須（skip せず assert）」で走らせる場合は、
+環境変数 `E2E_REQUIRE_SCHEDULE_DATA=1` を付与してください。
+
+```bash
+E2E_REQUIRE_SCHEDULE_DATA=1 npx playwright test --config=playwright.smoke.config.ts --reporter=line
+```
+
+このフラグが有効な場合、boot helper はスケジュール一覧が空の環境でも
+テスト日に 1 件の最小イベントを自動シードし、week view に 1 件以上が表示されることを保証します。
+
+---
+
 ## ポート衝突回避（5173 が使用中の場合）
 
 別プロセスが 5173 を使用している場合：
