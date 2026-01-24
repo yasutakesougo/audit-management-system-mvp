@@ -31,6 +31,8 @@ jobs:
 
           # Require-data smoke: catch zero-data regressions
           E2E_REQUIRE_SCHEDULE_DATA: "1"
+          # Force stub mode to avoid write tests in nightly
+          E2E_SP_STUBS: "1"
 
           VITE_SP_SCOPE_DEFAULT: ${{ secrets.VITE_SP_SCOPE_DEFAULT }}
           NOTIFY_WEBHOOK_URL: ${{ secrets.NOTIFY_WEBHOOK_URL }}
