@@ -69,13 +69,21 @@ type QuickDialogDebug = {
   }>;
 };
 
+const WEEK_ROOT_TESTIDS = [
+  TESTIDS['schedules-week-page'],
+  TESTIDS.SCHEDULE_WEEK_ROOT,
+  TESTIDS.SCHEDULE_WEEK_VIEW,
+  TESTIDS.SCHEDULES_WEEK_VIEW,
+  TESTIDS.SCHEDULES_WEEK_TIMELINE,
+].map((value) => String(value).toLowerCase());
+
 export async function captureQuickDialogDebug(page: Page, _targetSelectorOrTestId?: string): Promise<QuickDialogDebug> {
   const url = page.url();
   const title = await page.title().catch(() => '(title failed)');
 
   return page
     .evaluate(
-      ({ want }) => {
+      ({ want, weekRoots }) => {
         const now = Date.now();
 
         const norm = (s: string | null | undefined) => (s ?? '').trim();
@@ -103,6 +111,11 @@ export async function captureQuickDialogDebug(page: Page, _targetSelectorOrTestI
           return true;
         };
 
+        const isWeekRoot = (value: string) => {
+          const lower = norm(value).toLowerCase();
+          return weekRoots.some((root) => lower.includes(root));
+        };
+
         const score = (el: Element) => {
           const tid = testIdOf(el);
           const role = roleOf(el);
@@ -127,9 +140,9 @@ export async function captureQuickDialogDebug(page: Page, _targetSelectorOrTestI
           if (hasInputs) s += 180;
           if (labelLike) s += 90;
 
-          if (/(schedules-week-page|schedule-week-root|schedules-week-view)/i.test(tid)) s -= 400;
+          if (isWeekRoot(tid)) s -= 400;
           if ((el as HTMLElement).tagName === 'BODY') s -= 400;
-          if (/(schedules-week-page|schedule-week-root)/i.test(cls)) s -= 200;
+          if (isWeekRoot(cls)) s -= 200;
 
           if (isVisibleLoose(el)) s += 20;
 
@@ -242,7 +255,7 @@ export async function captureQuickDialogDebug(page: Page, _targetSelectorOrTestI
           bestSelectorHint: testIdOf(best) || classOf(best) || null,
         };
       },
-      { want: 'quick' },
+      { want: 'quick', weekRoots: WEEK_ROOT_TESTIDS },
     )
     .catch(async (error) => ({
       url,
@@ -572,13 +585,13 @@ const WEEK_PANEL_VISIBLE = '#panel-week:not([hidden])';
 const WEEK_TIMELINE_PANEL_VISIBLE = '#panel-timeline:not([hidden])';
 
 const buildWeekRootCandidates = (page: Page): Locator[] => [
-  page.locator(`${WEEK_TIMELINE_PANEL_VISIBLE} [data-testid="schedules-week-timeline"]`),
-  page.locator(`${WEEK_TIMELINE_PANEL_VISIBLE} [data-testid="schedule-week-root"]`),
-  page.getByTestId('schedules-week-timeline'),
-  page.locator(`${WEEK_PANEL_VISIBLE} [data-testid="schedule-week-root"]`),
-  page.locator(`${WEEK_PANEL_VISIBLE} [data-testid="schedule-week-view"]`),
-  page.getByTestId('schedule-week-root'),
-  page.getByTestId('schedule-week-view'),
+  page.locator(`${WEEK_TIMELINE_PANEL_VISIBLE} [data-testid="${TESTIDS.SCHEDULES_WEEK_TIMELINE}"]`),
+  page.locator(`${WEEK_TIMELINE_PANEL_VISIBLE} [data-testid="${TESTIDS.SCHEDULE_WEEK_ROOT}"]`),
+  page.getByTestId(TESTIDS.SCHEDULES_WEEK_TIMELINE),
+  page.locator(`${WEEK_PANEL_VISIBLE} [data-testid="${TESTIDS.SCHEDULE_WEEK_ROOT}"]`),
+  page.locator(`${WEEK_PANEL_VISIBLE} [data-testid="${TESTIDS.SCHEDULE_WEEK_VIEW}"]`),
+  page.getByTestId(TESTIDS.SCHEDULE_WEEK_ROOT),
+  page.getByTestId(TESTIDS.SCHEDULE_WEEK_VIEW),
 ];
 
 const getWeekTimelineRoot = async (page: Page): Promise<Locator> => {
@@ -599,7 +612,7 @@ const getWeekTimelineRoot = async (page: Page): Promise<Locator> => {
     }
   }
 
-  return page.getByTestId('schedule-week-view').first();
+  return page.getByTestId(TESTIDS.SCHEDULE_WEEK_VIEW).first();
 };
 
 export async function getWeekScheduleItems(
@@ -611,7 +624,7 @@ export async function getWeekScheduleItems(
   const { category } = opts;
   const categorySelector = category ? `[data-category="${category}"]` : '';
   const root = await getWeekTimelineRoot(page);
-  return root.locator(`[data-testid="schedule-item"]${categorySelector}`);
+  return root.locator(`[data-testid="${TESTIDS.SCHEDULE_ITEM}"]${categorySelector}`);
 }
 
 export async function waitForWeekScheduleItems(
@@ -630,7 +643,7 @@ export async function waitForWeekScheduleItems(
 
 export async function getWeekRowById(page: Page, id: number | string) {
   const root = await getWeekTimelineRoot(page);
-  return root.locator(`[data-testid="schedule-item"][data-id="${id}"]`).first();
+  return root.locator(`[data-testid="${TESTIDS.SCHEDULE_ITEM}"][data-id="${id}"]`).first();
 }
 
 export async function openEditorFromRowMenu(

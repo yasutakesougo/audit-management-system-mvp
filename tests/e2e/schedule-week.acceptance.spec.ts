@@ -61,7 +61,7 @@ test.describe('Schedules week acceptance flow', () => {
   });
 
   test('受け入れ登録が週/日ビューに反映される', async ({ page }) => {
-    const row = page.getByTestId('schedule-item').filter({ hasText: seedTitle }).first();
+    const row = page.getByTestId(TESTIDS.SCHEDULE_ITEM).filter({ hasText: seedTitle }).first();
     await expect(row).toBeVisible({ timeout: 15_000 });
 
     await row.getByRole('button', { name: '行の操作' }).click();

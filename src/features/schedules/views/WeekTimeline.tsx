@@ -276,7 +276,7 @@ const DayTimelineSection: React.FC<DayTimelineSectionProps> = ({ day, category, 
                 sx={{ position: 'absolute', left: 0, right: 0, top, height, px: 0.5, zIndex: 2 }}
               >
                 <Paper
-                  data-testid="schedule-item"
+                  data-testid={TESTIDS.SCHEDULE_ITEM}
                   data-id={item.id}
                   data-category={category}
                   elevation={3}

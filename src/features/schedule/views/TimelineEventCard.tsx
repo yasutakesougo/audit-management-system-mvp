@@ -2,6 +2,7 @@ import { AllDayChip } from '@/features/schedule/AllDayChip';
 import { RecurrenceChip } from '@/ui/components/RecurrenceChip';
 import { formatScheduleRange } from '@/utils/formatScheduleTime';
 import { resolveSchedulesTz } from '@/utils/scheduleTz';
+import { TESTIDS } from '@/testids';
 import AccessTimeRoundedIcon from '@mui/icons-material/AccessTimeRounded';
 import type { ChipProps } from '@mui/material/Chip';
 import Chip from '@mui/material/Chip';
@@ -142,7 +143,7 @@ const TimelineEventCard = memo(function TimelineEventCard({
       {...restContainerProps}
       component={containerComponent}
       elevation={containerElevation ?? (hasWarning ? 3 : 1)}
-      data-testid={dataTestIdProp ?? 'schedule-item'}
+      data-testid={dataTestIdProp ?? TESTIDS.SCHEDULE_ITEM}
       tabIndex={tabIndex ?? 0}
       aria-label={ariaLabelProp ?? aria}
       title={titleProp ?? ariaTimeRange}

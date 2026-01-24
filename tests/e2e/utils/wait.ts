@@ -16,8 +16,8 @@ const locatorExists = async (locator: Locator, timeout = 2_000): Promise<boolean
 
 export async function waitForScheduleReady(page: Page, timeout = 15_000): Promise<void> {
   const pageRoot = page.getByTestId(TESTIDS['schedules-week-page']);
-  const detailList = page.locator('[data-testid="schedule-week-list"]');
-  const emptyState = page.locator('[data-testid="schedule-week-empty"]');
+  const detailList = page.locator(`[data-testid="${TESTIDS.SCHEDULE_WEEK_LIST}"]`);
+  const emptyState = page.locator(`[data-testid="${TESTIDS.SCHEDULE_WEEK_EMPTY}"]`);
   const loading = page.locator('[aria-busy="true"]');
 
   await expect(pageRoot).toBeVisible({ timeout });
@@ -155,7 +155,7 @@ export async function waitForWeekTimeline(page: Page): Promise<void> {
     return;
   }
 
-  const legacyRoot = page.getByTestId('schedule-week-root');
+  const legacyRoot = page.getByTestId(TESTIDS.SCHEDULE_WEEK_ROOT);
   const hasLegacyRoot = await locatorExists(legacyRoot, 3_000);
   if (!hasLegacyRoot) {
     let domSnippet = '';
@@ -226,7 +226,7 @@ export async function waitSchedulesItemsOrEmpty(page: Page, timeout = 15_000): P
   }
 
   // items か empty state のどちらかが見えるまで待つ
-  const items = page.getByTestId('schedule-item');
+  const items = page.getByTestId(TESTIDS.SCHEDULE_ITEM);
   const empty = page.getByTestId('schedules-empty-hint')
     .or(page.getByTestId('schedules-empty'))
     .or(page.getByTestId('schedule-month-empty'));
