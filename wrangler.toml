@@ -1,3 +1,7 @@
+# ⚠️ CRITICAL:
+# This `name` must exactly match the Cloudflare Dashboard Worker name (case-sensitive).
+# A mismatch can deploy/update a different Worker and break production auth flows (e.g., MSAL callback/token handling).
+# Verified: 2026-01-24 (account: Momosantanuki@gmail.com's Account)
 name = "isogo-system"
 compatibility_date = "2026-01-17"
 main = "src/worker.ts"
