@@ -2,7 +2,7 @@ import type { Page } from '@playwright/test';
 import { mockEnsureScheduleList } from './mockEnsureScheduleList';
 import { setupSharePointStubs } from './setupSharePointStubs';
 import { setupPlaywrightEnv } from './setupPlaywrightEnv';
-import { buildWeekScheduleFixtures, SCHEDULE_FIXTURE_BASE_DATE, buildStaffMorningFixture } from '../utils/schedule.fixtures';
+import { buildWeekScheduleFixtures, SCHEDULE_FIXTURE_BASE_DATE, buildStaffMorningFixture, buildUserMinimalFixture } from '../utils/schedule.fixtures';
 import type { ScheduleItem } from '../utils/spMock';
 import { seedSchedulesToday } from './schedulesTodaySeed';
 
@@ -136,12 +136,42 @@ export async function bootSchedule(page: Page, options: ScheduleBootOptions = {}
   }
 
   // If the environment requires at least one schedule item, ensure a minimal seed exists.
-  if (requireData && (!Array.isArray(scheduleItems) || scheduleItems.length === 0)) {
-    scheduleItems = [buildStaffMorningFixture(date)];
+  if (requireData) {
+    const userCount = Array.isArray(scheduleItems) ? scheduleItems.filter((item: ScheduleItem) => item.cr014_category === 'User').length : 0;
+
+    if (!Array.isArray(scheduleItems) || scheduleItems.length === 0) {
+      // If completely empty, inject both User and Staff
+      scheduleItems = [buildUserMinimalFixture(date), buildStaffMorningFixture(date)];
+    } else if (userCount === 0) {
+      // If User items are missing, supplement with User seed
+      scheduleItems = [buildUserMinimalFixture(date), ...scheduleItems];
+    }
   }
 
   const sharePointOptions = options.sharePoint ?? {};
-  const { extraLists, lists: overrideLists, ...restSharePoint } = sharePointOptions;
+  const { extraLists, lists, ...restSharePoint } = sharePointOptions;
+  let overrideLists = lists;
+
+  // If E2E_REQUIRE_SCHEDULE_DATA and overrideLists lacks User items, supplement them
+  if (requireData && overrideLists) {
+    overrideLists = overrideLists.map((cfg) => {
+      const names = [cfg.name, ...(cfg.aliases ?? [])].map((n) => n.trim().toLowerCase());
+      const isSchedule = names.some((n) =>
+        n === 'schedules' || n === 'scheduleevents' || n === 'schedules_master' || n === 'supportschedule',
+      );
+      if (isSchedule && Array.isArray(cfg.items)) {
+        const userCount = cfg.items.filter((item: ScheduleItem) => item.cr014_category === 'User').length;
+        if (userCount === 0 && cfg.items.length > 0) {
+          // Supplement with User seed if schedule list has items but no User items
+          return {
+            ...cfg,
+            items: [buildUserMinimalFixture(date), ...cfg.items],
+          };
+        }
+      }
+      return cfg;
+    });
+  }
 
   let lists: ListConfigArray;
   if (overrideLists) {
@@ -160,10 +190,13 @@ export async function bootSchedule(page: Page, options: ScheduleBootOptions = {}
           {
             name: 'Schedules_Master',
             aliases: ['Schedules', 'ScheduleEvents', 'SupportSchedule'],
-            items: [buildStaffMorningFixture(date)],
+            items: [buildUserMinimalFixture(date), buildStaffMorningFixture(date)],
           },
         ]
       : [];
+    if (seedNeeded) {
+      console.log(`[bootSchedule] E2E_REQUIRE_SCHEDULE_DATA override seed injected: ${[buildUserMinimalFixture(date), buildStaffMorningFixture(date)].length} items`);
+    }
     lists = [...overrideLists, ...seedList, ...(extraLists ?? [])];
   } else {
     lists = [...buildDefaultLists(scheduleItems, orgItems), ...(extraLists ?? [])];
