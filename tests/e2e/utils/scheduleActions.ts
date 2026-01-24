@@ -614,6 +614,20 @@ export async function getWeekScheduleItems(
   return root.locator(`[data-testid="schedule-item"]${categorySelector}`);
 }
 
+export async function waitForWeekScheduleItems(
+  page: Page,
+  opts: { timeoutMs?: number } = {},
+) {
+  const timeoutMs = opts.timeoutMs ?? 15_000;
+  const items = await getWeekScheduleItems(page);
+
+  await expect
+    .poll(async () => items.count(), { timeout: timeoutMs })
+    .toBeGreaterThan(0);
+
+  return items;
+}
+
 export async function getWeekRowById(page: Page, id: number | string) {
   const root = await getWeekTimelineRoot(page);
   return root.locator(`[data-testid="schedule-item"][data-id="${id}"]`).first();
