@@ -56,6 +56,11 @@ lsof -ti :5173 | xargs -r kill -9
 
 - スケジュール週ビューを変更した場合: `npm run test:schedule-week`
 
+## Playwright Smoke テスト実行
+
+Mobile Chrome smoke テストの実行ガイドは [`docs/PLAYWRIGHT_SMOKE_RUNBOOK.md`](docs/PLAYWRIGHT_SMOKE_RUNBOOK.md) を参照してください。
+基本的には `npx playwright test --config=playwright.smoke.config.ts --reporter=line` で、`CONNECTION_REFUSED` が出た場合のトラブルシューティングも記載されています。
+
 ## E2E Skip Reduction Strategy (Schedule Suite)
 
 When improving Schedule E2E test coverage, classify skips into **categories**:
