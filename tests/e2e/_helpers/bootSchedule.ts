@@ -2,7 +2,7 @@ import type { Page } from '@playwright/test';
 import { mockEnsureScheduleList } from './mockEnsureScheduleList';
 import { setupSharePointStubs } from './setupSharePointStubs';
 import { setupPlaywrightEnv } from './setupPlaywrightEnv';
-import { buildWeekScheduleFixtures, SCHEDULE_FIXTURE_BASE_DATE } from '../utils/schedule.fixtures';
+import { buildWeekScheduleFixtures, SCHEDULE_FIXTURE_BASE_DATE, buildStaffMorningFixture } from '../utils/schedule.fixtures';
 import type { ScheduleItem } from '../utils/spMock';
 import { seedSchedulesToday } from './schedulesTodaySeed';
 
@@ -97,6 +97,7 @@ export async function bootSchedule(page: Page, options: ScheduleBootOptions = {}
   const ensureList = options.ensureList ?? true;
   const autoNavigate = options.autoNavigate ?? false;
   const route = options.route ?? '/schedules/day';
+  const requireData = process.env.E2E_REQUIRE_SCHEDULE_DATA === '1';
 
   const envOverrides = {
     ...FEATURE_ENV,
@@ -134,9 +135,39 @@ export async function bootSchedule(page: Page, options: ScheduleBootOptions = {}
     scheduleItems = seedResult.scheduleItems;
   }
 
+  // If the environment requires at least one schedule item, ensure a minimal seed exists.
+  if (requireData && (!Array.isArray(scheduleItems) || scheduleItems.length === 0)) {
+    scheduleItems = [buildStaffMorningFixture(date)];
+  }
+
   const sharePointOptions = options.sharePoint ?? {};
   const { extraLists, lists: overrideLists, ...restSharePoint } = sharePointOptions;
-  const lists = overrideLists ?? [...buildDefaultLists(scheduleItems, orgItems), ...(extraLists ?? [])];
+
+  let lists: ListConfigArray;
+  if (overrideLists) {
+    // Respect explicit overrides, but if E2E_REQUIRE_SCHEDULE_DATA is enabled and no schedule
+    // list provides items, append a minimal seed list to guarantee at least one item.
+    const hasScheduleWithItems = overrideLists.some((cfg) => {
+      const names = [cfg.name, ...(cfg.aliases ?? [])].map((n) => n.trim().toLowerCase());
+      const isSchedule = names.some((n) =>
+        n === 'schedules' || n === 'scheduleevents' || n === 'schedules_master' || n === 'supportschedule',
+      );
+      return isSchedule && Array.isArray(cfg.items) && cfg.items.length > 0;
+    });
+    const seedNeeded = requireData && !hasScheduleWithItems;
+    const seedList: ListConfigArray = seedNeeded
+      ? [
+          {
+            name: 'Schedules_Master',
+            aliases: ['Schedules', 'ScheduleEvents', 'SupportSchedule'],
+            items: [buildStaffMorningFixture(date)],
+          },
+        ]
+      : [];
+    lists = [...overrideLists, ...seedList, ...(extraLists ?? [])];
+  } else {
+    lists = [...buildDefaultLists(scheduleItems, orgItems), ...(extraLists ?? [])];
+  }
 
   await setupSharePointStubs(page, {
     currentUser: { status: 200, body: { Id: 101 } },
