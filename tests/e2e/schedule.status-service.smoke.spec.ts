@@ -46,10 +46,10 @@ const ensureWeekPanel = async (page) => {
   const candidates = [
     panel,
     page.getByRole('tabpanel', { name: /週|week/i }),
-    page.getByTestId('schedule-week-view'),
-    page.getByTestId('schedule-week-root'),
-    page.getByTestId('schedules-week-view'),
-    page.getByTestId('schedules-week-timeline'),
+    page.getByTestId(TESTIDS.SCHEDULE_WEEK_VIEW),
+    page.getByTestId(TESTIDS.SCHEDULE_WEEK_ROOT),
+    page.getByTestId(TESTIDS.SCHEDULES_WEEK_VIEW),
+    page.getByTestId(TESTIDS.SCHEDULES_WEEK_TIMELINE),
   ];
 
   for (const locator of candidates) {
@@ -70,8 +70,8 @@ const getWeekUserItem = async (page, text?: string | RegExp) => {
   const root = await ensureWeekPanel(page);
 
   const candidates: Array<ReturnType<typeof root.locator>> = [
-    root.locator('[data-testid="schedule-item"][data-category="User"]'),
-    root.getByTestId('schedule-item'),
+    root.locator(`[data-testid="${TESTIDS.SCHEDULE_ITEM}"][data-category="User"]`),
+    root.getByTestId(TESTIDS.SCHEDULE_ITEM),
     root.getByRole('listitem'),
   ];
 

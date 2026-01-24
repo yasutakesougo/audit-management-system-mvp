@@ -317,8 +317,8 @@ const WeekViewContent = ({ items, loading, onDayClick, activeDateIso, range, onI
     }));
 
   return (
-    <div data-testid="schedule-week-root">
-      <div data-testid="schedule-week-view" className="space-y-3">
+    <div data-testid={TESTIDS.SCHEDULE_WEEK_ROOT}>
+      <div data-testid={TESTIDS.SCHEDULE_WEEK_VIEW} className="space-y-3">
         <header className="flex items-center justify-between rounded-lg border border-slate-200 bg-slate-50 px-4 py-2 text-sm text-slate-700">
           <span>今週の予定</span>
           <span>{rangeLabel}</span>
@@ -437,11 +437,14 @@ const WeekViewContent = ({ items, loading, onDayClick, activeDateIso, range, onI
             予定を読み込み中…
           </p>
         ) : selectedItems.length === 0 ? (
-          <p className="rounded-lg border border-dashed border-slate-200 bg-white p-6 text-center text-slate-500" data-testid="schedule-week-empty">
+          <p
+            className="rounded-lg border border-dashed border-slate-200 bg-white p-6 text-center text-slate-500"
+            data-testid={TESTIDS.SCHEDULE_WEEK_EMPTY}
+          >
             選択した日の予定はまだありません。
           </p>
         ) : (
-          <div className="space-y-2" data-testid="schedule-week-list" role="list">
+          <div className="space-y-2" data-testid={TESTIDS.SCHEDULE_WEEK_LIST} role="list">
             {selectedItems.map((item) => {
               const statusMeta = getScheduleStatusMeta(item.status);
               const statusLabel = item.status && item.status !== 'Planned' ? statusMeta?.label : undefined;
@@ -476,7 +479,7 @@ const WeekViewContent = ({ items, loading, onDayClick, activeDateIso, range, onI
               return (
                 <div key={item.id} role="listitem">
                   <div
-                    data-testid="schedule-item"
+                    data-testid={TESTIDS.SCHEDULE_ITEM}
                     data-category={item.category}
                     data-schedule-event="true"
                     data-id={item.id}
