@@ -149,8 +149,8 @@ export async function bootSchedule(page: Page, options: ScheduleBootOptions = {}
   }
 
   const sharePointOptions = options.sharePoint ?? {};
-  const { extraLists, lists, ...restSharePoint } = sharePointOptions;
-  let overrideLists = lists;
+  const { extraLists, lists: inputLists, ...restSharePoint } = sharePointOptions;
+  let overrideLists = inputLists;
 
   // If E2E_REQUIRE_SCHEDULE_DATA and overrideLists lacks User items, supplement them
   if (requireData && overrideLists) {
@@ -173,7 +173,7 @@ export async function bootSchedule(page: Page, options: ScheduleBootOptions = {}
     });
   }
 
-  let lists: ListConfigArray;
+  let finalLists: ListConfigArray;
   if (overrideLists) {
     // Respect explicit overrides, but if E2E_REQUIRE_SCHEDULE_DATA is enabled and no schedule
     // list provides items, append a minimal seed list to guarantee at least one item.
@@ -197,17 +197,18 @@ export async function bootSchedule(page: Page, options: ScheduleBootOptions = {}
     if (seedNeeded) {
       console.log(`[bootSchedule] E2E_REQUIRE_SCHEDULE_DATA override seed injected: ${[buildUserMinimalFixture(date), buildStaffMorningFixture(date)].length} items`);
     }
-    lists = [...overrideLists, ...seedList, ...(extraLists ?? [])];
+    finalLists = [...overrideLists, ...seedList, ...(extraLists ?? [])];
   } else {
-    lists = [...buildDefaultLists(scheduleItems, orgItems), ...(extraLists ?? [])];
+    finalLists = [...buildDefaultLists(scheduleItems, orgItems), ...(extraLists ?? [])];
   }
 
   await setupSharePointStubs(page, {
     currentUser: { status: 200, body: { Id: 101 } },
     fallback: { status: 404, body: {} },
     ...restSharePoint,
-    lists,
+    lists: finalLists,
   });
+
 
   if (autoNavigate) {
     await page.goto(route, { waitUntil: 'load' });
