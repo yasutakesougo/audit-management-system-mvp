@@ -25,6 +25,7 @@
       "@/features/users/components/*": ["src/features/users/components/*"],
       "@/hydration/*": ["src/hydration/*"],
       "@/config/*": ["src/config/*"],
+      "@/sharepoint/*": ["src/sharepoint/*"],
       "@/ui/*": ["src/ui/*"],
       "@/adapters/*": ["src/adapters/*"],
       "@/test/*": ["tests/*"],

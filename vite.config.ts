@@ -45,6 +45,7 @@ export default defineConfig(({ mode }) => {
       alias: {
         '@': srcDir,
         '@/adapters': resolve(srcDir, 'adapters'),
+        '@/sharepoint': resolve(srcDir, 'sharepoint'),
         '@fluentui/react': fluentStub,
         'node:fs': emptyShim,
         crypto: emptyShim,
