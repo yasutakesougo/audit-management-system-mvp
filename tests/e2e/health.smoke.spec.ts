@@ -5,7 +5,7 @@ test("health page loads and shows diagnosis header", async ({ page }) => {
   await expect(
     page.getByRole("heading", { name: /環境診断/ })
   ).toBeVisible();
-  await expect(page.getByText("総合判定")).toBeVisible();
+  await expect(page.getByRole("heading", { name: "総合判定" })).toBeVisible();
 });
 
 test("health page has re-run button", async ({ page }) => {
