@@ -30,7 +30,7 @@ const envPairs = Object.entries(webServerEnvVarsSmoke)
   .map(([key, value]) => `${key}=${value}`)
   .join(' ');
 
-const devCommand = `npx cross-env ${envPairs} npx vite --mode test --host 0.0.0.0 --port ${devPort} --strictPort`;
+const devCommand = `npx cross-env ${envPairs} npx vite --mode test --host 127.0.0.1 --port ${devPort} --strictPort`;
 
 export default defineConfig({
   ...baseConfig,
@@ -41,7 +41,7 @@ export default defineConfig({
   webServer: {
     command: devCommand,
     url: baseURL,
-    reuseExistingServer: true,
+    reuseExistingServer: !process.env.CI,
     timeout: 180_000,
     env: {
       ...process.env,
