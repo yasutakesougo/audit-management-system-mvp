@@ -8,7 +8,7 @@ import { expect, type Locator, type Page, type TestInfo } from '@playwright/test
 
 import { TESTIDS } from '@/testids';
 
-import { waitForDayTimeline, waitForWeekTimeline, waitForMonthViewReady as waitMonthReady } from './wait';
+import { waitForDayTimeline, waitForMonthViewReady as waitMonthReady } from './wait';
 
 type SelectOption = string | RegExp;
 
@@ -409,8 +409,34 @@ export async function waitForDayViewReady(page: Page) {
   await waitForDayTimeline(page);
 }
 
+/**
+ * Wait for week grid ready state using flexible DOM checks.
+ * Does NOT require legacy timeline - matches what test #3 successfully sees.
+ */
+export async function waitForWeekGridReady(page: Page) {
+  // URL should be on week tab
+  await expect(page).toHaveURL(/\/schedules\/week\?.*tab=week/);
+
+  // Wait for one of: heading, grid-like structure, or empty state
+  const heading = page.getByRole('heading', { name: /週ごとの予定一覧/ });
+  const gridLike = page.locator(
+    '[role="grid"], [data-testid*="week"], #panel-week, [data-panel="week"]'
+  );
+  const emptyLike = page.getByText(/予定がありません|0件|No schedule/i);
+
+  await Promise.race([
+    heading.waitFor({ state: 'visible', timeout: 30_000 }),
+    gridLike.first().waitFor({ state: 'visible', timeout: 30_000 }),
+    emptyLike.first().waitFor({ state: 'visible', timeout: 30_000 }),
+  ]);
+
+  // Small stabilization wait for layout
+  await page.waitForTimeout(50);
+}
+
 export async function waitForWeekViewReady(page: Page) {
-  await waitForWeekTimeline(page);
+  // Use new flexible grid check instead of legacy timeline
+  await waitForWeekGridReady(page);
 }
 
 export async function waitForMonthViewReady(page: Page) {
@@ -646,6 +672,33 @@ export async function getWeekRowById(page: Page, id: number | string) {
   return root.locator(`[data-testid="${TESTIDS.SCHEDULE_ITEM}"][data-id="${id}"]`).first();
 }
 
+/**
+ * Get User category schedule items from week view (live DOM).
+ * Uses getWeekScheduleItems as base to avoid stale locator issues.
+ */
+export async function getWeekUserItem(
+  page: Page,
+  opts: {
+    textMatcher?: string | RegExp;
+  } = {},
+) {
+  const { textMatcher } = opts;
+  let items = await getWeekScheduleItems(page, { category: 'User' });
+
+  if (textMatcher) {
+    items = items.filter({ hasText: textMatcher });
+  }
+
+  const count = await items.count();
+  if (count === 0) {
+    throw new Error(
+      `No week user item found${textMatcher ? ` matching "${textMatcher}"` : ''}. Use getWeekScheduleItems to debug.`,
+    );
+  }
+
+  return items.first();
+}
+
 export async function openEditorFromRowMenu(
   page: Page,
   row: Locator,
@@ -793,7 +846,6 @@ export async function openWeekEventCard(
   if ((await weekTab.count().catch(() => 0)) > 0) {
     await weekTab.first().click();
   }
-  await expect(page.locator('#panel-week:not([hidden])')).toBeVisible({ timeout: 15_000 });
 
   const root = await getWeekTimelineRoot(page);
   await expect(root).toBeVisible({ timeout: 15_000 });

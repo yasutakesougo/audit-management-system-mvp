@@ -97,7 +97,7 @@ describe('WeekPage tabs', () => {
     await screen.findAllByTestId('schedule-item');
     fireEvent.click(screen.getByTestId(TESTIDS.SCHEDULES_WEEK_TAB_TIMELINE));
     const timeline = await screen.findByTestId(TESTIDS['schedules-week-timeline']);
-    const items = within(timeline).queryAllByTestId('schedule-item');
+    const items = await within(timeline).findAllByTestId('schedule-item', {}, { timeout: 5000 }).catch(() => []);
     if (items.length === 0) {
       expect(within(timeline).getAllByText(/:00/).length).toBeGreaterThan(0);
       return;

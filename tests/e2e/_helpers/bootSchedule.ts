@@ -21,6 +21,7 @@ const FEATURE_ENV: Record<string, string> = {
   VITE_FEATURE_SCHEDULES_SP: '0',
   VITE_FORCE_SHAREPOINT: '0',
   VITE_DEMO_MODE: '0',
+  VITE_ALLOW_SHAREPOINT_OUTSIDE_SPFX: '1',
   // Clear group-based authz to keep edit flows enabled in E2E regardless of build-time env
   VITE_RECEPTION_GROUP_ID: '',
   VITE_SCHEDULE_ADMINS_GROUP_ID: '',
