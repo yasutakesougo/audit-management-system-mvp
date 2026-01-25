@@ -15,7 +15,6 @@
     "types": ["vite/client", "node", "vitest/globals", "@testing-library/jest-dom"],
     "baseUrl": ".",
     "paths": {
-      "@/*": ["src/*"],
       "@/app/*": ["src/app/*"],
       "@/auth/*": ["src/auth/*"],
       "@/lib/*": ["src/lib/*"],
@@ -29,6 +28,7 @@
       "@/ui/*": ["src/ui/*"],
       "@/adapters/*": ["src/adapters/*"],
       "@/test/*": ["tests/*"],
+      "@/*": ["src/*"],
       "vitest/browser": ["types/vitest-browser.d.ts"],
       "vitest/browser/*": ["types/vitest-browser.d.ts"]
     }
