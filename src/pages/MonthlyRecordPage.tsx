@@ -7,9 +7,15 @@ import Button from '@mui/material/Button';
 import Card from '@mui/material/Card';
 import CardContent from '@mui/material/CardContent';
 import Container from '@mui/material/Container';
+import MenuItem from '@mui/material/MenuItem';
 import Stack from '@mui/material/Stack';
 import Tab from '@mui/material/Tab';
 import Tabs from '@mui/material/Tabs';
+import Table from '@mui/material/Table';
+import TableBody from '@mui/material/TableBody';
+import TableCell from '@mui/material/TableCell';
+import TableHead from '@mui/material/TableHead';
+import TableRow from '@mui/material/TableRow';
 import TextField from '@mui/material/TextField';
 import Typography from '@mui/material/Typography';
 import React from 'react';
@@ -123,7 +129,8 @@ export default function MonthlyRecordPage() {
   );
 
   // URLパラメータからタブを決定
-  const tab = (params.get('tab') as TabKey) || 'summary';
+  const tabParam = params.get('tab') as TabKey | null;
+  const tab = tabParam || 'summary';
   const allowedTabs: TabKey[] = ['summary', 'user-detail', 'pdf'];
 
   const setTab = (newTab: TabKey) => {
@@ -186,6 +193,65 @@ export default function MonthlyRecordPage() {
     await new Promise(resolve => setTimeout(resolve, 2000)); // モック遅延
     if (import.meta.env.DEV) console.log(`PDF生成完了: ${selectedMonth}`);
   };
+
+  const rawUserId = params.get('user');
+  const rawMonth = params.get('month') as YearMonth | null;
+
+  const detailMonth = React.useMemo<YearMonth>(() => {
+    if (rawMonth && monthOptions.includes(rawMonth)) return rawMonth;
+    return selectedMonth;
+  }, [rawMonth, monthOptions, selectedMonth]);
+
+  const userOptions = React.useMemo(
+    () => summaries.filter((s) => s.yearMonth === detailMonth),
+    [summaries, detailMonth],
+  );
+
+  const effectiveUserId = React.useMemo(() => {
+    if (rawUserId && userOptions.some((u) => u.userId === rawUserId)) return rawUserId;
+    return userOptions[0]?.userId ?? null;
+  }, [rawUserId, userOptions]);
+
+  React.useEffect(() => {
+    if (tab === 'user-detail' && detailMonth !== selectedMonth) {
+      setSelectedMonth(detailMonth);
+    }
+  }, [tab, detailMonth, selectedMonth]);
+
+  const detailSummary = React.useMemo(
+    () =>
+      effectiveUserId
+        ? summaries.find((s) => s.userId === effectiveUserId && s.yearMonth === detailMonth) ?? null
+        : null,
+    [summaries, effectiveUserId, detailMonth],
+  );
+
+  const handleDetailUserChange = (userId: string) => {
+    const newParams = new URLSearchParams(params);
+    newParams.set('tab', 'user-detail');
+    newParams.set('user', userId);
+    newParams.set('month', detailMonth);
+    setParams(newParams);
+  };
+
+  const handleDetailMonthChange = (yearMonth: YearMonth) => {
+    setSelectedMonth(yearMonth);
+    const candidates = summaries.filter((s) => s.yearMonth === yearMonth);
+    const nextUserId = candidates[0]?.userId;
+    const newParams = new URLSearchParams(params);
+    newParams.set('tab', 'user-detail');
+    newParams.set('month', yearMonth);
+    if (nextUserId) {
+      newParams.set('user', nextUserId);
+    } else {
+      newParams.delete('user');
+    }
+    setParams(newParams);
+  };
+
+  const effectiveParamsText = `tab=${tab}; rawUser=${rawUserId ?? 'none'}; rawMonth=${
+    rawMonth ?? 'none'
+  }; user=${effectiveUserId ?? 'none'}; month=${detailMonth}`;
 
   return (
     <Container maxWidth="xl" data-testid={TESTIDS['monthly-page']}>
@@ -337,17 +403,58 @@ export default function MonthlyRecordPage() {
           <Box
             component="section"
             aria-label="利用者別詳細表示"
-            data-testid={TESTIDS['monthly-detail-records-table']}
+            sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}
           >
             <Typography component="p" sx={srOnly}>
               選択した利用者の月次記録詳細とKPIカードを表示します。
             </Typography>
 
-            {(() => {
-              const selectedUserId = params.get('user');
-              const selectedUserMonth = params.get('month') as YearMonth | null;
+            <Box data-testid={TESTIDS['monthly-user-detail-mounted']} sx={{ fontSize: 12, color: 'text.secondary' }}>
+              User Detail mounted
+            </Box>
+            <Box
+              data-testid={TESTIDS['monthly-user-detail-effective-params']}
+              sx={{ fontSize: 12, color: 'text.secondary' }}
+            >
+              {effectiveParamsText}
+            </Box>
 
-              if (!selectedUserId || !selectedUserMonth) {
+            <Stack direction={{ xs: 'column', md: 'row' }} spacing={2} alignItems="flex-start">
+              <TextField
+                select
+                size="small"
+                label="利用者"
+                value={effectiveUserId ?? ''}
+                onChange={(event) => handleDetailUserChange(event.target.value)}
+                data-testid={TESTIDS['monthly-detail-user-select']}
+                sx={{ minWidth: 220 }}
+              >
+                {userOptions.map((user) => (
+                  <MenuItem key={user.userId} value={user.userId}>
+                    {user.displayName} ({user.userId})
+                  </MenuItem>
+                ))}
+              </TextField>
+
+              <TextField
+                select
+                size="small"
+                label="対象月"
+                value={detailMonth}
+                onChange={(event) => handleDetailMonthChange(event.target.value as YearMonth)}
+                data-testid={TESTIDS['monthly-detail-month-select']}
+                sx={{ minWidth: 180 }}
+              >
+                {monthOptions.map((month) => (
+                  <MenuItem key={month} value={month}>
+                    {month}
+                  </MenuItem>
+                ))}
+              </TextField>
+            </Stack>
+
+            {(() => {
+              if (!effectiveUserId || !detailMonth) {
                 return (
                   <Box sx={{ display: 'flex', justifyContent: 'center', py: 8 }}>
                     <Box sx={{ textAlign: 'center' }}>
@@ -362,12 +469,7 @@ export default function MonthlyRecordPage() {
                 );
               }
 
-              // filteredSummaries から該当ユーザーを検索
-              const selectedUserSummary = filteredSummaries.find(
-                summary => summary.userId === selectedUserId && summary.yearMonth === selectedUserMonth
-              );
-
-              if (!selectedUserSummary) {
+              if (!detailSummary) {
                 return (
                   <Box sx={{ display: 'flex', justifyContent: 'center', py: 8 }}>
                     <Box sx={{ textAlign: 'center' }}>
@@ -375,7 +477,7 @@ export default function MonthlyRecordPage() {
                         利用者が見つかりません
                       </Typography>
                       <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
-                        選択した利用者 ({selectedUserId}) の {selectedUserMonth} のデータが見つかりませんでした。
+                        選択した利用者 ({effectiveUserId}) の {detailMonth} のデータが見つかりませんでした。
                       </Typography>
                       <Typography variant="body2" color="text.secondary">
                         フィルター条件を確認してください。
@@ -388,13 +490,49 @@ export default function MonthlyRecordPage() {
               return (
                 <Stack spacing={3}>
                   {/* KPIカード表示 */}
-                  <UserKpiCards
-                    summary={selectedUserSummary}
-                    avgCompletionRate={stats.avgCompletionRate}
-                  />
+                  <UserKpiCards summary={detailSummary} avgCompletionRate={stats.avgCompletionRate} />
 
                   {/* プログレスチャート表示 */}
-                  <UserProgressChart summary={selectedUserSummary} />
+                  <UserProgressChart summary={detailSummary} />
+
+                  <Box data-testid={TESTIDS['monthly-detail-records-table']}>
+                    <Table aria-label="月次詳細テーブル" role="table">
+                      <TableHead>
+                        <TableRow>
+                          <TableCell>項目</TableCell>
+                          <TableCell align="right">値</TableCell>
+                        </TableRow>
+                      </TableHead>
+                      <TableBody>
+                        <TableRow>
+                          <TableCell>完了率</TableCell>
+                          <TableCell align="right">{detailSummary.completionRate}%</TableCell>
+                        </TableRow>
+                        <TableRow>
+                          <TableCell>完了行数 / 予定行数</TableCell>
+                          <TableCell align="right">
+                            {detailSummary.kpi.completedRows} / {detailSummary.kpi.plannedRows}
+                          </TableCell>
+                        </TableRow>
+                        <TableRow>
+                          <TableCell>進行中</TableCell>
+                          <TableCell align="right">{detailSummary.kpi.inProgressRows}</TableCell>
+                        </TableRow>
+                        <TableRow>
+                          <TableCell>未入力</TableCell>
+                          <TableCell align="right">{detailSummary.kpi.emptyRows}</TableCell>
+                        </TableRow>
+                        <TableRow>
+                          <TableCell>特記事項</TableCell>
+                          <TableCell align="right">{detailSummary.kpi.specialNotes}</TableCell>
+                        </TableRow>
+                        <TableRow>
+                          <TableCell>インシデント</TableCell>
+                          <TableCell align="right">{detailSummary.kpi.incidents}</TableCell>
+                        </TableRow>
+                      </TableBody>
+                    </Table>
+                  </Box>
                 </Stack>
               );
             })()}
