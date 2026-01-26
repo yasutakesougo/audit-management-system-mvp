@@ -45,4 +45,15 @@ test.describe('Monthly Records - User Detail (minimal smoke)', () => {
 
     await expect(page.getByTestId(monthlyTestIds.detailRecordsTable)).toBeVisible();
   });
+
+  test('smoke: detail records table structure', async ({ page }) => {
+    const table = page.getByTestId(monthlyTestIds.detailRecordsTable);
+    await expect(table).toBeVisible();
+
+    const headers = table.getByRole('columnheader');
+    await expect(headers).toHaveCount(2);
+
+    const rows = await table.getByRole('row').count();
+    expect(rows).toBeGreaterThan(1); // header + at least one data row
+  });
 });
