@@ -4,11 +4,16 @@ import {
     monthlyTestIds,
     triggerReaggregateAndWait
 } from './_helpers/enableMonthly';
+import { attachOnFailure } from './_helpers/diagArtifacts';
 
 test.describe('Monthly Records - Summary Smoke Tests', () => {
   test.beforeEach(async ({ page }) => {
     // 月次記録ページに移動（Feature Flag 有効化込み）
     await gotoMonthlyRecordsPage(page);
+  });
+
+  test.afterEach(async ({ page }, testInfo) => {
+    await attachOnFailure(page, testInfo);
   });
 
   test('@ci-smoke monthly summary page renders', async ({ page }) => {
