@@ -1,4 +1,4 @@
-import { Page } from '@playwright/test';
+import { expect, Page } from '@playwright/test';
 import { setupPlaywrightEnv } from './setupPlaywrightEnv';
 
 /**
@@ -42,8 +42,14 @@ export async function disableMonthlyRecordsFlag(page: Page): Promise<void> {
 
 /**
  * 月次記録ページに移動（Feature Flag 有効化込み）
+ * @param page Playwright page object
+ * @param opts.path カスタムパス（デフォルト: '/records/monthly'）。クエリパラメータも含められる
+ * @param opts.debug ログを出力するか（デフォルト: false）
  */
-export async function gotoMonthlyRecordsPage(page: Page): Promise<void> {
+export async function gotoMonthlyRecordsPage(page: Page, opts?: { path?: string; debug?: boolean }): Promise<void> {
+  const path = opts?.path ?? '/records/monthly';
+  const debug = opts?.debug ?? false;
+
   await setupPlaywrightEnv(page, {
     envOverrides: {
       VITE_FEATURE_MONTHLY_RECORDS: '1',
@@ -68,11 +74,17 @@ export async function gotoMonthlyRecordsPage(page: Page): Promise<void> {
     }
   });
 
-  await page.goto('/records/monthly');
+  await page.goto(path);
 
   // ルート到達とページの可視化を明示的に待つ（networkidle は CI で不安定なため使わない）
   await page.waitForURL(/\/records\/monthly/, { timeout: 15_000 });
   await page.waitForLoadState('domcontentloaded', { timeout: 15_000 }).catch(() => undefined);
+  
+  // ===== デバッグ: query が保持されているか確認（DEBUG時のみ） =====
+  if (debug) {
+    console.log(`[gotoMonthlyRecordsPage] after goto, url="${page.url()}"`);
+  }
+
   const monthlyRoot = page.getByTestId(monthlyTestIds.page);
   try {
     await monthlyRoot.waitFor({ state: 'visible', timeout: 30_000 });
@@ -142,31 +154,63 @@ export const monthlyTestIds = {
 } as const;
 
 /**
- * 月次記録のタブ切り替えヘルパー
+ * 月次記録のタブ切り替えヘルパー（確定版）
+ * 重要: aria-selected + panel hidden の両方を保証する
+ * @param debug デバッグログを出力するか（デフォルト: false）
  */
-export async function switchMonthlyTab(page: Page, tab: 'summary' | 'detail' | 'pdf'): Promise<void> {
-  const tabTestId = tab === 'summary' ? monthlyTestIds.summaryTab
-                  : tab === 'detail' ? monthlyTestIds.detailTab
-                  : monthlyTestIds.pdfTab;
-
-  const tabElement = page.getByTestId(tabTestId);
-  await tabElement.scrollIntoViewIfNeeded();
-  await tabElement.click({ force: true });
-
-  // 各タブごとの主要要素を待つ（アニメーション依存の waitForTimeout より堅牢）
-  if (tab === 'summary') {
-    const summaryEl = page.getByTestId(monthlyTestIds.summaryTable);
-    await summaryEl.waitFor({ state: 'attached' });
-    await summaryEl.waitFor({ state: 'visible' }).catch(() => undefined);
-  } else if (tab === 'detail') {
-    const detailEl = page.getByTestId(monthlyTestIds.detailRecordsTable);
-    await detailEl.waitFor({ state: 'attached' });
-    await detailEl.waitFor({ state: 'visible' }).catch(() => undefined);
-  } else {
-    const pdfEl = page.getByTestId(monthlyTestIds.pdfGenerateBtn);
-    await pdfEl.waitFor({ state: 'attached' });
-    await pdfEl.waitFor({ state: 'visible' }).catch(() => undefined);
+export async function switchMonthlyTab(
+  page: Page,
+  tab: 'summary' | 'detail' | 'pdf',
+  debug: boolean = false
+): Promise<void> {
+  // ===== デバッグ用: タブ一覧をダンプ（DEBUG時のみ） =====
+  async function dumpTabs() {
+    if (!debug) return;
+    const tabs = page.getByRole('tab');
+    const n = await tabs.count();
+    console.log(`[monthly.switchMonthlyTab] tabs.count=${n}`);
+    for (let i = 0; i < n; i++) {
+      const t = tabs.nth(i);
+      const name = (await t.textContent())?.trim() || '(empty)';
+      const selected = await t.getAttribute('aria-selected');
+      const controls = await t.getAttribute('aria-controls');
+      console.log(
+        `[monthly.switchMonthlyTab] tab[${i}] name="${name}" aria-selected=${selected} aria-controls=${controls}`
+      );
+    }
   }
+
+  await dumpTabs();
+
+  // ===== タブを特定（完全一致寄せ）=====
+  const tabName = tab === 'summary' ? /^組織サマリー$/ : tab === 'detail' ? /^利用者別詳細$/ : /^月次PDF$/;
+
+  const tabEl = page.getByRole('tab', { name: tabName });
+  await expect(tabEl).toBeVisible({ timeout: 30_000 });
+
+  if (debug) console.log(`[monthly.switchMonthlyTab] clicking tab="${tab}"`);
+  await tabEl.click();
+
+  // ✅ 超重要：クリック後に「選択された」状態を待つ
+  if (debug) console.log(`[monthly.switchMonthlyTab] waiting for aria-selected="true"`);
+  await expect(tabEl).toHaveAttribute('aria-selected', 'true', { timeout: 30_000 });
+
+  // ===== panel ID を取得 =====
+  const panelId = await tabEl.getAttribute('aria-controls');
+  if (!panelId) {
+    throw new Error(`[switchMonthlyTab] tab aria-controls not found for tab="${tab}"`);
+  }
+  if (debug) console.log(`[monthly.switchMonthlyTab] panelId="${panelId}"`);
+
+  // ===== panel が hidden を外すまで待つ =====
+  const panel = page.locator(`#${panelId}`);
+  await expect(panel).toBeAttached({ timeout: 30_000 });
+  if (debug) console.log(`[monthly.switchMonthlyTab] panel attached, waiting for hidden to be removed`);
+  await expect(panel).not.toHaveAttribute('hidden', '', { timeout: 30_000 });
+  if (debug) console.log(`[monthly.switchMonthlyTab] hidden removed, waiting for visible`);
+  await expect(panel).toBeVisible({ timeout: 30_000 });
+
+  if (debug) console.log(`[monthly.switchMonthlyTab] ✅ tab switch complete for tab="${tab}"`);
 }
 
 /**
