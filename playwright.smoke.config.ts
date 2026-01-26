@@ -41,7 +41,8 @@ export default defineConfig({
   webServer: {
     command: devCommand,
     url: baseURL,
-    reuseExistingServer: !process.env.CI,
+    // CI でも既存サーバーを再利用し、並列/再試行時のポート競合を回避
+    reuseExistingServer: true,
     timeout: 180_000,
     env: {
       ...process.env,
