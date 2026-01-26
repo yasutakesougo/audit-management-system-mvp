@@ -1,6 +1,11 @@
 import { test, expect } from '@playwright/test';
+import { attachOnFailure } from './_helpers/diagArtifacts';
 
 test.describe('Diagnostics Health - run & save', () => {
+  test.afterEach(async ({ page }, testInfo) => {
+    await attachOnFailure(page, testInfo);
+  });
+
   test('診断実行 → SharePoint 保存成功', async ({ page }) => {
     // 1) open
     await page.goto('/diagnostics/health');
