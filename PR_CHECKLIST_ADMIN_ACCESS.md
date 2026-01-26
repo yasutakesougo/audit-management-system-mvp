@@ -1,5 +1,18 @@
 # PR: /checklist ページ管理者専用アクセス制御（AdminGate & fail-closed)
 
+## 🧭 Review Order
+
+推奨レビュー順序:
+
+1. [src/auth/useUserAuthz.ts](src/auth/useUserAuthz.ts) — fail-closed ロジックの中核
+2. [src/components/AdminGate.tsx](src/components/AdminGate.tsx) — 403 ガードコンポーネント
+3. [src/app/router.tsx](src/app/router.tsx) — ルートレベルの保護
+4. [src/app/AppShell.tsx](src/app/AppShell.tsx) — ナビゲーション隠蔽
+5. [tests/e2e/checklist-admin-access.smoke.spec.ts](tests/e2e/checklist-admin-access.smoke.spec.ts) — E2E 検証
+6. [docs/operations-runbook.md](docs/operations-runbook.md) — 運用手順（build-first アプローチ）
+
+---
+
 ## 📋 概要
 
 `/checklist` ページを管理者専用ページに格上げし、**3層防御システム**で保護します。
