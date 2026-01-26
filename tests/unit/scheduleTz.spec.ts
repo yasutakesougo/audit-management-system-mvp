@@ -14,6 +14,7 @@ const RealDateTimeFormat = Intl.DateTimeFormat;
 const makeConfig = (overrides: Partial<AppConfig>): AppConfig => ({
   VITE_SP_RESOURCE: '',
   VITE_SP_SITE_RELATIVE: '',
+  VITE_SP_SITE_URL: '',
   VITE_SP_RETRY_MAX: '4',
   VITE_SP_RETRY_BASE_MS: '400',
   VITE_SP_RETRY_MAX_DELAY_MS: '5000',
