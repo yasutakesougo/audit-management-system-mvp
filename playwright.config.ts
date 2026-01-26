@@ -28,6 +28,7 @@ const webServerEnvVarsE2E = {
   VITE_SKIP_SHAREPOINT: process.env.VITE_SKIP_SHAREPOINT ?? '1', // Force no external API calls
   VITE_SKIP_ENSURE_SCHEDULE: process.env.VITE_SKIP_ENSURE_SCHEDULE ?? 'false',
   VITE_DEMO_MODE: process.env.VITE_DEMO_MODE ?? '1', // Use in-memory stores
+  VITE_SCHEDULE_ADMINS_GROUP_ID: process.env.VITE_SCHEDULE_ADMINS_GROUP_ID ?? '', // Allow shell override for admin access testing
   VITE_DEV_HARNESS: process.env.VITE_DEV_HARNESS ?? '1',
   VITE_SCHEDULES_TZ: process.env.VITE_SCHEDULES_TZ ?? 'Asia/Tokyo',
   VITE_FEATURE_SCHEDULES: '1',  // Default: schedules feature ON
@@ -52,6 +53,7 @@ const webServerEnvVarsSPIntegration = {
   VITE_SKIP_SHAREPOINT: '0',  // DO NOT skip SharePoint (allow route mocking)
   VITE_FEATURE_SCHEDULES_SP: '1',  // Enable SharePoint features
   VITE_DEMO_MODE: '1',  // Use in-memory stores for other data
+  VITE_SCHEDULE_ADMINS_GROUP_ID: process.env.VITE_SCHEDULE_ADMINS_GROUP_ID ?? '', // Allow shell override
   VITE_DEV_HARNESS: process.env.VITE_DEV_HARNESS ?? '1',
   VITE_SCHEDULES_TZ: process.env.VITE_SCHEDULES_TZ ?? 'Asia/Tokyo',
 };
@@ -69,6 +71,7 @@ const webServerEnvVarsIntegration = {
   VITE_SKIP_SHAREPOINT: '0', // Allow real SharePoint calls
   VITE_SKIP_ENSURE_SCHEDULE: 'false',
   VITE_DEMO_MODE: '0', // Use real stores
+  VITE_SCHEDULE_ADMINS_GROUP_ID: process.env.VITE_SCHEDULE_ADMINS_GROUP_ID ?? '', // Allow shell override
   VITE_DEV_HARNESS: process.env.VITE_DEV_HARNESS ?? '1',
   VITE_SCHEDULES_TZ: process.env.VITE_SCHEDULES_TZ ?? 'Asia/Tokyo',
 };
