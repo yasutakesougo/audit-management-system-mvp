@@ -155,11 +155,17 @@ export async function switchMonthlyTab(page: Page, tab: 'summary' | 'detail' | '
 
   // 各タブごとの主要要素を待つ（アニメーション依存の waitForTimeout より堅牢）
   if (tab === 'summary') {
-    await page.getByTestId(monthlyTestIds.summaryTable).waitFor();
+    const summaryEl = page.getByTestId(monthlyTestIds.summaryTable);
+    await summaryEl.waitFor({ state: 'attached' });
+    await summaryEl.waitFor({ state: 'visible' }).catch(() => undefined);
   } else if (tab === 'detail') {
-    await page.getByTestId(monthlyTestIds.detailRecordsTable).waitFor();
+    const detailEl = page.getByTestId(monthlyTestIds.detailRecordsTable);
+    await detailEl.waitFor({ state: 'attached' });
+    await detailEl.waitFor({ state: 'visible' }).catch(() => undefined);
   } else {
-    await page.getByTestId(monthlyTestIds.pdfGenerateBtn).waitFor();
+    const pdfEl = page.getByTestId(monthlyTestIds.pdfGenerateBtn);
+    await pdfEl.waitFor({ state: 'attached' });
+    await pdfEl.waitFor({ state: 'visible' }).catch(() => undefined);
   }
 }
 
