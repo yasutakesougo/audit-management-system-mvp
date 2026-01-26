@@ -6,6 +6,7 @@ import { afterAll, afterEach, beforeEach, describe, expect, it, vi } from 'vites
 const baseConfig = {
   VITE_SP_RESOURCE: 'https://contoso.sharepoint.com',
   VITE_SP_SITE_RELATIVE: '/sites/demo',
+  VITE_SP_SITE_URL: 'https://contoso.sharepoint.com/sites/demo',
   VITE_SP_RETRY_MAX: '3',
   VITE_SP_RETRY_BASE_MS: '10',
   VITE_SP_RETRY_MAX_DELAY_MS: '50',

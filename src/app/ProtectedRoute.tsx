@@ -66,7 +66,8 @@ const shouldBypassInE2E = (flag: keyof FeatureFlagSnapshot): boolean => {
 
 export default function ProtectedRoute({ flag, children, fallbackPath = '/' }: ProtectedRouteProps) {
   const enabled = useFeatureFlag(flag);
-  const { isAuthenticated, loading, shouldSkipLogin, tokenReady, signIn, getListReadyState } = useAuth();
+  const { isAuthenticated, loading, shouldSkipLogin, tokenReady: tokenReadyRaw, signIn, getListReadyState } = useAuth();
+  const tokenReady = tokenReadyRaw ?? false;
   const { accounts, inProgress } = useMsalContext();
   const location = useLocation();
   const pendingPath = useMemo(() => `${location.pathname}${location.search ?? ''}`, [location.pathname, location.search]);
