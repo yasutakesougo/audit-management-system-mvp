@@ -4,24 +4,26 @@ import {
     monthlyTestIds,
     triggerReaggregateAndWait
 } from './_helpers/enableMonthly';
-import { attachOnFailure, ConsoleLogger, PageErrorCollector, setupConsoleAndErrorCapture } from './_helpers/diagArtifacts';
+import { attachOnFailure, ConsoleLogger, PageErrorCollector, RequestLogger, setupConsoleAndErrorCapture } from './_helpers/diagArtifacts';
 
 test.describe('Monthly Records - Summary Smoke Tests', () => {
   let consoleLogger: ConsoleLogger;
   let errorCollector: PageErrorCollector;
+  let requestLogger: RequestLogger;
 
   test.beforeEach(async ({ page }) => {
     // Initialize capture
     consoleLogger = new ConsoleLogger();
     errorCollector = new PageErrorCollector();
-    await setupConsoleAndErrorCapture(page, consoleLogger, errorCollector);
+    requestLogger = new RequestLogger();
+    await setupConsoleAndErrorCapture(page, consoleLogger, errorCollector, requestLogger);
 
     // 月次記録ページに移動（Feature Flag 有効化込み）
     await gotoMonthlyRecordsPage(page);
   });
 
   test.afterEach(async ({ page }, testInfo) => {
-    await attachOnFailure(page, testInfo, consoleLogger, errorCollector);
+    await attachOnFailure(page, testInfo, consoleLogger, errorCollector, requestLogger);
   });
 
   test('@ci-smoke monthly summary page renders', async ({ page }) => {
