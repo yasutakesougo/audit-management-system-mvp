@@ -83,6 +83,19 @@ curl -s -I http://127.0.0.1:${E2E_PORT:-5173} | head -3
 
 ---
 
+## MUI Tabs 安定化パターン（勝ちパターン）
+
+**背景：** MUI Tabs は roving tabindex + focus 管理を使うため、keyboard navigation (`ArrowRight`/`Left` + `focus()`) は CI で不安定。
+
+**推奨アプローチ：**
+- タブ切り替えは **`click()`** を使用（keyboard は避ける）
+- `aria-selected` チェックは `.catch(() => {})` でオプション化
+- **panel visibility** を strict 指標に採用（例：`detailRecordsTable`, `summaryTable`）
+
+**実装例：** [monthly.summary-smoke.spec.ts](../tests/e2e/monthly.summary-smoke.spec.ts) の tab navigation test 参照
+
+---
+
 ## 参考資料
 
 - [playwright.smoke.config.ts](../playwright.smoke.config.ts) - webServer 設定の詳細
