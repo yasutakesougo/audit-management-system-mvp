@@ -185,6 +185,7 @@ export const monthlyTestIds = {
   detailMonthSelect: 'monthly-detail-month-select',
   detailKpiRoot: 'monthly-detail-kpi-root',
   detailRecordsTable: 'monthly-detail-records-table',
+  detailEmptyState: 'monthly-detail-empty-state',
   pdfGenerateBtn: 'monthly-pdf-generate-btn',
 } as const;
 
