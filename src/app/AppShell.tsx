@@ -20,6 +20,7 @@ import Typography from '@mui/material/Typography';
 import React, { useContext, useEffect, useMemo, useState } from 'react';
 // Navigation Icons
 import { useMsalContext } from '@/auth/MsalProvider';
+import { useUserAuthz } from '@/auth/useUserAuthz';
 import NavLinkPrefetch from '@/components/NavLinkPrefetch';
 import { useFeatureFlags } from '@/config/featureFlags';
 import { setCurrentUserRole, useAuthStore } from '@/features/auth/store';
@@ -63,6 +64,7 @@ const AppShell: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { mode, toggle } = useContext(ColorModeContext);
   const dashboardPath = useDashboardPath();
   const currentRole = useAuthStore((s) => s.currentUserRole);
+  const { isAdmin, ready: authzReady } = useUserAuthz();
 
   useEffect(() => {
     if (SKIP_LOGIN && location.pathname === '/login') {
@@ -139,14 +141,14 @@ const AppShell: React.FC<{ children: React.ReactNode }> = ({ children }) => {
         prefetchKey: PREFETCH_KEYS.dailyMenu,
         testId: TESTIDS.nav.daily,
       },
-      {
+      ...(isAdmin && authzReady ? [{
         label: '自己点検',
         to: '/checklist',
-        isActive: (pathname) => pathname.startsWith('/checklist'),
+        isActive: (pathname: string) => pathname.startsWith('/checklist'),
         icon: ChecklistRoundedIcon,
         prefetchKey: PREFETCH_KEYS.checklist,
         testId: TESTIDS.nav.checklist,
-      },
+      }] : []),
       {
         label: '監査ログ',
         to: '/audit',
@@ -202,7 +204,7 @@ const AppShell: React.FC<{ children: React.ReactNode }> = ({ children }) => {
     }
 
     return items;
-  }, [dashboardPath, currentRole, schedules, complianceForm]);
+  }, [dashboardPath, currentRole, schedules, complianceForm, isAdmin, authzReady]);
 
   return (
     <RouteHydrationListener>

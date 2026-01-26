@@ -1,4 +1,5 @@
 import ProtectedRoute from '@/app/ProtectedRoute';
+import AdminGate from '@/components/AdminGate';
 import { useFeatureFlags } from '@/config/featureFlags';
 import { nurseRoutes } from '@/features/nurse/routes/NurseRoutes';
 import { LegacyDayRedirect, LegacyMonthRedirect } from '@/features/schedule/legacyRedirects';
@@ -379,17 +380,19 @@ const SuspendedRecordList: React.FC = () => (
 );
 
 const SuspendedChecklistPage: React.FC = () => (
-  <RouteHydrationErrorBoundary>
-    <React.Suspense
-      fallback={(
-        <div className="p-4 text-sm text-slate-600" role="status">
-          自己点検ページを読み込んでいます…
-        </div>
-      )}
-    >
-      <ChecklistPage />
-    </React.Suspense>
-  </RouteHydrationErrorBoundary>
+  <AdminGate>
+    <RouteHydrationErrorBoundary>
+      <React.Suspense
+        fallback={(
+          <div className="p-4 text-sm text-slate-600" role="status">
+            自己点検ページを読み込んでいます…
+          </div>
+        )}
+      >
+        <ChecklistPage />
+      </React.Suspense>
+    </RouteHydrationErrorBoundary>
+  </AdminGate>
 );
 
 const SuspendedAuditPanel: React.FC = () => (

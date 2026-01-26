@@ -8,6 +8,7 @@ type UserAuthz = {
   isReception: boolean;
   isAdmin: boolean;
   ready: boolean;
+  reason?: 'missing-admin-group-id' | 'demo-default-full-access';
 };
 
 const MEMBER_OF_CACHE_TTL_MS = 10 * 60 * 1000; // 10 minutes
@@ -97,6 +98,29 @@ export const useUserAuthz = (): UserAuthz => {
 
   const value = useMemo(() => {
     const ids = groupIds ?? [];
+    const isDemoOrDev = import.meta.env.DEV || import.meta.env.VITE_DEMO_MODE === '1';
+    
+    // Fail-closed for admin group: if not configured in PROD, deny access
+    if (!adminGroupId && !isDemoOrDev) {
+      console.warn('[useUserAuthz] CRITICAL: Admin group ID is not configured in PROD mode. All users will be denied admin access.');
+      return {
+        isReception: false,
+        isAdmin: false,
+        ready: true,
+        reason: 'missing-admin-group-id',
+      } satisfies UserAuthz;
+    }
+
+    // DEMO-only: grant full access if group ID is not set (convenience mode)
+    if (!adminGroupId && isDemoOrDev) {
+      return {
+        isReception: true,
+        isAdmin: true,
+        ready: true,
+        reason: 'demo-default-full-access',
+      } satisfies UserAuthz;
+    }
+
     const hasGroupConfig = Boolean(receptionGroupId) || Boolean(adminGroupId);
 
     // Default-open policy: if no group IDs are configured, do not block edit flows.
