@@ -1,9 +1,19 @@
 import { test, expect } from '@playwright/test';
-import { attachOnFailure } from './_helpers/diagArtifacts';
+import { attachOnFailure, ConsoleLogger, PageErrorCollector, setupConsoleAndErrorCapture } from './_helpers/diagArtifacts';
 
 test.describe('Diagnostics Health - run & save', () => {
+  let consoleLogger: ConsoleLogger;
+  let errorCollector: PageErrorCollector;
+
+  test.beforeEach(async ({ page }) => {
+    // Initialize capture
+    consoleLogger = new ConsoleLogger();
+    errorCollector = new PageErrorCollector();
+    await setupConsoleAndErrorCapture(page, consoleLogger, errorCollector);
+  });
+
   test.afterEach(async ({ page }, testInfo) => {
-    await attachOnFailure(page, testInfo);
+    await attachOnFailure(page, testInfo, consoleLogger, errorCollector);
   });
 
   test('診断実行 → SharePoint 保存成功', async ({ page }) => {
