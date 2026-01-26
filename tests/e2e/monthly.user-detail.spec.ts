@@ -94,4 +94,28 @@ test.describe('Monthly Records - User Detail (minimal smoke)', () => {
     await page.waitForTimeout(50); // layout settle
     await expect(table).toBeVisible();
   });
+
+  test('smoke: keyboard navigation (user select)', async ({ page }) => {
+    const userSelect = page.getByTestId(monthlyTestIds.detailUserSelect);
+    const table = page.getByTestId(monthlyTestIds.detailRecordsTable);
+
+    // MUI Select の実divをクリック（focusを得る）
+    await userSelect.scrollIntoViewIfNeeded();
+    const selectDiv = userSelect.locator('div[role="combobox"]');
+    await selectDiv.click();
+
+    // listbox が出る（MUI Select）
+    const listbox = page.getByRole('listbox');
+    await expect(listbox).toBeVisible();
+
+    // pick next option & commit
+    await page.keyboard.press('ArrowDown');
+    await page.keyboard.press('Enter');
+
+    // close（念のため）
+    await expect(listbox).toBeHidden({ timeout: 5_000 }).catch(() => {});
+
+    // result still reachable
+    await expect(table).toBeVisible();
+  });
 });
