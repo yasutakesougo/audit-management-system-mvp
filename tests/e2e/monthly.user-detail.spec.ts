@@ -60,4 +60,24 @@ test.describe('Monthly Records - User Detail (minimal smoke)', () => {
   test('smoke: KPI display', async ({ page }) => {
     await expect(page.getByTestId(monthlyTestIds.detailKpiRoot)).toBeVisible();
   });
+
+  test('smoke: navigation from summary', async ({ page }) => {
+    await switchMonthlyTab(page, 'summary');
+
+    const summaryTable = page.getByTestId(monthlyTestIds.summaryTable);
+    await expect(summaryTable).toBeVisible();
+
+    const firstRow = summaryTable.locator('tbody tr').first();
+    await expect(firstRow).toBeVisible({ timeout: 10_000 });
+
+    const detailBtn = firstRow.getByRole('button', { name: /詳細|表示|開く/ });
+    await expect(detailBtn).toBeVisible();
+    await detailBtn.click();
+
+    await expect(page).toHaveURL(/tab=user-detail/);
+    await expect(page).toHaveURL(/user=/);
+    await expect(page).toHaveURL(/month=/);
+
+    await expect(page.getByTestId(monthlyTestIds.detailRecordsTable)).toBeVisible();
+  });
 });
