@@ -367,6 +367,7 @@ export const TESTIDS = {
   'monthly-detail-user-select': 'monthly-detail-user-select',
   'monthly-detail-month-select': 'monthly-detail-month-select',
   'monthly-detail-records-table': 'monthly-detail-records-table',
+  'monthly-detail-empty-state': 'monthly-detail-empty-state',
   'monthly-pdf-generate-btn': 'monthly-pdf-generate-btn',
 
   // Mobile Agenda View

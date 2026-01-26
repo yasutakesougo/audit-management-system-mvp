@@ -1,5 +1,23 @@
+import { readFileSync } from 'node:fs';
+import { resolve } from 'node:path';
 import { expect, Page } from '@playwright/test';
 import { setupPlaywrightEnv } from './setupPlaywrightEnv';
+
+/**
+ * Fixture ファイルのパス定義
+ */
+const MONTHLY_FIXTURE_PATH = resolve(
+  process.cwd(),
+  'tests/e2e/_fixtures/monthly.records.dev.v1.json'
+);
+
+/**
+ * E2E Seed データ型定義
+ */
+interface E2ESeedWindow extends Window {
+  __E2E_SEED__?: string;
+  __E2E_FIXTURE_MONTHLY_RECORDS__?: unknown;
+}
 
 /**
  * 月次記録機能のFeature Flagを有効化
@@ -45,10 +63,26 @@ export async function disableMonthlyRecordsFlag(page: Page): Promise<void> {
  * @param page Playwright page object
  * @param opts.path カスタムパス（デフォルト: '/records/monthly'）。クエリパラメータも含められる
  * @param opts.debug ログを出力するか（デフォルト: false）
+ * @param opts.seed E2E用デモシード設定
  */
-export async function gotoMonthlyRecordsPage(page: Page, opts?: { path?: string; debug?: boolean }): Promise<void> {
+export async function gotoMonthlyRecordsPage(
+  page: Page,
+  opts?: { path?: string; debug?: boolean; seed?: { monthlyRecords?: boolean } }
+): Promise<void> {
   const path = opts?.path ?? '/records/monthly';
   const debug = opts?.debug ?? false;
+  const seedEnabled = opts?.seed?.monthlyRecords ?? false;
+
+  // ===== Seed 注入（E2E限定） =====
+  if (seedEnabled) {
+    const seedJson = JSON.parse(readFileSync(MONTHLY_FIXTURE_PATH, 'utf-8'));
+
+    await page.addInitScript((data) => {
+      const w = window as E2ESeedWindow;
+      w.__E2E_SEED__ = 'monthly.records.dev.v1';
+      w.__E2E_FIXTURE_MONTHLY_RECORDS__ = data;
+    }, seedJson);
+  }
 
   await setupPlaywrightEnv(page, {
     envOverrides: {
