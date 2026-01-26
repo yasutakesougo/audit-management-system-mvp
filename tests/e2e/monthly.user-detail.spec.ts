@@ -118,4 +118,19 @@ test.describe('Monthly Records - User Detail (minimal smoke)', () => {
     // result still reachable
     await expect(table).toBeVisible();
   });
+
+  test('@ci-smoke empty state', async ({ page }) => {
+    // Setup with demo seed
+    await gotoMonthlyRecordsPage(page, { seed: { monthlyRecords: true } });
+    await switchMonthlyTab(page, 'detail');
+
+    // Navigate to non-existent user
+    await page.goto('/records/monthly?tab=user-detail&user=NONEXISTENT&month=2025-11', {
+      waitUntil: 'domcontentloaded',
+    });
+
+    // Validate empty state is visible
+    await expect(page.getByTestId(monthlyTestIds.detailEmptyState)).toBeVisible();
+    await expect(page.getByText('データが見つかりませんでした')).toBeVisible();
+  });
 });
