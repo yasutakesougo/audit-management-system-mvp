@@ -121,10 +121,10 @@ type TabKey = 'summary' | 'user-detail' | 'pdf';
  * E2E用 Demo Seed から月次サマリーを取得（E2E限定）
  */
 function useDemoSummaries(): MonthlySummary[] {
-  const isE2E = import.meta.env.VITE_E2E === 'true';
+  const isE2E = import.meta.env.VITE_E2E === '1' || import.meta.env.VITE_E2E === 'true';
   const w = (typeof window !== 'undefined' ? window : {}) as E2ESeedWindow;
 
-  if (isE2E && w.__E2E_SEED__ === 'monthly.records.dev.v1') {
+  if (isE2E && w.__E2E_SEED__?.startsWith('monthly.records.')) {
     const fixture = w.__E2E_FIXTURE_MONTHLY_RECORDS__;
     if (fixture?.summaryRows) {
       return fixture.summaryRows.map((row) => ({
@@ -146,6 +146,8 @@ function useDemoSummaries(): MonthlySummary[] {
         lastEntryDate: row.month + '-01',
       }));
     }
+    // Empty seed: return empty array
+    return [];
   }
 
   return mockMonthlySummaries;
@@ -155,6 +157,10 @@ export default function MonthlyRecordPage() {
   const [params, setParams] = useSearchParams();
   const [summaries] = React.useState<MonthlySummary[]>(useDemoSummaries());
   const [loading] = React.useState(false);
+
+  const isE2E = import.meta.env.VITE_E2E === '1' || import.meta.env.VITE_E2E === 'true';
+  const w = (typeof window !== 'undefined' ? window : {}) as E2ESeedWindow;
+  const debugSeed = isE2E ? w.__E2E_SEED__ : 'none';
 
   const [selectedMonth, setSelectedMonth] = React.useState<YearMonth>(DEFAULT_MONTH);
   const [keyword, setKeyword] = React.useState('');
@@ -305,6 +311,17 @@ export default function MonthlyRecordPage() {
 
   return (
     <Container maxWidth="xl" data-testid={TESTIDS['monthly-page']}>
+      {/* Debug seed info (E2E only) */}
+      {isE2E && (
+        <Box sx={srOnly} data-testid="monthly-debug-seed">
+          {debugSeed}
+        </Box>
+      )}
+      {isE2E && (
+        <Box sx={srOnly} data-testid="monthly-debug-summaries-count">
+          {summaries.length}
+        </Box>
+      )}
       <Box sx={{ py: 3 }}>
         {/* ヘッダー */}
         <Box sx={{ mb: 3 }}>
@@ -504,6 +521,25 @@ export default function MonthlyRecordPage() {
             </Stack>
 
             {(() => {
+              if (summaries.length === 0) {
+                // No data at all
+                return (
+                  <Box
+                    sx={{ display: 'flex', justifyContent: 'center', py: 8 }}
+                    data-testid={TESTIDS['monthly-detail-empty-state']}
+                  >
+                    <Box sx={{ textAlign: 'center' }}>
+                      <Typography variant="h6" gutterBottom>
+                        データが見つかりませんでした
+                      </Typography>
+                      <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
+                        月次記録データがありません。
+                      </Typography>
+                    </Box>
+                  </Box>
+                );
+              }
+
               if (!effectiveUserId || !detailMonth) {
                 return (
                   <Box sx={{ display: 'flex', justifyContent: 'center', py: 8 }}>

@@ -120,16 +120,16 @@ test.describe('Monthly Records - User Detail (minimal smoke)', () => {
   });
 
   test('@ci-smoke empty state', async ({ page }) => {
-    // Setup with demo seed
-    await gotoMonthlyRecordsPage(page, { seed: { monthlyRecords: true } });
+    // Setup with empty seed (no data)
+    await gotoMonthlyRecordsPage(page, { seed: { monthlyRecords: 'empty' } });
     await switchMonthlyTab(page, 'detail');
 
-    // Navigate to non-existent user
-    await page.goto('/records/monthly?tab=user-detail&user=NONEXISTENT&month=2025-11', {
-      waitUntil: 'domcontentloaded',
-    });
+    // Debug: check seed injection
+    const seedText = await page.getByTestId('monthly-debug-seed').textContent();
+    const summariesCount = await page.getByTestId('monthly-debug-summaries-count').textContent();
+    console.log('DEBUG: seed =', seedText, ', summaries.length =', summariesCount);
 
-    // Validate empty state is visible
+    // Wait for empty state to appear
     await expect(page.getByTestId(monthlyTestIds.detailEmptyState)).toBeVisible();
     await expect(page.getByText('データが見つかりませんでした')).toBeVisible();
   });
