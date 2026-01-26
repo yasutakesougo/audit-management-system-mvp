@@ -56,4 +56,8 @@ test.describe('Monthly Records - User Detail (minimal smoke)', () => {
     const rows = await table.getByRole('row').count();
     expect(rows).toBeGreaterThan(1); // header + at least one data row
   });
+
+  test('smoke: KPI display', async ({ page }) => {
+    await expect(page.getByTestId(monthlyTestIds.detailKpiRoot)).toBeVisible();
+  });
 });

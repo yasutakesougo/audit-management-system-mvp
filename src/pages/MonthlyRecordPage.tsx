@@ -490,7 +490,9 @@ export default function MonthlyRecordPage() {
               return (
                 <Stack spacing={3}>
                   {/* KPIカード表示 */}
-                  <UserKpiCards summary={detailSummary} avgCompletionRate={stats.avgCompletionRate} />
+                  <Box data-testid={TESTIDS['monthly-detail-kpi-root']}>
+                    <UserKpiCards summary={detailSummary} avgCompletionRate={stats.avgCompletionRate} />
+                  </Box>
 
                   {/* プログレスチャート表示 */}
                   <UserProgressChart summary={detailSummary} />
