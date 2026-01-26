@@ -115,27 +115,58 @@ gh run download <RUN_ID> -D /tmp/gh-artifacts
 ls -R /tmp/gh-artifacts
 ```
 
+
 ### 3. 含まれるファイル
 
+#### 🔴 最優先（まずこれを見る）
+
+- **failure.pageerror.log**  
+  → ブラウザで発生した JavaScript エラー（原因の当たりが一番つく）
+- **failure.console.log**  
+  → ブラウザコンソール出力（リングバッファ max 100 件）
+
+#### 📊 補助情報
+
 - **failure.png**  
-  → フルページスクリーンショット（最優先で確認）
+  → フルページスクリーンショット（UI 状態確認）
 - **failure.url.txt**  
   → 失敗時の URL（想定ルートか確認）
 - **failure.html**  
   → DOM スナップショット（要素未描画・条件分岐確認）
 
-### 4. 想定される即時原因
 
-- MUI popup / tab / portal 未描画
-- 権限・feature flag 不一致
-- 非同期待ち不足（attach はあるが visible でない）
+### 4. 即時原因の判定フロー（console/error から）
 
-### 実装例
+**pageerror.log に内容がある場合:**
+- JavaScript エラーが最大の犯人
+  - `Cannot read property ...` → selector/locator ズレ
+  - `fetch failed` → API 通信エラー
+  - `MUI portal error` → component lifecycle 問題
 
-- [tests/e2e/_helpers/diagArtifacts.ts](../tests/e2e/_helpers/diagArtifacts.ts)
-- 適用 spec:
-  - [monthly.summary-smoke.spec.ts](../tests/e2e/monthly.summary-smoke.spec.ts)
-  - [diagnostics-health-save.smoke.spec.ts](../tests/e2e/diagnostics-health-save.smoke.spec.ts)
+**console.log に WARNING/ERROR がある場合:**
+- React warning → prop/hook/dependency 問題
+- Network error → API/timeout 問題
+- Feature flag → VITE_FEATURE_* チェック
+
+**console/pageerror が空の場合:**
+- MUI popup / tab / portal 未描画（role 判定がズレた）
+- 非同期待ち不足（timeout が足りない）
+- → 次に `failure.png` / `failure.html` を確認
+
+
+### 実装例（段階的進化）
+
+**PR #205** - Screenshot / URL / DOM 自動添付
+- [diagArtifacts.ts](../tests/e2e/_helpers/diagArtifacts.ts) v1
+
+**PR #207** - Console / PageError ログ自動添付 ✨
+- [diagArtifacts.ts](../tests/e2e/_helpers/diagArtifacts.ts) v2 (ConsoleLogger / PageErrorCollector)
+- リングバッファ: max 100 console messages
+- PageError: すべての page.on('pageerror') イベント
+
+**適用 spec:**
+- [monthly.summary-smoke.spec.ts](../tests/e2e/monthly.summary-smoke.spec.ts)
+- [diagnostics-health-save.smoke.spec.ts](../tests/e2e/diagnostics-health-save.smoke.spec.ts)
 
 **原則：再実行する前に artifacts を読む**
 
