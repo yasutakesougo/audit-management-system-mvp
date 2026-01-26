@@ -122,6 +122,8 @@ ls -R /tmp/gh-artifacts
 
 - **failure.pageerror.log**  
   → ブラウザで発生した JavaScript エラー（原因の当たりが一番つく）
+- **failure.request.log**  
+  → `requestfailed` のリングバッファ（max 50）。method / url / status / resourceType / failureText を記録
 - **failure.console.log**  
   → ブラウザコンソール出力（リングバッファ max 100 件）
 
@@ -135,7 +137,7 @@ ls -R /tmp/gh-artifacts
   → DOM スナップショット（要素未描画・条件分岐確認）
 
 
-### 4. 即時原因の判定フロー（console/error から）
+### 4. 即時原因の判定フロー（error / request / console）
 
 **pageerror.log に内容がある場合:**
 - JavaScript エラーが最大の犯人
@@ -143,12 +145,18 @@ ls -R /tmp/gh-artifacts
   - `fetch failed` → API 通信エラー
   - `MUI portal error` → component lifecycle 問題
 
+**request.log に内容がある場合:**
+- `403` / `blocked` → 権限 / CSP / トークン
+- `timeout` → wait 不足 / 並列実行 / 環境差
+- `net::ERR_*` → ネットワーク / Proxy / DNS
+- resourceType の目安: xhr/fetch=API、script=CSP/デプロイ差分、document=認証/リダイレクト
+
 **console.log に WARNING/ERROR がある場合:**
 - React warning → prop/hook/dependency 問題
 - Network error → API/timeout 問題
 - Feature flag → VITE_FEATURE_* チェック
 
-**console/pageerror が空の場合:**
+**pageerror/console/request が空の場合:**
 - MUI popup / tab / portal 未描画（role 判定がズレた）
 - 非同期待ち不足（timeout が足りない）
 - → 次に `failure.png` / `failure.html` を確認
@@ -163,6 +171,11 @@ ls -R /tmp/gh-artifacts
 - [diagArtifacts.ts](../tests/e2e/_helpers/diagArtifacts.ts) v2 (ConsoleLogger / PageErrorCollector)
 - リングバッファ: max 100 console messages
 - PageError: すべての page.on('pageerror') イベント
+
+**PR #209** - Request failed ログ自動添付 ✨
+- [diagArtifacts.ts](../tests/e2e/_helpers/diagArtifacts.ts) v3 (RequestLogger)
+- リングバッファ: max 50 requestfailed
+- 記録: method / url / status / resourceType / failureText
 
 **適用 spec:**
 - [monthly.summary-smoke.spec.ts](../tests/e2e/monthly.summary-smoke.spec.ts)
