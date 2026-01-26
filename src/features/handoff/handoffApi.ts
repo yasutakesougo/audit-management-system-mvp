@@ -203,7 +203,6 @@ class HandoffApi {
       }
 
       // 🔥 動的フィールド取得：テナント差分に完全対応
-      // @ts-expect-error - getListFieldInternalNames exists at runtime but type may be truncated in display
       const existingFields = await this.sp.getListFieldInternalNames(handoffConfig.listTitle);
       const selectArray = buildHandoffSelectFields(Array.from(existingFields));
       const selectFields = selectArray.join(',');
@@ -307,7 +306,6 @@ class HandoffApi {
       });
 
       // 更新後のデータを取得
-      // @ts-expect-error - getListFieldInternalNames exists at runtime but type may be truncated in display
       const existingFields = await this.sp.getListFieldInternalNames(handoffConfig.listTitle);
       const selectArray = buildHandoffSelectFields(Array.from(existingFields));
       const selectFields = selectArray.join(',');
@@ -403,7 +401,6 @@ class HandoffApi {
         filterQuery += ` and TimeBand eq '${timeFilter}'`;
       }
 
-      // @ts-expect-error - getListFieldInternalNames exists at runtime but type may be truncated in display
       const existingFields = await this.sp.getListFieldInternalNames(handoffConfig.listTitle);
       const selectArray = buildHandoffSelectFields(Array.from(existingFields));
       const selectFields = selectArray.join(',');
@@ -431,7 +428,6 @@ class HandoffApi {
   ): Promise<HandoffRecord[]> {
     try {
       const filterQuery = `MeetingSessionKey eq '${meetingSessionKey}'`;
-      // @ts-expect-error - getListFieldInternalNames exists at runtime but type may be truncated in display
       const existingFields = await this.sp.getListFieldInternalNames(handoffConfig.listTitle);
       const selectArray = buildHandoffSelectFields(Array.from(existingFields));
       const selectFields = selectArray.join(',');

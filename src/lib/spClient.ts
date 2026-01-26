@@ -992,6 +992,11 @@ export function createSpClient(
     return map;
   };
 
+
+  const getListFieldInternalNames = async (listTitle: string): Promise<Set<string>> => {
+    const existingFields = await fetchExistingFields(listTitle);
+    return new Set(existingFields.keys());
+  };
   const addFieldToList = async (listTitle: string, field: SpFieldDef) => {
     const encoded = encodeURIComponent(listTitle);
     const schema = buildFieldSchema(field);
@@ -1209,6 +1214,8 @@ export function createSpClient(
     batch,
     postBatch,
     ensureListExists,
+    tryGetListMetadata,
+    getListFieldInternalNames,
   };
 }
 
