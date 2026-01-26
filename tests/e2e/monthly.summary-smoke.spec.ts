@@ -68,17 +68,16 @@ test.describe('Monthly Records - Summary Smoke Tests', () => {
     await monthSelect.scrollIntoViewIfNeeded();
     await monthSelect.click({ force: true });
 
-    // 選択肢が表示されることを確認（listbox または menu のいずれか）
-    const popup = page.locator('[role="listbox"], [role="menu"]');
-    await expect(popup).toBeVisible({ timeout: 10_000 });
+    // 選択肢が表示されることを確認
+    await expect(page.locator('[role="listbox"]')).toBeVisible();
 
-    // 現在月以外を選択（例：前月）- option または menuitem に対応
-    const firstOption = page.locator('[role="option"], [role="menuitem"]').first();
+    // 現在月以外を選択（例：前月）
+    const firstOption = page.getByRole('option').first();
     await firstOption.scrollIntoViewIfNeeded();
     await firstOption.click({ force: true });
 
     // テーブルデータが更新されることを確認
-    await page.waitForTimeout(500);
+    await page.waitForTimeout(300);
     const table = page.getByTestId(monthlyTestIds.summaryTable);
     await expect(table).toBeVisible();
   });
@@ -90,16 +89,15 @@ test.describe('Monthly Records - Summary Smoke Tests', () => {
     await rateFilter.scrollIntoViewIfNeeded();
     await rateFilter.click({ force: true });
 
-    // フィルター選択肢確認（listbox または menu のいずれか）
-    const popup = page.locator('[role="listbox"], [role="menu"]');
-    await expect(popup).toBeVisible({ timeout: 10_000 });
+    // フィルター選択肢確認
+    await expect(page.locator('[role="listbox"]')).toBeVisible();
 
-    // 「80%以上」などのフィルターを選択（option または menuitem に対応）
-    const firstOption = popup.locator('[role="option"], [role="menuitem"]').first();
-    if (await firstOption.count() > 0) {
-      await firstOption.scrollIntoViewIfNeeded();
-      await firstOption.click({ force: true });
-      await page.waitForTimeout(500);
+    // 「80%以上」などのフィルターを選択
+    const highRateOption = page.getByRole('option', { name: /80%以上|高完了率/ });
+    if (await highRateOption.count() > 0) {
+      await highRateOption.scrollIntoViewIfNeeded();
+      await highRateOption.click({ force: true });
+      await page.waitForTimeout(300);
     }
 
     // テーブルが更新されることを確認
