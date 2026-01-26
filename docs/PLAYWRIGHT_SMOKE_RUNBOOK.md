@@ -96,6 +96,51 @@ curl -s -I http://127.0.0.1:${E2E_PORT:-5173} | head -3
 
 ---
 
+## 失敗時アーティファクト回収（Smoke Tests）
+
+CI の smoke tests が失敗した場合、**URL / DOM / Screenshot が自動で添付**されます。
+再現環境を作らずに、まず以下を確認してください。
+
+### 1. 失敗した Run を確認
+
+```bash
+gh run list --limit 10
+gh run view <RUN_ID> --log-failed
+```
+
+### 2. 添付アーティファクトを取得
+
+```bash
+gh run download <RUN_ID> -D /tmp/gh-artifacts
+ls -R /tmp/gh-artifacts
+```
+
+### 3. 含まれるファイル
+
+- **failure.png**  
+  → フルページスクリーンショット（最優先で確認）
+- **failure.url.txt**  
+  → 失敗時の URL（想定ルートか確認）
+- **failure.html**  
+  → DOM スナップショット（要素未描画・条件分岐確認）
+
+### 4. 想定される即時原因
+
+- MUI popup / tab / portal 未描画
+- 権限・feature flag 不一致
+- 非同期待ち不足（attach はあるが visible でない）
+
+### 実装例
+
+- [tests/e2e/_helpers/diagArtifacts.ts](../tests/e2e/_helpers/diagArtifacts.ts)
+- 適用 spec:
+  - [monthly.summary-smoke.spec.ts](../tests/e2e/monthly.summary-smoke.spec.ts)
+  - [diagnostics-health-save.smoke.spec.ts](../tests/e2e/diagnostics-health-save.smoke.spec.ts)
+
+**原則：再実行する前に artifacts を読む**
+
+---
+
 ## 参考資料
 
 - [playwright.smoke.config.ts](../playwright.smoke.config.ts) - webServer 設定の詳細
