@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { gotoMonthlyRecordsPage, switchMonthlyTab } from './_helpers/enableMonthly';
+import { gotoMonthlyRecordsPage, switchMonthlyTab, monthlyTestIds } from './_helpers/enableMonthly';
 
 test.describe('Monthly Records - User Detail (minimal smoke)', () => {
   test.beforeEach(async ({ page }) => {
@@ -24,5 +24,20 @@ test.describe('Monthly Records - User Detail (minimal smoke)', () => {
 
     // Lightweight sanity check: tablist exists
     await expect(page.getByRole('tablist')).toBeVisible();
+  });
+
+  test('@ci-smoke empty state', async ({ page }) => {
+    // Setup with demo seed
+    await gotoMonthlyRecordsPage(page, { seed: { monthlyRecords: true } });
+    await switchMonthlyTab(page, 'detail');
+
+    // Navigate to non-existent user
+    await page.goto('/records/monthly?tab=user-detail&user=NONEXISTENT&month=2025-11', {
+      waitUntil: 'domcontentloaded',
+    });
+
+    // Validate empty state is visible
+    await expect(page.getByTestId(monthlyTestIds.detailEmptyState)).toBeVisible();
+    await expect(page.getByText('データが見つかりませんでした')).toBeVisible();
   });
 });

@@ -21,6 +21,22 @@ import { getCurrentYearMonth } from '../features/records/monthly/map';
 import type { MonthlySummary, YearMonth } from '../features/records/monthly/types';
 import { TESTIDS } from '../testids';
 
+/**
+ * E2E Seed データ型定義
+ */
+interface E2ESeedWindow extends Window {
+  __E2E_SEED__?: string;
+  __E2E_FIXTURE_MONTHLY_RECORDS__?: {
+    summaryRows?: Array<{
+      userId: string;
+      userName: string;
+      month: string;
+      total: number;
+      completed: number;
+    }>;
+  };
+}
+
 // モックデータ（後でAPIから取得）
 const mockMonthlySummaries: MonthlySummary[] = [
   {
@@ -95,9 +111,43 @@ const srOnly = {
 
 type TabKey = 'summary' | 'user-detail' | 'pdf';
 
+/**
+ * E2E用 Demo Seed から月次サマリーを取得（E2E限定）
+ */
+function useDemoSummaries(): MonthlySummary[] {
+  const isE2E = import.meta.env.VITE_E2E === 'true';
+  const w = (typeof window !== 'undefined' ? window : {}) as E2ESeedWindow;
+
+  if (isE2E && w.__E2E_SEED__ === 'monthly.records.dev.v1') {
+    const fixture = w.__E2E_FIXTURE_MONTHLY_RECORDS__;
+    if (fixture?.summaryRows) {
+      return fixture.summaryRows.map((row) => ({
+        userId: row.userId,
+        yearMonth: row.month as YearMonth,
+        displayName: row.userName,
+        lastUpdatedUtc: new Date().toISOString(),
+        kpi: {
+          totalDays: 22,
+          plannedRows: 418,
+          completedRows: row.completed ?? 0,
+          inProgressRows: 0,
+          emptyRows: (row.total ?? 0) - (row.completed ?? 0),
+          specialNotes: 0,
+          incidents: 0,
+        },
+        completionRate: row.total ? (row.completed / row.total) * 100 : 0,
+        firstEntryDate: row.month + '-01',
+        lastEntryDate: row.month + '-01',
+      }));
+    }
+  }
+
+  return mockMonthlySummaries;
+}
+
 export default function MonthlyRecordPage() {
   const [params, setParams] = useSearchParams();
-  const [summaries] = React.useState<MonthlySummary[]>(mockMonthlySummaries);
+  const [summaries] = React.useState<MonthlySummary[]>(useDemoSummaries());
   const [loading] = React.useState(false);
 
   const [selectedMonth, setSelectedMonth] = React.useState<YearMonth>(DEFAULT_MONTH);
@@ -369,10 +419,13 @@ export default function MonthlyRecordPage() {
 
               if (!selectedUserSummary) {
                 return (
-                  <Box sx={{ display: 'flex', justifyContent: 'center', py: 8 }}>
+                  <Box
+                    sx={{ display: 'flex', justifyContent: 'center', py: 8 }}
+                    data-testid={TESTIDS['monthly-detail-empty-state']}
+                  >
                     <Box sx={{ textAlign: 'center' }}>
                       <Typography variant="h6" gutterBottom>
-                        利用者が見つかりません
+                        データが見つかりませんでした
                       </Typography>
                       <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
                         選択した利用者 ({selectedUserId}) の {selectedUserMonth} のデータが見つかりませんでした。

@@ -1,0 +1,15 @@
+{
+  "users": [
+    { "userId": "I001", "userName": "山田太郎" }
+  ],
+  "months": ["2025-11"],
+  "summaryRows": [
+    { "userId": "I001", "userName": "山田太郎", "month": "2025-11", "total": 2, "completed": 1 }
+  ],
+  "detailRecords": {
+    "I001": [
+      { "date": "2025-11-01", "rowNo": 1, "situation": "OK", "completed": true },
+      { "date": "2025-11-02", "rowNo": 2, "situation": "", "completed": false }
+    ]
+  }
+}
