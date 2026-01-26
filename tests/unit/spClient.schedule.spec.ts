@@ -12,12 +12,12 @@ const mockWithFieldFallback = vi.hoisted(
     try {
       return await fn();
     } catch (error) {
-      if (mockHandleOptional(error)) {
+      if (mockHandleOptional()) {
         // First retry
         try {
           return await fn();
         } catch (retryError) {
-          if (mockHandleOptional(retryError)) {
+          if (mockHandleOptional()) {
             // Second retry (tier 2)
             return await fn();
           }
