@@ -1,5 +1,6 @@
 import { expect, test } from '@playwright/test';
-import { gotoMonthlyRecordsPage, switchMonthlyTab } from './_helpers/enableMonthly';
+import { gotoMonthlyRecordsPage, monthlyTestIds, switchMonthlyTab } from './_helpers/enableMonthly';
+import { selectFirstMuiOption } from './utils/muiSelect';
 
 test.describe('Monthly Records - User Detail (minimal smoke)', () => {
   test.beforeEach(async ({ page }) => {
@@ -24,5 +25,24 @@ test.describe('Monthly Records - User Detail (minimal smoke)', () => {
 
     // Lightweight sanity check: tablist exists
     await expect(page.getByRole('tablist')).toBeVisible();
+  });
+
+  test('@ci-smoke user-detail renders selects and effective params', async ({ page }) => {
+    await expect(page.getByTestId('monthly-user-detail-mounted')).toBeVisible();
+    const params = page.getByTestId('monthly-user-detail-effective-params');
+    await expect(params).toContainText('user=I001');
+    await expect(params).toContainText('month=2025-11');
+
+    await expect(page.getByTestId(monthlyTestIds.detailUserSelect)).toBeVisible();
+    await expect(page.getByTestId(monthlyTestIds.detailMonthSelect)).toBeVisible();
+    await expect(page.getByTestId(monthlyTestIds.detailRecordsTable)).toBeVisible();
+  });
+
+  test('smoke: month select works', async ({ page }) => {
+    const monthSelect = page.getByTestId(monthlyTestIds.detailMonthSelect);
+
+    await selectFirstMuiOption(page, monthSelect);
+
+    await expect(page.getByTestId(monthlyTestIds.detailRecordsTable)).toBeVisible();
   });
 });
