@@ -396,17 +396,19 @@ const SuspendedChecklistPage: React.FC = () => (
 );
 
 const SuspendedAuditPanel: React.FC = () => (
-  <RouteHydrationErrorBoundary>
-    <React.Suspense
-      fallback={(
-        <div className="p-4 text-sm text-slate-600" role="status">
-          監査ログを読み込んでいます…
-        </div>
-      )}
-    >
-      <AuditPanel />
-    </React.Suspense>
-  </RouteHydrationErrorBoundary>
+  <AdminGate>
+    <RouteHydrationErrorBoundary>
+      <React.Suspense
+        fallback={(
+          <div className="p-4 text-sm text-slate-600" role="status">
+            監査ログを読み込んでいます…
+          </div>
+        )}
+      >
+        <AuditPanel />
+      </React.Suspense>
+    </RouteHydrationErrorBoundary>
+  </AdminGate>
 );
 
 const SuspendedSupportActivityMasterPage: React.FC = () => (

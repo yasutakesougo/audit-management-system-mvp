@@ -1,7 +1,7 @@
 import { test, expect } from '@playwright/test';
 
 /**
- * AdminGate & Checklist Access Control Tests
+ * AdminGate Access Control Tests (Checklist & Audit)
  *
  * ⚠️ IMPORTANT: Vite environment variables (VITE_DEMO_MODE, VITE_SCHEDULE_ADMINS_GROUP_ID)
  * are captured at build/startup time and cannot be changed within test execution.
@@ -19,7 +19,7 @@ import { test, expect } from '@playwright/test';
  *   npx playwright test tests/e2e/checklist-admin-access.smoke.spec.ts --project=smoke
  */
 
-test.describe('Checklist page - Admin access control', () => {
+test.describe('Admin-only pages - Access control', () => {
   // Detect which mode we're running in based on URL response patterns
   // This allows the same spec to report correctly for both scenarios
   
@@ -63,14 +63,43 @@ test.describe('Checklist page - Admin access control', () => {
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const hasNav = appShell || (await page.locator('nav').isVisible().catch(() => false));
 
-    // The key assertion: Checklist nav item visibility depends on admin status
+    // The key assertion: Admin nav items visibility depends on admin status
     const checklistNavItem = page.getByRole('link', { name: /自己点検/i });
-    const navItemVisible = await checklistNavItem.isVisible().catch(() => false);
+    const auditNavItem = page.getByRole('link', { name: /監査ログ/i });
+    
+    const checklistVisible = await checklistNavItem.isVisible().catch(() => false);
+    const auditVisible = await auditNavItem.isVisible().catch(() => false);
 
     // Document the behavior (doesn't assert, just records)
     // In DEMO: visible (admin access)
     // In PROD without admin group: not visible (non-admin, hidden from nav)
-    console.log(`[env-check] App loaded, Checklist nav item visible: ${navItemVisible}`);
+    console.log(`[env-check] Checklist nav visible: ${checklistVisible}, Audit nav visible: ${auditVisible}`);
+  });
+
+  test('should handle /audit access consistently with /checklist', async ({ page }) => {
+    // Verify /audit has the same protection as /checklist
+    await page.goto('/audit', { waitUntil: 'domcontentloaded' });
+
+    const errorHeading = page.getByRole('heading', {
+      name: /アクセス権|設定エラー/i,
+    });
+    const errorVisible = await errorHeading.isVisible().catch(() => false);
+
+    if (errorVisible) {
+      // PROD-like scenario: Verify error message
+      const configError = page.getByText(/管理者グループIDが未設定/i);
+      const accessDenied = page.getByText(/このページは管理者のみ/i);
+      
+      const hasError =
+        (await configError.isVisible().catch(() => false)) ||
+        (await accessDenied.isVisible().catch(() => false));
+      
+      expect(hasError).toBe(true);
+    } else {
+      // DEMO scenario: Should show audit content
+      const auditContent = page.locator('main');
+      await expect(auditContent).toBeVisible();
+    }
   });
 
   test('should not allow direct access to 403 in any mode when not authorized', async ({
