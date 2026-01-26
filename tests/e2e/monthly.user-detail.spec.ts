@@ -80,4 +80,18 @@ test.describe('Monthly Records - User Detail (minimal smoke)', () => {
 
     await expect(page.getByTestId(monthlyTestIds.detailRecordsTable)).toBeVisible();
   });
+
+  test('smoke: responsive layout', async ({ page }) => {
+    const table = page.getByTestId(monthlyTestIds.detailRecordsTable);
+
+    // Mobile
+    await page.setViewportSize({ width: 375, height: 667 });
+    await page.waitForTimeout(50); // layout settle
+    await expect(table).toBeVisible();
+
+    // Desktop
+    await page.setViewportSize({ width: 1920, height: 1080 });
+    await page.waitForTimeout(50); // layout settle
+    await expect(table).toBeVisible();
+  });
 });
