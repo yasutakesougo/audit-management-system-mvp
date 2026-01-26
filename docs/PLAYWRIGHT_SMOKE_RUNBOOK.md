@@ -185,7 +185,128 @@ ls -R /tmp/gh-artifacts
 
 ---
 
+## MUI Select / Menu の勝ちパターン（CI安定版「monthly型」）
+
+**目的**：MUI Select / Menu / Portal を使用するテストで「CI Only Failure」や「listbox timeout」を撲滅する。
+
+**概要**：
+- `tests/e2e/utils/muiSelect.ts` に共通パターンを実装
+- コピペ + 最小調整で横展開可能な「型」として設計
+
+### 必須 4点セット
+
+#### 1. Dual-role locator
+
+```typescript
+const popup = page.locator('[role="listbox"], [role="menu"]');
+```
+
+**理由**：MUI は Select / Menu / Autocomplete で異なる role を使う。両者に対応。
+
+#### 2. Staged wait（attached → visible）
+
+```typescript
+await expect(popup).toBeAttached({ timeout: 15_000 });
+await expect(popup).toBeVisible({ timeout: 15_000 });
+```
+
+**理由**：CI で「DOM はあるが表示遅い」を吸収（Portal rendering の遅延対応）。
+
+#### 3. Keyboard fallback（ArrowDown try/catch）
+
+```typescript
+await trigger.click();
+await trigger.press('ArrowDown').catch(() => {
+  // Portal / focus 問題を回避
+});
+```
+
+**理由**：focus 管理が不確定な場合、ArrowDown で確実に popup を進める。
+
+#### 4. Non-fatal skip（選択肢 0件でも test を fail させない）
+
+```typescript
+if (await options.count() === 0) {
+  console.warn('[mytest] no options; skipping');
+  return false; // 環境差を吸収
+}
+```
+
+**理由**：モックデータ依存で「選択肢 0件」になることがある。non-fatal skip で許容。
+
+### 使用方法
+
+#### A. 最初の option を選択する（最シンプル）
+
+```typescript
+import { selectFirstMuiOption } from './utils/muiSelect';
+
+const monthSelect = page.getByTestId('month-select');
+const selected = await selectFirstMuiOption(page, monthSelect);
+
+if (!selected) {
+  console.warn('[mytest] no options; skipping');
+}
+```
+
+#### B. ラベル条件で option を選択する（正規表現対応）
+
+```typescript
+import { selectMuiOptionByLabel } from './utils/muiSelect';
+
+const rateFilter = page.getByTestId('rate-filter');
+const selected = await selectMuiOptionByLabel(
+  page,
+  rateFilter,
+  /80%以上|90%以上/
+);
+
+if (!selected) {
+  console.warn('[mytest] matching option not found; skipping');
+}
+```
+
+#### C. 低レベル API（popup を自分で操作したい場合）
+
+```typescript
+import { openMuiSelect } from './utils/muiSelect';
+
+const trigger = page.getByTestId('custom-select');
+const popup = await openMuiSelect(page, trigger);
+
+const options = popup.locator('[role="option"]');
+// ここから自由に操作
+await options.nth(2).click();
+```
+
+### 適用済みの spec
+
+- [monthly.summary-smoke.spec.ts](../tests/e2e/monthly.summary-smoke.spec.ts) ✅
+  - `month filter functionality` (line 78)
+  - `completion rate filter` (line 93)
+
+### 横展開対象（優先度順）
+
+**優先度 S（ほぼ同型）**：
+- MUI Select / Menu を直接使用
+- portal / popover あり
+- 例：billing summary filter、schedule org filter など
+
+**優先度 A（軽調整）**：
+- Autocomplete 系（listbox + 入力フィルター）
+- ContextMenu 系（menu item のみ）
+
+### 成功指標
+
+✅ "listbox timeout" / "menu timeout" が出なくなる  
+✅ CI only failure が消える  
+✅ 「あ、monthly型ね」でレビューが終わる  
+✅ rerun 文化が不要になる  
+
+---
+
 ## 参考資料
 
 - [playwright.smoke.config.ts](../playwright.smoke.config.ts) - webServer 設定の詳細
 - [playwright.config.ts](../playwright.config.ts) - ベース設定（デバイス、タイムアウト等）
+- [tests/e2e/utils/muiSelect.ts](../tests/e2e/utils/muiSelect.ts) - 「monthly型」実装

@@ -5,6 +5,7 @@ import {
     triggerReaggregateAndWait
 } from './_helpers/enableMonthly';
 import { attachOnFailure, ConsoleLogger, PageErrorCollector, RequestLogger, setupConsoleAndErrorCapture } from './_helpers/diagArtifacts';
+import { selectFirstMuiOption, selectMuiOptionByLabel } from './utils/muiSelect';
 
 test.describe('Monthly Records - Summary Smoke Tests', () => {
   let consoleLogger: ConsoleLogger;
@@ -78,34 +79,11 @@ test.describe('Monthly Records - Summary Smoke Tests', () => {
   test('@ci-smoke month filter functionality', async ({ page }) => {
     const monthSelect = page.getByTestId(monthlyTestIds.summaryMonthSelect);
 
-    // 月選択ドロップダウンを開く（mobile-safe）
-    await monthSelect.scrollIntoViewIfNeeded();
-    await monthSelect.click({ force: true });
-    await monthSelect.press('ArrowDown').catch(() => undefined);
-
-    // 選択肢が表示されることを確認（MUIのportal差異に対応: listbox/menu両対応）
-    const monthPopup = page.locator('[role="listbox"], [role="menu"]').first();
-    await monthPopup.waitFor({ state: 'attached', timeout: 5_000 }).catch(() => undefined);
-    await monthPopup.waitFor({ state: 'visible', timeout: 15_000 }).catch(() => undefined);
-
-    // 現在月以外を選択（例：前月）
-    let clicked = false;
-    const firstOption = page.getByRole('option').first();
-    if (await firstOption.count() > 0) {
-      await firstOption.scrollIntoViewIfNeeded();
-      await firstOption.click({ force: true });
-      clicked = true;
-    }
-    if (!clicked) {
-      const firstMenuItem = page.getByRole('menuitem').first();
-      if (await firstMenuItem.count() > 0) {
-        await firstMenuItem.scrollIntoViewIfNeeded();
-        await firstMenuItem.click({ force: true });
-        clicked = true;
-      }
-    }
-    if (!clicked) {
-      console.warn('[monthly] month filter options not found; skipping selection step');
+    // 月選択 MUI Select を開く（monthly型）
+    const selected = await selectFirstMuiOption(page, monthSelect, { timeout: 15_000 });
+    
+    if (!selected) {
+      console.warn('[monthly] month filter: no options available; skipping selection');
     }
 
     // テーブルデータが更新されることを確認
@@ -117,35 +95,18 @@ test.describe('Monthly Records - Summary Smoke Tests', () => {
   test('@ci-smoke completion rate filter', async ({ page }) => {
     const rateFilter = page.getByTestId(monthlyTestIds.summaryRateFilter);
 
-    // 完了率フィルターを開く（mobile-safe）
-    await rateFilter.scrollIntoViewIfNeeded();
-    await rateFilter.click({ force: true });
-    await rateFilter.press('ArrowDown').catch(() => undefined);
+    // 完了率フィルター MUI Select を開いて「80%以上」相当を選択（monthly型）
+    const selected = await selectMuiOptionByLabel(
+      page,
+      rateFilter,
+      /80%以上|90%以上|高完了率/,
+      { timeout: 15_000 }
+    );
 
-    // フィルター選択肢確認（MUIのportal差異に対応: listbox/menu両対応）
-    const ratePopup = page.locator('[role="listbox"], [role="menu"]').first();
-    await ratePopup.waitFor({ state: 'attached', timeout: 5_000 }).catch(() => undefined);
-    await ratePopup.waitFor({ state: 'visible', timeout: 15_000 }).catch(() => undefined);
+    if (!selected) {
+      console.warn('[monthly] completion rate filter: no matching option; skipping selection');
+    }
 
-    // 「80%以上」などのフィルターを選択
-    let rateClicked = false;
-    const highRateOption = page.getByRole('option', { name: /80%以上|90%以上|高完了率/ });
-    if (await highRateOption.count() > 0) {
-      await highRateOption.scrollIntoViewIfNeeded();
-      await highRateOption.click({ force: true });
-      rateClicked = true;
-    }
-    if (!rateClicked) {
-      const highRateMenuItem = page.getByRole('menuitem', { name: /80%以上|90%以上|高完了率/ });
-      if (await highRateMenuItem.count() > 0) {
-        await highRateMenuItem.scrollIntoViewIfNeeded();
-        await highRateMenuItem.click({ force: true });
-        rateClicked = true;
-      }
-    }
-    if (!rateClicked) {
-      console.warn('[monthly] rate filter options not found; skipping selection step');
-    }
     await page.waitForTimeout(300);
 
     // テーブルが更新されることを確認
