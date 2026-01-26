@@ -57,6 +57,9 @@ const SupportStepMasterPage = React.lazy(() => import('@/pages/SupportStepMaster
 const IndividualSupportManagementPage = React.lazy(() => import('@/pages/IndividualSupportManagementPage'));
 const UserDetailPage = React.lazy(() => import('@/pages/UserDetailPage'));
 
+// Diagnostics pages
+const HealthPage = React.lazy(() => import('@/pages/HealthPage'));
+
 // Dev/Test pages
 const DailyOpsDevPage = React.lazy(() => import('@/pages/DailyOpsDevPage'));
 const StaffDevHarnessPage = React.lazy(() => import('@/features/staff/dev/StaffDevHarnessPage'));
@@ -319,6 +322,20 @@ const SuspendedHealthObservationPage: React.FC = () => (
   </RouteHydrationErrorBoundary>
 );
 
+const SuspendedHealthPage: React.FC = () => (
+  <RouteHydrationErrorBoundary>
+    <React.Suspense
+      fallback={(
+        <div className="p-4 text-sm text-slate-600" role="status">
+          環境診断を読み込んでいます…
+        </div>
+      )}
+    >
+      <HealthPage />
+    </React.Suspense>
+  </RouteHydrationErrorBoundary>
+);
+
 const SuspendedStaffDashboardPage: React.FC = () => (
   <RouteHydrationErrorBoundary>
     <React.Suspense
@@ -531,6 +548,7 @@ const childRoutes: RouteObject[] = [
   { path: 'admin/templates', element: <SuspendedSupportActivityMasterPage /> },
   { path: 'admin/step-templates', element: <SuspendedSupportStepMasterPage /> },
   { path: 'admin/individual-support', element: <SuspendedIndividualSupportManagementPage /> },
+  { path: 'diagnostics/health', element: <SuspendedHealthPage /> },
   {
     path: 'admin/integrated-resource-calendar',
     element: (

@@ -13,9 +13,10 @@ vi.mock('@/features/schedules/useSchedules', () => ({
       {
         id: 'test-1',
         title: 'テスト予定',
-        start: new Date().toISOString(),
-        end: new Date(Date.now() + 3600000).toISOString(),
+        start: '2026-01-26T10:00:00.000Z',
+        end: '2026-01-26T11:00:00.000Z',
         category: 'User',
+        serviceType: 'HomeVisit',
       },
     ],
     loading: false,
@@ -52,7 +53,15 @@ const renderWeekPage = () =>
   );
 
 describe('WeekPage tabs', () => {
-  // No beforeEach/afterEach needed - vitest.setup.ts handles cleanup
+  // Fix: Stabilize date to prevent UTC/JST mismatch in selectedItems
+  beforeEach(() => {
+    vi.useFakeTimers({ shouldAdvanceTime: true, toFake: ['Date'] });
+    vi.setSystemTime(new Date('2026-01-26T12:00:00.000Z')); // Monday noon UTC
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+  });
 
   it('renders week view by default', async () => {
     renderWeekPage();

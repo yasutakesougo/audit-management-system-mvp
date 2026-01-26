@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "vite",
+    "dev": "vite --host 127.0.0.1 --port 5173",
     "dev:5173": "vite --host 127.0.0.1 --port 5173 --strictPort",
     "dev:e2e": "VITE_MSAL_CLIENT_ID=dummy VITE_MSAL_TENANT_ID=dummy VITE_SP_RESOURCE=https://contoso.sharepoint.com VITE_SP_SITE_RELATIVE=/sites/Audit vite --port=5173 --strictPort",
     "dev:schedules": "VITE_SKIP_LOGIN=1 VITE_FORCE_SHAREPOINT=0 vite --port 5175",
