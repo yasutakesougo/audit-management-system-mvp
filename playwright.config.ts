@@ -116,6 +116,17 @@ export default defineConfig({
     video: isCI ? 'retain-on-failure' : 'off',
     screenshot: 'only-on-failure',
   },
+  // Top-level webServer: ensure chromium runs always boot Vite on 5173
+  webServer: {
+    command: 'npm run dev:5173 -- --mode test --host 127.0.0.1 --port 5173 --strictPort',
+    url: baseURL,
+    reuseExistingServer: !isCI,
+    timeout: 180_000,
+    env: {
+      ...process.env,
+      ...webServerEnvVarsE2E,
+    },
+  },
   projects: [
     {
       name: 'integration:setup',
