@@ -34,10 +34,30 @@ export class PageErrorCollector {
   }
 }
 
+/**
+ * Ring buffer for failed network requests (max 50 entries)
+ */
+export class RequestLogger {
+  private logs: string[] = [];
+  private readonly maxSize = 50;
+
+  add(entry: string) {
+    this.logs.push(entry);
+    if (this.logs.length > this.maxSize) {
+      this.logs.shift();
+    }
+  }
+
+  get content(): string {
+    return this.logs.join('\n');
+  }
+}
+
 export async function setupConsoleAndErrorCapture(
   page: Page,
   consoleLogger: ConsoleLogger,
-  errorCollector: PageErrorCollector
+  errorCollector: PageErrorCollector,
+  requestLogger?: RequestLogger
 ) {
   page.on('console', (msg) => {
     consoleLogger.add(msg.type(), msg.text());
@@ -46,6 +66,17 @@ export async function setupConsoleAndErrorCapture(
   page.on('pageerror', (error) => {
     errorCollector.add(error);
   });
+
+  if (requestLogger) {
+    page.on('requestfailed', (request) => {
+      const failureText = request.failure()?.errorText ?? 'unknown';
+      const resourceType = request.resourceType();
+      const status = request.response()?.status();
+      const statusText = typeof status === 'number' ? String(status) : '-';
+      const line = `${request.method()} ${request.url()} ${statusText} (${resourceType}) – ${failureText}`;
+      requestLogger.add(line);
+    });
+  }
 }
 
 export async function attachUIState(page: Page, testInfo: TestInfo, name = 'ui-state') {
@@ -67,7 +98,8 @@ export async function attachOnFailure(
   page: Page,
   testInfo: TestInfo,
   consoleLogger?: ConsoleLogger,
-  errorCollector?: PageErrorCollector
+  errorCollector?: PageErrorCollector,
+  requestLogger?: RequestLogger
 ) {
   if (testInfo.status !== testInfo.expectedStatus) {
     // screenshot / trace は config で取れてる前提でも、ここで追撃の1枚を確実に残す
@@ -90,6 +122,14 @@ export async function attachOnFailure(
     if (errorCollector && errorCollector.content) {
       await testInfo.attach('failure.pageerror.log', {
         body: Buffer.from(errorCollector.content, 'utf-8'),
+        contentType: 'text/plain',
+      });
+    }
+
+    // Attach request failures if captured
+    if (requestLogger && requestLogger.content) {
+      await testInfo.attach('failure.request.log', {
+        body: Buffer.from(requestLogger.content, 'utf-8'),
         contentType: 'text/plain',
       });
     }
