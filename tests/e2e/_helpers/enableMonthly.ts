@@ -6,9 +6,13 @@ import { setupPlaywrightEnv } from './setupPlaywrightEnv';
 /**
  * Fixture ファイルのパス定義
  */
-const MONTHLY_FIXTURE_PATH = resolve(
+const MONTHLY_FIXTURE_DEV = resolve(
   process.cwd(),
   'tests/e2e/_fixtures/monthly.records.dev.v1.json'
+);
+const MONTHLY_FIXTURE_EMPTY = resolve(
+  process.cwd(),
+  'tests/e2e/_fixtures/monthly.records.empty.v1.json'
 );
 
 /**
@@ -67,21 +71,23 @@ export async function disableMonthlyRecordsFlag(page: Page): Promise<void> {
  */
 export async function gotoMonthlyRecordsPage(
   page: Page,
-  opts?: { path?: string; debug?: boolean; seed?: { monthlyRecords?: boolean } }
+  opts?: { path?: string; debug?: boolean; seed?: { monthlyRecords?: boolean | 'empty' } }
 ): Promise<void> {
   const path = opts?.path ?? '/records/monthly';
   const debug = opts?.debug ?? false;
-  const seedEnabled = opts?.seed?.monthlyRecords ?? false;
+  const seedType = opts?.seed?.monthlyRecords;
 
   // ===== Seed 注入（E2E限定） =====
-  if (seedEnabled) {
-    const seedJson = JSON.parse(readFileSync(MONTHLY_FIXTURE_PATH, 'utf-8'));
+  if (seedType) {
+    const fixturePath = seedType === 'empty' ? MONTHLY_FIXTURE_EMPTY : MONTHLY_FIXTURE_DEV;
+    const seedName = seedType === 'empty' ? 'monthly.records.empty.v1' : 'monthly.records.dev.v1';
+    const seedJson = JSON.parse(readFileSync(fixturePath, 'utf-8'));
 
     await page.addInitScript((data) => {
       const w = window as E2ESeedWindow;
-      w.__E2E_SEED__ = 'monthly.records.dev.v1';
-      w.__E2E_FIXTURE_MONTHLY_RECORDS__ = data;
-    }, seedJson);
+      w.__E2E_SEED__ = data.seedName;
+      w.__E2E_FIXTURE_MONTHLY_RECORDS__ = data.seedJson;
+    }, { seedName, seedJson });
   }
 
   await setupPlaywrightEnv(page, {
