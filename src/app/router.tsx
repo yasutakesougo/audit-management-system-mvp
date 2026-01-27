@@ -53,6 +53,7 @@ const MeetingGuidePage = React.lazy(() => import('@/pages/MeetingGuidePage'));
 const HandoffTimelinePage = React.lazy(() => import('@/pages/HandoffTimelinePage'));
 const IntegratedResourceCalendarPage = React.lazy(() => import('@/pages/IntegratedResourceCalendarPage'));
 const SettingsPage = React.lazy(() => import('@/pages/SettingsPage'));
+const SupportActivityMasterPage = React.lazy(() => import('@/pages/SupportActivityMasterPage'));
 
 const SupportStepMasterPage = React.lazy(() => import('@/pages/SupportStepMasterPage'));
 const IndividualSupportManagementPage = React.lazy(() => import('@/pages/IndividualSupportManagementPage'));
