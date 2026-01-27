@@ -122,28 +122,55 @@ export const acquireSpAccessToken = async (scopes?: string[]): Promise<string> =
     throw new Error(errorMsg);
   }
 
-  console.info('[msal] acquireSpAccessToken start');
-  const instance = getPca();
-  const resolvedScopes = ensureScopes(scopes);
-  const account = await ensureMsalSignedIn(resolvedScopes);
+  // singleflight: 同時多発のトークン取得を抑制
+  if (typeof globalThis === 'object') {
+    const carrier = globalThis as { __SP_TOKEN_PROMISE__?: Promise<string> | null };
+    if (!carrier.__SP_TOKEN_PROMISE__) {
+      carrier.__SP_TOKEN_PROMISE__ = (async () => {
+        console.info('[msal] acquireSpAccessToken start');
+        const instance = getPca();
+        const resolvedScopes = ensureScopes(scopes);
 
-  try {
-    console.info('[msal] acquireTokenSilent attempting...');
-    const result = await instance.acquireTokenSilent({ account, scopes: resolvedScopes });
-    console.info('[msal] acquireTokenSilent success');
-    persistMsalToken(result.accessToken);
-    return result.accessToken;
-  } catch (error) {
-    console.info('[msal] acquireTokenSilent failed, trying popup');
-    const popupClient = toPopupClient(instance);
-    const result = await popupClient.acquireTokenPopup(toPopupRequest(resolvedScopes, account));
-    const token = result.accessToken ?? '';
-    if (!token) {
-      throw error instanceof Error ? error : new Error('MSAL popup did not provide an access token.');
+        const account = ensureActiveAccount(instance);
+        if (!account) {
+          console.warn('[msal] no active account, initiating loginRedirect');
+          await instance.loginRedirect({ scopes: resolvedScopes });
+          throw new Error('[msal] loginRedirect initiated; flow will continue after redirect');
+        }
+
+        try {
+          console.info('[msal] acquireTokenSilent attempting...');
+          const result = await instance.acquireTokenSilent({ account, scopes: resolvedScopes });
+          console.info('[msal] acquireTokenSilent success');
+          persistMsalToken(result.accessToken);
+          return result.accessToken;
+        } catch (error: unknown) {
+          const maybeError = error as { errorCode?: string };
+          const interactionRequired =
+            maybeError?.errorCode === 'interaction_required' ||
+            maybeError?.errorCode === 'consent_required' ||
+            maybeError?.errorCode === 'login_required';
+
+          if (!interactionRequired) {
+            throw error;
+          }
+
+          console.warn('[msal] acquireTokenSilent requires interaction -> redirect');
+          await instance.acquireTokenRedirect({ account, scopes: resolvedScopes });
+          throw new Error('[msal] acquireTokenRedirect initiated; flow will continue after redirect');
+        }
+      })();
     }
-    persistMsalToken(token);
-    return token;
+
+    try {
+      return await carrier.__SP_TOKEN_PROMISE__;
+    } finally {
+      carrier.__SP_TOKEN_PROMISE__ = null;
+    }
   }
+
+  // fallback (should not reach here in browser)
+  throw new Error('[msal] token acquisition unsupported in this runtime');
 };
 
 export const getMsalInstance = (): PublicClientApplication => getPca();

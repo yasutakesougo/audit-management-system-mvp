@@ -1,7 +1,7 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 
 import { getPdcaRepository } from '../repositoryFactory';
-import type { CreatePdcaInput, UpdatePdcaInput } from '../domain/pdcaRepository';
+import type { CreatePdcaInput, DeletePdcaInput, UpdatePdcaInput } from '../domain/pdcaRepository';
 import { icebergPdcaQueryKeys } from './useIcebergPdcaList';
 
 const listKey = (userId?: string | null) => icebergPdcaQueryKeys.list(userId ?? undefined);
@@ -28,6 +28,18 @@ export const useUpdatePdca = (userId?: string | null) => {
 
   return useMutation({
     mutationFn: (input: UpdatePdcaInput) => repo.update(input),
+    onSuccess: async () => {
+      await qc.invalidateQueries({ queryKey: listKey(userId) });
+    },
+  });
+};
+
+export const useDeletePdca = (userId?: string | null) => {
+  const qc = useQueryClient();
+  const repo = getPdcaRepository();
+
+  return useMutation({
+    mutationFn: (input: DeletePdcaInput) => repo.delete(input),
     onSuccess: async () => {
       await qc.invalidateQueries({ queryKey: listKey(userId) });
     },

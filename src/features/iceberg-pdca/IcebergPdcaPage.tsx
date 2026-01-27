@@ -1,13 +1,20 @@
 import * as React from 'react';
 import {
+  Alert,
   Autocomplete,
   Box,
   Button,
   CircularProgress,
+  Dialog,
+  DialogActions,
+  DialogContent,
+  DialogContentText,
+  DialogTitle,
   FormControl,
   InputLabel,
   MenuItem,
   Paper,
+  Snackbar,
   Select,
   Stack,
   TextField,
@@ -18,14 +25,19 @@ import { useSearchParams } from 'react-router-dom';
 import { useFeatureFlag } from '@/config/featureFlags';
 import { useAuthStore } from '@/features/auth/store';
 import { useUsersStore } from '@/features/users/store';
+import { getEnv } from '@/lib/runtimeEnv';
 import { TESTIDS } from '@/testids';
 
 import { IcebergPdcaEmptyState } from './components/IcebergPdcaEmptyState';
 import type { IcebergPdcaEmptyContext } from './components/icebergPdcaEmptyCopy';
-import { useIcebergPdcaList, useCreatePdca, useUpdatePdca } from './queries';
+import { useIcebergPdcaList, useCreatePdca, useUpdatePdca, useDeletePdca } from './queries';
 import type { IcebergPdcaItem, IcebergPdcaPhase } from './types';
 
-export const IcebergPdcaPage: React.FC = () => {
+type IcebergPdcaPageProps = {
+  writeEnabled?: boolean;
+};
+
+export const IcebergPdcaPage: React.FC<IcebergPdcaPageProps> = ({ writeEnabled: writeEnabledProp }) => {
   const role = useAuthStore((s) => s.currentUserRole);
   const icebergPdca = useFeatureFlag('icebergPdca');
   const { data: users = [], status: usersStatus } = useUsersStore();
@@ -81,9 +93,28 @@ export const IcebergPdcaPage: React.FC = () => {
 
   const createMutation = useCreatePdca(selectedUserId);
   const updateMutation = useUpdatePdca(selectedUserId);
+  const deleteMutation = useDeletePdca(selectedUserId);
 
   const isAdmin = role === 'admin';
-  const isMutating = createMutation.isPending || updateMutation.isPending;
+  const writeEnabledRaw = writeEnabledProp ?? getEnv('VITE_WRITE_ENABLED');
+  const writeEnabled = writeEnabledRaw === '1' || writeEnabledRaw === 'true' || writeEnabledRaw === true;
+  const canWrite = isAdmin || (role === 'staff' && writeEnabled);
+  const isMutating =
+    createMutation.isPending || updateMutation.isPending || deleteMutation.isPending;
+
+  const [deleteTarget, setDeleteTarget] = React.useState<IcebergPdcaItem | null>(null);
+  const [snackbar, setSnackbar] = React.useState<string | null>(null);
+
+  const debugEnabled = getEnv('VITE_AUDIT_DEBUG') === '1';
+  if (import.meta.env.DEV && debugEnabled) {
+    console.log('[iceberg-pdca]', {
+      role,
+      isAdmin,
+      writeEnabled,
+      canWrite,
+      selectedUserId,
+    });
+  }
 
   const handleSubmit = async (event: React.FormEvent) => {
     event.preventDefault();
@@ -119,6 +150,15 @@ export const IcebergPdcaPage: React.FC = () => {
     });
   };
 
+  const askDelete = (item: IcebergPdcaItem) => setDeleteTarget(item);
+  const closeDelete = () => setDeleteTarget(null);
+  const handleDelete = async () => {
+    if (!deleteTarget) return;
+    await deleteMutation.mutateAsync({ id: deleteTarget.id });
+    setDeleteTarget(null);
+    setSnackbar('削除しました');
+  };
+
   if (!icebergPdca) {
     return (
       <Box data-testid={TESTIDS['iceberg-pdca-root']} sx={{ py: 2 }}>
@@ -129,8 +169,8 @@ export const IcebergPdcaPage: React.FC = () => {
 
   const context: IcebergPdcaEmptyContext | null = !selectedUserId
     ? 'no-user-selected'
-    : status === 'success' && items.length === 0
-      ? role === 'admin'
+    : status === 'success' && items.length === 0 && !canWrite
+      ? isAdmin
         ? 'no-items-admin'
         : 'no-items-staff'
       : null;
@@ -187,7 +227,7 @@ export const IcebergPdcaPage: React.FC = () => {
         </Box>
       ) : (
         <Box>
-          {isAdmin && selectedUserId && (
+          {canWrite && selectedUserId && (
             <Paper sx={{ p: 2, mb: 2 }} variant="outlined" component="form" onSubmit={handleSubmit}>
               <Stack spacing={1.5}>
                 <Typography variant="subtitle1">
@@ -266,10 +306,26 @@ export const IcebergPdcaPage: React.FC = () => {
                       </Typography>
                     ) : null}
                   </Box>
-                  {isAdmin && (
-                    <Button size="small" variant="outlined" onClick={() => startEdit(item)} disabled={isMutating}>
-                      編集
-                    </Button>
+                  {canWrite && (
+                    <Stack direction="row" spacing={1}>
+                      <Button
+                        size="small"
+                        variant="outlined"
+                        onClick={() => startEdit(item)}
+                        disabled={isMutating}
+                      >
+                        編集
+                      </Button>
+                      <Button
+                        size="small"
+                        color="error"
+                        variant="outlined"
+                        onClick={() => askDelete(item)}
+                        disabled={isMutating}
+                      >
+                        削除
+                      </Button>
+                    </Stack>
                   )}
                 </Stack>
               </Paper>
@@ -280,6 +336,47 @@ export const IcebergPdcaPage: React.FC = () => {
               </Typography>
             )}
           </Stack>
+
+          <Dialog open={Boolean(deleteTarget)} onClose={closeDelete} fullWidth maxWidth="xs">
+            <DialogTitle>この記録を削除しますか？</DialogTitle>
+            <DialogContent>
+              <DialogContentText>削除すると元に戻せません。</DialogContentText>
+              {deleteTarget ? (
+                <Box sx={{ mt: 1.5 }}>
+                  <Typography variant="subtitle2">{deleteTarget.title}</Typography>
+                  {deleteTarget.summary ? (
+                    <Typography variant="body2" sx={{ mt: 0.5, whiteSpace: 'pre-wrap' }}>
+                      {deleteTarget.summary}
+                    </Typography>
+                  ) : null}
+                </Box>
+              ) : null}
+            </DialogContent>
+            <DialogActions>
+              <Button onClick={closeDelete} disabled={deleteMutation.isPending}>
+                キャンセル
+              </Button>
+              <Button
+                color="error"
+                variant="contained"
+                onClick={handleDelete}
+                disabled={!deleteTarget || deleteMutation.isPending}
+              >
+                削除
+              </Button>
+            </DialogActions>
+          </Dialog>
+
+          <Snackbar
+            open={Boolean(snackbar)}
+            autoHideDuration={4000}
+            onClose={() => setSnackbar(null)}
+            anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
+          >
+            <Alert severity="success" onClose={() => setSnackbar(null)} sx={{ width: '100%' }}>
+              {snackbar}
+            </Alert>
+          </Snackbar>
         </Box>
       )}
     </Box>

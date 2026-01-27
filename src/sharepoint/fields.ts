@@ -220,10 +220,10 @@ export const FIELD_MAP_BEHAVIORS = {
 
 export const FIELD_MAP_ICEBERG_PDCA = {
   id: 'Id',
-  userId: 'UserID',
+  userId: 'UserID0',
   title: 'Title',
-  summary: 'Summary',
-  phase: 'Phase',
+  summary: 'Summary0',
+  phase: 'Phase0',
   createdAt: 'Created',
   updatedAt: 'Modified',
 } as const;
