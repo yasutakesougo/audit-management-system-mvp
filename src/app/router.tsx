@@ -52,6 +52,7 @@ const AdminDashboardPage = React.lazy(() =>
 const MeetingGuidePage = React.lazy(() => import('@/pages/MeetingGuidePage'));
 const HandoffTimelinePage = React.lazy(() => import('@/pages/HandoffTimelinePage'));
 const IntegratedResourceCalendarPage = React.lazy(() => import('@/pages/IntegratedResourceCalendarPage'));
+const SettingsPage = React.lazy(() => import('@/pages/SettingsPage'));
 
 const SupportActivityMasterPage = React.lazy(() => import('@/pages/SupportActivityMasterPage'));
 const SupportStepMasterPage = React.lazy(() => import('@/pages/SupportStepMasterPage'));
@@ -411,46 +412,66 @@ const SuspendedAuditPanel: React.FC = () => (
   </AdminGate>
 );
 
-const SuspendedSupportActivityMasterPage: React.FC = () => (
+const SuspendedSettingsPage: React.FC = () => (
   <RouteHydrationErrorBoundary>
     <React.Suspense
       fallback={(
         <div className="p-4 text-sm text-slate-600" role="status">
-          支援活動テンプレート管理を読み込んでいます…
+          設定ページを読み込んでいます…
         </div>
       )}
     >
-      <SupportActivityMasterPage />
+      <SettingsPage />
     </React.Suspense>
   </RouteHydrationErrorBoundary>
+);
+
+const SuspendedSupportActivityMasterPage: React.FC = () => (
+  <AdminGate>
+    <RouteHydrationErrorBoundary>
+      <React.Suspense
+        fallback={(
+          <div className="p-4 text-sm text-slate-600" role="status">
+            支援活動テンプレート管理を読み込んでいます…
+          </div>
+        )}
+      >
+        <SupportActivityMasterPage />
+      </React.Suspense>
+    </RouteHydrationErrorBoundary>
+  </AdminGate>
 );
 
 const SuspendedSupportStepMasterPage: React.FC = () => (
-  <RouteHydrationErrorBoundary>
-    <React.Suspense
-      fallback={(
-        <div className="p-4 text-sm text-slate-600" role="status">
-          支援手順テンプレート管理を読み込んでいます…
-        </div>
-      )}
-    >
-      <SupportStepMasterPage />
-    </React.Suspense>
-  </RouteHydrationErrorBoundary>
+  <AdminGate>
+    <RouteHydrationErrorBoundary>
+      <React.Suspense
+        fallback={(
+          <div className="p-4 text-sm text-slate-600" role="status">
+            支援手順テンプレート管理を読み込んでいます…
+          </div>
+        )}
+      >
+        <SupportStepMasterPage />
+      </React.Suspense>
+    </RouteHydrationErrorBoundary>
+  </AdminGate>
 );
 
 const SuspendedIndividualSupportManagementPage: React.FC = () => (
-  <RouteHydrationErrorBoundary>
-    <React.Suspense
-      fallback={(
-        <div className="p-4 text-sm text-slate-600" role="status">
-          個別支援手順管理を読み込んでいます…
-        </div>
-      )}
-    >
-      <IndividualSupportManagementPage />
-    </React.Suspense>
-  </RouteHydrationErrorBoundary>
+  <AdminGate>
+    <RouteHydrationErrorBoundary>
+      <React.Suspense
+        fallback={(
+          <div className="p-4 text-sm text-slate-600" role="status">
+            個別支援手順管理を読み込んでいます…
+          </div>
+        )}
+      >
+        <IndividualSupportManagementPage />
+      </React.Suspense>
+    </RouteHydrationErrorBoundary>
+  </AdminGate>
 );
 
 const SuspendedUserDetailPage: React.FC = () => (
@@ -550,6 +571,7 @@ const childRoutes: RouteObject[] = [
   { path: 'analysis/iceberg', element: <SuspendedIcebergAnalysisPage /> },
   { path: 'assessment', element: <SuspendedAssessmentDashboardPage /> },
   { path: 'survey/tokusei', element: <SuspendedTokuseiSurveyResultsPage /> },
+  { path: 'settings', element: <SuspendedSettingsPage /> },
   { path: 'admin/templates', element: <SuspendedSupportActivityMasterPage /> },
   { path: 'admin/step-templates', element: <SuspendedSupportStepMasterPage /> },
   { path: 'admin/individual-support', element: <SuspendedIndividualSupportManagementPage /> },
