@@ -130,7 +130,12 @@ function loadRecentKeys(): RecentNavKey[] {
     if (!raw) return [];
     const parsed = JSON.parse(raw);
     if (!Array.isArray(parsed)) return [];
-    return parsed.filter((x): x is RecentNavKey => x && typeof x.to === 'string');
+    return parsed.filter(
+      (x): x is RecentNavKey =>
+        !!x &&
+        typeof x.to === 'string' &&
+        (x.testId === undefined || typeof x.testId === 'string')
+    );
   } catch {
     return [];
   }
