@@ -3,6 +3,7 @@ import { expect, test, vi } from "vitest";
 
 import { routerFutureFlags } from "@/app/routerFuture";
 import { FeatureFlagsProvider, featureFlags } from "@/config/featureFlags";
+import { ToastProvider } from "@/hooks/useToast";
 import { renderWithAppProviders } from "../helpers/renderWithAppProviders";
 
 vi.mock("@/lib/spClient", () => ({
@@ -50,9 +51,11 @@ test("AppShell snapshot", async () => {
   const AppShell = (await import("@/app/AppShell")).default;
   const { container } = renderWithAppProviders(
     <FeatureFlagsProvider value={{ ...featureFlags, schedules: true }}>
-      <AppShell>
-        <div data-testid="snapshot-content">content</div>
-      </AppShell>
+      <ToastProvider>
+        <AppShell>
+          <div data-testid="snapshot-content">content</div>
+        </AppShell>
+      </ToastProvider>
     </FeatureFlagsProvider>,
     { future: routerFutureFlags }
   );
