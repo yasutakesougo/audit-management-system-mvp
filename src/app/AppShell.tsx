@@ -178,12 +178,17 @@ const AppShell: React.FC<{ children: React.ReactNode }> = ({ children }) => {
     }
   }, [navigate, location.pathname]);
   useEffect(() => {
-    if (location.pathname.startsWith('/admin/dashboard')) {
-      setCurrentUserRole('admin');
-    } else if (location.pathname === '/' || location.pathname.startsWith('/dashboard')) {
-      setCurrentUserRole('staff');
+    const nextRole = location.pathname.startsWith('/admin/dashboard') 
+      ? 'admin' 
+      : (location.pathname === '/' || location.pathname.startsWith('/dashboard')) 
+        ? 'staff' 
+        : null;
+    
+    // ✅ 同値ガード: 新しい role が現在値と同じなら更新しない（無限ループ防止）
+    if (nextRole && nextRole !== currentRole) {
+      setCurrentUserRole(nextRole);
     }
-  }, [location.pathname]);
+  }, [location.pathname, currentRole, setCurrentUserRole]);
 
   const navItems = useMemo(() => {
     const items: NavItem[] = [
