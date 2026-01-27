@@ -53,7 +53,7 @@ const MeetingGuidePage = React.lazy(() => import('@/pages/MeetingGuidePage'));
 const HandoffTimelinePage = React.lazy(() => import('@/pages/HandoffTimelinePage'));
 const IntegratedResourceCalendarPage = React.lazy(() => import('@/pages/IntegratedResourceCalendarPage'));
 const SettingsPage = React.lazy(() => import('@/pages/SettingsPage'));
-const AdminTemplatesDeprecatedPage = React.lazy(() => import('@/pages/AdminTemplatesDeprecatedPage').then(m => ({ default: m.default })));
+const SupportActivityMasterPage = React.lazy(() => import('@/pages/SupportActivityMasterPage'));
 
 const SupportStepMasterPage = React.lazy(() => import('@/pages/SupportStepMasterPage'));
 const IndividualSupportManagementPage = React.lazy(() => import('@/pages/IndividualSupportManagementPage'));
@@ -426,17 +426,17 @@ const SuspendedSettingsPage: React.FC = () => (
   </RouteHydrationErrorBoundary>
 );
 
-const SuspendedAdminTemplatesDeprecatedPage: React.FC = () => (
+const SuspendedSupportActivityMasterPage: React.FC = () => (
   <AdminGate>
     <RouteHydrationErrorBoundary>
       <React.Suspense
         fallback={(
           <div className="p-4 text-sm text-slate-600" role="status">
-            管理ページの移動について読み込んでいます…
+            支援活動テンプレート管理を読み込んでいます…
           </div>
         )}
       >
-        <AdminTemplatesDeprecatedPage />
+        <SupportActivityMasterPage />
       </React.Suspense>
     </RouteHydrationErrorBoundary>
   </AdminGate>
@@ -572,7 +572,7 @@ const childRoutes: RouteObject[] = [
   { path: 'assessment', element: <SuspendedAssessmentDashboardPage /> },
   { path: 'survey/tokusei', element: <SuspendedTokuseiSurveyResultsPage /> },
   { path: 'settings', element: <SuspendedSettingsPage /> },
-  { path: 'admin/templates', element: <SuspendedAdminTemplatesDeprecatedPage /> },
+  { path: 'admin/templates', element: <SuspendedSupportActivityMasterPage /> },
   { path: 'admin/step-templates', element: <SuspendedSupportStepMasterPage /> },
   { path: 'admin/individual-support', element: <SuspendedIndividualSupportManagementPage /> },
   { path: 'diagnostics/health', element: <SuspendedHealthPage /> },
