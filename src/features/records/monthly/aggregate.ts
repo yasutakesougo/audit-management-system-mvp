@@ -3,6 +3,7 @@
 
 import type {
     DailyRecord,
+    IsoDate,
     MonthlyAggregationResult,
     MonthlyKpi,
     MonthlySummary,
@@ -49,6 +50,7 @@ export function getTotalDaysInMonth(yearMonth: YearMonth): number {
 
 /**
  * 日次記録から月次KPIを集計
+ * emptyRows は整合性を保つため、plannedRows - completedRows - inProgressRows で計算
  */
 export function aggregateMonthlyKpi(
   dailyRecords: DailyRecord[],
@@ -71,9 +73,11 @@ export function aggregateMonthlyKpi(
   // 実績の集計
   const completedRows = dailyRecords.filter(r => r.completed).length;
   const inProgressRows = dailyRecords.filter(r => !r.completed && !r.isEmpty).length;
-  const emptyRows = dailyRecords.filter(r => r.isEmpty).length;
   const specialNotes = dailyRecords.filter(r => r.hasSpecialNotes).length;
   const incidents = dailyRecords.filter(r => r.hasIncidents).length;
+
+  // emptyRows は整合性保証: plannedRows - completedRows - inProgressRows（負にならない）
+  const emptyRows = Math.max(0, plannedRows - completedRows - inProgressRows);
 
   return {
     totalDays,
@@ -87,7 +91,7 @@ export function aggregateMonthlyKpi(
 }
 
 /**
- * 完了率を計算（パーセンテージ）
+ * 完了率を計算（パーセンテージ: 0..100）
  */
 export function calculateCompletionRate(kpi: MonthlyKpi): number {
   if (kpi.plannedRows === 0) return 0;
@@ -95,11 +99,11 @@ export function calculateCompletionRate(kpi: MonthlyKpi): number {
 }
 
 /**
- * 日次記録から初回・最終記録日を抽出
+ * 日次記録から初回・最終記録日を抽出（IsoDate型）
  */
 export function extractRecordDateRange(dailyRecords: DailyRecord[]): {
-  firstEntryDate?: string;
-  lastEntryDate?: string;
+  firstEntryDate?: IsoDate;
+  lastEntryDate?: IsoDate;
 } {
   const nonEmptyRecords = dailyRecords
     .filter(r => !r.isEmpty)

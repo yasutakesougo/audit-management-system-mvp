@@ -4,7 +4,7 @@ import {
     getTotalDaysInMonth,
     getWorkingDaysInMonth
 } from '../aggregate';
-import type { DailyRecord, YearMonth } from '../types';
+import type { DailyRecord, IsoDate, YearMonth } from '../types';
 
 describe('getWorkingDaysInMonth - 営業日計算テスト', () => {
   it('2024年1月 → 23営業日（土日除外）', () => {
@@ -47,7 +47,7 @@ describe('aggregateMonthlyKpi - 営業日vs暦日オプション', () => {
     id: `record_${date}`,
     userId: 'USER001',
     userName: 'テスト太郎',
-    recordDate: date,
+    recordDate: date as IsoDate,
     completed,
     hasSpecialNotes: false,
     hasIncidents: false,
@@ -108,7 +108,7 @@ describe('月跨ぎ・境界ケーステスト', () => {
     id: `record_${date}`,
     userId: 'USER001',
     userName: 'テスト太郎',
-    recordDate: date,
+    recordDate: date as IsoDate,
     completed,
     hasSpecialNotes: false,
     hasIncidents: false,
