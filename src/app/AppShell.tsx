@@ -73,7 +73,7 @@ type NavItem = {
 };
 
 type RecentNavKey = {
-  testId?: string;
+  testId: string;
   to: string;
 };
 
@@ -133,8 +133,8 @@ function loadRecentKeys(): RecentNavKey[] {
     return parsed.filter(
       (x): x is RecentNavKey =>
         !!x &&
-        typeof x.to === 'string' &&
-        (x.testId === undefined || typeof x.testId === 'string')
+        typeof x.testId === 'string' &&
+        typeof x.to === 'string'
     );
   } catch {
     return [];
@@ -324,6 +324,7 @@ const AppShell: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   }, [navItems, navQuery]);
 
   const addRecent = useCallback((item: NavItem) => {
+    if (!item.testId) return; // Skip items without testId
     const key: RecentNavKey = { testId: item.testId, to: item.to };
     setRecentKeys((prev) => {
       const filtered = prev.filter((k) => !(k.testId === key.testId && k.to === key.to));
@@ -387,10 +388,10 @@ const AppShell: React.FC<{ children: React.ReactNode }> = ({ children }) => {
     const isBlackNote = pickGroup(item, isAdmin) === 'blacknote';
     const showLabel = !navCollapsed;
 
-    const handleClick = useCallback(() => {
+    const handleClick = () => {
       addRecent(item);
       if (onNavigate) onNavigate();
-    }, [onNavigate]);
+    };
 
     const commonProps = {
       selected: active,
