@@ -8,11 +8,18 @@ import { gotoScheduleWeek } from './utils/scheduleWeek';
 test.describe('Schedule week smoke', () => {
   test.beforeEach(async ({ page }) => {
     await bootstrapScheduleEnv(page);
+
+    // Ensure V2 is always used regardless of helper defaults
+    await page.addInitScript(() => {
+      localStorage.setItem('feature:schedules', '1');
+      localStorage.setItem('feature:schedulesWeekV2', '1');
+    });
   });
 
   test('renders week overview and passes Axe', async ({ page }) => {
     await gotoScheduleWeek(page, new Date('2025-11-24'));
 
+    await expect(page.getByTestId('schedules-week-root')).toBeVisible();
     const weekRoot = page.getByTestId(TESTIDS.SCHEDULES_PAGE_ROOT).or(page.getByTestId(TESTIDS['schedules-week-page']));
     await expect(weekRoot).toBeVisible();
 

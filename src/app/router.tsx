@@ -1,6 +1,5 @@
 import ProtectedRoute from '@/app/ProtectedRoute';
 import AdminGate from '@/components/AdminGate';
-import { useFeatureFlags } from '@/config/featureFlags';
 import { nurseRoutes } from '@/features/nurse/routes/NurseRoutes';
 import { LegacyDayRedirect, LegacyMonthRedirect } from '@/features/schedule/legacyRedirects';
 import { StaffPanel } from '@/features/staff';
@@ -11,6 +10,7 @@ import lazyWithPreload from '@/utils/lazyWithPreload';
 import React from 'react';
 import { createBrowserRouter, Navigate, Outlet, type RouteObject } from 'react-router-dom';
 import AppShell from './AppShell';
+import ScheduleLegacyRedirect from './ScheduleLegacyRedirect';
 import { routerFutureFlags } from './routerFuture';
 import SchedulesGate from './SchedulesGate';
 
@@ -117,15 +117,9 @@ const SuspendedSchedulePage: React.FC = () => (
   </RouteHydrationErrorBoundary>
 );
 
-// 週間スケジュールの表示は feature flag で新旧UIを出し分ける
+// 週間スケジュールは V2 を正とし、legacy は退避ルートで提供
 const SchedulesWeekRoute: React.FC = () => {
-  const { schedulesWeekV2 } = useFeatureFlags();
-  // schedulesWeekV2=true should surface the v2 WeekPage; keep legacy page as fallback when disabled.
-  return (
-    <>
-      {schedulesWeekV2 ? <SuspendedNewSchedulesWeekPage /> : <SuspendedSchedulePage />}
-    </>
-  );
+  return <SuspendedNewSchedulesWeekPage />;
 };
 
 const SuspendedCreatePage: React.FC = () => (
@@ -585,11 +579,21 @@ const childRoutes: RouteObject[] = [
     )
   },
   {
+    path: 'schedule/legacy',
+    element: (
+      <SchedulesGate>
+        <ProtectedRoute flag="schedules">
+          <SuspendedSchedulePage />
+        </ProtectedRoute>
+      </SchedulesGate>
+    ),
+  },
+  {
     path: 'schedule',
     element: (
       <SchedulesGate>
         <ProtectedRoute flag="schedules">
-          <Navigate to="/schedules/week" replace />
+          <ScheduleLegacyRedirect />
         </ProtectedRoute>
       </SchedulesGate>
     ),
@@ -599,7 +603,7 @@ const childRoutes: RouteObject[] = [
     element: (
       <SchedulesGate>
         <ProtectedRoute flag="schedules">
-          <Navigate to="/schedules/week" replace />
+          <ScheduleLegacyRedirect />
         </ProtectedRoute>
       </SchedulesGate>
     ),
