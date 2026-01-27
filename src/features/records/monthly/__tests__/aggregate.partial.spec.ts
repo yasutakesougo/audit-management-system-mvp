@@ -126,7 +126,7 @@ describe('extractRecordDateRange - 記録日範囲抽出テスト', () => {
     id: `record_${date}`,
     userId: 'USER001',
     userName: 'テスト太郎',
-    recordDate: date,
+    recordDate: date as IsoDate,
     completed: !isEmpty,
     hasSpecialNotes: false,
     hasIncidents: false,

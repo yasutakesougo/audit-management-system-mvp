@@ -16,12 +16,14 @@
 ### 1. YearMonth 型の厳密化
 
 **変更前:**
+
 ```typescript
 export type YearMonth = `${number}-${`0${number}` | `${number}`}`; // '2025-11'
 // 問題: 2025-00 / 2025-19 / 2025-1 / -1-3 などの不正な値も許容
 ```
 
 **変更後:**
+
 ```typescript
 type Month = '01' | '02' | '03' | '04' | '05' | '06' | '07' | '08' | '09' | '10' | '11' | '12';
 export type YearMonth = `${number}-${Month}`; // '2025-11'
@@ -29,6 +31,7 @@ export type YearMonth = `${number}-${Month}`; // '2025-11'
 ```
 
 **使い方:**
+
 ```typescript
 import { parseYearMonth } from './map';
 
@@ -45,11 +48,13 @@ const summary = await fetchMonthlySummary(userId, yearMonth);
 ### 2. IsoDate 型の追加
 
 **定義:**
+
 ```typescript
 export type IsoDate = `${number}-${Month}-${string}`; // 'YYYY-MM-DD'
 ```
 
 **使い方:**
+
 ```typescript
 import { parseIsoDate } from './map';
 
@@ -72,11 +77,13 @@ const summary: MonthlySummary = {
 ### 3. MonthlySummaryId 型の追加
 
 **定義:**
+
 ```typescript
 export type MonthlySummaryId = `${string}__${YearMonth}`; // 'I001__2025-11'
 ```
 
 **使い方:**
+
 ```typescript
 import { generateMonthlySummaryId } from './map';
 
@@ -90,11 +97,13 @@ summaryMap.set(id, summary);
 ### 4. completionRate のコメント統一
 
 **変更前:**
+
 ```typescript
 completionRate: number; // completedRows / plannedRows
 ```
 
 **変更後:**
+
 ```typescript
 completionRate: number; // 0..100 (%) - completedRows / plannedRows × 100
 ```
