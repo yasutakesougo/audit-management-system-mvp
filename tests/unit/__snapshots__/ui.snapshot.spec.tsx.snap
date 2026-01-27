@@ -15,6 +15,7 @@ exports[`AppShell snapshot 1`] = `
         <button
           aria-label="メニューを開く"
           class="MuiButtonBase-root MuiIconButton-root MuiIconButton-colorInherit MuiIconButton-edgeStart MuiIconButton-sizeMedium css-1fytndg-MuiButtonBase-root-MuiIconButton-root"
+          data-testid="nav-open"
           tabindex="0"
           type="button"
         >
