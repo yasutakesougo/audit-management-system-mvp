@@ -51,7 +51,7 @@
     "test:e2e:users": "playwright test tests/e2e/users.detail-flow.spec.ts",
     "test:hydration:e2e": "playwright test tests/e2e/hydration.routes.spec.ts",
     "test:e2e:smoke": "playwright test --project=smoke",
-    "e2e:smoke:router-nav": "playwright test tests/e2e/router.smoke.spec.ts tests/e2e/nav.smoke.spec.ts --config=playwright.config.ts --reporter=line",
+    "e2e:smoke:router-nav": "playwright test tests/e2e/app-shell.smoke.spec.ts tests/e2e/router.smoke.spec.ts tests/e2e/nav.smoke.spec.ts --config=playwright.config.ts --reporter=line",
     "test:e2e:daily-flow": "PLAYWRIGHT_BASE_URL=http://127.0.0.1:3000 PLAYWRIGHT_WEB_SERVER_URL=http://127.0.0.1:3000 playwright test tests/e2e/daily-flow.smoke.spec.ts",
     "e2e": "cross-env VITE_E2E=1 VITE_E2E_MSAL_MOCK=1 playwright test --project=chromium",
     "e2e:ui": "playwright test --ui",

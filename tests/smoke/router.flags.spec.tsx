@@ -113,8 +113,6 @@ vi.mock('@/features/schedule/useSchedulesToday', () => ({
   }),
 }));
 
-import App from '../../src/App';
-
 /**
  * Router Future Flags スモークテスト
  *
@@ -228,89 +226,7 @@ describe('router future flags smoke', () => {
     });
   });
 
-  // ===== 旧テスト: App 全体レンダー（今後の拡張用に残す） =====
-  it.skip('renders app root and loads home page with future flags', async () => {
-    renderWithAppProviders(<App />, { initialEntries: ['/'] });
-    
-    // ✅ App が初期化され、Router が機能してることを確認（最小条件）
-    const appShell = await screen.findByTestId('app-shell', {}, { timeout: 10_000 });
-    expect(appShell).toBeInTheDocument();
-    
-    // ルート DOM の存在確認（future flags が有効でもクラッシュしてない）
-    const root = document.querySelector('#root');
-    expect(root?.children.length ?? 0).toBeGreaterThan(0);
-  }, 15_000);
-
-  // ===== テスト 2: 権限が有効な場合、管理者リンクが見える =====
-  // TODO: [RECOVERY ROADMAP]
-  // この todo を実現するには docs/ROUTER_FLAGS_RECOVERY_ROADMAP.md を参照
-  // A案: Routes コンポーネント化（最小・最速）
-  //   → src/app/AppRoutes.tsx を新規作成
-  //   → router.tsx から childRoutes を参照
-  //   → テストで appRouteConfig を直接使用（App全体プロバイダー省略）
-  // B案: root testid 付与（次点）
-  //   → src/features/audit/AuditPanel.tsx に data-testid="audit-root" を追加
-  //   → src/features/compliance-checklist/ChecklistPage.tsx に data-testid="checklist-root" を追加
-  // C案: 権限/フラグ固定（最後）
-  //   → src/app/AppShell.tsx のナビに data-testid を追加
-  //   → テストで useUserAuthz / feature flags を mock override
-  it.todo('navigates to audit page when link is available - awaiting admin nav testid stabilization');
-
-  // ===== テスト 3: ナビゲーション経路が正常か（リンク → 画面遷移） =====
-  // NOTE: router-future-flags.ts の global mock で React Router v7 future flags を有効化した状態で、
-  // App 全体の主要ルートが正常に遷移できることのスモークテスト。
-  // ⚠️ SKIP 理由: App 全体の E2E テストは複雑（MSAL/権限/ルーティング/ナビ が統合）
-  //    skip を外すには以下が必要：
-  //    - [A案] src/app/AppRoutes.tsx を作成して Routes 定義を分離
-  //    - [B案] 各ページ root に data-testid を付与（audit-root, checklist-root など）
-  //    - [C案] 権限/フラグを固定して nav 検証を実施
-  //    
-  //    詳細: docs/ROUTER_FLAGS_RECOVERY_ROADMAP.md
-  it.skip('navigates across primary routes with v7 flags enabled', async () => {
-    const user = userEvent.setup();
-    render(<App />);
-
-    // 初期表示: ホーム画面の確認
-    expect(await screen.findByText(/磯子区障害者地域活動ホーム/)).toBeInTheDocument();
-
-    // ナビゲーション経路のテスト: ホーム → 監査ログ → 日次記録 → 自己点検 → ホーム
-
-    // TODO: data-testid 追加で getAllByRole(...)[1] のマジックインデックスを回避
-    // 現在はヘッダー/フッターで同じラベルが存在するため [1] で特定
-    const auditLinks = screen.queryAllByRole('link', { name: '監査ログ' });
-    if (auditLinks.length > 1) {
-      await user.click(auditLinks[1]);
-      // URL 変化を期待（文言より堅い）
-      await page.waitForURL(/\/audit/i, { timeout: 5_000 }).catch(() => {
-        // URL 遷移がなければ文言を試す
-        return screen.findByText('監査ログビュー', {}, { timeout: 3_000 }).catch(() => undefined);
-      });
-    }
-
-    const dailyLinks = screen.queryAllByRole('link', { name: '日次記録' });
-    if (dailyLinks.length > 0) {
-      await user.click(dailyLinks[0]);
-      await screen.findByText(/日次記録/, {}, { timeout: 15_000 });
-    }
-
-    await user.click(screen.getByRole('link', { name: '自己点検' }));
-    expect(await screen.findByText('自己点検ビュー')).toBeInTheDocument();
-
-    // ホームリンクは「黒ノート」表記のナビゲーションをクリックして戻す
-    await user.click(await screen.findByTestId('nav-dashboard'));
-    expect(await screen.findByText(/磯子区障害者地域活動ホーム/)).toBeInTheDocument();
-
-    // 副作用の検証: ルート遷移での想定外のAPI呼び出しや認証アクションが発生していないことを確認
-    const calls = (spFetchMock.mock.calls as Array<[RequestInfo | URL | Request, RequestInit?]>).map(([input]) =>
-      typeof input === 'string' ? input : input instanceof Request ? input.url : String(input),
-    );
-
-    const currentUserCalls = calls.filter((u) => u.includes('/currentuser?$select=Id'));
-    const nonCurrentUserCalls = calls.filter((u) => !u.includes('/currentuser?$select=Id'));
-
-    expect(currentUserCalls.length).toBeLessThanOrEqual(1);
-    expect(nonCurrentUserCalls).toHaveLength(0);
-    expect(signInMock).not.toHaveBeenCalled();
-    expect(signOutMock).not.toHaveBeenCalled();
-  });
+  // ===== Playwright へ委譲: App 全体レンダー & ナビ統合 =====
+  // - App全体レンダーは tests/e2e/app-shell.smoke.spec.ts に委譲
+  // - ナビ統合は tests/e2e/nav.smoke.spec.ts に委譲
 });
