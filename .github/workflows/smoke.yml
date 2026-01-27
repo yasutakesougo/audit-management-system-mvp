@@ -109,11 +109,7 @@ jobs:
           node -v
           npx playwright --version
           echo "=== Run ==="
-          npx playwright test \
-            tests/e2e/router.smoke.spec.ts \
-            tests/e2e/nav.smoke.spec.ts \
-            --config=playwright.config.ts \
-            --reporter=line
+          npm run e2e:smoke:router-nav
       - name: e2e smoke tests (all)
         env:
           TZ: Asia/Tokyo
