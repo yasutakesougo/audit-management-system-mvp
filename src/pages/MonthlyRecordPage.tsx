@@ -23,7 +23,7 @@ import { useSearchParams } from 'react-router-dom';
 import { MonthlySummaryTable } from '../features/records/monthly/MonthlySummaryTable';
 import { UserKpiCards } from '../features/records/monthly/UserKpiCards';
 import { UserProgressChart } from '../features/records/monthly/UserProgressChart';
-import { getCurrentYearMonth } from '../features/records/monthly/map';
+import { getCurrentYearMonth, parseIsoDate, parseYearMonth } from '../features/records/monthly/map';
 import type { MonthlySummary, YearMonth } from '../features/records/monthly/types';
 import { TESTIDS } from '../testids';
 
@@ -60,8 +60,8 @@ const mockMonthlySummaries: MonthlySummary[] = [
       incidents: 2,
     },
     completionRate: 90.91,
-    firstEntryDate: '2024-11-01',
-    lastEntryDate: '2024-11-05',
+    firstEntryDate: '2025-11-01',
+    lastEntryDate: '2025-11-05',
   },
   {
     userId: 'I002',
@@ -78,8 +78,8 @@ const mockMonthlySummaries: MonthlySummary[] = [
       incidents: 0,
     },
     completionRate: 70.57,
-    firstEntryDate: '2024-11-01',
-    lastEntryDate: '2024-11-05',
+    firstEntryDate: '2025-11-01',
+    lastEntryDate: '2025-11-05',
   },
   {
     userId: 'I003',
@@ -96,8 +96,8 @@ const mockMonthlySummaries: MonthlySummary[] = [
       incidents: 1,
     },
     completionRate: 48.09,
-    firstEntryDate: '2024-11-02',
-    lastEntryDate: '2024-11-05',
+    firstEntryDate: '2025-11-02',
+    lastEntryDate: '2025-11-05',
   },
 ];
 
@@ -127,24 +127,35 @@ function useDemoSummaries(): MonthlySummary[] {
   if (isE2E && w.__E2E_SEED__?.startsWith('monthly.records.')) {
     const fixture = w.__E2E_FIXTURE_MONTHLY_RECORDS__;
     if (fixture?.summaryRows) {
-      return fixture.summaryRows.map((row) => ({
-        userId: row.userId,
-        yearMonth: row.month as YearMonth,
-        displayName: row.userName,
-        lastUpdatedUtc: new Date().toISOString(),
-        kpi: {
-          totalDays: 22,
-          plannedRows: 418,
-          completedRows: row.completed ?? 0,
-          inProgressRows: 0,
-          emptyRows: (row.total ?? 0) - (row.completed ?? 0),
-          specialNotes: 0,
-          incidents: 0,
-        },
-        completionRate: row.total ? (row.completed / row.total) * 100 : 0,
-        firstEntryDate: row.month + '-01',
-        lastEntryDate: row.month + '-01',
-      }));
+      return fixture.summaryRows.map((row) => {
+        // 型安全な変換: YearMonth と IsoDate をパース
+        const yearMonth = parseYearMonth(row.month);
+        const firstEntryDate = parseIsoDate(`${row.month}-01`);
+        const lastEntryDate = parseIsoDate(`${row.month}-01`);
+
+        if (!yearMonth) {
+          console.warn(`Invalid YearMonth in E2E fixture: ${row.month}`);
+        }
+
+        return {
+          userId: row.userId,
+          yearMonth: yearMonth ?? '2025-01' as YearMonth, // Fallback
+          displayName: row.userName,
+          lastUpdatedUtc: new Date().toISOString(),
+          kpi: {
+            totalDays: 22,
+            plannedRows: 418,
+            completedRows: row.completed ?? 0,
+            inProgressRows: 0,
+            emptyRows: (row.total ?? 0) - (row.completed ?? 0),
+            specialNotes: 0,
+            incidents: 0,
+          },
+          completionRate: row.total ? (row.completed / row.total) * 100 : 0,
+          firstEntryDate: firstEntryDate ?? undefined,
+          lastEntryDate: lastEntryDate ?? undefined,
+        };
+      });
     }
     // Empty seed: return empty array
     return [];
