@@ -56,6 +56,8 @@ import PsychologyIcon from '@mui/icons-material/Psychology';
 import SettingsRoundedIcon from '@mui/icons-material/SettingsRounded';
 import WorkspacesIcon from '@mui/icons-material/Workspaces';
 import MenuIcon from '@mui/icons-material/Menu';
+import ChevronLeftIcon from '@mui/icons-material/ChevronLeft';
+import ChevronRightIcon from '@mui/icons-material/ChevronRight';
 import { Link as RouterLink, useLocation, useNavigate } from 'react-router-dom';
 import { ColorModeContext } from './theme';
 
@@ -125,8 +127,11 @@ const AppShell: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const isDesktop = useMediaQuery(theme.breakpoints.up('md'));
   const [mobileOpen, setMobileOpen] = useState(false);
   const [navQuery, setNavQuery] = useState('');
+  const [navCollapsed, setNavCollapsed] = useState(false);
   const drawerWidth = 240;
-  const drawerOffset = isDesktop ? drawerWidth : 0;
+  const drawerMiniWidth = 64;
+  const currentDrawerWidth = navCollapsed ? drawerMiniWidth : drawerWidth;
+  const drawerOffset = isDesktop ? currentDrawerWidth : 0;
 
   useEffect(() => {
     if (SKIP_LOGIN && location.pathname === '/login') {
@@ -300,6 +305,11 @@ const AppShell: React.FC<{ children: React.ReactNode }> = ({ children }) => {
     setNavQuery('');
   }, []);
 
+  const handleToggleNavCollapse = useCallback(() => {
+    setNavCollapsed((v) => !v);
+    setNavQuery('');
+  }, []);
+
   const groupedNavItems = useMemo(() => {
     const ORDER: NavGroupKey[] = ['blacknote', 'record', 'analysis', 'master', 'admin', 'report'];
     const map = new Map<NavGroupKey, NavItem[]>();
@@ -317,20 +327,28 @@ const AppShell: React.FC<{ children: React.ReactNode }> = ({ children }) => {
     const { label, to, isActive, testId, icon: IconComponent, prefetchKey, prefetchKeys } = item;
     const active = isActive(location.pathname);
     const isBlackNote = pickGroup(item, isAdmin) === 'blacknote';
+    const showLabel = !navCollapsed;
 
     const commonProps = {
       selected: active,
       'data-testid': testId,
       'aria-current': active ? ('page' as const) : undefined,
       onClick: onNavigate,
-      sx: isBlackNote && active ? {
-        borderLeft: 4,
-        borderColor: 'primary.main',
-        fontWeight: 700,
-        '& .MuiListItemText-primary': {
+      sx: {
+        ...(isBlackNote && active ? {
+          borderLeft: 4,
+          borderColor: 'primary.main',
           fontWeight: 700,
-        },
-      } : undefined,
+          '& .MuiListItemText-primary': {
+            fontWeight: 700,
+          },
+        } : {}),
+        ...(navCollapsed ? {
+          '&:hover': {
+            backgroundColor: 'action.hover',
+          },
+        } : {}),
+      },
     };
 
     const content = (
@@ -340,12 +358,12 @@ const AppShell: React.FC<{ children: React.ReactNode }> = ({ children }) => {
             <IconComponent />
           </ListItemIcon>
         )}
-        <ListItemText primary={label} />
+        {showLabel && <ListItemText primary={label} />}
       </>
     );
 
     if (prefetchKey) {
-      return (
+      const button = (
         <ListItemButton
           key={label}
           component={NavLinkPrefetch as unknown as React.ElementType}
@@ -356,9 +374,21 @@ const AppShell: React.FC<{ children: React.ReactNode }> = ({ children }) => {
           {content}
         </ListItemButton>
       );
+
+      if (navCollapsed && !showLabel) {
+        return (
+          <Tooltip key={label} title={label} placement="right" enterDelay={100} disableInteractive>
+            <Box sx={{ width: '100%' }}>
+              {button}
+            </Box>
+          </Tooltip>
+        );
+      }
+
+      return button;
     }
 
-    return (
+    const button = (
       <ListItemButton
         key={label}
         component={RouterLink as unknown as React.ElementType}
@@ -368,6 +398,18 @@ const AppShell: React.FC<{ children: React.ReactNode }> = ({ children }) => {
         {content}
       </ListItemButton>
     );
+
+    if (navCollapsed && !showLabel) {
+      return (
+        <Tooltip key={label} title={label} placement="right" enterDelay={100} disableInteractive>
+          <Box sx={{ width: '100%' }}>
+            {button}
+          </Box>
+        </Tooltip>
+      );
+    }
+
+    return button;
   };
 
   const renderGroupedNavList = (onNavigate?: () => void) => {
@@ -393,22 +435,24 @@ const AppShell: React.FC<{ children: React.ReactNode }> = ({ children }) => {
 
           return (
             <Box key={groupKey} sx={{ mb: 1.5 }}>
-              <ListSubheader
-                disableSticky
-                sx={{
-                  bgcolor: 'transparent',
-                  lineHeight: 1.6,
-                  py: 0.5,
-                  fontWeight: 700,
-                  fontSize: '0.75rem',
-                  color: 'text.secondary',
-                  px: 2,
-                }}
-              >
-                {groupLabel[groupKey]}
-              </ListSubheader>
+              {!navCollapsed && (
+                <ListSubheader
+                  disableSticky
+                  sx={{
+                    bgcolor: 'transparent',
+                    lineHeight: 1.6,
+                    py: 0.5,
+                    fontWeight: 700,
+                    fontSize: '0.75rem',
+                    color: 'text.secondary',
+                    px: 2,
+                  }}
+                >
+                  {groupLabel[groupKey]}
+                </ListSubheader>
+              )}
               {items.map((item) => renderNavItem(item, onNavigate))}
-              {groupKey !== 'report' && <Divider sx={{ mt: 1, mb: 0.5 }} />}
+              {!navCollapsed && groupKey !== 'report' && <Divider sx={{ mt: 1, mb: 0.5 }} />}
             </Box>
           );
         })}
@@ -458,29 +502,49 @@ const AppShell: React.FC<{ children: React.ReactNode }> = ({ children }) => {
             variant="permanent"
             open
             sx={{
-              width: drawerWidth,
+              width: currentDrawerWidth,
               flexShrink: 0,
-              '& .MuiDrawer-paper': { width: drawerWidth, boxSizing: 'border-box' },
+              transition: theme.transitions.create('width', {
+                easing: theme.transitions.easing.sharp,
+                duration: theme.transitions.duration.enteringScreen,
+              }),
+              '& .MuiDrawer-paper': { width: currentDrawerWidth, boxSizing: 'border-box', transition: theme.transitions.create('width', {
+                easing: theme.transitions.easing.sharp,
+                duration: theme.transitions.duration.enteringScreen,
+              }) },
             }}
           >
             <Box role="navigation" aria-label="主要ナビゲーション" sx={{ mt: 7, overflowY: 'auto', height: 'calc(100vh - 56px)' }}>
-              <Box sx={{ px: 1.5, py: 1, pb: 1.5 }}>
-                <TextField
-                  value={navQuery}
-                  onChange={(e) => setNavQuery(e.target.value)}
-                  onKeyDown={handleNavSearchKeyDown}
-                  size="small"
-                  placeholder="メニュー検索"
-                  fullWidth
-                  inputProps={{ 'aria-label': 'メニュー検索' }}
-                  InputProps={{
-                    startAdornment: (
-                      <InputAdornment position="start">
-                        <SearchIcon fontSize="small" />
-                      </InputAdornment>
-                    ),
-                  }}
-                />
+              {!navCollapsed && (
+                <Box sx={{ px: 1.5, py: 1, pb: 1.5 }}>
+                  <TextField
+                    value={navQuery}
+                    onChange={(e) => setNavQuery(e.target.value)}
+                    onKeyDown={handleNavSearchKeyDown}
+                    size="small"
+                    placeholder="メニュー検索"
+                    fullWidth
+                    inputProps={{ 'aria-label': 'メニュー検索' }}
+                    InputProps={{
+                      startAdornment: (
+                        <InputAdornment position="start">
+                          <SearchIcon fontSize="small" />
+                        </InputAdornment>
+                      ),
+                    }}
+                  />
+                </Box>
+              )}
+              <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: navCollapsed ? 'center' : 'flex-end', px: 1, py: 0.5 }}>
+                <Tooltip title={navCollapsed ? 'ナビを展開' : 'ナビを折りたたみ'} placement="right" enterDelay={100}>
+                  <IconButton
+                    onClick={handleToggleNavCollapse}
+                    aria-label={navCollapsed ? 'ナビを展開' : 'ナビを折りたたみ'}
+                    size="small"
+                  >
+                    {navCollapsed ? <ChevronRightIcon /> : <ChevronLeftIcon />}
+                  </IconButton>
+                </Tooltip>
               </Box>
               {renderGroupedNavList()}
             </Box>
@@ -520,7 +584,10 @@ const AppShell: React.FC<{ children: React.ReactNode }> = ({ children }) => {
           </Drawer>
         )}
 
-        <Container component="main" role="main" maxWidth="lg" sx={{ py: 4, pb: { xs: 18, sm: 14 }, ml: `${drawerOffset}px` }}>
+        <Container component="main" role="main" maxWidth="lg" sx={{ py: 4, pb: { xs: 18, sm: 14 }, ml: `${drawerOffset}px`, transition: theme.transitions.create('margin-left', {
+          easing: theme.transitions.easing.sharp,
+          duration: theme.transitions.duration.enteringScreen,
+        }) }}>
           {children}
         </Container>
         <FooterQuickActions />
