@@ -7,6 +7,11 @@ import { cleanup, screen, within } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { renderWithAppProviders } from '../helpers/renderWithAppProviders';
 
+// MUI useMediaQuery を desktop 固定（Drawer が permanent 表示されるよう確保）
+vi.mock('@mui/material/useMediaQuery', () => ({
+  default: () => true,
+}));
+
 const spFetchMock = vi.fn(async (_path: string, _init?: RequestInit) => ({ ok: true }));
 
 const defaultFlags: FeatureFlagSnapshot = {
@@ -65,7 +70,16 @@ vi.mock('@/auth/useAuth', () => ({
   }),
 }));
 
+vi.mock('@/auth/useUserAuthz', () => ({
+  useUserAuthz: () => ({
+    isAdmin: false,
+    ready: true,
+  }),
+}));
+
 describe('AppShell navigation', () => {
+  it.todo('marks current route button with aria-current="page" - awaiting AppShell useEffect fix');
+
   it('marks current route button with aria-current="page"', async () => {
     const toggleMock = vi.fn();
     const theme = createTheme();

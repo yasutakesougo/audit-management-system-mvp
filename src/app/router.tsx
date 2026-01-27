@@ -728,6 +728,12 @@ const routes: RouteObject[] = [
   },
 ];
 
+/**
+ * テスト用：childRoutes を export
+ * router.flags.spec.tsx で createMemoryRouter から直接利用
+ */
+export const appChildRoutesForTest = childRoutes;
+
 export const router = createBrowserRouter(routes, {
   future: routerFutureFlags,
 });

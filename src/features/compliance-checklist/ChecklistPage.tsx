@@ -76,7 +76,7 @@ export default function ChecklistPage() {
   }
 
   return (
-    <Stack spacing={2} sx={{ p: 2 }}>
+    <Stack spacing={2} sx={{ p: 2 }} data-testid="checklist-root">
       <Stack direction="row" alignItems="center" spacing={1}>
         <AssignmentTurnedInRoundedIcon color="primary" />
         <Typography variant="h5" component="h1">監査チェックリスト</Typography>
