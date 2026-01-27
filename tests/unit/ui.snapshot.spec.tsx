@@ -12,7 +12,15 @@ vi.mock("@/lib/spClient", () => ({
 }));
 
 vi.mock("@/auth/MsalProvider", () => ({
-	useMsalContext: () => ({ accounts: [] }),
+	useMsalContext: () => ({ 
+		accounts: [],
+		instance: {
+			getActiveAccount: () => null,
+			getAllAccounts: () => [],
+			acquireTokenSilent: vi.fn(() => Promise.resolve({ accessToken: 'mock-token' })),
+		},
+		inProgress: 'none',
+	}),
 }));
 
 vi.mock("@/lib/env", async () => {
