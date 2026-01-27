@@ -42,16 +42,26 @@ const isAutomationRuntime = (): boolean => {
  * Check if an environment variable explicitly contains a boolean-like value.
  * Only returns true for actual boolean representations: '1', '0', 'true', 'false'.
  * Empty strings and undefined are treated as "not explicitly set".
+ *
+ * IMPORTANT: When envOverride is provided, only consider values from envOverride.
+ * This prevents local/process env from leaking into automation-specific overrides.
  */
 const hasExplicitBoolEnv = (key: string, envOverride?: EnvRecord): boolean => {
-  const raw = readOptionalEnv(key, envOverride);
+  if (envOverride) {
+    const rawOverride = envOverride[key];
+    if (rawOverride === undefined || rawOverride === null) return false;
+    const v = String(rawOverride).trim().toLowerCase();
+    return v === '1' || v === '0' || v === 'true' || v === 'false';
+  }
+  const raw = readOptionalEnv(key);
   if (raw == null) return false;
   const v = raw.trim().toLowerCase();
   return v === '1' || v === '0' || v === 'true' || v === 'false';
 };
 
 export const resolveFeatureFlags = (envOverride?: EnvRecord): FeatureFlagSnapshot => {
-  const isAutomationEnv = isE2E || isTestMode(envOverride) || isAutomationRuntime();
+  // Treat explicit envOverride as an automation-like context to apply safe defaults
+  const isAutomationEnv = envOverride ? true : (isE2E || isTestMode(envOverride) || isAutomationRuntime());
 
   const baseSnapshot: FeatureFlagSnapshot = {
     schedules: isSchedulesFeatureEnabled(envOverride),
@@ -63,16 +73,19 @@ export const resolveFeatureFlags = (envOverride?: EnvRecord): FeatureFlagSnapsho
 
   const explicitSchedules = hasExplicitBoolEnv('VITE_FEATURE_SCHEDULES', envOverride);
   const explicitSchedulesCreate = hasExplicitBoolEnv('VITE_FEATURE_SCHEDULES_CREATE', envOverride);
+  const explicitIcebergPdca = hasExplicitBoolEnv('VITE_FEATURE_ICEBERG_PDCA', envOverride);
 
   if (isAutomationEnv) {
     // In automation, honor explicit env overrides when provided (needed for flag-off E2E scenarios).
-    // If no explicit override, default to true for schedules/schedulesCreate.
+    // If no explicit override, default to true for schedules/schedulesCreate, and default PDCA off.
     const schedules = explicitSchedules ? readBool('VITE_FEATURE_SCHEDULES', true, envOverride) : true;
     const schedulesCreate = explicitSchedulesCreate ? readBool('VITE_FEATURE_SCHEDULES_CREATE', true, envOverride) : true;
+    const icebergPdca = explicitIcebergPdca ? readBool('VITE_FEATURE_ICEBERG_PDCA', false, envOverride) : false;
     return {
       ...baseSnapshot,
       schedules,
       schedulesCreate,
+      icebergPdca,
     };
   }
 
