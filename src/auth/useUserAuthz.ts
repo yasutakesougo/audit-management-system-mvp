@@ -67,6 +67,15 @@ export const useUserAuthz = (): UserAuthz => {
 
     const run = async () => {
       try {
+        // 0) E2E mock bypass: immediately return admin group ID
+        const isE2EMock = readOptionalEnv('VITE_E2E_MSAL_MOCK') === '1';
+        if (isE2EMock && adminGroupId) {
+          if (!cancelled) {
+            setGroupIds([adminGroupId]);
+          }
+          return;
+        }
+
         // 1) sessionStorage cache (per-user, 10min TTL)
         const cached = safeReadMemberOfCache(myUpnNormalized);
         if (cached) {
@@ -94,7 +103,7 @@ export const useUserAuthz = (): UserAuthz => {
     return () => {
       cancelled = true;
     };
-  }, [acquireToken, myUpnNormalized]);
+  }, [acquireToken, myUpnNormalized, adminGroupId]);
 
   const value = useMemo(() => {
     const ids = groupIds ?? [];
