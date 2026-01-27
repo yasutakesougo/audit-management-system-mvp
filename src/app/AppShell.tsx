@@ -541,6 +541,7 @@ const AppShell: React.FC<{ children: React.ReactNode }> = ({ children }) => {
               aria-label="メニューを開く"
               onClick={() => setMobileOpen(true)}
               edge="start"
+              data-testid={TESTIDS['nav-open']}
             >
               <MenuIcon />
             </IconButton>

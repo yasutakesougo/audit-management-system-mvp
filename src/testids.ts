@@ -24,6 +24,7 @@ export const TESTIDS = {
   // Shell / Router
   'app-root': 'app-root',
   'app-router-outlet': 'app-router-outlet',
+  'nav-open': 'nav-open',
   'sp-connection-status': 'sp-connection-status',
 
   // Pages
