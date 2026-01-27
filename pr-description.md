@@ -1,34 +1,17 @@
-<!-- PR description for gh pr create -->
-# Schedules acceptance & SP update
+# ナビ Drawer 刷新（検索・グルーピング）と E2E 管理者バイパス
 
 ## 概要
+- ヘッダーボタンを Drawer ナビに置き換え、検索・グルーピング・黒ノート強調を追加
+- モバイルでの遷移時に Drawer を自動クローズし検索クエリをリセット、0件時に「該当なし」案内を表示
+- Playwright/E2E で管理者グループを即時付与するモック経路を追加し、ナビ権限を安定化
 
-- 受け入れ登録を Week / Day 両ビューと FAB クイック作成に統合し、SharePoint と往復同期できるようにしました。
+## 主な変更
+- Drawer＋検索フィールド＋グループ見出し＋黒ノート強調の UI 実装（AppShell.tsx）
+- モバイル Drawer の onNavigate でクローズ＋検索クリア、検索 0 件時のフォールバック表示（AppShell.tsx）
+- E2E モードで admin グループ ID を即返却（useUserAuthz.ts）
+- Playwright ブートストラップで管理者グループ ID を env 注入（bootstrapApp.ts）
 
-## 主な変更点
-
-- Week / Day に受け入れ登録 UI とフッター・チップ表示を追加
-- FAB（＋）のクイック作成でも受け入れ情報を保存・表示
-- SharePoint ポートに update 実装（acceptedBy/acceptedOn/acceptedNote を往復反映）
-- acceptance フローの E2E (`schedule-week.acceptance.spec.ts`) を追加
-- Week / Day 全 E2E ロケータを strict モード対応に刷新
-- Unit tests（`ScheduleCreateDialog`, `schedule.tabs`）のロケータを最新 UI に追従
-
-## テスト状況
-
-- `npx playwright test schedule-week --reporter=line --workers=1`（17/17 pass）
-- `npx playwright test schedule-day --reporter=line --workers=1`（12/12 pass）
-- `npm run test -- --run ScheduleCreateDialog.spec.tsx schedule.tabs.spec.tsx --reporter=verbose`
-
-## 確認ポイント（レビュア向け）
-
-- 受け入れダイアログで acceptedBy/acceptedOn/acceptedNote が SP に往復反映されること
-- Week / Day で「受け入れ済み」表示とフッターが意図どおりに出ること（未登録時プレースホルダー含む）
-- FAB クイック作成後、受け入れ情報がカード/フッターに反映されること
-- E2E ロケータ更新で false positive/negative がないこと（strict locator の妥当性）
-- Unit でラベル変更やフィールド必須が正しくカバーされていること
-
-## マージ後のフォローアップ
-
-- UI 微調整（Week チップのアイコン/ツールチップ、Day フッター強調）を検討・実装
-- docs: `docs/ops/schedules-prod-checklist.md` に運用ルール追記（受け入れ必須・acceptedBy 記録）
+## テスト
+- npm run typecheck
+- npm run lint
+- npx playwright test tests/e2e/nav-and-status.smoke.spec.ts --workers=2

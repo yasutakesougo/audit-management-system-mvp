@@ -4,19 +4,32 @@ import Brightness7Icon from '@mui/icons-material/Brightness7';
 import CloseIcon from '@mui/icons-material/Close';
 import EditNoteIcon from '@mui/icons-material/EditNote';
 import HistoryIcon from '@mui/icons-material/History';
+import SearchIcon from '@mui/icons-material/Search';
 import AppBar from '@mui/material/AppBar';
 import Box from '@mui/material/Box';
 import Button from '@mui/material/Button';
+import Divider from '@mui/material/Divider';
+import Drawer from '@mui/material/Drawer';
+import List from '@mui/material/List';
+import ListItem from '@mui/material/ListItem';
+import ListItemButton from '@mui/material/ListItemButton';
+import ListItemIcon from '@mui/material/ListItemIcon';
+import ListItemText from '@mui/material/ListItemText';
+import ListSubheader from '@mui/material/ListSubheader';
 import Container from '@mui/material/Container';
 import Dialog from '@mui/material/Dialog';
 import DialogContent from '@mui/material/DialogContent';
 import DialogTitle from '@mui/material/DialogTitle';
 import IconButton from '@mui/material/IconButton';
+import InputAdornment from '@mui/material/InputAdornment';
 import Paper from '@mui/material/Paper';
 import Stack from '@mui/material/Stack';
+import TextField from '@mui/material/TextField';
 import Toolbar from '@mui/material/Toolbar';
 import Tooltip from '@mui/material/Tooltip';
 import Typography from '@mui/material/Typography';
+import useMediaQuery from '@mui/material/useMediaQuery';
+import { useTheme } from '@mui/material/styles';
 import React, { useContext, useEffect, useMemo, useState } from 'react';
 // Navigation Icons
 import { useMsalContext } from '@/auth/MsalProvider';
@@ -42,6 +55,7 @@ import PeopleAltRoundedIcon from '@mui/icons-material/PeopleAltRounded';
 import PsychologyIcon from '@mui/icons-material/Psychology';
 import SettingsRoundedIcon from '@mui/icons-material/SettingsRounded';
 import WorkspacesIcon from '@mui/icons-material/Workspaces';
+import MenuIcon from '@mui/icons-material/Menu';
 import { Link as RouterLink, useLocation, useNavigate } from 'react-router-dom';
 import { ColorModeContext } from './theme';
 
@@ -54,6 +68,48 @@ type NavItem = {
   prefetchKey?: PrefetchKey;
   prefetchKeys?: PrefetchKey[];
 };
+
+type NavGroupKey = 'blacknote' | 'record' | 'analysis' | 'master' | 'admin' | 'report';
+
+const groupLabel: Record<NavGroupKey, string> = {
+  blacknote: '📓 黒ノート',
+  record: '🗓 記録・運用',
+  analysis: '📊 分析・PDCA',
+  master: '👥 マスター',
+  admin: '🛡 管理',
+  report: '📣 申請・報告',
+};
+
+function pickGroup(item: NavItem, isAdmin: boolean): NavGroupKey {
+  const { to, label, testId } = item;
+  // 黒ノート: testId起点で安定判定（最優先）
+  if (testId === TESTIDS.nav.dashboard || to === '/' || to.startsWith('/dashboard') || to.startsWith('/admin/dashboard') || label.includes('黒ノート')) {
+    return 'blacknote';
+  }
+  // 記録・運用: daily, schedules
+  if (testId === TESTIDS.nav.daily || testId === TESTIDS.nav.schedules || to.startsWith('/daily') || to.startsWith('/schedule') || label.includes('日次') || label.includes('スケジュール')) {
+    return 'record';
+  }
+  // 分析・PDCA: analysis, iceberg, assessment
+  if (testId === TESTIDS.nav.analysis || testId === TESTIDS.nav.iceberg || testId === TESTIDS.nav.icebergPdca || testId === TESTIDS.nav.assessment || to.startsWith('/analysis') || to.startsWith('/assessment') || to.startsWith('/survey') || label.includes('分析') || label.includes('氷山') || label.includes('アセスメント') || label.includes('特性')) {
+    return 'analysis';
+  }
+  // マスター: users, staff
+  if (to.startsWith('/users') || to.startsWith('/staff') || label.includes('利用者') || label.includes('職員')) {
+    return 'master';
+  }
+  // 管理: checklist, audit, admin/templates (管理者のみ)
+  if (isAdmin && (testId === TESTIDS.nav.checklist || testId === TESTIDS.nav.audit || testId === TESTIDS.nav.admin || to.startsWith('/checklist') || to.startsWith('/audit') || to.startsWith('/admin') || label.includes('自己点検') || label.includes('監査') || label.includes('設定'))) {
+    return 'admin';
+  }
+  // 申請・報告: compliance
+  if (to.startsWith('/compliance') || label.includes('コンプラ')) {
+    return 'report';
+  }
+  // デフォルトは記録
+  return 'record';
+}
+
 const SKIP_LOGIN = shouldSkipLogin();
 const E2E_MSAL_MOCK_ENABLED = isE2eMsalMockEnabled();
 
@@ -65,6 +121,12 @@ const AppShell: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const dashboardPath = useDashboardPath();
   const currentRole = useAuthStore((s) => s.currentUserRole);
   const { isAdmin, ready: authzReady } = useUserAuthz();
+  const theme = useTheme();
+  const isDesktop = useMediaQuery(theme.breakpoints.up('md'));
+  const [mobileOpen, setMobileOpen] = useState(false);
+  const [navQuery, setNavQuery] = useState('');
+  const drawerWidth = 240;
+  const drawerOffset = isDesktop ? drawerWidth : 0;
 
   useEffect(() => {
     if (SKIP_LOGIN && location.pathname === '/login') {
@@ -133,7 +195,7 @@ const AppShell: React.FC<{ children: React.ReactNode }> = ({ children }) => {
         prefetchKey: PREFETCH_KEYS.dailyMenu,
         testId: TESTIDS.nav.daily,
       },
-      ...(isAdmin && authzReady ? [
+      ...(isAdmin && (authzReady || SKIP_LOGIN) ? [
         {
           label: '自己点検',
           to: '/checklist',
@@ -211,12 +273,144 @@ const AppShell: React.FC<{ children: React.ReactNode }> = ({ children }) => {
     return items;
   }, [dashboardPath, currentRole, schedules, complianceForm, icebergPdca, isAdmin, authzReady]);
 
+  const filteredNavItems = useMemo(() => {
+    const q = navQuery.trim().toLowerCase();
+    if (!q) return navItems;
+    return navItems.filter((item) => (item.label ?? '').toLowerCase().includes(q));
+  }, [navItems, navQuery]);
+
+  const groupedNavItems = useMemo(() => {
+    const ORDER: NavGroupKey[] = ['blacknote', 'record', 'analysis', 'master', 'admin', 'report'];
+    const map = new Map<NavGroupKey, NavItem[]>();
+    ORDER.forEach((k) => map.set(k, []));
+
+    for (const item of filteredNavItems) {
+      const group = pickGroup(item, isAdmin);
+      map.get(group)!.push(item);
+    }
+
+    return { map, ORDER };
+  }, [filteredNavItems, isAdmin]);
+
+  const renderNavItem = (item: NavItem, onNavigate?: () => void) => {
+    const { label, to, isActive, testId, icon: IconComponent, prefetchKey, prefetchKeys } = item;
+    const active = isActive(location.pathname);
+    const isBlackNote = pickGroup(item, isAdmin) === 'blacknote';
+
+    const commonProps = {
+      selected: active,
+      'data-testid': testId,
+      'aria-current': active ? ('page' as const) : undefined,
+      onClick: onNavigate,
+      sx: isBlackNote && active ? {
+        borderLeft: 4,
+        borderColor: 'primary.main',
+        fontWeight: 700,
+        '& .MuiListItemText-primary': {
+          fontWeight: 700,
+        },
+      } : undefined,
+    };
+
+    const content = (
+      <>
+        {IconComponent && (
+          <ListItemIcon>
+            <IconComponent />
+          </ListItemIcon>
+        )}
+        <ListItemText primary={label} />
+      </>
+    );
+
+    if (prefetchKey) {
+      return (
+        <ListItemButton
+          key={label}
+          component={NavLinkPrefetch as unknown as React.ElementType}
+          to={to}
+          {...commonProps}
+          {...({ preloadKey: prefetchKey, preloadKeys: prefetchKeys, meta: { label } } as Record<string, unknown>)}
+        >
+          {content}
+        </ListItemButton>
+      );
+    }
+
+    return (
+      <ListItemButton
+        key={label}
+        component={RouterLink as unknown as React.ElementType}
+        to={to}
+        {...commonProps}
+      >
+        {content}
+      </ListItemButton>
+    );
+  };
+
+  const renderGroupedNavList = (onNavigate?: () => void) => {
+    if (filteredNavItems.length === 0) {
+      return (
+        <List dense sx={{ px: 1 }}>
+          <ListItem disablePadding>
+            <ListItemText
+              primary="該当なし"
+              primaryTypographyProps={{ variant: 'body2' }}
+              sx={{ px: 2, py: 1, opacity: 0.7 }}
+            />
+          </ListItem>
+        </List>
+      );
+    }
+
+    return (
+      <List dense sx={{ px: 1 }}>
+        {groupedNavItems.ORDER.map((groupKey) => {
+          const items = groupedNavItems.map.get(groupKey) ?? [];
+          if (items.length === 0) return null;
+
+          return (
+            <Box key={groupKey} sx={{ mb: 1.5 }}>
+              <ListSubheader
+                disableSticky
+                sx={{
+                  bgcolor: 'transparent',
+                  lineHeight: 1.6,
+                  py: 0.5,
+                  fontWeight: 700,
+                  fontSize: '0.75rem',
+                  color: 'text.secondary',
+                  px: 2,
+                }}
+              >
+                {groupLabel[groupKey]}
+              </ListSubheader>
+              {items.map((item) => renderNavItem(item, onNavigate))}
+              {groupKey !== 'report' && <Divider sx={{ mt: 1, mb: 0.5 }} />}
+            </Box>
+          );
+        })}
+      </List>
+    );
+  };
+
   return (
     <RouteHydrationListener>
       <LiveAnnouncer>
         <div data-testid="app-shell">
         <AppBar position="static" color="primary" enableColorOnDark>
         <Toolbar sx={{ gap: 1 }}>
+          {!isDesktop && (
+            <IconButton
+              color="inherit"
+              aria-label="メニューを開く"
+              onClick={() => setMobileOpen(true)}
+              edge="start"
+            >
+              <MenuIcon />
+            </IconButton>
+          )}
           <Typography variant="h6" component="div" sx={{ flexGrow: 1 }}>
             磯子区障害者地域活動ホーム
           </Typography>
@@ -237,59 +431,75 @@ const AppShell: React.FC<{ children: React.ReactNode }> = ({ children }) => {
           <SignInButton />
         </Toolbar>
         </AppBar>
-        <Container component="main" role="main" maxWidth="lg" sx={{ py: 4, pb: { xs: 18, sm: 14 } }}>
-        <Box component="nav" role="navigation" aria-label="主要ナビゲーション" mb={2}>
-          <Stack direction="row" spacing={1} flexWrap="wrap">
-            {navItems.map(({ label, to, isActive, testId, icon: IconComponent, prefetchKey, prefetchKeys }) => {
-              const active = isActive(location.pathname);
-              const sx = {
-                minWidth: 'auto',
-                px: 2,
-                py: 1,
-                gap: 1,
-                '& .MuiButton-startIcon': {
-                  marginRight: '6px',
-                  marginLeft: 0,
-                },
-              } as const;
-
-              if (prefetchKey) {
-                return (
-                  <Button
-                    key={label}
-                    component={NavLinkPrefetch as unknown as React.ElementType}
-                    to={to}
-                    variant={active ? 'contained' : 'outlined'}
-                    size="small"
-                    data-testid={testId}
-                    aria-current={active ? 'page' : undefined}
-                    startIcon={IconComponent ? <IconComponent /> : undefined}
-                    sx={sx}
-                    {...({ preloadKey: prefetchKey, preloadKeys: prefetchKeys, meta: { label } } as Record<string, unknown>)}
-                  >
-                    {label}
-                  </Button>
-                );
-              }
-
-              return (
-                <Button
-                  key={label}
-                  component={RouterLink as unknown as React.ElementType}
-                  to={to}
-                  variant={active ? 'contained' : 'outlined'}
+        {/* Side Navigation Drawer */}
+        {isDesktop ? (
+          <Drawer
+            variant="permanent"
+            open
+            sx={{
+              width: drawerWidth,
+              flexShrink: 0,
+              '& .MuiDrawer-paper': { width: drawerWidth, boxSizing: 'border-box' },
+            }}
+          >
+            <Box role="navigation" aria-label="主要ナビゲーション" sx={{ mt: 7, overflowY: 'auto', height: 'calc(100vh - 56px)' }}>
+              <Box sx={{ px: 1.5, py: 1, pb: 1.5 }}>
+                <TextField
+                  value={navQuery}
+                  onChange={(e) => setNavQuery(e.target.value)}
                   size="small"
-                  data-testid={testId}
-                  aria-current={active ? 'page' : undefined}
-                  startIcon={IconComponent ? <IconComponent /> : undefined}
-                  sx={sx}
-                >
-                  {label}
-                </Button>
-              );
-            })}
-          </Stack>
-        </Box>
+                  placeholder="メニュー検索"
+                  fullWidth
+                  inputProps={{ 'aria-label': 'メニュー検索' }}
+                  InputProps={{
+                    startAdornment: (
+                      <InputAdornment position="start">
+                        <SearchIcon fontSize="small" />
+                      </InputAdornment>
+                    ),
+                  }}
+                />
+              </Box>
+              {renderGroupedNavList()}
+            </Box>
+          </Drawer>
+        ) : (
+          <Drawer
+            variant="temporary"
+            open={mobileOpen}
+            onClose={() => setMobileOpen(false)}
+            ModalProps={{ keepMounted: true }}
+            sx={{
+              '& .MuiDrawer-paper': { width: drawerWidth, boxSizing: 'border-box' },
+            }}
+          >
+            <Box role="navigation" aria-label="主要ナビゲーション" sx={{ pt: 2, overflowY: 'auto', height: '100vh' }}>
+              <Box sx={{ px: 1.5, pb: 1.5 }}>
+                <TextField
+                  value={navQuery}
+                  onChange={(e) => setNavQuery(e.target.value)}
+                  size="small"
+                  placeholder="メニュー検索"
+                  fullWidth
+                  inputProps={{ 'aria-label': 'メニュー検索' }}
+                  InputProps={{
+                    startAdornment: (
+                      <InputAdornment position="start">
+                        <SearchIcon fontSize="small" />
+                      </InputAdornment>
+                    ),
+                  }}
+                />
+              </Box>
+              {renderGroupedNavList(() => {
+                setMobileOpen(false);
+                setNavQuery('');
+              })}
+            </Box>
+          </Drawer>
+        )}
+
+        <Container component="main" role="main" maxWidth="lg" sx={{ py: 4, pb: { xs: 18, sm: 14 }, ml: `${drawerOffset}px` }}>
           {children}
         </Container>
         <FooterQuickActions />

@@ -24,6 +24,7 @@ export async function bootstrapDashboard(page: Page, flags: BootstrapFlags = {})
       VITE_E2E_MSAL_MOCK: '1',
       VITE_MSAL_CLIENT_ID: 'e2e-mock-client-id-12345678',
       VITE_MSAL_TENANT_ID: 'common',
+      VITE_SCHEDULE_ADMINS_GROUP_ID: 'e2e-admin-group-id',
       ...(opts.featureSchedules ? { VITE_FEATURE_SCHEDULES: '1' } : {}),
       ...(opts.featureIcebergPdca ? { VITE_FEATURE_ICEBERG_PDCA: '1' } : {}),
     };
