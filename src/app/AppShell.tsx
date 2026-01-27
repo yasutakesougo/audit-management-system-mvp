@@ -30,7 +30,7 @@ import Tooltip from '@mui/material/Tooltip';
 import Typography from '@mui/material/Typography';
 import useMediaQuery from '@mui/material/useMediaQuery';
 import { useTheme } from '@mui/material/styles';
-import React, { useContext, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useContext, useEffect, useMemo, useState } from 'react';
 // Navigation Icons
 import { useMsalContext } from '@/auth/MsalProvider';
 import { useUserAuthz } from '@/auth/useUserAuthz';
@@ -279,6 +279,27 @@ const AppShell: React.FC<{ children: React.ReactNode }> = ({ children }) => {
     return navItems.filter((item) => (item.label ?? '').toLowerCase().includes(q));
   }, [navItems, navQuery]);
 
+  const handleNavSearchKeyDown = useCallback(
+    (event: React.KeyboardEvent<HTMLInputElement>, onNavigate?: () => void) => {
+      if (event.key === 'Escape') {
+        setNavQuery('');
+        return;
+      }
+      if (event.key !== 'Enter') return;
+      const first = filteredNavItems[0];
+      if (!first) return;
+      event.preventDefault();
+      if (onNavigate) onNavigate();
+      navigate(first.to);
+    },
+    [filteredNavItems, navigate],
+  );
+
+  const handleMobileNavigate = useCallback(() => {
+    setMobileOpen(false);
+    setNavQuery('');
+  }, []);
+
   const groupedNavItems = useMemo(() => {
     const ORDER: NavGroupKey[] = ['blacknote', 'record', 'analysis', 'master', 'admin', 'report'];
     const map = new Map<NavGroupKey, NavItem[]>();
@@ -447,6 +468,7 @@ const AppShell: React.FC<{ children: React.ReactNode }> = ({ children }) => {
                 <TextField
                   value={navQuery}
                   onChange={(e) => setNavQuery(e.target.value)}
+                  onKeyDown={handleNavSearchKeyDown}
                   size="small"
                   placeholder="メニュー検索"
                   fullWidth
@@ -478,6 +500,8 @@ const AppShell: React.FC<{ children: React.ReactNode }> = ({ children }) => {
                 <TextField
                   value={navQuery}
                   onChange={(e) => setNavQuery(e.target.value)}
+                  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                  onKeyDown={(e) => handleNavSearchKeyDown(e as any, handleMobileNavigate)}
                   size="small"
                   placeholder="メニュー検索"
                   fullWidth
@@ -491,10 +515,7 @@ const AppShell: React.FC<{ children: React.ReactNode }> = ({ children }) => {
                   }}
                 />
               </Box>
-              {renderGroupedNavList(() => {
-                setMobileOpen(false);
-                setNavQuery('');
-              })}
+              {renderGroupedNavList(handleMobileNavigate)}
             </Box>
           </Drawer>
         )}
