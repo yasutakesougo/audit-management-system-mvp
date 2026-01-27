@@ -173,3 +173,5 @@
 - `schedulesWeekV2`: タイムライン UX 改善、高密度表示、フィルタリング
 - Nurse / Audit 連携: 出席 → 実績 → 請求 CSV へのトレーサビリティ
 - スケジュールテンプレート: 曜日パターン定義・月次展開
+
+Schedules Phase 1: /schedules/week is now the primary entry and always renders Schedules V2. The legacy schedule UI is preserved at /schedule/legacy for compatibility and emergency fallback. You can temporarily access legacy via /schedule?ui=legacy.

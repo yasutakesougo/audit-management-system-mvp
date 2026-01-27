@@ -650,6 +650,7 @@ export default function WeekPage() {
       tabIndex={-1}
       style={{ paddingBottom: 16 }}
     >
+      <div data-testid="schedules-week-root" style={{ display: 'contents' }}>
       <div
         className="schedule-sticky"
         style={{
@@ -874,6 +875,7 @@ export default function WeekPage() {
           {snack.message}
         </Alert>
       </Snackbar>
+      </div>
     </section>
   );
 }
