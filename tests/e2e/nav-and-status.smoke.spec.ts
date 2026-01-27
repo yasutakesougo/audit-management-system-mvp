@@ -23,7 +23,8 @@ test.describe('Nav/Status/Footers basics', () => {
     await expect(badge).toHaveText(/^(Checking|SP Connected|SP Error|SP Sign-In)$/);
   });
 
-  test('Top nav items expose test ids and aria-current updates', async ({ page }) => {
+  test('Drawer nav items expose test ids and aria-current updates', async ({ page }) => {
+    // Nav items are now in the drawer (permanent on desktop, mobile drawer also rendered but hidden)
     const dashboard = page.getByTestId('nav-dashboard').first();
     await expect(dashboard).toHaveAttribute('aria-current', 'page');
 
@@ -32,7 +33,7 @@ test.describe('Nav/Status/Footers basics', () => {
     await expect(page.getByTestId('nav-checklist').first()).toHaveAttribute('aria-current', 'page');
   });
 
-  test('Top nav highlights schedules / nurse / iceberg per route', async ({ page }) => {
+  test('Drawer nav highlights schedules / nurse / iceberg per route', async ({ page }) => {
     await page.goto('/schedules/week');
     await expect(page.getByTestId(TESTIDS.nav.schedules)).toHaveAttribute('aria-current', 'page');
 
@@ -40,20 +41,22 @@ test.describe('Nav/Status/Footers basics', () => {
     const nurseNav = page.getByTestId(TESTIDS.nav.nurse);
     const nurseCount = await nurseNav.count();
     test.skip(nurseCount === 0, 'Nurse nav entry is not visible in this build');
-    await expect(nurseNav.first()).toHaveAttribute('aria-current', 'page');
+    await expect(nurseNav).toHaveAttribute('aria-current', 'page');
 
     await page.goto('/analysis/iceberg');
     await expect(page.getByTestId(TESTIDS.nav.iceberg)).toHaveAttribute('aria-current', 'page');
   });
 
-  test('Footer quick actions announce active state', async ({ page }) => {
+  test.skip('Footer quick actions announce active state', async ({ page }) => {
+    // SKIP: Footer quick actions replaced with FAB in PR #227
     const attendance = page.getByTestId('footer-action-daily-attendance');
     await attendance.click();
     await expect(page).toHaveURL(/\/daily\/attendance/);
     await expect(attendance).toHaveAttribute('aria-current', 'page');
   });
 
-  test('Footer quick actions expose active state when visiting directly', async ({ page }) => {
+  test.skip('Footer quick actions expose active state when visiting directly', async ({ page }) => {
+    // SKIP: Footer quick actions replaced with FAB in PR #227
     await page.goto('/daily/activity');
     const activity = page.getByTestId('footer-action-daily-activity');
     await expect(activity).toHaveAttribute('aria-current', 'page');
