@@ -60,7 +60,7 @@ const E2E_MSAL_MOCK_ENABLED = isE2eMsalMockEnabled();
 const AppShell: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const location = useLocation();
   const navigate = useNavigate();
-  const { schedules, complianceForm } = useFeatureFlags();
+  const { schedules, complianceForm, icebergPdca } = useFeatureFlags();
   const { mode, toggle } = useContext(ColorModeContext);
   const dashboardPath = useDashboardPath();
   const currentRole = useAuthStore((s) => s.currentUserRole);
@@ -110,14 +110,6 @@ const AppShell: React.FC<{ children: React.ReactNode }> = ({ children }) => {
         icon: WorkspacesIcon,
         prefetchKey: PREFETCH_KEYS.iceberg,
         testId: TESTIDS.nav.iceberg,
-      },
-      {
-        label: '氷山PDCA',
-        to: '/analysis/iceberg-pdca',
-        isActive: (pathname) => pathname.startsWith('/analysis/iceberg-pdca'),
-        icon: HistoryIcon,
-        prefetchKey: PREFETCH_KEYS.icebergPdcaBoard,
-        testId: TESTIDS.nav.icebergPdca,
       },
       {
         label: 'アセスメント',
@@ -184,6 +176,17 @@ const AppShell: React.FC<{ children: React.ReactNode }> = ({ children }) => {
       },
     ];
 
+    if (icebergPdca) {
+      items.splice(3, 0, {
+        label: '氷山PDCA',
+        to: '/analysis/iceberg-pdca',
+        isActive: (pathname) => pathname.startsWith('/analysis/iceberg-pdca'),
+        icon: HistoryIcon,
+        prefetchKey: PREFETCH_KEYS.icebergPdcaBoard,
+        testId: TESTIDS.nav.icebergPdca,
+      });
+    }
+
     if (schedules) {
       items.push({
         label: 'スケジュール',
@@ -206,7 +209,7 @@ const AppShell: React.FC<{ children: React.ReactNode }> = ({ children }) => {
     }
 
     return items;
-  }, [dashboardPath, currentRole, schedules, complianceForm, isAdmin, authzReady]);
+  }, [dashboardPath, currentRole, schedules, complianceForm, icebergPdca, isAdmin, authzReady]);
 
   return (
     <RouteHydrationListener>

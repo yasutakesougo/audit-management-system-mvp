@@ -13,6 +13,12 @@ export type UpdatePdcaInput = {
   summary?: string;
   phase?: IcebergPdcaPhase;
   etag?: string;
+  userId?: string;
+};
+
+export type DeletePdcaInput = {
+  id: string;
+  etag?: string;
 };
 
 export type PdcaListQuery = {
@@ -23,4 +29,5 @@ export interface PdcaRepository {
   list(query: PdcaListQuery): Promise<IcebergPdcaItem[]>;
   create(input: CreatePdcaInput): Promise<IcebergPdcaItem>;
   update(input: UpdatePdcaInput): Promise<IcebergPdcaItem>;
+  delete(input: DeletePdcaInput): Promise<void>;
 }
