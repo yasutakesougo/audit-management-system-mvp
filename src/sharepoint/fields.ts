@@ -121,6 +121,7 @@ export enum ListKeys {
   SurveyTokusei = 'FormsResponses_Tokusei',
   OrgMaster = 'Org_Master',
   DiagnosticsReports = 'Diagnostics_Reports',
+  Schedules = 'Schedules',
 }
 
 export const LIST_CONFIG: Record<ListKeys, { title: string }> = {
@@ -132,6 +133,7 @@ export const LIST_CONFIG: Record<ListKeys, { title: string }> = {
   [ListKeys.SurveyTokusei]: { title: 'FormsResponses_Tokusei' },
   [ListKeys.OrgMaster]: { title: 'Org_Master' },
   [ListKeys.DiagnosticsReports]: { title: 'Diagnostics_Reports' },
+  [ListKeys.Schedules]: { title: 'Schedules' },
 };
 
 export const FIELD_MAP = {
@@ -186,22 +188,24 @@ export const FIELD_MAP = {
   Schedules: {
     id: 'Id',
     title: 'Title',
-    start: 'StartDateTime',
-    end: 'EndDateTime',
+    eventDate: 'EventDate', // Phase 1: DateTime, required
+    endDate: 'EndDate', // Phase 1: DateTime, required
     status: 'Status',
-    notes: 'Note',
     serviceType: 'ServiceType',
+    personType: 'cr014_personType', // Phase 1: Choice (User/Staff/Org), required
+    personId: 'cr014_personId', // Phase 1: Text, required
+    personName: 'cr014_personName',
+    rowKey: 'RowKey', // Phase 1: Text, required
+    dayKey: 'cr014_dayKey', // Phase 1: DateTime (Date display), required; SP reports as DateTime
+    monthKey: 'MonthKey', // Phase 1: Text, required (yyyy-MM)
+    fiscalYear: 'cr014_fiscalYear', // Phase 1: Text, required
+    orgAudience: 'cr014_orgAudience',
     staffIds: 'AssignedStaffId',
-    billingFlags: 'BillingFlags',
-    relatedResourceIds: 'RelatedResourceId',
     targetUserIds: 'TargetUserId',
     created: 'Created',
     modified: 'Modified',
     createdAt: 'CreatedAt',
     updatedAt: 'UpdatedAt',
-    rowKey: 'RowKey',
-    dayKey: 'Date',
-    monthKey: 'MonthKey',
   },
 } as const;
 
