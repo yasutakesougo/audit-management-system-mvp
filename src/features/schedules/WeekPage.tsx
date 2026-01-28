@@ -643,12 +643,40 @@ export default function WeekPage() {
   const [conflictDetailOpen, setConflictDetailOpen] = useState(false);
   const [lastErrorAt, setLastErrorAt] = useState<number | null>(null);
 
+  // Phase 2-2b: Scroll & highlight conflicted schedule after refetch
+  const [focusScheduleId, setFocusScheduleId] = useState<string | null>(null);
+  const [highlightId, setHighlightId] = useState<string | null>(null);
+
   // Set timestamp when conflict appears
   useEffect(() => {
     if (conflictOpen) {
       setLastErrorAt(Date.now());
     }
   }, [conflictOpen]);
+
+  // Phase 2-2b: Scroll to & highlight focused schedule after refetch completes
+  useEffect(() => {
+    if (!focusScheduleId) return;
+
+    const element = document.querySelector<HTMLElement>(`[data-schedule-id="${focusScheduleId}"]`);
+    if (!element) return;
+
+    // Smooth scroll to center
+    element.scrollIntoView({ block: 'center', behavior: 'smooth' });
+
+    // Set highlight
+    setHighlightId(focusScheduleId);
+
+    // Clear highlight after 2 seconds
+    const timeoutId = setTimeout(() => {
+      setHighlightId(null);
+    }, 2000);
+
+    // Clear focus state (one-time operation)
+    setFocusScheduleId(null);
+
+    return () => clearTimeout(timeoutId);
+  }, [focusScheduleId, filteredItems]);
 
   const showEmptyHint = !isLoading && filteredItems.length === 0;
 
@@ -790,6 +818,7 @@ export default function WeekPage() {
                 onDayClick={handleDayClick}
                 activeDateIso={resolvedActiveDateIso}
                 onItemSelect={handleWeekEventClick}
+                highlightId={highlightId}
               />
             )}
             {mode === 'day' && (
@@ -911,6 +940,10 @@ export default function WeekPage() {
                 color="inherit"
                 size="small"
                 onClick={() => {
+                  // Phase 2-2b: Set focus for post-refetch scroll + highlight
+                  if (lastError?.kind === 'conflict' && lastError.id) {
+                    setFocusScheduleId(lastError.id);
+                  }
                   refetch();
                   clearLastError();
                 }}

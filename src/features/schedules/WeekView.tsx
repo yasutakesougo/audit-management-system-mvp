@@ -31,6 +31,7 @@ export type WeekViewProps = {
   activeDateIso?: string | null;
   onItemSelect?: (item: WeekSchedItem) => void;
   onItemAccept?: (item: WeekSchedItem) => void;
+  highlightId?: string | null;
 };
 
 type WeekSchedItem = SchedItem & {
@@ -133,6 +134,7 @@ export default function WeekView(props: WeekViewProps) {
         activeDateIso={props.activeDateIso}
         onItemSelect={props.onItemSelect}
         onItemAccept={props.onItemAccept}
+        highlightId={props.highlightId}
       />
     );
   }
@@ -148,6 +150,7 @@ type WeekViewContentProps = {
   activeDateIso?: string | null;
   onItemSelect?: (item: WeekSchedItem) => void;
   onItemAccept?: (item: WeekSchedItem) => void;
+  highlightId?: string | null;
 };
 
 const WeekViewWithData = (props: WeekViewProps) => {
@@ -163,11 +166,12 @@ const WeekViewWithData = (props: WeekViewProps) => {
       activeDateIso={props.activeDateIso}
       onItemSelect={props.onItemSelect}
       onItemAccept={props.onItemAccept}
+      highlightId={props.highlightId}
     />
   );
 };
 
-const WeekViewContent = ({ items, loading, onDayClick, activeDateIso, range, onItemSelect, onItemAccept }: WeekViewContentProps) => {
+const WeekViewContent = ({ items, loading, onDayClick, activeDateIso, range, onItemSelect, onItemAccept, highlightId }: WeekViewContentProps) => {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
   const [menuAnchor, setMenuAnchor] = useState<HTMLElement | null>(null);
@@ -483,12 +487,16 @@ const WeekViewContent = ({ items, loading, onDayClick, activeDateIso, range, onI
                     data-category={item.category}
                     data-schedule-event="true"
                     data-id={item.id}
+                    data-schedule-id={item.id}
                     data-status={item.status ?? ''}
                     data-all-day={item.allDay ? '1' : '0'}
                     className="relative rounded-md border text-left shadow-sm"
                     style={{
                       backgroundColor: serviceTokens?.bg,
                       borderColor: serviceTokens?.border,
+                      ...(highlightId === item.id
+                        ? { outline: '2px solid', outlineOffset: 2, borderRadius: 4 }
+                        : null),
                     }}
                   >
                     <div
