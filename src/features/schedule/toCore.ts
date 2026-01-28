@@ -7,9 +7,10 @@ export function toCoreFromBaseSchedule(s: BaseSchedule): ScheduleItemCore {
   const title = String(raw.title ?? raw.subject ?? '');
   const start = String(raw.start ?? raw.Start ?? '');
   const end = String(raw.end ?? raw.End ?? '');
+  const id = String(raw.id ?? raw.Id ?? cryptoRandomFallback(`${title}|${start}`));
 
   return {
-    id: String(raw.id ?? raw.Id ?? cryptoRandomFallback(`${title}|${start}`)),
+    id,
     title,
     start,
     end,
@@ -20,7 +21,7 @@ export function toCoreFromBaseSchedule(s: BaseSchedule): ScheduleItemCore {
     allDay: raw.allDay as boolean | undefined,
     source: 'sharepoint',
     updatedAt: raw.updatedAt as string | undefined,
-    etag: raw.etag as string | undefined,
+    etag: (raw.etag as string | undefined) ?? `"schedule-${id}"`, // Phase 2-0: fallback etag
   };
 }
 

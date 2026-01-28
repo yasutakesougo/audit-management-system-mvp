@@ -3,7 +3,24 @@ import { fetchSp } from '@/lib/fetchSp';
 import { AuthRequiredError } from '@/lib/errors';
 import { withUserMessage } from '@/lib/notice';
 import { createSpClient, ensureConfig } from '@/lib/spClient';
+import { result } from '@/shared/result';
 import { SCHEDULES_DEBUG } from '../debug';
+
+/**
+ * Extract HTTP status code from various error shapes
+ * Phase 2-1b: Used for 412 Precondition Failed detection
+ */
+const getHttpStatus = (e: unknown): number | undefined => {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const anyErr = e as any;
+  return (
+    anyErr?.status ??
+    anyErr?.response?.status ??
+    anyErr?.response?.statusCode ??
+    anyErr?.cause?.status ??
+    anyErr?.cause?.response?.status
+  );
+};
 import { makeSharePointScheduleCreator, toSharePointPayload } from './createAdapters';
 import type { DateRange, SchedItem, SchedulesPort, UpdateScheduleEventInput } from './port';
 import { mapSpRowToSchedule, parseSpScheduleRows } from './spRowSchema';
@@ -155,13 +172,46 @@ const makeSharePointScheduleUpdater = (acquireToken: () => Promise<string | null
       throw new Error(`Invalid schedule id for SharePoint update: ${input.id}`);
     }
 
+    // Phase 2-1b: Validate etag presence (mismatch detection)
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const etag = (input as any)?.etag;
+    if (!etag) {
+      return result.validation('Missing etag for update', { field: 'etag' });
+    }
+
     const payload = toSharePointPayload(input);
     if (input.status) {
       payload.body[SCHEDULES_FIELDS.status] = input.status;
     }
 
-    await client.updateItemByTitle(SCHEDULES_LIST_TITLE, idNum, payload.body);
-    return fetchItemById(idNum);
+    try {
+      await client.updateItemByTitle(SCHEDULES_LIST_TITLE, idNum, payload.body);
+      const item = await fetchItemById(idNum);
+      return result.ok(item);
+    } catch (err) {
+      const status = getHttpStatus(err);
+
+      // Phase 2-1b: 412 Precondition Failed → conflict (etag mismatch)
+      if (status === 412) {
+        return result.conflict({
+          message: 'Schedule update conflict (etag mismatch)',
+          etag,
+          resource: 'schedule',
+          op: 'update',
+        });
+      }
+
+      if (status === 403) {
+        return result.forbidden('Forbidden');
+      }
+
+      if (status === 404) {
+        return result.notFound('Not found');
+      }
+
+      const message = err instanceof Error ? err.message : String(err);
+      return result.unknown<SchedItem>(message, err);
+    }
   };
 };
 
@@ -230,20 +280,26 @@ export const makeSharePointSchedulesPort = (options?: SharePointSchedulesPortOpt
     },
     async create(input) {
       if (!createImpl) {
-        throw new Error('Schedule create is not configured for this environment.');
+        return result.err({
+          kind: 'unknown',
+          message: 'Schedule create is not configured for this environment.',
+        });
       }
       return createImpl(input);
     },
     async update(input) {
       if (!updateImpl) {
-        throw new Error('Schedule update is not configured for this environment.');
+        return result.err({
+          kind: 'unknown',
+          message: 'Schedule update is not configured for this environment.',
+        });
       }
       try {
         return await updateImpl(input);
       } catch (error) {
-        throw withUserMessage(
-          toSafeError(error instanceof Error ? error : new Error(String(error))),
-          '予定の更新に失敗しました。時間をおいて再試行してください。',
+        const safeErr = toSafeError(error instanceof Error ? error : new Error(String(error)));
+        return result.unknown(
+          safeErr.message || '予定の更新に失敗しました。時間をおいて再試行してください。',
         );
       }
     },

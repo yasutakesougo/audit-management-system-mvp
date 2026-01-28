@@ -1,6 +1,6 @@
 import { type CSSProperties, type MouseEvent, useCallback, useEffect, useId, useMemo, useRef, useState } from 'react';
 import { useLocation, useMatch, useNavigate, useSearchParams } from 'react-router-dom';
-import { Alert, Snackbar } from '@mui/material';
+import { Alert, Button, Snackbar } from '@mui/material';
 
 import { useAnnounce } from '@/a11y/LiveAnnouncer';
 import { isDev } from '@/env';
@@ -271,7 +271,7 @@ export default function WeekPage() {
     const start = startOfWeek(focusDate);
     return makeRange(start, endOfWeek(start));
   }, [focusDate]);
-  const { items, loading: isLoading, create, update, remove } = useSchedules(weekRange);
+  const { items, loading: isLoading, create, update, remove, lastError, clearLastError, refetch } = useSchedules(weekRange);
   const filteredItems = useMemo(() => {
     const needle = query.trim().toLowerCase();
     return items.filter((item) => {
@@ -638,6 +638,9 @@ export default function WeekPage() {
     clearDialogParams();
   }, [clearDialogParams, primeRouteReset]);
 
+  // Phase 2-1c: Show conflict snackbar when update/create fails with conflict
+  const conflictOpen = !!lastError && lastError.kind === 'conflict';
+
   const showEmptyHint = !isLoading && filteredItems.length === 0;
 
 
@@ -873,6 +876,33 @@ export default function WeekPage() {
           sx={{ width: '100%' }}
         >
           {snack.message}
+        </Alert>
+      </Snackbar>
+
+      {/* Phase 2-1c: Conflict snackbar for etag mismatch */}
+      <Snackbar
+        open={conflictOpen}
+        autoHideDuration={8000}
+        onClose={() => clearLastError()}
+        anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
+      >
+        <Alert
+          severity="warning"
+          onClose={() => clearLastError()}
+          action={
+            <Button
+              color="inherit"
+              size="small"
+              onClick={() => {
+                refetch();
+                clearLastError();
+              }}
+            >
+              最新を表示
+            </Button>
+          }
+        >
+          {lastError?.message ?? '更新が競合しました（最新を読み込み直してください）'}
         </Alert>
       </Snackbar>
       </div>

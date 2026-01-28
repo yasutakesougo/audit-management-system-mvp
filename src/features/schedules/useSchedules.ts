@@ -2,15 +2,19 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { type DateRange, type SchedItem, type UpdateScheduleEventInput } from './data';
 import { useSchedulesPort } from './data/context';
 import type { InlineScheduleDraft } from './data/inlineScheduleDraft';
+import type { ResultError } from '@/shared/result';
 
 export type { InlineScheduleDraft } from './data/inlineScheduleDraft';
 
-type UseSchedulesResult = {
+export type UseSchedulesResult = {
   items: SchedItem[];
   loading: boolean;
   create: (draft: InlineScheduleDraft) => Promise<void>;
   update: (input: UpdateScheduleEventInput) => Promise<void>;
   remove: (eventId: string) => Promise<void>;
+  lastError: ResultError | null;
+  clearLastError: () => void;
+  refetch: () => void;
 };
 
 const normalizeRange = (range: DateRange): DateRange => ({
@@ -21,8 +25,13 @@ const normalizeRange = (range: DateRange): DateRange => ({
 export function useSchedules(range: DateRange): UseSchedulesResult {
   const [items, setItems] = useState<SchedItem[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
+  const [lastError, setLastError] = useState<ResultError | null>(null);
+  const [reloadToken, setReloadToken] = useState(0);
   const lastMutationTsRef = useRef<number>(0);
   const port = useSchedulesPort();
+
+  const clearLastError = () => setLastError(null);
+  const refetch = () => setReloadToken((v) => v + 1);
 
   const normalizedRange = useMemo(() => normalizeRange(range), [range.from, range.to]);
 
@@ -48,49 +57,65 @@ export function useSchedules(range: DateRange): UseSchedulesResult {
     return () => {
       alive = false;
     };
-  }, [normalizedRange.from, normalizedRange.to, port]);
+  }, [normalizedRange.from, normalizedRange.to, port, reloadToken]);
 
   const create = async (draft: InlineScheduleDraft) => {
-    if (!port.create) {
-      throw new Error('Schedule port does not support create');
+    if (!port.create) throw new Error('Schedule port does not support create');
+    if (!draft.sourceInput) throw new Error('Schedule draft is missing sourceInput');
+
+    const res = await port.create(draft.sourceInput);
+    if (!res.isOk) {
+      setLastError(res.error);
+      console.warn('[schedules] create failed', res.error);
+      return;
     }
-    if (!draft.sourceInput) {
-      throw new Error('Schedule draft is missing sourceInput');
-    }
-    const created = await port.create(draft.sourceInput);
+
+    setLastError(null);
     lastMutationTsRef.current = Date.now();
-    setItems((prev) => [...prev, created]);
+    setItems((prev) => [...prev, res.value]);
   };
 
   const update = async (input: UpdateScheduleEventInput) => {
-    if (!port.update) {
-      throw new Error('Schedule port does not support update');
+    if (!port.update) throw new Error('Schedule port does not support update');
+
+    const res = await port.update(input);
+    if (!res.isOk) {
+      setLastError(res.error);
+      console.warn('[schedules] update failed', res.error);
+      return;
     }
-    const updated = await port.update(input);
+
+    setLastError(null);
+    const updated = res.value;
     lastMutationTsRef.current = Date.now();
     setItems((prev) =>
       prev.map((item) => {
         if (item.id !== updated.id) return item;
         const nextServiceType = (updated.serviceType ?? input.serviceType ?? item.serviceType) ?? undefined;
-        return {
-          ...item,
-          ...updated,
-          serviceType: nextServiceType,
-        };
+        return { ...item, ...updated, serviceType: nextServiceType };
       }),
     );
   };
 
-  const remove = async (eventId: string) => {
-    if (!port.remove) {
-      throw new Error('Schedule port does not support remove');
-    }
-    await port.remove(eventId);
+  const remove = async (id: string) => {
+    const removeFn = port.remove;
+    if (!removeFn) throw new Error('Schedule port does not support remove');
+
+    await removeFn(id);
     lastMutationTsRef.current = Date.now();
-    setItems((prev) => prev.filter((item) => item.id !== eventId));
+    setItems((prev) => prev.filter((x) => x.id !== id));
   };
 
-  return { items, loading, create, update, remove };
+  return {
+    items,
+    loading,
+    create,
+    update,
+    remove,
+    lastError,
+    clearLastError,
+    refetch,
+  };
 }
 
 export const makeRange = (from: Date, to: Date): DateRange => ({

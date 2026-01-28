@@ -3,6 +3,7 @@ import { toSafeError } from '@/lib/errors';
 import { withUserMessage } from '@/lib/notice';
 import type { Event as GraphEvent } from '@microsoft/microsoft-graph-types';
 import type { SchedItem, SchedulesPort } from './port';
+import { result } from '@/shared/result';
 
 type GetToken = () => Promise<string | null>;
 
@@ -48,12 +49,16 @@ const mapGraphEventToItem = (event: GraphEvent): SchedItem | null => {
     (event as { createdBy?: { user?: { email?: string } } }).createdBy?.user?.email?.trim() ||
     null;
 
+  const id = fallbackId(event);
+  const etagValue = (event as { __metadata?: { id?: string } })?.__metadata?.id || `"graph-${id}"`; // Phase 2-0: etag from Graph
+
   return {
-    id: fallbackId(event),
+    id,
     title: normalizeTitle(event.subject ?? undefined),
     start,
     end,
     assignedTo: assignedTo ? assignedTo.toLowerCase() : null,
+    etag: etagValue, // Phase 2-0: required field
   };
 };
 
@@ -220,7 +225,18 @@ export const makeGraphSchedulesPort = (getToken: GetToken, options?: GraphSchedu
       inflight.set(key, { controller, promise });
       return promise;
     },
-    create: (input) => createImpl(input),
+    create: (input) => {
+      if (!createImpl) {
+        return Promise.resolve(result.err<SchedItem>({
+          kind: 'unknown',
+          message: 'Graph schedule creation not configured',
+        }));
+      }
+      return createImpl(input).catch((err) => {
+        const safeErr = err instanceof Error ? err : new Error(String(err));
+        return result.unknown<SchedItem>(safeErr.message, err);
+      });
+    },
     async remove(_eventId: string): Promise<void> {
       throw new Error('Graph adapter does not support schedule deletion');
     },
