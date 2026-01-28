@@ -355,3 +355,4 @@ await options.nth(2).click();
 - [playwright.smoke.config.ts](../playwright.smoke.config.ts) - webServer 設定の詳細
 - [playwright.config.ts](../playwright.config.ts) - ベース設定（デバイス、タイムアウト等）
 - [tests/e2e/utils/muiSelect.ts](../tests/e2e/utils/muiSelect.ts) - 「monthly型」実装
+- 👉 **[PR_MERGE_CHECKLIST.md](./PR_MERGE_CHECKLIST.md)** — PR 作成〜マージ時の事故防止チェックリスト
