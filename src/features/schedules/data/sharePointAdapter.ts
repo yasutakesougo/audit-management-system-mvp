@@ -5,6 +5,13 @@ import { withUserMessage } from '@/lib/notice';
 import { createSpClient, ensureConfig } from '@/lib/spClient';
 import { result } from '@/shared/result';
 import { SCHEDULES_DEBUG } from '../debug';
+import {
+  createSchedule,
+  updateSchedule,
+  removeSchedule,
+  type CreateScheduleInput,
+  type UpdateScheduleInput,
+} from '@/infra/sharepoint/repos/schedulesRepo';
 
 /**
  * Extract HTTP status code from various error shapes
@@ -21,10 +28,9 @@ const getHttpStatus = (e: unknown): number | undefined => {
     anyErr?.cause?.response?.status
   );
 };
-import { makeSharePointScheduleCreator, toSharePointPayload } from './createAdapters';
-import type { DateRange, SchedItem, SchedulesPort, UpdateScheduleEventInput } from './port';
+import type { DateRange, SchedItem, SchedulesPort, ScheduleServiceType } from './port';
 import { mapSpRowToSchedule, parseSpScheduleRows } from './spRowSchema';
-import { SCHEDULES_FIELDS, SCHEDULES_LIST_TITLE, buildSchedulesListPath } from './spSchema';
+import { SCHEDULES_FIELDS, buildSchedulesListPath } from './spSchema';
 
 type ListRangeFn = (range: DateRange) => Promise<SchedItem[]>;
 
@@ -131,7 +137,8 @@ const isMissingFieldError = (error: unknown): boolean => {
 const sortByStart = (items: SchedItem[]): SchedItem[] =>
   [...items].sort((a, b) => a.start.localeCompare(b.start));
 
-const fetchItemById = async (id: number): Promise<SchedItem> => {
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+const _fetchItemById = async (id: number): Promise<SchedItem> => {
   const { baseUrl } = ensureConfig();
   const listPath = buildSchedulesListPath(baseUrl);
 
@@ -161,103 +168,48 @@ const fetchItemById = async (id: number): Promise<SchedItem> => {
 
   throw new Error('予定データの取得に失敗しました');
 };
+/**
+ * LEGACY: makeSharePointScheduleUpdater and makeSharePointScheduleRemover
+ * Replaced by Step 3 repo layer (createSchedule, updateSchedule, removeSchedule)
+ * in makeSharePointSchedulesPort. Removed to avoid dependency on toSharePointPayload/fetchItemById.
+ */
 
-const makeSharePointScheduleUpdater = (acquireToken: () => Promise<string | null>): SchedulesPort['update'] => {
-  const { baseUrl } = ensureConfig();
-  const client = createSpClient(acquireToken, baseUrl);
-
-  return async (input: UpdateScheduleEventInput) => {
-    const idNum = Number.parseInt(input.id, 10);
-    if (!Number.isFinite(idNum)) {
-      throw new Error(`Invalid schedule id for SharePoint update: ${input.id}`);
-    }
-
-    // Phase 2-1b: Validate etag presence (mismatch detection)
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const etag = (input as any)?.etag;
-    if (!etag) {
-      return result.validation('Missing etag for update', { field: 'etag' });
-    }
-
-    const payload = toSharePointPayload(input);
-    if (input.status) {
-      payload.body[SCHEDULES_FIELDS.status] = input.status;
-    }
-
-    try {
-      await client.updateItemByTitle(SCHEDULES_LIST_TITLE, idNum, payload.body);
-      const item = await fetchItemById(idNum);
-      return result.ok(item);
-    } catch (err) {
-      const status = getHttpStatus(err);
-
-      // Phase 2-1b: 412 Precondition Failed → conflict (etag mismatch)
-      if (status === 412) {
-        return result.conflict({
-          message: 'Schedule update conflict (etag mismatch)',
-          etag,
-          resource: 'schedule',
-          op: 'update',
-        });
-      }
-
-      if (status === 403) {
-        return result.forbidden('Forbidden');
-      }
-
-      if (status === 404) {
-        return result.notFound('Not found');
-      }
-
-      const message = err instanceof Error ? err.message : String(err);
-      return result.unknown<SchedItem>(message, err);
-    }
-  };
+/**
+ * Helper: Map RepoSchedule → SchedItem
+ * Bridges repo layer (internal names) to port layer (domain types)
+ */
+const mapRepoScheduleToSchedItem = (repo: Parameters<typeof mapSpRowToSchedule>[0]): SchedItem | null => {
+  return mapSpRowToSchedule(repo);
 };
 
-const makeSharePointScheduleRemover = (acquireToken: () => Promise<string | null>): SchedulesPort['remove'] => {
-  const { baseUrl } = ensureConfig();
-  const client = createSpClient(acquireToken, baseUrl);
-
-  return async (eventId: string): Promise<void> => {
-    const idNum = Number.parseInt(eventId, 10);
-    if (!Number.isFinite(idNum)) {
-      throw new Error(`Invalid schedule id for SharePoint delete: ${eventId}`);
-    }
-
-    await client.deleteItemByTitle(SCHEDULES_LIST_TITLE, idNum);
-  };
+/**
+ * Helper: Generate rowKey for new schedule
+ * Format: YYYYMMDD-HHMMSS-randomId (or use input-provided rowKey)
+ */
+const generateRowKey = (input?: string): string => {
+  if (input) return input;
+  const now = new Date();
+  const date = now.toISOString().replace(/[-:T.]/g, '').slice(0, 14);
+  const random = Math.random().toString(36).slice(2, 8);
+  return `${date}${random}`;
 };
 
 export const makeSharePointSchedulesPort = (options?: SharePointSchedulesPortOptions): SchedulesPort => {
-  const listImpl = options?.listRange ?? defaultListRange;
-  const createImpl = options?.create ??
-    (options?.acquireToken ? makeSharePointScheduleCreator({ acquireToken: options.acquireToken }) : undefined);
-  const updateImpl = options?.update ??
-    (options?.acquireToken ? makeSharePointScheduleUpdater(options.acquireToken) : undefined);
-
-  const removeImpl = ((): SchedulesPort['remove'] => {
-    if (options?.remove) {
-      return options.remove;
-    }
-    if (options?.acquireToken) {
-      return makeSharePointScheduleRemover(options.acquireToken);
-    }
-    return async () => {
-      throw new Error('No token available for delete');
-    };
-  })();
+  // Create client for mutations if acquireToken is provided
+  let client: ReturnType<typeof createSpClient> | null = null;
+  if (options?.acquireToken) {
+    const { baseUrl } = ensureConfig();
+    client = createSpClient(options.acquireToken, baseUrl);
+  }
 
   return {
     async list(range) {
       try {
-        const allItems = await listImpl(range);
+        // Step 2: Use legacy defaultListRange (already working with SharePoint via fetchSp)
+        const allItems = await defaultListRange(range);
+
         // Phase 1: visibility filtering
-        // - 'org': all users can see
-        // - 'team': same team (not implemented yet, treat as 'org' for Phase 1)
-        // - 'private': only owner can see
         if (!options?.currentOwnerUserId) {
-          // No user context; return all 'org' items only
           return allItems.filter(item => !item.visibility || item.visibility === 'org');
         }
         return allItems.filter(item => {
@@ -278,34 +230,159 @@ export const makeSharePointSchedulesPort = (options?: SharePointSchedulesPortOpt
         throw withUserMessage(safe, userMessage);
       }
     },
+
     async create(input) {
-      if (!createImpl) {
+      if (!client) {
         return result.err({
           kind: 'unknown',
-          message: 'Schedule create is not configured for this environment.',
+          message: 'SharePoint client not available for create',
         });
       }
-      return createImpl(input);
+
+      try {
+        // Extract start/end ISO strings
+        const startIso = input.startLocal || new Date().toISOString();
+        const endIso = input.endLocal || new Date(Date.now() + 3600000).toISOString();
+
+        // Parse dates for day/month/fiscal year
+        const startDate = new Date(startIso);
+        const dayKey = startDate.toISOString().slice(0, 10); // YYYY-MM-DD
+        const monthKey = startDate.toISOString().slice(0, 7); // YYYY-MM
+        const fiscalYear = String(startDate.getFullYear());
+
+        const createPayload: CreateScheduleInput = {
+          title: input.title,
+          start: startIso,
+          end: endIso,
+          status: input.status,
+          serviceType: input.serviceType as ScheduleServiceType | string,
+          visibility: input.visibility,
+
+          personType: input.category as 'User' | 'Staff' | 'Org',
+          personId: input.userId || '',
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          personName: (input as any).userName,
+
+          assignedStaffId: input.assignedStaffId,
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          targetUserId: (input as any).targetUserId,
+
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          rowKey: generateRowKey((input as any).rowKey),
+          dayKey,
+          monthKey,
+          fiscalYear,
+
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          orgAudience: (input as any).orgAudience,
+          notes: input.notes,
+        };
+
+        const created = await createSchedule(client, createPayload);
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const item = mapRepoScheduleToSchedItem(created as any);
+
+        if (!item) {
+          return result.err({ kind: 'unknown', message: 'Failed to map created schedule' });
+        }
+
+        return result.ok(item);
+      } catch (e) {
+        const safeErr = toSafeError(e instanceof Error ? e : new Error(String(e)));
+        return result.unknown(safeErr.message || '予定の作成に失敗しました。時間をおいて再試行してください。');
+      }
     },
+
     async update(input) {
-      if (!updateImpl) {
+      if (!client) {
         return result.err({
           kind: 'unknown',
-          message: 'Schedule update is not configured for this environment.',
+          message: 'SharePoint client not available for update',
         });
       }
+
       try {
-        return await updateImpl(input);
-      } catch (error) {
-        const safeErr = toSafeError(error instanceof Error ? error : new Error(String(error)));
-        return result.unknown(
-          safeErr.message || '予定の更新に失敗しました。時間をおいて再試行してください。',
-        );
+        const idNum = Number(input.id);
+        if (!Number.isFinite(idNum)) {
+          return result.err({
+            kind: 'unknown',
+            message: `Invalid schedule ID: ${input.id}`,
+          });
+        }
+
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const etag = (input as any)?.etag;
+        if (!etag) {
+          return result.validation('Missing etag for update', { field: 'etag' });
+        }
+
+        const startDate = new Date(input.startLocal || new Date());
+        const dayKey = startDate.toISOString().slice(0, 10);
+        const monthKey = startDate.toISOString().slice(0, 7);
+
+        const updatePayload: UpdateScheduleInput = {
+          title: input.title,
+          start: input.startLocal,
+          end: input.endLocal,
+          status: input.status,
+          serviceType: input.serviceType as ScheduleServiceType | string,
+
+          personType: input.category as 'User' | 'Staff' | 'Org',
+          personId: input.userId,
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          personName: (input as any).userName,
+
+          assignedStaffId: input.assignedStaffId,
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          targetUserId: (input as any).targetUserId,
+
+          dayKey,
+          monthKey,
+          fiscalYear: String(startDate.getFullYear()),
+
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          orgAudience: (input as any).orgAudience,
+          notes: input.notes,
+        };
+
+        const updated = await updateSchedule(client, idNum, etag, updatePayload);
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const item = mapRepoScheduleToSchedItem(updated as any);
+
+        if (!item) {
+          return result.err({ kind: 'unknown', message: 'Failed to map updated schedule' });
+        }
+
+        return result.ok(item);
+      } catch (e) {
+        // Phase 2-2: Detect 412 Precondition Failed (ETag conflict)
+        const status = getHttpStatus(e);
+        if (status === 412) {
+          // Return conflict error for Phase 2-2 UX
+          return result.conflict({
+            message: 'Schedule was modified by another user (412)',
+            op: 'update',
+            id: input.id,
+          });
+        }
+
+        const safeErr = toSafeError(e instanceof Error ? e : new Error(String(e)));
+        return result.unknown(safeErr.message || '予定の更新に失敗しました。時間をおいて再試行してください。');
       }
     },
+
     async remove(eventId: string): Promise<void> {
+      if (!client) {
+        throw new Error('SharePoint client not available for remove');
+      }
+
       try {
-        await removeImpl!(eventId);
+        const idNum = Number(eventId);
+        if (!Number.isFinite(idNum)) {
+          throw new Error(`Invalid schedule ID for delete: ${eventId}`);
+        }
+
+        await removeSchedule(client, idNum);
       } catch (error) {
         throw withUserMessage(
           toSafeError(error instanceof Error ? error : new Error(String(error))),
@@ -314,4 +391,4 @@ export const makeSharePointSchedulesPort = (options?: SharePointSchedulesPortOpt
       }
     },
   } satisfies SchedulesPort;
-};
+}

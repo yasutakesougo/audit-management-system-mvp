@@ -184,24 +184,40 @@ export const FIELD_MAP = {
   },
   Org_Master: ORG_MASTER_FIELDS,
   Schedules: {
+    // Standard SharePoint columns
     id: 'Id',
     title: 'Title',
-    start: 'StartDateTime',
-    end: 'EndDateTime',
-    status: 'Status',
-    notes: 'Note',
-    serviceType: 'ServiceType',
-    staffIds: 'AssignedStaffId',
-    billingFlags: 'BillingFlags',
-    relatedResourceIds: 'RelatedResourceId',
-    targetUserIds: 'TargetUserId',
     created: 'Created',
     modified: 'Modified',
-    createdAt: 'CreatedAt',
-    updatedAt: 'UpdatedAt',
+
+    // Phase 1 mandatory fields (validated in app-test staging)
+    EventDate: 'EventDate', // DateTime
+    EndDate: 'EndDate',     // DateTime
+    Status: 'Status',       // Choice
+    ServiceType: 'ServiceType', // Text
+    cr014_personType: 'cr014_personType',  // Choice: User/Staff/Org
+    cr014_personId: 'cr014_personId',      // Text
+    cr014_personName: 'cr014_personName',  // Text (optional)
+    AssignedStaffId: 'AssignedStaffId',    // Text (optional)
+    TargetUserId: 'TargetUserId',          // Text (optional)
+    RowKey: 'RowKey',                      // Text (identifier)
+    cr014_dayKey: 'cr014_dayKey',          // DateTime → normalize to YYYY-MM-DD
+    MonthKey: 'MonthKey',                  // Text: YYYY-MM
+    cr014_fiscalYear: 'cr014_fiscalYear',  // Text
+    cr014_orgAudience: 'cr014_orgAudience', // Text (optional)
+    Note: 'Note',                          // Text (optional notes)
+    CreatedAt: 'CreatedAt',                // DateTime (metadata)
+    UpdatedAt: 'UpdatedAt',                // DateTime (metadata)
+
+    // Legacy aliases (kept for backwards compatibility)
+    start: 'EventDate',
+    end: 'EndDate',
+    notes: 'Note',
     rowKey: 'RowKey',
-    dayKey: 'Date',
+    dayKey: 'cr014_dayKey',
     monthKey: 'MonthKey',
+    staffIds: 'AssignedStaffId',
+    targetUserIds: 'TargetUserId',
   },
 } as const;
 
