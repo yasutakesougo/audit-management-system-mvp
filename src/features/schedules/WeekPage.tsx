@@ -1,6 +1,6 @@
 import { type CSSProperties, type MouseEvent, useCallback, useEffect, useId, useMemo, useRef, useState } from 'react';
 import { useLocation, useMatch, useNavigate, useSearchParams } from 'react-router-dom';
-import { Alert, Button, Dialog, DialogTitle, DialogContent, DialogActions, Snackbar, Stack, Typography, Tooltip } from '@mui/material';
+import { Alert, Button, Dialog, DialogTitle, DialogContent, DialogActions, Snackbar, Stack, Typography } from '@mui/material';
 
 import { useAnnounce } from '@/a11y/LiveAnnouncer';
 import { isDev } from '@/env';
@@ -642,6 +642,26 @@ export default function WeekPage() {
   const conflictOpen = !!lastError && lastError.kind === 'conflict';
   const [conflictDetailOpen, setConflictDetailOpen] = useState(false);
   const [lastErrorAt, setLastErrorAt] = useState<number | null>(null);
+  const [conflictBusy, setConflictBusy] = useState(false);
+
+  // Conflict dialog handlers
+  const handleConflictDiscard = useCallback(() => {
+    clearLastError();
+    setConflictDetailOpen(false);
+  }, [clearLastError]);
+
+  const handleConflictReload = useCallback(async () => {
+    if (conflictBusy) return;
+
+    try {
+      setConflictBusy(true);
+      await refetch();
+      clearLastError();
+      setConflictDetailOpen(false);
+    } finally {
+      setConflictBusy(false);
+    }
+  }, [conflictBusy, refetch, clearLastError]);
 
   // Phase 2-2b: Scroll & highlight conflicted schedule after refetch
   const [focusScheduleId, setFocusScheduleId] = useState<string | null>(null);
@@ -960,57 +980,45 @@ export default function WeekPage() {
       {/* Phase 2-2a: Conflict detail dialog */}
       <Dialog
         open={conflictDetailOpen}
-        onClose={() => setConflictDetailOpen(false)}
+        onClose={(_, reason) => {
+          // backdrop / ESC も Discard 扱い
+          if (reason === 'backdropClick' || reason === 'escapeKeyDown') {
+            handleConflictDiscard();
+            return;
+          }
+          handleConflictDiscard();
+        }}
         fullWidth
         maxWidth="sm"
       >
-        <DialogTitle>更新が競合しました</DialogTitle>
+        <DialogTitle>スケジュール更新が競合しました</DialogTitle>
+
         <DialogContent dividers>
-          {lastError ? (
-            <Stack spacing={1.25}>
+          <Stack spacing={1.5}>
+            <Typography variant="body2">
+              他のユーザーが先に更新しました。「最新を読み込む」で最新状態を取得できます。
+            </Typography>
+
+            {lastError ? (
               <Typography variant="body2">
                 <strong>メッセージ:</strong> {lastError.message}
               </Typography>
+            ) : (
+              <Typography variant="body2">詳細情報がありません。</Typography>
+            )}
 
-              {lastError.kind === 'conflict' && (
-                <>
-                  <Typography variant="body2">
-                    <strong>リソース:</strong> {lastError.resource}
-                  </Typography>
-                  <Typography variant="body2">
-                    <strong>操作:</strong> {lastError.op}
-                  </Typography>
-
-                  <Tooltip title={lastError.etag ?? ''}>
-                    <Typography variant="body2" sx={{ wordBreak: 'break-all', cursor: 'help' }}>
-                      <strong>etag:</strong>{' '}
-                      {lastError.etag ? `${lastError.etag.slice(0, 20)}…` : '(none)'}
-                    </Typography>
-                  </Tooltip>
-                </>
-              )}
-
-              <Typography variant="caption" color="text.secondary">
-                発生時刻:{' '}
-                {lastErrorAt ? new Date(lastErrorAt).toLocaleTimeString('ja-JP') : '-'}
-              </Typography>
-            </Stack>
-          ) : (
-            <Typography variant="body2">詳細情報がありません。</Typography>
-          )}
+            <Typography variant="caption" color="text.secondary">
+              発生時刻: {lastErrorAt ? new Date(lastErrorAt).toLocaleTimeString('ja-JP') : '-'}
+            </Typography>
+          </Stack>
         </DialogContent>
 
         <DialogActions>
-          <Button onClick={() => setConflictDetailOpen(false)}>閉じる</Button>
-          <Button
-            variant="contained"
-            onClick={() => {
-              refetch();
-              clearLastError();
-              setConflictDetailOpen(false);
-            }}
-          >
-            最新を表示
+          <Button onClick={handleConflictDiscard} disabled={conflictBusy}>
+            破棄して閉じる
+          </Button>
+          <Button variant="contained" onClick={handleConflictReload} disabled={conflictBusy}>
+            最新を読み込む
           </Button>
         </DialogActions>
       </Dialog>
