@@ -96,6 +96,51 @@ curl -s -I http://127.0.0.1:${E2E_PORT:-5173} | head -3
 
 ---
 
+## AppShell role-sync infinite loop guard (2026-01-28)
+
+### Symptom
+- Dev/Smokeで `Warning: Maximum update depth exceeded` が発生し、AppShell が再レンダーを繰り返す。
+
+### Root cause
+- `setCurrentUserRole` を direct import で参照しており、参照が安定しないケースで
+  role-sync effect が再実行 → setState → 再レンダー… のループになり得た。
+
+### Fix (required pattern)
+- setter は **必ず Zustand selector で取得**する。
+
+```ts
+const currentRole = useAuthStore((s) => s.currentUserRole);
+const setCurrentUserRole = useAuthStore((s) => s.setCurrentUserRole);
+```
+
+- effect は 入力だけを deps に置き、同値ガードする。
+
+```ts
+useEffect(() => {
+  const nextRole = location.pathname.startsWith('/admin/dashboard')
+    ? 'admin'
+    : (location.pathname === '/' || location.pathname.startsWith('/dashboard'))
+      ? 'staff'
+      : null;
+
+  // nextRole null のときは role を維持
+  if (nextRole && nextRole !== currentRole) setCurrentUserRole(nextRole);
+}, [location.pathname, currentRole, setCurrentUserRole]);
+```
+
+### Defense layers
+1. **AppShell effect**: `nextRole && nextRole !== currentRole`
+2. **auth store**: 同値なら no-op（`state.currentUserRole === role` → `return`）
+3. **selector 取得**: setter 参照を安定化
+
+### Regression tests
+- **Unit**: [src/app/AppShell.role-sync.spec.tsx](../src/app/AppShell.role-sync.spec.tsx)
+- **E2E smoke**: [tests/e2e/schedule-week.smoke.spec.ts](../tests/e2e/schedule-week.smoke.spec.ts)
+  - `"Maximum update depth exceeded"` / `"Too many re-renders"` を console/pageerror から検知して fail する
+  - role path を跨ぐ遷移（admin ↔ staff ↔ week）でもループしないことを確認
+
+---
+
 ## 失敗時アーティファクト回収（Smoke Tests）
 
 CI の smoke tests が失敗した場合、**URL / DOM / Screenshot が自動で添付**されます。
