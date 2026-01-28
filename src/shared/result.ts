@@ -4,7 +4,7 @@
  */
 
 export type ResultError =
-  | { kind: 'conflict'; message?: string; etag?: string; resource?: string; op?: 'create' | 'update' | 'remove' }
+  | { kind: 'conflict'; message?: string; etag?: string; resource?: string; op?: 'create' | 'update' | 'remove'; id?: string }
   | { kind: 'forbidden'; message?: string }
   | { kind: 'notFound'; message?: string }
   | { kind: 'validation'; message: string; details?: unknown }
@@ -26,7 +26,7 @@ export const result = {
     return { isOk: false, error };
   },
 
-  conflict<T>(options?: { message?: string; etag?: string; resource?: string; op?: 'create' | 'update' | 'remove' }): Result<T> {
+  conflict<T>(options?: { message?: string; etag?: string; resource?: string; op?: 'create' | 'update' | 'remove'; id?: string }): Result<T> {
     return result.err<T>({ kind: 'conflict', ...options });
   },
 
