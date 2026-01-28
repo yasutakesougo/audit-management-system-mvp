@@ -1,4 +1,4 @@
-import { getMsalLoginScopes, isComplianceFormEnabled, isSchedulesCreateEnabled, isSchedulesFeatureEnabled, shouldSkipLogin, type EnvRecord } from '@/lib/env';
+import { getMsalLoginScopes, isComplianceFormEnabled, isSchedulesFeatureEnabled, shouldSkipLogin, type EnvRecord } from '@/lib/env';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 describe('env feature toggles', () => {
@@ -12,7 +12,6 @@ describe('env feature toggles', () => {
 
   const baseEnv = (overrides: Partial<EnvRecord> = {}): EnvRecord => ({
     VITE_FEATURE_SCHEDULES: 'false',
-    VITE_FEATURE_SCHEDULES_CREATE: 'false',
     VITE_FEATURE_COMPLIANCE_FORM: 'false',
     VITE_DEMO_MODE: 'false',
     VITE_SKIP_LOGIN: 'false',
@@ -23,28 +22,21 @@ describe('env feature toggles', () => {
     expect(isSchedulesFeatureEnabled(baseEnv())).toBe(false);
     expect(isSchedulesFeatureEnabled(baseEnv({ VITE_FEATURE_SCHEDULES: 'true' }))).toBe(true);
 
-    expect(isSchedulesCreateEnabled(baseEnv())).toBe(false);
-    expect(isSchedulesCreateEnabled(baseEnv({ VITE_FEATURE_SCHEDULES_CREATE: 'yes' }))).toBe(true);
-
     expect(isComplianceFormEnabled(baseEnv())).toBe(false);
     expect(isComplianceFormEnabled(baseEnv({ VITE_FEATURE_COMPLIANCE_FORM: 'on' }))).toBe(true);
   });
 
   it('falls back to localStorage flag values when env values are falsey', () => {
     localStorage.setItem('feature:schedules', 'TrUe');
-    localStorage.setItem('feature:schedulesCreate', '1');
     localStorage.setItem('feature:complianceForm', 'enabled');
 
     expect(isSchedulesFeatureEnabled(baseEnv())).toBe(true);
-    expect(isSchedulesCreateEnabled(baseEnv())).toBe(true);
     expect(isComplianceFormEnabled(baseEnv())).toBe(true);
 
     localStorage.setItem('feature:schedules', 'disabled');
-    localStorage.setItem('feature:schedulesCreate', 'off');
     localStorage.setItem('feature:complianceForm', 'no');
 
     expect(isSchedulesFeatureEnabled(baseEnv())).toBe(false);
-    expect(isSchedulesCreateEnabled(baseEnv())).toBe(false);
     expect(isComplianceFormEnabled(baseEnv())).toBe(false);
   });
 

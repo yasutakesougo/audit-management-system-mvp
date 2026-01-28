@@ -65,7 +65,6 @@ vi.mock('@/lib/env', async () => {
     }),
     shouldSkipLogin: () => false,
     isSchedulesFeatureEnabled: () => false,
-    isSchedulesCreateEnabled: () => false,
     isComplianceFormEnabled: () => false,
     isSchedulesWeekV2Enabled: () => false,
   };

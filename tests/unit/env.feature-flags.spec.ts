@@ -17,7 +17,6 @@ const mockRuntimeEnv = (env: Record<string, string | undefined> = {}) => {
 
 const trackedEnvKeys = [
   'VITE_FEATURE_SCHEDULES',
-  'VITE_FEATURE_SCHEDULES_CREATE',
   'VITE_DEMO_MODE',
   'VITE_SKIP_LOGIN',
   'VITE_SP_SCOPE_DEFAULT',
@@ -59,17 +58,13 @@ describe('feature toggles backed by env/localStorage', () => {
   it('prefers localStorage overrides for schedules feature flags', async () => {
     mockRuntimeEnv();
     localStorage.setItem('feature:schedules', ' YES ');
-    localStorage.setItem('feature:schedulesCreate', 'NO');
     const env = await importEnvModule();
 
     expect(env.isSchedulesFeatureEnabled()).toBe(true);
-    expect(env.isSchedulesCreateEnabled()).toBe(false);
 
     localStorage.setItem('feature:schedules', 'off');
-    localStorage.setItem('feature:schedulesCreate', 'enabled');
 
     expect(env.isSchedulesFeatureEnabled()).toBe(false);
-    expect(env.isSchedulesCreateEnabled()).toBe(true);
   });
 
   it('tolerates storage access failures and falls back to disabled flags', async () => {
@@ -95,8 +90,7 @@ describe('feature toggles backed by env/localStorage', () => {
 
     try {
       expect(env.isSchedulesFeatureEnabled()).toBe(false);
-      expect(env.isSchedulesCreateEnabled()).toBe(false);
-      expect(failingGet).toHaveBeenCalledTimes(2);
+      expect(failingGet).toHaveBeenCalledTimes(1);
     } finally {
       Object.defineProperty(window, 'localStorage', {
         configurable: true,

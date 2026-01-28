@@ -14,7 +14,6 @@ const FEATURE_ENV: Record<string, string> = {
   VITE_MSAL_CLIENT_ID: 'e2e-mock-client-id-12345678',
   VITE_MSAL_TENANT_ID: 'common',
   VITE_FEATURE_SCHEDULES: '1',
-  VITE_FEATURE_SCHEDULES_CREATE: '1',
   VITE_FEATURE_SCHEDULES_WEEK_V2: '1',
   VITE_SCHEDULES_SAVE_MODE: 'mock',
   VITE_FEATURE_SCHEDULES_GRAPH: '0',
@@ -33,7 +32,6 @@ const FEATURE_ENV: Record<string, string> = {
 
 const FEATURE_STORAGE: Record<string, string> = {
   'feature:schedules': '1',
-  'feature:schedulesCreate': '1',
   'feature:schedulesWeekV2': '1',
   'feature:schedulesSp': '0',
   'schedules:fixtures': '1',

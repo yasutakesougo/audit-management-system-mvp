@@ -38,7 +38,6 @@ describe('featureFlags config', () => {
     // env override を使って、実環境に依存せず固定値でテスト
     const override = {
       VITE_FEATURE_SCHEDULES: '1',
-      VITE_FEATURE_SCHEDULES_CREATE: '0',
       VITE_FEATURE_COMPLIANCE_FORM: '1',
       VITE_FEATURE_SCHEDULES_WEEK_V2: '1',
       VITE_FEATURE_ICEBERG_PDCA: '1',
@@ -48,7 +47,6 @@ describe('featureFlags config', () => {
 
     expect(snapshot).toEqual({
       schedules: true,
-      schedulesCreate: false,
       complianceForm: true,
       schedulesWeekV2: true,
       icebergPdca: true,
@@ -61,7 +59,6 @@ describe('featureFlags config', () => {
   it('passes env override through to helper functions', () => {
     const override = { 
       VITE_FEATURE_SCHEDULES: '1',
-      VITE_FEATURE_SCHEDULES_CREATE: '1',
       VITE_FEATURE_COMPLIANCE_FORM: '0',
       VITE_FEATURE_SCHEDULES_WEEK_V2: '1',
       VITE_FEATURE_ICEBERG_PDCA: '0',
@@ -71,7 +68,6 @@ describe('featureFlags config', () => {
 
     expect(snapshot).toEqual({
       schedules: true,
-      schedulesCreate: true,
       complianceForm: false,
       schedulesWeekV2: true,
       icebergPdca: false,
@@ -88,14 +84,12 @@ describe('featureFlags config', () => {
 
     // automation環境では明示なし→デフォルトでtrue
     const override = {
-      VITE_FEATURE_SCHEDULES_CREATE: '1',
       VITE_FEATURE_COMPLIANCE_FORM: '0',
       VITE_FEATURE_SCHEDULES_WEEK_V2: '1',
     };
 
     expect(getFeatureFlags(override)).toEqual({
       schedules: true,
-      schedulesCreate: true,
       complianceForm: false,
       schedulesWeekV2: true,
       icebergPdca: false,
@@ -106,14 +100,12 @@ describe('featureFlags config', () => {
     // automation環境でも明示的な '0' は尊重してfalseにする
     const override = {
       VITE_FEATURE_SCHEDULES: '0',
-      VITE_FEATURE_SCHEDULES_CREATE: '0',
       VITE_FEATURE_COMPLIANCE_FORM: '0',
       VITE_FEATURE_SCHEDULES_WEEK_V2: '1',
     };
 
     expect(getFeatureFlags(override)).toEqual({
       schedules: false,
-      schedulesCreate: false,
       complianceForm: false,
       schedulesWeekV2: true,
       icebergPdca: false,
