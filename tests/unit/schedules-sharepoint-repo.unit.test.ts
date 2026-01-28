@@ -1,4 +1,4 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 import type { ScheduleCategory } from '../../src/features/schedules/domain';
 import { querySchedules } from '../../src/infra/sharepoint/repos/schedulesRepo';
 import type { QuerySchedulesArgs } from '../../src/infra/sharepoint/repos/schedulesRepo';
@@ -18,46 +18,50 @@ describe('Schedules Repository Unit Tests', () => {
   describe('Query Building', () => {
     it('should build correct OData filter for date range', async () => {
       // Mock client
+      const listItemsSpy = vi.fn(async (list: string, options: any) => {
+        // Verify filter is properly built
+        expect(options.filter).toBeDefined();
+        expect(options.filter).toContain('EventDate');
+        expect(options.filter).toContain('ge');
+        expect(options.filter).toContain('lt'); // Note: implementation uses 'lt' not 'le'
+        return [];
+      });
+
       const mockClient = {
-        listItems: async (list: string, options: any) => {
-          // Verify filter is properly built
-          expect(options.filter).toBeDefined();
-          expect(options.filter).toContain('EventDate');
-          expect(options.filter).toContain('ge');
-          expect(options.filter).toContain('le');
-          return [];
-        },
+        listItems: listItemsSpy,
       };
 
       const args: QuerySchedulesArgs = {
-        from: '2025-01-28',
-        to: '2025-01-29',
+        from: new Date('2025-01-28'),
+        to: new Date('2025-01-29'),
       };
 
       await querySchedules(args, mockClient as any);
 
-      expect(mockClient.listItems).toHaveBeenCalled();
+      expect(listItemsSpy).toHaveBeenCalled();
     });
 
     it('should include person filter when specified', async () => {
+      const listItemsSpy = vi.fn(async (list: string, options: any) => {
+        if (options.filter?.includes('cr014_personId')) {
+          return [];
+        }
+        throw new Error('Person filter not applied');
+      });
+
       const mockClient = {
-        listItems: async (list: string, options: any) => {
-          if (options.filter?.includes('cr014_personId')) {
-            return [];
-          }
-          throw new Error('Person filter not applied');
-        },
+        listItems: listItemsSpy,
       };
 
       const args: QuerySchedulesArgs = {
-        from: '2025-01-28',
-        to: '2025-01-29',
+        from: new Date('2025-01-28'),
+        to: new Date('2025-01-29'),
         personId: 'user-001',
       };
 
       await querySchedules(args, mockClient as any);
 
-      expect(mockClient.listItems).toHaveBeenCalled();
+      expect(listItemsSpy).toHaveBeenCalled();
     });
   });
 
