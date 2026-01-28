@@ -220,3 +220,32 @@ vi.mock('@/hydration/RouteHydrationListener', async () => {
 		default: Passthrough,
 	};
 });
+
+// ✅ AppShell test support: Mock browser APIs
+// ResizeObserver for Drawer / Grid / Portal components
+class ResizeObserverMock {
+	observe() {}
+	unobserve() {}
+	disconnect() {}
+}
+(globalThis as any).ResizeObserver = ResizeObserverMock;
+
+// matchMedia for MUI responsive hooks
+Object.defineProperty(window, 'matchMedia', {
+	writable: true,
+	value: vi.fn().mockImplementation((query: string) => ({
+		matches: false,
+		media: query,
+		onchange: null,
+		addListener: vi.fn(),
+		removeListener: vi.fn(),
+		addEventListener: vi.fn(),
+		removeEventListener: vi.fn(),
+		dispatchEvent: vi.fn(),
+	})),
+});
+
+// Mock useMediaQuery (MUI) for AppShell Drawer tests
+vi.mock('@mui/material/useMediaQuery', () => ({
+	default: () => false, // Always desktop mode for tests
+}));

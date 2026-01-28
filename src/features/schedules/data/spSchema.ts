@@ -1,14 +1,20 @@
 import { SCHEDULE_FIELD_TARGET_USER_ID } from '@/sharepoint/fields';
-import { readEnv } from '@/lib/env';
 
 // Centralized SharePoint schema constants for schedules.
 // Update these values (or the corresponding env vars) once the SP list is rebuilt.
+// Use import.meta.env for consistent runtime env access (matches ProtectedRoute + adapter consistency)
 export const SCHEDULES_LIST_TITLE = (() => {
-  const preferred = readEnv('VITE_SCHEDULES_LIST_TITLE', '').trim();
+  const preferred = typeof import.meta.env.VITE_SCHEDULES_LIST_TITLE === 'string' 
+    ? import.meta.env.VITE_SCHEDULES_LIST_TITLE.trim() 
+    : '';
   if (preferred) return preferred;
 
-  const legacy = readEnv('VITE_SP_LIST_SCHEDULES', 'Schedules').trim();
-  return legacy || 'Schedules';
+  const legacy = typeof import.meta.env.VITE_SP_LIST_SCHEDULES === 'string'
+    ? import.meta.env.VITE_SP_LIST_SCHEDULES.trim()
+    : '';
+  if (legacy) return legacy;
+
+  return 'ScheduleEvents';
 })();
 
 const normalizeGuid = (raw: string): string => raw.replace(/^guid:/i, '').replace(/[{}]/g, '').trim();

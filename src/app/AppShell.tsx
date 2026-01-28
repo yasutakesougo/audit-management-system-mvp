@@ -36,7 +36,7 @@ import { useMsalContext } from '@/auth/MsalProvider';
 import { useUserAuthz } from '@/auth/useUserAuthz';
 import NavLinkPrefetch from '@/components/NavLinkPrefetch';
 import { useFeatureFlags } from '@/config/featureFlags';
-import { setCurrentUserRole, useAuthStore } from '@/features/auth/store';
+import { useAuthStore } from '@/features/auth/store';
 import { useDashboardPath } from '@/features/dashboard/dashboardRouting';
 import { HandoffQuickNoteCard } from '@/features/handoff/HandoffQuickNoteCard';
 import RouteHydrationListener from '@/hydration/RouteHydrationListener';
@@ -156,8 +156,14 @@ const AppShell: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { mode, toggle } = useContext(ColorModeContext);
   const dashboardPath = useDashboardPath();
   const currentRole = useAuthStore((s) => s.currentUserRole);
+  const setCurrentUserRole = useAuthStore((s) => s.setCurrentUserRole);
   const { isAdmin, ready: authzReady } = useUserAuthz();
   const theme = useTheme();
+
+  // ✅ 修正：Object を直接依存に入れず、boolean フラグを作る
+  const schedulesEnabled = Boolean(schedules);
+  const complianceFormEnabled = Boolean(complianceForm);
+  const icebergPdcaEnabled = Boolean(icebergPdca);
   const isDesktop = useMediaQuery(theme.breakpoints.up('md'));
   const [mobileOpen, setMobileOpen] = useState(false);
   const [navQuery, setNavQuery] = useState('');
@@ -177,6 +183,7 @@ const AppShell: React.FC<{ children: React.ReactNode }> = ({ children }) => {
       navigate('/', { replace: true });
     }
   }, [navigate, location.pathname]);
+  
   useEffect(() => {
     const nextRole = location.pathname.startsWith('/admin/dashboard') 
       ? 'admin' 
@@ -184,7 +191,8 @@ const AppShell: React.FC<{ children: React.ReactNode }> = ({ children }) => {
         ? 'staff' 
         : null;
     
-    // ✅ 同値ガード: 新しい role が現在値と同じなら更新しない（無限ループ防止）
+    // ✅ 同値ガード: role が変わる時だけ更新（無限ループ防止）
+    // ※ nextRole が null の場合は role を維持（admin/staff 以外の画面でも role は保持）
     if (nextRole && nextRole !== currentRole) {
       setCurrentUserRole(nextRole);
     }
@@ -287,7 +295,7 @@ const AppShell: React.FC<{ children: React.ReactNode }> = ({ children }) => {
       },
     ];
 
-    if (icebergPdca) {
+    if (icebergPdcaEnabled) {
       items.splice(3, 0, {
         label: '氷山PDCA',
         to: '/analysis/iceberg-pdca',
@@ -298,7 +306,7 @@ const AppShell: React.FC<{ children: React.ReactNode }> = ({ children }) => {
       });
     }
 
-    if (schedules) {
+    if (schedulesEnabled) {
       items.push({
         label: 'スケジュール',
         to: '/schedules/week',
@@ -310,7 +318,7 @@ const AppShell: React.FC<{ children: React.ReactNode }> = ({ children }) => {
       });
     }
 
-    if (complianceForm) {
+    if (complianceFormEnabled) {
       items.push({
         label: 'コンプラ報告',
         to: '/compliance',
@@ -320,7 +328,7 @@ const AppShell: React.FC<{ children: React.ReactNode }> = ({ children }) => {
     }
 
     return items;
-  }, [dashboardPath, currentRole, schedules, complianceForm, icebergPdca, isAdmin, authzReady]);
+  }, [dashboardPath, currentRole, schedulesEnabled, complianceFormEnabled, icebergPdcaEnabled, isAdmin, authzReady]);
 
   const filteredNavItems = useMemo(() => {
     const q = navQuery.trim().toLowerCase();
@@ -355,13 +363,16 @@ const AppShell: React.FC<{ children: React.ReactNode }> = ({ children }) => {
         return;
       }
       if (event.key !== 'Enter') return;
-      const first = filteredNavItems[0];
+      // ⚠️ filteredNavItems の最初の item を使う際は、最新値を参照する必要がある
+      // ただし deps には入れない（無限ループ防止）
+      const currentFiltered = filteredNavItems;
+      const first = currentFiltered[0];
       if (!first) return;
       event.preventDefault();
       if (onNavigate) onNavigate();
       navigate(first.to);
     },
-    [filteredNavItems, navigate],
+    [navigate],  // ← filteredNavItems を削除
   );
 
   const handleMobileNavigate = useCallback(() => {
@@ -387,9 +398,11 @@ const AppShell: React.FC<{ children: React.ReactNode }> = ({ children }) => {
     return { map, ORDER };
   }, [filteredNavItems, isAdmin]);
 
-  const renderNavItem = (item: NavItem, onNavigate?: () => void) => {
+  const currentPathname = location.pathname;  // ✅ 参照を安定化
+  
+  const renderNavItem = useCallback((item: NavItem, onNavigate?: () => void) => {
     const { label, to, isActive, testId, icon: IconComponent, prefetchKey, prefetchKeys } = item;
-    const active = isActive(location.pathname);
+    const active = isActive(currentPathname);
     const isBlackNote = pickGroup(item, isAdmin) === 'blacknote';
     const showLabel = !navCollapsed;
 
@@ -479,7 +492,7 @@ const AppShell: React.FC<{ children: React.ReactNode }> = ({ children }) => {
     }
 
     return button;
-  };
+  }, [currentPathname, isAdmin, navCollapsed, addRecent]);
 
   const renderGroupedNavList = (onNavigate?: () => void) => {
     if (filteredNavItems.length === 0) {
@@ -586,8 +599,9 @@ const AppShell: React.FC<{ children: React.ReactNode }> = ({ children }) => {
           >
             <Box role="navigation" aria-label="主要ナビゲーション" sx={{ mt: 7, overflowY: 'auto', height: 'calc(100vh - 56px)' }}>
               {!navCollapsed && (
-                <Box sx={{ px: 1.5, py: 1, pb: 1.5 }}>
+                <Box sx={{ px: 1.5, py: 1, pb: 1.5 }} key="nav-search">
                   <TextField
+                    key="nav-search-field"
                     value={navQuery}
                     onChange={(e) => setNavQuery(e.target.value)}
                     onKeyDown={handleNavSearchKeyDown}
@@ -762,8 +776,17 @@ const ConnectionStatusReal: React.FC<{ sharePointDisabled: boolean }> = ({ share
   const accountsCount = accounts.length;
   const [state, setState] = useState<'checking' | 'ok' | 'error' | 'signedOut'>('checking');
   const bypassAccountGate = SKIP_LOGIN || E2E_MSAL_MOCK_ENABLED;
+  const isDemoMode = import.meta.env.VITE_DEMO_MODE === '1';
 
   useEffect(() => {
+    // Complete demo mode bypass: Skip SharePoint entirely when demo mode is active
+    if (isDemoMode) {
+      // eslint-disable-next-line no-console
+      console.info('[demo] Skip SharePoint bootstrap');
+      setState('ok');
+      return;
+    }
+
     const { isDev: isDevelopment } = getAppConfig();
     const isVitest = typeof process !== 'undefined' && Boolean(process.env?.VITEST);
     const shouldCheckSharePoint =
@@ -810,7 +833,7 @@ const ConnectionStatusReal: React.FC<{ sharePointDisabled: boolean }> = ({ share
       cancelled = true;
       controller.abort();
     };
-  }, [accountsCount, bypassAccountGate, forceSharePoint, sharePointFeatureEnabled, sharePointDisabled, spFetch]);
+  }, [isDemoMode, accountsCount, bypassAccountGate, forceSharePoint, sharePointFeatureEnabled, sharePointDisabled]);
 
   const { label, background } = useMemo(() => {
     switch (state) {
