@@ -301,24 +301,7 @@ export const isSchedulesFeatureEnabled = (envOverride?: EnvRecord): boolean => {
   return false;
 };
 
-export const isSchedulesCreateEnabled = (envOverride?: EnvRecord): boolean => {
-  if (readBool('VITE_FEATURE_SCHEDULES_CREATE', false, envOverride)) {
-    return true;
-  }
-  if (typeof window !== 'undefined') {
-    try {
-      const flag = window.localStorage.getItem('feature:schedulesCreate');
-      if (flag != null) {
-        const normalized = flag.trim().toLowerCase();
-        if (TRUTHY.has(normalized)) return true;
-        if (FALSY.has(normalized)) return false;
-      }
-    } catch {
-      // ignore storage access issues
-    }
-  }
-  return false;
-};
+
 
 export const isSchedulesWeekV2Enabled = (envOverride?: EnvRecord): boolean => {
   const envValue = readOptionalEnv('VITE_FEATURE_SCHEDULES_WEEK_V2', envOverride)?.trim().toLowerCase();

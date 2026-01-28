@@ -3,7 +3,6 @@ import { createContext, createElement, useContext, useMemo, type FC, type ReactN
 import {
     isComplianceFormEnabled,
   isIcebergPdcaEnabled,
-    isSchedulesCreateEnabled,
     isSchedulesFeatureEnabled,
     isSchedulesWeekV2Enabled,
     isTestMode,
@@ -14,7 +13,6 @@ import {
 
 export type FeatureFlagSnapshot = {
   schedules: boolean;
-  schedulesCreate: boolean;
   complianceForm: boolean;
   schedulesWeekV2: boolean;
   icebergPdca: boolean;
@@ -65,26 +63,22 @@ export const resolveFeatureFlags = (envOverride?: EnvRecord): FeatureFlagSnapsho
 
   const baseSnapshot: FeatureFlagSnapshot = {
     schedules: isSchedulesFeatureEnabled(envOverride),
-    schedulesCreate: isSchedulesCreateEnabled(envOverride),
     complianceForm: isComplianceFormEnabled(envOverride),
     schedulesWeekV2: isSchedulesWeekV2Enabled(envOverride),
     icebergPdca: isIcebergPdcaEnabled(envOverride),
   };
 
   const explicitSchedules = hasExplicitBoolEnv('VITE_FEATURE_SCHEDULES', envOverride);
-  const explicitSchedulesCreate = hasExplicitBoolEnv('VITE_FEATURE_SCHEDULES_CREATE', envOverride);
   const explicitIcebergPdca = hasExplicitBoolEnv('VITE_FEATURE_ICEBERG_PDCA', envOverride);
 
   if (isAutomationEnv) {
     // In automation, honor explicit env overrides when provided (needed for flag-off E2E scenarios).
-    // If no explicit override, default to true for schedules/schedulesCreate, and default PDCA off.
+    // If no explicit override, default to true for schedules, and default PDCA off.
     const schedules = explicitSchedules ? readBool('VITE_FEATURE_SCHEDULES', true, envOverride) : true;
-    const schedulesCreate = explicitSchedulesCreate ? readBool('VITE_FEATURE_SCHEDULES_CREATE', true, envOverride) : true;
     const icebergPdca = explicitIcebergPdca ? readBool('VITE_FEATURE_ICEBERG_PDCA', false, envOverride) : false;
     return {
       ...baseSnapshot,
       schedules,
-      schedulesCreate,
       icebergPdca,
     };
   }
@@ -129,7 +123,7 @@ export const FeatureFlagsProvider: FC<FeatureFlagsProviderProps> = ({ value, chi
   const memoized = useMemo(() => {
     currentSnapshot = snapshot;
     return snapshot;
-  }, [snapshot.schedules, snapshot.schedulesCreate, snapshot.complianceForm, snapshot.schedulesWeekV2, snapshot.icebergPdca]);
+  }, [snapshot.schedules, snapshot.complianceForm, snapshot.schedulesWeekV2, snapshot.icebergPdca]);
 
   return createElement(FeatureFlagsContext.Provider, { value: memoized }, children);
 };
