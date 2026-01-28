@@ -2,6 +2,7 @@ import { fromZonedTime } from 'date-fns-tz';
 
 import { createSpClient, ensureConfig } from '@/lib/spClient';
 import type { CreateScheduleEventInput, SchedItem, ScheduleServiceType, ScheduleStatus, ScheduleVisibility, SchedulesPort } from './port';
+import { result } from '@/shared/result';
 import { SCHEDULES_FIELDS, SCHEDULES_LIST_TITLE, DEFAULT_SCHEDULE_VISIBILITY, OWNER_USER_ID_ME } from './spSchema';
 import { resolveSchedulesTz } from '@/utils/scheduleTz';
 import { normalizeServiceType as normalizeSharePointServiceType } from '@/sharepoint/serviceTypes';
@@ -235,6 +236,7 @@ type BuildSchedItemArgs = {
   acceptedNote?: string | null;
   ownerUserId?: string;
   visibility?: ScheduleVisibility;
+  etag?: string; // Phase 2-0: conflict detection
 };
 
 const buildSchedItem = (args: BuildSchedItemArgs): SchedItem => ({
@@ -261,47 +263,59 @@ const buildSchedItem = (args: BuildSchedItemArgs): SchedItem => ({
   acceptedNote: args.acceptedNote ?? null,
   ownerUserId: args.ownerUserId,
   visibility: args.visibility,
+  etag: args.etag ?? `"sp-${Date.now()}"`, // Phase 2-0: fallback if not provided
 });
 
 export const makeMockScheduleCreator = (): SchedulesPort['create'] => async (input) => {
-  const { normalizedUserId, assignedStaffId, userLookupId } = resolveCategoryFields(input);
-  const personName = trimText((input as { userName?: string }).userName) ?? null;
-  const title = resolveTitle(input);
-  const start = toIsoString(appendSeconds(input.startLocal));
-  const end = toIsoString(appendSeconds(input.endLocal));
-  const normalizedServiceType = normalizeServiceType(input.serviceType);
-  const now = new Date().toISOString();
-  const ownerUserId = trimText(input.ownerUserId) ?? OWNER_USER_ID_ME;
-  const visibility: ScheduleVisibility = input.visibility ?? DEFAULT_SCHEDULE_VISIBILITY;
-  return buildSchedItem({
-    id: `mock-${Date.now()}`,
-    title,
-    start,
-    end,
-    userId: input.category === 'User' ? normalizedUserId ?? undefined : undefined,
-    userLookupId: input.category === 'User'
-      ? userLookupId != null
-        ? String(userLookupId)
-        : undefined
-      : undefined,
-    personName: input.category === 'User' ? personName ?? undefined : undefined,
-    category: input.category,
-    serviceType: normalizedServiceType ?? undefined,
-    locationName: trimText(input.locationName),
-    notes: trimText(input.notes),
-    assignedStaffId: input.category === 'Staff' ? assignedStaffId ?? undefined : undefined,
-    vehicleId: trimText(input.vehicleId),
-    status: input.status ?? 'Planned',
-    statusReason: null,
-    entryHash: undefined,
-    createdAt: now,
-    updatedAt: now,
-    acceptedOn: trimText(input.acceptedOn),
-    acceptedBy: trimText(input.acceptedBy),
-    acceptedNote: input.acceptedNote ?? null,
-    ownerUserId,
-    visibility,
-  });
+  try {
+    const { normalizedUserId, assignedStaffId, userLookupId } = resolveCategoryFields(input);
+    const personName = trimText((input as { userName?: string }).userName) ?? null;
+    const title = resolveTitle(input);
+    const start = toIsoString(appendSeconds(input.startLocal));
+    const end = toIsoString(appendSeconds(input.endLocal));
+    const normalizedServiceType = normalizeServiceType(input.serviceType);
+    const now = new Date().toISOString();
+    const ownerUserId = trimText(input.ownerUserId) ?? OWNER_USER_ID_ME;
+    const visibility: ScheduleVisibility = input.visibility ?? DEFAULT_SCHEDULE_VISIBILITY;
+    const etagValue = `"mock-${Date.now()}"`; // Phase 2-0: mock etag
+    const item = buildSchedItem({
+      id: `mock-${Date.now()}`,
+      title,
+      start,
+      end,
+      userId: input.category === 'User' ? normalizedUserId ?? undefined : undefined,
+      userLookupId: input.category === 'User'
+        ? userLookupId != null
+          ? String(userLookupId)
+          : undefined
+        : undefined,
+      personName: input.category === 'User' ? personName ?? undefined : undefined,
+      category: input.category,
+      serviceType: normalizedServiceType ?? undefined,
+      locationName: trimText(input.locationName),
+      notes: trimText(input.notes),
+      assignedStaffId: input.category === 'Staff' ? assignedStaffId ?? undefined : undefined,
+      vehicleId: trimText(input.vehicleId),
+      status: input.status ?? 'Planned',
+      statusReason: null,
+      entryHash: undefined,
+      createdAt: now,
+      updatedAt: now,
+      acceptedOn: trimText(input.acceptedOn),
+      acceptedBy: trimText(input.acceptedBy),
+      acceptedNote: input.acceptedNote ?? null,
+      ownerUserId,
+      visibility,
+      etag: etagValue,
+    });
+    return result.ok(item);
+  } catch (error) {
+    const safeErr = error instanceof Error ? error : new Error(String(error));
+    return result.err({
+      kind: 'validation',
+      message: safeErr.message,
+    });
+  }
 };
 
 type SharePointScheduleRow = {
@@ -336,8 +350,10 @@ export const makeSharePointScheduleCreator = ({ acquireToken }: SharePointCreato
     const acceptedNoteValue = input.acceptedNote ?? null;
     const ownerUserId = trimText(input.ownerUserId) ?? OWNER_USER_ID_ME;
     const visibility: ScheduleVisibility = input.visibility ?? DEFAULT_SCHEDULE_VISIBILITY;
+    const metadata = (created as { __metadata?: { id?: string } })?.__metadata;
+    const etagValue = metadata?.id ? `"${metadata.id}"` : `"sp-${id}"`; // Phase 2-0: etag from SP
 
-    return buildSchedItem({
+    const item = buildSchedItem({
       id,
       title: typeof persistedTitleRaw === 'string' && persistedTitleRaw.trim() ? persistedTitleRaw : payload.title,
       start: typeof persistedStartRaw === 'string' && persistedStartRaw ? persistedStartRaw : payload.startIso,
@@ -363,6 +379,8 @@ export const makeSharePointScheduleCreator = ({ acquireToken }: SharePointCreato
       acceptedNote: acceptedNoteValue,
       ownerUserId,
       visibility,
+      etag: etagValue,
     });
+    return result.ok(item);
   };
 };

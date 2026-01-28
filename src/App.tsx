@@ -18,7 +18,8 @@ import { routerFutureFlags } from './app/routerFuture';
 import { ThemeRoot } from './app/theme';
 import { GRAPH_RESOURCE } from './auth/msalConfig';
 import { MsalProvider } from './auth/MsalProvider';
-import { useAuth } from './auth/useAuth';
+import { useAuth } from '@/auth/useAuth';
+import type { Result } from '@/shared/result';
 import { ToastProvider, useToast } from './hooks/useToast';
 import { getScheduleSaveMode, readBool, readViteBool } from './lib/env';
 import { registerNotifier } from './lib/notice';
@@ -46,7 +47,7 @@ const sharePointListEnabled = sharePointFeatureEnabled || forceSharePointList;
 
 const queryClient = new QueryClient();
 
-type ScheduleCreateHandler = (input: CreateScheduleEventInput) => Promise<SchedItem>;
+type ScheduleCreateHandler = (input: CreateScheduleEventInput) => Promise<Result<SchedItem>>;
 
 function SchedulesProviderBridge({ children }: BridgeProps) {
   const { acquireToken, account } = useAuth();

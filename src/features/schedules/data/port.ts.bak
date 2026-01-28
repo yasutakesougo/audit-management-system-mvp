@@ -1,4 +1,3 @@
-import type { Result } from '@/shared/result';
 import type { ScheduleServiceType as SpScheduleServiceType } from '@/sharepoint/serviceTypes';
 
 export type ScheduleCategory = 'User' | 'Staff' | 'Org';
@@ -98,7 +97,7 @@ export type SchedItem = {
 
 export interface SchedulesPort {
   list(range: DateRange): Promise<SchedItem[]>;
-  create(input: CreateScheduleEventInput): Promise<Result<SchedItem>>;
-  update?: (input: UpdateScheduleEventInput) => Promise<Result<SchedItem>>;
+  create(input: CreateScheduleEventInput): Promise<SchedItem>;
+  update?: (input: UpdateScheduleEventInput) => Promise<SchedItem>;
   remove?: (eventId: string) => Promise<void>;
 }
