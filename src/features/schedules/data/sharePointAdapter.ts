@@ -22,9 +22,10 @@ const getHttpStatus = (e: unknown): number | undefined => {
   );
 };
 import { makeSharePointScheduleCreator, toSharePointPayload } from './createAdapters';
-import type { DateRange, SchedItem, SchedulesPort, UpdateScheduleEventInput } from './port';
+import type { DateRange, SchedItem, SchedulesPort, UpdateScheduleEventInput, ScheduleServiceType } from './port';
 import { mapSpRowToSchedule, parseSpScheduleRows } from './spRowSchema';
 import { SCHEDULES_FIELDS, SCHEDULES_LIST_TITLE, buildSchedulesListPath } from './spSchema';
+import { querySchedules } from '@/infra/sharepoint/repos/schedulesRepo';
 
 type ListRangeFn = (range: DateRange) => Promise<SchedItem[]>;
 
@@ -72,7 +73,9 @@ const ESSENTIAL_SERVICE_SELECT = [
 
 const SELECT_VARIANTS = [mergeSelectFields(false), ESSENTIAL_SERVICE_SELECT, mergeSelectFields(true)] as const;
 
-const defaultListRange: ListRangeFn = async (range) => {
+// NOTE: Kept for backwards compatibility but replaced by querySchedules(client) in makeSharePointSchedulesPort
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+const _defaultListRange: ListRangeFn = async (range) => {
   for (let index = 0; index < SELECT_VARIANTS.length; index += 1) {
     const select = SELECT_VARIANTS[index];
     try {
@@ -230,11 +233,17 @@ const makeSharePointScheduleRemover = (acquireToken: () => Promise<string | null
 };
 
 export const makeSharePointSchedulesPort = (options?: SharePointSchedulesPortOptions): SchedulesPort => {
-  const listImpl = options?.listRange ?? defaultListRange;
   const createImpl = options?.create ??
     (options?.acquireToken ? makeSharePointScheduleCreator({ acquireToken: options.acquireToken }) : undefined);
   const updateImpl = options?.update ??
     (options?.acquireToken ? makeSharePointScheduleUpdater(options.acquireToken) : undefined);
+
+  // Create client for list() if acquireToken is provided
+  let client: ReturnType<typeof createSpClient> | null = null;
+  if (options?.acquireToken) {
+    const { baseUrl } = ensureConfig();
+    client = createSpClient(options.acquireToken, baseUrl);
+  }
 
   const removeImpl = ((): SchedulesPort['remove'] => {
     if (options?.remove) {
@@ -251,19 +260,53 @@ export const makeSharePointSchedulesPort = (options?: SharePointSchedulesPortOpt
   return {
     async list(range) {
       try {
-        const allItems = await listImpl(range);
+        // Step 2: SharePoint "Schedules" read/query via querySchedules repo
+        // Parse DateRange (from/to: ISO string) to Date
+        const from = new Date(range.from);
+        const to = new Date(range.to);
+
+        if (!client) {
+          throw new Error('SharePoint client not available for list() - acquireToken required');
+        }
+
+        const repoItems = await querySchedules({ from, to }, client);
+
+        // Map RepoSchedule → SchedItem (ScheduleItemCore compatible)
+        const allItems: SchedItem[] = repoItems.map(repo => ({
+          id: String(repo.id), // repo.id は number → string
+          title: repo.title,
+          start: repo.eventDate, // ISO
+          end: repo.endDate,     // ISO
+
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          category: repo.personType as any, // ScheduleCategory 型合わせ
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          status: repo.status as any,
+          serviceType: repo.serviceType as unknown as ScheduleServiceType | undefined,
+
+          userId: repo.personId,
+          personName: repo.personName,
+          assignedStaffId: repo.assignedStaffId,
+
+          notes: repo.note,
+          createdAt: repo.createdAt,
+          updatedAt: repo.updatedAt,
+
+          etag: repo.etag ?? '', // Phase 2-2: conflict detection 用
+
+          // Phase 1: metadata
+          visibility: 'org', // TODO: SharePoint visibility column mapping
+          ownerUserId: undefined, // TODO: SharePoint owner mapping
+        }));
+
         // Phase 1: visibility filtering
-        // - 'org': all users can see
-        // - 'team': same team (not implemented yet, treat as 'org' for Phase 1)
-        // - 'private': only owner can see
         if (!options?.currentOwnerUserId) {
-          // No user context; return all 'org' items only
           return allItems.filter(item => !item.visibility || item.visibility === 'org');
         }
         return allItems.filter(item => {
           const visibility = item.visibility ?? 'org';
           if (visibility === 'org') return true;
-          if (visibility === 'team') return true; // Phase 1: team = org
+          if (visibility === 'team') return true;
           if (visibility === 'private') {
             return item.ownerUserId === options.currentOwnerUserId;
           }
