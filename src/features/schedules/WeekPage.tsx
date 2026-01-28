@@ -1,6 +1,6 @@
 import { type CSSProperties, type MouseEvent, useCallback, useEffect, useId, useMemo, useRef, useState } from 'react';
 import { useLocation, useMatch, useNavigate, useSearchParams } from 'react-router-dom';
-import { Alert, Button, Snackbar } from '@mui/material';
+import { Alert, Button, Dialog, DialogTitle, DialogContent, DialogActions, Snackbar, Stack, Typography, Tooltip } from '@mui/material';
 
 import { useAnnounce } from '@/a11y/LiveAnnouncer';
 import { isDev } from '@/env';
@@ -640,6 +640,43 @@ export default function WeekPage() {
 
   // Phase 2-1c: Show conflict snackbar when update/create fails with conflict
   const conflictOpen = !!lastError && lastError.kind === 'conflict';
+  const [conflictDetailOpen, setConflictDetailOpen] = useState(false);
+  const [lastErrorAt, setLastErrorAt] = useState<number | null>(null);
+
+  // Phase 2-2b: Scroll & highlight conflicted schedule after refetch
+  const [focusScheduleId, setFocusScheduleId] = useState<string | null>(null);
+  const [highlightId, setHighlightId] = useState<string | null>(null);
+
+  // Set timestamp when conflict appears
+  useEffect(() => {
+    if (conflictOpen) {
+      setLastErrorAt(Date.now());
+    }
+  }, [conflictOpen]);
+
+  // Phase 2-2b: Scroll to & highlight focused schedule after refetch completes
+  useEffect(() => {
+    if (!focusScheduleId) return;
+
+    const element = document.querySelector<HTMLElement>(`[data-schedule-id="${focusScheduleId}"]`);
+    if (!element) return;
+
+    // Smooth scroll to center
+    element.scrollIntoView({ block: 'center', behavior: 'smooth' });
+
+    // Set highlight
+    setHighlightId(focusScheduleId);
+
+    // Clear highlight after 2 seconds
+    const timeoutId = setTimeout(() => {
+      setHighlightId(null);
+    }, 2000);
+
+    // Clear focus state (one-time operation)
+    setFocusScheduleId(null);
+
+    return () => clearTimeout(timeoutId);
+  }, [focusScheduleId, filteredItems]);
 
   const showEmptyHint = !isLoading && filteredItems.length === 0;
 
@@ -781,6 +818,7 @@ export default function WeekPage() {
                 onDayClick={handleDayClick}
                 activeDateIso={resolvedActiveDateIso}
                 onItemSelect={handleWeekEventClick}
+                highlightId={highlightId}
               />
             )}
             {mode === 'day' && (
@@ -890,21 +928,92 @@ export default function WeekPage() {
           severity="warning"
           onClose={() => clearLastError()}
           action={
-            <Button
-              color="inherit"
-              size="small"
-              onClick={() => {
-                refetch();
-                clearLastError();
-              }}
-            >
-              最新を表示
-            </Button>
+            <Stack direction="row" spacing={0.5}>
+              <Button
+                color="inherit"
+                size="small"
+                onClick={() => setConflictDetailOpen(true)}
+              >
+                詳細を見る
+              </Button>
+              <Button
+                color="inherit"
+                size="small"
+                onClick={() => {
+                  // Phase 2-2b: Set focus for post-refetch scroll + highlight
+                  if (lastError?.kind === 'conflict' && lastError.id) {
+                    setFocusScheduleId(lastError.id);
+                  }
+                  refetch();
+                  clearLastError();
+                }}
+              >
+                最新を表示
+              </Button>
+            </Stack>
           }
         >
           {lastError?.message ?? '更新が競合しました（最新を読み込み直してください）'}
         </Alert>
       </Snackbar>
+
+      {/* Phase 2-2a: Conflict detail dialog */}
+      <Dialog
+        open={conflictDetailOpen}
+        onClose={() => setConflictDetailOpen(false)}
+        fullWidth
+        maxWidth="sm"
+      >
+        <DialogTitle>更新が競合しました</DialogTitle>
+        <DialogContent dividers>
+          {lastError ? (
+            <Stack spacing={1.25}>
+              <Typography variant="body2">
+                <strong>メッセージ:</strong> {lastError.message}
+              </Typography>
+
+              {lastError.kind === 'conflict' && (
+                <>
+                  <Typography variant="body2">
+                    <strong>リソース:</strong> {lastError.resource}
+                  </Typography>
+                  <Typography variant="body2">
+                    <strong>操作:</strong> {lastError.op}
+                  </Typography>
+
+                  <Tooltip title={lastError.etag ?? ''}>
+                    <Typography variant="body2" sx={{ wordBreak: 'break-all', cursor: 'help' }}>
+                      <strong>etag:</strong>{' '}
+                      {lastError.etag ? `${lastError.etag.slice(0, 20)}…` : '(none)'}
+                    </Typography>
+                  </Tooltip>
+                </>
+              )}
+
+              <Typography variant="caption" color="text.secondary">
+                発生時刻:{' '}
+                {lastErrorAt ? new Date(lastErrorAt).toLocaleTimeString('ja-JP') : '-'}
+              </Typography>
+            </Stack>
+          ) : (
+            <Typography variant="body2">詳細情報がありません。</Typography>
+          )}
+        </DialogContent>
+
+        <DialogActions>
+          <Button onClick={() => setConflictDetailOpen(false)}>閉じる</Button>
+          <Button
+            variant="contained"
+            onClick={() => {
+              refetch();
+              clearLastError();
+              setConflictDetailOpen(false);
+            }}
+          >
+            最新を表示
+          </Button>
+        </DialogActions>
+      </Dialog>
       </div>
     </section>
   );
