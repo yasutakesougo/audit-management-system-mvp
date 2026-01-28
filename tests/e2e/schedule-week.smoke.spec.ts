@@ -81,4 +81,67 @@ test.describe('Schedule week smoke', () => {
     await nextButton.click();
     await expect.poll(readRange, { timeout: 10_000 }).toBe(initialRange);
   });
+
+  test('opens week view without infinite render loop (AppShell guard)', async ({ page }) => {
+    // Guard against regression of "Maximum update depth exceeded" (AppShell role-sync fix)
+    const fatalErrors: string[] = [];
+    page.on('pageerror', (err) => {
+      fatalErrors.push(`[pageerror] ${err.message}`);
+    });
+    page.on('console', (msg) => {
+      if (msg.type() === 'error') {
+        const text = msg.text();
+        // Ignore known non-fatal errors (SharePoint 404/403 in demo mode)
+        if (text.includes('404') || text.includes('403') || text.includes('Failed to fetch')) {
+          return;
+        }
+        fatalErrors.push(`[console.error] ${text}`);
+      }
+    });
+
+    await gotoScheduleWeek(page, new Date('2025-11-24'));
+
+    // Verify basic rendering (proves AppShell didn't crash)
+    const weekPage = page.getByTestId(TESTIDS['schedules-week-page']);
+    await expect(weekPage).toBeVisible({ timeout: 15_000 });
+
+    const heading = page.getByTestId(TESTIDS['schedules-week-heading']);
+    await expect(heading).toBeVisible({ timeout: 10_000 });
+
+    // Critical assertion: No infinite loop errors
+    const joined = fatalErrors.join('\n');
+    expect(joined, 'Should not have infinite render loop').not.toMatch(/Maximum update depth exceeded/i);
+    expect(joined, 'Should not have too many re-renders').not.toMatch(/Too many re-renders/i);
+  });
+
+  test('navigates between admin and staff role paths without loop', async ({ page }) => {
+    const fatalErrors: string[] = [];
+    page.on('pageerror', (err) => fatalErrors.push(`[pageerror] ${err.message}`));
+    page.on('console', (msg) => {
+      if (msg.type() === 'error' && !msg.text().includes('404') && !msg.text().includes('403')) {
+        fatalErrors.push(`[console.error] ${msg.text()}`);
+      }
+    });
+
+    // Start at staff context
+    await page.goto('/schedules/week', { waitUntil: 'domcontentloaded' });
+    await expect(page.getByTestId(TESTIDS['schedules-week-page'])).toBeVisible({ timeout: 15_000 });
+
+    // Navigate to admin context
+    await page.goto('/admin/dashboard', { waitUntil: 'domcontentloaded' });
+    await page.waitForTimeout(1000); // Allow role sync to settle
+
+    // Navigate back to staff context
+    await page.goto('/dashboard', { waitUntil: 'domcontentloaded' });
+    await page.waitForTimeout(1000);
+
+    // Back to schedules (staff)
+    await page.goto('/schedules/week', { waitUntil: 'domcontentloaded' });
+    await expect(page.getByTestId(TESTIDS['schedules-week-page'])).toBeVisible({ timeout: 10_000 });
+
+    // No infinite loop errors should occur during role transitions
+    const joined = fatalErrors.join('\n');
+    expect(joined).not.toMatch(/Maximum update depth exceeded/i);
+    expect(joined).not.toMatch(/Too many re-renders/i);
+  });
 });
