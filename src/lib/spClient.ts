@@ -1328,34 +1328,7 @@ export function createSpClient(
   while (true) {
       const token = await acquireToken();
       if (!token) {
-        // Skip-login mode: return mock batch response instead of throwing
-        if (shouldSkipLogin()) {
-          if (debugEnabled) console.info('[postBatch] Token is null but skip-login enabled; returning mock batch');
-          const operationCount = (batchBody.match(new RegExp(`--${boundary}`, 'g')) || []).length - 1;
-          const mockOps = Array(Math.max(1, operationCount)).fill({});
-          const mockBatchResponse = (operations: Array<{ method?: string; url?: string; headers?: Record<string, string>; body?: unknown }>) => {
-            const parts: string[] = [];
-            operations.forEach(() => {
-              parts.push(`--${boundary}`);
-              parts.push('Content-Type: application/http');
-              parts.push('Content-Transfer-Encoding: binary');
-              parts.push('');
-              parts.push('HTTP/1.1 204 No Content');
-              parts.push('');
-            });
-            parts.push(`--${boundary}--`);
-            const mockBody = parts.join('\r\n');
-            return new Response(mockBody, {
-              status: 200,
-              statusText: 'OK',
-              headers: {
-                'Content-Type': `multipart/mixed; boundary=${boundary}`,
-              },
-            });
-          };
-          return Promise.resolve(mockBatchResponse(mockOps));
-        }
-        throw new Error('SharePoint のアクセストークン取得に失敗しました。');
+        throw new AuthRequiredError();
       }
       const headers = new Headers({
         'Authorization': `Bearer ${token}`,
