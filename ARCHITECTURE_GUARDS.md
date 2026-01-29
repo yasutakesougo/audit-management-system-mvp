@@ -6,6 +6,7 @@
 - Vitest treats different import specifiers as different modules.
 - Mocking `@/lib/env` does NOT affect `./env`.
 - `msal.ts` reads `getAppConfig()` at module-load, so unmocked env crashes tests.
+  - Diagram: `./env` (Module A) ≠ `@/lib/env` (Module B) → mocks don’t cross.
 
 ### Rule
 - All env imports MUST use `@/lib/env`.
