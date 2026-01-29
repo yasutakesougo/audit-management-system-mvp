@@ -572,3 +572,32 @@ export const getSharePointDefaultScope = (envOverride?: EnvRecord): string => {
 
   return raw;
 };
+
+/**
+ * ✅ SINGLE SOURCE OF TRUTH: When to SKIP SharePoint
+ * 
+ * This is the canonical check for all stores (useOrgStore, useStaffStore, etc.)
+ * to determine whether SharePoint API should be touched.
+ * 
+ * SharePoint is skipped if ANY of these are true:
+ * 1. VITE_DEMO_MODE === '1' (true demo mode)
+ * 2. VITE_SP_SITE_URL is not configured (empty/invalid baseUrl)
+ * 3. VITE_SKIP_LOGIN is enabled (automation/testing mode)
+ * 
+ * This prevents accidental SharePoint calls in demo/test scenarios.
+ */
+export const SP_SITE_URL = String(import.meta.env.VITE_SP_SITE_URL || '').trim();
+export const SP_BASE_URL = SP_SITE_URL; // Alias for clarity
+
+export const IS_DEMO = import.meta.env.VITE_DEMO_MODE === '1';
+export const IS_SKIP_LOGIN = readBool('VITE_SKIP_LOGIN', false);
+
+/**
+ * ✅ Master guard: Should we skip all SharePoint operations?
+ * This is what stores actually check — more accurate than IS_DEMO alone.
+ */
+export const IS_SKIP_SHAREPOINT = IS_DEMO || !SP_BASE_URL || IS_SKIP_LOGIN;
+
+// Legacy aliases (keep for backward compat, but prefer IS_SKIP_SHAREPOINT)
+export const SP_ENABLED = !IS_SKIP_SHAREPOINT;
+export const SP_DISABLED = IS_SKIP_SHAREPOINT;
