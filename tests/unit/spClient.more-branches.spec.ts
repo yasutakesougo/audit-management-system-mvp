@@ -1,34 +1,13 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { AppConfig } from '@/lib/env';
 import { installTestResets } from '../helpers/reset';
+import { mergeTestConfig, setTestConfigOverride } from '../helpers/mockEnv';
 
 vi.mock('@/lib/env', async () => {
   const actual = await vi.importActual<typeof import('@/lib/env')>('@/lib/env');
   return {
     ...actual,
-    getAppConfig: (): AppConfig => ({
-      VITE_SP_RESOURCE: 'https://contoso.sharepoint.com',
-      VITE_SP_SITE_URL: 'https://contoso.sharepoint.com/sites/demo',
-      VITE_SP_SITE_RELATIVE: '/sites/demo',
-      VITE_SP_RETRY_MAX: '3',
-      VITE_SP_RETRY_BASE_MS: '10',
-      VITE_SP_RETRY_MAX_DELAY_MS: '50',
-      VITE_MSAL_CLIENT_ID: '',
-      VITE_MSAL_TENANT_ID: '',
-      VITE_MSAL_TOKEN_REFRESH_MIN: '300',
-      VITE_AUDIT_DEBUG: '',
-      VITE_AUDIT_BATCH_SIZE: '',
-      VITE_AUDIT_RETRY_MAX: '',
-      VITE_AUDIT_RETRY_BASE: '',
-      VITE_E2E: '',
-      schedulesCacheTtlSec: 300,
-      graphRetryMax: 3,
-      graphRetryBaseMs: 100,
-      graphRetryCapMs: 1000,
-      schedulesTz: 'Asia/Tokyo',
-      schedulesWeekStart: 1,
-      isDev: false,
-    }),
+    getAppConfig: (): AppConfig => mergeTestConfig(),
     skipSharePoint: () => false,
     shouldSkipLogin: () => false,
   };
@@ -233,14 +212,12 @@ describe('spFetch retry matrix', () => {
 
   it('retries transient failures, logs in debug mode, and refreshes token on 401', async () => {
     process.env.NODE_ENV = 'development';
-    configGetter.mockReturnValue({
-      ...defaultConfig,
+    setTestConfigOverride({
       VITE_SP_RETRY_MAX: '2',
       VITE_SP_RETRY_BASE_MS: '0',
       VITE_SP_RETRY_MAX_DELAY_MS: '0',
       VITE_AUDIT_DEBUG: '1',
     });
-    __resetAppConfigForTests();
 
     const fetchMock = vi.fn()
       .mockResolvedValueOnce(makeResponse('', { status: 503, statusText: 'Service Unavailable' }))
@@ -269,13 +246,11 @@ describe('spFetch retry matrix', () => {
   });
 
   it('retries 408 timeout responses', async () => {
-    configGetter.mockReturnValue({
-      ...defaultConfig,
+    setTestConfigOverride({
       VITE_SP_RETRY_MAX: '2',
       VITE_SP_RETRY_BASE_MS: '0',
       VITE_SP_RETRY_MAX_DELAY_MS: '0',
     });
-    __resetAppConfigForTests();
 
     const fetchMock = vi.fn()
       .mockResolvedValueOnce(makeResponse('', { status: 408, statusText: 'Timeout' }))
@@ -290,13 +265,11 @@ describe('spFetch retry matrix', () => {
   });
 
   it('uses Retry-After header with RFC1123 timestamp for 429 throttles', async () => {
-    configGetter.mockReturnValue({
-      ...defaultConfig,
+    setTestConfigOverride({
       VITE_SP_RETRY_MAX: '2',
       VITE_SP_RETRY_BASE_MS: '1',
       VITE_SP_RETRY_MAX_DELAY_MS: '2',
     });
-    __resetAppConfigForTests();
     vi.useFakeTimers();
     vi.setSystemTime(new Date('2024-01-01T00:00:00Z'));
     const retryDate = new Date(Date.now() + 1000).toUTCString();
@@ -322,11 +295,9 @@ describe('spFetch retry matrix', () => {
   });
 
   it('surfaces raiseHttpError with payload message when retries are exhausted', async () => {
-    configGetter.mockReturnValue({
-      ...defaultConfig,
+    setTestConfigOverride({
       VITE_SP_RETRY_MAX: '1',
     });
-    __resetAppConfigForTests();
     const fetchMock = vi.fn().mockResolvedValue(makeResponse({ error: { message: { value: 'Detailed failure' } } }, { status: 500, statusText: 'Server Error', headers: { 'Content-Type': 'application/json' } }));
     globalThis.fetch = fetchMock as unknown as typeof fetch;
     const acquireToken = vi.fn().mockResolvedValue('token-1');
@@ -511,12 +482,11 @@ describe('postBatch retry logic and parser', () => {
   const baseUrl = `${defaultConfig.VITE_SP_RESOURCE}${defaultConfig.VITE_SP_SITE_RELATIVE}/_api/web`;
 
   it('retries batch requests on 429 and respects Retry-After seconds', async () => {
-    configGetter.mockReturnValue({
-      ...defaultConfig,
+    setTestConfigOverride({
       VITE_SP_RETRY_MAX: '3',
       VITE_SP_RETRY_BASE_MS: '5',
       VITE_SP_RETRY_MAX_DELAY_MS: '10',
-    });    __resetAppConfigForTests();
+    });
     const originalFetch = globalThis.fetch;
     const fetchMock = vi
       .fn()

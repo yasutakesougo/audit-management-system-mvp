@@ -1,6 +1,13 @@
 import type { AppConfig } from '@/lib/env';
 
 /**
+ * Per-test config override store.
+ * vi.mock の getAppConfig が読む。
+ * @internal Test infrastructure only.
+ */
+let testConfigOverride: Partial<AppConfig> | null = null;
+
+/**
  * Test用デフォルト AppConfig。
  * msal.ts が module load で読むため、全必須キーを埋める必要がある。
  *
@@ -38,6 +45,44 @@ export function createBaseTestAppConfig(
   };
 
   return { ...baseConfig, ...overrides };
+}
+
+/**
+ * Merge base config with per-test overrides.
+ * Used by vi.mock factory to support per-test config customization.
+ * @internal Called by vi.mock factory only.
+ */
+export function mergeTestConfig(overrides?: Partial<AppConfig>): AppConfig {
+  const base = createBaseTestAppConfig();
+  const merged = { ...base, ...(testConfigOverride || {}) };
+  if (overrides) {
+    return { ...merged, ...overrides };
+  }
+  return merged;
+}
+
+/**
+ * Set per-test config override. Call this before the test that needs custom config.
+ * Must be followed by resetTestConfigOverride() in afterEach.
+ *
+ * @param overrides - Config keys to override for this test
+ *
+ * @example
+ * it('test with custom config', () => {
+ *   setTestConfigOverride({ VITE_SP_RETRY_MAX: '1' });
+ *   // ... test code ...
+ * });
+ */
+export function setTestConfigOverride(overrides: Partial<AppConfig>): void {
+  testConfigOverride = overrides;
+}
+
+/**
+ * Reset per-test config override. Should be called in afterEach.
+ * @internal
+ */
+export function resetTestConfigOverride(): void {
+  testConfigOverride = null;
 }
 
 
