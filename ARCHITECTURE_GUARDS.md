@@ -1,5 +1,19 @@
 # Architecture Guards
 
+This document lists ESLint-enforced architectural patterns that prevent common violations.
+
+## CI Enforcement
+
+These guards are enforced at multiple layers:
+
+1. **Pre-commit Hook** (via Husky) - blocks local commits
+2. **CI Pipeline** (`.github/workflows/ci.yml`) - blocks PR merge  
+3. **Preflight Script** (`scripts/preflight.sh`) - runs in manual checks
+
+If pre-commit hooks are bypassed (`--no-verify`), CI will catch violations.
+
+---
+
 ## Testing: DevMock disable rule
 
 ### Problem
