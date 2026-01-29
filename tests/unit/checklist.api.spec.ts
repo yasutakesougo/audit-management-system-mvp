@@ -6,6 +6,7 @@ vi.mock('@/lib/env', async () => {
     ...actual,
     skipSharePoint: vi.fn(() => false),
     shouldSkipLogin: vi.fn(() => false),
+    isE2eMsalMockEnabled: vi.fn(() => false),
   };
 });
 
