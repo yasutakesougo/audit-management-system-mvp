@@ -41,3 +41,15 @@ vi.mock('@/lib/env', async () => {
 - ✅ Module ID一致で mock が確実に効く
 - ✅ partial mock で既存の env API を壊さない
 - ✅ hoist/TDZ を気にしなくていい
+
+---
+
+## Testing: SharePoint Batch Utilities
+
+### Reference
+- **`buildBatchInsertBody`** implementation: `@/features/audit/batchUtil`
+- **Contract test**: `tests/unit/spClient.batch.spec.ts`
+
+### Why
+- Prevents import path drift (e.g., referencing non-existent modules)
+- Tests serve as living documentation for batch API shape
