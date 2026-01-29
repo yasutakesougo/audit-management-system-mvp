@@ -1,7 +1,7 @@
 import { __resetAppConfigForTests, type AppConfig } from '@/lib/env';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-const { baseAppConfig, configGetter } = vi.hoisted(() => {
+const { baseAppConfig, configGetter, readEnvMock } = vi.hoisted(() => {
   const cfg = {
     VITE_SP_RESOURCE: 'https://contoso.sharepoint.com',
     VITE_SP_SITE_RELATIVE: '/sites/demo',
@@ -24,9 +24,22 @@ const { baseAppConfig, configGetter } = vi.hoisted(() => {
     isDev: false,
   } as AppConfig;
   
+  const getter = vi.fn(() => cfg);
+  
+  const readEnv = vi.fn((key: string, fallback = '') => {
+    // Read from the current config returned by configGetter
+    const currentCfg = getter() as Record<string, string | number | boolean>;
+    if (key in currentCfg) {
+      const val = currentCfg[key];
+      return val === '' || val === undefined || val === null ? fallback : String(val);
+    }
+    return fallback;
+  });
+  
   return {
     baseAppConfig: cfg,
-    configGetter: vi.fn(() => cfg),
+    configGetter: getter,
+    readEnvMock: readEnv,
   };
 });
 
@@ -35,6 +48,7 @@ vi.mock('@/lib/env', async () => {
   return {
     ...actual,
     getAppConfig: configGetter,
+    readEnv: readEnvMock,
     skipSharePoint: vi.fn(() => false),
     shouldSkipLogin: vi.fn(() => false),
   };
