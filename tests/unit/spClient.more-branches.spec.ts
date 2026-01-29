@@ -222,6 +222,7 @@ describe('spFetch retry matrix', () => {
       VITE_SP_RETRY_MAX_DELAY_MS: '0',
       VITE_AUDIT_DEBUG: '1',
     });
+    __resetAppConfigForTests();
 
     const fetchMock = vi.fn()
       .mockResolvedValueOnce(makeResponse('', { status: 503, statusText: 'Service Unavailable' }))
@@ -256,6 +257,7 @@ describe('spFetch retry matrix', () => {
       VITE_SP_RETRY_BASE_MS: '0',
       VITE_SP_RETRY_MAX_DELAY_MS: '0',
     });
+    __resetAppConfigForTests();
 
     const fetchMock = vi.fn()
       .mockResolvedValueOnce(makeResponse('', { status: 408, statusText: 'Timeout' }))
@@ -276,7 +278,7 @@ describe('spFetch retry matrix', () => {
       VITE_SP_RETRY_BASE_MS: '1',
       VITE_SP_RETRY_MAX_DELAY_MS: '2',
     });
-
+    __resetAppConfigForTests();
     vi.useFakeTimers();
     vi.setSystemTime(new Date('2024-01-01T00:00:00Z'));
     const retryDate = new Date(Date.now() + 1000).toUTCString();
@@ -306,7 +308,7 @@ describe('spFetch retry matrix', () => {
       ...defaultConfig,
       VITE_SP_RETRY_MAX: '1',
     });
-
+    __resetAppConfigForTests();
     const fetchMock = vi.fn().mockResolvedValue(makeResponse({ error: { message: { value: 'Detailed failure' } } }, { status: 500, statusText: 'Server Error', headers: { 'Content-Type': 'application/json' } }));
     globalThis.fetch = fetchMock as unknown as typeof fetch;
     const acquireToken = vi.fn().mockResolvedValue('token-1');
@@ -496,8 +498,7 @@ describe('postBatch retry logic and parser', () => {
       VITE_SP_RETRY_MAX: '3',
       VITE_SP_RETRY_BASE_MS: '5',
       VITE_SP_RETRY_MAX_DELAY_MS: '10',
-    });
-
+    });    __resetAppConfigForTests();
     const originalFetch = globalThis.fetch;
     const fetchMock = vi
       .fn()
