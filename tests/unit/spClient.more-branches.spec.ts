@@ -1,33 +1,40 @@
 import { __resetAppConfigForTests, type AppConfig } from '@/lib/env';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-const baseAppConfig = vi.hoisted(() => ({
-  VITE_SP_RESOURCE: 'https://contoso.sharepoint.com',
-  VITE_SP_SITE_RELATIVE: '/sites/demo',
-  VITE_SP_RETRY_MAX: '3',
-  VITE_SP_RETRY_BASE_MS: '10',
-  VITE_SP_RETRY_MAX_DELAY_MS: '50',
-  VITE_MSAL_CLIENT_ID: '',
-  VITE_MSAL_TENANT_ID: '',
-  VITE_MSAL_TOKEN_REFRESH_MIN: '300',
-  VITE_AUDIT_DEBUG: '',
-  VITE_AUDIT_BATCH_SIZE: '',
-  VITE_AUDIT_RETRY_MAX: '',
-  VITE_AUDIT_RETRY_BASE: '',
-  schedulesCacheTtlSec: 300,
-  graphRetryMax: 3,
-  graphRetryBaseMs: 100,
-  graphRetryCapMs: 1000,
-  schedulesTz: 'Asia/Tokyo',
-  schedulesWeekStart: 1,
-  isDev: false,
-})) as AppConfig;
+const { baseAppConfig, configGetter } = vi.hoisted(() => {
+  const cfg = {
+    VITE_SP_RESOURCE: 'https://contoso.sharepoint.com',
+    VITE_SP_SITE_RELATIVE: '/sites/demo',
+    VITE_SP_RETRY_MAX: '3',
+    VITE_SP_RETRY_BASE_MS: '10',
+    VITE_SP_RETRY_MAX_DELAY_MS: '50',
+    VITE_MSAL_CLIENT_ID: '',
+    VITE_MSAL_TENANT_ID: '',
+    VITE_MSAL_TOKEN_REFRESH_MIN: '300',
+    VITE_AUDIT_DEBUG: '',
+    VITE_AUDIT_BATCH_SIZE: '',
+    VITE_AUDIT_RETRY_MAX: '',
+    VITE_AUDIT_RETRY_BASE: '',
+    schedulesCacheTtlSec: 300,
+    graphRetryMax: 3,
+    graphRetryBaseMs: 100,
+    graphRetryCapMs: 1000,
+    schedulesTz: 'Asia/Tokyo',
+    schedulesWeekStart: 1,
+    isDev: false,
+  } as AppConfig;
+  
+  return {
+    baseAppConfig: cfg,
+    configGetter: vi.fn(() => cfg),
+  };
+});
 
 vi.mock('@/lib/env', async () => {
   const actual = await vi.importActual<typeof import('@/lib/env')>('@/lib/env');
   return {
     ...actual,
-    getAppConfig: vi.fn(() => baseAppConfig),
+    getAppConfig: configGetter,
     skipSharePoint: vi.fn(() => false),
     shouldSkipLogin: vi.fn(() => false),
   };
@@ -49,7 +56,6 @@ import {
   type SharePointBatchOperation,
 } from '@/lib/spClient';
 
-const mockGetAppConfig = vi.mocked(getAppConfig);
 const mockGetRuntimeEnv = vi.mocked(getRuntimeEnv);
 
 const defaultConfig: AppConfig = { ...baseAppConfig };
@@ -62,7 +68,7 @@ const originalWindow = (globalThis as Record<string, unknown>).window;
 beforeEach(() => {
   vi.unstubAllEnvs();
   __resetAppConfigForTests();
-  mockGetAppConfig.mockReturnValue({ ...defaultConfig });
+  configGetter.mockReturnValue({ ...defaultConfig });
   mockGetRuntimeEnv.mockReturnValue({});
   __test__.resetMissingOptionalFieldsCache();
   delete process.env.PLAYWRIGHT_TEST;
@@ -209,7 +215,7 @@ describe('spFetch retry matrix', () => {
 
   it('retries transient failures, logs in debug mode, and refreshes token on 401', async () => {
     process.env.NODE_ENV = 'development';
-    mockGetAppConfig.mockReturnValue({
+    configGetter.mockReturnValue({
       ...defaultConfig,
       VITE_SP_RETRY_MAX: '2',
       VITE_SP_RETRY_BASE_MS: '0',
@@ -244,7 +250,7 @@ describe('spFetch retry matrix', () => {
   });
 
   it('retries 408 timeout responses', async () => {
-    mockGetAppConfig.mockReturnValue({
+    configGetter.mockReturnValue({
       ...defaultConfig,
       VITE_SP_RETRY_MAX: '2',
       VITE_SP_RETRY_BASE_MS: '0',
@@ -264,7 +270,7 @@ describe('spFetch retry matrix', () => {
   });
 
   it('uses Retry-After header with RFC1123 timestamp for 429 throttles', async () => {
-    mockGetAppConfig.mockReturnValue({
+    configGetter.mockReturnValue({
       ...defaultConfig,
       VITE_SP_RETRY_MAX: '2',
       VITE_SP_RETRY_BASE_MS: '1',
@@ -296,7 +302,7 @@ describe('spFetch retry matrix', () => {
   });
 
   it('surfaces raiseHttpError with payload message when retries are exhausted', async () => {
-    mockGetAppConfig.mockReturnValue({
+    configGetter.mockReturnValue({
       ...defaultConfig,
       VITE_SP_RETRY_MAX: '1',
     });
@@ -485,7 +491,7 @@ describe('postBatch retry logic and parser', () => {
   const baseUrl = `${defaultConfig.VITE_SP_RESOURCE}${defaultConfig.VITE_SP_SITE_RELATIVE}/_api/web`;
 
   it('retries batch requests on 429 and respects Retry-After seconds', async () => {
-    mockGetAppConfig.mockReturnValue({
+    configGetter.mockReturnValue({
       ...defaultConfig,
       VITE_SP_RETRY_MAX: '3',
       VITE_SP_RETRY_BASE_MS: '5',
