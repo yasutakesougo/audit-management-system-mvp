@@ -1,31 +1,32 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { installTestResets } from '../helpers/reset';
 
 vi.mock('@/lib/env', async () => {
   const actual = await vi.importActual<typeof import('@/lib/env')>('@/lib/env');
   return {
     ...actual,
-    skipSharePoint: vi.fn(() => false),
-    shouldSkipLogin: vi.fn(() => false),
+    skipSharePoint: () => false,
+    shouldSkipLogin: () => false,
   };
 });
 
 import { createSpClient } from '@/lib/spClient';
 
-const ok = (body: any = {}) => new Response(JSON.stringify(body), { status: 200 });
-const r = (s: number, body: any = {}) => new Response(JSON.stringify(body), { status: s });
+const ok = (body: Record<string, unknown> = {}) =>
+  new Response(JSON.stringify(body), { status: 200 });
+const r = (s: number, body: Record<string, unknown> = {}) =>
+  new Response(JSON.stringify(body), { status: s });
 
 describe('spClient retries & refresh', () => {
+  installTestResets();
+
   let fetchSpy: ReturnType<typeof vi.spyOn>;
-  let acquireToken: any;
+  let acquireToken: ReturnType<typeof vi.fn>;
 
   beforeEach(() => {
-    fetchSpy = vi.spyOn(global, 'fetch' as any);
+    fetchSpy = vi.spyOn(global, 'fetch');
     // per-test we will define token sequence explicitly
     acquireToken = vi.fn();
-  });
-
-  afterEach(() => {
-    vi.restoreAllMocks();
   });
 
   it('401 -> token refresh -> success (single refresh)', async () => {
