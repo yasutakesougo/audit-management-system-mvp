@@ -571,7 +571,7 @@ describe('postBatch retry logic and parser', () => {
     const acquireToken = vi.fn().mockResolvedValue('');
     const client = createSpClient(acquireToken, baseUrl);
 
-    await expect(client.postBatch('--noop--', 'boundary')).rejects.toThrow('SharePoint のアクセストークン取得に失敗しました。');
+    await expect(client.postBatch('--noop--', 'boundary')).rejects.toThrow('AUTH_REQUIRED');
     expect(fetchMock).not.toHaveBeenCalled();
   });
 
