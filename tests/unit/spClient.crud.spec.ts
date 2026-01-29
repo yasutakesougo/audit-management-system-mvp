@@ -1,11 +1,7 @@
-import { getAppConfig } from '@/lib/env';
-import type { UseSP } from '@/lib/spClient';
-import { createSchedule, createSpClient } from '@/lib/spClient';
 import { afterAll, afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-vi.mock('@/lib/env', async () => {
-  const actual = await vi.importActual<typeof import('@/lib/env')>('@/lib/env');
-  const defaultConfig = {
+const { configGetter, demoModeGetter } = vi.hoisted(() => {
+  const cfg = {
     VITE_SP_RESOURCE: 'https://contoso.sharepoint.com',
     VITE_SP_SITE_RELATIVE: '/sites/demo',
     VITE_SP_RETRY_MAX: '3',
@@ -27,16 +23,30 @@ vi.mock('@/lib/env', async () => {
     schedulesWeekStart: 1,
     isDev: false,
   } as const;
-  const getAppConfig = vi.fn(() => ({ ...defaultConfig }));
-  const isDemoModeEnabled = vi.fn(() => true);
+  
+  const getter = vi.fn(() => ({ ...cfg }));
+  const demoGetter = vi.fn(() => true);
+  
+  return {
+    configGetter: getter,
+    demoModeGetter: demoGetter,
+  };
+});
+
+vi.mock('@/lib/env', async () => {
+  const actual = await vi.importActual<typeof import('@/lib/env')>('@/lib/env');
   return {
     ...actual,
-    getAppConfig,
-    isDemoModeEnabled,
+    getAppConfig: configGetter,
+    isDemoModeEnabled: demoModeGetter,
     skipSharePoint: vi.fn(() => false),
     shouldSkipLogin: vi.fn(() => false),
   };
 });
+
+import { getAppConfig } from '@/lib/env';
+import type { UseSP } from '@/lib/spClient';
+import { createSchedule, createSpClient } from '@/lib/spClient';
 
 const baseConfig = {
   VITE_SP_RESOURCE: 'https://contoso.sharepoint.com',

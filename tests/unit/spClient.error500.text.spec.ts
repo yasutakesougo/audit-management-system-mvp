@@ -1,4 +1,3 @@
-import { createSpClient } from '@/lib/spClient';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 vi.mock('@/lib/env', async () => {
@@ -9,6 +8,8 @@ vi.mock('@/lib/env', async () => {
     shouldSkipLogin: vi.fn(() => false),
   };
 });
+
+import { createSpClient } from '@/lib/spClient';
 
 const textPayload = 'Internal Boom (plain text)';
 

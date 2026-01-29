@@ -1,5 +1,4 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { createSpClient } from '../../src/lib/spClient';
 
 vi.mock('@/lib/env', async () => {
   const actual = await vi.importActual<typeof import('@/lib/env')>('@/lib/env');
@@ -9,6 +8,8 @@ vi.mock('@/lib/env', async () => {
     shouldSkipLogin: vi.fn(() => false),
   };
 });
+
+import { createSpClient } from '../../src/lib/spClient';
 
 // We simulate list() flow used by useChecklistApi: underlying call is getListItemsByTitle -> spFetch
 // Scenario: first 401 unauthorized -> token refresh -> success with empty value array
