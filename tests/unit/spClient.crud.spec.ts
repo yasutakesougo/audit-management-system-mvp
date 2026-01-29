@@ -327,7 +327,7 @@ describe('createSpClient CRUD helpers', () => {
 
     const client = createSpClient(acquireToken, baseUrl);
 
-    await expect(client.spFetch('/lists')).rejects.toThrow('SharePoint のアクセストークン取得に失敗しました。');
+    await expect(client.spFetch('/lists')).rejects.toThrow('AUTH_REQUIRED');
     expect(fetchMock).not.toHaveBeenCalled();
   });
 
