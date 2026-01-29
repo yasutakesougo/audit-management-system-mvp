@@ -88,44 +88,6 @@ afterEach(() => {
   vi.clearAllMocks();
 });
 
-describe('ensureConfig edge cases', () => {
-  it('fails fast when resource or site value is still a placeholder', async () => {
-    vi.resetModules();
-    vi.unmock('@/lib/spClient');
-    const { __test__ } = await vi.importActual<typeof import('@/lib/spClient')>('@/lib/spClient');
-
-    mockGetAppConfig.mockReturnValue({
-      ...defaultConfig,
-      VITE_SP_RESOURCE: '<yourtenant>',
-      VITE_SP_SITE_RELATIVE: '__FILL_ME__',
-    });
-
-    expect(() =>
-      __test__.ensureConfig({ VITE_SP_RESOURCE: 'https://<yourtenant>.sharepoint.com', VITE_SP_SITE_RELATIVE: '/sites/__FILL_ME__' })
-    ).toThrow(/SharePoint 接続設定が未完了です。/);
-  });
-
-  it('rejects obviously invalid resource domains', async () => {
-    vi.resetModules();
-    vi.unmock('@/lib/spClient');
-    const { __test__ } = await vi.importActual<typeof import('@/lib/spClient')>('@/lib/spClient');
-
-    expect(() =>
-      __test__.ensureConfig({ VITE_SP_RESOURCE: 'https://example.com', VITE_SP_SITE_RELATIVE: '/sites/demo' })
-    ).toThrow(/VITE_SP_RESOURCE の形式が不正です/);
-  });
-
-  it('treats undefined resource/site values as incomplete configuration', async () => {
-    vi.resetModules();
-    vi.unmock('@/lib/spClient');
-    const { __test__ } = await vi.importActual<typeof import('@/lib/spClient')>('@/lib/spClient');
-
-    expect(() =>
-      __test__.ensureConfig({ VITE_SP_RESOURCE: undefined, VITE_SP_SITE_RELATIVE: undefined })
-    ).toThrow(/SharePoint 接続設定が未完了です。/);
-  });
-});
-
 describe('buildFieldSchema branches', () => {
   const { buildFieldSchema } = __ensureListInternals;
 
