@@ -84,7 +84,7 @@ jobs:
       - name: Playwright install (preview server)
         run: PW_USE_PREVIEW=1 npx playwright install --with-deps
       - name: Build (preview server)
-        run: npm run build --if-present
+        run: VITE_E2E='1' npm run build --if-present
       - name: Start preview server
         run: npm run preview -- --host 127.0.0.1 --port 5173 --strictPort &
 
