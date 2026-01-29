@@ -1,76 +1,41 @@
-import { afterAll, afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-
-const { configGetter, demoModeGetter } = vi.hoisted(() => {
-  const cfg = {
-    VITE_SP_RESOURCE: 'https://contoso.sharepoint.com',
-    VITE_SP_SITE_RELATIVE: '/sites/demo',
-    VITE_SP_RETRY_MAX: '3',
-    VITE_SP_RETRY_BASE_MS: '10',
-    VITE_SP_RETRY_MAX_DELAY_MS: '50',
-    VITE_MSAL_CLIENT_ID: '',
-    VITE_MSAL_TENANT_ID: '',
-    VITE_MSAL_TOKEN_REFRESH_MIN: '300',
-    VITE_AUDIT_DEBUG: '',
-    VITE_AUDIT_BATCH_SIZE: '',
-    VITE_AUDIT_RETRY_MAX: '',
-    VITE_AUDIT_RETRY_BASE: '',
-    VITE_E2E: '',
-    schedulesCacheTtlSec: 60,
-    graphRetryMax: 2,
-    graphRetryBaseMs: 100,
-    graphRetryCapMs: 200,
-    schedulesTz: 'Asia/Tokyo',
-    schedulesWeekStart: 1,
-    isDev: false,
-  } as const;
-  
-  const getter = vi.fn(() => ({ ...cfg }));
-  const demoGetter = vi.fn(() => true);
-  
-  return {
-    configGetter: getter,
-    demoModeGetter: demoGetter,
-  };
-});
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { installTestResets } from '../helpers/reset';
 
 vi.mock('@/lib/env', async () => {
   const actual = await vi.importActual<typeof import('@/lib/env')>('@/lib/env');
   return {
     ...actual,
-    getAppConfig: configGetter,
-    isDemoModeEnabled: demoModeGetter,
-    skipSharePoint: vi.fn(() => false),
-    shouldSkipLogin: vi.fn(() => false),
+    getAppConfig: () => ({
+      VITE_SP_RESOURCE: 'https://contoso.sharepoint.com',
+      VITE_SP_SITE_URL: 'https://contoso.sharepoint.com/sites/demo',
+      VITE_SP_SITE_RELATIVE: '/sites/demo',
+      VITE_SP_RETRY_MAX: '3',
+      VITE_SP_RETRY_BASE_MS: '10',
+      VITE_SP_RETRY_MAX_DELAY_MS: '50',
+      VITE_MSAL_CLIENT_ID: '',
+      VITE_MSAL_TENANT_ID: '',
+      VITE_MSAL_TOKEN_REFRESH_MIN: '300',
+      VITE_AUDIT_DEBUG: '',
+      VITE_AUDIT_BATCH_SIZE: '',
+      VITE_AUDIT_RETRY_MAX: '',
+      VITE_AUDIT_RETRY_BASE: '',
+      VITE_E2E: '',
+      schedulesCacheTtlSec: 60,
+      graphRetryMax: 2,
+      graphRetryBaseMs: 100,
+      graphRetryCapMs: 200,
+      schedulesTz: 'Asia/Tokyo',
+      schedulesWeekStart: 1,
+      isDev: false,
+    }),
+    isDemoModeEnabled: () => true,
+    skipSharePoint: () => false,
+    shouldSkipLogin: () => false,
   };
 });
 
-import { getAppConfig } from '@/lib/env';
 import type { UseSP } from '@/lib/spClient';
 import { createSchedule, createSpClient } from '@/lib/spClient';
-
-const baseConfig = {
-  VITE_SP_RESOURCE: 'https://contoso.sharepoint.com',
-  VITE_SP_SITE_RELATIVE: '/sites/demo',
-  VITE_SP_SITE_URL: 'https://contoso.sharepoint.com/sites/demo',
-  VITE_SP_RETRY_MAX: '3',
-  VITE_SP_RETRY_BASE_MS: '10',
-  VITE_SP_RETRY_MAX_DELAY_MS: '50',
-  VITE_MSAL_CLIENT_ID: '',
-  VITE_MSAL_TENANT_ID: '',
-  VITE_MSAL_TOKEN_REFRESH_MIN: '300',
-  VITE_AUDIT_DEBUG: '',
-  VITE_AUDIT_BATCH_SIZE: '',
-  VITE_AUDIT_RETRY_MAX: '',
-  VITE_AUDIT_RETRY_BASE: '',
-  VITE_E2E: '',
-  schedulesCacheTtlSec: 60,
-  graphRetryMax: 2,
-  graphRetryBaseMs: 100,
-  graphRetryCapMs: 200,
-  schedulesTz: 'Asia/Tokyo',
-  schedulesWeekStart: 1,
-  isDev: false,
-} as const;
 
 const minimalSchedulePayload: Parameters<typeof createSchedule>[1] = {
   Title: 'noop',
@@ -92,28 +57,26 @@ vi.mock('@/lib/debugLogger', () => ({
 }));
 
 describe('createSpClient CRUD helpers', () => {
+  installTestResets();
+
   const baseUrl = 'https://contoso.sharepoint.com/sites/demo/_api/web';
   const originalFetch = global.fetch;
-  const mockedGetAppConfig = vi.mocked(getAppConfig);
 
   let acquireToken: ReturnType<typeof vi.fn<() => Promise<string | null>>>;
   let fetchMock: ReturnType<typeof vi.fn>;
 
   beforeEach(() => {
-    mockedGetAppConfig.mockClear();
-    mockedGetAppConfig.mockImplementation(() => ({ ...baseConfig }));
     acquireToken = vi.fn<() => Promise<string | null>>().mockResolvedValue('token');
     fetchMock = vi.fn();
     global.fetch = fetchMock as unknown as typeof fetch;
     delete (globalThis as { __TOKEN_METRICS__?: unknown }).__TOKEN_METRICS__;
   });
 
-  afterEach(() => {
-    global.fetch = originalFetch;
-  });
-
-  afterAll(() => {
-    global.fetch = originalFetch;
+  beforeEach(() => {
+    // restore fetch in case test left it modified
+    return () => {
+      global.fetch = originalFetch;
+    };
   });
 
   it('updateItemByTitle returns parsed JSON payload', async () => {

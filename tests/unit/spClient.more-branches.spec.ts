@@ -1,56 +1,36 @@
-import { __resetAppConfigForTests, type AppConfig } from '@/lib/env';
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-
-const { baseAppConfig, configGetter, readEnvMock } = vi.hoisted(() => {
-  const cfg = {
-    VITE_SP_RESOURCE: 'https://contoso.sharepoint.com',
-    VITE_SP_SITE_RELATIVE: '/sites/demo',
-    VITE_SP_RETRY_MAX: '3',
-    VITE_SP_RETRY_BASE_MS: '10',
-    VITE_SP_RETRY_MAX_DELAY_MS: '50',
-    VITE_MSAL_CLIENT_ID: '',
-    VITE_MSAL_TENANT_ID: '',
-    VITE_MSAL_TOKEN_REFRESH_MIN: '300',
-    VITE_AUDIT_DEBUG: '',
-    VITE_AUDIT_BATCH_SIZE: '',
-    VITE_AUDIT_RETRY_MAX: '',
-    VITE_AUDIT_RETRY_BASE: '',
-    schedulesCacheTtlSec: 300,
-    graphRetryMax: 3,
-    graphRetryBaseMs: 100,
-    graphRetryCapMs: 1000,
-    schedulesTz: 'Asia/Tokyo',
-    schedulesWeekStart: 1,
-    isDev: false,
-  } as AppConfig;
-  
-  const getter = vi.fn(() => cfg);
-  
-  const readEnv = vi.fn((key: string, fallback = '') => {
-    // Read from the current config returned by configGetter
-    const currentCfg = getter() as Record<string, string | number | boolean>;
-    if (key in currentCfg) {
-      const val = currentCfg[key];
-      return val === '' || val === undefined || val === null ? fallback : String(val);
-    }
-    return fallback;
-  });
-  
-  return {
-    baseAppConfig: cfg,
-    configGetter: getter,
-    readEnvMock: readEnv,
-  };
-});
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+import type { AppConfig } from '@/lib/env';
+import { installTestResets } from '../helpers/reset';
 
 vi.mock('@/lib/env', async () => {
   const actual = await vi.importActual<typeof import('@/lib/env')>('@/lib/env');
   return {
     ...actual,
-    getAppConfig: configGetter,
-    readEnv: readEnvMock,
-    skipSharePoint: vi.fn(() => false),
-    shouldSkipLogin: vi.fn(() => false),
+    getAppConfig: (): AppConfig => ({
+      VITE_SP_RESOURCE: 'https://contoso.sharepoint.com',
+      VITE_SP_SITE_URL: 'https://contoso.sharepoint.com/sites/demo',
+      VITE_SP_SITE_RELATIVE: '/sites/demo',
+      VITE_SP_RETRY_MAX: '3',
+      VITE_SP_RETRY_BASE_MS: '10',
+      VITE_SP_RETRY_MAX_DELAY_MS: '50',
+      VITE_MSAL_CLIENT_ID: '',
+      VITE_MSAL_TENANT_ID: '',
+      VITE_MSAL_TOKEN_REFRESH_MIN: '300',
+      VITE_AUDIT_DEBUG: '',
+      VITE_AUDIT_BATCH_SIZE: '',
+      VITE_AUDIT_RETRY_MAX: '',
+      VITE_AUDIT_RETRY_BASE: '',
+      VITE_E2E: '',
+      schedulesCacheTtlSec: 300,
+      graphRetryMax: 3,
+      graphRetryBaseMs: 100,
+      graphRetryCapMs: 1000,
+      schedulesTz: 'Asia/Tokyo',
+      schedulesWeekStart: 1,
+      isDev: false,
+    }),
+    skipSharePoint: () => false,
+    shouldSkipLogin: () => false,
   };
 });
 
@@ -59,7 +39,6 @@ vi.mock('@/env', () => ({
 }));
 
 import { getRuntimeEnv } from '@/env';
-import { getAppConfig } from '@/lib/env';
 import { SharePointItemNotFoundError, SharePointMissingEtagError } from '@/lib/errors';
 import {
   __ensureListInternals,
@@ -72,45 +51,68 @@ import {
 
 const mockGetRuntimeEnv = vi.mocked(getRuntimeEnv);
 
-const defaultConfig: AppConfig = { ...baseAppConfig };
+const defaultConfig: AppConfig = {
+  VITE_SP_RESOURCE: 'https://contoso.sharepoint.com',
+  VITE_SP_SITE_URL: 'https://contoso.sharepoint.com/sites/demo',
+  VITE_SP_SITE_RELATIVE: '/sites/demo',
+  VITE_SP_RETRY_MAX: '3',
+  VITE_SP_RETRY_BASE_MS: '10',
+  VITE_SP_RETRY_MAX_DELAY_MS: '50',
+  VITE_MSAL_CLIENT_ID: '',
+  VITE_MSAL_TENANT_ID: '',
+  VITE_MSAL_TOKEN_REFRESH_MIN: '300',
+  VITE_AUDIT_DEBUG: '',
+  VITE_AUDIT_BATCH_SIZE: '',
+  VITE_AUDIT_RETRY_MAX: '',
+  VITE_AUDIT_RETRY_BASE: '',
+  VITE_E2E: '',
+  schedulesCacheTtlSec: 300,
+  graphRetryMax: 3,
+  graphRetryBaseMs: 100,
+  graphRetryCapMs: 1000,
+  schedulesTz: 'Asia/Tokyo',
+  schedulesWeekStart: 1,
+  isDev: false,
+};
 
 const originalNodeEnv = process.env.NODE_ENV;
 const originalPlaywrightFlag = process.env.PLAYWRIGHT_TEST;
 const originalFetch = globalThis.fetch;
 const originalWindow = (globalThis as Record<string, unknown>).window;
 
-beforeEach(() => {
-  vi.unstubAllEnvs();
-  __resetAppConfigForTests();
-  configGetter.mockReturnValue({ ...defaultConfig });
-  mockGetRuntimeEnv.mockReturnValue({});
-  __test__.resetMissingOptionalFieldsCache();
-  delete process.env.PLAYWRIGHT_TEST;
-});
-
-afterEach(() => {
-  vi.unstubAllEnvs();
-  process.env.NODE_ENV = originalNodeEnv;
-  if (originalPlaywrightFlag === undefined) {
-    delete process.env.PLAYWRIGHT_TEST;
-  } else {
-    process.env.PLAYWRIGHT_TEST = originalPlaywrightFlag;
-  }
-  if (originalFetch) {
-    globalThis.fetch = originalFetch;
-  } else {
-    delete (globalThis as unknown as { fetch?: typeof fetch }).fetch;
-  }
-  if (originalWindow === undefined) {
-    delete (globalThis as Record<string, unknown>).window;
-  } else {
-    (globalThis as Record<string, unknown>).window = originalWindow;
-  }
-  __test__.resetMissingOptionalFieldsCache();
-  vi.clearAllMocks();
-});
-
 describe('buildFieldSchema branches', () => {
+  installTestResets();
+
+  beforeEach(() => {
+    vi.unstubAllEnvs();
+    mockGetRuntimeEnv.mockReturnValue({});
+    __test__.resetMissingOptionalFieldsCache();
+    delete process.env.PLAYWRIGHT_TEST;
+  });
+
+  beforeEach(() => {
+    // Cleanup for fetch and window
+    return () => {
+      process.env.NODE_ENV = originalNodeEnv;
+      if (originalPlaywrightFlag === undefined) {
+        delete process.env.PLAYWRIGHT_TEST;
+      } else {
+        process.env.PLAYWRIGHT_TEST = originalPlaywrightFlag;
+      }
+      if (originalFetch) {
+        globalThis.fetch = originalFetch;
+      } else {
+        delete (globalThis as unknown as { fetch?: typeof fetch }).fetch;
+      }
+      if (originalWindow === undefined) {
+        delete (globalThis as Record<string, unknown>).window;
+      } else {
+        (globalThis as Record<string, unknown>).window = originalWindow;
+      }
+      __test__.resetMissingOptionalFieldsCache();
+    };
+  });
+
   const { buildFieldSchema } = __ensureListInternals;
 
   it('renders lookup field metadata with trimmed guid braces', () => {
@@ -185,6 +187,8 @@ describe('buildFieldSchema branches', () => {
 });
 
 describe('resolveStaffListIdentifier scenarios', () => {
+  installTestResets();
+
   it('prefers explicit guid override even with braces', () => {
     const result = __test__.resolveStaffListIdentifier('Staff', '{ABCDEF00-ABCD-ABCD-ABCD-ABCDEF123456}');
     expect(result).toEqual({ type: 'guid', value: 'ABCDEF00-ABCD-ABCD-ABCD-ABCDEF123456' });
