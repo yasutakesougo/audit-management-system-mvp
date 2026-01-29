@@ -140,7 +140,9 @@ export const useAuth = () => {
   const defaultScope = `${ensureResource()}/.default`;
 
   const acquireToken = useCallback(async (resource?: string): Promise<string | null> => {
-    const activeAccount = ensureActiveAccount(instance) ?? (accounts[0] as BasicAccountInfo | undefined) ?? null;
+    // Get fresh account list from instance to avoid stale closure
+    const allAccounts = instance.getAllAccounts() as BasicAccountInfo[];
+    const activeAccount = ensureActiveAccount(instance) ?? (allAccounts[0] as BasicAccountInfo | undefined) ?? null;
     if (!activeAccount) return null;
 
     // しきい値（秒）。既定 5 分。
@@ -226,7 +228,7 @@ export const useAuth = () => {
       }
       return null;
     }
-  }, [instance, accounts, inProgress]);
+  }, [instance, inProgress]);
 
   const resolvedAccount = instance.getActiveAccount() ?? accounts[0] ?? null;
   const isAuthenticated = !!resolvedAccount;

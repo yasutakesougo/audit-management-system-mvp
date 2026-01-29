@@ -394,7 +394,7 @@ const buildDaySummaries = (
       counts[iso] = (counts[iso] ?? 0) + 1;
       // 先頭1件だけタイトルを保持（既に存在すれば上書きしない）
       if (firstTitle[iso] == null || firstTitle[iso] === '') {
-        const title = item.title || item.note || item.notes || '';
+        const title = item.title || item.notes || '';
         if (title) {
           firstTitle[iso] = title;
         }

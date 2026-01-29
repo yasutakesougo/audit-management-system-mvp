@@ -21,7 +21,7 @@ import { MsalProvider } from './auth/MsalProvider';
 import { useAuth } from '@/auth/useAuth';
 import type { Result } from '@/shared/result';
 import { ToastProvider, useToast } from './hooks/useToast';
-import { getScheduleSaveMode, readBool, readViteBool } from './lib/env';
+import { getScheduleSaveMode, readBool, readViteBool, isDemoModeEnabled, shouldSkipLogin } from './lib/env';
 import { registerNotifier } from './lib/notice';
 import { hasSpfxContext } from './lib/runtime';
 
@@ -71,7 +71,11 @@ function SchedulesProviderBridge({ children }: BridgeProps) {
   const port = useMemo(() => {
     let selectedPort: SchedulesPort;
 
-    const sharePointRunnable = sharePointListEnabled && (spfxContextAvailable || allowSharePointOutsideSpfx);
+    // CRITICAL: In demo/skip-login mode, NEVER use SharePoint
+    // Always fall back to demo port to avoid token acquisition errors
+    const isDemoOrSkipLogin = isDemoModeEnabled() || shouldSkipLogin();
+
+    const sharePointRunnable = !isDemoOrSkipLogin && sharePointListEnabled && (spfxContextAvailable || allowSharePointOutsideSpfx);
 
     if (sharePointRunnable) {
       if (import.meta.env.DEV) console.info('[schedules] using SharePoint port');
@@ -81,7 +85,7 @@ function SchedulesProviderBridge({ children }: BridgeProps) {
         currentOwnerUserId,
       });
 
-    } else if (graphEnabled) {
+    } else if (graphEnabled && !isDemoOrSkipLogin) {
       if (import.meta.env.DEV) console.info('[schedules] using Graph port');
       selectedPort = makeGraphSchedulesPort(() => acquireToken(GRAPH_RESOURCE), { create: createHandler });
     } else {
