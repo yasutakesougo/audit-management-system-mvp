@@ -79,6 +79,43 @@ vi.mock('@/lib/env', async () => {
 });
 ```
 
+### Per-Test Config Override
+
+個別テストで config を一時的に上書きしたい場合：
+
+```typescript
+import { mergeTestConfig, setTestConfigOverride } from '../helpers/mockEnv';
+
+vi.mock('@/lib/env', async () => {
+  const actual = await vi.importActual<typeof import('@/lib/env')>('@/lib/env');
+  return {
+    ...actual,
+    getAppConfig: () => mergeTestConfig(), // ← mergeTestConfig を使う
+    skipSharePoint: () => false,
+    shouldSkipLogin: () => false,
+  };
+});
+
+describe('spClient', () => {
+  installTestResets(); // ← afterEach で自動的に override がリセットされる
+
+  it('custom retry config only for this test', async () => {
+    setTestConfigOverride({
+      VITE_SP_RETRY_MAX: '1',
+      VITE_SP_RETRY_BASE_MS: '0',
+    });
+    // ... test code that needs custom config ...
+  });
+
+  it('back to default config', async () => {
+    // VITE_SP_RETRY_MAX は '3' に戻る
+    // ... test code ...
+  });
+});
+```
+
+**重要**: `installTestResets()` を必ず呼ぶこと。afterEach で `resetTestConfigOverride()` が実行される。
+
 ## ⚠️ Critical Rules (禁止事項)
 
 ### ✅ Do
