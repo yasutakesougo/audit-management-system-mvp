@@ -660,25 +660,11 @@ export function createSpClient(
     if (debugEnabled && tokenMetricsCarrier.__TOKEN_METRICS__) {
       dbg('token metrics snapshot', tokenMetricsCarrier.__TOKEN_METRICS__);
     }
-    if (!token1) {
-      // Skip-login mode: fall back to mock instead of throwing
-      // This allows E2E tests with Playwright stub to intercept requests
-      if (shouldSkipLogin()) {
-        if (AUDIT_DEBUG) {
-          console.info('[spFetch] Token is null but skip-login enabled; returning empty mock');
-        }
-        const mockResponse = (data: any, status = 200) => {
-          return new Response(JSON.stringify(data), {
-            status,
-            statusText: status === 200 ? 'OK' : 'Error',
-            headers: {
-              'Content-Type': 'application/json',
-              'ETag': 'W/"1"',
-            },
-          });
-        };
-        return mockResponse({ value: [] });
-      }
+    
+    // E2E/skip-login: allow fetch without token so Playwright stubs can intercept
+    const skipAuthCheck = shouldSkipLogin() || isE2eMsalMockEnabled();
+    
+    if (!token1 && !skipAuthCheck) {
       throw new AuthRequiredError();
     }
 
@@ -723,13 +709,16 @@ export function createSpClient(
     };
 
     const resolveUrl = (targetPath: string) => (/^https?:\/\//i.test(targetPath) ? targetPath : `${baseUrl}${targetPath}`);
-    const doFetch = async (token: string) => {
+    const doFetch = async (token: string | null) => {
       const url = resolveUrl(resolvedPath);
       const AUDIT_DEBUG = String(readEnv('VITE_AUDIT_DEBUG', '')) === '1';
 
       // ヘッダー生成: undefined/null を絶対に入れない
       const headers = toHeaders(init.headers);
-      headers.set('Authorization', `Bearer ${token}`);
+      // E2E/skip-login: only set Authorization if token exists
+      if (token) {
+        headers.set('Authorization', `Bearer ${token}`);
+      }
 
       const method = (init.method ?? 'GET').toUpperCase();
 
@@ -847,17 +836,20 @@ export function createSpClient(
     }
 
     if (!response.ok && (response.status === 401 || response.status === 403)) {
-      const token2 = await acquireToken();
-      if (token2 && token2 !== token1) {
-        try {
-          response = await doFetch(token2);
-        } catch (e) {
-          // AbortError: token refresh 不要
-          if (isAbortError(e)) throw e;
-          throw e;
+      // E2E/skip-login: don't retry with token if already in skip mode (Playwright handles auth)
+      if (!skipAuthCheck) {
+        const token2 = await acquireToken();
+        if (token2 && token2 !== token1) {
+          try {
+            response = await doFetch(token2);
+          } catch (e) {
+            // AbortError: token refresh 不要
+            if (isAbortError(e)) throw e;
+            throw e;
+          }
+        } else if (!token2) {
+          throw new AuthRequiredError();
         }
-      } else if (!token2) {
-        throw new AuthRequiredError();
       }
     }
 
@@ -1327,13 +1319,18 @@ export function createSpClient(
   // eslint-disable-next-line no-constant-condition
   while (true) {
       const token = await acquireToken();
-      if (!token) {
+      // E2E/skip-login: allow batch without token so Playwright stubs can intercept
+      const skipAuthCheck = shouldSkipLogin() || isE2eMsalMockEnabled();
+      if (!token && !skipAuthCheck) {
         throw new AuthRequiredError();
       }
       const headers = new Headers({
-        'Authorization': `Bearer ${token}`,
         'Content-Type': `multipart/mixed; boundary=${boundary}`
       });
+      // Only set Authorization if token exists
+      if (token) {
+        headers.set('Authorization', `Bearer ${token}`);
+      }
       const res = await fetch(`${apiRoot}/$batch`, { method: 'POST', headers, body: batchBody });
       // E2E instrumentation (non-production impact): expose attempt count & last URL for debugging
       if (typeof window !== 'undefined') {
