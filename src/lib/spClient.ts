@@ -1552,9 +1552,7 @@ export function clearAllFieldsCache(): void {
 
 // test-only export (intentionally non-exported in production bundles usage scope)
 export const __test__ = {
-  ensureConfig: (_override?: { VITE_SP_RESOURCE?: string; VITE_SP_SITE_RELATIVE?: string; VITE_SP_SITE?: string }) => {
-    throw new Error('probe wrapper');
-  },
+  ensureConfig,
   resetMissingOptionalFieldsCache(): void {
     missingOptionalFieldsCache.clear();
   },

@@ -1,6 +1,15 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { createSpClient } from '../../src/lib/spClient';
 
+vi.mock('@/lib/env', async () => {
+  const actual = await vi.importActual<typeof import('@/lib/env')>('@/lib/env');
+  return {
+    ...actual,
+    skipSharePoint: vi.fn(() => false),
+    shouldSkipLogin: vi.fn(() => false),
+  };
+});
+
 describe('spClient batch parsing', () => {
   const BASE_URL = 'https://contoso.sharepoint.com/sites/Audit/_api/web';
 

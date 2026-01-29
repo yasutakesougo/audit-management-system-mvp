@@ -2,6 +2,15 @@ import { __resetAppConfigForTests } from '@/lib/env';
 import { createSpClient, type SharePointRetryMeta } from '@/lib/spClient';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
+vi.mock('@/lib/env', async () => {
+  const actual = await vi.importActual<typeof import('@/lib/env')>('@/lib/env');
+  return {
+    ...actual,
+    skipSharePoint: vi.fn(() => false),
+    shouldSkipLogin: vi.fn(() => false),
+  };
+});
+
 describe('spClient – 429 Retry-After seconds → retry then success', () => {
   const baseUrl = 'https://contoso.sharepoint.com/sites/app/_api/web';
 

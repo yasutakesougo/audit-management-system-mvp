@@ -3,6 +3,41 @@ import type { UseSP } from '@/lib/spClient';
 import { createSchedule, createSpClient } from '@/lib/spClient';
 import { afterAll, afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
+vi.mock('@/lib/env', async () => {
+  const actual = await vi.importActual<typeof import('@/lib/env')>('@/lib/env');
+  const defaultConfig = {
+    VITE_SP_RESOURCE: 'https://contoso.sharepoint.com',
+    VITE_SP_SITE_RELATIVE: '/sites/demo',
+    VITE_SP_RETRY_MAX: '3',
+    VITE_SP_RETRY_BASE_MS: '10',
+    VITE_SP_RETRY_MAX_DELAY_MS: '50',
+    VITE_MSAL_CLIENT_ID: '',
+    VITE_MSAL_TENANT_ID: '',
+    VITE_MSAL_TOKEN_REFRESH_MIN: '300',
+    VITE_AUDIT_DEBUG: '',
+    VITE_AUDIT_BATCH_SIZE: '',
+    VITE_AUDIT_RETRY_MAX: '',
+    VITE_AUDIT_RETRY_BASE: '',
+    VITE_E2E: '',
+    schedulesCacheTtlSec: 60,
+    graphRetryMax: 2,
+    graphRetryBaseMs: 100,
+    graphRetryCapMs: 200,
+    schedulesTz: 'Asia/Tokyo',
+    schedulesWeekStart: 1,
+    isDev: false,
+  } as const;
+  const getAppConfig = vi.fn(() => ({ ...defaultConfig }));
+  const isDemoModeEnabled = vi.fn(() => true);
+  return {
+    ...actual,
+    getAppConfig,
+    isDemoModeEnabled,
+    skipSharePoint: vi.fn(() => false),
+    shouldSkipLogin: vi.fn(() => false),
+  };
+});
+
 const baseConfig = {
   VITE_SP_RESOURCE: 'https://contoso.sharepoint.com',
   VITE_SP_SITE_RELATIVE: '/sites/demo',
@@ -39,35 +74,6 @@ const minimalSchedulePayload: Parameters<typeof createSchedule>[1] = {
   UserIdId: null,
   ServiceType: null,
 };
-
-vi.mock('@/lib/env', async () => {
-  const actual = await vi.importActual<typeof import('@/lib/env')>('@/lib/env');
-  const defaultConfig = {
-    VITE_SP_RESOURCE: 'https://contoso.sharepoint.com',
-    VITE_SP_SITE_RELATIVE: '/sites/demo',
-    VITE_SP_RETRY_MAX: '3',
-    VITE_SP_RETRY_BASE_MS: '10',
-    VITE_SP_RETRY_MAX_DELAY_MS: '50',
-    VITE_MSAL_CLIENT_ID: '',
-    VITE_MSAL_TENANT_ID: '',
-    VITE_MSAL_TOKEN_REFRESH_MIN: '300',
-    VITE_AUDIT_DEBUG: '',
-    VITE_AUDIT_BATCH_SIZE: '',
-    VITE_AUDIT_RETRY_MAX: '',
-    VITE_AUDIT_RETRY_BASE: '',
-    VITE_E2E: '',
-    schedulesCacheTtlSec: 60,
-    graphRetryMax: 2,
-    graphRetryBaseMs: 100,
-    graphRetryCapMs: 200,
-    schedulesTz: 'Asia/Tokyo',
-    schedulesWeekStart: 1,
-    isDev: false,
-  } as const;
-  const getAppConfig = vi.fn(() => ({ ...defaultConfig }));
-  const isDemoModeEnabled = vi.fn(() => true);
-  return { ...actual, getAppConfig, isDemoModeEnabled };
-});
 
 vi.mock('@/lib/debugLogger', () => ({
   auditLog: {
@@ -112,7 +118,9 @@ describe('createSpClient CRUD helpers', () => {
     expect(fetchMock).toHaveBeenCalledTimes(1);
     const [url, init] = fetchMock.mock.calls[0] ?? [];
     expect(String(url)).toContain("/lists/getbytitle('Announcements')/items(42)");
-    expect((init as RequestInit | undefined)?.method).toBe('PATCH');
+    expect((init as RequestInit | undefined)?.method).toBe('POST'); // SharePoint Online uses POST+X-HTTP-Method:MERGE
+    const headers = init?.headers instanceof Headers ? init.headers : new Headers(init?.headers);
+    expect(headers.get('X-HTTP-Method')).toBe('MERGE');
     expect(result).toEqual({ Title: 'Updated' });
   });
 
@@ -186,7 +194,9 @@ describe('createSpClient CRUD helpers', () => {
 
     expect(fetchMock).toHaveBeenCalledTimes(1);
     const [, init] = fetchMock.mock.calls[0] ?? [];
-    expect((init as RequestInit | undefined)?.method).toBe('PATCH');
+    expect((init as RequestInit | undefined)?.method).toBe('POST'); // POST+X-HTTP-Method:MERGE
+    const headers = init?.headers instanceof Headers ? init.headers : new Headers(init?.headers);
+    expect(headers.get('X-HTTP-Method')).toBe('MERGE');
   });
 
   it('deleteItem removes SharePoint items by generic identifier', async () => {
@@ -317,7 +327,7 @@ describe('createSpClient CRUD helpers', () => {
 
     const client = createSpClient(acquireToken, baseUrl);
 
-    await expect(client.spFetch('/lists')).rejects.toThrow('SharePoint のアクセストークン取得に失敗しました。');
+    await expect(client.spFetch('/lists')).rejects.toThrow('AUTH_REQUIRED');
     expect(fetchMock).not.toHaveBeenCalled();
   });
 

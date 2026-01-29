@@ -27,6 +27,8 @@ vi.mock('@/lib/env', async () => {
   return {
     ...actual,
     getAppConfig: vi.fn(() => baseConfig),
+    skipSharePoint: vi.fn(() => false), // ← Disable SharePoint mocking for these tests
+    shouldSkipLogin: vi.fn(() => false), // ← Force real auth flow testing
   };
 });
 

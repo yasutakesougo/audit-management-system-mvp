@@ -3,6 +3,15 @@ import { createSpClient } from '../../src/lib/spClient';
 
 // Covers Retry-After header path when value is an HTTP-date (not numeric seconds)
 
+vi.mock('@/lib/env', async () => {
+  const actual = await vi.importActual<typeof import('@/lib/env')>('@/lib/env');
+  return {
+    ...actual,
+    skipSharePoint: vi.fn(() => false), // ← Disable SharePoint mocking for these tests
+    shouldSkipLogin: vi.fn(() => false), // ← Force real auth flow testing
+  };
+});
+
 describe('spClient retry with HTTP-date Retry-After header', () => {
   let fetchSpy: ReturnType<typeof vi.spyOn>;
   let acquireToken: any;
