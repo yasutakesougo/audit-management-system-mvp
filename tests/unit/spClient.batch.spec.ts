@@ -31,6 +31,7 @@ const multi = (boundary: string, blocks: Array<{ id: number; status: number }>) 
 
 describe('$batch retry + parse', () => {
   it.skip('503 -> retry then 200 success, mixed statuses returned', async () => {
+    // TODO: buildBatchInsertBody is not implemented yet; restore this test once available.
     const boundary = 'b1';
     const okRes = new Response(
       multi(boundary, [

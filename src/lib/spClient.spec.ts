@@ -1,5 +1,5 @@
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
-import { __resetAppConfigForTests } from './env';
+import { __resetAppConfigForTests } from '@/lib/env';
 
 describe('ensureConfig', () => {
   const originalPlaywrightFlag = process.env.PLAYWRIGHT_TEST;

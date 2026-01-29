@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { getAppConfig } from './env';
+import { getAppConfig } from '@/lib/env';
 
 const debugConfig = getAppConfig();
 const enabled = debugConfig.VITE_AUDIT_DEBUG === '1' || debugConfig.VITE_AUDIT_DEBUG === 'true';
