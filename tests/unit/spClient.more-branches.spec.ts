@@ -212,11 +212,11 @@ describe('spFetch retry matrix', () => {
 
   it('retries transient failures, logs in debug mode, and refreshes token on 401', async () => {
     process.env.NODE_ENV = 'development';
+    process.env.VITE_AUDIT_DEBUG = '1'; // readEnv() reads from process.env when envOverride is not passed
     setTestConfigOverride({
       VITE_SP_RETRY_MAX: '2',
       VITE_SP_RETRY_BASE_MS: '0',
       VITE_SP_RETRY_MAX_DELAY_MS: '0',
-      VITE_AUDIT_DEBUG: '1',
     });
 
     const fetchMock = vi.fn()
