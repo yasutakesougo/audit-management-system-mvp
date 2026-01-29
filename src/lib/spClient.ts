@@ -661,6 +661,24 @@ export function createSpClient(
       dbg('token metrics snapshot', tokenMetricsCarrier.__TOKEN_METRICS__);
     }
     if (!token1) {
+      // Skip-login mode: fall back to mock instead of throwing
+      // This allows E2E tests with Playwright stub to intercept requests
+      if (shouldSkipLogin()) {
+        if (AUDIT_DEBUG) {
+          console.info('[spFetch] Token is null but skip-login enabled; returning empty mock');
+        }
+        const mockResponse = (data: any, status = 200) => {
+          return new Response(JSON.stringify(data), {
+            status,
+            statusText: status === 200 ? 'OK' : 'Error',
+            headers: {
+              'Content-Type': 'application/json',
+              'ETag': 'W/"1"',
+            },
+          });
+        };
+        return mockResponse({ value: [] });
+      }
       throw new AuthRequiredError();
     }
 
@@ -1309,7 +1327,36 @@ export function createSpClient(
   // eslint-disable-next-line no-constant-condition
   while (true) {
       const token = await acquireToken();
-      if (!token) throw new Error('SharePoint のアクセストークン取得に失敗しました。');
+      if (!token) {
+        // Skip-login mode: return mock batch response instead of throwing
+        if (shouldSkipLogin()) {
+          if (debugEnabled) console.info('[postBatch] Token is null but skip-login enabled; returning mock batch');
+          const operationCount = (batchBody.match(new RegExp(`--${boundary}`, 'g')) || []).length - 1;
+          const mockOps = Array(Math.max(1, operationCount)).fill({});
+          const mockBatchResponse = (operations: Array<{ method?: string; url?: string; headers?: Record<string, string>; body?: unknown }>) => {
+            const parts: string[] = [];
+            operations.forEach(() => {
+              parts.push(`--${boundary}`);
+              parts.push('Content-Type: application/http');
+              parts.push('Content-Transfer-Encoding: binary');
+              parts.push('');
+              parts.push('HTTP/1.1 204 No Content');
+              parts.push('');
+            });
+            parts.push(`--${boundary}--`);
+            const mockBody = parts.join('\r\n');
+            return new Response(mockBody, {
+              status: 200,
+              statusText: 'OK',
+              headers: {
+                'Content-Type': `multipart/mixed; boundary=${boundary}`,
+              },
+            });
+          };
+          return Promise.resolve(mockBatchResponse(mockOps));
+        }
+        throw new Error('SharePoint のアクセストークン取得に失敗しました。');
+      }
       const headers = new Headers({
         'Authorization': `Bearer ${token}`,
         'Content-Type': `multipart/mixed; boundary=${boundary}`
