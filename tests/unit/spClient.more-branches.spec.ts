@@ -240,9 +240,6 @@ describe('spFetch retry matrix', () => {
     expect(fetchMock).toHaveBeenCalledTimes(3);
     expect(consoleWarn).toHaveBeenCalled();
     expect(consoleDebug).toHaveBeenCalled();
-
-    consoleWarn.mockRestore();
-    consoleDebug.mockRestore();
   });
 
   it('retries 408 timeout responses', async () => {
