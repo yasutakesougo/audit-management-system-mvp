@@ -42,7 +42,12 @@ const isAutomationRuntime = (): boolean => {
   return false;
 };
 
-const isSkipLoginEnabled = (): boolean => readEnv('VITE_SKIP_LOGIN', '0') === '1';
+const isSkipLoginEnabled = (): boolean => {
+  const skipLogin = readEnv('VITE_SKIP_LOGIN', '0') === '1';
+  const e2e = readEnv('VITE_E2E', '0') === '1';
+  const msalMock = readEnv('VITE_E2E_MSAL_MOCK', '0') === '1';
+  return skipLogin || e2e || msalMock;
+};
 
 const isMsalConfigured = (): boolean => {
   const clientId = readEnv('VITE_MSAL_CLIENT_ID', readEnv('VITE_AAD_CLIENT_ID', '')).trim();
