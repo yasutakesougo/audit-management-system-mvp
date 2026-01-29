@@ -121,11 +121,17 @@ Test Files  271 passed (271)
 
 ## Next Phase (Future Work)
 
-1. **Remaining 20+ test files** - Apply pattern replacement
-   - Search for `vi.hoisted` patterns
-   - Replace with inline `mergeTestConfig()`
-   - Convert `configGetter.mockReturnValue()` to `setTestConfigOverride()`
+### Out of Scope (This PR)
+The following files retain `__resetAppConfigForTests()` because they test **env itself**, not spClient:
 
+- **env.*.spec.ts** - Tests env parsing/coercion logic (not spClient consumers)
+- **schedule/dateutils.*.spec.ts** - Complex timezone calculation tests
+- **timeline.day.dst.spec.tsx** / **schedules.graph.spec.ts** - UI/integration tests with custom env handling
+
+**Reason**: These files validate env behavior directly, so they require real env reset rather than mock config override. Mixing them with spClient mock patterns would blur the testing intent.
+
+### Remaining Work (If Needed)
+1. **Evaluate env.*.spec.ts** - Determine if they benefit from helper pattern or should stay raw
 2. **Optional** - Create automated migration script for remaining files
 
 3. **Team adoption** - Include pattern in testing guidelines
