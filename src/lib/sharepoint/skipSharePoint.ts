@@ -8,6 +8,7 @@
  * in non-SharePoint contexts (demo, test, skip-login, automation, missing credentials).
  */
 
+// eslint-disable-next-line no-restricted-imports
 import { IS_SKIP_SHAREPOINT } from '@/lib/env';
 
 export type SkipSharePointReason =
