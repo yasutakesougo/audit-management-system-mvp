@@ -10,6 +10,7 @@ vi.mock('@/lib/env', async () => {
 });
 
 import { createSpClient } from '@/lib/spClient';
+import { buildBatchInsertBody } from '@/features/audit/batchUtil';
 
 const multi = (boundary: string, blocks: Array<{ id: number; status: number }>) => {
   const cs = `changeset_${boundary}`;
@@ -30,8 +31,7 @@ const multi = (boundary: string, blocks: Array<{ id: number; status: number }>) 
 };
 
 describe('$batch retry + parse', () => {
-  it.skip('503 -> retry then 200 success, mixed statuses returned', async () => {
-    // TODO: buildBatchInsertBody is not implemented yet; restore this test once available.
+  it('503 -> retry then 200 success, mixed statuses returned', async () => {
     const boundary = 'b1';
     const okRes = new Response(
       multi(boundary, [
