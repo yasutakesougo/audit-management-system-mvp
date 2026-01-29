@@ -1,7 +1,7 @@
 export type { EventType } from '@azure/msal-browser';
 
 import type { PublicClientApplication } from '@azure/msal-browser';
-import { getRuntimeEnv } from '../env';
+import { getRuntimeEnv } from '@/env';
 import { msalConfig } from './msalConfig';
 
 type MsalBrowserExports = Pick<typeof import('@azure/msal-browser'), 'PublicClientApplication' | 'EventType'>;

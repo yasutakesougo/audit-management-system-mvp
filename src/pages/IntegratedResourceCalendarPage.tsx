@@ -38,9 +38,9 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 
 import { useFeatureFlags } from '@/config/featureFlags';
 import { HYDRATION_FEATURES, estimatePayloadSize, startFeatureSpan } from '@/hydration/features';
+import { isE2E } from '@/env';
 import { getAppConfig } from '@/lib/env';
 import { useLocation } from 'react-router-dom';
-import { isE2E } from '../env';
 import {
     PvsAStatus,
     ResourceInfo,

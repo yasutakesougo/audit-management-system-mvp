@@ -1,4 +1,4 @@
-import { allowWriteFallback, isDemoModeEnabled } from './env';
+import { allowWriteFallback, isDemoModeEnabled } from '@/lib/env';
 import type { SafeError } from './errors';
 
 export type NoticedError = SafeError & { userMessage?: string };

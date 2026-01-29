@@ -1,6 +1,4 @@
 import { describe, it, expect, vi } from 'vitest';
-import { createSpClient } from '@/lib/spClient';
-import { buildBatchInsertBody } from '@/features/audit/batchUtil';
 
 vi.mock('@/lib/env', async () => {
   const actual = await vi.importActual<typeof import('@/lib/env')>('@/lib/env');
@@ -10,6 +8,9 @@ vi.mock('@/lib/env', async () => {
     shouldSkipLogin: vi.fn(() => false),
   };
 });
+
+import { createSpClient } from '@/lib/spClient';
+import { buildBatchInsertBody } from '@/features/audit/batchUtil';
 
 const multi = (boundary: string, blocks: Array<{ id: number; status: number }>) => {
   const cs = `changeset_${boundary}`;

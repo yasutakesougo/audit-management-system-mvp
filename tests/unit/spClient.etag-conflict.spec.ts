@@ -1,6 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { SharePointItemNotFoundError, SharePointMissingEtagError } from '@/lib/errors';
-import { createSpClient } from '@/lib/spClient';
 
 vi.mock('@/lib/env', async () => {
   const actual = await vi.importActual<typeof import('@/lib/env')>('@/lib/env');
@@ -10,6 +9,8 @@ vi.mock('@/lib/env', async () => {
     shouldSkipLogin: vi.fn(() => false),
   };
 });
+
+import { createSpClient } from '@/lib/spClient';
 
 const baseUrl = 'https://contoso.sharepoint.com/sites/wf/_api/web';
 const acquireToken = async () => 'tok';

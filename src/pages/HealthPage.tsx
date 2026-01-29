@@ -1,7 +1,7 @@
 import React from "react";
 import { HealthDiagnosisPage } from "../features/diagnostics/health/HealthDiagnosisPage";
 import { HealthContext, ListSpec } from "../features/diagnostics/health/types";
-import { getRuntimeEnv } from "../env";
+import { getRuntimeEnv } from "@/env";
 
 /**
  * ✅ 診断対象リスト（3つのメインリスト + 必須フィールドチェック）

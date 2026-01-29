@@ -1,7 +1,7 @@
 import React from 'react';
 import ReactDOM from 'react-dom/client';
-import { getRuntimeEnv, isDev, clearEnvCache } from './env';
-import { guardProdMisconfig } from './lib/envGuards';
+import { getRuntimeEnv, isDev, clearEnvCache } from '@/env';
+import { guardProdMisconfig } from '@/lib/envGuards';
 import { resolveHydrationEntry } from './hydration/routes';
 import { beginHydrationSpan, finalizeHydrationSpan } from './lib/hydrationHud';
 

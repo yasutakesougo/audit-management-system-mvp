@@ -44,6 +44,10 @@ module.exports = {
         ],
         patterns: [
           {
+            group: ['./env', '../env'],
+            message: "Use '@/lib/env' to keep module IDs consistent for mocks."
+          },
+          {
             group: [
               '**/features/users/UsersPanel{,.ts,.tsx,.js,.jsx}',
               '**/UsersPanel{,.ts,.tsx,.js,.jsx}'

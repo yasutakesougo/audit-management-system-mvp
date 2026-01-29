@@ -39,6 +39,13 @@ jobs:
       - name: Install dependencies
         run: npm ci
       
+      - name: ESLint (enforce ARCHITECTURE_GUARDS)
+        id: lint
+        run: |
+          echo "Running ESLint (includes no-restricted-imports for env module)..."
+          npm run lint
+          echo "✅ ESLint passed - ARCHITECTURE_GUARDS enforced"
+      
       - name: TypeScript type check
         id: typecheck
         run: |
@@ -58,5 +65,6 @@ jobs:
         run: |
           echo "## CI Results" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
+          echo "- ESLint (ARCHITECTURE_GUARDS): ${{ steps.lint.outcome }}" >> $GITHUB_STEP_SUMMARY
           echo "- TypeScript typecheck: ${{ steps.typecheck.outcome }}" >> $GITHUB_STEP_SUMMARY
           echo "- Tests: ${{ steps.tests.outcome }}" >> $GITHUB_STEP_SUMMARY

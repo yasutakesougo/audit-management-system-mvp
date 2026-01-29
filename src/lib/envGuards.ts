@@ -1,4 +1,4 @@
-import { shouldSkipSharePoint } from './env';
+import { shouldSkipSharePoint } from '@/lib/env';
 import { getFlag } from '@/env';
 
 // Guard against misconfigurations that would blank data in production

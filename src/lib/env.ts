@@ -1,4 +1,4 @@
-import { getRuntimeEnv, isDev as runtimeIsDev } from '../env';
+import { getRuntimeEnv, isDev as runtimeIsDev } from '@/env';
 
 type Primitive = string | number | boolean | undefined | null;
 export type EnvRecord = Record<string, Primitive>;

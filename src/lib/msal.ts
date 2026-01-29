@@ -3,7 +3,7 @@ import type { PublicClientApplication, PopupRequest } from '@azure/msal-browser'
 import type { AccountInfo } from '@azure/msal-common';
 
 import { getRuntimeEnv } from '@/env';
-import { getAppConfig, getSharePointResource, isE2eMsalMockEnabled, readEnv, shouldSkipLogin } from './env';
+import { getAppConfig, getSharePointResource, isE2eMsalMockEnabled, readEnv, shouldSkipLogin } from '@/lib/env';
 
 const { isDev } = getAppConfig();
 

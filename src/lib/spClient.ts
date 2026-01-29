@@ -1,12 +1,11 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-// NOTE: Avoid path alias here to keep ts-jest / vitest resolution simple without extra config
 
 import { useMemo } from 'react';
-import { useAuth } from '../auth/useAuth';
-import { getRuntimeEnv as getRuntimeEnvRoot } from '../env';
-import type { UnifiedResourceEvent } from '../features/resources/types';
-import { auditLog } from './debugLogger';
-import { getAppConfig, isE2eMsalMockEnabled, readBool, readEnv, shouldSkipLogin, skipSharePoint, type EnvRecord } from './env';
+import { useAuth } from '@/auth/useAuth';
+import { getRuntimeEnv as getRuntimeEnvRoot } from '@/env';
+import type { UnifiedResourceEvent } from '@/features/resources/types';
+import { auditLog } from '@/lib/debugLogger';
+import { getAppConfig, isE2eMsalMockEnabled, readBool, readEnv, shouldSkipLogin, skipSharePoint, type EnvRecord } from '@/lib/env';
 import { AuthRequiredError, SharePointItemNotFoundError, SharePointMissingEtagError } from './errors';
 
 const FALLBACK_SP_RESOURCE = 'https://example.sharepoint.com';
