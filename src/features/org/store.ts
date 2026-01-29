@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 
-import { IS_SKIP_SHAREPOINT } from '@/lib/env';
 import { useSP } from '@/lib/spClient';
+import { logSkipSharePointGuard, shouldSkipSharePoint } from '@/lib/sharepoint/skipSharePoint';
 
 import {
     ORG_MASTER_FIELDS,
@@ -83,8 +83,8 @@ export function useOrgStore(): OrgStoreState {
     // Guard -1: Skip SharePoint (demo / baseUrl empty / skip-login / automation)
     // ✅ Master guard: prevents ALL SharePoint operations in non-SP scenarios
     // ✅ Promise is never created if SharePoint should be skipped
-    if (IS_SKIP_SHAREPOINT) {
-      console.info('[useOrgStore] Guard -1: skip SharePoint, using fallback');
+    if (shouldSkipSharePoint()) {
+      logSkipSharePointGuard('useOrgStore');
       orgCachedOptions = null; // Clear cache
       setItems(FALLBACK_ORG_OPTIONS);
       setLoadedOnce(true);
