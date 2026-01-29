@@ -600,7 +600,9 @@ export function createSpClient(
 
     // 🔥 CRITICAL: Always read runtime env to respect env.runtime.json override
     const runtimeEnv = getRuntimeEnvRoot() as Record<string, string>;
-    const shouldMock = !baseUrl || baseUrl === '' || skipSharePoint(runtimeEnv) || shouldSkipLogin(runtimeEnv);
+    // In E2E with Playwright stubs (VITE_E2E_MSAL_MOCK), skip the mock layer to allow interception
+    const isE2EWithMsalMock = isE2eMsalMockEnabled(runtimeEnv);
+    const shouldMock = !isE2EWithMsalMock && (!baseUrl || baseUrl === '' || skipSharePoint(runtimeEnv) || shouldSkipLogin(runtimeEnv));
 
     // 🔍 デバッグログ: モック条件を確認
     const AUDIT_DEBUG = String(readEnv('VITE_AUDIT_DEBUG', '')) === '1';
