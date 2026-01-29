@@ -1,14 +1,14 @@
 import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
+import { ScheduleCreateDialog } from '@/features/schedules/ScheduleCreateDialog';
 import {
-  ScheduleCreateDialog,
   createInitialScheduleFormState,
   toCreateScheduleInput,
   validateScheduleForm,
   type ScheduleFormState,
   type ScheduleUserOption
-} from '@/features/schedules/ScheduleCreateDialog';
+} from '@/features/schedules/scheduleFormState';
 import { TESTIDS } from '@/testids';
 
 const mockUsers: ScheduleUserOption[] = [
