@@ -1,5 +1,5 @@
 import { useScheduleUserOptions } from '@/features/schedules/useScheduleUserOptions';
-import type { ScheduleUserOption } from '@/features/schedules/ScheduleCreateDialog';
+import type { ScheduleUserOption } from '@/features/schedules/scheduleFormState';
 import { SERVICE_TYPE_LABELS } from '@/sharepoint/serviceTypes';
 import { useStaff } from '@/stores/useStaff';
 import CloseRoundedIcon from '@mui/icons-material/CloseRounded';

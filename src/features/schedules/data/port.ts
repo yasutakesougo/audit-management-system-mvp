@@ -1,104 +1,43 @@
+import type { ScheduleCategory, ScheduleItemCore, ScheduleVisibility, ScheduleStatus, ScheduleServiceType } from '@/features/schedules/domain';
+export type { ScheduleCategory, ScheduleVisibility, ScheduleStatus, ScheduleServiceType } from '@/features/schedules/domain';
 import type { Result } from '@/shared/result';
-import type { ScheduleServiceType as SpScheduleServiceType } from '@/sharepoint/serviceTypes';
 
-export type ScheduleCategory = 'User' | 'Staff' | 'Org';
-
-// SharePoint と同じサービス区分を利用して型の乖離を防ぐ
-export type ScheduleServiceType = SpScheduleServiceType;
-
-export type ScheduleStatus = 'Planned' | 'Postponed' | 'Cancelled';
-
-export type ScheduleVisibility = 'org' | 'team' | 'private';
-
-export type DateRange = {
-  from: string;
-  to: string;
-};
+export type DateRange = { from: string; to: string };
 
 export type CreateScheduleEventInput = {
   title: string;
   category: ScheduleCategory;
   startLocal: string;
   endLocal: string;
-  serviceType: ScheduleServiceType;
-
+  serviceType?: ScheduleServiceType | string | null;
   userId?: string;
   userLookupId?: string;
   userName?: string;
-
+  assignedStaffId?: string;
   locationName?: string;
   notes?: string;
-
-  assignedStaffId?: string;
   vehicleId?: string;
-
   status?: ScheduleStatus;
   statusReason?: string | null;
-
+  // Added for approval tracking
   acceptedOn?: string | null;
   acceptedBy?: string | null;
   acceptedNote?: string | null;
-
+  // Phase 1: owner and visibility
   ownerUserId?: string;
   visibility?: ScheduleVisibility;
-  // Assignee for authorization checks (UPN/email, lowercase)
-  assignedTo?: string | null;
+  currentOwnerUserId?: string;
 };
 
-export type UpdateScheduleEventInput = CreateScheduleEventInput & { id: string };
-
-export type SchedItem = {
+export type UpdateScheduleEventInput = CreateScheduleEventInput & {
   id: string;
-  title: string;
-  start: string;
-  end: string;
-
-  category?: ScheduleCategory;
-
-  userId?: string;
-  userLookupId?: string;
-  personName?: string;
-
-  serviceType?: ScheduleServiceType;
-  subType?: string | null;
-
-  locationName?: string;
-  location?: string;
-
-  notes?: string;
-  note?: string;
-
-  assignedStaffId?: string;
-  staffNames?: string[];
-  vehicleId?: string;
-
-  status?: ScheduleStatus;
-  statusReason?: string | null;
-
-  entryHash?: string;
-  createdAt?: string;
-  updatedAt?: string;
-
-  allDay?: boolean;
-  dayKey?: string;
-  monthKey?: string;
-
-  acceptedOn?: string | null;
-  acceptedBy?: string | null;
-  acceptedNote?: string | null;
-
-  ownerUserId?: string;
-  visibility?: ScheduleVisibility;
-  // Assignee for authorization checks (UPN/email, lowercase)
-  assignedTo?: string | null;
-  
-  // Phase 2-0: conflict detection via etag
-  etag: string;
 };
+
+export type SchedItem = ScheduleItemCore;
 
 export interface SchedulesPort {
-  list(range: DateRange): Promise<SchedItem[]>;
-  create(input: CreateScheduleEventInput): Promise<Result<SchedItem>>;
+  list: (range: DateRange) => Promise<SchedItem[]>;
+  create?: (input: CreateScheduleEventInput) => Promise<Result<SchedItem>>;
   update?: (input: UpdateScheduleEventInput) => Promise<Result<SchedItem>>;
-  remove?: (eventId: string) => Promise<void>;
+  remove?: (id: string) => Promise<void>;
 }

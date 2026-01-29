@@ -36,10 +36,12 @@ export type ScheduleItemCore = {
   status?: ScheduleStatus;
   statusReason?: string | null;
   serviceType?: ScheduleServiceType;
+  subType?: string;
   
   // Phase 1: metadata
   entryHash?: string;
   ownerUserId?: string;
+  staffNames?: string[];
   
   // Phase 2-0: conflict detection via etag
   etag: string;

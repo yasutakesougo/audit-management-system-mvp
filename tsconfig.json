@@ -42,15 +42,21 @@
   "exclude": [
     "node_modules",
     "dist",
+    "build",
     "coverage",
     ".vite",
     ".vitest",
+    ".turbo",
+    ".cache",
     "test-results",
+    "playwright-report",
     "public",
     "tests/e2e",
     ".vscode",
     ".vscode/**/*",
     "docs/**/*",
-    "reports/**/*"
+    "reports/**/*",
+    "logs/**/*",
+    "tmp/**/*"
   ]
 }

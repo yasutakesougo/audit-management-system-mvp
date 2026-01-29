@@ -111,13 +111,19 @@ export default defineConfig(({ mode }) => {
       },
     },
     server: {
-      host: 'localhost',
+      host: '127.0.0.1',
       port: 5173,
       strictPort: true,
+      hmr: {
+        host: '127.0.0.1',
+        protocol: 'ws',
+        clientPort: 5173,
+      },
       headers: {
         'Cross-Origin-Opener-Policy': 'same-origin-allow-popups',
         'Cross-Origin-Embedder-Policy': 'unsafe-none',
       },
+      middlewareMode: false,
       proxy: {
         '/sharepoint-api': {
           target: siteUrl,

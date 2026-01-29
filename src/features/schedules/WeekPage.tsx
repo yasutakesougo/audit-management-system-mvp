@@ -1,5 +1,5 @@
 import { type CSSProperties, type MouseEvent, useCallback, useEffect, useId, useMemo, useRef, useState } from 'react';
-import { useLocation, useMatch, useNavigate, useSearchParams } from 'react-router-dom';
+import { useMatch, useSearchParams } from 'react-router-dom';
 import { Alert, Button, Dialog, DialogTitle, DialogContent, DialogActions, Snackbar, Stack, Typography } from '@mui/material';
 
 import { useAnnounce } from '@/a11y/LiveAnnouncer';
@@ -9,11 +9,12 @@ import { useUserAuthz } from '@/auth/useUserAuthz';
 import { MASTER_SCHEDULE_TITLE_JA } from '@/features/schedule/constants';
 import { ensureDateParam, normalizeToDayStart, pickDateParam } from '@/features/schedule/dateQuery';
 import type { Category } from '@/features/schedule/types';
-import ScheduleCreateDialog, { type CreateScheduleEventInput, type ScheduleFormState } from '@/features/schedules/ScheduleCreateDialog';
+import ScheduleCreateDialog from '@/features/schedules/ScheduleCreateDialog';
 import ScheduleEmptyHint from '@/features/schedules/components/ScheduleEmptyHint';
 import SchedulesFilterResponsive from '@/features/schedules/components/SchedulesFilterResponsive';
 import SchedulesHeader from '@/features/schedules/components/SchedulesHeader';
-import type { SchedItem, ScheduleServiceType, UpdateScheduleEventInput } from '@/features/schedules/data';
+import type { CreateScheduleEventInput, SchedItem, ScheduleServiceType, UpdateScheduleEventInput } from '@/features/schedules/data';
+import type { ScheduleFormState } from '@/features/schedules/scheduleFormState';
 import type { InlineScheduleDraft } from '@/features/schedules/data/inlineScheduleDraft';
 import { useScheduleUserOptions } from '@/features/schedules/useScheduleUserOptions';
 import { makeRange, useSchedules } from '@/features/schedules/useSchedules';
@@ -173,33 +174,28 @@ type LegacyTab = typeof LEGACY_TABS[number];
 
 export default function WeekPage() {
   const announce = useAnnounce();
-  const location = useLocation();
-  const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   
-  // Legacy ?tab= redirect (互換性のため)
-  // Only redirect if this came from external navigation (e.g., bookmarks)
-  // Don't redirect if we're already properly handling it via query param fallback
-  useEffect(() => {
-    const legacyTab = searchParams.get('tab');
-    if (!legacyTab) return;
-    
-    // Skip redirect if we're already on /schedules/week with a valid tab param
-    // This prevents redirect loops during tab switching
-    if (location.pathname === '/schedules/week' && LEGACY_TABS.includes(legacyTab as LegacyTab)) {
-      // Query param is already set, no need to redirect
-      return;
-    }
-    
-    const map: Record<LegacyTab, string> = {
-      day: '/schedules/day',
-      week: '/schedules/week',
-      timeline: '/schedules/timeline',
-      month: '/schedules/month',
-    };
-    const target = map[legacyTab as LegacyTab];
-    if (target) navigate(target, { replace: true });
-  }, [searchParams, navigate, location.pathname]);
+  // Legacy ?tab= redirect (互換性のため) - DISABLED to prevent infinite redirect loop
+  // The tab param is now handled directly in the mode calculation below
+  // No need to redirect between routes; WeekPage handles all tabs internally
+  // useEffect(() => {
+  //   const legacyTab = searchParams.get('tab');
+  //   if (!legacyTab) return;
+  //   
+  //   if (location.pathname === '/schedules/week' && LEGACY_TABS.includes(legacyTab as LegacyTab)) {
+  //     return;
+  //   }
+  //   
+  //   const map: Record<LegacyTab, string> = {
+  //     day: '/schedules/day',
+  //     week: '/schedules/week',
+  //     timeline: '/schedules/timeline',
+  //     month: '/schedules/month',
+  //   };
+  //   const target = map[legacyTab as LegacyTab];
+  //   if (target) navigate(target, { replace: true });
+  // }, [searchParams, navigate, location.pathname]);
   
   const [snack, setSnack] = useState<{
     open: boolean;
@@ -279,7 +275,7 @@ export default function WeekPage() {
       if (!needle) return true;
       const haystack = [
         item.title,
-        item.note ?? item.notes,
+        item.notes,
         item.location,
         item.subType,
         item.serviceType,
@@ -313,7 +309,7 @@ export default function WeekPage() {
         userId: editingItem.userId ?? '',
         serviceType: (editingItem.serviceType as ScheduleFormState['serviceType']) ?? '',
         locationName: editingItem.locationName ?? editingItem.location ?? '',
-        notes: editingItem.notes ?? editingItem.note ?? '',
+        notes: editingItem.notes ?? '',
         assignedStaffId: editingItem.assignedStaffId ?? '',
         vehicleId: editingItem.vehicleId ?? '',
         status: (editingItem.status as ScheduleFormState['status']) ?? 'Planned',
@@ -508,7 +504,7 @@ export default function WeekPage() {
       userId: item.userId ?? '',
       assignedStaffId: item.assignedStaffId ?? '',
       locationName: item.locationName ?? item.location ?? '',
-      notes: item.notes ?? item.note ?? '',
+      notes: item.notes ?? '',
       vehicleId: item.vehicleId ?? '',
       status: item.status ?? 'Planned',
       statusReason: item.statusReason ?? '',

@@ -71,7 +71,12 @@ export const useUserAuthz = (): UserAuthz => {
         const isE2EMock = readOptionalEnv('VITE_E2E_MSAL_MOCK') === '1';
         if (isE2EMock && adminGroupId) {
           if (!cancelled) {
-            setGroupIds([adminGroupId]);
+            // Prevent infinite setState: only update if value changed
+            setGroupIds(prev => {
+              const next = [adminGroupId];
+              const same = prev && prev.length === 1 && prev[0] === adminGroupId;
+              return same ? prev : next;
+            });
           }
           return;
         }
@@ -80,7 +85,11 @@ export const useUserAuthz = (): UserAuthz => {
         const cached = safeReadMemberOfCache(myUpnNormalized);
         if (cached) {
           if (!cancelled) {
-            setGroupIds(cached);
+            // Prevent infinite setState: only update if value changed
+            setGroupIds(prev => {
+              const same = prev && prev.length === cached.length && prev.every((id, i) => id === cached[i]);
+              return same ? prev : cached;
+            });
           }
           return;
         }
@@ -88,7 +97,11 @@ export const useUserAuthz = (): UserAuthz => {
         // 2) fetch from Graph
         const ids = await fetchMyGroupIds(() => acquireToken(GRAPH_RESOURCE));
         if (!cancelled) {
-          setGroupIds(ids);
+          // Prevent infinite setState: only update if value changed
+          setGroupIds(prev => {
+            const same = prev && prev.length === ids.length && prev.every((id, i) => id === ids[i]);
+            return same ? prev : ids;
+          });
           // 3) write cache only on success
           if (myUpnNormalized) {
             safeWriteMemberOfCache(myUpnNormalized, ids);
