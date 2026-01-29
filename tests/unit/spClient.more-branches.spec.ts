@@ -28,6 +28,8 @@ vi.mock('@/lib/env', async () => {
   return {
     ...actual,
     getAppConfig: vi.fn(() => baseAppConfig),
+    skipSharePoint: vi.fn(() => false),
+    shouldSkipLogin: vi.fn(() => false),
   };
 });
 

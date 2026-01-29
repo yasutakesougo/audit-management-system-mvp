@@ -2,6 +2,15 @@ import { describe, it, expect, vi } from 'vitest';
 import { createSpClient } from '@/lib/spClient';
 import { buildBatchInsertBody } from '@/features/audit/batchUtil';
 
+vi.mock('@/lib/env', async () => {
+  const actual = await vi.importActual<typeof import('@/lib/env')>('@/lib/env');
+  return {
+    ...actual,
+    skipSharePoint: vi.fn(() => false),
+    shouldSkipLogin: vi.fn(() => false),
+  };
+});
+
 const multi = (boundary: string, blocks: Array<{ id: number; status: number }>) => {
   const cs = `changeset_${boundary}`;
   const lines: string[] = [];
