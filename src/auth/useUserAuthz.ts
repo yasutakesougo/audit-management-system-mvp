@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
-import { readOptionalEnv } from '@/lib/env';
+import { readOptionalEnv, isE2eMsalMockEnabled, shouldSkipLogin } from '@/lib/env';
+import { getRuntimeEnv as getRuntimeEnvRoot } from '@/env';
 import { fetchMyGroupIds } from '@/features/schedules/data/graphAdapter';
 import { useAuth } from '@/auth/useAuth';
 import { GRAPH_RESOURCE } from '@/auth/msalConfig';
@@ -67,16 +68,12 @@ export const useUserAuthz = (): UserAuthz => {
 
     const run = async () => {
       try {
-        // 0) E2E mock bypass: immediately return admin group ID
-        const isE2EMock = readOptionalEnv('VITE_E2E_MSAL_MOCK') === '1';
-        if (isE2EMock && adminGroupId) {
+        // 🟢 E2E / skip-login: bypass Graph entirely to prevent networkGuard failures
+        const runtimeEnv = getRuntimeEnvRoot();
+        if (isE2eMsalMockEnabled(runtimeEnv) || shouldSkipLogin(runtimeEnv)) {
           if (!cancelled) {
-            // Prevent infinite setState: only update if value changed
-            setGroupIds(prev => {
-              const next = [adminGroupId];
-              const same = prev && prev.length === 1 && prev[0] === adminGroupId;
-              return same ? prev : next;
-            });
+            // In E2E mode, return non-admin user (safe default)
+            setGroupIds([]);
           }
           return;
         }
