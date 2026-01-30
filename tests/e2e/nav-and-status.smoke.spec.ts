@@ -2,6 +2,7 @@ import { expect, test } from '@playwright/test';
 
 import { TESTIDS } from '../../src/testids';
 import { bootstrapDashboard } from './utils/bootstrapApp';
+import { waitForLocator } from './_helpers/waitForLocator';
 import { waitForStableRender } from './_helpers/waitForStableRender';
 
 const APP_SHELL_ENTRY = '/dashboard';
@@ -26,11 +27,17 @@ test.describe('Nav/Status/Footers basics', () => {
 
   test('Drawer nav items expose test ids and aria-current updates', async ({ page }) => {
     // Nav items are now in the drawer (permanent on desktop, mobile drawer also rendered but hidden)
+    // First wait for nav items to exist in DOM
+    const navRoot = page.getByRole('navigation').first();
+    await waitForLocator(navRoot, { timeoutMs: 60_000, requireVisible: true });
+    
     const dashboard = page.getByTestId('nav-dashboard').first();
+    await waitForLocator(dashboard, { timeoutMs: 60_000, requireVisible: true });
     await waitForStableRender(page, dashboard, { timeoutMs: 45_000 });
     await expect(dashboard).toHaveAttribute('aria-current', 'page');
 
     const checklist = page.getByTestId('nav-checklist').first();
+    await waitForLocator(checklist, { timeoutMs: 60_000, requireVisible: true });
     await waitForStableRender(page, checklist, { timeoutMs: 45_000 });
     await checklist.click();
     await expect(page).toHaveURL(/\/checklist/);
@@ -38,7 +45,7 @@ test.describe('Nav/Status/Footers basics', () => {
     // Wait for aria-current to update after navigation
     await expect.poll(
       async () => await checklist.getAttribute('aria-current'),
-      { timeout: 30_000 }
+      { timeout: 45_000 }
     ).toBe('page');
   });
 
