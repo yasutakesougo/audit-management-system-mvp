@@ -257,7 +257,7 @@ const AppShell: React.FC<{ children: React.ReactNode }> = ({ children }) => {
       },
     ];
 
-    if (icebergPdcaEnabled) {
+    if (icebergPdcaEnabled && !items.some(item => item.testId === TESTIDS.nav.icebergPdca)) {
       items.splice(3, 0, {
         label: '氷山PDCA',
         to: '/analysis/iceberg-pdca',
@@ -268,7 +268,7 @@ const AppShell: React.FC<{ children: React.ReactNode }> = ({ children }) => {
       });
     }
 
-    if (schedulesEnabled) {
+    if (schedulesEnabled && !items.some(item => item.testId === TESTIDS.nav.schedules)) {
       items.push({
         label: 'スケジュール',
         to: '/schedules/week',
