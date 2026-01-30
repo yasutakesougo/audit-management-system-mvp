@@ -253,7 +253,7 @@ export default function UsersPanel() {
   }, []);
 
   const renderMenuTab = () => (
-    <Stack spacing={2.5}>
+    <Stack spacing={{ xs: 2, sm: 3 }}>
       <Box>
         <Typography variant="h6" component="h3" sx={{ fontWeight: 600 }}>
           利用者メニュー
@@ -296,7 +296,7 @@ export default function UsersPanel() {
     }
 
     return (
-      <Stack spacing={2.5}>
+      <Stack spacing={{ xs: 2, sm: 3 }}>
         <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2} alignItems={{ xs: 'flex-start', sm: 'center' }}>
           <Typography variant="h6" component="h3" sx={{ fontWeight: 600 }}>
             利用者一覧
@@ -347,7 +347,7 @@ export default function UsersPanel() {
             />
           </Stack>
         </Stack>
-        <Stack direction={{ xs: 'column', lg: 'row' }} spacing={2.5} alignItems="stretch">
+        <Stack direction={{ xs: 'column', lg: 'row' }} spacing={{ xs: 2, sm: 3 }} alignItems="stretch">
           <TableContainer
             component={Paper}
             variant="outlined"
@@ -438,7 +438,7 @@ export default function UsersPanel() {
                 backLink={{ onClick: handleDetailClose, label: '詳細表示を閉じる' }}
               />
             ) : (
-              <Paper variant="outlined" sx={{ p: { xs: 2.5, md: 3 }, borderRadius: 3 }}>
+              <Paper variant="outlined" sx={{ p: { xs: 2, sm: 3, md: 3 }, borderRadius: 3 }}>
                 <Stack spacing={1.5}>
                   <Typography variant="subtitle1" sx={{ fontWeight: 600 }}>
                     利用者詳細
@@ -459,7 +459,7 @@ export default function UsersPanel() {
   };
 
   const renderCreateTab = () => (
-    <Stack spacing={2.5}>
+    <Stack spacing={{ xs: 2, sm: 3 }}>
       <Typography variant="h6" component="h3" sx={{ fontWeight: 600 }}>
         新規利用者登録
       </Typography>
@@ -523,8 +523,8 @@ export default function UsersPanel() {
   );
 
   return (
-    <Box sx={{ p: 3 }} data-testid={TESTIDS['users-panel-root']}>
-      <Paper variant="outlined" sx={{ mb: 3 }}>
+    <Box sx={{ p: { xs: 2, sm: 3, md: 4 } }} data-testid={TESTIDS['users-panel-root']}>
+      <Paper variant="outlined" sx={{ mb: { xs: 2, sm: 3 } }}>
         <Tabs
           value={activeTab}
           onChange={(_, value) => setActiveTab(value as UsersTab)}
@@ -548,7 +548,7 @@ export default function UsersPanel() {
           />
         </Tabs>
         <Divider />
-        <Box sx={{ p: { xs: 2.5, md: 3 } }}>
+        <Box sx={{ p: { xs: 2, sm: 3, md: 3 } }}>
           {activeTab === 'menu' && renderMenuTab()}
           {activeTab === 'list' && renderListTab()}
           {activeTab === 'create' && renderCreateTab()}

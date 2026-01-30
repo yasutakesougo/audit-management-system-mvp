@@ -722,7 +722,7 @@ const AppShell: React.FC<{ children: React.ReactNode }> = ({ children }) => {
           </Drawer>
         )}
 
-        <Container component="main" role="main" maxWidth="lg" sx={{ py: 4, pb: { xs: 18, sm: 14 }, ml: `${drawerOffset}px`, transition: theme.transitions.create('margin-left', {
+        <Container component="main" role="main" maxWidth="lg" sx={{ py: { xs: 2, sm: 3, md: 4 }, pb: { xs: 18, sm: 14 }, px: { xs: 2, sm: 3, md: 4 }, ml: `${drawerOffset}px`, transition: theme.transitions.create('margin-left', {
           easing: theme.transitions.easing.sharp,
           duration: theme.transitions.duration.enteringScreen,
         }) }}>

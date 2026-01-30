@@ -58,13 +58,20 @@ const buildServiceTypeColors = (theme: Theme): Record<ServiceTypeKey, ServiceTyp
 
 // Base (shared) design tokens
 const base: ThemeOptions = {
-  typography: { fontSize: 15 },
+  typography: {
+    fontSize: 16,
+    body1: { lineHeight: 1.7 },
+    body2: { lineHeight: 1.7 },
+    h1: { fontSize: '1.75rem', lineHeight: 1.4, fontWeight: 700 },
+    h2: { fontSize: '1.375rem', lineHeight: 1.5, fontWeight: 600 },
+    h3: { fontSize: '1.125rem', lineHeight: 1.5, fontWeight: 600 },
+  },
   components: {
     MuiButton: {
       styleOverrides: {
         root: {
-          minHeight: 44,
-          padding: '8px 16px',
+          minHeight: 48,
+          padding: '10px 20px',
           '&:focus-visible': { outline: '3px solid currentColor', outlineOffset: 2 },
           '&.Mui-disabled': { opacity: 1 },
         },
@@ -119,8 +126,11 @@ const base: ThemeOptions = {
         }),
       },
     },
-    MuiIconButton: { styleOverrides: { root: { minWidth: 44, minHeight: 44 } } },
-    MuiTextField: { styleOverrides: { root: { '& .MuiInputBase-root': { minHeight: 44 } } } },
+    MuiIconButton: { styleOverrides: { root: { minWidth: 48, minHeight: 48 } } },
+    MuiTextField: { styleOverrides: { root: { '& .MuiInputBase-root': { minHeight: 48 } } } },
+    MuiListItemButton: { styleOverrides: { root: { minHeight: 48, py: 1.5 } } },
+    MuiMenuItem: { styleOverrides: { root: { minHeight: 48, py: 1.5 } } },
+    MuiTab: { styleOverrides: { root: { minHeight: 48 } } },
     MuiCssBaseline: { styleOverrides: `*:focus-visible{outline:3px solid #0078d4;outline-offset:2px}` },
   },
 } as const;
@@ -193,8 +203,10 @@ export const useColorMode = () => React.useContext(ColorModeContext);
 // (end of file)
 
 export const uiTokens = {
-  containerMaxWidth: 1120,
-  spacingYSection: 16,
+  containerMaxWidth: 1200,
+  spacingYSection: { xs: 16, sm: 24, md: 32 },
+  cardPadding: { xs: 16, sm: 20, md: 24 },
+  maxTextWidth: '80ch',
   heading: {
     h1: 28,
     h2: 22,

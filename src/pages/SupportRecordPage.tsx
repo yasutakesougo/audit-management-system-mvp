@@ -299,9 +299,9 @@ const SupportRecordPage: React.FC = () => {
 
   return (
     <Container maxWidth="lg">
-      <Box sx={{ py: 3 }}>
+      <Box sx={{ py: { xs: 2, sm: 3, md: 4 } }}>
         {/* ヘッダー */}
-        <Box sx={{ mb: 3 }}>
+        <Box sx={{ mb: { xs: 2, sm: 3 } }}>
           <Typography variant="h4" component="h1" gutterBottom>
             支援手順記録
           </Typography>
@@ -311,8 +311,8 @@ const SupportRecordPage: React.FC = () => {
         </Box>
 
         {/* 統計情報（本日分） */}
-        <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2} sx={{ mb: 3 }}>
-          <Paper sx={{ p: 2, textAlign: 'center', flex: 1 }}>
+        <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2} sx={{ mb: { xs: 2, sm: 3 } }}>
+          <Paper sx={{ p: { xs: 2, sm: 2.5 }, textAlign: 'center', flex: 1 }}>
             <Typography variant="h6" color="primary">
               {todayStats.total}名
             </Typography>
@@ -320,7 +320,7 @@ const SupportRecordPage: React.FC = () => {
               支援対象者
             </Typography>
           </Paper>
-          <Paper sx={{ p: 2, textAlign: 'center', flex: 1 }}>
+          <Paper sx={{ p: { xs: 2, sm: 2.5 }, textAlign: 'center', flex: 1 }}>
             <Typography variant="h6" color="success.main">
               {todayStats.completed}
             </Typography>
@@ -328,7 +328,7 @@ const SupportRecordPage: React.FC = () => {
               記録完了
             </Typography>
           </Paper>
-          <Paper sx={{ p: 2, textAlign: 'center', flex: 1 }}>
+          <Paper sx={{ p: { xs: 2, sm: 2.5 }, textAlign: 'center', flex: 1 }}>
             <Typography variant="h6" color="warning.main">
               {todayStats.inProgress}
             </Typography>
@@ -336,7 +336,7 @@ const SupportRecordPage: React.FC = () => {
               記録作成中
             </Typography>
           </Paper>
-          <Paper sx={{ p: 2, textAlign: 'center', flex: 1 }}>
+          <Paper sx={{ p: { xs: 2, sm: 2.5 }, textAlign: 'center', flex: 1 }}>
             <Typography variant="h6" color="error.main">
               {todayStats.notStarted}
             </Typography>
@@ -347,7 +347,7 @@ const SupportRecordPage: React.FC = () => {
         </Stack>
 
         {/* フィルター・検索 */}
-        <Card sx={{ mb: 3 }}>
+        <Card sx={{ mb: { xs: 2, sm: 3 } }}>
           <CardContent>
             <Typography variant="h6" gutterBottom>
               記録対象の選択
@@ -409,7 +409,7 @@ const SupportRecordPage: React.FC = () => {
               subheader={`実施: ${currentDailyRecord.summary.implementedSteps} / ${currentDailyRecord.summary.totalSteps} 項目`}
             />
             <CardContent>
-              <Box sx={{ mb: 3 }}>
+              <Box sx={{ mb: { xs: 2, sm: 3 } }}>
                 <Chip
                   label={`進捗: ${currentDailyRecord.summary.overallProgress}`}
                   color={currentDailyRecord.summary.overallProgress === '良好' ? 'success' :
@@ -421,7 +421,7 @@ const SupportRecordPage: React.FC = () => {
               <Box sx={{
                 display: 'grid',
                 gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))',
-                gap: 2
+                gap: { xs: 2, sm: 3 }
               }}>
                 {supportSteps.map((step) => {
                   const record = currentDailyRecord.records.find(r => r.stepId === step.id);
@@ -439,7 +439,7 @@ const SupportRecordPage: React.FC = () => {
                         <Typography variant="body2" color="text.secondary" gutterBottom>
                           {step.description}
                         </Typography>
-                        <Box sx={{ mt: 2 }}>
+                        <Box sx={{ mt: { xs: 1.5, sm: 2 } }}>
                           <Chip
                             label={record?.status || '未実施'}
                             color={record?.status === '実施済み' ? 'success' : 'default'}
@@ -459,7 +459,7 @@ const SupportRecordPage: React.FC = () => {
             </CardContent>
           </Card>
         ) : (
-          <Box sx={{ textAlign: 'center', py: 6 }}>
+          <Box sx={{ textAlign: 'center', py: { xs: 4, sm: 6, md: 8 } }}>
             <AssignmentIcon sx={{ fontSize: 64, color: 'text.secondary', mb: 2 }} />
             <Typography variant="h6" color="text.secondary" gutterBottom>
               利用者を選択してください
@@ -472,7 +472,7 @@ const SupportRecordPage: React.FC = () => {
 
         {/* 利用者一覧（サイドバー的表示） */}
         {!selectedUser && (
-          <Card sx={{ mt: 3 }}>
+          <Card sx={{ mt: { xs: 2, sm: 3 } }}>
             <CardContent>
               <Typography variant="h6" gutterBottom>
                 <TrendingUpIcon sx={{ verticalAlign: 'middle', mr: 1 }} />
@@ -500,7 +500,7 @@ const SupportRecordPage: React.FC = () => {
                       <Box
                         key={user.id}
                         sx={{
-                          p: 2,
+                          p: { xs: 2, sm: 2.5 },
                           border: '1px solid',
                           borderColor: 'divider',
                           borderRadius: 1,

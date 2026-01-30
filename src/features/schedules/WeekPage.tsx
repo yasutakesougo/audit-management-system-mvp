@@ -704,7 +704,7 @@ export default function WeekPage() {
       aria-labelledby={headingId}
       data-testid="schedules-week-page"
       tabIndex={-1}
-      style={{ paddingBottom: 16 }}
+      style={{ paddingBottom: 24 }}
     >
       <div data-testid="schedules-week-root" style={{ display: 'contents' }}>
       <div
@@ -715,8 +715,8 @@ export default function WeekPage() {
           zIndex: 2,
           background: 'rgba(255,255,255,0.96)',
           backdropFilter: 'blur(6px)',
-          paddingTop: 8,
-          paddingBottom: 8,
+          paddingTop: 12,
+          paddingBottom: 12,
           borderBottom: '1px solid rgba(0,0,0,0.08)',
         }}
       >
@@ -818,7 +818,7 @@ export default function WeekPage() {
           <ScheduleEmptyHint view="week" periodLabel={weekLabel} sx={{ mb: 2 }} />
         ) : null}
         {isLoading ? (
-          <div aria-busy="true" aria-live="polite" style={{ display: 'grid', gap: 12 }}>
+          <div aria-busy="true" aria-live="polite" style={{ display: 'grid', gap: 16 }}>
             <Loading />
             <div style={skeletonStyle} />
             <div style={skeletonStyle} />
@@ -866,14 +866,14 @@ export default function WeekPage() {
           position: 'fixed',
           right: 24,
           bottom: 24,
-          width: 56,
-          height: 56,
+          width: 64,
+          height: 64,
           borderRadius: '50%',
           border: 'none',
           background: '#1976d2',
           color: '#fff',
           boxShadow: '0 4px 12px rgba(0,0,0,0.3)',
-          fontSize: 32,
+          fontSize: 36,
           lineHeight: 1,
           cursor: 'pointer',
           zIndex: 1300,
