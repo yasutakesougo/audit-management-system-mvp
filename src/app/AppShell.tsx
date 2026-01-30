@@ -58,7 +58,6 @@ import WorkspacesIcon from '@mui/icons-material/Workspaces';
 import MenuIcon from '@mui/icons-material/Menu';
 import ChevronLeftIcon from '@mui/icons-material/ChevronLeft';
 import ChevronRightIcon from '@mui/icons-material/ChevronRight';
-import AccessTimeIcon from '@mui/icons-material/AccessTime';
 import { Link as RouterLink, useLocation, useNavigate } from 'react-router-dom';
 import { ColorModeContext } from './theme';
 
@@ -70,11 +69,6 @@ type NavItem = {
   icon?: React.ElementType;
   prefetchKey?: PrefetchKey;
   prefetchKeys?: PrefetchKey[];
-};
-
-type RecentNavKey = {
-  testId: string;
-  to: string;
 };
 
 type NavGroupKey = 'blacknote' | 'record' | 'analysis' | 'master' | 'admin' | 'report';
@@ -121,34 +115,6 @@ function pickGroup(item: NavItem, isAdmin: boolean): NavGroupKey {
 const SKIP_LOGIN = shouldSkipLogin();
 const E2E_MSAL_MOCK_ENABLED = isE2eMsalMockEnabled();
 
-const RECENT_NAV_STORAGE_KEY = 'recentNav';
-const MAX_RECENT = 5;
-
-function loadRecentKeys(): RecentNavKey[] {
-  try {
-    const raw = localStorage.getItem(RECENT_NAV_STORAGE_KEY);
-    if (!raw) return [];
-    const parsed = JSON.parse(raw);
-    if (!Array.isArray(parsed)) return [];
-    return parsed.filter(
-      (x): x is RecentNavKey =>
-        !!x &&
-        typeof x.testId === 'string' &&
-        typeof x.to === 'string'
-    );
-  } catch {
-    return [];
-  }
-}
-
-function saveRecentKeys(keys: RecentNavKey[]): void {
-  try {
-    localStorage.setItem(RECENT_NAV_STORAGE_KEY, JSON.stringify(keys.slice(0, MAX_RECENT)));
-  } catch {
-    // ignore storage quota exceeded
-  }
-}
-
 const AppShell: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const location = useLocation();
   const navigate = useNavigate();
@@ -168,16 +134,11 @@ const AppShell: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [mobileOpen, setMobileOpen] = useState(false);
   const [desktopNavOpen, setDesktopNavOpen] = useState(false);
   const [navQuery, setNavQuery] = useState('');
-  const [navCollapsed, setNavCollapsed] = useState(false);
-  const [recentKeys, setRecentKeys] = useState<RecentNavKey[]>([]);
+  const [navCollapsed, setNavCollapsed] = useState(true);
   const drawerWidth = 240;
   const drawerMiniWidth = 64;
   const currentDrawerWidth = navCollapsed ? drawerMiniWidth : drawerWidth;
   const drawerOffset = isDesktop ? currentDrawerWidth : 0;
-
-  useEffect(() => {
-    setRecentKeys(loadRecentKeys());
-  }, []);
 
   useEffect(() => {
     if (SKIP_LOGIN && location.pathname === '/login') {
@@ -337,25 +298,6 @@ const AppShell: React.FC<{ children: React.ReactNode }> = ({ children }) => {
     return navItems.filter((item) => (item.label ?? '').toLowerCase().includes(q));
   }, [navItems, navQuery]);
 
-  const addRecent = useCallback((item: NavItem) => {
-    if (!item.testId) return; // Skip items without testId
-    const key: RecentNavKey = { testId: item.testId, to: item.to };
-    setRecentKeys((prev) => {
-      const filtered = prev.filter((k) => !(k.testId === key.testId && k.to === key.to));
-      const updated = [key, ...filtered].slice(0, MAX_RECENT);
-      saveRecentKeys(updated);
-      return updated;
-    });
-  }, []);
-
-  const recentItems = useMemo(() => {
-    return recentKeys
-      .map((k) => {
-        const found = filteredNavItems.find((i) => i.testId === k.testId) ?? filteredNavItems.find((i) => i.to === k.to);
-        return found;
-      })
-      .filter((item): item is NavItem => item !== undefined);
-  }, [recentKeys, filteredNavItems]);
 
   const handleNavSearchKeyDown = useCallback(
     (event: React.KeyboardEvent<HTMLInputElement>, onNavigate?: () => void) => {
@@ -408,7 +350,7 @@ const AppShell: React.FC<{ children: React.ReactNode }> = ({ children }) => {
     const showLabel = !navCollapsed;
 
     const handleClick = () => {
-      addRecent(item);
+
       if (onNavigate) onNavigate();
     };
 
@@ -493,7 +435,7 @@ const AppShell: React.FC<{ children: React.ReactNode }> = ({ children }) => {
     }
 
     return button;
-  }, [currentPathname, isAdmin, navCollapsed, addRecent]);
+  }, [currentPathname, isAdmin, navCollapsed]);
 
   const renderGroupedNavList = (onNavigate?: () => void) => {
     if (filteredNavItems.length === 0) {
@@ -643,34 +585,6 @@ const AppShell: React.FC<{ children: React.ReactNode }> = ({ children }) => {
                   </IconButton>
                 </Tooltip>
               </Box>
-              {navQuery === '' && recentItems.length > 0 && (
-                <Box sx={{ mb: 1.5, px: 1 }}>
-                  {!navCollapsed && (
-                    <ListSubheader
-                      disableSticky
-                      sx={{
-                        bgcolor: 'transparent',
-                        lineHeight: 1.6,
-                        py: 0.5,
-                        fontWeight: 700,
-                        fontSize: '0.75rem',
-                        color: 'text.secondary',
-                        px: 2,
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: 0.5,
-                      }}
-                    >
-                      <AccessTimeIcon fontSize="small" />
-                      最近使った
-                    </ListSubheader>
-                  )}
-                  <List dense>
-                    {recentItems.map((item) => renderNavItem(item))}
-                  </List>
-                  <Divider sx={{ mt: 1, mb: 0.5 }} />
-                </Box>
-              )}
               {renderGroupedNavList()}
             </Box>
           </Drawer>
@@ -704,32 +618,7 @@ const AppShell: React.FC<{ children: React.ReactNode }> = ({ children }) => {
                   }}
                 />
               </Box>
-              {navQuery === '' && recentItems.length > 0 && (
-                <Box sx={{ mb: 1.5, px: 1 }}>
-                  <ListSubheader
-                    disableSticky
-                    sx={{
-                      bgcolor: 'transparent',
-                      lineHeight: 1.6,
-                      py: 0.5,
-                      fontWeight: 700,
-                      fontSize: '0.75rem',
-                      color: 'text.secondary',
-                      px: 2,
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: 0.5,
-                    }}
-                  >
-                    <AccessTimeIcon fontSize="small" />
-                    最近使った
-                  </ListSubheader>
-                  <List dense>
-                    {recentItems.map((item) => renderNavItem(item, handleMobileNavigate))}
-                  </List>
-                  <Divider sx={{ mt: 1, mb: 0.5 }} />
-                </Box>
-              )}
+              {renderGroupedNavList(handleMobileNavigate)}
               {renderGroupedNavList(handleMobileNavigate)}
             </Box>
           </Drawer>
