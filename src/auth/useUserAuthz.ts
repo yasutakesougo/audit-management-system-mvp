@@ -72,8 +72,9 @@ export const useUserAuthz = (): UserAuthz => {
         const runtimeEnv = getRuntimeEnvRoot();
         if (isE2eMsalMockEnabled(runtimeEnv) || shouldSkipLogin(runtimeEnv)) {
           if (!cancelled) {
-            // In E2E mode, return non-admin user (safe default)
-            setGroupIds([]);
+            // In E2E mode, immediately set safe defaults to unblock page init
+            setGroupIds([]);     // Non-admin user
+            setError(null);      // Clear any previous errors
           }
           return;
         }
