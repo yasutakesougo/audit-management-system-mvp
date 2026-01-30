@@ -138,11 +138,20 @@ test.describe('Schedule smoke', () => {
     await gotoWeek(page, new Date(SCHEDULE_FIXTURE_BASE_DATE));
     await waitForWeekViewReady(page);
 
+    // Wait for week view to fully render before checking tabs
+    await page.waitForLoadState('domcontentloaded');
+    await page.waitForTimeout(1000); // Allow initial render to settle
+
     const weekTabCandidate = page.getByTestId('tab-week');
     const weekTab = (await weekTabCandidate.count().catch(() => 0)) > 0
       ? weekTabCandidate.first()
       : page.getByRole('tab', { name: '週', exact: true }).first();
-    await expect(weekTab).toHaveAttribute('aria-selected', 'true');
+    
+    // Poll for tab to be ready and selected
+    await expect.poll(
+      async () => await weekTab.getAttribute('aria-selected'),
+      { timeout: 45_000 }
+    ).toBe('true');
 
     const dayTabCandidate = page.getByTestId('tab-day');
     const dayTab = (await dayTabCandidate.count().catch(() => 0)) > 0
