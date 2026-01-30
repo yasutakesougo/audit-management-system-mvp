@@ -350,9 +350,20 @@ await options.nth(2).click();
 
 ---
 
+## テストの安定性を高める
+
+**CI で flaky なテストが増えてきたら：**
+
+👉 **[E2E_BEST_PRACTICES.md](./E2E_BEST_PRACTICES.md)** を参照
+
+Two-layer wait strategy、responsive UI handling、troubleshooting checklist が記載されています。
+
+---
+
 ## 参考資料
 
 - [playwright.smoke.config.ts](../playwright.smoke.config.ts) - webServer 設定の詳細
 - [playwright.config.ts](../playwright.config.ts) - ベース設定（デバイス、タイムアウト等）
 - [tests/e2e/utils/muiSelect.ts](../tests/e2e/utils/muiSelect.ts) - 「monthly型」実装
+- [E2E_BEST_PRACTICES.md](./E2E_BEST_PRACTICES.md) - Element wait 戦略・responsive 対応
 - 👉 **[PR_MERGE_CHECKLIST.md](./PR_MERGE_CHECKLIST.md)** — PR 作成〜マージ時の事故防止チェックリスト
