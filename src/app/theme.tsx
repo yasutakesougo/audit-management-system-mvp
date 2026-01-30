@@ -2,6 +2,19 @@ import CssBaseline from '@mui/material/CssBaseline';
 import { alpha, createTheme, ThemeProvider as MUIThemeProvider, type Theme, type ThemeOptions } from '@mui/material/styles';
 import React, { createContext, useCallback, useEffect, useMemo, useState } from 'react';
 
+/**
+ * Theme Configuration (Phase 1: Light mode baseline + Dark mode foundation)
+ *
+ * Current Status:
+ * - Light mode: Active and optimized (Phase 1 complete)
+ * - Dark mode: Foundation ready (palette defined, not yet exposed to UI)
+ *
+ * Next Steps (Phase 2):
+ * - Add theme toggle UI (ColorModeContext.toggle already implemented)
+ * - Test dark mode visual hierarchy and readability
+ * - Update E2E tests to cover both modes
+ */
+
 type ServiceTypeKey = 'normal' | 'transport' | 'respite' | 'nursing' | 'absence' | 'other';
 
 export type ServiceTypeColorTokens = {
@@ -164,9 +177,17 @@ export const ThemeRoot: React.FC<{ children: React.ReactNode }> = ({ children })
         mode === 'dark'
           ? {
               mode: 'dark',
-              primary: { main: '#7BB8FF' },
-              secondary: { main: '#7AD48A' },
+              primary: { main: '#7BB8FF', dark: '#5A9FDE' },
+              secondary: { main: '#7AD48A', dark: '#5AB36A' },
               info: { main: '#58A6FF', contrastText: '#0A1929' },
+              background: {
+                default: '#0D1117',  // GitHub dark base
+                paper: '#161B22',    // Card backgrounds
+              },
+              text: {
+                primary: '#E6EDF3',  // High contrast for readability
+                secondary: '#8B949E', // Muted text
+              },
             }
           : {
               mode: 'light',
