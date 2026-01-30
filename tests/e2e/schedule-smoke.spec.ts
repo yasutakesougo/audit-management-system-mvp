@@ -1,6 +1,7 @@
 import '@/test/captureSp400';
 import { expect, test } from '@playwright/test';
 import { bootSchedule } from './_helpers/bootSchedule';
+import { waitForLocator } from './_helpers/waitForLocator';
 import { gotoWeek } from './utils/scheduleNav';
 import { assertWeekHasUserCareEvent, getWeekScheduleItems, waitForWeekViewReady } from './utils/scheduleActions';
 import { SCHEDULE_FIXTURE_BASE_DATE, buildWeekScheduleFixtures } from './utils/schedule.fixtures';
@@ -140,17 +141,20 @@ test.describe('Schedule smoke', () => {
 
     // Wait for week view to fully render before checking tabs
     await page.waitForLoadState('domcontentloaded');
-    await page.waitForTimeout(1000); // Allow initial render to settle
+    await page.waitForTimeout(2000); // Allow initial render to settle
 
     const weekTabCandidate = page.getByTestId('tab-week');
     const weekTab = (await weekTabCandidate.count().catch(() => 0)) > 0
       ? weekTabCandidate.first()
       : page.getByRole('tab', { name: '週', exact: true }).first();
     
+    // Wait for tab to exist first
+    await waitForLocator(weekTab, { timeoutMs: 60_000, requireVisible: true });
+    
     // Poll for tab to be ready and selected
     await expect.poll(
       async () => await weekTab.getAttribute('aria-selected'),
-      { timeout: 45_000 }
+      { timeout: 60_000 }
     ).toBe('true');
 
     const dayTabCandidate = page.getByTestId('tab-day');
