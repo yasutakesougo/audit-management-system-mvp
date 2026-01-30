@@ -465,14 +465,14 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ audience = 'staff' }) => 
           </Box>
         </Box>
 
-        <Stack spacing={3} sx={{ mb: 3 }}>
+        <Stack spacing={{ xs: 2, sm: 3, md: 4 }} sx={{ mb: { xs: 2, sm: 3 } }}>
           <DashboardSafetyHUD />
 
-          <Paper elevation={3} sx={{ p: 3 }}>
+          <Paper elevation={3} sx={{ p: { xs: 2, sm: 3, md: 3 } }}>
             <Typography variant="h5" sx={{ fontWeight: 700 }}>
               今日の通所 / 出勤状況
             </Typography>
-            <Grid container spacing={2} sx={{ mt: 2 }}>
+            <Grid container spacing={{ xs: 2, sm: 2, md: 3 }} sx={{ mt: 2 }}>
               <Grid size={{ xs: 12, sm: 4, md: 2 }}>
                 <Typography variant="h4" color="primary" sx={{ fontWeight: 800 }}>
                   {attendanceSummary.facilityAttendees}
@@ -524,17 +524,17 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ audience = 'staff' }) => 
             </Grid>
           </Paper>
 
-          <Paper elevation={3} sx={{ p: 3 }}>
+          <Paper elevation={3} sx={{ p: { xs: 2, sm: 3, md: 3 } }}>
             <Typography variant="h5" sx={{ fontWeight: 700 }}>
               日次記録状況
             </Typography>
-            <Grid container spacing={3} sx={{ mt: 1 }}>
+            <Grid container spacing={{ xs: 2, sm: 3 }} sx={{ mt: 1 }}>
               {dailyStatusCards.map(({ label, completed, pending, planned }) => {
                 const total = planned;
                 const progress = total > 0 ? Math.round((completed / total) * 100) : 0;
                 return (
                   <Grid key={label} size={{ xs: 12, md: 4 }}>
-                    <Paper variant="outlined" sx={{ p: 2, height: '100%' }}>
+                    <Paper variant="outlined" sx={{ p: { xs: 2, sm: 2.5 }, height: '100%' }}>
                       <Typography variant="h6" sx={{ fontWeight: 700 }}>
                         {label}
                       </Typography>
