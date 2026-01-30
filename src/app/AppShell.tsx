@@ -166,6 +166,7 @@ const AppShell: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const icebergPdcaEnabled = Boolean(icebergPdca);
   const isDesktop = useMediaQuery(theme.breakpoints.up('md'));
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [desktopNavOpen, setDesktopNavOpen] = useState(false);
   const [navQuery, setNavQuery] = useState('');
   const [navCollapsed, setNavCollapsed] = useState(false);
   const [recentKeys, setRecentKeys] = useState<RecentNavKey[]>([]);
@@ -559,6 +560,17 @@ const AppShell: React.FC<{ children: React.ReactNode }> = ({ children }) => {
               <MenuIcon />
             </IconButton>
           )}
+          {isDesktop && (
+            <IconButton
+              color="inherit"
+              aria-label="ナビゲーションを開く"
+              onClick={() => setDesktopNavOpen(true)}
+              edge="start"
+              data-testid="desktop-nav-open"
+            >
+              <MenuIcon />
+            </IconButton>
+          )}
           <Typography variant="h6" component="div" sx={{ flexGrow: 1 }}>
             磯子区障害者地域活動ホーム
           </Typography>
@@ -582,8 +594,9 @@ const AppShell: React.FC<{ children: React.ReactNode }> = ({ children }) => {
         {/* Side Navigation Drawer */}
         {isDesktop ? (
           <Drawer
-            variant="permanent"
-            open
+            variant="persistent"
+            open={desktopNavOpen}
+            onClose={() => setDesktopNavOpen(false)}
             sx={{
               width: currentDrawerWidth,
               flexShrink: 0,
