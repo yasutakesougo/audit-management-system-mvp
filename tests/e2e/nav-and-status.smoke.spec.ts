@@ -1,20 +1,12 @@
-import type { Page } from '@playwright/test';
 import { expect, test } from '@playwright/test';
 
 import { TESTIDS } from '../../src/testids';
 import { bootstrapDashboard } from './utils/bootstrapApp';
+import { openMobileNav } from './_helpers/openMobileNav';
 import { waitForLocator } from './_helpers/waitForLocator';
 import { waitForStableRender } from './_helpers/waitForStableRender';
 
 const APP_SHELL_ENTRY = '/dashboard';
-
-const ensureNavOpen = async (page: Page) => {
-  const navOpen = page.getByTestId(TESTIDS['nav-open']);
-  const navOpenCount = await navOpen.count().catch(() => 0);
-  if (navOpenCount > 0) {
-    await navOpen.first().click();
-  }
-};
 
 test.describe('Nav/Status/Footers basics', () => {
   test.beforeEach(async ({ page }) => {
@@ -36,7 +28,7 @@ test.describe('Nav/Status/Footers basics', () => {
 
   test('Drawer nav items expose test ids and aria-current updates', async ({ page }) => {
     // Nav items are now in the drawer (permanent on desktop, mobile drawer also rendered but hidden)
-    await ensureNavOpen(page);
+    await openMobileNav(page);
 
     // Wait for dashboard nav item to exist (this confirms nav is rendered)
     const dashboard = page.getByTestId('nav-dashboard').first();
@@ -59,7 +51,7 @@ test.describe('Nav/Status/Footers basics', () => {
 
   test('Drawer nav highlights schedules / nurse / iceberg per route', async ({ page }) => {
     await page.goto('/schedules/week');
-    await ensureNavOpen(page);
+    await openMobileNav(page);
     await expect(page.getByTestId(TESTIDS.nav.schedules)).toHaveAttribute('aria-current', 'page');
 
     await page.goto('/nurse');
