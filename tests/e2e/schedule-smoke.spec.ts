@@ -186,6 +186,7 @@ test.describe('Schedule smoke', () => {
     }
 
     const items = await getWeekScheduleItems(page);
+    await waitForLocator(items, { timeoutMs: 30_000, requireVisible: true });
     await expect(items.first()).toBeVisible({ timeout: 15_000 });
 
     await assertWeekHasUserCareEvent(page, {
