@@ -20,7 +20,7 @@ UI実装は、原則として以下の3層に分割する。
 - a11y（aria-label/role/tab order/aria-live）をここで完結させる
 
 **実装例（このプロジェクトの場合）**
-- `src/app/AppShell.tsx` : レイアウト・ナビゲーション中心
+- `src/app/AppShell.tsx` : レイアウト・ナビゲーション中心（※権限・フラグ判定も含むためA/B境界）
 - `src/features/**/components/*` : 画面の表示コンポーネント群
 
 ---
@@ -207,7 +207,7 @@ function SomePage() {
 
 ### After（3層分離）
 ```tsx
-// A: UI（例: src/pages/TimeFlowSupportRecordPage.tsx）
+// A: UI（将来の理想形 - TimeFlowSupportRecordPage.tsx は現在1877行で分割候補）
 function SomePage() {
   const vm = useItemsViewModel(); // B
   if (vm.state === 'loading') return <Spinner />;
@@ -235,6 +235,30 @@ function useItemsViewModel() {
 // C: side effects（例: src/lib/spClient.ts）
 // SharePoint REST API client に実装
 ```
+
+---
+
+---
+
+## 📝 実装ノート（現状と理想の差分）
+
+### 現状の課題
+
+**大規模ページコンポーネント**
+- `src/pages/TimeFlowSupportRecordPage.tsx` (1877行)
+  - 状態管理・UI・ビジネスロジックが混在
+  - **推奨**: hooks抽出 + 表示コンポーネント分割
+
+**A/B境界コンポーネント**
+- `src/app/AppShell.tsx` (1066行)
+  - レイアウト（A層）+ 権限判定・フラグ（B層）が同居
+  - **現実解**: シェルレベルでは許容範囲。ただし責務が明確に分離されていることを意識
+
+### リファクタ優先順位
+
+1. **高**: 1000行超えのページ → hooks + components分割
+2. **中**: 複数の状態管理パターンが混在する画面 → viewModel統一
+3. **低**: A/B境界の明確化（機能への影響小）
 
 ---
 

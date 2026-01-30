@@ -1,6 +1,6 @@
 # 磯子区障害者地域活動ホーム (React + SharePoint SPA)
 
-> 📌 クイックリンク: [プロビジョニング手順 / WhatIf レビュー](docs/provisioning.md#whatif-ドライラン-と-job-summary) ｜ [SharePoint スキーマ定義](provision/schema.xml) ｜ [プロジェクトボード自動連携](docs/project-auto-integration.md) ｜ **[UI Baseline (Phase 1)](docs/UI_BASELINE.md)**
+> 📌 クイックリンク: [プロビジョニング手順 / WhatIf レビュー](docs/provisioning.md#whatif-ドライラン-と-job-summary) ｜ [SharePoint スキーマ定義](provision/schema.xml) ｜ [プロジェクトボード自動連携](docs/project-auto-integration.md) ｜ **[UI Baseline (Phase 1)](docs/UI_BASELINE.md)** ｜ [UI Architecture](docs/ui-architecture.md)
 
 <!-- Badges -->
 
