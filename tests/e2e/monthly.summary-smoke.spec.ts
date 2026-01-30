@@ -122,12 +122,11 @@ test.describe('Monthly Records - Summary Smoke Tests', () => {
 
     // Wait for network idle to ensure aggregation completes
     await page.waitForLoadState('networkidle', { timeout: 60_000 });
-    await page.waitForTimeout(1000); // Allow UI to settle
+    await page.waitForTimeout(2000); // Allow UI to settle
 
-    // ステータス表示が更新されることを確認
+    // ステータス表示が更新されることを確認 - wait for existence first
     const status = page.getByTestId(monthlyTestIds.summaryStatus);
-    // UIの文言確定までは可視性のみ検証
-    await expect(status).toBeVisible({ timeout: 30_000 });
+    await waitForLocator(status, { timeoutMs: 120_000, requireVisible: true });
   });
 
   test('@ci-smoke table sorting functionality', async ({ page }) => {

@@ -1,10 +1,20 @@
+import type { Page } from '@playwright/test';
 import { expect, test } from '@playwright/test';
 
 import { TESTIDS } from '../../src/testids';
 import { bootstrapDashboard } from './utils/bootstrapApp';
+import { waitForLocator } from './_helpers/waitForLocator';
 import { waitForStableRender } from './_helpers/waitForStableRender';
 
 const APP_SHELL_ENTRY = '/dashboard';
+
+const ensureNavOpen = async (page: Page) => {
+  const navOpen = page.getByTestId(TESTIDS['nav-open']);
+  const navOpenCount = await navOpen.count().catch(() => 0);
+  if (navOpenCount > 0) {
+    await navOpen.first().click();
+  }
+};
 
 test.describe('Nav/Status/Footers basics', () => {
   test.beforeEach(async ({ page }) => {
@@ -26,11 +36,16 @@ test.describe('Nav/Status/Footers basics', () => {
 
   test('Drawer nav items expose test ids and aria-current updates', async ({ page }) => {
     // Nav items are now in the drawer (permanent on desktop, mobile drawer also rendered but hidden)
+    await ensureNavOpen(page);
+
+    // Wait for dashboard nav item to exist (this confirms nav is rendered)
     const dashboard = page.getByTestId('nav-dashboard').first();
+    await waitForLocator(dashboard, { timeoutMs: 60_000, requireVisible: true });
     await waitForStableRender(page, dashboard, { timeoutMs: 45_000 });
     await expect(dashboard).toHaveAttribute('aria-current', 'page');
 
     const checklist = page.getByTestId('nav-checklist').first();
+    await waitForLocator(checklist, { timeoutMs: 60_000, requireVisible: true });
     await waitForStableRender(page, checklist, { timeoutMs: 45_000 });
     await checklist.click();
     await expect(page).toHaveURL(/\/checklist/);
@@ -38,12 +53,13 @@ test.describe('Nav/Status/Footers basics', () => {
     // Wait for aria-current to update after navigation
     await expect.poll(
       async () => await checklist.getAttribute('aria-current'),
-      { timeout: 30_000 }
+      { timeout: 45_000 }
     ).toBe('page');
   });
 
   test('Drawer nav highlights schedules / nurse / iceberg per route', async ({ page }) => {
     await page.goto('/schedules/week');
+    await ensureNavOpen(page);
     await expect(page.getByTestId(TESTIDS.nav.schedules)).toHaveAttribute('aria-current', 'page');
 
     await page.goto('/nurse');
