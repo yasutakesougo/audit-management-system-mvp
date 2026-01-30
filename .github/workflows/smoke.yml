@@ -120,7 +120,6 @@ jobs:
           VITE_E2E: '1'
           VITE_E2E_MSAL_MOCK: '1'
           VITE_SKIP_LOGIN: '1'
-          VITE_E2E: '1'
           VITE_FEATURE_SCHEDULES: '1'
         run: npx playwright test tests/e2e --config=playwright.config.ts --project=smoke --trace on
       - if: always()
