@@ -15,6 +15,21 @@ vi.mock('@/lib/env', async () => {
 
 vi.mock('@/env', () => ({
   getRuntimeEnv: vi.fn(() => ({})),
+  isE2eMsalMockEnabled: () => false,
+}));
+
+vi.mock('@/lib/debugLogger', () => ({
+  auditLog: {
+    debug: (ns: string, ...a: unknown[]) => {
+      if (process.env.VITE_AUDIT_DEBUG === '1') {
+        console.debug(`[audit:${ns}]`, ...a);
+      }
+    },
+    info: (ns: string, ...a: unknown[]) => console.info(`[audit:${ns}]`, ...a),
+    warn: (ns: string, ...a: unknown[]) => console.warn(`[audit:${ns}]`, ...a),
+    error: (ns: string, ...a: unknown[]) => console.error(`[audit:${ns}]`, ...a),
+    enabled: true,
+  },
 }));
 
 import { getRuntimeEnv } from '@/env';

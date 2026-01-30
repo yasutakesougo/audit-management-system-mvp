@@ -606,15 +606,15 @@ export function createSpClient(
 
     // 🔍 デバッグログ: モック条件を確認
     const AUDIT_DEBUG = String(readEnv('VITE_AUDIT_DEBUG', '')) === '1';
-    if (AUDIT_DEBUG) {
-      console.debug('[spFetch] 🔍', {
-        path: resolvedPath.substring(0, 100),
+    if (AUDIT_DEBUG || isE2EWithMsalMock) {
+      console.log('[spFetch]', {
+        path: resolvedPath.substring(0, 80),
         method: init.method || 'GET',
+        isE2EWithMsalMock,
         shouldMock,
-        baseUrl: baseUrl ? `${baseUrl.substring(0, 50)}...` : '(empty)',
-        'config.isDev': config.isDev,
-        'skipSharePoint()': skipSharePoint(),
-        'shouldSkipLogin()': shouldSkipLogin(),
+        baseUrl: baseUrl ? `${baseUrl.substring(0, 40)}...` : '(empty)',
+        'VITE_E2E_MSAL_MOCK': runtimeEnv['VITE_E2E_MSAL_MOCK'],
+        'VITE_E2E': runtimeEnv['VITE_E2E'],
       });
     }
 
@@ -1273,7 +1273,9 @@ export function createSpClient(
   const postBatch = async (batchBody: string, boundary: string): Promise<Response> => {
     // 🔥 CRITICAL: Always read runtime env to respect env.runtime.json override
     const runtimeEnv = getRuntimeEnvRoot() as Record<string, string>;
-    const shouldMock = !baseUrl || baseUrl === '' || skipSharePoint(runtimeEnv) || shouldSkipLogin(runtimeEnv);
+    // In E2E with Playwright stubs (VITE_E2E_MSAL_MOCK), skip the mock layer to allow interception
+    const isE2EWithMsalMock = isE2eMsalMockEnabled(runtimeEnv);
+    const shouldMock = !isE2EWithMsalMock && (!baseUrl || baseUrl === '' || skipSharePoint(runtimeEnv) || shouldSkipLogin(runtimeEnv));
 
     // 開発環境・デモモード・スキップモードでのモック応答
     if (shouldMock) {
