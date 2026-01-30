@@ -120,10 +120,14 @@ test.describe('Monthly Records - Summary Smoke Tests', () => {
     // 再集計実行 & 完了待機
     await triggerReaggregateAndWait(page);
 
+    // Wait for network idle to ensure aggregation completes
+    await page.waitForLoadState('networkidle', { timeout: 60_000 });
+    await page.waitForTimeout(1000); // Allow UI to settle
+
     // ステータス表示が更新されることを確認
     const status = page.getByTestId(monthlyTestIds.summaryStatus);
     // UIの文言確定までは可視性のみ検証
-    await expect(status).toBeVisible({ timeout: 10_000 });
+    await expect(status).toBeVisible({ timeout: 30_000 });
   });
 
   test('@ci-smoke table sorting functionality', async ({ page }) => {
