@@ -27,18 +27,7 @@ test.describe('Nav/Status/Footers basics', () => {
 
   test('Drawer nav items expose test ids and aria-current updates', async ({ page }) => {
     // Nav items are now in the drawer (permanent on desktop, mobile drawer also rendered but hidden)
-    // First wait for nav items to exist in DOM - try alternative selectors if navigation role missing
-    let navRoot = page.getByRole('navigation').first();
-    const navCount = await navRoot.count().catch(() => 0);
-    
-    if (navCount === 0) {
-      // Fallback: look for nav items by test id
-      console.log('[nav-test] navigation role not found, trying nav-dashboard');
-      navRoot = page.getByTestId('nav-dashboard').first();
-    }
-    
-    await waitForLocator(navRoot, { timeoutMs: 60_000, requireVisible: true });
-    
+    // Wait for dashboard nav item to exist (this confirms nav is rendered)
     const dashboard = page.getByTestId('nav-dashboard').first();
     await waitForLocator(dashboard, { timeoutMs: 60_000, requireVisible: true });
     await waitForStableRender(page, dashboard, { timeoutMs: 45_000 });
