@@ -25,7 +25,7 @@ test.describe('Morning Meeting Flow', () => {
     const safetyHud = page.getByTestId(TESTIDS['dashboard-safety-hud']);
     await expect(safetyHud).toBeVisible();
 
-    // NextActionCardが表示される (朝会タブ内)
+    // NextActionCardが表示される (朝会カード内)
     const nextActionCard = page.getByTestId(TESTIDS['dashboard-next-action-card']);
     await expect(nextActionCard).toBeVisible();
   });
@@ -33,9 +33,9 @@ test.describe('Morning Meeting Flow', () => {
   test('navigates from NextActionCard to appropriate work screen', async ({ page }) => {
     await page.goto(MORNING_DASHBOARD_URL);
 
-    // 朝会タブをクリック（index 1: 朝会専用タブ）
-    const morningTab = page.getByRole('tab').nth(1);
-    await morningTab.click();
+    // 朝会カードが表示される
+    const morningCardHeading = page.getByRole('heading', { name: /朝会情報（9:00）/ });
+    await expect(morningCardHeading).toBeVisible();
 
     // NextActionCardが表示されるまで待機
     const nextActionCard = page.getByTestId(TESTIDS['dashboard-next-action-card']);
@@ -117,9 +117,9 @@ test.describe('Morning Meeting Flow', () => {
     const briefingPanel = page.getByTestId(TESTIDS['dashboard-briefing-panel']);
     await expect(briefingPanel).toBeVisible();
 
-    // 朝会タブをクリック
-    const morningTab = page.getByRole('tab').nth(1);
-    await morningTab.click();
+    // 朝会カードが表示される
+    const morningCardHeading = page.getByRole('heading', { name: /朝会情報（9:00）/ });
+    await expect(morningCardHeading).toBeVisible();
 
     // NextActionCardがモバイルでも表示される
     const nextActionCard = page.getByTestId(TESTIDS['dashboard-next-action-card']);
@@ -148,6 +148,10 @@ test.describe('Morning Meeting Flow', () => {
 
     // 夕会モードでは「お疲れさまでした」が表示される
     await expect(briefingPanel).toContainText('お疲れさまでした');
+
+    // 夕会カードが表示される
+    const eveningCardHeading = page.getByRole('heading', { name: /夕会情報（17:15）/ });
+    await expect(eveningCardHeading).toBeVisible();
   });
 
   test('handles loading states gracefully', async ({ page }) => {
