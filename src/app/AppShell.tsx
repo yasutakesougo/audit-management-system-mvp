@@ -546,7 +546,7 @@ const AppShell: React.FC<{ children: React.ReactNode }> = ({ children }) => {
     <RouteHydrationListener>
       <LiveAnnouncer>
         <div data-testid="app-shell">
-        <AppBar position="static" color="primary" enableColorOnDark>
+        <AppBar position="fixed" color="primary" enableColorOnDark>
         <Toolbar sx={{ gap: 1 }}>
           {!isDesktop && (
             <IconButton
@@ -591,13 +591,13 @@ const AppShell: React.FC<{ children: React.ReactNode }> = ({ children }) => {
                 easing: theme.transitions.easing.sharp,
                 duration: theme.transitions.duration.enteringScreen,
               }),
-              '& .MuiDrawer-paper': { width: currentDrawerWidth, boxSizing: 'border-box', transition: theme.transitions.create('width', {
+              '& .MuiDrawer-paper': { width: currentDrawerWidth, boxSizing: 'border-box', top: 64, height: 'calc(100vh - 64px - 80px)', transition: theme.transitions.create('width', {
                 easing: theme.transitions.easing.sharp,
                 duration: theme.transitions.duration.enteringScreen,
               }) },
             }}
           >
-            <Box role="navigation" aria-label="主要ナビゲーション" sx={{ mt: 7, overflowY: 'auto', height: 'calc(100vh - 56px)' }}>
+            <Box role="navigation" aria-label="主要ナビゲーション" sx={{ overflowY: 'auto', height: '100%', pt: 2 }}>
               {!navCollapsed && (
                 <Box sx={{ px: 1.5, py: 1, pb: 1.5 }} key="nav-search">
                   <TextField
@@ -722,7 +722,7 @@ const AppShell: React.FC<{ children: React.ReactNode }> = ({ children }) => {
           </Drawer>
         )}
 
-        <Container component="main" role="main" maxWidth="lg" sx={{ py: { xs: 2, sm: 3, md: 4 }, pb: { xs: 18, sm: 14 }, px: { xs: 2, sm: 3, md: 4 }, ml: `${drawerOffset}px`, transition: theme.transitions.create('margin-left', {
+        <Container component="main" role="main" maxWidth="lg" sx={{ pt: { xs: 10, sm: 11, md: 12 }, pb: { xs: 18, sm: 14 }, px: { xs: 2, sm: 3, md: 4 }, ml: `${drawerOffset}px`, transition: theme.transitions.create('margin-left', {
           easing: theme.transitions.easing.sharp,
           duration: theme.transitions.duration.enteringScreen,
         }) }}>
