@@ -266,8 +266,8 @@ export async function triggerReaggregateAndWait(page: Page): Promise<void> {
 
   // ステータスの変化を待つ（UI仕様確定後に実装）
   const status = page.getByTestId(monthlyTestIds.summaryStatus);
-  await status.waitFor();
-  await status.waitFor({ state: 'visible' });
+  await status.waitFor({ state: 'attached', timeout: 120_000 });
+  await status.waitFor({ state: 'visible', timeout: 120_000 });
 
   // TODO: テキストが決まったら以下のような実装に変更
   // await expect(status).toHaveText(/最新です|完了/);

@@ -43,8 +43,23 @@ test.describe('router smoke (URL direct, testid based)', () => {
     // ルート診断を速くするため URL も確認（あなたのロードマップに合わせた Done 条件）
     await expect(page).toHaveURL(/\/audit(\b|\/|\?|#)/);
 
+    // [DEBUG] URL と body を出力（失敗時に原因を特定）
+    console.log('[router.smoke.spec] [audit-root check] url=', page.url());
+
     // 本番アンカー（E2E 用）
-    await expect(page.getByTestId('audit-root')).toBeVisible();
+    // 事前に /audit 到達を明示的に待ち、networkidle まで待つ
+    await page.waitForURL(/\/audit/, { timeout: 30_000 });
+    await page.waitForLoadState('networkidle');
+
+    // [DEBUG] 見えない場合に DOM を出力
+    try {
+      await expect(page.getByTestId('audit-root')).toBeVisible();
+    } catch (e) {
+      console.log('[router.smoke.spec] [audit-root NOT visible] body innerText:', 
+        await page.locator('body').innerText().catch(() => '<failed to read>'));
+      console.log('[router.smoke.spec] [audit-root NOT visible] url=', page.url());
+      throw e;
+    }
   });
 
   test('GET /checklist renders checklist-root', async ({ page }) => {

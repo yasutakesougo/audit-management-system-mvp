@@ -15,6 +15,8 @@ describe('env feature toggles', () => {
     VITE_FEATURE_COMPLIANCE_FORM: 'false',
     VITE_DEMO_MODE: 'false',
     VITE_SKIP_LOGIN: 'false',
+    VITE_E2E: 'false',
+    VITE_E2E_MSAL_MOCK: 'false',
     ...overrides,
   });
 
@@ -44,6 +46,8 @@ describe('env feature toggles', () => {
     expect(shouldSkipLogin(baseEnv())).toBe(false);
     expect(shouldSkipLogin(baseEnv({ VITE_DEMO_MODE: '1' }))).toBe(true);
     expect(shouldSkipLogin(baseEnv({ VITE_SKIP_LOGIN: 'true' }))).toBe(true);
+    expect(shouldSkipLogin(baseEnv({ VITE_E2E: '1' }))).toBe(true);
+    expect(shouldSkipLogin(baseEnv({ VITE_E2E_MSAL_MOCK: '1' }))).toBe(true);
 
     localStorage.setItem('skipLogin', 'YES');
     expect(shouldSkipLogin(baseEnv())).toBe(true);

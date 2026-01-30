@@ -353,7 +353,12 @@ export const isIcebergPdcaEnabled = (envOverride?: EnvRecord): boolean =>
   readBool('VITE_FEATURE_ICEBERG_PDCA', false, envOverride);
 
 export const shouldSkipLogin = (envOverride?: EnvRecord): boolean => {
-  if (isDemoModeEnabled(envOverride) || readBool('VITE_SKIP_LOGIN', false, envOverride)) {
+  if (
+    isDemoModeEnabled(envOverride) ||
+    readBool('VITE_SKIP_LOGIN', false, envOverride) ||
+    readBool('VITE_E2E', false, envOverride) ||
+    readBool('VITE_E2E_MSAL_MOCK', false, envOverride)
+  ) {
     return true;
   }
 

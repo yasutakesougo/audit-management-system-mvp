@@ -23,7 +23,10 @@ type AdminGateProps = {
 export default function AdminGate({ children }: AdminGateProps) {
   const { isAdmin, ready, reason } = useUserAuthz();
   // E2E テストモード: AdminGate を権限チェックごとスキップ
-  const isTestMode = import.meta.env.VITE_E2E === '1' || import.meta.env.VITE_E2E_MSAL_MOCK === '1';
+  const isTestMode =
+    import.meta.env.VITE_E2E === '1' ||
+    import.meta.env.VITE_E2E_MSAL_MOCK === '1' ||
+    import.meta.env.VITE_SKIP_LOGIN === '1';
   if (isTestMode) {
     return <>{children}</>;
   }

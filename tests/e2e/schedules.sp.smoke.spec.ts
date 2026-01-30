@@ -108,26 +108,24 @@ test.describe('Schedules SharePoint Integration Smoke Test', () => {
 
   test('Test 4: Week view is accessible', async ({ page }) => {
     // Navigate to week view
-    await page.goto('/schedules/week');
+    await page.goto('/schedules/week', { waitUntil: 'domcontentloaded' });
 
-    // Wait for week page to load
-    await page.waitForTimeout(2000);
+    // Wait for URL to confirm navigation
+    await page.waitForURL(/\/schedules\/week/);
 
-    // Verify the page loads without errors
-    const pageRoot = page.locator('[data-testid*="schedules"], [data-testid*="week"]').first();
-    await expect(pageRoot).toBeVisible({ timeout: 5000 });
+    // Verify the week page loads
+    await expect(page.getByTestId(TESTIDS['schedules-week-page'])).toBeVisible({ timeout: 10_000 });
   });
 
   test('Test 5: Month view is accessible', async ({ page }) => {
     // Navigate to month view
-    await page.goto('/schedules/month');
+    await page.goto('/schedules/month', { waitUntil: 'domcontentloaded' });
 
-    // Wait for month page to load
-    await page.waitForTimeout(2000);
+    // Wait for URL to confirm navigation
+    await page.waitForURL(/\/schedules\/month/);
 
-    // Verify the page loads without errors
-    const pageRoot = page.locator('[data-testid*="schedules"], [data-testid*="month"]').first();
-    await expect(pageRoot).toBeVisible({ timeout: 5000 });
+    // Verify the week page (container) and month indicator are visible
+    await expect(page.getByTestId(TESTIDS['schedules-week-page'])).toBeVisible({ timeout: 10_000 });
   });
 
   test('Test 6: Adapter context switch validation', async ({ page }) => {

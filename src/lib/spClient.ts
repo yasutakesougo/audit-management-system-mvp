@@ -600,7 +600,9 @@ export function createSpClient(
 
     // 🔥 CRITICAL: Always read runtime env to respect env.runtime.json override
     const runtimeEnv = getRuntimeEnvRoot() as Record<string, string>;
-    const shouldMock = !baseUrl || baseUrl === '' || skipSharePoint(runtimeEnv) || shouldSkipLogin(runtimeEnv);
+    // In E2E with Playwright stubs (VITE_E2E_MSAL_MOCK), skip the mock layer to allow interception
+    const isE2EWithMsalMock = isE2eMsalMockEnabled(runtimeEnv);
+    const shouldMock = !isE2EWithMsalMock && (!baseUrl || baseUrl === '' || skipSharePoint(runtimeEnv) || shouldSkipLogin(runtimeEnv));
 
     // 🔍 デバッグログ: モック条件を確認
     const AUDIT_DEBUG = String(readEnv('VITE_AUDIT_DEBUG', '')) === '1';
@@ -660,7 +662,11 @@ export function createSpClient(
     if (debugEnabled && tokenMetricsCarrier.__TOKEN_METRICS__) {
       dbg('token metrics snapshot', tokenMetricsCarrier.__TOKEN_METRICS__);
     }
-    if (!token1) {
+    
+    // E2E/skip-login: allow fetch without token so Playwright stubs can intercept
+    const skipAuthCheck = shouldSkipLogin() || isE2eMsalMockEnabled();
+    
+    if (!token1 && !skipAuthCheck) {
       throw new AuthRequiredError();
     }
 
@@ -705,13 +711,16 @@ export function createSpClient(
     };
 
     const resolveUrl = (targetPath: string) => (/^https?:\/\//i.test(targetPath) ? targetPath : `${baseUrl}${targetPath}`);
-    const doFetch = async (token: string) => {
+    const doFetch = async (token: string | null) => {
       const url = resolveUrl(resolvedPath);
       const AUDIT_DEBUG = String(readEnv('VITE_AUDIT_DEBUG', '')) === '1';
 
       // ヘッダー生成: undefined/null を絶対に入れない
       const headers = toHeaders(init.headers);
-      headers.set('Authorization', `Bearer ${token}`);
+      // E2E/skip-login: only set Authorization if token exists
+      if (token) {
+        headers.set('Authorization', `Bearer ${token}`);
+      }
 
       const method = (init.method ?? 'GET').toUpperCase();
 
@@ -829,17 +838,20 @@ export function createSpClient(
     }
 
     if (!response.ok && (response.status === 401 || response.status === 403)) {
-      const token2 = await acquireToken();
-      if (token2 && token2 !== token1) {
-        try {
-          response = await doFetch(token2);
-        } catch (e) {
-          // AbortError: token refresh 不要
-          if (isAbortError(e)) throw e;
-          throw e;
+      // E2E/skip-login: don't retry with token if already in skip mode (Playwright handles auth)
+      if (!skipAuthCheck) {
+        const token2 = await acquireToken();
+        if (token2 && token2 !== token1) {
+          try {
+            response = await doFetch(token2);
+          } catch (e) {
+            // AbortError: token refresh 不要
+            if (isAbortError(e)) throw e;
+            throw e;
+          }
+        } else if (!token2) {
+          throw new AuthRequiredError();
         }
-      } else if (!token2) {
-        throw new AuthRequiredError();
       }
     }
 
@@ -1309,11 +1321,18 @@ export function createSpClient(
   // eslint-disable-next-line no-constant-condition
   while (true) {
       const token = await acquireToken();
-      if (!token) throw new Error('SharePoint のアクセストークン取得に失敗しました。');
+      // E2E/skip-login: allow batch without token so Playwright stubs can intercept
+      const skipAuthCheck = shouldSkipLogin() || isE2eMsalMockEnabled();
+      if (!token && !skipAuthCheck) {
+        throw new AuthRequiredError();
+      }
       const headers = new Headers({
-        'Authorization': `Bearer ${token}`,
         'Content-Type': `multipart/mixed; boundary=${boundary}`
       });
+      // Only set Authorization if token exists
+      if (token) {
+        headers.set('Authorization', `Bearer ${token}`);
+      }
       const res = await fetch(`${apiRoot}/$batch`, { method: 'POST', headers, body: batchBody });
       // E2E instrumentation (non-production impact): expose attempt count & last URL for debugging
       if (typeof window !== 'undefined') {

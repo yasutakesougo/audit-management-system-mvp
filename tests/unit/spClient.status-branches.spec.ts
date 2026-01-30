@@ -38,6 +38,7 @@ vi.mock('@/lib/env', async () => {
     getAppConfig: configGetter,
     skipSharePoint: vi.fn(() => false),
     shouldSkipLogin: vi.fn(() => false),
+    isE2eMsalMockEnabled: vi.fn(() => false),
   };
 });
 

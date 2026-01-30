@@ -10,6 +10,7 @@ vi.mock('@/lib/env', async () => {
     isDemoModeEnabled: () => true,
     skipSharePoint: () => false,
     shouldSkipLogin: () => false,
+    isE2eMsalMockEnabled: () => false,
   };
 });
 

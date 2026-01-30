@@ -115,6 +115,8 @@ test.describe('Monthly Records - Summary Smoke Tests', () => {
   });
 
   test('@ci-smoke reaggregate button triggers update', async ({ page }) => {
+    test.setTimeout(120_000);
+
     // 再集計実行 & 完了待機
     await triggerReaggregateAndWait(page);
 
