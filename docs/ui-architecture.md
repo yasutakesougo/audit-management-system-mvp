@@ -19,9 +19,9 @@ UI実装は、原則として以下の3層に分割する。
 - ビジネスロジック / API / localStorage に触らない
 - a11y（aria-label/role/tab order/aria-live）をここで完結させる
 
-**実装例（このプロジェクトの場合）**
-- `src/app/AppShell.tsx` : レイアウト・ナビゲーション中心（※権限・フラグ判定も含むためA/B境界）
-- `src/features/**/components/*` : 画面の表示コンポーネント群
+**実例（このリポジトリ内）**
+- [`src/app/AppShell.tsx`](https://github.com/yasutakesougo/audit-management-system-mvp/blob/main/src/app/AppShell.tsx) : レイアウト・ナビゲーション中心
+- `src/features/**/components/*` : 画面の表示コンポーネント群（例: `src/features/dashboard/`, `src/features/daily/`）
 
 ---
 
@@ -30,8 +30,8 @@ UI実装は、原則として以下の3層に分割する。
 - 取得・整形・フィルタ・ソート・ページング・バリデーション等の "状態の翻訳" を担う
 - UIが迷わない形で `viewModel` を返す
 
-**実装例（このプロジェクトの場合）**
-- `src/features/**/hooks/*` : 画面用の状態（例: `src/features/meeting/usePriorityFollowUsers.ts`）
+**実例（このリポジトリ内）**
+- `src/features/**/hooks/*` : 画面用の状態（例: `src/features/users/hooks/`, `src/features/schedules/hooks/`）
 - `src/hooks/*` : 横断の状態（auth / settings / capabilities など）
 
 ---
@@ -40,11 +40,12 @@ UI実装は、原則として以下の3層に分割する。
 - **責務**: SharePoint/Graph/Storage/Telemetry は「Adapter / Client」に閉じ込める
 - UIから直接 fetch しない
 
-**実装例（このプロジェクトの場合）**
-- `src/lib/spClient.ts` : SharePoint REST API クライアント
-- `src/lib/msal.ts` : 認証クライアント（存在する場合）
-- `src/infra/sharepoint/repos/*` : SharePoint schema mapping / repos
-- `src/adapters/*` : 外部I/Fの変換層
+**実例（このリポジトリ内）**
+- [`src/lib/spClient.ts`](https://github.com/yasutakesougo/audit-management-system-mvp/blob/main/src/lib/spClient.ts) : SharePoint REST API client
+- [`src/lib/msal.ts`](https://github.com/yasutakesougo/audit-management-system-mvp/blob/main/src/lib/msal.ts) : MSAL 認証トークン取得
+- [`src/lib/audit.ts`](https://github.com/yasutakesougo/audit-management-system-mvp/blob/main/src/lib/audit.ts) : localStorage への監査ログ書き込み
+- [`src/infra/sharepoint/repos/schedulesRepo.ts`](https://github.com/yasutakesougo/audit-management-system-mvp/blob/main/src/infra/sharepoint/repos/schedulesRepo.ts) : スケジュールリストの CRUD
+- `src/adapters/*` : 外部I/Fの変換層（必要なら）
 
 ---
 
@@ -72,7 +73,7 @@ type PermissionState = {
 ```
 
 ### ルール
-- 分岐は「状態」で行う（条件式の連鎖を避ける）
+- **分岐は「状態」で行う**（条件式の連鎖を避ける）
 - 状態は hook の返り値で表現し、UIはそれを描画するだけにする
 
 ### 推奨パターン（例）
@@ -94,12 +95,12 @@ return <SomethingList {...vm.propsForList} />;
 
 ### 禁止
 - derived state を二重保存して "同期地獄" を作ること  
-  （例: items と filteredItems を別々に setState する）
+  （例: `items` と `filteredItems` を別々に setState する）
 
 ### 推奨
-- derived は useMemo で計算し、入力（source）が変わったら自然に更新される構造にする
+- derived は `useMemo` で計算し、入力（source）が変わったら自然に更新される構造にする
 
-**例**
+**例**:
 ```tsx
 const users = useUsersStore((s) => s.users);
 
@@ -120,9 +121,9 @@ const filtered = useMemo(
 
 ### UIに置かないもの
 - API呼び出し、token取得、SharePointクエリ構築  
-  → adapter/client（C層）へ
+  → `src/lib/spClient.ts` / `src/lib/msal.ts` / `src/infra/sharepoint/repos/*` へ
 - 重要なバリデーション（UIはエラー表示だけ担当）
-- localStorage 永続化（storage/telemetry などのC層へ）
+- localStorage 永続化（`src/lib/audit.ts` / `src/lib/notice.ts` へ）
 
 ---
 
@@ -133,33 +134,60 @@ const filtered = useMemo(
 ### エラー分類（最低限）
 
 | 種別 | 例 | UI導線 |
-|------|-----|---------|
-| ConfigError | 環境変数・設定不備 | 起動/導線で必ず救う |
-| AuthError | 401 / 認証必須 | サインイン促し |
-| NetworkError | timeout / 5xx | 再試行・オフライン |
-| ConflictError | 412 / ETag | 再読込 or 上書き選択 |
-| PermissionError | 403 | 権限説明 |
+|------|---|--------|
+| `ConfigError` | 環境変数・設定不備 | 起動/導線で必ず救う |
+| `AuthError` | 401 / 認証必須 | サインイン促し |
+| `NetworkError` | timeout / 5xx | 再試行・オフライン |
+| `ConflictError` | 412 / ETag | 再読込 or 上書き選択 |
+| `PermissionError` | 403 | 権限説明 |
 
-UI側は `error.kind` を見て、適切な ErrorState を出す。
+UI側は `error.kind` を見て、適切な `ErrorState` を出す。
+
+**実例**: [`src/lib/notice.ts`](https://github.com/yasutakesougo/audit-management-system-mvp/blob/main/src/lib/notice.ts) の `withUserMessage()` で分類
 
 ---
 
 ## 6. 競合（412 / ETag）と冪等性を "UIの仕様" に含める
 
 - 更新系は原則 ETag を使う（競合を検知できる）
-- バッチ/重複は entryHash 等で冪等化する
-- UIは conflict を 1つの明確な状態として扱う（トーストだけで終わらせない）
+- バッチ/重複は `entryHash` 等で冪等化する
+- UIは `conflict` を 1つの明確な状態として扱う（トーストだけで終わらせない）
+
+**実例**: [`src/infra/sharepoint/repos/schedulesRepo.ts`](https://github.com/yasutakesougo/audit-management-system-mvp/blob/main/src/infra/sharepoint/repos/schedulesRepo.ts) で ETag 付き更新
+
+```typescript
+await useSP().updateItem(
+  'Schedules',
+  id,
+  payload,
+  { etag: schedule.etag } // 412 if stale
+);
+```
 
 ---
 
 ## 7. Feature Flags は "UI分岐" ではなく "ルーティング/能力" で制御する
 
-- featureFlags は画面単位（route単位）でオン/オフ
+- `featureFlags` は画面単位（route単位）でオン/オフ
 - UI内部で `if(flag)...` を散らさない（見通しが悪化する）
 
-### 推奨:
-- routes で gate する
-- capabilities（canRead/canWrite/canUseX）を hook で返す
+**推奨**:
+- `routes` で gate する
+- `capabilities`（canRead/canWrite/canUseX）を hook で返す
+
+**実例**: [`src/lib/env.ts`](https://github.com/yasutakesougo/audit-management-system-mvp/blob/main/src/lib/env.ts) で読み取り、`src/app/routes.tsx` でルート制御
+
+```typescript
+export const readViteBool = (key: string, fallback = false): boolean => {
+  // ビルド時に決まるフラグ
+};
+
+// routes.tsx
+{
+  path: '/schedules',
+  element: readViteBool('VITE_ENABLE_SCHEDULES') ? <SchedulesPage /> : <NotFound />,
+}
+```
 
 ---
 
@@ -172,23 +200,51 @@ UI側は `error.kind` を見て、適切な ErrorState を出す。
 ### E2E（Playwright）
 - "重要シナリオ最小数" に絞る（フレーク回避）
 - data-testid は安定キー（見た目変更に耐える）
+- **実例**: `tests/e2e/smoke/` - サインイン/ダッシュボード/記録保存
 
 ---
 
 ## 9. レビュー時チェックリスト（5問）
 
-1. このUIは **状態を持ちすぎていないか？**（hookへ逃がせるか）
-2. API/永続化/telemetry が **UIに漏れていないか？**
-3. 分岐は **操作ではなく状態で表現されているか？**
-4. error が **分類され、救済導線があるか？**
-5. テストは **UIの結果（状態→描画）**を見ているか？
+PRレビューでは次の5問で判定する。
+
+1. このUIは **状態を持ちすぎていないか**？（hookへ逃がせるか）
+2. API/永続化/telemetry が **UIに漏れていないか**？
+3. 分岐は **操作ではなく状態**で表現されているか？
+4. error が **分類され、救済導線があるか**？
+5. テストは **UIの結果（状態→描画）** を見ているか？
 
 ---
 
-## Appendix: 具体例（Before / After）
+## Appendix A: 推奨ディレクトリ構造（実例マッピング）
+
+```
+src/
+├── features/<feature>/
+│   ├── components/*     : presentational (A層)
+│   ├── hooks/*          : state (B層)
+│   └── data/*           : adapters/clients (C層) ※まだ少数
+├── lib/*                : cross-cutting clients (useSP, auth, telemetry) (C層)
+├── infra/sharepoint/    : SharePoint schema mapping & repos (C層)
+├── adapters/*           : external API clients (C層)
+├── app/*                : shell, routing, theme, flags
+├── components/*         : shared presentational (A層)
+└── hooks/*              : shared state (B層)
+```
+
+| 層 | 実ファイル例（このリポジトリ内） |
+|----|-------------------------------|
+| **A (Presentational)** | [`src/app/AppShell.tsx`](https://github.com/yasutakesougo/audit-management-system-mvp/blob/main/src/app/AppShell.tsx), `src/features/dashboard/components/*`, `src/features/daily/components/*` |
+| **B (State)** | `src/features/users/hooks/*`, `src/features/schedules/hooks/*`, `src/hooks/useAuth.ts` |
+| **C (Side effects)** | [`src/lib/spClient.ts`](https://github.com/yasutakesougo/audit-management-system-mvp/blob/main/src/lib/spClient.ts), [`src/lib/msal.ts`](https://github.com/yasutakesougo/audit-management-system-mvp/blob/main/src/lib/msal.ts), [`src/lib/audit.ts`](https://github.com/yasutakesougo/audit-management-system-mvp/blob/main/src/lib/audit.ts), [`src/infra/sharepoint/repos/schedulesRepo.ts`](https://github.com/yasutakesougo/audit-management-system-mvp/blob/main/src/infra/sharepoint/repos/schedulesRepo.ts) |
+
+---
+
+## Appendix B: 具体例（Before / After）
 
 ### Before（混在）
 ```tsx
+// ❌ API呼び出し、state、UIが全部混ざっている
 function SomePage() {
   const [items, setItems] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
@@ -207,18 +263,19 @@ function SomePage() {
 
 ### After（3層分離）
 ```tsx
-// A: UI（将来の理想形 - TimeFlowSupportRecordPage.tsx は現在1877行で分割候補）
+// ✅ A層: Presentational (UI)
 function SomePage() {
-  const vm = useItemsViewModel(); // B
+  const vm = useItemsViewModel(); // B層
+
   if (vm.state === 'loading') return <Spinner />;
   if (vm.state === 'error') return <ErrorState error={vm.error} />;
   if (vm.state === 'empty') return <EmptyState />;
   return <List items={vm.items} onSelect={vm.select} />;
 }
 
-// B: state（例: src/features/meeting/hooks/useItemsViewModel.ts）
+// ✅ B層: State (hooks/useItemsViewModel.ts)
 function useItemsViewModel() {
-  const q = useItemsQuery(); // C を使う hook
+  const q = useItemsQuery(); // C層を使う hook
   const items = useMemo(() => q.data ?? [], [q.data]);
 
   if (q.isLoading) return { state: 'loading' as const };
@@ -232,38 +289,20 @@ function useItemsViewModel() {
   };
 }
 
-// C: side effects（例: src/lib/spClient.ts）
-// SharePoint REST API client に実装
+// ✅ C層: Side effects (lib/spClient.ts)
+async function fetchItems() {
+  return useSP().queryItems('Items', { top: 50 });
+}
 ```
 
 ---
 
----
+## まとめ
 
-## 📝 実装ノート（現状と理想の差分）
+- **状態 = 設計単位**（操作ではなく）
+- **3層分離**（A: UI / B: hooks / C: adapters）
+- **エラーは分類**（握りつぶさない）
+- **Feature Flags はルート層**（UIに散らさない）
+- **テストは結果を見る**（状態→描画）
 
-### 現状の課題
-
-**大規模ページコンポーネント**
-- `src/pages/TimeFlowSupportRecordPage.tsx` (1877行)
-  - 状態管理・UI・ビジネスロジックが混在
-  - **推奨**: hooks抽出 + 表示コンポーネント分割
-
-**A/B境界コンポーネント**
-- `src/app/AppShell.tsx` (1066行)
-  - レイアウト（A層）+ 権限判定・フラグ（B層）が同居
-  - **現実解**: シェルレベルでは許容範囲。ただし責務が明確に分離されていることを意識
-
-### リファクタ優先順位
-
-1. **高**: 1000行超えのページ → hooks + components分割
-2. **中**: 複数の状態管理パターンが混在する画面 → viewModel統一
-3. **低**: A/B境界の明確化（機能への影響小）
-
----
-
-## ✅ 関連ドキュメント
-
-- [ARCHITECTURE_GUARDS.md](../ARCHITECTURE_GUARDS.md) : アーキテクチャルール全般
-- [docs/E2E_TEST_STRATEGY.md](./E2E_TEST_STRATEGY.md) : E2Eテスト戦略
-- [.github/copilot-instructions.md](../.github/copilot-instructions.md) : プロジェクト固有のコーディング規約
+**次のステップ**: PR時に「5問チェック」を使い、違反箇所を指摘する。
