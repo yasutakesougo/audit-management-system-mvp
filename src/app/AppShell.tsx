@@ -591,7 +591,7 @@ const AppShell: React.FC<{ children: React.ReactNode }> = ({ children }) => {
                 easing: theme.transitions.easing.sharp,
                 duration: theme.transitions.duration.enteringScreen,
               }),
-              '& .MuiDrawer-paper': { width: currentDrawerWidth, boxSizing: 'border-box', top: 64, height: 'calc(100vh - 64px - 80px)', transition: theme.transitions.create('width', {
+              '& .MuiDrawer-paper': { width: currentDrawerWidth, boxSizing: 'border-box', top: 64, bottom: 80, transition: theme.transitions.create('width', {
                 easing: theme.transitions.easing.sharp,
                 duration: theme.transitions.duration.enteringScreen,
               }) },
