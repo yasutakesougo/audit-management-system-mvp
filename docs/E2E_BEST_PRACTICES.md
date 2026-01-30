@@ -45,6 +45,11 @@ await waitForLocator(page.locator('[data-testid="nav-dashboard"]'));
 - [tests/e2e/monthly.summary-smoke.spec.ts](../tests/e2e/monthly.summary-smoke.spec.ts) - Two-layer wait
 - [tests/e2e/schedule-smoke.spec.ts](../tests/e2e/schedule-smoke.spec.ts) - Two-layer wait
 
+## Other gates
+
+- Performance tests are gated by default to keep CI deterministic.
+- To run locally: `PERF_TEST=1 npm run test -- ruleEngine.spec.ts`
+
 ## Related PRs
 
 - PR #259: Fixed network/auth blocking

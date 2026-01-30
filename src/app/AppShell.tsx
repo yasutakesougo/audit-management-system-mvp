@@ -619,7 +619,6 @@ const AppShell: React.FC<{ children: React.ReactNode }> = ({ children }) => {
                 />
               </Box>
               {renderGroupedNavList(handleMobileNavigate)}
-              {renderGroupedNavList(handleMobileNavigate)}
             </Box>
           </Drawer>
         )}
