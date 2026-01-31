@@ -404,27 +404,43 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ audience = 'staff' }) => 
     owner?: string;
   };
 
-  const scheduleLanes = useMemo<{ userLane: ScheduleItem[]; staffLane: ScheduleItem[]; organizationLane: ScheduleItem[] }>(() => {
-    const userLane = users.slice(0, 3).map((user, index) => ({
+  const [scheduleLanesToday, scheduleLanesTomorrow] = useMemo<[
+    { userLane: ScheduleItem[]; staffLane: ScheduleItem[]; organizationLane: ScheduleItem[] },
+    { userLane: ScheduleItem[]; staffLane: ScheduleItem[]; organizationLane: ScheduleItem[] },
+  ]>(() => {
+    const baseUserLane = users.slice(0, 3).map((user, index) => ({
       id: `user-${index}`,
       time: `${(9 + index).toString().padStart(2, '0')}:00`,
       title: `${user.FullName ?? `利用者${index + 1}`} ${['作業プログラム', '個別支援', 'リハビリ'][index % 3]}`,
       location: ['作業室A', '相談室1', '療育室'][index % 3],
     }));
-    const staffLane = [
+    const baseStaffLane = [
       { id: 'staff-1', time: '08:45', title: '職員朝会 / 申し送り確認', owner: '生活支援課' },
       { id: 'staff-2', time: '11:30', title: '通所記録レビュー', owner: '管理責任者' },
       { id: 'staff-3', time: '15:30', title: '支援手順フィードバック会議', owner: '専門職チーム' },
     ];
-    const organizationLane: ScheduleItem[] = [
+    const baseOrganizationLane: ScheduleItem[] = [
       { id: 'org-1', time: '10:00', title: '自治体監査ヒアリング', owner: '法人本部' },
       { id: 'org-2', time: '13:30', title: '家族向け連絡会資料確認', owner: '連携推進室' },
       { id: 'org-3', time: '16:00', title: '設備点検結果共有', owner: '施設管理' },
     ];
-    return { userLane, staffLane, organizationLane };
+
+    const today = {
+      userLane: baseUserLane,
+      staffLane: baseStaffLane,
+      organizationLane: baseOrganizationLane,
+    };
+
+    const tomorrow = {
+      userLane: baseUserLane,
+      staffLane: baseStaffLane,
+      organizationLane: baseOrganizationLane,
+    };
+
+    return [today, tomorrow];
   }, [users]);
 
-  const renderScheduleLanes = (title: string, lanes: typeof scheduleLanes) => (
+  const renderScheduleLanes = (title: string, lanes: { userLane: ScheduleItem[]; staffLane: ScheduleItem[]; organizationLane: ScheduleItem[] }) => (
     <Card>
       <CardContent>
         <Typography variant="h6" sx={{ mb: 2 }}>
@@ -665,9 +681,9 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ audience = 'staff' }) => 
             </Typography>
             <Grid container spacing={2}>
               {[
-                { label: '利用者レーン', items: scheduleLanes.userLane },
-                { label: '職員レーン', items: scheduleLanes.staffLane },
-                { label: '組織レーン', items: scheduleLanes.organizationLane },
+                { label: '利用者レーン', items: scheduleLanesToday.userLane },
+                { label: '職員レーン', items: scheduleLanesToday.staffLane },
+                { label: '組織レーン', items: scheduleLanesToday.organizationLane },
               ].map(({ label, items }) => (
                 <Grid key={label} size={{ xs: 12, md: 4 }}>
                   <Paper variant="outlined" sx={{ p: 2, height: '100%' }}>
@@ -1085,7 +1101,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ audience = 'staff' }) => 
                     </CardContent>
                   </Card>
 
-                  {renderScheduleLanes('今日の予定', scheduleLanes)}
+                  {renderScheduleLanes('今日の予定', scheduleLanesToday)}
                 </Stack>
               </CardContent>
             </Card>
@@ -1163,7 +1179,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ audience = 'staff' }) => 
                     onOpenTimeline={() => openTimeline('today')}
                   />
 
-                  {renderScheduleLanes('明日の予定', scheduleLanes)}
+                  {renderScheduleLanes('明日の予定', scheduleLanesTomorrow)}
                 </Stack>
               </CardContent>
             </Card>
