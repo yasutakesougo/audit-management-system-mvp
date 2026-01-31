@@ -6,6 +6,7 @@ import {
   Typography,
   CircularProgress,
   Alert,
+  Chip,
   Table,
   TableBody,
   TableCell,
@@ -33,7 +34,20 @@ function todayISO(): string {
 export default function StaffAttendanceAdminPage(): JSX.Element {
   const [date, setDate] = useState<string>(() => todayISO());
   const admin = useStaffAttendanceAdmin(date);
-  const { items, loading, error, saving, save, port, recordDate, refetch, writeEnabled, readOnlyReason } = admin;
+  const {
+    items,
+    loading,
+    error,
+    saving,
+    save,
+    port,
+    recordDate,
+    refetch,
+    writeEnabled,
+    readOnlyReason,
+    connectionStatus,
+    connectionLabel,
+  } = admin;
 
   const bulk = useStaffAttendanceBulk({
     port,
@@ -77,6 +91,21 @@ export default function StaffAttendanceAdminPage(): JSX.Element {
           </Typography>
 
           <Stack direction="row" spacing={1} alignItems="center">
+            <Chip
+              size="small"
+              label={connectionLabel}
+              color={
+                connectionStatus === 'connected'
+                  ? 'success'
+                  : connectionStatus === 'checking'
+                    ? 'default'
+                    : connectionStatus === 'local'
+                      ? 'info'
+                      : 'warning'
+              }
+              variant={connectionStatus === 'local' ? 'outlined' : 'filled'}
+              data-testid="staff-attendance-connection"
+            />
             <ToggleButton
               value="bulk"
               selected={bulk.bulkMode}
