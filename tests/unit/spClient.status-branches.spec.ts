@@ -1,9 +1,7 @@
-import { createSpClient } from '@/lib/spClient';
 import { afterAll, beforeEach, describe, expect, it, vi } from 'vitest';
 
-vi.mock('@/lib/env', async () => {
-  const actual = await vi.importActual<typeof import('@/lib/env')>('@/lib/env');
-  const baseConfig = {
+const { configGetter } = vi.hoisted(() => {
+  const cfg = {
     VITE_SP_RESOURCE: 'https://contoso.sharepoint.com',
     VITE_SP_SITE_RELATIVE: '/sites/demo',
     VITE_SP_RETRY_MAX: '2',
@@ -24,9 +22,23 @@ vi.mock('@/lib/env', async () => {
     schedulesWeekStart: 1,
     isDev: false,
   } as const;
+  
+  const getter = vi.fn(() => cfg);
+  
+  return {
+    baseConfig: cfg,
+    configGetter: getter,
+  };
+});
+
+vi.mock('@/lib/env', async () => {
+  const actual = await vi.importActual<typeof import('@/lib/env')>('@/lib/env');
   return {
     ...actual,
-    getAppConfig: vi.fn(() => baseConfig),
+    getAppConfig: configGetter,
+    skipSharePoint: vi.fn(() => false),
+    shouldSkipLogin: vi.fn(() => false),
+    isE2eMsalMockEnabled: vi.fn(() => false),
   };
 });
 
@@ -35,6 +47,8 @@ vi.mock('@/lib/debugLogger', () => ({
     debug: vi.fn(),
   },
 }));
+
+import { createSpClient } from '@/lib/spClient';
 
 describe('createSpClient retry branches', () => {
   const baseUrl = 'https://contoso.sharepoint.com/sites/demo/_api/web';

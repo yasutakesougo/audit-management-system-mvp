@@ -1,7 +1,47 @@
 // SharePoint連携用のデータ変換とUpsert処理
 // Power AutomateとTypeScriptで共通利用
 
-import type { MonthlyRecordKey, MonthlySummary, YearMonth } from './types';
+import type { IsoDate, MonthlyRecordKey, MonthlySummary, MonthlySummaryId, YearMonth } from './types';
+
+/**
+ * 文字列が YearMonth 形式（YYYY-MM, 月01〜12）かを検証
+ */
+export function parseYearMonth(value: unknown): YearMonth | null {
+  if (typeof value !== 'string') return null;
+  
+  // YYYY-MM 形式チェック（月は01〜12）
+  const match = /^(\d{4})-(0[1-9]|1[0-2])$/.exec(value);
+  if (!match) return null;
+  
+  return value as YearMonth;
+}
+
+/**
+ * YearMonth を文字列にフォーマット（検証済みなのでそのまま返す）
+ */
+export function formatYearMonth(yearMonth: YearMonth): string {
+  return yearMonth;
+}
+
+/**
+ * 文字列が IsoDate 形式（YYYY-MM-DD）かを検証
+ */
+export function parseIsoDate(value: unknown): IsoDate | null {
+  if (typeof value !== 'string') return null;
+  
+  // YYYY-MM-DD 形式チェック（月01〜12、日01〜31の簡易チェック）
+  const match = /^(\d{4})-(0[1-9]|1[0-2])-(0[1-9]|[12]\d|3[01])$/.exec(value);
+  if (!match) return null;
+  
+  return value as IsoDate;
+}
+
+/**
+ * MonthlySummaryId を生成（userId__yearMonth）
+ */
+export function generateMonthlySummaryId(userId: string, yearMonth: YearMonth): MonthlySummaryId {
+  return `${userId}__${yearMonth}` as MonthlySummaryId;
+}
 
 /**
  * 日付から YearMonth 形式に変換（UTC基準）
@@ -85,12 +125,22 @@ export interface SharePointMonthlyItem {
 }
 
 /**
- * SharePointフィールドからMonthlySummaryに変換
+ * SharePointフィールドからMonthlySummaryに変換（型検証付き）
  */
 export function fromSharePointFields(fields: SharePointMonthlyItem): MonthlySummary {
+  // YearMonth 検証
+  const yearMonth = parseYearMonth(fields.YearMonth);
+  if (!yearMonth) {
+    throw new Error(`Invalid YearMonth format: ${fields.YearMonth}`);
+  }
+
+  // IsoDate 検証（optional なので null も許可）
+  const firstEntryDate = fields.FirstEntryDate ? parseIsoDate(fields.FirstEntryDate) ?? undefined : undefined;
+  const lastEntryDate = fields.LastEntryDate ? parseIsoDate(fields.LastEntryDate) ?? undefined : undefined;
+
   return {
     userId: fields.UserCode,
-    yearMonth: fields.YearMonth as YearMonth,
+    yearMonth,
     displayName: fields.DisplayName,
     lastUpdatedUtc: fields.LastUpdated,
     kpi: {
@@ -103,8 +153,8 @@ export function fromSharePointFields(fields: SharePointMonthlyItem): MonthlySumm
       incidents: fields.KPI_Incidents || 0,
     },
     completionRate: fields.CompletionRate || 0,
-    firstEntryDate: fields.FirstEntryDate || undefined,
-    lastEntryDate: fields.LastEntryDate || undefined,
+    firstEntryDate,
+    lastEntryDate,
   };
 }
 

@@ -14,7 +14,11 @@ vi.mock('@/env', async () => {
   const actual = await vi.importActual<typeof import('@/env')>('@/env');
   return {
     ...actual,
-    isE2E: false, // E2Eモードを無効にしてテスト環境で正常動作させる
+    isE2E: false,
+    getFlag: vi.fn((key: string) => {
+      if (key === 'VITE_E2E') return false;
+      return actual.getFlag(key, false);
+    }),
   };
 });
 

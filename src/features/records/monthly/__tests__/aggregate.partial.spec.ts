@@ -4,7 +4,7 @@ import {
     extractRecordDateRange,
     shouldUpdateSummary
 } from '../aggregate';
-import type { DailyRecord, MonthlySummary, YearMonth } from '../types';
+import type { DailyRecord, IsoDate, MonthlySummary, YearMonth } from '../types';
 
 describe('部分入力・未完了ケーステスト', () => {
   const createDailyRecord = (
@@ -17,7 +17,7 @@ describe('部分入力・未完了ケーステスト', () => {
     id: `record_${date}`,
     userId: 'USER001',
     userName: 'テスト太郎',
-    recordDate: date,
+    recordDate: date as IsoDate,
     completed,
     hasSpecialNotes,
     hasIncidents,
@@ -40,7 +40,7 @@ describe('部分入力・未完了ケーステスト', () => {
 
     expect(summary.kpi.completedRows).toBe(0);
     expect(summary.kpi.inProgressRows).toBe(0);
-    expect(summary.kpi.emptyRows).toBe(3);
+    expect(summary.kpi.emptyRows).toBe(399); // plannedRows - completedRows - inProgressRows (2024年9月は21営業日 = 399行)
     expect(summary.completionRate).toBe(0); // 0%
     expect(summary.firstEntryDate).toBeUndefined(); // 空記録は除外
     expect(summary.lastEntryDate).toBeUndefined();
@@ -91,7 +91,7 @@ describe('部分入力・未完了ケーステスト', () => {
 
     expect(summary.kpi.completedRows).toBe(2);
     expect(summary.kpi.inProgressRows).toBe(1);
-    expect(summary.kpi.emptyRows).toBe(1);
+    expect(summary.kpi.emptyRows).toBe(399 - 2 - 1); // plannedRows - completedRows - inProgressRows (2024年11月は21営業日 = 399行)
     expect(summary.kpi.incidents).toBe(1);
     expect(summary.firstEntryDate).toBe('2024-11-01'); // 空記録除く
     expect(summary.lastEntryDate).toBe('2024-11-11'); // 空記録除く
@@ -126,7 +126,7 @@ describe('extractRecordDateRange - 記録日範囲抽出テスト', () => {
     id: `record_${date}`,
     userId: 'USER001',
     userName: 'テスト太郎',
-    recordDate: date,
+    recordDate: date as IsoDate,
     completed: !isEmpty,
     hasSpecialNotes: false,
     hasIncidents: false,

@@ -10,7 +10,7 @@ import type { Theme } from '@mui/material/styles';
 import React, { type FocusEventHandler } from 'react';
 import { useNavigate } from 'react-router-dom';
 
-type ViewMode = 'day' | 'week' | 'month';
+type ViewMode = 'day' | 'week' | 'timeline' | 'month';
 type ViewModeOption = ViewMode;
 
 type Props = {
@@ -25,6 +25,7 @@ type Props = {
   children?: React.ReactNode;
   dayHref?: string;
   weekHref?: string;
+  timelineHref?: string;
   monthHref?: string;
   rangeLabelId?: string;
   rangeAriaLive?: 'polite' | 'assertive' | 'off';
@@ -65,6 +66,7 @@ export const SchedulesHeader: React.FC<Props> = ({
   children,
   dayHref = '/schedules/day',
   weekHref = '/schedules/week',
+  timelineHref = '/schedules/timeline',
   monthHref = '/schedules/month',
   rangeLabelId,
   rangeAriaLive = 'polite',
@@ -90,7 +92,7 @@ export const SchedulesHeader: React.FC<Props> = ({
   prevButtonLabel = '前の期間',
   nextButtonLabel = '次の期間',
   todayButtonLabel = '今日へ移動',
-  modes = ['day', 'week', 'month'],
+  modes = ['day', 'week', 'timeline', 'month'],
 }) => {
   const navigate = useNavigate();
   const isSmall = useMediaQuery((theme: Theme) => theme.breakpoints.down('sm'));
@@ -99,7 +101,7 @@ export const SchedulesHeader: React.FC<Props> = ({
     if (value === mode) {
       return;
     }
-    const nextHref = { day: dayHref, week: weekHref, month: monthHref }[value];
+    const nextHref = { day: dayHref, week: weekHref, timeline: timelineHref, month: monthHref }[value];
     if (!nextHref) return;
     navigate(nextHref);
   };
@@ -137,10 +139,11 @@ export const SchedulesHeader: React.FC<Props> = ({
             width: isSmall ? '100%' : 'auto',
           }}
         >
-          <Tabs value={mode} onChange={handleTabChange} aria-label={tablistLabel} sx={{ flexShrink: 0 }}>
-            {modes.includes('day') && <Tab label="日" value="day" sx={{ minHeight: 40 }} />}
-            {modes.includes('week') && <Tab label="週" value="week" sx={{ minHeight: 40 }} />}
-            {modes.includes('month') && <Tab label="月" value="month" sx={{ minHeight: 40 }} />}
+          <Tabs value={mode} onChange={handleTabChange} aria-label={tablistLabel} sx={{ flexShrink: 0 }} data-testid="schedules-view-tabs">
+            {modes.includes('day') && <Tab label="日" value="day" sx={{ minHeight: 40 }} data-testid="schedules-view-tab-day" />}
+            {modes.includes('week') && <Tab label="週" value="week" sx={{ minHeight: 40 }} data-testid="schedules-view-tab-week" />}
+            {modes.includes('timeline') && <Tab label="タイムライン" value="timeline" sx={{ minHeight: 40 }} data-testid="schedules-view-tab-timeline" />}
+            {modes.includes('month') && <Tab label="月" value="month" sx={{ minHeight: 40 }} data-testid="schedules-view-tab-month" />}
           </Tabs>
         </Box>
 

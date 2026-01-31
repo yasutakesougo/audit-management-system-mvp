@@ -1,0 +1,110 @@
+
+> audit-management-system-mvp@0.1.0 ci:integration:staff
+> PLAYWRIGHT_PROJECT=integration npx playwright test tests/integration/staffMaster.sp.integration.spec.ts --project=integration --reporter=line
+
+
+Running 4 tests using 1 worker
+
+[1A[2K[2m[WebServer] [22m[baseline-browser-mapping] The data in this module is over two months old.  To ensure accurate Baseline data, please update: `npm i baseline-browser-mapping@latest -D`
+
+[1A[2K[1/4] [integration] › tests/integration/_shared/runListIntegration.ts:7:9 › [integration][list] Staff_Master › reachability
+[1A[2K  1) [integration] › tests/integration/_shared/runListIntegration.ts:7:9 › [integration][list] Staff_Master › reachability 
+
+    Error: [integration] Staff_Master:reachability failed: 403
+    url=https://isogokatudouhome.sharepoint.com/sites/welfare/_api/web/lists/GetByTitle('Staff_Master')/items?$select=Id&$top=1
+    sprequestguid=87ddeea1-60df-6000-69df-beb4ab3eb509
+    body=<?xml version="1.0" encoding="utf-8"?><m:error xmlns:m="http://schemas.microsoft.com/ado/2007/08/dataservices/metadata"><m:code>-2147024891, System.UnauthorizedAccessException</m:code><m:message xml:lang="ja-JP">Attempted to perform an unauthorized operation.</m:message></m:error>
+
+       at tests/integration/_shared/spHttp.ts:25
+
+      23 |   const snippet = body.slice(0, 400);
+      24 |
+    > 25 |   throw new Error(
+         |         ^
+      26 |     `[integration] ${ctx.op} failed: ${status}\n` +
+      27 |       `url=${ctx.url}\n` +
+      28 |       `sprequestguid=${sprequestguid}\n` +
+        at ensureOk (/Users/yasutakesougo/audit-management-system-mvp/tests/integration/_shared/spHttp.ts:25:9)
+        at Object.get (/Users/yasutakesougo/audit-management-system-mvp/tests/integration/_shared/spHttp.ts:46:7)
+        at Object.reachability (/Users/yasutakesougo/audit-management-system-mvp/tests/integration/_shared/listSpecFactory.ts:78:19)
+        at /Users/yasutakesougo/audit-management-system-mvp/tests/integration/_shared/runListIntegration.ts:9:7
+
+
+[1A[2K[2/4] [integration] › tests/integration/_shared/runListIntegration.ts:12:9 › [integration][list] Staff_Master › schema
+[1A[2K  2) [integration] › tests/integration/_shared/runListIntegration.ts:12:9 › [integration][list] Staff_Master › schema 
+
+    Error: [integration] Staff_Master:listByKey failed: 403
+    url=https://isogokatudouhome.sharepoint.com/sites/welfare/_api/web/lists/GetByTitle('Staff_Master')/items?$select=Id,StaffID,Title,StaffID,FullName,Role,IsActive,Department,HireDate,Email&$filter=StaffID%20eq%20'E2E_INTEGRATION_STAFF_0001'&$top=5
+    sprequestguid=87ddeea1-10fd-6000-8015-0167d5f506d2
+    body=<?xml version="1.0" encoding="utf-8"?><m:error xmlns:m="http://schemas.microsoft.com/ado/2007/08/dataservices/metadata"><m:code>-2147024891, System.UnauthorizedAccessException</m:code><m:message xml:lang="ja-JP">Attempted to perform an unauthorized operation.</m:message></m:error>
+
+       at tests/integration/_shared/spHttp.ts:25
+
+      23 |   const snippet = body.slice(0, 400);
+      24 |
+    > 25 |   throw new Error(
+         |         ^
+      26 |     `[integration] ${ctx.op} failed: ${status}\n` +
+      27 |       `url=${ctx.url}\n` +
+      28 |       `sprequestguid=${sprequestguid}\n` +
+        at ensureOk (/Users/yasutakesougo/audit-management-system-mvp/tests/integration/_shared/spHttp.ts:25:9)
+        at Object.get (/Users/yasutakesougo/audit-management-system-mvp/tests/integration/_shared/spHttp.ts:46:7)
+        at fetchByKey (/Users/yasutakesougo/audit-management-system-mvp/tests/integration/_shared/listSpecFactory.ts:51:17)
+        at Object.schema (/Users/yasutakesougo/audit-management-system-mvp/tests/integration/_shared/listSpecFactory.ts:83:20)
+        at /Users/yasutakesougo/audit-management-system-mvp/tests/integration/_shared/runListIntegration.ts:14:7
+
+
+[1A[2K[3/4] [integration] › tests/integration/_shared/runListIntegration.ts:17:9 › [integration][list] Staff_Master › idempotent upsert
+[1A[2K  3) [integration] › tests/integration/_shared/runListIntegration.ts:17:9 › [integration][list] Staff_Master › idempotent upsert 
+
+    Error: [integration] Staff_Master:listByKey failed: 403
+    url=https://isogokatudouhome.sharepoint.com/sites/welfare/_api/web/lists/GetByTitle('Staff_Master')/items?$select=Id,StaffID,Title,StaffID,FullName,Role,IsActive,Department,HireDate,Email&$filter=StaffID%20eq%20'E2E_INTEGRATION_STAFF_0001'&$top=5
+    sprequestguid=88ddeea1-1018-6000-69df-b7e8a52e7869
+    body=<?xml version="1.0" encoding="utf-8"?><m:error xmlns:m="http://schemas.microsoft.com/ado/2007/08/dataservices/metadata"><m:code>-2147024891, System.UnauthorizedAccessException</m:code><m:message xml:lang="ja-JP">Attempted to perform an unauthorized operation.</m:message></m:error>
+
+       at tests/integration/_shared/spHttp.ts:25
+
+      23 |   const snippet = body.slice(0, 400);
+      24 |
+    > 25 |   throw new Error(
+         |         ^
+      26 |     `[integration] ${ctx.op} failed: ${status}\n` +
+      27 |       `url=${ctx.url}\n` +
+      28 |       `sprequestguid=${sprequestguid}\n` +
+        at ensureOk (/Users/yasutakesougo/audit-management-system-mvp/tests/integration/_shared/spHttp.ts:25:9)
+        at Object.get (/Users/yasutakesougo/audit-management-system-mvp/tests/integration/_shared/spHttp.ts:46:7)
+        at fetchByKey (/Users/yasutakesougo/audit-management-system-mvp/tests/integration/_shared/listSpecFactory.ts:51:17)
+        at upsertOnce (/Users/yasutakesougo/audit-management-system-mvp/tests/integration/_shared/listSpecFactory.ts:58:20)
+        at Object.idempotentUpsert (/Users/yasutakesougo/audit-management-system-mvp/tests/integration/_shared/listSpecFactory.ts:90:21)
+        at /Users/yasutakesougo/audit-management-system-mvp/tests/integration/_shared/runListIntegration.ts:19:7
+
+
+[1A[2K[4/4] [integration] › tests/integration/_shared/runListIntegration.ts:22:9 › [integration][list] Staff_Master › deactivate/resolve
+[1A[2K  4) [integration] › tests/integration/_shared/runListIntegration.ts:22:9 › [integration][list] Staff_Master › deactivate/resolve 
+
+    Error: [integration] Staff_Master:listByKey failed: 403
+    url=https://isogokatudouhome.sharepoint.com/sites/welfare/_api/web/lists/GetByTitle('Staff_Master')/items?$select=Id,StaffID,Title,StaffID,FullName,Role,IsActive,Department,HireDate,Email&$filter=StaffID%20eq%20'E2E_INTEGRATION_STAFF_0001'&$top=5
+    sprequestguid=88ddeea1-803b-6000-69df-bbb031dc5eaa
+    body=<?xml version="1.0" encoding="utf-8"?><m:error xmlns:m="http://schemas.microsoft.com/ado/2007/08/dataservices/metadata"><m:code>-2147024891, System.UnauthorizedAccessException</m:code><m:message xml:lang="ja-JP">Attempted to perform an unauthorized operation.</m:message></m:error>
+
+       at tests/integration/_shared/spHttp.ts:25
+
+      23 |   const snippet = body.slice(0, 400);
+      24 |
+    > 25 |   throw new Error(
+         |         ^
+      26 |     `[integration] ${ctx.op} failed: ${status}\n` +
+      27 |       `url=${ctx.url}\n` +
+      28 |       `sprequestguid=${sprequestguid}\n` +
+        at ensureOk (/Users/yasutakesougo/audit-management-system-mvp/tests/integration/_shared/spHttp.ts:25:9)
+        at Object.get (/Users/yasutakesougo/audit-management-system-mvp/tests/integration/_shared/spHttp.ts:46:7)
+        at fetchByKey (/Users/yasutakesougo/audit-management-system-mvp/tests/integration/_shared/listSpecFactory.ts:51:17)
+        at Object.deactivateIfNeeded (/Users/yasutakesougo/audit-management-system-mvp/tests/integration/_shared/listSpecFactory.ts:104:20)
+        at /Users/yasutakesougo/audit-management-system-mvp/tests/integration/_shared/runListIntegration.ts:24:7
+
+
+[1A[2K  4 failed
+    [integration] › tests/integration/_shared/runListIntegration.ts:7:9 › [integration][list] Staff_Master › reachability 
+    [integration] › tests/integration/_shared/runListIntegration.ts:12:9 › [integration][list] Staff_Master › schema 
+    [integration] › tests/integration/_shared/runListIntegration.ts:17:9 › [integration][list] Staff_Master › idempotent upsert 
+    [integration] › tests/integration/_shared/runListIntegration.ts:22:9 › [integration][list] Staff_Master › deactivate/resolve 

@@ -15,7 +15,6 @@ test.beforeEach(async ({ page }) => {
     globalWithEnv.__ENV__ = {
       ...(globalWithEnv.__ENV__ ?? {}),
       VITE_FEATURE_SCHEDULES: '0',
-      VITE_FEATURE_SCHEDULES_CREATE: '0',
       VITE_SKIP_LOGIN: '1',
       VITE_E2E_MSAL_MOCK: '1',
       VITE_SP_RESOURCE: 'https://contoso.sharepoint.com',
@@ -29,7 +28,7 @@ test.describe('schedule feature flag', () => {
     await page.goto('/', { waitUntil: 'domcontentloaded' });
     await page.waitForLoadState('networkidle', { timeout: 5_000 });
 
-      const maybeWeek = page.getByTestId(TESTIDS.SCHEDULES_PAGE_ROOT).or(page.getByTestId(TESTIDS['schedules-week-page']));
+    const maybeWeek = page.getByTestId(TESTIDS.SCHEDULES_PAGE_ROOT).or(page.getByTestId(TESTIDS['schedules-week-page']));
     if ((await maybeWeek.count()) > 0) {
       await waitForScheduleReady(page);
     }
@@ -49,6 +48,7 @@ test.describe('schedule feature flag', () => {
       globalWithEnv.__ENV__ = {
         ...(globalWithEnv.__ENV__ ?? {}),
         VITE_FEATURE_SCHEDULES: '1',
+        VITE_FEATURE_SCHEDULES_WEEK_V2: '1',
         VITE_SKIP_LOGIN: '1',
         VITE_E2E_MSAL_MOCK: '1',
         VITE_SP_RESOURCE: 'https://contoso.sharepoint.com',
@@ -59,7 +59,7 @@ test.describe('schedule feature flag', () => {
     await page.goto('/', { waitUntil: 'domcontentloaded' });
     await page.waitForLoadState('networkidle', { timeout: 5_000 });
 
-      const maybeWeek = page.getByTestId(TESTIDS.SCHEDULES_PAGE_ROOT).or(page.getByTestId(TESTIDS['schedules-week-page']));
+    const maybeWeek = page.getByTestId(TESTIDS.SCHEDULES_PAGE_ROOT).or(page.getByTestId(TESTIDS['schedules-week-page']));
     if ((await maybeWeek.count()) > 0) {
       await waitForScheduleReady(page);
     }

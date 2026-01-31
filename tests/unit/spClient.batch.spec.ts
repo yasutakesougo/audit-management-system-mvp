@@ -1,4 +1,14 @@
 import { describe, it, expect, vi } from 'vitest';
+
+vi.mock('@/lib/env', async () => {
+  const actual = await vi.importActual<typeof import('@/lib/env')>('@/lib/env');
+  return {
+    ...actual,
+    skipSharePoint: vi.fn(() => false),
+    shouldSkipLogin: vi.fn(() => false),
+  };
+});
+
 import { createSpClient } from '@/lib/spClient';
 import { buildBatchInsertBody } from '@/features/audit/batchUtil';
 

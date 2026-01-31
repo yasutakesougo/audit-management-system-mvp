@@ -1,6 +1,7 @@
 import React from 'react';
 import { describe, it, expect, vi, beforeEach, afterEach, beforeAll, afterAll } from 'vitest';
-import { render, screen, fireEvent, waitFor, cleanup } from '@testing-library/react';
+import { screen, fireEvent, waitFor, cleanup } from '@testing-library/react';
+import { renderWithRouter } from './_helpers/renderWithRouter';
 import AuditPanel from '../../src/features/audit/AuditPanel';
 
 // Mocks for hooks
@@ -77,7 +78,7 @@ describe('AuditPanel action handlers', () => {
 
   it('CSV export enabled when logs exist and triggers createObjectURL', () => {
     seedLogs(2);
-    render(<AuditPanel />);
+    renderWithRouter(<AuditPanel />);
     const exportBtn = screen.getByRole('button', { name: 'CSVエクスポート' });
   // Using attribute check instead of jest-dom matcher to avoid type issues in TS context
   expect(exportBtn.getAttribute('disabled')).toBeNull();
@@ -89,7 +90,7 @@ describe('AuditPanel action handlers', () => {
   it('syncAll success path sets message', async () => {
     seedLogs(1);
     syncAllMock.mockResolvedValueOnce({ total: 1, success: 1 });
-    render(<AuditPanel />);
+    renderWithRouter(<AuditPanel />);
     fireEvent.click(screen.getByRole('button', { name: 'SPOへ同期' }));
     await waitFor(() => {
       expect(screen.getByText(/同期完了/)).toBeTruthy();
@@ -99,7 +100,7 @@ describe('AuditPanel action handlers', () => {
   it('syncAll failure path shows error', async () => {
     seedLogs(1);
     syncAllMock.mockRejectedValueOnce(new Error('Boom'));
-    render(<AuditPanel />);
+    renderWithRouter(<AuditPanel />);
     fireEvent.click(screen.getByRole('button', { name: 'SPOへ同期' }));
     await waitFor(() => {
       expect(screen.getByText(/同期失敗/)).toBeTruthy();
@@ -112,7 +113,7 @@ describe('AuditPanel action handlers', () => {
     syncAllBatchMock.mockResolvedValueOnce({ total: 3, success: 2, duplicates: 1, failed: 1, durationMs: 5 });
     // Resend batch call: all succeed
     syncAllBatchMock.mockResolvedValueOnce({ total: 1, success: 1, duplicates: 0, failed: 0, durationMs: 3 });
-    render(<AuditPanel />);
+    renderWithRouter(<AuditPanel />);
     fireEvent.click(screen.getByRole('button', { name: /一括同期/ }));
     await waitFor(() => {
       expect(screen.getByText(/一括同期完了/)).toBeTruthy();
@@ -129,7 +130,7 @@ describe('AuditPanel action handlers', () => {
   it('batch sync error catch path sets failure message', async () => {
     seedLogs(2);
     syncAllBatchMock.mockRejectedValueOnce(new Error('NetFail'));
-    render(<AuditPanel />);
+    renderWithRouter(<AuditPanel />);
     fireEvent.click(screen.getByRole('button', { name: /一括同期/ }));
     await waitFor(() => {
       expect(screen.getByText(/一括同期失敗/)).toBeTruthy();
@@ -142,7 +143,7 @@ describe('AuditPanel action handlers', () => {
       { ts: new Date(now).toISOString(), actor: 'tester', action: 'CREATE', entity: 'R', entity_id: '1', channel: 'UI', after: {} },
       { ts: new Date(now-1000).toISOString(), actor: 'tester', action: 'UPDATE', entity: 'R', entity_id: '2', channel: 'UI', after: {} }
     ];
-    render(<AuditPanel />);
+    renderWithRouter(<AuditPanel />);
     // Initially ALL -> both actions present
     expect(screen.getAllByText(/CREATE|UPDATE/).length).toBeGreaterThan(1);
     const select = screen.getByRole('combobox');

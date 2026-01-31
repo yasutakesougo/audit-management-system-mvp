@@ -40,7 +40,9 @@ export default function SharePointListDebug() {
     try {
       const response = await spFetch("/_api/web/lists/getbytitle('Compliance_CheckRules')/items?$top=5");
       const data = await (response as Response).json();
-      console.log('Compliance_CheckRules items:', data.value);
+      if (import.meta.env.DEV) {
+        console.log('Compliance_CheckRules items:', data.value);
+      }
       setMessage(
         `コンプライアンスリスト OK: ${Array.isArray(data.value) ? data.value.length : 0} 件取得`
       );

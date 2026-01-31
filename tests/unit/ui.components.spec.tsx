@@ -4,6 +4,7 @@ import { FormField } from '@/ui/components/FormField';
 import SignInButton from '@/ui/components/SignInButton';
 import { useMsalContext } from '@/auth/MsalProvider';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { MemoryRouter } from 'react-router-dom';
 import { beforeEach, describe, expect, it, vi, type Mock } from 'vitest';
 
 vi.mock('@/auth/MsalProvider', () => ({
@@ -82,7 +83,12 @@ describe('UI components', () => {
       },
     });
 
-    render(<SignInButton />);
+    // Fix CI: SignInButton uses useNavigate, requires Router context
+    render(
+      <MemoryRouter>
+        <SignInButton />
+      </MemoryRouter>
+    );
 
     const button = screen.getByRole('button', { name: 'サインイン' });
     fireEvent.click(button);

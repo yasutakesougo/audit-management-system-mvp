@@ -4,25 +4,39 @@ import Brightness7Icon from '@mui/icons-material/Brightness7';
 import CloseIcon from '@mui/icons-material/Close';
 import EditNoteIcon from '@mui/icons-material/EditNote';
 import HistoryIcon from '@mui/icons-material/History';
+import SearchIcon from '@mui/icons-material/Search';
 import AppBar from '@mui/material/AppBar';
 import Box from '@mui/material/Box';
 import Button from '@mui/material/Button';
+import Divider from '@mui/material/Divider';
+import Drawer from '@mui/material/Drawer';
+import List from '@mui/material/List';
+import ListItem from '@mui/material/ListItem';
+import ListItemButton from '@mui/material/ListItemButton';
+import ListItemIcon from '@mui/material/ListItemIcon';
+import ListItemText from '@mui/material/ListItemText';
+import ListSubheader from '@mui/material/ListSubheader';
 import Container from '@mui/material/Container';
 import Dialog from '@mui/material/Dialog';
 import DialogContent from '@mui/material/DialogContent';
 import DialogTitle from '@mui/material/DialogTitle';
 import IconButton from '@mui/material/IconButton';
+import InputAdornment from '@mui/material/InputAdornment';
 import Paper from '@mui/material/Paper';
 import Stack from '@mui/material/Stack';
+import TextField from '@mui/material/TextField';
 import Toolbar from '@mui/material/Toolbar';
 import Tooltip from '@mui/material/Tooltip';
 import Typography from '@mui/material/Typography';
-import React, { useContext, useEffect, useMemo, useState } from 'react';
+import useMediaQuery from '@mui/material/useMediaQuery';
+import { useTheme } from '@mui/material/styles';
+import React, { useCallback, useContext, useEffect, useMemo, useState } from 'react';
 // Navigation Icons
 import { useMsalContext } from '@/auth/MsalProvider';
+import { useUserAuthz } from '@/auth/useUserAuthz';
 import NavLinkPrefetch from '@/components/NavLinkPrefetch';
 import { useFeatureFlags } from '@/config/featureFlags';
-import { setCurrentUserRole, useAuthStore } from '@/features/auth/store';
+import { useAuthStore } from '@/features/auth/store';
 import { useDashboardPath } from '@/features/dashboard/dashboardRouting';
 import { HandoffQuickNoteCard } from '@/features/handoff/HandoffQuickNoteCard';
 import RouteHydrationListener from '@/hydration/RouteHydrationListener';
@@ -41,6 +55,9 @@ import PeopleAltRoundedIcon from '@mui/icons-material/PeopleAltRounded';
 import PsychologyIcon from '@mui/icons-material/Psychology';
 import SettingsRoundedIcon from '@mui/icons-material/SettingsRounded';
 import WorkspacesIcon from '@mui/icons-material/Workspaces';
+import MenuIcon from '@mui/icons-material/Menu';
+import ChevronLeftIcon from '@mui/icons-material/ChevronLeft';
+import ChevronRightIcon from '@mui/icons-material/ChevronRight';
 import { Link as RouterLink, useLocation, useNavigate } from 'react-router-dom';
 import { ColorModeContext } from './theme';
 
@@ -53,29 +70,96 @@ type NavItem = {
   prefetchKey?: PrefetchKey;
   prefetchKeys?: PrefetchKey[];
 };
+
+type NavGroupKey = 'blacknote' | 'record' | 'analysis' | 'master' | 'admin' | 'report';
+
+const groupLabel: Record<NavGroupKey, string> = {
+  blacknote: '📓 黒ノート',
+  record: '🗓 記録・運用',
+  analysis: '📊 分析・PDCA',
+  master: '👥 マスター',
+  admin: '🛡 管理',
+  report: '📣 申請・報告',
+};
+
+function pickGroup(item: NavItem, isAdmin: boolean): NavGroupKey {
+  const { to, label, testId } = item;
+  // 黒ノート: testId起点で安定判定（最優先）
+  if (testId === TESTIDS.nav.dashboard || to === '/' || to.startsWith('/dashboard') || to.startsWith('/admin/dashboard') || label.includes('黒ノート')) {
+    return 'blacknote';
+  }
+  // 記録・運用: daily, schedules
+  if (testId === TESTIDS.nav.daily || testId === TESTIDS.nav.schedules || to.startsWith('/daily') || to.startsWith('/schedule') || label.includes('日次') || label.includes('スケジュール')) {
+    return 'record';
+  }
+  // 分析・PDCA: analysis, iceberg, assessment
+  if (testId === TESTIDS.nav.analysis || testId === TESTIDS.nav.iceberg || testId === TESTIDS.nav.icebergPdca || testId === TESTIDS.nav.assessment || to.startsWith('/analysis') || to.startsWith('/assessment') || to.startsWith('/survey') || label.includes('分析') || label.includes('氷山') || label.includes('アセスメント') || label.includes('特性')) {
+    return 'analysis';
+  }
+  // マスター: users, staff
+  if (to.startsWith('/users') || to.startsWith('/staff') || label.includes('利用者') || label.includes('職員')) {
+    return 'master';
+  }
+  // 管理: checklist, audit, admin/templates (管理者のみ)
+  if (isAdmin && (testId === TESTIDS.nav.checklist || testId === TESTIDS.nav.audit || testId === TESTIDS.nav.admin || to.startsWith('/checklist') || to.startsWith('/audit') || to.startsWith('/admin') || label.includes('自己点検') || label.includes('監査') || label.includes('設定'))) {
+    return 'admin';
+  }
+  // 申請・報告: compliance
+  if (to.startsWith('/compliance') || label.includes('コンプラ')) {
+    return 'report';
+  }
+  // デフォルトは記録
+  return 'record';
+}
+
 const SKIP_LOGIN = shouldSkipLogin();
 const E2E_MSAL_MOCK_ENABLED = isE2eMsalMockEnabled();
 
 const AppShell: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const location = useLocation();
   const navigate = useNavigate();
-  const { schedules, complianceForm } = useFeatureFlags();
+  const { schedules, complianceForm, icebergPdca } = useFeatureFlags();
   const { mode, toggle } = useContext(ColorModeContext);
   const dashboardPath = useDashboardPath();
   const currentRole = useAuthStore((s) => s.currentUserRole);
+  const setCurrentUserRole = useAuthStore((s) => s.setCurrentUserRole);
+  const { isAdmin, ready: authzReady } = useUserAuthz();
+  const theme = useTheme();
+
+  // ✅ 修正：Object を直接依存に入れず、boolean フラグを作る
+  const schedulesEnabled = Boolean(schedules);
+  const complianceFormEnabled = Boolean(complianceForm);
+  const icebergPdcaEnabled = Boolean(icebergPdca);
+  const isDesktop = useMediaQuery(theme.breakpoints.up('md'));
+  const [mobileOpen, setMobileOpen] = useState(false);
+  const [desktopNavOpen, setDesktopNavOpen] = useState(false);
+  const [navQuery, setNavQuery] = useState('');
+  const [navCollapsed, setNavCollapsed] = useState(true);
+  const drawerWidth = 240;
+  const drawerMiniWidth = 64;
+  const currentDrawerWidth = navCollapsed ? drawerMiniWidth : drawerWidth;
+  const drawerOffset = isDesktop ? currentDrawerWidth : 0;
 
   useEffect(() => {
     if (SKIP_LOGIN && location.pathname === '/login') {
       navigate('/', { replace: true });
     }
   }, [navigate, location.pathname]);
+
+  
   useEffect(() => {
-    if (location.pathname.startsWith('/admin/dashboard')) {
-      setCurrentUserRole('admin');
-    } else if (location.pathname === '/' || location.pathname.startsWith('/dashboard')) {
-      setCurrentUserRole('staff');
+    const nextRole = location.pathname.startsWith('/admin/dashboard') 
+      ? 'admin' 
+      : (location.pathname === '/' || location.pathname.startsWith('/dashboard')) 
+        ? 'staff' 
+        : null;
+    
+    // ✅ 同値ガード: role が変わる時だけ更新（無限ループ防止）
+    // ※ nextRole が null の場合は role を維持（admin/staff 以外の画面でも role は保持）
+    if (nextRole && nextRole !== currentRole) {
+      setCurrentUserRole(nextRole);
     }
-  }, [location.pathname]);
+  }, [location.pathname, currentRole, setCurrentUserRole]);
 
   const navItems = useMemo(() => {
     const items: NavItem[] = [
@@ -110,14 +194,6 @@ const AppShell: React.FC<{ children: React.ReactNode }> = ({ children }) => {
         testId: TESTIDS.nav.iceberg,
       },
       {
-        label: '氷山PDCA',
-        to: '/analysis/iceberg-pdca',
-        isActive: (pathname) => pathname.startsWith('/analysis/iceberg-pdca'),
-        icon: HistoryIcon,
-        prefetchKey: PREFETCH_KEYS.icebergPdcaBoard,
-        testId: TESTIDS.nav.icebergPdca,
-      },
-      {
         label: 'アセスメント',
         to: '/assessment',
         isActive: (pathname) => pathname.startsWith('/assessment'),
@@ -139,22 +215,24 @@ const AppShell: React.FC<{ children: React.ReactNode }> = ({ children }) => {
         prefetchKey: PREFETCH_KEYS.dailyMenu,
         testId: TESTIDS.nav.daily,
       },
-      {
-        label: '自己点検',
-        to: '/checklist',
-        isActive: (pathname) => pathname.startsWith('/checklist'),
-        icon: ChecklistRoundedIcon,
-        prefetchKey: PREFETCH_KEYS.checklist,
-        testId: TESTIDS.nav.checklist,
-      },
-      {
-        label: '監査ログ',
-        to: '/audit',
-        isActive: (pathname) => pathname.startsWith('/audit'),
-        testId: TESTIDS.nav.audit,
-        icon: AssessmentRoundedIcon,
-        prefetchKey: PREFETCH_KEYS.audit,
-      },
+      ...(isAdmin && (authzReady || SKIP_LOGIN) ? [
+        {
+          label: '自己点検',
+          to: '/checklist',
+          isActive: (pathname: string) => pathname.startsWith('/checklist'),
+          icon: ChecklistRoundedIcon,
+          prefetchKey: PREFETCH_KEYS.checklist,
+          testId: TESTIDS.nav.checklist,
+        },
+        {
+          label: '監査ログ',
+          to: '/audit',
+          isActive: (pathname: string) => pathname.startsWith('/audit'),
+          testId: TESTIDS.nav.audit,
+          icon: AssessmentRoundedIcon,
+          prefetchKey: PREFETCH_KEYS.audit,
+        },
+      ] : []),
       {
         label: '利用者',
         to: '/users',
@@ -165,7 +243,14 @@ const AppShell: React.FC<{ children: React.ReactNode }> = ({ children }) => {
       {
         label: '職員',
         to: '/staff',
-        isActive: (pathname) => pathname.startsWith('/staff'),
+        isActive: (pathname) => pathname.startsWith('/staff') && !pathname.startsWith('/staff/attendance'),
+        icon: BadgeRoundedIcon,
+        prefetchKey: PREFETCH_KEYS.staff,
+      },
+      {
+        label: '職員勤怠',
+        to: '/staff/attendance',
+        isActive: (pathname) => pathname.startsWith('/staff/attendance'),
         icon: BadgeRoundedIcon,
         prefetchKey: PREFETCH_KEYS.staff,
       },
@@ -180,7 +265,18 @@ const AppShell: React.FC<{ children: React.ReactNode }> = ({ children }) => {
       },
     ];
 
-    if (schedules) {
+    if (icebergPdcaEnabled && !items.some(item => item.testId === TESTIDS.nav.icebergPdca)) {
+      items.splice(3, 0, {
+        label: '氷山PDCA',
+        to: '/analysis/iceberg-pdca',
+        isActive: (pathname) => pathname.startsWith('/analysis/iceberg-pdca'),
+        icon: HistoryIcon,
+        prefetchKey: PREFETCH_KEYS.icebergPdcaBoard,
+        testId: TESTIDS.nav.icebergPdca,
+      });
+    }
+
+    if (schedulesEnabled && !items.some(item => item.testId === TESTIDS.nav.schedules)) {
       items.push({
         label: 'スケジュール',
         to: '/schedules/week',
@@ -192,7 +288,7 @@ const AppShell: React.FC<{ children: React.ReactNode }> = ({ children }) => {
       });
     }
 
-    if (complianceForm) {
+    if (complianceFormEnabled) {
       items.push({
         label: 'コンプラ報告',
         to: '/compliance',
@@ -202,14 +298,229 @@ const AppShell: React.FC<{ children: React.ReactNode }> = ({ children }) => {
     }
 
     return items;
-  }, [dashboardPath, currentRole, schedules, complianceForm]);
+  }, [dashboardPath, currentRole, schedulesEnabled, complianceFormEnabled, icebergPdcaEnabled, isAdmin, authzReady]);
+
+  const filteredNavItems = useMemo(() => {
+    const q = navQuery.trim().toLowerCase();
+    if (!q) return navItems;
+    return navItems.filter((item) => (item.label ?? '').toLowerCase().includes(q));
+  }, [navItems, navQuery]);
+
+
+  const handleNavSearchKeyDown = useCallback(
+    (event: React.KeyboardEvent<HTMLInputElement>, onNavigate?: () => void) => {
+      if (event.key === 'Escape') {
+        setNavQuery('');
+        return;
+      }
+      if (event.key !== 'Enter') return;
+      // ⚠️ filteredNavItems の最初の item を使う際は、最新値を参照する必要がある
+      // ただし deps には入れない（無限ループ防止）
+      const currentFiltered = filteredNavItems;
+      const first = currentFiltered[0];
+      if (!first) return;
+      event.preventDefault();
+      if (onNavigate) onNavigate();
+      navigate(first.to);
+    },
+    [navigate],  // ← filteredNavItems を削除
+  );
+
+  const handleMobileNavigate = useCallback(() => {
+    setMobileOpen(false);
+    setNavQuery('');
+  }, []);
+
+  const handleToggleNavCollapse = useCallback(() => {
+    setNavCollapsed((v) => !v);
+    setNavQuery('');
+  }, []);
+
+  const groupedNavItems = useMemo(() => {
+    const ORDER: NavGroupKey[] = ['blacknote', 'record', 'analysis', 'master', 'admin', 'report'];
+    const map = new Map<NavGroupKey, NavItem[]>();
+    ORDER.forEach((k) => map.set(k, []));
+
+    for (const item of filteredNavItems) {
+      const group = pickGroup(item, isAdmin);
+      map.get(group)!.push(item);
+    }
+
+    return { map, ORDER };
+  }, [filteredNavItems, isAdmin]);
+
+  const currentPathname = location.pathname;  // ✅ 参照を安定化
+  
+  const renderNavItem = useCallback((item: NavItem, onNavigate?: () => void) => {
+    const { label, to, isActive, testId, icon: IconComponent, prefetchKey, prefetchKeys } = item;
+    const active = isActive(currentPathname);
+    const isBlackNote = pickGroup(item, isAdmin) === 'blacknote';
+    const showLabel = !navCollapsed;
+
+    const handleClick = () => {
+
+      if (onNavigate) onNavigate();
+    };
+
+    const commonProps = {
+      selected: active,
+      'data-testid': testId,
+      'aria-current': active ? ('page' as const) : undefined,
+      onClick: handleClick,
+      sx: {
+        ...(isBlackNote && active ? {
+          borderLeft: 4,
+          borderColor: 'primary.main',
+          fontWeight: 700,
+          '& .MuiListItemText-primary': {
+            fontWeight: 700,
+          },
+        } : {}),
+        ...(navCollapsed ? {
+          '&:hover': {
+            backgroundColor: 'action.hover',
+          },
+        } : {}),
+      },
+    };
+
+    const content = (
+      <>
+        {IconComponent && (
+          <ListItemIcon>
+            <IconComponent />
+          </ListItemIcon>
+        )}
+        {showLabel && <ListItemText primary={label} />}
+      </>
+    );
+
+    if (prefetchKey) {
+      const button = (
+        <ListItemButton
+          key={label}
+          component={NavLinkPrefetch as unknown as React.ElementType}
+          to={to}
+          {...commonProps}
+          {...({ preloadKey: prefetchKey, preloadKeys: prefetchKeys, meta: { label } } as Record<string, unknown>)}
+        >
+          {content}
+        </ListItemButton>
+      );
+
+      if (navCollapsed && !showLabel) {
+        return (
+          <Tooltip key={label} title={label} placement="right" enterDelay={100} disableInteractive>
+            <Box sx={{ width: '100%' }}>
+              {button}
+            </Box>
+          </Tooltip>
+        );
+      }
+
+      return button;
+    }
+
+    const button = (
+      <ListItemButton
+        key={label}
+        component={RouterLink as unknown as React.ElementType}
+        to={to}
+        {...commonProps}
+      >
+        {content}
+      </ListItemButton>
+    );
+
+    if (navCollapsed && !showLabel) {
+      return (
+        <Tooltip key={label} title={label} placement="right" enterDelay={100} disableInteractive>
+          <Box sx={{ width: '100%' }}>
+            {button}
+          </Box>
+        </Tooltip>
+      );
+    }
+
+    return button;
+  }, [currentPathname, isAdmin, navCollapsed]);
+
+  const renderGroupedNavList = (onNavigate?: () => void) => {
+    if (filteredNavItems.length === 0) {
+      return (
+        <List dense sx={{ px: 1 }}>
+          <ListItem disablePadding>
+            <ListItemText
+              primary="該当なし"
+              primaryTypographyProps={{ variant: 'body2' }}
+              sx={{ px: 2, py: 1, opacity: 0.7 }}
+            />
+          </ListItem>
+        </List>
+      );
+    }
+
+    return (
+      <List dense sx={{ px: 1 }}>
+        {groupedNavItems.ORDER.map((groupKey) => {
+          const items = groupedNavItems.map.get(groupKey) ?? [];
+          if (items.length === 0) return null;
+
+          return (
+            <Box key={groupKey} sx={{ mb: 1.5 }}>
+              {!navCollapsed && (
+                <ListSubheader
+                  disableSticky
+                  sx={{
+                    bgcolor: 'transparent',
+                    lineHeight: 1.6,
+                    py: 0.5,
+                    fontWeight: 700,
+                    fontSize: '0.75rem',
+                    color: 'text.secondary',
+                    px: 2,
+                  }}
+                >
+                  {groupLabel[groupKey]}
+                </ListSubheader>
+              )}
+              {items.map((item) => renderNavItem(item, onNavigate))}
+              {!navCollapsed && groupKey !== 'report' && <Divider sx={{ mt: 1, mb: 0.5 }} />}
+            </Box>
+          );
+        })}
+      </List>
+    );
+  };
 
   return (
     <RouteHydrationListener>
       <LiveAnnouncer>
         <div data-testid="app-shell">
-        <AppBar position="static" color="primary" enableColorOnDark>
+        <AppBar position="fixed" color="primary" enableColorOnDark>
         <Toolbar sx={{ gap: 1 }}>
+          {!isDesktop && (
+            <IconButton
+              color="inherit"
+              aria-label="メニューを開く"
+              onClick={() => setMobileOpen(true)}
+              edge="start"
+              data-testid={TESTIDS['nav-open']}
+            >
+              <MenuIcon />
+            </IconButton>
+          )}
+          {isDesktop && (
+            <IconButton
+              color="inherit"
+              aria-label="ナビゲーションを開く"
+              onClick={() => setDesktopNavOpen(true)}
+              edge="start"
+              data-testid="desktop-nav-open"
+            >
+              <MenuIcon />
+            </IconButton>
+          )}
           <Typography variant="h6" component="div" sx={{ flexGrow: 1 }}>
             磯子区障害者地域活動ホーム
           </Typography>
@@ -230,59 +541,119 @@ const AppShell: React.FC<{ children: React.ReactNode }> = ({ children }) => {
           <SignInButton />
         </Toolbar>
         </AppBar>
-        <Container component="main" role="main" maxWidth="lg" sx={{ py: 4, pb: { xs: 18, sm: 14 } }}>
-        <Box component="nav" role="navigation" aria-label="主要ナビゲーション" mb={2}>
-          <Stack direction="row" spacing={1} flexWrap="wrap">
-            {navItems.map(({ label, to, isActive, testId, icon: IconComponent, prefetchKey, prefetchKeys }) => {
-              const active = isActive(location.pathname);
-              const sx = {
-                minWidth: 'auto',
-                px: 2,
-                py: 1,
-                gap: 1,
-                '& .MuiButton-startIcon': {
-                  marginRight: '6px',
-                  marginLeft: 0,
-                },
-              } as const;
-
-              if (prefetchKey) {
-                return (
-                  <Button
-                    key={label}
-                    component={NavLinkPrefetch as unknown as React.ElementType}
-                    to={to}
-                    variant={active ? 'contained' : 'outlined'}
+        {/* Side Navigation Drawer */}
+        {isDesktop ? (
+          <Drawer
+            data-testid="nav-drawer"
+            variant="persistent"
+            open={desktopNavOpen}
+            onClose={() => setDesktopNavOpen(false)}
+            sx={{
+              width: currentDrawerWidth,
+              flexShrink: 0,
+              transition: theme.transitions.create('width', {
+                easing: theme.transitions.easing.sharp,
+                duration: theme.transitions.duration.enteringScreen,
+              }),
+              '& .MuiDrawer-paper': { 
+                width: currentDrawerWidth, 
+                boxSizing: 'border-box', 
+                top: 64, 
+                height: 'calc(100vh - 64px)', 
+                overflowY: 'auto',
+                transition: theme.transitions.create('width', {
+                  easing: theme.transitions.easing.sharp,
+                  duration: theme.transitions.duration.enteringScreen,
+                }) 
+              },
+            }}
+          >
+            <Box
+              role="navigation"
+              aria-label="主要ナビゲーション"
+              data-testid="nav-items"
+              sx={{ overflowY: 'auto', height: '100%', pt: 2, pb: 10 }}
+            >
+              {!navCollapsed && (
+                <Box sx={{ px: 1.5, py: 1, pb: 1.5 }} key="nav-search">
+                  <TextField
+                    key="nav-search-field"
+                    value={navQuery}
+                    onChange={(e) => setNavQuery(e.target.value)}
+                    onKeyDown={handleNavSearchKeyDown}
                     size="small"
-                    data-testid={testId}
-                    aria-current={active ? 'page' : undefined}
-                    startIcon={IconComponent ? <IconComponent /> : undefined}
-                    sx={sx}
-                    {...({ preloadKey: prefetchKey, preloadKeys: prefetchKeys, meta: { label } } as Record<string, unknown>)}
+                    placeholder="メニュー検索"
+                    fullWidth
+                    inputProps={{ 'aria-label': 'メニュー検索' }}
+                    InputProps={{
+                      startAdornment: (
+                        <InputAdornment position="start">
+                          <SearchIcon fontSize="small" />
+                        </InputAdornment>
+                      ),
+                    }}
+                  />
+                </Box>
+              )}
+              <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: navCollapsed ? 'center' : 'flex-end', px: 1, py: 0.5 }}>
+                <Tooltip title={navCollapsed ? 'ナビを展開' : 'ナビを折りたたみ'} placement="right" enterDelay={100}>
+                  <IconButton
+                    onClick={handleToggleNavCollapse}
+                    aria-label={navCollapsed ? 'ナビを展開' : 'ナビを折りたたみ'}
+                    size="small"
                   >
-                    {label}
-                  </Button>
-                );
-              }
-
-              return (
-                <Button
-                  key={label}
-                  component={RouterLink as unknown as React.ElementType}
-                  to={to}
-                  variant={active ? 'contained' : 'outlined'}
+                    {navCollapsed ? <ChevronRightIcon /> : <ChevronLeftIcon />}
+                  </IconButton>
+                </Tooltip>
+              </Box>
+              {renderGroupedNavList()}
+            </Box>
+          </Drawer>
+        ) : (
+          <Drawer
+            data-testid="nav-drawer"
+            variant="temporary"
+            open={mobileOpen}
+            onClose={() => setMobileOpen(false)}
+            ModalProps={{ keepMounted: true }}
+            sx={{
+              '& .MuiDrawer-paper': { width: drawerWidth, boxSizing: 'border-box' },
+            }}
+          >
+            <Box
+              role="navigation"
+              aria-label="主要ナビゲーション"
+              data-testid="nav-items"
+              sx={{ pt: 2, overflowY: 'auto', height: '100vh' }}
+            >
+              <Box sx={{ px: 1.5, pb: 1.5 }}>
+                <TextField
+                  value={navQuery}
+                  onChange={(e) => setNavQuery(e.target.value)}
+                  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                  onKeyDown={(e) => handleNavSearchKeyDown(e as any, handleMobileNavigate)}
                   size="small"
-                  data-testid={testId}
-                  aria-current={active ? 'page' : undefined}
-                  startIcon={IconComponent ? <IconComponent /> : undefined}
-                  sx={sx}
-                >
-                  {label}
-                </Button>
-              );
-            })}
-          </Stack>
-        </Box>
+                  placeholder="メニュー検索"
+                  fullWidth
+                  inputProps={{ 'aria-label': 'メニュー検索' }}
+                  InputProps={{
+                    startAdornment: (
+                      <InputAdornment position="start">
+                        <SearchIcon fontSize="small" />
+                      </InputAdornment>
+                    ),
+                  }}
+                />
+              </Box>
+              {renderGroupedNavList(handleMobileNavigate)}
+            </Box>
+          </Drawer>
+        )}
+
+        <Container component="main" role="main" maxWidth="lg" sx={{ pt: { xs: 10, sm: 11, md: 12 }, pb: { xs: 18, sm: 14 }, px: { xs: 2, sm: 3, md: 4 }, ml: `${drawerOffset}px`, transition: theme.transitions.create('margin-left', {
+          easing: theme.transitions.easing.sharp,
+          duration: theme.transitions.duration.enteringScreen,
+        }) }}>
           {children}
         </Container>
         <FooterQuickActions />
@@ -333,8 +704,17 @@ const ConnectionStatusReal: React.FC<{ sharePointDisabled: boolean }> = ({ share
   const accountsCount = accounts.length;
   const [state, setState] = useState<'checking' | 'ok' | 'error' | 'signedOut'>('checking');
   const bypassAccountGate = SKIP_LOGIN || E2E_MSAL_MOCK_ENABLED;
+  const isDemoMode = import.meta.env.VITE_DEMO_MODE === '1';
 
   useEffect(() => {
+    // Complete demo mode bypass: Skip SharePoint entirely when demo mode is active
+    if (isDemoMode) {
+      // eslint-disable-next-line no-console
+      console.info('[demo] Skip SharePoint bootstrap');
+      setState('ok');
+      return;
+    }
+
     const { isDev: isDevelopment } = getAppConfig();
     const isVitest = typeof process !== 'undefined' && Boolean(process.env?.VITEST);
     const shouldCheckSharePoint =
@@ -381,7 +761,7 @@ const ConnectionStatusReal: React.FC<{ sharePointDisabled: boolean }> = ({ share
       cancelled = true;
       controller.abort();
     };
-  }, [accountsCount, bypassAccountGate, forceSharePoint, sharePointFeatureEnabled, sharePointDisabled, spFetch]);
+  }, [isDemoMode, accountsCount, bypassAccountGate, forceSharePoint, sharePointFeatureEnabled, sharePointDisabled]);
 
   const { label, background } = useMemo(() => {
     switch (state) {

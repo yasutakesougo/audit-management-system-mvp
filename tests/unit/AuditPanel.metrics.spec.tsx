@@ -1,6 +1,7 @@
 import React from 'react';
 import { describe, test, expect, vi, beforeEach, afterEach } from 'vitest';
-import { render, screen, fireEvent, cleanup, waitFor } from '@testing-library/react';
+import { screen, fireEvent, cleanup, waitFor } from '@testing-library/react';
+import { renderWithRouter } from './_helpers/renderWithRouter';
 import AuditPanel from '../../src/features/audit/AuditPanel';
 
 // Mocks
@@ -65,14 +66,14 @@ describe('AuditPanel metrics attributes', () => {
   });
 
   test('no logs -> no metrics container', () => {
-    render(<AuditPanel />);
+    renderWithRouter(<AuditPanel />);
     expect(screen.queryByTestId('audit-metrics')).toBeNull();
   });
 
   test('mixed results (new + duplicates + failed)', async () => {
     seedLogs(6); // total
     syncAllBatchMock.mockResolvedValueOnce({ total: 6, success: 5, duplicates: 2, failed: 1, durationMs: 10 });
-    render(<AuditPanel />);
+    renderWithRouter(<AuditPanel />);
     fireEvent.click(screen.getByRole('button', { name: /一括同期/ }));
     await expectMetrics({ newItems: 3, duplicates: 2, failed: 1 });
   });
@@ -80,7 +81,7 @@ describe('AuditPanel metrics attributes', () => {
   test('all duplicates (no new failures)', async () => {
     seedLogs(3);
     syncAllBatchMock.mockResolvedValueOnce({ total: 3, success: 3, duplicates: 3, failed: 0 });
-    render(<AuditPanel />);
+    renderWithRouter(<AuditPanel />);
     fireEvent.click(screen.getByRole('button', { name: /一括同期/ }));
     await expectMetrics({ newItems: 0, duplicates: 3, failed: 0 });
   });
@@ -89,7 +90,7 @@ describe('AuditPanel metrics attributes', () => {
     seedLogs(4);
     // success=0 failed=4
     syncAllBatchMock.mockResolvedValueOnce({ total: 4, success: 0, failed: 4 });
-    render(<AuditPanel />);
+    renderWithRouter(<AuditPanel />);
     fireEvent.click(screen.getByRole('button', { name: /一括同期/ }));
     const container = await screen.findByTestId('audit-metrics');
     await waitFor(() => {

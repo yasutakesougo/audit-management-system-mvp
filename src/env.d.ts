@@ -17,8 +17,8 @@ interface ImportMetaEnv {
   readonly VITE_E2E_MSAL_MOCK?: string;
   readonly VITE_FEATURE_COMPLIANCE_FORM?: string;
   readonly VITE_FEATURE_SCHEDULES_GRAPH?: string;
+  readonly VITE_FEATURE_SCHEDULES_SP?: string;
   readonly VITE_FEATURE_SCHEDULES?: string;
-  readonly VITE_FEATURE_SCHEDULES_CREATE?: string;
   readonly VITE_FEATURE_SCHEDULES_WEEK_V2?: string;
   readonly VITE_FEATURE_SCHEDULE_STAFF_TEXT_COLUMNS?: string;
   readonly VITE_FEATURE_USERS_CRUD?: string;
@@ -43,10 +43,12 @@ interface ImportMetaEnv {
   readonly VITE_SP_LIST_DAILY?: string;
   readonly VITE_SP_LIST_SCHEDULES?: string;
   readonly VITE_SP_LIST_STAFF?: string;
+  readonly VITE_SP_LIST_STAFF_ATTENDANCE?: string;
   readonly VITE_SP_LIST_STAFF_GUID?: string;
   readonly VITE_SP_LIST_USERS?: string;
   readonly VITE_SP_LIST_PLAN_GOAL?: string;
   readonly VITE_SP_LIST_NURSE_OBSERVATION?: string;
+  readonly VITE_STAFF_ATTENDANCE_STORAGE?: 'local' | 'sharepoint';
   readonly VITE_SP_BASE_URL?: string;
   readonly VITE_SP_RETRY_BASE_MS?: string;
   readonly VITE_SP_RETRY_MAX?: string;
@@ -56,6 +58,7 @@ interface ImportMetaEnv {
   readonly VITE_SP_SITE_URL?: string;
   readonly VITE_SP_USE_PROXY?: string;
   readonly VITE_WRITE_ENABLED?: string;
+  readonly VITE_ALLOW_SHAREPOINT_OUTSIDE_SPFX?: string;
 
   // 🔽 新規追加（prefetch / telemetry / feature flags）
   readonly VITE_PREFETCH_TTL_MS?: string;

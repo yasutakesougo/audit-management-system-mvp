@@ -1,6 +1,7 @@
 import React from 'react';
 import ReactDOM from 'react-dom/client';
-import { getRuntimeEnv, isDev } from './env';
+import { getRuntimeEnv, isDev, clearEnvCache } from '@/env';
+import { guardProdMisconfig } from '@/lib/envGuards';
 import { resolveHydrationEntry } from './hydration/routes';
 import { beginHydrationSpan, finalizeHydrationSpan } from './lib/hydrationHud';
 
@@ -21,6 +22,9 @@ declare global {
     __FLAGS__?: unknown;
   }
 }
+
+// NOTE: Do NOT call guardProdMisconfig() here - it needs runtime env to be loaded first!
+// Call it after ensureRuntimeEnv() completes below.
 
 const RUNTIME_PATH_KEYS = new Set(['RUNTIME_ENV_PATH', 'VITE_RUNTIME_ENV_PATH']);
 
@@ -90,6 +94,7 @@ const ensureRuntimeEnv = async (): Promise<EnvRecord> => {
 
   const merged = { ...baseEnv, ...runtimeOverrides } satisfies EnvRecord;
   window.__ENV__ = merged;
+  clearEnvCache();
 
   if (isDev) {
     // 🎯 開発時ログを要点に絞って表示
@@ -126,15 +131,41 @@ const run = async (): Promise<void> => {
   const completeBootstrap = beginHydrationSpan('route:bootstrap', { group: 'hydration', meta: { budget: 100 } });
   const completeEnv = beginHydrationSpan('bootstrap:env', { group: 'hydration', meta: { budget: 20 } });
 
-  const envPromise = ensureRuntimeEnv()
-    .then((env) => {
+  // ✅ Step 1: Load runtime env FIRST (before MSAL init)
+  await ensureRuntimeEnv()
+    .then(() => {
       finalizeHydrationSpan(completeEnv);
-      return env;
     })
     .catch((error) => {
       finalizeHydrationSpan(completeEnv, error);
       throw error;
     });
+
+  // ✅ Step 2: Initialize MSAL singleton + handle redirect BEFORE React renders
+  if (hasWindow) {
+    try {
+      const { getPcaSingleton } = await import('./auth/azureMsal');
+      const msalInstance = await getPcaSingleton();
+      
+      console.info('[msal] 🚀 singleton created, calling handleRedirectPromise...');
+      const result = await msalInstance.handleRedirectPromise();
+      
+      if (result?.account) {
+        msalInstance.setActiveAccount(result.account);
+        const username = (result.account as { username?: string; homeAccountId?: string }).username
+          ?? (result.account as { homeAccountId?: string }).homeAccountId
+          ?? '(unknown)';
+        console.info('[msal] ✅ redirect success:', username);
+        const msalKeys = Object.keys(sessionStorage).filter(k => k.toLowerCase().includes('msal'));
+        console.info('[msal] sessionStorage MSAL keys:', msalKeys);
+      } else {
+        console.info('[msal] ℹ️  no redirect result (first load or no auth callback)');
+      }
+    } catch (error) {
+      // Non-fatal: continue app bootstrap even if MSAL init/redirect fails
+      console.error('[msal] ❌ initialization/redirect error:', error);
+    }
+  }
 
   const completeImports = beginHydrationSpan('bootstrap:imports', { group: 'hydration', meta: { budget: 30 } });
 
@@ -177,11 +208,14 @@ const run = async (): Promise<void> => {
       finalizeHydrationSpan(completeMetrics, error);
     });
 
-  let envSnapshot: EnvRecord | null = null;
+  const envSnapshot = (getRuntimeEnv() as EnvRecord) ?? null;
 
   try {
     // 🔧 runtime env を最優先で適用してからモジュールを読み込み
-    envSnapshot = await envPromise;
+    // (envPromise は既に await ensureRuntimeEnv() で完了済み)
+    
+    // ✅ NOW that runtime env is loaded, check for production misconfigurations
+    guardProdMisconfig();
 
     const [modules, appModule] = await Promise.all([modulesPromise, appPromise]);
     const [{ ConfigErrorBoundary }, { auditLog }, featureFlagsModule] = modules;

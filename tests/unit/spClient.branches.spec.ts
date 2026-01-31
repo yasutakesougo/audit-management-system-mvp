@@ -1,18 +1,32 @@
-import { __resetAppConfigForTests } from '@/lib/env';
-import { createSpClient, type SharePointRetryMeta } from '@/lib/spClient';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { mergeTestConfig, setTestConfigOverride } from '../helpers/mockEnv';
+import { installTestResets } from '../helpers/reset';
+
+vi.mock('@/lib/env', async () => {
+  const actual = await vi.importActual<typeof import('@/lib/env')>('@/lib/env');
+  return {
+    ...actual,
+    getAppConfig: vi.fn(() => mergeTestConfig()),
+    skipSharePoint: vi.fn(() => false),
+    shouldSkipLogin: vi.fn(() => false),
+  };
+});
+
+import { createSpClient, type SharePointRetryMeta } from '@/lib/spClient';
 
 describe('spClient – retry & paging branches', () => {
+  installTestResets();
+
   const baseUrl = 'https://contoso.sharepoint.com/sites/app/_api/web';
 
   beforeEach(() => {
-    __resetAppConfigForTests();
+    // No longer need __resetAppConfigForTests
   });
 
   afterEach(() => {
     vi.useRealTimers();
-    vi.restoreAllMocks();
-    __resetAppConfigForTests();
+    // vi.restoreAllMocks() called by installTestResets()
+    // No longer need __resetAppConfigForTests
   });
 
   it('retries on 503 then succeeds and emits retry metadata', async () => {
@@ -85,10 +99,8 @@ describe('spClient – retry & paging branches', () => {
   });
 
   it('surface text errors from non-JSON 500 responses', async () => {
+    setTestConfigOverride({ VITE_SP_RETRY_MAX: '1' });
     const acquire = vi.fn().mockResolvedValue('token');
-    const previousRetryMax = process.env.VITE_SP_RETRY_MAX;
-    process.env.VITE_SP_RETRY_MAX = '1';
-    __resetAppConfigForTests();
 
     const fetchSpy = vi.spyOn(globalThis, 'fetch');
     fetchSpy.mockImplementation(() =>
@@ -101,17 +113,8 @@ describe('spClient – retry & paging branches', () => {
       )
     );
 
-    try {
-      const client = createSpClient(acquire, baseUrl);
-      await expect(client.listItems('SupportRecord_Daily')).rejects.toThrow(/Internal Boom/);
-      expect(fetchSpy).toHaveBeenCalledTimes(1);
-    } finally {
-      if (previousRetryMax === undefined) {
-        delete process.env.VITE_SP_RETRY_MAX;
-      } else {
-        process.env.VITE_SP_RETRY_MAX = previousRetryMax;
-      }
-      __resetAppConfigForTests();
-    }
+    const client = createSpClient(acquire, baseUrl);
+    await expect(client.listItems('SupportRecord_Daily')).rejects.toThrow(/Internal Boom/);
+    expect(fetchSpy).toHaveBeenCalledTimes(1);
   });
 });

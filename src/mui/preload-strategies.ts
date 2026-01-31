@@ -14,7 +14,9 @@ import { warmAll, warmAsync, warmDataEntryComponents, warmTableComponents } from
  * @param route - 遷移先のルート
  */
 export const routingPreloadStrategy = async (route: string): Promise<void> => {
-  console.log(`[preload] routing-based preload triggered for ${route}`);
+  if (import.meta.env.DEV) {
+    console.log(`[preload] routing-based preload triggered for ${route}`);
+  }
 
   try {
     const normalizedRoute = route.toLowerCase();
@@ -90,7 +92,9 @@ export const preloadStrategies = {
  * ユーザーが何もしていない時間を活用して事前読み込み
  */
 export const speculativePreload = (): void => {
-  console.log('[preload] speculative preload started');
+  if (import.meta.env.DEV) {
+    console.log('[preload] speculative preload started');
+  }
 
   if (typeof window !== 'undefined' && 'requestIdleCallback' in window) {
     window.requestIdleCallback(() => {
@@ -117,21 +121,27 @@ export const adaptivePreload = async (): Promise<void> => {
 
     // データセーバーモードの場合はスキップ
     if (connection?.saveData) {
-      console.log('[preload] skipping preload due to data saver mode');
+      if (import.meta.env.DEV) {
+        console.log('[preload] skipping preload due to data saver mode');
+      }
       return;
     }
 
     // 低速接続の場合はスキップ
     if (connection?.effectiveType &&
         ['slow-2g', '2g'].includes(connection.effectiveType)) {
-      console.log('[preload] skipping preload due to slow connection');
+      if (import.meta.env.DEV) {
+        console.log('[preload] skipping preload due to slow connection');
+      }
       return;
     }
   }
 
   // 高速接続または接続情報不明時はプリロード実行
   await warmAll();
-  console.log('[preload] adaptive preload completed');
+  if (import.meta.env.DEV) {
+    console.log('[preload] adaptive preload completed');
+  }
 };
 
 export default preloadStrategies;

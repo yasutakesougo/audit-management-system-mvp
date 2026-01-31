@@ -1,4 +1,14 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
+
+vi.mock('@/lib/env', async () => {
+  const actual = await vi.importActual<typeof import('@/lib/env')>('@/lib/env');
+  return {
+    ...actual,
+    skipSharePoint: vi.fn(() => false),
+    shouldSkipLogin: vi.fn(() => false),
+  };
+});
+
 import { createSpClient } from '../../src/lib/spClient';
 
 describe('Retry-After absolute date', () => {

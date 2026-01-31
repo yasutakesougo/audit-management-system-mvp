@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { primeOpsEnv } from './helpers/ops';
+import { bootDaily } from './_helpers/bootDaily';
 
 // Smoke: /daily/activity happy path navigation and quick sanity checks
 // - open activity list
@@ -9,7 +9,7 @@ import { primeOpsEnv } from './helpers/ops';
 
 test.describe('Daily activity smoke', () => {
   test('opens activity, shows records, and round-trips via nav/footer', async ({ page }) => {
-    await primeOpsEnv(page);
+    await bootDaily(page);
 
     // Open activity page
     await page.goto('/daily/activity', { waitUntil: 'domcontentloaded' });
@@ -43,7 +43,7 @@ test.describe('Daily activity smoke', () => {
   });
 
   test('opens edit dialog, cancels, and returns to list', async ({ page }) => {
-    await primeOpsEnv(page);
+    await bootDaily(page);
 
     await page.goto('/daily/activity', { waitUntil: 'domcontentloaded' });
     await page.waitForLoadState('networkidle', { timeout: 15_000 }).catch(() => undefined);

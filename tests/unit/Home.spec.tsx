@@ -10,7 +10,6 @@ import { renderWithAppProviders } from '../helpers/renderWithAppProviders';
 const isDemoModeEnabledMock = vi.fn((): boolean => false);
 const featureFlagsState = vi.hoisted<FeatureFlagSnapshot>(() => ({
   schedules: false,
-  schedulesCreate: false,
   complianceForm: false,
   schedulesWeekV2: false,
   icebergPdca: false,
@@ -22,7 +21,6 @@ vi.mock('@/lib/env', async () => {
     ...actual,
     isDemoModeEnabled: () => isDemoModeEnabledMock(),
     isSchedulesFeatureEnabled: () => featureFlagsState.schedules,
-    isSchedulesCreateEnabled: () => featureFlagsState.schedulesCreate,
     isComplianceFormEnabled: () => featureFlagsState.complianceForm,
     isSchedulesWeekV2Enabled: () => featureFlagsState.schedulesWeekV2,
     shouldSkipLogin: () => false,
@@ -44,7 +42,6 @@ describe('Home', () => {
     isDemoModeEnabledMock.mockReset();
     isDemoModeEnabledMock.mockReturnValue(false);
     featureFlagsState.schedules = false;
-    featureFlagsState.schedulesCreate = false;
     featureFlagsState.complianceForm = false;
     featureFlagsState.schedulesWeekV2 = false;
   });

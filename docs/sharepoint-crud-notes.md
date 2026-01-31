@@ -1,9 +1,11 @@
 # SharePoint CRUD 実装メモ
 
 ## 概要
+
 Schedules 機能の SharePoint 統合における CRUD 実装の技術的なメモです。
 
 ## DELETE (削除) 動作
+
 - **HTTP ステータスコード**: 200 OK または 204 No Content
   - SharePoint REST API の DELETE は環境構成によって 200 または 204 で応答する場合があります
   - アプリケーション側は**両方のステータスコード対応**が必須です
@@ -20,6 +22,7 @@ Schedules 機能の SharePoint 統合における CRUD 実装の技術的なメ�
   - ダイアログは自動的に閉じます（`clearInlineSelection()` で統一）
 
 ## PATCH (更新) 動作
+
 - **成功時の UX**
   - スナックバー表示: 「予定を更新しました」
   - ローカル状態の該当行を新しいデータで置き換え
@@ -31,16 +34,19 @@ Schedules 機能の SharePoint 統合における CRUD 実装の技術的なメ�
   - 入力値は保持される
 
 ## 型定義
+
 - **SchedulesPort インターフェース**
   - `remove: (eventId: string) => Promise<void>` は必須メソッドです
   - すべてのアダプター（Demo / SharePoint / Graph）が実装する必要があります
   - オプション化していないため、環境構成時に削除機能が常に利用可能です
 
 ## テスト
+
 - ユニットテスト: `npm run test:schedule:mini`
 - E2E テスト: `npm run test:e2e` (SharePoint 連携が有効な環境)
 
 ## チームへのメモ
+
 1. 削除後、ブラウザ再読込しても反映が確認できます（サーバー側削除の確認）
 2. ネットワーク エラーで削除失敗時は、ダイアログが残った状態で再試行できます
 3. 削除と同時に行の選択状態も消えるため、誤操作リスクが低くなります

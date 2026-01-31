@@ -1,3 +1,4 @@
+import Alert from '@mui/material/Alert';
 import Box from '@mui/material/Box';
 import Button from '@mui/material/Button';
 import Paper from '@mui/material/Paper';
@@ -5,6 +6,7 @@ import Stack from '@mui/material/Stack';
 import TextField from '@mui/material/TextField';
 import Typography from '@mui/material/Typography';
 import * as React from 'react';
+import { useLocation, useNavigate } from 'react-router-dom';
 // MUI Icons
 import AddTaskRoundedIcon from '@mui/icons-material/AddTaskRounded';
 import AssignmentTurnedInRoundedIcon from '@mui/icons-material/AssignmentTurnedInRounded';
@@ -14,6 +16,8 @@ import type { ChecklistInsertDTO, ChecklistItem } from './types';
 
 export default function ChecklistPage() {
   const { list, add } = useChecklistApi();
+  const location = useLocation();
+  const navigate = useNavigate();
   const [items, setItems] = React.useState<ChecklistItem[]>([]);
   const [form, setForm] = React.useState<ChecklistInsertDTO>({
     Title: '',
@@ -24,6 +28,18 @@ export default function ChecklistPage() {
   });
   const [busy, setBusy] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
+
+  // RuleID filter from query params
+  const ruleIdFilter = React.useMemo(() => {
+    const q = new URLSearchParams(location.search);
+    return (q.get('ruleId') ?? '').trim();
+  }, [location.search]);
+
+  // Filtered items based on ruleId query param
+  const visibleItems = React.useMemo(() => {
+    if (!ruleIdFilter) return items;
+    return items.filter(item => String(item.value ?? '').trim() === ruleIdFilter);
+  }, [items, ruleIdFilter]);
 
   React.useEffect(() => {
     let alive = true;
@@ -113,11 +129,29 @@ export default function ChecklistPage() {
         )}
       </Paper>
 
+      {ruleIdFilter && (
+        <Alert
+          severity="info"
+          action={
+            <Button
+              size="small"
+              onClick={() => navigate('/checklist', { replace: true })}
+            >
+              フィルタ解除
+            </Button>
+          }
+        >
+          RuleID: <strong>{ruleIdFilter}</strong> のみ表示中
+        </Alert>
+      )}
+
       <Stack spacing={1}>
-        {items.length === 0 ? (
-          <Typography color="text.secondary">データがありません</Typography>
+        {visibleItems.length === 0 ? (
+          <Typography color="text.secondary">
+            {ruleIdFilter ? `RuleID "${ruleIdFilter}" に一致するデータがありません` : 'データがありません'}
+          </Typography>
         ) : (
-          items.map(it => (
+          visibleItems.map(it => (
             <Paper key={it.id} sx={{ p: 1.5 }}>
               <Typography fontWeight={600}>{it.label}</Typography>
               <Box sx={{ fontSize: 14, color: 'text.secondary' }}>

@@ -1,4 +1,5 @@
-import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { cleanup, fireEvent, screen, waitFor } from '@testing-library/react';
+import { renderWithRouter } from './_helpers/renderWithRouter';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import AuditPanel from '../../src/features/audit/AuditPanel';
 
@@ -99,7 +100,7 @@ describe('AuditPanel dev mode interactions', () => {
       categories: { conflict: 1 },
     });
 
-    render(<AuditPanel />);
+    renderWithRouter(<AuditPanel />);
     fireEvent.click(screen.getByRole('button', { name: /一括同期/ }));
 
     const metrics = await screen.findByTestId('audit-metrics');

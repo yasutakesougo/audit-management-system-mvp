@@ -1,60 +1,37 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-// NOTE: Avoid path alias here to keep ts-jest / vitest resolution simple without extra config
+
 import { useMemo } from 'react';
-import { useAuth } from '../auth/useAuth';
-import { getRuntimeEnv as getRuntimeEnvRoot } from '../env';
-import type { UnifiedResourceEvent } from '../features/resources/types';
-import { SCHEDULE_FIELD_ENTRY_HASH, SCHEDULE_FIELD_SERVICE_TYPE } from '../sharepoint/fields';
-import type { SpScheduleItem } from '../types';
-import { auditLog } from './debugLogger';
-import { getAppConfig, getSchedulesListIdFromEnv, isDemo, isDemoModeEnabled, isE2E, isE2eMsalMockEnabled, readBool, readEnv, skipSharePoint, type EnvRecord } from './env';
-import { SharePointItemNotFoundError, SharePointMissingEtagError } from './errors';
-import { sha256Hex } from './hashUtil';
+import { useAuth } from '@/auth/useAuth';
+import { getRuntimeEnv as getRuntimeEnvRoot } from '@/env';
+import type { UnifiedResourceEvent } from '@/features/resources/types';
+import { auditLog } from '@/lib/debugLogger';
+import { getAppConfig, isE2eMsalMockEnabled, readBool, readEnv, shouldSkipLogin, skipSharePoint, type EnvRecord } from '@/lib/env';
+import { AuthRequiredError, SharePointItemNotFoundError, SharePointMissingEtagError } from './errors';
 
 const FALLBACK_SP_RESOURCE = 'https://example.sharepoint.com';
 const FALLBACK_SP_SITE_RELATIVE = '/sites/demo';
-const MAX_SP_ERROR_BODY_PREVIEW = 2000;
-
-const runtimeImportEnv: ImportMeta['env'] | undefined = (() => {
-  try {
-    if (typeof import.meta !== 'undefined' && (import.meta as ImportMeta)?.env) {
-      return (import.meta as ImportMeta).env;
-    }
-  } catch {
-    // ignore environments where import.meta is unavailable
-  }
-  return undefined;
-})();
-
-const runtimeMode = (() => {
-  if (typeof runtimeImportEnv?.MODE === 'string' && runtimeImportEnv.MODE) {
-    return runtimeImportEnv.MODE.toLowerCase();
-  }
-  if (typeof process !== 'undefined' && typeof process.env?.NODE_ENV === 'string') {
-    return process.env.NODE_ENV.toLowerCase();
-  }
-  return 'production';
-})();
-
-const isRuntimeDev = typeof runtimeImportEnv?.DEV === 'boolean'
-  ? runtimeImportEnv.DEV
-  : runtimeMode === 'development';
-
-const isVitestRuntime = (() => {
-  if (typeof runtimeImportEnv?.VITEST !== 'undefined') {
-    return Boolean(runtimeImportEnv.VITEST);
-  }
-  if (typeof process !== 'undefined') {
-    return Boolean(process.env?.VITEST);
-  }
-  return false;
-})();
 
 const shouldBypassSharePointConfig = (envOverride?: EnvRecord): boolean => {
+  // Respect explicit SharePoint overrides even when test/demo flags are set
+  if (envOverride && ('VITE_SP_RESOURCE' in envOverride || 'VITE_SP_SITE_RELATIVE' in envOverride || 'VITE_SP_SITE' in envOverride || 'VITE_SP_SITE_URL' in envOverride)) {
+    return false;
+  }
+
+  // Force SharePoint even in E2E/mock contexts when explicitly requested (e.g., Playwright stub mode)
+  if (readBool('VITE_FORCE_SHAREPOINT', false, envOverride)) {
+    return false;
+  }
+
   if (isE2eMsalMockEnabled(envOverride)) {
     return true;
   }
   if (readBool('VITE_E2E', false, envOverride)) {
+    return true;
+  }
+  if (skipSharePoint(envOverride)) {
+    return true;
+  }
+  if (shouldSkipLogin(envOverride)) {
     return true;
   }
   if (typeof process !== 'undefined' && process.env?.PLAYWRIGHT_TEST === '1') {
@@ -71,11 +48,11 @@ const normalizeSiteRelative = (value: string): string => {
 
 const normalizeResource = (value: string): string => value.trim().replace(/\/+$/, '');
 
-export function ensureConfig(envOverride?: { VITE_SP_RESOURCE?: string; VITE_SP_SITE_RELATIVE?: string; VITE_SP_SITE?: string }) {
+export function ensureConfig(envOverride?: { VITE_SP_RESOURCE?: string; VITE_SP_SITE_RELATIVE?: string; VITE_SP_SITE?: string; VITE_SP_SITE_URL?: string }) {
   const overrideRecord = envOverride as EnvRecord | undefined;
   const hasExplicitOverride = envOverride !== undefined;
 
-  const pickSite = () => {
+  const _pickSite = () => {
     const primary = readEnv('VITE_SP_SITE_RELATIVE', '', overrideRecord).trim();
     if (primary) return primary;
     const legacy = readEnv('VITE_SP_SITE', '', overrideRecord).trim();
@@ -136,11 +113,8 @@ export function ensureConfig(envOverride?: { VITE_SP_RESOURCE?: string; VITE_SP_
   }
 
   if (shouldBypassSharePointConfig(overrideRecord)) {
-    const rawResource = readEnv('VITE_SP_RESOURCE', FALLBACK_SP_RESOURCE, overrideRecord);
-    const rawSiteRel = pickSite() || FALLBACK_SP_SITE_RELATIVE;
-    const resource = normalizeResource(rawResource || FALLBACK_SP_RESOURCE) || FALLBACK_SP_RESOURCE;
-    const siteRel = normalizeSiteRelative(rawSiteRel || FALLBACK_SP_SITE_RELATIVE) || FALLBACK_SP_SITE_RELATIVE;
-    return { resource, siteRel, baseUrl: `${resource}${siteRel}/_api/web` };
+    // E2E/demo/mock/skip-login 等では SharePoint を外部に出さない
+    return { resource: '', siteRel: '', baseUrl: '' };
   }
 
   const baseConfig = getAppConfig(overrideRecord);
@@ -163,7 +137,6 @@ export function ensureConfig(envOverride?: { VITE_SP_RESOURCE?: string; VITE_SP_
 }
 
 const DEFAULT_LIST_TEMPLATE = 100;
-
 
 type JsonRecord = Record<string, unknown>;
 
@@ -270,6 +243,44 @@ const withGuidBraces = (value: string): string => {
   return trimmed ? `{${trimmed}}` : '';
 };
 
+// ────────────────────────────────────────────────────────────────────────────
+// Fields Cache（sessionStorage）
+// ────────────────────────────────────────────────────────────────────────────
+const FIELDS_CACHE_TTL_MS = 20 * 60 * 1000; // 20分
+
+type FieldsCacheEntry = {
+  v: 1;
+  savedAt: number;
+  listTitle: string;
+  siteUrl: string;
+  internalNames: string[];
+};
+
+function nowMs(): number {
+  return Date.now();
+}
+
+function safeJsonParse<T>(raw: string | null): T | null {
+  if (!raw) return null;
+  try {
+    return JSON.parse(raw) as T;
+  } catch {
+    return null;
+  }
+}
+
+function safeJsonStringify(obj: unknown): string | null {
+  try {
+    return JSON.stringify(obj);
+  } catch {
+    return null;
+  }
+}
+
+function makeFieldsCacheKey(siteUrl: string, listTitle: string): string {
+  return `sp.fieldsCache.v1::${siteUrl}::${listTitle}`;
+}
+
 type E2eDebugWindow = Window & {
   __E2E_BATCH_URL__?: string;
   __E2E_BATCH_ATTEMPTS__?: number;
@@ -363,12 +374,14 @@ const buildSelectFields = (baseFields: readonly string[], optionalFields: readon
   return Array.from(new Set(merged));
 };
 
+const normalizeGuidCandidate = (value: string): string => trimGuidBraces(value.replace(/^guid:/i, ''));
+
 const buildListItemsPath = (listTitle: string, select: string[], top: number): string => {
   const queryParts: string[] = [];
   if (select.length) queryParts.push(`$select=${select.join(',')}`);
   if (Number.isFinite(top) && top > 0) queryParts.push(`$top=${top}`);
   const query = queryParts.length ? `?${queryParts.join('&')}` : '';
-  const guidCandidate = trimGuidBraces(listTitle);
+  const guidCandidate = normalizeGuidCandidate(listTitle);
   if (/^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/.test(guidCandidate)) {
     return `/lists(guid'${guidCandidate}')/items${query}`;
   }
@@ -386,7 +399,7 @@ const resolveListPath = (identifier: string): string => {
   if (/^(lists|web)\//i.test(raw) || /^lists\(/i.test(raw)) {
     return `/${raw}`;
   }
-  const guidCandidate = trimGuidBraces(raw);
+  const guidCandidate = normalizeGuidCandidate(raw);
   if (/^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/.test(guidCandidate)) {
     return `/lists(guid'${guidCandidate}')`;
   }
@@ -424,8 +437,32 @@ const readErrorPayload = async (res: Response): Promise<string> => {
   }
 };
 
-const raiseHttpError = async (res: Response): Promise<never> => {
+const raiseHttpError = async (
+  res: Response,
+  ctx?: { url?: string; method?: string }
+): Promise<never> => {
   const detail = await readErrorPayload(res);
+  const AUDIT_DEBUG = String(readEnv('VITE_AUDIT_DEBUG', '')) === '1';
+
+  // 必ず1行はエラーとして残す（詳細なし）
+  console.error('[SP ERROR]', {
+    status: res.status,
+    statusText: res.statusText,
+    method: ctx?.method,
+    url: ctx?.url ? ctx.url.split('?')[0] : undefined,
+  });
+
+  // 詳細は AUDIT_DEBUG 時のみ
+  if (AUDIT_DEBUG) {
+    console.error('[SP ERROR][detail]', {
+      status: res.status,
+      statusText: res.statusText,
+      method: ctx?.method,
+      url: ctx?.url,
+      detailPreview: typeof detail === 'string' ? detail.slice(0, 800) : detail,
+    });
+  }
+
   const base = `APIリクエストに失敗しました (${res.status} ${res.statusText ?? ''})`;
   const error: Error & { status?: number; statusText?: string } = new Error(detail || base);
   error.status = res.status;
@@ -502,8 +539,6 @@ export function createSpClient(
   options: SpClientOptions = {}
 ) {
   const config = getAppConfig();
-  const forceSharePoint = readBool('VITE_FORCE_SHAREPOINT', false);
-  const sharePointFeatureEnabled = readBool('VITE_FEATURE_SCHEDULES_SP', false);
   const parsePositiveNumber = (raw: string, fallback: number): number => {
     const numeric = Number(raw);
     return Number.isFinite(numeric) && numeric > 0 ? numeric : fallback;
@@ -517,9 +552,13 @@ export function createSpClient(
   function dbg(...a: unknown[]) { if (debugEnabled) console.debug('[spClient]', ...a); }
   const tokenMetricsCarrier = globalThis as { __TOKEN_METRICS__?: Record<string, unknown> };
   const { onRetry } = options;
-  const baseUrlInfo = new URL(baseUrl);
+
+  // baseUrl が空の場合は URL 初期化をスキップ（モックモード）
+  const baseUrlInfo = baseUrl ? new URL(baseUrl) : null;
+
   const normalizePath = (value: string): string => {
     if (!value) return value;
+    if (!baseUrlInfo) return value; // モックモードでは正規化不要
     if (/^https?:\/\//i.test(value)) {
       try {
         const target = new URL(value);
@@ -559,11 +598,31 @@ export function createSpClient(
   const spFetch = async (path: string, init: RequestInit = {}): Promise<Response> => {
     const resolvedPath = normalizePath(path);
 
-    const isVitest = isVitestRuntime;
+    // 🔥 CRITICAL: Always read runtime env to respect env.runtime.json override
+    const runtimeEnv = getRuntimeEnvRoot() as Record<string, string>;
+    // In E2E with Playwright stubs (VITE_E2E_MSAL_MOCK), skip the mock layer to allow interception
+    const isE2EWithMsalMock = isE2eMsalMockEnabled(runtimeEnv);
+    const shouldMock = !isE2EWithMsalMock && (!baseUrl || baseUrl === '' || skipSharePoint(runtimeEnv) || shouldSkipLogin(runtimeEnv));
 
-    // 開発環境でのモック応答
-    if (config.isDev && !forceSharePoint && !sharePointFeatureEnabled && !isVitest) {
-      console.info(`[DevMock] SharePoint API モック: ${init.method || 'GET'} ${resolvedPath}`);
+    // 🔍 デバッグログ: モック条件を確認
+    const AUDIT_DEBUG = String(readEnv('VITE_AUDIT_DEBUG', '')) === '1';
+    if (AUDIT_DEBUG || isE2EWithMsalMock) {
+      console.log('[spFetch]', {
+        path: resolvedPath.substring(0, 80),
+        method: init.method || 'GET',
+        isE2EWithMsalMock,
+        shouldMock,
+        baseUrl: baseUrl ? `${baseUrl.substring(0, 40)}...` : '(empty)',
+        'VITE_E2E_MSAL_MOCK': runtimeEnv['VITE_E2E_MSAL_MOCK'],
+        'VITE_E2E': runtimeEnv['VITE_E2E'],
+      });
+    }
+
+    // 開発環境・デモモード・スキップモードでのモック応答
+    if (shouldMock) {
+      if (AUDIT_DEBUG) {
+        console.info(`[DevMock] ✅ SharePoint API モック: ${init.method || 'GET'} ${resolvedPath}`);
+      }
 
       // モックレスポンスを作成
       const mockResponse = (data: any, status = 200) => {
@@ -572,6 +631,7 @@ export function createSpClient(
           statusText: status === 200 ? 'OK' : 'Error',
           headers: {
             'Content-Type': 'application/json',
+            'ETag': 'W/"1"',
           },
         });
         return Promise.resolve(response);
@@ -579,16 +639,18 @@ export function createSpClient(
 
       // パスに応じたモックデータ
       if (resolvedPath.includes('/currentuser')) {
-        return mockResponse({ Id: 1, Title: 'Development User' });
+        return mockResponse({ Id: 1, Title: 'Development User', LoginName: 'dev@example.com' });
       }
 
       if (resolvedPath.includes('/lists/getbytitle') && resolvedPath.includes('/items')) {
-        // スケジュールリストのモック（空データ）
         return mockResponse({ value: [] });
       }
 
+      if (resolvedPath.includes('/lists/getbytitle')) {
+        return mockResponse({ Id: 'mock-list-id', Title: 'Mock List' });
+      }
+
       if (resolvedPath.includes('/lists')) {
-        // その他のリストのモック
         return mockResponse({ value: [] });
       }
 
@@ -600,30 +662,127 @@ export function createSpClient(
     if (debugEnabled && tokenMetricsCarrier.__TOKEN_METRICS__) {
       dbg('token metrics snapshot', tokenMetricsCarrier.__TOKEN_METRICS__);
     }
-    if (!token1) {
-      throw new Error([
-        'SharePoint のアクセストークン取得に失敗しました。',
-        '対処:',
-        ' - 右上からサインイン',
-        ' - Entra で SharePoint 委任権限 (AllSites.Read/Manage) に管理者同意',
-        ' - `.env` の VITE_SP_RESOURCE / VITE_SP_SITE_RELATIVE を確認'
-      ].join('\n'));
+    
+    // E2E/skip-login: allow fetch without token so Playwright stubs can intercept
+    const skipAuthCheck = shouldSkipLogin() || isE2eMsalMockEnabled();
+    
+    if (!token1 && !skipAuthCheck) {
+      throw new AuthRequiredError();
     }
 
-    const resolveUrl = (targetPath: string) => (/^https?:\/\//i.test(targetPath) ? targetPath : `${baseUrl}${targetPath}`);
-    const doFetch = async (token: string) => {
-      const url = resolveUrl(resolvedPath);
-      const headers = new Headers(init.headers || {});
-      headers.set('Authorization', `Bearer ${token}`);
-      headers.set('Accept', 'application/json;odata=nometadata');
-      if (init.method === 'POST' || init.method === 'PUT' || init.method === 'PATCH' || init.method === 'MERGE') {
-        headers.set('Content-Type', 'application/json;odata=nometadata');
-      }
-      if (isRuntimeDev) console.debug('[SPFetch] URL:', url);
-      return fetch(url, { ...init, headers });
+    // AbortError helper: 正常なキャンセル判定 (latest-request-only pattern)
+    const isAbortError = (e: unknown): boolean => {
+      if (e instanceof DOMException && e.name === 'AbortError') return true;
+      // 環境差異対応: Node.js AbortSignal.abort() 等
+      return typeof e === 'object' && e !== null && 'name' in e && (e as { name: string }).name === 'AbortError';
     };
 
-    let response = await doFetch(token1);
+    // util: undefined/null/空文字/文字列"undefined"/"null" を落として Headers に入れる
+    const toHeaders = (input?: HeadersInit): Headers => {
+      const h = new Headers();
+      if (!input) return h;
+
+      const isInvalidValue = (v: any): boolean => {
+        if (v === undefined || v === null) return true;
+        const str = `${v}`.trim();
+        if (str === '') return true;
+        if (str.toLowerCase() === 'undefined' || str.toLowerCase() === 'null') return true;
+        return false;
+      };
+
+      if (input instanceof Headers) {
+        input.forEach((v, k) => {
+          if (!isInvalidValue(v)) h.set(k, `${v}`);
+        });
+        return h;
+      }
+
+      if (Array.isArray(input)) {
+        for (const [k, v] of input) {
+          if (!isInvalidValue(v)) h.set(k, `${v}`);
+        }
+        return h;
+      }
+
+      for (const [k, v] of Object.entries(input)) {
+        if (!isInvalidValue(v)) h.set(k, `${v}`);
+      }
+      return h;
+    };
+
+    const resolveUrl = (targetPath: string) => (/^https?:\/\//i.test(targetPath) ? targetPath : `${baseUrl}${targetPath}`);
+    const doFetch = async (token: string | null) => {
+      const url = resolveUrl(resolvedPath);
+      const AUDIT_DEBUG = String(readEnv('VITE_AUDIT_DEBUG', '')) === '1';
+
+      // ヘッダー生成: undefined/null を絶対に入れない
+      const headers = toHeaders(init.headers);
+      // E2E/skip-login: only set Authorization if token exists
+      if (token) {
+        headers.set('Authorization', `Bearer ${token}`);
+      }
+
+      const method = (init.method ?? 'GET').toUpperCase();
+
+      // 確実にログを出す（到達確認用）
+      if (AUDIT_DEBUG) {
+        console.warn('[spFetch] reached', { method, url: url.split('?')[0] });
+      }
+
+      if (['POST', 'PUT', 'PATCH', 'MERGE'].includes(method)) {
+        // Accept を強制設定（undefined/空/文字列"undefined"を検出）
+        const accept = headers.get('Accept');
+        if (!accept || !accept.trim() || accept.trim().toLowerCase() === 'undefined') {
+          headers.set('Accept', 'application/json;odata=nometadata');
+        }
+
+        // Content-Type を強制設定
+        const contentType = headers.get('Content-Type');
+        if (!contentType || !contentType.trim() || contentType.trim().toLowerCase() === 'undefined') {
+          headers.set('Content-Type', 'application/json;odata=nometadata');
+        }
+
+        // デバッグ: 書き込み系リクエストの最終ヘッダー確認
+        if (process.env.NODE_ENV === 'development') {
+          console.warn('[spFetch] PATCH/POST headers FINAL', {
+            method,
+            Accept: headers.get('Accept'),
+            ContentType: headers.get('Content-Type'),
+            url: url.split('?')[0],
+          });
+        }
+      } else {
+        // 読み取り系: Accept が無い/`*/*` の場合のみ設定
+        const currentAccept = headers.get('Accept');
+        if (!currentAccept || currentAccept.trim() === '' || currentAccept.trim() === '*/*') {
+          headers.set('Accept', 'application/json;odata=nometadata');
+        }
+      }
+
+      // 🚨 fetch 直前の最終確認ログ（AUDIT_DEBUG 時のみ）
+      if (AUDIT_DEBUG) {
+        console.log('[spClient] 📡 fetch', {
+          method,
+          url: url.split('?')[0],
+          Accept: headers.get('Accept'),
+          ContentType: headers.get('Content-Type'),
+        });
+      }
+      return fetch(url, { ...init, headers }).catch((e: unknown) => {
+        // AbortError は正常なキャンセル: リトライ/ログ不要
+        if (isAbortError(e)) throw e;
+        throw e;
+      });
+    };
+
+    let response: Response;
+    try {
+      response = await doFetch(token1);
+    } catch (e) {
+      // AbortError は正常なキャンセル: 即座に throw
+      if (isAbortError(e)) throw e;
+      throw e;
+    }
 
     // Retry transient (throttle/server) BEFORE auth refresh, but only if not 401/403.
     const maxAttempts = retrySettings.maxAttempts;
@@ -669,40 +828,35 @@ export function createSpClient(
         await Promise.resolve();
       }
       attempt += 1;
-      response = await doFetch(token1);
+      try {
+        response = await doFetch(token1);
+      } catch (e) {
+        // AbortError: リトライせず即終了
+        if (isAbortError(e)) throw e;
+        throw e;
+      }
     }
 
     if (!response.ok && (response.status === 401 || response.status === 403)) {
-      const token2 = await acquireToken();
-      if (token2 && token2 !== token1) {
-        response = await doFetch(token2);
+      // E2E/skip-login: don't retry with token if already in skip mode (Playwright handles auth)
+      if (!skipAuthCheck) {
+        const token2 = await acquireToken();
+        if (token2 && token2 !== token1) {
+          try {
+            response = await doFetch(token2);
+          } catch (e) {
+            // AbortError: token refresh 不要
+            if (isAbortError(e)) throw e;
+            throw e;
+          }
+        } else if (!token2) {
+          throw new AuthRequiredError();
+        }
       }
     }
 
     if (!response.ok) {
-      const isPlaywright = typeof process !== 'undefined' && process.env?.PLAYWRIGHT_TEST === '1';
-      const shouldLogSpError = (config.isDev || isPlaywright) && runtimeMode !== 'production';
-      if (shouldLogSpError && response.status >= 400 && response.status < 500) {
-        let preview = '<no-text-body>';
-        try {
-          const body = await response.clone().text();
-          preview = body ? body.slice(0, MAX_SP_ERROR_BODY_PREVIEW) : '<empty>';
-        } catch {
-          preview = '<no-text-body>';
-        }
-        const failedUrl = resolveUrl(resolvedPath);
-        const trimmedPreview = preview.trim();
-        // eslint-disable-next-line no-console
-        console.error(
-          '[SP ERROR]',
-          response.status,
-          failedUrl,
-          '\n--- response preview ---\n',
-          trimmedPreview || '<empty>',
-          '\n-------------------------\n',
-        );
-      }
-      await raiseHttpError(response);
+      await raiseHttpError(response, { url: resolveUrl(resolvedPath), method: init.method ?? 'GET' });
     }
     return response;
   };
@@ -740,12 +894,19 @@ export function createSpClient(
     const basePath = resolveListPath(listIdentifier);
     const query = params.toString();
     const initialPath = query ? `${basePath}/items?${query}` : `${basePath}/items`;
+    const AUDIT_DEBUG = String(readEnv('VITE_AUDIT_DEBUG', '')) === '1';
+    if (AUDIT_DEBUG) {
+      console.log('[spClient.listItems] 🚀 initialPath=', initialPath);
+    }
     const rows: TRow[] = [];
     let nextPath: string | null = initialPath;
     let pages = 0;
     const maxPages = typeof pageCap === 'number' && pageCap > 0 ? Math.floor(pageCap) : Number.POSITIVE_INFINITY;
 
     while (nextPath && pages < maxPages) {
+      if (AUDIT_DEBUG) {
+        console.log('[spClient.listItems] 📡 spFetch call with path=', nextPath);
+      }
       const res = await spFetch(nextPath, signal ? { signal } : {});
       const payload = await res.json().catch(() => ({}) as Record<string, unknown>) as {
         value?: unknown[];
@@ -813,9 +974,12 @@ export function createSpClient(
     const payload = JSON.stringify(body);
     const attempt = async (etag: string | undefined): Promise<Response | null> => {
       try {
+        // SharePoint Online: POST+X-HTTP-Method:MERGE は PATCH より安定
         return await spFetch(itemPath, {
-          method: 'PATCH',
+          method: 'POST',
           headers: {
+            'Accept': 'application/json;odata=nometadata',
+            'X-HTTP-Method': 'MERGE',
             'If-Match': etag ?? '*',
             'OData-Version': '4.0',
             'Content-Type': 'application/json;odata=nometadata',
@@ -961,6 +1125,93 @@ export function createSpClient(
     return map;
   };
 
+  const getListFieldInternalNames = async (listTitle: string): Promise<Set<string>> => {
+    const debug = String(readEnv('VITE_AUDIT_DEBUG', '')) === '1';
+    const siteUrl = baseUrl;
+    const cacheKey = makeFieldsCacheKey(siteUrl, listTitle);
+
+    // 1) キャッシュヒット判定
+    if (typeof sessionStorage !== 'undefined') {
+      const cached = safeJsonParse<FieldsCacheEntry>(sessionStorage.getItem(cacheKey));
+      if (cached && cached.v === 1) {
+        const age = nowMs() - cached.savedAt;
+        const valid =
+          cached.siteUrl === siteUrl &&
+          cached.listTitle === listTitle &&
+          age >= 0 &&
+          age < FIELDS_CACHE_TTL_MS;
+
+        if (valid && Array.isArray(cached.internalNames) && cached.internalNames.length > 0) {
+          if (debug) {
+            console.log('[spClient][fieldsCache] ✅ hit', {
+              listTitle,
+              count: cached.internalNames.length,
+              ageMs: age,
+            });
+          }
+          return new Set(cached.internalNames);
+        }
+
+        // 期限切れ/不正 → 破棄
+        if (debug) {
+          console.log('[spClient][fieldsCache] ⏰ stale/invalid -> drop', { listTitle, ageMs: age });
+        }
+        sessionStorage.removeItem(cacheKey);
+      } else if (cached) {
+        // JSON は読めたが形が違う
+        sessionStorage.removeItem(cacheKey);
+      }
+    }
+
+    // 2) Network fetch（Fields API）
+    const encoded = encodeURIComponent(listTitle);
+    const path = `/lists/getbytitle('${encoded}')/fields?$select=InternalName&$top=500`;
+
+    try {
+      const res = await spFetch(path);
+      const json = (await res.json().catch(() => ({ value: [] }))) as {
+        value?: { InternalName?: string }[];
+      };
+      const names = new Set<string>();
+      for (const field of json.value ?? []) {
+        if (field?.InternalName) {
+          names.add(field.InternalName);
+        }
+      }
+
+      // 3) キャッシュ保存（空は保存しない）
+      if (typeof sessionStorage !== 'undefined' && names.size > 0) {
+        const entry: FieldsCacheEntry = {
+          v: 1,
+          savedAt: nowMs(),
+          listTitle,
+          siteUrl,
+          internalNames: Array.from(names),
+        };
+        const s = safeJsonStringify(entry);
+        if (s) {
+          sessionStorage.setItem(cacheKey, s);
+          if (debug) {
+            console.log('[spClient][fieldsCache] 💾 save', { listTitle, count: names.size });
+          }
+        }
+      } else if (debug && names.size === 0) {
+        console.log('[spClient][fieldsCache] ⚠️ fetched empty (not cached)', { listTitle });
+      }
+
+      return names;
+    } catch (e) {
+      // 4) 失敗時はキャッシュを残さない
+      if (typeof sessionStorage !== 'undefined') {
+        sessionStorage.removeItem(cacheKey);
+      }
+      if (debug) {
+        console.warn('[spClient][fieldsCache] ❌ fetch failed', { listTitle, error: e });
+      }
+      throw e;
+    }
+  };
+
   const addFieldToList = async (listTitle: string, field: SpFieldDef) => {
     const encoded = encodeURIComponent(listTitle);
     const schema = buildFieldSchema(field);
@@ -1020,6 +1271,44 @@ export function createSpClient(
 
   // $batch 投稿ヘルパー (429/503/504 リトライ対応)
   const postBatch = async (batchBody: string, boundary: string): Promise<Response> => {
+    // 🔥 CRITICAL: Always read runtime env to respect env.runtime.json override
+    const runtimeEnv = getRuntimeEnvRoot() as Record<string, string>;
+    // In E2E with Playwright stubs (VITE_E2E_MSAL_MOCK), skip the mock layer to allow interception
+    const isE2EWithMsalMock = isE2eMsalMockEnabled(runtimeEnv);
+    const shouldMock = !isE2EWithMsalMock && (!baseUrl || baseUrl === '' || skipSharePoint(runtimeEnv) || shouldSkipLogin(runtimeEnv));
+
+    // 開発環境・デモモード・スキップモードでのモック応答
+    if (shouldMock) {
+      if (import.meta.env.DEV) {
+        console.info('[DevMock] ✅ SharePoint Batch API モック');
+      }
+      // バッチ操作が成功したというモックレスポンスを返す
+      const mockBatchResponse = (operations: Array<{ method?: string; url?: string; headers?: Record<string, string>; body?: unknown }>) => {
+        const parts: string[] = [];
+        operations.forEach(() => {
+          parts.push(`--${boundary}`);
+          parts.push('Content-Type: application/http');
+          parts.push('Content-Transfer-Encoding: binary');
+          parts.push('');
+          parts.push('HTTP/1.1 204 No Content');
+          parts.push('');
+        });
+        parts.push(`--${boundary}--`);
+        const mockBody = parts.join('\r\n');
+        return new Response(mockBody, {
+          status: 200,
+          statusText: 'OK',
+          headers: {
+            'Content-Type': `multipart/mixed; boundary=${boundary}`,
+          },
+        });
+      };
+      // バッチ操作の数を推定（簡易的に boundary の出現回数から）
+      const operationCount = (batchBody.match(new RegExp(`--${boundary}`, 'g')) || []).length - 1;
+      const mockOps = Array(Math.max(1, operationCount)).fill({});
+      return Promise.resolve(mockBatchResponse(mockOps));
+    }
+
     const apiRoot = baseUrl.replace(/\/web\/?$/, '');
     const maxAttempts = retrySettings.maxAttempts;
     const baseDelay = retrySettings.baseDelay;
@@ -1034,12 +1323,18 @@ export function createSpClient(
   // eslint-disable-next-line no-constant-condition
   while (true) {
       const token = await acquireToken();
-      if (!token) throw new Error('SharePoint のアクセストークン取得に失敗しました。');
+      // E2E/skip-login: allow batch without token so Playwright stubs can intercept
+      const skipAuthCheck = shouldSkipLogin() || isE2eMsalMockEnabled();
+      if (!token && !skipAuthCheck) {
+        throw new AuthRequiredError();
+      }
       const headers = new Headers({
-        'Authorization': `Bearer ${token}`,
-        'Accept': 'application/json',
         'Content-Type': `multipart/mixed; boundary=${boundary}`
       });
+      // Only set Authorization if token exists
+      if (token) {
+        headers.set('Authorization', `Bearer ${token}`);
+      }
       const res = await fetch(`${apiRoot}/$batch`, { method: 'POST', headers, body: batchBody });
       // E2E instrumentation (non-production impact): expose attempt count & last URL for debugging
       if (typeof window !== 'undefined') {
@@ -1178,6 +1473,8 @@ export function createSpClient(
     batch,
     postBatch,
     ensureListExists,
+    tryGetListMetadata,
+    getListFieldInternalNames,
   };
 }
 
@@ -1227,265 +1524,51 @@ export const useSP = () => {
   return client;
 };
 
-type ScheduleCreatePayload = Readonly<{
-  Title: string;
-  EventDate: string;
-  EndDate: string;
-  AllDay: boolean;
-  Location: string | null;
-  Status: string;
-  Notes: string | null;
-  StaffIdId: number | null;
-  UserIdId: number | null;
-  ServiceType: string | null;
-}> & Record<string, unknown>;
-
-const scheduleDemoStore: SpScheduleItem[] = [];
-let scheduleDemoCounter = 0;
-
-const normalizeForHash = (value: unknown): string => {
-  if (value === null || value === undefined) return '';
-  if (typeof value === 'string') return value.trim();
-  if (typeof value === 'number') {
-    if (!Number.isFinite(value)) return '';
-    return String(value);
-  }
-  if (typeof value === 'boolean') {
-    return value ? '1' : '0';
-  }
-  return String(value).trim();
+export type IntegratedResourceCalendarClient = {
+  getUnifiedEvents: () => Promise<UnifiedResourceEvent[]>;
 };
 
-const resolveServiceType = (payload: ScheduleCreatePayload): string => {
-  if (typeof payload.ServiceType === 'string') {
-    const trimmed = payload.ServiceType.trim();
-    if (trimmed) {
-      return trimmed;
-    }
-  }
-  const mapped = (payload as Record<string, unknown>)[SCHEDULE_FIELD_SERVICE_TYPE];
-  if (typeof mapped === 'string') {
-    return mapped.trim();
-  }
-  if (mapped === null || mapped === undefined) {
-    return '';
-  }
-  return String(mapped).trim();
-};
+export const createIrcSpClient = (): IntegratedResourceCalendarClient => ({
+  async getUnifiedEvents() {
+    // Placeholder: wire to SharePoint/Graph once schema stabilizes
+    return [];
+  },
+});
 
-const computeScheduleEntryHash = async (payload: ScheduleCreatePayload): Promise<string> => {
-  const parts = [
-    normalizeForHash(payload.Title),
-    normalizeForHash(payload.EventDate),
-    normalizeForHash(payload.EndDate),
-    normalizeForHash(payload.Status),
-    normalizeForHash(payload.AllDay),
-    normalizeForHash(payload.Location),
-    normalizeForHash(payload.Notes),
-    normalizeForHash(payload.UserIdId),
-    normalizeForHash(payload.StaffIdId),
-    resolveServiceType(payload),
-  ];
-  return sha256Hex(parts.join('|'));
-};
-
-const createScheduleInDemo = (payload: ScheduleCreatePayload, entryHash: string): SpScheduleItem => {
-  const existing = scheduleDemoStore.find((item) => item.EntryHash === entryHash);
-  if (existing) {
-    return existing;
-  }
-
-  const nextId = ++scheduleDemoCounter;
-  const nowIso = new Date().toISOString();
-  const serviceType = resolveServiceType(payload) || null;
-  const draft: SpScheduleItem = {
-    Id: nextId,
-    Title: payload.Title ?? null,
-    EventDate: payload.EventDate ?? null,
-    EndDate: payload.EndDate ?? null,
-    AllDay: Boolean(payload.AllDay),
-    Status: payload.Status ?? null,
-    Location: typeof payload.Location === 'string' ? payload.Location : null,
-    Notes: typeof payload.Notes === 'string' ? payload.Notes : null,
-    StaffIdId: payload.StaffIdId ?? null,
-    UserIdId: payload.UserIdId ?? null,
-    ServiceType: serviceType,
-    cr014_serviceType: serviceType,
-    EntryHash: entryHash,
-    Created: nowIso,
-    Modified: nowIso,
-    '@odata.etag': `"demo-${nextId}"`,
-  };
-
-  scheduleDemoStore.push(draft);
-  return draft;
-};
-
-const isDuplicateScheduleError = (error: unknown): boolean => {
-  if (!error) {
-    return false;
-  }
-  const status = (error as { status?: number }).status;
-  if (status === 409) {
-    return true;
-  }
-  const message = (error as Error).message ?? '';
-  if (!message) {
-    return false;
-  }
-  return /duplicate|conflict|409/i.test(message);
-};
-
-const findScheduleByEntryHash = async (sp: UseSP, listTitle: string, entryHash: string): Promise<SpScheduleItem | null> => {
-  const escapedHash = entryHash.replace(/'/g, "''");
-  const filter = `${SCHEDULE_FIELD_ENTRY_HASH} eq '${escapedHash}'`;
-  const select = ['Id', 'Title', 'EventDate', 'EndDate', '@odata.etag', SCHEDULE_FIELD_ENTRY_HASH];
-  try {
-    const items = await sp.listItems<SpScheduleItem>(listTitle, { filter, select, top: 1 });
-    return items[0] ?? null;
-  } catch (error) {
-    auditLog.warn('schedule.create.lookupFailed', { entryHash, error });
-    return null;
-  }
-};
-
-export async function createSchedule(sp: UseSP, payload: ScheduleCreatePayload): Promise<SpScheduleItem> {
-  ensureConfig();
-  const listTitle = getSchedulesListIdFromEnv();
-  const entryHash = await computeScheduleEntryHash(payload);
-  const body = { ...payload, [SCHEDULE_FIELD_ENTRY_HASH]: entryHash };
-
-  if (isDemoModeEnabled()) {
-    const draft = createScheduleInDemo(payload, entryHash);
-    auditLog.debug('schedule.create.demo', { entryHash, id: draft.Id });
-    return draft;
-  }
-
-  try {
-    const created = await sp.addListItemByTitle<typeof body, SpScheduleItem>(listTitle, body);
-    auditLog.debug('schedule.create.success', { entryHash, id: created?.Id ?? null });
-    return created;
-  } catch (error) {
-    if (isDuplicateScheduleError(error)) {
-      const existing = await findScheduleByEntryHash(sp, listTitle, entryHash);
-      if (existing) {
-        auditLog.debug('schedule.create.duplicate', { entryHash, id: existing.Id ?? null });
-        return existing;
-      }
-    }
-    throw error;
-  }
+export async function createSchedule<T extends Record<string, unknown>>(_sp: UseSP, payload: T): Promise<T> {
+  // placeholder: real implementation will map payload to SharePoint list mutation
+  return payload;
 }
 
 export const __ensureListInternals = { buildFieldSchema };
 
-// =============================================================================
-// IRC E2E用モッククライアント
-// =============================================================================
-
 /**
- * E2E/Demo用の統合リソースイベントモックデータ
- * 実績ありイベント（ロック対象）と編集可能イベントを含む
+ * Fields キャッシュを手動クリア（デバッグ用）
  */
-const mockUnifiedEventsForE2E: UnifiedResourceEvent[] = [
-  {
-    id: 'locked-event-1',
-    resourceId: 'staff-1',
-    title: '利用者宅訪問 (実績あり)',
-    start: '2025-11-16T09:00:00', // 固定日付
-    end: '2025-11-16T10:00:00',
-    editable: false,
-    extendedProps: {
-      planId: 'plan-locked-1',
-      planType: 'visit',
-      recordId: 'record-locked-1',
-      actualStart: '2025-11-16T09:05:00', // 実績あり
-      actualEnd: '2025-11-16T10:10:00',
-      status: 'completed',
-      percentComplete: 100,
-      diffMinutes: 10,
-      notes: '正常完了'
-    }
-  },
-  {
-    id: 'editable-event-1',
-    resourceId: 'staff-1',
-    title: 'デイサービス送迎 (計画のみ)',
-    start: '2025-11-16T11:00:00', // 固定日付
-    end: '2025-11-16T12:00:00',
-    editable: true,
-    extendedProps: {
-      planId: 'plan-editable-1',
-      planType: 'travel',
-      status: 'waiting'
-      // actualStart なし = 編集可能
-    }
-  },
-  {
-    id: 'staff2-overwork',
-    resourceId: 'staff-2',
-    title: '長時間作業A',
-    start: '2025-11-16T08:00:00', // 固定日付
-    end: '2025-11-16T14:00:00', // 6時間
-    editable: true,
-    extendedProps: {
-      planId: 'plan-staff2-1',
-      planType: 'center',
-      status: 'waiting'
-    }
-  },
-  {
-    id: 'staff2-additional',
-    resourceId: 'staff-2',
-    title: '追加作業B',
-    start: '2025-11-16T14:30:00', // 固定日付
-    end: '2025-11-16T17:00:00', // 2.5時間 = 合計8.5時間
-    editable: true,
-    extendedProps: {
-      planId: 'plan-staff2-2',
-      planType: 'admin',
-      status: 'waiting'
-    }
-  }
-];
-
-/**
- * IRC E2E/Demo用SpClientインターface
- */
-export interface IrcSpClient {
-  getUnifiedEvents: () => Promise<UnifiedResourceEvent[]>;
-  // 必要に応じて他のメソッドも追加
+export function clearFieldsCacheFor(listTitle: string, siteUrl?: string): void {
+  if (typeof sessionStorage === 'undefined') return;
+  const url = siteUrl || ensureConfig().baseUrl;
+  const key = makeFieldsCacheKey(url, listTitle);
+  sessionStorage.removeItem(key);
+  console.log('[spClient][fieldsCache] 🗑️ cleared', { listTitle });
 }
 
 /**
- * E2E/Demo用モックSpClient
+ * 全 Fields キャッシュをクリア
  */
-const createMockIrcSpClient = (): IrcSpClient => ({
-  async getUnifiedEvents() {
-    // E2E環境では固定のテスト用データを返す
-    return mockUnifiedEventsForE2E;
+export function clearAllFieldsCache(): void {
+  if (typeof sessionStorage === 'undefined') return;
+  const prefix = 'sp.fieldsCache.v1::';
+  let count = 0;
+  for (let i = sessionStorage.length - 1; i >= 0; i--) {
+    const key = sessionStorage.key(i);
+    if (key?.startsWith(prefix)) {
+      sessionStorage.removeItem(key);
+      count++;
+    }
   }
-});
-
-/**
- * 本番用実SpClient（将来実装）
- */
-const createRealIrcSpClient = (): IrcSpClient => ({
-  async getUnifiedEvents() {
-    // TODO: 実際のSharePointからUnifiedResourceEventを取得
-    throw new Error('Real SharePoint IRC client not implemented yet');
-  }
-});
-
-/**
- * 環境に応じてIRC用SpClientを作成
- */
-export const createIrcSpClient = (): IrcSpClient => {
-  if (isE2E() || isDemo() || skipSharePoint()) {
-    return createMockIrcSpClient();
-  }
-  return createRealIrcSpClient();
-};
+  console.log('[spClient][fieldsCache] 🗑️ cleared all', { count });
+}
 
 // test-only export (intentionally non-exported in production bundles usage scope)
 export const __test__ = {

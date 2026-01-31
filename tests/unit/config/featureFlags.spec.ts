@@ -7,7 +7,6 @@ import {
     useFeatureFlags,
     type FeatureFlagSnapshot
 } from '@/config/featureFlags';
-import * as env from '@/lib/env';
 import { cleanup, render } from '@testing-library/react';
 import React, { createElement } from 'react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
@@ -36,45 +35,43 @@ describe('featureFlags config', () => {
   });
 
   it('resolves feature flag snapshot using env helpers', () => {
-    const schedules = vi.spyOn(env, 'isSchedulesFeatureEnabled').mockReturnValue(true);
-    const schedulesCreate = vi.spyOn(env, 'isSchedulesCreateEnabled').mockReturnValue(false);
-    const compliance = vi.spyOn(env, 'isComplianceFormEnabled').mockReturnValue(true);
-    const schedulesWeekV2 = vi.spyOn(env, 'isSchedulesWeekV2Enabled').mockReturnValue(true);
-    const icebergPdca = vi.spyOn(env, 'isIcebergPdcaEnabled').mockReturnValue(true);
+    // env override を使って、実環境に依存せず固定値でテスト
+    const override = {
+      VITE_FEATURE_SCHEDULES: '1',
+      VITE_FEATURE_COMPLIANCE_FORM: '1',
+      VITE_FEATURE_SCHEDULES_WEEK_V2: '1',
+      VITE_FEATURE_ICEBERG_PDCA: '1',
+    };
 
-    const snapshot = resolveFeatureFlags();
+    const snapshot = resolveFeatureFlags(override);
 
     expect(snapshot).toEqual({
       schedules: true,
-      schedulesCreate: true,
       complianceForm: true,
       schedulesWeekV2: true,
       icebergPdca: true,
     });
 
-    // 将来のリファクタ余地を考慮して具体的な呼び出し回数は固定しない
-    expect(schedules).toHaveBeenCalled();
-    expect(schedulesCreate).toHaveBeenCalled();
-    expect(compliance).toHaveBeenCalled();
-    expect(schedulesWeekV2).toHaveBeenCalled();
-    expect(icebergPdca).toHaveBeenCalled();
+    // env override を使った場合、helper 関数にも override が渡される
+    // (スパイは不要 - 実関数の動作をテストする)
   });
 
   it('passes env override through to helper functions', () => {
-    const override = { VITE_FEATURE_SCHEDULES: 'true' };
-    const schedules = vi.spyOn(env, 'isSchedulesFeatureEnabled').mockReturnValue(true);
-    const schedulesCreate = vi.spyOn(env, 'isSchedulesCreateEnabled').mockReturnValue(false);
-    const compliance = vi.spyOn(env, 'isComplianceFormEnabled').mockReturnValue(false);
-    const schedulesWeekV2 = vi.spyOn(env, 'isSchedulesWeekV2Enabled').mockReturnValue(true);
-    const icebergPdca = vi.spyOn(env, 'isIcebergPdcaEnabled').mockReturnValue(false);
+    const override = { 
+      VITE_FEATURE_SCHEDULES: '1',
+      VITE_FEATURE_COMPLIANCE_FORM: '0',
+      VITE_FEATURE_SCHEDULES_WEEK_V2: '1',
+      VITE_FEATURE_ICEBERG_PDCA: '0',
+    };
 
-    resolveFeatureFlags(override);
+    const snapshot = resolveFeatureFlags(override);
 
-    expect(schedules).toHaveBeenCalledWith(override);
-    expect(schedulesCreate).toHaveBeenCalledWith(override);
-    expect(compliance).toHaveBeenCalledWith(override);
-    expect(schedulesWeekV2).toHaveBeenCalledWith(override);
-    expect(icebergPdca).toHaveBeenCalledWith(override);
+    expect(snapshot).toEqual({
+      schedules: true,
+      complianceForm: false,
+      schedulesWeekV2: true,
+      icebergPdca: false,
+    });
   });
 
   it('exports a default snapshot computed at module load', () => {
@@ -85,16 +82,30 @@ describe('featureFlags config', () => {
   it('returns current snapshot from getFeatureFlags', () => {
     expect(getFeatureFlags()).toEqual(featureFlags);
 
+    // automation環境では明示なし→デフォルトでtrue
     const override = {
-      VITE_FEATURE_SCHEDULES: '0',
-      VITE_FEATURE_SCHEDULES_CREATE: '1',
       VITE_FEATURE_COMPLIANCE_FORM: '0',
       VITE_FEATURE_SCHEDULES_WEEK_V2: '1',
     };
 
     expect(getFeatureFlags(override)).toEqual({
       schedules: true,
-      schedulesCreate: true,
+      complianceForm: false,
+      schedulesWeekV2: true,
+      icebergPdca: false,
+    });
+  });
+
+  it('respects explicit false in automation (flag-off E2E)', () => {
+    // automation環境でも明示的な '0' は尊重してfalseにする
+    const override = {
+      VITE_FEATURE_SCHEDULES: '0',
+      VITE_FEATURE_COMPLIANCE_FORM: '0',
+      VITE_FEATURE_SCHEDULES_WEEK_V2: '1',
+    };
+
+    expect(getFeatureFlags(override)).toEqual({
+      schedules: false,
       complianceForm: false,
       schedulesWeekV2: true,
       icebergPdca: false,

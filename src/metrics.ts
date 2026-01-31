@@ -45,7 +45,9 @@ const handleMetric = (metric: Metric) => {
 		entries.push(metricEntry);
 	}
 
-	console.log('[web-vitals]', metric.name, metric.value, metric.id, `(δ${metric.delta})`);
+	if (import.meta.env.DEV) {
+		console.log('[web-vitals]', metric.name, metric.value, metric.id, `(δ${metric.delta})`);
+	}
 	persistEntries();
 };
 

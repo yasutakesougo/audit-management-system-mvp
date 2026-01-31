@@ -56,7 +56,7 @@ const DailyRecordMenuPage: React.FC = () => {
     };
     individualNotes: Record<string, { specialNotes?: string }>;
   }, selectedUserIds: string[]) => {
-    console.log('複数利用者記録保存:', { data, selectedUserIds });
+    if (import.meta.env.DEV) console.log('複数利用者記録保存:', { data, selectedUserIds });
 
     // TODO: 実際の保存処理を実装
     // 1. 各利用者に対して個別の記録を作成

@@ -93,14 +93,15 @@ const MeetingStepsChecklist: React.FC<MeetingStepsChecklistProps> = ({
               >
                 {step.completed ? '✓' : step.id}
               </Box>
-              <Box sx={{ flex: 1 }}>
-                <Stack direction="row" alignItems="center" spacing={1} sx={{ mb: 0.5 }}>
+              <Box sx={{ flex: 1, minWidth: 0 }}>
+                <Stack direction="row" alignItems="center" spacing={1} sx={{ mb: 0.5, flexWrap: 'wrap' }}>
                   <Typography
                     variant="body1"
                     sx={{
                       fontWeight: 600,
                       textDecoration: step.completed ? 'line-through' : 'none',
-                      color: step.completed ? 'text.secondary' : 'text.primary'
+                      color: step.completed ? 'text.secondary' : 'text.primary',
+                      wordBreak: 'break-word'
                     }}
                   >
                     {step.title}
@@ -135,7 +136,8 @@ const MeetingStepsChecklist: React.FC<MeetingStepsChecklistProps> = ({
                     variant="body2"
                     sx={{
                       color: 'text.secondary',
-                      opacity: step.completed ? 0.7 : 1
+                      opacity: step.completed ? 0.7 : 1,
+                      wordBreak: 'break-word'
                     }}
                   >
                     {step.description}

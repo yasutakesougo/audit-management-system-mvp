@@ -92,7 +92,7 @@ const AuditPanel: React.FC = () => {
   };
 
   return (
-    <div>
+    <div data-testid="audit-root">
       <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 4 }}>
         <h2 style={{ margin: 0 }} data-testid={TESTIDS['audit-heading']}>
           監査ログ

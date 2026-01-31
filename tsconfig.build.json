@@ -1,7 +1,38 @@
 {
-  "extends": "./tsconfig.json",
   "compilerOptions": {
-    "noEmit": true
+    "target": "ES2020",
+    "lib": ["ES2020", "DOM", "DOM.Iterable"],
+    "module": "ESNext",
+    "moduleResolution": "Bundler",
+    "jsx": "react-jsx",
+    "strict": true,
+    "noFallthroughCasesInSwitch": true,
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "resolveJsonModule": true,
+    "allowSyntheticDefaultImports": true,
+    "downlevelIteration": true,
+    "types": ["vite/client", "node", "vitest/globals", "@testing-library/jest-dom"],
+    "baseUrl": ".",
+    "noEmit": true,
+    "paths": {
+      "@/app/*": ["src/app/*"],
+      "@/auth/*": ["src/auth/*"],
+      "@/lib/*": ["src/lib/*"],
+      "@/features/*": ["src/features/*"],
+      "@/features/iceberg-pdca/*": ["src/features/iceberg-pdca/*"],
+      "@/features/users/*": ["src/features/users/*"],
+      "@/features/users/components/*": ["src/features/users/components/*"],
+      "@/hydration/*": ["src/hydration/*"],
+      "@/config/*": ["src/config/*"],
+      "@/sharepoint/*": ["src/sharepoint/*"],
+      "@/ui/*": ["src/ui/*"],
+      "@/adapters/*": ["src/adapters/*"],
+      "@/test/*": ["tests/*"],
+      "@/*": ["src/*"],
+      "vitest/browser": ["types/vitest-browser.d.ts"],
+      "vitest/browser/*": ["types/vitest-browser.d.ts"]
+    }
   },
   "include": ["src/**/*", "types/**/*.d.ts"],
   "exclude": [

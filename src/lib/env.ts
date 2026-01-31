@@ -1,4 +1,4 @@
-import { getRuntimeEnv, isDev as runtimeIsDev } from '../env';
+import { getRuntimeEnv, isDev as runtimeIsDev } from '@/env';
 
 type Primitive = string | number | boolean | undefined | null;
 export type EnvRecord = Record<string, Primitive>;
@@ -6,6 +6,7 @@ export type EnvRecord = Record<string, Primitive>;
 export type AppConfig = {
   VITE_SP_RESOURCE: string;
   VITE_SP_SITE_RELATIVE: string;
+  VITE_SP_SITE_URL: string;
   VITE_SP_RETRY_MAX: string;
   VITE_SP_RETRY_BASE_MS: string;
   VITE_SP_RETRY_MAX_DELAY_MS: string;
@@ -49,6 +50,23 @@ const normalizeString = (value: Primitive): string => {
   return '';
 };
 
+/**
+ * Read Vite build-time environment variables directly from import.meta.env.
+ * Used for feature flags that must be determined at build time (e.g., GraphQL enablement).
+ * This bypasses runtime env handling and reads the value Vite baked into the code.
+ */
+export const readViteBool = (key: string, fallback = false): boolean => {
+  const raw = (import.meta.env as Record<string, unknown>)[key];
+  if (raw === undefined || raw === null) return fallback;
+  if (typeof raw === 'boolean') return raw;
+  if (typeof raw === 'string') {
+    const normalized = raw.trim().toLowerCase();
+    if (normalized === 'true' || normalized === '1' || normalized === 'yes') return true;
+    if (normalized === 'false' || normalized === '0' || normalized === 'no') return false;
+  }
+  return fallback;
+};
+
 const coerceBoolean = (value: Primitive, fallback = false): boolean => {
   if (value === undefined || value === null) return fallback;
   if (typeof value === 'boolean') return value;
@@ -62,20 +80,60 @@ const coerceBoolean = (value: Primitive, fallback = false): boolean => {
 
 
 const getEnvValue = (key: string, envOverride?: EnvRecord): Primitive => {
-  if (envOverride && key in envOverride) {
+  // Helper: treat undefined and empty-string-like values as "missing"
+  const isMeaningful = (v: unknown): boolean => {
+    if (v === undefined || v === null) return false;
+    if (typeof v === 'string') return v.trim().length > 0;
+    return true; // numbers/booleans considered meaningful
+  };
+
+  if (envOverride && key in envOverride && isMeaningful(envOverride[key])) {
     return envOverride[key];
   }
-  if (typeof process !== 'undefined' && process.env && key in process.env) {
-    return process.env[key] as Primitive;
-  }
+
+  // ✅ Runtime env (window.__ENV__) should win over build-time
   const runtime = getRuntimeEnv() as EnvRecord;
-  if (key in runtime) {
+  if (key in runtime && isMeaningful(runtime[key])) {
     return runtime[key];
   }
+
+  // Build-time env injected by Vite
+  if (typeof window !== 'undefined' && typeof import.meta !== 'undefined' && import.meta.env) {
+    const candidate = (import.meta.env as Record<string, Primitive>)[key];
+    if (isMeaningful(candidate)) {
+      return candidate as Primitive;
+    }
+  }
+
+  // Node.js environment: use process.env or globalThis.import for SSR
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const globalImport = (globalThis as any).import;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  if (typeof globalImport !== 'undefined' && (globalImport as any).meta?.env && typeof (globalImport as any).meta.env === 'object') {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const metaEnv = (globalImport as any).meta.env as Record<string, Primitive>;
+    const candidate = metaEnv[key];
+    if (isMeaningful(candidate)) {
+      return candidate;
+    }
+  }
+
+  if (typeof process !== 'undefined' && process.env) {
+    const candidate = process.env[key] as Primitive;
+    if (isMeaningful(candidate)) {
+      return candidate;
+    }
+  }
+
   return undefined;
 };
 
 const resolveIsDev = (envOverride?: EnvRecord): boolean => {
+  // Vite dev server は import.meta.env.DEV が true になるので、これを最優先
+  if (import.meta.env.DEV) {
+    return true;
+  }
+
   const modeValue = getEnvValue('MODE', envOverride);
   if (typeof modeValue === 'string' && modeValue.trim()) {
     const normalized = modeValue.trim().toLowerCase();
@@ -138,11 +196,12 @@ export const getAppConfig = (envOverride?: EnvRecord): AppConfig => {
   const cfg: AppConfig = {
     VITE_SP_RESOURCE: readEnv('VITE_SP_RESOURCE', '', envOverride),
     VITE_SP_SITE_RELATIVE: readEnv('VITE_SP_SITE_RELATIVE', '', envOverride),
+    VITE_SP_SITE_URL: readEnv('VITE_SP_SITE_URL', '', envOverride),
     VITE_SP_RETRY_MAX: readEnv('VITE_SP_RETRY_MAX', '4', envOverride),
     VITE_SP_RETRY_BASE_MS: readEnv('VITE_SP_RETRY_BASE_MS', '400', envOverride),
     VITE_SP_RETRY_MAX_DELAY_MS: readEnv('VITE_SP_RETRY_MAX_DELAY_MS', '5000', envOverride),
-    VITE_MSAL_CLIENT_ID: readEnv('VITE_MSAL_CLIENT_ID', '', envOverride),
-    VITE_MSAL_TENANT_ID: readEnv('VITE_MSAL_TENANT_ID', '', envOverride),
+    VITE_MSAL_CLIENT_ID: readEnv('VITE_MSAL_CLIENT_ID', '', envOverride) || readEnv('VITE_AAD_CLIENT_ID', '', envOverride),
+    VITE_MSAL_TENANT_ID: readEnv('VITE_MSAL_TENANT_ID', '', envOverride) || readEnv('VITE_AAD_TENANT_ID', '', envOverride),
     VITE_MSAL_TOKEN_REFRESH_MIN: readEnv('VITE_MSAL_TOKEN_REFRESH_MIN', '300', envOverride),
     VITE_AUDIT_DEBUG: readEnv('VITE_AUDIT_DEBUG', '', envOverride),
     VITE_AUDIT_BATCH_SIZE: readEnv('VITE_AUDIT_BATCH_SIZE', '', envOverride),
@@ -242,24 +301,7 @@ export const isSchedulesFeatureEnabled = (envOverride?: EnvRecord): boolean => {
   return false;
 };
 
-export const isSchedulesCreateEnabled = (envOverride?: EnvRecord): boolean => {
-  if (readBool('VITE_FEATURE_SCHEDULES_CREATE', false, envOverride)) {
-    return true;
-  }
-  if (typeof window !== 'undefined') {
-    try {
-      const flag = window.localStorage.getItem('feature:schedulesCreate');
-      if (flag != null) {
-        const normalized = flag.trim().toLowerCase();
-        if (TRUTHY.has(normalized)) return true;
-        if (FALSY.has(normalized)) return false;
-      }
-    } catch {
-      // ignore storage access issues
-    }
-  }
-  return false;
-};
+
 
 export const isSchedulesWeekV2Enabled = (envOverride?: EnvRecord): boolean => {
   const envValue = readOptionalEnv('VITE_FEATURE_SCHEDULES_WEEK_V2', envOverride)?.trim().toLowerCase();
@@ -311,7 +353,12 @@ export const isIcebergPdcaEnabled = (envOverride?: EnvRecord): boolean =>
   readBool('VITE_FEATURE_ICEBERG_PDCA', false, envOverride);
 
 export const shouldSkipLogin = (envOverride?: EnvRecord): boolean => {
-  if (isDemoModeEnabled(envOverride) || readBool('VITE_SKIP_LOGIN', false, envOverride)) {
+  if (
+    isDemoModeEnabled(envOverride) ||
+    readBool('VITE_SKIP_LOGIN', false, envOverride) ||
+    readBool('VITE_E2E', false, envOverride) ||
+    readBool('VITE_E2E_MSAL_MOCK', false, envOverride)
+  ) {
     return true;
   }
 
@@ -329,6 +376,10 @@ export const shouldSkipLogin = (envOverride?: EnvRecord): boolean => {
   }
 
   return false;
+};
+
+export const shouldSkipSharePoint = (envOverride?: EnvRecord): boolean => {
+  return readBool('VITE_SKIP_SHAREPOINT', false, envOverride);
 };
 
 export const isUsersCrudEnabled = (envOverride?: EnvRecord): boolean => {
@@ -380,6 +431,10 @@ export const getSharePointResource = (envOverride?: EnvRecord): string => {
   const resource = readEnv('VITE_SP_RESOURCE', '', envOverride).trim();
   if (resource) {
     return resource.replace(/\/+$/, '');
+  }
+  // If envOverride explicitly provided (even with empty VITE_SP_RESOURCE), don't fallback to runtime
+  if (envOverride && 'VITE_SP_RESOURCE' in envOverride) {
+    return '';
   }
   const runtime = getRuntimeEnv();
   return (runtime.VITE_SP_RESOURCE ?? '').replace(/\/+$/, '');
@@ -522,3 +577,32 @@ export const getSharePointDefaultScope = (envOverride?: EnvRecord): string => {
 
   return raw;
 };
+
+/**
+ * ✅ SINGLE SOURCE OF TRUTH: When to SKIP SharePoint
+ * 
+ * This is the canonical check for all stores (useOrgStore, useStaffStore, etc.)
+ * to determine whether SharePoint API should be touched.
+ * 
+ * SharePoint is skipped if ANY of these are true:
+ * 1. VITE_DEMO_MODE === '1' (true demo mode)
+ * 2. VITE_SP_SITE_URL is not configured (empty/invalid baseUrl)
+ * 3. VITE_SKIP_LOGIN is enabled (automation/testing mode)
+ * 
+ * This prevents accidental SharePoint calls in demo/test scenarios.
+ */
+export const SP_SITE_URL = String(import.meta.env.VITE_SP_SITE_URL || '').trim();
+export const SP_BASE_URL = SP_SITE_URL; // Alias for clarity
+
+export const IS_DEMO = import.meta.env.VITE_DEMO_MODE === '1';
+export const IS_SKIP_LOGIN = readBool('VITE_SKIP_LOGIN', false);
+
+/**
+ * ✅ Master guard: Should we skip all SharePoint operations?
+ * This is what stores actually check — more accurate than IS_DEMO alone.
+ */
+export const IS_SKIP_SHAREPOINT = IS_DEMO || !SP_BASE_URL || IS_SKIP_LOGIN;
+
+// Legacy aliases (keep for backward compat, but prefer IS_SKIP_SHAREPOINT)
+export const SP_ENABLED = !IS_SKIP_SHAREPOINT;
+export const SP_DISABLED = IS_SKIP_SHAREPOINT;

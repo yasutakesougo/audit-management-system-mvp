@@ -1,5 +1,5 @@
 import { useFeatureFlags } from '@/config/featureFlags';
-import { isE2E } from '@/env';
+import { getFlag } from '@/env';
 import { getAppConfig } from '@/lib/env';
 import type { PropsWithChildren } from 'react';
 import { Navigate, useLocation } from 'react-router-dom';
@@ -18,8 +18,9 @@ export default function SchedulesGate({ children }: PropsWithChildren): JSX.Elem
   const flags = useFeatureFlags();
   const { pathname } = useLocation();
 
-  // E2E環境では無条件でパス
-  if (isE2E) {
+  // E2E環境では無条件でパス - 動的に確認（runtime env ロード待機のため）
+  const isE2eRuntime = getFlag('VITE_E2E', false);
+  if (isE2eRuntime) {
     debug('E2E bypass enabled for path:', pathname);
     return <>{children}</>;
   }

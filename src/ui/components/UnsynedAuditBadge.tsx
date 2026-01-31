@@ -1,3 +1,5 @@
+'use client';
+
 import React from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { readAudit } from '../../lib/audit';
@@ -16,22 +18,15 @@ interface UnsynedAuditBadgeProps {
  *
  * - クリックで /audit ページに遷移（既に audit ページの場合はテーブルにスクロール）
  * - 未同期ログがない場合は非表示
+ * - Note: Router コンテキスト必須のため、Router 内で使用してください
  */
 const UnsynedAuditBadge: React.FC<UnsynedAuditBadgeProps> = ({
   className = '',
   style = {},
   size = 'medium'
 }) => {
-  // Router hooks are conditionally used to prevent test failures
-  let navigate: ReturnType<typeof useNavigate> | null = null;
-  let location: ReturnType<typeof useLocation> | null = null;
-
-  try {
-    navigate = useNavigate();
-    location = useLocation();
-  } catch {
-    // Router context not available (e.g., in tests)
-  }
+  const navigate = useNavigate();
+  const location = useLocation();
   const logs = readAudit();
 
   // 未同期ログがない場合は何も表示しない
@@ -56,11 +51,6 @@ const UnsynedAuditBadge: React.FC<UnsynedAuditBadgeProps> = ({
   };
 
   const handleClick = () => {
-    if (!navigate || !location) {
-      // Router not available (e.g., in tests)
-      return;
-    }
-
     if (location.pathname !== '/audit') {
       // 他のページから監査ページに遷移
       navigate('/audit');

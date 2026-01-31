@@ -322,7 +322,7 @@ export default function TimelineWeek({ events, startDate, onEventMove, onEventCr
   );
 
   return (
-    <Box component="section" aria-label="週タイムライン" data-testid="schedule-week-root">
+    <Box component="section" aria-label="週タイムライン" data-testid={TESTIDS.SCHEDULE_WEEK_ROOT}>
       {/* Header */}
       <Stack direction="row" alignItems="center" justifyContent="space-between" mb={3}>
         <Box>
@@ -650,7 +650,7 @@ export default function TimelineWeek({ events, startDate, onEventMove, onEventCr
                           const isDraggingCard = draggingId === event.id;
 
                           const baseContainerProps = {
-                            'data-testid': 'schedule-item',
+                            'data-testid': TESTIDS.SCHEDULE_ITEM,
                             'data-schedule-event': 'true',
                             'data-id': event.id,
                             'data-status': event.status,

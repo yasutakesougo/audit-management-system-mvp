@@ -7,7 +7,7 @@ import {
     getTotalDaysInMonth,
     getWorkingDaysInMonth
 } from '../aggregate';
-import type { DailyRecord, YearMonth } from '../types';
+import type { DailyRecord, IsoDate, YearMonth } from '../types';
 
 describe('aggregateMonthlyKpi - 基本集計テスト', () => {
   const createDailyRecord = (
@@ -20,7 +20,7 @@ describe('aggregateMonthlyKpi - 基本集計テスト', () => {
     id: `record_${date}`,
     userId: 'USER001',
     userName: '山田太郎',
-    recordDate: date,
+    recordDate: date as IsoDate,
     completed,
     hasSpecialNotes,
     hasIncidents,
@@ -41,7 +41,7 @@ describe('aggregateMonthlyKpi - 基本集計テスト', () => {
     expect(result.plannedRows).toBe(23 * 19); // 営業日数 × 19行/日
     expect(result.completedRows).toBe(31); // 完了記録の件数
     expect(result.inProgressRows).toBe(0);
-    expect(result.emptyRows).toBe(0);
+    expect(result.emptyRows).toBe(437 - 31); // plannedRows - completedRows - inProgressRows
     expect(result.specialNotes).toBe(0);
     expect(result.incidents).toBe(0);
   });
@@ -71,7 +71,7 @@ describe('aggregateMonthlyKpi - 基本集計テスト', () => {
     expect(result.plannedRows).toBe(21 * 19); // 営業日数 × 19行/日
     expect(result.completedRows).toBe(5);
     expect(result.inProgressRows).toBe(3);
-    expect(result.emptyRows).toBe(2);
+    expect(result.emptyRows).toBe(399 - 5 - 3); // plannedRows - completedRows - inProgressRows
     expect(result.specialNotes).toBe(0);
     expect(result.incidents).toBe(0);
   });
@@ -89,7 +89,7 @@ describe('aggregateMonthlyKpi - 基本集計テスト', () => {
 
     expect(result.completedRows).toBe(3);
     expect(result.inProgressRows).toBe(1);
-    expect(result.emptyRows).toBe(1);
+    expect(result.emptyRows).toBe(399 - 3 - 1); // plannedRows - completedRows - inProgressRows (2024年3月は21営業日 = 399行)
     expect(result.specialNotes).toBe(2); // 3/1, 3/3
     expect(result.incidents).toBe(2); // 3/2, 3/3
   });
@@ -103,7 +103,7 @@ describe('aggregateMonthlyKpi - 基本集計テスト', () => {
     expect(result.plannedRows).toBe(23 * 19); // 営業日数 × 19行/日
     expect(result.completedRows).toBe(0);
     expect(result.inProgressRows).toBe(0);
-    expect(result.emptyRows).toBe(0);
+    expect(result.emptyRows).toBe(437); // plannedRows - completedRows - inProgressRows
     expect(result.specialNotes).toBe(0);
     expect(result.incidents).toBe(0);
   });
@@ -152,7 +152,7 @@ describe('aggregateMonthlySummary - 月次サマリー生成テスト', () => {
     id: `record_${date}`,
     userId: 'USER001',
     userName: '山田太郎',
-    recordDate: date,
+    recordDate: date as IsoDate,
     completed,
     hasSpecialNotes,
     hasIncidents,
@@ -179,7 +179,7 @@ describe('aggregateMonthlySummary - 月次サマリー生成テスト', () => {
     expect(summary.yearMonth).toBe('2024-06');
     expect(summary.kpi.completedRows).toBe(2);
     expect(summary.kpi.inProgressRows).toBe(1);
-    expect(summary.kpi.emptyRows).toBe(1);
+    expect(summary.kpi.emptyRows).toBe(380 - 2 - 1); // plannedRows - completedRows - inProgressRows (2024年6月は20営業日 = 380行)
     expect(summary.kpi.specialNotes).toBe(1);
     expect(summary.kpi.incidents).toBe(1);
     expect(summary.completionRate).toBeGreaterThan(0); // 完了率が計算されている
@@ -235,7 +235,7 @@ describe('aggregateMultipleUsers - 複数ユーザー集計テスト', () => {
     id: `record_${userId}_${date}`,
     userId,
     userName: userId === 'USER001' ? '山田太郎' : '佐藤花子',
-    recordDate: date,
+    recordDate: date as IsoDate,
     completed,
     hasSpecialNotes,
     hasIncidents,
@@ -278,7 +278,7 @@ describe('aggregateMultipleUsers - 複数ユーザー集計テスト', () => {
     const user002Result = results.find(r => r.summary.userId === 'USER002');
     expect(user002Result).toBeDefined();
     expect(user002Result!.summary.kpi.completedRows).toBe(1);
-    expect(user002Result!.summary.kpi.emptyRows).toBe(1);
+    expect(user002Result!.summary.kpi.emptyRows).toBe(380 - 1 - 0); // plannedRows - completedRows - inProgressRows (2024年6月は20営業日 = 380行)
     expect(user002Result!.processedRecords).toBe(2);
   });
 

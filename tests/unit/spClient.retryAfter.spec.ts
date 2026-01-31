@@ -1,19 +1,30 @@
-import { __resetAppConfigForTests } from '@/lib/env';
-import { createSpClient, type SharePointRetryMeta } from '@/lib/spClient';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { mergeTestConfig } from '../helpers/mockEnv';
+import { installTestResets } from '../helpers/reset';
+
+vi.mock('@/lib/env', async () => {
+  const actual = await vi.importActual<typeof import('@/lib/env')>('@/lib/env');
+  return {
+    ...actual,
+    getAppConfig: vi.fn(() => mergeTestConfig()),
+    skipSharePoint: vi.fn(() => false),
+    shouldSkipLogin: vi.fn(() => false),
+  };
+});
+
+import { createSpClient, type SharePointRetryMeta } from '@/lib/spClient';
 
 describe('spClient – 429 Retry-After seconds → retry then success', () => {
+  installTestResets();
+
   const baseUrl = 'https://contoso.sharepoint.com/sites/app/_api/web';
 
   beforeEach(() => {
-    __resetAppConfigForTests();
     vi.useFakeTimers();
   });
 
   afterEach(() => {
     vi.useRealTimers();
-    vi.restoreAllMocks();
-    __resetAppConfigForTests();
   });
 
   it('respects Retry-After seconds and retries once before succeeding', async () => {

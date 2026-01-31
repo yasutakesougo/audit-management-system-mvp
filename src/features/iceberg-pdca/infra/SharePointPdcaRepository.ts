@@ -1,12 +1,8 @@
-import { spfi, SPFx, type ISPFXContext, type SPFI } from '@pnp/sp';
-import '@pnp/sp/items';
-import '@pnp/sp/lists';
-import '@pnp/sp/webs';
-
-import { getAppConfig } from '@/lib/env';
+import { acquireSpAccessToken } from '@/lib/msal';
+import { createSpClient, ensureConfig } from '@/lib/spClient';
 import {
+  buildIcebergPdcaSelectFields,
   FIELD_MAP_ICEBERG_PDCA,
-  ICEBERG_PDCA_SELECT_FIELDS,
   LIST_CONFIG,
   ListKeys,
 } from '@/sharepoint/fields';
@@ -14,6 +10,7 @@ import {
 import type { IcebergPdcaItem, IcebergPdcaPhase } from '../domain/pdca';
 import type {
   CreatePdcaInput,
+  DeletePdcaInput,
   PdcaListQuery,
   PdcaRepository,
   UpdatePdcaInput,
@@ -21,99 +18,128 @@ import type {
 
 const DEFAULT_TOP = 200;
 
-type SpContextCarrier = {
-  __SPFX_CONTEXT__?: ISPFXContext;
-};
-
-export type SharePointPdcaRepositoryOptions = {
-  sp?: SPFI;
-  spfxContext?: ISPFXContext;
-  defaultTop?: number;
-};
+type SpClient = ReturnType<typeof createSpClient>;
 
 export class SharePointPdcaRepository implements PdcaRepository {
-  private readonly sp: SPFI;
+  private readonly sp: SpClient;
   private readonly listTitle = LIST_CONFIG[ListKeys.IcebergPdca].title;
   private readonly defaultTop: number;
 
-  constructor(options: SharePointPdcaRepositoryOptions = {}) {
-    this.ensureSharePointConfig();
+  constructor(options: { defaultTop?: number } = {}) {
     this.defaultTop = options.defaultTop ?? DEFAULT_TOP;
-    this.sp = options.sp ?? this.createSpInstance(options.spfxContext);
+    const { baseUrl } = ensureConfig();
+    this.sp = createSpClient(acquireSpAccessToken, baseUrl);
   }
 
   async list(query: PdcaListQuery): Promise<IcebergPdcaItem[]> {
     const userId = query.userId;
     if (!userId) return [];
 
-    const filters = [`${FIELD_MAP_ICEBERG_PDCA.userId} eq '${this.escapeSingleQuotes(userId)}'`];
+    const internalNames = await this.sp.getListFieldInternalNames(this.listTitle);
+    const selectFields = buildIcebergPdcaSelectFields(Array.from(internalNames));
+    const filter = `${FIELD_MAP_ICEBERG_PDCA.userId} eq '${this.escapeSingleQuotes(userId)}'`;
 
-    let spQuery = this.spList.items
-      .select(...ICEBERG_PDCA_SELECT_FIELDS)
-      .orderBy(FIELD_MAP_ICEBERG_PDCA.updatedAt, false);
-
+    const params = new URLSearchParams();
+    params.set('$select', selectFields.join(','));
+    params.set('$filter', filter);
+    params.set('$orderby', `${FIELD_MAP_ICEBERG_PDCA.updatedAt} desc`);
     if (this.defaultTop) {
-      spQuery = spQuery.top(this.defaultTop);
+      params.set('$top', String(this.defaultTop));
     }
 
-    if (filters.length) {
-      spQuery = spQuery.filter(filters.join(' and '));
-    }
-
-    const items = await spQuery();
-    return (items ?? []).map((item: Record<string, unknown>) => this.toDomain(item));
+    const url = `/lists/getbytitle('${encodeURIComponent(this.listTitle)}')/items?${params.toString()}`;
+    const res = await this.sp.spFetch(url, { method: 'GET' });
+    const json = (await res.json()) as { value?: Record<string, unknown>[] };
+    return (json.value ?? []).map((item) => this.toDomain(item));
   }
 
   async create(input: CreatePdcaInput): Promise<IcebergPdcaItem> {
-    const fields: Record<string, unknown> = {
+    const body: Record<string, unknown> = {
       [FIELD_MAP_ICEBERG_PDCA.title]: input.title,
       [FIELD_MAP_ICEBERG_PDCA.userId]: input.userId,
     };
 
-    if (input.summary !== undefined) fields[FIELD_MAP_ICEBERG_PDCA.summary] = input.summary;
-    if (input.phase !== undefined) fields[FIELD_MAP_ICEBERG_PDCA.phase] = input.phase;
+    if (input.summary !== undefined) body[FIELD_MAP_ICEBERG_PDCA.summary] = input.summary;
+    if (input.phase !== undefined) body[FIELD_MAP_ICEBERG_PDCA.phase] = input.phase;
 
-    const result = await this.spList.items.add(fields);
-    return this.toDomain(result.data as Record<string, unknown>);
+    const url = `/lists/getbytitle('${encodeURIComponent(this.listTitle)}')/items`;
+    const res = await this.sp.spFetch(url, {
+      method: 'POST',
+      headers: {
+        Accept: 'application/json;odata=nometadata',
+        'Content-Type': 'application/json;odata=nometadata',
+      },
+      body: JSON.stringify(body),
+    });
+    const data = (await res.json()) as Record<string, unknown>;
+    return this.toDomain(data);
   }
 
   async update(input: UpdatePdcaInput): Promise<IcebergPdcaItem> {
-    const id = Number(input.id);
-    if (Number.isNaN(id)) {
+    const idNum = Number(input.id);
+    if (Number.isNaN(idNum)) {
       throw new Error(`[SharePointPdcaRepository] Invalid id: ${input.id}`);
     }
 
-    const fields: Record<string, unknown> = {};
-    if (input.title !== undefined) fields[FIELD_MAP_ICEBERG_PDCA.title] = input.title;
-    if (input.summary !== undefined) fields[FIELD_MAP_ICEBERG_PDCA.summary] = input.summary;
-    if (input.phase !== undefined) fields[FIELD_MAP_ICEBERG_PDCA.phase] = input.phase;
+    const body: Record<string, unknown> = {};
+    if (input.title !== undefined) body[FIELD_MAP_ICEBERG_PDCA.title] = input.title;
+    if (input.summary !== undefined) body[FIELD_MAP_ICEBERG_PDCA.summary] = input.summary;
+    if (input.phase !== undefined) body[FIELD_MAP_ICEBERG_PDCA.phase] = input.phase;
 
-    const result = await this.spList.items.getById(id).update(fields, input.etag ?? '*');
-    return this.toDomain(result.data as Record<string, unknown>);
-  }
+    const url = `/lists/getbytitle('${encodeURIComponent(this.listTitle)}')/items(${idNum})`;
+    const res = await this.sp.spFetch(url, {
+      method: 'PATCH',
+      headers: {
+        Accept: 'application/json;odata=nometadata',
+        'Content-Type': 'application/json;odata=nometadata',
+        'IF-MATCH': input.etag ?? '*',
+      },
+      body: JSON.stringify(body),
+    });
 
-  private get spList() {
-    return this.sp.web.lists.getByTitle(this.listTitle);
-  }
-
-  private ensureSharePointConfig(): void {
-    const config = getAppConfig();
-    if (!config.VITE_SP_RESOURCE || !config.VITE_SP_SITE_RELATIVE) {
-      console.warn('[SharePointPdcaRepository] SharePoint environment variables are missing.');
+    // 204 No Content は SharePoint の更新で一般的。ボディが空なので json() は呼ばない
+    if (res.status === 204 || res.status === 200) {
+      const text = await res.text();
+      if (!text || text.length === 0) {
+        // 更新成功だが、レスポンスボディが空。元のデータを返す（キャッシュ無効化は呼び出し側で）
+        return {
+          id: String(input.id),
+          userId: input.userId ?? '',
+          title: input.title ?? '',
+          summary: input.summary ?? '',
+          phase: input.phase ?? 'PLAN',
+          createdAt: '',
+          updatedAt: new Date().toISOString(),
+        };
+      }
+      const data = JSON.parse(text) as Record<string, unknown>;
+      return this.toDomain(data);
     }
+
+    // その他のステータス
+    const data = (await res.json()) as Record<string, unknown>;
+    return this.toDomain(data);
   }
 
-  private createSpInstance(context?: ISPFXContext): SPFI {
-    const resolved = context ?? SharePointPdcaRepository.resolveGlobalSpfxContext();
-    if (!resolved) {
-      throw new Error('[SharePointPdcaRepository] SPFx context is not available.');
+  async delete(input: DeletePdcaInput): Promise<void> {
+    const idNum = Number(input.id);
+    if (Number.isNaN(idNum)) {
+      throw new Error(`[SharePointPdcaRepository] Invalid id: ${input.id}`);
     }
-    return spfi().using(SPFx(resolved));
-  }
 
-  private static resolveGlobalSpfxContext(): ISPFXContext | undefined {
-    const carrier = globalThis as SpContextCarrier;
-    return carrier.__SPFX_CONTEXT__;
+    const url = `/lists/getbytitle('${encodeURIComponent(this.listTitle)}')/items(${idNum})`;
+    const res = await this.sp.spFetch(url, {
+      method: 'POST',
+      headers: {
+        Accept: 'application/json;odata=nometadata',
+        'Content-Type': 'application/json;odata=nometadata',
+        'X-HTTP-Method': 'DELETE',
+        'IF-MATCH': input.etag ?? '*',
+      },
+    });
+
+    if (res.status === 204 || res.status === 200) return;
+    throw new Error(`[SharePointPdcaRepository] delete failed: ${res.status}`);
   }
 
   private toDomain(raw: Record<string, unknown>): IcebergPdcaItem {

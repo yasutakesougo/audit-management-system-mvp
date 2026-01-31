@@ -2,6 +2,15 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import type { AppConfig } from '../../src/lib/env';
 
+vi.mock('@/lib/env', async () => {
+  const actual = await vi.importActual<typeof import('@/lib/env')>('@/lib/env');
+  return {
+    ...actual,
+    skipSharePoint: vi.fn(() => false),
+    shouldSkipLogin: vi.fn(() => false),
+  };
+});
+
 const boomPayload = { error: { message: 'Internal Boom' } };
 
 const mockFetch = vi.fn(async () => ({
@@ -18,6 +27,7 @@ const mockFetch = vi.fn(async () => ({
 const DEFAULT_APP_CONFIG: AppConfig = {
   VITE_SP_RESOURCE: 'https://contoso.sharepoint.com',
   VITE_SP_SITE_RELATIVE: '/sites/wf',
+  VITE_SP_SITE_URL: 'https://contoso.sharepoint.com/sites/wf',
   VITE_SP_RETRY_MAX: '1',
   VITE_SP_RETRY_BASE_MS: '50',
   VITE_SP_RETRY_MAX_DELAY_MS: '50',

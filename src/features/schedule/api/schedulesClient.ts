@@ -1,6 +1,7 @@
 import { isE2eMsalMockEnabled, readBool, readEnv, readOptionalEnv } from '@/lib/env';
 import { fetchSp } from '@/lib/fetchSp';
 import { acquireSpAccessToken } from '@/lib/msal';
+import { buildScheduleSelectClause, withScheduleFieldFallback } from '../scheduleFeatures';
 
 import type { OrgFilterKey } from '../orgFilters';
 
@@ -40,8 +41,6 @@ const PROXY_PREFIX = '/sharepoint-api';
 const preferProxyFetch = readBool('VITE_SP_USE_PROXY', false);
 const siteBaseUrl = resolveSiteBaseUrl();
 const scheduleCategoryField = resolveScheduleCategoryField();
-// Keep select/expand lists tightly scoped so SharePoint accepts the query.
-const scheduleSelectFields = createScheduleSelectFields(scheduleCategoryField);
 const scheduleExpandFields = ['AssignedStaff', 'TargetUser', 'Author', 'Editor'] as const;
 
 export function clearSchedulesCache() {
@@ -298,6 +297,49 @@ const fixtures: Record<ScheduleCategory, ScheduleEvent[]> = {
       dayKey: '2025-11-14',
       orgCode: 'main',
     },
+    // E2E smoke seed: 2025-12-01 week
+    {
+      id: 32001,
+      title: '田中 太郎 - 生活介護',
+      start: '2025-12-01T09:00:00+09:00',
+      end: '2025-12-01T15:00:00+09:00',
+      category: 'User',
+      personName: '田中 太郎',
+      targetUserNames: ['田中 太郎'],
+      targetUserIds: ['USER001'],
+      staffIds: ['401'],
+      staffNames: ['吉田 千尋'],
+      dayKey: '2025-12-01',
+      orgCode: 'main',
+    },
+    // E2E smoke seed: temporary care (一時ケア) for status-service test
+    {
+      id: 32002,
+      title: '山田 花子 - 一時ケア',
+      start: '2025-12-01T09:15:00+09:00',
+      end: '2025-12-01T10:00:00+09:00',
+      category: 'User',
+      personName: '山田 花子',
+      targetUserNames: ['山田 花子'],
+      targetUserIds: ['USER002'],
+      staffIds: ['402'],
+      staffNames: ['佐藤 美穂'],
+      dayKey: '2025-12-01',
+      orgCode: 'respite',
+    },
+    // E2E smoke seed: legacy status (申請中 → その他) for normalization test
+    {
+      id: 32003,
+      title: '佐々木 三郎 - その他',
+      start: '2025-12-01T09:00:00+09:00',
+      end: '2025-12-01T09:30:00+09:00',
+      category: 'User',
+      personName: '佐々木 三郎',
+      targetUserNames: ['佐々木 三郎'],
+      targetUserIds: ['USER003'],
+      dayKey: '2025-12-01',
+      orgCode: 'main',
+    },
   ],
 };
 
@@ -344,7 +386,7 @@ export async function getSchedules(
       },
     };
 
-    const items = await fetchSharePointItems(category, request, requestInit);
+    const items = await withScheduleFieldFallback(() => fetchSharePointItems(category, request, requestInit));
     data = items.map(spToEvent).map(coerceAllDay).sort(sortByStartAsc);
   }
 
@@ -410,7 +452,18 @@ async function fetchSharePointItems(
   const collected: ScheduleSpItem[] = [];
   const firstResponse = await executeSharePointFetch(category, request, init);
   if (!firstResponse.ok) {
-    throw new Error(`SP fetch failed: ${firstResponse.status}`);
+    const errorText = await firstResponse.text().catch(() => '');
+    const error = new Error(`SP fetch failed: ${firstResponse.status} ${firstResponse.statusText}`) as Error & {
+      status?: number;
+      response?: { status: number };
+    };
+    error.status = firstResponse.status;
+    error.response = { status: firstResponse.status };
+    // Include error message from SharePoint if available
+    if (errorText) {
+      error.message += ` - ${errorText.substring(0, 200)}`;
+    }
+    throw error;
   }
   const firstBody = (await firstResponse.json()) as SharePointResponse;
   collected.push(...(firstBody.value ?? []));
@@ -421,7 +474,17 @@ async function fetchSharePointItems(
     const pageResponse = await fetchSp(normalizedNext, init);
     console.info('[schedulesClient] fetch', { category, url: normalizedNext, via: 'direct', status: pageResponse.status });
     if (!pageResponse.ok) {
-      throw new Error(`SP fetch failed (page): ${pageResponse.status}`);
+      const errorText = await pageResponse.text().catch(() => '');
+      const error = new Error(`SP fetch failed (page): ${pageResponse.status} ${pageResponse.statusText}`) as Error & {
+        status?: number;
+        response?: { status: number };
+      };
+      error.status = pageResponse.status;
+      error.response = { status: pageResponse.status };
+      if (errorText) {
+        error.message += ` - ${errorText.substring(0, 200)}`;
+      }
+      throw error;
     }
     const body = (await pageResponse.json()) as SharePointResponse;
     collected.push(...(body.value ?? []));
@@ -460,7 +523,7 @@ function buildSpQueryPath(category: ScheduleCategory, r: Range): string {
     $top: '500',
     $filter: filter,
     $orderby: 'EventDate asc,Id asc',
-    $select: scheduleSelectFields.join(','),
+    $select: buildScheduleSelectClause(),
     $expand: scheduleExpandFields.join(','),
   });
   return `/_api/web/${listKey}/items?${params.toString()}`;
@@ -480,34 +543,6 @@ function resolveSchedulesListIdentifier(): string {
 function resolveScheduleCategoryField(): string {
   const raw = readEnv('VITE_SP_SCHEDULE_CATEGORY', '').trim();
   return raw || 'cr014_category';
-}
-
-function createScheduleSelectFields(categoryField: string): string[] {
-  const fields: string[] = ['Id', 'Title', 'EventDate', 'EndDate', 'AllDay'];
-  const ensure = (value: string) => {
-    if (!value || fields.includes(value)) {
-      return;
-    }
-    fields.push(value);
-  };
-  ensure(categoryField);
-  ensure('Category');
-  ensure('ServiceType');
-  ensure('Status');
-  [
-    'AssignedStaffId',
-    'TargetUserId',
-    'cr014_serviceType',
-    'AssignedStaff/Id',
-    'AssignedStaff/Title',
-    'AssignedStaff/EMail',
-    'TargetUser/Id',
-    'TargetUser/Title',
-    'TargetUser/EMail',
-    'Author/Title',
-    'Editor/Title',
-  ].forEach(ensure);
-  return fields;
 }
 
 function resolveSiteBaseUrl(): string {

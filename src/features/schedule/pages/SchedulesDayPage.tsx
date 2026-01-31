@@ -2,7 +2,8 @@ import { useAnnounce } from '@/a11y/LiveAnnouncer';
 import { useRouteFocusManager } from '@/a11y/useRouteFocusManager';
 import { type ScheduleEvent } from '@/features/schedule/api/schedulesClient';
 import { ScheduleConflictGuideDialog, type SuggestionAction } from '@/features/schedule/components/ScheduleConflictGuideDialog';
-import ScheduleCreateDialog, { type CreateScheduleEventInput } from '@/features/schedules/ScheduleCreateDialog';
+import ScheduleCreateDialog from '@/features/schedules/ScheduleCreateDialog';
+import type { CreateScheduleEventInput } from '@/features/schedules/data';
 import { useSchedulesPort } from '@/features/schedules/data';
 import type { SchedItem } from '@/features/schedules/data';
 import type { InlineScheduleDraft } from '@/features/schedules/data/inlineScheduleDraft';
@@ -450,7 +451,7 @@ export default function SchedulesDayPage(): JSX.Element {
     setDialogParams(buildDialogIntent('User', anchoredDateIso));
   }, [anchoredDateIso, setDialogParams]);
 
-  const dayHref = useMemo(() => `/schedules/day?day=${range.param}`, [range.param]);
+  const dayHref = useMemo(() => `/schedules/day?date=${encodeURIComponent(range.param)}&tab=day`, [range.param]);
   const weekHref = useMemo(() => `/schedules/week?date=${range.param}`, [range.param]);
   const monthHref = useMemo(() => `/schedules/month?date=${range.param}`, [range.param]);
 

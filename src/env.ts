@@ -86,6 +86,17 @@ export function getRuntimeEnv(): EnvDict {
       }
     }
 
+    // DEBUG: Log E2E flag state
+    if (typeof window !== 'undefined' && String(fromWindow?.VITE_AUDIT_DEBUG) === '1') {
+      console.log('[getRuntimeEnv] DEBUG:', {
+        'fromWindow.VITE_E2E_MSAL_MOCK': fromWindow?.VITE_E2E_MSAL_MOCK,
+        'fromWindow.VITE_E2E': fromWindow?.VITE_E2E,
+        'INLINE_ENV.VITE_E2E_MSAL_MOCK': INLINE_ENV.VITE_E2E_MSAL_MOCK,
+        'allowRuntimeOverrides': allowRuntimeOverrides,
+        'merged.VITE_E2E_MSAL_MOCK': merged.VITE_E2E_MSAL_MOCK,
+      });
+    }
+
     cachedEnv = merged;
     return merged;
   }
@@ -156,3 +167,11 @@ export const isDev = resolveIsDev();
 // 🔧 命名統一：環境フラグを定数化
 export const isE2E = getFlag('VITE_E2E', false);
 export const isDemo = getFlag('VITE_DEMO', false);
+/**
+ * Clear the cached env after runtime env is loaded.
+ * Call this after window.__ENV__ is updated to ensure fresh reads.
+ * @internal
+ */
+export function clearEnvCache(): void {
+  cachedEnv = null;
+}

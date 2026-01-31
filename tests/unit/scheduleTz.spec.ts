@@ -1,39 +1,16 @@
-import type { AppConfig } from '@/lib/env';
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
+import { mergeTestConfig, setTestConfigOverride } from '../helpers/mockEnv';
+import { installTestResets } from '../helpers/reset';
 
 vi.mock('@/lib/env', async () => {
   const actual = await vi.importActual<typeof import('@/lib/env')>('@/lib/env');
   return {
     ...actual,
-    getAppConfig: vi.fn(),
+    getAppConfig: vi.fn(() => mergeTestConfig()),
   };
 });
 
 const RealDateTimeFormat = Intl.DateTimeFormat;
-
-const makeConfig = (overrides: Partial<AppConfig>): AppConfig => ({
-  VITE_SP_RESOURCE: '',
-  VITE_SP_SITE_RELATIVE: '',
-  VITE_SP_RETRY_MAX: '4',
-  VITE_SP_RETRY_BASE_MS: '400',
-  VITE_SP_RETRY_MAX_DELAY_MS: '5000',
-  VITE_MSAL_CLIENT_ID: '',
-  VITE_MSAL_TENANT_ID: '',
-  VITE_MSAL_TOKEN_REFRESH_MIN: '300',
-  VITE_AUDIT_DEBUG: '',
-  VITE_AUDIT_BATCH_SIZE: '',
-  VITE_AUDIT_RETRY_MAX: '',
-  VITE_AUDIT_RETRY_BASE: '',
-  VITE_E2E: '',
-  schedulesCacheTtlSec: 60,
-  graphRetryMax: 2,
-  graphRetryBaseMs: 300,
-  graphRetryCapMs: 2000,
-  schedulesTz: '',
-  schedulesWeekStart: 1,
-  isDev: false,
-  ...overrides,
-});
 
 const mockDateTimeFormat = (
   opts: {
@@ -62,17 +39,13 @@ const mockDateTimeFormat = (
     }) as typeof Intl.DateTimeFormat);
 };
 
-const { getAppConfig } = await import('@/lib/env');
 const scheduleLib = await import('@/utils/scheduleTz');
-const mockedGetAppConfig = vi.mocked(getAppConfig);
-
-afterEach(() => {
-  vi.clearAllMocks();
-});
 
 describe('scheduleTz utilities', () => {
+  installTestResets();
+
   it('returns trimmed schedulesTz when configuration is valid', () => {
-  mockedGetAppConfig.mockReturnValue(makeConfig({ schedulesTz: '  Europe/Berlin   ' }));
+    setTestConfigOverride({ schedulesTz: '  Europe/Berlin   ' });
 
     const result = scheduleLib.resolveSchedulesTz();
 
@@ -80,7 +53,7 @@ describe('scheduleTz utilities', () => {
   });
 
   it('logs and falls back to Intl resolved zone when config is invalid', () => {
-  mockedGetAppConfig.mockReturnValue(makeConfig({ schedulesTz: 'Invalid/Zone' }));
+    setTestConfigOverride({ schedulesTz: 'Invalid/Zone' });
 
     const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
     const dtSpy = mockDateTimeFormat({ intlTz: 'America/New_York', invalidZones: ['Invalid/Zone'] });
@@ -104,7 +77,7 @@ describe('scheduleTz utilities', () => {
   });
 
   it('uses Intl resolved zone when configuration is empty', () => {
-  mockedGetAppConfig.mockReturnValue(makeConfig({ schedulesTz: '   ' }));
+    setTestConfigOverride({ schedulesTz: '   ' });
 
     const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
     const dtSpy = mockDateTimeFormat({ intlTz: 'America/New_York' });
@@ -123,7 +96,7 @@ describe('scheduleTz utilities', () => {
   });
 
   it('falls back to default timezone when nothing is resolvable', () => {
-  mockedGetAppConfig.mockReturnValue(makeConfig({ schedulesTz: '' }));
+    setTestConfigOverride({ schedulesTz: '' });
 
     const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
     const dtSpy = mockDateTimeFormat({ intlTz: 'Bad/Tz', invalidZones: ['Bad/Tz', 'America/New_York'] });

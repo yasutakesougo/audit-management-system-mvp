@@ -69,6 +69,8 @@ export function renderWithAppProviders(ui: React.ReactNode, opts: Options = {}):
     future: mergedFuture,
   });
 
+  // Note: ToastProvider is included here; tests should NOT wrap UI with ToastProvider again
+  // to avoid double-mounting and snapshot mismatches.
   const utils = render(
     <StrictMode>
       <ToastProvider>

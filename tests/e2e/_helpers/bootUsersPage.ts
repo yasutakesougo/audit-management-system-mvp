@@ -87,10 +87,47 @@ export async function bootUsersPage(page: Page, options: BootUsersOptions = {}):
   const route = options.route ?? '/users';
   const shouldNavigate = options.autoNavigate !== false;
 
+  // Bootstrap monitoring: JS/network failures only logged on failure
+  // Controlled by process.env.E2E_DEBUG for local debugging
+  const isDebug = process.env.E2E_DEBUG === '1' || process.env.CI === 'true';
+  const reqFailed: string[] = [];
+  const consoleErr: string[] = [];
+  const pageErr: string[] = [];
+
+  page.on('requestfailed', (req) => {
+    const url = req.url();
+    const type = req.resourceType();
+    const failure = req.failure()?.errorText;
+    if (type === 'script' || type === 'document' || type === 'stylesheet') {
+      reqFailed.push(`[requestfailed] ${type} ${url} :: ${failure ?? 'unknown'}`);
+    }
+  });
+
+  page.on('response', (res) => {
+    const url = res.url();
+    if ((url.endsWith('.js') || url.includes('/assets/')) && res.status() >= 400) {
+      reqFailed.push(`[bad response] ${res.status()} ${url}`);
+    }
+  });
+
+  page.on('pageerror', (err) => {
+    pageErr.push(`[pageerror] ${String(err)}`);
+  });
+
+  page.on('console', (msg) => {
+    if (msg.type() === 'error') {
+      consoleErr.push(`[console.error] ${msg.text()}`);
+    }
+  });
+
   await setupPlaywrightEnv(page, {
     envOverrides,
     storageOverrides,
   });
+
+  // Ensure app is initialized by navigating to root first
+  await page.goto('/', { waitUntil: 'load' });
+  await page.waitForLoadState('networkidle');
 
   if (shouldSeedUsers && Array.isArray(seededUsers)) {
     await page.addInitScript(
@@ -119,5 +156,36 @@ export async function bootUsersPage(page: Page, options: BootUsersOptions = {}):
   if (shouldNavigate) {
     await page.goto(route, { waitUntil: 'load' });
     await page.waitForLoadState('networkidle');
+
+    // Verify: root element actually mounted after navigation
+    // Only log on failure (root is empty) or when E2E_DEBUG enabled
+    await page.waitForTimeout(200);
+    const rootHtml = await page.locator('#root').innerHTML().catch(() => '');
+    const isMounted = rootHtml && rootHtml.trim() !== '';
+
+    if (!isMounted || isDebug) {
+      if (!isMounted) {
+        console.log('\n❌ ERROR [bootUsersPage]: React root is empty after navigation');
+        console.log('  URL:', page.url());
+        console.log('  Network failures:', reqFailed.slice(0, 5).join('\n  '));
+        console.log('  Page errors:', pageErr.slice(0, 5).join('\n  '));
+        console.log('  Console errors:', consoleErr.slice(0, 5).join('\n  '));
+
+        try {
+          const moduleScripts = await page.$$eval('script[type="module"]', (els) =>
+            (els as HTMLScriptElement[]).map((e) => e.src || '[inline]'),
+          );
+          console.log('  Module scripts loaded:', moduleScripts.length);
+        } catch {
+          console.log('  Failed to inspect module scripts');
+        }
+      }
+
+      if (isDebug && isMounted) {
+        console.log('[bootUsersPage] DEBUG: Bootstrap complete, root mounted');
+        console.log('  Network failures:', reqFailed.length);
+        console.log('  Console errors:', consoleErr.length);
+      }
+    }
   }
 }

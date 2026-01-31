@@ -29,7 +29,24 @@ module.exports = {
     'no-restricted-imports': [
       'error',
       {
+        paths: [
+          {
+            name: '@/lib/env',
+            importNames: [
+              'IS_SKIP_SHAREPOINT',
+              'IS_DEMO',
+              'IS_AUTOMATION',
+              'IS_SKIP_LOGIN',
+            ],
+            message:
+              'Do not import skip/demo flags directly. Use shouldSkipSharePoint() from src/lib/sharepoint/skipSharePoint instead.',
+          },
+        ],
         patterns: [
+          {
+            group: ['./env', '../env'],
+            message: "Use '@/lib/env' to keep module IDs consistent for mocks."
+          },
           {
             group: [
               '**/features/users/UsersPanel{,.ts,.tsx,.js,.jsx}',

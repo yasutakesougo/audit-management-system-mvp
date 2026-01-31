@@ -12,7 +12,15 @@ vi.mock("@/lib/spClient", () => ({
 }));
 
 vi.mock("@/auth/MsalProvider", () => ({
-	useMsalContext: () => ({ accounts: [] }),
+	useMsalContext: () => ({
+		accounts: [],
+		instance: {
+			getActiveAccount: () => null,
+			getAllAccounts: () => [],
+			acquireTokenSilent: vi.fn(() => Promise.resolve({ accessToken: 'mock-token' })),
+		},
+		inProgress: 'none',
+	}),
 }));
 
 vi.mock("@/lib/env", async () => {
@@ -37,7 +45,8 @@ vi.mock("@/lib/env", async () => {
   };
 });
 
-// Wrap with MemoryRouter since AppShell renders navigation links using router context.
+// Verify AppShell renders correctly with all app providers, router context, and router future flags.
+// Note: renderWithAppProviders already includes ToastProvider, so do not wrap UI with it again.
 test("AppShell snapshot", async () => {
   const AppShell = (await import("@/app/AppShell")).default;
   const { container } = renderWithAppProviders(

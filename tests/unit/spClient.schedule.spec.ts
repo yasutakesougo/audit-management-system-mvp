@@ -7,6 +7,27 @@ const mockToSpScheduleFields = vi.hoisted(() => vi.fn());
 const mockValidateUserCare = vi.hoisted(() => vi.fn());
 const mockBuildSelect = vi.hoisted(() => vi.fn(() => 'Id,Title'));
 const mockHandleOptional = vi.hoisted(() => vi.fn(() => false));
+const mockWithFieldFallback = vi.hoisted(
+  () => vi.fn(async (fn) => {
+    try {
+      return await fn();
+    } catch (error) {
+      if (mockHandleOptional()) {
+        // First retry
+        try {
+          return await fn();
+        } catch (retryError) {
+          if (mockHandleOptional()) {
+            // Second retry (tier 2)
+            return await fn();
+          }
+          throw retryError;
+        }
+      }
+      throw error;
+    }
+  })
+);
 const mockSpWriteResilient = vi.hoisted(() => vi.fn());
 const mockReadEnv = vi.hoisted(() => vi.fn<(key?: string, fallback?: string) => string>(() => ''));
 
@@ -26,6 +47,7 @@ vi.mock('@/features/schedule/statusDictionary', () => ({
 vi.mock('@/features/schedule/scheduleFeatures', () => ({
   buildScheduleSelectClause: mockBuildSelect,
   handleScheduleOptionalFieldError: mockHandleOptional,
+  withScheduleFieldFallback: mockWithFieldFallback,
 }));
 
 vi.mock('@/lib/spWrite', () => ({

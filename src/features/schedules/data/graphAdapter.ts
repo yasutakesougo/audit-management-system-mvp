@@ -3,6 +3,7 @@ import { toSafeError } from '@/lib/errors';
 import { withUserMessage } from '@/lib/notice';
 import type { Event as GraphEvent } from '@microsoft/microsoft-graph-types';
 import type { SchedItem, SchedulesPort } from './port';
+import { result } from '@/shared/result';
 
 type GetToken = () => Promise<string | null>;
 
@@ -43,11 +44,21 @@ const mapGraphEventToItem = (event: GraphEvent): SchedItem | null => {
     return null;
   }
 
+  const assignedTo =
+    event.organizer?.emailAddress?.address?.trim() ||
+    (event as { createdBy?: { user?: { email?: string } } }).createdBy?.user?.email?.trim() ||
+    null;
+
+  const id = fallbackId(event);
+  const etagValue = (event as { __metadata?: { id?: string } })?.__metadata?.id || `"graph-${id}"`; // Phase 2-0: etag from Graph
+
   return {
-    id: fallbackId(event),
+    id,
     title: normalizeTitle(event.subject ?? undefined),
     start,
     end,
+    assignedTo: assignedTo ? assignedTo.toLowerCase() : null,
+    etag: etagValue, // Phase 2-0: required field
   };
 };
 
@@ -214,9 +225,43 @@ export const makeGraphSchedulesPort = (getToken: GetToken, options?: GraphSchedu
       inflight.set(key, { controller, promise });
       return promise;
     },
-    create: (input) => createImpl(input),
+    create: (input) => {
+      if (!createImpl) {
+        return Promise.resolve(result.err<SchedItem>({
+          kind: 'unknown',
+          message: 'Graph schedule creation not configured',
+        }));
+      }
+      return createImpl(input).catch((err) => {
+        const safeErr = err instanceof Error ? err : new Error(String(err));
+        return result.unknown<SchedItem>(safeErr.message, err);
+      });
+    },
     async remove(_eventId: string): Promise<void> {
       throw new Error('Graph adapter does not support schedule deletion');
     },
   } satisfies SchedulesPort;
+};
+
+/**
+ * Fetch the list of group IDs the current user is a member of.
+ * Used for authorization checks (reception, admin roles).
+ */
+export const fetchMyGroupIds = async (getToken: GetToken): Promise<string[]> => {
+  const token = await getToken();
+  if (!token) return [];
+
+  const res = await fetch('https://graph.microsoft.com/v1.0/me/memberOf?$select=id', {
+    headers: {
+      Authorization: `Bearer ${token}`,
+      Accept: 'application/json',
+    },
+  });
+
+  if (!res.ok) {
+    throw new Error(`memberOf failed: ${res.status}`);
+  }
+
+  const json = await res.json();
+  return (json.value ?? []).map((v: { id?: string }) => v.id).filter(Boolean);
 };

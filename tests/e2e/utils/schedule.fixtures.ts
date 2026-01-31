@@ -49,6 +49,31 @@ export function buildStaffMorningFixture(dateInput: Date | string): ScheduleItem
   } satisfies ScheduleItem;
 }
 
+export function buildUserMinimalFixture(dateInput: Date | string): ScheduleItem {
+  const dateKey = normaliseDateKey(dateInput);
+  const start = toIso(dateKey, '10:00:00');
+  const end = toIso(dateKey, '11:00:00');
+  return {
+    Id: 9100,
+    Title: 'デモ利用者ケア',
+    ...withDateColumns(start, end),
+    AllDay: false,
+    Status: '承認済み',
+    Location: 'ケア室A',
+    DayPart: 'AM',
+    cr014_category: 'User',
+    cr014_serviceType: '日中支援',
+    cr014_personType: 'Internal',
+    cr014_personId: 'U-999',
+    cr014_personName: 'デモ利用者',
+    cr014_staffIds: ['999'],
+    cr014_staffNames: ['デモスタッフ'],
+    cr014_dayKey: dateKey,
+    cr014_fiscalYear: formatInTimeZone(new Date(`${dateKey}T00:00:00${TZ_OFFSET}`), TIME_ZONE, 'yyyy'),
+    '@odata.etag': '"99"',
+  } satisfies ScheduleItem;
+}
+
 export function buildScheduleFixturesForDate(dateInput: Date = new Date()): Required<ScheduleFixtures> {
   const dayKey = formatInTimeZone(dateInput, TIME_ZONE, 'yyyy-MM-dd');
   const fiscalYear = formatInTimeZone(dateInput, TIME_ZONE, 'yyyy');

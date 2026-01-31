@@ -320,12 +320,14 @@ export default function DailyRecordPage() {
       });
 
       // 成功ログ
-      console.log('保存成功:', {
-        operation,
-        personName: record.personName,
-        date: record.date,
-        status: record.status
-      });
+      if (import.meta.env.DEV) {
+        console.log('保存成功:', {
+          operation,
+          personName: record.personName,
+          date: record.date,
+          status: record.status
+        });
+      }
 
     } catch (error) {
       // 予期しないエラーをキャッチ

@@ -8,10 +8,15 @@ export type ScheduleEnvOptions = {
 };
 
 const DEFAULT_ENV = {
+  VITE_E2E: '1',
   VITE_E2E_MSAL_MOCK: '1',
   VITE_SKIP_LOGIN: '1',
+  VITE_SKIP_SHAREPOINT: '1',
+  VITE_MSAL_CLIENT_ID: 'e2e-mock-client-id-12345678',
+  VITE_MSAL_TENANT_ID: 'common',
   VITE_FEATURE_SCHEDULES: '1',
   VITE_FEATURE_SCHEDULES_WEEK_V2: '1',
+  VITE_SCHEDULES_SAVE_MODE: 'mock',
 } satisfies Record<string, string>;
 
 const DEFAULT_STORAGE = {

@@ -12,7 +12,6 @@ export type TokuseiSurveyResponse = {
   personality?: string;
   sensoryFeatures?: string;
   behaviorFeatures?: string;
-  preferences?: string;
   strengths?: string;
   notes?: string;
   createdAt: string;
@@ -84,7 +83,6 @@ export const createTokuseiDemoResponses = (): TokuseiSurveyResponse[] => {
       personality: '初めての環境では緊張が強いが、慣れると自分から話しかけられる明るさがあります。',
       sensoryFeatures: '大きな音と蛍光灯のちらつきが苦手。イヤーマフで落ち着ける。',
       behaviorFeatures: '予定外の変更で泣いてしまうことあり。視覚スケジュールで予告すると安定。',
-      preferences: '動物動画を見ること、柔らかい感触のクッション。',
       strengths: '手先が器用でビーズ作りが得意。小さい子のお世話が上手。',
       notes: '配慮が必要な場面：集団活動の開始時。個別に声をかけると入りやすい。',
       createdAt: new Date(now - dayMs * 0.9).toISOString(),
@@ -103,7 +101,6 @@ export const createTokuseiDemoResponses = (): TokuseiSurveyResponse[] => {
       personality: 'マイペースでこだわり強め。信頼できる人には冗談を交えながら話す。',
       sensoryFeatures: '触覚過敏でタグ付きの服が苦手。加圧ベストで安心できる。',
       behaviorFeatures: '気持ちの切り替えに時間がかかる。シークエンスボードで見通しを示すと前向き。',
-      preferences: '電車の車両形式を調べること。図鑑を眺める時間。',
       strengths: '記憶力が非常に高く、ダイヤ改正の情報にも詳しい。',
       notes: '外出時は混雑を避けるルート設定を希望。',
       createdAt: new Date(now - dayMs * 2.9).toISOString(),
@@ -122,7 +119,6 @@ export const createTokuseiDemoResponses = (): TokuseiSurveyResponse[] => {
       personality: '周囲を観察してから動く慎重派。信頼関係ができると率先して手伝ってくれる。',
       sensoryFeatures: '匂いに敏感で、調理室付近ではマスクをしたい。',
       behaviorFeatures: '疲れると黙り込むので、短い休憩を挟むと復活。',
-      preferences: 'イラストを描くこと、落ち着いた音楽。',
       strengths: '人を気遣う声かけが自然にできる。',
       notes: '面談時は女性スタッフ希望。',
       createdAt: new Date(now - dayMs * 5.8).toISOString(),

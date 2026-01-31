@@ -38,7 +38,9 @@ import StaffTab from '@/features/schedule/views/StaffTab';
 import TimelineDay from '@/features/schedule/views/TimelineDay';
 import TimelineWeek, { type EventMovePayload } from '@/features/schedule/views/TimelineWeek';
 import UserTab from '@/features/schedule/views/UserTab';
-import ScheduleCreateDialog, { type CreateScheduleEventInput, type ScheduleFormState, type ScheduleServiceType, type ScheduleUserOption } from '@/features/schedules/ScheduleCreateDialog';
+import ScheduleCreateDialog from '@/features/schedules/ScheduleCreateDialog';
+import type { CreateScheduleEventInput, ScheduleServiceType } from '@/features/schedules/data';
+import type { ScheduleFormState, ScheduleUserOption } from '@/features/schedules/scheduleFormState';
 import { useScheduleUserOptions } from '@/features/schedules/useScheduleUserOptions';
 import { getAppConfig, skipSharePoint } from '@/lib/env';
 import { AuthRequiredError } from '@/lib/errors';
@@ -1091,13 +1093,14 @@ export default function SchedulePage() {
 
   const handleDayNavigate = useCallback(
     (dayKey: string) => {
-      navigate(`/schedules/day?day=${encodeURIComponent(dayKey)}`);
+      navigate(`/schedules/day?date=${encodeURIComponent(dayKey)}&tab=day`);
     },
     [navigate],
   );
 
   return (
-    <Container maxWidth="xl" sx={{ py: 3 }} data-testid={TESTIDS.SCHEDULES_PAGE_ROOT}>
+    <Box data-testid="schedule-legacy-root" sx={{ display: 'contents' }}>
+      <Container maxWidth="xl" sx={{ py: 3 }} data-testid={TESTIDS.SCHEDULES_PAGE_ROOT}>
       <Paper elevation={0} sx={{ borderRadius: 2, overflow: 'hidden' }}>
         {/* Header with title and period navigation */}
         <Box sx={{ p: 3, pb: 0 }}>
@@ -1345,6 +1348,7 @@ export default function SchedulePage() {
         onSubmit={handleDialogSubmit}
       />
       {snackbarUi}
-    </Container>
+      </Container>
+    </Box>
   );
 }

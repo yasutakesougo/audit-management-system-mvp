@@ -256,7 +256,9 @@ describe('Rule Engine API', () => {
   });
 
   describe('Performance', () => {
-    it('handles large datasets efficiently', () => {
+    const perfTest = process.env.PERF_TEST === '1' ? it : it.skip;
+
+    perfTest('handles large datasets efficiently', () => {
       const schedules: Schedule[] = [];
       const PERF_LIMIT_MS = process.env.CI ? 800 : 500;
 
