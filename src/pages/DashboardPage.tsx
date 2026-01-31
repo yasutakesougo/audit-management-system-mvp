@@ -497,7 +497,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ audience = 'staff' }) => 
 
   return (
     <Container maxWidth="lg" data-testid="dashboard-page">
-      <Box sx={{ py: 3 }}>
+      <Box sx={{ py: { xs: 1.5, sm: 2, md: 2.5 } }}>
         {/* ヘッダー */}
         <Box sx={{ mb: 3 }}>
           <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 1 }}>
@@ -553,8 +553,8 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ audience = 'staff' }) => 
         <Stack spacing={{ xs: 2, sm: 3, md: 4 }} sx={{ mb: { xs: 2, sm: 3 } }}>
           <DashboardSafetyHUD />
 
-          <Paper elevation={3} sx={{ p: { xs: 2, sm: 3, md: 3 } }}>
-            <Typography variant="h5" sx={{ fontWeight: 700 }}>
+          <Paper elevation={3} sx={{ p: { xs: 2, sm: 2.5, md: 3 } }}>
+            <Typography variant="h5" sx={{ fontWeight: 700, mb: 1.5 }}>
               今日の通所 / 出勤状況
             </Typography>
             <Grid container spacing={{ xs: 2, sm: 2, md: 3 }} sx={{ mt: 2 }}>
@@ -609,8 +609,8 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ audience = 'staff' }) => 
             </Grid>
           </Paper>
 
-          <Paper elevation={3} sx={{ p: { xs: 2, sm: 3, md: 3 } }}>
-            <Typography variant="h5" sx={{ fontWeight: 700 }}>
+          <Paper elevation={3} sx={{ p: { xs: 2, sm: 2.5, md: 3 } }}>
+            <Typography variant="h5" sx={{ fontWeight: 700, mb: 1.5 }}>
               日次記録状況
             </Typography>
             <Grid container spacing={{ xs: 2, sm: 3 }} sx={{ mt: 1 }}>
@@ -637,7 +637,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ audience = 'staff' }) => 
             </Grid>
           </Paper>
 
-          <Paper elevation={3} sx={{ p: 3 }}>
+          <Paper elevation={3} sx={{ p: { xs: 2, sm: 2.5, md: 3 } }}>
             <Stack
               direction={{ xs: 'column', sm: 'row' }}
               spacing={1}
