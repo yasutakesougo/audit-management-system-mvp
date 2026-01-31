@@ -242,7 +242,14 @@ const AppShell: React.FC<{ children: React.ReactNode }> = ({ children }) => {
       {
         label: '職員',
         to: '/staff',
-        isActive: (pathname) => pathname.startsWith('/staff'),
+        isActive: (pathname) => pathname.startsWith('/staff') && !pathname.startsWith('/staff/attendance'),
+        icon: BadgeRoundedIcon,
+        prefetchKey: PREFETCH_KEYS.staff,
+      },
+      {
+        label: '職員勤怠',
+        to: '/staff/attendance',
+        isActive: (pathname) => pathname.startsWith('/staff/attendance'),
         icon: BadgeRoundedIcon,
         prefetchKey: PREFETCH_KEYS.staff,
       },

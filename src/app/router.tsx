@@ -59,6 +59,13 @@ const SupportStepMasterPage = React.lazy(() => import('@/pages/SupportStepMaster
 const IndividualSupportManagementPage = React.lazy(() => import('@/pages/IndividualSupportManagementPage'));
 const UserDetailPage = React.lazy(() => import('@/pages/UserDetailPage'));
 
+// Staff Attendance
+const StaffAttendanceInput = React.lazy(() =>
+  import('@/features/staff/attendance/StaffAttendanceInput').then((m) => ({
+    default: m.StaffAttendanceInput,
+  }))
+);
+
 // Diagnostics pages
 const HealthPage = React.lazy(() => import('@/pages/HealthPage'));
 
@@ -537,6 +544,14 @@ const childRoutes: RouteObject[] = [
   { path: 'users', element: <UsersPanel /> },
   { path: 'users/:userId', element: <SuspendedUserDetailPage /> },
   { path: 'staff', element: <StaffPanel /> },
+  {
+    path: 'staff/attendance',
+    element: (
+      <React.Suspense fallback={<div>Loading...</div>}>
+        <StaffAttendanceInput />
+      </React.Suspense>
+    ),
+  },
   { path: 'daily', element: <SuspendedDailyRecordMenuPage /> },
   { path: 'daily/table', element: <SuspendedTableDailyRecordPage /> },
   { path: 'daily/activity', element: <SuspendedDailyRecordPage /> },

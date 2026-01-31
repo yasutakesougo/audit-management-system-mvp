@@ -17,6 +17,9 @@ export interface StaffAttendanceStore {
   countByDate: (
     recordDate: RecordDate
   ) => { onDuty: number; out: number; absent: number; total: number };
+
+  // 永続化用：全記録を取得
+  listAll: () => StaffAttendance[];
 }
 
 // In-memory store for demo mode (shareable state reference)
@@ -50,6 +53,10 @@ const storeState: StaffAttendanceStore = {
     const out = list.filter((a) => a.status === '外出中').length;
     const absent = list.filter((a) => a.status === '欠勤').length;
     return { onDuty, out, absent, total: list.length };
+  },
+
+  listAll() {
+    return Object.values(this.attendances);
   },
 };
 
