@@ -9,6 +9,7 @@ import {
   makeSharePointSchedulesPort,
   normalizeUserId,
 } from '@/features/schedules/data';
+import { hydrateStaffAttendanceFromStorage, saveStaffAttendanceToStorage } from '@/features/staff/attendance/persist';
 import CssBaseline from '@mui/material/CssBaseline';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import React, { useEffect, useMemo, type ReactNode } from 'react';
@@ -122,6 +123,20 @@ export const ToastNotifierBridge: React.FC = () => {
 };
 
 function App() {
+  // ✅ 起動時に hydrate（1回だけ）
+  useEffect(() => {
+    hydrateStaffAttendanceFromStorage();
+  }, []);
+
+  // ✅ 変更時に自動保存（2秒ごと）
+  useEffect(() => {
+    const saveInterval = setInterval(() => {
+      saveStaffAttendanceToStorage();
+    }, 2000);
+
+    return () => clearInterval(saveInterval);
+  }, []);
+
   return (
     <MsalProvider>
       {/* 🔐 認証コンテキスト */}

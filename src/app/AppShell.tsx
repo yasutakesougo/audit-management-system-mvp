@@ -145,6 +145,7 @@ const AppShell: React.FC<{ children: React.ReactNode }> = ({ children }) => {
       navigate('/', { replace: true });
     }
   }, [navigate, location.pathname]);
+
   
   useEffect(() => {
     const nextRole = location.pathname.startsWith('/admin/dashboard') 
@@ -242,7 +243,14 @@ const AppShell: React.FC<{ children: React.ReactNode }> = ({ children }) => {
       {
         label: '職員',
         to: '/staff',
-        isActive: (pathname) => pathname.startsWith('/staff'),
+        isActive: (pathname) => pathname.startsWith('/staff') && !pathname.startsWith('/staff/attendance'),
+        icon: BadgeRoundedIcon,
+        prefetchKey: PREFETCH_KEYS.staff,
+      },
+      {
+        label: '職員勤怠',
+        to: '/staff/attendance',
+        isActive: (pathname) => pathname.startsWith('/staff/attendance'),
         icon: BadgeRoundedIcon,
         prefetchKey: PREFETCH_KEYS.staff,
       },
@@ -536,6 +544,7 @@ const AppShell: React.FC<{ children: React.ReactNode }> = ({ children }) => {
         {/* Side Navigation Drawer */}
         {isDesktop ? (
           <Drawer
+            data-testid="nav-drawer"
             variant="persistent"
             open={desktopNavOpen}
             onClose={() => setDesktopNavOpen(false)}
@@ -546,13 +555,25 @@ const AppShell: React.FC<{ children: React.ReactNode }> = ({ children }) => {
                 easing: theme.transitions.easing.sharp,
                 duration: theme.transitions.duration.enteringScreen,
               }),
-              '& .MuiDrawer-paper': { width: currentDrawerWidth, boxSizing: 'border-box', top: 64, bottom: 80, transition: theme.transitions.create('width', {
-                easing: theme.transitions.easing.sharp,
-                duration: theme.transitions.duration.enteringScreen,
-              }) },
+              '& .MuiDrawer-paper': { 
+                width: currentDrawerWidth, 
+                boxSizing: 'border-box', 
+                top: 64, 
+                height: 'calc(100vh - 64px)', 
+                overflowY: 'auto',
+                transition: theme.transitions.create('width', {
+                  easing: theme.transitions.easing.sharp,
+                  duration: theme.transitions.duration.enteringScreen,
+                }) 
+              },
             }}
           >
-            <Box role="navigation" aria-label="主要ナビゲーション" sx={{ overflowY: 'auto', height: '100%', pt: 2 }}>
+            <Box
+              role="navigation"
+              aria-label="主要ナビゲーション"
+              data-testid="nav-items"
+              sx={{ overflowY: 'auto', height: '100%', pt: 2, pb: 10 }}
+            >
               {!navCollapsed && (
                 <Box sx={{ px: 1.5, py: 1, pb: 1.5 }} key="nav-search">
                   <TextField
@@ -590,6 +611,7 @@ const AppShell: React.FC<{ children: React.ReactNode }> = ({ children }) => {
           </Drawer>
         ) : (
           <Drawer
+            data-testid="nav-drawer"
             variant="temporary"
             open={mobileOpen}
             onClose={() => setMobileOpen(false)}
@@ -598,7 +620,12 @@ const AppShell: React.FC<{ children: React.ReactNode }> = ({ children }) => {
               '& .MuiDrawer-paper': { width: drawerWidth, boxSizing: 'border-box' },
             }}
           >
-            <Box role="navigation" aria-label="主要ナビゲーション" sx={{ pt: 2, overflowY: 'auto', height: '100vh' }}>
+            <Box
+              role="navigation"
+              aria-label="主要ナビゲーション"
+              data-testid="nav-items"
+              sx={{ pt: 2, overflowY: 'auto', height: '100vh' }}
+            >
               <Box sx={{ px: 1.5, pb: 1.5 }}>
                 <TextField
                   value={navQuery}

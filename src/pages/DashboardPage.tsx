@@ -52,7 +52,41 @@ import type { MeetingKind } from '../features/meeting/meetingSteps';
 import UsageStatusDashboard from '../features/users/UsageStatusDashboard.v2';
 import { calculateUsageFromDailyRecords } from '../features/users/userMasterDashboardUtils';
 import { useUsersDemo } from '../features/users/usersStoreDemo';
+import type { AttendanceCounts } from '@/features/staff/attendance/port';
+import { getStaffAttendancePort } from '@/features/staff/attendance/storage';
 import { IUserMaster } from '../sharepoint/fields';
+
+const useAttendanceCounts = (recordDate: string): AttendanceCounts => {
+  const [counts, setCounts] = useState<AttendanceCounts>({
+    onDuty: 0,
+    out: 0,
+    absent: 0,
+    total: 0,
+  });
+
+  useEffect(() => {
+    let active = true;
+
+    (async () => {
+      const port = getStaffAttendancePort();
+      const res = await port.countByDate(recordDate);
+      if (!active) return;
+
+      if (res.isOk) {
+        setCounts(res.value);
+      } else {
+        console.warn('[attendance] countByDate failed', res.error);
+        setCounts({ onDuty: 0, out: 0, absent: 0, total: 0 });
+      }
+    })();
+
+    return () => {
+      active = false;
+    };
+  }, [recordDate]);
+
+  return counts;
+};
 
 // モック支援記録（ケース記録）データ生成
 const generateMockActivityRecords = (users: IUserMaster[], date: string): PersonDaily[] => {
@@ -314,6 +348,8 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ audience = 'staff' }) => 
     };
   }, [users, activityRecords]);
 
+  const attendanceCounts = useAttendanceCounts(today);
+
   const attendanceSummary = useMemo(() => {
     const visitList = Object.values(visits);
 
@@ -324,20 +360,26 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ audience = 'staff' }) => 
     const lateOrEarlyLeave = visitList.filter((visit) => visit.isEarlyLeave === true).length;
     const absenceCount = visitList.filter((visit) => visit.status === '当日欠席').length;
 
+    // Get actual staff attendance via port (Phase 3.1-C)
+    const onDutyStaff = attendanceCounts.onDuty;
+
+    // Fallback to demo data if no attendance records yet
     const staffCount = staff.length || 0;
-    const onDutyStaff = Math.max(0, Math.round(staffCount * 0.6));
-    const lateOrShiftAdjust = Math.max(0, Math.round(onDutyStaff * 0.15));
-    const outStaff = Math.max(0, Math.round(onDutyStaff * 0.2));
+    const estimatedOnDutyStaff = Math.max(0, Math.round(staffCount * 0.6));
+    const finalOnDutyStaff = onDutyStaff > 0 ? onDutyStaff : estimatedOnDutyStaff;
+
+    const lateOrShiftAdjust = Math.max(0, Math.round(finalOnDutyStaff * 0.15));
+    const outStaff = Math.max(0, Math.round(finalOnDutyStaff * 0.2));
 
     return {
       facilityAttendees,
       lateOrEarlyLeave,
       absenceCount,
-      onDutyStaff,
+      onDutyStaff: finalOnDutyStaff,
       lateOrShiftAdjust,
       outStaff,
     };
-  }, [staff.length, visits]);
+  }, [attendanceCounts.onDuty, staff.length, visits]);
 
   const dailyRecordStatus = useMemo(() => {
     const commuteCompleted = Math.round(users.length * 0.82);
@@ -362,27 +404,43 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ audience = 'staff' }) => 
     owner?: string;
   };
 
-  const scheduleLanes = useMemo<{ userLane: ScheduleItem[]; staffLane: ScheduleItem[]; organizationLane: ScheduleItem[] }>(() => {
-    const userLane = users.slice(0, 3).map((user, index) => ({
+  const [scheduleLanesToday, scheduleLanesTomorrow] = useMemo<[
+    { userLane: ScheduleItem[]; staffLane: ScheduleItem[]; organizationLane: ScheduleItem[] },
+    { userLane: ScheduleItem[]; staffLane: ScheduleItem[]; organizationLane: ScheduleItem[] },
+  ]>(() => {
+    const baseUserLane = users.slice(0, 3).map((user, index) => ({
       id: `user-${index}`,
       time: `${(9 + index).toString().padStart(2, '0')}:00`,
       title: `${user.FullName ?? `利用者${index + 1}`} ${['作業プログラム', '個別支援', 'リハビリ'][index % 3]}`,
       location: ['作業室A', '相談室1', '療育室'][index % 3],
     }));
-    const staffLane = [
+    const baseStaffLane = [
       { id: 'staff-1', time: '08:45', title: '職員朝会 / 申し送り確認', owner: '生活支援課' },
       { id: 'staff-2', time: '11:30', title: '通所記録レビュー', owner: '管理責任者' },
       { id: 'staff-3', time: '15:30', title: '支援手順フィードバック会議', owner: '専門職チーム' },
     ];
-    const organizationLane: ScheduleItem[] = [
+    const baseOrganizationLane: ScheduleItem[] = [
       { id: 'org-1', time: '10:00', title: '自治体監査ヒアリング', owner: '法人本部' },
       { id: 'org-2', time: '13:30', title: '家族向け連絡会資料確認', owner: '連携推進室' },
       { id: 'org-3', time: '16:00', title: '設備点検結果共有', owner: '施設管理' },
     ];
-    return { userLane, staffLane, organizationLane };
+
+    const today = {
+      userLane: baseUserLane,
+      staffLane: baseStaffLane,
+      organizationLane: baseOrganizationLane,
+    };
+
+    const tomorrow = {
+      userLane: baseUserLane,
+      staffLane: baseStaffLane,
+      organizationLane: baseOrganizationLane,
+    };
+
+    return [today, tomorrow];
   }, [users]);
 
-  const renderScheduleLanes = (title: string, lanes: typeof scheduleLanes) => (
+  const renderScheduleLanes = (title: string, lanes: { userLane: ScheduleItem[]; staffLane: ScheduleItem[]; organizationLane: ScheduleItem[] }) => (
     <Card>
       <CardContent>
         <Typography variant="h6" sx={{ mb: 2 }}>
@@ -455,7 +513,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ audience = 'staff' }) => 
 
   return (
     <Container maxWidth="lg" data-testid="dashboard-page">
-      <Box sx={{ py: 3 }}>
+      <Box sx={{ py: { xs: 1.5, sm: 2, md: 2.5 } }}>
         {/* ヘッダー */}
         <Box sx={{ mb: 3 }}>
           <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 1 }}>
@@ -511,8 +569,8 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ audience = 'staff' }) => 
         <Stack spacing={{ xs: 2, sm: 3, md: 4 }} sx={{ mb: { xs: 2, sm: 3 } }}>
           <DashboardSafetyHUD />
 
-          <Paper elevation={3} sx={{ p: { xs: 2, sm: 3, md: 3 } }}>
-            <Typography variant="h5" sx={{ fontWeight: 700 }}>
+          <Paper elevation={3} sx={{ p: { xs: 2, sm: 2.5, md: 3 } }}>
+            <Typography variant="h5" sx={{ fontWeight: 700, mb: 1.5 }}>
               今日の通所 / 出勤状況
             </Typography>
             <Grid container spacing={{ xs: 2, sm: 2, md: 3 }} sx={{ mt: 2 }}>
@@ -545,7 +603,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ audience = 'staff' }) => 
                   {attendanceSummary.onDutyStaff}
                 </Typography>
                 <Typography variant="body2" color="text.secondary">
-                  出勤職員（推定）
+                  出勤職員
                 </Typography>
               </Grid>
               <Grid size={{ xs: 12, sm: 4, md: 2 }}>
@@ -553,7 +611,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ audience = 'staff' }) => 
                   {attendanceSummary.lateOrShiftAdjust}
                 </Typography>
                 <Typography variant="body2" color="text.secondary">
-                  遅刻 / シフト調整（推定）
+                  遅刻 / シフト調整
                 </Typography>
               </Grid>
               <Grid size={{ xs: 12, sm: 4, md: 2 }}>
@@ -561,14 +619,14 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ audience = 'staff' }) => 
                   {attendanceSummary.outStaff}
                 </Typography>
                 <Typography variant="body2" color="text.secondary">
-                  外出スタッフ（推定）
+                  外出スタッフ
                 </Typography>
               </Grid>
             </Grid>
           </Paper>
 
-          <Paper elevation={3} sx={{ p: { xs: 2, sm: 3, md: 3 } }}>
-            <Typography variant="h5" sx={{ fontWeight: 700 }}>
+          <Paper elevation={3} sx={{ p: { xs: 2, sm: 2.5, md: 3 } }}>
+            <Typography variant="h5" sx={{ fontWeight: 700, mb: 1.5 }}>
               日次記録状況
             </Typography>
             <Grid container spacing={{ xs: 2, sm: 3 }} sx={{ mt: 1 }}>
@@ -595,7 +653,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ audience = 'staff' }) => 
             </Grid>
           </Paper>
 
-          <Paper elevation={3} sx={{ p: 3 }}>
+          <Paper elevation={3} sx={{ p: { xs: 2, sm: 2.5, md: 3 } }}>
             <Stack
               direction={{ xs: 'column', sm: 'row' }}
               spacing={1}
@@ -623,9 +681,9 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ audience = 'staff' }) => 
             </Typography>
             <Grid container spacing={2}>
               {[
-                { label: '利用者レーン', items: scheduleLanes.userLane },
-                { label: '職員レーン', items: scheduleLanes.staffLane },
-                { label: '組織レーン', items: scheduleLanes.organizationLane },
+                { label: '利用者レーン', items: scheduleLanesToday.userLane },
+                { label: '職員レーン', items: scheduleLanesToday.staffLane },
+                { label: '組織レーン', items: scheduleLanesToday.organizationLane },
               ].map(({ label, items }) => (
                 <Grid key={label} size={{ xs: 12, md: 4 }}>
                   <Paper variant="outlined" sx={{ p: 2, height: '100%' }}>
@@ -1043,7 +1101,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ audience = 'staff' }) => 
                     </CardContent>
                   </Card>
 
-                  {renderScheduleLanes('今日の予定', scheduleLanes)}
+                  {renderScheduleLanes('今日の予定', scheduleLanesToday)}
                 </Stack>
               </CardContent>
             </Card>
@@ -1121,7 +1179,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ audience = 'staff' }) => 
                     onOpenTimeline={() => openTimeline('today')}
                   />
 
-                  {renderScheduleLanes('明日の予定', scheduleLanes)}
+                  {renderScheduleLanes('明日の予定', scheduleLanesTomorrow)}
                 </Stack>
               </CardContent>
             </Card>

@@ -4,7 +4,7 @@ import { setupSharePointStubs } from './setupSharePointStubs';
 import { setupPlaywrightEnv } from './setupPlaywrightEnv';
 import { buildWeekScheduleFixtures, SCHEDULE_FIXTURE_BASE_DATE, buildStaffMorningFixture, buildUserMinimalFixture } from '../utils/schedule.fixtures';
 import type { ScheduleItem } from '../utils/spMock';
-import { seedSchedulesToday } from './schedulesTodaySeed';
+import { seedSchedulesToday, seedSchedulesTodayForDemoAdapter } from './schedulesTodaySeed';
 
 const FEATURE_ENV: Record<string, string> = {
   VITE_E2E: '1',
@@ -132,6 +132,8 @@ export async function bootSchedule(page: Page, options: ScheduleBootOptions = {}
   if (seedOptions.schedulesToday) {
     const seedResult = await seedSchedulesToday(page);
     scheduleItems = seedResult.scheduleItems;
+    // E2E fixture を demo adapter 用に注入
+    await seedSchedulesTodayForDemoAdapter(page, { payload: seedResult.payload });
   }
 
   // If the environment requires at least one schedule item, ensure a minimal seed exists.
