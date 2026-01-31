@@ -1,4 +1,15 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+
+vi.mock('@/lib/env', async () => {
+  const actual = await vi.importActual<typeof import('@/lib/env')>('@/lib/env');
+  return {
+    ...actual,
+    skipSharePoint: vi.fn(() => false),
+    shouldSkipLogin: vi.fn(() => false),
+    isE2eMsalMockEnabled: vi.fn(() => false),
+  };
+});
+
 import { createSpClient } from '../../src/lib/spClient';
 
 // We simulate list() flow used by useChecklistApi: underlying call is getListItemsByTitle -> spFetch

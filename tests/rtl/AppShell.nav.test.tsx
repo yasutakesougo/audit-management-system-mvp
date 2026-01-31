@@ -65,7 +65,6 @@ vi.mock('@/lib/env', async () => {
     }),
     shouldSkipLogin: () => false,
     isSchedulesFeatureEnabled: () => false,
-    isSchedulesCreateEnabled: () => false,
     isComplianceFormEnabled: () => false,
     isSchedulesWeekV2Enabled: () => false,
   };
@@ -77,7 +76,7 @@ vi.mock('@/ui/components/SignInButton', () => ({
 }));
 
 describe('AppShell navigation smoke test', () => {
-  const featureFlags: FeatureFlagSnapshot = {
+  const baseFlags: FeatureFlagSnapshot = {
     schedules: false,
     schedulesCreate: false,
     complianceForm: false,
@@ -87,11 +86,11 @@ describe('AppShell navigation smoke test', () => {
 
   const colorMode = { mode: 'light' as const, toggle: vi.fn(), sticky: false };
 
-  const renderWithProviders = () =>
+  const renderWithProviders = (flags: FeatureFlagSnapshot = baseFlags) =>
     render(
       <MemoryRouter initialEntries={['/daily']}>
         <ColorModeContext.Provider value={colorMode}>
-          <FeatureFlagsContext.Provider value={featureFlags}>
+          <FeatureFlagsContext.Provider value={flags}>
             <AppShell>
               <div />
             </AppShell>
@@ -115,5 +114,19 @@ describe('AppShell navigation smoke test', () => {
     elements.forEach((node) => {
       expect(node).toBeInTheDocument();
     });
+  });
+
+  it('hides Iceberg PDCA nav when feature flag is off', () => {
+    const flags = { ...baseFlags, icebergPdca: false };
+    renderWithProviders(flags);
+
+    expect(screen.queryByTestId('nav-iceberg-pdca')).not.toBeInTheDocument();
+  });
+
+  it('shows Iceberg PDCA nav when feature flag is on', () => {
+    const flags = { ...baseFlags, icebergPdca: true };
+    renderWithProviders(flags);
+
+    expect(screen.getByTestId('nav-iceberg-pdca')).toBeInTheDocument();
   });
 });

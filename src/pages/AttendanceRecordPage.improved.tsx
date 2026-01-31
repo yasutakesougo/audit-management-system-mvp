@@ -129,7 +129,7 @@ const AttendanceRecordPage: React.FC<AttendanceRecordPageProps> = ({ 'data-testi
   useEffect(() => {
     const interval = setInterval(() => {
       // Auto-save or sync with server in real implementation
-      console.log('Auto-refresh tick');
+      if (import.meta.env.DEV) console.log('Auto-refresh tick');
     }, 30000); // 30秒間隔
 
     return () => clearInterval(interval);

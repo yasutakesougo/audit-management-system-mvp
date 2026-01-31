@@ -1,15 +1,16 @@
 import ProtectedRoute from '@/app/ProtectedRoute';
-import { useFeatureFlags } from '@/config/featureFlags';
+import AdminGate from '@/components/AdminGate';
 import { nurseRoutes } from '@/features/nurse/routes/NurseRoutes';
 import { LegacyDayRedirect, LegacyMonthRedirect } from '@/features/schedule/legacyRedirects';
 import { StaffPanel } from '@/features/staff';
 import { UsersPanel } from '@/features/users';
 import { RouteHydrationErrorBoundary } from '@/hydration/RouteHydrationListener';
-import { getAppConfig } from '@/lib/env';
+import { getAppConfig, readBool } from '@/lib/env';
 import lazyWithPreload from '@/utils/lazyWithPreload';
 import React from 'react';
 import { createBrowserRouter, Navigate, Outlet, type RouteObject } from 'react-router-dom';
 import AppShell from './AppShell';
+import ScheduleLegacyRedirect from './ScheduleLegacyRedirect';
 import { routerFutureFlags } from './routerFuture';
 import SchedulesGate from './SchedulesGate';
 
@@ -51,14 +52,32 @@ const AdminDashboardPage = React.lazy(() =>
 const MeetingGuidePage = React.lazy(() => import('@/pages/MeetingGuidePage'));
 const HandoffTimelinePage = React.lazy(() => import('@/pages/HandoffTimelinePage'));
 const IntegratedResourceCalendarPage = React.lazy(() => import('@/pages/IntegratedResourceCalendarPage'));
+const SettingsPage = React.lazy(() => import('@/pages/SettingsPage'));
+const AdminTemplatesDeprecatedPage = React.lazy(() => import('@/pages/AdminTemplatesDeprecatedPage'));
 
-const SupportActivityMasterPage = React.lazy(() => import('@/pages/SupportActivityMasterPage'));
 const SupportStepMasterPage = React.lazy(() => import('@/pages/SupportStepMasterPage'));
 const IndividualSupportManagementPage = React.lazy(() => import('@/pages/IndividualSupportManagementPage'));
 const UserDetailPage = React.lazy(() => import('@/pages/UserDetailPage'));
 
+// Staff Attendance
+const StaffAttendanceInput = React.lazy(() =>
+  import('@/features/staff/attendance/StaffAttendanceInput').then((m) => ({
+    default: m.StaffAttendanceInput,
+  }))
+);
+
+const StaffAttendanceAdminPage = React.lazy(() => import('@/pages/StaffAttendanceAdminPage'));
+
+// Diagnostics pages
+const HealthPage = React.lazy(() => import('@/pages/HealthPage'));
+
+// Dev/Test pages
+const DailyOpsDevPage = React.lazy(() => import('@/pages/DailyOpsDevPage'));
+const StaffDevHarnessPage = React.lazy(() => import('@/features/staff/dev/StaffDevHarnessPage'));
+const UsersDevHarnessPage = React.lazy(() => import('@/features/users/dev/UsersDevHarnessPage').then((m) => ({ default: m.UsersDevHarnessPage })));
+
 // Dev harness（開発環境のみ）
-const devHarnessEnabled = getAppConfig().isDev;
+const devHarnessEnabled = readBool('VITE_DEV_HARNESS', false) || getAppConfig().isDev;
 const DevScheduleCreateDialogPage = devHarnessEnabled
   ? React.lazy(() => import('@/features/schedules/DevScheduleCreateDialogPage'))
   : null;
@@ -107,11 +126,9 @@ const SuspendedSchedulePage: React.FC = () => (
   </RouteHydrationErrorBoundary>
 );
 
-// 週間スケジュールの表示は feature flag で新旧UIを出し分ける
+// 週間スケジュールは V2 を正とし、legacy は退避ルートで提供
 const SchedulesWeekRoute: React.FC = () => {
-  const { schedulesWeekV2 } = useFeatureFlags();
-  // schedulesWeekV2=true should surface the v2 WeekPage; keep legacy page as fallback when disabled.
-  return schedulesWeekV2 ? <SuspendedNewSchedulesWeekPage /> : <SuspendedSchedulePage />;
+  return <SuspendedNewSchedulesWeekPage />;
 };
 
 const SuspendedCreatePage: React.FC = () => (
@@ -310,6 +327,20 @@ const SuspendedHealthObservationPage: React.FC = () => (
   </RouteHydrationErrorBoundary>
 );
 
+const SuspendedHealthPage: React.FC = () => (
+  <RouteHydrationErrorBoundary>
+    <React.Suspense
+      fallback={(
+        <div className="p-4 text-sm text-slate-600" role="status">
+          環境診断を読み込んでいます…
+        </div>
+      )}
+    >
+      <HealthPage />
+    </React.Suspense>
+  </RouteHydrationErrorBoundary>
+);
+
 const SuspendedStaffDashboardPage: React.FC = () => (
   <RouteHydrationErrorBoundary>
     <React.Suspense
@@ -353,73 +384,98 @@ const SuspendedRecordList: React.FC = () => (
 );
 
 const SuspendedChecklistPage: React.FC = () => (
-  <RouteHydrationErrorBoundary>
-    <React.Suspense
-      fallback={(
-        <div className="p-4 text-sm text-slate-600" role="status">
-          自己点検ページを読み込んでいます…
-        </div>
-      )}
-    >
-      <ChecklistPage />
-    </React.Suspense>
-  </RouteHydrationErrorBoundary>
+  // Ensure E2E anchor exists regardless of gate/lazy state
+  <div data-testid="checklist-root" style={{ display: 'contents' }}>
+    <AdminGate>
+      <RouteHydrationErrorBoundary>
+        <React.Suspense
+          fallback={(
+            <div className="p-4 text-sm text-slate-600" role="status">
+              自己点検ページを読み込んでいます…
+            </div>
+          )}
+        >
+          <ChecklistPage />
+        </React.Suspense>
+      </RouteHydrationErrorBoundary>
+    </AdminGate>
+  </div>
 );
 
 const SuspendedAuditPanel: React.FC = () => (
+  <AdminGate>
+    <RouteHydrationErrorBoundary>
+      <React.Suspense
+        fallback={(
+          <div className="p-4 text-sm text-slate-600" role="status">
+            監査ログを読み込んでいます…
+          </div>
+        )}
+      >
+        <AuditPanel />
+      </React.Suspense>
+    </RouteHydrationErrorBoundary>
+  </AdminGate>
+);
+
+const SuspendedSettingsPage: React.FC = () => (
   <RouteHydrationErrorBoundary>
     <React.Suspense
       fallback={(
         <div className="p-4 text-sm text-slate-600" role="status">
-          監査ログを読み込んでいます…
+          設定ページを読み込んでいます…
         </div>
       )}
     >
-      <AuditPanel />
+      <SettingsPage />
     </React.Suspense>
   </RouteHydrationErrorBoundary>
 );
 
-const SuspendedSupportActivityMasterPage: React.FC = () => (
+const SuspendedAdminTemplatesDeprecatedPage: React.FC = () => (
   <RouteHydrationErrorBoundary>
     <React.Suspense
       fallback={(
         <div className="p-4 text-sm text-slate-600" role="status">
-          支援活動テンプレート管理を読み込んでいます…
+          管理ページを読み込んでいます…
         </div>
       )}
     >
-      <SupportActivityMasterPage />
+      <AdminTemplatesDeprecatedPage />
     </React.Suspense>
   </RouteHydrationErrorBoundary>
 );
 
 const SuspendedSupportStepMasterPage: React.FC = () => (
-  <RouteHydrationErrorBoundary>
-    <React.Suspense
-      fallback={(
-        <div className="p-4 text-sm text-slate-600" role="status">
-          支援手順テンプレート管理を読み込んでいます…
-        </div>
-      )}
-    >
-      <SupportStepMasterPage />
-    </React.Suspense>
-  </RouteHydrationErrorBoundary>
+  <AdminGate>
+    <RouteHydrationErrorBoundary>
+      <React.Suspense
+        fallback={(
+          <div className="p-4 text-sm text-slate-600" role="status">
+            支援手順テンプレート管理を読み込んでいます…
+          </div>
+        )}
+      >
+        <SupportStepMasterPage />
+      </React.Suspense>
+    </RouteHydrationErrorBoundary>
+  </AdminGate>
 );
 
 const SuspendedIndividualSupportManagementPage: React.FC = () => (
-  <RouteHydrationErrorBoundary>
-    <React.Suspense
-      fallback={(
-        <div className="p-4 text-sm text-slate-600" role="status">
-          個別支援手順管理を読み込んでいます…
-        </div>
-      )}
-    >
-      <IndividualSupportManagementPage />
-    </React.Suspense>
-  </RouteHydrationErrorBoundary>
+  <AdminGate>
+    <RouteHydrationErrorBoundary>
+      <React.Suspense
+        fallback={(
+          <div className="p-4 text-sm text-slate-600" role="status">
+            個別支援手順管理を読み込んでいます…
+          </div>
+        )}
+      >
+        <IndividualSupportManagementPage />
+      </React.Suspense>
+    </RouteHydrationErrorBoundary>
+  </AdminGate>
 );
 
 const SuspendedUserDetailPage: React.FC = () => (
@@ -490,6 +546,32 @@ const childRoutes: RouteObject[] = [
   { path: 'users', element: <UsersPanel /> },
   { path: 'users/:userId', element: <SuspendedUserDetailPage /> },
   { path: 'staff', element: <StaffPanel /> },
+  {
+    path: 'staff/attendance',
+    element: (
+      <React.Suspense fallback={<div>Loading...</div>}>
+        <StaffAttendanceInput />
+      </React.Suspense>
+    ),
+  },
+  {
+    path: 'admin/staff-attendance',
+    element: (
+      <AdminGate>
+        <RouteHydrationErrorBoundary>
+          <React.Suspense
+            fallback={(
+              <div className="p-4 text-sm text-slate-600" role="status">
+                スタッフ勤怠管理を読み込んでいます…
+              </div>
+            )}
+          >
+            <StaffAttendanceAdminPage />
+          </React.Suspense>
+        </RouteHydrationErrorBoundary>
+      </AdminGate>
+    ),
+  },
   { path: 'daily', element: <SuspendedDailyRecordMenuPage /> },
   { path: 'daily/table', element: <SuspendedTableDailyRecordPage /> },
   { path: 'daily/activity', element: <SuspendedDailyRecordPage /> },
@@ -519,9 +601,11 @@ const childRoutes: RouteObject[] = [
   { path: 'analysis/iceberg', element: <SuspendedIcebergAnalysisPage /> },
   { path: 'assessment', element: <SuspendedAssessmentDashboardPage /> },
   { path: 'survey/tokusei', element: <SuspendedTokuseiSurveyResultsPage /> },
-  { path: 'admin/templates', element: <SuspendedSupportActivityMasterPage /> },
+  { path: 'settings', element: <SuspendedSettingsPage /> },
+  { path: 'admin/templates', element: <SuspendedAdminTemplatesDeprecatedPage /> },
   { path: 'admin/step-templates', element: <SuspendedSupportStepMasterPage /> },
   { path: 'admin/individual-support', element: <SuspendedIndividualSupportManagementPage /> },
+  { path: 'diagnostics/health', element: <SuspendedHealthPage /> },
   {
     path: 'admin/integrated-resource-calendar',
     element: (
@@ -533,11 +617,21 @@ const childRoutes: RouteObject[] = [
     )
   },
   {
+    path: 'schedule/legacy',
+    element: (
+      <SchedulesGate>
+        <ProtectedRoute flag="schedules">
+          <SuspendedSchedulePage />
+        </ProtectedRoute>
+      </SchedulesGate>
+    ),
+  },
+  {
     path: 'schedule',
     element: (
       <SchedulesGate>
         <ProtectedRoute flag="schedules">
-          <Navigate to="/schedules/week" replace />
+          <ScheduleLegacyRedirect />
         </ProtectedRoute>
       </SchedulesGate>
     ),
@@ -547,7 +641,7 @@ const childRoutes: RouteObject[] = [
     element: (
       <SchedulesGate>
         <ProtectedRoute flag="schedules">
-          <Navigate to="/schedules/week" replace />
+          <ScheduleLegacyRedirect />
         </ProtectedRoute>
       </SchedulesGate>
     ),
@@ -606,7 +700,7 @@ const childRoutes: RouteObject[] = [
     path: 'schedules/create',
     element: (
       <SchedulesGate>
-        <ProtectedRoute flag="schedulesCreate">
+        <ProtectedRoute flag="schedules">
           <SuspendedCreatePage />
         </ProtectedRoute>
       </SchedulesGate>
@@ -624,6 +718,44 @@ const childRoutes: RouteObject[] = [
         ),
       }]
     : []),
+  ...(devHarnessEnabled
+    ? [{
+        path: 'dev/daily-ops',
+        element: (
+          <ProtectedRoute flag="schedules">
+            <React.Suspense
+              fallback={<div className="p-4 text-sm text-slate-600">DailyOpsSignals を読み込んでいます…</div>}
+            >
+              <DailyOpsDevPage />
+            </React.Suspense>
+          </ProtectedRoute>
+        ),
+      }]
+    : []),
+  ...(devHarnessEnabled && StaffDevHarnessPage
+    ? [{
+        path: 'dev/staff',
+        element: (
+          <React.Suspense
+            fallback={<div className="p-4 text-sm text-slate-600">Staff Dev Harness を読み込んでいます…</div>}
+          >
+            <StaffDevHarnessPage />
+          </React.Suspense>
+        ),
+      }]
+    : []),
+  ...(devHarnessEnabled && UsersDevHarnessPage
+    ? [{
+        path: 'dev/users',
+        element: (
+          <React.Suspense
+            fallback={<div className="p-4 text-sm text-slate-600">Users Dev Harness を読み込んでいます…</div>}
+          >
+            <UsersDevHarnessPage />
+          </React.Suspense>
+        ),
+      }]
+    : []),
   nurseRoutes(),
 ];
 
@@ -637,6 +769,12 @@ const routes: RouteObject[] = [
     children: childRoutes,
   },
 ];
+
+/**
+ * テスト用：childRoutes を export
+ * router.flags.spec.tsx で createMemoryRouter から直接利用
+ */
+export const appChildRoutesForTest = childRoutes;
 
 export const router = createBrowserRouter(routes, {
   future: routerFutureFlags,

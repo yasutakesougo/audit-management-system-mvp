@@ -1,7 +1,7 @@
 import { useMemo } from 'react';
 
 import { useUsersStore } from '@/features/users/store';
-import type { ScheduleUserOption } from './ScheduleCreateDialog';
+import type { ScheduleUserOption } from './scheduleFormState';
 
 const normalizeUserId = (value: unknown, fallbackId?: number): string => {
   if (typeof value === 'string') {

@@ -22,6 +22,7 @@ import Box from '@mui/material/Box';
 import Button from '@mui/material/Button';
 import Card from '@mui/material/Card';
 import CardContent from '@mui/material/CardContent';
+import CardHeader from '@mui/material/CardHeader';
 import Chip from '@mui/material/Chip';
 import Container from '@mui/material/Container';
 import Divider from '@mui/material/Divider';
@@ -37,9 +38,12 @@ import Tab from '@mui/material/Tab';
 import Tabs from '@mui/material/Tabs';
 import Typography from '@mui/material/Typography';
 import React, { useEffect, useMemo, useState } from 'react';
+import { alpha } from '@mui/material/styles';
 import { Link, useNavigate } from 'react-router-dom';
 import { PersonDaily, SeizureRecord } from '../domain/daily/types';
 import DashboardSafetyHUD from '@/features/dashboard/DashboardSafetyHUD';
+import { useAttendanceStore } from '@/features/attendance/store';
+import { useStaffStore } from '@/features/staff/store';
 import HandoffSummaryForMeeting from '../features/handoff/HandoffSummaryForMeeting';
 import type { HandoffDayScope } from '../features/handoff/handoffTypes';
 import { useHandoffSummary } from '../features/handoff/useHandoffSummary';
@@ -48,7 +52,41 @@ import type { MeetingKind } from '../features/meeting/meetingSteps';
 import UsageStatusDashboard from '../features/users/UsageStatusDashboard.v2';
 import { calculateUsageFromDailyRecords } from '../features/users/userMasterDashboardUtils';
 import { useUsersDemo } from '../features/users/usersStoreDemo';
+import type { AttendanceCounts } from '@/features/staff/attendance/port';
+import { getStaffAttendancePort } from '@/features/staff/attendance/storage';
 import { IUserMaster } from '../sharepoint/fields';
+
+const useAttendanceCounts = (recordDate: string): AttendanceCounts => {
+  const [counts, setCounts] = useState<AttendanceCounts>({
+    onDuty: 0,
+    out: 0,
+    absent: 0,
+    total: 0,
+  });
+
+  useEffect(() => {
+    let active = true;
+
+    (async () => {
+      const port = getStaffAttendancePort();
+      const res = await port.countByDate(recordDate);
+      if (!active) return;
+
+      if (res.isOk) {
+        setCounts(res.value);
+      } else {
+        console.warn('[attendance] countByDate failed', res.error);
+        setCounts({ onDuty: 0, out: 0, absent: 0, total: 0 });
+      }
+    })();
+
+    return () => {
+      active = false;
+    };
+  }, [recordDate]);
+
+  return counts;
+};
 
 // モック支援記録（ケース記録）データ生成
 const generateMockActivityRecords = (users: IUserMaster[], date: string): PersonDaily[] => {
@@ -174,11 +212,6 @@ const ADMIN_TABS = [
   { label: '個別支援記録', icon: <AssignmentIcon /> },
 ];
 
-const STAFF_TABS = [
-  { label: '朝ミーティング 9:00', icon: <WbSunnyIcon /> },
-  { label: '夕ミーティング 17:15', icon: <NightsStayIcon /> },
-];
-
 const DashboardPage: React.FC<DashboardPageProps> = ({ audience = 'staff' }) => {
   const navigate = useNavigate();
   const { schedules: schedulesEnabled } = useFeatureFlags();
@@ -186,6 +219,8 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ audience = 'staff' }) => 
   const [meetingDrawerOpen, setMeetingDrawerOpen] = useState(false);
   const [meetingKind, setMeetingKind] = useState<MeetingKind>('morning');
   const { data: users } = useUsersDemo();
+  const { visits } = useAttendanceStore();
+  const { staff } = useStaffStore();
   const {
     total: handoffTotal,
     byStatus: handoffStatus,
@@ -194,6 +229,9 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ audience = 'staff' }) => 
 
   const today = new Date().toISOString().split('T')[0];
   const currentMonth = today.slice(0, 7);
+  const currentHour = new Date().getHours();
+  const isMorningTime = currentHour >= 8 && currentHour < 12;
+  const isEveningTime = currentHour >= 17 && currentHour < 19;
 
   const openTimeline = (scope: HandoffDayScope = 'today') => {
     navigate('/handoff-timeline', {
@@ -310,22 +348,38 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ audience = 'staff' }) => 
     };
   }, [users, activityRecords]);
 
+  const attendanceCounts = useAttendanceCounts(today);
+
   const attendanceSummary = useMemo(() => {
-    const facilityAttendees = users.filter((_, index) => index % 4 !== 0).length;
-    const remoteParticipants = users.filter((_, index) => index % 8 === 0).length;
-    const absenceCount = Math.max(users.length - facilityAttendees - remoteParticipants, 0);
-    const onDutyStaff = Math.max(5, Math.round(users.length * 0.35));
-    const lateOrShiftAdjust = Math.max(Math.round(onDutyStaff * 0.15), 1);
-    const supportReady = Math.max(onDutyStaff - lateOrShiftAdjust, 0);
+    const visitList = Object.values(visits);
+
+    const facilityAttendees = visitList.filter(
+      (visit) => visit.status === '通所中' || visit.status === '退所済'
+    ).length;
+
+    const lateOrEarlyLeave = visitList.filter((visit) => visit.isEarlyLeave === true).length;
+    const absenceCount = visitList.filter((visit) => visit.status === '当日欠席').length;
+
+    // Get actual staff attendance via port (Phase 3.1-C)
+    const onDutyStaff = attendanceCounts.onDuty;
+
+    // Fallback to demo data if no attendance records yet
+    const staffCount = staff.length || 0;
+    const estimatedOnDutyStaff = Math.max(0, Math.round(staffCount * 0.6));
+    const finalOnDutyStaff = onDutyStaff > 0 ? onDutyStaff : estimatedOnDutyStaff;
+
+    const lateOrShiftAdjust = Math.max(0, Math.round(finalOnDutyStaff * 0.15));
+    const outStaff = Math.max(0, Math.round(finalOnDutyStaff * 0.2));
+
     return {
       facilityAttendees,
-      remoteParticipants,
+      lateOrEarlyLeave,
       absenceCount,
-      onDutyStaff,
+      onDutyStaff: finalOnDutyStaff,
       lateOrShiftAdjust,
-      supportReady,
+      outStaff,
     };
-  }, [users]);
+  }, [attendanceCounts.onDuty, staff.length, visits]);
 
   const dailyRecordStatus = useMemo(() => {
     const commuteCompleted = Math.round(users.length * 0.82);
@@ -350,30 +404,78 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ audience = 'staff' }) => 
     owner?: string;
   };
 
-  const scheduleLanes = useMemo<{ userLane: ScheduleItem[]; staffLane: ScheduleItem[]; organizationLane: ScheduleItem[] }>(() => {
-    const userLane = users.slice(0, 3).map((user, index) => ({
+  const [scheduleLanesToday, scheduleLanesTomorrow] = useMemo<[
+    { userLane: ScheduleItem[]; staffLane: ScheduleItem[]; organizationLane: ScheduleItem[] },
+    { userLane: ScheduleItem[]; staffLane: ScheduleItem[]; organizationLane: ScheduleItem[] },
+  ]>(() => {
+    const baseUserLane = users.slice(0, 3).map((user, index) => ({
       id: `user-${index}`,
       time: `${(9 + index).toString().padStart(2, '0')}:00`,
       title: `${user.FullName ?? `利用者${index + 1}`} ${['作業プログラム', '個別支援', 'リハビリ'][index % 3]}`,
       location: ['作業室A', '相談室1', '療育室'][index % 3],
     }));
-    const staffLane = [
+    const baseStaffLane = [
       { id: 'staff-1', time: '08:45', title: '職員朝会 / 申し送り確認', owner: '生活支援課' },
       { id: 'staff-2', time: '11:30', title: '通所記録レビュー', owner: '管理責任者' },
       { id: 'staff-3', time: '15:30', title: '支援手順フィードバック会議', owner: '専門職チーム' },
     ];
-    const organizationLane: ScheduleItem[] = [
+    const baseOrganizationLane: ScheduleItem[] = [
       { id: 'org-1', time: '10:00', title: '自治体監査ヒアリング', owner: '法人本部' },
       { id: 'org-2', time: '13:30', title: '家族向け連絡会資料確認', owner: '連携推進室' },
       { id: 'org-3', time: '16:00', title: '設備点検結果共有', owner: '施設管理' },
     ];
-    return { userLane, staffLane, organizationLane };
+
+    const today = {
+      userLane: baseUserLane,
+      staffLane: baseStaffLane,
+      organizationLane: baseOrganizationLane,
+    };
+
+    const tomorrow = {
+      userLane: baseUserLane,
+      staffLane: baseStaffLane,
+      organizationLane: baseOrganizationLane,
+    };
+
+    return [today, tomorrow];
   }, [users]);
 
-  const staffMeetingHighlights = useMemo(
-    () => scheduleLanes.staffLane.slice(0, 3),
-    [scheduleLanes]
+  const renderScheduleLanes = (title: string, lanes: { userLane: ScheduleItem[]; staffLane: ScheduleItem[]; organizationLane: ScheduleItem[] }) => (
+    <Card>
+      <CardContent>
+        <Typography variant="h6" sx={{ mb: 2 }}>
+          📅 {title}
+        </Typography>
+        <Grid container spacing={2}>
+          {[
+            { label: '利用者レーン', items: lanes.userLane },
+            { label: '職員レーン', items: lanes.staffLane },
+            { label: '組織レーン', items: lanes.organizationLane },
+          ].map(({ label, items }) => (
+            <Grid key={label} size={{ xs: 12, md: 4 }}>
+              <Paper variant="outlined" sx={{ p: 2, height: '100%' }}>
+                <Typography variant="subtitle2" sx={{ fontWeight: 700, mb: 1 }}>
+                  {label}
+                </Typography>
+                <List dense>
+                  {items.map((item) => (
+                    <ListItem key={item.id} disableGutters>
+                      <ListItemText
+                        primary={`${item.time} ${item.title}`}
+                        secondary={item.location ? `場所: ${item.location}` : item.owner ? `担当: ${item.owner}` : undefined}
+                        primaryTypographyProps={{ variant: 'body2' }}
+                      />
+                    </ListItem>
+                  ))}
+                </List>
+              </Paper>
+            </Grid>
+          ))}
+        </Grid>
+      </CardContent>
+    </Card>
   );
+
   const prioritizedUsers = useMemo(() => intensiveSupportUsers.slice(0, 3), [intensiveSupportUsers]);
 
   const dailyStatusCards = [
@@ -402,17 +504,16 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ audience = 'staff' }) => 
   };
 
   useEffect(() => {
-    const maxIndex = (audience === 'admin' ? ADMIN_TABS.length : STAFF_TABS.length) - 1;
+    if (audience !== 'admin') return;
+    const maxIndex = ADMIN_TABS.length - 1;
     if (tabValue > maxIndex) {
       setTabValue(0);
     }
   }, [audience, tabValue]);
 
-  const tabItems = audience === 'admin' ? ADMIN_TABS : STAFF_TABS;
-
   return (
     <Container maxWidth="lg" data-testid="dashboard-page">
-      <Box sx={{ py: 3 }}>
+      <Box sx={{ py: { xs: 1.5, sm: 2, md: 2.5 } }}>
         {/* ヘッダー */}
         <Box sx={{ mb: 3 }}>
           <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 1 }}>
@@ -465,14 +566,14 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ audience = 'staff' }) => 
           </Box>
         </Box>
 
-        <Stack spacing={3} sx={{ mb: 3 }}>
+        <Stack spacing={{ xs: 2, sm: 3, md: 4 }} sx={{ mb: { xs: 2, sm: 3 } }}>
           <DashboardSafetyHUD />
 
-          <Paper elevation={3} sx={{ p: 3 }}>
-            <Typography variant="h5" sx={{ fontWeight: 700 }}>
+          <Paper elevation={3} sx={{ p: { xs: 2, sm: 2.5, md: 3 } }}>
+            <Typography variant="h5" sx={{ fontWeight: 700, mb: 1.5 }}>
               今日の通所 / 出勤状況
             </Typography>
-            <Grid container spacing={2} sx={{ mt: 2 }}>
+            <Grid container spacing={{ xs: 2, sm: 2, md: 3 }} sx={{ mt: 2 }}>
               <Grid size={{ xs: 12, sm: 4, md: 2 }}>
                 <Typography variant="h4" color="primary" sx={{ fontWeight: 800 }}>
                   {attendanceSummary.facilityAttendees}
@@ -483,10 +584,10 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ audience = 'staff' }) => 
               </Grid>
               <Grid size={{ xs: 12, sm: 4, md: 2 }}>
                 <Typography variant="h4" color="success.main" sx={{ fontWeight: 800 }}>
-                  {attendanceSummary.remoteParticipants}
+                  {attendanceSummary.lateOrEarlyLeave}
                 </Typography>
                 <Typography variant="body2" color="text.secondary">
-                  リモート利用
+                  遅刻 / 早退
                 </Typography>
               </Grid>
               <Grid size={{ xs: 12, sm: 4, md: 2 }}>
@@ -494,7 +595,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ audience = 'staff' }) => 
                   {attendanceSummary.absenceCount}
                 </Typography>
                 <Typography variant="body2" color="text.secondary">
-                  欠席 / 体調不良
+                  当日欠席
                 </Typography>
               </Grid>
               <Grid size={{ xs: 12, sm: 4, md: 2 }}>
@@ -515,26 +616,26 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ audience = 'staff' }) => 
               </Grid>
               <Grid size={{ xs: 12, sm: 4, md: 2 }}>
                 <Typography variant="h4" color="info.main" sx={{ fontWeight: 800 }}>
-                  {attendanceSummary.supportReady}
+                  {attendanceSummary.outStaff}
                 </Typography>
                 <Typography variant="body2" color="text.secondary">
-                  応援可能スタッフ
+                  外出スタッフ
                 </Typography>
               </Grid>
             </Grid>
           </Paper>
 
-          <Paper elevation={3} sx={{ p: 3 }}>
-            <Typography variant="h5" sx={{ fontWeight: 700 }}>
+          <Paper elevation={3} sx={{ p: { xs: 2, sm: 2.5, md: 3 } }}>
+            <Typography variant="h5" sx={{ fontWeight: 700, mb: 1.5 }}>
               日次記録状況
             </Typography>
-            <Grid container spacing={3} sx={{ mt: 1 }}>
+            <Grid container spacing={{ xs: 2, sm: 3 }} sx={{ mt: 1 }}>
               {dailyStatusCards.map(({ label, completed, pending, planned }) => {
                 const total = planned;
                 const progress = total > 0 ? Math.round((completed / total) * 100) : 0;
                 return (
                   <Grid key={label} size={{ xs: 12, md: 4 }}>
-                    <Paper variant="outlined" sx={{ p: 2, height: '100%' }}>
+                    <Paper variant="outlined" sx={{ p: { xs: 2, sm: 2.5 }, height: '100%' }}>
                       <Typography variant="h6" sx={{ fontWeight: 700 }}>
                         {label}
                       </Typography>
@@ -552,7 +653,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ audience = 'staff' }) => 
             </Grid>
           </Paper>
 
-          <Paper elevation={3} sx={{ p: 3 }}>
+          <Paper elevation={3} sx={{ p: { xs: 2, sm: 2.5, md: 3 } }}>
             <Stack
               direction={{ xs: 'column', sm: 'row' }}
               spacing={1}
@@ -580,9 +681,9 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ audience = 'staff' }) => 
             </Typography>
             <Grid container spacing={2}>
               {[
-                { label: '利用者レーン', items: scheduleLanes.userLane },
-                { label: '職員レーン', items: scheduleLanes.staffLane },
-                { label: '組織レーン', items: scheduleLanes.organizationLane },
+                { label: '利用者レーン', items: scheduleLanesToday.userLane },
+                { label: '職員レーン', items: scheduleLanesToday.staffLane },
+                { label: '組織レーン', items: scheduleLanesToday.organizationLane },
               ].map(({ label, items }) => (
                 <Grid key={label} size={{ xs: 12, md: 4 }}>
                   <Paper variant="outlined" sx={{ p: 2, height: '100%' }}>
@@ -725,29 +826,27 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ audience = 'staff' }) => 
           </Paper>
         </Stack>
 
-        {/* タブナビゲーション */}
-        <Card sx={{ mb: 3 }}>
-          <Tabs
-            value={tabValue}
-            onChange={handleTabChange}
-            variant="scrollable"
-            scrollButtons="auto"
-          >
-            {tabItems.map((tab) => (
-              <Tab
-                key={tab.label}
-                label={tab.label}
-                icon={tab.icon}
-                iconPosition="start"
-              />
-            ))}
-          </Tabs>
-        </Card>
-
-        {/* タブコンテンツ */}
-
         {audience === 'admin' && (
           <>
+            {/* タブナビゲーション */}
+            <Card sx={{ mb: 3 }}>
+              <Tabs
+                value={tabValue}
+                onChange={handleTabChange}
+                variant="scrollable"
+                scrollButtons="auto"
+              >
+                {ADMIN_TABS.map((tab) => (
+                  <Tab
+                    key={tab.label}
+                    label={tab.label}
+                    icon={tab.icon}
+                    iconPosition="start"
+                  />
+                ))}
+              </Tabs>
+            </Card>
+
             {/* 集団傾向分析 */}
             <TabPanel value={tabValue} index={0}>
               <Stack spacing={3}>
@@ -950,124 +1049,141 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ audience = 'staff' }) => 
         )}
 
         {audience === 'staff' && (
-          <>
-            {/* 朝ミーティング 9:00 */}
-            <TabPanel value={tabValue} index={0}>
-              <Stack spacing={3}>
-                <HandoffSummaryForMeeting
-                  dayScope="yesterday"
-                  title="前日からの申し送り引き継ぎ"
-                  description="朝会では前日までの申し送りを確認し、優先対応が必要な案件をタイムラインからピックアップします。"
-                  actionLabel="タイムラインを開く"
-                  onOpenTimeline={() => openTimeline('yesterday')}
-                />
+          <Stack spacing={3}>
+            {/* 🌅 朝会カード */}
+            <Card
+              elevation={3}
+              sx={{
+                borderWidth: 2,
+                borderStyle: 'solid',
+                borderColor: isMorningTime ? 'primary.main' : 'divider',
+              }}
+            >
+              <CardHeader
+                title="🌅 朝会情報（9:00）"
+                titleTypographyProps={{ variant: 'h5', fontWeight: 600 }}
+                sx={{
+                  bgcolor: (theme) => (isMorningTime ? alpha(theme.palette.primary.main, 0.08) : 'transparent'),
+                }}
+              />
+              <CardContent>
+                <Stack spacing={3}>
+                  <HandoffSummaryForMeeting
+                    dayScope="yesterday"
+                    title="前日からの申し送り引き継ぎ"
+                    description="朝会では前日までの申し送りを確認し、優先対応が必要な案件をタイムラインからピックアップします。"
+                    actionLabel="タイムラインを開く"
+                    onOpenTimeline={() => openTimeline('yesterday')}
+                  />
 
-                <Card>
-                  <CardContent>
-                    <Typography variant="h6" gutterBottom>
-                      本日の優先予定（スタッフレーン）
-                    </Typography>
-                    <List dense>
-                      {staffMeetingHighlights.map((item) => (
-                        <ListItem key={item.id} disableGutters>
-                          <ListItemText
-                            primary={`${item.time} ${item.title}`}
-                            secondary={item.owner ? `担当: ${item.owner}` : undefined}
-                            primaryTypographyProps={{ fontWeight: 600 }}
-                          />
-                        </ListItem>
-                      ))}
-                    </List>
-                  </CardContent>
-                </Card>
-
-                <Card>
-                  <CardContent>
-                    <Typography variant="h6" gutterBottom>
-                      重点フォロー利用者
-                    </Typography>
-                    {prioritizedUsers.length > 0 ? (
-                      <List dense>
-                        {prioritizedUsers.map((user) => (
-                          <ListItem key={user.Id} disableGutters>
-                            <ListItemAvatar>
-                              <Avatar>{user.FullName?.charAt(0) ?? '利'}</Avatar>
-                            </ListItemAvatar>
-                            <ListItemText
-                              primary={user.FullName ?? '利用者'}
-                              secondary="支援手順記録の確認をお願いします"
-                            />
-                          </ListItem>
-                        ))}
-                      </List>
-                    ) : (
-                      <Alert severity="success">現在フォロー対象の利用者はありません。</Alert>
-                    )}
-                  </CardContent>
-                </Card>
-              </Stack>
-            </TabPanel>
-
-            {/* 夕ミーティング 17:15 */}
-            <TabPanel value={tabValue} index={1}>
-              <Stack spacing={3}>
-                <Card>
-                  <CardContent>
-                    <Typography variant="h6" gutterBottom>
-                      本日の振り返り
-                    </Typography>
-                    <Stack spacing={2}>
-                      {dailyStatusCards.map(({ label, completed, pending, planned }) => {
-                        const total = planned;
-                        const progress = total > 0 ? Math.round((completed / total) * 100) : 0;
-                        return (
-                          <Paper key={label} variant="outlined" sx={{ p: 2 }}>
-                            <Typography variant="subtitle1" sx={{ fontWeight: 700 }}>
-                              {label}
-                            </Typography>
-                            <Typography variant="body2" color="text.secondary">
-                              完了 {completed} / 予定 {total} （残り {pending} 件）
-                            </Typography>
-                            <LinearProgress value={progress} variant="determinate" sx={{ mt: 1, height: 6, borderRadius: 3 }} />
-                          </Paper>
-                        );
-                      })}
-                    </Stack>
-                  </CardContent>
-                </Card>
-
-                <Card>
-                  <CardContent>
-                    <Typography variant="h6" gutterBottom>
-                      健康・行動トピック
-                    </Typography>
-                    <Stack spacing={2}>
-                      {stats.seizureCount > 0 ? (
-                        <Alert severity="warning">本日 {stats.seizureCount} 件の発作対応がありました。詳細記録を確認してください。</Alert>
+                  <Card>
+                    <CardContent>
+                      <Typography variant="h6" gutterBottom>
+                        重点フォロー利用者
+                      </Typography>
+                      {prioritizedUsers.length > 0 ? (
+                        <List dense>
+                          {prioritizedUsers.map((user) => (
+                            <ListItem key={user.Id} disableGutters>
+                              <ListItemAvatar>
+                                <Avatar>{user.FullName?.charAt(0) ?? '利'}</Avatar>
+                              </ListItemAvatar>
+                              <ListItemText
+                                primary={user.FullName ?? '利用者'}
+                                secondary="支援手順記録の確認をお願いします"
+                              />
+                            </ListItem>
+                          ))}
+                        </List>
                       ) : (
-                        <Alert severity="success">発作対応はありませんでした。</Alert>
+                        <Alert severity="success">現在フォロー対象の利用者はありません。</Alert>
                       )}
-                      {Object.values(stats.problemBehaviorStats).some((count) => count > 0) ? (
-                        <Alert severity="error">
-                          問題行動が記録されています。対応履歴と支援手順の見直しを検討してください。
-                        </Alert>
-                      ) : (
-                        <Alert severity="info">問題行動の記録はありません。</Alert>
-                      )}
-                    </Stack>
-                  </CardContent>
-                </Card>
+                    </CardContent>
+                  </Card>
 
-                <HandoffSummaryForMeeting
-                  dayScope="today"
-                  title="明日への申し送り候補"
-                  description="夕会では今日の申し送りを最終確認し、重要なトピックをタイムラインに集約して明日へ引き継ぎます。"
-                  actionLabel="タイムラインで確認"
-                  onOpenTimeline={() => openTimeline('today')}
-                />
-              </Stack>
-            </TabPanel>
-          </>
+                  {renderScheduleLanes('今日の予定', scheduleLanesToday)}
+                </Stack>
+              </CardContent>
+            </Card>
+
+            {/* 🌆 夕会カード */}
+            <Card
+              elevation={3}
+              sx={{
+                borderWidth: 2,
+                borderStyle: 'solid',
+                borderColor: isEveningTime ? 'secondary.main' : 'divider',
+              }}
+            >
+              <CardHeader
+                title="🌆 夕会情報（17:15）"
+                titleTypographyProps={{ variant: 'h5', fontWeight: 600 }}
+                sx={{
+                  bgcolor: (theme) => (isEveningTime ? alpha(theme.palette.secondary.main, 0.08) : 'transparent'),
+                }}
+              />
+              <CardContent>
+                <Stack spacing={3}>
+                  <Card>
+                    <CardContent>
+                      <Typography variant="h6" gutterBottom>
+                        本日の振り返り
+                      </Typography>
+                      <Stack spacing={2}>
+                        {dailyStatusCards.map(({ label, completed, pending, planned }) => {
+                          const total = planned;
+                          const progress = total > 0 ? Math.round((completed / total) * 100) : 0;
+                          return (
+                            <Paper key={label} variant="outlined" sx={{ p: 2 }}>
+                              <Typography variant="subtitle1" sx={{ fontWeight: 700 }}>
+                                {label}
+                              </Typography>
+                              <Typography variant="body2" color="text.secondary">
+                                完了 {completed} / 予定 {total} （残り {pending} 件）
+                              </Typography>
+                              <LinearProgress value={progress} variant="determinate" sx={{ mt: 1, height: 6, borderRadius: 3 }} />
+                            </Paper>
+                          );
+                        })}
+                      </Stack>
+                    </CardContent>
+                  </Card>
+
+                  <Card>
+                    <CardContent>
+                      <Typography variant="h6" gutterBottom>
+                        健康・行動トピック
+                      </Typography>
+                      <Stack spacing={2}>
+                        {stats.seizureCount > 0 ? (
+                          <Alert severity="warning">本日 {stats.seizureCount} 件の発作対応がありました。詳細記録を確認してください。</Alert>
+                        ) : (
+                          <Alert severity="success">発作対応はありませんでした。</Alert>
+                        )}
+                        {Object.values(stats.problemBehaviorStats).some((count) => count > 0) ? (
+                          <Alert severity="error">
+                            問題行動が記録されています。対応履歴と支援手順の見直しを検討してください。
+                          </Alert>
+                        ) : (
+                          <Alert severity="info">問題行動の記録はありません。</Alert>
+                        )}
+                      </Stack>
+                    </CardContent>
+                  </Card>
+
+                  <HandoffSummaryForMeeting
+                    dayScope="today"
+                    title="明日への申し送り候補"
+                    description="夕会では今日の申し送りを最終確認し、重要なトピックをタイムラインに集約して明日へ引き継ぎます。"
+                    actionLabel="タイムラインで確認"
+                    onOpenTimeline={() => openTimeline('today')}
+                  />
+
+                  {renderScheduleLanes('明日の予定', scheduleLanesTomorrow)}
+                </Stack>
+              </CardContent>
+            </Card>
+          </Stack>
         )}
 
       </Box>

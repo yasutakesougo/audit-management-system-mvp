@@ -1,5 +1,6 @@
 import '@/test/captureSp400';
 import { expect, test } from '@playwright/test';
+import { TESTIDS } from '@/testids';
 import { gotoDay, gotoWeek } from './utils/scheduleNav';
 import { waitForDayTimeline, waitForWeekTimeline } from './utils/wait';
 
@@ -57,7 +58,7 @@ test.describe('Schedule conflicts – timeline views', () => {
     await gotoWeek(page, TARGET_DATE, { searchParams: { scenario: CONFLICT_SCENARIO } });
     await waitForWeekTimeline(page);
 
-    const weekRoot = page.getByTestId('schedule-week-root');
+    const weekRoot = page.getByTestId(TESTIDS.SCHEDULE_WEEK_ROOT);
     await expect(weekRoot).toBeVisible();
 
     const conflicts = weekRoot.locator(CONFLICT_SELECTOR);

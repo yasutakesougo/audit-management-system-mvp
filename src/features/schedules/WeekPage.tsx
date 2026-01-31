@@ -1,16 +1,20 @@
 import { type CSSProperties, type MouseEvent, useCallback, useEffect, useId, useMemo, useRef, useState } from 'react';
-import { useSearchParams } from 'react-router-dom';
-import { Alert, Snackbar } from '@mui/material';
+import { useMatch, useSearchParams } from 'react-router-dom';
+import { Alert, Button, Dialog, DialogTitle, DialogContent, DialogActions, Snackbar, Stack, Typography } from '@mui/material';
 
 import { useAnnounce } from '@/a11y/LiveAnnouncer';
+import { isDev } from '@/env';
+import { useAuth } from '@/auth/useAuth';
+import { useUserAuthz } from '@/auth/useUserAuthz';
 import { MASTER_SCHEDULE_TITLE_JA } from '@/features/schedule/constants';
 import { ensureDateParam, normalizeToDayStart, pickDateParam } from '@/features/schedule/dateQuery';
 import type { Category } from '@/features/schedule/types';
-import ScheduleCreateDialog, { type CreateScheduleEventInput, type ScheduleFormState } from '@/features/schedules/ScheduleCreateDialog';
+import ScheduleCreateDialog from '@/features/schedules/ScheduleCreateDialog';
 import ScheduleEmptyHint from '@/features/schedules/components/ScheduleEmptyHint';
 import SchedulesFilterResponsive from '@/features/schedules/components/SchedulesFilterResponsive';
 import SchedulesHeader from '@/features/schedules/components/SchedulesHeader';
-import type { SchedItem, ScheduleServiceType, UpdateScheduleEventInput } from '@/features/schedules/data';
+import type { CreateScheduleEventInput, SchedItem, ScheduleServiceType, UpdateScheduleEventInput } from '@/features/schedules/data';
+import type { ScheduleFormState } from '@/features/schedules/scheduleFormState';
 import type { InlineScheduleDraft } from '@/features/schedules/data/inlineScheduleDraft';
 import { useScheduleUserOptions } from '@/features/schedules/useScheduleUserOptions';
 import { makeRange, useSchedules } from '@/features/schedules/useSchedules';
@@ -22,24 +26,13 @@ import { resolveSchedulesTz } from '@/utils/scheduleTz';
 
 import DayView from './DayView';
 import WeekView from './WeekView';
+import MonthPage from './MonthPage';
 import WeekTimeline, { type WeekTimelineCreateHint } from './views/WeekTimeline';
 
-type ScheduleTab = 'week' | 'day' | 'timeline';
-
-const TAB_LABELS: Record<ScheduleTab, string> = {
-  week: '週',
-  day: '日',
-  timeline: 'タイムライン',
-};
-
+type ScheduleTab = 'week' | 'day' | 'timeline' | 'month';
 const DEFAULT_START_TIME = '10:00';
 const DEFAULT_END_TIME = '11:00';
 const SCHEDULES_TZ = resolveSchedulesTz();
-
-const normalizeTabParam = (params: URLSearchParams): ScheduleTab => {
-  const raw = params.get('tab');
-  return raw === 'day' || raw === 'timeline' ? raw : 'week';
-};
 
 const startOfWeek = (date: Date): Date => {
   const next = new Date(date);
@@ -176,9 +169,34 @@ const resolveDialogIntent = (params: URLSearchParams): DialogIntentParams | null
 let pendingFabFocus = false;
 
 
+const LEGACY_TABS = ['day', 'week', 'timeline', 'month'] as const;
+type LegacyTab = typeof LEGACY_TABS[number];
+
 export default function WeekPage() {
   const announce = useAnnounce();
   const [searchParams, setSearchParams] = useSearchParams();
+  
+  // Legacy ?tab= redirect (互換性のため) - DISABLED to prevent infinite redirect loop
+  // The tab param is now handled directly in the mode calculation below
+  // No need to redirect between routes; WeekPage handles all tabs internally
+  // useEffect(() => {
+  //   const legacyTab = searchParams.get('tab');
+  //   if (!legacyTab) return;
+  //   
+  //   if (location.pathname === '/schedules/week' && LEGACY_TABS.includes(legacyTab as LegacyTab)) {
+  //     return;
+  //   }
+  //   
+  //   const map: Record<LegacyTab, string> = {
+  //     day: '/schedules/day',
+  //     week: '/schedules/week',
+  //     timeline: '/schedules/timeline',
+  //     month: '/schedules/month',
+  //   };
+  //   const target = map[legacyTab as LegacyTab];
+  //   if (target) navigate(target, { replace: true });
+  // }, [searchParams, navigate, location.pathname]);
+  
   const [snack, setSnack] = useState<{
     open: boolean;
     severity: 'success' | 'error' | 'info' | 'warning';
@@ -190,9 +208,35 @@ export default function WeekPage() {
       setSnack({ open: true, severity, message }),
     []
   );
-  const [tab, setTab] = useState<ScheduleTab>(() => normalizeTabParam(searchParams));
+  
+  // Route から mode を決定（useMatch で堅牢化）
+  // First check URL path (when navigation completes), then fall back to query param (during redirect)
+  const dayMatch = useMatch('/schedules/day/*');
+  const timelineMatch = useMatch('/schedules/timeline/*');
+  const monthMatch = useMatch('/schedules/month/*');
+  
+  // Fallback to query parameter for backward compatibility with redirects
+  const tabParam = searchParams.get('tab') as ScheduleTab | null;
+  
+  const mode: ScheduleTab = dayMatch
+    ? 'day'
+    : timelineMatch
+      ? 'timeline'
+      : monthMatch
+        ? 'month'
+        : tabParam && LEGACY_TABS.includes(tabParam as LegacyTab)
+          ? (tabParam as ScheduleTab)
+          : 'week';
   const [categoryFilter, setCategoryFilter] = useState<'All' | Category>('All');
   const [query, setQuery] = useState('');
+  
+  // Authorization check for Day view editing
+  const { account } = useAuth();
+  const myUpn = (account?.username ?? '').trim().toLowerCase();
+  const { isReception, isAdmin, ready } = useUserAuthz();
+  const canEditByRole = ready && (isReception || isAdmin);
+  const canEdit = mode === 'day' && canEditByRole; // FAB (create) = reception/admin only
+  
   const rawDateParam = useMemo(() => pickDateParam(searchParams), [searchParams]);
   const focusDate = useMemo(() => normalizeToDayStart(rawDateParam), [rawDateParam]);
   const [activeDateIso, setActiveDateIso] = useState<string | null>(() => toDateIso(focusDate));
@@ -218,13 +262,12 @@ export default function WeekPage() {
     }
   }, [createDialogOpen]);
   const headingId = useId();
-  const tablistId = useId();
   const rangeDescriptionId = 'schedules-week-range';
   const weekRange = useMemo(() => {
     const start = startOfWeek(focusDate);
     return makeRange(start, endOfWeek(start));
   }, [focusDate]);
-  const { items, loading: isLoading, create, update, remove } = useSchedules(weekRange);
+  const { items, loading: isLoading, create, update, remove, lastError, clearLastError, refetch } = useSchedules(weekRange);
   const filteredItems = useMemo(() => {
     const needle = query.trim().toLowerCase();
     return items.filter((item) => {
@@ -232,7 +275,7 @@ export default function WeekPage() {
       if (!needle) return true;
       const haystack = [
         item.title,
-        item.note ?? item.notes,
+        item.notes,
         item.location,
         item.subType,
         item.serviceType,
@@ -266,7 +309,7 @@ export default function WeekPage() {
         userId: editingItem.userId ?? '',
         serviceType: (editingItem.serviceType as ScheduleFormState['serviceType']) ?? '',
         locationName: editingItem.locationName ?? editingItem.location ?? '',
-        notes: editingItem.notes ?? editingItem.note ?? '',
+        notes: editingItem.notes ?? '',
         assignedStaffId: editingItem.assignedStaffId ?? '',
         vehicleId: editingItem.vehicleId ?? '',
         status: (editingItem.status as ScheduleFormState['status']) ?? 'Planned',
@@ -329,23 +372,6 @@ export default function WeekPage() {
     next.delete('dialogCategory');
     next.delete('eventId');
     setSearchParams(next, { replace: true });
-  }, [searchParams, setSearchParams]);
-
-  const tabButtonIds: Record<ScheduleTab, string> = {
-    week: `${tablistId}-tab-week`,
-    day: `${tablistId}-tab-day`,
-    timeline: `${tablistId}-tab-timeline`,
-  };
-
-  useEffect(() => {
-    const resolved = normalizeTabParam(searchParams);
-    setTab((prev) => (prev === resolved ? prev : resolved));
-    const current = searchParams.get('tab');
-    if (current !== resolved) {
-      const next = new URLSearchParams(searchParams);
-      next.set('tab', resolved);
-      setSearchParams(next, { replace: true });
-    }
   }, [searchParams, setSearchParams]);
 
   const primeRouteReset = useCallback(() => {
@@ -425,6 +451,8 @@ export default function WeekPage() {
 
   const handleFabClick = useCallback(
     (_event?: MouseEvent<HTMLButtonElement>) => {
+      if (!canEdit) return; // Guard: Day tab + authorized users only
+      
       const iso = activeDateIso ?? defaultDateIso;
       if (!activeDateIso) {
         setActiveDateIso(iso);
@@ -434,11 +462,32 @@ export default function WeekPage() {
       const end = new Date(`${iso}T${DEFAULT_END_TIME}`);
       setDialogParams(buildCreateDialogIntent('User', start, end));
     },
-    [activeDateIso, defaultDateIso, primeRouteReset, setDialogParams],
+    [canEdit, activeDateIso, defaultDateIso, primeRouteReset, setDialogParams],
   );
 
   const handleWeekEventClick = useCallback((item: SchedItem) => {
     console.info('[WeekPage] row click', item.id);
+
+    // Authorization check: reception/admin OR assignee (Day view only)
+    if (mode === 'day' && ready) {
+      const assignedNormalized = (item.assignedTo ?? '').trim().toLowerCase();
+      const hasAssignee = Boolean(assignedNormalized);
+      const myUpnNormalized = (myUpn ?? '').trim().toLowerCase();
+      const isAssignee = Boolean(myUpnNormalized) && assignedNormalized === myUpnNormalized;
+      const canEditItem = canEditByRole || isAssignee;
+      if (!canEditItem) {
+        if (isDev) {
+          console.warn('[WeekPage] Edit blocked: not authorized', { myUpn, assignedTo: item.assignedTo });
+        }
+        if (hasAssignee && !isAssignee) {
+          showSnack('info', 'この予定は担当者のみ編集できます');
+        } else {
+          showSnack('info', '受付/管理者のみ編集できます');
+        }
+        return;
+      }
+    }
+
     const category = (item.category as Category) ?? 'User';
     const serviceType = (item.serviceType as ScheduleServiceType) ?? 'normal';
     const startLocal = formatScheduleLocalInput(item.start, DEFAULT_START_TIME);
@@ -455,13 +504,13 @@ export default function WeekPage() {
       userId: item.userId ?? '',
       assignedStaffId: item.assignedStaffId ?? '',
       locationName: item.locationName ?? item.location ?? '',
-      notes: item.notes ?? item.note ?? '',
+      notes: item.notes ?? '',
       vehicleId: item.vehicleId ?? '',
       status: item.status ?? 'Planned',
       statusReason: item.statusReason ?? '',
     });
     setDialogOpen(true);
-  }, []);
+  }, [mode, ready, canEditByRole, myUpn, showSnack]);
 
   const clearInlineSelection = useCallback(() => {
     setDialogOpen(false);
@@ -585,6 +634,66 @@ export default function WeekPage() {
     clearDialogParams();
   }, [clearDialogParams, primeRouteReset]);
 
+  // Phase 2-1c: Show conflict snackbar when update/create fails with conflict
+  const conflictOpen = !!lastError && lastError.kind === 'conflict';
+  const [conflictDetailOpen, setConflictDetailOpen] = useState(false);
+  const [lastErrorAt, setLastErrorAt] = useState<number | null>(null);
+  const [conflictBusy, setConflictBusy] = useState(false);
+
+  // Conflict dialog handlers
+  const handleConflictDiscard = useCallback(() => {
+    clearLastError();
+    setConflictDetailOpen(false);
+  }, [clearLastError]);
+
+  const handleConflictReload = useCallback(async () => {
+    if (conflictBusy) return;
+
+    try {
+      setConflictBusy(true);
+      await refetch();
+      clearLastError();
+      setConflictDetailOpen(false);
+    } finally {
+      setConflictBusy(false);
+    }
+  }, [conflictBusy, refetch, clearLastError]);
+
+  // Phase 2-2b: Scroll & highlight conflicted schedule after refetch
+  const [focusScheduleId, setFocusScheduleId] = useState<string | null>(null);
+  const [highlightId, setHighlightId] = useState<string | null>(null);
+
+  // Set timestamp when conflict appears
+  useEffect(() => {
+    if (conflictOpen) {
+      setLastErrorAt(Date.now());
+    }
+  }, [conflictOpen]);
+
+  // Phase 2-2b: Scroll to & highlight focused schedule after refetch completes
+  useEffect(() => {
+    if (!focusScheduleId) return;
+
+    const element = document.querySelector<HTMLElement>(`[data-schedule-id="${focusScheduleId}"]`);
+    if (!element) return;
+
+    // Smooth scroll to center
+    element.scrollIntoView({ block: 'center', behavior: 'smooth' });
+
+    // Set highlight
+    setHighlightId(focusScheduleId);
+
+    // Clear highlight after 2 seconds
+    const timeoutId = setTimeout(() => {
+      setHighlightId(null);
+    }, 2000);
+
+    // Clear focus state (one-time operation)
+    setFocusScheduleId(null);
+
+    return () => clearTimeout(timeoutId);
+  }, [focusScheduleId, filteredItems]);
+
   const showEmptyHint = !isLoading && filteredItems.length === 0;
 
 
@@ -595,8 +704,9 @@ export default function WeekPage() {
       aria-labelledby={headingId}
       data-testid="schedules-week-page"
       tabIndex={-1}
-      style={{ paddingBottom: 16 }}
+      style={{ paddingBottom: 24 }}
     >
+      <div data-testid="schedules-week-root" style={{ display: 'contents' }}>
       <div
         className="schedule-sticky"
         style={{
@@ -605,29 +715,55 @@ export default function WeekPage() {
           zIndex: 2,
           background: 'rgba(255,255,255,0.96)',
           backdropFilter: 'blur(6px)',
-          paddingTop: 8,
-          paddingBottom: 8,
+          paddingTop: 12,
+          paddingBottom: 12,
           borderBottom: '1px solid rgba(0,0,0,0.08)',
         }}
       >
         <span hidden>週間スケジュール</span>
-        <SchedulesHeader
-          mode={tab === 'day' ? 'day' : 'week'}
-          title={MASTER_SCHEDULE_TITLE_JA}
-          subLabel="週表示（週間の予定一覧）"
-          periodLabel={`表示期間: ${weekLabel}`}
+        {/* Tab-aware header content */}
+        {(() => {
+          // Compute monthLabel for month view
+          const monthDate = new Date(`${resolvedActiveDateIso}T00:00:00`);
+          const monthLabel = new Intl.DateTimeFormat('ja-JP', { year: 'numeric', month: 'long' }).format(monthDate);
+
+          // Determine subLabel and periodLabel based on current view mode
+          const headerSubLabel =
+            mode === 'day'
+              ? '日表示（本日の予定）'
+              : mode === 'month'
+                ? '月表示（全体カレンダー）'
+                : mode === 'timeline'
+                  ? 'タイムライン（週間）'
+                  : '週表示（週間の予定一覧）';
+
+          const headerPeriodLabel =
+            mode === 'month'
+              ? `表示月: ${monthLabel}`
+              : mode === 'day'
+                ? `表示期間: ${new Intl.DateTimeFormat('ja-JP', { year: 'numeric', month: 'short', day: 'numeric' }).format(monthDate)}`
+                : `表示期間: ${weekLabel}`;
+
+          return (
+            <>
+              <SchedulesHeader
+                mode={mode}
+                title={MASTER_SCHEDULE_TITLE_JA}
+                subLabel={headerSubLabel}
+                periodLabel={headerPeriodLabel}
           onPrev={handlePrevWeek}
           onNext={handleNextWeek}
           onToday={handleTodayWeek}
-          onPrimaryCreate={handleFabClick}
+          onPrimaryCreate={canEdit ? handleFabClick : undefined}
           primaryActionAriaLabel="この週に新規予定を作成"
           headingId={headingId}
           titleTestId={TESTIDS['schedules-week-heading']}
           rangeLabelId={rangeDescriptionId}
           dayHref={dayViewHref}
           weekHref={weekViewHref}
+          timelineHref={`/schedules/timeline?date=${resolvedActiveDateIso}`}
           monthHref={monthViewHref}
-          modes={[ 'day', 'week' ]}
+          modes={[ 'day', 'week', 'timeline', 'month' ]}
           prevTestId={TESTIDS.SCHEDULES_PREV_WEEK}
           nextTestId={TESTIDS.SCHEDULES_NEXT_WEEK}
         >
@@ -672,45 +808,9 @@ export default function WeekPage() {
             </div>
           </SchedulesFilterResponsive>
         </SchedulesHeader>
-
-        <div
-          id={tablistId}
-          role="tablist"
-          aria-label="スケジュールビュー切り替え"
-          style={{ display: 'flex', gap: 8, marginBottom: 8, flexWrap: 'wrap' }}
-          data-testid={TESTIDS.SCHEDULES_WEEK_TABLIST}
-        >
-          {(Object.keys(TAB_LABELS) as ScheduleTab[]).map((key) => {
-            const isActive = tab === key;
-            const tabTestId =
-              key === 'week'
-                ? TESTIDS.SCHEDULES_WEEK_TAB_WEEK
-                : key === 'day'
-                  ? TESTIDS.SCHEDULES_WEEK_TAB_DAY
-                  : TESTIDS.SCHEDULES_WEEK_TAB_TIMELINE;
-            return (
-              <button
-                key={key}
-                id={tabButtonIds[key]}
-                type="button"
-                role="tab"
-                aria-selected={isActive}
-                aria-controls={`panel-${key}`}
-                data-testid={tabTestId}
-                onClick={() => {
-                  if (tab === key) return;
-                  setTab(key);
-                  const next = new URLSearchParams(searchParams);
-                  next.set('tab', key);
-                  setSearchParams(next, { replace: true });
-                }}
-                style={tabButtonStyle(isActive)}
-              >
-                {TAB_LABELS[key]}
-              </button>
-            );
-          })}
-        </div>
+            </>
+          );
+        })()}
       </div>
 
       <div>
@@ -718,7 +818,7 @@ export default function WeekPage() {
           <ScheduleEmptyHint view="week" periodLabel={weekLabel} sx={{ mb: 2 }} />
         ) : null}
         {isLoading ? (
-          <div aria-busy="true" aria-live="polite" style={{ display: 'grid', gap: 12 }}>
+          <div aria-busy="true" aria-live="polite" style={{ display: 'grid', gap: 16 }}>
             <Loading />
             <div style={skeletonStyle} />
             <div style={skeletonStyle} />
@@ -726,39 +826,25 @@ export default function WeekPage() {
           </div>
         ) : (
           <>
-            {tab === 'week' && (
-              <div
-                id="panel-week"
-                role="tabpanel"
-                aria-labelledby={tabButtonIds.week}
-              >
-                <WeekView
-                  items={filteredItems}
-                  loading={isLoading}
-                  range={weekRange}
-                  onDayClick={handleDayClick}
-                  activeDateIso={resolvedActiveDateIso}
-                  onItemSelect={handleWeekEventClick}
-                />
-              </div>
+            {mode === 'week' && (
+              <WeekView
+                items={filteredItems}
+                loading={isLoading}
+                range={weekRange}
+                onDayClick={handleDayClick}
+                activeDateIso={resolvedActiveDateIso}
+                onItemSelect={handleWeekEventClick}
+                highlightId={highlightId}
+              />
             )}
-            {tab === 'day' && (
-              <div
-                id="panel-day"
-                role="tabpanel"
-                aria-labelledby={tabButtonIds.day}
-              >
-                <DayView items={filteredItems} loading={isLoading} range={activeDayRange} />
-              </div>
+            {mode === 'day' && (
+              <DayView items={filteredItems} loading={isLoading} range={activeDayRange} />
             )}
-            {tab === 'timeline' && (
-              <div
-                id="panel-timeline"
-                role="tabpanel"
-                aria-labelledby={tabButtonIds.timeline}
-              >
-                <WeekTimeline range={weekRange} items={filteredItems} onCreateHint={handleTimelineCreateHint} />
-              </div>
+            {mode === 'timeline' && (
+              <WeekTimeline range={weekRange} items={filteredItems} onCreateHint={handleTimelineCreateHint} />
+            )}
+            {mode === 'month' && (
+              <MonthPage />
             )}
             {filteredItems.length === 0 && (
               <EmptyState
@@ -780,14 +866,14 @@ export default function WeekPage() {
           position: 'fixed',
           right: 24,
           bottom: 24,
-          width: 56,
-          height: 56,
+          width: 64,
+          height: 64,
           borderRadius: '50%',
           border: 'none',
           background: '#1976d2',
           color: '#fff',
           boxShadow: '0 4px 12px rgba(0,0,0,0.3)',
-          fontSize: 32,
+          fontSize: 36,
           lineHeight: 1,
           cursor: 'pointer',
           zIndex: 1300,
@@ -846,24 +932,96 @@ export default function WeekPage() {
           {snack.message}
         </Alert>
       </Snackbar>
+
+      {/* Phase 2-1c: Conflict snackbar for etag mismatch */}
+      <Snackbar
+        open={conflictOpen}
+        autoHideDuration={8000}
+        onClose={() => clearLastError()}
+        anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
+      >
+        <Alert
+          severity="warning"
+          onClose={() => clearLastError()}
+          action={
+            <Stack direction="row" spacing={0.5}>
+              <Button
+                color="inherit"
+                size="small"
+                onClick={() => setConflictDetailOpen(true)}
+              >
+                詳細を見る
+              </Button>
+              <Button
+                color="inherit"
+                size="small"
+                onClick={() => {
+                  // Phase 2-2b: Set focus for post-refetch scroll + highlight
+                  if (lastError?.kind === 'conflict' && lastError.id) {
+                    setFocusScheduleId(lastError.id);
+                  }
+                  refetch();
+                  clearLastError();
+                }}
+              >
+                最新を表示
+              </Button>
+            </Stack>
+          }
+        >
+          {lastError?.message ?? '更新が競合しました（最新を読み込み直してください）'}
+        </Alert>
+      </Snackbar>
+
+      {/* Phase 2-2a: Conflict detail dialog */}
+      <Dialog
+        open={conflictDetailOpen}
+        onClose={(_, reason) => {
+          // backdrop / ESC も Discard 扱い
+          if (reason === 'backdropClick' || reason === 'escapeKeyDown') {
+            handleConflictDiscard();
+            return;
+          }
+          handleConflictDiscard();
+        }}
+        fullWidth
+        maxWidth="sm"
+      >
+        <DialogTitle>スケジュール更新が競合しました</DialogTitle>
+
+        <DialogContent dividers>
+          <Stack spacing={1.5}>
+            <Typography variant="body2">
+              他のユーザーが先に更新しました。「最新を読み込む」で最新状態を取得できます。
+            </Typography>
+
+            {lastError ? (
+              <Typography variant="body2">
+                <strong>メッセージ:</strong> {lastError.message}
+              </Typography>
+            ) : (
+              <Typography variant="body2">詳細情報がありません。</Typography>
+            )}
+
+            <Typography variant="caption" color="text.secondary">
+              発生時刻: {lastErrorAt ? new Date(lastErrorAt).toLocaleTimeString('ja-JP') : '-'}
+            </Typography>
+          </Stack>
+        </DialogContent>
+
+        <DialogActions>
+          <Button onClick={handleConflictDiscard} disabled={conflictBusy}>
+            破棄して閉じる
+          </Button>
+          <Button variant="contained" onClick={handleConflictReload} disabled={conflictBusy}>
+            最新を読み込む
+          </Button>
+        </DialogActions>
+      </Dialog>
+      </div>
     </section>
   );
 }
-
-const tabButtonStyle = (active: boolean): CSSProperties => ({
-  padding: '6px 12px',
-  borderRadius: 999,
-  border: active ? '1px solid rgba(25,118,210,0.7)' : '1px solid rgba(0,0,0,0.18)',
-  background: active ? 'rgba(25,118,210,0.08)' : 'rgba(255,255,255,0.8)',
-  fontWeight: active ? 700 : 500,
-  fontSize: 13,
-  color: active ? 'rgba(25,118,210,0.95)' : 'rgba(0,0,0,0.7)',
-  cursor: 'pointer',
-  display: 'inline-flex',
-  alignItems: 'center',
-  justifyContent: 'center',
-  gap: 4,
-});
 
 const skeletonStyle: CSSProperties = {
   height: 16,

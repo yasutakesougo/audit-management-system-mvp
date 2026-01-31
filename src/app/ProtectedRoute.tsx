@@ -3,6 +3,7 @@ import { useFeatureFlag, type FeatureFlagSnapshot } from '@/config/featureFlags'
 import { isE2E } from '@/env';
 import { getAppConfig, isDemoModeEnabled, readEnv } from '@/lib/env';
 import { InteractionStatus } from '@/auth/interactionStatus';
+import { createSpClient, ensureConfig } from '@/lib/spClient';
 import Button from '@mui/material/Button';
 import Paper from '@mui/material/Paper';
 import Stack from '@mui/material/Stack';
@@ -16,6 +17,8 @@ export type ProtectedRouteProps = {
   children: ReactElement;
   fallbackPath?: NavigateProps['to'];
 };
+
+type ListGate = 'idle' | 'checking' | 'ready' | 'blocked';
 
 /**
  * Development-only debug logging to avoid production noise
@@ -39,7 +42,12 @@ const isAutomationRuntime = (): boolean => {
   return false;
 };
 
-const isSkipLoginEnabled = (): boolean => readEnv('VITE_SKIP_LOGIN', '0') === '1';
+const isSkipLoginEnabled = (): boolean => {
+  const skipLogin = readEnv('VITE_SKIP_LOGIN', '0') === '1';
+  const e2e = readEnv('VITE_E2E', '0') === '1';
+  const msalMock = readEnv('VITE_E2E_MSAL_MOCK', '0') === '1';
+  return skipLogin || e2e || msalMock;
+};
 
 const isMsalConfigured = (): boolean => {
   const clientId = readEnv('VITE_MSAL_CLIENT_ID', readEnv('VITE_AAD_CLIENT_ID', '')).trim();
@@ -66,11 +74,13 @@ const shouldBypassInE2E = (flag: keyof FeatureFlagSnapshot): boolean => {
 
 export default function ProtectedRoute({ flag, children, fallbackPath = '/' }: ProtectedRouteProps) {
   const enabled = useFeatureFlag(flag);
-  const { isAuthenticated, loading, shouldSkipLogin, signIn } = useAuth();
+  const { isAuthenticated, loading, shouldSkipLogin, tokenReady: tokenReadyRaw, signIn, getListReadyState: _getListReadyState, setListReadyState, acquireToken } = useAuth();
+  const tokenReady = tokenReadyRaw ?? false;
   const { accounts, inProgress } = useMsalContext();
   const location = useLocation();
   const pendingPath = useMemo(() => `${location.pathname}${location.search ?? ''}`, [location.pathname, location.search]);
   const signInAttemptedRef = useRef(false);
+  const [listGate, setListGate] = useState<ListGate>('idle');
 
   const isAutomationOrDemo = isAutomationRuntime() || isDemoModeEnabled();
   const allowBypass = isAutomationOrDemo || isSkipLoginEnabled() || !isMsalConfigured();
@@ -87,6 +97,52 @@ export default function ProtectedRoute({ flag, children, fallbackPath = '/' }: P
     signInAttemptedRef.current = true;
     void signIn();
   }, [accounts.length, allowBypass, inProgress, signIn]);
+
+  // List existence check: trigger when tokenReady + schedules flag
+  useEffect(() => {
+    if (!tokenReady) return;
+    if (flag !== 'schedules') return;
+    if (listGate !== 'idle') return;
+
+    setListGate('checking');
+
+    const checkSchedulesListExistence = async () => {
+      try {
+        const spConfig = ensureConfig();
+        const baseUrl = spConfig.baseUrl;
+        if (!baseUrl) {
+          debug('[schedules] No baseUrl (demo mode), skipping list check');
+          setListGate('ready');
+          return;
+        }
+
+        const listName = import.meta.env.VITE_SP_LIST_SCHEDULES || 'ScheduleEvents';
+        // eslint-disable-next-line no-console
+        console.log('[env-check] VITE_SP_LIST_SCHEDULES =', listName);
+        debug(`[schedules] Checking list existence: ${listName}`);
+
+        const client = createSpClient(acquireToken, baseUrl);
+        const listNameStr = typeof listName === 'string' ? listName : 'ScheduleEvents';
+        const metadata = await client.tryGetListMetadata(listNameStr);
+
+        if (metadata) {
+          debug('[schedules] List exists:', listName);
+          setListReadyState(true);
+          setListGate('ready');
+        } else {
+          debug('[schedules] List NOT found:', listName);
+          setListReadyState(false);
+          setListGate('blocked');
+        }
+      } catch (error) {
+        console.error('[ProtectedRoute] List existence check failed:', error);
+        setListReadyState(false);
+        setListGate('blocked');
+      }
+    };
+
+    void checkSchedulesListExistence();
+  }, [tokenReady, flag, listGate, acquireToken, setListReadyState]);
 
   // Automation / Demo / Skip-login / 未設定MSALでは認証ガードをバイパス（フラグは尊重）
   if (allowBypass) {
@@ -135,6 +191,42 @@ export default function ProtectedRoute({ flag, children, fallbackPath = '/' }: P
     );
   }
 
+  // Gate: Ensure SharePoint token is ready before rendering children
+  // This prevents API calls from auto-triggering MSAL popups
+  if (!tokenReady) {
+    debug('Token acquisition in progress; waiting for completion for flag:', flag);
+    return (
+      <div style={{ padding: '2rem', textAlign: 'center' }}>
+        アクセス権限を確認しています…
+      </div>
+    );
+  }
+
+  // Gate: Ensure list exists before rendering children (prevents 404 cascade)
+  // For schedules flag, listGate must be 'ready' before allowing children
+  if (flag === 'schedules' && listGate !== 'ready') {
+    if (listGate === 'blocked') {
+      debug('List check failed (404/error) for flag:', flag);
+      return (
+        <div style={{ padding: '2rem', textAlign: 'center', color: '#d32f2f' }}>
+          <Typography variant="body2" sx={{ fontWeight: 600, mb: 1 }}>
+            スケジュール用の SharePoint リストが見つかりません
+          </Typography>
+          <Typography variant="caption" sx={{ display: 'block', color: '#666' }}>
+            管理者に連絡してください
+          </Typography>
+        </div>
+      );
+    }
+    // idle or checking
+    debug('List existence check in progress for flag:', flag);
+    return (
+      <div style={{ padding: '2rem', textAlign: 'center' }}>
+        スケジュール用リストを確認しています…
+      </div>
+    );
+  }
+
   if (typeof window !== 'undefined') {
     const postLoginTarget = window.sessionStorage.getItem('postLoginRedirect');
     if (postLoginTarget) {
@@ -154,7 +246,7 @@ type AuthNoticeProps = {
   flag: keyof FeatureFlagSnapshot;
   pendingPath: string;
   fallbackPath: NavigateProps['to'];
-  onSignIn?: () => Promise<void>;
+  onSignIn?: () => Promise<{ success: boolean }>;
 };
 
 const AuthRequiredNotice = ({ flag, pendingPath, onSignIn, fallbackPath }: AuthNoticeProps) => {

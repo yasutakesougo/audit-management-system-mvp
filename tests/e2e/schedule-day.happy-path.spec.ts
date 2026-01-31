@@ -15,6 +15,7 @@ import {
   waitForDayViewReady,
   waitForWeekViewReady,
 } from './utils/scheduleActions';
+import { waitSchedulesItemsOrEmpty } from './utils/wait';
 
 const TARGET_DATE = new Date('2025-11-24T00:00:00+09:00');
 const TARGET_DATE_ISO = '2025-11-24';
@@ -46,6 +47,7 @@ test.describe('Schedule day seeded happy path (fixtures)', () => {
     });
 
     await waitForWeekViewReady(page);
+    await waitSchedulesItemsOrEmpty(page);
 
     const allItems = await getWeekScheduleItems(page);
     await expect(allItems).toHaveCount(SEEDED_EVENT_COUNT);

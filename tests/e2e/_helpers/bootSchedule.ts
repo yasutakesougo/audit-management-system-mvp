@@ -2,34 +2,39 @@ import type { Page } from '@playwright/test';
 import { mockEnsureScheduleList } from './mockEnsureScheduleList';
 import { setupSharePointStubs } from './setupSharePointStubs';
 import { setupPlaywrightEnv } from './setupPlaywrightEnv';
-import { buildWeekScheduleFixtures, SCHEDULE_FIXTURE_BASE_DATE } from '../utils/schedule.fixtures';
+import { buildWeekScheduleFixtures, SCHEDULE_FIXTURE_BASE_DATE, buildStaffMorningFixture, buildUserMinimalFixture } from '../utils/schedule.fixtures';
 import type { ScheduleItem } from '../utils/spMock';
-import { seedSchedulesToday } from './schedulesTodaySeed';
+import { seedSchedulesToday, seedSchedulesTodayForDemoAdapter } from './schedulesTodaySeed';
 
 const FEATURE_ENV: Record<string, string> = {
+  VITE_E2E: '1',
   VITE_E2E_MSAL_MOCK: '1',
   VITE_SKIP_LOGIN: '1',
+  VITE_SKIP_SHAREPOINT: '0',
+  VITE_MSAL_CLIENT_ID: 'e2e-mock-client-id-12345678',
+  VITE_MSAL_TENANT_ID: 'common',
   VITE_FEATURE_SCHEDULES: '1',
   VITE_FEATURE_SCHEDULES_WEEK_V2: '1',
+  VITE_SCHEDULES_SAVE_MODE: 'mock',
   VITE_FEATURE_SCHEDULES_GRAPH: '0',
-  VITE_FEATURE_SCHEDULES_SP: '1',
-  VITE_FORCE_SHAREPOINT: '1',
-  VITE_SKIP_SHAREPOINT: '0',
+  VITE_FEATURE_SCHEDULES_SP: '0',
+  VITE_FORCE_SHAREPOINT: '0',
   VITE_DEMO_MODE: '0',
+  VITE_ALLOW_SHAREPOINT_OUTSIDE_SPFX: '1',
+  // Clear group-based authz to keep edit flows enabled in E2E regardless of build-time env
+  VITE_RECEPTION_GROUP_ID: '',
+  VITE_SCHEDULE_ADMINS_GROUP_ID: '',
   MODE: 'production',
   DEV: '0',
-  VITE_SP_RESOURCE: 'https://contoso.sharepoint.com',
-  VITE_SP_SITE_RELATIVE: '/sites/AuditSystem',
-  VITE_SP_SCOPE_DEFAULT: 'https://contoso.sharepoint.com/AllSites.Read',
-  VITE_SCHEDULE_FIXTURES: '0',
-  VITE_SCHEDULES_FIXTURES: '0',
+  VITE_SCHEDULE_FIXTURES: '1',
+  VITE_SCHEDULES_FIXTURES: '1',
 };
 
 const FEATURE_STORAGE: Record<string, string> = {
   'feature:schedules': '1',
   'feature:schedulesWeekV2': '1',
-  'feature:schedulesSp': '1',
-  'schedules:fixtures': '0',
+  'feature:schedulesSp': '0',
+  'schedules:fixtures': '1',
   skipLogin: '1',
   demo: '0',
 };
@@ -91,6 +96,7 @@ export async function bootSchedule(page: Page, options: ScheduleBootOptions = {}
   const ensureList = options.ensureList ?? true;
   const autoNavigate = options.autoNavigate ?? false;
   const route = options.route ?? '/schedules/day';
+  const requireData = process.env.E2E_REQUIRE_SCHEDULE_DATA === '1';
 
   const envOverrides = {
     ...FEATURE_ENV,
@@ -126,18 +132,84 @@ export async function bootSchedule(page: Page, options: ScheduleBootOptions = {}
   if (seedOptions.schedulesToday) {
     const seedResult = await seedSchedulesToday(page);
     scheduleItems = seedResult.scheduleItems;
+    // E2E fixture を demo adapter 用に注入
+    await seedSchedulesTodayForDemoAdapter(page, { payload: seedResult.payload });
+  }
+
+  // If the environment requires at least one schedule item, ensure a minimal seed exists.
+  if (requireData) {
+    const userCount = Array.isArray(scheduleItems) ? scheduleItems.filter((item: ScheduleItem) => item.cr014_category === 'User').length : 0;
+
+    if (!Array.isArray(scheduleItems) || scheduleItems.length === 0) {
+      // If completely empty, inject both User and Staff
+      scheduleItems = [buildUserMinimalFixture(date), buildStaffMorningFixture(date)];
+    } else if (userCount === 0) {
+      // If User items are missing, supplement with User seed
+      scheduleItems = [buildUserMinimalFixture(date), ...scheduleItems];
+    }
   }
 
   const sharePointOptions = options.sharePoint ?? {};
-  const { extraLists, lists: overrideLists, ...restSharePoint } = sharePointOptions;
-  const lists = overrideLists ?? [...buildDefaultLists(scheduleItems, orgItems), ...(extraLists ?? [])];
+  const { extraLists, lists: inputLists, ...restSharePoint } = sharePointOptions;
+  let overrideLists = inputLists;
+
+  // If E2E_REQUIRE_SCHEDULE_DATA and overrideLists lacks User items, supplement them
+  if (requireData && overrideLists) {
+    overrideLists = overrideLists.map((cfg) => {
+      const names = [cfg.name, ...(cfg.aliases ?? [])].map((n) => n.trim().toLowerCase());
+      const isSchedule = names.some((n) =>
+        n === 'schedules' || n === 'scheduleevents' || n === 'schedules_master' || n === 'supportschedule',
+      );
+      if (isSchedule && Array.isArray(cfg.items)) {
+        const userCount = cfg.items.filter((item: ScheduleItem) => item.cr014_category === 'User').length;
+        if (userCount === 0 && cfg.items.length > 0) {
+          // Supplement with User seed if schedule list has items but no User items
+          return {
+            ...cfg,
+            items: [buildUserMinimalFixture(date), ...cfg.items],
+          };
+        }
+      }
+      return cfg;
+    });
+  }
+
+  let finalLists: ListConfigArray;
+  if (overrideLists) {
+    // Respect explicit overrides, but if E2E_REQUIRE_SCHEDULE_DATA is enabled and no schedule
+    // list provides items, append a minimal seed list to guarantee at least one item.
+    const hasScheduleWithItems = overrideLists.some((cfg) => {
+      const names = [cfg.name, ...(cfg.aliases ?? [])].map((n) => n.trim().toLowerCase());
+      const isSchedule = names.some((n) =>
+        n === 'schedules' || n === 'scheduleevents' || n === 'schedules_master' || n === 'supportschedule',
+      );
+      return isSchedule && Array.isArray(cfg.items) && cfg.items.length > 0;
+    });
+    const seedNeeded = requireData && !hasScheduleWithItems;
+    const seedList: ListConfigArray = seedNeeded
+      ? [
+          {
+            name: 'Schedules_Master',
+            aliases: ['Schedules', 'ScheduleEvents', 'SupportSchedule'],
+            items: [buildUserMinimalFixture(date), buildStaffMorningFixture(date)],
+          },
+        ]
+      : [];
+    if (seedNeeded) {
+      console.log(`[bootSchedule] E2E_REQUIRE_SCHEDULE_DATA override seed injected: ${[buildUserMinimalFixture(date), buildStaffMorningFixture(date)].length} items`);
+    }
+    finalLists = [...overrideLists, ...seedList, ...(extraLists ?? [])];
+  } else {
+    finalLists = [...buildDefaultLists(scheduleItems, orgItems), ...(extraLists ?? [])];
+  }
 
   await setupSharePointStubs(page, {
     currentUser: { status: 200, body: { Id: 101 } },
     fallback: { status: 404, body: {} },
     ...restSharePoint,
-    lists,
+    lists: finalLists,
   });
+
 
   if (autoNavigate) {
     await page.goto(route, { waitUntil: 'load' });

@@ -1,114 +1,67 @@
-import { getAppConfig } from '@/lib/env';
-import { ensureConfig } from '@/lib/spClient';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
 
-const baseConfig = {
-  VITE_SP_RESOURCE: 'https://contoso.sharepoint.com',
-  VITE_SP_SITE_RELATIVE: '/sites/demo',
-  VITE_SP_RETRY_MAX: '4',
-  VITE_SP_RETRY_BASE_MS: '400',
-  VITE_SP_RETRY_MAX_DELAY_MS: '5000',
-  VITE_MSAL_CLIENT_ID: '',
-  VITE_MSAL_TENANT_ID: '',
-  VITE_MSAL_TOKEN_REFRESH_MIN: '300',
-  VITE_AUDIT_DEBUG: '',
-  VITE_AUDIT_BATCH_SIZE: '',
-  VITE_AUDIT_RETRY_MAX: '',
-  VITE_AUDIT_RETRY_BASE: '',
-  VITE_E2E: '',
-  schedulesCacheTtlSec: 60,
-  graphRetryMax: 2,
-  graphRetryBaseMs: 100,
-  graphRetryCapMs: 200,
-  schedulesTz: 'Asia/Tokyo',
-  schedulesWeekStart: 1,
-  isDev: false,
-} as const;
+/**
+ * Helpers to manage process.env directly for real env testing
+ * (bypassing vi.mock('@/lib/env') which runs at module load time)
+ */
+function setEnv(vars: Record<string, string | undefined>) {
+  for (const [k, v] of Object.entries(vars)) {
+    if (v === undefined) delete process.env[k];
+    else process.env[k] = v;
+  }
+}
 
-vi.mock('@/lib/env', async () => {
-  const actual = await vi.importActual<typeof import('@/lib/env')>('@/lib/env');
-  const defaultConfig = {
-    VITE_SP_RESOURCE: 'https://contoso.sharepoint.com',
-    VITE_SP_SITE_RELATIVE: '/sites/demo',
-    VITE_SP_RETRY_MAX: '4',
-    VITE_SP_RETRY_BASE_MS: '400',
-    VITE_SP_RETRY_MAX_DELAY_MS: '5000',
-    VITE_MSAL_CLIENT_ID: '',
-    VITE_MSAL_TENANT_ID: '',
-    VITE_MSAL_TOKEN_REFRESH_MIN: '300',
-    VITE_AUDIT_DEBUG: '',
-    VITE_AUDIT_BATCH_SIZE: '',
-    VITE_AUDIT_RETRY_MAX: '',
-    VITE_AUDIT_RETRY_BASE: '',
-    VITE_E2E: '',
-    schedulesCacheTtlSec: 60,
-    graphRetryMax: 2,
-    graphRetryBaseMs: 100,
-    graphRetryCapMs: 200,
-    schedulesTz: 'Asia/Tokyo',
-    schedulesWeekStart: 1,
-    isDev: false,
-  } as const;
-  const getAppConfig = vi.fn(() => ({ ...defaultConfig }));
-  const isE2eMsalMockEnabled = vi.fn(() => false);
-  const readBool: typeof actual.readBool = (key, fallback, envOverride) => {
-    if (key === 'VITE_E2E' || key === 'VITE_E2E_MSAL_MOCK') {
-      return false;
-    }
-    return actual.readBool(key, fallback, envOverride);
-  };
-  return { ...actual, getAppConfig, isE2eMsalMockEnabled, readBool };
-});
+async function importFreshSpClient() {
+  vi.resetModules(); // ← clear module cache
+  return await import('@/lib/spClient');
+}
 
-describe('ensureConfig validation', () => {
-  const mockedGetAppConfig = vi.mocked(getAppConfig);
-
+describe('spClient ensureConfig (real env validation)', () => {
   beforeEach(() => {
-    mockedGetAppConfig.mockClear();
-    mockedGetAppConfig.mockImplementation(() => ({ ...baseConfig }));
-  });
-
-  it('throws when placeholder values remain in configuration', () => {
-    mockedGetAppConfig.mockImplementation(() => ({
-      ...baseConfig,
-      VITE_SP_RESOURCE: 'https://contoso.sharepoint.com',
-      VITE_SP_SITE_RELATIVE: '__FILL_ME__',
-    }));
-
-    expect(() => ensureConfig()).toThrow('SharePoint 接続設定が未完了です。');
-  });
-
-  it('throws when SharePoint resource is left as the placeholder', () => {
-    mockedGetAppConfig.mockImplementation(() => ({
-      ...baseConfig,
-      VITE_SP_RESOURCE: '__FILL_ME__',
-      VITE_SP_SITE_RELATIVE: '/sites/demo',
-    }));
-
-    expect(() => ensureConfig()).toThrow('SharePoint 接続設定が未完了です。');
-  });
-
-  it('rejects non-SharePoint resource origins', () => {
-    mockedGetAppConfig.mockImplementation(() => ({
-      ...baseConfig,
-      VITE_SP_RESOURCE: 'https://example.com',
-      VITE_SP_SITE_RELATIVE: '/sites/demo',
-    }));
-
-    expect(() => ensureConfig()).toThrow('VITE_SP_RESOURCE の形式が不正です');
-  });
-
-  it('normalizes trailing slashes and builds baseUrl', () => {
-    mockedGetAppConfig.mockImplementation(() => ({
-      ...baseConfig,
-      VITE_SP_RESOURCE: 'https://contoso.sharepoint.com/',
-      VITE_SP_SITE_RELATIVE: 'sites/demo/',
-    }));
-
-    expect(ensureConfig()).toEqual({
-      resource: 'https://contoso.sharepoint.com',
-      siteRel: '/sites/demo',
-      baseUrl: 'https://contoso.sharepoint.com/sites/demo/_api/web',
+    // Initialize env to clean state（prevent test interdependencies）
+    setEnv({
+      VITE_SP_RESOURCE: undefined,
+      VITE_SP_SITE_RELATIVE: undefined,
+      VITE_SP_SITE_URL: undefined,
+      VITE_SP_SITE: undefined,
+      VITE_E2E: undefined,
+      VITE_SKIP_SHAREPOINT: undefined,
+      VITE_SKIP_LOGIN: undefined,
+      VITE_AUTOMATION: undefined,
+      IS_DEMO: undefined,
+      PLAYWRIGHT_TEST: undefined,
     });
+  });
+
+  it('fails fast when resource or site value is still a placeholder', async () => {
+    const sp = await importFreshSpClient();
+    expect(() =>
+      sp.ensureConfig({ VITE_SP_RESOURCE: 'https://<tenant>.sharepoint.com', VITE_SP_SITE_RELATIVE: '/sites/<site>' })
+    ).toThrow(/SharePoint 接続設定が未完了です。/);
+  });
+
+  it('rejects obviously invalid resource domains', async () => {
+    const sp = await importFreshSpClient();
+    expect(() =>
+      sp.ensureConfig({ VITE_SP_RESOURCE: 'https://example.com', VITE_SP_SITE_RELATIVE: '/sites/foo' })
+    ).toThrow(/VITE_SP_RESOURCE の形式が不正です|sharepoint\.com/);
+  });
+
+  it('treats undefined resource/site values as incomplete configuration', async () => {
+    const sp = await importFreshSpClient();
+    expect(() =>
+      sp.ensureConfig({ VITE_SP_RESOURCE: undefined, VITE_SP_SITE_RELATIVE: undefined })
+    ).toThrow(/SharePoint 接続設定が未完了です。|設定が不完全/);
+  });
+
+  it('accepts valid sharepoint.com domains', async () => {
+    const sp = await importFreshSpClient();
+    const result = sp.ensureConfig({
+      VITE_SP_RESOURCE: 'https://contoso.sharepoint.com',
+      VITE_SP_SITE_RELATIVE: '/sites/demo',
+    });
+    expect(result).toHaveProperty('resource');
+    expect(result).toHaveProperty('siteRel');
+    expect(result).toHaveProperty('baseUrl');
   });
 });

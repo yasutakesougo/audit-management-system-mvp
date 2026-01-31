@@ -1,22 +1,18 @@
 {
-  // TypeScript
-  "typescript.tsdk": "node_modules/typescript/lib",
-  "typescript.enablePromptUseWorkspaceTsdk": true,
-  "typescript.tsserver.experimental.enableProjectDiagnostics": true,
+  "typescript.enablePromptUseWorkspaceTsdk": false,
+  "typescript.tsserver.maxTsServerMemory": 4096,
+  "typescript.tsserver.useSyntaxServer": "auto",
+  "typescript.tsserver.pluginProbeLocations": [],
+  "typescript.disableAutomaticTypeAcquisition": true,
+  "typescript.tsserver.experimental.enableProjectDiagnostics": false,
   "typescript.suggest.completeFunctionCalls": true,
   "typescript.preferences.importModuleSpecifier": "non-relative",
 
-  // Tasks
   "task.allowAutomaticTasks": "on",
   "task.startOnFolderOpen": "Test (vitest watch)",
   "task.alwaysRevealTask": false,
 
-  // ESLint
-  "eslint.workingDirectories": [
-    {
-      "mode": "auto"
-    }
-  ],
+  "eslint.workingDirectories": [{ "mode": "auto" }],
   "eslint.validate": [
     "javascript",
     "javascriptreact",
@@ -24,61 +20,131 @@
     "typescriptreact"
   ],
 
-  // Security
   "security.workspace.trust.untrustedFiles": "open",
 
-  // Formatting
   "editor.formatOnSave": true,
+  "editor.formatOnSaveMode": "modifications",
   "editor.codeActionsOnSave": {
     "source.fixAll.eslint": "explicit",
     "source.organizeImports": "explicit"
   },
-  "[markdown]": {
-    "editor.wordWrap": "on"
+
+  "editor.fontFamily": "ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, \"Liberation Mono\", \"Courier New\", monospace",
+  "editor.fontSize": 15,
+  "editor.lineHeight": 26,
+  "editor.fontLigatures": false,
+
+  "editor.wordWrap": "on",
+  "editor.wordWrapColumn": 120,
+  "editor.wrappingIndent": "same",
+
+  "editor.minimap.enabled": false,
+  "editor.stickyScroll.enabled": false,
+  "editor.guides.indentation": false,
+  "editor.guides.bracketPairs": true,
+  "editor.guides.highlightActiveIndentation": false,
+
+  "editor.cursorBlinking": "smooth",
+  "editor.cursorSmoothCaretAnimation": "on",
+  "editor.smoothScrolling": true,
+  "editor.mouseWheelZoom": false,
+  "editor.multiCursorModifier": "ctrlCmd",
+
+  "editor.codeLens": false,
+  "editor.lightbulb.enabled": "off",
+  "editor.parameterHints.enabled": false,
+  "editor.hover.delay": 450,
+
+  "editor.inlineSuggest.enabled": true,
+  "editor.quickSuggestions": {
+    "other": true,
+    "comments": false,
+    "strings": false
   },
-  "[jsonc]": {
-    "editor.formatOnSave": true
-  },
+  "editor.suggest.preview": true,
+  "editor.suggestSelection": "first",
+  "editor.suggest.showStatusBar": true,
 
-  // Copilot
-  "github.copilot.inlineSuggest.enable": true,
-  "github.copilot.suggestionDelayMs": 80,
+  "workbench.colorTheme": "Default Light Modern",
+  "workbench.preferredLightColorTheme": "Default Light Modern",
+  "workbench.preferredDarkColorTheme": "Default Dark Modern",
+  "workbench.iconTheme": "vs-seti",
+  "workbench.activityBar.location": "default",
+  "workbench.sideBar.location": "left",
+  "workbench.statusBar.visible": true,
+  "workbench.layoutControl.enabled": false,
+  "workbench.startupEditor": "none",
 
-  // Vitest Explorer
-  "vitest.enable": true,
-  "vitest.explorer.startupMode": "manual",
-  "vitest.explorer.enableWatching": true,
-
-  // Git & diff
-  "git.confirmSync": false,
-  "git.autofetch": true,
-  "git.enableSmartCommit": true,
-  "diffEditor.ignoreTrimWhitespace": false,
+  "workbench.editor.showTabs": "multiple",
+  "workbench.editor.tabSizing": "shrink",
+  "workbench.editor.wrapTabs": true,
+  "workbench.editor.pinnedTabsOnSeparateRow": true,
   "workbench.editor.enablePreview": false,
+  "workbench.editor.enablePreviewFromQuickOpen": false,
+  "workbench.editor.openPositioning": "right",
+  "workbench.editor.revealIfOpen": true,
 
-  // Terminal
-  "terminal.integrated.scrollback": 10000,
+  "breadcrumbs.enabled": false,
+  "workbench.tree.indent": 14,
+  "workbench.tree.renderIndentGuides": "none",
 
-  // Files
   "files.eol": "\n",
+  "files.insertFinalNewline": true,
   "files.trimFinalNewlines": true,
   "files.trimTrailingWhitespace": true,
+  "files.autoSave": "off",
+
   "files.watcherExclude": {
     "**/node_modules/**": true,
     "**/.git/**": true,
     "**/dist/**": true,
+    "**/build/**": true,
+    "**/.turbo/**": true,
+    "**/.cache/**": true,
     "**/coverage/**": true,
+    "**/playwright-report/**": true,
     "**/test-results/**": true,
     "**/.vitest/**": true,
     "**/.vite/**": true,
     "**/logs/**": true
   },
 
-  // Search
+  "search.useIgnoreFiles": true,
   "search.exclude": {
-    "**/node_modules": true,
-    "**/dist": true,
-    "**/coverage": true,
-    "**/test-results": true
+    "**/node_modules/**": true,
+    "**/dist/**": true,
+    "**/build/**": true,
+    "**/.next/**": true,
+    "**/coverage/**": true,
+    "**/playwright-report/**": true,
+    "**/test-results/**": true
+  },
+
+  "terminal.integrated.fontFamily": "ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, \"Liberation Mono\", \"Courier New\", monospace",
+  "terminal.integrated.fontSize": 14,
+  "terminal.integrated.lineHeight": 1.25,
+  "terminal.integrated.smoothScrolling": true,
+  "terminal.integrated.scrollback": 20000,
+  "terminal.integrated.copyOnSelection": true,
+  "terminal.integrated.cursorBlinking": true,
+  "terminal.integrated.tabs.enabled": true,
+  "terminal.integrated.tabs.location": "left",
+
+  "git.confirmSync": false,
+  "git.autofetch": true,
+  "git.enableSmartCommit": true,
+
+  "diffEditor.ignoreTrimWhitespace": false,
+  "scm.diffDecorations": "all",
+
+  "github.copilot.inlineSuggest.enable": true,
+  "github.copilot.suggestionDelayMs": 80,
+
+  "vitest.enable": false,
+  "vitest.explorer.startupMode": "manual",
+  "vitest.explorer.enableWatching": true,
+
+  "workbench.editorAssociations": {
+    "*.md": "vscode.markdown.preview.editor"
   }
 }

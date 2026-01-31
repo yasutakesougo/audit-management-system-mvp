@@ -1,5 +1,15 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { __ensureListInternals, createSpClient, type SpFieldDef } from '../../src/lib/spClient';
+
+vi.mock('@/lib/env', async () => {
+  const actual = await vi.importActual<typeof import('@/lib/env')>('@/lib/env');
+  return {
+    ...actual,
+    skipSharePoint: vi.fn(() => false),
+    shouldSkipLogin: vi.fn(() => false),
+  };
+});
+
+import { __ensureListInternals, createSpClient } from '@/lib/spClient';
 
 describe('spClient ensureListExists', () => {
   let fetchSpy: ReturnType<typeof vi.spyOn>;

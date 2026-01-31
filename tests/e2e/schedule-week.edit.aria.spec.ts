@@ -22,12 +22,17 @@ test.describe('Schedules week edit entry', () => {
       }
     });
 
+    // Use new UI (/schedules/week with enableWeekV2:true) instead of legacy /schedule
+    // Legacy UI is incompatible with nightly's E2E_VITE_FEATURE_SCHEDULES=0 override
     await bootSchedule(page, {
-      enableWeekV2: false,
+      // enableWeekV2: false removed - use new UI
       seed: { schedulesToday: true },
+      route: '/schedules/week?tab=week',
     });
   });
 
+  // Test: clicking a timeline card opens an edit dialog with data prefilled
+  // Now testing with new UI (/schedules/week) instead of legacy /schedule
   test('clicking a timeline card opens an edit dialog with data prefilled', async ({ page }, testInfo) => {
     await gotoWeek(page, TEST_DATE);
     await waitForWeekViewReady(page);

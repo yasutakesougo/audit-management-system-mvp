@@ -1,6 +1,7 @@
 import { mockPdcaItems } from '../mockPdcaItems';
 import type {
   CreatePdcaInput,
+  DeletePdcaInput,
   PdcaListQuery,
   PdcaRepository,
   UpdatePdcaInput,
@@ -47,5 +48,9 @@ export class InMemoryPdcaRepository implements PdcaRepository {
 
     this.items = [...this.items.slice(0, index), next, ...this.items.slice(index + 1)];
     return next;
+  }
+
+  async delete(input: DeletePdcaInput): Promise<void> {
+    this.items = this.items.filter((item) => item.id !== input.id);
   }
 }

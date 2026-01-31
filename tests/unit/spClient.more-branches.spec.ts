@@ -1,8 +1,53 @@
-import { __resetAppConfigForTests, type AppConfig } from '@/lib/env';
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+import type { AppConfig } from '@/lib/env';
+import { installTestResets } from '../helpers/reset';
+import { mergeTestConfig, setTestConfigOverride } from '../helpers/mockEnv';
 
-const baseAppConfig = vi.hoisted(() => ({
+vi.mock('@/lib/env', async () => {
+  const actual = await vi.importActual<typeof import('@/lib/env')>('@/lib/env');
+  return {
+    ...actual,
+    getAppConfig: (): AppConfig => mergeTestConfig(),
+    skipSharePoint: () => false,
+    shouldSkipLogin: () => false,
+  };
+});
+
+vi.mock('@/env', () => ({
+  getRuntimeEnv: vi.fn(() => ({})),
+  isE2eMsalMockEnabled: () => false,
+}));
+
+vi.mock('@/lib/debugLogger', () => ({
+  auditLog: {
+    debug: (ns: string, ...a: unknown[]) => {
+      if (process.env.VITE_AUDIT_DEBUG === '1') {
+        console.debug(`[audit:${ns}]`, ...a);
+      }
+    },
+    info: (ns: string, ...a: unknown[]) => console.info(`[audit:${ns}]`, ...a),
+    warn: (ns: string, ...a: unknown[]) => console.warn(`[audit:${ns}]`, ...a),
+    error: (ns: string, ...a: unknown[]) => console.error(`[audit:${ns}]`, ...a),
+    enabled: true,
+  },
+}));
+
+import { getRuntimeEnv } from '@/env';
+import { SharePointItemNotFoundError, SharePointMissingEtagError } from '@/lib/errors';
+import {
+  __ensureListInternals,
+  __test__,
+  createSpClient,
+  getStaffMaster,
+  getUsersMaster,
+  type SharePointBatchOperation,
+} from '@/lib/spClient';
+
+const mockGetRuntimeEnv = vi.mocked(getRuntimeEnv);
+
+const defaultConfig: AppConfig = {
   VITE_SP_RESOURCE: 'https://contoso.sharepoint.com',
+  VITE_SP_SITE_URL: 'https://contoso.sharepoint.com/sites/demo',
   VITE_SP_SITE_RELATIVE: '/sites/demo',
   VITE_SP_RETRY_MAX: '3',
   VITE_SP_RETRY_BASE_MS: '10',
@@ -14,6 +59,7 @@ const baseAppConfig = vi.hoisted(() => ({
   VITE_AUDIT_BATCH_SIZE: '',
   VITE_AUDIT_RETRY_MAX: '',
   VITE_AUDIT_RETRY_BASE: '',
+  VITE_E2E: '',
   schedulesCacheTtlSec: 300,
   graphRetryMax: 3,
   graphRetryBaseMs: 100,
@@ -21,112 +67,46 @@ const baseAppConfig = vi.hoisted(() => ({
   schedulesTz: 'Asia/Tokyo',
   schedulesWeekStart: 1,
   isDev: false,
-})) as AppConfig;
-
-vi.mock('@/lib/env', async () => {
-  const actual = await vi.importActual<typeof import('@/lib/env')>('@/lib/env');
-  return {
-    ...actual,
-    getAppConfig: vi.fn(() => baseAppConfig),
-  };
-});
-
-vi.mock('@/env', () => ({
-  getRuntimeEnv: vi.fn(() => ({})),
-}));
-
-import { getRuntimeEnv } from '@/env';
-import { getAppConfig } from '@/lib/env';
-import { SharePointItemNotFoundError, SharePointMissingEtagError } from '@/lib/errors';
-import {
-  __ensureListInternals,
-  __test__,
-  createSpClient,
-  getStaffMaster,
-  getUsersMaster,
-  type SharePointBatchOperation,
-} from '@/lib/spClient';
-
-const mockGetAppConfig = vi.mocked(getAppConfig);
-const mockGetRuntimeEnv = vi.mocked(getRuntimeEnv);
-
-const defaultConfig: AppConfig = { ...baseAppConfig };
+};
 
 const originalNodeEnv = process.env.NODE_ENV;
 const originalPlaywrightFlag = process.env.PLAYWRIGHT_TEST;
 const originalFetch = globalThis.fetch;
 const originalWindow = (globalThis as Record<string, unknown>).window;
 
-beforeEach(() => {
-  vi.unstubAllEnvs();
-  __resetAppConfigForTests();
-  mockGetAppConfig.mockReturnValue({ ...defaultConfig });
-  mockGetRuntimeEnv.mockReturnValue({});
-  __test__.resetMissingOptionalFieldsCache();
-  delete process.env.PLAYWRIGHT_TEST;
-});
-
-afterEach(() => {
-  vi.unstubAllEnvs();
-  process.env.NODE_ENV = originalNodeEnv;
-  if (originalPlaywrightFlag === undefined) {
-    delete process.env.PLAYWRIGHT_TEST;
-  } else {
-    process.env.PLAYWRIGHT_TEST = originalPlaywrightFlag;
-  }
-  if (originalFetch) {
-    globalThis.fetch = originalFetch;
-  } else {
-    delete (globalThis as unknown as { fetch?: typeof fetch }).fetch;
-  }
-  if (originalWindow === undefined) {
-    delete (globalThis as Record<string, unknown>).window;
-  } else {
-    (globalThis as Record<string, unknown>).window = originalWindow;
-  }
-  __test__.resetMissingOptionalFieldsCache();
-  vi.clearAllMocks();
-});
-
-describe('ensureConfig edge cases', () => {
-  it('fails fast when resource or site value is still a placeholder', async () => {
-    vi.resetModules();
-    vi.unmock('@/lib/spClient');
-    const { __test__ } = await vi.importActual<typeof import('@/lib/spClient')>('@/lib/spClient');
-
-    mockGetAppConfig.mockReturnValue({
-      ...defaultConfig,
-      VITE_SP_RESOURCE: '<yourtenant>',
-      VITE_SP_SITE_RELATIVE: '__FILL_ME__',
-    });
-
-    expect(() =>
-      __test__.ensureConfig({ VITE_SP_RESOURCE: 'https://<yourtenant>.sharepoint.com', VITE_SP_SITE_RELATIVE: '/sites/__FILL_ME__' })
-    ).toThrow(/SharePoint 接続設定が未完了です。/);
-  });
-
-  it('rejects obviously invalid resource domains', async () => {
-    vi.resetModules();
-    vi.unmock('@/lib/spClient');
-    const { __test__ } = await vi.importActual<typeof import('@/lib/spClient')>('@/lib/spClient');
-
-    expect(() =>
-      __test__.ensureConfig({ VITE_SP_RESOURCE: 'https://example.com', VITE_SP_SITE_RELATIVE: '/sites/demo' })
-    ).toThrow(/VITE_SP_RESOURCE の形式が不正です/);
-  });
-
-  it('treats undefined resource/site values as incomplete configuration', async () => {
-    vi.resetModules();
-    vi.unmock('@/lib/spClient');
-    const { __test__ } = await vi.importActual<typeof import('@/lib/spClient')>('@/lib/spClient');
-
-    expect(() =>
-      __test__.ensureConfig({ VITE_SP_RESOURCE: undefined, VITE_SP_SITE_RELATIVE: undefined })
-    ).toThrow(/SharePoint 接続設定が未完了です。/);
-  });
-});
-
 describe('buildFieldSchema branches', () => {
+  installTestResets();
+
+  beforeEach(() => {
+    vi.unstubAllEnvs();
+    mockGetRuntimeEnv.mockReturnValue({});
+    __test__.resetMissingOptionalFieldsCache();
+    delete process.env.PLAYWRIGHT_TEST;
+  });
+
+  beforeEach(() => {
+    // Cleanup for fetch and window
+    return () => {
+      process.env.NODE_ENV = originalNodeEnv;
+      if (originalPlaywrightFlag === undefined) {
+        delete process.env.PLAYWRIGHT_TEST;
+      } else {
+        process.env.PLAYWRIGHT_TEST = originalPlaywrightFlag;
+      }
+      if (originalFetch) {
+        globalThis.fetch = originalFetch;
+      } else {
+        delete (globalThis as unknown as { fetch?: typeof fetch }).fetch;
+      }
+      if (originalWindow === undefined) {
+        delete (globalThis as Record<string, unknown>).window;
+      } else {
+        (globalThis as Record<string, unknown>).window = originalWindow;
+      }
+      __test__.resetMissingOptionalFieldsCache();
+    };
+  });
+
   const { buildFieldSchema } = __ensureListInternals;
 
   it('renders lookup field metadata with trimmed guid braces', () => {
@@ -201,6 +181,8 @@ describe('buildFieldSchema branches', () => {
 });
 
 describe('resolveStaffListIdentifier scenarios', () => {
+  installTestResets();
+
   it('prefers explicit guid override even with braces', () => {
     const result = __test__.resolveStaffListIdentifier('Staff', '{ABCDEF00-ABCD-ABCD-ABCD-ABCDEF123456}');
     expect(result).toEqual({ type: 'guid', value: 'ABCDEF00-ABCD-ABCD-ABCD-ABCDEF123456' });
@@ -245,12 +227,11 @@ describe('spFetch retry matrix', () => {
 
   it('retries transient failures, logs in debug mode, and refreshes token on 401', async () => {
     process.env.NODE_ENV = 'development';
-    mockGetAppConfig.mockReturnValue({
-      ...defaultConfig,
+    process.env.VITE_AUDIT_DEBUG = '1'; // readEnv() reads from process.env when envOverride is not passed
+    setTestConfigOverride({
       VITE_SP_RETRY_MAX: '2',
       VITE_SP_RETRY_BASE_MS: '0',
       VITE_SP_RETRY_MAX_DELAY_MS: '0',
-      VITE_AUDIT_DEBUG: '1',
     });
 
     const fetchMock = vi.fn()
@@ -274,14 +255,10 @@ describe('spFetch retry matrix', () => {
     expect(fetchMock).toHaveBeenCalledTimes(3);
     expect(consoleWarn).toHaveBeenCalled();
     expect(consoleDebug).toHaveBeenCalled();
-
-    consoleWarn.mockRestore();
-    consoleDebug.mockRestore();
   });
 
   it('retries 408 timeout responses', async () => {
-    mockGetAppConfig.mockReturnValue({
-      ...defaultConfig,
+    setTestConfigOverride({
       VITE_SP_RETRY_MAX: '2',
       VITE_SP_RETRY_BASE_MS: '0',
       VITE_SP_RETRY_MAX_DELAY_MS: '0',
@@ -300,13 +277,11 @@ describe('spFetch retry matrix', () => {
   });
 
   it('uses Retry-After header with RFC1123 timestamp for 429 throttles', async () => {
-    mockGetAppConfig.mockReturnValue({
-      ...defaultConfig,
+    setTestConfigOverride({
       VITE_SP_RETRY_MAX: '2',
       VITE_SP_RETRY_BASE_MS: '1',
       VITE_SP_RETRY_MAX_DELAY_MS: '2',
     });
-
     vi.useFakeTimers();
     vi.setSystemTime(new Date('2024-01-01T00:00:00Z'));
     const retryDate = new Date(Date.now() + 1000).toUTCString();
@@ -332,11 +307,9 @@ describe('spFetch retry matrix', () => {
   });
 
   it('surfaces raiseHttpError with payload message when retries are exhausted', async () => {
-    mockGetAppConfig.mockReturnValue({
-      ...defaultConfig,
+    setTestConfigOverride({
       VITE_SP_RETRY_MAX: '1',
     });
-
     const fetchMock = vi.fn().mockResolvedValue(makeResponse({ error: { message: { value: 'Detailed failure' } } }, { status: 500, statusText: 'Server Error', headers: { 'Content-Type': 'application/json' } }));
     globalThis.fetch = fetchMock as unknown as typeof fetch;
     const acquireToken = vi.fn().mockResolvedValue('token-1');
@@ -521,13 +494,11 @@ describe('postBatch retry logic and parser', () => {
   const baseUrl = `${defaultConfig.VITE_SP_RESOURCE}${defaultConfig.VITE_SP_SITE_RELATIVE}/_api/web`;
 
   it('retries batch requests on 429 and respects Retry-After seconds', async () => {
-    mockGetAppConfig.mockReturnValue({
-      ...defaultConfig,
+    setTestConfigOverride({
       VITE_SP_RETRY_MAX: '3',
       VITE_SP_RETRY_BASE_MS: '5',
       VITE_SP_RETRY_MAX_DELAY_MS: '10',
     });
-
     const originalFetch = globalThis.fetch;
     const fetchMock = vi
       .fn()
@@ -615,7 +586,7 @@ describe('postBatch retry logic and parser', () => {
     const acquireToken = vi.fn().mockResolvedValue('');
     const client = createSpClient(acquireToken, baseUrl);
 
-    await expect(client.postBatch('--noop--', 'boundary')).rejects.toThrow('SharePoint のアクセストークン取得に失敗しました。');
+    await expect(client.postBatch('--noop--', 'boundary')).rejects.toThrow('AUTH_REQUIRED');
     expect(fetchMock).not.toHaveBeenCalled();
   });
 

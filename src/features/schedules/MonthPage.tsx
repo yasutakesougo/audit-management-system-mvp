@@ -1,3 +1,4 @@
+import Badge from '@mui/material/Badge';
 import Button from '@mui/material/Button';
 import Box from '@mui/material/Box';
 import Typography from '@mui/material/Typography';
@@ -5,12 +6,11 @@ import type { SxProps, Theme } from '@mui/material/styles';
 import { useAnnounce } from '@/a11y/LiveAnnouncer';
 import EmptyState from '@/ui/components/EmptyState';
 import Loading from '@/ui/components/Loading';
-import { MASTER_SCHEDULE_TITLE_JA } from '@/features/schedule/constants';
 import { TESTIDS } from '@/testids';
 import { makeRange, useSchedules } from './useSchedules';
 import { getDayChipSx } from './theme/dateStyles';
-import { SchedulesHeader } from './components/SchedulesHeader';
 import { ScheduleEmptyHint } from './components/ScheduleEmptyHint';
+import { DayPopover } from './components/DayPopover';
 import {
   useCallback,
   useEffect,
@@ -30,6 +30,7 @@ type CalendarDay = {
   inMonth: boolean;
   isToday: boolean;
   eventCount: number;
+  firstTitle?: string;
 };
 
 type CalendarWeek = {
@@ -72,16 +73,30 @@ export default function MonthPage() {
 
   const { items, loading } = useSchedules(calendarRange);
 
-  const countsByDay = useMemo(() => buildDayCounts(items), [items]);
+  const daySummaries = useMemo(() => buildDaySummaries(items), [items]);
   const weeks = useMemo(
-    () => buildCalendarWeeks(anchorDate, countsByDay),
-    [anchorDate, countsByDay],
+    () => buildCalendarWeeks(anchorDate, daySummaries.counts, daySummaries.firstTitle),
+    [anchorDate, daySummaries],
   );
 
   const monthLabel = useMemo(() => formatMonthLabel(anchorDate), [anchorDate]);
   const monthAnnouncement = useMemo(() => formatMonthAnnouncement(anchorDate), [anchorDate]);
-  const totalCount = useMemo(() => countEventsInMonth(countsByDay, anchorDate), [countsByDay, anchorDate]);
+  const totalCount = useMemo(
+    () => countEventsInMonth(daySummaries.counts, anchorDate),
+    [daySummaries.counts, anchorDate],
+  );
   const showEmptyHint = !loading && totalCount === 0;
+
+  // Day Popover state
+  const [dayPopoverAnchor, setDayPopoverAnchor] = useState<HTMLElement | null>(null);
+  const [dayPopoverDateIso, setDayPopoverDateIso] = useState<string | null>(null);
+
+  const isDayPopoverOpen = Boolean(dayPopoverAnchor) && Boolean(dayPopoverDateIso);
+
+  const handleDayPopoverClose = useCallback(() => {
+    setDayPopoverAnchor(null);
+    setDayPopoverDateIso(null);
+  }, []);
 
   useEffect(() => {
     if (monthAnnouncement) {
@@ -89,43 +104,38 @@ export default function MonthPage() {
     }
   }, [announce, monthAnnouncement]);
 
-  const handleShiftMonth = useCallback((delta: number) => {
-    setAnchorDate((prev) => addMonths(prev, delta));
-  }, [setAnchorDate]);
-
   const handleDaySelect = useCallback(
-    (iso: string, inMonth: boolean) => {
+    (e: React.MouseEvent<HTMLElement>, iso: string) => {
+      // Open popover instead of navigating directly
+      setDayPopoverAnchor(e.currentTarget);
+      setDayPopoverDateIso(iso);
+    },
+    [],
+  );
+
+  const handleOpenDay = useCallback(
+    (iso: string) => {
       setActiveDateIso(iso);
       const next = new URLSearchParams(searchParams);
       next.set('date', iso);
       setSearchParams(next, { replace: true });
-      if (!inMonth) {
-        const nextDate = parseDateParam(iso);
-        setAnchorDate(startOfMonth(nextDate));
-      }
-      navigate(`/schedules/day?day=${iso}`);
+      const nextDate = parseDateParam(iso);
+      setAnchorDate(startOfMonth(nextDate));
+      // Navigate to day view (now tab within week page)
+      navigate(`/schedules/week?date=${encodeURIComponent(iso)}&tab=day`);
     },
     [navigate, searchParams, setSearchParams],
   );
 
-  const handleTodayClick = useCallback(() => {
-    const today = new Date();
-    const todayIso = toDateIso(today);
-    setAnchorDate(startOfMonth(today));
-    setActiveDateIso(todayIso);
-    const next = new URLSearchParams(searchParams);
-    next.set('date', todayIso);
-    setSearchParams(next, { replace: true });
-  }, [searchParams, setSearchParams, setActiveDateIso, setAnchorDate]);
+  const getItemsForDate = useCallback(
+    (dateIso: string): SchedItem[] => {
+      return items.filter((it) => (it.start ?? '').slice(0, 10) === dateIso);
+    },
+    [items],
+  );
 
   const headingId = TESTIDS.SCHEDULES_MONTH_HEADING_ID;
   const rangeId = TESTIDS.SCHEDULES_MONTH_RANGE_ID;
-  const dayHref = useMemo(() => `/schedules/day?day=${resolvedActiveDateIso}`, [resolvedActiveDateIso]);
-  const weekHref = useMemo(() => `/schedules/week?date=${resolvedActiveDateIso}`, [resolvedActiveDateIso]);
-  const monthHref = useMemo(
-    () => `/schedules/month?date=${resolvedActiveDateIso}`,
-    [resolvedActiveDateIso],
-  );
 
   return (
     <section
@@ -136,42 +146,18 @@ export default function MonthPage() {
       tabIndex={-1}
       style={{ paddingBottom: 32 }}
     >
-      <Box
-        sx={{
-          position: 'sticky',
-          top: 0,
-          zIndex: 2,
-          backgroundColor: (theme) => theme.palette.background.paper,
-          backdropFilter: 'blur(6px)',
-          borderBottom: '1px solid',
-          borderColor: 'divider',
-          px: 2,
-          py: 2,
-        }}
-      >
-        <SchedulesHeader
-          mode="month"
-          title={MASTER_SCHEDULE_TITLE_JA}
-          subLabel="月表示（全体カレンダー）"
-          periodLabel={`表示月: ${monthLabel}`}
-          onPrev={() => handleShiftMonth(-1)}
-          onNext={() => handleShiftMonth(1)}
-          onToday={handleTodayClick}
-          dayHref={dayHref}
-          weekHref={weekHref}
-          monthHref={monthHref}
-          headingId={headingId}
-          titleTestId={TESTIDS.SCHEDULES_MONTH_HEADING_ID}
-          rangeLabelId={rangeId}
-          rangeTestId={TESTIDS.SCHEDULES_MONTH_RANGE_ID}
-          prevTestId={TESTIDS.SCHEDULES_MONTH_PREV}
-          nextTestId={TESTIDS.SCHEDULES_MONTH_NEXT}
-          showPrimaryAction={false}
+      <Box sx={{ px: 2, py: 1.5 }}>
+        <Typography 
+          variant="h6" 
+          id={headingId}
+          data-testid={TESTIDS.SCHEDULES_MONTH_HEADING_ID}
+          sx={{ mb: 0.5 }}
         >
-          <Typography variant="body2" color="text.secondary" sx={{ textAlign: 'right' }}>
-            予定 {totalCount} 件
-          </Typography>
-        </SchedulesHeader>
+          {monthLabel}
+        </Typography>
+        <Typography variant="body2" color="text.secondary" sx={{ textAlign: 'right' }}>
+          予定 {totalCount} 件
+        </Typography>
       </Box>
 
       <div
@@ -207,7 +193,7 @@ export default function MonthPage() {
                     data-testid={`${TESTIDS.SCHEDULES_MONTH_DAY_PREFIX}-${day.iso}`}
                     aria-label={ariaLabel}
                     aria-current={isSelected ? 'date' : undefined}
-                    onClick={() => handleDaySelect(day.iso, day.inMonth)}
+                    onClick={(e) => handleDaySelect(e, day.iso)}
                     variant="outlined"
                     fullWidth
                     sx={{
@@ -215,16 +201,39 @@ export default function MonthPage() {
                       ...getDayChipSx({ isToday: day.isToday, isSelected }),
                     } as SxProps<Theme>}
                   >
-                    <span style={dayNumberStyle(day)}>
-                      {day.day}
-                      {day.isToday ? <span style={todayDotStyle} aria-hidden="true" /> : null}
-                      {day.isToday ? (
-                        <span style={{ fontSize: 12, color: '#1e88e5', marginLeft: 4 }}>(今日)</span>
-                      ) : null}
-                    </span>
-                    <span style={eventCountStyle(day)}>
-                      {day.eventCount > 0 ? `予定 ${day.eventCount} 件` : '予定 0 件'}
-                    </span>
+                    <Badge
+                      badgeContent={day.eventCount}
+                      invisible={!day.eventCount}
+                      overlap="circular"
+                      anchorOrigin={{ vertical: 'top', horizontal: 'right' }}
+                      sx={{
+                        '& .MuiBadge-badge': {
+                          backgroundColor: '#d32f2f',
+                          color: '#fff',
+                          fontSize: 11,
+                          fontWeight: 600,
+                          minWidth: 18,
+                          height: 18,
+                          padding: '0 5px',
+                          transform: 'translate(35%, -35%)',
+                          boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
+                        },
+                      }}
+                    >
+                      <span style={dayNumberStyle(day)}>
+                        {day.day}
+                        {day.isToday ? <span style={todayDotStyle} aria-hidden="true" /> : null}
+                        {day.isToday ? (
+                          <span style={{ fontSize: 12, color: '#1e88e5', marginLeft: 4 }}>(今日)</span>
+                        ) : null}
+                      </span>
+                    </Badge>
+                    {day.firstTitle ? (
+                      <Typography sx={dayTitleSx} title={day.firstTitle}>
+                        {day.firstTitle}
+                        {day.eventCount > 1 ? ` +${day.eventCount - 1}` : ''}
+                      </Typography>
+                    ) : null}
                   </Button>
                 );
               })}
@@ -241,6 +250,21 @@ export default function MonthPage() {
           </div>
         ) : null}
       </div>
+
+      {dayPopoverDateIso && (
+        <DayPopover
+          open={isDayPopoverOpen}
+          anchorEl={dayPopoverAnchor as HTMLButtonElement | null}
+          date={dayPopoverDateIso}
+          dateLabel={dayPopoverDateIso}
+          items={getItemsForDate(dayPopoverDateIso)}
+          onClose={handleDayPopoverClose}
+          onOpenDay={(dateIso) => {
+            handleOpenDay(dateIso);
+            handleDayPopoverClose();
+          }}
+        />
+      )}
     </section>
   );
 }
@@ -284,6 +308,17 @@ const dayNumberStyle = (day: CalendarDay): CSSProperties => ({
   gap: 6,
 });
 
+const dayTitleSx = {
+  mt: 0.5,
+  fontSize: 12,
+  fontWeight: 600,
+  color: 'rgba(0,0,0,0.75)',
+  overflow: 'hidden',
+  textOverflow: 'ellipsis',
+  whiteSpace: 'nowrap',
+  width: '100%',
+};
+
 const todayDotStyle: CSSProperties = {
   width: 6,
   height: 6,
@@ -291,12 +326,6 @@ const todayDotStyle: CSSProperties = {
   background: '#1565c0',
   display: 'inline-block',
 };
-
-const eventCountStyle = (day: CalendarDay): CSSProperties => ({
-  fontSize: 12,
-  fontWeight: 600,
-  color: day.eventCount > 0 ? 'rgba(0,0,0,0.75)' : 'rgba(0,0,0,0.5)',
-});
 
 const startOfWeek = (date: Date): Date => {
   const next = new Date(date);
@@ -345,8 +374,12 @@ const addDays = (date: Date, days: number): Date => {
   return next;
 };
 
-const buildDayCounts = (items: SchedItem[]): Record<string, number> => {
+const buildDaySummaries = (
+  items: SchedItem[],
+): { counts: Record<string, number>; firstTitle: Record<string, string> } => {
   const counts: Record<string, number> = {};
+  const firstTitle: Record<string, string> = {};
+
   for (const item of items) {
     const start = new Date(item.start);
     if (Number.isNaN(start.getTime())) continue;
@@ -359,10 +392,17 @@ const buildDayCounts = (items: SchedItem[]): Record<string, number> => {
     while (cursor <= boundary) {
       const iso = toDateIso(cursor);
       counts[iso] = (counts[iso] ?? 0) + 1;
+      // 先頭1件だけタイトルを保持（既に存在すれば上書きしない）
+      if (firstTitle[iso] == null || firstTitle[iso] === '') {
+        const title = item.title || item.notes || '';
+        if (title) {
+          firstTitle[iso] = title;
+        }
+      }
       cursor.setDate(cursor.getDate() + 1);
     }
   }
-  return counts;
+  return { counts, firstTitle };
 };
 
 const startOfDay = (date: Date): Date => {
@@ -371,7 +411,11 @@ const startOfDay = (date: Date): Date => {
   return next;
 };
 
-const buildCalendarWeeks = (anchorDate: Date, counts: Record<string, number>): CalendarWeek[] => {
+const buildCalendarWeeks = (
+  anchorDate: Date,
+  counts: Record<string, number>,
+  firstTitle: Record<string, string>,
+): CalendarWeek[] => {
   const start = startOfCalendar(anchorDate);
   const todayIso = toDateIso(new Date());
   const weeks: CalendarWeek[] = [];
@@ -387,6 +431,7 @@ const buildCalendarWeeks = (anchorDate: Date, counts: Record<string, number>): C
         inMonth: cursor.getMonth() === anchorDate.getMonth(),
         isToday: iso === todayIso,
         eventCount: counts[iso] ?? 0,
+        firstTitle: firstTitle[iso],
       });
       cursor = addDays(cursor, 1);
     }

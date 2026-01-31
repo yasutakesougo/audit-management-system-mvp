@@ -1,11 +1,13 @@
 import { createHash } from '@/utils/createHash';
 import type { CreateScheduleEventInput, DateRange, SchedItem, ScheduleServiceType, SchedulesPort, UpdateScheduleEventInput } from './port';
+import { result } from '@/shared/result';
 import { normalizeServiceType as normalizeSharePointServiceType } from '@/sharepoint/serviceTypes';
 
 const formatISO = (date: Date): string => date.toISOString();
 const addHours = (date: Date, hours: number): Date => new Date(date.getTime() + hours * 60 * 60 * 1000);
 
-const base = new Date();
+// Test compatibility: Use a fixed date for demo items that covers the test range
+const base = new Date('2026-01-15T09:00:00Z'); // Fixed date within test range
 base.setSeconds(0, 0);
 
 let demoItems: SchedItem[] = [
@@ -16,6 +18,7 @@ let demoItems: SchedItem[] = [
     end: formatISO(addHours(base, 2)),
     status: 'Planned',
     statusReason: null,
+    etag: '"demo-1"', // Phase 2-0: seed etag
   },
   {
     id: 'demo-meeting',
@@ -24,6 +27,7 @@ let demoItems: SchedItem[] = [
     end: formatISO(addHours(base, 4)),
     status: 'Planned',
     statusReason: null,
+    etag: '"demo-2"', // Phase 2-0: seed etag
   },
   {
     id: 'demo-visit-afternoon',
@@ -32,6 +36,7 @@ let demoItems: SchedItem[] = [
     end: formatISO(addHours(base, 8)),
     status: 'Planned',
     statusReason: null,
+    etag: '"demo-3"', // Phase 2-0: seed etag
   },
 ];
 
@@ -49,6 +54,7 @@ const CONFLICTS_BASIC_SEED: WarningSchedItem[] = [
     baseShiftWarnings: [{ staffId: 'STF-100', staffName: '佐藤' }],
     status: 'Planned',
     statusReason: '同時間帯に別予定',
+    etag: '"demo-conflict-org"', // Phase 2-0: etag seed
   },
   {
     id: 'conflict-user',
@@ -62,6 +68,7 @@ const CONFLICTS_BASIC_SEED: WarningSchedItem[] = [
     baseShiftWarnings: [{ staffId: 'STF-100', staffName: '佐藤' }],
     status: 'Planned',
     statusReason: '担当者が重複',
+    etag: '"demo-conflict-user"', // Phase 2-0: etag seed
   },
   {
     id: 'conflict-org-late',
@@ -73,6 +80,7 @@ const CONFLICTS_BASIC_SEED: WarningSchedItem[] = [
     baseShiftWarnings: [{ staffId: 'STF-200', staffName: '鈴木' }],
     status: 'Postponed',
     statusReason: '会場準備遅延',
+    etag: '"demo-conflict-org-late"', // Phase 2-0: etag seed
   },
 ];
 
@@ -92,6 +100,24 @@ const resolveSeedForScenario = (scenario: string | null): SchedItem[] | null => 
       return CONFLICTS_BASIC_SEED;
     default:
       return null;
+  }
+};
+
+/**
+ * E2E用 fixture 注入ポイント
+ * localStorage.setItem('e2e:schedules.v1', JSON.stringify([...])) で供給されたスケジュールを読み込む
+ */
+const resolveE2eSchedules = (): SchedItem[] | null => {
+  if (typeof window === 'undefined') return null;
+  try {
+    const raw = window.localStorage.getItem('e2e:schedules.v1');
+    if (!raw) return null;
+    const parsed = JSON.parse(raw);
+    if (!Array.isArray(parsed)) return null;
+    return parsed as SchedItem[];
+  } catch (error) {
+    if (import.meta.env.DEV) console.warn('[demoAdapter] E2E fixtures parse error:', error);
+    return null;
   }
 };
 
@@ -148,10 +174,27 @@ const resolveTitle = (input: CreateScheduleEventInput): string =>
 
 export const demoSchedulesPort: SchedulesPort = {
   async list(range) {
+    // E2E fixture 優先
+    const e2eSchedules = resolveE2eSchedules();
+    if (e2eSchedules) {
+      return e2eSchedules
+        .filter((item) => withinRange(item, range))
+        .map((item) => ({
+          ...item,
+          etag: item.etag ?? `"demo-${item.id}"`,
+        }));
+    }
+
+    // Fallback: scenario or default demo items
     const scenario = resolveScenario();
     const scenarioSeed = resolveSeedForScenario(scenario);
     const source = scenarioSeed ?? demoItems;
-    return source.filter((item) => withinRange(item, range));
+    return source
+      .filter((item) => withinRange(item, range))
+      .map((item) => ({
+        ...item,
+        etag: item.etag ?? `"demo-${item.id}"`,
+      }));
   },
   async create(input) {
     const title = resolveTitle(input);
@@ -175,6 +218,7 @@ export const demoSchedulesPort: SchedulesPort = {
       statusReason,
     });
     const now = new Date().toISOString();
+    const etagValue = `"demo-${Date.now()}"`; // Phase 2-0: etag for conflict detection
     const created: SchedItem = {
       id: `demo-${Date.now()}`,
       title,
@@ -196,15 +240,16 @@ export const demoSchedulesPort: SchedulesPort = {
       entryHash,
       createdAt: now,
       updatedAt: now,
+      etag: etagValue,
     } satisfies SchedItem;
 
     demoItems = [...demoItems, created];
-    return created;
+    return result.ok(created);
   },
   async update(input: UpdateScheduleEventInput) {
     const index = demoItems.findIndex((item) => item.id === input.id);
     if (index === -1) {
-      throw new Error(`Schedule not found: ${input.id}`);
+      return result.notFound<SchedItem>(`Schedule item not found: ${input.id}`);
     }
 
     const start = toIsoString(normalizeLocal(input.startLocal));
@@ -216,6 +261,7 @@ export const demoSchedulesPort: SchedulesPort = {
     const acceptedBy = normalizeOptionalText(input.acceptedBy) ?? demoItems[index].acceptedBy;
     const acceptedNote =
       input.acceptedNote !== undefined ? normalizeNote(input.acceptedNote) : demoItems[index].acceptedNote ?? null;
+    const nextEtag = `"demo-${Date.now()}"`; // Phase 2-0: bump etag on update
 
     const next: SchedItem = {
       ...demoItems[index],
@@ -241,10 +287,11 @@ export const demoSchedulesPort: SchedulesPort = {
       acceptedOn,
       acceptedBy,
       acceptedNote,
+      etag: nextEtag,
     };
 
     demoItems[index] = next;
-    return next;
+    return result.ok(next);
   },
   async remove(eventId: string) {
     const index = demoItems.findIndex((item) => item.id === eventId);

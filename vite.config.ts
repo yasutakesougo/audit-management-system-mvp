@@ -16,7 +16,9 @@ const fluentStub = fileURLToPath(new URL('./src/stubs/fluentui-react.tsx', impor
 const emptyShim = fileURLToPath(new URL('./src/shims/empty.ts', import.meta.url))
 
 export default defineConfig(({ mode }) => {
+  // Load environment variables (.env.test.local will override .env.local in test mode)
   const env = loadEnv(mode, process.cwd(), '');
+  
   const normalizeBase = (value: string | undefined) => (value ? value.replace(/\/?$/, '') : undefined);
   const siteUrl =
     normalizeBase(env.VITE_SP_SITE_URL) ??
@@ -43,6 +45,7 @@ export default defineConfig(({ mode }) => {
       alias: {
         '@': srcDir,
         '@/adapters': resolve(srcDir, 'adapters'),
+        '@/sharepoint': resolve(srcDir, 'sharepoint'),
         '@fluentui/react': fluentStub,
         'node:fs': emptyShim,
         crypto: emptyShim,
@@ -108,13 +111,19 @@ export default defineConfig(({ mode }) => {
       },
     },
     server: {
-      host: 'localhost',
+      host: '127.0.0.1',
       port: 5173,
       strictPort: true,
+      hmr: {
+        host: '127.0.0.1',
+        protocol: 'ws',
+        clientPort: 5173,
+      },
       headers: {
         'Cross-Origin-Opener-Policy': 'same-origin-allow-popups',
         'Cross-Origin-Embedder-Policy': 'unsafe-none',
       },
+      middlewareMode: false,
       proxy: {
         '/sharepoint-api': {
           target: siteUrl,
@@ -122,6 +131,10 @@ export default defineConfig(({ mode }) => {
           secure: true,
           rewrite: (path) => path.replace(/^\/sharepoint-api/, ''),
         },
+      },
+      watch: {
+        usePolling: true,
+        interval: 1000,
       },
     },
     preview: {

@@ -1,8 +1,9 @@
 import ChecklistPage from '@/features/compliance-checklist/ChecklistPage';
 import type { ChecklistInsertDTO, ChecklistItem } from '@/features/compliance-checklist/types';
 import * as audit from '@/lib/audit';
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { fireEvent, screen, waitFor } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { renderWithAppProviders } from '../helpers/renderWithAppProviders';
 
 const listMock = vi.fn<() => Promise<ChecklistItem[]>>();
 const addMock = vi.fn<(body: ChecklistInsertDTO) => Promise<ChecklistItem>>();
@@ -23,9 +24,10 @@ describe('ChecklistPage', () => {
   it('renders empty state when API returns no items', async () => {
     listMock.mockResolvedValue([]);
 
-    render(<ChecklistPage />);
+    renderWithAppProviders(<ChecklistPage />);
 
-    await waitFor(() => expect(listMock).toHaveBeenCalledTimes(1));
+    // React Strict Mode では 2回呼ばれる可能性がある
+    await waitFor(() => expect(listMock).toHaveBeenCalled());
     expect(screen.getByRole('heading', { name: '監査チェックリスト' })).toBeInTheDocument();
     expect(screen.getByText('データがありません')).toBeInTheDocument();
     expect(addMock).not.toHaveBeenCalled();
@@ -46,9 +48,10 @@ describe('ChecklistPage', () => {
       note: body.EvaluationLogic ?? null,
     }));
     const pushAuditSpy = vi.spyOn(audit, 'pushAudit').mockImplementation(() => undefined);
-    render(<ChecklistPage />);
+    renderWithAppProviders(<ChecklistPage />);
 
-    await waitFor(() => expect(listMock).toHaveBeenCalledTimes(1));
+    // React Strict Mode では 2回呼ばれる可能性がある
+    await waitFor(() => expect(listMock).toHaveBeenCalled());
 
     const firstMatchingInput = (labels: string[]): HTMLInputElement => {
       for (const label of labels) {

@@ -1,5 +1,15 @@
-import { createSpClient } from '@/lib/spClient';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+
+vi.mock('@/lib/env', async () => {
+  const actual = await vi.importActual<typeof import('@/lib/env')>('@/lib/env');
+  return {
+    ...actual,
+    skipSharePoint: vi.fn(() => false),
+    shouldSkipLogin: vi.fn(() => false),
+  };
+});
+
+import { createSpClient } from '@/lib/spClient';
 
 const mockFetchResponse = (body: unknown, status = 500): Response => ({
   ok: false,
