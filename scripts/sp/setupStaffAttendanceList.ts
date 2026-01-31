@@ -1,7 +1,7 @@
 import { execFileSync } from 'node:child_process';
 
 const SITE_URL = process.env.SITE_URL?.trim() ?? '';
-const LIST_TITLE = process.env.LIST_TITLE?.trim() || 'StaffAttendance';
+const LIST_TITLE = process.env.LIST_TITLE?.trim() || 'Staff_Attendance';
 const DRY_RUN = parseBoolean(process.env.DRY_RUN ?? '1');
 
 if (!SITE_URL) {
