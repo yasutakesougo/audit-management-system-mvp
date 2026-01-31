@@ -1234,3 +1234,28 @@ gh workflow view .github/workflows/report-links.yml --yaml
 
 - VITE_FORCE_DEMO: When set to true, forces the users store to use demo user data for local development and certain test modes. Default: false.
 - VITE_SKIP_LOGIN: When set to true, bypasses the login flow for faster local development and demo runs. Default: false.
+
+---
+
+## Project Status
+
+### Phase 2 (Staff Attendance + Dashboard Enhancement)
+
+✅ **Completed (2026-01)**
+
+- PRs: #268 (Phase 2.1-A+B: Store + UI + Persistence), #269 (Phase 2.1-C: Dashboard Integration)
+- Docs: `docs/PHASE2_COMPLETION.md`
+- Route: `/staff/attendance`
+- Tests: 1,612/1,612 PASSED
+
+**Key Features:**
+- Staff attendance input with 3 status toggles (出勤/欠勤/外出中)
+- localStorage persistence (2-second auto-save)
+- Dashboard real-time display (replaces estimated counts)
+- Schedule lanes in morning/evening meeting cards
+
+### Next: Phase 3.1 (SharePoint Integration)
+
+- Replace localStorage with SharePoint List API
+- Real-time sync across devices
+- Design: `docs/PHASE3_1_SHAREPOINT_STAFF_ATTENDANCE.md` (pending)
