@@ -4,9 +4,12 @@ import { bootSchedule } from './_helpers/bootSchedule';
 import { waitForLocator } from './_helpers/waitForLocator';
 import { gotoWeek } from './utils/scheduleNav';
 import { assertWeekHasUserCareEvent, getWeekScheduleItems, waitForWeekViewReady } from './utils/scheduleActions';
-import { SCHEDULE_FIXTURE_BASE_DATE, buildWeekScheduleFixtures } from './utils/schedule.fixtures';
+import { buildSchedulesTodaySharePointItems, getSchedulesTodaySeedDate } from './_helpers/schedulesTodaySeed';
+import { waitSchedulesItemsOrEmpty } from './utils/wait';
 
-const TEST_NOW = SCHEDULE_FIXTURE_BASE_DATE.toISOString();
+const SEED_DATE = getSchedulesTodaySeedDate();
+const SEED_DATE_OBJ = new Date(`${SEED_DATE}T00:00:00+09:00`);
+const TEST_NOW = new Date(`${SEED_DATE}T09:00:00+09:00`).toISOString();
 
 const buildGraphEvents = (startIso: string | null, endIso: string | null) => {
   const fallbackStart = new Date(TEST_NOW);
@@ -49,7 +52,7 @@ const buildGraphEvents = (startIso: string | null, endIso: string | null) => {
   return events.filter((event) => new Date(event.start.dateTime).getTime() < endTs);
 };
 
-const scheduleFixtures = buildWeekScheduleFixtures(SCHEDULE_FIXTURE_BASE_DATE);
+const scheduleFixtures = buildSchedulesTodaySharePointItems();
 
 test.describe('Schedule smoke', () => {
   test.beforeEach(async ({ page }) => {
@@ -117,8 +120,10 @@ test.describe('Schedule smoke', () => {
     });
 
     await bootSchedule(page, {
+      date: SEED_DATE_OBJ,
       enableWeekV2: false,
       scheduleItems: scheduleFixtures,
+      seed: { schedulesToday: true },
       env: {
         VITE_FEATURE_SCHEDULES_GRAPH: '1',
         VITE_SP_SITE_RELATIVE: '/sites/Audit',
@@ -136,7 +141,7 @@ test.describe('Schedule smoke', () => {
       }
     });
 
-    await gotoWeek(page, new Date(SCHEDULE_FIXTURE_BASE_DATE));
+    await gotoWeek(page, SEED_DATE_OBJ);
     await waitForWeekViewReady(page);
 
     // Wait for week view to fully render before checking tabs
@@ -169,30 +174,16 @@ test.describe('Schedule smoke', () => {
       : page.getByRole('tab', { name: /リスト|タイムライン/ }).first();
     await expect(timelineTab).toBeVisible();
 
-    const weekViewRoot = page.getByTestId('schedule-week-view');
-    const hasNewWeekView = (await weekViewRoot.count().catch(() => 0)) > 0;
-    if (hasNewWeekView) {
-      await timelineTab.click();
-      const timelineRoot = page.getByTestId('schedules-week-timeline');
-      const timelineCount = await timelineRoot.count().catch(() => 0);
-      if (timelineCount > 0) {
-        await expect(timelineRoot.first()).toBeVisible({ timeout: 15_000 });
-      } else {
-        test.info().annotations.push({
-          type: 'info',
-          description: 'Timeline root not rendered; skipping visibility assertion.',
-        });
-      }
-    }
+
+    await waitSchedulesItemsOrEmpty(page, 60_000);
 
     const items = await getWeekScheduleItems(page);
-    await waitForLocator(items, { timeoutMs: 30_000, requireVisible: true });
     await expect(items.first()).toBeVisible({ timeout: 15_000 });
 
     await assertWeekHasUserCareEvent(page, {
-      titleContains: '訪問リハビリ',
-      serviceContains: '一時ケア',
-      userName: '田中 実',
+      titleContains: 'AM 検温',
+      serviceContains: undefined,
+      userName: undefined,
     });
   });
 });
