@@ -562,7 +562,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ audience = 'staff' }) => 
                   {attendanceSummary.lateOrShiftAdjust}
                 </Typography>
                 <Typography variant="body2" color="text.secondary">
-                  遅刻 / シフト調整（推定）
+                  遅刻 / シフト調整
                 </Typography>
               </Grid>
               <Grid size={{ xs: 12, sm: 4, md: 2 }}>
@@ -570,7 +570,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ audience = 'staff' }) => 
                   {attendanceSummary.outStaff}
                 </Typography>
                 <Typography variant="body2" color="text.secondary">
-                  外出スタッフ（推定）
+                  外出スタッフ
                 </Typography>
               </Grid>
             </Grid>
