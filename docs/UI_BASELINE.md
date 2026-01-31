@@ -89,6 +89,10 @@ e2e-ui-regression:
     - run: npx playwright test tests/e2e/ui --project=chromium
 ```
 
+## Recent Changes
+
+- **2026-02-01**: Dashboard spacing compacted (PR #289) — responsive padding only, no behavior change.
+
 **Current Status**: 12 passed, 6 skipped (11.8s)
 
 ## Future Phases
