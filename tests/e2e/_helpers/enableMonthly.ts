@@ -266,8 +266,14 @@ export async function triggerReaggregateAndWait(page: Page): Promise<void> {
 
   // ステータスの変化を待つ（UI仕様確定後に実装）
   const status = page.getByTestId(monthlyTestIds.summaryStatus);
-  await status.waitFor({ state: 'attached', timeout: 120_000 });
-  await status.waitFor({ state: 'visible', timeout: 120_000 });
+  
+  // First check if element exists at all (more resilient to slow CI)
+  await expect
+    .poll(async () => status.count(), { timeout: 30_000, intervals: [1_000, 2_000, 5_000] })
+    .toBeGreaterThan(0);
+  
+  // Then wait for visibility
+  await expect(status.first()).toBeVisible({ timeout: 90_000 });
 
   // TODO: テキストが決まったら以下のような実装に変更
   // await expect(status).toHaveText(/最新です|完了/);

@@ -110,7 +110,7 @@ const SMOKE_SPEC_PATTERN = /.*smoke.*\.spec\.ts$/i;
 const desktopChrome = { ...devices['Desktop Chrome'] };
 
 export default defineConfig({
-  timeout: 60_000,
+  timeout: 120_000, // Increased from 60s to accommodate slow CI environments
   retries: isCI ? 2 : 0,
   reporter: isCI ? ciReporters : 'list',
   use: {

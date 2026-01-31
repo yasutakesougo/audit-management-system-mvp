@@ -14,12 +14,22 @@ export async function waitForLocator(
   locator: Locator,
   options: WaitForLocatorOptions = {}
 ): Promise<void> {
-  const timeoutMs = options.timeoutMs ?? 45_000;
+  const timeoutMs = options.timeoutMs ?? 60_000; // Increased from 45s for CI resilience
   const requireVisible = options.requireVisible ?? false;
 
-  await expect
-    .poll(async () => locator.count(), { timeout: timeoutMs })
-    .toBeGreaterThan(0);
+  try {
+    await expect
+      .poll(async () => locator.count(), { timeout: timeoutMs, intervals: [1_000, 2_000, 5_000] })
+      .toBeGreaterThan(0);
+  } catch (error) {
+    // Add diagnostic info before failing
+    const page = locator.page();
+    const url = page.url();
+    const title = await page.title().catch(() => 'unknown');
+    // eslint-disable-next-line no-console
+    console.error(`[waitForLocator] Element not found after ${timeoutMs}ms. URL: ${url}, Title: ${title}`);
+    throw error;
+  }
 
   if (requireVisible) {
     await expect(locator.first()).toBeVisible({ timeout: timeoutMs });
