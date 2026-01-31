@@ -145,6 +145,7 @@ const AppShell: React.FC<{ children: React.ReactNode }> = ({ children }) => {
       navigate('/', { replace: true });
     }
   }, [navigate, location.pathname]);
+
   
   useEffect(() => {
     const nextRole = location.pathname.startsWith('/admin/dashboard') 
