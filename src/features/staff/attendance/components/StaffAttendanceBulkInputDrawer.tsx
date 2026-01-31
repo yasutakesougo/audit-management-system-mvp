@@ -17,6 +17,7 @@ type Props = {
   saving: boolean;
   error: string | null;
   onClose: () => void;
+  writeEnabled?: boolean;
 
   // "適用"で生成するための入力値
   value: {
@@ -32,7 +33,7 @@ type Props = {
 const STATUS_OPTIONS: StaffAttendanceStatus[] = ['出勤', '欠勤', '外出中'];
 
 export function StaffAttendanceBulkInputDrawer(props: Props): JSX.Element {
-  const { open, selectedCount, saving, error, onClose, value, onChange, onSave } = props;
+  const { open, selectedCount, saving, error, onClose, value, onChange, onSave, writeEnabled = true } = props;
 
   return (
     <Drawer
@@ -103,7 +104,7 @@ export function StaffAttendanceBulkInputDrawer(props: Props): JSX.Element {
             <Button
               variant="contained"
               onClick={onSave}
-              disabled={saving || selectedCount === 0}
+              disabled={saving || selectedCount === 0 || !writeEnabled}
               data-testid="staff-attendance-bulk-save"
             >
               {saving ? '保存中...' : '保存'}

@@ -33,13 +33,15 @@ function todayISO(): string {
 export default function StaffAttendanceAdminPage(): JSX.Element {
   const [date, setDate] = useState<string>(() => todayISO());
   const admin = useStaffAttendanceAdmin(date);
-  const { items, loading, error, saving, save, port, recordDate, refetch } = admin;
+  const { items, loading, error, saving, save, port, recordDate, refetch, writeEnabled, readOnlyReason } = admin;
 
   const bulk = useStaffAttendanceBulk({
     port,
     recordDate,
     items,
     refetch,
+    writeEnabled,
+    readOnlyReason,
   });
 
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -60,6 +62,7 @@ export default function StaffAttendanceAdminPage(): JSX.Element {
   };
 
   const handleSave = async (next: StaffAttendance) => {
+    if (!writeEnabled) return;
     await save(next);
     setDialogOpen(false);
     setSelected(null);
@@ -88,9 +91,9 @@ export default function StaffAttendanceAdminPage(): JSX.Element {
               <Button
                 variant="contained"
                 onClick={bulk.openDrawer}
-                disabled={bulk.selectedCount === 0}
                 size="small"
                 data-testid="staff-attendance-bulk-open"
+                disabled={bulk.selectedCount === 0}
               >
                 一括編集（{bulk.selectedCount}）
               </Button>
@@ -127,6 +130,12 @@ export default function StaffAttendanceAdminPage(): JSX.Element {
             </Stack>
           )}
 
+          {readOnlyReason && (
+            <Alert severity="warning" data-testid="staff-attendance-readonly">
+              {readOnlyReason}
+            </Alert>
+          )}
+
           {error && (
             <Alert severity="error" data-testid="staff-attendance-error">
               {error}
@@ -158,7 +167,7 @@ export default function StaffAttendanceAdminPage(): JSX.Element {
                     onClick={() => handleRowClick(it)}
                     data-testid={`staff-attendance-row-${it.staffId}`}
                     sx={{ 
-                      cursor: 'pointer',
+                      cursor: writeEnabled ? 'pointer' : 'default',
                       ...(bulk.bulkMode && bulk.selectedIds.has(it.staffId) && {
                         backgroundColor: 'action.selected',
                       }),
@@ -191,6 +200,7 @@ export default function StaffAttendanceAdminPage(): JSX.Element {
         recordDate={date}
         initial={selected}
         saving={saving}
+        writeEnabled={writeEnabled}
         onClose={handleDialogClose}
         onSave={handleSave}
       />
@@ -200,6 +210,7 @@ export default function StaffAttendanceAdminPage(): JSX.Element {
         selectedCount={bulk.selectedCount}
         saving={bulk.saving}
         error={bulk.error}
+        writeEnabled={writeEnabled}
         onClose={bulk.closeDrawer}
         value={bulk.value}
         onChange={bulk.setValue}

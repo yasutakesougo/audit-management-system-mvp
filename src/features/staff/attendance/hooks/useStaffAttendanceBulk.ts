@@ -33,8 +33,10 @@ export function useStaffAttendanceBulk(args: {
   recordDate: string; // YYYY-MM-DD
   items: StaffAttendance[]; // その日の一覧（既存/空含む）
   refetch: () => Promise<void>;
+  writeEnabled: boolean;
+  readOnlyReason?: string | null;
 }) {
-  const { port, recordDate, items, refetch } = args;
+  const { port, recordDate, items, refetch, writeEnabled, readOnlyReason } = args;
 
   const [state, setState] = React.useState<State>(() => ({
     bulkMode: false,
@@ -80,6 +82,14 @@ export function useStaffAttendanceBulk(args: {
 
   const bulkSave = React.useCallback(async () => {
     if (state.selectedIds.size === 0) return;
+
+    if (!writeEnabled) {
+      setState((s) => ({
+        ...s,
+        error: readOnlyReason ?? '書き込みが無効です（読み取り専用）',
+      }));
+      return;
+    }
 
     setState((s) => ({ ...s, saving: true, error: null }));
 
@@ -136,7 +146,7 @@ export function useStaffAttendanceBulk(args: {
       selectedIds: new Set<string>(),
       error: null,
     }));
-  }, [items, port, recordDate, refetch, state.selectedIds, state.value]);
+  }, [items, port, recordDate, refetch, state.selectedIds, state.value, writeEnabled, readOnlyReason]);
 
   return {
     bulkMode: state.bulkMode,
