@@ -59,5 +59,8 @@ export function useStaffAttendanceAdmin(recordDate: string) {
     ...state,
     refetch,
     save,
+    // ✅ Bulk 用に公開（挙動は変えない）
+    port,
+    recordDate,
   };
 }
