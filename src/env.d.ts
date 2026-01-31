@@ -43,6 +43,7 @@ interface ImportMetaEnv {
   readonly VITE_SP_LIST_DAILY?: string;
   readonly VITE_SP_LIST_SCHEDULES?: string;
   readonly VITE_SP_LIST_STAFF?: string;
+  readonly VITE_SP_LIST_STAFF_ATTENDANCE?: string;
   readonly VITE_SP_LIST_STAFF_GUID?: string;
   readonly VITE_SP_LIST_USERS?: string;
   readonly VITE_SP_LIST_PLAN_GOAL?: string;
