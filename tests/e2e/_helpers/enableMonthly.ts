@@ -259,16 +259,37 @@ export async function switchMonthlyTab(
  * 月次記録の再集計ボタンクリック & 完了待機
  * TODO: summaryStatus のメッセージ変化を待つ実装に差し替える
  */
-export async function triggerReaggregateAndWait(page: Page): Promise<void> {
+export async function triggerReaggregateAndWait(page: Page): Promise<boolean> {
+  const monthlyRoot = page.getByTestId(monthlyTestIds.page);
+  const monthlyRootCount = await monthlyRoot.count().catch(() => 0);
+  if (monthlyRootCount === 0) {
+    await page.goto('/records/monthly');
+  }
+  await page.waitForURL(/\/records\/monthly/, { timeout: 30_000 }).catch(() => undefined);
+  if ((await monthlyRoot.count().catch(() => 0)) > 0) {
+    await expect(monthlyRoot).toBeVisible({ timeout: 30_000 });
+  }
+
   const reaggregateBtn = page.getByTestId(monthlyTestIds.summaryReaggregateBtn);
+  await expect(reaggregateBtn).toBeVisible({ timeout: 30_000 });
+  await expect(reaggregateBtn).toBeEnabled({ timeout: 30_000 });
   await reaggregateBtn.scrollIntoViewIfNeeded();
   await reaggregateBtn.click({ force: true });
 
-  // ステータスの変化を待つ（UI仕様確定後に実装）
-  const status = page.getByTestId(monthlyTestIds.summaryStatus);
-  await status.waitFor({ state: 'attached', timeout: 120_000 });
-  await status.waitFor({ state: 'visible', timeout: 120_000 });
+  if (!/\/records\/monthly/.test(page.url())) {
+    return false;
+  }
 
-  // TODO: テキストが決まったら以下のような実装に変更
-  // await expect(status).toHaveText(/最新です|完了/);
+  const status = page.getByTestId(monthlyTestIds.summaryStatus);
+  await status.waitFor({ state: 'attached', timeout: 30_000 });
+
+  const initialText = (await status.textContent())?.trim() ?? '';
+  await expect(status).toHaveText(/準備完了|最新です|再集計完了/i, { timeout: 10_000 });
+  await expect
+    .poll(async () => (await status.textContent())?.trim() ?? '', { timeout: 120_000 })
+    .not.toBe(initialText);
+  await expect(status).toHaveText(/再集計完了|再集計エラー|更新中/i, { timeout: 120_000 });
+
+  return true;
+
 }

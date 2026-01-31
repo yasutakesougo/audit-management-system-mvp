@@ -543,6 +543,7 @@ const AppShell: React.FC<{ children: React.ReactNode }> = ({ children }) => {
         {/* Side Navigation Drawer */}
         {isDesktop ? (
           <Drawer
+            data-testid="nav-drawer"
             variant="persistent"
             open={desktopNavOpen}
             onClose={() => setDesktopNavOpen(false)}
@@ -559,7 +560,12 @@ const AppShell: React.FC<{ children: React.ReactNode }> = ({ children }) => {
               }) },
             }}
           >
-            <Box role="navigation" aria-label="主要ナビゲーション" sx={{ overflowY: 'auto', height: '100%', pt: 2 }}>
+            <Box
+              role="navigation"
+              aria-label="主要ナビゲーション"
+              data-testid="nav-items"
+              sx={{ overflowY: 'auto', height: '100%', pt: 2 }}
+            >
               {!navCollapsed && (
                 <Box sx={{ px: 1.5, py: 1, pb: 1.5 }} key="nav-search">
                   <TextField
@@ -597,6 +603,7 @@ const AppShell: React.FC<{ children: React.ReactNode }> = ({ children }) => {
           </Drawer>
         ) : (
           <Drawer
+            data-testid="nav-drawer"
             variant="temporary"
             open={mobileOpen}
             onClose={() => setMobileOpen(false)}
@@ -605,7 +612,12 @@ const AppShell: React.FC<{ children: React.ReactNode }> = ({ children }) => {
               '& .MuiDrawer-paper': { width: drawerWidth, boxSizing: 'border-box' },
             }}
           >
-            <Box role="navigation" aria-label="主要ナビゲーション" sx={{ pt: 2, overflowY: 'auto', height: '100vh' }}>
+            <Box
+              role="navigation"
+              aria-label="主要ナビゲーション"
+              data-testid="nav-items"
+              sx={{ pt: 2, overflowY: 'auto', height: '100vh' }}
+            >
               <Box sx={{ px: 1.5, pb: 1.5 }}>
                 <TextField
                   value={navQuery}

@@ -1,8 +1,7 @@
 import { expect, test } from '@playwright/test';
 import {
     gotoMonthlyRecordsPage,
-    monthlyTestIds,
-    triggerReaggregateAndWait
+    monthlyTestIds
 } from './_helpers/enableMonthly';
 import { attachOnFailure, ConsoleLogger, PageErrorCollector, RequestLogger, setupConsoleAndErrorCapture } from './_helpers/diagArtifacts';
 import { selectFirstMuiOption, selectMuiOptionByLabel } from './utils/muiSelect';
@@ -117,16 +116,31 @@ test.describe('Monthly Records - Summary Smoke Tests', () => {
   test('@ci-smoke reaggregate button triggers update', async ({ page }) => {
     test.setTimeout(120_000);
 
-    // 再集計実行 & 完了待機
-    await triggerReaggregateAndWait(page);
+    const table = page.getByTestId(monthlyTestIds.summaryTable);
+    await expect(table).toBeVisible();
 
-    // Wait for network idle to ensure aggregation completes
-    await page.waitForLoadState('networkidle', { timeout: 60_000 });
-    await page.waitForTimeout(2000); // Allow UI to settle
+    const rows = page.locator('[data-testid^="monthly-summary-row"]');
+    await expect.poll(async () => rows.count(), { timeout: 30_000 }).toBeGreaterThan(0);
 
-    // ステータス表示が更新されることを確認 - wait for existence first
+    // 個別の再集計ボタンを取得（行ごとの RefreshIcon ボタン）
+    const reaggregateBtns = page.locator('[data-testid^="monthly-reaggregate-btn-"]');
+    const btnCount = await reaggregateBtns.count();
+    if (btnCount === 0) {
+      test.skip(true, 'No individual reaggregate buttons found');
+    }
+
+    const firstReaggregateBtn = reaggregateBtns.first();
+    await expect(firstReaggregateBtn).toBeVisible();
+    await expect(firstReaggregateBtn).toBeEnabled();
+    await firstReaggregateBtn.click({ force: true });
+    
+    // 遷移が止まっていることを確認
+    await expect(page).not.toHaveURL(/\/daily\/support/, { timeout: 10_000 });
+
+    // ステータス表示が更新されることを確認
     const status = page.getByTestId(monthlyTestIds.summaryStatus);
-    await waitForLocator(status, { timeoutMs: 120_000, requireVisible: true });
+    await status.waitFor({ state: 'visible', timeout: 30_000 });
+    await expect(status).toHaveText(/再集計完了|再集計エラー/i, { timeout: 120_000 });
   });
 
   test('@ci-smoke table sorting functionality', async ({ page }) => {

@@ -1,4 +1,5 @@
 import type { Page } from '@playwright/test';
+import { waitForAppShellReady } from './wait';
 
 export type BootstrapFlags = {
   skipLogin?: boolean;
@@ -34,5 +35,6 @@ export async function bootstrapDashboard(page: Page, flags: BootstrapFlags = {})
     }
   }, options);
 
-  await page.goto(options.initialPath, { waitUntil: 'networkidle' });
+  await page.goto(options.initialPath, { waitUntil: 'domcontentloaded' });
+  await waitForAppShellReady(page, 60_000);
 }

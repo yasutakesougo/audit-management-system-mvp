@@ -132,3 +132,34 @@ export async function seedSchedulesToday(
   );
   return { payload, scheduleItems: buildSchedulesTodaySharePointItems(payload) };
 }
+
+/**
+ * E2E fixture をデモアダプタ用の storage key に書き込む
+ * demoAdapter.ts 内の resolveE2eSchedules() で読み込まれる
+ */
+export async function seedSchedulesTodayForDemoAdapter(
+  page: Page,
+  options: { payload?: SchedulesTodaySeedPayload } = {},
+): Promise<void> {
+  const payload = options.payload ?? readSchedulesTodaySeed();
+  const e2eKey = 'e2e:schedules.v1';
+  
+  // ScheduleItem から SchedItem フォーマットに変換
+  const schedItems = payload.events.map((event) => ({
+    id: event.id,
+    title: event.title,
+    start: event.start,
+    end: event.end,
+    status: 'Planned',
+    statusReason: null,
+    category: event.category ?? 'User',
+    etag: `"e2e-${event.id}"`,
+  }));
+
+  await page.addInitScript(
+    ({ key, value }) => {
+      window.localStorage.setItem(key, value);
+    },
+    { key: e2eKey, value: JSON.stringify(schedItems) },
+  );
+}

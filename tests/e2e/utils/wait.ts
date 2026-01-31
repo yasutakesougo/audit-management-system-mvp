@@ -5,6 +5,27 @@ export async function waitForTestId(page: Page, id: string, timeout = 10_000): P
   await expect(page.getByTestId(id)).toBeVisible({ timeout });
 }
 
+export async function waitForAppShellReady(page: Page, timeout = 60_000): Promise<void> {
+  const appShell = page.getByTestId('app-shell');
+  const appShellCount = await appShell.count().catch(() => 0);
+  if (appShellCount > 0) {
+    await expect(appShell.first()).toBeVisible({ timeout });
+    return;
+  }
+
+  const appRoot = page.getByTestId(TESTIDS['app-root']);
+  const appRootCount = await appRoot.count().catch(() => 0);
+  if (appRootCount > 0) {
+    await expect(appRoot.first()).toBeVisible({ timeout });
+  }
+
+  const routerOutlet = page.getByTestId(TESTIDS['app-router-outlet']);
+  const outletCount = await routerOutlet.count().catch(() => 0);
+  if (outletCount > 0) {
+    await expect(routerOutlet.first()).toBeVisible({ timeout });
+  }
+}
+
 const locatorExists = async (locator: Locator, timeout = 2_000): Promise<boolean> => {
   try {
     await locator.first().waitFor({ state: 'attached', timeout });

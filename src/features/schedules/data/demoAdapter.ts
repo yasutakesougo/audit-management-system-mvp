@@ -103,6 +103,24 @@ const resolveSeedForScenario = (scenario: string | null): SchedItem[] | null => 
   }
 };
 
+/**
+ * E2E用 fixture 注入ポイント
+ * localStorage.setItem('e2e:schedules.v1', JSON.stringify([...])) で供給されたスケジュールを読み込む
+ */
+const resolveE2eSchedules = (): SchedItem[] | null => {
+  if (typeof window === 'undefined') return null;
+  try {
+    const raw = window.localStorage.getItem('e2e:schedules.v1');
+    if (!raw) return null;
+    const parsed = JSON.parse(raw);
+    if (!Array.isArray(parsed)) return null;
+    return parsed as SchedItem[];
+  } catch (error) {
+    if (import.meta.env.DEV) console.warn('[demoAdapter] E2E fixtures parse error:', error);
+    return null;
+  }
+};
+
 const normalizeStatusReason = (value?: string | null): string | null => {
   if (typeof value !== 'string') {
     return null;
@@ -156,6 +174,18 @@ const resolveTitle = (input: CreateScheduleEventInput): string =>
 
 export const demoSchedulesPort: SchedulesPort = {
   async list(range) {
+    // E2E fixture 優先
+    const e2eSchedules = resolveE2eSchedules();
+    if (e2eSchedules) {
+      return e2eSchedules
+        .filter((item) => withinRange(item, range))
+        .map((item) => ({
+          ...item,
+          etag: item.etag ?? `"demo-${item.id}"`,
+        }));
+    }
+
+    // Fallback: scenario or default demo items
     const scenario = resolveScenario();
     const scenarioSeed = resolveSeedForScenario(scenario);
     const source = scenarioSeed ?? demoItems;
