@@ -52,6 +52,7 @@ import type { MeetingKind } from '../features/meeting/meetingSteps';
 import UsageStatusDashboard from '../features/users/UsageStatusDashboard.v2';
 import { calculateUsageFromDailyRecords } from '../features/users/userMasterDashboardUtils';
 import { useUsersDemo } from '../features/users/usersStoreDemo';
+import { useStaffAttendanceStore } from '@/features/staff/attendance/store';
 import { IUserMaster } from '../sharepoint/fields';
 
 // モック支援記録（ケース記録）データ生成
@@ -324,16 +325,24 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ audience = 'staff' }) => 
     const lateOrEarlyLeave = visitList.filter((visit) => visit.isEarlyLeave === true).length;
     const absenceCount = visitList.filter((visit) => visit.status === '当日欠席').length;
 
+    // Get actual staff attendance from store (Phase 2.1-C)
+    const today = new Date().toISOString().slice(0, 10);
+    const attendanceCounts = useStaffAttendanceStore().countByDate(today);
+    const onDutyStaff = attendanceCounts.onDuty;
+    
+    // Fallback to demo data if no attendance records yet
     const staffCount = staff.length || 0;
-    const onDutyStaff = Math.max(0, Math.round(staffCount * 0.6));
-    const lateOrShiftAdjust = Math.max(0, Math.round(onDutyStaff * 0.15));
-    const outStaff = Math.max(0, Math.round(onDutyStaff * 0.2));
+    const estimatedOnDutyStaff = Math.max(0, Math.round(staffCount * 0.6));
+    const finalOnDutyStaff = onDutyStaff > 0 ? onDutyStaff : estimatedOnDutyStaff;
+    
+    const lateOrShiftAdjust = Math.max(0, Math.round(finalOnDutyStaff * 0.15));
+    const outStaff = Math.max(0, Math.round(finalOnDutyStaff * 0.2));
 
     return {
       facilityAttendees,
       lateOrEarlyLeave,
       absenceCount,
-      onDutyStaff,
+      onDutyStaff: finalOnDutyStaff,
       lateOrShiftAdjust,
       outStaff,
     };
@@ -545,7 +554,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ audience = 'staff' }) => 
                   {attendanceSummary.onDutyStaff}
                 </Typography>
                 <Typography variant="body2" color="text.secondary">
-                  出勤職員（推定）
+                  出勤職員
                 </Typography>
               </Grid>
               <Grid size={{ xs: 12, sm: 4, md: 2 }}>

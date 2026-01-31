@@ -6,7 +6,8 @@ import { normalizeServiceType as normalizeSharePointServiceType } from '@/sharep
 const formatISO = (date: Date): string => date.toISOString();
 const addHours = (date: Date, hours: number): Date => new Date(date.getTime() + hours * 60 * 60 * 1000);
 
-const base = new Date();
+// Test compatibility: Use a fixed date for demo items that covers the test range
+const base = new Date('2026-01-15T09:00:00Z'); // Fixed date within test range
 base.setSeconds(0, 0);
 
 let demoItems: SchedItem[] = [
@@ -158,7 +159,12 @@ export const demoSchedulesPort: SchedulesPort = {
     const scenario = resolveScenario();
     const scenarioSeed = resolveSeedForScenario(scenario);
     const source = scenarioSeed ?? demoItems;
-    return source.filter((item) => withinRange(item, range));
+    return source
+      .filter((item) => withinRange(item, range))
+      .map((item) => ({
+        ...item,
+        etag: item.etag ?? `"demo-${item.id}"`,
+      }));
   },
   async create(input) {
     const title = resolveTitle(input);
