@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useState } from 'react';
 import {
   Box,
   Paper,
@@ -11,15 +11,15 @@ import {
   TableCell,
   TableHead,
   TableRow,
+  Button,
+  ToggleButton,
+  Checkbox,
 } from '@mui/material';
-import { getStaffAttendancePort } from '@/features/staff/attendance/storage';
+import { useStaffAttendanceAdmin } from '@/features/staff/attendance/hooks/useStaffAttendanceAdmin';
+import { useStaffAttendanceBulk } from '@/features/staff/attendance/hooks/useStaffAttendanceBulk';
+import { StaffAttendanceEditDialog } from '@/features/staff/attendance/components/StaffAttendanceEditDialog';
+import { StaffAttendanceBulkInputDrawer } from '@/features/staff/attendance/components/StaffAttendanceBulkInputDrawer';
 import type { StaffAttendance } from '@/features/staff/attendance/types';
-
-type LoadState =
-  | { kind: 'idle' }
-  | { kind: 'loading' }
-  | { kind: 'error'; message: string }
-  | { kind: 'ready'; items: StaffAttendance[] };
 
 function todayISO(): string {
   // YYYY-MM-DD（ブラウザのローカル日付）
@@ -32,39 +32,71 @@ function todayISO(): string {
 
 export default function StaffAttendanceAdminPage(): JSX.Element {
   const [date, setDate] = useState<string>(() => todayISO());
-  const [state, setState] = useState<LoadState>({ kind: 'idle' });
+  const admin = useStaffAttendanceAdmin(date);
+  const { items, loading, error, saving, save, port, recordDate, refetch } = admin;
 
-  const port = useMemo(() => getStaffAttendancePort(), []);
+  const bulk = useStaffAttendanceBulk({
+    port,
+    recordDate,
+    items,
+    refetch,
+  });
 
-  useEffect(() => {
-    let cancelled = false;
+  const [dialogOpen, setDialogOpen] = useState(false);
+  const [selected, setSelected] = useState<StaffAttendance | null>(null);
 
-    async function run() {
-      setState({ kind: 'loading' });
-
-      const res = await port.listByDate(date);
-      if (cancelled) return;
-
-      if (!res.isOk) {
-        setState({ kind: 'error', message: res.error.message || 'データの取得に失敗しました' });
-        return;
-      }
-
-      setState({ kind: 'ready', items: res.value });
+  const handleRowClick = (row: StaffAttendance) => {
+    if (bulk.bulkMode) {
+      bulk.toggleSelect(row.staffId);
+    } else {
+      setSelected(row);
+      setDialogOpen(true);
     }
+  };
 
-    run();
-    return () => {
-      cancelled = true;
-    };
-  }, [date, port]);
+  const handleDialogClose = () => {
+    setDialogOpen(false);
+    setSelected(null);
+  };
+
+  const handleSave = async (next: StaffAttendance) => {
+    await save(next);
+    setDialogOpen(false);
+    setSelected(null);
+  };
 
   return (
     <Box data-testid="staff-attendance-admin-root" sx={{ p: 2 }}>
       <Stack spacing={2}>
-        <Typography variant="h5" sx={{ fontWeight: 800 }}>
-          職員勤怠（管理）
-        </Typography>
+        <Stack direction="row" spacing={2} alignItems="center" justifyContent="space-between">
+          <Typography variant="h5" sx={{ fontWeight: 800 }}>
+            職員勤怠（管理）
+          </Typography>
+
+          <Stack direction="row" spacing={1} alignItems="center">
+            <ToggleButton
+              value="bulk"
+              selected={bulk.bulkMode}
+              onChange={bulk.toggleBulkMode}
+              size="small"
+              data-testid="staff-attendance-bulk-toggle"
+            >
+              一括入力モード
+            </ToggleButton>
+
+            {bulk.bulkMode && (
+              <Button
+                variant="contained"
+                onClick={bulk.openDrawer}
+                disabled={bulk.selectedCount === 0}
+                size="small"
+                data-testid="staff-attendance-bulk-open"
+              >
+                一括編集（{bulk.selectedCount}）
+              </Button>
+            )}
+          </Stack>
+        </Stack>
 
         <Paper variant="outlined" sx={{ p: 2 }}>
           <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2} alignItems={{ sm: 'center' }}>
@@ -88,29 +120,30 @@ export default function StaffAttendanceAdminPage(): JSX.Element {
         </Paper>
 
         <Paper variant="outlined" sx={{ p: 2 }}>
-          {state.kind === 'loading' && (
+          {loading && (
             <Stack direction="row" spacing={2} alignItems="center">
               <CircularProgress size={20} />
               <Typography>読み込み中…</Typography>
             </Stack>
           )}
 
-          {state.kind === 'error' && (
+          {error && (
             <Alert severity="error" data-testid="staff-attendance-error">
-              {state.message}
+              {error}
             </Alert>
           )}
 
-          {state.kind === 'ready' && state.items.length === 0 && (
+          {!loading && !error && items.length === 0 && (
             <Alert severity="info" data-testid="staff-attendance-empty">
               この日の勤怠データはありません。
             </Alert>
           )}
 
-          {state.kind === 'ready' && state.items.length > 0 && (
+          {!loading && items.length > 0 && (
             <Table size="small" data-testid="staff-attendance-table">
               <TableHead>
                 <TableRow>
+                  {bulk.bulkMode && <TableCell sx={{ width: 48 }} />}
                   <TableCell sx={{ fontWeight: 800 }}>職員ID</TableCell>
                   <TableCell sx={{ fontWeight: 800 }}>ステータス</TableCell>
                   <TableCell sx={{ fontWeight: 800 }}>備考</TableCell>
@@ -118,12 +151,33 @@ export default function StaffAttendanceAdminPage(): JSX.Element {
                 </TableRow>
               </TableHead>
               <TableBody>
-                {state.items.map((it) => (
-                  <TableRow key={`${it.recordDate}#${it.staffId}`}>
+                {items.map((it) => (
+                  <TableRow
+                    key={`${it.recordDate}#${it.staffId}`}
+                    hover
+                    onClick={() => handleRowClick(it)}
+                    data-testid={`staff-attendance-row-${it.staffId}`}
+                    sx={{ 
+                      cursor: 'pointer',
+                      ...(bulk.bulkMode && bulk.selectedIds.has(it.staffId) && {
+                        backgroundColor: 'action.selected',
+                      }),
+                    }}
+                  >
+                    {bulk.bulkMode && (
+                      <TableCell>
+                        <Checkbox
+                          checked={bulk.selectedIds.has(it.staffId)}
+                          data-testid={`staff-attendance-select-${it.staffId}`}
+                        />
+                      </TableCell>
+                    )}
                     <TableCell>{it.staffId}</TableCell>
                     <TableCell>{it.status}</TableCell>
                     <TableCell>{it.note ?? '—'}</TableCell>
-                    <TableCell>{it.checkInAt ?? '—'}</TableCell>
+                    <TableCell>
+                      {it.checkInAt ? new Date(it.checkInAt).toLocaleTimeString('ja-JP', { hour: '2-digit', minute: '2-digit' }) : '—'}
+                    </TableCell>
                   </TableRow>
                 ))}
               </TableBody>
@@ -131,6 +185,26 @@ export default function StaffAttendanceAdminPage(): JSX.Element {
           )}
         </Paper>
       </Stack>
+
+      <StaffAttendanceEditDialog
+        open={dialogOpen}
+        recordDate={date}
+        initial={selected}
+        saving={saving}
+        onClose={handleDialogClose}
+        onSave={handleSave}
+      />
+
+      <StaffAttendanceBulkInputDrawer
+        open={bulk.drawerOpen}
+        selectedCount={bulk.selectedCount}
+        saving={bulk.saving}
+        error={bulk.error}
+        onClose={bulk.closeDrawer}
+        value={bulk.value}
+        onChange={bulk.setValue}
+        onSave={bulk.bulkSave}
+      />
     </Box>
   );
 }

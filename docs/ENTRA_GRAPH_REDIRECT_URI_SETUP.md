@@ -26,10 +26,28 @@
 
 4. ✅ **確認:** SPA セクションに新しい URI が表示されることを確認
 
-**補足:** Preview/Branch URL でのテストが必要な場合
-- Entra では基本ワイルドカード(`*.momosantanuki.workers.dev`)が使用できないため、
-- 使用予定の個別 URL を「その都度追加」する運用が現実的です。
-- 例：`https://debug-branch.momosantanuki.workers.dev` など
+**補足:** Preview/Branch URL での運用推奨（AADSTS50011 完全回避）
+
+**❌ 非推奨：** PRごとに Redirect URI を追加する運用
+- Entra では基本ワイルドカード(`*.momosantanuki.workers.dev`)が使用できない
+- PR環境（`fix-*.momosantanuki.workers.dev`）ごとにドメインが変わる
+- その都度 Entra に追加が必要で運用負担が高い
+
+**✅ 推奨：** PR環境はデモモード運用（認証スキップ）
+
+Cloudflare Dashboard → Workers & Pages → `isogo-system` → Settings → Environment Variables
+
+| 変数名 | 値 | 対象環境 | 説明 |
+|--------|-----|---------|------|
+| `VITE_SKIP_LOGIN` | `1` | Preview (All branches) | PR環境でログインをスキップ |
+
+**メリット：**
+- ✅ AADSTS50011 エラーが構造的に発生しない
+- ✅ Entra 側の Redirect URI 管理が本番/ステージングのみで済む
+- ✅ PR環境で即座に動作確認可能（ログインフロー不要）
+- ✅ 既存の `VITE_SKIP_LOGIN` 実装をそのまま利用
+
+**実装状態：** [src/app/ProtectedRoute.tsx](../src/app/ProtectedRoute.tsx) に実装済み
 
 ---
 
