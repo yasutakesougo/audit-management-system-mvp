@@ -17,12 +17,13 @@ type Props = {
   onClose: () => void;
   onSave: (next: StaffAttendance) => Promise<void>;
   saving?: boolean;
+  writeEnabled?: boolean;
 };
 
 const STATUS_OPTIONS: StaffAttendanceStatus[] = ['出勤', '欠勤', '外出中'];
 
 export function StaffAttendanceEditDialog(props: Props): JSX.Element {
-  const { open, recordDate, initial, onClose, onSave, saving = false } = props;
+  const { open, recordDate, initial, onClose, onSave, saving = false, writeEnabled = true } = props;
 
   const [status, setStatus] = React.useState<StaffAttendanceStatus>('出勤');
   const [note, setNote] = React.useState<string>('');
@@ -134,7 +135,7 @@ export function StaffAttendanceEditDialog(props: Props): JSX.Element {
 
         <Button
           variant="contained"
-          disabled={!canSave || saving}
+          disabled={!canSave || saving || !writeEnabled}
           data-testid="staff-attendance-edit-save"
           onClick={handleSave}
         >
