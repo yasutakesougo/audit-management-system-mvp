@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { bootstrapDashboard } from './_helpers/bootstrapDashboard';
+import { bootstrapDashboard } from './utils/bootstrapApp';
 
 const ATTENDANCE_KEY = 'staff-attendance.v1';
 
