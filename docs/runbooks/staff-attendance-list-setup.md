@@ -71,6 +71,62 @@ UI確認:
 
 ---
 
+## 実行例ログ（app-test）
+
+### DRY_RUN=true（変更なし）
+
+```
+> audit-management-system-mvp@0.1.0 sp:setup:staff-attendance
+> node --import tsx scripts/sp/setupStaffAttendanceList.ts
+
+[sp-setup] ✅ List exists: Staff_Attendance
+[sp-setup] 📝 DRY_RUN: Missing fields → would add:
+  - StaffId (Text)
+  - RecordDate (DateTime)
+  - Status (Choice)
+  - CheckInAt (DateTime)
+  - CheckOutAt (DateTime)
+  - LateMinutes (Number)
+  - Note (Note)
+```
+
+### APPLY（DRY_RUN=false）
+
+```
+> audit-management-system-mvp@0.1.0 sp:setup:staff-attendance
+> node --import tsx scripts/sp/setupStaffAttendanceList.ts
+
+[sp-setup] ✅ List exists: Staff_Attendance
+[sp-setup] ➕ Adding field: StaffId (Text)
+[sp-setup] Failed to add field StaffId. status=400 {"error":{"code":"-1, Microsoft.Data.OData.ODataException","message":{"lang":"ja-JP","value":"プロパティ 'AddToDefaultView' は型 'SP.XmlSchemaFieldCreationInformation' に存在しません。型で定義されているプロパティ名のみ使用してください。"}}}
+```
+
+### IDEMPOTENT（2回目実行）
+
+```
+> audit-management-system-mvp@0.1.0 sp:setup:staff-attendance
+> node --import tsx scripts/sp/setupStaffAttendanceList.ts
+
+[sp-setup] ✅ List exists: Staff_Attendance
+[sp-setup] ➕ Adding field: StaffId (Text)
+```
+
+---
+
+## Troubleshooting
+
+### 400: AddToDefaultView エラー
+
+```
+プロパティ 'AddToDefaultView' は型 'SP.XmlSchemaFieldCreationInformation' に存在しません。
+```
+
+**原因**: `createfieldasxml` では `AddToDefaultView` が受け付けられない場合がある
+
+**対処**: `SchemaXml` のみ送信する（`AddToDefaultView` を除去）
+
+---
+
 ## 参考
 
 - スクリプト: [scripts/sp/setupStaffAttendanceList.ts](../../scripts/sp/setupStaffAttendanceList.ts)

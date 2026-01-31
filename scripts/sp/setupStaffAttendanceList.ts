@@ -225,7 +225,6 @@ async function createField(token: string, digest: string, listTitle: string, def
   const body = {
     parameters: {
       SchemaXml: schema,
-      AddToDefaultView: def.addToDefaultView ?? false,
     },
   };
 
