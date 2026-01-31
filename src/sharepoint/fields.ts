@@ -36,6 +36,38 @@ export const ORG_MASTER_SELECT_FIELDS = [
   ORG_MASTER_FIELDS.notes,
 ] as const;
 
+// ──────────────────────────────────────────────────────────────
+// Staff attendance (SharePoint list: Staff_Attendance)
+// ──────────────────────────────────────────────────────────────
+
+export const STAFF_ATTENDANCE_LIST_TITLE = 'Staff_Attendance' as const;
+
+export const STAFF_ATTENDANCE_FIELDS = {
+  id: 'Id',
+  title: 'Title',
+  staffId: 'StaffId',
+  recordDate: 'RecordDate',
+  status: 'Status',
+  checkInAt: 'CheckInAt',
+  checkOutAt: 'CheckOutAt',
+  lateMinutes: 'LateMinutes',
+  note: 'Note',
+  created: 'Created',
+  modified: 'Modified',
+} as const;
+
+export const STAFF_ATTENDANCE_SELECT_FIELDS = [
+  STAFF_ATTENDANCE_FIELDS.id,
+  STAFF_ATTENDANCE_FIELDS.title,
+  STAFF_ATTENDANCE_FIELDS.staffId,
+  STAFF_ATTENDANCE_FIELDS.recordDate,
+  STAFF_ATTENDANCE_FIELDS.status,
+  STAFF_ATTENDANCE_FIELDS.checkInAt,
+  STAFF_ATTENDANCE_FIELDS.checkOutAt,
+  STAFF_ATTENDANCE_FIELDS.lateMinutes,
+  STAFF_ATTENDANCE_FIELDS.note,
+] as const;
+
 export interface IUserMaster {
   Id: number;
   Title?: string | null;
@@ -120,6 +152,7 @@ export enum ListKeys {
   IcebergPdca = 'Iceberg_PDCA',
   SurveyTokusei = 'FormsResponses_Tokusei',
   OrgMaster = 'Org_Master',
+  StaffAttendance = 'Staff_Attendance',
   DiagnosticsReports = 'Diagnostics_Reports',
 }
 
@@ -131,6 +164,7 @@ export const LIST_CONFIG: Record<ListKeys, { title: string }> = {
   [ListKeys.IcebergPdca]: { title: 'Iceberg_PDCA' },
   [ListKeys.SurveyTokusei]: { title: 'FormsResponses_Tokusei' },
   [ListKeys.OrgMaster]: { title: 'Org_Master' },
+  [ListKeys.StaffAttendance]: { title: 'Staff_Attendance' },
   [ListKeys.DiagnosticsReports]: { title: 'Diagnostics_Reports' },
 };
 
@@ -181,6 +215,19 @@ export const FIELD_MAP = {
     email: 'Email',
     phone: 'Phone',
     certifications: 'Certifications',
+  },
+  Staff_Attendance: {
+    id: 'Id',
+    title: 'Title',
+    staffId: 'StaffId',
+    recordDate: 'RecordDate',
+    status: 'Status',
+    checkInAt: 'CheckInAt',
+    checkOutAt: 'CheckOutAt',
+    lateMinutes: 'LateMinutes',
+    note: 'Note',
+    created: 'Created',
+    modified: 'Modified',
   },
   Org_Master: ORG_MASTER_FIELDS,
   Schedules: {

@@ -43,10 +43,12 @@ interface ImportMetaEnv {
   readonly VITE_SP_LIST_DAILY?: string;
   readonly VITE_SP_LIST_SCHEDULES?: string;
   readonly VITE_SP_LIST_STAFF?: string;
+  readonly VITE_SP_LIST_STAFF_ATTENDANCE?: string;
   readonly VITE_SP_LIST_STAFF_GUID?: string;
   readonly VITE_SP_LIST_USERS?: string;
   readonly VITE_SP_LIST_PLAN_GOAL?: string;
   readonly VITE_SP_LIST_NURSE_OBSERVATION?: string;
+  readonly VITE_STAFF_ATTENDANCE_STORAGE?: 'local' | 'sharepoint';
   readonly VITE_SP_BASE_URL?: string;
   readonly VITE_SP_RETRY_BASE_MS?: string;
   readonly VITE_SP_RETRY_MAX?: string;
