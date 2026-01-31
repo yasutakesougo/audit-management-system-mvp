@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useState } from 'react';
 import {
   Box,
   Paper,
@@ -12,14 +12,9 @@ import {
   TableHead,
   TableRow,
 } from '@mui/material';
-import { getStaffAttendancePort } from '@/features/staff/attendance/storage';
+import { useStaffAttendanceAdmin } from '@/features/staff/attendance/hooks/useStaffAttendanceAdmin';
+import { StaffAttendanceEditDialog } from '@/features/staff/attendance/components/StaffAttendanceEditDialog';
 import type { StaffAttendance } from '@/features/staff/attendance/types';
-
-type LoadState =
-  | { kind: 'idle' }
-  | { kind: 'loading' }
-  | { kind: 'error'; message: string }
-  | { kind: 'ready'; items: StaffAttendance[] };
 
 function todayISO(): string {
   // YYYY-MM-DD（ブラウザのローカル日付）
@@ -32,32 +27,26 @@ function todayISO(): string {
 
 export default function StaffAttendanceAdminPage(): JSX.Element {
   const [date, setDate] = useState<string>(() => todayISO());
-  const [state, setState] = useState<LoadState>({ kind: 'idle' });
+  const { items, loading, error, saving, save } = useStaffAttendanceAdmin(date);
 
-  const port = useMemo(() => getStaffAttendancePort(), []);
+  const [dialogOpen, setDialogOpen] = useState(false);
+  const [selected, setSelected] = useState<StaffAttendance | null>(null);
 
-  useEffect(() => {
-    let cancelled = false;
+  const handleRowClick = (row: StaffAttendance) => {
+    setSelected(row);
+    setDialogOpen(true);
+  };
 
-    async function run() {
-      setState({ kind: 'loading' });
+  const handleDialogClose = () => {
+    setDialogOpen(false);
+    setSelected(null);
+  };
 
-      const res = await port.listByDate(date);
-      if (cancelled) return;
-
-      if (!res.isOk) {
-        setState({ kind: 'error', message: res.error.message || 'データの取得に失敗しました' });
-        return;
-      }
-
-      setState({ kind: 'ready', items: res.value });
-    }
-
-    run();
-    return () => {
-      cancelled = true;
-    };
-  }, [date, port]);
+  const handleSave = async (next: StaffAttendance) => {
+    await save(next);
+    setDialogOpen(false);
+    setSelected(null);
+  };
 
   return (
     <Box data-testid="staff-attendance-admin-root" sx={{ p: 2 }}>
@@ -88,26 +77,26 @@ export default function StaffAttendanceAdminPage(): JSX.Element {
         </Paper>
 
         <Paper variant="outlined" sx={{ p: 2 }}>
-          {state.kind === 'loading' && (
+          {loading && (
             <Stack direction="row" spacing={2} alignItems="center">
               <CircularProgress size={20} />
               <Typography>読み込み中…</Typography>
             </Stack>
           )}
 
-          {state.kind === 'error' && (
+          {error && (
             <Alert severity="error" data-testid="staff-attendance-error">
-              {state.message}
+              {error}
             </Alert>
           )}
 
-          {state.kind === 'ready' && state.items.length === 0 && (
+          {!loading && !error && items.length === 0 && (
             <Alert severity="info" data-testid="staff-attendance-empty">
               この日の勤怠データはありません。
             </Alert>
           )}
 
-          {state.kind === 'ready' && state.items.length > 0 && (
+          {!loading && items.length > 0 && (
             <Table size="small" data-testid="staff-attendance-table">
               <TableHead>
                 <TableRow>
@@ -118,12 +107,20 @@ export default function StaffAttendanceAdminPage(): JSX.Element {
                 </TableRow>
               </TableHead>
               <TableBody>
-                {state.items.map((it) => (
-                  <TableRow key={`${it.recordDate}#${it.staffId}`}>
+                {items.map((it) => (
+                  <TableRow
+                    key={`${it.recordDate}#${it.staffId}`}
+                    hover
+                    onClick={() => handleRowClick(it)}
+                    data-testid={`staff-attendance-row-${it.staffId}`}
+                    sx={{ cursor: 'pointer' }}
+                  >
                     <TableCell>{it.staffId}</TableCell>
                     <TableCell>{it.status}</TableCell>
                     <TableCell>{it.note ?? '—'}</TableCell>
-                    <TableCell>{it.checkInAt ?? '—'}</TableCell>
+                    <TableCell>
+                      {it.checkInAt ? new Date(it.checkInAt).toLocaleTimeString('ja-JP', { hour: '2-digit', minute: '2-digit' }) : '—'}
+                    </TableCell>
                   </TableRow>
                 ))}
               </TableBody>
@@ -131,6 +128,15 @@ export default function StaffAttendanceAdminPage(): JSX.Element {
           )}
         </Paper>
       </Stack>
+
+      <StaffAttendanceEditDialog
+        open={dialogOpen}
+        recordDate={date}
+        initial={selected}
+        saving={saving}
+        onClose={handleDialogClose}
+        onSave={handleSave}
+      />
     </Box>
   );
 }
