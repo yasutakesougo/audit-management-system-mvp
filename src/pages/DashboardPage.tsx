@@ -52,8 +52,41 @@ import type { MeetingKind } from '../features/meeting/meetingSteps';
 import UsageStatusDashboard from '../features/users/UsageStatusDashboard.v2';
 import { calculateUsageFromDailyRecords } from '../features/users/userMasterDashboardUtils';
 import { useUsersDemo } from '../features/users/usersStoreDemo';
-import { useStaffAttendanceStore } from '@/features/staff/attendance/store';
+import type { AttendanceCounts } from '@/features/staff/attendance/port';
+import { getStaffAttendancePort } from '@/features/staff/attendance/storage';
 import { IUserMaster } from '../sharepoint/fields';
+
+const useAttendanceCounts = (recordDate: string): AttendanceCounts => {
+  const [counts, setCounts] = useState<AttendanceCounts>({
+    onDuty: 0,
+    out: 0,
+    absent: 0,
+    total: 0,
+  });
+
+  useEffect(() => {
+    let active = true;
+
+    (async () => {
+      const port = getStaffAttendancePort();
+      const res = await port.countByDate(recordDate);
+      if (!active) return;
+
+      if (res.isOk) {
+        setCounts(res.value);
+      } else {
+        console.warn('[attendance] countByDate failed', res.error);
+        setCounts({ onDuty: 0, out: 0, absent: 0, total: 0 });
+      }
+    })();
+
+    return () => {
+      active = false;
+    };
+  }, [recordDate]);
+
+  return counts;
+};
 
 // モック支援記録（ケース記録）データ生成
 const generateMockActivityRecords = (users: IUserMaster[], date: string): PersonDaily[] => {
@@ -315,6 +348,8 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ audience = 'staff' }) => 
     };
   }, [users, activityRecords]);
 
+  const attendanceCounts = useAttendanceCounts(today);
+
   const attendanceSummary = useMemo(() => {
     const visitList = Object.values(visits);
 
@@ -325,16 +360,14 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ audience = 'staff' }) => 
     const lateOrEarlyLeave = visitList.filter((visit) => visit.isEarlyLeave === true).length;
     const absenceCount = visitList.filter((visit) => visit.status === '当日欠席').length;
 
-    // Get actual staff attendance from store (Phase 2.1-C)
-    const today = new Date().toISOString().slice(0, 10);
-    const attendanceCounts = useStaffAttendanceStore().countByDate(today);
+    // Get actual staff attendance via port (Phase 3.1-C)
     const onDutyStaff = attendanceCounts.onDuty;
-    
+
     // Fallback to demo data if no attendance records yet
     const staffCount = staff.length || 0;
     const estimatedOnDutyStaff = Math.max(0, Math.round(staffCount * 0.6));
     const finalOnDutyStaff = onDutyStaff > 0 ? onDutyStaff : estimatedOnDutyStaff;
-    
+
     const lateOrShiftAdjust = Math.max(0, Math.round(finalOnDutyStaff * 0.15));
     const outStaff = Math.max(0, Math.round(finalOnDutyStaff * 0.2));
 
@@ -346,7 +379,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ audience = 'staff' }) => 
       lateOrShiftAdjust,
       outStaff,
     };
-  }, [staff.length, visits]);
+  }, [attendanceCounts.onDuty, staff.length, visits]);
 
   const dailyRecordStatus = useMemo(() => {
     const commuteCompleted = Math.round(users.length * 0.82);
