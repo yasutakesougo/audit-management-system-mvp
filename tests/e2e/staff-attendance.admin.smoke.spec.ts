@@ -59,8 +59,10 @@ test.describe('staff attendance admin smoke', () => {
     await page.getByTestId('staff-attendance-row-S001').click();
     await expect(page.getByTestId('staff-attendance-edit-dialog')).toBeVisible();
 
-    // Change status
-    await page.getByTestId('staff-attendance-edit-status').selectOption('外出中');
+    // Change status (MUI Select: click to open, then select option)
+    const statusField = page.getByTestId('staff-attendance-edit-status');
+    await statusField.click();
+    await page.getByRole('option', { name: '外出中' }).click();
 
     // Edit note
     await page.getByTestId('staff-attendance-edit-note').fill('updated note');
@@ -91,7 +93,9 @@ test.describe('staff attendance admin smoke', () => {
     await expect(page.getByTestId('staff-attendance-bulk-drawer')).toBeVisible();
 
     // Set bulk status (will overwrite both)
-    await page.getByTestId('staff-attendance-bulk-status').selectOption('出勤');
+    const bulkStatusField = page.getByTestId('staff-attendance-bulk-status');
+    await bulkStatusField.click();
+    await page.getByRole('option', { name: '出勤' }).click();
 
     // Set bulk check-in time (will overwrite both)
     await page.getByTestId('staff-attendance-bulk-checkin').fill('11:30');
