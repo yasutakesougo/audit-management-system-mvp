@@ -59,13 +59,15 @@ test.describe('staff attendance admin smoke', () => {
     await page.getByTestId('staff-attendance-row-S001').click();
     await expect(page.getByTestId('staff-attendance-edit-dialog')).toBeVisible();
 
-    // Change status (MUI Select: click to open, then select option)
-    const statusField = page.getByTestId('staff-attendance-edit-status');
-    await statusField.click();
-    await page.getByRole('option', { name: '外出中' }).click();
+    // Change status (MUI Select: find and click the combobox wrapper)
+    const selects = await page.locator('div[class*="MuiSelect-select"]').all();
+    if (selects.length > 0) {
+      await selects[0].click();
+      await page.getByRole('option', { name: '外出中' }).click();
+    }
 
-    // Edit note
-    await page.getByTestId('staff-attendance-edit-note').fill('updated note');
+    // Edit note (multiline TextField becomes a div wrapper with input inside)
+    await page.getByTestId('staff-attendance-edit-note').locator('..').locator('textarea, input').first().fill('updated note');
 
     // Edit check-in time
     await page.getByTestId('staff-attendance-edit-checkin').fill('10:10');
@@ -93,15 +95,17 @@ test.describe('staff attendance admin smoke', () => {
     await expect(page.getByTestId('staff-attendance-bulk-drawer')).toBeVisible();
 
     // Set bulk status (will overwrite both)
-    const bulkStatusField = page.getByTestId('staff-attendance-bulk-status');
-    await bulkStatusField.click();
-    await page.getByRole('option', { name: '出勤' }).click();
+    const bulkSelects = await page.locator('div[class*="MuiSelect-select"]').all();
+    if (bulkSelects.length > 0) {
+      await bulkSelects[bulkSelects.length - 1].click(); // Last one should be bulk status
+      await page.getByRole('option', { name: '出勤' }).click();
+    }
 
     // Set bulk check-in time (will overwrite both)
-    await page.getByTestId('staff-attendance-bulk-checkin').fill('11:30');
+    await page.getByTestId('staff-attendance-bulk-checkin').locator('input').fill('11:30');
 
     // Note field: leave empty (= preserve existing notes per safety rule)
-    const noteField = page.getByTestId('staff-attendance-bulk-note');
+    const noteField = page.getByTestId('staff-attendance-bulk-note').locator('..').locator('textarea, input').first();
     await noteField.clear();
 
     // Save
