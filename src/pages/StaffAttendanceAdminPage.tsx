@@ -11,9 +11,14 @@ import {
   TableCell,
   TableHead,
   TableRow,
+  Button,
+  ToggleButton,
+  Checkbox,
 } from '@mui/material';
 import { useStaffAttendanceAdmin } from '@/features/staff/attendance/hooks/useStaffAttendanceAdmin';
+import { useStaffAttendanceBulk } from '@/features/staff/attendance/hooks/useStaffAttendanceBulk';
 import { StaffAttendanceEditDialog } from '@/features/staff/attendance/components/StaffAttendanceEditDialog';
+import { StaffAttendanceBulkInputDrawer } from '@/features/staff/attendance/components/StaffAttendanceBulkInputDrawer';
 import type { StaffAttendance } from '@/features/staff/attendance/types';
 
 function todayISO(): string {
@@ -27,14 +32,26 @@ function todayISO(): string {
 
 export default function StaffAttendanceAdminPage(): JSX.Element {
   const [date, setDate] = useState<string>(() => todayISO());
-  const { items, loading, error, saving, save } = useStaffAttendanceAdmin(date);
+  const admin = useStaffAttendanceAdmin(date);
+  const { items, loading, error, saving, save, port, recordDate, refetch } = admin;
+
+  const bulk = useStaffAttendanceBulk({
+    port,
+    recordDate,
+    items,
+    refetch,
+  });
 
   const [dialogOpen, setDialogOpen] = useState(false);
   const [selected, setSelected] = useState<StaffAttendance | null>(null);
 
   const handleRowClick = (row: StaffAttendance) => {
-    setSelected(row);
-    setDialogOpen(true);
+    if (bulk.bulkMode) {
+      bulk.toggleSelect(row.staffId);
+    } else {
+      setSelected(row);
+      setDialogOpen(true);
+    }
   };
 
   const handleDialogClose = () => {
@@ -51,9 +68,35 @@ export default function StaffAttendanceAdminPage(): JSX.Element {
   return (
     <Box data-testid="staff-attendance-admin-root" sx={{ p: 2 }}>
       <Stack spacing={2}>
-        <Typography variant="h5" sx={{ fontWeight: 800 }}>
-          職員勤怠（管理）
-        </Typography>
+        <Stack direction="row" spacing={2} alignItems="center" justifyContent="space-between">
+          <Typography variant="h5" sx={{ fontWeight: 800 }}>
+            職員勤怠（管理）
+          </Typography>
+
+          <Stack direction="row" spacing={1} alignItems="center">
+            <ToggleButton
+              value="bulk"
+              selected={bulk.bulkMode}
+              onChange={bulk.toggleBulkMode}
+              size="small"
+              data-testid="staff-attendance-bulk-toggle"
+            >
+              一括入力モード
+            </ToggleButton>
+
+            {bulk.bulkMode && (
+              <Button
+                variant="contained"
+                onClick={bulk.openDrawer}
+                disabled={bulk.selectedCount === 0}
+                size="small"
+                data-testid="staff-attendance-bulk-open"
+              >
+                一括編集（{bulk.selectedCount}）
+              </Button>
+            )}
+          </Stack>
+        </Stack>
 
         <Paper variant="outlined" sx={{ p: 2 }}>
           <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2} alignItems={{ sm: 'center' }}>
@@ -100,6 +143,7 @@ export default function StaffAttendanceAdminPage(): JSX.Element {
             <Table size="small" data-testid="staff-attendance-table">
               <TableHead>
                 <TableRow>
+                  {bulk.bulkMode && <TableCell sx={{ width: 48 }} />}
                   <TableCell sx={{ fontWeight: 800 }}>職員ID</TableCell>
                   <TableCell sx={{ fontWeight: 800 }}>ステータス</TableCell>
                   <TableCell sx={{ fontWeight: 800 }}>備考</TableCell>
@@ -113,8 +157,21 @@ export default function StaffAttendanceAdminPage(): JSX.Element {
                     hover
                     onClick={() => handleRowClick(it)}
                     data-testid={`staff-attendance-row-${it.staffId}`}
-                    sx={{ cursor: 'pointer' }}
+                    sx={{ 
+                      cursor: 'pointer',
+                      ...(bulk.bulkMode && bulk.selectedIds.has(it.staffId) && {
+                        backgroundColor: 'action.selected',
+                      }),
+                    }}
                   >
+                    {bulk.bulkMode && (
+                      <TableCell>
+                        <Checkbox
+                          checked={bulk.selectedIds.has(it.staffId)}
+                          data-testid={`staff-attendance-select-${it.staffId}`}
+                        />
+                      </TableCell>
+                    )}
                     <TableCell>{it.staffId}</TableCell>
                     <TableCell>{it.status}</TableCell>
                     <TableCell>{it.note ?? '—'}</TableCell>
@@ -136,6 +193,17 @@ export default function StaffAttendanceAdminPage(): JSX.Element {
         saving={saving}
         onClose={handleDialogClose}
         onSave={handleSave}
+      />
+
+      <StaffAttendanceBulkInputDrawer
+        open={bulk.drawerOpen}
+        selectedCount={bulk.selectedCount}
+        saving={bulk.saving}
+        error={bulk.error}
+        onClose={bulk.closeDrawer}
+        value={bulk.value}
+        onChange={bulk.setValue}
+        onSave={bulk.bulkSave}
       />
     </Box>
   );
