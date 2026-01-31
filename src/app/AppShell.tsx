@@ -554,17 +554,24 @@ const AppShell: React.FC<{ children: React.ReactNode }> = ({ children }) => {
                 easing: theme.transitions.easing.sharp,
                 duration: theme.transitions.duration.enteringScreen,
               }),
-              '& .MuiDrawer-paper': { width: currentDrawerWidth, boxSizing: 'border-box', top: 64, bottom: 80, transition: theme.transitions.create('width', {
-                easing: theme.transitions.easing.sharp,
-                duration: theme.transitions.duration.enteringScreen,
-              }) },
+              '& .MuiDrawer-paper': { 
+                width: currentDrawerWidth, 
+                boxSizing: 'border-box', 
+                top: 64, 
+                height: 'calc(100vh - 64px)', 
+                overflowY: 'auto',
+                transition: theme.transitions.create('width', {
+                  easing: theme.transitions.easing.sharp,
+                  duration: theme.transitions.duration.enteringScreen,
+                }) 
+              },
             }}
           >
             <Box
               role="navigation"
               aria-label="主要ナビゲーション"
               data-testid="nav-items"
-              sx={{ overflowY: 'auto', height: '100%', pt: 2 }}
+              sx={{ pt: 2, pb: 10 }}
             >
               {!navCollapsed && (
                 <Box sx={{ px: 1.5, py: 1, pb: 1.5 }} key="nav-search">
