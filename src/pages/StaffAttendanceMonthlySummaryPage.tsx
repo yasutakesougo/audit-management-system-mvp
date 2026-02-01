@@ -5,6 +5,7 @@ import {
   Box,
   Button,
   CircularProgress,
+  GlobalStyles,
   Paper,
   Stack,
   Table,
@@ -15,6 +16,7 @@ import {
   TextField,
   Typography,
 } from "@mui/material";
+import PrintIcon from "@mui/icons-material/Print";
 
 import { useStaffAttendanceAdmin } from "@/features/staff/attendance/hooks/useStaffAttendanceAdmin";
 import { useStaffStore } from "@/features/staff/store";
@@ -94,25 +96,88 @@ export default function StaffAttendanceMonthlySummaryPage() {
     return s?.name ?? staffId;
   };
 
+  const printStyles = (
+    <GlobalStyles
+      styles={{
+        '@page': {
+          size: 'A4 portrait',
+          margin: '10mm',
+        },
+        '@media print': {
+          // 画面用UIを消す
+          '[data-print="hide"]': { display: 'none !important' },
+
+          // 余白・色・フォント
+          body: {
+            WebkitPrintColorAdjust: 'exact',
+            printColorAdjust: 'exact',
+            background: '#fff',
+          },
+
+          // コンテナの横幅制限を外す（A4にフィットさせる）
+          '.MuiContainer-root': {
+            maxWidth: 'none !important',
+            paddingLeft: '0 !important',
+            paddingRight: '0 !important',
+          },
+
+          // 余計なシャドウを消す
+          '.MuiPaper-root': {
+            boxShadow: 'none !important',
+          },
+
+          // 改ページ事故を減らす
+          'h1, h2, h3, .MuiTypography-h4, .MuiTypography-h5, .MuiTypography-h6': {
+            breakAfter: 'avoid',
+            pageBreakAfter: 'avoid',
+          },
+          '.MuiTableRow-root, .MuiCard-root, .MuiPaper-root': {
+            breakInside: 'avoid',
+            pageBreakInside: 'avoid',
+          },
+
+          // テーブルの見た目を印刷向けに締める
+          '.MuiTableCell-root': {
+            paddingTop: '6px',
+            paddingBottom: '6px',
+            fontSize: '11pt',
+          },
+        },
+      }}
+    />
+  );
+
   return (
-    <Box sx={{ p: 2 }}>
-      <Stack spacing={2}>
+    <>
+      {printStyles}
+      <Box sx={{ p: 2 }}>
+        <Stack spacing={2}>
         <Stack direction="row" alignItems="center" justifyContent="space-between" spacing={2}>
           <Typography variant="h5" sx={{ fontWeight: 700 }}>
             勤怠 月次サマリー
           </Typography>
-          <Button
-            component={Link}
-            to="/admin/staff-attendance"
-            size="small"
-            variant="outlined"
-          >
-            一覧へ戻る
-          </Button>
+          <Stack direction="row" spacing={1} data-print="hide">
+            <Button
+              variant="outlined"
+              startIcon={<PrintIcon />}
+              onClick={() => window.print()}
+              data-testid="staff-attendance-summary-print"
+            >
+              印刷 / PDF
+            </Button>
+            <Button
+              component={Link}
+              to="/admin/staff-attendance"
+              size="small"
+              variant="outlined"
+            >
+              一覧へ戻る
+            </Button>
+          </Stack>
         </Stack>
 
         <Paper sx={{ p: 2 }}>
-          <Stack direction={{ xs: "column", sm: "row" }} spacing={2} alignItems={{ sm: "center" }}>
+          <Stack direction={{ xs: "column", sm: "row" }} spacing={2} alignItems={{ sm: "center" }} data-print="hide">
             <TextField
               label="対象月"
               type="month"
@@ -285,5 +350,6 @@ export default function StaffAttendanceMonthlySummaryPage() {
         </Paper>
       </Stack>
     </Box>
+    </>
   );
 }
