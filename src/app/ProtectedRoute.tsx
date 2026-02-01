@@ -4,7 +4,7 @@ import { isE2E } from '@/env';
 import { getAppConfig, isDemoModeEnabled, readEnv } from '@/lib/env';
 import { InteractionStatus } from '@/auth/interactionStatus';
 import { createSpClient, ensureConfig } from '@/lib/spClient';
-import { createAuthCorrId, summarizeAuthBlockReason, type AuthDiagSummary } from '@/lib/authDiag';
+import { buildAuthDiagCopyText, createAuthCorrId, summarizeAuthBlockReason, type AuthDiagSummary } from '@/lib/authDiag';
 import Button from '@mui/material/Button';
 import Paper from '@mui/material/Paper';
 import Stack from '@mui/material/Stack';
@@ -77,7 +77,7 @@ export default function ProtectedRoute({ flag, children, fallbackPath = '/' }: P
   const enabled = useFeatureFlag(flag);
   const { isAuthenticated, loading, shouldSkipLogin, tokenReady: tokenReadyRaw, signIn, getListReadyState: _getListReadyState, setListReadyState, acquireToken } = useAuth();
   const tokenReady = tokenReadyRaw ?? false;
-  const { accounts, inProgress } = useMsalContext();
+  const { accounts, inProgress, instance } = useMsalContext();
   const location = useLocation();
   const pendingPath = useMemo(() => `${location.pathname}${location.search ?? ''}`, [location.pathname, location.search]);
   const signInAttemptedRef = useRef(false);
@@ -216,6 +216,7 @@ export default function ProtectedRoute({ flag, children, fallbackPath = '/' }: P
         onSignIn={signIn}
         diagSummary={summary}
         corrId={corrId}
+        msalInstance={instance}
       />
     );
   }
@@ -264,6 +265,7 @@ export default function ProtectedRoute({ flag, children, fallbackPath = '/' }: P
         pendingPath={pendingPath}
         diagSummary={summary}
         corrId={corrId}
+        msalInstance={instance}
       />
     );
   }
@@ -366,6 +368,7 @@ type AuthNoticeProps = {
   onSignIn?: () => Promise<{ success: boolean }>;
   diagSummary?: AuthDiagSummary;
   corrId?: string;
+  msalInstance?: { logoutRedirect?: (options?: { postLogoutRedirectUri?: string }) => Promise<void> | void };
 };
 
 type AuthDiagnosticsProps = {
@@ -373,16 +376,79 @@ type AuthDiagnosticsProps = {
   corrId: string;
 };
 
+const buildDiagCopyText = (summary: AuthDiagSummary, corrId: string): string => {
+  const url = typeof window !== 'undefined' ? window.location.href : '';
+  const userAgent = typeof navigator !== 'undefined' ? navigator.userAgent : '';
+  return buildAuthDiagCopyText({
+    summary,
+    corrId,
+    url,
+    userAgent,
+    timestamp: new Date().toISOString(),
+  });
+};
+
+const copyToClipboard = async (text: string): Promise<boolean> => {
+  if (typeof navigator !== 'undefined' && navigator.clipboard?.writeText) {
+    try {
+      await navigator.clipboard.writeText(text);
+      return true;
+    } catch {
+      // fall through to legacy path
+    }
+  }
+
+  if (typeof document === 'undefined') return false;
+  const textarea = document.createElement('textarea');
+  textarea.value = text;
+  textarea.setAttribute('readonly', 'true');
+  textarea.style.position = 'absolute';
+  textarea.style.left = '-9999px';
+  document.body.appendChild(textarea);
+  textarea.select();
+  const success = document.execCommand('copy');
+  document.body.removeChild(textarea);
+  return success;
+};
+
+const clearMsalCache = (): number => {
+  if (typeof window === 'undefined') return 0;
+  const storages = [window.sessionStorage, window.localStorage];
+  const matcher = (key: string) => /^msal/i.test(key);
+  let removed = 0;
+  storages.forEach((storage) => {
+    const keys = Object.keys(storage);
+    keys.forEach((key) => {
+      if (matcher(key)) {
+        storage.removeItem(key);
+        removed += 1;
+      }
+    });
+  });
+  return removed;
+};
+
 const AuthDiagnosticsPanel = ({ summary, corrId }: AuthDiagnosticsProps) => {
   const [open, setOpen] = useState(false);
+  const [copied, setCopied] = useState(false);
+  const handleCopy = async () => {
+    const text = buildDiagCopyText(summary, corrId);
+    const ok = await copyToClipboard(text);
+    setCopied(ok);
+  };
   return (
     <Stack spacing={1} alignItems="center" sx={{ mt: 2 }}>
       <Typography variant="caption" color="text.secondary">
         理由コード: {summary.code} / 診断ID: {corrId}
       </Typography>
-      <Button variant="text" size="small" onClick={() => setOpen((prev) => !prev)}>
-        {open ? '詳細を隠す' : '詳細を表示'}
-      </Button>
+      <Stack direction="row" spacing={1} alignItems="center">
+        <Button variant="text" size="small" onClick={() => setOpen((prev) => !prev)}>
+          {open ? '詳細を隠す' : '詳細を表示'}
+        </Button>
+        <Button variant="outlined" size="small" onClick={handleCopy}>
+          {copied ? 'コピーしました' : '診断情報をコピー'}
+        </Button>
+      </Stack>
       {open && (
         <Paper variant="outlined" sx={{ width: '100%', p: 1 }}>
           <Typography
@@ -398,10 +464,19 @@ const AuthDiagnosticsPanel = ({ summary, corrId }: AuthDiagnosticsProps) => {
   );
 };
 
-const AuthRedirectingNotice = ({ flag, pendingPath, onSignIn, fallbackPath, diagSummary, corrId }: AuthNoticeProps) => {
+const AuthRedirectingNotice = ({
+  flag,
+  pendingPath,
+  onSignIn,
+  fallbackPath,
+  diagSummary,
+  corrId,
+  msalInstance,
+}: AuthNoticeProps) => {
   const [signingIn, setSigningIn] = useState(false);
+  const [clearing, setClearing] = useState(false);
 
-  const handleSignIn = async () => {
+  const handleForceSignIn = async () => {
     if (!onSignIn) {
       debug('Sign-in handler missing; redirecting to fallback for flag:', flag);
       if (typeof window !== 'undefined') {
@@ -422,6 +497,30 @@ const AuthRedirectingNotice = ({ flag, pendingPath, onSignIn, fallbackPath, diag
     }
   };
 
+  const handleClearCache = async () => {
+    try {
+      setClearing(true);
+      const removed = clearMsalCache();
+      console.info('[auth] msal cache cleared', { removed, corrId });
+      if (typeof window !== 'undefined') {
+        window.sessionStorage.setItem('postLoginRedirect', pendingPath);
+      }
+      if (msalInstance?.logoutRedirect) {
+        await msalInstance.logoutRedirect({
+          postLogoutRedirectUri: typeof window !== 'undefined' ? window.location.origin : undefined,
+        });
+        return;
+      }
+      if (typeof window !== 'undefined') {
+        window.location.assign(typeof fallbackPath === 'string' ? fallbackPath : '/');
+      }
+    } catch (error) {
+      console.error('[ProtectedRoute] cache clear logout failed', error);
+    } finally {
+      setClearing(false);
+    }
+  };
+
   return (
     <div style={{ display: 'flex', justifyContent: 'center', padding: '3rem 1rem' }}>
       <Paper elevation={1} sx={{ maxWidth: 520, width: '100%', padding: 4 }}>
@@ -434,11 +533,19 @@ const AuthRedirectingNotice = ({ flag, pendingPath, onSignIn, fallbackPath, diag
           </Typography>
           <Button
             variant="contained"
-            onClick={handleSignIn}
-            disabled={signingIn}
+            onClick={handleForceSignIn}
+            disabled={signingIn || clearing}
             sx={{ minWidth: 200 }}
           >
-            {signingIn ? '再ログイン中…' : '再ログインする'}
+            {signingIn ? '再ログイン中…' : '強制再ログイン'}
+          </Button>
+          <Button
+            variant="outlined"
+            onClick={handleClearCache}
+            disabled={signingIn || clearing}
+            sx={{ minWidth: 220 }}
+          >
+            {clearing ? 'キャッシュをクリア中…' : 'キャッシュクリアして再ログイン'}
           </Button>
           <Button
             variant="text"
@@ -451,6 +558,9 @@ const AuthRedirectingNotice = ({ flag, pendingPath, onSignIn, fallbackPath, diag
           >
             ホームに戻る
           </Button>
+          <Typography variant="caption" color="text.secondary" textAlign="center">
+            ① 強制再ログイン → ② キャッシュクリア → ③ 診断IDを共有
+          </Typography>
           {diagSummary && corrId && <AuthDiagnosticsPanel summary={diagSummary} corrId={corrId} />}
         </Stack>
       </Paper>
@@ -458,10 +568,19 @@ const AuthRedirectingNotice = ({ flag, pendingPath, onSignIn, fallbackPath, diag
   );
 };
 
-const AuthRequiredNotice = ({ flag, pendingPath, onSignIn, fallbackPath, diagSummary, corrId }: AuthNoticeProps) => {
+const AuthRequiredNotice = ({
+  flag,
+  pendingPath,
+  onSignIn,
+  fallbackPath,
+  diagSummary,
+  corrId,
+  msalInstance,
+}: AuthNoticeProps) => {
   const [signingIn, setSigningIn] = useState(false);
+  const [clearing, setClearing] = useState(false);
 
-  const handleSignIn = async () => {
+  const handleForceSignIn = async () => {
     if (!onSignIn) {
       debug('Sign-in handler missing; redirecting to fallback for flag:', flag);
       if (typeof window !== 'undefined') {
@@ -482,6 +601,30 @@ const AuthRequiredNotice = ({ flag, pendingPath, onSignIn, fallbackPath, diagSum
     }
   };
 
+  const handleClearCache = async () => {
+    try {
+      setClearing(true);
+      const removed = clearMsalCache();
+      console.info('[auth] msal cache cleared', { removed, corrId });
+      if (typeof window !== 'undefined') {
+        window.sessionStorage.setItem('postLoginRedirect', pendingPath);
+      }
+      if (msalInstance?.logoutRedirect) {
+        await msalInstance.logoutRedirect({
+          postLogoutRedirectUri: typeof window !== 'undefined' ? window.location.origin : undefined,
+        });
+        return;
+      }
+      if (typeof window !== 'undefined') {
+        window.location.assign(typeof fallbackPath === 'string' ? fallbackPath : '/');
+      }
+    } catch (error) {
+      console.error('[ProtectedRoute] cache clear logout failed', error);
+    } finally {
+      setClearing(false);
+    }
+  };
+
   return (
     <div style={{ display: 'flex', justifyContent: 'center', padding: '3rem 1rem' }}>
       <Paper elevation={1} sx={{ maxWidth: 480, width: '100%', padding: 4 }}>
@@ -494,11 +637,19 @@ const AuthRequiredNotice = ({ flag, pendingPath, onSignIn, fallbackPath, diagSum
           </Typography>
           <Button
             variant="contained"
-            onClick={handleSignIn}
-            disabled={signingIn}
+            onClick={handleForceSignIn}
+            disabled={signingIn || clearing}
             sx={{ minWidth: 180 }}
           >
-            {signingIn ? 'サインイン処理中…' : 'サインインする'}
+            {signingIn ? 'サインイン処理中…' : '強制再ログイン'}
+          </Button>
+          <Button
+            variant="outlined"
+            onClick={handleClearCache}
+            disabled={signingIn || clearing}
+            sx={{ minWidth: 220 }}
+          >
+            {clearing ? 'キャッシュをクリア中…' : 'キャッシュクリアして再ログイン'}
           </Button>
           <Button
             variant="text"
@@ -511,6 +662,9 @@ const AuthRequiredNotice = ({ flag, pendingPath, onSignIn, fallbackPath, diagSum
           >
             ホームに戻る
           </Button>
+          <Typography variant="caption" color="text.secondary" textAlign="center">
+            ① 強制再ログイン → ② キャッシュクリア → ③ 診断IDを共有
+          </Typography>
           {diagSummary && corrId && <AuthDiagnosticsPanel summary={diagSummary} corrId={corrId} />}
         </Stack>
       </Paper>

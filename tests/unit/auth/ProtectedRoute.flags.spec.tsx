@@ -139,7 +139,7 @@ describe('ProtectedRoute flag/skip-login behavior', () => {
   it('prompts sign-in when flag enabled, skip-login false, and user not authenticated', () => {
     renderWith(defaultFlags, { shouldSkipLogin: false, isAuthenticated: false });
     expect(screen.getByText('スケジュールを表示するには、サインインが必要です。')).toBeInTheDocument();
-    expect(screen.getByText('サインインする')).toBeInTheDocument();
+    expect(screen.getByText('強制再ログイン')).toBeInTheDocument();
   });
 
   it('redirects to fallback when schedules flag disabled (regardless of skip-login)', async () => {
