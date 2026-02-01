@@ -90,6 +90,19 @@ export default function StaffAttendanceMonthlySummaryPage() {
     ? lastFetchedAt.toLocaleString('ja-JP', { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' })
     : '—';
 
+  const monthLabel = monthValue || defaultMonthValue();
+  const generatedAtLabel = useMemo(() => {
+    const now = new Date();
+    return new Intl.DateTimeFormat('ja-JP', {
+      timeZone: 'Asia/Tokyo',
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+      hour: '2-digit',
+      minute: '2-digit',
+    }).format(now);
+  }, [lastFetchedAt, monthValue]);
+
   const CSV_BOM = '\ufeff';
 
   const csvEscape = (v: unknown): string => {
@@ -150,6 +163,7 @@ export default function StaffAttendanceMonthlySummaryPage() {
   const printStyles = (
     <GlobalStyles
       styles={{
+        '[data-print="only"]': { display: 'none' },
         '@page': {
           size: 'A4 portrait',
           margin: '10mm',
@@ -157,6 +171,7 @@ export default function StaffAttendanceMonthlySummaryPage() {
         '@media print': {
           // 画面用UIを消す
           '[data-print="hide"]': { display: 'none !important' },
+          '[data-print="only"]': { display: 'block !important' },
 
           // 余白・色・フォント
           body: {
@@ -193,6 +208,22 @@ export default function StaffAttendanceMonthlySummaryPage() {
             paddingBottom: '6px',
             fontSize: '11pt',
           },
+
+          thead: {
+            display: 'table-header-group',
+          },
+
+          '.print-footer': {
+            position: 'fixed',
+            right: '10mm',
+            bottom: '6mm',
+            fontSize: '10pt',
+            color: '#555',
+          },
+
+          '.print-page-number::after': {
+            content: '"Page " counter(page) " / " counter(pages)',
+          },
         },
       }}
     />
@@ -203,9 +234,14 @@ export default function StaffAttendanceMonthlySummaryPage() {
       {printStyles}
       <Box sx={{ p: 2 }}>
         <Stack spacing={2}>
+          <Box data-print="only">
+            <Typography variant="h6" sx={{ fontWeight: 700 }}>
+              勤怠 月次サマリー（{monthLabel}）
+            </Typography>
+          </Box>
         <Stack direction="row" alignItems="center" justifyContent="space-between" spacing={2}>
           <Typography variant="h5" sx={{ fontWeight: 700 }}>
-            勤怠 月次サマリー
+            勤怠 月次サマリー（{monthLabel}）
           </Typography>
           <Stack direction="row" spacing={1} data-print="hide">
             <Button
@@ -409,6 +445,17 @@ export default function StaffAttendanceMonthlySummaryPage() {
             </Table>
           )}
         </Paper>
+        <Box data-print="only" className="print-footer">
+          <Typography component="span" variant="caption" sx={{ color: 'text.secondary' }}>
+            Generated: {generatedAtLabel} JST
+          </Typography>
+          <Typography
+            component="span"
+            variant="caption"
+            className="print-page-number"
+            sx={{ ml: 1, color: 'text.secondary' }}
+          />
+        </Box>
       </Stack>
     </Box>
     </>
