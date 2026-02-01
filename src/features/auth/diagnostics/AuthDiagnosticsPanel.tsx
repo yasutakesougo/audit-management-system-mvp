@@ -49,9 +49,21 @@ export default function AuthDiagnosticsPanel({ limit = 10, pollInterval = 2000 }
   }, [limit]);
 
   useEffect(() => {
+    // Subscribe to new events
+    const unsubscribe = authDiagnostics.subscribe(() => {
+      refresh();
+    });
+
+    // Initial load
     refresh();
+
+    // Poll as fallback (in case listener updates are delayed)
     const timer = setInterval(refresh, pollInterval);
-    return () => clearInterval(timer);
+
+    return () => {
+      unsubscribe();
+      clearInterval(timer);
+    };
   }, [refresh, pollInterval]);
 
   const handleClear = () => {

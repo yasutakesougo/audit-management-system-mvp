@@ -5,5 +5,6 @@ export type {
   AuthDiagnosticOutcome,
   AuthDiagnosticReason,
   AuthDiagnosticCollectInput,
+  AuthDiagnosticsListener,
 } from './collector';
 export { default as AuthDiagnosticsPanel } from './AuthDiagnosticsPanel';
