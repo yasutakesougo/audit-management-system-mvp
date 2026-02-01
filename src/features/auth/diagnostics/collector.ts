@@ -51,11 +51,15 @@ type SnapshotStats = {
   recoveryRate: number; // recovered / (blocked + recovered)
 };
 
+/** Event listener callback type */
+export type AuthDiagnosticsListener = (event: AuthDiagnosticEvent) => void;
+
 export class AuthDiagnosticsCollector {
   private readonly maxSize: number;
   private events: AuthDiagnosticEvent[] = [];
   private lastKey: string | null = null;
   private lastKeyAt = 0;
+  private listeners: Set<AuthDiagnosticsListener> = new Set();
 
   constructor(maxSize: number = 100) {
     this.maxSize = Math.max(10, maxSize);
@@ -91,6 +95,16 @@ export class AuthDiagnosticsCollector {
       // 古いものから捨てる
       this.events = this.events.slice(this.events.length - this.maxSize);
     }
+
+    // Notify listeners
+    for (const listener of this.listeners) {
+      try {
+        listener(evt);
+      } catch (err) {
+        console.warn('[AuthDiagnosticsCollector] listener error', err);
+      }
+    }
+
     return evt;
   }
 
@@ -138,6 +152,20 @@ export class AuthDiagnosticsCollector {
       byOutcome,
       recoveryRate: this.getRecoveryRate(),
     };
+  }
+
+  /** Subscribe to diagnostic events */
+  subscribe(listener: AuthDiagnosticsListener): () => void {
+    this.listeners.add(listener);
+    // Return unsubscribe function
+    return () => {
+      this.listeners.delete(listener);
+    };
+  }
+
+  /** Unsubscribe from diagnostic events */
+  unsubscribe(listener: AuthDiagnosticsListener): void {
+    this.listeners.delete(listener);
   }
 
   clear(): void {
