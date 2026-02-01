@@ -1,12 +1,14 @@
 import { expect, test } from '@playwright/test';
 
 import { TESTIDS } from '../../src/testids';
+import { openMobileNav } from './_helpers/openMobileNav';
 import { bootstrapDashboard } from './utils/bootstrapApp';
 
 test.describe('Iceberg PDCA nav smoke', () => {
   test('navigates via nav and shows empty state for unmatched user', async ({ page }) => {
     await bootstrapDashboard(page, { skipLogin: true, featureSchedules: true, initialPath: '/dashboard' });
 
+    await openMobileNav(page); // Ensure nav is visible before clicking
     await page.getByTestId(TESTIDS.nav.icebergPdca).first().click();
     await expect(page).toHaveURL(/\/analysis\/iceberg-pdca/);
     await expect(page.getByTestId(TESTIDS['iceberg-pdca-root'])).toBeVisible();
