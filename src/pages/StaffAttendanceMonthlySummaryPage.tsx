@@ -16,6 +16,7 @@ import {
   TextField,
   Typography,
 } from "@mui/material";
+import DownloadIcon from "@mui/icons-material/Download";
 import PrintIcon from "@mui/icons-material/Print";
 
 import { useStaffAttendanceAdmin } from "@/features/staff/attendance/hooks/useStaffAttendanceAdmin";
@@ -89,6 +90,56 @@ export default function StaffAttendanceMonthlySummaryPage() {
     ? lastFetchedAt.toLocaleString('ja-JP', { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' })
     : '—';
 
+  const CSV_BOM = '\ufeff';
+
+  const csvEscape = (v: unknown): string => {
+    if (v === null || v === undefined) return '';
+    const s = String(v);
+    const escaped = s.replace(/"/g, '""');
+    return /[,"\r\n]/.test(escaped) ? `"${escaped}"` : escaped;
+  };
+
+  const toCsv = (headers: string[], rows: Array<Array<unknown>>): string => {
+    const head = headers.map(csvEscape).join(',');
+    const body = rows.map(r => r.map(csvEscape).join(',')).join('\n');
+    return `${CSV_BOM}${head}${rows.length ? '\n' : ''}${body}`;
+  };
+
+  const downloadTextFile = (filename: string, content: string) => {
+    const blob = new Blob([content], { type: 'text/csv;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+
+    URL.revokeObjectURL(url);
+  };
+
+  const handleExportCsv = () => {
+    const headers = ['職員ID', '氏名', '出勤', '欠勤', '遅刻', '早退', '合計'];
+
+    const rows = breakdown.map((r) => {
+      const staffName = resolveStaffName(r.staffId);
+      return [
+        r.staffId,
+        staffName,
+        r.countsByStatus['出勤'] ?? 0,
+        r.countsByStatus['欠勤'] ?? 0,
+        r.countsByStatus['遅刻'] ?? 0,
+        r.countsByStatus['早退'] ?? 0,
+        r.total,
+      ];
+    });
+
+    const csv = toCsv(headers, rows);
+    const ym = monthParam || monthValue || 'unknown-month';
+    downloadTextFile(`staff-attendance-summary_${ym}.csv`, csv);
+  };
+
   const resolveStaffName = (staffId: string): string => {
     // Try parsing as number for staffById Map lookup
     const numId = Number(staffId);
@@ -157,6 +208,16 @@ export default function StaffAttendanceMonthlySummaryPage() {
             勤怠 月次サマリー
           </Typography>
           <Stack direction="row" spacing={1} data-print="hide">
+            <Button
+              variant="outlined"
+              size="small"
+              startIcon={<DownloadIcon />}
+              onClick={handleExportCsv}
+              disabled={listLoading || breakdown.length === 0}
+              data-testid="staff-attendance-summary-csv"
+            >
+              CSV
+            </Button>
             <Button
               variant="outlined"
               startIcon={<PrintIcon />}
