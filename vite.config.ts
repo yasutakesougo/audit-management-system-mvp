@@ -111,11 +111,11 @@ export default defineConfig(({ mode }) => {
       },
     },
     server: {
-      host: '127.0.0.1',
+      host: 'localhost',
       port: 5173,
       strictPort: true,
       hmr: {
-        host: '127.0.0.1',
+        host: 'localhost',
         protocol: 'ws',
         clientPort: 5173,
       },
@@ -138,7 +138,7 @@ export default defineConfig(({ mode }) => {
       },
     },
     preview: {
-      host: '127.0.0.1',
+      host: 'localhost',
       port: 4173,
       strictPort: true,
       headers: {
