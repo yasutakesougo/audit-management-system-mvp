@@ -13,6 +13,10 @@ type State = {
   loading: boolean;
   error: string | null;
   saving: boolean;
+  listItems?: StaffAttendance[] | undefined;
+  listLoading?: boolean;
+  listError?: string | null;
+  listDateRange?: { from: string; to: string };
 };
 
 type SpCheckState = 'idle' | 'checking' | 'connected' | 'blocked';
@@ -22,6 +26,7 @@ const createBlockedPort = (message: string): StaffAttendancePort => ({
   remove: async () => result.forbidden(message),
   getByKey: async () => result.forbidden(message),
   listByDate: async () => result.forbidden(message),
+  listByDateRange: async () => result.forbidden(message),
   countByDate: async () => result.forbidden(message),
 });
 
@@ -171,6 +176,45 @@ export function useStaffAttendanceAdmin(recordDate: string) {
     [effectiveReadOnlyReason, port, refetch, writeEnabled]
   );
 
+  const fetchListByDateRange = React.useCallback(
+    async (from: string, to: string) => {
+      if (storageKind === 'sharepoint' && !spReady) {
+        setState((s) => ({ ...s, listLoading: false, listError: readOnlyReason ?? '接続不可' }));
+        return [];
+      }
+
+      setState((s) => ({ ...s, listLoading: true, listError: null, listDateRange: { from, to } }));
+
+      // listByDateRange メソッドが存在するか確認して呼び出し
+      const portWithRange = port as unknown as Record<string, unknown>;
+      if (typeof portWithRange.listByDateRange !== 'function') {
+        setState((s) => ({ ...s, listLoading: false, listError: 'List query not supported' }));
+        return [];
+      }
+
+      const res = await (portWithRange.listByDateRange as (from: string, to: string) => Promise<{ isOk: boolean; value?: StaffAttendance[]; error?: { kind: string; message: string } }>)(from, to);
+      if (res.isOk) {
+        setState((s) => ({ ...s, listItems: res.value ?? [], listLoading: false }));
+        return res.value ?? [];
+      }
+
+      if (res.error && res.error.kind === 'forbidden') {
+        const message = res.error.message || 'SharePoint にアクセスできません（権限不足）。';
+        setReadOnlyReason(message);
+        setState((s) => ({ ...s, listLoading: false, listError: null }));
+        return [];
+      }
+
+      setState((s) => ({
+        ...s,
+        listLoading: false,
+        listError: res.error?.message || res.error?.kind || 'unknown',
+      }));
+      return [];
+    },
+    [port, spReady, readOnlyReason, storageKind]
+  );
+
   return {
     ...state,
     writeEnabled,
@@ -182,6 +226,7 @@ export function useStaffAttendanceAdmin(recordDate: string) {
     connectionLabel,
     refetch,
     save,
+    fetchListByDateRange,
     // ✅ Bulk 用に公開（挙動は変えない）
     port,
     recordDate,

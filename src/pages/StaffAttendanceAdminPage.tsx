@@ -15,6 +15,7 @@ import {
   Button,
   ToggleButton,
   Checkbox,
+  Divider,
 } from '@mui/material';
 import { useStaffAttendanceAdmin } from '@/features/staff/attendance/hooks/useStaffAttendanceAdmin';
 import { useStaffAttendanceBulk } from '@/features/staff/attendance/hooks/useStaffAttendanceBulk';
@@ -31,8 +32,18 @@ function todayISO(): string {
   return `${yyyy}-${mm}-${dd}`;
 }
 
+function firstOfMonthISO(): string {
+  const d = new Date();
+  const yyyy = d.getFullYear();
+  const mm = String(d.getMonth() + 1).padStart(2, '0');
+  return `${yyyy}-${mm}-01`;
+}
+
 export default function StaffAttendanceAdminPage(): JSX.Element {
   const [date, setDate] = useState<string>(() => todayISO());
+  const [listDateFrom, setListDateFrom] = useState<string>(() => firstOfMonthISO());
+  const [listDateTo, setListDateTo] = useState<string>(() => todayISO());
+  
   const admin = useStaffAttendanceAdmin(date);
   const {
     items,
@@ -47,6 +58,10 @@ export default function StaffAttendanceAdminPage(): JSX.Element {
     readOnlyReason,
     connectionStatus,
     connectionLabel,
+    fetchListByDateRange,
+    listItems = [],
+    listLoading = false,
+    listError,
   } = admin;
 
   const bulk = useStaffAttendanceBulk({
@@ -245,6 +260,111 @@ export default function StaffAttendanceAdminPage(): JSX.Element {
         onChange={bulk.setValue}
         onSave={bulk.bulkSave}
       />
+
+      <Divider sx={{ my: 4 }} />
+
+      <Stack spacing={2}>
+        <Typography variant="h6" sx={{ fontWeight: 800 }}>
+          勤怠一覧（読み取り）
+        </Typography>
+
+        <Paper variant="outlined" sx={{ p: 2 }}>
+          <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2} alignItems={{ sm: 'center' }}>
+            <Typography sx={{ minWidth: 80, fontWeight: 700 }}>期間</Typography>
+            <Box>
+              <input
+                data-testid="staff-attendance-list-date-from"
+                type="date"
+                value={listDateFrom}
+                onChange={(e) => setListDateFrom(e.target.value)}
+                style={{
+                  padding: '8px',
+                  fontSize: '14px',
+                  border: '1px solid #ccc',
+                  borderRadius: '4px',
+                  marginRight: '8px',
+                }}
+              />
+              <span style={{ marginRight: '8px' }}>〜</span>
+              <input
+                data-testid="staff-attendance-list-date-to"
+                type="date"
+                value={listDateTo}
+                onChange={(e) => setListDateTo(e.target.value)}
+                style={{
+                  padding: '8px',
+                  fontSize: '14px',
+                  border: '1px solid #ccc',
+                  borderRadius: '4px',
+                }}
+              />
+            </Box>
+            <Button
+              variant="contained"
+              size="small"
+              onClick={() => fetchListByDateRange(listDateFrom, listDateTo)}
+              data-testid="staff-attendance-list-fetch"
+            >
+              検索
+            </Button>
+          </Stack>
+        </Paper>
+
+        <Paper variant="outlined" sx={{ p: 2 }}>
+          {listLoading && (
+            <Stack direction="row" spacing={2} alignItems="center">
+              <CircularProgress size={20} />
+              <Typography>読み込み中…</Typography>
+            </Stack>
+          )}
+
+          {listError && (
+            <Alert severity="error" data-testid="staff-attendance-list-error">
+              {listError}
+            </Alert>
+          )}
+
+          {!listLoading && listItems.length === 0 && !listError && (
+            <Alert severity="info" data-testid="staff-attendance-list-empty">
+              期間内に勤怠データがありません。
+            </Alert>
+          )}
+
+          {!listLoading && listItems.length > 0 && (
+            <Table size="small" data-testid="staff-attendance-list-table">
+              <TableHead>
+                <TableRow>
+                  <TableCell sx={{ fontWeight: 800 }}>日付</TableCell>
+                  <TableCell sx={{ fontWeight: 800 }}>職員ID</TableCell>
+                  <TableCell sx={{ fontWeight: 800 }}>ステータス</TableCell>
+                  <TableCell sx={{ fontWeight: 800 }}>備考</TableCell>
+                  <TableCell sx={{ fontWeight: 800 }}>チェックイン</TableCell>
+                  <TableCell sx={{ fontWeight: 800 }}>チェックアウト</TableCell>
+                </TableRow>
+              </TableHead>
+              <TableBody>
+                {listItems.map((it) => (
+                  <TableRow
+                    key={`${it.recordDate}#${it.staffId}`}
+                    data-testid={`staff-attendance-list-row-${it.recordDate}-${it.staffId}`}
+                  >
+                    <TableCell>{it.recordDate}</TableCell>
+                    <TableCell>{it.staffId}</TableCell>
+                    <TableCell>{it.status}</TableCell>
+                    <TableCell>{it.note ?? '—'}</TableCell>
+                    <TableCell>
+                      {it.checkInAt ? new Date(it.checkInAt).toLocaleTimeString('ja-JP', { hour: '2-digit', minute: '2-digit' }) : '—'}
+                    </TableCell>
+                    <TableCell>
+                      {it.checkOutAt ? new Date(it.checkOutAt).toLocaleTimeString('ja-JP', { hour: '2-digit', minute: '2-digit' }) : '—'}
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          )}
+        </Paper>
+      </Stack>
     </Box>
   );
 }
