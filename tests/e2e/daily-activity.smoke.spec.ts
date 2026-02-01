@@ -1,5 +1,6 @@
 import { expect, test } from '@playwright/test';
 import { bootDaily } from './_helpers/bootDaily';
+import { openMobileNav } from './_helpers/openMobileNav';
 
 // Smoke: /daily/activity happy path navigation and quick sanity checks
 // - open activity list
@@ -23,6 +24,7 @@ test.describe('Daily activity smoke', () => {
     await expect(page.getByText('佐藤花子', { exact: false })).toBeVisible();
 
     // Navigate back to the daily hub via top nav (fallback to direct route if nav is already active)
+    await openMobileNav(page); // Ensure nav is visible before clicking
     await page.getByTestId('nav-daily').first().click();
     await expect(page).toHaveURL(/\/daily$/).catch(async () => {
       await page.goto('/daily');
