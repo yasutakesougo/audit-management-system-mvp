@@ -5,6 +5,7 @@ import { getAppConfig, isDemoModeEnabled, readEnv } from '@/lib/env';
 import { InteractionStatus } from '@/auth/interactionStatus';
 import { createSpClient, ensureConfig } from '@/lib/spClient';
 import { buildAuthDiagCopyText, createAuthCorrId, summarizeAuthBlockReason, type AuthDiagSummary } from '@/lib/authDiag';
+import { authDiagnostics } from '@/features/auth/diagnostics/collector';
 import Button from '@mui/material/Button';
 import Paper from '@mui/material/Paper';
 import Stack from '@mui/material/Stack';
@@ -207,6 +208,13 @@ export default function ProtectedRoute({ flag, children, fallbackPath = '/' }: P
       route: pendingPath,
     });
     logAuthDiag(summary);
+    authDiagnostics.collect({
+      route: pendingPath ?? '',
+      reason: summary.code,
+      outcome: 'blocked',
+      correlationId: corrId,
+      detail: summary.detail,
+    });
     debug('MSAL interaction in progress for flag:', flag, 'status:', inProgress);
     return (
       <AuthRedirectingNotice
@@ -233,6 +241,13 @@ export default function ProtectedRoute({ flag, children, fallbackPath = '/' }: P
       route: pendingPath,
     });
     logAuthDiag(summary);
+    authDiagnostics.collect({
+      route: pendingPath ?? '',
+      reason: summary.code,
+      outcome: 'blocked',
+      correlationId: corrId,
+      detail: summary.detail,
+    });
     debug('Auth still loading for flag:', flag);
     return (
       <div style={{ padding: '2rem', textAlign: 'center' }}>
@@ -256,6 +271,13 @@ export default function ProtectedRoute({ flag, children, fallbackPath = '/' }: P
       route: pendingPath,
     });
     logAuthDiag(summary);
+    authDiagnostics.collect({
+      route: pendingPath ?? '',
+      reason: summary.code,
+      outcome: 'blocked',
+      correlationId: corrId,
+      detail: summary.detail,
+    });
     debug('User not authenticated for flag:', flag, '- prompting sign-in');
     return (
       <AuthRequiredNotice
@@ -284,6 +306,13 @@ export default function ProtectedRoute({ flag, children, fallbackPath = '/' }: P
       route: pendingPath,
     });
     logAuthDiag(summary);
+    authDiagnostics.collect({
+      route: pendingPath ?? '',
+      reason: summary.code,
+      outcome: 'blocked',
+      correlationId: corrId,
+      detail: summary.detail,
+    });
     debug('Token acquisition in progress; waiting for completion for flag:', flag);
     return (
       <div style={{ padding: '2rem', textAlign: 'center' }}>
@@ -310,6 +339,13 @@ export default function ProtectedRoute({ flag, children, fallbackPath = '/' }: P
         route: pendingPath,
       });
       logAuthDiag(summary);
+      authDiagnostics.collect({
+        route: pendingPath ?? '',
+        reason: summary.code,
+        outcome: 'blocked',
+        correlationId: corrId,
+        detail: summary.detail,
+      });
       debug('List check failed (404/error) for flag:', flag);
       return (
         <div style={{ padding: '2rem', textAlign: 'center', color: '#d32f2f' }}>
@@ -335,6 +371,13 @@ export default function ProtectedRoute({ flag, children, fallbackPath = '/' }: P
       route: pendingPath,
     });
     logAuthDiag(summary);
+    authDiagnostics.collect({
+      route: pendingPath ?? '',
+      reason: summary.code,
+      outcome: 'blocked',
+      correlationId: corrId,
+      detail: summary.detail,
+    });
     debug('List existence check in progress for flag:', flag);
     return (
       <div style={{ padding: '2rem', textAlign: 'center' }}>
@@ -435,6 +478,13 @@ const AuthDiagnosticsPanel = ({ summary, corrId }: AuthDiagnosticsProps) => {
     const text = buildDiagCopyText(summary, corrId);
     const ok = await copyToClipboard(text);
     setCopied(ok);
+    // Collect manual-fix action (copying diagnostics for support)
+    authDiagnostics.collect({
+      route: typeof window !== 'undefined' ? window.location.pathname : '',
+      reason: summary.code,
+      outcome: 'manual-fix',
+      correlationId: corrId,
+    });
   };
   return (
     <Stack spacing={1} alignItems="center" sx={{ mt: 2 }}>
@@ -489,6 +539,15 @@ const AuthRedirectingNotice = ({
       if (typeof window !== 'undefined') {
         window.sessionStorage.setItem('postLoginRedirect', pendingPath);
       }
+      // Collect recovery attempt
+      if (diagSummary && corrId) {
+        authDiagnostics.collect({
+          route: pendingPath ?? '',
+          reason: diagSummary.code,
+          outcome: 'recovered',
+          correlationId: corrId,
+        });
+      }
       await onSignIn();
     } catch (error) {
       console.error('[ProtectedRoute] re-login failed', error);
@@ -504,6 +563,15 @@ const AuthRedirectingNotice = ({
       console.info('[auth] msal cache cleared', { removed, corrId });
       if (typeof window !== 'undefined') {
         window.sessionStorage.setItem('postLoginRedirect', pendingPath);
+      }
+      // Collect cache clear recovery attempt
+      if (diagSummary && corrId) {
+        authDiagnostics.collect({
+          route: pendingPath ?? '',
+          reason: diagSummary.code,
+          outcome: 'recovered',
+          correlationId: corrId,
+        });
       }
       if (msalInstance?.logoutRedirect) {
         await msalInstance.logoutRedirect({
@@ -593,6 +661,15 @@ const AuthRequiredNotice = ({
       if (typeof window !== 'undefined') {
         window.sessionStorage.setItem('postLoginRedirect', pendingPath);
       }
+      // Collect recovery attempt
+      if (diagSummary && corrId) {
+        authDiagnostics.collect({
+          route: pendingPath ?? '',
+          reason: diagSummary.code,
+          outcome: 'recovered',
+          correlationId: corrId,
+        });
+      }
       await onSignIn();
     } catch (error) {
       console.error('[ProtectedRoute] sign-in failed', error);
@@ -608,6 +685,15 @@ const AuthRequiredNotice = ({
       console.info('[auth] msal cache cleared', { removed, corrId });
       if (typeof window !== 'undefined') {
         window.sessionStorage.setItem('postLoginRedirect', pendingPath);
+      }
+      // Collect cache clear recovery attempt
+      if (diagSummary && corrId) {
+        authDiagnostics.collect({
+          route: pendingPath ?? '',
+          reason: diagSummary.code,
+          outcome: 'recovered',
+          correlationId: corrId,
+        });
       }
       if (msalInstance?.logoutRedirect) {
         await msalInstance.logoutRedirect({
