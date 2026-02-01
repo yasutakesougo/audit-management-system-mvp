@@ -23,6 +23,7 @@ import { useStaffAttendanceAdmin } from '@/features/staff/attendance/hooks/useSt
 import { useStaffAttendanceBulk } from '@/features/staff/attendance/hooks/useStaffAttendanceBulk';
 import { StaffAttendanceEditDialog } from '@/features/staff/attendance/components/StaffAttendanceEditDialog';
 import { StaffAttendanceBulkInputDrawer } from '@/features/staff/attendance/components/StaffAttendanceBulkInputDrawer';
+import { useStaffStore } from '@/features/staff/store';
 import type { StaffAttendance } from '@/features/staff/attendance/types';
 
 function todayISO(): string {
@@ -41,12 +42,45 @@ function firstOfMonthISO(): string {
   return `${yyyy}-${mm}-01`;
 }
 
+function toISODate(d: Date): string {
+  const yyyy = d.getFullYear();
+  const mm = String(d.getMonth() + 1).padStart(2, '0');
+  const dd = String(d.getDate()).padStart(2, '0');
+  return `${yyyy}-${mm}-${dd}`;
+}
+
+function startOfMonthISO(base: Date): string {
+  return `${base.getFullYear()}-${String(base.getMonth() + 1).padStart(2, '0')}-01`;
+}
+
+function endOfMonthISO(base: Date): string {
+  const d = new Date(base.getFullYear(), base.getMonth() + 1, 0);
+  return toISODate(d);
+}
+
+function startOfWeekISO(base: Date): string {
+  const d = new Date(base);
+  const day = d.getDay();
+  const diff = (day + 6) % 7; // 月曜始まり
+  d.setDate(d.getDate() - diff);
+  return toISODate(d);
+}
+
+function endOfWeekISO(base: Date): string {
+  const d = new Date(base);
+  const day = d.getDay();
+  const diff = 6 - ((day + 6) % 7); // 日曜終わり
+  d.setDate(d.getDate() + diff);
+  return toISODate(d);
+}
+
 export default function StaffAttendanceAdminPage(): JSX.Element {
   const [date, setDate] = useState<string>(() => todayISO());
   const [listDateFrom, setListDateFrom] = useState<string>(() => firstOfMonthISO());
   const [listDateTo, setListDateTo] = useState<string>(() => todayISO());
   
   const [searchParams, setSearchParams] = useSearchParams();
+  const { data: staffData } = useStaffStore();
 
   const readCsvParam = (key: string): Set<string> => {
     const raw = searchParams.get(key);
@@ -122,12 +156,64 @@ export default function StaffAttendanceAdminPage(): JSX.Element {
     });
   }, [listItems, selectedStaffIds, selectedStatuses]);
 
+  const staffNameMap = useMemo(() => {
+    const map = new Map<string, string>();
+    (staffData ?? []).forEach((staff) => {
+      const key = (staff.staffId ?? '').trim() || (staff.id != null ? String(staff.id) : '');
+      if (!key) return;
+      const name = (staff.name ?? '').trim();
+      map.set(key, name || key);
+    });
+    return map;
+  }, [staffData]);
+
+  const formatStaffLabel = useCallback(
+    (staffId: string | null | undefined) => {
+      const key = (staffId ?? '').trim();
+      if (!key) return '—';
+      const name = staffNameMap.get(key);
+      if (name && name !== key) return `${name}（${key}）`;
+      return key;
+    },
+    [staffNameMap],
+  );
+
   // CSV Export Helpers
   const csvEscape = (v: unknown) => {
     const s = v == null ? '' : String(v);
-    if (/[",\n]/.test(s)) return `"${s.replace(/"/g, '""')}`;
+    if (/[",\n]/.test(s)) return `"${s.replace(/"/g, '""')}"`;
     return s;
   };
+
+  const applyPresetRange = useCallback(
+    (from: string, to: string) => {
+      setListDateFrom(from);
+      setListDateTo(to);
+    },
+    [],
+  );
+
+  const handlePresetThisMonth = useCallback(() => {
+    const now = new Date();
+    const from = startOfMonthISO(now);
+    const to = endOfMonthISO(now);
+    applyPresetRange(from, to);
+  }, [applyPresetRange]);
+
+  const handlePresetLastMonth = useCallback(() => {
+    const base = new Date();
+    base.setMonth(base.getMonth() - 1);
+    const from = startOfMonthISO(base);
+    const to = endOfMonthISO(base);
+    applyPresetRange(from, to);
+  }, [applyPresetRange]);
+
+  const handlePresetThisWeek = useCallback(() => {
+    const now = new Date();
+    const from = startOfWeekISO(now);
+    const to = endOfWeekISO(now);
+    applyPresetRange(from, to);
+  }, [applyPresetRange]);
 
   const toCsv = (rows: Array<Record<string, unknown>>, headers: Array<[string, string]>) => {
     const headerLine = headers.map(([, label]) => csvEscape(label)).join(',');
@@ -313,7 +399,7 @@ export default function StaffAttendanceAdminPage(): JSX.Element {
               <TableHead>
                 <TableRow>
                   {bulk.bulkMode && <TableCell sx={{ width: 48 }} />}
-                  <TableCell sx={{ fontWeight: 800 }}>職員ID</TableCell>
+                  <TableCell sx={{ fontWeight: 800 }}>職員</TableCell>
                   <TableCell sx={{ fontWeight: 800 }}>ステータス</TableCell>
                   <TableCell sx={{ fontWeight: 800 }}>備考</TableCell>
                   <TableCell sx={{ fontWeight: 800 }}>チェックイン</TableCell>
@@ -341,7 +427,7 @@ export default function StaffAttendanceAdminPage(): JSX.Element {
                         />
                       </TableCell>
                     )}
-                    <TableCell>{it.staffId}</TableCell>
+                    <TableCell>{formatStaffLabel(it.staffId)}</TableCell>
                     <TableCell>{it.status}</TableCell>
                     <TableCell>{it.note ?? '—'}</TableCell>
                     <TableCell>
@@ -415,6 +501,29 @@ export default function StaffAttendanceAdminPage(): JSX.Element {
                 }}
               />
             </Box>
+            <Stack direction="row" spacing={1} alignItems="center" sx={{ flexWrap: 'wrap' }}>
+              <Chip
+                label="今月"
+                size="small"
+                onClick={handlePresetThisMonth}
+                variant="outlined"
+                clickable
+              />
+              <Chip
+                label="先月"
+                size="small"
+                onClick={handlePresetLastMonth}
+                variant="outlined"
+                clickable
+              />
+              <Chip
+                label="今週"
+                size="small"
+                onClick={handlePresetThisWeek}
+                variant="outlined"
+                clickable
+              />
+            </Stack>
             <Button
               variant="contained"
               size="small"
@@ -447,7 +556,7 @@ export default function StaffAttendanceAdminPage(): JSX.Element {
                 {Array.from(selectedStaffIds).map((id) => (
                   <Chip
                     key={`staff-${id}`}
-                    label={`職員: ${id}`}
+                    label={`職員: ${formatStaffLabel(id)}`}
                     onDelete={() => {
                       const next = new Set(selectedStaffIds);
                       next.delete(id);
@@ -499,7 +608,7 @@ export default function StaffAttendanceAdminPage(): JSX.Element {
                     uniqueStaffIds.map((id) => (
                       <Chip
                         key={`filter-staff-${id}`}
-                        label={id}
+                        label={formatStaffLabel(id)}
                         onClick={() => {
                           const next = new Set(selectedStaffIds);
                           if (next.has(id)) next.delete(id);
@@ -548,6 +657,11 @@ export default function StaffAttendanceAdminPage(): JSX.Element {
         </Paper>
 
         <Paper variant="outlined" sx={{ p: 2 }}>
+          <Box sx={{ display: 'flex', justifyContent: 'flex-end', mb: 1 }}>
+            <Typography variant="caption" color="text.secondary" data-testid="staff-attendance-list-count">
+              表示 {filteredListItems.length} / 全体 {listItems.length}
+            </Typography>
+          </Box>
           {listLoading && (
             <Stack direction="row" spacing={2} alignItems="center">
               <CircularProgress size={20} />
@@ -572,7 +686,7 @@ export default function StaffAttendanceAdminPage(): JSX.Element {
               <TableHead>
                 <TableRow>
                   <TableCell sx={{ fontWeight: 800 }}>日付</TableCell>
-                  <TableCell sx={{ fontWeight: 800 }}>職員ID</TableCell>
+                  <TableCell sx={{ fontWeight: 800 }}>職員</TableCell>
                   <TableCell sx={{ fontWeight: 800 }}>ステータス</TableCell>
                   <TableCell sx={{ fontWeight: 800 }}>備考</TableCell>
                   <TableCell sx={{ fontWeight: 800 }}>チェックイン</TableCell>
@@ -586,7 +700,7 @@ export default function StaffAttendanceAdminPage(): JSX.Element {
                     data-testid={`staff-attendance-list-row-${it.recordDate}-${it.staffId}`}
                   >
                     <TableCell>{it.recordDate}</TableCell>
-                    <TableCell>{it.staffId}</TableCell>
+                    <TableCell>{formatStaffLabel(it.staffId)}</TableCell>
                     <TableCell>{it.status}</TableCell>
                     <TableCell>{it.note ?? '—'}</TableCell>
                     <TableCell>
