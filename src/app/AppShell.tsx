@@ -37,6 +37,7 @@ import { useUserAuthz } from '@/auth/useUserAuthz';
 import NavLinkPrefetch from '@/components/NavLinkPrefetch';
 import { useFeatureFlags } from '@/config/featureFlags';
 import { useAuthStore } from '@/features/auth/store';
+import { AuthDiagnosticsPanel } from '@/features/auth/diagnostics';
 import { useDashboardPath } from '@/features/dashboard/dashboardRouting';
 import { HandoffQuickNoteCard } from '@/features/handoff/HandoffQuickNoteCard';
 import RouteHydrationListener from '@/hydration/RouteHydrationListener';
@@ -656,6 +657,7 @@ const AppShell: React.FC<{ children: React.ReactNode }> = ({ children }) => {
         }) }}>
           {children}
         </Container>
+        {import.meta.env.DEV && <AuthDiagnosticsPanel limit={15} pollInterval={2000} />}
         <FooterQuickActions />
       </div>
       </LiveAnnouncer>

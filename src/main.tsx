@@ -208,6 +208,17 @@ const run = async (): Promise<void> => {
       finalizeHydrationSpan(completeMetrics, error);
     });
 
+  // ✅ DEV: Expose authDiagnostics to window for debugging
+  if (import.meta.env.DEV && hasWindow) {
+    void import('./features/auth/diagnostics/collector')
+      .then(({ exposeAuthDiagnosticsToWindow }) => {
+        exposeAuthDiagnosticsToWindow();
+      })
+      .catch((error) => {
+        console.warn('[main] failed to expose authDiagnostics to window', error);
+      });
+  }
+
   const envSnapshot = (getRuntimeEnv() as EnvRecord) ?? null;
 
   try {
