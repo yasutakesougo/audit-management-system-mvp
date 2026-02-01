@@ -18,6 +18,7 @@ import {
   Checkbox,
   Divider,
 } from '@mui/material';
+import DownloadIcon from '@mui/icons-material/Download';
 import { useStaffAttendanceAdmin } from '@/features/staff/attendance/hooks/useStaffAttendanceAdmin';
 import { useStaffAttendanceBulk } from '@/features/staff/attendance/hooks/useStaffAttendanceBulk';
 import { StaffAttendanceEditDialog } from '@/features/staff/attendance/components/StaffAttendanceEditDialog';
@@ -120,6 +121,64 @@ export default function StaffAttendanceAdminPage(): JSX.Element {
       return staffMatch && statusMatch;
     });
   }, [listItems, selectedStaffIds, selectedStatuses]);
+
+  // CSV Export Helpers
+  const csvEscape = (v: unknown) => {
+    const s = v == null ? '' : String(v);
+    if (/[",\n]/.test(s)) return `"${s.replace(/"/g, '""')}`;
+    return s;
+  };
+
+  const toCsv = (rows: Array<Record<string, unknown>>, headers: Array<[string, string]>) => {
+    const headerLine = headers.map(([, label]) => csvEscape(label)).join(',');
+    const lines = rows.map((r) => headers.map(([key]) => csvEscape(r[key])).join(','));
+    // Excel対策: UTF-8 BOM
+    return `\ufeff${headerLine}\n${lines.join('\n')}\n`;
+  };
+
+  const downloadTextFile = (content: string, filename: string, mime = 'text/csv;charset=utf-8') => {
+    const blob = new Blob([content], { type: mime });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
+  };
+
+  const handleExportCsv = () => {
+    const headers: Array<[string, string]> = [
+      ['recordDate', '日付'],
+      ['staffId', '職員ID'],
+      ['status', 'ステータス'],
+      ['checkInAt', '出勤時刻'],
+      ['checkOutAt', '退勤時刻'],
+      ['lateMinutes', '遅刻（分）'],
+      ['note', '備考'],
+    ];
+
+    const rows = filteredListItems.map((it) => ({
+      recordDate: it.recordDate,
+      staffId: it.staffId,
+      status: it.status,
+      checkInAt: it.checkInAt ?? '',
+      checkOutAt: it.checkOutAt ?? '',
+      lateMinutes: it.lateMinutes ?? '',
+      note: it.note ?? '',
+    }));
+
+    const staffSuffix =
+      selectedStaffIds.size > 0 ? `_staff-${Array.from(selectedStaffIds).join('-')}` : '';
+    const statusSuffix =
+      selectedStatuses.size > 0 ? `_status-${Array.from(selectedStatuses).join('-')}` : '';
+
+    const filename = `staff-attendance_${listDateFrom}_${listDateTo}${staffSuffix}${statusSuffix}.csv`;
+
+    const csv = toCsv(rows, headers);
+    downloadTextFile(csv, filename);
+  };
 
   const bulk = useStaffAttendanceBulk({
     port,
@@ -363,6 +422,16 @@ export default function StaffAttendanceAdminPage(): JSX.Element {
               data-testid="staff-attendance-list-fetch"
             >
               検索
+            </Button>
+            <Button
+              variant="outlined"
+              size="small"
+              startIcon={<DownloadIcon />}
+              onClick={handleExportCsv}
+              disabled={filteredListItems.length === 0 || listLoading}
+              data-testid="staff-attendance-export-csv"
+            >
+              CSVエクスポート
             </Button>
           </Stack>
         </Paper>
