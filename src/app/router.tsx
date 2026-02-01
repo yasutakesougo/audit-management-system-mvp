@@ -67,6 +67,7 @@ const StaffAttendanceInput = React.lazy(() =>
 );
 
 const StaffAttendanceAdminPage = React.lazy(() => import('@/pages/StaffAttendanceAdminPage'));
+const StaffAttendanceMonthlySummaryPage = React.lazy(() => import('@/pages/StaffAttendanceMonthlySummaryPage'));
 
 // Diagnostics pages
 const HealthPage = React.lazy(() => import('@/pages/HealthPage'));
@@ -567,6 +568,24 @@ const childRoutes: RouteObject[] = [
             )}
           >
             <StaffAttendanceAdminPage />
+          </React.Suspense>
+        </RouteHydrationErrorBoundary>
+      </AdminGate>
+    ),
+  },
+  {
+    path: 'admin/staff-attendance/summary',
+    element: (
+      <AdminGate>
+        <RouteHydrationErrorBoundary>
+          <React.Suspense
+            fallback={(
+              <div className="p-4 text-sm text-slate-600" role="status">
+                月次サマリーを読み込んでいます…
+              </div>
+            )}
+          >
+            <StaffAttendanceMonthlySummaryPage />
           </React.Suspense>
         </RouteHydrationErrorBoundary>
       </AdminGate>
