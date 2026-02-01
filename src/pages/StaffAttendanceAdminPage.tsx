@@ -1,5 +1,5 @@
 import { useState, useMemo, useCallback } from 'react';
-import { useSearchParams } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 import {
   Box,
   Paper,
@@ -466,9 +466,19 @@ export default function StaffAttendanceAdminPage(): JSX.Element {
       <Divider sx={{ my: 4 }} />
 
       <Stack spacing={2}>
-        <Typography variant="h6" sx={{ fontWeight: 800 }}>
-          勤怠一覧（読み取り）
-        </Typography>
+        <Stack direction="row" alignItems="center" justifyContent="space-between" spacing={2}>
+          <Typography variant="h6" sx={{ fontWeight: 800 }}>
+            勤怠一覧（読み取り）
+          </Typography>
+          <Button
+            component={Link}
+            to="/admin/staff-attendance/summary"
+            size="small"
+            variant="outlined"
+          >
+            月次サマリーへ
+          </Button>
+        </Stack>
 
         <Paper variant="outlined" sx={{ p: 2 }}>
           <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2} alignItems={{ sm: 'center' }}>
