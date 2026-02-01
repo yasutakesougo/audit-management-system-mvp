@@ -165,13 +165,25 @@ export const createSharePointStaffAttendanceAdapter = (options: SharePointAdapte
         const sp = assertClient();
         const filter = `${STAFF_ATTENDANCE_FIELDS.recordDate} ge '${escapeODataString(from)}' and ${STAFF_ATTENDANCE_FIELDS.recordDate} le '${escapeODataString(to)}'`;
         const orderby = `${STAFF_ATTENDANCE_FIELDS.recordDate} desc, ${STAFF_ATTENDANCE_FIELDS.staffId} asc`;
-        const rows = await sp.getListItemsByTitle<SharePointAttendanceRow>(
-          listTitle,
-          defaultSelect,
+        
+        // Use listItems with nextLink pagination support
+        // Safety cap: 10 pages × 200 items per page = 2000 items max
+        const maxPages = 10;
+        const rows = await sp.listItems<SharePointAttendanceRow>(listTitle, {
+          select: defaultSelect,
           filter,
           orderby,
           top,
-        );
+          pageCap: maxPages,
+        });
+        
+        if (rows.length >= top * maxPages) {
+          return result.err({
+            kind: 'validation',
+            message: `Read list exceeded max items (${top * maxPages}). Please refine date range.`,
+          });
+        }
+        
         const list = (rows ?? []).map(toAttendance).filter((v): v is StaffAttendance => Boolean(v));
         return result.ok(list);
       } catch (error) {
