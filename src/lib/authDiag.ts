@@ -25,6 +25,14 @@ export type AuthDiagSummary = {
   detail: Record<string, unknown>;
 };
 
+export type AuthDiagCopyInput = {
+  summary: AuthDiagSummary;
+  corrId: string;
+  url?: string;
+  userAgent?: string;
+  timestamp?: string;
+};
+
 export const createAuthCorrId = (prefix: string = 'AUTH'): string => {
   const now = new Date();
   const date = `${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, '0')}${String(
@@ -76,4 +84,20 @@ export const summarizeAuthBlockReason = (input: AuthDiagInput): AuthDiagSummary 
   }
 
   return { code: 'UNKNOWN', message: '状態確認中', detail: baseDetail };
+};
+
+export const buildAuthDiagCopyText = ({ summary, corrId, url, userAgent, timestamp }: AuthDiagCopyInput): string => {
+  const safeTimestamp = timestamp ?? new Date().toISOString();
+  const safeUrl = url ?? '';
+  const safeUa = userAgent ?? '';
+  const detail = JSON.stringify(summary.detail, null, 2);
+  return [
+    `ReasonCode: ${summary.code}`,
+    `CorrelationId: ${corrId}`,
+    `Message: ${summary.message}`,
+    `Timestamp: ${safeTimestamp}`,
+    `URL: ${safeUrl}`,
+    `UserAgent: ${safeUa}`,
+    `Detail: ${detail}`,
+  ].join('\n');
 };
