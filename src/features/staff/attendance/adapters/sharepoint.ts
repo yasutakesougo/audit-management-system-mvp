@@ -160,6 +160,25 @@ export const createSharePointStaffAttendanceAdapter = (options: SharePointAdapte
       }
     },
 
+    async listByDateRange(from: string, to: string, top = 200): Promise<Result<StaffAttendance[]>> {
+      try {
+        const sp = assertClient();
+        const filter = `${STAFF_ATTENDANCE_FIELDS.recordDate} ge '${escapeODataString(from)}' and ${STAFF_ATTENDANCE_FIELDS.recordDate} le '${escapeODataString(to)}'`;
+        const orderby = `${STAFF_ATTENDANCE_FIELDS.recordDate} desc, ${STAFF_ATTENDANCE_FIELDS.staffId} asc`;
+        const rows = await sp.getListItemsByTitle<SharePointAttendanceRow>(
+          listTitle,
+          defaultSelect,
+          filter,
+          orderby,
+          top,
+        );
+        const list = (rows ?? []).map(toAttendance).filter((v): v is StaffAttendance => Boolean(v));
+        return result.ok(list);
+      } catch (error) {
+        return result.err(toResultError(error));
+      }
+    },
+
     async countByDate(date: string): Promise<Result<AttendanceCounts>> {
       try {
         const listResult = await this.listByDate(date);

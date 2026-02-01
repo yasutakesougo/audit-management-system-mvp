@@ -66,6 +66,18 @@ export const createLocalStorageAdapter = (): StaffAttendancePort => ({
     }
   },
 
+  async listByDateRange(from: string, to: string): Promise<Result<StaffAttendance[]>> {
+    try {
+      const store = useStaffAttendanceStore();
+      // In-memory: filter all records by date range
+      const allRecords = store.listByDate(from as RecordDate);
+      const filtered = allRecords.filter((r) => r.recordDate >= from && r.recordDate <= to);
+      return result.ok(filtered);
+    } catch (e) {
+      return result.unknown('Failed to list attendance by range', e);
+    }
+  },
+
   async countByDate(date: string): Promise<Result<AttendanceCounts>> {
     try {
       const store = useStaffAttendanceStore();
