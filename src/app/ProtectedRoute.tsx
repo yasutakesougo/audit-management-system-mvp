@@ -4,6 +4,7 @@ import { isE2E } from '@/env';
 import { getAppConfig, isDemoModeEnabled, readEnv } from '@/lib/env';
 import { InteractionStatus } from '@/auth/interactionStatus';
 import { createSpClient, ensureConfig } from '@/lib/spClient';
+import { createAuthCorrId, summarizeAuthBlockReason, type AuthDiagSummary } from '@/lib/authDiag';
 import Button from '@mui/material/Button';
 import Paper from '@mui/material/Paper';
 import Stack from '@mui/material/Stack';
@@ -82,6 +83,24 @@ export default function ProtectedRoute({ flag, children, fallbackPath = '/' }: P
   const signInAttemptedRef = useRef(false);
   const [listGate, setListGate] = useState<ListGate>('idle');
   const isMsalInProgress = inProgress !== InteractionStatus.None && inProgress !== 'none';
+  const corrIdRef = useRef<string | null>(null);
+  const lastDiagCodeRef = useRef<AuthDiagSummary['code'] | null>(null);
+  if (!corrIdRef.current) {
+    corrIdRef.current = createAuthCorrId('AUTH');
+  }
+  const corrId = corrIdRef.current;
+
+  const logAuthDiag = (summary: AuthDiagSummary) => {
+    if (lastDiagCodeRef.current === summary.code) return;
+    lastDiagCodeRef.current = summary.code;
+    console.info('[auth]', {
+      code: summary.code,
+      inProgress,
+      route: pendingPath,
+      corrId,
+      detail: summary.detail,
+    });
+  };
 
   const isAutomationOrDemo = isAutomationRuntime() || isDemoModeEnabled();
   const allowBypass = isAutomationOrDemo || isSkipLoginEnabled() || !isMsalConfigured();
@@ -177,6 +196,17 @@ export default function ProtectedRoute({ flag, children, fallbackPath = '/' }: P
   }
 
   if (isMsalInProgress) {
+    const summary = summarizeAuthBlockReason({
+      inProgress,
+      isAuthenticated,
+      loading,
+      tokenReady,
+      listGate: flag === 'schedules' ? listGate : undefined,
+      enabled,
+      accounts: accounts.length,
+      route: pendingPath,
+    });
+    logAuthDiag(summary);
     debug('MSAL interaction in progress for flag:', flag, 'status:', inProgress);
     return (
       <AuthRedirectingNotice
@@ -184,16 +214,47 @@ export default function ProtectedRoute({ flag, children, fallbackPath = '/' }: P
         pendingPath={pendingPath}
         fallbackPath={fallbackPath}
         onSignIn={signIn}
+        diagSummary={summary}
+        corrId={corrId}
       />
     );
   }
 
   if (loading) {
+    const summary = summarizeAuthBlockReason({
+      inProgress,
+      isAuthenticated,
+      loading,
+      tokenReady,
+      listGate: flag === 'schedules' ? listGate : undefined,
+      enabled,
+      accounts: accounts.length,
+      route: pendingPath,
+    });
+    logAuthDiag(summary);
     debug('Auth still loading for flag:', flag);
-    return <div style={{ padding: '2rem', textAlign: 'center' }}>認証情報を確認しています…</div>;
+    return (
+      <div style={{ padding: '2rem', textAlign: 'center' }}>
+        <Typography variant="body2" sx={{ fontWeight: 600, mb: 1 }}>
+          認証情報を確認しています…
+        </Typography>
+        <AuthDiagnosticsPanel summary={summary} corrId={corrId} />
+      </div>
+    );
   }
 
   if (!isAuthenticated) {
+    const summary = summarizeAuthBlockReason({
+      inProgress,
+      isAuthenticated,
+      loading,
+      tokenReady,
+      listGate: flag === 'schedules' ? listGate : undefined,
+      enabled,
+      accounts: accounts.length,
+      route: pendingPath,
+    });
+    logAuthDiag(summary);
     debug('User not authenticated for flag:', flag, '- prompting sign-in');
     return (
       <AuthRequiredNotice
@@ -201,6 +262,8 @@ export default function ProtectedRoute({ flag, children, fallbackPath = '/' }: P
         onSignIn={signIn}
         fallbackPath={fallbackPath}
         pendingPath={pendingPath}
+        diagSummary={summary}
+        corrId={corrId}
       />
     );
   }
@@ -208,10 +271,24 @@ export default function ProtectedRoute({ flag, children, fallbackPath = '/' }: P
   // Gate: Ensure SharePoint token is ready before rendering children
   // This prevents API calls from auto-triggering MSAL popups
   if (!tokenReady) {
+    const summary = summarizeAuthBlockReason({
+      inProgress,
+      isAuthenticated,
+      loading,
+      tokenReady,
+      listGate: flag === 'schedules' ? listGate : undefined,
+      enabled,
+      accounts: accounts.length,
+      route: pendingPath,
+    });
+    logAuthDiag(summary);
     debug('Token acquisition in progress; waiting for completion for flag:', flag);
     return (
       <div style={{ padding: '2rem', textAlign: 'center' }}>
-        アクセス権限を確認しています…
+        <Typography variant="body2" sx={{ fontWeight: 600, mb: 1 }}>
+          アクセス権限を確認しています…
+        </Typography>
+        <AuthDiagnosticsPanel summary={summary} corrId={corrId} />
       </div>
     );
   }
@@ -220,6 +297,17 @@ export default function ProtectedRoute({ flag, children, fallbackPath = '/' }: P
   // For schedules flag, listGate must be 'ready' before allowing children
   if (flag === 'schedules' && listGate !== 'ready') {
     if (listGate === 'blocked') {
+      const summary = summarizeAuthBlockReason({
+        inProgress,
+        isAuthenticated,
+        loading,
+        tokenReady,
+        listGate,
+        enabled,
+        accounts: accounts.length,
+        route: pendingPath,
+      });
+      logAuthDiag(summary);
       debug('List check failed (404/error) for flag:', flag);
       return (
         <div style={{ padding: '2rem', textAlign: 'center', color: '#d32f2f' }}>
@@ -229,14 +317,29 @@ export default function ProtectedRoute({ flag, children, fallbackPath = '/' }: P
           <Typography variant="caption" sx={{ display: 'block', color: '#666' }}>
             管理者に連絡してください
           </Typography>
+          <AuthDiagnosticsPanel summary={summary} corrId={corrId} />
         </div>
       );
     }
     // idle or checking
+    const summary = summarizeAuthBlockReason({
+      inProgress,
+      isAuthenticated,
+      loading,
+      tokenReady,
+      listGate,
+      enabled,
+      accounts: accounts.length,
+      route: pendingPath,
+    });
+    logAuthDiag(summary);
     debug('List existence check in progress for flag:', flag);
     return (
       <div style={{ padding: '2rem', textAlign: 'center' }}>
-        スケジュール用リストを確認しています…
+        <Typography variant="body2" sx={{ fontWeight: 600, mb: 1 }}>
+          スケジュール用リストを確認しています…
+        </Typography>
+        <AuthDiagnosticsPanel summary={summary} corrId={corrId} />
       </div>
     );
   }
@@ -261,9 +364,41 @@ type AuthNoticeProps = {
   pendingPath: string;
   fallbackPath: NavigateProps['to'];
   onSignIn?: () => Promise<{ success: boolean }>;
+  diagSummary?: AuthDiagSummary;
+  corrId?: string;
 };
 
-const AuthRedirectingNotice = ({ flag, pendingPath, onSignIn, fallbackPath }: AuthNoticeProps) => {
+type AuthDiagnosticsProps = {
+  summary: AuthDiagSummary;
+  corrId: string;
+};
+
+const AuthDiagnosticsPanel = ({ summary, corrId }: AuthDiagnosticsProps) => {
+  const [open, setOpen] = useState(false);
+  return (
+    <Stack spacing={1} alignItems="center" sx={{ mt: 2 }}>
+      <Typography variant="caption" color="text.secondary">
+        理由コード: {summary.code} / 診断ID: {corrId}
+      </Typography>
+      <Button variant="text" size="small" onClick={() => setOpen((prev) => !prev)}>
+        {open ? '詳細を隠す' : '詳細を表示'}
+      </Button>
+      {open && (
+        <Paper variant="outlined" sx={{ width: '100%', p: 1 }}>
+          <Typography
+            component="pre"
+            variant="caption"
+            sx={{ whiteSpace: 'pre-wrap', fontFamily: 'monospace', m: 0 }}
+          >
+            {JSON.stringify(summary.detail, null, 2)}
+          </Typography>
+        </Paper>
+      )}
+    </Stack>
+  );
+};
+
+const AuthRedirectingNotice = ({ flag, pendingPath, onSignIn, fallbackPath, diagSummary, corrId }: AuthNoticeProps) => {
   const [signingIn, setSigningIn] = useState(false);
 
   const handleSignIn = async () => {
@@ -316,13 +451,14 @@ const AuthRedirectingNotice = ({ flag, pendingPath, onSignIn, fallbackPath }: Au
           >
             ホームに戻る
           </Button>
+          {diagSummary && corrId && <AuthDiagnosticsPanel summary={diagSummary} corrId={corrId} />}
         </Stack>
       </Paper>
     </div>
   );
 };
 
-const AuthRequiredNotice = ({ flag, pendingPath, onSignIn, fallbackPath }: AuthNoticeProps) => {
+const AuthRequiredNotice = ({ flag, pendingPath, onSignIn, fallbackPath, diagSummary, corrId }: AuthNoticeProps) => {
   const [signingIn, setSigningIn] = useState(false);
 
   const handleSignIn = async () => {
@@ -375,6 +511,7 @@ const AuthRequiredNotice = ({ flag, pendingPath, onSignIn, fallbackPath }: AuthN
           >
             ホームに戻る
           </Button>
+          {diagSummary && corrId && <AuthDiagnosticsPanel summary={diagSummary} corrId={corrId} />}
         </Stack>
       </Paper>
     </div>
