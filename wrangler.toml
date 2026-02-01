@@ -3,7 +3,7 @@
 # A mismatch can deploy/update a different Worker and break production auth flows (e.g., MSAL callback/token handling).
 # Verified: 2026-02-01 (account: Momosantanuki@gmail.com's Account)
 # Production Worker: audit-management-system-mvp (isogo-system is legacy/standby)
-name = "audit-management-system-mvp"
+name = "isogo-system"
 compatibility_date = "2026-01-17"
 main = "src/worker.ts"
 
