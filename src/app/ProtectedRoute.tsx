@@ -81,6 +81,7 @@ export default function ProtectedRoute({ flag, children, fallbackPath = '/' }: P
   const pendingPath = useMemo(() => `${location.pathname}${location.search ?? ''}`, [location.pathname, location.search]);
   const signInAttemptedRef = useRef(false);
   const [listGate, setListGate] = useState<ListGate>('idle');
+  const isMsalInProgress = inProgress !== InteractionStatus.None && inProgress !== 'none';
 
   const isAutomationOrDemo = isAutomationRuntime() || isDemoModeEnabled();
   const allowBypass = isAutomationOrDemo || isSkipLoginEnabled() || !isMsalConfigured();
@@ -100,6 +101,7 @@ export default function ProtectedRoute({ flag, children, fallbackPath = '/' }: P
 
   // List existence check: trigger when tokenReady + schedules flag
   useEffect(() => {
+    if (isMsalInProgress) return;
     if (!tokenReady) return;
     if (flag !== 'schedules') return;
     if (listGate !== 'idle') return;
@@ -142,7 +144,7 @@ export default function ProtectedRoute({ flag, children, fallbackPath = '/' }: P
     };
 
     void checkSchedulesListExistence();
-  }, [tokenReady, flag, listGate, acquireToken, setListReadyState]);
+  }, [isMsalInProgress, tokenReady, flag, listGate, acquireToken, setListReadyState]);
 
   // Automation / Demo / Skip-login / 未設定MSALでは認証ガードをバイパス（フラグは尊重）
   if (allowBypass) {
@@ -172,6 +174,18 @@ export default function ProtectedRoute({ flag, children, fallbackPath = '/' }: P
   if (!enabled) {
     debug('Access denied for flag:', flag, '- redirecting to', fallbackPath);
     return <Navigate to={fallbackPath} replace />;
+  }
+
+  if (isMsalInProgress) {
+    debug('MSAL interaction in progress for flag:', flag, 'status:', inProgress);
+    return (
+      <AuthRedirectingNotice
+        flag={flag}
+        pendingPath={pendingPath}
+        fallbackPath={fallbackPath}
+        onSignIn={signIn}
+      />
+    );
   }
 
   if (loading) {
@@ -247,6 +261,65 @@ type AuthNoticeProps = {
   pendingPath: string;
   fallbackPath: NavigateProps['to'];
   onSignIn?: () => Promise<{ success: boolean }>;
+};
+
+const AuthRedirectingNotice = ({ flag, pendingPath, onSignIn, fallbackPath }: AuthNoticeProps) => {
+  const [signingIn, setSigningIn] = useState(false);
+
+  const handleSignIn = async () => {
+    if (!onSignIn) {
+      debug('Sign-in handler missing; redirecting to fallback for flag:', flag);
+      if (typeof window !== 'undefined') {
+        window.location.assign(typeof fallbackPath === 'string' ? fallbackPath : '/');
+      }
+      return;
+    }
+    try {
+      setSigningIn(true);
+      if (typeof window !== 'undefined') {
+        window.sessionStorage.setItem('postLoginRedirect', pendingPath);
+      }
+      await onSignIn();
+    } catch (error) {
+      console.error('[ProtectedRoute] re-login failed', error);
+    } finally {
+      setSigningIn(false);
+    }
+  };
+
+  return (
+    <div style={{ display: 'flex', justifyContent: 'center', padding: '3rem 1rem' }}>
+      <Paper elevation={1} sx={{ maxWidth: 520, width: '100%', padding: 4 }}>
+        <Stack spacing={2} alignItems="center">
+          <Typography component="h1" variant="h6" fontWeight={700} textAlign="center">
+            サインイン処理中です…
+          </Typography>
+          <Typography variant="body2" color="text.secondary" textAlign="center">
+            画面遷移の途中です。数分待っても進まない場合は再ログインしてください。
+          </Typography>
+          <Button
+            variant="contained"
+            onClick={handleSignIn}
+            disabled={signingIn}
+            sx={{ minWidth: 200 }}
+          >
+            {signingIn ? '再ログイン中…' : '再ログインする'}
+          </Button>
+          <Button
+            variant="text"
+            size="small"
+            onClick={() => {
+              if (typeof window !== 'undefined') {
+                window.location.assign(typeof fallbackPath === 'string' ? fallbackPath : '/');
+              }
+            }}
+          >
+            ホームに戻る
+          </Button>
+        </Stack>
+      </Paper>
+    </div>
+  );
 };
 
 const AuthRequiredNotice = ({ flag, pendingPath, onSignIn, fallbackPath }: AuthNoticeProps) => {
