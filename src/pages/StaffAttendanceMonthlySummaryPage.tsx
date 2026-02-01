@@ -1,4 +1,5 @@
-import { useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { Link, useSearchParams } from "react-router-dom";
 import {
   Alert,
   Box,
@@ -43,23 +44,48 @@ const monthToRange = (ym: string): { from: string; to: string } => {
 };
 
 export default function StaffAttendanceMonthlySummaryPage() {
+  const [searchParams, setSearchParams] = useSearchParams();
+  const monthParam = searchParams.get('month') ?? '';
+  const recordDate = useMemo(() => new Date().toISOString().slice(0, 10), []);
   const {
     listItems,
     listLoading,
     listError,
     fetchListByDateRange,
-  } = useStaffAttendanceAdmin(""); // dummy date since we control range via monthValue
+  } = useStaffAttendanceAdmin(recordDate);
 
   const { byId: staffById } = useStaffStore();
 
-  const [monthValue, setMonthValue] = useState<string>(() => defaultMonthValue());
+  const [monthValue, setMonthValue] = useState<string>(() => monthParam || defaultMonthValue());
+  const [lastFetchedAt, setLastFetchedAt] = useState<Date | null>(null);
   const { from, to } = useMemo(() => monthToRange(monthValue), [monthValue]);
+
+  useEffect(() => {
+    if (!monthParam) return;
+    if (monthParam !== monthValue) setMonthValue(monthParam);
+  }, [monthParam, monthValue]);
+
+  const handleMonthChange = useCallback((value: string) => {
+    setMonthValue(value);
+    const next = new URLSearchParams(searchParams);
+    if (value) next.set('month', value);
+    else next.delete('month');
+    setSearchParams(next, { replace: true });
+  }, [searchParams, setSearchParams]);
+
+  const handleFetch = useCallback(async () => {
+    await fetchListByDateRange(from, to);
+    setLastFetchedAt(new Date());
+  }, [fetchListByDateRange, from, to]);
 
   const items = (listItems ?? []) as AttendanceLike[];
 
   const summary = useMemo(() => buildMonthlySummary(items), [items]);
   const breakdown = useMemo(() => buildStaffBreakdown(items), [items]);
   const statuses = useMemo(() => listAllStatuses(summary.countsByStatus), [summary.countsByStatus]);
+  const lastFetchedLabel = lastFetchedAt
+    ? lastFetchedAt.toLocaleString('ja-JP', { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' })
+    : '—';
 
   const resolveStaffName = (staffId: string): string => {
     // Try parsing as number for staffById Map lookup
@@ -71,9 +97,19 @@ export default function StaffAttendanceMonthlySummaryPage() {
   return (
     <Box sx={{ p: 2 }}>
       <Stack spacing={2}>
-        <Typography variant="h5" sx={{ fontWeight: 700 }}>
-          勤怠 月次サマリー
-        </Typography>
+        <Stack direction="row" alignItems="center" justifyContent="space-between" spacing={2}>
+          <Typography variant="h5" sx={{ fontWeight: 700 }}>
+            勤怠 月次サマリー
+          </Typography>
+          <Button
+            component={Link}
+            to="/admin/staff-attendance"
+            size="small"
+            variant="outlined"
+          >
+            一覧へ戻る
+          </Button>
+        </Stack>
 
         <Paper sx={{ p: 2 }}>
           <Stack direction={{ xs: "column", sm: "row" }} spacing={2} alignItems={{ sm: "center" }}>
@@ -81,14 +117,14 @@ export default function StaffAttendanceMonthlySummaryPage() {
               label="対象月"
               type="month"
               value={monthValue}
-              onChange={(e) => setMonthValue(e.target.value)}
+              onChange={(e) => handleMonthChange(e.target.value)}
               inputProps={{ "data-testid": "staff-attendance-summary-month" }}
               sx={{ width: 220 }}
             />
             <Box sx={{ flex: 1 }} />
             <Button
               variant="contained"
-              onClick={() => fetchListByDateRange(from, to)}
+              onClick={handleFetch}
               disabled={listLoading}
               data-testid="staff-attendance-summary-fetch"
             >
@@ -97,7 +133,7 @@ export default function StaffAttendanceMonthlySummaryPage() {
           </Stack>
 
           <Typography variant="body2" sx={{ mt: 1, color: "text.secondary" }}>
-            範囲: {from} 〜 {to}
+            範囲: {from} 〜 {to} / 件数: {summary.totalItems} / 最終更新: {lastFetchedLabel}
           </Typography>
         </Paper>
 
@@ -127,6 +163,42 @@ export default function StaffAttendanceMonthlySummaryPage() {
               </Typography>
               <Typography variant="h6" data-testid="staff-attendance-summary-staffcount">
                 {summary.uniqueStaffCount}
+              </Typography>
+            </Paper>
+
+            <Paper variant="outlined" sx={{ p: 1.5, minWidth: 220 }}>
+              <Typography variant="body2" sx={{ color: "text.secondary" }}>
+                出勤扱い
+              </Typography>
+              <Typography variant="h6" data-testid="staff-attendance-summary-attendance">
+                {summary.attendanceCount}
+              </Typography>
+            </Paper>
+
+            <Paper variant="outlined" sx={{ p: 1.5, minWidth: 220 }}>
+              <Typography variant="body2" sx={{ color: "text.secondary" }}>
+                欠勤扱い
+              </Typography>
+              <Typography variant="h6" data-testid="staff-attendance-summary-absence">
+                {summary.absenceCount}
+              </Typography>
+            </Paper>
+
+            <Paper variant="outlined" sx={{ p: 1.5, minWidth: 220 }}>
+              <Typography variant="body2" sx={{ color: "text.secondary" }}>
+                遅刻
+              </Typography>
+              <Typography variant="h6" data-testid="staff-attendance-summary-late">
+                {summary.lateCount}
+              </Typography>
+            </Paper>
+
+            <Paper variant="outlined" sx={{ p: 1.5, minWidth: 220 }}>
+              <Typography variant="body2" sx={{ color: "text.secondary" }}>
+                早退
+              </Typography>
+              <Typography variant="h6" data-testid="staff-attendance-summary-early-leave">
+                {summary.earlyLeaveCount}
               </Typography>
             </Paper>
 
