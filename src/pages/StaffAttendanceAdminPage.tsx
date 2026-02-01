@@ -1,4 +1,5 @@
-import { useState } from 'react';
+import { useState, useMemo, useCallback } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import {
   Box,
   Paper,
@@ -44,6 +45,23 @@ export default function StaffAttendanceAdminPage(): JSX.Element {
   const [listDateFrom, setListDateFrom] = useState<string>(() => firstOfMonthISO());
   const [listDateTo, setListDateTo] = useState<string>(() => todayISO());
   
+  const [searchParams, setSearchParams] = useSearchParams();
+
+  const readCsvParam = (key: string): Set<string> => {
+    const raw = searchParams.get(key);
+    if (!raw) return new Set();
+    return new Set(
+      raw
+        .split(',')
+        .map((s) => s.trim())
+        .filter(Boolean),
+    );
+  };
+
+  // フィルタ state（新規）
+  const [selectedStaffIds, setSelectedStaffIds] = useState<Set<string>>(() => readCsvParam('staff'));
+  const [selectedStatuses, setSelectedStatuses] = useState<Set<string>>(() => readCsvParam('status'));
+  
   const admin = useStaffAttendanceAdmin(date);
   const {
     items,
@@ -63,6 +81,45 @@ export default function StaffAttendanceAdminPage(): JSX.Element {
     listLoading = false,
     listError,
   } = admin;
+
+  // URL 更新ヘルパー
+  const updateSearchParams = useCallback(
+    (staff: Set<string>, status: Set<string>) => {
+      const next = new URLSearchParams(searchParams);
+
+      if (staff.size > 0) next.set('staff', Array.from(staff).join(','));
+      else next.delete('staff');
+
+      if (status.size > 0) next.set('status', Array.from(status).join(','));
+      else next.delete('status');
+
+      // replace で履歴を増やさない（bookmarkableは維持）
+      setSearchParams(next, { replace: true });
+    },
+    [searchParams, setSearchParams],
+  );
+
+  // 候補生成
+  const { uniqueStaffIds, uniqueStatuses } = useMemo(() => {
+    const staffs = Array.from(new Set(listItems.map((it) => it.staffId).filter(Boolean)));
+    const statuses = Array.from(new Set(listItems.map((it) => it.status).filter(Boolean)));
+    staffs.sort();
+    statuses.sort();
+    return { uniqueStaffIds: staffs, uniqueStatuses: statuses };
+  }, [listItems]);
+
+  // フィルタ適用
+  const filteredListItems = useMemo(() => {
+    if (selectedStaffIds.size === 0 && selectedStatuses.size === 0) return listItems;
+
+    return listItems.filter((it) => {
+      const staffId = it.staffId ?? '';
+      const status = it.status ?? '';
+      const staffMatch = selectedStaffIds.size === 0 || selectedStaffIds.has(staffId);
+      const statusMatch = selectedStatuses.size === 0 || selectedStatuses.has(status);
+      return staffMatch && statusMatch;
+    });
+  }, [listItems, selectedStaffIds, selectedStatuses]);
 
   const bulk = useStaffAttendanceBulk({
     port,
@@ -311,6 +368,117 @@ export default function StaffAttendanceAdminPage(): JSX.Element {
         </Paper>
 
         <Paper variant="outlined" sx={{ p: 2 }}>
+          <Stack spacing={1.5}>
+            {(selectedStaffIds.size > 0 || selectedStatuses.size > 0) && (
+              <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap', alignItems: 'center' }}>
+                <Typography variant="body2" sx={{ fontWeight: 600 }}>
+                  フィルタ中:
+                </Typography>
+
+                {Array.from(selectedStaffIds).map((id) => (
+                  <Chip
+                    key={`staff-${id}`}
+                    label={`職員: ${id}`}
+                    onDelete={() => {
+                      const next = new Set(selectedStaffIds);
+                      next.delete(id);
+                      setSelectedStaffIds(next);
+                      updateSearchParams(next, selectedStatuses);
+                    }}
+                    size="small"
+                  />
+                ))}
+
+                {Array.from(selectedStatuses).map((st) => (
+                  <Chip
+                    key={`status-${st}`}
+                    label={`ステータス: ${st}`}
+                    onDelete={() => {
+                      const next = new Set(selectedStatuses);
+                      next.delete(st);
+                      setSelectedStatuses(next);
+                      updateSearchParams(selectedStaffIds, next);
+                    }}
+                    size="small"
+                  />
+                ))}
+
+                <Button
+                  size="small"
+                  variant="text"
+                  onClick={() => {
+                    const empty = new Set<string>();
+                    setSelectedStaffIds(empty);
+                    setSelectedStatuses(empty);
+                    updateSearchParams(empty, empty);
+                  }}
+                >
+                  クリア
+                </Button>
+              </Box>
+            )}
+
+            <Stack direction={{ xs: 'column', md: 'row' }} spacing={2}>
+              <Stack direction="row" spacing={1} alignItems="center" sx={{ flex: 1 }}>
+                <Typography sx={{ fontWeight: 600 }}>職員:</Typography>
+                <Box sx={{ display: 'flex', gap: 0.5, flexWrap: 'wrap' }}>
+                  {uniqueStaffIds.length === 0 ? (
+                    <Typography variant="body2" sx={{ color: 'text.secondary' }}>
+                      データなし
+                    </Typography>
+                  ) : (
+                    uniqueStaffIds.map((id) => (
+                      <Chip
+                        key={`filter-staff-${id}`}
+                        label={id}
+                        onClick={() => {
+                          const next = new Set(selectedStaffIds);
+                          if (next.has(id)) next.delete(id);
+                          else next.add(id);
+                          setSelectedStaffIds(next);
+                          updateSearchParams(next, selectedStatuses);
+                        }}
+                        variant={selectedStaffIds.has(id) ? 'filled' : 'outlined'}
+                        size="small"
+                        clickable
+                      />
+                    ))
+                  )}
+                </Box>
+              </Stack>
+
+              <Stack direction="row" spacing={1} alignItems="center" sx={{ flex: 1 }}>
+                <Typography sx={{ fontWeight: 600 }}>ステータス:</Typography>
+                <Box sx={{ display: 'flex', gap: 0.5, flexWrap: 'wrap' }}>
+                  {uniqueStatuses.length === 0 ? (
+                    <Typography variant="body2" sx={{ color: 'text.secondary' }}>
+                      データなし
+                    </Typography>
+                  ) : (
+                    uniqueStatuses.map((st) => (
+                      <Chip
+                        key={`filter-status-${st}`}
+                        label={st}
+                        onClick={() => {
+                          const next = new Set(selectedStatuses);
+                          if (next.has(st)) next.delete(st);
+                          else next.add(st);
+                          setSelectedStatuses(next);
+                          updateSearchParams(selectedStaffIds, next);
+                        }}
+                        variant={selectedStatuses.has(st) ? 'filled' : 'outlined'}
+                        size="small"
+                        clickable
+                      />
+                    ))
+                  )}
+                </Box>
+              </Stack>
+            </Stack>
+          </Stack>
+        </Paper>
+
+        <Paper variant="outlined" sx={{ p: 2 }}>
           {listLoading && (
             <Stack direction="row" spacing={2} alignItems="center">
               <CircularProgress size={20} />
@@ -324,13 +492,13 @@ export default function StaffAttendanceAdminPage(): JSX.Element {
             </Alert>
           )}
 
-          {!listLoading && listItems.length === 0 && !listError && (
+          {!listLoading && filteredListItems.length === 0 && !listError && (
             <Alert severity="info" data-testid="staff-attendance-list-empty">
-              期間内に勤怠データがありません。
+              {listItems.length > 0 ? 'フィルタ条件に該当するデータがありません。' : '期間内に勤怠データがありません。'}
             </Alert>
           )}
 
-          {!listLoading && listItems.length > 0 && (
+          {!listLoading && filteredListItems.length > 0 && (
             <Table size="small" data-testid="staff-attendance-list-table">
               <TableHead>
                 <TableRow>
@@ -343,7 +511,7 @@ export default function StaffAttendanceAdminPage(): JSX.Element {
                 </TableRow>
               </TableHead>
               <TableBody>
-                {listItems.map((it) => (
+                {filteredListItems.map((it) => (
                   <TableRow
                     key={`${it.recordDate}#${it.staffId}`}
                     data-testid={`staff-attendance-list-row-${it.recordDate}-${it.staffId}`}
