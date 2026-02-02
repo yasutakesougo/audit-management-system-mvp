@@ -1,4 +1,4 @@
-import React, { useContext } from 'react';
+import React, { useCallback, useContext } from 'react';
 import Dialog from '@mui/material/Dialog';
 import DialogContent from '@mui/material/DialogContent';
 import DialogTitle from '@mui/material/DialogTitle';
@@ -11,7 +11,9 @@ import Typography from '@mui/material/Typography';
 import Divider from '@mui/material/Divider';
 import Brightness4Icon from '@mui/icons-material/Brightness4';
 import Brightness7Icon from '@mui/icons-material/Brightness7';
-import { ColorModeContext } from '@/app/theme';
+import { ColorModeContext, applyDensityToDocument, type Density } from '@/app/theme';
+import { useSettingsContext } from './SettingsContext';
+import { DensityControl } from './components';
 
 interface SettingsDialogProps {
   open: boolean;
@@ -20,6 +22,12 @@ interface SettingsDialogProps {
 
 export const SettingsDialog: React.FC<SettingsDialogProps> = ({ open, onClose }) => {
   const { mode, toggle } = useContext(ColorModeContext);
+  const { settings, updateSettings } = useSettingsContext();
+
+  const handleDensityChange = useCallback((newDensity: Density) => {
+    updateSettings({ density: newDensity });
+    applyDensityToDocument(newDensity);
+  }, [updateSettings]);
 
   return (
     <Dialog open={open} onClose={onClose} maxWidth="sm" fullWidth>
@@ -59,9 +67,19 @@ export const SettingsDialog: React.FC<SettingsDialogProps> = ({ open, onClose })
             </Typography>
           </Stack>
 
+          <Divider />
+
+          {/* UI 密度設定 */}
+          <Stack spacing={2}>
+            <DensityControl 
+              value={settings.density}
+              onChange={handleDensityChange}
+            />
+          </Stack>
+
           {/* 将来の設定項目プレースホルダー */}
           <Typography variant="caption" color="text.secondary" sx={{ pt: 2 }}>
-            その他の表示設定（密度、フォントサイズなど）は今後実装予定です。
+            その他の表示設定（フォントサイズ、色カスタマイズなど）は今後実装予定です。
           </Typography>
         </Stack>
       </DialogContent>
