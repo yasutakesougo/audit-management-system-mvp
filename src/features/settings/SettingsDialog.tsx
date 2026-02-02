@@ -12,6 +12,7 @@ import Divider from '@mui/material/Divider';
 import Brightness4Icon from '@mui/icons-material/Brightness4';
 import Brightness7Icon from '@mui/icons-material/Brightness7';
 import { ColorModeContext } from '@/app/theme';
+import { useSettingsContext } from './SettingsContext';
 
 interface SettingsDialogProps {
   open: boolean;
@@ -20,6 +21,7 @@ interface SettingsDialogProps {
 
 export const SettingsDialog: React.FC<SettingsDialogProps> = ({ open, onClose }) => {
   const { mode, toggle } = useContext(ColorModeContext);
+  const { settings } = useSettingsContext();
 
   return (
     <Dialog open={open} onClose={onClose} maxWidth="sm" fullWidth>
@@ -59,9 +61,24 @@ export const SettingsDialog: React.FC<SettingsDialogProps> = ({ open, onClose })
             </Typography>
           </Stack>
 
+          <Divider />
+
+          {/* UI 密度設定（プレースホルダー - PR #318 マージ後に DensityControl を配置） */}
+          <Stack spacing={2}>
+            <Typography variant="h6" sx={{ fontWeight: 700 }}>
+              UI 密度
+            </Typography>
+            <Typography variant="body2" color="text.secondary">
+              現在の設定: <strong>{settings.density}</strong>
+            </Typography>
+            <Typography variant="caption" color="text.secondary">
+              実装準備中: DensityControl コンポーネントが利用可能になると、ここにラジオボタンが表示されます。
+            </Typography>
+          </Stack>
+
           {/* 将来の設定項目プレースホルダー */}
           <Typography variant="caption" color="text.secondary" sx={{ pt: 2 }}>
-            その他の表示設定（密度、フォントサイズなど）は今後実装予定です。
+            その他の表示設定（フォントサイズ、色カスタマイズなど）は今後実装予定です。
           </Typography>
         </Stack>
       </DialogContent>

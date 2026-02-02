@@ -77,7 +77,7 @@ export function useSettingsContext(): SettingsContextType {
   const context = React.useContext(SettingsContext);
   if (!context) {
     throw new Error(
-      'useSettingsContext must be used within SettingsProvider'
+      'useSettingsContext must be used within a <SettingsProvider>'
     );
   }
   return context;
