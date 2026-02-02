@@ -30,7 +30,7 @@ const getHttpStatus = (e: unknown): number | undefined => {
 };
 import type { DateRange, SchedItem, SchedulesPort, ScheduleServiceType } from './port';
 import { mapSpRowToSchedule, parseSpScheduleRows } from './spRowSchema';
-import { SCHEDULES_FIELDS, buildSchedulesListPath } from './spSchema';
+import { SCHEDULES_FIELDS, SCHEDULES_LIST_TITLE, buildSchedulesListPath } from './spSchema';
 
 type ListRangeFn = (range: DateRange) => Promise<SchedItem[]>;
 
@@ -49,23 +49,21 @@ type SharePointResponse<T> = {
 };
 
 const REQUIRED_SELECT = ['Id', SCHEDULES_FIELDS.title, SCHEDULES_FIELDS.start, SCHEDULES_FIELDS.end] as const;
+// ScheduleEvents (BaseTemplate=106) only has basic event fields
 const OPTIONAL_SELECT = [
-  SCHEDULES_FIELDS.targetUserId,
-  SCHEDULES_FIELDS.legacyUserCode,
-  SCHEDULES_FIELDS.serviceType,
-  SCHEDULES_FIELDS.locationName,
-  SCHEDULES_FIELDS.notes,
-  SCHEDULES_FIELDS.acceptedOn,
-  SCHEDULES_FIELDS.acceptedBy,
-  SCHEDULES_FIELDS.acceptedNote,
-  SCHEDULES_FIELDS.assignedStaff,
-  SCHEDULES_FIELDS.vehicle,
-  SCHEDULES_FIELDS.status,
-  SCHEDULES_FIELDS.entryHash,
-  SCHEDULES_FIELDS.ownerUserId,
-  SCHEDULES_FIELDS.visibility,
+  SCHEDULES_FIELDS.serviceType,  // Category
+  SCHEDULES_FIELDS.locationName, // Location
   'Created',
   'Modified',
+] as const;
+
+const EVENT_SAFE_SELECT = [
+  'Id',
+  SCHEDULES_FIELDS.title,
+  SCHEDULES_FIELDS.start,
+  SCHEDULES_FIELDS.end,
+  SCHEDULES_FIELDS.locationName,
+  SCHEDULES_FIELDS.serviceType,
 ] as const;
 
 const mergeSelectFields = (fallbackOnly: boolean): readonly string[] =>
@@ -79,42 +77,110 @@ const ESSENTIAL_SERVICE_SELECT = [
 const SELECT_VARIANTS = [mergeSelectFields(false), ESSENTIAL_SERVICE_SELECT, mergeSelectFields(true)] as const;
 
 const defaultListRange: ListRangeFn = async (range) => {
-  for (let index = 0; index < SELECT_VARIANTS.length; index += 1) {
-    const select = SELECT_VARIANTS[index];
+  const isEventList = SCHEDULES_LIST_TITLE.trim().toLowerCase() === 'scheduleevents';
+  const selectFull = isEventList ? EVENT_SAFE_SELECT : SELECT_VARIANTS[0];
+  const selectLite = isEventList ? EVENT_SAFE_SELECT : SELECT_VARIANTS[1];
+  const selectMin = isEventList ? REQUIRED_SELECT : SELECT_VARIANTS[2];
+  const stages = [
+    { name: 'full', select: selectFull, keepOrderby: true, keepFilter: true, top: 500 },
+    { name: 'selectLite', select: selectLite, keepOrderby: true, keepFilter: true, top: 500 },
+    { name: 'noOrderby', select: selectLite, keepOrderby: false, keepFilter: true, top: 500 },
+    { name: 'noFilter', select: selectMin, keepOrderby: false, keepFilter: false, top: 1 },
+  ] as const;
+
+  const diagnostics: Array<{ stage: string; url: string; status?: number; body?: string }> = [];
+
+  for (const stage of stages) {
     try {
-      const rows = await fetchRange(range, select);
+      const rows = await fetchRange(range, stage.select, {
+        includeOrderby: stage.keepOrderby,
+        includeFilter: stage.keepFilter,
+        top: stage.top,
+      });
+      if (SCHEDULES_DEBUG) {
+        console.info(`[schedules] ✅ stage=${stage.name} succeeded`);
+      }
       return sortByStart(rows.map(mapSpRowToSchedule).filter((item): item is SchedItem => Boolean(item)));
     } catch (error) {
-      const isLastAttempt = index === SELECT_VARIANTS.length - 1;
-      if (!isMissingFieldError(error) || isLastAttempt) {
+      const status = getHttpStatus(error);
+      const url = (error as { url?: string }).url ?? '';
+      const rawBody = (error as { body?: unknown }).body;
+      const body = typeof rawBody === 'string' ? rawBody : JSON.stringify(rawBody, null, 2);
+      diagnostics.push({ stage: stage.name, url, status, body });
+
+      const shouldFallback = isMissingFieldError(error) || status === 400;
+      if (!shouldFallback) {
         throw error;
       }
       if (SCHEDULES_DEBUG) {
-        console.warn('[schedules] SharePoint list missing optional field, retrying with alternate select.', select, error);
+        console.warn('[schedules] SharePoint list fallback stage failed, retrying with alternate query.', stage, error);
       }
     }
   }
 
-  return [];
+  const detail = diagnostics
+    .map((d) => `--- stage=${d.stage} status=${d.status ?? 'unknown'}\nurl=${d.url}\nbody=${d.body ?? ''}`)
+    .join('\n');
+  throw new Error(`[schedules] 400 persisted across fallback stages.\n${detail}`);
 };
 
-const fetchRange = async (range: DateRange, select: readonly string[]): Promise<ReturnType<typeof parseSpScheduleRows>> => {
+const readSpErrorMessage = async (response: Response): Promise<string> => {
+  const text = await response.text().catch(() => '');
+  if (!text) return '';
+  try {
+    const data = JSON.parse(text) as {
+      error?: { message?: { value?: string } };
+      'odata.error'?: { message?: { value?: string } };
+      message?: { value?: string };
+    };
+    return (
+      data.error?.message?.value ??
+      data['odata.error']?.message?.value ??
+      data.message?.value ??
+      ''
+    );
+  } catch {
+    return text.slice(0, 4000);
+  }
+};
+
+const fetchRange = async (
+  range: DateRange,
+  select: readonly string[],
+  options?: { includeOrderby?: boolean; includeFilter?: boolean; top?: number }
+): Promise<ReturnType<typeof parseSpScheduleRows>> => {
   const { baseUrl } = ensureConfig();
   const listPath = buildSchedulesListPath(baseUrl);
   const params = new URLSearchParams();
-  params.set('$top', '500');
-  params.set('$orderby', `${SCHEDULES_FIELDS.start} asc,Id asc`);
-  params.set('$filter', buildRangeFilter(range));
+  params.set('$top', String(options?.top ?? 500));
+  if (options?.includeOrderby ?? true) {
+    params.set('$orderby', `${SCHEDULES_FIELDS.start} asc,Id asc`);
+  }
+  if (options?.includeFilter ?? true) {
+    params.set('$filter', buildRangeFilter(range));
+  }
   params.set('$select', select.join(','));
 
-  const response = await fetchSp(`${listPath}?${params.toString()}`);
+  const url = `${listPath}?${params.toString()}`;
+  const response = await fetchSp(url);
+  if (!response.ok) {
+    const message = await readSpErrorMessage(response);
+    const error = new Error(message || `SharePoint request failed (${response.status})`);
+    (error as { status?: number }).status = response.status;
+    (error as { url?: string }).url = url;
+    (error as { body?: string }).body = message;
+    throw error;
+  }
   const payload = (await response.json()) as SharePointResponse<unknown>;
   return parseSpScheduleRows(payload.value ?? []);
 };
 
 const buildRangeFilter = (range: DateRange): string => {
-  const fromLiteral = encodeDateLiteral(range.from);
-  const toLiteral = encodeDateLiteral(range.to);
+  // Add ±1 day buffer for timezone/all-day event safety (SharePoint best practice)
+  const fromBuffer = new Date(new Date(range.from).getTime() - 24 * 60 * 60 * 1000).toISOString();
+  const toBuffer = new Date(new Date(range.to).getTime() + 24 * 60 * 60 * 1000).toISOString();
+  const fromLiteral = encodeDateLiteral(fromBuffer);
+  const toLiteral = encodeDateLiteral(toBuffer);
   return `(${SCHEDULES_FIELDS.start} lt ${toLiteral}) and (${SCHEDULES_FIELDS.end} ge ${fromLiteral})`;
 };
 

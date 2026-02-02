@@ -34,6 +34,7 @@ export const SpScheduleRowSchema = z
     ServiceType: z.string().optional().nullable(),
     cr014_serviceType: z.string().optional().nullable(),
     LocationName: z.string().optional().nullable(),
+    Location: z.string().optional().nullable(), // Event list uses Location instead of LocationName
     Notes: z.string().optional().nullable(),
     AcceptedOn: z.string().optional().nullable(),
     AcceptedBy: z.string().optional().nullable(),
@@ -247,7 +248,7 @@ export function mapSpRowToSchedule(row: SpScheduleRow): SchedItem | null {
     allDay: false,
     userId: normalizedUserId,
     serviceType: serviceTypeKey === 'unset' ? undefined : serviceTypeKey,
-    locationName: coerceString(row.LocationName),
+    locationName: coerceString(row.LocationName) ?? coerceString(row.Location), // Support both LocationName and Location
     notes: coerceString(row.Notes),
     acceptedOn: coerceIso(row.AcceptedOn),
     acceptedBy: coerceString(row.AcceptedBy),

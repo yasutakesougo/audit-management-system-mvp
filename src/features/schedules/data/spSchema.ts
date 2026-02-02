@@ -39,20 +39,20 @@ export const buildSchedulesListPath = (baseUrl: string): string => {
 
 export const SCHEDULES_FIELDS = {
   title: 'Title',
-  serviceType: 'ServiceType',
+  serviceType: 'Category',  // ScheduleEvents uses Category field
   legacyServiceType: 'cr014_serviceType',
-  start: 'Start',
-  end: 'End',
+  start: 'EventDate',  // Event list uses EventDate
+  end: 'EndDate',      // Event list uses EndDate
   status: 'Status',
   notes: 'Notes',
   entryHash: 'EntryHash',
   targetUserId: SCHEDULE_FIELD_TARGET_USER_ID,
   legacyUserCode: 'UserCode',
-  locationName: 'LocationName',
-  assignedStaff: 'AssignedStaff',
-  vehicle: 'Vehicle',
+  locationName: 'Location',  // Event list uses Location
+  assignedStaff: 'AssignedStaffId',
+  vehicle: 'VehicleId',
   acceptedOn: 'AcceptedOn',
-  acceptedBy: 'AcceptedBy',
+  acceptedBy: 'AcceptedById',
   acceptedNote: 'AcceptedNote',
   // Phase 1: owner/visibility/status support
   ownerUserId: 'OwnerUserId',
