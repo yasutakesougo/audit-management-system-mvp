@@ -1,13 +1,14 @@
 import { useMemo, useEffect } from 'react';
 import { useSettingsContext } from '../SettingsContext';
 import { applyDensityToDocument } from '@/app/theme';
+import { createAppTheme } from '@/app/createAppTheme';
 
 /**
  * Custom hook to create MUI theme from user settings
  * and apply density CSS variables
  *
  * This hook integrates:
- * - createAppTheme: Theme creation with density-aware spacing
+ * - createAppTheme: Theme creation with density-aware spacing (from PR #321)
  * - applyDensityToDocument: CSS variable application
  *
  * Centralizes all density-related effects in one place
@@ -18,16 +19,13 @@ export function useAppTheme() {
   const { settings } = useSettingsContext();
 
   /**
-   * TODO: Replace with createAppTheme once PR #321 merges
-   * For now, create minimal theme to avoid import errors
+   * Create theme with current settings
+   * Memoized to avoid unnecessary recreations
+   * Depends on density and fontSize changes
    */
   const theme = useMemo(() => {
-    // Placeholder until createAppTheme is available
-    return {
-      spacing: (scale: number) => `${scale * (settings.density === 'compact' ? 4 : settings.density === 'spacious' ? 12 : 8)}px`,
-      components: {},
-    };
-  }, [settings.density]);
+    return createAppTheme(settings);
+  }, [settings.density, settings.fontSize]);
 
   // Apply density CSS variables on density change
   useEffect(() => {
