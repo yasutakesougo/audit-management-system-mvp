@@ -12,6 +12,16 @@ const densitySpacingMap = {
 } as const;
 
 /**
+ * Font size map (Phase 7.1 - Font Size Control)
+ * Maps user-selected fontSize preference to px values
+ */
+const fontSizeMap = {
+  small: 12,       // Compact, high-density display
+  medium: 14,      // Standard, balanced display
+  large: 16,       // Accessible, spacious display
+} as const;
+
+/**
  * Creates MUI theme with user settings (density, fontSize, etc.)
  * 
  * Pure function - no side effects, easy to test
@@ -27,9 +37,13 @@ const densitySpacingMap = {
  */
 export function createAppTheme(settings: UserSettings): Theme {
   const densityBase = densitySpacingMap[settings.density];
+  const baseFontSize = fontSizeMap[settings.fontSize];
 
   return createTheme({
     spacing: densityBase,
+    typography: {
+      fontSize: baseFontSize,
+    },
     components: {
       // Button - density-aware padding
       MuiButton: {
