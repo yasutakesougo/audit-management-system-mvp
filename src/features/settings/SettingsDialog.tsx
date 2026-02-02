@@ -76,6 +76,21 @@ export const SettingsDialog: React.FC<SettingsDialogProps> = ({ open, onClose })
             />
           </Stack>
 
+          <Divider sx={{ my: 2 }} />
+
+          <FormControlLabel
+            control={
+              <Switch
+                checked={settings.layoutMode === 'focus'}
+                onChange={(_, checked) =>
+                  updateSettings({ layoutMode: checked ? 'focus' : 'normal' })
+                }
+                inputProps={{ 'aria-label': '集中モード（全画面）' }}
+              />
+            }
+            label="集中モード（全画面）"
+          />
+
           {/* 将来の設定項目プレースホルダー */}
           <Typography variant="caption" color="text.secondary" sx={{ pt: 2 }}>
             その他の表示設定（フォントサイズ、色カスタマイズなど）は今後実装予定です。

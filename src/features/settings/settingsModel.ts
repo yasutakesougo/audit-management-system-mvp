@@ -18,6 +18,9 @@ export type UserSettings = {
   // Color presets (Phase 2+)
   colorPreset: 'default' | 'highContrast' | 'custom';
 
+  // Layout mode (Phase 6: Focus Mode)
+  layoutMode: 'normal' | 'focus';
+
   // Timestamp for sync validation
   lastModified: number;
 };
@@ -28,6 +31,7 @@ export const DEFAULT_SETTINGS: UserSettings = {
   density: 'comfortable',
   fontSize: 'medium',
   colorPreset: 'default',
+  layoutMode: 'normal',
   lastModified: Date.now(),
 };
 
@@ -61,6 +65,7 @@ export function loadSettingsFromStorage(): UserSettings {
       density: parsed.density as UserSettings['density'],
       fontSize: parsed.fontSize as UserSettings['fontSize'],
       colorPreset: parsed.colorPreset || 'default',
+      layoutMode: parsed.layoutMode || 'normal',
       lastModified: parsed.lastModified || Date.now(),
     };
   } catch (error) {
