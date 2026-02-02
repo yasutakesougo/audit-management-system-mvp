@@ -84,6 +84,8 @@ export function useSchedules(range: DateRange): UseSchedulesResult {
         if (lastMutationTsRef.current > startedAt) {
           return;
         }
+        // Diagnostic: Check if items are fetched but not displayed
+        console.info('[schedules] fetched items:', { count: data.length, sample: data.slice(0, 3) });
         setItems(data);
       } catch (err) {
         // Handle errors gracefully without throwing
