@@ -12,7 +12,8 @@ import Divider from '@mui/material/Divider';
 import Brightness4Icon from '@mui/icons-material/Brightness4';
 import Brightness7Icon from '@mui/icons-material/Brightness7';
 import { ColorModeContext } from '@/app/theme';
-import { DensityControl } from './components/DensityControl';
+import { useSettingsContext } from './SettingsContext';
+import { DensityControl } from './components';
 
 interface SettingsDialogProps {
   open: boolean;
@@ -21,14 +22,11 @@ interface SettingsDialogProps {
 
 export const SettingsDialog: React.FC<SettingsDialogProps> = ({ open, onClose }) => {
   const { mode, toggle } = useContext(ColorModeContext);
-  
-  // TODO: Connect to UserSettings context when implemented
-  // For now, use a default value
-  const density = 'comfortable' as const;
+  const { settings, updateSettings } = useSettingsContext();
+
   const handleDensityChange = useCallback((newDensity: 'compact' | 'comfortable' | 'spacious') => {
-    // TODO: Update UserSettings via context
-    console.log('Density changed to:', newDensity);
-  }, []);
+    updateSettings({ density: newDensity });
+  }, [updateSettings]);
 
   return (
     <Dialog open={open} onClose={onClose} maxWidth="sm" fullWidth>
@@ -73,7 +71,7 @@ export const SettingsDialog: React.FC<SettingsDialogProps> = ({ open, onClose })
           {/* UI 密度設定 */}
           <Stack spacing={2}>
             <DensityControl 
-              value={density}
+              value={settings.density}
               onChange={handleDensityChange}
             />
           </Stack>
