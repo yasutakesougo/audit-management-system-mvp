@@ -58,7 +58,10 @@ const colorPresetMap = {
 export function createAppTheme(settings: UserSettings): Theme {
   const densityBase = densitySpacingMap[settings.density];
   const baseFontSize = fontSizeMap[settings.fontSize];
-  const colorPreset = colorPresetMap[settings.colorPreset];
+  
+  // Fallback to 'default' preset if colorPreset is not specified
+  const safePresetKey = settings.colorPreset ?? 'default';
+  const colorPreset = colorPresetMap[safePresetKey] ?? colorPresetMap.default;
 
   return createTheme({
     spacing: densityBase,
