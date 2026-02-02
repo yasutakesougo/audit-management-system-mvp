@@ -13,7 +13,7 @@ import Brightness4Icon from '@mui/icons-material/Brightness4';
 import Brightness7Icon from '@mui/icons-material/Brightness7';
 import { ColorModeContext } from '@/app/theme';
 import { useSettingsContext } from './SettingsContext';
-import { DensityControl, ColorPresetControl } from './components';
+import { DensityControl, FontSizeControl, ColorPresetControl } from './components';
 
 interface SettingsDialogProps {
   open: boolean;
@@ -26,6 +26,10 @@ export const SettingsDialog: React.FC<SettingsDialogProps> = ({ open, onClose })
 
   const handleDensityChange = useCallback((newDensity: 'compact' | 'comfortable' | 'spacious') => {
     updateSettings({ density: newDensity });
+  }, [updateSettings]);
+
+  const handleFontSizeChange = useCallback((newFontSize: 'small' | 'medium' | 'large') => {
+    updateSettings({ fontSize: newFontSize });
   }, [updateSettings]);
 
   const handleColorPresetChange = useCallback((newPreset: 'default' | 'highContrast' | 'custom') => {
@@ -82,6 +86,16 @@ export const SettingsDialog: React.FC<SettingsDialogProps> = ({ open, onClose })
 
           <Divider sx={{ my: 2 }} />
 
+          {/* フォントサイズ設定 */}
+          <Stack spacing={2}>
+            <FontSizeControl
+              value={settings.fontSize}
+              onChange={handleFontSizeChange}
+            />
+          </Stack>
+
+          <Divider sx={{ my: 2 }} />
+
           {/* カラープリセット設定 */}
           <Stack spacing={2}>
             <ColorPresetControl
@@ -107,7 +121,7 @@ export const SettingsDialog: React.FC<SettingsDialogProps> = ({ open, onClose })
 
           {/* 将来の設定項目プレースホルダー */}
           <Typography variant="caption" color="text.secondary" sx={{ pt: 2 }}>
-            その他の表示設定（フォントサイズ、カスタムカラー、レイアウトプリセットなど）は今後実装予定です。
+            その他の表示設定（レイアウトプリセットなど）は今後実装予定です。
           </Typography>
         </Stack>
       </DialogContent>
