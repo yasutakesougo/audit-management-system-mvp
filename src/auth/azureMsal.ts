@@ -56,29 +56,7 @@ export const getPcaSingleton = async (): Promise<PublicClientApplication> => {
 
 	pcaInstance = new PublicClientApplication(config);
 
-	// Handle redirect promise (critical for redirect flow)
-	pcaInstance
-		.handleRedirectPromise()
-		.then((result) => {
-			if (result?.account) {
-				pcaInstance?.setActiveAccount(result.account);
-				console.info('[msal] redirect login completed, account set from result');
-			} else {
-				// Fallback: restore active account from cache if available
-				// (handles restart after redirect when result is null)
-				const active = pcaInstance?.getActiveAccount();
-				if (!active) {
-					const accounts = pcaInstance?.getAllAccounts() ?? [];
-					if (accounts.length > 0) {
-						pcaInstance?.setActiveAccount(accounts[0]);
-						console.info('[msal] restored active account from fallback');
-					}
-				}
-			}
-		})
-		.catch((err) => {
-			console.warn('[msal] handleRedirectPromise error (may be normal if not redirect flow)', err);
-		});
+	// (handleRedirectPromise responsibility moved to main.tsx)
 
 	// Cache in globalThis for use by MsalProvider + other consumers
 	(globalThis as MsalGlobalCarrier).__MSAL_PUBLIC_CLIENT__ = pcaInstance;
