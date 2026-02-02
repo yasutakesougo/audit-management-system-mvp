@@ -212,68 +212,29 @@ const pickEtag = (v: any): string | undefined => {
   return v?.etag ?? v?.ETag ?? v?.__metadata?.etag ?? v?.headers?.etag ?? v?.headers?.ETag;
 };
 
-const toSpDayKeyDateTime = (dayKey: string) => {
-  // dayKey = yyyy-MM-dd → SPが DateTime として扱っても "日付だけ" を保持できるよう
-  return `${dayKey}T00:00:00.000Z`;
-};
-
 const buildCreateBody = (input: CreateScheduleInput) => {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const fm = (FIELD_MAP as any).Schedules;
-
-  // NOTE: spClientは内部名キーでbodyを投げるのが安全
+  // ScheduleEvents (event list) has different fields than custom Schedules list
+  // Use only fields that exist in event list: Title, EventDate, EndDate, Category, Location
   const body: Record<string, unknown> = {
     Title: input.title,
-    [fm.EventDate]: input.start,
-    [fm.EndDate]: input.end,
-
-    ...(input.status ? { [fm.Status]: input.status } : {}),
-    ...(input.serviceType ? { [fm.ServiceType]: input.serviceType } : {}),
-
-    [fm.cr014_personType]: input.personType,
-    [fm.cr014_personId]: input.personId,
-    ...(input.personName ? { [fm.cr014_personName]: input.personName } : {}),
-
-    ...(input.assignedStaffId ? { [fm.AssignedStaffId]: input.assignedStaffId } : {}),
-    ...(input.targetUserId ? { [fm.TargetUserId]: input.targetUserId } : {}),
-
-    [fm.RowKey]: input.rowKey,
-    [fm.cr014_dayKey]: toSpDayKeyDateTime(input.dayKey),
-    [fm.MonthKey]: input.monthKey,
-    [fm.cr014_fiscalYear]: input.fiscalYear,
-
-    ...(input.orgAudience ? { [fm.cr014_orgAudience]: input.orgAudience } : {}),
-    ...(input.notes ? { [fm.Note]: input.notes } : {}),
+    EventDate: input.start,
+    EndDate: input.end,
+    Category: input.serviceType ?? 'User',
+    Location: input.personName ?? '',
   };
 
   return body;
 };
 
 const buildUpdateBody = (input: UpdateScheduleInput) => {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const fm = (FIELD_MAP as any).Schedules;
+  // ScheduleEvents (event list) has different fields than custom Schedules list
   const body: Record<string, unknown> = {};
 
   if (input.title !== undefined) body.Title = input.title;
-  if (input.start !== undefined) body[fm.EventDate] = input.start;
-  if (input.end !== undefined) body[fm.EndDate] = input.end;
-
-  if (input.status !== undefined) body[fm.Status] = input.status;
-  if (input.serviceType !== undefined) body[fm.ServiceType] = input.serviceType;
-
-  if (input.personType !== undefined) body[fm.cr014_personType] = input.personType;
-  if (input.personId !== undefined) body[fm.cr014_personId] = input.personId;
-  if (input.personName !== undefined) body[fm.cr014_personName] = input.personName;
-
-  if (input.assignedStaffId !== undefined) body[fm.AssignedStaffId] = input.assignedStaffId;
-  if (input.targetUserId !== undefined) body[fm.TargetUserId] = input.targetUserId;
-
-  if (input.dayKey !== undefined) body[fm.cr014_dayKey] = toSpDayKeyDateTime(input.dayKey);
-  if (input.monthKey !== undefined) body[fm.MonthKey] = input.monthKey;
-  if (input.fiscalYear !== undefined) body[fm.cr014_fiscalYear] = input.fiscalYear;
-
-  if (input.orgAudience !== undefined) body[fm.cr014_orgAudience] = input.orgAudience;
-  if (input.notes !== undefined) body[fm.Note] = input.notes;
+  if (input.start !== undefined) body.EventDate = input.start;
+  if (input.end !== undefined) body.EndDate = input.end;
+  if (input.serviceType !== undefined) body.Category = input.serviceType;
+  if (input.personName !== undefined) body.Location = input.personName;
 
   return body;
 };
@@ -282,8 +243,8 @@ export async function createSchedule(
   client: ReturnType<typeof useSP>,
   input: CreateScheduleInput
 ): Promise<RepoSchedule> {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const listId = ((FIELD_MAP as any).Schedules?.title ?? 'Schedules');
+  // Use ScheduleEvents list (event list, not custom Schedules list)
+  const listId = 'ScheduleEvents';
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const created: any = await client.addListItemByTitle(listId, buildCreateBody(input));
@@ -301,8 +262,8 @@ export async function updateSchedule(
   etag: string,
   input: UpdateScheduleInput
 ): Promise<RepoSchedule> {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const listId = ((FIELD_MAP as any).Schedules?.title ?? 'Schedules');
+  // Use ScheduleEvents list (event list, not custom Schedules list)
+  const listId = 'ScheduleEvents';
 
   // NOTE: spClient.updateItem(listId, id, body, { ifMatch }) 前提
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -316,7 +277,7 @@ export async function updateSchedule(
 }
 
 export async function removeSchedule(client: ReturnType<typeof useSP>, id: number): Promise<void> {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const listId = ((FIELD_MAP as any).Schedules?.title ?? 'Schedules');
+  // Use ScheduleEvents list (event list, not custom Schedules list)
+  const listId = 'ScheduleEvents';
   await client.deleteItem(listId, id);
 }
