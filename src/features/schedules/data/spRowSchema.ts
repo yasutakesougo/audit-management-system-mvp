@@ -67,8 +67,36 @@ export const SpScheduleRowSchema = z
 
 export type SpScheduleRow = z.infer<typeof SpScheduleRowSchema>;
 
-export const parseSpScheduleRows = (input: unknown): SpScheduleRow[] =>
-  SpScheduleRowSchema.array().parse(input);
+/**
+ * Summarize payload shape for diagnostics (avoid PII exposure)
+ */
+function summarizeShape(x: unknown) {
+  if (!x || typeof x !== 'object') return { type: typeof x };
+  const o = x as Record<string, unknown>;
+  return {
+    keys: Object.keys(o).slice(0, 40),
+    hasValue: 'value' in o,
+    valueType: typeof o.value,
+    valueLen: Array.isArray(o.value) ? o.value.length : undefined,
+    hasDResults: !!(o?.d as Record<string, unknown>)?.results,
+    dResultsLen: Array.isArray((o?.d as Record<string, unknown>)?.results)
+      ? ((o.d as Record<string, unknown>).results as unknown[]).length
+      : undefined,
+  };
+}
+
+export const parseSpScheduleRows = (input: unknown): SpScheduleRow[] => {
+  try {
+    return SpScheduleRowSchema.array().parse(input);
+  } catch (e) {
+    // Log shape details to diagnose OData format variance
+    console.error('[schedules] parseSpScheduleRows failed', {
+      shape: summarizeShape(input),
+      err: e instanceof z.ZodError ? e.issues?.slice(0, 6) : String(e),
+    });
+    throw e;
+  }
+};
 
 /** Facility/Other → Org/Staff, User stays User */
 export function mapSpCategoryToDomain(raw?: SpScheduleCategoryRaw | null): 'Org' | 'User' | 'Staff' | undefined {

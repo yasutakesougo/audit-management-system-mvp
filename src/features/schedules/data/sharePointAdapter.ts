@@ -172,7 +172,17 @@ const fetchRange = async (
     throw error;
   }
   const payload = (await response.json()) as SharePointResponse<unknown>;
-  return parseSpScheduleRows(payload.value ?? []);
+  try {
+    return parseSpScheduleRows(payload.value ?? []);
+  } catch (parseError) {
+    // Dump raw payload on parse failure (helps diagnose field/shape issues)
+    console.error('[schedules] fetchRange parse failed', {
+      url,
+      status: response.status,
+      payloadPreview: JSON.stringify(payload).slice(0, 2000),
+    });
+    throw parseError;
+  }
 };
 
 const buildRangeFilter = (range: DateRange): string => {

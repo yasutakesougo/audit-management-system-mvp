@@ -90,10 +90,11 @@ export function useSchedules(range: DateRange): UseSchedulesResult {
         if (!alive) return;
         const error = err instanceof Error ? err.message : 'Failed to fetch schedules';
         // eslint-disable-next-line no-console
-        console.error('[useSchedules] Error detail:', {
+        console.error('[useSchedules] Failed to load schedule items', {
           message: error,
-          errorFull: err,
+          err,
           status: (err as { status?: number }).status,
+          url: (err as { url?: string }).url,
           body: (err as { body?: string }).body,
         });
         setLastError({ message: error } as ResultError);
