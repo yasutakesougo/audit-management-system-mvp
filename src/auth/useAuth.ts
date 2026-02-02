@@ -14,8 +14,11 @@ const tokenMetrics = {
   lastRefreshEpoch: 0,
 };
 
+// ③ Cooldown + Singleflight guards to prevent rapid-fire popup loops
 // Prevent concurrent/duplicate interactive logins that can open multiple MSAL prompts
 let signInInFlight = false;
+let lastSignInAttemptTime = 0;
+const SIGN_IN_COOLDOWN_MS = 30000; // 30 seconds between attempts
 
 const authConfig = getAppConfig();
 const debugEnabled = authConfig.VITE_AUDIT_DEBUG === '1' || authConfig.VITE_AUDIT_DEBUG === 'true';
@@ -283,6 +286,16 @@ export const useAuth = () => {
         debugLog('login skipped (already in flight)');
         return { success: false };
       }
+
+      // ③ Cooldown guard: prevent rapid-fire attempts
+      const now = Date.now();
+      const timeSinceLastAttempt = now - lastSignInAttemptTime;
+      if (timeSinceLastAttempt < SIGN_IN_COOLDOWN_MS) {
+        debugLog(`login skipped (cooldown active, ${timeSinceLastAttempt}ms / ${SIGN_IN_COOLDOWN_MS}ms)`);
+        return { success: false };
+      }
+      lastSignInAttemptTime = now;
+
       signInInFlight = true;
       try {
         const canInteract = inProgress === InteractionStatus.None || inProgress === 'none';
@@ -290,13 +303,55 @@ export const useAuth = () => {
           debugLog('loginPopup skipped because another interaction is in progress');
           return { success: false };
         }
-        const result = await instance.loginPopup({ scopes: [defaultScope], prompt: 'select_account' });
-        if (result?.account) {
-          instance.setActiveAccount(result.account);
-          // Return success; caller (SignInButton) handles navigation
-          return { success: true };
+
+        // ② Popup→Redirect fallback + 30sec timeout
+        // Wrap loginPopup in Promise.race: if popup hangs/fails due to COOP or network, fallback to redirect
+        const POPUP_TIMEOUT_MS = 30000; // 30 seconds
+        
+        let popupTimeoutId: NodeJS.Timeout | undefined;
+        let timedOut = false;
+        
+        const popupPromise = (async () => {
+          const result = await instance.loginPopup({ scopes: [defaultScope], prompt: 'select_account' });
+          if (result?.account) {
+            instance.setActiveAccount(result.account);
+            return { success: true };
+          }
+          return { success: false };
+        })();
+
+        const timeoutPromise = new Promise<{ success: boolean }>((resolve) => {
+          popupTimeoutId = setTimeout(() => {
+            timedOut = true;
+            debugLog('loginPopup timeout after 30sec; falling back to loginRedirect');
+            resolve({ success: false }); // Trigger catch path
+          }, POPUP_TIMEOUT_MS);
+        });
+
+        const result = await Promise.race([popupPromise, timeoutPromise]);
+        
+        if (popupTimeoutId) clearTimeout(popupTimeoutId);
+        
+        // If popup timed out, fall back to redirect
+        if (timedOut) {
+          const canInteractRedirect = inProgress === InteractionStatus.None || inProgress === 'none';
+          if (canInteractRedirect) {
+            try {
+              debugLog('Executing fallback loginRedirect after popup timeout');
+              await instance.loginRedirect({ scopes: [defaultScope], prompt: 'select_account' });
+              return { success: true };
+            } catch (redirectError: any) {
+              debugLog('loginRedirect failed', {
+                name: redirectError?.name,
+                code: redirectError?.errorCode,
+              });
+              return { success: false };
+            }
+          }
+          return { success: false };
         }
-        return { success: false };
+
+        return result;
       } catch (error: any) {
         const popupIssues = new Set([
           'user_cancelled',
