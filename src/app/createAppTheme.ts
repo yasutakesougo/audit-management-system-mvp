@@ -12,6 +12,36 @@ const densitySpacingMap = {
 } as const;
 
 /**
+ * Font size map (Phase 7.1 - Font Size Control)
+ * Maps user-selected fontSize preference to px values
+ */
+const fontSizeMap = {
+  small: 12,       // Compact, high-density display
+  medium: 14,      // Standard, balanced display
+  large: 16,       // Accessible, spacious display
+} as const;
+
+/**
+ * Color preset map (Phase 7.2 - Color Customization)
+ * Maps user-selected colorPreset to palette colors
+ * Note: 'custom' preset is reserved for Phase 7.2 v2 ColorPicker integration
+ */
+const colorPresetMap = {
+  default: {
+    primary: '#1976d2',      // MUI Blue
+    secondary: '#dc004e',    // MUI Pink
+  },
+  highContrast: {
+    primary: '#000000',      // Black
+    secondary: '#ffffff',    // White
+  },
+  custom: {
+    primary: '#1976d2',      // Placeholder - will be overridden in Phase 7.2 v2
+    secondary: '#dc004e',
+  },
+} as const;
+
+/**
  * Creates MUI theme with user settings (density, fontSize, etc.)
  * 
  * Pure function - no side effects, easy to test
@@ -27,9 +57,18 @@ const densitySpacingMap = {
  */
 export function createAppTheme(settings: UserSettings): Theme {
   const densityBase = densitySpacingMap[settings.density];
+  const baseFontSize = fontSizeMap[settings.fontSize];
+  const colorPreset = colorPresetMap[settings.colorPreset];
 
   return createTheme({
     spacing: densityBase,
+    typography: {
+      fontSize: baseFontSize,
+    },
+    palette: {
+      primary: { main: colorPreset.primary },
+      secondary: { main: colorPreset.secondary },
+    },
     components: {
       // Button - density-aware padding
       MuiButton: {
