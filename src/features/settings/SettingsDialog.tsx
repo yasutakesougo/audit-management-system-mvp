@@ -1,4 +1,4 @@
-import React, { useContext } from 'react';
+import React, { useCallback, useContext } from 'react';
 import Dialog from '@mui/material/Dialog';
 import DialogContent from '@mui/material/DialogContent';
 import DialogTitle from '@mui/material/DialogTitle';
@@ -13,6 +13,7 @@ import Brightness4Icon from '@mui/icons-material/Brightness4';
 import Brightness7Icon from '@mui/icons-material/Brightness7';
 import { ColorModeContext } from '@/app/theme';
 import { useSettingsContext } from './SettingsContext';
+import { DensityControl } from './components';
 
 interface SettingsDialogProps {
   open: boolean;
@@ -21,7 +22,11 @@ interface SettingsDialogProps {
 
 export const SettingsDialog: React.FC<SettingsDialogProps> = ({ open, onClose }) => {
   const { mode, toggle } = useContext(ColorModeContext);
-  const { settings } = useSettingsContext();
+  const { settings, updateSettings } = useSettingsContext();
+
+  const handleDensityChange = useCallback((newDensity: 'compact' | 'comfortable' | 'spacious') => {
+    updateSettings({ density: newDensity });
+  }, [updateSettings]);
 
   return (
     <Dialog open={open} onClose={onClose} maxWidth="sm" fullWidth>
@@ -63,17 +68,12 @@ export const SettingsDialog: React.FC<SettingsDialogProps> = ({ open, onClose })
 
           <Divider />
 
-          {/* UI 密度設定（プレースホルダー - PR #318 マージ後に DensityControl を配置） */}
+          {/* UI 密度設定 */}
           <Stack spacing={2}>
-            <Typography variant="h6" sx={{ fontWeight: 700 }}>
-              UI 密度
-            </Typography>
-            <Typography variant="body2" color="text.secondary">
-              現在の設定: <strong>{settings.density}</strong>
-            </Typography>
-            <Typography variant="caption" color="text.secondary">
-              実装準備中: DensityControl コンポーネントが利用可能になると、ここにラジオボタンが表示されます。
-            </Typography>
+            <DensityControl 
+              value={settings.density}
+              onChange={handleDensityChange}
+            />
           </Stack>
 
           {/* 将来の設定項目プレースホルダー */}
