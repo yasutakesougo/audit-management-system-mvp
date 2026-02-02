@@ -2,6 +2,7 @@ import React from 'react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, act } from '@testing-library/react';
 import { MemoryRouter, Routes, Route, useNavigate } from 'react-router-dom';
+import { SettingsProvider } from '@/features/settings';
 import AppShell from './AppShell';
 
 const setCurrentUserRoleMock = vi.fn();
@@ -48,19 +49,21 @@ describe('AppShell role sync', () => {
 
     render(
       <MemoryRouter initialEntries={['/']}>
-        <Routes>
-          <Route
-            path="*"
-            element={
-              <>
-                <NavDriver />
-                <AppShell>
-                  <div>Test Content</div>
-                </AppShell>
-              </>
-            }
-          />
-        </Routes>
+        <SettingsProvider>
+          <Routes>
+            <Route
+              path="*"
+              element={
+                <>
+                  <NavDriver />
+                  <AppShell>
+                    <div>Test Content</div>
+                  </AppShell>
+                </>
+              }
+            />
+          </Routes>
+        </SettingsProvider>
       </MemoryRouter>,
     );
 
@@ -92,19 +95,21 @@ describe('AppShell role sync', () => {
 
     render(
       <MemoryRouter initialEntries={['/']}>
-        <Routes>
-          <Route
-            path="*"
-            element={
-              <>
-                <NavDriver />
-                <AppShell>
-                  <div>Test Content</div>
-                </AppShell>
-              </>
-            }
-          />
-        </Routes>
+        <SettingsProvider>
+          <Routes>
+            <Route
+              path="*"
+              element={
+                <>
+                  <NavDriver />
+                  <AppShell>
+                    <div>Test Content</div>
+                  </AppShell>
+                </>
+              }
+            />
+          </Routes>
+        </SettingsProvider>
       </MemoryRouter>,
     );
 

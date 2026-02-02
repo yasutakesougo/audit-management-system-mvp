@@ -13,6 +13,7 @@ import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import React from 'react';
 import { SettingsProvider, useSettingsContext } from '../index';
+import { SETTINGS_STORAGE_KEY } from '../settingsModel';
 
 // Mock component to test context access
 const TestConsumer: React.FC = () => {
@@ -72,9 +73,9 @@ describe('Phase 3: Density Context Integration', () => {
     });
 
     it('loads persisted settings on mount', () => {
-      // Pre-populate localStorage
+      // Pre-populate localStorage with correct key
       localStorage.setItem(
-        'app_settings',
+        SETTINGS_STORAGE_KEY,
         JSON.stringify({
           colorMode: 'dark',
           density: 'spacious',
@@ -137,7 +138,7 @@ describe('Phase 3: Density Context Integration', () => {
 
   describe('Error Handling', () => {
     it('gracefully handles invalid localStorage data', () => {
-      localStorage.setItem('app_settings', 'invalid json');
+      localStorage.setItem(SETTINGS_STORAGE_KEY, 'invalid json');
 
       // Should not throw, should use defaults
       expect(() => {

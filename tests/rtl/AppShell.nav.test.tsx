@@ -6,6 +6,7 @@ import { describe, expect, it, vi } from 'vitest';
 import AppShell from '@/app/AppShell';
 import { ColorModeContext } from '@/app/theme';
 import { FeatureFlagsContext, type FeatureFlagSnapshot } from '@/config/featureFlags';
+import { SettingsProvider } from '@/features/settings';
 
 vi.mock('@/lib/spClient', () => ({
   useSP: () => ({ spFetch: vi.fn().mockResolvedValue({ ok: true }) }),
@@ -91,9 +92,11 @@ describe('AppShell navigation smoke test', () => {
       <MemoryRouter initialEntries={['/daily']}>
         <ColorModeContext.Provider value={colorMode}>
           <FeatureFlagsContext.Provider value={flags}>
-            <AppShell>
-              <div />
-            </AppShell>
+            <SettingsProvider>
+              <AppShell>
+                <div />
+              </AppShell>
+            </SettingsProvider>
           </FeatureFlagsContext.Provider>
         </ColorModeContext.Provider>
       </MemoryRouter>
