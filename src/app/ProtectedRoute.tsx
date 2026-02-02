@@ -106,18 +106,15 @@ export default function ProtectedRoute({ flag, children, fallbackPath = '/' }: P
   const isAutomationOrDemo = isAutomationRuntime() || isDemoModeEnabled();
   const allowBypass = isAutomationOrDemo || isSkipLoginEnabled() || !isMsalConfigured();
 
-  // One-shot auto sign-in to avoid interaction_in_progress from multiple triggers
+  // ① Auto-stop patch: Remove auto sign-in from useEffect
+  // Sign-in is now button-click only (moved to AuthRequiredNotice/AuthRedirectingNotice handlers)
+  // This prevents automatic popup loops on route load or state changes
   useEffect(() => {
-    if (allowBypass) return;
+    // Just reset the flag when user accounts change (for fresh attempts on next user interaction)
     if (accounts.length > 0) {
       signInAttemptedRef.current = false;
-      return;
     }
-    if (inProgress !== InteractionStatus.None && inProgress !== 'none') return;
-    if (signInAttemptedRef.current) return;
-    signInAttemptedRef.current = true;
-    void signIn();
-  }, [accounts.length, allowBypass, inProgress, signIn]);
+  }, [accounts.length]);
 
   // List existence check: trigger when tokenReady + schedules flag
   useEffect(() => {
