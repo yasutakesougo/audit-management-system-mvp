@@ -186,9 +186,9 @@ const fetchRange = async (
 };
 
 const buildRangeFilter = (range: DateRange): string => {
-  // Add ±1 day buffer for timezone/all-day event safety (SharePoint best practice)
-  const fromBuffer = new Date(new Date(range.from).getTime() - 24 * 60 * 60 * 1000).toISOString();
-  const toBuffer = new Date(new Date(range.to).getTime() + 24 * 60 * 60 * 1000).toISOString();
+  // Add ±2 day buffer for timezone/all-day event safety and boundary cases
+  const fromBuffer = new Date(new Date(range.from).getTime() - 2 * 24 * 60 * 60 * 1000).toISOString();
+  const toBuffer = new Date(new Date(range.to).getTime() + 2 * 24 * 60 * 60 * 1000).toISOString();
   const fromLiteral = encodeDateLiteral(fromBuffer);
   const toLiteral = encodeDateLiteral(toBuffer);
   return `(${SCHEDULES_FIELDS.start} lt ${toLiteral}) and (${SCHEDULES_FIELDS.end} ge ${fromLiteral})`;
