@@ -61,6 +61,7 @@ import ChevronLeftIcon from '@mui/icons-material/ChevronLeft';
 import ChevronRightIcon from '@mui/icons-material/ChevronRight';
 import { Link as RouterLink, useLocation, useNavigate } from 'react-router-dom';
 import { ColorModeContext } from './theme';
+import { SettingsDialog } from '@/features/settings/SettingsDialog';
 
 type NavItem = {
   label: string;
@@ -136,6 +137,7 @@ const AppShell: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [desktopNavOpen, setDesktopNavOpen] = useState(false);
   const [navQuery, setNavQuery] = useState('');
   const [navCollapsed, setNavCollapsed] = useState(true);
+  const [settingsDialogOpen, setSettingsDialogOpen] = useState(false);
   const drawerWidth = 240;
   const drawerMiniWidth = 64;
   const currentDrawerWidth = navCollapsed ? drawerMiniWidth : drawerWidth;
@@ -526,6 +528,15 @@ const AppShell: React.FC<{ children: React.ReactNode }> = ({ children }) => {
             磯子区障害者地域活動ホーム
           </Typography>
           <ConnectionStatus />
+          <Tooltip title="表示設定">
+            <IconButton
+              color="inherit"
+              onClick={() => setSettingsDialogOpen(true)}
+              aria-label="表示設定"
+            >
+              <SettingsRoundedIcon />
+            </IconButton>
+          </Tooltip>
           <Tooltip title={mode === 'dark' ? 'ライトテーマに切り替え' : 'ダークテーマに切り替え'}>
             <IconButton
               color="inherit"
@@ -659,6 +670,7 @@ const AppShell: React.FC<{ children: React.ReactNode }> = ({ children }) => {
         </Container>
         {import.meta.env.DEV && <AuthDiagnosticsPanel limit={15} pollInterval={2000} />}
         <FooterQuickActions />
+        <SettingsDialog open={settingsDialogOpen} onClose={() => setSettingsDialogOpen(false)} />
       </div>
       </LiveAnnouncer>
     </RouteHydrationListener>
