@@ -223,6 +223,34 @@ export const ThemeRoot: React.FC<{ children: React.ReactNode }> = ({ children })
 export const useColorMode = () => React.useContext(ColorModeContext);
 // (end of file)
 
+/**
+ * Density-aware spacing configuration
+ * Maps UserSettings.density to base spacing unit
+ */
+export const densitySpacingMap = {
+  compact: 4,      // Tighter spacing
+  comfortable: 8,  // Default spacing
+  spacious: 12,    // Generous spacing
+} as const;
+
+export type Density = keyof typeof densitySpacingMap;
+
+/**
+ * Apply density settings to document CSS variables
+ * Usage: applyDensityToDocument('comfortable')
+ *
+ * This enables dynamic theme updates without recreating theme object
+ */
+export function applyDensityToDocument(density: Density): void {
+  const baseSpacing = densitySpacingMap[density];
+  const root = typeof document !== 'undefined' ? document.documentElement : null;
+
+  if (root) {
+    root.style.setProperty('--theme-density-base', `${baseSpacing}px`);
+    root.style.setProperty('--theme-density-factor', String(baseSpacing / 8)); // Relative to comfortable
+  }
+}
+
 export const uiTokens = {
   containerMaxWidth: 1200,
   spacingYSection: { xs: 16, sm: 24, md: 32 },
