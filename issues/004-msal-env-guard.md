@@ -28,11 +28,11 @@ MSAL の設定（Redirect URI, Tenant ID, Client ID など）は、環境ごと�
 
 ## タスク例
 
-- [ ] `src/lib/envSchema.ts` を作成
-  - zod スキーマを定義
+- [ ] 既存の `src/lib/env.schema.ts` を拡張
+  - zod スキーマを定義（`envSchema` などの名前で MSAL 用も含めて一元管理）
   - MSAL 関連の環境変数を列挙
   - URL フォーマット検証を追加
-- [ ] `src/lib/env.ts` に envSchema を統合
+- [ ] `src/lib/env.ts` で `env.schema.ts` のスキーマを利用して統合
   - スキーマバリデーションを実行
   - エラー時は console.error で詳細を出力
   - エラー時は throw で起動を停止
@@ -45,7 +45,8 @@ MSAL の設定（Redirect URI, Tenant ID, Client ID など）は、環境ごと�
 関連ファイル:
 - `src/lib/env.ts` - 現在の環境変数アクセサ
 - `.env.example` - 環境変数のサンプル
-- `src/config/msalConfig.ts` - MSAL 設定
+- `src/auth/msalConfig.ts` - MSAL 設定本体
+- `src/lib/msalConfig.ts` - 互換用 shim（古い import パス向け）
 
 参考:
 - [Zod Documentation](https://zod.dev/)

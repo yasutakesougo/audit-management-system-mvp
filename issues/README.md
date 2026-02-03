@@ -21,7 +21,7 @@ Phase 1 の基盤の上に構築する、より包括的なテストとインフ
 
 5. [005-users-crud-integration.md](./005-users-crud-integration.md) - Users CRUD 統合テスト（4 ステップ網羅）
 6. [006-a11y-ci-integration.md](./006-a11y-ci-integration.md) - a11y CI 統合（複合ページ）
-7. [007-https-restoration.md](./007-https-restoration.md) - HTTPS 復帰（RSA + TLS1.2/1.3）
+7. [007-https-restoration.md](./007-https-restoration.md) - HTTPS 復帰（TLS1.2/1.3）
 
 ## 使い方
 

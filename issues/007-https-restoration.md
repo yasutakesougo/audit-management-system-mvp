@@ -57,7 +57,8 @@ Entra/MSAL の本番挙動に近い HTTPS 動作を開発環境でも再現す�
 - `package.json` - npm scripts（`dev:https`, `certs:mkcert` など）
 - `.gitignore` - 証明書ファイルの除外
 - `README.md` - セットアップドキュメント
-- `src/config/msalConfig.ts` - MSAL 設定
+- `src/auth/msalConfig.ts` - MSAL 設定
+- `src/lib/msalConfig.ts` - MSAL 設定（互換 shim）
 
 参考:
 - [mkcert GitHub](https://github.com/FiloSottile/mkcert)

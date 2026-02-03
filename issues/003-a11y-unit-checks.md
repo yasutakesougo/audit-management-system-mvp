@@ -55,7 +55,7 @@ Phase 1 では **代表的な2コンポーネント** に絞って実装しま�
 - `src/features/records/RecordList.tsx` - 記録一覧コンポーネント
 - `src/features/users/UsersPanel.tsx` - ユーザーパネルコンポーネント
 - `vitest.setup.ts` - Vitest のセットアップファイル
-- `docs/ACCESSIBILITY_GUIDE.md` - アクセシビリティガイド
+
 
 参考:
 - [jest-axe GitHub](https://github.com/nickcolley/jest-axe)
