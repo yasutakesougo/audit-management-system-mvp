@@ -12,6 +12,10 @@
 
 詳細は [issues/README.md](./issues/README.md) を参照してください。
 
+### 📅 スプリント計画
+
+スプリントの進め方（Sprint 1-2 の詳細なタスク分解、依存関係、リスク対策）は [SPRINT_PLAN.md](./SPRINT_PLAN.md) を参照してください。
+
 ### 複合ページ axe スイープ（ストレッチゴール）
 
 **目標:**  
