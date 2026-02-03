@@ -1,6 +1,6 @@
 /**
  * Cloudflare Workers custom handler for Assets
- * Adds COOP header to HTML responses for MSAL popup authentication
+ * SPA fallback + COOP header for MSAL popup authentication
  */
 
 interface Env {
@@ -11,22 +11,28 @@ interface Env {
 
 export default {
   async fetch(request: Request, env: Env): Promise<Response> {
-    // Serve static assets via Workers Assets
-    const response = await env.ASSETS.fetch(request);
+    const url = new URL(request.url);
 
-    // Only modify HTML responses
-    const contentType = response.headers.get('content-type') || '';
-    if (!contentType.includes('text/html')) {
-      return response;
+    // API routes - pass through
+    if (url.pathname.startsWith('/api')) {
+      return env.ASSETS.fetch(request);
     }
 
-    // Add COOP header for MSAL popup support
-    const headers = new Headers(response.headers);
+    // Static files (has file extension) - serve as-is
+    if (url.pathname.includes('.')) {
+      return env.ASSETS.fetch(request);
+    }
+
+    // SPA routes (no extension) - always return index.html with COOP header
+    const indexRequest = new Request(new URL('/index.html', url), request);
+    const indexResponse = await env.ASSETS.fetch(indexRequest);
+    
+    const headers = new Headers(indexResponse.headers);
     headers.set('Cross-Origin-Opener-Policy', 'same-origin-allow-popups');
     headers.set('Cache-Control', 'public, max-age=0, must-revalidate');
 
-    return new Response(response.body, {
-      status: response.status,
+    return new Response(indexResponse.body, {
+      status: 200,
       headers,
     });
   },
