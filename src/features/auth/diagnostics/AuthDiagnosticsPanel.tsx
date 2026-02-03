@@ -7,7 +7,10 @@ import Stack from '@mui/material/Stack';
 import Chip from '@mui/material/Chip';
 import Divider from '@mui/material/Divider';
 import Button from '@mui/material/Button';
+import IconButton from '@mui/material/IconButton';
+import HelpIcon from '@mui/icons-material/Help';
 import { authDiagnostics, type AuthDiagnosticEvent } from './collector';
+import { getRunbookLink, getReasonTitle } from './runbook';
 
 type AuthDiagnosticsPanelProps = {
   /** 表示する最大件数 */
@@ -144,9 +147,22 @@ export default function AuthDiagnosticsPanel({ limit = 10, pollInterval = 2000 }
           <Stack spacing={0.5}>
             {topReasons.map(([reason, count]) => (
               <Stack key={reason} direction="row" justifyContent="space-between" alignItems="center">
-                <Typography variant="body2" fontFamily="monospace">
-                  {reason}
-                </Typography>
+                <Stack direction="row" spacing={0.5} alignItems="center">
+                  <Typography variant="body2" fontFamily="monospace">
+                    {getReasonTitle(reason)}
+                  </Typography>
+                  <IconButton
+                    size="small"
+                    component="a"
+                    href={getRunbookLink(reason)}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    aria-label={`${reason} troubleshooting guide`}
+                    sx={{ p: 0.25 }}
+                  >
+                    <HelpIcon sx={{ fontSize: 16 }} />
+                  </IconButton>
+                </Stack>
                 <Typography variant="body2" fontWeight={600}>
                   {count}
                 </Typography>
