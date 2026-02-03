@@ -1,52 +1,264 @@
-name: e2e-deep
+name: E2E Deep Tests
 
+# Deep tests run less frequently but provide comprehensive coverage
+# These tests are more thorough and may take longer to complete
 on:
-  schedule:
-    - cron: '0 21 * * 1-5' # JST 06:00 weekdays
-  workflow_dispatch:
+  push:
+    branches: [main]
   pull_request:
-    types: [opened, synchronize, reopened, labeled]
+    branches: [main]
+    types: [opened, synchronize, reopened, ready_for_review]
+  schedule:
+    # Run deep tests nightly at 2 AM UTC (11 AM JST)
+    - cron: '0 2 * * *'
+  workflow_dispatch:
+    inputs:
+      test_pattern:
+        description: 'Test pattern to run (optional, defaults to all deep tests)'
+        required: false
+        default: ''
+      environment:
+        description: 'Environment to test against'
+        required: false
+        default: 'e2e'
+        type: choice
+        options:
+          - e2e
+          - preview
 
 concurrency:
   group: e2e-deep-${{ github.ref }}
   cancel-in-progress: true
 
+env:
+  CI: true
+  NODE_ENV: test
+  # E2E Environment configuration
+  VITE_E2E: '1'
+  VITE_E2E_MSAL_MOCK: '1'
+  VITE_SKIP_LOGIN: '1'
+  VITE_SKIP_SHAREPOINT: '1'
+  VITE_DEMO_MODE: '1'
+  VITE_DEV_HARNESS: '1'
+  VITE_SCHEDULES_TZ: 'Asia/Tokyo'
+  VITE_FEATURE_SCHEDULES: '1'
+  VITE_MSAL_CLIENT_ID: 'dummy-client-id'
+  VITE_MSAL_TENANT_ID: 'dummy-tenant-id'
+
 jobs:
-  e2e-deep:
-    if: >
-      github.event_name != 'pull_request' ||
-      (
-        github.event.pull_request.draft == false &&
-        contains(join(github.event.pull_request.labels.*.name, ','), 'run-ci')
-      )
+  deep-tests-chromium:
+    name: Deep Tests (Chromium)
     runs-on: ubuntu-latest
-    timeout-minutes: 60
+    timeout-minutes: 45
+    permissions:
+      contents: read
+      checks: write
+    
     steps:
-      - uses: actions/checkout@v4
-
-      - uses: actions/setup-node@v4
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
         with:
-          node-version: 20
-          cache: npm
-
-      - run: npm ci
-
-      - name: Playwright install
-        run: npx playwright install --with-deps
-
-      - name: E2E Deep
+          node-version: '20'
+          cache: 'npm'
+      
+      - name: Install dependencies
+        run: npm ci
+      
+      - name: Install Playwright browsers
+        run: npx playwright install --with-deps chromium
+      
+      - name: Build application (preview mode)
+        run: npm run build
         env:
-          CI: 'true'
+          VITE_E2E: '1'
+          VITE_E2E_MSAL_MOCK: '1'
+          VITE_SKIP_LOGIN: '1'
+          VITE_FEATURE_SCHEDULES: '1'
+      
+      - name: Start preview server
+        run: npm run preview -- --host 127.0.0.1 --port 5173 --strictPort &
+      
+      - name: Wait for preview server
+        run: npx wait-on http://127.0.0.1:5173 --timeout 60000
+      
+      - name: Run deep E2E tests (non-smoke)
+        id: deep_tests
+        env:
           TZ: Asia/Tokyo
-        run: npx playwright test --config=playwright.deep.config.ts
-
-      - name: Upload Playwright report (failure only)
-        if: failure()
+          PLAYWRIGHT_BASE_URL: http://127.0.0.1:5173
+          PLAYWRIGHT_WEB_SERVER_URL: http://127.0.0.1:5173
+          PLAYWRIGHT_SKIP_BUILD: '1'
+          PLAYWRIGHT_JUNIT_OUTPUT: 'test-results/junit-e2e-deep.xml'
+        run: |
+          # Run all E2E tests excluding smoke tests
+          if [ -n "${{ github.event.inputs.test_pattern }}" ]; then
+            echo "Running custom test pattern: ${{ github.event.inputs.test_pattern }}"
+            npx playwright test ${{ github.event.inputs.test_pattern }} \
+              --config=playwright.config.ts \
+              --project=chromium \
+              --reporter=list,junit,html \
+              --retries=2
+          else
+            echo "Running all deep (non-smoke) tests"
+            npx playwright test tests/e2e \
+              --config=playwright.config.ts \
+              --project=chromium \
+              --grep-invert smoke \
+              --reporter=list,junit,html \
+              --retries=2
+          fi
+        continue-on-error: true
+      
+      - name: Generate test summary
+        if: always()
+        run: |
+          echo "## E2E Deep Test Results" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Environment:** ${{ github.event.inputs.environment || 'e2e' }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Status:** ${{ steps.deep_tests.outcome }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Test Pattern:** ${{ github.event.inputs.test_pattern || 'All deep tests (non-smoke)' }}" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          
+          # Check if JUnit report exists and parse it
+          if [ -f "test-results/junit-e2e-deep.xml" ]; then
+            tests=$(grep -o 'tests="[0-9]*"' test-results/junit-e2e-deep.xml | head -1 | grep -o '[0-9]*')
+            failures=$(grep -o 'failures="[0-9]*"' test-results/junit-e2e-deep.xml | head -1 | grep -o '[0-9]*')
+            echo "**Total Tests:** ${tests:-0}" >> $GITHUB_STEP_SUMMARY
+            echo "**Failures:** ${failures:-0}" >> $GITHUB_STEP_SUMMARY
+          fi
+      
+      - name: Upload Playwright HTML report
+        if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: playwright-deep-report
-          path: |
-            playwright-report
-            test-results
+          name: playwright-report-deep-${{ github.run_number }}
+          path: playwright-report/
           retention-days: 14
           if-no-files-found: warn
+      
+      - name: Upload test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-results-deep-${{ github.run_number }}
+          path: |
+            test-results/
+            playwright-report/
+          retention-days: 14
+          if-no-files-found: warn
+      
+      - name: Upload JUnit report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: junit-e2e-deep-${{ github.run_number }}
+          path: test-results/junit-e2e-deep.xml
+          retention-days: 14
+          if-no-files-found: warn
+      
+      - name: Upload artifacts on partial failure
+        if: failure() || steps.deep_tests.outcome == 'failure'
+        uses: actions/upload-artifact@v4
+        with:
+          name: failure-artifacts-deep-${{ github.run_number }}
+          path: |
+            test-results/
+            playwright-report/
+            logs/
+          retention-days: 14
+          if-no-files-found: warn
+      
+      - name: Check for flaky tests
+        if: always()
+        run: |
+          echo "## Flaky Test Detection" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          
+          # Check if any tests were retried (indicator of flakiness)
+          if [ -d "test-results" ]; then
+            retried_tests=$(find test-results -name "*-retry*" -type d | wc -l)
+            if [ "$retried_tests" -gt 0 ]; then
+              echo "⚠️ **Warning:** $retried_tests test(s) required retry" >> $GITHUB_STEP_SUMMARY
+              echo "" >> $GITHUB_STEP_SUMMARY
+              echo "Please investigate these potentially flaky tests:" >> $GITHUB_STEP_SUMMARY
+              find test-results -name "*-retry*" -type d | sed 's/test-results\//- /' >> $GITHUB_STEP_SUMMARY || true
+            else
+              echo "✅ No test retries detected - all tests passed on first attempt" >> $GITHUB_STEP_SUMMARY
+            fi
+          fi
+      
+      - name: Analyze flaky tests (detailed)
+        if: always()
+        run: node scripts/analyze-flaky-tests.mjs
+        continue-on-error: true
+      
+      - name: Upload flaky test report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: flaky-test-report-deep-${{ github.run_number }}
+          path: reports/flaky-tests.md
+          retention-days: 30
+          if-no-files-found: ignore
+      
+      - name: Fail job if tests failed
+        if: steps.deep_tests.outcome == 'failure'
+        run: exit 1
+
+  deep-tests-integration:
+    name: Deep Tests (Integration Scenarios)
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
+    permissions:
+      contents: read
+      checks: write
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+      
+      - name: Install dependencies
+        run: npm ci
+      
+      - name: Install Playwright browsers
+        run: npx playwright install --with-deps chromium
+      
+      - name: Run integration tests
+        id: integration_tests
+        run: |
+          echo "Running integration scenario tests..."
+          npx playwright test tests/e2e/dashboard-logic-integration.spec.ts \
+            tests/e2e/cross-module-navigation.spec.ts \
+            tests/e2e/integrated-resource-calendar.spec.ts \
+            --config=playwright.config.ts \
+            --project=chromium \
+            --reporter=list,junit,html \
+            --retries=1
+        env:
+          PLAYWRIGHT_JUNIT_OUTPUT: 'test-results/junit-e2e-integration.xml'
+        continue-on-error: true
+      
+      - name: Upload integration test artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: integration-results-${{ github.run_number }}
+          path: |
+            test-results/
+            playwright-report/
+          retention-days: 14
+          if-no-files-found: warn
+      
+      - name: Fail job if tests failed
+        if: steps.integration_tests.outcome == 'failure'
+        run: exit 1

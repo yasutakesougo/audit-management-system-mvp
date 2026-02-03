@@ -1,46 +1,64 @@
-name: e2e-smoke
+name: Smoke Tests (Fast)
 
+# Fast smoke tests for quick feedback on PRs
+# These tests run on every PR and prioritize speed over coverage
 on:
   pull_request:
     branches: [main, develop]
     types: [opened, synchronize, reopened, ready_for_review]
   workflow_dispatch:
+    inputs:
+      skip_build:
+        description: 'Skip build and typecheck (for testing only)'
+        required: false
+        default: 'false'
+        type: boolean
 
 concurrency:
   group: smoke-${{ github.ref }}
   cancel-in-progress: true
 
+env:
+  CI: true
+  NODE_ENV: test
+  # Smoke environment - minimal setup for speed
+  VITE_MSAL_CLIENT_ID: dummy-client-id
+  VITE_MSAL_TENANT_ID: dummy-tenant-id
+  VITE_FEATURE_SCHEDULES: '1'
+  E2E_FEATURE_SCHEDULE_NAV: '1'
+  E2E_FEATURE_SCHEDULE_ACCEPTANCE: '1'
+  E2E_FEATURE_SCHEDULE_WEEK_MONTH_TAB: '1'
+
 jobs:
   lint:
-    name: lint
+    name: Lint
     runs-on: ubuntu-latest
+    if: github.event.inputs.skip_build != 'true'
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
           node-version: 20
           cache: npm
-      - name: Validate env (only when secrets present)
-        if: ${{ env.VITE_MSAL_CLIENT_ID != '' && env.VITE_MSAL_TENANT_ID != '' }}
-        run: node scripts/validate-env.mjs
-        env:
-          ENV_VALIDATE_REQUIRED: VITE_MSAL_CLIENT_ID,VITE_MSAL_TENANT_ID
-          VITE_MSAL_CLIENT_ID: ${{ secrets.VITE_MSAL_CLIENT_ID || '' }}
-          VITE_MSAL_TENANT_ID: ${{ secrets.VITE_MSAL_TENANT_ID || '' }}
       - run: npm ci
-      - run: npm run lint
+      - name: Run ESLint
+        id: lint
+        run: npm run lint
+      - name: Upload lint results on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: lint-errors-${{ github.run_number }}
+          path: |
+            package.json
+            .eslintrc.cjs
+          retention-days: 7
+          if-no-files-found: ignore
 
   typecheck:
-    name: typecheck
+    name: TypeCheck
     runs-on: ubuntu-latest
-    env:
-      VITE_MSAL_CLIENT_ID: dummy-client-id
-      VITE_MSAL_TENANT_ID: dummy-tenant-id
-      VITE_FEATURE_SCHEDULES: "1"
-      # Phase 2: E2E feature flag guards
-      E2E_FEATURE_SCHEDULE_NAV: "1"
-      E2E_FEATURE_SCHEDULE_ACCEPTANCE: "1"
-      E2E_FEATURE_SCHEDULE_WEEK_MONTH_TAB: "1"
+    if: github.event.inputs.skip_build != 'true'
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -48,21 +66,29 @@ jobs:
           node-version: 20
           cache: npm
       - run: npm ci
-      - run: npm run typecheck
+      - name: Run TypeScript check
+        id: typecheck
+        run: npm run typecheck
+      - name: Upload typecheck errors on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: typecheck-errors-${{ github.run_number }}
+          path: |
+            tsconfig.build.json
+            tsconfig.json
+          retention-days: 7
+          if-no-files-found: ignore
 
   vitest:
-    name: vitest
+    name: Unit Tests
     runs-on: ubuntu-latest
     timeout-minutes: 15
     needs: [lint, typecheck]
-    env:
-      VITE_MSAL_CLIENT_ID: dummy-client-id
-      VITE_MSAL_TENANT_ID: dummy-tenant-id
-      VITE_FEATURE_SCHEDULES: "1"
-      # Phase 2: E2E feature flag guards
-      E2E_FEATURE_SCHEDULE_NAV: "1"
-      E2E_FEATURE_SCHEDULE_ACCEPTANCE: "1"
-      E2E_FEATURE_SCHEDULE_WEEK_MONTH_TAB: "1"
+    if: |
+      always() && 
+      (needs.lint.result == 'success' || needs.lint.result == 'skipped') && 
+      (needs.typecheck.result == 'success' || needs.typecheck.result == 'skipped')
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -70,46 +96,171 @@ jobs:
           node-version: 20
           cache: npm
       - run: npm ci
-      - name: vitest
+      - name: Run unit tests
+        id: vitest
         run: TZ=Asia/Tokyo npm run test:ci
-
-  e2e-smoke:
-    name: e2e-smoke (chromium)
-    runs-on: ubuntu-latest
-    needs: [lint, typecheck, vitest]
-    env:
-      VITE_MSAL_CLIENT_ID: dummy-client-id
-      VITE_MSAL_TENANT_ID: dummy-tenant-id
-      VITE_FEATURE_SCHEDULES: "1"
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 20
-          cache: npm
-      - run: npm ci
-      - name: Playwright install
-        run: npx playwright install --with-deps
-      - name: E2E Smoke (short set)
-        env:
-          TZ: Asia/Tokyo
-          CI: 'true'
-        run: npx playwright test --config=playwright.smoke.config.ts
-      - if: failure()
-        name: Upload Playwright artifacts (failure only)
+      - name: Upload test coverage on failure
+        if: failure()
         uses: actions/upload-artifact@v4
         with:
-          name: playwright-artifacts
+          name: vitest-coverage-${{ github.run_number }}
+          path: coverage/
+          retention-days: 7
+          if-no-files-found: ignore
+
+  e2e-smoke:
+    name: E2E Smoke (Chromium)
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    needs: [vitest]
+    if: always() && needs.vitest.result == 'success'
+    permissions:
+      contents: read
+      checks: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - run: npm ci
+      - name: Playwright install (preview server)
+        run: npx playwright install --with-deps chromium
+      - name: Build (preview server)
+        run: VITE_E2E='1' VITE_E2E_MSAL_MOCK='1' VITE_FEATURE_SCHEDULES='1' VITE_SKIP_LOGIN='1' npm run build --if-present
+      - name: Start preview server
+        run: npm run preview -- --host 127.0.0.1 --port 5173 --strictPort &
+
+      - name: Wait for preview server
+        run: npx wait-on http://127.0.0.1:5173 --timeout 60000
+      
+      - name: Verify server is responding
+        run: curl -I http://127.0.0.1:5173 | head -5
+      
+      - name: E2E router + nav smoke (chromium + smoke)
+        id: smoke_core
+        env:
+          TZ: Asia/Tokyo
+          PLAYWRIGHT_BASE_URL: http://127.0.0.1:5173
+          PLAYWRIGHT_WEB_SERVER_URL: http://127.0.0.1:5173
+          PLAYWRIGHT_SKIP_BUILD: '1'
+          VITE_E2E: '1'
+          VITE_E2E_MSAL_MOCK: '1'
+          VITE_SKIP_LOGIN: '1'
+          PLAYWRIGHT_JUNIT_OUTPUT: 'test-results/junit-e2e-smoke-core.xml'
+        run: |
+          echo "=== E2E flags ==="
+          echo "VITE_E2E=$VITE_E2E"
+          echo "VITE_E2E_MSAL_MOCK=$VITE_E2E_MSAL_MOCK"
+          echo "VITE_SKIP_LOGIN=$VITE_SKIP_LOGIN"
+          echo "=== Tooling ==="
+          node -v
+          npx playwright --version
+          echo "=== Run Core Smoke ==="
+          npm run e2e:smoke:router-nav
+        continue-on-error: true
+      
+      - name: E2E all smoke tests
+        id: smoke_all
+        env:
+          TZ: Asia/Tokyo
+          PLAYWRIGHT_BASE_URL: http://127.0.0.1:5173
+          PLAYWRIGHT_WEB_SERVER_URL: http://127.0.0.1:5173
+          PLAYWRIGHT_SKIP_BUILD: '1'
+          VITE_E2E: '1'
+          VITE_E2E_MSAL_MOCK: '1'
+          VITE_SKIP_LOGIN: '1'
+          VITE_FEATURE_SCHEDULES: '1'
+          PLAYWRIGHT_JUNIT_OUTPUT: 'test-results/junit-e2e-smoke-all.xml'
+        run: |
+          npx playwright test tests/e2e \
+            --config=playwright.config.ts \
+            --project=smoke \
+            --reporter=list,junit,html \
+            --retries=1
+        continue-on-error: true
+      
+      - name: Generate smoke test summary
+        if: always()
+        run: |
+          echo "## Smoke Test Results" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Core Smoke Tests:** ${{ steps.smoke_core.outcome }}" >> $GITHUB_STEP_SUMMARY
+          echo "**All Smoke Tests:** ${{ steps.smoke_all.outcome }}" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          
+          # Parse JUnit reports if available
+          if [ -f "test-results/junit-e2e-smoke-all.xml" ]; then
+            tests=$(grep -o 'tests="[0-9]*"' test-results/junit-e2e-smoke-all.xml | head -1 | grep -o '[0-9]*' || echo "0")
+            failures=$(grep -o 'failures="[0-9]*"' test-results/junit-e2e-smoke-all.xml | head -1 | grep -o '[0-9]*' || echo "0")
+            echo "**Total Smoke Tests:** ${tests}" >> $GITHUB_STEP_SUMMARY
+            echo "**Failures:** ${failures}" >> $GITHUB_STEP_SUMMARY
+          fi
+      
+      - name: Upload Playwright artifacts (always)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-artifacts-smoke-${{ github.run_number }}
           path: |
             playwright-report/**
             test-results/**
           retention-days: 7
           if-no-files-found: warn
-      - if: failure()
-        name: Upload JUnit report (failure only)
+      
+      - name: Upload JUnit report
+        if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: junit-e2e-smoke
-          path: test-results/junit-e2e-smoke.xml
+          name: junit-e2e-smoke-${{ github.run_number }}
+          path: test-results/junit-e2e-smoke-*.xml
           retention-days: 7
           if-no-files-found: warn
+      
+      - name: Upload failure artifacts
+        if: failure() || steps.smoke_core.outcome == 'failure' || steps.smoke_all.outcome == 'failure'
+        uses: actions/upload-artifact@v4
+        with:
+          name: smoke-failure-artifacts-${{ github.run_number }}
+          path: |
+            test-results/
+            playwright-report/
+            logs/
+          retention-days: 14
+          if-no-files-found: warn
+      
+      - name: Detect flaky smoke tests
+        if: always()
+        run: |
+          echo "## Flaky Test Detection (Smoke)" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          
+          if [ -d "test-results" ]; then
+            retried=$(find test-results -name "*-retry*" -type d | wc -l)
+            if [ "$retried" -gt 0 ]; then
+              echo "⚠️ **$retried smoke test(s) required retry**" >> $GITHUB_STEP_SUMMARY
+              echo "" >> $GITHUB_STEP_SUMMARY
+              echo "Flaky tests detected:" >> $GITHUB_STEP_SUMMARY
+              find test-results -name "*-retry*" -type d | sed 's/test-results\//- /' >> $GITHUB_STEP_SUMMARY || true
+            else
+              echo "✅ No retries - all smoke tests stable" >> $GITHUB_STEP_SUMMARY
+            fi
+          fi
+      
+      - name: Analyze flaky tests (detailed)
+        if: always()
+        run: node scripts/analyze-flaky-tests.mjs
+        continue-on-error: true
+      
+      - name: Upload flaky test report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: flaky-test-report-smoke-${{ github.run_number }}
+          path: reports/flaky-tests.md
+          retention-days: 30
+          if-no-files-found: ignore
+      
+      - name: Fail job if smoke tests failed
+        if: steps.smoke_core.outcome == 'failure' || steps.smoke_all.outcome == 'failure'
+        run: exit 1
