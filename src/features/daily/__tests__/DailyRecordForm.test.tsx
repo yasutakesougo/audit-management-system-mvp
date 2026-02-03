@@ -1,5 +1,6 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import { MemoryRouter } from 'react-router-dom';
 import { describe, expect, it, vi } from 'vitest';
 import { PersonDaily } from '../../../domain/daily/types';
 import { DailyRecordForm } from '../DailyRecordForm';
@@ -69,11 +70,13 @@ describe('DailyRecordForm', () => {
       const mockOnClose = vi.fn();
 
       render(
-        <DailyRecordForm
-          open={true}
-          onClose={mockOnClose}
-          onSave={mockOnSave}
-        />
+        <MemoryRouter>
+          <DailyRecordForm
+            open={true}
+            onClose={mockOnClose}
+            onSave={mockOnSave}
+          />
+        </MemoryRouter>
       );
 
       const today = new Date().toISOString().split('T')[0];
@@ -86,12 +89,14 @@ describe('DailyRecordForm', () => {
       const mockOnClose = vi.fn();
 
       render(
-        <DailyRecordForm
-          open={true}
-          onClose={mockOnClose}
-          onSave={mockOnSave}
-          record={mockRecord}
-        />
+        <MemoryRouter>
+          <DailyRecordForm
+            open={true}
+            onClose={mockOnClose}
+            onSave={mockOnSave}
+            record={mockRecord}
+          />
+        </MemoryRouter>
       );
 
       expect(screen.getByRole('textbox', { name: /記録者名/ })).toHaveValue('山田花子');
@@ -106,11 +111,13 @@ describe('DailyRecordForm', () => {
       const mockOnClose = vi.fn();
 
       render(
-        <DailyRecordForm
-          open={true}
-          onClose={mockOnClose}
-          onSave={mockOnSave}
-        />
+        <MemoryRouter>
+          <DailyRecordForm
+            open={true}
+            onClose={mockOnClose}
+            onSave={mockOnSave}
+          />
+        </MemoryRouter>
       );
 
       const saveButton = screen.getByRole('button', { name: /保存/ });
@@ -122,11 +129,13 @@ describe('DailyRecordForm', () => {
       const mockOnClose = vi.fn();
 
       render(
-        <DailyRecordForm
-          open={true}
-          onClose={mockOnClose}
-          onSave={mockOnSave}
-        />
+        <MemoryRouter>
+          <DailyRecordForm
+            open={true}
+            onClose={mockOnClose}
+            onSave={mockOnSave}
+          />
+        </MemoryRouter>
       );
 
       const user = userEvent.setup();
@@ -156,12 +165,14 @@ describe('DailyRecordForm', () => {
       const mockOnClose = vi.fn();
 
       render(
-        <DailyRecordForm
-          open={true}
-          onClose={mockOnClose}
-          onSave={mockOnSave}
-          record={mockRecord}
-        />
+        <MemoryRouter>
+          <DailyRecordForm
+            open={true}
+            onClose={mockOnClose}
+            onSave={mockOnSave}
+            record={mockRecord}
+          />
+        </MemoryRouter>
       );
 
       // 文字列フィールドの更新
@@ -185,12 +196,14 @@ describe('DailyRecordForm', () => {
       const mockOnClose = vi.fn();
 
       render(
-        <DailyRecordForm
-          open={true}
-          onClose={mockOnClose}
-          onSave={mockOnSave}
-          record={mockRecord}
-        />
+        <MemoryRouter>
+          <DailyRecordForm
+            open={true}
+            onClose={mockOnClose}
+            onSave={mockOnSave}
+            record={mockRecord}
+          />
+        </MemoryRouter>
       );
 
       const saveButton = screen.getByRole('button', { name: /更新/ });
