@@ -52,7 +52,7 @@ Phase 1 では **代表的な2コンポーネント** に絞って実装しま�
 ## 備考
 
 関連ファイル:
-- `src/features/daily/RecordList.tsx` - 記録一覧コンポーネント
+- `src/features/records/RecordList.tsx` - 記録一覧コンポーネント
 - `src/features/users/UsersPanel.tsx` - ユーザーパネルコンポーネント
 - `vitest.setup.ts` - Vitest のセットアップファイル
 - `docs/ACCESSIBILITY_GUIDE.md` - アクセシビリティガイド

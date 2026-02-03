@@ -32,9 +32,9 @@ Issue #003 で単体コンポーネントの a11y チェックを導入した後
 - [ ] 複合ページのレンダリング
   - RecordList と UsersPanel を同時に表示する画面に遷移
   - データが正しく読み込まれるまで待機
-- [ ] axe-playwright を使ったスキャン
-  - `await expect(page).toPassAxeTest()` でアサート
-  - 違反があればレポートを取得
+- [ ] 既存の a11y ヘルパーを使ったスキャン
+  - `tests/e2e/utils/a11y.ts` の `runA11ySmoke(page, { pageName: 'complex-page' })` を呼び出す
+  - 違反があれば `runA11ySmoke` の結果を JSON レポートとして保存
 - [ ] CI ワークフローの更新
   - `.github/workflows/ci.yml` に a11y テストジョブを追加
   - axe レポートをアーティファクトとして保存
@@ -49,7 +49,7 @@ Issue #003 で単体コンポーネントの a11y チェックを導入した後
 ## 備考
 
 関連ファイル:
-- `src/features/daily/RecordList.tsx` - 記録一覧コンポーネント
+- `src/features/records/RecordList.tsx` - 記録一覧コンポーネント
 - `src/features/users/UsersPanel.tsx` - ユーザーパネルコンポーネント
 - `tests/e2e/dashboard.tabs.smoke.spec.ts` - 複合ページの参考
 - `.github/workflows/ci.yml` - CI ワークフロー

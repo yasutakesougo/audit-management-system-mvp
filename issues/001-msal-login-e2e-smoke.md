@@ -37,7 +37,7 @@ MSAL (Microsoft Authentication Library) による認証フローは、アプリ�
 ## 備考
 
 関連ファイル:
-- `src/hooks/useAuth.ts` - MSAL 認証ロジック
+- `src/auth/useAuth.ts` - MSAL 認証ロジック
 - `tests/e2e/app-shell.smoke.spec.ts` - 既存のスモークテスト参考
 - `.github/workflows/e2e.yml` - E2E テストワークフロー
 

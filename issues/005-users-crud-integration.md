@@ -54,10 +54,11 @@ Issue #002 で基本的な追加・削除フローを確保した後、ユーザ
 ## 備考
 
 関連ファイル:
-- `src/features/users/UsersPage.tsx` - ユーザー一覧・管理画面
+- `src/features/users/UsersPanel.tsx` - ユーザー一覧・管理画面
 - `src/features/users/UserForm.tsx` - ユーザー追加/編集フォーム
-- `src/domain/users/usersStore.ts` - ユーザーストア（状態管理）
-- `tests/e2e/users.detail-flow.spec.ts` - 既存のユーザーテスト参考
+- `src/features/users/store.ts` - ユーザーストア（デモ用 In-Memory 状態管理）
+- `src/features/users/useUsers.ts` - ユーザーフック（SharePoint 連携 / 本番想定）
+- `tests/e2e/users-crud-smoke.spec.ts` - 既存のユーザーテスト参考
 - `issues/002-users-crud-smoke.md` - 前提となる基本回帰テスト
 
 前提条件:
