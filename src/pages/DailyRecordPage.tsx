@@ -1,3 +1,4 @@
+import AccessTimeIcon from '@mui/icons-material/AccessTime';
 import AddIcon from '@mui/icons-material/Add';
 import SearchIcon from '@mui/icons-material/Search';
 import Box from '@mui/material/Box';
@@ -21,6 +22,7 @@ import { useNavigate, useSearchParams } from 'react-router-dom';
 import { PersonDaily } from '../domain/daily/types';
 import { DailyRecordForm } from '../features/daily/DailyRecordForm';
 import { DailyRecordList } from '../features/daily/DailyRecordList';
+import { useHandoffSummary } from '../features/handoff/useHandoffSummary';
 import { useUsersDemo } from '../features/users/usersStoreDemo';
 import { saveDailyRecord, validateDailyRecord } from '@/features/daily/dailyRecordLogic';
 import { useSchedules } from '../stores/useSchedules';
@@ -201,6 +203,12 @@ export default function DailyRecordPage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
   const [dateFilter, setDateFilter] = useState('');
+
+  // Phase 1A: 申し送りサマリー
+  const {
+    total: handoffTotal,
+    criticalCount: handoffCritical
+  } = useHandoffSummary({ dayScope: 'today' });
 
   // Effect to scroll to highlighted record when query params are present
   useEffect(() => {
@@ -482,6 +490,57 @@ export default function DailyRecordPage() {
             利用者全員の日々の活動状況、問題行動、発作記録を管理します
           </Typography>
         </Box>
+
+        {/* Phase 1A: 申し送りサマリーカード */}
+        {handoffTotal > 0 && (
+          <Card
+            sx={{
+              mb: 2,
+              bgcolor: handoffCritical > 0 ? 'error.50' : 'info.50',
+              border: '1px solid',
+              borderColor: handoffCritical > 0 ? 'error.200' : 'info.200'
+            }}
+            data-testid="daily-handoff-summary"
+          >
+            <CardContent>
+              <Stack
+                direction={{ xs: 'column', sm: 'row' }}
+                justifyContent="space-between"
+                alignItems={{ xs: 'flex-start', sm: 'center' }}
+                spacing={2}
+              >
+                <Stack direction="row" spacing={2} alignItems="center">
+                  <AccessTimeIcon
+                    color={handoffCritical > 0 ? 'error' : 'primary'}
+                    sx={{ fontSize: 32 }}
+                  />
+                  <Box>
+                    <Typography variant="h6" sx={{ fontWeight: 600 }}>
+                      本日の申し送り: {handoffTotal}件
+                    </Typography>
+                    {handoffCritical > 0 && (
+                      <Typography variant="body2" color="error.main" sx={{ mt: 0.5 }}>
+                        ⚠️ 重要 {handoffCritical}件 - 要確認
+                      </Typography>
+                    )}
+                  </Box>
+                </Stack>
+                <Button
+                  variant="contained"
+                  size="medium"
+                  startIcon={<AccessTimeIcon />}
+                  onClick={() => navigate('/handoff-timeline', {
+                    state: { dayScope: 'today', timeFilter: 'all' }
+                  })}
+                  sx={{ minWidth: { xs: '100%', sm: 'auto' } }}
+                  data-testid="daily-handoff-summary-cta"
+                >
+                  タイムラインで確認
+                </Button>
+              </Stack>
+            </CardContent>
+          </Card>
+        )}
 
         {/* 統計情報（本日分） */}
         <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2} sx={{ mb: 3 }} data-testid="daily-stats-panel">
