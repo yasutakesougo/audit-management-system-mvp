@@ -38,7 +38,7 @@
 
 #### PR#1: MSAL認証 E2E スモークテスト + Playwright安定化
 
-**Issue**: [001-msal-login-e2e-smoke.md](./issues/001-msal-login-e2e-smoke.md)
+**Issue**: [001-msal-login-e2e-smoke.md](./../issues/001-msal-login-e2e-smoke.md)
 
 **目的**:
 - 認証の致命的バグを自動検知
@@ -78,7 +78,7 @@ test('MSAL login → /me → logout', async ({ page }) => {
 
 #### PR#2: Users CRUD 基本回帰テスト（追加/削除）
 
-**Issue**: [002-users-crud-smoke.md](./issues/002-users-crud-smoke.md)
+**Issue**: [002-users-crud-smoke.md](./../issues/002-users-crud-smoke.md)
 
 **目的**:
 - Users CRUD の最小限の回帰テストを確立
@@ -161,7 +161,7 @@ test('Add user → verify in list → delete', async ({ page }) => {
 
 #### PR#3: a11y 自動チェック（jest-axe 単体導入）
 
-**Issue**: [003-a11y-unit-checks.md](./issues/003-a11y-unit-checks.md)
+**Issue**: [003-a11y-unit-checks.md](./../issues/003-a11y-unit-checks.md)
 
 **目的**:
 - 初期段階でアクセシビリティ違反を検知
@@ -199,7 +199,7 @@ test('RecordList has no a11y violations', async () => {
 
 #### PR#4: MSAL 設定健全性ガード（env schema）
 
-**Issue**: [004-msal-env-guard.md](./issues/004-msal-env-guard.md)
+**Issue**: [004-msal-env-guard.md](./../issues/004-msal-env-guard.md)
 
 **目的**:
 - Redirect URI や Authority などの設定ミスを起動時に検知

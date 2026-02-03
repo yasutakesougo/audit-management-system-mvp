@@ -18,7 +18,7 @@
 
 1. **Issue Draft を確認**
    ```bash
-   cat issues/001-msal-login-e2e-smoke.md
+   cat ../issues/001-msal-login-e2e-smoke.md
    ```
 
 2. **GitHub Issue を作成**
@@ -72,7 +72,7 @@
 
 1. **Issue Draft を確認**
    ```bash
-   cat issues/002-users-crud-smoke.md
+   cat ../issues/002-users-crud-smoke.md
    ```
 
 2. **GitHub Issue を作成**
@@ -114,7 +114,7 @@
 
 1. **Issue Draft を確認**
    ```bash
-   cat issues/003-a11y-unit-checks.md
+   cat ../issues/003-a11y-unit-checks.md
    ```
 
 2. **jest-axe をインストール**
@@ -162,7 +162,7 @@
 
 1. **Issue Draft を確認**
    ```bash
-   cat issues/004-msal-env-guard.md
+   cat ../issues/004-msal-env-guard.md
    ```
 
 2. **env スキーマを作成**
@@ -287,7 +287,7 @@ npm run test:e2e:smoke      # E2E smoke tests
 
 - [SPRINT_PLAN.md](./SPRINT_PLAN.md) - 詳細なスプリント計画
 - [Backlog.md](./Backlog.md) - バックログ候補
-- [issues/README.md](./issues/README.md) - Issue Draft 一覧
+- [issues/README.md](./../issues/README.md) - Issue Draft 一覧
 - [E2E_BEST_PRACTICES.md](./docs/E2E_BEST_PRACTICES.md) - E2Eテストのベストプラクティス
 - [E2E_TEST_STRATEGY.md](./docs/E2E_TEST_STRATEGY.md) - E2Eテスト戦略
 

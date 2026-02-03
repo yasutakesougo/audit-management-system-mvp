@@ -7,7 +7,7 @@
 ### PR#1: MSAL認証 E2E スモークテスト (Week 1)
 **担当者**: _未定_  
 **期限**: Week 1  
-**Issue**: [issues/001-msal-login-e2e-smoke.md](./issues/001-msal-login-e2e-smoke.md)
+**Issue**: [issues/001-msal-login-e2e-smoke.md](./../issues/001-msal-login-e2e-smoke.md)
 
 - [ ] **準備**
   - [ ] Issue Draft を確認
@@ -44,7 +44,7 @@
 ### PR#2: Users CRUD 基本回帰テスト（追加/削除）(Week 1-2)
 **担当者**: _未定_  
 **期限**: Week 2  
-**Issue**: [issues/002-users-crud-smoke.md](./issues/002-users-crud-smoke.md)  
+**Issue**: [issues/002-users-crud-smoke.md](./../issues/002-users-crud-smoke.md)  
 **依存**: PR#1 完了後
 
 - [ ] **準備**
@@ -91,7 +91,7 @@
 ### PR#3: a11y 自動チェック（jest-axe 単体導入）(Week 3)
 **担当者**: _未定_  
 **期限**: Week 3  
-**Issue**: [issues/003-a11y-unit-checks.md](./issues/003-a11y-unit-checks.md)  
+**Issue**: [issues/003-a11y-unit-checks.md](./../issues/003-a11y-unit-checks.md)  
 **依存**: なし（並行実施可能）
 
 - [ ] **準備**
@@ -138,7 +138,7 @@
 ### PR#4: MSAL 設定健全性ガード（env schema）(Week 3-4)
 **担当者**: _未定_  
 **期限**: Week 4  
-**Issue**: [issues/004-msal-env-guard.md](./issues/004-msal-env-guard.md)  
+**Issue**: [issues/004-msal-env-guard.md](./../issues/004-msal-env-guard.md)  
 **依存**: なし（並行実施可能）
 
 - [ ] **準備**
@@ -258,7 +258,7 @@ Sprint 1-2 完了後、以下を検討:
 - [SPRINT_QUICKSTART.md](./SPRINT_QUICKSTART.md) - 実装クイックスタート
 - [.github/SPRINT_TIMELINE.md](./.github/SPRINT_TIMELINE.md) - ビジュアルタイムライン
 - [Backlog.md](./Backlog.md) - バックログ候補
-- [issues/README.md](./issues/README.md) - Issue Draft 一覧
+- [issues/README.md](./../issues/README.md) - Issue Draft 一覧
 
 ---
 

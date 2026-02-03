@@ -33,29 +33,29 @@
    - リスクヒートマップ
    - 並行作業の機会
 
-5. **[issues/README.md](./issues/README.md)** - 📝 Issue Draft 一覧
+5. **[issues/README.md](./../issues/README.md)** - 📝 Issue Draft 一覧
    - 各 Issue Draft の概要
    - GitHub Issue 作成方法
    - テンプレート構造
 
 ### 🎫 Issue Drafts（実装詳細）
 
-6. **[issues/001-msal-login-e2e-smoke.md](./issues/001-msal-login-e2e-smoke.md)**
+6. **[issues/001-msal-login-e2e-smoke.md](./../issues/001-msal-login-e2e-smoke.md)**
    - Sprint 1, PR#1
    - MSAL認証 E2E スモークテスト
    - 工数: S（1-2日）
 
-7. **[issues/002-users-crud-smoke.md](./issues/002-users-crud-smoke.md)**
+7. **[issues/002-users-crud-smoke.md](./../issues/002-users-crud-smoke.md)**
    - Sprint 1, PR#2
    - Users CRUD 基本回帰テスト
    - 工数: S（1-2日）
 
-8. **[issues/003-a11y-unit-checks.md](./issues/003-a11y-unit-checks.md)**
+8. **[issues/003-a11y-unit-checks.md](./../issues/003-a11y-unit-checks.md)**
    - Sprint 2, PR#3
    - a11y 自動チェック
    - 工数: S（1-2日）
 
-9. **[issues/004-msal-env-guard.md](./issues/004-msal-env-guard.md)**
+9. **[issues/004-msal-env-guard.md](./../issues/004-msal-env-guard.md)**
    - Sprint 2, PR#4
    - MSAL 設定健全性ガード
    - 工数: S（1-2日）
@@ -102,7 +102,7 @@
    cat SPRINT_QUICKSTART.md
    
    # 担当タスクの Issue Draft を確認
-   cat issues/001-msal-login-e2e-smoke.md
+   cat ../issues/001-msal-login-e2e-smoke.md
    ```
 
 2. **実装中**
@@ -147,7 +147,7 @@
 1. 📘 [SPRINT_PLAN.md](./SPRINT_PLAN.md) - 全体像を把握
 2. 🗓️ [.github/SPRINT_TIMELINE.md](./.github/SPRINT_TIMELINE.md) - スケジュール確認
 3. 🚀 [SPRINT_QUICKSTART.md](./SPRINT_QUICKSTART.md) - 実装方法を理解
-4. 📝 [issues/001-msal-login-e2e-smoke.md](./issues/001-msal-login-e2e-smoke.md) - 最初のタスク詳細
+4. 📝 [issues/001-msal-login-e2e-smoke.md](./../issues/001-msal-login-e2e-smoke.md) - 最初のタスク詳細
 
 ### 実装担当者
 
