@@ -66,8 +66,9 @@ test.describe('Phase 2-1: handoff → daily highlight navigation', () => {
     // ✅ /daily/activity へ遷移
     await expect(page).toHaveURL(/\/daily\/activity/);
 
-    // ✅ 該当利用者のカードが存在する（personId ベース）
-    const targetCard = page.getByTestId('daily-record-card-001');
+    // ✅ 該当利用者のカードが存在する（record.id ベース）
+    // 最初のレコード（userCode 001）の id は 1
+    const targetCard = page.getByTestId('daily-record-card-1');
     await expect(targetCard).toBeVisible({ timeout: 10_000 });
 
     // ✅ ハイライトバナーが一時表示される
