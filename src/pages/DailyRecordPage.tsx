@@ -230,7 +230,7 @@ export default function DailyRecordPage() {
 
     // 記録一覧が描画された後にスクロールしたいので、軽く遅延
     const timer = setTimeout(() => {
-      const element = document.querySelector(`[data-testid="daily-record-card-${highlightUserId}"]`);
+      const element = document.querySelector(`[data-person-id="${highlightUserId}"]`);
       if (element) {
         element.scrollIntoView({ behavior: 'smooth', block: 'center' });
         setActiveHighlightUserId(highlightUserId);
