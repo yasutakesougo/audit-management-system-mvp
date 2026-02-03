@@ -8,6 +8,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2026-02-04] Phase 3.7-A Complete
+
+### Added
+- **Auth Diagnostics Infrastructure**
+  - AuthDiagnosticsCollector (Singleton, 100-event ring buffer)
+  - useSchedules integration (Auth Guard events)
+  - MsalProvider integration (login events)
+  - DevTools API for dev-mode inspection
+  - Runbook links for troubleshooting
+  - E2E smoke test coverage (3 test cases)
+
+### Quality
+- TypeScript: 100% compliance
+- ESLint: 0 warnings
+- E2E: All tests passing
+- Manual: DevTools API verified
+
 ### Added
 
 - _TBD_
