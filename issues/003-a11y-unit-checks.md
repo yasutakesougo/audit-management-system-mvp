@@ -26,6 +26,14 @@
 - [ ] M（中）
 - [ ] L（大）
 
+## スコープ（Phase 1 として）
+
+Phase 1 では **代表的な2コンポーネント** に絞って実装します：
+- RecordList（記録一覧）
+- UsersPanel（ユーザーパネル）
+
+全コンポーネントへの展開は Phase 2（Issue #006）で実施します。
+
 ## タスク例
 
 - [ ] `npm install --save-dev jest-axe @types/jest-axe` を実行

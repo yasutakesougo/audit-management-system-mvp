@@ -66,4 +66,4 @@ Issue #002 で基本的な追加・削除フローを確保した後、ユーザ
 
 参考:
 - [Playwright Test Fixtures](https://playwright.dev/docs/test-fixtures)
-- [E2E Test Strategy](./docs/E2E_TEST_STRATEGY.md)
+- [E2E Test Strategy](../docs/E2E_TEST_STRATEGY.md)

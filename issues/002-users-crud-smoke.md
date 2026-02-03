@@ -46,4 +46,4 @@
 
 参考:
 - [Playwright Locators](https://playwright.dev/docs/locators)
-- [E2E Best Practices](./docs/E2E_BEST_PRACTICES.md)
+- [E2E Best Practices](../docs/E2E_BEST_PRACTICES.md)
