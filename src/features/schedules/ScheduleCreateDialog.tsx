@@ -66,6 +66,8 @@ type ScheduleCreateDialogBaseProps = {
   defaultUser?: ScheduleUserOption | null;
   dialogTestId?: string;
   submitTestId?: string;
+  isSubmitting?: boolean;
+  isDeleting?: boolean;
 };
 
 type ScheduleCreateDialogCreateProps = {
@@ -108,6 +110,8 @@ export const ScheduleCreateDialog: React.FC<ScheduleCreateDialogProps> = (props)
     initialOverride,
     dialogTestId,
     submitTestId,
+    isSubmitting: externalIsSubmitting = false,
+    isDeleting: externalIsDeleting = false,
   } = props;
   const resolvedDialogTestId = dialogTestId ?? TESTIDS['schedule-create-dialog'];
   const headingId = `${resolvedDialogTestId}-heading`;
@@ -144,7 +148,6 @@ export const ScheduleCreateDialog: React.FC<ScheduleCreateDialogProps> = (props)
   );
   const [errors, setErrors] = useState<string[]>([]);
   const [submitting, setSubmitting] = useState(false);
-  const [isDeleting, setIsDeleting] = useState(false);
   const announce = useAnnounce();
   const wasOpenRef = useRef(open);
   const lastFocusedRef = useRef<HTMLElement | null>(null);
@@ -685,20 +688,17 @@ export const ScheduleCreateDialog: React.FC<ScheduleCreateDialogProps> = (props)
               const confirmed = window.confirm('この予定を削除します。よろしいですか？');
               if (!confirmed) return;
               try {
-                setIsDeleting(true);
                 await onDelete(_eventId);
                 onClose();
               } catch (error) {
                 console.error('Failed to delete schedule:', error);
-              } finally {
-                setIsDeleting(false);
               }
             }}
             startIcon={<DeleteOutlineIcon />}
             color="error"
-            disabled={submitting || isDeleting}
+            disabled={submitting || externalIsDeleting}
           >
-            {isDeleting ? (
+            {externalIsDeleting ? (
               <>
                 <span>削除中…</span>
                 <CircularProgress size={16} sx={{ ml: 1 }} />
@@ -708,17 +708,17 @@ export const ScheduleCreateDialog: React.FC<ScheduleCreateDialogProps> = (props)
             )}
           </Button>
         )}
-        <Button onClick={handleClose} startIcon={<CloseIcon />} disabled={submitting}>
+        <Button onClick={handleClose} startIcon={<CloseIcon />} disabled={submitting || externalIsSubmitting}>
           キャンセル
         </Button>
         <Button
           variant="contained"
           onClick={handleSubmit}
           startIcon={<SaveIcon />}
-          disabled={submitting}
+          disabled={submitting || externalIsSubmitting}
           data-testid={submitTestId ?? TESTIDS['schedule-create-save']}
         >
-            {submitting ? '保存中...' : primaryButtonLabel}
+            {submitting || externalIsSubmitting ? '保存中...' : primaryButtonLabel}
         </Button>
       </DialogActions>
       </Box>

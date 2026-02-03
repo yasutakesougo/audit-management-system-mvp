@@ -250,6 +250,8 @@ export default function WeekPage() {
   const fabRef = useRef<HTMLButtonElement | null>(null);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [dialogInitialValues, setDialogInitialValues] = useState<ScheduleEditDialogValues | null>(null);
+  const [isInlineSaving, setIsInlineSaving] = useState(false);
+  const [isInlineDeleting, setIsInlineDeleting] = useState(false);
 
   useEffect(() => {
     if (!createDialogOpen && pendingFabFocus && fabRef.current) {
@@ -525,9 +527,10 @@ export default function WeekPage() {
 
   const handleInlineDialogSubmit = useCallback(
     async (input: CreateScheduleEventInput) => {
-      if (!inlineEditingEventId) {
+      if (!inlineEditingEventId || isInlineSaving) {
         return;
       }
+      setIsInlineSaving(true);
       const payload = buildUpdateInput(inlineEditingEventId, input);
       try {
         await update(payload);
@@ -536,13 +539,19 @@ export default function WeekPage() {
       } catch (e) {
         showSnack('error', '更新に失敗しました（権限・認証・ネットワークを確認）');
         throw e;
+      } finally {
+        setIsInlineSaving(false);
       }
     },
-    [clearInlineSelection, inlineEditingEventId, showSnack, update],
+    [clearInlineSelection, inlineEditingEventId, showSnack, update, isInlineSaving],
   );
 
   const handleInlineDialogDelete = useCallback(
     async (eventId: string) => {
+      if (isInlineDeleting) {
+        return;
+      }
+      setIsInlineDeleting(true);
       try {
         await remove(eventId);
         showSnack('success', '予定を削除しました');
@@ -550,9 +559,11 @@ export default function WeekPage() {
       } catch (e) {
         showSnack('error', '削除に失敗しました（権限・認証・ネットワークを確認）');
         throw e;
+      } finally {
+        setIsInlineDeleting(false);
       }
     },
-    [clearInlineSelection, remove, showSnack],
+    [clearInlineSelection, remove, showSnack, isInlineDeleting],
   );
 
   const handleTimelineCreateHint = useCallback(
@@ -903,6 +914,8 @@ export default function WeekPage() {
           onDelete={handleInlineDialogDelete}
           users={scheduleUserOptions}
           defaultUser={defaultScheduleUser ?? undefined}
+          isSubmitting={isInlineSaving}
+          isDeleting={isInlineDeleting}
         />
       ) : null}
       <ScheduleCreateDialog
