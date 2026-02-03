@@ -10,6 +10,7 @@ import {
     CheckCircle as CheckCircleIcon,
     ExpandLess as ExpandLessIcon,
     ExpandMore as ExpandMoreIcon,
+    OpenInNew as OpenInNewIcon,
     RadioButtonUnchecked as RadioButtonUncheckedIcon,
 } from '@mui/icons-material';
 import {
@@ -24,6 +25,8 @@ import {
     Typography,
 } from '@mui/material';
 import React, { useEffect, useMemo, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+import type { DailyActivityNavState } from '../cross-module/navigationState';
 import type { HandoffDayScope, HandoffRecord, HandoffTimeFilter } from './handoffTypes';
 import { getNextStatus, getSeverityColor, HANDOFF_STATUS_META } from './handoffTypes';
 import { useHandoffTimeline } from './useHandoffTimeline';
@@ -57,6 +60,7 @@ type HandoffItemProps = {
 
 const HandoffItem: React.FC<HandoffItemProps> = ({ item, onStatusChange }) => {
   const [expanded, setExpanded] = useState(false);
+  const navigate = useNavigate();
 
   const handleStatusToggle = async () => {
     const newStatus = getNextStatus(item.status);
@@ -66,6 +70,22 @@ const HandoffItem: React.FC<HandoffItemProps> = ({ item, onStatusChange }) => {
     } catch (error) {
       console.error('[handoff] Status update failed:', error);
     }
+  };
+
+  const handleOpenDailyRecord = () => {
+    if (!item.userCode || item.userCode === 'ALL') {
+      return;
+    }
+
+    // createdAt から YYYY-MM-DD を抽出
+    const highlightDate = item.createdAt ? item.createdAt.split('T')[0] : undefined;
+
+    const navState: DailyActivityNavState = {
+      highlightUserId: item.userCode,
+      highlightDate,
+    };
+
+    navigate('/daily/activity', { state: navState });
   };
 
   const isLongMessage = item.message.length > 100;
@@ -163,6 +183,23 @@ const HandoffItem: React.FC<HandoffItemProps> = ({ item, onStatusChange }) => {
           <Typography variant="caption" color="text.secondary">
             記録者: {item.createdByName}
           </Typography>
+
+          {/* Phase 2-1: この利用者の記録を開くCTA */}
+          {item.userCode && item.userCode !== 'ALL' && (
+            <Box sx={{ mt: 1.5, pt: 1, borderTop: '1px solid', borderColor: 'divider' }}>
+              <Button
+                size="small"
+                variant="outlined"
+                startIcon={<OpenInNewIcon />}
+                onClick={handleOpenDailyRecord}
+                data-testid="handoff-open-daily-highlight"
+                fullWidth
+                sx={{ justifyContent: 'flex-start' }}
+              >
+                この利用者の記録を開く
+              </Button>
+            </Box>
+          )}
         </Stack>
       </CardContent>
     </Card>
