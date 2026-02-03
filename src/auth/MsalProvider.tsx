@@ -1,6 +1,7 @@
 import type { IPublicClientApplication } from '@azure/msal-browser';
 import React, { useEffect, useMemo, useState } from 'react';
 import { isE2eMsalMockEnabled } from '../lib/env';
+import { authDiagnostics } from '@/features/auth/diagnostics';
 
 type MsalInstance = IPublicClientApplication;
 type MsalReactModule = typeof import('@azure/msal-react');
@@ -47,31 +48,52 @@ const globalCarrier = globalThis as typeof globalThis & {
 async function loadMsalInstance(): Promise<MsalInstance> {
   if (!loadMsalInstancePromise) {
     loadMsalInstancePromise = (async () => {
-      // 🔥 CRITICAL: Use getPcaSingleton() to ensure SAME instance as main.tsx
-      // This way, redirect handling in main.tsx + account setup in Provider = unified flow
-      const { getPcaSingleton } = await import('./azureMsal');
-      const { wireMsalRoleInvalidation } = await import('./msalEvents');
-      const { EventType } = await import('@azure/msal-browser');
+      try {
+        // 🔥 CRITICAL: Use getPcaSingleton() to ensure SAME instance as main.tsx
+        // This way, redirect handling in main.tsx + account setup in Provider = unified flow
+        const { getPcaSingleton } = await import('./azureMsal');
+        const { wireMsalRoleInvalidation } = await import('./msalEvents');
+        const { EventType } = await import('@azure/msal-browser');
 
-      const instance = await getPcaSingleton();
-      
-      // ✅ At this point:
-      // - instance.initialize() was already called by getPcaSingleton()
-      // - instance.handleRedirectPromise() was already called by main.tsx
-      // - globalThis.__MSAL_PUBLIC_CLIENT__ is already set
-      
-      // We just need to ensure active account is set (if not already done by main.tsx)
-      const accounts = instance.getAllAccounts();
-      if (!instance.getActiveAccount() && accounts.length > 0) {
-        instance.setActiveAccount(accounts[0]);
+        const instance = await getPcaSingleton();
+        
+        // ✅ At this point:
+        // - instance.initialize() was already called by getPcaSingleton()
+        // - instance.handleRedirectPromise() was already called by main.tsx
+        // - globalThis.__MSAL_PUBLIC_CLIENT__ is already set
+        
+        // We just need to ensure active account is set (if not already done by main.tsx)
+        const accounts = instance.getAllAccounts();
+        if (!instance.getActiveAccount() && accounts.length > 0) {
+          instance.setActiveAccount(accounts[0]);
+        }
+
+        wireMsalRoleInvalidation(instance, EventType);
+
+        // Already cached in globalThis by getPcaSingleton, but redundant assignment is harmless
+        globalCarrier.__MSAL_PUBLIC_CLIENT__ = instance;
+
+        // 📊 Collect success event
+        const firstAccount = accounts[0] as { homeAccountId?: string } | undefined;
+        authDiagnostics.collect({
+          route: '/auth/msal-provider',
+          reason: 'login-success',
+          outcome: 'recovered',
+          userId: firstAccount?.homeAccountId,
+        });
+
+        return instance;
+      } catch (error) {
+        // 📊 Collect error event
+        const errorMessage = error instanceof Error ? error.message : String(error);
+        authDiagnostics.collect({
+          route: '/auth/msal-provider',
+          reason: 'login-failure',
+          outcome: 'blocked',
+          detail: { errorMessage, type: 'msal-init-error' },
+        });
+        throw error;
       }
-
-      wireMsalRoleInvalidation(instance, EventType);
-
-      // Already cached in globalThis by getPcaSingleton, but redundant assignment is harmless
-      globalCarrier.__MSAL_PUBLIC_CLIENT__ = instance;
-
-      return instance;
     })();
   }
 
