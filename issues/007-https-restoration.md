@@ -38,9 +38,9 @@ Entra/MSAL の本番挙動に近い HTTPS 動作を開発環境でも再現す�
 - [ ] Vite 設定の更新
   - `vite.config.ts` に HTTPS オプションを追加
   - 証明書ファイルのパスを指定
-- [ ] `npm run dev:https` スクリプトの確認
-  - package.json に既存のスクリプトがあることを確認
-  - 必要に応じて修正
+- [ ] `vite.config.ts` / `npm run dev:https` の HTTPS 設定を適用
+  - `vite.config.ts` の `server.https` に `.certs/localhost.pem` / `.certs/localhost-key.pem` を読み込んで適用する
+  - 既存の `npm run dev:https` がこの HTTPS 設定を利用して Vite dev server を起動すること（不要な `--https` / 証明書パスの二重指定がないこと）を確認・調整する
 - [ ] MSAL 設定の更新
   - Redirect URI に `https://localhost:5173` を追加
   - Entra ID の登録アプリケーションでも Redirect URI を更新
