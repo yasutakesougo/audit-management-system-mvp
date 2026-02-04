@@ -119,6 +119,17 @@ export const useUserAuthz = (): UserAuthz => {
   const value = useMemo(() => {
     const ids = groupIds ?? [];
     const isDemoOrDev = import.meta.env.DEV || import.meta.env.VITE_DEMO_MODE === '1';
+    const isE2E = import.meta.env.VITE_E2E === '1';
+    
+    // E2E: always grant admin access for test coverage (all nav items visible)
+    if (isE2E) {
+      return {
+        isReception: true,
+        isAdmin: true,
+        ready: true,
+        reason: 'demo-default-full-access',
+      } satisfies UserAuthz;
+    }
     
     // Fail-closed for admin group: if not configured in PROD, deny access
     if (!adminGroupId && !isDemoOrDev) {
