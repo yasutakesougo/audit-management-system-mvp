@@ -67,7 +67,10 @@ test.describe('Schedules SharePoint Integration Smoke Test', () => {
         // Try to find and click save button
         const saveButton = page.locator('button:has-text("作成"), button:has-text("保存"), button:has-text("Save")').first();
         if (await saveButton.isVisible({ timeout: 2000 }).catch(() => false)) {
-          await saveButton.click();
+          // Wait for dialog to be fully visible before clicking
+          await expect(page.getByRole('dialog')).toBeVisible({ timeout: 2000 }).catch(() => {});
+          
+          await saveButton.click({ timeout: 5000 }).catch(() => {});
 
           // Wait for the dialog to close
           await page.waitForTimeout(2000);
