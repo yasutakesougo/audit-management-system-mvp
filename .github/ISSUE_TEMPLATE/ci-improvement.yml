@@ -1,0 +1,91 @@
+name: "CI Improvement"
+description: "CIの安定化・高速化・運用改善のためのIssue"
+title: "ci: <short summary>"
+labels: ["ci/infra"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        CI改善は「小さく安全に」「ロールバック可能に」「運用に効く」を最優先にします。
+
+  - type: dropdown
+    id: priority
+    attributes:
+      label: Priority
+      options:
+        - P0
+        - P1
+        - P2
+        - P3
+    validations:
+      required: true
+
+  - type: dropdown
+    id: effort
+    attributes:
+      label: Effort
+      description: "目安：S(<2h) / M(2-8h) / L(>8h)"
+      options:
+        - S
+        - M
+        - L
+    validations:
+      required: true
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem / Symptoms
+      description: "失敗ログ、遅延、flake疑い、Action required洪水など。可能なら run URL も。"
+      placeholder: |
+        - Workflow: e2e-smoke
+        - Run URL: https://github.com/.../actions/runs/...
+        - Symptom: action_required / timeout / flake
+    validations:
+      required: true
+
+  - type: textarea
+    id: objective
+    attributes:
+      label: Objective (Measurable)
+      description: "数値で置ける目標がベスト（成功率、平均時間、再実行率、action_required件数など）"
+      placeholder: |
+        - CI success rate >= 95%
+        - Avg runtime -30%
+        - action_required near 0
+    validations:
+      required: true
+
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed Approach
+      placeholder: |
+        - Gate heavy workflows by label/draft
+        - Split smoke/deep
+        - Add env validator
+    validations:
+      required: true
+
+  - type: textarea
+    id: dod
+    attributes:
+      label: Definition of Done (DoD)
+      placeholder: |
+        - Changes merged
+        - Required checks green
+        - Runbook updated (if applicable)
+    validations:
+      required: true
+
+  - type: textarea
+    id: rollback
+    attributes:
+      label: Rollback Plan
+      description: "失敗したらどう戻すか（if条件削除、step削除、workflow revert等）"
+      placeholder: |
+        - Revert PR
+        - Remove workflow `if:` gate
+        - Re-enable original branch/label condition
+    validations:
+      required: true

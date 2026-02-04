@@ -723,6 +723,34 @@ npm run test:coverage # カバレッジ付き
 3. 409 増加傾向 → 重複 (期待挙動) なので異常ではないが、新規率低下をモニタリング
 4. parserFallbackCount > 0 → ネットワーク系 (途中切断) や O365 側一時的フォーマット崩れを疑う
 
+## CI / Workflow Policy
+
+このリポジトリでは、CI負荷とレビュー速度を両立するため、重いWorkflowは **ラベル駆動**で起動します。
+
+### ✅ `run-ci` ラベル運用（必須）
+
+- **Draft / WIP PR**：`run-ci` を付けない（重いCIは走りません）
+- **レビュー準備が整ったPR**：`run-ci` を付ける（重いCIが走ります）
+  - 対象：e2e-smoke / storybook-a11y / fast-lane / lighthouse-ci
+
+### ✅ `ready-for-review` ラベル
+
+- PR説明、DoD、セルフチェックが整ったら付けてください
+- Projects Board では Review 列に自動移動します
+
+### Why?
+
+- 「Action required 洪水」や承認待ちで Actions 一覧が埋まるのを防ぎます
+- 重要なタイミングでのみ重いCIを回し、開発を止めません
+
+### 詳細
+
+詳しくは以下を参照：
+- **ラベル辞書**: [docs/LABELS.md](docs/LABELS.md)
+- **Board 設計**: [docs/PROJECT_BOARD.md](docs/PROJECT_BOARD.md)
+- **マージ前チェックリスト**: [docs/MERGE_CHECKLIST.md](docs/MERGE_CHECKLIST.md)（マージ手順・マージ後指標・次の一手）
+- **PR テンプレート**: [.github/pull_request_template.md](.github/pull_request_template.md)
+
 ### E2E Tests (Playwright)
 初期スモークとして Playwright を導入しています。
 ```

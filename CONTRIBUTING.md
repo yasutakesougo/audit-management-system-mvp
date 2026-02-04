@@ -2,6 +2,39 @@
 
 Thanks for taking the time to contribute! Please follow the guidelines below to help keep the project healthy.
 
+## Pull Request Workflow
+
+### 1) PR を作る（Draft 推奨）
+
+- まずは Draft PR で OK（WIPの共有）
+- この時点では `run-ci` は付けない
+- ラベルを付ける必要もありません（軽いCI は常に走ります）
+
+### 2) レビュー準備ができたら
+
+- `ready-for-review` を付ける
+- PR 説明（What/Why）、DoD、影響範囲、ロールバックをPR本文に書く
+- Projects Board の Review 列に自動移動します
+
+### 3) 重いCI を回す
+
+- `run-ci` を付ける（e2e-smoke / storybook-a11y / fast-lane / lighthouse-ci が起動）
+- Projects Board の CI/Verify 列に移動する（自動化されている場合）
+
+### 4) マージ条件（最低限）
+
+- Required checks が green
+- PR本文のDoDが満たされている
+- ロールバック手順が書かれている（必要な場合）
+
+### Tips
+
+- **Draft → Ready** の段階で早期フィードバック（軽いCI で十分）
+- **Ready → run-ci** で最終確認（重いCI）
+- **重いCIは必要なときだけ**：ラベル無しなら e2e-smoke / storybook は走りません
+
+詳細は [docs/LABELS.md](../docs/LABELS.md) / [docs/PROJECT_BOARD.md](../docs/PROJECT_BOARD.md) を参照。
+
 ## Preflight before PR
 
 Run the appropriate safety net locally before opening a Pull Request:
