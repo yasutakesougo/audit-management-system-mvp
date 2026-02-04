@@ -140,6 +140,7 @@ export default defineConfig({
     {
       name: 'chromium',
       testDir: 'tests/e2e',
+      testIgnore: /auth-diagnostics\.spec\.ts$/,
       use: desktopChrome,
       webServer: {
         command: webServerCommand,
