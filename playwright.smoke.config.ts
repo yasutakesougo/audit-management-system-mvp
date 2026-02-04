@@ -24,6 +24,7 @@ const webServerEnvVarsSmoke = {
   VITE_SCHEDULES_TZ: 'Asia/Tokyo',
   VITE_FEATURE_SCHEDULES: '1',
   VITE_AUDIT_DEBUG: process.env.VITE_AUDIT_DEBUG ?? '0',
+  E2E_SAVE_MODE: 'mock',
 };
 
 const envPairs = Object.entries(webServerEnvVarsSmoke)
