@@ -75,10 +75,12 @@ export default defineConfig(({ mode }) => {
       el.textContent = 'boot:dom-ok';
     });
     window.addEventListener('error', function (e) {
-      el.textContent = 'boot:error ' + (e && e.message ? e.message.substring(0, 40) : 'unknown');
+      var msg = (e && e.error) ? (e.error.stack || e.error.message) : (e && e.message ? e.message : 'unknown');
+      el.textContent = 'boot:error ' + String(msg).substring(0, 120);
     });
     window.addEventListener('unhandledrejection', function (evt) {
-      el.textContent = 'boot:unhandledrejection ' + (evt && evt.reason ? String(evt.reason).substring(0, 20) : 'unknown');
+      var reason = (evt && evt.reason) ? (evt.reason.stack || evt.reason.message || String(evt.reason)) : 'unknown';
+      el.textContent = 'boot:error ' + String(reason).substring(0, 120);
     });
     document.documentElement.appendChild(el);
   })();
