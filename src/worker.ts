@@ -36,7 +36,7 @@ export default {
       headers.set('Content-Type', 'text/html; charset=UTF-8');
 
       return new Response(html, {
-        status: indexResponse.status,
+        status: 200,
         headers,
       });
     }
