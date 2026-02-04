@@ -30,12 +30,11 @@ export type MsalEnv = z.infer<typeof MsalEnvSchema>;
  * @returns Parsed MsalEnv or null if core keys are missing
  */
 export function readMsalEnv(raw: Record<string, unknown>): MsalEnv | null {
-  // Check if core MSAL env is present (CLIENT_ID + TENANT_ID + AUTHORITY)
-  // All three are required to be considered "real" MSAL config
+  // Check if core MSAL env is present (CLIENT_ID + TENANT_ID only)
+  // AUTHORITY is optional and will be constructed if missing
   const hasCore =
     !!(raw.VITE_MSAL_CLIENT_ID || raw.VITE_AZURE_AD_CLIENT_ID || raw.VITE_AAD_CLIENT_ID) &&
-    !!(raw.VITE_MSAL_TENANT_ID || raw.VITE_AZURE_AD_TENANT_ID || raw.VITE_AAD_TENANT_ID) &&
-    !!(raw.VITE_MSAL_AUTHORITY || raw.VITE_AZURE_AD_AUTHORITY);
+    !!(raw.VITE_MSAL_TENANT_ID || raw.VITE_AZURE_AD_TENANT_ID || raw.VITE_AAD_TENANT_ID);
 
   // If core keys are missing, skip validation (CI/E2E with env未設定)
   if (!hasCore) {
