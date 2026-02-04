@@ -55,6 +55,9 @@ export default defineConfig(({ mode }) => {
   });
 
   return {
+    define: {
+      'process.env': {},
+    },
     plugins: [react()],
     server: {
       https: httpsConfig, // undefined if certs don't exist (fallback to HTTP)
@@ -73,6 +76,10 @@ export default defineConfig(({ mode }) => {
       },
     },
     build: {
+      target: ['es2019', 'safari13'],
+      modulePreload: {
+        polyfill: true,
+      },
       chunkSizeWarningLimit: 900,
       rollupOptions: {
         output: {
