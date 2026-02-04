@@ -1,9 +1,23 @@
 import { expect, test, type Page } from '@playwright/test';
 
 async function openNavIfDrawerExists(page: Page) {
-  const openBtn = page.getByTestId('nav-open');
-  if (await openBtn.count()) {
-    await openBtn.first().click({ noWaitAfter: true });
+  const mobileBtn = page.getByTestId('nav-open');
+  const desktopBtn = page.getByTestId('desktop-nav-open');
+  
+  // Try mobile drawer
+  if (await mobileBtn.count()) {
+    await mobileBtn.first().click();
+    // Wait for drawer to be visible
+    await expect(page.getByTestId('nav-drawer')).toBeVisible({ timeout: 3000 });
+    return;
+  }
+  
+  // Try desktop drawer
+  if (await desktopBtn.count()) {
+    await desktopBtn.click();
+    // Wait for drawer to be visible
+    await expect(page.getByTestId('nav-drawer')).toBeVisible({ timeout: 3000 });
+    return;
   }
 }
 
