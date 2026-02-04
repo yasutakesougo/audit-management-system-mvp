@@ -1,3 +1,4 @@
+import AccessTimeIcon from '@mui/icons-material/AccessTime';
 import AddIcon from '@mui/icons-material/Add';
 import SearchIcon from '@mui/icons-material/Search';
 import Box from '@mui/material/Box';
@@ -17,10 +18,12 @@ import TextField from '@mui/material/TextField';
 import Typography from '@mui/material/Typography';
 import { useEffect, useMemo, useState } from 'react';
 import toast, { Toaster } from 'react-hot-toast';
-import { useNavigate, useSearchParams } from 'react-router-dom';
+import { useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import { PersonDaily } from '../domain/daily/types';
 import { DailyRecordForm } from '../features/daily/DailyRecordForm';
 import { DailyRecordList } from '../features/daily/DailyRecordList';
+import type { DailyActivityNavState } from '../features/cross-module/navigationState';
+import { useHandoffSummary } from '../features/handoff/useHandoffSummary';
 import { useUsersDemo } from '../features/users/usersStoreDemo';
 import { saveDailyRecord, validateDailyRecord } from '@/features/daily/dailyRecordLogic';
 import { useSchedules } from '../stores/useSchedules';
@@ -185,11 +188,21 @@ const generateTodayRecords = (): PersonDaily[] => {
 export default function DailyRecordPage() {
   // Navigation hook for cross-module navigation
   const navigate = useNavigate();
+  const location = useLocation();
 
-  // URL query parameters for highlighting
+  // Phase 2-1: navigation state から highlight 情報を取得
+  const navState = (location.state ?? {}) as DailyActivityNavState;
+  const highlightUserIdFromState = navState.highlightUserId ?? null;
+  const highlightDateFromState = navState.highlightDate ?? null;
+
+  // URL query parameters for highlighting (backward compatibility)
   const [searchParams] = useSearchParams();
-  const highlightUserId = searchParams.get('userId');
-  const highlightDate = searchParams.get('date');
+  const highlightUserIdFromQuery = searchParams.get('userId');
+  const highlightDateFromQuery = searchParams.get('date');
+
+  // 優先順位: navState > searchParams
+  const highlightUserId = highlightUserIdFromState ?? highlightUserIdFromQuery;
+  const highlightDate = highlightDateFromState ?? highlightDateFromQuery;
 
   // 利用者マスタとスケジュールデータ
   const { data: usersData } = useUsersDemo();
@@ -202,20 +215,33 @@ export default function DailyRecordPage() {
   const [statusFilter, setStatusFilter] = useState('all');
   const [dateFilter, setDateFilter] = useState('');
 
-  // Effect to scroll to highlighted record when query params are present
-  useEffect(() => {
-    if (highlightUserId && highlightDate) {
-      // Scroll to highlighted record after a short delay to ensure rendering
-      const timer = setTimeout(() => {
-        const element = document.querySelector(`[data-testid*="${highlightUserId}"]`);
-        if (element) {
-          element.scrollIntoView({ behavior: 'smooth', block: 'center' });
-        }
-      }, 500);
+  // Phase 1A: 申し送りサマリー
+  const {
+    total: handoffTotal,
+    criticalCount: handoffCritical
+  } = useHandoffSummary({ dayScope: 'today' });
 
-      return () => clearTimeout(timer);
-    }
-  }, [highlightUserId, highlightDate]);
+  // Phase 2-1: ハイライト表示用の一時状態（1.5秒で自動解除）
+  const [activeHighlightUserId, setActiveHighlightUserId] = useState<string | null>(null);
+
+  // Phase 2-1: スクロール＋ハイライト処理
+  useEffect(() => {
+    if (!highlightUserId) return;
+
+    // 記録一覧が描画された後にスクロールしたいので、軽く遅延
+    const timer = setTimeout(() => {
+      const element = document.querySelector(`[data-person-id="${highlightUserId}"]`);
+      if (element) {
+        element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        setActiveHighlightUserId(highlightUserId);
+        
+        // 1.5秒後に自動解除
+        setTimeout(() => setActiveHighlightUserId(null), 1500);
+      }
+    }, 100);
+
+    return () => clearTimeout(timer);
+  }, [highlightUserId, records]);
 
   // 今日の予定通所者数を計算
   const todayAttendanceInfo = useMemo(() => {
@@ -483,6 +509,57 @@ export default function DailyRecordPage() {
           </Typography>
         </Box>
 
+        {/* Phase 1A: 申し送りサマリーカード */}
+        {handoffTotal > 0 && (
+          <Card
+            sx={{
+              mb: 2,
+              bgcolor: handoffCritical > 0 ? 'error.50' : 'info.50',
+              border: '1px solid',
+              borderColor: handoffCritical > 0 ? 'error.200' : 'info.200'
+            }}
+            data-testid="daily-handoff-summary"
+          >
+            <CardContent>
+              <Stack
+                direction={{ xs: 'column', sm: 'row' }}
+                justifyContent="space-between"
+                alignItems={{ xs: 'flex-start', sm: 'center' }}
+                spacing={2}
+              >
+                <Stack direction="row" spacing={2} alignItems="center">
+                  <AccessTimeIcon
+                    color={handoffCritical > 0 ? 'error' : 'primary'}
+                    sx={{ fontSize: 32 }}
+                  />
+                  <Box>
+                    <Typography variant="h6" sx={{ fontWeight: 600 }}>
+                      本日の申し送り: {handoffTotal}件
+                    </Typography>
+                    {handoffCritical > 0 && (
+                      <Typography variant="body2" color="error.main" sx={{ mt: 0.5 }}>
+                        ⚠️ 重要 {handoffCritical}件 - 要確認
+                      </Typography>
+                    )}
+                  </Box>
+                </Stack>
+                <Button
+                  variant="contained"
+                  size="medium"
+                  startIcon={<AccessTimeIcon />}
+                  onClick={() => navigate('/handoff-timeline', {
+                    state: { dayScope: 'today', timeFilter: 'all' }
+                  })}
+                  sx={{ minWidth: { xs: '100%', sm: 'auto' } }}
+                  data-testid="daily-handoff-summary-cta"
+                >
+                  タイムラインで確認
+                </Button>
+              </Stack>
+            </CardContent>
+          </Card>
+        )}
+
         {/* 統計情報（本日分） */}
         <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2} sx={{ mb: 3 }} data-testid="daily-stats-panel">
           <Paper sx={{ p: 2, textAlign: 'center', flex: 1 }} data-testid="total-records-stat">
@@ -660,6 +737,7 @@ export default function DailyRecordPage() {
           onOpenAttendance={handleOpenAttendance}
           highlightUserId={highlightUserId}
           highlightDate={highlightDate}
+          activeHighlightUserId={activeHighlightUserId}
           data-testid="daily-record-list"
         />
 

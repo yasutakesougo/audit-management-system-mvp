@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { type DateRange, type SchedItem, type UpdateScheduleEventInput } from './data';
 import { useSchedulesPort } from './data/context';
 import { useAuth } from '@/auth/useAuth';
+import { authDiagnostics } from '@/features/auth/diagnostics';
 import { createSpClient, ensureConfig } from '@/lib/spClient';
 import type { InlineScheduleDraft } from './data/inlineScheduleDraft';
 import type { ResultError } from '@/shared/result';
@@ -59,10 +60,25 @@ export function useSchedules(range: DateRange): UseSchedulesResult {
           setListReadyState(true);
         } else {
           setListReadyState(false);
+          // Diagnose: List not found
+          authDiagnostics.collect({
+            route: '/schedules',
+            reason: 'list-not-found',
+            outcome: 'blocked',
+          });
         }
       } catch (error) {
         console.error('[useSchedules] List existence check failed:', error);
         setListReadyState(false);
+        // Diagnose: Network or auth error during list check
+        authDiagnostics.collect({
+          route: '/schedules',
+          reason: error instanceof Error && error.message.includes('auth') ? 'login-failure' : 'network-error',
+          outcome: 'blocked',
+          detail: {
+            errorMessage: error instanceof Error ? error.message : String(error),
+          },
+        });
       }
     };
 
@@ -89,9 +105,37 @@ export function useSchedules(range: DateRange): UseSchedulesResult {
         // Handle errors gracefully without throwing
         if (!alive) return;
         const error = err instanceof Error ? err.message : 'Failed to fetch schedules';
-        console.error('[useSchedules] Failed to load schedule items:', err);
+        // eslint-disable-next-line no-console
+        console.error('[useSchedules] Failed to load schedule items', {
+          message: error,
+          err,
+          status: (err as { status?: number }).status,
+          url: (err as { url?: string }).url,
+          body: (err as { body?: string }).body,
+        });
         setLastError({ message: error } as ResultError);
         setItems([]); // Clear items on error
+
+        // Diagnose: Categorize error and collect event
+        const errorStatus = (err as { status?: number }).status;
+        let reason = 'unknown-error';
+        if (errorStatus === 401 || errorStatus === 403) {
+          reason = 'login-failure';
+        } else if (errorStatus === 404) {
+          reason = 'list-not-found';
+        } else if (!navigator.onLine || error.includes('network')) {
+          reason = 'network-error';
+        }
+
+        authDiagnostics.collect({
+          route: '/schedules',
+          reason,
+          outcome: 'blocked',
+          detail: {
+            errorMessage: error,
+            status: errorStatus,
+          },
+        });
       } finally {
         if (alive) {
           setLoading(false);

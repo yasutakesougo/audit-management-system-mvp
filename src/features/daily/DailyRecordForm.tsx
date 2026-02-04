@@ -1,9 +1,11 @@
 import AccessTimeIcon from '@mui/icons-material/AccessTime';
 import DeleteIcon from '@mui/icons-material/Delete';
 import InfoOutlinedIcon from '@mui/icons-material/InfoOutlined';
+import OpenInNewIcon from '@mui/icons-material/OpenInNew';
 import PersonIcon from '@mui/icons-material/Person';
 import RestaurantIcon from '@mui/icons-material/Restaurant';
 import Alert from '@mui/material/Alert';
+import AlertTitle from '@mui/material/AlertTitle';
 import Autocomplete from '@mui/material/Autocomplete';
 import Box from '@mui/material/Box';
 import Button from '@mui/material/Button';
@@ -19,10 +21,12 @@ import InputLabel from '@mui/material/InputLabel';
 import MenuItem from '@mui/material/MenuItem';
 import Paper from '@mui/material/Paper';
 import Select from '@mui/material/Select';
+import Skeleton from '@mui/material/Skeleton';
 import Stack from '@mui/material/Stack';
 import TextField from '@mui/material/TextField';
 import Typography from '@mui/material/Typography';
 import { useEffect, useMemo, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { DailyAData, MealAmount, PersonDaily } from '../../domain/daily/types';
 import {
     buildSpecialNotesFromImportantHandoffs,
@@ -148,7 +152,16 @@ const createEmptyDailyRecord = (): Omit<PersonDaily, 'id'> => ({
   }
 });
 
+function todayYmdLocal(): string {
+  const d = new Date();
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${y}-${m}-${day}`;
+}
+
 export function DailyRecordForm({ open, onClose, record, onSave }: DailyRecordFormProps) {
+  const navigate = useNavigate();
   const { options: userOptions, findByPersonId } = useDailyUserOptions();
 
   const [formData, setFormData] = useState<Omit<PersonDaily, 'id'>>(
@@ -180,6 +193,9 @@ export function DailyRecordForm({ open, onClose, record, onSave }: DailyRecordFo
     }
     return null;
   }, [findByPersonId, formData.personId, formData.personName]);
+
+  const todayYmd = todayYmdLocal();
+  const dayScope = formData.date === todayYmd ? 'today' : 'yesterday';
 
   // 🔽 Phase 9: 重要な申し送りを取得
   const {
@@ -490,6 +506,75 @@ export function DailyRecordForm({ open, onClose, record, onSave }: DailyRecordFo
               />
             </Stack>
           </Paper>
+
+          {/* Phase 1B: 関連申し送りの可視化 */}
+          {formData.personId && (
+            <>
+              {loadingHandoffs && (
+                <Skeleton variant="rectangular" height={80} />
+              )}
+
+              {!loadingHandoffs && !handoffError && handoffCount > 0 && importantHandoffs?.length > 0 && (
+                <Alert
+                  severity="warning"
+                  sx={{ mb: 2 }}
+                  data-testid="daily-related-handoffs"
+                >
+                  <AlertTitle sx={{ fontWeight: 600 }}>
+                    📢 この利用者の重要な申し送り（{handoffCount}件）
+                  </AlertTitle>
+                  <Stack spacing={1} sx={{ mt: 1 }}>
+                    {importantHandoffs.slice(0, 3).map(handoff => (
+                      <Box
+                        key={handoff.id}
+                        sx={{ display: 'flex', gap: 1, alignItems: 'flex-start' }}
+                      >
+                        <Chip
+                          size="small"
+                          label={handoff.category}
+                          color="primary"
+                          sx={{ minWidth: 60 }}
+                        />
+                        <Typography variant="body2">
+                          {handoff.message}
+                          <Typography
+                            component="span"
+                            variant="caption"
+                            color="text.secondary"
+                            sx={{ ml: 1 }}
+                          >
+                            ({handoff.time})
+                          </Typography>
+                        </Typography>
+                      </Box>
+                    ))}
+                    {handoffCount > 3 && (
+                      <Typography variant="caption" color="text.secondary">
+                        ... 他 {handoffCount - 3}件
+                      </Typography>
+                    )}
+                  </Stack>
+                  <Button
+                    size="small"
+                    variant="text"
+                    startIcon={<OpenInNewIcon />}
+                    onClick={() => {
+                      navigate('/handoff-timeline', {
+                        state: {
+                          dayScope,
+                          timeFilter: 'all'
+                        }
+                      });
+                    }}
+                    sx={{ mt: 1 }}
+                    data-testid="daily-open-handoff-timeline"
+                  >
+                    すべての申し送りを確認
+                  </Button>
+                </Alert>
+              )}
+            </>
+          )}
 
           {/* 午前の活動 */}
           <Paper sx={{ p: 2 }}>

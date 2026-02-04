@@ -37,6 +37,7 @@ import { useUserAuthz } from '@/auth/useUserAuthz';
 import NavLinkPrefetch from '@/components/NavLinkPrefetch';
 import { useFeatureFlags } from '@/config/featureFlags';
 import { useAuthStore } from '@/features/auth/store';
+import { AuthDiagnosticsPanel } from '@/features/auth/diagnostics';
 import { useDashboardPath } from '@/features/dashboard/dashboardRouting';
 import { HandoffQuickNoteCard } from '@/features/handoff/HandoffQuickNoteCard';
 import RouteHydrationListener from '@/hydration/RouteHydrationListener';
@@ -58,8 +59,12 @@ import WorkspacesIcon from '@mui/icons-material/Workspaces';
 import MenuIcon from '@mui/icons-material/Menu';
 import ChevronLeftIcon from '@mui/icons-material/ChevronLeft';
 import ChevronRightIcon from '@mui/icons-material/ChevronRight';
+import CloseFullscreenRoundedIcon from '@mui/icons-material/CloseFullscreenRounded';
 import { Link as RouterLink, useLocation, useNavigate } from 'react-router-dom';
+import Fab from '@mui/material/Fab';
 import { ColorModeContext } from './theme';
+import { SettingsDialog } from '@/features/settings/SettingsDialog';
+import { useSettingsContext } from '@/features/settings/SettingsContext';
 
 type NavItem = {
   label: string;
@@ -125,6 +130,8 @@ const AppShell: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const setCurrentUserRole = useAuthStore((s) => s.setCurrentUserRole);
   const { isAdmin, ready: authzReady } = useUserAuthz();
   const theme = useTheme();
+  const { settings, updateSettings } = useSettingsContext();
+  const isFocusMode = settings.layoutMode === 'focus';
 
   // ✅ 修正：Object を直接依存に入れず、boolean フラグを作る
   const schedulesEnabled = Boolean(schedules);
@@ -135,6 +142,7 @@ const AppShell: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [desktopNavOpen, setDesktopNavOpen] = useState(false);
   const [navQuery, setNavQuery] = useState('');
   const [navCollapsed, setNavCollapsed] = useState(true);
+  const [settingsDialogOpen, setSettingsDialogOpen] = useState(false);
   const drawerWidth = 240;
   const drawerMiniWidth = 64;
   const currentDrawerWidth = navCollapsed ? drawerMiniWidth : drawerWidth;
@@ -145,6 +153,19 @@ const AppShell: React.FC<{ children: React.ReactNode }> = ({ children }) => {
       navigate('/', { replace: true });
     }
   }, [navigate, location.pathname]);
+
+  useEffect(() => {
+    if (!isFocusMode) return;
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        updateSettings({ layoutMode: 'normal' });
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isFocusMode, updateSettings]);
 
   
   useEffect(() => {
@@ -497,6 +518,7 @@ const AppShell: React.FC<{ children: React.ReactNode }> = ({ children }) => {
     <RouteHydrationListener>
       <LiveAnnouncer>
         <div data-testid="app-shell">
+        {!isFocusMode && (
         <AppBar position="fixed" color="primary" enableColorOnDark>
         <Toolbar sx={{ gap: 1 }}>
           {!isDesktop && (
@@ -525,6 +547,15 @@ const AppShell: React.FC<{ children: React.ReactNode }> = ({ children }) => {
             磯子区障害者地域活動ホーム
           </Typography>
           <ConnectionStatus />
+          <Tooltip title="表示設定">
+            <IconButton
+              color="inherit"
+              onClick={() => setSettingsDialogOpen(true)}
+              aria-label="表示設定"
+            >
+              <SettingsRoundedIcon />
+            </IconButton>
+          </Tooltip>
           <Tooltip title={mode === 'dark' ? 'ライトテーマに切り替え' : 'ダークテーマに切り替え'}>
             <IconButton
               color="inherit"
@@ -541,8 +572,9 @@ const AppShell: React.FC<{ children: React.ReactNode }> = ({ children }) => {
           <SignInButton />
         </Toolbar>
         </AppBar>
+        )}
         {/* Side Navigation Drawer */}
-        {isDesktop ? (
+        {!isFocusMode && (isDesktop ? (
           <Drawer
             data-testid="nav-drawer"
             variant="persistent"
@@ -648,15 +680,28 @@ const AppShell: React.FC<{ children: React.ReactNode }> = ({ children }) => {
               {renderGroupedNavList(handleMobileNavigate)}
             </Box>
           </Drawer>
-        )}
+        ))}
 
-        <Container component="main" role="main" maxWidth="lg" sx={{ pt: { xs: 10, sm: 11, md: 12 }, pb: { xs: 18, sm: 14 }, px: { xs: 2, sm: 3, md: 4 }, ml: `${drawerOffset}px`, transition: theme.transitions.create('margin-left', {
+        <Container component="main" role="main" maxWidth="lg" sx={{ pt: isFocusMode ? 0 : { xs: 10, sm: 11, md: 12 }, pb: isFocusMode ? 2 : { xs: 18, sm: 14 }, px: isFocusMode ? 0 : { xs: 2, sm: 3, md: 4 }, ml: isFocusMode ? 0 : `${drawerOffset}px`, transition: theme.transitions.create('margin-left', {
           easing: theme.transitions.easing.sharp,
           duration: theme.transitions.duration.enteringScreen,
         }) }}>
           {children}
         </Container>
+
+        {isFocusMode && (
+          <Fab
+            size="small"
+            aria-label="通常表示に戻す"
+            onClick={() => updateSettings({ layoutMode: 'normal' })}
+            sx={{ position: 'fixed', top: 12, right: 12, zIndex: (t) => t.zIndex.modal + 1 }}
+          >
+            <CloseFullscreenRoundedIcon fontSize="small" />
+          </Fab>
+        )}
+        {import.meta.env.DEV && <AuthDiagnosticsPanel limit={15} pollInterval={2000} />}
         <FooterQuickActions />
+        <SettingsDialog open={settingsDialogOpen} onClose={() => setSettingsDialogOpen(false)} />
       </div>
       </LiveAnnouncer>
     </RouteHydrationListener>

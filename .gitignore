@@ -16,6 +16,7 @@ cert.pem
 cert.pfx
 cert.pfx.b64
 *.cer
+.certs/
 .lighthouseci/
 lhci-results.json
 reports/

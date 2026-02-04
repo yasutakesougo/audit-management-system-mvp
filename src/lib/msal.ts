@@ -1,5 +1,5 @@
 import { buildMsalScopes } from '@/auth/scopes';
-import type { PublicClientApplication, PopupRequest } from '@azure/msal-browser';
+import type { PublicClientApplication } from '@azure/msal-browser';
 import type { AccountInfo } from '@azure/msal-common';
 
 import { getRuntimeEnv } from '@/env';
@@ -62,12 +62,6 @@ const getPca = (): PublicClientApplication => {
   return instance;
 };
 
-type PopupCapableClient = PublicClientApplication & {
-  acquireTokenPopup: (request: PopupRequest) => Promise<{ accessToken?: string }>;
-  loginPopup: (request: PopupRequest) => Promise<{ account?: AccountInfo | null }>;
-};
-
-const toPopupClient = (instance: PublicClientApplication): PopupCapableClient => instance as PopupCapableClient;
 
 const ensureActiveAccount = (instance: PublicClientApplication): AccountInfo | null => {
   const active = (instance.getActiveAccount() as AccountInfo | null) ?? null;
@@ -80,12 +74,6 @@ const ensureActiveAccount = (instance: PublicClientApplication): AccountInfo | n
   return null;
 };
 
-const toPopupRequest = (scopes: string[], account?: AccountInfo): PopupRequest => ({
-  scopes,
-  prompt: 'select_account',
-  account,
-});
-
 export const ensureMsalSignedIn = async (scopes?: string[]): Promise<AccountInfo> => {
   // 🔥 CRITICAL FIX: Always read runtime env to respect env.runtime.json override
   const runtimeEnv = getRuntimeEnv() as Record<string, string>;
@@ -96,18 +84,14 @@ export const ensureMsalSignedIn = async (scopes?: string[]): Promise<AccountInfo
     return createE2EMsalAccount();
   }
   const instance = getPca();
-  const popupClient = toPopupClient(instance);
   const resolvedScopes = ensureScopes(scopes);
   const cached = ensureActiveAccount(instance);
   if (cached) return cached;
 
-  const response = await popupClient.loginPopup(toPopupRequest(resolvedScopes));
-  const account = (response.account as AccountInfo | null) ?? null;
-  if (!account) {
-    throw new Error('MSAL login did not yield an account.');
-  }
-  instance.setActiveAccount(account);
-  return account;
+  // Use redirect instead of popup (COOP-friendly)
+  await instance.loginRedirect({ scopes: resolvedScopes, prompt: 'select_account' });
+  // Note: Does not return; page redirects to AAD
+  throw new Error('[msal] loginRedirect initiated');
 };
 
 export const acquireSpAccessToken = async (scopes?: string[]): Promise<string> => {
@@ -157,7 +141,7 @@ export const acquireSpAccessToken = async (scopes?: string[]): Promise<string> =
 
           console.warn('[msal] acquireTokenSilent requires interaction -> redirect');
           await instance.acquireTokenRedirect({ account, scopes: resolvedScopes });
-          throw new Error('[msal] acquireTokenRedirect initiated; flow will continue after redirect');
+          throw new Error('[msal] acquireTokenRedirect initiated');
         }
       })();
     }

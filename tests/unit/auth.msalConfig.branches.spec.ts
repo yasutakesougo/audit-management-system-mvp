@@ -26,6 +26,10 @@ describe('msalConfig fallbacks', () => {
         VITE_MSAL_TENANT_ID: 'tenant-id',
       }),
     }));
+    // Mock readMsalEnv to return null (skip validation in tests)
+    vi.doMock('@/env/msalEnv', () => ({
+      readMsalEnv: () => null,
+    }));
 
     const module = await import('@/auth/msalConfig');
     expect(module.SP_RESOURCE).toBe('sp-resource');
@@ -44,10 +48,14 @@ describe('msalConfig fallbacks', () => {
         VITE_MSAL_TENANT_ID: '',
       }),
     }));
+    // Mock readMsalEnv to return null (skip validation in tests)
+    vi.doMock('@/env/msalEnv', () => ({
+      readMsalEnv: () => null,
+    }));
 
     const module = await import('@/auth/msalConfig');
     expect(module.msalConfig.auth.clientId).toBe('dummy-client-id');
     expect(module.msalConfig.auth.authority).toBe('https://login.microsoftonline.com/dummy-tenant');
-    expect(module.msalConfig.auth.redirectUri).toBe('http://localhost');
+    expect(module.msalConfig.auth.redirectUri).toBe('http://localhost:5173');
   });
 });

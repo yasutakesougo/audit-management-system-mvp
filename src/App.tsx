@@ -10,6 +10,7 @@ import {
   normalizeUserId,
 } from '@/features/schedules/data';
 import { hydrateStaffAttendanceFromStorage, saveStaffAttendanceToStorage } from '@/features/staff/attendance/persist';
+import { SettingsProvider } from '@/features/settings';
 import CssBaseline from '@mui/material/CssBaseline';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import React, { useEffect, useMemo, type ReactNode } from 'react';
@@ -146,12 +147,15 @@ function App() {
           {/* 🎨 MUIテーマ + グローバルスタイル */}
           <ToastProvider>
             {/* 📢 グローバルトースト通知 */}
-            <SchedulesProviderBridge>
-              {/* 📅 スケジュール機能のデータポート（Graph / デモ切替） */}
-              <ToastNotifierBridge />
+            <SettingsProvider>
+              {/* ⚙️ ユーザー表示設定（theme density等） */}
+              <SchedulesProviderBridge>
+                {/* 📅 スケジュール機能のデータポート（Graph / デモ切替） */}
+                <ToastNotifierBridge />
 
-              <RouterProvider router={router} future={routerFutureFlags} />
-            </SchedulesProviderBridge>
+                <RouterProvider router={router} future={routerFutureFlags} />
+              </SchedulesProviderBridge>
+            </SettingsProvider>
           </ToastProvider>
           {/* 🔍 開発/検証用 HUD（本番では非表示可能） */}
           {hydrationHudEnabled && <HydrationHud />}

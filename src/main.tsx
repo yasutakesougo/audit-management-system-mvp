@@ -1,9 +1,13 @@
 import React from 'react';
 import ReactDOM from 'react-dom/client';
+import { installFatalHandlers } from './bootstrapFatal';
 import { getRuntimeEnv, isDev, clearEnvCache } from '@/env';
 import { guardProdMisconfig } from '@/lib/envGuards';
 import { resolveHydrationEntry } from './hydration/routes';
 import { beginHydrationSpan, finalizeHydrationSpan } from './lib/hydrationHud';
+
+// Install fatal error handlers BEFORE any other code executes
+installFatalHandlers();
 
 type EnvRecord = Record<string, string | undefined>;
 
@@ -27,6 +31,89 @@ declare global {
 // Call it after ensureRuntimeEnv() completes below.
 
 const RUNTIME_PATH_KEYS = new Set(['RUNTIME_ENV_PATH', 'VITE_RUNTIME_ENV_PATH']);
+
+/**
+ * Error Boundary for catching unhandled React errors (especially on tablet)
+ * Prevents white screen by showing error message + reload button
+ */
+class ErrorBoundary extends React.Component<
+  { children: React.ReactNode },
+  { hasError: boolean; error: Error | null }
+> {
+  constructor(props: { children: React.ReactNode }) {
+    super(props);
+    this.state = { hasError: false, error: null };
+  }
+
+  static getDerivedStateFromError(error: Error) {
+    return { hasError: true, error };
+  }
+
+  componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
+    // eslint-disable-next-line no-console
+    console.error('[ErrorBoundary] React error caught:', error, errorInfo);
+  }
+
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div
+          style={{
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            justifyContent: 'center',
+            minHeight: '100vh',
+            padding: '20px',
+            backgroundColor: '#f5f5f5',
+            fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif',
+          }}
+        >
+          <h1 style={{ fontSize: '24px', marginBottom: '12px' }}>エラーが発生しました</h1>
+          <p style={{ fontSize: '14px', color: '#666', marginBottom: '20px', maxWidth: '500px' }}>
+            予期しないエラーが発生しました。下のボタンをクリックしてリロードしてください。
+          </p>
+          {this.state.error && (
+            <details style={{ marginBottom: '20px', maxWidth: '500px', width: '100%' }}>
+              <summary style={{ cursor: 'pointer', fontSize: '12px', color: '#999' }}>
+                エラー詳細を表示
+              </summary>
+              <pre
+                style={{
+                  fontSize: '11px',
+                  backgroundColor: '#fff',
+                  padding: '12px',
+                  borderRadius: '4px',
+                  overflow: 'auto',
+                  marginTop: '8px',
+                  border: '1px solid #ddd',
+                }}
+              >
+                {this.state.error.toString()}
+              </pre>
+            </details>
+          )}
+          <button
+            onClick={() => window.location.reload()}
+            style={{
+              padding: '12px 24px',
+              fontSize: '16px',
+              backgroundColor: '#1976d2',
+              color: 'white',
+              border: 'none',
+              borderRadius: '4px',
+              cursor: 'pointer',
+            }}
+          >
+            リロード
+          </button>
+        </div>
+      );
+    }
+
+    return this.props.children;
+  }
+}
 
 // 🔧 DOM lib との型競合回避のため、assertion ベースに変更
 const runOnIdle = (callback: () => void, timeout = 200): void => {
@@ -208,6 +295,17 @@ const run = async (): Promise<void> => {
       finalizeHydrationSpan(completeMetrics, error);
     });
 
+  // ✅ DEV: Expose authDiagnostics to window for debugging
+  if (import.meta.env.DEV && hasWindow) {
+    void import('./features/auth/diagnostics/collector')
+      .then(({ exposeAuthDiagnosticsToWindow }) => {
+        exposeAuthDiagnosticsToWindow();
+      })
+      .catch((error) => {
+        console.warn('[main] failed to expose authDiagnostics to window', error);
+      });
+  }
+
   const envSnapshot = (getRuntimeEnv() as EnvRecord) ?? null;
 
   try {
@@ -225,7 +323,41 @@ const run = async (): Promise<void> => {
 
     const completeRender = beginHydrationSpan('bootstrap:render', { group: 'hydration', meta: { budget: 60 } });
 
-    ReactDOM.createRoot(document.getElementById('root')!).render(
+/**
+ * Loading fallback for Suspense boundary
+ * Shows during lazy component loading (prevents white screen on slow networks)
+ */
+const SuspenseFallback = () => (
+  <div
+    style={{
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      minHeight: '100vh',
+      backgroundColor: '#fafafa',
+    }}
+  >
+    <div style={{ textAlign: 'center' }}>
+      <div
+        style={{
+          width: '40px',
+          height: '40px',
+          borderRadius: '50%',
+          border: '4px solid #f3f3f3',
+          borderTop: '4px solid #1976d2',
+          animation: 'spin 1s linear infinite',
+          margin: '0 auto 16px',
+        }}
+      />
+      <style>{`@keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }`}</style>
+      <p style={{ color: '#666', fontSize: '14px' }}>読み込み中...</p>
+    </div>
+  </div>
+);
+
+ReactDOM.createRoot(document.getElementById('root')!).render(
+  <ErrorBoundary>
+    <React.Suspense fallback={<SuspenseFallback />}>
       <React.StrictMode>
         <ConfigErrorBoundary>
           <FeatureFlagsProvider value={flags}>
@@ -233,6 +365,8 @@ const run = async (): Promise<void> => {
           </FeatureFlagsProvider>
         </ConfigErrorBoundary>
       </React.StrictMode>
+    </React.Suspense>
+  </ErrorBoundary>
     );
 
     const settle = (error?: unknown) => {

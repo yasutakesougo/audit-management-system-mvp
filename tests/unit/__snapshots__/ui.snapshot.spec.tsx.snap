@@ -46,6 +46,25 @@ exports[`AppShell snapshot 1`] = `
           SP Sign-In
         </div>
         <button
+          aria-label="表示設定"
+          class="MuiButtonBase-root MuiIconButton-root MuiIconButton-colorInherit MuiIconButton-sizeMedium css-h7cjts-MuiButtonBase-root-MuiIconButton-root"
+          data-mui-internal-clone-element="true"
+          tabindex="0"
+          type="button"
+        >
+          <svg
+            aria-hidden="true"
+            class="MuiSvgIcon-root MuiSvgIcon-fontSizeMedium css-1umw9bq-MuiSvgIcon-root"
+            data-testid="SettingsRoundedIcon"
+            focusable="false"
+            viewBox="0 0 24 24"
+          >
+            <path
+              d="M19.5 12c0-.23-.01-.45-.03-.68l1.86-1.41c.4-.3.51-.86.26-1.3l-1.87-3.23c-.25-.44-.79-.62-1.25-.42l-2.15.91c-.37-.26-.76-.49-1.17-.68l-.29-2.31c-.06-.5-.49-.88-.99-.88h-3.73c-.51 0-.94.38-1 .88l-.29 2.31c-.41.19-.8.42-1.17.68l-2.15-.91c-.46-.2-1-.02-1.25.42L2.41 8.62c-.25.44-.14.99.26 1.3l1.86 1.41c-.02.22-.03.44-.03.67s.01.45.03.68l-1.86 1.41c-.4.3-.51.86-.26 1.3l1.87 3.23c.25.44.79.62 1.25.42l2.15-.91c.37.26.76.49 1.17.68l.29 2.31c.06.5.49.88.99.88h3.73c.5 0 .93-.38.99-.88l.29-2.31c.41-.19.8-.42 1.17-.68l2.15.91c.46.2 1 .02 1.25-.42l1.87-3.23c.25-.44.14-.99-.26-1.3l-1.86-1.41c.03-.23.04-.45.04-.68m-7.46 3.5c-1.93 0-3.5-1.57-3.5-3.5s1.57-3.5 3.5-3.5 3.5 1.57 3.5 3.5-1.57 3.5-3.5 3.5"
+            />
+          </svg>
+        </button>
+        <button
           aria-label="テーマ切り替え"
           aria-pressed="false"
           class="MuiButtonBase-root MuiIconButton-root MuiIconButton-colorInherit MuiIconButton-sizeMedium css-h7cjts-MuiButtonBase-root-MuiIconButton-root"
@@ -103,6 +122,138 @@ exports[`AppShell snapshot 1`] = `
         content
       </div>
     </main>
+    <div
+      class="MuiPaper-root MuiPaper-outlined MuiPaper-rounded css-1nf8ew-MuiPaper-root"
+    >
+      <div
+        class="MuiStack-root css-1sazv7p-MuiStack-root"
+      >
+        <div
+          class="MuiStack-root css-3y1137-MuiStack-root"
+        >
+          <h6
+            class="MuiTypography-root MuiTypography-h6 css-fe0fwj-MuiTypography-root"
+          >
+            Auth Diagnostics (Dev)
+          </h6>
+          <button
+            class="MuiButtonBase-root MuiButton-root MuiButton-outlined MuiButton-outlinedPrimary MuiButton-sizeSmall MuiButton-outlinedSizeSmall MuiButton-colorPrimary MuiButton-root MuiButton-outlined MuiButton-outlinedPrimary MuiButton-sizeSmall MuiButton-outlinedSizeSmall MuiButton-colorPrimary css-wyro15-MuiButtonBase-root-MuiButton-root"
+            tabindex="0"
+            type="button"
+          >
+            クリア
+          </button>
+        </div>
+        <hr
+          class="MuiDivider-root MuiDivider-fullWidth css-1jpc804-MuiDivider-root"
+        />
+        <div
+          class="MuiStack-root css-1f89vao-MuiStack-root"
+        >
+          <div
+            class="MuiBox-root css-0"
+          >
+            <span
+              class="MuiTypography-root MuiTypography-caption css-1374baf-MuiTypography-root"
+            >
+              合計
+            </span>
+            <h6
+              class="MuiTypography-root MuiTypography-h6 css-1miy0lu-MuiTypography-root"
+            >
+              0
+            </h6>
+          </div>
+          <div
+            class="MuiBox-root css-0"
+          >
+            <span
+              class="MuiTypography-root MuiTypography-caption css-1374baf-MuiTypography-root"
+            >
+              ブロック
+            </span>
+            <h6
+              class="MuiTypography-root MuiTypography-h6 css-wvu10o-MuiTypography-root"
+            >
+              0
+            </h6>
+          </div>
+          <div
+            class="MuiBox-root css-0"
+          >
+            <span
+              class="MuiTypography-root MuiTypography-caption css-1374baf-MuiTypography-root"
+            >
+              回復
+            </span>
+            <h6
+              class="MuiTypography-root MuiTypography-h6 css-8hsqgf-MuiTypography-root"
+            >
+              0
+            </h6>
+          </div>
+          <div
+            class="MuiBox-root css-0"
+          >
+            <span
+              class="MuiTypography-root MuiTypography-caption css-1374baf-MuiTypography-root"
+            >
+              手動対応
+            </span>
+            <h6
+              class="MuiTypography-root MuiTypography-h6 css-bqnt4m-MuiTypography-root"
+            >
+              0
+            </h6>
+          </div>
+          <div
+            class="MuiBox-root css-0"
+          >
+            <span
+              class="MuiTypography-root MuiTypography-caption css-1374baf-MuiTypography-root"
+            >
+              回復率
+            </span>
+            <h6
+              class="MuiTypography-root MuiTypography-h6 css-8hsqgf-MuiTypography-root"
+            >
+              100.0
+              %
+            </h6>
+          </div>
+        </div>
+        <hr
+          class="MuiDivider-root MuiDivider-fullWidth css-1jpc804-MuiDivider-root"
+        />
+        <div
+          class="MuiBox-root css-0"
+        >
+          <h6
+            class="MuiTypography-root MuiTypography-subtitle2 css-1d94q9g-MuiTypography-root"
+          >
+            Top Reasons
+          </h6>
+          <div
+            class="MuiStack-root css-j3ygch-MuiStack-root"
+          />
+        </div>
+        <hr
+          class="MuiDivider-root MuiDivider-fullWidth css-1jpc804-MuiDivider-root"
+        />
+        <div
+          class="MuiBox-root css-0"
+        >
+          <h6
+            class="MuiTypography-root MuiTypography-subtitle2 css-1d94q9g-MuiTypography-root"
+          >
+            Recent Events (新しい順)
+          </h6>
+          <div
+            class="MuiStack-root css-jfdv4h-MuiStack-root"
+          />
+        </div>
+      </div>
+    </div>
     <footer
       class="MuiBox-root css-1c1ti6f"
       role="contentinfo"

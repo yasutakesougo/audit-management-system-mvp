@@ -1,0 +1,463 @@
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { Link, useSearchParams } from "react-router-dom";
+import {
+  Alert,
+  Box,
+  Button,
+  CircularProgress,
+  GlobalStyles,
+  Paper,
+  Stack,
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableRow,
+  TextField,
+  Typography,
+} from "@mui/material";
+import DownloadIcon from "@mui/icons-material/Download";
+import PrintIcon from "@mui/icons-material/Print";
+
+import { useStaffAttendanceAdmin } from "@/features/staff/attendance/hooks/useStaffAttendanceAdmin";
+import { useStaffStore } from "@/features/staff/store";
+import {
+  buildMonthlySummary,
+  buildStaffBreakdown,
+  listAllStatuses,
+  type AttendanceLike,
+} from "@/features/staff/attendance/summary";
+
+const pad2 = (n: number) => String(n).padStart(2, "0");
+const toISODate = (y: number, m: number, d: number) => `${y}-${pad2(m)}-${pad2(d)}`;
+const lastDayOfMonth = (y: number, m: number) => new Date(y, m, 0).getDate(); // m: 1-12
+
+const defaultMonthValue = (): string => {
+  const now = new Date();
+  return `${now.getFullYear()}-${pad2(now.getMonth() + 1)}`; // YYYY-MM
+};
+
+const monthToRange = (ym: string): { from: string; to: string } => {
+  const [yStr, mStr] = ym.split("-");
+  const y = Number(yStr);
+  const m = Number(mStr);
+  const from = toISODate(y, m, 1);
+  const to = toISODate(y, m, lastDayOfMonth(y, m));
+  return { from, to };
+};
+
+export default function StaffAttendanceMonthlySummaryPage() {
+  const [searchParams, setSearchParams] = useSearchParams();
+  const monthParam = searchParams.get('month') ?? '';
+  const recordDate = useMemo(() => new Date().toISOString().slice(0, 10), []);
+  const {
+    listItems,
+    listLoading,
+    listError,
+    fetchListByDateRange,
+  } = useStaffAttendanceAdmin(recordDate);
+
+  const { byId: staffById } = useStaffStore();
+
+  const [monthValue, setMonthValue] = useState<string>(() => monthParam || defaultMonthValue());
+  const [lastFetchedAt, setLastFetchedAt] = useState<Date | null>(null);
+  const { from, to } = useMemo(() => monthToRange(monthValue), [monthValue]);
+
+  useEffect(() => {
+    if (!monthParam) return;
+    if (monthParam !== monthValue) setMonthValue(monthParam);
+  }, [monthParam, monthValue]);
+
+  const handleMonthChange = useCallback((value: string) => {
+    setMonthValue(value);
+    const next = new URLSearchParams(searchParams);
+    if (value) next.set('month', value);
+    else next.delete('month');
+    setSearchParams(next, { replace: true });
+  }, [searchParams, setSearchParams]);
+
+  const handleFetch = useCallback(async () => {
+    await fetchListByDateRange(from, to);
+    setLastFetchedAt(new Date());
+  }, [fetchListByDateRange, from, to]);
+
+  const items = (listItems ?? []) as AttendanceLike[];
+
+  const summary = useMemo(() => buildMonthlySummary(items), [items]);
+  const breakdown = useMemo(() => buildStaffBreakdown(items), [items]);
+  const statuses = useMemo(() => listAllStatuses(summary.countsByStatus), [summary.countsByStatus]);
+  const lastFetchedLabel = lastFetchedAt
+    ? lastFetchedAt.toLocaleString('ja-JP', { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' })
+    : '—';
+
+  const monthLabel = monthValue || defaultMonthValue();
+  const generatedAtLabel = useMemo(() => {
+    const now = new Date();
+    return new Intl.DateTimeFormat('ja-JP', {
+      timeZone: 'Asia/Tokyo',
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+      hour: '2-digit',
+      minute: '2-digit',
+    }).format(now);
+  }, [lastFetchedAt, monthValue]);
+
+  const CSV_BOM = '\ufeff';
+
+  const csvEscape = (v: unknown): string => {
+    if (v === null || v === undefined) return '';
+    const s = String(v);
+    const escaped = s.replace(/"/g, '""');
+    return /[,"\r\n]/.test(escaped) ? `"${escaped}"` : escaped;
+  };
+
+  const toCsv = (headers: string[], rows: Array<Array<unknown>>): string => {
+    const head = headers.map(csvEscape).join(',');
+    const body = rows.map(r => r.map(csvEscape).join(',')).join('\n');
+    return `${CSV_BOM}${head}${rows.length ? '\n' : ''}${body}`;
+  };
+
+  const downloadTextFile = (filename: string, content: string) => {
+    const blob = new Blob([content], { type: 'text/csv;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+
+    URL.revokeObjectURL(url);
+  };
+
+  const handleExportCsv = () => {
+    const headers = ['職員ID', '氏名', '出勤', '欠勤', '遅刻', '早退', '合計'];
+
+    const rows = breakdown.map((r) => {
+      const staffName = resolveStaffName(r.staffId);
+      return [
+        r.staffId,
+        staffName,
+        r.countsByStatus['出勤'] ?? 0,
+        r.countsByStatus['欠勤'] ?? 0,
+        r.countsByStatus['遅刻'] ?? 0,
+        r.countsByStatus['早退'] ?? 0,
+        r.total,
+      ];
+    });
+
+    const csv = toCsv(headers, rows);
+    const ym = monthParam || monthValue || 'unknown-month';
+    downloadTextFile(`staff-attendance-summary_${ym}.csv`, csv);
+  };
+
+  const resolveStaffName = (staffId: string): string => {
+    // Try parsing as number for staffById Map lookup
+    const numId = Number(staffId);
+    const s = Number.isFinite(numId) ? staffById?.get(numId) : undefined;
+    return s?.name ?? staffId;
+  };
+
+  const printStyles = (
+    <GlobalStyles
+      styles={{
+        '[data-print="only"]': { display: 'none' },
+        '@page': {
+          size: 'A4 portrait',
+          margin: '10mm',
+        },
+        '@media print': {
+          // 画面用UIを消す
+          '[data-print="hide"]': { display: 'none !important' },
+          '[data-print="only"]': { display: 'block !important' },
+
+          // 余白・色・フォント
+          body: {
+            WebkitPrintColorAdjust: 'exact',
+            printColorAdjust: 'exact',
+            background: '#fff',
+          },
+
+          // コンテナの横幅制限を外す（A4にフィットさせる）
+          '.MuiContainer-root': {
+            maxWidth: 'none !important',
+            paddingLeft: '0 !important',
+            paddingRight: '0 !important',
+          },
+
+          // 余計なシャドウを消す
+          '.MuiPaper-root': {
+            boxShadow: 'none !important',
+          },
+
+          // 改ページ事故を減らす
+          'h1, h2, h3, .MuiTypography-h4, .MuiTypography-h5, .MuiTypography-h6': {
+            breakAfter: 'avoid',
+            pageBreakAfter: 'avoid',
+          },
+          '.MuiTableRow-root, .MuiCard-root, .MuiPaper-root': {
+            breakInside: 'avoid',
+            pageBreakInside: 'avoid',
+          },
+
+          // テーブルの見た目を印刷向けに締める
+          '.MuiTableCell-root': {
+            paddingTop: '6px',
+            paddingBottom: '6px',
+            fontSize: '11pt',
+          },
+
+          thead: {
+            display: 'table-header-group',
+          },
+
+          '.print-footer': {
+            position: 'fixed',
+            right: '10mm',
+            bottom: '6mm',
+            fontSize: '10pt',
+            color: '#555',
+          },
+
+          '.print-page-number::after': {
+            content: '"Page " counter(page) " / " counter(pages)',
+          },
+        },
+      }}
+    />
+  );
+
+  return (
+    <>
+      {printStyles}
+      <Box sx={{ p: 2 }}>
+        <Stack spacing={2}>
+          <Box data-print="only">
+            <Typography variant="h6" sx={{ fontWeight: 700 }}>
+              勤怠 月次サマリー（{monthLabel}）
+            </Typography>
+          </Box>
+        <Stack direction="row" alignItems="center" justifyContent="space-between" spacing={2}>
+          <Typography variant="h5" sx={{ fontWeight: 700 }}>
+            勤怠 月次サマリー（{monthLabel}）
+          </Typography>
+          <Stack direction="row" spacing={1} data-print="hide">
+            <Button
+              variant="outlined"
+              size="small"
+              startIcon={<DownloadIcon />}
+              onClick={handleExportCsv}
+              disabled={listLoading || breakdown.length === 0}
+              data-testid="staff-attendance-summary-csv"
+            >
+              CSV
+            </Button>
+            <Button
+              variant="outlined"
+              startIcon={<PrintIcon />}
+              onClick={() => window.print()}
+              data-testid="staff-attendance-summary-print"
+            >
+              印刷 / PDF
+            </Button>
+            <Button
+              component={Link}
+              to="/admin/staff-attendance"
+              size="small"
+              variant="outlined"
+            >
+              一覧へ戻る
+            </Button>
+          </Stack>
+        </Stack>
+
+        <Paper sx={{ p: 2 }}>
+          <Stack direction={{ xs: "column", sm: "row" }} spacing={2} alignItems={{ sm: "center" }} data-print="hide">
+            <TextField
+              label="対象月"
+              type="month"
+              value={monthValue}
+              onChange={(e) => handleMonthChange(e.target.value)}
+              inputProps={{ "data-testid": "staff-attendance-summary-month" }}
+              sx={{ width: 220 }}
+            />
+            <Box sx={{ flex: 1 }} />
+            <Button
+              variant="contained"
+              onClick={handleFetch}
+              disabled={listLoading}
+              data-testid="staff-attendance-summary-fetch"
+            >
+              {listLoading ? <CircularProgress size={20} /> : "読み込み"}
+            </Button>
+          </Stack>
+
+          <Typography variant="body2" sx={{ mt: 1, color: "text.secondary" }}>
+            範囲: {from} 〜 {to} / 件数: {summary.totalItems} / 最終更新: {lastFetchedLabel}
+          </Typography>
+        </Paper>
+
+        {listError && (
+          <Alert severity="error" data-testid="staff-attendance-summary-error">
+            {String(listError)}
+          </Alert>
+        )}
+
+        <Paper sx={{ p: 2 }}>
+          <Typography variant="h6" sx={{ fontWeight: 700, mb: 2 }}>
+            サマリー
+          </Typography>
+          <Stack direction={{ xs: "column", md: "row" }} spacing={2}>
+            <Paper variant="outlined" sx={{ p: 1.5, minWidth: 220 }}>
+              <Typography variant="body2" sx={{ color: "text.secondary" }}>
+                総件数
+              </Typography>
+              <Typography variant="h6" data-testid="staff-attendance-summary-total">
+                {summary.totalItems}
+              </Typography>
+            </Paper>
+
+            <Paper variant="outlined" sx={{ p: 1.5, minWidth: 220 }}>
+              <Typography variant="body2" sx={{ color: "text.secondary" }}>
+                職員数
+              </Typography>
+              <Typography variant="h6" data-testid="staff-attendance-summary-staffcount">
+                {summary.uniqueStaffCount}
+              </Typography>
+            </Paper>
+
+            <Paper variant="outlined" sx={{ p: 1.5, minWidth: 220 }}>
+              <Typography variant="body2" sx={{ color: "text.secondary" }}>
+                出勤扱い
+              </Typography>
+              <Typography variant="h6" data-testid="staff-attendance-summary-attendance">
+                {summary.attendanceCount}
+              </Typography>
+            </Paper>
+
+            <Paper variant="outlined" sx={{ p: 1.5, minWidth: 220 }}>
+              <Typography variant="body2" sx={{ color: "text.secondary" }}>
+                欠勤扱い
+              </Typography>
+              <Typography variant="h6" data-testid="staff-attendance-summary-absence">
+                {summary.absenceCount}
+              </Typography>
+            </Paper>
+
+            <Paper variant="outlined" sx={{ p: 1.5, minWidth: 220 }}>
+              <Typography variant="body2" sx={{ color: "text.secondary" }}>
+                遅刻
+              </Typography>
+              <Typography variant="h6" data-testid="staff-attendance-summary-late">
+                {summary.lateCount}
+              </Typography>
+            </Paper>
+
+            <Paper variant="outlined" sx={{ p: 1.5, minWidth: 220 }}>
+              <Typography variant="body2" sx={{ color: "text.secondary" }}>
+                早退
+              </Typography>
+              <Typography variant="h6" data-testid="staff-attendance-summary-early-leave">
+                {summary.earlyLeaveCount}
+              </Typography>
+            </Paper>
+
+            {statuses.map((st) => (
+              <Paper key={st} variant="outlined" sx={{ p: 1.5, minWidth: 220 }}>
+                <Typography variant="body2" sx={{ color: "text.secondary" }}>
+                  {st}
+                </Typography>
+                <Typography
+                  variant="h6"
+                  data-testid={`staff-attendance-summary-status-${st}`}
+                >
+                  {summary.countsByStatus[st] ?? 0}
+                </Typography>
+              </Paper>
+            ))}
+          </Stack>
+        </Paper>
+
+        <Paper sx={{ p: 2 }}>
+          <Typography variant="h6" sx={{ fontWeight: 700, mb: 2 }}>
+            職員別
+          </Typography>
+
+          {!listLoading && breakdown.length === 0 && !listError && (
+            <Alert severity="info" data-testid="staff-attendance-summary-empty">
+              データがありません。対象月を選び「読み込み」を押してください。
+            </Alert>
+          )}
+
+          {listLoading && (
+            <Stack direction="row" spacing={2} alignItems="center">
+              <CircularProgress size={20} />
+              <Typography>読み込み中…</Typography>
+            </Stack>
+          )}
+
+          {breakdown.length > 0 && (
+            <Table size="small" data-testid="staff-attendance-summary-table">
+              <TableHead>
+                <TableRow>
+                  <TableCell sx={{ fontWeight: 800 }}>職員</TableCell>
+                  {statuses.map((st) => (
+                    <TableCell
+                      key={`head-${st}`}
+                      align="right"
+                      sx={{ fontWeight: 800 }}
+                    >
+                      {st}
+                    </TableCell>
+                  ))}
+                  <TableCell align="right" sx={{ fontWeight: 800 }}>
+                    合計
+                  </TableCell>
+                </TableRow>
+              </TableHead>
+              <TableBody>
+                {breakdown.map((r) => (
+                  <TableRow key={r.staffId}>
+                    <TableCell>
+                      {resolveStaffName(r.staffId)}{" "}
+                      <Typography
+                        component="span"
+                        variant="body2"
+                        sx={{ color: "text.secondary" }}
+                      >
+                        ({r.staffId})
+                      </Typography>
+                    </TableCell>
+                    {statuses.map((st) => (
+                      <TableCell
+                        key={`${r.staffId}-${st}`}
+                        align="right"
+                      >
+                        {r.countsByStatus[st] ?? 0}
+                      </TableCell>
+                    ))}
+                    <TableCell align="right">{r.total}</TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          )}
+        </Paper>
+        <Box data-print="only" className="print-footer">
+          <Typography component="span" variant="caption" sx={{ color: 'text.secondary' }}>
+            Generated: {generatedAtLabel} JST
+          </Typography>
+          <Typography
+            component="span"
+            variant="caption"
+            className="print-page-number"
+            sx={{ ml: 1, color: 'text.secondary' }}
+          />
+        </Box>
+      </Stack>
+    </Box>
+    </>
+  );
+}

@@ -72,8 +72,8 @@ export const useUserAuthz = (): UserAuthz => {
         const runtimeEnv = getRuntimeEnvRoot();
         if (isE2eMsalMockEnabled(runtimeEnv) || shouldSkipLogin(runtimeEnv)) {
           if (!cancelled) {
-            // In E2E mode, immediately set safe defaults to unblock page init
-            setGroupIds([]);     // Non-admin user
+            // In E2E mode, grant admin access for comprehensive test coverage
+            setGroupIds([adminGroupId || 'demo-admin-group-id']);
             setError(null);      // Clear any previous errors
           }
           return;
@@ -119,6 +119,17 @@ export const useUserAuthz = (): UserAuthz => {
   const value = useMemo(() => {
     const ids = groupIds ?? [];
     const isDemoOrDev = import.meta.env.DEV || import.meta.env.VITE_DEMO_MODE === '1';
+    const isE2E = import.meta.env.VITE_E2E === '1';
+    
+    // E2E: always grant admin access for test coverage (all nav items visible)
+    if (isE2E) {
+      return {
+        isReception: true,
+        isAdmin: true,
+        ready: true,
+        reason: 'demo-default-full-access',
+      } satisfies UserAuthz;
+    }
     
     // Fail-closed for admin group: if not configured in PROD, deny access
     if (!adminGroupId && !isDemoOrDev) {

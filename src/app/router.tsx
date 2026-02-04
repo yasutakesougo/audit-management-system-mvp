@@ -67,9 +67,11 @@ const StaffAttendanceInput = React.lazy(() =>
 );
 
 const StaffAttendanceAdminPage = React.lazy(() => import('@/pages/StaffAttendanceAdminPage'));
+const StaffAttendanceMonthlySummaryPage = React.lazy(() => import('@/pages/StaffAttendanceMonthlySummaryPage'));
 
 // Diagnostics pages
 const HealthPage = React.lazy(() => import('@/pages/HealthPage'));
+const AuthDiagnosticsPage = React.lazy(() => import('@/features/auth/diagnostics/pages/AuthDiagnosticsPage'));
 
 // Dev/Test pages
 const DailyOpsDevPage = React.lazy(() => import('@/pages/DailyOpsDevPage'));
@@ -340,7 +342,19 @@ const SuspendedHealthPage: React.FC = () => (
     </React.Suspense>
   </RouteHydrationErrorBoundary>
 );
-
+const SuspendedAuthDiagnosticsPage: React.FC = () => (
+  <RouteHydrationErrorBoundary>
+    <React.Suspense
+      fallback={(
+        <div className="p-4 text-sm text-slate-600" role="status">
+          認証診断ページを読み込んでいます…
+        </div>
+      )}
+    >
+      <AuthDiagnosticsPage />
+    </React.Suspense>
+  </RouteHydrationErrorBoundary>
+);
 const SuspendedStaffDashboardPage: React.FC = () => (
   <RouteHydrationErrorBoundary>
     <React.Suspense
@@ -572,6 +586,24 @@ const childRoutes: RouteObject[] = [
       </AdminGate>
     ),
   },
+  {
+    path: 'admin/staff-attendance/summary',
+    element: (
+      <AdminGate>
+        <RouteHydrationErrorBoundary>
+          <React.Suspense
+            fallback={(
+              <div className="p-4 text-sm text-slate-600" role="status">
+                月次サマリーを読み込んでいます…
+              </div>
+            )}
+          >
+            <StaffAttendanceMonthlySummaryPage />
+          </React.Suspense>
+        </RouteHydrationErrorBoundary>
+      </AdminGate>
+    ),
+  },
   { path: 'daily', element: <SuspendedDailyRecordMenuPage /> },
   { path: 'daily/table', element: <SuspendedTableDailyRecordPage /> },
   { path: 'daily/activity', element: <SuspendedDailyRecordPage /> },
@@ -606,6 +638,7 @@ const childRoutes: RouteObject[] = [
   { path: 'admin/step-templates', element: <SuspendedSupportStepMasterPage /> },
   { path: 'admin/individual-support', element: <SuspendedIndividualSupportManagementPage /> },
   { path: 'diagnostics/health', element: <SuspendedHealthPage /> },
+  { path: 'admin/auth-diagnostics', element: <SuspendedAuthDiagnosticsPage /> },
   {
     path: 'admin/integrated-resource-calendar',
     element: (

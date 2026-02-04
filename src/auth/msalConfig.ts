@@ -1,6 +1,16 @@
 import { getAppConfig } from '../lib/env';
+import { readMsalEnv } from '@/env/msalEnv';
 
 const appConfig = getAppConfig();
+
+// Validate MSAL environment variables only when core keys are present (Issue #344)
+// CI/E2E with env未設定 → returns null (no validation)
+const msalEnv = readMsalEnv(import.meta.env);
+if (msalEnv) {
+  console.info('[MSAL ENV] Validated successfully');
+} else {
+  console.warn('[MSAL ENV] Core keys not found, skipping validation (CI/E2E mode)');
+}
 
 // Resolve MSAL/AAD IDs with fallback to avoid dummy defaults when either side is present
 const config = appConfig as unknown as Record<string, string | undefined>;
@@ -46,12 +56,18 @@ const isIntegrationEnv =
   (typeof import.meta !== 'undefined' && (import.meta as ImportMeta)?.env?.VITE_E2E_INTEGRATION === '1') ||
   (typeof import.meta !== 'undefined' && (import.meta as ImportMeta)?.env?.PLAYWRIGHT_PROJECT === 'integration');
 
-const safeOrigin = (typeof window !== 'undefined' && window.location && window.location.origin) || 'http://localhost';
+// redirectUri: env 優先（dev:https 用）、なければ window.origin（CI/E2E 保護）
+const redirectUri =
+  msalEnv?.VITE_MSAL_REDIRECT_URI ??
+  msalEnv?.VITE_AZURE_AD_REDIRECT_URI ??
+  ((typeof window !== 'undefined' && window.location?.origin) ||
+  'http://localhost:5173');
+
 export const msalConfig = {
   auth: {
     clientId: effectiveClientId,
     authority: `https://login.microsoftonline.com/${effectiveTenantId}`,
-    redirectUri: safeOrigin,
+    redirectUri: redirectUri, // env 優先、fallback は window.origin（https 固定禁止）
   },
   cache: {
     // Integration/Playwright needs localStorage to persist tokens into storageState.json

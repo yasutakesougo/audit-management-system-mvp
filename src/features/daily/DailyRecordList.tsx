@@ -31,6 +31,7 @@ interface DailyRecordListProps {
   loading?: boolean;
   highlightUserId?: string | null;
   highlightDate?: string | null;
+  activeHighlightUserId?: string | null; // Phase 2-1: 一時ハイライト表示用
 }
 
 const statusColors: Record<DailyStatus, 'default' | 'primary' | 'secondary' | 'success' | 'error' | 'info' | 'warning'> = {
@@ -53,7 +54,8 @@ export function DailyRecordList({
   onOpenHandoffTimeline, // Phase 9: 申し送り表示用
   loading = false,
   highlightUserId,
-  highlightDate
+  highlightDate,
+  activeHighlightUserId // Phase 2-1: 一時ハイライト表示用
 }: DailyRecordListProps) {
   const [anchorEl, setAnchorEl] = React.useState<null | HTMLElement>(null);
   const [selectedRecord, setSelectedRecord] = React.useState<PersonDaily | null>(null);
@@ -127,12 +129,15 @@ export function DailyRecordList({
     <>
       <Stack spacing={2} data-testid="daily-record-list-container">
         {records.map((record) => {
-          // Check if this record should be highlighted
+          // Phase 2-1: Check if this record should be highlighted
           const isHighlighted =
             !!highlightUserId &&
             !!highlightDate &&
             record.personId === highlightUserId &&
             record.date === highlightDate;
+
+          // Phase 2-1: 一時ハイライト（スクロール直後）
+          const isActiveHighlight = activeHighlightUserId === record.personId;
 
           // Check for problem behaviors
           const hasProblemBehavior =
@@ -150,6 +155,8 @@ export function DailyRecordList({
               key={record.id}
               variant="outlined"
               data-testid={`daily-record-card-${record.id}`}
+              data-person-id={record.personId}
+              data-date-ymd={record.date}
               {...(isHighlighted && {
                 'data-highlighted': 'true',
               })}
@@ -159,9 +166,33 @@ export function DailyRecordList({
                   boxShadow: 4,
                   backgroundColor: 'rgba(25, 118, 210, 0.04)',
                 }),
+                ...(isActiveHighlight && {
+                  outline: '3px solid',
+                  outlineColor: 'warning.main',
+                  transition: 'outline 200ms ease',
+                }),
               }}
             >
             <CardContent>
+              {/* Phase 2-1: ハイライトバナー */}
+              {isActiveHighlight && (
+                <Box
+                  sx={{
+                    mb: 2,
+                    p: 1,
+                    bgcolor: 'warning.50',
+                    borderRadius: 1,
+                    border: '1px solid',
+                    borderColor: 'warning.200',
+                  }}
+                  data-testid="daily-highlight-banner"
+                >
+                  <Typography variant="caption" sx={{ fontWeight: 600, color: 'warning.dark' }}>
+                    📌 申し送りから移動しました
+                  </Typography>
+                </Box>
+              )}
+
               {/* ヘッダー部分 */}
               <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 2 }}>
                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }} data-testid={`record-header-${record.id}`}>

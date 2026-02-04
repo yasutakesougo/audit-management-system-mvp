@@ -47,6 +47,15 @@ export interface StaffAttendancePort {
   listByDate(date: string): Promise<Result<StaffAttendance[]>>;
 
   /**
+   * List by date range: Retrieve records within a date range
+   * @param from Start date in format "YYYY-MM-DD"
+   * @param to End date in format "YYYY-MM-DD"
+   * @param top Max results (default 200)
+   * @returns ok(StaffAttendance[]) on success, err on failure
+   */
+  listByDateRange(from: string, to: string, top?: number): Promise<Result<StaffAttendance[]>>;
+
+  /**
    * Count by date: Get aggregated statistics
    * @param date Date in format "YYYY-MM-DD"
    * @returns ok(AttendanceCounts) on success, err on failure

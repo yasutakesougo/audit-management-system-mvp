@@ -56,6 +56,8 @@ export const getPcaSingleton = async (): Promise<PublicClientApplication> => {
 
 	pcaInstance = new PublicClientApplication(config);
 
+	// (handleRedirectPromise responsibility moved to main.tsx)
+
 	// Cache in globalThis for use by MsalProvider + other consumers
 	(globalThis as MsalGlobalCarrier).__MSAL_PUBLIC_CLIENT__ = pcaInstance;
 
