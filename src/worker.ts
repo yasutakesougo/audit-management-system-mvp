@@ -28,12 +28,18 @@ export default {
     if (acceptsHtml || !url.pathname.includes('.')) {
       const indexRequest = new Request(new URL('/index.html', url), request);
       const indexResponse = await env.ASSETS.fetch(indexRequest);
-      const html = await indexResponse.text();
+      const redirectLocation = indexResponse.headers.get('location');
+      const resolvedResponse =
+        indexResponse.status >= 300 && indexResponse.status < 400 && redirectLocation
+          ? await env.ASSETS.fetch(new Request(new URL(redirectLocation, url), request))
+          : indexResponse;
+      const html = await resolvedResponse.text();
 
-      const headers = new Headers(indexResponse.headers);
+      const headers = new Headers(resolvedResponse.headers);
       headers.set('Cross-Origin-Opener-Policy', 'same-origin-allow-popups');
       headers.set('Cache-Control', 'no-store, must-revalidate');
       headers.set('Content-Type', 'text/html; charset=UTF-8');
+      headers.delete('Location');
 
       return new Response(html, {
         status: 200,
