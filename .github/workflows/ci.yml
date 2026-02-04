@@ -63,8 +63,10 @@ jobs:
       - name: Summary
         if: always()
         run: |
-          echo "## CI Results" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "- ESLint (ARCHITECTURE_GUARDS): ${{ steps.lint.outcome }}" >> $GITHUB_STEP_SUMMARY
-          echo "- TypeScript typecheck: ${{ steps.typecheck.outcome }}" >> $GITHUB_STEP_SUMMARY
-          echo "- Tests: ${{ steps.tests.outcome }}" >> $GITHUB_STEP_SUMMARY
+          {
+            echo "## CI Results"
+            echo ""
+            echo "- ESLint (ARCHITECTURE_GUARDS): ${{ steps.lint.outcome }}"
+            echo "- TypeScript typecheck: ${{ steps.typecheck.outcome }}"
+            echo "- Tests: ${{ steps.tests.outcome }}"
+          } >> "$GITHUB_STEP_SUMMARY"
