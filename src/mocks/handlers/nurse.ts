@@ -67,7 +67,10 @@ const buildResponse = (mode: NurseMode): FlushSummary => {
 export const makeNurseHandlers = (mode: NurseMode) => {
   return [
     http.post('**/api/nurse/flush', async ({ request }) => {
-      const baseUrl = typeof window !== 'undefined' ? window.location.origin : 'http://localhost';
+      const baseUrl =
+        typeof window !== 'undefined' && window.location?.origin
+          ? window.location.origin
+          : 'http://localhost:5173'; // SSR fallback（テスト用、CI 保護）
       const url = new URL(request.url, baseUrl);
       const effectiveMode = resolveMode(url.searchParams.get('mode'), mode);
       await new Promise((resolve) => setTimeout(resolve, 300));
