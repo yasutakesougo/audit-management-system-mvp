@@ -30,7 +30,7 @@ const IS_PREVIEW = process.env.PW_USE_PREVIEW === '1';
 const IS_FIXTURES = process.env.VITE_FORCE_SHAREPOINT !== '1';
 const IS_SP_STUBS = process.env.E2E_SP_STUBS === '1'; // Skip writes when using SharePoint stubs
 const HAS_SCHEDULE_DATA = process.env.E2E_HAS_SCHEDULE_DATA === '1';
-const IS_SAVE_MODE_MOCK = (process.env.VITE_SCHEDULES_SAVE_MODE ?? 'mock').toLowerCase() !== 'real';
+const IS_SAVE_MODE_MOCK = process.env.E2E_SAVE_MODE === 'mock';
 
 const buildLocalDateTime = (time: string) => `${TEST_DAY_KEY}T${time}`;
 
@@ -110,6 +110,9 @@ test.describe.skip(
   IS_SAVE_MODE_MOCK,
   'Mock save mode does not POST; skip status/service e2e.',
   () => {
+  if (IS_SAVE_MODE_MOCK) {
+    console.info('[e2e] ⏭️  Skipping status/service: E2E_SAVE_MODE=mock detected (env gate: E2E_SAVE_MODE)');
+  }
 
   test.beforeEach(async ({ page }, testInfo) => {
     const context = page.context();
