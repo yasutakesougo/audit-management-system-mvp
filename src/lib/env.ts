@@ -410,8 +410,8 @@ export const allowWriteFallback = (envOverride?: EnvRecord): boolean =>
 export type ScheduleSaveMode = 'mock' | 'real';
 
 export const getScheduleSaveMode = (envOverride?: EnvRecord): ScheduleSaveMode => {
-  const raw = readEnv('VITE_SCHEDULES_SAVE_MODE', 'mock', envOverride).trim().toLowerCase();
-  return raw === 'real' ? 'real' : 'mock';
+  const raw = readEnv('VITE_SCHEDULES_SAVE_MODE', 'real', envOverride).trim().toLowerCase();
+  return raw === 'mock' ? 'mock' : 'real';
 };
 
 export const isScheduleSaveMocked = (envOverride?: EnvRecord): boolean =>
