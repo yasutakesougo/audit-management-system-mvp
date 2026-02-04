@@ -150,6 +150,13 @@ jobs:
             test-results/
             playwright-report/
           if-no-files-found: warn
+      - name: Upload a11y baseline (json)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: a11y-baseline
+          path: test-results/a11y-baseline/**/*.json
+          if-no-files-found: ignore
       - name: Perf report (LHCI + Web Vitals)
         if: github.event_name == 'workflow_dispatch' || (github.ref == 'refs/heads/main' && steps.changes.outputs.playwright == 'true')
         run: npm run -s ci:perf-report

@@ -31,10 +31,27 @@ test.describe('a11y CI integration (complex pages)', () => {
     await page.waitForLoadState('networkidle');
     await expect(page.locator('main, [role="main"]')).toBeVisible({ timeout: 10000 });
 
-    // a11y スキャン実行（1件でも違反があれば fail）
-    await runA11ySmoke(page, 'users-complex-page', {
-      includeBestPractices: false,
-    });
+    // Gate: 1件でも違反があれば fail（失敗時は FAIL.json に記録）
+    try {
+      await runA11ySmoke(page, 'users-complex-page', {
+        includeBestPractices: false,
+      });
+    } catch (error) {
+      // Gate失敗時：違反内容を FAIL.json に保存してから fail
+      const results = await runA11yScan(page, 'users-complex-page-FAIL', {
+        includeBestPractices: false,
+      });
+      if (results && results.violations.length > 0) {
+        const baselineDir = path.join(process.cwd(), 'test-results', 'a11y-baseline');
+        fs.mkdirSync(baselineDir, { recursive: true });
+        fs.writeFileSync(
+          path.join(baselineDir, 'users.FAIL.json'),
+          JSON.stringify(results, null, 2)
+        );
+        console.error(`❌ Users gate FAILED: ${results.violations.length} violations recorded in users.FAIL.json`);
+      }
+      throw error; // 元のエラーを再スロー
+    }
   });
 
   // ========================================
