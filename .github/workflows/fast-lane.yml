@@ -26,7 +26,6 @@ jobs:
       VITE_MSAL_CLIENT_ID: "dummy-e2e-client-id"
       VITE_MSAL_TENANT_ID: "dummy-e2e-tenant-id"
       VITE_MSAL_AUTHORITY: "https://login.microsoftonline.com/dummy-e2e-tenant-id"
-      VITE_MSAL_REDIRECT_URI: "http://127.0.0.1:5173/"
 
     steps:
       - uses: actions/checkout@v4
