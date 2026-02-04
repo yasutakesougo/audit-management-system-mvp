@@ -22,6 +22,11 @@ jobs:
       VITE_PREFETCH_HUD: "1"
       PREFETCH_HUD: "1"
       VERBOSE_TESTS: "0"
+      # MSAL dummy vars for CI/E2E validation (PR #351)
+      VITE_MSAL_CLIENT_ID: "dummy-e2e-client-id"
+      VITE_MSAL_TENANT_ID: "dummy-e2e-tenant-id"
+      VITE_MSAL_AUTHORITY: "https://login.microsoftonline.com/dummy-e2e-tenant-id"
+      VITE_MSAL_REDIRECT_URI: "http://127.0.0.1:5173/"
 
     steps:
       - uses: actions/checkout@v4
