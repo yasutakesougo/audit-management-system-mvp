@@ -514,8 +514,13 @@ test.describe('Schedule dialog: status/service end-to-end', () => {
       location: '生活介護室A',
       notes: 'E2E quick create',
     });
+    
+    // Wait for dialog and editor to be ready before clicking save
+    await expect(page.getByRole('dialog')).toBeVisible({ timeout: 3000 }).catch(() => {});
+    
     const creationSave = page.getByTestId(TESTIDS['schedule-editor-save']);
-    await creationSave.click();
+    await expect(creationSave).toBeVisible({ timeout: 2000 }).catch(() => {});
+    await creationSave.click({ timeout: 5000 });
     const createResponse = await createResponsePromise;
     await expect(creationSave).toBeHidden({ timeout: 15_000 });
 
