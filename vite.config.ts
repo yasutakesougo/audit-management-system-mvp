@@ -1,4 +1,5 @@
 import react from '@vitejs/plugin-react'
+import legacy from '@vitejs/plugin-legacy'
 import fs from 'node:fs'
 import path from 'node:path'
 import { resolve } from 'node:path'
@@ -58,7 +59,40 @@ export default defineConfig(({ mode }) => {
     define: {
       'process.env': {},
     },
-    plugins: [react()],
+    plugins: [
+      react(),
+      {
+        name: 'boot-beacon',
+        transformIndexHtml(html) {
+          const beacon = `
+<script>
+  (function () {
+    var el = document.createElement('div');
+    el.id = '__boot_beacon__';
+    el.style.cssText = 'position:fixed;z-index:99999;left:8px;top:8px;padding:6px 8px;background:#111;color:#0f0;font:12px/1.2 monospace;border-radius:6px';
+    el.textContent = 'boot:html-ok';
+    document.addEventListener('DOMContentLoaded', function () {
+      el.textContent = 'boot:dom-ok';
+    });
+    window.addEventListener('error', function (e) {
+      el.textContent = 'boot:error ' + (e && e.message ? e.message.substring(0, 40) : 'unknown');
+    });
+    window.addEventListener('unhandledrejection', function (evt) {
+      el.textContent = 'boot:unhandledrejection ' + (evt && evt.reason ? String(evt.reason).substring(0, 20) : 'unknown');
+    });
+    document.documentElement.appendChild(el);
+  })();
+</script>`;
+          return html.replace('</head>', beacon + '\n</head>');
+        },
+      },
+      legacy({
+        targets: ['safari >= 12', 'ios >= 12'],
+        additionalLegacyPolyfills: ['regenerator-runtime/runtime'],
+        polyfills: true,
+        modernPolyfills: true,
+      }),
+    ],
     server: {
       https: httpsConfig, // undefined if certs don't exist (fallback to HTTP)
       host: '0.0.0.0',
