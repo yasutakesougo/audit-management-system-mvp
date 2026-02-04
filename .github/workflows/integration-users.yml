@@ -97,7 +97,7 @@ jobs:
               }
             ]
           }
-          JSON
+JSON
           )
 
           curl -sS -X POST -H "Content-Type: application/json" -d "$MSG" "$TEAMS_WEBHOOK_URL"
