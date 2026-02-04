@@ -1,6 +1,17 @@
 import { getAppConfig } from '../lib/env';
+import { readMsalEnv } from '@/env/msalEnv';
 
 const appConfig = getAppConfig();
+
+// Validate MSAL environment variables at startup (fail-fast pattern)
+// This ensures config errors are caught immediately in dev, CI, and production
+try {
+  readMsalEnv(import.meta.env);
+} catch (error) {
+  if (error instanceof Error) {
+    console.warn('[MSAL ENV] Validation warning (non-critical in dev/test):', error.message);
+  }
+}
 
 // Resolve MSAL/AAD IDs with fallback to avoid dummy defaults when either side is present
 const config = appConfig as unknown as Record<string, string | undefined>;
