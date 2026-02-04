@@ -1,4 +1,6 @@
 import react from '@vitejs/plugin-react'
+import fs from 'node:fs'
+import path from 'node:path'
 import { resolve } from 'node:path'
 import { fileURLToPath, URL } from 'node:url'
 import { defineConfig, loadEnv } from 'vite'
@@ -18,6 +20,19 @@ const emptyShim = fileURLToPath(new URL('./src/shims/empty.ts', import.meta.url)
 export default defineConfig(({ mode }) => {
   // Load environment variables (.env.test.local will override .env.local in test mode)
   const env = loadEnv(mode, process.cwd(), '');
+  
+  // HTTPS setup (mkcert certificates) - Issue #344
+  const certsDir = path.resolve(process.cwd(), '.certs');
+  const certPath = path.join(certsDir, 'localhost.pem');
+  const keyPath = path.join(certsDir, 'localhost-key.pem');
+  
+  const httpsConfig =
+    fs.existsSync(certPath) && fs.existsSync(keyPath)
+      ? {
+          key: fs.readFileSync(keyPath),
+          cert: fs.readFileSync(certPath),
+        }
+      : undefined;
   
   const normalizeBase = (value: string | undefined) => (value ? value.replace(/\/?$/, '') : undefined);
   const siteUrl =
@@ -41,6 +56,12 @@ export default defineConfig(({ mode }) => {
 
   return {
     plugins: [react()],
+    server: {
+      https: httpsConfig, // undefined if certs don't exist (fallback to HTTP)
+      host: '0.0.0.0',
+      port: 5173,
+      strictPort: true,
+    },
     resolve: {
       alias: {
         '@': srcDir,
