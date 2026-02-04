@@ -131,6 +131,25 @@ jobs:
 
           # Run only the lightest Playwright smoke to keep Quality Gates aligned with this PR scope.
           npx playwright test tests/e2e/basic-smoke.spec.ts --config=playwright.smoke.config.ts --project=smoke
+      - name: a11y CI integration tests (complex pages)
+        if: github.event_name == 'workflow_dispatch' || (github.ref == 'refs/heads/main' && steps.changes.outputs.playwright == 'true')
+        env:
+          VITE_E2E: "1"
+          VITE_SKIP_LOGIN: "1"
+          VITE_E2E_MSAL_MOCK: "1"
+          VITE_SKIP_SHAREPOINT: "1"
+          PLAYWRIGHT_BASE_URL: http://127.0.0.1:5173
+        run: |
+          npx playwright test tests/e2e/a11y-complex-page.spec.ts --project=chromium --reporter=line
+      - name: Upload a11y test artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: a11y-test-results
+          path: |
+            test-results/
+            playwright-report/
+          if-no-files-found: warn
       - name: Perf report (LHCI + Web Vitals)
         if: github.event_name == 'workflow_dispatch' || (github.ref == 'refs/heads/main' && steps.changes.outputs.playwright == 'true')
         run: npm run -s ci:perf-report
