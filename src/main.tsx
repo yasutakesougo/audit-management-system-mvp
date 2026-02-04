@@ -1,9 +1,13 @@
 import React from 'react';
 import ReactDOM from 'react-dom/client';
+import { installFatalHandlers } from './bootstrapFatal';
 import { getRuntimeEnv, isDev, clearEnvCache } from '@/env';
 import { guardProdMisconfig } from '@/lib/envGuards';
 import { resolveHydrationEntry } from './hydration/routes';
 import { beginHydrationSpan, finalizeHydrationSpan } from './lib/hydrationHud';
+
+// Install fatal error handlers BEFORE any other code executes
+installFatalHandlers();
 
 type EnvRecord = Record<string, string | undefined>;
 
