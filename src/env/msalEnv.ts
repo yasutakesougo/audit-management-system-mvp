@@ -1,21 +1,49 @@
 import { z } from 'zod';
 import { normalizeHttpsUrl } from './url';
 
-const HttpsUrl = z
-  .string()
-  .url()
-  .refine((v) => v.startsWith('https://'), 'must start with https://');
+// Preprocess to trim whitespace and treat empty strings as undefined
+const preprocessTrimmed = (schema: z.ZodTypeAny) => z.preprocess((v) => {
+  // null/undefined は通す
+  if (v == null) return v;
+
+  // string 以外は通す（zod が弾く）
+  if (typeof v !== 'string') return v;
+
+  // 先頭/末尾の空白を削除
+  const trimmed = v.trim();
+
+  // 空文字は undefined に変換（未設定扱い）
+  return trimmed === '' ? undefined : trimmed;
+}, schema);
+
+// HTTPS 強制（authority は本番/CI 共に https必須）
+const HttpsUrl = preprocessTrimmed(
+  z.string().url()
+    .refine((v) => v.startsWith('https://'), 'must start with https://')
+).optional();
+
+// Redirect URI は例外: CI で http://localhost許容
+const HttpsOrLocalhostUrl = preprocessTrimmed(
+  z.string().url()
+    .refine(
+      (v) =>
+        v.startsWith('https://') ||
+        v.startsWith('http://localhost') ||
+        v.startsWith('http://127.0.0.1'),
+      'must start with https:// (or http://localhost/127.0.0.1 for CI)'
+    )
+).optional();
 
 const MsalEnvSchema = z.object({
   VITE_AZURE_AD_CLIENT_ID: z.string().min(10).optional(),
   VITE_AZURE_AD_TENANT_ID: z.string().min(3).optional(),
   VITE_AZURE_AD_AUTHORITY: HttpsUrl.optional(),
-  VITE_AZURE_AD_REDIRECT_URI: HttpsUrl.optional(), // HTTPS 強制（env に入ってる時だけ）
+  VITE_AZURE_AD_REDIRECT_URI: HttpsOrLocalhostUrl.optional(),
   // Legacy aliases
   VITE_MSAL_CLIENT_ID: z.string().min(10).optional(),
   VITE_MSAL_TENANT_ID: z.string().min(3).optional(),
-  VITE_MSAL_AUTHORITY: HttpsUrl.optional(), // HTTPS 強制（env に入ってる時だけ）
-  VITE_MSAL_REDIRECT_URI: HttpsUrl.optional(), // HTTPS 強制（env に入ってる時だけ）
+  VITE_MSAL_AUTHORITY: HttpsUrl.optional(),
+  VITE_MSAL_REDIRECT_URI: HttpsOrLocalhostUrl.optional(),
   VITE_AAD_CLIENT_ID: z.string().min(10).optional(),
   VITE_AAD_TENANT_ID: z.string().min(3).optional(),
 });
@@ -45,10 +73,10 @@ export function readMsalEnv(raw: Record<string, unknown>): MsalEnv | null {
   const parsed = MsalEnvSchema.parse(raw);
 
   // Normalize authority to https if present
-  if (parsed.VITE_MSAL_AUTHORITY) {
+  if (parsed.VITE_MSAL_AUTHORITY && typeof parsed.VITE_MSAL_AUTHORITY === 'string') {
     parsed.VITE_MSAL_AUTHORITY = normalizeHttpsUrl(parsed.VITE_MSAL_AUTHORITY);
   }
-  if (parsed.VITE_AZURE_AD_AUTHORITY) {
+  if (parsed.VITE_AZURE_AD_AUTHORITY && typeof parsed.VITE_AZURE_AD_AUTHORITY === 'string') {
     parsed.VITE_AZURE_AD_AUTHORITY = normalizeHttpsUrl(parsed.VITE_AZURE_AD_AUTHORITY);
   }
 
