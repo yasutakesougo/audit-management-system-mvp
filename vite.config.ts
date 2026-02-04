@@ -67,19 +67,37 @@ export default defineConfig(({ mode }) => {
           const beacon = `
 <script>
   (function () {
+    // Only show beacon if ?b=1 parameter is present
+    var params = new URLSearchParams(typeof window !== 'undefined' ? window.location.search : '');
+    var shouldShow = params.get('b') === '1';
+    if (!shouldShow) return;
+    
     var el = document.createElement('div');
     el.id = '__boot_beacon__';
-    el.style.cssText = 'position:fixed;z-index:99999;left:8px;top:8px;padding:6px 8px;background:#111;color:#0f0;font:12px/1.2 monospace;border-radius:6px';
+    // pointer-events: none prevents click interception
+    // z-index: 1100 is above app content but below MUI modals (1200+)
+    el.style.cssText = 'position:fixed;z-index:1100;right:10px;bottom:10px;padding:8px 12px;background:rgba(0,0,0,0.85);color:#0f0;font:12px/1.35 monospace;border-radius:6px;pointer-events:none;max-width:320px';
     el.textContent = 'boot:html-ok';
+    
+    // Close button
+    var closeBtn = document.createElement('button');
+    closeBtn.textContent = '×';
+    closeBtn.style.cssText = 'position:absolute;top:2px;right:6px;background:transparent;border:none;color:#0f0;font-size:16px;cursor:pointer;padding:0 4px;pointer-events:auto';
+    closeBtn.addEventListener('click', function () { el.remove(); });
+    
     document.addEventListener('DOMContentLoaded', function () {
       el.textContent = 'boot:dom-ok';
     });
     window.addEventListener('error', function (e) {
-      el.textContent = 'boot:error ' + (e && e.message ? e.message.substring(0, 40) : 'unknown');
+      var msg = (e && e.error) ? (e.error.stack || e.error.message) : (e && e.message ? e.message : 'unknown');
+      el.textContent = 'boot:error ' + String(msg).substring(0, 120);
     });
     window.addEventListener('unhandledrejection', function (evt) {
-      el.textContent = 'boot:unhandledrejection ' + (evt && evt.reason ? String(evt.reason).substring(0, 20) : 'unknown');
+      var reason = (evt && evt.reason) ? String(evt.reason) : 'unknown';
+      el.textContent = 'boot:rejection ' + reason.substring(0, 120);
     });
+    
+    el.appendChild(closeBtn);
     document.documentElement.appendChild(el);
   })();
 </script>`;
