@@ -20,9 +20,12 @@ const TAB_NAMES = {
 const selectOrgInTab = async (page: Page, value: OrgFilterKey) => {
   const orgTab = page.getByRole('tab', { name: '事業所別' });
   await orgTab.click();
+  await expect(orgTab).toHaveAttribute('aria-selected', 'true', { timeout: 5000 });
   const select = page.getByTestId('schedule-org-select');
-  await expect(select).toBeVisible();
+  await expect(select).toBeVisible({ timeout: 5000 });
   await select.selectOption(value);
+  // Wait for URL to reflect selection
+  await page.waitForFunction((val) => new URL(window.location.href).searchParams.get('org') === val, value, { timeout: 5000 });
 };
 
 test.describe('Schedule org query param contract', () => {
