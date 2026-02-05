@@ -89,6 +89,7 @@ vi.mock('@/features/schedule/useSchedulesToday', () => ({
 }));
 
 import App from '../../src/App';
+import { TESTIDS } from '../../src/testids';
 
 /**
  * Router Future Flags スモークテスト
