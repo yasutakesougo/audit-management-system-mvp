@@ -35,7 +35,7 @@ vi.mock('../../src/features/compliance-checklist/ChecklistPage', () => ({
 
 vi.mock('../../src/features/audit/AuditPanel', () => ({
   __esModule: true,
-  default: () => <h1>監査ログビュー</h1>,
+  default: () => <h1 data-testid={TESTIDS['audit-heading']}>監査ログビュー</h1>,
 }));
 
 vi.mock('../../src/features/users', () => ({
