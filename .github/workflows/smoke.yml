@@ -117,8 +117,22 @@ jobs:
     permissions:
       contents: read
       checks: write
+    env:
+      # ✅ Force hermetic E2E (no SharePoint calls)
+      E2E_SAVE_MODE: mock
+      VITE_DEMO_MODE: "1"
+      VITE_SKIP_SHAREPOINT: "1"
+      # ✅ Stabilize schedule tests
+      VITE_SCHEDULES_TZ: Asia/Tokyo
     steps:
       - uses: actions/checkout@v4
+      
+      - name: Print E2E env
+        run: |
+          echo "E2E_SAVE_MODE=$E2E_SAVE_MODE"
+          echo "VITE_DEMO_MODE=$VITE_DEMO_MODE"
+          echo "VITE_SKIP_SHAREPOINT=$VITE_SKIP_SHAREPOINT"
+          echo "VITE_SCHEDULES_TZ=$VITE_SCHEDULES_TZ"
       - uses: actions/setup-node@v4
         with:
           node-version: 20
