@@ -18,6 +18,36 @@ export type FeatureFlagSnapshot = {
   icebergPdca: boolean;
 };
 
+const hasExplicitOverride = (storageKey: string, envKey: string, envOverride?: EnvRecord): boolean => {
+  // env override takes priority when provided
+  if (typeof envOverride !== 'undefined' && envKey in envOverride) {
+    return true;
+  }
+
+  // process/global env
+  if (typeof process !== 'undefined' && process.env && envKey in process.env) {
+    return true;
+  }
+
+  // runtime env shim (window.__ENV__)
+  if (typeof window !== 'undefined') {
+    const runtimeEnv = (window as Window & { __ENV__?: Record<string, string | undefined> }).__ENV__;
+    if (runtimeEnv && envKey in runtimeEnv) {
+      return true;
+    }
+
+    try {
+      if (window.localStorage.getItem(storageKey) != null) {
+        return true;
+      }
+    } catch {
+      // ignore storage access errors (private mode, etc.)
+    }
+  }
+
+  return false;
+};
+
 const isAutomationRuntime = (): boolean => {
   if (typeof navigator !== 'undefined' && navigator.webdriver) {
     return true;
