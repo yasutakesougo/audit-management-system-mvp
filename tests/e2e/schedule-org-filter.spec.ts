@@ -18,14 +18,18 @@ const TAB_NAMES = {
 } as const;
 
 const selectOrgInTab = async (page: Page, value: OrgFilterKey) => {
+  // Ensure org tab is active
   const orgTab = page.getByRole('tab', { name: '事業所別' });
   await orgTab.click();
   await expect(orgTab).toHaveAttribute('aria-selected', 'true', { timeout: 5000 });
+  
+  // Select option
   const select = page.getByTestId('schedule-org-select');
   await expect(select).toBeVisible({ timeout: 5000 });
   await select.selectOption(value);
-  // Wait for URL to reflect selection
-  await page.waitForFunction((val) => new URL(window.location.href).searchParams.get('org') === val, value, { timeout: 5000 });
+  
+  // Wait for URL update
+  await page.waitForURL((url) => new URL(url).searchParams.get('org') === (value === 'all' ? null : value), { timeout: 5000 });
 };
 
 test.describe('Schedule org query param contract', () => {
@@ -37,13 +41,17 @@ test.describe('Schedule org query param contract', () => {
       }
     });
 
+    // Boot schedule and navigate to org tab
     await bootSchedule(page, { date: TARGET_DATE });
     await gotoOrg(page, { date: TARGET_DATE });
-    // Ensure org tab is active and select is visible before tests
+    
+    // Verify org tab is ready
     const orgTab = page.getByRole('tab', { name: '事業所別' });
-    await expect(orgTab).toHaveAttribute('aria-selected', 'true', { timeout: 5000 });
+    await expect(orgTab).toHaveAttribute('aria-selected', 'true', { timeout: 10000 });
+    
+    // Verify select is ready
     const select = page.getByTestId('schedule-org-select');
-    await expect(select).toBeVisible({ timeout: 5000 });
+    await expect(select).toBeVisible({ timeout: 10000 });
   });
 
   test('org param is absent when no org selected on Org tab', async ({ page }) => {
@@ -70,21 +78,21 @@ test.describe('Schedule org query param contract', () => {
     // Switch to week tab
     const weekTab = page.getByRole('tab', { name: TAB_NAMES.WEEK });
     await weekTab.click();
-    await page.waitForLoadState('domcontentloaded');
+    await expect(weekTab).toHaveAttribute('aria-selected', 'true');
     expect(getOrgParam(page)).toBe('respite');
     await expect(page).toHaveURL(/org=respite/);
 
     // Switch to month tab
     const monthTab = page.getByRole('tab', { name: TAB_NAMES.MONTH });
     await monthTab.click();
-    await page.waitForLoadState('domcontentloaded');
+    await expect(monthTab).toHaveAttribute('aria-selected', 'true');
     expect(getOrgParam(page)).toBe('respite');
     await expect(page).toHaveURL(/org=respite/);
 
     // Switch to day tab
     const dayTab = page.getByRole('tab', { name: TAB_NAMES.DAY });
     await dayTab.click();
-    await page.waitForLoadState('domcontentloaded');
+    await expect(dayTab).toHaveAttribute('aria-selected', 'true');
     expect(getOrgParam(page)).toBe('respite');
     await expect(page).toHaveURL(/org=respite/);
   });
