@@ -10,6 +10,8 @@ test-results
 tests/.auth/storageState.json
 tmp/
 reports/flaky-tests.md
+playwright-report
+junit
 
 # Local certificates/keys (do NOT commit)
 key.pem
