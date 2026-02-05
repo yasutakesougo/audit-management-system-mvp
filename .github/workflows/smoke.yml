@@ -1,4 +1,4 @@
-name: Smoke Tests
+name: e2e-smoke
 
 on:
   pull_request:
@@ -88,49 +88,15 @@ jobs:
           node-version: 20
           cache: npm
       - run: npm ci
-      - name: Playwright install (preview server)
-        run: PW_USE_PREVIEW=1 npx playwright install --with-deps
-      - name: Build (preview server)
-        run: VITE_E2E='1' VITE_E2E_MSAL_MOCK='1' VITE_FEATURE_SCHEDULES='1' VITE_SKIP_LOGIN='1' npm run build --if-present
-      - name: Start preview server
-        run: npm run preview -- --host 127.0.0.1 --port 5173 --strictPort &
-
-      - name: Wait for preview server
-        run: npx wait-on http://127.0.0.1:5173
-      - name: E2E router + nav smoke (chromium + smoke)
+      - name: Playwright install
+        run: npx playwright install --with-deps
+      - name: E2E Smoke (short set)
         env:
           TZ: Asia/Tokyo
-          PW_USE_PREVIEW: 1
-          PLAYWRIGHT_BASE_URL: http://127.0.0.1:5173
-          PLAYWRIGHT_WEB_SERVER_URL: http://127.0.0.1:5173
-          PLAYWRIGHT_SKIP_BUILD: '1'
-          VITE_E2E: '1'
-          VITE_E2E_MSAL_MOCK: '1'
-          VITE_SKIP_LOGIN: '1'
-        run: |
-          echo "=== E2E flags ==="
-          echo "VITE_E2E=$VITE_E2E"
-          echo "VITE_E2E_MSAL_MOCK=$VITE_E2E_MSAL_MOCK"
-          echo "VITE_SKIP_LOGIN=$VITE_SKIP_LOGIN"
-          echo "=== Tooling ==="
-          node -v
-          npx playwright --version
-          echo "=== Run ==="
-          npm run e2e:smoke:router-nav
-      - name: e2e smoke tests (all)
-        env:
-          TZ: Asia/Tokyo
-          PW_USE_PREVIEW: 1
-          PLAYWRIGHT_BASE_URL: http://127.0.0.1:5173
-          PLAYWRIGHT_WEB_SERVER_URL: http://127.0.0.1:5173
-          PLAYWRIGHT_SKIP_BUILD: '1'
-          VITE_E2E: '1'
-          VITE_E2E_MSAL_MOCK: '1'
-          VITE_SKIP_LOGIN: '1'
-          VITE_FEATURE_SCHEDULES: '1'
-        run: npx playwright test tests/e2e --config=playwright.config.ts --project=smoke --trace on
-      - if: always()
-        name: Upload Playwright artifacts
+          CI: 'true'
+        run: npx playwright test --config=playwright.smoke.config.ts
+      - if: failure()
+        name: Upload Playwright artifacts (failure only)
         uses: actions/upload-artifact@v4
         with:
           name: playwright-artifacts
@@ -139,8 +105,8 @@ jobs:
             test-results/**
           retention-days: 7
           if-no-files-found: warn
-      - if: always()
-        name: Upload JUnit report
+      - if: failure()
+        name: Upload JUnit report (failure only)
         uses: actions/upload-artifact@v4
         with:
           name: junit-e2e-smoke
