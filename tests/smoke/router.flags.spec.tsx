@@ -7,15 +7,15 @@ const spFetchMock = vi.fn(async () => ({ ok: true }));
 const signInMock = vi.fn(async () => undefined);
 const signOutMock = vi.fn(async () => undefined);
 
-vi.mock('../../src/lib/spClient', async () => {
-  const actual = await vi.importActual<typeof import('../../src/lib/spClient')>('../../src/lib/spClient');
+vi.mock('@/lib/spClient', async () => {
+  const actual = await vi.importActual<typeof import('@/lib/spClient')>('@/lib/spClient');
   return {
     ...actual,
     useSP: () => ({ spFetch: spFetchMock }),
   };
 });
 
-vi.mock('../../src/auth/useAuth', () => ({
+vi.mock('@/auth/useAuth', () => ({
   useAuth: () => ({
     signIn: signInMock,
     signOut: signOutMock,
@@ -24,22 +24,22 @@ vi.mock('../../src/auth/useAuth', () => ({
   }),
 }));
 
-vi.mock('../../src/features/records/RecordList', () => ({
+vi.mock('@/features/records/RecordList', () => ({
   __esModule: true,
   default: () => <h1>記録管理トップ</h1>,
 }));
 
-vi.mock('../../src/features/compliance-checklist/ChecklistPage', () => ({
+vi.mock('@/features/compliance-checklist/ChecklistPage', () => ({
   __esModule: true,
   default: () => <h1>自己点検ビュー</h1>,
 }));
 
-vi.mock('../../src/features/audit/AuditPanel', () => ({
+vi.mock('@/features/audit/AuditPanel', () => ({
   __esModule: true,
-  default: () => <h1 data-testid={TESTIDS['audit-heading']}>監査ログビュー</h1>,
+  default: () => <h1 data-testid="audit-heading">監査ログビュー</h1>,
 }));
 
-vi.mock('../../src/features/users', () => ({
+vi.mock('@/features/users', () => ({
   __esModule: true,
   UsersPanel: () => <h1>利用者ビュー</h1>,
 }));
