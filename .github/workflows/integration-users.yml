@@ -29,6 +29,13 @@ jobs:
           node-version: 20
           cache: npm
 
+      - name: Validate env (fail-fast)
+        run: node scripts/validate-env.mjs
+        env:
+          ENV_VALIDATE_REQUIRED: PW_STORAGE_STATE_B64,SHAREPOINT_SITE
+          PW_STORAGE_STATE_B64: ${{ secrets.PW_STORAGE_STATE_B64 }}
+          SHAREPOINT_SITE: ${{ secrets.SHAREPOINT_SITE }}
+
       - name: Install deps
         run: npm ci
 

@@ -81,6 +81,7 @@
     "preci": "npm run lint && npm run typecheck && npm run lint:cookies",
     "preflight": "bash scripts/preflight.sh unit",
     "preflight:full": "bash scripts/preflight.sh e2e",
+    "validate:env": "node scripts/validate-env.mjs",
     "validate:project-auto": "bash scripts/validate-project-auto.sh",
     "prepare": "husky install",
     "health": "npm run typecheck || npm run --if-present build:types; npm run lint:dev; npx vitest run",
