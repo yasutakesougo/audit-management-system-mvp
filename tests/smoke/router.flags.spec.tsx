@@ -44,6 +44,15 @@ vi.mock('@/features/users', () => ({
   UsersPanel: () => <h1>利用者ビュー</h1>,
 }));
 
+vi.mock('@/auth/useUserAuthz', () => ({
+  useUserAuthz: () => ({
+    isAdmin: true,
+    isReception: false,
+    ready: true,
+    reason: undefined,
+  }),
+}));
+
 vi.mock('@/lib/env', async () => {
   const actual = await vi.importActual<typeof import('@/lib/env')>('@/lib/env');
   return {
@@ -116,9 +125,7 @@ describe('router future flags smoke', () => {
 
     // ナビゲーション経路のテスト: ホーム → 監査ログ → 日次記録 → 自己点検 → ホーム
 
-    // TODO: data-testid 追加で getAllByRole(...)[1] のマジックインデックスを回避
-    // 現在はヘッダー/フッターで同じラベルが存在するため [1] で特定
-    await user.click(screen.getAllByRole('link', { name: '監査ログ' })[1]);
+    await user.click(screen.getByTestId(TESTIDS.nav.audit));
     expect(await screen.findByTestId(TESTIDS['audit-heading'])).toBeInTheDocument();
 
     await user.click(screen.getByRole('link', { name: '日次記録' }));
