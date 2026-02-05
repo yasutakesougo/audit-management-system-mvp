@@ -36,6 +36,11 @@ test.describe('Schedule org query param contract', () => {
 
     await bootSchedule(page, { date: TARGET_DATE });
     await gotoOrg(page, { date: TARGET_DATE });
+    // Ensure org tab is active and select is visible before tests
+    const orgTab = page.getByRole('tab', { name: '事業所別' });
+    await expect(orgTab).toHaveAttribute('aria-selected', 'true', { timeout: 5000 });
+    const select = page.getByTestId('schedule-org-select');
+    await expect(select).toBeVisible({ timeout: 5000 });
   });
 
   test('org param is absent when no org selected on Org tab', async ({ page }) => {
