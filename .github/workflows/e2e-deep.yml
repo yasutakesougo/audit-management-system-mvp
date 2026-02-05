@@ -117,7 +117,7 @@ jobs:
         run: |
           echo "## E2E Deep Test Results" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
-          echo "**Environment:** ${{ github.event.inputs.environment || 'e2e' }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Environment:** e2e" >> $GITHUB_STEP_SUMMARY
           echo "**Status:** ${{ steps.deep_tests.outcome }}" >> $GITHUB_STEP_SUMMARY
           echo "**Test Pattern:** ${{ github.event.inputs.test_pattern || 'All deep tests (non-smoke)' }}" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
