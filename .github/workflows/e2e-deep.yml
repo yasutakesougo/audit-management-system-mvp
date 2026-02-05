@@ -193,6 +193,8 @@ jobs:
       
       - name: Analyze flaky tests (detailed)
         if: always()
+        env:
+          FLAKY_EXIT_ON: NEVER
         run: node scripts/analyze-flaky-tests.mjs
         continue-on-error: true
       

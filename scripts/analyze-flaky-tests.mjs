@@ -204,13 +204,31 @@ function generateMarkdownReport(flakyTests, totalRetries, severityLevel) {
   return report;
 }
 
+const FLAKY_EXIT_ON = (process.env.FLAKY_EXIT_ON || 'HIGH').toUpperCase();
+const EXIT_LEVELS = {
+  LOW: 1,
+  MEDIUM: 2,
+  HIGH: 3,
+};
+
+function shouldExitOnSeverity(severity) {
+  if (['NEVER', 'NONE', 'OFF', 'FALSE', '0'].includes(FLAKY_EXIT_ON)) {
+    return false;
+  }
+
+  const threshold = EXIT_LEVELS[FLAKY_EXIT_ON] ?? EXIT_LEVELS.HIGH;
+  const current = EXIT_LEVELS[severity] ?? EXIT_LEVELS.HIGH;
+
+  return current >= threshold;
+}
+
 // Run analysis
 try {
   const result = analyzeFlakyTests();
   
-  // Exit with non-zero if HIGH severity
-  if (result.severityLevel === 'HIGH') {
-    console.log('⚠️  Exiting with status 1 due to HIGH severity flaky tests\n');
+  // Exit with non-zero if severity meets configured threshold
+  if (shouldExitOnSeverity(result.severityLevel)) {
+    console.log(`⚠️  Exiting with status 1 due to ${result.severityLevel} severity flaky tests\n`);
     process.exit(1);
   }
   
