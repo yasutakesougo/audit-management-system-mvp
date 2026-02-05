@@ -1,0 +1,5 @@
+
+> audit-management-system-mvp@0.1.0 lint
+> eslint --ext .ts,.tsx src --max-warnings=0
+
+npm run lint exit code: 0
