@@ -38,6 +38,7 @@ export const TESTIDS = {
   'dashboard-records': 'dashboard-records',
   'audit-heading': 'audit-heading',
   'iceberg-pdca-root': 'iceberg-pdca-root',
+  'iceberg-pdca-empty': 'iceberg-pdca-empty',
   ICEBERG_PDCA_EMPTY: 'iceberg-pdca-empty',
 
   // Dashboard Tabs (黒ノート機能個別タブ) 🌱 E2Eでタブ切替を細かく検査用
@@ -358,6 +359,9 @@ export const TESTIDS = {
   'users-quick-prefix': 'users-quick-',
   'user-menu-card-prefix': 'user-menu-card-',
   'user-menu-tabpanel-prefix': 'user-menu-tabpanel-',
+
+  // Staff feature
+  'staff-panel-root': 'staff-panel-root',
 
   // User Menu関連
   'user-menu-trigger': 'user-menu-trigger',

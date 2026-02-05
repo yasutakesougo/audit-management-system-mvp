@@ -35,6 +35,7 @@ const IcebergAnalysisPage = React.lazy(() => import('@/pages/IcebergAnalysisPage
 const MonthlyRecordPage = React.lazy(() => import('@/pages/MonthlyRecordPage'));
 
 const AttendanceRecordPage = React.lazy(() => import('@/pages/AttendanceRecordPage'));
+const StaffAttendanceAdminPage = React.lazy(() => import('@/pages/StaffAttendanceAdminPage'));
 
 const StaffDashboardPage = React.lazy(() =>
   import('@/pages/DashboardPage').then((module) => ({
@@ -399,6 +400,20 @@ const SuspendedSupportActivityMasterPage: React.FC = () => (
   </RouteHydrationErrorBoundary>
 );
 
+const SuspendedStaffAttendanceAdminPage: React.FC = () => (
+  <RouteHydrationErrorBoundary>
+    <React.Suspense
+      fallback={(
+        <div className="p-4 text-sm text-slate-600" role="status">
+          職員出勤管理を読み込んでいます…
+        </div>
+      )}
+    >
+      <StaffAttendanceAdminPage />
+    </React.Suspense>
+  </RouteHydrationErrorBoundary>
+);
+
 const SuspendedSupportStepMasterPage: React.FC = () => (
   <RouteHydrationErrorBoundary>
     <React.Suspense
@@ -528,6 +543,7 @@ const childRoutes: RouteObject[] = [
   { path: 'admin/templates', element: <SuspendedSupportActivityMasterPage /> },
   { path: 'admin/step-templates', element: <SuspendedSupportStepMasterPage /> },
   { path: 'admin/individual-support', element: <SuspendedIndividualSupportManagementPage /> },
+  { path: 'admin/staff-attendance', element: <SuspendedStaffAttendanceAdminPage /> },
   {
     path: 'admin/integrated-resource-calendar',
     element: (
@@ -612,7 +628,7 @@ const childRoutes: RouteObject[] = [
     path: 'schedules/create',
     element: (
       <SchedulesGate>
-        <ProtectedRoute flag="schedulesCreate">
+        <ProtectedRoute flag="schedules">
           <SuspendedCreatePage />
         </ProtectedRoute>
       </SchedulesGate>

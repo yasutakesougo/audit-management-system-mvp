@@ -56,7 +56,6 @@ describe('useToast', () => {
 
     expect(typeof result.current.show).toBe('function');
   });
-
   it('creates toast entries using crypto.randomUUID when available and removes after timeout', () => {
     const cryptoGetter = vi.spyOn(globalThis, 'crypto', 'get');
     const randomUUID = vi.fn(() => 'uuid-1234');

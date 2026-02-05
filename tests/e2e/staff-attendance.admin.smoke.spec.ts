@@ -44,7 +44,14 @@ test.describe('staff attendance admin smoke', () => {
     // ---- App bootstrap ----
     await bootstrapDashboard(page, { skipLogin: true, featureSchedules: true, initialPath: '/admin/staff-attendance' });
 
+    // ---- Diagnostic: Verify page state ----
+    const bodyText = (await page.locator('body').innerText()).slice(0, 1200);
+    console.info('[e2e] before-expect url=', page.url());
+    console.info('[e2e] before-expect title=', await page.title());
+    console.info('[e2e] before-expect body(head)=', bodyText.replace(/\s+/g, ' '));
+
     // ---- Verify Admin UI loads ----
+    await page.waitForTimeout(250);
     await expect(page.getByTestId('staff-attendance-admin-root')).toBeVisible();
 
     // Date picker

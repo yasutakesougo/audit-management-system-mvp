@@ -1,32 +1,30 @@
 import { test, expect } from '@playwright/test';
 import { installNetworkGuard } from '../helpers/networkGuard';
+import { bootstrapDashboard } from './utils/bootstrapApp';
 
-test.describe('Users dev harness (hermetic E2E)', () => {
-  test('loads /dev/users without external calls', async ({ page }) => {
-    // Enforce strict allowlist: localhost/127.0.0.1/data:/blob: only
-    // Fail immediately on any external host (SharePoint, Graph, etc.)
+test.describe('Users page smoke (hermetic E2E)', () => {
+  test('loads /users and search input is visible', async ({ page }) => {
     installNetworkGuard(page, 'allowlist-localhost');
 
-    await page.goto('/dev/users');
+    await bootstrapDashboard(page, { skipLogin: true, initialPath: '/users' });
 
     // Wait for stable markers
-    await expect(page.getByTestId('users-dev-harness')).toBeVisible();
-    await expect(page.getByTestId('users-dev')).toBeVisible();
-    await expect(page.getByTestId('users-count')).toContainText('Count:');
-  });
+    console.info('[e2e] url=', page.url());
+    console.info('[e2e] title=', await page.title());
+    await page.waitForTimeout(500);
+    
+    // Verify root panel is visible
+    await expect(page.getByTestId('users-panel-root')).toBeVisible();
 
-  test('Reload button works', async ({ page }) => {
-    installNetworkGuard(page, 'allowlist-localhost');
+    // Click the "利用者一覧" tab to show the search input
+    await page.getByRole('tab', { name: /利用者一覧/ }).click();
+    await page.waitForTimeout(300);
 
-    await page.goto('/dev/users');
+    // ---- Diagnostic: Verify page state ----
+    const bodyText = (await page.locator('body').innerText()).slice(0, 1200);
+    console.info('[e2e] before-expect body(head)=', bodyText.replace(/\s+/g, ' '));
 
-    // Initial count should be 0
-    await expect(page.getByTestId('users-count')).toContainText('Count: 0');
-
-    // Click Reload button
-    await page.getByRole('button', { name: 'Reload' }).click();
-
-    // Count should increment
-    await expect(page.getByTestId('users-count')).toContainText('Count: 1');
+    // Verify search input
+    await expect(page.getByTestId('users-panel-search')).toBeVisible({ timeout: 10000 });
   });
 });

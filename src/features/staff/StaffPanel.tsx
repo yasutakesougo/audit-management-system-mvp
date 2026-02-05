@@ -1,4 +1,5 @@
 import { useStaff } from '@/stores/useStaff';
+import { TESTIDS } from '@/testids';
 import type { Staff } from '@/types';
 import React, { useState } from 'react';
 import StaffForm from './StaffForm';
@@ -67,7 +68,7 @@ const StaffPanel: React.FC = () => {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6" data-testid={TESTIDS['staff-panel-root']}>
       {/* ヘッダー */}
       <div className="flex items-center justify-between">
         <div>
