@@ -22,7 +22,10 @@ const isTestEnv =
       process.env.VITEST === 'true' ||
       process.env.NODE_ENV === 'test')) ||
   // Vitest also exposes a global marker in the test runtime.
-  (typeof globalThis !== 'undefined' && !!(globalThis as unknown as { __vitest__?: unknown }).__vitest__);
+  (typeof globalThis !== 'undefined' && !!(globalThis as unknown as { __vitest__?: unknown }).__vitest__) ||
+  // Vite/Vitest provides import.meta.env.MODE === 'test'
+  ((import.meta as unknown as { env?: Record<string, unknown> })?.env?.MODE === 'test');
+
 
 let effectiveClientId = config.VITE_MSAL_CLIENT_ID || config.VITE_AAD_CLIENT_ID;
 let effectiveTenantId = config.VITE_MSAL_TENANT_ID || config.VITE_AAD_TENANT_ID;

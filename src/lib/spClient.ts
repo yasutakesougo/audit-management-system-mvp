@@ -775,6 +775,7 @@ export function createSpClient(
       });
     };
 
+
     let response: Response;
     try {
       response = await doFetch(token1);
