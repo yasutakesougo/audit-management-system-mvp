@@ -65,6 +65,11 @@ vi.mock('@/pages/DailyPage', () => ({
   default: () => <h1>日次記録ビュー</h1>,
 }));
 
+vi.mock('@/features/daily/TableDailyRecordPage', () => ({
+  __esModule: true,
+  default: () => <h1 data-testid="daily-table-root">日次記録ビュー</h1>,
+}));
+
 vi.mock('@/stores/useUsers', () => ({
   useUsers: () => ({ data: [], error: null, loading: false, reload: vi.fn() }),
 }));
@@ -128,9 +133,8 @@ describe('router future flags smoke', () => {
   await user.click(screen.getByTestId(TESTIDS.nav.audit));
   expect(await screen.findByTestId(TESTIDS['audit-heading'])).toBeInTheDocument();
 
-    await user.click(screen.getByRole('link', { name: '日次記録' }));
-      // 文言・role差や遅延描画を吸収して「日次記録」系の表示を待つ
-      await screen.findByText(/日次記録/, {}, { timeout: 15_000 });
+    await user.click(screen.getByTestId(TESTIDS.nav.daily));
+    await screen.findByTestId('daily-table-root');
 
     await user.click(screen.getByRole('link', { name: '自己点検' }));
     expect(await screen.findByText('自己点検ビュー')).toBeInTheDocument();
