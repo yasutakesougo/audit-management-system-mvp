@@ -45,8 +45,12 @@ test.describe('staff attendance read-only guard', () => {
 
     await bootstrapDashboard(page, { skipLogin: true, featureSchedules: true, initialPath: '/admin/staff-attendance' });
 
-    console.info('[e2e] url=', page.url());
-    console.info('[e2e] title=', await page.title());
+    // ---- Diagnostic: Verify page state ----
+    const bodyText = (await page.locator('body').innerText()).slice(0, 1200);
+    console.info('[e2e] before-expect url=', page.url());
+    console.info('[e2e] before-expect title=', await page.title());
+    console.info('[e2e] before-expect body(head)=', bodyText.replace(/\s+/g, ' '));
+
     await page.waitForTimeout(250);
     await expect(page.getByTestId('staff-attendance-admin-root')).toBeVisible();
     await expect(page.getByTestId('staff-attendance-readonly')).toBeVisible();

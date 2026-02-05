@@ -20,8 +20,13 @@ test.describe('Users page smoke (hermetic E2E)', () => {
     installNetworkGuard(page, 'allowlist-localhost');
 
     await page.goto('/users');
-    console.info('[e2e] url=', page.url());
-    console.info('[e2e] title=', await page.title());
+
+    // ---- Diagnostic: Verify page state ----
+    const bodyText = (await page.locator('body').innerText()).slice(0, 1200);
+    console.info('[e2e] before-expect url=', page.url());
+    console.info('[e2e] before-expect title=', await page.title());
+    console.info('[e2e] before-expect body(head)=', bodyText.replace(/\s+/g, ' '));
+
     await page.waitForTimeout(250);
     await expect(page.getByTestId('users-panel-search')).toBeVisible();
   });
