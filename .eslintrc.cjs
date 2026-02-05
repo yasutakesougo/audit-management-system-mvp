@@ -7,7 +7,7 @@ module.exports = {
     sourceType: 'module',
     ecmaFeatures: { jsx: true }
   },
-  plugins: ['@typescript-eslint'],
+  plugins: ['@typescript-eslint', 'boundaries'],
   extends: [
     'eslint:recommended',
     'plugin:@typescript-eslint/recommended',
@@ -63,6 +63,29 @@ module.exports = {
           }
         ]
       }
+    ],
+    // Phase 1: boundaries (warn)
+    'boundaries/element-types': ['warn', {
+      default: 'disallow',
+      rules: [
+        // app → feature/lib/utils/shared OK
+        { from: 'app', allow: ['feature', 'lib', 'utils', 'shared'] },
+        // feature → lib/utils/shared OK (feature↔feature は原則禁止)
+        { from: 'feature', allow: ['lib', 'utils', 'shared'] },
+        // lib/utils/shared は限定的に許可
+        { from: 'lib', allow: ['utils', 'shared'] },
+        { from: 'utils', allow: ['shared'] },
+        { from: 'shared', allow: ['utils'] }
+      ]
+    }]
+  },
+  settings: {
+    'boundaries/elements': [
+      { type: 'app', pattern: 'src/app/*' },
+      { type: 'feature', pattern: 'src/features/*' },
+      { type: 'lib', pattern: 'src/lib/*' },
+      { type: 'utils', pattern: 'src/utils/*' },
+      { type: 'shared', pattern: 'src/components/*' }
     ]
   },
   env: {
