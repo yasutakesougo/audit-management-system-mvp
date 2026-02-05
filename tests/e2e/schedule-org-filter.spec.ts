@@ -34,7 +34,7 @@ test.describe('Schedule org query param contract', () => {
       }
     });
 
-    await bootSchedule(page, { date: TARGET_DATE, enableWeekV2: false });
+    await bootSchedule(page, { date: TARGET_DATE });
     await gotoOrg(page, { date: TARGET_DATE });
   });
 
