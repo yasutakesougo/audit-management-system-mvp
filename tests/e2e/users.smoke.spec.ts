@@ -16,6 +16,10 @@ test.describe('Users page smoke (hermetic E2E)', () => {
     // Verify root panel is visible
     await expect(page.getByTestId('users-panel-root')).toBeVisible();
 
+    // Click the "利用者一覧" tab to show the search input
+    await page.getByRole('tab', { name: /利用者一覧/ }).click();
+    await page.waitForTimeout(300);
+
     // ---- Diagnostic: Verify page state ----
     const bodyText = (await page.locator('body').innerText()).slice(0, 1200);
     console.info('[e2e] before-expect body(head)=', bodyText.replace(/\s+/g, ' '));
