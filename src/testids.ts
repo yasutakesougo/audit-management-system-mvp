@@ -360,6 +360,9 @@ export const TESTIDS = {
   'user-menu-card-prefix': 'user-menu-card-',
   'user-menu-tabpanel-prefix': 'user-menu-tabpanel-',
 
+  // Staff feature
+  'staff-panel-root': 'staff-panel-root',
+
   // User Menu関連
   'user-menu-trigger': 'user-menu-trigger',
   'user-menu-popup': 'user-menu-popup',
