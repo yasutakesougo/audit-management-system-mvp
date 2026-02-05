@@ -136,7 +136,7 @@ describe('router future flags smoke', () => {
     await user.click(screen.getByTestId(TESTIDS.nav.daily));
     expect(await screen.findByTestId('daily-table-root')).toBeInTheDocument();
 
-    await user.click(screen.getByRole('link', { name: '自己点検' }));
+    await user.click(screen.getByTestId(TESTIDS.nav.checklist));
     expect(await screen.findByText('自己点検ビュー')).toBeInTheDocument();
 
     // ホームリンクは「黒ノート」表記のナビゲーションをクリックして戻す
