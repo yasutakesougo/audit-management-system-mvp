@@ -1,22 +1,29 @@
 import { useAnnounce } from '@/a11y/LiveAnnouncer';
 import { useRouteFocusManager } from '@/a11y/useRouteFocusManager';
-import { type ScheduleEvent } from '@/features/schedule/api/schedulesClient';
-import { ScheduleConflictGuideDialog, type SuggestionAction } from '@/features/schedule/components/ScheduleConflictGuideDialog';
-import ScheduleCreateDialog from '@/features/schedules/ScheduleCreateDialog';
-import type { CreateScheduleEventInput } from '@/features/schedules/data';
-import { useSchedulesPort } from '@/features/schedules/data';
-import type { SchedItem } from '@/features/schedules/data';
-import type { InlineScheduleDraft } from '@/features/schedules/data/inlineScheduleDraft';
-import { useSchedules } from '@/features/schedules/useSchedules';
-import { buildConflictIndex } from '@/features/schedule/conflictChecker';
-import { FOCUS_GUARD_MS } from '@/features/schedule/focusGuard';
-import { useAnchoredPeriod } from '@/features/schedule/hooks/useAnchoredPeriod';
-import { useApplyScheduleSuggestion } from '@/features/schedule/hooks/useApplyScheduleSuggestion';
-import type { BaseSchedule, Category } from '@/features/schedule/types';
-import { useScheduleUserOptions } from '@/features/schedules/useScheduleUserOptions';
-import { SchedulesHeader } from '@/features/schedules/components/SchedulesHeader';
-import { ScheduleEmptyHint } from '@/features/schedules/components/ScheduleEmptyHint';
-import { normalizeToDayStart, pickDateParam } from '@/features/schedule/dateQuery';
+import {
+  type ScheduleEvent,
+  ScheduleConflictGuideDialog,
+  type SuggestionAction,
+  buildConflictIndex,
+  FOCUS_GUARD_MS,
+  useAnchoredPeriod,
+  useApplyScheduleSuggestion,
+  type BaseSchedule,
+  type Category,
+  normalizeToDayStart,
+  pickDateParam,
+} from '@/features/schedule';
+import {
+  ScheduleCreateDialog,
+  type CreateScheduleEventInput,
+  useSchedulesPort,
+  type SchedItem,
+  type InlineScheduleDraft,
+  useSchedules,
+  useScheduleUserOptions,
+  SchedulesHeader,
+  ScheduleEmptyHint,
+} from '@/features/schedules';
 import { useToast } from '@/hooks/useToast';
 import { TESTIDS, tid } from '@/testids';
 import { normalizeServiceType as normalizeScheduleServiceType } from '@/sharepoint/serviceTypes';

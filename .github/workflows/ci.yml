@@ -50,6 +50,13 @@ jobs:
           echo "Running ESLint (includes no-restricted-imports for env module)..."
           npm run lint
           echo "✅ ESLint passed - ARCHITECTURE_GUARDS enforced"
+
+      - name: ESLint boundaries report (non-blocking)
+        id: lint_boundaries
+        run: |
+          echo "Running ESLint boundaries report (warn-only)..."
+          npm run lint:boundaries
+          echo "✅ Boundaries report generated"
       
       - name: TypeScript type check
         id: typecheck
@@ -72,6 +79,7 @@ jobs:
             echo "## CI Results"
             echo ""
             echo "- ESLint (ARCHITECTURE_GUARDS): ${{ steps.lint.outcome }}"
+            echo "- ESLint (boundaries report): ${{ steps.lint_boundaries.outcome }}"
             echo "- TypeScript typecheck: ${{ steps.typecheck.outcome }}"
             echo "- Tests: ${{ steps.tests.outcome }}"
           } >> "$GITHUB_STEP_SUMMARY"

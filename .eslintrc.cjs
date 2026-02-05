@@ -81,12 +81,19 @@ module.exports = {
   },
   settings: {
     'boundaries/elements': [
-      { type: 'app', pattern: 'src/app/*' },
       { type: 'feature', pattern: 'src/features/*' },
       { type: 'lib', pattern: 'src/lib/*' },
       { type: 'utils', pattern: 'src/utils/*' },
-      { type: 'shared', pattern: 'src/components/*' }
-    ]
+      { type: 'shared', pattern: 'src/components/*' },
+      { type: 'app', pattern: 'src/*' },
+    ],
+    'import/resolver': {
+      typescript: {
+        // tsconfig paths (@/*) を拾う
+        project: ['./tsconfig.json'],
+        alwaysTryTypes: true,
+      },
+    },
   },
   env: {
     browser: true,
