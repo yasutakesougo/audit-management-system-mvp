@@ -12,6 +12,10 @@
 
 詳細は [issues/README.md](./issues/README.md) を参照してください。
 
+### 📅 スプリント計画
+
+スプリントの進め方（Sprint 1-2 の詳細なタスク分解、依存関係、リスク対策）は [SPRINT_PLAN.md](./SPRINT_PLAN.md) を参照してください。
+
 ### 複合ページ axe スイープ（ストレッチゴール）
 
 **目標:**  
@@ -30,19 +34,19 @@ RecordListとUsersPanelを同時にレンダリングしたページで、アク
 
 ### おすすめバックログ（S工数優先導入）
 
-1. **MSAL ログイン E2E スモーク** — [Issue Draft](./issues/001-msal-login-e2e-smoke.md)
+1. **MSAL ログイン E2E スモーク** — [Issue Draft](./../issues/001-msal-login-e2e-smoke.md)
   - 目的: 認証の致命的バグを自動検知し、ログイン/ログアウト動線を守る
   - 受け入れ基準: Playwrightで signIn() → /me レンダリング → signOut() が CI で緑になる
   - 工数: S
-2. **Users CRUD 基本回帰テスト（追加/削除）** — [Issue Draft](./issues/002-users-crud-smoke.md)
+2. **Users CRUD 基本回帰テスト（追加/削除）** — [Issue Draft](./../issues/002-users-crud-smoke.md)
   - 目的: 最小限の CRUD 回帰を保証して、主要なユーザー操作の破壊的変更を早期検知する
   - 受け入れ基準: モック API を使った ユーザー追加 → 削除 のフローが安定してパスする
   - 工数: S
-3. **a11y 自動チェック（jest-axe 単体導入）** — [Issue Draft](./issues/003-a11y-unit-checks.md)
+3. **a11y 自動チェック（jest-axe 単体導入）** — [Issue Draft](./../issues/003-a11y-unit-checks.md)
   - 目的: 初期段階でアクセシビリティ違反を検知し、UI 品質を維持する
   - 受け入れ基準: RecordList・UsersPanel の単体テストで axe 違反がゼロになる
   - 工数: S
-4. **MSAL 設定健全性ガード（env schema）** — [Issue Draft](./issues/004-msal-env-guard.md)
+4. **MSAL 設定健全性ガード（env schema）** — [Issue Draft](./../issues/004-msal-env-guard.md)
   - 目的: Redirect URI や Authority などの設定ミスを起動時に検知し、環境差異による事故を防ぐ
   - 受け入れ基準: zod 等で env を検証し、不正値があると `npm start` 時にエラーで停止する
   - 工数: S
