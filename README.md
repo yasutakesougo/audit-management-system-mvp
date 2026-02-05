@@ -446,6 +446,51 @@ VITE_SP_RETRY_MAX_DELAY_MS=5000
 - After changing auth settings (MSAL config, scopes, or cookie policy), clear site cookies once to flush stale MSAL state.
 - Inspect cache stats in DevTools via `window.__SP_DBG__()` — it now reports `{ size, hits, cacheHits, staleHits, swrRefreshes, \_304s, lruKeysSample }`. Individual counters (`window.__SP_GET_HITS__`, `__SP_GET_CACHE_HITS__`, `__SP_GET_STALE_HITS__`, `__SP_GET_SWR_REFRESHES__`, `__SP_GET_304s__`) remain available for quick console pokes.
 
+### HTTPS Development Environment (Issue #344)
+
+**Purpose:** Reproduce production-like HTTPS behavior locally for MSAL, cookies, CSP, and mixed content testing.
+
+**Setup:**
+
+1. Install [mkcert](https://github.com/FiloSottile/mkcert):
+   ```bash
+   # macOS
+   brew install mkcert nss
+   
+   # Windows (Chocolatey)
+   choco install mkcert
+   
+   # Linux
+   apt install libnss3-tools
+   wget -O mkcert https://dl.filippo.io/mkcert/latest?for=linux/amd64
+   chmod +x mkcert && sudo mv mkcert /usr/local/bin/
+   ```
+
+2. Generate localhost certificates:
+   ```bash
+   npm run certs:mkcert
+   ```
+   This creates `.certs/localhost.pem` and `.certs/localhost-key.pem` (already in `.gitignore`).
+
+3. Start HTTPS dev server:
+   ```bash
+   npm run dev:https
+   ```
+   Access at `https://localhost:5173` (certificate will be trusted automatically).
+
+**MSAL Configuration:**
+
+- `redirectUri` uses `window.location.origin` (auto-detects HTTP/HTTPS)
+- Register **both** URIs in Azure Portal → Authentication → SPA:
+  - `http://localhost:5173`
+  - `https://localhost:5173`
+
+**Troubleshooting:**
+
+※ After switching to HTTPS, if login becomes unstable, clear browser cookies for `localhost` once to reset MSAL state.
+
+**CI/E2E Note:** Tests continue using HTTP (`npm run dev`) — HTTPS is opt-in for local development only.
+
 ### Bypass cache (for debugging)
 
 - Add header `x-sp-bypass-cache: 1` on a GET to force a network fetch.
