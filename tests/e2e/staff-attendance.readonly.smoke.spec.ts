@@ -45,6 +45,9 @@ test.describe('staff attendance read-only guard', () => {
 
     await bootstrapDashboard(page, { skipLogin: true, featureSchedules: true, initialPath: '/admin/staff-attendance' });
 
+    console.info('[e2e] url=', page.url());
+    console.info('[e2e] title=', await page.title());
+    await page.waitForTimeout(250);
     await expect(page.getByTestId('staff-attendance-admin-root')).toBeVisible();
     await expect(page.getByTestId('staff-attendance-readonly')).toBeVisible();
 

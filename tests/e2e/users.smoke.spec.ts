@@ -10,6 +10,9 @@ test.describe('Users page smoke (hermetic E2E)', () => {
     await page.goto('/users');
 
     // Wait for stable markers
+    console.info('[e2e] url=', page.url());
+    console.info('[e2e] title=', await page.title());
+    await page.waitForTimeout(250);
     await expect(page.getByTestId('users-panel-root')).toBeVisible();
   });
 
@@ -17,6 +20,9 @@ test.describe('Users page smoke (hermetic E2E)', () => {
     installNetworkGuard(page, 'allowlist-localhost');
 
     await page.goto('/users');
+    console.info('[e2e] url=', page.url());
+    console.info('[e2e] title=', await page.title());
+    await page.waitForTimeout(250);
     await expect(page.getByTestId('users-panel-search')).toBeVisible();
   });
 });
