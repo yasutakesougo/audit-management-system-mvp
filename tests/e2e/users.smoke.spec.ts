@@ -1,5 +1,6 @@
 import { test, expect } from '@playwright/test';
 import { installNetworkGuard } from '../helpers/networkGuard';
+import { bootstrapDashboard } from './utils/bootstrapApp';
 
 test.describe('Users page smoke (hermetic E2E)', () => {
   test('loads /users without external calls', async ({ page }) => {
@@ -7,7 +8,7 @@ test.describe('Users page smoke (hermetic E2E)', () => {
     // Fail immediately on any external host (SharePoint, Graph, etc.)
     installNetworkGuard(page, 'allowlist-localhost');
 
-    await page.goto('/users');
+    await bootstrapDashboard(page, { skipLogin: true, initialPath: '/users' });
 
     // Wait for stable markers
     console.info('[e2e] url=', page.url());
@@ -19,7 +20,7 @@ test.describe('Users page smoke (hermetic E2E)', () => {
   test('search input is visible', async ({ page }) => {
     installNetworkGuard(page, 'allowlist-localhost');
 
-    await page.goto('/users');
+    await bootstrapDashboard(page, { skipLogin: true, initialPath: '/users' });
 
     // ---- Diagnostic: Verify page state ----
     const bodyText = (await page.locator('body').innerText()).slice(0, 1200);
