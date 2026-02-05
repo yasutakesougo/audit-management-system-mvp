@@ -92,6 +92,7 @@ jobs:
           PLAYWRIGHT_WEB_SERVER_URL: http://127.0.0.1:5173
           PLAYWRIGHT_SKIP_BUILD: '1'
           PLAYWRIGHT_JUNIT_OUTPUT: 'test-results/junit-e2e-deep.xml'
+          PW_USE_PREVIEW: '1'
         run: |
           # Run all E2E tests excluding smoke tests
           if [ -n "${{ github.event.inputs.test_pattern }}" ]; then
