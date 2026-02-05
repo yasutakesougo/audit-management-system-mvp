@@ -74,6 +74,7 @@ vi.mock('@/features/schedule/useSchedulesToday', () => ({
 }));
 
 import App from '../../src/App';
+import { TESTIDS } from '../../src/testids';
 
 /**
  * Router Future Flags スモークテスト
@@ -117,8 +118,8 @@ describe('router future flags smoke', () => {
 
     // TODO: data-testid 追加で getAllByRole(...)[1] のマジックインデックスを回避
     // 現在はヘッダー/フッターで同じラベルが存在するため [1] で特定
-    await user.click(screen.getAllByRole('link', { name: '監査ログ' })[1]);
-    expect(await screen.findByText('監査ログビュー')).toBeInTheDocument();
+      await user.click(screen.getAllByRole('link', { name: '監査ログ' })[1]);
+      expect(await screen.findByTestId(TESTIDS['audit-heading'])).toBeInTheDocument();
 
     await user.click(screen.getByRole('link', { name: '日次記録' }));
       // 文言・role差や遅延描画を吸収して「日次記録」系の表示を待つ

@@ -302,7 +302,7 @@ exports[`AppShell snapshot 1`] = `
             <a
               class="MuiButtonBase-root MuiButton-root MuiButton-contained MuiButton-containedPrimary MuiButton-sizeLarge MuiButton-containedSizeLarge MuiButton-colorPrimary MuiButton-fullWidth MuiButton-root MuiButton-contained MuiButton-containedPrimary MuiButton-sizeLarge MuiButton-containedSizeLarge MuiButton-colorPrimary MuiButton-fullWidth css-9i5bd4-MuiButtonBase-root-MuiButton-root"
               data-testid="daily-footer-activity"
-              href="/daily/activity"
+              href="/daily/table"
               tabindex="0"
             >
               支援記録（ケース記録）入力
