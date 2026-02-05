@@ -612,7 +612,7 @@ const childRoutes: RouteObject[] = [
     path: 'schedules/create',
     element: (
       <SchedulesGate>
-        <ProtectedRoute flag="schedulesCreate">
+        <ProtectedRoute flag="schedules">
           <SuspendedCreatePage />
         </ProtectedRoute>
       </SchedulesGate>

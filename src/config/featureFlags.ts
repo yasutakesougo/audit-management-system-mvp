@@ -18,7 +18,7 @@ export type FeatureFlagSnapshot = {
   icebergPdca: boolean;
 };
 
-const hasExplicitOverride = (storageKey: string, envKey: string, envOverride?: EnvRecord): boolean => {
+const _hasExplicitOverride = (storageKey: string, envKey: string, envOverride?: EnvRecord): boolean => {
   // env override takes priority when provided
   if (typeof envOverride !== 'undefined' && envKey in envOverride) {
     return true;
