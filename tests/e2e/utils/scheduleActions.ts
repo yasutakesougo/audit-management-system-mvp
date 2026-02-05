@@ -414,9 +414,13 @@ export async function waitForDayViewReady(page: Page) {
  * Does NOT require legacy timeline - matches what test #3 successfully sees.
  */
 export async function waitForWeekGridReady(page: Page) {
-  // URL should be on week route (flexible on tab query param)
-  // Allow both /schedules/week and /schedule/week, and tab param can be present or absent
-  await expect(page).toHaveURL(/\/schedule(s)?\/week/);
+  // URL should be on week route with tab=week parameter (order-independent)
+  await expect(page).toHaveURL(/\/schedules\/week/);
+  
+  // Verify tab parameter is set (tab order doesn't matter)
+  const url = new URL(page.url());
+  const tabParam = url.searchParams.get('tab');
+  expect(tabParam).toBe('week');
 
   // Wait for one of: heading, grid-like structure, or empty state
   const heading = page.getByRole('heading', { name: /週ごとの予定一覧/ });
