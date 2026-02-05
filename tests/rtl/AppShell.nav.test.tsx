@@ -81,7 +81,6 @@ vi.mock('@/ui/components/SignInButton', () => ({
 describe('AppShell navigation smoke test', () => {
   const baseFlags: FeatureFlagSnapshot = {
     schedules: false,
-    schedulesCreate: false,
     complianceForm: false,
     schedulesWeekV2: false,
     icebergPdca: false,
@@ -93,12 +92,13 @@ describe('AppShell navigation smoke test', () => {
     render(
       <MemoryRouter initialEntries={['/daily']}>
         <ColorModeContext.Provider value={colorMode}>
-<<<<<<< HEAD
           <FeatureFlagsContext.Provider value={flags}>
             <SettingsProvider>
-              <AppShell>
-                <div />
-              </AppShell>
+              <ToastProvider>
+                <AppShell>
+                  <div />
+                </AppShell>
+              </ToastProvider>
             </SettingsProvider>
           </FeatureFlagsContext.Provider>
         </ColorModeContext.Provider>
