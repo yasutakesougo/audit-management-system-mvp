@@ -147,7 +147,7 @@
 1. 📘 [SPRINT_PLAN.md](./SPRINT_PLAN.md) - 全体像を把握
 2. 🗓️ [.github/SPRINT_TIMELINE.md](./.github/SPRINT_TIMELINE.md) - スケジュール確認
 3. 🚀 [SPRINT_QUICKSTART.md](./SPRINT_QUICKSTART.md) - 実装方法を理解
-4. 📝 [issues/001-msal-login-e2e-smoke.md](./../issues/001-msal-login-e2e-smoke.md) - 最初のタスク詳細
+4. 📝 [issues/001-msal-login-e2e-smoke.md](./issues/001-msal-login-e2e-smoke.md) - 最初のタスク詳細
 
 ### 実装担当者
 
