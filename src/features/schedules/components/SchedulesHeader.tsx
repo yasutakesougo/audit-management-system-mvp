@@ -103,7 +103,10 @@ export const SchedulesHeader: React.FC<Props> = ({
     }
     const nextHref = { day: dayHref, week: weekHref, timeline: timelineHref, month: monthHref }[value];
     if (!nextHref) return;
-    navigate(nextHref);
+    // Append tab parameter to maintain tab state in URL for E2E tests and history tracking
+    const urlObj = new URL(nextHref, window.location.origin);
+    urlObj.searchParams.set('tab', value);
+    navigate(urlObj.pathname + urlObj.search);
   };
 
   return (

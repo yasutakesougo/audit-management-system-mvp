@@ -663,6 +663,24 @@ The nightly health workflow runs comprehensive type checking to surface any issu
 
 ### Test & Coverage
 
+#### CI/CD Test Strategy
+
+**📚 New Documentation (February 2026):**
+- [CI Test Stability Strategy](docs/CI_TEST_STABILITY_STRATEGY.md) - Comprehensive test categorization and environment setup
+- [Flaky Test Runbook](docs/FLAKY_TEST_RUNBOOK.md) - Step-by-step guide for handling unstable tests
+- [CI Quick Reference](docs/CI_QUICK_REFERENCE.md) - Quick commands and troubleshooting
+- [CI Workflow Updates](docs/CI_WORKFLOW_UPDATES.md) - Migration guide and changelog
+
+**Test Types:**
+- **Smoke Tests** (`*.smoke.spec.ts`): Fast validation on every PR (~20 min, 29 tests)
+- **Deep Tests** (other E2E): Comprehensive testing on main + nightly (~45 min, 83 tests)
+
+**CI Workflows:**
+- `.github/workflows/smoke.yml` - Fast feedback on PRs
+- `.github/workflows/e2e-deep.yml` - Thorough testing with flaky test detection
+
+**Local Testing:**
+
 #### Strategy
 
 - **Unit (厚め)**: 同期ロジック、リトライ、バッチパーサ、CSV 生成などの純粋ロジックは **Vitest** で網羅。UI 断面も **React Testing Library (jsdom)** でコンポーネント単位を検証。

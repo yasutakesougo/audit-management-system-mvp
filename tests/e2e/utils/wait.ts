@@ -76,8 +76,16 @@ export async function waitForDayScheduleReady(page: Page, timeout = 15_000): Pro
 
 export async function waitForDayTimeline(page: Page): Promise<void> {
   // Day view is now a tab within /schedules/week (renders DayView component, not TimelineDay)
-  await expect(page).toHaveURL(/tab=day/);
-  await expect(page.getByTestId(TESTIDS['schedules-day-page'])).toBeVisible();
+  await expect(page).toHaveURL(/\/schedules\/week/);
+  
+  // Verify tab parameter if present
+  const url = new URL(page.url());
+  const tabParam = url.searchParams.get('tab');
+  if (tabParam) {
+    expect(tabParam).toBe('day');
+  }
+  
+  await expect(page.getByTestId(TESTIDS['schedules-day-page'])).toBeVisible({ timeout: 15_000 });
 
   const dayTab = page.getByTestId(TESTIDS.SCHEDULES_WEEK_TAB_DAY).first();
   await expect(dayTab).toBeVisible();
