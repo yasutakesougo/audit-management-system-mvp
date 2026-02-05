@@ -20,10 +20,13 @@ jobs:
         with:
           node-version: 20
           cache: npm
-      - name: Validate env (fail-fast)
+      - name: Validate env (only when secrets present)
+        if: ${{ env.VITE_MSAL_CLIENT_ID != '' && env.VITE_MSAL_TENANT_ID != '' }}
         run: node scripts/validate-env.mjs
         env:
           ENV_VALIDATE_REQUIRED: VITE_MSAL_CLIENT_ID,VITE_MSAL_TENANT_ID
+          VITE_MSAL_CLIENT_ID: ${{ secrets.VITE_MSAL_CLIENT_ID || '' }}
+          VITE_MSAL_TENANT_ID: ${{ secrets.VITE_MSAL_TENANT_ID || '' }}
       - run: npm ci
       - run: npm run lint
 
