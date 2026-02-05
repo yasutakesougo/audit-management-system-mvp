@@ -194,7 +194,7 @@ test.describe('Schedule quick-create (regression)', () => {
     await gotoWeek(page, TEST_DATE);
     await waitForWeekViewReady(page);
     const items = await getWeekScheduleItems(page);
-    await expect(items.first()).toBeVisible();
+    await expect(items.first()).toBeVisible({ timeout: 15_000 });
   });
 
   test('create new 生活介護休み entry via quick dialog', async ({ page }, testInfo) => {

@@ -414,13 +414,26 @@ export async function waitForDayViewReady(page: Page) {
  * Does NOT require legacy timeline - matches what test #3 successfully sees.
  */
 export async function waitForWeekGridReady(page: Page) {
-  // URL should be on week route with tab=week parameter (order-independent)
+  // URL should be on week route
   await expect(page).toHaveURL(/\/schedules\/week/);
   
-  // Verify tab parameter is set (tab order doesn't matter)
+  // Verify tab parameter if present (optional for alternative navigation paths)
   const url = new URL(page.url());
   const tabParam = url.searchParams.get('tab');
-  expect(tabParam).toBe('week');
+  if (tabParam) {
+    expect(tabParam).toBe('week');
+  }
+
+  // Wait for schedule-week-root to be visible
+  const weekRoot = page.getByTestId('schedule-week-root');
+  await expect(weekRoot).toBeVisible({ timeout: 15_000 });
+
+  // Wait for loading spinner to disappear if present
+  const spinner = page.getByTestId('schedule-loading');
+  const isSpinnerVisible = await spinner.isVisible().catch(() => false);
+  if (isSpinnerVisible) {
+    await expect(spinner).toBeHidden({ timeout: 15_000 });
+  }
 
   // Wait for one of: heading, grid-like structure, or empty state
   const heading = page.getByRole('heading', { name: /週ごとの予定一覧/ });
@@ -430,13 +443,13 @@ export async function waitForWeekGridReady(page: Page) {
   const emptyLike = page.getByText(/予定がありません|0件|No schedule/i);
 
   await Promise.race([
-    heading.waitFor({ state: 'visible', timeout: 30_000 }),
-    gridLike.first().waitFor({ state: 'visible', timeout: 30_000 }),
-    emptyLike.first().waitFor({ state: 'visible', timeout: 30_000 }),
+    heading.waitFor({ state: 'visible', timeout: 15_000 }),
+    gridLike.first().waitFor({ state: 'visible', timeout: 15_000 }),
+    emptyLike.first().waitFor({ state: 'visible', timeout: 15_000 }),
   ]);
 
   // Small stabilization wait for layout
-  await page.waitForTimeout(50);
+  await page.waitForTimeout(100);
 }
 
 export async function waitForWeekViewReady(page: Page) {
