@@ -18,8 +18,8 @@ const TAB_NAMES = {
 } as const;
 
 const selectOrgInTab = async (page: Page, value: OrgFilterKey) => {
-  // Ensure org tab is active
-  const orgTab = page.getByRole('tab', { name: '事業所別' });
+  // Ensure org tab is active (use testid for reliability)
+  const orgTab = page.getByTestId('schedule-tab-org');
   await orgTab.click();
   await expect(orgTab).toHaveAttribute('aria-selected', 'true', { timeout: 5000 });
   
@@ -41,12 +41,16 @@ test.describe('Schedule org query param contract', () => {
       }
     });
 
-    // Boot schedule and navigate to org tab
-    await bootSchedule(page, { date: TARGET_DATE });
+    // Boot schedule with WeekV1 (org tab only exists in v1)
+    await bootSchedule(page, { date: TARGET_DATE, enableWeekV2: false });
     await gotoOrg(page, { date: TARGET_DATE });
     
-    // Verify org tab is ready
-    const orgTab = page.getByRole('tab', { name: '事業所別' });
+    // Wait for page to be fully loaded
+    await page.waitForLoadState('networkidle', { timeout: 10000 });
+    
+    // Verify org tab is ready - use testid as fallback
+    const orgTab = page.getByTestId('schedule-tab-org');
+    await expect(orgTab).toBeVisible({ timeout: 10000 });
     await expect(orgTab).toHaveAttribute('aria-selected', 'true', { timeout: 10000 });
     
     // Verify select is ready
