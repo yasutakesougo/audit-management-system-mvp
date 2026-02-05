@@ -10,6 +10,13 @@ const mobileChrome = {
 const devPort = Number(process.env.E2E_PORT) || 5173;
 const baseURL = `http://127.0.0.1:${devPort}`;
 
+const smokeTestMatch = [
+  'tests/e2e/app-shell.smoke.spec.ts',
+  'tests/e2e/router.smoke.spec.ts',
+  'tests/e2e/nav.smoke.spec.ts',
+  'tests/e2e/schedule-day.aria.smoke.spec.ts',
+];
+
 const webServerEnvVarsSmoke = {
   VITE_SP_RESOURCE: 'https://isogokatudouhome.sharepoint.com',
   VITE_SP_SITE_RELATIVE: '/sites/app-test',
@@ -54,6 +61,7 @@ export default defineConfig({
     .filter((project) => project.name === 'smoke')
     .map((project) => ({
       ...project,
+      testMatch: smokeTestMatch,
       use: {
         ...(project.use ?? {}),
         ...mobileChrome,
