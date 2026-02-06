@@ -1,7 +1,7 @@
 import '@/test/captureSp400';
 import { expect, test, type Page } from '@playwright/test';
-import { bootSchedule } from './_helpers/bootSchedule';
 import { expectTestIdVisibleBestEffort } from './_helpers/smoke';
+import { bootSchedule } from './_helpers/bootSchedule';
 import { gotoOrg } from './utils/scheduleNav';
 
 const waitForOrgTab = async (page: Page): Promise<void> => {

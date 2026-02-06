@@ -61,7 +61,6 @@ test.describe('router smoke (URL direct, testid based)', () => {
       });
       return;
     }
-
     try {
       await expect(auditRoot).toBeVisible();
     } catch (e) {
