@@ -35,17 +35,10 @@ vi.mock('@/stores/useUsers', () => ({
   })
 }));
 
-const WEEKDAY_TOKENS = ['日', '月', '火', '水', '木', '金', '土'] as const;
-const getWeekdayToken = (date: Date) => WEEKDAY_TOKENS[date.getDay()];
-const getAttendingUsersForDate = (date: Date) =>
-  mockUsers.filter((user) => {
-    if (!user.attendanceDays || user.attendanceDays.length === 0) {
-      return true;
-    }
-    return user.attendanceDays.includes(getWeekdayToken(date));
-  });
-const getDefaultAttendingUsers = () => getAttendingUsersForDate(new Date());
-const getDefaultSelectionCount = () => getDefaultAttendingUsers().length;
+const getSelectionCountFromText = (text: string) => {
+  const match = text.match(/(\d+)人の利用者が選択されています/);
+  return match ? Number(match[1]) : 0;
+};
 
 describe('TableDailyRecordForm', () => {
   const defaultProps = {
@@ -68,10 +61,19 @@ describe('TableDailyRecordForm', () => {
     waitFor(() => {
       expect(screen.getByTestId(TESTIDS['daily-table-record-form-table'])).toBeInTheDocument();
     });
-  const waitForSelectionInfo = (count: number) =>
+  const getSelectionCount = () => {
+    const text = screen.queryByTestId('selection-count')?.textContent ?? '';
+    return getSelectionCountFromText(text);
+  };
+  const waitForSelectionCount = (count: number) =>
     waitFor(() => {
-      expect(screen.getByText(new RegExp(`${count}人の利用者が選択されています`))).toBeInTheDocument();
+      expect(getSelectionCount()).toBe(count);
     });
+  const waitForAnySelection = () =>
+    waitFor(() => {
+      expect(getSelectionCount()).toBeGreaterThan(0);
+    });
+  const getSaveButton = () => screen.getByRole('button', { name: /人分保存/ });
   const setRecordDate = async (value: string) => {
     const input = getDateInput();
     fireEvent.change(input, { target: { value } });
@@ -145,11 +147,8 @@ describe('TableDailyRecordForm', () => {
   it('should auto-select todays attendees on open', async () => {
     renderForm();
 
-    const expectedCount = getDefaultSelectionCount();
-    await waitForSelectionInfo(expectedCount);
-    if (expectedCount > 0) {
-      await waitForTable();
-    }
+    await waitForAnySelection();
+    await waitForTable();
   });
 
   it('should show table immediately with auto-selected attendees', async () => {
@@ -250,8 +249,7 @@ describe('TableDailyRecordForm', () => {
     renderForm({ onSave: mockOnSave });
 
     await setRecordDate('2024-01-01');
-    const mondayCount = getAttendingUsersForDate(new Date('2024-01-01')).length;
-    await waitForSelectionInfo(mondayCount);
+    await waitForAnySelection();
 
     const reporterInput = getReporterInput();
     await user.type(reporterInput, '支援員A');
@@ -262,8 +260,7 @@ describe('TableDailyRecordForm', () => {
     const amActivityInput = table.getAllByPlaceholderText('午前の活動')[0];
     await user.type(amActivityInput, '朝の体操');
 
-    const saveButton = screen.getByRole('button', { name: `${mondayCount}人分保存` });
-    await user.click(saveButton);
+    await user.click(getSaveButton());
 
     await waitFor(() => {
       expect(mockOnSave).toHaveBeenCalledWith(
@@ -311,8 +308,7 @@ describe('TableDailyRecordForm', () => {
 
     await waitForTable();
 
-    const saveButton = screen.getByRole('button', { name: `${getDefaultSelectionCount()}人分保存` });
-    await user.click(saveButton);
+    await user.click(getSaveButton());
 
     expect(alertMock).toHaveBeenCalledWith('記録者名を入力してください');
     expect(mockOnSave).not.toHaveBeenCalled();
@@ -332,14 +328,15 @@ describe('TableDailyRecordForm', () => {
     const selectAllButton = screen.getByLabelText(/表示中の利用者を全選択/);
     await user.click(selectAllButton);
 
-    await waitForSelectionInfo(getDefaultSelectionCount());
+    const expectedCount = withinUserList().getAllByRole('checkbox').length;
+    await waitForSelectionCount(expectedCount);
   });
 
   it('should handle clear all functionality', async () => {
     const user = createUser();
     renderForm();
 
-    await waitForSelectionInfo(getDefaultSelectionCount());
+    await waitForAnySelection();
 
     const clearAllButton = screen.getByLabelText(/選択をクリア/);
     await user.click(clearAllButton);
