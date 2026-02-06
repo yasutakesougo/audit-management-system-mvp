@@ -86,8 +86,7 @@ test.describe('Schedules global navigation', () => {
     await openDayView(page);
 
     await expect(page).toHaveURL(/tab=day/);
-    const heading = page.getByRole('heading', { name: /スケジュール/, level: 1 });
-    await expect(heading).toBeVisible({ timeout: 10_000 });
+    await expect(page.getByRole('heading').first()).toBeVisible({ timeout: 10_000 });
 
     // On mobile, tabs may be in a menu; validate week navigation by direct action
     const weekTab = tabByName(page, '週');

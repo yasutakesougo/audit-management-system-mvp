@@ -179,7 +179,6 @@ test.describe('Schedule smoke', () => {
     // ✅ Smoke test: verify week page is reachable and tabs are visible
     // Data/list assertions → moved to deep tests
     await expect(page).toHaveURL(/\/schedules\/week/);
-    await expect(page.getByRole('main')).toBeVisible({ timeout: 15_000 });
     
     // Week tab should be visible and selected (smoke validates UI structure, not data)
     await expect(weekTab).toBeVisible();

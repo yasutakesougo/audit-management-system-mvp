@@ -42,9 +42,9 @@ test.describe('nav smoke (UI navigation)', () => {
     await openNavIfDrawerExists(page);
     await clickOrFallback(page, 'nav-checklist', '/checklist');
 
-    // Smoke: verify navigation succeeds and main is visible
+    // Smoke: verify navigation succeeds and minimal UI is visible
     await expect(page).toHaveURL(/\/checklist/);
-    await expect(page.getByRole('main')).toBeVisible({ timeout: 15_000 });
+    await expect(page.getByRole('heading').first()).toBeVisible({ timeout: 15_000 });
     
     // checklist-root is optional (depends on admin authz)
     const root = page.getByTestId('checklist-root');

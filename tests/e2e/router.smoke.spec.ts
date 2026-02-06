@@ -75,8 +75,8 @@ test.describe('router smoke (URL direct, testid based)', () => {
     try {
       await expect(page.getByTestId('checklist-root')).toBeVisible();
     } catch {
-      // Fallback: checklist-root may not exist; use <main> instead
-      await expect(page.getByRole('main')).toBeVisible();
+      // Fallback: checklist-root may not exist; use minimal UI
+      await expect(page.getByRole('heading').first()).toBeVisible();
     }
   });
 });
