@@ -66,3 +66,26 @@ export async function expectTestIdEnabledBestEffort(
   const locator = page.getByTestId(testId);
   await expectLocatorEnabledBestEffort(locator, note, options.timeout);
 }
+
+export async function clickBestEffort(
+  locator: Locator,
+  note = 'locator not found (allowed for smoke)'
+): Promise<void> {
+  const count = await locator.count().catch(() => 0);
+  if (count > 0) {
+    try {
+      await locator.first().click();
+    } catch (error) {
+      test.info().annotations.push({
+        type: 'note',
+        description: `${note}; click failed: ${String(error)}`,
+      });
+    }
+    return;
+  }
+
+  test.info().annotations.push({
+    type: 'note',
+    description: note,
+  });
+}
