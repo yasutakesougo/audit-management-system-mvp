@@ -49,7 +49,7 @@ import { useStaff } from '@/stores/useStaff';
 import { TESTIDS } from '@/testids';
 import FilterToolbar from '@/ui/filters/FilterToolbar';
 import { formatRangeLocal } from '@/utils/datetime';
-import { getOrgFilterLabel, matchesOrgFilter, normalizeOrgFilter, type OrgFilterKey } from './orgFilters';
+import { DEFAULT_ORG_FILTER, getOrgFilterLabel, matchesOrgFilter, normalizeOrgFilter, type OrgFilterKey } from './orgFilters';
 import { getComposedWeek, isScheduleFixturesMode, type ScheduleEvent } from './api/schedulesClient';
 import { ensureDateParam, normalizeToDayStart, pickDateParam } from './dateQuery';
 import { useEnsureScheduleList } from './ensureScheduleList';
@@ -264,6 +264,27 @@ export default function SchedulePage() {
   const view = useMemo(() => resolveViewParam(searchParams), [searchParams]);
   const orgFilterKey = useMemo<OrgFilterKey>(() => normalizeOrgFilter(searchParams.get('org')), [searchParams]);
   const orgFilterLabel = useMemo(() => getOrgFilterLabel(orgFilterKey), [orgFilterKey]);
+
+  useEffect(() => {
+    const rawOrg = searchParams.get('org');
+    if (!rawOrg) return;
+
+    const normalized = normalizeOrgFilter(rawOrg);
+    const next = new URLSearchParams(searchParams);
+
+    if (normalized === DEFAULT_ORG_FILTER) {
+      if (rawOrg !== DEFAULT_ORG_FILTER) {
+        next.delete('org');
+        setSearchParams(next, { replace: true });
+      }
+      return;
+    }
+
+    if (rawOrg !== normalized) {
+      next.set('org', normalized);
+      setSearchParams(next, { replace: true });
+    }
+  }, [searchParams, setSearchParams]);
 
   useEffect(() => {
     const raw = searchParams.get('tab');

@@ -66,6 +66,8 @@ test.describe('Schedule org query param contract', () => {
 
   test('org param reflects Org tab selection and clears on all', async ({ page }) => {
     await selectOrgInTab(page, 'shortstay');
+    // Contract A: URL is the source of truth.
+    // Note: value may be normalized (e.g., legacy alias -> canonical org key).
     expect(getOrgParam(page)).toBe('shortstay');
     await expect(page).toHaveURL(/org=shortstay/);
 
