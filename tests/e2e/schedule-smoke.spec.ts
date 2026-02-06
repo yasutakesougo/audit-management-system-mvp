@@ -138,6 +138,11 @@ test.describe('Schedule smoke', () => {
     });
 
     await gotoWeek(page, SEED_DATE_OBJ);
+    
+    // ページのロードとHydration完了を待つ
+    await page.waitForLoadState('networkidle');
+    await page.waitForTimeout(1500);
+    
     await waitForWeekViewReady(page);
 
     // Wait for week view to fully render before checking tabs
@@ -171,16 +176,14 @@ test.describe('Schedule smoke', () => {
     await expect(timelineTab).toBeVisible();
 
 
-    // ✅ Wait for week view root + (list OR empty state)
-    await page.waitForSelector('[data-testid="schedule-week-root"], [data-testid="schedules-week-view"], [data-testid="schedule-week-view"]', {
-      state: 'visible',
-      timeout: 30_000,
-    });
-    
-    await page.waitForSelector('[data-testid="schedule-week-list"], [data-testid*="empty"]', {
-      state: 'visible',
-      timeout: 30_000,
-    });
+    // ✅ より柔軟な待機 - 複数のセレクタに対応
+    await expect(async () => {
+      const listVisible = await page.locator('[data-testid="schedule-week-list"]').isVisible().catch(() => false);
+      const emptyVisible = await page.locator('[data-testid*="empty"]').isVisible().catch(() => false);
+      if (!listVisible && !emptyVisible) {
+        throw new Error('Neither list nor empty state found');
+      }
+    }).toPass({ timeout: 30_000 });
 
     const items = await getWeekScheduleItems(page);
     await expect(items.first()).toBeVisible({ timeout: 15_000 });

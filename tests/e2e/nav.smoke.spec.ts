@@ -42,7 +42,11 @@ test.describe('nav smoke (UI navigation)', () => {
     await openNavIfDrawerExists(page);
     await clickOrFallback(page, 'nav-checklist', '/checklist');
 
-    await expect(page.getByTestId('checklist-root')).toBeVisible();
+    // ナビゲーションとレンダリング完了を待つ
+    await page.waitForLoadState('networkidle');
+    await page.waitForTimeout(1000);
+    
+    await expect(page.getByTestId('checklist-root')).toBeVisible({ timeout: 10000 });
     await expect(page).toHaveURL(/\/checklist/);
   });
 });

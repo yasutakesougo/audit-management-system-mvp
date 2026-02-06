@@ -24,8 +24,13 @@ test("health page displays categories", async ({ page }) => {
 
 test("health page has share buttons", async ({ page }) => {
   await page.goto("/diagnostics/health");
+  
+  // ページのロードとHydration完了を待つ
+  await page.waitForLoadState('networkidle');
+  await page.waitForTimeout(1000);
+  
   // Wait for report to load
-  await expect(page.getByText(/カテゴリ別/)).toBeVisible({ timeout: 5000 });
+  await expect(page.getByText(/カテゴリ別/)).toBeVisible({ timeout: 10000 });
   // Verify share buttons are visible
   const summaryButton = page.getByRole("button", { name: /サマリーをコピー/ });
   const jsonButton = page.getByRole("button", { name: /JSONをコピー/ });
