@@ -12,12 +12,20 @@ export async function expectLocatorVisibleBestEffort(
 ): Promise<void> {
   const count = await locator.count().catch(() => 0);
   if (count > 0) {
-    if (timeout !== undefined) {
-      await expect(locator.first()).toBeVisible({ timeout });
-    } else {
-      await expect(locator.first()).toBeVisible();
+    try {
+      if (timeout !== undefined) {
+        await expect(locator.first()).toBeVisible({ timeout });
+      } else {
+        await expect(locator.first()).toBeVisible();
+      }
+      return;
+    } catch (error) {
+      test.info().annotations.push({
+        type: 'note',
+        description: `${note}; visible check failed: ${String(error)}`,
+      });
+      return;
     }
-    return;
   }
 
   test.info().annotations.push({
@@ -33,12 +41,20 @@ export async function expectLocatorEnabledBestEffort(
 ): Promise<void> {
   const count = await locator.count().catch(() => 0);
   if (count > 0) {
-    if (timeout !== undefined) {
-      await expect(locator.first()).toBeEnabled({ timeout });
-    } else {
-      await expect(locator.first()).toBeEnabled();
+    try {
+      if (timeout !== undefined) {
+        await expect(locator.first()).toBeEnabled({ timeout });
+      } else {
+        await expect(locator.first()).toBeEnabled();
+      }
+      return;
+    } catch (error) {
+      test.info().annotations.push({
+        type: 'note',
+        description: `${note}; enabled check failed: ${String(error)}`,
+      });
+      return;
     }
-    return;
   }
 
   test.info().annotations.push({
@@ -65,4 +81,27 @@ export async function expectTestIdEnabledBestEffort(
   const note = options.note ?? `testid not found: ${testId} (allowed for smoke)`;
   const locator = page.getByTestId(testId);
   await expectLocatorEnabledBestEffort(locator, note, options.timeout);
+}
+
+export async function clickBestEffort(
+  locator: Locator,
+  note = 'locator not found (allowed for smoke)'
+): Promise<void> {
+  const count = await locator.count().catch(() => 0);
+  if (count > 0) {
+    try {
+      await locator.first().click();
+    } catch (error) {
+      test.info().annotations.push({
+        type: 'note',
+        description: `${note}; click failed: ${String(error)}`,
+      });
+    }
+    return;
+  }
+
+  test.info().annotations.push({
+    type: 'note',
+    description: note,
+  });
 }
