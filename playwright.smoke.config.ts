@@ -11,6 +11,7 @@ const devPort = Number(process.env.E2E_PORT) || 5173;
 const baseURL = `http://127.0.0.1:${devPort}`;
 
 const smokeTestMatch = [
+  'tests/e2e/basic-smoke.spec.ts',
   'tests/e2e/app-shell.smoke.spec.ts',
   'tests/e2e/router.smoke.spec.ts',
   'tests/e2e/nav.smoke.spec.ts',
