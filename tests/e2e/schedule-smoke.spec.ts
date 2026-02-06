@@ -5,7 +5,7 @@ import { waitForLocator } from './_helpers/waitForLocator';
 import { gotoWeek } from './utils/scheduleNav';
 import { assertWeekHasUserCareEvent, getWeekScheduleItems, waitForWeekViewReady } from './utils/scheduleActions';
 import { buildSchedulesTodaySharePointItems, getSchedulesTodaySeedDate } from './_helpers/schedulesTodaySeed';
-import { waitSchedulesItemsOrEmpty } from './utils/wait';
+import { waitForScheduleReady } from './utils/wait';
 
 const SEED_DATE = getSchedulesTodaySeedDate();
 const SEED_DATE_OBJ = new Date(`${SEED_DATE}T00:00:00+09:00`);
@@ -172,7 +172,7 @@ test.describe('Schedule smoke', () => {
     await expect(timelineTab).toBeVisible();
 
 
-    await waitSchedulesItemsOrEmpty(page, 60_000);
+    await waitForScheduleReady(page, 60_000);
 
     const items = await getWeekScheduleItems(page);
     await expect(items.first()).toBeVisible({ timeout: 15_000 });
