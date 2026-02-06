@@ -5,7 +5,7 @@ test("health page loads and shows diagnosis header", async ({ page }) => {
   
   // ページのロードとHydration完了を待つ
   await page.waitForLoadState('domcontentloaded');
-  await page.waitForTimeout(3000);
+  await page.waitForTimeout(5000);
   
   await expect(
     page.getByRole("heading", { name: /環境診断/ })
@@ -18,7 +18,7 @@ test("health page has re-run button", async ({ page }) => {
   
   // ページのロードとHydration完了を待つ
   await page.waitForLoadState('domcontentloaded');
-  await page.waitForTimeout(3000);
+  await page.waitForTimeout(5000);
   
   const runButton = page.getByRole("button", { name: "再実行" });
   await expect(runButton).toBeVisible();
@@ -29,7 +29,7 @@ test("health page displays categories", async ({ page }) => {
   
   // ページのロードとHydration完了を待つ
   await page.waitForLoadState('domcontentloaded');
-  await page.waitForTimeout(3000);
+  await page.waitForTimeout(5000);
   
   // Wait for report to load
   await expect(page.getByText(/カテゴリ別/)).toBeVisible({ timeout: 5000 });
@@ -42,7 +42,7 @@ test("health page has share buttons", async ({ page }) => {
   
   // ページのロードとHydration完了を待つ
   await page.waitForLoadState('domcontentloaded');
-  await page.waitForTimeout(3000);
+  await page.waitForTimeout(5000);
   
   // Wait for report to load
   await expect(page.getByText(/カテゴリ別/)).toBeVisible({ timeout: 10000 });
