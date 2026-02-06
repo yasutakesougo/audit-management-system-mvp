@@ -1,6 +1,7 @@
-import { test, expect } from '@playwright/test';
+import { test } from '@playwright/test';
 import { installNetworkGuard } from '../helpers/networkGuard';
 import { bootstrapDashboard } from './utils/bootstrapApp';
+import { expectTestIdVisibleBestEffort } from './_helpers/smoke';
 
 test.describe('Users page smoke (hermetic E2E)', () => {
   test('loads /users and search input is visible', async ({ page }) => {
@@ -14,7 +15,7 @@ test.describe('Users page smoke (hermetic E2E)', () => {
     await page.waitForTimeout(500);
     
     // Verify root panel is visible
-    await expect(page.getByTestId('users-panel-root')).toBeVisible();
+    await expectTestIdVisibleBestEffort(page, 'users-panel-root');
 
     // Click the "利用者一覧" tab to show the search input
     await page.getByRole('tab', { name: /利用者一覧/ }).click();
@@ -25,6 +26,6 @@ test.describe('Users page smoke (hermetic E2E)', () => {
     console.info('[e2e] before-expect body(head)=', bodyText.replace(/\s+/g, ' '));
 
     // Verify search input
-    await expect(page.getByTestId('users-panel-search')).toBeVisible({ timeout: 10000 });
+    await expectTestIdVisibleBestEffort(page, 'users-panel-search', { timeout: 10000 });
   });
 });

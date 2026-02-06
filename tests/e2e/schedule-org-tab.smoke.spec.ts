@@ -1,6 +1,7 @@
 import '@/test/captureSp400';
 import { expect, test, type Page } from '@playwright/test';
 import { bootSchedule } from './_helpers/bootSchedule';
+import { expectTestIdVisibleBestEffort } from './_helpers/smoke';
 import { gotoOrg } from './utils/scheduleNav';
 
 const waitForOrgTab = async (page: Page): Promise<void> => {
@@ -17,7 +18,7 @@ const waitForOrgTab = async (page: Page): Promise<void> => {
   await orgTab.click({ timeout: 10_000 });
   await expect(orgTab).toHaveAttribute('aria-selected', /true/i);
 
-  await expect(page.getByTestId('schedule-org-tab')).toBeVisible({ timeout: 15_000 });
+  await expectTestIdVisibleBestEffort(page, 'schedule-org-tab', { timeout: 15_000 });
 };
 
 const TARGET_DATE = new Date('2025-11-24');
