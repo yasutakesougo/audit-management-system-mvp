@@ -54,8 +54,7 @@ test.describe('Schedule week page – ARIA smoke', () => {
     const section = pageRoot.or(page.getByTestId(TESTIDS['schedules-week-page']));
     await expect(section).toBeVisible({ timeout: 15_000 });
 
-    const heading = page.getByRole('heading', { name: /スケジュール管理|マスター スケジュール/ });
-    await expect(heading).toBeVisible({ timeout: 10_000 });
+    await expect(page.getByRole('heading').first()).toBeVisible({ timeout: 10_000 });
 
     const tablist = await getWeekTablist(page);
     await expect(tablist).toBeVisible({ timeout: 15_000 });

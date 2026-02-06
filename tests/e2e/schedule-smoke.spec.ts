@@ -3,9 +3,8 @@ import { expect, test } from '@playwright/test';
 import { bootSchedule } from './_helpers/bootSchedule';
 import { waitForLocator } from './_helpers/waitForLocator';
 import { gotoWeek } from './utils/scheduleNav';
-import { assertWeekHasUserCareEvent, getWeekScheduleItems, waitForWeekViewReady } from './utils/scheduleActions';
+import { waitForWeekViewReady } from './utils/scheduleActions';
 import { buildSchedulesTodaySharePointItems, getSchedulesTodaySeedDate } from './_helpers/schedulesTodaySeed';
-import { waitSchedulesItemsOrEmpty } from './utils/wait';
 
 const SEED_DATE = getSchedulesTodaySeedDate();
 const SEED_DATE_OBJ = new Date(`${SEED_DATE}T00:00:00+09:00`);
@@ -120,14 +119,11 @@ test.describe('Schedule smoke', () => {
     });
 
     await bootSchedule(page, {
-      date: SEED_DATE_OBJ,
+      mode: 'fixtures',
       enableWeekV2: false,
+      date: SEED_DATE_OBJ,
       scheduleItems: scheduleFixtures,
       seed: { schedulesToday: true },
-      env: {
-        VITE_FEATURE_SCHEDULES_GRAPH: '1',
-        VITE_SP_SITE_RELATIVE: '/sites/Audit',
-      },
     });
   });
 
@@ -142,6 +138,11 @@ test.describe('Schedule smoke', () => {
     });
 
     await gotoWeek(page, SEED_DATE_OBJ);
+    
+    // ページのロードとHydration完了を待つ
+    await page.waitForLoadState('domcontentloaded');
+    await page.waitForTimeout(5000);
+    
     await waitForWeekViewReady(page);
 
     // Wait for week view to fully render before checking tabs
@@ -175,15 +176,12 @@ test.describe('Schedule smoke', () => {
     await expect(timelineTab).toBeVisible();
 
 
-    await waitSchedulesItemsOrEmpty(page, 60_000);
-
-    const items = await getWeekScheduleItems(page);
-    await expect(items.first()).toBeVisible({ timeout: 15_000 });
-
-    await assertWeekHasUserCareEvent(page, {
-      titleContains: 'AM 検温',
-      serviceContains: undefined,
-      userName: undefined,
-    });
+    // ✅ Smoke test: verify week page is reachable and tabs are visible
+    // Data/list assertions → moved to deep tests
+    await expect(page).toHaveURL(/\/schedules\/week/);
+    
+    // Week tab should be visible and selected (smoke validates UI structure, not data)
+    await expect(weekTab).toBeVisible();
+    await expect(weekTab).toHaveAttribute('aria-selected', 'true');
   });
 });

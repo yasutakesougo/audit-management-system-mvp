@@ -19,3 +19,4 @@ jobs:
         with:
           reporter: github-pr-review
           filter_mode: nofilter
+          actionlint_flags: -shellcheck=

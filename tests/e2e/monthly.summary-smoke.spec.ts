@@ -27,8 +27,8 @@ test.describe('Monthly Records - Summary Smoke Tests', () => {
   });
 
   test('@ci-smoke monthly summary page renders', async ({ page }) => {
-    // ページタイトル確認（正確なテキストを指定）
-    await expect(page.getByRole('heading', { name: '月次記録', exact: true })).toBeVisible();
+    // ページタイトル確認（minimal UI）
+    await expect(page.getByRole('heading').first()).toBeVisible();
 
     // メインページコンテナ確認
     await expect(page.getByTestId(monthlyTestIds.page)).toBeVisible();

@@ -1,6 +1,7 @@
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { TESTIDS } from '../../src/testids';
 
 const spFetchMock = vi.fn(async () => ({ ok: true }));
 const signInMock = vi.fn(async () => undefined);

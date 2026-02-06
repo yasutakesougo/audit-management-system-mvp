@@ -56,7 +56,7 @@ jobs:
           if-no-files-found: ignore
 
   typecheck:
-    name: TypeCheck
+    name: typecheck
     runs-on: ubuntu-latest
     if: github.event.inputs.skip_build != 'true'
     steps:
@@ -117,8 +117,22 @@ jobs:
     permissions:
       contents: read
       checks: write
+    env:
+      # ✅ Force hermetic E2E (no SharePoint calls)
+      E2E_SAVE_MODE: mock
+      VITE_DEMO_MODE: "1"
+      VITE_SKIP_SHAREPOINT: "1"
+      # ✅ Stabilize schedule tests
+      VITE_SCHEDULES_TZ: Asia/Tokyo
     steps:
       - uses: actions/checkout@v4
+      
+      - name: Print E2E env
+        run: |
+          echo "E2E_SAVE_MODE=$E2E_SAVE_MODE"
+          echo "VITE_DEMO_MODE=$VITE_DEMO_MODE"
+          echo "VITE_SKIP_SHAREPOINT=$VITE_SKIP_SHAREPOINT"
+          echo "VITE_SCHEDULES_TZ=$VITE_SCHEDULES_TZ"
       - uses: actions/setup-node@v4
         with:
           node-version: 20
@@ -147,6 +161,9 @@ jobs:
           VITE_E2E: '1'
           VITE_E2E_MSAL_MOCK: '1'
           VITE_SKIP_LOGIN: '1'
+          VITE_SKIP_SHAREPOINT: '1'
+          E2E_SAVE_MODE: mock
+          VITE_SCHEDULES_TZ: Asia/Tokyo
           PLAYWRIGHT_JUNIT_OUTPUT: 'test-results/junit-e2e-smoke-core.xml'
         run: |
           echo "=== E2E flags ==="
@@ -170,6 +187,9 @@ jobs:
           VITE_E2E: '1'
           VITE_E2E_MSAL_MOCK: '1'
           VITE_SKIP_LOGIN: '1'
+          VITE_SKIP_SHAREPOINT: '1'
+          E2E_SAVE_MODE: mock
+          VITE_SCHEDULES_TZ: Asia/Tokyo
           VITE_FEATURE_SCHEDULES: '1'
           PLAYWRIGHT_JUNIT_OUTPUT: 'test-results/junit-e2e-smoke-all.xml'
         run: |

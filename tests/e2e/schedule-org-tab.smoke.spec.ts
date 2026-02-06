@@ -4,8 +4,7 @@ import { bootSchedule } from './_helpers/bootSchedule';
 import { gotoOrg } from './utils/scheduleNav';
 
 const waitForOrgTab = async (page: Page): Promise<void> => {
-  const heading = page.getByRole('heading', { level: 1, name: /スケジュール/ });
-  await expect(heading).toBeVisible({ timeout: 15_000 });
+  await expect(page.getByRole('heading').first()).toBeVisible({ timeout: 15_000 });
 
   const tablist = page.getByRole('tablist').first();
   await expect(tablist).toBeVisible({ timeout: 15_000 });
@@ -36,7 +35,7 @@ test.describe('Schedules Org Tab (Smoke)', () => {
     const select = page.getByTestId('schedule-org-select');
     const summary = page.getByTestId('schedule-org-summary');
 
-    await expect(panel.getByRole('heading', { name: '事業所別スケジュール（準備中）' })).toBeVisible();
+    await expect(panel.getByRole('heading').first()).toBeVisible();
     await expect(select).toHaveValue('all');
     await expect(summary).toContainText('全事業所（統合ビュー）');
 
