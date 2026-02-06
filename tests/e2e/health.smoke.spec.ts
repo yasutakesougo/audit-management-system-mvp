@@ -49,8 +49,7 @@ test("health page has share buttons", async ({ page }) => {
   await expect(page).toHaveURL(/\/diagnostics\/health/);
   await expect(page.getByRole('main')).toBeVisible({ timeout: 15_000 });
   
-  // Verify share buttons are visible (looser matching for resilience)
-  const summaryButton = page.getByRole("button", { name: /サマリー|コピー/ });
+  // Verify at least one share button is visible (looser matching for resilience)
   const jsonButton = page.getByRole("button", { name: /json/i });
-  await expect(summaryButton.or(jsonButton)).toBeVisible({ timeout: 10_000 });
+  await expect(jsonButton).toBeVisible({ timeout: 10_000 });
 });
