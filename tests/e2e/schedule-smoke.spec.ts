@@ -119,19 +119,12 @@ test.describe('Schedule smoke', () => {
       });
     });
 
-    // ✅ WeekV1 + SharePoint skip to ensure empty-state or mock items appear (no 404)
     await bootSchedule(page, {
-      date: SEED_DATE_OBJ,
+      mode: 'fixtures',
       enableWeekV2: false,
+      date: SEED_DATE_OBJ,
       scheduleItems: scheduleFixtures,
       seed: { schedulesToday: true },
-      skipSharePoint: true,
-      env: {
-        VITE_FEATURE_SCHEDULES_GRAPH: '0',  // Disable Graph to prevent real API calls
-        VITE_SP_SITE_RELATIVE: '/sites/Audit',
-        VITE_SKIP_SHAREPOINT: '1',
-        E2E_SAVE_MODE: 'mock',
-      },
     });
   });
 
