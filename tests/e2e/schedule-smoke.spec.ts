@@ -140,7 +140,7 @@ test.describe('Schedule smoke', () => {
     await gotoWeek(page, SEED_DATE_OBJ);
     
     // ページのロードとHydration完了を待つ
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('domcontentloaded');
     await page.waitForTimeout(1500);
     
     await waitForWeekViewReady(page);

@@ -26,7 +26,7 @@ test("health page has share buttons", async ({ page }) => {
   await page.goto("/diagnostics/health");
   
   // ページのロードとHydration完了を待つ
-  await page.waitForLoadState('networkidle');
+  await page.waitForLoadState('domcontentloaded');
   await page.waitForTimeout(1000);
   
   // Wait for report to load
