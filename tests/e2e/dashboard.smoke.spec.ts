@@ -38,6 +38,7 @@ test.describe('Dashboard smoke', () => {
   });
 
   test('shows core daily dashboard panels', async ({ page }) => {
+    await page.waitForLoadState('domcontentloaded');
     const root = page.getByTestId(TESTIDS['dashboard-page']);
     await expect(root).toBeVisible();
 
