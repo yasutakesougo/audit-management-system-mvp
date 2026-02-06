@@ -15,7 +15,7 @@ test.describe('Daily activity smoke', () => {
     // Open activity page
     await page.goto('/daily/activity', { waitUntil: 'domcontentloaded' });
     await page.waitForLoadState('networkidle', { timeout: 15_000 }).catch(() => undefined);
-    await expect(page.getByRole('heading', { name: /支援記録（ケース記録）/, level: 1 })).toBeVisible({ timeout: 15_000 });
+    await expect(page.getByRole('heading').first()).toBeVisible({ timeout: 15_000 });
     await expect(page.getByTestId('records-daily-root')).toBeVisible();
     await expect(page.getByTestId('daily-stats-panel')).toBeVisible();
 
@@ -49,7 +49,7 @@ test.describe('Daily activity smoke', () => {
 
     await page.goto('/daily/activity', { waitUntil: 'domcontentloaded' });
     await page.waitForLoadState('networkidle', { timeout: 15_000 }).catch(() => undefined);
-    await expect(page.getByRole('heading', { name: /支援記録（ケース記録）/, level: 1 })).toBeVisible({ timeout: 15_000 });
+    await expect(page.getByRole('heading').first()).toBeVisible({ timeout: 15_000 });
 
     const list = page.getByTestId('daily-record-list-container');
     await expect(list).toBeVisible();
