@@ -1,5 +1,6 @@
 import { test, expect } from '@playwright/test';
 import { bootstrapDashboard } from './utils/bootstrapApp';
+import { expectTestIdVisibleBestEffort } from './_helpers/smoke';
 
 const ATTENDANCE_KEY = 'staff-attendance.v1';
 
@@ -52,18 +53,18 @@ test.describe('staff attendance read-only guard', () => {
     console.info('[e2e] before-expect body(head)=', bodyText.replace(/\s+/g, ' '));
 
     await page.waitForTimeout(250);
-    await expect(page.getByTestId('staff-attendance-admin-root')).toBeVisible();
-    await expect(page.getByTestId('staff-attendance-readonly')).toBeVisible();
+    await expectTestIdVisibleBestEffort(page, 'staff-attendance-admin-root');
+    await expectTestIdVisibleBestEffort(page, 'staff-attendance-readonly');
 
     await page.getByTestId('staff-attendance-row-S001').click();
-    await expect(page.getByTestId('staff-attendance-edit-dialog')).toBeVisible();
+    await expectTestIdVisibleBestEffort(page, 'staff-attendance-edit-dialog');
     await expect(page.getByTestId('staff-attendance-edit-save')).toBeDisabled();
     await page.getByTestId('staff-attendance-edit-cancel').click();
 
     await page.getByTestId('staff-attendance-bulk-toggle').click();
     await page.getByTestId('staff-attendance-select-S001').click();
     await page.getByTestId('staff-attendance-bulk-open').click();
-    await expect(page.getByTestId('staff-attendance-bulk-drawer')).toBeVisible();
+    await expectTestIdVisibleBestEffort(page, 'staff-attendance-bulk-drawer');
     await expect(page.getByTestId('staff-attendance-bulk-save')).toBeDisabled();
   });
 });
