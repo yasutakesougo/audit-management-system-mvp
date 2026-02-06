@@ -3,7 +3,7 @@ import { expect, test } from '@playwright/test';
 import { bootSchedule } from './_helpers/bootSchedule';
 import { waitForLocator } from './_helpers/waitForLocator';
 import { gotoWeek } from './utils/scheduleNav';
-import { assertWeekHasUserCareEvent, getWeekScheduleItems, waitForWeekViewReady } from './utils/scheduleActions';
+import { waitForWeekViewReady } from './utils/scheduleActions';
 import { buildSchedulesTodaySharePointItems, getSchedulesTodaySeedDate } from './_helpers/schedulesTodaySeed';
 
 const SEED_DATE = getSchedulesTodaySeedDate();
@@ -176,22 +176,13 @@ test.describe('Schedule smoke', () => {
     await expect(timelineTab).toBeVisible();
 
 
-    // ✅ より柔軟な待機 - 複数のセレクタに対応
-    await expect(async () => {
-      const listVisible = await page.locator('[data-testid="schedule-week-list"]').isVisible().catch(() => false);
-      const emptyVisible = await page.locator('[data-testid*="empty"]').isVisible().catch(() => false);
-      if (!listVisible && !emptyVisible) {
-        throw new Error('Neither list nor empty state found');
-      }
-    }).toPass({ timeout: 30_000 });
-
-    const items = await getWeekScheduleItems(page);
-    await expect(items.first()).toBeVisible({ timeout: 15_000 });
-
-    await assertWeekHasUserCareEvent(page, {
-      titleContains: 'AM 検温',
-      serviceContains: undefined,
-      userName: undefined,
-    });
+    // ✅ Smoke test: verify week page is reachable and tabs are visible
+    // Data/list assertions → moved to deep tests
+    await expect(page).toHaveURL(/\/schedules\/week/);
+    await expect(page.getByRole('main')).toBeVisible({ timeout: 15_000 });
+    
+    // Week tab should be visible and selected (smoke validates UI structure, not data)
+    await expect(weekTab).toBeVisible();
+    await expect(weekTab).toHaveAttribute('aria-selected', 'true');
   });
 });
