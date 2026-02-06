@@ -141,7 +141,7 @@ test.describe('Schedule smoke', () => {
     
     // ページのロードとHydration完了を待つ
     await page.waitForLoadState('domcontentloaded');
-    await page.waitForTimeout(2500);
+    await page.waitForTimeout(3500);
     
     await waitForWeekViewReady(page);
 
