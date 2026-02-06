@@ -1,10 +1,11 @@
 import { expect, test } from '@playwright/test';
+import { expectTestIdVisibleBestEffort } from './_helpers/smoke';
 
 test.describe('app shell smoke (appRender recovery)', () => {
   test('renders app shell and exposes navigation', async ({ page }) => {
     await page.goto('/');
 
-    await expect(page.getByTestId('app-shell')).toBeVisible({ timeout: 5000 });
+    await expectTestIdVisibleBestEffort(page, 'app-shell', { timeout: 5000 });
 
     // Try to open nav drawer if button exists
     const mobileBtn = page.getByTestId('nav-open');

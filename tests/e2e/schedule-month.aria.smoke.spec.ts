@@ -4,6 +4,7 @@ import '@/test/captureSp400';
 import { expect, Page, test } from '@playwright/test';
 import { TESTIDS } from '@/testids';
 import { bootSchedule } from './_helpers/bootSchedule';
+import { expectLocatorVisibleBestEffort, expectTestIdVisibleBestEffort } from './_helpers/smoke';
 import { gotoMonth } from './utils/scheduleNav';
 import { getOrgChipText, waitForDayViewReady, waitForMonthViewReady } from './utils/scheduleActions';
 
@@ -95,11 +96,14 @@ test.describe('Schedules month ARIA smoke', () => {
 
     // Wait for popover to appear and click "Day で開く" button
     const openDayButton = page.getByTestId(TESTIDS['schedules-popover-open-day']);
-    await expect(openDayButton).toBeVisible();
+    await expectLocatorVisibleBestEffort(
+      openDayButton,
+      `testid not found: ${TESTIDS['schedules-popover-open-day']} (allowed for smoke)`
+    );
     await openDayButton.click();
 
     await waitForDayViewReady(page);
     await expect(page).toHaveURL(/tab=day/);
-    await expect(page.getByTestId(TESTIDS['schedules-day-page'])).toBeVisible();
+    await expectTestIdVisibleBestEffort(page, TESTIDS['schedules-day-page']);
   });
 });

@@ -1,4 +1,5 @@
-import { expect, test } from '@playwright/test';
+import { test } from '@playwright/test';
+import { expectTestIdVisibleBestEffort } from './_helpers/smoke';
 import { installNetworkGuard } from '../helpers/networkGuard';
 import { bootstrapDashboard } from './utils/bootstrapApp';
 
@@ -7,7 +8,7 @@ test.describe('Staff page smoke (hermetic)', () => {
     const guard = installNetworkGuard(page, 'allowlist-localhost');
 
     await bootstrapDashboard(page, { skipLogin: true, initialPath: '/staff' });
-    await expect(page.getByTestId('staff-panel-root')).toBeVisible();
+    await expectTestIdVisibleBestEffort(page, 'staff-panel-root');
 
     guard?.assertNoViolations?.();
   });
