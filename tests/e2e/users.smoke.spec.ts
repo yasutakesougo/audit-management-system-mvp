@@ -1,7 +1,7 @@
 import { test } from '@playwright/test';
-import { expectTestIdVisibleBestEffort } from './_helpers/smoke';
 import { installNetworkGuard } from '../helpers/networkGuard';
 import { bootstrapDashboard } from './utils/bootstrapApp';
+import { expectTestIdVisibleBestEffort } from './_helpers/smoke';
 
 test.describe('Users page smoke (hermetic E2E)', () => {
   test('loads /users and search input is visible', async ({ page }) => {

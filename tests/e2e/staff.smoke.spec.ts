@@ -1,7 +1,7 @@
 import { test } from '@playwright/test';
-import { expectTestIdVisibleBestEffort } from './_helpers/smoke';
 import { installNetworkGuard } from '../helpers/networkGuard';
 import { bootstrapDashboard } from './utils/bootstrapApp';
+import { expectTestIdVisibleBestEffort } from './_helpers/smoke';
 
 test.describe('Staff page smoke (hermetic)', () => {
   test('renders staff page without external calls', async ({ page }) => {
