@@ -201,7 +201,7 @@ jobs:
     env:
       VITE_FEATURE_SCHEDULES: "true"
       NOTIFY_WEBHOOK_URL: ${{ secrets.NOTIFY_WEBHOOK_URL }}
-      VITE_SP_SCOPE_DEFAULT: ${{ secrets.VITE_SP_SCOPE_DEFAULT }}
+      VITE_SP_SCOPE_DEFAULT: ${{ vars.VITE_SP_SCOPE_DEFAULT || (vars.VITE_SP_RESOURCE && format('{0}/.default', vars.VITE_SP_RESOURCE)) || secrets.VITE_SP_SCOPE_DEFAULT || 'https://contoso.sharepoint.com/.default' }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -243,7 +243,7 @@ jobs:
 
           export VITE_SP_RESOURCE="${VITE_SP_RESOURCE:-https://contoso.sharepoint.com}"
           export VITE_SP_SITE_RELATIVE="${VITE_SP_SITE_RELATIVE:-/sites/Audit}"
-          export VITE_SP_SCOPE_DEFAULT="${VITE_SP_SCOPE_DEFAULT:-https://contoso.sharepoint.com/AllSites.Read}"
+          export VITE_SP_SCOPE_DEFAULT="${VITE_SP_SCOPE_DEFAULT:-${VITE_SP_RESOURCE}/.default}"
 
           npm run ci:e2e -- --grep-invert @seed --grep-invert @csp
           exit_code=$?
