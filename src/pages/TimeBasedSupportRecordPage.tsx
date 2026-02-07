@@ -31,7 +31,10 @@ const TimeBasedSupportRecordPage: React.FC = () => {
   const [isEditOpen, setIsEditOpen] = useState(false);
   const [selectedStepId, setSelectedStepId] = useState<string | null>(null);
   const [scrollToStepId, setScrollToStepId] = useState<string | null>(null);
-  const [showUnfilledOnly, setShowUnfilledOnly] = useState(false);
+  const [showUnfilledOnly, setShowUnfilledOnly] = useState(() => {
+    if (typeof window === 'undefined') return false;
+    return window.sessionStorage.getItem('daily-support-unfilled-only') === '1';
+  });
   const recordDate = useMemo(() => new Date(), []);
   const { add, data: behaviorRecords, fetchByUser } = useBehaviorStore();
   const { getByUser, save } = useProcedureStore();
@@ -59,6 +62,8 @@ const TimeBasedSupportRecordPage: React.FC = () => {
     () => scheduleKeys.filter((key) => !filledStepIds.has(key)),
     [scheduleKeys, filledStepIds]
   );
+  const totalSteps = scheduleKeys.length;
+  const unfilledStepsCount = unfilledStepIds.length;
   const recordLockState = useMemo<RecordPanelLockState>(() => {
     if (!targetUserId) return 'no-user';
     return isAcknowledged ? 'unlocked' : 'unconfirmed';
@@ -107,6 +112,11 @@ const TimeBasedSupportRecordPage: React.FC = () => {
       setScrollToStepId(nextTarget);
     }
   }, [filledStepIds, scrollToStepId, selectedStepId, showUnfilledOnly, unfilledStepIds]);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    window.sessionStorage.setItem('daily-support-unfilled-only', showUnfilledOnly ? '1' : '0');
+  }, [showUnfilledOnly]);
 
   const handleRecordSubmit = useCallback(async (payload: Omit<BehaviorObservation, 'id' | 'userId'>) => {
     if (!targetUserId) return;
@@ -238,6 +248,8 @@ const TimeBasedSupportRecordPage: React.FC = () => {
               scrollToStepId={scrollToStepId}
               showUnfilledOnly={showUnfilledOnly}
               onToggleUnfilledOnly={() => setShowUnfilledOnly((prev) => !prev)}
+              unfilledCount={unfilledStepsCount}
+              totalCount={totalSteps}
             />
           ) : (
             <ProcedurePanel title="支援手順 (Plan)">

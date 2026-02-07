@@ -1,14 +1,15 @@
 import { isE2E } from '@/env';
 import { createContext, createElement, useContext, useMemo, type FC, type ReactNode } from 'react';
 import {
-    isComplianceFormEnabled,
+  isComplianceFormEnabled,
   isIcebergPdcaEnabled,
-    isSchedulesFeatureEnabled,
-    isSchedulesWeekV2Enabled,
-    isTestMode,
-    readBool,
-    readOptionalEnv,
-    type EnvRecord,
+  isSchedulesFeatureEnabled,
+  isSchedulesWeekV2Enabled,
+  isStaffAttendanceEnabled,
+  isTestMode,
+  readBool,
+  readOptionalEnv,
+  type EnvRecord,
 } from '../lib/env';
 
 export type FeatureFlagSnapshot = {
@@ -16,6 +17,7 @@ export type FeatureFlagSnapshot = {
   complianceForm: boolean;
   schedulesWeekV2: boolean;
   icebergPdca: boolean;
+  staffAttendance: boolean;
 };
 
 const _hasExplicitOverride = (storageKey: string, envKey: string, envOverride?: EnvRecord): boolean => {
@@ -96,6 +98,7 @@ export const resolveFeatureFlags = (envOverride?: EnvRecord): FeatureFlagSnapsho
     complianceForm: isComplianceFormEnabled(envOverride),
     schedulesWeekV2: isSchedulesWeekV2Enabled(envOverride),
     icebergPdca: isIcebergPdcaEnabled(envOverride),
+    staffAttendance: isStaffAttendanceEnabled(envOverride),
   };
 
   const explicitSchedules = hasExplicitBoolEnv('VITE_FEATURE_SCHEDULES', envOverride);

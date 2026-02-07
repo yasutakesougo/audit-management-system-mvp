@@ -12,6 +12,7 @@ const NAV_TESTIDS = {
   audit: 'nav-audit',
   admin: 'nav-admin',
   schedules: 'nav-schedules',
+  staffAttendance: 'nav-staff-attendance',
   nurse: 'nav-nurse',
 } as const;
 
@@ -74,6 +75,7 @@ export const TESTIDS = {
   'nav-audit': 'nav-audit',
   'nav-admin': 'nav-admin',
   'nav-schedules': 'nav-schedules',
+  'nav-staff-attendance': 'nav-staff-attendance',
   'nav-nurse': 'nav-nurse',
   'footer-action-daily-attendance': 'footer-action-daily-attendance',
   'footer-action-daily-activity': 'footer-action-daily-activity',

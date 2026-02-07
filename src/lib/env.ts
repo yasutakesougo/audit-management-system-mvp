@@ -349,6 +349,25 @@ export const isComplianceFormEnabled = (envOverride?: EnvRecord): boolean => {
   return false;
 };
 
+export const isStaffAttendanceEnabled = (envOverride?: EnvRecord): boolean => {
+  if (readBool('VITE_FEATURE_STAFF_ATTENDANCE', false, envOverride)) {
+    return true;
+  }
+  if (typeof window !== 'undefined') {
+    try {
+      const flag = window.localStorage.getItem('feature:staffAttendance');
+      if (flag != null) {
+        const normalized = flag.trim().toLowerCase();
+        if (TRUTHY.has(normalized)) return true;
+        if (FALSY.has(normalized)) return false;
+      }
+    } catch {
+      // ignore storage access issues
+    }
+  }
+  return false;
+};
+
 export const isIcebergPdcaEnabled = (envOverride?: EnvRecord): boolean =>
   readBool('VITE_FEATURE_ICEBERG_PDCA', false, envOverride);
 

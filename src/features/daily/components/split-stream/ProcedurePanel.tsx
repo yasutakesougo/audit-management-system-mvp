@@ -35,6 +35,8 @@ type GuidedProcedurePanelProps = {
   scrollToStepId?: string | null;
   showUnfilledOnly?: boolean;
   onToggleUnfilledOnly?: () => void;
+  unfilledCount?: number;
+  totalCount?: number;
   children?: undefined;
 };
 
@@ -81,7 +83,9 @@ export function ProcedurePanel(props: ProcedurePanelProps): JSX.Element {
     filledStepIds,
     scrollToStepId,
     showUnfilledOnly,
-    onToggleUnfilledOnly
+    onToggleUnfilledOnly,
+    unfilledCount,
+    totalCount
   } = props;
   const scrollRef = useRef<HTMLDivElement>(null);
   const itemRefs = useRef(new Map<string, HTMLLIElement | null>());
@@ -132,17 +136,28 @@ export function ProcedurePanel(props: ProcedurePanelProps): JSX.Element {
               <EditIcon fontSize="small" />
             </IconButton>
           )}
-          {onToggleUnfilledOnly && (
-            <ToggleButton
-              value="unfilled"
-              selected={Boolean(showUnfilledOnly)}
-              onChange={onToggleUnfilledOnly}
-              size="small"
-              color="primary"
-              sx={{ ml: 'auto' }}
-            >
-              未記入のみ
-            </ToggleButton>
+          {(onToggleUnfilledOnly || typeof unfilledCount === 'number') && (
+            <Box display="flex" alignItems="center" gap={1} sx={{ ml: 'auto' }}>
+              {typeof unfilledCount === 'number' && typeof totalCount === 'number' && (
+                <Chip
+                  label={`未記入 ${unfilledCount}/${totalCount}`}
+                  size="small"
+                  color={unfilledCount === 0 ? 'success' : 'default'}
+                  variant={unfilledCount === 0 ? 'filled' : 'outlined'}
+                />
+              )}
+              {onToggleUnfilledOnly && (
+                <ToggleButton
+                  value="unfilled"
+                  selected={Boolean(showUnfilledOnly)}
+                  onChange={onToggleUnfilledOnly}
+                  size="small"
+                  color="primary"
+                >
+                  未記入のみ
+                </ToggleButton>
+              )}
+            </Box>
           )}
         </Box>
       </CardContent>
