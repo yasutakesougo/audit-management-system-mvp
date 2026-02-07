@@ -1,10 +1,15 @@
-import HandoffSummaryForMeeting from '@/features/handoff/HandoffSummaryForMeeting';
-import MeetingGuidePage from '@/features/records/dashboard/MeetingGuidePage';
+import { useHandoffSummary } from '@/features/handoff/useHandoffSummary';
 import { useUsersStore } from '@/features/users/store';
 import { TESTIDS } from '@/testids';
 import lazyWithPreload from '@/utils/lazyWithPreload';
 import { cancelIdle, runOnIdle } from '@/utils/runOnIdle';
+import Alert from '@mui/material/Alert';
+import Accordion from '@mui/material/Accordion';
+import AccordionDetails from '@mui/material/AccordionDetails';
+import AccordionSummary from '@mui/material/AccordionSummary';
 import Box from '@mui/material/Box';
+import Button from '@mui/material/Button';
+import Chip from '@mui/material/Chip';
 import Container from '@mui/material/Container';
 import Paper from '@mui/material/Paper';
 import Stack from '@mui/material/Stack';
@@ -13,6 +18,7 @@ import Tabs from '@mui/material/Tabs';
 import Typography from '@mui/material/Typography';
 import React, { Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 
 const WeeklySummaryChartLazy = lazyWithPreload(() => import('@/features/records/dashboard/WeeklySummaryChart'));
 
@@ -20,7 +26,8 @@ const TABS = [
   { label: '運営管理情報', value: 'management' },
   { label: '申し送りタイムライン', value: 'timeline' },
   { label: '週次サマリー', value: 'weekly' },
-  { label: 'ミーティングガイド', value: 'meeting' },
+  { label: '朝会', value: 'morning' },
+  { label: '夕会', value: 'evening' },
   { label: '統合利用者プロファイル', value: 'profile' },
 ] as const;
 
@@ -40,7 +47,8 @@ const getUserId = (u: MaybeUser) => String(u.UserID ?? u.Id ?? '');
 
 const DashboardPageTabs: React.FC = () => {
   const navigate = useNavigate();
-  const [tab, setTab] = useState<TabValue>('timeline'); // 初期タブを「申し送りタイムライン」に変更
+  const defaultTab: TabValue = new Date().getHours() < 14 ? 'morning' : 'evening';
+  const [tab, setTab] = useState<TabValue>(defaultTab);
   const { data: usersStore = [] } = useUsersStore(); // 🛡️ undefined対策: 初期値 [] でクラッシュ防止
   const activeUsers = useMemo(() => usersStore.filter((user) => user?.IsActive !== false), [usersStore]);
   const activeUserIds = useMemo(() => activeUsers.map(getUserId), [activeUsers]);
@@ -52,6 +60,32 @@ const DashboardPageTabs: React.FC = () => {
   const openTimelineToday = useCallback(() => {
     navigate('/handoff-timeline', { state: { dayScope: 'today', timeFilter: 'all' } });
   }, [navigate]);
+
+  const { total, byStatus, criticalCount } = useHandoffSummary({ dayScope: 'today' });
+  const hasSummaryInfo = total > 0;
+
+  const meetingGuide = useMemo(() => ({
+    morning: {
+      title: '朝会',
+      subtitle: '今日の要点を確認して、優先対応を揃えます。',
+      steps: [
+        '安全指標の確認（注意事項があれば共有）',
+        '重要・未対応の申し送りを確認',
+        '当日の支援・配置の確認',
+        '未入力のケース記録の優先度を確認',
+      ],
+    },
+    evening: {
+      title: '夕会',
+      subtitle: '今日の振り返りと明日の準備を整えます。',
+      steps: [
+        '本日の記録・対応状況の確認',
+        '重要案件の申し送りを整理',
+        '未入力のケース記録を確認',
+        '明日の注意点を共有',
+      ],
+    },
+  }), []);
 
   const preloadOnHover = useCallback(() => {
     if (hoverTimerRef.current) {
@@ -81,7 +115,15 @@ const DashboardPageTabs: React.FC = () => {
 
   return (
   <Container maxWidth="lg" data-testid={TESTIDS['dashboard-page-tabs']}> {/* 🧪 タブ専用testid */}
-      <Box py={4}>
+      <Box py={4} data-testid={TESTIDS['dashboard-briefing-page']}>
+        <Stack spacing={0.5} sx={{ mb: 2 }}>
+          <Typography variant="h4" sx={{ fontWeight: 800 }}>
+            朝会・夕会情報
+          </Typography>
+          <Typography variant="body2" color="text.secondary">
+            今日の要点を確認し、進行ガイドを必要なときに開けます。
+          </Typography>
+        </Stack>
         <Tabs
           value={tab}
           onChange={(_, v: TabValue) => setTab(v)} // 🎯 型安全: TabValue で制限
@@ -120,13 +162,9 @@ const DashboardPageTabs: React.FC = () => {
               今日の申し送り状況のサマリーを確認し、詳細はタイムライン画面で操作できます。
             </Typography>
             <Box sx={{ mt: 2 }}>
-              <HandoffSummaryForMeeting
-                dayScope="today"
-                title="申し送りタイムライン"
-                description="今日の申し送りの件数と状況を確認できます。詳細はタイムライン画面で確認してください。"
-                actionLabel="タイムラインを開く"
-                onOpenTimeline={openTimelineToday}
-              />
+              <Button variant="outlined" size="small" onClick={openTimelineToday}>
+                タイムラインを開く
+              </Button>
             </Box>
           </Paper>
         )}
@@ -156,7 +194,122 @@ const DashboardPageTabs: React.FC = () => {
             </Stack>
           </Paper>
         )}
-        {tab === 'meeting' && <MeetingGuidePage />}
+        {tab === 'morning' && (
+          <Stack spacing={3}>
+            {hasSummaryInfo && (
+              <Paper
+                elevation={3}
+                sx={{ p: 2, mb: 1.5 }}
+                data-testid={TESTIDS['dashboard-briefing-summary-morning']}
+              >
+                <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1} alignItems={{ xs: 'flex-start', sm: 'center' }}>
+                  <Typography variant="subtitle1" sx={{ fontWeight: 700 }}>
+                    今日の要点
+                  </Typography>
+                  <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
+                    {criticalCount > 0 && (
+                      <Chip size="small" color="error" label={`注意 ${criticalCount}`} />
+                    )}
+                    {byStatus['未対応'] > 0 && (
+                      <Chip size="small" color="warning" label={`未対応 ${byStatus['未対応']}`} />
+                    )}
+                    <Chip size="small" color="default" label={`合計 ${total}`} />
+                  </Stack>
+                  <Button
+                    size="small"
+                    variant="text"
+                    onClick={openTimelineToday}
+                    sx={{ ml: { sm: 'auto' } }}
+                  >
+                    タイムラインを見る
+                  </Button>
+                </Stack>
+              </Paper>
+            )}
+            {!hasSummaryInfo && null}
+            <Alert severity="info">
+              安全指標サマリはダッシュボードの「安全インジケーター」で確認できます。
+            </Alert>
+            <Accordion
+              elevation={3}
+              defaultExpanded={false}
+              data-testid={TESTIDS['dashboard-briefing-guide-morning']}
+            >
+              <AccordionSummary expandIcon={<ExpandMoreIcon />}>
+                <Typography variant="subtitle1" sx={{ fontWeight: 700 }}>
+                  進行ガイド（チェックリスト）
+                </Typography>
+              </AccordionSummary>
+              <AccordionDetails>
+                <Stack spacing={1}>
+                  {meetingGuide.morning.steps.map((step) => (
+                    <Typography key={step} variant="body2">
+                      • {step}
+                    </Typography>
+                  ))}
+                </Stack>
+              </AccordionDetails>
+            </Accordion>
+          </Stack>
+        )}
+        {tab === 'evening' && (
+          <Stack spacing={3}>
+            {hasSummaryInfo && (
+              <Paper
+                elevation={3}
+                sx={{ p: 2, mb: 1.5 }}
+                data-testid={TESTIDS['dashboard-briefing-summary-evening']}
+              >
+                <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1} alignItems={{ xs: 'flex-start', sm: 'center' }}>
+                  <Typography variant="subtitle1" sx={{ fontWeight: 700 }}>
+                    今日の要点
+                  </Typography>
+                  <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
+                    {criticalCount > 0 && (
+                      <Chip size="small" color="error" label={`注意 ${criticalCount}`} />
+                    )}
+                    {byStatus['未対応'] > 0 && (
+                      <Chip size="small" color="warning" label={`未対応 ${byStatus['未対応']}`} />
+                    )}
+                    <Chip size="small" color="default" label={`合計 ${total}`} />
+                  </Stack>
+                  <Button
+                    size="small"
+                    variant="text"
+                    onClick={openTimelineToday}
+                    sx={{ ml: { sm: 'auto' } }}
+                  >
+                    タイムラインを見る
+                  </Button>
+                </Stack>
+              </Paper>
+            )}
+            {!hasSummaryInfo && null}
+            <Alert severity="info">
+              記録状況の詳細はダッシュボードの「ケース記録」カードから確認できます。
+            </Alert>
+            <Accordion
+              elevation={3}
+              defaultExpanded={false}
+              data-testid={TESTIDS['dashboard-briefing-guide-evening']}
+            >
+              <AccordionSummary expandIcon={<ExpandMoreIcon />}>
+                <Typography variant="subtitle1" sx={{ fontWeight: 700 }}>
+                  進行ガイド（チェックリスト）
+                </Typography>
+              </AccordionSummary>
+              <AccordionDetails>
+                <Stack spacing={1}>
+                  {meetingGuide.evening.steps.map((step) => (
+                    <Typography key={step} variant="body2">
+                      • {step}
+                    </Typography>
+                  ))}
+                </Stack>
+              </AccordionDetails>
+            </Accordion>
+          </Stack>
+        )}
         {tab === 'profile' && (
           <Paper elevation={3} sx={{ p: 3, mb: 3 }}>
             <Typography variant="h4" sx={{ fontWeight: 800 }}>

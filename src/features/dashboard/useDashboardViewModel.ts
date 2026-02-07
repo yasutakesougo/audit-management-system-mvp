@@ -48,12 +48,12 @@ export function useDashboardViewModel<TSummary = unknown>(
     const defaults: DashboardSection[] = [
       { key: 'safety', title: '安全インジケーター', enabled: true },
       { key: 'attendance', title: '今日の通所 / 出勤状況', enabled: true },
-      { key: 'daily', title: '日次記録状況', enabled: true },
       { key: 'schedule', title: '今日の予定', enabled: true },
       { key: 'handover', title: '申し送りタイムライン', enabled: true },
       { key: 'stats', enabled: true },
       { key: 'adminOnly', title: '管理者ダッシュボード', enabled: role === 'admin' },
       { key: 'staffOnly', title: 'スタッフダッシュボード', enabled: role === 'staff' },
+      { key: 'daily', title: '日次記録状況', enabled: true },
     ];
 
     if (!sectionKeys || sectionKeys.length === 0) {
