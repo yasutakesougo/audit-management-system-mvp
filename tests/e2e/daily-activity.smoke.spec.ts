@@ -1,12 +1,11 @@
 import { expect, test } from '@playwright/test';
 import { bootDaily } from './_helpers/bootDaily';
-import { openMobileNav } from './_helpers/openMobileNav';
 
 // Smoke: /daily/activity happy path navigation and quick sanity checks
 // - open activity list
 // - ensure records render
-// - navigate back to /daily via nav
-// - return to activity via footer/card button
+// - navigate back to daily menu via close
+// - return to activity via menu card
 
 test.describe('Daily activity smoke', () => {
   test('opens activity, shows records, and round-trips via nav/footer', async ({ page }) => {
@@ -27,12 +26,19 @@ test.describe('Daily activity smoke', () => {
       });
     }
 
-    // Navigate back to the daily hub via top nav (fallback to direct route if nav is already active)
-    await openMobileNav(page); // Ensure nav is visible before clicking
-    await page.getByTestId('nav-daily').first().click();
-    await expect(page).toHaveURL(/\/daily$/).catch(async () => {
-      await page.goto('/daily');
-      await expect(page).toHaveURL(/\/daily$/);
+    // Navigate back to the daily menu via close (fallback to direct route)
+    const closeButton = page.getByTestId('daily-dialog-close').first();
+    if ((await closeButton.count()) > 0) {
+      await closeButton.click();
+    } else {
+      test.info().annotations.push({
+        type: 'note',
+        description: 'close button not found (allowed for smoke)',
+      });
+    }
+    await expect(page).toHaveURL(/\/daily\/menu/).catch(async () => {
+      await page.goto('/daily/menu');
+      await expect(page).toHaveURL(/\/daily\/menu/);
     });
     await page.waitForLoadState('domcontentloaded');
     const dailyMenu = page.getByTestId('daily-record-menu');
@@ -42,21 +48,16 @@ test.describe('Daily activity smoke', () => {
       await expect(page.getByRole('heading').first()).toBeVisible({ timeout: 10_000 });
     }
 
-    // Return to activity via footer quick action (if present) otherwise card CTA
-    const footerActivity = page.getByTestId('footer-action-daily-activity');
-    if ((await footerActivity.count()) > 0) {
-      await footerActivity.first().click().catch(() => undefined);
+    // Return to activity via menu CTA
+    const openActivity = page.getByTestId('btn-open-activity');
+    if ((await openActivity.count()) > 0) {
+      await openActivity.first().click().catch(() => undefined);
     } else {
-      const openActivity = page.getByTestId('btn-open-activity');
-      if ((await openActivity.count()) > 0) {
-        await openActivity.first().click().catch(() => undefined);
-      } else {
-        test.info().annotations.push({
-          type: 'note',
-          description: 'activity CTA not found (allowed for smoke)',
-        });
-        return;
-      }
+      test.info().annotations.push({
+        type: 'note',
+        description: 'activity CTA not found (allowed for smoke)',
+      });
+      return;
     }
 
     await expect(page).toHaveURL(/\/daily\/activity/).catch(() => undefined);

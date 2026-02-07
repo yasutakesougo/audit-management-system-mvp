@@ -46,6 +46,7 @@ export function FullScreenDailyDialogPage({
             aria-label="閉じる"
             onClick={handleClose}
             disabled={busy}
+            data-testid="daily-dialog-close"
           >
             <CloseIcon />
           </IconButton>
