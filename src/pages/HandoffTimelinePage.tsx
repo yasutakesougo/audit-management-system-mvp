@@ -1,12 +1,11 @@
 import { AccessTime as AccessTimeIcon, Close as CloseIcon, EditNote as EditNoteIcon, Nightlight as EveningIcon, WbSunny as MorningIcon } from '@mui/icons-material';
 import { Box, Button, Chip, Collapse, Container, Divider, IconButton, Paper, Stack, ToggleButton, ToggleButtonGroup, Typography } from '@mui/material';
-import { useEffect, useRef, useState } from 'react';
 import { useLocation } from 'react-router-dom';
+import { useHandoffTimelineViewModel } from '../features/handoff/useHandoffTimelineViewModel';
 import HandoffCategorySummaryCard from '../features/handoff/HandoffCategorySummaryCard';
 import { HandoffQuickNoteCard } from '../features/handoff/HandoffQuickNoteCard';
 import type { HandoffDayScope, HandoffTimeFilter } from '../features/handoff/handoffTypes';
 import { HANDOFF_DAY_SCOPE_LABELS, HANDOFF_TIME_FILTER_LABELS } from '../features/handoff/handoffTypes';
-import type { HandoffStats } from '../features/handoff/TodayHandoffTimelineList';
 import { TodayHandoffTimelineList } from '../features/handoff/TodayHandoffTimelineList';
 import { tid, TESTIDS } from '@/testids';
 
@@ -32,47 +31,18 @@ export default function HandoffTimelinePage() {
   const navState = location.state as
     | { dayScope?: HandoffDayScope; timeFilter?: HandoffTimeFilter }
     | undefined;
-  const [dayScope, setDayScope] = useState<HandoffDayScope>(
-    navState?.dayScope ?? 'today'
-  );
-
-  const [timeFilter, setTimeFilter] = useState<HandoffTimeFilter>(
-    navState?.timeFilter ?? 'all'
-  );
-
-  const [isQuickNoteOpen, setIsQuickNoteOpen] = useState(false);
-  const [handoffStats, setHandoffStats] = useState<HandoffStats | null>(null);
-  const quickNoteRef = useRef<HTMLDivElement | null>(null);
-
-  const navDayScope = navState?.dayScope;
-  const navTimeFilter = navState?.timeFilter;
-
-  useEffect(() => {
-    if (navDayScope) {
-      setDayScope(navDayScope);
-    }
-    if (navTimeFilter) {
-      setTimeFilter(navTimeFilter);
-    }
-  }, [navDayScope, navTimeFilter]);
-
-  useEffect(() => {
-    setHandoffStats(null);
-  }, [dayScope, timeFilter]);
-
-  useEffect(() => {
-    const handler = () => {
-      setIsQuickNoteOpen(true);
-      window.setTimeout(() => {
-        if (quickNoteRef.current) {
-          quickNoteRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
-        }
-      }, 50);
-    };
-
-    window.addEventListener('handoff-open-quicknote', handler);
-    return () => window.removeEventListener('handoff-open-quicknote', handler);
-  }, []);
+  const {
+    dayScope,
+    timeFilter,
+    isQuickNoteOpen,
+    handoffStats,
+    setHandoffStats,
+    quickNoteRef,
+    handleDayScopeChange,
+    handleTimeFilterChange,
+    openQuickNote,
+    closeQuickNote,
+  } = useHandoffTimelineViewModel({ navState });
 
   return (
     <Container maxWidth="lg" sx={{ py: 3 }} {...tid(TESTIDS['agenda-page-root'])}>
@@ -114,11 +84,7 @@ export default function HandoffTimelinePage() {
           <ToggleButtonGroup
             value={dayScope}
             exclusive
-            onChange={(_event, newDayScope: HandoffDayScope) => {
-              if (newDayScope !== null) {
-                setDayScope(newDayScope);
-              }
-            }}
+            onChange={handleDayScopeChange}
             size="small"
             color="secondary"
           >
@@ -134,11 +100,7 @@ export default function HandoffTimelinePage() {
           <ToggleButtonGroup
             value={timeFilter}
             exclusive
-            onChange={(_event, newFilter: HandoffTimeFilter) => {
-              if (newFilter !== null) {
-                setTimeFilter(newFilter);
-              }
-            }}
+            onChange={handleTimeFilterChange}
             size="small"
             color="primary"
           >
@@ -209,7 +171,7 @@ export default function HandoffTimelinePage() {
             <Box sx={{ display: 'flex', justifyContent: 'flex-end', p: 1 }}>
               <IconButton
                 aria-label="申し送り入力カードを閉じる"
-                onClick={() => setIsQuickNoteOpen(false)}
+                onClick={closeQuickNote}
                 size="small"
               >
                 <CloseIcon fontSize="small" />
@@ -224,7 +186,7 @@ export default function HandoffTimelinePage() {
           <Button
             variant="outlined"
             startIcon={<EditNoteIcon />}
-            onClick={() => setIsQuickNoteOpen(true)}
+            onClick={openQuickNote}
           >
             今すぐ申し送り入力カードを開く
           </Button>

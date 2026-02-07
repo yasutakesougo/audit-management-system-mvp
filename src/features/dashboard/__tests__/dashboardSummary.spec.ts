@@ -90,6 +90,13 @@ describe('buildDashboardSummary', () => {
 
       expect(result.modules).toEqual([]);
       expect(result.alerts).toEqual([]);
+      expect(result).toEqual(
+        expect.objectContaining({
+          modules: expect.any(Array),
+          alerts: expect.any(Array),
+          generatedAt: expect.any(String),
+        })
+      );
       expect(result.generatedAt).toBeDefined();
       expect(new Date(result.generatedAt)).toBeInstanceOf(Date);
     });

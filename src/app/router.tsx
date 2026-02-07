@@ -36,6 +36,11 @@ const MonthlyRecordPage = React.lazy(() => import('@/pages/MonthlyRecordPage'));
 
 const AttendanceRecordPage = React.lazy(() => import('@/pages/AttendanceRecordPage'));
 const StaffAttendanceAdminPage = React.lazy(() => import('@/pages/StaffAttendanceAdminPage'));
+const StaffAttendanceInput = React.lazy(() =>
+  import('@/features/staff/attendance/StaffAttendanceInput').then((module) => ({
+    default: module.StaffAttendanceInput,
+  })),
+);
 
 const StaffDashboardPage = React.lazy(() =>
   import('@/pages/DashboardPage').then((module) => ({
@@ -400,6 +405,20 @@ const SuspendedSupportActivityMasterPage: React.FC = () => (
   </RouteHydrationErrorBoundary>
 );
 
+const SuspendedStaffAttendanceInput: React.FC = () => (
+  <RouteHydrationErrorBoundary>
+    <React.Suspense
+      fallback={(
+        <div className="p-4 text-sm text-slate-600" role="status">
+          職員勤怠入力を読み込んでいます…
+        </div>
+      )}
+    >
+      <StaffAttendanceInput />
+    </React.Suspense>
+  </RouteHydrationErrorBoundary>
+);
+
 const SuspendedStaffAttendanceAdminPage: React.FC = () => (
   <RouteHydrationErrorBoundary>
     <React.Suspense
@@ -510,6 +529,14 @@ const childRoutes: RouteObject[] = [
   { path: 'users', element: <UsersPanel /> },
   { path: 'users/:userId', element: <SuspendedUserDetailPage /> },
   { path: 'staff', element: <StaffPanel /> },
+  {
+    path: 'staff/attendance',
+    element: (
+      <ProtectedRoute flag="schedules">
+        <SuspendedStaffAttendanceInput />
+      </ProtectedRoute>
+    ),
+  },
   { path: 'daily', element: <Navigate to="/daily/table" replace /> },
   { path: 'daily/menu', element: <SuspendedDailyRecordMenuPage /> },
   { path: 'daily/table', element: <SuspendedTableDailyRecordPage /> },

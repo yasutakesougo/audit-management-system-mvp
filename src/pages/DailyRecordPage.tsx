@@ -17,12 +17,13 @@ import Stack from '@mui/material/Stack';
 import TextField from '@mui/material/TextField';
 import Typography from '@mui/material/Typography';
 import { useEffect, useMemo, useState } from 'react';
-import toast, { Toaster } from 'react-hot-toast';
+import { Toaster } from 'react-hot-toast';
 import { useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import { PersonDaily } from '../domain/daily/types';
 import { DailyRecordForm } from '../features/daily/DailyRecordForm';
 import { DailyRecordList } from '../features/daily/DailyRecordList';
-import type { DailyActivityNavState } from '../features/cross-module/navigationState';
+import { useDailyRecordViewModel } from '../features/daily/useDailyRecordViewModel';
+import { FullScreenDailyDialogPage } from '../features/daily/components/FullScreenDailyDialogPage';
 import { useHandoffSummary } from '../features/handoff/useHandoffSummary';
 import { useUsersDemo } from '../features/users/usersStoreDemo';
 import { saveDailyRecord, validateDailyRecord } from '@/features/daily/dailyRecordLogic';
@@ -189,20 +190,7 @@ export default function DailyRecordPage() {
   // Navigation hook for cross-module navigation
   const navigate = useNavigate();
   const location = useLocation();
-
-  // Phase 2-1: navigation state から highlight 情報を取得
-  const navState = (location.state ?? {}) as DailyActivityNavState;
-  const highlightUserIdFromState = navState.highlightUserId ?? null;
-  const highlightDateFromState = navState.highlightDate ?? null;
-
-  // URL query parameters for highlighting (backward compatibility)
   const [searchParams] = useSearchParams();
-  const highlightUserIdFromQuery = searchParams.get('userId');
-  const highlightDateFromQuery = searchParams.get('date');
-
-  // 優先順位: navState > searchParams
-  const highlightUserId = highlightUserIdFromState ?? highlightUserIdFromQuery;
-  const highlightDate = highlightDateFromState ?? highlightDateFromQuery;
 
   // 利用者マスタとスケジュールデータ
   const { data: usersData } = useUsersDemo();
@@ -211,9 +199,74 @@ export default function DailyRecordPage() {
   const [records, setRecords] = useState<PersonDaily[]>(mockRecords);
   const [formOpen, setFormOpen] = useState(false);
   const [editingRecord, setEditingRecord] = useState<PersonDaily | undefined>();
-  const [searchQuery, setSearchQuery] = useState('');
-  const [statusFilter, setStatusFilter] = useState('all');
-  const [dateFilter, setDateFilter] = useState('');
+  const vm = useDailyRecordViewModel<PersonDaily>({
+    locationState: location.state,
+    searchParams,
+    records,
+    setRecords,
+    editingRecord,
+    setEditingRecord,
+    setFormOpen,
+    navigate,
+    validateDailyRecord,
+    saveDailyRecord,
+    generateTodayRecords,
+    mockUsers,
+    createMissingRecord: (name, userId, date, index) => ({
+      id: Date.now() + index,
+      personId: userId,
+      personName: name,
+      date,
+      status: '未作成',
+      reporter: { name: '' },
+      draft: { isDraft: true },
+      kind: 'A',
+      data: {
+        amActivities: [],
+        pmActivities: [],
+        amNotes: '',
+        pmNotes: '',
+        mealAmount: '完食',
+        problemBehavior: {
+          selfHarm: false,
+          violence: false,
+          loudVoice: false,
+          pica: false,
+          other: false,
+          otherDetail: '',
+        },
+        seizureRecord: {
+          occurred: false,
+          time: '',
+          duration: '',
+          severity: undefined,
+          notes: '',
+        },
+        specialNotes: '',
+      },
+    }),
+  });
+
+  const {
+    highlightUserId,
+    highlightDate,
+    searchQuery,
+    setSearchQuery,
+    statusFilter,
+    setStatusFilter,
+    dateFilter,
+    setDateFilter,
+    filteredRecords,
+    handleOpenForm,
+    handleEditRecord,
+    handleCloseForm,
+    handleOpenAttendance,
+    handleSaveRecord,
+    handleDeleteRecord,
+    handleGenerateTodayRecords,
+    handleBulkCreateMissing,
+    handleBulkComplete,
+  } = vm;
 
   // Phase 1A: 申し送りサマリー
   const {
@@ -287,218 +340,16 @@ export default function DailyRecordPage() {
   }, [usersData, schedulesData, records]);
 
 
-  const handleOpenForm = () => {
-    setEditingRecord(undefined);
-    setFormOpen(true);
-  };
-
-  const handleEditRecord = (record: PersonDaily) => {
-    setEditingRecord(record);
-    setFormOpen(true);
-  };
-
-  const handleCloseForm = () => {
-    setFormOpen(false);
-    setEditingRecord(undefined);
-  };
-
-  const handleOpenAttendance = (record: PersonDaily) => {
-    navigate(`/daily/attendance?userId=${record.personId}&date=${record.date}`);
-  };
-
-  const handleSaveRecord = (record: Omit<PersonDaily, 'id'>) => {
-    try {
-      // バリデーション実行
-      const validationResult = validateDailyRecord(record);
-
-      if (!validationResult.isValid) {
-        // バリデーションエラーがある場合
-        const errorMessage = validationResult.errors.join('\n');
-        toast.error(`保存に失敗しました\n\n${errorMessage}`, {
-          duration: 6000,
-          style: {
-            maxWidth: '500px'
-          }
-        });
-        console.error('保存失敗 - バリデーションエラー:', validationResult.errors);
-        return;
-      }
-
-      // 保存処理実行
-      const updatedRecords = saveDailyRecord(
-        records,
-        record,
-        editingRecord?.id
-      );
-
-      setRecords(updatedRecords);
-
-      // フォームを閉じる
-      handleCloseForm();
-
-      // 成功通知
-      const operation = editingRecord ? '更新' : '新規作成';
-      toast.success(`日次記録の${operation}が完了しました\n\n利用者: ${record.personName}\n日付: ${record.date}`, {
-        duration: 4000,
-        style: {
-          maxWidth: '400px'
-        }
-      });
-
-      // 成功ログ
-      if (import.meta.env.DEV) {
-        console.log('保存成功:', {
-          operation,
-          personName: record.personName,
-          date: record.date,
-          status: record.status
-        });
-      }
-
-    } catch (error) {
-      // 予期しないエラーをキャッチ
-      const errorMessage = error instanceof Error ? error.message : '不明なエラーが発生しました';
-      toast.error(`システムエラーが発生しました\n\n${errorMessage}`, {
-        duration: 8000,
-        style: {
-          maxWidth: '500px'
-        }
-      });
-      console.error('保存失敗 - システムエラー:', error);
-    }
-  };
-
-  const handleDeleteRecord = (recordId: number) => {
-    const recordToDelete = records.find(r => r.id === recordId);
-
-    setRecords(prev => prev.filter(record => record.id !== recordId));
-
-    if (recordToDelete) {
-      toast.success(`${recordToDelete.personName}さんの記録を削除しました`, {
-        duration: 3000
-      });
-    } else {
-      toast.error('削除対象の記録が見つかりませんでした', {
-        duration: 3000
-      });
-    }
-  };
-
-  const handleGenerateTodayRecords = () => {
-    const todayRecords = generateTodayRecords();
-    setRecords(todayRecords);
-    toast.success(`本日分の記録を32名分作成しました`, {
-      duration: 3000
-    });
-  };
-
-  const handleBulkCreateMissing = () => {
-    const today = new Date().toISOString().split('T')[0];
-    const existingPersonIds = records
-      .filter(record => record.date === today)
-      .map(record => record.personId);
-
-    const missingUsers = mockUsers.filter((_, index) => {
-      const userId = String(index + 1).padStart(3, '0');
-      return !existingPersonIds.includes(userId);
-    });
-
-    if (missingUsers.length === 0) {
-      toast('本日分の記録は全員作成済みです', {
-        icon: 'ℹ️',
-        duration: 2000
-      });
-      return;
-    }
-
-    const newRecords = missingUsers.map((name, index) => {
-      const globalIndex = mockUsers.indexOf(name);
-      const userId = String(globalIndex + 1).padStart(3, '0');
-
-      return {
-        id: Date.now() + index, // 簡易的なID生成
-        personId: userId,
-        personName: name,
-        date: today,
-        status: '未作成' as const,
-        reporter: { name: '' },
-        draft: { isDraft: true },
-        kind: 'A' as const,
-        data: {
-          amActivities: [],
-          pmActivities: [],
-          amNotes: '',
-          pmNotes: '',
-          mealAmount: '完食' as const,
-          problemBehavior: {
-            selfHarm: false,
-            violence: false,
-            loudVoice: false,
-            pica: false,
-            other: false,
-            otherDetail: ''
-          },
-          seizureRecord: {
-            occurred: false,
-            time: '',
-            duration: '',
-            severity: undefined,
-            notes: ''
-          },
-          specialNotes: ''
-        }
-      };
-    });
-
-    setRecords(prev => [...prev, ...newRecords]);
-    toast.success(`${missingUsers.length}名分の未作成記録を追加しました`, {
-      duration: 3000
-    });
-  };
-
-  const handleBulkComplete = () => {
-    const today = new Date().toISOString().split('T')[0];
-    let completedCount = 0;
-
-    setRecords(prev => prev.map(record => {
-      if (record.date === today && record.status === '未作成') {
-        completedCount++;
-        return {
-          ...record,
-          status: '完了' as const,
-          draft: { isDraft: false }
-        };
-      }
-      return record;
-    }));
-
-    if (completedCount === 0) {
-      toast('本日分の記録で一括完了対象はありませんでした', {
-        icon: 'ℹ️',
-        duration: 2000
-      });
-    } else {
-      toast.success(`${completedCount}件の記録を一括完了しました`, {
-        duration: 3000
-      });
-    }
-  };
-
-  // フィルタリング
-  const filteredRecords = records.filter(record => {
-    const matchesSearch = !searchQuery ||
-      record.personName.includes(searchQuery) ||
-      record.personId.includes(searchQuery);
-
-    const matchesStatus = statusFilter === 'all' || record.status === statusFilter;
-    const matchesDate = !dateFilter || record.date === dateFilter;
-
-    return matchesSearch && matchesStatus && matchesDate;
-  });
+  // handlers & filters are provided by view model
 
   return (
-    <Container maxWidth="lg" data-testid="records-daily-root">
-      <Box sx={{ py: 3 }}>
+    <FullScreenDailyDialogPage
+      title="支援記録（ケース記録）"
+      backTo="/daily/menu"
+      testId="daily-activity-page"
+    >
+      <Container maxWidth="lg" data-testid="records-daily-root">
+        <Box sx={{ py: 3 }}>
         {/* ヘッダー */}
         <Box sx={{ mb: 3 }}>
           <Typography variant="h4" component="h1" gutterBottom>
@@ -788,7 +639,8 @@ export default function DailyRecordPage() {
             },
           }}
         />
-      </Box>
-    </Container>
+        </Box>
+      </Container>
+    </FullScreenDailyDialogPage>
   );
 }

@@ -37,7 +37,7 @@ import {
     Tooltip,
     Typography
 } from '@mui/material';
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 
 // Types
 interface UserRowData {
@@ -69,6 +69,7 @@ interface TableDailyRecordFormProps {
   open: boolean;
   onClose: () => void;
   onSave: (data: TableDailyRecordData) => Promise<void>;
+  variant?: 'dialog' | 'content';
 }
 
 const LUNCH_OPTIONS = ['完食', '8割', '半分', '少量', 'なし'];
@@ -76,7 +77,8 @@ const LUNCH_OPTIONS = ['完食', '8割', '半分', '少量', 'なし'];
 export function TableDailyRecordForm({
   open,
   onClose,
-  onSave
+  onSave,
+  variant = 'dialog'
 }: TableDailyRecordFormProps) {
   // State
   const [selectedUserIds, setSelectedUserIds] = useState<string[]>([]);
@@ -103,71 +105,74 @@ export function TableDailyRecordForm({
     }
 
     const targetDate = new Date(formData.date);
-    return users.filter(user => {
-      if (user.attendanceDays && Array.isArray(user.attendanceDays)) {
-        return isUserScheduledForDate({
-          Id: parseInt(user.userId || '0'),
-          UserID: user.userId || '',
-          FullName: user.name || '',
-          AttendanceDays: user.attendanceDays
-        }, targetDate);
+    return users.filter((user) => {
+      const attendanceDays = user.attendanceDays;
+      if (!attendanceDays || !Array.isArray(attendanceDays) || attendanceDays.length === 0) {
+        return true;
       }
-      // attendanceDaysが未設定の場合は毎日通所とみなす
-      return true;
+      return isUserScheduledForDate(
+        {
+          Id: user.id,
+          UserID: user.userId,
+          FullName: user.name || '',
+          AttendanceDays: attendanceDays,
+        },
+        targetDate,
+      );
     });
   }, [users, showTodayOnly, formData.date]);
 
   const filteredUsers = useMemo(() => {
-    let result = attendanceFilteredUsers;
-
-    if (searchQuery.trim()) {
-      const query = searchQuery.toLowerCase();
-      result = result.filter(user =>
-        user.name?.toLowerCase().includes(query) ||
-        user.userId?.toLowerCase().includes(query) ||
-        user.furigana?.toLowerCase().includes(query)
-      );
-    }
-
-    return result;
+    if (!searchQuery.trim()) return attendanceFilteredUsers;
+    const query = searchQuery.toLowerCase();
+    return attendanceFilteredUsers.filter((user) => (
+      user.name?.toLowerCase().includes(query) ||
+      user.userId?.toLowerCase().includes(query) ||
+      user.furigana?.toLowerCase().includes(query) ||
+      user.nameKana?.toLowerCase().includes(query)
+    ));
   }, [attendanceFilteredUsers, searchQuery]);
 
-  // Selected users data
   const selectedUsers = useMemo(() => {
-    return users.filter(user => selectedUserIds.includes(user.userId || ''));
+    return selectedUserIds
+      .map((id) => users.find((user) => user.userId === id))
+      .filter((user): user is typeof users[number] => Boolean(user));
   }, [users, selectedUserIds]);
 
-  // Initialize user rows when selection changes
-  React.useEffect(() => {
-    const newUserRows = selectedUserIds.map(userId => {
-      const user = users.find(u => u.userId === userId);
-      const existingRow = formData.userRows.find(row => row.userId === userId);
-
-      return existingRow || {
-        userId,
-        userName: user?.name || '',
-        amActivity: '',
-        pmActivity: '',
-        lunchAmount: '',
-        problemBehavior: {
-          selfHarm: false,
-          violence: false,
-          loudVoice: false,
-          pica: false,
-          other: false,
-        },
-        specialNotes: ''
+  useEffect(() => {
+    setFormData((prev) => {
+      const existingMap = new Map(prev.userRows.map((row) => [row.userId, row]));
+      const nextRows: UserRowData[] = selectedUsers.map((user) => {
+        const userId = user.userId || '';
+        const existing = existingMap.get(userId);
+        if (existing) {
+          return existing;
+        }
+        return {
+          userId,
+          userName: user.name || '',
+          amActivity: '',
+          pmActivity: '',
+          lunchAmount: '',
+          problemBehavior: {
+            selfHarm: false,
+            violence: false,
+            loudVoice: false,
+            pica: false,
+            other: false,
+          },
+          specialNotes: '',
+        };
+      });
+      return {
+        ...prev,
+        userRows: nextRows,
       };
     });
-
-    setFormData(prev => ({
-      ...prev,
-      userRows: newUserRows
-    }));
-  }, [selectedUserIds, users]);
+  }, [selectedUsers]);
 
   // Auto-update selected users when date changes and attendance filter is active
-  React.useEffect(() => {
+  useEffect(() => {
     if (showTodayOnly && selectedUserIds.length > 0) {
       const targetDate = new Date(formData.date);
       const validUserIds = selectedUserIds.filter(userId => {
@@ -190,13 +195,13 @@ export function TableDailyRecordForm({
     }
   }, [formData.date, showTodayOnly, selectedUserIds, users]);
 
-  React.useEffect(() => {
+  useEffect(() => {
     if (!open) {
       setSelectionManuallyEdited(false);
     }
   }, [open]);
 
-  React.useEffect(() => {
+  useEffect(() => {
     if (!open || !showTodayOnly || selectionManuallyEdited) {
       return;
     }
@@ -322,14 +327,8 @@ export function TableDailyRecordForm({
     }
   };
 
-  return (
-    <Dialog
-      open={open}
-      onClose={onClose}
-      maxWidth="xl"
-      fullWidth
-      data-testid={TESTIDS['daily-table-record-form']}
-    >
+  const content = (
+    <>
       <DialogTitle>
         <Box display="flex" alignItems="center" gap={1}>
           <GroupIcon />
@@ -633,6 +632,22 @@ export function TableDailyRecordForm({
           {saving ? '保存中...' : `${selectedUserIds.length}人分保存`}
         </Button>
       </DialogActions>
+    </>
+  );
+
+  if (variant === 'content') {
+    return <Box>{content}</Box>;
+  }
+
+  return (
+    <Dialog
+      open={open}
+      onClose={onClose}
+      maxWidth="xl"
+      fullWidth
+      data-testid={TESTIDS['daily-table-record-form']}
+    >
+      {content}
     </Dialog>
   );
 }

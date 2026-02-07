@@ -116,6 +116,28 @@ export default defineConfig(({ mode }) => {
       host: '0.0.0.0',
       port: 5173,
       strictPort: true,
+      hmr: {
+        host: 'localhost',
+        protocol: 'ws',
+        clientPort: 5173,
+      },
+      headers: {
+        'Cross-Origin-Opener-Policy': 'same-origin-allow-popups',
+        'Cross-Origin-Embedder-Policy': 'unsafe-none',
+      },
+      middlewareMode: false,
+      proxy: {
+        '/sharepoint-api': {
+          target: siteUrl,
+          changeOrigin: true,
+          secure: true,
+          rewrite: (path) => path.replace(/^\/sharepoint-api/, ''),
+        },
+      },
+      watch: {
+        usePolling: true,
+        interval: 1000,
+      },
     },
     resolve: {
       alias: {
@@ -188,33 +210,6 @@ export default defineConfig(({ mode }) => {
             return undefined;
           },
         },
-      },
-    },
-    server: {
-      host: 'localhost',
-      port: 5173,
-      strictPort: true,
-      hmr: {
-        host: 'localhost',
-        protocol: 'ws',
-        clientPort: 5173,
-      },
-      headers: {
-        'Cross-Origin-Opener-Policy': 'same-origin-allow-popups',
-        'Cross-Origin-Embedder-Policy': 'unsafe-none',
-      },
-      middlewareMode: false,
-      proxy: {
-        '/sharepoint-api': {
-          target: siteUrl,
-          changeOrigin: true,
-          secure: true,
-          rewrite: (path) => path.replace(/^\/sharepoint-api/, ''),
-        },
-      },
-      watch: {
-        usePolling: true,
-        interval: 1000,
       },
     },
     preview: {
