@@ -40,6 +40,7 @@ test.describe('users detail menu', () => {
 
     await page.goto('/users/UX-020', { waitUntil: 'load' });
     await page.waitForLoadState('networkidle');
+    await page.waitForURL('**/users?tab=list&selected=UX-020');
     await page.waitForSelector(`[data-testid="${TESTIDS['user-detail-sections']}"]`, { timeout: 10000 });
 
     const detailSections = page.getByTestId(TESTIDS['user-detail-sections']);
@@ -65,6 +66,7 @@ test.describe('users detail menu', () => {
 
     await page.goto('/users/UX-020', { waitUntil: 'load' });
     await page.waitForLoadState('networkidle');
+    await page.waitForURL('**/users?tab=list&selected=UX-020');
     await page.waitForSelector(`[data-testid="${TESTIDS['user-detail-sections']}"]`, { timeout: 10000 });
     const detailSectionsAgain = page.getByTestId(TESTIDS['user-detail-sections']);
     await expect(detailSectionsAgain).toBeVisible();

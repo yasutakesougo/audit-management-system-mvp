@@ -7,7 +7,7 @@ const UserDetailPage: React.FC = () => {
 
   useEffect(() => {
     if (userId) {
-      navigate(`/users?selected=${encodeURIComponent(userId)}`, { replace: true });
+      navigate(`/users?tab=list&selected=${encodeURIComponent(userId)}`, { replace: true });
     } else {
       navigate('/users', { replace: true });
     }
