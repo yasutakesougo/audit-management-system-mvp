@@ -17,8 +17,9 @@ import ToggleButton from '@mui/material/ToggleButton';
 import ToggleButtonGroup from '@mui/material/ToggleButtonGroup';
 import Typography from '@mui/material/Typography';
 import type { ReactNode } from 'react';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { BehaviorIntensity, BehaviorMood, BehaviorObservation, MOCK_OBSERVATION_MASTER } from '../../domain/daily/types';
+import { getScheduleKey } from '@/features/daily/domain/getScheduleKey';
 import type { ScheduleItem } from './ProcedurePanel';
 
 export type RecordPanelLockState = 'unlocked' | 'no-user' | 'unconfirmed';
@@ -26,8 +27,12 @@ export type RecordPanelLockState = 'unlocked' | 'no-user' | 'unconfirmed';
 type InteractiveRecordPanelProps = {
   title?: string;
   lockState: RecordPanelLockState;
-  onSubmit: (data: Omit<BehaviorObservation, 'id' | 'userId'>) => void;
+  onSubmit: (data: Omit<BehaviorObservation, 'id' | 'userId'>) => Promise<void> | void;
   schedule?: ScheduleItem[];
+  selectedSlotKey?: string;
+  onSlotChange?: (next: string) => void;
+  onAfterSubmit?: (slotKey: string | null) => void;
+  recordDate?: Date;
   children?: undefined;
 };
 
@@ -44,8 +49,6 @@ const isInteractiveRecordPanel = (props: RecordPanelProps): props is Interactive
   'onSubmit' in props;
 
 const MOOD_OPTIONS: BehaviorMood[] = ['良好', '普通', 'やや不安定', '不安定', '高揚', '疲労'];
-
-const getScheduleKey = (item: ScheduleItem) => `${item.time}-${item.activity}`;
 
 export function RecordPanel(props: RecordPanelProps): JSX.Element {
   if (!isInteractiveRecordPanel(props)) {
@@ -102,7 +105,7 @@ export function RecordPanel(props: RecordPanelProps): JSX.Element {
     );
   }
 
-  const { title, lockState, onSubmit, schedule = [] } = props;
+  const { title, lockState, onSubmit, schedule = [], selectedSlotKey: controlledSlotKey, onSlotChange, onAfterSubmit, recordDate } = props;
   const [selectedBehavior, setSelectedBehavior] = useState<string | null>(null);
   const [selectedAntecedent, setSelectedAntecedent] = useState<string | null>(null);
   const [selectedConsequence, setSelectedConsequence] = useState<string | null>(null);
@@ -115,9 +118,21 @@ export function RecordPanel(props: RecordPanelProps): JSX.Element {
   const [memo, setMemo] = useState('');
   const [durationMinutes, setDurationMinutes] = useState(5);
   const [userMood, setUserMood] = useState<BehaviorMood | null>(null);
+  const observationRef = useRef<HTMLInputElement | HTMLTextAreaElement>(null);
+
+  const isControlledSlot = typeof controlledSlotKey === 'string';
+  const effectiveSelectedSlotKey = isControlledSlot ? controlledSlotKey : selectedSlotKey;
+  const resolvedRecordDate = useMemo(() => recordDate ?? new Date(), [recordDate]);
+  const recordDateLabel = useMemo(
+    () => resolvedRecordDate.toLocaleDateString('ja-JP', { year: 'numeric', month: '2-digit', day: '2-digit' }),
+    [resolvedRecordDate]
+  );
 
   const isLocked = lockState !== 'unlocked';
-  const selectedSlot = useMemo(() => schedule.find((item) => getScheduleKey(item) === selectedSlotKey) ?? null, [schedule, selectedSlotKey]);
+  const selectedSlot = useMemo(
+    () => schedule.find((item) => getScheduleKey(item.time, item.activity) === effectiveSelectedSlotKey) ?? null,
+    [schedule, effectiveSelectedSlotKey]
+  );
   const observationText = actualObservation.trim();
   const slotSelected = Boolean(selectedSlot);
   const canSubmit =
@@ -127,22 +142,38 @@ export function RecordPanel(props: RecordPanelProps): JSX.Element {
 
   useEffect(() => {
     if (!schedule.length) {
-      setSelectedSlotKey('');
+      if (!isControlledSlot) {
+        setSelectedSlotKey('');
+      }
       return;
     }
-    if (!selectedSlotKey) return;
-    const stillExists = schedule.some((item) => getScheduleKey(item) === selectedSlotKey);
-    if (!stillExists) {
+    if (!effectiveSelectedSlotKey) return;
+    const stillExists = schedule.some((item) => getScheduleKey(item.time, item.activity) === effectiveSelectedSlotKey);
+    if (!stillExists && !isControlledSlot) {
       setSelectedSlotKey('');
     }
-  }, [schedule, selectedSlotKey]);
+  }, [schedule, effectiveSelectedSlotKey, isControlledSlot]);
 
-  const handleSubmit = () => {
+  useEffect(() => {
+    if (isLocked || !effectiveSelectedSlotKey) return;
+    observationRef.current?.focus();
+  }, [effectiveSelectedSlotKey, isLocked]);
+
+  const handleSlotChange = (next: string) => {
+    if (isControlledSlot) {
+      onSlotChange?.(next);
+      return;
+    }
+    setSelectedSlotKey(next);
+    onSlotChange?.(next);
+  };
+
+  const handleSubmit = async () => {
     if (isLocked) return;
     const observation = actualObservation.trim();
     if (!observation) return;
     if (!selectedBehavior && !selectedSlot) return;
-    onSubmit({
+    await onSubmit({
       timestamp: new Date().toISOString(),
       behavior: selectedBehavior ?? '日常記録',
       antecedent: selectedAntecedent,
@@ -161,13 +192,16 @@ export function RecordPanel(props: RecordPanelProps): JSX.Element {
     setSelectedAntecedent(null);
     setSelectedConsequence(null);
     setIntensity(1);
-    setSelectedSlotKey('');
+    if (!isControlledSlot) {
+      setSelectedSlotKey('');
+    }
     setActualObservation('');
     setStaffResponse('');
     setFollowUpNote('');
     setMemo('');
     setDurationMinutes(5);
     setUserMood(null);
+    onAfterSubmit?.(selectedSlot ? getScheduleKey(selectedSlot.time, selectedSlot.activity) : null);
   };
 
   return (
@@ -210,11 +244,14 @@ export function RecordPanel(props: RecordPanelProps): JSX.Element {
       )}
       <CardContent sx={{ flex: 1, overflowY: 'auto', p: 2, opacity: isLocked ? 0.5 : 1 }}>
         <Stack spacing={3}>
-          <Box display="flex" justifyContent="space-between" alignItems="center">
+          <Box display="flex" justifyContent="space-between" alignItems="center" flexWrap="wrap" gap={1}>
             <Typography variant="h6" component="h2" fontWeight="bold">
               {title ?? '支援・行動記録 (Do)'}
             </Typography>
-            <Chip icon={<AccessTimeIcon />} label={timestamp} size="small" />
+            <Stack direction="row" spacing={1} alignItems="center">
+              <Chip label={`記録日 ${recordDateLabel}`} size="small" />
+              <Chip icon={<AccessTimeIcon />} label={timestamp} size="small" />
+            </Stack>
           </Box>
 
           {schedule.length ? (
@@ -224,15 +261,15 @@ export function RecordPanel(props: RecordPanelProps): JSX.Element {
               </Typography>
               <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1, mt: 1, mb: 2 }}>
                 {schedule.map((item) => {
-                  const key = getScheduleKey(item);
-                  const isSelected = selectedSlotKey === key;
+                  const key = getScheduleKey(item.time, item.activity);
+                  const isSelected = effectiveSelectedSlotKey === key;
                   return (
                     <Chip
                       key={key}
                       label={item.time}
                       color={isSelected ? 'primary' : 'default'}
                       variant={isSelected ? 'filled' : 'outlined'}
-                      onClick={() => !isLocked && setSelectedSlotKey((prev) => (prev === key ? '' : key))}
+                      onClick={() => !isLocked && handleSlotChange(effectiveSelectedSlotKey === key ? '' : key)}
                       disabled={isLocked}
                       sx={{ fontWeight: isSelected ? 'bold' : undefined, minWidth: 72 }}
                     />
@@ -293,6 +330,7 @@ export function RecordPanel(props: RecordPanelProps): JSX.Element {
               minRows={2}
               disabled={isLocked}
               required={!selectedBehavior}
+              inputRef={observationRef}
               fullWidth
               sx={{ mb: 2 }}
             />

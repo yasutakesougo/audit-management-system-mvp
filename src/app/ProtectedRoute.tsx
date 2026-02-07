@@ -1,5 +1,5 @@
 import { useAuth } from '@/auth/useAuth';
-import { useFeatureFlag, type FeatureFlagSnapshot } from '@/config/featureFlags';
+import { useFeatureFlags, type FeatureFlagSnapshot } from '@/config/featureFlags';
 import { isE2E } from '@/env';
 import { getAppConfig, isDemoModeEnabled, readEnv } from '@/lib/env';
 import { InteractionStatus } from '@/auth/interactionStatus';
@@ -15,7 +15,7 @@ import { Navigate, type NavigateProps, useLocation } from 'react-router-dom';
 import { useMsalContext } from '@/auth/MsalProvider';
 
 export type ProtectedRouteProps = {
-  flag: keyof FeatureFlagSnapshot;
+  flag?: keyof FeatureFlagSnapshot;
   children: ReactElement;
   fallbackPath?: NavigateProps['to'];
 };
@@ -75,7 +75,8 @@ const shouldBypassInE2E = (flag: keyof FeatureFlagSnapshot): boolean => {
 };
 
 export default function ProtectedRoute({ flag, children, fallbackPath = '/' }: ProtectedRouteProps) {
-  const enabled = useFeatureFlag(flag);
+  const flags = useFeatureFlags();
+  const enabled = flag ? flags[flag] : true;
   const { isAuthenticated, loading, shouldSkipLogin, tokenReady: tokenReadyRaw, signIn, getListReadyState: _getListReadyState, setListReadyState, acquireToken } = useAuth();
   const tokenReady = tokenReadyRaw ?? false;
   const { accounts, inProgress, instance } = useMsalContext();
@@ -174,7 +175,7 @@ export default function ProtectedRoute({ flag, children, fallbackPath = '/' }: P
   }
 
   // E2E環境では、重要でないフラグは bypass して画面テストを優先
-  if (isE2E && shouldBypassInE2E(flag)) {
+  if (flag && isE2E && shouldBypassInE2E(flag)) {
     debug('E2E bypass enabled for flag:', flag);
     return children;
   }
@@ -402,7 +403,7 @@ export default function ProtectedRoute({ flag, children, fallbackPath = '/' }: P
 }
 
 type AuthNoticeProps = {
-  flag: keyof FeatureFlagSnapshot;
+  flag?: keyof FeatureFlagSnapshot;
   pendingPath: string;
   fallbackPath: NavigateProps['to'];
   onSignIn?: () => Promise<{ success: boolean }>;

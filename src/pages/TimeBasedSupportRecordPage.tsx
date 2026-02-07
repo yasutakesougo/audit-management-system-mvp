@@ -3,6 +3,7 @@ import { ProcedurePanel } from '@/features/daily/components/split-stream/Procedu
 import { RecordPanel, type RecordPanelLockState } from '@/features/daily/components/split-stream/RecordPanel';
 import { SplitStreamLayout } from '@/features/daily/components/split-stream/SplitStreamLayout';
 import type { BehaviorObservation } from '@/features/daily/domain/daily/types';
+import { getScheduleKey } from '@/features/daily/domain/getScheduleKey';
 import { useBehaviorStore } from '@/features/daily/stores/behaviorStore';
 import { useProcedureStore, type ProcedureItem } from '@/features/daily/stores/procedureStore';
 import { useUsersDemo } from '@/features/users/usersStoreDemo';
@@ -28,6 +29,9 @@ const TimeBasedSupportRecordPage: React.FC = () => {
   const [targetUserId, setTargetUserId] = useState('');
   const [snackbarOpen, setSnackbarOpen] = useState(false);
   const [isEditOpen, setIsEditOpen] = useState(false);
+  const [selectedStepId, setSelectedStepId] = useState<string | null>(null);
+  const [scrollToStepId, setScrollToStepId] = useState<string | null>(null);
+  const recordDate = useMemo(() => new Date(), []);
   const { add, data: behaviorRecords, fetchByUser } = useBehaviorStore();
   const { getByUser, save } = useProcedureStore();
   const { data: users } = useUsersDemo();
@@ -40,15 +44,53 @@ const TimeBasedSupportRecordPage: React.FC = () => {
     if (!targetUserId) return [];
     return getByUser(targetUserId);
   }, [getByUser, targetUserId]);
+  const scheduleKeys = useMemo(() => schedule.map((item) => getScheduleKey(item.time, item.activity)), [schedule]);
+  const filledStepIds = useMemo(() => {
+    if (!schedule.length || recentObservations.length === 0) return new Set<string>();
+    const filled = new Set<string>();
+    recentObservations.forEach((observation) => {
+      if (!observation.timeSlot) return;
+      filled.add(getScheduleKey(observation.timeSlot, observation.plannedActivity ?? ''));
+    });
+    return filled;
+  }, [schedule, recentObservations]);
   const recordLockState = useMemo<RecordPanelLockState>(() => {
     if (!targetUserId) return 'no-user';
     return isAcknowledged ? 'unlocked' : 'unconfirmed';
   }, [targetUserId, isAcknowledged]);
 
   useEffect(() => {
+    if (process.env.NODE_ENV === 'production') return;
+    if (!schedule.length) return;
+    const seen = new Set<string>();
+    const dups: string[] = [];
+    schedule.forEach((item) => {
+      const key = getScheduleKey(item.time, item.activity);
+      if (seen.has(key)) {
+        dups.push(key);
+      } else {
+        seen.add(key);
+      }
+    });
+    if (dups.length) {
+      console.warn('[daily/support] Duplicate scheduleKey detected:', dups, 'Check timeSlot + plannedActivity normalization.');
+    }
+  }, [schedule]);
+
+  useEffect(() => {
     if (!targetUserId) return;
     fetchByUser(targetUserId);
   }, [fetchByUser, targetUserId]);
+
+  useEffect(() => {
+    if (!schedule.length) {
+      setSelectedStepId(null);
+      return;
+    }
+    if (selectedStepId && !scheduleKeys.includes(selectedStepId)) {
+      setSelectedStepId(null);
+    }
+  }, [schedule, scheduleKeys, selectedStepId]);
 
   const handleRecordSubmit = useCallback(async (payload: Omit<BehaviorObservation, 'id' | 'userId'>) => {
     if (!targetUserId) return;
@@ -59,9 +101,21 @@ const TimeBasedSupportRecordPage: React.FC = () => {
     setSnackbarOpen(true);
   }, [add, targetUserId]);
 
+  const handleAfterSubmit = useCallback((currentStepId: string | null) => {
+    const sourceId = currentStepId ?? selectedStepId;
+    if (!sourceId) return;
+    const currentIndex = scheduleKeys.indexOf(sourceId);
+    if (currentIndex < 0) return;
+    const nextId = scheduleKeys[currentIndex + 1] ?? sourceId;
+    setSelectedStepId(nextId);
+    setScrollToStepId(nextId);
+  }, [scheduleKeys, selectedStepId]);
+
   const handleUserChange = useCallback((event: SelectChangeEvent<string>) => {
     setTargetUserId(event.target.value);
     setIsAcknowledged(false);
+    setSelectedStepId(null);
+    setScrollToStepId(null);
   }, []);
 
   const handleSnackbarClose = useCallback(() => {
@@ -150,6 +204,13 @@ const TimeBasedSupportRecordPage: React.FC = () => {
               isAcknowledged={isAcknowledged}
               onAcknowledged={() => setIsAcknowledged(true)}
               onEdit={handleEditorOpen}
+              selectedStepId={selectedStepId}
+              onSelectStep={(_, stepId) => {
+                setSelectedStepId(stepId);
+                setScrollToStepId(stepId);
+              }}
+              filledStepIds={filledStepIds}
+              scrollToStepId={scrollToStepId}
             />
           ) : (
             <ProcedurePanel title="支援手順 (Plan)">
@@ -170,6 +231,10 @@ const TimeBasedSupportRecordPage: React.FC = () => {
               lockState={recordLockState}
               onSubmit={handleRecordSubmit}
               schedule={schedule}
+              selectedSlotKey={selectedStepId ?? ''}
+              onSlotChange={(next) => setSelectedStepId(next || null)}
+              onAfterSubmit={handleAfterSubmit}
+              recordDate={recordDate}
             />
           }
         />
