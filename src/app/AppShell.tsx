@@ -123,7 +123,7 @@ const E2E_MSAL_MOCK_ENABLED = isE2eMsalMockEnabled();
 const AppShell: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const location = useLocation();
   const navigate = useNavigate();
-  const { schedules, complianceForm, icebergPdca } = useFeatureFlags();
+  const { schedules, complianceForm, icebergPdca, staffAttendance } = useFeatureFlags();
   const { mode, toggle } = useContext(ColorModeContext);
   const dashboardPath = useDashboardPath();
   const currentRole = useAuthStore((s) => s.currentUserRole);
@@ -137,6 +137,7 @@ const AppShell: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const schedulesEnabled = Boolean(schedules);
   const complianceFormEnabled = Boolean(complianceForm);
   const icebergPdcaEnabled = Boolean(icebergPdca);
+  const staffAttendanceEnabled = Boolean(staffAttendance);
   const isDesktop = useMediaQuery(theme.breakpoints.up('md'));
   const [mobileOpen, setMobileOpen] = useState(false);
   const [desktopNavOpen, setDesktopNavOpen] = useState(false);
@@ -257,28 +258,31 @@ const AppShell: React.FC<{ children: React.ReactNode }> = ({ children }) => {
       {
         label: '利用者',
         to: '/users',
-        isActive: (pathname) => pathname.startsWith('/users'),
+        isActive: (pathname: string) => pathname.startsWith('/users'),
         icon: PeopleAltRoundedIcon,
         prefetchKey: PREFETCH_KEYS.users,
       },
       {
         label: '職員',
         to: '/staff',
-        isActive: (pathname) => pathname.startsWith('/staff') && !pathname.startsWith('/staff/attendance'),
+        isActive: (pathname: string) => pathname.startsWith('/staff') && !pathname.startsWith('/staff/attendance'),
         icon: BadgeRoundedIcon,
         prefetchKey: PREFETCH_KEYS.staff,
       },
-      {
-        label: '職員勤怠',
-        to: '/staff/attendance',
-        isActive: (pathname) => pathname.startsWith('/staff/attendance'),
-        icon: BadgeRoundedIcon,
-        prefetchKey: PREFETCH_KEYS.staff,
-      },
+      ...(staffAttendanceEnabled ? [
+        {
+          label: '職員勤怠',
+          to: '/staff/attendance',
+          isActive: (pathname: string) => pathname.startsWith('/staff/attendance'),
+          icon: BadgeRoundedIcon,
+          prefetchKey: PREFETCH_KEYS.staff,
+          testId: TESTIDS.nav.staffAttendance,
+        },
+      ] : []),
       {
         label: '設定管理',
         to: '/admin/templates',
-        isActive: (pathname) => pathname.startsWith('/admin'),
+        isActive: (pathname: string) => pathname.startsWith('/admin'),
         icon: SettingsRoundedIcon,
         prefetchKey: PREFETCH_KEYS.adminTemplates,
         prefetchKeys: [PREFETCH_KEYS.muiForms, PREFETCH_KEYS.muiOverlay],
@@ -290,7 +294,7 @@ const AppShell: React.FC<{ children: React.ReactNode }> = ({ children }) => {
       items.splice(3, 0, {
         label: '氷山PDCA',
         to: '/analysis/iceberg-pdca',
-        isActive: (pathname) => pathname.startsWith('/analysis/iceberg-pdca'),
+        isActive: (pathname: string) => pathname.startsWith('/analysis/iceberg-pdca'),
         icon: HistoryIcon,
         prefetchKey: PREFETCH_KEYS.icebergPdcaBoard,
         testId: TESTIDS.nav.icebergPdca,
@@ -301,7 +305,7 @@ const AppShell: React.FC<{ children: React.ReactNode }> = ({ children }) => {
       items.push({
         label: 'スケジュール',
         to: '/schedules/week',
-        isActive: (pathname) => pathname.startsWith('/schedule') || pathname.startsWith('/schedules'),
+        isActive: (pathname: string) => pathname.startsWith('/schedule') || pathname.startsWith('/schedules'),
         testId: TESTIDS.nav.schedules,
         icon: EventAvailableRoundedIcon,
         prefetchKey: PREFETCH_KEYS.schedulesWeek,
@@ -313,13 +317,13 @@ const AppShell: React.FC<{ children: React.ReactNode }> = ({ children }) => {
       items.push({
         label: 'コンプラ報告',
         to: '/compliance',
-        isActive: (pathname) => pathname.startsWith('/compliance'),
+        isActive: (pathname: string) => pathname.startsWith('/compliance'),
         icon: ChecklistRoundedIcon,
       });
     }
 
     return items;
-  }, [dashboardPath, currentRole, schedulesEnabled, complianceFormEnabled, icebergPdcaEnabled, isAdmin, authzReady]);
+  }, [dashboardPath, currentRole, schedulesEnabled, complianceFormEnabled, icebergPdcaEnabled, staffAttendanceEnabled, isAdmin, authzReady]);
 
   const filteredNavItems = useMemo(() => {
     const q = navQuery.trim().toLowerCase();

@@ -4,13 +4,16 @@ import Box from '@mui/material/Box';
 import Button from '@mui/material/Button';
 import Card from '@mui/material/Card';
 import CardContent from '@mui/material/CardContent';
+import Chip from '@mui/material/Chip';
 import IconButton from '@mui/material/IconButton';
 import List from '@mui/material/List';
 import ListItem from '@mui/material/ListItem';
 import ListItemText from '@mui/material/ListItemText';
+import ToggleButton from '@mui/material/ToggleButton';
 import Typography from '@mui/material/Typography';
 import type { ReactNode } from 'react';
-import { useCallback, useRef } from 'react';
+import { useCallback, useEffect, useMemo, useRef } from 'react';
+import { getScheduleKey } from '@/features/daily/domain/getScheduleKey';
 
 export type ScheduleItem = {
   id?: string;
@@ -26,6 +29,14 @@ type GuidedProcedurePanelProps = {
   isAcknowledged: boolean;
   onAcknowledged: () => void;
   onEdit?: () => void;
+  selectedStepId?: string | null;
+  onSelectStep?: (step: ScheduleItem, stepId: string) => void;
+  filledStepIds?: Set<string>;
+  scrollToStepId?: string | null;
+  showUnfilledOnly?: boolean;
+  onToggleUnfilledOnly?: () => void;
+  unfilledCount?: number;
+  totalCount?: number;
   children?: undefined;
 };
 
@@ -41,6 +52,8 @@ export type ProcedurePanelProps = GuidedProcedurePanelProps | CustomProcedurePan
 
 const isGuidedProcedurePanel = (props: ProcedurePanelProps): props is GuidedProcedurePanelProps =>
   'schedule' in props;
+
+const getItemScheduleKey = (item: ScheduleItem) => getScheduleKey(item.time, item.activity);
 
 export function ProcedurePanel(props: ProcedurePanelProps): JSX.Element {
   if (!isGuidedProcedurePanel(props)) {
@@ -64,9 +77,25 @@ export function ProcedurePanel(props: ProcedurePanelProps): JSX.Element {
     schedule,
     isAcknowledged,
     onAcknowledged,
-    onEdit
+    onEdit,
+    selectedStepId,
+    onSelectStep,
+    filledStepIds,
+    scrollToStepId,
+    showUnfilledOnly,
+    onToggleUnfilledOnly,
+    unfilledCount,
+    totalCount
   } = props;
   const scrollRef = useRef<HTMLDivElement>(null);
+  const itemRefs = useRef(new Map<string, HTMLLIElement | null>());
+
+  const scheduleKeys = useMemo(() => schedule.map((item) => getItemScheduleKey(item)), [schedule]);
+  const visibleSchedule = useMemo(() => {
+    if (!showUnfilledOnly) return schedule;
+    if (!filledStepIds) return schedule;
+    return schedule.filter((item) => !filledStepIds.has(getItemScheduleKey(item)));
+  }, [filledStepIds, schedule, showUnfilledOnly]);
 
   const handleScroll = useCallback(() => {
     if (!scrollRef.current || isAcknowledged) return;
@@ -76,6 +105,13 @@ export function ProcedurePanel(props: ProcedurePanelProps): JSX.Element {
       scrollRef.current.dataset.reachedBottom = 'true';
     }
   }, [isAcknowledged]);
+
+  useEffect(() => {
+    if (!scrollToStepId) return;
+    const targetRef = itemRefs.current.get(scrollToStepId);
+    if (!targetRef) return;
+    targetRef.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }, [scrollToStepId, scheduleKeys]);
 
   return (
     <Card variant="outlined" sx={{ height: '100%', display: 'flex', flexDirection: 'column', bgcolor: 'grey.50' }}>
@@ -100,6 +136,29 @@ export function ProcedurePanel(props: ProcedurePanelProps): JSX.Element {
               <EditIcon fontSize="small" />
             </IconButton>
           )}
+          {(onToggleUnfilledOnly || typeof unfilledCount === 'number') && (
+            <Box display="flex" alignItems="center" gap={1} sx={{ ml: 'auto' }}>
+              {typeof unfilledCount === 'number' && typeof totalCount === 'number' && (
+                <Chip
+                  label={`未記入 ${unfilledCount}/${totalCount}`}
+                  size="small"
+                  color={unfilledCount === 0 ? 'success' : 'default'}
+                  variant={unfilledCount === 0 ? 'filled' : 'outlined'}
+                />
+              )}
+              {onToggleUnfilledOnly && (
+                <ToggleButton
+                  value="unfilled"
+                  selected={Boolean(showUnfilledOnly)}
+                  onChange={onToggleUnfilledOnly}
+                  size="small"
+                  color="primary"
+                >
+                  未記入のみ
+                </ToggleButton>
+              )}
+            </Box>
+          )}
         </Box>
       </CardContent>
 
@@ -110,10 +169,30 @@ export function ProcedurePanel(props: ProcedurePanelProps): JSX.Element {
         data-testid="procedure-scroll-container"
       >
         <List disablePadding>
-          {schedule.map((item, index) => (
+          {visibleSchedule.map((item) => {
+            const stepId = getItemScheduleKey(item);
+            const isFilled = filledStepIds?.has(stepId) ?? false;
+            const isSelected = selectedStepId === stepId;
+            return (
             <ListItem
-              key={item.id ?? `${item.time}-${index}`}
+              key={stepId}
               alignItems="flex-start"
+              ref={(node) => {
+                itemRefs.current.set(stepId, node);
+              }}
+              role={onSelectStep ? 'button' : undefined}
+              tabIndex={onSelectStep ? 0 : undefined}
+              onClick={onSelectStep ? () => onSelectStep(item, stepId) : undefined}
+              onKeyDown={
+                onSelectStep
+                  ? (event) => {
+                      if (event.key === 'Enter' || event.key === ' ') {
+                        event.preventDefault();
+                        onSelectStep(item, stepId);
+                      }
+                    }
+                  : undefined
+              }
               sx={{
                 borderBottom: '1px solid',
                 borderColor: 'divider',
@@ -121,18 +200,31 @@ export function ProcedurePanel(props: ProcedurePanelProps): JSX.Element {
                 gap: 1,
                 py: 2,
                 px: 2,
-                bgcolor: item.isKey ? 'warning.50' : 'background.paper'
+                bgcolor: isSelected ? 'primary.50' : item.isKey ? 'warning.50' : 'background.paper',
+                borderLeft: isFilled ? '4px solid' : '4px solid transparent',
+                borderLeftColor: isFilled ? 'success.main' : 'transparent',
+                cursor: onSelectStep ? 'pointer' : 'default'
               }}
             >
               <Box display="flex" justifyContent="space-between" width="100%" mb={0.5}>
                 <Typography variant="subtitle2" color="primary" fontWeight="bold">
                   {item.time}
                 </Typography>
-                {item.isKey && (
-                  <Typography variant="caption" color="warning.dark" fontWeight="bold">
-                    重要
-                  </Typography>
-                )}
+                <Box display="flex" alignItems="center" gap={1}>
+                  {filledStepIds && (
+                    <Chip
+                      label={isFilled ? '記録済み' : '未記入'}
+                      size="small"
+                      color={isFilled ? 'success' : 'default'}
+                      variant={isFilled ? 'filled' : 'outlined'}
+                    />
+                  )}
+                  {item.isKey && (
+                    <Typography variant="caption" color="warning.dark" fontWeight="bold">
+                      重要
+                    </Typography>
+                  )}
+                </Box>
               </Box>
               <ListItemText
                 primary={
@@ -158,8 +250,17 @@ export function ProcedurePanel(props: ProcedurePanelProps): JSX.Element {
                 }
               />
             </ListItem>
-          ))}
+          );
+          })}
         </List>
+
+        {showUnfilledOnly && visibleSchedule.length === 0 && (
+          <Box sx={{ p: 3, textAlign: 'center' }}>
+            <Typography variant="body2" color="text.secondary">
+              未記入の手順はありません。
+            </Typography>
+          </Box>
+        )}
 
         <Box sx={{ p: 3, textAlign: 'center', bgcolor: isAcknowledged ? 'success.50' : 'error.50' }}>
           <Typography variant="body2" fontWeight="bold" gutterBottom>
