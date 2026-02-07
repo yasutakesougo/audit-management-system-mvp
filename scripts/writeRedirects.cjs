@@ -1,6 +1,11 @@
 const fs = require('fs');
 const path = require('path');
 
+if (process.env.DEPLOY_TARGET === 'cloudflare') {
+  console.log('[redirects] skipped for Cloudflare');
+  process.exit(0);
+}
+
 const distDir = path.join(process.cwd(), 'dist');
 const redirectsPath = path.join(distDir, '_redirects');
 
