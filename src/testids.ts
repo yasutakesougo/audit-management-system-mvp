@@ -82,6 +82,7 @@ export const TESTIDS = {
   'daily-footer-activity': 'daily-footer-activity',
   'daily-footer-support': 'daily-footer-support',
   'daily-footer-health': 'daily-footer-health',
+  'daily-table-record-page': 'daily-table-record-page',
   'daily-table-record-form': 'daily-table-record-form',
   'daily-table-record-form-user-list': 'daily-table-record-form-user-list',
   'daily-table-record-form-table': 'daily-table-record-form-table',

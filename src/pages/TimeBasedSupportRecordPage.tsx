@@ -21,6 +21,7 @@ import Snackbar from '@mui/material/Snackbar';
 import Stack from '@mui/material/Stack';
 import Typography from '@mui/material/Typography';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { FullScreenDailyDialogPage } from '@/features/daily/components/FullScreenDailyDialogPage';
 
 const TimeBasedSupportRecordPage: React.FC = () => {
   const [isAcknowledged, setIsAcknowledged] = useState(false);
@@ -82,12 +83,17 @@ const TimeBasedSupportRecordPage: React.FC = () => {
   }, []);
 
   return (
-    <Container
-      maxWidth="xl"
-      disableGutters
-      sx={{ height: '100vh', display: 'flex', flexDirection: 'column', bgcolor: 'grey.100' }}
-      data-testid="iceberg-time-based-support-record-page"
+    <FullScreenDailyDialogPage
+      title="支援（サポート記録）"
+      backTo="/daily/menu"
+      testId="daily-support-page"
     >
+      <Container
+        maxWidth="xl"
+        disableGutters
+        sx={{ height: '100vh', display: 'flex', flexDirection: 'column', bgcolor: 'grey.100' }}
+        data-testid="iceberg-time-based-support-record-page"
+      >
       <Paper
         elevation={0}
         sx={{
@@ -225,7 +231,8 @@ const TimeBasedSupportRecordPage: React.FC = () => {
           行動記録を保存しました
         </Alert>
       </Snackbar>
-    </Container>
+      </Container>
+    </FullScreenDailyDialogPage>
   );
 };
 

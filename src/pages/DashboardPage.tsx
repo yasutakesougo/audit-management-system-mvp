@@ -37,11 +37,12 @@ import Stack from '@mui/material/Stack';
 import Tab from '@mui/material/Tab';
 import Tabs from '@mui/material/Tabs';
 import Typography from '@mui/material/Typography';
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { alpha } from '@mui/material/styles';
 import { Link, useNavigate } from 'react-router-dom';
 import { PersonDaily, SeizureRecord } from '../domain/daily/types';
 import DashboardSafetyHUD from '@/features/dashboard/DashboardSafetyHUD';
+import { useDashboardViewModel, type DashboardSection } from '@/features/dashboard/useDashboardViewModel';
 import { useAttendanceStore } from '@/features/attendance/store';
 import { useStaffStore } from '@/features/staff/store';
 import HandoffSummaryForMeeting from '../features/handoff/HandoffSummaryForMeeting';
@@ -213,6 +214,13 @@ const ADMIN_TABS = [
 ];
 
 const DashboardPage: React.FC<DashboardPageProps> = ({ audience = 'staff' }) => {
+  /**
+   * Phase 4 note:
+   * - このページは「表示（レイアウト/配置）」に寄せ、判断/計算は ViewModel に集約する方針。
+   * - 新しいカードやセクション追加は原則 `useDashboardViewModel` に寄せて、
+   *   ここでは `vm.sections` を描画するだけに留める（Page肥大化を防ぐ）。
+   * - E2E/スモークの安定性のため、Page側に副作用やデータ整形を増やさない。
+   */
   const navigate = useNavigate();
   const { schedules: schedulesEnabled } = useFeatureFlags();
   const [tabValue, setTabValue] = useState(0);
@@ -396,6 +404,24 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ audience = 'staff' }) => 
     };
   }, [users.length, stats.recordedUsers, intensiveSupportUsers.length]);
 
+  const vm = useDashboardViewModel({
+    role: audience,
+    summary: {
+      attendanceSummary,
+      dailyRecordStatus,
+      stats,
+      handoff: {
+        total: handoffTotal,
+        byStatus: handoffStatus,
+        critical: handoffCritical,
+      },
+      timing: {
+        isMorningTime,
+        isEveningTime,
+      },
+    },
+  });
+
   type ScheduleItem = {
     id: string;
     time: string;
@@ -504,74 +530,26 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ audience = 'staff' }) => 
   };
 
   useEffect(() => {
-    if (audience !== 'admin') return;
+    if (vm.role !== 'admin') return;
     const maxIndex = ADMIN_TABS.length - 1;
     if (tabValue > maxIndex) {
       setTabValue(0);
     }
-  }, [audience, tabValue]);
+  }, [vm.role, tabValue]);
 
-  return (
-    <Container maxWidth="lg" data-testid="dashboard-page">
-      <Box sx={{ py: { xs: 1.5, sm: 2, md: 2.5 } }}>
-        {/* ヘッダー */}
-        <Box sx={{ mb: 3 }}>
-          <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 1 }}>
-            <Box>
-              <Typography variant="h4" component="h1" gutterBottom>
-                <DashboardIcon sx={{ verticalAlign: 'middle', mr: 2 }} />
-                黒ノート
-              </Typography>
-              <Typography variant="body1" color="text.secondary">
-                全利用者の活動状況と支援記録の統合的な管理・分析
-              </Typography>
-            </Box>
+  const assertNever = (value: never): never => {
+    throw new Error(`Unhandled dashboard section key: ${String(value)}`);
+  };
 
-            {/* 朝会・夕会ガイドボタン */}
-            <Stack direction="row" spacing={1}>
-              <Button
-                variant="outlined"
-                startIcon={<WbSunnyIcon />}
-                onClick={() => {
-                  setMeetingKind('morning');
-                  setMeetingDrawerOpen(true);
-                }}
-                size="small"
-              >
-                朝会ガイド
-              </Button>
-              <Button
-                variant="outlined"
-                startIcon={<NightsStayIcon />}
-                onClick={() => {
-                  setMeetingKind('evening');
-                  setMeetingDrawerOpen(true);
-                }}
-                size="small"
-                color="secondary"
-              >
-                夕会ガイド
-              </Button>
-              <Button
-                variant="contained"
-                startIcon={<AccessTimeIcon />}
-                component={Link}
-                to="/handoff-timeline"
-                size="small"
-                color="primary"
-              >
-                申し送りタイムライン
-              </Button>
-            </Stack>
-          </Box>
-        </Box>
-
-        <Stack spacing={{ xs: 2, sm: 3, md: 4 }} sx={{ mb: { xs: 2, sm: 3 } }}>
-          <DashboardSafetyHUD />
-
+  const renderSection = useCallback((section: DashboardSection) => {
+    switch (section.key) {
+      case 'safety':
+        return <DashboardSafetyHUD />;
+      case 'attendance':
+        return (
           <Paper elevation={3} sx={{ p: { xs: 2, sm: 2.5, md: 3 } }}>
             <Typography variant="h5" sx={{ fontWeight: 700, mb: 1.5 }}>
-              今日の通所 / 出勤状況
+              {section.title ?? '今日の通所 / 出勤状況'}
             </Typography>
             <Grid container spacing={{ xs: 2, sm: 2, md: 3 }} sx={{ mt: 2 }}>
               <Grid size={{ xs: 12, sm: 4, md: 2 }}>
@@ -624,10 +602,12 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ audience = 'staff' }) => 
               </Grid>
             </Grid>
           </Paper>
-
+        );
+      case 'daily':
+        return (
           <Paper elevation={3} sx={{ p: { xs: 2, sm: 2.5, md: 3 } }}>
             <Typography variant="h5" sx={{ fontWeight: 700, mb: 1.5 }}>
-              日次記録状況
+              {section.title ?? '日次記録状況'}
             </Typography>
             <Grid container spacing={{ xs: 2, sm: 3 }} sx={{ mt: 1 }}>
               {dailyStatusCards.map(({ label, completed, pending, planned }) => {
@@ -652,7 +632,9 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ audience = 'staff' }) => 
               })}
             </Grid>
           </Paper>
-
+        );
+      case 'schedule':
+        return (
           <Paper elevation={3} sx={{ p: { xs: 2, sm: 2.5, md: 3 } }}>
             <Stack
               direction={{ xs: 'column', sm: 'row' }}
@@ -662,7 +644,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ audience = 'staff' }) => 
               sx={{ mb: 1.5 }}
             >
               <Typography variant="h5" sx={{ fontWeight: 700 }}>
-                今日の予定
+                {section.title ?? '今日の予定'}
               </Typography>
               {schedulesEnabled && (
                 <Button
@@ -706,7 +688,9 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ audience = 'staff' }) => 
               ))}
             </Grid>
           </Paper>
-
+        );
+      case 'handover':
+        return (
           <Paper elevation={3} sx={{ p: 3 }} {...tid(TESTIDS['dashboard-handoff-summary'])}>
             <Stack spacing={2}>
               <Stack
@@ -715,7 +699,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ audience = 'staff' }) => 
                 alignItems={{ xs: 'flex-start', sm: 'center' }}
               >
                 <Typography variant="h5" sx={{ fontWeight: 700 }}>
-                  申し送りタイムライン
+                  {section.title ?? '申し送りタイムライン'}
                 </Typography>
                 {handoffCritical > 0 && (
                   <Chip
@@ -775,58 +759,59 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ audience = 'staff' }) => 
               </Stack>
             </Stack>
           </Paper>
-        </Stack>
-
-        {/* 基本統計 */}
-        <Stack direction={{ xs: 'column', md: 'row' }} spacing={2} sx={{ mb: 3 }}>
-          <Paper sx={{ p: 2, textAlign: 'center', flex: 1 }}>
-            <Typography variant="h4" color="primary">
-              {stats.totalUsers}名
-            </Typography>
-            <Typography variant="body2" color="text.secondary">
-              総利用者数
-            </Typography>
-          </Paper>
-
-          <Paper sx={{ p: 2, textAlign: 'center', flex: 1 }}>
-            <Typography variant="h4" color="success.main">
-              {stats.recordedUsers}名
-            </Typography>
-            <Typography variant="body2" color="text.secondary">
-              本日記録完了
-            </Typography>
-            <Box sx={{ mt: 1 }}>
-              <LinearProgress
-                variant="determinate"
-                value={stats.completionRate}
-                sx={{ height: 6, borderRadius: 3 }}
-              />
-              <Typography variant="caption" color="text.secondary">
-                {Math.round(stats.completionRate)}%
+        );
+      case 'stats':
+        return (
+          <Stack direction={{ xs: 'column', md: 'row' }} spacing={2} sx={{ mb: 3 }}>
+            <Paper sx={{ p: 2, textAlign: 'center', flex: 1 }}>
+              <Typography variant="h4" color="primary">
+                {stats.totalUsers}名
               </Typography>
-            </Box>
-          </Paper>
+              <Typography variant="body2" color="text.secondary">
+                総利用者数
+              </Typography>
+            </Paper>
 
-          <Paper sx={{ p: 2, textAlign: 'center', flex: 1 }}>
-            <Typography variant="h4" color="secondary.main">
-              {intensiveSupportUsers.length}名
-            </Typography>
-            <Typography variant="body2" color="text.secondary">
-              強度行動障害対象者
-            </Typography>
-          </Paper>
+            <Paper sx={{ p: 2, textAlign: 'center', flex: 1 }}>
+              <Typography variant="h4" color="success.main">
+                {stats.recordedUsers}名
+              </Typography>
+              <Typography variant="body2" color="text.secondary">
+                本日記録完了
+              </Typography>
+              <Box sx={{ mt: 1 }}>
+                <LinearProgress
+                  variant="determinate"
+                  value={stats.completionRate}
+                  sx={{ height: 6, borderRadius: 3 }}
+                />
+                <Typography variant="caption" color="text.secondary">
+                  {Math.round(stats.completionRate)}%
+                </Typography>
+              </Box>
+            </Paper>
 
-          <Paper sx={{ p: 2, textAlign: 'center', flex: 1 }}>
-            <Typography variant="h4" color={stats.seizureCount > 0 ? "error.main" : "success.main"}>
-              {stats.seizureCount}件
-            </Typography>
-            <Typography variant="body2" color="text.secondary">
-              本日発作記録
-            </Typography>
-          </Paper>
-        </Stack>
+            <Paper sx={{ p: 2, textAlign: 'center', flex: 1 }}>
+              <Typography variant="h4" color="secondary.main">
+                {intensiveSupportUsers.length}名
+              </Typography>
+              <Typography variant="body2" color="text.secondary">
+                強度行動障害対象者
+              </Typography>
+            </Paper>
 
-        {audience === 'admin' && (
+            <Paper sx={{ p: 2, textAlign: 'center', flex: 1 }}>
+              <Typography variant="h4" color={stats.seizureCount > 0 ? 'error.main' : 'success.main'}>
+                {stats.seizureCount}件
+              </Typography>
+              <Typography variant="body2" color="text.secondary">
+                本日発作記録
+              </Typography>
+            </Paper>
+          </Stack>
+        );
+      case 'adminOnly':
+        return vm.role === 'admin' ? (
           <>
             {/* タブナビゲーション */}
             <Card sx={{ mb: 3 }}>
@@ -1046,9 +1031,9 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ audience = 'staff' }) => 
               </Stack>
             </TabPanel>
           </>
-        )}
-
-        {audience === 'staff' && (
+        ) : null;
+      case 'staffOnly':
+        return vm.role === 'staff' ? (
           <Stack spacing={3}>
             {/* 🌅 朝会カード */}
             <Card
@@ -1184,7 +1169,98 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ audience = 'staff' }) => 
               </CardContent>
             </Card>
           </Stack>
-        )}
+        ) : null;
+      default:
+        return assertNever(section.key);
+    }
+  }, [
+    attendanceSummary,
+    dailyStatusCards,
+    handoffCritical,
+    handoffStatus,
+    handoffTotal,
+    intensiveSupportUsers,
+    isEveningTime,
+    isMorningTime,
+    openTimeline,
+    prioritizedUsers,
+    renderScheduleLanes,
+    scheduleLanesToday.organizationLane,
+    scheduleLanesToday.staffLane,
+    scheduleLanesToday.userLane,
+    scheduleLanesTomorrow.organizationLane,
+    scheduleLanesTomorrow.staffLane,
+    scheduleLanesTomorrow.userLane,
+    schedulesEnabled,
+    stats,
+    tabValue,
+    usageMap,
+    users,
+    vm.role,
+  ]);
+
+  return (
+    <Container maxWidth="lg" data-testid="dashboard-page">
+      <Box sx={{ py: { xs: 1.5, sm: 2, md: 2.5 } }}>
+        {/* ヘッダー */}
+        <Box sx={{ mb: 3 }}>
+          <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 1 }}>
+            <Box>
+              <Typography variant="h4" component="h1" gutterBottom>
+                <DashboardIcon sx={{ verticalAlign: 'middle', mr: 2 }} />
+                黒ノート
+              </Typography>
+              <Typography variant="body1" color="text.secondary">
+                全利用者の活動状況と支援記録の統合的な管理・分析
+              </Typography>
+            </Box>
+
+            {/* 朝会・夕会ガイドボタン */}
+            <Stack direction="row" spacing={1}>
+              <Button
+                variant="outlined"
+                startIcon={<WbSunnyIcon />}
+                onClick={() => {
+                  setMeetingKind('morning');
+                  setMeetingDrawerOpen(true);
+                }}
+                size="small"
+              >
+                朝会ガイド
+              </Button>
+              <Button
+                variant="outlined"
+                startIcon={<NightsStayIcon />}
+                onClick={() => {
+                  setMeetingKind('evening');
+                  setMeetingDrawerOpen(true);
+                }}
+                size="small"
+                color="secondary"
+              >
+                夕会ガイド
+              </Button>
+              <Button
+                variant="contained"
+                startIcon={<AccessTimeIcon />}
+                component={Link}
+                to="/handoff-timeline"
+                size="small"
+                color="primary"
+              >
+                申し送りタイムライン
+              </Button>
+            </Stack>
+          </Box>
+        </Box>
+
+        <Stack spacing={{ xs: 2, sm: 3, md: 4 }} sx={{ mb: { xs: 2, sm: 3 } }}>
+          {vm.sections.map((section) => (
+            <React.Fragment key={section.key}>
+              {section.enabled === false ? null : renderSection(section)}
+            </React.Fragment>
+          ))}
+        </Stack>
 
       </Box>
 
