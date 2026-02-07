@@ -25,9 +25,44 @@ jobs:
           npm ls dayjs || true
           node -e "console.log('dayjs resolved:', require.resolve('dayjs'))"
       - name: Start dev server (background)
-        run: npm run dev -- --host --port 5173 --clearScreen false &
+        run: |
+          set -euo pipefail
+          nohup npm run dev -- --host 127.0.0.1 --port 5173 --strictPort --clearScreen false > vite-dev.log 2>&1 &
+          echo $! > vite-dev.pid
+          sleep 2
+          echo "Vite PID: $(cat vite-dev.pid)"
+          ps -p "$(cat vite-dev.pid)" -o pid,cmd || true
+          echo "---- vite-dev.log (head) ----"
+          head -n 200 vite-dev.log || true
+          echo "---- vite-dev.log (tail) ----"
+          tail -n 200 vite-dev.log || true
       - name: Wait for dev server
-        run: npx wait-on http://127.0.0.1:5173
+        run: |
+          set -euo pipefail
+          echo "Waiting for http://127.0.0.1:5173/ to respond with 200..."
+          for i in {1..60}; do
+            if ! ps -p "$(cat vite-dev.pid 2>/dev/null)" >/dev/null 2>&1; then
+              echo "❌ Vite process is not running"
+              tail -n 200 vite-dev.log || true
+              exit 1
+            fi
+            if curl -sf --max-time 3 http://127.0.0.1:5173/ >/dev/null; then
+              echo "✅ Server ready after ${i} attempts"
+              exit 0
+            fi
+            echo "Attempt ${i}/60 failed, retrying in 3s..."
+            sleep 3
+          done
+          echo "❌ Server did not respond after 180s"
+          tail -n 100 vite-dev.log || true
+          exit 1
+      - name: Dump dev server log on failure
+        if: failure()
+        run: |
+          echo "---- vite-dev.log (tail) ----"
+          tail -n 400 vite-dev.log || true
+          echo "---- lsof 5173 ----"
+          lsof -iTCP:5173 -sTCP:LISTEN || true
       - name: Unit (week overlap)
         run: npm run test:schedule:unit
       - name: E2E (ARIA smoke, fixtures)
