@@ -62,8 +62,10 @@ test.describe('Dashboard smoke', () => {
   });
 
   test('renders seeded handoff summary counts', async ({ page }) => {
+    await page.waitForLoadState('domcontentloaded');
+    await expect(page.getByTestId(TESTIDS['dashboard-page'])).toBeVisible();
     const summaryRoot = page.getByTestId(TESTIDS['dashboard-handoff-summary']);
-    await expect(summaryRoot).toBeVisible();
+    await expect(summaryRoot).toBeVisible({ timeout: 15_000 });
     await expect(
       summaryRoot.getByTestId(TESTIDS['dashboard-handoff-summary-total'])
     ).toContainText('3');

@@ -7,13 +7,21 @@ export function useBehaviorStore() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<Error | null>(null);
   const repo = getBehaviorRepository();
+  const RECENT_LIMIT = 5;
+
+  const ensureDesc = useCallback((items: BehaviorObservation[]) => {
+    return [...items].sort(
+      (a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime(),
+    );
+  }, []);
 
   const fetchByUser = useCallback(async (userId: string) => {
     if (!userId) return;
     setLoading(true);
     try {
-      const result = await repo.getByUser(userId);
-      setData(result);
+      const result = await repo.listByUser(userId, { order: 'desc', limit: RECENT_LIMIT });
+      const normalized = ensureDesc(result).slice(0, RECENT_LIMIT);
+      setData(normalized);
       setError(null);
     } catch (err) {
       console.error(err);
@@ -21,7 +29,7 @@ export function useBehaviorStore() {
     } finally {
       setLoading(false);
     }
-  }, [repo]);
+  }, [RECENT_LIMIT, ensureDesc, repo]);
 
   const add = useCallback(async (record: Omit<BehaviorObservation, 'id'>) => {
     setLoading(true);
