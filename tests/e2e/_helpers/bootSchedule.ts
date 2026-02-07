@@ -60,6 +60,7 @@ export type ScheduleBootOptions = {
   scheduleItems?: ScheduleItem[];
   orgItems?: Array<Record<string, unknown>>;
   mode?: 'sharepoint' | 'fixtures';
+  ui?: 'legacy' | 'weekV2' | 'auto';
   enableWeekV2?: boolean;
   ensureList?: boolean;
   env?: Record<string, string>;
@@ -92,7 +93,9 @@ export async function bootSchedule(page: Page, options: ScheduleBootOptions = {}
   const date = options.date ?? SCHEDULE_FIXTURE_BASE_DATE;
   const seedOptions = options.seed ?? {};
   const mode = options.mode ?? 'sharepoint';
-  const enableWeekV2 = options.enableWeekV2 ?? true;
+  const uiMode = options.ui ?? 'auto';
+  const enableWeekV2 =
+    uiMode === 'legacy' ? false : uiMode === 'weekV2' ? true : (options.enableWeekV2 ?? true);
   const ensureList = options.ensureList ?? true;
   const autoNavigate = options.autoNavigate ?? false;
   const route = options.route ?? '/schedules/day';
