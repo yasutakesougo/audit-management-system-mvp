@@ -14,7 +14,7 @@ export type SpScheduleCategoryRaw = z.infer<typeof SpScheduleCategoryRaw>;
 /**
  * SharePoint raw row schema.
  * - Current Schedules list uses: Title, Start, End, UserCode, AssignedStaff, etc.
- * - Legacy schedule list may use: EventDate, EndDate, cr014_usercode, cr014_category.
+ * - Legacy schedule list may use: EventDate, EndDate, cr014_category.
  *
  * We accept both to keep the adapter resilient.
  */
@@ -28,14 +28,13 @@ export const SpScheduleRowSchema = z
     EndDate: z.string().optional().nullable(),
 
     UserCode: z.string().optional().nullable(),
-    cr014_usercode: z.string().optional().nullable(),
-    cr014_personId: z.string().optional().nullable(),
-    cr014_personName: z.string().optional().nullable(),
     TargetUserId: z.unknown().optional().nullable(),
 
     AssignedStaff: z.union([z.number(), z.string()]).optional().nullable(),
     ServiceType: z.string().optional().nullable(),
+    cr014_serviceType: z.string().optional().nullable(),
     LocationName: z.string().optional().nullable(),
+    Location: z.string().optional().nullable(), // Event list uses Location instead of LocationName
     Notes: z.string().optional().nullable(),
     AcceptedOn: z.string().optional().nullable(),
     AcceptedBy: z.string().optional().nullable(),
@@ -45,19 +44,59 @@ export const SpScheduleRowSchema = z
     StatusReason: z.string().optional().nullable(),
     EntryHash: z.string().optional().nullable(),
 
+    // Phase 1: owner/visibility
+    OwnerUserId: z.string().optional().nullable(),
+    Visibility: z.string().optional().nullable(),
+
     Created: z.string().optional().nullable(),
     Modified: z.string().optional().nullable(),
 
     // optional legacy category columns
     cr014_category: SpScheduleCategoryRaw.optional().nullable(),
     Category: SpScheduleCategoryRaw.optional().nullable(),
+
+    // Phase 2-0: etag for conflict detection
+    __metadata: z
+      .object({
+        id: z.string().optional(),
+      })
+      .optional()
+      .nullable(),
   })
   .passthrough();
 
 export type SpScheduleRow = z.infer<typeof SpScheduleRowSchema>;
 
-export const parseSpScheduleRows = (input: unknown): SpScheduleRow[] =>
-  SpScheduleRowSchema.array().parse(input);
+/**
+ * Summarize payload shape for diagnostics (avoid PII exposure)
+ */
+function summarizeShape(x: unknown) {
+  if (!x || typeof x !== 'object') return { type: typeof x };
+  const o = x as Record<string, unknown>;
+  return {
+    keys: Object.keys(o).slice(0, 40),
+    hasValue: 'value' in o,
+    valueType: typeof o.value,
+    valueLen: Array.isArray(o.value) ? o.value.length : undefined,
+    hasDResults: !!(o?.d as Record<string, unknown>)?.results,
+    dResultsLen: Array.isArray((o?.d as Record<string, unknown>)?.results)
+      ? ((o.d as Record<string, unknown>).results as unknown[]).length
+      : undefined,
+  };
+}
+
+export const parseSpScheduleRows = (input: unknown): SpScheduleRow[] => {
+  try {
+    return SpScheduleRowSchema.array().parse(input);
+  } catch (e) {
+    // Log shape details to diagnose OData format variance
+    console.error('[schedules] parseSpScheduleRows failed', {
+      shape: summarizeShape(input),
+      err: e instanceof z.ZodError ? e.issues?.slice(0, 6) : String(e),
+    });
+    throw e;
+  }
+};
 
 /** Facility/Other → Org/Staff, User stays User */
 export function mapSpCategoryToDomain(raw?: SpScheduleCategoryRaw | null): 'Org' | 'User' | 'Staff' | undefined {
@@ -128,21 +167,23 @@ export const normalizeUserId = (raw?: string | null): string | undefined => {
   return cleaned || undefined;
 };
 
+// Prefer EventDate/EndDate so we keep the original local time (with offset)
+// when both legacy and modern columns are present. Start/End are fallback.
 const pickStart = (row: SpScheduleRow): string | undefined =>
-  coerceIso(row.Start ?? row.EventDate);
+  coerceIso(row.EventDate ?? row.Start);
 
 const pickEnd = (row: SpScheduleRow): string | undefined =>
-  coerceIso(row.End ?? row.EndDate);
+  coerceIso(row.EndDate ?? row.End);
 
 const pickUserCode = (row: SpScheduleRow): string | undefined =>
-  coerceString(row.UserCode ?? row.cr014_usercode);
+  coerceString(row.UserCode);
 
 const inferCategory = (row: SpScheduleRow): 'Org' | 'User' | 'Staff' => {
   const rawCategory = (row.cr014_category ?? row.Category) as SpScheduleCategoryRaw | undefined;
   const mapped = mapSpCategoryToDomain(rawCategory);
   if (mapped) return mapped;
 
-  const userCode = pickUserCode(row) ?? coerceString(row.cr014_personId);
+  const userCode = pickUserCode(row);
   if (userCode) return 'User';
 
   const staffId = coerceIdString(row.AssignedStaff);
@@ -200,9 +241,13 @@ export function mapSpRowToSchedule(row: SpScheduleRow): SchedItem | null {
         ? idRaw.trim()
         : `${start}-${end}`;
 
+  // Phase 2-0: extract etag from __metadata.id or generate fallback
+  const etagValue = row.__metadata?.id ? `"${row.__metadata.id}"` : `"sp-${id}"`;
+
   const titleField = row.Title;
-  const title = typeof titleField === 'string' && titleField.trim() ? titleField.trim() : '予定';
-  const userCodeCandidates = [coerceString(row.cr014_personId), pickUserCode(row)];
+  const providedTitle = typeof titleField === 'string' && titleField.trim() ? titleField.trim() : undefined;
+  const title = providedTitle ?? '予定';
+  const userCodeCandidates = [pickUserCode(row)];
   let normalizedUserId: string | undefined;
   for (const candidate of userCodeCandidates) {
     const normalized = normalizeUserId(candidate);
@@ -215,13 +260,13 @@ export function mapSpRowToSchedule(row: SpScheduleRow): SchedItem | null {
   if (!normalizedUserId && userLookupIds.length) {
     normalizedUserId = normalizeUserId(userLookupIds[0]);
   }
-  const primaryPersonName = coerceString(row.cr014_personName);
   const assignedStaffId = coerceIdString(row.AssignedStaff);
   const vehicleId = coerceIdString(row.Vehicle);
 
   const category = inferCategory(row);
 
-  const serviceTypeKey = normalizeServiceType(coerceString(row.ServiceType));
+  const rawServiceType = coerceString(row.ServiceType) ?? coerceString((row as { cr014_serviceType?: unknown }).cr014_serviceType);
+  const serviceTypeKey = normalizeServiceType(rawServiceType);
   const item: SchedItem = {
     id,
     title,
@@ -231,12 +276,12 @@ export function mapSpRowToSchedule(row: SpScheduleRow): SchedItem | null {
     allDay: false,
     userId: normalizedUserId,
     serviceType: serviceTypeKey === 'unset' ? undefined : serviceTypeKey,
-    locationName: coerceString(row.LocationName),
+    locationName: coerceString(row.LocationName) ?? coerceString(row.Location), // Support both LocationName and Location
     notes: coerceString(row.Notes),
     acceptedOn: coerceIso(row.AcceptedOn),
     acceptedBy: coerceString(row.AcceptedBy),
     acceptedNote: coerceString(row.AcceptedNote) ?? null,
-    personName: primaryPersonName,
+    personName: undefined,
     userLookupId: userLookupIds[0],
     assignedStaffId: assignedStaffId ?? undefined,
     vehicleId: vehicleId ?? undefined,
@@ -245,24 +290,14 @@ export function mapSpRowToSchedule(row: SpScheduleRow): SchedItem | null {
     entryHash: coerceString(row.EntryHash),
     createdAt: coerceIso(row.Created),
     updatedAt: coerceIso(row.Modified),
+    // Phase 1: owner/visibility
+    ownerUserId: coerceString(row.OwnerUserId),
+    visibility: coerceString(row.Visibility) as SchedItem['visibility'],
+    // Phase 2-0: etag for conflict detection
+    etag: etagValue,
   } satisfies SchedItem;
 
-  if (category === 'User' && primaryPersonName) {
-    const label = (() => {
-      switch (item.serviceType) {
-        case 'absence':
-          return '欠席';
-        case 'late':
-          return '遅刻';
-        case 'earlyLeave':
-          return '早退';
-        default:
-          return 'その他';
-      }
-    })();
-    const date = item.start.slice(0, 10);
-    item.title = `${date} ${primaryPersonName}（${label}）`;
-  }
+  // Keep the original SharePoint title when provided; fall back to person name if missing.
 
   return item;
 }

@@ -1,3 +1,5 @@
+import * as StaffModule from '@/features/staff';
+import * as UsersModule from '@/features/users';
 import { prefetch, type PrefetchHandle, type PrefetchRequest } from './prefetch';
 import type { PrefetchSource } from './tracker';
 import { scheduleIdle } from './util';
@@ -45,8 +47,8 @@ export const ROUTE_IMPORTERS: PrefetchRegistry = {
   [PREFETCH_KEYS.records]: () => import('@/features/records/RecordList'),
   [PREFETCH_KEYS.checklist]: () => import('@/features/compliance-checklist/ChecklistPage'),
   [PREFETCH_KEYS.audit]: () => import('@/features/audit/AuditPanel'),
-  [PREFETCH_KEYS.users]: () => import('@/features/users'),
-  [PREFETCH_KEYS.staff]: () => import('@/features/staff'),
+  [PREFETCH_KEYS.users]: () => Promise.resolve(UsersModule),
+  [PREFETCH_KEYS.staff]: () => Promise.resolve(StaffModule),
   [PREFETCH_KEYS.dailyMenu]: () => import('@/pages/DailyRecordMenuPage'),
   [PREFETCH_KEYS.schedulesWeek]: () => import('@/features/schedule/SchedulePage'),
   [PREFETCH_KEYS.schedulesDay]: () => import('@/features/schedule/views/TimelineDay'),

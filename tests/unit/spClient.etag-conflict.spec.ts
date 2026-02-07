@@ -1,5 +1,15 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { SharePointItemNotFoundError, SharePointMissingEtagError } from '@/lib/errors';
+
+vi.mock('@/lib/env', async () => {
+  const actual = await vi.importActual<typeof import('@/lib/env')>('@/lib/env');
+  return {
+    ...actual,
+    skipSharePoint: vi.fn(() => false),
+    shouldSkipLogin: vi.fn(() => false),
+  };
+});
+
 import { createSpClient } from '@/lib/spClient';
 
 const baseUrl = 'https://contoso.sharepoint.com/sites/wf/_api/web';
@@ -42,13 +52,14 @@ describe('spClient ETag / 412 handling', () => {
     expect(fetchMock).toHaveBeenCalledTimes(3);
 
   const [url1, init1] = fetchMock.mock.calls[0]!;
-  expect(init1?.method).toBe('PATCH');
+  expect(init1?.method).toBe('POST'); // SharePoint Online uses POST+X-HTTP-Method:MERGE instead of PATCH
   const url1Obj = new URL(String(url1));
   expect(url1Obj.pathname.endsWith('/items(10)')).toBe(true);
   expect(url1Obj.pathname).toContain('SupportRecord_Daily');
     const headers1 = Object.fromEntries((init1!.headers as Headers).entries());
     expect(headers1['authorization']).toBe('Bearer tok');
     expect(headers1['if-match']).toBe('W/"2"');
+    expect(headers1['x-http-method']).toBe('MERGE'); // SharePoint MERGE operation via POST
     expect(headers1['content-type']).toBe('application/json;odata=nometadata');
     expect(headers1['odata-version']).toBe('4.0');
 
@@ -62,7 +73,7 @@ describe('spClient ETag / 412 handling', () => {
     expect(headers2['accept']).toBe('application/json;odata=nometadata');
 
     const [, init3] = fetchMock.mock.calls[2]!;
-    expect(init3?.method).toBe('PATCH');
+    expect(init3?.method).toBe('POST'); // Second attempt also uses POST+X-HTTP-Method:MERGE
     const headers3 = Object.fromEntries((init3!.headers as Headers).entries());
     expect(headers3['authorization']).toBe('Bearer tok');
     expect(headers3['if-match']).toBe('W/"3"');

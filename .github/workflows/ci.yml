@@ -1,0 +1,85 @@
+name: CI
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+  push:
+    branches: [main, develop]
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  typecheck-and-test:
+    name: TypeCheck & Test
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
+    env:
+      VITE_MSAL_CLIENT_ID: dummy-client-id
+      VITE_MSAL_TENANT_ID: dummy-tenant-id
+      VITE_FEATURE_SCHEDULES: "1"
+      # Phase 2: E2E feature flag guards
+      E2E_FEATURE_SCHEDULE_NAV: "1"
+      E2E_FEATURE_SCHEDULE_ACCEPTANCE: "1"
+      E2E_FEATURE_SCHEDULE_WEEK_MONTH_TAB: "1"
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+
+      - name: Validate env (fail-fast)
+        run: node scripts/validate-env.mjs
+        env:
+          ENV_VALIDATE_REQUIRED: VITE_MSAL_CLIENT_ID,VITE_MSAL_TENANT_ID
+      
+      - name: Install dependencies
+        run: npm ci
+      
+      - name: ESLint (enforce ARCHITECTURE_GUARDS)
+        id: lint
+        run: |
+          echo "Running ESLint (includes no-restricted-imports for env module)..."
+          npm run lint
+          echo "✅ ESLint passed - ARCHITECTURE_GUARDS enforced"
+
+      - name: ESLint boundaries report (non-blocking)
+        id: lint_boundaries
+        run: |
+          echo "Running ESLint boundaries report (warn-only)..."
+          npm run lint:boundaries
+          echo "✅ Boundaries report generated"
+      
+      - name: TypeScript type check
+        id: typecheck
+        run: |
+          echo "Running TypeScript type check..."
+          npm run typecheck
+          echo "✅ TypeScript type check completed successfully"
+      
+      - name: Run tests
+        id: tests
+        run: |
+          echo "Running unit tests..."
+          npm run test:ci
+          echo "✅ Tests completed successfully"
+      
+      - name: Summary
+        if: always()
+        run: |
+          {
+            echo "## CI Results"
+            echo ""
+            echo "- ESLint (ARCHITECTURE_GUARDS): ${{ steps.lint.outcome }}"
+            echo "- ESLint (boundaries report): ${{ steps.lint_boundaries.outcome }}"
+            echo "- TypeScript typecheck: ${{ steps.typecheck.outcome }}"
+            echo "- Tests: ${{ steps.tests.outcome }}"
+          } >> "$GITHUB_STEP_SUMMARY"

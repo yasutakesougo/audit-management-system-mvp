@@ -7,7 +7,7 @@ module.exports = {
     sourceType: 'module',
     ecmaFeatures: { jsx: true }
   },
-  plugins: ['@typescript-eslint'],
+  plugins: ['@typescript-eslint', 'boundaries'],
   extends: [
     'eslint:recommended',
     'plugin:@typescript-eslint/recommended',
@@ -29,7 +29,24 @@ module.exports = {
     'no-restricted-imports': [
       'error',
       {
+        paths: [
+          {
+            name: '@/lib/env',
+            importNames: [
+              'IS_SKIP_SHAREPOINT',
+              'IS_DEMO',
+              'IS_AUTOMATION',
+              'IS_SKIP_LOGIN',
+            ],
+            message:
+              'Do not import skip/demo flags directly. Use shouldSkipSharePoint() from src/lib/sharepoint/skipSharePoint instead.',
+          },
+        ],
         patterns: [
+          {
+            group: ['./env', '../env'],
+            message: "Use '@/lib/env' to keep module IDs consistent for mocks."
+          },
           {
             group: [
               '**/features/users/UsersPanel{,.ts,.tsx,.js,.jsx}',
@@ -46,7 +63,37 @@ module.exports = {
           }
         ]
       }
-    ]
+    ],
+    // Phase 1: boundaries (warn)
+    'boundaries/element-types': ['warn', {
+      default: 'disallow',
+      rules: [
+        // app → feature/lib/utils/shared OK
+        { from: 'app', allow: ['feature', 'lib', 'utils', 'shared'] },
+        // feature → lib/utils/shared OK (feature↔feature は原則禁止)
+        { from: 'feature', allow: ['lib', 'utils', 'shared'] },
+        // lib/utils/shared は限定的に許可
+        { from: 'lib', allow: ['utils', 'shared'] },
+        { from: 'utils', allow: ['shared'] },
+        { from: 'shared', allow: ['utils'] }
+      ]
+    }]
+  },
+  settings: {
+    'boundaries/elements': [
+      { type: 'feature', pattern: 'src/features/*' },
+      { type: 'lib', pattern: 'src/lib/*' },
+      { type: 'utils', pattern: 'src/utils/*' },
+      { type: 'shared', pattern: 'src/components/*' },
+      { type: 'app', pattern: 'src/*' },
+    ],
+    'import/resolver': {
+      typescript: {
+        // tsconfig paths (@/*) を拾う
+        project: ['./tsconfig.json'],
+        alwaysTryTypes: true,
+      },
+    },
   },
   env: {
     browser: true,

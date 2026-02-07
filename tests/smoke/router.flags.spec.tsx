@@ -1,20 +1,21 @@
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { TESTIDS } from '../../src/testids';
 
 const spFetchMock = vi.fn(async () => ({ ok: true }));
 const signInMock = vi.fn(async () => undefined);
 const signOutMock = vi.fn(async () => undefined);
 
-vi.mock('../../src/lib/spClient', async () => {
-  const actual = await vi.importActual<typeof import('../../src/lib/spClient')>('../../src/lib/spClient');
+vi.mock('@/lib/spClient', async () => {
+  const actual = await vi.importActual<typeof import('@/lib/spClient')>('@/lib/spClient');
   return {
     ...actual,
     useSP: () => ({ spFetch: spFetchMock }),
   };
 });
 
-vi.mock('../../src/auth/useAuth', () => ({
+vi.mock('@/auth/useAuth', () => ({
   useAuth: () => ({
     signIn: signInMock,
     signOut: signOutMock,
@@ -23,24 +24,33 @@ vi.mock('../../src/auth/useAuth', () => ({
   }),
 }));
 
-vi.mock('../../src/features/records/RecordList', () => ({
+vi.mock('@/features/records/RecordList', () => ({
   __esModule: true,
   default: () => <h1>記録管理トップ</h1>,
 }));
 
-vi.mock('../../src/features/compliance-checklist/ChecklistPage', () => ({
+vi.mock('@/features/compliance-checklist/ChecklistPage', () => ({
   __esModule: true,
   default: () => <h1>自己点検ビュー</h1>,
 }));
 
-vi.mock('../../src/features/audit/AuditPanel', () => ({
+vi.mock('@/features/audit/AuditPanel', () => ({
   __esModule: true,
-  default: () => <h1>監査ログビュー</h1>,
+  default: () => <h1 data-testid="audit-heading">監査ログビュー</h1>,
 }));
 
-vi.mock('../../src/features/users', () => ({
+vi.mock('@/features/users', () => ({
   __esModule: true,
   UsersPanel: () => <h1>利用者ビュー</h1>,
+}));
+
+vi.mock('@/auth/useUserAuthz', () => ({
+  useUserAuthz: () => ({
+    isAdmin: true,
+    isReception: false,
+    ready: true,
+    reason: undefined,
+  }),
 }));
 
 vi.mock('@/lib/env', async () => {
@@ -53,7 +63,12 @@ vi.mock('@/lib/env', async () => {
 
 vi.mock('@/pages/DailyPage', () => ({
   __esModule: true,
-  default: () => <h1>日次記録ビュー</h1>,
+  default: () => <h1 data-testid="daily-page-root" />,
+}));
+
+vi.mock('@/features/daily/TableDailyRecordPage', () => ({
+  __esModule: true,
+  default: () => <h1 data-testid="daily-table-root" />,
 }));
 
 vi.mock('@/stores/useUsers', () => ({
@@ -74,6 +89,7 @@ vi.mock('@/features/schedule/useSchedulesToday', () => ({
 }));
 
 import App from '../../src/App';
+import { TESTIDS } from '../../src/testids';
 
 /**
  * Router Future Flags スモークテスト
@@ -111,26 +127,33 @@ describe('router future flags smoke', () => {
     render(<App />);
 
     // 初期表示: ホーム画面の確認
-    expect(await screen.findByRole('heading', { name: 'Audit Management – ホーム' })).toBeInTheDocument();
+    expect(await screen.findByText(/磯子区障害者地域活動ホーム/)).toBeInTheDocument();
 
     // ナビゲーション経路のテスト: ホーム → 監査ログ → 日次記録 → 自己点検 → ホーム
 
-    // TODO: data-testid 追加で getAllByRole(...)[1] のマジックインデックスを回避
-    // 現在はヘッダー/フッターで同じラベルが存在するため [1] で特定
-    await user.click(screen.getAllByRole('link', { name: '監査ログ' })[1]);
-    expect(await screen.findByText('監査ログビュー')).toBeInTheDocument();
+    await user.click(screen.getByTestId(TESTIDS.nav.audit));
+    expect(await screen.findByTestId(TESTIDS['audit-heading'])).toBeInTheDocument();
 
-    await user.click(screen.getByRole('link', { name: '日次記録' }));
-    expect(await screen.findByText('日次記録ビュー')).toBeInTheDocument();
+    await user.click(screen.getByTestId(TESTIDS.nav.daily));
+    expect(await screen.findByTestId('daily-table-root')).toBeInTheDocument();
 
-    await user.click(screen.getByRole('link', { name: '自己点検' }));
+    await user.click(screen.getByTestId(TESTIDS.nav.checklist));
     expect(await screen.findByText('自己点検ビュー')).toBeInTheDocument();
 
-    await user.click(screen.getByRole('link', { name: 'ホーム' }));
-    expect(await screen.findByRole('heading', { name: 'Audit Management – ホーム' })).toBeInTheDocument();
+    // ホームリンクは「黒ノート」表記のナビゲーションをクリックして戻す
+    await user.click(await screen.findByTestId('nav-dashboard'));
+    expect(await screen.findByText(/磯子区障害者地域活動ホーム/)).toBeInTheDocument();
 
     // 副作用の検証: ルート遷移での想定外のAPI呼び出しや認証アクションが発生していないことを確認
-    expect(spFetchMock).not.toHaveBeenCalled();
+    const calls = (spFetchMock.mock.calls as unknown as any[]).map(([input]: any) =>
+      typeof input === 'string' ? input : input instanceof Request ? (input as Request).url : String(input),
+    );
+
+    const currentUserCalls = calls.filter((u) => u.includes('/currentuser?$select=Id'));
+    const nonCurrentUserCalls = calls.filter((u) => !u.includes('/currentuser?$select=Id'));
+
+    expect(currentUserCalls.length).toBeLessThanOrEqual(1);
+    expect(nonCurrentUserCalls).toHaveLength(0);
     expect(signInMock).not.toHaveBeenCalled();
     expect(signOutMock).not.toHaveBeenCalled();
   });

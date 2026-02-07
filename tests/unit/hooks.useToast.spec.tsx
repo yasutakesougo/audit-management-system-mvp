@@ -16,14 +16,46 @@ describe('useToast', () => {
   });
 
   it('throws when used outside of provider', () => {
+    // Rather than triggering actual render errors that pollute test output,
+    // we verify the error path by checking useContext behavior directly.
+    // This test ensures that useToast properly validates the ToastContext.
+    
+    // Create a minimal test that verifies the guard without full component render
+    const TestWrapper = () => {
+      // This will throw during render, which we'll catch
+      try {
+        const result = useToast();
+        // If we get here, the guard failed
+        expect(result).toBeUndefined();
+        return <div>Should not reach here</div>;
+      } catch (err) {
+        // Expected: error was thrown correctly
+        expect(err).toBeInstanceOf(Error);
+        expect((err as Error).message).toBe('useToast must be used within a <ToastProvider>');
+        return <div data-testid="error-caught">Error caught as expected</div>;
+      }
+    };
+
+    // Suppress React error warnings in test output
     const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {});
+    
     try {
-      expect(() => renderHook(() => useToast())).toThrowError('useToast must be used within a <ToastProvider>');
+      render(<TestWrapper />);
+      expect(screen.getByTestId('error-caught')).toBeInTheDocument();
     } finally {
       consoleError.mockRestore();
     }
   });
 
+  it('works when used inside ToastProvider via renderHook wrapper', () => {
+    const wrapper: React.FC<{ children?: React.ReactNode }> = ({ children }) => (
+      <ToastProvider>{children}</ToastProvider>
+    );
+
+    const { result } = renderHook(() => useToast(), { wrapper });
+
+    expect(typeof result.current.show).toBe('function');
+  });
   it('creates toast entries using crypto.randomUUID when available and removes after timeout', () => {
     const cryptoGetter = vi.spyOn(globalThis, 'crypto', 'get');
     const randomUUID = vi.fn(() => 'uuid-1234');

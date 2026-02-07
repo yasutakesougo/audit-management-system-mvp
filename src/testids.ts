@@ -18,12 +18,16 @@ const NAV_TESTIDS = {
 const FOOTER_TESTIDS = {
   dailyAttendance: 'footer-action-daily-attendance',
   dailyActivity: 'footer-action-daily-activity',
+  // New canonical footer ids (2024+)
+  dailyFooterAttendance: 'daily-footer-attendance',
+  dailyFooterActivity: 'daily-footer-activity',
 } as const;
 
 export const TESTIDS = {
   // Shell / Router
   'app-root': 'app-root',
   'app-router-outlet': 'app-router-outlet',
+  'nav-open': 'nav-open',
   'sp-connection-status': 'sp-connection-status',
 
   // Pages
@@ -34,7 +38,7 @@ export const TESTIDS = {
   'dashboard-records': 'dashboard-records',
   'audit-heading': 'audit-heading',
   'iceberg-pdca-root': 'iceberg-pdca-root',
-  'iceberg-pdca-empty': 'iceberg-pdca-empty', // 互換: bracket参照(TESTIDS['iceberg-pdca-empty'])向け
+  'iceberg-pdca-empty': 'iceberg-pdca-empty',
   ICEBERG_PDCA_EMPTY: 'iceberg-pdca-empty',
 
   // Dashboard Tabs (黒ノート機能個別タブ) 🌱 E2Eでタブ切替を細かく検査用
@@ -73,10 +77,12 @@ export const TESTIDS = {
   'nav-nurse': 'nav-nurse',
   'footer-action-daily-attendance': 'footer-action-daily-attendance',
   'footer-action-daily-activity': 'footer-action-daily-activity',
+  // Compatibility: new footer ids used by AppShell (2024+)
   'daily-footer-attendance': 'daily-footer-attendance',
   'daily-footer-activity': 'daily-footer-activity',
   'daily-footer-support': 'daily-footer-support',
   'daily-footer-health': 'daily-footer-health',
+  'daily-table-record-page': 'daily-table-record-page',
   'daily-table-record-form': 'daily-table-record-form',
   'daily-table-record-form-user-list': 'daily-table-record-form-user-list',
   'daily-table-record-form-table': 'daily-table-record-form-table',
@@ -99,10 +105,14 @@ export const TESTIDS = {
   'schedules-day-heading': 'schedules-day-heading',
   'schedules-day-list': 'schedules-day-list',
   'schedules-day-skeleton': 'schedules-day-skeleton',
+  'schedules-day-popover': 'schedules-day-popover',
+  'schedules-popover-open-day': 'schedules-popover-open-day',
   SCHEDULES_PAGE_ROOT: 'schedules-page-root',
   'schedules-week-page': 'schedules-week-page',
   'schedules-week-heading': 'schedules-week-heading',
   'schedules-week-grid': 'schedules-week-grid',
+  'schedule-week-root': 'schedule-week-root',
+  SCHEDULE_WEEK_ROOT: 'schedule-week-root',
   'schedule-week-view': 'schedule-week-view',
   'schedules-week-view': 'schedules-week-view',
   SCHEDULE_WEEK_VIEW: 'schedule-week-view',
@@ -110,10 +120,16 @@ export const TESTIDS = {
   SCHEDULES_WEEK_SERVICE_SUMMARY: 'schedules-week-service-summary',
   SCHEDULES_WEEK_TIMELINE: 'schedules-week-timeline',
   'schedules-week-timeline': 'schedules-week-timeline',
-  SCHEDULES_WEEK_TABLIST: 'schedules-week-tablist',
-  SCHEDULES_WEEK_TAB_WEEK: 'schedules-week-tab-week',
-  SCHEDULES_WEEK_TAB_DAY: 'schedules-week-tab-day',
-  SCHEDULES_WEEK_TAB_TIMELINE: 'schedules-week-tab-timeline',
+  'schedule-week-list': 'schedule-week-list',
+  SCHEDULE_WEEK_LIST: 'schedule-week-list',
+  'schedule-week-empty': 'schedule-week-empty',
+  SCHEDULE_WEEK_EMPTY: 'schedule-week-empty',
+  // ✨ 新: ヘッダーのMUI Tabs統一後の命名
+  SCHEDULES_WEEK_TABLIST: 'schedules-view-tabs',
+  SCHEDULES_WEEK_TAB_WEEK: 'schedules-view-tab-week',
+  SCHEDULES_WEEK_TAB_DAY: 'schedules-view-tab-day',
+  SCHEDULES_WEEK_TAB_TIMELINE: 'schedules-view-tab-timeline',
+  SCHEDULES_WEEK_TAB_MONTH: 'schedules-view-tab-month',
   SCHEDULES_WEEK_TIMELINE_PANEL: 'schedules-week-timeline-panel',
   SCHEDULE_WEEK_ORG_INDICATOR: 'schedule-week-org-indicator',
   SCHEDULE_DAY_ORG_INDICATOR: 'schedule-day-org-indicator',
@@ -144,6 +160,8 @@ export const TESTIDS = {
   SCHEDULES_MONTH_DAY_PREFIX: 'schedules-month-day',
   'schedules-event-conflicted': 'schedules-event-conflicted',
   'schedules-event-normal': 'schedules-event-normal',
+  'schedule-item': 'schedule-item',
+  SCHEDULE_ITEM: 'schedule-item',
   'schedule-create-quick-button': 'schedule-create-quick-button',
   'schedule-create-dialog': 'schedule-create-dialog',
   'schedule-editor-root': 'schedule-editor-root',
@@ -182,9 +200,19 @@ export const TESTIDS = {
   'dashboard-handoff-summary-total': 'dashboard-handoff-summary-total',
   'dashboard-handoff-summary-alert': 'dashboard-handoff-summary-alert',
   'dashboard-handoff-summary-action': 'dashboard-handoff-summary-action',
+  'dashboard-tabs': 'dashboard-tabs',
+  'tab-overview': 'tab-overview',
+  'tab-morning': 'tab-morning',
+  'tab-evening': 'tab-evening',
+  'btn-morning-mode': 'btn-morning-mode',
+  'btn-evening-mode': 'btn-evening-mode',
   'dashboard-daily-status-card-通所記録': 'dashboard-daily-status-card-通所記録',
   'dashboard-daily-status-card-日誌': 'dashboard-daily-status-card-日誌',
   'dashboard-daily-status-card-支援手順': 'dashboard-daily-status-card-支援手順',
+  'module-summary-cards': 'module-summary-cards',
+  'module-summary-card-activity': 'module-summary-card-activity',
+  'module-summary-card-attendance': 'module-summary-card-attendance',
+  'module-summary-card-irc': 'module-summary-card-irc',
 
   // Morning/Evening Meeting System
   'dashboard-briefing-panel': 'dashboard-briefing-panel',
@@ -333,6 +361,9 @@ export const TESTIDS = {
   'user-menu-card-prefix': 'user-menu-card-',
   'user-menu-tabpanel-prefix': 'user-menu-tabpanel-',
 
+  // Staff feature
+  'staff-panel-root': 'staff-panel-root',
+
   // User Menu関連
   'user-menu-trigger': 'user-menu-trigger',
   'user-menu-popup': 'user-menu-popup',
@@ -355,7 +386,17 @@ export const TESTIDS = {
   'monthly-detail-user-select': 'monthly-detail-user-select',
   'monthly-detail-month-select': 'monthly-detail-month-select',
   'monthly-detail-records-table': 'monthly-detail-records-table',
+  'monthly-detail-empty-state': 'monthly-detail-empty-state',
+  'monthly-detail-kpi-root': 'monthly-detail-kpi-root',
+  'monthly-user-detail-root': 'monthly-user-detail-root',
+  'monthly-user-detail-tabs': 'monthly-user-detail-tabs',
+  'monthly-user-detail-tab-basic': 'monthly-user-detail-tab-basic',
+  'monthly-user-detail-tab-billing': 'monthly-user-detail-tab-billing',
+  'monthly-user-detail-mounted': 'monthly-user-detail-mounted',
+  'monthly-user-detail-effective-params': 'monthly-user-detail-effective-params',
   'monthly-pdf-generate-btn': 'monthly-pdf-generate-btn',
+  'monthly-pdf-panel': 'monthly-pdf-panel',
+  'monthly-pdf-download-btn': 'monthly-pdf-download-btn',
 
   // Mobile Agenda View
   'mobile-agenda-loading': 'mobile-agenda-loading',

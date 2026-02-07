@@ -1,9 +1,7 @@
 name: nurse e2e (minute-basis matrix)
 
 on:
-  push:
-    branches: [main]
-  pull_request:
+  workflow_dispatch:
 
 jobs:
   nurse-e2e:

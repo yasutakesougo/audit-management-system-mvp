@@ -266,6 +266,104 @@ pwsh -c "./scripts/emergency-stop.ps1 -Resume"
 
 ---
 
+## 🧪 E2E テスト実行手順（チェックリスト管理者アクセス制御）
+
+### ⚠️ 重要: Vite 環境変数はビルド時に固定される
+
+Vite は `import.meta.env.*` を**ビルド時**に埋め込むため、テスト実行時に環境変数を変更しても反映されません。
+
+**正しい手順**: 環境変数を設定してビルド → その後テストを実行
+
+### 1️⃣ PROD相当（fail-closed）の検証
+
+```bash
+# ビルド時に PROD 環境を埋め込み
+VITE_DEMO_MODE=0 VITE_SCHEDULE_ADMINS_GROUP_ID= npm run build
+
+# ビルド済みアーティファクトを使ってテスト実行
+VITE_DEMO_MODE=0 VITE_SCHEDULE_ADMINS_GROUP_ID= PLAYWRIGHT_SKIP_BUILD=1 \
+  npx playwright test 'checklist-admin-access' --project=smoke
+```
+
+**期待結果**:
+- `/checklist` アクセス → 403エラー（env未設定のため）
+- ナビゲーションにチェックリスト項目なし
+
+### 2️⃣ DEMO（便利モード）の検証
+
+```bash
+# ビルド時に DEMO 環境を埋め込み
+VITE_DEMO_MODE=1 npm run build
+
+# ビルド済みアーティファクトを使ってテスト実行
+VITE_DEMO_MODE=1 PLAYWRIGHT_SKIP_BUILD=1 \
+  npx playwright test 'checklist-admin-access' --project=smoke
+```
+
+**期待結果**:
+- `/checklist` アクセス → 正常表示（デフォルト管理者権限）
+- ナビゲーションにチェックリスト項目あり
+
+### 3️⃣ Production実行時（実際の管理者グループIDを使用）
+
+```bash
+# .env に実際のグループIDを設定してビルド
+VITE_SCHEDULE_ADMINS_GROUP_ID=12345678-1234-1234-1234-123456789abc npm run build
+
+# ビルド済みアーティファクトを使ってテスト実行
+VITE_SCHEDULE_ADMINS_GROUP_ID=12345678-1234-1234-1234-123456789abc PLAYWRIGHT_SKIP_BUILD=1 \
+  npx playwright test 'checklist-admin-access' --project=smoke
+```
+
+### 4️⃣ CI/CDでの実行例
+
+`.github/workflows/test.yml`:
+
+```yaml
+strategy:
+  matrix:
+    env-mode:
+      - name: prod-fail-closed
+        VITE_DEMO_MODE: "0"
+        VITE_SCHEDULE_ADMINS_GROUP_ID: ""
+      - name: demo-convenience
+        VITE_DEMO_MODE: "1"
+        VITE_SCHEDULE_ADMINS_GROUP_ID: ""
+
+steps:
+  - name: Build with environment
+    run: npm run build
+    env:
+      VITE_DEMO_MODE: ${{ matrix.env-mode.VITE_DEMO_MODE }}
+      VITE_SCHEDULE_ADMINS_GROUP_ID: ${{ matrix.env-mode.VITE_SCHEDULE_ADMINS_GROUP_ID }}
+      
+  - name: Run tests
+    run: npx playwright test 'checklist-admin-access' --project=smoke
+    env:
+      PLAYWRIGHT_SKIP_BUILD: "1"
+```
+
+### トラブルシューティング
+
+#### ❌ 間違い: テスト実行時のみ環境変数を設定
+
+```bash
+# これは動作しません（ビルド済みアーティファクトに環境変数が埋め込まれていない）
+VITE_DEMO_MODE=0 PLAYWRIGHT_SKIP_BUILD=1 npx playwright test ...
+```
+
+#### ✅ 正しい: ビルド → テストの2段階
+
+```bash
+# 1. 環境変数を設定してビルド
+VITE_DEMO_MODE=0 npm run build
+
+# 2. ビルド済みを使ってテスト
+VITE_DEMO_MODE=0 PLAYWRIGHT_SKIP_BUILD=1 npx playwright test ...
+```
+
+---
+
 **最終更新**: 2025年11月6日
 **バージョン**: 1.0
 **承認者**: システム管理者

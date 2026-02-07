@@ -1,10 +1,11 @@
 import {
-    getAppConfig,
-    isDemoModeEnabled,
-    isForceDemoEnabled,
-    isTestMode,
-    shouldSkipLogin,
+  getAppConfig,
+  isDemoModeEnabled,
+  isForceDemoEnabled,
+  isTestMode,
+  shouldSkipLogin,
 } from '@/lib/env';
+import { hasSpfxContext } from '@/lib/runtime';
 
 import type { UserRepository } from './domain/UserRepository';
 import { inMemoryUserRepository } from './infra/InMemoryUserRepository';
@@ -26,12 +27,15 @@ let overrideKind: UserRepositoryKind | null = null;
 
 const shouldUseDemoRepository = (): boolean => {
   const { isDev } = getAppConfig();
+  const spfxContextAvailable = hasSpfxContext();
   return (
     isDev ||
     isTestMode() ||
     isForceDemoEnabled() ||
     isDemoModeEnabled() ||
-    shouldSkipLogin()
+    shouldSkipLogin() ||
+    // Workers/pages (non-SharePoint) runtime: avoid SPFx-only repository
+    !spfxContextAvailable
   );
 };
 

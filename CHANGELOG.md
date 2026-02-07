@@ -1,3 +1,4 @@
+<!-- markdownlint-disable MD024 -->
 # Changelog
 
 All notable changes to this project will be documented in this file.
@@ -6,6 +7,23 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
+
+## [2026-02-04] Phase 3.7-A Complete
+
+### Added
+- **Auth Diagnostics Infrastructure**
+  - AuthDiagnosticsCollector (Singleton, 100-event ring buffer)
+  - useSchedules integration (Auth Guard events)
+  - MsalProvider integration (login events)
+  - DevTools API for dev-mode inspection
+  - Runbook links for troubleshooting
+  - E2E smoke test coverage (3 test cases)
+
+### Quality
+- TypeScript: 100% compliance
+- ESLint: 0 warnings
+- E2E: All tests passing
+- Manual: DevTools API verified
 
 ### Added
 
@@ -20,7 +38,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - _TBD_
 
-## [0.9.1] – 2025-10-11
+## [0.9.1] - 2025-10-11
 
 ### Added
 
@@ -34,7 +52,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - (none)
 
-## [0.9.0] – 2025-10-11
+## [0.9.0] - 2025-10-11
 
 ### Added
 
@@ -59,8 +77,4 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Safe for minor version bump → 0.8.x → 0.9.0 (backward-compatible public API, new config options).
 - No migration required: existing callers pick up defaults automatically.
 
----
-
-[Unreleased]: https://github.com/yasutakesougo/audit-management-system-mvp/compare/v0.9.1...HEAD
-[0.9.1]: https://github.com/yasutakesougo/audit-management-system-mvp/compare/v0.9.0...v0.9.1
-[0.9.0]: https://github.com/yasutakesougo/audit-management-system-mvp/releases/tag/v0.9.0
+<!-- markdownlint-enable MD024 -->

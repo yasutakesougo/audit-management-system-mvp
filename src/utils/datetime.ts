@@ -69,9 +69,16 @@ const applyRounding = (
 };
 
 const formatWithZone = (date: Date, timeZone: string): string => {
+  const effectiveTz = timeZone?.trim() || DEFAULT_TIMEZONE;
+
+  // Prevent infinite recursion when caller passes an empty/invalid tz repeatedly
+  if (effectiveTz === '') {
+    return formatWithZone(date, DEFAULT_TIMEZONE);
+  }
+
   try {
     const formatter = new Intl.DateTimeFormat('ja-JP', {
-      timeZone,
+      timeZone: effectiveTz,
       year: 'numeric',
       month: '2-digit',
       day: '2-digit',
@@ -94,7 +101,10 @@ const formatWithZone = (date: Date, timeZone: string): string => {
     const minute = parts.minute ?? '--';
     return `${year}-${month}-${day} ${hour}:${minute}`;
   } catch {
-    // 不正なタイムゾーン指定時は DEFAULT_TIMEZONE でフォールバック
+    // Fallback to default and avoid unbounded recursion
+    if (effectiveTz === DEFAULT_TIMEZONE) {
+      return date.toISOString();
+    }
     return formatWithZone(date, DEFAULT_TIMEZONE);
   }
 };

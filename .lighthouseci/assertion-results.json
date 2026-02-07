@@ -2,60 +2,60 @@
   {
     "name": "maxNumericValue",
     "expected": 2500,
-    "actual": 2971.574399999998,
+    "actual": 3788.855600000001,
     "values": [
-      2971.574399999998
+      3788.855600000001
     ],
     "operator": "<=",
     "passed": false,
     "auditId": "first-contentful-paint",
     "level": "warn",
-    "url": "http://localhost:56183/",
+    "url": "http://127.0.0.1:4173/analysis/dashboard",
     "auditTitle": "First Contentful Paint",
     "auditDocumentationLink": "https://developer.chrome.com/docs/lighthouse/performance/first-contentful-paint/"
   },
   {
     "name": "maxNumericValue",
     "expected": 3000,
-    "actual": 4391.6115999999965,
+    "actual": 5956.140800000004,
     "values": [
-      4391.6115999999965
+      5956.140800000004
     ],
     "operator": "<=",
     "passed": false,
     "auditId": "largest-contentful-paint",
     "level": "warn",
-    "url": "http://localhost:56183/",
+    "url": "http://127.0.0.1:4173/analysis/dashboard",
     "auditTitle": "Largest Contentful Paint",
     "auditDocumentationLink": "https://developer.chrome.com/docs/lighthouse/performance/lighthouse-largest-contentful-paint/"
   },
   {
     "name": "maxNumericValue",
     "expected": 4000,
-    "actual": 4391.6115999999965,
+    "actual": 5956.140800000005,
     "values": [
-      4391.6115999999965
+      5956.140800000005
     ],
     "operator": "<=",
     "passed": false,
     "auditId": "interactive",
     "level": "warn",
-    "url": "http://localhost:56183/",
+    "url": "http://127.0.0.1:4173/analysis/dashboard",
     "auditTitle": "Time to Interactive",
     "auditDocumentationLink": "https://developer.chrome.com/docs/lighthouse/performance/interactive/"
   },
   {
     "name": "minScore",
     "expected": 0.8,
-    "actual": 0.79,
+    "actual": 0.69,
     "values": [
-      0.79
+      0.69
     ],
     "operator": ">=",
     "passed": false,
     "auditProperty": "performance",
     "auditId": "categories",
     "level": "warn",
-    "url": "http://localhost:56183/"
+    "url": "http://127.0.0.1:4173/analysis/dashboard"
   }
 ]

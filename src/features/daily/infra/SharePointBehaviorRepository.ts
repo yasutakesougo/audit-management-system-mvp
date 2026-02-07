@@ -2,9 +2,10 @@ import { spfi, SPFx, type ISPFXContext, type SPFI } from '@pnp/sp';
 import '@pnp/sp/items';
 import '@pnp/sp/lists';
 import '@pnp/sp/webs';
+import '@pnp/sp/fields';
 
 import { getAppConfig } from '@/lib/env';
-import { BEHAVIORS_SELECT_FIELDS, FIELD_MAP_BEHAVIORS, LIST_CONFIG, ListKeys } from '@/sharepoint/fields';
+import { buildBehaviorsSelectFields, FIELD_MAP_BEHAVIORS, LIST_CONFIG, ListKeys } from '@/sharepoint/fields';
 import type { BehaviorQueryOptions, BehaviorRepository } from '../domain/BehaviorRepository';
 import type { BehaviorObservation } from '../domain/daily/types';
 
@@ -40,6 +41,11 @@ export class SharePointBehaviorRepository implements BehaviorRepository {
   async getByUser(userId: string, options?: BehaviorQueryOptions): Promise<BehaviorObservation[]> {
     if (!userId) return [];
 
+    // 🔥 動的フィールド取得：テナント差分に完全対応
+    const fields = await this.list.fields.select('InternalName')();
+    const existingInternalNames = fields.map((f: { InternalName: string }) => f.InternalName);
+    const selectFields = buildBehaviorsSelectFields(existingInternalNames);
+
     const filters: string[] = [
       `${FIELD_MAP_BEHAVIORS.userId} eq '${this.escapeSingleQuotes(userId)}'`,
     ];
@@ -52,7 +58,7 @@ export class SharePointBehaviorRepository implements BehaviorRepository {
     }
 
     let query = this.list.items
-      .select(...BEHAVIORS_SELECT_FIELDS)
+      .select(...selectFields)
       .orderBy(FIELD_MAP_BEHAVIORS.timestamp, false);
 
     const top = options?.limit ?? this.defaultTop;

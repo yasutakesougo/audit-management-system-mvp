@@ -35,11 +35,11 @@ const sharedEnv = {
   CSP_PORT: collectorPort,
   CSP_PREFIX: collectorPrefix,
   CSP_REPORT_DIR: reportDir,
-  CSP_PREVIEW_ORIGIN: process.env.CSP_PREVIEW_ORIGIN || 'http://localhost:4173',
+  CSP_PREVIEW_ORIGIN: process.env.CSP_PREVIEW_ORIGIN || 'http://localhost:4174',
 };
 
 if (!sharedEnv.CSP_PREVIEW_PORT) {
-  sharedEnv.CSP_PREVIEW_PORT = '4173';
+  sharedEnv.CSP_PREVIEW_PORT = '4174';
 }
 
 if (!sharedEnv.CSP_COLLECTOR_ORIGIN) {

@@ -1,1 +1,0 @@
-// Placeholder to preserve history; converted to .disabled to avoid Vitest collection.

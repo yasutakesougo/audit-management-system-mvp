@@ -354,7 +354,7 @@ const extractLookupTitles = (value: unknown): string[] => {
 };
 
 const buildBaseSchedule = (item: SpScheduleItem): BaseSchedule => {
-  // SharePointリストの構造に応じて柔軟にフィールドを処理（Schedules/ ScheduleEvents 両対応）
+  // SharePointリストの構造に応じて柔軟にフィールドを処理（SchedulesのStart/Endと旧EventDate系の両方を考慮）
   const eventDate = item.Start || item.EventDate || item.StartDateTime || item.Created;
   const endDate = item.End || item.EndDate || item.EndDateTime || item.EventDate || item.StartDateTime || item.Created;
 
@@ -514,7 +514,7 @@ const normalizeRecurrenceField = (schedule: Schedule): Record<string, unknown> =
 export const toSpScheduleFields = (schedule: Schedule): Record<string, unknown> => {
   const base: Record<string, unknown> = {
     Title: schedule.title,
-    // Schedules (Start/End) と ScheduleEvents (EventDate/EndDate) の両方を埋める
+    // SchedulesのStart/Endと旧EventDate/EndDateの両方を埋める
     Start: schedule.start,
     End: schedule.end,
     EventDate: schedule.start,

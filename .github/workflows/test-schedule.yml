@@ -5,6 +5,13 @@ on: [push, pull_request]
 jobs:
   schedule:
     runs-on: ubuntu-latest
+    env:
+      VITE_E2E: "1"
+      VITE_E2E_MSAL_MOCK: "1"
+      VITE_SKIP_SHAREPOINT: "1"
+      VITE_SKIP_LOGIN: "1"
+      VITE_MSAL_CLIENT_ID: "dummy"
+      VITE_MSAL_TENANT_ID: "dummy"
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -67,6 +74,9 @@ jobs:
         run: npm run test:schedule:unit
       - name: E2E (ARIA smoke, fixtures)
         env:
+          VITE_E2E: "1"
+          VITE_E2E_MSAL_MOCK: "1"
+          VITE_SKIP_SHAREPOINT: "1"
           VITE_SCHEDULE_FIXTURES: "1"
           VITE_SKIP_LOGIN: "1"
           PLAYWRIGHT_BASE_URL: "http://127.0.0.1:5173"

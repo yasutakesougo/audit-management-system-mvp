@@ -1,4 +1,6 @@
+import { routerFutureFlags } from '@/app/routerFuture';
 import { ToastProvider } from '@/hooks/useToast';
+import { SettingsProvider } from '@/features/settings';
 import type { FutureConfig } from '@remix-run/router';
 import { render, type RenderResult } from '@testing-library/react';
 import React, { StrictMode } from 'react';
@@ -52,6 +54,9 @@ export function renderWithAppProviders(ui: React.ReactNode, opts: Options = {}):
     enableHudForTests();
   }
 
+  // Merge user-specified future flags with the project defaults used in production router
+  const mergedFuture = { ...routerFutureFlags, ...(future ?? {}) } satisfies Partial<FutureConfig>;
+
   const routes: RouteObject[] = [
     {
       path: '/',
@@ -62,13 +67,17 @@ export function renderWithAppProviders(ui: React.ReactNode, opts: Options = {}):
 
   const router = createMemoryRouter(routes, {
     initialEntries,
-    future,
+    future: mergedFuture,
   });
 
+  // Note: ToastProvider and SettingsProvider are included here; tests should NOT wrap UI with them again
+  // to avoid double-mounting and snapshot mismatches.
   const utils = render(
     <StrictMode>
       <ToastProvider>
-        <RouterProvider router={router} />
+        <SettingsProvider>
+          <RouterProvider router={router} />
+        </SettingsProvider>
       </ToastProvider>
     </StrictMode>
   );

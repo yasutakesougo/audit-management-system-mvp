@@ -83,7 +83,9 @@ describe('utils/datetime: formatRangeLocal edge cases', () => {
       ],
     } as unknown as Intl.DateTimeFormat;
 
-    const spy = vi.spyOn(Intl, 'DateTimeFormat').mockReturnValue(formatter);
+    const spy = vi
+      .spyOn(Intl, 'DateTimeFormat')
+      .mockImplementation((() => formatter) as unknown as typeof Intl.DateTimeFormat);
     try {
       const out = formatRangeLocal('2025-05-01T00:00:00.000Z', '2025-05-01T00:30:00.000Z', { tz: '', roundTo: 15 });
       expect(out.endsWith(')')).toBe(false);

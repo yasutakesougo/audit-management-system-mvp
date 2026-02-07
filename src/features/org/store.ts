@@ -1,7 +1,7 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 
-import { isDemoModeEnabled, skipSharePoint } from '@/lib/env';
 import { useSP } from '@/lib/spClient';
+import { logSkipSharePointGuard, shouldSkipSharePoint } from '@/lib/sharepoint/skipSharePoint';
 
 import {
     ORG_MASTER_FIELDS,
@@ -10,6 +10,18 @@ import {
     SpOrgRowSchema,
     type OrgMasterRecord,
 } from './data/orgRowSchema';
+
+// ============================================================================
+// In-flight dedupe: Prevent multiple simultaneous Org_Master fetches
+// (solves React 18 StrictMode double-invocation in dev)
+// ============================================================================
+let orgLoadPromise: Promise<void> | null = null;
+
+// ============================================================================
+// Module-scope cache: Session-wide cache to prevent refetch on remount
+// (survives React state reset, route transitions, and HMR)
+// ============================================================================
+let orgCachedOptions: OrgOption[] | null = null;
 
 export type OrgOption = {
   id: string;
@@ -55,93 +67,147 @@ const sortRecords = (records: OrgMasterRecord[]): OrgMasterRecord[] =>
 
 export function useOrgStore(): OrgStoreState {
   const sp = useSP();
+  const spRef = useRef(sp);
+  
+  // Keep ref updated to latest sp client (for refresh after auth state change)
+  useEffect(() => {
+    spRef.current = sp;
+  }, [sp]);
+
   const [items, setItems] = useState<OrgOption[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
   const [loadedOnce, setLoadedOnce] = useState<boolean>(false);
-  const sharePointDisabled = useMemo(() => isDemoModeEnabled() || skipSharePoint(), []);
 
   const loadOrgOptions = useCallback(async (signal?: AbortSignal) => {
+    // Guard -1: Skip SharePoint (demo / baseUrl empty / skip-login / automation)
+    // ✅ Master guard: prevents ALL SharePoint operations in non-SP scenarios
+    // ✅ Promise is never created if SharePoint should be skipped
+    if (shouldSkipSharePoint()) {
+      logSkipSharePointGuard('useOrgStore');
+      orgCachedOptions = null; // Clear cache
+      setItems(FALLBACK_ORG_OPTIONS);
+      setLoadedOnce(true);
+      setLoading(false); // ← CRITICAL: complete state transition
+      return; // ← EXIT POINT: SHAREPOINT SKIPPED - PROMISE NEVER CREATED
+    }
+
+    // Guard 0: Module cache hit (only for SP mode)
+    if (orgCachedOptions) {
+      console.debug('[useOrgStore] Guard 0: cache hit, restoring from module cache');
+      setItems(orgCachedOptions);
+      setLoadedOnce(true);
+      setLoading(false);
+      return;
+    }
+
+    // Guard 1: Already loaded - avoid redundant fetch (synchronous check)
+    if (loadedOnce) {
+      console.debug('[useOrgStore] Guard 1: already loaded, skipping');
+      return;
+    }
+
+    // Guard 2: In-flight dedupe (StrictMode protection)
+    // If already fetching, return the same promise instead of fetching again
+    if (orgLoadPromise) {
+      console.debug('[useOrgStore] Guard 2: in-flight promise found, reusing');
+      return orgLoadPromise;
+    }
+
     if (signal?.aborted) {
       return;
     }
-    setLoading(true);
-    setError(null);
 
-    try {
-      if (sharePointDisabled) {
-        setItems(FALLBACK_ORG_OPTIONS);
-        setLoadedOnce(true);
-        return;
-      }
-
-      const fetchRows = async () => {
-        try {
-          return await sp.listItems<Record<string, unknown>>(ORG_MASTER_LIST_TITLE, {
-            select: Array.from(ORG_MASTER_SELECT_FIELDS),
-            orderby: `${ORG_MASTER_FIELDS.title} asc`,
-            top: 500,
-            signal,
-          });
-        } catch (err) {
-          const status = (err as { status?: number }).status;
-          if (status === 400) {
-            return await sp.listItems<Record<string, unknown>>(ORG_MASTER_LIST_TITLE, {
+    console.debug('[useOrgStore] Guard 3: creating new load promise (SharePoint fetch)');
+    // Guard 3: Promise先取り確保（await前に確保して、同時呼び出しを同じPromiseに吸収）
+    // ✅ sharePointDisabled NEVER true here — Guard -1 already handled all demo mode cases
+    orgLoadPromise = (async () => {
+      setLoading(true);
+      setError(null);
+      try {
+        const fetchRows = async () => {
+          try {
+            return await spRef.current.listItems<Record<string, unknown>>(ORG_MASTER_LIST_TITLE, {
+              select: Array.from(ORG_MASTER_SELECT_FIELDS),
               orderby: `${ORG_MASTER_FIELDS.title} asc`,
               top: 500,
               signal,
             });
+          } catch (err) {
+            const status = (err as { status?: number }).status;
+            if (status === 400) {
+              return await spRef.current.listItems<Record<string, unknown>>(ORG_MASTER_LIST_TITLE, {
+                orderby: `${ORG_MASTER_FIELDS.title} asc`,
+                top: 500,
+                signal,
+              });
+            }
+            throw err;
           }
-          throw err;
+        };
+
+        const rows = await fetchRows();
+        if (signal?.aborted) {
+          return;
         }
-      };
 
-      const rows = await fetchRows();
-      if (signal?.aborted) {
-        return;
-      }
+        const normalizedRows = Array.isArray(rows) ? rows : (rows as { value?: unknown[] })?.value ?? [];
+        const parsedRows = SpOrgRowSchema.array().safeParse(normalizedRows);
+        if (!parsedRows.success) {
+          console.warn('[Org_Master] parse failed, fallback used', parsedRows.error.flatten());
+          setError('Org master schema mismatch');
+          setItems(FALLBACK_ORG_OPTIONS);
+          setLoadedOnce(true);
+          return;
+        }
 
-      const normalizedRows = Array.isArray(rows) ? rows : (rows as { value?: unknown[] })?.value ?? [];
-      const parsedRows = SpOrgRowSchema.array().safeParse(normalizedRows);
-      if (!parsedRows.success) {
-        console.warn('[Org_Master] parse failed, fallback used', parsedRows.error.flatten());
-        setError('Org master schema mismatch');
+        const activeRecords = parsedRows.data.filter((record) => record.isActive);
+
+        const sortedRecords = sortRecords(activeRecords);
+        const nextItems = sortedRecords.length ? buildOrgOptions(sortedRecords) : FALLBACK_ORG_OPTIONS;
+        
+        // Cache successful result at module scope
+        orgCachedOptions = nextItems;
+        
+        setItems(nextItems);
+        setLoadedOnce(true);
+      } catch (err) {
+        if (signal?.aborted) {
+          return;
+        }
+        const message = err instanceof Error ? err.message : '事業所マスターの取得に失敗しました';
+        console.warn('[useOrgStore] failed to load org options', err);
+        setError(message);
         setItems(FALLBACK_ORG_OPTIONS);
         setLoadedOnce(true);
-        return;
+      } finally {
+        if (!signal?.aborted) {
+          setLoading(false);
+        }
+        // Clear in-flight cache on completion (both success and failure)
+        // This allows retry on next call if needed
+        orgLoadPromise = null;
       }
+    })();
 
-      const activeRecords = parsedRows.data.filter((record) => record.isActive);
-
-      const sortedRecords = sortRecords(activeRecords);
-      const nextItems = sortedRecords.length ? buildOrgOptions(sortedRecords) : FALLBACK_ORG_OPTIONS;
-      setItems(nextItems);
-      setLoadedOnce(true);
-    } catch (err) {
-      if (signal?.aborted) {
-        return;
-      }
-      const message = err instanceof Error ? err.message : '事業所マスターの取得に失敗しました';
-      console.warn('[useOrgStore] failed to load org options', err);
-      setError(message);
-      setItems(FALLBACK_ORG_OPTIONS);
-      setLoadedOnce(true);
-    } finally {
-      if (!signal?.aborted) {
-        setLoading(false);
-      }
-    }
-  }, [sharePointDisabled, sp]);
+    return orgLoadPromise;
+  }, []); // No dependencies: IS_DEMO is module-level constant, sp via spRef
 
   const refresh = useCallback(async () => {
     await loadOrgOptions();
   }, [loadOrgOptions]);
 
   useEffect(() => {
+    // Guard: only load if not already loaded
+    // This prevents infinite effect cycles even if loadOrgOptions reference changes
+    if (loadedOnce) {
+      return;
+    }
+
     const controller = new AbortController();
     void loadOrgOptions(controller.signal);
     return () => controller.abort();
-  }, [loadOrgOptions]);
+  }, [loadedOnce, loadOrgOptions]);
 
   return { items, loading, error, loadedOnce, refresh };
 }

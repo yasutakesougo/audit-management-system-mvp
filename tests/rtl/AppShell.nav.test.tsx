@@ -6,6 +6,9 @@ import { describe, expect, it, vi } from 'vitest';
 import AppShell from '@/app/AppShell';
 import { ColorModeContext } from '@/app/theme';
 import { FeatureFlagsContext, type FeatureFlagSnapshot } from '@/config/featureFlags';
+import { SettingsProvider } from '@/features/settings';
+import { ToastProvider } from '@/hooks/useToast';
+import { TESTIDS } from '@/testids';
 
 vi.mock('@/lib/spClient', () => ({
   useSP: () => ({ spFetch: vi.fn().mockResolvedValue({ ok: true }) }),
@@ -65,7 +68,6 @@ vi.mock('@/lib/env', async () => {
     }),
     shouldSkipLogin: () => false,
     isSchedulesFeatureEnabled: () => false,
-    isSchedulesCreateEnabled: () => false,
     isComplianceFormEnabled: () => false,
     isSchedulesWeekV2Enabled: () => false,
   };
@@ -77,9 +79,8 @@ vi.mock('@/ui/components/SignInButton', () => ({
 }));
 
 describe('AppShell navigation smoke test', () => {
-  const featureFlags: FeatureFlagSnapshot = {
+  const baseFlags: FeatureFlagSnapshot = {
     schedules: false,
-    schedulesCreate: false,
     complianceForm: false,
     schedulesWeekV2: false,
     icebergPdca: false,
@@ -87,14 +88,18 @@ describe('AppShell navigation smoke test', () => {
 
   const colorMode = { mode: 'light' as const, toggle: vi.fn(), sticky: false };
 
-  const renderWithProviders = () =>
+  const renderWithProviders = (flags: FeatureFlagSnapshot = baseFlags) =>
     render(
       <MemoryRouter initialEntries={['/daily']}>
         <ColorModeContext.Provider value={colorMode}>
-          <FeatureFlagsContext.Provider value={featureFlags}>
-            <AppShell>
-              <div />
-            </AppShell>
+          <FeatureFlagsContext.Provider value={flags}>
+            <SettingsProvider>
+              <ToastProvider>
+                <AppShell>
+                  <div />
+                </AppShell>
+              </ToastProvider>
+            </SettingsProvider>
           </FeatureFlagsContext.Provider>
         </ColorModeContext.Provider>
       </MemoryRouter>
@@ -105,8 +110,8 @@ describe('AppShell navigation smoke test', () => {
 
     const ids = [
       'nav-daily',
-      'footer-action-daily-attendance',
-      'footer-action-daily-activity',
+      TESTIDS['daily-footer-attendance'],
+      TESTIDS['daily-footer-activity'],
       'daily-footer-support',
       'daily-footer-health',
     ];
@@ -115,5 +120,19 @@ describe('AppShell navigation smoke test', () => {
     elements.forEach((node) => {
       expect(node).toBeInTheDocument();
     });
+  });
+
+  it('hides Iceberg PDCA nav when feature flag is off', () => {
+    const flags = { ...baseFlags, icebergPdca: false };
+    renderWithProviders(flags);
+
+    expect(screen.queryByTestId('nav-iceberg-pdca')).not.toBeInTheDocument();
+  });
+
+  it('shows Iceberg PDCA nav when feature flag is on', () => {
+    const flags = { ...baseFlags, icebergPdca: true };
+    renderWithProviders(flags);
+
+    expect(screen.getByTestId('nav-iceberg-pdca')).toBeInTheDocument();
   });
 });

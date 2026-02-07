@@ -1,4 +1,5 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
+import { formatInTimeZone } from 'date-fns-tz';
 
 import { normalizeUserId, toSharePointPayload } from './createAdapters';
 import type { CreateScheduleEventInput } from './port';
@@ -11,6 +12,30 @@ describe('createAdapters helpers', () => {
     endLocal: '2025-11-26T11:00',
     serviceType: 'normal',
   };
+
+  const runWithTz = async (tz: string) => {
+    vi.resetModules();
+    vi.doMock('@/utils/scheduleTz', () => ({
+      resolveSchedulesTz: () => tz,
+    }));
+
+    return import('./createAdapters');
+  };
+
+  it('serializes naive startLocal/endLocal using the configured schedules time zone', async () => {
+    const recordDate = '2025-01-15';
+    const startLocal = `${recordDate}T10:00`;
+    const endLocal = `${recordDate}T11:00`;
+    const zones = ['Asia/Tokyo', 'UTC', 'America/New_York'];
+
+    for (const tz of zones) {
+      const { toSharePointPayload: toSharePointPayloadWithTz } = await runWithTz(tz);
+      const payload = toSharePointPayloadWithTz({ ...baseInput, category: 'Org', startLocal, endLocal });
+
+      expect(formatInTimeZone(new Date(payload.startIso), tz, "yyyy-MM-dd'T'HH:mm")).toBe(startLocal);
+      expect(formatInTimeZone(new Date(payload.endIso), tz, "yyyy-MM-dd'T'HH:mm")).toBe(endLocal);
+    }
+  });
 
   it('keeps assignedStaffId as a string for Staff schedules', () => {
     const input: CreateScheduleEventInput = {
@@ -35,9 +60,11 @@ describe('createAdapters helpers', () => {
     };
 
     const payload = toSharePointPayload(input);
-    expect(payload.body[SCHEDULES_FIELDS.personId]).toBe('U001');
-    expect(payload.body[SCHEDULES_FIELDS.personName]).toBe('テスト利用者');
-    expect(payload.body[SCHEDULES_FIELDS.targetUserId]).toBe(42);
+    expect(payload.body[SCHEDULES_FIELDS.targetUserId]).toBe('42');
+    expect(payload.body[SCHEDULES_FIELDS.assignedStaff]).toBeNull();
+    expect(payload.body).not.toHaveProperty('cr014_personId');
+    expect(payload.body).not.toHaveProperty('cr014_personName');
+    expect(payload.body).not.toHaveProperty('cr014_usercode');
   });
 
   it('allows Org schedules without user or staff IDs', () => {
@@ -47,8 +74,6 @@ describe('createAdapters helpers', () => {
     };
 
     const payload = toSharePointPayload(input);
-    expect(payload.body[SCHEDULES_FIELDS.personId]).toBeNull();
-    expect(payload.body[SCHEDULES_FIELDS.personName]).toBeNull();
     expect(payload.body[SCHEDULES_FIELDS.targetUserId]).toBeNull();
     expect(payload.body[SCHEDULES_FIELDS.assignedStaff]).toBeUndefined();
   });

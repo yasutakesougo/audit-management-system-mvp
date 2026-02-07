@@ -38,9 +38,9 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 
 import { useFeatureFlags } from '@/config/featureFlags';
 import { HYDRATION_FEATURES, estimatePayloadSize, startFeatureSpan } from '@/hydration/features';
+import { isE2E } from '@/env';
 import { getAppConfig } from '@/lib/env';
 import { useLocation } from 'react-router-dom';
-import { isE2E } from '../env';
 import {
     PvsAStatus,
     ResourceInfo,
@@ -332,23 +332,27 @@ export default function IntegratedResourceCalendarPage() {
   const appConfig = useMemo(() => getAppConfig(), []);
 
   // 1️⃣ デバッグマーカー: この関数が確実に実行されているかを確認
-  console.log('[IRC] mounted', {
-    pathname: location.pathname,
-    isE2E: isE2E,
-    timestamp: new Date().toISOString(),
-  });
+  if (import.meta.env.DEV) {
+    console.log('[IRC] mounted', {
+      pathname: location.pathname,
+      isE2E: isE2E,
+      timestamp: new Date().toISOString(),
+    });
 
-  // E2E テスト用デバッグ情報
-  console.log('[IRC] Page loading with E2E flag:', isE2E);
-  console.log('[IRC] Current environment:', {
-    VITE_E2E: isE2E,
-    VITE_SP_RESOURCE: appConfig.VITE_SP_RESOURCE,
-    VITE_FEATURE_SCHEDULES: schedules,
-  });
+    // E2E テスト用デバッグ情報
+    console.log('[IRC] Page loading with E2E flag:', isE2E);
+    console.log('[IRC] Current environment:', {
+      VITE_E2E: isE2E,
+      VITE_SP_RESOURCE: appConfig.VITE_SP_RESOURCE,
+      VITE_FEATURE_SCHEDULES: schedules,
+    });
+  }
 
   const ircSpClient = useMemo(() => {
     const client = createIrcSpClient();
-    console.log('[IRC] SpClient created:', { isE2E: isE2E, client });
+    if (import.meta.env.DEV) {
+      console.log('[IRC] SpClient created:', { isE2E: isE2E, client });
+    }
     return client;
   }, []);
 
@@ -373,16 +377,18 @@ export default function IntegratedResourceCalendarPage() {
       });
       try {
         const unifiedEvents = await ircSpClient.getUnifiedEvents();
-        console.log('[IRC] Loaded events count:', unifiedEvents.length);
-        unifiedEvents.forEach((event, index) => {
-          console.log(`[IRC] Event ${index}:`, {
-            id: event.id,
-            title: event.title,
-            resourceId: event.resourceId,
-            editable: event.editable,
-            hasActual: !!event.extendedProps?.actualStart
+        if (import.meta.env.DEV) {
+          console.log('[IRC] Loaded events count:', unifiedEvents.length);
+          unifiedEvents.forEach((event, index) => {
+            console.log(`[IRC] Event ${index}:`, {
+              id: event.id,
+              title: event.title,
+              resourceId: event.resourceId,
+              editable: event.editable,
+              hasActual: !!event.extendedProps?.actualStart
+            });
           });
-        });
+        }
         setEvents(unifiedEvents);
         eventSpan({
           meta: {
@@ -481,11 +487,13 @@ export default function IntegratedResourceCalendarPage() {
     const hasActual = eventProps?.actualStart;
 
     // 全てのイベントでログ出力
-    console.log('[IRC] eventDidMount called', {
-      id: event.id,
-      title: event.title,
-      allEventsLength: visibleEvents.length
-    });
+    if (import.meta.env.DEV) {
+      console.log('[IRC] eventDidMount called', {
+        id: event.id,
+        title: event.title,
+        allEventsLength: visibleEvents.length
+      });
+    }
 
     // イベントの実際の編集可能性を判定
     // 1. 実績がある場合は編集不可
@@ -505,15 +513,16 @@ export default function IntegratedResourceCalendarPage() {
       }
 
       element.setAttribute('data-testid', testId);
-      console.log('[IRC] eventDidMount E2E testid set', {
-        id: event.id,
-        title: event.title,
-        hasActual: !!hasActual,
-        isLocked,
-        eventDataEditable: eventData?.editable,
-        testId,
-        element
-      });
+      if (import.meta.env.DEV) {
+        console.log('[IRC] eventDidMount E2E testid set', {
+          id: event.id,
+          title: event.title,
+          hasActual: !!hasActual,
+          isLocked,
+          eventDataEditable: eventData?.editable,
+          testId,
+        });
+      }
     }
   }, [events, visibleEvents]);
 

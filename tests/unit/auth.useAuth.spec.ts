@@ -100,16 +100,17 @@ describe('useAuth hook', () => {
     expect(result.current.isAuthenticated).toBe(true);
     expect(result.current.account).toEqual(mockAccount);
 
-  let token: string | null = null;
+    let token: string | null = null;
     await act(async () => {
       token = await result.current.acquireToken('https://resource.example.com');
     });
 
-  expect(token).toBe('mock-token:https://resource.example.com/.default');
+    expect(token).toBe('mock-token:https://resource.example.com/.default');
     expect(mockPersistMsalToken).toHaveBeenCalledWith(
       'mock-token:https://resource.example.com/.default'
     );
-    await expect(result.current.signIn()).resolves.toBeUndefined();
+    // E2E mock mode: signIn returns { success: false }, signOut returns undefined (no-ops)
+    await expect(result.current.signIn()).resolves.toEqual({ success: false });
     await expect(result.current.signOut()).resolves.toBeUndefined();
   });
 

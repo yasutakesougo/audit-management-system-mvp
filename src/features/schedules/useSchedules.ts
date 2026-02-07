@@ -1,24 +1,24 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
-import type { CreateScheduleEventInput } from './ScheduleCreateDialog';
-import { type DateRange as DataDateRange, type SchedItem, type UpdateScheduleEventInput } from './data';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { type DateRange, type SchedItem, type UpdateScheduleEventInput } from './data';
 import { useSchedulesPort } from './data/context';
-import { SCHEDULES_DEBUG } from './debug';
+import { useAuth } from '@/auth/useAuth';
+import { authDiagnostics } from '@/features/auth/diagnostics';
+import { createSpClient, ensureConfig } from '@/lib/spClient';
+import type { InlineScheduleDraft } from './data/inlineScheduleDraft';
+import type { ResultError } from '@/shared/result';
+import { toSafeError } from '@/lib/errors';
 
-export type DateRange = DataDateRange;
+export type { InlineScheduleDraft } from './data/inlineScheduleDraft';
 
-type UseSchedulesResult = {
+export type UseSchedulesResult = {
   items: SchedItem[];
   loading: boolean;
-  create: (draft: InlineScheduleDraft) => Promise<SchedItem>;
-  update: (input: UpdateScheduleEventInput) => Promise<SchedItem>;
-};
-
-export type InlineScheduleDraft = {
-  title: string;
-  dateIso: string;
-  startTime: string;
-  endTime: string;
-  sourceInput?: CreateScheduleEventInput;
+  create: (draft: InlineScheduleDraft) => Promise<void>;
+  update: (input: UpdateScheduleEventInput) => Promise<void>;
+  remove: (eventId: string) => Promise<void>;
+  lastError: ResultError | null;
+  clearLastError: () => void;
+  refetch: () => void;
 };
 
 const normalizeRange = (range: DateRange): DateRange => ({
@@ -26,60 +26,116 @@ const normalizeRange = (range: DateRange): DateRange => ({
   to: new Date(range.to).toISOString(),
 });
 
-const inferRangeMode = (range: DateRange): 'day' | 'week' | 'month' | 'custom' => {
-  const fromTs = Date.parse(range.from);
-  const toTs = Date.parse(range.to);
-  if (Number.isNaN(fromTs) || Number.isNaN(toTs)) {
-    return 'custom';
-  }
-  const diffDays = (toTs - fromTs) / (1000 * 60 * 60 * 24);
-  if (diffDays <= 1.1) return 'day';
-  if (diffDays <= 7.1) return 'week';
-  if (diffDays <= 35) return 'month';
-  return 'custom';
-};
-
 export function useSchedules(range: DateRange): UseSchedulesResult {
   const [items, setItems] = useState<SchedItem[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
+  const [lastError, setLastError] = useState<ResultError | null>(null);
+  const [reloadToken, setReloadToken] = useState(0);
+  const lastMutationTsRef = useRef<number>(0);
+  const listCheckDoneRef = useRef<boolean>(false);
   const port = useSchedulesPort();
+  const { acquireToken, getListReadyState, setListReadyState } = useAuth();
+
+  const clearLastError = () => setLastError(null);
+  const refetch = () => setReloadToken((v) => v + 1);
 
   const normalizedRange = useMemo(() => normalizeRange(range), [range.from, range.to]);
 
+  // One-time check: verify ScheduleEvents list exists at app startup
   useEffect(() => {
-    if (!SCHEDULES_DEBUG) {
-      return;
-    }
-    const view = inferRangeMode(normalizedRange);
-    // eslint-disable-next-line no-console -- dev/test diagnostics only
-    console.log('[schedules] useSchedules', {
-      view,
-      range: {
-        from: normalizedRange.from,
-        to: normalizedRange.to,
-      },
-      items: items.length,
-    });
-  }, [items.length, normalizedRange.from, normalizedRange.to]);
+    if (listCheckDoneRef.current) return;
+    listCheckDoneRef.current = true;
 
-  const refresh = useCallback(async () => {
-    setLoading(true);
-    try {
-      const data = await port.list(normalizedRange);
-      setItems(data);
-    } finally {
-      setLoading(false);
+    const checkListExistence = async () => {
+      try {
+        const spConfig = ensureConfig();
+        const baseUrl = spConfig.baseUrl;
+        if (!baseUrl) return; // E2E/demo mode
+
+        const listName = String(import.meta.env.VITE_SP_LIST_SCHEDULES || 'ScheduleEvents');
+        const client = createSpClient(acquireToken, baseUrl);
+        const metadata = await client.tryGetListMetadata(listName);
+
+        if (metadata) {
+          setListReadyState(true);
+        } else {
+          setListReadyState(false);
+          // Diagnose: List not found
+          authDiagnostics.collect({
+            route: '/schedules',
+            reason: 'list-not-found',
+            outcome: 'blocked',
+          });
+        }
+      } catch (error) {
+        console.error('[useSchedules] List existence check failed:', error);
+        setListReadyState(false);
+        // Diagnose: Network or auth error during list check
+        authDiagnostics.collect({
+          route: '/schedules',
+          reason: error instanceof Error && error.message.includes('auth') ? 'login-failure' : 'network-error',
+          outcome: 'blocked',
+          detail: {
+            errorMessage: error instanceof Error ? error.message : String(error),
+          },
+        });
+      }
+    };
+
+    const currentState = getListReadyState();
+    if (currentState === null) {
+      void checkListExistence();
     }
-  }, [normalizedRange, port]);
+  }, [acquireToken, getListReadyState, setListReadyState]);
 
   useEffect(() => {
     let alive = true;
+    const startedAt = Date.now();
     (async () => {
       try {
         setLoading(true);
+        setLastError(null); // Clear previous errors
         const data = await port.list(normalizedRange);
         if (!alive) return;
+        if (lastMutationTsRef.current > startedAt) {
+          return;
+        }
         setItems(data);
+      } catch (err) {
+        // Handle errors gracefully without throwing
+        if (!alive) return;
+        const error = err instanceof Error ? err.message : 'Failed to fetch schedules';
+        // eslint-disable-next-line no-console
+        console.error('[useSchedules] Failed to load schedule items', {
+          message: error,
+          err,
+          status: (err as { status?: number }).status,
+          url: (err as { url?: string }).url,
+          body: (err as { body?: string }).body,
+        });
+        setLastError({ message: error } as ResultError);
+        setItems([]); // Clear items on error
+
+        // Diagnose: Categorize error and collect event
+        const errorStatus = (err as { status?: number }).status;
+        let reason = 'unknown-error';
+        if (errorStatus === 401 || errorStatus === 403) {
+          reason = 'login-failure';
+        } else if (errorStatus === 404) {
+          reason = 'list-not-found';
+        } else if (!navigator.onLine || error.includes('network')) {
+          reason = 'network-error';
+        }
+
+        authDiagnostics.collect({
+          route: '/schedules',
+          reason,
+          outcome: 'blocked',
+          detail: {
+            errorMessage: error,
+            status: errorStatus,
+          },
+        });
       } finally {
         if (alive) {
           setLoading(false);
@@ -90,68 +146,89 @@ export function useSchedules(range: DateRange): UseSchedulesResult {
     return () => {
       alive = false;
     };
-  }, [normalizedRange.from, normalizedRange.to, port]);
+  }, [normalizedRange.from, normalizedRange.to, port, reloadToken]);
 
-  const create = useCallback(async (draft: InlineScheduleDraft) => {
-    const startIso = toIsoFromParts(draft.dateIso, draft.startTime);
-    const endIso = toIsoFromParts(draft.dateIso, draft.endTime);
-    const optimisticId = `temp-${Date.now()}`;
-    const optimistic: SchedItem = {
-      id: optimisticId,
-      title: draft.title.trim() || '新規予定',
-      start: startIso,
-      end: endIso,
-      status: 'Planned',
-      statusReason: draft.sourceInput?.statusReason ?? null,
-    };
-
-    setItems((prev) => sortByStart([...prev, optimistic]));
-
-    const input = buildCreateInputFromDraft(draft);
-
-    try {
-      const normalizedTitle = draft.title.trim() || input.title;
-      const saved = await port.create({ ...input, title: normalizedTitle });
-      setItems((prev) =>
-        sortByStart(
-          prev.map((item) => (item.id === optimisticId ? saved : item)),
-        ),
-      );
-      await refresh();
-      return saved;
-    } catch (error) {
-      setItems((prev) => prev.filter((item) => item.id !== optimisticId));
-      // eslint-disable-next-line no-console
-      console.error('Failed to create schedule', error);
-      throw error;
+  const create = async (draft: InlineScheduleDraft) => {
+    if (!port.create) {
+      throw new Error('Schedule port does not support create');
     }
-  }, [port, refresh]);
+    if (!draft.sourceInput) {
+      throw new Error('Schedule draft is missing sourceInput');
+    }
+    const res = await port.create(draft.sourceInput);
+    if (!res.isOk) {
+      setLastError(res.error);
+      console.warn('[schedules] create failed', res.error);
+      return;
+    }
+    setLastError(null);
+    lastMutationTsRef.current = Date.now();
+    setItems((prev) => [...prev, res.value]);
+  };
 
-  const update = useCallback(async (input: UpdateScheduleEventInput) => {
+  const update = async (input: UpdateScheduleEventInput) => {
     if (!port.update) {
-      throw new Error('Schedules update is not configured for this environment.');
+      throw new Error('Schedule port does not support update');
     }
+    const res = await port.update(input);
+    if (!res.isOk) {
+      // Phase 2-2b: Attach schedule id to conflict errors for post-refetch targeting
+      const errorToSet = res.error.kind === 'conflict' ? { ...res.error, id: input.id } : res.error;
+      setLastError(errorToSet);
+      console.warn('[schedules] update failed', errorToSet);
+      return;
+    }
+    setLastError(null);
+    const updated = res.value;
+    lastMutationTsRef.current = Date.now();
+    setItems((prev) =>
+      prev.map((item) => {
+        if (item.id !== updated.id) return item;
+        const nextServiceType = (updated.serviceType ?? input.serviceType ?? item.serviceType) ?? undefined;
+        return {
+          ...item,
+          ...updated,
+          serviceType: nextServiceType,
+        };
+      }),
+    );
+  };
 
-    const normalized: UpdateScheduleEventInput = {
-      ...input,
-      title: input.title?.trim() || '新規予定',
-    };
-
+  const remove = async (eventId: string): Promise<void> => {
+    const removeFn = port.remove;
+    if (!removeFn) {
+      throw new Error('Schedule port does not support remove');
+    }
     try {
-      const saved = await port.update(normalized);
-      setItems((prev) =>
-        sortByStart(prev.map((item) => (item.id === saved.id ? saved : item))),
-      );
-      await refresh();
-      return saved;
+      await removeFn(eventId);
+      setLastError(null);
+      lastMutationTsRef.current = Date.now();
+      setItems((prev) => prev.filter((item) => item.id !== eventId));
     } catch (error) {
-      // eslint-disable-next-line no-console
-      console.error('Failed to update schedule', error);
+      const safeError = toSafeError(error);
+      const resultError: ResultError = { kind: 'unknown', message: safeError.message, cause: safeError };
+      setLastError(resultError);
+      console.warn('[schedules] remove failed', resultError);
       throw error;
     }
-  }, [port, refresh]);
+  };
 
-  return { items, loading, create, update };
+  const returnValue = {
+    items,
+    loading,
+    create,
+    update,
+    remove,
+    lastError,
+    clearLastError,
+    refetch,
+  };
+
+  if (typeof returnValue.remove !== 'function') {
+    console.error('[CRITICAL] useSchedules returning remove that is NOT a function:', typeof returnValue.remove);
+  }
+
+  return returnValue as UseSchedulesResult;
 }
 
 export const makeRange = (from: Date, to: Date): DateRange => ({
@@ -159,31 +236,5 @@ export const makeRange = (from: Date, to: Date): DateRange => ({
   to: to.toISOString(),
 });
 
-const sortByStart = (list: SchedItem[]): SchedItem[] =>
-  [...list].sort((a, b) => a.start.localeCompare(b.start));
-
-const toIsoFromParts = (dateIso: string, time: string): string => {
-  const normalizedTime = time.length === 5 ? `${time}:00` : time;
-  const value = `${dateIso}T${normalizedTime}`;
-  const date = new Date(value);
-  return Number.isNaN(date.getTime()) ? new Date().toISOString() : date.toISOString();
-};
-
-const buildCreateInputFromDraft = (draft: InlineScheduleDraft): CreateScheduleEventInput => {
-  if (draft.sourceInput) {
-    return { ...draft.sourceInput, title: draft.title };
-  }
-
-  const startLocal = `${draft.dateIso}T${draft.startTime}`;
-  const endLocal = `${draft.dateIso}T${draft.endTime}`;
-  const input: CreateScheduleEventInput = {
-    title: draft.title || '新規予定',
-    category: 'Org',
-    startLocal,
-    endLocal,
-    serviceType: 'other',
-    status: 'Planned',
-    statusReason: null,
-  };
-  return input;
-};
+// Re-export for consumers importing from useSchedules
+export type { DateRange };

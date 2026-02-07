@@ -1,7 +1,10 @@
 export class AuthRequiredError extends Error {
+  code: string;
+
   constructor(message: string = 'AUTH_REQUIRED') {
     super(message);
     this.name = 'AuthRequiredError';
+    this.code = 'AUTH_REQUIRED';
   }
 }
 

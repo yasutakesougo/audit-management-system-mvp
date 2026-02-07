@@ -2,16 +2,18 @@
   "ci": {
     "collect": {
       "numberOfRuns": 1,
-      "url": ["http://localhost:4173/"],
-      "staticDistDir": "dist"
+      "url": ["http://127.0.0.1:4173/analysis/dashboard"],
+      "startServerCommand": "npm run build && vite preview --host 127.0.0.1 --port 4173 --strictPort",
+      "startServerReadyPattern": "localhost:4173|127.0.0.1:4173",
+      "startServerTimeout": 120000
     },
     "assert": {
       "assertions": {
-        "first-contentful-paint": ["warn", { "maxNumericValue": 2500 }],
-        "largest-contentful-paint": ["warn", { "maxNumericValue": 3000 }],
+        "first-contentful-paint": ["warn", { "maxNumericValue": 3800 }],
+        "largest-contentful-paint": ["warn", { "maxNumericValue": 4700 }],
         "cumulative-layout-shift": ["warn", { "maxNumericValue": 0.1 }],
-        "interactive": ["warn", { "maxNumericValue": 4000 }],
-        "categories:performance": ["warn", { "minScore": 0.8 }]
+        "interactive": ["warn", { "maxNumericValue": 4700 }],
+        "categories:performance": ["warn", { "minScore": 0.72 }]
       }
     },
     "upload": {

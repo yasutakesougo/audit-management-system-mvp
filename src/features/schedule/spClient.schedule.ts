@@ -8,7 +8,7 @@ import {
     SCHEDULE_FIELD_SERVICE_TYPE,
 } from '@/sharepoint/fields';
 import type { SpScheduleItem } from '@/types';
-import { buildScheduleSelectClause, handleScheduleOptionalFieldError } from './scheduleFeatures';
+import { buildScheduleSelectClause, withScheduleFieldFallback } from './scheduleFeatures';
 import { fromSpSchedule, toSpScheduleFields } from './spMap';
 import { STATUS_DEFAULT } from './statusDictionary';
 import type { ScheduleUserCare, ServiceType } from './types';
@@ -19,7 +19,7 @@ type ScheduleUserCareDraft = Omit<ScheduleUserCare, 'id' | 'etag'> & {
   etag?: string;
 };
 
-const DEFAULT_LIST_TITLE = 'ScheduleEvents';
+const DEFAULT_LIST_TITLE = 'Schedules';
 const LIST_TITLE = (() => {
   const override = readEnv('VITE_SP_LIST_SCHEDULES', '').trim();
   return override || DEFAULT_LIST_TITLE;
@@ -37,17 +37,6 @@ const LIST_PATH = buildListPath(LIST_TITLE);
 const buildScheduleListPath = (list: string, id?: number): string => {
   const base = buildListPath(list);
   return typeof id === 'number' ? `${base}(${id})` : base;
-};
-
-const withScheduleFieldFallback = async <T>(operation: () => Promise<T>): Promise<T> => {
-  try {
-    return await operation();
-  } catch (error: unknown) {
-    if (handleScheduleOptionalFieldError(error)) {
-      return await operation();
-    }
-    throw error;
-  }
 };
 
 const encodeODataDate = (iso: string): string => {
@@ -248,7 +237,7 @@ export async function getUserCareSchedules(
   };
 
   try {
-    const result = await withScheduleFieldFallback(execute);
+    const result = await withScheduleFieldFallback(() => execute());
     span({ meta: { status: 'ok', count: result.length, bytes: estimatePayloadSize(result) } });
     return result;
   } catch (error) {

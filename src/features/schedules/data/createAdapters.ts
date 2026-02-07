@@ -1,8 +1,14 @@
+import { fromZonedTime } from 'date-fns-tz';
+
 import { createSpClient, ensureConfig } from '@/lib/spClient';
-import type { CreateScheduleEventInput, SchedItem, ScheduleServiceType, ScheduleStatus, SchedulesPort } from './port';
-import { SCHEDULES_FIELDS, SCHEDULES_LIST_TITLE } from './spSchema';
+import type { CreateScheduleEventInput, SchedItem, ScheduleServiceType, ScheduleStatus, ScheduleVisibility, SchedulesPort } from './port';
+import { result } from '@/shared/result';
+import { SCHEDULES_FIELDS, SCHEDULES_LIST_TITLE, DEFAULT_SCHEDULE_VISIBILITY, OWNER_USER_ID_ME } from './spSchema';
+import { resolveSchedulesTz } from '@/utils/scheduleTz';
+import { normalizeServiceType as normalizeSharePointServiceType } from '@/sharepoint/serviceTypes';
 
 const DEFAULT_TITLE = '新規予定';
+const SCHEDULES_TZ = resolveSchedulesTz();
 
 export const normalizeUserId = (value: string): string => value.trim().toUpperCase().replace(/[^A-Z0-9]/g, '');
 
@@ -14,18 +20,25 @@ const trimText = (value?: string | null): string | undefined => {
   return trimmed ? trimmed : undefined;
 };
 
+const asStringOrUndefined = (value: unknown): string | undefined => {
+  if (value === null || value === undefined) return undefined;
+  if (typeof value === 'string') {
+    const trimmed = value.trim();
+    return trimmed || undefined;
+  }
+  return String(value);
+};
+
 const resolveCategoryFields = (
   input: CreateScheduleEventInput,
 ): {
   normalizedUserId: string | null;
   assignedStaffId: string | null;
-  personName: string | null;
   normalizedTargetUserId: number | null;
   userLookupId: string | number | null;
 } => {
   const normalizedUserId = input.userId ? normalizeUserId(input.userId) : null;
   const assignedStaffId = trimText(input.assignedStaffId) ?? null;
-  const personName = trimText((input as { userName?: string }).userName) ?? null;
   const normalizedTargetUserId = normalizeLookupId(input.userLookupId);
   const userLookupId = input.userLookupId ?? null;
 
@@ -41,7 +54,7 @@ const resolveCategoryFields = (
     }
   }
 
-  return { normalizedUserId, assignedStaffId, personName, normalizedTargetUserId, userLookupId };
+  return { normalizedUserId, assignedStaffId, normalizedTargetUserId, userLookupId };
 };
 
 const appendSeconds = (value: string): string => {
@@ -57,19 +70,21 @@ const normalizeLookupId = (value: string | number | null | undefined): number | 
   return Number.isFinite(parsed) ? parsed : null;
 };
 
-const ensureTimeZone = (value: string): string => {
-  // Treat naive local timestamps as UTC to avoid date shifting when toISOString() is applied.
-  const hasZone = /[zZ]$|[+-]\d{2}:?\d{2}$/.test(value);
-  return hasZone ? value : `${value}Z`;
-};
+const hasTimeZone = (value: string): boolean => /[zZ]$|[+-]\d{2}:?\d{2}$/.test(value);
 
 const toIsoString = (value: string): string => {
-  const normalized = ensureTimeZone(value);
-  const date = new Date(normalized);
+  const date = hasTimeZone(value) ? new Date(value) : fromZonedTime(value, SCHEDULES_TZ);
+
   if (Number.isNaN(date.getTime())) {
     throw new Error(`Invalid datetime value: ${value}`);
   }
+
   return date.toISOString();
+};
+
+const normalizeServiceType = (value: string | ScheduleServiceType | null | undefined): ScheduleServiceType | undefined => {
+  const normalized = normalizeSharePointServiceType(value ?? null);
+  return normalized ?? undefined;
 };
 
 const jpServiceLabel = (serviceType?: ScheduleServiceType | null): string => {
@@ -94,9 +109,10 @@ const buildUserTitle = (startLocal: string, userName: string, serviceType: Sched
 const resolveTitle = (input: CreateScheduleEventInput): string => {
   const rawTitle = trimText(input.title);
   const userName = trimText((input as { userName?: string }).userName);
+  const normalizedServiceType = normalizeServiceType(input.serviceType);
 
   if (input.category === 'User' && userName) {
-    return buildUserTitle(input.startLocal, userName, input.serviceType);
+    return buildUserTitle(input.startLocal, userName, normalizedServiceType ?? 'other');
   }
 
   return rawTitle || DEFAULT_TITLE;
@@ -110,31 +126,37 @@ type SharePointPayload = {
 };
 
 export const toSharePointPayload = (input: CreateScheduleEventInput): SharePointPayload => {
-  const { normalizedUserId, assignedStaffId, personName, normalizedTargetUserId } = resolveCategoryFields(input);
+  const { normalizedUserId: _normalizedUserId, assignedStaffId, normalizedTargetUserId } = resolveCategoryFields(input);
   const title = resolveTitle(input);
   const startIso = toIsoString(appendSeconds(input.startLocal));
   const endIso = toIsoString(appendSeconds(input.endLocal));
-  const serviceType = trimText(input.serviceType);
+  const normalizedServiceType = normalizeServiceType(input.serviceType);
+  const serviceType = normalizedServiceType ?? trimText(input.serviceType);
   const locationName = trimText(input.locationName);
   const notes = trimText(input.notes);
   const acceptedOn = trimText(input.acceptedOn);
   const acceptedBy = trimText(input.acceptedBy);
   const acceptedNote = trimText(input.acceptedNote);
+  const ownerUserId = trimText(input.ownerUserId) ?? OWNER_USER_ID_ME;
+  const visibility: ScheduleVisibility = input.visibility ?? DEFAULT_SCHEDULE_VISIBILITY;
   const body: Record<string, unknown> = {
     [SCHEDULES_FIELDS.title]: title,
     [SCHEDULES_FIELDS.start]: startIso,
     [SCHEDULES_FIELDS.end]: endIso,
     // SharePoint choice/text column. We start with a fixed value known to exist.
     [SCHEDULES_FIELDS.status]: 'Scheduled',
+    // Phase 1: owner and visibility defaults
+    [SCHEDULES_FIELDS.ownerUserId]: ownerUserId,
+    [SCHEDULES_FIELDS.visibility]: visibility,
   };
 
   if (serviceType) {
     body[SCHEDULES_FIELDS.serviceType] = serviceType;
   }
   if (input.category === 'User') {
-    body[SCHEDULES_FIELDS.personId] = normalizedUserId ?? null;
-    body[SCHEDULES_FIELDS.personName] = personName ?? null;
-    body[SCHEDULES_FIELDS.targetUserId] = normalizedTargetUserId ?? null;
+    // Convert lookup id to string for SharePoint text field (if present)
+    body[SCHEDULES_FIELDS.targetUserId] = normalizedTargetUserId !== null ? String(normalizedTargetUserId) : null;
+    // Explicitly clear staff assignment for user schedules.
     body[SCHEDULES_FIELDS.assignedStaff] = null;
   }
   if (locationName) {
@@ -153,16 +175,34 @@ export const toSharePointPayload = (input: CreateScheduleEventInput): SharePoint
     body[SCHEDULES_FIELDS.acceptedNote] = acceptedNote ?? null;
   }
   if (input.category === 'Staff') {
-    body[SCHEDULES_FIELDS.assignedStaff] = assignedStaffId ?? null;
-    body[SCHEDULES_FIELDS.personId] = null;
-    body[SCHEDULES_FIELDS.personName] = null;
-    body[SCHEDULES_FIELDS.targetUserId] = null;
+    const assignedStaffString = asStringOrUndefined(assignedStaffId);
+    if (assignedStaffString) {
+      body[SCHEDULES_FIELDS.assignedStaff] = assignedStaffString;
+    }
   }
   if (input.category === 'Org') {
-    body[SCHEDULES_FIELDS.personId] = null;
-    body[SCHEDULES_FIELDS.personName] = null;
+    // Explicitly set lookup field to null so callers/tests can distinguish from "not provided".
     body[SCHEDULES_FIELDS.targetUserId] = null;
   }
+
+  // Drop undefined and most nulls to avoid SharePoint rejecting text fields.
+  // Keep null for known nullable fields.
+  const keepNull = new Set<string>([
+    SCHEDULES_FIELDS.targetUserId,
+    SCHEDULES_FIELDS.acceptedNote,
+    // Some tests and callers rely on an explicit null to indicate "cleared".
+    SCHEDULES_FIELDS.assignedStaff,
+  ]);
+  Object.keys(body).forEach((key) => {
+    const value = body[key];
+    if (value === undefined) {
+      delete body[key];
+      return;
+    }
+    if (value === null && !keepNull.has(key)) {
+      delete body[key];
+    }
+  });
 
   return {
     body,
@@ -194,6 +234,9 @@ type BuildSchedItemArgs = {
   acceptedOn?: string;
   acceptedBy?: string;
   acceptedNote?: string | null;
+  ownerUserId?: string;
+  visibility?: ScheduleVisibility;
+  etag?: string; // Phase 2-0: conflict detection
 };
 
 const buildSchedItem = (args: BuildSchedItemArgs): SchedItem => ({
@@ -218,41 +261,61 @@ const buildSchedItem = (args: BuildSchedItemArgs): SchedItem => ({
   acceptedOn: args.acceptedOn,
   acceptedBy: args.acceptedBy,
   acceptedNote: args.acceptedNote ?? null,
+  ownerUserId: args.ownerUserId,
+  visibility: args.visibility,
+  etag: args.etag ?? `"sp-${Date.now()}"`, // Phase 2-0: fallback if not provided
 });
 
 export const makeMockScheduleCreator = (): SchedulesPort['create'] => async (input) => {
-  const { normalizedUserId, assignedStaffId, personName, userLookupId } = resolveCategoryFields(input);
-  const title = resolveTitle(input);
-  const start = toIsoString(appendSeconds(input.startLocal));
-  const end = toIsoString(appendSeconds(input.endLocal));
-  const now = new Date().toISOString();
-  return buildSchedItem({
-    id: `mock-${Date.now()}`,
-    title,
-    start,
-    end,
-    userId: input.category === 'User' ? normalizedUserId ?? undefined : undefined,
-    userLookupId: input.category === 'User'
-      ? userLookupId != null
-        ? String(userLookupId)
-        : undefined
-      : undefined,
-    personName: input.category === 'User' ? personName ?? undefined : undefined,
-    category: input.category,
-    serviceType: input.serviceType,
-    locationName: trimText(input.locationName),
-    notes: trimText(input.notes),
-    assignedStaffId: input.category === 'Staff' ? assignedStaffId ?? undefined : undefined,
-    vehicleId: trimText(input.vehicleId),
-    status: input.status ?? 'Planned',
-    statusReason: null,
-    entryHash: undefined,
-    createdAt: now,
-    updatedAt: now,
-    acceptedOn: trimText(input.acceptedOn),
-    acceptedBy: trimText(input.acceptedBy),
-    acceptedNote: input.acceptedNote ?? null,
-  });
+  try {
+    const { normalizedUserId, assignedStaffId, userLookupId } = resolveCategoryFields(input);
+    const personName = trimText((input as { userName?: string }).userName) ?? null;
+    const title = resolveTitle(input);
+    const start = toIsoString(appendSeconds(input.startLocal));
+    const end = toIsoString(appendSeconds(input.endLocal));
+    const normalizedServiceType = normalizeServiceType(input.serviceType);
+    const now = new Date().toISOString();
+    const ownerUserId = trimText(input.ownerUserId) ?? OWNER_USER_ID_ME;
+    const visibility: ScheduleVisibility = input.visibility ?? DEFAULT_SCHEDULE_VISIBILITY;
+    const etagValue = `"mock-${Date.now()}"`; // Phase 2-0: mock etag
+    const item = buildSchedItem({
+      id: `mock-${Date.now()}`,
+      title,
+      start,
+      end,
+      userId: input.category === 'User' ? normalizedUserId ?? undefined : undefined,
+      userLookupId: input.category === 'User'
+        ? userLookupId != null
+          ? String(userLookupId)
+          : undefined
+        : undefined,
+      personName: input.category === 'User' ? personName ?? undefined : undefined,
+      category: input.category,
+      serviceType: normalizedServiceType ?? undefined,
+      locationName: trimText(input.locationName),
+      notes: trimText(input.notes),
+      assignedStaffId: input.category === 'Staff' ? assignedStaffId ?? undefined : undefined,
+      vehicleId: trimText(input.vehicleId),
+      status: input.status ?? 'Planned',
+      statusReason: null,
+      entryHash: undefined,
+      createdAt: now,
+      updatedAt: now,
+      acceptedOn: trimText(input.acceptedOn),
+      acceptedBy: trimText(input.acceptedBy),
+      acceptedNote: input.acceptedNote ?? null,
+      ownerUserId,
+      visibility,
+      etag: etagValue,
+    });
+    return result.ok(item);
+  } catch (error) {
+    const safeErr = error instanceof Error ? error : new Error(String(error));
+    return result.err({
+      kind: 'validation',
+      message: safeErr.message,
+    });
+  }
 };
 
 type SharePointScheduleRow = {
@@ -282,10 +345,15 @@ export const makeSharePointScheduleCreator = ({ acquireToken }: SharePointCreato
     const notesValue = trimText(input.notes);
     const acceptedOnValue = trimText(input.acceptedOn);
     const acceptedByValue = trimText(input.acceptedBy);
-    const { normalizedUserId, assignedStaffId, personName, userLookupId } = resolveCategoryFields(input);
+    const { normalizedUserId, assignedStaffId, userLookupId } = resolveCategoryFields(input);
+    const personName = trimText((input as { userName?: string }).userName) ?? null;
     const acceptedNoteValue = input.acceptedNote ?? null;
+    const ownerUserId = trimText(input.ownerUserId) ?? OWNER_USER_ID_ME;
+    const visibility: ScheduleVisibility = input.visibility ?? DEFAULT_SCHEDULE_VISIBILITY;
+    const metadata = (created as { __metadata?: { id?: string } })?.__metadata;
+    const etagValue = metadata?.id ? `"${metadata.id}"` : `"sp-${id}"`; // Phase 2-0: etag from SP
 
-    return buildSchedItem({
+    const item = buildSchedItem({
       id,
       title: typeof persistedTitleRaw === 'string' && persistedTitleRaw.trim() ? persistedTitleRaw : payload.title,
       start: typeof persistedStartRaw === 'string' && persistedStartRaw ? persistedStartRaw : payload.startIso,
@@ -309,6 +377,10 @@ export const makeSharePointScheduleCreator = ({ acquireToken }: SharePointCreato
       acceptedOn: acceptedOnValue,
       acceptedBy: acceptedByValue,
       acceptedNote: acceptedNoteValue,
+      ownerUserId,
+      visibility,
+      etag: etagValue,
     });
+    return result.ok(item);
   };
 };

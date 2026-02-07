@@ -8,11 +8,13 @@ import { getScheduleStatusMeta } from './statusMetadata';
 import { type DateRange } from './data';
 import { makeRange, useSchedules } from './useSchedules';
 
-type ExtendedSchedItem = SchedItem & Partial<{
-  location: string;
-  resource: string;
-  owner: string;
-}>;
+type ExtendedSchedItem = SchedItem &
+  Partial<{
+    location: string;
+    resource: string;
+    owner: string;
+    baseShiftWarnings: { staffId?: string; staffName?: string }[];
+  }>;
 
 type TimelineItemProps = {
   title: string;
@@ -23,6 +25,8 @@ type TimelineItemProps = {
   acceptedBy?: string | null;
   acceptedOn?: string | null;
   acceptedNote?: string | null;
+  hasWarning?: boolean;
+  warningLabel?: string;
 };
 
 const toLocalDateIso = (value?: string): string => {
@@ -126,6 +130,7 @@ const DayViewContent = ({ items, loading, range }: { items: SchedItem[]; loading
 
   return (
     <section
+      id="panel-day"
       aria-labelledby={headingId}
       data-testid={TESTIDS['schedules-day-page']}
       style={{ padding: '8px 0 16px' }}
@@ -281,6 +286,13 @@ const DayViewContent = ({ items, loading, range }: { items: SchedItem[]; loading
               }
 
               const secondary = secondaryParts.length > 0 ? secondaryParts.join(' / ') : undefined;
+              const warningNames = Array.isArray(item.baseShiftWarnings)
+                ? item.baseShiftWarnings
+                    .map((w: { staffId?: string; staffName?: string } | undefined) => w?.staffName || w?.staffId)
+                    .filter(Boolean)
+                : [];
+              const hasWarning = warningNames.length > 0;
+              const warningLabel = hasWarning ? `担当重複: ${warningNames.join(', ')}` : undefined;
 
               return (
                 <li
@@ -288,6 +300,10 @@ const DayViewContent = ({ items, loading, range }: { items: SchedItem[]; loading
                   role="listitem"
                   style={{ margin: 0, padding: 0 }}
                   data-testid={TESTIDS['schedules-event-normal']}
+                  data-schedule-event="true"
+                  data-category={item.category ?? 'Org'}
+                  data-id={item.id}
+                  data-status={item.status ?? undefined}
                 >
                   <TimelineItem
                     title={item.title ?? '（タイトル未設定）'}
@@ -298,6 +314,8 @@ const DayViewContent = ({ items, loading, range }: { items: SchedItem[]; loading
                     acceptedBy={item.acceptedBy}
                     acceptedOn={item.acceptedOn}
                     acceptedNote={item.acceptedNote}
+                    hasWarning={hasWarning}
+                    warningLabel={warningLabel}
                   />
                 </li>
               );
@@ -309,12 +327,14 @@ const DayViewContent = ({ items, loading, range }: { items: SchedItem[]; loading
   );
 }
 
-function TimelineItem({ title, timeLabel, secondary, status, statusReason, acceptedBy, acceptedOn, acceptedNote }: TimelineItemProps) {
+function TimelineItem({ title, timeLabel, secondary, status, statusReason, acceptedBy, acceptedOn, acceptedNote, hasWarning, warningLabel }: TimelineItemProps) {
   const statusMeta = getScheduleStatusMeta(status);
   const dotColor = statusMeta?.dotColor ?? 'rgba(25,118,210,0.9)';
   const badgeLabel = status && status !== 'Planned' ? statusMeta?.label : undefined;
   const opacity = statusMeta?.opacity ?? 1;
   const reason = statusReason?.trim();
+  const warningActive = Boolean(hasWarning);
+  const warningText = warningLabel ?? '注意が必要な予定です';
   const hasAcceptance = Boolean(acceptedBy || acceptedOn || acceptedNote);
   const acceptedLabel = (() => {
     if (!hasAcceptance) return '';
@@ -377,6 +397,27 @@ function TimelineItem({ title, timeLabel, secondary, status, statusReason, accep
             background: 'linear-gradient(to bottom, rgba(0,0,0,0.18), rgba(0,0,0,0.06))',
           }}
         />
+        {warningActive ? (
+          <div
+            data-testid="schedule-warning-indicator"
+            title={warningText}
+            style={{
+              position: 'absolute',
+              top: -4,
+              right: 0,
+              padding: '2px 6px',
+              borderRadius: 999,
+              background: '#f57c00',
+              color: '#fff',
+              fontSize: 11,
+              fontWeight: 700,
+              boxShadow: '0 2px 6px rgba(0,0,0,0.15)',
+            }}
+            aria-label={warningText}
+          >
+            ⚠
+          </div>
+        ) : null}
         <div
           aria-hidden="true"
           style={{

@@ -68,11 +68,14 @@ const MATCHERS: Matcher[] = [
   { match: (path) => path === '/dashboard', entry: HYDRATION_KEYS.dashboard },
   { match: (path) => path === '/' || path === '', entry: HYDRATION_KEYS.dashboard },
   { match: (path) => path.startsWith('/handoff-timeline'), entry: HYDRATION_KEYS.handoffTimeline },
+  // Schedules - prefer specific view matches before generic fallback
+  // Schedules - most specific to least specific (fallback last)
+  { match: (path, search) => path.startsWith('/schedules') && includesQuery(search, 'view', 'day'), entry: HYDRATION_KEYS.schedulesDay },
   { match: (path) => path.startsWith('/schedules/day'), entry: HYDRATION_KEYS.schedulesDay },
-  {
-    match: (path, search) => path.startsWith('/schedules') && includesQuery(search, 'view', 'day'),
-    entry: HYDRATION_KEYS.schedulesDay,
-  },
+  { match: (path) => path.startsWith('/schedules/month'), entry: HYDRATION_KEYS.schedulesMonth },
+  { match: (path) => path.startsWith('/schedules/create'), entry: HYDRATION_KEYS.schedulesCreate },
+  { match: (path) => path.startsWith('/schedules/week'), entry: HYDRATION_KEYS.schedulesWeek },
+  { match: (path) => path.startsWith('/schedules'), entry: HYDRATION_KEYS.schedulesWeek },
   { match: (path) => path.startsWith('/meeting-guide'), entry: HYDRATION_KEYS.meetingGuide },
   { match: (path) => path.startsWith('/records/support-procedures'), entry: HYDRATION_KEYS.supportProcedures },
   { match: (path) => path.startsWith('/records'), entry: HYDRATION_KEYS.records },
@@ -95,12 +98,12 @@ const MATCHERS: Matcher[] = [
     match: (path) => path.startsWith('/admin/integrated-resource-calendar'),
     entry: HYDRATION_KEYS.adminIntegratedResourceCalendar,
   },
-  { match: (path) => path.startsWith('/admin/templates'), entry: HYDRATION_KEYS.adminTemplates },
-  { match: (path) => path.startsWith('/admin/step-templates'), entry: HYDRATION_KEYS.adminSteps },
   {
     match: (path) => path.startsWith('/admin/individual-support'),
     entry: HYDRATION_KEYS.adminIndividualSupport,
   },
+  { match: (path) => path.startsWith('/admin/templates'), entry: HYDRATION_KEYS.adminTemplates },
+  { match: (path) => path.startsWith('/admin/step-templates'), entry: HYDRATION_KEYS.adminSteps },
   { match: (path) => path.startsWith('/admin'), entry: HYDRATION_KEYS.adminTemplates },
 ];
 

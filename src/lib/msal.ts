@@ -1,8 +1,9 @@
 import { buildMsalScopes } from '@/auth/scopes';
-import type { PublicClientApplication, PopupRequest } from '@azure/msal-browser';
+import type { PublicClientApplication } from '@azure/msal-browser';
 import type { AccountInfo } from '@azure/msal-common';
 
-import { getAppConfig, getSharePointResource, isE2eMsalMockEnabled, readEnv, shouldSkipLogin } from './env';
+import { getRuntimeEnv } from '@/env';
+import { getAppConfig, getSharePointResource, isE2eMsalMockEnabled, readEnv, shouldSkipLogin } from '@/lib/env';
 
 const { isDev } = getAppConfig();
 
@@ -61,12 +62,6 @@ const getPca = (): PublicClientApplication => {
   return instance;
 };
 
-type PopupCapableClient = PublicClientApplication & {
-  acquireTokenPopup: (request: PopupRequest) => Promise<{ accessToken?: string }>;
-  loginPopup: (request: PopupRequest) => Promise<{ account?: AccountInfo | null }>;
-};
-
-const toPopupClient = (instance: PublicClientApplication): PopupCapableClient => instance as PopupCapableClient;
 
 const ensureActiveAccount = (instance: PublicClientApplication): AccountInfo | null => {
   const active = (instance.getActiveAccount() as AccountInfo | null) ?? null;
@@ -79,61 +74,87 @@ const ensureActiveAccount = (instance: PublicClientApplication): AccountInfo | n
   return null;
 };
 
-const toPopupRequest = (scopes: string[], account?: AccountInfo): PopupRequest => ({
-  scopes,
-  prompt: 'select_account',
-  account,
-});
-
 export const ensureMsalSignedIn = async (scopes?: string[]): Promise<AccountInfo> => {
-  if (isE2eMsalMockEnabled() || shouldSkipLogin()) {
+  // 🔥 CRITICAL FIX: Always read runtime env to respect env.runtime.json override
+  const runtimeEnv = getRuntimeEnv() as Record<string, string>;
+  if (isE2eMsalMockEnabled(runtimeEnv) || shouldSkipLogin(runtimeEnv)) {
     if (isDev) {
       console.info('[msal] using E2E/dummy account');
     }
     return createE2EMsalAccount();
   }
   const instance = getPca();
-  const popupClient = toPopupClient(instance);
   const resolvedScopes = ensureScopes(scopes);
   const cached = ensureActiveAccount(instance);
   if (cached) return cached;
 
-  const response = await popupClient.loginPopup(toPopupRequest(resolvedScopes));
-  const account = (response.account as AccountInfo | null) ?? null;
-  if (!account) {
-    throw new Error('MSAL login did not yield an account.');
-  }
-  instance.setActiveAccount(account);
-  return account;
+  // Use redirect instead of popup (COOP-friendly)
+  await instance.loginRedirect({ scopes: resolvedScopes, prompt: 'select_account' });
+  // Note: Does not return; page redirects to AAD
+  throw new Error('[msal] loginRedirect initiated');
 };
 
 export const acquireSpAccessToken = async (scopes?: string[]): Promise<string> => {
-  if (isE2eMsalMockEnabled() || shouldSkipLogin()) {
-    const token = 'mock-token:sharepoint';
+  // 🔥 CRITICAL FIX: Always read runtime env to respect env.runtime.json override
+  const runtimeEnv = getRuntimeEnv() as Record<string, string>;
+  if (isE2eMsalMockEnabled(runtimeEnv) || shouldSkipLogin(runtimeEnv)) {
+    // モックモード: トークン取得をスキップしてエラーを投げる（SharePointに偽トークンを送らない）
+    const errorMsg = '[msal] SkipLogin/E2E mode: acquireSpAccessToken disabled. Real SharePoint access requires VITE_SKIP_LOGIN=0';
     if (isDev) {
-      console.info('[msal] SkipLogin=1: acquireSpAccessToken bypassed');
+      console.error(errorMsg);
     }
-    persistMsalToken(token);
-    return token;
+    throw new Error(errorMsg);
   }
-  const instance = getPca();
-  const resolvedScopes = ensureScopes(scopes);
-  const account = await ensureMsalSignedIn(resolvedScopes);
 
-  try {
-    const result = await instance.acquireTokenSilent({ account, scopes: resolvedScopes });
-    persistMsalToken(result.accessToken);
-    return result.accessToken;
-  } catch (error) {
-    const popupClient = toPopupClient(instance);
-    const result = await popupClient.acquireTokenPopup(toPopupRequest(resolvedScopes, account));
-    const token = result.accessToken ?? '';
-    if (!token) {
-      throw error instanceof Error ? error : new Error('MSAL popup did not provide an access token.');
+  // singleflight: 同時多発のトークン取得を抑制
+  if (typeof globalThis === 'object') {
+    const carrier = globalThis as { __SP_TOKEN_PROMISE__?: Promise<string> | null };
+    if (!carrier.__SP_TOKEN_PROMISE__) {
+      carrier.__SP_TOKEN_PROMISE__ = (async () => {
+        console.info('[msal] acquireSpAccessToken start');
+        const instance = getPca();
+        const resolvedScopes = ensureScopes(scopes);
+
+        const account = ensureActiveAccount(instance);
+        if (!account) {
+          console.warn('[msal] no active account, initiating loginRedirect');
+          await instance.loginRedirect({ scopes: resolvedScopes });
+          throw new Error('[msal] loginRedirect initiated; flow will continue after redirect');
+        }
+
+        try {
+          console.info('[msal] acquireTokenSilent attempting...');
+          const result = await instance.acquireTokenSilent({ account, scopes: resolvedScopes });
+          console.info('[msal] acquireTokenSilent success');
+          persistMsalToken(result.accessToken);
+          return result.accessToken;
+        } catch (error: unknown) {
+          const maybeError = error as { errorCode?: string };
+          const interactionRequired =
+            maybeError?.errorCode === 'interaction_required' ||
+            maybeError?.errorCode === 'consent_required' ||
+            maybeError?.errorCode === 'login_required';
+
+          if (!interactionRequired) {
+            throw error;
+          }
+
+          console.warn('[msal] acquireTokenSilent requires interaction -> redirect');
+          await instance.acquireTokenRedirect({ account, scopes: resolvedScopes });
+          throw new Error('[msal] acquireTokenRedirect initiated');
+        }
+      })();
     }
-    persistMsalToken(token);
-    return token;
+
+    try {
+      return await carrier.__SP_TOKEN_PROMISE__;
+    } finally {
+      carrier.__SP_TOKEN_PROMISE__ = null;
+    }
   }
+
+  // fallback (should not reach here in browser)
+  throw new Error('[msal] token acquisition unsupported in this runtime');
 };
 
 export const getMsalInstance = (): PublicClientApplication => getPca();

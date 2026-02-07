@@ -144,12 +144,15 @@ describe('TableDailyRecordForm', () => {
     });
   });
 
-  it('should auto-select todays attendees on open', async () => {
-    renderForm();
-
-    await waitForAnySelection();
-    await waitForTable();
-  });
+  it(
+    'should auto-select todays attendees on open',
+    { timeout: 15000 },
+    async () => {
+      renderForm();
+      await waitForAnySelection();
+      await waitForTable();
+    }
+  );
 
   it('should show table immediately with auto-selected attendees', async () => {
     renderForm();
@@ -293,58 +296,73 @@ describe('TableDailyRecordForm', () => {
     const reporterInput = getReporterInput();
     await user.type(reporterInput, '支援員A');
 
-    const saveButton = screen.getByRole('button', { name: '0人分保存' });
+    const saveButton = await screen.findByRole('button', { name: '0人分保存' }, { timeout: 5000 });
     expect(saveButton).toBeDisabled();
 
     expect(mockOnSave).not.toHaveBeenCalled();
   });
 
-  it('should prevent saving without reporter name', async () => {
-    const alertMock = vi.spyOn(window, 'alert').mockImplementation(() => undefined);
-    const mockOnSave = vi.fn();
-    const user = createUser();
+  it(
+    'should prevent saving without reporter name',
+    { timeout: 15000 },
+    async () => {
+      const alertMock = vi.spyOn(window, 'alert').mockImplementation(() => undefined);
+      const mockOnSave = vi.fn();
+      const user = createUser();
 
-    renderForm({ onSave: mockOnSave });
+      renderForm({ onSave: mockOnSave });
 
-    await waitForTable();
+      await setRecordDate('2024-01-01');
+      await waitForTable();
+      await waitForAnySelection();
 
-    await user.click(getSaveButton());
+      await user.click(getSaveButton());
 
-    expect(alertMock).toHaveBeenCalledWith('記録者名を入力してください');
-    expect(mockOnSave).not.toHaveBeenCalled();
+      expect(alertMock).toHaveBeenCalledWith('記録者名を入力してください');
+      expect(mockOnSave).not.toHaveBeenCalled();
 
-    alertMock.mockRestore();
-  });
+      alertMock.mockRestore();
+    }
+  );
 
-  it('should handle select all functionality', async () => {
-    const user = createUser();
-    renderForm();
+  it(
+    'should handle select all functionality',
+    { timeout: 15000 },
+    async () => {
+      const user = createUser();
+      renderForm();
 
-    await waitForTable();
+      await setRecordDate('2024-01-01');
+      await waitForTable();
 
-    const clearAllButton = screen.getByLabelText(/選択をクリア/);
-    await user.click(clearAllButton);
+      const clearAllButton = screen.getByLabelText(/選択をクリア/);
+      await user.click(clearAllButton);
 
-    const selectAllButton = screen.getByLabelText(/表示中の利用者を全選択/);
-    await user.click(selectAllButton);
+      const selectAllButton = screen.getByLabelText(/表示中の利用者を全選択/);
+      await user.click(selectAllButton);
 
-    const expectedCount = withinUserList().getAllByRole('checkbox').length;
-    await waitForSelectionCount(expectedCount);
-  });
+      const expectedCount = withinUserList().getAllByRole('checkbox').length;
+      await waitForSelectionCount(expectedCount);
+    }
+  );
 
-  it('should handle clear all functionality', async () => {
-    const user = createUser();
-    renderForm();
+  it(
+    'should handle clear all functionality',
+    { timeout: 15000 },
+    async () => {
+      const user = createUser();
+      renderForm();
 
-    await waitForAnySelection();
+        await waitForAnySelection();
 
-    const clearAllButton = screen.getByLabelText(/選択をクリア/);
-    await user.click(clearAllButton);
+      const clearAllButton = screen.getByLabelText(/選択をクリア/);
+      await user.click(clearAllButton);
 
-    await waitFor(() => {
-      expect(screen.queryByText(/人の利用者が選択されています/)).not.toBeInTheDocument();
-    });
-  });
+      await waitFor(() => {
+        expect(screen.queryByText(/人の利用者が選択されています/)).not.toBeInTheDocument();
+      });
+    }
+  );
 
   describe('Attendance Day Filter', () => {
     it('should show attendance filter button', () => {

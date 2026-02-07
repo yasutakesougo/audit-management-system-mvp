@@ -4,6 +4,7 @@ export type DashboardAudience = 'staff' | 'admin';
 
 type AuthStoreState = {
   currentUserRole: DashboardAudience;
+  setCurrentUserRole: (role: DashboardAudience) => void;
 };
 
 const ROLE_STORAGE_KEY = 'role';
@@ -11,6 +12,7 @@ const listeners = new Set<() => void>();
 
 let state: AuthStoreState = {
   currentUserRole: getInitialRole(),
+  setCurrentUserRole: (role: DashboardAudience) => updateRole(role, true),
 };
 
 function getInitialRole(): DashboardAudience {
@@ -31,7 +33,11 @@ function updateRole(role: DashboardAudience, persist: boolean) {
   if (state.currentUserRole === role) {
     return;
   }
-  state = { ...state, currentUserRole: role };
+  state = {
+    ...state,
+    currentUserRole: role,
+    setCurrentUserRole: (r: DashboardAudience) => updateRole(r, true),
+  };
   if (persist && typeof window !== 'undefined') {
     window.localStorage.setItem(ROLE_STORAGE_KEY, role);
   }

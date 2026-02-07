@@ -1,4 +1,4 @@
-import { allowWriteFallback, isDemoModeEnabled } from './env';
+import { allowWriteFallback, isDemoModeEnabled } from '@/lib/env';
 import type { SafeError } from './errors';
 
 export type NoticedError = SafeError & { userMessage?: string };
@@ -15,6 +15,10 @@ const TRIM_RE = /\s+/g;
 const DEFAULT_MESSAGE = '操作に失敗しました。時間をおいて再度お試しください。';
 
 const ENTRIES: ErrorEntry[] = [
+	{
+		match: (error) => error.name === 'AuthRequiredError' || error.code === 'AUTH_REQUIRED',
+		message: 'サインインが必要です。右上の「サインイン」からログインしてください。',
+	},
 	{
 		match: (error) => typeof error.code === 'string' && /timeout|network|503|504/.test(error.code.toLowerCase()),
 		message: 'ネットワークの状態を確認して、再度お試しください。',

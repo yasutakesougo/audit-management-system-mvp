@@ -1,4 +1,5 @@
 import dayjs from 'dayjs';
+import { normalizeServiceType as normalizeSharePointServiceType } from '@/sharepoint/serviceTypes';
 import type { CreateScheduleEventInput, ScheduleServiceType } from '../data';
 
 type AnnouncementMode = 'create' | 'edit';
@@ -62,9 +63,16 @@ const resolveTargetLabel = (userName?: string | null, fallbackTitle?: string): s
   return '予定';
 };
 
-const resolveServiceLabel = (serviceType?: ScheduleServiceType): string | null => {
-  if (!serviceType) return null;
-  return SERVICE_TYPE_LABELS[serviceType] ?? null;
+const normalizeServiceType = (value: CreateScheduleEventInput['serviceType']): ScheduleServiceType | undefined => {
+  const raw = typeof value === 'string' ? value.trim() : value ?? undefined;
+  const normalized = normalizeSharePointServiceType(raw ?? null);
+  return normalized ?? (raw as ScheduleServiceType | undefined);
+};
+
+const resolveServiceLabel = (serviceType: CreateScheduleEventInput['serviceType']): string | null => {
+  const normalized = normalizeServiceType(serviceType);
+  if (!normalized) return null;
+  return SERVICE_TYPE_LABELS[normalized] ?? null;
 };
 
 const buildSentence = ({

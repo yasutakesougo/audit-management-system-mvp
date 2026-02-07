@@ -15,7 +15,6 @@
     "types": ["vite/client", "node", "vitest/globals", "@testing-library/jest-dom"],
     "baseUrl": ".",
     "paths": {
-      "@/*": ["src/*"],
       "@/app/*": ["src/app/*"],
       "@/auth/*": ["src/auth/*"],
       "@/lib/*": ["src/lib/*"],
@@ -25,9 +24,13 @@
       "@/features/users/components/*": ["src/features/users/components/*"],
       "@/hydration/*": ["src/hydration/*"],
       "@/config/*": ["src/config/*"],
+      "@/sharepoint/*": ["src/sharepoint/*"],
       "@/ui/*": ["src/ui/*"],
       "@/adapters/*": ["src/adapters/*"],
-      "@/test/*": ["tests/*"]
+      "@/test/*": ["tests/*"],
+      "@/*": ["src/*"],
+      "vitest/browser": ["types/vitest-browser.d.ts"],
+      "vitest/browser/*": ["types/vitest-browser.d.ts"]
     }
   },
   "ts-node": {
@@ -35,19 +38,25 @@
       "module": "CommonJS"
     }
   },
-  "include": ["src", "tests", "types", "debug.tsx"],
+  "include": ["src", "tests", "types", "debug.tsx", "vitest.setup.ts"],
   "exclude": [
     "node_modules",
     "dist",
+    "build",
     "coverage",
     ".vite",
     ".vitest",
+    ".turbo",
+    ".cache",
     "test-results",
+    "playwright-report",
     "public",
     "tests/e2e",
     ".vscode",
     ".vscode/**/*",
     "docs/**/*",
-    "reports/**/*"
+    "reports/**/*",
+    "logs/**/*",
+    "tmp/**/*"
   ]
 }

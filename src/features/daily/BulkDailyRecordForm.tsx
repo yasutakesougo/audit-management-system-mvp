@@ -287,6 +287,7 @@ export function BulkDailyRecordForm({
               <FormControl sx={{ minWidth: 120 }}>
                 <InputLabel>役職</InputLabel>
                 <Select
+                  name="reporterRole"
                   value={formData.reporter.role}
                   onChange={(e) => setFormData(prev => ({
                     ...prev,

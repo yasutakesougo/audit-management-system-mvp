@@ -22,6 +22,8 @@ async function readViolationLog() {
   return content.trim();
 }
 
+test.skip(process.env.VITE_E2E === '1', 'CSP collector is disabled in E2E runs');
+
 test('serves CSP without violations', async ({ page }) => {
   const healthy = await fetchCollectorHealth();
   expect(healthy, 'CSP collector health check should succeed').toBeTruthy();

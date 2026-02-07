@@ -1,23 +1,32 @@
 import { useAnnounce } from '@/a11y/LiveAnnouncer';
 import { useRouteFocusManager } from '@/a11y/useRouteFocusManager';
-import { type ScheduleEvent } from '@/features/schedule/api/schedulesClient';
-import { ScheduleConflictGuideDialog, type SuggestionAction } from '@/features/schedule/components/ScheduleConflictGuideDialog';
-import ScheduleCreateDialog, { type CreateScheduleEventInput } from '@/features/schedules/ScheduleCreateDialog';
-import { useSchedulesPort } from '@/features/schedules/data';
-import type { SchedItem } from '@/features/schedules/data';
-import type { InlineScheduleDraft } from '@/features/schedules/data/inlineScheduleDraft';
-import { useSchedules } from '@/features/schedules/useSchedules';
-import { buildConflictIndex } from '@/features/schedule/conflictChecker';
-import { FOCUS_GUARD_MS } from '@/features/schedule/focusGuard';
-import { useAnchoredPeriod } from '@/features/schedule/hooks/useAnchoredPeriod';
-import { useApplyScheduleSuggestion } from '@/features/schedule/hooks/useApplyScheduleSuggestion';
-import type { BaseSchedule, Category } from '@/features/schedule/types';
-import { useScheduleUserOptions } from '@/features/schedules/useScheduleUserOptions';
-import { SchedulesHeader } from '@/features/schedules/components/SchedulesHeader';
-import { ScheduleEmptyHint } from '@/features/schedules/components/ScheduleEmptyHint';
-import { normalizeToDayStart, pickDateParam } from '@/features/schedule/dateQuery';
+import {
+  type ScheduleEvent,
+  ScheduleConflictGuideDialog,
+  type SuggestionAction,
+  buildConflictIndex,
+  FOCUS_GUARD_MS,
+  useAnchoredPeriod,
+  useApplyScheduleSuggestion,
+  type BaseSchedule,
+  type Category,
+  normalizeToDayStart,
+  pickDateParam,
+} from '@/features/schedule';
+import {
+  ScheduleCreateDialog,
+  type CreateScheduleEventInput,
+  useSchedulesPort,
+  type SchedItem,
+  type InlineScheduleDraft,
+  useSchedules,
+  useScheduleUserOptions,
+  SchedulesHeader,
+  ScheduleEmptyHint,
+} from '@/features/schedules';
 import { useToast } from '@/hooks/useToast';
 import { TESTIDS, tid } from '@/testids';
+import { normalizeServiceType as normalizeScheduleServiceType } from '@/sharepoint/serviceTypes';
 import Box from '@mui/material/Box';
 import Container from '@mui/material/Container';
 import Skeleton from '@mui/material/Skeleton';
@@ -414,11 +423,18 @@ export default function SchedulesDayPage(): JSX.Element {
       const startTime = extractTimePart(input.startLocal) || dialogInitialStartTime || DEFAULT_START_TIME;
       const endTime = extractTimePart(input.endLocal) || dialogInitialEndTime || DEFAULT_END_TIME;
 
+      const serviceType =
+        input.serviceType == null
+          ? null
+          : typeof input.serviceType === 'string'
+            ? normalizeScheduleServiceType(input.serviceType)
+            : input.serviceType;
+
       const draft: InlineScheduleDraft = {
         title: input.title.trim() || '新規予定',
         start: input.startLocal,
         end: input.endLocal,
-        serviceType: input.serviceType,
+        serviceType,
         notes: input.notes,
         dateIso,
         startTime,
@@ -442,7 +458,7 @@ export default function SchedulesDayPage(): JSX.Element {
     setDialogParams(buildDialogIntent('User', anchoredDateIso));
   }, [anchoredDateIso, setDialogParams]);
 
-  const dayHref = useMemo(() => `/schedules/day?day=${range.param}`, [range.param]);
+  const dayHref = useMemo(() => `/schedules/day?date=${encodeURIComponent(range.param)}&tab=day`, [range.param]);
   const weekHref = useMemo(() => `/schedules/week?date=${range.param}`, [range.param]);
   const monthHref = useMemo(() => `/schedules/month?date=${range.param}`, [range.param]);
 

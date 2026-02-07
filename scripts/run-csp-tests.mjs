@@ -13,8 +13,8 @@ const env = { ...process.env };
 if (!env.CSP_PORT) env.CSP_PORT = '8787';
 if (!env.CSP_PREFIX) env.CSP_PREFIX = '/__csp__';
 if (!env.CSP_REPORT_DIR) env.CSP_REPORT_DIR = 'csp-reports';
-if (!env.CSP_PREVIEW_ORIGIN) env.CSP_PREVIEW_ORIGIN = 'http://127.0.0.1:4173';
-if (!env.CSP_PREVIEW_PORT) env.CSP_PREVIEW_PORT = '4173';
+if (!env.CSP_PREVIEW_ORIGIN) env.CSP_PREVIEW_ORIGIN = 'http://127.0.0.1:4174';
+if (!env.CSP_PREVIEW_PORT) env.CSP_PREVIEW_PORT = '4174';
 if (!env.CSP_COLLECTOR_ORIGIN) env.CSP_COLLECTOR_ORIGIN = `http://localhost:${env.CSP_PORT}`;
 if (!env.PLAYWRIGHT_SKIP_BUILD) env.PLAYWRIGHT_SKIP_BUILD = '1';
 

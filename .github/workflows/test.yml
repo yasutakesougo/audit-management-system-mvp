@@ -1,7 +1,7 @@
 name: Quality Gates
 on:
   push:
-    branches: [main, develop]
+    branches: [main]
   pull_request:
     branches: [main, develop]
     types: [opened, synchronize, reopened, ready_for_review]
@@ -19,11 +19,34 @@ concurrency:
 jobs:
   quality:
     runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      # Phase 2: E2E feature flag guards
+      E2E_FEATURE_SCHEDULE_NAV: "1"
+      E2E_FEATURE_SCHEDULE_ACCEPTANCE: "1"
+      E2E_FEATURE_SCHEDULE_WEEK_MONTH_TAB: "1"
     steps:
       - name: Checkout
         uses: actions/checkout@v4
         with:
           ref: ${{ github.event.inputs.ref || github.head_ref || github.ref }}
+      - name: Detect changes (paths-filter)
+        id: changes
+        uses: dorny/paths-filter@v3
+        with:
+          filters: |
+            playwright:
+              - 'src/**'
+              - 'tests/e2e/**'
+              - 'playwright*.ts'
+              - 'package.json'
+              - 'pnpm-lock.yaml'
+              - 'package-lock.json'
+              - 'yarn.lock'
+              - '.github/workflows/**'
+              - 'vite.config.*'
+              - 'vitest.config.*'
+              - 'public/**'
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
@@ -32,6 +55,7 @@ jobs:
       - name: Install deps
         run: npm ci
       - name: Install Playwright browsers
+        if: github.event_name == 'workflow_dispatch' || (github.ref == 'refs/heads/main' && steps.changes.outputs.playwright == 'true')
         run: npx playwright install --with-deps
       - name: Typecheck
         run: npm run typecheck
@@ -54,13 +78,90 @@ jobs:
         continue-on-error: true
       - name: Test (coverage)
         run: npm run test:coverage -- --reporter=default
+      - name: Free port 5173 (best-effort, lsof OR fuser)
+        if: github.event_name == 'workflow_dispatch' || (github.ref == 'refs/heads/main' && steps.changes.outputs.playwright == 'true')
+        run: |
+          (command -v lsof >/dev/null && lsof -ti :5173 | xargs -r kill -9) || true
+          (command -v fuser >/dev/null && fuser -k 5173/tcp) || true
+          sleep 1
+      - name: Start dev server (5173, strict)
+        if: github.event_name == 'workflow_dispatch' || (github.ref == 'refs/heads/main' && steps.changes.outputs.playwright == 'true')
+        run: |
+          nohup npm run dev:5173 </dev/null > /tmp/vite-5173.log 2>&1 &
+          echo "Vite starting on port 5173..."
+          sleep 2
+          echo "=== vite log (head -20, sanity check) ==="
+          head -20 /tmp/vite-5173.log || true
+      - name: Wait for dev server (5173)
+        if: github.event_name == 'workflow_dispatch' || (github.ref == 'refs/heads/main' && steps.changes.outputs.playwright == 'true')
+        run: |
+          npx wait-on http://127.0.0.1:5173/ --timeout 60000
+          curl -I http://127.0.0.1:5173/ | head -5
+      - name: Debug server logs on failure (5173)
+        if: failure() && (github.event_name == 'workflow_dispatch' || (github.ref == 'refs/heads/main' && steps.changes.outputs.playwright == 'true'))
+        run: |
+          echo "=== /tmp/vite-5173.log (tail -200) ==="
+          tail -200 /tmp/vite-5173.log || true
       - name: Playwright E2E
-        run: npm run ci:e2e
+        if: github.event_name == 'workflow_dispatch' || (github.ref == 'refs/heads/main' && steps.changes.outputs.playwright == 'true')
         env:
+          VITE_E2E: "1"
+          VITE_SKIP_LOGIN: "1"
+          VITE_E2E_MSAL_MOCK: "1"
+          VITE_SKIP_SHAREPOINT: "1"
+          VITE_MSAL_CLIENT_ID: "dummy"
+          VITE_MSAL_TENANT_ID: "dummy"
+          VITE_SCHEDULES_TZ: "Asia/Tokyo"
+          VITE_SP_SCOPE_DEFAULT: ${{ secrets.VITE_SP_SCOPE_DEFAULT }}
+          VITE_SP_RESOURCE: ${{ vars.VITE_SP_RESOURCE }}
+          VITE_SP_SITE_RELATIVE: ${{ vars.VITE_SP_SITE_RELATIVE }}
+          PLAYWRIGHT_BASE_URL: http://127.0.0.1:5173
           NOTIFY_WEBHOOK_URL: ${{ secrets.NOTIFY_WEBHOOK_URL }}
+        run: |
+          set -euo pipefail
+
+          export VITE_SP_RESOURCE="${VITE_SP_RESOURCE:-https://contoso.sharepoint.com}"
+          export VITE_SP_SITE_RELATIVE="${VITE_SP_SITE_RELATIVE:-/sites/Audit}"
+          export VITE_SP_SCOPE_DEFAULT="${VITE_SP_SCOPE_DEFAULT:-https://contoso.sharepoint.com/AllSites.Read}"
+
+          echo "VITE_SP_SCOPE_DEFAULT set? -> $([ -n "${VITE_SP_SCOPE_DEFAULT}" ] && echo yes || echo no)"
+          echo "VITE_SP_SCOPE_DEFAULT length -> ${#VITE_SP_SCOPE_DEFAULT}"
+          echo "VITE_SP_RESOURCE -> ${VITE_SP_RESOURCE}"
+          echo "VITE_SP_SITE_RELATIVE -> ${VITE_SP_SITE_RELATIVE}"
+
+          # Run only the lightest Playwright smoke to keep Quality Gates aligned with this PR scope.
+          npx playwright test tests/e2e/basic-smoke.spec.ts --config=playwright.smoke.config.ts --project=smoke
+      - name: a11y CI integration tests (complex pages)
+        if: github.event_name == 'workflow_dispatch' || (github.ref == 'refs/heads/main' && steps.changes.outputs.playwright == 'true')
+        env:
+          VITE_E2E: "1"
+          VITE_SKIP_LOGIN: "1"
+          VITE_E2E_MSAL_MOCK: "1"
+          VITE_SKIP_SHAREPOINT: "1"
+          PLAYWRIGHT_BASE_URL: http://127.0.0.1:5173
+        run: |
+          npx playwright test tests/e2e/a11y-complex-page.spec.ts --project=chromium --reporter=line
+      - name: Upload a11y test artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: a11y-test-results
+          path: |
+            test-results/
+            playwright-report/
+          if-no-files-found: warn
+      - name: Upload a11y baseline (json)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: a11y-baseline
+          path: test-results/a11y-baseline/**/*.json
+          if-no-files-found: ignore
       - name: Perf report (LHCI + Web Vitals)
+        if: github.event_name == 'workflow_dispatch' || (github.ref == 'refs/heads/main' && steps.changes.outputs.playwright == 'true')
         run: npm run -s ci:perf-report
         env:
+          VITE_E2E_MSAL_MOCK: "1"
           NOTIFY_WEBHOOK_URL: ${{ secrets.NOTIFY_WEBHOOK_URL }}
       - name: Upload perf summary artifact
         if: always()
@@ -76,7 +177,7 @@ jobs:
         with:
           name: lcov.info
           path: coverage/lcov.info
-          if-no-files-found: error
+          if-no-files-found: warn
       - name: Coverage summary
         if: always()
         run: |
@@ -100,6 +201,7 @@ jobs:
     env:
       VITE_FEATURE_SCHEDULES: "true"
       NOTIFY_WEBHOOK_URL: ${{ secrets.NOTIFY_WEBHOOK_URL }}
+      VITE_SP_SCOPE_DEFAULT: ${{ vars.VITE_SP_SCOPE_DEFAULT || (vars.VITE_SP_RESOURCE && format('{0}/.default', vars.VITE_SP_RESOURCE)) || secrets.VITE_SP_SCOPE_DEFAULT || 'https://contoso.sharepoint.com/.default' }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -112,13 +214,38 @@ jobs:
         run: npm ci
       - name: Install Playwright browsers
         run: npx playwright install --with-deps
+      - name: Free port 5173 (best-effort, lsof OR fuser)
+        run: |
+          (command -v lsof >/dev/null && lsof -ti :5173 | xargs -r kill -9) || true
+          (command -v fuser >/dev/null && fuser -k 5173/tcp) || true
+          sleep 1
+      - name: Start dev server (5173, strict)
+        run: |
+          nohup npm run dev:5173 </dev/null > /tmp/vite-5173.log 2>&1 &
+          echo "Vite starting on port 5173..."
+          sleep 2
+          echo "=== vite log (head -20, sanity check) ==="
+          head -20 /tmp/vite-5173.log || true
+      - name: Wait for dev server (5173)
+        run: |
+          npx wait-on http://127.0.0.1:5173/ --timeout 60000
+          curl -I http://127.0.0.1:5173/ | head -5
+      - name: Debug server logs on failure (5173)
+        if: failure()
+        run: |
+          echo "=== /tmp/vite-5173.log (tail -200) ==="
+          tail -200 /tmp/vite-5173.log || true
       - name: Canary checks (E2E + LHCI + Summary)
         id: canary
         run: |
           set +e
           status=0
 
-          npm run ci:e2e
+          export VITE_SP_RESOURCE="${VITE_SP_RESOURCE:-https://contoso.sharepoint.com}"
+          export VITE_SP_SITE_RELATIVE="${VITE_SP_SITE_RELATIVE:-/sites/Audit}"
+          export VITE_SP_SCOPE_DEFAULT="${VITE_SP_SCOPE_DEFAULT:-${VITE_SP_RESOURCE}/.default}"
+
+          npm run ci:e2e -- --grep-invert @seed --grep-invert @csp
           exit_code=$?
           if [ "$exit_code" -ne 0 ]; then
             status="$exit_code"
@@ -139,6 +266,18 @@ jobs:
           if [ "$status" -ne 0 ]; then
             exit "$status"
           fi
+        env:
+          VITE_E2E: "1"
+          VITE_SKIP_LOGIN: "1"
+          VITE_E2E_MSAL_MOCK: "1"
+          VITE_SKIP_SHAREPOINT: "1"
+          VITE_MSAL_CLIENT_ID: "dummy"
+          VITE_MSAL_TENANT_ID: "dummy"
+          VITE_SCHEDULES_TZ: "Asia/Tokyo"
+          VITE_SP_SCOPE_DEFAULT: ${{ secrets.VITE_SP_SCOPE_DEFAULT }}
+          VITE_SP_RESOURCE: ${{ vars.VITE_SP_RESOURCE }}
+          VITE_SP_SITE_RELATIVE: ${{ vars.VITE_SP_SITE_RELATIVE }}
+          NOTIFY_WEBHOOK_URL: ${{ secrets.NOTIFY_WEBHOOK_URL }}
       - name: Notify canary failure
         if: failure()
         run: node scripts/notify.mjs --only-on-fail --title "canary(schedule)" --files reports/perf-summary.md

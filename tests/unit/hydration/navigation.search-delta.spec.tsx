@@ -1,11 +1,12 @@
-import { act, cleanup, render } from '@testing-library/react';
+import { act, cleanup, render, waitFor } from '@testing-library/react';
 import { Outlet, RouterProvider, createMemoryRouter } from 'react-router-dom';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-import RouteHydrationListener from '@/hydration/RouteHydrationListener';
 import { getHydrationSpans, resetHydrationSpans } from '@/lib/hydrationHud';
 
-const routes = [
+const buildRoutes = (
+  RouteHydrationListener: typeof import('@/hydration/RouteHydrationListener').default
+) => [
   {
     path: '/',
     element: (
@@ -18,53 +19,53 @@ const routes = [
 ];
 
 describe('RouteHydrationListener search delta coalescing', () => {
+  let RouteHydrationListener: typeof import('@/hydration/RouteHydrationListener').default;
+
   beforeEach(() => {
-    vi.useFakeTimers();
-    resetHydrationSpans();
+    vi.doUnmock('@/hydration/RouteHydrationListener');
+    // dynamic import to ensure real implementation wins over setup passthrough mock
+    return import('@/hydration/RouteHydrationListener').then((mod) => {
+      RouteHydrationListener = mod.default;
+      resetHydrationSpans();
+    });
   });
 
   afterEach(() => {
     cleanup();
     resetHydrationSpans();
-    vi.useRealTimers();
   });
 
   it('coalesces search-only updates into a single active span', async () => {
-    const router = createMemoryRouter(routes, {
+    const router = createMemoryRouter(buildRoutes(RouteHydrationListener), {
       // view=dayクエリパラメータを含めてroute:schedules:dayにマッピングされるようにする
       initialEntries: ['/schedules/day?view=day&tab=1'],
     });
 
     render(<RouterProvider router={router} />);
 
-    // 初期ハイドレーションの完了を待つ
-    await act(async () => {
-      vi.advanceTimersByTime(160);
-    });
-
-    // 最初のsearch変更: tab=1 → tab=2（view=dayは維持）
+    // search-only updates: tab=1 → tab=2 → tab=3（view=day維持）
     await act(async () => {
       await router.navigate('/schedules/day?view=day&tab=2');
-      vi.advanceTimersByTime(50); // debounce期間
-    });
-
-    // 2回目のsearch変更: tab=2 → tab=3（coalescingテスト）
-    await act(async () => {
       await router.navigate('/schedules/day?view=day&tab=3');
-      vi.advanceTimersByTime(200); // span完了とsettle期間
     });
 
     // route:schedules:day のspanを取得（view=dayパラメータでマッピング）
+    await waitFor(
+      () => {
+        const spans = getHydrationSpans().filter((span) => span.id === 'route:schedules:day');
+        expect(spans.length, '/schedules/day?view=day ルート用のspanが存在すること').toBeGreaterThanOrEqual(1);
+      },
+      { timeout: 10_000 }
+    );
+
     const spans = getHydrationSpans().filter((span) => span.id === 'route:schedules:day');
 
     // デバッグ情報：どのようなspanが作成されているか確認
     const allSpans = getHydrationSpans();
-    console.log('All spans after search operations:', allSpans.map(s => ({
+    console.log('All spans after search operations:', allSpans.map((s) => ({
       id: s.id,
-      meta: s.meta
+      meta: s.meta,
     })));
-
-    expect(spans.length, '/schedules/day?view=day ルート用のspanが存在すること').toBeGreaterThanOrEqual(1);
 
     // search-onlyアップデートに関連するspansをフィルター
     const searchSpans = spans.filter((span) => {
@@ -72,9 +73,9 @@ describe('RouteHydrationListener search delta coalescing', () => {
       return meta.reason === 'search';
     });
 
-    console.log('Search spans found:', searchSpans.map(s => ({
+    console.log('Search spans found:', searchSpans.map((s) => ({
       id: s.id,
-      meta: s.meta
+      meta: s.meta,
     })));
 
     // search spanが見つからない場合の代替検証

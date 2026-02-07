@@ -2,6 +2,19 @@ import CssBaseline from '@mui/material/CssBaseline';
 import { alpha, createTheme, ThemeProvider as MUIThemeProvider, type Theme, type ThemeOptions } from '@mui/material/styles';
 import React, { createContext, useCallback, useEffect, useMemo, useState } from 'react';
 
+/**
+ * Theme Configuration (Phase 1: Light mode baseline + Dark mode foundation)
+ *
+ * Current Status:
+ * - Light mode: Active and optimized (Phase 1 complete)
+ * - Dark mode: Foundation ready (palette defined, not yet exposed to UI)
+ *
+ * Next Steps (Phase 2):
+ * - Add theme toggle UI (ColorModeContext.toggle already implemented)
+ * - Test dark mode visual hierarchy and readability
+ * - Update E2E tests to cover both modes
+ */
+
 type ServiceTypeKey = 'normal' | 'transport' | 'respite' | 'nursing' | 'absence' | 'other';
 
 export type ServiceTypeColorTokens = {
@@ -58,13 +71,20 @@ const buildServiceTypeColors = (theme: Theme): Record<ServiceTypeKey, ServiceTyp
 
 // Base (shared) design tokens
 const base: ThemeOptions = {
-  typography: { fontSize: 15 },
+  typography: {
+    fontSize: 16,
+    body1: { lineHeight: 1.7 },
+    body2: { lineHeight: 1.7 },
+    h1: { fontSize: '1.75rem', lineHeight: 1.4, fontWeight: 700 },
+    h2: { fontSize: '1.375rem', lineHeight: 1.5, fontWeight: 600 },
+    h3: { fontSize: '1.125rem', lineHeight: 1.5, fontWeight: 600 },
+  },
   components: {
     MuiButton: {
       styleOverrides: {
         root: {
-          minHeight: 44,
-          padding: '8px 16px',
+          minHeight: 48,
+          padding: '10px 20px',
           '&:focus-visible': { outline: '3px solid currentColor', outlineOffset: 2 },
           '&.Mui-disabled': { opacity: 1 },
         },
@@ -119,8 +139,11 @@ const base: ThemeOptions = {
         }),
       },
     },
-    MuiIconButton: { styleOverrides: { root: { minWidth: 44, minHeight: 44 } } },
-    MuiTextField: { styleOverrides: { root: { '& .MuiInputBase-root': { minHeight: 44 } } } },
+    MuiIconButton: { styleOverrides: { root: { minWidth: 48, minHeight: 48 } } },
+    MuiTextField: { styleOverrides: { root: { '& .MuiInputBase-root': { minHeight: 48 } } } },
+    MuiListItemButton: { styleOverrides: { root: { minHeight: 48, py: 1.5 } } },
+    MuiMenuItem: { styleOverrides: { root: { minHeight: 48, py: 1.5 } } },
+    MuiTab: { styleOverrides: { root: { minHeight: 48 } } },
     MuiCssBaseline: { styleOverrides: `*:focus-visible{outline:3px solid #0078d4;outline-offset:2px}` },
   },
 } as const;
@@ -154,9 +177,17 @@ export const ThemeRoot: React.FC<{ children: React.ReactNode }> = ({ children })
         mode === 'dark'
           ? {
               mode: 'dark',
-              primary: { main: '#7BB8FF' },
-              secondary: { main: '#7AD48A' },
+              primary: { main: '#7BB8FF', dark: '#5A9FDE' },
+              secondary: { main: '#7AD48A', dark: '#5AB36A' },
               info: { main: '#58A6FF', contrastText: '#0A1929' },
+              background: {
+                default: '#0D1117',  // GitHub dark base
+                paper: '#161B22',    // Card backgrounds
+              },
+              text: {
+                primary: '#E6EDF3',  // High contrast for readability
+                secondary: '#8B949E', // Muted text
+              },
             }
           : {
               mode: 'light',
@@ -192,9 +223,39 @@ export const ThemeRoot: React.FC<{ children: React.ReactNode }> = ({ children })
 export const useColorMode = () => React.useContext(ColorModeContext);
 // (end of file)
 
+/**
+ * Density-aware spacing configuration
+ * Maps UserSettings.density to base spacing unit
+ */
+export const densitySpacingMap = {
+  compact: 4,      // Tighter spacing
+  comfortable: 8,  // Default spacing
+  spacious: 12,    // Generous spacing
+} as const;
+
+export type Density = keyof typeof densitySpacingMap;
+
+/**
+ * Apply density settings to document CSS variables
+ * Usage: applyDensityToDocument('comfortable')
+ *
+ * This enables dynamic theme updates without recreating theme object
+ */
+export function applyDensityToDocument(density: Density): void {
+  const baseSpacing = densitySpacingMap[density];
+  const root = typeof document !== 'undefined' ? document.documentElement : null;
+
+  if (root) {
+    root.style.setProperty('--theme-density-base', `${baseSpacing}px`);
+    root.style.setProperty('--theme-density-factor', String(baseSpacing / 8)); // Relative to comfortable
+  }
+}
+
 export const uiTokens = {
-  containerMaxWidth: 1120,
-  spacingYSection: 16,
+  containerMaxWidth: 1200,
+  spacingYSection: { xs: 16, sm: 24, md: 32 },
+  cardPadding: { xs: 16, sm: 20, md: 24 },
+  maxTextWidth: '80ch',
   heading: {
     h1: 28,
     h2: 22,

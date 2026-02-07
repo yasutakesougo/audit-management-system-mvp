@@ -11,7 +11,7 @@ type GuidIdentifier = { type: 'guid'; value: string } | { type: 'title'; value: 
 
 const GUID_REGEX = /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/;
 
-const DEFAULT_SCHEDULE_LIST_TITLE = 'ScheduleEvents';
+const DEFAULT_SCHEDULE_LIST_TITLE = 'Schedules';
 const DEFAULT_USERS_LIST_TITLE = 'Users_Master';
 const DEFAULT_STAFF_LIST_TITLE = 'Staff_Master';
 

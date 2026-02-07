@@ -73,22 +73,39 @@ const shouldAllowRuntimeFlagOverrides = (runtimeEnv?: EnvDict): boolean => {
 let cachedEnv: EnvDict | null = null;
 
 export function getRuntimeEnv(): EnvDict {
-  if (cachedEnv) return cachedEnv;
-
   const fromWindow = getWindowEnv();
-  const allowRuntimeOverrides = shouldAllowRuntimeFlagOverrides(fromWindow);
-  const merged = fromWindow ? { ...INLINE_ENV, ...fromWindow } : { ...INLINE_ENV };
+  if (fromWindow) {
+    const allowRuntimeOverrides = shouldAllowRuntimeFlagOverrides(fromWindow);
+    const merged = { ...INLINE_ENV, ...fromWindow } as EnvDict;
 
-  if (fromWindow && !allowRuntimeOverrides) {
-    for (const key of E2E_OVERRIDE_KEYS) {
-      if (INLINE_ENV[key] !== undefined) {
-        merged[key] = INLINE_ENV[key];
+    if (!allowRuntimeOverrides) {
+      for (const key of E2E_OVERRIDE_KEYS) {
+        if (INLINE_ENV[key] !== undefined) {
+          merged[key] = INLINE_ENV[key];
+        }
       }
     }
+
+    // DEBUG: Log E2E flag state
+    if (typeof window !== 'undefined' && String(fromWindow?.VITE_AUDIT_DEBUG) === '1') {
+      console.log('[getRuntimeEnv] DEBUG:', {
+        'fromWindow.VITE_E2E_MSAL_MOCK': fromWindow?.VITE_E2E_MSAL_MOCK,
+        'fromWindow.VITE_E2E': fromWindow?.VITE_E2E,
+        'INLINE_ENV.VITE_E2E_MSAL_MOCK': INLINE_ENV.VITE_E2E_MSAL_MOCK,
+        'allowRuntimeOverrides': allowRuntimeOverrides,
+        'merged.VITE_E2E_MSAL_MOCK': merged.VITE_E2E_MSAL_MOCK,
+      });
+    }
+
+    cachedEnv = merged;
+    return merged;
   }
 
+  if (cachedEnv) return cachedEnv;
+
+  const merged = { ...INLINE_ENV } as EnvDict;
   cachedEnv = merged;
-  return cachedEnv;
+  return merged;
 }
 
 export function get(name: string, fallback = ''): string {
@@ -150,3 +167,11 @@ export const isDev = resolveIsDev();
 // 🔧 命名統一：環境フラグを定数化
 export const isE2E = getFlag('VITE_E2E', false);
 export const isDemo = getFlag('VITE_DEMO', false);
+/**
+ * Clear the cached env after runtime env is loaded.
+ * Call this after window.__ENV__ is updated to ensure fresh reads.
+ * @internal
+ */
+export function clearEnvCache(): void {
+  cachedEnv = null;
+}

@@ -22,6 +22,10 @@ jobs:
       VITE_PREFETCH_HUD: "1"
       PREFETCH_HUD: "1"
       VERBOSE_TESTS: "0"
+      # MSAL dummy vars for CI/E2E validation (PR #351)
+      VITE_MSAL_CLIENT_ID: "dummy-e2e-client-id"
+      VITE_MSAL_TENANT_ID: "dummy-e2e-tenant-id"
+      VITE_MSAL_AUTHORITY: "https://login.microsoftonline.com/dummy-e2e-tenant-id"
 
     steps:
       - uses: actions/checkout@v4
@@ -56,17 +60,68 @@ jobs:
       - name: Hydration unit budget suite
         run: npm run test:hydration -- --reporter=dot
 
-      - name: Prefetch E2E (HUD on)
-        run: npm run test:e2e:prefetch -- --reporter=line
+      - name: Build for E2E
+        run: npm run build
+
+      - name: Dev server + Prefetch E2E
+        shell: bash
+        run: |
+          npm run dev -- --host 127.0.0.1 --port 5173 --strictPort > /tmp/dev.log 2>&1 &
+          DEV_PID=$!
+          npx wait-on http://127.0.0.1:5173/ --timeout 60000 || EXIT_CODE=$?
+          if [ "${EXIT_CODE:-0}" -ne 0 ]; then
+            kill "${DEV_PID}" 2>/dev/null || true
+            exit "${EXIT_CODE}"
+          fi
+          npm run test:e2e:prefetch -- --reporter=line
+          TEST_EXIT=$?
+          pkill -f "npm run dev" || true
+          exit $TEST_EXIT
 
       - name: HUD thresholds E2E
-        run: npx playwright test tests/e2e/hud.thresholds.spec.ts --reporter=line
+        shell: bash
+        run: |
+          npm run dev -- --host 127.0.0.1 --port 5173 --strictPort > /tmp/dev.log 2>&1 &
+          DEV_PID=$!
+          npx wait-on http://127.0.0.1:5173/ --timeout 60000 || EXIT_CODE=$?
+          if [ "${EXIT_CODE:-0}" -ne 0 ]; then
+            kill "${DEV_PID}" 2>/dev/null || true
+            exit "${EXIT_CODE}"
+          fi
+          npx playwright test tests/e2e/hud.thresholds.spec.ts --reporter=line
+          TEST_EXIT=$?
+          pkill -f "npm run dev" || true
+          exit $TEST_EXIT
 
       - name: Users detail flow E2E
-        run: npm run test:e2e:users -- --reporter=line
+        shell: bash
+        run: |
+          npm run dev -- --host 127.0.0.1 --port 5173 --strictPort > /tmp/dev.log 2>&1 &
+          DEV_PID=$!
+          npx wait-on http://127.0.0.1:5173/ --timeout 60000 || EXIT_CODE=$?
+          if [ "${EXIT_CODE:-0}" -ne 0 ]; then
+            kill "${DEV_PID}" 2>/dev/null || true
+            exit "${EXIT_CODE}"
+          fi
+          npm run test:e2e:users -- --reporter=line
+          TEST_EXIT=$?
+          pkill -f "npm run dev" || true
+          exit $TEST_EXIT
 
       - name: E2E (nurse BP sync)
-        run: VITE_FEATURE_NURSE=1 VITE_SKIP_LOGIN=1 npx playwright test tests/e2e/nurse.bp.sync.spec.ts --reporter=line
+        shell: bash
+        run: |
+          npm run dev -- --host 127.0.0.1 --port 5173 --strictPort > /tmp/dev.log 2>&1 &
+          DEV_PID=$!
+          npx wait-on http://127.0.0.1:5173/ --timeout 60000 || EXIT_CODE=$?
+          if [ "${EXIT_CODE:-0}" -ne 0 ]; then
+            kill "${DEV_PID}" 2>/dev/null || true
+            exit "${EXIT_CODE}"
+          fi
+          VITE_FEATURE_NURSE=1 VITE_SKIP_LOGIN=1 npx playwright test tests/e2e/nurse.bp.sync.spec.ts --reporter=line
+          TEST_EXIT=$?
+          pkill -f "npm run dev" || true
+          exit $TEST_EXIT
 
       - name: Build + bundle guards
         run: npm run build:ci

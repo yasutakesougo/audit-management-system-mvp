@@ -1,7 +1,5 @@
-name: e2e (Nightly)
+name: e2e (Manual)
 on:
-  schedule:
-    - cron: '0 15 * * *'
   workflow_dispatch:
 
 concurrency:

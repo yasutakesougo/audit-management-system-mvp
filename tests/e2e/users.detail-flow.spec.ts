@@ -18,8 +18,18 @@ test.describe('users detail menu', () => {
     });
   });
 
-  test('opens demo user detail and navigates via quick access controls', async ({ page }) => {
-    await expect(page.getByTestId(TESTIDS['users-panel-root'])).toBeVisible();
+  test('opens demo user detail and navigates via quick access controls', async ({ page, baseURL }) => {
+    // Ensure app is fully initialized
+    const appUrl = baseURL || 'http://localhost:5173';
+    await page.goto(appUrl, { waitUntil: 'load' });
+    await page.waitForLoadState('networkidle');
+    
+    // Now navigate to users route
+    await page.goto(`${appUrl}/users`, { waitUntil: 'load' });
+    await page.waitForLoadState('networkidle');
+    
+    // Wait for users panel to be visible
+    await expect(page.getByTestId(TESTIDS['users-panel-root'])).toBeVisible({ timeout: 15000 });
 
     const listTab = page.getByRole('tab', { name: /利用者一覧/ });
     await listTab.click();
@@ -45,7 +55,7 @@ test.describe('users detail menu', () => {
 
     await page.getByTestId(`${TESTIDS['users-quick-prefix']}create-user`).click();
     await page.waitForURL('**/users');
-    await expect(page.getByTestId(TESTIDS['users-panel-root'])).toBeVisible();
+    await expect(page.getByTestId(TESTIDS['users-panel-root'])).toBeVisible({ timeout: 15000 });
     await expect(page.getByRole('tab', { name: '新規利用者登録' })).toHaveAttribute('aria-selected', 'true');
     await expect(page.getByLabel('ユーザーID')).toBeVisible();
 

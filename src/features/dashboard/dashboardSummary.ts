@@ -25,6 +25,13 @@ export interface DashboardSummaryParams {
 export function buildDashboardSummary(
   params: DashboardSummaryParams
 ): DashboardSummary {
+  /**
+   * Phase 4 note:
+   * - Dashboard 集約の「唯一の入口」(single entrypoint)。
+   * - 他モジュールの集約（attendance / activity / handover / schedule / alerts 等）は
+   *   可能な限りここで束ね、Page/Component にロジックを漏らさない。
+   * - 将来の拡張（週次/ロール別KPI/アラート優先度/キャッシュ最適化）もここを起点に行う。
+   */
   const modules: ModuleSummary[] = [];
   const alerts: DashboardAlert[] = [];
 

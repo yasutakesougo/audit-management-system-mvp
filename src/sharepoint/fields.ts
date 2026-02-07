@@ -36,6 +36,112 @@ export const ORG_MASTER_SELECT_FIELDS = [
   ORG_MASTER_FIELDS.notes,
 ] as const;
 
+// ──────────────────────────────────────────────────────────────
+// Staff attendance (SharePoint list: Staff_Attendance)
+// ──────────────────────────────────────────────────────────────
+
+export const STAFF_ATTENDANCE_LIST_TITLE = 'Staff_Attendance' as const;
+
+export const STAFF_ATTENDANCE_FIELDS = {
+  id: 'Id',
+  title: 'Title',
+  staffId: 'StaffId',
+  recordDate: 'RecordDate',
+  status: 'Status',
+  checkInAt: 'CheckInAt',
+  checkOutAt: 'CheckOutAt',
+  lateMinutes: 'LateMinutes',
+  note: 'Note',
+  created: 'Created',
+  modified: 'Modified',
+} as const;
+
+export const STAFF_ATTENDANCE_SELECT_FIELDS = [
+  STAFF_ATTENDANCE_FIELDS.id,
+  STAFF_ATTENDANCE_FIELDS.title,
+  STAFF_ATTENDANCE_FIELDS.staffId,
+  STAFF_ATTENDANCE_FIELDS.recordDate,
+  STAFF_ATTENDANCE_FIELDS.status,
+  STAFF_ATTENDANCE_FIELDS.checkInAt,
+  STAFF_ATTENDANCE_FIELDS.checkOutAt,
+  STAFF_ATTENDANCE_FIELDS.lateMinutes,
+  STAFF_ATTENDANCE_FIELDS.note,
+] as const;
+
+// ──────────────────────────────────────────────────────────────
+// User Attendance Users (SharePoint list: AttendanceUsers)
+// ──────────────────────────────────────────────────────────────
+
+export const ATTENDANCE_USERS_LIST_TITLE = 'AttendanceUsers' as const;
+
+export const ATTENDANCE_USERS_FIELDS = {
+  id: 'Id',
+  title: 'Title',
+  userCode: 'UserCode',
+  isTransportTarget: 'IsTransportTarget',
+  standardMinutes: 'StandardMinutes',
+  isActive: 'IsActive',
+} as const;
+
+export const ATTENDANCE_USERS_SELECT_FIELDS = [
+  ATTENDANCE_USERS_FIELDS.id,
+  ATTENDANCE_USERS_FIELDS.title,
+  ATTENDANCE_USERS_FIELDS.userCode,
+  ATTENDANCE_USERS_FIELDS.isTransportTarget,
+  ATTENDANCE_USERS_FIELDS.standardMinutes,
+  ATTENDANCE_USERS_FIELDS.isActive,
+] as const;
+
+// ──────────────────────────────────────────────────────────────
+// User Attendance Daily (SharePoint list: AttendanceDaily)
+// ──────────────────────────────────────────────────────────────
+
+export const ATTENDANCE_DAILY_LIST_TITLE = 'AttendanceDaily' as const;
+
+export const ATTENDANCE_DAILY_FIELDS = {
+  id: 'Id',
+  key: 'Key',
+  userCode: 'UserCode',
+  recordDate: 'RecordDate',
+  status: 'Status',
+  checkInAt: 'CheckInAt',
+  checkOutAt: 'CheckOutAt',
+  cntAttendIn: 'CntAttendIn',
+  cntAttendOut: 'CntAttendOut',
+  transportTo: 'TransportTo',
+  transportFrom: 'TransportFrom',
+  providedMinutes: 'ProvidedMinutes',
+  isEarlyLeave: 'IsEarlyLeave',
+  userConfirmedAt: 'UserConfirmedAt',
+  absentMorningContacted: 'AbsentMorningContacted',
+  absentMorningMethod: 'AbsentMorningMethod',
+  eveningChecked: 'EveningChecked',
+  eveningNote: 'EveningNote',
+  isAbsenceAddonClaimable: 'IsAbsenceAddonClaimable',
+} as const;
+
+export const ATTENDANCE_DAILY_SELECT_FIELDS = [
+  ATTENDANCE_DAILY_FIELDS.id,
+  ATTENDANCE_DAILY_FIELDS.key,
+  ATTENDANCE_DAILY_FIELDS.userCode,
+  ATTENDANCE_DAILY_FIELDS.recordDate,
+  ATTENDANCE_DAILY_FIELDS.status,
+  ATTENDANCE_DAILY_FIELDS.checkInAt,
+  ATTENDANCE_DAILY_FIELDS.checkOutAt,
+  ATTENDANCE_DAILY_FIELDS.cntAttendIn,
+  ATTENDANCE_DAILY_FIELDS.cntAttendOut,
+  ATTENDANCE_DAILY_FIELDS.transportTo,
+  ATTENDANCE_DAILY_FIELDS.transportFrom,
+  ATTENDANCE_DAILY_FIELDS.providedMinutes,
+  ATTENDANCE_DAILY_FIELDS.isEarlyLeave,
+  ATTENDANCE_DAILY_FIELDS.userConfirmedAt,
+  ATTENDANCE_DAILY_FIELDS.absentMorningContacted,
+  ATTENDANCE_DAILY_FIELDS.absentMorningMethod,
+  ATTENDANCE_DAILY_FIELDS.eveningChecked,
+  ATTENDANCE_DAILY_FIELDS.eveningNote,
+  ATTENDANCE_DAILY_FIELDS.isAbsenceAddonClaimable,
+] as const;
+
 export interface IUserMaster {
   Id: number;
   Title?: string | null;
@@ -120,6 +226,10 @@ export enum ListKeys {
   IcebergPdca = 'Iceberg_PDCA',
   SurveyTokusei = 'FormsResponses_Tokusei',
   OrgMaster = 'Org_Master',
+  StaffAttendance = 'Staff_Attendance',
+  DiagnosticsReports = 'Diagnostics_Reports',
+  AttendanceUsers = 'AttendanceUsers',
+  AttendanceDaily = 'AttendanceDaily',
 }
 
 export const LIST_CONFIG: Record<ListKeys, { title: string }> = {
@@ -130,6 +240,10 @@ export const LIST_CONFIG: Record<ListKeys, { title: string }> = {
   [ListKeys.IcebergPdca]: { title: 'Iceberg_PDCA' },
   [ListKeys.SurveyTokusei]: { title: 'FormsResponses_Tokusei' },
   [ListKeys.OrgMaster]: { title: 'Org_Master' },
+  [ListKeys.StaffAttendance]: { title: 'Staff_Attendance' },
+  [ListKeys.DiagnosticsReports]: { title: 'Diagnostics_Reports' },
+  [ListKeys.AttendanceUsers]: { title: 'AttendanceUsers' },
+  [ListKeys.AttendanceDaily]: { title: 'AttendanceDaily' },
 };
 
 export const FIELD_MAP = {
@@ -180,26 +294,55 @@ export const FIELD_MAP = {
     phone: 'Phone',
     certifications: 'Certifications',
   },
-  Org_Master: ORG_MASTER_FIELDS,
-  Schedules: {
+  Staff_Attendance: {
     id: 'Id',
     title: 'Title',
-    start: 'StartDateTime',
-    end: 'EndDateTime',
+    staffId: 'StaffId',
+    recordDate: 'RecordDate',
     status: 'Status',
-    notes: 'Note',
-    serviceType: 'ServiceType',
-    staffIds: 'AssignedStaffId',
-    billingFlags: 'BillingFlags',
-    relatedResourceIds: 'RelatedResourceId',
-    targetUserIds: 'TargetUserId',
+    checkInAt: 'CheckInAt',
+    checkOutAt: 'CheckOutAt',
+    lateMinutes: 'LateMinutes',
+    note: 'Note',
     created: 'Created',
     modified: 'Modified',
-    createdAt: 'CreatedAt',
-    updatedAt: 'UpdatedAt',
+  },
+  Org_Master: ORG_MASTER_FIELDS,
+  Schedules: {
+    // Standard SharePoint columns
+    id: 'Id',
+    title: 'Title',
+    created: 'Created',
+    modified: 'Modified',
+
+    // Phase 1 mandatory fields (validated in app-test staging)
+    EventDate: 'EventDate', // DateTime
+    EndDate: 'EndDate',     // DateTime
+    Status: 'Status',       // Choice
+    ServiceType: 'ServiceType', // Text
+    cr014_personType: 'cr014_personType',  // Choice: User/Staff/Org
+    cr014_personId: 'cr014_personId',      // Text
+    cr014_personName: 'cr014_personName',  // Text (optional)
+    AssignedStaffId: 'AssignedStaffId',    // Text (optional)
+    TargetUserId: 'TargetUserId',          // Text (optional)
+    RowKey: 'RowKey',                      // Text (identifier)
+    cr014_dayKey: 'cr014_dayKey',          // DateTime → normalize to YYYY-MM-DD
+    MonthKey: 'MonthKey',                  // Text: YYYY-MM
+    cr014_fiscalYear: 'cr014_fiscalYear',  // Text
+    cr014_orgAudience: 'cr014_orgAudience', // Text (optional)
+    Note: 'Note',                          // Text (optional notes)
+    CreatedAt: 'CreatedAt',                // DateTime (metadata)
+    UpdatedAt: 'UpdatedAt',                // DateTime (metadata)
+
+    // Legacy aliases (kept for backwards compatibility)
+    start: 'EventDate',
+    end: 'EndDate',
+    notes: 'Note',
     rowKey: 'RowKey',
-    dayKey: 'Date',
+    dayKey: 'cr014_dayKey',
     monthKey: 'MonthKey',
+    staffIds: 'AssignedStaffId',
+    targetUserIds: 'TargetUserId',
   },
 } as const;
 
@@ -218,13 +361,78 @@ export const FIELD_MAP_BEHAVIORS = {
 
 export const FIELD_MAP_ICEBERG_PDCA = {
   id: 'Id',
-  userId: 'UserID',
+  userId: 'UserID0',
   title: 'Title',
-  summary: 'Summary',
-  phase: 'Phase',
+  summary: 'Summary0',
+  phase: 'Phase0',
   createdAt: 'Created',
   updatedAt: 'Modified',
 } as const;
+
+// ──────────────────────────────────────────────────────────────
+// Diagnostics_Reports リスト
+// ──────────────────────────────────────────────────────────────
+// 環境診断結果を記録するリスト
+// 
+// 内部名が違う場合（e.g., "Report_x0020_Link"）の対応方法：
+// - 以下の FIELD_MAP_DIAGNOSTICS_REPORTS を修正するだけで OK
+// - 例: reportLink: 'Report_x0020_Link' と変更すれば全コード自動対応
+// ──────────────────────────────────────────────────────────────
+
+export const DIAGNOSTICS_REPORTS_LIST_TITLE = 'Diagnostics_Reports' as const;
+
+/**
+ * Diagnostics_Reports リスト用フィールド定義（内部名マップ）
+ * 
+ * 使用方法：
+ * - コード内では logicalName（左側）を使用
+ * - SharePoint API呼び出し時は value（右側）の内部名を使用
+ * 
+ * 内部名が変わった場合:
+ * - このオブジェクトの value のみ修正すれば、全コード自動対応
+ * 
+ * @example
+ * // ✅ 使用パターン
+ * const fieldName = FIELD_MAP_DIAGNOSTICS_REPORTS.reportLink;
+ * // fieldName = 'Report_x0020_Link' (内部名)
+ * 
+ * // ❌ 非推奨（内部名をハードコード）
+ * const fieldName = 'Report_x0020_Link';
+ */
+export const FIELD_MAP_DIAGNOSTICS_REPORTS = {
+  id: 'Id',                    // SharePoint システムフィールド
+  title: 'Title',              // 一意キー: health:<tenant>:<site>
+  overall: 'Overall',          // Choice: pass | warn | fail
+  topIssue: 'TopIssue',        // 最上位課題（1行）
+  summaryText: 'SummaryText',  // 詳細サマリー（複数行）
+  reportLink: 'ReportLink',    // 診断レポートへのリンク
+  notified: 'Notified',        // 通知フラグ（Power Automate制御）
+  notifiedAt: 'NotifiedAt',    // 通知日時
+  created: 'Created',          // SharePoint システムフィールド
+  modified: 'Modified',        // SharePoint システムフィールド
+} as const;
+
+/**
+ * Diagnostics_Reports の select フィールド（固定）
+ * 
+ * Power Automate/SharePoint は環境で返却形式が微妙に異なるため、
+ * 取得列を固定しておくと、互換性問題を最小化できます。
+ * 
+ * 全キーを field map 経由で定義しているため、内部名変更時は
+ * FIELD_MAP_DIAGNOSTICS_REPORTS を修正するだけで OK
+ */
+export const DIAGNOSTICS_REPORTS_SELECT_FIELDS = [
+  FIELD_MAP_DIAGNOSTICS_REPORTS.id,
+  FIELD_MAP_DIAGNOSTICS_REPORTS.title,
+  FIELD_MAP_DIAGNOSTICS_REPORTS.overall,
+  FIELD_MAP_DIAGNOSTICS_REPORTS.topIssue,
+  FIELD_MAP_DIAGNOSTICS_REPORTS.summaryText,
+  FIELD_MAP_DIAGNOSTICS_REPORTS.reportLink,
+  FIELD_MAP_DIAGNOSTICS_REPORTS.notified,
+  FIELD_MAP_DIAGNOSTICS_REPORTS.notifiedAt,
+  FIELD_MAP_DIAGNOSTICS_REPORTS.created,
+  FIELD_MAP_DIAGNOSTICS_REPORTS.modified,
+] as const;
 
 export const BEHAVIORS_SELECT_FIELDS = [
   FIELD_MAP_BEHAVIORS.id,
@@ -263,13 +471,132 @@ export const FIELD_MAP_SURVEY_TOKUSEI = {
   personality: 'Personality',
   sensoryFeatures: 'SensoryFeatures',
   behaviorFeatures: 'BehaviorFeatures',
-  preferences: 'Preferences',
   strengths: 'Strengths',
   notes: 'Notes',
   created: 'Created'
 } as const;
 
-export const SURVEY_TOKUSEI_SELECT_FIELDS = Object.values(FIELD_MAP_SURVEY_TOKUSEI);
+// Exclude fields we know are missing based on 400 error cascade; allow others
+export const SURVEY_TOKUSEI_SELECT_FIELDS: readonly string[] = Object.entries(FIELD_MAP_SURVEY_TOKUSEI)
+  .filter(([key]) =>
+    key !== 'responseId' &&
+    key !== 'guardianName' &&
+    key !== 'relation' &&
+    key !== 'heightCm' &&
+    key !== 'weightKg' &&
+    key !== 'personality' &&
+    key !== 'sensoryFeatures' &&
+    key !== 'behaviorFeatures'
+  )
+  .map(([, value]) => value);
+/**
+ * 動的に "存在する列だけ" を select フィールドに含める
+ * テナント列差分・列削除・列名変更に対応
+ */
+export async function buildSurveyTokuseiSelectFields(
+  getFieldNames: () => Promise<Set<string>>
+): Promise<string[]> {
+  try {
+    const availableFields = await getFieldNames();
+    const availableLower = new Set(Array.from(availableFields).map((name) => name.toLowerCase()));
+    const allCandidates = Object.values(FIELD_MAP_SURVEY_TOKUSEI);
+    const selected = allCandidates.filter((fieldName) => fieldName === 'Id' || availableLower.has(fieldName.toLowerCase()));
+    
+    // 🔍 デバッグ出力：何が存在して何が除外されたか可視化
+    console.debug('[TokuseiSelect] 📊 Fields API から取得した内部名（最初の50個）:', Array.from(availableFields).slice(0, 50));
+    console.debug('[TokuseiSelect] 📋 FIELD_MAP から candidate（全数）:', allCandidates);
+    console.debug('[TokuseiSelect] ✅ selected（存在する列）:', selected);
+    console.debug('[TokuseiSelect] ❌ dropped（見つからない列）:', allCandidates.filter(x => !selected.includes(x)));
+    
+    return selected;
+  } catch (error) {
+    // Fallback: エラー時は既知フィールドの除外版を使う
+    console.warn('[buildSurveyTokuseiSelectFields] Fields API 取得失敗、fallback を使用:', error);
+    return Array.from(SURVEY_TOKUSEI_SELECT_FIELDS);
+  }
+}
+
+/**
+ * 汎用的な動的 $select ビルダー（テナント差分に耐える）
+ * 存在するフィールドだけを $select に含めて 400 エラーを防ぐ
+ */
+export function buildSelectFieldsFromMap(
+  fieldMap: Record<string, string>,
+  existingInternalNames?: readonly string[],
+  opts?: { alwaysInclude?: readonly string[]; fallback?: readonly string[] }
+): readonly string[] {
+  const alwaysInclude = (opts?.alwaysInclude ?? ['Id']).map((s) => String(s));
+  const existing = new Set((existingInternalNames ?? []).map((x) => String(x).toLowerCase()));
+
+  const candidates = Object.values(fieldMap)
+    .map((v) => String(v))
+    .filter(Boolean);
+
+  // Fields API 取得失敗時は安全な fallback を返す（400 回避優先）
+  if (existing.size === 0) {
+    const fb = opts?.fallback ?? alwaysInclude;
+    return Array.from(new Set(fb.map((x) => (x.toLowerCase() === 'id' ? 'Id' : x))));
+  }
+
+  const selected = candidates.filter((v) => existing.has(v.toLowerCase()));
+  const merged = Array.from(
+    new Set([...alwaysInclude, ...selected].map((x) => (x.toLowerCase() === 'id' ? 'Id' : x)))
+  );
+
+  return merged;
+}
+
+/**
+ * Behaviors リスト用の動的 $select ビルダー
+ */
+export function buildBehaviorsSelectFields(existingInternalNames?: readonly string[]): readonly string[] {
+  return buildSelectFieldsFromMap(FIELD_MAP_BEHAVIORS, existingInternalNames, {
+    alwaysInclude: ['Id', 'Created', 'Modified'],
+    fallback: ['Id', 'Created'],
+  });
+}
+
+/**
+ * Iceberg PDCA リスト用の動的 $select ビルダー
+ */
+export function buildIcebergPdcaSelectFields(existingInternalNames?: readonly string[]): readonly string[] {
+  return buildSelectFieldsFromMap(FIELD_MAP_ICEBERG_PDCA, existingInternalNames, {
+    alwaysInclude: ['Id', 'Created', 'Modified'],
+    fallback: ['Id', 'Created'],
+  });
+}
+
+/**
+ * Handoff リスト用の FIELD_MAP（HANDOFF_TIMELINE_COLUMNS から抽出）
+ */
+export const FIELD_MAP_HANDOFF = {
+  id: 'Id',
+  title: 'Title',
+  message: 'Message',
+  userCode: 'UserCode',
+  userDisplayName: 'UserDisplayName',
+  category: 'Category',
+  severity: 'Severity',
+  status: 'Status',
+  timeBand: 'TimeBand',
+  meetingSessionKey: 'MeetingSessionKey',
+  createdBy: 'CreatedBy',
+  createdAt: 'CreatedAt',
+  modifiedBy: 'ModifiedBy',
+  modifiedAt: 'ModifiedAt',
+  created: 'Created',
+  modified: 'Modified',
+} as const;
+
+/**
+ * Handoff リスト用の動的 $select ビルダー
+ */
+export function buildHandoffSelectFields(existingInternalNames?: readonly string[]): readonly string[] {
+  return buildSelectFieldsFromMap(FIELD_MAP_HANDOFF, existingInternalNames, {
+    alwaysInclude: ['Id', 'Title', 'Created', 'Modified'],
+    fallback: ['Id', 'Title', 'Message', 'UserCode', 'Created'],
+  });
+}
 
 export const USERS_SELECT_FIELDS_SAFE = [
   FIELD_MAP.Users_Master.id,

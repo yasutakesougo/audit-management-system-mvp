@@ -138,7 +138,7 @@ const TimelineDayContent = ({ items, loading, range }: { items: SchedItem[]; loa
             if (location) details.push(location);
             if (statusLabel) details.push(statusLabel);
             if (statusReason) details.push(`理由: ${statusReason}`);
-            const description = (item.notes ?? item.note)?.trim();
+            const description = (item.notes)?.trim();
             const detailText = details.join(' / ');
 
             return (

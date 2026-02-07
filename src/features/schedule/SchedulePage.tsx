@@ -38,15 +38,18 @@ import StaffTab from '@/features/schedule/views/StaffTab';
 import TimelineDay from '@/features/schedule/views/TimelineDay';
 import TimelineWeek, { type EventMovePayload } from '@/features/schedule/views/TimelineWeek';
 import UserTab from '@/features/schedule/views/UserTab';
-import ScheduleCreateDialog, { type CreateScheduleEventInput, type ScheduleFormState, type ScheduleServiceType, type ScheduleUserOption } from '@/features/schedules/ScheduleCreateDialog';
+import ScheduleCreateDialog from '@/features/schedules/ScheduleCreateDialog';
+import type { CreateScheduleEventInput, ScheduleServiceType } from '@/features/schedules/data';
+import type { ScheduleFormState, ScheduleUserOption } from '@/features/schedules/scheduleFormState';
 import { useScheduleUserOptions } from '@/features/schedules/useScheduleUserOptions';
 import { getAppConfig, skipSharePoint } from '@/lib/env';
+import { AuthRequiredError } from '@/lib/errors';
 import { useSP } from '@/lib/spClient';
 import { useStaff } from '@/stores/useStaff';
 import { TESTIDS } from '@/testids';
 import FilterToolbar from '@/ui/filters/FilterToolbar';
 import { formatRangeLocal } from '@/utils/datetime';
-import { getOrgFilterLabel, matchesOrgFilter, normalizeOrgFilter, type OrgFilterKey } from './orgFilters';
+import { DEFAULT_ORG_FILTER, getOrgFilterLabel, matchesOrgFilter, normalizeOrgFilter, type OrgFilterKey } from './orgFilters';
 import { getComposedWeek, isScheduleFixturesMode, type ScheduleEvent } from './api/schedulesClient';
 import { ensureDateParam, normalizeToDayStart, pickDateParam } from './dateQuery';
 import { useEnsureScheduleList } from './ensureScheduleList';
@@ -87,7 +90,7 @@ const DOMAIN_TO_DIALOG_STATUS: Record<Status, ScheduleStatus> = {
   完了: 'confirmed',
 };
 
-const QUICK_SERVICE_TYPE_LABELS: Partial<Record<ScheduleServiceType, string>> = {
+const QUICK_SERVICE_TYPE_LABELS: Record<string, string> = {
   normal: '通所',
   transport: '送迎',
   respite: 'レスパイト',
@@ -108,7 +111,7 @@ const QUICK_SERVICE_TYPE_BY_LABEL: Record<string, ScheduleServiceType> = Object.
 );
 
 // Quick-create(code) -> Domain(ServiceType) のマップ
-const QUICK_TO_DOMAIN_SERVICE_TYPE: Partial<Record<ScheduleServiceType, ScheduleUserCare['serviceType']>> = {
+const QUICK_TO_DOMAIN_SERVICE_TYPE: Record<string, ScheduleUserCare['serviceType']> = {
   normal: '通常利用',
   transport: '送迎',
   respite: '一時ケア',
@@ -136,7 +139,6 @@ const toNumericId = (id?: string | number): number | undefined => {
   }
   return undefined;
 };
-
 const FIXTURE_DEFAULT_STATUS: Status = '承認済み';
 const FIXTURE_USER_SERVICE: ScheduleUserCare['serviceType'] = '一時ケア';
 const FIXTURE_USER_PERSON_TYPE: ScheduleUserCare['personType'] = 'Internal';
@@ -262,6 +264,27 @@ export default function SchedulePage() {
   const view = useMemo(() => resolveViewParam(searchParams), [searchParams]);
   const orgFilterKey = useMemo<OrgFilterKey>(() => normalizeOrgFilter(searchParams.get('org')), [searchParams]);
   const orgFilterLabel = useMemo(() => getOrgFilterLabel(orgFilterKey), [orgFilterKey]);
+
+  useEffect(() => {
+    const rawOrg = searchParams.get('org');
+    if (!rawOrg) return;
+
+    const normalized = normalizeOrgFilter(rawOrg);
+    const next = new URLSearchParams(searchParams);
+
+    if (normalized === DEFAULT_ORG_FILTER) {
+      if (rawOrg !== DEFAULT_ORG_FILTER) {
+        next.delete('org');
+        setSearchParams(next, { replace: true });
+      }
+      return;
+    }
+
+    if (rawOrg !== normalized) {
+      next.set('org', normalized);
+      setSearchParams(next, { replace: true });
+    }
+  }, [searchParams, setSearchParams]);
 
   useEffect(() => {
     const raw = searchParams.get('tab');
@@ -655,7 +678,15 @@ export default function SchedulePage() {
       setTimelineEvents(combined);
       // 成功時のリトライカウントリセットは useEffect で行う
     } catch (cause) {
-      const err = cause instanceof Error ? cause : new Error('予定の取得に失敗しました');
+      const err = (() => {
+        if (cause instanceof AuthRequiredError) {
+          return new Error('サインインが必要です。右上の「サインイン」からログインしてください。');
+        }
+        if (cause instanceof Error && cause.message === 'AUTH_REQUIRED') {
+          return new Error('サインインが必要です。右上の「サインイン」からログインしてください。');
+        }
+        return cause instanceof Error ? cause : new Error('予定の取得に失敗しました');
+      })();
       console.warn('SharePoint API エラー:', err.message);
 
       // 開発環境では SharePoint エラーの場合、無限リトライを避けて空データを使用
@@ -826,12 +857,15 @@ export default function SchedulePage() {
       return undefined;
     })();
 
-    const serviceTypeCode = input.serviceType;
-    const serviceTypeLabel = QUICK_SERVICE_TYPE_LABELS[serviceTypeCode] ?? QUICK_SERVICE_TYPE_LABELS.other ?? 'その他';
+    const serviceTypeKey =
+      typeof input.serviceType === 'string' && input.serviceType.trim()
+        ? (input.serviceType.trim() as keyof typeof QUICK_SERVICE_TYPE_LABELS)
+        : 'other';
+    const serviceTypeLabel = QUICK_SERVICE_TYPE_LABELS[serviceTypeKey] ?? QUICK_SERVICE_TYPE_LABELS.other ?? 'その他';
     const userOption = input.userId ? scheduleUserMap.get(input.userId) ?? null : null;
     const trimmedTitle = input.title.trim();
     const resolvedTitle = trimmedTitle || `${serviceTypeLabel} / ${userOption?.name ?? '利用者'}`;
-    const mappedServiceType = QUICK_TO_DOMAIN_SERVICE_TYPE[serviceTypeCode] ?? '一時ケア';
+    const mappedServiceType = QUICK_TO_DOMAIN_SERVICE_TYPE[serviceTypeKey] ?? '一時ケア';
 
     const startDate = new Date(input.startLocal);
     const endDate = new Date(input.endLocal);
@@ -1080,13 +1114,14 @@ export default function SchedulePage() {
 
   const handleDayNavigate = useCallback(
     (dayKey: string) => {
-      navigate(`/schedules/day?day=${encodeURIComponent(dayKey)}`);
+      navigate(`/schedules/day?date=${encodeURIComponent(dayKey)}&tab=day`);
     },
     [navigate],
   );
 
   return (
-    <Container maxWidth="xl" sx={{ py: 3 }} data-testid={TESTIDS.SCHEDULES_PAGE_ROOT}>
+    <Box data-testid="schedule-legacy-root" sx={{ display: 'contents' }}>
+      <Container maxWidth="xl" sx={{ py: 3 }} data-testid={TESTIDS.SCHEDULES_PAGE_ROOT}>
       <Paper elevation={0} sx={{ borderRadius: 2, overflow: 'hidden' }}>
         {/* Header with title and period navigation */}
         <Box sx={{ p: 3, pb: 0 }}>
@@ -1334,6 +1369,7 @@ export default function SchedulePage() {
         onSubmit={handleDialogSubmit}
       />
       {snackbarUi}
-    </Container>
+      </Container>
+    </Box>
   );
 }

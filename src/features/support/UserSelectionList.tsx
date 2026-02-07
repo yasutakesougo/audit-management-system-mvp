@@ -13,8 +13,9 @@ import InputAdornment from '@mui/material/InputAdornment';
 import TextField from '@mui/material/TextField';
 import Tooltip from '@mui/material/Tooltip';
 import Typography from '@mui/material/Typography';
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { UserBasicInfo, sampleUsers } from '../../domain/support/individual-steps';
+import { userCardSx } from '@/ui/density/userCardSx';
 
 interface UserSelectionListProps {
   users?: UserBasicInfo[];
@@ -30,6 +31,9 @@ export const UserSelectionList: React.FC<UserSelectionListProps> = ({
   selectedUserId
 }) => {
   const [searchQuery, setSearchQuery] = useState('');
+  const [activeIndex, setActiveIndex] = useState(0);
+  const itemRefs = useRef<Array<HTMLDivElement | null>>([]);
+  const searchRef = useRef<HTMLInputElement | null>(null);
 
   // フィルタリング処理
   const filteredUsers = useMemo(() => {
@@ -43,6 +47,60 @@ export const UserSelectionList: React.FC<UserSelectionListProps> = ({
       );
     });
   }, [users, searchQuery]);
+
+  useEffect(() => {
+    if (filteredUsers.length === 0) {
+      setActiveIndex(0);
+      return;
+    }
+    setActiveIndex((prev) => Math.min(prev, filteredUsers.length - 1));
+  }, [filteredUsers.length]);
+
+  useEffect(() => {
+    setActiveIndex(0);
+  }, [searchQuery, filteredUsers.length]);
+
+  useEffect(() => {
+    const el = itemRefs.current[activeIndex];
+    if (!el) return;
+    el.scrollIntoView({ block: 'nearest', inline: 'nearest' });
+  }, [activeIndex]);
+
+  const confirmUser = (user: UserBasicInfo, index?: number) => {
+    if (index !== undefined) {
+      setActiveIndex(index);
+    }
+    onSelectUser?.(user);
+    requestAnimationFrame(() => {
+      searchRef.current?.focus();
+      searchRef.current?.select();
+    });
+  };
+
+  const handleListKeyDown = (event: React.KeyboardEvent<HTMLDivElement>) => {
+    const target = event.target as HTMLElement | null;
+    const tagName = target?.tagName ?? '';
+    if (tagName === 'INPUT' || tagName === 'TEXTAREA') return;
+    if (filteredUsers.length === 0) return;
+
+    if (event.key === 'ArrowDown') {
+      event.preventDefault();
+      setActiveIndex((prev) => Math.min(prev + 1, filteredUsers.length - 1));
+      return;
+    }
+    if (event.key === 'ArrowUp') {
+      event.preventDefault();
+      setActiveIndex((prev) => Math.max(prev - 1, 0));
+      return;
+    }
+    if (event.key === 'Enter') {
+      event.preventDefault();
+      const user = filteredUsers[activeIndex];
+      if (user) {
+        confirmUser(user);
+      }
+    }
+  };
 
   // 年齢計算
   const calculateAge = (birthDate?: string) => {
@@ -86,10 +144,28 @@ export const UserSelectionList: React.FC<UserSelectionListProps> = ({
       <Card sx={{ mb: 3 }}>
         <CardContent>
           <TextField
+            inputRef={searchRef}
             fullWidth
             placeholder="利用者名、ふりがなで検索..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
+            onKeyDown={(event) => {
+              if (event.key === 'Escape') {
+                event.preventDefault();
+                setSearchQuery('');
+                requestAnimationFrame(() => {
+                  searchRef.current?.focus();
+                });
+                return;
+              }
+              if (event.key !== 'Enter') return;
+              const nativeEvent = event.nativeEvent as { isComposing?: boolean } | undefined;
+              if (nativeEvent?.isComposing) return;
+              const user = filteredUsers[0];
+              if (!user) return;
+              event.preventDefault();
+              confirmUser(user, 0);
+            }}
             InputProps={{
               startAdornment: (
                 <InputAdornment position="start">
@@ -108,89 +184,115 @@ export const UserSelectionList: React.FC<UserSelectionListProps> = ({
           gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))',
           gap: 2,
         }}
+        role="listbox"
+        tabIndex={0}
+        onKeyDown={handleListKeyDown}
       >
-        {filteredUsers.map((user) => {
+        {filteredUsers.map((user, index) => {
           const age = calculateAge(user.birthDate);
           const isSelected = selectedUserId === user.id;
+          const isActive = index === activeIndex;
+          const isEmphasized = isSelected || isActive;
 
           return (
-            <Card
+            <Box
               key={user.id}
-              sx={{
-                cursor: 'pointer',
-                border: isSelected ? 2 : 1,
-                borderColor: isSelected ? 'primary.main' : 'grey.300',
-                backgroundColor: isSelected ? 'primary.50' : 'background.paper',
-                '&:hover': {
-                  backgroundColor: isSelected ? 'primary.100' : 'grey.50',
-                  transform: 'translateY(-2px)',
-                  transition: 'all 0.2s ease-in-out',
-                },
+              ref={(el) => {
+                itemRefs.current[index] = el as HTMLDivElement | null;
               }}
-              onClick={() => onSelectUser?.(user)}
+              role="option"
+              aria-selected={isEmphasized}
             >
-              <CardContent>
-                <Box display="flex" alignItems="center" mb={2}>
-                  <Avatar
-                    sx={{
-                      width: 48,
-                      height: 48,
-                      mr: 2,
-                      bgcolor: isSelected ? 'primary.main' : 'grey.400',
-                      fontSize: '1.2rem',
-                    }}
-                  >
-                    {getInitials(user.name)}
-                  </Avatar>
+              <Card
+                sx={{
+                  cursor: 'pointer',
+                  border: isSelected ? 2 : 1,
+                  borderColor: isSelected ? 'primary.main' : 'grey.300',
+                  ...userCardSx.card(isEmphasized),
+                  backgroundColor: isSelected ? 'primary.50' : 'background.paper',
+                  '&:hover': {
+                    backgroundColor: isSelected ? 'primary.100' : 'grey.50',
+                    transform: 'translateY(-2px)',
+                    transition: 'all 0.2s ease-in-out',
+                  },
+                }}
+                onClick={() => confirmUser(user, index)}
+              >
+                <CardContent
+                  sx={userCardSx.content}
+                >
+                  <Box display="flex" alignItems="center" mb={1}>
+                    <Avatar
+                      sx={{
+                        ...userCardSx.avatar,
+                        mr: 1.5,
+                        bgcolor: isSelected ? 'primary.main' : 'grey.400',
+                        fontSize: '1rem',
+                      }}
+                    >
+                      {getInitials(user.name)}
+                    </Avatar>
 
-                  <Box flex={1}>
-                    <Typography variant="h6" component="div" sx={{ fontWeight: 600 }}>
-                      {user.name}
-                    </Typography>
-                    {user.furigana && (
-                      <Typography variant="body2" color="text.secondary">
-                        {user.furigana}
+                    <Box flex={1} sx={{ minWidth: 0 }}>
+                      <Typography
+                        variant="subtitle2"
+                        component="div"
+                        noWrap
+                        sx={{ fontWeight: 600, ...userCardSx.name }}
+                      >
+                        {user.name}
                       </Typography>
-                    )}
+                      {user.furigana && (
+                        <Typography
+                          variant="caption"
+                          color="text.secondary"
+                          noWrap
+                          sx={userCardSx.sub}
+                        >
+                          {user.furigana}
+                        </Typography>
+                      )}
+                    </Box>
                   </Box>
-                </Box>
 
-                <Box display="flex" justifyContent="space-between" alignItems="center">
-                  <Box>
-                    {age !== null && (
+                  <Box display="flex" justifyContent="space-between" alignItems="center">
+                    <Box>
+                      {age !== null && (
+                        <Chip
+                          label={`${age}歳`}
+                          size="small"
+                          variant="outlined"
+                          sx={{ mr: 1 }}
+                        />
+                      )}
                       <Chip
-                        label={`${age}歳`}
-                        size="small"
-                        variant="outlined"
-                        sx={{ mr: 1 }}
-                      />
-                    )}
-                    <Chip
-                      icon={<PersonIcon />}
-                      label="利用者"
-                      size="small"
-                      color="primary"
-                      variant={isSelected ? 'filled' : 'outlined'}
-                    />
-                  </Box>
-
-                  <Box>
-                    <Tooltip title="支援手順を表示">
-                      <IconButton
+                        icon={<PersonIcon />}
+                        label="利用者"
                         size="small"
                         color="primary"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          onSelectUser?.(user);
-                        }}
-                      >
-                        <ViewIcon />
-                      </IconButton>
-                    </Tooltip>
+                        variant={isSelected ? 'filled' : 'outlined'}
+                      />
+                    </Box>
+
+                    <Box>
+                      <Tooltip title="支援手順を表示">
+                        <IconButton
+                          size="small"
+                          color="primary"
+                          sx={userCardSx.iconButton}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            onSelectUser?.(user);
+                          }}
+                        >
+                          <ViewIcon />
+                        </IconButton>
+                      </Tooltip>
+                    </Box>
                   </Box>
-                </Box>
-              </CardContent>
-            </Card>
+                </CardContent>
+              </Card>
+            </Box>
           );
         })}
       </Box>

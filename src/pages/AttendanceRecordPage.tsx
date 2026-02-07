@@ -1,3 +1,4 @@
+/* eslint-disable boundaries/element-types */
 import { ABSENCE_MONTHLY_LIMIT, DISCREPANCY_THRESHOLD } from '@/config/serviceRecords';
 import { getFlag } from '@/env';
 import {
@@ -13,6 +14,17 @@ import {
     type AttendanceUser,
     type AttendanceVisit,
 } from '@/features/attendance/attendance.logic';
+import { 
+  getActiveUsers,
+  type AttendanceUserItem 
+} from '@/features/attendance/infra/attendanceUsersRepository';
+import { 
+  getDailyByDate,
+  upsertDailyByKey,
+  type AttendanceDailyItem 
+} from '@/features/attendance/infra/attendanceDailyRepository';
+import { useAuth } from '@/auth/useAuth';
+import { createSpClient, ensureConfig } from '@/lib/spClient';
 import { warmDataEntryComponents } from '@/mui/warm';
 import { TESTIDS } from '@/testids';
 import TransportIcon from '@mui/icons-material/AirportShuttle';
@@ -27,6 +39,7 @@ import EveningIcon from '@mui/icons-material/WbTwilight';
 import Alert from '@mui/material/Alert';
 import Button from '@mui/material/Button';
 import Card from '@mui/material/Card';
+import Box from '@mui/material/Box';
 import CardContent from '@mui/material/CardContent';
 import Chip from '@mui/material/Chip';
 import Container from '@mui/material/Container';
@@ -47,8 +60,15 @@ import Tooltip from '@mui/material/Tooltip';
 import Typography from '@mui/material/Typography';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
+import { FullScreenDailyDialogPage } from '@/features/daily/components/FullScreenDailyDialogPage';
 
 type ToastSeverity = 'success' | 'error' | 'warning' | 'info';
+
+type UndoPayload = {
+  userCode: string;
+  prevVisit: AttendanceVisit;
+  message: string;
+};
 
 type FilterStatus = 'all' | 'pending' | 'completed' | 'absent';
 
@@ -88,15 +108,25 @@ const AttendanceRecordPage: React.FC<AttendanceRecordPageProps> = ({ 'data-testi
 
   // Snackbar state for toast notifications
   const [snackbar, setSnackbar] = useState<{ open: boolean; message: string; severity: ToastSeverity } | null>(null);
+  const [undo, setUndo] = useState<UndoPayload | null>(null);
 
-  const openToast = (message: string, severity: ToastSeverity) => {
+  const openToast = (message: string, severity: ToastSeverity, options?: { keepUndo?: boolean }) => {
+    if (!options?.keepUndo) {
+      setUndo(null);
+    }
     setSnackbar({ open: true, message, severity });
   };
 
   const handleSnackbarClose = () => {
     setSnackbar((prev) => (prev ? { ...prev, open: false } : prev));
   };
+  useEffect(() => {
+    if (!undo) return;
+    const timer = window.setTimeout(() => setUndo(null), 8000);
+    return () => window.clearTimeout(timer);
+  }, [undo]);
   const today = useMemo(() => new Date().toISOString().split('T')[0], []);
+  const [loading, setLoading] = useState(true);
   const [users, setUsers] = useState<AttendanceUser[]>(initialUsers);
   const [visits, setVisits] = useState<Record<string, AttendanceVisit>>(() =>
     buildInitialVisits(initialUsers, today)
@@ -104,6 +134,127 @@ const AttendanceRecordPage: React.FC<AttendanceRecordPageProps> = ({ 'data-testi
   const [absenceDialog, setAbsenceDialog] = useState<AbsenceDialogState | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [filterStatus, setFilterStatus] = useState<FilterStatus>('all');
+
+  // SharePoint client setup
+  const { acquireToken } = useAuth();
+  const spClient = useMemo(() => {
+    if (!acquireToken) return null;
+    try {
+      return createSpClient(acquireToken, ensureConfig().baseUrl);
+    } catch {
+      return null;
+    }
+  }, [acquireToken]);
+
+  // Map SharePoint items to local types
+  const mapUserItem = (item: AttendanceUserItem): AttendanceUser => ({
+    userCode: item.UserCode,
+    userName: item.Title,
+    isTransportTarget: item.IsTransportTarget,
+    absenceClaimedThisMonth: 0, // TODO: 月次集計から取得
+    standardMinutes: item.StandardMinutes,
+  });
+
+  const mapDailyToVisit = (item: AttendanceDailyItem): AttendanceVisit => ({
+    userCode: item.UserCode,
+    status: item.Status as AttendanceVisit['status'],
+    recordDate: item.RecordDate,
+    cntAttendIn: item.CntAttendIn ?? 0,
+    cntAttendOut: item.CntAttendOut ?? 0,
+    transportTo: item.TransportTo ?? false,
+    transportFrom: item.TransportFrom ?? false,
+    isEarlyLeave: item.IsEarlyLeave ?? false,
+    absentMorningContacted: item.AbsentMorningContacted ?? false,
+    absentMorningMethod: (item.AbsentMorningMethod as AbsentMethod) ?? '',
+    eveningChecked: item.EveningChecked ?? false,
+    eveningNote: item.EveningNote ?? '',
+    isAbsenceAddonClaimable: item.IsAbsenceAddonClaimable ?? false,
+    providedMinutes: item.ProvidedMinutes ?? 0,
+    userConfirmedAt: item.UserConfirmedAt ?? undefined,
+    checkInAt: item.CheckInAt ?? undefined,
+    checkOutAt: item.CheckOutAt ?? undefined,
+  });
+
+  // Load data on mount
+  useEffect(() => {
+    const loadData = async () => {
+      if (!spClient) {
+        // Demo mode: use initialUsers
+        setLoading(false);
+        return;
+      }
+
+      try {
+        // 1. Load AttendanceUsers
+        const userItems = await getActiveUsers(spClient);
+        const loadedUsers = userItems.map(mapUserItem);
+        setUsers(loadedUsers);
+
+        // 2. Load today's AttendanceDaily
+        const dailyItems = await getDailyByDate(spClient, today);
+        const loadedVisits: Record<string, AttendanceVisit> = {};
+        
+        dailyItems.forEach((item) => {
+          loadedVisits[item.UserCode] = mapDailyToVisit(item);
+        });
+
+        // 3. Fill in missing users with initial visits
+        const initialVisits = buildInitialVisits(loadedUsers, today);
+        loadedUsers.forEach((user) => {
+          if (!loadedVisits[user.userCode]) {
+            loadedVisits[user.userCode] = initialVisits[user.userCode];
+          }
+        });
+
+        setVisits(loadedVisits);
+        setLoading(false);
+      } catch (error) {
+        console.error('Failed to load attendance data:', error);
+        openToast('データの読み込みに失敗しました', 'error');
+        setLoading(false);
+      }
+    };
+
+    loadData();
+  }, [spClient, today]);
+
+  // Save visit to SharePoint
+  const saveVisit = useCallback(async (userCode: string) => {
+    if (!spClient) return; // Demo mode: no save
+
+    const visit = visits[userCode];
+    const user = users.find(u => u.userCode === userCode);
+    if (!visit || !user) return;
+
+    const key = `${userCode}|${today}`;
+    const item: AttendanceDailyItem = {
+      Key: key,
+      UserCode: userCode,
+      RecordDate: today,
+      Status: visit.status,
+      CheckInAt: visit.checkInAt ?? null,
+      CheckOutAt: visit.checkOutAt ?? null,
+      CntAttendIn: visit.cntAttendIn ?? 0,
+      CntAttendOut: visit.cntAttendOut ?? 0,
+      TransportTo: !!visit.transportTo,
+      TransportFrom: !!visit.transportFrom,
+      ProvidedMinutes: visit.providedMinutes ?? null,
+      IsEarlyLeave: !!visit.isEarlyLeave,
+      UserConfirmedAt: visit.userConfirmedAt ?? null,
+      AbsentMorningContacted: !!visit.absentMorningContacted,
+      AbsentMorningMethod: visit.absentMorningMethod ?? '',
+      EveningChecked: !!visit.eveningChecked,
+      EveningNote: visit.eveningNote ?? '',
+      IsAbsenceAddonClaimable: !!visit.isAbsenceAddonClaimable,
+    };
+
+    try {
+      await upsertDailyByKey(spClient, item);
+    } catch (error) {
+      console.error('Failed to save visit:', error);
+      openToast('保存に失敗しました', 'error');
+    }
+  }, [spClient, visits, users, today]);
 
   // 乖離件数（サマリー用）
   const discrepancyCount = useMemo(
@@ -159,12 +310,17 @@ const AttendanceRecordPage: React.FC<AttendanceRecordPageProps> = ({ 'data-testi
     return filtered;
   }, [users, searchQuery, filterStatus, visits]);
 
-  const handleCheckIn = useCallback((user: AttendanceUser) => {
+  const handleCheckIn = useCallback(async (user: AttendanceUser) => {
     setVisits((prev) => {
       const current = prev[user.userCode];
       if (!current || current.status === '当日欠席' || current.cntAttendIn === 1) {
         return prev;
       }
+      setUndo({
+        userCode: user.userCode,
+        prevVisit: { ...current },
+        message: `${user.userName}さんの通所を取り消しますか？`,
+      });
       const now = new Date().toISOString();
       return {
         ...prev,
@@ -176,15 +332,23 @@ const AttendanceRecordPage: React.FC<AttendanceRecordPageProps> = ({ 'data-testi
         }
       };
     });
-    openToast(`${user.userName}さんが通所しました`, 'success');
-  }, []);
+    openToast(`${user.userName}さんが通所しました`, 'success', { keepUndo: true });
 
-  const handleCheckOut = useCallback((user: AttendanceUser) => {
+    // Save to SharePoint after state update
+    await saveVisit(user.userCode);
+  }, [saveVisit]);
+
+  const handleCheckOut = useCallback(async (user: AttendanceUser) => {
     setVisits((prev) => {
       const current = prev[user.userCode];
       if (!canCheckOut(current)) {
         return prev;
       }
+      setUndo({
+        userCode: user.userCode,
+        prevVisit: { ...current },
+        message: `${user.userName}さんの退所を取り消しますか？`,
+      });
       const now = new Date();
       return {
         ...prev,
@@ -197,10 +361,13 @@ const AttendanceRecordPage: React.FC<AttendanceRecordPageProps> = ({ 'data-testi
         }
       };
     });
-    openToast(`${user.userName}さんが退所しました`, 'success');
-  }, []);
+    openToast(`${user.userName}さんが退所しました`, 'success', { keepUndo: true });
 
-  const handleTransportToggle = (user: AttendanceUser, field: 'transportTo' | 'transportFrom') => {
+    // Save to SharePoint after state update
+    await saveVisit(user.userCode);
+  }, [saveVisit]);
+
+  const handleTransportToggle = async (user: AttendanceUser, field: 'transportTo' | 'transportFrom') => {
     setVisits((prev) => {
       const current = prev[user.userCode];
       if (!current || !user.isTransportTarget) {
@@ -214,6 +381,9 @@ const AttendanceRecordPage: React.FC<AttendanceRecordPageProps> = ({ 'data-testi
         }
       };
     });
+    
+    // Save to SharePoint after state update
+    await saveVisit(user.userCode);
   };
 
   const openAbsenceDialog = (user: AttendanceUser) => {
@@ -231,7 +401,7 @@ const AttendanceRecordPage: React.FC<AttendanceRecordPageProps> = ({ 'data-testi
 
   const closeAbsenceDialog = () => setAbsenceDialog(null);
 
-  const handleAbsenceSave = () => {
+  const handleAbsenceSave = async () => {
     if (!absenceDialog) return;
     const { user, visit, morningContacted, morningMethod, eveningChecked, eveningNote } =
       absenceDialog;
@@ -265,48 +435,91 @@ const AttendanceRecordPage: React.FC<AttendanceRecordPageProps> = ({ 'data-testi
     } else {
       openToast(`${user.userName}さんの欠席を記録しました（加算対象外）`, 'warning');
     }
-  closeAbsenceDialog();
+    closeAbsenceDialog();
+    
+    // Save to SharePoint after state update
+    await saveVisit(user.userCode);
   };
 
-  const handleReset = (user: AttendanceUser) => {
+  const handleReset = async (user: AttendanceUser) => {
     setVisits((prev) => ({
       ...prev,
       [user.userCode]: buildInitialVisits([user], today)[user.userCode]
     }));
+    
+    // Save to SharePoint after state update
+    await saveVisit(user.userCode);
   };
 
   return (
-  <Container maxWidth="lg" sx={{ py: 4 }} data-testid={dataTestId ?? TESTIDS['attendance-page']}>
-    {/* Snackbar for save/failure notifications */}
-    {snackbar && (
-      <Snackbar open={snackbar.open} autoHideDuration={4000} onClose={handleSnackbarClose} anchorOrigin={{ vertical: 'top', horizontal: 'center' }}>
-        <Alert onClose={handleSnackbarClose} severity={snackbar.severity} sx={{ width: '100%' }} data-testid="toast">
-          {snackbar.message}
-        </Alert>
-      </Snackbar>
-    )}
-      <Stack spacing={3}>
-        <Stack spacing={1}>
-          <Typography variant="h3" component="h1" data-testid="heading-attendance">
-            通所実績入力（サンプル）
-          </Typography>
-          <Typography color="text.secondary">
-            押したら即反映する想定で、通所・送迎・欠席加算の状態変化をタブレットで確認できます。
-          </Typography>
-        </Stack>
+    <FullScreenDailyDialogPage
+      title="通所（出欠）"
+      backTo="/daily/menu"
+      testId="daily-attendance-page"
+    >
+      <Container maxWidth="lg" sx={{ py: 4 }} data-testid={dataTestId ?? TESTIDS['attendance-page']}>
+        {/* Snackbar for save/failure notifications */}
+        {snackbar && (
+          <Snackbar open={snackbar.open} autoHideDuration={4000} onClose={handleSnackbarClose} anchorOrigin={{ vertical: 'top', horizontal: 'center' }}>
+            <Alert
+              onClose={handleSnackbarClose}
+              severity={snackbar.severity}
+              sx={{ width: '100%' }}
+              data-testid="toast"
+              action={
+                undo ? (
+                  <Button
+                    color="inherit"
+                    size="small"
+                    onClick={() => {
+                      setVisits((prev) => ({
+                        ...prev,
+                        [undo.userCode]: undo.prevVisit,
+                      }));
+                      setUndo(null);
+                      openToast('取り消しました', 'info');
+                    }}
+                  >
+                    取り消し
+                  </Button>
+                ) : null
+              }
+            >
+              {snackbar.message}
+            </Alert>
+          </Snackbar>
+        )}
 
-        <Card>
-          <CardContent>
-            <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2} flexWrap="wrap">
-              <Chip icon={<AttendanceIcon />} color="primary" label={`通所 ${summary.attendIn}`} />
-              <Chip icon={<CheckIcon />} color="success" label={`退所 ${summary.attendOut}`} />
-              <Chip icon={<BusIcon />} color="secondary" label={`送迎 行き ${summary.transportTo}`} />
-              <Chip icon={<BusIcon />} color="secondary" label={`送迎 帰り ${summary.transportFrom}`} />
-              <Chip icon={<AbsenceIcon />} color="warning" label={`欠席加算 ${summary.absenceAddon}`} />
-          <Chip label={`乖離あり ${discrepancyCount}`} variant="outlined" data-testid="chip-discrepancy" />
-            </Stack>
-          </CardContent>
-        </Card>
+        {loading ? (
+          <Stack spacing={2} alignItems="center" sx={{ py: 8 }}>
+            <Typography variant="h6" color="text.secondary">
+              データを読み込んでいます...
+            </Typography>
+          </Stack>
+        ) : (
+          <>
+            <Stack spacing={3}>
+              <Stack spacing={1}>
+                <Typography variant="h3" component="h1" data-testid="heading-attendance">
+                  通所実績入力（サンプル）
+                </Typography>
+                <Typography color="text.secondary">
+                  押したら即反映する想定で、通所・送迎・欠席加算の状態変化をタブレットで確認できます。
+                </Typography>
+              </Stack>
+
+              <Card>
+                <CardContent>
+                  <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2} flexWrap="wrap">
+                    <Chip icon={<AttendanceIcon />} color="primary" label={`通所 ${summary.attendIn}`} />
+                    <Chip icon={<CheckIcon />} color="success" label={`退所 ${summary.attendOut}`} />
+                    <Chip icon={<BusIcon />} color="secondary" label={`送迎 行き ${summary.transportTo}`} />
+                    <Chip icon={<BusIcon />} color="secondary" label={`送迎 帰り ${summary.transportFrom}`} />
+                    <Chip icon={<AbsenceIcon />} color="warning" label={`欠席加算 ${summary.absenceAddon}`} />
+                    <Chip label={`乖離あり ${discrepancyCount}`} variant="outlined" data-testid="chip-discrepancy" />
+                  </Stack>
+                </CardContent>
+              </Card>
 
         {/* 検索・フィルタ機能 */}
         <Card>
@@ -368,31 +581,193 @@ const AttendanceRecordPage: React.FC<AttendanceRecordPageProps> = ({ 'data-testi
                   transition: 'box-shadow 0.2s, border-color 0.2s',
                 }}
               >
-                <CardContent>
+                <CardContent sx={{ py: 1.25 }}>
                   <Stack spacing={2}>
-                    <Stack direction={{ xs: 'column', md: 'row' }} spacing={2} alignItems="center">
-                      <Stack flex={1}>
-                        <Typography variant="h6">
-                          {user.userName}{' '}
-                          <Typography component="span" variant="body2" color="text.secondary">
+                    <Box
+                      sx={{
+                        display: 'grid',
+                        gridTemplateColumns: { xs: '1fr', md: '1fr auto' },
+                        rowGap: 1,
+                        columnGap: 2,
+                        alignItems: 'start',
+                      }}
+                    >
+                      <Box sx={{ minWidth: 0 }}>
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, minWidth: 0 }}>
+                          <Typography
+                            variant="subtitle1"
+                            noWrap
+                            sx={{ fontWeight: 700, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis' }}
+                          >
+                            {user.userName}
+                          </Typography>
+                          <Typography variant="caption" color="text.secondary" noWrap>
                             ({user.userCode})
                           </Typography>
-                        </Typography>
-                        <Stack direction="row" spacing={1} flexWrap="wrap" sx={{ mt: 1 }}>
-                          <Chip
-                            label={`ステータス: ${visit.status}`}
-                            color={
-                              visit.status === '退所済' ? 'success' :
-                              visit.status === '当日欠席' ? 'error' :
-                              visit.status === '通所中' ? 'primary' : 'default'
+                          <Tooltip title={`ステータス: ${visit.status}`}>
+                            <Chip
+                              size="small"
+                              label={visit.status}
+                              color={
+                                visit.status === '退所済' ? 'success' :
+                                visit.status === '当日欠席' ? 'error' :
+                                visit.status === '通所中' ? 'primary' : 'default'
+                              }
+                              variant={visit.status === '未' ? 'outlined' : 'filled'}
+                              sx={{ flex: '0 0 auto' }}
+                            />
+                          </Tooltip>
+                        </Box>
+                      </Box>
+                      <Box>
+                        <Stack
+                          direction="row"
+                          spacing={1}
+                          sx={{
+                            flexWrap: 'wrap',
+                            justifyContent: { xs: 'flex-start', md: 'flex-end' },
+                            rowGap: 1,
+                            maxWidth: '100%',
+                          }}
+                        >
+                          <Tooltip title={disableCheckIn ? '通所済みまたは欠席日により実行不可' : ''}>
+                            <span>
+                              <Button
+                                variant="contained"
+                                onClick={() => handleCheckIn(user)}
+                                disabled={disableCheckIn}
+                                data-testid={`btn-checkin-${user.userCode}`}
+                              >
+                                通所
+                              </Button>
+                            </span>
+                          </Tooltip>
+                          <Tooltip title={disableCheckOut ? '通所後に退所できます' : ''}>
+                            <span>
+                              <Button
+                                variant="contained"
+                                color="success"
+                                onClick={() => handleCheckOut(user)}
+                                disabled={disableCheckOut}
+                                data-testid={`btn-checkout-${user.userCode}`}
+                              >
+                                退所
+                              </Button>
+                            </span>
+                          </Tooltip>
+                          <Tooltip title={disableAbsence ? '通所操作後は欠席へ切り替え不可' : ''}>
+                            <span>
+                              <Button
+                                variant="outlined"
+                                color="warning"
+                                onClick={() => openAbsenceDialog(user)}
+                                disabled={disableAbsence}
+                                startIcon={<AbsenceIcon />}
+                                data-testid={`btn-absence-${user.userCode}`}
+                                onMouseEnter={() => {
+                                  // ダイアログ関連コンポーネントの事前読み込み
+                                  // ホバー時に読み込んでクリック時の応答性を向上
+                                  if (!disableAbsence) {
+                                    warmDataEntryComponents();
+                                  }
+                                }}
+                              >
+                                欠席
+                              </Button>
+                            </span>
+                          </Tooltip>
+                          <Tooltip
+                            title={
+                              visit.userConfirmedAt
+                                ? `確認済: ${new Date(visit.userConfirmedAt).toLocaleTimeString('ja-JP', { hour: '2-digit', minute: '2-digit' })}`
+                                : (visit.status === '退所済' || visit.status === '当日欠席'
+                                  ? '確認できます'
+                                  : '退所または欠席確定後に確認可能')
                             }
-                            variant={visit.status === '未' ? 'outlined' : 'filled'}
-                          />
+                          >
+                            <span>
+                              {(() => {
+                                // --- E2E専用confirm強制有効化（src/env.tsのgetFlagで判定） ---
+                                const E2E_UNLOCK_CONFIRM = getFlag('VITE_E2E_UNLOCK_CONFIRM');
+                                const disabled = !!visit.userConfirmedAt || (visit.status !== '退所済' && visit.status !== '当日欠席');
+                                const disabledFinal = E2E_UNLOCK_CONFIRM ? false : disabled;
+                                if (typeof window !== 'undefined') {
+                                  type ConfirmDebugPayload = {
+                                    userCode: string;
+                                    disabled: boolean;
+                                    disabledFinal: boolean;
+                                    reasons: {
+                                      userConfirmedAt: boolean;
+                                      status: typeof visit.status;
+                                      E2E_UNLOCK_CONFIRM: boolean;
+                                    };
+                                  };
+                                  const debugWindow = window as typeof window & { __CONFIRM_DEBUG?: ConfirmDebugPayload };
+                                  debugWindow.__CONFIRM_DEBUG = {
+                                    userCode: user.userCode,
+                                    disabled,
+                                    disabledFinal,
+                                    reasons: {
+                                      userConfirmedAt: !!visit.userConfirmedAt,
+                                      status: visit.status,
+                                      E2E_UNLOCK_CONFIRM,
+                                    },
+                                  };
+                                }
+                                return (
+                                  <Button
+                                    variant="outlined"
+                                    color="success"
+                                    onClick={async () => {
+                                      setVisits((prev) => ({
+                                        ...prev,
+                                        [user.userCode]: {
+                                          ...prev[user.userCode],
+                                          userConfirmedAt: prev[user.userCode].userConfirmedAt ?? new Date().toISOString(),
+                                        },
+                                      }));
+                                      openToast('保存しました', 'success');
+                                      await saveVisit(user.userCode);
+                                    }}
+                                    disabled={disabledFinal}
+                                    startIcon={<CheckIcon />}
+                                    data-testid={`btn-confirm-${user.userCode}`}
+                                  >
+                                    利用者確認
+                                  </Button>
+                                );
+                              })()}
+                            </span>
+                          </Tooltip>
+                          <Tooltip title="初期状態へ戻します">
+                            <span>
+                              <Button
+                                variant="text"
+                                color="inherit"
+                                onClick={() => handleReset(user)}
+                                startIcon={<ResetIcon />}
+                                data-testid={`btn-reset-${user.userCode}`}
+                              >
+                                リセット
+                              </Button>
+                            </span>
+                          </Tooltip>
+                        </Stack>
+                      </Box>
+                      <Box>
+                        <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.75 }}>
                           <Chip label={`通所 ${formatTime(visit.checkInAt)}`} size="small" />
                           <Chip label={`退所 ${formatTime(visit.checkOutAt)}`} size="small" />
                           <Chip label={`実提供 ${visit.providedMinutes ?? 0}分`} size="small" />
                           <Chip label={`算定 ${user.standardMinutes}分`} variant="outlined" size="small" />
-                          { (visit.providedMinutes ?? 0) > 0 && visit.providedMinutes! < user.standardMinutes * DISCREPANCY_THRESHOLD && (
+                          {visit.userConfirmedAt && (
+                            <Chip
+                              label={`確認 ${new Date(visit.userConfirmedAt).toLocaleTimeString('ja-JP', { hour: '2-digit', minute: '2-digit' })}`}
+                              color="success"
+                              size="small"
+                            />
+                          )}
+                          {(visit.providedMinutes ?? 0) > 0 && visit.providedMinutes! < user.standardMinutes * DISCREPANCY_THRESHOLD && (
                             <Chip label="乖離あり（備考推奨）" color="warning" variant="outlined" size="small" />
                           )}
                           {visit.isEarlyLeave && (
@@ -401,181 +776,75 @@ const AttendanceRecordPage: React.FC<AttendanceRecordPageProps> = ({ 'data-testi
                           {visit.isAbsenceAddonClaimable && (
                             <Chip label="欠席加算対象" color="warning" size="small" />
                           )}
-                          {visit.userConfirmedAt && (
-                            <Chip
-                              label={`確認 ${new Date(visit.userConfirmedAt).toLocaleTimeString('ja-JP', { hour: '2-digit', minute: '2-digit' })}`}
-                              color="success"
-                              size="small"
-                            />
-                          )}
-                        </Stack>
-                      </Stack>
-                      <Stack direction="row" spacing={1}>
-                        <Tooltip title={disableCheckIn ? '通所済みまたは欠席日により実行不可' : ''}>
-                          <span>
-                            <Button
-                              variant="contained"
-                              onClick={() => handleCheckIn(user)}
-                              disabled={disableCheckIn}
-                              data-testid={`btn-checkin-${user.userCode}`}
-                            >
-                              通所
-                            </Button>
-                          </span>
-                        </Tooltip>
-                        <Tooltip title={disableCheckOut ? '通所後に退所できます' : ''}>
-                          <span>
-                            <Button
-                              variant="contained"
-                              color="success"
-                              onClick={() => handleCheckOut(user)}
-                              disabled={disableCheckOut}
-                              data-testid={`btn-checkout-${user.userCode}`}
-                            >
-                              退所
-                            </Button>
-                          </span>
-                        </Tooltip>
-                        <Tooltip title={disableAbsence ? '通所操作後は欠席へ切り替え不可' : ''}>
-                          <span>
-                            <Button
-                              variant="outlined"
-                              color="warning"
-                              onClick={() => openAbsenceDialog(user)}
-                              disabled={disableAbsence}
-                              startIcon={<AbsenceIcon />}
-                              data-testid={`btn-absence-${user.userCode}`}
-                              onMouseEnter={() => {
-                                // ダイアログ関連コンポーネントの事前読み込み
-                                // ホバー時に読み込んでクリック時の応答性を向上
-                                if (!disableAbsence) {
-                                  warmDataEntryComponents();
-                                }
-                              }}
-                            >
-                              欠席
-                            </Button>
-                          </span>
-                        </Tooltip>
-                        <Tooltip
-                          title={
-                            visit.userConfirmedAt
-                              ? `確認済: ${new Date(visit.userConfirmedAt).toLocaleTimeString('ja-JP', { hour: '2-digit', minute: '2-digit' })}`
-                              : (visit.status === '退所済' || visit.status === '当日欠席'
-                                ? '確認できます'
-                                : '退所または欠席確定後に確認可能')
-                          }
+                        </Box>
+                      </Box>
+                      <Box>
+                        <Stack
+                          direction="row"
+                          spacing={1}
+                          sx={{
+                            flexWrap: 'wrap',
+                            justifyContent: { xs: 'flex-start', md: 'flex-end' },
+                            rowGap: 0.5,
+                            maxWidth: '100%',
+                          }}
                         >
-                          <span>
-                            {(() => {
-                              // --- E2E専用confirm強制有効化（src/env.tsのgetFlagで判定） ---
-                              const E2E_UNLOCK_CONFIRM = getFlag('VITE_E2E_UNLOCK_CONFIRM');
-                              const disabled = !!visit.userConfirmedAt || (visit.status !== '退所済' && visit.status !== '当日欠席');
-                              const disabledFinal = E2E_UNLOCK_CONFIRM ? false : disabled;
-                              if (typeof window !== 'undefined') {
-                                type ConfirmDebugPayload = {
-                                  userCode: string;
-                                  disabled: boolean;
-                                  disabledFinal: boolean;
-                                  reasons: {
-                                    userConfirmedAt: boolean;
-                                    status: typeof visit.status;
-                                    E2E_UNLOCK_CONFIRM: boolean;
-                                  };
-                                };
-                                const debugWindow = window as typeof window & { __CONFIRM_DEBUG?: ConfirmDebugPayload };
-                                debugWindow.__CONFIRM_DEBUG = {
-                                  userCode: user.userCode,
-                                  disabled,
-                                  disabledFinal,
-                                  reasons: {
-                                    userConfirmedAt: !!visit.userConfirmedAt,
-                                    status: visit.status,
-                                    E2E_UNLOCK_CONFIRM,
-                                  },
-                                };
-                              }
-                              return (
-                                <Button
-                                  variant="outlined"
-                                  color="success"
-                                  onClick={() => {
-                                    setVisits(prev => ({
-                                      ...prev,
-                                      [user.userCode]: {
-                                        ...prev[user.userCode],
-                                        userConfirmedAt: prev[user.userCode].userConfirmedAt ?? new Date().toISOString()
-                                      }
-                                    }));
-                                    openToast('保存しました', 'success');
-                                  }}
-                                  disabled={disabledFinal}
-                                  startIcon={<CheckIcon />}
-                                  data-testid={`btn-confirm-${user.userCode}`}
-                                >
-                                  利用者確認
-                                </Button>
-                              );
-                            })()}
-                          </span>
-                        </Tooltip>
-                        <Tooltip title="初期状態へ戻します">
-                          <span>
-                            <Button
-                              variant="text"
-                              color="inherit"
-                              onClick={() => handleReset(user)}
-                              startIcon={<ResetIcon />}
-                              data-testid={`btn-reset-${user.userCode}`}
-                            >
-                              リセット
-                            </Button>
-                          </span>
-                        </Tooltip>
+                          {/* ★ 追加: 支援記録（ケース記録）へのクロスリンク */}
+                          <Tooltip title="今日の支援記録（ケース記録）（/daily/activity）を開きます">
+                            <span>
+                              <Button
+                                variant="text"
+                                color="inherit"
+                                size="small"
+                                sx={{
+                                  px: 0.5,
+                                  minWidth: 'auto',
+                                  color: 'text.secondary',
+                                  '&:hover': { color: 'primary.main' },
+                                }}
+                                onClick={() => {
+                                  navigate(`/daily/activity?userId=${user.userCode}&date=${today}`);
+                                }}
+                                data-testid={`btn-activity-${user.userCode}`}
+                              >
+                                支援記録を見る
+                              </Button>
+                            </span>
+                          </Tooltip>
 
-                        {/* ★ 追加: 支援記録（ケース記録）へのクロスリンク */}
-                        <Tooltip title="今日の支援記録（ケース記録）（/daily/activity）を開きます">
-                          <span>
-                            <Button
-                              variant="text"
-                              color="primary"
-                              size="small"
-                              onClick={() => {
-                                navigate(`/daily/activity?userId=${user.userCode}&date=${today}`);
-                              }}
-                              data-testid={`btn-activity-${user.userCode}`}
-                            >
-                              支援記録（ケース記録）を見る
-                            </Button>
-                          </span>
-                        </Tooltip>
-
-                        {/* ★ 追加: 申し送りタイムラインへのクロスリンク */}
-                        <Tooltip title="この利用者の申し送りタイムライン（/handoff-timeline）を開きます">
-                          <span>
-                            <Button
-                              variant="text"
-                              color="secondary"
-                              size="small"
-                              onClick={() => {
-                                navigate('/handoff-timeline', {
-                                  state: {
-                                    dayScope: 'today',
-                                    timeFilter: 'all',
-                                    userId: user.userCode,
-                                    date: today,
-                                    focus: true,
-                                  },
-                                });
-                              }}
-                              data-testid={`btn-handoff-${user.userCode}`}
-                            >
-                              申し送りを見る
-                            </Button>
-                          </span>
-                        </Tooltip>
-                      </Stack>
-                    </Stack>
+                          {/* ★ 追加: 申し送りタイムラインへのクロスリンク */}
+                          <Tooltip title="この利用者の申し送りタイムライン（/handoff-timeline）を開きます">
+                            <span>
+                              <Button
+                                variant="text"
+                                color="inherit"
+                                size="small"
+                                sx={{
+                                  px: 0.5,
+                                  minWidth: 'auto',
+                                  color: 'text.secondary',
+                                  '&:hover': { color: 'secondary.main' },
+                                }}
+                                onClick={() => {
+                                  navigate('/handoff-timeline', {
+                                    state: {
+                                      dayScope: 'today',
+                                      timeFilter: 'all',
+                                      userId: user.userCode,
+                                      date: today,
+                                      focus: true,
+                                    },
+                                  });
+                                }}
+                                data-testid={`btn-handoff-${user.userCode}`}
+                              >
+                                申し送りを見る
+                              </Button>
+                            </span>
+                          </Tooltip>
+                        </Stack>
+                      </Box>
+                    </Box>
 
                     {user.isTransportTarget ? (
                       <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2}>
@@ -724,7 +993,10 @@ const AttendanceRecordPage: React.FC<AttendanceRecordPageProps> = ({ 'data-testi
           </Button>
         </DialogActions>
       </Dialog>
-    </Container>
+      </>
+    )}
+      </Container>
+    </FullScreenDailyDialogPage>
   );
 };
 

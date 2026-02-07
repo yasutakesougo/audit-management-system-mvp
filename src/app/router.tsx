@@ -8,7 +8,7 @@ import { RouteHydrationErrorBoundary } from '@/hydration/RouteHydrationListener'
 import { getAppConfig } from '@/lib/env';
 import lazyWithPreload from '@/utils/lazyWithPreload';
 import React from 'react';
-import { createBrowserRouter, Navigate, Outlet, type RouteObject } from 'react-router-dom';
+import { createBrowserRouter, Navigate, Outlet, type RouteObject, useLocation } from 'react-router-dom';
 import AppShell from './AppShell';
 import { routerFutureFlags } from './routerFuture';
 import SchedulesGate from './SchedulesGate';
@@ -35,6 +35,12 @@ const IcebergAnalysisPage = React.lazy(() => import('@/pages/IcebergAnalysisPage
 const MonthlyRecordPage = React.lazy(() => import('@/pages/MonthlyRecordPage'));
 
 const AttendanceRecordPage = React.lazy(() => import('@/pages/AttendanceRecordPage'));
+const StaffAttendanceAdminPage = React.lazy(() => import('@/pages/StaffAttendanceAdminPage'));
+const StaffAttendanceInput = React.lazy(() =>
+  import('@/features/staff/attendance/StaffAttendanceInput').then((module) => ({
+    default: module.StaffAttendanceInput,
+  })),
+);
 
 const StaffDashboardPage = React.lazy(() =>
   import('@/pages/DashboardPage').then((module) => ({
@@ -112,6 +118,11 @@ const SchedulesWeekRoute: React.FC = () => {
   const { schedulesWeekV2 } = useFeatureFlags();
   // schedulesWeekV2=true should surface the v2 WeekPage; keep legacy page as fallback when disabled.
   return schedulesWeekV2 ? <SuspendedNewSchedulesWeekPage /> : <SuspendedSchedulePage />;
+};
+
+const DashboardRedirect: React.FC = () => {
+  const location = useLocation();
+  return <Navigate to={`/dashboard${location.search}`} replace />;
 };
 
 const SuspendedCreatePage: React.FC = () => (
@@ -394,6 +405,34 @@ const SuspendedSupportActivityMasterPage: React.FC = () => (
   </RouteHydrationErrorBoundary>
 );
 
+const SuspendedStaffAttendanceInput: React.FC = () => (
+  <RouteHydrationErrorBoundary>
+    <React.Suspense
+      fallback={(
+        <div className="p-4 text-sm text-slate-600" role="status">
+          職員勤怠入力を読み込んでいます…
+        </div>
+      )}
+    >
+      <StaffAttendanceInput />
+    </React.Suspense>
+  </RouteHydrationErrorBoundary>
+);
+
+const SuspendedStaffAttendanceAdminPage: React.FC = () => (
+  <RouteHydrationErrorBoundary>
+    <React.Suspense
+      fallback={(
+        <div className="p-4 text-sm text-slate-600" role="status">
+          職員出勤管理を読み込んでいます…
+        </div>
+      )}
+    >
+      <StaffAttendanceAdminPage />
+    </React.Suspense>
+  </RouteHydrationErrorBoundary>
+);
+
 const SuspendedSupportStepMasterPage: React.FC = () => (
   <RouteHydrationErrorBoundary>
     <React.Suspense
@@ -478,7 +517,7 @@ const SuspendedHandoffTimelinePage: React.FC = () => (
   </RouteHydrationErrorBoundary>
 );
 const childRoutes: RouteObject[] = [
-  { index: true, element: <Navigate to="/dashboard" replace /> },
+  { index: true, element: <DashboardRedirect /> },
   { path: 'dashboard', element: <SuspendedStaffDashboardPage /> },
   { path: 'admin/dashboard', element: <SuspendedAdminDashboardPage /> },
   { path: 'meeting-guide', element: <SuspendedMeetingGuidePage /> },
@@ -490,7 +529,16 @@ const childRoutes: RouteObject[] = [
   { path: 'users', element: <UsersPanel /> },
   { path: 'users/:userId', element: <SuspendedUserDetailPage /> },
   { path: 'staff', element: <StaffPanel /> },
-  { path: 'daily', element: <SuspendedDailyRecordMenuPage /> },
+  {
+    path: 'staff/attendance',
+    element: (
+      <ProtectedRoute flag="schedules">
+        <SuspendedStaffAttendanceInput />
+      </ProtectedRoute>
+    ),
+  },
+  { path: 'daily', element: <Navigate to="/daily/table" replace /> },
+  { path: 'daily/menu', element: <SuspendedDailyRecordMenuPage /> },
   { path: 'daily/table', element: <SuspendedTableDailyRecordPage /> },
   { path: 'daily/activity', element: <SuspendedDailyRecordPage /> },
   { path: 'daily/attendance', element: <SuspendedAttendanceRecordPage /> },
@@ -498,6 +546,7 @@ const childRoutes: RouteObject[] = [
   { path: 'daily/support-checklist', element: <SuspendedTimeFlowSupportRecordPage /> },
   { path: 'daily/time-based', element: <SuspendedTimeBasedSupportRecordPage /> },
   { path: 'daily/health', element: <SuspendedHealthObservationPage /> },
+  { path: 'analysis', element: <Navigate to="/analysis/dashboard" replace /> },
   { path: 'analysis/dashboard', element: <SuspendedAnalysisDashboardPage /> },
   {
     path: 'analysis/iceberg-pdca',
@@ -521,6 +570,7 @@ const childRoutes: RouteObject[] = [
   { path: 'admin/templates', element: <SuspendedSupportActivityMasterPage /> },
   { path: 'admin/step-templates', element: <SuspendedSupportStepMasterPage /> },
   { path: 'admin/individual-support', element: <SuspendedIndividualSupportManagementPage /> },
+  { path: 'admin/staff-attendance', element: <SuspendedStaffAttendanceAdminPage /> },
   {
     path: 'admin/integrated-resource-calendar',
     element: (
@@ -605,7 +655,7 @@ const childRoutes: RouteObject[] = [
     path: 'schedules/create',
     element: (
       <SchedulesGate>
-        <ProtectedRoute flag="schedulesCreate">
+        <ProtectedRoute flag="schedules">
           <SuspendedCreatePage />
         </ProtectedRoute>
       </SchedulesGate>

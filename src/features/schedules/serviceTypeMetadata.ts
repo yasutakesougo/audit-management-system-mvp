@@ -1,8 +1,6 @@
 import { SERVICE_TYPE_LABELS, normalizeServiceType as normalizeSharePointServiceType } from '@/sharepoint/serviceTypes';
-import type { ScheduleServiceType } from './data';
 
-export type ServiceTypeKey = Extract<
-  ScheduleServiceType,
+export type ServiceTypeKey =
   | 'normal'
   | 'transport'
   | 'respite'
@@ -13,7 +11,7 @@ export type ServiceTypeKey = Extract<
   | 'late'
   | 'earlyLeave'
   | 'other'
-> | 'unset';
+  | 'unset';
 
 export type ServiceTypeMeta = {
   key: ServiceTypeKey;
@@ -23,7 +21,7 @@ export type ServiceTypeMeta = {
 
 export type ServiceTypeColor = 'default' | 'primary' | 'secondary' | 'info' | 'success' | 'warning' | 'error';
 
-const RAW_TO_KEY: Record<string, ServiceTypeKey> = {
+const RAW_TO_KEY: { [key: string]: ServiceTypeKey } = {
   normal: 'normal',
   transport: 'transport',
   respite: 'respite',
@@ -55,7 +53,7 @@ const RAW_TO_KEY: Record<string, ServiceTypeKey> = {
   'その他': 'other',
 };
 
-export const SERVICE_TYPE_COLOR: Record<ServiceTypeKey, ServiceTypeColor> = {
+export const SERVICE_TYPE_COLOR: { [K in ServiceTypeKey]: ServiceTypeColor } = {
   normal: 'info',
   transport: 'info',
   respite: 'success',
@@ -69,7 +67,7 @@ export const SERVICE_TYPE_COLOR: Record<ServiceTypeKey, ServiceTypeColor> = {
   unset: 'default',
 };
 
-const SERVICE_TYPE_LABEL: Record<ServiceTypeKey, string> = {
+const SERVICE_TYPE_LABEL: { [K in ServiceTypeKey]: string } = {
   normal: SERVICE_TYPE_LABELS.normal,
   transport: SERVICE_TYPE_LABELS.transport,
   respite: SERVICE_TYPE_LABELS.respite,

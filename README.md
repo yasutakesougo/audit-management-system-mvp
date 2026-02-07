@@ -1,6 +1,6 @@
 # 磯子区障害者地域活動ホーム (React + SharePoint SPA)
 
-> 📌 クイックリンク: [プロビジョニング手順 / WhatIf レビュー](docs/provisioning.md#whatif-ドライラン-と-job-summary) ｜ [SharePoint スキーマ定義](provision/schema.xml) ｜ [プロジェクトボード自動連携](docs/project-auto-integration.md)
+> 📌 クイックリンク: [プロビジョニング手順 / WhatIf レビュー](docs/provisioning.md#whatif-ドライラン-と-job-summary) ｜ [SharePoint スキーマ定義](provision/schema.xml) ｜ [プロジェクトボード自動連携](docs/project-auto-integration.md) ｜ **[UI Baseline (Phase 1)](docs/UI_BASELINE.md)** ｜ [UI Architecture](docs/ui-architecture.md)
 
 <!-- Badges -->
 
@@ -10,14 +10,16 @@
 ![TypeCheck](https://img.shields.io/badge/types-pass-informational)
 ![Coverage Lines](https://img.shields.io/badge/coverage-70%25%2B-green)
 
+<!-- markdownlint-disable MD040 -->
+
 > Quality Gate (Phase 3 Baseline): Lines >= 70% / Functions >= 70% / Statements >= 70% / Branches >= 65%
 > Current (local latest): Lines ~78% / Functions ~73% / Statements ~78% / Branches ~76% (headroom maintained before next phase)
-
+> CI note: docs-only PRs (e.g., README/docs) skip Playwright smoke + LHCI; workflow/config changes trigger them for safety.
 > **QA snapshot (v0.9.2):** Coverage 88.27% • Branch 71.70% • Lighthouse Perf 97 • A11y 100 • Errors 0.07%/mo
 
 ## レポートリンク
 
-**CI ダッシュボード**
+### CI ダッシュボード
 
 - カバレッジ: (GitHub 変数 `COVERAGE_URL`)
 - Lighthouse: (GitHub 変数 `LIGHTHOUSE_URL`)
@@ -32,6 +34,50 @@
 
 - `import.meta.env` を直接参照すると lint / pre-push の制御に阻まれるので、必ず `src/lib/env.ts` のヘルパー経由で値を取得する
 - VS Code の Problems が急増したときは `src/lib/env.ts` や `.env` 差分をまず確認すると、型/エラーの原因を素早く特定できる
+- **React 18 開発モード (StrictMode)**: `useEffect` と認証フローが意図的に二重実行されます。MSAL の重複ログインを防ぐため、`useAuth.signIn()` は `useRef` ガードで保護されています。この動作は正常で、本番環境（StrictMode なし）には影響しません。
+
+## ⚠ Production Safety Notes
+
+**本番環境での事故防止メカニズム**
+
+このアプリケーションは以下の3段階のガードで本番運用での事故を防ぎます：
+
+1. **tokenReady gate** (`ProtectedRoute.tsx`)
+   - SharePoint token 取得完了まで子コンポーネントを実行しない
+   - MSAL popup の自動起動を防止
+
+2. **List existence check** (`useSchedules.ts`)
+   - アプリ起動時に `DailyOpsSignals` リストの存在確認
+   - 404 または permissions error の場合、ユーザーに即座に通知
+   - sessionStorage にキャッシュして同一セッション内での再チェックを回避
+   - **セッションキャッシュ戦略**: list check は同一ブラウザセッション内で1回のみ実行されます。リストを再作成した場合は再ログインが必要です
+
+3. **Clear error messaging**
+   - リストが見つからない場合: 「スケジュール用の SharePoint リストが見つかりません。管理者に連絡してください。」
+   - 現場職員が対処方法を明確に認識できる
+
+**これで防げる本番事故**
+- ✅ 初回アクセスで突然サインイン画面
+- ✅ SharePoint リスト削除後に画面が壊れる
+- ✅ 環境設定ミス（welfare vs app-test）での 404 地獄
+- ✅ 無限 API リトライ
+- ✅ 現場職員の混乱
+
+**E2E テスト戦略**
+
+ゲートの回帰を防ぐため、以下の複数プロジェクトで段階的にテストしています：
+
+- **chromium** (通常 E2E)
+  - 環境: `VITE_SKIP_SHAREPOINT=1`, `VITE_DEMO_MODE=1` (外部 API なし)
+  - テスト: 正常系（ゲートがブロックしないこと）のみ
+  - 頻度: CI での全テスト実行毎
+  - 目的: ゲート実装の回帰検知
+
+- **chromium-sp-integration** (オプション, 週1 nightly 推奨)
+  - 環境: `VITE_SKIP_SHAREPOINT=0`, 全 SharePoint API をroute.respond() でモック
+  - テスト: 404 エラーハンドリング（ゲートが確実にエラー表示すること）を含む
+  - 頻度: 定期メンテナンス・デプロイ前
+  - 目的: 実際のエラーパスの正確性を事前検証
 
 ## Tech Stack
 
@@ -73,7 +119,7 @@ Ops フィードバックはこちら → [docs/ops-feedback.md](docs/ops-feedba
 1. `npm run dev` でアプリを起動し、MSAL サインインを完了させます。
 2. 上部ナビの「利用者」タブ (`/users`) を開くと、`useUsers` が即時フェッチを行い `status` が `success` になるまで待機します。
 3. フォームに `UserID` と `FullName` を入力し **Create** を押すとリストへ登録され、テーブルに即時反映されます。
-4. 任意の行で **Rename\*** を押すと `FullName` の末尾に `*` を追加する更新が行われます（更新 API 経路の動作確認）。
+4. 任意の行で `Rename*` を押すと `FullName` の末尾に `*` を追加する更新が行われます（更新 API 経路の動作確認）。
 5. **Delete** を押し確認ダイアログで `OK` すると SharePoint 側から削除され、テーブルとローカル状態から消えます。
 6. ハッピーケース後は監査ログ (`/audit`) で該当アクションが記録されているかを確認し、必要なら CSV をエクスポートします。
 
@@ -182,7 +228,7 @@ npm run dev
 ```
 
 > これらのフラグはローカル開発／デモ専用です。本番検証や SharePoint 実データを扱う際は必ず無効化してください。
-
+>
 > Note: 一部の Playwright / Vitest シナリオは `VITE_FORCE_DEMO` / `VITE_SKIP_LOGIN` を前提にしています。フラグ名や評価ロジックを変更する場合は、`src/lib/env.ts` と関連テストヘルパー (`tests/e2e/_helpers/boot*.ts` など) も併せて更新してください。
 
 ### Reading environment config
@@ -201,28 +247,30 @@ npm run dev
 
 ### Rules / Validation Logic
 
+<!-- markdownlint-disable MD060 -->
 | Key                                     | Requirement                                    | Auto-Normalization                                       | Error If                                 |
 | --------------------------------------- | ---------------------------------------------- | -------------------------------------------------------- | ---------------------------------------- |
 | VITE_SP_RESOURCE                        | `https://*.sharepoint.com` / no trailing slash | Trailing slash trimmed                                   | Not matching regex / placeholder present |
 | VITE_SP_SITE_RELATIVE                   | Starts with `/`, no trailing slash             | Adds leading `/`, trims trailing slashes                 | Placeholder present / empty              |
-| VITE*SP_SITE_URL *(optional)\_          | Full site URL                                  | Splits into RESOURCE + SITE_RELATIVE                     | Missing scheme/host/path                 |
-| VITE*SP_SITE *(optional)\_              | Full site URL alias                            | Splits into RESOURCE + SITE_RELATIVE                     | Missing scheme/host/path                 |
-| VITE*SP_LIST_SCHEDULES *(optional)\_    | Schedules list title override                  | Whitespace trimmed                                       | Placeholder present / empty              |
-| VITE*SP_LIST_USERS *(optional)\_        | Users list title override                      | Whitespace trimmed                                       | Placeholder present / empty              |
-| VITE*SP_LIST_STAFF *(optional)\_        | Staff list title override                      | Whitespace trimmed                                       | Placeholder present / empty              |
-| VITE*SP_LIST_STAFF_GUID *(optional)\_   | Staff list GUID override                       | Lower-case/brace trimming                                | Invalid GUID format                      |
-| VITE*SP_LIST_ACTIVITY_DIARY *(optional)\_| Activity diary list title                      | Whitespace trimmed                                       | Placeholder present / empty              |
-| VITE*SP_LIST_DAILY *(optional)\_        | Daily record list title                        | Whitespace trimmed                                       | Placeholder present / empty              |
-| VITE*SP_LIST_PLAN_GOAL *(optional)\_     | Plan goal list title                           | Whitespace trimmed                                       | Placeholder present / empty              |
+| VITE_SP_SITE_URL (optional)             | Full site URL                                  | Splits into RESOURCE + SITE_RELATIVE                     | Missing scheme/host/path                 |
+| VITE_SP_SITE (optional)                 | Full site URL alias                            | Splits into RESOURCE + SITE_RELATIVE                     | Missing scheme/host/path                 |
+| VITE_SP_LIST_SCHEDULES (optional)       | Schedules list title override                  | Whitespace trimmed                                       | Placeholder present / empty              |
+| VITE_SP_LIST_USERS (optional)           | Users list title override                      | Whitespace trimmed                                       | Placeholder present / empty              |
+| VITE_SP_LIST_STAFF (optional)           | Staff list title override                      | Whitespace trimmed                                       | Placeholder present / empty              |
+| VITE_SP_LIST_STAFF_GUID (optional)      | Staff list GUID override                       | Lower-case/brace trimming                                | Invalid GUID format                      |
+| VITE_SP_LIST_ACTIVITY_DIARY (optional)  | Activity diary list title                      | Whitespace trimmed                                       | Placeholder present / empty              |
+| VITE_SP_LIST_DAILY (optional)           | Daily record list title                        | Whitespace trimmed                                       | Placeholder present / empty              |
+| VITE_SP_LIST_PLAN_GOAL (optional)       | Plan goal list title                           | Whitespace trimmed                                       | Placeholder present / empty              |
 | VITE_MSAL_CLIENT_ID                     | Azure AD app (SPA) client ID                   | —                                                        | Placeholder / empty                      |
 | VITE_MSAL_TENANT_ID                     | Azure AD tenant ID (GUID)                      | —                                                        | Placeholder / empty                      |
-| VITE*MSAL_REDIRECT_URI *(optional)\_    | Redirect URI for SPA                           | Defaults to `window.location.origin`                     | Invalid URI                              |
-| VITE*MSAL_AUTHORITY *(optional)\_       | Authority URL                                  | Defaults to `https://login.microsoftonline.com/<tenant>` | Non-HTTPS / mismatched tenant            |
-| VITE*MSAL_SCOPES *(optional)\_          | Token scopes list (space/comma separated)      | Defaults to `${VITE_SP_RESOURCE}/.default`               | Empty / unsupported scope                |
-| VITE*LOGIN_SCOPES *(optional)\_         | Identity scopes (openid/profile)               | Filters to allowed identity scopes                      | Empty / unsupported scope                |
-| VITE*MSAL_LOGIN_SCOPES *(optional)\_    | Identity scopes alias                          | Filters to allowed identity scopes                      | Empty / unsupported scope                |
-| VITE*SP_SCOPE_DEFAULT *(optional)\_     | SharePoint default scope                       | Derives from resource / MSAL scopes                     | Missing scope and no derivation          |
-| VITE*GRAPH_SCOPES *(optional)\_         | Graph delegated scopes                         | —                                                        | useSP must support Graph path            |
+| VITE_MSAL_REDIRECT_URI (optional)       | Redirect URI for SPA                           | Defaults to `window.location.origin`                     | Invalid URI                              |
+| VITE_MSAL_AUTHORITY (optional)          | Authority URL                                  | Defaults to `https://login.microsoftonline.com/<tenant>` | Non-HTTPS / mismatched tenant            |
+| VITE_MSAL_SCOPES (optional)             | Token scopes list (space/comma separated)      | Defaults to `${VITE_SP_RESOURCE}/.default`               | Empty / unsupported scope                |
+| VITE_LOGIN_SCOPES (optional)            | Identity scopes (openid/profile)               | Filters to allowed identity scopes                      | Empty / unsupported scope                |
+| VITE_MSAL_LOGIN_SCOPES (optional)       | Identity scopes alias                          | Filters to allowed identity scopes                      | Empty / unsupported scope                |
+| VITE_SP_SCOPE_DEFAULT (optional)        | SharePoint default scope                       | Derives from resource / MSAL scopes                     | Missing scope and no derivation          |
+| VITE_GRAPH_SCOPES (optional)            | Graph delegated scopes                         | —                                                        | useSP must support Graph path            |
+<!-- markdownlint-enable MD060 -->
 
 Placeholders recognized as invalid: `<yourtenant>`, `<SiteName>`, `__FILL_ME__`.
 
@@ -267,6 +315,7 @@ if (import.meta.env.DEV) {
 
 ### Common Pitfalls & Fixes
 
+<!-- markdownlint-disable MD060 -->
 | Symptom                             | Cause                                                | Fix                                                             |
 | ----------------------------------- | ---------------------------------------------------- | --------------------------------------------------------------- |
 | "SharePoint 接続設定が未完了です"   | Placeholders still present                           | Replace `<yourtenant>` / `<SiteName>` with real values          |
@@ -276,6 +325,7 @@ if (import.meta.env.DEV) {
 | `VITE_SP_SITE_URL の形式が不正`     | Missing path or non-SharePoint host                  | Use full URL like `https://tenant.sharepoint.com/sites/Example` |
 | SharePoint list missing override   | One of `VITE_SP_LIST_*` pointed to an absent list    | Correct the list title or remove the override                   |
 | `AcquireTokenSilent` scope warnings | Graph scopes configured but useSP still targets REST | Remove `VITE_GRAPH_SCOPES` or update implementation             |
+<!-- markdownlint-enable MD060 -->
 
 ### Schedules をローカルで動かすための `.env.local` 最小例
 
@@ -362,7 +412,7 @@ npm run dev:schedules
 
 **禁止事項:** `Date#setHours` など、ローカルタイムゾーンに依存する丸めは使用しません。DST・地域差で破綻するため、常に文字列 → `zonedTimeToUtc`（`date-fns-tz` では `fromZonedTime`）の経路を用いて確定します。
 
-**設定:**
+### 設定
 
 - `VITE_SCHEDULES_TZ` — 表示タイムゾーン。未設定または不正な場合は `Intl.DateTimeFormat().resolvedOptions().timeZone`、それも不可なら `Asia/Tokyo` へフォールバックします（警告ログ付き）。
 - `VITE_SCHEDULES_WEEK_START` — 週の開始曜日（0=日曜〜6=土曜）。デフォルトは 1（=月曜）。
@@ -394,7 +444,52 @@ VITE_SP_RETRY_MAX_DELAY_MS=5000
 ### Dev Tips
 
 - After changing auth settings (MSAL config, scopes, or cookie policy), clear site cookies once to flush stale MSAL state.
-- Inspect cache stats in DevTools via `window.__SP_DBG__()` — it now reports `{ size, hits, cacheHits, staleHits, swrRefreshes, _304s, lruKeysSample }`. Individual counters (`window.__SP_GET_HITS__`, `__SP_GET_CACHE_HITS__`, `__SP_GET_STALE_HITS__`, `__SP_GET_SWR_REFRESHES__`, `__SP_GET_304s__`) remain available for quick console pokes.
+- Inspect cache stats in DevTools via `window.__SP_DBG__()` — it now reports `{ size, hits, cacheHits, staleHits, swrRefreshes, \_304s, lruKeysSample }`. Individual counters (`window.__SP_GET_HITS__`, `__SP_GET_CACHE_HITS__`, `__SP_GET_STALE_HITS__`, `__SP_GET_SWR_REFRESHES__`, `__SP_GET_304s__`) remain available for quick console pokes.
+
+### HTTPS Development Environment (Issue #344)
+
+**Purpose:** Reproduce production-like HTTPS behavior locally for MSAL, cookies, CSP, and mixed content testing.
+
+**Setup:**
+
+1. Install [mkcert](https://github.com/FiloSottile/mkcert):
+   ```bash
+   # macOS
+   brew install mkcert nss
+   
+   # Windows (Chocolatey)
+   choco install mkcert
+   
+   # Linux
+   apt install libnss3-tools
+   wget -O mkcert https://dl.filippo.io/mkcert/latest?for=linux/amd64
+   chmod +x mkcert && sudo mv mkcert /usr/local/bin/
+   ```
+
+2. Generate localhost certificates:
+   ```bash
+   npm run certs:mkcert
+   ```
+   This creates `.certs/localhost.pem` and `.certs/localhost-key.pem` (already in `.gitignore`).
+
+3. Start HTTPS dev server:
+   ```bash
+   npm run dev:https
+   ```
+   Access at `https://localhost:5173` (certificate will be trusted automatically).
+
+**MSAL Configuration:**
+
+- `redirectUri` uses `window.location.origin` (auto-detects HTTP/HTTPS)
+- Register **both** URIs in Azure Portal → Authentication → SPA:
+  - `http://localhost:5173`
+  - `https://localhost:5173`
+
+**Troubleshooting:**
+
+※ After switching to HTTPS, if login becomes unstable, clear browser cookies for `localhost` once to reset MSAL state.
+
+**CI/E2E Note:** Tests continue using HTTP (`npm run dev`) — HTTPS is opt-in for local development only.
 
 ### Bypass cache (for debugging)
 
@@ -405,7 +500,7 @@ VITE_SP_RETRY_MAX_DELAY_MS=5000
 
 ## Security
 
-#### Cookie policy helper
+### Cookie policy helper
 
 Use `cookiePolicy({ crossSite })` to derive **SameSite** and **Secure** automatically.
 
@@ -438,6 +533,7 @@ Selector:
 ```
 
 Exposed data attributes (stringified numbers):
+<!-- markdownlint-disable MD060 -->
 | Attribute | Meaning |
 |-----------|---------|
 | `data-new` | Newly inserted items (success - duplicates) |
@@ -445,6 +541,7 @@ Exposed data attributes (stringified numbers):
 | `data-failed` | Failed (non-2xx except 409) items remaining after last attempt |
 | `data-success` | Successful count including duplicates |
 | `data-total` | Total items attempted in last batch |
+<!-- markdownlint-enable MD060 -->
 
 Each pill also has `data-metric` = `new` / `duplicates` / `failed` in stable order for ordering assertions.
 
@@ -566,6 +663,24 @@ The nightly health workflow runs comprehensive type checking to surface any issu
 
 ### Test & Coverage
 
+#### CI/CD Test Strategy
+
+**📚 New Documentation (February 2026):**
+- [CI Test Stability Strategy](docs/CI_TEST_STABILITY_STRATEGY.md) - Comprehensive test categorization and environment setup
+- [Flaky Test Runbook](docs/FLAKY_TEST_RUNBOOK.md) - Step-by-step guide for handling unstable tests
+- [CI Quick Reference](docs/CI_QUICK_REFERENCE.md) - Quick commands and troubleshooting
+- [CI Workflow Updates](docs/CI_WORKFLOW_UPDATES.md) - Migration guide and changelog
+
+**Test Types:**
+- **Smoke Tests** (`*.smoke.spec.ts`): Fast validation on every PR (~20 min, 29 tests)
+- **Deep Tests** (other E2E): Comprehensive testing on main + nightly (~45 min, 83 tests)
+
+**CI Workflows:**
+- `.github/workflows/smoke.yml` - Fast feedback on PRs
+- `.github/workflows/e2e-deep.yml` - Thorough testing with flaky test detection
+
+**Local Testing:**
+
 #### Strategy
 
 - **Unit (厚め)**: 同期ロジック、リトライ、バッチパーサ、CSV 生成などの純粋ロジックは **Vitest** で網羅。UI 断面も **React Testing Library (jsdom)** でコンポーネント単位を検証。
@@ -596,6 +711,7 @@ Lines >= 70%, Statements >= 70%, Functions >= 70%, Branches >= 65%
 
 現在: Phase 3 (安定運用ベースライン達成)
 
+<!-- markdownlint-disable MD060 -->
 | Phase | 目標 (Lines/Fn/Stmts \| Branches) | 達成基準 | 主なアクション | 想定タイミング |
 |-------|------------------------------------|-----------|----------------|----------------|
 | 0 | 20/20/20 \| 10 (導入) | スモーク + 主要ユーティリティ | 初期テスト整備 | 達成済 ✅ |
@@ -604,6 +720,7 @@ Lines >= 70%, Statements >= 70%, Functions >= 70%, Branches >= 65%
 | 3 | 70/70/70 \| 65 (固定現状) | UI ロジック分離・Hooks 単体化 | `useAuditSyncBatch` 分岐別テスト | 達成済 ✅ |
 | 4 | 80/80/80 \| 65 | 主要分岐ほぼ網羅 (表示のみ除外) | jsdom コンポーネントテスト導入 (ピンポイント) | 中期 |
 | 5 | 85+/85+/85+ \| 70+ | コスト/リターン再評価 | Snapshot 最適化 / Flaky 監視 | 後期 |
+<!-- markdownlint-enable MD060 -->
 
 運用ポリシー (固定化後):
 
@@ -611,14 +728,15 @@ Lines >= 70%, Statements >= 70%, Functions >= 70%, Branches >= 65%
 - Flaky 発生時は引き上げ計画を一旦停止し要因除去 (jitter/タイマー/ランダム化の deterministic 化)。
 
 ローカル詳細メトリクス確認:
+
+```
+npm run test:coverage -- --reporter=text
 ```
 
-npm run test:coverage -- --reporter=text
-
-````
 CI では text / lcov / json-summary を生成。将来的にバッジ or PR コメント自動化を計画。
 
 ### Utility: `safeRandomUUID`
+
 依存注入オプション付き UUID 生成ヘルパ。優先順: (1) 注入実装 (2) `crypto.randomUUID` (3) `crypto.getRandomValues` v4 生成 (4) `Math.random` フォールバック。
 
 ```ts
@@ -667,6 +785,34 @@ npm run test:coverage # カバレッジ付き
 2. 429 増加 → バッチサイズ・ユーザー同時操作確認、必要なら `VITE_SP_RETRY_BASE_MS` 引き上げ
 3. 409 増加傾向 → 重複 (期待挙動) なので異常ではないが、新規率低下をモニタリング
 4. parserFallbackCount > 0 → ネットワーク系 (途中切断) や O365 側一時的フォーマット崩れを疑う
+
+## CI / Workflow Policy
+
+このリポジトリでは、CI負荷とレビュー速度を両立するため、重いWorkflowは **ラベル駆動**で起動します。
+
+### ✅ `run-ci` ラベル運用（必須）
+
+- **Draft / WIP PR**：`run-ci` を付けない（重いCIは走りません）
+- **レビュー準備が整ったPR**：`run-ci` を付ける（重いCIが走ります）
+  - 対象：e2e-smoke / storybook-a11y / fast-lane / lighthouse-ci
+
+### ✅ `ready-for-review` ラベル
+
+- PR説明、DoD、セルフチェックが整ったら付けてください
+- Projects Board では Review 列に自動移動します
+
+### Why?
+
+- 「Action required 洪水」や承認待ちで Actions 一覧が埋まるのを防ぎます
+- 重要なタイミングでのみ重いCIを回し、開発を止めません
+
+### 詳細
+
+詳しくは以下を参照：
+- **ラベル辞書**: [docs/LABELS.md](docs/LABELS.md)
+- **Board 設計**: [docs/PROJECT_BOARD.md](docs/PROJECT_BOARD.md)
+- **マージ前チェックリスト**: [docs/MERGE_CHECKLIST.md](docs/MERGE_CHECKLIST.md)（マージ手順・マージ後指標・次の一手）
+- **PR テンプレート**: [.github/pull_request_template.md](.github/pull_request_template.md)
 
 ### E2E Tests (Playwright)
 初期スモークとして Playwright を導入しています。
@@ -736,12 +882,14 @@ lastRefreshEpoch: <最後の refresh UNIX 秒>
 3. 成功後、今後の同期で 409 重複が“成功扱い”に収束し取りこぼしゼロへ
 
 ローカル / 手動実行例 (接続後):
+ 
 ```
 
-pwsh -File ./scripts/backfill-entry-hash.ps1 -SiteUrl https://contoso.sharepoint.com/sites/Audit -WhatIfMode
-pwsh -File ./scripts/backfill-entry-hash.ps1 -SiteUrl https://contoso.sharepoint.com/sites/Audit
+pwsh -File ./scripts/backfill-entry-hash.ps1 -SiteUrl <https://contoso.sharepoint.com/sites/Audit> -WhatIfMode
+pwsh -File ./scripts/backfill-entry-hash.ps1 -SiteUrl <https://contoso.sharepoint.com/sites/Audit>
 
 ```
+
 オプション:
 - `-BatchSize`: まとめて更新する件数 (既定 50)
 - `-WhatIfMode`: 書き込み抑止
@@ -754,6 +902,8 @@ pwsh -File ./scripts/backfill-entry-hash.ps1 -SiteUrl https://contoso.sharepoint
 SharePoint から 429 (Throttle) / 503 / 504 が返った場合は指数バックオフ + full jitter で自動再試行します。`Retry-After` ヘッダが存在する場合はそれを最優先で待機します。
 
 環境変数 (既定値):
+
+<!-- markdownlint-disable MD031 -->
 ```
 
 VITE_SP_RETRY_MAX=4 # 最大試行回数 (初回+再試行含む)
@@ -761,6 +911,8 @@ VITE_SP_RETRY_BASE_MS=400 # バックオフ基準 ms (指数 2^(attempt-1))
 VITE_SP_RETRY_MAX_DELAY_MS=5000 # 1 回あたり待機時間上限
 
 ```
+<!-- markdownlint-enable MD031 -->
+
 アルゴリズム:
 1. 応答が 429/503/504 → attempt < max なら待機
 2. 待機時間: Retry-After (秒 or 日付) 優先 / 無ければ `rand(0..min(cap, base*2^(attempt-1)))`
@@ -768,11 +920,12 @@ VITE_SP_RETRY_MAX_DELAY_MS=5000 # 1 回あたり待機時間上限
 4. すべて失敗で最終レスポンス内容を含むエラー throw
 
 デバッグ例 (`VITE_AUDIT_DEBUG=1`):
+
+<!-- markdownlint-disable MD031 -->
 ```
-
 [spClient] retrying { status: 429, attempt: 2, waitMs: 317 }
-
-````
+```
+<!-- markdownlint-enable MD031 -->
 
 ## CSV Export (Audit Panel)
 Found in `src/features/audit/AuditPanel.tsx` – quoting & escaping ensures RFC4180-compatible output for Excel.
@@ -1014,11 +1167,11 @@ Existing fields snapshot: Audit_Events
 
 TL;DR（最短復旧フロー）
 
-1. https://localhost:3000 / https://127.0.0.1:3000 で開く
-2. Chrome の HSTS を削除：[chrome://net-internals/#hsts](chrome://net-internals/#hsts) → Delete domain localhost → Delete → **ブラウザを完全終了（⌘Q）**（再読み込みでは復旧しない）
-3. Service Worker とキャッシュ：DevTools → Network → “Disable cache”、Application → Service Workers → Unregister
-4. プロキシ/セキュリティ製品をバイパス（localhost,127.0.0.1 を除外）
-5. 証明書を mkcert で作成（プロジェクト直下）
+1. [https://localhost:3000](https://localhost:3000) / [https://127.0.0.1:3000](https://127.0.0.1:3000) で開く
+1. Chrome の HSTS を削除：[chrome://net-internals/#hsts](chrome://net-internals/#hsts) → Delete domain localhost → Delete → **ブラウザを完全終了（⌘Q）**（再読み込みでは復旧しない）
+1. Service Worker とキャッシュ：DevTools → Network → “Disable cache”、Application → Service Workers → Unregister
+1. プロキシ/セキュリティ製品をバイパス（localhost,127.0.0.1 を除外）
+1. 証明書を mkcert で作成（プロジェクト直下）
 
 macOS (Homebrew):
 
@@ -1040,7 +1193,7 @@ mkdir -p .certs
 mkcert -key-file ./.certs/localhost-key.pem -cert-file ./.certs/localhost.pem localhost 127.0.0.1 ::1
 ```
 
-6. Vite を HTTPS (127.0.0.1) で起動
+1. Vite を HTTPS (127.0.0.1) で起動
 
 ```ts
 // vite.config.ts
@@ -1074,10 +1227,10 @@ npm run dev:https
 ```
 
 > ポート 3000 が塞がっている場合、Vite が自動で 3001 へフォールバックすることがあります。ブラウザも `https://127.0.0.1:3001/` に切り替えて再読み込みしてください。
-
+>
 > 认证フローでクロスサイト Cookie を扱う場合は `cookiePolicy` ヘルパーを使うと `SameSite=None; Secure` を自動で付与でき、Chrome の警告を避けられます。
 
-7. ポートの競合を掃除
+1. ポートの競合を掃除
 
 ```bash
 lsof -tiTCP:3000 -sTCP:LISTEN | xargs -r kill -TERM
@@ -1137,12 +1290,15 @@ API permissions should include delegated permissions to SharePoint (e.g. `Sites.
 
 Internal / TBD.
 
-# CI smoke
+<!-- markdownlint-enable MD040 -->
+
+## CI smoke
 
 ## Highlights
 
 - SharePoint client hardened (retry telemetry, preserved nextLink parameters, sturdier batch parsing).
 - Local Operation Mode documentation, SOP set, and architecture diagrams published.
+- CI paths-filter verification: docs-only change to confirm Playwright/LHCI skip behavior.
 
 ## Quality Assurance
 
@@ -1160,10 +1316,37 @@ Internal / TBD.
 ## Docs
 
 - Local Operation Mode: `docs/local-mode.md` (plus architecture PNG/SVG, SOPs, validation form)
+- SharePoint CRUD Notes: `docs/sharepoint-crud-notes.md` (DELETE/PATCH UX and network handling)
 - Metrics: `docs/releases/v0.9.2.metrics.yaml`
 
 gh workflow view .github/workflows/report-links.yml --yaml
 
 ### Environment variables for demo and test mode
+
 - VITE_FORCE_DEMO: When set to true, forces the users store to use demo user data for local development and certain test modes. Default: false.
 - VITE_SKIP_LOGIN: When set to true, bypasses the login flow for faster local development and demo runs. Default: false.
+
+---
+
+## Project Status
+
+### Phase 2 (Staff Attendance + Dashboard Enhancement)
+
+✅ **Completed (2026-01)**
+
+- PRs: #268 (Phase 2.1-A+B: Store + UI + Persistence), #269 (Phase 2.1-C: Dashboard Integration)
+- Docs: `docs/PHASE2_COMPLETION.md`
+- Route: `/staff/attendance`
+- Tests: 1,612/1,612 PASSED
+
+**Key Features:**
+- Staff attendance input with 3 status toggles (出勤/欠勤/外出中)
+- localStorage persistence (2-second auto-save)
+- Dashboard real-time display (replaces estimated counts)
+- Schedule lanes in morning/evening meeting cards
+
+### Next: Phase 3.1 (SharePoint Integration)
+
+- Replace localStorage with SharePoint List API
+- Real-time sync across devices
+- Design: `docs/PHASE3_1_SHAREPOINT_STAFF_ATTENDANCE.md` (pending)

@@ -7,6 +7,7 @@ const scheduleNavLabel = /スケジュール/;
 test.beforeEach(async ({ page }) => {
   await page.addInitScript(() => {
     window.localStorage.clear();
+    window.localStorage.setItem('feature:schedules', 'false');
   });
 
   await page.addInitScript(() => {
@@ -14,7 +15,6 @@ test.beforeEach(async ({ page }) => {
     globalWithEnv.__ENV__ = {
       ...(globalWithEnv.__ENV__ ?? {}),
       VITE_FEATURE_SCHEDULES: '0',
-      VITE_FEATURE_SCHEDULES_CREATE: '0',
       VITE_SKIP_LOGIN: '1',
       VITE_E2E_MSAL_MOCK: '1',
       VITE_SP_RESOURCE: 'https://contoso.sharepoint.com',
@@ -28,13 +28,13 @@ test.describe('schedule feature flag', () => {
     await page.goto('/', { waitUntil: 'domcontentloaded' });
     await page.waitForLoadState('networkidle', { timeout: 5_000 });
 
-      const maybeWeek = page.getByTestId(TESTIDS.SCHEDULES_PAGE_ROOT).or(page.getByTestId(TESTIDS['schedules-week-page']));
+    const maybeWeek = page.getByTestId(TESTIDS.SCHEDULES_PAGE_ROOT).or(page.getByTestId(TESTIDS['schedules-week-page']));
     if ((await maybeWeek.count()) > 0) {
       await waitForScheduleReady(page);
     }
 
     await expect(page.getByTestId(TESTIDS.nav.schedules)).toHaveCount(0);
-    await expect(page.getByRole('link', { name: scheduleNavLabel })).toHaveCount(0);
+    await expect(page.getByRole('link', { name: scheduleNavLabel }).first()).toHaveCount(0);
 
     await page.goto('/schedules/week', { waitUntil: 'domcontentloaded' });
     await page.waitForLoadState('networkidle', { timeout: 5_000 });
@@ -48,6 +48,7 @@ test.describe('schedule feature flag', () => {
       globalWithEnv.__ENV__ = {
         ...(globalWithEnv.__ENV__ ?? {}),
         VITE_FEATURE_SCHEDULES: '1',
+        VITE_FEATURE_SCHEDULES_WEEK_V2: '1',
         VITE_SKIP_LOGIN: '1',
         VITE_E2E_MSAL_MOCK: '1',
         VITE_SP_RESOURCE: 'https://contoso.sharepoint.com',
@@ -58,14 +59,14 @@ test.describe('schedule feature flag', () => {
     await page.goto('/', { waitUntil: 'domcontentloaded' });
     await page.waitForLoadState('networkidle', { timeout: 5_000 });
 
-      const maybeWeek = page.getByTestId(TESTIDS.SCHEDULES_PAGE_ROOT).or(page.getByTestId(TESTIDS['schedules-week-page']));
+    const maybeWeek = page.getByTestId(TESTIDS.SCHEDULES_PAGE_ROOT).or(page.getByTestId(TESTIDS['schedules-week-page']));
     if ((await maybeWeek.count()) > 0) {
       await waitForScheduleReady(page);
     }
 
     const nav = page.getByTestId(TESTIDS.nav.schedules);
     await expect(nav).toBeVisible();
-    await expect(page.getByRole('link', { name: scheduleNavLabel })).toBeVisible();
+    await expect(page.getByRole('link', { name: scheduleNavLabel }).first()).toBeVisible();
 
     if ((await nav.count()) > 0) {
       await nav.first().click();

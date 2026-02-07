@@ -1,6 +1,7 @@
 import type { IPublicClientApplication } from '@azure/msal-browser';
 import React, { useEffect, useMemo, useState } from 'react';
-import { msalConfig } from './msalConfig';
+import { isE2eMsalMockEnabled } from '../lib/env';
+import { authDiagnostics } from '@/features/auth/diagnostics';
 
 type MsalInstance = IPublicClientApplication;
 type MsalReactModule = typeof import('@azure/msal-react');
@@ -16,6 +17,27 @@ type MsalContextValue = {
 
 const MsalContext = React.createContext<MsalContextValue | null>(null);
 
+const isVitest = typeof process !== 'undefined' && process.env.VITEST === 'true';
+type ViCarrier = typeof globalThis & { vi?: typeof import('vitest')['vi'] };
+const viMock = isVitest ? (globalThis as ViCarrier).vi : undefined;
+
+const createDefaultMsalContextMock = (): MsalContextValue => ({
+  instance: {
+    getAllAccounts: () => [],
+    getActiveAccount: () => null,
+    setActiveAccount: () => undefined,
+  } as unknown as MsalInstance,
+  accounts: [],
+  inProgress: 'none',
+});
+
+export const __msalContextMock = viMock
+  ? {
+      // vi mock so unit tests can override behavior without rendering the real provider
+      useMsalContext: viMock.fn((): MsalContextValue => createDefaultMsalContextMock()),
+    }
+  : undefined;
+
 let loadMsalInstancePromise: Promise<MsalInstance> | null = null;
 let loadMsalReactPromise: Promise<MsalReactModule> | null = null;
 
@@ -26,32 +48,52 @@ const globalCarrier = globalThis as typeof globalThis & {
 async function loadMsalInstance(): Promise<MsalInstance> {
   if (!loadMsalInstancePromise) {
     loadMsalInstancePromise = (async () => {
-      const [{ loadMsalBrowser }, { wireMsalRoleInvalidation }] = await Promise.all([
-        import('./azureMsal'),
-        import('./msalEvents'),
-      ]);
-
-      const { PublicClientApplication, EventType } = await loadMsalBrowser();
-
-      const instance = new PublicClientApplication(msalConfig);
-      await instance.initialize();
-
       try {
-        await instance.handleRedirectPromise();
+        // 🔥 CRITICAL: Use getPcaSingleton() to ensure SAME instance as main.tsx
+        // This way, redirect handling in main.tsx + account setup in Provider = unified flow
+        const { getPcaSingleton } = await import('./azureMsal');
+        const { wireMsalRoleInvalidation } = await import('./msalEvents');
+        const { EventType } = await import('@azure/msal-browser');
+
+        const instance = await getPcaSingleton();
+        
+        // ✅ At this point:
+        // - instance.initialize() was already called by getPcaSingleton()
+        // - instance.handleRedirectPromise() was already called by main.tsx
+        // - globalThis.__MSAL_PUBLIC_CLIENT__ is already set
+        
+        // We just need to ensure active account is set (if not already done by main.tsx)
+        const accounts = instance.getAllAccounts();
+        if (!instance.getActiveAccount() && accounts.length > 0) {
+          instance.setActiveAccount(accounts[0]);
+        }
+
+        wireMsalRoleInvalidation(instance, EventType);
+
+        // Already cached in globalThis by getPcaSingleton, but redundant assignment is harmless
+        globalCarrier.__MSAL_PUBLIC_CLIENT__ = instance;
+
+        // 📊 Collect success event
+        const firstAccount = accounts[0] as { homeAccountId?: string } | undefined;
+        authDiagnostics.collect({
+          route: '/auth/msal-provider',
+          reason: 'login-success',
+          outcome: 'recovered',
+          userId: firstAccount?.homeAccountId,
+        });
+
+        return instance;
       } catch (error) {
-        console.warn('[msal] handleRedirectPromise failed (non-fatal)', error);
+        // 📊 Collect error event
+        const errorMessage = error instanceof Error ? error.message : String(error);
+        authDiagnostics.collect({
+          route: '/auth/msal-provider',
+          reason: 'login-failure',
+          outcome: 'blocked',
+          detail: { errorMessage, type: 'msal-init-error' },
+        });
+        throw error;
       }
-
-      const accounts = instance.getAllAccounts();
-      if (!instance.getActiveAccount() && accounts.length > 0) {
-        instance.setActiveAccount(accounts[0]);
-      }
-
-      wireMsalRoleInvalidation(instance, EventType);
-
-      globalCarrier.__MSAL_PUBLIC_CLIENT__ = instance;
-
-      return instance;
     })();
   }
 
@@ -67,13 +109,43 @@ async function loadMsalReact(): Promise<MsalReactModule> {
 }
 
 export const MsalProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  const isMock = isVitest || isE2eMsalMockEnabled();
+
+  const mockInstance = useMemo(
+    () => ({
+      getAllAccounts: () => [],
+      getActiveAccount: () => null,
+      setActiveAccount: () => undefined,
+      // Provide no-op popup methods so sign-in flows in mock mode do not throw
+      loginPopup: async () => ({ account: null } as never),
+      acquireTokenPopup: async () => ({ accessToken: '' } as never),
+    }) as unknown as MsalInstance,
+    [],
+  );
+
+  const mockLogger = useMemo(
+    () => ({} as ReturnType<MsalReactModule['useMsal']>['logger']),
+    [],
+  );
+
+  const mockUseMsal: MsalReactModule['useMsal'] = () => ({
+    instance: mockInstance,
+    accounts: [],
+    inProgress: 'none',
+    logger: mockLogger,
+  });
+
+  const MockProvider: MsalProviderComponent = ({ children: mockChildren }) => <>{mockChildren}</>;
+
   const [providerState, setProviderState] = useState<{
     instance: MsalInstance;
     Provider: MsalProviderComponent;
     useMsal: MsalReactModule['useMsal'];
-  } | null>(null);
+  } | null>(isMock ? { instance: mockInstance, Provider: MockProvider, useMsal: mockUseMsal } : null);
 
   useEffect(() => {
+    if (isMock) return undefined;
+
     let isMounted = true;
 
     Promise.all([loadMsalInstance(), loadMsalReact()]).then(([instance, msalReact]) => {
@@ -85,7 +157,7 @@ export const MsalProvider: React.FC<{ children: React.ReactNode }> = ({ children
     return () => {
       isMounted = false;
     };
-  }, []);
+  }, [isMock]);
 
   if (!providerState) {
     return null;
@@ -114,6 +186,10 @@ const MsalBridge: React.FC<{ instance: MsalInstance; useMsal: MsalReactModule['u
 };
 
 export function useMsalContext(): MsalContextValue {
+  if (isVitest && __msalContextMock) {
+    return __msalContextMock.useMsalContext();
+  }
+
   const context = React.useContext(MsalContext);
 
   if (!context) {

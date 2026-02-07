@@ -1,30 +1,21 @@
-import { getAppConfig } from '@/lib/env';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { installTestResets } from '../helpers/reset';
+import { mergeTestConfig, setTestConfigOverride } from '../helpers/mockEnv';
+
+vi.mock('@/lib/env', async () => {
+  const actual = await vi.importActual<typeof import('@/lib/env')>('@/lib/env');
+  return {
+    ...actual,
+    getAppConfig: () => mergeTestConfig(),
+    isDemoModeEnabled: () => true,
+    skipSharePoint: () => false,
+    shouldSkipLogin: () => false,
+    isE2eMsalMockEnabled: () => false,
+  };
+});
+
 import type { UseSP } from '@/lib/spClient';
 import { createSchedule, createSpClient } from '@/lib/spClient';
-import { afterAll, afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-
-const baseConfig = {
-  VITE_SP_RESOURCE: 'https://contoso.sharepoint.com',
-  VITE_SP_SITE_RELATIVE: '/sites/demo',
-  VITE_SP_RETRY_MAX: '3',
-  VITE_SP_RETRY_BASE_MS: '10',
-  VITE_SP_RETRY_MAX_DELAY_MS: '50',
-  VITE_MSAL_CLIENT_ID: '',
-  VITE_MSAL_TENANT_ID: '',
-  VITE_MSAL_TOKEN_REFRESH_MIN: '300',
-  VITE_AUDIT_DEBUG: '',
-  VITE_AUDIT_BATCH_SIZE: '',
-  VITE_AUDIT_RETRY_MAX: '',
-  VITE_AUDIT_RETRY_BASE: '',
-  VITE_E2E: '',
-  schedulesCacheTtlSec: 60,
-  graphRetryMax: 2,
-  graphRetryBaseMs: 100,
-  graphRetryCapMs: 200,
-  schedulesTz: 'Asia/Tokyo',
-  schedulesWeekStart: 1,
-  isDev: false,
-} as const;
 
 const minimalSchedulePayload: Parameters<typeof createSchedule>[1] = {
   Title: 'noop',
@@ -39,35 +30,6 @@ const minimalSchedulePayload: Parameters<typeof createSchedule>[1] = {
   ServiceType: null,
 };
 
-vi.mock('@/lib/env', async () => {
-  const actual = await vi.importActual<typeof import('@/lib/env')>('@/lib/env');
-  const defaultConfig = {
-    VITE_SP_RESOURCE: 'https://contoso.sharepoint.com',
-    VITE_SP_SITE_RELATIVE: '/sites/demo',
-    VITE_SP_RETRY_MAX: '3',
-    VITE_SP_RETRY_BASE_MS: '10',
-    VITE_SP_RETRY_MAX_DELAY_MS: '50',
-    VITE_MSAL_CLIENT_ID: '',
-    VITE_MSAL_TENANT_ID: '',
-    VITE_MSAL_TOKEN_REFRESH_MIN: '300',
-    VITE_AUDIT_DEBUG: '',
-    VITE_AUDIT_BATCH_SIZE: '',
-    VITE_AUDIT_RETRY_MAX: '',
-    VITE_AUDIT_RETRY_BASE: '',
-    VITE_E2E: '',
-    schedulesCacheTtlSec: 60,
-    graphRetryMax: 2,
-    graphRetryBaseMs: 100,
-    graphRetryCapMs: 200,
-    schedulesTz: 'Asia/Tokyo',
-    schedulesWeekStart: 1,
-    isDev: false,
-  } as const;
-  const getAppConfig = vi.fn(() => ({ ...defaultConfig }));
-  const isDemoModeEnabled = vi.fn(() => true);
-  return { ...actual, getAppConfig, isDemoModeEnabled };
-});
-
 vi.mock('@/lib/debugLogger', () => ({
   auditLog: {
     debug: vi.fn(),
@@ -75,28 +37,26 @@ vi.mock('@/lib/debugLogger', () => ({
 }));
 
 describe('createSpClient CRUD helpers', () => {
+  installTestResets();
+
   const baseUrl = 'https://contoso.sharepoint.com/sites/demo/_api/web';
   const originalFetch = global.fetch;
-  const mockedGetAppConfig = vi.mocked(getAppConfig);
 
-  let acquireToken: ReturnType<typeof vi.fn>;
+  let acquireToken: ReturnType<typeof vi.fn<() => Promise<string | null>>>;
   let fetchMock: ReturnType<typeof vi.fn>;
 
   beforeEach(() => {
-    mockedGetAppConfig.mockClear();
-    mockedGetAppConfig.mockImplementation(() => ({ ...baseConfig }));
-    acquireToken = vi.fn().mockResolvedValue('token');
+    acquireToken = vi.fn<() => Promise<string | null>>().mockResolvedValue('token');
     fetchMock = vi.fn();
     global.fetch = fetchMock as unknown as typeof fetch;
     delete (globalThis as { __TOKEN_METRICS__?: unknown }).__TOKEN_METRICS__;
   });
 
-  afterEach(() => {
-    global.fetch = originalFetch;
-  });
-
-  afterAll(() => {
-    global.fetch = originalFetch;
+  beforeEach(() => {
+    // restore fetch in case test left it modified
+    return () => {
+      global.fetch = originalFetch;
+    };
   });
 
   it('updateItemByTitle returns parsed JSON payload', async () => {
@@ -111,7 +71,9 @@ describe('createSpClient CRUD helpers', () => {
     expect(fetchMock).toHaveBeenCalledTimes(1);
     const [url, init] = fetchMock.mock.calls[0] ?? [];
     expect(String(url)).toContain("/lists/getbytitle('Announcements')/items(42)");
-    expect((init as RequestInit | undefined)?.method).toBe('PATCH');
+    expect((init as RequestInit | undefined)?.method).toBe('POST'); // SharePoint Online uses POST+X-HTTP-Method:MERGE
+    const headers = init?.headers instanceof Headers ? init.headers : new Headers(init?.headers);
+    expect(headers.get('X-HTTP-Method')).toBe('MERGE');
     expect(result).toEqual({ Title: 'Updated' });
   });
 
@@ -185,7 +147,9 @@ describe('createSpClient CRUD helpers', () => {
 
     expect(fetchMock).toHaveBeenCalledTimes(1);
     const [, init] = fetchMock.mock.calls[0] ?? [];
-    expect((init as RequestInit | undefined)?.method).toBe('PATCH');
+    expect((init as RequestInit | undefined)?.method).toBe('POST'); // POST+X-HTTP-Method:MERGE
+    const headers = init?.headers instanceof Headers ? init.headers : new Headers(init?.headers);
+    expect(headers.get('X-HTTP-Method')).toBe('MERGE');
   });
 
   it('deleteItem removes SharePoint items by generic identifier', async () => {
@@ -311,12 +275,12 @@ describe('createSpClient CRUD helpers', () => {
   });
 
   it('throws a descriptive error when token acquisition fails', async () => {
-    acquireToken = vi.fn().mockResolvedValue(null);
+    acquireToken = vi.fn<() => Promise<string | null>>().mockResolvedValue(null);
     fetchMock.mockImplementation(async () => new Response('', { status: 200 }));
 
     const client = createSpClient(acquireToken, baseUrl);
 
-    await expect(client.spFetch('/lists')).rejects.toThrow('SharePoint のアクセストークン取得に失敗しました。');
+    await expect(client.spFetch('/lists')).rejects.toThrow('AUTH_REQUIRED');
     expect(fetchMock).not.toHaveBeenCalled();
   });
 
@@ -366,8 +330,8 @@ describe('createSpClient CRUD helpers', () => {
   });
 
   it('logs token metrics snapshot when debug mode is enabled', async () => {
-  mockedGetAppConfig.mockImplementation(() => ({ ...baseConfig, VITE_AUDIT_DEBUG: '1' }));
-  fetchMock.mockResolvedValueOnce(new Response(null, { status: 204 }));
+    setTestConfigOverride({ VITE_AUDIT_DEBUG: '1' });
+    fetchMock.mockResolvedValueOnce(new Response(null, { status: 204 }));
     const debugSpy = vi.spyOn(console, 'debug').mockImplementation(() => {});
 
     (globalThis as { __TOKEN_METRICS__?: Record<string, unknown> }).__TOKEN_METRICS__ = { refreshed: true };

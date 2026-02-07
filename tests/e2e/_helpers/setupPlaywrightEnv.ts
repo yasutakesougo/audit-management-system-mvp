@@ -28,11 +28,16 @@ const BASE_ENV: Record<string, string> = {
   VITE_DEMO_MODE: '1',
   VITE_SKIP_SHAREPOINT: '1',
   VITE_FORCE_SHAREPOINT: '0',
+  // Ensure SharePoint adapter is selected by default in E2E (spfxContextAvailable will be injected)
+  VITE_ALLOW_SHAREPOINT_OUTSIDE_SPFX: '1',
   MODE: 'development',
   DEV: '1',
   VITE_SP_RESOURCE: 'https://contoso.sharepoint.com',
   VITE_SP_SITE_RELATIVE: '/sites/Audit',
   VITE_SP_SCOPE_DEFAULT: 'https://contoso.sharepoint.com/AllSites.Read',
+  // MSAL: Mock mode, so these are just placeholders
+  VITE_MSAL_CLIENT_ID: 'e2e-mock-client-id-12345678',
+  VITE_MSAL_TENANT_ID: 'common',
 };
 
 const BASE_STORAGE: Record<string, string> = {
@@ -66,6 +71,13 @@ export async function setupPlaywrightEnv(page: Page, options: SetupPlaywrightEnv
       ...providedEnv,
     };
   }, envPayload);
+
+  // Inject mock SPFx context for E2E SharePoint adapter activation
+  // This simulates hasSpfxContext() detection so sharePointRunnable = true
+  await page.addInitScript(() => {
+    const scope = globalThis as typeof globalThis & { __SPFX_CONTEXT__?: unknown };
+    scope.__SPFX_CONTEXT__ = { mode: 'e2e-mock', webPartData: {} };
+  });
 
   if (resetLocalStorage) {
     await page.addInitScript(() => {

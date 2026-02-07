@@ -3,19 +3,49 @@ import { createContext, createElement, useContext, useMemo, type FC, type ReactN
 import {
     isComplianceFormEnabled,
   isIcebergPdcaEnabled,
-    isSchedulesCreateEnabled,
     isSchedulesFeatureEnabled,
     isSchedulesWeekV2Enabled,
     isTestMode,
+    readBool,
+    readOptionalEnv,
     type EnvRecord,
 } from '../lib/env';
 
 export type FeatureFlagSnapshot = {
   schedules: boolean;
-  schedulesCreate: boolean;
   complianceForm: boolean;
   schedulesWeekV2: boolean;
   icebergPdca: boolean;
+};
+
+const _hasExplicitOverride = (storageKey: string, envKey: string, envOverride?: EnvRecord): boolean => {
+  // env override takes priority when provided
+  if (typeof envOverride !== 'undefined' && envKey in envOverride) {
+    return true;
+  }
+
+  // process/global env
+  if (typeof process !== 'undefined' && process.env && envKey in process.env) {
+    return true;
+  }
+
+  // runtime env shim (window.__ENV__)
+  if (typeof window !== 'undefined') {
+    const runtimeEnv = (window as Window & { __ENV__?: Record<string, string | undefined> }).__ENV__;
+    if (runtimeEnv && envKey in runtimeEnv) {
+      return true;
+    }
+
+    try {
+      if (window.localStorage.getItem(storageKey) != null) {
+        return true;
+      }
+    } catch {
+      // ignore storage access errors (private mode, etc.)
+    }
+  }
+
+  return false;
 };
 
 const isAutomationRuntime = (): boolean => {
@@ -36,21 +66,50 @@ const isAutomationRuntime = (): boolean => {
   return false;
 };
 
+/**
+ * Check if an environment variable explicitly contains a boolean-like value.
+ * Only returns true for actual boolean representations: '1', '0', 'true', 'false'.
+ * Empty strings and undefined are treated as "not explicitly set".
+ *
+ * IMPORTANT: When envOverride is provided, only consider values from envOverride.
+ * This prevents local/process env from leaking into automation-specific overrides.
+ */
+const hasExplicitBoolEnv = (key: string, envOverride?: EnvRecord): boolean => {
+  if (envOverride) {
+    const rawOverride = envOverride[key];
+    if (rawOverride === undefined || rawOverride === null) return false;
+    const v = String(rawOverride).trim().toLowerCase();
+    return v === '1' || v === '0' || v === 'true' || v === 'false';
+  }
+  const raw = readOptionalEnv(key);
+  if (raw == null) return false;
+  const v = raw.trim().toLowerCase();
+  return v === '1' || v === '0' || v === 'true' || v === 'false';
+};
+
 export const resolveFeatureFlags = (envOverride?: EnvRecord): FeatureFlagSnapshot => {
+  // Treat explicit envOverride as an automation-like context to apply safe defaults
+  const isAutomationEnv = envOverride ? true : (isE2E || isTestMode(envOverride) || isAutomationRuntime());
+
   const baseSnapshot: FeatureFlagSnapshot = {
     schedules: isSchedulesFeatureEnabled(envOverride),
-    schedulesCreate: isSchedulesCreateEnabled(envOverride),
     complianceForm: isComplianceFormEnabled(envOverride),
     schedulesWeekV2: isSchedulesWeekV2Enabled(envOverride),
     icebergPdca: isIcebergPdcaEnabled(envOverride),
   };
 
-  if (isE2E || isTestMode(envOverride) || isAutomationRuntime()) {
+  const explicitSchedules = hasExplicitBoolEnv('VITE_FEATURE_SCHEDULES', envOverride);
+  const explicitIcebergPdca = hasExplicitBoolEnv('VITE_FEATURE_ICEBERG_PDCA', envOverride);
+
+  if (isAutomationEnv) {
+    // In automation, honor explicit env overrides when provided (needed for flag-off E2E scenarios).
+    // If no explicit override, default to true for schedules, and default PDCA off.
+    const schedules = explicitSchedules ? readBool('VITE_FEATURE_SCHEDULES', true, envOverride) : true;
+    const icebergPdca = explicitIcebergPdca ? readBool('VITE_FEATURE_ICEBERG_PDCA', false, envOverride) : false;
     return {
       ...baseSnapshot,
-      schedules: true,
-      schedulesCreate: true,
-      icebergPdca: baseSnapshot.icebergPdca,
+      schedules,
+      icebergPdca,
     };
   }
 
@@ -94,7 +153,7 @@ export const FeatureFlagsProvider: FC<FeatureFlagsProviderProps> = ({ value, chi
   const memoized = useMemo(() => {
     currentSnapshot = snapshot;
     return snapshot;
-  }, [snapshot.schedules, snapshot.schedulesCreate, snapshot.complianceForm, snapshot.schedulesWeekV2, snapshot.icebergPdca]);
+  }, [snapshot.schedules, snapshot.complianceForm, snapshot.schedulesWeekV2, snapshot.icebergPdca]);
 
   return createElement(FeatureFlagsContext.Provider, { value: memoized }, children);
 };

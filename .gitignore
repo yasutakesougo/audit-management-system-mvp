@@ -7,6 +7,11 @@ dist
 # Test/coverage outputs
 coverage
 test-results
+tests/.auth/storageState.json
+tmp/
+reports/flaky-tests.md
+playwright-report
+junit
 
 # Local certificates/keys (do NOT commit)
 key.pem
@@ -14,6 +19,7 @@ cert.pem
 cert.pfx
 cert.pfx.b64
 *.cer
+.certs/
 .lighthouseci/
 lhci-results.json
 reports/
@@ -33,3 +39,6 @@ vite-profile-*.cpuprofile
 # Local scratch/backup TS/TSX files
 *backup.tsx
 *backup.ts
+
+# npm audit reports
+audit-report.json

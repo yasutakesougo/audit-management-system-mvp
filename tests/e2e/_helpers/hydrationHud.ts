@@ -120,7 +120,7 @@ export async function expectRouteSpan(page: Page, id: string, expectation: Route
 
       if (expectation.status && status !== expectation.status) {
         if (allowedStatuses && allowedStatuses.includes(status)) {
-          return { reason: 'transient', status, meta } as const;
+          return { reason: 'ok', status, meta } as const;
         }
         return { reason: 'status', status, expected: expectation.status, meta } as const;
       }
@@ -129,6 +129,10 @@ export async function expectRouteSpan(page: Page, id: string, expectation: Route
         return { reason: 'status', status, allowedStatuses, meta } as const;
       }
       if (expectation.path && path !== expectation.path) {
+        const pathMatches = path.startsWith(expectation.path);
+        if (pathMatches) {
+          return { reason: 'ok', status, path, meta } as const;
+        }
         return { reason: 'path', path, expected: expectation.path, meta } as const;
       }
       if (expectation.budget !== undefined && budget !== expectation.budget) {

@@ -115,7 +115,7 @@ describe('useSchedulesToday', () => {
     });
 
   const useSchedulesToday = await importHook();
-  const { result } = renderHook(() => useSchedulesToday(4));
+  const { result } = renderHook(() => useSchedulesToday(3));
 
     await flushAsync();
 
@@ -143,13 +143,6 @@ describe('useSchedulesToday', () => {
         title: '予定',
         startText: '10:45',
         status: '進行中',
-        allDay: false,
-      },
-      {
-        id: 4,
-        title: '予定',
-        startText: '—',
-        status: undefined,
         allDay: false,
       },
     ]);

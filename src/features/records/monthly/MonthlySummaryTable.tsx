@@ -52,7 +52,7 @@ export const MonthlySummaryTable: React.FC<MonthlySummaryTableProps> = ({
     direction: 'desc',
   });
   const [reaggregatingUsers, setReaggregatingUsers] = React.useState<Set<string>>(new Set());
-  const [statusMessage, setStatusMessage] = React.useState('');
+  const [statusMessage, setStatusMessage] = React.useState('準備完了');
 
   React.useEffect(() => {
     if (summaries.length === 0) return;
@@ -137,6 +137,7 @@ export const MonthlySummaryTable: React.FC<MonthlySummaryTableProps> = ({
   const handleReaggregate = async (userId: string, yearMonth: YearMonth) => {
     if (!onReaggregate) return;
 
+    setStatusMessage('更新中');
     setReaggregatingUsers((prev) => new Set(prev).add(`${userId}#${yearMonth}`));
 
     try {
@@ -146,7 +147,7 @@ export const MonthlySummaryTable: React.FC<MonthlySummaryTableProps> = ({
       setStatusMessage(`再集計完了: ${summary?.displayName || userId} ${yearMonth}`);
     } catch (error) {
       console.error('再集計エラー:', error);
-      setStatusMessage('再集計エラーが発生しました');
+      setStatusMessage('再集計エラー');
     } finally {
       setReaggregatingUsers((prev) => {
         const next = new Set(prev);
@@ -245,15 +246,21 @@ export const MonthlySummaryTable: React.FC<MonthlySummaryTableProps> = ({
             </Button>
 
             <Button
+              type="button"
               variant="contained"
               color="primary"
               startIcon={<RefreshIcon />}
-              onClick={async () => {
+              onClick={async (event) => {
+                event.preventDefault();
+                event.stopPropagation();
+                setStatusMessage('更新中');
                 if (onReaggregate) {
                   // 表示中の全利用者を再集計
                   for (const summary of sortedSummaries) {
                     await handleReaggregate(summary.userId, summary.yearMonth);
                   }
+                } else {
+                  setStatusMessage('再集計エラー');
                 }
               }}
               data-testid={TESTIDS['monthly-summary-reaggregate-btn']}
@@ -408,10 +415,16 @@ export const MonthlySummaryTable: React.FC<MonthlySummaryTableProps> = ({
                       {onReaggregate && (
                         <Tooltip title="この月を再集計">
                           <IconButton
+                            type="button"
                             size="small"
-                            onClick={() => handleReaggregate(summary.userId, summary.yearMonth)}
-                            disabled={isReaggregating}
+                            aria-label="reaggregate"
                             data-testid={`monthly-reaggregate-btn-${summary.userId}-${summary.yearMonth}`}
+                            disabled={isReaggregating}
+                            onClick={(e) => {
+                              e.preventDefault();
+                              e.stopPropagation();
+                              handleReaggregate(summary.userId, summary.yearMonth);
+                            }}
                           >
                             <RefreshIcon />
                           </IconButton>
