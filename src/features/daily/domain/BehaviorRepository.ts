@@ -12,6 +12,8 @@ export type BehaviorQueryOptions = {
   dateRange?: BehaviorDateRange;
   /** Optional maximum rows to return, newest-first if repository supports ordering. */
   limit?: number;
+  /** Optional ordering for timestamp-based retrieval. */
+  order?: 'asc' | 'desc';
 };
 
 export interface BehaviorRepository {
@@ -23,4 +25,8 @@ export interface BehaviorRepository {
    * Fetch a user's observations ordered from newest to oldest unless otherwise noted.
    */
   getByUser(userId: string, options?: BehaviorQueryOptions): Promise<BehaviorObservation[]>;
+  /**
+   * Fetch a user's observations with explicit ordering/limit options.
+   */
+  listByUser(userId: string, options?: BehaviorQueryOptions): Promise<BehaviorObservation[]>;
 }

@@ -24,6 +24,12 @@ const applyLimit = (items: BehaviorObservation[], options?: BehaviorQueryOptions
   return items.slice(0, options.limit);
 };
 
+const applyOrder = (items: BehaviorObservation[], options?: BehaviorQueryOptions): BehaviorObservation[] => {
+  if (!options?.order) return items;
+  const sorted = [...items].sort((a, b) => toTimestamp(a.timestamp) - toTimestamp(b.timestamp));
+  return options.order === 'desc' ? sorted.reverse() : sorted;
+};
+
 export class InMemoryBehaviorRepository implements BehaviorRepository {
   async add(observation: Omit<BehaviorObservation, 'id'>): Promise<BehaviorObservation> {
     const newRecord: BehaviorObservation = {
@@ -37,11 +43,16 @@ export class InMemoryBehaviorRepository implements BehaviorRepository {
   }
 
   async getByUser(userId: string, options?: BehaviorQueryOptions): Promise<BehaviorObservation[]> {
+    return this.listByUser(userId, options);
+  }
+
+  async listByUser(userId: string, options?: BehaviorQueryOptions): Promise<BehaviorObservation[]> {
     const dateRange = options?.dateRange;
     const filtered = inMemoryStore.filter(
       (behavior) => behavior.userId === userId && isWithinRange(behavior.timestamp, dateRange),
     );
-    return applyLimit(filtered, options);
+    const ordered = applyOrder(filtered, options);
+    return applyLimit(ordered, options);
   }
 
   public seed(records: BehaviorObservation[]): void {

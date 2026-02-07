@@ -39,6 +39,10 @@ export class SharePointBehaviorRepository implements BehaviorRepository {
   }
 
   async getByUser(userId: string, options?: BehaviorQueryOptions): Promise<BehaviorObservation[]> {
+    return this.listByUser(userId, options);
+  }
+
+  async listByUser(userId: string, options?: BehaviorQueryOptions): Promise<BehaviorObservation[]> {
     if (!userId) return [];
 
     // 🔥 動的フィールド取得：テナント差分に完全対応
@@ -57,9 +61,10 @@ export class SharePointBehaviorRepository implements BehaviorRepository {
       filters.push(`${FIELD_MAP_BEHAVIORS.timestamp} le '${options.dateRange.to}'`);
     }
 
+    const isDescending = options?.order !== 'asc';
     let query = this.list.items
       .select(...selectFields)
-      .orderBy(FIELD_MAP_BEHAVIORS.timestamp, false);
+      .orderBy(FIELD_MAP_BEHAVIORS.timestamp, isDescending);
 
     const top = options?.limit ?? this.defaultTop;
     if (top && top > 0) {
