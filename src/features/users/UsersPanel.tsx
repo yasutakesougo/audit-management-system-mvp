@@ -27,7 +27,7 @@ import PeopleAltRoundedIcon from '@mui/icons-material/PeopleAltRounded';
 import PersonAddRoundedIcon from '@mui/icons-material/PersonAddRounded';
 import PostAddIcon from '@mui/icons-material/PostAdd';
 import RefreshRoundedIcon from '@mui/icons-material/RefreshRounded';
-import { Link as RouterLink, useLocation } from 'react-router-dom';
+import { Link as RouterLink, useLocation, useSearchParams } from 'react-router-dom';
 import { AuthRequiredError } from '../../lib/errors';
 import ErrorState from '../../ui/components/ErrorState';
 import Loading from '../../ui/components/Loading';
@@ -57,6 +57,7 @@ const buildErrorMessage = (error: unknown): string => {
 export default function UsersPanel() {
   useUsersDemoSeed();
   const location = useLocation();
+  const [searchParams, setSearchParams] = useSearchParams();
   const { data, status, create, remove, refresh, error } = useUsersStore();
   const [userId, setUserId] = useState('');
   const [fullName, setFullName] = useState('');
@@ -112,8 +113,28 @@ export default function UsersPanel() {
       setActiveTab(nextTab);
     }
   }, [activeTab, location.key, readTabFromLocation]);
-  const [detailUserKey, setDetailUserKey] = useState<string | null>(null);
+  const selectedUserId = searchParams.get('selected');
+  const detailUserKey = selectedUserId ?? null;
   const detailSectionRef = useRef<HTMLDivElement | null>(null);
+  const listScrollRef = useRef<HTMLDivElement | null>(null);
+
+  const listScrollStorageKey = useMemo(() => 'users.panel.list.scroll.v1', []);
+
+  const setSelectedUserId = useCallback((userId: string) => {
+    setSearchParams((prev) => {
+      const next = new URLSearchParams(prev);
+      next.set('selected', userId);
+      return next;
+    });
+  }, [setSearchParams]);
+
+  const clearSelectedUserId = useCallback(() => {
+    setSearchParams((prev) => {
+      const next = new URLSearchParams(prev);
+      next.delete('selected');
+      return next;
+    });
+  }, [setSearchParams]);
 
   const detailUser = useMemo(() => {
     if (!detailUserKey) return null;
@@ -121,9 +142,22 @@ export default function UsersPanel() {
   }, [data, detailUserKey]);
 
   useEffect(() => {
+    const container = listScrollRef.current;
+    if (!container) return;
+    const raw = sessionStorage.getItem(listScrollStorageKey);
+    if (!raw) return;
+    const next = Number(raw);
+    if (!Number.isFinite(next)) return;
+    container.scrollTop = next;
+  }, [data.length, listScrollStorageKey]);
+
+  useEffect(() => {
     if (!detailUserKey) return;
     if (!detailUser) {
-      setDetailUserKey(null);
+      if (status !== 'success') {
+        return;
+      }
+      clearSelectedUserId();
       return;
     }
 
@@ -132,7 +166,7 @@ export default function UsersPanel() {
         detailSectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
       });
     }
-  }, [detailUser, detailUserKey]);
+  }, [clearSelectedUserId, detailUser, detailUserKey, status]);
 
   const canCreate = useMemo(
     () => !!userId.trim() && !!fullName.trim() && busyId === null,
@@ -173,10 +207,22 @@ export default function UsersPanel() {
     setBusyId(Number(id));
     try {
       await remove(id);
+      const deletedKey = String(id);
+      const remaining = data.filter((user) => (user.UserID || String(user.Id)) !== deletedKey);
+      if (remaining.length === 0) {
+        clearSelectedUserId();
+      } else if (!selectedUserId || selectedUserId === deletedKey) {
+        const nextKey = remaining[0]?.UserID || String(remaining[0]?.Id);
+        if (nextKey) {
+          setSelectedUserId(nextKey);
+        } else {
+          clearSelectedUserId();
+        }
+      }
     } finally {
       setBusyId(null);
     }
-  }, [remove]);
+  }, [clearSelectedUserId, data, remove, selectedUserId, setSelectedUserId]);
 
   const handleRefresh = useCallback(async () => {
     if (busyId !== null) return;
@@ -195,12 +241,22 @@ export default function UsersPanel() {
     event.preventDefault();
     const key = user.UserID || String(user.Id);
     setActiveTab('list');
-    setDetailUserKey((prev) => (prev === key ? null : key));
-  }, [setActiveTab]);
+    if (detailUserKey === key) {
+      clearSelectedUserId();
+    } else {
+      setSelectedUserId(key);
+    }
+  }, [clearSelectedUserId, detailUserKey, setActiveTab, setSelectedUserId]);
+
+  const handleListScroll = useCallback(() => {
+    const container = listScrollRef.current;
+    if (!container) return;
+    sessionStorage.setItem(listScrollStorageKey, String(container.scrollTop));
+  }, [listScrollStorageKey]);
 
   const handleDetailClose = useCallback(() => {
-    setDetailUserKey(null);
-  }, []);
+    clearSelectedUserId();
+  }, [clearSelectedUserId]);
 
   const filteredUsers = useMemo(() => {
     const needle = search.trim().toLowerCase();
@@ -239,7 +295,11 @@ export default function UsersPanel() {
     setSelectedUser(null);
     void refresh();
     setActiveTab('list');
-  }, [refresh]);
+    const nextKey = updatedUser.UserID || String(updatedUser.Id);
+    if (nextKey) {
+      setSelectedUserId(nextKey);
+    }
+  }, [refresh, setSelectedUserId]);
 
   const handleEditClick = useCallback((user: IUserMaster) => {
     setSelectedUser(user);
@@ -349,9 +409,11 @@ export default function UsersPanel() {
         </Stack>
         <Stack direction={{ xs: 'column', lg: 'row' }} spacing={{ xs: 2, sm: 3 }} alignItems="stretch">
           <TableContainer
+            ref={listScrollRef}
+            onScroll={handleListScroll}
             component={Paper}
             variant="outlined"
-            sx={{ flex: { lg: 1.1 }, minWidth: { lg: 0 } }}
+            sx={{ flex: { lg: 1.1 }, minWidth: { lg: 0 }, maxHeight: { xs: 360, sm: 420, lg: 520 } }}
             {...tid(TESTIDS['users-list-table'])}
           >
             <Table stickyHeader aria-label="利用者一覧テーブル">
@@ -369,7 +431,23 @@ export default function UsersPanel() {
                 const userKey = user.UserID || String(user.Id);
                 const isSelected = detailUserKey === userKey;
                 return (
-                  <TableRow key={user.Id} hover selected={isSelected}>
+                  <TableRow
+                    key={user.Id}
+                    hover
+                    selected={isSelected}
+                    sx={{
+                      '&.Mui-selected': {
+                        backgroundColor: 'action.selected',
+                      },
+                      '&.Mui-selected:hover': {
+                        backgroundColor: 'action.selected',
+                      },
+                      '&.Mui-selected td:first-of-type': {
+                        borderLeft: '4px solid',
+                        borderLeftColor: 'primary.main',
+                      },
+                    }}
+                  >
                     <TableCell>
                       <span {...tidWithSuffix(TESTIDS['users-list-table-row'], `-${userKey}`)}>{user.Id}</span>
                     </TableCell>
@@ -441,14 +519,52 @@ export default function UsersPanel() {
               <Paper variant="outlined" sx={{ p: { xs: 2, sm: 3, md: 3 }, borderRadius: 3 }}>
                 <Stack spacing={1.5}>
                   <Typography variant="subtitle1" sx={{ fontWeight: 600 }}>
-                    利用者詳細
+                    利用者が未選択です
                   </Typography>
                   <Typography variant="body2" color="text.secondary">
-                    表の「詳細」ボタンを選択すると、一覧ページ内で利用者情報を確認できます。
+                    左の一覧から利用者を選択してください。
                   </Typography>
-                  <Typography variant="caption" color="text.secondary">
-                    新しいタブで開く場合は、詳細アイコンを ⌘/Ctrl キーを押しながらクリックしてください。
+                  <Typography variant="body2" color="text.secondary">
+                    ・詳細確認：詳細アイコン
                   </Typography>
+                  <Typography variant="body2" color="text.secondary">
+                    ・編集：編集アイコン
+                  </Typography>
+                  <Typography variant="body2" color="text.secondary">
+                    ・新規登録：上部の「新規利用者登録」タブ
+                  </Typography>
+                  <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1} sx={{ pt: 1 }}>
+                    <Button
+                      variant="outlined"
+                      size="small"
+                      startIcon={<RefreshRoundedIcon />}
+                      onClick={handleRefresh}
+                      disabled={busyId !== null}
+                    >
+                      一覧を更新
+                    </Button>
+                    <Button
+                      variant="contained"
+                      size="small"
+                      startIcon={<PersonAddRoundedIcon />}
+                      onClick={() => setActiveTab('create')}
+                    >
+                      新規利用者登録へ
+                    </Button>
+                    {filteredUsers.length > 0 && (
+                      <Button
+                        variant="text"
+                        size="small"
+                        onClick={() => {
+                          const first = filteredUsers[0];
+                          const key = first?.UserID || String(first?.Id);
+                          if (key) setSelectedUserId(key);
+                        }}
+                      >
+                        最初の利用者を選択
+                      </Button>
+                    )}
+                  </Stack>
                 </Stack>
               </Paper>
             )}
