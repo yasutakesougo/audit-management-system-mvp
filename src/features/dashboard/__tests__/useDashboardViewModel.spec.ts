@@ -26,12 +26,12 @@ describe('useDashboardViewModel', () => {
     expect(keys).toEqual([
       'safety',
       'attendance',
-      'daily',
       'schedule',
       'handover',
       'stats',
       'adminOnly',
       'staffOnly',
+      'daily',
     ]);
 
     const attendance = result.current.sections.find(

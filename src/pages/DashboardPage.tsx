@@ -9,13 +9,11 @@ import DashboardIcon from '@mui/icons-material/Dashboard';
 import EventAvailableRoundedIcon from '@mui/icons-material/EventAvailableRounded';
 import MedicalIcon from '@mui/icons-material/LocalHospital';
 import MonitorHeartIcon from '@mui/icons-material/MonitorHeart';
-import NightsStayIcon from '@mui/icons-material/NightsStay';
 import PersonIcon from '@mui/icons-material/Person';
 import BehaviorIcon from '@mui/icons-material/Psychology';
 import RestaurantIcon from '@mui/icons-material/Restaurant';
 import TrendingUpIcon from '@mui/icons-material/TrendingUp';
 import WarningIcon from '@mui/icons-material/Warning';
-import WbSunnyIcon from '@mui/icons-material/WbSunny';
 import Alert from '@mui/material/Alert';
 import Avatar from '@mui/material/Avatar';
 import Box from '@mui/material/Box';
@@ -36,6 +34,7 @@ import Paper from '@mui/material/Paper';
 import Stack from '@mui/material/Stack';
 import Tab from '@mui/material/Tab';
 import Tabs from '@mui/material/Tabs';
+import Tooltip from '@mui/material/Tooltip';
 import Typography from '@mui/material/Typography';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { alpha } from '@mui/material/styles';
@@ -48,8 +47,6 @@ import { useStaffStore } from '@/features/staff/store';
 import HandoffSummaryForMeeting from '../features/handoff/HandoffSummaryForMeeting';
 import type { HandoffDayScope } from '../features/handoff/handoffTypes';
 import { useHandoffSummary } from '../features/handoff/useHandoffSummary';
-import MeetingGuideDrawer from '../features/meeting/MeetingGuideDrawer';
-import type { MeetingKind } from '../features/meeting/meetingSteps';
 import UsageStatusDashboard from '../features/users/UsageStatusDashboard.v2';
 import { calculateUsageFromDailyRecords } from '../features/users/userMasterDashboardUtils';
 import { useUsersDemo } from '../features/users/usersStoreDemo';
@@ -224,8 +221,6 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ audience = 'staff' }) => 
   const navigate = useNavigate();
   const { schedules: schedulesEnabled } = useFeatureFlags();
   const [tabValue, setTabValue] = useState(0);
-  const [meetingDrawerOpen, setMeetingDrawerOpen] = useState(false);
-  const [meetingKind, setMeetingKind] = useState<MeetingKind>('morning');
   const { data: users } = useUsersDemo();
   const { visits } = useAttendanceStore();
   const { staff } = useStaffStore();
@@ -360,13 +355,28 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ audience = 'staff' }) => 
 
   const attendanceSummary = useMemo(() => {
     const visitList = Object.values(visits);
+    const userCodeMap = new Map<string, string>();
+
+    users.forEach((user, index) => {
+      const userCode = (user.UserID ?? '').trim() || `U${String(user.Id ?? index + 1).padStart(3, '0')}`;
+      const displayName = user.FullName ?? `利用者${index + 1}`;
+      userCodeMap.set(userCode, displayName);
+    });
 
     const facilityAttendees = visitList.filter(
       (visit) => visit.status === '通所中' || visit.status === '退所済'
     ).length;
 
     const lateOrEarlyLeave = visitList.filter((visit) => visit.isEarlyLeave === true).length;
-    const absenceCount = visitList.filter((visit) => visit.status === '当日欠席').length;
+    const absenceVisits = visitList.filter((visit) => visit.status === '当日欠席' || visit.status === '事前欠席');
+    const absenceNames = Array.from(
+      new Set(
+        absenceVisits
+          .map((visit) => userCodeMap.get(visit.userCode))
+          .filter((name): name is string => Boolean(name))
+      )
+    );
+    const absenceCount = absenceVisits.length;
 
     // Get actual staff attendance via port (Phase 3.1-C)
     const onDutyStaff = attendanceCounts.onDuty;
@@ -383,26 +393,26 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ audience = 'staff' }) => 
       facilityAttendees,
       lateOrEarlyLeave,
       absenceCount,
+      absenceNames,
       onDutyStaff: finalOnDutyStaff,
       lateOrShiftAdjust,
       outStaff,
     };
-  }, [attendanceCounts.onDuty, staff.length, visits]);
+  }, [attendanceCounts.onDuty, staff.length, users, visits]);
 
   const dailyRecordStatus = useMemo(() => {
-    const commuteCompleted = Math.round(users.length * 0.82);
-    const commutePending = Math.max(users.length - commuteCompleted, 0);
-    const diaryCompleted = stats.recordedUsers;
-    const diaryDraft = Math.max(users.length - stats.recordedUsers, 0);
-    const supportTarget = Math.max(intensiveSupportUsers.length || Math.round(users.length * 0.25), 1);
-    const supportCompleted = Math.min(Math.max(Math.round(supportTarget * 0.72), 0), supportTarget);
-    const supportPending = Math.max(supportTarget - supportCompleted, 0);
+    const total = users.length;
+    const completed = activityRecords.filter((record) => record.status === '完了').length;
+    const inProgress = activityRecords.filter((record) => record.status === '作成中').length;
+    const pending = Math.max(total - completed - inProgress, 0);
+
     return {
-      commute: { completed: commuteCompleted, pending: commutePending },
-      diary: { completed: diaryCompleted, pending: diaryDraft },
-      support: { completed: supportCompleted, pending: supportPending, target: supportTarget },
+      total,
+      pending,
+      inProgress,
+      completed,
     };
-  }, [users.length, stats.recordedUsers, intensiveSupportUsers.length]);
+  }, [activityRecords, users.length]);
 
   const vm = useDashboardViewModel({
     role: audience,
@@ -506,22 +516,23 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ audience = 'staff' }) => 
 
   const dailyStatusCards = [
     {
-      label: '通所記録',
-      completed: dailyRecordStatus.commute.completed,
-      pending: dailyRecordStatus.commute.pending,
-      planned: dailyRecordStatus.commute.completed + dailyRecordStatus.commute.pending,
+      label: '未入力',
+      value: dailyRecordStatus.pending,
+      helper: `対象 ${dailyRecordStatus.total}名`,
+      color: 'error.main',
+      emphasize: true,
     },
     {
-      label: '日誌',
-      completed: dailyRecordStatus.diary.completed,
-      pending: dailyRecordStatus.diary.pending,
-      planned: dailyRecordStatus.diary.completed + dailyRecordStatus.diary.pending,
+      label: '入力途中',
+      value: dailyRecordStatus.inProgress,
+      helper: `対象 ${dailyRecordStatus.total}名`,
+      color: 'warning.main',
     },
     {
-      label: '支援手順',
-      completed: dailyRecordStatus.support.completed,
-      pending: dailyRecordStatus.support.pending,
-      planned: dailyRecordStatus.support.target,
+      label: '完了',
+      value: dailyRecordStatus.completed,
+      helper: `対象 ${dailyRecordStatus.total}名`,
+      color: 'text.secondary',
     },
   ];
 
@@ -600,16 +611,49 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ audience = 'staff' }) => 
                   {attendanceSummary.lateOrEarlyLeave}
                 </Typography>
                 <Typography variant="body2" color="text.secondary">
-                  遅刻 / 早退
+                  遅刻・早退
                 </Typography>
               </Grid>
               <Grid size={{ xs: 12, sm: 4, md: 2 }}>
-                <Typography variant="h4" color="warning.main" sx={{ fontWeight: 800 }}>
-                  {attendanceSummary.absenceCount}
-                </Typography>
-                <Typography variant="body2" color="text.secondary">
-                  当日欠席
-                </Typography>
+                <Tooltip
+                  title={(
+                    <Stack spacing={0.5} sx={{ p: 0.5 }}>
+                      <Typography variant="caption" sx={{ fontWeight: 700 }}>
+                        欠席者
+                      </Typography>
+                      {attendanceSummary.absenceNames?.length ? (
+                        <>
+                          {attendanceSummary.absenceNames.slice(0, 6).map((name) => (
+                            <Typography key={name} variant="caption">
+                              {name}
+                            </Typography>
+                          ))}
+                          {attendanceSummary.absenceNames.length > 6 && (
+                            <Typography variant="caption" color="text.secondary">
+                              他{attendanceSummary.absenceNames.length - 6}名
+                            </Typography>
+                          )}
+                        </>
+                      ) : (
+                        <Typography variant="caption" color="text.secondary">
+                          該当者なし
+                        </Typography>
+                      )}
+                    </Stack>
+                  )}
+                  arrow
+                  placement="top"
+                  disableHoverListener={!attendanceSummary.absenceNames?.length}
+                >
+                  <Box sx={{ cursor: attendanceSummary.absenceNames?.length ? 'pointer' : 'default' }}>
+                    <Typography variant="h4" color="warning.main" sx={{ fontWeight: 800 }}>
+                      {attendanceSummary.absenceCount}
+                    </Typography>
+                    <Typography variant="body2" color="text.secondary">
+                      欠席
+                    </Typography>
+                  </Box>
+                </Tooltip>
               </Grid>
               <Grid size={{ xs: 12, sm: 4, md: 2 }}>
                 <Typography variant="h4" color="text.primary" sx={{ fontWeight: 800 }}>
@@ -624,7 +668,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ audience = 'staff' }) => 
                   {attendanceSummary.lateOrShiftAdjust}
                 </Typography>
                 <Typography variant="body2" color="text.secondary">
-                  遅刻 / シフト調整
+                  シフト調整
                 </Typography>
               </Grid>
               <Grid size={{ xs: 12, sm: 4, md: 2 }}>
@@ -650,10 +694,10 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ audience = 'staff' }) => 
             >
               <Stack spacing={0.5} sx={{ minWidth: 0 }}>
                 <Typography variant="subtitle2" lineHeight={1.2} sx={{ fontWeight: 700 }}>
-                  {section.title ?? '日次記録状況'}
+                  ケース記録：未入力があります
                 </Typography>
                 <Typography variant="caption" lineHeight={1.3} color="text.secondary">
-                  未入力を優先して、ケース記録の入力と確認を進められます。
+                  未入力を優先して、入力と確認を進められます。
                 </Typography>
               </Stack>
               <Stack
@@ -662,39 +706,37 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ audience = 'staff' }) => 
                 sx={{ width: { xs: '100%', md: 'auto' }, minWidth: 180 }}
               >
                 <Stack direction="row" spacing={1} flexWrap="nowrap" useFlexGap>
-                  <Button variant="contained" size="small" component={Link} to="/daily/activity">
-                    記録入力
+                  <Button
+                    variant="contained"
+                    size="small"
+                    component={Link}
+                    to="/daily/activity"
+                    disabled={dailyRecordStatus.pending === 0}
+                  >
+                    未入力を入力する
                   </Button>
-                  <Button variant="outlined" size="small" component={Link} to="/daily/table">
-                    一覧
-                  </Button>
-                </Stack>
-                <Stack direction="row" spacing={1} flexWrap="nowrap" useFlexGap>
-                  <Button variant="text" size="small" component={Link} to="/daily/menu">
-                    記録メニュー
-                  </Button>
-                  <Button variant="text" size="small" component={Link} to="/daily/attendance">
-                    通所入力
+                  <Button variant="text" size="small" component={Link} to="/daily/table">
+                    一覧を見る
                   </Button>
                 </Stack>
               </Stack>
             </Stack>
             <Grid container spacing={{ xs: 2, sm: 3 }} sx={{ mt: 1 }}>
-              {dailyStatusCards.map(({ label, completed, pending, planned }) => {
-                const total = planned;
-                const progress = total > 0 ? Math.round((completed / total) * 100) : 0;
+              {dailyStatusCards.map(({ label, value, helper, color, emphasize }) => {
                 return (
                   <Grid key={label} size={{ xs: 12, md: 4 }}>
                     <Paper variant="outlined" sx={{ p: { xs: 2, sm: 2.5 }, height: '100%' }}>
                       <Typography variant="h6" sx={{ fontWeight: 700 }}>
                         {label}
                       </Typography>
-                      <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
-                        完了 {completed} / 予定 {total}
+                      <Typography
+                        variant="h4"
+                        sx={{ fontWeight: emphasize ? 800 : 700, color, mt: 1 }}
+                      >
+                        {value}
                       </Typography>
-                      <LinearProgress variant="determinate" value={progress} sx={{ height: 8, borderRadius: 4 }} />
-                      <Typography variant="caption" color="text.secondary" sx={{ mt: 1, display: 'block' }}>
-                        残り {pending} 件
+                      <Typography variant="caption" color="text.secondary" sx={{ mt: 0.5, display: 'block' }}>
+                        {helper}
                       </Typography>
                     </Paper>
                   </Grid>
@@ -1204,21 +1246,22 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ audience = 'staff' }) => 
                         本日の振り返り
                       </Typography>
                       <Stack spacing={2}>
-                        {dailyStatusCards.map(({ label, completed, pending, planned }) => {
-                          const total = planned;
-                          const progress = total > 0 ? Math.round((completed / total) * 100) : 0;
-                          return (
-                            <Paper key={label} variant="outlined" sx={{ p: 2 }}>
-                              <Typography variant="subtitle1" sx={{ fontWeight: 700 }}>
-                                {label}
-                              </Typography>
-                              <Typography variant="body2" color="text.secondary">
-                                完了 {completed} / 予定 {total} （残り {pending} 件）
-                              </Typography>
-                              <LinearProgress value={progress} variant="determinate" sx={{ mt: 1, height: 6, borderRadius: 3 }} />
-                            </Paper>
-                          );
-                        })}
+                        {dailyStatusCards.map(({ label, value, helper, color, emphasize }) => (
+                          <Paper key={label} variant="outlined" sx={{ p: 2 }}>
+                            <Typography variant="subtitle1" sx={{ fontWeight: 700 }}>
+                              {label}
+                            </Typography>
+                            <Typography
+                              variant="h5"
+                              sx={{ fontWeight: emphasize ? 800 : 700, color, mt: 0.5 }}
+                            >
+                              {value}
+                            </Typography>
+                            <Typography variant="caption" color="text.secondary">
+                              {helper}
+                            </Typography>
+                          </Paper>
+                        ))}
                       </Stack>
                     </CardContent>
                   </Card>
@@ -1304,40 +1347,17 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ audience = 'staff' }) => 
               </Typography>
             </Box>
 
-            {/* 朝会・夕会ガイドボタン */}
+            {/* 朝会・夕会情報ボタン */}
             <Stack direction="row" spacing={1}>
-              <Button
-                variant="outlined"
-                startIcon={<WbSunnyIcon />}
-                onClick={() => {
-                  setMeetingKind('morning');
-                  setMeetingDrawerOpen(true);
-                }}
-                size="small"
-              >
-                朝会ガイド
-              </Button>
-              <Button
-                variant="outlined"
-                startIcon={<NightsStayIcon />}
-                onClick={() => {
-                  setMeetingKind('evening');
-                  setMeetingDrawerOpen(true);
-                }}
-                size="small"
-                color="secondary"
-              >
-                夕会ガイド
-              </Button>
               <Button
                 variant="contained"
                 startIcon={<AccessTimeIcon />}
                 component={Link}
-                to="/handoff-timeline"
+                to="/dashboard/briefing"
                 size="small"
                 color="primary"
               >
-                申し送りタイムライン
+                朝会・夕会情報
               </Button>
             </Stack>
           </Box>
@@ -1353,12 +1373,6 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ audience = 'staff' }) => 
 
       </Box>
 
-      {/* 朝会・夕会ガイドDrawer - Phase 5B統合 */}
-      <MeetingGuideDrawer
-        open={meetingDrawerOpen}
-        kind={meetingKind}
-        onClose={() => setMeetingDrawerOpen(false)}
-      />
     </Container>
   );
 };
