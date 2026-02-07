@@ -22,6 +22,7 @@ import Card from '@mui/material/Card';
 import CardContent from '@mui/material/CardContent';
 import CardHeader from '@mui/material/CardHeader';
 import Chip from '@mui/material/Chip';
+import Collapse from '@mui/material/Collapse';
 import Container from '@mui/material/Container';
 import Divider from '@mui/material/Divider';
 import Grid from '@mui/material/Grid';
@@ -34,7 +35,6 @@ import Paper from '@mui/material/Paper';
 import Stack from '@mui/material/Stack';
 import Tab from '@mui/material/Tab';
 import Tabs from '@mui/material/Tabs';
-import Tooltip from '@mui/material/Tooltip';
 import Typography from '@mui/material/Typography';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { alpha } from '@mui/material/styles';
@@ -221,6 +221,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ audience = 'staff' }) => 
   const navigate = useNavigate();
   const { schedules: schedulesEnabled } = useFeatureFlags();
   const [tabValue, setTabValue] = useState(0);
+  const [showAttendanceNames, setShowAttendanceNames] = useState(false);
   const { data: users } = useUsersDemo();
   const { visits } = useAttendanceStore();
   const { staff } = useStaffStore();
@@ -367,7 +368,15 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ audience = 'staff' }) => 
       (visit) => visit.status === '通所中' || visit.status === '退所済'
     ).length;
 
-    const lateOrEarlyLeave = visitList.filter((visit) => visit.isEarlyLeave === true).length;
+    const lateOrEarlyVisits = visitList.filter((visit) => visit.isEarlyLeave === true);
+    const lateOrEarlyLeave = lateOrEarlyVisits.length;
+    const lateOrEarlyNames = Array.from(
+      new Set(
+        lateOrEarlyVisits
+          .map((visit) => userCodeMap.get(visit.userCode))
+          .filter((name): name is string => Boolean(name))
+      )
+    );
     const absenceVisits = visitList.filter((visit) => visit.status === '当日欠席' || visit.status === '事前欠席');
     const absenceNames = Array.from(
       new Set(
@@ -388,15 +397,20 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ audience = 'staff' }) => 
 
     const lateOrShiftAdjust = Math.max(0, Math.round(finalOnDutyStaff * 0.15));
     const outStaff = Math.max(0, Math.round(finalOnDutyStaff * 0.2));
+    const outStaffNames = staff.slice(0, outStaff).map((member, index) => {
+      return member?.name ?? member?.staffId ?? `職員${index + 1}`;
+    });
 
     return {
       facilityAttendees,
       lateOrEarlyLeave,
+      lateOrEarlyNames,
       absenceCount,
       absenceNames,
       onDutyStaff: finalOnDutyStaff,
       lateOrShiftAdjust,
       outStaff,
+      outStaffNames,
     };
   }, [attendanceCounts.onDuty, staff.length, users, visits]);
 
@@ -615,45 +629,14 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ audience = 'staff' }) => 
                 </Typography>
               </Grid>
               <Grid size={{ xs: 12, sm: 4, md: 2 }}>
-                <Tooltip
-                  title={(
-                    <Stack spacing={0.5} sx={{ p: 0.5 }}>
-                      <Typography variant="caption" sx={{ fontWeight: 700 }}>
-                        欠席者
-                      </Typography>
-                      {attendanceSummary.absenceNames?.length ? (
-                        <>
-                          {attendanceSummary.absenceNames.slice(0, 6).map((name) => (
-                            <Typography key={name} variant="caption">
-                              {name}
-                            </Typography>
-                          ))}
-                          {attendanceSummary.absenceNames.length > 6 && (
-                            <Typography variant="caption" color="text.secondary">
-                              他{attendanceSummary.absenceNames.length - 6}名
-                            </Typography>
-                          )}
-                        </>
-                      ) : (
-                        <Typography variant="caption" color="text.secondary">
-                          該当者なし
-                        </Typography>
-                      )}
-                    </Stack>
-                  )}
-                  arrow
-                  placement="top"
-                  disableHoverListener={!attendanceSummary.absenceNames?.length}
-                >
-                  <Box sx={{ cursor: attendanceSummary.absenceNames?.length ? 'pointer' : 'default' }}>
-                    <Typography variant="h4" color="warning.main" sx={{ fontWeight: 800 }}>
-                      {attendanceSummary.absenceCount}
-                    </Typography>
-                    <Typography variant="body2" color="text.secondary">
-                      欠席
-                    </Typography>
-                  </Box>
-                </Tooltip>
+                <Box>
+                  <Typography variant="h4" color="warning.main" sx={{ fontWeight: 800 }}>
+                    {attendanceSummary.absenceCount}
+                  </Typography>
+                  <Typography variant="body2" color="text.secondary">
+                    欠席
+                  </Typography>
+                </Box>
               </Grid>
               <Grid size={{ xs: 12, sm: 4, md: 2 }}>
                 <Typography variant="h4" color="text.primary" sx={{ fontWeight: 800 }}>
@@ -680,6 +663,48 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ audience = 'staff' }) => 
                 </Typography>
               </Grid>
             </Grid>
+            {(() => {
+              const hasNames =
+                (attendanceSummary.absenceNames?.length ?? 0) > 0 ||
+                (attendanceSummary.lateOrEarlyNames?.length ?? 0) > 0 ||
+                (attendanceSummary.outStaffNames?.length ?? 0) > 0;
+
+              if (!hasNames) return null;
+
+              const formatNames = (names?: string[]) => {
+                const list = names ?? [];
+                if (list.length === 0) return '該当者なし';
+                const shown = list.slice(0, 6).join('、');
+                const remaining = list.length - 6;
+                return remaining > 0 ? `${shown}、他${remaining}名` : shown;
+              };
+
+              return (
+                <Stack alignItems="flex-end" sx={{ mt: 1 }}>
+                  <Button
+                    size="small"
+                    variant="text"
+                    onClick={() => setShowAttendanceNames((prev) => !prev)}
+                    aria-expanded={showAttendanceNames}
+                  >
+                    該当者を見る
+                  </Button>
+                  <Collapse in={showAttendanceNames} sx={{ width: '100%' }}>
+                    <Stack spacing={0.5} sx={{ mt: 0.5 }}>
+                      <Typography variant="caption">
+                        欠席：{formatNames(attendanceSummary.absenceNames)}
+                      </Typography>
+                      <Typography variant="caption">
+                        遅刻・早退：{formatNames(attendanceSummary.lateOrEarlyNames)}
+                      </Typography>
+                      <Typography variant="caption">
+                        外出スタッフ：{formatNames(attendanceSummary.outStaffNames)}
+                      </Typography>
+                    </Stack>
+                  </Collapse>
+                </Stack>
+              );
+            })()}
           </Paper>
         );
       case 'daily':
@@ -1361,6 +1386,35 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ audience = 'staff' }) => 
               </Button>
             </Stack>
           </Box>
+          {vm.briefingChips.length > 0 && (
+            <Stack
+              direction={{ xs: 'column', sm: 'row' }}
+              spacing={1}
+              alignItems={{ xs: 'flex-start', sm: 'center' }}
+              component={Link}
+              to="/dashboard/briefing"
+              sx={{
+                mt: 1,
+                textDecoration: 'none',
+                color: 'inherit',
+                cursor: 'pointer',
+              }}
+            >
+              <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 700 }}>
+                今日の要点
+              </Typography>
+              <Stack direction="row" spacing={0.75} flexWrap="wrap" useFlexGap>
+                {vm.briefingChips.map((chip) => (
+                  <Chip
+                    key={chip.key}
+                    size="small"
+                    color={chip.kind}
+                    label={chip.label}
+                  />
+                ))}
+              </Stack>
+            </Stack>
+          )}
         </Box>
 
         <Stack spacing={{ xs: 2, sm: 3, md: 4 }} sx={{ mb: { xs: 2, sm: 3 } }}>
