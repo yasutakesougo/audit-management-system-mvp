@@ -1,11 +1,14 @@
 import Alert from '@mui/material/Alert';
 import Box from '@mui/material/Box';
-import Card from '@mui/material/Card';
-import CardContent from '@mui/material/CardContent';
 import Chip from '@mui/material/Chip';
+import Collapse from '@mui/material/Collapse';
+import IconButton from '@mui/material/IconButton';
+import Paper from '@mui/material/Paper';
 import Stack from '@mui/material/Stack';
 import Typography from '@mui/material/Typography';
-import { useMemo } from 'react';
+import ExpandLessIcon from '@mui/icons-material/ExpandLess';
+import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
+import { useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 
 import { createCrossModuleAlertScenarios } from '@/features/cross-module/mockData';
@@ -33,25 +36,63 @@ const DashboardSafetyHUD: React.FC<DashboardSafetyHUDProps> = ({ date = defaultD
     return convertDashboardAlertsToSafetyHUD(dashboardAlerts);
   }, [date]);
 
-  const totalAlerts = hudAlerts.length;
-  const headline = totalAlerts > 0 ? `${totalAlerts}件の注意が必要` : '安定しています';
+  const [open, setOpen] = useState(false);
+  const counts = useMemo(() => {
+    return hudAlerts.reduce(
+      (acc, alert) => {
+        acc[alert.severity] += 1;
+        return acc;
+      },
+      { error: 0, warning: 0, info: 0 },
+    );
+  }, [hudAlerts]);
+  const attentionCount = counts.error + counts.warning;
 
   return (
     <Box {...tid(TESTIDS['dashboard-safety-hud'])}>
-      <Card sx={{ borderRadius: 3 }}>
-        <CardContent>
-          <Stack direction={{ xs: 'column', sm: 'row' }} justifyContent="space-between" alignItems="flex-start" spacing={1.5} sx={{ mb: 1 }}>
-            <Box>
-              <Typography variant="subtitle2" color="text.secondary">
-                安全インジケーター
-              </Typography>
-              <Typography variant="h6" fontWeight={800} sx={{ display: 'flex', alignItems: 'center', gap: 0.75 }}>
-                🛡️ ダッシュボード安全指標
-              </Typography>
-              <Typography variant="body2" color="text.secondary">
+      <Paper elevation={0} sx={{ p: 1, borderRadius: 1.5, border: '1px solid', borderColor: 'divider' }}>
+        <Stack direction="row" alignItems="center" justifyContent="space-between" spacing={1}>
+          <Stack direction="row" alignItems="center" spacing={1} sx={{ minWidth: 0, flexWrap: 'wrap' }}>
+            <Typography variant="subtitle2" noWrap sx={{ fontWeight: 700 }}>
+              🛡️ 安全指標
+            </Typography>
+            {attentionCount > 0 ? (
+              <Chip
+                size="small"
+                variant="outlined"
+                color={counts.error > 0 ? 'error' : 'warning'}
+                icon={<span aria-hidden="true">{getAlertIcon(counts.error > 0 ? 'error' : 'warning')}</span>}
+                label={`注意 ${attentionCount}`}
+              />
+            ) : (
+              <Chip size="small" variant="outlined" color="success" label="安定" />
+            )}
+            {counts.info > 0 && (
+              <Chip
+                size="small"
+                variant="outlined"
+                color="info"
+                icon={<span aria-hidden="true">{getAlertIcon('info')}</span>}
+                label={`情報 ${counts.info}`}
+              />
+            )}
+          </Stack>
+          <IconButton
+            size="small"
+            onClick={() => setOpen((prev) => !prev)}
+            aria-label="安全指標の詳細を開閉"
+          >
+            {open ? <ExpandLessIcon fontSize="small" /> : <ExpandMoreIcon fontSize="small" />}
+          </IconButton>
+        </Stack>
+
+        <Collapse in={open} timeout="auto" unmountOnExit>
+          <Stack spacing={0.75} sx={{ mt: 1 }} {...tidWithSuffix(TESTIDS['dashboard-safety-hud'], '-alerts')}>
+            <Stack spacing={0.25}>
+              <Typography variant="caption" color="text.secondary">
                 主要モジュールの不整合やリスクを上位3件まで表示します。
               </Typography>
-              <Typography variant="body2" color="text.secondary">
+              <Typography variant="caption" color="text.secondary">
                 今日の安全インジケーター / 予定の重なり をここで確認できます。
               </Typography>
               <Box
@@ -72,11 +113,8 @@ const DashboardSafetyHUD: React.FC<DashboardSafetyHUDProps> = ({ date = defaultD
               >
                 Safety HUD
               </Box>
-            </Box>
-            <Chip label={headline} color={totalAlerts > 0 ? 'warning' : 'success'} variant={totalAlerts > 0 ? 'filled' : 'outlined'} size="small" />
-          </Stack>
+            </Stack>
 
-          <Stack spacing={1} {...tidWithSuffix(TESTIDS['dashboard-safety-hud'], '-alerts')}>
             {hudAlerts.length === 0 ? (
               <Alert severity="success" variant="outlined" data-testid="safety-hud-alert-empty">
                 現在アラートはありません。
@@ -86,7 +124,12 @@ const DashboardSafetyHUD: React.FC<DashboardSafetyHUDProps> = ({ date = defaultD
                 const content = (
                   <Stack spacing={0.25}>
                     <Stack direction="row" spacing={1} alignItems="center">
-                      <Chip label={alert.severity.toUpperCase()} color={severityChipColor[alert.severity]} size="small" variant="outlined" />
+                      <Chip
+                        label={alert.severity.toUpperCase()}
+                        color={severityChipColor[alert.severity]}
+                        size="small"
+                        variant="outlined"
+                      />
                       <Typography variant="subtitle2" fontWeight={700} sx={{ lineHeight: 1.3 }}>
                         {alert.title}
                       </Typography>
@@ -101,7 +144,7 @@ const DashboardSafetyHUD: React.FC<DashboardSafetyHUDProps> = ({ date = defaultD
                   <Alert
                     key={alert.id}
                     severity={alert.severity}
-                    variant="filled"
+                    variant="outlined"
                     icon={<span aria-hidden="true">{getAlertIcon(alert.severity)}</span>}
                     data-testid={`safety-hud-alert-${alert.severity}-${index}`}
                     className={`safety-hud-alert ${alert.severity}`}
@@ -119,8 +162,8 @@ const DashboardSafetyHUD: React.FC<DashboardSafetyHUDProps> = ({ date = defaultD
               })
             )}
           </Stack>
-        </CardContent>
-      </Card>
+        </Collapse>
+      </Paper>
     </Box>
   );
 };
