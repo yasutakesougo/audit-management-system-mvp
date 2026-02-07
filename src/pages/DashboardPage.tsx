@@ -468,7 +468,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ audience = 'staff' }) => 
 
   const renderScheduleLanes = (title: string, lanes: { userLane: ScheduleItem[]; staffLane: ScheduleItem[]; organizationLane: ScheduleItem[] }) => (
     <Card>
-      <CardContent>
+      <CardContent sx={{ py: 1.25, px: 1.5 }}>
         <Typography variant="h6" sx={{ mb: 2 }}>
           📅 {title}
         </Typography>
@@ -548,9 +548,44 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ audience = 'staff' }) => 
       case 'attendance':
         return (
           <Paper elevation={3} sx={{ p: { xs: 2, sm: 2.5, md: 3 } }}>
-            <Typography variant="h5" sx={{ fontWeight: 700, mb: 1.5 }}>
-              {section.title ?? '今日の通所 / 出勤状況'}
-            </Typography>
+            <Stack
+              direction={{ xs: 'column', md: 'row' }}
+              spacing={1.5}
+              alignItems={{ xs: 'flex-start', md: 'center' }}
+              justifyContent="space-between"
+              sx={{ mb: 2 }}
+            >
+              <Stack spacing={0.5} sx={{ minWidth: 0 }}>
+                <Typography variant="subtitle2" lineHeight={1.2} sx={{ fontWeight: 700 }}>
+                  {section.title ?? '今日の通所 / 出勤状況'}
+                </Typography>
+                <Typography variant="caption" lineHeight={1.3} color="text.secondary">
+                  利用者と職員の通所・出勤の状況をまとめて確認できます。
+                </Typography>
+              </Stack>
+              <Stack
+                spacing={0.75}
+                alignItems={{ xs: 'flex-start', md: 'flex-end' }}
+                sx={{ width: { xs: '100%', md: 'auto' }, minWidth: 180 }}
+              >
+                <Stack direction="row" spacing={1} flexWrap="nowrap" useFlexGap>
+                  <Button variant="contained" size="small" component={Link} to="/daily/attendance">
+                    通所入力
+                  </Button>
+                  <Button variant="outlined" size="small" component={Link} to="/staff/attendance">
+                    職員出勤
+                  </Button>
+                </Stack>
+                <Stack direction="row" spacing={1} flexWrap="nowrap" useFlexGap>
+                  <Button variant="text" size="small" component={Link} to="/daily/activity">
+                    支援記録
+                  </Button>
+                  <Button variant="text" size="small" component={Link} to="/handoff-timeline">
+                    申し送り
+                  </Button>
+                </Stack>
+              </Stack>
+            </Stack>
             <Grid container spacing={{ xs: 2, sm: 2, md: 3 }} sx={{ mt: 2 }}>
               <Grid size={{ xs: 12, sm: 4, md: 2 }}>
                 <Typography variant="h4" color="primary" sx={{ fontWeight: 800 }}>
@@ -606,9 +641,44 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ audience = 'staff' }) => 
       case 'daily':
         return (
           <Paper elevation={3} sx={{ p: { xs: 2, sm: 2.5, md: 3 } }}>
-            <Typography variant="h5" sx={{ fontWeight: 700, mb: 1.5 }}>
-              {section.title ?? '日次記録状況'}
-            </Typography>
+            <Stack
+              direction={{ xs: 'column', md: 'row' }}
+              spacing={1.5}
+              alignItems={{ xs: 'flex-start', md: 'center' }}
+              justifyContent="space-between"
+              sx={{ mb: 2 }}
+            >
+              <Stack spacing={0.5} sx={{ minWidth: 0 }}>
+                <Typography variant="subtitle2" lineHeight={1.2} sx={{ fontWeight: 700 }}>
+                  {section.title ?? '日次記録状況'}
+                </Typography>
+                <Typography variant="caption" lineHeight={1.3} color="text.secondary">
+                  未入力を優先して、ケース記録の入力と確認を進められます。
+                </Typography>
+              </Stack>
+              <Stack
+                spacing={0.75}
+                alignItems={{ xs: 'flex-start', md: 'flex-end' }}
+                sx={{ width: { xs: '100%', md: 'auto' }, minWidth: 180 }}
+              >
+                <Stack direction="row" spacing={1} flexWrap="nowrap" useFlexGap>
+                  <Button variant="contained" size="small" component={Link} to="/daily/activity">
+                    記録入力
+                  </Button>
+                  <Button variant="outlined" size="small" component={Link} to="/daily/table">
+                    一覧
+                  </Button>
+                </Stack>
+                <Stack direction="row" spacing={1} flexWrap="nowrap" useFlexGap>
+                  <Button variant="text" size="small" component={Link} to="/daily/menu">
+                    記録メニュー
+                  </Button>
+                  <Button variant="text" size="small" component={Link} to="/daily/attendance">
+                    通所入力
+                  </Button>
+                </Stack>
+              </Stack>
+            </Stack>
             <Grid container spacing={{ xs: 2, sm: 3 }} sx={{ mt: 1 }}>
               {dailyStatusCards.map(({ label, completed, pending, planned }) => {
                 const total = planned;
@@ -694,25 +764,54 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ audience = 'staff' }) => 
           <Paper elevation={3} sx={{ p: 3 }} {...tid(TESTIDS['dashboard-handoff-summary'])}>
             <Stack spacing={2}>
               <Stack
-                direction={{ xs: 'column', sm: 'row' }}
-                spacing={1}
-                alignItems={{ xs: 'flex-start', sm: 'center' }}
+                direction={{ xs: 'column', md: 'row' }}
+                spacing={1.5}
+                alignItems={{ xs: 'flex-start', md: 'center' }}
+                justifyContent="space-between"
               >
-                <Typography variant="h5" sx={{ fontWeight: 700 }}>
-                  {section.title ?? '申し送りタイムライン'}
-                </Typography>
-                {handoffCritical > 0 && (
-                  <Chip
-                    size="small"
-                    color="error"
-                    variant="filled"
-                    label={`重要・未完了 ${handoffCritical}件`}
-                  />
-                )}
+                <Stack spacing={0.5} sx={{ minWidth: 0 }}>
+                  <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap">
+                      <Typography variant="subtitle2" lineHeight={1.2} sx={{ fontWeight: 700 }}>
+                      {section.title ?? '申し送りタイムライン'}
+                    </Typography>
+                    {handoffCritical > 0 && (
+                      <Chip
+                        size="small"
+                        color="error"
+                        variant="filled"
+                        label={`重要・未完了 ${handoffCritical}件`}
+                      />
+                    )}
+                  </Stack>
+                  <Typography variant="caption" lineHeight={1.3} color="text.secondary">
+                    今日の申し送り状況を把握して、必要に応じて詳細を確認してください。
+                  </Typography>
+                </Stack>
+                <Stack
+                  spacing={0.75}
+                  alignItems={{ xs: 'flex-start', md: 'flex-end' }}
+                  sx={{ width: { xs: '100%', md: 'auto' }, minWidth: 180 }}
+                >
+                  <Stack direction="row" spacing={1} flexWrap="nowrap" useFlexGap>
+                    <Button
+                      variant="contained"
+                      startIcon={<AccessTimeIcon />}
+                      onClick={() => openTimeline('today')}
+                      size="small"
+                    >
+                      タイムラインを開く
+                    </Button>
+                  </Stack>
+                  <Stack direction="row" spacing={1} flexWrap="nowrap" useFlexGap>
+                    <Button variant="text" size="small" onClick={() => openTimeline('yesterday')}>
+                      前日の申し送り
+                    </Button>
+                    <Button variant="text" size="small" component={Link} to="/handoff-timeline">
+                      一覧を見る
+                    </Button>
+                  </Stack>
+                </Stack>
               </Stack>
-              <Typography variant="body2" color="text.secondary">
-                今日の申し送り状況を把握して、必要に応じてタイムラインページで詳細を確認してください。
-              </Typography>
               {handoffTotal > 0 ? (
                 <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1} flexWrap="wrap" useFlexGap>
                   <Chip
@@ -747,16 +846,6 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ audience = 'staff' }) => 
                   まだ今日の申し送りは登録されていません。気づいたことがあれば /handoff-timeline から追加できます。
                 </Alert>
               )}
-              <Stack direction={{ xs: 'column', sm: 'row' }} justifyContent="flex-end">
-                <Button
-                  variant="contained"
-                  startIcon={<AccessTimeIcon />}
-                  onClick={() => openTimeline('today')}
-                  sx={{ minWidth: { xs: '100%', sm: 220 } }}
-                >
-                  タイムラインで詳細を見る
-                </Button>
-              </Stack>
             </Stack>
           </Paper>
         );
@@ -836,7 +925,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ audience = 'staff' }) => 
             <TabPanel value={tabValue} index={0}>
               <Stack spacing={3}>
                 <Card>
-                  <CardContent>
+                  <CardContent sx={{ py: 1.25, px: 1.5 }}>
                     <Typography variant="h6" gutterBottom>
                       <RestaurantIcon sx={{ verticalAlign: 'middle', mr: 1 }} />
                       昼食摂取状況
@@ -855,7 +944,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ audience = 'staff' }) => 
                 </Card>
 
                 <Card>
-                  <CardContent>
+                  <CardContent sx={{ py: 1.25, px: 1.5 }}>
                     <Typography variant="h6" gutterBottom>
                       <BehaviorIcon sx={{ verticalAlign: 'middle', mr: 1 }} />
                       問題行動発生状況
@@ -915,7 +1004,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ audience = 'staff' }) => 
                 )}
 
                 <Card>
-                  <CardContent>
+                  <CardContent sx={{ py: 1.25, px: 1.5 }}>
                     <Typography variant="h6" gutterBottom>問題行動対応履歴</Typography>
                     <Typography variant="body2" color="text.secondary">
                       詳細な対応記録と改善傾向の分析は個別の支援記録（ケース記録）をご確認ください。
@@ -929,7 +1018,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ audience = 'staff' }) => 
             <TabPanel value={tabValue} index={3}>
               <Stack spacing={3}>
                 <Card>
-                  <CardContent>
+                  <CardContent sx={{ py: 1.25, px: 1.5 }}>
                     <Typography variant="h6" gutterBottom>
                       <MedicalIcon sx={{ verticalAlign: 'middle', mr: 1 }} />
                       発作記録サマリー
@@ -947,7 +1036,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ audience = 'staff' }) => 
                 </Card>
 
                 <Card>
-                  <CardContent>
+                  <CardContent sx={{ py: 1.25, px: 1.5 }}>
                     <Typography variant="h6" gutterBottom>健康管理指標</Typography>
                     <Stack spacing={2}>
                       <Box>
@@ -978,7 +1067,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ audience = 'staff' }) => 
 
                 {intensiveSupportUsers.map(user => (
                   <Card key={user.Id} sx={{ border: '2px solid', borderColor: 'warning.main' }}>
-                    <CardContent>
+                    <CardContent sx={{ py: 1.25, px: 1.5 }}>
                       <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 2 }}>
                         <Typography variant="h6">
                           {user.FullName}
@@ -1051,7 +1140,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ audience = 'staff' }) => 
                   bgcolor: (theme) => (isMorningTime ? alpha(theme.palette.primary.main, 0.08) : 'transparent'),
                 }}
               />
-              <CardContent>
+              <CardContent sx={{ py: 1.25, px: 1.5 }}>
                 <Stack spacing={3}>
                   <HandoffSummaryForMeeting
                     dayScope="yesterday"
@@ -1062,7 +1151,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ audience = 'staff' }) => 
                   />
 
                   <Card>
-                    <CardContent>
+                    <CardContent sx={{ py: 1.25, px: 1.5 }}>
                       <Typography variant="h6" gutterBottom>
                         重点フォロー利用者
                       </Typography>
@@ -1107,10 +1196,10 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ audience = 'staff' }) => 
                   bgcolor: (theme) => (isEveningTime ? alpha(theme.palette.secondary.main, 0.08) : 'transparent'),
                 }}
               />
-              <CardContent>
+              <CardContent sx={{ py: 1.25, px: 1.5 }}>
                 <Stack spacing={3}>
                   <Card>
-                    <CardContent>
+                    <CardContent sx={{ py: 1.25, px: 1.5 }}>
                       <Typography variant="h6" gutterBottom>
                         本日の振り返り
                       </Typography>
@@ -1135,7 +1224,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ audience = 'staff' }) => 
                   </Card>
 
                   <Card>
-                    <CardContent>
+                    <CardContent sx={{ py: 1.25, px: 1.5 }}>
                       <Typography variant="h6" gutterBottom>
                         健康・行動トピック
                       </Typography>
