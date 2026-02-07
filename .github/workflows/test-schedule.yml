@@ -69,6 +69,7 @@ jobs:
         env:
           VITE_SCHEDULE_FIXTURES: "1"
           VITE_SKIP_LOGIN: "1"
+          PLAYWRIGHT_BASE_URL: "http://127.0.0.1:5173"
           PLAYWRIGHT_SKIP_BUILD: "1"
           PLAYWRIGHT_WEB_SERVER_URL: "http://127.0.0.1:5173"
           PLAYWRIGHT_WEB_SERVER_COMMAND: "true"
