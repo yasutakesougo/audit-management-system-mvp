@@ -6,6 +6,7 @@ const skipBuild = process.env.PLAYWRIGHT_SKIP_BUILD === '1';
 const baseURL = process.env.PLAYWRIGHT_BASE_URL ?? 'http://localhost:3000';
 const webServerCommandOverride = process.env.PLAYWRIGHT_WEB_SERVER_COMMAND;
 const webServerUrl = process.env.PLAYWRIGHT_WEB_SERVER_URL ?? baseURL;
+const useExternalWebServer = !!process.env.PLAYWRIGHT_WEB_SERVER_URL;
 const junitOutput = process.env.PLAYWRIGHT_JUNIT_OUTPUT ?? 'junit/results.xml';
 const ciReporters: ReporterDescription[] = [
   ['list'],
@@ -36,10 +37,16 @@ export default defineConfig({
     { name: 'chromium', use: desktopChrome },
     { name: 'smoke', use: desktopChrome, testMatch: SMOKE_SPEC_PATTERN },
   ],
-  webServer: {
-    command: webServerCommand,
-    url: webServerUrl,
-    reuseExistingServer: !isCI,
-    timeout: 120_000,
-  },
+  webServer: useExternalWebServer
+    ? {
+        url: webServerUrl,
+        reuseExistingServer: true,
+        timeout: 120_000,
+      }
+    : {
+        command: webServerCommand,
+        url: webServerUrl,
+        reuseExistingServer: !isCI,
+        timeout: 120_000,
+      },
 });
