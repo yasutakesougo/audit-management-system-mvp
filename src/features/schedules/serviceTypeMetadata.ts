@@ -18,7 +18,6 @@ export type ServiceTypeMeta = {
   label: string;
   color: ServiceTypeColor;
 };
-
 export type ServiceTypeColor = 'default' | 'primary' | 'secondary' | 'info' | 'success' | 'warning' | 'error';
 
 const RAW_TO_KEY: { [key: string]: ServiceTypeKey } = {
@@ -91,8 +90,12 @@ export const SERVICE_TYPE_META: Record<ServiceTypeKey, ServiceTypeMeta> = (Objec
     return acc;
   }, {} as Record<ServiceTypeKey, ServiceTypeMeta>);
 
-const normalize = (value: string): string => value.trim();
+export const getServiceTypeMeta = (key?: ServiceTypeKey | null): ServiceTypeMeta => {
+  if (!key) return SERVICE_TYPE_META.other;
+  return SERVICE_TYPE_META[key] ?? SERVICE_TYPE_META.other;
+};
 
+const normalize = (value: string): string => value.trim();
 const normalizeViaSharePoint = (value: string): ServiceTypeKey | null => {
   const normalized = normalizeSharePointServiceType(value);
   if (!normalized) return null;
@@ -108,9 +111,9 @@ export const normalizeServiceType = (raw?: string | null): ServiceTypeKey => {
   const fromSharePoint = normalizeViaSharePoint(v);
   if (fromSharePoint) return fromSharePoint;
 
+  // Direct match in metadata
   if ((Object.keys(SERVICE_TYPE_META) as ServiceTypeKey[]).includes(v as ServiceTypeKey)) {
     return v as ServiceTypeKey;
   }
-
   return RAW_TO_KEY[v] ?? 'other';
 };

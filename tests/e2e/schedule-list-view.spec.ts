@@ -114,6 +114,7 @@ test.describe('schedule list view', () => {
       window.localStorage.setItem('writeEnabled', '1');
       window.localStorage.setItem('feature:schedules', '1');
       window.localStorage.setItem('feature:schedulesSp', '1');
+      // Force legacy list view mode (Week v2 OFF) for stable list tab testing
       window.localStorage.setItem('feature:schedulesWeekV2', '0');
       window.localStorage.setItem('schedules:fixtures', '0');
       (window as typeof window & { __TEST_NOW__?: string }).__TEST_NOW__ = now;
@@ -145,6 +146,7 @@ test.describe('schedule list view', () => {
         VITE_SKIP_LOGIN: '1',
         VITE_DEMO_MODE: '0',
         VITE_FEATURE_SCHEDULES: '1',
+        // Force legacy list view for stable testing (Week v2 OFF)
         VITE_FEATURE_SCHEDULES_WEEK_V2: '0',
         VITE_FEATURE_SCHEDULES_SP: '1',
         VITE_FEATURE_SCHEDULES_GRAPH: '0',
