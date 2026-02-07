@@ -31,6 +31,7 @@ const TimeBasedSupportRecordPage: React.FC = () => {
   const [isEditOpen, setIsEditOpen] = useState(false);
   const [selectedStepId, setSelectedStepId] = useState<string | null>(null);
   const [scrollToStepId, setScrollToStepId] = useState<string | null>(null);
+  const [showUnfilledOnly, setShowUnfilledOnly] = useState(false);
   const recordDate = useMemo(() => new Date(), []);
   const { add, data: behaviorRecords, fetchByUser } = useBehaviorStore();
   const { getByUser, save } = useProcedureStore();
@@ -54,6 +55,10 @@ const TimeBasedSupportRecordPage: React.FC = () => {
     });
     return filled;
   }, [schedule, recentObservations]);
+  const unfilledStepIds = useMemo(
+    () => scheduleKeys.filter((key) => !filledStepIds.has(key)),
+    [scheduleKeys, filledStepIds]
+  );
   const recordLockState = useMemo<RecordPanelLockState>(() => {
     if (!targetUserId) return 'no-user';
     return isAcknowledged ? 'unlocked' : 'unconfirmed';
@@ -92,6 +97,17 @@ const TimeBasedSupportRecordPage: React.FC = () => {
     }
   }, [schedule, scheduleKeys, selectedStepId]);
 
+  useEffect(() => {
+    if (!showUnfilledOnly) return;
+    const nextTarget = unfilledStepIds[0] ?? null;
+    if (!nextTarget) return;
+    if (selectedStepId === nextTarget && scrollToStepId === nextTarget) return;
+    if (!selectedStepId || filledStepIds.has(selectedStepId)) {
+      setSelectedStepId(nextTarget);
+      setScrollToStepId(nextTarget);
+    }
+  }, [filledStepIds, scrollToStepId, selectedStepId, showUnfilledOnly, unfilledStepIds]);
+
   const handleRecordSubmit = useCallback(async (payload: Omit<BehaviorObservation, 'id' | 'userId'>) => {
     if (!targetUserId) return;
     await add({
@@ -106,10 +122,19 @@ const TimeBasedSupportRecordPage: React.FC = () => {
     if (!sourceId) return;
     const currentIndex = scheduleKeys.indexOf(sourceId);
     if (currentIndex < 0) return;
-    const nextId = scheduleKeys[currentIndex + 1] ?? sourceId;
+    let nextId = scheduleKeys[currentIndex + 1] ?? sourceId;
+    if (showUnfilledOnly) {
+      for (let i = currentIndex + 1; i < scheduleKeys.length; i += 1) {
+        const candidate = scheduleKeys[i];
+        if (candidate !== sourceId && !filledStepIds.has(candidate)) {
+          nextId = candidate;
+          break;
+        }
+      }
+    }
     setSelectedStepId(nextId);
     setScrollToStepId(nextId);
-  }, [scheduleKeys, selectedStepId]);
+  }, [filledStepIds, scheduleKeys, selectedStepId, showUnfilledOnly]);
 
   const handleUserChange = useCallback((event: SelectChangeEvent<string>) => {
     setTargetUserId(event.target.value);
@@ -211,6 +236,8 @@ const TimeBasedSupportRecordPage: React.FC = () => {
               }}
               filledStepIds={filledStepIds}
               scrollToStepId={scrollToStepId}
+              showUnfilledOnly={showUnfilledOnly}
+              onToggleUnfilledOnly={() => setShowUnfilledOnly((prev) => !prev)}
             />
           ) : (
             <ProcedurePanel title="支援手順 (Plan)">

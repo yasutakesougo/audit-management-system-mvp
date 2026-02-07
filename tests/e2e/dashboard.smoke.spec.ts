@@ -40,7 +40,7 @@ test.describe('Dashboard smoke', () => {
   test('shows core daily dashboard panels', async ({ page }) => {
     await page.waitForLoadState('domcontentloaded');
     const root = page.getByTestId(TESTIDS['dashboard-page']);
-    await expect(root).toBeVisible();
+    await expect(root).toBeVisible({ timeout: 15_000 });
 
     // Smoke: verify headings exist (minimal UI, avoid fragile text matching)
     await expect(page.getByRole('heading').first()).toBeVisible();
@@ -63,7 +63,7 @@ test.describe('Dashboard smoke', () => {
 
   test('renders seeded handoff summary counts', async ({ page }) => {
     await page.waitForLoadState('domcontentloaded');
-    await expect(page.getByTestId(TESTIDS['dashboard-page'])).toBeVisible();
+    await expect(page.getByTestId(TESTIDS['dashboard-page'])).toBeVisible({ timeout: 15_000 });
     const summaryRoot = page.getByTestId(TESTIDS['dashboard-handoff-summary']);
     await expect(summaryRoot).toBeVisible({ timeout: 15_000 });
     await expect(

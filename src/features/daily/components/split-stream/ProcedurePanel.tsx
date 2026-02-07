@@ -9,6 +9,7 @@ import IconButton from '@mui/material/IconButton';
 import List from '@mui/material/List';
 import ListItem from '@mui/material/ListItem';
 import ListItemText from '@mui/material/ListItemText';
+import ToggleButton from '@mui/material/ToggleButton';
 import Typography from '@mui/material/Typography';
 import type { ReactNode } from 'react';
 import { useCallback, useEffect, useMemo, useRef } from 'react';
@@ -32,6 +33,8 @@ type GuidedProcedurePanelProps = {
   onSelectStep?: (step: ScheduleItem, stepId: string) => void;
   filledStepIds?: Set<string>;
   scrollToStepId?: string | null;
+  showUnfilledOnly?: boolean;
+  onToggleUnfilledOnly?: () => void;
   children?: undefined;
 };
 
@@ -76,12 +79,19 @@ export function ProcedurePanel(props: ProcedurePanelProps): JSX.Element {
     selectedStepId,
     onSelectStep,
     filledStepIds,
-    scrollToStepId
+    scrollToStepId,
+    showUnfilledOnly,
+    onToggleUnfilledOnly
   } = props;
   const scrollRef = useRef<HTMLDivElement>(null);
   const itemRefs = useRef(new Map<string, HTMLLIElement | null>());
 
   const scheduleKeys = useMemo(() => schedule.map((item) => getItemScheduleKey(item)), [schedule]);
+  const visibleSchedule = useMemo(() => {
+    if (!showUnfilledOnly) return schedule;
+    if (!filledStepIds) return schedule;
+    return schedule.filter((item) => !filledStepIds.has(getItemScheduleKey(item)));
+  }, [filledStepIds, schedule, showUnfilledOnly]);
 
   const handleScroll = useCallback(() => {
     if (!scrollRef.current || isAcknowledged) return;
@@ -122,6 +132,18 @@ export function ProcedurePanel(props: ProcedurePanelProps): JSX.Element {
               <EditIcon fontSize="small" />
             </IconButton>
           )}
+          {onToggleUnfilledOnly && (
+            <ToggleButton
+              value="unfilled"
+              selected={Boolean(showUnfilledOnly)}
+              onChange={onToggleUnfilledOnly}
+              size="small"
+              color="primary"
+              sx={{ ml: 'auto' }}
+            >
+              未記入のみ
+            </ToggleButton>
+          )}
         </Box>
       </CardContent>
 
@@ -132,7 +154,7 @@ export function ProcedurePanel(props: ProcedurePanelProps): JSX.Element {
         data-testid="procedure-scroll-container"
       >
         <List disablePadding>
-          {schedule.map((item) => {
+          {visibleSchedule.map((item) => {
             const stepId = getItemScheduleKey(item);
             const isFilled = filledStepIds?.has(stepId) ?? false;
             const isSelected = selectedStepId === stepId;
@@ -216,6 +238,14 @@ export function ProcedurePanel(props: ProcedurePanelProps): JSX.Element {
           );
           })}
         </List>
+
+        {showUnfilledOnly && visibleSchedule.length === 0 && (
+          <Box sx={{ p: 3, textAlign: 'center' }}>
+            <Typography variant="body2" color="text.secondary">
+              未記入の手順はありません。
+            </Typography>
+          </Box>
+        )}
 
         <Box sx={{ p: 3, textAlign: 'center', bgcolor: isAcknowledged ? 'success.50' : 'error.50' }}>
           <Typography variant="body2" fontWeight="bold" gutterBottom>
