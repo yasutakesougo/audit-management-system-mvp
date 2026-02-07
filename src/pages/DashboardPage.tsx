@@ -1361,6 +1361,35 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ audience = 'staff' }) => 
               </Button>
             </Stack>
           </Box>
+          {vm.briefingChips.length > 0 && (
+            <Stack
+              direction={{ xs: 'column', sm: 'row' }}
+              spacing={1}
+              alignItems={{ xs: 'flex-start', sm: 'center' }}
+              component={Link}
+              to="/dashboard/briefing"
+              sx={{
+                mt: 1,
+                textDecoration: 'none',
+                color: 'inherit',
+                cursor: 'pointer',
+              }}
+            >
+              <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 700 }}>
+                今日の要点
+              </Typography>
+              <Stack direction="row" spacing={0.75} flexWrap="wrap" useFlexGap>
+                {vm.briefingChips.map((chip) => (
+                  <Chip
+                    key={chip.key}
+                    size="small"
+                    color={chip.kind}
+                    label={chip.label}
+                  />
+                ))}
+              </Stack>
+            </Stack>
+          )}
         </Box>
 
         <Stack spacing={{ xs: 2, sm: 3, md: 4 }} sx={{ mb: { xs: 2, sm: 3 } }}>

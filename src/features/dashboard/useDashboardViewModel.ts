@@ -26,10 +26,30 @@ export type DashboardSection = {
   enabled?: boolean;
 };
 
+export type DashboardBriefingChip = {
+  key: 'attention' | 'pending' | 'absence' | 'late' | 'out-staff';
+  label: string;
+  count: number;
+  kind: 'default' | 'info' | 'warning' | 'error';
+};
+
 export type DashboardViewModel<TSummary = unknown> = {
   role: DashboardRole;
   summary: TSummary;
   sections: DashboardSection[];
+  briefingChips: DashboardBriefingChip[];
+};
+
+type DashboardSummaryInfo = {
+  handoff?: {
+    byStatus?: Record<string, number>;
+    critical?: number;
+  };
+  attendanceSummary?: {
+    absenceCount?: number;
+    lateOrEarlyLeave?: number;
+    outStaff?: number;
+  };
 };
 
 export type UseDashboardViewModelParams<TSummary = unknown> = {
@@ -66,6 +86,63 @@ export function useDashboardViewModel<TSummary = unknown>(
     });
   }, [role, sectionKeys]);
 
+  const briefingChips = useMemo<DashboardBriefingChip[]>(() => {
+    const summaryInfo = summary as DashboardSummaryInfo;
+    const chips: DashboardBriefingChip[] = [];
+
+    const critical = summaryInfo?.handoff?.critical ?? 0;
+    if (critical > 0) {
+      chips.push({
+        key: 'attention',
+        label: `注意 ${critical}`,
+        count: critical,
+        kind: 'error',
+      });
+    }
+
+    const pending = summaryInfo?.handoff?.byStatus?.['未対応'] ?? 0;
+    if (pending > 0) {
+      chips.push({
+        key: 'pending',
+        label: `未対応 ${pending}`,
+        count: pending,
+        kind: 'warning',
+      });
+    }
+
+    const absence = summaryInfo?.attendanceSummary?.absenceCount ?? 0;
+    if (absence > 0) {
+      chips.push({
+        key: 'absence',
+        label: `欠席 ${absence}`,
+        count: absence,
+        kind: 'default',
+      });
+    }
+
+    const late = summaryInfo?.attendanceSummary?.lateOrEarlyLeave ?? 0;
+    if (late > 0) {
+      chips.push({
+        key: 'late',
+        label: `遅刻・早退 ${late}`,
+        count: late,
+        kind: 'info',
+      });
+    }
+
+    const outStaff = summaryInfo?.attendanceSummary?.outStaff ?? 0;
+    if (outStaff > 0) {
+      chips.push({
+        key: 'out-staff',
+        label: `外出スタッフ ${outStaff}`,
+        count: outStaff,
+        kind: 'info',
+      });
+    }
+
+    return chips;
+  }, [summary]);
+
   useEffect(() => {
     if (!import.meta.env.DEV) return;
     const keys = sections.map((section) => section.key);
@@ -88,7 +165,8 @@ export function useDashboardViewModel<TSummary = unknown>(
       role,
       summary,
       sections,
+      briefingChips,
     }),
-    [role, summary, sections],
+    [role, summary, sections, briefingChips],
   );
 }
