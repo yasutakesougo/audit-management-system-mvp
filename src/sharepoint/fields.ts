@@ -68,6 +68,80 @@ export const STAFF_ATTENDANCE_SELECT_FIELDS = [
   STAFF_ATTENDANCE_FIELDS.note,
 ] as const;
 
+// ──────────────────────────────────────────────────────────────
+// User Attendance Users (SharePoint list: AttendanceUsers)
+// ──────────────────────────────────────────────────────────────
+
+export const ATTENDANCE_USERS_LIST_TITLE = 'AttendanceUsers' as const;
+
+export const ATTENDANCE_USERS_FIELDS = {
+  id: 'Id',
+  title: 'Title',
+  userCode: 'UserCode',
+  isTransportTarget: 'IsTransportTarget',
+  standardMinutes: 'StandardMinutes',
+  isActive: 'IsActive',
+} as const;
+
+export const ATTENDANCE_USERS_SELECT_FIELDS = [
+  ATTENDANCE_USERS_FIELDS.id,
+  ATTENDANCE_USERS_FIELDS.title,
+  ATTENDANCE_USERS_FIELDS.userCode,
+  ATTENDANCE_USERS_FIELDS.isTransportTarget,
+  ATTENDANCE_USERS_FIELDS.standardMinutes,
+  ATTENDANCE_USERS_FIELDS.isActive,
+] as const;
+
+// ──────────────────────────────────────────────────────────────
+// User Attendance Daily (SharePoint list: AttendanceDaily)
+// ──────────────────────────────────────────────────────────────
+
+export const ATTENDANCE_DAILY_LIST_TITLE = 'AttendanceDaily' as const;
+
+export const ATTENDANCE_DAILY_FIELDS = {
+  id: 'Id',
+  key: 'Key',
+  userCode: 'UserCode',
+  recordDate: 'RecordDate',
+  status: 'Status',
+  checkInAt: 'CheckInAt',
+  checkOutAt: 'CheckOutAt',
+  cntAttendIn: 'CntAttendIn',
+  cntAttendOut: 'CntAttendOut',
+  transportTo: 'TransportTo',
+  transportFrom: 'TransportFrom',
+  providedMinutes: 'ProvidedMinutes',
+  isEarlyLeave: 'IsEarlyLeave',
+  userConfirmedAt: 'UserConfirmedAt',
+  absentMorningContacted: 'AbsentMorningContacted',
+  absentMorningMethod: 'AbsentMorningMethod',
+  eveningChecked: 'EveningChecked',
+  eveningNote: 'EveningNote',
+  isAbsenceAddonClaimable: 'IsAbsenceAddonClaimable',
+} as const;
+
+export const ATTENDANCE_DAILY_SELECT_FIELDS = [
+  ATTENDANCE_DAILY_FIELDS.id,
+  ATTENDANCE_DAILY_FIELDS.key,
+  ATTENDANCE_DAILY_FIELDS.userCode,
+  ATTENDANCE_DAILY_FIELDS.recordDate,
+  ATTENDANCE_DAILY_FIELDS.status,
+  ATTENDANCE_DAILY_FIELDS.checkInAt,
+  ATTENDANCE_DAILY_FIELDS.checkOutAt,
+  ATTENDANCE_DAILY_FIELDS.cntAttendIn,
+  ATTENDANCE_DAILY_FIELDS.cntAttendOut,
+  ATTENDANCE_DAILY_FIELDS.transportTo,
+  ATTENDANCE_DAILY_FIELDS.transportFrom,
+  ATTENDANCE_DAILY_FIELDS.providedMinutes,
+  ATTENDANCE_DAILY_FIELDS.isEarlyLeave,
+  ATTENDANCE_DAILY_FIELDS.userConfirmedAt,
+  ATTENDANCE_DAILY_FIELDS.absentMorningContacted,
+  ATTENDANCE_DAILY_FIELDS.absentMorningMethod,
+  ATTENDANCE_DAILY_FIELDS.eveningChecked,
+  ATTENDANCE_DAILY_FIELDS.eveningNote,
+  ATTENDANCE_DAILY_FIELDS.isAbsenceAddonClaimable,
+] as const;
+
 export interface IUserMaster {
   Id: number;
   Title?: string | null;
@@ -154,6 +228,8 @@ export enum ListKeys {
   OrgMaster = 'Org_Master',
   StaffAttendance = 'Staff_Attendance',
   DiagnosticsReports = 'Diagnostics_Reports',
+  AttendanceUsers = 'AttendanceUsers',
+  AttendanceDaily = 'AttendanceDaily',
 }
 
 export const LIST_CONFIG: Record<ListKeys, { title: string }> = {
@@ -166,6 +242,8 @@ export const LIST_CONFIG: Record<ListKeys, { title: string }> = {
   [ListKeys.OrgMaster]: { title: 'Org_Master' },
   [ListKeys.StaffAttendance]: { title: 'Staff_Attendance' },
   [ListKeys.DiagnosticsReports]: { title: 'Diagnostics_Reports' },
+  [ListKeys.AttendanceUsers]: { title: 'AttendanceUsers' },
+  [ListKeys.AttendanceDaily]: { title: 'AttendanceDaily' },
 };
 
 export const FIELD_MAP = {

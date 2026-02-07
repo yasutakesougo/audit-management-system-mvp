@@ -1,3 +1,4 @@
+/* eslint-disable boundaries/element-types */
 import { ABSENCE_MONTHLY_LIMIT, DISCREPANCY_THRESHOLD } from '@/config/serviceRecords';
 import { getFlag } from '@/env';
 import {
@@ -13,6 +14,17 @@ import {
     type AttendanceUser,
     type AttendanceVisit,
 } from '@/features/attendance/attendance.logic';
+import { 
+  getActiveUsers,
+  type AttendanceUserItem 
+} from '@/features/attendance/infra/attendanceUsersRepository';
+import { 
+  getDailyByDate,
+  upsertDailyByKey,
+  type AttendanceDailyItem 
+} from '@/features/attendance/infra/attendanceDailyRepository';
+import { useAuth } from '@/auth/useAuth';
+import { createSpClient, ensureConfig } from '@/lib/spClient';
 import { warmDataEntryComponents } from '@/mui/warm';
 import { TESTIDS } from '@/testids';
 import TransportIcon from '@mui/icons-material/AirportShuttle';
@@ -114,6 +126,7 @@ const AttendanceRecordPage: React.FC<AttendanceRecordPageProps> = ({ 'data-testi
     return () => window.clearTimeout(timer);
   }, [undo]);
   const today = useMemo(() => new Date().toISOString().split('T')[0], []);
+  const [loading, setLoading] = useState(true);
   const [users, setUsers] = useState<AttendanceUser[]>(initialUsers);
   const [visits, setVisits] = useState<Record<string, AttendanceVisit>>(() =>
     buildInitialVisits(initialUsers, today)
@@ -121,6 +134,127 @@ const AttendanceRecordPage: React.FC<AttendanceRecordPageProps> = ({ 'data-testi
   const [absenceDialog, setAbsenceDialog] = useState<AbsenceDialogState | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [filterStatus, setFilterStatus] = useState<FilterStatus>('all');
+
+  // SharePoint client setup
+  const { acquireToken } = useAuth();
+  const spClient = useMemo(() => {
+    if (!acquireToken) return null;
+    try {
+      return createSpClient(acquireToken, ensureConfig().baseUrl);
+    } catch {
+      return null;
+    }
+  }, [acquireToken]);
+
+  // Map SharePoint items to local types
+  const mapUserItem = (item: AttendanceUserItem): AttendanceUser => ({
+    userCode: item.UserCode,
+    userName: item.Title,
+    isTransportTarget: item.IsTransportTarget,
+    absenceClaimedThisMonth: 0, // TODO: 月次集計から取得
+    standardMinutes: item.StandardMinutes,
+  });
+
+  const mapDailyToVisit = (item: AttendanceDailyItem): AttendanceVisit => ({
+    userCode: item.UserCode,
+    status: item.Status as AttendanceVisit['status'],
+    recordDate: item.RecordDate,
+    cntAttendIn: item.CntAttendIn ?? 0,
+    cntAttendOut: item.CntAttendOut ?? 0,
+    transportTo: item.TransportTo ?? false,
+    transportFrom: item.TransportFrom ?? false,
+    isEarlyLeave: item.IsEarlyLeave ?? false,
+    absentMorningContacted: item.AbsentMorningContacted ?? false,
+    absentMorningMethod: (item.AbsentMorningMethod as AbsentMethod) ?? '',
+    eveningChecked: item.EveningChecked ?? false,
+    eveningNote: item.EveningNote ?? '',
+    isAbsenceAddonClaimable: item.IsAbsenceAddonClaimable ?? false,
+    providedMinutes: item.ProvidedMinutes ?? 0,
+    userConfirmedAt: item.UserConfirmedAt ?? undefined,
+    checkInAt: item.CheckInAt ?? undefined,
+    checkOutAt: item.CheckOutAt ?? undefined,
+  });
+
+  // Load data on mount
+  useEffect(() => {
+    const loadData = async () => {
+      if (!spClient) {
+        // Demo mode: use initialUsers
+        setLoading(false);
+        return;
+      }
+
+      try {
+        // 1. Load AttendanceUsers
+        const userItems = await getActiveUsers(spClient);
+        const loadedUsers = userItems.map(mapUserItem);
+        setUsers(loadedUsers);
+
+        // 2. Load today's AttendanceDaily
+        const dailyItems = await getDailyByDate(spClient, today);
+        const loadedVisits: Record<string, AttendanceVisit> = {};
+        
+        dailyItems.forEach((item) => {
+          loadedVisits[item.UserCode] = mapDailyToVisit(item);
+        });
+
+        // 3. Fill in missing users with initial visits
+        const initialVisits = buildInitialVisits(loadedUsers, today);
+        loadedUsers.forEach((user) => {
+          if (!loadedVisits[user.userCode]) {
+            loadedVisits[user.userCode] = initialVisits[user.userCode];
+          }
+        });
+
+        setVisits(loadedVisits);
+        setLoading(false);
+      } catch (error) {
+        console.error('Failed to load attendance data:', error);
+        openToast('データの読み込みに失敗しました', 'error');
+        setLoading(false);
+      }
+    };
+
+    loadData();
+  }, [spClient, today]);
+
+  // Save visit to SharePoint
+  const saveVisit = useCallback(async (userCode: string) => {
+    if (!spClient) return; // Demo mode: no save
+
+    const visit = visits[userCode];
+    const user = users.find(u => u.userCode === userCode);
+    if (!visit || !user) return;
+
+    const key = `${userCode}|${today}`;
+    const item: AttendanceDailyItem = {
+      Key: key,
+      UserCode: userCode,
+      RecordDate: today,
+      Status: visit.status,
+      CheckInAt: visit.checkInAt ?? null,
+      CheckOutAt: visit.checkOutAt ?? null,
+      CntAttendIn: visit.cntAttendIn ?? 0,
+      CntAttendOut: visit.cntAttendOut ?? 0,
+      TransportTo: !!visit.transportTo,
+      TransportFrom: !!visit.transportFrom,
+      ProvidedMinutes: visit.providedMinutes ?? null,
+      IsEarlyLeave: !!visit.isEarlyLeave,
+      UserConfirmedAt: visit.userConfirmedAt ?? null,
+      AbsentMorningContacted: !!visit.absentMorningContacted,
+      AbsentMorningMethod: visit.absentMorningMethod ?? '',
+      EveningChecked: !!visit.eveningChecked,
+      EveningNote: visit.eveningNote ?? '',
+      IsAbsenceAddonClaimable: !!visit.isAbsenceAddonClaimable,
+    };
+
+    try {
+      await upsertDailyByKey(spClient, item);
+    } catch (error) {
+      console.error('Failed to save visit:', error);
+      openToast('保存に失敗しました', 'error');
+    }
+  }, [spClient, visits, users, today]);
 
   // 乖離件数（サマリー用）
   const discrepancyCount = useMemo(
@@ -176,7 +310,7 @@ const AttendanceRecordPage: React.FC<AttendanceRecordPageProps> = ({ 'data-testi
     return filtered;
   }, [users, searchQuery, filterStatus, visits]);
 
-  const handleCheckIn = useCallback((user: AttendanceUser) => {
+  const handleCheckIn = useCallback(async (user: AttendanceUser) => {
     setVisits((prev) => {
       const current = prev[user.userCode];
       if (!current || current.status === '当日欠席' || current.cntAttendIn === 1) {
@@ -199,9 +333,12 @@ const AttendanceRecordPage: React.FC<AttendanceRecordPageProps> = ({ 'data-testi
       };
     });
     openToast(`${user.userName}さんが通所しました`, 'success', { keepUndo: true });
-  }, []);
 
-  const handleCheckOut = useCallback((user: AttendanceUser) => {
+    // Save to SharePoint after state update
+    await saveVisit(user.userCode);
+  }, [saveVisit]);
+
+  const handleCheckOut = useCallback(async (user: AttendanceUser) => {
     setVisits((prev) => {
       const current = prev[user.userCode];
       if (!canCheckOut(current)) {
@@ -225,9 +362,12 @@ const AttendanceRecordPage: React.FC<AttendanceRecordPageProps> = ({ 'data-testi
       };
     });
     openToast(`${user.userName}さんが退所しました`, 'success', { keepUndo: true });
-  }, []);
 
-  const handleTransportToggle = (user: AttendanceUser, field: 'transportTo' | 'transportFrom') => {
+    // Save to SharePoint after state update
+    await saveVisit(user.userCode);
+  }, [saveVisit]);
+
+  const handleTransportToggle = async (user: AttendanceUser, field: 'transportTo' | 'transportFrom') => {
     setVisits((prev) => {
       const current = prev[user.userCode];
       if (!current || !user.isTransportTarget) {
@@ -241,6 +381,9 @@ const AttendanceRecordPage: React.FC<AttendanceRecordPageProps> = ({ 'data-testi
         }
       };
     });
+    
+    // Save to SharePoint after state update
+    await saveVisit(user.userCode);
   };
 
   const openAbsenceDialog = (user: AttendanceUser) => {
@@ -258,7 +401,7 @@ const AttendanceRecordPage: React.FC<AttendanceRecordPageProps> = ({ 'data-testi
 
   const closeAbsenceDialog = () => setAbsenceDialog(null);
 
-  const handleAbsenceSave = () => {
+  const handleAbsenceSave = async () => {
     if (!absenceDialog) return;
     const { user, visit, morningContacted, morningMethod, eveningChecked, eveningNote } =
       absenceDialog;
@@ -292,14 +435,20 @@ const AttendanceRecordPage: React.FC<AttendanceRecordPageProps> = ({ 'data-testi
     } else {
       openToast(`${user.userName}さんの欠席を記録しました（加算対象外）`, 'warning');
     }
-  closeAbsenceDialog();
+    closeAbsenceDialog();
+    
+    // Save to SharePoint after state update
+    await saveVisit(user.userCode);
   };
 
-  const handleReset = (user: AttendanceUser) => {
+  const handleReset = async (user: AttendanceUser) => {
     setVisits((prev) => ({
       ...prev,
       [user.userCode]: buildInitialVisits([user], today)[user.userCode]
     }));
+    
+    // Save to SharePoint after state update
+    await saveVisit(user.userCode);
   };
 
   return (
@@ -340,28 +489,37 @@ const AttendanceRecordPage: React.FC<AttendanceRecordPageProps> = ({ 'data-testi
             </Alert>
           </Snackbar>
         )}
-        <Stack spacing={3}>
-        <Stack spacing={1}>
-          <Typography variant="h3" component="h1" data-testid="heading-attendance">
-            通所実績入力（サンプル）
-          </Typography>
-          <Typography color="text.secondary">
-            押したら即反映する想定で、通所・送迎・欠席加算の状態変化をタブレットで確認できます。
-          </Typography>
-        </Stack>
 
-        <Card>
-          <CardContent>
-            <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2} flexWrap="wrap">
-              <Chip icon={<AttendanceIcon />} color="primary" label={`通所 ${summary.attendIn}`} />
-              <Chip icon={<CheckIcon />} color="success" label={`退所 ${summary.attendOut}`} />
-              <Chip icon={<BusIcon />} color="secondary" label={`送迎 行き ${summary.transportTo}`} />
-              <Chip icon={<BusIcon />} color="secondary" label={`送迎 帰り ${summary.transportFrom}`} />
-              <Chip icon={<AbsenceIcon />} color="warning" label={`欠席加算 ${summary.absenceAddon}`} />
-          <Chip label={`乖離あり ${discrepancyCount}`} variant="outlined" data-testid="chip-discrepancy" />
-            </Stack>
-          </CardContent>
-        </Card>
+        {loading ? (
+          <Stack spacing={2} alignItems="center" sx={{ py: 8 }}>
+            <Typography variant="h6" color="text.secondary">
+              データを読み込んでいます...
+            </Typography>
+          </Stack>
+        ) : (
+          <>
+            <Stack spacing={3}>
+              <Stack spacing={1}>
+                <Typography variant="h3" component="h1" data-testid="heading-attendance">
+                  通所実績入力（サンプル）
+                </Typography>
+                <Typography color="text.secondary">
+                  押したら即反映する想定で、通所・送迎・欠席加算の状態変化をタブレットで確認できます。
+                </Typography>
+              </Stack>
+
+              <Card>
+                <CardContent>
+                  <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2} flexWrap="wrap">
+                    <Chip icon={<AttendanceIcon />} color="primary" label={`通所 ${summary.attendIn}`} />
+                    <Chip icon={<CheckIcon />} color="success" label={`退所 ${summary.attendOut}`} />
+                    <Chip icon={<BusIcon />} color="secondary" label={`送迎 行き ${summary.transportTo}`} />
+                    <Chip icon={<BusIcon />} color="secondary" label={`送迎 帰り ${summary.transportFrom}`} />
+                    <Chip icon={<AbsenceIcon />} color="warning" label={`欠席加算 ${summary.absenceAddon}`} />
+                    <Chip label={`乖離あり ${discrepancyCount}`} variant="outlined" data-testid="chip-discrepancy" />
+                  </Stack>
+                </CardContent>
+              </Card>
 
         {/* 検索・フィルタ機能 */}
         <Card>
@@ -560,15 +718,16 @@ const AttendanceRecordPage: React.FC<AttendanceRecordPageProps> = ({ 'data-testi
                                   <Button
                                     variant="outlined"
                                     color="success"
-                                    onClick={() => {
-                                      setVisits(prev => ({
+                                    onClick={async () => {
+                                      setVisits((prev) => ({
                                         ...prev,
                                         [user.userCode]: {
                                           ...prev[user.userCode],
-                                          userConfirmedAt: prev[user.userCode].userConfirmedAt ?? new Date().toISOString()
-                                        }
+                                          userConfirmedAt: prev[user.userCode].userConfirmedAt ?? new Date().toISOString(),
+                                        },
                                       }));
                                       openToast('保存しました', 'success');
+                                      await saveVisit(user.userCode);
                                     }}
                                     disabled={disabledFinal}
                                     startIcon={<CheckIcon />}
@@ -834,6 +993,8 @@ const AttendanceRecordPage: React.FC<AttendanceRecordPageProps> = ({ 'data-testi
           </Button>
         </DialogActions>
       </Dialog>
+      </>
+    )}
       </Container>
     </FullScreenDailyDialogPage>
   );
