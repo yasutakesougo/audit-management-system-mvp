@@ -9,18 +9,6 @@ declare module '@/ui/components/RecurrenceChip' {
   export default RecurrenceChip;
 }
 
-declare module '@/features/schedule/write' {
-  import type { UseSP } from '@/lib/spClient';
-
-  export type UpdateScheduleRequest = {
-    id: number;
-    etag?: string;
-    patch: Record<string, unknown>;
-  };
-
-  export function updateSchedule(sp: UseSP, request: UpdateScheduleRequest): Promise<void>;
-}
-
 declare module '@/hooks/useFiltersSync' {
   import type { MutableRefObject } from 'react';
   export type UseFiltersSyncOptions<T> = {
@@ -65,51 +53,11 @@ declare module '@/features/schedule/dateutils.local' {
   };
 }
 
-declare module '@/features/schedule/move' {
-  import type { Schedule } from '@/features/schedule/types';
-  export function moveScheduleToDay(schedule: Schedule, day: string): Schedule;
-}
-
-declare module '@/features/schedule/workPattern' {
-  import type { BaseShiftWarning, Schedule } from '@/features/schedule/types';
-  import type { Staff } from '@/types';
-  export type StaffPatternIndex = Record<string, {
-    staffId: string;
-    staffName?: string;
-    workDays?: string[];
-    baseWorkingDays?: string[];
-  }>;
-  export function summarizeBaseShiftWarnings(warnings?: BaseShiftWarning[]): string;
-  export function collectBaseShiftWarnings(schedule: Schedule, index?: StaffPatternIndex | null): BaseShiftWarning[];
-  export function buildStaffPatternIndex(staff: Staff[] | null | undefined): StaffPatternIndex | null;
-}
-
-declare module '@/features/schedule/presenters/format' {
-  type ScheduleLike = {
-    start?: string | null;
-    end?: string | null;
-    startLocal?: string | null;
-    endLocal?: string | null;
-    startUtc?: string | null;
-    endUtc?: string | null;
-    audience?: string[] | null;
-    targetUserNames?: string[] | null;
-    location?: string | null;
-  };
-  export function formatOrgSubtitle(schedule: ScheduleLike): string;
-}
 
 declare module '../dateutils.local' {
   export * from '@/features/schedule/dateutils.local';
 }
 
-declare module '../workPattern' {
-  export * from '@/features/schedule/workPattern';
-}
-
-declare module '../presenters/format' {
-  export * from '@/features/schedule/presenters/format';
-}
 
 declare module '@/features/users/attendance' {
   export function normalizeAttendanceDays(input: unknown): string[];
