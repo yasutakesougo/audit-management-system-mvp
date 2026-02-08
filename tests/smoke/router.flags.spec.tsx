@@ -94,7 +94,6 @@ vi.mock('@/features/schedule/useSchedulesToday', () => ({
 }));
 
 import App from '../../src/App';
-import { TESTIDS } from '../../src/testids';
 
 /**
  * Router Future Flags スモークテスト
@@ -140,7 +139,7 @@ describe('router future flags smoke', () => {
     expect(await screen.findByTestId(TESTIDS['audit-heading'])).toBeInTheDocument();
 
     await user.click(screen.getByTestId(TESTIDS.nav.daily));
-    expect(await screen.findByTestId('daily-hub-root')).toBeInTheDocument();
+    expect(await screen.findByTestId('daily-table-root')).toBeInTheDocument();
 
     await user.click(screen.getByTestId(TESTIDS.nav.checklist));
     expect(await screen.findByText('自己点検ビュー')).toBeInTheDocument();
