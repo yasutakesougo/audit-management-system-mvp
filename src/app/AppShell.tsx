@@ -232,7 +232,7 @@ const AppShell: React.FC<{ children: React.ReactNode }> = ({ children }) => {
       {
         label: '日次記録',
         to: '/dailysupport',
-        isActive: (pathname) => pathname.startsWith('/daily'),
+        isActive: (pathname) => pathname === '/dailysupport' || pathname.startsWith('/daily/'),
         icon: AssignmentTurnedInRoundedIcon,
         prefetchKey: PREFETCH_KEYS.dailyMenu,
         testId: TESTIDS.nav.daily,
