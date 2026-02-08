@@ -213,12 +213,14 @@ type TodayHandoffTimelineListProps = {
   timeFilter?: HandoffTimeFilter;
   dayScope?: HandoffDayScope;
   onStatsChange?: (stats: HandoffStats | null) => void;
+  maxItems?: number;
 };
 
 export const TodayHandoffTimelineList: React.FC<TodayHandoffTimelineListProps> = ({
   timeFilter = 'all',
   dayScope = 'today',
   onStatsChange,
+  maxItems,
 }) => {
   const { todayHandoffs, loading, error, updateHandoffStatus } = useHandoffTimeline(timeFilter, dayScope);
 
@@ -232,6 +234,11 @@ export const TodayHandoffTimelineList: React.FC<TodayHandoffTimelineListProps> =
 
     return { total, completed, inProgress, pending };
   }, [safeHandoffs]);
+
+  const visibleHandoffs = useMemo(() => {
+    if (typeof maxItems !== 'number') return safeHandoffs;
+    return safeHandoffs.slice(0, Math.max(0, maxItems));
+  }, [safeHandoffs, maxItems]);
 
   useEffect(() => {
     if (!onStatsChange) {
@@ -338,7 +345,7 @@ export const TodayHandoffTimelineList: React.FC<TodayHandoffTimelineListProps> =
 
       {/* 申し送り一覧 */}
       <Stack spacing={1.5} {...tid(TESTIDS['agenda-timeline-list'])}>
-        {safeHandoffs.map(item => (
+        {visibleHandoffs.map(item => (
           <HandoffItem key={item.id} item={item} onStatusChange={updateHandoffStatus} />
         ))}
       </Stack>
