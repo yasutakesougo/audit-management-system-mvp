@@ -6,6 +6,7 @@ Collected on: 2026-02-05 JST (main + resolver fix)
 - **Total warnings (baseline):** 520
 - **After SchedulesDayPage.tsx fix:** 512 (↓8 violations)
 - **Status:** Warn phase (Phase 1) - collecting baseline before Phase 2B enforcement
+- **Note:** 旧 schedule 系のパスは削除済みのため、このリストからは省略（最新方針は docs/ARCHITECTURE_SCHEDULES.md を参照）。
 
 ## Resolver Fix Applied
 Added `eslint-import-resolver-typescript` to enable @/ path alias resolution:
@@ -16,8 +17,6 @@ Added `eslint-import-resolver-typescript` to enable @/ path alias resolution:
 ## Top 20 Violating Files (Post-fix update)
 
 ```
- 13  features/schedule/views/ListView.tsx
- 12  features/schedule/SchedulePage.tsx
  10  app/AppShell.tsx
  10  pages/DailyPage.tsx
   9  features/operation-hub/useOperationHubData.ts
@@ -25,15 +24,9 @@ Added `eslint-import-resolver-typescript` to enable @/ path alias resolution:
   9  pages/ScheduleCreatePage.tsx
   7  app/ProtectedRoute.tsx
   7  features/schedules/data/sharePointAdapter.ts
-  6  features/schedule/spClient.schedule.org.ts
-  6  features/schedule/spClient.schedule.staff.ts
-  6  features/schedule/spClient.schedule.ts
   5  components/DailyForm.tsx
   5  features/assessment/hooks/useTokuseiSurveyResponses.ts
   5  features/audit/useAuditSyncBatch.core.ts
-  5  features/schedule/pages/SchedulesDayPage.tsx (↓ 13→5)
-  5  features/schedule/spMap.ts
-  5  features/schedule/useSchedulesToday.ts
   5  features/schedules/useSchedules.ts
   5  pages/DashboardPage.tsx
 ```
@@ -41,11 +34,10 @@ Added `eslint-import-resolver-typescript` to enable @/ path alias resolution:
 ## Pattern Demonstrated
 Fixed SchedulesDayPage.tsx by:
 1. Created feature-level index.ts files:
-   - `src/features/schedule/index.ts` (10 public exports)
    - `src/features/schedules/index.ts` (9 public exports)
 2. Converted deep imports to index.ts:
-   - Before: `@/features/schedules/useSchedules`, `@/features/schedule/hooks/useApplyScheduleSuggestion`
-   - After: `@/features/schedules`, `@/features/schedule`
+   - Before: `@/features/schedules/useSchedules`
+   - After: `@/features/schedules`
 3. Result: ✅ 13 violations → 5 (38% reduction)
 
 ## Remaining Issues

@@ -52,7 +52,7 @@
 ### 3.2 SharePoint リストとの対応
 
 - リスト名: `ScheduleEvents`
-- 列は `src/sharepoint/fields.ts` / `src/features/schedule/spMap.ts` に準拠（ハードコード禁止）
+- 列は `src/sharepoint/fields.ts` / `src/features/schedules/data/spRowSchema.ts` に準拠（ハードコード禁止）
 - 主要列マッピング（SharePoint 内部名ベース / 必要に応じて列を追加）:
 
 | 区分 | 内部名 (SP) | 型 | 備考 |
@@ -144,7 +144,7 @@
 - `useSchedulesPort`: Demo/SharePoint 切替条件、返却型の一貫性
 - featureFlags: `resolveFeatureFlags(envOverride)` 分岐、`isAutomationRuntime` の検出
 - ProtectedRoute: flag × skip-login × auth-state 分岐
-- `npm run test:schedule:mini`: Schedule 関連のユニットテスト短縮版（`schedules*` / `schedule*` をまとめて実行）
+- Schedule 関連のユニットテスト短縮版は `schedules*` を対象にする
 
 ### 6.2 E2E（Playwright）
 
@@ -174,4 +174,4 @@
 - Nurse / Audit 連携: 出席 → 実績 → 請求 CSV へのトレーサビリティ
 - スケジュールテンプレート: 曜日パターン定義・月次展開
 
-Schedules Phase 1: /schedules/week is now the primary entry and always renders Schedules V2. The legacy schedule UI is preserved at /schedule/legacy for compatibility and emergency fallback. You can temporarily access legacy via /schedule?ui=legacy.
+Schedules Phase 1: /schedules/week is now the primary entry and always renders Schedules V2. The legacy schedule UI is removed; use /schedules only.
