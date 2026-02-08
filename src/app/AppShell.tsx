@@ -231,7 +231,7 @@ const AppShell: React.FC<{ children: React.ReactNode }> = ({ children }) => {
       },
       {
         label: '日次記録',
-        to: '/daily/table',
+        to: '/dailysupport',
         isActive: (pathname) => pathname.startsWith('/daily'),
         icon: AssignmentTurnedInRoundedIcon,
         prefetchKey: PREFETCH_KEYS.dailyMenu,
@@ -882,7 +882,7 @@ const FooterQuickActions: React.FC = () => {
     {
       key: 'daily-activity',
       label: '支援記録（ケース記録）入力',
-      to: '/daily/table',
+      to: '/dailysupport',
       color: 'primary' as const,
       variant: 'contained' as const,
     },

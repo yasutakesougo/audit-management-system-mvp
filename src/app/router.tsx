@@ -554,8 +554,9 @@ const childRoutes: RouteObject[] = [
       </ProtectedRoute>
     ),
   },
-  { path: 'daily', element: <Navigate to="/daily/table" replace /> },
-  { path: 'daily/menu', element: <SuspendedDailyRecordMenuPage /> },
+  { path: 'daily', element: <Navigate to="/dailysupport" replace /> },
+  { path: 'dailysupport', element: <SuspendedDailyRecordMenuPage /> },
+  { path: 'daily/menu', element: <Navigate to="/dailysupport" replace /> },
   { path: 'daily/table', element: <SuspendedTableDailyRecordPage /> },
   { path: 'daily/activity', element: <SuspendedDailyRecordPage /> },
   { path: 'daily/attendance', element: <SuspendedAttendanceRecordPage /> },
