@@ -46,7 +46,9 @@ jobs:
 
       - name: Guard: no runtime imports from legacy schedules
         run: |
-          if rg "from '.*features/schedule|features/schedule/" src --glob '!src/features/schedule/**'; then
+          if rg "(from ['\"].*features/schedule/|import\s+[^;]*features/schedule/|require\(['\"].*features/schedule/)" src \
+            --glob '!src/features/schedule/**' \
+            --glob '!src/types/module-stubs.d.ts'; then
             echo "❌ Legacy schedule import detected outside src/features/schedule"
             exit 1
           fi

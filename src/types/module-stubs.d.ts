@@ -9,18 +9,6 @@ declare module '@/ui/components/RecurrenceChip' {
   export default RecurrenceChip;
 }
 
-declare module '@/features/schedule/write' {
-  import type { UseSP } from '@/lib/spClient';
-
-  export type UpdateScheduleRequest = {
-    id: number;
-    etag?: string;
-    patch: Record<string, unknown>;
-  };
-
-  export function updateSchedule(sp: UseSP, request: UpdateScheduleRequest): Promise<void>;
-}
-
 declare module '@/hooks/useFiltersSync' {
   import type { MutableRefObject } from 'react';
   export type UseFiltersSyncOptions<T> = {
