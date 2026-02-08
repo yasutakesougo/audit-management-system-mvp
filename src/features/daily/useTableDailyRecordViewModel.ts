@@ -34,7 +34,7 @@ export const useTableDailyRecordViewModel = (): TableDailyRecordViewModel => {
 
   const navigateBackToMenu = useCallback(() => {
     setOpen(false);
-    navigate('/daily/menu', { replace: true });
+    navigate('/dashboard', { replace: true });
   }, [navigate]);
 
   const handleTableSave = useCallback(async (data: TableDailyRecordPayload) => {
@@ -50,7 +50,7 @@ export const useTableDailyRecordViewModel = (): TableDailyRecordViewModel => {
   return {
     open,
     title: '一覧形式ケース記録',
-    backTo: '/daily/menu',
+    backTo: '/dashboard',
     testId: TESTIDS['daily-table-record-page'],
     onClose: navigateBackToMenu,
     onSave: handleTableSave,
