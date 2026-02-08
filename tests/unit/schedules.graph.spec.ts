@@ -1,7 +1,8 @@
-import { makeGraphSchedulesPort } from '@/features/schedules/data';
-import * as env from '@/lib/env';
+import { __resetAppConfigForTests, getAppConfig } from '@/lib/env';
 import type { Event as GraphEvent } from '@microsoft/microsoft-graph-types';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+
+let makeGraphSchedulesPort: typeof import('@/features/schedules/data').makeGraphSchedulesPort;
 
 const from = '2025-10-10T00:00:00Z';
 const to = '2025-10-11T00:00:00Z';
@@ -42,7 +43,15 @@ const createResponse = (options: {
 describe('Graph schedules adapter', () => {
   beforeEach(() => {
     vi.restoreAllMocks();
-    env.__resetAppConfigForTests();
+    __resetAppConfigForTests();
+  });
+
+  beforeEach(async () => {
+    vi.stubEnv('VITE_MSAL_CLIENT_ID', 'e2e-mock-client-id-12345678');
+    vi.stubEnv('VITE_MSAL_TENANT_ID', 'common');
+    if (!makeGraphSchedulesPort) {
+      ({ makeGraphSchedulesPort } = await import('@/features/schedules/data'));
+    }
   });
 
   it('fetches and maps events to sched items', async () => {
@@ -138,8 +147,8 @@ describe('Graph schedules adapter', () => {
   });
 
   it('honours cached responses while the TTL remains valid', async () => {
-    const baseConfig = env.getAppConfig({});
-    vi.spyOn(env, 'getAppConfig').mockReturnValue({
+    const baseConfig = getAppConfig({});
+    vi.spyOn({ getAppConfig }, 'getAppConfig').mockReturnValue({
       ...baseConfig,
       schedulesCacheTtlSec: 120,
     });
@@ -168,8 +177,8 @@ describe('Graph schedules adapter', () => {
   });
 
   it('returns the existing in-flight promise for duplicate range requests', async () => {
-    const baseConfig = env.getAppConfig({});
-    vi.spyOn(env, 'getAppConfig').mockReturnValue({
+    const baseConfig = getAppConfig({});
+    vi.spyOn({ getAppConfig }, 'getAppConfig').mockReturnValue({
       ...baseConfig,
       schedulesCacheTtlSec: 0,
     });
@@ -211,14 +220,14 @@ describe('Graph schedules adapter', () => {
 
     const [resultA, resultB] = await Promise.all([pendingA, pendingB]);
 
-  expect(resultA).toBe(resultB);
-  expect(resultA).toHaveLength(1);
-  expect(fetchSpy).toHaveBeenCalledTimes(1);
+    expect(resultA).toBe(resultB);
+    expect(resultA).toHaveLength(1);
+    expect(fetchSpy).toHaveBeenCalledTimes(1);
   });
 
   it('retries according to retry-after hints and exponential backoff', async () => {
-    const baseConfig = env.getAppConfig({});
-    vi.spyOn(env, 'getAppConfig').mockReturnValue({
+    const baseConfig = getAppConfig({});
+    vi.spyOn({ getAppConfig }, 'getAppConfig').mockReturnValue({
       ...baseConfig,
       graphRetryMax: 3,
       graphRetryBaseMs: 100,
@@ -269,8 +278,8 @@ describe('Graph schedules adapter', () => {
   });
 
   it('ignores retry-after headers when accessor throws and stops after max attempts', async () => {
-    const baseConfig = env.getAppConfig({});
-    vi.spyOn(env, 'getAppConfig').mockReturnValue({
+    const baseConfig = getAppConfig({});
+    vi.spyOn({ getAppConfig }, 'getAppConfig').mockReturnValue({
       ...baseConfig,
       graphRetryMax: 1,
       graphRetryBaseMs: 0,
