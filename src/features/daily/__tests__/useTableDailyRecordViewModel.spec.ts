@@ -30,7 +30,7 @@ describe('useTableDailyRecordViewModel', () => {
 
     expect(result.current.open).toBe(true);
     expect(result.current.title).toBe('一覧形式ケース記録');
-    expect(result.current.backTo).toBe('/daily/menu');
+    expect(result.current.backTo).toBe('/dashboard');
     expect(result.current.testId).toBe('daily-table-record-page');
 
     const payload = {
@@ -56,7 +56,7 @@ describe('useTableDailyRecordViewModel', () => {
     });
 
     expect(alertSpy).toHaveBeenCalled();
-    expect(navigateMock).toHaveBeenCalledWith('/daily/menu', { replace: true });
+    expect(navigateMock).toHaveBeenCalledWith('/dashboard', { replace: true });
     expect(result.current.open).toBe(false);
 
     alertSpy.mockRestore();

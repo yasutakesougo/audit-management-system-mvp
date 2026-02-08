@@ -1,7 +1,6 @@
 import AssignmentIcon from '@mui/icons-material/Assignment';
 import AttendanceIcon from '@mui/icons-material/AssignmentInd';
 import SupportIcon from '@mui/icons-material/AssignmentTurnedIn';
-import ActivityIcon from '@mui/icons-material/EventNote';
 import GroupIcon from '@mui/icons-material/Group';
 import PeopleIcon from '@mui/icons-material/People';
 import Box from '@mui/material/Box';
@@ -14,15 +13,87 @@ import Container from '@mui/material/Container';
 import Paper from '@mui/material/Paper';
 import Stack from '@mui/material/Stack';
 import Typography from '@mui/material/Typography';
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useAttendanceStore } from '@/features/attendance/store';
 import { BulkDailyRecordForm } from '../features/daily/BulkDailyRecordForm';
 import { useUsersDemo } from '../features/users/usersStoreDemo';
+import type { IUserMaster } from '../features/users/types';
+
+type DailyHubSummary = {
+  activity: {
+    pending: number;
+    inProgress: number;
+  };
+  support: {
+    total: number;
+    incomplete: number;
+  };
+  attendance: {
+    absence: number;
+    lateOrEarly: number;
+  };
+};
+
+const getUserSeed = (userId: string | number | null | undefined, fallback: number) => {
+  const raw = String(userId ?? fallback);
+  const digits = raw.replace(/\D/g, '');
+  const seed = Number(digits);
+  return Number.isNaN(seed) || seed === 0 ? fallback : seed;
+};
+
+const useDailyHubSummary = (users: IUserMaster[]) => {
+  const { visits } = useAttendanceStore();
+
+  return useMemo<DailyHubSummary>(() => {
+    const activity = users.reduce(
+      (acc, user, index) => {
+        const seed = getUserSeed(user.UserID ?? user.Id, index + 1);
+        if (seed % 11 === 0) {
+          acc.pending += 1;
+        } else if (seed % 5 === 0) {
+          acc.inProgress += 1;
+        }
+        return acc;
+      },
+      { pending: 0, inProgress: 0 },
+    );
+
+    const supportTargets = users.filter((user) => Boolean(user.IsSupportProcedureTarget));
+    const support = supportTargets.reduce(
+      (acc, user, index) => {
+        const seed = getUserSeed(user.UserID ?? user.Id, index + 1);
+        if (seed % 7 === 0 || seed % 5 === 0) {
+          acc.incomplete += 1;
+        }
+        return acc;
+      },
+      { total: supportTargets.length, incomplete: 0 },
+    );
+
+    const visitList = Object.values(visits ?? {});
+    const attendance = visitList.reduce(
+      (acc, visit) => {
+        if (visit.status === '当日欠席' || visit.status === '事前欠席') {
+          acc.absence += 1;
+        }
+        if (visit.isEarlyLeave) {
+          acc.lateOrEarly += 1;
+        }
+        return acc;
+      },
+      { absence: 0, lateOrEarly: 0 },
+    );
+
+    return { activity, support, attendance };
+  }, [users, visits]);
+};
 
 const DailyRecordMenuPage: React.FC = () => {
   const navigate = useNavigate();
   const { data: usersRaw } = useUsersDemo();
   const users = usersRaw ?? []; // ← 常に配列にしておく
+  const dailyHubSummary = useDailyHubSummary(users);
 
   // 複数利用者フォーム状態
   const [bulkFormOpen, setBulkFormOpen] = useState(false);
@@ -43,6 +114,31 @@ const DailyRecordMenuPage: React.FC = () => {
     totalUsers > 0 ? Math.round((mockAttendanceProgress / totalUsers) * 100) : 0;
   const supportPercent =
     intensiveSupportUsers > 0 ? Math.round((mockSupportProgress / intensiveSupportUsers) * 100) : 0;
+
+  const activityCaption = useMemo(() => {
+    const { pending, inProgress } = dailyHubSummary.activity;
+    if (pending === 0 && inProgress === 0) return null;
+    return `未入力 ${pending} / 入力中 ${inProgress}`;
+  }, [dailyHubSummary.activity]);
+
+  const supportCaption = useMemo(() => {
+    const { total, incomplete } = dailyHubSummary.support;
+    if (total === 0 && incomplete === 0) return null;
+    return `今日 ${total}件 / 未完了 ${incomplete}`;
+  }, [dailyHubSummary.support]);
+
+  const attendanceCaption = useMemo(() => {
+    const { absence, lateOrEarly } = dailyHubSummary.attendance;
+    if (absence === 0 && lateOrEarly === 0) return null;
+    return `欠席 ${absence} / 遅刻・早退 ${lateOrEarly}`;
+  }, [dailyHubSummary.attendance]);
+
+  const activityCaptionColor = dailyHubSummary.activity.pending > 0 ? 'warning.main' : 'text.secondary';
+  const supportCaptionColor = dailyHubSummary.support.incomplete > 0 ? 'warning.main' : 'text.secondary';
+  const attendanceCaptionColor =
+    dailyHubSummary.attendance.absence > 0 || dailyHubSummary.attendance.lateOrEarly > 0
+      ? 'warning.main'
+      : 'text.secondary';
 
   // 複数利用者記録保存ハンドラ
   const handleBulkSave = async (data: {
@@ -72,7 +168,7 @@ const DailyRecordMenuPage: React.FC = () => {
 
   return (
     <Container maxWidth="lg" data-testid="daily-record-menu">
-      <Box sx={{ py: 4 }}>
+      <Box data-testid="daily-hub-root" sx={{ py: 4 }}>
         {/* ヘッダー */}
         <Box sx={{ mb: 4, textAlign: 'center' }}>
           <Typography variant="h3" component="h1" gutterBottom>
@@ -119,6 +215,17 @@ const DailyRecordMenuPage: React.FC = () => {
                 />
               </Box>
 
+              {activityCaption && (
+                <Typography
+                  variant="caption"
+                  color={activityCaptionColor}
+                  noWrap
+                  sx={{ display: 'block', mb: 1 }}
+                >
+                  {activityCaption}
+                </Typography>
+              )}
+
               <Typography variant="body1" color="text.secondary" sx={{ mb: 2 }}>
                 利用者を行として表形式で並べて効率的に一覧入力できます
               </Typography>
@@ -159,71 +266,6 @@ const DailyRecordMenuPage: React.FC = () => {
             </CardActions>
           </Card>
 
-          {/* 支援記録（ケース記録） */}
-          <Card
-            data-testid="daily-card-activity"
-            sx={{
-              flex: 1,
-              display: 'flex',
-              flexDirection: 'column',
-              transition: 'transform 0.2s, elevation 0.2s',
-              '&:hover': {
-                transform: 'translateY(-4px)',
-                elevation: 8
-              }
-            }}
-          >
-            <CardContent sx={{ flexGrow: 1, p: 3 }}>
-              <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
-                <ActivityIcon sx={{ fontSize: 32, color: 'primary.main', mr: 2 }} />
-                <Typography variant="h5" component="h2">
-                  支援記録（ケース記録）
-                </Typography>
-              </Box>
-
-              <Typography variant="body1" color="text.secondary" sx={{ mb: 2 }}>
-                利用者を1人ずつ選択して詳細な記録を作成します
-              </Typography>
-
-                <Stack spacing={1}>
-                  <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                    <PeopleIcon sx={{ fontSize: 16, mr: 1, color: 'text.secondary' }} />
-                    <Typography variant="body2" color="text.secondary">
-                      対象：利用者全員（{totalUsers}名）
-                    </Typography>
-                  </Box>
-                <Typography variant="body2" color="text.secondary">
-                  • AM/PM活動内容
-                </Typography>
-                <Typography variant="body2" color="text.secondary">
-                  • 昼食摂取量
-                </Typography>
-                <Typography variant="body2" color="text.secondary">
-                  • 問題行動記録（自傷・暴力・大声・異食・その他）
-                </Typography>
-                <Typography variant="body2" color="text.secondary">
-                  • 発作記録（時刻・持続時間・重度・詳細）
-                </Typography>
-                <Typography variant="body2" color="text.secondary">
-                  • 特記事項
-                </Typography>
-              </Stack>
-            </CardContent>
-
-            <CardActions sx={{ p: 3, pt: 0 }}>
-              <Button
-                variant="contained"
-                size="large"
-                fullWidth
-                onClick={() => navigate('/daily/activity')}
-                startIcon={<ActivityIcon />}
-                data-testid="btn-open-activity"
-              >
-                支援記録（ケース記録）を開く
-              </Button>
-            </CardActions>
-          </Card>
-
           {/* 通所管理 */}
           <Card
             data-testid="daily-card-attendance"
@@ -245,6 +287,17 @@ const DailyRecordMenuPage: React.FC = () => {
                   通所管理
                 </Typography>
               </Box>
+
+              {attendanceCaption && (
+                <Typography
+                  variant="caption"
+                  color={attendanceCaptionColor}
+                  noWrap
+                  sx={{ display: 'block', mb: 1 }}
+                >
+                  {attendanceCaption}
+                </Typography>
+              )}
 
               <Typography variant="body1" color="text.secondary" sx={{ mb: 2 }}>
                 通所・退所・欠席加算など、当日の通所状況を一元管理します
@@ -308,6 +361,17 @@ const DailyRecordMenuPage: React.FC = () => {
                   支援手順記録
                 </Typography>
               </Box>
+
+              {supportCaption && (
+                <Typography
+                  variant="caption"
+                  color={supportCaptionColor}
+                  noWrap
+                  sx={{ display: 'block', mb: 1 }}
+                >
+                  {supportCaption}
+                </Typography>
+              )}
 
               <Typography variant="body1" color="text.secondary" sx={{ mb: 2 }}>
                 個別支援計画に基づく支援手順の実施状況を記録します

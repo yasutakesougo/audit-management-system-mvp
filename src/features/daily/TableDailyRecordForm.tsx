@@ -619,18 +619,40 @@ export function TableDailyRecordForm({
         </Stack>
       </DialogContent>
 
-      <DialogActions>
-        <Button onClick={onClose} disabled={saving}>
-          キャンセル
-        </Button>
-        <Button
-          variant="contained"
-          onClick={handleSave}
-          disabled={saving || selectedUserIds.length === 0}
-          startIcon={<SaveIcon />}
-        >
-          {saving ? '保存中...' : `${selectedUserIds.length}人分保存`}
-        </Button>
+      <DialogActions
+        sx={{
+          position: 'sticky',
+          bottom: 0,
+          bgcolor: 'background.paper',
+          borderTop: 1,
+          borderColor: 'divider',
+          p: 1,
+          zIndex: 1,
+        }}
+      >
+        <Stack direction="row" spacing={1} sx={{ width: '100%' }}>
+          <Button
+            onClick={onClose}
+            disabled={saving}
+            variant="outlined"
+            size="large"
+            fullWidth
+            sx={{ minHeight: 48 }}
+          >
+            キャンセル
+          </Button>
+          <Button
+            variant="contained"
+            size="large"
+            fullWidth
+            sx={{ minHeight: 48 }}
+            onClick={handleSave}
+            disabled={saving || selectedUserIds.length === 0}
+            startIcon={<SaveIcon />}
+          >
+            {saving ? '保存中...' : `${selectedUserIds.length}人分保存`}
+          </Button>
+        </Stack>
       </DialogActions>
     </>
   );
