@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import {
   AppBar,
   Box,
+  Button,
   Dialog,
   IconButton,
   Toolbar,
@@ -37,6 +38,10 @@ export function FullScreenDailyDialogPage({
     navigate(backTo, { replace: true });
   }, [busy, onClose, navigate, backTo]);
 
+  const handleHubClick = React.useCallback(() => {
+    navigate('/dailysupport');
+  }, [navigate]);
+
   return (
     <Dialog fullScreen open={open} data-testid={testId}>
       <AppBar position="sticky" color="default" elevation={1}>
@@ -54,6 +59,10 @@ export function FullScreenDailyDialogPage({
           <Typography sx={{ ml: 1, flex: 1 }} variant="h6">
             {title}
           </Typography>
+
+          <Button size="small" variant="text" onClick={handleHubClick}>
+            日次ハブへ
+          </Button>
         </Toolbar>
       </AppBar>
 
