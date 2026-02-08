@@ -1,6 +1,6 @@
 import { useCallback, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
 import { TESTIDS } from '@/testids';
+import { useCancelToDashboard } from '@/lib/nav/useCancelToDashboard';
 
 type TableDailyRecordPayload = {
   date: string;
@@ -29,13 +29,13 @@ type TableDailyRecordViewModel = {
 };
 
 export const useTableDailyRecordViewModel = (): TableDailyRecordViewModel => {
-  const navigate = useNavigate();
+  const cancelToDashboard = useCancelToDashboard();
   const [open, setOpen] = useState(true);
 
   const navigateBackToMenu = useCallback(() => {
     setOpen(false);
-    navigate('/dashboard', { replace: true });
-  }, [navigate]);
+    cancelToDashboard();
+  }, [cancelToDashboard]);
 
   const handleTableSave = useCallback(async (data: TableDailyRecordPayload) => {
     console.log('一覧形式記録保存@/daily/table:', data);
