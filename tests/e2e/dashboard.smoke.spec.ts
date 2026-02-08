@@ -44,7 +44,7 @@ test.describe('Dashboard smoke', () => {
 
     // Smoke: verify headings exist (minimal UI, avoid fragile text matching)
     await expect(page.getByRole('heading').first()).toBeVisible();
-    await expect(page.getByRole('link', { name: '申し送りタイムライン' })).toBeVisible();
+    await expect(page.getByTestId(TESTIDS['dashboard-handoff-summary'])).toBeVisible();
   });
 
   test('can open schedules from dashboard cta', async ({ page }) => {
@@ -55,7 +55,9 @@ test.describe('Dashboard smoke', () => {
   });
 
   test('navigates to handoff timeline from dashboard shortcut', async ({ page }) => {
-    const handoffButton = page.getByRole('link', { name: '申し送りタイムライン' });
+    const handoffButton = page
+      .getByTestId(TESTIDS['dashboard-handoff-summary'])
+      .getByRole('button', { name: 'タイムラインを開く' });
     await expect(handoffButton).toBeVisible();
     await handoffButton.click();
     await expect(page).toHaveURL(/\/handoff-timeline/);
