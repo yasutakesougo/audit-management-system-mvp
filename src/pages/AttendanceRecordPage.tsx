@@ -979,18 +979,41 @@ const AttendanceRecordPage: React.FC<AttendanceRecordPageProps> = ({ 'data-testi
             </Stack>
           </DialogContent>
         )}
-        <DialogActions>
-          <Button onClick={closeAbsenceDialog}>キャンセル</Button>
-          <Button
-            onClick={handleAbsenceSave}
-            variant="contained"
-            disabled={
-              !absenceDialog ||
-              (absenceDialog.morningContacted && absenceDialog.morningMethod === '')
-            }
-          >
-            保存
-          </Button>
+        <DialogActions
+          sx={{
+            position: 'sticky',
+            bottom: 0,
+            bgcolor: 'background.paper',
+            borderTop: 1,
+            borderColor: 'divider',
+            p: 1,
+            zIndex: 1,
+          }}
+        >
+          <Stack direction="row" spacing={1} sx={{ width: '100%' }}>
+            <Button
+              onClick={closeAbsenceDialog}
+              variant="outlined"
+              size="large"
+              fullWidth
+              sx={{ minHeight: 48 }}
+            >
+              キャンセル
+            </Button>
+            <Button
+              onClick={handleAbsenceSave}
+              variant="contained"
+              size="large"
+              fullWidth
+              sx={{ minHeight: 48 }}
+              disabled={
+                !absenceDialog ||
+                (absenceDialog.morningContacted && absenceDialog.morningMethod === '')
+              }
+            >
+              保存
+            </Button>
+          </Stack>
         </DialogActions>
       </Dialog>
       </>

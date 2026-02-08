@@ -66,6 +66,11 @@ vi.mock('@/pages/DailyPage', () => ({
   default: () => <h1 data-testid="daily-page-root" />,
 }));
 
+vi.mock('@/pages/DailyRecordMenuPage', () => ({
+  __esModule: true,
+  default: () => <h1 data-testid="daily-hub-root" />,
+}));
+
 vi.mock('@/features/daily/TableDailyRecordPage', () => ({
   __esModule: true,
   default: () => <h1 data-testid="daily-table-root" />,
@@ -89,7 +94,6 @@ vi.mock('@/features/schedule/useSchedulesToday', () => ({
 }));
 
 import App from '../../src/App';
-import { TESTIDS } from '../../src/testids';
 
 /**
  * Router Future Flags スモークテスト
