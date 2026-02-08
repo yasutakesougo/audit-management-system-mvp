@@ -19,6 +19,7 @@ import Typography from '@mui/material/Typography';
 import React, { Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
+import { TodayHandoffTimelineList, type HandoffStats } from '@/features/handoff/TodayHandoffTimelineList';
 
 const WeeklySummaryChartLazy = lazyWithPreload(() => import('@/features/records/dashboard/WeeklySummaryChart'));
 
@@ -49,6 +50,9 @@ const DashboardPageTabs: React.FC = () => {
   const navigate = useNavigate();
   const defaultTab: TabValue = new Date().getHours() < 14 ? 'morning' : 'evening';
   const [tab, setTab] = useState<TabValue>(defaultTab);
+  const handoffPreviewLimit = 6;
+  const [morningHandoffStats, setMorningHandoffStats] = useState<HandoffStats | null>(null);
+  const [eveningHandoffStats, setEveningHandoffStats] = useState<HandoffStats | null>(null);
   const { data: usersStore = [] } = useUsersStore(); // 🛡️ undefined対策: 初期値 [] でクラッシュ防止
   const activeUsers = useMemo(() => usersStore.filter((user) => user?.IsActive !== false), [usersStore]);
   const activeUserIds = useMemo(() => activeUsers.map(getUserId), [activeUsers]);
@@ -59,6 +63,10 @@ const DashboardPageTabs: React.FC = () => {
   const hoverTimerRef = useRef<number | null>(null);
   const openTimelineToday = useCallback(() => {
     navigate('/handoff-timeline', { state: { dayScope: 'today', timeFilter: 'all' } });
+  }, [navigate]);
+
+  const openTimelineYesterday = useCallback(() => {
+    navigate('/handoff-timeline', { state: { dayScope: 'yesterday', timeFilter: 'all' } });
   }, [navigate]);
 
   const { total, byStatus, criticalCount } = useHandoffSummary({ dayScope: 'today' });
@@ -230,6 +238,29 @@ const DashboardPageTabs: React.FC = () => {
             <Alert severity="info">
               安全指標サマリはダッシュボードの「安全インジケーター」で確認できます。
             </Alert>
+            <Paper elevation={3} sx={{ p: 2, mb: 1.5 }}>
+              <Stack spacing={2}>
+                <Stack direction="row" spacing={1} alignItems="center">
+                  <Typography variant="subtitle1" sx={{ fontWeight: 700 }}>
+                    申し送りタイムライン（昨日）
+                  </Typography>
+                  <Chip size="small" label="朝会" color="primary" />
+                </Stack>
+                <TodayHandoffTimelineList
+                  dayScope="yesterday"
+                  timeFilter="all"
+                  maxItems={handoffPreviewLimit}
+                  onStatsChange={setMorningHandoffStats}
+                />
+                {(morningHandoffStats?.total ?? 0) > handoffPreviewLimit && (
+                  <Box sx={{ display: 'flex', justifyContent: 'flex-end' }}>
+                    <Button size="small" variant="text" onClick={openTimelineYesterday}>
+                      申し送りをもっと見る
+                    </Button>
+                  </Box>
+                )}
+              </Stack>
+            </Paper>
             <Accordion
               elevation={3}
               defaultExpanded={false}
@@ -288,6 +319,29 @@ const DashboardPageTabs: React.FC = () => {
             <Alert severity="info">
               記録状況の詳細はダッシュボードの「ケース記録」カードから確認できます。
             </Alert>
+            <Paper elevation={3} sx={{ p: 2, mb: 1.5 }}>
+              <Stack spacing={2}>
+                <Stack direction="row" spacing={1} alignItems="center">
+                  <Typography variant="subtitle1" sx={{ fontWeight: 700 }}>
+                    申し送りタイムライン（今日）
+                  </Typography>
+                  <Chip size="small" label="夕会" color="secondary" />
+                </Stack>
+                <TodayHandoffTimelineList
+                  dayScope="today"
+                  timeFilter="all"
+                  maxItems={handoffPreviewLimit}
+                  onStatsChange={setEveningHandoffStats}
+                />
+                {(eveningHandoffStats?.total ?? 0) > handoffPreviewLimit && (
+                  <Box sx={{ display: 'flex', justifyContent: 'flex-end' }}>
+                    <Button size="small" variant="text" onClick={openTimelineToday}>
+                      申し送りをもっと見る
+                    </Button>
+                  </Box>
+                )}
+              </Stack>
+            </Paper>
             <Accordion
               elevation={3}
               defaultExpanded={false}
