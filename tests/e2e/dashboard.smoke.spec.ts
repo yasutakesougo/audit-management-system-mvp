@@ -55,7 +55,9 @@ test.describe('Dashboard smoke', () => {
   });
 
   test('navigates to handoff timeline from dashboard shortcut', async ({ page }) => {
-    const handoffButton = page.getByRole('button', { name: 'タイムラインを開く' });
+    const handoffButton = page
+      .getByTestId(TESTIDS['dashboard-handoff-summary'])
+      .getByRole('button', { name: 'タイムラインを開く' });
     await expect(handoffButton).toBeVisible();
     await handoffButton.click();
     await expect(page).toHaveURL(/\/handoff-timeline/);
