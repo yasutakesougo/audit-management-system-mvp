@@ -17,7 +17,7 @@ import Tab from '@mui/material/Tab';
 import Tabs from '@mui/material/Tabs';
 import Typography from '@mui/material/Typography';
 import React, { Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import { TodayHandoffTimelineList, type HandoffStats } from '@/features/handoff/TodayHandoffTimelineList';
 
@@ -47,8 +47,10 @@ type MaybeUser = { Id?: number | string; UserID?: string | number; IsActive?: bo
 const getUserId = (u: MaybeUser) => String(u.UserID ?? u.Id ?? '');
 
 const DashboardPageTabs: React.FC = () => {
+  const location = useLocation();
   const navigate = useNavigate();
-  const defaultTab: TabValue = new Date().getHours() < 14 ? 'morning' : 'evening';
+  const navState = location.state as { tab?: TabValue } | undefined;
+  const defaultTab: TabValue = navState?.tab ?? (new Date().getHours() < 14 ? 'morning' : 'evening');
   const [tab, setTab] = useState<TabValue>(defaultTab);
   const handoffPreviewLimit = 6;
   const [morningHandoffStats, setMorningHandoffStats] = useState<HandoffStats | null>(null);
@@ -120,6 +122,12 @@ const DashboardPageTabs: React.FC = () => {
       WeeklySummaryChartLazy.preload?.();
     }
   }, [tab]);
+
+  useEffect(() => {
+    if (navState?.tab) {
+      setTab(navState.tab);
+    }
+  }, [navState?.tab]);
 
   return (
   <Container maxWidth="lg" data-testid={TESTIDS['dashboard-page-tabs']}> {/* 🧪 タブ専用testid */}
