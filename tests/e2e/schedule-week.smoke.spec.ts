@@ -2,6 +2,7 @@ import '@/test/captureSp400';
 import { expect, test } from '@playwright/test';
 import { TESTIDS } from '@/testids';
 import { runA11ySmoke } from './utils/a11y';
+import { waitForWeekViewReady } from './utils/scheduleActions';
 import { bootstrapScheduleEnv } from './utils/scheduleEnv';
 import { gotoScheduleWeek } from './utils/scheduleWeek';
 import { expectLocatorVisibleBestEffort, expectTestIdVisibleBestEffort } from './_helpers/smoke';
@@ -81,16 +82,23 @@ test.describe('Schedule week smoke', () => {
       15_000
     );
     await dayTab.first().click();
-    const daySelected = await dayTab.getAttribute('aria-selected').catch(() => null);
-    if (daySelected !== null) {
-      await expect(dayTab).toHaveAttribute('aria-selected', 'true');
-    }
+
     const dayPanel = page.locator('#panel-day');
-    const dayPanelVisible = await dayPanel.isVisible().catch(() => false);
-    if (dayPanelVisible) {
-      await expect(dayPanel).toBeVisible({ timeout: 15_000 });
-    } else {
-      await expectTestIdVisibleBestEffort(page, TESTIDS['schedules-week-grid'], { timeout: 15_000 });
+    const dayRoot = page.getByTestId(TESTIDS['schedules-day-page']);
+    const dayList = page.getByTestId(TESTIDS['schedules-day-list']);
+    const dayTabParam = () => new URL(page.url()).searchParams.get('tab');
+
+    await Promise.race([
+      page.waitForFunction(() => new URL(window.location.href).searchParams.get('tab') === 'day', null, {
+        timeout: 15_000,
+      }),
+      dayRoot.waitFor({ state: 'visible', timeout: 15_000 }),
+      dayList.waitFor({ state: 'visible', timeout: 15_000 }),
+      dayPanel.waitFor({ state: 'visible', timeout: 15_000 }),
+    ]);
+
+    if (dayTabParam() === 'day') {
+      await expect(page).toHaveURL(/tab=day/);
     }
 
     const weekTabCount = await weekTab.count().catch(() => 0);
@@ -102,10 +110,8 @@ test.describe('Schedule week smoke', () => {
       return;
     }
     await weekTab.first().click();
-    const weekSelected = await weekTab.getAttribute('aria-selected').catch(() => null);
-    if (weekSelected !== null) {
-      await expect(weekTab).toHaveAttribute('aria-selected', 'true');
-    }
+
+    await waitForWeekViewReady(page);
     await expectTestIdVisibleBestEffort(page, TESTIDS['schedules-week-grid'], { timeout: 15_000 });
   });
 
