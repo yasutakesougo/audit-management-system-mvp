@@ -1,7 +1,5 @@
 import ProtectedRoute from '@/app/ProtectedRoute';
-import { useFeatureFlags } from '@/config/featureFlags';
 import { nurseRoutes } from '@/features/nurse/routes/NurseRoutes';
-import { LegacyDayRedirect, LegacyMonthRedirect } from '@/features/schedule/legacyRedirects';
 import { StaffPanel } from '@/features/staff';
 import { UsersPanel } from '@/features/users';
 import { RouteHydrationErrorBoundary } from '@/hydration/RouteHydrationListener';
@@ -17,9 +15,9 @@ const RecordList = React.lazy(() => import('@/features/records/RecordList'));
 const ChecklistPage = React.lazy(() => import('@/features/compliance-checklist/ChecklistPage'));
 const AuditPanel = React.lazy(() => import('@/features/audit/AuditPanel'));
 
-const SchedulePage = lazyWithPreload(() => import('@/features/schedule/SchedulePage'));
 const NewSchedulesWeekPage = lazyWithPreload(() => import('@/features/schedules/WeekPage'));
-const ScheduleCreatePage = React.lazy(() => import('@/pages/ScheduleCreatePage'));
+const SchedulesDayPage = React.lazy(() => import('@/features/schedules/views/TimelineDay'));
+const SchedulesMonthPage = React.lazy(() => import('@/features/schedules/MonthPage'));
 const DailyRecordPage = React.lazy(() => import('@/pages/DailyRecordPage'));
 const DailyRecordMenuPage = React.lazy(() => import('@/pages/DailyRecordMenuPage'));
 const TableDailyRecordPage = React.lazy(() => import('@/features/daily/TableDailyRecordPage'));
@@ -101,45 +99,38 @@ const SuspendedNewSchedulesWeekPage: React.FC = () => (
   </RouteHydrationErrorBoundary>
 );
 
-const SuspendedSchedulePage: React.FC = () => (
+const SuspendedSchedulesDayPage: React.FC = () => (
   <RouteHydrationErrorBoundary>
     <React.Suspense
       fallback={(
         <div className="p-4 text-sm text-slate-600" role="status">
-          マスター スケジュールを読み込んでいます…
+          日別予定を読み込んでいます…
         </div>
       )}
     >
-      <SchedulePage />
+      <SchedulesDayPage />
     </React.Suspense>
   </RouteHydrationErrorBoundary>
 );
 
-// 週間スケジュールの表示は feature flag で新旧UIを出し分ける
-const SchedulesWeekRoute: React.FC = () => {
-  const { schedulesWeekV2 } = useFeatureFlags();
-  // schedulesWeekV2=true should surface the v2 WeekPage; keep legacy page as fallback when disabled.
-  return schedulesWeekV2 ? <SuspendedNewSchedulesWeekPage /> : <SuspendedSchedulePage />;
-};
+const SuspendedSchedulesMonthPage: React.FC = () => (
+  <RouteHydrationErrorBoundary>
+    <React.Suspense
+      fallback={(
+        <div className="p-4 text-sm text-slate-600" role="status">
+          月別予定を読み込んでいます…
+        </div>
+      )}
+    >
+      <SchedulesMonthPage />
+    </React.Suspense>
+  </RouteHydrationErrorBoundary>
+);
 
 const DashboardRedirect: React.FC = () => {
   const location = useLocation();
   return <Navigate to={`/dashboard${location.search}`} replace />;
 };
-
-const SuspendedCreatePage: React.FC = () => (
-  <RouteHydrationErrorBoundary>
-    <React.Suspense
-      fallback={(
-        <div className="p-4 text-sm text-slate-600" role="status">
-          新規予定を読み込んでいます…
-        </div>
-      )}
-    >
-      <ScheduleCreatePage />
-    </React.Suspense>
-  </RouteHydrationErrorBoundary>
-);
 
 const SuspendedDailyRecordPage: React.FC = () => (
   <RouteHydrationErrorBoundary>
@@ -634,7 +625,7 @@ const childRoutes: RouteObject[] = [
     element: (
       <SchedulesGate>
         <ProtectedRoute flag="schedules">
-          <SchedulesWeekRoute />
+          <SuspendedNewSchedulesWeekPage />
         </ProtectedRoute>
       </SchedulesGate>
     ),
@@ -644,7 +635,7 @@ const childRoutes: RouteObject[] = [
     element: (
       <SchedulesGate>
         <ProtectedRoute flag="schedules">
-          <LegacyDayRedirect />
+          <SuspendedSchedulesDayPage />
         </ProtectedRoute>
       </SchedulesGate>
     ),
@@ -654,7 +645,7 @@ const childRoutes: RouteObject[] = [
     element: (
       <SchedulesGate>
         <ProtectedRoute flag="schedules">
-          <LegacyMonthRedirect />
+          <SuspendedSchedulesMonthPage />
         </ProtectedRoute>
       </SchedulesGate>
     ),
@@ -671,13 +662,7 @@ const childRoutes: RouteObject[] = [
   },
   {
     path: 'schedules/create',
-    element: (
-      <SchedulesGate>
-        <ProtectedRoute flag="schedules">
-          <SuspendedCreatePage />
-        </ProtectedRoute>
-      </SchedulesGate>
-    ),
+    element: <Navigate to="/schedules/week" replace />,
   },
   ...(devHarnessEnabled && SuspendedDevScheduleCreateDialogPage
     ? [{
