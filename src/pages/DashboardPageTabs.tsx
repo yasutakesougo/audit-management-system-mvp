@@ -19,6 +19,7 @@ import Typography from '@mui/material/Typography';
 import React, { Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
+import { TodayHandoffTimelineList } from '@/features/handoff/TodayHandoffTimelineList';
 
 const WeeklySummaryChartLazy = lazyWithPreload(() => import('@/features/records/dashboard/WeeklySummaryChart'));
 
@@ -230,6 +231,17 @@ const DashboardPageTabs: React.FC = () => {
             <Alert severity="info">
               安全指標サマリはダッシュボードの「安全インジケーター」で確認できます。
             </Alert>
+            <Paper elevation={3} sx={{ p: 2, mb: 1.5 }}>
+              <Stack spacing={2}>
+                <Stack direction="row" spacing={1} alignItems="center">
+                  <Typography variant="subtitle1" sx={{ fontWeight: 700 }}>
+                    申し送りタイムライン（昨日）
+                  </Typography>
+                  <Chip size="small" label="朝会" color="primary" />
+                </Stack>
+                <TodayHandoffTimelineList dayScope="yesterday" timeFilter="all" />
+              </Stack>
+            </Paper>
             <Accordion
               elevation={3}
               defaultExpanded={false}
@@ -288,6 +300,17 @@ const DashboardPageTabs: React.FC = () => {
             <Alert severity="info">
               記録状況の詳細はダッシュボードの「ケース記録」カードから確認できます。
             </Alert>
+            <Paper elevation={3} sx={{ p: 2, mb: 1.5 }}>
+              <Stack spacing={2}>
+                <Stack direction="row" spacing={1} alignItems="center">
+                  <Typography variant="subtitle1" sx={{ fontWeight: 700 }}>
+                    申し送りタイムライン（今日）
+                  </Typography>
+                  <Chip size="small" label="夕会" color="secondary" />
+                </Stack>
+                <TodayHandoffTimelineList dayScope="today" timeFilter="all" />
+              </Stack>
+            </Paper>
             <Accordion
               elevation={3}
               defaultExpanded={false}
