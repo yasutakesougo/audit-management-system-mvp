@@ -36,12 +36,12 @@ import Stack from '@mui/material/Stack';
 import Tab from '@mui/material/Tab';
 import Tabs from '@mui/material/Tabs';
 import Typography from '@mui/material/Typography';
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { alpha } from '@mui/material/styles';
 import { Link, useNavigate } from 'react-router-dom';
 import { PersonDaily, SeizureRecord } from '../domain/daily/types';
 import DashboardSafetyHUD from '@/features/dashboard/DashboardSafetyHUD';
-import { useDashboardViewModel, type DashboardSection } from '@/features/dashboard/useDashboardViewModel';
+import { useDashboardViewModel, type DashboardBriefingChip, type DashboardSection, type DashboardSectionKey } from '@/features/dashboard/useDashboardViewModel';
 import { useAttendanceStore } from '@/features/attendance/store';
 import { useStaffStore } from '@/features/staff/store';
 import HandoffSummaryForMeeting from '../features/handoff/HandoffSummaryForMeeting';
@@ -222,6 +222,8 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ audience = 'staff' }) => 
   const { schedules: schedulesEnabled } = useFeatureFlags();
   const [tabValue, setTabValue] = useState(0);
   const [showAttendanceNames, setShowAttendanceNames] = useState(false);
+  const [highlightSection, setHighlightSection] = useState<DashboardSectionKey | null>(null);
+  const highlightTimerRef = useRef<number | null>(null);
   const { data: users } = useUsersDemo();
   const { visits } = useAttendanceStore();
   const { staff } = useStaffStore();
@@ -242,6 +244,49 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ audience = 'staff' }) => 
       state: { dayScope: scope, timeFilter: 'all' },
     });
   };
+
+  const openBriefing = useCallback(() => {
+    const tab = isMorningTime ? 'morning' : 'evening';
+    navigate('/dashboard/briefing', { state: { tab } });
+  }, [navigate, isMorningTime]);
+
+  const sectionIdByKey: Record<DashboardSectionKey, string> = {
+    safety: 'dashboard-section-safety',
+    attendance: 'dashboard-section-attendance',
+    schedule: 'dashboard-section-schedule',
+    handover: 'dashboard-section-handover',
+    stats: 'dashboard-section-stats',
+    adminOnly: 'dashboard-section-admin',
+    staffOnly: 'dashboard-section-staff',
+    daily: 'dashboard-section-daily',
+  };
+
+  const scrollToSection = useCallback(
+    (sectionKey: DashboardSectionKey) => {
+      const targetId = sectionIdByKey[sectionKey];
+      const node = document.getElementById(targetId);
+      if (!node) return;
+      node.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      setHighlightSection(sectionKey);
+      if (highlightTimerRef.current) {
+        window.clearTimeout(highlightTimerRef.current);
+      }
+      highlightTimerRef.current = window.setTimeout(() => {
+        setHighlightSection(null);
+      }, 1400);
+    },
+    [sectionIdByKey],
+  );
+
+  const handleBriefingChipClick = useCallback(
+    (chip: DashboardBriefingChip) => {
+      const targetSection = chip.key === 'attention' || chip.key === 'pending'
+        ? 'handover'
+        : 'attendance';
+      scrollToSection(targetSection);
+    },
+    [scrollToSection],
+  );
 
   // 支援記録（ケース記録）データ（モック）
   // TODO: 実データ接続時は SharePoint / PersonDaily 由来の記録で置き換える
@@ -561,6 +606,12 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ audience = 'staff' }) => 
       setTabValue(0);
     }
   }, [vm.role, tabValue]);
+
+  useEffect(() => () => {
+    if (highlightTimerRef.current) {
+      window.clearTimeout(highlightTimerRef.current);
+    }
+  }, []);
 
   const assertNever = (value: never): never => {
     throw new Error(`Unhandled dashboard section key: ${String(value)}`);
@@ -1396,8 +1447,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ audience = 'staff' }) => 
               <Button
                 variant="contained"
                 startIcon={<AccessTimeIcon />}
-                component={Link}
-                to="/dashboard/briefing"
+                onClick={openBriefing}
                 size="small"
                 color="primary"
               >
@@ -1410,12 +1460,8 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ audience = 'staff' }) => 
               direction={{ xs: 'column', sm: 'row' }}
               spacing={1}
               alignItems={{ xs: 'flex-start', sm: 'center' }}
-              component={Link}
-              to="/dashboard/briefing"
               sx={{
                 mt: 1,
-                textDecoration: 'none',
-                color: 'inherit',
                 cursor: 'pointer',
               }}
             >
@@ -1429,6 +1475,8 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ audience = 'staff' }) => 
                     size="small"
                     color={chip.kind}
                     label={chip.label}
+                    clickable
+                    onClick={() => handleBriefingChipClick(chip)}
                   />
                 ))}
               </Stack>
@@ -1438,9 +1486,19 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ audience = 'staff' }) => 
 
         <Stack spacing={{ xs: 2, sm: 3, md: 4 }} sx={{ mb: { xs: 2, sm: 3 } }}>
           {vm.sections.map((section) => (
-            <React.Fragment key={section.key}>
+            <Box
+              key={section.key}
+              id={sectionIdByKey[section.key]}
+              sx={(theme) => ({
+                scrollMarginTop: { xs: 80, sm: 96 },
+                transition: 'box-shadow 0.2s ease, outline-color 0.2s ease',
+                outline: highlightSection === section.key ? '2px solid' : '2px solid transparent',
+                outlineColor: highlightSection === section.key ? theme.palette.primary.main : 'transparent',
+                borderRadius: highlightSection === section.key ? 2 : 0,
+              })}
+            >
               {section.enabled === false ? null : renderSection(section)}
-            </React.Fragment>
+            </Box>
           ))}
         </Stack>
 
