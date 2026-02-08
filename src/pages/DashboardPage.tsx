@@ -679,6 +679,10 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ audience = 'staff' }) => 
                 return remaining > 0 ? `${shown}、他${remaining}名` : shown;
               };
 
+              const absenceCount = attendanceSummary.absenceNames?.length ?? 0;
+              const lateOrEarlyCount = attendanceSummary.lateOrEarlyNames?.length ?? 0;
+              const outStaffCount = attendanceSummary.outStaffNames?.length ?? 0;
+
               return (
                 <Stack alignItems="flex-end" sx={{ mt: 1 }}>
                   <Button
@@ -687,19 +691,34 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ audience = 'staff' }) => 
                     onClick={() => setShowAttendanceNames((prev) => !prev)}
                     aria-expanded={showAttendanceNames}
                   >
-                    該当者を見る
+                    {showAttendanceNames ? '閉じる' : '該当者を見る'}
                   </Button>
                   <Collapse in={showAttendanceNames} sx={{ width: '100%' }}>
                     <Stack spacing={0.5} sx={{ mt: 0.5 }}>
-                      <Typography variant="caption">
-                        欠席：{formatNames(attendanceSummary.absenceNames)}
-                      </Typography>
-                      <Typography variant="caption">
-                        遅刻・早退：{formatNames(attendanceSummary.lateOrEarlyNames)}
-                      </Typography>
-                      <Typography variant="caption">
-                        外出スタッフ：{formatNames(attendanceSummary.outStaffNames)}
-                      </Typography>
+                      <Stack spacing={0.25}>
+                        <Typography variant="caption" sx={{ fontWeight: 700 }}>
+                          欠席（{absenceCount}）
+                        </Typography>
+                        <Typography variant="caption">
+                          {formatNames(attendanceSummary.absenceNames)}
+                        </Typography>
+                      </Stack>
+                      <Stack spacing={0.25}>
+                        <Typography variant="caption" sx={{ fontWeight: 700 }}>
+                          遅刻・早退（{lateOrEarlyCount}）
+                        </Typography>
+                        <Typography variant="caption">
+                          {formatNames(attendanceSummary.lateOrEarlyNames)}
+                        </Typography>
+                      </Stack>
+                      <Stack spacing={0.25}>
+                        <Typography variant="caption" sx={{ fontWeight: 700 }}>
+                          外出スタッフ（{outStaffCount}）
+                        </Typography>
+                        <Typography variant="caption">
+                          {formatNames(attendanceSummary.outStaffNames)}
+                        </Typography>
+                      </Stack>
                     </Stack>
                   </Collapse>
                 </Stack>
