@@ -12,6 +12,7 @@ export const TableDailyRecordPage: React.FC = () => {
       open={vm.open}
       title={vm.title}
       backTo={vm.backTo}
+      hubTo="/dailysupport"
       testId={vm.testId}
       onClose={vm.onClose}
     >

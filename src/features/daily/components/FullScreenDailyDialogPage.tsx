@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import {
   AppBar,
   Box,
+  Button,
   Dialog,
   IconButton,
   Toolbar,
@@ -14,6 +15,8 @@ type FullScreenDailyDialogPageProps = {
   open?: boolean;
   title: string;
   backTo?: string;
+  hubTo?: string;
+  hubLabel?: string;
   busy?: boolean;
   onClose?: () => void;
   testId?: string;
@@ -24,6 +27,8 @@ export function FullScreenDailyDialogPage({
   open = true,
   title,
   backTo = '/daily/menu',
+  hubTo,
+  hubLabel = '日次ハブへ',
   busy = false,
   onClose,
   testId,
@@ -36,6 +41,11 @@ export function FullScreenDailyDialogPage({
     if (onClose) return onClose();
     navigate(backTo, { replace: true });
   }, [busy, onClose, navigate, backTo]);
+
+  const handleHubClick = React.useCallback(() => {
+    if (!hubTo) return;
+    navigate(hubTo);
+  }, [hubTo, navigate]);
 
   return (
     <Dialog fullScreen open={open} data-testid={testId}>
@@ -54,6 +64,12 @@ export function FullScreenDailyDialogPage({
           <Typography sx={{ ml: 1, flex: 1 }} variant="h6">
             {title}
           </Typography>
+
+          {hubTo && (
+            <Button size="small" variant="text" onClick={handleHubClick}>
+              {hubLabel}
+            </Button>
+          )}
         </Toolbar>
       </AppBar>
 

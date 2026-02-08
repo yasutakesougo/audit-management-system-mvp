@@ -455,6 +455,7 @@ const AttendanceRecordPage: React.FC<AttendanceRecordPageProps> = ({ 'data-testi
     <FullScreenDailyDialogPage
       title="通所（出欠）"
       backTo="/daily/menu"
+      hubTo="/dailysupport"
       testId="daily-attendance-page"
     >
       <Container maxWidth="lg" sx={{ py: 4 }} data-testid={dataTestId ?? TESTIDS['attendance-page']}>

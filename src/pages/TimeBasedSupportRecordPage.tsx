@@ -175,6 +175,7 @@ const TimeBasedSupportRecordPage: React.FC = () => {
     <FullScreenDailyDialogPage
       title="支援（サポート記録）"
       backTo="/daily/menu"
+      hubTo="/dailysupport"
       testId="daily-support-page"
     >
       <Container
