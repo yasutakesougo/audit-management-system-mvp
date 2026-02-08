@@ -7,7 +7,7 @@
  * Follows established patterns from:
  * - useSP hook (src/lib/spClient.ts)
  * - Monthly records API (src/features/records/monthly/)
- * - Schedule API (src/features/schedule/spClient.schedule.staff.ts)
+ * - Legacy schedule API (removed in Phase 2-C)
  */
 
 import { estimatePayloadSize, HYDRATION_FEATURES, startFeatureSpan } from '@/hydration/features';
