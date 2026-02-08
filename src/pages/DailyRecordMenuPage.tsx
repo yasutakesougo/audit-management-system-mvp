@@ -71,7 +71,7 @@ const DailyRecordMenuPage: React.FC = () => {
 
   return (
     <Container maxWidth="lg" data-testid="daily-record-menu">
-      <Box sx={{ py: 4 }}>
+      <Box data-testid="daily-hub-root" sx={{ py: 4 }}>
         {/* ヘッダー */}
         <Box sx={{ mb: 4, textAlign: 'center' }}>
           <Typography variant="h3" component="h1" gutterBottom>

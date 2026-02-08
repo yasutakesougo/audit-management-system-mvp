@@ -66,6 +66,11 @@ vi.mock('@/pages/DailyPage', () => ({
   default: () => <h1 data-testid="daily-page-root" />,
 }));
 
+vi.mock('@/pages/DailyRecordMenuPage', () => ({
+  __esModule: true,
+  default: () => <h1 data-testid="daily-hub-root" />,
+}));
+
 vi.mock('@/features/daily/TableDailyRecordPage', () => ({
   __esModule: true,
   default: () => <h1 data-testid="daily-table-root" />,
@@ -135,7 +140,7 @@ describe('router future flags smoke', () => {
     expect(await screen.findByTestId(TESTIDS['audit-heading'])).toBeInTheDocument();
 
     await user.click(screen.getByTestId(TESTIDS.nav.daily));
-    expect(await screen.findByTestId('daily-table-root')).toBeInTheDocument();
+    expect(await screen.findByTestId('daily-hub-root')).toBeInTheDocument();
 
     await user.click(screen.getByTestId(TESTIDS.nav.checklist));
     expect(await screen.findByText('自己点検ビュー')).toBeInTheDocument();
