@@ -44,7 +44,7 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Guard: no legacy schedule references
+      - name: "Guard: no legacy schedule references"
         run: |
           test ! -d src/features/schedule
           rg -n 'features/schedule(?!s)' src tests --pcre2 && exit 1 || true
