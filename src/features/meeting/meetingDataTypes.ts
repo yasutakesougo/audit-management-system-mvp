@@ -6,7 +6,7 @@
  * Defines type-safe data structures for meeting session persistence,
  * following established SharePoint integration patterns from:
  * - Monthly Records (src/features/records/monthly/map.ts)
- * - Schedule Events (src/features/schedule/spMap.ts)
+ * - Legacy schedule events (removed in Phase 2-C)
  * - Audit Records (src/features/audit/types.ts)
  */
 

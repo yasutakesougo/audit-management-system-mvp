@@ -34,31 +34,6 @@ declare module '@/utils/range' {
 }
 
 
-declare module '@/features/schedule/dateutils.local' {
-  export function getLocalDateKey(input: Date | string, timeZone?: string): string;
-  export function getLocalDateMonthKey(input: Date | string, timeZone?: string): string;
-  export function startOfDay(input: Date | string, timeZone?: string): Date;
-  export function endOfDay(input: Date | string, timeZone?: string): Date;
-  export function startOfDayUtc(input: Date | string, timeZone?: string): Date;
-  export function endOfDayUtc(input: Date | string, timeZone?: string): Date;
-  export function startOfWeekUtc(input: Date | string, timeZone?: string, weekStartsOn?: number): Date;
-  export function endOfWeekUtc(input: Date | string, timeZone?: string, weekStartsOn?: number): Date;
-  export function assignLocalDateKey<T extends {
-    start?: string | null;
-    end?: string | null;
-    startLocal?: string | null;
-    endLocal?: string | null;
-  }>(item: T, timeZone?: string): T & {
-    localDateKey: string;
-  };
-}
-
-
-declare module '../dateutils.local' {
-  export * from '@/features/schedule/dateutils.local';
-}
-
-
 declare module '@/features/users/attendance' {
   export function normalizeAttendanceDays(input: unknown): string[];
 }

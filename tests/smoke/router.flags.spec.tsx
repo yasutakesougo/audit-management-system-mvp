@@ -76,6 +76,13 @@ vi.mock('@/features/daily/TableDailyRecordPage', () => ({
   default: () => <h1 data-testid="daily-table-root" />,
 }));
 
+vi.mock('@/pages/DashboardPage', () => ({
+  __esModule: true,
+  default: () => <h1 data-testid="dashboard-root">ダッシュボード</h1>,
+  StaffDashboardPage: () => <h1 data-testid="dashboard-root">ダッシュボード</h1>,
+  AdminDashboardPage: () => <h1 data-testid="dashboard-root">ダッシュボード</h1>,
+}));
+
 vi.mock('@/stores/useUsers', () => ({
   useUsers: () => ({ data: [], error: null, loading: false, reload: vi.fn() }),
 }));
@@ -133,7 +140,7 @@ describe('router future flags smoke', () => {
     render(<App />);
 
     // 初期表示: ホーム画面の確認
-    expect(await screen.findByText(/磯子区障害者地域活動ホーム/)).toBeInTheDocument();
+    expect(await screen.findByTestId('dashboard-root')).toBeInTheDocument();
 
     // ナビゲーション経路のテスト: ホーム → 監査ログ → 日次記録 → 自己点検 → ホーム
 
@@ -148,7 +155,7 @@ describe('router future flags smoke', () => {
 
     // ホームリンクは「黒ノート」表記のナビゲーションをクリックして戻す
     await user.click(await screen.findByTestId('nav-dashboard'));
-    expect(await screen.findByText(/磯子区障害者地域活動ホーム/)).toBeInTheDocument();
+    expect(await screen.findByTestId('dashboard-root')).toBeInTheDocument();
 
     // 副作用の検証: ルート遷移での想定外のAPI呼び出しや認証アクションが発生していないことを確認
     const calls = (spFetchMock.mock.calls as unknown as any[]).map(([input]: any) =>
