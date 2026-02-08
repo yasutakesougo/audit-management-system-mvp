@@ -9,12 +9,6 @@ declare module '@/ui/components/RecurrenceChip' {
   export default RecurrenceChip;
 }
 
-declare module '@/features/schedule/AllDayChip' {
-  import type { FC } from 'react';
-  export const AllDayChip: FC<{ allDay?: boolean }>;
-  export default AllDayChip;
-}
-
 declare module '@/features/schedule/write' {
   import type { UseSP } from '@/lib/spClient';
 
@@ -51,30 +45,6 @@ declare module '@/utils/range' {
   export function normalizeRange(from?: string | null, to?: string | null): { from: string; to: string };
 }
 
-
-declare module '@/features/schedule/views/UserTab' {
-  import type { FC } from 'react';
-  const UserTab: FC<Record<string, unknown>>;
-  export default UserTab;
-}
-
-declare module '@/features/schedule/views/OrgTab' {
-  import type { FC } from 'react';
-  const OrgTab: FC<Record<string, unknown>>;
-  export default OrgTab;
-}
-
-declare module '@/features/schedule/views/StaffTab' {
-  import type { FC } from 'react';
-  const StaffTab: FC<Record<string, unknown>>;
-  export default StaffTab;
-}
-
-declare module '@/features/schedule/components/BriefingPanel' {
-  import type { FC } from 'react';
-  const BriefingPanel: FC<Record<string, unknown>>;
-  export default BriefingPanel;
-}
 
 declare module '@/features/schedule/dateutils.local' {
   export function getLocalDateKey(input: Date | string, timeZone?: string): string;
