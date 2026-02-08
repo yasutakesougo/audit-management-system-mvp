@@ -922,18 +922,41 @@ export function DailyRecordForm({ open, onClose, record, onSave }: DailyRecordFo
         </Stack>
       </DialogContent>
 
-      <DialogActions data-testid="daily-record-form-actions">
-        <Button onClick={onClose} data-testid="cancel-button">
-          キャンセル
-        </Button>
-        <Button
-          onClick={handleSave}
-          variant="contained"
-          data-testid="save-button"
-          disabled={!isFormValid}
-        >
-          {record ? '更新' : '保存'}
-        </Button>
+      <DialogActions
+        data-testid="daily-record-form-actions"
+        sx={{
+          position: 'sticky',
+          bottom: 0,
+          bgcolor: 'background.paper',
+          borderTop: 1,
+          borderColor: 'divider',
+          p: 1,
+          zIndex: 1,
+        }}
+      >
+        <Stack direction="row" spacing={1} sx={{ width: '100%' }}>
+          <Button
+            onClick={onClose}
+            data-testid="cancel-button"
+            variant="outlined"
+            size="large"
+            fullWidth
+            sx={{ minHeight: 48 }}
+          >
+            キャンセル
+          </Button>
+          <Button
+            onClick={handleSave}
+            variant="contained"
+            size="large"
+            fullWidth
+            sx={{ minHeight: 48 }}
+            data-testid="save-button"
+            disabled={!isFormValid}
+          >
+            {record ? '更新' : '保存'}
+          </Button>
+        </Stack>
       </DialogActions>
     </Dialog>
   );
