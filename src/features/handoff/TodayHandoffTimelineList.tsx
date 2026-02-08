@@ -24,7 +24,7 @@ import {
     Stack,
     Typography,
 } from '@mui/material';
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import type { DailyActivityNavState } from '../cross-module/navigationState';
 import type { HandoffDayScope, HandoffRecord, HandoffTimeFilter } from './handoffTypes';
@@ -50,6 +50,32 @@ function formatTime(iso: string): string {
   });
 }
 
+const HANDOFF_SEEN_STORAGE_KEY = 'handoff-seen.v1';
+
+type HandoffSeenMap = Record<string, string>;
+
+const loadSeenMap = (): HandoffSeenMap => {
+  if (typeof window === 'undefined') return {};
+  try {
+    const raw = window.localStorage.getItem(HANDOFF_SEEN_STORAGE_KEY);
+    if (!raw) return {};
+    const parsed = JSON.parse(raw) as HandoffSeenMap;
+    if (!parsed || typeof parsed !== 'object') return {};
+    return parsed;
+  } catch {
+    return {};
+  }
+};
+
+const saveSeenMap = (map: HandoffSeenMap) => {
+  if (typeof window === 'undefined') return;
+  try {
+    window.localStorage.setItem(HANDOFF_SEEN_STORAGE_KEY, JSON.stringify(map));
+  } catch {
+    // noop
+  }
+};
+
 /**
  * 申し送り1件の表示コンポーネント
  */
@@ -60,7 +86,16 @@ type HandoffItemProps = {
 
 const HandoffItem: React.FC<HandoffItemProps> = ({ item, onStatusChange }) => {
   const [expanded, setExpanded] = useState(false);
+  const [isSeen, setIsSeen] = useState(() => {
+    const map = loadSeenMap();
+    return Boolean(map[String(item.id)]);
+  });
   const navigate = useNavigate();
+
+  useEffect(() => {
+    const map = loadSeenMap();
+    setIsSeen(Boolean(map[String(item.id)]));
+  }, [item.id]);
 
   const handleStatusToggle = async () => {
     const newStatus = getNextStatus(item.status);
@@ -93,12 +128,32 @@ const HandoffItem: React.FC<HandoffItemProps> = ({ item, onStatusChange }) => {
     ? item.message
     : item.message.substring(0, 100) + '...';
 
+  const markSeen = useCallback(() => {
+    if (isSeen) return;
+    const map = loadSeenMap();
+    const key = String(item.id);
+    if (!map[key]) {
+      map[key] = new Date().toISOString();
+      saveSeenMap(map);
+    }
+    setIsSeen(true);
+  }, [isSeen, item.id]);
+
+  const handleToggleExpand = () => {
+    if (!expanded) {
+      markSeen();
+    }
+    setExpanded((prev) => !prev);
+  };
+
   return (
     <Card variant="outlined"
       sx={{
       borderLeft: item.severity === '重要' ? '4px solid' : '2px solid',
       borderLeftColor: item.severity === '重要' ? 'error.main' :
-                      item.severity === '要注意' ? 'warning.main' : 'grey.300'
+                      item.severity === '要注意' ? 'warning.main' : 'grey.300',
+      bgcolor: isSeen ? 'background.paper' : 'warning.50',
+      transition: 'background-color 0.2s ease',
       }}
       {...tid(TESTIDS['agenda-timeline-item'])}
     >
@@ -113,6 +168,15 @@ const HandoffItem: React.FC<HandoffItemProps> = ({ item, onStatusChange }) => {
             <Typography variant="subtitle2" sx={{ fontWeight: 600 }}>
               {item.userDisplayName}
             </Typography>
+
+            {!isSeen && (
+              <Chip
+                size="small"
+                label="未確認"
+                color="warning"
+                variant="outlined"
+              />
+            )}
 
             <Chip
               size="small"
@@ -162,6 +226,7 @@ const HandoffItem: React.FC<HandoffItemProps> = ({ item, onStatusChange }) => {
                 lineHeight: 1.6,
                 color: item.status === '対応済' ? 'text.secondary' : 'text.primary'
               }}
+              onClick={!isLongMessage ? markSeen : undefined}
             >
               {displayMessage}
             </Typography>
@@ -170,7 +235,7 @@ const HandoffItem: React.FC<HandoffItemProps> = ({ item, onStatusChange }) => {
             {isLongMessage && (
               <Button
                 size="small"
-                onClick={() => setExpanded(!expanded)}
+                onClick={handleToggleExpand}
                 endIcon={expanded ? <ExpandLessIcon /> : <ExpandMoreIcon />}
                 sx={{ mt: 0.5, p: 0 }}
               >
