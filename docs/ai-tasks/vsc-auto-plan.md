@@ -76,7 +76,7 @@ CI/CD・Nightly Health・タグ管理・環境変数を整備し、ロールバ�
 	import { test, expect } from "@playwright/test";
 
 	test("Schedule list loads and shows today", async ({ page }) => {
-	  await page.goto("http://localhost:5173/schedule");
+	  await page.goto("http://localhost:5173/schedules/week");
 	  await expect(page.getByText("スケジュール")).toBeVisible();
 	});
 	```
@@ -119,18 +119,18 @@ CI/CD・Nightly Health・タグ管理・環境変数を整備し、ロールバ�
 ### 🪜 手順
 1. **ブランチ作成**
 	```bash
-	git switch -c feat/schedule-month-view
+	git switch -c feat/schedules-month-view
 	```
 2. **スケジュール月表示ビュー追加**
-	- `features/schedule/views/MonthView.tsx` を作成
+	- `src/features/schedules/MonthPage.tsx` を作成
 	- 週/日切替ナビに `<MonthView />` を追加
 3. **API 強化**
-	- SharePoint から月単位の一覧を取得する SP クエリを追加（`spClient.schedule.ts` に `getMonthlySchedule()` 追加）
+	- SharePoint から月単位の一覧を取得する SP クエリを追加（`src/features/schedules/data/sharePointAdapter.ts` など）
 4. **Teams 通知連携（任意）**
 	- `notice.ts` に `sendTeamsNotice()` を追加して投稿
 5. **Unit + E2E テストを追加**
-	- `tests/unit/schedule/month.spec.ts`
-	- `tests/e2e/schedule-month.spec.ts`
+	- `tests/unit/schedules/month.spec.ts`
+	- `tests/e2e/schedules-month.spec.ts`
 
 ---
 

@@ -24,7 +24,7 @@ flowchart TB
   UI --> AUTH[Auth: MSAL]
   AUTH --> TOK[Access Token]
 
-  UI --> FEAT_S[Feature: Schedule]
+  UI --> FEAT_S[Feature: Schedules]
   UI --> FEAT_U[Feature: Users]
   UI --> FEAT_D[Feature: Daily]
   UI --> FEAT_N[Feature: Nurse]
@@ -83,7 +83,7 @@ Why（なぜ必要か）：
 
 参考：
 - `src/sharepoint/fields.ts`：スケジュール取得の Select フィールドセットを環境で切替（最小構成）
-- `src/features/schedule/scheduleFeatures.ts`：optional フィールド欠落時のフォールバック制御
+- `src/features/schedules/data/spRowSchema.ts`：optional フィールドの取り扱い（不足時のフォールバック方針）
 
 Why（なぜ必要か）：
 - SharePoint の「実環境ごとの差分」を吸収し、開発・E2E を止めないため
@@ -91,15 +91,9 @@ Why（なぜ必要か）：
 
 ---
 
-## 5. Schedule の“二系統”に注意（`schedule` と `schedules`）
-リポジトリ内には schedule に関する実装が少なくとも二系統あります（命名が紛らわしいため注意）。
-
-- `src/features/schedule/**`
-  - 月/週/日/リストなどのビュー群、競合検知、SharePoint list 確保など
-- `src/features/schedules/**`
-  - 予定作成ダイアログや SharePoint adapter（port）など、別レイヤの実装が存在
-
-DeepWiki では、どの画面/処理がどちらに属するかを **ファイルパスで明示**し、読み手の混乱を避けます。
+## 5. Schedule の系統
+legacy の schedule 系は削除済みで、現在は `src/features/schedules/**` のみが現行です。
+詳細方針は `docs/ARCHITECTURE_SCHEDULES.md` を参照。
 
 ---
 

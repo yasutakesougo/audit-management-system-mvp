@@ -23,7 +23,7 @@ feat(hydration): unify schedule write spans with payload metrics
 
 1. `src/hydration/features.ts`: added `estimatePayloadSize` helper and exported budgets.
 2. `src/features/meeting/*`: instrumented spans with counts/bytes on load and drawer interactions.
-3. `src/features/schedule/*`: write spans now emit `meta.status/mode/fallbackKind`; list/conflict/move flows track payload sizes.
+3. `src/features/schedules/*`: write spans now emit `meta.status/mode/fallbackKind`; list/conflict/move flows track payload sizes.
 4. `src/pages/DashboardPage.tsx`, `src/pages/IntegratedResourceCalendarPage.tsx`, `src/pages/SupportPlanGuidePage*.tsx`: dashboards and support plan features now emit load metrics.
 5. Tests: expanded `src/hydration/__tests__/features.spec.ts` for table coverage.
 
@@ -34,7 +34,7 @@ feat(hydration): unify schedule write spans with payload metrics
 - [ ] `npm run lint`
 - [ ] `npm run typecheck -- --pretty false`
 - [ ] `npx vitest run src/hydration/__tests__/features.spec.ts`
-- [ ] `npx vitest run src/features/schedule/**/*.spec.ts`
+- [ ] `npx vitest run src/features/schedules/**/*.spec.ts`
 - [ ] `npx vitest run src/features/meeting/**/*.spec.ts`
 - [ ] `npx vitest run src/features/dashboard/**/*.spec.ts`
 - [ ] `npx vitest run src/pages/__tests__/SupportPlanGuidePage.test.tsx`

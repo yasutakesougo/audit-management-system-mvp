@@ -44,10 +44,10 @@ Confirm:
 ### 3.1 Automated suite
 
 ```bash
-npx vitest run src/features/schedule/**/*.spec.ts
+npx vitest run src/features/schedules/**/*.spec.ts
 ```
 
-Focus on `conflictChecker`, alternative engines, ops summaries, rule engines.
+Focus on schedules adapters, conflict handling, ops summaries, rule engines.
 
 ### 3.2 Manual checks
 

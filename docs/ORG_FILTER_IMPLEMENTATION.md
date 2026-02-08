@@ -117,7 +117,7 @@ const next = ensureDateParam(searchParams, normalizedDate);
 setSearchParams(next, { replace: true });
 ```
 
-The `ensureDateParam()` function in `src/features/schedule/dateQuery.ts`:
+The `ensureDateParam()` function in `src/features/schedules/utils/dateQuery.ts`:
 
 ```typescript
 export const ensureDateParam = (searchParams: URLSearchParams, date: Date): URLSearchParams => {
@@ -157,7 +157,7 @@ This creates a NEW URLSearchParams by copying the old one, so all existing param
 
 ### No Changes Needed
 
-- ✅ `src/features/schedule/dateQuery.ts` - Already preserves params
+- ✅ `src/features/schedules/utils/dateQuery.ts` - Already preserves params
 - ✅ `tests/e2e/utils/scheduleActions.ts` - Already has getOrgChipText()
 - ✅ `src/testids.ts` - Already has SCHEDULE_WEEK_ORG_INDICATOR
 

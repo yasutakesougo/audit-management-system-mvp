@@ -26,6 +26,8 @@
 
 ## Unit Test Coverage
 
+> 注記: legacy の conflictChecker 実装は削除済み。現行は schedules adapter での競合検知（ETag/412）を中心にテストする。
+
 ### ⚡ Core Logic Tests
 - **時間重複検知 (`hasTimeOverlap`)**
   - 部分重複 / 完全重複 / 包含関係
@@ -94,10 +96,10 @@ const largeDataset = generateSchedules(1000);
 ### Unit Tests
 ```bash
 # 単体実行
-npx vitest run src/features/schedule/conflictChecker.spec.ts
+npx vitest run tests/unit/schedules.sharePointAdapter.conflict.spec.ts
 
 # ウォッチモード
-npx vitest watch conflictChecker
+npx vitest watch schedules.sharePointAdapter.conflict
 
 # カバレッジ
 npx vitest run --coverage

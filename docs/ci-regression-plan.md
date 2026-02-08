@@ -11,7 +11,7 @@ Create `.github/workflows/regression.yml` with:
   1. `prepare`: checkout, setup Node (use `node-version: 20.x`), cache npm, run `npm ci`.
   2. `lint-typecheck`: depends on `prepare`; runs `npm run lint` and `npm run typecheck -- --pretty false`.
   3. `vitest-hydration`: runs `npx vitest run src/hydration/__tests__/routes.spec.ts src/hydration/__tests__/features.spec.ts`.
-  4. `vitest-schedules`: runs `npx vitest run src/features/schedule/**/*.spec.ts` with `CI=1` to avoid watch mode.
+  4. `vitest-schedules`: runs `npx vitest run src/features/schedules/**/*.spec.ts` with `CI=1` to avoid watch mode.
   5. `vitest-meeting-dashboard`: matrix job covering meeting, dashboard, support plan suites.
   6. Optional `playwright`: gated behind dispatch input or label (parallel tests are expensive).
 
