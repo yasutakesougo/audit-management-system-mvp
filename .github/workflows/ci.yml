@@ -44,14 +44,11 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Guard: no runtime imports from legacy schedules
+      - name: Guard: no legacy schedule references
         run: |
-          if rg "(from ['\"].*features/schedule/|import\s+[^;]*features/schedule/|require\(['\"].*features/schedule/)" src \
-            --glob '!src/features/schedule/**' \
-            --glob '!src/types/module-stubs.d.ts'; then
-            echo "❌ Legacy schedule import detected outside src/features/schedule"
-            exit 1
-          fi
+          test ! -d src/features/schedule
+          rg -n 'features/schedule(?!s)' src tests --pcre2 && exit 1 || true
+          rg -n '@/features/schedule(?!s)' src tests --pcre2 && exit 1 || true
       
       - name: ESLint (enforce ARCHITECTURE_GUARDS)
         id: lint
