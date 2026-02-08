@@ -16,7 +16,6 @@ export const PREFETCH_KEYS = {
   dailyMenu: 'route:daily:menu',
   schedulesWeek: 'route:schedules:week',
   schedulesDay: 'route:schedules:day',
-  schedulesList: 'route:schedules:list',
   schedulesMonth: 'route:schedules:month',
   adminTemplates: 'route:admin:templates',
   adminSteps: 'route:admin:step-templates',
@@ -50,9 +49,8 @@ export const ROUTE_IMPORTERS: PrefetchRegistry = {
   [PREFETCH_KEYS.users]: () => Promise.resolve(UsersModule),
   [PREFETCH_KEYS.staff]: () => Promise.resolve(StaffModule),
   [PREFETCH_KEYS.dailyMenu]: () => import('@/pages/DailyRecordMenuPage'),
-  [PREFETCH_KEYS.schedulesWeek]: () => import('@/features/schedule/SchedulePage'),
-  [PREFETCH_KEYS.schedulesDay]: () => import('@/features/schedule/views/TimelineDay'),
-  [PREFETCH_KEYS.schedulesList]: () => import('@/features/schedule/views/ListView'),
+  [PREFETCH_KEYS.schedulesWeek]: () => import('@/features/schedules/WeekPage'),
+  [PREFETCH_KEYS.schedulesDay]: () => import('@/features/schedules/views/TimelineDay'),
   [PREFETCH_KEYS.schedulesMonth]: () => import('@/features/schedules/MonthPage'),
   [PREFETCH_KEYS.adminTemplates]: () => import('@/pages/SupportActivityMasterPage'),
   [PREFETCH_KEYS.adminSteps]: () => import('@/pages/SupportStepMasterPage'),
@@ -75,9 +73,8 @@ const registry: PrefetchRegistry = { ...ROUTE_IMPORTERS };
 
 // 同様に、neighbors も後から registerNeighbors で拡張する前提の可変マップ
 const neighbors: NeighborMap = {
-  [PREFETCH_KEYS.schedulesWeek]: [PREFETCH_KEYS.schedulesDay, PREFETCH_KEYS.schedulesList],
-  [PREFETCH_KEYS.schedulesDay]: [PREFETCH_KEYS.schedulesWeek, PREFETCH_KEYS.schedulesList],
-  [PREFETCH_KEYS.schedulesList]: [PREFETCH_KEYS.schedulesWeek],
+  [PREFETCH_KEYS.schedulesWeek]: [PREFETCH_KEYS.schedulesDay, PREFETCH_KEYS.schedulesMonth],
+  [PREFETCH_KEYS.schedulesDay]: [PREFETCH_KEYS.schedulesWeek, PREFETCH_KEYS.schedulesMonth],
   [PREFETCH_KEYS.dashboard]: [
     PREFETCH_KEYS.records,
     PREFETCH_KEYS.audit,

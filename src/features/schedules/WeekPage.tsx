@@ -6,9 +6,9 @@ import { useAnnounce } from '@/a11y/LiveAnnouncer';
 import { isDev } from '@/env';
 import { useAuth } from '@/auth/useAuth';
 import { useUserAuthz } from '@/auth/useUserAuthz';
-import { MASTER_SCHEDULE_TITLE_JA } from '@/features/schedule/constants';
-import { ensureDateParam, normalizeToDayStart, pickDateParam } from '@/features/schedule/dateQuery';
-import type { Category } from '@/features/schedule/types';
+import { MASTER_SCHEDULE_TITLE_JA } from '@/features/schedules/constants';
+import { ensureDateParam, normalizeToDayStart, pickDateParam } from '@/features/schedules/utils/dateQuery';
+import type { ScheduleCategory } from '@/features/schedules/domain/types';
 import ScheduleCreateDialog from '@/features/schedules/ScheduleCreateDialog';
 import ScheduleEmptyHint from '@/features/schedules/components/ScheduleEmptyHint';
 import SchedulesFilterResponsive from '@/features/schedules/components/SchedulesFilterResponsive';
@@ -116,7 +116,7 @@ type DialogMode = 'create' | 'edit';
 
 type DialogIntentParams = {
   mode: DialogMode;
-  category: Category;
+  category: ScheduleCategory;
   dateIso: string;
   startTime: string;
   endTime: string;
@@ -127,7 +127,7 @@ type ScheduleEditDialogValues = (Omit<CreateScheduleEventInput, 'statusReason'> 
   id: string;
 };
 
-const buildCreateDialogIntent = (category: Category, start: Date, end: Date): DialogIntentParams => ({
+const buildCreateDialogIntent = (category: ScheduleCategory, start: Date, end: Date): DialogIntentParams => ({
   mode: 'create',
   category,
   dateIso: toDateIso(start),
@@ -153,7 +153,7 @@ const resolveDialogIntent = (params: URLSearchParams): DialogIntentParams | null
   }
   const startTime = params.get('dialogStart') ?? DEFAULT_START_TIME;
   const endTime = params.get('dialogEnd') ?? DEFAULT_END_TIME;
-  const category = (params.get('dialogCategory') as Category) ?? 'User';
+  const category = (params.get('dialogCategory') as ScheduleCategory) ?? 'User';
   const eventId = mode === 'edit' ? params.get('eventId') : null;
   return {
     mode,
@@ -227,7 +227,7 @@ export default function WeekPage() {
         : tabParam && LEGACY_TABS.includes(tabParam as LegacyTab)
           ? (tabParam as ScheduleTab)
           : 'week';
-  const [categoryFilter, setCategoryFilter] = useState<'All' | Category>('All');
+  const [categoryFilter, setCategoryFilter] = useState<'All' | ScheduleCategory>('All');
   const [query, setQuery] = useState('');
   
   // Authorization check for Day view editing
@@ -306,7 +306,7 @@ export default function WeekPage() {
 
     if (isEditMode && editingItem) {
       return {
-        category: (editingItem.category as Category) ?? dialogIntent.category,
+        category: (editingItem.category as ScheduleCategory) ?? dialogIntent.category,
         title: editingItem.title,
         userId: editingItem.userId ?? '',
         serviceType: (editingItem.serviceType as ScheduleFormState['serviceType']) ?? '',
@@ -490,7 +490,7 @@ export default function WeekPage() {
       }
     }
 
-    const category = (item.category as Category) ?? 'User';
+    const category = (item.category as ScheduleCategory) ?? 'User';
     const serviceType = (item.serviceType as ScheduleServiceType) ?? 'normal';
     const startLocal = formatScheduleLocalInput(item.start, DEFAULT_START_TIME);
     const endLocal = formatScheduleLocalInput(item.end, DEFAULT_END_TIME);
@@ -576,7 +576,7 @@ export default function WeekPage() {
       const dayIso = toDateIso(start);
       setActiveDateIso(dayIso);
       primeRouteReset();
-      setDialogParams(buildCreateDialogIntent(hint.category as Category, start, end));
+      setDialogParams(buildCreateDialogIntent(hint.category as ScheduleCategory, start, end));
     },
     [primeRouteReset, setDialogParams],
   );
@@ -791,7 +791,7 @@ export default function WeekPage() {
                 カテゴリ:
                 <select
                   value={categoryFilter}
-                  onChange={(e) => setCategoryFilter(e.target.value as 'All' | Category)}
+                  onChange={(e) => setCategoryFilter(e.target.value as 'All' | ScheduleCategory)}
                   style={{ padding: '4px 8px', borderRadius: 8, border: '1px solid rgba(0,0,0,0.2)' }}
                   data-testid={TESTIDS['schedules-filter-category']}
                 >

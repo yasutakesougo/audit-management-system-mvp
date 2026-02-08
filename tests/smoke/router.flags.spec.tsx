@@ -84,7 +84,7 @@ vi.mock('@/stores/useStaff', () => ({
   useStaff: () => ({ data: [], error: null, loading: false, reload: vi.fn() }),
 }));
 
-vi.mock('@/features/schedule/useSchedulesToday', () => ({
+vi.mock('@/features/schedules/useSchedulesToday', () => ({
   useSchedulesToday: () => ({
     data: [],
     loading: false,
