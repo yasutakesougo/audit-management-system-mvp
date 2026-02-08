@@ -34,9 +34,9 @@ const MonthlyRecordPage = React.lazy(() => import('@/pages/MonthlyRecordPage'));
 
 const AttendanceRecordPage = React.lazy(() => import('@/pages/AttendanceRecordPage'));
 const StaffAttendanceAdminPage = React.lazy(() => import('@/pages/StaffAttendanceAdminPage'));
-const StaffAttendanceInput = React.lazy(() =>
-  import('@/features/staff/attendance/StaffAttendanceInput').then((module) => ({
-    default: module.StaffAttendanceInput,
+const StaffAttendanceInputPage = React.lazy(() =>
+  import('@/pages/StaffAttendanceInputPage').then((module) => ({
+    default: module.StaffAttendanceInputPage,
   })),
 );
 
@@ -407,7 +407,7 @@ const SuspendedStaffAttendanceInput: React.FC = () => (
         </div>
       )}
     >
-      <StaffAttendanceInput />
+      <StaffAttendanceInputPage />
     </React.Suspense>
   </RouteHydrationErrorBoundary>
 );
@@ -540,7 +540,7 @@ const childRoutes: RouteObject[] = [
   {
     path: 'staff/attendance',
     element: (
-      <ProtectedRoute flag="schedules">
+      <ProtectedRoute>
         <SuspendedStaffAttendanceInput />
       </ProtectedRoute>
     ),

@@ -5,6 +5,7 @@ export type BootstrapFlags = {
   skipLogin?: boolean;
   featureSchedules?: boolean;
   featureIcebergPdca?: boolean;
+  featureStaffAttendance?: boolean;
   initialPath?: string;
 };
 
@@ -13,6 +14,7 @@ export async function bootstrapDashboard(page: Page, flags: BootstrapFlags = {})
     skipLogin: flags.skipLogin ?? true,
     featureSchedules: flags.featureSchedules ?? true,
     featureIcebergPdca: flags.featureIcebergPdca ?? true,
+    featureStaffAttendance: flags.featureStaffAttendance ?? false,
     initialPath: flags.initialPath ?? '/dashboard',
   };
 
@@ -28,6 +30,7 @@ export async function bootstrapDashboard(page: Page, flags: BootstrapFlags = {})
       VITE_SCHEDULE_ADMINS_GROUP_ID: 'e2e-admin-group-id',
       ...(opts.featureSchedules ? { VITE_FEATURE_SCHEDULES: '1' } : {}),
       ...(opts.featureIcebergPdca ? { VITE_FEATURE_ICEBERG_PDCA: '1' } : {}),
+      ...(opts.featureStaffAttendance ? { VITE_FEATURE_STAFF_ATTENDANCE: '1' } : {}),
     };
 
     if (opts.skipLogin) {

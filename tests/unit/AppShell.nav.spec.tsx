@@ -17,10 +17,10 @@ const spFetchMock = vi.fn(async (_path: string, _init?: RequestInit) => ({ ok: t
 
 const defaultFlags: FeatureFlagSnapshot = {
   schedules: true,
-  schedulesCreate: true,
   complianceForm: false,
   schedulesWeekV2: false,
   icebergPdca: false,
+  staffAttendance: false,
 };
 
 beforeEach(() => {

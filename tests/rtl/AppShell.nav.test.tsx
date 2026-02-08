@@ -84,6 +84,7 @@ describe('AppShell navigation smoke test', () => {
     complianceForm: false,
     schedulesWeekV2: false,
     icebergPdca: false,
+    staffAttendance: false,
   };
 
   const colorMode = { mode: 'light' as const, toggle: vi.fn(), sticky: false };

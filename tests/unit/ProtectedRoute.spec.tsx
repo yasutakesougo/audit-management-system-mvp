@@ -37,10 +37,10 @@ const createAuthenticatedState = (
 
 const defaultFlags: FeatureFlagSnapshot = {
   schedules: true,
-  schedulesCreate: true,
   complianceForm: false,
   schedulesWeekV2: false,
   icebergPdca: false,
+  staffAttendance: false,
 };
 
 const LocationProbe: React.FC<{ testId: string }> = ({ testId }) => {

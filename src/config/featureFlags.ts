@@ -156,7 +156,7 @@ export const FeatureFlagsProvider: FC<FeatureFlagsProviderProps> = ({ value, chi
   const memoized = useMemo(() => {
     currentSnapshot = snapshot;
     return snapshot;
-  }, [snapshot.schedules, snapshot.complianceForm, snapshot.schedulesWeekV2, snapshot.icebergPdca]);
+  }, [snapshot.schedules, snapshot.complianceForm, snapshot.schedulesWeekV2, snapshot.icebergPdca, snapshot.staffAttendance]);
 
   return createElement(FeatureFlagsContext.Provider, { value: memoized }, children);
 };
