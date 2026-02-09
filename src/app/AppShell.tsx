@@ -603,7 +603,7 @@ const AppShell: React.FC<{ children: React.ReactNode }> = ({ children }) => {
           {isDesktop && (
             <IconButton
               color="inherit"
-              aria-label="ナビゲーションを開閉"
+              aria-label={desktopNavOpen ? 'ナビゲーションを閉じる' : 'ナビゲーションを開く'}
               onClick={() => setDesktopNavOpen((prev) => !prev)}
               edge="start"
               data-testid="desktop-nav-open"
