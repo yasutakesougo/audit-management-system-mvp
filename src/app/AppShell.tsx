@@ -212,30 +212,18 @@ const AppShell: React.FC<{ children: React.ReactNode }> = ({ children }) => {
     // - /schedules/day, /schedules/month
     const items: NavItem[] = [
       {
-        label: '黒ノート',
-        to: dashboardPath,
-        isActive: (pathname) => {
-          if (currentRole === 'admin') {
-            return pathname.startsWith('/admin/dashboard');
-          }
-          return pathname === '/' || pathname.startsWith('/dashboard') || pathname.startsWith('/records');
-        },
+        label: '日次記録',
+        to: '/dailysupport',
+        isActive: (pathname) => pathname === '/dailysupport' || pathname.startsWith('/daily/'),
         icon: AssignmentTurnedInRoundedIcon,
-        prefetchKey: PREFETCH_KEYS.dashboard,
-        prefetchKeys: [PREFETCH_KEYS.muiData, PREFETCH_KEYS.muiFeedback],
-        testId: TESTIDS.nav.dashboard,
+        prefetchKey: PREFETCH_KEYS.dailyMenu,
+        testId: TESTIDS.nav.daily,
       },
       {
-        label: '黒ノート一覧',
-        to: '/records',
-        isActive: (pathname) => pathname.startsWith('/records'),
-        icon: AssignmentTurnedInRoundedIcon,
-      },
-      {
-        label: '月次記録',
-        to: '/records/monthly',
-        isActive: (pathname) => pathname.startsWith('/records/monthly'),
-        icon: AssessmentRoundedIcon,
+        label: '健康記録',
+        to: '/daily/health',
+        isActive: (pathname) => pathname.startsWith('/daily/health'),
+        icon: EditNoteIcon,
       },
       {
         label: '申し送りタイムライン',
@@ -248,6 +236,18 @@ const AppShell: React.FC<{ children: React.ReactNode }> = ({ children }) => {
         to: '/meeting-guide',
         isActive: (pathname) => pathname.startsWith('/meeting-guide'),
         icon: PsychologyIcon,
+      },
+      {
+        label: '黒ノート一覧',
+        to: '/records',
+        isActive: (pathname) => pathname.startsWith('/records'),
+        icon: AssignmentTurnedInRoundedIcon,
+      },
+      {
+        label: '月次記録',
+        to: '/records/monthly',
+        isActive: (pathname) => pathname.startsWith('/records/monthly'),
+        icon: AssessmentRoundedIcon,
       },
       {
         label: '分析',
@@ -280,56 +280,6 @@ const AppShell: React.FC<{ children: React.ReactNode }> = ({ children }) => {
         icon: EditNoteIcon,
       },
       {
-        label: '日次記録',
-        to: '/dailysupport',
-        isActive: (pathname) => pathname === '/dailysupport' || pathname.startsWith('/daily/'),
-        icon: AssignmentTurnedInRoundedIcon,
-        prefetchKey: PREFETCH_KEYS.dailyMenu,
-        testId: TESTIDS.nav.daily,
-      },
-      {
-        label: '健康記録',
-        to: '/daily/health',
-        isActive: (pathname) => pathname.startsWith('/daily/health'),
-        icon: EditNoteIcon,
-      },
-      ...(isAdmin && (authzReady || SKIP_LOGIN) ? [
-        {
-          label: '自己点検',
-          to: '/checklist',
-          isActive: (pathname: string) => pathname.startsWith('/checklist'),
-          icon: ChecklistRoundedIcon,
-          prefetchKey: PREFETCH_KEYS.checklist,
-          testId: TESTIDS.nav.checklist,
-        },
-        {
-          label: '監査ログ',
-          to: '/audit',
-          isActive: (pathname: string) => pathname.startsWith('/audit'),
-          testId: TESTIDS.nav.audit,
-          icon: AssessmentRoundedIcon,
-          prefetchKey: PREFETCH_KEYS.audit,
-        },
-        {
-          label: '支援手順テンプレ',
-          to: '/admin/step-templates',
-          isActive: (pathname: string) => pathname.startsWith('/admin/step-templates'),
-          icon: ChecklistRoundedIcon,
-        },
-        {
-          label: '個別支援手順',
-          to: '/admin/individual-support',
-          isActive: (pathname: string) => pathname.startsWith('/admin/individual-support'),
-          icon: WorkspacesIcon,
-        },
-        {
-          label: '職員勤怠管理',
-          to: '/admin/staff-attendance',
-          isActive: (pathname: string) => pathname.startsWith('/admin/staff-attendance'),
-          icon: BadgeRoundedIcon,
-        },
-      ] : []),
-      {
         label: '利用者',
         to: '/users',
         isActive: (pathname: string) => pathname.startsWith('/users'),
@@ -351,6 +301,42 @@ const AppShell: React.FC<{ children: React.ReactNode }> = ({ children }) => {
           icon: BadgeRoundedIcon,
           prefetchKey: PREFETCH_KEYS.staff,
           testId: TESTIDS.nav.staffAttendance,
+        },
+      ] : []),
+      ...(isAdmin && (authzReady || SKIP_LOGIN) ? [
+        {
+          label: '支援手順テンプレ',
+          to: '/admin/step-templates',
+          isActive: (pathname: string) => pathname.startsWith('/admin/step-templates'),
+          icon: ChecklistRoundedIcon,
+        },
+        {
+          label: '個別支援手順',
+          to: '/admin/individual-support',
+          isActive: (pathname: string) => pathname.startsWith('/admin/individual-support'),
+          icon: WorkspacesIcon,
+        },
+        {
+          label: '職員勤怠管理',
+          to: '/admin/staff-attendance',
+          isActive: (pathname: string) => pathname.startsWith('/admin/staff-attendance'),
+          icon: BadgeRoundedIcon,
+        },
+        {
+          label: '自己点検',
+          to: '/checklist',
+          isActive: (pathname: string) => pathname.startsWith('/checklist'),
+          icon: ChecklistRoundedIcon,
+          prefetchKey: PREFETCH_KEYS.checklist,
+          testId: TESTIDS.nav.checklist,
+        },
+        {
+          label: '監査ログ',
+          to: '/audit',
+          isActive: (pathname: string) => pathname.startsWith('/audit'),
+          testId: TESTIDS.nav.audit,
+          icon: AssessmentRoundedIcon,
+          prefetchKey: PREFETCH_KEYS.audit,
         },
       ] : []),
       {
