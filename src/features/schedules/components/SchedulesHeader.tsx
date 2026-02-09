@@ -10,7 +10,7 @@ import type { Theme } from '@mui/material/styles';
 import React, { type FocusEventHandler } from 'react';
 import { useNavigate } from 'react-router-dom';
 
-type ViewMode = 'day' | 'week' | 'timeline' | 'month';
+type ViewMode = 'day' | 'week' | 'month';
 type ViewModeOption = ViewMode;
 
 type Props = {
@@ -25,7 +25,6 @@ type Props = {
   children?: React.ReactNode;
   dayHref?: string;
   weekHref?: string;
-  timelineHref?: string;
   monthHref?: string;
   rangeLabelId?: string;
   rangeAriaLive?: 'polite' | 'assertive' | 'off';
@@ -66,7 +65,6 @@ export const SchedulesHeader: React.FC<Props> = ({
   children,
   dayHref = '/schedules/day',
   weekHref = '/schedules/week',
-  timelineHref = '/schedules/timeline',
   monthHref = '/schedules/month',
   rangeLabelId,
   rangeAriaLive = 'polite',
@@ -92,7 +90,7 @@ export const SchedulesHeader: React.FC<Props> = ({
   prevButtonLabel = '前の期間',
   nextButtonLabel = '次の期間',
   todayButtonLabel = '今日へ移動',
-  modes = ['day', 'week', 'timeline', 'month'],
+  modes = ['day', 'week', 'month'],
 }) => {
   const navigate = useNavigate();
   const isSmall = useMediaQuery((theme: Theme) => theme.breakpoints.down('sm'));
@@ -101,7 +99,7 @@ export const SchedulesHeader: React.FC<Props> = ({
     if (value === mode) {
       return;
     }
-    const nextHref = { day: dayHref, week: weekHref, timeline: timelineHref, month: monthHref }[value];
+    const nextHref = { day: dayHref, week: weekHref, month: monthHref }[value];
     if (!nextHref) return;
     // Append tab parameter to maintain tab state in URL for E2E tests and history tracking
     const urlObj = new URL(nextHref, window.location.origin);
@@ -110,26 +108,32 @@ export const SchedulesHeader: React.FC<Props> = ({
   };
 
   return (
-    <Stack spacing={1.5} sx={{ mb: 2 }} data-testid={TESTIDS.SCHEDULES_HEADER_ROOT}>
+    <Stack spacing={1} sx={{ mb: 1.25 }} data-testid={TESTIDS.SCHEDULES_HEADER_ROOT}>
       <Stack
         direction={isSmall ? 'column' : 'row'}
         alignItems={isSmall ? 'flex-start' : 'center'}
-        spacing={isSmall ? 1 : 2}
+        spacing={isSmall ? 0.75 : 1.5}
         justifyContent={isSmall ? 'flex-start' : 'space-between'}
-        sx={{ mb: isSmall ? 1 : 0 }}
+        sx={{ mb: 0 }}
       >
-        <Box>
+        <Box sx={{ minWidth: 0 }}>
           <Typography
-            variant="h5"
+            variant="h6"
             component="h1"
-            sx={{ fontWeight: 700 }}
+            sx={{ fontWeight: 700, lineHeight: 1.2 }}
             id={headingId}
             data-testid={titleTestId}
             data-page-heading="true"
+            noWrap
           >
             {title}
           </Typography>
-          <Typography variant="body2" color="text.secondary">
+          <Typography
+            variant="caption"
+            color="text.secondary"
+            sx={{ display: { xs: 'none', md: 'block' } }}
+            noWrap
+          >
             {subLabel}
           </Typography>
         </Box>
@@ -142,11 +146,16 @@ export const SchedulesHeader: React.FC<Props> = ({
             width: isSmall ? '100%' : 'auto',
           }}
         >
-          <Tabs value={mode} onChange={handleTabChange} aria-label={tablistLabel} sx={{ flexShrink: 0 }} data-testid="schedules-view-tabs">
-            {modes.includes('day') && <Tab label="日" value="day" sx={{ minHeight: 40 }} data-testid="schedules-view-tab-day" />}
-            {modes.includes('week') && <Tab label="週" value="week" sx={{ minHeight: 40 }} data-testid="schedules-view-tab-week" />}
-            {modes.includes('timeline') && <Tab label="タイムライン" value="timeline" sx={{ minHeight: 40 }} data-testid="schedules-view-tab-timeline" />}
-            {modes.includes('month') && <Tab label="月" value="month" sx={{ minHeight: 40 }} data-testid="schedules-view-tab-month" />}
+          <Tabs
+            value={mode}
+            onChange={handleTabChange}
+            aria-label={tablistLabel}
+            sx={{ flexShrink: 0, minHeight: 36 }}
+            data-testid="schedules-view-tabs"
+          >
+            {modes.includes('day') && <Tab label="日" value="day" sx={{ minHeight: 34, minWidth: 44, px: 1 }} data-testid="schedules-view-tab-day" />}
+            {modes.includes('week') && <Tab label="週" value="week" sx={{ minHeight: 34, minWidth: 44, px: 1 }} data-testid="schedules-view-tab-week" />}
+            {modes.includes('month') && <Tab label="月" value="month" sx={{ minHeight: 34, minWidth: 44, px: 1 }} data-testid="schedules-view-tab-month" />}
           </Tabs>
         </Box>
 
@@ -154,6 +163,7 @@ export const SchedulesHeader: React.FC<Props> = ({
           {!isSmall && showPrimaryAction && onPrimaryCreate ? (
             <Button
               variant="contained"
+              size="small"
               onClick={onPrimaryCreate}
               data-testid={primaryButtonTestId ?? TESTIDS.SCHEDULES_HEADER_CREATE}
               startIcon={<span aria-hidden="true">＋</span>}
@@ -168,13 +178,20 @@ export const SchedulesHeader: React.FC<Props> = ({
         </Stack>
       </Stack>
 
-      <Stack direction="row" alignItems="center" justifyContent="space-between" spacing={2} flexWrap="wrap">
-        <Stack direction="column" spacing={0.5} sx={{ minWidth: 200 }}>
+      <Stack
+        direction={isSmall ? 'column' : 'row'}
+        alignItems={isSmall ? 'flex-start' : 'center'}
+        justifyContent="space-between"
+        spacing={1}
+        flexWrap="wrap"
+      >
+        <Stack direction="row" spacing={1} alignItems="center" sx={{ flexWrap: 'wrap' }}>
           <Typography
-            variant="subtitle1"
+            variant="body2"
             data-testid={rangeTestId ?? TESTIDS.SCHEDULES_RANGE_LABEL}
             id={rangeLabelId}
             aria-live={rangeAriaLive}
+            sx={{ fontWeight: 600 }}
           >
             {periodLabel}
           </Typography>
@@ -182,7 +199,6 @@ export const SchedulesHeader: React.FC<Props> = ({
             size="small"
             variant="outlined"
             onClick={onToday}
-            sx={{ width: 'fit-content' }}
             data-testid={todayTestId}
             ref={todayButtonRef}
             onBlur={todayButtonOnBlur}
@@ -193,8 +209,9 @@ export const SchedulesHeader: React.FC<Props> = ({
           </Button>
         </Stack>
 
-        <Stack direction="row" spacing={1} sx={{ flexGrow: 1 }} justifyContent="center">
+        <Stack direction="row" spacing={0.5} sx={{ flexGrow: isSmall ? 0 : 1 }} justifyContent={isSmall ? 'flex-start' : 'center'}>
           <Button
+            size="small"
             variant="text"
             onClick={onPrev}
             data-testid={prevTestId}
@@ -206,6 +223,7 @@ export const SchedulesHeader: React.FC<Props> = ({
             &lt; 前
           </Button>
           <Button
+            size="small"
             variant="text"
             onClick={onNext}
             data-testid={nextTestId}
@@ -218,7 +236,7 @@ export const SchedulesHeader: React.FC<Props> = ({
           </Button>
         </Stack>
 
-        <Box sx={{ minWidth: 260, display: 'flex', justifyContent: 'flex-end', flex: '1 1 auto' }}>{children}</Box>
+        <Box sx={{ minWidth: 220, display: 'flex', justifyContent: 'flex-end', flex: '1 1 auto' }}>{children}</Box>
       </Stack>
     </Stack>
   );

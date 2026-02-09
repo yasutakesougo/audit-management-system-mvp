@@ -4,7 +4,7 @@ import { useMatch, useSearchParams } from 'react-router-dom';
 import type { ScheduleCategory } from '@/features/schedules/domain/types';
 import { ensureDateParam, normalizeToDayStart, pickDateParam } from '@/features/schedules/utils/dateQuery';
 
-export type ScheduleTab = 'week' | 'day' | 'timeline' | 'month';
+export type ScheduleTab = 'week' | 'day' | 'month';
 export type DialogMode = 'create' | 'edit';
 
 export type DialogIntentParams = {
@@ -83,19 +83,25 @@ const resolveDialogIntent = (params: URLSearchParams): DialogIntentParams | null
 export const useWeekPageRouteState = (): RouteState => {
   const [searchParams, setSearchParams] = useSearchParams();
   const dayMatch = useMatch('/schedules/day/*');
-  const timelineMatch = useMatch('/schedules/timeline/*');
   const monthMatch = useMatch('/schedules/month/*');
-  const tabParam = searchParams.get('tab') as ScheduleTab | null;
+  const tabParam = searchParams.get('tab');
 
   const mode: ScheduleTab = dayMatch
     ? 'day'
-    : timelineMatch
-      ? 'timeline'
-      : monthMatch
-        ? 'month'
-        : tabParam && LEGACY_TABS.includes(tabParam as LegacyTab)
-          ? (tabParam as ScheduleTab)
-          : 'week';
+    : monthMatch
+      ? 'month'
+      : tabParam && LEGACY_TABS.includes(tabParam as LegacyTab)
+        ? (tabParam === 'timeline' ? 'week' : (tabParam as ScheduleTab))
+        : 'week';
+
+  useEffect(() => {
+    if (tabParam !== 'timeline') {
+      return;
+    }
+    const next = new URLSearchParams(searchParams);
+    next.set('tab', 'week');
+    setSearchParams(next, { replace: true });
+  }, [searchParams, setSearchParams, tabParam]);
 
   const rawDateParam = useMemo(() => pickDateParam(searchParams), [searchParams]);
   const focusDate = useMemo(() => normalizeToDayStart(rawDateParam), [rawDateParam]);

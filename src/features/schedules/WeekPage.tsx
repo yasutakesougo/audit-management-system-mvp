@@ -19,7 +19,6 @@ import { makeRange, useSchedules } from '@/features/schedules/useSchedules';
 import { type DialogIntentParams, useWeekPageRouteState } from '@/features/schedules/useWeekPageRouteState';
 import { useWeekPageUiState } from '@/features/schedules/useWeekPageUiState';
 import { TESTIDS } from '@/testids';
-import EmptyState from '@/ui/components/EmptyState';
 import Loading from '@/ui/components/Loading';
 import { formatInTimeZone } from 'date-fns-tz';
 import { resolveSchedulesTz } from '@/utils/scheduleTz';
@@ -27,7 +26,6 @@ import { resolveSchedulesTz } from '@/utils/scheduleTz';
 import DayView from './DayView';
 import WeekView from './WeekView';
 import MonthPage from './MonthPage';
-import WeekTimeline, { type WeekTimelineCreateHint } from './views/WeekTimeline';
 
 const DEFAULT_START_TIME = '10:00';
 const DEFAULT_END_TIME = '11:00';
@@ -470,20 +468,6 @@ export default function WeekPage() {
     [clearInlineSelection, remove, showSnack, isInlineDeleting],
   );
 
-  const handleTimelineCreateHint = useCallback(
-    (hint: WeekTimelineCreateHint) => {
-      const baseDay = new Date(hint.day);
-      const start = new Date(baseDay);
-      start.setHours(hint.hour, 0, 0, 0);
-      const end = new Date(start);
-      end.setHours(end.getHours() + 1, 0, 0, 0);
-      const dayIso = toDateIso(start);
-      setActiveDateIso(dayIso);
-      primeRouteReset();
-      setDialogParams(buildCreateDialogIntent(hint.category as ScheduleCategory, start, end));
-    },
-    [primeRouteReset, setDialogParams],
-  );
 
   const shiftWeek = useCallback(
     (deltaWeeks: number) => {
@@ -604,7 +588,7 @@ export default function WeekPage() {
     return () => clearTimeout(timeoutId);
   }, [focusScheduleId, filteredItems]);
 
-  const showEmptyHint = !isLoading && filteredItems.length === 0;
+  const showEmptyHint = !isLoading && filteredItems.length === 0 && mode !== 'week';
 
 
   return (
@@ -625,8 +609,8 @@ export default function WeekPage() {
           zIndex: 2,
           background: 'rgba(255,255,255,0.96)',
           backdropFilter: 'blur(6px)',
-          paddingTop: 12,
-          paddingBottom: 12,
+          paddingTop: 8,
+          paddingBottom: 8,
           borderBottom: '1px solid rgba(0,0,0,0.08)',
         }}
       >
@@ -643,9 +627,7 @@ export default function WeekPage() {
               ? '日表示（本日の予定）'
               : mode === 'month'
                 ? '月表示（全体カレンダー）'
-                : mode === 'timeline'
-                  ? 'タイムライン（週間）'
-                  : '週表示（週間の予定一覧）';
+                : '週表示（週間の予定一覧）';
 
           const headerPeriodLabel =
             mode === 'month'
@@ -671,9 +653,8 @@ export default function WeekPage() {
           rangeLabelId={rangeDescriptionId}
           dayHref={dayViewHref}
           weekHref={weekViewHref}
-          timelineHref={`/schedules/timeline?date=${resolvedActiveDateIso}`}
           monthHref={monthViewHref}
-          modes={[ 'day', 'week', 'timeline', 'month' ]}
+          modes={['day', 'week', 'month']}
           prevTestId={TESTIDS.SCHEDULES_PREV_WEEK}
           nextTestId={TESTIDS.SCHEDULES_NEXT_WEEK}
         >
@@ -685,8 +666,13 @@ export default function WeekPage() {
             }}
           >
             <span style={{ fontSize: 12, fontWeight: 600, color: 'rgba(0,0,0,0.6)' }}>絞り込み</span>
-            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', justifyContent: 'flex-end' }}>
-              <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13 }}>
+            <Stack
+              direction={{ xs: 'column', md: 'row' }}
+              spacing={1}
+              alignItems={{ xs: 'stretch', md: 'center' }}
+              sx={{ width: '100%' }}
+            >
+              <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, width: '100%' }}>
                 カテゴリ:
                 <select
                   value={categoryFilter}
@@ -703,7 +689,7 @@ export default function WeekPage() {
               <input
                 type="search"
                 value={query}
-                  onChange={(e) => route.setFilter({ query: e.target.value })}
+                onChange={(e) => route.setFilter({ query: e.target.value })}
                 placeholder="タイトル/場所/担当/利用者で検索"
                 style={{
                   flex: '1 1 280px',
@@ -715,7 +701,7 @@ export default function WeekPage() {
                 aria-label="スケジュール検索"
                 data-testid={TESTIDS['schedules-filter-query']}
               />
-            </div>
+            </Stack>
           </SchedulesFilterResponsive>
         </SchedulesHeader>
             </>
@@ -750,18 +736,8 @@ export default function WeekPage() {
             {mode === 'day' && (
               <DayView items={filteredItems} loading={isLoading} range={activeDayRange} />
             )}
-            {mode === 'timeline' && (
-              <WeekTimeline range={weekRange} items={filteredItems} onCreateHint={handleTimelineCreateHint} />
-            )}
             {mode === 'month' && (
               <MonthPage />
-            )}
-            {filteredItems.length === 0 && (
-              <EmptyState
-                title="今週の予定はありません"
-                description="別の日付や条件で再度お試しください。"
-                data-testid="schedule-empty"
-              />
             )}
           </>
         )}

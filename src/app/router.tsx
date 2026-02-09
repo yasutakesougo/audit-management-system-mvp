@@ -134,16 +134,14 @@ const DashboardRedirect: React.FC = () => {
   return <Navigate to={`/dashboard${location.search}`} replace />;
 };
 
-const AuthCallbackRedirect: React.FC = () => {
-  if (typeof window !== 'undefined') {
-    const postLoginTarget = window.sessionStorage.getItem('postLoginRedirect');
-    if (postLoginTarget) {
-      window.sessionStorage.removeItem('postLoginRedirect');
-      return <Navigate to={postLoginTarget} replace />;
-    }
-  }
-  return <Navigate to="/dashboard" replace />;
+const SchedulesTimelineRedirect: React.FC = () => {
+  const location = useLocation();
+  const nextParams = new URLSearchParams(location.search);
+  nextParams.set('tab', 'week');
+  const suffix = nextParams.toString();
+  return <Navigate to={`/schedules/week${suffix ? `?${suffix}` : ''}`} replace />;
 };
+
 
 const SuspendedDailyRecordPage: React.FC = () => (
   <RouteHydrationErrorBoundary>
@@ -538,7 +536,6 @@ const SuspendedHandoffTimelinePage: React.FC = () => (
 );
 const childRoutes: RouteObject[] = [
   { index: true, element: <DashboardRedirect /> },
-  { path: 'auth/callback', element: <AuthCallbackRedirect /> },
   { path: 'dashboard', element: <SuspendedStaffDashboardPage /> },
   {
     path: 'admin/dashboard',
@@ -795,6 +792,18 @@ const childRoutes: RouteObject[] = [
         <ProtectedRoute flag="schedules">
           <RequireAudience audience="staff">
             <SuspendedSchedulesMonthPage />
+          </RequireAudience>
+        </ProtectedRoute>
+      </SchedulesGate>
+    ),
+  },
+  {
+    path: 'schedules/timeline',
+    element: (
+      <SchedulesGate>
+        <ProtectedRoute flag="schedules">
+          <RequireAudience audience="staff">
+            <SchedulesTimelineRedirect />
           </RequireAudience>
         </ProtectedRoute>
       </SchedulesGate>

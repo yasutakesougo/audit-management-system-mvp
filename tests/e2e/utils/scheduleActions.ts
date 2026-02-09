@@ -626,12 +626,8 @@ export async function getOrgChipText(page: Page, view: 'week' | 'month' | 'day')
 }
 
 const WEEK_PANEL_VISIBLE = '#panel-week:not([hidden])';
-const WEEK_TIMELINE_PANEL_VISIBLE = '#panel-timeline:not([hidden])';
 
 const buildWeekRootCandidates = (page: Page): Locator[] => [
-  page.locator(`${WEEK_TIMELINE_PANEL_VISIBLE} [data-testid="${TESTIDS.SCHEDULES_WEEK_TIMELINE}"]`),
-  page.locator(`${WEEK_TIMELINE_PANEL_VISIBLE} [data-testid="${TESTIDS.SCHEDULE_WEEK_ROOT}"]`),
-  page.getByTestId(TESTIDS.SCHEDULES_WEEK_TIMELINE),
   page.locator(`${WEEK_PANEL_VISIBLE} [data-testid="${TESTIDS.SCHEDULE_WEEK_ROOT}"]`),
   page.locator(`${WEEK_PANEL_VISIBLE} [data-testid="${TESTIDS.SCHEDULE_WEEK_VIEW}"]`),
   page.getByTestId(TESTIDS.SCHEDULE_WEEK_ROOT),
@@ -891,8 +887,6 @@ export async function assertWeekHasUserCareEvent(
 ) {
   const root = await getWeekTimelineRoot(page);
   await expect(root).toBeVisible({ timeout: 15_000 });
-  const rootTestId = await root.getAttribute('data-testid').catch(() => null);
-  const isTimelineOnlyLayout = rootTestId === 'schedules-week-timeline';
 
   const { titleContains, serviceContains, userName, memoContains } = opts;
   let cardLocator = await getWeekScheduleItems(page, { category: 'User' });
@@ -907,15 +901,15 @@ export async function assertWeekHasUserCareEvent(
   const card = cardLocator.first();
   await expect(card).toBeVisible({ timeout: 30_000 });
 
-  if (serviceContains && !isTimelineOnlyLayout) {
+  if (serviceContains) {
     await expect(card).toContainText(serviceContains);
   }
 
-  if (userName && !isTimelineOnlyLayout) {
+  if (userName) {
     await expect(root.getByText(userName, { exact: false }).first()).toBeVisible({ timeout: 15_000 });
   }
 
-  if (memoContains && !isTimelineOnlyLayout) {
+  if (memoContains) {
     await expect(root.getByText(memoContains, { exact: false }).first()).toBeVisible({ timeout: 15_000 });
   }
 }
