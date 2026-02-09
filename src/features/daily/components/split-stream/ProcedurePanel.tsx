@@ -1,7 +1,5 @@
-import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import EditIcon from '@mui/icons-material/Edit';
 import Box from '@mui/material/Box';
-import Button from '@mui/material/Button';
 import Card from '@mui/material/Card';
 import CardContent from '@mui/material/CardContent';
 import Chip from '@mui/material/Chip';
@@ -13,6 +11,7 @@ import ToggleButton from '@mui/material/ToggleButton';
 import Typography from '@mui/material/Typography';
 import type { ReactNode } from 'react';
 import { useCallback, useEffect, useMemo, useRef } from 'react';
+import { flushSync } from 'react-dom';
 import { getScheduleKey } from '@/features/daily/domain/getScheduleKey';
 
 export type ScheduleItem = {
@@ -56,39 +55,31 @@ const isGuidedProcedurePanel = (props: ProcedurePanelProps): props is GuidedProc
 const getItemScheduleKey = (item: ScheduleItem) => getScheduleKey(item.time, item.activity);
 
 export function ProcedurePanel(props: ProcedurePanelProps): JSX.Element {
-  if (!isGuidedProcedurePanel(props)) {
-    const { title, children } = props;
-    return (
-      <Card variant="outlined" sx={{ height: '100%', display: 'flex', flexDirection: 'column', bgcolor: 'grey.50' }}>
-        <CardContent sx={{ p: 2, borderBottom: 1, borderColor: 'divider' }}>
-          <Typography variant="h6" component="h2" fontWeight="bold">
-            {title ?? '支援手順 (Plan)'}
-          </Typography>
-        </CardContent>
-        <Box sx={{ flex: 1, overflowY: 'auto', p: 2 }}>
-          {children}
-        </Box>
-      </Card>
-    );
-  }
-
+  const isGuided = isGuidedProcedurePanel(props);
   const {
     title,
-    schedule,
-    isAcknowledged,
-    onAcknowledged,
+    schedule = [],
+    isAcknowledged = false,
+    onAcknowledged: _onAcknowledged,
     onEdit,
     selectedStepId,
     onSelectStep,
     filledStepIds,
     scrollToStepId,
-    showUnfilledOnly,
+    showUnfilledOnly = false,
     onToggleUnfilledOnly,
     unfilledCount,
-    totalCount
-  } = props;
+    totalCount,
+    children,
+  } = isGuided
+    ? props
+    : {
+        title: props.title,
+        children: props.children,
+      };
   const scrollRef = useRef<HTMLDivElement>(null);
   const itemRefs = useRef(new Map<string, HTMLLIElement | null>());
+  const lastScrolledStepRef = useRef<string | null>(null);
 
   const scheduleKeys = useMemo(() => schedule.map((item) => getItemScheduleKey(item)), [schedule]);
   const visibleSchedule = useMemo(() => {
@@ -106,12 +97,38 @@ export function ProcedurePanel(props: ProcedurePanelProps): JSX.Element {
     }
   }, [isAcknowledged]);
 
+  const handleSelectStep = useCallback((step: ScheduleItem, stepId: string) => {
+    onSelectStep?.(step, stepId);
+    if (showUnfilledOnly && onToggleUnfilledOnly) {
+      flushSync(() => {
+        onToggleUnfilledOnly();
+      });
+    }
+  }, [onSelectStep, onToggleUnfilledOnly, showUnfilledOnly]);
+
   useEffect(() => {
     if (!scrollToStepId) return;
+    if (lastScrolledStepRef.current === scrollToStepId) return;
     const targetRef = itemRefs.current.get(scrollToStepId);
     if (!targetRef) return;
-    targetRef.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    lastScrolledStepRef.current = scrollToStepId;
+    targetRef.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
   }, [scrollToStepId, scheduleKeys]);
+
+  if (!isGuided) {
+    return (
+      <Card variant="outlined" sx={{ height: '100%', display: 'flex', flexDirection: 'column', bgcolor: 'grey.50' }}>
+        <CardContent sx={{ p: 2, borderBottom: 1, borderColor: 'divider' }}>
+          <Typography variant="h6" component="h2" fontWeight="bold">
+            {title ?? '支援手順 (Plan)'}
+          </Typography>
+        </CardContent>
+        <Box sx={{ flex: 1, overflowY: 'auto', p: 2 }}>
+          {children}
+        </Box>
+      </Card>
+    );
+  }
 
   return (
     <Card variant="outlined" sx={{ height: '100%', display: 'flex', flexDirection: 'column', bgcolor: 'grey.50' }}>
@@ -182,13 +199,21 @@ export function ProcedurePanel(props: ProcedurePanelProps): JSX.Element {
               }}
               role={onSelectStep ? 'button' : undefined}
               tabIndex={onSelectStep ? 0 : undefined}
-              onClick={onSelectStep ? () => onSelectStep(item, stepId) : undefined}
+              onPointerDown={
+                onSelectStep
+                  ? (event) => {
+                      if ('button' in event && event.button !== 0) return;
+                      event.preventDefault();
+                      handleSelectStep(item, stepId);
+                    }
+                  : undefined
+              }
               onKeyDown={
                 onSelectStep
                   ? (event) => {
                       if (event.key === 'Enter' || event.key === ' ') {
                         event.preventDefault();
-                        onSelectStep(item, stepId);
+                        handleSelectStep(item, stepId);
                       }
                     }
                   : undefined
@@ -200,9 +225,15 @@ export function ProcedurePanel(props: ProcedurePanelProps): JSX.Element {
                 gap: 1,
                 py: 2,
                 px: 2,
-                bgcolor: isSelected ? 'primary.50' : item.isKey ? 'warning.50' : 'background.paper',
+                bgcolor: isSelected ? 'primary.100' : item.isKey ? 'warning.50' : 'background.paper',
                 borderLeft: isFilled ? '4px solid' : '4px solid transparent',
-                borderLeftColor: isFilled ? 'success.main' : 'transparent',
+                borderLeftColor: isSelected ? 'primary.main' : isFilled ? 'success.main' : 'transparent',
+                boxShadow: isSelected ? 2 : 0,
+                outline: isSelected ? '2px solid' : 'none',
+                outlineColor: isSelected ? 'primary.main' : undefined,
+                outlineOffset: '-2px',
+                transform: isSelected ? 'translateX(2px)' : 'none',
+                transition: 'box-shadow 0.2s ease, transform 0.2s ease, background-color 0.2s ease',
                 cursor: onSelectStep ? 'pointer' : 'default'
               }}
             >
@@ -262,22 +293,7 @@ export function ProcedurePanel(props: ProcedurePanelProps): JSX.Element {
           </Box>
         )}
 
-        <Box sx={{ p: 3, textAlign: 'center', bgcolor: isAcknowledged ? 'success.50' : 'error.50' }}>
-          <Typography variant="body2" fontWeight="bold" gutterBottom>
-            {isAcknowledged ? '手順確認済み' : '手順を確認しましたか？'}
-          </Typography>
-          <Button
-            variant={isAcknowledged ? 'outlined' : 'contained'}
-            color={isAcknowledged ? 'success' : 'warning'}
-            size="large"
-            startIcon={<CheckCircleIcon />}
-            disabled={isAcknowledged}
-            onClick={onAcknowledged}
-            data-testid="procedure-acknowledge-button"
-          >
-            {isAcknowledged ? '記録入力が解放されています' : '確認してロック解除'}
-          </Button>
-        </Box>
+        <Box sx={{ p: 2 }} />
       </Box>
     </Card>
   );

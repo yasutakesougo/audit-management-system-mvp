@@ -18,6 +18,7 @@ type FullScreenDailyDialogPageProps = {
   busy?: boolean;
   onClose?: () => void;
   testId?: string;
+  headerActions?: React.ReactNode;
   children: React.ReactNode;
 };
 
@@ -28,6 +29,7 @@ export function FullScreenDailyDialogPage({
   busy = false,
   onClose,
   testId,
+  headerActions,
   children,
 }: FullScreenDailyDialogPageProps) {
   const navigate = useNavigate();
@@ -61,6 +63,8 @@ export function FullScreenDailyDialogPage({
           <Typography sx={{ flex: 1 }} variant="h6">
             {title}
           </Typography>
+
+          {headerActions}
 
           <Button
             onClick={handleHubClick}
