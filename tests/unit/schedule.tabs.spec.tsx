@@ -1,5 +1,5 @@
 import { ThemeProvider, createTheme } from '@mui/material/styles';
-import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { describe, expect, it, vi } from 'vitest';
 import WeekPage from '@/features/schedules/WeekPage';
@@ -101,17 +101,5 @@ describe('WeekPage tabs', () => {
     expect(list.textContent).toContain('テスト予定');
   });
 
-  it('shows demo schedule items in timeline view', async () => {
-    renderWeekPage();
-    await screen.findAllByTestId('schedule-item');
-    fireEvent.click(screen.getByTestId(TESTIDS.SCHEDULES_WEEK_TAB_TIMELINE));
-    const timeline = await screen.findByTestId(TESTIDS['schedules-week-timeline']);
-    const items = await within(timeline).findAllByTestId('schedule-item', {}, { timeout: 5000 }).catch(() => []);
-    if (items.length === 0) {
-      expect(within(timeline).getAllByText(/:00/).length).toBeGreaterThan(0);
-      return;
-    }
-    const text = items.map((item) => item.textContent ?? '').join('\n');
-    expect(text).toContain('テスト予定');
-  });
+  // Timeline view removed; day/week/month are covered by other tests.
 });

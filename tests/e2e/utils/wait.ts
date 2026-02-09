@@ -116,14 +116,19 @@ export async function waitForWeekTimeline(page: Page): Promise<void> {
     const weekTab = page.getByRole('tab', { name: '週' }).first();
     await expect(weekTab).toBeVisible({ timeout: 10_000 });
 
-    const timeline = page.getByTestId(TESTIDS.SCHEDULES_WEEK_TIMELINE);
-    if (await locatorExists(timeline, 3_000)) {
-      await expect(timeline.first()).toBeVisible({ timeout: 15_000 });
+    const weekGrid = page.getByTestId(TESTIDS['schedules-week-grid']);
+    const weekView = page.getByTestId(TESTIDS.SCHEDULE_WEEK_VIEW);
+    if (await locatorExists(weekGrid, 3_000)) {
+      await expect(weekGrid.first()).toBeVisible({ timeout: 15_000 });
+      return;
+    }
+    if (await locatorExists(weekView, 3_000)) {
+      await expect(weekView.first()).toBeVisible({ timeout: 15_000 });
       return;
     }
 
     const snippet = (await page.content()).slice(0, 1000);
-    throw new Error(`Schedule week timeline not found. url=${url} snippet="${snippet}"`);
+    throw new Error(`Schedule week view not found. url=${url} snippet="${snippet}"`);
   }
 
   if (hasWeekPage) {
@@ -145,8 +150,6 @@ export async function waitForWeekTimeline(page: Page): Promise<void> {
     await expect(weekTab).toBeVisible();
 
     const gridRoot = page.getByTestId(TESTIDS['schedules-week-grid']);
-    const timelinePanel = page.getByTestId(TESTIDS.SCHEDULES_WEEK_TIMELINE_PANEL);
-    const timeline = page.getByTestId(TESTIDS['schedules-week-timeline']);
 
     const gridVisible = async (): Promise<boolean> => {
       if (!(await locatorExists(gridRoot))) return false;
@@ -154,18 +157,8 @@ export async function waitForWeekTimeline(page: Page): Promise<void> {
       return grid.isVisible().catch(() => false);
     };
 
-    const timelineVisible = async (): Promise<boolean> => {
-      if (!(await locatorExists(timelinePanel))) return false;
-      return timeline.first().isVisible().catch(() => false);
-    };
-
     if (await gridVisible()) {
       await expect(gridRoot.first()).toBeVisible();
-      return;
-    }
-
-    if (await timelineVisible()) {
-      await expect(timeline.first()).toBeVisible();
       return;
     }
 
@@ -175,12 +168,6 @@ export async function waitForWeekTimeline(page: Page): Promise<void> {
       await expect(gridRoot.first()).toBeVisible();
       return;
     }
-
-    if (await timelineVisible()) {
-      await expect(timeline.first()).toBeVisible();
-      return;
-    }
-
     return;
   }
 
