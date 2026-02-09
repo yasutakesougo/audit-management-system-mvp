@@ -86,9 +86,12 @@ export function getRuntimeEnv(): EnvDict {
       }
     }
 
-    // DEBUG: Log E2E flag state
-    if (typeof window !== 'undefined' && String(fromWindow?.VITE_AUDIT_DEBUG) === '1') {
-      console.log('[getRuntimeEnv] DEBUG:', {
+    // DEBUG: Log E2E flag state (dev + explicit flag only)
+    const debugEnvEnabled =
+      import.meta.env.DEV &&
+      (String(fromWindow?.VITE_DEBUG_ENV) === '1' || String(INLINE_ENV.VITE_DEBUG_ENV) === '1');
+    if (debugEnvEnabled) {
+      console.debug('[getRuntimeEnv] DEBUG:', {
         'fromWindow.VITE_E2E_MSAL_MOCK': fromWindow?.VITE_E2E_MSAL_MOCK,
         'fromWindow.VITE_E2E': fromWindow?.VITE_E2E,
         'INLINE_ENV.VITE_E2E_MSAL_MOCK': INLINE_ENV.VITE_E2E_MSAL_MOCK,
