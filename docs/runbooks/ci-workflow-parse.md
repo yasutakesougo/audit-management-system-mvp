@@ -1,5 +1,11 @@
 # CI Runbook: workflow file issue（jobs=0）/ YAML parse error の切り分け
 
+## 即断（最初の10秒）
+- **症状**: Actions run が `failure` なのに **jobs が 0**
+- **判定**: workflow file issue（YAML パース失敗）
+- **即行動**: 対象 workflow を `git show <headSha>:.github/workflows/ci.yml` で取得し、YAML パースで確認
+- **禁止**: 再実行の連打（jobs=0 はテスト失敗ではなくパース不正が原因）
+
 ## 症状
 - GitHub Actions run が `failure` なのに **jobs が 0**（UI に “workflow file issue” などが出る）
 - `gh run view <runId> --json jobs | jq '.jobs | length'` が `0`
