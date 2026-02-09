@@ -2,7 +2,7 @@
 import type { IPublicClientApplication } from '@azure/msal-browser';
 import { InteractionStatus } from './interactionStatus';
 import { useCallback, useEffect, useRef } from 'react';
-import { getAppConfig, isE2eMsalMockEnabled, shouldSkipLogin } from '../lib/env';
+import { getAppConfig, isE2eMsalMockEnabled, readEnv, shouldSkipLogin } from '../lib/env';
 import { createE2EMsalAccount, persistMsalToken } from '../lib/msal';
 import { SP_RESOURCE } from './msalConfig';
 import { useMsalContext } from './MsalProvider';
@@ -22,6 +22,8 @@ const SIGN_IN_COOLDOWN_MS = 30000; // 30 seconds between attempts
 
 const authConfig = getAppConfig();
 const debugEnabled = authConfig.VITE_AUDIT_DEBUG === '1' || authConfig.VITE_AUDIT_DEBUG === 'true';
+const preferredLoginFlow = readEnv('VITE_MSAL_LOGIN_FLOW', 'popup').trim().toLowerCase();
+const useRedirectLogin = preferredLoginFlow === 'redirect';
 function debugLog(...args: unknown[]) {
   if (debugEnabled) console.debug('[auth]', ...args);
 }
@@ -301,6 +303,15 @@ export const useAuth = () => {
         const canInteract = inProgress === InteractionStatus.None || inProgress === 'none';
         if (!canInteract) {
           debugLog('loginPopup skipped because another interaction is in progress');
+          return { success: false };
+        }
+
+        if (useRedirectLogin) {
+          if (canInteract) {
+            await instance.loginRedirect({ scopes: [defaultScope], prompt: 'select_account' });
+            return { success: true };
+          }
+          debugLog('loginRedirect skipped because another interaction is in progress');
           return { success: false };
         }
 
