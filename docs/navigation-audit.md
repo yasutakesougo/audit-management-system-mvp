@@ -73,7 +73,6 @@ Do not add to Side/Footer unless we confirm “no parent navigation exists”.
 
 - /daily/activity
 - /daily/support-checklist
-- /daily/time-based
 - /schedules/day (🟡)
 - /schedules/month (🟡)
 
@@ -102,6 +101,9 @@ Examples:
 - Added the 7 must-have routes to Side Menu
 - Updated nav unit test assertions
 - Updated snapshots (removed obsolete snapshot content and regenerated via -u)
+
+### Follow-up (Post-PR #412)
+- Added a daily menu link to /daily/time-based to ensure non-URL-only access
 
 ### PR #411 (Draft)
 - Parked due to broad CI failures (layout/theme) not related to navigation exposure

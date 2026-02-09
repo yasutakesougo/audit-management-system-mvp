@@ -431,6 +431,21 @@ const DailyRecordMenuPage: React.FC = () => {
                   textDecoration: 'underline',
                   '&:hover': { backgroundColor: 'transparent', color: 'text.primary' }
                 }}
+                onClick={() => navigate('/daily/time-based')}
+              >
+                ※時間帯ごとに記録する画面はこちら
+              </Button>
+
+              <Button
+                variant="text"
+                size="small"
+                color="inherit"
+                sx={{
+                  color: 'text.secondary',
+                  fontSize: '0.75rem',
+                  textDecoration: 'underline',
+                  '&:hover': { backgroundColor: 'transparent', color: 'text.primary' }
+                }}
                 onClick={() => navigate('/daily/support-checklist')}
               >
                 ※従来のチェックリスト形式はこちら
