@@ -166,6 +166,11 @@ export interface HandoffRecord {
   status: HandoffStatus;
   timeBand: TimeBand;
   meetingSessionKey?: string;
+  sourceType?: string;
+  sourceId?: number;
+  sourceUrl?: string;
+  sourceKey?: string;
+  sourceLabel?: string;
   createdAt: string; // ISO datetime
   createdByName: string;
   isDraft: boolean;
@@ -184,6 +189,11 @@ export interface NewHandoffInput {
   message: string;
   title?: string; // 省略時は message から自動生成
   meetingSessionKey?: string;
+  sourceType?: string;
+  sourceId?: number;
+  sourceUrl?: string;
+  sourceKey?: string;
+  sourceLabel?: string;
   // status は常に '未対応' で作成
   // createdAt, createdByName は自動設定
 }
@@ -279,6 +289,11 @@ export type SpHandoffItem = {
   Status: string;
   TimeBand: string;
   MeetingSessionKey?: string;
+  SourceType?: string;
+  SourceId?: number;
+  SourceUrl?: string;
+  SourceKey?: string;
+  SourceLabel?: string;
   CreatedAt?: string;
   CreatedByName: string;
   IsDraft: boolean;
@@ -303,6 +318,11 @@ export function fromSpHandoffItem(sp: SpHandoffItem): HandoffRecord {
     status: sp.Status as HandoffStatus,
     timeBand: sp.TimeBand as TimeBand,
     meetingSessionKey: sp.MeetingSessionKey,
+    sourceType: sp.SourceType,
+    sourceId: sp.SourceId,
+    sourceUrl: sp.SourceUrl,
+    sourceKey: sp.SourceKey,
+    sourceLabel: sp.SourceLabel,
     createdAt: sp.CreatedAt || sp.Created || new Date().toISOString(),
     createdByName: sp.CreatedByName,
     isDraft: sp.IsDraft,
@@ -330,6 +350,11 @@ export function toSpHandoffCreatePayload(
     Status: '未対応', // 新規作成時は常に未対応
     TimeBand: record.timeBand,
     MeetingSessionKey: record.meetingSessionKey,
+    SourceType: record.sourceType,
+    SourceId: record.sourceId,
+    SourceUrl: record.sourceUrl,
+    SourceKey: record.sourceKey,
+    SourceLabel: record.sourceLabel,
     CreatedAt: record.createdAt || new Date().toISOString(),
     CreatedByName: record.createdByName || 'システム利用者',
     IsDraft: record.isDraft || false,

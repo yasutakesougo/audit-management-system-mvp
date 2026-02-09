@@ -142,6 +142,48 @@ export const ATTENDANCE_DAILY_SELECT_FIELDS = [
   ATTENDANCE_DAILY_FIELDS.isAbsenceAddonClaimable,
 ] as const;
 
+// ──────────────────────────────────────────────────────────────
+// Meeting Minutes (SharePoint list: MeetingMinutes)
+// ──────────────────────────────────────────────────────────────
+
+export const MEETING_MINUTES_LIST_TITLE = 'MeetingMinutes' as const;
+
+export const MEETING_MINUTES_FIELDS = {
+  id: 'Id',
+  title: 'Title',
+  meetingDate: 'MeetingDate',
+  category: 'Category',
+  summary: 'Summary',
+  decisions: 'Decisions',
+  actions: 'Actions',
+  tags: 'Tags',
+  relatedLinks: 'RelatedLinks',
+  isPublished: 'IsPublished',
+  chair: 'Chair',
+  scribe: 'Scribe',
+  attendees: 'Attendees',
+  created: 'Created',
+  modified: 'Modified',
+} as const;
+
+export const MEETING_MINUTES_SELECT_FIELDS = [
+  MEETING_MINUTES_FIELDS.id,
+  MEETING_MINUTES_FIELDS.title,
+  MEETING_MINUTES_FIELDS.meetingDate,
+  MEETING_MINUTES_FIELDS.category,
+  MEETING_MINUTES_FIELDS.summary,
+  MEETING_MINUTES_FIELDS.decisions,
+  MEETING_MINUTES_FIELDS.actions,
+  MEETING_MINUTES_FIELDS.tags,
+  MEETING_MINUTES_FIELDS.relatedLinks,
+  MEETING_MINUTES_FIELDS.isPublished,
+  MEETING_MINUTES_FIELDS.chair,
+  MEETING_MINUTES_FIELDS.scribe,
+  MEETING_MINUTES_FIELDS.attendees,
+  MEETING_MINUTES_FIELDS.created,
+  MEETING_MINUTES_FIELDS.modified,
+] as const;
+
 export interface IUserMaster {
   Id: number;
   Title?: string | null;
@@ -230,6 +272,7 @@ export enum ListKeys {
   DiagnosticsReports = 'Diagnostics_Reports',
   AttendanceUsers = 'AttendanceUsers',
   AttendanceDaily = 'AttendanceDaily',
+  MeetingMinutes = 'MeetingMinutes',
 }
 
 export const LIST_CONFIG: Record<ListKeys, { title: string }> = {
@@ -244,6 +287,7 @@ export const LIST_CONFIG: Record<ListKeys, { title: string }> = {
   [ListKeys.DiagnosticsReports]: { title: 'Diagnostics_Reports' },
   [ListKeys.AttendanceUsers]: { title: 'AttendanceUsers' },
   [ListKeys.AttendanceDaily]: { title: 'AttendanceDaily' },
+  [ListKeys.MeetingMinutes]: { title: 'MeetingMinutes' },
 };
 
 export const FIELD_MAP = {
@@ -580,6 +624,11 @@ export const FIELD_MAP_HANDOFF = {
   status: 'Status',
   timeBand: 'TimeBand',
   meetingSessionKey: 'MeetingSessionKey',
+  sourceType: 'SourceType',
+  sourceId: 'SourceId',
+  sourceUrl: 'SourceUrl',
+  sourceKey: 'SourceKey',
+  sourceLabel: 'SourceLabel',
   createdBy: 'CreatedBy',
   createdAt: 'CreatedAt',
   modifiedBy: 'ModifiedBy',

@@ -1,7 +1,9 @@
 import ProtectedRoute from '@/app/ProtectedRoute';
+import RequireAudience from '@/components/RequireAudience';
 import { nurseRoutes } from '@/features/nurse/routes/NurseRoutes';
 import { StaffPanel } from '@/features/staff';
 import { UsersPanel } from '@/features/users';
+import { MeetingMinutesRoutes } from '@/features/meeting-minutes/routes';
 import { RouteHydrationErrorBoundary } from '@/hydration/RouteHydrationListener';
 import { getAppConfig } from '@/lib/env';
 import lazyWithPreload from '@/utils/lazyWithPreload';
@@ -526,22 +528,84 @@ const SuspendedHandoffTimelinePage: React.FC = () => (
 const childRoutes: RouteObject[] = [
   { index: true, element: <DashboardRedirect /> },
   { path: 'dashboard', element: <SuspendedStaffDashboardPage /> },
-  { path: 'admin/dashboard', element: <SuspendedAdminDashboardPage /> },
+  {
+    path: 'admin/dashboard',
+    element: (
+      <RequireAudience audience="admin">
+        <SuspendedAdminDashboardPage />
+      </RequireAudience>
+    ),
+  },
   { path: 'dashboard/briefing', element: <SuspendedDashboardBriefingPage /> },
   { path: 'meeting-guide', element: <SuspendedMeetingGuidePage /> },
   { path: 'handoff-timeline', element: <SuspendedHandoffTimelinePage /> },
-  { path: 'records', element: <SuspendedRecordList /> },
-  { path: 'records/monthly', element: <SuspendedMonthlyRecordPage /> },
-  { path: 'checklist', element: <SuspendedChecklistPage /> },
-  { path: 'audit', element: <SuspendedAuditPanel /> },
-  { path: 'users', element: <UsersPanel /> },
-  { path: 'users/:userId', element: <SuspendedUserDetailPage /> },
-  { path: 'staff', element: <StaffPanel /> },
+  { path: 'meeting-minutes', element: MeetingMinutesRoutes.List },
+  { path: 'meeting-minutes/new', element: MeetingMinutesRoutes.New },
+  { path: 'meeting-minutes/:id', element: MeetingMinutesRoutes.Detail },
+  { path: 'meeting-minutes/:id/edit', element: MeetingMinutesRoutes.Edit },
+  {
+    path: 'records',
+    element: (
+      <RequireAudience audience="staff">
+        <SuspendedRecordList />
+      </RequireAudience>
+    ),
+  },
+  {
+    path: 'records/monthly',
+    element: (
+      <RequireAudience audience="staff">
+        <SuspendedMonthlyRecordPage />
+      </RequireAudience>
+    ),
+  },
+  {
+    path: 'checklist',
+    element: (
+      <RequireAudience audience="admin">
+        <SuspendedChecklistPage />
+      </RequireAudience>
+    ),
+  },
+  {
+    path: 'audit',
+    element: (
+      <RequireAudience audience="admin">
+        <SuspendedAuditPanel />
+      </RequireAudience>
+    ),
+  },
+  {
+    path: 'users',
+    element: (
+      <RequireAudience audience="staff">
+        <UsersPanel />
+      </RequireAudience>
+    ),
+  },
+  {
+    path: 'users/:userId',
+    element: (
+      <RequireAudience audience="staff">
+        <SuspendedUserDetailPage />
+      </RequireAudience>
+    ),
+  },
+  {
+    path: 'staff',
+    element: (
+      <RequireAudience audience="staff">
+        <StaffPanel />
+      </RequireAudience>
+    ),
+  },
   {
     path: 'staff/attendance',
     element: (
       <ProtectedRoute>
-        <SuspendedStaffAttendanceInput />
+        <RequireAudience audience="staff">
+          <SuspendedStaffAttendanceInput />
+        </RequireAudience>
       </ProtectedRoute>
     ),
   },
@@ -556,36 +620,98 @@ const childRoutes: RouteObject[] = [
   { path: 'daily/time-based', element: <SuspendedTimeBasedSupportRecordPage /> },
   { path: 'daily/health', element: <SuspendedHealthObservationPage /> },
   { path: 'analysis', element: <Navigate to="/analysis/dashboard" replace /> },
-  { path: 'analysis/dashboard', element: <SuspendedAnalysisDashboardPage /> },
+  {
+    path: 'analysis/dashboard',
+    element: (
+      <RequireAudience audience="staff">
+        <SuspendedAnalysisDashboardPage />
+      </RequireAudience>
+    ),
+  },
   {
     path: 'analysis/iceberg-pdca',
     element: (
-      <IcebergPdcaGate>
-        <SuspendedIcebergPdcaPage />
-      </IcebergPdcaGate>
+      <RequireAudience audience="staff">
+        <IcebergPdcaGate>
+          <SuspendedIcebergPdcaPage />
+        </IcebergPdcaGate>
+      </RequireAudience>
     ),
   },
   {
     path: 'analysis/iceberg-pdca/edit',
     element: (
-      <IcebergPdcaGate requireEdit>
-        <SuspendedIcebergPdcaPage />
-      </IcebergPdcaGate>
+      <RequireAudience audience="staff">
+        <IcebergPdcaGate requireEdit>
+          <SuspendedIcebergPdcaPage />
+        </IcebergPdcaGate>
+      </RequireAudience>
     ),
   },
-  { path: 'analysis/iceberg', element: <SuspendedIcebergAnalysisPage /> },
-  { path: 'assessment', element: <SuspendedAssessmentDashboardPage /> },
-  { path: 'survey/tokusei', element: <SuspendedTokuseiSurveyResultsPage /> },
-  { path: 'admin/templates', element: <SuspendedSupportActivityMasterPage /> },
-  { path: 'admin/step-templates', element: <SuspendedSupportStepMasterPage /> },
-  { path: 'admin/individual-support', element: <SuspendedIndividualSupportManagementPage /> },
-  { path: 'admin/staff-attendance', element: <SuspendedStaffAttendanceAdminPage /> },
+  {
+    path: 'analysis/iceberg',
+    element: (
+      <RequireAudience audience="staff">
+        <SuspendedIcebergAnalysisPage />
+      </RequireAudience>
+    ),
+  },
+  {
+    path: 'assessment',
+    element: (
+      <RequireAudience audience="staff">
+        <SuspendedAssessmentDashboardPage />
+      </RequireAudience>
+    ),
+  },
+  {
+    path: 'survey/tokusei',
+    element: (
+      <RequireAudience audience="staff">
+        <SuspendedTokuseiSurveyResultsPage />
+      </RequireAudience>
+    ),
+  },
+  {
+    path: 'admin/templates',
+    element: (
+      <RequireAudience audience="admin">
+        <SuspendedSupportActivityMasterPage />
+      </RequireAudience>
+    ),
+  },
+  {
+    path: 'admin/step-templates',
+    element: (
+      <RequireAudience audience="admin">
+        <SuspendedSupportStepMasterPage />
+      </RequireAudience>
+    ),
+  },
+  {
+    path: 'admin/individual-support',
+    element: (
+      <RequireAudience audience="admin">
+        <SuspendedIndividualSupportManagementPage />
+      </RequireAudience>
+    ),
+  },
+  {
+    path: 'admin/staff-attendance',
+    element: (
+      <RequireAudience audience="admin">
+        <SuspendedStaffAttendanceAdminPage />
+      </RequireAudience>
+    ),
+  },
   {
     path: 'admin/integrated-resource-calendar',
     element: (
       <SchedulesGate>
         <ProtectedRoute flag="schedules">
-          <SuspendedIntegratedResourceCalendarPage />
+          <RequireAudience audience="admin">
+            <SuspendedIntegratedResourceCalendarPage />
+          </RequireAudience>
         </ProtectedRoute>
       </SchedulesGate>
     )
@@ -595,7 +721,9 @@ const childRoutes: RouteObject[] = [
     element: (
       <SchedulesGate>
         <ProtectedRoute flag="schedules">
-          <Navigate to="/schedules/week" replace />
+          <RequireAudience audience="staff">
+            <Navigate to="/schedules/week" replace />
+          </RequireAudience>
         </ProtectedRoute>
       </SchedulesGate>
     ),
@@ -605,7 +733,9 @@ const childRoutes: RouteObject[] = [
     element: (
       <SchedulesGate>
         <ProtectedRoute flag="schedules">
-          <Navigate to="/schedules/week" replace />
+          <RequireAudience audience="staff">
+            <Navigate to="/schedules/week" replace />
+          </RequireAudience>
         </ProtectedRoute>
       </SchedulesGate>
     ),
@@ -615,7 +745,9 @@ const childRoutes: RouteObject[] = [
     element: (
       <SchedulesGate>
         <ProtectedRoute flag="schedules">
-          <Navigate to="/schedules/week" replace />
+          <RequireAudience audience="staff">
+            <Navigate to="/schedules/week" replace />
+          </RequireAudience>
         </ProtectedRoute>
       </SchedulesGate>
     ),
@@ -625,7 +757,9 @@ const childRoutes: RouteObject[] = [
     element: (
       <SchedulesGate>
         <ProtectedRoute flag="schedules">
-          <SuspendedNewSchedulesWeekPage />
+          <RequireAudience audience="staff">
+            <SuspendedNewSchedulesWeekPage />
+          </RequireAudience>
         </ProtectedRoute>
       </SchedulesGate>
     ),
@@ -635,7 +769,9 @@ const childRoutes: RouteObject[] = [
     element: (
       <SchedulesGate>
         <ProtectedRoute flag="schedules">
-          <SuspendedSchedulesDayPage />
+          <RequireAudience audience="staff">
+            <SuspendedSchedulesDayPage />
+          </RequireAudience>
         </ProtectedRoute>
       </SchedulesGate>
     ),
@@ -645,7 +781,9 @@ const childRoutes: RouteObject[] = [
     element: (
       <SchedulesGate>
         <ProtectedRoute flag="schedules">
-          <SuspendedSchedulesMonthPage />
+          <RequireAudience audience="staff">
+            <SuspendedSchedulesMonthPage />
+          </RequireAudience>
         </ProtectedRoute>
       </SchedulesGate>
     ),
@@ -655,7 +793,9 @@ const childRoutes: RouteObject[] = [
     element: (
       <SchedulesGate>
         <ProtectedRoute flag="schedules">
-          <Navigate to="/schedules/week" replace />
+          <RequireAudience audience="staff">
+            <Navigate to="/schedules/week" replace />
+          </RequireAudience>
         </ProtectedRoute>
       </SchedulesGate>
     ),
@@ -670,7 +810,9 @@ const childRoutes: RouteObject[] = [
         element: (
           <SchedulesGate>
             <ProtectedRoute flag="schedules">
-              <SuspendedDevScheduleCreateDialogPage />
+              <RequireAudience audience="staff">
+                <SuspendedDevScheduleCreateDialogPage />
+              </RequireAudience>
             </ProtectedRoute>
           </SchedulesGate>
         ),

@@ -172,10 +172,10 @@ const SupportActivityMasterPage: React.FC = () => {
           color="inherit"
         >
           <SettingsIcon sx={{ mr: 0.5, fontSize: 20 }} />
-          設定管理
+          支援マスタ
         </Link>
         <Typography color="text.primary" sx={{ display: 'flex', alignItems: 'center' }}>
-          支援活動テンプレート管理
+          支援活動マスタ
         </Typography>
       </Breadcrumbs>
 
@@ -183,12 +183,12 @@ const SupportActivityMasterPage: React.FC = () => {
       <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 4 }}>
         <Box>
           <Typography variant="h4" component="h1" gutterBottom>
-            支援活動テンプレート管理
+            支援活動マスタ
           </Typography>
           <Typography variant="body1" color="text.secondary">
-            支援手順記録で使用する活動テンプレートの登録・編集・削除を行います。
+            支援手順記録で使用する活動マスタの登録・編集・削除を行います。
             <br />
-            テンプレートを作成することで、支援記録の入力が効率化されます。
+            マスタを作成することで、支援記録の入力が効率化されます。
           </Typography>
         </Box>
         <Button
