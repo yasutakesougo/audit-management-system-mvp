@@ -142,16 +142,6 @@ const SchedulesTimelineRedirect: React.FC = () => {
   return <Navigate to={`/schedules/week${suffix ? `?${suffix}` : ''}`} replace />;
 };
 
-const AuthCallbackRedirect: React.FC = () => {
-  if (typeof window !== 'undefined') {
-    const postLoginTarget = window.sessionStorage.getItem('postLoginRedirect');
-    if (postLoginTarget) {
-      window.sessionStorage.removeItem('postLoginRedirect');
-      return <Navigate to={postLoginTarget} replace />;
-    }
-  }
-  return <Navigate to="/dashboard" replace />;
-};
 
 const SuspendedDailyRecordPage: React.FC = () => (
   <RouteHydrationErrorBoundary>
@@ -546,7 +536,6 @@ const SuspendedHandoffTimelinePage: React.FC = () => (
 );
 const childRoutes: RouteObject[] = [
   { index: true, element: <DashboardRedirect /> },
-  { path: 'auth/callback', element: <AuthCallbackRedirect /> },
   { path: 'dashboard', element: <SuspendedStaffDashboardPage /> },
   {
     path: 'admin/dashboard',

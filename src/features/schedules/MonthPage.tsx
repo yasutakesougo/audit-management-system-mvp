@@ -1,13 +1,15 @@
+import Badge from '@mui/material/Badge';
 import Button from '@mui/material/Button';
 import Box from '@mui/material/Box';
 import Typography from '@mui/material/Typography';
-import AddRoundedIcon from '@mui/icons-material/AddRounded';
 import type { SxProps, Theme } from '@mui/material/styles';
 import { useAnnounce } from '@/a11y/LiveAnnouncer';
+import EmptyState from '@/ui/components/EmptyState';
 import Loading from '@/ui/components/Loading';
 import { TESTIDS } from '@/testids';
 import { makeRange, useSchedules } from './useSchedules';
 import { getDayChipSx } from './theme/dateStyles';
+import { ScheduleEmptyHint } from './components/ScheduleEmptyHint';
 import { DayPopover } from './components/DayPopover';
 import {
   useCallback,
@@ -20,8 +22,6 @@ import { useNavigate, useSearchParams } from 'react-router-dom';
 import type { SchedItem } from './data';
 
 const WEEKDAY_LABELS = ['月', '火', '水', '木', '金', '土', '日'];
-const DEFAULT_START_TIME = '10:00';
-const DEFAULT_END_TIME = '11:00';
 
 type CalendarDay = {
   iso: string;
@@ -30,7 +30,7 @@ type CalendarDay = {
   inMonth: boolean;
   isToday: boolean;
   eventCount: number;
-  titles: string[];
+  firstTitle?: string;
 };
 
 type CalendarWeek = {
@@ -75,7 +75,7 @@ export default function MonthPage() {
 
   const daySummaries = useMemo(() => buildDaySummaries(items), [items]);
   const weeks = useMemo(
-    () => buildCalendarWeeks(anchorDate, daySummaries.counts, daySummaries.titles),
+    () => buildCalendarWeeks(anchorDate, daySummaries.counts, daySummaries.firstTitle),
     [anchorDate, daySummaries],
   );
 
@@ -85,7 +85,7 @@ export default function MonthPage() {
     () => countEventsInMonth(daySummaries.counts, anchorDate),
     [daySummaries.counts, anchorDate],
   );
-  const showMonthSummary = !loading && totalCount > 0;
+  const showEmptyHint = !loading && totalCount === 0;
 
   // Day Popover state
   const [dayPopoverAnchor, setDayPopoverAnchor] = useState<HTMLElement | null>(null);
@@ -127,23 +127,6 @@ export default function MonthPage() {
     [navigate, searchParams, setSearchParams],
   );
 
-  const handleCreateOnDay = useCallback(
-    (event: React.MouseEvent<HTMLButtonElement>, iso: string) => {
-      event.preventDefault();
-      event.stopPropagation();
-      const params = new URLSearchParams();
-      params.set('date', iso);
-      params.set('tab', 'day');
-      params.set('dialog', 'create');
-      params.set('dialogDate', iso);
-      params.set('dialogStart', DEFAULT_START_TIME);
-      params.set('dialogEnd', DEFAULT_END_TIME);
-      params.set('dialogCategory', 'User');
-      navigate(`/schedules/week?${params.toString()}`);
-    },
-    [navigate],
-  );
-
   const getItemsForDate = useCallback(
     (dateIso: string): SchedItem[] => {
       return items.filter((it) => (it.start ?? '').slice(0, 10) === dateIso);
@@ -161,9 +144,9 @@ export default function MonthPage() {
       aria-labelledby={headingId}
       aria-describedby={rangeId}
       tabIndex={-1}
-      style={{ paddingBottom: 16, height: '100%', display: 'flex', flexDirection: 'column', minHeight: 0 }}
+      style={{ paddingBottom: 32 }}
     >
-      <Box sx={{ px: 2, py: 1, flex: '0 0 auto' }}>
+      <Box sx={{ px: 2, py: 1.5 }}>
         <Typography 
           variant="h6" 
           id={headingId}
@@ -172,24 +155,25 @@ export default function MonthPage() {
         >
           {monthLabel}
         </Typography>
-        {showMonthSummary ? (
-          <Typography variant="body2" color="text.secondary" sx={{ textAlign: 'right' }}>
-            予定 {totalCount} 件
-          </Typography>
-        ) : null}
+        <Typography variant="body2" color="text.secondary" sx={{ textAlign: 'right' }}>
+          予定 {totalCount} 件
+        </Typography>
       </Box>
 
-      <Box
-        sx={{ px: 1.5, pb: 2, flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column' }}
+      <div
+        style={{ padding: '16px 12px 32px' }}
         aria-busy={loading || undefined}
         aria-live={loading ? 'polite' : undefined}
       >
-        {loading ? (
-          <Box sx={{ mb: 1 }}>
-            <Loading />
-          </Box>
+        {showEmptyHint ? (
+          <ScheduleEmptyHint view="month" periodLabel={monthLabel} sx={{ mb: 2 }} />
         ) : null}
-        <Box role="grid" aria-label={`${monthLabel}のカレンダー`} sx={gridContainerSx}>
+        {loading ? (
+          <div style={{ marginBottom: 16 }}>
+            <Loading />
+          </div>
+        ) : null}
+        <div role="grid" aria-label={`${monthLabel}のカレンダー`} style={gridContainerStyle}>
           <div role="row" style={{ display: 'contents' }}>
             {WEEKDAY_LABELS.map((label, index) => (
               <div key={label} role="columnheader" style={weekdayHeaderStyle(index)}>
@@ -202,8 +186,6 @@ export default function MonthPage() {
               {week.days.map((day) => {
                 const isSelected = day.iso === resolvedActiveDateIso;
                 const ariaLabel = buildDayAriaLabel(day);
-                const visibleTitles = day.titles.slice(0, 2);
-                const restCount = Math.max(day.eventCount - visibleTitles.length, 0);
                 return (
                   <Button
                     key={day.iso}
@@ -219,46 +201,55 @@ export default function MonthPage() {
                       ...getDayChipSx({ isToday: day.isToday, isSelected }),
                     } as SxProps<Theme>}
                   >
-                    <span style={dayNumberStyle(day)}>
-                      {day.day}
-                      {day.isToday ? <span style={todayDotStyle} aria-hidden="true" /> : null}
-                      {day.isToday ? (
-                        <span style={{ fontSize: 11, color: '#1e88e5', marginLeft: 4 }}>(今日)</span>
-                      ) : null}
-                    </span>
-                    {visibleTitles.map((title) => (
-                      <Typography key={title} sx={dayTitleSx} title={title}>
-                        {title}
-                      </Typography>
-                    ))}
-                    {restCount > 0 ? (
-                      <Typography variant="caption" color="text.secondary" sx={{ px: 0.25 }}>
-                        +{restCount}
+                    <Badge
+                      badgeContent={day.eventCount}
+                      invisible={!day.eventCount}
+                      overlap="circular"
+                      anchorOrigin={{ vertical: 'top', horizontal: 'right' }}
+                      sx={{
+                        '& .MuiBadge-badge': {
+                          backgroundColor: '#d32f2f',
+                          color: '#fff',
+                          fontSize: 11,
+                          fontWeight: 600,
+                          minWidth: 18,
+                          height: 18,
+                          padding: '0 5px',
+                          transform: 'translate(35%, -35%)',
+                          boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
+                        },
+                      }}
+                    >
+                      <span style={dayNumberStyle(day)}>
+                        {day.day}
+                        {day.isToday ? <span style={todayDotStyle} aria-hidden="true" /> : null}
+                        {day.isToday ? (
+                          <span style={{ fontSize: 12, color: '#1e88e5', marginLeft: 4 }}>(今日)</span>
+                        ) : null}
+                      </span>
+                    </Badge>
+                    {day.firstTitle ? (
+                      <Typography sx={dayTitleSx} title={day.firstTitle}>
+                        {day.firstTitle}
+                        {day.eventCount > 1 ? ` +${day.eventCount - 1}` : ''}
                       </Typography>
                     ) : null}
-                    <Box
-                      component="span"
-                      role="button"
-                      tabIndex={0}
-                      aria-label={`${day.day}日の予定を追加`}
-                      onClick={(event) => handleCreateOnDay(event as React.MouseEvent<HTMLButtonElement>, day.iso)}
-                      onKeyDown={(event) => {
-                        if (event.key === 'Enter' || event.key === ' ') {
-                          event.preventDefault();
-                          handleCreateOnDay(event as unknown as React.MouseEvent<HTMLButtonElement>, day.iso);
-                        }
-                      }}
-                      sx={addButtonSx}
-                    >
-                      <AddRoundedIcon fontSize="inherit" />
-                    </Box>
                   </Button>
                 );
               })}
             </div>
           ))}
-        </Box>
-      </Box>
+        </div>
+        {!loading && totalCount === 0 ? (
+          <div style={{ marginTop: 24 }}>
+            <EmptyState
+              title="この月の予定はありません"
+              description="別の日付や条件で再度お試しください。"
+              data-testid="schedule-month-empty"
+            />
+          </div>
+        ) : null}
+      </div>
 
       {dayPopoverDateIso && (
         <DayPopover
@@ -278,14 +269,10 @@ export default function MonthPage() {
   );
 }
 
-const gridContainerSx: SxProps<Theme> = {
-  flex: 1,
-  minHeight: 0,
+const gridContainerStyle: CSSProperties = {
   display: 'grid',
   gridTemplateColumns: 'repeat(7, minmax(0, 1fr))',
-  gridTemplateRows: 'auto repeat(6, minmax(0, 1fr))',
-  gap: 0.75,
-  overflow: 'hidden',
+  gap: 8,
 };
 
 const weekdayHeaderStyle = (index: number): CSSProperties => ({
@@ -303,15 +290,12 @@ const monthDayBaseSx = (day: CalendarDay): Record<string, string | number> => ({
   justifyContent: 'space-between',
   alignItems: 'flex-start',
   flexDirection: 'column',
-  padding: '14px 12px',
-  minHeight: 0,
-  gap: 0.5,
+  padding: '10px 12px',
+  minHeight: 90,
+  gap: 1,
   color: day.inMonth ? 'rgba(0,0,0,0.85)' : 'rgba(0,0,0,0.4)',
   backgroundColor: day.inMonth ? '#fff' : 'rgba(0,0,0,0.02)',
   display: 'flex',
-  height: '100%',
-  overflow: 'hidden',
-  position: 'relative',
   width: '100%',
   textAlign: 'left',
 });
@@ -325,10 +309,10 @@ const dayNumberStyle = (day: CalendarDay): CSSProperties => ({
 });
 
 const dayTitleSx = {
-  mt: 0.75,
-  fontSize: 13,
+  mt: 0.5,
+  fontSize: 12,
   fontWeight: 600,
-  color: 'rgba(0,0,0,0.72)',
+  color: 'rgba(0,0,0,0.75)',
   overflow: 'hidden',
   textOverflow: 'ellipsis',
   whiteSpace: 'nowrap',
@@ -336,34 +320,11 @@ const dayTitleSx = {
 };
 
 const todayDotStyle: CSSProperties = {
-  width: 8,
-  height: 8,
+  width: 6,
+  height: 6,
   borderRadius: '50%',
   background: '#1565c0',
   display: 'inline-block',
-};
-
-const addButtonSx: SxProps<Theme> = {
-  position: 'absolute',
-  right: 6,
-  bottom: 6,
-  width: 22,
-  height: 22,
-  borderRadius: 999,
-  border: '1px solid rgba(148,163,184,0.6)',
-  backgroundColor: '#fff',
-  color: 'rgba(30,64,175,0.8)',
-  fontSize: 14,
-  display: 'inline-flex',
-  alignItems: 'center',
-  justifyContent: 'center',
-  cursor: 'pointer',
-  opacity: 0,
-  transition: 'opacity 120ms ease',
-  '&:hover': { backgroundColor: 'rgba(59,130,246,0.08)' },
-  '.MuiButtonBase-root:hover &': { opacity: 1 },
-  '&:focus-visible': { opacity: 1 },
-  '@media (hover: none)': { opacity: 1 },
 };
 
 const startOfWeek = (date: Date): Date => {
@@ -415,9 +376,9 @@ const addDays = (date: Date, days: number): Date => {
 
 const buildDaySummaries = (
   items: SchedItem[],
-): { counts: Record<string, number>; titles: Record<string, string[]> } => {
+): { counts: Record<string, number>; firstTitle: Record<string, string> } => {
   const counts: Record<string, number> = {};
-  const titles: Record<string, string[]> = {};
+  const firstTitle: Record<string, string> = {};
 
   for (const item of items) {
     const start = new Date(item.start);
@@ -431,18 +392,17 @@ const buildDaySummaries = (
     while (cursor <= boundary) {
       const iso = toDateIso(cursor);
       counts[iso] = (counts[iso] ?? 0) + 1;
-      const title = item.title || item.notes || '';
-      if (title) {
-        const bucket = titles[iso] ?? [];
-        if (bucket.length < 2) {
-          bucket.push(title);
-          titles[iso] = bucket;
+      // 先頭1件だけタイトルを保持（既に存在すれば上書きしない）
+      if (firstTitle[iso] == null || firstTitle[iso] === '') {
+        const title = item.title || item.notes || '';
+        if (title) {
+          firstTitle[iso] = title;
         }
       }
       cursor.setDate(cursor.getDate() + 1);
     }
   }
-  return { counts, titles };
+  return { counts, firstTitle };
 };
 
 const startOfDay = (date: Date): Date => {
@@ -454,7 +414,7 @@ const startOfDay = (date: Date): Date => {
 const buildCalendarWeeks = (
   anchorDate: Date,
   counts: Record<string, number>,
-  titles: Record<string, string[]>,
+  firstTitle: Record<string, string>,
 ): CalendarWeek[] => {
   const start = startOfCalendar(anchorDate);
   const todayIso = toDateIso(new Date());
@@ -471,7 +431,7 @@ const buildCalendarWeeks = (
         inMonth: cursor.getMonth() === anchorDate.getMonth(),
         isToday: iso === todayIso,
         eventCount: counts[iso] ?? 0,
-        titles: titles[iso] ?? [],
+        firstTitle: firstTitle[iso],
       });
       cursor = addDays(cursor, 1);
     }
