@@ -2,7 +2,7 @@ import '@/test/captureSp400';
 import { expect, test } from '@playwright/test';
 import { TESTIDS } from '@/testids';
 import { gotoDay, gotoWeek } from './utils/scheduleNav';
-import { waitForDayTimeline, waitForWeekTimeline } from './utils/wait';
+import { waitForDayTimeline, waitForWeekViewReady } from './utils/wait';
 
 const setupEnv = {
   env: {
@@ -22,7 +22,7 @@ const TARGET_DATE = new Date('2025-11-14');
 const CONFLICT_SCENARIO = 'conflicts-basic';
 const CONFLICT_SELECTOR = '[data-testid="schedule-warning-indicator"]';
 
-test.describe('Schedule conflicts – timeline views', () => {
+test.describe('Schedule conflicts – schedule views', () => {
   test.beforeEach(async ({ page }) => {
     page.on('console', (message) => {
       if (message.type() === 'info' && message.text().startsWith('[schedulesClient] fixtures=')) {
@@ -54,9 +54,9 @@ test.describe('Schedule conflicts – timeline views', () => {
     await expect(conflicts.first()).toBeVisible();
   });
 
-  test('highlights the same conflicts in the week timeline', async ({ page }) => {
+  test('highlights the same conflicts in the week view', async ({ page }) => {
     await gotoWeek(page, TARGET_DATE, { searchParams: { scenario: CONFLICT_SCENARIO } });
-    await waitForWeekTimeline(page);
+    await waitForWeekViewReady(page);
 
     const weekRoot = page.getByTestId(TESTIDS.SCHEDULE_WEEK_ROOT);
     await expect(weekRoot).toBeVisible();

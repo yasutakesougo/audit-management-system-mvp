@@ -75,7 +75,7 @@ export async function waitForDayScheduleReady(page: Page, timeout = 15_000): Pro
 }
 
 export async function waitForDayTimeline(page: Page): Promise<void> {
-  // Day view is now a tab within /schedules/week (renders DayView component, not TimelineDay)
+  // Day view is now a tab within /schedules/week (renders DayView component)
   await expect(page).toHaveURL(/\/schedules\/week/);
   
   // Verify tab parameter if present
@@ -101,7 +101,7 @@ export async function waitForDayTimeline(page: Page): Promise<void> {
   await expect(root).toBeVisible();
 }
 
-export async function waitForWeekTimeline(page: Page): Promise<void> {
+export async function waitForWeekViewReady(page: Page): Promise<void> {
   const url = page.url();
 
   const pageRoot = page.getByTestId(TESTIDS.SCHEDULES_PAGE_ROOT);
@@ -171,32 +171,14 @@ export async function waitForWeekTimeline(page: Page): Promise<void> {
     return;
   }
 
-  const legacyRoot = page.getByTestId(TESTIDS.SCHEDULE_WEEK_ROOT);
-  const hasLegacyRoot = await locatorExists(legacyRoot, 3_000);
-  if (!hasLegacyRoot) {
-    let domSnippet = '';
-    try {
-      domSnippet = await page.evaluate(() => document.body.innerHTML.slice(0, 10000));
-      domSnippet = domSnippet.replace(/\s+/g, ' ').trim();
-    } catch {
-      domSnippet = '[failed to capture DOM]';
-    }
-    throw new Error(
-      `Schedule week view not found (neither SchedulePage nor WeekPage nor legacy timeline). url=${url} snippet="${domSnippet}"`,
-    );
+  let domSnippet = '';
+  try {
+    domSnippet = await page.evaluate(() => document.body.innerHTML.slice(0, 10000));
+    domSnippet = domSnippet.replace(/\s+/g, ' ').trim();
+  } catch {
+    domSnippet = '[failed to capture DOM]';
   }
-
-  await expect(legacyRoot).toBeVisible();
-
-  const legacyHeading = page.getByRole('heading', { level: 1, name: /スケジュール/ });
-  await expect(legacyHeading).toBeVisible();
-
-  const legacyWeekTab = page.getByRole('tab', { name: /週/ }).first();
-  await expect(legacyWeekTab).toBeVisible();
-  await expect(legacyWeekTab).toHaveAttribute('aria-selected', 'true');
-
-  const legacyHeader = page.locator('[id^="timeline-week-header-"]').first();
-  await expect(legacyHeader).toBeVisible();
+  throw new Error(`Schedule week view not found. url=${url} snippet="${domSnippet}"`);
 }
 
 export async function waitForMonthTimeline(page: Page): Promise<void> {

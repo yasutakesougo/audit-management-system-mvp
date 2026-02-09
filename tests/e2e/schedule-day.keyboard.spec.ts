@@ -2,7 +2,7 @@ import '@/test/captureSp400';
 import { expect, test } from '@playwright/test';
 import { TESTIDS } from '../../src/testids';
 import { gotoDay } from './utils/scheduleNav';
-import { waitForDayTimeline, waitForWeekTimeline } from './utils/wait';
+import { waitForDayTimeline, waitForWeekViewReady } from './utils/wait';
 
 const setupEnv = {
   env: {
@@ -50,7 +50,7 @@ test.describe('Schedule day keyboard navigation', () => {
 
     await dayTab.press('ArrowLeft');
     await weekTab.press(' ');
-    await waitForWeekTimeline(page);
+    await waitForWeekViewReady(page);
     await expect(weekTab).toBeVisible();
 
     await weekTab.press('ArrowRight');

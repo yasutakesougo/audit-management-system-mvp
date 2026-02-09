@@ -3,7 +3,7 @@ import { expect, test, type Page } from '@playwright/test';
 import { TESTIDS } from '../../src/testids';
 import { bootstrapScheduleEnv } from './utils/scheduleEnv';
 import { gotoWeek } from './utils/scheduleNav';
-import { waitForWeekTimeline } from './utils/wait';
+import { waitForWeekViewReady } from './utils/wait';
 
 test.describe('Schedule week deep link', () => {
   test.beforeEach(async ({ page }) => {
@@ -18,7 +18,7 @@ test.describe('Schedule week deep link', () => {
     });
 
   const waitForSchedulePage = async (page: Page, iso?: string): Promise<void> => {
-    await waitForWeekTimeline(page);
+    await waitForWeekViewReady(page);
 
     const heading = page.getByTestId(TESTIDS['schedules-week-heading']).or(
       page.getByRole('heading', { level: 1, name: /スケジュール/ }),
