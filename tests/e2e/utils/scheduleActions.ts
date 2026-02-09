@@ -633,7 +633,7 @@ const buildWeekRootCandidates = (page: Page): Locator[] => [
   page.getByTestId(TESTIDS.SCHEDULE_WEEK_VIEW),
 ];
 
-const getWeekTimelineRoot = async (page: Page): Promise<Locator> => {
+const getWeekRoot = async (page: Page): Promise<Locator> => {
   const candidates = buildWeekRootCandidates(page);
   for (const locator of candidates) {
     const candidate = locator.first();
@@ -662,7 +662,7 @@ export async function getWeekScheduleItems(
 ) {
   const { category } = opts;
   const categorySelector = category ? `[data-category="${category}"]` : '';
-  const root = await getWeekTimelineRoot(page);
+  const root = await getWeekRoot(page);
   return root.locator(`[data-testid="${TESTIDS.SCHEDULE_ITEM}"]${categorySelector}`);
 }
 
@@ -681,7 +681,7 @@ export async function waitForWeekScheduleItems(
 }
 
 export async function getWeekRowById(page: Page, id: number | string) {
-  const root = await getWeekTimelineRoot(page);
+  const root = await getWeekRoot(page);
   return root.locator(`[data-testid="${TESTIDS.SCHEDULE_ITEM}"][data-id="${id}"]`).first();
 }
 
@@ -860,7 +860,7 @@ export async function openWeekEventCard(
     await weekTab.first().click();
   }
 
-  const root = await getWeekTimelineRoot(page);
+  const root = await getWeekRoot(page);
   await expect(root).toBeVisible({ timeout: 15_000 });
 
   let locator = await getWeekScheduleItems(page, { category });
@@ -884,7 +884,7 @@ export async function assertWeekHasUserCareEvent(
     memoContains?: string;
   } = {},
 ) {
-  const root = await getWeekTimelineRoot(page);
+  const root = await getWeekRoot(page);
   await expect(root).toBeVisible({ timeout: 15_000 });
 
   const { titleContains, serviceContains, userName, memoContains } = opts;

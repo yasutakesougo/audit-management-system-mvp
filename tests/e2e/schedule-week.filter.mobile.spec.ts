@@ -3,7 +3,7 @@ import { expect, test } from '@playwright/test';
 import { TESTIDS } from '@/testids';
 import { bootstrapScheduleEnv } from './utils/scheduleEnv';
 import { gotoWeek } from './utils/scheduleNav';
-import { waitForWeekTimeline } from './utils/wait';
+import { waitForWeekViewReady } from './utils/wait';
 
 test.describe('Schedule week – mobile toolbar/search', () => {
   test.beforeEach(async ({ page }) => {
@@ -14,7 +14,7 @@ test.describe('Schedule week – mobile toolbar/search', () => {
     await page.setViewportSize({ width: 390, height: 844 });
 
     await gotoWeek(page, new Date('2025-11-24'));
-    await waitForWeekTimeline(page);
+    await waitForWeekViewReady(page);
 
     const filterToggle = page.getByTestId(TESTIDS.SCHEDULES_FILTER_TOGGLE);
     await expect(filterToggle).toBeVisible();
