@@ -1,11 +1,11 @@
 import { ProcedureEditor } from '@/features/daily/components/procedure/ProcedureEditor';
 import { ProcedurePanel } from '@/features/daily/components/split-stream/ProcedurePanel';
-import { RecordPanel, type RecordPanelLockState } from '@/features/daily/components/split-stream/RecordPanel';
+import { RecordPanel } from '@/features/daily/components/split-stream/RecordPanel';
 import { SplitStreamLayout } from '@/features/daily/components/split-stream/SplitStreamLayout';
 import type { BehaviorObservation } from '@/features/daily/domain/daily/types';
 import { getScheduleKey } from '@/features/daily/domain/getScheduleKey';
-import { useBehaviorStore } from '@/features/daily/stores/behaviorStore';
-import { useProcedureStore, type ProcedureItem } from '@/features/daily/stores/procedureStore';
+import type { ProcedureItem } from '@/features/daily/stores/procedureStore';
+import { useInMemoryBehaviorRepository, useInMemoryProcedureRepository } from '@/features/daily/repositories/inMemory';
 import { useUsersDemo } from '@/features/users/usersStoreDemo';
 import AccessTimeIcon from '@mui/icons-material/AccessTime';
 import PersonIcon from '@mui/icons-material/Person';
@@ -17,57 +17,74 @@ import FormControl from '@mui/material/FormControl';
 import InputLabel from '@mui/material/InputLabel';
 import MenuItem from '@mui/material/MenuItem';
 import Paper from '@mui/material/Paper';
-import Select, { type SelectChangeEvent } from '@mui/material/Select';
+import Select from '@mui/material/Select';
 import Snackbar from '@mui/material/Snackbar';
 import Stack from '@mui/material/Stack';
 import Typography from '@mui/material/Typography';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { FullScreenDailyDialogPage } from '@/features/daily/components/FullScreenDailyDialogPage';
+import { useTimeBasedSupportRecordPage } from '@/pages/hooks/useTimeBasedSupportRecordPage';
+import { useSearchParams } from 'react-router-dom';
 
 const TimeBasedSupportRecordPage: React.FC = () => {
-  const [isAcknowledged, setIsAcknowledged] = useState(false);
-  const [targetUserId, setTargetUserId] = useState('');
+  const [searchParams, setSearchParams] = useSearchParams();
+  const initialUserId = searchParams.get('user') ?? undefined;
+  const initialStepKey = searchParams.get('step') ?? undefined;
+  const initialUnfilledOnly = searchParams.get('unfilled') === '1';
   const [snackbarOpen, setSnackbarOpen] = useState(false);
   const [isEditOpen, setIsEditOpen] = useState(false);
-  const [selectedStepId, setSelectedStepId] = useState<string | null>(null);
-  const [scrollToStepId, setScrollToStepId] = useState<string | null>(null);
-  const [showUnfilledOnly, setShowUnfilledOnly] = useState(() => {
-    if (typeof window === 'undefined') return false;
-    return window.sessionStorage.getItem('daily-support-unfilled-only') === '1';
-  });
   const recordDate = useMemo(() => new Date(), []);
-  const { add, data: behaviorRecords, fetchByUser } = useBehaviorStore();
-  const { getByUser, save } = useProcedureStore();
+  const procedureRepo = useInMemoryProcedureRepository();
+  const { repo: behaviorRepo, data: behaviorRecords } = useInMemoryBehaviorRepository();
   const { data: users } = useUsersDemo();
+  const {
+    targetUserId,
+    handleUserChange,
+    schedule,
+    filledStepIds,
+    recentObservations,
+    isAcknowledged,
+    setIsAcknowledged,
+    selectedStepId,
+    setSelectedStepId,
+    scrollToStepId,
+    showUnfilledOnly,
+    setShowUnfilledOnly,
+    recordLockState,
+    totalSteps,
+    unfilledStepsCount,
+    handleSelectStep,
+    handleAfterSubmit,
+  } = useTimeBasedSupportRecordPage({
+    procedureRepo,
+    behaviorRepo,
+    behaviorRecords,
+    initialUserId,
+    initialStepKey,
+    initialUnfilledOnly,
+  });
   const selectedUser = useMemo(() => users.find((user) => user.UserID === targetUserId), [users, targetUserId]);
-  const recentObservations = useMemo(
-    () => behaviorRecords.filter((behavior) => behavior.userId === targetUserId),
-    [behaviorRecords, targetUserId],
-  );
-  const schedule = useMemo(() => {
-    if (!targetUserId) return [];
-    return getByUser(targetUserId);
-  }, [getByUser, targetUserId]);
-  const scheduleKeys = useMemo(() => schedule.map((item) => getScheduleKey(item.time, item.activity)), [schedule]);
-  const filledStepIds = useMemo(() => {
-    if (!schedule.length || recentObservations.length === 0) return new Set<string>();
-    const filled = new Set<string>();
-    recentObservations.forEach((observation) => {
-      if (!observation.timeSlot) return;
-      filled.add(getScheduleKey(observation.timeSlot, observation.plannedActivity ?? ''));
-    });
-    return filled;
-  }, [schedule, recentObservations]);
-  const unfilledStepIds = useMemo(
-    () => scheduleKeys.filter((key) => !filledStepIds.has(key)),
-    [scheduleKeys, filledStepIds]
-  );
-  const totalSteps = scheduleKeys.length;
-  const unfilledStepsCount = unfilledStepIds.length;
-  const recordLockState = useMemo<RecordPanelLockState>(() => {
-    if (!targetUserId) return 'no-user';
-    return isAcknowledged ? 'unlocked' : 'unconfirmed';
-  }, [targetUserId, isAcknowledged]);
+
+  useEffect(() => {
+    const nextParams = new URLSearchParams(searchParams);
+    if (targetUserId) {
+      nextParams.set('user', targetUserId);
+    } else {
+      nextParams.delete('user');
+    }
+    if (selectedStepId) {
+      nextParams.set('step', selectedStepId);
+    } else {
+      nextParams.delete('step');
+    }
+    if (showUnfilledOnly) {
+      nextParams.set('unfilled', '1');
+    } else {
+      nextParams.delete('unfilled');
+    }
+    if (nextParams.toString() === searchParams.toString()) return;
+    setSearchParams(nextParams, { replace: true });
+  }, [searchParams, selectedStepId, setSearchParams, showUnfilledOnly, targetUserId]);
 
   useEffect(() => {
     if (process.env.NODE_ENV === 'production') return;
@@ -87,71 +104,14 @@ const TimeBasedSupportRecordPage: React.FC = () => {
     }
   }, [schedule]);
 
-  useEffect(() => {
-    if (!targetUserId) return;
-    fetchByUser(targetUserId);
-  }, [fetchByUser, targetUserId]);
-
-  useEffect(() => {
-    if (!schedule.length) {
-      setSelectedStepId(null);
-      return;
-    }
-    if (selectedStepId && !scheduleKeys.includes(selectedStepId)) {
-      setSelectedStepId(null);
-    }
-  }, [schedule, scheduleKeys, selectedStepId]);
-
-  useEffect(() => {
-    if (!showUnfilledOnly) return;
-    const nextTarget = unfilledStepIds[0] ?? null;
-    if (!nextTarget) return;
-    if (selectedStepId === nextTarget && scrollToStepId === nextTarget) return;
-    if (!selectedStepId || filledStepIds.has(selectedStepId)) {
-      setSelectedStepId(nextTarget);
-      setScrollToStepId(nextTarget);
-    }
-  }, [filledStepIds, scrollToStepId, selectedStepId, showUnfilledOnly, unfilledStepIds]);
-
-  useEffect(() => {
-    if (typeof window === 'undefined') return;
-    window.sessionStorage.setItem('daily-support-unfilled-only', showUnfilledOnly ? '1' : '0');
-  }, [showUnfilledOnly]);
-
   const handleRecordSubmit = useCallback(async (payload: Omit<BehaviorObservation, 'id' | 'userId'>) => {
     if (!targetUserId) return;
-    await add({
+    await behaviorRepo.add({
       ...payload,
       userId: targetUserId,
     });
     setSnackbarOpen(true);
-  }, [add, targetUserId]);
-
-  const handleAfterSubmit = useCallback((currentStepId: string | null) => {
-    const sourceId = currentStepId ?? selectedStepId;
-    if (!sourceId) return;
-    const currentIndex = scheduleKeys.indexOf(sourceId);
-    if (currentIndex < 0) return;
-    let nextId = scheduleKeys[currentIndex + 1] ?? sourceId;
-    if (showUnfilledOnly) {
-      for (let i = currentIndex + 1; i < scheduleKeys.length; i += 1) {
-        const candidate = scheduleKeys[i];
-        if (candidate !== sourceId && !filledStepIds.has(candidate)) {
-          nextId = candidate;
-          break;
-        }
-      }
-    }
-    setSelectedStepId(nextId);
-    setScrollToStepId(nextId);
-  }, [filledStepIds, scheduleKeys, selectedStepId, showUnfilledOnly]);
-
-  const handleUserChange = useCallback((event: SelectChangeEvent<string>) => {
-    setTargetUserId(event.target.value);
-    setIsAcknowledged(false);
-    setSelectedStepId(null);
-    setScrollToStepId(null);
-  }, []);
+  }, [behaviorRepo, targetUserId]);
 
   const handleSnackbarClose = useCallback(() => {
     setSnackbarOpen(false);
@@ -159,9 +119,9 @@ const TimeBasedSupportRecordPage: React.FC = () => {
 
   const handleProcedureSave = useCallback((items: ProcedureItem[]) => {
     if (!targetUserId) return;
-    save(targetUserId, items);
+    procedureRepo.save(targetUserId, items);
     setIsAcknowledged(false);
-  }, [save, targetUserId]);
+  }, [procedureRepo, targetUserId]);
 
   const handleEditorOpen = useCallback(() => {
     setIsEditOpen(true);
@@ -215,7 +175,7 @@ const TimeBasedSupportRecordPage: React.FC = () => {
             labelId="iceberg-user-select-label"
             value={targetUserId}
             label="支援対象者"
-            onChange={handleUserChange}
+            onChange={(event) => handleUserChange(event.target.value)}
             startAdornment={<PersonIcon fontSize="small" sx={{ mr: 1, color: 'text.secondary' }} />}
           >
             <MenuItem value="">
@@ -240,10 +200,7 @@ const TimeBasedSupportRecordPage: React.FC = () => {
               onAcknowledged={() => setIsAcknowledged(true)}
               onEdit={handleEditorOpen}
               selectedStepId={selectedStepId}
-              onSelectStep={(_, stepId) => {
-                setSelectedStepId(stepId);
-                setScrollToStepId(stepId);
-              }}
+              onSelectStep={(_, stepId) => handleSelectStep(stepId)}
               filledStepIds={filledStepIds}
               scrollToStepId={scrollToStepId}
               showUnfilledOnly={showUnfilledOnly}
