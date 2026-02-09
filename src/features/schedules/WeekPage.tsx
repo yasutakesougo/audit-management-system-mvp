@@ -1,5 +1,4 @@
 import { type CSSProperties, type MouseEvent, useCallback, useEffect, useId, useMemo, useRef, useState } from 'react';
-import { useMatch, useSearchParams } from 'react-router-dom';
 import { Alert, Button, Dialog, DialogTitle, DialogContent, DialogActions, Snackbar, Stack, Typography } from '@mui/material';
 
 import { useAnnounce } from '@/a11y/LiveAnnouncer';
@@ -7,7 +6,6 @@ import { isDev } from '@/env';
 import { useAuth } from '@/auth/useAuth';
 import { useUserAuthz } from '@/auth/useUserAuthz';
 import { MASTER_SCHEDULE_TITLE_JA } from '@/features/schedules/constants';
-import { ensureDateParam, normalizeToDayStart, pickDateParam } from '@/features/schedules/utils/dateQuery';
 import type { ScheduleCategory } from '@/features/schedules/domain/types';
 import ScheduleCreateDialog from '@/features/schedules/ScheduleCreateDialog';
 import ScheduleEmptyHint from '@/features/schedules/components/ScheduleEmptyHint';
@@ -18,6 +16,8 @@ import type { ScheduleFormState } from '@/features/schedules/scheduleFormState';
 import type { InlineScheduleDraft } from '@/features/schedules/data/inlineScheduleDraft';
 import { useScheduleUserOptions } from '@/features/schedules/useScheduleUserOptions';
 import { makeRange, useSchedules } from '@/features/schedules/useSchedules';
+import { type DialogIntentParams, useWeekPageRouteState } from '@/features/schedules/useWeekPageRouteState';
+import { useWeekPageUiState } from '@/features/schedules/useWeekPageUiState';
 import { TESTIDS } from '@/testids';
 import EmptyState from '@/ui/components/EmptyState';
 import Loading from '@/ui/components/Loading';
@@ -29,7 +29,6 @@ import WeekView from './WeekView';
 import MonthPage from './MonthPage';
 import WeekTimeline, { type WeekTimelineCreateHint } from './views/WeekTimeline';
 
-type ScheduleTab = 'week' | 'day' | 'timeline' | 'month';
 const DEFAULT_START_TIME = '10:00';
 const DEFAULT_END_TIME = '11:00';
 const SCHEDULES_TZ = resolveSchedulesTz();
@@ -112,17 +111,6 @@ const formatWeekAnnouncement = (fromIso: string, toIso: string): string => {
   return `${startLabel}〜${endLabel}の週を表示`;
 };
 
-type DialogMode = 'create' | 'edit';
-
-type DialogIntentParams = {
-  mode: DialogMode;
-  category: ScheduleCategory;
-  dateIso: string;
-  startTime: string;
-  endTime: string;
-  eventId?: string | null;
-};
-
 type ScheduleEditDialogValues = (Omit<CreateScheduleEventInput, 'statusReason'> & { statusReason: string }) & {
   id: string;
 };
@@ -142,39 +130,32 @@ const buildUpdateInput = (eventId: string, input: CreateScheduleEventInput): Upd
   title: input.title.trim() || '新規予定',
 });
 
-const resolveDialogIntent = (params: URLSearchParams): DialogIntentParams | null => {
-  const mode = params.get('dialog') as DialogMode | null;
-  if (mode !== 'create' && mode !== 'edit') {
-    return null;
-  }
-  const dateIso = params.get('dialogDate');
-  if (!dateIso) {
-    return null;
-  }
-  const startTime = params.get('dialogStart') ?? DEFAULT_START_TIME;
-  const endTime = params.get('dialogEnd') ?? DEFAULT_END_TIME;
-  const category = (params.get('dialogCategory') as ScheduleCategory) ?? 'User';
-  const eventId = mode === 'edit' ? params.get('eventId') : null;
-  return {
-    mode,
-    category,
-    dateIso,
-    startTime,
-    endTime,
-    eventId,
-  };
-};
-
 // Tracks whether the FAB should reclaim focus after the dialog closes across route remounts.
 let pendingFabFocus = false;
 
 
-const LEGACY_TABS = ['day', 'week', 'timeline', 'month'] as const;
-type LegacyTab = typeof LEGACY_TABS[number];
-
 export default function WeekPage() {
+  const route = useWeekPageRouteState();
+  const {
+    snack,
+    setSnack,
+    showSnack,
+    isInlineSaving,
+    setIsInlineSaving,
+    isInlineDeleting,
+    setIsInlineDeleting,
+    conflictDetailOpen,
+    setConflictDetailOpen,
+    lastErrorAt,
+    setLastErrorAt,
+    conflictBusy,
+    setConflictBusy,
+    focusScheduleId,
+    setFocusScheduleId,
+    highlightId,
+    setHighlightId,
+  } = useWeekPageUiState();
   const announce = useAnnounce();
-  const [searchParams, setSearchParams] = useSearchParams();
   
   // Legacy ?tab= redirect (互換性のため) - DISABLED to prevent infinite redirect loop
   // The tab param is now handled directly in the mode calculation below
@@ -197,38 +178,9 @@ export default function WeekPage() {
   //   if (target) navigate(target, { replace: true });
   // }, [searchParams, navigate, location.pathname]);
   
-  const [snack, setSnack] = useState<{
-    open: boolean;
-    severity: 'success' | 'error' | 'info' | 'warning';
-    message: string;
-  }>({ open: false, severity: 'info', message: '' });
-
-  const showSnack = useCallback(
-    (severity: 'success' | 'error' | 'info' | 'warning', message: string) =>
-      setSnack({ open: true, severity, message }),
-    []
-  );
-  
-  // Route から mode を決定（useMatch で堅牢化）
-  // First check URL path (when navigation completes), then fall back to query param (during redirect)
-  const dayMatch = useMatch('/schedules/day/*');
-  const timelineMatch = useMatch('/schedules/timeline/*');
-  const monthMatch = useMatch('/schedules/month/*');
-  
-  // Fallback to query parameter for backward compatibility with redirects
-  const tabParam = searchParams.get('tab') as ScheduleTab | null;
-  
-  const mode: ScheduleTab = dayMatch
-    ? 'day'
-    : timelineMatch
-      ? 'timeline'
-      : monthMatch
-        ? 'month'
-        : tabParam && LEGACY_TABS.includes(tabParam as LegacyTab)
-          ? (tabParam as ScheduleTab)
-          : 'week';
-  const [categoryFilter, setCategoryFilter] = useState<'All' | ScheduleCategory>('All');
-  const [query, setQuery] = useState('');
+  const mode = route.mode;
+  const categoryFilter = route.filter.category;
+  const query = route.filter.query;
   
   // Authorization check for Day view editing
   const { account } = useAuth();
@@ -237,21 +189,18 @@ export default function WeekPage() {
   const canEditByRole = ready && (isReception || isAdmin);
   const canEdit = mode === 'day' && canEditByRole; // FAB (create) = reception/admin only
   
-  const rawDateParam = useMemo(() => pickDateParam(searchParams), [searchParams]);
-  const focusDate = useMemo(() => normalizeToDayStart(rawDateParam), [rawDateParam]);
+  const focusDate = route.focusDate;
   const [activeDateIso, setActiveDateIso] = useState<string | null>(() => toDateIso(focusDate));
   const scheduleUserOptions = useScheduleUserOptions();
   const defaultScheduleUser = scheduleUserOptions.length ? scheduleUserOptions[0] : null;
-  const dialogIntent = useMemo(() => resolveDialogIntent(searchParams), [searchParams]);
-  const createDialogOpen = Boolean(dialogIntent);
+  const dialogIntent = route.dialogIntent;
+  const createDialogOpen = route.createDialogOpen;
   const createDialogInitialDate: Date | string | undefined = dialogIntent?.dateIso;
   const createDialogInitialStartTime = dialogIntent?.startTime;
   const createDialogInitialEndTime = dialogIntent?.endTime;
   const fabRef = useRef<HTMLButtonElement | null>(null);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [dialogInitialValues, setDialogInitialValues] = useState<ScheduleEditDialogValues | null>(null);
-  const [isInlineSaving, setIsInlineSaving] = useState(false);
-  const [isInlineDeleting, setIsInlineDeleting] = useState(false);
 
   useEffect(() => {
     if (!createDialogOpen && pendingFabFocus && fabRef.current) {
@@ -290,7 +239,7 @@ export default function WeekPage() {
       return haystack.includes(needle);
     });
   }, [items, categoryFilter, query]);
-  const dialogMode: DialogMode = dialogIntent?.mode ?? 'create';
+  const dialogMode = (dialogIntent?.mode ?? 'create') as 'create' | 'edit';
   const isEditMode = dialogMode === 'edit';
   const dialogEventId = dialogIntent?.eventId ?? null;
   const editingItem: SchedItem | null = useMemo(() => {
@@ -346,35 +295,8 @@ export default function WeekPage() {
     () => formatWeekAnnouncement(weekRange.from, weekRange.to),
     [weekRange.from, weekRange.to],
   );
-  const setDialogParams = useCallback(
-    (intent: DialogIntentParams) => {
-      const normalizedDate = normalizeToDayStart(intent.dateIso);
-      const next = ensureDateParam(searchParams, normalizedDate);
-      next.set('dialog', intent.mode);
-      next.set('dialogDate', intent.dateIso);
-      next.set('dialogStart', intent.startTime);
-      next.set('dialogEnd', intent.endTime);
-      next.set('dialogCategory', intent.category);
-      if (intent.eventId) {
-        next.set('eventId', intent.eventId);
-      } else {
-        next.delete('eventId');
-      }
-      setSearchParams(next, { replace: true });
-    },
-    [searchParams, setSearchParams],
-  );
-
-  const clearDialogParams = useCallback(() => {
-    const next = new URLSearchParams(searchParams);
-    next.delete('dialog');
-    next.delete('dialogDate');
-    next.delete('dialogStart');
-    next.delete('dialogEnd');
-    next.delete('dialogCategory');
-    next.delete('eventId');
-    setSearchParams(next, { replace: true });
-  }, [searchParams, setSearchParams]);
+  const setDialogParams = route.setDialogParams;
+  const clearDialogParams = route.clearDialogParams;
 
   const primeRouteReset = useCallback(() => {
     if (typeof window === 'undefined') {
@@ -383,22 +305,6 @@ export default function WeekPage() {
     const scope = window as typeof window & { __suppressRouteReset__?: boolean };
     scope.__suppressRouteReset__ = true;
   }, []);
-
-  useEffect(() => {
-    const dateParam = searchParams.get('date');
-    const hasDay = searchParams.has('day');
-    const hasWeek = searchParams.has('week');
-    const needsNormalization = !dateParam || hasDay || hasWeek;
-
-    if (!needsNormalization) {
-      return;
-    }
-
-    const source = dateParam ?? rawDateParam;
-    const normalized = source ? normalizeToDayStart(source) : focusDate;
-    const next = ensureDateParam(searchParams, normalized);
-    setSearchParams(next, { replace: true });
-  }, [focusDate, rawDateParam, searchParams, setSearchParams]);
 
   useEffect(() => {
     const nextIso = toDateIso(focusDate);
@@ -414,11 +320,9 @@ export default function WeekPage() {
 
   const syncDateParam = useCallback(
     (dateIso: string) => {
-      const normalizedDate = normalizeToDayStart(dateIso);
-      const next = ensureDateParam(searchParams, normalizedDate);
-      setSearchParams(next, { replace: true });
+      route.setDateIso(dateIso);
     },
-    [searchParams, setSearchParams],
+    [route.setDateIso],
   );
 
   const handleDayClick = useCallback(
@@ -583,7 +487,7 @@ export default function WeekPage() {
 
   const shiftWeek = useCallback(
     (deltaWeeks: number) => {
-      const baseIso = searchParams.get('date') ?? toDateIso(focusDate);
+      const baseIso = route.dateIso ?? toDateIso(focusDate);
       const base = new Date(`${baseIso}T00:00:00Z`);
       base.setDate(base.getDate() + deltaWeeks * 7);
       const iso = toDateIso(base);
@@ -591,7 +495,7 @@ export default function WeekPage() {
       primeRouteReset();
       syncDateParam(iso);
     },
-    [focusDate, primeRouteReset, searchParams, syncDateParam],
+    [focusDate, primeRouteReset, route.dateIso, syncDateParam],
   );
 
   const handlePrevWeek = useCallback(() => {
@@ -647,9 +551,6 @@ export default function WeekPage() {
 
   // Phase 2-1c: Show conflict snackbar when update/create fails with conflict
   const conflictOpen = !!lastError && lastError.kind === 'conflict';
-  const [conflictDetailOpen, setConflictDetailOpen] = useState(false);
-  const [lastErrorAt, setLastErrorAt] = useState<number | null>(null);
-  const [conflictBusy, setConflictBusy] = useState(false);
 
   // Conflict dialog handlers
   const handleConflictDiscard = useCallback(() => {
@@ -671,8 +572,6 @@ export default function WeekPage() {
   }, [conflictBusy, refetch, clearLastError]);
 
   // Phase 2-2b: Scroll & highlight conflicted schedule after refetch
-  const [focusScheduleId, setFocusScheduleId] = useState<string | null>(null);
-  const [highlightId, setHighlightId] = useState<string | null>(null);
 
   // Set timestamp when conflict appears
   useEffect(() => {
@@ -791,7 +690,7 @@ export default function WeekPage() {
                 カテゴリ:
                 <select
                   value={categoryFilter}
-                  onChange={(e) => setCategoryFilter(e.target.value as 'All' | ScheduleCategory)}
+                  onChange={(e) => route.setFilter({ category: e.target.value as 'All' | ScheduleCategory })}
                   style={{ padding: '4px 8px', borderRadius: 8, border: '1px solid rgba(0,0,0,0.2)' }}
                   data-testid={TESTIDS['schedules-filter-category']}
                 >
@@ -804,7 +703,7 @@ export default function WeekPage() {
               <input
                 type="search"
                 value={query}
-                onChange={(e) => setQuery(e.target.value)}
+                  onChange={(e) => route.setFilter({ query: e.target.value })}
                 placeholder="タイトル/場所/担当/利用者で検索"
                 style={{
                   flex: '1 1 280px',
