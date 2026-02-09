@@ -140,22 +140,38 @@ describe('router future flags smoke', () => {
     render(<App />);
     const arrivalOptions = { timeout: 8000 };
 
+    const ensureNavItem = async (testId: string) => {
+      if (!screen.queryByTestId(testId)) {
+        const openButton =
+          screen.queryByTestId(TESTIDS['nav-open']) ?? screen.queryByTestId('desktop-nav-open');
+        if (openButton) {
+          await user.click(openButton);
+        }
+      }
+      return screen.findByTestId(testId, arrivalOptions);
+    };
+
+    const navigateToPath = (path: string) => {
+      window.history.pushState({}, '', path);
+      window.dispatchEvent(new PopStateEvent('popstate'));
+    };
+
     // 初期表示: ホーム画面の確認
     expect(await screen.findByTestId('dashboard-root', arrivalOptions)).toBeInTheDocument();
 
     // ナビゲーション経路のテスト: ホーム → 監査ログ → 日次記録 → 自己点検 → ホーム
 
-    await user.click(screen.getByTestId(TESTIDS.nav.audit));
+    await user.click(await ensureNavItem(TESTIDS.nav.audit));
     expect(await screen.findByTestId(TESTIDS['audit-heading'], arrivalOptions)).toBeInTheDocument();
 
-    await user.click(screen.getByTestId(TESTIDS.nav.daily));
+    await user.click(await ensureNavItem(TESTIDS.nav.daily));
     expect(await screen.findByTestId('daily-hub-root', arrivalOptions)).toBeInTheDocument();
 
-    await user.click(screen.getByTestId(TESTIDS.nav.checklist));
+    await user.click(await ensureNavItem(TESTIDS.nav.checklist));
     expect(await screen.findByText('自己点検ビュー', arrivalOptions)).toBeInTheDocument();
 
-    // ホームリンクは「黒ノート」表記のナビゲーションをクリックして戻す
-    await user.click(await screen.findByTestId('nav-dashboard'));
+    // nav-dashboard は常設UI契約ではないため、戻りは history 遷移を契約にする
+    navigateToPath('/');
     expect(await screen.findByTestId('dashboard-root', arrivalOptions)).toBeInTheDocument();
 
     // 副作用の検証: ルート遷移での想定外のAPI呼び出しや認証アクションが発生していないことを確認

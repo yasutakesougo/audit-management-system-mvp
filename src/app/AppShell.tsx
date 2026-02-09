@@ -2,7 +2,6 @@ import LiveAnnouncer from '@/a11y/LiveAnnouncer';
 import Brightness4Icon from '@mui/icons-material/Brightness4';
 import Brightness7Icon from '@mui/icons-material/Brightness7';
 import CloseIcon from '@mui/icons-material/Close';
-import CenterFocusStrongIcon from '@mui/icons-material/CenterFocusStrong';
 import EditNoteIcon from '@mui/icons-material/EditNote';
 import AddCircleOutlineIcon from '@mui/icons-material/AddCircleOutline';
 import HistoryIcon from '@mui/icons-material/History';
