@@ -516,15 +516,16 @@ const AppShell: React.FC<{ children: React.ReactNode }> = ({ children }) => {
             <Box key={groupKey} sx={{ mb: 1.5 }}>
               {!navCollapsed && (
                 <ListSubheader
-                  disableSticky
                   sx={{
-                    bgcolor: 'transparent',
+                    bgcolor: 'background.paper',
                     lineHeight: 1.6,
                     py: 0.5,
                     fontWeight: 700,
                     fontSize: '0.75rem',
                     color: 'text.secondary',
                     px: 2,
+                    borderBottom: 1,
+                    borderColor: 'divider',
                   }}
                 >
                   {groupLabel[groupKey]}
@@ -603,7 +604,8 @@ const AppShell: React.FC<{ children: React.ReactNode }> = ({ children }) => {
           {isDesktop && (
             <IconButton
               color="inherit"
-              aria-label={desktopNavOpen ? 'ナビゲーションを閉じる' : 'ナビゲーションを開く'}
+              aria-label={desktopNavOpen ? 'サイドメニューを閉じる' : 'サイドメニューを開く'}
+              aria-expanded={desktopNavOpen}
               onClick={() => setDesktopNavOpen((prev) => !prev)}
               edge="start"
               data-testid="desktop-nav-open"
