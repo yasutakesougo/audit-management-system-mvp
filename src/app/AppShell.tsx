@@ -3,6 +3,7 @@ import Brightness4Icon from '@mui/icons-material/Brightness4';
 import Brightness7Icon from '@mui/icons-material/Brightness7';
 import CloseIcon from '@mui/icons-material/Close';
 import EditNoteIcon from '@mui/icons-material/EditNote';
+import AddCircleOutlineIcon from '@mui/icons-material/AddCircleOutline';
 import HistoryIcon from '@mui/icons-material/History';
 import SearchIcon from '@mui/icons-material/Search';
 import AppBar from '@mui/material/AppBar';
@@ -77,42 +78,82 @@ type NavItem = {
   prefetchKeys?: PrefetchKey[];
 };
 
-type NavGroupKey = 'blacknote' | 'record' | 'analysis' | 'master' | 'admin' | 'report';
+type NavGroupKey = 'daily' | 'record' | 'review' | 'master' | 'admin' | 'settings';
 
+// ✅ Side Menu Order Policy (2026-02): daily → record → review → master → admin → settings
+// - Routes/permissions/feature flags are unchanged; reorder only.
+// - Meeting minutes: archive and quick-create (朝会/夕会) belong to daily.
+// - Avoid duplicate "黒ノート": keep only list entry in side menu.
 const groupLabel: Record<NavGroupKey, string> = {
-  blacknote: '📓 黒ノート',
-  record: '🗓 記録・運用',
-  analysis: '📊 分析・PDCA',
-  master: '👥 マスター',
+  daily: '🗓 日次',
+  record: '🗂 記録・運用',
+  review: '📊 振り返り・分析',
+  master: '👥 マスタ',
   admin: '🛡 管理',
-  report: '📣 申請・報告',
+  settings: '⚙️ 設定',
 };
 
 function pickGroup(item: NavItem, isAdmin: boolean): NavGroupKey {
   const { to, label, testId } = item;
-  // 黒ノート: testId起点で安定判定（最優先）
-  if (testId === TESTIDS.nav.dashboard || to === '/' || to.startsWith('/dashboard') || to.startsWith('/admin/dashboard') || label.includes('黒ノート')) {
-    return 'blacknote';
+  // 日次: daily + handoff/meeting + meeting minutes
+  if (
+    testId === TESTIDS.nav.daily ||
+    to.startsWith('/daily') ||
+    to.startsWith('/dailysupport') ||
+    to.startsWith('/handoff') ||
+    to.startsWith('/meeting-guide') ||
+    to.startsWith('/meeting-minutes') ||
+    label.includes('日次') ||
+    label.includes('健康') ||
+    label.includes('申し送り') ||
+    label.includes('司会') ||
+    label.includes('朝会') ||
+    label.includes('夕会') ||
+    label.includes('議事録')
+  ) {
+    return 'daily';
   }
-  // 記録・運用: daily, schedules
-  if (testId === TESTIDS.nav.daily || testId === TESTIDS.nav.schedules || to.startsWith('/daily') || to.startsWith('/schedule') || label.includes('日次') || label.includes('スケジュール')) {
+  // 記録・運用: records, schedules
+  if (testId === TESTIDS.nav.schedules || to.startsWith('/records') || to.startsWith('/schedule') || label.includes('黒ノート') || label.includes('月次')) {
     return 'record';
   }
-  // 分析・PDCA: analysis, iceberg, assessment
-  if (testId === TESTIDS.nav.analysis || testId === TESTIDS.nav.iceberg || testId === TESTIDS.nav.icebergPdca || testId === TESTIDS.nav.assessment || to.startsWith('/analysis') || to.startsWith('/assessment') || to.startsWith('/survey') || label.includes('分析') || label.includes('氷山') || label.includes('アセスメント') || label.includes('特性')) {
-    return 'analysis';
+  // 振り返り・分析: analysis, iceberg, assessment
+  if (
+    testId === TESTIDS.nav.analysis ||
+    testId === TESTIDS.nav.iceberg ||
+    testId === TESTIDS.nav.icebergPdca ||
+    testId === TESTIDS.nav.assessment ||
+    to.startsWith('/analysis') ||
+    to.startsWith('/assessment') ||
+    to.startsWith('/survey') ||
+    label.includes('分析') ||
+    label.includes('氷山') ||
+    label.includes('アセスメント') ||
+    label.includes('特性')
+  ) {
+    return 'review';
   }
-  // マスター: users, staff
+  // マスタ: users, staff
   if (to.startsWith('/users') || to.startsWith('/staff') || label.includes('利用者') || label.includes('職員')) {
     return 'master';
   }
-  // 管理: checklist, audit, admin/templates (管理者のみ)
-  if (isAdmin && (testId === TESTIDS.nav.checklist || testId === TESTIDS.nav.audit || testId === TESTIDS.nav.admin || to.startsWith('/checklist') || to.startsWith('/audit') || to.startsWith('/admin') || label.includes('自己点検') || label.includes('監査') || label.includes('設定'))) {
-    return 'admin';
+  // 設定: label based
+  if (label.includes('設定')) {
+    return 'settings';
   }
-  // 申請・報告: compliance
-  if (to.startsWith('/compliance') || label.includes('コンプラ')) {
-    return 'report';
+  // 管理: checklist, audit, admin/* (管理者のみ)
+  if (
+    isAdmin &&
+    (testId === TESTIDS.nav.checklist ||
+      testId === TESTIDS.nav.audit ||
+      testId === TESTIDS.nav.admin ||
+      to.startsWith('/checklist') ||
+      to.startsWith('/audit') ||
+      to.startsWith('/admin') ||
+      label.includes('自己点検') ||
+      label.includes('監査'))
+  ) {
+    return 'admin';
   }
   // デフォルトは記録
   return 'record';
@@ -236,6 +277,24 @@ const AppShell: React.FC<{ children: React.ReactNode }> = ({ children }) => {
         to: '/meeting-guide',
         isActive: (pathname) => pathname.startsWith('/meeting-guide'),
         icon: PsychologyIcon,
+      },
+      {
+        label: '朝会（作成）',
+        to: '/meeting-minutes/new?category=朝会',
+        isActive: (pathname) => pathname.startsWith('/meeting-minutes/new'),
+        icon: AddCircleOutlineIcon,
+      },
+      {
+        label: '夕会（作成）',
+        to: '/meeting-minutes/new?category=夕会',
+        isActive: (pathname) => pathname.startsWith('/meeting-minutes/new'),
+        icon: AddCircleOutlineIcon,
+      },
+      {
+        label: '議事録アーカイブ',
+        to: '/meeting-minutes',
+        isActive: (pathname) => pathname.startsWith('/meeting-minutes'),
+        icon: EditNoteIcon,
       },
       {
         label: '黒ノート一覧',
@@ -422,7 +481,7 @@ const AppShell: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   }, []);
 
   const groupedNavItems = useMemo(() => {
-    const ORDER: NavGroupKey[] = ['blacknote', 'record', 'analysis', 'master', 'admin', 'report'];
+    const ORDER: NavGroupKey[] = ['daily', 'record', 'review', 'master', 'admin', 'settings'];
     const map = new Map<NavGroupKey, NavItem[]>();
     ORDER.forEach((k) => map.set(k, []));
 
@@ -439,7 +498,7 @@ const AppShell: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const renderNavItem = useCallback((item: NavItem, onNavigate?: () => void) => {
     const { label, to, isActive, testId, icon: IconComponent, prefetchKey, prefetchKeys } = item;
     const active = isActive(currentPathname);
-    const isBlackNote = pickGroup(item, isAdmin) === 'blacknote';
+    const isBlackNote = label.includes('黒ノート');
     const showLabel = !navCollapsed;
 
     const handleClick = () => {
@@ -571,7 +630,7 @@ const AppShell: React.FC<{ children: React.ReactNode }> = ({ children }) => {
                 </ListSubheader>
               )}
               {items.map((item) => renderNavItem(item, onNavigate))}
-              {!navCollapsed && groupKey !== 'report' && <Divider sx={{ mt: 1, mb: 0.5 }} />}
+              {!navCollapsed && groupKey !== 'settings' && <Divider sx={{ mt: 1, mb: 0.5 }} />}
             </Box>
           );
         })}
