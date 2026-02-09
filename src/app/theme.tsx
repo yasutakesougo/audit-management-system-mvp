@@ -191,10 +191,14 @@ export const ThemeRoot: React.FC<{ children: React.ReactNode }> = ({ children })
             }
           : {
               mode: 'light',
-              primary: { main: '#00529B' },
-              secondary: { main: '#3b3b44', contrastText: '#ffffff' },
-              info: { main: '#026aa2', dark: '#01507a', contrastText: '#ffffff' },
-              background: { default: '#F5F5F5' },
+              primary: { main: '#2C6FB7', light: '#E6F0FA', dark: '#1F4E85' },
+              secondary: { main: '#4A5568', contrastText: '#ffffff' },
+              info: { main: '#2C6FB7', dark: '#1F4E85', contrastText: '#ffffff' },
+              warning: { main: '#C89B3C' },
+              error: { main: '#C94A4A' },
+              background: { default: '#F6F8FA', paper: '#FFFFFF' },
+              text: { primary: '#1F2933', secondary: '#4A5568' },
+              divider: 'rgba(0,0,0,0.08)',
             },
       ...base,
     });

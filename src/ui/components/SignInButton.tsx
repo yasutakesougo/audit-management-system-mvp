@@ -91,7 +91,14 @@ const SignInButton: React.FC = () => {
 
 	if (!signedIn) {
 		return (
-			<Button color="inherit" variant="outlined" size="small" onClick={handleSignIn} aria-label="サインイン">
+			<Button
+				color="inherit"
+				variant="outlined"
+				size="small"
+				onClick={handleSignIn}
+				aria-label="サインイン"
+				sx={{ height: 28, minHeight: 28, px: 1.25, py: 0, alignSelf: 'center', lineHeight: 1, whiteSpace: 'nowrap' }}
+			>
 				サインイン
 			</Button>
 		);
@@ -99,7 +106,14 @@ const SignInButton: React.FC = () => {
 
 	return (
 		<Tooltip title={tooltip}>
-			<Button color="inherit" variant="outlined" size="small" onClick={handleSignOut} aria-label="サインアウト">
+			<Button
+				color="inherit"
+				variant="outlined"
+				size="small"
+				onClick={handleSignOut}
+				aria-label="サインアウト"
+				sx={{ height: 28, minHeight: 28, px: 1.25, py: 0, alignSelf: 'center', lineHeight: 1, whiteSpace: 'nowrap' }}
+			>
 				サインアウト
 			</Button>
 		</Tooltip>
