@@ -1,19 +1,20 @@
+import { useAuth } from '@/auth/useAuth';
 import { useMsalContext } from '@/auth/MsalProvider';
-import { SP_RESOURCE } from '@/auth/msalConfig';
 import { getAppConfig, readEnv } from '@/lib/env';
 import Button from '@mui/material/Button';
 import Tooltip from '@mui/material/Tooltip';
-import React, { useEffect, useMemo } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 
-const defaultScopes = [`${SP_RESOURCE}/.default`];
 const preferredLoginFlow = readEnv('VITE_MSAL_LOGIN_FLOW', 'popup').trim().toLowerCase();
 const useRedirectLogin = preferredLoginFlow === 'redirect';
 
 const { isDev: isDevEnv } = getAppConfig();
 
 const SignInButton: React.FC = () => {
-	const { instance, accounts } = useMsalContext();
+const { instance, accounts } = useMsalContext();
+const { signIn } = useAuth();
+const [signingIn, setSigningIn] = useState(false);
 	const navigate = useNavigate();
 	const signedIn = accounts.length > 0;
 	const tooltip = useMemo(() => {
@@ -23,38 +24,18 @@ const SignInButton: React.FC = () => {
 	}, [accounts, instance, signedIn]);
 
 	const handleSignIn = async () => {
+		if (signingIn) return;
 		try {
-			if (useRedirectLogin) {
-				await instance.loginRedirect({ scopes: defaultScopes, prompt: 'select_account' });
-				return;
-			}
-			const res = await instance.loginPopup({ scopes: defaultScopes, prompt: 'select_account' });
-			const active = ensureActiveAccount((res.account as Record<string, unknown> | null) ?? null);
-			if (!active) {
-				console.warn('[auth] login succeeded but no account returned.');
-				return;
-			}
-			navigate('/dashboard', { replace: true });
-			if (isDevEnv) {
-				const label = (active as { username?: string; homeAccountId?: string }).username ?? (active as { homeAccountId?: string }).homeAccountId;
-				console.info('[auth] signed in:', label ?? '(unknown account)');
-				console.info('[auth] accounts cache:', instance.getAllAccounts());
+			setSigningIn(true);
+			const result = await signIn();
+			if (result?.success && !useRedirectLogin) {
+				navigate('/dashboard', { replace: true });
 			}
 		} catch (error) {
-			console.error('[auth] loginPopup failed', error);
+			console.error('[auth] sign-in failed', error);
+		} finally {
+			setSigningIn(false);
 		}
-	};
-	const ensureActiveAccount = (candidate?: Record<string, unknown> | null) => {
-		if (candidate) {
-			instance.setActiveAccount(candidate as never);
-			return candidate;
-		}
-		const [fallback] = instance.getAllAccounts();
-		if (fallback) {
-			instance.setActiveAccount(fallback);
-			return fallback as Record<string, unknown>;
-		}
-		return null;
 	};
 
 	useEffect(() => {
@@ -96,10 +77,11 @@ const SignInButton: React.FC = () => {
 				variant="outlined"
 				size="small"
 				onClick={handleSignIn}
+				disabled={signingIn}
 				aria-label="サインイン"
 				sx={{ height: 28, minHeight: 28, px: 1.25, py: 0, alignSelf: 'center', lineHeight: 1, whiteSpace: 'nowrap' }}
 			>
-				サインイン
+				{signingIn ? 'サインイン中…' : 'サインイン'}
 			</Button>
 		);
 	}
