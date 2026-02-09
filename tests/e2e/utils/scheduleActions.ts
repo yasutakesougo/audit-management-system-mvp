@@ -74,7 +74,6 @@ const WEEK_ROOT_TESTIDS = [
   TESTIDS.SCHEDULE_WEEK_ROOT,
   TESTIDS.SCHEDULE_WEEK_VIEW,
   TESTIDS.SCHEDULES_WEEK_VIEW,
-  TESTIDS.SCHEDULES_WEEK_TIMELINE,
 ].map((value) => String(value).toLowerCase());
 
 export async function captureQuickDialogDebug(page: Page, _targetSelectorOrTestId?: string): Promise<QuickDialogDebug> {

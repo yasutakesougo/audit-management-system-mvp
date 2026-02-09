@@ -10,7 +10,7 @@ test.describe('Schedule week – mobile toolbar/search', () => {
     await bootstrapScheduleEnv(page);
   });
 
-  test('keeps the timeline visible while using the mobile search toolbar', async ({ page }) => {
+  test('keeps the week view visible while using the mobile search toolbar', async ({ page }) => {
     await page.setViewportSize({ width: 390, height: 844 });
 
     await gotoWeek(page, new Date('2025-11-24'));
@@ -31,12 +31,6 @@ test.describe('Schedule week – mobile toolbar/search', () => {
     const closeButton = filterDialog.getByRole('button', { name: '閉じる' });
     await expect(closeButton).toBeEnabled();
     await closeButton.click();
-
-    const timeline = page.getByTestId(TESTIDS.SCHEDULES_WEEK_TIMELINE);
-    if (await timeline.isVisible({ timeout: 2000 }).catch(() => false)) {
-      await expect(timeline).toBeVisible();
-      return;
-    }
 
     const grid = page.getByTestId(TESTIDS['schedules-week-grid']);
     await expect(grid).toBeVisible();

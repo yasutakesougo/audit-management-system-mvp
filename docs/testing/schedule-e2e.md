@@ -3,7 +3,7 @@
 `schedules/*` 系の E2E を追加・改修するときに共通で守りたいルールをまとめました。狙いは次の 3 点です。
 
 - どの spec も **同じ helper / 同じ SharePoint スタブ** を使う
-- 旧 UI / 新 UI（WeekTimeline）・fixtures / SharePoint モードの差を **helper で吸収** する
+- 旧 UI / 新 UI・fixtures / SharePoint モードの差を **helper で吸収** する
 - 「UI の見た目」だけでなく、「保存されたデータ」まで確認する
 
 ---
@@ -293,7 +293,7 @@ test('介護休み entry via quick dialog persists as 欠席・休み', async ({
 ## 7. Tips
 
 - 日本語ラベルとコード値が揺れる場合は `serviceContains('生活介護')` のような部分一致ヘルパーで吸収する。
-- Week には旧 ListView (`schedule-week-root`) と新 Timeline (`schedule-week-view`) があるため、**selector 直書きではなく helper 経由** でカードを操作する。
+- Week には ListView と GridView があるため、**selector 直書きではなく helper 経由** でカードを操作する。
 - エラー発生時は `error-context.md` から `[schedule]` や SharePoint 400 ログを確認すると原因特定が早い。
 
 ---
@@ -304,7 +304,7 @@ test('介護休み entry via quick dialog persists as 欠席・休み', async ({
 
 ## Troubleshooting
 
-### 1. WeekTimeline でカードが 0 件になる
+### 1. Week view でカードが 0 件になる
 
 **現象:** `waitForWeekViewReady` は通るが `getWeekScheduleItems` が 0 件を返し、week 系テストがカードを見つけられない。
 
@@ -354,9 +354,9 @@ Audience フィールドを実装側のフィルタ条件（例: `Staff`）と�
 
 ### 3. 保存後に UI にカードが出ない（特に Quick Create）
 
-**現象:** Quick Dialog / Full Dialog の保存は成功しているが、WeekTimeline に新しいカードが出ない・DOM ベースの検証が失敗する。
+**現象:** Quick Dialog / Full Dialog の保存は成功しているが、Week view に新しいカードが出ない・DOM ベースの検証が失敗する。
 
-**原因:** WeekTimeline の再描画タイミングが遅延したり、ステータス/サービスが省略表示されるレイアウト差分がある。
+**原因:** Week view の再描画タイミングが遅延したり、ステータス/サービスが省略表示されるレイアウト差分がある。
 
 **対応:**
 
