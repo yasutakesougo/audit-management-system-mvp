@@ -4,6 +4,7 @@
 
 関連ガイド:
 - [認証トラブルシューティング (MSAL / リダイレクト)](runbook/auth-troubleshooting.md)
+- [CI workflow parse（jobs=0）切り分け](runbooks/ci-workflow-parse.md)
 
 ---
 ## 1. インシデント分類クイックテーブル
