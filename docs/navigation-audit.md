@@ -61,10 +61,10 @@ Short-distance navigation for field staff, optimized for tablets/mobile.
 - ✅ /daily/table — Daily records (table)
 - ✅ /daily/attendance — Attendance
 - ✅ /daily/support — Support procedure record
-- ✅ /daily/health — Health record
+- ✅ /handoff-timeline — Handoff timeline
 
 Candidate (if needed):
-- /handoff-timeline — Consider swapping with /daily/health if handoff is more frequent for your site
+- /daily/health — Consider swapping in if health records are more frequent for your site
 - /nurse/observation — Consider adding for nurse-heavy operations (may swap with one existing item)
 
 ## Context-only Routes (do NOT expose globally unless proven necessary)

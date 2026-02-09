@@ -988,7 +988,7 @@ const FooterQuickActions: React.FC<{ fixed?: boolean }> = ({ fixed = true }) => 
     'daily-attendance': TESTIDS['daily-footer-attendance'],
     'daily-activity': TESTIDS['daily-footer-activity'],
     'daily-support': TESTIDS['daily-footer-support'],
-    'daily-health': TESTIDS['daily-footer-health'],
+    'handoff-timeline': TESTIDS['handoff-footer-timeline'],
     'handoff-quicknote': TESTIDS['handoff-footer-quicknote'],
   };
 
@@ -1015,9 +1015,9 @@ const FooterQuickActions: React.FC<{ fixed?: boolean }> = ({ fixed = true }) => 
       variant: 'outlined' as const,
     },
     {
-      key: 'daily-health',
-      label: '健康記録',
-      to: '/daily/health',
+      key: 'handoff-timeline',
+      label: '申し送り',
+      to: '/handoff-timeline',
       color: 'secondary' as const,
       variant: 'outlined' as const,
     },
