@@ -205,6 +205,11 @@ const AppShell: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   }, [location.pathname, currentRole, setCurrentUserRole]);
 
   const navItems = useMemo(() => {
+    // Side-nav intentionally excludes:
+    // - /analysis/iceberg-pdca/edit (edit-only)
+    // - /dev/schedule-create-dialog (dev-only)
+    // - /daily/activity, /daily/support-checklist, /daily/time-based
+    // - /schedules/day, /schedules/month
     const items: NavItem[] = [
       {
         label: '黒ノート',
@@ -219,6 +224,30 @@ const AppShell: React.FC<{ children: React.ReactNode }> = ({ children }) => {
         prefetchKey: PREFETCH_KEYS.dashboard,
         prefetchKeys: [PREFETCH_KEYS.muiData, PREFETCH_KEYS.muiFeedback],
         testId: TESTIDS.nav.dashboard,
+      },
+      {
+        label: '黒ノート一覧',
+        to: '/records',
+        isActive: (pathname) => pathname.startsWith('/records'),
+        icon: AssignmentTurnedInRoundedIcon,
+      },
+      {
+        label: '月次記録',
+        to: '/records/monthly',
+        isActive: (pathname) => pathname.startsWith('/records/monthly'),
+        icon: AssessmentRoundedIcon,
+      },
+      {
+        label: '申し送りタイムライン',
+        to: '/handoff-timeline',
+        isActive: (pathname) => pathname.startsWith('/handoff-timeline'),
+        icon: HistoryIcon,
+      },
+      {
+        label: '司会ガイド',
+        to: '/meeting-guide',
+        isActive: (pathname) => pathname.startsWith('/meeting-guide'),
+        icon: PsychologyIcon,
       },
       {
         label: '分析',
@@ -274,6 +303,24 @@ const AppShell: React.FC<{ children: React.ReactNode }> = ({ children }) => {
           testId: TESTIDS.nav.audit,
           icon: AssessmentRoundedIcon,
           prefetchKey: PREFETCH_KEYS.audit,
+        },
+        {
+          label: '支援手順テンプレ',
+          to: '/admin/step-templates',
+          isActive: (pathname: string) => pathname.startsWith('/admin/step-templates'),
+          icon: ChecklistRoundedIcon,
+        },
+        {
+          label: '個別支援手順',
+          to: '/admin/individual-support',
+          isActive: (pathname: string) => pathname.startsWith('/admin/individual-support'),
+          icon: WorkspacesIcon,
+        },
+        {
+          label: '職員勤怠管理',
+          to: '/admin/staff-attendance',
+          isActive: (pathname: string) => pathname.startsWith('/admin/staff-attendance'),
+          icon: BadgeRoundedIcon,
         },
       ] : []),
       {
