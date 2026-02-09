@@ -3,7 +3,7 @@ import type { ScheduleItem } from '@/features/daily/components/split-stream/Proc
 import type { BehaviorObservation } from '@/features/daily/domain/daily/types';
 import type { BehaviorRepository, ProcedureRepository } from '@/features/daily/repositories/types';
 import { getScheduleKey } from '@/features/daily/domain/getScheduleKey';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 type UseTimeBasedSupportRecordPageArgs = {
   procedureRepo: ProcedureRepository;
@@ -30,11 +30,13 @@ export function useTimeBasedSupportRecordPage({
   const [isAcknowledged, setIsAcknowledged] = useState(false);
   const [selectedStepId, setSelectedStepId] = useState<string | null>(null);
   const [scrollToStepId, setScrollToStepId] = useState<string | null>(null);
+  const didApplyInitialStepRef = useRef(false);
   const [showUnfilledOnly, setShowUnfilledOnly] = useState(() => {
     if (initialUnfilledOnly !== undefined) return initialUnfilledOnly;
     if (typeof window === 'undefined') return false;
     return window.sessionStorage.getItem(storageKey) === '1';
   });
+  const skipAutoSelectRef = useRef(false);
 
   const schedule = useMemo(() => {
     if (!targetUserId) return [];
@@ -62,8 +64,8 @@ export function useTimeBasedSupportRecordPage({
   const unfilledStepsCount = unfilledStepIds.length;
   const recordLockState = useMemo<RecordPanelLockState>(() => {
     if (!targetUserId) return 'no-user';
-    return isAcknowledged ? 'unlocked' : 'unconfirmed';
-  }, [targetUserId, isAcknowledged]);
+    return 'unlocked';
+  }, [targetUserId]);
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
@@ -87,13 +89,18 @@ export function useTimeBasedSupportRecordPage({
 
   useEffect(() => {
     if (!initialStepKey) return;
-    if (selectedStepId === initialStepKey && scrollToStepId === initialStepKey) return;
+    if (didApplyInitialStepRef.current) return;
+    didApplyInitialStepRef.current = true;
     setSelectedStepId(initialStepKey);
     setScrollToStepId(initialStepKey);
-  }, [initialStepKey, scrollToStepId, selectedStepId]);
+  }, [initialStepKey]);
 
   useEffect(() => {
     if (!showUnfilledOnly) return;
+    if (skipAutoSelectRef.current) {
+      skipAutoSelectRef.current = false;
+      return;
+    }
     const nextTarget = unfilledStepIds[0] ?? null;
     if (!nextTarget) return;
     if (selectedStepId === nextTarget && scrollToStepId === nextTarget) return;
@@ -108,9 +115,11 @@ export function useTimeBasedSupportRecordPage({
     setIsAcknowledged(false);
     setSelectedStepId(null);
     setScrollToStepId(null);
+    didApplyInitialStepRef.current = false;
   }, []);
 
   const handleSelectStep = useCallback((stepId: string) => {
+    skipAutoSelectRef.current = true;
     setSelectedStepId(stepId);
     setScrollToStepId(stepId);
   }, []);

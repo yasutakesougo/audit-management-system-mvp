@@ -1,10 +1,12 @@
 import Box from '@mui/material/Box';
 import Stack from '@mui/material/Stack';
-import type { ReactNode } from 'react';
+import type { ReactNode, Ref } from 'react';
 
 export type SplitStreamLayoutProps = {
   plan: ReactNode;
   record: ReactNode;
+  planRef?: Ref<HTMLDivElement>;
+  recordRef?: Ref<HTMLDivElement>;
 };
 
 /**
@@ -12,7 +14,7 @@ export type SplitStreamLayoutProps = {
  * - Mobile: stacked (Plan over Do)
  * - Desktop: two panes with independent scrolling
  */
-export function SplitStreamLayout({ plan, record }: SplitStreamLayoutProps): JSX.Element {
+export function SplitStreamLayout({ plan, record, planRef, recordRef }: SplitStreamLayoutProps): JSX.Element {
   return (
     <Stack
       direction={{ xs: 'column', md: 'row' }}
@@ -20,6 +22,7 @@ export function SplitStreamLayout({ plan, record }: SplitStreamLayoutProps): JSX
       sx={{ height: '100%', overflow: 'hidden' }}
     >
       <Box
+        ref={planRef}
         sx={{
           flex: 1,
           minHeight: 0,
@@ -32,6 +35,7 @@ export function SplitStreamLayout({ plan, record }: SplitStreamLayoutProps): JSX
         {plan}
       </Box>
       <Box
+        ref={recordRef}
         sx={{
           flex: 1,
           minHeight: 0,

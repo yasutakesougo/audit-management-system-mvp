@@ -119,6 +119,7 @@ export function RecordPanel(props: RecordPanelProps): JSX.Element {
   const [durationMinutes, setDurationMinutes] = useState(5);
   const [userMood, setUserMood] = useState<BehaviorMood | null>(null);
   const observationRef = useRef<HTMLInputElement | HTMLTextAreaElement>(null);
+  const selectedActivityRef = useRef<HTMLDivElement>(null);
 
   const isControlledSlot = typeof controlledSlotKey === 'string';
   const effectiveSelectedSlotKey = isControlledSlot ? controlledSlotKey : selectedSlotKey;
@@ -158,6 +159,16 @@ export function RecordPanel(props: RecordPanelProps): JSX.Element {
     if (isLocked || !effectiveSelectedSlotKey) return;
     observationRef.current?.focus();
   }, [effectiveSelectedSlotKey, isLocked]);
+
+  useEffect(() => {
+    if (!selectedSlot) return;
+    const node = selectedActivityRef.current;
+    if (!node) return;
+    const rect = node.getBoundingClientRect();
+    const inView = rect.top >= 0 && rect.bottom <= window.innerHeight;
+    if (inView) return;
+    node.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  }, [selectedSlot]);
 
   const handleSlotChange = (next: string) => {
     if (isControlledSlot) {
@@ -278,6 +289,7 @@ export function RecordPanel(props: RecordPanelProps): JSX.Element {
               </Box>
               {selectedSlot ? (
                 <Paper
+                  ref={selectedActivityRef}
                   variant="outlined"
                   sx={{ p: 2, bgcolor: 'primary.50', borderColor: 'primary.main', transition: 'background-color 0.2s ease' }}
                 >
