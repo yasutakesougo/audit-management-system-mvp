@@ -287,6 +287,12 @@ const AppShell: React.FC<{ children: React.ReactNode }> = ({ children }) => {
         prefetchKey: PREFETCH_KEYS.dailyMenu,
         testId: TESTIDS.nav.daily,
       },
+      {
+        label: '健康記録',
+        to: '/daily/health',
+        isActive: (pathname) => pathname.startsWith('/daily/health'),
+        icon: EditNoteIcon,
+      },
       ...(isAdmin && (authzReady || SKIP_LOGIN) ? [
         {
           label: '自己点検',
@@ -988,7 +994,6 @@ const FooterQuickActions: React.FC<{ fixed?: boolean }> = ({ fixed = true }) => 
     'daily-attendance': TESTIDS['daily-footer-attendance'],
     'daily-activity': TESTIDS['daily-footer-activity'],
     'daily-support': TESTIDS['daily-footer-support'],
-    'handoff-timeline': TESTIDS['handoff-footer-timeline'],
     'handoff-quicknote': TESTIDS['handoff-footer-quicknote'],
   };
 
@@ -1012,13 +1017,6 @@ const FooterQuickActions: React.FC<{ fixed?: boolean }> = ({ fixed = true }) => 
       label: '支援手順記録入力',
       to: '/daily/support',
       color: 'primary' as const,
-      variant: 'outlined' as const,
-    },
-    {
-      key: 'handoff-timeline',
-      label: '申し送り',
-      to: '/handoff-timeline',
-      color: 'secondary' as const,
       variant: 'outlined' as const,
     },
   ] as const;

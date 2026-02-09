@@ -1,5 +1,6 @@
 import React, { type ReactNode } from 'react';
-import { render, screen } from '@testing-library/react';
+import { render, screen, within } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router-dom';
 import { describe, expect, it, vi } from 'vitest';
 
@@ -111,16 +112,22 @@ describe('AppShell navigation smoke test', () => {
 
     const ids = [
       'nav-daily',
+      TESTIDS['handoff-footer-quicknote'],
       TESTIDS['daily-footer-attendance'],
       TESTIDS['daily-footer-activity'],
       'daily-footer-support',
-      TESTIDS['handoff-footer-timeline'],
     ];
 
     const elements = await Promise.all(ids.map((testId) => screen.findByTestId(testId)));
     elements.forEach((node) => {
       expect(node).toBeInTheDocument();
     });
+
+    const user = userEvent.setup();
+    await user.click(screen.getByTestId('nav-open'));
+    const nav = await screen.findByRole('navigation', { name: /主要ナビゲーション/i });
+    const navLinks = within(nav).getAllByRole('link');
+    expect(navLinks.some((link) => link.getAttribute('href') === '/daily/health')).toBe(true);
   });
 
   it('hides Iceberg PDCA nav when feature flag is off', () => {
