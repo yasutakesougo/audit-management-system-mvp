@@ -35,6 +35,7 @@ import React, { useCallback, useContext, useEffect, useMemo, useState } from 're
 import { useMsalContext } from '@/auth/MsalProvider';
 import { useUserAuthz } from '@/auth/useUserAuthz';
 import NavLinkPrefetch from '@/components/NavLinkPrefetch';
+import { AppShellV2 } from '@/components/layout/AppShellV2';
 import { useFeatureFlags } from '@/config/featureFlags';
 import { useAuthStore } from '@/features/auth/store';
 import { AuthDiagnosticsPanel } from '@/features/auth/diagnostics';
@@ -120,7 +121,28 @@ function pickGroup(item: NavItem, isAdmin: boolean): NavGroupKey {
 const SKIP_LOGIN = shouldSkipLogin();
 const E2E_MSAL_MOCK_ENABLED = isE2eMsalMockEnabled();
 
+function useLockBodyScroll(enabled: boolean) {
+  React.useLayoutEffect(() => {
+    if (!enabled) return;
+
+    const html = document.documentElement;
+    const body = document.body;
+
+    const prevHtmlOverflow = html.style.overflow;
+    const prevBodyOverflow = body.style.overflow;
+
+    html.style.overflow = 'hidden';
+    body.style.overflow = 'hidden';
+
+    return () => {
+      html.style.overflow = prevHtmlOverflow;
+      body.style.overflow = prevBodyOverflow;
+    };
+  }, [enabled]);
+}
+
 const AppShell: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  useLockBodyScroll(true);
   const location = useLocation();
   const navigate = useNavigate();
   const { schedules, complianceForm, icebergPdca, staffAttendance } = useFeatureFlags();
@@ -147,7 +169,6 @@ const AppShell: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const drawerWidth = 240;
   const drawerMiniWidth = 64;
   const currentDrawerWidth = navCollapsed ? drawerMiniWidth : drawerWidth;
-  const drawerOffset = isDesktop ? currentDrawerWidth : 0;
 
   useEffect(() => {
     if (SKIP_LOGIN && location.pathname === '/login') {
@@ -184,6 +205,11 @@ const AppShell: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   }, [location.pathname, currentRole, setCurrentUserRole]);
 
   const navItems = useMemo(() => {
+    // Side-nav intentionally excludes:
+    // - /analysis/iceberg-pdca/edit (edit-only)
+    // - /dev/schedule-create-dialog (dev-only)
+    // - /daily/activity, /daily/support-checklist, /daily/time-based
+    // - /schedules/day, /schedules/month
     const items: NavItem[] = [
       {
         label: '黒ノート',
@@ -198,6 +224,30 @@ const AppShell: React.FC<{ children: React.ReactNode }> = ({ children }) => {
         prefetchKey: PREFETCH_KEYS.dashboard,
         prefetchKeys: [PREFETCH_KEYS.muiData, PREFETCH_KEYS.muiFeedback],
         testId: TESTIDS.nav.dashboard,
+      },
+      {
+        label: '黒ノート一覧',
+        to: '/records',
+        isActive: (pathname) => pathname.startsWith('/records'),
+        icon: AssignmentTurnedInRoundedIcon,
+      },
+      {
+        label: '月次記録',
+        to: '/records/monthly',
+        isActive: (pathname) => pathname.startsWith('/records/monthly'),
+        icon: AssessmentRoundedIcon,
+      },
+      {
+        label: '申し送りタイムライン',
+        to: '/handoff-timeline',
+        isActive: (pathname) => pathname.startsWith('/handoff-timeline'),
+        icon: HistoryIcon,
+      },
+      {
+        label: '司会ガイド',
+        to: '/meeting-guide',
+        isActive: (pathname) => pathname.startsWith('/meeting-guide'),
+        icon: PsychologyIcon,
       },
       {
         label: '分析',
@@ -253,6 +303,24 @@ const AppShell: React.FC<{ children: React.ReactNode }> = ({ children }) => {
           testId: TESTIDS.nav.audit,
           icon: AssessmentRoundedIcon,
           prefetchKey: PREFETCH_KEYS.audit,
+        },
+        {
+          label: '支援手順テンプレ',
+          to: '/admin/step-templates',
+          isActive: (pathname: string) => pathname.startsWith('/admin/step-templates'),
+          icon: ChecklistRoundedIcon,
+        },
+        {
+          label: '個別支援手順',
+          to: '/admin/individual-support',
+          isActive: (pathname: string) => pathname.startsWith('/admin/individual-support'),
+          icon: WorkspacesIcon,
+        },
+        {
+          label: '職員勤怠管理',
+          to: '/admin/staff-attendance',
+          isActive: (pathname: string) => pathname.startsWith('/admin/staff-attendance'),
+          icon: BadgeRoundedIcon,
         },
       ] : []),
       {
@@ -495,15 +563,16 @@ const AppShell: React.FC<{ children: React.ReactNode }> = ({ children }) => {
             <Box key={groupKey} sx={{ mb: 1.5 }}>
               {!navCollapsed && (
                 <ListSubheader
-                  disableSticky
                   sx={{
-                    bgcolor: 'transparent',
+                    bgcolor: 'background.paper',
                     lineHeight: 1.6,
                     py: 0.5,
                     fontWeight: 700,
                     fontSize: '0.75rem',
                     color: 'text.secondary',
                     px: 2,
+                    borderBottom: 1,
+                    borderColor: 'divider',
                   }}
                 >
                   {groupLabel[groupKey]}
@@ -518,13 +587,54 @@ const AppShell: React.FC<{ children: React.ReactNode }> = ({ children }) => {
     );
   };
 
-  return (
-    <RouteHydrationListener>
-      <LiveAnnouncer>
-        <div data-testid="app-shell">
-        {!isFocusMode && (
-        <AppBar position="fixed" color="primary" enableColorOnDark>
-        <Toolbar sx={{ gap: 1 }}>
+  const showDesktopSidebar = !isFocusMode && isDesktop && desktopNavOpen;
+
+  const headerContent = !isFocusMode ? (
+    <AppBar
+      position="static"
+      color="primary"
+      enableColorOnDark
+      sx={{
+        height: '100%',
+        width: '100%',
+        borderRadius: 0,
+        left: 0,
+        right: 0,
+        '& .MuiToolbar-root': {
+          height: 44,
+          minHeight: '44px !important',
+          paddingTop: 0,
+          paddingBottom: 0,
+          alignItems: 'center',
+        },
+        '& .MuiToolbar-root .MuiTypography-root': {
+          height: 44,
+          lineHeight: '44px !important',
+          display: 'flex',
+          alignItems: 'center',
+        },
+        '& .MuiToolbar-root .MuiIconButton-root': {
+          alignSelf: 'center',
+        },
+        '& .MuiToolbar-root .MuiChip-root': {
+          alignSelf: 'center',
+        },
+        '& .MuiToolbar-root .MuiButton-root': {
+          alignSelf: 'center',
+        },
+      }}
+    >
+      <Toolbar
+        disableGutters
+        sx={{
+          px: 1,
+          minHeight: 44,
+          height: 44,
+          alignItems: 'center',
+          '& > *': { alignSelf: 'center' },
+        }}
+      >
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
           {!isDesktop && (
             <IconButton
               color="inherit"
@@ -532,6 +642,8 @@ const AppShell: React.FC<{ children: React.ReactNode }> = ({ children }) => {
               onClick={() => setMobileOpen(true)}
               edge="start"
               data-testid={TESTIDS['nav-open']}
+              size="small"
+              sx={{ p: 0.5 }}
             >
               <MenuIcon />
             </IconButton>
@@ -539,23 +651,37 @@ const AppShell: React.FC<{ children: React.ReactNode }> = ({ children }) => {
           {isDesktop && (
             <IconButton
               color="inherit"
-              aria-label="ナビゲーションを開く"
-              onClick={() => setDesktopNavOpen(true)}
+              aria-label={desktopNavOpen ? 'サイドメニューを閉じる' : 'サイドメニューを開く'}
+              aria-expanded={desktopNavOpen}
+              onClick={() => setDesktopNavOpen((prev) => !prev)}
               edge="start"
               data-testid="desktop-nav-open"
+              size="small"
+              sx={{ p: 0.5 }}
             >
               <MenuIcon />
             </IconButton>
           )}
-          <Typography variant="h6" component="div" sx={{ flexGrow: 1 }}>
+          <Typography
+            variant="subtitle1"
+            component="div"
+            sx={{ fontWeight: 600, lineHeight: '44px', height: 44, display: 'flex', alignItems: 'center' }}
+          >
             磯子区障害者地域活動ホーム
           </Typography>
+        </Box>
+
+        <Box sx={{ flex: 1 }} />
+
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
           <ConnectionStatus />
           <Tooltip title="表示設定">
             <IconButton
               color="inherit"
               onClick={() => setSettingsDialogOpen(true)}
               aria-label="表示設定"
+              size="small"
+              sx={{ p: 0.5 }}
             >
               <SettingsRoundedIcon />
             </IconButton>
@@ -566,86 +692,89 @@ const AppShell: React.FC<{ children: React.ReactNode }> = ({ children }) => {
               onClick={toggle}
               aria-label="テーマ切り替え"
               aria-pressed={mode === 'dark' ? 'true' : 'false'}
+              size="small"
+              sx={{ p: 0.5 }}
             >
               {mode === 'dark' ? <Brightness7Icon /> : <Brightness4Icon />}
             </IconButton>
           </Tooltip>
-          <IconButton component={RouterLink} to="/audit" color="inherit" aria-label="監査ログ">
+          <IconButton
+            component={RouterLink}
+            to="/audit"
+            color="inherit"
+            aria-label="監査ログ"
+            size="small"
+            sx={{ p: 0.5 }}
+          >
             <HistoryIcon />
           </IconButton>
           <SignInButton />
-        </Toolbar>
-        </AppBar>
-        )}
-        {/* Side Navigation Drawer */}
-        {!isFocusMode && (isDesktop ? (
-          <Drawer
-            data-testid="nav-drawer"
-            variant="persistent"
-            open={desktopNavOpen}
-            onClose={() => setDesktopNavOpen(false)}
-            sx={{
-              width: currentDrawerWidth,
-              flexShrink: 0,
-              transition: theme.transitions.create('width', {
-                easing: theme.transitions.easing.sharp,
-                duration: theme.transitions.duration.enteringScreen,
-              }),
-              '& .MuiDrawer-paper': { 
-                width: currentDrawerWidth, 
-                boxSizing: 'border-box', 
-                top: 64, 
-                height: 'calc(100vh - 64px)', 
-                overflowY: 'auto',
-                transition: theme.transitions.create('width', {
-                  easing: theme.transitions.easing.sharp,
-                  duration: theme.transitions.duration.enteringScreen,
-                }) 
-              },
+        </Box>
+      </Toolbar>
+    </AppBar>
+  ) : null;
+
+  const sidebarContent = showDesktopSidebar ? (
+    <Box
+      role="navigation"
+      aria-label="主要ナビゲーション"
+      data-testid="nav-drawer"
+      sx={{ overflowY: 'auto', height: '100%', pt: 2, pb: 10 }}
+    >
+      {!navCollapsed && (
+        <Box sx={{ px: 1.5, py: 1, pb: 1.5 }} key="nav-search">
+          <TextField
+            key="nav-search-field"
+            value={navQuery}
+            onChange={(e) => setNavQuery(e.target.value)}
+            onKeyDown={handleNavSearchKeyDown}
+            size="small"
+            placeholder="メニュー検索"
+            fullWidth
+            inputProps={{ 'aria-label': 'メニュー検索' }}
+            InputProps={{
+              startAdornment: (
+                <InputAdornment position="start">
+                  <SearchIcon fontSize="small" />
+                </InputAdornment>
+              ),
             }}
+          />
+        </Box>
+      )}
+      <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: navCollapsed ? 'center' : 'flex-end', px: 1, py: 0.5 }}>
+        <Tooltip title={navCollapsed ? 'ナビを展開' : 'ナビを折りたたみ'} placement="right" enterDelay={100}>
+          <IconButton
+            onClick={handleToggleNavCollapse}
+            aria-label={navCollapsed ? 'ナビを展開' : 'ナビを折りたたみ'}
+            size="small"
           >
-            <Box
-              role="navigation"
-              aria-label="主要ナビゲーション"
-              data-testid="nav-items"
-              sx={{ overflowY: 'auto', height: '100%', pt: 2, pb: 10 }}
-            >
-              {!navCollapsed && (
-                <Box sx={{ px: 1.5, py: 1, pb: 1.5 }} key="nav-search">
-                  <TextField
-                    key="nav-search-field"
-                    value={navQuery}
-                    onChange={(e) => setNavQuery(e.target.value)}
-                    onKeyDown={handleNavSearchKeyDown}
-                    size="small"
-                    placeholder="メニュー検索"
-                    fullWidth
-                    inputProps={{ 'aria-label': 'メニュー検索' }}
-                    InputProps={{
-                      startAdornment: (
-                        <InputAdornment position="start">
-                          <SearchIcon fontSize="small" />
-                        </InputAdornment>
-                      ),
-                    }}
-                  />
-                </Box>
-              )}
-              <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: navCollapsed ? 'center' : 'flex-end', px: 1, py: 0.5 }}>
-                <Tooltip title={navCollapsed ? 'ナビを展開' : 'ナビを折りたたみ'} placement="right" enterDelay={100}>
-                  <IconButton
-                    onClick={handleToggleNavCollapse}
-                    aria-label={navCollapsed ? 'ナビを展開' : 'ナビを折りたたみ'}
-                    size="small"
-                  >
-                    {navCollapsed ? <ChevronRightIcon /> : <ChevronLeftIcon />}
-                  </IconButton>
-                </Tooltip>
-              </Box>
-              {renderGroupedNavList()}
-            </Box>
-          </Drawer>
-        ) : (
+            {navCollapsed ? <ChevronRightIcon /> : <ChevronLeftIcon />}
+          </IconButton>
+        </Tooltip>
+      </Box>
+      {renderGroupedNavList()}
+    </Box>
+  ) : null;
+
+  const footerContent = !isFocusMode ? <FooterQuickActions fixed={false} /> : null;
+
+  return (
+    <RouteHydrationListener>
+      <LiveAnnouncer>
+        <div data-testid="app-shell">
+        <AppShellV2
+          header={headerContent}
+          sidebar={sidebarContent}
+          footer={footerContent}
+          sidebarWidth={showDesktopSidebar ? currentDrawerWidth : 0}
+          contentPaddingX={isFocusMode ? 0 : 16}
+          contentPaddingY={isFocusMode ? 0 : 16}
+        >
+          {children}
+        </AppShellV2>
+
+        {!isFocusMode && !isDesktop && (
           <Drawer
             data-testid="nav-drawer"
             variant="temporary"
@@ -684,14 +813,7 @@ const AppShell: React.FC<{ children: React.ReactNode }> = ({ children }) => {
               {renderGroupedNavList(handleMobileNavigate)}
             </Box>
           </Drawer>
-        ))}
-
-        <Container component="main" role="main" maxWidth="lg" sx={{ pt: isFocusMode ? 0 : { xs: 10, sm: 11, md: 12 }, pb: isFocusMode ? 2 : { xs: 18, sm: 14 }, px: isFocusMode ? 0 : { xs: 2, sm: 3, md: 4 }, ml: isFocusMode ? 0 : `${drawerOffset}px`, transition: theme.transitions.create('margin-left', {
-          easing: theme.transitions.easing.sharp,
-          duration: theme.transitions.duration.enteringScreen,
-        }) }}>
-          {children}
-        </Container>
+        )}
 
         {isFocusMode && (
           <Fab
@@ -704,7 +826,6 @@ const AppShell: React.FC<{ children: React.ReactNode }> = ({ children }) => {
           </Fab>
         )}
         {import.meta.env.DEV && <AuthDiagnosticsPanel limit={15} pollInterval={2000} />}
-        <FooterQuickActions />
         <SettingsDialog open={settingsDialogOpen} onClose={() => setSettingsDialogOpen(false)} />
       </div>
       </LiveAnnouncer>
@@ -848,7 +969,7 @@ const ConnectionStatusReal: React.FC<{ sharePointDisabled: boolean }> = ({ share
   );
 };
 
-const FooterQuickActions: React.FC = () => {
+const FooterQuickActions: React.FC<{ fixed?: boolean }> = ({ fixed = true }) => {
   const location = useLocation();
   const [quickNoteOpen, setQuickNoteOpen] = useState(false);
   const isHandoffTimeline =
@@ -867,7 +988,7 @@ const FooterQuickActions: React.FC = () => {
     'daily-attendance': TESTIDS['daily-footer-attendance'],
     'daily-activity': TESTIDS['daily-footer-activity'],
     'daily-support': TESTIDS['daily-footer-support'],
-    'daily-health': TESTIDS['daily-footer-health'],
+    'handoff-timeline': TESTIDS['handoff-footer-timeline'],
     'handoff-quicknote': TESTIDS['handoff-footer-quicknote'],
   };
 
@@ -894,9 +1015,9 @@ const FooterQuickActions: React.FC = () => {
       variant: 'outlined' as const,
     },
     {
-      key: 'daily-health',
-      label: '健康記録',
-      to: '/daily/health',
+      key: 'handoff-timeline',
+      label: '申し送り',
+      to: '/handoff-timeline',
       color: 'secondary' as const,
       variant: 'outlined' as const,
     },
@@ -927,15 +1048,15 @@ const FooterQuickActions: React.FC = () => {
       component="footer"
       role="contentinfo"
       sx={{
-        position: 'fixed',
-        bottom: { xs: 8, sm: 16 },
-        left: 0,
+        position: fixed ? 'fixed' : 'static',
+        bottom: fixed ? { xs: 8, sm: 16 } : 'auto',
+        left: fixed ? 0 : 'auto',
         width: '100%',
-        pointerEvents: 'none',
-        zIndex: (theme) => theme.zIndex.appBar,
+        pointerEvents: fixed ? 'none' : 'auto',
+        zIndex: fixed ? ((theme) => theme.zIndex.appBar) : 'auto',
       }}
     >
-      <Container maxWidth="lg" sx={{ pointerEvents: 'auto' }}>
+      <Container maxWidth="lg" sx={fixed ? { pointerEvents: 'auto' } : undefined}>
         <Paper
           elevation={6}
           sx={{

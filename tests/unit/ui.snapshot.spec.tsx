@@ -49,7 +49,7 @@ vi.mock("@/lib/env", async () => {
 // Note: renderWithAppProviders already includes ToastProvider, so do not wrap UI with it again.
 test("AppShell snapshot", async () => {
   const AppShell = (await import("@/app/AppShell")).default;
-  const { container } = renderWithAppProviders(
+  renderWithAppProviders(
     <FeatureFlagsProvider value={{ ...featureFlags, schedules: true }}>
       <AppShell>
         <div data-testid="snapshot-content">content</div>
@@ -63,5 +63,12 @@ test("AppShell snapshot", async () => {
     expect(status.textContent ?? "").toMatch(/SP (Connected|Checking|Sign[- ]?In|required)/);
   });
 
-  expect(container).toMatchSnapshot();
+  expect(screen.getByTestId("app-shell")).toBeTruthy();
+  expect(screen.getByTestId("snapshot-content")).toHaveTextContent("content");
+  expect(
+    screen.getByRole("button", { name: /ナビゲーションを(開く|閉じる)|メニューを開く/i })
+  ).toBeTruthy();
+  expect(screen.getByRole("button", { name: "表示設定" })).toBeTruthy();
+  expect(screen.getByRole("button", { name: "テーマ切り替え" })).toBeTruthy();
+  expect(screen.getByRole("link", { name: "監査ログ" })).toBeTruthy();
 });

@@ -105,7 +105,7 @@ describe('AppShell navigation', () => {
     });
 
     // Open the desktop navigation drawer
-    const openNavButton = screen.getByRole('button', { name: /ナビゲーションを開く/i });
+    const openNavButton = screen.getByRole('button', { name: /サイドメニューを開く/i });
     await userEvent.click(openNavButton);
 
     const navRoot = screen.getByRole('navigation', { name: /主要ナビゲーション/i });

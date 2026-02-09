@@ -114,7 +114,7 @@ describe('AppShell navigation smoke test', () => {
       TESTIDS['daily-footer-attendance'],
       TESTIDS['daily-footer-activity'],
       'daily-footer-support',
-      'daily-footer-health',
+      TESTIDS['handoff-footer-timeline'],
     ];
 
     const elements = await Promise.all(ids.map((testId) => screen.findByTestId(testId)));
