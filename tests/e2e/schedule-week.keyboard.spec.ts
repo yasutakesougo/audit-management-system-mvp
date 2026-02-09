@@ -58,12 +58,7 @@ test.describe('Schedule week keyboard navigation', () => {
     await page.keyboard.press('Enter');
     await waitForWeekTimeline(page);
 
-    const timeline = page.getByTestId(TESTIDS.SCHEDULES_WEEK_TIMELINE);
-    if (await timeline.isVisible().catch(() => false)) {
-      await expect(timeline).toBeVisible();
-    } else {
-      await expect(page.getByTestId(TESTIDS['schedules-week-grid'])).toBeVisible();
-    }
+    await expect(page.getByTestId(TESTIDS['schedules-week-grid'])).toBeVisible();
   });
 
   test('period navigation buttons respond to keyboard activation', async ({ page }) => {
@@ -85,7 +80,7 @@ test.describe('Schedule week keyboard navigation', () => {
     await expect.poll(readRange, { timeout: 10_000 }).toBe(initialRange);
   });
 
-  test('search interactions do not change the active week timeline', async ({ page }) => {
+  test('search interactions do not change the active week view', async ({ page }) => {
     await gotoWeek(page, new Date('2025-11-24'));
     await waitForWeekTimeline(page);
 
