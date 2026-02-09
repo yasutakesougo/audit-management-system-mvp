@@ -617,7 +617,7 @@ const childRoutes: RouteObject[] = [
   { path: 'daily/attendance', element: <SuspendedAttendanceRecordPage /> },
   { path: 'daily/support', element: <SuspendedTimeBasedSupportRecordPage /> },
   { path: 'daily/support-checklist', element: <SuspendedTimeFlowSupportRecordPage /> },
-  { path: 'daily/time-based', element: <SuspendedTimeBasedSupportRecordPage /> },
+  { path: 'daily/time-based', element: <Navigate to="/daily/support" replace /> },
   { path: 'daily/health', element: <SuspendedHealthObservationPage /> },
   { path: 'analysis', element: <Navigate to="/analysis/dashboard" replace /> },
   {
