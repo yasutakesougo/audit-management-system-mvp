@@ -175,10 +175,10 @@ const SupportStepMasterPage: React.FC = () => {
           <Box display="flex" justifyContent="space-between" alignItems="center">
             <Box>
               <Typography variant="h4" component="h1" sx={{ fontWeight: 600, mb: 1 }}>
-                支援手順テンプレート管理
+                支援手順マスタ
               </Typography>
               <Typography variant="body1" color="text.secondary">
-                個別支援手順のテンプレートを管理します。利用者様の支援計画作成時に使用できます。
+                個別支援手順のマスタを管理します。利用者様の支援計画作成時に使用できます。
               </Typography>
             </Box>
 

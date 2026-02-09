@@ -34,7 +34,7 @@ export function AppShellV2({
   const theme = useTheme();
   const isPhone = useMediaQuery(theme.breakpoints.down('sm'));
 
-  const headerH = isPhone ? LAYOUT.headerH.xs : LAYOUT.headerH.md;
+  const headerH = header ? (isPhone ? LAYOUT.headerH.xs : LAYOUT.headerH.md) : 0;
   const footerH = isPhone ? LAYOUT.footerH.xs : LAYOUT.footerH.md;
   const activityW = activityWidth ?? LAYOUT.activityW;
   const sidebarW = sidebarWidth ?? (isPhone ? LAYOUT.sidebarW.xs : LAYOUT.sidebarW.md);
@@ -71,7 +71,7 @@ export function AppShellV2({
           height: `${headerH}px`,
           minHeight: 0,
           borderBottom: `1px solid ${borderColor}`,
-          display: 'flex',
+          display: header ? 'flex' : 'none',
           alignItems: 'stretch',
           px: 0,
         }}

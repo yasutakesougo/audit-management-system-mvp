@@ -2,6 +2,7 @@ import LiveAnnouncer from '@/a11y/LiveAnnouncer';
 import Brightness4Icon from '@mui/icons-material/Brightness4';
 import Brightness7Icon from '@mui/icons-material/Brightness7';
 import CloseIcon from '@mui/icons-material/Close';
+import CenterFocusStrongIcon from '@mui/icons-material/CenterFocusStrong';
 import EditNoteIcon from '@mui/icons-material/EditNote';
 import AddCircleOutlineIcon from '@mui/icons-material/AddCircleOutline';
 import HistoryIcon from '@mui/icons-material/History';
@@ -76,7 +77,16 @@ type NavItem = {
   icon?: React.ElementType;
   prefetchKey?: PrefetchKey;
   prefetchKeys?: PrefetchKey[];
+  audience?: NavAudience;
 };
+
+type NavAudience = 'all' | 'staff' | 'admin';
+
+const NAV_AUDIENCE = {
+  all: 'all',
+  staff: 'staff',
+  admin: 'admin',
+} as const satisfies Record<'all' | 'staff' | 'admin', NavAudience>;
 
 type NavGroupKey = 'daily' | 'record' | 'review' | 'master' | 'admin' | 'settings';
 
@@ -192,6 +202,7 @@ const AppShell: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const currentRole = useAuthStore((s) => s.currentUserRole);
   const setCurrentUserRole = useAuthStore((s) => s.setCurrentUserRole);
   const { isAdmin, ready: authzReady } = useUserAuthz();
+  const navAudience: NavAudience = isAdmin ? NAV_AUDIENCE.admin : NAV_AUDIENCE.staff;
   const theme = useTheme();
   const { settings, updateSettings } = useSettingsContext();
   const isFocusMode = settings.layoutMode === 'focus';
@@ -259,54 +270,63 @@ const AppShell: React.FC<{ children: React.ReactNode }> = ({ children }) => {
         icon: AssignmentTurnedInRoundedIcon,
         prefetchKey: PREFETCH_KEYS.dailyMenu,
         testId: TESTIDS.nav.daily,
+        audience: NAV_AUDIENCE.all,
       },
       {
         label: '健康記録',
         to: '/daily/health',
         isActive: (pathname) => pathname.startsWith('/daily/health'),
         icon: EditNoteIcon,
+        audience: NAV_AUDIENCE.all,
       },
       {
         label: '申し送りタイムライン',
         to: '/handoff-timeline',
         isActive: (pathname) => pathname.startsWith('/handoff-timeline'),
         icon: HistoryIcon,
+        audience: NAV_AUDIENCE.all,
       },
       {
         label: '司会ガイド',
         to: '/meeting-guide',
         isActive: (pathname) => pathname.startsWith('/meeting-guide'),
         icon: PsychologyIcon,
+        audience: NAV_AUDIENCE.all,
       },
       {
         label: '朝会（作成）',
         to: '/meeting-minutes/new?category=朝会',
         isActive: (pathname) => pathname.startsWith('/meeting-minutes/new'),
         icon: AddCircleOutlineIcon,
+        audience: NAV_AUDIENCE.all,
       },
       {
         label: '夕会（作成）',
         to: '/meeting-minutes/new?category=夕会',
         isActive: (pathname) => pathname.startsWith('/meeting-minutes/new'),
         icon: AddCircleOutlineIcon,
+        audience: NAV_AUDIENCE.all,
       },
       {
         label: '議事録アーカイブ',
         to: '/meeting-minutes',
         isActive: (pathname) => pathname.startsWith('/meeting-minutes'),
         icon: EditNoteIcon,
+        audience: NAV_AUDIENCE.all,
       },
       {
         label: '黒ノート一覧',
         to: '/records',
         isActive: (pathname) => pathname.startsWith('/records'),
         icon: AssignmentTurnedInRoundedIcon,
+        audience: NAV_AUDIENCE.staff,
       },
       {
         label: '月次記録',
         to: '/records/monthly',
         isActive: (pathname) => pathname.startsWith('/records/monthly'),
         icon: AssessmentRoundedIcon,
+        audience: NAV_AUDIENCE.staff,
       },
       {
         label: '分析',
@@ -315,6 +335,7 @@ const AppShell: React.FC<{ children: React.ReactNode }> = ({ children }) => {
         icon: InsightsIcon,
         prefetchKey: PREFETCH_KEYS.analysisDashboard,
         testId: TESTIDS.nav.analysis,
+        audience: NAV_AUDIENCE.staff,
       },
       {
         label: '氷山分析',
@@ -323,6 +344,7 @@ const AppShell: React.FC<{ children: React.ReactNode }> = ({ children }) => {
         icon: WorkspacesIcon,
         prefetchKey: PREFETCH_KEYS.iceberg,
         testId: TESTIDS.nav.iceberg,
+        audience: NAV_AUDIENCE.staff,
       },
       {
         label: 'アセスメント',
@@ -331,12 +353,14 @@ const AppShell: React.FC<{ children: React.ReactNode }> = ({ children }) => {
         icon: PsychologyIcon,
         prefetchKey: PREFETCH_KEYS.assessmentDashboard,
         testId: TESTIDS.nav.assessment,
+        audience: NAV_AUDIENCE.staff,
       },
       {
         label: '特性アンケート',
         to: '/survey/tokusei',
         isActive: (pathname) => pathname.startsWith('/survey/tokusei'),
         icon: EditNoteIcon,
+        audience: NAV_AUDIENCE.staff,
       },
       {
         label: '利用者',
@@ -344,6 +368,7 @@ const AppShell: React.FC<{ children: React.ReactNode }> = ({ children }) => {
         isActive: (pathname: string) => pathname.startsWith('/users'),
         icon: PeopleAltRoundedIcon,
         prefetchKey: PREFETCH_KEYS.users,
+        audience: NAV_AUDIENCE.staff,
       },
       {
         label: '職員',
@@ -351,6 +376,7 @@ const AppShell: React.FC<{ children: React.ReactNode }> = ({ children }) => {
         isActive: (pathname: string) => pathname.startsWith('/staff') && !pathname.startsWith('/staff/attendance'),
         icon: BadgeRoundedIcon,
         prefetchKey: PREFETCH_KEYS.staff,
+        audience: NAV_AUDIENCE.staff,
       },
       ...(staffAttendanceEnabled ? [
         {
@@ -360,26 +386,30 @@ const AppShell: React.FC<{ children: React.ReactNode }> = ({ children }) => {
           icon: BadgeRoundedIcon,
           prefetchKey: PREFETCH_KEYS.staff,
           testId: TESTIDS.nav.staffAttendance,
+          audience: NAV_AUDIENCE.staff,
         },
       ] : []),
       ...(isAdmin && (authzReady || SKIP_LOGIN) ? [
         {
-          label: '支援手順テンプレ',
+          label: '支援手順マスタ',
           to: '/admin/step-templates',
           isActive: (pathname: string) => pathname.startsWith('/admin/step-templates'),
           icon: ChecklistRoundedIcon,
+          audience: NAV_AUDIENCE.admin,
         },
         {
           label: '個別支援手順',
           to: '/admin/individual-support',
           isActive: (pathname: string) => pathname.startsWith('/admin/individual-support'),
           icon: WorkspacesIcon,
+          audience: NAV_AUDIENCE.admin,
         },
         {
           label: '職員勤怠管理',
           to: '/admin/staff-attendance',
           isActive: (pathname: string) => pathname.startsWith('/admin/staff-attendance'),
           icon: BadgeRoundedIcon,
+          audience: NAV_AUDIENCE.admin,
         },
         {
           label: '自己点検',
@@ -388,6 +418,7 @@ const AppShell: React.FC<{ children: React.ReactNode }> = ({ children }) => {
           icon: ChecklistRoundedIcon,
           prefetchKey: PREFETCH_KEYS.checklist,
           testId: TESTIDS.nav.checklist,
+          audience: NAV_AUDIENCE.admin,
         },
         {
           label: '監査ログ',
@@ -396,16 +427,18 @@ const AppShell: React.FC<{ children: React.ReactNode }> = ({ children }) => {
           testId: TESTIDS.nav.audit,
           icon: AssessmentRoundedIcon,
           prefetchKey: PREFETCH_KEYS.audit,
+          audience: NAV_AUDIENCE.admin,
         },
       ] : []),
       {
-        label: '設定管理',
+        label: '支援活動マスタ',
         to: '/admin/templates',
         isActive: (pathname: string) => pathname.startsWith('/admin'),
         icon: SettingsRoundedIcon,
         prefetchKey: PREFETCH_KEYS.adminTemplates,
         prefetchKeys: [PREFETCH_KEYS.muiForms, PREFETCH_KEYS.muiOverlay],
         testId: TESTIDS.nav.admin,
+        audience: NAV_AUDIENCE.admin,
       },
     ];
 
@@ -417,6 +450,7 @@ const AppShell: React.FC<{ children: React.ReactNode }> = ({ children }) => {
         icon: HistoryIcon,
         prefetchKey: PREFETCH_KEYS.icebergPdcaBoard,
         testId: TESTIDS.nav.icebergPdca,
+        audience: NAV_AUDIENCE.staff,
       });
     }
 
@@ -429,6 +463,7 @@ const AppShell: React.FC<{ children: React.ReactNode }> = ({ children }) => {
         icon: EventAvailableRoundedIcon,
         prefetchKey: PREFETCH_KEYS.schedulesWeek,
         prefetchKeys: [PREFETCH_KEYS.muiForms, PREFETCH_KEYS.muiOverlay],
+        audience: NAV_AUDIENCE.staff,
       });
     }
 
@@ -438,11 +473,19 @@ const AppShell: React.FC<{ children: React.ReactNode }> = ({ children }) => {
         to: '/compliance',
         isActive: (pathname: string) => pathname.startsWith('/compliance'),
         icon: ChecklistRoundedIcon,
+        audience: 'staff',
       });
     }
 
-    return items;
-  }, [dashboardPath, currentRole, schedulesEnabled, complianceFormEnabled, icebergPdcaEnabled, staffAttendanceEnabled, isAdmin, authzReady]);
+    const isNavVisible = (item: NavItem): boolean => {
+      const audience = item.audience ?? 'all';
+      if (audience === 'all') return true;
+      if (audience === 'admin') return navAudience === 'admin';
+      return navAudience === 'admin' || navAudience === 'staff';
+    };
+
+    return items.filter(isNavVisible);
+  }, [dashboardPath, currentRole, schedulesEnabled, complianceFormEnabled, icebergPdcaEnabled, staffAttendanceEnabled, isAdmin, authzReady, navAudience]);
 
   const filteredNavItems = useMemo(() => {
     const q = navQuery.trim().toLowerCase();
@@ -640,7 +683,7 @@ const AppShell: React.FC<{ children: React.ReactNode }> = ({ children }) => {
 
   const showDesktopSidebar = !isFocusMode && isDesktop && desktopNavOpen;
 
-  const headerContent = !isFocusMode ? (
+  const headerContent = isFocusMode ? null : (
     <AppBar
       position="static"
       color="primary"
@@ -763,7 +806,7 @@ const AppShell: React.FC<{ children: React.ReactNode }> = ({ children }) => {
         </Box>
       </Toolbar>
     </AppBar>
-  ) : null;
+  );
 
   const sidebarContent = showDesktopSidebar ? (
     <Box
