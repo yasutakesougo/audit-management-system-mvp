@@ -35,20 +35,57 @@ const locatorExists = async (locator: Locator, timeout = 2_000): Promise<boolean
   }
 };
 
-export async function waitForScheduleReady(page: Page, timeout = 15_000): Promise<void> {
-  const pageRoot = page.getByTestId(TESTIDS['schedules-week-page']);
-  const detailList = page.locator(`[data-testid="${TESTIDS.SCHEDULE_WEEK_LIST}"]`);
-  const emptyState = page.locator(`[data-testid="${TESTIDS.SCHEDULE_WEEK_EMPTY}"]`);
-  const loading = page.locator('[aria-busy="true"]');
+type ScheduleReadyOptions = {
+  tab?: 'day' | 'week' | 'month';
+  timeout?: number;
+};
 
-  await expect(pageRoot).toBeVisible({ timeout });
-  await expect(detailList.or(emptyState).or(loading)).toBeVisible({ timeout });
+export async function waitForScheduleReady(
+  page: Page,
+  opts?: ScheduleReadyOptions | number
+): Promise<void> {
+  const resolved =
+    typeof opts === 'number'
+      ? { timeout: opts }
+      : { timeout: opts?.timeout ?? 15_000, tab: opts?.tab };
 
-  if (await loading.isVisible().catch(() => false)) {
-    await loading.waitFor({ state: 'detached', timeout }).catch(() => undefined);
+  if (!resolved.tab) {
+    const pageRoot = page.getByTestId(TESTIDS['schedules-week-page']);
+    const detailList = page.locator(`[data-testid="${TESTIDS.SCHEDULE_WEEK_LIST}"]`);
+    const emptyState = page.locator(`[data-testid="${TESTIDS.SCHEDULE_WEEK_EMPTY}"]`);
+    const loading = page.locator('[aria-busy="true"]');
+
+    await expect(pageRoot).toBeVisible({ timeout: resolved.timeout });
+    await expect(detailList.or(emptyState).or(loading)).toBeVisible({ timeout: resolved.timeout });
+
+    if (await loading.isVisible().catch(() => false)) {
+      await loading.waitFor({ state: 'detached', timeout: resolved.timeout }).catch(() => undefined);
+    }
+
+    await expect(detailList.or(emptyState)).toBeVisible({ timeout: resolved.timeout });
+    return;
   }
 
-  await expect(detailList.or(emptyState)).toBeVisible({ timeout });
+  const pageRoot = page.getByTestId(TESTIDS.SCHEDULES_PAGE_ROOT);
+  const headerRoot = page.getByTestId(TESTIDS.SCHEDULES_HEADER_ROOT);
+  const hasPageRoot = await locatorExists(pageRoot, 2_000);
+  await expect(hasPageRoot ? pageRoot : headerRoot).toBeVisible({ timeout: resolved.timeout });
+
+  const loading = page.locator('[aria-busy="true"]');
+  if (await loading.isVisible().catch(() => false)) {
+    await loading.waitFor({ state: 'detached', timeout: resolved.timeout }).catch(() => undefined);
+  }
+
+  const panel =
+    resolved.tab === 'day'
+      ? page.getByTestId(TESTIDS['schedules-day-page'])
+      : resolved.tab === 'month'
+        ? page.getByTestId(TESTIDS.SCHEDULES_MONTH_PAGE)
+        : page
+            .getByTestId(TESTIDS.SCHEDULES_WEEK_VIEW)
+            .or(page.getByTestId(TESTIDS['schedules-week-page']));
+
+  await expect(panel).toBeVisible({ timeout: resolved.timeout });
 }
 
 export async function waitForDayScheduleReady(page: Page, timeout = 15_000): Promise<void> {

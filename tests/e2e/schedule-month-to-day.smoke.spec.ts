@@ -5,6 +5,7 @@ import { bootSchedule } from './_helpers/bootSchedule';
 import { TESTIDS } from '@/testids';
 import { gotoMonth } from './utils/scheduleNav';
 import { waitForMonthViewReady, waitForDayViewReady } from './utils/scheduleActions';
+import { waitForScheduleReady } from './utils/wait';
 
 test.describe('Schedule month→day navigation smoke', () => {
   test('navigates from month calendar to day view with correct query params', async ({ page }) => {
@@ -13,6 +14,7 @@ test.describe('Schedule month→day navigation smoke', () => {
     // Navigate to month view with a specific date
     const targetDate = new Date('2025-12-01');
     await gotoMonth(page, targetDate);
+    await waitForScheduleReady(page, { tab: 'month' });
     await waitForMonthViewReady(page);
 
     // Get any day card and click it (opens popover)
@@ -46,6 +48,7 @@ test.describe('Schedule month→day navigation smoke', () => {
     // Start from a month view
     const targetDate = new Date('2025-12-15');
     await gotoMonth(page, targetDate);
+    await waitForScheduleReady(page, { tab: 'month' });
     await waitForMonthViewReady(page);
 
     // Click today button
