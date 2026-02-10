@@ -209,11 +209,25 @@ export async function waitForMonthTimeline(page: Page): Promise<void> {
 }
 
 export async function waitForMonthViewReady(page: Page, timeout = 10_000): Promise<void> {
-  // 1) まず「月ページの外枠」が出ていること（画面違いを排除）
-  await expect(page.getByTestId('schedules-month-page')).toBeVisible({ timeout });
+  const monthRoot = page.getByTestId('schedules-month-page');
+  const monthHeading = page.getByTestId('schedules-month-heading');
 
-  // 2) 次に heading（hydration/描画完了の目印）
-  await expect(page.getByTestId('schedules-month-heading')).toBeVisible({ timeout });
+  const monthVisible = async (): Promise<boolean> => {
+    if (!(await locatorExists(monthRoot))) return false;
+    return monthRoot.first().isVisible().catch(() => false);
+  };
+
+  if (!(await monthVisible())) {
+    const monthTab = page.getByTestId(TESTIDS.SCHEDULES_WEEK_TAB_MONTH);
+    const fallbackTab = page.getByRole('tab', { name: '月' }).first();
+    const tab = (await locatorExists(monthTab)) ? monthTab.first() : fallbackTab;
+    if ((await tab.count().catch(() => 0)) > 0) {
+      await tab.click();
+    }
+  }
+
+  await expect(monthRoot).toBeVisible({ timeout });
+  await expect(monthHeading).toBeVisible({ timeout });
 }
 
 export async function waitSchedulesItemsOrEmpty(page: Page, timeout = 15_000): Promise<void> {

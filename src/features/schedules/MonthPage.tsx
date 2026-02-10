@@ -134,9 +134,8 @@ export default function MonthPage() {
   const headingId = TESTIDS.SCHEDULES_MONTH_HEADING_ID;
   const rangeId = TESTIDS.SCHEDULES_MONTH_RANGE_ID;
 
-  const shiftMonth = useCallback(
-    (delta: number) => {
-      const nextAnchor = addMonths(anchorDate, delta);
+  const setMonthAnchor = useCallback(
+    (nextAnchor: Date) => {
       const nextIso = toDateIso(nextAnchor);
       setAnchorDate(nextAnchor);
       setActiveDateIso(nextIso);
@@ -144,11 +143,24 @@ export default function MonthPage() {
       next.set('date', nextIso);
       setSearchParams(next, { replace: true });
     },
-    [anchorDate, searchParams, setSearchParams],
+    [searchParams, setSearchParams],
+  );
+
+  const shiftMonth = useCallback(
+    (delta: number) => {
+      setMonthAnchor(addMonths(anchorDate, delta));
+    },
+    [anchorDate, setMonthAnchor],
   );
 
   const handlePrevMonth = useCallback(() => shiftMonth(-1), [shiftMonth]);
   const handleNextMonth = useCallback(() => shiftMonth(1), [shiftMonth]);
+  const handleCurrentMonth = useCallback(
+    () => {
+      setMonthAnchor(startOfMonth(new Date()));
+    },
+    [setMonthAnchor],
+  );
 
   return (
     <section
@@ -160,7 +172,13 @@ export default function MonthPage() {
       style={{ paddingBottom: 32 }}
     >
       <Box sx={{ px: 2, py: 1.5, display: 'flex', alignItems: 'center', gap: 1 }}>
-        <Button variant="outlined" size="small" onClick={handlePrevMonth} aria-label="前の月">
+        <Button
+          variant="outlined"
+          size="small"
+          onClick={handlePrevMonth}
+          aria-label="前の月へ移動"
+          data-testid={TESTIDS.SCHEDULES_MONTH_PREV}
+        >
           前
         </Button>
         <Box sx={{ flex: 1 }}>
@@ -176,7 +194,21 @@ export default function MonthPage() {
             予定 {totalCount} 件
           </Typography>
         </Box>
-        <Button variant="outlined" size="small" onClick={handleNextMonth} aria-label="次の月">
+        <Button
+          variant="outlined"
+          size="small"
+          onClick={handleCurrentMonth}
+          aria-label="今月に移動"
+        >
+          今月
+        </Button>
+        <Button
+          variant="outlined"
+          size="small"
+          onClick={handleNextMonth}
+          aria-label="次の月へ移動"
+          data-testid={TESTIDS.SCHEDULES_MONTH_NEXT}
+        >
           次
         </Button>
       </Box>
