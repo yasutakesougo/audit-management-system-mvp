@@ -6,8 +6,14 @@ const POST_LOGIN_REDIRECT_KEY = 'postLoginRedirect';
 
 export function AuthCallbackRoute(): JSX.Element {
   const navigate = useNavigate();
+  const didHandleRef = React.useRef(false);
 
   React.useEffect(() => {
+    if (didHandleRef.current) {
+      return;
+    }
+    didHandleRef.current = true;
+
     let cancelled = false;
 
     void (async () => {

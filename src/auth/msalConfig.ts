@@ -55,10 +55,6 @@ if (isTestEnv && effectiveTenantId === 'dummy-tenant-id') {
 export const SP_RESOURCE = appConfig.VITE_SP_RESOURCE;
 export const GRAPH_RESOURCE = 'https://graph.microsoft.com';
 
-const isIntegrationEnv =
-  (typeof import.meta !== 'undefined' && (import.meta as ImportMeta)?.env?.VITE_E2E_INTEGRATION === '1') ||
-  (typeof import.meta !== 'undefined' && (import.meta as ImportMeta)?.env?.PLAYWRIGHT_PROJECT === 'integration');
-
 const LOCAL_ORIGIN = 'http://localhost:5173';
 const runtimeOrigin = typeof window !== 'undefined' ? window.location.origin : LOCAL_ORIGIN;
 const envRedirectUri = config.VITE_MSAL_REDIRECT_URI || config.VITE_AZURE_AD_REDIRECT_URI;
@@ -72,8 +68,8 @@ export const msalConfig = {
     postLogoutRedirectUri: runtimeOrigin,
   },
   cache: {
-    // Integration/Playwright needs localStorage to persist tokens into storageState.json
-    cacheLocation: isIntegrationEnv ? 'localStorage' : 'sessionStorage',
-    storeAuthStateInCookie: false,
+    // iOS/Safari: prefer localStorage + cookie-backed state to avoid redirect loops.
+    cacheLocation: 'localStorage',
+    storeAuthStateInCookie: true,
   },
 };
