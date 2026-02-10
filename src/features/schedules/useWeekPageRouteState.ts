@@ -5,10 +5,10 @@ import type { ScheduleCategory } from '@/features/schedules/domain/types';
 import { ensureDateParam, normalizeToDayStart, pickDateParam } from '@/features/schedules/utils/dateQuery';
 
 export type ScheduleTab = 'week' | 'day' | 'month';
-export type DialogMode = 'create' | 'edit';
+export type WeekDialogMode = 'create' | 'edit';
 
 export type DialogIntentParams = {
-  mode: DialogMode;
+  mode: WeekDialogMode;
   category: ScheduleCategory;
   dateIso: string;
   startTime: string;
@@ -58,7 +58,7 @@ const toDateIso = (date: Date): string => {
 };
 
 const resolveDialogIntent = (params: URLSearchParams): DialogIntentParams | null => {
-  const mode = params.get('dialog') as DialogMode | null;
+  const mode = params.get('dialog') as WeekDialogMode | null;
   if (mode !== 'create' && mode !== 'edit') {
     return null;
   }

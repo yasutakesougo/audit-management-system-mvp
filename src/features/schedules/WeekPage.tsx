@@ -16,7 +16,7 @@ import type { ScheduleFormState } from '@/features/schedules/scheduleFormState';
 import type { InlineScheduleDraft } from '@/features/schedules/data/inlineScheduleDraft';
 import { useScheduleUserOptions } from '@/features/schedules/useScheduleUserOptions';
 import { makeRange, useSchedules } from '@/features/schedules/useSchedules';
-import { type DialogIntentParams, useWeekPageRouteState } from '@/features/schedules/useWeekPageRouteState';
+import { type DialogIntentParams, type WeekDialogMode, useWeekPageRouteState } from '@/features/schedules/useWeekPageRouteState';
 import { useWeekPageUiState } from '@/features/schedules/useWeekPageUiState';
 import { TESTIDS } from '@/testids';
 import Loading from '@/ui/components/Loading';
@@ -237,7 +237,7 @@ export default function WeekPage() {
       return haystack.includes(needle);
     });
   }, [items, categoryFilter, query]);
-  const dialogMode = (dialogIntent?.mode ?? 'create') as 'create' | 'edit';
+  const dialogMode = (dialogIntent?.mode ?? 'create') as WeekDialogMode;
   const isEditMode = dialogMode === 'edit';
   const dialogEventId = dialogIntent?.eventId ?? null;
   const editingItem: SchedItem | null = useMemo(() => {
