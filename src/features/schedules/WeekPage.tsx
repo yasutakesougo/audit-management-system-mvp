@@ -200,6 +200,13 @@ export default function WeekPage() {
   const fabRef = useRef<HTMLButtonElement | null>(null);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [dialogInitialValues, setDialogInitialValues] = useState<ScheduleEditDialogValues | null>(null);
+  const [dayLane, setDayLane] = useState<ScheduleCategory | null>(null);
+
+  useEffect(() => {
+    if (mode === 'day') {
+      setDayLane(null);
+    }
+  }, [mode]);
 
   useEffect(() => {
     if (!createDialogOpen && pendingFabFocus && fabRef.current) {
@@ -327,6 +334,7 @@ export default function WeekPage() {
   const handleDayClick = useCallback(
     (dayIso: string, _event?: MouseEvent<HTMLButtonElement>) => {
       setActiveDateIso(dayIso);
+      setDayLane(null);
       primeRouteReset();
       syncDateParam(dayIso);
     },
@@ -335,10 +343,13 @@ export default function WeekPage() {
 
   const defaultDateIso = weekRange.from.slice(0, 10);
   const resolvedActiveDateIso = activeDateIso ?? defaultDateIso;
-  const dayViewHref = useMemo(
-    () => `/schedules/day?date=${resolvedActiveDateIso}`,
-    [resolvedActiveDateIso],
-  );
+  const dayViewHref = useMemo(() => {
+    const params = new URLSearchParams({ date: resolvedActiveDateIso });
+    if (dayLane) {
+      params.set('lane', dayLane);
+    }
+    return `/schedules/day?${params.toString()}`;
+  }, [dayLane, resolvedActiveDateIso]);
   const weekViewHref = useMemo(
     () => `/schedules/week?date=${resolvedActiveDateIso}`,
     [resolvedActiveDateIso],
@@ -394,6 +405,7 @@ export default function WeekPage() {
     }
 
     const category = (item.category as ScheduleCategory) ?? 'User';
+    setDayLane(category);
     const serviceType = (item.serviceType as ScheduleServiceType) ?? 'normal';
     const startLocal = formatScheduleLocalInput(item.start, DEFAULT_START_TIME);
     const endLocal = formatScheduleLocalInput(item.end, DEFAULT_END_TIME);

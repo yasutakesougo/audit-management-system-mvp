@@ -109,7 +109,8 @@ export const useWeekPageRouteState = (): RouteState => {
 
   const filter = useMemo<WeekPageFilterState>(() => {
     const query = searchParams.get('q')?.trim() ?? '';
-    const category = parseCategoryParam(searchParams.get('cat'));
+    const laneParam = searchParams.get('lane');
+    const category = parseCategoryParam(laneParam ?? searchParams.get('cat'));
     return { category, query };
   }, [searchParams]);
 
@@ -129,6 +130,7 @@ export const useWeekPageRouteState = (): RouteState => {
       } else {
         params.delete('q');
       }
+      params.delete('lane');
       if (merged.category !== 'All') {
         params.set('cat', merged.category);
       } else {
