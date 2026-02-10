@@ -32,6 +32,10 @@ test.describe('Schedule month→day navigation smoke', () => {
     await firstDayCard.click();
 
     // Wait for popover to appear and click "Day で開く" button
+    const popover = page.getByTestId(TESTIDS['schedules-day-popover']);
+    await expect(popover).toBeVisible();
+    await expect(popover).not.toContainText('利用者');
+    await expect(popover).not.toContainText('職員');
     const openDayButton = page.getByTestId(TESTIDS['schedules-popover-open-day']);
     await expect(openDayButton).toBeVisible();
     await openDayButton.click();
