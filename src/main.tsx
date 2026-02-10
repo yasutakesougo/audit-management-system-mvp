@@ -253,7 +253,7 @@ const run = async (): Promise<void> => {
         const msalKeys = Object.keys(sessionStorage).filter(k => k.toLowerCase().includes('msal'));
         console.info('[msal] sessionStorage MSAL keys:', msalKeys);
       } else {
-        console.info('[msal] ℹ️  no redirect result (first load or no auth callback)');
+        console.info('[msal] ℹ️  handleRedirectPromise returned null');
       }
     } catch (error) {
       // Non-fatal: continue app bootstrap even if MSAL init/redirect fails
@@ -261,6 +261,10 @@ const run = async (): Promise<void> => {
     } finally {
       if (typeof window !== 'undefined') {
         window.__MSAL_REDIRECT_DONE__ = true;
+        console.info('[msal] __MSAL_REDIRECT_DONE__ set true', {
+          path: window.location.pathname,
+          search: window.location.search,
+        });
       }
     }
   }
