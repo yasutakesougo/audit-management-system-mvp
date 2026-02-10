@@ -16,7 +16,7 @@ afterEach(() => {
 });
 
 describe('msalConfig fallbacks', () => {
-  it('uses provided window origin and config values when available', async () => {
+  it('uses provided config values and fixed localhost redirect', async () => {
     const origin = 'https://app.example.com';
     vi.stubGlobal('window', { location: { origin } });
     vi.doMock('@/lib/env', () => ({
@@ -35,10 +35,10 @@ describe('msalConfig fallbacks', () => {
     expect(module.SP_RESOURCE).toBe('sp-resource');
     expect(module.msalConfig.auth.clientId).toBe('client-id');
     expect(module.msalConfig.auth.authority).toBe('https://login.microsoftonline.com/tenant-id');
-    expect(module.msalConfig.auth.redirectUri).toBe(origin);
+    expect(module.msalConfig.auth.redirectUri).toBe('http://localhost:5173/auth/callback');
   });
 
-  it('falls back to dummy values and localhost origin when window is absent', async () => {
+  it('falls back to dummy values and localhost redirect when window is absent', async () => {
     vi.stubGlobal('window', undefined);
 
     vi.doMock('@/lib/env', () => ({
@@ -56,6 +56,6 @@ describe('msalConfig fallbacks', () => {
     const module = await import('@/auth/msalConfig');
     expect(module.msalConfig.auth.clientId).toBe('dummy-client-id');
     expect(module.msalConfig.auth.authority).toBe('https://login.microsoftonline.com/dummy-tenant');
-    expect(module.msalConfig.auth.redirectUri).toBe('http://localhost:5173');
+    expect(module.msalConfig.auth.redirectUri).toBe('http://localhost:5173/auth/callback');
   });
 });

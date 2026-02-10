@@ -113,7 +113,7 @@ export default defineConfig(({ mode }) => {
     ],
     server: {
       https: httpsConfig, // undefined if certs don't exist (fallback to HTTP)
-      host: '0.0.0.0',
+      host: 'localhost',
       port: 5173,
       strictPort: true,
       hmr: {

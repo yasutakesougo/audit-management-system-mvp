@@ -198,6 +198,12 @@ const ensureRuntimeEnv = async (): Promise<EnvRecord> => {
 
 const run = async (): Promise<void> => {
   const hasWindow = typeof window !== 'undefined';
+  if (hasWindow && window.location.hostname === '127.0.0.1') {
+    const { protocol, port, pathname, search, hash } = window.location;
+    const nextUrl = `${protocol}//localhost${port ? `:${port}` : ''}${pathname}${search}${hash}`;
+    window.location.replace(nextUrl);
+    return;
+  }
   const initialPathname = hasWindow ? window.location.pathname : '';
   const initialSearch = hasWindow ? window.location.search ?? '' : '';
   const initialRouteEntry = hasWindow ? resolveHydrationEntry(initialPathname, initialSearch) : null;
