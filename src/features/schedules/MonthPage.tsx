@@ -4,12 +4,10 @@ import Box from '@mui/material/Box';
 import Typography from '@mui/material/Typography';
 import type { SxProps, Theme } from '@mui/material/styles';
 import { useAnnounce } from '@/a11y/LiveAnnouncer';
-import EmptyState from '@/ui/components/EmptyState';
 import Loading from '@/ui/components/Loading';
 import { TESTIDS } from '@/testids';
 import { makeRange, useSchedules } from './useSchedules';
 import { getDayChipSx } from './theme/dateStyles';
-import { ScheduleEmptyHint } from './components/ScheduleEmptyHint';
 import { DayPopover } from './components/DayPopover';
 import {
   useCallback,
@@ -85,7 +83,6 @@ export default function MonthPage() {
     () => countEventsInMonth(daySummaries.counts, anchorDate),
     [daySummaries.counts, anchorDate],
   );
-  const showEmptyHint = !loading && totalCount === 0;
 
   // Day Popover state
   const [dayPopoverAnchor, setDayPopoverAnchor] = useState<HTMLElement | null>(null);
@@ -137,6 +134,34 @@ export default function MonthPage() {
   const headingId = TESTIDS.SCHEDULES_MONTH_HEADING_ID;
   const rangeId = TESTIDS.SCHEDULES_MONTH_RANGE_ID;
 
+  const setMonthAnchor = useCallback(
+    (nextAnchor: Date) => {
+      const nextIso = toDateIso(nextAnchor);
+      setAnchorDate(nextAnchor);
+      setActiveDateIso(nextIso);
+      const next = new URLSearchParams(searchParams);
+      next.set('date', nextIso);
+      setSearchParams(next, { replace: true });
+    },
+    [searchParams, setSearchParams],
+  );
+
+  const shiftMonth = useCallback(
+    (delta: number) => {
+      setMonthAnchor(addMonths(anchorDate, delta));
+    },
+    [anchorDate, setMonthAnchor],
+  );
+
+  const handlePrevMonth = useCallback(() => shiftMonth(-1), [shiftMonth]);
+  const handleNextMonth = useCallback(() => shiftMonth(1), [shiftMonth]);
+  const handleCurrentMonth = useCallback(
+    () => {
+      setMonthAnchor(startOfMonth(new Date()));
+    },
+    [setMonthAnchor],
+  );
+
   return (
     <section
       data-testid={TESTIDS.SCHEDULES_MONTH_PAGE}
@@ -146,18 +171,46 @@ export default function MonthPage() {
       tabIndex={-1}
       style={{ paddingBottom: 32 }}
     >
-      <Box sx={{ px: 2, py: 1.5 }}>
-        <Typography 
-          variant="h6" 
-          id={headingId}
-          data-testid={TESTIDS.SCHEDULES_MONTH_HEADING_ID}
-          sx={{ mb: 0.5 }}
+      <Box sx={{ px: 2, py: 1.5, display: 'flex', alignItems: 'center', gap: 1 }}>
+        <Button
+          variant="outlined"
+          size="small"
+          onClick={handlePrevMonth}
+          aria-label="前の月へ移動"
+          data-testid={TESTIDS.SCHEDULES_MONTH_PREV}
         >
-          {monthLabel}
-        </Typography>
-        <Typography variant="body2" color="text.secondary" sx={{ textAlign: 'right' }}>
-          予定 {totalCount} 件
-        </Typography>
+          前
+        </Button>
+        <Box sx={{ flex: 1 }}>
+          <Typography
+            variant="h6"
+            id={headingId}
+            data-testid={TESTIDS.SCHEDULES_MONTH_HEADING_ID}
+            sx={{ mb: 0.5 }}
+          >
+            {monthLabel}
+          </Typography>
+          <Typography variant="body2" color="text.secondary">
+            予定 {totalCount} 件
+          </Typography>
+        </Box>
+        <Button
+          variant="outlined"
+          size="small"
+          onClick={handleCurrentMonth}
+          aria-label="今月に移動"
+        >
+          今月
+        </Button>
+        <Button
+          variant="outlined"
+          size="small"
+          onClick={handleNextMonth}
+          aria-label="次の月へ移動"
+          data-testid={TESTIDS.SCHEDULES_MONTH_NEXT}
+        >
+          次
+        </Button>
       </Box>
 
       <div
@@ -165,9 +218,6 @@ export default function MonthPage() {
         aria-busy={loading || undefined}
         aria-live={loading ? 'polite' : undefined}
       >
-        {showEmptyHint ? (
-          <ScheduleEmptyHint view="month" periodLabel={monthLabel} sx={{ mb: 2 }} />
-        ) : null}
         {loading ? (
           <div style={{ marginBottom: 16 }}>
             <Loading />
@@ -240,15 +290,7 @@ export default function MonthPage() {
             </div>
           ))}
         </div>
-        {!loading && totalCount === 0 ? (
-          <div style={{ marginTop: 24 }}>
-            <EmptyState
-              title="この月の予定はありません"
-              description="別の日付や条件で再度お試しください。"
-              data-testid="schedule-month-empty"
-            />
-          </div>
-        ) : null}
+        {!loading && totalCount === 0 ? null : null}
       </div>
 
       {dayPopoverDateIso && (
