@@ -12,6 +12,7 @@ import { createBrowserRouter, Navigate, Outlet, type RouteObject, useLocation } 
 import AppShell from './AppShell';
 import { routerFutureFlags } from './routerFuture';
 import SchedulesGate from './SchedulesGate';
+import { AuthCallbackRoute } from '@/auth/AuthCallbackRoute';
 
 const RecordList = React.lazy(() => import('@/features/records/RecordList'));
 const ChecklistPage = React.lazy(() => import('@/features/compliance-checklist/ChecklistPage'));
@@ -528,6 +529,7 @@ const SuspendedHandoffTimelinePage: React.FC = () => (
   </RouteHydrationErrorBoundary>
 );
 const childRoutes: RouteObject[] = [
+  { path: 'auth/callback', element: <AuthCallbackRoute /> },
   { index: true, element: <DashboardRedirect /> },
   { path: 'dashboard', element: <SuspendedStaffDashboardPage /> },
   {
