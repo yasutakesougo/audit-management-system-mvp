@@ -129,10 +129,6 @@ const LANE_ORDER: Array<{ key: ScheduleCategory; label: string }> = [
   { key: 'Org', label: scheduleCategoryLabels.Org },
 ];
 
-const resolveLaneCategory = (value?: ScheduleCategory | null): ScheduleCategory => {
-  if (value === 'User' || value === 'Staff' || value === 'Org') return value;
-  return 'Org';
-};
 
 export default function WeekView(props: WeekViewProps) {
   const hasExternalData = props.items !== undefined && props.loading !== undefined;
@@ -276,7 +272,7 @@ const WeekViewContent = ({ items, loading, onDayClick, activeDateIso, range, onI
       Org: [],
     };
     items.forEach((item) => {
-      const category = resolveLaneCategory(item.category as ScheduleCategory | undefined);
+      const category = item.category as ScheduleCategory;
       map[category].push(item);
     });
     (Object.keys(map) as ScheduleCategory[]).forEach((key) => {
