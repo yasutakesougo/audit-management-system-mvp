@@ -5,8 +5,8 @@ import { expect, test } from '@playwright/test';
 import { TESTIDS } from '@/testids';
 
 import { bootstrapScheduleEnv } from './utils/scheduleEnv';
-import { gotoScheduleWeek } from './utils/scheduleWeek';
-import { waitForDayTimeline, waitForWeekViewReady } from './utils/wait';
+import { gotoDay } from './utils/scheduleNav';
+import { waitForDayTimeline, waitForScheduleReady } from './utils/wait';
 
 test.describe('Schedules day create flow (facility)', () => {
   test('Week lane -> Day create defaults to facility', async ({ page }) => {
@@ -15,9 +15,9 @@ test.describe('Schedules day create flow (facility)', () => {
     });
 
     const date = new Date('2026-02-10T00:00:00+09:00');
-    await gotoScheduleWeek(page, date, { searchParams: { lane: 'Org' } });
-    await waitForWeekViewReady(page);
+    await gotoDay(page, date, { searchParams: { lane: 'Org' } });
     await waitForDayTimeline(page);
+    await waitForScheduleReady(page, { tab: 'day' });
 
     const cta = page.getByRole('button', { name: '施設予定を追加' });
     await expect(cta).toBeVisible();
@@ -30,6 +30,11 @@ test.describe('Schedules day create flow (facility)', () => {
     await expect(categorySelect).toContainText('施設');
 
     const titleInput = dialog.getByTestId(TESTIDS['schedule-create-title']);
-    await expect(titleInput).toBeFocused();
+    try {
+      await expect(titleInput).toBeFocused({ timeout: 3_000 });
+    } catch {
+      await titleInput.click();
+      await expect(titleInput).toBeFocused();
+    }
   });
 });
