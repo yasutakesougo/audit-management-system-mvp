@@ -33,7 +33,7 @@ let pendingFabFocus = false;
 
 
 export default function WeekPage() {
-  const { isTabletSize } = useBreakpointFlags();
+  const { isTabletSize, isDesktopSize } = useBreakpointFlags();
   const { isLandscape } = useOrientation();
   const { account } = useAuth();
   const { isReception, isAdmin, ready } = useUserAuthz();
@@ -116,7 +116,9 @@ export default function WeekPage() {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [dialogInitialValues, setDialogInitialValues] = useState<ScheduleEditDialogValues | null>(null);
   const [dayLane, setDayLane] = useState<ScheduleCategory | null>(null);
-  const isExtendedFab = isTabletSize && isLandscape;
+  const isLandscapeTablet = isTabletSize && isLandscape;
+  const showFab = !isDesktopSize;
+  const isExtendedFab = isLandscapeTablet;
 
   useEffect(() => {
     if (mode === 'day') {
@@ -485,7 +487,7 @@ export default function WeekPage() {
 
           return (
             <>
-              <SchedulesHeader
+                  <SchedulesHeader
                 mode={mode}
                 title={MASTER_SCHEDULE_TITLE_JA}
                 subLabel={headerSubLabel}
@@ -494,7 +496,8 @@ export default function WeekPage() {
           onNext={handleNextWeek}
           onToday={handleTodayWeek}
           onPrimaryCreate={canEdit ? handleFabClick : undefined}
-          showPrimaryAction={false}
+                  showPrimaryAction={isDesktopSize}
+                  primaryActionLabel="新規登録"
           primaryActionAriaLabel="この週に新規予定を作成"
           headingId={headingId}
           titleTestId={TESTIDS['schedules-week-heading']}
@@ -601,41 +604,43 @@ export default function WeekPage() {
         )}
       </div>
 
-      <button
-        type="button"
-        onClick={handleFabClick}
-        data-testid={TESTIDS.SCHEDULES_FAB_CREATE}
-        ref={fabRef}
-        style={{
-          position: 'fixed',
-          right: 24,
-          bottom: 24,
-          width: isExtendedFab ? 'auto' : 64,
-          height: 56,
-          padding: isExtendedFab ? '0 20px' : undefined,
-          borderRadius: '50%',
-          border: 'none',
-          background: '#1976d2',
-          color: '#fff',
-          boxShadow: '0 4px 12px rgba(0,0,0,0.3)',
-          fontSize: 28,
-          fontWeight: 700,
-          lineHeight: 1,
-          cursor: 'pointer',
-          zIndex: 1300,
-          display: 'inline-flex',
-          alignItems: 'center',
-          gap: isExtendedFab ? 10 : 0,
-        }}
-        aria-label={
-          resolvedActiveDateIso
-            ? `選択中の日に予定を追加 (${resolvedActiveDateIso})`
-            : '予定を追加'
-        }
-      >
-        <span aria-hidden="true">＋</span>
-        {isExtendedFab ? <span style={{ fontSize: 14, fontWeight: 600 }}>新規登録</span> : null}
-      </button>
+      {showFab ? (
+        <button
+          type="button"
+          onClick={handleFabClick}
+          data-testid={TESTIDS.SCHEDULES_FAB_CREATE}
+          ref={fabRef}
+          style={{
+            position: 'fixed',
+            right: 24,
+            bottom: 24,
+            width: isExtendedFab ? 'auto' : 64,
+            height: 56,
+            padding: isExtendedFab ? '0 20px' : undefined,
+            borderRadius: '50%',
+            border: 'none',
+            background: '#1976d2',
+            color: '#fff',
+            boxShadow: '0 4px 12px rgba(0,0,0,0.3)',
+            fontSize: 28,
+            fontWeight: 700,
+            lineHeight: 1,
+            cursor: 'pointer',
+            zIndex: 1300,
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: isExtendedFab ? 10 : 0,
+          }}
+          aria-label={
+            resolvedActiveDateIso
+              ? `選択中の日に予定を追加 (${resolvedActiveDateIso})`
+              : '予定を追加'
+          }
+        >
+          <span aria-hidden="true">＋</span>
+          {isExtendedFab ? <span style={{ fontSize: 14, fontWeight: 600 }}>新規登録</span> : null}
+        </button>
+      ) : null}
       {dialogInitialValues ? (
         <ScheduleCreateDialog
           open={dialogOpen}
