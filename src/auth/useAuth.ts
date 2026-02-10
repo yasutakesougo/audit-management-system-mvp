@@ -278,6 +278,12 @@ export const useAuth = () => {
     getListReadyState,
     setListReadyState,
     signIn: async () => {
+      const canInteract = inProgress === InteractionStatus.None || inProgress === 'none';
+      if (!canInteract) {
+        debugLog('login skipped (interaction in progress)');
+        return signInInFlight ?? { success: false };
+      }
+
       if (signInInFlight) {
         debugLog('login skipped (already in flight)');
         return signInInFlight;
@@ -302,18 +308,11 @@ export const useAuth = () => {
 
       signInInFlight = (async () => {
         try {
-          const canInteract = inProgress === InteractionStatus.None || inProgress === 'none';
-          if (!canInteract) {
-            debugLog('loginPopup skipped because another interaction is in progress');
-            return { success: false };
-          }
-
           if (useRedirectLogin) {
             if (canInteract) {
               await instance.loginRedirect({ scopes: [defaultScope], prompt: 'select_account' });
               return { success: true };
             }
-            debugLog('loginRedirect skipped because another interaction is in progress');
             return { success: false };
           }
 
@@ -385,7 +384,6 @@ export const useAuth = () => {
               await instance.loginRedirect({ scopes: [defaultScope], prompt: 'select_account' });
               return { success: true };
             } else {
-              debugLog('loginRedirect skipped because another interaction is in progress');
               return { success: false };
             }
           }
