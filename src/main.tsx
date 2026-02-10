@@ -241,15 +241,47 @@ const run = async (): Promise<void> => {
       const { getPcaSingleton } = await import('./auth/azureMsal');
       const msalInstance = await getPcaSingleton();
       
-      console.info('[msal] 🚀 singleton created, calling handleRedirectPromise...');
-      const result = await msalInstance.handleRedirectPromise();
+      // Singleflight: prevent multiple concurrent handleRedirectPromise calls
+      const handleRedirectOnce = async () => {
+        const w = window as typeof window & { __MSAL_HANDLE_REDIRECT_INFLIGHT__?: Promise<unknown> };
+        if (w.__MSAL_HANDLE_REDIRECT_INFLIGHT__) {
+          console.info('[msal] 🔄 handleRedirectPromise already in flight, reusing promise');
+          return w.__MSAL_HANDLE_REDIRECT_INFLIGHT__;
+        }
+
+        const p = (async () => {
+          console.info('[msal] 🚀 handleRedirectPromise start');
+
+          const timeoutId = window.setTimeout(() => {
+            console.warn('[msal] ⏱ handleRedirectPromise still pending after 3000ms (possible hang)');
+          }, 3000);
+
+          try {
+            const result = await msalInstance.handleRedirectPromise();
+            console.info('[msal] ✅ handleRedirectPromise resolved:', result?.account ? '(account present)' : 'null');
+            return result;
+          } catch (e) {
+            console.error('[msal] ❌ handleRedirectPromise threw', e instanceof Error ? e.message : String(e));
+            throw e;
+          } finally {
+            window.clearTimeout(timeoutId);
+            w.__MSAL_HANDLE_REDIRECT_INFLIGHT__ = undefined;
+            console.info('[msal] 🧹 handleRedirectPromise finished');
+          }
+        })();
+
+        w.__MSAL_HANDLE_REDIRECT_INFLIGHT__ = p;
+        return p;
+      };
+
+      const result = await handleRedirectOnce();
       
       if (result?.account) {
         msalInstance.setActiveAccount(result.account);
         const username = (result.account as { username?: string; homeAccountId?: string }).username
           ?? (result.account as { homeAccountId?: string }).homeAccountId
           ?? '(unknown)';
-        console.info('[msal] ✅ redirect success:', username);
+        console.info('[msal] ✅ account set:', username);
         const msalKeys = Object.keys(sessionStorage).filter(k => k.toLowerCase().includes('msal'));
         console.info('[msal] sessionStorage MSAL keys:', msalKeys);
       } else {
@@ -257,7 +289,7 @@ const run = async (): Promise<void> => {
       }
     } catch (error) {
       // Non-fatal: continue app bootstrap even if MSAL init/redirect fails
-      console.error('[msal] ❌ initialization/redirect error:', error);
+      console.error('[msal] ❌ initialization/redirect error:', error instanceof Error ? error.message : String(error));
     } finally {
       if (typeof window !== 'undefined') {
         window.__MSAL_REDIRECT_DONE__ = true;
