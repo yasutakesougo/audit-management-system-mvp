@@ -98,20 +98,24 @@ export const parseSpScheduleRows = (input: unknown): SpScheduleRow[] => {
   }
 };
 
-/** Facility/Other → Org/Staff, User stays User */
-export function mapSpCategoryToDomain(raw?: SpScheduleCategoryRaw | null): 'Org' | 'User' | 'Staff' | undefined {
-  if (!raw) return undefined;
+/** Facility/Other/Org -> Org, User stays User, Staff stays Staff. */
+export function mapSpCategoryToDomain(raw?: SpScheduleCategoryRaw | null): 'Org' | 'User' | 'Staff' {
+  if (!raw) {
+    console.warn('[schedules] category missing; defaulting to Org');
+    return 'Org';
+  }
   switch (raw) {
     case 'User':
       return 'User';
-    case 'Facility':
-    case 'Org':
-      return 'Org';
-    case 'Other':
     case 'Staff':
       return 'Staff';
+    case 'Facility':
+    case 'Other':
+    case 'Org':
+      return 'Org';
     default:
-      return undefined;
+      console.warn('[schedules] category unknown; defaulting to Org', raw);
+      return 'Org';
   }
 }
 
@@ -180,8 +184,9 @@ const pickUserCode = (row: SpScheduleRow): string | undefined =>
 
 const inferCategory = (row: SpScheduleRow): 'Org' | 'User' | 'Staff' => {
   const rawCategory = (row.cr014_category ?? row.Category) as SpScheduleCategoryRaw | undefined;
-  const mapped = mapSpCategoryToDomain(rawCategory);
-  if (mapped) return mapped;
+  if (rawCategory) {
+    return mapSpCategoryToDomain(rawCategory);
+  }
 
   const userCode = pickUserCode(row);
   if (userCode) return 'User';
