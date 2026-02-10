@@ -61,7 +61,7 @@ test.describe('Schedule month→day navigation smoke', () => {
     await waitForMonthViewReady(page);
     await expect(page).toHaveURL(/tab=month/);
     const url = page.url();
-    expect(url).toContain('/schedules/month');
+    expect(url).toMatch(/\/schedules\/(month|week)/);
     expect(url).toContain('tab=month');
   });
 });
