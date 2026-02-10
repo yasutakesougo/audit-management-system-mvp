@@ -53,6 +53,7 @@ import { useStaffOptions, type StaffOption } from './useStaffOptions';
 import {
   scheduleCategoryLabels,
   scheduleFacilityHelpText,
+  scheduleFacilityOneTimeGuide,
   scheduleFacilityPlaceholder,
 } from './domain/categoryLabels';
 
@@ -153,6 +154,7 @@ export const ScheduleCreateDialog: React.FC<ScheduleCreateDialogProps> = (props)
   );
   const [errors, setErrors] = useState<string[]>([]);
   const [submitting, setSubmitting] = useState(false);
+  const [showFacilityGuide, setShowFacilityGuide] = useState(false);
   const announce = useAnnounce();
   const wasOpenRef = useRef(open);
   const lastFocusedRef = useRef<HTMLElement | null>(null);
@@ -260,6 +262,30 @@ export const ScheduleCreateDialog: React.FC<ScheduleCreateDialogProps> = (props)
   const isOrgCategory = form.category === 'Org';
   const titlePlaceholder = isOrgCategory ? scheduleFacilityPlaceholder : '例）午前 利用者Aさん通所';
   const titleHelperText = isOrgCategory ? scheduleFacilityHelpText : undefined;
+
+  useEffect(() => {
+    if (!open) {
+      setShowFacilityGuide(false);
+      return;
+    }
+    if (!isOrgCategory) {
+      setShowFacilityGuide(false);
+      return;
+    }
+    if (typeof window === 'undefined') {
+      return;
+    }
+    const storageKey = 'schedules.facilityGuideSeen.v1';
+    try {
+      const seen = window.localStorage.getItem(storageKey);
+      if (!seen) {
+        setShowFacilityGuide(true);
+        window.localStorage.setItem(storageKey, 'true');
+      }
+    } catch {
+      setShowFacilityGuide(true);
+    }
+  }, [isOrgCategory, open]);
 
   const handleUserChange = (_event: unknown, value: ScheduleUserOption | null) => {
     setForm((prev) => {
@@ -414,6 +440,12 @@ export const ScheduleCreateDialog: React.FC<ScheduleCreateDialogProps> = (props)
         >
           タイトル、開始/終了時刻、カテゴリと対象を入力して{mode === 'edit' ? '内容を更新' : '新しい予定を登録'}します。
         </Typography>
+
+        {showFacilityGuide ? (
+          <Alert severity="info" sx={{ mb: 2 }}>
+            {scheduleFacilityOneTimeGuide}
+          </Alert>
+        ) : null}
 
         <Stack spacing={2}>
           {errors.length > 0 && (
