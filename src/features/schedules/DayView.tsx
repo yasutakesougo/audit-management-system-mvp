@@ -86,7 +86,6 @@ type DayViewProps = {
   range?: DateRange;
   categoryFilter?: 'All' | ScheduleCategory;
   emptyCtaLabel?: string;
-  onCreate?: () => void;
 };
 
 export default function DayView(props: DayViewProps = {}) {
@@ -100,7 +99,6 @@ export default function DayView(props: DayViewProps = {}) {
         range={props.range!}
         categoryFilter={props.categoryFilter}
         emptyCtaLabel={props.emptyCtaLabel}
-        onCreate={props.onCreate}
       />
     );
   }
@@ -124,7 +122,6 @@ const DayViewWithData = (props: DayViewProps) => {
       range={resolvedRange}
       categoryFilter={props.categoryFilter}
       emptyCtaLabel={props.emptyCtaLabel}
-      onCreate={props.onCreate}
     />
   );
 };
@@ -135,14 +132,12 @@ const DayViewContent = ({
   range,
   categoryFilter,
   emptyCtaLabel,
-  onCreate,
 }: {
   items: SchedItem[];
   loading: boolean;
   range: DateRange;
   categoryFilter?: 'All' | ScheduleCategory;
   emptyCtaLabel?: string;
-  onCreate?: () => void;
 }) => {
   const headingId = useId();
   const listLabelId = useId();
@@ -163,6 +158,11 @@ const DayViewContent = ({
   const dayLabel = useMemo(() => formatDayLabel(range.from), [range.from]);
   const resolvedCtaLabel =
     emptyCtaLabel ?? (categoryFilter === 'Org' ? '施設予定を追加' : '予定を追加');
+  const emptyHint = `右下の「＋」から${resolvedCtaLabel}できます。`;
+  const emptyDescription =
+    categoryFilter === 'Org'
+      ? `${emptyHint}会議・全体予定・共有タスクは「施設」へ。`
+      : emptyHint;
 
   return (
     <section
@@ -292,26 +292,9 @@ const DayViewContent = ({
           <div style={{ display: 'grid', gap: 12 }}>
             <EmptyState
               title="予定はまだありません"
-              description="「＋予定を追加」から登録できます。会議・全体予定・共有タスクは「施設」へ。"
+              description={emptyDescription}
               data-testid="schedule-day-empty"
             />
-            {onCreate ? (
-              <button
-                type="button"
-                onClick={onCreate}
-                style={{
-                  alignSelf: 'flex-start',
-                  padding: '8px 14px',
-                  borderRadius: 999,
-                  border: '1px solid rgba(0,0,0,0.2)',
-                  background: '#fff',
-                  fontSize: 14,
-                  cursor: 'pointer',
-                }}
-              >
-                {resolvedCtaLabel}
-              </button>
-            ) : null}
           </div>
         ) : (
           <ol
