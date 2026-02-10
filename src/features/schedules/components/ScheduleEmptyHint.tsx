@@ -27,7 +27,7 @@ export function ScheduleEmptyHint(props: ScheduleEmptyHintProps) {
       <Typography variant="body2" color="text.secondary">
         {description}
       </Typography>
-      <Typography variant="body2" color="primary">
+      <Typography variant="body2" color="text.secondary">
         {cta}
       </Typography>
     </Box>

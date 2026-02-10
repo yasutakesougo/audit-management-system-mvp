@@ -713,6 +713,7 @@ export default function WeekPage() {
           onNext={handleNextWeek}
           onToday={handleTodayWeek}
           onPrimaryCreate={canEdit ? handleFabClick : undefined}
+          showPrimaryAction={false}
           primaryActionAriaLabel="この週に新規予定を作成"
           headingId={headingId}
           titleTestId={TESTIDS['schedules-week-heading']}
@@ -806,7 +807,6 @@ export default function WeekPage() {
                 range={activeDayRange}
                 categoryFilter={categoryFilter}
                 emptyCtaLabel={categoryFilter === 'Org' ? '施設予定を追加' : '予定を追加'}
-                onCreate={canEdit ? handleFabClick : undefined}
               />
             )}
             {mode === 'month' && (
