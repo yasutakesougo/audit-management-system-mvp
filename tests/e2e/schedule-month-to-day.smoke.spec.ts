@@ -17,6 +17,10 @@ test.describe('Schedule month→day navigation smoke', () => {
     await waitForScheduleReady(page, { tab: 'month' });
     await waitForMonthViewReady(page);
 
+    const categoryFilter = page.getByTestId(TESTIDS['schedules-filter-category']);
+    await expect(categoryFilter).toBeVisible();
+    await categoryFilter.selectOption('Org');
+
     // Get any day card and click it (opens popover)
     const dayCards = page.locator(`[data-testid^="${TESTIDS.SCHEDULES_MONTH_DAY_PREFIX}-"]`);
     if ((await dayCards.count()) === 0) {
@@ -34,6 +38,11 @@ test.describe('Schedule month→day navigation smoke', () => {
 
     // Verify navigation to day view with correct query params
     await waitForDayViewReady(page);
+    await expect(categoryFilter).toHaveValue('Org');
+    const dayCta = page.getByRole('button', { name: '施設予定を追加' });
+    if ((await dayCta.count()) > 0) {
+      await expect(dayCta).toBeVisible();
+    }
     await expect(page).toHaveURL(/tab=day/);
     const url = page.url();
     // Current routing uses /schedules/week with tab=day query param for day view

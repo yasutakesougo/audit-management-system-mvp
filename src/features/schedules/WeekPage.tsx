@@ -47,6 +47,21 @@ const endOfWeek = (start: Date): Date => {
   return end;
 };
 
+const startOfMonth = (date: Date): Date => {
+  const next = new Date(date);
+  next.setDate(1);
+  next.setHours(0, 0, 0, 0);
+  return next;
+};
+
+const startOfCalendar = (anchor: Date): Date => startOfWeek(startOfMonth(anchor));
+
+const endOfCalendar = (start: Date): Date => {
+  const end = new Date(start);
+  end.setDate(end.getDate() + 6 * 7);
+  return end;
+};
+
 const formatRangeLabel = (fromIso: string, toIso: string): string => {
   const start = new Date(fromIso);
   const end = new Date(toIso);
@@ -255,7 +270,14 @@ export default function WeekPage() {
     const start = startOfWeek(focusDate);
     return makeRange(start, endOfWeek(start));
   }, [focusDate]);
-  const { items, loading: isLoading, create, update, remove, lastError, clearLastError, refetch } = useSchedules(weekRange);
+  const monthRange = useMemo(() => {
+    const anchor = startOfMonth(focusDate);
+    const from = startOfCalendar(anchor);
+    const to = endOfCalendar(from);
+    return makeRange(from, to);
+  }, [focusDate]);
+  const dataRange = mode === 'month' ? monthRange : weekRange;
+  const { items, loading: isLoading, create, update, remove, lastError, clearLastError, refetch } = useSchedules(dataRange);
   const filteredItems = useMemo(() => {
     const needle = query.trim().toLowerCase();
     return items.filter((item) => {
@@ -788,7 +810,11 @@ export default function WeekPage() {
               />
             )}
             {mode === 'month' && (
-              <MonthPage />
+              <MonthPage
+                items={filteredItems}
+                loading={isLoading}
+                activeCategory={categoryFilter}
+              />
             )}
           </>
         )}
