@@ -59,18 +59,18 @@ const isIntegrationEnv =
   (typeof import.meta !== 'undefined' && (import.meta as ImportMeta)?.env?.VITE_E2E_INTEGRATION === '1') ||
   (typeof import.meta !== 'undefined' && (import.meta as ImportMeta)?.env?.PLAYWRIGHT_PROJECT === 'integration');
 
-// redirectUri: env 優先（dev:https 用）、なければ window.origin（CI/E2E 保護）
-const redirectUri =
-  msalEnv?.VITE_MSAL_REDIRECT_URI ??
-  msalEnv?.VITE_AZURE_AD_REDIRECT_URI ??
-  ((typeof window !== 'undefined' && window.location?.origin) ||
-  'http://localhost:5173');
+const LOCAL_REDIRECT = 'http://localhost:5173/auth/callback';
+const LOCAL_ORIGIN = 'http://localhost:5173';
+
+// redirectUri: fixed to localhost to avoid 127.0.0.1 mismatch with Entra settings
+const redirectUri = LOCAL_REDIRECT;
 
 export const msalConfig = {
   auth: {
     clientId: effectiveClientId,
     authority: `https://login.microsoftonline.com/${effectiveTenantId}`,
-    redirectUri: redirectUri, // env 優先、fallback は window.origin（https 固定禁止）
+    redirectUri: redirectUri,
+    postLogoutRedirectUri: LOCAL_ORIGIN,
   },
   cache: {
     // Integration/Playwright needs localStorage to persist tokens into storageState.json
