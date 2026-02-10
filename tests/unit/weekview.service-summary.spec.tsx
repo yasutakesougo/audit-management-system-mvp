@@ -14,6 +14,7 @@ describe('WeekView service summary chips', () => {
         title: '区分未設定 午前',
         start: '2025-03-03T01:00:00.000Z',
         end: '2025-03-03T02:00:00.000Z',
+        category: 'Org',
         serviceType: 'other',
       },
       {
@@ -21,6 +22,7 @@ describe('WeekView service summary chips', () => {
         title: '区分未設定 送迎',
         start: '2025-03-03T03:00:00.000Z',
         end: '2025-03-03T04:00:00.000Z',
+        category: 'Org',
         serviceType: 'other',
       },
       {
@@ -28,6 +30,7 @@ describe('WeekView service summary chips', () => {
         title: '区分未設定 午後',
         start: '2025-03-03T05:00:00.000Z',
         end: '2025-03-03T06:00:00.000Z',
+        category: 'Org',
         serviceType: 'other',
       },
       {
@@ -35,6 +38,7 @@ describe('WeekView service summary chips', () => {
         title: '会議',
         start: '2025-03-04T01:00:00.000Z',
         end: '2025-03-04T02:00:00.000Z',
+        category: 'Org',
         serviceType: 'meeting',
       },
     ];
