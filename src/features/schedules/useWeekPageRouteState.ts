@@ -106,10 +106,10 @@ export const useWeekPageRouteState = (): RouteState => {
   const rawDateParam = useMemo(() => pickDateParam(searchParams), [searchParams]);
   const focusDate = useMemo(() => normalizeToDayStart(rawDateParam), [rawDateParam]);
   const dateIso = useMemo(() => toDateIso(focusDate), [focusDate]);
+  const laneParam = searchParams.get('lane');
 
   const filter = useMemo<WeekPageFilterState>(() => {
     const query = searchParams.get('q')?.trim() ?? '';
-    const laneParam = searchParams.get('lane');
     const category = parseCategoryParam(laneParam ?? searchParams.get('cat'));
     return { category, query };
   }, [searchParams]);
@@ -140,6 +140,21 @@ export const useWeekPageRouteState = (): RouteState => {
     },
     [filter.category, filter.query, searchParams, setSearchParams],
   );
+
+  useEffect(() => {
+    if (mode !== 'day' || !laneParam) {
+      return;
+    }
+    const laneCategory = parseCategoryParam(laneParam);
+    const params = new URLSearchParams(searchParams);
+    params.delete('lane');
+    if (laneCategory !== 'All') {
+      params.set('cat', laneCategory);
+    } else {
+      params.delete('cat');
+    }
+    setSearchParams(params, { replace: true });
+  }, [laneParam, mode, searchParams, setSearchParams]);
 
   const dialogIntent = useMemo(() => resolveDialogIntent(searchParams), [searchParams]);
   const createDialogOpen = Boolean(dialogIntent);
