@@ -79,7 +79,7 @@ export default function ProtectedRoute({ flag, children, fallbackPath = '/' }: P
   const enabled = flag ? flags[flag] : true;
   const { isAuthenticated, loading, shouldSkipLogin, tokenReady: tokenReadyRaw, signIn, getListReadyState: _getListReadyState, setListReadyState, acquireToken } = useAuth();
   const tokenReady = tokenReadyRaw ?? false;
-  const { accounts, inProgress, instance } = useMsalContext();
+  const { accounts, inProgress, instance, authReady } = useMsalContext();
   const location = useLocation();
   const pendingPath = useMemo(() => `${location.pathname}${location.search ?? ''}`, [location.pathname, location.search]);
   const signInAttemptedRef = useRef(false);
@@ -192,6 +192,36 @@ export default function ProtectedRoute({ flag, children, fallbackPath = '/' }: P
   if (!enabled) {
     debug('Access denied for flag:', flag, '- redirecting to', fallbackPath);
     return <Navigate to={fallbackPath} replace />;
+  }
+
+  if (!authReady) {
+    const summary = summarizeAuthBlockReason({
+      inProgress,
+      isAuthenticated,
+      loading,
+      tokenReady,
+      listGate: flag === 'schedules' ? listGate : undefined,
+      enabled,
+      accounts: accounts.length,
+      route: pendingPath,
+    });
+    logAuthDiag(summary);
+    authDiagnostics.collect({
+      route: pendingPath ?? '',
+      reason: summary.code,
+      outcome: 'blocked',
+      correlationId: corrId,
+      detail: summary.detail,
+    });
+    debug('MSAL redirect handling not ready; waiting before auth prompt');
+    return (
+      <div style={{ padding: '2rem', textAlign: 'center' }}>
+        <Typography variant="body2" sx={{ fontWeight: 600, mb: 1 }}>
+          サインイン処理中です…
+        </Typography>
+        <AuthDiagnosticsPanel summary={summary} corrId={corrId} />
+      </div>
+    );
   }
 
   if (isMsalInProgress) {
