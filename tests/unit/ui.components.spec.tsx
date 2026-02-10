@@ -3,6 +3,7 @@ import ErrorState from '@/ui/components/ErrorState';
 import { FormField } from '@/ui/components/FormField';
 import SignInButton from '@/ui/components/SignInButton';
 import { useMsalContext } from '@/auth/MsalProvider';
+import { useAuth } from '@/auth/useAuth';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { beforeEach, describe, expect, it, vi, type Mock } from 'vitest';
@@ -11,7 +12,12 @@ vi.mock('@/auth/MsalProvider', () => ({
   useMsalContext: vi.fn(),
 }));
 
+vi.mock('@/auth/useAuth', () => ({
+  useAuth: vi.fn(),
+}));
+
 const mockUseMsalContext = useMsalContext as unknown as Mock;
+const mockUseAuth = useAuth as unknown as Mock;
 
 vi.mock('@mui/material/Button', () => ({
   __esModule: true,
@@ -30,6 +36,7 @@ vi.mock('@mui/material/Tooltip', () => ({
 describe('UI components', () => {
   beforeEach(() => {
     mockUseMsalContext.mockReset();
+    mockUseAuth.mockReset();
   });
 
   it('renders EmptyState with defaults and overrides', () => {
@@ -67,11 +74,10 @@ describe('UI components', () => {
   });
 
   it('renders sign-in button when no MSAL accounts exist', async () => {
-    const loginPopup = vi.fn().mockResolvedValue({ account: { homeAccountId: 'abc' } });
+    const signIn = vi.fn().mockResolvedValue({ success: true });
     mockUseMsalContext.mockReturnValue({
       accounts: [],
       instance: {
-        loginPopup,
         loginRedirect: vi.fn(),
         logoutRedirect: vi.fn(),
         logoutPopup: vi.fn(),
@@ -82,6 +88,7 @@ describe('UI components', () => {
         setActiveAccount: vi.fn(),
       },
     });
+    mockUseAuth.mockReturnValue({ signIn });
 
     // Fix CI: SignInButton uses useNavigate, requires Router context
     render(
@@ -93,7 +100,7 @@ describe('UI components', () => {
     const button = screen.getByRole('button', { name: 'サインイン' });
     fireEvent.click(button);
     await waitFor(() => {
-      expect(loginPopup).toHaveBeenCalled();
+      expect(signIn).toHaveBeenCalled();
     });
   });
 
