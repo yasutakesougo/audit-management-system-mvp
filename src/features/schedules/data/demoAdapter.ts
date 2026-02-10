@@ -170,7 +170,7 @@ const normalizeServiceType = (value: CreateScheduleEventInput['serviceType']): S
 };
 
 const resolveTitle = (input: CreateScheduleEventInput): string =>
-  (input.title ?? '').trim() || '新規予定';
+  (input.title ?? '').trim() || '予定';
 
 export const demoSchedulesPort: SchedulesPort = {
   async list(range) {

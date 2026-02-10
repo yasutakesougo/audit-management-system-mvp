@@ -36,7 +36,7 @@ export function buildAutoTitle(params: {
   }
   if (params.assignedStaffId?.trim()) return `担当 ${params.assignedStaffId} の予定`;
   if (params.vehicleId?.trim()) return `車両 ${params.vehicleId} の予定`;
-  return '新規予定';
+  return '';
 }
 
 // ===== Types =====

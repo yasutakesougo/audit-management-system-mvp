@@ -7,7 +7,7 @@ import { SCHEDULES_FIELDS, SCHEDULES_LIST_TITLE, DEFAULT_SCHEDULE_VISIBILITY, OW
 import { resolveSchedulesTz } from '@/utils/scheduleTz';
 import { normalizeServiceType as normalizeSharePointServiceType } from '@/sharepoint/serviceTypes';
 
-const DEFAULT_TITLE = '新規予定';
+const DEFAULT_TITLE = '予定';
 const SCHEDULES_TZ = resolveSchedulesTz();
 
 export const normalizeUserId = (value: string): string => value.trim().toUpperCase().replace(/[^A-Z0-9]/g, '');
