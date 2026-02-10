@@ -32,7 +32,7 @@ const resolveBody = (view: ScheduleEmptyHintProps['view'], prefix: string): stri
     case 'week':
       return `${prefix} 必要に応じて日表示に切り替えて、予定を追加してください。`;
     case 'month':
-      return `${prefix} カレンダーの日付を選んで日表示に移動し、予定を追加できます。`;
+      return prefix;
     default:
       return prefix;
   }
