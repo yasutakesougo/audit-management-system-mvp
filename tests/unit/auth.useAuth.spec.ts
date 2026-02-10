@@ -283,7 +283,7 @@ describe('useAuth hook', () => {
     expect(acquireTokenSilent).toHaveBeenCalledTimes(1);
   });
 
-  it('redirects when silent acquisition fails', async () => {
+  it('returns null when silent acquisition fails without redirect', async () => {
     const acquireTokenSilent = vi.fn().mockRejectedValue(new Error('silent-failure'));
     const acquireTokenRedirect = vi.fn().mockResolvedValue(undefined);
 
@@ -312,11 +312,7 @@ describe('useAuth hook', () => {
 
     expect(token).toBeNull();
     expect(sessionStorage.getItem('spToken')).toBeNull();
-    expect(acquireTokenRedirect).toHaveBeenCalledWith(
-      expect.objectContaining({
-        scopes: ['https://resource.example.com/.default'],
-      })
-    );
+    expect(acquireTokenRedirect).not.toHaveBeenCalled();
   });
 
   it('returns unauthenticated state when no accounts are present', async () => {
