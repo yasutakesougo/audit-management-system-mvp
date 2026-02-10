@@ -391,6 +391,7 @@ export const useAuth = () => {
         throw error;
       } finally {
         signInInFlight = false;
+        signInAttemptedRef.current = false;
       }
     },
     signOut: () => instance.logoutRedirect(),
