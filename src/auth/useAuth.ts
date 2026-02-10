@@ -14,9 +14,11 @@ const tokenMetrics = {
   lastRefreshEpoch: 0,
 };
 
+type SignInResult = { success: boolean };
+
 // ③ Cooldown + Singleflight guards to prevent rapid-fire popup loops
 // Prevent concurrent/duplicate interactive logins that can open multiple MSAL prompts
-let signInInFlight = false;
+let signInInFlight: Promise<SignInResult> | null = null;
 let lastSignInAttemptTime = 0;
 const SIGN_IN_COOLDOWN_MS = 30000; // 30 seconds between attempts
 
@@ -276,16 +278,21 @@ export const useAuth = () => {
     getListReadyState,
     setListReadyState,
     signIn: async () => {
+      const canInteract = inProgress === InteractionStatus.None || inProgress === 'none';
+      if (!canInteract) {
+        debugLog('login skipped (interaction in progress)');
+        return signInInFlight ?? { success: false };
+      }
+
+      if (signInInFlight) {
+        debugLog('login skipped (already in flight)');
+        return signInInFlight;
+      }
+
       // StrictMode guard (React 18 dev): prevent double-execution on initial render
       // If already attempted (even if not yet finished), skip to avoid duplicate MSAL popups
       if (signInAttemptedRef.current) {
         debugLog('[StrictMode Guard] signIn already attempted; skipping to prevent duplicate MSAL popup');
-        return { success: false };
-      }
-      signInAttemptedRef.current = true;
-
-      if (signInInFlight) {
-        debugLog('login skipped (already in flight)');
         return { success: false };
       }
 
@@ -297,102 +304,98 @@ export const useAuth = () => {
         return { success: false };
       }
       lastSignInAttemptTime = now;
+      signInAttemptedRef.current = true;
 
-      signInInFlight = true;
-      try {
-        const canInteract = inProgress === InteractionStatus.None || inProgress === 'none';
-        if (!canInteract) {
-          debugLog('loginPopup skipped because another interaction is in progress');
-          return { success: false };
-        }
-
-        if (useRedirectLogin) {
-          if (canInteract) {
-            await instance.loginRedirect({ scopes: [defaultScope], prompt: 'select_account' });
-            return { success: true };
-          }
-          debugLog('loginRedirect skipped because another interaction is in progress');
-          return { success: false };
-        }
-
-        // ② Popup→Redirect fallback + 30sec timeout
-        // Wrap loginPopup in Promise.race: if popup hangs/fails due to COOP or network, fallback to redirect
-        const POPUP_TIMEOUT_MS = 30000; // 30 seconds
-        
-        let popupTimeoutId: NodeJS.Timeout | undefined;
-        let timedOut = false;
-        
-        const popupPromise = (async () => {
-          const result = await instance.loginPopup({ scopes: [defaultScope], prompt: 'select_account' });
-          if (result?.account) {
-            instance.setActiveAccount(result.account);
-            return { success: true };
-          }
-          return { success: false };
-        })();
-
-        const timeoutPromise = new Promise<{ success: boolean }>((resolve) => {
-          popupTimeoutId = setTimeout(() => {
-            timedOut = true;
-            debugLog('loginPopup timeout after 30sec; falling back to loginRedirect');
-            resolve({ success: false }); // Trigger catch path
-          }, POPUP_TIMEOUT_MS);
-        });
-
-        const result = await Promise.race([popupPromise, timeoutPromise]);
-        
-        if (popupTimeoutId) clearTimeout(popupTimeoutId);
-        
-        // If popup timed out, fall back to redirect
-        if (timedOut) {
-          const canInteractRedirect = inProgress === InteractionStatus.None || inProgress === 'none';
-          if (canInteractRedirect) {
-            try {
-              debugLog('Executing fallback loginRedirect after popup timeout');
+      signInInFlight = (async () => {
+        try {
+          if (useRedirectLogin) {
+            if (canInteract) {
               await instance.loginRedirect({ scopes: [defaultScope], prompt: 'select_account' });
               return { success: true };
-            } catch (redirectError: any) {
-              debugLog('loginRedirect failed', {
-                name: redirectError?.name,
-                code: redirectError?.errorCode,
-              });
+            }
+            return { success: false };
+          }
+
+          // ② Popup→Redirect fallback + 30sec timeout
+          // Wrap loginPopup in Promise.race: if popup hangs/fails due to COOP or network, fallback to redirect
+          const POPUP_TIMEOUT_MS = 30000; // 30 seconds
+
+          let popupTimeoutId: NodeJS.Timeout | undefined;
+          let timedOut = false;
+
+          const popupPromise = (async () => {
+            const result = await instance.loginPopup({ scopes: [defaultScope], prompt: 'select_account' });
+            if (result?.account) {
+              instance.setActiveAccount(result.account);
+              return { success: true };
+            }
+            return { success: false };
+          })();
+
+          const timeoutPromise = new Promise<SignInResult>((resolve) => {
+            popupTimeoutId = setTimeout(() => {
+              timedOut = true;
+              debugLog('loginPopup timeout after 30sec; falling back to loginRedirect');
+              resolve({ success: false }); // Trigger catch path
+            }, POPUP_TIMEOUT_MS);
+          });
+
+          const result = await Promise.race([popupPromise, timeoutPromise]);
+
+          if (popupTimeoutId) clearTimeout(popupTimeoutId);
+
+          // If popup timed out, fall back to redirect
+          if (timedOut) {
+            const canInteractRedirect = inProgress === InteractionStatus.None || inProgress === 'none';
+            if (canInteractRedirect) {
+              try {
+                debugLog('Executing fallback loginRedirect after popup timeout');
+                await instance.loginRedirect({ scopes: [defaultScope], prompt: 'select_account' });
+                return { success: true };
+              } catch (redirectError: any) {
+                debugLog('loginRedirect failed', {
+                  name: redirectError?.name,
+                  code: redirectError?.errorCode,
+                });
+                return { success: false };
+              }
+            }
+            return { success: false };
+          }
+
+          return result;
+        } catch (error: any) {
+          const popupIssues = new Set([
+            'user_cancelled',
+            'popup_window_error',
+            'monitor_window_timeout',
+          ]);
+
+          const message = typeof error?.message === 'string' ? error.message.toLowerCase() : '';
+          const coopBlocked = message.includes('cross-origin-opener-policy') || message.includes('window.closed');
+
+          if (popupIssues.has(error?.errorCode) || coopBlocked) {
+            debugLog('loginPopup failed; falling back to redirect', {
+              name: error?.name,
+              code: error?.errorCode,
+            });
+            const canInteractRedirect = inProgress === InteractionStatus.None || inProgress === 'none';
+            if (canInteractRedirect) {
+              await instance.loginRedirect({ scopes: [defaultScope], prompt: 'select_account' });
+              return { success: true };
+            } else {
               return { success: false };
             }
           }
-          return { success: false };
+
+          throw error;
+        } finally {
+          signInInFlight = null;
+          signInAttemptedRef.current = false;
         }
+      })();
 
-        return result;
-      } catch (error: any) {
-        const popupIssues = new Set([
-          'user_cancelled',
-          'popup_window_error',
-          'monitor_window_timeout',
-        ]);
-
-        const message = typeof error?.message === 'string' ? error.message.toLowerCase() : '';
-        const coopBlocked = message.includes('cross-origin-opener-policy') || message.includes('window.closed');
-
-        if (popupIssues.has(error?.errorCode) || coopBlocked) {
-          debugLog('loginPopup failed; falling back to redirect', {
-            name: error?.name,
-            code: error?.errorCode,
-          });
-          const canInteractRedirect = inProgress === InteractionStatus.None || inProgress === 'none';
-          if (canInteractRedirect) {
-            await instance.loginRedirect({ scopes: [defaultScope], prompt: 'select_account' });
-            return { success: true };
-          } else {
-            debugLog('loginRedirect skipped because another interaction is in progress');
-            return { success: false };
-          }
-        }
-
-        throw error;
-      } finally {
-        signInInFlight = false;
-        signInAttemptedRef.current = false;
-      }
+      return signInInFlight;
     },
     signOut: () => instance.logoutRedirect(),
     acquireToken,
