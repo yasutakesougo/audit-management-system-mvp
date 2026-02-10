@@ -6,16 +6,12 @@ export const scheduleCategoryLabels: Record<ScheduleCategory, string> = {
   Org: '施設',
 };
 
-export const scheduleFacilityPlaceholder = '例）朝礼／職員会議／全体イベント準備／送迎調整／設備点検';
+export const scheduleFacilityPlaceholder = '例）会議／全体予定／共有タスク';
 
-export const scheduleFacilityHelpText =
-  '「施設」は、会議・全体予定・共有タスクなど“みんなに影響する予定”を入れるレーンです。';
-
-export const scheduleFacilityOneTimeGuide =
-  '施設レーンは「会議・全体予定・共有タスク」用です。';
+export const scheduleFacilityHelpText = '個人ではなく、施設全体に関わる予定です。';
 
 export const scheduleFacilityEmptyCopy = {
-  title: '予定はまだありません',
-  description: '「＋予定を追加」から登録できます。会議・全体予定・共有タスクは「施設」へ。',
-  cta: '＋予定を追加',
+  title: '施設の予定はまだありません',
+  description: '会議や全体予定、共有タスクなど、施設全体に関わる予定を登録できます。',
+  cta: '施設の予定を追加',
 };

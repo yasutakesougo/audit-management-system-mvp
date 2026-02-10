@@ -53,7 +53,6 @@ import { useStaffOptions, type StaffOption } from './useStaffOptions';
 import {
   scheduleCategoryLabels,
   scheduleFacilityHelpText,
-  scheduleFacilityOneTimeGuide,
   scheduleFacilityPlaceholder,
 } from './domain/categoryLabels';
 
@@ -97,6 +96,8 @@ const CATEGORY_OPTIONS: { value: string; label: string; helper: string }[] = [
   { value: 'Staff', label: scheduleCategoryLabels.Staff, helper: '職員予定：担当職員を選択' },
   { value: 'Org', label: scheduleCategoryLabels.Org, helper: `施設予定：${scheduleFacilityHelpText}` },
 ];
+
+const FACILITY_ONE_TIME_GUIDE = '施設レーンは「会議・全体予定・共有タスク」用です。';
 
 // ===== Component =====
 
@@ -443,7 +444,7 @@ export const ScheduleCreateDialog: React.FC<ScheduleCreateDialogProps> = (props)
 
         {showFacilityGuide ? (
           <Alert severity="info" sx={{ mb: 2 }}>
-            {scheduleFacilityOneTimeGuide}
+            {FACILITY_ONE_TIME_GUIDE}
           </Alert>
         ) : null}
 
