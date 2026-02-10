@@ -156,6 +156,10 @@ export const ScheduleCreateDialog: React.FC<ScheduleCreateDialogProps> = (props)
   const [errors, setErrors] = useState<string[]>([]);
   const [submitting, setSubmitting] = useState(false);
   const [showFacilityGuide, setShowFacilityGuide] = useState(false);
+  const titleInputRef = useRef<HTMLInputElement | null>(null);
+  const userInputRef = useRef<HTMLInputElement | null>(null);
+  const staffInputRef = useRef<HTMLInputElement | null>(null);
+  const didAutoFocusRef = useRef(false);
   const announce = useAnnounce();
   const wasOpenRef = useRef(open);
   const lastFocusedRef = useRef<HTMLElement | null>(null);
@@ -263,6 +267,32 @@ export const ScheduleCreateDialog: React.FC<ScheduleCreateDialogProps> = (props)
   const isOrgCategory = form.category === 'Org';
   const titlePlaceholder = isOrgCategory ? scheduleFacilityPlaceholder : '例）午前 利用者Aさん通所';
   const titleHelperText = isOrgCategory ? scheduleFacilityHelpText : undefined;
+
+  useEffect(() => {
+    if (!open) {
+      didAutoFocusRef.current = false;
+      return;
+    }
+    if (didAutoFocusRef.current) {
+      return;
+    }
+    const target =
+      mode === 'edit' || isOrgCategory
+        ? titleInputRef.current
+        : form.category === 'User'
+          ? userInputRef.current
+          : form.category === 'Staff'
+            ? staffInputRef.current
+            : titleInputRef.current;
+    if (target) {
+      if (typeof window === 'undefined') {
+        target.focus();
+      } else {
+        window.requestAnimationFrame(() => target.focus());
+      }
+      didAutoFocusRef.current = true;
+    }
+  }, [form.category, isOrgCategory, mode, open]);
 
   useEffect(() => {
     if (!open) {
@@ -471,7 +501,7 @@ export const ScheduleCreateDialog: React.FC<ScheduleCreateDialogProps> = (props)
             onChange={(e) => handleFieldChange('title', e.target.value)}
             placeholder={titlePlaceholder}
             helperText={titleHelperText}
-            autoFocus
+            inputRef={titleInputRef}
             inputProps={{
               'data-testid': TESTIDS['schedule-create-title'],
             }}
@@ -510,6 +540,7 @@ export const ScheduleCreateDialog: React.FC<ScheduleCreateDialogProps> = (props)
                   {...params}
                   label="利用者"
                   required
+                  inputRef={userInputRef}
                   inputProps={{
                     ...params.inputProps,
                     'data-testid': TESTIDS['schedule-create-user-input']
@@ -651,6 +682,7 @@ export const ScheduleCreateDialog: React.FC<ScheduleCreateDialogProps> = (props)
                     {...params}
                     placeholder="職員を選択"
                     required
+                    inputRef={staffInputRef}
                     inputProps={{
                       ...params.inputProps,
                       'data-testid': TESTIDS['schedule-create-staff-id'],
@@ -666,6 +698,7 @@ export const ScheduleCreateDialog: React.FC<ScheduleCreateDialogProps> = (props)
                 value={form.assignedStaffId}
                 onChange={(e) => handleFieldChange('assignedStaffId', e.target.value)}
                 placeholder="SharePoint の AssignedStaffId"
+                inputRef={staffInputRef}
                 inputProps={{
                   min: 0,
                   'data-testid': TESTIDS['schedule-create-staff-id'],

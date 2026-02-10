@@ -60,6 +60,37 @@ const formatTimePart = (date: Date): string => {
   return `${pad(date.getHours())}:${pad(date.getMinutes())}`;
 };
 
+const buildDefaultSlot = (iso: string): { start: Date; end: Date } => {
+  const start = new Date(`${iso}T${DEFAULT_START_TIME}`);
+  const end = new Date(`${iso}T${DEFAULT_END_TIME}`);
+  return { start, end };
+};
+
+const buildNextSlot = (iso: string): { start: Date; end: Date } => {
+  const todayIso = toDateIso(new Date());
+  if (iso !== todayIso) {
+    return buildDefaultSlot(iso);
+  }
+
+  const now = new Date();
+  const base = new Date(`${iso}T00:00:00`);
+  const roundedMinutes = Math.ceil(now.getMinutes() / 30) * 30;
+  let hours = now.getHours();
+  let minutes = roundedMinutes;
+  if (roundedMinutes >= 60) {
+    hours += 1;
+    minutes = 0;
+  }
+  if (hours >= 24) {
+    return buildDefaultSlot(iso);
+  }
+  const start = new Date(base);
+  start.setHours(hours, minutes, 0, 0);
+  const end = new Date(start);
+  end.setHours(start.getHours() + 1);
+  return { start, end };
+};
+
 const extractDatePart = (value?: string | null): string => {
   if (!value) return '';
   return value.slice(0, 10);
@@ -374,11 +405,11 @@ export default function WeekPage() {
         setActiveDateIso(iso);
       }
       primeRouteReset();
-      const start = new Date(`${iso}T${DEFAULT_START_TIME}`);
-      const end = new Date(`${iso}T${DEFAULT_END_TIME}`);
-      setDialogParams(buildCreateDialogIntent('User', start, end));
+      const { start, end } = buildNextSlot(iso);
+      const createCategory = categoryFilter === 'All' ? 'User' : categoryFilter;
+      setDialogParams(buildCreateDialogIntent(createCategory, start, end));
     },
-    [canEdit, activeDateIso, defaultDateIso, primeRouteReset, setDialogParams],
+    [canEdit, activeDateIso, categoryFilter, defaultDateIso, primeRouteReset, setDialogParams],
   );
 
   const handleWeekEventClick = useCallback((item: SchedItem) => {
@@ -747,7 +778,14 @@ export default function WeekPage() {
               />
             )}
             {mode === 'day' && (
-              <DayView items={filteredItems} loading={isLoading} range={activeDayRange} />
+              <DayView
+                items={filteredItems}
+                loading={isLoading}
+                range={activeDayRange}
+                categoryFilter={categoryFilter}
+                emptyCtaLabel={categoryFilter === 'Org' ? '施設予定を追加' : '予定を追加'}
+                onCreate={canEdit ? handleFabClick : undefined}
+              />
             )}
             {mode === 'month' && (
               <MonthPage />

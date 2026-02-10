@@ -7,6 +7,7 @@ import type { SchedItem, ScheduleStatus } from './data';
 import { getScheduleStatusMeta } from './statusMetadata';
 import { type DateRange } from './data';
 import { makeRange, useSchedules } from './useSchedules';
+import type { ScheduleCategory } from './domain/types';
 
 type ExtendedSchedItem = SchedItem &
   Partial<{
@@ -83,6 +84,9 @@ type DayViewProps = {
   items?: SchedItem[];
   loading?: boolean;
   range?: DateRange;
+  categoryFilter?: 'All' | ScheduleCategory;
+  emptyCtaLabel?: string;
+  onCreate?: () => void;
 };
 
 export default function DayView(props: DayViewProps = {}) {
@@ -90,7 +94,14 @@ export default function DayView(props: DayViewProps = {}) {
 
   if (hasExternalData) {
     return (
-      <DayViewContent items={props.items!} loading={props.loading!} range={props.range!} />
+      <DayViewContent
+        items={props.items!}
+        loading={props.loading!}
+        range={props.range!}
+        categoryFilter={props.categoryFilter}
+        emptyCtaLabel={props.emptyCtaLabel}
+        onCreate={props.onCreate}
+      />
     );
   }
 
@@ -106,10 +117,33 @@ const DayViewWithData = (props: DayViewProps) => {
 
   const { items, loading } = useSchedules(resolvedRange);
 
-  return <DayViewContent items={items} loading={loading} range={resolvedRange} />;
+  return (
+    <DayViewContent
+      items={items}
+      loading={loading}
+      range={resolvedRange}
+      categoryFilter={props.categoryFilter}
+      emptyCtaLabel={props.emptyCtaLabel}
+      onCreate={props.onCreate}
+    />
+  );
 };
 
-const DayViewContent = ({ items, loading, range }: { items: SchedItem[]; loading: boolean; range: DateRange }) => {
+const DayViewContent = ({
+  items,
+  loading,
+  range,
+  categoryFilter,
+  emptyCtaLabel,
+  onCreate,
+}: {
+  items: SchedItem[];
+  loading: boolean;
+  range: DateRange;
+  categoryFilter?: 'All' | ScheduleCategory;
+  emptyCtaLabel?: string;
+  onCreate?: () => void;
+}) => {
   const headingId = useId();
   const listLabelId = useId();
   const navigate = useNavigate();
@@ -127,6 +161,8 @@ const DayViewContent = ({ items, loading, range }: { items: SchedItem[]; loading
     [filteredItems],
   );
   const dayLabel = useMemo(() => formatDayLabel(range.from), [range.from]);
+  const resolvedCtaLabel =
+    emptyCtaLabel ?? (categoryFilter === 'Org' ? '施設予定を追加' : '予定を追加');
 
   return (
     <section
@@ -253,11 +289,30 @@ const DayViewContent = ({ items, loading, range }: { items: SchedItem[]; loading
             <TimelineSkeleton />
           </div>
         ) : typedItems.length === 0 ? (
-          <EmptyState
-            title="この日に登録された予定はありません"
-            description="別の日付や条件で再度お試しください。"
-            data-testid="schedule-day-empty"
-          />
+          <div style={{ display: 'grid', gap: 12 }}>
+            <EmptyState
+              title="予定はまだありません"
+              description="「＋予定を追加」から登録できます。会議・全体予定・共有タスクは「施設」へ。"
+              data-testid="schedule-day-empty"
+            />
+            {onCreate ? (
+              <button
+                type="button"
+                onClick={onCreate}
+                style={{
+                  alignSelf: 'flex-start',
+                  padding: '8px 14px',
+                  borderRadius: 999,
+                  border: '1px solid rgba(0,0,0,0.2)',
+                  background: '#fff',
+                  fontSize: 14,
+                  cursor: 'pointer',
+                }}
+              >
+                {resolvedCtaLabel}
+              </button>
+            ) : null}
+          </div>
         ) : (
           <ol
             role="list"
