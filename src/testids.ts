@@ -22,6 +22,7 @@ const FOOTER_TESTIDS = {
   // New canonical footer ids (2024+)
   dailyFooterAttendance: 'daily-footer-attendance',
   dailyFooterActivity: 'daily-footer-activity',
+  schedulesFooterMonth: 'schedules-footer-month',
 } as const;
 
 export const TESTIDS = {
@@ -86,6 +87,7 @@ export const TESTIDS = {
   'daily-footer-activity': 'daily-footer-activity',
   'daily-footer-support': 'daily-footer-support',
   'daily-footer-health': 'daily-footer-health',
+  'schedules-footer-month': 'schedules-footer-month',
   'handoff-footer-timeline': 'handoff-footer-timeline',
   'daily-table-record-page': 'daily-table-record-page',
   'daily-table-record-form': 'daily-table-record-form',

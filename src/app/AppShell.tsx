@@ -1064,6 +1064,8 @@ const ConnectionStatusReal: React.FC<{ sharePointDisabled: boolean }> = ({ share
 
 const FooterQuickActions: React.FC<{ fixed?: boolean }> = ({ fixed = true }) => {
   const location = useLocation();
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
   const [quickNoteOpen, setQuickNoteOpen] = useState(false);
   const isHandoffTimeline =
     location.pathname === '/handoff-timeline' || location.pathname.startsWith('/handoff-timeline/');
@@ -1078,10 +1080,35 @@ const FooterQuickActions: React.FC<{ fixed?: boolean }> = ({ fixed = true }) => 
   };
 
   const footerTestIds: Record<string, string> = {
+    'schedules-month': TESTIDS['schedules-footer-month'],
     'daily-attendance': TESTIDS['daily-footer-attendance'],
     'daily-activity': TESTIDS['daily-footer-activity'],
     'daily-support': TESTIDS['daily-footer-support'],
     'handoff-quicknote': TESTIDS['handoff-footer-quicknote'],
+  };
+
+  const footerAccentByKey: Record<string, string> = {
+    'handoff-quicknote': '#C53030',
+    'schedules-month': '#B7791F',
+    'daily-attendance': '#2F855A',
+    'daily-activity': '#C05621',
+    'daily-support': '#6B46C1',
+  };
+
+  const footerShortLabelByKey: Record<string, string> = {
+    'handoff-quicknote': '申し送り',
+    'schedules-month': '予定',
+    'daily-attendance': '通所',
+    'daily-activity': '記録',
+    'daily-support': '手順',
+  };
+
+  const scheduleMonthAction: FooterAction = {
+    key: 'schedules-month',
+    label: 'スケジュール',
+    to: '/schedules/month',
+    color: 'info' as const,
+    variant: 'contained' as const,
   };
 
   const baseActions: FooterAction[] = [
@@ -1094,7 +1121,7 @@ const FooterQuickActions: React.FC<{ fixed?: boolean }> = ({ fixed = true }) => 
     },
     {
       key: 'daily-activity',
-      label: '支援記録（ケース記録）入力',
+      label: 'ケース記録入力',
       to: '/daily/table',
       color: 'primary' as const,
       variant: 'contained' as const,
@@ -1108,8 +1135,6 @@ const FooterQuickActions: React.FC<{ fixed?: boolean }> = ({ fixed = true }) => 
     },
   ] as const;
 
-  const actions: FooterAction[] = [...baseActions];
-
   const handleQuickNoteClick = () => {
     if (isHandoffTimeline) {
       if (typeof window !== 'undefined') {
@@ -1120,13 +1145,17 @@ const FooterQuickActions: React.FC<{ fixed?: boolean }> = ({ fixed = true }) => 
     setQuickNoteOpen(true);
   };
 
-  actions.unshift({
-    key: 'handoff-quicknote',
-    label: '今すぐ申し送り',
-    color: 'secondary' as const,
-    variant: 'contained' as const,
-    onClick: handleQuickNoteClick,
-  });
+  const actions: FooterAction[] = [
+    {
+      key: 'handoff-quicknote',
+      label: '今すぐ申し送り',
+      color: 'secondary' as const,
+      variant: 'contained' as const,
+      onClick: handleQuickNoteClick,
+    },
+    scheduleMonthAction,
+    ...baseActions,
+  ];
 
   return (
     <Box
@@ -1155,19 +1184,50 @@ const FooterQuickActions: React.FC<{ fixed?: boolean }> = ({ fixed = true }) => 
                 : 'rgba(255, 255, 255, 0.9)',
           }}
         >
-          <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1.5} alignItems="stretch">
+          <Stack
+            direction={{ xs: 'row', sm: 'row' }}
+            spacing={1.5}
+            alignItems="stretch"
+            sx={{
+              overflowX: 'auto',
+              overflowY: 'hidden',
+              flexWrap: 'nowrap',
+              WebkitOverflowScrolling: 'touch',
+              px: 0.5,
+              py: 0.5,
+              scrollbarWidth: 'thin',
+              '&::-webkit-scrollbar': { height: 6 },
+            }}
+          >
             {actions.map(({ key, label, to, color, variant: baseVariant, onClick }) => {
+              const displayLabel = isMobile ? (footerShortLabelByKey[key] ?? label) : label;
               const commonProps = {
                 color,
                 size: 'large' as const,
-                fullWidth: true,
-                sx: { flex: 1, fontWeight: 600 },
+                fullWidth: !isMobile,
+                sx: {
+                  flex: isMobile ? '0 0 auto' : 1,
+                  minWidth: isMobile ? 160 : 'auto',
+                  fontWeight: 600,
+                },
                 'data-testid': footerTestIds[key],
               };
 
               if (to) {
                 const targetPath = to.split('?')[0];
                 const isActive = location.pathname.startsWith(targetPath);
+                const accent = footerAccentByKey[key] ?? theme.palette.primary.main;
+                const activeSx = isActive
+                  ? {
+                      color: accent,
+                      borderBottom: `3px solid ${accent}`,
+                      borderRadius: 0,
+                      fontWeight: 700,
+                      '&:hover': {
+                        backgroundColor: theme.palette.action.hover,
+                      },
+                    }
+                  : undefined;
                 return (
                   <Button
                     key={key}
@@ -1176,8 +1236,9 @@ const FooterQuickActions: React.FC<{ fixed?: boolean }> = ({ fixed = true }) => 
                     to={to}
                     variant={isActive ? 'contained' : baseVariant}
                     aria-current={isActive ? 'page' : undefined}
+                    sx={{ ...commonProps.sx, ...activeSx }}
                   >
-                    {label}
+                    {displayLabel}
                   </Button>
                 );
               }
@@ -1191,7 +1252,7 @@ const FooterQuickActions: React.FC<{ fixed?: boolean }> = ({ fixed = true }) => 
                   onClick={onClick}
                   data-testid={key === 'handoff-quicknote' ? TESTIDS['handoff-footer-quicknote'] : undefined}
                 >
-                  {label}
+                  {displayLabel}
                 </Button>
               );
             })}
