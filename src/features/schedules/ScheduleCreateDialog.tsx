@@ -50,7 +50,11 @@ import { SCHEDULE_STATUS_OPTIONS } from './statusMetadata';
 import { buildScheduleFailureAnnouncement, buildScheduleSuccessAnnouncement } from './utils/scheduleAnnouncements';
 import { useOrgOptions, type OrgOption } from './useOrgOptions';
 import { useStaffOptions, type StaffOption } from './useStaffOptions';
-import { scheduleCategoryLabels } from './domain/categoryLabels';
+import {
+  scheduleCategoryLabels,
+  scheduleFacilityHelpText,
+  scheduleFacilityPlaceholder,
+} from './domain/categoryLabels';
 
 // ===== Types for Dialog Component Only =====
 // (All business logic types moved to scheduleFormState.ts for Fast Refresh compatibility)
@@ -90,7 +94,7 @@ export type ScheduleCreateDialogProps = ScheduleCreateDialogBaseProps & (Schedul
 const CATEGORY_OPTIONS: { value: string; label: string; helper: string }[] = [
   { value: 'User', label: scheduleCategoryLabels.User, helper: '利用者予定：利用者とサービス種別を指定' },
   { value: 'Staff', label: scheduleCategoryLabels.Staff, helper: '職員予定：担当職員を選択' },
-  { value: 'Org', label: scheduleCategoryLabels.Org, helper: '施設予定：共有イベントや会議など' },
+  { value: 'Org', label: scheduleCategoryLabels.Org, helper: `施設予定：${scheduleFacilityHelpText}` },
 ];
 
 // ===== Component =====
@@ -252,6 +256,10 @@ export const ScheduleCreateDialog: React.FC<ScheduleCreateDialogProps> = (props)
       return { ...prev, title: autoTitleFromForm };
     });
   }, [autoTitleFromForm]);
+
+  const isOrgCategory = form.category === 'Org';
+  const titlePlaceholder = isOrgCategory ? scheduleFacilityPlaceholder : '例）午前 利用者Aさん通所';
+  const titleHelperText = isOrgCategory ? scheduleFacilityHelpText : undefined;
 
   const handleUserChange = (_event: unknown, value: ScheduleUserOption | null) => {
     setForm((prev) => {
@@ -428,7 +436,8 @@ export const ScheduleCreateDialog: React.FC<ScheduleCreateDialogProps> = (props)
             fullWidth
             value={form.title}
             onChange={(e) => handleFieldChange('title', e.target.value)}
-            placeholder="例）午前 利用者Aさん通所"
+            placeholder={titlePlaceholder}
+            helperText={titleHelperText}
             autoFocus
             inputProps={{
               'data-testid': TESTIDS['schedule-create-title'],

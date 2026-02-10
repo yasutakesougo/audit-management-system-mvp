@@ -601,7 +601,7 @@ export default function WeekPage() {
     return () => clearTimeout(timeoutId);
   }, [focusScheduleId, filteredItems]);
 
-  const showEmptyHint = !isLoading && filteredItems.length === 0 && mode !== 'week';
+  const showEmptyHint = !isLoading && filteredItems.length === 0;
 
 
   return (
@@ -724,7 +724,7 @@ export default function WeekPage() {
 
       <div>
         {showEmptyHint ? (
-          <ScheduleEmptyHint view="week" periodLabel={weekLabel} sx={{ mb: 2 }} />
+          <ScheduleEmptyHint view={mode} periodLabel={weekLabel} sx={{ mb: 2 }} />
         ) : null}
         {isLoading ? (
           <div aria-busy="true" aria-live="polite" style={{ display: 'grid', gap: 16 }}>
