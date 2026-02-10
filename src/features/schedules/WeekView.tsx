@@ -635,6 +635,7 @@ const WeekViewContent = ({ items, loading, onDayClick, activeDateIso, range, onI
                   return (
                     <section
                       key={lane.key}
+                      data-testid={`schedules-week-lane-${lane.key}`}
                       aria-label={`${lane.label}レーン`}
                       style={{
                         border: '1px solid rgba(15,23,42,0.08)',
