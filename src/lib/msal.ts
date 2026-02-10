@@ -117,9 +117,8 @@ export const acquireSpAccessToken = async (scopes?: string[]): Promise<string> =
 
         const account = ensureActiveAccount(instance);
         if (!account) {
-          console.warn('[msal] no active account, initiating loginRedirect');
-          await instance.loginRedirect({ scopes: resolvedScopes });
-          throw new Error('[msal] loginRedirect initiated; flow will continue after redirect');
+          console.warn('[msal] no active account; interactive sign-in required');
+          throw new Error('[msal] no signed-in account');
         }
 
         try {
@@ -139,9 +138,12 @@ export const acquireSpAccessToken = async (scopes?: string[]): Promise<string> =
             throw error;
           }
 
-          console.warn('[msal] acquireTokenSilent requires interaction -> redirect');
-          await instance.acquireTokenRedirect({ account, scopes: resolvedScopes });
-          throw new Error('[msal] acquireTokenRedirect initiated');
+          console.warn('[msal] acquireTokenSilent requires interaction; suppressing auto-redirect');
+          const interactionError = Object.assign(
+            new Error('[msal] interaction required for token acquisition'),
+            { errorCode: maybeError?.errorCode ?? 'interaction_required' }
+          );
+          throw interactionError;
         }
       })();
     }

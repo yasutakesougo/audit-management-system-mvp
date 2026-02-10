@@ -212,28 +212,18 @@ export const useAuth = () => {
 
       console.warn('[auth] acquireTokenSilent failed', error);
 
-      // When silent token acquisition fails, fall back to redirect.
-      // This matches our expected UX (recover via interactive auth) and unit tests.
-      const canInteractRedirect = inProgress === InteractionStatus.None || inProgress === 'none';
-      if (canInteractRedirect) {
-        try {
-          await instance.acquireTokenRedirect({
-            scopes: [scope],
-            account: activeAccount,
-          });
-        } catch (redirectError: any) {
-          debugLog('acquireTokenRedirect failed', {
-            errorName: redirectError?.name,
-            errorCode: redirectError?.errorCode,
-            message: redirectError?.message || 'Unknown error',
-          });
-        }
+      const interactionRequired =
+        error?.errorCode === 'interaction_required' ||
+        error?.errorCode === 'consent_required' ||
+        error?.errorCode === 'login_required';
+      if (interactionRequired) {
+        debugLog('acquireTokenSilent requires interaction; suppressing auto-redirect');
       } else {
-        debugLog('acquireTokenRedirect skipped because another interaction is in progress');
+        debugLog('acquireTokenSilent failed without interaction-required error');
       }
       return null;
     }
-  }, [instance, inProgress]);
+  }, [instance]);
 
   const resolvedAccount = instance.getActiveAccount() ?? accounts[0] ?? null;
   const isAuthenticated = !!resolvedAccount;
