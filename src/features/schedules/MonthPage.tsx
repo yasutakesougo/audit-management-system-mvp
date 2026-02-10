@@ -6,7 +6,7 @@ import type { SxProps, Theme } from '@mui/material/styles';
 import { useAnnounce } from '@/a11y/LiveAnnouncer';
 import Loading from '@/ui/components/Loading';
 import { TESTIDS } from '@/testids';
-import { makeRange, useSchedules } from './useSchedules';
+import type { ScheduleCategory } from './domain/types';
 import { getDayChipSx } from './theme/dateStyles';
 import { DayPopover } from './components/DayPopover';
 import {
@@ -36,7 +36,13 @@ type CalendarWeek = {
   days: CalendarDay[];
 };
 
-export default function MonthPage() {
+type MonthPageProps = {
+  items: SchedItem[];
+  loading?: boolean;
+  activeCategory?: 'All' | ScheduleCategory;
+};
+
+export default function MonthPage({ items, loading = false, activeCategory = 'All' }: MonthPageProps) {
   const announce = useAnnounce();
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
@@ -62,14 +68,6 @@ export default function MonthPage() {
   }, [focusDate, requestedIso, searchParams, setSearchParams]);
 
   const resolvedActiveDateIso = activeDateIso ?? toDateIso(anchorDate);
-
-  const calendarRange = useMemo(() => {
-    const from = startOfCalendar(anchorDate);
-    const to = endOfCalendar(from);
-    return makeRange(from, to);
-  }, [anchorDate]);
-
-  const { items, loading } = useSchedules(calendarRange);
 
   const daySummaries = useMemo(() => buildDaySummaries(items), [items]);
   const weeks = useMemo(
@@ -119,9 +117,13 @@ export default function MonthPage() {
       const nextDate = parseDateParam(iso);
       setAnchorDate(startOfMonth(nextDate));
       // Navigate to day view (now tab within week page)
-      navigate(`/schedules/week?date=${encodeURIComponent(iso)}&tab=day`);
+      const params = new URLSearchParams({ date: iso, tab: 'day' });
+      if (activeCategory !== 'All') {
+        params.set('lane', activeCategory);
+      }
+      navigate(`/schedules/week?${params.toString()}`);
     },
-    [navigate, searchParams, setSearchParams],
+    [activeCategory, navigate, searchParams, setSearchParams],
   );
 
   const getItemsForDate = useCallback(
@@ -392,12 +394,6 @@ const addMonths = (date: Date, delta: number): Date => {
 };
 
 const startOfCalendar = (anchor: Date): Date => startOfWeek(startOfMonth(anchor));
-
-const endOfCalendar = (start: Date): Date => {
-  const end = new Date(start);
-  end.setDate(end.getDate() + 6 * 7);
-  return end;
-};
 
 const toDateIso = (date: Date): string => date.toISOString().slice(0, 10);
 

@@ -19,7 +19,6 @@ const ChecklistPage = React.lazy(() => import('@/features/compliance-checklist/C
 const AuditPanel = React.lazy(() => import('@/features/audit/AuditPanel'));
 
 const NewSchedulesWeekPage = lazyWithPreload(() => import('@/features/schedules/WeekPage'));
-const SchedulesMonthPage = React.lazy(() => import('@/features/schedules/MonthPage'));
 const DailyRecordPage = React.lazy(() => import('@/pages/DailyRecordPage'));
 const DailyRecordMenuPage = React.lazy(() => import('@/pages/DailyRecordMenuPage'));
 const TableDailyRecordPage = React.lazy(() => import('@/features/daily/TableDailyRecordPage'));
@@ -101,19 +100,6 @@ const SuspendedNewSchedulesWeekPage: React.FC = () => (
   </RouteHydrationErrorBoundary>
 );
 
-const SuspendedSchedulesMonthPage: React.FC = () => (
-  <RouteHydrationErrorBoundary>
-    <React.Suspense
-      fallback={(
-        <div className="p-4 text-sm text-slate-600" role="status">
-          月別予定を読み込んでいます…
-        </div>
-      )}
-    >
-      <SchedulesMonthPage />
-    </React.Suspense>
-  </RouteHydrationErrorBoundary>
-);
 
 const DashboardRedirect: React.FC = () => {
   const location = useLocation();
@@ -132,6 +118,14 @@ const SchedulesDayRedirect: React.FC = () => {
   const location = useLocation();
   const nextParams = new URLSearchParams(location.search);
   nextParams.set('tab', 'day');
+  const suffix = nextParams.toString();
+  return <Navigate to={`/schedules/week${suffix ? `?${suffix}` : ''}`} replace />;
+};
+
+const SchedulesMonthRedirect: React.FC = () => {
+  const location = useLocation();
+  const nextParams = new URLSearchParams(location.search);
+  nextParams.set('tab', 'month');
   const suffix = nextParams.toString();
   return <Navigate to={`/schedules/week${suffix ? `?${suffix}` : ''}`} replace />;
 };
@@ -786,7 +780,7 @@ const childRoutes: RouteObject[] = [
       <SchedulesGate>
         <ProtectedRoute flag="schedules">
           <RequireAudience audience="staff">
-            <SuspendedSchedulesMonthPage />
+            <SchedulesMonthRedirect />
           </RequireAudience>
         </ProtectedRoute>
       </SchedulesGate>
