@@ -8,6 +8,7 @@ import Divider from '@mui/material/Divider';
 import CalendarTodayIcon from '@mui/icons-material/CalendarToday';
 import type { SchedItem } from '../data';
 import { TESTIDS } from '@/testids';
+import { scheduleCategoryLabels } from '../domain/categoryLabels';
 
 interface DayPopoverProps {
   open: boolean;
@@ -88,7 +89,7 @@ export const DayPopover: React.FC<DayPopoverProps> = ({
                   </Typography>
                   {item.category ? (
                     <Typography variant="caption" color="text.secondary">
-                      {item.category}
+                      {scheduleCategoryLabels[item.category] ?? item.category}
                     </Typography>
                   ) : null}
                 </A11yRowButton>

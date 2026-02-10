@@ -19,6 +19,7 @@ import { getDayChipSx } from './theme/dateStyles';
 import { type DateRange } from './data';
 import { makeRange, useSchedules } from './useSchedules';
 import type { ScheduleCategory } from '@/features/schedules/domain/types';
+import { scheduleCategoryLabels } from '@/features/schedules/domain/categoryLabels';
 import {
   WeekServiceSummaryChips,
   type WeekServiceSummaryItem,
@@ -123,9 +124,9 @@ const getServiceTypeMeta = (value?: WeekServiceFilter | null) =>
   value && value !== 'unset' ? SERVICE_TYPE_META[value] : undefined;
 
 const LANE_ORDER: Array<{ key: ScheduleCategory; label: string }> = [
-  { key: 'User', label: '利用者' },
-  { key: 'Staff', label: '職員' },
-  { key: 'Org', label: '事業所' },
+  { key: 'User', label: scheduleCategoryLabels.User },
+  { key: 'Staff', label: scheduleCategoryLabels.Staff },
+  { key: 'Org', label: scheduleCategoryLabels.Org },
 ];
 
 const resolveLaneCategory = (value?: ScheduleCategory | null): ScheduleCategory => {

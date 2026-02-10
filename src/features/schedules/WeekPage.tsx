@@ -7,6 +7,7 @@ import { useAuth } from '@/auth/useAuth';
 import { useUserAuthz } from '@/auth/useUserAuthz';
 import { MASTER_SCHEDULE_TITLE_JA } from '@/features/schedules/constants';
 import type { ScheduleCategory } from '@/features/schedules/domain/types';
+import { scheduleCategoryLabels } from '@/features/schedules/domain/categoryLabels';
 import ScheduleCreateDialog from '@/features/schedules/ScheduleCreateDialog';
 import ScheduleEmptyHint from '@/features/schedules/components/ScheduleEmptyHint';
 import SchedulesFilterResponsive from '@/features/schedules/components/SchedulesFilterResponsive';
@@ -681,9 +682,9 @@ export default function WeekPage() {
                   data-testid={TESTIDS['schedules-filter-category']}
                 >
                   <option value="All">すべて</option>
-                  <option value="User">利用者</option>
-                  <option value="Staff">職員</option>
-                  <option value="Org">事業所</option>
+                  <option value="User">{scheduleCategoryLabels.User}</option>
+                  <option value="Staff">{scheduleCategoryLabels.Staff}</option>
+                  <option value="Org">{scheduleCategoryLabels.Org}</option>
                 </select>
               </label>
               <input
