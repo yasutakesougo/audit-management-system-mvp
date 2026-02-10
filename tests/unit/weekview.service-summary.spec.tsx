@@ -7,7 +7,7 @@ type WeekItem = NonNullable<WeekViewProps['items']>[number];
 describe('WeekView service summary chips', () => {
   const range = { from: '2025-03-03', to: '2025-03-10' };
 
-  it('aggregates counts by service type for the active day', () => {
+  it('aggregates counts by service type for the week range', () => {
     const items: WeekItem[] = [
       {
         id: 'other-1',
@@ -46,8 +46,10 @@ describe('WeekView service summary chips', () => {
     const otherChip = within(summary).getByTestId('schedules-week-service-summary-other');
     expect(otherChip).toHaveTextContent('その他 3件');
 
+    const meetingChip = within(summary).getByTestId('schedules-week-service-summary-meeting');
+    expect(meetingChip).toHaveTextContent('会議 1件');
+
     expect(within(summary).queryByTestId('schedules-week-service-summary-normal')).toBeNull();
     expect(within(summary).queryByTestId('schedules-week-service-summary-transport')).toBeNull();
-    expect(within(summary).queryByTestId('schedules-week-service-summary-meeting')).toBeNull();
   });
 });
