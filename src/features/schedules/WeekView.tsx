@@ -18,6 +18,7 @@ import { SERVICE_TYPE_COLOR, SERVICE_TYPE_META, normalizeServiceType, type Servi
 import { getDayChipSx } from './theme/dateStyles';
 import { type DateRange } from './data';
 import { makeRange, useSchedules } from './useSchedules';
+import type { ScheduleCategory } from '@/features/schedules/domain/types';
 import {
   WeekServiceSummaryChips,
   type WeekServiceSummaryItem,
@@ -120,6 +121,17 @@ const mapServiceTypeToThemeKey = (value?: WeekServiceFilter | null): WeekService
 
 const getServiceTypeMeta = (value?: WeekServiceFilter | null) =>
   value && value !== 'unset' ? SERVICE_TYPE_META[value] : undefined;
+
+const LANE_ORDER: Array<{ key: ScheduleCategory; label: string }> = [
+  { key: 'User', label: '利用者' },
+  { key: 'Staff', label: '職員' },
+  { key: 'Org', label: '事業所' },
+];
+
+const resolveLaneCategory = (value?: ScheduleCategory | null): ScheduleCategory => {
+  if (value === 'User' || value === 'Staff' || value === 'Org') return value;
+  return 'Org';
+};
 
 export default function WeekView(props: WeekViewProps) {
   const hasExternalData = props.items !== undefined && props.loading !== undefined;
@@ -256,12 +268,172 @@ const WeekViewContent = ({ items, loading, onDayClick, activeDateIso, range, onI
     return map;
   }, [items, weekDays]);
 
-  const selectedItems = groupedItems.get(resolvedActiveIso) ?? [];
+  const laneItems = useMemo(() => {
+    const map: Record<ScheduleCategory, WeekSchedItem[]> = {
+      User: [],
+      Staff: [],
+      Org: [],
+    };
+    items.forEach((item) => {
+      const category = resolveLaneCategory(item.category as ScheduleCategory | undefined);
+      map[category].push(item);
+    });
+    (Object.keys(map) as ScheduleCategory[]).forEach((key) => {
+      map[key].sort((a, b) => a.start.localeCompare(b.start));
+    });
+    return map;
+  }, [items]);
+
+  const hasItems = items.length > 0;
+
+  const renderItemCard = (item: WeekSchedItem) => {
+    const statusMeta = getScheduleStatusMeta(item.status);
+    const statusLabel = item.status && item.status !== 'Planned' ? statusMeta?.label : undefined;
+    const buttonOpacity = statusMeta?.opacity ?? 1;
+    const statusReason = item.statusReason?.trim();
+    const isDisabled = Boolean(statusMeta?.isDisabled);
+    const handleItemClick = () => {
+      if (SCHEDULES_DEBUG) {
+        // eslint-disable-next-line no-console -- trace row clicks only when debugging schedules
+        console.info('[WeekView] row click', item.id);
+      }
+      if (isDisabled) return;
+      onItemSelect?.(item);
+    };
+    const normalizedServiceType = normalizeServiceType(item.serviceType as string | null);
+    const serviceTypeKey = mapServiceTypeToThemeKey(normalizedServiceType);
+    const serviceTokens = getServiceTokens(serviceTypeKey);
+    const timeRange = formatEventTimeRange(item.start, item.end);
+    const serviceTypeMeta = getServiceTypeMeta(normalizedServiceType);
+    const showServiceChip = Boolean(serviceTypeMeta && serviceTypeKey !== 'unset');
+    const isAccepted = Boolean(item.acceptedOn || item.acceptedBy || item.acceptedNote);
+    const dateLabel = dayFormatter.format(new Date(item.start));
+    const timeRangeLabel = `${dateLabel} ${timeRange}`.trim();
+    const ariaLabel = buildWeekEventAriaLabel(item, timeRangeLabel, statusLabel);
+    const rawLocation = item.locationName ?? (item as Record<string, unknown>).location;
+    const locationLabel = typeof rawLocation === 'string' && rawLocation.trim() ? rawLocation : null;
+    const primaryTitle = isMobile
+      ? item.personName?.trim() || serviceTypeMeta?.label || item.title
+      : item.title;
+    const metaLine = isMobile
+      ? [dateLabel, timeRange]
+      : [dateLabel, timeRange, locationLabel].filter(Boolean);
+
+    return (
+      <div key={item.id} role="listitem">
+        <div
+          data-testid={TESTIDS.SCHEDULE_ITEM}
+          data-category={item.category}
+          data-schedule-event="true"
+          data-id={item.id}
+          data-schedule-id={item.id}
+          data-status={item.status ?? ''}
+          data-all-day={item.allDay ? '1' : '0'}
+          className="relative rounded-md border text-left shadow-sm"
+          style={{
+            backgroundColor: serviceTokens?.bg,
+            borderColor: serviceTokens?.border,
+            ...(highlightId === item.id
+              ? { outline: '2px solid', outlineOffset: 2, borderRadius: 4 }
+              : null),
+          }}
+        >
+          <div
+            className="flex w-full flex-col gap-1.5 px-3 py-2 text-left sm:gap-2 sm:px-4 sm:py-3"
+            onClick={handleItemClick}
+            onKeyDown={(e) => {
+              if (!isDisabled && (e.key === 'Enter' || e.key === ' ')) {
+                e.preventDefault();
+                handleItemClick();
+              }
+            }}
+            role="button"
+            tabIndex={isDisabled ? -1 : 0}
+            aria-disabled={isDisabled}
+            aria-label={ariaLabel}
+            title={timeRangeLabel}
+            style={{ opacity: buttonOpacity }}
+          >
+            <div className="flex items-start justify-between gap-2">
+              <p className="text-sm font-semibold text-slate-900 flex items-center gap-2">
+                {serviceTokens ? (
+                  <span
+                    aria-hidden="true"
+                    className="inline-block h-4 w-1 rounded-full"
+                    style={{ backgroundColor: serviceTokens.accent }}
+                  />
+                ) : null}
+                <span className="flex items-center gap-1">
+                  {primaryTitle}
+                  {item.baseShiftWarnings?.length ? (
+                    <span
+                      data-testid="schedule-warning-indicator"
+                      title="重複または配置注意があります"
+                      className="inline-flex items-center justify-center rounded-full bg-amber-500 px-1.5 py-0.5 text-[10px] font-bold text-white shadow"
+                    >
+                      ⚠
+                    </span>
+                  ) : null}
+                </span>
+                {statusLabel && statusMeta && (
+                  <span
+                    className="text-[11px] px-2 py-0.5 rounded-full"
+                    style={{
+                      background: statusMeta.chipBg,
+                      color: statusMeta.chipColor,
+                      fontWeight: 600,
+                    }}
+                  >
+                    {statusLabel}
+                  </span>
+                )}
+              </p>
+            </div>
+            <p className="text-xs text-slate-600 flex flex-wrap gap-1.5 items-center">
+              {metaLine.map((text, index) => (
+                <span key={`${item.id}-meta-${index}`}>{text}</span>
+              ))}
+            </p>
+            {!isMobile && item.personName ? (
+              <p className="text-xs text-slate-500">{item.personName}</p>
+            ) : null}
+            {(showServiceChip && serviceTypeMeta) || isAccepted ? (
+              <div className="mt-0.5 flex flex-wrap items-center gap-1.5">
+                {showServiceChip && serviceTypeMeta ? (
+                  <Chip size="small" label={serviceTypeMeta.label} color={serviceTypeMeta.color} variant="outlined" />
+                ) : null}
+                {isAccepted ? <Chip size="small" label="受け入れ済" color="success" variant="filled" /> : null}
+              </div>
+            ) : null}
+            {!isMobile && statusReason && (
+              <p className="text-xs text-slate-500 mt-1" data-testid="schedule-status-reason">
+                {statusReason}
+              </p>
+            )}
+          </div>
+          {!isMobile && (
+            <IconButton
+              aria-label="行の操作"
+              data-testid={TESTIDS['schedule-item-menu']}
+              size="small"
+              onClick={(event) => {
+                event.stopPropagation();
+                handleMenuOpen(event, item);
+              }}
+              sx={{ position: 'absolute', top: 4, right: 4, ml: 0.5 }}
+            >
+              <MoreVertIcon fontSize="small" />
+            </IconButton>
+          )}
+        </div>
+      </div>
+    );
+  };
 
   const serviceSummary: WeekServiceSummaryItem[] = useMemo(() => {
     const counts: Partial<Record<WeekServiceFilter, number>> = {};
 
-    selectedItems.forEach((item) => {
+    items.forEach((item) => {
       const normalizedServiceType = normalizeServiceType(item.serviceType as string | null);
       const key = mapServiceTypeToThemeKey(normalizedServiceType);
       counts[key] = (counts[key] ?? 0) + 1;
@@ -278,7 +450,7 @@ const WeekViewContent = ({ items, loading, onDayClick, activeDateIso, range, onI
         tokens: getServiceTokens(key),
       };
     });
-  }, [getServiceTokens, selectedItems]);
+  }, [getServiceTokens, items]);
 
   const handleClick = (iso: string, event: MouseEvent<HTMLButtonElement>) => {
     onDayClick?.(iso, event);
@@ -440,156 +612,74 @@ const WeekViewContent = ({ items, loading, onDayClick, activeDateIso, range, onI
           <p className="rounded-lg border border-dashed border-slate-300 bg-white p-6 text-center text-slate-500" aria-busy="true">
             予定を読み込み中…
           </p>
-        ) : selectedItems.length === 0 ? (
+        ) : !hasItems ? (
           <p
             className="rounded-lg border border-dashed border-slate-200 bg-white p-6 text-center text-slate-500"
             data-testid={TESTIDS.SCHEDULE_WEEK_EMPTY}
           >
-            選択した日の予定はまだありません。
+            この週の予定はまだありません。
           </p>
         ) : (
-          <div className="space-y-2" data-testid={TESTIDS.SCHEDULE_WEEK_LIST} role="list">
-            {selectedItems.map((item) => {
-              const statusMeta = getScheduleStatusMeta(item.status);
-              const statusLabel = item.status && item.status !== 'Planned' ? statusMeta?.label : undefined;
-              const buttonOpacity = statusMeta?.opacity ?? 1;
-              const statusReason = item.statusReason?.trim();
-              const isDisabled = Boolean(statusMeta?.isDisabled);
-              const handleItemClick = () => {
-                if (SCHEDULES_DEBUG) {
-                  // eslint-disable-next-line no-console -- trace row clicks only when debugging schedules
-                  console.info('[WeekView] row click', item.id);
-                }
-                if (isDisabled) return;
-                onItemSelect?.(item);
-              };
-              const normalizedServiceType = normalizeServiceType(item.serviceType as string | null);
-              const serviceTypeKey = mapServiceTypeToThemeKey(normalizedServiceType);
-              const serviceTokens = getServiceTokens(serviceTypeKey);
-              const timeRange = formatEventTimeRange(item.start, item.end);
-              const serviceTypeMeta = getServiceTypeMeta(normalizedServiceType);
-              const showServiceChip = Boolean(serviceTypeMeta && serviceTypeKey !== 'unset');
-              const isAccepted = Boolean(item.acceptedOn || item.acceptedBy || item.acceptedNote);
-              const ariaLabel = buildWeekEventAriaLabel(item, timeRange, statusLabel);
-              const rawLocation = item.locationName ?? (item as Record<string, unknown>).location;
-              const locationLabel = typeof rawLocation === 'string' && rawLocation.trim() ? rawLocation : null;
-              const primaryTitle = isMobile
-                ? item.personName?.trim() || serviceTypeMeta?.label || item.title
-                : item.title;
-              const metaLine = isMobile
-                ? [timeRange]
-                : [timeRange, locationLabel].filter(Boolean);
-
-              return (
-                <div key={item.id} role="listitem">
-                  <div
-                    data-testid={TESTIDS.SCHEDULE_ITEM}
-                    data-category={item.category}
-                    data-schedule-event="true"
-                    data-id={item.id}
-                    data-schedule-id={item.id}
-                    data-status={item.status ?? ''}
-                    data-all-day={item.allDay ? '1' : '0'}
-                    className="relative rounded-md border text-left shadow-sm"
-                    style={{
-                      backgroundColor: serviceTokens?.bg,
-                      borderColor: serviceTokens?.border,
-                      ...(highlightId === item.id
-                        ? { outline: '2px solid', outlineOffset: 2, borderRadius: 4 }
-                        : null),
-                    }}
-                  >
-                    <div
-                      className="flex w-full flex-col gap-1.5 px-3 py-2 text-left sm:gap-2 sm:px-4 sm:py-3"
-                      onClick={handleItemClick}
-                      onKeyDown={(e) => {
-                        if (!isDisabled && (e.key === 'Enter' || e.key === ' ')) {
-                          e.preventDefault();
-                          handleItemClick();
-                        }
+          <div data-testid={TESTIDS.SCHEDULE_WEEK_LIST} role="list">
+            <div style={{ overflowX: 'auto', paddingBottom: 4 }}>
+              <div
+                style={{
+                  display: 'grid',
+                  gridAutoFlow: 'column',
+                  gridAutoColumns: isMobile ? 'minmax(240px, 1fr)' : 'minmax(280px, 1fr)',
+                  gap: 16,
+                }}
+              >
+                {LANE_ORDER.map((lane) => {
+                  const itemsInLane = laneItems[lane.key];
+                  return (
+                    <section
+                      key={lane.key}
+                      aria-label={`${lane.label}レーン`}
+                      style={{
+                        border: '1px solid rgba(15,23,42,0.08)',
+                        borderRadius: 12,
+                        background: '#fff',
+                        padding: 12,
+                        minWidth: isMobile ? 240 : 280,
                       }}
-                      role="button"
-                      tabIndex={isDisabled ? -1 : 0}
-                      aria-disabled={isDisabled}
-                      aria-label={ariaLabel}
-                      title={timeRange}
-                      style={{ opacity: buttonOpacity }}
                     >
-                    <div className="flex items-start justify-between gap-2">
-                      <p className="text-sm font-semibold text-slate-900 flex items-center gap-2">
-                        {serviceTokens ? (
-                          <span
-                            aria-hidden="true"
-                            className="inline-block h-4 w-1 rounded-full"
-                            style={{ backgroundColor: serviceTokens.accent }}
-                          />
-                        ) : null}
-                        <span className="flex items-center gap-1">
-                          {primaryTitle}
-                          {item.baseShiftWarnings?.length ? (
-                            <span
-                              data-testid="schedule-warning-indicator"
-                              title="重複または配置注意があります"
-                              className="inline-flex items-center justify-center rounded-full bg-amber-500 px-1.5 py-0.5 text-[10px] font-bold text-white shadow"
-                            >
-                              ⚠
-                            </span>
-                          ) : null}
+                      <header
+                        style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'space-between',
+                          marginBottom: 12,
+                        }}
+                      >
+                        <span style={{ fontSize: 14, fontWeight: 700, color: 'rgba(15,23,42,0.9)' }}>
+                          {lane.label}
                         </span>
-                        {statusLabel && statusMeta && (
-                          <span
-                            className="text-[11px] px-2 py-0.5 rounded-full"
-                            style={{
-                              background: statusMeta.chipBg,
-                              color: statusMeta.chipColor,
-                              fontWeight: 600,
-                            }}
-                          >
-                            {statusLabel}
-                          </span>
-                        )}
-                      </p>
-                    </div>
-                    <p className="text-xs text-slate-600 flex flex-wrap gap-1.5 items-center">
-                      {metaLine.map((text, index) => (
-                        <span key={`${item.id}-meta-${index}`}>{text}</span>
-                      ))}
-                    </p>
-                    {!isMobile && item.personName ? (
-                      <p className="text-xs text-slate-500">{item.personName}</p>
-                    ) : null}
-                    {(showServiceChip && serviceTypeMeta) || isAccepted ? (
-                      <div className="mt-0.5 flex flex-wrap items-center gap-1.5">
-                        {showServiceChip && serviceTypeMeta ? (
-                          <Chip size="small" label={serviceTypeMeta.label} color={serviceTypeMeta.color} variant="outlined" />
-                        ) : null}
-                        {isAccepted ? <Chip size="small" label="受け入れ済" color="success" variant="filled" /> : null}
-                      </div>
-                    ) : null}
-                    {!isMobile && statusReason && (
-                      <p className="text-xs text-slate-500 mt-1" data-testid="schedule-status-reason">
-                        {statusReason}
-                      </p>
-                    )}
-                  </div>
-                  {!isMobile && (
-                    <IconButton
-                      aria-label="行の操作"
-                      data-testid={TESTIDS['schedule-item-menu']}
-                      size="small"
-                      onClick={(event) => {
-                        event.stopPropagation();
-                        handleMenuOpen(event, item);
-                      }}
-                      sx={{ position: 'absolute', top: 4, right: 4, ml: 0.5 }}
-                    >
-                      <MoreVertIcon fontSize="small" />
-                    </IconButton>
-                  )}
-                </div>
-                </div>
-              );
-            })}
+                        <span
+                          style={{
+                            fontSize: 11,
+                            padding: '2px 8px',
+                            borderRadius: 999,
+                            background: 'rgba(15,23,42,0.08)',
+                            color: 'rgba(15,23,42,0.7)',
+                            fontWeight: 600,
+                          }}
+                        >
+                          {itemsInLane.length}件
+                        </span>
+                      </header>
+                      {itemsInLane.length === 0 ? (
+                        <p style={{ fontSize: 12, color: 'rgba(15,23,42,0.6)' }}>予定なし</p>
+                      ) : (
+                        <div className="space-y-2" role="list">
+                          {itemsInLane.map((item) => renderItemCard(item))}
+                        </div>
+                      )}
+                    </section>
+                  );
+                })}
+              </div>
+            </div>
           </div>
         )}
 
