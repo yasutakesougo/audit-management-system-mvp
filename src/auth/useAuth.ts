@@ -95,8 +95,18 @@ export const useAuth = () => {
     };
   }
 
-  const { instance, accounts, inProgress } = useMsalContext();
+  const { instance, accounts, inProgress, authReady } = useMsalContext();
   const skipLogin = shouldSkipLogin();
+
+  const signInSessionKey =
+    typeof window === 'undefined' ? null : `__msal_signin_attempted__${window.location.origin}`;
+
+  useEffect(() => {
+    if (!signInSessionKey) return;
+    if (authReady || accounts.length > 0) {
+      window.sessionStorage.removeItem(signInSessionKey);
+    }
+  }, [accounts.length, authReady, signInSessionKey]);
 
   useEffect(() => {
     if (skipLogin) {
@@ -266,6 +276,14 @@ export const useAuth = () => {
     getListReadyState,
     setListReadyState,
     signIn: async () => {
+      if (signInSessionKey) {
+        const alreadyAttempted = window.sessionStorage.getItem(signInSessionKey) === 'true';
+        if (alreadyAttempted) {
+          debugLog('login skipped (session guard)');
+          return { success: false };
+        }
+        window.sessionStorage.setItem(signInSessionKey, 'true');
+      }
       const canInteract = inProgress === InteractionStatus.None || inProgress === 'none';
       if (!canInteract) {
         debugLog('login skipped (interaction in progress)');
