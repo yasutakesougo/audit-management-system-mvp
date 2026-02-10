@@ -362,7 +362,7 @@ export default function WeekPage() {
       const start = new Date(buildLocalDateTimeInput(input.startLocal, startTime)).toISOString();
       const end = new Date(buildLocalDateTimeInput(input.endLocal, endTime)).toISOString();
       const draft: InlineScheduleDraft = {
-        title: input.title.trim() || '新規予定',
+        title: input.title.trim() || '予定',
         dateIso,
         startTime,
         endTime,
@@ -497,8 +497,8 @@ export default function WeekPage() {
           onToday={handleTodayWeek}
           onPrimaryCreate={canEdit ? handleFabClick : undefined}
                   showPrimaryAction={isDesktopSize}
-                  primaryActionLabel="新規登録"
-          primaryActionAriaLabel="この週に新規予定を作成"
+                  primaryActionLabel="予定を追加"
+          primaryActionAriaLabel="この週に予定を追加"
           headingId={headingId}
           titleTestId={TESTIDS['schedules-week-heading']}
           rangeLabelId={rangeDescriptionId}
@@ -638,7 +638,7 @@ export default function WeekPage() {
           }
         >
           <span aria-hidden="true">＋</span>
-          {isExtendedFab ? <span style={{ fontSize: 14, fontWeight: 600 }}>新規登録</span> : null}
+          {isExtendedFab ? <span style={{ fontSize: 14, fontWeight: 600 }}>予定を追加</span> : null}
         </button>
       ) : null}
       {dialogInitialValues ? (

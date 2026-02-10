@@ -154,7 +154,7 @@ export const buildCreateDialogIntent = (category: ScheduleCategory, start: Date,
 export const buildUpdateInput = (eventId: string, input: CreateScheduleEventInput): UpdateScheduleEventInput => ({
   ...input,
   id: eventId,
-  title: input.title.trim() || '新規予定',
+  title: input.title.trim() || '予定',
 });
 
 export const toDateIso = (date: Date): string => {

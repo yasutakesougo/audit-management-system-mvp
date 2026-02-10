@@ -12,6 +12,6 @@ export const scheduleFacilityHelpText = '個人ではなく、施設全体に関
 
 export const scheduleFacilityEmptyCopy = {
   title: '施設の予定はまだありません',
-  description: '会議や全体予定、共有タスクなど、施設全体に関わる予定を登録できます。',
-  cta: '右下の「＋」から追加できます。',
+  description: '会議や全体予定、共有タスクなど、施設全体に関わる予定を追加できます。',
+  cta: '右下の「＋」から予定を追加できます。',
 };
