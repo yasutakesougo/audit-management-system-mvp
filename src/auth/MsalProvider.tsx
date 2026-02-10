@@ -1,5 +1,5 @@
 import type { IPublicClientApplication } from '@azure/msal-browser';
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { isE2eMsalMockEnabled } from '../lib/env';
 import { authDiagnostics } from '@/features/auth/diagnostics';
 
@@ -186,6 +186,22 @@ const MsalBridge: React.FC<{ instance: MsalInstance; useMsal: MsalReactModule['u
     typeof window === 'undefined'
       ? true
       : (window as Window & { __MSAL_REDIRECT_DONE__?: boolean }).__MSAL_REDIRECT_DONE__ === true;
+  const lastLogRef = useRef('');
+  useEffect(() => {
+    const snapshot = JSON.stringify({
+      authReady,
+      inProgress,
+      accounts: accounts.length,
+    });
+    if (snapshot !== lastLogRef.current) {
+      lastLogRef.current = snapshot;
+      console.info('[msal] bridge state', {
+        authReady,
+        inProgress,
+        accounts: accounts.length,
+      });
+    }
+  }, [accounts.length, authReady, inProgress]);
   const value = useMemo(
     () => ({ instance, accounts, inProgress, authReady }),
     [instance, accounts, inProgress, authReady],
