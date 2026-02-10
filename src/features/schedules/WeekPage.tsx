@@ -2,6 +2,8 @@ import { type CSSProperties, type MouseEvent, useCallback, useEffect, useId, use
 import { Alert, Button, Dialog, DialogTitle, DialogContent, DialogActions, Snackbar, Stack, Typography } from '@mui/material';
 
 import { useAnnounce } from '@/a11y/LiveAnnouncer';
+import { useAuth } from '@/auth/useAuth';
+import { useUserAuthz } from '@/auth/useUserAuthz';
 import { isDev } from '@/env';
 import { MASTER_SCHEDULE_TITLE_JA } from '@/features/schedules/constants';
 import type { ScheduleCategory } from '@/features/schedules/domain/types';
@@ -18,6 +20,8 @@ import { type ScheduleEditDialogValues, useSchedulesPageState, buildCreateDialog
 import { useWeekPageUiState } from '@/features/schedules/useWeekPageUiState';
 import { TESTIDS } from '@/testids';
 import Loading from '@/ui/components/Loading';
+import { resolveSchedulesTz } from '@/utils/scheduleTz';
+import { useBreakpointFlags, useOrientation } from '@/app/LayoutContext';
 
 import DayView from './DayView';
 import WeekView from './WeekView';
@@ -29,15 +33,19 @@ let pendingFabFocus = false;
 
 
 export default function WeekPage() {
+  const { isTabletSize } = useBreakpointFlags();
+  const { isLandscape } = useOrientation();
+  const { account } = useAuth();
+  const { isReception, isAdmin, ready } = useUserAuthz();
+  const myUpn = useMemo(() => (account?.username ?? '').trim().toLowerCase(), [account?.username]);
+  const canEditByRole = ready && (isReception || isAdmin);
+  const schedulesTz = useMemo(() => resolveSchedulesTz(), []);
   const {
     route,
     mode,
     categoryFilter,
     query,
     canEdit,
-    canEditByRole,
-    myUpn,
-    ready,
     focusDate,
     weekRange,
     isLoading,
@@ -57,7 +65,7 @@ export default function WeekPage() {
     scheduleDialogModeProps,
     weekLabel,
     weekAnnouncement,
-  } = useSchedulesPageState();
+  } = useSchedulesPageState({ myUpn, canEditByRole, ready });
   const {
     snack,
     setSnack,
@@ -108,6 +116,7 @@ export default function WeekPage() {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [dialogInitialValues, setDialogInitialValues] = useState<ScheduleEditDialogValues | null>(null);
   const [dayLane, setDayLane] = useState<ScheduleCategory | null>(null);
+  const isExtendedFab = isTabletSize && isLandscape;
 
   useEffect(() => {
     if (mode === 'day') {
@@ -233,8 +242,8 @@ export default function WeekPage() {
     const category = (item.category as ScheduleCategory) ?? 'User';
     setDayLane(category);
     const serviceType = (item.serviceType as ScheduleServiceType) ?? 'normal';
-    const startLocal = formatScheduleLocalInput(item.start, DEFAULT_START_TIME);
-    const endLocal = formatScheduleLocalInput(item.end, DEFAULT_END_TIME);
+    const startLocal = formatScheduleLocalInput(item.start, DEFAULT_START_TIME, schedulesTz);
+    const endLocal = formatScheduleLocalInput(item.end, DEFAULT_END_TIME, schedulesTz);
     const dateIso = extractDatePart(item.start) || toDateIso(new Date());
     setActiveDateIso(dateIso);
     setDialogInitialValues({
@@ -601,25 +610,31 @@ export default function WeekPage() {
           position: 'fixed',
           right: 24,
           bottom: 24,
-          width: 64,
-          height: 64,
+          width: isExtendedFab ? 'auto' : 64,
+          height: 56,
+          padding: isExtendedFab ? '0 20px' : undefined,
           borderRadius: '50%',
           border: 'none',
           background: '#1976d2',
           color: '#fff',
           boxShadow: '0 4px 12px rgba(0,0,0,0.3)',
-          fontSize: 36,
+          fontSize: 28,
+          fontWeight: 700,
           lineHeight: 1,
           cursor: 'pointer',
           zIndex: 1300,
+          display: 'inline-flex',
+          alignItems: 'center',
+          gap: isExtendedFab ? 10 : 0,
         }}
         aria-label={
           resolvedActiveDateIso
             ? `選択中の日に予定を追加 (${resolvedActiveDateIso})`
-            : 'この週に新しい予定を追加'
+            : '予定を追加'
         }
       >
-        +
+        <span aria-hidden="true">＋</span>
+        {isExtendedFab ? <span style={{ fontSize: 14, fontWeight: 600 }}>新規登録</span> : null}
       </button>
       {dialogInitialValues ? (
         <ScheduleCreateDialog
@@ -642,17 +657,34 @@ export default function WeekPage() {
           isDeleting={isInlineDeleting}
         />
       ) : null}
-      <ScheduleCreateDialog
-        open={createDialogOpen}
-        onClose={handleCreateDialogClose}
-        onSubmit={handleScheduleDialogSubmit}
-        users={scheduleUserOptions}
-        initialDate={createDialogInitialDate}
-        initialStartTime={createDialogInitialStartTime}
-        initialEndTime={createDialogInitialEndTime}
-        defaultUser={defaultScheduleUser ?? undefined}
-        {...scheduleDialogModeProps}
-      />
+      {scheduleDialogModeProps.mode === 'edit' ? (
+        <ScheduleCreateDialog
+          open={createDialogOpen}
+          mode="edit"
+          eventId={scheduleDialogModeProps.eventId}
+          initialOverride={scheduleDialogModeProps.initialOverride}
+          onClose={handleCreateDialogClose}
+          onSubmit={handleScheduleDialogSubmit}
+          users={scheduleUserOptions}
+          initialDate={createDialogInitialDate}
+          initialStartTime={createDialogInitialStartTime}
+          initialEndTime={createDialogInitialEndTime}
+          defaultUser={defaultScheduleUser ?? undefined}
+        />
+      ) : (
+        <ScheduleCreateDialog
+          open={createDialogOpen}
+          mode="create"
+          initialOverride={scheduleDialogModeProps.initialOverride}
+          onClose={handleCreateDialogClose}
+          onSubmit={handleScheduleDialogSubmit}
+          users={scheduleUserOptions}
+          initialDate={createDialogInitialDate}
+          initialStartTime={createDialogInitialStartTime}
+          initialEndTime={createDialogInitialEndTime}
+          defaultUser={defaultScheduleUser ?? undefined}
+        />
+      )}
 
       <Snackbar
         open={snack.open}

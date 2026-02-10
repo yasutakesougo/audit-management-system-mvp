@@ -1,18 +1,14 @@
 import { useMemo } from 'react';
 import { formatInTimeZone } from 'date-fns-tz';
 
-import { useAuth } from '@/auth/useAuth';
-import { useUserAuthz } from '@/auth/useUserAuthz';
 import type { ScheduleCategory } from '@/features/schedules/domain/types';
 import type { CreateScheduleEventInput, SchedItem, UpdateScheduleEventInput } from '@/features/schedules/data';
 import type { ScheduleFormState } from '@/features/schedules/scheduleFormState';
 import { makeRange, useSchedules } from '@/features/schedules/useSchedules';
 import { type DialogIntentParams, type WeekDialogMode, useWeekPageRouteState } from '@/features/schedules/useWeekPageRouteState';
-import { resolveSchedulesTz } from '@/utils/scheduleTz';
 
 export const DEFAULT_START_TIME = '10:00';
 export const DEFAULT_END_TIME = '11:00';
-const SCHEDULES_TZ = resolveSchedulesTz();
 
 const startOfWeek = (date: Date): Date => {
   const next = new Date(date);
@@ -104,7 +100,11 @@ export const buildLocalDateTimeInput = (value?: string | null, fallbackTime?: st
   return `${dateIso}T${time}`;
 };
 
-export const formatScheduleLocalInput = (value?: string | null, fallbackTime?: string): string => {
+export const formatScheduleLocalInput = (
+  value: string | null | undefined,
+  fallbackTime: string | undefined,
+  schedulesTz: string,
+): string => {
   if (!value) {
     return buildLocalDateTimeInput(value, fallbackTime);
   }
@@ -112,7 +112,7 @@ export const formatScheduleLocalInput = (value?: string | null, fallbackTime?: s
   if (Number.isNaN(parsed.getTime())) {
     return buildLocalDateTimeInput(value, fallbackTime);
   }
-  return formatInTimeZone(parsed, SCHEDULES_TZ, "yyyy-MM-dd'T'HH:mm");
+  return formatInTimeZone(parsed, schedulesTz, "yyyy-MM-dd'T'HH:mm");
 };
 
 const ANNOUNCE_START_FORMATTER = new Intl.DateTimeFormat('ja-JP', {
@@ -199,16 +199,17 @@ type SchedulesPageState = {
   weekAnnouncement: string;
 };
 
-export const useSchedulesPageState = (): SchedulesPageState => {
+type SchedulesPageStateOptions = {
+  myUpn: string;
+  canEditByRole: boolean;
+  ready: boolean;
+};
+
+export const useSchedulesPageState = ({ myUpn, canEditByRole, ready }: SchedulesPageStateOptions): SchedulesPageState => {
   const route = useWeekPageRouteState();
   const mode = route.mode;
   const categoryFilter = route.filter.category;
   const query = route.filter.query;
-
-  const { account } = useAuth();
-  const myUpn = (account?.username ?? '').trim().toLowerCase();
-  const { isReception, isAdmin, ready } = useUserAuthz();
-  const canEditByRole = ready && (isReception || isAdmin);
   const canEdit = mode === 'day' && canEditByRole;
 
   const focusDate = route.focusDate;
