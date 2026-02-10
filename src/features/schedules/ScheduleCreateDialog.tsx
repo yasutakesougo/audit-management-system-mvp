@@ -50,6 +50,7 @@ import { SCHEDULE_STATUS_OPTIONS } from './statusMetadata';
 import { buildScheduleFailureAnnouncement, buildScheduleSuccessAnnouncement } from './utils/scheduleAnnouncements';
 import { useOrgOptions, type OrgOption } from './useOrgOptions';
 import { useStaffOptions, type StaffOption } from './useStaffOptions';
+import { scheduleCategoryLabels } from './domain/categoryLabels';
 
 // ===== Types for Dialog Component Only =====
 // (All business logic types moved to scheduleFormState.ts for Fast Refresh compatibility)
@@ -87,9 +88,9 @@ export type ScheduleCreateDialogProps = ScheduleCreateDialogBaseProps & (Schedul
 // ===== Component-local Helpers =====
 
 const CATEGORY_OPTIONS: { value: string; label: string; helper: string }[] = [
-  { value: 'User', label: '利用者', helper: '利用者予定：利用者とサービス種別を指定' },
-  { value: 'Staff', label: '職員', helper: '職員予定：担当職員を選択' },
-  { value: 'Org', label: '事業所', helper: '事業所予定：共有イベントや会議など' },
+  { value: 'User', label: scheduleCategoryLabels.User, helper: '利用者予定：利用者とサービス種別を指定' },
+  { value: 'Staff', label: scheduleCategoryLabels.Staff, helper: '職員予定：担当職員を選択' },
+  { value: 'Org', label: scheduleCategoryLabels.Org, helper: '施設予定：共有イベントや会議など' },
 ];
 
 // ===== Component =====
@@ -559,7 +560,7 @@ export const ScheduleCreateDialog: React.FC<ScheduleCreateDialogProps> = (props)
                 <TextField
                   {...params}
                   label="対象 / 場所（任意）"
-                  placeholder="事業所イベントの対象を選択"
+                  placeholder="施設イベントの対象を選択"
                   inputProps={{
                     ...params.inputProps,
                     'data-testid': TESTIDS['schedule-create-location'],
