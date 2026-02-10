@@ -24,6 +24,7 @@ declare global {
   interface Window {
     __ENV__?: EnvRecord;
     __FLAGS__?: unknown;
+    __MSAL_REDIRECT_DONE__?: boolean;
   }
 }
 
@@ -257,6 +258,10 @@ const run = async (): Promise<void> => {
     } catch (error) {
       // Non-fatal: continue app bootstrap even if MSAL init/redirect fails
       console.error('[msal] ❌ initialization/redirect error:', error);
+    } finally {
+      if (typeof window !== 'undefined') {
+        window.__MSAL_REDIRECT_DONE__ = true;
+      }
     }
   }
 

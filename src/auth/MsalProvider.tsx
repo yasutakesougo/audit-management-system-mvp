@@ -13,6 +13,7 @@ type MsalContextValue = {
   instance: MsalInstance;
   accounts: MsalAccounts;
   inProgress: MsalInProgress;
+  authReady: boolean;
 };
 
 const MsalContext = React.createContext<MsalContextValue | null>(null);
@@ -29,6 +30,7 @@ const createDefaultMsalContextMock = (): MsalContextValue => ({
   } as unknown as MsalInstance,
   accounts: [],
   inProgress: 'none',
+  authReady: true,
 });
 
 export const __msalContextMock = viMock
@@ -180,7 +182,14 @@ const MsalBridge: React.FC<{ instance: MsalInstance; useMsal: MsalReactModule['u
   useMsal,
 }) => {
   const { accounts, inProgress } = useMsal();
-  const value = useMemo(() => ({ instance, accounts, inProgress }), [instance, accounts, inProgress]);
+  const authReady =
+    typeof window === 'undefined'
+      ? true
+      : (window as Window & { __MSAL_REDIRECT_DONE__?: boolean }).__MSAL_REDIRECT_DONE__ === true;
+  const value = useMemo(
+    () => ({ instance, accounts, inProgress, authReady }),
+    [instance, accounts, inProgress, authReady],
+  );
 
   return <MsalContext.Provider value={value}>{children}</MsalContext.Provider>;
 };
