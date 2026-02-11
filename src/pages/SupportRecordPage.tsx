@@ -20,6 +20,28 @@ import Stack from '@mui/material/Stack';
 import TextField from '@mui/material/TextField';
 import Typography from '@mui/material/Typography';
 import React, { useCallback, useMemo, useState } from 'react';
+import { useLandscapeTablet } from '../hooks/useLandscapeTablet';
+
+// FAB コンポーネント（横長タブレット対応）
+const FABSupportRecord = ({ onClick }: { onClick: () => void }) => {
+  const isLandscapeTablet = useLandscapeTablet();
+  return (
+    <Fab
+      color="secondary"
+      aria-label="新規記録作成"
+      size={isLandscapeTablet ? 'large' : 'medium'}
+      sx={{
+        position: 'fixed',
+        bottom: isLandscapeTablet ? 24 : 16,
+        right: isLandscapeTablet ? 24 : 16,
+        ...(isLandscapeTablet && { elevation: 8 })
+      }}
+      onClick={onClick}
+    >
+      <AddIcon />
+    </Fab>
+  );
+};
 
 // 支援手順記録の型定義
 // TODO: 将来的にsrc/types/support.tsなどの共通モジュールに移動予定
@@ -546,14 +568,7 @@ const SupportRecordPage: React.FC = () => {
         )}
 
         {/* フローティングアクションボタン */}
-        <Fab
-          color="secondary"
-          aria-label="新規記録作成"
-          sx={{ position: 'fixed', bottom: 16, right: 16 }}
-          onClick={handleGenerateTodayRecords}
-        >
-          <AddIcon />
-        </Fab>
+        <FABSupportRecord onClick={handleGenerateTodayRecords} />
       </Box>
     </Container>
   );

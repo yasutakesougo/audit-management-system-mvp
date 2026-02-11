@@ -17,6 +17,7 @@ import { TESTIDS } from '@/testids';
 import Snackbar from '@mui/material/Snackbar';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
+import { useLandscapeTablet } from '../hooks/useLandscapeTablet';
 
 // Icons
 import TransportIcon from '@mui/icons-material/AirportShuttle';
@@ -83,6 +84,27 @@ const initialUsers: AttendanceUser[] = [
 
 type AttendanceRecordPageProps = {
   'data-testid'?: string;
+};
+
+// FAB コンポーネント（横長タブレット対応）
+const FABRefresh = () => {
+  const isLandscapeTablet = useLandscapeTablet();
+  return (
+    <Fab
+      color="primary"
+      size={isLandscapeTablet ? 'large' : 'medium'}
+      sx={{
+        position: 'fixed',
+        bottom: isLandscapeTablet ? 24 : 16,
+        right: isLandscapeTablet ? 24 : 16,
+        ...(isLandscapeTablet && { elevation: 8 })
+      }}
+      onClick={() => window.location.reload()}
+      data-testid="fab-refresh"
+    >
+      <RefreshIcon />
+    </Fab>
+  );
 };
 
 const AttendanceRecordPage: React.FC<AttendanceRecordPageProps> = ({ 'data-testid': dataTestId }) => {
@@ -778,14 +800,7 @@ const AttendanceRecordPage: React.FC<AttendanceRecordPageProps> = ({ 'data-testi
       </Stack>
 
       {/* Floating Action Button */}
-      <Fab
-        color="primary"
-        sx={{ position: 'fixed', bottom: 16, right: 16 }}
-        onClick={() => window.location.reload()}
-        data-testid="fab-refresh"
-      >
-        <RefreshIcon />
-      </Fab>
+      <FABRefresh />
 
       {/* Absence Dialog */}
       <Dialog open={Boolean(absenceDialog)} onClose={closeAbsenceDialog} fullWidth maxWidth="sm">

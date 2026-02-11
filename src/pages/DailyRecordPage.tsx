@@ -23,6 +23,7 @@ import { PersonDaily } from '../domain/daily/types';
 import { DailyRecordForm } from '../features/daily/DailyRecordForm';
 import { DailyRecordList } from '../features/daily/DailyRecordList';
 import { useDailyRecordViewModel } from '../features/daily/useDailyRecordViewModel';
+import { useLandscapeTablet } from '../hooks/useLandscapeTablet';
 import { FullScreenDailyDialogPage } from '../features/daily/components/FullScreenDailyDialogPage';
 import { useHandoffSummary } from '../features/handoff/useHandoffSummary';
 import { useUsersDemo } from '../features/users/usersStoreDemo';
@@ -184,6 +185,28 @@ const generateTodayRecords = (): PersonDaily[] => {
       }
     };
   });
+};
+
+// FAB コンポーネント（横長タブレット対応）
+const FABButton = ({ onClick }: { onClick: () => void }) => {
+  const isLandscapeTablet = useLandscapeTablet();
+  return (
+    <Fab
+      color="primary"
+      aria-label="add"
+      onClick={onClick}
+      size={isLandscapeTablet ? 'large' : 'medium'}
+      sx={{
+        position: 'fixed',
+        bottom: isLandscapeTablet ? 24 : 16,
+        right: isLandscapeTablet ? 24 : 16,
+        ...(isLandscapeTablet && { elevation: 8 })
+      }}
+      data-testid="add-record-fab"
+    >
+      <AddIcon />
+    </Fab>
+  );
 };
 
 export default function DailyRecordPage() {
@@ -602,19 +625,7 @@ export default function DailyRecordPage() {
         />
 
         {/* 新規作成FAB */}
-        <Fab
-          color="primary"
-          aria-label="add"
-          onClick={handleOpenForm}
-          sx={{
-            position: 'fixed',
-            bottom: 16,
-            right: 16,
-          }}
-          data-testid="add-record-fab"
-        >
-          <AddIcon />
-        </Fab>
+        <FABButton onClick={handleOpenForm} />
 
         {/* Toast通知 */}
         <Toaster
