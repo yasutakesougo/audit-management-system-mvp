@@ -17,7 +17,7 @@ import { TESTIDS } from '@/testids';
 import Snackbar from '@mui/material/Snackbar';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { useLandscapeTablet } from '../hooks/useLandscapeTablet';
+import { LandscapeFab } from '../components/ui/LandscapeFab';
 
 // Icons
 import TransportIcon from '@mui/icons-material/AirportShuttle';
@@ -47,7 +47,6 @@ import DialogActions from '@mui/material/DialogActions';
 import DialogContent from '@mui/material/DialogContent';
 import DialogTitle from '@mui/material/DialogTitle';
 import Divider from '@mui/material/Divider';
-import Fab from '@mui/material/Fab';
 import FormControl from '@mui/material/FormControl';
 import FormControlLabel from '@mui/material/FormControlLabel';
 import InputLabel from '@mui/material/InputLabel';
@@ -86,26 +85,7 @@ type AttendanceRecordPageProps = {
   'data-testid'?: string;
 };
 
-// FAB コンポーネント（横長タブレット対応）
-const FABRefresh = () => {
-  const isLandscapeTablet = useLandscapeTablet();
-  return (
-    <Fab
-      color="primary"
-      size={isLandscapeTablet ? 'large' : 'medium'}
-      sx={{
-        position: 'fixed',
-        bottom: isLandscapeTablet ? 24 : 16,
-        right: isLandscapeTablet ? 24 : 16,
-        ...(isLandscapeTablet && { elevation: 8 })
-      }}
-      onClick={() => window.location.reload()}
-      data-testid="fab-refresh"
-    >
-      <RefreshIcon />
-    </Fab>
-  );
-};
+
 
 const AttendanceRecordPage: React.FC<AttendanceRecordPageProps> = ({ 'data-testid': dataTestId }) => {
   // Navigation hooks for cross-module navigation
@@ -800,7 +780,12 @@ const AttendanceRecordPage: React.FC<AttendanceRecordPageProps> = ({ 'data-testi
       </Stack>
 
       {/* Floating Action Button */}
-      <FABRefresh />
+      <LandscapeFab
+        icon={<RefreshIcon />}
+        ariaLabel="再読込"
+        onClick={() => window.location.reload()}
+        testId="fab-refresh"
+      />
 
       {/* Absence Dialog */}
       <Dialog open={Boolean(absenceDialog)} onClose={closeAbsenceDialog} fullWidth maxWidth="sm">

@@ -4,10 +4,6 @@ import SearchIcon from '@mui/icons-material/Search';
 import Box from '@mui/material/Box';
 import Button from '@mui/material/Button';
 import Card from '@mui/material/Card';
-import CardContent from '@mui/material/CardContent';
-import Chip from '@mui/material/Chip';
-import Container from '@mui/material/Container';
-import Fab from '@mui/material/Fab';
 import FormControl from '@mui/material/FormControl';
 import InputLabel from '@mui/material/InputLabel';
 import MenuItem from '@mui/material/MenuItem';
@@ -20,10 +16,10 @@ import { useEffect, useMemo, useState } from 'react';
 import { Toaster } from 'react-hot-toast';
 import { useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import { PersonDaily } from '../domain/daily/types';
+import { LandscapeFab } from '../components/ui/LandscapeFab';
 import { DailyRecordForm } from '../features/daily/DailyRecordForm';
 import { DailyRecordList } from '../features/daily/DailyRecordList';
 import { useDailyRecordViewModel } from '../features/daily/useDailyRecordViewModel';
-import { useLandscapeTablet } from '../hooks/useLandscapeTablet';
 import { FullScreenDailyDialogPage } from '../features/daily/components/FullScreenDailyDialogPage';
 import { useHandoffSummary } from '../features/handoff/useHandoffSummary';
 import { useUsersDemo } from '../features/users/usersStoreDemo';
@@ -185,28 +181,6 @@ const generateTodayRecords = (): PersonDaily[] => {
       }
     };
   });
-};
-
-// FAB コンポーネント（横長タブレット対応）
-const FABButton = ({ onClick }: { onClick: () => void }) => {
-  const isLandscapeTablet = useLandscapeTablet();
-  return (
-    <Fab
-      color="primary"
-      aria-label="add"
-      onClick={onClick}
-      size={isLandscapeTablet ? 'large' : 'medium'}
-      sx={{
-        position: 'fixed',
-        bottom: isLandscapeTablet ? 24 : 16,
-        right: isLandscapeTablet ? 24 : 16,
-        ...(isLandscapeTablet && { elevation: 8 })
-      }}
-      data-testid="add-record-fab"
-    >
-      <AddIcon />
-    </Fab>
-  );
 };
 
 export default function DailyRecordPage() {
@@ -625,7 +599,12 @@ export default function DailyRecordPage() {
         />
 
         {/* 新規作成FAB */}
-        <FABButton onClick={handleOpenForm} />
+        <LandscapeFab
+          icon={<AddIcon />}
+          ariaLabel="新規記録作成"
+          onClick={handleOpenForm}
+          testId="add-record-fab"
+        />
 
         {/* Toast通知 */}
         <Toaster

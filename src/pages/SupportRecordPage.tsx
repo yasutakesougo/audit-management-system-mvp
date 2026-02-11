@@ -10,7 +10,6 @@ import CardContent from '@mui/material/CardContent';
 import CardHeader from '@mui/material/CardHeader';
 import Chip from '@mui/material/Chip';
 import Container from '@mui/material/Container';
-import Fab from '@mui/material/Fab';
 import FormControl from '@mui/material/FormControl';
 import InputLabel from '@mui/material/InputLabel';
 import MenuItem from '@mui/material/MenuItem';
@@ -20,28 +19,7 @@ import Stack from '@mui/material/Stack';
 import TextField from '@mui/material/TextField';
 import Typography from '@mui/material/Typography';
 import React, { useCallback, useMemo, useState } from 'react';
-import { useLandscapeTablet } from '../hooks/useLandscapeTablet';
-
-// FAB コンポーネント（横長タブレット対応）
-const FABSupportRecord = ({ onClick }: { onClick: () => void }) => {
-  const isLandscapeTablet = useLandscapeTablet();
-  return (
-    <Fab
-      color="secondary"
-      aria-label="新規記録作成"
-      size={isLandscapeTablet ? 'large' : 'medium'}
-      sx={{
-        position: 'fixed',
-        bottom: isLandscapeTablet ? 24 : 16,
-        right: isLandscapeTablet ? 24 : 16,
-        ...(isLandscapeTablet && { elevation: 8 })
-      }}
-      onClick={onClick}
-    >
-      <AddIcon />
-    </Fab>
-  );
-};
+import { LandscapeFab } from '../components/ui/LandscapeFab';
 
 // 支援手順記録の型定義
 // TODO: 将来的にsrc/types/support.tsなどの共通モジュールに移動予定
@@ -568,7 +546,11 @@ const SupportRecordPage: React.FC = () => {
         )}
 
         {/* フローティングアクションボタン */}
-        <FABSupportRecord onClick={handleGenerateTodayRecords} />
+        <LandscapeFab
+          icon={<AddIcon />}
+          ariaLabel="新規記録作成"
+          onClick={handleGenerateTodayRecords}
+        />
       </Box>
     </Container>
   );
