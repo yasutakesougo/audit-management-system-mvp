@@ -5,6 +5,7 @@ import Typography from '@mui/material/Typography';
 
 import { useAuth } from '@/auth/useAuth';
 import { useUserAuthz } from '@/auth/useUserAuthz';
+import { shouldSkipLogin as shouldSkipLoginEnv } from '@/lib/env';
 
 export type Audience = 'staff' | 'admin';
 
@@ -13,16 +14,11 @@ type RequireAudienceProps = {
   children: React.ReactNode;
 };
 
-const isTestMode =
-  import.meta.env.VITE_E2E === '1' ||
-  import.meta.env.VITE_E2E_MSAL_MOCK === '1' ||
-  import.meta.env.VITE_SKIP_LOGIN === '1';
-
 export default function RequireAudience({ audience, children }: RequireAudienceProps) {
   const { isAdmin, ready, reason } = useUserAuthz();
   const { isAuthenticated, loading, shouldSkipLogin } = useAuth();
 
-  if (isTestMode) {
+  if (shouldSkipLoginEnv() || shouldSkipLogin) {
     return <>{children}</>;
   }
 
