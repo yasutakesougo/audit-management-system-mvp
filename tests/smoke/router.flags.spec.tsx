@@ -21,6 +21,8 @@ vi.mock('@/auth/useAuth', () => ({
     signOut: signOutMock,
     isAuthenticated: false,
     account: null,
+    shouldSkipLogin: true,
+    loading: false,
   }),
 }));
 
