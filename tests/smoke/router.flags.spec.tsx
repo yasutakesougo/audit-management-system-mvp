@@ -143,16 +143,24 @@ describe('router future flags smoke', () => {
     const arrivalOptions = { timeout: process.env.CI ? 15_000 : 8_000 };
 
     const ensureNavItem = async (testId: string) => {
-      if (!screen.queryByTestId(testId)) {
-        const openButton =
-          screen.queryByTestId(TESTIDS['nav-open']) ?? screen.queryByTestId('desktop-nav-open');
-        if (openButton) {
-          await user.click(openButton);
-        }
+      const existing = screen.queryByTestId(testId);
+      if (existing && existing instanceof HTMLElement) {
+        await waitFor(
+          () => expect(existing).toBeVisible(),
+          { timeout: process.env.CI ? 5_000 : 2_000 },
+        );
+        return existing;
       }
+
+      const openButton =
+        screen.queryByTestId(TESTIDS['nav-open']) ?? screen.queryByTestId('desktop-nav-open');
+      if (openButton) {
+        await user.click(openButton);
+      }
+
       const navItem = await screen.findByTestId(testId, arrivalOptions);
       await waitFor(
-        () => expect(screen.getByTestId(testId)).toBeVisible(),
+        () => expect(navItem).toBeVisible(),
         { timeout: process.env.CI ? 5_000 : 2_000 },
       );
       return navItem;
