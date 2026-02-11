@@ -26,6 +26,7 @@ export const SpScheduleRowSchema = z
     End: z.string().optional().nullable(),
     EventDate: z.string().optional().nullable(),
     EndDate: z.string().optional().nullable(),
+    date: z.string().optional().nullable(),
 
     UserCode: z.string().optional().nullable(),
     TargetUserId: z.unknown().optional().nullable(),
@@ -174,10 +175,10 @@ export const normalizeUserId = (raw?: string | null): string | undefined => {
 // Prefer EventDate/EndDate so we keep the original local time (with offset)
 // when both legacy and modern columns are present. Start/End are fallback.
 const pickStart = (row: SpScheduleRow): string | undefined =>
-  coerceIso(row.EventDate ?? row.Start);
+  coerceIso(row.EventDate ?? row.Start ?? row.date);
 
 const pickEnd = (row: SpScheduleRow): string | undefined =>
-  coerceIso(row.EndDate ?? row.End);
+  coerceIso(row.EndDate ?? row.End ?? row.date);
 
 const pickUserCode = (row: SpScheduleRow): string | undefined =>
   coerceString(row.UserCode);

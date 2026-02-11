@@ -20,6 +20,10 @@ describe('MSAL env guard', () => {
       VITE_AZURE_AD_AUTHORITY: 'https://login.microsoftonline.com/organizations',
       VITE_AZURE_AD_REDIRECT_URI: 'http://localhost:5173',
     });
+    expect(env).not.toBeNull();
+    if (!env) {
+      throw new Error('Expected readMsalEnv to return a value');
+    }
     expect(env.VITE_AZURE_AD_AUTHORITY).toContain('https://');
     expect(env.VITE_AZURE_AD_CLIENT_ID).toBe('aaaaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee');
   });

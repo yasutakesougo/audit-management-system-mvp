@@ -3,7 +3,7 @@ import { fromZonedTime } from 'date-fns-tz';
 import { createSpClient, ensureConfig } from '@/lib/spClient';
 import type { CreateScheduleEventInput, SchedItem, ScheduleServiceType, ScheduleStatus, ScheduleVisibility, SchedulesPort } from './port';
 import { result } from '@/shared/result';
-import { SCHEDULES_FIELDS, SCHEDULES_LIST_TITLE, DEFAULT_SCHEDULE_VISIBILITY, OWNER_USER_ID_ME } from './spSchema';
+import { getSchedulesListTitle, SCHEDULES_FIELDS, DEFAULT_SCHEDULE_VISIBILITY, OWNER_USER_ID_ME } from './spSchema';
 import { resolveSchedulesTz } from '@/utils/scheduleTz';
 import { normalizeServiceType as normalizeSharePointServiceType } from '@/sharepoint/serviceTypes';
 
@@ -335,7 +335,7 @@ export const makeSharePointScheduleCreator = ({ acquireToken }: SharePointCreato
 
   return async (input) => {
     const payload = toSharePointPayload(input);
-    const created = await client.addListItemByTitle<typeof payload.body, SharePointScheduleRow>(SCHEDULES_LIST_TITLE, payload.body);
+    const created = await client.addListItemByTitle<typeof payload.body, SharePointScheduleRow>(getSchedulesListTitle(), payload.body);
     const id = created?.Id ? String(created.Id) : `sp-${Date.now()}`;
     const persistedTitleRaw = created?.[SCHEDULES_FIELDS.title];
     const persistedStartRaw = created?.[SCHEDULES_FIELDS.start];

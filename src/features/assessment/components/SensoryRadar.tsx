@@ -42,7 +42,13 @@ export const SensoryRadar: React.FC<Props> = ({ profile }) => {
             fill={theme.palette.primary.main}
             fillOpacity={0.6}
           />
-          <Tooltip formatter={(value: number) => [value, '強度']} contentStyle={{ borderRadius: 8 }} />
+          <Tooltip
+            formatter={(value) => {
+              const numeric = typeof value === 'number' ? value : Number(value ?? 0);
+              return [numeric, '強度'];
+            }}
+            contentStyle={{ borderRadius: 8 }}
+          />
         </RadarChart>
       </ResponsiveContainer>
     </Box>
