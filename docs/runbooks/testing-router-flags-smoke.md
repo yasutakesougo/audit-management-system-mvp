@@ -1,5 +1,10 @@
 # Router Flags Smoke Test - Troubleshooting Guide
 
+## TL;DR
+- **Drawer**: Always open → wait visible (MUI keeps hidden elements in DOM)
+- **Guards**: Use runtime env functions for mockability (not build-time constants)
+- **JSDOM**: Dispatch popstate when route doesn't update (React Router needs events)
+
 ## Overview
 This runbook documents solutions to common issues encountered in `tests/smoke/router.flags.spec.tsx`, particularly when testing React Router v7 future flags with MUI components and authorization guards.
 
