@@ -52,6 +52,7 @@ export function AppShellV2({
   return (
     <Box
       sx={{
+        '--bottom-nav-height': '88px', // CSS variable for LandscapeFab positioning
         height: '100dvh',
         overflow: 'hidden',
         display: 'grid',
