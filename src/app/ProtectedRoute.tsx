@@ -136,7 +136,7 @@ export default function ProtectedRoute({ flag, children, fallbackPath = '/' }: P
           return;
         }
 
-        const listName = import.meta.env.VITE_SP_LIST_SCHEDULES || 'ScheduleEvents';
+        const listName = readEnv('VITE_SP_LIST_SCHEDULES', 'ScheduleEvents');
         // eslint-disable-next-line no-console
         console.log('[env-check] VITE_SP_LIST_SCHEDULES =', listName);
         debug(`[schedules] Checking list existence: ${listName}`);
@@ -163,6 +163,33 @@ export default function ProtectedRoute({ flag, children, fallbackPath = '/' }: P
 
     void checkSchedulesListExistence();
   }, [isMsalInProgress, tokenReady, flag, listGate, acquireToken, setListReadyState]);
+
+  // Collect diagnostics when the blocking reason changes
+  // This must be in useEffect to avoid render-phase setState warnings
+  useEffect(() => {
+    const summary = summarizeAuthBlockReason({
+      inProgress,
+      isAuthenticated,
+      loading,
+      tokenReady,
+      listGate: flag === 'schedules' ? listGate : undefined,
+      enabled,
+      accounts: accounts.length,
+      route: pendingPath,
+    });
+
+    // Only collect if the reason has changed
+    if (lastDiagCodeRef.current !== summary.code) {
+      lastDiagCodeRef.current = summary.code;
+      authDiagnostics.collect({
+        route: pendingPath ?? '',
+        reason: summary.code,
+        outcome: 'blocked',
+        correlationId: corrId,
+        detail: summary.detail,
+      });
+    }
+  }, [inProgress, isAuthenticated, loading, tokenReady, listGate, enabled, accounts.length, pendingPath, corrId, flag]);
 
   // Automation / Demo / Skip-login / 未設定MSALでは認証ガードをバイパス（フラグは尊重）
   if (allowBypass) {
@@ -206,13 +233,6 @@ export default function ProtectedRoute({ flag, children, fallbackPath = '/' }: P
       route: pendingPath,
     });
     logAuthDiag(summary);
-    authDiagnostics.collect({
-      route: pendingPath ?? '',
-      reason: summary.code,
-      outcome: 'blocked',
-      correlationId: corrId,
-      detail: summary.detail,
-    });
     debug('MSAL redirect handling not ready; waiting before auth prompt');
     return (
       <div style={{ padding: '2rem', textAlign: 'center' }}>
@@ -236,13 +256,6 @@ export default function ProtectedRoute({ flag, children, fallbackPath = '/' }: P
       route: pendingPath,
     });
     logAuthDiag(summary);
-    authDiagnostics.collect({
-      route: pendingPath ?? '',
-      reason: summary.code,
-      outcome: 'blocked',
-      correlationId: corrId,
-      detail: summary.detail,
-    });
     debug('MSAL interaction in progress for flag:', flag, 'status:', inProgress);
     return (
       <AuthRedirectingNotice
@@ -269,13 +282,6 @@ export default function ProtectedRoute({ flag, children, fallbackPath = '/' }: P
       route: pendingPath,
     });
     logAuthDiag(summary);
-    authDiagnostics.collect({
-      route: pendingPath ?? '',
-      reason: summary.code,
-      outcome: 'blocked',
-      correlationId: corrId,
-      detail: summary.detail,
-    });
     debug('Auth still loading for flag:', flag);
     return (
       <div style={{ padding: '2rem', textAlign: 'center' }}>
@@ -299,13 +305,6 @@ export default function ProtectedRoute({ flag, children, fallbackPath = '/' }: P
       route: pendingPath,
     });
     logAuthDiag(summary);
-    authDiagnostics.collect({
-      route: pendingPath ?? '',
-      reason: summary.code,
-      outcome: 'blocked',
-      correlationId: corrId,
-      detail: summary.detail,
-    });
     debug('User not authenticated for flag:', flag, '- prompting sign-in');
     return (
       <AuthRequiredNotice
@@ -334,13 +333,6 @@ export default function ProtectedRoute({ flag, children, fallbackPath = '/' }: P
       route: pendingPath,
     });
     logAuthDiag(summary);
-    authDiagnostics.collect({
-      route: pendingPath ?? '',
-      reason: summary.code,
-      outcome: 'blocked',
-      correlationId: corrId,
-      detail: summary.detail,
-    });
     debug('Token acquisition in progress; waiting for completion for flag:', flag);
     return (
       <div style={{ padding: '2rem', textAlign: 'center' }}>
@@ -367,13 +359,6 @@ export default function ProtectedRoute({ flag, children, fallbackPath = '/' }: P
         route: pendingPath,
       });
       logAuthDiag(summary);
-      authDiagnostics.collect({
-        route: pendingPath ?? '',
-        reason: summary.code,
-        outcome: 'blocked',
-        correlationId: corrId,
-        detail: summary.detail,
-      });
       debug('List check failed (404/error) for flag:', flag);
       return (
         <div style={{ padding: '2rem', textAlign: 'center', color: '#d32f2f' }}>
@@ -399,13 +384,6 @@ export default function ProtectedRoute({ flag, children, fallbackPath = '/' }: P
       route: pendingPath,
     });
     logAuthDiag(summary);
-    authDiagnostics.collect({
-      route: pendingPath ?? '',
-      reason: summary.code,
-      outcome: 'blocked',
-      correlationId: corrId,
-      detail: summary.detail,
-    });
     debug('List existence check in progress for flag:', flag);
     return (
       <div style={{ padding: '2rem', textAlign: 'center' }}>

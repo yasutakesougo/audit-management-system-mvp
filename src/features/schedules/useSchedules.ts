@@ -4,6 +4,7 @@ import { useSchedulesPort } from './data/context';
 import { useAuth } from '@/auth/useAuth';
 import { authDiagnostics } from '@/features/auth/diagnostics';
 import { createSpClient, ensureConfig } from '@/lib/spClient';
+import { readEnv } from '@/lib/env';
 import type { InlineScheduleDraft } from './data/inlineScheduleDraft';
 import type { ResultError } from '@/shared/result';
 import { toSafeError } from '@/lib/errors';
@@ -52,7 +53,7 @@ export function useSchedules(range: DateRange): UseSchedulesResult {
         const baseUrl = spConfig.baseUrl;
         if (!baseUrl) return; // E2E/demo mode
 
-        const listName = String(import.meta.env.VITE_SP_LIST_SCHEDULES || 'ScheduleEvents');
+        const listName = readEnv('VITE_SP_LIST_SCHEDULES', 'ScheduleEvents');
         const client = createSpClient(acquireToken, baseUrl);
         const metadata = await client.tryGetListMetadata(listName);
 
