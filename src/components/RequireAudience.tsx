@@ -22,7 +22,7 @@ export default function RequireAudience({ audience, children }: RequireAudienceP
   const { isAdmin, ready, reason } = useUserAuthz();
   const { isAuthenticated, loading, shouldSkipLogin } = useAuth();
 
-  if (isTestMode) {
+  if (isTestMode || shouldSkipLogin) {
     return <>{children}</>;
   }
 
