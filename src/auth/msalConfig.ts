@@ -57,8 +57,19 @@ export const GRAPH_RESOURCE = 'https://graph.microsoft.com';
 
 const LOCAL_ORIGIN = 'http://localhost:5173';
 const runtimeOrigin = typeof window !== 'undefined' ? window.location.origin : LOCAL_ORIGIN;
-const envRedirectUri = config.VITE_MSAL_REDIRECT_URI || config.VITE_AZURE_AD_REDIRECT_URI;
-const redirectUri = envRedirectUri?.trim() || `${runtimeOrigin}/auth/callback`;
+const envRedirectUri = (config.VITE_MSAL_REDIRECT_URI || config.VITE_AZURE_AD_REDIRECT_URI)?.trim();
+const resolveRedirectUri = (): string => {
+  const fallback = `${runtimeOrigin}/auth/callback`;
+  if (!envRedirectUri) return fallback;
+  try {
+    const parsed = new URL(envRedirectUri);
+    if (parsed.origin !== runtimeOrigin) return fallback;
+    return envRedirectUri;
+  } catch {
+    return fallback;
+  }
+};
+const redirectUri = resolveRedirectUri();
 
 export const msalConfig = {
   auth: {

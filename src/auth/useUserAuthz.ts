@@ -120,9 +120,10 @@ export const useUserAuthz = (): UserAuthz => {
     const ids = groupIds ?? [];
     const isDemoOrDev = import.meta.env.DEV || import.meta.env.VITE_DEMO_MODE === '1';
     const isE2E = import.meta.env.VITE_E2E === '1';
+    const skipLogin = shouldSkipLogin(getRuntimeEnvRoot());
     
     // E2E: always grant admin access for test coverage (all nav items visible)
-    if (isE2E) {
+    if (isE2E || skipLogin) {
       return {
         isReception: true,
         isAdmin: true,

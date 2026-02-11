@@ -30,7 +30,7 @@ const getHttpStatus = (e: unknown): number | undefined => {
 };
 import type { DateRange, SchedItem, SchedulesPort, ScheduleServiceType } from './port';
 import { mapSpRowToSchedule, parseSpScheduleRows } from './spRowSchema';
-import { SCHEDULES_FIELDS, SCHEDULES_LIST_TITLE, buildSchedulesListPath } from './spSchema';
+import { getSchedulesListTitle, SCHEDULES_FIELDS, buildSchedulesListPath } from './spSchema';
 
 type ListRangeFn = (range: DateRange) => Promise<SchedItem[]>;
 
@@ -48,39 +48,81 @@ type SharePointResponse<T> = {
   value?: T[];
 };
 
-const REQUIRED_SELECT = ['Id', SCHEDULES_FIELDS.title, SCHEDULES_FIELDS.start, SCHEDULES_FIELDS.end] as const;
-// ScheduleEvents (BaseTemplate=106) only has basic event fields
-const OPTIONAL_SELECT = [
-  SCHEDULES_FIELDS.serviceType,  // Category
-  SCHEDULES_FIELDS.locationName, // Location
-  'Created',
-  'Modified',
-] as const;
+type ScheduleFieldNames = {
+  title: string;
+  start: string;
+  end: string;
+  serviceType?: string;
+  locationName?: string;
+};
 
-const EVENT_SAFE_SELECT = [
-  'Id',
-  SCHEDULES_FIELDS.title,
-  SCHEDULES_FIELDS.start,
-  SCHEDULES_FIELDS.end,
-  SCHEDULES_FIELDS.locationName,
-  SCHEDULES_FIELDS.serviceType,
-] as const;
+const resolveScheduleFieldNames = (): ScheduleFieldNames => {
+  const listTitle = getSchedulesListTitle().trim().toLowerCase();
+  if (listTitle === 'dailyopssignals') {
+    return {
+      title: 'Title',
+      start: 'date',
+      end: 'date',
+    };
+  }
 
-const mergeSelectFields = (fallbackOnly: boolean): readonly string[] =>
-  fallbackOnly ? [...REQUIRED_SELECT] : [...new Set([...REQUIRED_SELECT, ...OPTIONAL_SELECT])];
+  return {
+    title: SCHEDULES_FIELDS.title,
+    start: SCHEDULES_FIELDS.start,
+    end: SCHEDULES_FIELDS.end,
+    serviceType: SCHEDULES_FIELDS.serviceType,
+    locationName: SCHEDULES_FIELDS.locationName,
+  };
+};
 
-const ESSENTIAL_SERVICE_SELECT = [
-  ...REQUIRED_SELECT,
-  SCHEDULES_FIELDS.serviceType,
-] as const;
+const compact = (values: Array<string | undefined>): string[] =>
+  values.filter((value): value is string => Boolean(value));
 
-const SELECT_VARIANTS = [mergeSelectFields(false), ESSENTIAL_SERVICE_SELECT, mergeSelectFields(true)] as const;
+const buildSelectSets = () => {
+  const fields = resolveScheduleFieldNames();
+  const required = compact(['Id', fields.title, fields.start, fields.end]);
+  // ScheduleEvents (BaseTemplate=106) only has basic event fields
+  const optional = compact([
+    fields.serviceType,
+    fields.locationName,
+    'Created',
+    'Modified',
+  ]);
+  const eventSafe = compact([
+    'Id',
+    fields.title,
+    fields.start,
+    fields.end,
+    fields.locationName,
+    fields.serviceType,
+  ]);
+  const mergeSelectFields = (fallbackOnly: boolean): readonly string[] =>
+    fallbackOnly ? [...required] : [...new Set([...required, ...optional])];
+  const essentialService = compact([...required, fields.serviceType]);
+  const selectVariants = [mergeSelectFields(false), essentialService, mergeSelectFields(true)] as const;
+
+  return {
+    fields,
+    required,
+    eventSafe,
+    selectVariants,
+  };
+};
 
 const defaultListRange: ListRangeFn = async (range) => {
-  const isEventList = SCHEDULES_LIST_TITLE.trim().toLowerCase() === 'scheduleevents';
-  const selectFull = isEventList ? EVENT_SAFE_SELECT : SELECT_VARIANTS[0];
-  const selectLite = isEventList ? EVENT_SAFE_SELECT : SELECT_VARIANTS[1];
-  const selectMin = isEventList ? REQUIRED_SELECT : SELECT_VARIANTS[2];
+  const listTitle = getSchedulesListTitle().trim().toLowerCase();
+  if (listTitle === 'dailyopssignals') {
+    if (SCHEDULES_DEBUG) {
+      console.warn('[schedules] DailyOpsSignals is not a schedules list; skipping fetch.');
+    }
+    return [];
+  }
+
+  const isEventList = listTitle === 'scheduleevents';
+  const { fields, eventSafe, required, selectVariants } = buildSelectSets();
+  const selectFull = isEventList ? eventSafe : selectVariants[0];
+  const selectLite = isEventList ? eventSafe : selectVariants[1];
+  const selectMin = isEventList ? required : selectVariants[2];
   const stages = [
     { name: 'full', select: selectFull, keepOrderby: true, keepFilter: true, top: 500 },
     { name: 'selectLite', select: selectLite, keepOrderby: true, keepFilter: true, top: 500 },
@@ -92,7 +134,7 @@ const defaultListRange: ListRangeFn = async (range) => {
 
   for (const stage of stages) {
     try {
-      const rows = await fetchRange(range, stage.select, {
+      const rows = await fetchRange(range, stage.select, fields, {
         includeOrderby: stage.keepOrderby,
         includeFilter: stage.keepFilter,
         top: stage.top,
@@ -147,6 +189,7 @@ const readSpErrorMessage = async (response: Response): Promise<string> => {
 const fetchRange = async (
   range: DateRange,
   select: readonly string[],
+  fields: ScheduleFieldNames,
   options?: { includeOrderby?: boolean; includeFilter?: boolean; top?: number }
 ): Promise<ReturnType<typeof parseSpScheduleRows>> => {
   const { baseUrl } = ensureConfig();
@@ -154,10 +197,10 @@ const fetchRange = async (
   const params = new URLSearchParams();
   params.set('$top', String(options?.top ?? 500));
   if (options?.includeOrderby ?? true) {
-    params.set('$orderby', `${SCHEDULES_FIELDS.start} asc,Id asc`);
+    params.set('$orderby', `${fields.start} asc,Id asc`);
   }
   if (options?.includeFilter ?? true) {
-    params.set('$filter', buildRangeFilter(range));
+    params.set('$filter', buildRangeFilter(range, fields));
   }
   params.set('$select', select.join(','));
 
@@ -165,6 +208,15 @@ const fetchRange = async (
   const response = await fetchSp(url);
   if (!response.ok) {
     const message = await readSpErrorMessage(response);
+    console.error('[schedules] SharePoint list query failed', {
+      status: response.status,
+      listTitle: getSchedulesListTitle(),
+      url,
+      select: select.join(','),
+      includeOrderby: options?.includeOrderby ?? true,
+      includeFilter: options?.includeFilter ?? true,
+      message,
+    });
     const error = new Error(message || `SharePoint request failed (${response.status})`);
     (error as { status?: number }).status = response.status;
     (error as { url?: string }).url = url;
@@ -185,13 +237,13 @@ const fetchRange = async (
   }
 };
 
-const buildRangeFilter = (range: DateRange): string => {
+const buildRangeFilter = (range: DateRange, fields: ScheduleFieldNames): string => {
   // Add ±1 day buffer for timezone/all-day event safety (SharePoint best practice)
   const fromBuffer = new Date(new Date(range.from).getTime() - 24 * 60 * 60 * 1000).toISOString();
   const toBuffer = new Date(new Date(range.to).getTime() + 24 * 60 * 60 * 1000).toISOString();
   const fromLiteral = encodeDateLiteral(fromBuffer);
   const toLiteral = encodeDateLiteral(toBuffer);
-  return `(${SCHEDULES_FIELDS.start} lt ${toLiteral}) and (${SCHEDULES_FIELDS.end} ge ${fromLiteral})`;
+  return `(${fields.start} lt ${toLiteral}) and (${fields.end} ge ${fromLiteral})`;
 };
 
 const encodeDateLiteral = (value: string): string => {
@@ -217,9 +269,10 @@ const sortByStart = (items: SchedItem[]): SchedItem[] =>
 const _fetchItemById = async (id: number): Promise<SchedItem> => {
   const { baseUrl } = ensureConfig();
   const listPath = buildSchedulesListPath(baseUrl);
+  const { selectVariants } = buildSelectSets();
 
-  for (let index = 0; index < SELECT_VARIANTS.length; index += 1) {
-    const select = SELECT_VARIANTS[index];
+  for (let index = 0; index < selectVariants.length; index += 1) {
+    const select = selectVariants[index];
     const params = new URLSearchParams();
     params.set('$select', select.join(','));
 
@@ -232,7 +285,7 @@ const _fetchItemById = async (id: number): Promise<SchedItem> => {
       }
       return mapped;
     } catch (error) {
-      const isLastAttempt = index === SELECT_VARIANTS.length - 1;
+      const isLastAttempt = index === selectVariants.length - 1;
       if (!isMissingFieldError(error) || isLastAttempt) {
         throw error;
       }

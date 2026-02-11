@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react';
+import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { TESTIDS } from '../../src/testids';
@@ -21,6 +21,8 @@ vi.mock('@/auth/useAuth', () => ({
     signOut: signOutMock,
     isAuthenticated: false,
     account: null,
+    shouldSkipLogin: true,
+    loading: false,
   }),
 }));
 
@@ -126,7 +128,7 @@ import App from '../../src/App';
 
 describe('router future flags smoke', () => {
   beforeEach(async () => {
-    localStorage.setItem('VITE_SKIP_LOGIN', '1');
+    localStorage.setItem('skipLogin', '1');
     await Promise.resolve();
     spFetchMock.mockClear();
     signInMock.mockClear();
@@ -138,17 +140,32 @@ describe('router future flags smoke', () => {
   it('navigates across primary routes with v7 flags enabled', async () => {
     const user = userEvent.setup();
     render(<App />);
-    const arrivalOptions = { timeout: 8000 };
+    const arrivalOptions = { timeout: process.env.CI ? 15_000 : 8_000 };
+
+    const openDrawerIfPossible = async () => {
+      const openButton =
+        screen.queryByTestId(TESTIDS['nav-open']) ?? screen.queryByTestId('desktop-nav-open');
+      if (!openButton) {
+        return;
+      }
+      await user.click(openButton);
+      if (openButton.hasAttribute('aria-expanded')) {
+        await waitFor(
+          () => expect(openButton).toHaveAttribute('aria-expanded', 'true'),
+          { timeout: process.env.CI ? 5_000 : 2_000 },
+        );
+      }
+    };
 
     const ensureNavItem = async (testId: string) => {
-      if (!screen.queryByTestId(testId)) {
-        const openButton =
-          screen.queryByTestId(TESTIDS['nav-open']) ?? screen.queryByTestId('desktop-nav-open');
-        if (openButton) {
-          await user.click(openButton);
-        }
-      }
-      return screen.findByTestId(testId, arrivalOptions);
+      await openDrawerIfPossible();
+      const navItem = (screen.queryByTestId(testId) ??
+        (await screen.findByTestId(testId, arrivalOptions))) as HTMLElement;
+      await waitFor(
+        () => expect(navItem).toBeVisible(),
+        { timeout: process.env.CI ? 5_000 : 2_000 },
+      );
+      return navItem;
     };
 
     const navigateToPath = (path: string) => {
@@ -162,6 +179,11 @@ describe('router future flags smoke', () => {
     // ナビゲーション経路のテスト: ホーム → 監査ログ → 日次記録 → 自己点検 → ホーム
 
     await user.click(await ensureNavItem(TESTIDS.nav.audit));
+    await waitFor(
+      () => expect(window.location.pathname).toBe('/audit'),
+      { timeout: process.env.CI ? 15_000 : 8_000 },
+    );
+    expect(screen.queryByText(/権限を確認中/)).not.toBeInTheDocument();
     expect(await screen.findByTestId(TESTIDS['audit-heading'], arrivalOptions)).toBeInTheDocument();
 
     await user.click(await ensureNavItem(TESTIDS.nav.daily));

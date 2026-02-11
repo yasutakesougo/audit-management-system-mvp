@@ -11,6 +11,13 @@ installFatalHandlers();
 
 type EnvRecord = Record<string, string | undefined>;
 
+type MsalRedirectResult = {
+  account?: {
+    username?: string;
+    homeAccountId?: string;
+  };
+} | null;
+
 type IdleDeadline = {
   didTimeout: boolean;
   timeRemaining: () => number;
@@ -25,6 +32,7 @@ declare global {
     __ENV__?: EnvRecord;
     __FLAGS__?: unknown;
     __MSAL_REDIRECT_DONE__?: boolean;
+    __spFetch__?: unknown;
   }
 }
 
@@ -237,36 +245,118 @@ const run = async (): Promise<void> => {
 
   // ✅ Step 2: Initialize MSAL singleton + handle redirect BEFORE React renders
   if (hasWindow) {
+    const hasAuthResponse = (): boolean => {
+      const { hash, search } = window.location;
+      return hash.includes('code=') || hash.includes('state=') || search.includes('code=') || search.includes('state=');
+    };
+    const getInteractionStatus = (): string | null => {
+      try {
+        return window.sessionStorage.getItem('msal.interaction.status');
+      } catch {
+        return null;
+      }
+    };
+    const getHashPrefix = (value: string): string => (value ? value.slice(0, 48) : '');
+    const isAuthCallback = window.location.pathname === '/auth/callback';
+    let redirectAfterAuth: string | null = null;
+    let accountResolved = false;
+
     try {
       const { getPcaSingleton } = await import('./auth/azureMsal');
       const msalInstance = await getPcaSingleton();
-      
+
+      if (isAuthCallback) {
+        console.info('[msal] callback entry', {
+          href: window.location.href,
+          hashPrefix: getHashPrefix(window.location.hash),
+          interactionStatus: getInteractionStatus(),
+          accounts: msalInstance.getAllAccounts().length,
+        });
+      }
+
       console.info('[msal] 🚀 singleton created, calling handleRedirectPromise...');
-      const result = await msalInstance.handleRedirectPromise();
-      
+      const result = (await msalInstance.handleRedirectPromise()) as MsalRedirectResult;
+
+      if (isAuthCallback) {
+        console.info('[msal] handleRedirectPromise result', {
+          returnedNull: result === null,
+          hasAccount: Boolean(result?.account),
+          accountsAfter: msalInstance.getAllAccounts().length,
+          interactionStatus: getInteractionStatus(),
+        });
+      }
+
       if (result?.account) {
         msalInstance.setActiveAccount(result.account);
-        const username = (result.account as { username?: string; homeAccountId?: string }).username
-          ?? (result.account as { homeAccountId?: string }).homeAccountId
+        accountResolved = true;
+      }
+
+      if (!accountResolved) {
+        const accounts = msalInstance.getAllAccounts();
+        if (accounts.length > 0) {
+          msalInstance.setActiveAccount(accounts[0]);
+          accountResolved = true;
+        }
+      }
+
+      if (accountResolved) {
+        const activeAccount = msalInstance.getActiveAccount();
+        const username = (activeAccount as { username?: string; homeAccountId?: string })?.username
+          ?? (activeAccount as { homeAccountId?: string })?.homeAccountId
           ?? '(unknown)';
         console.info('[msal] ✅ redirect success:', username);
         const msalKeys = Object.keys(sessionStorage).filter(k => k.toLowerCase().includes('msal'));
         console.info('[msal] sessionStorage MSAL keys:', msalKeys);
+
+        if (isAuthCallback && hasAuthResponse()) {
+          redirectAfterAuth = sessionStorage.getItem('postLoginRedirect') || '/dashboard';
+          sessionStorage.removeItem('postLoginRedirect');
+        }
       } else {
-        console.info('[msal] ℹ️  handleRedirectPromise returned null');
+        console.info('[msal] ℹ️  handleRedirectPromise returned null (no account)');
+        if (isAuthCallback && hasAuthResponse()) {
+          console.info('[msal] callback stay', { reason: 'null-no-account' });
+        }
       }
     } catch (error) {
       // Non-fatal: continue app bootstrap even if MSAL init/redirect fails
       console.error('[msal] ❌ initialization/redirect error:', error);
+      if (isAuthCallback && hasAuthResponse()) {
+        console.info('[msal] callback stay', { reason: 'threw' });
+      }
     } finally {
       if (typeof window !== 'undefined') {
-        window.__MSAL_REDIRECT_DONE__ = true;
-        console.info('[msal] __MSAL_REDIRECT_DONE__ set true', {
+        const ready = !isAuthCallback || !hasAuthResponse() || accountResolved;
+        window.__MSAL_REDIRECT_DONE__ = ready;
+        console.info('[msal] __MSAL_REDIRECT_DONE__ set', {
+          ready,
           path: window.location.pathname,
           search: window.location.search,
         });
       }
     }
+
+    if (redirectAfterAuth) {
+      window.location.replace(redirectAfterAuth);
+      return;
+    }
+  }
+
+  if (hasWindow && window.__ENV__?.VITE_AUDIT_DEBUG === '1') {
+    void Promise.all([import('./lib/fetchSp'), import('./lib/spClient')])
+      .then(([{ fetchSp }, { ensureConfig }]) => {
+        const helper = async ({ path, method = 'GET' }: { path: string; method?: string }) => {
+          const { baseUrl } = ensureConfig();
+          const url = path.startsWith('http') ? path : `${baseUrl}${path}`;
+          const response = await fetchSp(url, { method });
+          return response.json();
+        };
+        (window as Window & { __spFetch__?: typeof helper }).__spFetch__ = helper;
+        console.info('[debug] __spFetch__ exposed');
+      })
+      .catch((error) => {
+        console.warn('[debug] failed to expose __spFetch__', error);
+      });
   }
 
   const completeImports = beginHydrationSpan('bootstrap:imports', { group: 'hydration', meta: { budget: 30 } });

@@ -1,26 +1,22 @@
+import { readEnv } from '@/lib/env';
 import { SCHEDULE_FIELD_TARGET_USER_ID } from '@/sharepoint/fields';
 
 // Centralized SharePoint schema constants for schedules.
-// Update these values (or the corresponding env vars) once the SP list is rebuilt.
-// Use import.meta.env for consistent runtime env access (matches ProtectedRoute + adapter consistency)
-export const SCHEDULES_LIST_TITLE = (() => {
-  const preferred = typeof import.meta.env.VITE_SCHEDULES_LIST_TITLE === 'string' 
-    ? import.meta.env.VITE_SCHEDULES_LIST_TITLE.trim() 
-    : '';
+// Resolve at runtime so window.__ENV__ overrides are respected.
+export const getSchedulesListTitle = (): string => {
+  const preferred = readEnv('VITE_SCHEDULES_LIST_TITLE', '').trim();
   if (preferred) return preferred;
 
-  const legacy = typeof import.meta.env.VITE_SP_LIST_SCHEDULES === 'string'
-    ? import.meta.env.VITE_SP_LIST_SCHEDULES.trim()
-    : '';
+  const legacy = readEnv('VITE_SP_LIST_SCHEDULES', '').trim();
   if (legacy) return legacy;
 
   return 'ScheduleEvents';
-})();
+};
 
 const normalizeGuid = (raw: string): string => raw.replace(/^guid:/i, '').replace(/[{}]/g, '').trim();
 
 export const resolveSchedulesListIdentifier = (): { type: 'guid' | 'title'; value: string } => {
-  const trimmed = SCHEDULES_LIST_TITLE.trim();
+  const trimmed = getSchedulesListTitle().trim();
   const guid = normalizeGuid(trimmed);
   if (/^[0-9a-fA-F-]{36}$/.test(guid)) {
     return { type: 'guid', value: guid };
