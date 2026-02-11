@@ -126,7 +126,7 @@ import App from '../../src/App';
 
 describe('router future flags smoke', () => {
   beforeEach(async () => {
-    localStorage.setItem('VITE_SKIP_LOGIN', '1');
+    localStorage.setItem('skipLogin', '1');
     await Promise.resolve();
     spFetchMock.mockClear();
     signInMock.mockClear();
