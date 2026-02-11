@@ -138,7 +138,7 @@ describe('router future flags smoke', () => {
   it('navigates across primary routes with v7 flags enabled', async () => {
     const user = userEvent.setup();
     render(<App />);
-    const arrivalOptions = { timeout: 8000 };
+    const arrivalOptions = { timeout: process.env.CI ? 15_000 : 8_000 };
 
     const ensureNavItem = async (testId: string) => {
       if (!screen.queryByTestId(testId)) {
@@ -146,6 +146,8 @@ describe('router future flags smoke', () => {
           screen.queryByTestId(TESTIDS['nav-open']) ?? screen.queryByTestId('desktop-nav-open');
         if (openButton) {
           await user.click(openButton);
+          // Wait for drawer animation to complete
+          await new Promise((r) => setTimeout(r, 300));
         }
       }
       return screen.findByTestId(testId, arrivalOptions);
