@@ -1,6 +1,7 @@
 import * as React from 'react';
 import { Box, useMediaQuery, useTheme } from '@mui/material';
 import { LAYOUT } from './layoutTokens';
+import { useLandscapeTablet } from '@/hooks/useLandscapeTablet';
 
 type Props = {
   header?: React.ReactNode;
@@ -33,6 +34,7 @@ export function AppShellV2({
 }: Props) {
   const theme = useTheme();
   const isPhone = useMediaQuery(theme.breakpoints.down('sm'));
+  const isLandscapeTablet = useLandscapeTablet();
 
   const headerH = header ? (isPhone ? LAYOUT.headerH.xs : LAYOUT.headerH.md) : 0;
   const footerH = isPhone ? LAYOUT.footerH.xs : LAYOUT.footerH.md;
@@ -119,6 +121,10 @@ export function AppShellV2({
           overflow: 'auto',
           overscrollBehavior: 'contain',
           WebkitOverflowScrolling: 'touch',
+          ...(isLandscapeTablet && {
+            maxWidth: 1200,
+            margin: '0 auto',
+          }),
         }}
       >
         {/* ✅ メイン内側コンテナ層（ワイドで散らばらせない） */}
