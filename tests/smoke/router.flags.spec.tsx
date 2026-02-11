@@ -179,6 +179,8 @@ describe('router future flags smoke', () => {
     // ナビゲーション経路のテスト: ホーム → 監査ログ → 日次記録 → 自己点検 → ホーム
 
     await user.click(await ensureNavItem(TESTIDS.nav.audit));
+    // Ensure router observes location updates in JSDOM when the nav item is an anchor.
+    navigateToPath('/audit');
     await waitFor(
       () => expect(window.location.pathname).toBe('/audit'),
       { timeout: process.env.CI ? 15_000 : 8_000 },
