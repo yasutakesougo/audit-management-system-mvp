@@ -10,6 +10,7 @@ import type { MouseEvent } from 'react';
 import { useCallback, useMemo, useState } from 'react';
 
 import { TESTIDS } from '@/testids';
+import { useLandscapeTablet } from '@/hooks/useLandscapeTablet';
 
 import type { SchedItem } from './data';
 import { SCHEDULES_DEBUG } from './debug';
@@ -183,6 +184,7 @@ const WeekViewWithData = (props: WeekViewProps) => {
 const WeekViewContent = ({ items, loading, onDayClick, activeDateIso, range, onItemSelect, onItemAccept, highlightId }: WeekViewContentProps) => {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
+  const isLandscapeTablet = useLandscapeTablet();
   const [menuAnchor, setMenuAnchor] = useState<HTMLElement | null>(null);
   const [menuItem, setMenuItem] = useState<WeekSchedItem | null>(null);
   const resolvedRange = useMemo(() => range ?? defaultWeekRange(), [range]);
@@ -618,15 +620,23 @@ const WeekViewContent = ({ items, loading, onDayClick, activeDateIso, range, onI
           </p>
         ) : (
           <div data-testid={TESTIDS.SCHEDULE_WEEK_LIST} role="list">
-            <div style={{ overflowX: 'auto', paddingBottom: 4 }}>
-              <div
-                style={{
-                  display: 'grid',
-                  gridAutoFlow: 'column',
-                  gridAutoColumns: isMobile ? 'minmax(240px, 1fr)' : 'minmax(280px, 1fr)',
-                  gap: 16,
-                }}
-              >
+            <div
+              style={{
+                ...(isLandscapeTablet && {
+                  maxWidth: 1200,
+                  margin: '0 auto',
+                }),
+              }}
+            >
+              <div style={{ overflowX: 'auto', paddingBottom: 4 }}>
+                <div
+                  style={{
+                    display: 'grid',
+                    gridAutoFlow: 'column',
+                    gridAutoColumns: isMobile ? 'minmax(240px, 1fr)' : 'minmax(280px, 1fr)',
+                    gap: isLandscapeTablet ? 12 : 16,
+                  }}
+                >
                 {LANE_ORDER.map((lane) => {
                   const itemsInLane = laneItems[lane.key];
                   return (
@@ -677,6 +687,7 @@ const WeekViewContent = ({ items, loading, onDayClick, activeDateIso, range, onI
                   );
                 })}
               </div>
+            </div>
             </div>
           </div>
         )}
