@@ -144,7 +144,12 @@ describe('router future flags smoke', () => {
 
     const ensureNavItem = async (testId: string) => {
       const existing = screen.queryByTestId(testId);
+      const openButton =
+        screen.queryByTestId(TESTIDS['nav-open']) ?? screen.queryByTestId('desktop-nav-open');
       if (existing && existing instanceof HTMLElement) {
+        if (openButton?.getAttribute('aria-expanded') !== 'true') {
+          await user.click(openButton);
+        }
         await waitFor(
           () => expect(existing).toBeVisible(),
           { timeout: process.env.CI ? 5_000 : 2_000 },
@@ -152,8 +157,6 @@ describe('router future flags smoke', () => {
         return existing;
       }
 
-      const openButton =
-        screen.queryByTestId(TESTIDS['nav-open']) ?? screen.queryByTestId('desktop-nav-open');
       if (openButton) {
         await user.click(openButton);
       }
