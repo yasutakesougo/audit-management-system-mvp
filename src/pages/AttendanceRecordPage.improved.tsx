@@ -17,6 +17,7 @@ import { TESTIDS } from '@/testids';
 import Snackbar from '@mui/material/Snackbar';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
+import { LandscapeFab } from '../components/ui/LandscapeFab';
 
 // Icons
 import TransportIcon from '@mui/icons-material/AirportShuttle';
@@ -46,7 +47,6 @@ import DialogActions from '@mui/material/DialogActions';
 import DialogContent from '@mui/material/DialogContent';
 import DialogTitle from '@mui/material/DialogTitle';
 import Divider from '@mui/material/Divider';
-import Fab from '@mui/material/Fab';
 import FormControl from '@mui/material/FormControl';
 import FormControlLabel from '@mui/material/FormControlLabel';
 import InputLabel from '@mui/material/InputLabel';
@@ -84,6 +84,8 @@ const initialUsers: AttendanceUser[] = [
 type AttendanceRecordPageProps = {
   'data-testid'?: string;
 };
+
+
 
 const AttendanceRecordPage: React.FC<AttendanceRecordPageProps> = ({ 'data-testid': dataTestId }) => {
   // Navigation hooks for cross-module navigation
@@ -778,14 +780,12 @@ const AttendanceRecordPage: React.FC<AttendanceRecordPageProps> = ({ 'data-testi
       </Stack>
 
       {/* Floating Action Button */}
-      <Fab
-        color="primary"
-        sx={{ position: 'fixed', bottom: 16, right: 16 }}
+      <LandscapeFab
+        icon={<RefreshIcon />}
+        ariaLabel="再読込"
         onClick={() => window.location.reload()}
-        data-testid="fab-refresh"
-      >
-        <RefreshIcon />
-      </Fab>
+        testId="fab-refresh"
+      />
 
       {/* Absence Dialog */}
       <Dialog open={Boolean(absenceDialog)} onClose={closeAbsenceDialog} fullWidth maxWidth="sm">

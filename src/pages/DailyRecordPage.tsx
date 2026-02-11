@@ -7,7 +7,6 @@ import Card from '@mui/material/Card';
 import CardContent from '@mui/material/CardContent';
 import Chip from '@mui/material/Chip';
 import Container from '@mui/material/Container';
-import Fab from '@mui/material/Fab';
 import FormControl from '@mui/material/FormControl';
 import InputLabel from '@mui/material/InputLabel';
 import MenuItem from '@mui/material/MenuItem';
@@ -20,6 +19,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { Toaster } from 'react-hot-toast';
 import { useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import { PersonDaily } from '../domain/daily/types';
+import { LandscapeFab } from '../components/ui/LandscapeFab';
 import { DailyRecordForm } from '../features/daily/DailyRecordForm';
 import { DailyRecordList } from '../features/daily/DailyRecordList';
 import { useDailyRecordViewModel } from '../features/daily/useDailyRecordViewModel';
@@ -602,19 +602,12 @@ export default function DailyRecordPage() {
         />
 
         {/* 新規作成FAB */}
-        <Fab
-          color="primary"
-          aria-label="add"
+        <LandscapeFab
+          icon={<AddIcon />}
+          ariaLabel="新規記録作成"
           onClick={handleOpenForm}
-          sx={{
-            position: 'fixed',
-            bottom: 16,
-            right: 16,
-          }}
-          data-testid="add-record-fab"
-        >
-          <AddIcon />
-        </Fab>
+          testId="add-record-fab"
+        />
 
         {/* Toast通知 */}
         <Toaster

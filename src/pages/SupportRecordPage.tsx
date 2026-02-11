@@ -10,7 +10,6 @@ import CardContent from '@mui/material/CardContent';
 import CardHeader from '@mui/material/CardHeader';
 import Chip from '@mui/material/Chip';
 import Container from '@mui/material/Container';
-import Fab from '@mui/material/Fab';
 import FormControl from '@mui/material/FormControl';
 import InputLabel from '@mui/material/InputLabel';
 import MenuItem from '@mui/material/MenuItem';
@@ -20,6 +19,7 @@ import Stack from '@mui/material/Stack';
 import TextField from '@mui/material/TextField';
 import Typography from '@mui/material/Typography';
 import React, { useCallback, useMemo, useState } from 'react';
+import { LandscapeFab } from '../components/ui/LandscapeFab';
 
 // 支援手順記録の型定義
 // TODO: 将来的にsrc/types/support.tsなどの共通モジュールに移動予定
@@ -546,14 +546,11 @@ const SupportRecordPage: React.FC = () => {
         )}
 
         {/* フローティングアクションボタン */}
-        <Fab
-          color="secondary"
-          aria-label="新規記録作成"
-          sx={{ position: 'fixed', bottom: 16, right: 16 }}
+        <LandscapeFab
+          icon={<AddIcon />}
+          ariaLabel="新規記録作成"
           onClick={handleGenerateTodayRecords}
-        >
-          <AddIcon />
-        </Fab>
+        />
       </Box>
     </Container>
   );
