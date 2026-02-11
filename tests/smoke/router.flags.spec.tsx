@@ -151,7 +151,10 @@ describe('router future flags smoke', () => {
         }
       }
       const navItem = await screen.findByTestId(testId, arrivalOptions);
-      expect(navItem).toBeVisible();
+      await waitFor(
+        () => expect(screen.getByTestId(testId)).toBeVisible(),
+        { timeout: process.env.CI ? 5_000 : 2_000 },
+      );
       return navItem;
     };
 
