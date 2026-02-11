@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react';
+import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { TESTIDS } from '../../src/testids';
@@ -164,6 +164,10 @@ describe('router future flags smoke', () => {
     // ナビゲーション経路のテスト: ホーム → 監査ログ → 日次記録 → 自己点検 → ホーム
 
     await user.click(await ensureNavItem(TESTIDS.nav.audit));
+    await waitFor(
+      () => expect(window.location.pathname).toBe('/audit'),
+      { timeout: process.env.CI ? 15_000 : 8_000 },
+    );
     expect(await screen.findByTestId(TESTIDS['audit-heading'], arrivalOptions)).toBeInTheDocument();
 
     await user.click(await ensureNavItem(TESTIDS.nav.daily));
