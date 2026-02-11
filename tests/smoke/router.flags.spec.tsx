@@ -142,26 +142,25 @@ describe('router future flags smoke', () => {
     render(<App />);
     const arrivalOptions = { timeout: process.env.CI ? 15_000 : 8_000 };
 
-    const ensureNavItem = async (testId: string) => {
-      const existing = screen.queryByTestId(testId);
+    const openDrawerIfPossible = async () => {
       const openButton =
         screen.queryByTestId(TESTIDS['nav-open']) ?? screen.queryByTestId('desktop-nav-open');
-      if (existing && existing instanceof HTMLElement) {
-        if (openButton?.getAttribute('aria-expanded') !== 'true') {
-          await user.click(openButton);
-        }
+      if (!openButton) {
+        return;
+      }
+      await user.click(openButton);
+      if (openButton.hasAttribute('aria-expanded')) {
         await waitFor(
-          () => expect(existing).toBeVisible(),
+          () => expect(openButton).toHaveAttribute('aria-expanded', 'true'),
           { timeout: process.env.CI ? 5_000 : 2_000 },
         );
-        return existing;
       }
+    };
 
-      if (openButton) {
-        await user.click(openButton);
-      }
-
-      const navItem = await screen.findByTestId(testId, arrivalOptions);
+    const ensureNavItem = async (testId: string) => {
+      await openDrawerIfPossible();
+      const navItem = (screen.queryByTestId(testId) ??
+        (await screen.findByTestId(testId, arrivalOptions))) as HTMLElement;
       await waitFor(
         () => expect(navItem).toBeVisible(),
         { timeout: process.env.CI ? 5_000 : 2_000 },
