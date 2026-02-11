@@ -148,11 +148,11 @@ describe('router future flags smoke', () => {
           screen.queryByTestId(TESTIDS['nav-open']) ?? screen.queryByTestId('desktop-nav-open');
         if (openButton) {
           await user.click(openButton);
-          // Wait for drawer animation to complete
-          await new Promise((r) => setTimeout(r, 300));
         }
       }
-      return screen.findByTestId(testId, arrivalOptions);
+      const navItem = await screen.findByTestId(testId, arrivalOptions);
+      expect(navItem).toBeVisible();
+      return navItem;
     };
 
     const navigateToPath = (path: string) => {
@@ -170,6 +170,7 @@ describe('router future flags smoke', () => {
       () => expect(window.location.pathname).toBe('/audit'),
       { timeout: process.env.CI ? 15_000 : 8_000 },
     );
+    expect(screen.queryByText(/権限を確認中/)).not.toBeInTheDocument();
     expect(await screen.findByTestId(TESTIDS['audit-heading'], arrivalOptions)).toBeInTheDocument();
 
     await user.click(await ensureNavItem(TESTIDS.nav.daily));
