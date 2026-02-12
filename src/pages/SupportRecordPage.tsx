@@ -18,7 +18,7 @@ import Select from '@mui/material/Select';
 import Stack from '@mui/material/Stack';
 import TextField from '@mui/material/TextField';
 import Typography from '@mui/material/Typography';
-import React, { useCallback, useMemo, useState } from 'react';
+import React, { useCallback, useMemo, useReducer, useRef, useState } from 'react';
 import { LandscapeFab } from '../components/ui/LandscapeFab';
 
 // 支援手順記録の型定義
@@ -210,8 +210,9 @@ const SupportRecordPage: React.FC = () => {
   const [dateFilter, setDateFilter] = useState(new Date().toISOString().split('T')[0]);
   const [searchQuery, setSearchQuery] = useState('');
 
-  // 安定したデータ管理のためのstate
-  const [dailyRecordCache, setDailyRecordCache] = useState<Map<string, DailySupportRecord>>(new Map());
+  // 安定したデータ管理のためのref（レンダリング入力にしない）
+  const dailyRecordCacheRef = useRef<Map<string, DailySupportRecord>>(new Map());
+  const [refreshTick, forceRefresh] = useReducer((value: number) => value + 1, 0);
 
   // フィルタリングされた利用者
   const filteredUsers = useMemo(() => mockSupportUsers.filter(user => {
@@ -225,24 +226,24 @@ const SupportRecordPage: React.FC = () => {
   const getDailyRecord = useCallback((userId: string, date: string): DailySupportRecord | null => {
     const cacheKey = `${userId}-${date}`;
 
-    if (dailyRecordCache.has(cacheKey)) {
-      return dailyRecordCache.get(cacheKey)!;
+    if (dailyRecordCacheRef.current.has(cacheKey)) {
+      return dailyRecordCacheRef.current.get(cacheKey)!;
     }
 
     const user = mockSupportUsers.find(u => u.id === userId);
     if (!user) return null;
 
     const newRecord = generateMockDailyRecord(user, date);
-    setDailyRecordCache(prev => new Map(prev).set(cacheKey, newRecord));
+    dailyRecordCacheRef.current.set(cacheKey, newRecord);
 
     return newRecord;
-  }, [dailyRecordCache]);
+  }, []);
 
   // 選択された利用者の日次記録
   const currentDailyRecord = useMemo(() => {
     if (!selectedUser) return null;
     return getDailyRecord(selectedUser, dateFilter);
-  }, [selectedUser, dateFilter, getDailyRecord]);
+  }, [selectedUser, dateFilter, getDailyRecord, refreshTick]);
 
   // 支援手順（選択された利用者用）
   const supportSteps = useMemo(() => {
@@ -270,7 +271,8 @@ const SupportRecordPage: React.FC = () => {
     if (import.meta.env.DEV) console.log('本日分の記録を一括生成');
     // 実際の生成処理をここに実装
     // 生成後にキャッシュをクリアして最新データを表示
-    setDailyRecordCache(new Map());
+    dailyRecordCacheRef.current = new Map();
+    forceRefresh();
   }, []);
 
   // 記録更新機能（将来の拡張用）
@@ -279,8 +281,8 @@ const SupportRecordPage: React.FC = () => {
     // 実際の更新処理をここに実装
     // 更新後にキャッシュの該当項目を更新
     const cacheKey = `${record.personId}-${record.date}`;
-    if (dailyRecordCache.has(cacheKey)) {
-      const currentRecord = dailyRecordCache.get(cacheKey)!;
+    if (dailyRecordCacheRef.current.has(cacheKey)) {
+      const currentRecord = dailyRecordCacheRef.current.get(cacheKey)!;
       const updatedRecords = currentRecord.records.map(r =>
         r.id === record.id ? { ...record, updatedAt: new Date().toISOString() } : r
       );
@@ -293,9 +295,10 @@ const SupportRecordPage: React.FC = () => {
           implementedSteps: updatedRecords.filter(r => r.implemented).length
         }
       };
-      setDailyRecordCache(prev => new Map(prev).set(cacheKey, updatedDailyRecord));
+      dailyRecordCacheRef.current.set(cacheKey, updatedDailyRecord);
+      forceRefresh();
     }
-  }, [dailyRecordCache]);
+  }, []);
 
   return (
     <Container maxWidth="lg">
