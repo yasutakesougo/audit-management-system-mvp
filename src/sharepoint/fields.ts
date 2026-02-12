@@ -265,6 +265,7 @@ export enum ListKeys {
   StaffMaster = 'Staff_Master',
   ComplianceCheckRules = 'Compliance_CheckRules',
   Behaviors = 'Dat_Behaviors',
+  DailyActivityRecords = 'DailyActivityRecords',
   IcebergPdca = 'Iceberg_PDCA',
   SurveyTokusei = 'FormsResponses_Tokusei',
   OrgMaster = 'Org_Master',
@@ -279,7 +280,8 @@ export const LIST_CONFIG: Record<ListKeys, { title: string }> = {
   [ListKeys.UsersMaster]: { title: 'Users_Master' },
   [ListKeys.StaffMaster]: { title: 'Staff_Master' },
   [ListKeys.ComplianceCheckRules]: { title: 'Compliance_CheckRules' },
-  [ListKeys.Behaviors]: { title: 'Dat_Behaviors' },
+  [ListKeys.Behaviors]: { title: 'SupportTemplates' },
+  [ListKeys.DailyActivityRecords]: { title: 'DailyActivityRecords' },
   [ListKeys.IcebergPdca]: { title: 'Iceberg_PDCA' },
   [ListKeys.SurveyTokusei]: { title: 'FormsResponses_Tokusei' },
   [ListKeys.OrgMaster]: { title: 'Org_Master' },
@@ -390,17 +392,66 @@ export const FIELD_MAP = {
   },
 } as const;
 
+/**
+ * SupportTemplates list field mappings (確定版: 2026-02-12)
+ * 
+ * ✅ 実内部名（Fields API で確認済み）
+ * - UserCode0, RowNo0, TimeSlot0, Activity0, PersonManual0, SupporterManual0, version（⚠️小文字）
+ * - IsActive（存在確認済み）
+ * 
+ * ⚠️ 重要: intensity は version（Version0ではなく小文字!）
+ * 
+ * 🎯 戦略:
+ * - Phase 1: UserID === userCode（ドメイン側で I022、SharePoint側でも UserCode0=I022）
+ * - Phase 2: UserID統一列追加後に UserCode0 から移行
+ * 
+ * 📊 必須列（常に取得）:
+ * - Id, UserCode0, RowNo0, Activity0, SupporterManual0, TimeSlot0, PersonManual0, version
+ * - Created, Modified（SharePoint標準）
+ * 
+ * 🔧 オプション列（フィルタリング用）:
+ * - IsActive（有効フラグ：true/false）
+ */
 export const FIELD_MAP_BEHAVIORS = {
+  // 🔑 主キー＆フィルタ
   id: 'Id',
-  userId: 'UserID',
-  timestamp: 'BehaviorDateTime',
-  antecedent: 'Antecedent',
-  behavior: 'BehaviorType',
-  consequence: 'Consequence',
-  intensity: 'Intensity',
-  duration: 'DurationMinutes',
-  memo: 'Notes',
-  created: 'Created'
+  userId: 'UserCode0',              // フィルタキー: $filter=UserCode0 eq 'I022'
+  timestamp: 'RowNo0',              // ソート用: $orderby=RowNo0 asc|desc
+  
+  // 📝 コンテンツ（ABC分析）
+  antecedent: 'TimeSlot0',          // 先行条件（時間帯）
+  behavior: 'Activity0',            // 行動（活動内容）
+  consequence: 'SupporterManual0',  // 結果（支援者向けマニュアル）
+  intensity: 'version',             // 🔥 強度（version・小文字！Version0ではない）
+  duration: 'duration',             // 持続時間（オプション）
+  
+  // 💬 補足
+  memo: 'PersonManual0',            // 本人向けマニュアル
+  
+  // 📅 メタデータ（SharePoint標準）
+  created: 'Created',
+  modified: 'Modified',
+  
+  // 🔲 オプション（有効性フィルタ用）
+  isActive: 'IsActive',             // 有効フラグ（Yes/No）
+} as const;
+
+/**
+ * DailyActivityRecords リスト用フィールド定義（内部名）
+ * Fields API で確認済み: UserCode, RecordDate, TimeSlot, Observation, Behavior, version, duration, Order
+ */
+export const FIELD_MAP_DAILY_ACTIVITY = {
+  id: 'Id',
+  userId: 'UserCode',
+  recordDate: 'RecordDate',
+  timeSlot: 'TimeSlot',
+  observation: 'Observation',
+  behavior: 'Behavior',
+  intensity: 'version',
+  duration: 'duration',
+  order: 'Order',
+  created: 'Created',
+  modified: 'Modified',
 } as const;
 
 export const FIELD_MAP_ICEBERG_PDCA = {
@@ -489,6 +540,19 @@ export const BEHAVIORS_SELECT_FIELDS = [
   FIELD_MAP_BEHAVIORS.duration,
   FIELD_MAP_BEHAVIORS.memo,
   FIELD_MAP_BEHAVIORS.created
+] as const;
+
+export const DAILY_ACTIVITY_SELECT_FIELDS = [
+  FIELD_MAP_DAILY_ACTIVITY.id,
+  FIELD_MAP_DAILY_ACTIVITY.userId,
+  FIELD_MAP_DAILY_ACTIVITY.recordDate,
+  FIELD_MAP_DAILY_ACTIVITY.timeSlot,
+  FIELD_MAP_DAILY_ACTIVITY.observation,
+  FIELD_MAP_DAILY_ACTIVITY.behavior,
+  FIELD_MAP_DAILY_ACTIVITY.intensity,
+  FIELD_MAP_DAILY_ACTIVITY.duration,
+  FIELD_MAP_DAILY_ACTIVITY.order,
+  FIELD_MAP_DAILY_ACTIVITY.created,
 ] as const;
 
 export const ICEBERG_PDCA_SELECT_FIELDS = [
@@ -592,11 +656,50 @@ export function buildSelectFieldsFromMap(
 
 /**
  * Behaviors リスト用の動的 $select ビルダー
+ * 
+ * 2段階フォールバック戦略:
+ * 1st: Fields API成功 → 存在する列のみ選択
+ * 2nd: Fields API失敗 → CSV確認済み列 + 標準列（高確率で存在）
  */
 export function buildBehaviorsSelectFields(existingInternalNames?: readonly string[]): readonly string[] {
   return buildSelectFieldsFromMap(FIELD_MAP_BEHAVIORS, existingInternalNames, {
+    alwaysInclude: ['Id', 'Created', 'Modified'],  // SharePoint 標準列は常に含める
+    fallback: [
+      // 2nd fallback: Fields API で確認済みの実内部名（高確率で存在）
+      'Id',
+      'UserCode0',
+      'RowNo0',
+      'TimeSlot0',
+      'Activity0',
+      'PersonManual0',
+      'SupporterManual0',
+      'version',    // 🔥 小文字!（Version0ではない）
+      'IsActive',   // 有効フラグ
+      'Created',
+      'Modified',
+    ],
+  });
+}
+
+/**
+ * DailyActivityRecords リスト用の動的 $select ビルダー
+ */
+export function buildDailyActivitySelectFields(existingInternalNames?: readonly string[]): readonly string[] {
+  return buildSelectFieldsFromMap(FIELD_MAP_DAILY_ACTIVITY, existingInternalNames, {
     alwaysInclude: ['Id', 'Created', 'Modified'],
-    fallback: ['Id', 'Created'],
+    fallback: [
+      'Id',
+      'UserCode',
+      'RecordDate',
+      'TimeSlot',
+      'Observation',
+      'Behavior',
+      'version',
+      'duration',
+      'Order',
+      'Created',
+      'Modified',
+    ],
   });
 }
 
