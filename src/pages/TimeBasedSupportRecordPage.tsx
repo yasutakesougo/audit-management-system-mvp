@@ -29,17 +29,29 @@ import { useLocation, useSearchParams } from 'react-router-dom';
 
 const TimeBasedSupportRecordPage: React.FC = () => {
   const location = useLocation();
-  const [searchParams, setSearchParams] = useSearchParams();
-  const initialUserId = searchParams.get('user') ?? undefined;
-  const initialStepKey = searchParams.get('step') ?? undefined;
-  const initialUnfilledOnly = searchParams.get('unfilled') === '1';
+  const [, setSearchParams] = useSearchParams();
+  const initialParams = useRef({
+    userId: new URLSearchParams(location.search).get('user') ?? undefined,
+    stepKey: new URLSearchParams(location.search).get('step') ?? undefined,
+    unfilledOnly: new URLSearchParams(location.search).get('unfilled') === '1',
+  }).current;
+  const initialUserId = initialParams.userId;
+  const initialStepKey = initialParams.stepKey;
+  const initialUnfilledOnly = initialParams.unfilledOnly;
+  const ERROR_STORAGE_KEY = 'daily-support-submit-error';
   const [snackbarOpen, setSnackbarOpen] = useState(false);
   const [isEditOpen, setIsEditOpen] = useState(false);
+  const [submitError, setSubmitError] = useState<Error | null>(() => {
+    if (typeof window === 'undefined') return null;
+    const stored = window.sessionStorage.getItem(ERROR_STORAGE_KEY);
+    return stored ? new Error(stored) : null;
+  });
   const recordDate = useMemo(() => new Date(), []);
   const recordPanelRef = useRef<HTMLDivElement>(null);
   const procedureRepo = useInMemoryProcedureRepository();
-  const { repo: behaviorRepo, data: behaviorRecords } = useInMemoryBehaviorRepository();
+  const { repo: behaviorRepo, data: behaviorRecords, error: behaviorError, clearError } = useInMemoryBehaviorRepository();
   const { data: users } = useUsersDemo();
+
   const {
     targetUserId,
     handleUserChange,
@@ -66,8 +78,15 @@ const TimeBasedSupportRecordPage: React.FC = () => {
     initialStepKey,
     initialUnfilledOnly,
   });
+  const displayedError = submitError ?? behaviorError;
   const selectedUser = useMemo(() => users.find((user) => user.UserID === targetUserId), [users, targetUserId]);
   const previousSearchRef = useRef(location.search);
+
+  useEffect(() => {
+    if (!initialUserId) return;
+    if (targetUserId) return;
+    handleUserChange(initialUserId);
+  }, [handleUserChange, initialUserId, targetUserId]);
 
   useEffect(() => {
     setSearchParams((prev) => {
@@ -77,8 +96,10 @@ const TimeBasedSupportRecordPage: React.FC = () => {
       } else {
         nextParams.delete('user');
       }
-      if (selectedStepId) {
-        nextParams.set('step', selectedStepId);
+      const prevStep = prev.get('step') ?? undefined;
+      const resolvedStep = selectedStepId ?? prevStep ?? initialParams.stepKey;
+      if (resolvedStep) {
+        nextParams.set('step', resolvedStep);
       } else {
         nextParams.delete('step');
       }
@@ -92,7 +113,7 @@ const TimeBasedSupportRecordPage: React.FC = () => {
       }
       return nextParams;
     }, { replace: true });
-  }, [selectedStepId, setSearchParams, showUnfilledOnly, targetUserId]);
+  }, [initialParams.stepKey, selectedStepId, setSearchParams, showUnfilledOnly, targetUserId]);
 
   useEffect(() => {
     const prevSearch = previousSearchRef.current;
@@ -151,12 +172,34 @@ const TimeBasedSupportRecordPage: React.FC = () => {
 
   const handleRecordSubmit = useCallback(async (payload: Omit<BehaviorObservation, 'id' | 'userId'>) => {
     if (!targetUserId) return;
-    await behaviorRepo.add({
-      ...payload,
-      userId: targetUserId,
-    });
-    setSnackbarOpen(true);
+    try {
+      await behaviorRepo.add({
+        ...payload,
+        userId: targetUserId,
+      });
+      if (typeof window !== 'undefined') {
+        window.sessionStorage.removeItem(ERROR_STORAGE_KEY);
+      }
+      setSubmitError(null);
+      setSnackbarOpen(true);
+    } catch (err) {
+      const error = err instanceof Error ? err : new Error('Failed to add behavior');
+      if (typeof window !== 'undefined') {
+        window.sessionStorage.setItem(ERROR_STORAGE_KEY, error.message);
+      }
+      setSubmitError(error);
+      // 🚨 store.error も更新されるが、UI 表示は submitError を優先
+      console.debug('[handleRecordSubmit] error already in store:', err);
+    }
   }, [behaviorRepo, targetUserId]);
+
+  const handleErrorClose = useCallback(() => {
+    if (typeof window !== 'undefined') {
+      window.sessionStorage.removeItem(ERROR_STORAGE_KEY);
+    }
+    clearError();
+    setSubmitError(null);
+  }, [clearError]);
 
   const handleSnackbarClose = useCallback(() => {
     setSnackbarOpen(false);
@@ -258,6 +301,23 @@ const TimeBasedSupportRecordPage: React.FC = () => {
         </Stack>
       </Paper>
 
+      {/* Error Alert (fixed, always visible) */}
+      {displayedError ? (
+        <Box
+          sx={{
+            position: 'fixed',
+            top: 12,
+            left: 12,
+            right: 12,
+            zIndex: (theme) => theme.zIndex.modal + 3,
+          }}
+        >
+          <Alert severity="error" onClose={handleErrorClose}>
+            {String(displayedError)}
+          </Alert>
+        </Box>
+      ) : null}
+
       <Box sx={{ flex: 1, minHeight: 0, p: 2 }}>
         <SplitStreamLayout
           recordRef={recordPanelRef}
@@ -296,7 +356,7 @@ const TimeBasedSupportRecordPage: React.FC = () => {
               lockState={recordLockState}
               onSubmit={handleRecordSubmit}
               schedule={schedule}
-              selectedSlotKey={selectedStepId ?? ''}
+              selectedSlotKey={selectedStepId ?? undefined}
               onSlotChange={(next) => setSelectedStepId(next || null)}
               onAfterSubmit={handleAfterSubmit}
               recordDate={recordDate}
@@ -359,6 +419,17 @@ const TimeBasedSupportRecordPage: React.FC = () => {
       >
         <Alert onClose={handleSnackbarClose} severity="success" sx={{ width: '100%' }}>
           行動記録を保存しました
+        </Alert>
+      </Snackbar>
+      <Snackbar
+        open={Boolean(displayedError)}
+        autoHideDuration={null}
+        onClose={handleErrorClose}
+        anchorOrigin={{ vertical: 'top', horizontal: 'center' }}
+        sx={{ zIndex: (theme) => theme.zIndex.modal + 2 }}
+      >
+        <Alert onClose={handleErrorClose} severity="error" sx={{ width: '100%' }}>
+          {String(displayedError ?? '')}
         </Alert>
       </Snackbar>
       </Container>

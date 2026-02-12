@@ -111,7 +111,7 @@ export function RecordPanel(props: RecordPanelProps): JSX.Element {
   const [selectedConsequence, setSelectedConsequence] = useState<string | null>(null);
   const [intensity, setIntensity] = useState<BehaviorIntensity>(1);
   const [timestamp] = useState<string>(new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }));
-  const [selectedSlotKey, setSelectedSlotKey] = useState('');
+  const [selectedSlotKey, setSelectedSlotKey] = useState(controlledSlotKey ?? '');
   const [actualObservation, setActualObservation] = useState('');
   const [staffResponse, setStaffResponse] = useState('');
   const [followUpNote, setFollowUpNote] = useState('');
@@ -136,9 +136,19 @@ export function RecordPanel(props: RecordPanelProps): JSX.Element {
   );
   const observationText = actualObservation.trim();
   const slotSelected = Boolean(selectedSlot);
+  const hasObservation = observationText.length > 0;
   const canSubmit =
     !isLocked &&
-    ((Boolean(selectedBehavior) && observationText.length > 0) || (slotSelected && observationText.length > 0));
+    (Boolean(selectedBehavior) || (slotSelected && hasObservation));
+  const debugAttrs = import.meta.env.DEV
+    ? {
+        'data-can-submit': String(canSubmit),
+        'data-slot-selected': String(slotSelected),
+        'data-has-observation': String(hasObservation),
+        'data-selected-behavior': String(Boolean(selectedBehavior)),
+        'data-locked': String(isLocked),
+      }
+    : {};
   const chipSize = useMemo(() => ({ py: 1.2, px: 1.5, fontSize: '0.95rem' }), []);
 
   useEffect(() => {
@@ -154,6 +164,12 @@ export function RecordPanel(props: RecordPanelProps): JSX.Element {
       setSelectedSlotKey('');
     }
   }, [schedule, effectiveSelectedSlotKey, isControlledSlot]);
+
+  useEffect(() => {
+    if (isControlledSlot && controlledSlotKey !== selectedSlotKey) {
+      setSelectedSlotKey(controlledSlotKey ?? '');
+    }
+  }, [controlledSlotKey, isControlledSlot, selectedSlotKey]);
 
   useEffect(() => {
     if (isLocked || !effectiveSelectedSlotKey) return;
@@ -180,39 +196,52 @@ export function RecordPanel(props: RecordPanelProps): JSX.Element {
   };
 
   const handleSubmit = async () => {
+    if (import.meta.env.DEV) {
+      console.info('[daily/support] submit attempt', {
+        isLocked,
+        selectedBehavior,
+        selectedSlotKey: effectiveSelectedSlotKey,
+        observationLength: observationText.length,
+      });
+    }
     if (isLocked) return;
     const observation = actualObservation.trim();
     if (!observation) return;
     if (!selectedBehavior && !selectedSlot) return;
-    await onSubmit({
-      timestamp: new Date().toISOString(),
-      behavior: selectedBehavior ?? '日常記録',
-      antecedent: selectedAntecedent,
-      consequence: selectedConsequence,
-      intensity,
-      durationMinutes,
-      memo: memo.trim() || undefined,
-      actualObservation: observation,
-      staffResponse: staffResponse.trim() || undefined,
-      followUpNote: followUpNote.trim() || undefined,
-      timeSlot: selectedSlot?.time,
-      plannedActivity: selectedSlot?.activity,
-      userMood: userMood ?? undefined
-    });
-    setSelectedBehavior(null);
-    setSelectedAntecedent(null);
-    setSelectedConsequence(null);
-    setIntensity(1);
-    if (!isControlledSlot) {
-      setSelectedSlotKey('');
+    try {
+      await onSubmit({
+        timestamp: new Date().toISOString(),
+        behavior: selectedBehavior ?? '日常記録',
+        antecedent: selectedAntecedent,
+        consequence: selectedConsequence,
+        intensity,
+        durationMinutes,
+        memo: memo.trim() || undefined,
+        actualObservation: observation,
+        staffResponse: staffResponse.trim() || undefined,
+        followUpNote: followUpNote.trim() || undefined,
+        timeSlot: selectedSlot?.time,
+        plannedActivity: selectedSlot?.activity,
+        userMood: userMood ?? undefined
+      });
+      setSelectedBehavior(null);
+      setSelectedAntecedent(null);
+      setSelectedConsequence(null);
+      setIntensity(1);
+      if (!isControlledSlot) {
+        setSelectedSlotKey('');
+      }
+      setActualObservation('');
+      setStaffResponse('');
+      setFollowUpNote('');
+      setMemo('');
+      setDurationMinutes(5);
+      setUserMood(null);
+      onAfterSubmit?.(selectedSlot ? getScheduleKey(selectedSlot.time, selectedSlot.activity) : null);
+    } catch (err) {
+      // 🚨 error は store.error に入ってるので、ここでは何もしない
+      console.debug('[RecordPanel.handleSubmit] error already in store:', err);
     }
-    setActualObservation('');
-    setStaffResponse('');
-    setFollowUpNote('');
-    setMemo('');
-    setDurationMinutes(5);
-    setUserMood(null);
-    onAfterSubmit?.(selectedSlot ? getScheduleKey(selectedSlot.time, selectedSlot.activity) : null);
   };
 
   return (
@@ -520,6 +549,7 @@ export function RecordPanel(props: RecordPanelProps): JSX.Element {
           onClick={handleSubmit}
           sx={{ height: 56, fontWeight: 'bold' }}
           data-testid="behavior-submit-button"
+          {...debugAttrs}
         >
           {selectedBehavior ? '行動記録を保存' : '支援記録を保存'}
         </Button>

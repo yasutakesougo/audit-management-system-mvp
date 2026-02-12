@@ -13,11 +13,11 @@ export function useInMemoryProcedureRepository(): ProcedureRepository {
 }
 
 export function useInMemoryBehaviorRepository() {
-  const { data, fetchByUser, add } = useBehaviorStore();
+  const { data, fetchByUser, add, error, clearError } = useBehaviorStore();
   const repo = useMemo<BehaviorRepository>(() => ({
     fetchByUser,
     add: async (record: Omit<BehaviorRecord, 'id'>) => add(record),
   }), [add, fetchByUser]);
 
-  return { repo, data } as const;
+  return { repo, data, error, clearError } as const;
 }
