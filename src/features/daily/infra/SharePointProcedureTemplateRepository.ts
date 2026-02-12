@@ -27,6 +27,27 @@ import {
   SUPPORT_TEMPLATES_SELECT_FIELDS,
 } from '@/sharepoint/fields';
 
+/**
+ * Support Template Item (Domain Model)
+ * 
+ * ドメインモデルのプロパティ名は SharePoint の内部名と異なります。
+ * SharePoint の内部名には "0" サフィックスが付与されています：
+ * - UserCode → UserCode0 (SharePoint 内部名)
+ * - RowNo → RowNo0 (SharePoint 内部名)
+ * - TimeSlot → TimeSlot0 (SharePoint 内部名)
+ * - Activity → Activity0 (SharePoint 内部名)
+ * - PersonManual → PersonManual0 (SharePoint 内部名)
+ * - SupporterManual → SupporterManual0 (SharePoint 内部名)
+ * 
+ * マッピングは FIELD_MAP_SUPPORT_TEMPLATES を使用して行われます。
+ * 
+ * @example
+ * // SharePoint API レスポンス
+ * { "Id": 1, "UserCode0": "I001", "RowNo0": 1, "TimeSlot0": "09:30-10:30" }
+ * 
+ * // ドメインモデル（このtype）
+ * { Id: 1, UserCode: "I001", RowNo: 1, TimeSlot: "09:30-10:30" }
+ */
 export type SupportTemplateItem = {
   Id?: number;
   Title: string;
