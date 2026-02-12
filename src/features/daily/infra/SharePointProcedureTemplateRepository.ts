@@ -97,7 +97,7 @@ export async function getTemplatesByUser(
   const fields = FIELD_MAP_SUPPORT_TEMPLATES;
   
   // ✅ 正しい使い方: FIELD_MAP経由で内部名を取得
-  const select = [...SUPPORT_TEMPLATES_SELECT_FIELDS] as unknown as string[];
+  const select = [...SUPPORT_TEMPLATES_SELECT_FIELDS];
   const filter = `${fields.userCode} eq '${escapeSingleQuotes(userCode)}'`; // UserCode0 eq 'I001'
   const orderby = fields.rowNo; // RowNo0
 
@@ -126,7 +126,7 @@ export async function getAllTemplates(
 ): Promise<SupportTemplateItem[]> {
   const fields = FIELD_MAP_SUPPORT_TEMPLATES;
   
-  const select = [...SUPPORT_TEMPLATES_SELECT_FIELDS] as unknown as string[];
+  const select = [...SUPPORT_TEMPLATES_SELECT_FIELDS];
   const orderby = `${fields.userCode} asc,${fields.rowNo} asc`; // UserCode0 asc, RowNo0 asc
 
   const rows = await client.getListItemsByTitle<SharePointTemplateRow>(
