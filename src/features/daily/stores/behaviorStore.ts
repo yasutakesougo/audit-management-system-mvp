@@ -22,7 +22,7 @@ export function useBehaviorStore() {
       const result = await repo.listByUser(userId, { order: 'desc', limit: RECENT_LIMIT });
       const normalized = ensureDesc(result).slice(0, RECENT_LIMIT);
       setData(normalized);
-      setError(null);
+      // ⚠️ error はクリアしない（add error を保持、手動で閉じるまで表示し続ける）
     } catch (err) {
       console.error(err);
       setError(err instanceof Error ? err : new Error('Failed to load behaviors'));
@@ -36,14 +36,22 @@ export function useBehaviorStore() {
     try {
       const newRecord = await repo.add(record);
       setData((prev) => [newRecord, ...prev]);
+      setError(null); // ✅ 成功時のみクリア
       return newRecord;
     } catch (err) {
       console.error(err);
-      throw err;
+      const error = err instanceof Error ? err : new Error('Failed to add behavior');
+      setError(error);
+      // 🚨 throw で上に投げる（呼び出し側で try/catch が握ってる）
+      throw error;
     } finally {
       setLoading(false);
     }
   }, [repo]);
+
+  const clearError = useCallback(() => {
+    setError(null);
+  }, []);
 
   return {
     data,
@@ -51,6 +59,7 @@ export function useBehaviorStore() {
     error,
     fetchByUser,
     add,
+    clearError,
   } as const;
 }
 
