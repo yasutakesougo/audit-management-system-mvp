@@ -62,7 +62,20 @@ export function RecordPanel(props: RecordPanelProps): JSX.Element {
           height: '100%',
           display: 'flex',
           flexDirection: 'column',
-          position: 'relative'
+          position: 'relative',
+          transition: 'none',
+          // hover/focus でピクつきやすい MUI の定番クラスだけ止める
+          '& .MuiButtonBase-root, & .MuiChip-root, & .MuiToggleButton-root, & .MuiIconButton-root': {
+            transition: 'none !important',
+          },
+          // 文字の色/opacity 変化（hover, disabled, selected）で残像化するのを止める
+          '& .MuiTypography-root, & .MuiSvgIcon-root': {
+            transition: 'none !important',
+          },
+          // outline/box-shadow の瞬間変化を抑制
+          '& .MuiButtonBase-root:focus-visible': {
+            outline: 'none',
+          }
         }}
         data-testid="record-panel"
       >
@@ -251,7 +264,20 @@ export function RecordPanel(props: RecordPanelProps): JSX.Element {
         height: '100%',
         display: 'flex',
         flexDirection: 'column',
-        position: 'relative'
+        position: 'relative',
+        transition: 'none',
+        // hover/focus でピクつきやすい MUI の定番クラスだけ止める
+        '& .MuiButtonBase-root, & .MuiChip-root, & .MuiToggleButton-root, & .MuiIconButton-root': {
+          transition: 'none !important',
+        },
+        // 文字の色/opacity 変化（hover, disabled, selected）で残像化するのを止める
+        '& .MuiTypography-root, & .MuiSvgIcon-root': {
+          transition: 'none !important',
+        },
+        // outline/box-shadow の瞬間変化を抑制
+        '& .MuiButtonBase-root:focus-visible': {
+          outline: 'none',
+        }
       }}
       data-testid="record-panel"
     >
@@ -320,7 +346,7 @@ export function RecordPanel(props: RecordPanelProps): JSX.Element {
                 <Paper
                   ref={selectedActivityRef}
                   variant="outlined"
-                  sx={{ p: 2, bgcolor: 'primary.50', borderColor: 'primary.main', transition: 'background-color 0.2s ease' }}
+                  sx={{ p: 2, bgcolor: 'primary.50', borderColor: 'primary.main' }}
                 >
                   <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2}>
                     <Box flex={1}>

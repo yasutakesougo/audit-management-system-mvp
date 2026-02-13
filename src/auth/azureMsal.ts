@@ -56,12 +56,15 @@ export const getPcaSingleton = async (): Promise<PublicClientApplication> => {
 
 	pcaInstance = new PublicClientApplication(config);
 
+	// ✅ CRITICAL: initialize() must be called before any MSAL API
+	await pcaInstance.initialize();
+
 	// (handleRedirectPromise responsibility moved to main.tsx)
 
 	// Cache in globalThis for use by MsalProvider + other consumers
 	(globalThis as MsalGlobalCarrier).__MSAL_PUBLIC_CLIENT__ = pcaInstance;
 
-	console.info('[msal] singleton instance created and cached');
+	console.info('[msal] singleton instance created, initialized, and cached');
 	return pcaInstance;
 };
 

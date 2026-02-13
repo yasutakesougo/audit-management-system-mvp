@@ -4,7 +4,6 @@ import {
   AppBar,
   Box,
   Button,
-  Dialog,
   Toolbar,
   Typography,
 } from '@mui/material';
@@ -44,8 +43,45 @@ export function FullScreenDailyDialogPage({
     navigate('/dailysupport');
   }, [navigate]);
 
+  // ✅ 背景スクロール防止（フルスクリーン時に背面が動かないように）
+  React.useEffect(() => {
+    if (!open) return;
+    const originalOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    return () => {
+      document.body.style.overflow = originalOverflow;
+    };
+  }, [open]);
+
+  // ✅ Esc キーで戻る（Dialog 互換の UX）
+  React.useEffect(() => {
+    if (!open || busy) return;
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        e.preventDefault();
+        handleClose();
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [open, busy, handleClose]);
+
+  // ✅ Dialog → fixed Box に置換（root 構造最適化）
+  if (!open) return null;
+
   return (
-    <Dialog fullScreen open={open} data-testid={testId}>
+    <Box
+      data-testid={testId}
+      sx={{
+        position: 'fixed',
+        inset: 0,
+        bgcolor: 'background.default',
+        zIndex: 1300,
+        overflow: 'auto',
+        display: 'flex',
+        flexDirection: 'column',
+      }}
+    >
       <AppBar position="sticky" color="default" elevation={1}>
         <Toolbar variant="dense" sx={{ gap: 1 }}>
           <Button
@@ -78,9 +114,9 @@ export function FullScreenDailyDialogPage({
         </Toolbar>
       </AppBar>
 
-      <Box sx={{ p: 2 }}>
+      <Box sx={{ flex: 1, overflow: 'auto' }}>
         {children}
       </Box>
-    </Dialog>
+    </Box>
   );
 }
