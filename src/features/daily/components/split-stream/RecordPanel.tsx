@@ -17,7 +17,7 @@ import ToggleButton from '@mui/material/ToggleButton';
 import ToggleButtonGroup from '@mui/material/ToggleButtonGroup';
 import Typography from '@mui/material/Typography';
 import type { ReactNode } from 'react';
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState, memo } from 'react';
 import { BehaviorIntensity, BehaviorMood, BehaviorObservation, MOCK_OBSERVATION_MASTER } from '../../domain/daily/types';
 import { getScheduleKey } from '@/features/daily/domain/getScheduleKey';
 import type { ScheduleItem } from './ProcedurePanel';
@@ -207,13 +207,14 @@ export function RecordPanel(props: RecordPanelProps): JSX.Element {
   }, [effectiveSelectedSlotKey, isLocked]);
 
   const handleSlotChange = (next: string) => {
-    // Synchronously update sticky ref when valid slot is selected (before state update)
+    // Prevent toggle deselection (null/'' state) to avoid empty frame flicker
     const normalized = next && next.trim() !== '' ? next : '';
-    if (normalized) {
-      const validSlot = schedule.find((item) => getScheduleKey(item.time, item.activity) === normalized);
-      if (validSlot) {
-        stickySlotRef.current = validSlot;
-      }
+    if (!normalized) return; // ← Block deselection completely
+    
+    // Synchronously update sticky ref when valid slot is selected (before state update)
+    const validSlot = schedule.find((item) => getScheduleKey(item.time, item.activity) === normalized);
+    if (validSlot) {
+      stickySlotRef.current = validSlot;
     }
     
     if (isControlledSlot) {
@@ -352,68 +353,68 @@ export function RecordPanel(props: RecordPanelProps): JSX.Element {
                       label={item.time}
                       color={isSelected ? 'primary' : 'default'}
                       variant={isSelected ? 'filled' : 'outlined'}
-                      onClick={() => !isLocked && handleSlotChange(effectiveSelectedSlotKey === key ? '' : key)}
+                      onClick={() => !isLocked && handleSlotChange(key)}
                       disabled={isLocked}
                       sx={{ fontWeight: isSelected ? 'bold' : undefined, minWidth: 72 }}
                     />
                   );
                 })}
               </Box>
-              <Box sx={{ minHeight: { xs: 140, md: 180 } }}>
+              {/* Single Paper always mounted to prevent DOM swap flicker */}
+              <Paper
+                ref={selectedActivityRef}
+                variant="outlined"
+                sx={{
+                  p: 2,
+                  bgcolor: 'background.paper',
+                  borderColor: selectedSlot ? 'primary.main' : 'divider',
+                  boxShadow: 0,
+                  minHeight: { xs: 140, md: 180 },
+                  display: 'flex',
+                  // GPU compositing optimization (prevent subpixel artifacts)
+                  isolation: 'isolate',
+                  contain: 'paint',
+                  transform: 'translateZ(0)',
+                  backfaceVisibility: 'hidden',
+                }}
+              >
                 {showEmptyState ? (
-                  <Paper
-                    variant="outlined"
+                  <Box
                     sx={{
-                      p: 2,
-                      bgcolor: 'background.paper',
-                      borderColor: 'divider',
-                      boxShadow: 0,
-                      minHeight: { xs: 140, md: 180 },
                       display: 'flex',
                       alignItems: 'center',
                       justifyContent: 'center',
+                      width: '100%',
                     }}
                   >
                     <Typography variant="body2" color="text.secondary">
                       時間帯を選択すると、支援内容(Plan)が表示されます
                     </Typography>
-                  </Paper>
+                  </Box>
                 ) : selectedSlot ? (
-                  <Paper
-                    ref={selectedActivityRef}
-                    variant="outlined"
-                    sx={{
-                      p: 2,
-                      bgcolor: 'background.paper',
-                      borderColor: 'primary.main',
-                      boxShadow: 0,
-                      minHeight: { xs: 140, md: 180 },
-                    }}
-                  >
-                    <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2}>
-                      <Box flex={1}>
-                        <Typography variant="caption" color="text.secondary" fontWeight="bold">
-                          本人のやること (Activity)
-                        </Typography>
-                        <Typography variant="body1" fontWeight="bold">
-                          {selectedSlot.activity}
-                        </Typography>
-                        <Typography variant="body2" color="text.secondary">
-                          {selectedSlot.time}
-                        </Typography>
-                      </Box>
-                      <Box flex={1}>
-                        <Typography variant="caption" color="text.secondary" fontWeight="bold">
-                          支援者のやること (Instruction)
-                        </Typography>
-                        <Typography variant="body2" sx={{ whiteSpace: 'pre-wrap' }}>
-                          {selectedSlot.instruction}
-                        </Typography>
-                      </Box>
-                    </Stack>
-                  </Paper>
+                  <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2} sx={{ width: '100%' }}>
+                    <Box flex={1}>
+                      <Typography variant="caption" color="text.secondary" fontWeight="bold">
+                        本人のやること (Activity)
+                      </Typography>
+                      <Typography variant="body1" fontWeight="bold">
+                        {selectedSlot.activity}
+                      </Typography>
+                      <Typography variant="body2" color="text.secondary">
+                        {selectedSlot.time}
+                      </Typography>
+                    </Box>
+                    <Box flex={1}>
+                      <Typography variant="caption" color="text.secondary" fontWeight="bold">
+                        支援者のやること (Instruction)
+                      </Typography>
+                      <Typography variant="body2" sx={{ whiteSpace: 'pre-wrap' }}>
+                        {selectedSlot.instruction}
+                      </Typography>
+                    </Box>
+                  </Stack>
                 ) : null}
-              </Box>
+              </Paper>
             </Box>
           ) : (
             <Alert severity="info">
@@ -622,4 +623,5 @@ export function RecordPanel(props: RecordPanelProps): JSX.Element {
     </Card>
   );
 }
-export default RecordPanel;
+
+export default memo(RecordPanel);

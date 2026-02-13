@@ -78,7 +78,14 @@ const TimeBasedSupportRecordPage: React.FC = () => {
     initialStepKey,
     initialUnfilledOnly,
   });
-  const displayedError = submitError ?? behaviorError;
+  // Filter out DailyActivityRecords list errors (not yet implemented in SharePoint)
+  const rawError = submitError ?? behaviorError;
+  const displayedError = useMemo(() => {
+    if (!rawError) return null;
+    const errorMessage = String(rawError);
+    if (errorMessage.includes('DailyActivityRecords')) return null;
+    return rawError;
+  }, [rawError]);
   const selectedUser = useMemo(() => users.find((user) => user.UserID === targetUserId), [users, targetUserId]);
   const previousSearchRef = useRef(location.search);
 
@@ -246,6 +253,18 @@ const TimeBasedSupportRecordPage: React.FC = () => {
     setIsEditOpen(false);
   }, []);
 
+  const handleAcknowledged = useCallback(() => {
+    setIsAcknowledged(true);
+  }, []);
+
+  const handleToggleUnfilledOnly = useCallback(() => {
+    setShowUnfilledOnly((prev) => !prev);
+  }, []);
+
+  const handleSlotChange = useCallback((next: string) => {
+    setSelectedStepId(next || null);
+  }, []);
+
   return (
     <FullScreenDailyDialogPage
       title="支援（サポート記録）"
@@ -334,14 +353,14 @@ const TimeBasedSupportRecordPage: React.FC = () => {
               title={selectedUser ? `${selectedUser.FullName} 様 (Plan)` : '支援手順 (Plan)'}
               schedule={schedule}
               isAcknowledged={isAcknowledged}
-              onAcknowledged={() => setIsAcknowledged(true)}
+              onAcknowledged={handleAcknowledged}
               onEdit={handleEditorOpen}
               selectedStepId={selectedStepId}
               onSelectStep={handleSelectStepAndScroll}
               filledStepIds={filledStepIds}
               scrollToStepId={scrollToStepId}
               showUnfilledOnly={showUnfilledOnly}
-              onToggleUnfilledOnly={() => setShowUnfilledOnly((prev) => !prev)}
+              onToggleUnfilledOnly={handleToggleUnfilledOnly}
               unfilledCount={unfilledStepsCount}
               totalCount={totalSteps}
             />
@@ -365,7 +384,7 @@ const TimeBasedSupportRecordPage: React.FC = () => {
               onSubmit={handleRecordSubmit}
               schedule={schedule}
               selectedSlotKey={selectedStepId ?? undefined}
-              onSlotChange={(next) => setSelectedStepId(next || null)}
+              onSlotChange={handleSlotChange}
               onAfterSubmit={handleAfterSubmit}
               recordDate={recordDate}
             />

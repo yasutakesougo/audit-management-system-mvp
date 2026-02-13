@@ -10,7 +10,7 @@ import ListItemText from '@mui/material/ListItemText';
 import ToggleButton from '@mui/material/ToggleButton';
 import Typography from '@mui/material/Typography';
 import type { ReactNode } from 'react';
-import { useCallback, useEffect, useMemo, useRef } from 'react';
+import { useCallback, useEffect, useMemo, useRef, memo } from 'react';
 import { flushSync } from 'react-dom';
 import { getScheduleKey } from '@/features/daily/domain/getScheduleKey';
 
@@ -299,4 +299,4 @@ export function ProcedurePanel(props: ProcedurePanelProps): JSX.Element {
   );
 }
 
-export default ProcedurePanel;
+export default memo(ProcedurePanel);
