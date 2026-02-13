@@ -180,6 +180,11 @@ Before modifying drawer navigation tests:
 - [ ] Does test verify visibility (not just DOM presence)?
 - [ ] Does test dispatch popstate in JSDOM?
 
+Before testing AppBar icon navigation:
+- [ ] Icons with `aria-label` use `findByRole()` with name match (e.g., audit nav: `findByRole('link', { name: /監査ログ/i })`)
+- [ ] Use async `findByRole()` not sync `getByRole()` (CI rendering delays)
+- [ ] Check AppShell for `component={RouterLink}` to determine role (icon+link → role='link')
+
 ---
 
 ## References

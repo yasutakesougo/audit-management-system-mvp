@@ -47,6 +47,18 @@ jobs:
               - 'vite.config.*'
               - 'vitest.config.*'
               - 'public/**'
+            perf:
+              - 'src/**'
+              - 'public/**'
+              - 'index.html'
+              - 'vite.config.*'
+              - 'package.json'
+              - 'package-lock.json'
+              - 'pnpm-lock.yaml'
+              - 'yarn.lock'
+              - '.github/workflows/test.yml'
+              - '!docs/**'
+              - '!**/*.md'
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
@@ -158,7 +170,7 @@ jobs:
           path: test-results/a11y-baseline/**/*.json
           if-no-files-found: ignore
       - name: Perf report (LHCI + Web Vitals)
-        if: github.event_name == 'workflow_dispatch' || (github.ref == 'refs/heads/main' && steps.changes.outputs.playwright == 'true')
+        if: github.event_name == 'workflow_dispatch' || (github.ref == 'refs/heads/main' && steps.changes.outputs.perf == 'true')
         run: npm run -s ci:perf-report
         env:
           VITE_E2E_MSAL_MOCK: "1"
