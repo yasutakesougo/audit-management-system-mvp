@@ -25,7 +25,7 @@
     "preview": "vite preview",
     "preview:e2e": "npm run build && node scripts/write-e2e-runtime-env.mjs && vite preview --host 127.0.0.1 --port 5173 --strictPort",
     "preview:csp": "node scripts/preview-csp.mjs",
-    "deploy:cf": "DEPLOY_TARGET=cloudflare npm run build && npx wrangler deploy",
+    "deploy:cf": "bash scripts/deploy-guard.sh && DEPLOY_TARGET=cloudflare npm run build && npx wrangler deploy",
     "config:print": "VITE_CONFIG_DEBUG=1 vite --force",
     "gen:system-map": "tsx scripts/generate-system-map.ts",
     "test": "vitest run",
