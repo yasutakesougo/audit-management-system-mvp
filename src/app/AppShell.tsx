@@ -1196,7 +1196,6 @@ const ConnectionStatusReal: React.FC<{ sharePointDisabled: boolean }> = ({ share
 const FooterQuickActions: React.FC<{ fixed?: boolean }> = ({ fixed = true }) => {
   const location = useLocation();
   const theme = useTheme();
-  const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
   const [quickNoteOpen, setQuickNoteOpen] = useState(false);
   const isHandoffTimeline =
     location.pathname === '/handoff-timeline' || location.pathname.startsWith('/handoff-timeline/');
@@ -1230,8 +1229,8 @@ const FooterQuickActions: React.FC<{ fixed?: boolean }> = ({ fixed = true }) => 
     'handoff-quicknote': '申し送り',
     'schedules-month': '予定',
     'daily-attendance': '通所',
-    'daily-activity': '記録',
-    'daily-support': '手順',
+    'daily-activity': 'ケース記録',
+    'daily-support': '支援手順',
   };
 
   const scheduleMonthAction: FooterAction = {
@@ -1305,41 +1304,49 @@ const FooterQuickActions: React.FC<{ fixed?: boolean }> = ({ fixed = true }) => 
         <Paper
           elevation={6}
           sx={{
-            borderRadius: { xs: 3, sm: 5 },
-            px: { xs: 2, sm: 3 },
-            py: { xs: 1.5, sm: 2 },
+            height: 56,
+            borderRadius: 0,
+            px: { xs: 1, sm: 2 },
+            py: { xs: 0.5, sm: 1 },
+            pb: 'calc(1px * (var(--mobile-safe-area, 0)) + 0.5rem)',
             backdropFilter: 'blur(6px)',
             backgroundColor: (theme) =>
               theme.palette.mode === 'dark'
-                ? 'rgba(33, 33, 33, 0.85)'
-                : 'rgba(255, 255, 255, 0.9)',
+                ? 'rgba(33, 33, 33, 0.95)'
+                : 'rgba(255, 255, 255, 0.98)',
+            boxSizing: 'border-box',
+            display: 'flex',
+            alignItems: 'center',
           }}
         >
           <Stack
-            direction={{ xs: 'row', sm: 'row' }}
-            spacing={1.5}
-            alignItems="stretch"
+            direction="row"
+            spacing={0.5}
+            alignItems="center"
             sx={{
+              width: '100%',
+              height: '100%',
               overflowX: 'auto',
               overflowY: 'hidden',
               flexWrap: 'nowrap',
               WebkitOverflowScrolling: 'touch',
-              px: 0.5,
-              py: 0.5,
               scrollbarWidth: 'thin',
-              '&::-webkit-scrollbar': { height: 6 },
+              '&::-webkit-scrollbar': { height: 4 },
             }}
           >
             {actions.map(({ key, label, to, color, variant: baseVariant, onClick }) => {
-              const displayLabel = isMobile ? (footerShortLabelByKey[key] ?? label) : label;
+              const displayLabel = footerShortLabelByKey[key] ?? label;
               const commonProps = {
                 color,
-                size: 'large' as const,
-                fullWidth: !isMobile,
+                size: 'small' as const,
+                fullWidth: true,
                 sx: {
-                  flex: isMobile ? '0 0 auto' : 1,
-                  minWidth: isMobile ? 160 : 'auto',
+                  flex: 1,
+                  minHeight: 44,
                   fontWeight: 600,
+                  fontSize: '0.75rem',
+                  whiteSpace: 'nowrap',
+                  py: 0.5,
                 },
                 'data-testid': footerTestIds[key],
               };

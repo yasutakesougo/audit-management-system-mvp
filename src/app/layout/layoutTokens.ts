@@ -12,7 +12,7 @@ export const layoutTokens = {
     width: 240,
   },
   footer: {
-    height: 36,
+    height: 56,
   },
   touchTarget: {
     min: 40,

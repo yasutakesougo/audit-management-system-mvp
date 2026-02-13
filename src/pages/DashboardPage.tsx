@@ -36,9 +36,10 @@ import Stack from '@mui/material/Stack';
 import Tab from '@mui/material/Tab';
 import Tabs from '@mui/material/Tabs';
 import Typography from '@mui/material/Typography';
+import { useTheme } from '@mui/material';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { alpha } from '@mui/material/styles';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { PersonDaily, SeizureRecord } from '../domain/daily/types';
 import DashboardSafetyHUD from '@/features/dashboard/DashboardSafetyHUD';
 import { useDashboardViewModel, type DashboardBriefingChip, type DashboardSection, type DashboardSectionKey } from '@/features/dashboard/useDashboardViewModel';
@@ -219,6 +220,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ audience = 'staff' }) => 
    * - E2E/スモークの安定性のため、Page側に副作用やデータ整形を増やさない。
    */
   const navigate = useNavigate();
+  const location = useLocation();
   const { schedules: schedulesEnabled } = useFeatureFlags();
   const [tabValue, setTabValue] = useState(0);
   const [showAttendanceNames, setShowAttendanceNames] = useState(false);
@@ -1485,26 +1487,133 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ audience = 'staff' }) => 
         </Box>
 
         <Stack spacing={{ xs: 2, sm: 3, md: 4 }} sx={{ mb: { xs: 2, sm: 3 } }}>
-          {vm.sections.map((section) => (
-            <Box
-              key={section.key}
-              id={sectionIdByKey[section.key]}
-              sx={(theme) => ({
-                scrollMarginTop: { xs: 80, sm: 96 },
-                transition: 'box-shadow 0.2s ease, outline-color 0.2s ease',
-                outline: highlightSection === section.key ? '2px solid' : '2px solid transparent',
-                outlineColor: highlightSection === section.key ? theme.palette.primary.main : 'transparent',
-                borderRadius: highlightSection === section.key ? 2 : 0,
-              })}
-            >
-              {section.enabled === false ? null : renderSection(section)}
-            </Box>
-          ))}
+          {(() => {
+            const searchParams = new URLSearchParams(location.search);
+            const tabletParam = searchParams.get('tablet');
+            const forceTablet = tabletParam === '1';
+            const windowWidth = typeof window !== 'undefined' ? window.innerWidth : 0;
+            const meetsWidth = windowWidth >= 1024;
+            const isTabletLandscape = forceTablet || meetsWidth;
+            
+            // Debug: コンソールに出力
+            if (typeof window !== 'undefined') {
+              console.log('[Dashboard Layout Debug]', {
+                'URL': location.search,
+                'tablet param': tabletParam,
+                'forceTablet': forceTablet,
+                'window.innerWidth': windowWidth,
+                'meetsWidth (>=1024)': meetsWidth,
+                'isTabletLandscape (final)': isTabletLandscape,
+              });
+            }
+            
+            if (isTabletLandscape) {
+              return (
+                <DashboardTabletLayout
+                  sections={vm.sections}
+                  renderSection={renderSection}
+                  sectionIdByKey={sectionIdByKey}
+                  highlightSection={highlightSection}
+                />
+              );
+            }
+
+            return vm.sections.map((section) => (
+              <Box
+                key={section.key}
+                id={sectionIdByKey[section.key]}
+                sx={(theme) => ({
+                  scrollMarginTop: { xs: 80, sm: 96 },
+                  transition: 'box-shadow 0.2s ease, outline-color 0.2s ease',
+                  outline: highlightSection === section.key ? '2px solid' : '2px solid transparent',
+                  outlineColor: highlightSection === section.key ? theme.palette.primary.main : 'transparent',
+                  borderRadius: highlightSection === section.key ? 2 : 0,
+                })}
+              >
+                {section.enabled === false ? null : renderSection(section)}
+              </Box>
+            ));
+          })()}
         </Stack>
 
       </Box>
 
     </Container>
+  );
+};
+
+// Tablet用 3カラムコマンドセンターレイアウト
+type DashboardTabletLayoutProps = {
+  sections: DashboardSection[];
+  renderSection: (section: DashboardSection) => React.ReactNode;
+  sectionIdByKey: Record<DashboardSectionKey, string>;
+  highlightSection?: DashboardSectionKey | null;
+};
+
+const DashboardTabletLayout: React.FC<DashboardTabletLayoutProps> = ({
+  sections,
+  renderSection,
+  sectionIdByKey,
+  highlightSection,
+}) => {
+  const theme = useTheme();
+  const getSection = (key: DashboardSectionKey) => sections.find((s) => s.key === key);
+  const renderSectionIfEnabled = (key: DashboardSectionKey) => {
+    const section = getSection(key);
+    if (!section || section.enabled === false) return null;
+    return (
+      <Box
+        key={section.key}
+        id={sectionIdByKey[key]}
+        sx={{
+          scrollMarginTop: 96,
+          transition: 'box-shadow 0.2s ease, outline-color 0.2s ease',
+          outline: highlightSection === key ? '2px solid' : '2px solid transparent',
+          outlineColor: highlightSection === key ? theme.palette.primary.main : 'transparent',
+          borderRadius: highlightSection === key ? 2 : 0,
+        }}
+      >
+        {renderSection(section)}
+      </Box>
+    );
+  };
+
+  return (
+    <>
+      <Grid container spacing={3}>
+        {/* 左カラム：Safety + Handover */}
+        <Grid size={{ xs: 12, md: 4 }} sx={{ display: 'flex' }}>
+          <Stack spacing={2} sx={{ flex: 1, width: '100%' }}>
+            {renderSectionIfEnabled('safety')}
+            {renderSectionIfEnabled('handover')}
+          </Stack>
+        </Grid>
+
+        {/* 中央カラム：Attendance + Daily */}
+        <Grid size={{ xs: 12, md: 4 }} sx={{ display: 'flex' }}>
+          <Stack spacing={2} sx={{ flex: 1, width: '100%' }}>
+            {renderSectionIfEnabled('attendance')}
+            {renderSectionIfEnabled('daily')}
+          </Stack>
+        </Grid>
+
+        {/* 右カラム：Schedule（高さ確保） */}
+        <Grid size={{ xs: 12, md: 4 }} sx={{ display: 'flex' }}>
+          <Stack spacing={2} sx={{ flex: 1, width: '100%' }}>
+            {renderSectionIfEnabled('schedule')}
+          </Stack>
+        </Grid>
+      </Grid>
+
+      {/* 下段：Stats / adminOnly / staffOnly */}
+      <Box sx={{ mt: 3 }}>
+        <Stack spacing={2}>
+          {renderSectionIfEnabled('stats')}
+          {renderSectionIfEnabled('adminOnly')}
+          {renderSectionIfEnabled('staffOnly')}
+        </Stack>
+      </Box>
+    </>
   );
 };
 
