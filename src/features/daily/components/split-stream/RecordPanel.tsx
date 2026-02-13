@@ -143,10 +143,27 @@ export function RecordPanel(props: RecordPanelProps): JSX.Element {
   );
 
   const isLocked = lockState !== 'unlocked';
-  const selectedSlot = useMemo(
+  
+  // Sticky selection: keep last valid selection via ref (updated synchronously on event)
+  const stickySlotRef = useRef<ScheduleItem | null>(null);
+  const hasEverSelectedRef = useRef(false);
+  
+  // Current slot lookup (may be null when '' is passed)
+  const currentSelectedSlot = useMemo(
     () => schedule.find((item) => getScheduleKey(item.time, item.activity) === effectiveSelectedSlotKey) ?? null,
     [schedule, effectiveSelectedSlotKey]
   );
+  
+  // Fallback to sticky when current is null
+  const selectedSlot = currentSelectedSlot ?? stickySlotRef.current;
+  
+  // Track if ever selected (for initial empty state)
+  if (selectedSlot) {
+    hasEverSelectedRef.current = true;
+  }
+  
+  const showEmptyState = !hasEverSelectedRef.current;
+  
   const observationText = actualObservation.trim();
   const slotSelected = Boolean(selectedSlot);
   const hasObservation = observationText.length > 0;
@@ -186,20 +203,19 @@ export function RecordPanel(props: RecordPanelProps): JSX.Element {
 
   useEffect(() => {
     if (isLocked || !effectiveSelectedSlotKey) return;
-    observationRef.current?.focus();
+    observationRef.current?.focus({ preventScroll: true });
   }, [effectiveSelectedSlotKey, isLocked]);
 
-  useEffect(() => {
-    if (!selectedSlot) return;
-    const node = selectedActivityRef.current;
-    if (!node) return;
-    const rect = node.getBoundingClientRect();
-    const inView = rect.top >= 0 && rect.bottom <= window.innerHeight;
-    if (inView) return;
-    node.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-  }, [selectedSlot]);
-
   const handleSlotChange = (next: string) => {
+    // Synchronously update sticky ref when valid slot is selected (before state update)
+    const normalized = next && next.trim() !== '' ? next : '';
+    if (normalized) {
+      const validSlot = schedule.find((item) => getScheduleKey(item.time, item.activity) === normalized);
+      if (validSlot) {
+        stickySlotRef.current = validSlot;
+      }
+    }
+    
     if (isControlledSlot) {
       onSlotChange?.(next);
       return;
@@ -262,6 +278,7 @@ export function RecordPanel(props: RecordPanelProps): JSX.Element {
       variant="outlined"
       sx={{
         height: '100%',
+        minHeight: { xs: 320, md: 420 },
         display: 'flex',
         flexDirection: 'column',
         position: 'relative',
@@ -342,39 +359,61 @@ export function RecordPanel(props: RecordPanelProps): JSX.Element {
                   );
                 })}
               </Box>
-              {selectedSlot ? (
-                <Paper
-                  ref={selectedActivityRef}
-                  variant="outlined"
-                  sx={{ p: 2, bgcolor: 'primary.50', borderColor: 'primary.main' }}
-                >
-                  <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2}>
-                    <Box flex={1}>
-                      <Typography variant="caption" color="text.secondary" fontWeight="bold">
-                        本人のやること (Activity)
-                      </Typography>
-                      <Typography variant="body1" fontWeight="bold">
-                        {selectedSlot.activity}
-                      </Typography>
-                      <Typography variant="body2" color="text.secondary">
-                        {selectedSlot.time}
-                      </Typography>
-                    </Box>
-                    <Box flex={1}>
-                      <Typography variant="caption" color="text.secondary" fontWeight="bold">
-                        支援者のやること (Instruction)
-                      </Typography>
-                      <Typography variant="body2" sx={{ whiteSpace: 'pre-wrap' }}>
-                        {selectedSlot.instruction}
-                      </Typography>
-                    </Box>
-                  </Stack>
-                </Paper>
-              ) : (
-                <Alert severity="info" sx={{ py: 0 }}>
-                  時間帯を選択すると、支援内容(Plan)が表示されます
-                </Alert>
-              )}
+              <Box sx={{ minHeight: { xs: 140, md: 180 } }}>
+                {showEmptyState ? (
+                  <Paper
+                    variant="outlined"
+                    sx={{
+                      p: 2,
+                      bgcolor: 'background.paper',
+                      borderColor: 'divider',
+                      boxShadow: 0,
+                      minHeight: { xs: 140, md: 180 },
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                    }}
+                  >
+                    <Typography variant="body2" color="text.secondary">
+                      時間帯を選択すると、支援内容(Plan)が表示されます
+                    </Typography>
+                  </Paper>
+                ) : selectedSlot ? (
+                  <Paper
+                    ref={selectedActivityRef}
+                    variant="outlined"
+                    sx={{
+                      p: 2,
+                      bgcolor: 'background.paper',
+                      borderColor: 'primary.main',
+                      boxShadow: 0,
+                      minHeight: { xs: 140, md: 180 },
+                    }}
+                  >
+                    <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2}>
+                      <Box flex={1}>
+                        <Typography variant="caption" color="text.secondary" fontWeight="bold">
+                          本人のやること (Activity)
+                        </Typography>
+                        <Typography variant="body1" fontWeight="bold">
+                          {selectedSlot.activity}
+                        </Typography>
+                        <Typography variant="body2" color="text.secondary">
+                          {selectedSlot.time}
+                        </Typography>
+                      </Box>
+                      <Box flex={1}>
+                        <Typography variant="caption" color="text.secondary" fontWeight="bold">
+                          支援者のやること (Instruction)
+                        </Typography>
+                        <Typography variant="body2" sx={{ whiteSpace: 'pre-wrap' }}>
+                          {selectedSlot.instruction}
+                        </Typography>
+                      </Box>
+                    </Stack>
+                  </Paper>
+                ) : null}
+              </Box>
             </Box>
           ) : (
             <Alert severity="info">
@@ -583,5 +622,4 @@ export function RecordPanel(props: RecordPanelProps): JSX.Element {
     </Card>
   );
 }
-
 export default RecordPanel;
