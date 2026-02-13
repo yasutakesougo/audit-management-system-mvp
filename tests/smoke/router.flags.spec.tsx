@@ -186,7 +186,11 @@ describe('router future flags smoke', () => {
       { timeout: process.env.CI ? 15_000 : 8_000 },
     );
     expect(screen.queryByText(/権限を確認中/)).not.toBeInTheDocument();
-    expect(await screen.findByText(/監査ログ/, arrivalOptions)).toBeInTheDocument();
+    // ✅ Audit nav via role-based aria-label query (stable across CI/local)
+    // AppShell.tsx: IconButton component={RouterLink} to="/audit" aria-label="監査ログ"
+    // rendered as <a> so role="link"
+    const auditLink = await screen.findByRole('link', { name: /監査ログ/i });
+    expect(auditLink).toBeInTheDocument();
 
     await user.click(await ensureNavItem(TESTIDS.nav.daily));
     expect(await screen.findByTestId('daily-hub-root', arrivalOptions)).toBeInTheDocument();
