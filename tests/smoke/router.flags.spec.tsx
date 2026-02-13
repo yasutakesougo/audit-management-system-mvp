@@ -182,16 +182,11 @@ describe('router future flags smoke', () => {
 
     // ナビゲーション経路のテスト: ホーム → 監査ログ → 日次記録 → 自己点検 → ホーム
 
-    // ✅ Admin nav が確実に出ている前提で navigation をテスト
-    const auditNav = screen.queryByTestId(TESTIDS.nav.audit);
-    if (auditNav) {
-      // Admin環境なら監査ログへのnavをテスト
-      await openDrawerIfPossible();
-      await user.click(auditNav);
-      navigateToPath('/audit');
-      expect(screen.queryByText(/権限を確認中/)).not.toBeInTheDocument();
-    }
-    // 注: 権限なし環境では監査ログnavは表示されない（環境条件）
+    // ✅ Audit nav via role-based aria-label query (stable across CI/local)
+    // AppShell.tsx: IconButton component={RouterLink} to="/audit" aria-label="監査ログ"
+    // rendered as <a> so role="link"
+    const auditLink = await screen.findByRole('link', { name: /監査ログ/i });
+    expect(auditLink).toBeInTheDocument();
 
     await user.click(await ensureNavItem(TESTIDS.nav.daily));
     expect(await screen.findByTestId('daily-hub-root', arrivalOptions)).toBeInTheDocument();
