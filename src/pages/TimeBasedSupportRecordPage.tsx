@@ -255,7 +255,15 @@ const TimeBasedSupportRecordPage: React.FC = () => {
       <Container
         maxWidth="xl"
         disableGutters
-        sx={{ height: '100vh', display: 'flex', flexDirection: 'column', bgcolor: 'grey.100' }}
+        sx={{
+          height: '100vh',
+          display: 'flex',
+          flexDirection: 'column',
+          bgcolor: 'grey.100',
+          backgroundColor: 'background.default',
+          position: 'relative',
+          isolation: 'isolate',
+        }}
         data-testid="iceberg-time-based-support-record-page"
       >
       <Paper
