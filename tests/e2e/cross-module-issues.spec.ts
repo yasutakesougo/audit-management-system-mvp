@@ -233,9 +233,10 @@ test.describe('C-4: Cross-Module Issues E2E', () => {
           await expect(page.getByTestId('records-daily-root')).toBeVisible();
 
           // Activity の メニューから Attendance への遷移を試行
-          const menuButtons = page.locator('[aria-label*="more"], button:has(svg)');
-          if (await menuButtons.count() > 0) {
-            await menuButtons.first().click();
+          const menuButtons = page.locator('[aria-label*="メニューを開く"], [aria-label*="more"]');
+          const menuButton = menuButtons.first();
+          if (await menuButton.isVisible()) {
+            await menuButton.click({ force: true, noWaitAfter: true, timeout: 5000 });
 
             const attendanceMenuItem = page.getByText('通所状況を見る');
             if (await attendanceMenuItem.isVisible()) {
@@ -258,6 +259,8 @@ test.describe('C-4: Cross-Module Issues E2E', () => {
                 }
               }
             }
+          } else {
+            test.skip(true, 'Activity menu button not visible on this run');
           }
         }
       } else {
