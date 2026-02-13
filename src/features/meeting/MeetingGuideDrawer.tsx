@@ -13,6 +13,8 @@ import {
     Paper,
     Typography,
 } from '@mui/material';
+import { useTheme } from '@mui/material/styles';
+import useMediaQuery from '@mui/material/useMediaQuery';
 import React, { useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { HandoffMiniSummaryForDrawer } from '../handoff/HandoffMiniSummaryForDrawer';
@@ -40,6 +42,8 @@ const MeetingGuideDrawer: React.FC<MeetingGuideDrawerProps> = ({
     error,
     handoffAlert, // Option B: アラート情報を取得
   } = currentMeeting;
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
 
   const drawerStatsRef = useRef({
     stepCount: steps.length,
@@ -69,6 +73,36 @@ const MeetingGuideDrawer: React.FC<MeetingGuideDrawerProps> = ({
     span({ meta: { status: 'opened' } });
   }, [kind, open]);
 
+  useEffect(() => {
+    if (!open || !isMobile) {
+      return;
+    }
+
+    const originalOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    return () => {
+      document.body.style.overflow = originalOverflow;
+    };
+  }, [isMobile, open]);
+
+  useEffect(() => {
+    if (!open || !isMobile) {
+      return;
+    }
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        event.preventDefault();
+        onClose();
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [isMobile, onClose, open]);
+
   // Step 7C: 申し送りタイムライン連携ナビゲーション
   const navigate = useNavigate();
 
@@ -94,31 +128,14 @@ const MeetingGuideDrawer: React.FC<MeetingGuideDrawerProps> = ({
   };
 
   // エラーハンドリング
-  if (error) {
-    return (
-      <Drawer anchor="right" open={open} onClose={onClose}>
-        <Box sx={{ width: 400, p: 2 }}>
-          <Typography color="error">
-            エラー: {error.message}
-          </Typography>
-        </Box>
-      </Drawer>
-    );
-  }
-
-  return (
-    <Drawer
-      anchor="right"
-      open={open}
-      onClose={onClose}
-      PaperProps={{
-        sx: {
-          width: { xs: '100vw', sm: 400, md: 480 },
-          maxWidth: '100vw'
-        },
-      }}
-    >
-      <Box sx={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
+  const content = error ? (
+    <Box sx={{ width: { xs: '100%', sm: 400, md: 480 }, p: 2 }}>
+      <Typography color="error">
+        エラー: {error.message}
+      </Typography>
+    </Box>
+  ) : (
+    <Box sx={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
         {/* タイトル */}
         <Box sx={{ p: 3, pb: 0 }}>
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1, justifyContent: 'space-between' }}>
@@ -225,6 +242,42 @@ const MeetingGuideDrawer: React.FC<MeetingGuideDrawerProps> = ({
           </Box>
         </Box>
       </Box>
+  );
+
+  if (isMobile) {
+    if (!open) {
+      return null;
+    }
+
+    return (
+      <Box
+        sx={{
+          position: 'fixed',
+          inset: 0,
+          bgcolor: 'background.default',
+          zIndex: 1300,
+          display: 'flex',
+          flexDirection: 'column',
+        }}
+      >
+        {content}
+      </Box>
+    );
+  }
+
+  return (
+    <Drawer
+      anchor="right"
+      open={open}
+      onClose={onClose}
+      PaperProps={{
+        sx: {
+          width: { xs: '100vw', sm: 400, md: 480 },
+          maxWidth: '100vw'
+        },
+      }}
+    >
+      {content}
     </Drawer>
   );
 };

@@ -482,8 +482,10 @@ export async function openQuickUserCareDialog(page: Page) {
   // Ensure trigger is ready and clickable
   await page.waitForLoadState('networkidle');
   await trigger.scrollIntoViewIfNeeded();
-  await trigger.click({ trial: true });
-  await trigger.click({ force: true });
+  await expect(trigger).toBeVisible();
+  await expect(trigger).toBeEnabled();
+  await trigger.focus();
+  await page.keyboard.press('Enter');
   
   const dialog = getQuickScheduleDialog(page);
   // Fallback: if the dialog did not open (e.g., authz gate or query param handler lag), force the dialog params
