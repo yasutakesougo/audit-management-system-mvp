@@ -1,6 +1,7 @@
 import { isE2E } from '@/env';
 import { createContext, createElement, useContext, useMemo, type FC, type ReactNode } from 'react';
 import {
+  isAppShellVsCodeEnabled,
   isComplianceFormEnabled,
   isIcebergPdcaEnabled,
   isSchedulesFeatureEnabled,
@@ -18,6 +19,7 @@ export type FeatureFlagSnapshot = {
   schedulesWeekV2: boolean;
   icebergPdca: boolean;
   staffAttendance: boolean;
+  appShellVsCode: boolean;
 };
 
 const _hasExplicitOverride = (storageKey: string, envKey: string, envOverride?: EnvRecord): boolean => {
@@ -99,6 +101,7 @@ export const resolveFeatureFlags = (envOverride?: EnvRecord): FeatureFlagSnapsho
     schedulesWeekV2: isSchedulesWeekV2Enabled(envOverride),
     icebergPdca: isIcebergPdcaEnabled(envOverride),
     staffAttendance: isStaffAttendanceEnabled(envOverride),
+    appShellVsCode: isAppShellVsCodeEnabled(envOverride),
   };
 
   const explicitSchedules = hasExplicitBoolEnv('VITE_FEATURE_SCHEDULES', envOverride);
@@ -156,7 +159,14 @@ export const FeatureFlagsProvider: FC<FeatureFlagsProviderProps> = ({ value, chi
   const memoized = useMemo(() => {
     currentSnapshot = snapshot;
     return snapshot;
-  }, [snapshot.schedules, snapshot.complianceForm, snapshot.schedulesWeekV2, snapshot.icebergPdca, snapshot.staffAttendance]);
+  }, [
+    snapshot.schedules,
+    snapshot.complianceForm,
+    snapshot.schedulesWeekV2,
+    snapshot.icebergPdca,
+    snapshot.staffAttendance,
+    snapshot.appShellVsCode,
+  ]);
 
   return createElement(FeatureFlagsContext.Provider, { value: memoized }, children);
 };

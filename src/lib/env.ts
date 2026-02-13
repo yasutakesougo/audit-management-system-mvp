@@ -371,6 +371,9 @@ export const isStaffAttendanceEnabled = (envOverride?: EnvRecord): boolean => {
 export const isIcebergPdcaEnabled = (envOverride?: EnvRecord): boolean =>
   readBool('VITE_FEATURE_ICEBERG_PDCA', false, envOverride);
 
+export const isAppShellVsCodeEnabled = (envOverride?: EnvRecord): boolean =>
+  readBool('VITE_FEATURE_APPSHELL_VSCODE', false, envOverride);
+
 export const shouldSkipLogin = (envOverride?: EnvRecord): boolean => {
   if (
     isDemoModeEnabled(envOverride) ||
