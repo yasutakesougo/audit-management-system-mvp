@@ -20,12 +20,62 @@ import Paper from '@mui/material/Paper';
 import Select from '@mui/material/Select';
 import Snackbar from '@mui/material/Snackbar';
 import Stack from '@mui/material/Stack';
+import type { Theme } from '@mui/material/styles';
 import Typography from '@mui/material/Typography';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { flushSync } from 'react-dom';
-import { FullScreenDailyDialogPage } from '@/features/daily/components/FullScreenDailyDialogPage';
 import { useTimeBasedSupportRecordPage } from '@/pages/hooks/useTimeBasedSupportRecordPage';
 import { useLocation, useSearchParams } from 'react-router-dom';
+
+const containerSx = { height: '100vh', display: 'flex', flexDirection: 'column', bgcolor: 'grey.100' } as const;
+const headerPaperSx = {
+  p: 2,
+  borderBottom: 1,
+  borderColor: 'divider',
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'space-between',
+  flexWrap: 'wrap',
+  gap: 2,
+  borderRadius: 0,
+} as const;
+const formControlSx = { minWidth: 220 } as const;
+const personIconSx = { mr: 1, color: 'text.secondary' } as const;
+const fixedErrorBoxSx = {
+  position: 'fixed',
+  top: 12,
+  left: 12,
+  right: 12,
+  zIndex: (theme: Theme) => theme.zIndex.modal + 3,
+} as const;
+const mainContentSx = { flex: 1, minHeight: 0, p: 2 } as const;
+const emptyPlanSx = { minHeight: 320, textAlign: 'center' } as const;
+const recentPaperSx = {
+  p: 2,
+  borderTop: 1,
+  borderColor: 'divider',
+  bgcolor: 'common.white',
+  minHeight: 200,
+  maxHeight: 200,
+  overflowY: 'auto',
+} as const;
+const recentRowSx = { display: 'flex', alignItems: 'center', gap: 1 } as const;
+const recentTimeSx = { minWidth: 60 } as const;
+const recordFadeBoxSx = {
+  // ❌ Animation OFF for A/B test (cross-fade artifact)
+  // animation: 'recordFadeOut 60ms ease forwards, recordFadeIn 60ms ease 60ms forwards',
+  '@keyframes recordFadeOut': {
+    from: { opacity: 1 },
+    to: { opacity: 0 },
+  },
+  '@keyframes recordFadeIn': {
+    from: { opacity: 0 },
+    to: { opacity: 1 },
+  },
+} as const;
+const chipSx = { transition: 'background-color 120ms ease, color 120ms ease, border-color 120ms ease' } as const;
+const alertSx = { width: '100%' } as const;
+const errorSnackbarSx = { zIndex: (theme: Theme) => theme.zIndex.modal + 2 } as const;
 
 const TimeBasedSupportRecordPage: React.FC = () => {
   const location = useLocation();
@@ -114,6 +164,8 @@ const TimeBasedSupportRecordPage: React.FC = () => {
       return nextParams;
     }, { replace: true });
   }, [initialParams.stepKey, selectedStepId, setSearchParams, showUnfilledOnly, targetUserId]);
+
+
 
   useEffect(() => {
     const prevSearch = previousSearchRef.current;
@@ -246,31 +298,34 @@ const TimeBasedSupportRecordPage: React.FC = () => {
     setIsEditOpen(false);
   }, []);
 
-  return (
-    <FullScreenDailyDialogPage
-      title="支援（サポート記録）"
-      backTo="/dashboard"
-      testId="daily-support-page"
+  const memoizedRecord = useMemo(() => (
+    <Box
+      sx={recordFadeBoxSx}
     >
-      <Container
-        maxWidth="xl"
-        disableGutters
-        sx={{ height: '100vh', display: 'flex', flexDirection: 'column', bgcolor: 'grey.100' }}
-        data-testid="iceberg-time-based-support-record-page"
-      >
+      <RecordPanel
+        title="行動記録 (Do)"
+        userId={targetUserId}
+        lockState={recordLockState}
+        onSubmit={handleRecordSubmit}
+        schedule={schedule}
+        selectedSlotKey={selectedStepId ?? undefined}
+        onSlotChange={(next) => setSelectedStepId(next || null)}
+        onAfterSubmit={handleAfterSubmit}
+        recordDate={recordDate}
+      />
+    </Box>
+  ), [targetUserId, recordLockState, selectedStepId, schedule, recordDate, handleRecordSubmit, handleAfterSubmit, setSelectedStepId]);
+
+  return (
+    <Container
+      maxWidth="xl"
+      disableGutters
+      sx={containerSx}
+      data-testid="iceberg-time-based-support-record-page"
+    >
       <Paper
         elevation={0}
-        sx={{
-          p: 2,
-          borderBottom: 1,
-          borderColor: 'divider',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          flexWrap: 'wrap',
-          gap: 2,
-          borderRadius: 0
-        }}
+        sx={headerPaperSx}
       >
         <Stack direction="row" spacing={1.5} alignItems="center" flexWrap="wrap">
           <AccessTimeIcon color="primary" />
@@ -278,14 +333,14 @@ const TimeBasedSupportRecordPage: React.FC = () => {
             <Typography variant="h6" fontWeight="bold">
               支援手順・行動記録（タイムライン）
             </Typography>
-            <FormControl size="small" sx={{ minWidth: 220 }}>
+            <FormControl size="small" sx={formControlSx}>
               <InputLabel id="iceberg-user-select-label">支援対象者</InputLabel>
               <Select
                 labelId="iceberg-user-select-label"
                 value={targetUserId}
                 label="支援対象者"
                 onChange={(event) => handleUserChange(event.target.value)}
-                startAdornment={<PersonIcon fontSize="small" sx={{ mr: 1, color: 'text.secondary' }} />}
+                startAdornment={<PersonIcon fontSize="small" sx={personIconSx} />}
               >
                 <MenuItem value="">
                   <em>選択してください</em>
@@ -304,13 +359,7 @@ const TimeBasedSupportRecordPage: React.FC = () => {
       {/* Error Alert (fixed, always visible) */}
       {displayedError ? (
         <Box
-          sx={{
-            position: 'fixed',
-            top: 12,
-            left: 12,
-            right: 12,
-            zIndex: (theme) => theme.zIndex.modal + 3,
-          }}
+          sx={fixedErrorBoxSx}
         >
           <Alert severity="error" onClose={handleErrorClose}>
             {String(displayedError)}
@@ -318,7 +367,7 @@ const TimeBasedSupportRecordPage: React.FC = () => {
         </Box>
       ) : null}
 
-      <Box sx={{ flex: 1, minHeight: 0, p: 2 }}>
+      <Box sx={mainContentSx}>
         <SplitStreamLayout
           recordRef={recordPanelRef}
           plan={targetUserId ? (
@@ -339,7 +388,7 @@ const TimeBasedSupportRecordPage: React.FC = () => {
             />
           ) : (
             <ProcedurePanel title="支援手順 (Plan)">
-              <Stack spacing={2} alignItems="center" justifyContent="center" sx={{ minHeight: 320, textAlign: 'center' }}>
+              <Stack spacing={2} alignItems="center" justifyContent="center" sx={emptyPlanSx}>
                 <Typography variant="body1" fontWeight="bold">
                   支援対象者を選択して時間割を表示
                 </Typography>
@@ -350,23 +399,14 @@ const TimeBasedSupportRecordPage: React.FC = () => {
               </Stack>
             </ProcedurePanel>
           )}
-          record={
-            <RecordPanel
-              title="行動記録 (Do)"
-              lockState={recordLockState}
-              onSubmit={handleRecordSubmit}
-              schedule={schedule}
-              selectedSlotKey={selectedStepId ?? undefined}
-              onSlotChange={(next) => setSelectedStepId(next || null)}
-              onAfterSubmit={handleAfterSubmit}
-              recordDate={recordDate}
-            />
-          }
+          record={memoizedRecord}
         />
       </Box>
 
       {targetUserId && (
-        <Paper sx={{ p: 2, borderTop: 1, borderColor: 'divider', bgcolor: 'common.white' }}>
+        <Paper
+          sx={recentPaperSx}
+        >
           <Box display="flex" alignItems="center" gap={1} mb={1}>
             <Typography variant="subtitle1" fontWeight="bold">
               直近の行動記録
@@ -385,14 +425,15 @@ const TimeBasedSupportRecordPage: React.FC = () => {
           ) : (
             <Stack spacing={1.5}>
               {recentObservations.slice(0, 5).map((observation) => (
-                <Box key={observation.id} sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                  <Typography variant="caption" color="text.secondary" sx={{ minWidth: 60 }}>
+                <Box key={observation.id} sx={recentRowSx}>
+                  <Typography variant="caption" color="text.secondary" sx={recentTimeSx}>
                     {new Date(observation.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                   </Typography>
                   <Chip
                     label={`${observation.behavior} / Lv.${observation.intensity}`}
                     color={observation.intensity >= 4 ? 'error' : observation.intensity >= 3 ? 'warning' : 'success'}
                     size="small"
+                    sx={chipSx}
                   />
                   <Typography variant="caption" color="text.secondary">
                     A: {observation.antecedent ?? '―'} / C: {observation.consequence ?? '―'}
@@ -417,7 +458,7 @@ const TimeBasedSupportRecordPage: React.FC = () => {
         onClose={handleSnackbarClose}
         anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
       >
-        <Alert onClose={handleSnackbarClose} severity="success" sx={{ width: '100%' }}>
+        <Alert onClose={handleSnackbarClose} severity="success" sx={alertSx}>
           行動記録を保存しました
         </Alert>
       </Snackbar>
@@ -426,14 +467,13 @@ const TimeBasedSupportRecordPage: React.FC = () => {
         autoHideDuration={null}
         onClose={handleErrorClose}
         anchorOrigin={{ vertical: 'top', horizontal: 'center' }}
-        sx={{ zIndex: (theme) => theme.zIndex.modal + 2 }}
+        sx={errorSnackbarSx}
       >
-        <Alert onClose={handleErrorClose} severity="error" sx={{ width: '100%' }}>
+        <Alert onClose={handleErrorClose} severity="error" sx={alertSx}>
           {String(displayedError ?? '')}
         </Alert>
       </Snackbar>
-      </Container>
-    </FullScreenDailyDialogPage>
+    </Container>
   );
 };
 
