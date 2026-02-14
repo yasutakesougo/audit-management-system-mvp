@@ -1582,9 +1582,19 @@ const DashboardTabletLayout: React.FC<DashboardTabletLayoutProps> = ({
 
   return (
     <>
-      <Grid container spacing={3}>
-        {/* 左カラム（42%）：重要情報（Safety + Handover）閲覧中心 */}
-        <Grid size={{ xs: 12, md: 5 }} sx={{ display: 'flex' }}>
+      <Grid container spacing={3} sx={{ display: 'flex', alignItems: 'flex-start' }}>
+        {/* 左カラム（42%）：重要情報（Safety + Handover）固定・閲覧中心 */}
+        <Grid
+          size={{ xs: 12, md: 5 }}
+          sx={{
+            display: 'flex',
+            position: 'sticky',
+            top: 0,
+            maxHeight: '100vh',
+            overflowY: 'auto',
+            alignSelf: 'flex-start',
+          }}
+        >
           <Stack spacing={2} sx={{ flex: 1, width: '100%' }}>
             {renderSectionIfEnabled('safety')}
             {renderSectionIfEnabled('handover')}
