@@ -79,6 +79,17 @@
   - 頻度: 定期メンテナンス・デプロイ前
   - 目的: 実際のエラーパスの正確性を事前検証
 
+**Production Deployment**
+
+Production deploy is allowed only from main and must be executed via `npm run deploy:cf` (guarded).
+
+The deploy guard (`scripts/deploy-guard.sh`) enforces three critical checks:
+- ✅ Working tree is clean (no uncommitted changes)
+- ✅ Current branch is main
+- ✅ HEAD matches origin/main
+
+This ensures all production deployments are traceable to a specific main commit and eliminates "mystery deploys".
+
 ## Tech Stack
 
 - React 18 + TypeScript + Vite
