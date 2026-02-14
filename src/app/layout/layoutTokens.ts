@@ -13,6 +13,10 @@ export const layoutTokens = {
   },
   footer: {
     height: 56,
+    // Safe-area aware: outer height = footer + safe-area-inset-bottom
+    // Inner button area stays 56px, safe-area is padding
+    heightWithSafeArea: 'calc(56px + env(safe-area-inset-bottom))',
+    safeAreaPadding: 'env(safe-area-inset-bottom)',
   },
   touchTarget: {
     min: 40,

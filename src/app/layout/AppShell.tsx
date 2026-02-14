@@ -44,7 +44,7 @@ export function AppShell(props: AppShellProps) {
         height: layoutTokens.app.height,
         overflow: 'hidden',
         display: 'grid',
-        gridTemplateRows: `${showHeader ? layoutTokens.header.height : 0}px 1fr ${showFooter ? layoutTokens.footer.height : 0}px`,
+        gridTemplateRows: `${showHeader ? layoutTokens.header.height : 0}px 1fr ${showFooter ? layoutTokens.footer.heightWithSafeArea : 0}px`,
         gridTemplateColumns: `${activityWidth}px ${sidebarWidth}px 1fr`,
         gridTemplateAreas: `
           "header header header"
@@ -98,6 +98,8 @@ export function AppShell(props: AppShellProps) {
           overflow: 'auto',
           minWidth: 0,
           minHeight: 0,
+          // Ensure footer (56px) + safe-area doesn't hide content
+          paddingBottom: showFooter ? `calc(${layoutTokens.footer.height}px + env(safe-area-inset-bottom))` : 0,
         })}
       >
         <Box
@@ -116,14 +118,25 @@ export function AppShell(props: AppShellProps) {
         component="footer"
         sx={(t) => ({
           gridArea: 'footer',
-          height: showFooter ? `${layoutTokens.footer.height}px` : 0,
+          // Outer height includes safe-area
+          height: showFooter ? layoutTokens.footer.heightWithSafeArea : 0,
+          paddingBottom: showFooter ? layoutTokens.footer.safeAreaPadding : 0,
           borderTop: showFooter ? `1px solid ${t.palette.divider}` : 'none',
           background: t.palette.background.default,
-          display: showFooter ? 'block' : 'none',
+          display: showFooter ? 'flex' : 'none',
+          alignItems: 'flex-start',
           overflow: 'hidden',
         })}
       >
-        {props.footer}
+        <Box
+          sx={{
+            height: `${layoutTokens.footer.height}px`,
+            width: '100%',
+            overflow: 'hidden',
+          }}
+        >
+          {props.footer}
+        </Box>
       </Box>
     </Box>
   );
