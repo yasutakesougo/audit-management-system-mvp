@@ -263,6 +263,23 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ audience = 'staff' }) => 
     daily: 'dashboard-section-daily',
   };
 
+  // ===== 「本日の変更」用の仮データ =====
+  const dateLabel = new Intl.DateTimeFormat('ja-JP', {
+    month: 'numeric',
+    day: 'numeric',
+    weekday: 'short',
+  }).format(new Date()); // TODO: selectedDate を使う
+
+  const todayChanges: TodayChanges = {
+    userChanges: [
+      // { id: 'u1', text: '山田：10:30来所', tone: 'info' },
+      // { id: 'u2', text: '佐藤：休み', tone: 'warn' },
+    ],
+    staffChanges: [
+      // { id: 's1', text: '高橋：9:30出勤', tone: 'info' },
+    ],
+  };
+
   const scrollToSection = useCallback(
     (sectionKey: DashboardSectionKey) => {
       const targetId = sectionIdByKey[sectionKey];
@@ -633,11 +650,11 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ audience = 'staff' }) => 
               justifyContent="space-between"
               sx={{ mb: 2 }}
             >
-              <Stack spacing={0.5} sx={{ minWidth: 0 }}>
-                <Typography variant="subtitle2" lineHeight={1.2} sx={{ fontWeight: 700 }}>
-                  {section.title ?? '今日の通所 / 出勤状況'}
+              <Stack spacing={0.25} sx={{ minWidth: 0 }}>
+                <Typography variant="h6" fontWeight={800}>
+                  今日の通所 / 出勤状況
                 </Typography>
-                <Typography variant="caption" lineHeight={1.3} color="text.secondary">
+                <Typography variant="body2" sx={{ opacity: 0.8 }}>
                   利用者と職員の通所・出勤の状況をまとめて確認できます。
                 </Typography>
               </Stack>
@@ -1509,11 +1526,13 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ audience = 'staff' }) => 
             
             if (isTabletLandscape) {
               return (
-                <DashboardTabletLayout
+                <DashboardZoneLayout
                   sections={vm.sections}
                   renderSection={renderSection}
                   sectionIdByKey={sectionIdByKey}
                   highlightSection={highlightSection}
+                  dateLabel={dateLabel}
+                  todayChanges={todayChanges}
                 />
               );
             }
@@ -1542,21 +1561,253 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ audience = 'staff' }) => 
   );
 };
 
-// Tablet用 2カラムコマンドセンターレイアウト
-// 左（42%）：重要情報（Safety + Handover）閲覧中心
-// 右（58%）：運用エリア（Attendance + Daily + Schedule）入力・スクロール可能
-type DashboardTabletLayoutProps = {
+// ===== 「本日の変更」コンポーネント群 =====
+
+type ChangeItem = {
+  id: string;
+  text: string;
+  tone?: 'info' | 'warn';
+};
+
+type TodayChanges = {
+  userChanges: ChangeItem[];
+  staffChanges: ChangeItem[];
+};
+
+function ChangeSection(props: { title: string; items: ChangeItem[] }) {
+  const { title, items } = props;
+
+  return (
+    <Stack spacing={0.5}>
+      <Typography variant="caption" sx={{ opacity: 0.85 }} fontWeight={700}>
+        {title}
+      </Typography>
+
+      <Stack spacing={0.5}>
+        {items.map((it) => (
+          <Alert
+            key={it.id}
+            severity={it.tone === 'warn' ? 'warning' : 'info'}
+            variant="outlined"
+            sx={{
+              py: 0.25,
+              '& .MuiAlert-message': { py: 0 },
+              borderRadius: 1,
+            }}
+          >
+            <Typography variant="body2">{it.text}</Typography>
+          </Alert>
+        ))}
+      </Stack>
+    </Stack>
+  );
+}
+
+function TodayChangesCard(props: {
+  dateLabel: string;
+  changes: TodayChanges;
+}) {
+  const { dateLabel, changes } = props;
+
+  const hasAny = changes.userChanges.length > 0 || changes.staffChanges.length > 0;
+
+  // ダミー生活支援情報（後で実データに）
+  const lifeSupportDummy = [
+    { type: '一時ケア', name: '山田', time: '10:00-11:00', transport: 'あり', staff: '佐藤' },
+    { type: 'SS', name: '鈴木', time: '15:00-16:00', transport: 'なし', staff: '高橋' },
+  ];
+
+  // 2件以下の場合は3件未満、3件以上の場合は多件
+  const lifeSupportVisible = lifeSupportDummy.slice(0, 2);
+  const lifeSupportHasMore = lifeSupportDummy.length > 2;
+
+  // 生活支援を2行テキストにまとめる（line-clamp用）
+  const lifeSupportLines = lifeSupportVisible.map((it) =>
+    `${it.type}：${it.name}(${it.time}) ${it.transport}`
+  );
+  const lifeSupportText = lifeSupportLines.join('\n');
+
+  return (
+    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0 }}>
+      <Stack direction="row" alignItems="baseline" justifyContent="space-between" spacing={1} sx={{ pb: 0.5 }}>
+        <Typography variant="caption" fontWeight={700} sx={{ opacity: 0.8 }}>
+          本日の確認
+        </Typography>
+        <Typography variant="caption" sx={{ opacity: 0.6 }}>
+          {dateLabel}
+        </Typography>
+      </Stack>
+
+      <Box
+        sx={{
+          minHeight: 0,
+          overflowX: 'hidden',
+          overflowY: 'hidden',
+          display: 'flex',
+          flexDirection: 'column',
+        }}
+      >
+        {/* 上段：本日の変更（自然高さ、スクロールなし） */}
+        <Box sx={{ flex: '0 0 auto' }}>
+          <Typography variant="caption" fontWeight={700} sx={{ opacity: 0.75, display: 'block', mb: 0.5 }}>
+            変更
+          </Typography>
+          {hasAny ? (
+            <Stack spacing={0.5}>
+              <ChangeSection title="利用者" items={changes.userChanges} />
+              <ChangeSection title="職員" items={changes.staffChanges} />
+            </Stack>
+          ) : (
+            <Box sx={{ userSelect: 'none' }}>
+              <Typography variant="body2" noWrap sx={{ opacity: 0.85 }}>
+                利用者：なし
+              </Typography>
+              <Typography variant="body2" noWrap sx={{ opacity: 0.85 }}>
+                職員：なし
+              </Typography>
+            </Box>
+          )}
+        </Box>
+
+        <Divider sx={{ opacity: 0.3, flexShrink: 0 }} />
+
+        {/* 下段：生活支援情報（2行固定表示） */}
+        <Box
+          sx={{
+            flex: '1 0 auto',
+            minHeight: 0,
+            overflow: 'hidden',
+            pb: 1,
+          }}
+        >
+          <Typography variant="caption" fontWeight={700} sx={{ opacity: 0.75, display: 'block', mb: 0.5 }}>
+            生活支援
+          </Typography>
+          {lifeSupportDummy.length > 0 ? (
+            <>
+              <Typography
+                variant="body2"
+                sx={{
+                  display: '-webkit-box',
+                  WebkitBoxOrient: 'vertical',
+                  WebkitLineClamp: 2,
+                  lineHeight: '20px',
+                  maxHeight: '48px',
+                  overflow: 'hidden',
+                  textOverflow: 'ellipsis',
+                  whiteSpace: 'pre-line',
+                  opacity: 0.8,
+                  pr: 0.5,
+                }}
+              >
+                {lifeSupportText}
+              </Typography>
+              {lifeSupportHasMore && (
+                <Typography variant="caption" sx={{ opacity: 0.6, mt: 0.25 }}>
+                  ほか +{lifeSupportDummy.length - 2}件
+                </Typography>
+              )}
+            </>
+          ) : (
+            <Typography variant="body2" sx={{ opacity: 0.85 }}>
+              対応なし（✓確認済み）
+            </Typography>
+          )}
+        </Box>
+
+        <span style={{ position: 'absolute', left: -9999, top: -9999 }}>
+          本日の確認情報：変更なし、生活支援対応なし
+        </span>
+      </Box>
+    </Box>
+  );
+}
+
+// ⸻
+// Zone 1: 朝30秒判断ゾーン（固定）
+// 左：申し送りタイムライン（主役・最大）
+// 右：本日の変更HUD（小・補助）
+// ⸻
+type Zone1_MorningDecisionProps = {
+  handoverNode: React.ReactNode;
+  dateLabel: string;
+  todayChanges: TodayChanges;
+};
+
+const Zone1_MorningDecision: React.FC<Zone1_MorningDecisionProps> = ({
+  handoverNode,
+  dateLabel,
+  todayChanges,
+}) => {
+  // 🔍 デバッグ用 ref（右カラムのみ）
+  const rightColRef = useRef<HTMLDivElement>(null);
+
+  // 🔍 サイズ計測（最小化）
+  useEffect(() => {
+    if (!rightColRef.current) return;
+
+    const rect = rightColRef.current.getBoundingClientRect();
+    const { scrollHeight, clientHeight } = rightColRef.current;
+
+    const data = [{
+      name: '右カラム Box',
+      clientHeight,
+      scrollHeight,
+      rectHeight: rect.height.toFixed(1),
+      rectTop: rect.top.toFixed(1),
+      rectBottom: rect.bottom.toFixed(1),
+      isClipping: scrollHeight > clientHeight + 1,
+    }];
+
+    console.log('🔍 Zone1 計測:');
+    console.table(data);
+  }, []);
+
+  return (
+    <Box
+      sx={{
+        display: 'grid',
+        gridTemplateColumns: '2fr 1fr',
+        gap: 2,
+        alignItems: 'start',
+        outline: '3px solid yellow',
+        backgroundColor: 'rgba(255, 255, 0, 0.05)',
+      }}
+    >
+      {/* 左（50%）：申し送りタイムライン（主役・最大） */}
+      <Box>
+        {handoverNode}
+      </Box>
+
+      {/* 中（25%）：本日の変更HUD */}
+      <Box ref={rightColRef} sx={{ outline: '3px solid cyan', backgroundColor: 'rgba(0, 255, 255, 0.05)' }}>
+        <TodayChangesCard dateLabel={dateLabel} changes={todayChanges} />
+      </Box>
+    </Box>
+  );
+};
+
+// ⸻
+// Zone 2-3: スクロール領域（1カラム）
+// Zone 2: 今日の予定（主役）
+// Zone 3: 集計・作業（補助）
+// ⸻
+type DashboardZoneLayoutProps = {
   sections: DashboardSection[];
   renderSection: (section: DashboardSection) => React.ReactNode;
   sectionIdByKey: Record<DashboardSectionKey, string>;
   highlightSection?: DashboardSectionKey | null;
+  dateLabel: string;
+  todayChanges: TodayChanges;
 };
 
-const DashboardTabletLayout: React.FC<DashboardTabletLayoutProps> = ({
+const DashboardZoneLayout: React.FC<DashboardZoneLayoutProps> = ({
   sections,
   renderSection,
   sectionIdByKey,
   highlightSection,
+  dateLabel,
+  todayChanges,
 }) => {
   const theme = useTheme();
   const getSection = (key: DashboardSectionKey) => sections.find((s) => s.key === key);
@@ -1583,43 +1834,49 @@ const DashboardTabletLayout: React.FC<DashboardTabletLayoutProps> = ({
   const FOOTER_H = 56;
 
   return (
-    <>
-      {/* Tablet 2-column layout: left fixed, right scrollable */}
-      <Box sx={{ height: '100%', overflow: 'hidden', display: 'flex', gap: 3 }}>
-        {/* 左カラム（42%）：重要情報（Safety + Handover）固定表示 */}
-        <Box sx={{ width: '42%', overflow: 'hidden', flexShrink: 0 }}>
-          <Stack spacing={2}>
-            {renderSectionIfEnabled('safety')}
-            {renderSectionIfEnabled('handover')}
-          </Stack>
-        </Box>
-
-        {/* 右カラム（58%）：運用エリア（Attendance + Daily + Schedule）スクロール可能 */}
-        <Box
-          sx={{
-            width: '58%',
-            overflowY: 'auto',
-            pr: 1,
-            pb: `${FOOTER_H}px`,
-          }}
-        >
-          <Stack spacing={2}>
-            {renderSectionIfEnabled('attendance')}
-            {renderSectionIfEnabled('daily')}
-            {renderSectionIfEnabled('schedule')}
-
-            {/* 下段：Stats / adminOnly / staffOnly */}
-            <Box sx={{ mt: 3 }}>
-              <Stack spacing={2}>
-                {renderSectionIfEnabled('stats')}
-                {renderSectionIfEnabled('adminOnly')}
-                {renderSectionIfEnabled('staffOnly')}
-              </Stack>
-            </Box>
-          </Stack>
+    <Box sx={{ minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
+      {/* ZONE 1: 朝30秒判断ゾーン（sticky wrapper 分離） */}
+      <Box
+        sx={{
+          position: 'sticky',
+          top: 0,
+          zIndex: 20,
+          backgroundColor: 'background.default',
+        }}
+      >
+        {/* 内部コンテンツ（通常レイアウト） */}
+        <Box sx={{ pb: 2 }}>
+          <Zone1_MorningDecision
+            handoverNode={renderSectionIfEnabled('handover')}
+            dateLabel={dateLabel}
+            todayChanges={todayChanges}
+          />
         </Box>
       </Box>
-    </>
+
+      {/* ZONE 2-3: スクロール領域（1カラム） */}
+      <Box
+        sx={{
+          overflowY: 'auto',
+          flex: 1,
+          pr: 1,
+          pb: `${FOOTER_H}px`,
+        }}
+      >
+        <Stack spacing={3}>
+          {/* ZONE 2: 今日の予定（主役） */}
+          {renderSectionIfEnabled('schedule')}
+
+          {/* ZONE 3: 集計・作業（補助） */}
+          {renderSectionIfEnabled('safety')}
+          {renderSectionIfEnabled('attendance')}
+          {renderSectionIfEnabled('daily')}
+          {renderSectionIfEnabled('stats')}
+          {renderSectionIfEnabled('adminOnly')}
+          {renderSectionIfEnabled('staffOnly')}
+        </Stack>
+      </Box>
+    </Box>
   );
 };
 
