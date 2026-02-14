@@ -1542,7 +1542,9 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ audience = 'staff' }) => 
   );
 };
 
-// Tablet用 3カラムコマンドセンターレイアウト
+// Tablet用 2カラムコマンドセンターレイアウト
+// 左（42%）：重要情報（Safety + Handover）閲覧中心
+// 右（58%）：運用エリア（Attendance + Daily + Schedule）入力・スクロール可能
 type DashboardTabletLayoutProps = {
   sections: DashboardSection[];
   renderSection: (section: DashboardSection) => React.ReactNode;
@@ -1581,25 +1583,19 @@ const DashboardTabletLayout: React.FC<DashboardTabletLayoutProps> = ({
   return (
     <>
       <Grid container spacing={3}>
-        {/* 左カラム：Safety + Handover */}
-        <Grid size={{ xs: 12, md: 4 }} sx={{ display: 'flex' }}>
+        {/* 左カラム（42%）：重要情報（Safety + Handover）閲覧中心 */}
+        <Grid size={{ xs: 12, md: 5 }} sx={{ display: 'flex' }}>
           <Stack spacing={2} sx={{ flex: 1, width: '100%' }}>
             {renderSectionIfEnabled('safety')}
             {renderSectionIfEnabled('handover')}
           </Stack>
         </Grid>
 
-        {/* 中央カラム：Attendance + Daily */}
-        <Grid size={{ xs: 12, md: 4 }} sx={{ display: 'flex' }}>
-          <Stack spacing={2} sx={{ flex: 1, width: '100%' }}>
+        {/* 右カラム（58%）：運用エリア（Attendance + Daily + Schedule）入力・スクロール可能 */}
+        <Grid size={{ xs: 12, md: 7 }} sx={{ display: 'flex' }}>
+          <Stack spacing={2} sx={{ flex: 1, width: '100%', minHeight: 600 }}>
             {renderSectionIfEnabled('attendance')}
             {renderSectionIfEnabled('daily')}
-          </Stack>
-        </Grid>
-
-        {/* 右カラム：Schedule（高さ確保） */}
-        <Grid size={{ xs: 12, md: 4 }} sx={{ display: 'flex' }}>
-          <Stack spacing={2} sx={{ flex: 1, width: '100%' }}>
             {renderSectionIfEnabled('schedule')}
           </Stack>
         </Grid>
