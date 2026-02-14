@@ -1,5 +1,7 @@
 #!/usr/bin/env sh
-. "$(dirname "$0")/_/husky.sh"
+. "$(dirname -- "$0")/_/husky.sh"
+
+set -eu
 
 # Pre-push hook: lightweight guard for development
 # Full checks (lint, typecheck, build) run in CI via npm run preflight
@@ -12,27 +14,26 @@
 # Allow bypass: git push --no-verify
 # Troubleshoot: run "npm run preflight" locally to match CI
 
-if [ -n "$CI" ]; then
+if [ -n "${CI:-}" ]; then
   # In CI: npm run preflight already handles everything
   # This hook is not typically called during CI push, but if it is, skip it
   exit 0
 fi
 
-# Local development: check only changed files to keep it fast
-# Include: Added, Created, Modified, Renamed (ACMR)
-# Use -z for NUL-terminated output: safeguards against filenames with spaces/newlines
-FILES=$(git diff --cached --name-only --diff-filter=ACMR -z -- '*.ts' '*.tsx' '*.js' '*.jsx' 2>/dev/null || true)
+BASE_REF="${BASE_REF:-origin/main}"
 
-# If no TypeScript/JavaScript files staged, nothing to check
+# Determine changed JS/TS files compared to base.
+FILES="$(git diff --name-only --diff-filter=ACMR "$BASE_REF...HEAD" -- '*.ts' '*.tsx' '*.js' '*.jsx' || true)"
+
+# If nothing to lint, skip.
 if [ -z "$FILES" ]; then
+  echo "[pre-push] eslint: skip (no changed JS/TS files vs $BASE_REF)"
   exit 0
 fi
 
-echo "[pre-push] Lint staged TypeScript/JavaScript files only..."
-# Use xargs -0 to handle NUL-delimited input (supports filenames with spaces/special chars)
-# This is the most robust way to pass long file lists safely
-# Use -- to ensure all arguments are treated as files (prevents "--file.ts" from being parsed as options)
-if ! printf '%s\0' $FILES | xargs -0 npx eslint --; then
+echo "[pre-push] eslint: running on changed files vs $BASE_REF"
+# shellcheck disable=SC2086
+if ! npx eslint --max-warnings=0 $FILES; then
   echo ""
   echo "❌ Lint failed. To run full checks locally:"
   echo "   npm run preflight"
@@ -48,7 +49,7 @@ fi
 # All other files should import from env helpers, not access import.meta.env directly
 #
 # Exclude comments and string literals to reduce false positives
-ADDED=$(git diff --cached -U0 | \
+ADDED=$(git diff "$BASE_REF...HEAD" -U0 | \
   grep -E '^\+.*import\.meta\.env\.' | \
   grep -vE '^\+\s*//' | \
   grep -vE '^\+\s*/\*' || true)
