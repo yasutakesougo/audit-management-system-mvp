@@ -1580,34 +1580,44 @@ const DashboardTabletLayout: React.FC<DashboardTabletLayoutProps> = ({
     );
   };
 
+  const FOOTER_H = 56;
+
   return (
     <>
-      <Grid container spacing={3}>
-        {/* 左カラム（42%）：重要情報（Safety + Handover）閲覧中心 */}
-        <Grid size={{ xs: 12, md: 5 }} sx={{ display: 'flex' }}>
-          <Stack spacing={2} sx={{ flex: 1, width: '100%' }}>
+      {/* Tablet 2-column layout: left fixed, right scrollable */}
+      <Box sx={{ height: '100%', overflow: 'hidden', display: 'flex', gap: 3 }}>
+        {/* 左カラム（42%）：重要情報（Safety + Handover）固定表示 */}
+        <Box sx={{ width: '42%', overflow: 'hidden', flexShrink: 0 }}>
+          <Stack spacing={2}>
             {renderSectionIfEnabled('safety')}
             {renderSectionIfEnabled('handover')}
           </Stack>
-        </Grid>
+        </Box>
 
-        {/* 右カラム（58%）：運用エリア（Attendance + Daily + Schedule）入力・スクロール可能 */}
-        <Grid size={{ xs: 12, md: 7 }} sx={{ display: 'flex' }}>
-          <Stack spacing={2} sx={{ flex: 1, width: '100%', minHeight: 600 }}>
+        {/* 右カラム（58%）：運用エリア（Attendance + Daily + Schedule）スクロール可能 */}
+        <Box
+          sx={{
+            width: '58%',
+            overflowY: 'auto',
+            pr: 1,
+            pb: `${FOOTER_H}px`,
+          }}
+        >
+          <Stack spacing={2}>
             {renderSectionIfEnabled('attendance')}
             {renderSectionIfEnabled('daily')}
             {renderSectionIfEnabled('schedule')}
-          </Stack>
-        </Grid>
-      </Grid>
 
-      {/* 下段：Stats / adminOnly / staffOnly */}
-      <Box sx={{ mt: 3 }}>
-        <Stack spacing={2}>
-          {renderSectionIfEnabled('stats')}
-          {renderSectionIfEnabled('adminOnly')}
-          {renderSectionIfEnabled('staffOnly')}
-        </Stack>
+            {/* 下段：Stats / adminOnly / staffOnly */}
+            <Box sx={{ mt: 3 }}>
+              <Stack spacing={2}>
+                {renderSectionIfEnabled('stats')}
+                {renderSectionIfEnabled('adminOnly')}
+                {renderSectionIfEnabled('staffOnly')}
+              </Stack>
+            </Box>
+          </Stack>
+        </Box>
       </Box>
     </>
   );
