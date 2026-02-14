@@ -263,6 +263,23 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ audience = 'staff' }) => 
     daily: 'dashboard-section-daily',
   };
 
+  // ===== 「本日の変更」用の仮データ =====
+  const dateLabel = new Intl.DateTimeFormat('ja-JP', {
+    month: 'numeric',
+    day: 'numeric',
+    weekday: 'short',
+  }).format(new Date()); // TODO: selectedDate を使う
+
+  const todayChanges: TodayChanges = {
+    userChanges: [
+      // { id: 'u1', text: '山田：10:30来所', tone: 'info' },
+      // { id: 'u2', text: '佐藤：休み', tone: 'warn' },
+    ],
+    staffChanges: [
+      // { id: 's1', text: '高橋：9:30出勤', tone: 'info' },
+    ],
+  };
+
   const scrollToSection = useCallback(
     (sectionKey: DashboardSectionKey) => {
       const targetId = sectionIdByKey[sectionKey];
@@ -1514,6 +1531,8 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ audience = 'staff' }) => 
                   renderSection={renderSection}
                   sectionIdByKey={sectionIdByKey}
                   highlightSection={highlightSection}
+                  dateLabel={dateLabel}
+                  todayChanges={todayChanges}
                 />
               );
             }
@@ -1542,14 +1561,131 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ audience = 'staff' }) => 
   );
 };
 
+// ===== 「本日の変更」コンポーネント群 =====
+
+type ChangeItem = {
+  id: string;
+  text: string;
+  tone?: 'info' | 'warn';
+};
+
+type TodayChanges = {
+  userChanges: ChangeItem[];
+  staffChanges: ChangeItem[];
+};
+
+function ChangeSection(props: { title: string; items: ChangeItem[] }) {
+  const { title, items } = props;
+
+  return (
+    <Stack spacing={0.5}>
+      <Typography variant="caption" sx={{ opacity: 0.85 }} fontWeight={700}>
+        {title}
+      </Typography>
+
+      <Stack spacing={0.5}>
+        {items.map((it) => (
+          <Alert
+            key={it.id}
+            severity={it.tone === 'warn' ? 'warning' : 'info'}
+            variant="outlined"
+            sx={{
+              py: 0.25,
+              '& .MuiAlert-message': { py: 0 },
+              borderRadius: 1,
+            }}
+          >
+            <Typography variant="body2">{it.text}</Typography>
+          </Alert>
+        ))}
+      </Stack>
+    </Stack>
+  );
+}
+
+function TodayChangesCard(props: {
+  dateLabel: string;
+  changes: TodayChanges;
+}) {
+  const { dateLabel, changes } = props;
+
+  const hasAny = changes.userChanges.length > 0 || changes.staffChanges.length > 0;
+
+  return (
+    <Paper
+      variant="outlined"
+      sx={(t) => ({
+        borderColor: t.palette.divider,
+        backgroundColor: hasAny ? t.palette.warning.light : t.palette.action.hover,
+      })}
+    >
+      <Box sx={{ px: 1.25, py: 0.75 }}>
+        <Stack direction="row" alignItems="baseline" justifyContent="space-between" spacing={1}>
+          <Typography variant="body2" fontWeight={700}>
+            本日の変更
+          </Typography>
+          <Typography variant="caption" sx={{ opacity: 0.8 }}>
+            {dateLabel}
+          </Typography>
+        </Stack>
+      </Box>
+
+      <Divider />
+
+      <Box
+        sx={{
+          px: 1.25,
+          py: 1,
+          minHeight: 72,
+          maxHeight: 240,
+          overflowY: 'auto',
+        }}
+      >
+        {hasAny ? (
+          <Stack spacing={1}>
+            <ChangeSection title="利用者" items={changes.userChanges} />
+            <Divider flexItem />
+            <ChangeSection title="職員" items={changes.staffChanges} />
+          </Stack>
+        ) : (
+          <Box
+            sx={{
+              height: '100%',
+              display: 'grid',
+              placeItems: 'center',
+              opacity: 0.6,
+              userSelect: 'none',
+              textAlign: 'center',
+            }}
+          >
+            <Stack spacing={0.5} alignItems="center">
+              <Typography variant="body2" sx={{ fontWeight: 600 }}>
+                本日の変更：特になし
+              </Typography>
+              <Typography variant="caption" sx={{ opacity: 0.8 }}>
+                ✓ 確認済み
+              </Typography>
+            </Stack>
+            <span style={{ position: 'absolute', left: -9999, top: -9999 }}>
+              変更なし、確認済み
+            </span>
+          </Box>
+        )}
+      </Box>
+    </Paper>
+  );
+}
+
 // Tablet用 2カラムコマンドセンターレイアウト
-// 左（42%）：重要情報（Safety + Handover）閲覧中心
-// 右（58%）：運用エリア（Attendance + Daily + Schedule）入力・スクロール可能
+// 左（42%）：固定情報サマリ（本日の変更 + Safety）
+// 右（58%）：主役エリア（申し送りタイムライン + Schedule + 入力エリア）スクロール可能
 type DashboardTabletLayoutProps = {
   sections: DashboardSection[];
   renderSection: (section: DashboardSection) => React.ReactNode;
   sectionIdByKey: Record<DashboardSectionKey, string>;
   highlightSection?: DashboardSectionKey | null;
+  dateLabel: string;
+  todayChanges: TodayChanges;
 };
 
 const DashboardTabletLayout: React.FC<DashboardTabletLayoutProps> = ({
@@ -1557,6 +1693,8 @@ const DashboardTabletLayout: React.FC<DashboardTabletLayoutProps> = ({
   renderSection,
   sectionIdByKey,
   highlightSection,
+  dateLabel,
+  todayChanges,
 }) => {
   const theme = useTheme();
   const getSection = (key: DashboardSectionKey) => sections.find((s) => s.key === key);
@@ -1584,17 +1722,26 @@ const DashboardTabletLayout: React.FC<DashboardTabletLayoutProps> = ({
 
   return (
     <>
-      {/* Tablet 2-column layout: left fixed, right scrollable */}
+      {/* Tablet 2-column layout: left fixed (summary), right scrollable (main) */}
       <Box sx={{ height: '100%', overflow: 'hidden', display: 'flex', gap: 3 }}>
-        {/* 左カラム（42%）：重要情報（Safety + Handover）固定表示 */}
-        <Box sx={{ width: '42%', overflow: 'hidden', flexShrink: 0 }}>
-          <Stack spacing={2}>
-            {renderSectionIfEnabled('safety')}
-            {renderSectionIfEnabled('handover')}
-          </Stack>
+        {/* 左カラム（42%）：固定情報サマリ（本日の変更 + Safety）*/}
+        <Box
+          sx={{
+            position: 'sticky',
+            top: 0,
+            alignSelf: 'flex-start',
+            width: '42%',
+            maxHeight: 'calc(100dvh - 44px - 56px)',
+            display: 'flex',
+            flexDirection: 'column',
+            gap: 2,
+          }}
+        >
+          <TodayChangesCard dateLabel={dateLabel} changes={todayChanges} />
+          {renderSectionIfEnabled('safety')}
         </Box>
 
-        {/* 右カラム（58%）：運用エリア（Attendance + Daily + Schedule）スクロール可能 */}
+        {/* 右カラム（58%）：主役エリア（申し送りタイムライン + Schedule + Attendance/Daily）スクロール可能 */}
         <Box
           sx={{
             width: '58%',
@@ -1603,10 +1750,15 @@ const DashboardTabletLayout: React.FC<DashboardTabletLayoutProps> = ({
             pb: `${FOOTER_H}px`,
           }}
         >
+          {/* 申し送り：常時可視（右カラム内sticky） */}
+          <Box sx={{ position: 'sticky', top: 0, zIndex: 10, mb: 2, backgroundColor: 'background.default' }}>
+            {renderSectionIfEnabled('handover')}
+          </Box>
+
           <Stack spacing={2}>
+            {renderSectionIfEnabled('schedule')}
             {renderSectionIfEnabled('attendance')}
             {renderSectionIfEnabled('daily')}
-            {renderSectionIfEnabled('schedule')}
 
             {/* 下段：Stats / adminOnly / staffOnly */}
             <Box sx={{ mt: 3 }}>
