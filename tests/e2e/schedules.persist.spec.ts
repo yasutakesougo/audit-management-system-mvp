@@ -93,4 +93,44 @@ test.describe('Schedules Persistence', () => {
     const scheduleItem = page.locator(`text="${testTitle}"`).first();
     await expect(scheduleItem).toBeVisible({ timeout: 5000 });
   });
+
+  test('should persist schedule after page reload', async ({ page }) => {
+    // Skip if write is disabled (no schedule to verify)
+    if (!isWriteEnabled) {
+      test.skip();
+      return;
+    }
+
+    // First, create a schedule (same as previous test)
+    const fab = page.getByTestId(TESTIDS.SCHEDULES_FAB_CREATE);
+    await fab.click({ timeout: 5000 });
+    await page.waitForSelector('[role="dialog"]', { timeout: 5000 });
+
+    const titleInput = page.locator('input[name="title"], input[placeholder*="タイトル"]').first();
+    await titleInput.fill(testTitle);
+
+    const saveButton = page.locator('button:has-text("作成"), button:has-text("保存"), button[type="submit"]').first();
+    await saveButton.click();
+    await page.waitForSelector('[role="dialog"]', { state: 'hidden', timeout: 5000 }).catch(() => {});
+    await page.waitForTimeout(1000);
+
+    // Verify it appears before reload
+    const scheduleBeforeReload = page.locator(`text="${testTitle}"`).first();
+    await expect(scheduleBeforeReload).toBeVisible({ timeout: 5000 });
+
+    // Reload the page
+    await page.reload({ waitUntil: 'networkidle' });
+
+    // Wait for page to be ready again
+    await page.waitForSelector(`[data-testid="${TESTIDS.SCHEDULES_WEEK_VIEW}"]`, { 
+      timeout: 10000,
+      state: 'visible' 
+    }).catch(() => {
+      return page.waitForSelector(`[data-testid="${TESTIDS.SCHEDULES_PAGE_ROOT}"]`, { timeout: 5000 });
+    });
+
+    // Verify the schedule still exists after reload (persistence proof)
+    const scheduleAfterReload = page.locator(`text="${testTitle}"`).first();
+    await expect(scheduleAfterReload).toBeVisible({ timeout: 5000 });
+  });
 });
