@@ -514,6 +514,7 @@ export default function WeekPage() {
           nextTestId={TESTIDS.SCHEDULES_NEXT_WEEK}
         >
           <SchedulesFilterResponsive
+            compact={compact}
             inlineStackProps={{
               sx: { mt: { xs: 0.5, sm: 0 }, minWidth: 260 },
               spacing: 0.5,
