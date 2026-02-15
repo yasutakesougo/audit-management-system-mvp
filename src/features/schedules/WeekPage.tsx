@@ -118,6 +118,8 @@ export default function WeekPage() {
   const [dialogInitialValues, setDialogInitialValues] = useState<ScheduleEditDialogValues | null>(null);
   const [dayLane, setDayLane] = useState<ScheduleCategory | null>(null);
   const showFab = !isDesktopSize;
+  const fabInset = `max(24px, calc(env(safe-area-inset-bottom, 0px) + 8px))`;
+  const fabInsetRight = `max(24px, calc(env(safe-area-inset-right, 0px) + 8px))`;
 
   useEffect(() => {
     if (mode === 'day') {
@@ -639,8 +641,8 @@ export default function WeekPage() {
           disabled={!canWrite}
           style={{
             position: 'fixed',
-            right: 24,
-            bottom: 24,
+            right: fabInsetRight,
+            bottom: fabInset,
             width: 64,
             height: 56,
             borderRadius: '50%',
