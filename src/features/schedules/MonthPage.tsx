@@ -175,7 +175,7 @@ export default function MonthPage({ items, loading = false, activeCategory = 'Al
       tabIndex={-1}
       style={{ paddingBottom: 32 }}
     >
-      <Box sx={{ px: 2, py: isCompact ? 1 : 1.5, display: 'flex', alignItems: 'center', gap: isCompact ? 0.5 : 1 }}>
+      <Box sx={{ px: 2, py: isCompact ? 1 : 1.5, display: 'flex', alignItems: 'center', gap: isCompact ? 0 : 1 }}>
         <Button
           variant="outlined"
           size="small"
@@ -190,7 +190,7 @@ export default function MonthPage({ items, loading = false, activeCategory = 'Al
             variant="h6"
             id={headingId}
             data-testid={TESTIDS.SCHEDULES_MONTH_HEADING_ID}
-            sx={{ mb: isCompact ? 0.25 : 0.5 }}
+            sx={{ mb: isCompact ? 0 : 0.5, fontSize: isCompact ? 16 : undefined }}
           >
             {monthLabel}
           </Typography>
@@ -230,7 +230,7 @@ export default function MonthPage({ items, loading = false, activeCategory = 'Al
         <div role="grid" aria-label={`${monthLabel}のカレンダー`} style={{ ...gridContainerStyle, gap: isCompact ? 6 : 8 }}>
           <div role="row" style={{ display: 'contents' }}>
             {WEEKDAY_LABELS.map((label, index) => (
-              <div key={label} role="columnheader" style={{ ...weekdayHeaderStyle(index), fontSize: isCompact ? 11 : 12, padding: isCompact ? '2px 0' : '4px 0' }}>
+              <div key={label} role="columnheader" style={{ ...weekdayHeaderStyle(index), fontSize: isCompact ? 10.5 : 12, padding: isCompact ? '1px 0' : '4px 0' }}>
                 {label}
               </div>
             ))}
@@ -254,8 +254,8 @@ export default function MonthPage({ items, loading = false, activeCategory = 'Al
                       ...monthDayBaseSx(day),
                       ...getDayChipSx({ isToday: day.isToday, isSelected }),
                       padding: isCompact ? '6px 8px' : '10px 12px',
-                      minHeight: isCompact ? 70 : 90,
-                      gap: isCompact ? 0.5 : 1,
+                      minHeight: isCompact ? 64 : 90,
+                      gap: isCompact ? 0 : 1,
                     } as SxProps<Theme>}
                   >
                     <Badge
