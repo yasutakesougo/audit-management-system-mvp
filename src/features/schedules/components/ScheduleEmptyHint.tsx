@@ -8,11 +8,28 @@ export type ScheduleEmptyHintProps = {
   view: 'day' | 'week' | 'month';
   periodLabel?: string;
   sx?: SxProps<Theme>;
+  compact?: boolean;
 };
 
 export function ScheduleEmptyHint(props: ScheduleEmptyHintProps) {
   const { title, description, cta } = scheduleFacilityEmptyCopy;
-  const { sx } = props;
+  const { sx, compact } = props;
+
+  // Compact mode: single-line hint for zero-scroll on tablet landscape
+  if (compact) {
+    return (
+      <Box
+        role="status"
+        aria-live="polite"
+        data-testid={TESTIDS.SCHEDULES_EMPTY_HINT}
+        sx={{ mb: 0.5, ...sx }}
+      >
+        <Typography variant="body2" color="text.secondary" sx={{ fontSize: 12 }}>
+          予定はまだありません（＋から追加）
+        </Typography>
+      </Box>
+    );
+  }
 
   return (
     <Box
