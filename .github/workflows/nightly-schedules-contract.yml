@@ -1,0 +1,39 @@
+name: nightly-schedules-contract
+
+on:
+  workflow_dispatch: {}
+  schedule:
+    - cron: "30 18 * * *"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: nightly-schedules-contract
+  cancel-in-progress: false
+
+jobs:
+  contract:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: "npm"
+
+      - name: Install
+        run: npm ci
+
+      - name: Run schedules SharePoint contract check
+        env:
+          SP_TENANT_ID: ${{ secrets.SP_TENANT_ID }}
+          SP_CLIENT_ID: ${{ secrets.SP_CLIENT_ID }}
+          SP_CLIENT_SECRET: ${{ secrets.SP_CLIENT_SECRET }}
+          SP_SITE_URL: ${{ secrets.SP_SITE_URL }}
+          VITE_SCHEDULES_LIST_TITLE: ${{ vars.VITE_SCHEDULES_LIST_TITLE }}
+          VITE_SP_LIST_SCHEDULES: ${{ vars.VITE_SP_LIST_SCHEDULES }}
+        run: node scripts/nightly-schedules-contract.mjs
