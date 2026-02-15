@@ -624,6 +624,7 @@ export default function WeekPage() {
                 range={activeDayRange}
                 categoryFilter={categoryFilter}
                 emptyCtaLabel={categoryFilter === 'Org' ? '施設予定を追加' : '予定を追加'}
+                compact={compact}
               />
             )}
             {mode === 'month' && (
