@@ -636,7 +636,7 @@ const WeekViewContent = ({ items, loading, onDayClick, activeDateIso, range, onI
             </div>
           ) : (
             <div role="row" aria-rowindex={1} className="grid grid-cols-2 gap-2 sm:grid-cols-4 md:grid-cols-7">
-              {weekDays.map(renderDayCell)}
+              {weekDays.map((day, index) => renderDayCell(day, index))}
             </div>
           )}
         </div>
