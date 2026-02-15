@@ -7,4 +7,5 @@ export type {
 	CreateScheduleEventInput, DateRange, SchedItem, ScheduleCategory,
 	ScheduleServiceType, SchedulesPort, ScheduleStatus, ScheduleVisibility, UpdateScheduleEventInput
 } from './port';
-export { makeSharePointSchedulesPort } from './sharePointAdapter';
+export { makeSharePointSchedulesPort, getListFieldsMeta } from './sharePointAdapter';
+export type { ListFieldMeta } from './sharePointAdapter';
