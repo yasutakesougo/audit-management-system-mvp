@@ -489,11 +489,19 @@ const WeekViewContent = ({ items, loading, onDayClick, activeDateIso, range, onI
       testId: `${TESTIDS.SCHEDULES_WEEK_SERVICE_SUMMARY}-${entry.key}`,
     }));
 
-  const renderDayCell = (day: (typeof weekDays)[number], index: number) => {
+  const renderDayCell = (day: (typeof weekDays)[number], index: number, options?: { compact?: boolean }) => {
+    const compact = options?.compact ?? false;
     const isToday = day.iso === todayIso;
     const isActive = day.iso === resolvedActiveIso;
     const dayItems = groupedItems.get(day.iso) ?? [];
     const ariaLabel = `${day.label}${isToday ? '（今日）' : ''} 予定${dayItems.length}件`;
+    const itemLimit = compact ? 2 : 3;
+    const metaFontSize = compact ? 10 : 11;
+    const chipFontSize = compact ? 10 : 11;
+    const headerFontSize = compact ? 11 : 12;
+    const headerGap = compact ? 4 : 6;
+    const listGap = compact ? 3 : 4;
+    const listMarginTop = compact ? 4 : 6;
 
     return (
       <div
@@ -512,13 +520,13 @@ const WeekViewContent = ({ items, loading, onDayClick, activeDateIso, range, onI
           variant="outlined"
           sx={{ ...dayChipBaseSx, ...getDayChipSx({ isToday, isSelected: isActive }) }}
         >
-          <div style={{ display: 'flex', alignItems: 'center', gap: 6, width: '100%' }}>
-            <span style={{ fontSize: 12, fontWeight: 600, color: 'rgba(0,0,0,0.65)' }}>{day.label}</span>
+          <div style={{ display: 'flex', alignItems: 'center', gap: headerGap, width: '100%' }}>
+            <span style={{ fontSize: headerFontSize, fontWeight: 600, color: 'rgba(0,0,0,0.65)' }}>{day.label}</span>
             {isToday && (
               <span
                 style={{
-                  fontSize: 10,
-                  padding: '1px 6px',
+                  fontSize: compact ? 9 : 10,
+                  padding: compact ? '1px 4px' : '1px 6px',
                   borderRadius: 999,
                   background: '#E3F2FD',
                   color: '#0D47A1',
@@ -529,11 +537,11 @@ const WeekViewContent = ({ items, loading, onDayClick, activeDateIso, range, onI
               </span>
             )}
           </div>
-          <div style={{ marginTop: 6, display: 'flex', flexDirection: 'column', gap: 4, width: '100%' }}>
+          <div style={{ marginTop: listMarginTop, display: 'flex', flexDirection: 'column', gap: listGap, width: '100%' }}>
             {dayItems.length === 0 ? (
-              <span style={{ fontSize: 11, color: 'rgba(31,41,55,0.9)' }}>予定なし</span>
+              <span style={{ fontSize: metaFontSize, color: 'rgba(31,41,55,0.9)' }}>予定なし</span>
             ) : (
-              dayItems.slice(0, 3).map((item) => {
+              dayItems.slice(0, itemLimit).map((item) => {
                 const statusMeta = getScheduleStatusMeta(item.status);
                 const showStatus = item.status && item.status !== 'Planned' && statusMeta;
                 const normalizedServiceType = normalizeServiceType(item.serviceType as string | null);
@@ -546,10 +554,10 @@ const WeekViewContent = ({ items, loading, onDayClick, activeDateIso, range, onI
                     style={{
                       display: 'inline-flex',
                       alignItems: 'center',
-                      gap: 6,
-                      padding: '2px 6px',
+                      gap: compact ? 4 : 6,
+                      padding: compact ? '1px 4px' : '2px 6px',
                       borderRadius: 999,
-                      fontSize: 11,
+                      fontSize: chipFontSize,
                       background: 'rgba(0,0,0,0.04)',
                       color: 'rgba(0,0,0,0.75)',
                       maxWidth: '100%',
@@ -561,8 +569,8 @@ const WeekViewContent = ({ items, loading, onDayClick, activeDateIso, range, onI
                     <span
                       aria-hidden="true"
                       style={{
-                        width: 6,
-                        height: 6,
+                        width: compact ? 5 : 6,
+                        height: compact ? 5 : 6,
                         borderRadius: '50%',
                         background: statusMeta?.dotColor ?? 'rgba(76,175,80,0.9)',
                         flexShrink: 0,
@@ -573,8 +581,10 @@ const WeekViewContent = ({ items, loading, onDayClick, activeDateIso, range, onI
                 );
               })
             )}
-            {dayItems.length > 3 && (
-              <span style={{ fontSize: 10, color: 'rgba(0,0,0,0.5)' }}>+{dayItems.length - 3} 件</span>
+            {dayItems.length > itemLimit && (
+              <span style={{ fontSize: compact ? 9 : 10, color: 'rgba(0,0,0,0.5)' }}>
+                +{dayItems.length - itemLimit} 件
+              </span>
             )}
           </div>
         </Button>
