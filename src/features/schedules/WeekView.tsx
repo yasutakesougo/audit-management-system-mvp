@@ -34,6 +34,7 @@ export type WeekViewProps = {
   onItemSelect?: (item: WeekSchedItem) => void;
   onItemAccept?: (item: WeekSchedItem) => void;
   highlightId?: string | null;
+  compact?: boolean;
 };
 
 type WeekSchedItem = SchedItem & {
@@ -144,6 +145,7 @@ export default function WeekView(props: WeekViewProps) {
         onItemSelect={props.onItemSelect}
         onItemAccept={props.onItemAccept}
         highlightId={props.highlightId}
+        compact={props.compact}
       />
     );
   }
@@ -160,6 +162,7 @@ type WeekViewContentProps = {
   onItemSelect?: (item: WeekSchedItem) => void;
   onItemAccept?: (item: WeekSchedItem) => void;
   highlightId?: string | null;
+  compact?: boolean;
 };
 
 const WeekViewWithData = (props: WeekViewProps) => {
@@ -176,16 +179,18 @@ const WeekViewWithData = (props: WeekViewProps) => {
       onItemSelect={props.onItemSelect}
       onItemAccept={props.onItemAccept}
       highlightId={props.highlightId}
+      compact={props.compact}
     />
   );
 };
 
-const WeekViewContent = ({ items, loading, onDayClick, activeDateIso, range, onItemSelect, onItemAccept, highlightId }: WeekViewContentProps) => {
+const WeekViewContent = ({ items, loading, onDayClick, activeDateIso, range, onItemSelect, onItemAccept, highlightId, compact }: WeekViewContentProps) => {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
   const [menuAnchor, setMenuAnchor] = useState<HTMLElement | null>(null);
   const [menuItem, setMenuItem] = useState<WeekSchedItem | null>(null);
   const resolvedRange = useMemo(() => range ?? defaultWeekRange(), [range]);
+  const isCompact = Boolean(compact);
 
   type ServiceTokens = { bg: string; border: string; accent: string };
 
@@ -489,6 +494,109 @@ const WeekViewContent = ({ items, loading, onDayClick, activeDateIso, range, onI
       testId: `${TESTIDS.SCHEDULES_WEEK_SERVICE_SUMMARY}-${entry.key}`,
     }));
 
+  const renderDayCell = (day: (typeof weekDays)[number], index: number, options?: { compact?: boolean }) => {
+    const compact = options?.compact ?? false;
+    const isToday = day.iso === todayIso;
+    const isActive = day.iso === resolvedActiveIso;
+    const dayItems = groupedItems.get(day.iso) ?? [];
+    const ariaLabel = `${day.label}${isToday ? '（今日）' : ''} 予定${dayItems.length}件`;
+    const itemLimit = compact ? 2 : 3;
+    const metaFontSize = compact ? 10 : 11;
+    const chipFontSize = compact ? 10 : 11;
+    const headerFontSize = compact ? 11 : 12;
+    const headerGap = compact ? 4 : 6;
+    const listGap = compact ? 3 : 4;
+    const listMarginTop = compact ? 4 : 6;
+
+    return (
+      <div
+        key={day.iso}
+        role="gridcell"
+        aria-colindex={index + 1}
+        aria-selected={isActive}
+        className="min-w-0"
+      >
+        <Button
+          type="button"
+          aria-label={ariaLabel}
+          aria-current={isActive ? 'date' : undefined}
+          onClick={(event) => handleClick(day.iso, event as MouseEvent<HTMLButtonElement>)}
+          data-testid={`${TESTIDS.SCHEDULES_WEEK_DAY_PREFIX}-${day.iso}`}
+          variant="outlined"
+          sx={{ ...dayChipBaseSx, ...getDayChipSx({ isToday, isSelected: isActive }) }}
+        >
+          <div style={{ display: 'flex', alignItems: 'center', gap: headerGap, width: '100%' }}>
+            <span style={{ fontSize: headerFontSize, fontWeight: 600, color: 'rgba(0,0,0,0.65)' }}>{day.label}</span>
+            {isToday && (
+              <span
+                style={{
+                  fontSize: compact ? 9 : 10,
+                  padding: compact ? '1px 4px' : '1px 6px',
+                  borderRadius: 999,
+                  background: '#E3F2FD',
+                  color: '#0D47A1',
+                  fontWeight: 700,
+                }}
+              >
+                今日
+              </span>
+            )}
+          </div>
+          <div style={{ marginTop: listMarginTop, display: 'flex', flexDirection: 'column', gap: listGap, width: '100%' }}>
+            {dayItems.length === 0 ? (
+              <span style={{ fontSize: metaFontSize, color: 'rgba(31,41,55,0.9)' }}>予定なし</span>
+            ) : (
+              dayItems.slice(0, itemLimit).map((item) => {
+                const statusMeta = getScheduleStatusMeta(item.status);
+                const showStatus = item.status && item.status !== 'Planned' && statusMeta;
+                const normalizedServiceType = normalizeServiceType(item.serviceType as string | null);
+                const serviceTypeMeta = getServiceTypeMeta(normalizedServiceType);
+                const compactLabel = `${formatEventTimeRange(item.start, item.end)} ${serviceTypeMeta?.label ?? item.title}`.trim();
+                const label = isMobile ? compactLabel : showStatus ? `${item.title}（${statusMeta!.label}）` : item.title;
+                return (
+                  <span
+                    key={item.id}
+                    style={{
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: compact ? 4 : 6,
+                      padding: compact ? '1px 4px' : '2px 6px',
+                      borderRadius: 999,
+                      fontSize: chipFontSize,
+                      background: 'rgba(0,0,0,0.04)',
+                      color: 'rgba(0,0,0,0.75)',
+                      maxWidth: '100%',
+                      overflow: 'hidden',
+                      textOverflow: 'ellipsis',
+                      whiteSpace: 'nowrap',
+                    }}
+                  >
+                    <span
+                      aria-hidden="true"
+                      style={{
+                        width: compact ? 5 : 6,
+                        height: compact ? 5 : 6,
+                        borderRadius: '50%',
+                        background: statusMeta?.dotColor ?? 'rgba(76,175,80,0.9)',
+                        flexShrink: 0,
+                      }}
+                    />
+                    {label}
+                  </span>
+                );
+              })
+            )}
+            {dayItems.length > itemLimit && (
+              <span style={{ fontSize: compact ? 9 : 10, color: 'rgba(0,0,0,0.5)' }}>
+                +{dayItems.length - itemLimit} 件
+              </span>
+            )}
+          </div>
+        </Button>
+      </div>
+    );
+  };
+
   return (
     <div data-testid={TESTIDS.SCHEDULE_WEEK_ROOT}>
       <div data-testid={TESTIDS.SCHEDULE_WEEK_VIEW} className="space-y-3">
@@ -511,99 +619,26 @@ const WeekViewContent = ({ items, loading, onDayClick, activeDateIso, range, onI
           data-testid={TESTIDS['schedules-week-grid']}
           className="w-full"
         >
-          <div role="row" aria-rowindex={1} className="grid grid-cols-2 gap-2 sm:grid-cols-4 md:grid-cols-7">
-            {weekDays.map((day, index) => {
-              const isToday = day.iso === todayIso;
-              const isActive = day.iso === resolvedActiveIso;
-              const dayItems = groupedItems.get(day.iso) ?? [];
-              const ariaLabel = `${day.label}${isToday ? '（今日）' : ''} 予定${dayItems.length}件`;
-              return (
-                <div
-                  key={day.iso}
-                  role="gridcell"
-                  aria-colindex={index + 1}
-                  aria-selected={isActive}
-                  className="min-w-0"
-                >
-                  <Button
-                    type="button"
-                    aria-label={ariaLabel}
-                    aria-current={isActive ? 'date' : undefined}
-                    onClick={(event) => handleClick(day.iso, event as MouseEvent<HTMLButtonElement>)}
-                    data-testid={`${TESTIDS.SCHEDULES_WEEK_DAY_PREFIX}-${day.iso}`}
-                    variant="outlined"
-                    sx={{ ...dayChipBaseSx, ...getDayChipSx({ isToday, isSelected: isActive }) }}
-                  >
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 6, width: '100%' }}>
-                      <span style={{ fontSize: 12, fontWeight: 600, color: 'rgba(0,0,0,0.65)' }}>{day.label}</span>
-                      {isToday && (
-                        <span
-                          style={{
-                            fontSize: 10,
-                            padding: '1px 6px',
-                            borderRadius: 999,
-                            background: '#E3F2FD',
-                            color: '#0D47A1',
-                            fontWeight: 700,
-                          }}
-                        >
-                          今日
-                        </span>
-                      )}
-                    </div>
-                    <div style={{ marginTop: 6, display: 'flex', flexDirection: 'column', gap: 4, width: '100%' }}>
-                      {dayItems.length === 0 ? (
-                        <span style={{ fontSize: 11, color: 'rgba(31,41,55,0.9)' }}>予定なし</span>
-                      ) : (
-                        dayItems.slice(0, 3).map((item) => {
-                          const statusMeta = getScheduleStatusMeta(item.status);
-                          const showStatus = item.status && item.status !== 'Planned' && statusMeta;
-                          const normalizedServiceType = normalizeServiceType(item.serviceType as string | null);
-                          const serviceTypeMeta = getServiceTypeMeta(normalizedServiceType);
-                          const compactLabel = `${formatEventTimeRange(item.start, item.end)} ${serviceTypeMeta?.label ?? item.title}`.trim();
-                          const label = isMobile ? compactLabel : showStatus ? `${item.title}（${statusMeta!.label}）` : item.title;
-                          return (
-                            <span
-                              key={item.id}
-                              style={{
-                                display: 'inline-flex',
-                                alignItems: 'center',
-                                gap: 6,
-                                padding: '2px 6px',
-                                borderRadius: 999,
-                                fontSize: 11,
-                                background: 'rgba(0,0,0,0.04)',
-                                color: 'rgba(0,0,0,0.75)',
-                                maxWidth: '100%',
-                                overflow: 'hidden',
-                                textOverflow: 'ellipsis',
-                                whiteSpace: 'nowrap',
-                              }}
-                            >
-                              <span
-                                aria-hidden="true"
-                                style={{
-                                  width: 6,
-                                  height: 6,
-                                  borderRadius: '50%',
-                                  background: statusMeta?.dotColor ?? 'rgba(76,175,80,0.9)',
-                                  flexShrink: 0,
-                                }}
-                              />
-                              {label}
-                            </span>
-                          );
-                        })
-                      )}
-                      {dayItems.length > 3 && (
-                        <span style={{ fontSize: 10, color: 'rgba(0,0,0,0.5)' }}>+{dayItems.length - 3} 件</span>
-                      )}
-                    </div>
-                  </Button>
-                </div>
-              );
-            })}
-          </div>
+          {isCompact ? (
+            <div style={{ overflowX: 'auto', paddingBottom: 4 }}>
+              <div
+                role="row"
+                aria-rowindex={1}
+                style={{
+                  display: 'grid',
+                  gridAutoFlow: 'column',
+                  gridAutoColumns: 'minmax(220px, 1fr)',
+                  gap: 16,
+                }}
+              >
+                {weekDays.map((day, index) => renderDayCell(day, index, { compact: true }))}
+              </div>
+            </div>
+          ) : (
+            <div role="row" aria-rowindex={1} className="grid grid-cols-2 gap-2 sm:grid-cols-4 md:grid-cols-7">
+              {weekDays.map((day, index) => renderDayCell(day, index))}
+            </div>
+          )}
         </div>
         {loading ? (
           <p className="rounded-lg border border-dashed border-slate-300 bg-white p-6 text-center text-slate-500" aria-busy="true">

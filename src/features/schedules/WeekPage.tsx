@@ -21,7 +21,7 @@ import { useWeekPageUiState } from '@/features/schedules/useWeekPageUiState';
 import { TESTIDS } from '@/testids';
 import Loading from '@/ui/components/Loading';
 import { resolveSchedulesTz } from '@/utils/scheduleTz';
-import { useBreakpointFlags } from '@/app/LayoutContext';
+import { useBreakpointFlags, useOrientation } from '@/app/LayoutContext';
 
 import DayView from './DayView';
 import WeekView from './WeekView';
@@ -33,7 +33,8 @@ let pendingFabFocus = false;
 
 
 export default function WeekPage() {
-  const { isDesktopSize } = useBreakpointFlags();
+  const { isDesktopSize, isTabletSize } = useBreakpointFlags();
+  const { isLandscape } = useOrientation();
   const { account } = useAuth();
   const { isReception, isAdmin, ready } = useUserAuthz();
   const myUpn = useMemo(() => (account?.username ?? '').trim().toLowerCase(), [account?.username]);
@@ -118,6 +119,7 @@ export default function WeekPage() {
   const [dialogInitialValues, setDialogInitialValues] = useState<ScheduleEditDialogValues | null>(null);
   const [dayLane, setDayLane] = useState<ScheduleCategory | null>(null);
   const showFab = !isDesktopSize;
+  const compact = isTabletSize && isLandscape;
   const fabInset = `max(24px, calc(env(safe-area-inset-bottom, 0px) + 8px))`;
   const fabInsetRight = `max(24px, calc(env(safe-area-inset-right, 0px) + 8px))`;
 
@@ -493,6 +495,7 @@ export default function WeekPage() {
                 title={MASTER_SCHEDULE_TITLE_JA}
                 subLabel={headerSubLabel}
                 periodLabel={headerPeriodLabel}
+                compact={compact}
           onPrev={handlePrevWeek}
           onNext={handleNextWeek}
           onToday={handleTodayWeek}
@@ -511,6 +514,7 @@ export default function WeekPage() {
           nextTestId={TESTIDS.SCHEDULES_NEXT_WEEK}
         >
           <SchedulesFilterResponsive
+            compact={compact}
             inlineStackProps={{
               sx: { mt: { xs: 0.5, sm: 0 }, minWidth: 260 },
               spacing: 0.5,
@@ -610,6 +614,7 @@ export default function WeekPage() {
                 activeDateIso={resolvedActiveDateIso}
                 onItemSelect={handleWeekEventClick}
                 highlightId={highlightId}
+                compact={compact}
               />
             )}
             {mode === 'day' && (

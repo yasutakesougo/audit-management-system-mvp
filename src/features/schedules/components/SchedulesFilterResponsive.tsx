@@ -19,6 +19,8 @@ export interface SchedulesFilterResponsiveProps {
   dialogTitle?: string;
   /** ダイアログで案内メッセージを差し替えたい場合に指定。 */
   dialogDescription?: React.ReactNode;
+  /** Tablet landscape などで dialog-only にしたい場合に指定。 */
+  compact?: boolean;
 }
 
 const DEFAULT_DIALOG_TITLE = 'スケジュールの絞り込み';
@@ -37,6 +39,7 @@ export const SchedulesFilterResponsive: React.FC<SchedulesFilterResponsiveProps>
   inlineStackProps,
   dialogTitle = DEFAULT_DIALOG_TITLE,
   dialogDescription = DEFAULT_DIALOG_DESCRIPTION,
+  compact = false,
 }) => {
   const isSmall = useMediaQuery((theme: Theme) => theme.breakpoints.down('sm'));
   const [open, setOpen] = React.useState(false);
@@ -44,7 +47,7 @@ export const SchedulesFilterResponsive: React.FC<SchedulesFilterResponsiveProps>
   const handleOpen = () => setOpen(true);
   const handleClose = () => setOpen(false);
 
-  if (!isSmall) {
+  if (!isSmall && !compact) {
     return (
       <Stack
         role="group"
