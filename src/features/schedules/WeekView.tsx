@@ -34,6 +34,7 @@ export type WeekViewProps = {
   onItemSelect?: (item: WeekSchedItem) => void;
   onItemAccept?: (item: WeekSchedItem) => void;
   highlightId?: string | null;
+  compact?: boolean;
 };
 
 type WeekSchedItem = SchedItem & {
@@ -144,6 +145,7 @@ export default function WeekView(props: WeekViewProps) {
         onItemSelect={props.onItemSelect}
         onItemAccept={props.onItemAccept}
         highlightId={props.highlightId}
+        compact={props.compact}
       />
     );
   }
@@ -160,6 +162,7 @@ type WeekViewContentProps = {
   onItemSelect?: (item: WeekSchedItem) => void;
   onItemAccept?: (item: WeekSchedItem) => void;
   highlightId?: string | null;
+  compact?: boolean;
 };
 
 const WeekViewWithData = (props: WeekViewProps) => {
@@ -176,16 +179,18 @@ const WeekViewWithData = (props: WeekViewProps) => {
       onItemSelect={props.onItemSelect}
       onItemAccept={props.onItemAccept}
       highlightId={props.highlightId}
+      compact={props.compact}
     />
   );
 };
 
-const WeekViewContent = ({ items, loading, onDayClick, activeDateIso, range, onItemSelect, onItemAccept, highlightId }: WeekViewContentProps) => {
+const WeekViewContent = ({ items, loading, onDayClick, activeDateIso, range, onItemSelect, onItemAccept, highlightId, compact }: WeekViewContentProps) => {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
   const [menuAnchor, setMenuAnchor] = useState<HTMLElement | null>(null);
   const [menuItem, setMenuItem] = useState<WeekSchedItem | null>(null);
   const resolvedRange = useMemo(() => range ?? defaultWeekRange(), [range]);
+  const isCompact = Boolean(compact);
 
   type ServiceTokens = { bg: string; border: string; accent: string };
 
@@ -614,9 +619,26 @@ const WeekViewContent = ({ items, loading, onDayClick, activeDateIso, range, onI
           data-testid={TESTIDS['schedules-week-grid']}
           className="w-full"
         >
+          {isCompact ? (
+            <div style={{ overflowX: 'auto', paddingBottom: 4 }}>
+              <div
+                role="row"
+                aria-rowindex={1}
+                style={{
+                  display: 'grid',
+                  gridAutoFlow: 'column',
+                  gridAutoColumns: 'minmax(220px, 1fr)',
+                  gap: 16,
+                }}
+              >
+                {weekDays.map((day, index) => renderDayCell(day, index, { compact: true }))}
+              </div>
+            </div>
+          ) : (
             <div role="row" aria-rowindex={1} className="grid grid-cols-2 gap-2 sm:grid-cols-4 md:grid-cols-7">
               {weekDays.map(renderDayCell)}
             </div>
+          )}
         </div>
         {loading ? (
           <p className="rounded-lg border border-dashed border-slate-300 bg-white p-6 text-center text-slate-500" aria-busy="true">

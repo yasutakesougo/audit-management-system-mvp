@@ -614,6 +614,7 @@ export default function WeekPage() {
                 activeDateIso={resolvedActiveDateIso}
                 onItemSelect={handleWeekEventClick}
                 highlightId={highlightId}
+                compact={compact}
               />
             )}
             {mode === 'day' && (
