@@ -632,6 +632,7 @@ export default function WeekPage() {
                 items={filteredItems}
                 loading={isLoading}
                 activeCategory={categoryFilter}
+                compact={compact}
               />
             )}
           </>
