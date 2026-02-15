@@ -129,3 +129,16 @@ When improving Schedule E2E test coverage, classify skips into **categories**:
 - Commit the updated assets under `tests/e2e/__screenshots__/nurse.med.visual.spec.ts/`.
 - The spec relies on `TESTIDS.NURSE_MEDS_GRID_SUMMARY` and `TESTIDS.NURSE_MEDS_GRID_CONTROLS`; keep these identifiers intact when editing the markup.
 - Ensure the nurse workspace flags remain enabled by setting `VITE_FEATURE_NURSE=1` (CI uses the same env alongside `VITE_SKIP_LOGIN=1`).
+
+## Architecture & Lint
+
+### Boundaries Rule
+- **Current Status**: ESLint `boundaries/element-types` is set to **`off`** in both CI (`npm run lint`) and pre-push hook to maintain consistency.
+- **Rationale**: Prevents "passes CI but blocks local push" pattern that leads to `--no-verify` abuse.
+- **Improvement Plan**: Boundaries violations are tracked separately for incremental architectural refactoring in dedicated sprints.
+
+### PR Updates (Avoiding Loss)
+- **Preferred**: Use GitHub "Update branch" button or `git merge origin/main` to resolve BEHIND status.
+- **Avoid**: `git rebase origin/main` on PRs that are BEHIND can cause commit loss if branch state is unclear.
+- **Why**: Rebasing a BEHIND branch may eliminate unique commits, leading to PR closure without merge (see PR #472 incident).
+
