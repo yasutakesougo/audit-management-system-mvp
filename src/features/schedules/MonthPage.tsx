@@ -40,12 +40,14 @@ type MonthPageProps = {
   items: SchedItem[];
   loading?: boolean;
   activeCategory?: 'All' | ScheduleCategory;
+  compact?: boolean;
 };
 
-export default function MonthPage({ items, loading = false, activeCategory = 'All' }: MonthPageProps) {
+export default function MonthPage({ items, loading = false, activeCategory = 'All', compact }: MonthPageProps) {
   const announce = useAnnounce();
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
+  const isCompact = Boolean(compact);
   const requestedIso = searchParams.get('date');
   const focusDate = useMemo(() => parseDateParam(requestedIso), [requestedIso]);
   const [anchorDate, setAnchorDate] = useState<Date>(() => startOfMonth(focusDate));
@@ -173,7 +175,7 @@ export default function MonthPage({ items, loading = false, activeCategory = 'Al
       tabIndex={-1}
       style={{ paddingBottom: 32 }}
     >
-      <Box sx={{ px: 2, py: 1.5, display: 'flex', alignItems: 'center', gap: 1 }}>
+      <Box sx={{ px: 2, py: isCompact ? 1 : 1.5, display: 'flex', alignItems: 'center', gap: isCompact ? 0.5 : 1 }}>
         <Button
           variant="outlined"
           size="small"
@@ -188,11 +190,11 @@ export default function MonthPage({ items, loading = false, activeCategory = 'Al
             variant="h6"
             id={headingId}
             data-testid={TESTIDS.SCHEDULES_MONTH_HEADING_ID}
-            sx={{ mb: 0.5 }}
+            sx={{ mb: isCompact ? 0.25 : 0.5 }}
           >
             {monthLabel}
           </Typography>
-          <Typography variant="body2" color="text.secondary">
+          <Typography variant="body2" color="text.secondary" sx={{ fontSize: isCompact ? 11 : 12 }}>
             予定 {totalCount} 件
           </Typography>
         </Box>
@@ -216,19 +218,19 @@ export default function MonthPage({ items, loading = false, activeCategory = 'Al
       </Box>
 
       <div
-        style={{ padding: '16px 12px 32px' }}
+        style={{ padding: isCompact ? '12px 8px 24px' : '16px 12px 32px' }}
         aria-busy={loading || undefined}
         aria-live={loading ? 'polite' : undefined}
       >
         {loading ? (
-          <div style={{ marginBottom: 16 }}>
+          <div style={{ marginBottom: isCompact ? 12 : 16 }}>
             <Loading />
           </div>
         ) : null}
-        <div role="grid" aria-label={`${monthLabel}のカレンダー`} style={gridContainerStyle}>
+        <div role="grid" aria-label={`${monthLabel}のカレンダー`} style={{ ...gridContainerStyle, gap: isCompact ? 6 : 8 }}>
           <div role="row" style={{ display: 'contents' }}>
             {WEEKDAY_LABELS.map((label, index) => (
-              <div key={label} role="columnheader" style={weekdayHeaderStyle(index)}>
+              <div key={label} role="columnheader" style={{ ...weekdayHeaderStyle(index), fontSize: isCompact ? 11 : 12, padding: isCompact ? '2px 0' : '4px 0' }}>
                 {label}
               </div>
             ))}
@@ -251,6 +253,9 @@ export default function MonthPage({ items, loading = false, activeCategory = 'Al
                     sx={{
                       ...monthDayBaseSx(day),
                       ...getDayChipSx({ isToday: day.isToday, isSelected }),
+                      padding: isCompact ? '6px 8px' : '10px 12px',
+                      minHeight: isCompact ? 70 : 90,
+                      gap: isCompact ? 0.5 : 1,
                     } as SxProps<Theme>}
                   >
                     <Badge
@@ -272,16 +277,16 @@ export default function MonthPage({ items, loading = false, activeCategory = 'Al
                         },
                       }}
                     >
-                      <span style={dayNumberStyle(day)}>
+                      <span style={{ ...dayNumberStyle(day), fontSize: isCompact ? 14 : 16 }}>
                         {day.day}
                         {day.isToday ? <span style={todayDotStyle} aria-hidden="true" /> : null}
                         {day.isToday ? (
-                          <span style={{ fontSize: 12, color: '#1e88e5', marginLeft: 4 }}>(今日)</span>
+                          <span style={{ fontSize: isCompact ? 10 : 12, color: '#1e88e5', marginLeft: 4 }}>(今日)</span>
                         ) : null}
                       </span>
                     </Badge>
                     {day.firstTitle ? (
-                      <Typography sx={dayTitleSx} title={day.firstTitle}>
+                        <Typography sx={{ ...dayTitleSx, fontSize: isCompact ? 11 : 12, mt: isCompact ? 0.25 : 0.5 }} title={day.firstTitle}>
                         {day.firstTitle}
                         {day.eventCount > 1 ? ` +${day.eventCount - 1}` : ''}
                       </Typography>
