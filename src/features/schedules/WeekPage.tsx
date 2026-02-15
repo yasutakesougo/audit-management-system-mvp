@@ -21,7 +21,7 @@ import { useWeekPageUiState } from '@/features/schedules/useWeekPageUiState';
 import { TESTIDS } from '@/testids';
 import Loading from '@/ui/components/Loading';
 import { resolveSchedulesTz } from '@/utils/scheduleTz';
-import { useBreakpointFlags, useOrientation } from '@/app/LayoutContext';
+import { useBreakpointFlags } from '@/app/LayoutContext';
 
 import DayView from './DayView';
 import WeekView from './WeekView';
@@ -33,8 +33,7 @@ let pendingFabFocus = false;
 
 
 export default function WeekPage() {
-  const { isTabletSize, isDesktopSize } = useBreakpointFlags();
-  const { isLandscape } = useOrientation();
+  const { isDesktopSize } = useBreakpointFlags();
   const { account } = useAuth();
   const { isReception, isAdmin, ready } = useUserAuthz();
   const myUpn = useMemo(() => (account?.username ?? '').trim().toLowerCase(), [account?.username]);
@@ -118,9 +117,7 @@ export default function WeekPage() {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [dialogInitialValues, setDialogInitialValues] = useState<ScheduleEditDialogValues | null>(null);
   const [dayLane, setDayLane] = useState<ScheduleCategory | null>(null);
-  const isLandscapeTablet = isTabletSize && isLandscape;
   const showFab = !isDesktopSize;
-  const isExtendedFab = isLandscapeTablet;
 
   useEffect(() => {
     if (mode === 'day') {
@@ -644,9 +641,8 @@ export default function WeekPage() {
             position: 'fixed',
             right: 24,
             bottom: 24,
-            width: isExtendedFab ? 'auto' : 64,
+            width: 64,
             height: 56,
-            padding: isExtendedFab ? '0 20px' : undefined,
             borderRadius: '50%',
             border: 'none',
             background: canWrite ? '#1976d2' : '#ccc',
@@ -659,7 +655,7 @@ export default function WeekPage() {
             zIndex: 1300,
             display: 'inline-flex',
             alignItems: 'center',
-            gap: isExtendedFab ? 10 : 0,
+            justifyContent: 'center',
             opacity: canWrite ? 1 : 0.6,
           }}
           aria-label={
@@ -672,7 +668,6 @@ export default function WeekPage() {
           title={!canWrite ? readOnlyReason?.message ?? '現在は閲覧のみです' : undefined}
         >
           <span aria-hidden="true">＋</span>
-          {isExtendedFab ? <span style={{ fontSize: 14, fontWeight: 600 }}>予定を追加</span> : null}
         </button>
       ) : null}
       {dialogInitialValues ? (
