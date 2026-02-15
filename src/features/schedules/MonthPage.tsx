@@ -9,6 +9,7 @@ import { TESTIDS } from '@/testids';
 import type { ScheduleCategory } from './domain/types';
 import { getDayChipSx } from './theme/dateStyles';
 import { DayPopover } from './components/DayPopover';
+import { ScheduleEmptyHint } from './components/ScheduleEmptyHint';
 import {
   useCallback,
   useEffect,
@@ -165,6 +166,67 @@ export default function MonthPage({ items, loading = false, activeCategory = 'Al
     },
     [setMonthAnchor],
   );
+
+  // Empty state: skip rendering large grid to achieve zero-scroll on iPad landscape
+  if (!loading && totalCount === 0) {
+    return (
+      <section
+        data-testid={TESTIDS.SCHEDULES_MONTH_PAGE}
+        aria-label="月間スケジュール"
+        aria-labelledby={headingId}
+        tabIndex={-1}
+        style={{ paddingBottom: isCompact ? 16 : 32 }}
+      >
+        {/* Month controls (preserved for navigation) */}
+        <Box sx={{ px: 2, py: isCompact ? 1 : 1.5, display: 'flex', alignItems: 'center', gap: isCompact ? 0 : 1 }}>
+          <Button
+            variant="outlined"
+            size="small"
+            onClick={handlePrevMonth}
+            aria-label="前の月へ移動"
+            data-testid={TESTIDS.SCHEDULES_MONTH_PREV}
+          >
+            前
+          </Button>
+          <Box sx={{ flex: 1 }}>
+            <Typography
+              variant="h6"
+              id={headingId}
+              data-testid={TESTIDS.SCHEDULES_MONTH_HEADING_ID}
+              sx={{ mb: isCompact ? 0 : 0.5, fontSize: isCompact ? 16 : undefined }}
+            >
+              {monthLabel}
+            </Typography>
+            <Typography variant="body2" color="text.secondary" sx={{ fontSize: isCompact ? 11 : 12 }}>
+              予定 {totalCount} 件
+            </Typography>
+          </Box>
+          <Button
+            variant="outlined"
+            size="small"
+            onClick={handleCurrentMonth}
+            aria-label="今月に移動"
+          >
+            今月
+          </Button>
+          <Button
+            variant="outlined"
+            size="small"
+            onClick={handleNextMonth}
+            aria-label="次の月へ移動"
+            data-testid={TESTIDS.SCHEDULES_MONTH_NEXT}
+          >
+            次
+          </Button>
+        </Box>
+
+        {/* Empty state hint only (no grid rendering) */}
+        <div style={{ padding: isCompact ? '12px 12px 24px' : '16px 16px 32px' }}>
+          <ScheduleEmptyHint view="month" periodLabel={monthLabel} compact={isCompact} />
+        </div>
+      </section>
+    );
+  }
 
   return (
     <section
