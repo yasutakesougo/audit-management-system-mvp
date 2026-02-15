@@ -42,4 +42,3 @@ vite-profile-*.cpuprofile
 
 # npm audit reports
 audit-report.json
-.todo/
