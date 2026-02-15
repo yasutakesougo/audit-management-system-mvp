@@ -28,6 +28,7 @@ type TimelineItemProps = {
   acceptedNote?: string | null;
   hasWarning?: boolean;
   warningLabel?: string;
+  compact?: boolean;
 };
 
 const toLocalDateIso = (value?: string): string => {
@@ -86,6 +87,7 @@ type DayViewProps = {
   range?: DateRange;
   categoryFilter?: 'All' | ScheduleCategory;
   emptyCtaLabel?: string;
+  compact?: boolean;
 };
 
 export default function DayView(props: DayViewProps = {}) {
@@ -99,6 +101,7 @@ export default function DayView(props: DayViewProps = {}) {
         range={props.range!}
         categoryFilter={props.categoryFilter}
         emptyCtaLabel={props.emptyCtaLabel}
+        compact={props.compact}
       />
     );
   }
@@ -122,6 +125,7 @@ const DayViewWithData = (props: DayViewProps) => {
       range={resolvedRange}
       categoryFilter={props.categoryFilter}
       emptyCtaLabel={props.emptyCtaLabel}
+      compact={props.compact}
     />
   );
 };
@@ -132,16 +136,19 @@ const DayViewContent = ({
   range,
   categoryFilter,
   emptyCtaLabel,
+  compact,
 }: {
   items: SchedItem[];
   loading: boolean;
   range: DateRange;
   categoryFilter?: 'All' | ScheduleCategory;
   emptyCtaLabel?: string;
+  compact?: boolean;
 }) => {
   const headingId = useId();
   const listLabelId = useId();
   const navigate = useNavigate();
+  const isCompact = Boolean(compact);
 
   const dayIso = toLocalDateIso(range.from);
   const filteredItems = useMemo(
@@ -163,6 +170,7 @@ const DayViewContent = ({
     categoryFilter === 'Org'
       ? `${emptyHint}会議・全体予定・共有タスクは「施設」へ。`
       : emptyHint;
+  const emptyDescriptionCompact = 'この日の予定はありません。';
 
   return (
     <section
@@ -173,10 +181,10 @@ const DayViewContent = ({
     >
       <header
         style={{
-          position: 'sticky',
+          position: isCompact ? 'static' : 'sticky',
           top: 0,
           zIndex: 1,
-          padding: '8px 12px 12px',
+          padding: isCompact ? '6px 10px 8px' : '8px 12px 12px',
           background: 'rgba(255,255,255,0.95)',
           backdropFilter: 'blur(6px)',
           borderBottom: '1px solid rgba(0,0,0,0.06)',
@@ -188,14 +196,14 @@ const DayViewContent = ({
             alignItems: 'baseline',
             justifyContent: 'space-between',
             gap: 12,
-            marginBottom: 6,
+            marginBottom: isCompact ? 4 : 6,
           }}
         >
           <h2
             id={headingId}
             style={{
               margin: 0,
-              fontSize: 22,
+              fontSize: isCompact ? 18 : 22,
               fontWeight: 700,
             }}
           >
@@ -204,7 +212,7 @@ const DayViewContent = ({
           <span
             style={{
               margin: 0,
-              fontSize: 14,
+              fontSize: isCompact ? 12 : 14,
               color: 'rgba(0,0,0,0.65)',
             }}
             aria-live="polite"
@@ -216,7 +224,7 @@ const DayViewContent = ({
           style={{
             display: 'flex',
             justifyContent: 'flex-end',
-            gap: 8,
+            gap: isCompact ? 6 : 8,
             flexWrap: 'wrap',
           }}
         >
@@ -225,12 +233,13 @@ const DayViewContent = ({
             onClick={() => navigate('/schedules/week')}
             data-testid="schedules-link-week"
             style={{
-              padding: '4px 10px',
+              padding: isCompact ? '2px 8px' : '4px 10px',
               borderRadius: 999,
               border: '1px solid rgba(0,0,0,0.18)',
               background: '#fff',
-              fontSize: 13,
+              fontSize: isCompact ? 12 : 13,
               cursor: 'pointer',
+              minHeight: isCompact ? 28 : undefined,
             }}
           >
             週表示に戻る
@@ -240,12 +249,13 @@ const DayViewContent = ({
             onClick={() => navigate('/schedules/month')}
             data-testid="schedules-link-month"
             style={{
-              padding: '4px 10px',
+              padding: isCompact ? '2px 8px' : '4px 10px',
               borderRadius: 999,
               border: '1px solid rgba(0,0,0,0.14)',
               background: 'rgba(0,0,0,0.03)',
-              fontSize: 13,
+              fontSize: isCompact ? 12 : 13,
               cursor: 'pointer',
+              minHeight: isCompact ? 28 : undefined,
             }}
           >
             月表示に切り替え
@@ -256,7 +266,7 @@ const DayViewContent = ({
       <div
         aria-labelledby={listLabelId}
         role="group"
-        style={{ marginTop: 12 }}
+        style={{ marginTop: isCompact ? 8 : 12 }}
         data-testid="schedule-day-root"
       >
         <span
@@ -280,7 +290,7 @@ const DayViewContent = ({
           <div
             aria-busy="true"
             aria-live="polite"
-            style={{ display: 'grid', gap: 12, paddingTop: 8 }}
+            style={{ display: 'grid', gap: isCompact ? 8 : 12, paddingTop: isCompact ? 4 : 8 }}
             data-testid={TESTIDS['schedules-day-skeleton']}
           >
             <Loading />
@@ -289,10 +299,10 @@ const DayViewContent = ({
             <TimelineSkeleton />
           </div>
         ) : typedItems.length === 0 ? (
-          <div style={{ display: 'grid', gap: 12 }}>
+          <div style={{ display: 'grid', gap: isCompact ? 8 : 12 }}>
             <EmptyState
               title="予定はまだありません"
-              description={emptyDescription}
+              description={isCompact ? emptyDescriptionCompact : emptyDescription}
               data-testid="schedule-day-empty"
             />
           </div>
@@ -304,7 +314,7 @@ const DayViewContent = ({
               margin: 0,
               padding: 0,
               display: 'grid',
-              gap: 8,
+              gap: isCompact ? 4 : 8,
             }}
             data-testid={TESTIDS['schedules-day-list']}
           >
@@ -354,6 +364,7 @@ const DayViewContent = ({
                     acceptedNote={item.acceptedNote}
                     hasWarning={hasWarning}
                     warningLabel={warningLabel}
+                    compact={isCompact}
                   />
                 </li>
               );
@@ -365,7 +376,7 @@ const DayViewContent = ({
   );
 }
 
-function TimelineItem({ title, timeLabel, secondary, status, statusReason, acceptedBy, acceptedOn, acceptedNote, hasWarning, warningLabel }: TimelineItemProps) {
+function TimelineItem({ title, timeLabel, secondary, status, statusReason, acceptedBy, acceptedOn, acceptedNote, hasWarning, warningLabel, compact }: TimelineItemProps) {
   const statusMeta = getScheduleStatusMeta(status);
   const dotColor = statusMeta?.dotColor ?? 'rgba(25,118,210,0.9)';
   const badgeLabel = status && status !== 'Planned' ? statusMeta?.label : undefined;
@@ -395,23 +406,28 @@ function TimelineItem({ title, timeLabel, secondary, status, statusReason, accep
     return `受け入れ: ${dateText}`;
   })();
 
+  const isCompact = Boolean(compact);
+  const labelFontSize = isCompact ? 13 : 14;
+  const metaFontSize = isCompact ? 11 : 12;
+  const acceptFontSize = isCompact ? 10 : 11;
+
   return (
     <div
       style={{
         display: 'grid',
-        gridTemplateColumns: '80px minmax(0, 1fr)',
-        columnGap: 12,
+        gridTemplateColumns: isCompact ? '68px minmax(0, 1fr)' : '80px minmax(0, 1fr)',
+        columnGap: isCompact ? 8 : 12,
         alignItems: 'flex-start',
         opacity,
       }}
     >
       <div
         style={{
-          fontSize: 12,
+          fontSize: isCompact ? 11 : 12,
           fontWeight: 600,
           color: 'rgba(0,0,0,0.65)',
           textAlign: 'right',
-          paddingTop: 4,
+          paddingTop: isCompact ? 2 : 4,
         }}
       >
         {timeLabel}
@@ -420,8 +436,8 @@ function TimelineItem({ title, timeLabel, secondary, status, statusReason, accep
       <div
         style={{
           position: 'relative',
-          paddingLeft: 18,
-          paddingBottom: 8,
+          paddingLeft: isCompact ? 14 : 18,
+          paddingBottom: isCompact ? 6 : 8,
         }}
       >
         <div
@@ -441,13 +457,13 @@ function TimelineItem({ title, timeLabel, secondary, status, statusReason, accep
             title={warningText}
             style={{
               position: 'absolute',
-              top: -4,
+              top: isCompact ? -2 : -4,
               right: 0,
-              padding: '2px 6px',
+              padding: isCompact ? '1px 4px' : '2px 6px',
               borderRadius: 999,
               background: '#f57c00',
               color: '#fff',
-              fontSize: 11,
+              fontSize: isCompact ? 10 : 11,
               fontWeight: 700,
               boxShadow: '0 2px 6px rgba(0,0,0,0.15)',
             }}
@@ -471,7 +487,7 @@ function TimelineItem({ title, timeLabel, secondary, status, statusReason, accep
         />
         <div
           style={{
-            padding: '6px 10px',
+            padding: isCompact ? '4px 8px' : '6px 10px',
             borderRadius: 10,
             background: 'rgba(0,0,0,0.02)',
             border: '1px solid rgba(0,0,0,0.08)',
@@ -479,9 +495,9 @@ function TimelineItem({ title, timeLabel, secondary, status, statusReason, accep
         >
           <div
             style={{
-              fontSize: 14,
+              fontSize: labelFontSize,
               fontWeight: 600,
-              marginBottom: secondary || badgeLabel || reason ? 2 : 0,
+              marginBottom: secondary || badgeLabel || reason ? (isCompact ? 1 : 2) : 0,
             }}
           >
             {title}
@@ -489,11 +505,11 @@ function TimelineItem({ title, timeLabel, secondary, status, statusReason, accep
               <span
                 style={{
                   marginLeft: 8,
-                  padding: '1px 6px',
+                  padding: isCompact ? '1px 4px' : '1px 6px',
                   borderRadius: 999,
                   background: statusMeta?.chipBg ?? 'rgba(0,0,0,0.08)',
                   color: statusMeta?.chipColor ?? 'rgba(0,0,0,0.7)',
-                  fontSize: 11,
+                  fontSize: isCompact ? 10 : 11,
                   fontWeight: 600,
                 }}
               >
@@ -506,8 +522,8 @@ function TimelineItem({ title, timeLabel, secondary, status, statusReason, accep
               style={{
                 display: 'flex',
                 flexWrap: 'wrap',
-                gap: 6,
-                fontSize: 12,
+                gap: isCompact ? 4 : 6,
+                fontSize: metaFontSize,
                 color: 'rgba(0,0,0,0.6)',
               }}
             >
@@ -518,8 +534,8 @@ function TimelineItem({ title, timeLabel, secondary, status, statusReason, accep
           {hasAcceptance ? (
             <div
               style={{
-                marginTop: 4,
-                fontSize: 11,
+                marginTop: isCompact ? 2 : 4,
+                fontSize: acceptFontSize,
                 color: 'rgba(0,0,0,0.55)',
               }}
               aria-label="受け入れ情報"
@@ -529,8 +545,8 @@ function TimelineItem({ title, timeLabel, secondary, status, statusReason, accep
           ) : (
             <div
               style={{
-                marginTop: 4,
-                fontSize: 10,
+                marginTop: isCompact ? 2 : 4,
+                fontSize: isCompact ? 9 : 10,
                 color: 'rgba(0,0,0,0.38)',
                 fontStyle: 'italic',
               }}
