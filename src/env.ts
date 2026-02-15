@@ -171,6 +171,11 @@ export const isDev = resolveIsDev();
 export const isE2E = getFlag('VITE_E2E', false);
 export const isDemo = getFlag('VITE_DEMO', false);
 /**
+ * 書き込み操作の可否フラグ（デフォルト: true）
+ * 本番環境で安全に read-only モードにする際に使用
+ */
+export const isWriteEnabled = getFlag('VITE_WRITE_ENABLED', true);
+/**
  * Clear the cached env after runtime env is loaded.
  * Call this after window.__ENV__ is updated to ensure fresh reads.
  * @internal

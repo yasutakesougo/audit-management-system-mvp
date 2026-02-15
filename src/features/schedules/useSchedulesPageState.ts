@@ -6,6 +6,7 @@ import type { CreateScheduleEventInput, SchedItem, UpdateScheduleEventInput } fr
 import type { ScheduleFormState } from '@/features/schedules/scheduleFormState';
 import { makeRange, useSchedules } from '@/features/schedules/useSchedules';
 import { type DialogIntentParams, type WeekDialogMode, useWeekPageRouteState } from '@/features/schedules/useWeekPageRouteState';
+import type { SchedulesErrorInfo } from './errors';
 
 export const DEFAULT_START_TIME = '10:00';
 export const DEFAULT_END_TIME = '11:00';
@@ -184,6 +185,8 @@ type SchedulesPageState = {
   lastError: ReturnType<typeof useSchedules>['lastError'];
   clearLastError: ReturnType<typeof useSchedules>['clearLastError'];
   refetch: ReturnType<typeof useSchedules>['refetch'];
+  readOnlyReason?: SchedulesErrorInfo;
+  canWrite: boolean;
   filteredItems: SchedItem[];
   dialogIntent: DialogIntentParams | null;
   dialogMode: WeekDialogMode;
@@ -226,7 +229,7 @@ export const useSchedulesPageState = ({ myUpn, canEditByRole, ready }: Schedules
   }, [focusDate]);
 
   const dataRange = mode === 'month' ? monthRange : weekRange;
-  const { items, loading: isLoading, create, update, remove, lastError, clearLastError, refetch } = useSchedules(dataRange);
+  const { items, loading: isLoading, create, update, remove, lastError, clearLastError, refetch, readOnlyReason, canWrite } = useSchedules(dataRange);
 
   const filteredItems = useMemo(() => {
     const needle = query.trim().toLowerCase();
@@ -342,5 +345,7 @@ export const useSchedulesPageState = ({ myUpn, canEditByRole, ready }: Schedules
     scheduleDialogModeProps,
     weekLabel,
     weekAnnouncement,
+    readOnlyReason,
+    canWrite,
   };
 };

@@ -11,9 +11,28 @@
  * - ETag 412 conflict handling (update)
  */
 
+import { isWriteEnabled } from '@/env';
 import { useSP } from '@/lib/spClient';
 import { FIELD_MAP } from '@/sharepoint/fields';
 import type { ScheduleStatus, ScheduleServiceType, ScheduleVisibility } from '@/features/schedules/domain/types';
+
+// ────────────────────────────────────────────────────────────────
+// Write Gate: Repo レベルで mutation を確実に遮断
+// ────────────────────────────────────────────────────────────────
+
+export class WriteDisabledError extends Error {
+  readonly code = 'WRITE_DISABLED' as const;
+  constructor(operation: string) {
+    super(`Write operation "${operation}" is disabled. Set VITE_WRITE_ENABLED=1 to enable.`);
+    this.name = 'WriteDisabledError';
+  }
+}
+
+function assertWriteEnabled(operation: string): void {
+  if (!isWriteEnabled) {
+    throw new WriteDisabledError(operation);
+  }
+}
 
 // ────────────────────────────────────────────────────────────────
 // Step 2: Read/Query Types & Functions
@@ -243,6 +262,8 @@ export async function createSchedule(
   client: ReturnType<typeof useSP>,
   input: CreateScheduleInput
 ): Promise<RepoSchedule> {
+  assertWriteEnabled('createSchedule');
+
   // Use ScheduleEvents list (event list, not custom Schedules list)
   const listId = 'ScheduleEvents';
 
@@ -262,6 +283,8 @@ export async function updateSchedule(
   etag: string,
   input: UpdateScheduleInput
 ): Promise<RepoSchedule> {
+  assertWriteEnabled('updateSchedule');
+
   // Use ScheduleEvents list (event list, not custom Schedules list)
   const listId = 'ScheduleEvents';
 
@@ -277,6 +300,8 @@ export async function updateSchedule(
 }
 
 export async function removeSchedule(client: ReturnType<typeof useSP>, id: number): Promise<void> {
+  assertWriteEnabled('removeSchedule');
+
   // Use ScheduleEvents list (event list, not custom Schedules list)
   const listId = 'ScheduleEvents';
   await client.deleteItem(listId, id);

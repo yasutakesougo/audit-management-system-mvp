@@ -30,7 +30,7 @@ const getHttpStatus = (e: unknown): number | undefined => {
 };
 import type { DateRange, SchedItem, SchedulesPort, ScheduleServiceType } from './port';
 import { mapSpRowToSchedule, parseSpScheduleRows } from './spRowSchema';
-import { getSchedulesListTitle, SCHEDULES_FIELDS, buildSchedulesListPath } from './spSchema';
+import { getSchedulesListTitle, SCHEDULES_FIELDS, buildSchedulesListPath, resolveSchedulesListIdentifier } from './spSchema';
 
 type ListRangeFn = (range: DateRange) => Promise<SchedItem[]>;
 
@@ -184,6 +184,57 @@ const readSpErrorMessage = async (response: Response): Promise<string> => {
   } catch {
     return text.slice(0, 4000);
   }
+};
+
+export type ListFieldMeta = {
+  internalName: string;
+  type: string;
+  required: boolean;
+  choices?: string[];
+};
+
+export const getListFieldsMeta = async (): Promise<ListFieldMeta[]> => {
+  const { baseUrl } = ensureConfig();
+  const identifier = resolveSchedulesListIdentifier();
+  const listBase = identifier.type === 'guid'
+    ? `${baseUrl}/lists(guid'${identifier.value}')`
+    : `${baseUrl}/lists/getbytitle('${identifier.value.replace(/'/g, "''")}')`;
+  const url = `${listBase}/fields?$select=InternalName,TypeAsString,Required,Choices&$filter=Hidden eq false`;
+
+  const response = await fetchSp(url);
+  if (!response.ok) {
+    const message = await readSpErrorMessage(response);
+    const error = new Error(message || `SharePoint request failed (${response.status})`);
+    (error as { status?: number }).status = response.status;
+    (error as { url?: string }).url = url;
+    (error as { body?: string }).body = message;
+    throw error;
+  }
+
+  const payload = (await response.json()) as SharePointResponse<{
+    InternalName?: string;
+    TypeAsString?: string;
+    Required?: boolean;
+    Choices?: { results?: string[] } | string[];
+  }>;
+
+  const fields = (payload.value ?? [])
+    .map((field) => {
+      const internalName = field.InternalName ?? '';
+      if (!internalName) return null;
+      const rawChoices = Array.isArray(field.Choices)
+        ? field.Choices
+        : field.Choices?.results;
+
+      return {
+        internalName,
+        type: field.TypeAsString ?? 'Unknown',
+        required: Boolean(field.Required),
+        choices: rawChoices?.filter(Boolean),
+      };
+    })
+    .filter(Boolean);
+  return fields as ListFieldMeta[];
 };
 
 const fetchRange = async (

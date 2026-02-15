@@ -18,6 +18,7 @@ type Props = {
   title?: string;
   subLabel: string;
   periodLabel: string;
+  compact?: boolean;
   onPrev: () => void;
   onNext: () => void;
   onToday: () => void;
@@ -58,6 +59,7 @@ export const SchedulesHeader: React.FC<Props> = ({
   title = 'スケジュール',
   subLabel,
   periodLabel,
+  compact = false,
   onPrev,
   onNext,
   onToday,
@@ -94,6 +96,14 @@ export const SchedulesHeader: React.FC<Props> = ({
 }) => {
   const navigate = useNavigate();
   const isSmall = useMediaQuery((theme: Theme) => theme.breakpoints.down('sm'));
+  const headerSpacing = compact ? 0.5 : 1;
+  const headerBottom = compact ? 0.75 : 1.25;
+  const tabsMinHeight = compact ? 30 : 36;
+  const tabMinHeight = compact ? 28 : 34;
+  const tabMinWidth = compact ? 36 : 44;
+  const tabPaddingX = compact ? 0.5 : 1;
+  const controlSpacing = compact ? 0.5 : 1;
+  const compactButtonSx = compact ? { py: 0.5, px: 1, minHeight: 30 } : undefined;
 
   const handleTabChange = (_: React.SyntheticEvent, value: ViewMode) => {
     if (value === mode) {
@@ -108,7 +118,7 @@ export const SchedulesHeader: React.FC<Props> = ({
   };
 
   return (
-    <Stack spacing={1} sx={{ mb: 1.25 }} data-testid={TESTIDS.SCHEDULES_HEADER_ROOT}>
+    <Stack spacing={headerSpacing} sx={{ mb: headerBottom }} data-testid={TESTIDS.SCHEDULES_HEADER_ROOT}>
       <Stack
         direction={isSmall ? 'column' : 'row'}
         alignItems={isSmall ? 'flex-start' : 'center'}
@@ -131,7 +141,7 @@ export const SchedulesHeader: React.FC<Props> = ({
           <Typography
             variant="caption"
             color="text.secondary"
-            sx={{ display: { xs: 'none', md: 'block' } }}
+            sx={{ display: compact ? 'none' : { xs: 'none', md: 'block' } }}
             noWrap
           >
             {subLabel}
@@ -150,12 +160,33 @@ export const SchedulesHeader: React.FC<Props> = ({
             value={mode}
             onChange={handleTabChange}
             aria-label={tablistLabel}
-            sx={{ flexShrink: 0, minHeight: 36 }}
+            sx={{ flexShrink: 0, minHeight: tabsMinHeight }}
             data-testid="schedules-view-tabs"
           >
-            {modes.includes('day') && <Tab label="日" value="day" sx={{ minHeight: 34, minWidth: 44, px: 1 }} data-testid="schedules-view-tab-day" />}
-            {modes.includes('week') && <Tab label="週" value="week" sx={{ minHeight: 34, minWidth: 44, px: 1 }} data-testid="schedules-view-tab-week" />}
-            {modes.includes('month') && <Tab label="月" value="month" sx={{ minHeight: 34, minWidth: 44, px: 1 }} data-testid="schedules-view-tab-month" />}
+            {modes.includes('day') && (
+              <Tab
+                label="日"
+                value="day"
+                sx={{ minHeight: tabMinHeight, minWidth: tabMinWidth, px: tabPaddingX }}
+                data-testid="schedules-view-tab-day"
+              />
+            )}
+            {modes.includes('week') && (
+              <Tab
+                label="週"
+                value="week"
+                sx={{ minHeight: tabMinHeight, minWidth: tabMinWidth, px: tabPaddingX }}
+                data-testid="schedules-view-tab-week"
+              />
+            )}
+            {modes.includes('month') && (
+              <Tab
+                label="月"
+                value="month"
+                sx={{ minHeight: tabMinHeight, minWidth: tabMinWidth, px: tabPaddingX }}
+                data-testid="schedules-view-tab-month"
+              />
+            )}
           </Tabs>
         </Box>
 
@@ -182,12 +213,12 @@ export const SchedulesHeader: React.FC<Props> = ({
         direction={isSmall ? 'column' : 'row'}
         alignItems={isSmall ? 'flex-start' : 'center'}
         justifyContent="space-between"
-        spacing={1}
+        spacing={controlSpacing}
         flexWrap="wrap"
       >
-        <Stack direction="row" spacing={1} alignItems="center" sx={{ flexWrap: 'wrap' }}>
+        <Stack direction="row" spacing={controlSpacing} alignItems="center" sx={{ flexWrap: 'wrap' }}>
           <Typography
-            variant="body2"
+            variant={compact ? 'caption' : 'body2'}
             data-testid={rangeTestId ?? TESTIDS.SCHEDULES_RANGE_LABEL}
             id={rangeLabelId}
             aria-live={rangeAriaLive}
@@ -204,6 +235,7 @@ export const SchedulesHeader: React.FC<Props> = ({
             onBlur={todayButtonOnBlur}
             aria-label={todayButtonLabel}
             title={todayButtonLabel}
+            sx={compactButtonSx}
           >
             今日
           </Button>
@@ -219,6 +251,7 @@ export const SchedulesHeader: React.FC<Props> = ({
             onBlur={prevButtonOnBlur}
             aria-label={prevButtonLabel}
             title={prevButtonLabel}
+            sx={compactButtonSx}
           >
             &lt; 前
           </Button>
@@ -231,6 +264,7 @@ export const SchedulesHeader: React.FC<Props> = ({
             onBlur={nextButtonOnBlur}
             aria-label={nextButtonLabel}
             title={nextButtonLabel}
+            sx={compactButtonSx}
           >
             次 &gt;
           </Button>

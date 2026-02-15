@@ -1,5 +1,5 @@
 import { type CSSProperties, type MouseEvent, useCallback, useEffect, useId, useMemo, useRef, useState } from 'react';
-import { Alert, Button, Dialog, DialogTitle, DialogContent, DialogActions, Snackbar, Stack, Typography } from '@mui/material';
+import { Alert, AlertTitle, Button, Dialog, DialogTitle, DialogContent, DialogActions, Snackbar, Stack, Typography } from '@mui/material';
 
 import { useAnnounce } from '@/a11y/LiveAnnouncer';
 import { useAuth } from '@/auth/useAuth';
@@ -33,7 +33,7 @@ let pendingFabFocus = false;
 
 
 export default function WeekPage() {
-  const { isTabletSize, isDesktopSize } = useBreakpointFlags();
+  const { isDesktopSize, isTabletSize } = useBreakpointFlags();
   const { isLandscape } = useOrientation();
   const { account } = useAuth();
   const { isReception, isAdmin, ready } = useUserAuthz();
@@ -65,6 +65,8 @@ export default function WeekPage() {
     scheduleDialogModeProps,
     weekLabel,
     weekAnnouncement,
+    readOnlyReason,
+    canWrite,
   } = useSchedulesPageState({ myUpn, canEditByRole, ready });
   const {
     snack,
@@ -116,9 +118,10 @@ export default function WeekPage() {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [dialogInitialValues, setDialogInitialValues] = useState<ScheduleEditDialogValues | null>(null);
   const [dayLane, setDayLane] = useState<ScheduleCategory | null>(null);
-  const isLandscapeTablet = isTabletSize && isLandscape;
   const showFab = !isDesktopSize;
-  const isExtendedFab = isLandscapeTablet;
+  const compact = isTabletSize && isLandscape;
+  const fabInset = `max(24px, calc(env(safe-area-inset-bottom, 0px) + 8px))`;
+  const fabInsetRight = `max(24px, calc(env(safe-area-inset-right, 0px) + 8px))`;
 
   useEffect(() => {
     if (mode === 'day') {
@@ -492,10 +495,11 @@ export default function WeekPage() {
                 title={MASTER_SCHEDULE_TITLE_JA}
                 subLabel={headerSubLabel}
                 periodLabel={headerPeriodLabel}
+                compact={compact}
           onPrev={handlePrevWeek}
           onNext={handleNextWeek}
           onToday={handleTodayWeek}
-          onPrimaryCreate={canEdit ? handleFabClick : undefined}
+          onPrimaryCreate={canEdit && canWrite ? handleFabClick : undefined}
                   showPrimaryAction={isDesktopSize}
                   primaryActionLabel="予定を追加"
           primaryActionAriaLabel="この週に予定を追加"
@@ -510,6 +514,7 @@ export default function WeekPage() {
           nextTestId={TESTIDS.SCHEDULES_NEXT_WEEK}
         >
           <SchedulesFilterResponsive
+            compact={compact}
             inlineStackProps={{
               sx: { mt: { xs: 0.5, sm: 0 }, minWidth: 260 },
               spacing: 0.5,
@@ -560,6 +565,33 @@ export default function WeekPage() {
         })()}
       </div>
 
+      {readOnlyReason && (
+        <Alert
+          severity={readOnlyReason.kind === 'WRITE_DISABLED' ? 'info' : 'warning'}
+          sx={{ mb: 2 }}
+          action={
+            readOnlyReason.action ? (
+              <Button
+                color="inherit"
+                size="small"
+                onClick={readOnlyReason.action.onClick}
+                href={readOnlyReason.action.href}
+              >
+                {readOnlyReason.action.label}
+              </Button>
+            ) : undefined
+          }
+        >
+          <AlertTitle>{readOnlyReason.title}</AlertTitle>
+          {readOnlyReason.message}
+          {readOnlyReason.details && readOnlyReason.details.length > 0 && (
+            <Typography variant="caption" component="div" sx={{ mt: 1, opacity: 0.8 }}>
+              {readOnlyReason.details.join(' / ')}
+            </Typography>
+          )}
+        </Alert>
+      )}
+
       <div>
         {showEmptyHint ? (
           <ScheduleEmptyHint view={mode} periodLabel={weekLabel} sx={{ mb: 2 }} />
@@ -582,6 +614,7 @@ export default function WeekPage() {
                 activeDateIso={resolvedActiveDateIso}
                 onItemSelect={handleWeekEventClick}
                 highlightId={highlightId}
+                compact={compact}
               />
             )}
             {mode === 'day' && (
@@ -610,35 +643,38 @@ export default function WeekPage() {
           onClick={handleFabClick}
           data-testid={TESTIDS.SCHEDULES_FAB_CREATE}
           ref={fabRef}
+          disabled={!canWrite}
           style={{
             position: 'fixed',
-            right: 24,
-            bottom: 24,
-            width: isExtendedFab ? 'auto' : 64,
+            right: fabInsetRight,
+            bottom: fabInset,
+            width: 64,
             height: 56,
-            padding: isExtendedFab ? '0 20px' : undefined,
             borderRadius: '50%',
             border: 'none',
-            background: '#1976d2',
+            background: canWrite ? '#1976d2' : '#ccc',
             color: '#fff',
             boxShadow: '0 4px 12px rgba(0,0,0,0.3)',
             fontSize: 28,
             fontWeight: 700,
             lineHeight: 1,
-            cursor: 'pointer',
+            cursor: canWrite ? 'pointer' : 'not-allowed',
             zIndex: 1300,
             display: 'inline-flex',
             alignItems: 'center',
-            gap: isExtendedFab ? 10 : 0,
+            justifyContent: 'center',
+            opacity: canWrite ? 1 : 0.6,
           }}
           aria-label={
-            resolvedActiveDateIso
+            !canWrite
+              ? readOnlyReason?.message ?? '現在は閲覧のみです'
+              : resolvedActiveDateIso
               ? `選択中の日に予定を追加 (${resolvedActiveDateIso})`
               : '予定を追加'
           }
+          title={!canWrite ? readOnlyReason?.message ?? '現在は閲覧のみです' : undefined}
         >
           <span aria-hidden="true">＋</span>
-          {isExtendedFab ? <span style={{ fontSize: 14, fontWeight: 600 }}>予定を追加</span> : null}
         </button>
       ) : null}
       {dialogInitialValues ? (

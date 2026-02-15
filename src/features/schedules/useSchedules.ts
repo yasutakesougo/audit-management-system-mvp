@@ -8,6 +8,8 @@ import { createSpClient, ensureConfig } from '@/lib/spClient';
 import type { InlineScheduleDraft } from './data/inlineScheduleDraft';
 import type { ResultError } from '@/shared/result';
 import { toSafeError } from '@/lib/errors';
+import { isWriteEnabled } from '@/env';
+import { classifySchedulesError, shouldFallbackToReadOnly, type SchedulesErrorInfo } from './errors';
 
 export type { InlineScheduleDraft } from './data/inlineScheduleDraft';
 
@@ -20,6 +22,10 @@ export type UseSchedulesResult = {
   lastError: ResultError | null;
   clearLastError: () => void;
   refetch: () => void;
+  /** Read-only reason if mutations are disabled */
+  readOnlyReason?: SchedulesErrorInfo;
+  /** Whether writes are currently allowed */
+  canWrite: boolean;
 };
 
 const normalizeRange = (range: DateRange): DateRange => ({
@@ -214,6 +220,47 @@ export function useSchedules(range: DateRange): UseSchedulesResult {
     }
   };
 
+  // Determine read-only reason
+  const readOnlyReason = useMemo((): SchedulesErrorInfo | undefined => {
+    // If write is disabled via env flag
+    if (!isWriteEnabled) {
+      return {
+        kind: 'WRITE_DISABLED',
+        title: '閲覧専用モード',
+        message: '現在、スケジュールの作成・編集・削除は無効になっています。',
+        action: {
+          label: '管理者に確認',
+        },
+        details: ['環境変数 VITE_WRITE_ENABLED が無効になっています。'],
+      };
+    }
+
+    // If list check failed
+    const listReady = getListReadyState();
+    if (listReady === false) {
+      return {
+        kind: 'LIST_MISSING',
+        title: 'リストが見つかりません',
+        message: 'SharePoint に ScheduleEvents リストが見つかりませんでした。',
+        action: {
+          label: '管理者に確認',
+        },
+        details: ['リストが削除されているか、名前が変更されている可能性があります。'],
+      };
+    }
+
+    // If mutation error suggests read-only fallback
+    if (lastError && lastError.kind === 'unknown' && lastError.cause) {
+      if (shouldFallbackToReadOnly(lastError.cause)) {
+        return classifySchedulesError(lastError.cause);
+      }
+    }
+
+    return undefined;
+  }, [getListReadyState, lastError]);
+
+  const canWrite = !readOnlyReason;
+
   const returnValue = {
     items,
     loading,
@@ -223,6 +270,8 @@ export function useSchedules(range: DateRange): UseSchedulesResult {
     lastError,
     clearLastError,
     refetch,
+    readOnlyReason,
+    canWrite,
   };
 
   if (typeof returnValue.remove !== 'function') {
