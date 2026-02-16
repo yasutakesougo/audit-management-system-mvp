@@ -1,5 +1,5 @@
-import EmptyState from '@/ui/components/EmptyState';
 import Loading from '@/ui/components/Loading';
+import ScheduleEmptyHint from './components/ScheduleEmptyHint';
 import { TESTIDS } from '@/testids';
 import { useId, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
@@ -159,7 +159,6 @@ const DayViewContent = ({
     [filteredItems],
   );
   const dayLabel = useMemo(() => formatDayLabel(range.from), [range.from]);
-  const emptyTitle = categoryFilter === 'Org' ? '施設の予定はまだありません。' : '予定はまだありません。';
 
   return (
     <section
@@ -289,11 +288,7 @@ const DayViewContent = ({
           </div>
         ) : typedItems.length === 0 ? (
           <div style={{ display: 'grid', gap: isCompact ? 8 : 12 }}>
-            <EmptyState
-              title={emptyTitle}
-              description={null}
-              data-testid="schedule-day-empty"
-            />
+            <ScheduleEmptyHint view="day" compact={isCompact} categoryFilter={categoryFilter} />
           </div>
         ) : (
           <ol

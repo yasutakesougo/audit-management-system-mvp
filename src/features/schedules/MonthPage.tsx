@@ -222,7 +222,7 @@ export default function MonthPage({ items, loading = false, activeCategory = 'Al
 
         {/* Empty hint (compact mode for zero-scroll) */}
         <Box sx={{ px: 2 }}>
-          <ScheduleEmptyHint view="month" compact={isCompact} />
+          <ScheduleEmptyHint view="month" compact={isCompact} categoryFilter={activeCategory} />
         </Box>
       </section>
     );

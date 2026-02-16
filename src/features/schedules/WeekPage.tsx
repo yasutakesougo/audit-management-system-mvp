@@ -594,7 +594,7 @@ export default function WeekPage() {
 
       <div>
         {showEmptyHint ? (
-          <ScheduleEmptyHint view={mode} periodLabel={weekLabel} sx={{ mb: 2 }} />
+          <ScheduleEmptyHint view={mode} periodLabel={weekLabel} sx={{ mb: 2 }} categoryFilter={categoryFilter} />
         ) : null}
         {isLoading ? (
           <div aria-busy="true" aria-live="polite" style={{ display: 'grid', gap: 16 }}>
