@@ -100,7 +100,6 @@ export default function DayView(props: DayViewProps = {}) {
         loading={props.loading!}
         range={props.range!}
         categoryFilter={props.categoryFilter}
-        emptyCtaLabel={props.emptyCtaLabel}
         compact={props.compact}
       />
     );
@@ -124,7 +123,6 @@ const DayViewWithData = (props: DayViewProps) => {
       loading={loading}
       range={resolvedRange}
       categoryFilter={props.categoryFilter}
-      emptyCtaLabel={props.emptyCtaLabel}
       compact={props.compact}
     />
   );
@@ -135,14 +133,12 @@ const DayViewContent = ({
   loading,
   range,
   categoryFilter,
-  emptyCtaLabel,
   compact,
 }: {
   items: SchedItem[];
   loading: boolean;
   range: DateRange;
   categoryFilter?: 'All' | ScheduleCategory;
-  emptyCtaLabel?: string;
   compact?: boolean;
 }) => {
   const headingId = useId();
@@ -163,14 +159,7 @@ const DayViewContent = ({
     [filteredItems],
   );
   const dayLabel = useMemo(() => formatDayLabel(range.from), [range.from]);
-  const resolvedCtaLabel =
-    emptyCtaLabel ?? (categoryFilter === 'Org' ? '施設予定を追加' : '予定を追加');
-  const emptyHint = `右下の「＋」から${resolvedCtaLabel}できます。`;
-  const emptyDescription =
-    categoryFilter === 'Org'
-      ? `${emptyHint}会議・全体予定・共有タスクは「施設」へ。`
-      : emptyHint;
-  const emptyDescriptionCompact = 'この日の予定はありません。';
+  const emptyTitle = categoryFilter === 'Org' ? '施設の予定はまだありません。' : '予定はまだありません。';
 
   return (
     <section
@@ -301,8 +290,8 @@ const DayViewContent = ({
         ) : typedItems.length === 0 ? (
           <div style={{ display: 'grid', gap: isCompact ? 8 : 12 }}>
             <EmptyState
-              title="予定はまだありません"
-              description={isCompact ? emptyDescriptionCompact : emptyDescription}
+              title={emptyTitle}
+              description={null}
               data-testid="schedule-day-empty"
             />
           </div>
