@@ -139,24 +139,6 @@ export default function MonthPage({ items, loading = false, activeCategory = 'Al
   const headingId = TESTIDS.SCHEDULES_MONTH_HEADING_ID;
   const rangeId = TESTIDS.SCHEDULES_MONTH_RANGE_ID;
 
-  // Empty state: skip rendering large grid to achieve zero-scroll on iPad landscape
-  if (!loading && totalCount === 0) {
-    return (
-      <section
-        data-testid={TESTIDS.SCHEDULES_MONTH_PAGE}
-        aria-label="月間スケジュール"
-        aria-labelledby={headingId}
-        tabIndex={-1}
-        style={{ paddingBottom: isCompact ? 16 : 32 }}
-      >
-        {/* Empty state: navigation via SchedulesHeader, content via ScheduleEmptyHint */}
-        <Box sx={{ px: 2 }}>
-          <ScheduleEmptyHint view="month" compact={isCompact} categoryFilter={activeCategory} />
-        </Box>
-      </section>
-    );
-  }
-
   return (
     <section
       data-testid={TESTIDS.SCHEDULES_MONTH_PAGE}
@@ -176,6 +158,11 @@ export default function MonthPage({ items, loading = false, activeCategory = 'Al
             <Loading />
           </div>
         ) : null}
+        {!loading && totalCount === 0 && (
+          <Box sx={{ px: 2, mb: isCompact ? 1 : 2 }}>
+            <ScheduleEmptyHint view="month" compact={isCompact} categoryFilter={activeCategory} />
+          </Box>
+        )}
         <div role="grid" aria-label={`${monthLabel}のカレンダー`} style={{ ...gridContainerStyle, gap: isCompact ? 6 : 8 }}>
           <div role="row" style={{ display: 'contents' }}>
             {WEEKDAY_LABELS.map((label, index) => (
