@@ -29,7 +29,7 @@ type CalendarDay = {
   inMonth: boolean;
   isToday: boolean;
   eventCount: number;
-  firstTitle?: string;
+  titles?: string[];
 };
 
 type CalendarWeek = {
@@ -74,7 +74,7 @@ export default function MonthPage({ items, loading = false, activeCategory = 'Al
 
   const daySummaries = useMemo(() => buildDaySummaries(items), [items]);
   const weeks = useMemo(
-    () => buildCalendarWeeks(anchorDate, daySummaries.counts, daySummaries.firstTitle),
+    () => buildCalendarWeeks(anchorDate, daySummaries.counts, daySummaries.titles),
     [anchorDate, daySummaries],
   );
 
@@ -347,11 +347,23 @@ export default function MonthPage({ items, loading = false, activeCategory = 'Al
                         ) : null}
                       </span>
                     </Badge>
-                    {day.firstTitle ? (
-                        <Typography sx={{ ...dayTitleSx, fontSize: isCompact ? 11 : 12, mt: isCompact ? 0.25 : 0.5 }} title={day.firstTitle}>
-                        {day.firstTitle}
-                        {day.eventCount > 1 ? ` +${day.eventCount - 1}` : ''}
-                      </Typography>
+                    {day.titles && day.titles.length > 0 ? (
+                      <Box sx={{ width: '100%' }}>
+                        {day.titles.slice(0, 2).map((title, index, visible) => {
+                          const remaining = Math.max(0, day.eventCount - visible.length);
+                          const suffix = remaining > 0 && index === visible.length - 1 ? ` +${remaining}` : '';
+                          return (
+                            <Typography
+                              key={`${day.iso}-${index}`}
+                              sx={{ ...dayTitleSx, fontSize: isCompact ? 11 : 12, mt: index === 0 ? (isCompact ? 0.25 : 0.5) : 0 }}
+                              title={title}
+                            >
+                              {title}
+                              {suffix}
+                            </Typography>
+                          );
+                        })}
+                      </Box>
                     ) : null}
                   </Button>
                 );
@@ -481,9 +493,9 @@ const addDays = (date: Date, days: number): Date => {
 
 const buildDaySummaries = (
   items: SchedItem[],
-): { counts: Record<string, number>; firstTitle: Record<string, string> } => {
+): { counts: Record<string, number>; titles: Record<string, string[]> } => {
   const counts: Record<string, number> = {};
-  const firstTitle: Record<string, string> = {};
+  const titles: Record<string, string[]> = {};
 
   for (const item of items) {
     const start = new Date(item.start);
@@ -497,17 +509,18 @@ const buildDaySummaries = (
     while (cursor <= boundary) {
       const iso = toDateIso(cursor);
       counts[iso] = (counts[iso] ?? 0) + 1;
-      // 先頭1件だけタイトルを保持（既に存在すれば上書きしない）
-      if (firstTitle[iso] == null || firstTitle[iso] === '') {
-        const title = item.title || item.notes || '';
-        if (title) {
-          firstTitle[iso] = title;
+      const title = item.title || item.notes || '';
+      if (title) {
+        const bucket = titles[iso] ?? [];
+        if (bucket.length < 2) {
+          bucket.push(title);
+          titles[iso] = bucket;
         }
       }
       cursor.setDate(cursor.getDate() + 1);
     }
   }
-  return { counts, firstTitle };
+  return { counts, titles };
 };
 
 const startOfDay = (date: Date): Date => {
@@ -519,7 +532,7 @@ const startOfDay = (date: Date): Date => {
 const buildCalendarWeeks = (
   anchorDate: Date,
   counts: Record<string, number>,
-  firstTitle: Record<string, string>,
+  titles: Record<string, string[]>,
 ): CalendarWeek[] => {
   const start = startOfCalendar(anchorDate);
   const todayIso = toDateIso(new Date());
@@ -536,7 +549,7 @@ const buildCalendarWeeks = (
         inMonth: cursor.getMonth() === anchorDate.getMonth(),
         isToday: iso === todayIso,
         eventCount: counts[iso] ?? 0,
-        firstTitle: firstTitle[iso],
+        titles: titles[iso],
       });
       cursor = addDays(cursor, 1);
     }
