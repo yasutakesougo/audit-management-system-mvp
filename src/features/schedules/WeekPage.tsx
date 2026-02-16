@@ -350,6 +350,32 @@ export default function WeekPage() {
     syncDateParam(todayIso);
   }, [primeRouteReset, syncDateParam]);
 
+  // Month-specific navigation handlers
+  const handlePrevMonth = useCallback(() => {
+    const prevMonthDate = new Date(focusDate);
+    prevMonthDate.setMonth(prevMonthDate.getMonth() - 1);
+    const iso = toDateIso(prevMonthDate);
+    setActiveDateIso(iso);
+    primeRouteReset();
+    syncDateParam(iso);
+  }, [focusDate, primeRouteReset, syncDateParam]);
+
+  const handleNextMonth = useCallback(() => {
+    const nextMonthDate = new Date(focusDate);
+    nextMonthDate.setMonth(nextMonthDate.getMonth() + 1);
+    const iso = toDateIso(nextMonthDate);
+    setActiveDateIso(iso);
+    primeRouteReset();
+    syncDateParam(iso);
+  }, [focusDate, primeRouteReset, syncDateParam]);
+
+  const handleTodayMonth = useCallback(() => {
+    const todayIso = toDateIso(new Date());
+    setActiveDateIso(todayIso);
+    primeRouteReset();
+    syncDateParam(todayIso);
+  }, [primeRouteReset, syncDateParam]);
+
   const handleScheduleDialogSubmit = useCallback(
     async (input: CreateScheduleEventInput) => {
       if (dialogMode === 'edit' && dialogEventId) {
@@ -488,6 +514,11 @@ export default function WeekPage() {
                 ? `表示期間: ${new Intl.DateTimeFormat('ja-JP', { year: 'numeric', month: 'short', day: 'numeric' }).format(monthDate)}`
                 : `表示期間: ${weekLabel}`;
 
+          // Mode-aware navigation handlers
+          const navPrev = mode === 'month' ? handlePrevMonth : handlePrevWeek;
+          const navNext = mode === 'month' ? handleNextMonth : handleNextWeek;
+          const navToday = mode === 'month' ? handleTodayMonth : handleTodayWeek;
+
           return (
             <>
                   <SchedulesHeader
@@ -496,9 +527,9 @@ export default function WeekPage() {
                 subLabel={headerSubLabel}
                 periodLabel={headerPeriodLabel}
                 compact={compact}
-          onPrev={handlePrevWeek}
-          onNext={handleNextWeek}
-          onToday={handleTodayWeek}
+          onPrev={navPrev}
+          onNext={navNext}
+          onToday={navToday}
           onPrimaryCreate={canEdit && canWrite ? handleFabClick : undefined}
                   showPrimaryAction={isDesktopSize}
                   primaryActionLabel="予定を追加"
