@@ -141,7 +141,7 @@ export const SchedulesHeader: React.FC<Props> = ({
           <Typography
             variant="caption"
             color="text.secondary"
-            sx={{ display: compact ? 'none' : { xs: 'none', md: 'block' } }}
+            sx={{ display: compact || isSmall ? 'none' : 'block' }}
             noWrap
           >
             {subLabel}
@@ -213,10 +213,10 @@ export const SchedulesHeader: React.FC<Props> = ({
         direction={isSmall ? 'column' : 'row'}
         alignItems={isSmall ? 'flex-start' : 'center'}
         justifyContent="space-between"
-        spacing={controlSpacing}
+        spacing={compact ? 0 : controlSpacing}
         flexWrap="wrap"
       >
-        <Stack direction="row" spacing={controlSpacing} alignItems="center" sx={{ flexWrap: 'wrap' }}>
+        <Stack direction="row" spacing={compact ? 0.25 : controlSpacing} alignItems="center" sx={{ flexWrap: 'wrap' }}>
           <Typography
             variant={compact ? 'caption' : 'body2'}
             data-testid={rangeTestId ?? TESTIDS.SCHEDULES_RANGE_LABEL}
@@ -241,7 +241,7 @@ export const SchedulesHeader: React.FC<Props> = ({
           </Button>
         </Stack>
 
-        <Stack direction="row" spacing={0.5} sx={{ flexGrow: isSmall ? 0 : 1 }} justifyContent={isSmall ? 'flex-start' : 'center'}>
+        <Stack direction="row" spacing={compact ? 0 : 0.5} sx={{ flexGrow: isSmall ? 0 : 1 }} justifyContent={isSmall ? 'flex-start' : 'center'}>
           <Button
             size="small"
             variant="text"
@@ -270,7 +270,7 @@ export const SchedulesHeader: React.FC<Props> = ({
           </Button>
         </Stack>
 
-        <Box sx={{ minWidth: 220, display: 'flex', justifyContent: 'flex-end', flex: '1 1 auto' }}>{children}</Box>
+        <Box sx={{ minWidth: compact ? 0 : 220, display: 'flex', justifyContent: 'flex-end', flex: '1 1 auto' }}>{children}</Box>
       </Stack>
     </Stack>
   );
