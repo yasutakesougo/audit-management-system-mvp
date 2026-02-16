@@ -100,7 +100,6 @@ export default function DayView(props: DayViewProps = {}) {
         loading={props.loading!}
         range={props.range!}
         categoryFilter={props.categoryFilter}
-        emptyCtaLabel={props.emptyCtaLabel}
         compact={props.compact}
       />
     );
