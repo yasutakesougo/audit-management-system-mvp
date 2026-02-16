@@ -1,6 +1,6 @@
 type EmptyStateProps = {
   title?: string;
-  description?: string;
+  description?: string | null;
   'data-testid'?: string;
 };
 
@@ -21,8 +21,8 @@ export default function EmptyState({
         background: 'rgba(0,0,0,0.02)',
       }}
     >
-      <div style={{ fontWeight: 600, marginBottom: 6 }}>{title}</div>
-      <div style={{ color: 'rgba(0,0,0,0.6)' }}>{description}</div>
+      <div style={{ fontWeight: 600, marginBottom: description ? 6 : 0 }}>{title}</div>
+      {description ? <div style={{ color: 'rgba(0,0,0,0.6)' }}>{description}</div> : null}
     </div>
   );
 }

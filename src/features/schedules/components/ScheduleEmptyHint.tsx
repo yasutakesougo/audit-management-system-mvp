@@ -12,40 +12,19 @@ export type ScheduleEmptyHintProps = {
 };
 
 export function ScheduleEmptyHint(props: ScheduleEmptyHintProps) {
-  const { title, description, cta } = scheduleFacilityEmptyCopy;
+  const { title } = scheduleFacilityEmptyCopy;
   const { sx, compact } = props;
-
-  // Compact mode: single-line hint for zero-scroll on tablet landscape
-  if (compact) {
-    return (
-      <Box
-        role="status"
-        aria-live="polite"
-        data-testid={TESTIDS.SCHEDULES_EMPTY_HINT}
-        sx={{ mb: 0.5, ...sx }}
-      >
-        <Typography variant="body2" color="text.secondary" sx={{ fontSize: 12 }}>
-          予定はまだありません（＋から追加）
-        </Typography>
-      </Box>
-    );
-  }
+  const emptyLine = title.endsWith('。') ? title : `${title}。`;
 
   return (
     <Box
       role="status"
       aria-live="polite"
       data-testid={TESTIDS.SCHEDULES_EMPTY_HINT}
-      sx={{ mb: 1.5, display: 'grid', gap: 0.5, ...sx }}
+      sx={{ mb: compact ? 0.5 : 1, ...sx }}
     >
-      <Typography variant="subtitle2" color="text.primary">
-        {title}
-      </Typography>
-      <Typography variant="body2" color="text.secondary">
-        {description}
-      </Typography>
-      <Typography variant="body2" color="text.secondary">
-        {cta}
+      <Typography variant="body2" color="text.secondary" sx={{ fontSize: compact ? 12 : 13 }}>
+        {emptyLine}
       </Typography>
     </Box>
   );
