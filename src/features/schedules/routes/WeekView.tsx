@@ -11,19 +11,19 @@ import { useCallback, useMemo, useState } from 'react';
 
 import { TESTIDS } from '@/testids';
 
-import type { SchedItem } from './data';
-import { SCHEDULES_DEBUG } from './debug';
-import { getScheduleStatusMeta } from './statusMetadata';
-import { SERVICE_TYPE_COLOR, SERVICE_TYPE_META, normalizeServiceType, type ServiceTypeColor, type ServiceTypeKey } from './serviceTypeMetadata';
-import { getDayChipSx } from './theme/dateStyles';
-import { type DateRange } from './data';
-import { makeRange, useSchedules } from './useSchedules';
+import type { SchedItem } from '../data';
+import { SCHEDULES_DEBUG } from '../debug';
+import { getScheduleStatusMeta } from '../statusMetadata';
+import { SERVICE_TYPE_COLOR, SERVICE_TYPE_META, normalizeServiceType, type ServiceTypeColor, type ServiceTypeKey } from '../serviceTypeMetadata';
+import { getDayChipSx } from '../theme/dateStyles';
+import { type DateRange } from '../data';
+import { makeRange, useSchedules } from '../hooks/useSchedules';
 import type { ScheduleCategory } from '@/features/schedules/domain/types';
 import { scheduleCategoryLabels } from '@/features/schedules/domain/categoryLabels';
 import {
   WeekServiceSummaryChips,
   type WeekServiceSummaryItem,
-} from './WeekServiceSummaryChips';
+} from '../components/WeekServiceSummaryChips';
 
 export type WeekViewProps = {
   items?: WeekSchedItem[];

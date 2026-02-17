@@ -14,7 +14,7 @@ import Typography from '@mui/material/Typography';
 // MUI Icons
 import { useFeatureFlags } from '@/config/featureFlags';
 import SharePointListDebug from '@/debug/SharePointListDebug';
-import { useSchedulesToday } from '@/features/schedules/useSchedulesToday';
+import { useSchedulesToday } from '@/features/schedules/hooks/useSchedulesToday';
 import { useUsersStore } from '@/features/users/store';
 import { getAppConfig, isDemoModeEnabled } from '@/lib/env';
 import { useStaff } from '@/stores/useStaff';

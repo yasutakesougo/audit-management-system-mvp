@@ -1,0 +1,1 @@
+npx playwright show-trace test-results/smoke-20260217-145751/nav-and-status.smoke-Nav-S-e4340-ds-and-aria-current-updates-smoke/trace.zip

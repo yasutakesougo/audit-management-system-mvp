@@ -96,13 +96,11 @@ export const SchedulesHeader: React.FC<Props> = ({
 }) => {
   const navigate = useNavigate();
   const isSmall = useMediaQuery((theme: Theme) => theme.breakpoints.down('sm'));
-  const headerSpacing = compact ? 0.5 : 1;
   const headerBottom = compact ? 0.75 : 1.25;
   const tabsMinHeight = compact ? 30 : 36;
   const tabMinHeight = compact ? 28 : 34;
   const tabMinWidth = compact ? 36 : 44;
   const tabPaddingX = compact ? 0.5 : 1;
-  const controlSpacing = compact ? 0.5 : 1;
   const compactButtonSx = compact ? { py: 0.5, px: 1, minHeight: 30 } : undefined;
 
   const handleTabChange = (_: React.SyntheticEvent, value: ViewMode) => {
@@ -118,30 +116,29 @@ export const SchedulesHeader: React.FC<Props> = ({
   };
 
   return (
-    <Stack spacing={headerSpacing} sx={{ mb: headerBottom }} data-testid={TESTIDS.SCHEDULES_HEADER_ROOT}>
+    <Stack spacing={0.5} sx={{ mb: headerBottom }} data-testid={TESTIDS.SCHEDULES_HEADER_ROOT}>
       <Stack
         direction={isSmall ? 'column' : 'row'}
-        alignItems={isSmall ? 'flex-start' : 'center'}
-        spacing={isSmall ? 0.75 : 1.5}
+        alignItems="center"
+        spacing={isSmall ? 0.75 : 1}
         justifyContent={isSmall ? 'flex-start' : 'space-between'}
         sx={{ mb: 0 }}
       >
-        <Box sx={{ minWidth: 0 }}>
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, minWidth: 0, flex: '0 0 auto' }}>
           <Typography
             variant="h6"
             component="h1"
-            sx={{ fontWeight: 700, lineHeight: 1.2 }}
+            sx={{ fontWeight: 700, lineHeight: 1.2, whiteSpace: 'nowrap' }}
             id={headingId}
             data-testid={titleTestId}
             data-page-heading="true"
-            noWrap
           >
             {title}
           </Typography>
           <Typography
             variant="caption"
             color="text.secondary"
-            sx={{ display: compact || isSmall ? 'none' : 'block' }}
+            sx={{ display: compact || isSmall ? 'none' : 'inline' }}
             noWrap
           >
             {subLabel}
@@ -153,6 +150,7 @@ export const SchedulesHeader: React.FC<Props> = ({
             display: 'flex',
             alignItems: 'center',
             justifyContent: isSmall ? 'center' : 'flex-start',
+            flex: '0 0 auto',
             width: isSmall ? '100%' : 'auto',
           }}
         >
@@ -190,8 +188,8 @@ export const SchedulesHeader: React.FC<Props> = ({
           </Tabs>
         </Box>
 
-        <Stack direction="row" spacing={1} justifyContent="flex-end" sx={{ display: isSmall ? 'none' : 'flex' }}>
-          {!isSmall && showPrimaryAction && onPrimaryCreate ? (
+        <Stack direction="row" spacing={0.5} justifyContent="flex-end" sx={{ display: isSmall ? 'none' : 'flex', flex: '0 0 auto' }}>
+          {showPrimaryAction && onPrimaryCreate ? (
             <Button
               variant="contained"
               size="small"
@@ -211,21 +209,23 @@ export const SchedulesHeader: React.FC<Props> = ({
 
       <Stack
         direction={isSmall ? 'column' : 'row'}
-        alignItems={isSmall ? 'flex-start' : 'center'}
-        justifyContent="space-between"
-        spacing={compact ? 0 : controlSpacing}
-        flexWrap="wrap"
+        alignItems="center"
+        justifyContent={isSmall ? 'flex-start' : 'space-between'}
+        spacing={compact ? 0.5 : 0.75}
+        flexWrap={isSmall ? 'nowrap' : 'wrap'}
       >
-        <Stack direction="row" spacing={compact ? 0.25 : controlSpacing} alignItems="center" sx={{ flexWrap: 'wrap' }}>
-          <Typography
-            variant={compact ? 'caption' : 'body2'}
-            data-testid={rangeTestId ?? TESTIDS.SCHEDULES_RANGE_LABEL}
-            id={rangeLabelId}
-            aria-live={rangeAriaLive}
-            sx={{ fontWeight: 600 }}
-          >
-            {periodLabel}
-          </Typography>
+        <Typography
+          variant={compact ? 'caption' : 'body2'}
+          data-testid={rangeTestId ?? TESTIDS.SCHEDULES_RANGE_LABEL}
+          id={rangeLabelId}
+          aria-live={rangeAriaLive}
+          sx={{ fontWeight: 600, flex: '0 0 auto' }}
+          noWrap
+        >
+          {periodLabel}
+        </Typography>
+
+        <Stack direction="row" spacing={compact ? 0.25 : 0.5} alignItems="center" sx={{ flex: '0 0 auto' }}>
           <Button
             size="small"
             variant="outlined"
@@ -239,9 +239,6 @@ export const SchedulesHeader: React.FC<Props> = ({
           >
             今日
           </Button>
-        </Stack>
-
-        <Stack direction="row" spacing={compact ? 0 : 0.5} sx={{ flexGrow: isSmall ? 0 : 1 }} justifyContent={isSmall ? 'flex-start' : 'center'}>
           <Button
             size="small"
             variant="text"
@@ -270,7 +267,7 @@ export const SchedulesHeader: React.FC<Props> = ({
           </Button>
         </Stack>
 
-        <Box sx={{ minWidth: compact ? 0 : 220, display: 'flex', justifyContent: 'flex-end', flex: '1 1 auto' }}>{children}</Box>
+        <Box sx={{ display: isSmall ? 'none' : 'flex', justifyContent: 'flex-end', flex: '1 1 auto', minWidth: 0 }}>{children}</Box>
       </Stack>
     </Stack>
   );

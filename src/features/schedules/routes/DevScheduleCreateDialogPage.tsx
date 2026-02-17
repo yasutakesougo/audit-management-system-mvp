@@ -1,6 +1,6 @@
-import ScheduleCreateDialog from '@/features/schedules/ScheduleCreateDialog';
-import type { CreateScheduleEventInput } from '@/features/schedules/data';
-import type { ScheduleUserOption } from '@/features/schedules/scheduleFormState';
+import ScheduleCreateDialog from './ScheduleCreateDialog';
+import type { CreateScheduleEventInput } from '../data';
+import type { ScheduleUserOption } from '@/features/schedules/domain';
 import { TESTIDS } from '@/testids';
 import Button from '@mui/material/Button';
 import Paper from '@mui/material/Paper';
