@@ -33,6 +33,7 @@ const webServerEnvVarsSmoke = {
   VITE_DEV_HARNESS: '1',
   VITE_SCHEDULES_TZ: 'Asia/Tokyo',
   VITE_FEATURE_SCHEDULES: '1',
+  VITE_SCHEDULES_SAVE_MODE: 'mock',
   VITE_AUDIT_DEBUG: process.env.VITE_AUDIT_DEBUG ?? '0',
   E2E_SAVE_MODE: 'mock',
 };

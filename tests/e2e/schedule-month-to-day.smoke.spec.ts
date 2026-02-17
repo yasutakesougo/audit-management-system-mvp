@@ -8,6 +8,21 @@ import { waitForMonthViewReady, waitForDayViewReady } from './utils/scheduleActi
 import { waitForScheduleReady } from './utils/wait';
 
 test.describe('Schedule month→day navigation smoke', () => {
+  const ensureFilterVisible = async (page: import('@playwright/test').Page) => {
+    const categoryFilter = page.getByTestId(TESTIDS['schedules-filter-category']);
+    if (await categoryFilter.isVisible().catch(() => false)) {
+      return categoryFilter;
+    }
+
+    const filterToggle = page.getByTestId(TESTIDS.SCHEDULES_FILTER_TOGGLE);
+    if ((await filterToggle.count()) > 0) {
+      await filterToggle.click();
+    }
+
+    await expect(categoryFilter).toBeVisible();
+    return categoryFilter;
+  };
+
   test('navigates from month calendar to day view with correct query params', async ({ page }) => {
     await bootSchedule(page);
 
@@ -17,8 +32,7 @@ test.describe('Schedule month→day navigation smoke', () => {
     await waitForScheduleReady(page, { tab: 'month' });
     await waitForMonthViewReady(page);
 
-    const categoryFilter = page.getByTestId(TESTIDS['schedules-filter-category']);
-    await expect(categoryFilter).toBeVisible();
+    const categoryFilter = await ensureFilterVisible(page);
     await categoryFilter.selectOption('Org');
 
     // Get any day card and click it (opens popover)
@@ -42,7 +56,8 @@ test.describe('Schedule month→day navigation smoke', () => {
 
     // Verify navigation to day view with correct query params
     await waitForDayViewReady(page);
-    await expect(categoryFilter).toHaveValue('Org');
+    const categoryFilterAfter = await ensureFilterVisible(page);
+    await expect(categoryFilterAfter).toHaveValue('Org');
     const dayCta = page.getByRole('button', { name: '施設予定を追加' });
     if ((await dayCta.count()) > 0) {
       await expect(dayCta).toBeVisible();

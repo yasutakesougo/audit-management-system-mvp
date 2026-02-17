@@ -535,7 +535,13 @@ export default function WeekPage() {
                   primaryActionLabel="予定を追加"
           primaryActionAriaLabel="この週に予定を追加"
           headingId={headingId}
-          titleTestId={TESTIDS['schedules-week-heading']}
+          titleTestId={
+            mode === 'month'
+              ? TESTIDS.SCHEDULES_MONTH_HEADING_ID
+              : mode === 'day'
+                ? TESTIDS['schedules-day-heading']
+                : TESTIDS['schedules-week-heading']
+          }
           rangeLabelId={rangeDescriptionId}
           dayHref={dayViewHref}
           weekHref={weekViewHref}

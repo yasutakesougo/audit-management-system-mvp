@@ -10,6 +10,21 @@ import { waitForWeekViewReady } from './utils/wait';
 
 
 test.describe('Schedule week -> day lane', () => {
+  const ensureFilterVisible = async (page: import('@playwright/test').Page) => {
+    const categorySelect = page.getByTestId(TESTIDS['schedules-filter-category']);
+    if (await categorySelect.isVisible().catch(() => false)) {
+      return categorySelect;
+    }
+
+    const filterToggle = page.getByTestId(TESTIDS.SCHEDULES_FILTER_TOGGLE);
+    if ((await filterToggle.count()) > 0) {
+      await filterToggle.click();
+    }
+
+    await expect(categorySelect).toBeVisible();
+    return categorySelect;
+  };
+
   test('preserves selected lane when switching to day view', async ({ page }) => {
     const targetDate = new Date('2026-01-27');
     const fixtures = [
@@ -42,7 +57,7 @@ test.describe('Schedule week -> day lane', () => {
 
     await page.getByTestId(TESTIDS.SCHEDULES_WEEK_TAB_DAY).click();
 
-    const categorySelect = page.getByTestId(TESTIDS['schedules-filter-category']);
+    const categorySelect = await ensureFilterVisible(page);
     await expect(categorySelect).toHaveValue('Org');
   });
 });
