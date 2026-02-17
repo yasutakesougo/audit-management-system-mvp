@@ -44,7 +44,7 @@ const webServerCommand = webServerCommandOverride
     : buildAndPreviewCommand;
 
 // Allow reusing an externally started server when PLAYWRIGHT_WEB_SERVER_URL is provided (e.g., guardrails workflows).
-const reuseExistingServer = true; // always reuse an existing server if already running at baseURL
+const reuseExistingServer = process.env.PW_REUSE_SERVER !== '0';
 const SMOKE_SPEC_PATTERN = /.*smoke.*\.spec\.ts$/i;
 const desktopChrome = { ...devices['Desktop Chrome'] };
 

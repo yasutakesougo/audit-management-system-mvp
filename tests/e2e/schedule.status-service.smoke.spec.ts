@@ -106,10 +106,9 @@ const orgMasterFixtures = [
   },
 ];
 
-test.describe.skip(
-  IS_SAVE_MODE_MOCK,
-  'Mock save mode does not POST; skip status/service e2e.',
-  () => {
+const describeStatusService = IS_SAVE_MODE_MOCK ? test.describe.skip : test.describe;
+
+describeStatusService('Mock save mode does not POST; skip status/service e2e.', () => {
   if (IS_SAVE_MODE_MOCK) {
     console.info('[e2e] ⏭️  Skipping status/service: E2E_SAVE_MODE=mock detected (env gate: E2E_SAVE_MODE)');
   }
