@@ -36,7 +36,7 @@ import type {
   ScheduleCategory,
   ScheduleServiceType,
   ScheduleStatus,
-} from './data';
+} from '../data';
 import {
   buildAutoTitle,
   createInitialScheduleFormState,
@@ -45,16 +45,16 @@ import {
   validateScheduleForm,
   type ScheduleFormState,
   type ScheduleUserOption,
-} from './scheduleFormState';
-import { SCHEDULE_STATUS_OPTIONS } from './statusMetadata';
-import { buildScheduleFailureAnnouncement, buildScheduleSuccessAnnouncement } from './utils/scheduleAnnouncements';
-import { useOrgOptions, type OrgOption } from './useOrgOptions';
-import { useStaffOptions, type StaffOption } from './useStaffOptions';
+} from '../domain/scheduleFormState';
+import { SCHEDULE_STATUS_OPTIONS } from '../statusMetadata';
+import { buildScheduleFailureAnnouncement, buildScheduleSuccessAnnouncement } from '../utils/scheduleAnnouncements';
+import { useOrgOptions, type OrgOption } from '../hooks/useOrgOptions';
+import { useStaffOptions, type StaffOption } from '../hooks/useStaffOptions';
 import {
   scheduleCategoryLabels,
   scheduleFacilityHelpText,
   scheduleFacilityPlaceholder,
-} from './domain/categoryLabels';
+} from '../domain/categoryLabels';
 
 // ===== Types for Dialog Component Only =====
 // (All business logic types moved to scheduleFormState.ts for Fast Refresh compatibility)

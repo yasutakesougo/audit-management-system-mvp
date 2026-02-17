@@ -4,7 +4,7 @@ import userEvent from '@testing-library/user-event';
 import { MemoryRouter, Route, Routes, useLocation } from 'react-router-dom';
 import { describe, expect, it } from 'vitest';
 
-import { useWeekPageRouteState } from '@/features/schedules/useWeekPageRouteState';
+import { useWeekPageRouteState } from '@/features/schedules';
 
 const Harness = () => {
   const route = useWeekPageRouteState();

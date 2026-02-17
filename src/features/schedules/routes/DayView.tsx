@@ -1,13 +1,13 @@
 import Loading from '@/ui/components/Loading';
-import ScheduleEmptyHint from './components/ScheduleEmptyHint';
+import ScheduleEmptyHint from '../components/ScheduleEmptyHint';
 import { TESTIDS } from '@/testids';
 import { useId, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
-import type { SchedItem, ScheduleStatus } from './data';
-import { getScheduleStatusMeta } from './statusMetadata';
-import { type DateRange } from './data';
-import { makeRange, useSchedules } from './useSchedules';
-import type { ScheduleCategory } from './domain/types';
+import type { SchedItem, ScheduleStatus } from '../data';
+import { getScheduleStatusMeta } from '../statusMetadata';
+import { type DateRange } from '../data';
+import { makeRange, useSchedules } from '../hooks/useSchedules';
+import type { ScheduleCategory } from '../domain/types';
 
 type ExtendedSchedItem = SchedItem &
   Partial<{
