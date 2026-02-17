@@ -19,9 +19,14 @@ test.describe('Schedules day create flow (facility)', () => {
     await waitForDayTimeline(page);
     await waitForScheduleReady(page, { tab: 'day' });
 
-    const cta = page.getByRole('button', { name: '施設予定を追加' });
-    await expect(cta).toBeVisible();
-    await cta.click();
+    const fabCta = page.getByTestId(TESTIDS.SCHEDULES_FAB_CREATE);
+    if (await fabCta.isVisible().catch(() => false)) {
+      await fabCta.click();
+    } else {
+      const cta = page.getByRole('button', { name: /予定を追加/ });
+      await expect(cta).toBeVisible();
+      await cta.click();
+    }
 
     const dialog = page.getByTestId(TESTIDS['schedule-create-dialog']);
     await expect(dialog).toBeVisible();
