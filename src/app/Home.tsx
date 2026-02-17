@@ -2,7 +2,7 @@ import { useFeatureFlags } from '@/config/featureFlags';
 import { useDashboardPath } from '@/features/dashboard/dashboardRouting';
 import MobileAgendaView from '@/features/schedules/components/MobileAgendaView';
 import NextActionCard from '@/features/schedules/components/NextActionCard';
-import { useSchedulesToday } from '@/features/schedules/useSchedulesToday';
+import { useSchedulesToday } from '@/features/schedules/hooks/useSchedulesToday';
 import { isDemoModeEnabled } from '@/lib/env';
 import { TESTIDS, type TestId } from '@/testids';
 import UnsynedAuditBadge from '@/ui/components/UnsynedAuditBadge';

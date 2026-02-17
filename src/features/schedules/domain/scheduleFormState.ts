@@ -1,14 +1,6 @@
 import { addHours, format } from 'date-fns';
 
-import type { CreateScheduleEventInput, ScheduleCategory, ScheduleServiceType, ScheduleStatus } from './data';
-
-// ===== Re-exports for external consumers =====
-export type {
-  CreateScheduleEventInput,
-  ScheduleCategory,
-  ScheduleServiceType,
-  ScheduleStatus,
-} from './data';
+import type { CreateScheduleEventInput, ScheduleCategory, ScheduleServiceType, ScheduleStatus } from '../data';
 
 // ===== Helper Functions =====
 

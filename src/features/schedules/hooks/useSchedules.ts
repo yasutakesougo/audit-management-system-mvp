@@ -1,17 +1,17 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { type DateRange, type SchedItem, type UpdateScheduleEventInput } from './data';
-import { getSchedulesListTitle } from './data/spSchema';
-import { useSchedulesPort } from './data/context';
+import { type DateRange, type SchedItem, type UpdateScheduleEventInput } from '../data';
+import { getSchedulesListTitle } from '../data/spSchema';
+import { useSchedulesPort } from '../data/context';
 import { useAuth } from '@/auth/useAuth';
 import { authDiagnostics } from '@/features/auth/diagnostics';
 import { createSpClient, ensureConfig } from '@/lib/spClient';
-import type { InlineScheduleDraft } from './data/inlineScheduleDraft';
+import type { InlineScheduleDraft } from '../data/inlineScheduleDraft';
 import type { ResultError } from '@/shared/result';
 import { toSafeError } from '@/lib/errors';
 import { isWriteEnabled } from '@/env';
-import { classifySchedulesError, shouldFallbackToReadOnly, type SchedulesErrorInfo } from './errors';
+import { classifySchedulesError, shouldFallbackToReadOnly, type SchedulesErrorInfo } from '../errors';
 
-export type { InlineScheduleDraft } from './data/inlineScheduleDraft';
+export type { InlineScheduleDraft } from '../data/inlineScheduleDraft';
 
 export type UseSchedulesResult = {
   items: SchedItem[];

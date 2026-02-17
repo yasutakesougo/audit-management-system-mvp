@@ -6,10 +6,10 @@ import type { SxProps, Theme } from '@mui/material/styles';
 import { useAnnounce } from '@/a11y/LiveAnnouncer';
 import Loading from '@/ui/components/Loading';
 import { TESTIDS } from '@/testids';
-import type { ScheduleCategory } from './domain/types';
-import { getDayChipSx } from './theme/dateStyles';
-import { DayPopover } from './components/DayPopover';
-import { ScheduleEmptyHint } from './components/ScheduleEmptyHint';
+import type { ScheduleCategory } from '../domain/types';
+import { getDayChipSx } from '../theme/dateStyles';
+import { DayPopover } from '../components/DayPopover';
+import { ScheduleEmptyHint } from '../components/ScheduleEmptyHint';
 import {
   useCallback,
   useEffect,
@@ -18,7 +18,7 @@ import {
   type CSSProperties,
 } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import type { SchedItem } from './data';
+import type { SchedItem } from '../data';
 
 const WEEKDAY_LABELS = ['月', '火', '水', '木', '金', '土', '日'];
 

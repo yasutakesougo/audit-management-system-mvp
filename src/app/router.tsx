@@ -18,7 +18,7 @@ const RecordList = React.lazy(() => import('@/features/records/RecordList'));
 const ChecklistPage = React.lazy(() => import('@/features/compliance-checklist/ChecklistPage'));
 const AuditPanel = React.lazy(() => import('@/features/audit/AuditPanel'));
 
-const NewSchedulesWeekPage = lazyWithPreload(() => import('@/features/schedules/WeekPage'));
+const NewSchedulesWeekPage = lazyWithPreload(() => import('@/features/schedules/routes/WeekPage'));
 const DailyRecordPage = React.lazy(() => import('@/pages/DailyRecordPage'));
 const DailyRecordMenuPage = React.lazy(() => import('@/pages/DailyRecordMenuPage'));
 const TableDailyRecordPage = React.lazy(() => import('@/features/daily/TableDailyRecordPage'));
@@ -67,7 +67,7 @@ const UserDetailPage = React.lazy(() => import('@/pages/UserDetailPage'));
 // Dev harness（開発環境のみ）
 const devHarnessEnabled = getAppConfig().isDev;
 const DevScheduleCreateDialogPage = devHarnessEnabled
-  ? React.lazy(() => import('@/features/schedules/DevScheduleCreateDialogPage'))
+  ? React.lazy(() => import('@/features/schedules/routes/DevScheduleCreateDialogPage'))
   : null;
 
 const SuspendedDevScheduleCreateDialogPage: React.FC | null = DevScheduleCreateDialogPage

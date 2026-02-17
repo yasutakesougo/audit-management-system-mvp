@@ -3,10 +3,10 @@ import { formatInTimeZone } from 'date-fns-tz';
 
 import type { ScheduleCategory } from '@/features/schedules/domain/types';
 import type { CreateScheduleEventInput, SchedItem, UpdateScheduleEventInput } from '@/features/schedules/data';
-import type { ScheduleFormState } from '@/features/schedules/scheduleFormState';
-import { makeRange, useSchedules } from '@/features/schedules/useSchedules';
-import { type DialogIntentParams, type WeekDialogMode, useWeekPageRouteState } from '@/features/schedules/useWeekPageRouteState';
-import type { SchedulesErrorInfo } from './errors';
+import type { ScheduleFormState } from '@/features/schedules/domain/scheduleFormState';
+import { makeRange, useSchedules } from './useSchedules';
+import { type DialogIntentParams, type WeekDialogMode, useWeekPageRouteState } from './useWeekPageRouteState';
+import type { SchedulesErrorInfo } from '../errors';
 
 export const DEFAULT_START_TIME = '10:00';
 export const DEFAULT_END_TIME = '11:00';

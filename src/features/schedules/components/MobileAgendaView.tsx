@@ -10,7 +10,7 @@ import Typography from '@mui/material/Typography';
 import { format } from 'date-fns';
 import { ja } from 'date-fns/locale';
 import React from 'react';
-import { useSchedulesToday, type MiniSchedule } from '../useSchedulesToday';
+import { useSchedulesToday, type MiniSchedule } from '../hooks/useSchedulesToday';
 
 type ScheduleConflict = {
 	id?: string | number;
