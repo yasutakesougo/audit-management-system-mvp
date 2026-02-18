@@ -9,7 +9,6 @@ import { TESTIDS } from '@/testids';
 import type { ScheduleCategory } from '../domain/types';
 import { SCHEDULE_MONTH_SPACING } from '../constants';
 import { getDayChipSx } from '../theme/dateStyles';
-import { DayPopover } from '../components/DayPopover';
 import { ScheduleEmptyHint } from '../components/ScheduleEmptyHint';
 import { DaySummaryDrawer } from '../components/DaySummaryDrawer';
 import { CreateScheduleDialog, type CreateScheduleDraft } from '../components/CreateScheduleDialog';
@@ -22,7 +21,7 @@ import {
   useState,
   type CSSProperties,
 } from 'react';
-import { useNavigate, useSearchParams } from 'react-router-dom';
+import { useSearchParams } from 'react-router-dom';
 import type { SchedItem } from '../data';import { toDateKey } from '../lib/dateKey';
 const WEEKDAY_LABELS = ['月', '火', '水', '木', '金', '土', '日'];
 
@@ -50,7 +49,6 @@ type MonthPageProps = {
 
 export default function MonthPage({ items, loading = false, activeCategory = 'All', compact }: MonthPageProps) {
   const announce = useAnnounce();
-  const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const isCompact = Boolean(compact);
   const requestedIso = searchParams.get('date');
@@ -97,17 +95,6 @@ export default function MonthPage({ items, loading = false, activeCategory = 'Al
     [daySummaries.counts, anchorDate],
   );
 
-  // Day Popover state
-  const [dayPopoverAnchor, setDayPopoverAnchor] = useState<HTMLElement | null>(null);
-  const [dayPopoverDateIso, setDayPopoverDateIso] = useState<string | null>(null);
-
-  const isDayPopoverOpen = Boolean(dayPopoverAnchor) && Boolean(dayPopoverDateIso);
-
-  const handleDayPopoverClose = useCallback(() => {
-    setDayPopoverAnchor(null);
-    setDayPopoverDateIso(null);
-  }, []);
-
   // Day summary panel state (for registration flow)
   const [selectedDateIso, setSelectedDateIso] = useState<string | null>(null);
   const isPanelOpen = selectedDateIso !== null;
@@ -138,37 +125,10 @@ export default function MonthPage({ items, loading = false, activeCategory = 'Al
 
   const handleDaySelect = useCallback(
     (e: React.MouseEvent<HTMLElement>, iso: string) => {
-      // Open popover AND day summary panel
-      setDayPopoverAnchor(e.currentTarget);
-      setDayPopoverDateIso(iso);
-      setSelectedDateIso(iso); // Open summary panel
+      // Open day summary panel (new unified flow)
+      setSelectedDateIso(iso);
     },
     [],
-  );
-
-  const handleOpenDay = useCallback(
-    (iso: string) => {
-      setActiveDateIso(iso);
-      const next = new URLSearchParams(searchParams);
-      next.set('date', iso);
-      setSearchParams(next, { replace: true });
-      const nextDate = parseDateParam(iso);
-      setAnchorDate(startOfMonth(nextDate));
-      // Navigate to day view (now tab within week page)
-      const params = new URLSearchParams({ date: iso, tab: 'day' });
-      if (activeCategory !== 'All') {
-        params.set('lane', activeCategory);
-      }
-      navigate(`/schedules/week?${params.toString()}`);
-    },
-    [activeCategory, navigate, searchParams, setSearchParams],
-  );
-
-  const getItemsForDate = useCallback(
-    (dateIso: string): SchedItem[] => {
-      return items.filter((it) => (it.start ?? '').slice(0, 10) === dateIso);
-    },
-    [items],
   );
 
   const headingId = TESTIDS.SCHEDULES_MONTH_HEADING_ID;
@@ -342,21 +302,6 @@ export default function MonthPage({ items, loading = false, activeCategory = 'Al
         </div>
         {!loading && totalCount === 0 ? null : null}
       </div>
-
-      {dayPopoverDateIso && (
-        <DayPopover
-          open={isDayPopoverOpen}
-          anchorEl={dayPopoverAnchor as HTMLButtonElement | null}
-          date={dayPopoverDateIso}
-          dateLabel={dayPopoverDateIso}
-          items={getItemsForDate(dayPopoverDateIso)}
-          onClose={handleDayPopoverClose}
-          onOpenDay={(dateIso) => {
-            handleOpenDay(dateIso);
-            handleDayPopoverClose();
-          }}
-        />
-      )}
 
       {/* Day Summary Panel (for registration flow) */}
       <DaySummaryDrawer
