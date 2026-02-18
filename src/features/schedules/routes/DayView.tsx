@@ -1,6 +1,7 @@
 import Loading from '@/ui/components/Loading';
 import ScheduleEmptyHint from '../components/ScheduleEmptyHint';
 import { TESTIDS } from '@/testids';
+import { SCHEDULE_TIMELINE_SPACING } from '../constants';
 import { useId, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import type { SchedItem, ScheduleStatus } from '../data';
@@ -212,7 +213,7 @@ const DayViewContent = ({
           style={{
             display: 'flex',
             justifyContent: 'flex-end',
-            gap: isCompact ? 6 : 8,
+            gap: isCompact ? SCHEDULE_TIMELINE_SPACING.headerGapCompact : SCHEDULE_TIMELINE_SPACING.headerGapNormal,
             flexWrap: 'wrap',
           }}
         >
@@ -278,7 +279,7 @@ const DayViewContent = ({
           <div
             aria-busy="true"
             aria-live="polite"
-            style={{ display: 'grid', gap: isCompact ? 8 : 12, paddingTop: isCompact ? 4 : 8 }}
+            style={{ display: 'grid', gap: isCompact ? SCHEDULE_TIMELINE_SPACING.itemGridGapCompact : SCHEDULE_TIMELINE_SPACING.itemGridGapNormal, paddingTop: isCompact ? 4 : 8 }}
             data-testid={TESTIDS['schedules-day-skeleton']}
           >
             <Loading />
@@ -287,7 +288,7 @@ const DayViewContent = ({
             <TimelineSkeleton />
           </div>
         ) : typedItems.length === 0 ? (
-          <div style={{ display: 'grid', gap: isCompact ? 8 : 12 }}>
+          <div style={{ display: 'grid', gap: isCompact ? SCHEDULE_TIMELINE_SPACING.itemGridGapCompact : SCHEDULE_TIMELINE_SPACING.itemGridGapNormal }}>
             <ScheduleEmptyHint view="day" compact={isCompact} categoryFilter={categoryFilter} />
           </div>
         ) : (
@@ -298,7 +299,7 @@ const DayViewContent = ({
               margin: 0,
               padding: 0,
               display: 'grid',
-              gap: isCompact ? 4 : 8,
+              gap: isCompact ? SCHEDULE_TIMELINE_SPACING.itemGapCompact : SCHEDULE_TIMELINE_SPACING.itemGapNormal,
             }}
             data-testid={TESTIDS['schedules-day-list']}
           >
@@ -400,7 +401,7 @@ function TimelineItem({ title, timeLabel, secondary, status, statusReason, accep
       style={{
         display: 'grid',
         gridTemplateColumns: isCompact ? '68px minmax(0, 1fr)' : '80px minmax(0, 1fr)',
-        columnGap: isCompact ? 8 : 12,
+        columnGap: isCompact ? SCHEDULE_TIMELINE_SPACING.itemGridGapCompact : SCHEDULE_TIMELINE_SPACING.itemGridGapNormal,
         alignItems: 'flex-start',
         opacity,
       }}
@@ -471,7 +472,7 @@ function TimelineItem({ title, timeLabel, secondary, status, statusReason, accep
         />
         <div
           style={{
-            padding: isCompact ? '4px 8px' : '6px 10px',
+            padding: isCompact ? SCHEDULE_TIMELINE_SPACING.itemPaddingCompact : SCHEDULE_TIMELINE_SPACING.itemPaddingNormal,
             borderRadius: 10,
             background: 'rgba(0,0,0,0.02)',
             border: '1px solid rgba(0,0,0,0.08)',
