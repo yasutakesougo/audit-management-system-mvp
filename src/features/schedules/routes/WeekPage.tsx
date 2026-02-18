@@ -223,6 +223,27 @@ export default function WeekPage() {
     [canEdit, activeDateIso, categoryFilter, defaultDateIso, primeRouteReset, setDialogParams],
   );
 
+  // Week Grid: Time slot click handler (PR #515)
+  const handleTimeSlotClick = useCallback(
+    (dayIso: string, time: string) => {
+      if (!canEdit) return;
+
+      // Compute end time: start + 30 minutes
+      const [year, month, day] = dayIso.split('-').map(Number);
+      const [h, m] = time.split(':').map(Number);
+      const startDate = new Date(year, month - 1, day, h, m);
+      const endDate = new Date(startDate);
+      endDate.setMinutes(endDate.getMinutes() + 30);
+
+      const startTimeStr = `${startDate.getFullYear()}-${String(startDate.getMonth() + 1).padStart(2, '0')}-${String(startDate.getDate()).padStart(2, '0')}T${String(startDate.getHours()).padStart(2, '0')}:${String(startDate.getMinutes()).padStart(2, '0')}:00`;
+      const endTimeStr = `${endDate.getFullYear()}-${String(endDate.getMonth() + 1).padStart(2, '0')}-${String(endDate.getDate()).padStart(2, '0')}T${String(endDate.getHours()).padStart(2, '0')}:${String(endDate.getMinutes()).padStart(2, '0')}:00`;
+
+      const createCategory = categoryFilter === 'All' ? 'User' : categoryFilter;
+      setDialogParams(buildCreateDialogIntent(createCategory, new Date(startTimeStr), new Date(endTimeStr)));
+    },
+    [canEdit, categoryFilter, setDialogParams],
+  );
+
   const handleWeekEventClick = useCallback((item: SchedItem) => {
     console.info('[WeekPage] row click', item.id);
 
@@ -645,6 +666,7 @@ export default function WeekPage() {
                 loading={isLoading}
                 range={weekRange}
                 onDayClick={handleDayClick}
+                onTimeSlotClick={handleTimeSlotClick}
                 activeDateIso={resolvedActiveDateIso}
                 onItemSelect={handleWeekEventClick}
                 highlightId={highlightId}
