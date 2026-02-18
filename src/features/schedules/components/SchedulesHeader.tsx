@@ -101,7 +101,18 @@ export const SchedulesHeader: React.FC<Props> = ({
   const tabMinHeight = compact ? 26 : 32;
   const tabMinWidth = compact ? 36 : 44;
   const tabPaddingX = compact ? 0.5 : 1;
-  const compactButtonSx = compact ? { py: 0.25, px: 1, minHeight: 28 } : undefined;
+  // Responsive button sizing: compact on desktop/tablet (minHeight 36px),
+  // expanded on mobile coarse pointer devices (44px)
+  const compactButtonSx = compact ? {
+    px: 1,
+    py: 0.5,
+    minHeight: 36,
+    '@media (pointer: coarse)': {
+      minHeight: 44,
+      minWidth: 44,
+      py: 0.75,
+    },
+  } : undefined;
 
   const handleTabChange = (_: React.SyntheticEvent, value: ViewMode) => {
     if (value === mode) {
@@ -199,7 +210,7 @@ export const SchedulesHeader: React.FC<Props> = ({
         {periodLabel}
       </Typography>
 
-      <Stack direction="row" spacing={compact ? 0.25 : 0.5} alignItems="center" sx={{ flex: '0 0 auto', display: isSmall ? 'none' : 'flex' }}>
+      <Stack direction="row" spacing={compact ? 0.5 : 0.75} alignItems="center" sx={{ flex: '0 0 auto', display: isSmall ? 'none' : 'flex' }}>
         <Button
           size="small"
           variant="outlined"
