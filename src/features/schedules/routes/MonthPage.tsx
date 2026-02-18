@@ -84,10 +84,11 @@ export default function MonthPage({ items, loading = false, activeCategory = 'Al
   const monthAnnouncement = useMemo(() => formatMonthAnnouncement(anchorDate), [anchorDate]);
 
   // Height calculation for iPad landscape fixed layout
+  const pageRef = useRef<HTMLDivElement>(null);
   const headerRef = useRef<HTMLDivElement>(null);
   const weekdayRef = useRef<HTMLDivElement>(null);
   const gridWrapRef = useRef<HTMLDivElement>(null);
-  const [cellMinH, setCellMinH] = useState<number | null>(null);
+  const [cellGridH, setCellGridH] = useState<number | null>(null);
   const rows = weeks.length;
   const totalCount = useMemo(
     () => countEventsInMonth(daySummaries.counts, anchorDate),
@@ -149,37 +150,48 @@ export default function MonthPage({ items, loading = false, activeCategory = 'Al
   const rangeId = TESTIDS.SCHEDULES_MONTH_RANGE_ID;
 
   // Measure and calculate cell height for iPad landscape fixed layout
+  // NOTE: Observe pageRef (fixed 100dvh) instead of gridWrapRef (flex) to avoid resize feedback loops.
   useLayoutEffect(() => {
-    const wrap = gridWrapRef.current;
-    if (!wrap) return;
+    const page = pageRef.current;
+    const header = headerRef.current;
+    const weekday = weekdayRef.current;
+    if (!page || !header || !weekday) return;
 
     const ro = new ResizeObserver(() => {
-      const wrapH = wrap.getBoundingClientRect().height;
+      const pageH = page.getBoundingClientRect().height;
+      const headerH = header.getBoundingClientRect().height;
+      const weekdayH = weekday.getBoundingClientRect().height;
+
+      // Guard: if header or weekday are 0px, layout not ready yet
+      if (headerH === 0 || weekdayH === 0) return;
+
       const gap = isCompact ? SCHEDULE_MONTH_SPACING.gridGapCompact : SCHEDULE_MONTH_SPACING.gridGapNormal;
       const totalGaps = gap * Math.max(0, rows - 1);
-      const availableH = wrapH - totalGaps;
+      const availableH = pageH - headerH - weekdayH - totalGaps;
       const cellH = Math.floor(availableH / rows);
       const minAllowed = isCompact ? 56 : 64;
-      setCellMinH(Math.max(minAllowed, cellH));
+      setCellGridH(Math.max(minAllowed, cellH));
     });
 
-    ro.observe(wrap);
+    ro.observe(page);
     return () => ro.disconnect();
   }, [isCompact, rows]);
 
   return (
     <section
+      ref={pageRef}
       data-testid={TESTIDS.SCHEDULES_MONTH_PAGE}
       aria-label="月間スケジュール"
       aria-labelledby={headingId}
       aria-describedby={rangeId}
       tabIndex={-1}
       style={{
-        paddingBottom: 32,
+        paddingBottom: 128,
         display: 'flex',
         flexDirection: 'column',
         height: '100dvh',
         overflow: 'hidden',
+        boxSizing: 'border-box',
       }}
     >
       <div
@@ -224,7 +236,7 @@ export default function MonthPage({ items, loading = false, activeCategory = 'Al
                 display: 'grid',
                 gridTemplateColumns: 'repeat(7, 1fr)',
                 gridColumn: 'span 7',
-                height: cellMinH ?? (isCompact ? SCHEDULE_MONTH_SPACING.cellMinHeightCompact : SCHEDULE_MONTH_SPACING.cellMinHeightNormal),
+                ...(cellGridH ? { height: cellGridH } : { flex: 1 }),
                 gap: isCompact ? SCHEDULE_MONTH_SPACING.gridGapCompact : SCHEDULE_MONTH_SPACING.gridGapNormal,
               }}
             >
