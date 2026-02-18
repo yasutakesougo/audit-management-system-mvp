@@ -14,7 +14,9 @@ import { ScheduleEmptyHint } from '../components/ScheduleEmptyHint';
 import {
   useCallback,
   useEffect,
+  useLayoutEffect,
   useMemo,
+  useRef,
   useState,
   type CSSProperties,
 } from 'react';
@@ -81,6 +83,13 @@ export default function MonthPage({ items, loading = false, activeCategory = 'Al
 
   const monthLabel = useMemo(() => formatMonthLabel(anchorDate), [anchorDate]);
   const monthAnnouncement = useMemo(() => formatMonthAnnouncement(anchorDate), [anchorDate]);
+
+  // Height calculation for iPad landscape fixed layout
+  const headerRef = useRef<HTMLDivElement>(null);
+  const weekdayRef = useRef<HTMLDivElement>(null);
+  const gridWrapRef = useRef<HTMLDivElement>(null);
+  const [cellMinH, setCellMinH] = useState<number | null>(null);
+  const rows = weeks.length;
   const totalCount = useMemo(
     () => countEventsInMonth(daySummaries.counts, anchorDate),
     [daySummaries.counts, anchorDate],
@@ -140,6 +149,25 @@ export default function MonthPage({ items, loading = false, activeCategory = 'Al
   const headingId = TESTIDS.SCHEDULES_MONTH_HEADING_ID;
   const rangeId = TESTIDS.SCHEDULES_MONTH_RANGE_ID;
 
+  // Measure and calculate cell height for iPad landscape fixed layout
+  useLayoutEffect(() => {
+    const wrap = gridWrapRef.current;
+    if (!wrap) return;
+
+    const ro = new ResizeObserver(() => {
+      const wrapH = wrap.getBoundingClientRect().height;
+      const gap = isCompact ? SCHEDULE_MONTH_SPACING.gridGapCompact : SCHEDULE_MONTH_SPACING.gridGapNormal;
+      const totalGaps = gap * Math.max(0, rows - 1);
+      const availableH = wrapH - totalGaps;
+      const cellH = Math.floor(availableH / rows);
+      const minAllowed = isCompact ? 56 : 64;
+      setCellMinH(Math.max(minAllowed, cellH));
+    });
+
+    ro.observe(wrap);
+    return () => ro.disconnect();
+  }, [isCompact, rows]);
+
   return (
     <section
       data-testid={TESTIDS.SCHEDULES_MONTH_PAGE}
@@ -147,9 +175,16 @@ export default function MonthPage({ items, loading = false, activeCategory = 'Al
       aria-labelledby={headingId}
       aria-describedby={rangeId}
       tabIndex={-1}
-      style={{ paddingBottom: 32 }}
+      style={{
+        paddingBottom: 32,
+        display: 'flex',
+        flexDirection: 'column',
+        height: '100dvh',
+        overflow: 'hidden',
+      }}
     >
       <div
+        ref={headerRef}
         style={{ padding: isCompact ? SCHEDULE_MONTH_SPACING.headerPaddingCompact : SCHEDULE_MONTH_SPACING.headerPaddingNormal }}
         aria-busy={loading || undefined}
         aria-live={loading ? 'polite' : undefined}
@@ -164,8 +199,18 @@ export default function MonthPage({ items, loading = false, activeCategory = 'Al
             <ScheduleEmptyHint view="month" compact={isCompact} categoryFilter={activeCategory} />
           </Box>
         )}
-        <div role="grid" aria-label={`${monthLabel}のカレンダー`} style={{ ...gridContainerStyle, gap: isCompact ? SCHEDULE_MONTH_SPACING.gridGapCompact : SCHEDULE_MONTH_SPACING.gridGapNormal }}>
-          <div role="row" style={{ display: 'contents' }}>
+        <div
+          ref={gridWrapRef}
+          style={{
+            flex: 1,
+            minHeight: 0,
+            overflow: 'hidden',
+            display: 'flex',
+            flexDirection: 'column',
+          }}
+        >
+          <div role="grid" aria-label={`${monthLabel}のカレンダー`} style={{ ...gridContainerStyle, gap: isCompact ? SCHEDULE_MONTH_SPACING.gridGapCompact : SCHEDULE_MONTH_SPACING.gridGapNormal }}>
+            <div ref={weekdayRef} role="row" style={{ display: 'contents' }}>
             {WEEKDAY_LABELS.map((label, index) => (
               <div key={label} role="columnheader" style={{ ...weekdayHeaderStyle(index), fontSize: isCompact ? 10.5 : 12, padding: isCompact ? SCHEDULE_MONTH_SPACING.weekdayHeaderPaddingCompact : SCHEDULE_MONTH_SPACING.weekdayHeaderPaddingNormal }}>
                 {label}
@@ -173,7 +218,17 @@ export default function MonthPage({ items, loading = false, activeCategory = 'Al
             ))}
           </div>
           {weeks.map((week) => (
-            <div key={week.id} role="row" style={{ display: 'contents' }}>
+            <div
+              key={week.id}
+              role="row"
+              style={{
+                display: 'grid',
+                gridTemplateColumns: 'repeat(7, 1fr)',
+                gridColumn: 'span 7',
+                height: cellMinH ?? (isCompact ? SCHEDULE_MONTH_SPACING.cellMinHeightCompact : SCHEDULE_MONTH_SPACING.cellMinHeightNormal),
+                gap: isCompact ? SCHEDULE_MONTH_SPACING.gridGapCompact : SCHEDULE_MONTH_SPACING.gridGapNormal,
+              }}
+            >
               {week.days.map((day) => {
                 const isSelected = day.iso === resolvedActiveDateIso;
                 const ariaLabel = buildDayAriaLabel(day);
@@ -191,7 +246,9 @@ export default function MonthPage({ items, loading = false, activeCategory = 'Al
                       ...monthDayBaseSx(day),
                       ...getDayChipSx({ isToday: day.isToday, isSelected }),
                       padding: isCompact ? SCHEDULE_MONTH_SPACING.cellPaddingCompact : SCHEDULE_MONTH_SPACING.cellPaddingNormal,
-                      minHeight: isCompact ? SCHEDULE_MONTH_SPACING.cellMinHeightCompact : SCHEDULE_MONTH_SPACING.cellMinHeightNormal,
+                      height: '100%',
+                      minHeight: 0,
+                      overflow: 'hidden',
                       gap: isCompact ? SCHEDULE_MONTH_SPACING.cellGapCompact : SCHEDULE_MONTH_SPACING.cellGapNormal,
                     } as SxProps<Theme>}
                   >
@@ -245,6 +302,7 @@ export default function MonthPage({ items, loading = false, activeCategory = 'Al
               })}
             </div>
           ))}
+        </div>
         </div>
         {!loading && totalCount === 0 ? null : null}
       </div>
