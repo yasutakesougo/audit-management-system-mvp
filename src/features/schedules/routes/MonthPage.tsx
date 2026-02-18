@@ -21,8 +21,7 @@ import {
   type CSSProperties,
 } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import type { SchedItem } from '../data';
-
+import type { SchedItem } from '../data';import { toDateKey } from '../lib/dateKey';
 const WEEKDAY_LABELS = ['月', '火', '水', '木', '金', '土', '日'];
 
 type CalendarDay = {
@@ -55,12 +54,12 @@ export default function MonthPage({ items, loading = false, activeCategory = 'Al
   const requestedIso = searchParams.get('date');
   const focusDate = useMemo(() => parseDateParam(requestedIso), [requestedIso]);
   const [anchorDate, setAnchorDate] = useState<Date>(() => startOfMonth(focusDate));
-  const [activeDateIso, setActiveDateIso] = useState<string>(() => toDateIso(focusDate));
+  const [activeDateIso, setActiveDateIso] = useState<string>(() => toDateKey(focusDate));
 
   useEffect(() => {
     const nextAnchor = startOfMonth(focusDate);
     setAnchorDate((prev) => (prev.getTime() === nextAnchor.getTime() ? prev : nextAnchor));
-    const nextIso = toDateIso(focusDate);
+    const nextIso = toDateKey(focusDate);
     setActiveDateIso((prev) => (prev === nextIso ? prev : nextIso));
   }, [focusDate]);
 
@@ -69,11 +68,11 @@ export default function MonthPage({ items, loading = false, activeCategory = 'Al
       return;
     }
     const next = new URLSearchParams(searchParams);
-    next.set('date', toDateIso(focusDate));
+    next.set('date', toDateKey(focusDate));
     setSearchParams(next, { replace: true });
   }, [focusDate, requestedIso, searchParams, setSearchParams]);
 
-  const resolvedActiveDateIso = activeDateIso ?? toDateIso(anchorDate);
+  const resolvedActiveDateIso = activeDateIso ?? toDateKey(anchorDate);
 
   const daySummaries = useMemo(() => buildDaySummaries(items), [items]);
   const weeks = useMemo(
@@ -407,8 +406,6 @@ const addMonths = (date: Date, delta: number): Date => {
 
 const startOfCalendar = (anchor: Date): Date => startOfWeek(startOfMonth(anchor));
 
-const toDateIso = (date: Date): string => date.toISOString().slice(0, 10);
-
 const parseDateParam = (value: string | null): Date => {
   if (!value) return new Date();
   const parsed = new Date(`${value}T00:00:00`);
@@ -440,7 +437,7 @@ const buildDaySummaries = (
     const cursor = startOfDay(start);
     const boundary = startOfDay(end);
     while (cursor <= boundary) {
-      const iso = toDateIso(cursor);
+      const iso = toDateKey(cursor);
       counts[iso] = (counts[iso] ?? 0) + 1;
       const title = item.title || item.notes || '';
       if (title) {
@@ -468,13 +465,13 @@ const buildCalendarWeeks = (
   titles: Record<string, string[]>,
 ): CalendarWeek[] => {
   const start = startOfCalendar(anchorDate);
-  const todayIso = toDateIso(new Date());
+  const todayIso = toDateKey(new Date());
   const weeks: CalendarWeek[] = [];
   let cursor = new Date(start);
   for (let week = 0; week < 6; week++) {
     const days: CalendarDay[] = [];
     for (let dayIndex = 0; dayIndex < 7; dayIndex++) {
-      const iso = toDateIso(cursor);
+      const iso = toDateKey(cursor);
       days.push({
         iso,
         day: cursor.getDate(),
@@ -486,7 +483,7 @@ const buildCalendarWeeks = (
       });
       cursor = addDays(cursor, 1);
     }
-    weeks.push({ id: `${days[0]?.iso ?? `${toDateIso(start)}-${week}`}`, days });
+    weeks.push({ id: `${days[0]?.iso ?? `${toDateKey(start)}-${week}`}`, days });
   }
   return weeks;
 };
@@ -505,7 +502,7 @@ const countEventsInMonth = (counts: Record<string, number>, anchorDate: Date): n
   const cursor = new Date(monthStart);
   let total = 0;
   while (cursor < monthEnd) {
-    const iso = toDateIso(cursor);
+    const iso = toDateKey(cursor);
     total += counts[iso] ?? 0;
     cursor.setDate(cursor.getDate() + 1);
   }
