@@ -69,7 +69,7 @@ export function CreateScheduleDialog({
       title: title.trim(),
       notes: notes.trim() ? notes.trim() : undefined,
       dateIso,
-      allDay: defaultAllDay,
+      allDay: isTimeMode ? false : defaultAllDay,
       startTime: isTimeMode ? startTime : undefined,
       endTime: isTimeMode ? endTime : undefined,
     };
