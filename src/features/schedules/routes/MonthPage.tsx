@@ -55,6 +55,10 @@ export default function MonthPage({ items, loading = false, activeCategory = 'Al
   const focusDate = useMemo(() => parseDateParam(requestedIso), [requestedIso]);
   const [anchorDate, setAnchorDate] = useState<Date>(() => startOfMonth(focusDate));
   const [activeDateIso, setActiveDateIso] = useState<string>(() => toDateKey(focusDate));
+  
+  // Ref to prevent setState churn from ResizeObserver feedback loop (iPad landscape fix)
+  const lastCellHRef = useRef<number | null>(null);
+  const roRef = useRef<ResizeObserver | null>(null);
 
   useEffect(() => {
     const nextAnchor = startOfMonth(focusDate);
@@ -84,11 +88,11 @@ export default function MonthPage({ items, loading = false, activeCategory = 'Al
   const monthAnnouncement = useMemo(() => formatMonthAnnouncement(anchorDate), [anchorDate]);
 
   // Height calculation for iPad landscape fixed layout
-  const pageRef = useRef<HTMLDivElement>(null);
   const headerRef = useRef<HTMLDivElement>(null);
   const weekdayRef = useRef<HTMLDivElement>(null);
   const gridWrapRef = useRef<HTMLDivElement>(null);
-  const [cellGridH, setCellGridH] = useState<number | null>(null);
+  const pageRef = useRef<HTMLDivElement>(null);
+  const [cellMinH, setCellMinH] = useState<number | null>(null);
   const rows = weeks.length;
   const totalCount = useMemo(
     () => countEventsInMonth(daySummaries.counts, anchorDate),
@@ -150,30 +154,45 @@ export default function MonthPage({ items, loading = false, activeCategory = 'Al
   const rangeId = TESTIDS.SCHEDULES_MONTH_RANGE_ID;
 
   // Measure and calculate cell height for iPad landscape fixed layout
-  // NOTE: Observe pageRef (fixed 100dvh) instead of gridWrapRef (flex) to avoid resize feedback loops.
   useLayoutEffect(() => {
     const page = pageRef.current;
     const header = headerRef.current;
     const weekday = weekdayRef.current;
     if (!page || !header || !weekday) return;
 
+    // Clean up any previous observer (StrictMode safety)
+    roRef.current?.disconnect();
+
     const ro = new ResizeObserver(() => {
       const pageH = page.getBoundingClientRect().height;
       const headerH = header.getBoundingClientRect().height;
       const weekdayH = weekday.getBoundingClientRect().height;
 
-      // Guard: if header or weekday are 0px, layout not ready yet
+      // Guard: wait for layout to settle
       if (headerH === 0 || weekdayH === 0) return;
 
       const gap = isCompact ? SCHEDULE_MONTH_SPACING.gridGapCompact : SCHEDULE_MONTH_SPACING.gridGapNormal;
       const totalGaps = gap * Math.max(0, rows - 1);
       const availableH = pageH - headerH - weekdayH - totalGaps;
-      const cellH = Math.floor(availableH / rows);
+      const nextCellH = Math.floor(availableH / rows);
       const minAllowed = isCompact ? 56 : 64;
-      setCellGridH(Math.max(minAllowed, cellH));
+      const nextH = Math.max(minAllowed, nextCellH);
+
+      // Guard: round to prevent sub-pixel churn (iPad Safari fix)
+      const rounded = Math.round(nextH);
+
+      // Guard: only setState if value changed significantly (1px threshold)
+      const prev = lastCellHRef.current;
+      if (prev != null && Math.abs(prev - rounded) <= 1) return;
+
+      lastCellHRef.current = rounded;
+      setCellMinH(rounded);
     });
 
+    roRef.current = ro;
+    // Observe fixed parent (100dvh, overflow: hidden) NOT flex-growing gridWrapRef
     ro.observe(page);
+
     return () => ro.disconnect();
   }, [isCompact, rows]);
 
@@ -186,12 +205,11 @@ export default function MonthPage({ items, loading = false, activeCategory = 'Al
       aria-describedby={rangeId}
       tabIndex={-1}
       style={{
-        paddingBottom: 128,
+        paddingBottom: 32,
         display: 'flex',
         flexDirection: 'column',
         height: '100dvh',
         overflow: 'hidden',
-        boxSizing: 'border-box',
       }}
     >
       <div
@@ -236,7 +254,7 @@ export default function MonthPage({ items, loading = false, activeCategory = 'Al
                 display: 'grid',
                 gridTemplateColumns: 'repeat(7, 1fr)',
                 gridColumn: 'span 7',
-                ...(cellGridH ? { height: cellGridH } : { flex: 1 }),
+                height: cellMinH ?? (isCompact ? SCHEDULE_MONTH_SPACING.cellMinHeightCompact : SCHEDULE_MONTH_SPACING.cellMinHeightNormal),
                 gap: isCompact ? SCHEDULE_MONTH_SPACING.gridGapCompact : SCHEDULE_MONTH_SPACING.gridGapNormal,
               }}
             >
@@ -292,7 +310,7 @@ export default function MonthPage({ items, loading = false, activeCategory = 'Al
                     </Badge>
                     {day.titles && day.titles.length > 0 ? (
                       <Box sx={{ width: '100%' }}>
-                        {day.titles.slice(0, 2).map((title, index, visible) => {
+                        {day.titles.slice(0, 3).map((title, index, visible) => {
                           const remaining = Math.max(0, day.eventCount - visible.length);
                           const suffix = remaining > 0 && index === visible.length - 1 ? ` +${remaining}` : '';
                           return (
