@@ -1,4 +1,5 @@
 import { type CSSProperties, type MouseEvent, useCallback, useEffect, useId, useMemo, useRef, useState } from 'react';
+import { useLocation } from 'react-router-dom';
 import { Alert, AlertTitle, Button, Dialog, DialogTitle, DialogContent, DialogActions, Snackbar, Stack, Typography } from '@mui/material';
 
 import { useAnnounce } from '@/a11y/LiveAnnouncer';
@@ -113,11 +114,13 @@ export default function WeekPage() {
   const [activeDateIso, setActiveDateIso] = useState<string | null>(() => toDateIso(focusDate));
   const scheduleUserOptions = useScheduleUserOptions();
   const defaultScheduleUser = scheduleUserOptions.length ? scheduleUserOptions[0] : null;
+  const location = useLocation();
+  const isSchedulesView = location.pathname === '/schedules' || location.pathname.startsWith('/schedules/');
   const fabRef = useRef<HTMLButtonElement | null>(null);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [dialogInitialValues, setDialogInitialValues] = useState<ScheduleEditDialogValues | null>(null);
   const [dayLane, setDayLane] = useState<ScheduleCategory | null>(null);
-  const showFab = !isDesktopSize;
+  const showFab = !isDesktopSize && !isSchedulesView; // Hide FAB in /schedules views
   const compact = isTabletSize && isLandscape;
   const fabInset = `max(24px, calc(env(safe-area-inset-bottom, 0px) + 8px))`;
   const fabInsetRight = `max(24px, calc(env(safe-area-inset-right, 0px) + 8px))`;
