@@ -60,6 +60,21 @@ export default function MonthPage({ items, loading = false, activeCategory = 'Al
   const lastCellHRef = useRef<number | null>(null);
   const roRef = useRef<ResizeObserver | null>(null);
 
+  // Commit cell height only if significantly changed (2px threshold + NaN guard)
+  const commitCellMinH = useCallback((next: number) => {
+    const rounded = Math.round(next);
+
+    // Guard: NaN / Infinity / invalid values
+    if (!Number.isFinite(rounded) || rounded <= 0) return;
+
+    // Guard: ignore changes <= 2px (iPad Safari sub-pixel + layout settling)
+    const prev = lastCellHRef.current;
+    if (prev != null && Math.abs(prev - rounded) <= 2) return;
+
+    lastCellHRef.current = rounded;
+    setCellMinH(rounded);
+  }, []);
+
   useEffect(() => {
     const nextAnchor = startOfMonth(focusDate);
     setAnchorDate((prev) => (prev.getTime() === nextAnchor.getTime() ? prev : nextAnchor));
@@ -168,9 +183,10 @@ export default function MonthPage({ items, loading = false, activeCategory = 'Al
       const headerH = header.getBoundingClientRect().height;
       const weekdayH = weekday.getBoundingClientRect().height;
 
-      // Guard: wait for layout to settle
+      // Guard: wait for layout to settle (0-height = unmeasured)
       if (headerH === 0 || weekdayH === 0) return;
 
+      // Absolute-value calculation ONLY (no accumulation)
       const gap = isCompact ? SCHEDULE_MONTH_SPACING.gridGapCompact : SCHEDULE_MONTH_SPACING.gridGapNormal;
       const totalGaps = gap * Math.max(0, rows - 1);
       const availableH = pageH - headerH - weekdayH - totalGaps;
@@ -178,15 +194,8 @@ export default function MonthPage({ items, loading = false, activeCategory = 'Al
       const minAllowed = isCompact ? 56 : 64;
       const nextH = Math.max(minAllowed, nextCellH);
 
-      // Guard: round to prevent sub-pixel churn (iPad Safari fix)
-      const rounded = Math.round(nextH);
-
-      // Guard: only setState if value changed significantly (1px threshold)
-      const prev = lastCellHRef.current;
-      if (prev != null && Math.abs(prev - rounded) <= 1) return;
-
-      lastCellHRef.current = rounded;
-      setCellMinH(rounded);
+      // Commit only if significantly changed (2px threshold + NaN guard)
+      commitCellMinH(nextH);
     });
 
     roRef.current = ro;
@@ -194,7 +203,7 @@ export default function MonthPage({ items, loading = false, activeCategory = 'Al
     ro.observe(page);
 
     return () => ro.disconnect();
-  }, [isCompact, rows]);
+  }, [isCompact, rows, commitCellMinH]);
 
   return (
     <section
@@ -210,6 +219,8 @@ export default function MonthPage({ items, loading = false, activeCategory = 'Al
         flexDirection: 'column',
         height: '100dvh',
         overflow: 'hidden',
+        minHeight: 0,           // Flex Safety: Prevent overflow of content
+        boxSizing: 'border-box', // Box Model: Include padding in height calc
       }}
     >
       <div
