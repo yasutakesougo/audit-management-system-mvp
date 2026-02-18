@@ -125,19 +125,11 @@ export const DaySummaryDrawer: React.FC<DaySummaryDrawerProps> = ({
           }}
         >
           {sortedItems.length === 0 ? (
-            <Stack sx={{ alignItems: 'center', pt: 4 }} spacing={2}>
+            <Box sx={{ textAlign: 'center', pt: 4 }}>
               <Typography variant="body2" color="textSecondary">
                 予定はまだありません
               </Typography>
-              <Button
-                size="small"
-                startIcon={<AddIcon />}
-                onClick={onAdd}
-                variant="outlined"
-              >
-                予定を追加
-              </Button>
-            </Stack>
+            </Box>
           ) : (
             <Stack spacing={1}>
               {sortedItems.map((item, idx) => (

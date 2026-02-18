@@ -251,17 +251,29 @@ export const fetchMyGroupIds = async (getToken: GetToken): Promise<string[]> => 
   const token = await getToken();
   if (!token) return [];
 
-  const res = await fetch('https://graph.microsoft.com/v1.0/me/memberOf?$select=id', {
-    headers: {
-      Authorization: `Bearer ${token}`,
-      Accept: 'application/json',
-    },
-  });
+  const endpoints = [
+    'https://graph.microsoft.com/v1.0/me/transitiveMemberOf?$select=id',
+    'https://graph.microsoft.com/v1.0/me/memberOf?$select=id',
+  ];
 
-  if (!res.ok) {
-    throw new Error(`memberOf failed: ${res.status}`);
+  for (const endpoint of endpoints) {
+    const res = await fetch(endpoint, {
+      headers: {
+        Authorization: `Bearer ${token}`,
+        Accept: 'application/json',
+      },
+    });
+
+    if (!res.ok) {
+      if (endpoint === endpoints[endpoints.length - 1]) {
+        throw new Error(`memberOf failed: ${res.status}`);
+      }
+      continue;
+    }
+
+    const json = await res.json();
+    return (json.value ?? []).map((v: { id?: string }) => v.id).filter(Boolean);
   }
 
-  const json = await res.json();
-  return (json.value ?? []).map((v: { id?: string }) => v.id).filter(Boolean);
+  return [];
 };

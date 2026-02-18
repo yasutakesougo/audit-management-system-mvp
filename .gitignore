@@ -42,3 +42,6 @@ vite-profile-*.cpuprofile
 
 # npm audit reports
 audit-report.json
+
+# runtime env (do not commit)
+public/env.runtime.json

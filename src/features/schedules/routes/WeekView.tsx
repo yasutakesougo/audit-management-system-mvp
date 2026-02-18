@@ -449,36 +449,55 @@ const WeekViewContent = ({ items, loading, onDayClick: _onDayClick, onTimeSlotCl
                     onTimeSlotClick?.(day.iso, timeStr);
                   };
 
+                  const handlePointerUp = (event: React.PointerEvent<HTMLButtonElement>) => {
+                    event.preventDefault();
+                    event.stopPropagation();
+                    handleCellClick();
+                  };
+
                   return (
-                    <div
+                    <button
+                      type="button"
                       key={cellKey}
                       role="gridcell"
                       aria-rowindex={slotIndex + 2}
                       aria-colindex={dayIndex + 2}
-                      data-testid="schedules-week-slot"
+                      data-testid="schedules-week-gridcell"
                       data-day={day.iso}
                       data-time={timeStr}
-                      onClick={handleCellClick}
-                      onKeyDown={(e) => {
-                        if (e.key === 'Enter' || e.key === ' ') {
-                          e.preventDefault();
-                          handleCellClick();
-                        }
+                      onPointerUp={handlePointerUp}
+                      onClick={(event) => {
+                        if (typeof window !== 'undefined' && 'PointerEvent' in window) return;
+                        event.preventDefault();
+                        event.stopPropagation();
+                        handleCellClick();
                       }}
-                      tabIndex={0}
+                      onFocus={(event) => {
+                        event.currentTarget.style.boxShadow = '0 0 0 2px rgba(25,118,210,0.35)';
+                      }}
+                      onBlur={(event) => {
+                        event.currentTarget.style.boxShadow = 'none';
+                      }}
+                      onMouseEnter={() => setHoveredCell(cellKey)}
+                      onMouseLeave={() => setHoveredCell(null)}
                       style={{
+                        all: 'unset',
+                        display: 'block',
                         gridColumn: dayIndex + 2,
                         gridRow: slotIndex + 2,
+                        width: '100%',
                         minHeight: '40px',
+                        outline: 'none',
+                        borderRadius: 6,
                         borderRight: dayIndex < 6 ? '1px solid rgba(15,23,42,0.08)' : 'none',
                         borderBottom: '1px solid rgba(15,23,42,0.08)',
                         backgroundColor: hoveredCell === cellKey ? 'rgba(59,130,246,0.1)' : isEvenSlot ? 'rgba(15,23,42,0.01)' : 'transparent',
                         padding: '2px 4px',
                         cursor: 'pointer',
                         transition: 'background-color 0.2s',
+                        touchAction: 'manipulation',
+                        WebkitTapHighlightColor: 'transparent',
                       }}
-                      onMouseEnter={() => setHoveredCell(cellKey)}
-                      onMouseLeave={() => setHoveredCell(null)}
                     >
                       {cellItems.length > 0 && (
                         <div
@@ -493,6 +512,7 @@ const WeekViewContent = ({ items, loading, onDayClick: _onDayClick, onTimeSlotCl
                             whiteSpace: 'nowrap',
                             color: 'rgba(0,0,0,0.8)',
                             position: 'relative',
+                            pointerEvents: 'none',
                           }}
                           title={cellItems.map(item => item.title).join('; ')}
                         >
@@ -504,7 +524,7 @@ const WeekViewContent = ({ items, loading, onDayClick: _onDayClick, onTimeSlotCl
                           )}
                         </div>
                       )}
-                    </div>
+                    </button>
                   );
                 })}
               </React.Fragment>
