@@ -9,7 +9,6 @@ import { MASTER_SCHEDULE_TITLE_JA } from '@/features/schedules/constants';
 import type { ScheduleCategory } from '@/features/schedules/domain/types';
 import { scheduleCategoryLabels } from '@/features/schedules/domain/categoryLabels';
 import ScheduleCreateDialog from './ScheduleCreateDialog';
-import ScheduleEmptyHint from '@/features/schedules/components/ScheduleEmptyHint';
 import SchedulesFilterResponsive from '@/features/schedules/components/SchedulesFilterResponsive';
 import SchedulesHeader from '@/features/schedules/components/SchedulesHeader';
 import type { CreateScheduleEventInput, SchedItem, ScheduleServiceType } from '@/features/schedules/data';
@@ -466,8 +465,6 @@ export default function WeekPage() {
     return () => clearTimeout(timeoutId);
   }, [focusScheduleId, filteredItems]);
 
-  const showEmptyHint = !isLoading && filteredItems.length === 0;
-
 
   return (
     <section
@@ -630,9 +627,6 @@ export default function WeekPage() {
       )}
 
       <div>
-        {showEmptyHint ? (
-          <ScheduleEmptyHint view={mode} periodLabel={weekLabel} sx={{ mb: 2 }} categoryFilter={categoryFilter} />
-        ) : null}
         {isLoading ? (
           <div aria-busy="true" aria-live="polite" style={{ display: 'grid', gap: 16 }}>
             <Loading />
