@@ -96,12 +96,12 @@ export const SchedulesHeader: React.FC<Props> = ({
 }) => {
   const navigate = useNavigate();
   const isSmall = useMediaQuery((theme: Theme) => theme.breakpoints.down('sm'));
-  const headerBottom = compact ? 0.75 : 1.25;
-  const tabsMinHeight = compact ? 30 : 36;
-  const tabMinHeight = compact ? 28 : 34;
+  const headerBottom = compact ? 0.5 : 0.75;
+  const tabsMinHeight = compact ? 28 : 32;
+  const tabMinHeight = compact ? 26 : 32;
   const tabMinWidth = compact ? 36 : 44;
   const tabPaddingX = compact ? 0.5 : 1;
-  const compactButtonSx = compact ? { py: 0.5, px: 1, minHeight: 30 } : undefined;
+  const compactButtonSx = compact ? { py: 0.25, px: 1, minHeight: 28 } : undefined;
 
   const handleTabChange = (_: React.SyntheticEvent, value: ViewMode) => {
     if (value === mode) {
@@ -116,159 +116,150 @@ export const SchedulesHeader: React.FC<Props> = ({
   };
 
   return (
-    <Stack spacing={0.5} sx={{ mb: headerBottom }} data-testid={TESTIDS.SCHEDULES_HEADER_ROOT}>
-      <Stack
-        direction={isSmall ? 'column' : 'row'}
-        alignItems="center"
-        spacing={isSmall ? 0.75 : 1}
-        justifyContent={isSmall ? 'flex-start' : 'space-between'}
-        sx={{ mb: 0 }}
-      >
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, minWidth: 0, flex: '0 0 auto' }}>
-          <Typography
-            variant="h6"
-            component="h1"
-            sx={{ fontWeight: 700, lineHeight: 1.2, whiteSpace: 'nowrap' }}
-            id={headingId}
-            data-testid={titleTestId}
-            data-page-heading="true"
-          >
-            {title}
-          </Typography>
-          <Typography
-            variant="caption"
-            color="text.secondary"
-            sx={{ display: compact || isSmall ? 'none' : 'inline' }}
-            noWrap
-          >
-            {subLabel}
-          </Typography>
-        </Box>
-
-        <Box
-          sx={{
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: isSmall ? 'center' : 'flex-start',
-            flex: '0 0 auto',
-            width: isSmall ? '100%' : 'auto',
-          }}
-        >
-          <Tabs
-            value={mode}
-            onChange={handleTabChange}
-            aria-label={tablistLabel}
-            sx={{ flexShrink: 0, minHeight: tabsMinHeight }}
-            data-testid="schedules-view-tabs"
-          >
-            {modes.includes('day') && (
-              <Tab
-                label="日"
-                value="day"
-                sx={{ minHeight: tabMinHeight, minWidth: tabMinWidth, px: tabPaddingX }}
-                data-testid="schedules-view-tab-day"
-              />
-            )}
-            {modes.includes('week') && (
-              <Tab
-                label="週"
-                value="week"
-                sx={{ minHeight: tabMinHeight, minWidth: tabMinWidth, px: tabPaddingX }}
-                data-testid="schedules-view-tab-week"
-              />
-            )}
-            {modes.includes('month') && (
-              <Tab
-                label="月"
-                value="month"
-                sx={{ minHeight: tabMinHeight, minWidth: tabMinWidth, px: tabPaddingX }}
-                data-testid="schedules-view-tab-month"
-              />
-            )}
-          </Tabs>
-        </Box>
-
-        <Stack direction="row" spacing={0.5} justifyContent="flex-end" sx={{ display: isSmall ? 'none' : 'flex', flex: '0 0 auto' }}>
-          {showPrimaryAction && onPrimaryCreate ? (
-            <Button
-              variant="contained"
-              size="small"
-              onClick={onPrimaryCreate}
-              data-testid={primaryButtonTestId ?? TESTIDS.SCHEDULES_HEADER_CREATE}
-              startIcon={<span aria-hidden="true">＋</span>}
-              ref={primaryButtonRef}
-              onBlur={onPrimaryBlur}
-              aria-label={primaryActionAriaLabel ?? primaryActionLabel}
-              title={primaryActionAriaLabel ?? primaryActionLabel}
-            >
-              {primaryActionLabel}
-            </Button>
-          ) : null}
-        </Stack>
-      </Stack>
-
-      <Stack
-        direction={isSmall ? 'column' : 'row'}
-        alignItems="center"
-        justifyContent={isSmall ? 'flex-start' : 'space-between'}
-        spacing={compact ? 0.5 : 0.75}
-        flexWrap={isSmall ? 'nowrap' : 'wrap'}
-      >
+    <Stack
+      direction={isSmall ? 'column' : 'row'}
+      alignItems="center"
+      spacing={isSmall ? 0.5 : 0.75}
+      justifyContent={isSmall ? 'flex-start' : 'space-between'}
+      sx={{ mb: headerBottom }}
+      data-testid={TESTIDS.SCHEDULES_HEADER_ROOT}
+    >
+      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, minWidth: 0, flex: '0 0 auto' }}>
         <Typography
-          variant={compact ? 'caption' : 'body2'}
-          data-testid={rangeTestId ?? TESTIDS.SCHEDULES_RANGE_LABEL}
-          id={rangeLabelId}
-          aria-live={rangeAriaLive}
-          sx={{ fontWeight: 600, flex: '0 0 auto' }}
+          variant="h6"
+          component="h1"
+          sx={{ fontWeight: 700, lineHeight: 1, whiteSpace: 'nowrap' }}
+          id={headingId}
+          data-testid={titleTestId}
+          data-page-heading="true"
+        >
+          {title}
+        </Typography>
+        <Typography
+          variant="caption"
+          color="text.secondary"
+          sx={{ display: compact || isSmall ? 'none' : 'inline' }}
           noWrap
         >
-          {periodLabel}
+          {subLabel}
         </Typography>
+      </Box>
 
-        <Stack direction="row" spacing={compact ? 0.25 : 0.5} alignItems="center" sx={{ flex: '0 0 auto' }}>
-          <Button
-            size="small"
-            variant="outlined"
-            onClick={onToday}
-            data-testid={todayTestId}
-            ref={todayButtonRef}
-            onBlur={todayButtonOnBlur}
-            aria-label={todayButtonLabel}
-            title={todayButtonLabel}
-            sx={compactButtonSx}
-          >
-            今日
-          </Button>
-          <Button
-            size="small"
-            variant="text"
-            onClick={onPrev}
-            data-testid={prevTestId}
-            ref={prevButtonRef}
-            onBlur={prevButtonOnBlur}
-            aria-label={prevButtonLabel}
-            title={prevButtonLabel}
-            sx={compactButtonSx}
-          >
-            &lt; 前
-          </Button>
-          <Button
-            size="small"
-            variant="text"
-            onClick={onNext}
-            data-testid={nextTestId}
-            ref={nextButtonRef}
-            onBlur={nextButtonOnBlur}
-            aria-label={nextButtonLabel}
-            title={nextButtonLabel}
-            sx={compactButtonSx}
-          >
-            次 &gt;
-          </Button>
-        </Stack>
+      <Box
+        sx={{
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: isSmall ? 'center' : 'flex-start',
+          flex: '0 0 auto',
+          width: isSmall ? '100%' : 'auto',
+        }}
+      >
+        <Tabs
+          value={mode}
+          onChange={handleTabChange}
+          aria-label={tablistLabel}
+          sx={{ flexShrink: 0, minHeight: tabsMinHeight }}
+          data-testid="schedules-view-tabs"
+        >
+          {modes.includes('day') && (
+            <Tab
+              label="日"
+              value="day"
+              sx={{ minHeight: tabMinHeight, minWidth: tabMinWidth, px: tabPaddingX }}
+              data-testid="schedules-view-tab-day"
+            />
+          )}
+          {modes.includes('week') && (
+            <Tab
+              label="週"
+              value="week"
+              sx={{ minHeight: tabMinHeight, minWidth: tabMinWidth, px: tabPaddingX }}
+              data-testid="schedules-view-tab-week"
+            />
+          )}
+          {modes.includes('month') && (
+            <Tab
+              label="月"
+              value="month"
+              sx={{ minHeight: tabMinHeight, minWidth: tabMinWidth, px: tabPaddingX }}
+              data-testid="schedules-view-tab-month"
+            />
+          )}
+        </Tabs>
+      </Box>
 
-        <Box sx={{ display: isSmall ? 'none' : 'flex', justifyContent: 'flex-end', flex: '1 1 auto', minWidth: 0 }}>{children}</Box>
+      <Typography
+        variant={compact ? 'caption' : 'body2'}
+        data-testid={rangeTestId ?? TESTIDS.SCHEDULES_RANGE_LABEL}
+        id={rangeLabelId}
+        aria-live={rangeAriaLive}
+        sx={{ fontWeight: 600, flex: '0 0 auto', display: isSmall ? 'none' : 'block' }}
+        noWrap
+      >
+        {periodLabel}
+      </Typography>
+
+      <Stack direction="row" spacing={compact ? 0.25 : 0.5} alignItems="center" sx={{ flex: '0 0 auto', display: isSmall ? 'none' : 'flex' }}>
+        <Button
+          size="small"
+          variant="outlined"
+          onClick={onToday}
+          data-testid={todayTestId}
+          ref={todayButtonRef}
+          onBlur={todayButtonOnBlur}
+          aria-label={todayButtonLabel}
+          title={todayButtonLabel}
+          sx={compactButtonSx}
+        >
+          今日
+        </Button>
+        <Button
+          size="small"
+          variant="text"
+          onClick={onPrev}
+          data-testid={prevTestId}
+          ref={prevButtonRef}
+          onBlur={prevButtonOnBlur}
+          aria-label={prevButtonLabel}
+          title={prevButtonLabel}
+          sx={compactButtonSx}
+        >
+          &lt; 前
+        </Button>
+        <Button
+          size="small"
+          variant="text"
+          onClick={onNext}
+          data-testid={nextTestId}
+          ref={nextButtonRef}
+          onBlur={nextButtonOnBlur}
+          aria-label={nextButtonLabel}
+          title={nextButtonLabel}
+          sx={compactButtonSx}
+        >
+          次 &gt;
+        </Button>
       </Stack>
+
+      <Stack direction="row" spacing={0.5} justifyContent="flex-end" sx={{ display: isSmall ? 'none' : 'flex', flex: '0 0 auto' }}>
+        {showPrimaryAction && onPrimaryCreate ? (
+          <Button
+            variant="contained"
+            size="small"
+            onClick={onPrimaryCreate}
+            data-testid={primaryButtonTestId ?? TESTIDS.SCHEDULES_HEADER_CREATE}
+            startIcon={<span aria-hidden="true">＋</span>}
+            ref={primaryButtonRef}
+            onBlur={onPrimaryBlur}
+            aria-label={primaryActionAriaLabel ?? primaryActionLabel}
+            title={primaryActionAriaLabel ?? primaryActionLabel}
+          >
+            {primaryActionLabel}
+          </Button>
+        ) : null}
+      </Stack>
+
+      <Box sx={{ display: isSmall ? 'none' : 'flex', justifyContent: 'flex-end', flex: '1 1 auto', minWidth: 0 }}>{children}</Box>
     </Stack>
   );
 };
