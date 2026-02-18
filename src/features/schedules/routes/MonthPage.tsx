@@ -280,7 +280,7 @@ export default function MonthPage({ items, loading = false, activeCategory = 'Al
                     </Badge>
                     {day.titles && day.titles.length > 0 ? (
                       <Box sx={{ width: '100%' }}>
-                        {day.titles.slice(0, 2).map((title, index, visible) => {
+                        {day.titles.slice(0, 3).map((title, index, visible) => {
                           const remaining = Math.max(0, day.eventCount - visible.length);
                           const suffix = remaining > 0 && index === visible.length - 1 ? ` +${remaining}` : '';
                           return (
