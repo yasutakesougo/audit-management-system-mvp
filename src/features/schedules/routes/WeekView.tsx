@@ -137,9 +137,9 @@ const LANE_ORDER: Array<{ key: ScheduleCategory; label: string }> = [
 // Time Grid Constants
 const TIME_START = 6;      // 06:00
 const TIME_END = 22;       // 22:00
-const SLOT_MINUTES = 30;
+const _SLOT_MINUTES = 30;
 
-const generateTimeSlots = (): string[] => {
+const _generateTimeSlots = (): string[] => {
   const slots: string[] = [];
   for (let h = TIME_START; h < TIME_END; h++) {
     slots.push(`${String(h).padStart(2, '0')}:00`);
@@ -148,7 +148,7 @@ const generateTimeSlots = (): string[] => {
   return slots;
 };
 
-const getLocalTimeLabel = (iso: string): string => {
+const _getLocalTimeLabel = (iso: string): string => {
   const d = new Date(iso);
   const hours = String(d.getHours()).padStart(2, '0');
   const minutes = String(d.getMinutes()).padStart(2, '0');
@@ -184,6 +184,7 @@ type WeekViewContentProps = {
   loading: boolean;
   range?: DateRange;
   onDayClick?: (dayIso: string, event?: MouseEvent<HTMLButtonElement>) => void;
+  onTimeSlotClick?: (dayIso: string, time: string) => void;
   activeDateIso?: string | null;
   onItemSelect?: (item: WeekSchedItem) => void;
   onItemAccept?: (item: WeekSchedItem) => void;
@@ -201,6 +202,7 @@ const WeekViewWithData = (props: WeekViewProps) => {
       loading={loading}
       range={resolvedRange}
       onDayClick={props.onDayClick}
+      onTimeSlotClick={props.onTimeSlotClick}
       activeDateIso={props.activeDateIso}
       onItemSelect={props.onItemSelect}
       onItemAccept={props.onItemAccept}
