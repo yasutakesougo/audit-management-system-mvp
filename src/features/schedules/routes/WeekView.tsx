@@ -1,27 +1,24 @@
-import Button from '@mui/material/Button';
-import Chip from '@mui/material/Chip';
-import IconButton from '@mui/material/IconButton';
+import _Chip from '@mui/material/Chip';
+import _IconButton from '@mui/material/IconButton';
 import Menu from '@mui/material/Menu';
 import MenuItem from '@mui/material/MenuItem';
 import { useTheme } from '@mui/material/styles';
 import useMediaQuery from '@mui/material/useMediaQuery';
-import MoreVertIcon from '@mui/icons-material/MoreVert';
-import ChevronLeftIcon from '@mui/icons-material/ChevronLeft';
-import ChevronRightIcon from '@mui/icons-material/ChevronRight';
+import _MoreVertIcon from '@mui/icons-material/MoreVert';
+import React, { useCallback, useMemo, useState } from 'react';
 import type { MouseEvent } from 'react';
-import { useCallback, useLayoutEffect, useMemo, useRef, useState } from 'react';
 
 import { TESTIDS } from '@/testids';
 
 import type { SchedItem } from '../data';
 import { SCHEDULES_DEBUG } from '../debug';
-import { getScheduleStatusMeta } from '../statusMetadata';
+import { getScheduleStatusMeta as _getScheduleStatusMeta } from '../statusMetadata';
 import { SERVICE_TYPE_COLOR, SERVICE_TYPE_META, normalizeServiceType, type ServiceTypeColor, type ServiceTypeKey } from '../serviceTypeMetadata';
-import { getDayChipSx } from '../theme/dateStyles';
+import { getDayChipSx as _getDayChipSx } from '../theme/dateStyles';
 import { type DateRange } from '../data';
 import { makeRange, useSchedules } from '../hooks/useSchedules';
-import type { ScheduleCategory } from '@/features/schedules/domain/types';
-import { scheduleCategoryLabels } from '@/features/schedules/domain/categoryLabels';
+import type { ScheduleCategory as _ScheduleCategory } from '@/features/schedules/domain/types';
+import { scheduleCategoryLabels as _scheduleCategoryLabels } from '@/features/schedules/domain/categoryLabels';
 import {
   WeekServiceSummaryChips,
   type WeekServiceSummaryItem,
@@ -70,7 +67,7 @@ const formatTime = (iso: string): string =>
     minute: '2-digit',
   }).format(new Date(iso));
 
-const formatEventTimeRange = (startIso: string, endIso?: string | null): string => {
+const _formatEventTimeRange = (startIso: string, endIso?: string | null): string => {
   const start = formatTime(startIso);
   if (!endIso) {
     return start;
@@ -78,7 +75,7 @@ const formatEventTimeRange = (startIso: string, endIso?: string | null): string 
   return `${start} – ${formatTime(endIso)}`;
 };
 
-const buildWeekEventAriaLabel = (
+const _buildWeekEventAriaLabel = (
   item: SchedItem & { staffNames?: string[]; location?: string },
   timeRange: string,
   statusLabel?: string,
@@ -127,12 +124,6 @@ const mapServiceTypeToThemeKey = (value?: WeekServiceFilter | null): WeekService
 
 const getServiceTypeMeta = (value?: WeekServiceFilter | null) =>
   value && value !== 'unset' ? SERVICE_TYPE_META[value] : undefined;
-
-const LANE_ORDER: Array<{ key: ScheduleCategory; label: string }> = [
-  { key: 'User', label: scheduleCategoryLabels.User },
-  { key: 'Staff', label: scheduleCategoryLabels.Staff },
-  { key: 'Org', label: scheduleCategoryLabels.Org },
-];
 
 // Time Grid Constants
 const TIME_START = 6;      // 06:00
@@ -212,41 +203,12 @@ const WeekViewWithData = (props: WeekViewProps) => {
   );
 };
 
-const WeekViewContent = ({ items, loading, onDayClick, activeDateIso, range, onItemSelect, onItemAccept, highlightId, compact }: WeekViewContentProps) => {
+const WeekViewContent = ({ items, loading, onDayClick: _onDayClick, onTimeSlotClick, activeDateIso: _activeDateIso, range, onItemSelect, onItemAccept, highlightId: _highlightId, compact: _compact }: WeekViewContentProps) => {
   const theme = useTheme();
-  const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
+  const _isMobile = useMediaQuery(theme.breakpoints.down('sm'));
   const [menuAnchor, setMenuAnchor] = useState<HTMLElement | null>(null);
   const [menuItem, setMenuItem] = useState<WeekSchedItem | null>(null);
-  const scrollContainerRef = useRef<HTMLDivElement>(null);
-  const [canScrollLeft, setCanScrollLeft] = useState(false);
-  const [canScrollRight, setCanScrollRight] = useState(false);
   const resolvedRange = useMemo(() => range ?? defaultWeekRange(), [range]);
-  const isCompact = Boolean(compact);
-
-  const updateScrollState = useCallback(() => {
-    const el = scrollContainerRef.current;
-    if (!el) return;
-    const scrollLeft = el.scrollLeft;
-    const scrollWidth = el.scrollWidth;
-    const clientWidth = el.clientWidth;
-    setCanScrollLeft(scrollLeft > 0);
-    setCanScrollRight(scrollLeft + clientWidth < scrollWidth);
-  }, []);
-
-  useLayoutEffect(() => {
-    const el = scrollContainerRef.current;
-    if (!el) return;
-
-    updateScrollState();
-
-    el.addEventListener('scroll', updateScrollState);
-    window.addEventListener('resize', updateScrollState);
-
-    return () => {
-      el.removeEventListener('scroll', updateScrollState);
-      window.removeEventListener('resize', updateScrollState);
-    };
-  }, [updateScrollState]);
 
   type ServiceTokens = { bg: string; border: string; accent: string };
 
@@ -309,7 +271,6 @@ const WeekViewContent = ({ items, loading, onDayClick, activeDateIso, range, onI
   }, [resolvedRange.from]);
 
   const todayIso = toDateKey(new Date());
-  const resolvedActiveIso = activeDateIso ?? weekDays[0]?.iso ?? todayIso;
 
   const groupedItems = useMemo(() => {
     const map = new Map<string, typeof items>();
@@ -325,168 +286,6 @@ const WeekViewContent = ({ items, loading, onDayClick, activeDateIso, range, onI
     });
     return map;
   }, [items, weekDays]);
-
-  const laneItems = useMemo(() => {
-    const map: Record<ScheduleCategory, WeekSchedItem[]> = {
-      User: [],
-      Staff: [],
-      Org: [],
-    };
-    items.forEach((item) => {
-      const category = item.category as ScheduleCategory;
-      map[category].push(item);
-    });
-    (Object.keys(map) as ScheduleCategory[]).forEach((key) => {
-      map[key].sort((a, b) => a.start.localeCompare(b.start));
-    });
-    return map;
-  }, [items]);
-
-  const hasItems = items.length > 0;
-
-  const renderItemCard = (item: WeekSchedItem) => {
-    const statusMeta = getScheduleStatusMeta(item.status);
-    const statusLabel = item.status && item.status !== 'Planned' ? statusMeta?.label : undefined;
-    const buttonOpacity = statusMeta?.opacity ?? 1;
-    const statusReason = item.statusReason?.trim();
-    const isDisabled = Boolean(statusMeta?.isDisabled);
-    const handleItemClick = () => {
-      if (SCHEDULES_DEBUG) {
-        // eslint-disable-next-line no-console -- trace row clicks only when debugging schedules
-        console.info('[WeekView] row click', item.id);
-      }
-      if (isDisabled) return;
-      onItemSelect?.(item);
-    };
-    const normalizedServiceType = normalizeServiceType(item.serviceType as string | null);
-    const serviceTypeKey = mapServiceTypeToThemeKey(normalizedServiceType);
-    const serviceTokens = getServiceTokens(serviceTypeKey);
-    const timeRange = formatEventTimeRange(item.start, item.end);
-    const serviceTypeMeta = getServiceTypeMeta(normalizedServiceType);
-    const showServiceChip = Boolean(serviceTypeMeta && serviceTypeKey !== 'unset');
-    const isAccepted = Boolean(item.acceptedOn || item.acceptedBy || item.acceptedNote);
-    const dateLabel = dayFormatter.format(new Date(item.start));
-    const timeRangeLabel = `${dateLabel} ${timeRange}`.trim();
-    const ariaLabel = buildWeekEventAriaLabel(item, timeRangeLabel, statusLabel);
-    const rawLocation = item.locationName ?? (item as Record<string, unknown>).location;
-    const locationLabel = typeof rawLocation === 'string' && rawLocation.trim() ? rawLocation : null;
-    const primaryTitle = isMobile
-      ? item.personName?.trim() || serviceTypeMeta?.label || item.title
-      : item.title;
-    const metaLine = isMobile
-      ? [dateLabel, timeRange]
-      : [dateLabel, timeRange, locationLabel].filter(Boolean);
-
-    return (
-      <div key={item.id} role="listitem">
-        <div
-          data-testid={TESTIDS.SCHEDULE_ITEM}
-          data-category={item.category}
-          data-schedule-event="true"
-          data-id={item.id}
-          data-schedule-id={item.id}
-          data-status={item.status ?? ''}
-          data-all-day={item.allDay ? '1' : '0'}
-          className="relative rounded-md border text-left shadow-sm"
-          style={{
-            backgroundColor: serviceTokens?.bg,
-            borderColor: serviceTokens?.border,
-            ...(highlightId === item.id
-              ? { outline: '2px solid', outlineOffset: 2, borderRadius: 4 }
-              : null),
-          }}
-        >
-          <div
-            className="flex w-full flex-col gap-1.5 px-3 py-2 text-left sm:gap-2 sm:px-4 sm:py-3"
-            onClick={handleItemClick}
-            onKeyDown={(e) => {
-              if (!isDisabled && (e.key === 'Enter' || e.key === ' ')) {
-                e.preventDefault();
-                handleItemClick();
-              }
-            }}
-            role="button"
-            tabIndex={isDisabled ? -1 : 0}
-            aria-disabled={isDisabled}
-            aria-label={ariaLabel}
-            title={timeRangeLabel}
-            style={{ opacity: buttonOpacity }}
-          >
-            <div className="flex items-start justify-between gap-2">
-              <p className="text-sm font-semibold text-slate-900 flex items-center gap-2">
-                {serviceTokens ? (
-                  <span
-                    aria-hidden="true"
-                    className="inline-block h-4 w-1 rounded-full"
-                    style={{ backgroundColor: serviceTokens.accent }}
-                  />
-                ) : null}
-                <span className="flex items-center gap-1">
-                  {primaryTitle}
-                  {item.baseShiftWarnings?.length ? (
-                    <span
-                      data-testid="schedule-warning-indicator"
-                      title="重複または配置注意があります"
-                      className="inline-flex items-center justify-center rounded-full bg-amber-500 px-1.5 py-0.5 text-[10px] font-bold text-white shadow"
-                    >
-                      ⚠
-                    </span>
-                  ) : null}
-                </span>
-                {statusLabel && statusMeta && (
-                  <span
-                    className="text-[11px] px-2 py-0.5 rounded-full"
-                    style={{
-                      background: statusMeta.chipBg,
-                      color: statusMeta.chipColor,
-                      fontWeight: 600,
-                    }}
-                  >
-                    {statusLabel}
-                  </span>
-                )}
-              </p>
-            </div>
-            <p className="text-xs text-slate-600 flex flex-wrap gap-1.5 items-center">
-              {metaLine.map((text, index) => (
-                <span key={`${item.id}-meta-${index}`}>{text}</span>
-              ))}
-            </p>
-            {!isMobile && item.personName ? (
-              <p className="text-xs text-slate-500">{item.personName}</p>
-            ) : null}
-            {(showServiceChip && serviceTypeMeta) || isAccepted ? (
-              <div className="mt-0.5 flex flex-wrap items-center gap-1.5">
-                {showServiceChip && serviceTypeMeta ? (
-                  <Chip size="small" label={serviceTypeMeta.label} color={serviceTypeMeta.color} variant="outlined" />
-                ) : null}
-                {isAccepted ? <Chip size="small" label="受け入れ済" color="success" variant="filled" /> : null}
-              </div>
-            ) : null}
-            {!isMobile && statusReason && (
-              <p className="text-xs text-slate-500 mt-1" data-testid="schedule-status-reason">
-                {statusReason}
-              </p>
-            )}
-          </div>
-          {!isMobile && (
-            <IconButton
-              aria-label="行の操作"
-              data-testid={TESTIDS['schedule-item-menu']}
-              size="small"
-              onClick={(event) => {
-                event.stopPropagation();
-                handleMenuOpen(event, item);
-              }}
-              sx={{ position: 'absolute', top: 4, right: 4, ml: 0.5 }}
-            >
-              <MoreVertIcon fontSize="small" />
-            </IconButton>
-          )}
-        </div>
-      </div>
-    );
-  };
 
   const serviceSummary: WeekServiceSummaryItem[] = useMemo(() => {
     const counts: Partial<Record<WeekServiceFilter, number>> = {};
@@ -509,16 +308,6 @@ const WeekViewContent = ({ items, loading, onDayClick, activeDateIso, range, onI
       };
     });
   }, [getServiceTokens, items]);
-
-  const handleClick = (iso: string, event: MouseEvent<HTMLButtonElement>) => {
-    onDayClick?.(iso, event);
-  };
-
-  const handleMenuOpen = (event: MouseEvent<HTMLElement>, item: WeekSchedItem) => {
-    event.stopPropagation();
-    setMenuAnchor(event.currentTarget);
-    setMenuItem(item);
-  };
 
   const handleMenuClose = () => {
     setMenuAnchor(null);
@@ -550,108 +339,6 @@ const WeekViewContent = ({ items, loading, onDayClick, activeDateIso, range, onI
       testId: `${TESTIDS.SCHEDULES_WEEK_SERVICE_SUMMARY}-${entry.key}`,
     }));
 
-  const renderDayCell = (day: (typeof weekDays)[number], index: number, options?: { compact?: boolean }) => {
-    const compact = options?.compact ?? false;
-    const isToday = day.iso === todayIso;
-    const isActive = day.iso === resolvedActiveIso;
-    const dayItems = groupedItems.get(day.iso) ?? [];
-    const ariaLabel = `${day.label}${isToday ? '（今日）' : ''} 予定${dayItems.length}件`;
-    const itemLimit = compact ? 2 : 3;
-    const metaFontSize = compact ? 10 : 11;
-    const chipFontSize = compact ? 10 : 11;
-    const headerFontSize = compact ? 11 : 12;
-    const headerGap = compact ? 4 : 6;
-    const listGap = compact ? 3 : 4;
-    const listMarginTop = compact ? 4 : 6;
-
-    return (
-      <div
-        key={day.iso}
-        role="gridcell"
-        aria-colindex={index + 1}
-        aria-selected={isActive}
-        className="min-w-0"
-      >
-        <Button
-          type="button"
-          aria-label={ariaLabel}
-          aria-current={isActive ? 'date' : undefined}
-          onClick={(event) => handleClick(day.iso, event as MouseEvent<HTMLButtonElement>)}
-          data-testid={`${TESTIDS.SCHEDULES_WEEK_DAY_PREFIX}-${day.iso}`}
-          variant="outlined"
-          sx={{ ...dayChipBaseSx, ...getDayChipSx({ isToday, isSelected: isActive }) }}
-        >
-          <div style={{ display: 'flex', alignItems: 'center', gap: headerGap, width: '100%' }}>
-            <span style={{ fontSize: headerFontSize, fontWeight: 600, color: 'rgba(0,0,0,0.65)' }}>{day.label}</span>
-            {isToday && (
-              <span
-                style={{
-                  fontSize: compact ? 9 : 10,
-                  padding: compact ? '1px 4px' : '1px 6px',
-                  borderRadius: 999,
-                  background: '#E3F2FD',
-                  color: '#0D47A1',
-                  fontWeight: 700,
-                }}
-              >
-                今日
-              </span>
-            )}
-          </div>
-          <div style={{ marginTop: listMarginTop, display: 'flex', flexDirection: 'column', gap: listGap, width: '100%' }}>
-            {dayItems.length === 0 ? (
-              <span style={{ fontSize: metaFontSize, color: 'rgba(31,41,55,0.9)' }}>予定なし</span>
-            ) : (
-              dayItems.slice(0, itemLimit).map((item) => {
-                const statusMeta = getScheduleStatusMeta(item.status);
-                const showStatus = item.status && item.status !== 'Planned' && statusMeta;
-                const normalizedServiceType = normalizeServiceType(item.serviceType as string | null);
-                const serviceTypeMeta = getServiceTypeMeta(normalizedServiceType);
-                const compactLabel = `${formatEventTimeRange(item.start, item.end)} ${serviceTypeMeta?.label ?? item.title}`.trim();
-                const label = isMobile ? compactLabel : showStatus ? `${item.title}（${statusMeta!.label}）` : item.title;
-                return (
-                  <span
-                    key={item.id}
-                    style={{
-                      display: 'inline-flex',
-                      alignItems: 'center',
-                      gap: compact ? 4 : 6,
-                      padding: compact ? '1px 4px' : '2px 6px',
-                      borderRadius: 999,
-                      fontSize: chipFontSize,
-                      background: 'rgba(0,0,0,0.04)',
-                      color: 'rgba(0,0,0,0.75)',
-                      maxWidth: '100%',
-                      overflow: 'hidden',
-                      textOverflow: 'ellipsis',
-                      whiteSpace: 'nowrap',
-                    }}
-                  >
-                    <span
-                      aria-hidden="true"
-                      style={{
-                        width: compact ? 5 : 6,
-                        height: compact ? 5 : 6,
-                        borderRadius: '50%',
-                        background: statusMeta?.dotColor ?? 'rgba(76,175,80,0.9)',
-                        flexShrink: 0,
-                      }}
-                    />
-                    {label}
-                  </span>
-                );
-              })
-            )}
-            {dayItems.length > itemLimit && (
-              <span style={{ fontSize: compact ? 9 : 10, color: 'rgba(0,0,0,0.5)' }}>
-                +{dayItems.length - itemLimit} 件
-              </span>
-            )}
-          </div>
-        </Button>
-      </div>
-    );
-  };
 
   return (
     <div data-testid={TESTIDS.SCHEDULE_WEEK_ROOT}>
@@ -667,170 +354,164 @@ const WeekViewContent = ({ items, loading, onDayClick, activeDateIso, range, onI
             <WeekServiceSummaryChips items={serviceSummaryItems} />
           )}
         </div>
+        {/* Time Grid View */}
         <div
-          aria-label="週ごとの予定一覧"
+          aria-label="週ごとの時間割"
           role="grid"
-          aria-rowcount={1}
-          aria-colcount={weekDays.length}
+          aria-rowcount={32}
+          aria-colcount={8}
           data-testid={TESTIDS['schedules-week-grid']}
           className="w-full"
+          style={{
+            display: 'grid',
+            gridTemplateColumns: '80px repeat(7, 1fr)',
+            gap: 0,
+            border: '1px solid rgba(15,23,42,0.08)',
+            borderRadius: 8,
+            backgroundColor: '#fff',
+            overflow: 'hidden',
+          }}
         >
-          {isCompact ? (
-            <div style={{ overflowX: 'auto', paddingBottom: 4 }}>
-              <div
-                role="row"
-                aria-rowindex={1}
-                style={{
-                  display: 'grid',
-                  gridAutoFlow: 'column',
-                  gridAutoColumns: 'minmax(220px, 1fr)',
-                  gap: 16,
-                }}
-              >
-                {weekDays.map((day, index) => renderDayCell(day, index, { compact: true }))}
-              </div>
+          {/* Time Labels Header */}
+          <div
+            style={{
+              gridColumn: 1,
+              gridRow: '1 / span 1',
+              padding: '8px 4px',
+              textAlign: 'center',
+              fontSize: 11,
+              fontWeight: 600,
+              borderRight: '1px solid rgba(15,23,42,0.08)',
+              color: 'rgba(15,23,42,0.7)',
+            }}
+          >
+            時刻
+          </div>
+          {weekDays.map((day, dayIndex) => (
+            <div
+              key={`header-${day.iso}`}
+              style={{
+                gridColumn: dayIndex + 2,
+                gridRow: 1,
+                padding: '8px 4px',
+                textAlign: 'center',
+                fontSize: 12,
+                fontWeight: 700,
+                borderRight: dayIndex < 6 ? '1px solid rgba(15,23,42,0.08)' : 'none',
+                borderBottom: '1px solid rgba(15,23,42,0.08)',
+                backgroundColor: day.iso === todayIso ? '#E3F2FD' : undefined,
+              }}
+            >
+              <div>{day.label}</div>
+              {day.iso === todayIso && (
+                <span style={{ fontSize: 10, color: '#0D47A1', fontWeight: 600 }}>今日</span>
+              )}
             </div>
-          ) : (
-            <div role="row" aria-rowindex={1} className="grid grid-cols-2 gap-2 sm:grid-cols-4 md:grid-cols-7">
-              {weekDays.map((day, index) => renderDayCell(day, index))}
-            </div>
-          )}
+          ))}
+
+          {/* Time Slots Grid */}
+          {_generateTimeSlots().map((timeStr, slotIndex) => {
+            const isEvenSlot = slotIndex % 2 === 0;
+            return (
+              <React.Fragment key={`slot-${timeStr}`}>
+                {/* Time Label */}
+                <div
+                  style={{
+                    gridColumn: 1,
+                    gridRow: slotIndex + 2,
+                    padding: '4px',
+                    textAlign: 'right',
+                    fontSize: 10,
+                    fontWeight: 500,
+                    borderRight: '1px solid rgba(15,23,42,0.08)',
+                    borderBottom: '1px solid rgba(15,23,42,0.08)',
+                    color: 'rgba(15,23,42,0.6)',
+                    backgroundColor: isEvenSlot ? 'rgba(15,23,42,0.01)' : 'transparent',
+                    paddingRight: '6px',
+                  }}
+                >
+                  {timeStr}
+                </div>
+
+                {/* Day Cells */}
+                {weekDays.map((day, dayIndex) => {
+                  const cellKey = `${day.iso}-${timeStr}`;
+                  const cellItems = (groupedItems.get(day.iso) ?? []).filter((item) => {
+                    // Simple time filtering: check if event start time matches slot
+                    const itemStartHour = parseInt(item.start.slice(11, 13), 10);
+                    const itemStartMin = parseInt(item.start.slice(14, 16), 10);
+                    const [slotHour, slotMin] = timeStr.split(':').map(Number);
+                    return itemStartHour === slotHour && itemStartMin === slotMin;
+                  });
+
+                  const handleCellClick = () => {
+                    onTimeSlotClick?.(day.iso, timeStr);
+                  };
+
+                  return (
+                    <div
+                      key={cellKey}
+                      role="gridcell"
+                      aria-rowindex={slotIndex + 2}
+                      aria-colindex={dayIndex + 2}
+                      onClick={handleCellClick}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter' || e.key === ' ') {
+                          e.preventDefault();
+                          handleCellClick();
+                        }
+                      }}
+                      tabIndex={0}
+                      style={{
+                        gridColumn: dayIndex + 2,
+                        gridRow: slotIndex + 2,
+                        minHeight: '40px',
+                        borderRight: dayIndex < 6 ? '1px solid rgba(15,23,42,0.08)' : 'none',
+                        borderBottom: '1px solid rgba(15,23,42,0.08)',
+                        backgroundColor: isEvenSlot ? 'rgba(15,23,42,0.01)' : 'transparent',
+                        padding: '2px 4px',
+                        cursor: 'pointer',
+                        transition: 'background-color 0.2s',
+                      }}
+                      onMouseEnter={(e) => {
+                        (e.currentTarget as HTMLDivElement).style.backgroundColor = 'rgba(59,130,246,0.1)';
+                      }}
+                      onMouseLeave={(e) => {
+                        (e.currentTarget as HTMLDivElement).style.backgroundColor = isEvenSlot
+                          ? 'rgba(15,23,42,0.01)'
+                          : 'transparent';
+                      }}
+                    >
+                      {cellItems.length > 0 && (
+                        <div
+                          style={{
+                            fontSize: 10,
+                            padding: '2px 4px',
+                            backgroundColor: 'rgba(59,130,246,0.2)',
+                            borderLeft: '3px solid rgb(59,130,246)',
+                            borderRadius: '2px',
+                            overflow: 'hidden',
+                            textOverflow: 'ellipsis',
+                            whiteSpace: 'nowrap',
+                            color: 'rgba(0,0,0,0.8)',
+                          }}
+                        >
+                          {cellItems[0]?.title}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </React.Fragment>
+            );
+          })}
         </div>
+
         {loading ? (
           <p className="rounded-lg border border-dashed border-slate-300 bg-white p-6 text-center text-slate-500" aria-busy="true">
             予定を読み込み中…
           </p>
-        ) : !hasItems ? (
-          <p
-            className="rounded-lg border border-dashed border-slate-200 bg-white p-6 text-center text-slate-500"
-            data-testid={TESTIDS.SCHEDULE_WEEK_EMPTY}
-          >
-            この週の予定はまだありません。
-          </p>
-        ) : (
-          <div data-testid={TESTIDS.SCHEDULE_WEEK_LIST} role="list">
-            <div style={{ paddingBottom: 4 }}>
-              <div style={{ overflowX: 'auto', position: 'relative' }} ref={scrollContainerRef}>
-                {/* Left fade + chevron */}
-                {canScrollLeft && (
-                  <>
-                    <div
-                      style={{
-                        position: 'absolute',
-                        left: 0,
-                        top: 0,
-                        bottom: 0,
-                        width: 40,
-                        background: 'linear-gradient(to right, rgba(255,255,255,0.8), rgba(255,255,255,0))',
-                        pointerEvents: 'none',
-                        zIndex: 1,
-                      }}
-                    />
-                    <ChevronLeftIcon
-                      style={{
-                        position: 'absolute',
-                        left: 8,
-                        top: '50%',
-                        transform: 'translateY(-50%)',
-                        color: 'rgba(15,23,42,0.6)',
-                        pointerEvents: 'none',
-                        zIndex: 2,
-                      }}
-                    />
-                  </>
-                )}
-
-                {/* Right fade + chevron */}
-                {canScrollRight && (
-                  <>
-                    <div
-                      style={{
-                        position: 'absolute',
-                        right: 0,
-                        top: 0,
-                        bottom: 0,
-                        width: 40,
-                        background: 'linear-gradient(to left, rgba(255,255,255,0.8), rgba(255,255,255,0))',
-                        pointerEvents: 'none',
-                        zIndex: 1,
-                      }}
-                    />
-                    <ChevronRightIcon
-                      style={{
-                        position: 'absolute',
-                        right: 8,
-                        top: '50%',
-                        transform: 'translateY(-50%)',
-                        color: 'rgba(15,23,42,0.6)',
-                        pointerEvents: 'none',
-                        zIndex: 2,
-                      }}
-                    />
-                  </>
-                )}
-
-                <div
-                  style={{
-                    display: 'grid',
-                    gridAutoFlow: 'column',
-                    gridAutoColumns: isMobile ? 'minmax(240px, 1fr)' : 'minmax(260px, 1fr)',
-                    gap: 12,
-                  }}
-                >
-                {LANE_ORDER.map((lane) => {
-                  const itemsInLane = laneItems[lane.key];
-                  return (
-                    <section
-                      key={lane.key}
-                      data-testid={`schedules-week-lane-${lane.key}`}
-                      aria-label={`${lane.label}レーン`}
-                      style={{
-                        border: '1px solid rgba(15,23,42,0.08)',
-                        borderRadius: 12,
-                        background: '#fff',
-                        padding: 8,
-                        minWidth: isMobile ? 240 : 260,
-                      }}
-                    >
-                      <header
-                        style={{
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'space-between',
-                          marginBottom: 8,
-                        }}
-                      >
-                        <span style={{ fontSize: 14, fontWeight: 700, color: 'rgba(15,23,42,0.9)' }}>
-                          {lane.label}
-                        </span>
-                        <span
-                          style={{
-                            fontSize: 11,
-                            padding: '2px 8px',
-                            borderRadius: 999,
-                            background: 'rgba(15,23,42,0.08)',
-                            color: 'rgba(15,23,42,0.7)',
-                            fontWeight: 600,
-                          }}
-                        >
-                          {itemsInLane.length}件
-                        </span>
-                      </header>
-                      {itemsInLane.length === 0 ? (
-                        <p style={{ fontSize: 12, color: 'rgba(15,23,42,0.6)' }}>予定なし</p>
-                      ) : (
-                        <div className="space-y-2" role="list">
-                          {itemsInLane.map((item) => renderItemCard(item))}
-                        </div>
-                      )}
-                    </section>
-                  );
-                })}
-              </div>
-            </div>
-            </div>
-          </div>
-        )}
+        ) : null}
 
         <Menu anchorEl={menuAnchor} open={Boolean(menuAnchor)} onClose={handleMenuClose} elevation={3}>
           <MenuItem onClick={handleMenuEdit}>編集</MenuItem>
@@ -842,18 +523,6 @@ const WeekViewContent = ({ items, loading, onDayClick, activeDateIso, range, onI
     </div>
   );
 };
-
-const dayChipBaseSx = {
-  width: '100%',
-  justifyContent: 'flex-start',
-  textTransform: 'none',
-  alignItems: 'flex-start',
-  flexDirection: 'column',
-  borderRadius: 2,
-  padding: '10px 12px',
-  gap: 0.75,
-  color: 'text.primary',
-} as const;
 
 const defaultWeekRange = (): DateRange => {
   const start = startOfWeek(new Date());
