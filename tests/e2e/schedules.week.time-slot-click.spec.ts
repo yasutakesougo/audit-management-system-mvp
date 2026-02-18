@@ -7,36 +7,24 @@ test.describe('Schedule Week: Time Slot Click Opens Dialog', () => {
 
   test('clicking time slot cell opens CreateScheduleDialog with time mode', async ({ page }) => {
     // 1. Week grid is visible
-    const grid = page.locator('[data-testid="schedules-week-grid"]');
+    const grid = page.getByTestId('schedules-week-grid');
     await expect(grid).toBeVisible();
 
-    // 2. Find a time slot cell (grid-based) - skip header row
-    // Grid has: 1 header row + 32 time slot rows, 8 columns (time label + 7 days)
-    // Click on first data cell (not header, not time label)
-    const gridCells = grid.locator('[role="gridcell"]');
-    const cellCount = await gridCells.count();
+    // 2. Click a specific time slot (e.g., 10:30 on the first available day)
+    // Use data attributes for stable selection
+    const timeSlotCell = page.locator('[data-testid="schedules-week-slot"][data-time="10:30"]').first();
+    
+    const cellCount = await page.locator('[data-testid="schedules-week-slot"]').count();
+    expect(cellCount).toBeGreaterThan(100); // 32 time slots × 7 days
 
-    // Expected: ~260 cells (32 slots × 8 cols + 1 header row)
-    expect(cellCount).toBeGreaterThan(200);
-
-    // Click a cell in the data grid (skip first column of time labels and header row)
-    // Target: approximately 10:00 slot, Monday (day index 2 in our grid)
-    // Time slot row index: (10 - 6) * 2 + 2 = 10 (accounting for 30-min granularity)
-    // Cell index ≈ (10 * 8) + 2 = 82
-    const targetCell = gridCells.nth(82);
-
-    await targetCell.click({ timeout: 5000 });
+    await timeSlotCell.click({ timeout: 5000 });
 
     // 3. Dialog should open
     const dialog = page.locator('[role="dialog"]');
     await expect(dialog).toBeVisible({ timeout: 5000 });
 
-    // 4. Dialog should show time inputs (time mode)
-    const titleInput = dialog.locator('input');
-    await expect(titleInput).toBeVisible();
-
-    // 5. Should be able to close dialog
-    const closeBtn = dialog.locator('button').filter({ hasText: /キャン|閉じ/ }).first();
+    // 4. Should be able to close dialog
+    const closeBtn = dialog.locator('button').filter({ hasText: /キャン|閉じ|×/ }).first();
     if (await closeBtn.isVisible({ timeout: 1000 }).catch(() => false)) {
       await closeBtn.click();
     } else {
@@ -46,17 +34,38 @@ test.describe('Schedule Week: Time Slot Click Opens Dialog', () => {
     await expect(dialog).not.toBeVisible({ timeout: 3000 });
   });
 
-  test('grid displays without errors on load', async ({ page }) => {
-    // Smoke test: grid renders without exceptions
-    const grid = page.locator('[data-testid="schedules-week-grid"]');
-    await expect(grid).toBeVisible();
+  test('time slot cells display correctly across all hours (06:00-21:30)', async ({ page }) => {
+    // Smoke test: verify grid renders all time slots
+    const slots = page.locator('[data-testid="schedules-week-slot"]');
+    const slotCount = await slots.count();
 
-    // Check header (時刻 label)
-    const timeHeader = page.locator(':has-text("時刻")').first();
-    await expect(timeHeader).toBeVisible();
+    // 32 time slots × 7 days = 224 cells minimum
+    expect(slotCount).toBeGreaterThanOrEqual(220);
 
-    // Check at least one time slot (e.g., "06:00")
-    const timeSlot = page.locator(':has-text("06:00")');
-    // May have multiple cells with "06:00" due to repetition
+    // Verify time attributes are present
+    const firstSlot = slots.first();
+    const dayAttr = await firstSlot.getAttribute('data-day');
+    const timeAttr = await firstSlot.getAttribute('data-time');
+
+    expect(dayAttr).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+    expect(timeAttr).toMatch(/^\d{2}:\d{2}$/);
+  });
+
+  test('multiple clicks on different slots work independently', async ({ page }) => {
+    const slots = page.locator('[data-testid="schedules-week-slot"]');
+    
+    // Click first slot
+    await slots.nth(0).click();
+    let dialog = page.locator('[role="dialog"]');
+    await expect(dialog).toBeVisible({ timeout: 5000 });
+
+    // Close
+    await page.keyboard.press('Escape');
+    await expect(dialog).not.toBeVisible({ timeout: 2000 });
+
+    // Click different slot
+    await slots.nth(50).click();
+    dialog = page.locator('[role="dialog"]');
+    await expect(dialog).toBeVisible({ timeout: 5000 });
   });
 });

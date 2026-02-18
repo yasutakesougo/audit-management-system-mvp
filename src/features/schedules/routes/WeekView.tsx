@@ -455,6 +455,9 @@ const WeekViewContent = ({ items, loading, onDayClick: _onDayClick, onTimeSlotCl
                       role="gridcell"
                       aria-rowindex={slotIndex + 2}
                       aria-colindex={dayIndex + 2}
+                      data-testid="schedules-week-slot"
+                      data-day={day.iso}
+                      data-time={timeStr}
                       onClick={handleCellClick}
                       onKeyDown={(e) => {
                         if (e.key === 'Enter' || e.key === ' ') {
