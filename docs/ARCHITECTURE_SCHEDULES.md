@@ -11,3 +11,6 @@
 ## レガシー (削除済み)
 - legacy schedule（単数系パス）は削除済み。
 - 参照は禁止（CI で強制）。
+
+## Date keys
+Use `toDateKey()` from `src/features/schedules/lib/dateKey.ts` for "today" labeling and date key generation across Month/Week/Day views. This ensures timezone-aware formatting (respects `VITE_SCHEDULES_TZ`, defaults to Asia/Tokyo) and prevents UTC off-by-one bugs.
