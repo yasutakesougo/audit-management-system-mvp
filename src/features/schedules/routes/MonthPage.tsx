@@ -7,6 +7,7 @@ import { useAnnounce } from '@/a11y/LiveAnnouncer';
 import Loading from '@/ui/components/Loading';
 import { TESTIDS } from '@/testids';
 import type { ScheduleCategory } from '../domain/types';
+import { SCHEDULE_MONTH_SPACING } from '../constants';
 import { getDayChipSx } from '../theme/dateStyles';
 import { DayPopover } from '../components/DayPopover';
 import { ScheduleEmptyHint } from '../components/ScheduleEmptyHint';
@@ -149,7 +150,7 @@ export default function MonthPage({ items, loading = false, activeCategory = 'Al
       style={{ paddingBottom: 32 }}
     >
       <div
-        style={{ padding: isCompact ? '12px 8px 24px' : '16px 12px 32px' }}
+        style={{ padding: isCompact ? SCHEDULE_MONTH_SPACING.headerPaddingCompact : SCHEDULE_MONTH_SPACING.headerPaddingNormal }}
         aria-busy={loading || undefined}
         aria-live={loading ? 'polite' : undefined}
       >
@@ -163,10 +164,10 @@ export default function MonthPage({ items, loading = false, activeCategory = 'Al
             <ScheduleEmptyHint view="month" compact={isCompact} categoryFilter={activeCategory} />
           </Box>
         )}
-        <div role="grid" aria-label={`${monthLabel}のカレンダー`} style={{ ...gridContainerStyle, gap: isCompact ? 6 : 8 }}>
+        <div role="grid" aria-label={`${monthLabel}のカレンダー`} style={{ ...gridContainerStyle, gap: isCompact ? SCHEDULE_MONTH_SPACING.gridGapCompact : SCHEDULE_MONTH_SPACING.gridGapNormal }}>
           <div role="row" style={{ display: 'contents' }}>
             {WEEKDAY_LABELS.map((label, index) => (
-              <div key={label} role="columnheader" style={{ ...weekdayHeaderStyle(index), fontSize: isCompact ? 10.5 : 12, padding: isCompact ? '1px 0' : '4px 0' }}>
+              <div key={label} role="columnheader" style={{ ...weekdayHeaderStyle(index), fontSize: isCompact ? 10.5 : 12, padding: isCompact ? SCHEDULE_MONTH_SPACING.weekdayHeaderPaddingCompact : SCHEDULE_MONTH_SPACING.weekdayHeaderPaddingNormal }}>
                 {label}
               </div>
             ))}
@@ -189,9 +190,9 @@ export default function MonthPage({ items, loading = false, activeCategory = 'Al
                     sx={{
                       ...monthDayBaseSx(day),
                       ...getDayChipSx({ isToday: day.isToday, isSelected }),
-                      padding: isCompact ? '6px 8px' : '10px 12px',
-                      minHeight: isCompact ? 64 : 90,
-                      gap: isCompact ? 0 : 1,
+                      padding: isCompact ? SCHEDULE_MONTH_SPACING.cellPaddingCompact : SCHEDULE_MONTH_SPACING.cellPaddingNormal,
+                      minHeight: isCompact ? SCHEDULE_MONTH_SPACING.cellMinHeightCompact : SCHEDULE_MONTH_SPACING.cellMinHeightNormal,
+                      gap: isCompact ? SCHEDULE_MONTH_SPACING.cellGapCompact : SCHEDULE_MONTH_SPACING.cellGapNormal,
                     } as SxProps<Theme>}
                   >
                     <Badge
@@ -269,7 +270,7 @@ export default function MonthPage({ items, loading = false, activeCategory = 'Al
 const gridContainerStyle: CSSProperties = {
   display: 'grid',
   gridTemplateColumns: 'repeat(7, minmax(0, 1fr))',
-  gap: 8,
+  gap: SCHEDULE_MONTH_SPACING.gridGapNormal,
 };
 
 const weekdayHeaderStyle = (index: number): CSSProperties => ({
@@ -277,7 +278,7 @@ const weekdayHeaderStyle = (index: number): CSSProperties => ({
   fontSize: 12,
   fontWeight: 700,
   color: index === 5 ? '#1e88e5' : index === 6 ? '#d14343' : 'rgba(0,0,0,0.65)',
-  padding: '4px 0',
+  padding: SCHEDULE_MONTH_SPACING.weekdayHeaderPaddingNormal,
 });
 
 const monthDayBaseSx = (day: CalendarDay): Record<string, string | number> => ({
@@ -287,9 +288,9 @@ const monthDayBaseSx = (day: CalendarDay): Record<string, string | number> => ({
   justifyContent: 'space-between',
   alignItems: 'flex-start',
   flexDirection: 'column',
-  padding: '10px 12px',
-  minHeight: 90,
-  gap: 1,
+  padding: SCHEDULE_MONTH_SPACING.cellPaddingNormal,
+  minHeight: SCHEDULE_MONTH_SPACING.cellMinHeightNormal,
+  gap: SCHEDULE_MONTH_SPACING.cellGapNormal,
   color: day.inMonth ? 'rgba(0,0,0,0.85)' : 'rgba(0,0,0,0.4)',
   backgroundColor: day.inMonth ? '#fff' : 'rgba(0,0,0,0.02)',
   display: 'flex',
