@@ -24,6 +24,7 @@ import {
   WeekServiceSummaryChips,
   type WeekServiceSummaryItem,
 } from '../components/WeekServiceSummaryChips';
+import { toDateKey } from '../lib/dateKey';
 
 export type WeekViewProps = {
   items?: WeekSchedItem[];
@@ -252,7 +253,7 @@ const WeekViewContent = ({ items, loading, onDayClick, activeDateIso, range, onI
     });
   }, [resolvedRange.from]);
 
-  const todayIso = new Date().toISOString().slice(0, 10);
+  const todayIso = toDateKey(new Date());
   const resolvedActiveIso = activeDateIso ?? weekDays[0]?.iso ?? todayIso;
 
   const groupedItems = useMemo(() => {
