@@ -11,6 +11,7 @@ import { SCHEDULE_MONTH_SPACING } from '../constants';
 import { getDayChipSx } from '../theme/dateStyles';
 import { DayPopover } from '../components/DayPopover';
 import { ScheduleEmptyHint } from '../components/ScheduleEmptyHint';
+import { DaySummaryDrawer } from '../components/DaySummaryDrawer';
 import {
   useCallback,
   useEffect,
@@ -106,6 +107,14 @@ export default function MonthPage({ items, loading = false, activeCategory = 'Al
     setDayPopoverDateIso(null);
   }, []);
 
+  // Day summary panel state (for registration flow)
+  const [selectedDateIso, setSelectedDateIso] = useState<string | null>(null);
+  const isPanelOpen = selectedDateIso !== null;
+
+  const handlePanelClose = useCallback(() => {
+    setSelectedDateIso(null);
+  }, []);
+
   useEffect(() => {
     if (monthAnnouncement) {
       announce(monthAnnouncement);
@@ -114,9 +123,10 @@ export default function MonthPage({ items, loading = false, activeCategory = 'Al
 
   const handleDaySelect = useCallback(
     (e: React.MouseEvent<HTMLElement>, iso: string) => {
-      // Open popover instead of navigating directly
+      // Open popover AND day summary panel
       setDayPopoverAnchor(e.currentTarget);
       setDayPopoverDateIso(iso);
+      setSelectedDateIso(iso); // Open summary panel
     },
     [],
   );
@@ -332,6 +342,18 @@ export default function MonthPage({ items, loading = false, activeCategory = 'Al
           }}
         />
       )}
+
+      {/* Day Summary Panel (for registration flow) */}
+      <DaySummaryDrawer
+        open={isPanelOpen}
+        selectedDateIso={selectedDateIso}
+        items={items}
+        onClose={handlePanelClose}
+        onAddClick={() => {
+          // TODO: Open create dialog with selectedDateIso
+          console.log('Open create dialog for:', selectedDateIso);
+        }}
+      />
     </section>
   );
 }
