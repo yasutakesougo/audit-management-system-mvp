@@ -659,8 +659,8 @@ const WeekViewContent = ({ items, loading, onDayClick, activeDateIso, range, onI
                   style={{
                     display: 'grid',
                     gridAutoFlow: 'column',
-                    gridAutoColumns: isMobile ? 'minmax(240px, 1fr)' : 'minmax(280px, 1fr)',
-                    gap: 16,
+                    gridAutoColumns: isMobile ? 'minmax(240px, 1fr)' : 'minmax(260px, 1fr)',
+                    gap: 12,
                   }}
                 >
                 {LANE_ORDER.map((lane) => {
@@ -674,8 +674,8 @@ const WeekViewContent = ({ items, loading, onDayClick, activeDateIso, range, onI
                         border: '1px solid rgba(15,23,42,0.08)',
                         borderRadius: 12,
                         background: '#fff',
-                        padding: 12,
-                        minWidth: isMobile ? 240 : 280,
+                        padding: 8,
+                        minWidth: isMobile ? 240 : 260,
                       }}
                     >
                       <header
@@ -683,7 +683,7 @@ const WeekViewContent = ({ items, loading, onDayClick, activeDateIso, range, onI
                           display: 'flex',
                           alignItems: 'center',
                           justifyContent: 'space-between',
-                          marginBottom: 12,
+                          marginBottom: 8,
                         }}
                       >
                         <span style={{ fontSize: 14, fontWeight: 700, color: 'rgba(15,23,42,0.9)' }}>
