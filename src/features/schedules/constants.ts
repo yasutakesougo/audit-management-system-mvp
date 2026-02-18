@@ -26,3 +26,34 @@ export const SCHEDULE_TIMELINE_SPACING = {
   railWidth: 2,
   dotSize: 10,
 } as const;
+
+/**
+ * MonthPage grid spacing tokens.
+ * Provides consistent responsive spacing for calendar grid cells and layout.
+ * Separate from card/timeline tokens to allow independent grid density adjustment.
+ */
+export const SCHEDULE_MONTH_SPACING = {
+  // Header section padding
+  headerPaddingCompact: '12px 8px 24px',
+  headerPaddingNormal: '16px 12px 32px',
+
+  // Calendar grid gap between cells
+  gridGapCompact: 6,
+  gridGapNormal: 8,
+
+  // Weekday header row padding
+  weekdayHeaderPaddingCompact: '1px 0',
+  weekdayHeaderPaddingNormal: '4px 0',
+
+  // Individual day cell padding (flex container)
+  cellPaddingCompact: '6px 8px',
+  cellPaddingNormal: '10px 12px',
+
+  // Gap between elements inside day cell (badge/event title/etc)
+  cellGapCompact: 0,
+  cellGapNormal: 1,
+
+  // Minimum height for day cell (flexible based on content)
+  cellMinHeightCompact: 64,
+  cellMinHeightNormal: 90,
+} as const;
