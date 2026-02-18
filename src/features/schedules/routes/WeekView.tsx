@@ -208,6 +208,7 @@ const WeekViewContent = ({ items, loading, onDayClick: _onDayClick, onTimeSlotCl
   const _isMobile = useMediaQuery(theme.breakpoints.down('sm'));
   const [menuAnchor, setMenuAnchor] = useState<HTMLElement | null>(null);
   const [menuItem, setMenuItem] = useState<WeekSchedItem | null>(null);
+  const [hoveredCell, setHoveredCell] = useState<string | null>(null);
   const resolvedRange = useMemo(() => range ?? defaultWeekRange(), [range]);
 
   type ServiceTokens = { bg: string; border: string; accent: string };
@@ -468,19 +469,13 @@ const WeekViewContent = ({ items, loading, onDayClick: _onDayClick, onTimeSlotCl
                         minHeight: '40px',
                         borderRight: dayIndex < 6 ? '1px solid rgba(15,23,42,0.08)' : 'none',
                         borderBottom: '1px solid rgba(15,23,42,0.08)',
-                        backgroundColor: isEvenSlot ? 'rgba(15,23,42,0.01)' : 'transparent',
+                        backgroundColor: hoveredCell === cellKey ? 'rgba(59,130,246,0.1)' : isEvenSlot ? 'rgba(15,23,42,0.01)' : 'transparent',
                         padding: '2px 4px',
                         cursor: 'pointer',
                         transition: 'background-color 0.2s',
                       }}
-                      onMouseEnter={(e) => {
-                        (e.currentTarget as HTMLDivElement).style.backgroundColor = 'rgba(59,130,246,0.1)';
-                      }}
-                      onMouseLeave={(e) => {
-                        (e.currentTarget as HTMLDivElement).style.backgroundColor = isEvenSlot
-                          ? 'rgba(15,23,42,0.01)'
-                          : 'transparent';
-                      }}
+                      onMouseEnter={() => setHoveredCell(cellKey)}
+                      onMouseLeave={() => setHoveredCell(null)}
                     >
                       {cellItems.length > 0 && (
                         <div
@@ -494,9 +489,16 @@ const WeekViewContent = ({ items, loading, onDayClick: _onDayClick, onTimeSlotCl
                             textOverflow: 'ellipsis',
                             whiteSpace: 'nowrap',
                             color: 'rgba(0,0,0,0.8)',
+                            position: 'relative',
                           }}
+                          title={cellItems.map(item => item.title).join('; ')}
                         >
                           {cellItems[0]?.title}
+                          {cellItems.length > 1 && (
+                            <span style={{ fontSize: 9, marginLeft: 2, opacity: 0.8 }}>
+                              +{cellItems.length - 1}
+                            </span>
+                          )}
                         </div>
                       )}
                     </div>
