@@ -12,6 +12,7 @@ import { getDayChipSx } from '../theme/dateStyles';
 import { DayPopover } from '../components/DayPopover';
 import { ScheduleEmptyHint } from '../components/ScheduleEmptyHint';
 import { DaySummaryDrawer } from '../components/DaySummaryDrawer';
+import { CreateScheduleDialog, type CreateScheduleDraft } from '../components/CreateScheduleDialog';
 import {
   useCallback,
   useEffect,
@@ -113,6 +114,20 @@ export default function MonthPage({ items, loading = false, activeCategory = 'Al
 
   const handlePanelClose = useCallback(() => {
     setSelectedDateIso(null);
+  }, []);
+
+  // Create schedule dialog state
+  const [isCreateOpen, setIsCreateOpen] = useState(false);
+  const [createDateIso, setCreateDateIso] = useState<string | null>(null);
+
+  const handleAddFromPanel = useCallback(() => {
+    if (!selectedDateIso) return;
+    setCreateDateIso(selectedDateIso);
+    setIsCreateOpen(true);
+  }, [selectedDateIso]);
+
+  const handleCloseCreate = useCallback(() => {
+    setIsCreateOpen(false);
   }, []);
 
   useEffect(() => {
@@ -349,9 +364,18 @@ export default function MonthPage({ items, loading = false, activeCategory = 'Al
         selectedDateIso={selectedDateIso}
         items={items}
         onClose={handlePanelClose}
-        onAddClick={() => {
-          // TODO: Open create dialog with selectedDateIso
-          console.log('Open create dialog for:', selectedDateIso);
+        onAdd={handleAddFromPanel}
+      />
+
+      {/* Create Schedule Dialog (Month: all-day default) */}
+      <CreateScheduleDialog
+        open={isCreateOpen}
+        dateIso={createDateIso}
+        defaultAllDay
+        onClose={handleCloseCreate}
+        onSubmit={(draft: CreateScheduleDraft) => {
+          // TODO: Persist to repository (next PR)
+          console.log('[create-schedule-draft-month]', draft);
         }}
       />
     </section>

@@ -17,7 +17,7 @@ interface DaySummaryDrawerProps {
   selectedDateIso: string | null;
   items: SchedItem[];
   onClose: () => void;
-  onAddClick: () => void;
+  onAdd: () => void;
 }
 
 const parseDateIso = (iso: string): Date => {
@@ -38,7 +38,7 @@ export const DaySummaryDrawer: React.FC<DaySummaryDrawerProps> = ({
   selectedDateIso,
   items,
   onClose,
-  onAddClick,
+  onAdd,
 }) => {
   const theme = useTheme();
   const isTablet = useMediaQuery(theme.breakpoints.down('md'));
@@ -105,7 +105,7 @@ export const DaySummaryDrawer: React.FC<DaySummaryDrawerProps> = ({
             <Button
               size="small"
               startIcon={<AddIcon />}
-              onClick={onAddClick}
+              onClick={onAdd}
               variant="contained"
             >
               追加
@@ -132,7 +132,7 @@ export const DaySummaryDrawer: React.FC<DaySummaryDrawerProps> = ({
               <Button
                 size="small"
                 startIcon={<AddIcon />}
-                onClick={onAddClick}
+                onClick={onAdd}
                 variant="outlined"
               >
                 予定を追加
