@@ -15,12 +15,17 @@ export type CreateScheduleDraft = {
   notes?: string;
   dateIso: string; // YYYY-MM-DD
   allDay: boolean;
+  startTime?: string; // HH:mm (time mode only)
+  endTime?: string; // HH:mm (time mode only)
 };
 
 interface CreateScheduleDialogProps {
   open: boolean;
   dateIso: string | null;
+  mode?: 'month' | 'time'; // Default: 'month'
   defaultAllDay?: boolean;
+  defaultStartTime?: string; // HH:mm
+  defaultEndTime?: string; // HH:mm
   onClose: () => void;
   onSubmit: (draft: CreateScheduleDraft) => void;
 }
@@ -28,21 +33,35 @@ interface CreateScheduleDialogProps {
 export function CreateScheduleDialog({
   open,
   dateIso,
+  mode = 'month',
   defaultAllDay = false,
+  defaultStartTime,
+  defaultEndTime,
   onClose,
   onSubmit,
 }: CreateScheduleDialogProps) {
   const [title, setTitle] = React.useState('');
   const [notes, setNotes] = React.useState('');
+  const [startTime, setStartTime] = React.useState('');
+  const [endTime, setEndTime] = React.useState('');
+
+  const isTimeMode = mode === 'time';
 
   React.useEffect(() => {
     if (!open) return;
     // Reset on open
     setTitle('');
     setNotes('');
-  }, [open]);
+    setStartTime(defaultStartTime || '');
+    setEndTime(defaultEndTime || '');
+  }, [open, defaultStartTime, defaultEndTime]);
 
-  const canSave = Boolean(dateIso) && title.trim().length > 0;
+  const canSave = React.useMemo(() => {
+    const hasTitle = Boolean(dateIso) && title.trim().length > 0;
+    if (!isTimeMode) return hasTitle;
+    // Time mode: additionally check start/end
+    return hasTitle && startTime && endTime && startTime < endTime;
+  }, [dateIso, title, isTimeMode, startTime, endTime]);
 
   const handleSave = () => {
     if (!dateIso) return;
@@ -50,7 +69,9 @@ export function CreateScheduleDialog({
       title: title.trim(),
       notes: notes.trim() ? notes.trim() : undefined,
       dateIso,
-      allDay: defaultAllDay,
+      allDay: isTimeMode ? false : defaultAllDay,
+      startTime: isTimeMode ? startTime : undefined,
+      endTime: isTimeMode ? endTime : undefined,
     };
     onSubmit(draft);
     onClose();
@@ -69,7 +90,7 @@ export function CreateScheduleDialog({
         <Stack spacing={2} sx={{ mt: 1 }}>
           <Typography variant="body2" color="text.secondary">
             日付: {dateIso ?? '—'}
-            {defaultAllDay ? '（終日）' : ''}
+            {defaultAllDay && !isTimeMode ? '（終日）' : ''}
           </Typography>
 
           <TextField
@@ -83,6 +104,35 @@ export function CreateScheduleDialog({
             fullWidth
             inputProps={{ maxLength: 120 }}
           />
+
+          {isTimeMode && (
+            <Stack direction="row" spacing={2}>
+              <TextField
+                type="time"
+                label="開始時間"
+                value={startTime}
+                onChange={(e) => setStartTime(e.target.value)}
+                onKeyDown={handleKeyDown}
+                required
+                fullWidth
+                inputProps={{
+                  step: 60, // 1 minute increments
+                }}
+              />
+              <TextField
+                type="time"
+                label="終了時間"
+                value={endTime}
+                onChange={(e) => setEndTime(e.target.value)}
+                onKeyDown={handleKeyDown}
+                required
+                fullWidth
+                inputProps={{
+                  step: 60,
+                }}
+              />
+            </Stack>
+          )}
 
           <TextField
             label="メモ"
