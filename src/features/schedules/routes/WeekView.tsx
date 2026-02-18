@@ -6,8 +6,10 @@ import MenuItem from '@mui/material/MenuItem';
 import { useTheme } from '@mui/material/styles';
 import useMediaQuery from '@mui/material/useMediaQuery';
 import MoreVertIcon from '@mui/icons-material/MoreVert';
+import ChevronLeftIcon from '@mui/icons-material/ChevronLeft';
+import ChevronRightIcon from '@mui/icons-material/ChevronRight';
 import type { MouseEvent } from 'react';
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useLayoutEffect, useMemo, useRef, useState } from 'react';
 
 import { TESTIDS } from '@/testids';
 
@@ -190,8 +192,36 @@ const WeekViewContent = ({ items, loading, onDayClick, activeDateIso, range, onI
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
   const [menuAnchor, setMenuAnchor] = useState<HTMLElement | null>(null);
   const [menuItem, setMenuItem] = useState<WeekSchedItem | null>(null);
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
+  const [canScrollLeft, setCanScrollLeft] = useState(false);
+  const [canScrollRight, setCanScrollRight] = useState(false);
   const resolvedRange = useMemo(() => range ?? defaultWeekRange(), [range]);
   const isCompact = Boolean(compact);
+
+  const updateScrollState = useCallback(() => {
+    const el = scrollContainerRef.current;
+    if (!el) return;
+    const scrollLeft = el.scrollLeft;
+    const scrollWidth = el.scrollWidth;
+    const clientWidth = el.clientWidth;
+    setCanScrollLeft(scrollLeft > 0);
+    setCanScrollRight(scrollLeft + clientWidth < scrollWidth);
+  }, []);
+
+  useLayoutEffect(() => {
+    const el = scrollContainerRef.current;
+    if (!el) return;
+
+    updateScrollState();
+
+    el.addEventListener('scroll', updateScrollState);
+    window.addEventListener('resize', updateScrollState);
+
+    return () => {
+      el.removeEventListener('scroll', updateScrollState);
+      window.removeEventListener('resize', updateScrollState);
+    };
+  }, [updateScrollState]);
 
   type ServiceTokens = { bg: string; border: string; accent: string };
 
@@ -655,7 +685,65 @@ const WeekViewContent = ({ items, loading, onDayClick, activeDateIso, range, onI
         ) : (
           <div data-testid={TESTIDS.SCHEDULE_WEEK_LIST} role="list">
             <div style={{ paddingBottom: 4 }}>
-              <div style={{ overflowX: 'auto' }}>
+              <div style={{ overflowX: 'auto', position: 'relative' }} ref={scrollContainerRef}>
+                {/* Left fade + chevron */}
+                {canScrollLeft && (
+                  <>
+                    <div
+                      style={{
+                        position: 'absolute',
+                        left: 0,
+                        top: 0,
+                        bottom: 0,
+                        width: 40,
+                        background: 'linear-gradient(to right, rgba(255,255,255,0.8), rgba(255,255,255,0))',
+                        pointerEvents: 'none',
+                        zIndex: 1,
+                      }}
+                    />
+                    <ChevronLeftIcon
+                      style={{
+                        position: 'absolute',
+                        left: 8,
+                        top: '50%',
+                        transform: 'translateY(-50%)',
+                        color: 'rgba(15,23,42,0.6)',
+                        pointerEvents: 'none',
+                        zIndex: 2,
+                      }}
+                    />
+                  </>
+                )}
+
+                {/* Right fade + chevron */}
+                {canScrollRight && (
+                  <>
+                    <div
+                      style={{
+                        position: 'absolute',
+                        right: 0,
+                        top: 0,
+                        bottom: 0,
+                        width: 40,
+                        background: 'linear-gradient(to left, rgba(255,255,255,0.8), rgba(255,255,255,0))',
+                        pointerEvents: 'none',
+                        zIndex: 1,
+                      }}
+                    />
+                    <ChevronRightIcon
+                      style={{
+                        position: 'absolute',
+                        right: 8,
+                        top: '50%',
+                        transform: 'translateY(-50%)',
+                        color: 'rgba(15,23,42,0.6)',
+                        pointerEvents: 'none',
+                        zIndex: 2,
+                      }}
+                    />
+                  </>
+                )}
+
                 <div
                   style={{
                     display: 'grid',
