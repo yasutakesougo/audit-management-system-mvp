@@ -11,6 +11,8 @@ import { SCHEDULE_MONTH_SPACING } from '../constants';
 import { getDayChipSx } from '../theme/dateStyles';
 import { DayPopover } from '../components/DayPopover';
 import { ScheduleEmptyHint } from '../components/ScheduleEmptyHint';
+import { DaySummaryDrawer } from '../components/DaySummaryDrawer';
+import { CreateScheduleDialog, type CreateScheduleDraft } from '../components/CreateScheduleDialog';
 import {
   useCallback,
   useEffect,
@@ -106,6 +108,28 @@ export default function MonthPage({ items, loading = false, activeCategory = 'Al
     setDayPopoverDateIso(null);
   }, []);
 
+  // Day summary panel state (for registration flow)
+  const [selectedDateIso, setSelectedDateIso] = useState<string | null>(null);
+  const isPanelOpen = selectedDateIso !== null;
+
+  const handlePanelClose = useCallback(() => {
+    setSelectedDateIso(null);
+  }, []);
+
+  // Create schedule dialog state
+  const [isCreateOpen, setIsCreateOpen] = useState(false);
+  const [createDateIso, setCreateDateIso] = useState<string | null>(null);
+
+  const handleAddFromPanel = useCallback(() => {
+    if (!selectedDateIso) return;
+    setCreateDateIso(selectedDateIso);
+    setIsCreateOpen(true);
+  }, [selectedDateIso]);
+
+  const handleCloseCreate = useCallback(() => {
+    setIsCreateOpen(false);
+  }, []);
+
   useEffect(() => {
     if (monthAnnouncement) {
       announce(monthAnnouncement);
@@ -114,9 +138,10 @@ export default function MonthPage({ items, loading = false, activeCategory = 'Al
 
   const handleDaySelect = useCallback(
     (e: React.MouseEvent<HTMLElement>, iso: string) => {
-      // Open popover instead of navigating directly
+      // Open popover AND day summary panel
       setDayPopoverAnchor(e.currentTarget);
       setDayPopoverDateIso(iso);
+      setSelectedDateIso(iso); // Open summary panel
     },
     [],
   );
@@ -332,6 +357,27 @@ export default function MonthPage({ items, loading = false, activeCategory = 'Al
           }}
         />
       )}
+
+      {/* Day Summary Panel (for registration flow) */}
+      <DaySummaryDrawer
+        open={isPanelOpen}
+        selectedDateIso={selectedDateIso}
+        items={items}
+        onClose={handlePanelClose}
+        onAdd={handleAddFromPanel}
+      />
+
+      {/* Create Schedule Dialog (Month: all-day default) */}
+      <CreateScheduleDialog
+        open={isCreateOpen}
+        dateIso={createDateIso}
+        defaultAllDay
+        onClose={handleCloseCreate}
+        onSubmit={(draft: CreateScheduleDraft) => {
+          // TODO: Persist to repository (next PR)
+          console.log('[create-schedule-draft-month]', draft);
+        }}
+      />
     </section>
   );
 }
