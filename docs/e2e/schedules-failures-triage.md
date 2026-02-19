@@ -5,13 +5,13 @@
 - 1 failure = 1 issue に落とせる粒度にする。
 
 ## Run Context
-- Date:
-- Branch:
-- Command:
+- Date: 2026-02-19
+- Branch: chore/schedules-e2e-failures-triage
+- Command: E2E_BASE_URL=http://127.0.0.1:4173 ... npx playwright test tests/e2e/schedule-*.spec.ts tests/e2e/schedules*.spec.ts tests/e2e/dashboard-schedule-flow.spec.ts --project=chromium --workers=1 --reporter=json
 - Env (key flags):
-  - VITE_E2E_FORCE_SCHEDULES_WRITE=
-  - VITE_SKIP_SHAREPOINT=
-  - VITE_FEATURE_SCHEDULES_WEEK_V2=
+  - VITE_E2E_FORCE_SCHEDULES_WRITE=1
+  - VITE_SKIP_SHAREPOINT=1
+  - VITE_FEATURE_SCHEDULES_WEEK_V2=1
 
 ## Categories (choose one)
 - Locator drift (testid/role/text changed)
@@ -26,6 +26,28 @@
 ## Failure Table
 | Spec | Test | Symptom | Category | Quick Fix | Proper Fix | Owner | Issue |
 |---|---|---|---|---|---|---|---|
+| schedule-conflicts.spec.ts | highlights the same conflicts in the week view | Error: expect(locator).toBeVisible() failed Locator: getByTestId('schedule-week-root').locator('[data-testid="schedule-warning-indicator"]') | Locator drift |  |  |  |  |
+| schedule-create-dialog.aria.spec.ts | exposes dialog semantics, announces open state, and restores focus | Test timeout of 60000ms exceeded. | Timing / wait condition |  |  |  |  |
+| schedule-day-view.spec.ts | 指定日の Day ビューが開き、タブとタイムラインが揃う | Error: expect(locator).toBeVisible() failed Locator: getByRole('heading', { name: /スケジュール/, level: 1 }) Expected: visible Timeout: 5000ms Er | SharePoint / integration dependency |  |  |  |  |
+| schedule-day.happy-path.spec.ts | user can create and edit a day entry through the quick dialog | Error: expect(received).toBe(expected) // Object.is equality Expected: 1 Received: 0 Call Log: - Timeout 10000ms exceeded while waiting on t | Timing / wait condition |  |  |  |  |
+| schedule-day.happy-path.spec.ts | week category filter narrows visible items | Error: expect(locator).toHaveCount(expected) failed Locator: getByTestId('schedules-week-root').first().locator('[data-testid="schedule-item | Locator drift |  |  |  |  |
+| schedule-list-view.spec.ts | filters, sorts, paginates, and shows details | Error: expect(locator).toBeVisible() failed Locator: getByTestId('schedules-week-root').first().locator('[data-testid="schedule-item"]').fir | Locator drift |  |  |  |  |
+| schedule-month-to-day.smoke.spec.ts | navigates from month calendar to day view with correct query params | Error: expect(locator).toBeVisible() failed Locator: getByTestId('schedules-day-popover') Expected: visible Timeout: 5000ms Error: element(s | SharePoint / integration dependency |  |  |  |  |
+| schedule-month.aria.smoke.spec.ts | navigates to day view when a calendar card is clicked | Test timeout of 60000ms exceeded. | Navigation / route guard |  |  |  |  |
+| schedule-org-filter.deep.spec.ts | filters week items for respite org | Error: expect(received).toBeGreaterThan(expected) Expected: > 0 Received: 0 Call Log: - Timeout 15000ms exceeded while waiting on the predic | SharePoint / integration dependency |  |  |  |  |
+| schedule-org-filter.deep.spec.ts | filters week items for shortstay org | Error: expect(received).toBeGreaterThan(expected) Expected: > 0 Received: 0 Call Log: - Timeout 15000ms exceeded while waiting on the predic | SharePoint / integration dependency |  |  |  |  |
+| schedule-org-filter.deep.spec.ts | invalid org falls back to all items | Error: expect(received).toBeGreaterThan(expected) Expected: > 0 Received: 0 Call Log: - Timeout 15000ms exceeded while waiting on the predic | SharePoint / integration dependency |  |  |  |  |
+| schedule-org-filter.spec.ts | org param is absent when no org selected on Org tab | Error: expect(locator).toBeVisible() failed Locator: getByTestId('schedule-tab-org') Expected: visible Timeout: 10000ms Error: element(s) no | Navigation / route guard |  |  |  |  |
+| schedule-org-filter.spec.ts | org param persists when switching between week, month, and day tabs | Error: expect(locator).toBeVisible() failed Locator: getByTestId('schedule-tab-org') Expected: visible Timeout: 10000ms Error: element(s) no | Navigation / route guard |  |  |  |  |
+| schedule-org-filter.spec.ts | org param reflects Org tab selection and clears on all | Error: expect(locator).toBeVisible() failed Locator: getByTestId('schedule-tab-org') Expected: visible Timeout: 10000ms Error: element(s) no | Navigation / route guard |  |  |  |  |
+| schedule-week-to-day.lane.smoke.spec.ts | preserves selected lane when switching to day view | Test timeout of 60000ms exceeded. | Timing / wait condition |  |  |  |  |
+| schedule-week.deeplink.spec.ts | loads the requested week and preserves announcements after reload | Error: expect(locator).toBeVisible() failed Locator: getByTestId('schedules-week-day-2025-11-24') Expected: visible Timeout: 5000ms Error: e | SharePoint / integration dependency |  |  |  |  |
+| schedule-week.filter.mobile.spec.ts | keeps the week view visible while using the mobile search toolbar | Error: expect(locator).toBeVisible() failed Locator: getByTestId('schedules-filter-toggle') Expected: visible Received: hidden Timeout: 5000 | SharePoint / integration dependency |  |  |  |  |
+| schedule-week.keyboard.spec.ts | keyboard focus moves across tabs and restores the week view | Error: expect(received).toBe(expected) // Object.is equality Expected: "day" Received: "month" | Navigation / route guard |  |  |  |  |
+| schedule-week.keyboard.spec.ts | search interactions do not change the active week view | Error: expect(locator).toHaveAttribute(expected) failed Locator: getByTestId('schedules-week-day-2025-11-24') Expected: "date" Timeout: 5000 | SharePoint / integration dependency |  |  |  |  |
+| schedule-week.lanes.smoke.spec.ts | shows 3 lanes (User/Staff/Org) | Error: expect(locator).toBeVisible() failed Locator: getByTestId('schedules-week-lane-User') Expected: visible Timeout: 5000ms Error: elemen | SharePoint / integration dependency |  |  |  |  |
+| schedule-week.smoke.spec.ts | renders week overview and passes Axe | Error: Axe violations detected for Schedules Week: aria-required-children (critical) → .w-full aria-required-parent (critical) → button[aria | Timing / wait condition |  |  |  |  |
+| schedules-day-create-facility.smoke.spec.ts | Week lane -> Day create defaults to facility | Error: expect(locator).toBeVisible() failed Locator: getByRole('button', { name: /予定を追加/ }) Expected: visible Timeout: 5000ms Error: element | SharePoint / integration dependency |  |  |  |  |
 
 ## Notes / Patterns
 - (例) "getByRole(tab, name=Week)" が複数ヒット → locator drift
