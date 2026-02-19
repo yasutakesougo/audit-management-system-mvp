@@ -77,3 +77,66 @@ jobs:
           PLAYWRIGHT_WEB_SERVER_URL: "http://127.0.0.1:5173"
           PLAYWRIGHT_WEB_SERVER_COMMAND: "true"
         run: npm run test:schedule:e2e
+
+  e2e-schedules-sp-smoke:
+    name: e2e-schedules-sp-smoke (optional)
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    if: ${{ secrets.VITE_SP_RESOURCE != '' && secrets.VITE_SP_SITE_RELATIVE != '' }}
+    env:
+      VITE_E2E: "1"
+      VITE_E2E_MSAL_MOCK: "1"
+      VITE_SKIP_LOGIN: "1"
+      VITE_FEATURE_SCHEDULES: "1"
+      VITE_FEATURE_SCHEDULES_SP: "1"
+      VITE_SKIP_SHAREPOINT: "0"
+      VITE_FORCE_SHAREPOINT: "1"
+      VITE_FEATURE_SCHEDULES_GRAPH: "0"
+      VITE_SP_RESOURCE: ${{ secrets.VITE_SP_RESOURCE }}
+      VITE_SP_SITE_RELATIVE: ${{ secrets.VITE_SP_SITE_RELATIVE }}
+      VITE_MSAL_CLIENT_ID: "dummy"
+      VITE_MSAL_TENANT_ID: "dummy"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Cache Playwright browsers
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: ${{ runner.os }}-playwright-${{ hashFiles('**/package-lock.json') }}
+          restore-keys: |
+            ${{ runner.os }}-playwright-
+      - run: npm ci
+      - name: Install Playwright browsers (ensure executables present)
+        run: npx playwright install --with-deps chromium
+      - name: Start dev server (background)
+        run: |
+          set -euo pipefail
+          nohup npm run dev -- --host 127.0.0.1 --port 5173 --strictPort --clearScreen false > vite-dev.log 2>&1 &
+          echo $! > vite-dev.pid
+          sleep 2
+          echo "Vite PID: $(cat vite-dev.pid)"
+      - name: Wait for dev server
+        run: |
+          set -euo pipefail
+          for i in {1..60}; do
+            if curl -sf http://127.0.0.1:5173/ >/dev/null; then
+              echo "✅ Server ready after ${i} attempts"
+              exit 0
+            fi
+            sleep 3
+          done
+          echo "❌ Server did not respond after 180s"
+          tail -n 100 vite-dev.log || true
+          exit 1
+      - name: E2E (Schedules SP smoke)
+        env:
+          PLAYWRIGHT_SKIP_BUILD: "1"
+          PLAYWRIGHT_WEB_SERVER_URL: "http://127.0.0.1:5173"
+          PLAYWRIGHT_WEB_SERVER_COMMAND: "true"
+        run: npm run test:e2e:schedules:sp
+      - name: Dump dev server log on failure
+        if: failure()
+        run: tail -n 400 vite-dev.log || true
