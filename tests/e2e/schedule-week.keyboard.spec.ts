@@ -5,12 +5,15 @@ import { bootstrapScheduleEnv } from './utils/scheduleEnv';
 import { gotoWeek } from './utils/scheduleNav';
 import { waitForDayTimeline, waitForWeekViewReady } from './utils/wait';
 
+const skipSp = process.env.VITE_SKIP_SHAREPOINT === '1' || process.env.VITE_FEATURE_SCHEDULES_SP === '0';
+
 const focusLocator = async (locator: Locator): Promise<void> => {
   await locator.scrollIntoViewIfNeeded();
   await locator.focus();
 };
 
 test.describe('Schedule week keyboard navigation', () => {
+  test.skip(skipSp, 'SharePoint/SP disabled in this run');
   test.beforeEach(async ({ page }) => {
     page.on('console', (message) => {
       if (message.type() === 'error' && message.text().includes('SharePoint')) {

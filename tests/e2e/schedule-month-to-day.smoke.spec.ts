@@ -7,7 +7,10 @@ import { gotoMonth } from './utils/scheduleNav';
 import { waitForMonthViewReady, waitForDayViewReady } from './utils/scheduleActions';
 import { waitForScheduleReady } from './utils/wait';
 
+const skipSp = process.env.VITE_SKIP_SHAREPOINT === '1' || process.env.VITE_FEATURE_SCHEDULES_SP === '0';
+
 test.describe('Schedule month→day navigation smoke', () => {
+  test.skip(skipSp, 'SharePoint/SP disabled in this run');
   const ensureFilterVisible = async (page: import('@playwright/test').Page) => {
     const categoryFilter = page.getByTestId(TESTIDS['schedules-filter-category']);
     if (await categoryFilter.isVisible().catch(() => false)) {

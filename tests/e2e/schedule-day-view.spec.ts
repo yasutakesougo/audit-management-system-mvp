@@ -5,9 +5,13 @@ import { bootSchedule } from './_helpers/bootSchedule';
 import { getSchedulesTodaySeedDate } from './_helpers/schedulesTodaySeed';
 import { gotoDay } from './utils/scheduleNav';
 import { assertDayHasUserCareEvent, waitForDayViewReady, waitForWeekViewReady } from './utils/scheduleActions';
+
+const skipSp = process.env.VITE_SKIP_SHAREPOINT === '1' || process.env.VITE_FEATURE_SCHEDULES_SP === '0';
+
 const TEST_DATE = new Date(getSchedulesTodaySeedDate());
 
 test.describe('Schedule day view', () => {
+  test.skip(skipSp, 'SharePoint/SP disabled in this run');
   test.beforeEach(async ({ page }) => {
     page.on('console', (message) => {
       if (message.type() === 'info' && message.text().startsWith('[schedulesClient] fixtures=')) {

@@ -7,6 +7,8 @@ import { hookConsole } from './utils/console';
 import { registerScheduleMocks, TIME_ZONE, type ScheduleItem } from './utils/spMock';
 import { clickEnabledFilterAction } from './utils/waiters';
 
+const skipSp = process.env.VITE_SKIP_SHAREPOINT === '1' || process.env.VITE_FEATURE_SCHEDULES_SP === '0';
+
 const TEST_NOW = '2025-10-08T03:00:00.000Z';
 const TEST_DATE = new Date(TEST_NOW);
 
@@ -74,6 +76,7 @@ const materializeScheduleItems = (items: ReturnType<typeof buildScheduleFixtures
   });
 
 test.describe('schedule list view', () => {
+  test.skip(skipSp, 'SharePoint/SP disabled in this run');
   test('filters, sorts, paginates, and shows details', async ({ page }) => {
     const consoleGuard = hookConsole(page);
 

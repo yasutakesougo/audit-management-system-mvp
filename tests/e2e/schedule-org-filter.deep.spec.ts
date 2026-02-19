@@ -8,6 +8,8 @@ import { getWeekRowById, waitForWeekScheduleItems, waitForWeekViewReady } from '
 import { gotoWeek } from './utils/scheduleNav';
 import { registerScheduleMocks, TIME_ZONE } from './utils/spMock';
 
+const skipSp = process.env.VITE_SKIP_SHAREPOINT === '1' || process.env.VITE_FEATURE_SCHEDULES_SP === '0';
+
 const TEST_DATE = new Date(SCHEDULE_FIXTURE_BASE_DATE);
 const TEST_DATE_KEY = formatInTimeZone(TEST_DATE, TIME_ZONE, 'yyyy-MM-dd');
 
@@ -17,6 +19,7 @@ const buildScheduleItems = () => {
 };
 
 test.describe('Schedule org filter deep', () => {
+  test.skip(skipSp, 'SharePoint/SP disabled in this run');
   test.beforeEach(async ({ page }) => {
     const fixtures = buildScheduleFixturesForDate(TEST_DATE);
     await registerScheduleMocks(page, fixtures);
