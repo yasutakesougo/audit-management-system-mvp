@@ -6,7 +6,10 @@ import { bootstrapScheduleEnv } from './utils/scheduleEnv';
 import { gotoScheduleWeek } from './utils/scheduleWeek';
 import { waitForWeekViewReady } from './utils/wait';
 
+const skipSp = process.env.VITE_SKIP_SHAREPOINT === '1' || process.env.VITE_FEATURE_SCHEDULES_SP === '0';
+
 test.describe('Schedule week lanes', () => {
+  test.skip(skipSp, 'SharePoint/SP disabled in this run');
   test.beforeEach(async ({ page }) => {
     await bootstrapScheduleEnv(page);
   });

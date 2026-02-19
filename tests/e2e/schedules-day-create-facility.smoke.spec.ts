@@ -8,7 +8,10 @@ import { bootstrapScheduleEnv } from './utils/scheduleEnv';
 import { gotoDay } from './utils/scheduleNav';
 import { waitForDayTimeline, waitForScheduleReady } from './utils/wait';
 
+const skipSp = process.env.VITE_SKIP_SHAREPOINT === '1' || process.env.VITE_FEATURE_SCHEDULES_SP === '0';
+
 test.describe('Schedules day create flow (facility)', () => {
+  test.skip(skipSp, 'SharePoint/SP disabled in this run');
   test('Week lane -> Day create defaults to facility', async ({ page }) => {
     await bootstrapScheduleEnv(page, {
       storage: { 'e2e:schedules.v1': JSON.stringify([]) },
