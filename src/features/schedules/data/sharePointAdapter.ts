@@ -4,7 +4,6 @@ import { AuthRequiredError } from '@/lib/errors';
 import { withUserMessage } from '@/lib/notice';
 import { createSpClient, ensureConfig } from '@/lib/spClient';
 import { result } from '@/shared/result';
-import { get } from '@/env';
 import { SCHEDULES_DEBUG } from '../debug';
 import {
   createSchedule,
@@ -43,7 +42,7 @@ import { getSchedulesListTitle, SCHEDULES_FIELDS, buildSchedulesListPath, resolv
  * 
  * Solution: Format date in site timezone directly using Intl.DateTimeFormat
  */
-const SCHEDULES_TZ = get('VITE_SCHEDULES_TZ', 'Asia/Tokyo');
+const SCHEDULES_TZ = 'Asia/Tokyo';
 
 /**
  * Get date key (YYYY-MM-DD) in site timezone
