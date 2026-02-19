@@ -26,12 +26,12 @@
 ## Failure Table
 | Spec | Test | Symptom | Category | Quick Fix | Proper Fix | Owner | Issue |
 |---|---|---|---|---|---|---|---|
-| schedule-conflicts.spec.ts | highlights the same conflicts in the week view | Error: expect(locator).toBeVisible() failed Locator: getByTestId('schedule-week-root').locator('[data-testid="schedule-warning-indicator"]') | Locator drift |  |  |  |  |
+| schedule-conflicts.spec.ts | highlights the same conflicts in the week view | Error: expect(locator).toBeVisible() failed Locator: getByTestId('schedule-week-root').locator('[data-testid="schedule-warning-indicator"]') | Locator drift | ✅ FIXED (warning-indicator added to WeekView item) |  |  |  |
 | schedule-create-dialog.aria.spec.ts | exposes dialog semantics, announces open state, and restores focus | Test timeout of 60000ms exceeded. | Timing / wait condition |  |  |  |  |
 | schedule-day-view.spec.ts | 指定日の Day ビューが開き、タブとタイムラインが揃う | Error: expect(locator).toBeVisible() failed Locator: getByRole('heading', { name: /スケジュール/, level: 1 }) Expected: visible Timeout: 5000ms Er | SharePoint / integration dependency |  |  |  |  |
 | schedule-day.happy-path.spec.ts | user can create and edit a day entry through the quick dialog | Error: expect(received).toBe(expected) // Object.is equality Expected: 1 Received: 0 Call Log: - Timeout 10000ms exceeded while waiting on t | Timing / wait condition |  |  |  |  |
-| schedule-day.happy-path.spec.ts | week category filter narrows visible items | Error: expect(locator).toHaveCount(expected) failed Locator: getByTestId('schedules-week-root').first().locator('[data-testid="schedule-item | Locator drift |  |  |  |  |
-| schedule-list-view.spec.ts | filters, sorts, paginates, and shows details | Error: expect(locator).toBeVisible() failed Locator: getByTestId('schedules-week-root').first().locator('[data-testid="schedule-item"]').fir | Locator drift |  |  |  |  |
+| schedule-day.happy-path.spec.ts | week category filter narrows visible items | Error: expect(locator).toHaveCount(expected) failed Locator: getByTestId('schedules-week-root').first().locator('[data-testid="schedule-item | Locator drift | ✅ FIXED (data-category attribute added to WeekView item) |  |  |  |
+| schedule-list-view.spec.ts | filters, sorts, paginates, and shows details | Error: expect(locator).toBeVisible() failed Locator: getByTestId('schedules-week-root').first().locator('[data-testid="schedule-item"]').fir | SharePoint / integration dependency |  |  |  |  |
 | schedule-month-to-day.smoke.spec.ts | navigates from month calendar to day view with correct query params | Error: expect(locator).toBeVisible() failed Locator: getByTestId('schedules-day-popover') Expected: visible Timeout: 5000ms Error: element(s | SharePoint / integration dependency |  |  |  |  |
 | schedule-month.aria.smoke.spec.ts | navigates to day view when a calendar card is clicked | Test timeout of 60000ms exceeded. | Navigation / route guard |  |  |  |  |
 | schedule-org-filter.deep.spec.ts | filters week items for respite org | Error: expect(received).toBeGreaterThan(expected) Expected: > 0 Received: 0 Call Log: - Timeout 15000ms exceeded while waiting on the predic | SharePoint / integration dependency |  |  |  |  |
@@ -52,3 +52,22 @@
 ## Notes / Patterns
 - (例) "getByRole(tab, name=Week)" が複数ヒット → locator drift
 - (例) "LIST_CHECK_PENDING" → gate / env mismatch
+
+## Phase 1: Locator Drift (Completed)
+
+**Objective:** Fix 3 locator drift failures with quick wins.
+
+**Fix Summary:**
+| # | Spec | Test | Fix | Status |
+|---|---|---|---|---|
+| 1 | schedule-conflicts | week view warning | Add `data-testid="schedule-warning-indicator"` to WeekView item with conditional wrapper for baseShiftWarnings | ✅ PASS |
+| 2 | schedule-day.happy-path | category filter | Add `data-category={item.category ?? 'Org'}` attribute to WeekView button | ✅ PASS |
+| 3 | schedule-list-view | list view items | **Reclassified as SharePoint/integration dependency** (not Locator drift) | ⏳ Defer to Phase 2 |
+
+**Commit:** `6a519b92 (fix/schedules-locator-drift)` - "fix: add data-category and warning-indicator to WeekView schedule items"
+
+**Updated Distribution:**
+- Locator drift: ~~3~~ **2** (2 fixed) = 9% of total failures
+- SharePoint / integration: ~~10~~ **11** (reclassified 1) = 50% of total
+- Navigation / route guard: 5 (22.7%)
+- Timing / wait condition: 4 (18.2%)
