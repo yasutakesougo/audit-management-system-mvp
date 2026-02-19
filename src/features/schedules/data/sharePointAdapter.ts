@@ -32,6 +32,39 @@ import type { DateRange, SchedItem, SchedulesPort, ScheduleServiceType } from '.
 import { mapSpRowToSchedule, parseSpScheduleRows } from './spRowSchema';
 import { getSchedulesListTitle, SCHEDULES_FIELDS, buildSchedulesListPath, resolveSchedulesListIdentifier } from './spSchema';
 
+/**
+ * Timezone-aware date key helpers
+ * CRITICAL: Always use site timezone (JST) for dayKey/monthKey to prevent UTC offset bugs
+ * 
+ * Issue: Using toISOString().slice(0,10) on JST dates causes -9hr shift
+ * Example: 2026-02-18 07:00 JST → 2026-02-17 22:00 UTC → dayKey='2026-02-17' (WRONG!)
+ * 
+ * Solution: Format date in site timezone directly using Intl.DateTimeFormat
+ */
+const SCHEDULES_TZ = import.meta.env.VITE_SCHEDULES_TZ ?? 'Asia/Tokyo';
+
+/**
+ * Get date key (YYYY-MM-DD) in site timezone
+ * @param date - Date object (can be in any timezone)
+ * @param timeZone - IANA timezone (default: Asia/Tokyo)
+ * @returns Date string in YYYY-MM-DD format using site timezone
+ */
+export function dayKeyInTz(date: Date, timeZone: string = SCHEDULES_TZ): string {
+  // sv-SE locale returns YYYY-MM-DD format
+  return new Intl.DateTimeFormat('sv-SE', { timeZone }).format(date);
+}
+
+/**
+ * Get month key (YYYY-MM) in site timezone
+ * @param date - Date object (can be in any timezone)
+ * @param timeZone - IANA timezone (default: Asia/Tokyo)
+ * @returns Month string in YYYY-MM format using site timezone
+ */
+export function monthKeyInTz(date: Date, timeZone: string = SCHEDULES_TZ): string {
+  const day = dayKeyInTz(date, timeZone); // YYYY-MM-DD
+  return day.slice(0, 7); // YYYY-MM
+}
+
 type ListRangeFn = (range: DateRange) => Promise<SchedItem[]>;
 
 type SharePointSchedulesPortOptions = {
@@ -288,10 +321,19 @@ const fetchRange = async (
   }
 };
 
+/**
+ * Strip 'Z' suffix so SharePoint interprets as site timezone (JST) not UTC
+ * Prevents 9-hour offset causing week boundary mismatches
+ */
+const toIsoWithoutZ = (date: Date): string => {
+  const iso = date.toISOString();
+  return iso.endsWith('Z') ? iso.slice(0, -1) : iso;
+};
+
 const buildRangeFilter = (range: DateRange, fields: ScheduleFieldNames): string => {
   // Add ±1 day buffer for timezone/all-day event safety (SharePoint best practice)
-  const fromBuffer = new Date(new Date(range.from).getTime() - 24 * 60 * 60 * 1000).toISOString();
-  const toBuffer = new Date(new Date(range.to).getTime() + 24 * 60 * 60 * 1000).toISOString();
+  const fromBuffer = toIsoWithoutZ(new Date(new Date(range.from).getTime() - 24 * 60 * 60 * 1000));
+  const toBuffer = toIsoWithoutZ(new Date(new Date(range.to).getTime() + 24 * 60 * 60 * 1000));
   const fromLiteral = encodeDateLiteral(fromBuffer);
   const toLiteral = encodeDateLiteral(toBuffer);
   return `(${fields.start} lt ${toLiteral}) and (${fields.end} ge ${fromLiteral})`;
@@ -302,7 +344,10 @@ const encodeDateLiteral = (value: string): string => {
   if (Number.isNaN(parsed)) {
     throw new Error(`Invalid date value: ${value}`);
   }
-  return `datetime'${new Date(parsed).toISOString()}'`;
+  // Remove 'Z' so SharePoint interprets as site timezone (JST)
+  const iso = new Date(parsed).toISOString();
+  const withoutZ = iso.endsWith('Z') ? iso.slice(0, -1) : iso;
+  return `datetime'${withoutZ}'`;
 };
 
 const isMissingFieldError = (error: unknown): boolean => {
@@ -358,8 +403,44 @@ const _fetchItemById = async (id: number): Promise<SchedItem> => {
  * Helper: Map RepoSchedule → SchedItem
  * Bridges repo layer (internal names) to port layer (domain types)
  */
-const mapRepoScheduleToSchedItem = (repo: Parameters<typeof mapSpRowToSchedule>[0]): SchedItem | null => {
-  return mapSpRowToSchedule(repo);
+const mapRepoScheduleToSchedItem = (repo: {
+  id: number;
+  etag?: string;
+  title: string;
+  eventDate: string;
+  endDate: string;
+  status?: string;
+  serviceType?: string;
+  personType: string;
+  personId: string;
+  personName?: string;
+  assignedStaffId?: string;
+  note?: string;
+  createdAt?: string;
+  updatedAt?: string;
+}): SchedItem | null => {
+  try {
+    return {
+      id: String(repo.id),
+      etag: repo.etag ?? '',
+      title: repo.title,
+      start: repo.eventDate,
+      end: repo.endDate,
+      category: repo.personType as ScheduleCategory,
+      userId: repo.personId || undefined,
+      personName: repo.personName,
+      assignedStaffId: repo.assignedStaffId,
+      status: repo.status as ScheduleStatus | undefined,
+      serviceType: repo.serviceType,
+      notes: repo.note,
+      createdAt: repo.createdAt,
+      updatedAt: repo.updatedAt,
+      source: 'sharepoint' as const,
+    };
+  } catch (err) {
+    console.error('[mapRepoScheduleToSchedItem] Failed to map:', err, repo);
+    return null;
+  }
 };
 
 /**
@@ -424,10 +505,10 @@ export const makeSharePointSchedulesPort = (options?: SharePointSchedulesPortOpt
         const startIso = input.startLocal || new Date().toISOString();
         const endIso = input.endLocal || new Date(Date.now() + 3600000).toISOString();
 
-        // Parse dates for day/month/fiscal year
+        // Parse dates for day/month/fiscal year (use JST timezone to prevent UTC offset bugs)
         const startDate = new Date(startIso);
-        const dayKey = startDate.toISOString().slice(0, 10); // YYYY-MM-DD
-        const monthKey = startDate.toISOString().slice(0, 7); // YYYY-MM
+        const dayKey = dayKeyInTz(startDate); // YYYY-MM-DD in JST
+        const monthKey = monthKeyInTz(startDate); // YYYY-MM in JST
         const fiscalYear = String(startDate.getFullYear());
 
         const createPayload: CreateScheduleInput = {
@@ -497,8 +578,8 @@ export const makeSharePointSchedulesPort = (options?: SharePointSchedulesPortOpt
         }
 
         const startDate = new Date(input.startLocal || new Date());
-        const dayKey = startDate.toISOString().slice(0, 10);
-        const monthKey = startDate.toISOString().slice(0, 7);
+        const dayKey = dayKeyInTz(startDate); // YYYY-MM-DD in JST
+        const monthKey = monthKeyInTz(startDate); // YYYY-MM in JST
 
         const updatePayload: UpdateScheduleInput = {
           title: input.title,

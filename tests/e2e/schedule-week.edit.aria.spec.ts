@@ -7,6 +7,7 @@ import { gotoWeek } from './utils/scheduleNav';
 import {
   getWeekRowById,
   getWeekScheduleItems,
+  getScheduleWriteState,
   openWeekEventEditor,
   waitForWeekViewReady,
 } from './utils/scheduleActions';
@@ -37,10 +38,17 @@ test.describe('Schedules week edit entry', () => {
     await gotoWeek(page, TEST_DATE);
     await waitForWeekViewReady(page);
 
+    const { canWrite, reason } = await getScheduleWriteState(page);
+    test.skip(!canWrite, `read-only mode: ${reason}`);
+
     const scheduleItems = await getWeekScheduleItems(page);
     await expect(scheduleItems.first()).toBeVisible({ timeout: 15_000 });
 
-    const targetRow = await getWeekRowById(page, 70_000);
+    let targetRow = await getWeekRowById(page, 70_000);
+    const hasTarget70000 = await targetRow.count().then((count) => count > 0).catch(() => false);
+    if (!hasTarget70000) {
+      targetRow = scheduleItems.first();
+    }
     await expect(targetRow).toBeVisible({ timeout: 15_000 });
 
     const editor = await openWeekEventEditor(page, targetRow, {

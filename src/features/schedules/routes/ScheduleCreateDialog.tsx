@@ -113,7 +113,7 @@ export const ScheduleCreateDialog: React.FC<ScheduleCreateDialogProps> = (props)
     initialEndTime,
     defaultUser,
     mode,
-    eventId: _eventId,
+    eventId,
     initialOverride,
     dialogTestId,
     submitTestId,
@@ -127,6 +127,16 @@ export const ScheduleCreateDialog: React.FC<ScheduleCreateDialogProps> = (props)
     if (initialOverride?.title?.trim()) return initialOverride.title;
     const candidateUserId = initialOverride?.userId ?? defaultUser?.id;
     const matchedUser = candidateUserId ? users.find((candidate) => candidate.id === candidateUserId) : undefined;
+    if (mode === 'edit') {
+      return matchedUser
+        ? buildAutoTitle({
+            userName: matchedUser.name,
+            serviceType: initialOverride?.serviceType ?? '',
+            assignedStaffId: initialOverride?.assignedStaffId ?? '',
+            vehicleId: initialOverride?.vehicleId ?? '',
+          })
+        : '';
+    }
     return buildAutoTitle({
       userName: matchedUser?.name ?? defaultUser?.name ?? undefined,
       serviceType: initialOverride?.serviceType ?? '',
@@ -141,6 +151,7 @@ export const ScheduleCreateDialog: React.FC<ScheduleCreateDialogProps> = (props)
     initialOverride?.serviceType,
     initialOverride?.assignedStaffId,
     initialOverride?.vehicleId,
+    mode,
     users
   ]);
   const [form, setForm] = useState<ScheduleFormState>(() =>
@@ -197,7 +208,7 @@ export const ScheduleCreateDialog: React.FC<ScheduleCreateDialogProps> = (props)
           defaultTitle: resolvedDefaultTitle,
           override: initialOverride ?? undefined
         });
-        if (prev.title && prev.title.trim() && prev.title !== resolvedDefaultTitle) {
+        if (mode === 'create' && prev.title && prev.title.trim() && prev.title !== resolvedDefaultTitle) {
           next.title = prev.title;
         }
         return next;
@@ -205,7 +216,7 @@ export const ScheduleCreateDialog: React.FC<ScheduleCreateDialogProps> = (props)
       setErrors([]);
       setSubmitting(false);
     }
-  }, [open, initialDate, initialStartTime, initialEndTime, defaultUser?.id, initialOverride, mode, resolvedDefaultTitle]);
+  }, [open, eventId, initialDate, initialStartTime, initialEndTime, defaultUser?.id, initialOverride, mode, resolvedDefaultTitle]);
 
   const titleLabel = mode === 'edit' ? 'スケジュール更新' : 'スケジュール新規作成';
   const primaryButtonLabel = mode === 'edit' ? '更新' : '作成';
@@ -758,13 +769,13 @@ export const ScheduleCreateDialog: React.FC<ScheduleCreateDialogProps> = (props)
       </DialogContent>
 
       <DialogActions>
-        {mode === 'edit' && _eventId && onDelete && (
+        {mode === 'edit' && eventId && onDelete && (
           <Button
             onClick={async () => {
               const confirmed = window.confirm('この予定を削除します。よろしいですか？');
               if (!confirmed) return;
               try {
-                await onDelete(_eventId);
+                await onDelete(eventId);
                 onClose();
               } catch (error) {
                 console.error('Failed to delete schedule:', error);

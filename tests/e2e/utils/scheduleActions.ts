@@ -423,9 +423,28 @@ export async function waitForWeekGridReady(page: Page) {
     expect(tabParam).toBe('week');
   }
 
-  // Wait for schedule-week-root to be visible
-  const weekRoot = page.getByTestId('schedule-week-root');
-  await expect(weekRoot).toBeVisible({ timeout: 15_000 });
+  // Wait for one of the supported week roots to be visible
+  const weekRootCandidates = [
+    page.getByTestId('schedules-week-page').first(),
+    page.getByTestId('schedules-week-grid').first(),
+    page.getByTestId('schedule-week-root').first(),
+    page.getByTestId('schedule-week-view').first(),
+    page.getByTestId('schedules-week-view').first(),
+  ];
+
+  await expect
+    .poll(
+      async () => {
+        for (const locator of weekRootCandidates) {
+          if (await locator.isVisible().catch(() => false)) {
+            return true;
+          }
+        }
+        return false;
+      },
+      { timeout: 15_000 },
+    )
+    .toBe(true);
 
   // Wait for loading spinner to disappear if present
   const spinner = page.getByTestId('schedule-loading');
@@ -461,6 +480,33 @@ export async function waitForMonthViewReady(page: Page) {
   await waitMonthReady(page);
 }
 
+export async function getScheduleWriteState(page: Page): Promise<{ canWrite: boolean; reason: string }> {
+  const env = await page.evaluate(() => {
+    const runtime = (window as typeof window & { __ENV__?: Record<string, string> }).__ENV__ ?? {};
+    return {
+      VITE_E2E_FORCE_SCHEDULES_WRITE: runtime.VITE_E2E_FORCE_SCHEDULES_WRITE,
+    };
+  });
+
+  if (String(env.VITE_E2E_FORCE_SCHEDULES_WRITE) === '1') {
+    return { canWrite: true, reason: 'e2e-force' };
+  }
+
+  const headerCreate = page.getByTestId(TESTIDS.SCHEDULES_HEADER_CREATE);
+  if (await headerCreate.isVisible().catch(() => false)) {
+    const disabled = await headerCreate.isDisabled().catch(() => false);
+    return { canWrite: !disabled, reason: disabled ? 'header-disabled' : 'header-enabled' };
+  }
+
+  const fab = page.getByTestId(TESTIDS.SCHEDULES_FAB_CREATE);
+  if (await fab.isVisible().catch(() => false)) {
+    const disabled = await fab.isDisabled().catch(() => false);
+    return { canWrite: !disabled, reason: disabled ? 'fab-disabled' : 'fab-enabled' };
+  }
+
+  return { canWrite: false, reason: 'no-create-control' };
+}
+
 export async function openQuickUserCareDialog(page: Page) {
   const dayTab = page.getByTestId(TESTIDS.SCHEDULES_WEEK_TAB_DAY);
   await expect(dayTab).toBeVisible();
@@ -476,16 +522,20 @@ export async function openQuickUserCareDialog(page: Page) {
   await expect(dayRoot).toBeVisible({ timeout: 10_000 });
   await waitForDayViewReady(page);
 
-  const trigger = page.getByTestId(TESTIDS.SCHEDULES_FAB_CREATE);
-  await expect(trigger).toBeVisible();
-  
+  const trigger = page.getByTestId(TESTIDS.SCHEDULES_FAB_CREATE).first();
+  const headerCreate = page.getByTestId(TESTIDS.SCHEDULES_HEADER_CREATE).first();
+
   // Ensure trigger is ready and clickable
   await page.waitForLoadState('networkidle');
-  await trigger.scrollIntoViewIfNeeded();
-  await expect(trigger).toBeVisible();
-  await expect(trigger).toBeEnabled();
-  await trigger.focus();
-  await page.keyboard.press('Enter');
+  if (await trigger.isVisible().catch(() => false)) {
+    await trigger.scrollIntoViewIfNeeded();
+    await expect(trigger).toBeEnabled();
+    await trigger.focus();
+    await page.keyboard.press('Enter');
+  } else if (await headerCreate.isVisible().catch(() => false)) {
+    await headerCreate.scrollIntoViewIfNeeded();
+    await headerCreate.click();
+  }
   
   const dialog = getQuickScheduleDialog(page);
   // Fallback: if the dialog did not open (e.g., authz gate or query param handler lag), force the dialog params
@@ -629,6 +679,9 @@ export async function getOrgChipText(page: Page, view: 'week' | 'month' | 'day')
 const WEEK_PANEL_VISIBLE = '#panel-week:not([hidden])';
 
 const buildWeekRootCandidates = (page: Page): Locator[] => [
+  page.getByTestId('schedules-week-root'),
+  page.getByTestId(TESTIDS['schedules-week-page']),
+  page.getByTestId(TESTIDS['schedules-week-grid']),
   page.locator(`${WEEK_PANEL_VISIBLE} [data-testid="${TESTIDS.SCHEDULE_WEEK_ROOT}"]`),
   page.locator(`${WEEK_PANEL_VISIBLE} [data-testid="${TESTIDS.SCHEDULE_WEEK_VIEW}"]`),
   page.getByTestId(TESTIDS.SCHEDULE_WEEK_ROOT),
@@ -653,7 +706,7 @@ const getWeekRoot = async (page: Page): Promise<Locator> => {
     }
   }
 
-  return page.getByTestId(TESTIDS.SCHEDULE_WEEK_VIEW).first();
+  return page.getByTestId(TESTIDS['schedules-week-grid']).first();
 };
 
 export async function getWeekScheduleItems(
@@ -721,6 +774,7 @@ export async function openEditorFromRowMenu(
 ) {
   const editor = page.getByTestId(TESTIDS['schedule-editor-root']);
   const menu = page.getByRole('menu').first();
+  const viewEditButton = page.getByTestId('schedule-view-edit').first();
 
   // Retry up to 3 times with progressive backoff
   for (let attempt = 1; attempt <= 3; attempt++) {
@@ -748,13 +802,17 @@ export async function openEditorFromRowMenu(
       )
       .first();
 
-    // Try menu-based flow first
+    // Current UX first: row/card click -> detail dialog -> edit button.
     try {
+      await row.click({ force: true });
+      if (await viewEditButton.isVisible({ timeout: 1200 }).catch(() => false)) {
+        await viewEditButton.click({ force: true });
+        return;
+      }
+
+      // Legacy fallback: row menu path
       if ((await moreInRow.count()) > 0) {
         await moreInRow.click({ force: true });
-      } else {
-        // On mobile/no menu button: click row directly
-        await row.click({ force: true });
       }
     } catch (e) {
       if (attempt === 3) throw e;

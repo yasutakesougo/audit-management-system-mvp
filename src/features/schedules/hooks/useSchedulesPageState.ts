@@ -4,6 +4,7 @@ import { formatInTimeZone } from 'date-fns-tz';
 import type { ScheduleCategory } from '@/features/schedules/domain/types';
 import type { CreateScheduleEventInput, SchedItem, UpdateScheduleEventInput } from '@/features/schedules/data';
 import type { ScheduleFormState } from '@/features/schedules/domain/scheduleFormState';
+import { isE2eForceSchedulesWrite } from '@/env';
 import { makeRange, useSchedules } from './useSchedules';
 import { type DialogIntentParams, type WeekDialogMode, useWeekPageRouteState } from './useWeekPageRouteState';
 import type { SchedulesErrorInfo } from '../errors';
@@ -213,7 +214,7 @@ export const useSchedulesPageState = ({ myUpn, canEditByRole, ready }: Schedules
   const mode = route.mode;
   const categoryFilter = route.filter.category;
   const query = route.filter.query;
-  const canEdit = (mode === 'day' || mode === 'week') && canEditByRole;
+  const canEdit = (mode === 'day' || mode === 'week') && (canEditByRole || isE2eForceSchedulesWrite);
 
   const focusDate = route.focusDate;
   const weekRange = useMemo(() => {

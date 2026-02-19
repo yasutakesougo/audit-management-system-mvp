@@ -67,6 +67,40 @@ const formatTime = (iso: string): string =>
     minute: '2-digit',
   }).format(new Date(iso));
 
+/**
+ * Extract date key (YYYY-MM-DD) in site timezone
+ * Fixes UTC offset bug: JST 07:00-08:59 schedules were appearing in previous day column
+ */
+const dayKeyInTz = (date: Date, tz = 'Asia/Tokyo'): string => {
+  return new Intl.DateTimeFormat('sv-SE', { timeZone: tz }).format(date);
+};
+
+/**
+ * Parse ISO-like string to Date, handling both UTC (with Z) and local formats
+ */
+const parseAsDate = (isoLike: string): Date => {
+  const t = Date.parse(isoLike);
+  return Number.isNaN(t) ? new Date(isoLike) : new Date(t);
+};
+
+/**
+ * Extract hour and minute in site timezone (for time slot filtering)
+ * Fixes display bug: UTC 21:00 was showing as 21:00 instead of JST 06:00
+ */
+const getTimeInTz = (isoString: string, tz = 'Asia/Tokyo'): { hour: number; minute: number } => {
+  const date = new Date(isoString);
+  const formatter = new Intl.DateTimeFormat('en-US', {
+    timeZone: tz,
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: false,
+  });
+  const parts = formatter.formatToParts(date);
+  const hour = parseInt(parts.find((p) => p.type === 'hour')?.value ?? '0', 10);
+  const minute = parseInt(parts.find((p) => p.type === 'minute')?.value ?? '0', 10);
+  return { hour, minute };
+};
+
 const _formatEventTimeRange = (startIso: string, endIso?: string | null): string => {
   const start = formatTime(startIso);
   if (!endIso) {
@@ -278,13 +312,35 @@ const WeekViewContent = ({ items, loading, onDayClick: _onDayClick, onTimeSlotCl
     weekDays.forEach((day) => {
       map.set(day.iso, []);
     });
+    
+    // Always log for debugging week view issues
+    console.log('[WeekView] 🔍 Grouping logic:', {
+      weekDays: weekDays.map(d => ({ iso: d.iso, label: d.label })),
+      itemsCount: items.length,
+      itemSamples: items.slice(0, 3).map(i => ({
+        id: i.id,
+        start: i.start,
+        parsed: parseAsDate(i.start).toISOString(),
+        dayKey: dayKeyInTz(parseAsDate(i.start)),
+      })),
+    });
+    
     items.forEach((item) => {
-      const key = item.start.slice(0, 10);
+      // Use JST date key instead of UTC slice to prevent wrong day column assignment
+      const key = dayKeyInTz(parseAsDate(item.start));
       if (!map.has(key)) {
         map.set(key, []);
       }
       map.get(key)!.push(item);
     });
+    
+    console.log('[WeekView] 🔍 Grouped result:', {
+      mapKeys: Array.from(map.keys()),
+      itemsByKey: Object.fromEntries(
+        Array.from(map.entries()).map(([k, v]) => [k, v.length])
+      ),
+    });
+    
     return map;
   }, [items, weekDays]);
 
@@ -370,12 +426,16 @@ const WeekViewContent = ({ items, loading, onDayClick: _onDayClick, onTimeSlotCl
             border: '1px solid rgba(15,23,42,0.08)',
             borderRadius: 8,
             backgroundColor: '#fff',
-            overflow: 'hidden',
+            maxHeight: 'calc(100vh - 280px)',
+            overflow: 'auto',
           }}
         >
           {/* Time Labels Header */}
           <div
             style={{
+              position: 'sticky',
+              top: 0,
+              zIndex: 10,
               gridColumn: 1,
               gridRow: '1 / span 1',
               padding: '8px 4px',
@@ -383,7 +443,9 @@ const WeekViewContent = ({ items, loading, onDayClick: _onDayClick, onTimeSlotCl
               fontSize: 11,
               fontWeight: 600,
               borderRight: '1px solid rgba(15,23,42,0.08)',
+              borderBottom: '1px solid rgba(15,23,42,0.08)',
               color: 'rgba(15,23,42,0.7)',
+              backgroundColor: '#fff',
             }}
           >
             時刻
@@ -392,6 +454,9 @@ const WeekViewContent = ({ items, loading, onDayClick: _onDayClick, onTimeSlotCl
             <div
               key={`header-${day.iso}`}
               style={{
+                position: 'sticky',
+                top: 0,
+                zIndex: 10,
                 gridColumn: dayIndex + 2,
                 gridRow: 1,
                 padding: '8px 4px',
@@ -400,7 +465,7 @@ const WeekViewContent = ({ items, loading, onDayClick: _onDayClick, onTimeSlotCl
                 fontWeight: 700,
                 borderRight: dayIndex < 6 ? '1px solid rgba(15,23,42,0.08)' : 'none',
                 borderBottom: '1px solid rgba(15,23,42,0.08)',
-                backgroundColor: day.iso === todayIso ? '#E3F2FD' : undefined,
+                backgroundColor: day.iso === todayIso ? '#E3F2FD' : '#fff',
               }}
             >
               <div>{day.label}</div>
@@ -418,6 +483,9 @@ const WeekViewContent = ({ items, loading, onDayClick: _onDayClick, onTimeSlotCl
                 {/* Time Label */}
                 <div
                   style={{
+                    position: 'sticky',
+                    left: 0,
+                    zIndex: 5,
                     gridColumn: 1,
                     gridRow: slotIndex + 2,
                     padding: '4px',
@@ -427,7 +495,7 @@ const WeekViewContent = ({ items, loading, onDayClick: _onDayClick, onTimeSlotCl
                     borderRight: '1px solid rgba(15,23,42,0.08)',
                     borderBottom: '1px solid rgba(15,23,42,0.08)',
                     color: 'rgba(15,23,42,0.6)',
-                    backgroundColor: isEvenSlot ? 'rgba(15,23,42,0.01)' : 'transparent',
+                    backgroundColor: isEvenSlot ? 'rgba(15,23,42,0.01)' : '#fff',
                     paddingRight: '6px',
                   }}
                 >
@@ -438,9 +506,8 @@ const WeekViewContent = ({ items, loading, onDayClick: _onDayClick, onTimeSlotCl
                 {weekDays.map((day, dayIndex) => {
                   const cellKey = `${day.iso}-${timeStr}`;
                   const cellItems = (groupedItems.get(day.iso) ?? []).filter((item) => {
-                    // Simple time filtering: check if event start time matches slot
-                    const itemStartHour = parseInt(item.start.slice(11, 13), 10);
-                    const itemStartMin = parseInt(item.start.slice(14, 16), 10);
+                    // Filter by time slot (JST timezone-aware)
+                    const { hour: itemStartHour, minute: itemStartMin } = getTimeInTz(item.start);
                     const [slotHour, slotMin] = timeStr.split(':').map(Number);
                     return itemStartHour === slotHour && itemStartMin === slotMin;
                   });
@@ -462,7 +529,7 @@ const WeekViewContent = ({ items, loading, onDayClick: _onDayClick, onTimeSlotCl
                       role="gridcell"
                       aria-rowindex={slotIndex + 2}
                       aria-colindex={dayIndex + 2}
-                      data-testid="schedules-week-gridcell"
+                      data-testid="schedules-week-slot"
                       data-day={day.iso}
                       data-time={timeStr}
                       onPointerUp={handlePointerUp}
@@ -500,28 +567,54 @@ const WeekViewContent = ({ items, loading, onDayClick: _onDayClick, onTimeSlotCl
                       }}
                     >
                       {cellItems.length > 0 && (
-                        <div
-                          style={{
-                            fontSize: 10,
-                            padding: '2px 4px',
-                            backgroundColor: 'rgba(59,130,246,0.2)',
-                            borderLeft: '3px solid rgb(59,130,246)',
-                            borderRadius: '2px',
-                            overflow: 'hidden',
-                            textOverflow: 'ellipsis',
-                            whiteSpace: 'nowrap',
-                            color: 'rgba(0,0,0,0.8)',
-                            position: 'relative',
-                            pointerEvents: 'none',
-                          }}
-                          title={cellItems.map(item => item.title).join('; ')}
-                        >
-                          {cellItems[0]?.title}
-                          {cellItems.length > 1 && (
-                            <span style={{ fontSize: 9, marginLeft: 2, opacity: 0.8 }}>
-                              +{cellItems.length - 1}
-                            </span>
-                          )}
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '2px', padding: '2px' }}>
+                          {cellItems.map((item, idx) => (
+                            <button
+                              key={item.id || idx}
+                              type="button"
+                              data-testid={TESTIDS.SCHEDULE_ITEM}
+                              data-schedule-id={item.id}
+                              data-id={item.id}
+                              onPointerDown={(e) => {
+                                e.preventDefault();
+                                e.stopPropagation();
+                              }}
+                              onPointerUp={(e) => {
+                                e.preventDefault();
+                                e.stopPropagation();
+                              }}
+                              onClick={(e) => {
+                                e.preventDefault();
+                                e.stopPropagation(); // Prevent bubbling to parent cell
+                                onItemSelect?.(item); // Open the specific item clicked
+                              }}
+                              style={{
+                                all: 'unset',
+                                display: 'block',
+                                width: '100%',
+                                fontSize: 10,
+                                padding: '2px 4px',
+                                backgroundColor: 'rgba(59,130,246,0.2)',
+                                borderLeft: '3px solid rgb(59,130,246)',
+                                borderRadius: '2px',
+                                overflow: 'hidden',
+                                textOverflow: 'ellipsis',
+                                whiteSpace: 'nowrap',
+                                color: 'rgba(0,0,0,0.8)',
+                                cursor: 'pointer',
+                                transition: 'background-color 0.2s',
+                              }}
+                              onMouseEnter={(e) => {
+                                e.currentTarget.style.backgroundColor = 'rgba(59,130,246,0.3)';
+                              }}
+                              onMouseLeave={(e) => {
+                                e.currentTarget.style.backgroundColor = 'rgba(59,130,246,0.2)';
+                              }}
+                              title={item.title}
+                            >
+                              {item.personName || item.title}
+                            </button>
+                          ))}
                         </div>
                       )}
                     </button>

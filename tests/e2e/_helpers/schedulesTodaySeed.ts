@@ -158,7 +158,9 @@ export async function seedSchedulesTodayForDemoAdapter(
 
   await page.addInitScript(
     ({ key, value }) => {
-      window.localStorage.setItem(key, value);
+      if (!window.localStorage.getItem(key)) {
+        window.localStorage.setItem(key, value);
+      }
     },
     { key: e2eKey, value: JSON.stringify(schedItems) },
   );

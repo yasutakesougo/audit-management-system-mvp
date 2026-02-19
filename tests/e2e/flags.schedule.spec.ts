@@ -3,6 +3,9 @@ import { expect, test } from '@playwright/test';
 import { waitForScheduleReady } from './utils/wait';
 
 const scheduleNavLabel = /スケジュール/;
+const isForcedSchedulesOn =
+  process.env.VITE_FEATURE_SCHEDULES === '1' ||
+  process.env.VITE_E2E_FORCE_SCHEDULES_WRITE === '1';
 
 test.beforeEach(async ({ page }) => {
   await page.addInitScript(() => {
@@ -24,6 +27,7 @@ test.beforeEach(async ({ page }) => {
 });
 
 test.describe('schedule feature flag', () => {
+  test.skip(isForcedSchedulesOn, 'schedules feature is forced by env in this run');
   test('hides schedule navigation and redirects deep links when flag disabled', async ({ page }) => {
     await page.goto('/', { waitUntil: 'domcontentloaded' });
     await page.waitForLoadState('networkidle', { timeout: 5_000 });

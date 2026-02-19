@@ -235,75 +235,85 @@ const normalizeStatusFromSp = (raw: unknown): ScheduleStatus => {
  * Returns null if required datetime fields are missing.
  */
 export function mapSpRowToSchedule(row: SpScheduleRow): SchedItem | null {
-  const start = pickStart(row);
-  const end = pickEnd(row);
-  if (!start || !end) return null;
+  try {
+    const start = pickStart(row);
+    const end = pickEnd(row);
+    if (!start || !end) return null;
 
-  const idRaw = row.Id;
-  const id =
-    typeof idRaw === 'number'
-      ? String(idRaw)
-      : typeof idRaw === 'string' && idRaw.trim()
-        ? idRaw.trim()
-        : `${start}-${end}`;
+    const idRaw = row.Id;
+    const id =
+      typeof idRaw === 'number'
+        ? String(idRaw)
+        : typeof idRaw === 'string' && idRaw.trim()
+          ? idRaw.trim()
+          : `${start}-${end}`;
 
-  // Phase 2-0: extract etag from __metadata.id or generate fallback
-  const etagValue = row.__metadata?.id ? `"${row.__metadata.id}"` : `"sp-${id}"`;
+    // Phase 2-0: extract etag from __metadata.id or generate fallback
+    const etagValue = row.__metadata?.id ? `"${row.__metadata.id}"` : `"sp-${id}"`;
 
-  const titleField = row.Title;
-  const providedTitle = typeof titleField === 'string' && titleField.trim() ? titleField.trim() : undefined;
-  const title = providedTitle ?? '予定';
-  const userCodeCandidates = [pickUserCode(row)];
-  let normalizedUserId: string | undefined;
-  for (const candidate of userCodeCandidates) {
-    const normalized = normalizeUserId(candidate);
-    if (normalized) {
-      normalizedUserId = normalized;
-      break;
+    const titleField = row.Title;
+    const providedTitle = typeof titleField === 'string' && titleField.trim() ? titleField.trim() : undefined;
+    const title = providedTitle ?? '予定';
+    const userCodeCandidates = [pickUserCode(row)];
+    let normalizedUserId: string | undefined;
+    for (const candidate of userCodeCandidates) {
+      const normalized = normalizeUserId(candidate);
+      if (normalized) {
+        normalizedUserId = normalized;
+        break;
+      }
     }
+    const userLookupIds = coerceLookupIds(row.TargetUserId);
+    if (!normalizedUserId && userLookupIds.length) {
+      normalizedUserId = normalizeUserId(userLookupIds[0]);
+    }
+    const assignedStaffId = coerceIdString(row.AssignedStaff);
+    const vehicleId = coerceIdString(row.Vehicle);
+
+    const category = inferCategory(row);
+
+    const rawServiceType = coerceString(row.ServiceType) ?? coerceString((row as { cr014_serviceType?: unknown }).cr014_serviceType);
+    const serviceTypeKey = normalizeServiceType(rawServiceType);
+    const item: SchedItem = {
+      id,
+      title,
+      start,
+      end,
+      category,
+      allDay: false,
+      userId: normalizedUserId,
+      serviceType: serviceTypeKey === 'unset' ? undefined : serviceTypeKey,
+      locationName: coerceString(row.LocationName) ?? coerceString(row.Location), // Support both LocationName and Location
+      notes: coerceString(row.Notes),
+      acceptedOn: coerceIso(row.AcceptedOn),
+      acceptedBy: coerceString(row.AcceptedBy),
+      acceptedNote: coerceString(row.AcceptedNote) ?? null,
+      personName: undefined,
+      userLookupId: userLookupIds[0],
+      assignedStaffId: assignedStaffId ?? undefined,
+      vehicleId: vehicleId ?? undefined,
+      status: normalizeStatusFromSp(row.Status),
+      statusReason: coerceString(row.StatusReason) ?? null,
+      entryHash: coerceString(row.EntryHash),
+      createdAt: coerceIso(row.Created),
+      updatedAt: coerceIso(row.Modified),
+      // Phase 1: owner/visibility
+      ownerUserId: coerceString(row.OwnerUserId),
+      visibility: coerceString(row.Visibility) as SchedItem['visibility'],
+      // Phase 2-0: etag for conflict detection
+      etag: etagValue,
+    } satisfies SchedItem;
+
+    // Keep the original SharePoint title when provided; fall back to person name if missing.
+
+    return item;
+  } catch (err) {
+    console.error('[mapSpRowToSchedule] 🔴 MAPPER_FAILED', {
+      error: err instanceof Error ? { message: err.message, stack: err.stack } : err,
+      rowId: row?.Id,
+      rowKeys: Object.keys(row ?? {}),
+      rowJson: JSON.stringify(row, null, 2),
+    });
+    throw err;
   }
-  const userLookupIds = coerceLookupIds(row.TargetUserId);
-  if (!normalizedUserId && userLookupIds.length) {
-    normalizedUserId = normalizeUserId(userLookupIds[0]);
-  }
-  const assignedStaffId = coerceIdString(row.AssignedStaff);
-  const vehicleId = coerceIdString(row.Vehicle);
-
-  const category = inferCategory(row);
-
-  const rawServiceType = coerceString(row.ServiceType) ?? coerceString((row as { cr014_serviceType?: unknown }).cr014_serviceType);
-  const serviceTypeKey = normalizeServiceType(rawServiceType);
-  const item: SchedItem = {
-    id,
-    title,
-    start,
-    end,
-    category,
-    allDay: false,
-    userId: normalizedUserId,
-    serviceType: serviceTypeKey === 'unset' ? undefined : serviceTypeKey,
-    locationName: coerceString(row.LocationName) ?? coerceString(row.Location), // Support both LocationName and Location
-    notes: coerceString(row.Notes),
-    acceptedOn: coerceIso(row.AcceptedOn),
-    acceptedBy: coerceString(row.AcceptedBy),
-    acceptedNote: coerceString(row.AcceptedNote) ?? null,
-    personName: undefined,
-    userLookupId: userLookupIds[0],
-    assignedStaffId: assignedStaffId ?? undefined,
-    vehicleId: vehicleId ?? undefined,
-    status: normalizeStatusFromSp(row.Status),
-    statusReason: coerceString(row.StatusReason) ?? null,
-    entryHash: coerceString(row.EntryHash),
-    createdAt: coerceIso(row.Created),
-    updatedAt: coerceIso(row.Modified),
-    // Phase 1: owner/visibility
-    ownerUserId: coerceString(row.OwnerUserId),
-    visibility: coerceString(row.Visibility) as SchedItem['visibility'],
-    // Phase 2-0: etag for conflict detection
-    etag: etagValue,
-  } satisfies SchedItem;
-
-  // Keep the original SharePoint title when provided; fall back to person name if missing.
-
-  return item;
 }
