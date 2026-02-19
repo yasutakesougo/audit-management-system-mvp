@@ -575,6 +575,7 @@ const WeekViewContent = ({ items, loading, onDayClick: _onDayClick, onTimeSlotCl
                               data-testid={TESTIDS.SCHEDULE_ITEM}
                               data-schedule-id={item.id}
                               data-id={item.id}
+                              data-category={item.category ?? 'Org'}
                               onPointerDown={(e) => {
                                 e.preventDefault();
                                 e.stopPropagation();
@@ -590,7 +591,9 @@ const WeekViewContent = ({ items, loading, onDayClick: _onDayClick, onTimeSlotCl
                               }}
                               style={{
                                 all: 'unset',
-                                display: 'block',
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: '4px',
                                 width: '100%',
                                 fontSize: 10,
                                 padding: '2px 4px',
@@ -598,8 +601,6 @@ const WeekViewContent = ({ items, loading, onDayClick: _onDayClick, onTimeSlotCl
                                 borderLeft: '3px solid rgb(59,130,246)',
                                 borderRadius: '2px',
                                 overflow: 'hidden',
-                                textOverflow: 'ellipsis',
-                                whiteSpace: 'nowrap',
                                 color: 'rgba(0,0,0,0.8)',
                                 cursor: 'pointer',
                                 transition: 'background-color 0.2s',
@@ -612,7 +613,29 @@ const WeekViewContent = ({ items, loading, onDayClick: _onDayClick, onTimeSlotCl
                               }}
                               title={item.title}
                             >
-                              {item.personName || item.title}
+                              <span style={{ flex: 1, textOverflow: 'ellipsis', whiteSpace: 'nowrap', overflow: 'hidden' }}>
+                                {item.personName || item.title}
+                              </span>
+                              {item.baseShiftWarnings && item.baseShiftWarnings.length > 0 && (
+                                <div
+                                  data-testid="schedule-warning-indicator"
+                                  title={`Shift warning: ${item.baseShiftWarnings.map(w => w.staffName).join(', ')}`}
+                                  style={{
+                                    flexShrink: 0,
+                                    fontSize: 9,
+                                    padding: '0 2px',
+                                    borderRadius: 2,
+                                    background: '#f57c00',
+                                    color: '#fff',
+                                    fontWeight: 700,
+                                    minWidth: '16px',
+                                    textAlign: 'center',
+                                    lineHeight: 1,
+                                  }}
+                                >
+                                  ⚠
+                                </div>
+                              )}
                             </button>
                           ))}
                         </div>
