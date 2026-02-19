@@ -169,12 +169,15 @@ export function resolveIsDev(): boolean {
 export const isDev = resolveIsDev();
 // 🔧 命名統一：環境フラグを定数化
 export const isE2E = getFlag('VITE_E2E', false);
+export const isE2eMsalMock = getFlag('VITE_E2E_MSAL_MOCK', false);
 export const isDemo = getFlag('VITE_DEMO', false);
 /**
  * 書き込み操作の可否フラグ（デフォルト: true）
  * 本番環境で安全に read-only モードにする際に使用
  */
 export const isWriteEnabled = getFlag('VITE_WRITE_ENABLED', true);
+export const isE2eForceSchedulesWrite =
+  isE2E && isE2eMsalMock && getFlag('VITE_E2E_FORCE_SCHEDULES_WRITE', false);
 /**
  * Clear the cached env after runtime env is loaded.
  * Call this after window.__ENV__ is updated to ensure fresh reads.

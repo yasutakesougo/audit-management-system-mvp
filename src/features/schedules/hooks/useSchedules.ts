@@ -2,13 +2,14 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { type DateRange, type SchedItem, type UpdateScheduleEventInput } from '../data';
 import { getSchedulesListTitle } from '../data/spSchema';
 import { useSchedulesPort } from '../data/context';
+import { makeMockScheduleCreator } from '../data';
 import { useAuth } from '@/auth/useAuth';
 import { authDiagnostics } from '@/features/auth/diagnostics';
 import { createSpClient, ensureConfig } from '@/lib/spClient';
 import type { InlineScheduleDraft } from '../data/inlineScheduleDraft';
 import type { ResultError } from '@/shared/result';
 import { toSafeError } from '@/lib/errors';
-import { isWriteEnabled } from '@/env';
+import { isE2eForceSchedulesWrite, isWriteEnabled } from '@/env';
 import { classifySchedulesError, shouldFallbackToReadOnly, type SchedulesErrorInfo } from '../errors';
 
 export type { InlineScheduleDraft } from '../data/inlineScheduleDraft';
@@ -157,20 +158,47 @@ export function useSchedules(range: DateRange): UseSchedulesResult {
 
   const create = async (draft: InlineScheduleDraft) => {
     if (!port.create) {
-      throw new Error('Schedule port does not support create');
+      if (!isE2eForceSchedulesWrite) {
+        throw new Error('Schedule port does not support create');
+      }
     }
     if (!draft.sourceInput) {
       throw new Error('Schedule draft is missing sourceInput');
     }
-    const res = await port.create(draft.sourceInput);
-    if (!res.isOk) {
-      setLastError(res.error);
-      console.warn('[schedules] create failed', res.error);
+    const fallbackCreate = isE2eForceSchedulesWrite ? makeMockScheduleCreator() : null;
+    const res = isE2eForceSchedulesWrite && fallbackCreate
+      ? await fallbackCreate(draft.sourceInput)
+      : port.create
+        ? await port.create(draft.sourceInput)
+        : fallbackCreate
+          ? await fallbackCreate(draft.sourceInput)
+          : undefined;
+
+    const finalRes = res;
+
+    if (!finalRes) {
+      throw new Error('Schedule create did not return a result');
+    }
+    if (!finalRes.isOk) {
+      setLastError(finalRes.error);
+      console.warn('[schedules] create failed', finalRes.error);
       return;
     }
     setLastError(null);
     lastMutationTsRef.current = Date.now();
-    setItems((prev) => [...prev, res.value]);
+    setItems((prev) => [...prev, finalRes.value]);
+
+    if (isE2eForceSchedulesWrite && typeof window !== 'undefined') {
+      try {
+        const storageKey = 'e2e:schedules.v1';
+        const raw = window.localStorage.getItem(storageKey);
+        const parsed = raw ? JSON.parse(raw) : [];
+        const next = Array.isArray(parsed) ? [...parsed, finalRes.value] : [finalRes.value];
+        window.localStorage.setItem(storageKey, JSON.stringify(next));
+      } catch (error) {
+        console.warn('[schedules] E2E localStorage write failed', error);
+      }
+    }
   };
 
   const update = async (input: UpdateScheduleEventInput) => {
@@ -222,6 +250,9 @@ export function useSchedules(range: DateRange): UseSchedulesResult {
 
   // Determine read-only reason
   const readOnlyReason = useMemo((): SchedulesErrorInfo | undefined => {
+    if (isE2eForceSchedulesWrite) {
+      return undefined;
+    }
     // If write is disabled via env flag
     if (!isWriteEnabled) {
       return {
@@ -257,9 +288,9 @@ export function useSchedules(range: DateRange): UseSchedulesResult {
     }
 
     return undefined;
-  }, [getListReadyState, lastError]);
+  }, [getListReadyState, isE2eForceSchedulesWrite, lastError]);
 
-  const canWrite = !readOnlyReason;
+  const canWrite = isE2eForceSchedulesWrite ? true : !readOnlyReason;
 
   const returnValue = {
     items,

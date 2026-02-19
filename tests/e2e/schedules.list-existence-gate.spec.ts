@@ -1,6 +1,9 @@
 import { test, expect } from '@playwright/test';
 
+const skipSp = process.env.VITE_SKIP_SHAREPOINT === '1' || process.env.VITE_FEATURE_SCHEDULES_SP === '0';
+
 test.describe('Schedules: list existence gate', () => {
+  test.skip(skipSp, 'SharePoint/SP disabled in this run');
   test('renders schedules week view successfully (tokenReady + listReady gate active)', async ({
     page,
   }) => {

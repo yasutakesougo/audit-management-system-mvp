@@ -9,8 +9,9 @@ import { seedSchedulesToday, seedSchedulesTodayForDemoAdapter } from './schedule
 const FEATURE_ENV: Record<string, string> = {
   VITE_E2E: '1',
   VITE_E2E_MSAL_MOCK: '1',
+  VITE_E2E_FORCE_SCHEDULES_WRITE: process.env.VITE_E2E_FORCE_SCHEDULES_WRITE ?? '0',
   VITE_SKIP_LOGIN: '1',
-  VITE_SKIP_SHAREPOINT: '0',
+  VITE_SKIP_SHAREPOINT: process.env.VITE_SKIP_SHAREPOINT ?? '0',
   VITE_MSAL_CLIENT_ID: 'e2e-mock-client-id-12345678',
   VITE_MSAL_TENANT_ID: 'common',
   VITE_FEATURE_SCHEDULES: '1',
@@ -67,6 +68,7 @@ export type ScheduleBootOptions = {
   envOverrides?: Record<string, string>;
   storage?: Record<string, string>;
   storageOverrides?: Record<string, string>;
+  resetLocalStorage?: boolean;
   sharePoint?: Omit<SetupSharePointOptions, 'lists'> & {
     lists?: ListConfigArray;
     extraLists?: ListConfigArray;
@@ -123,6 +125,7 @@ export async function bootSchedule(page: Page, options: ScheduleBootOptions = {}
   await setupPlaywrightEnv(page, {
     envOverrides,
     storageOverrides,
+    resetLocalStorage: options.resetLocalStorage,
   });
 
   if (ensureList) {

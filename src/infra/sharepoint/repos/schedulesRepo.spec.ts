@@ -5,6 +5,7 @@ import { useSP } from '@/lib/spClient';
 // Mock env.ts to disable writes
 vi.mock('@/env', () => ({
   isWriteEnabled: false,
+  getRuntimeEnv: () => ({}),
 }));
 
 // Import after mock to ensure mocked value is used

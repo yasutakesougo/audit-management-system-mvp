@@ -14,7 +14,10 @@ import { expectLocatorVisibleBestEffort, expectTestIdVisibleBestEffort } from '.
  * For real SharePoint validation, run manual smoke test checklist.
  */
 
+const skipSp = process.env.VITE_SKIP_SHAREPOINT === '1' || process.env.VITE_FEATURE_SCHEDULES_SP === '0';
+
 test.describe('Schedules SharePoint Integration Smoke Test', () => {
+  test.skip(skipSp, 'SharePoint/SP disabled in this run');
   test.beforeEach(async ({ page }) => {
     // Navigate to schedules week page with day tab
     // Note: /schedules/day redirects to /schedules/week?tab=day&date=YYYY-MM-DD

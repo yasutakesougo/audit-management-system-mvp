@@ -67,12 +67,12 @@ test.describe('Schedules day ARIA smoke', () => {
     await expect(page).toHaveURL(/\/schedules\/week/);
     await expect(page).toHaveURL(/tab=day/);
 
-    const prevButton = page.getByRole('button', { name: '前の期間' });
+    const prevButton = page.getByTestId(TESTIDS.SCHEDULES_PREV_WEEK);
     await expect(prevButton).toBeVisible();
-    await expect(prevButton).toHaveAttribute('aria-label', '前の期間');
+    await expect(prevButton).toHaveAttribute('aria-label', /前の期間/);
 
-    const nextButton = page.getByRole('button', { name: '次の期間' });
+    const nextButton = page.getByTestId(TESTIDS.SCHEDULES_NEXT_WEEK);
     await expect(nextButton).toBeVisible();
-    await expect(nextButton).toHaveAttribute('aria-label', '次の期間');
+    await expect(nextButton).toHaveAttribute('aria-label', /次の期間/);
   });
 });

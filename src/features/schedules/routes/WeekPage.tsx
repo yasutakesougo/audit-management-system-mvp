@@ -10,6 +10,7 @@ import { MASTER_SCHEDULE_TITLE_JA } from '@/features/schedules/constants';
 import type { ScheduleCategory } from '@/features/schedules/domain/types';
 import { scheduleCategoryLabels } from '@/features/schedules/domain/categoryLabels';
 import ScheduleCreateDialog from './ScheduleCreateDialog';
+import ScheduleViewDialog from './ScheduleViewDialog';
 import SchedulesFilterResponsive from '@/features/schedules/components/SchedulesFilterResponsive';
 import SchedulesHeader from '@/features/schedules/components/SchedulesHeader';
 import type { CreateScheduleEventInput, SchedItem, ScheduleServiceType } from '@/features/schedules/data';
@@ -89,6 +90,9 @@ export default function WeekPage() {
   } = useWeekPageUiState();
   const announce = useAnnounce();
   
+  // View Dialog state (for viewing/editing schedule details)
+  const [viewItem, setViewItem] = useState<SchedItem | null>(null);
+  
   // Legacy ?tab= redirect (互換性のため) - DISABLED to prevent infinite redirect loop
   // The tab param is now handled directly in the mode calculation below
   // No need to redirect between routes; WeekPage handles all tabs internally
@@ -119,6 +123,9 @@ export default function WeekPage() {
   const fabRef = useRef<HTMLButtonElement | null>(null);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [dialogInitialValues, setDialogInitialValues] = useState<ScheduleEditDialogValues | null>(null);
+  
+  // Suppress route-dialog when view/inline edit is active (防波堤: 詳細/編集中はURL-dialogを開かせない)
+  const suppressRouteDialog = Boolean(viewItem) || Boolean(dialogInitialValues);
   const [dayLane, setDayLane] = useState<ScheduleCategory | null>(null);
   const showFab = !isDesktopSize && !isSchedulesView; // Hide FAB in /schedules views
   const compact = isTabletSize && isLandscape;
@@ -250,9 +257,19 @@ export default function WeekPage() {
     [canEdit, categoryFilter, setDialogParams],
   );
 
-  const handleWeekEventClick = useCallback((item: SchedItem) => {
-    // Authorization check: reception/admin OR assignee (Day view only)
-    if (mode === 'day' && ready) {
+  // View dialog - open when clicking a schedule (for viewing details)
+  const handleViewClick = useCallback((item: SchedItem) => {
+    setViewItem(item);
+  }, []);
+
+  // View dialog edit - transition to edit dialog
+  const handleViewEdit = useCallback((item: SchedItem) => {
+    // 1. Close other dialogs first
+    setViewItem(null);
+    clearDialogParams();
+    
+    // 2. Authorization check (day/week共通)
+    if (ready) {
       const assignedNormalized = (item.assignedTo ?? '').trim().toLowerCase();
       const hasAssignee = Boolean(assignedNormalized);
       const myUpnNormalized = (myUpn ?? '').trim().toLowerCase();
@@ -270,22 +287,30 @@ export default function WeekPage() {
         return;
       }
     }
-
+    
+    // 3. Prepare dialog values (JST基準で統一)
     const category = (item.category as ScheduleCategory) ?? 'User';
     setDayLane(category);
     const serviceType = (item.serviceType as ScheduleServiceType) ?? 'normal';
     const startLocal = formatScheduleLocalInput(item.start, DEFAULT_START_TIME, schedulesTz);
     const endLocal = formatScheduleLocalInput(item.end, DEFAULT_END_TIME, schedulesTz);
-    const dateIso = extractDatePart(item.start) || toDateIso(new Date());
+    const dateIso = extractDatePart(startLocal) || toDateIso(new Date());
     setActiveDateIso(dateIso);
+    
+    // 4. Set values first, then open
+    const resolvedUserId =
+      item.userId?.trim() ||
+      (typeof item.userLookupId === 'string' ? item.userLookupId.trim() : String(item.userLookupId ?? '')).trim();
+    const resolvedTitle = item.title?.trim() || (item.personName?.trim() ? `${item.personName.trim()}の予定` : '');
+
     setDialogInitialValues({
       id: item.id,
-      title: item.title ?? '',
+      title: resolvedTitle,
       category,
       startLocal,
       endLocal,
       serviceType,
-      userId: item.userId ?? '',
+      userId: resolvedUserId,
       assignedStaffId: item.assignedStaffId ?? '',
       locationName: item.locationName ?? item.location ?? '',
       notes: item.notes ?? '',
@@ -294,9 +319,29 @@ export default function WeekPage() {
       statusReason: item.statusReason ?? '',
     });
     setDialogOpen(true);
-  }, [mode, ready, canEditByRole, myUpn, showSnack]);
+  }, [mode, ready, canEditByRole, myUpn, showSnack, schedulesTz, clearDialogParams]);
+
+  // View dialog delete - remove schedule
+  const handleViewDelete = useCallback(
+    async (id: string) => {
+      if (isInlineDeleting) return;
+      setIsInlineDeleting(true);
+      try {
+        await remove(id);
+        showSnack('success', '予定を削除しました');
+        setViewItem(null);
+      } catch (e) {
+        showSnack('error', '削除に失敗しました（権限・認証・ネットワークを確認）');
+        throw e;
+      } finally {
+        setIsInlineDeleting(false);
+      }
+    },
+    [remove, showSnack, isInlineDeleting],
+  );
 
   const clearInlineSelection = useCallback(() => {
+
     setDialogOpen(false);
     setDialogInitialValues(null);
   }, []);
@@ -672,7 +717,7 @@ export default function WeekPage() {
                 onDayClick={handleDayClick}
                 onTimeSlotClick={handleTimeSlotClick}
                 activeDateIso={resolvedActiveDateIso}
-                onItemSelect={handleWeekEventClick}
+                onItemSelect={handleViewClick}
                 highlightId={highlightId}
                 compact={compact}
               />
@@ -759,10 +804,9 @@ export default function WeekPage() {
           isSubmitting={isInlineSaving}
           isDeleting={isInlineDeleting}
         />
-      ) : null}
-      {scheduleDialogModeProps.mode === 'edit' ? (
+      ) : scheduleDialogModeProps.mode === 'edit' ? (
         <ScheduleCreateDialog
-          open={createDialogOpen}
+          open={!suppressRouteDialog && createDialogOpen}
           mode="edit"
           eventId={scheduleDialogModeProps.eventId}
           initialOverride={scheduleDialogModeProps.initialOverride}
@@ -776,7 +820,7 @@ export default function WeekPage() {
         />
       ) : (
         <ScheduleCreateDialog
-          open={createDialogOpen}
+          open={!suppressRouteDialog && createDialogOpen}
           mode="create"
           initialOverride={scheduleDialogModeProps.initialOverride}
           onClose={handleCreateDialogClose}
@@ -788,6 +832,16 @@ export default function WeekPage() {
           defaultUser={defaultScheduleUser ?? undefined}
         />
       )}
+
+      {/* View Dialog - read-only view with edit/delete buttons */}
+      <ScheduleViewDialog
+        open={Boolean(viewItem)}
+        item={viewItem}
+        onClose={() => setViewItem(null)}
+        onEdit={handleViewEdit}
+        onDelete={handleViewDelete}
+        isDeleting={isInlineDeleting}
+      />
 
       <Snackbar
         open={snack.open}

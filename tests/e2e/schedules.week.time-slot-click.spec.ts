@@ -1,11 +1,29 @@
 import { test, expect } from '@playwright/test';
+import { bootSchedule } from './_helpers/bootSchedule';
+import { gotoWeek } from './utils/scheduleNav';
+import { getScheduleWriteState, waitForWeekViewReady } from './utils/scheduleActions';
 
 test.describe('Schedule Week: Time Slot Click Opens Dialog', () => {
+  let canWrite = false;
+  let writeReason = 'unknown';
+
   test.beforeEach(async ({ page }) => {
-    await page.goto('/schedules/week');
+    const today = new Date();
+    await bootSchedule(page, {
+      seed: { schedulesToday: true },
+      route: '/schedules/week?tab=week',
+    });
+    await gotoWeek(page, today);
+    await waitForWeekViewReady(page);
+
+    const state = await getScheduleWriteState(page);
+    canWrite = state.canWrite;
+    writeReason = state.reason;
   });
 
   test('clicking time slot cell opens CreateScheduleDialog with time mode', async ({ page }) => {
+    test.skip(!canWrite, `read-only mode: ${writeReason}`);
+
     // 1. Week grid is visible
     const grid = page.getByTestId('schedules-week-grid');
     await expect(grid).toBeVisible();
@@ -52,6 +70,8 @@ test.describe('Schedule Week: Time Slot Click Opens Dialog', () => {
   });
 
   test('multiple clicks on different slots work independently', async ({ page }) => {
+    test.skip(!canWrite, `read-only mode: ${writeReason}`);
+
     const slots = page.locator('[data-testid="schedules-week-slot"]');
     
     // Click first slot
