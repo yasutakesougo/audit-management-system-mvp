@@ -2,7 +2,7 @@ import { test, expect } from '@playwright/test';
 import { TESTIDS } from '../../src/testids';
 import { bootSchedule } from './_helpers/bootSchedule';
 import { gotoWeek } from './utils/scheduleNav';
-import { getQuickDialogSaveButton, waitForWeekViewReady } from './utils/scheduleActions';
+import { waitForWeekViewReady } from './utils/scheduleActions';
 
 const openCreateDialog = async (page: Parameters<typeof test.beforeEach>[0]['page']) => {
   const headerCreate = page.getByTestId(TESTIDS.SCHEDULES_HEADER_CREATE);
@@ -42,6 +42,25 @@ const openCreateDialog = async (page: Parameters<typeof test.beforeEach>[0]['pag
 test.describe('Schedules Persistence', () => {
   let testTitle: string;
   let isWriteEnabled: boolean;
+  let isForceWrite: boolean;
+
+  const readStoredCount = async (page: Parameters<typeof test.beforeEach>[0]['page']): Promise<number> =>
+    page.evaluate(() => {
+      const raw = window.localStorage.getItem('e2e:schedules.v1');
+      const rows = raw ? (JSON.parse(raw) as unknown[]) : [];
+      return Array.isArray(rows) ? rows.length : 0;
+    });
+
+  const saveFromCreateDialog = async (page: Parameters<typeof test.beforeEach>[0]['page']) => {
+    const dialog = page
+      .getByTestId(TESTIDS['schedule-create-dialog'])
+      .filter({ has: page.getByTestId(TESTIDS['schedule-create-start']) })
+      .last();
+    const saveButton = dialog.getByTestId(TESTIDS['schedule-create-save']).first();
+    await expect(saveButton).toBeVisible({ timeout: 3000 });
+    await expect(saveButton).toBeEnabled({ timeout: 5000 });
+    await saveButton.click();
+  };
 
   test.beforeEach(async ({ page }) => {
     // Generate unique test title for this run
@@ -56,12 +75,12 @@ test.describe('Schedules Persistence', () => {
     await gotoWeek(page, today);
     await waitForWeekViewReady(page);
 
-    const isE2eForceWrite = await page.evaluate(() => {
+    isForceWrite = await page.evaluate(() => {
       const env = (window as typeof window & { __ENV__?: Record<string, string> }).__ENV__ ?? {};
       return String(env.VITE_E2E_FORCE_SCHEDULES_WRITE) === '1';
     });
 
-    if (isE2eForceWrite) {
+    if (isForceWrite) {
       isWriteEnabled = true;
       return;
     }
@@ -93,6 +112,8 @@ test.describe('Schedules Persistence', () => {
       return;
     }
 
+    const beforeStoredCount = isForceWrite ? await readStoredCount(page) : 0;
+
     // Write enabled: proceed with creation
     await openCreateDialog(page);
 
@@ -114,15 +135,16 @@ test.describe('Schedules Persistence', () => {
     const staffIdInput = page.getByTestId(TESTIDS['schedule-create-staff-id']).first();
     await staffIdInput.fill('1');
 
-    const { dialog, inDialog, global } = getQuickDialogSaveButton(page);
-    const saveButton = (await inDialog.count()) > 0 ? inDialog : global;
-    await expect(saveButton).toBeVisible({ timeout: 3000 });
-    await saveButton.click();
-    await expect(dialog).toBeHidden({ timeout: 10_000 });
+    await saveFromCreateDialog(page);
 
-    // Wait for dialog to close
-    await page.waitForSelector('[role="dialog"]', { state: 'hidden', timeout: 5000 }).catch(() => {});
-    await page.waitForTimeout(1000);
+    if (isForceWrite) {
+      await expect
+        .poll(async () => {
+          const current = await readStoredCount(page);
+          return current > beforeStoredCount;
+        }, { timeout: 10_000 })
+        .toBe(true);
+    }
 
     // Verify the created schedule appears in the week view
     const scheduleItem = page.locator(`text="${testTitle}"`).first();
@@ -135,6 +157,8 @@ test.describe('Schedules Persistence', () => {
       test.skip(true, 'Write disabled in this environment');
       return;
     }
+
+    const beforeStoredCount = isForceWrite ? await readStoredCount(page) : 0;
 
     // First, create a schedule (same as previous test)
     await openCreateDialog(page);
@@ -154,12 +178,16 @@ test.describe('Schedules Persistence', () => {
     const staffIdInput = page.getByTestId(TESTIDS['schedule-create-staff-id']).first();
     await staffIdInput.fill('1');
 
-    const { dialog, inDialog, global } = getQuickDialogSaveButton(page);
-    const saveButton = (await inDialog.count()) > 0 ? inDialog : global;
-    await saveButton.click();
-    await expect(dialog).toBeHidden({ timeout: 10_000 });
-    await page.waitForSelector('[role="dialog"]', { state: 'hidden', timeout: 5000 }).catch(() => {});
-    await page.waitForTimeout(1000);
+    await saveFromCreateDialog(page);
+
+    if (isForceWrite) {
+      await expect
+        .poll(async () => {
+          const current = await readStoredCount(page);
+          return current > beforeStoredCount;
+        }, { timeout: 10_000 })
+        .toBe(true);
+    }
 
     // Verify it appears before reload
     const scheduleBeforeReload = page.locator(`text="${testTitle}"`).first();
