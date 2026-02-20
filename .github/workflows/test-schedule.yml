@@ -82,7 +82,6 @@ jobs:
     name: e2e-schedules-sp-smoke (optional)
     runs-on: ubuntu-latest
     continue-on-error: true
-    if: ${{ secrets.VITE_SP_RESOURCE && secrets.VITE_SP_SITE_RELATIVE }}
     env:
       VITE_E2E: "1"
       VITE_E2E_MSAL_MOCK: "1"
@@ -132,6 +131,7 @@ jobs:
           tail -n 100 vite-dev.log || true
           exit 1
       - name: E2E (Schedules SP smoke)
+        if: ${{ env.VITE_SP_RESOURCE != '' }}
         env:
           PLAYWRIGHT_SKIP_BUILD: "1"
           PLAYWRIGHT_WEB_SERVER_URL: "http://127.0.0.1:5173"
