@@ -199,25 +199,34 @@ export default function WeekPage() {
     if (dayLane) {
       params.set('lane', dayLane);
     }
+    if (categoryFilter !== 'All') {
+      params.set('cat', categoryFilter);
+    }
     if (orgParam !== 'all') {
       params.set('org', orgParam);
     }
     return `/schedules/day?${params.toString()}`;
-  }, [dayLane, orgParam, resolvedActiveDateIso]);
+  }, [categoryFilter, dayLane, orgParam, resolvedActiveDateIso]);
   const weekViewHref = useMemo(() => {
     const params = new URLSearchParams({ date: resolvedActiveDateIso });
+    if (categoryFilter !== 'All') {
+      params.set('cat', categoryFilter);
+    }
     if (orgParam !== 'all') {
       params.set('org', orgParam);
     }
     return `/schedules/week?${params.toString()}`;
-  }, [orgParam, resolvedActiveDateIso]);
+  }, [categoryFilter, orgParam, resolvedActiveDateIso]);
   const monthViewHref = useMemo(() => {
     const params = new URLSearchParams({ date: resolvedActiveDateIso });
+    if (categoryFilter !== 'All') {
+      params.set('cat', categoryFilter);
+    }
     if (orgParam !== 'all') {
       params.set('org', orgParam);
     }
     return `/schedules/month?${params.toString()}`;
-  }, [orgParam, resolvedActiveDateIso]);
+  }, [categoryFilter, orgParam, resolvedActiveDateIso]);
   const activeDayRange = useMemo(() => {
     const start = new Date(`${resolvedActiveDateIso}T00:00:00`);
     const end = new Date(start);

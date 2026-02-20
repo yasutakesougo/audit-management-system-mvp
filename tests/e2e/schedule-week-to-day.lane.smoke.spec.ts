@@ -45,17 +45,22 @@ test.describe('Schedule week -> day lane', () => {
     await gotoScheduleWeek(page, targetDate);
     await waitForWeekViewReady(page);
 
-    const itemButton = page.getByRole('button', { name: /Org lane smoke/ }).first();
-    await expect(itemButton).toBeVisible();
-    await itemButton.click();
+    await expect
+      .poll(async () => {
+        const weekCategorySelect = await ensureFilterVisible(page);
+        await weekCategorySelect.selectOption('Org').catch(() => undefined);
+        return weekCategorySelect.inputValue().catch(() => '');
+      }, { timeout: 10_000 })
+      .toBe('Org');
 
-    const dialog = page.getByTestId(TESTIDS['schedule-create-dialog']);
-    if (await dialog.isVisible().catch(() => false)) {
+    const filterDialog = page.getByTestId('schedules-filter-dialog');
+    if (await filterDialog.isVisible().catch(() => false)) {
       await page.keyboard.press('Escape');
-      await expect(dialog).toBeHidden({ timeout: 10_000 });
+      await expect(filterDialog).toBeHidden({ timeout: 10_000 });
     }
 
     await page.getByTestId(TESTIDS.SCHEDULES_WEEK_TAB_DAY).click();
+    await expect(page).toHaveURL(/tab=day/);
 
     const categorySelect = await ensureFilterVisible(page);
     await expect(categorySelect).toHaveValue('Org');
