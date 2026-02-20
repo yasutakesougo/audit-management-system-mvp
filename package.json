@@ -49,6 +49,7 @@
     "test:prefetch": "vitest run tests/unit/prefetch.*.spec.ts* --run",
     "test:e2e": "playwright test",
     "test:e2e:schedules:a": "E2E_BASE_URL=http://127.0.0.1:4173 E2E_REQUIRE_SCHEDULE_DATA=1 VITE_E2E=1 VITE_E2E_MSAL_MOCK=1 VITE_E2E_FORCE_SCHEDULES_WRITE=1 VITE_SKIP_SHAREPOINT=1 VITE_SKIP_LOGIN=1 VITE_FEATURE_SCHEDULES=1 VITE_FEATURE_SCHEDULES_WEEK_V2=1 VITE_SCHEDULES_SAVE_MODE=mock VITE_FEATURE_SCHEDULES_GRAPH=0 VITE_FEATURE_SCHEDULES_SP=0 VITE_FORCE_SHAREPOINT=0 VITE_DEMO_MODE=0 VITE_ALLOW_SHAREPOINT_OUTSIDE_SPFX=1 VITE_SCHEDULE_FIXTURES=1 VITE_SCHEDULES_FIXTURES=1 npx playwright test tests/e2e/schedule-*.spec.ts tests/e2e/schedules*.spec.ts tests/e2e/dashboard-schedule-flow.spec.ts --project=chromium --workers=1",
+    "test:e2e:schedules:sp": "E2E_BASE_URL=http://127.0.0.1:4173 VITE_E2E=1 VITE_E2E_MSAL_MOCK=1 VITE_SKIP_LOGIN=1 VITE_FEATURE_SCHEDULES=1 VITE_FEATURE_SCHEDULES_SP=1 VITE_SKIP_SHAREPOINT=0 VITE_FORCE_SHAREPOINT=1 VITE_FEATURE_SCHEDULES_GRAPH=0 npx playwright test tests/e2e/schedules.sp.smoke.spec.ts tests/e2e/schedules.list-existence-gate.spec.ts --project=chromium --workers=1",
     "test:e2e:headed": "playwright test --headed",
     "test:e2e:prefetch": "playwright test tests/e2e/prefetch.*.spec.ts --reporter=list",
     "test:e2e:users": "playwright test tests/e2e/users.detail-flow.spec.ts",
