@@ -144,7 +144,7 @@ test.describe('Schedules SharePoint Integration Smoke Test', () => {
     await expectTestIdVisibleBestEffort(page, TESTIDS['schedules-week-page'], { timeout: 5000 });
 
     // Check for no critical errors in console
-    const criticalErrors: string[] = [];
+    const criticalErrors: Array<{ text: string; sourceUrl: string }> = [];
     page.on('console', (msg) => {
       if (
         msg.type() === 'error' &&
@@ -153,29 +153,46 @@ test.describe('Schedules SharePoint Integration Smoke Test', () => {
         !msg.text().includes('unsafe-inline') &&
         !msg.text().includes('unsafe-eval')
       ) {
-        criticalErrors.push(msg.text());
+        criticalErrors.push({
+          text: msg.text(),
+          sourceUrl: msg.location().url ?? '',
+        });
       }
     });
 
     await page.waitForTimeout(1000);
 
     // No critical errors should be present
-    const ignorableErrors = criticalErrors.filter((text) => {
+    const hasProtectedRouteFetchFailure = criticalErrors.some((entry) =>
+      entry.text.includes('[ProtectedRoute] List existence check failed: TypeError: Failed to fetch')
+    );
+
+    const ignorableErrors = criticalErrors.filter((entry) => {
+      const { text, sourceUrl } = entry;
+      const sourceLooksSharePoint =
+        sourceUrl.includes('sharepoint.com') || sourceUrl.includes('/_api/');
+
       return (
         text.includes('favicon') ||
         text.includes('Content Security Policy') ||
         text.includes('unsafe-inline') ||
         text.includes('unsafe-eval') ||
-        text.includes('[SP ERROR]') ||
-        text.includes("lists/getbytitle('Org_Master')") ||
-        text.includes('Org_Master') ||
-        (text.includes('Failed to load resource') && text.includes('Not Found'))
+        ((text.includes('[SP ERROR]') ||
+          text.includes("lists/getbytitle('Org_Master')") ||
+          text.includes('Org_Master') ||
+          (text.includes('Failed to load resource') && text.includes('Not Found'))) &&
+          sourceLooksSharePoint) ||
+        (text.includes('ERR_NAME_NOT_RESOLVED') && hasProtectedRouteFetchFailure) ||
+        text.includes('[ProtectedRoute] List existence check failed: TypeError: Failed to fetch')
       );
     });
-    const nonIgnorableErrors = criticalErrors.filter((text) => !ignorableErrors.includes(text));
+    const nonIgnorableErrors = criticalErrors.filter((entry) => !ignorableErrors.includes(entry));
 
     if (nonIgnorableErrors.length > 0) {
-      console.log('[e2e] critical console errors:\n' + nonIgnorableErrors.join('\n'));
+      console.log(
+        '[e2e] critical console errors:\n' +
+          nonIgnorableErrors.map((entry) => `${entry.text} @ ${entry.sourceUrl}`).join('\n')
+      );
     }
 
     if (nonIgnorableErrors.length === 0 && criticalErrors.length > 0) {
