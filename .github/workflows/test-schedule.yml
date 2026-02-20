@@ -82,7 +82,7 @@ jobs:
     name: e2e-schedules-sp-smoke (optional)
     runs-on: ubuntu-latest
     continue-on-error: true
-    if: ${{ secrets.VITE_SP_RESOURCE != '' && secrets.VITE_SP_SITE_RELATIVE != '' }}
+    if: ${{ secrets.VITE_SP_RESOURCE && secrets.VITE_SP_SITE_RELATIVE }}
     env:
       VITE_E2E: "1"
       VITE_E2E_MSAL_MOCK: "1"
