@@ -11,7 +11,6 @@ import {
   getWeekScheduleItems,
   fillQuickUserCareForm,
   openQuickUserCareDialog,
-  submitQuickUserCareForm,
   waitForDayViewReady,
   waitForWeekViewReady,
 } from './utils/scheduleActions';
@@ -166,13 +165,62 @@ test.describe('Schedules day happy path', () => {
       location: '日中活動室A',
       notes: 'Playwright作成',
     });
-    await submitQuickUserCareForm(page);
 
-    await expect.poll(() => recordedCreates.length, { timeout: 10_000 }).toBe(1);
+    const beforeStoredCount = await page.evaluate(() => {
+      const raw = window.localStorage.getItem('e2e:schedules.v1');
+      const rows = raw ? (JSON.parse(raw) as unknown[]) : [];
+      return Array.isArray(rows) ? rows.length : 0;
+    });
 
-    const created = recordedCreates[0];
-    expect(String(created.cr014_category ?? created[SCHEDULE_FIELD_CATEGORY])).toBe('User');
-    expect(String(created.cr014_serviceType ?? created[SCHEDULE_FIELD_SERVICE_TYPE])).toMatch(/(absence|欠席|休み)/);
-    expect(new Date(String(created.EventDate ?? created.Start)).toISOString()).toBe(new Date(`${TARGET_DATE_ISO}T10:00:00+09:00`).toISOString());
+    const dialog = page
+      .getByTestId(TESTIDS['schedule-create-dialog'])
+      .filter({ has: page.getByTestId(TESTIDS['schedule-create-start']) })
+      .last();
+    const saveButton = dialog.getByTestId(TESTIDS['schedule-create-save']).first();
+    await expect(saveButton).toBeVisible({ timeout: 15_000 });
+    await expect(saveButton).toBeEnabled({ timeout: 15_000 });
+    await saveButton.click({ timeout: 10_000 });
+    await expect(page.getByTestId(TESTIDS['schedule-create-dialog'])).toBeHidden({ timeout: 15_000 });
+
+    const isForceWrite = await page.evaluate(
+      () => String((window as typeof window & { __ENV__?: Record<string, string> }).__ENV__?.VITE_E2E_FORCE_SCHEDULES_WRITE) === '1',
+    );
+
+    const created = isForceWrite
+      ? await expect
+          .poll(
+            async () =>
+              page.evaluate((baseline) => {
+                const raw = window.localStorage.getItem('e2e:schedules.v1');
+                const rows = raw ? (JSON.parse(raw) as Array<Record<string, unknown>>) : [];
+                if (!Array.isArray(rows) || rows.length <= baseline) {
+                  return null;
+                }
+                return rows[rows.length - 1] ?? null;
+              }, beforeStoredCount),
+            { timeout: 10_000 },
+          )
+          .not.toBeNull()
+          .then(async () =>
+            page.evaluate((baseline) => {
+              const raw = window.localStorage.getItem('e2e:schedules.v1');
+              const rows = raw ? (JSON.parse(raw) as Array<Record<string, unknown>>) : [];
+              if (!Array.isArray(rows) || rows.length <= baseline) {
+                return null;
+              }
+              return rows[rows.length - 1] ?? null;
+            }, beforeStoredCount),
+          )
+      : await expect
+          .poll(() => recordedCreates.length, { timeout: 10_000 })
+          .toBe(1)
+          .then(() => recordedCreates[0]);
+
+    expect(created).not.toBeNull();
+    expect(String(created.cr014_category ?? created[SCHEDULE_FIELD_CATEGORY] ?? created.category ?? '')).toBe('User');
+    expect(String(created.cr014_serviceType ?? created[SCHEDULE_FIELD_SERVICE_TYPE] ?? created.serviceType ?? '')).toMatch(/(absence|欠席|休み)/);
+    expect(new Date(String(created.EventDate ?? created.Start ?? created.start ?? '')).toISOString()).toBe(
+      new Date(`${TARGET_DATE_ISO}T10:00:00+09:00`).toISOString(),
+    );
   });
 });
