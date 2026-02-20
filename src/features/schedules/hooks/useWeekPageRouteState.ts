@@ -4,7 +4,7 @@ import { useMatch, useSearchParams } from 'react-router-dom';
 import type { ScheduleCategory } from '@/features/schedules/domain/types';
 import { ensureDateParam, normalizeToDayStart, pickDateParam } from '@/features/schedules/utils/dateQuery';
 
-export type ScheduleTab = 'week' | 'day' | 'month';
+export type ScheduleTab = 'week' | 'day' | 'month' | 'org';
 export type WeekDialogMode = 'create' | 'edit';
 
 export type DialogIntentParams = {
@@ -34,7 +34,7 @@ type RouteState = {
   setDateIso: (dateIso: string) => void;
 };
 
-const LEGACY_TABS = ['day', 'week', 'timeline', 'month'] as const;
+const LEGACY_TABS = ['day', 'week', 'timeline', 'month', 'org'] as const;
 type LegacyTab = typeof LEGACY_TABS[number];
 
 const DEFAULT_DIALOG_START = '10:00';
