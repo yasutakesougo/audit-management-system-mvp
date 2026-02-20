@@ -39,7 +39,7 @@ test.describe('Schedule week smoke', () => {
       grid,
       `testid not found: ${TESTIDS['schedules-week-grid']} (allowed for smoke)`
     );
-    await expect(grid.getByRole('gridcell').first()).toBeVisible();
+    await expect(grid.locator('button').first()).toBeVisible();
 
     await runA11ySmoke(page, 'Schedules Week', {
       selectors: `[data-testid="${TESTIDS['schedules-week-page']}"]`,

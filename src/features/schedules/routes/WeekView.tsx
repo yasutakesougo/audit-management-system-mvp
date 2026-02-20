@@ -414,9 +414,6 @@ const WeekViewContent = ({ items, loading, onDayClick: _onDayClick, onTimeSlotCl
         {/* Time Grid View */}
         <div
           aria-label="週ごとの時間割"
-          role="grid"
-          aria-rowcount={32}
-          aria-colcount={8}
           data-testid={TESTIDS['schedules-week-grid']}
           className="w-full"
           style={{
@@ -526,9 +523,7 @@ const WeekViewContent = ({ items, loading, onDayClick: _onDayClick, onTimeSlotCl
                     <button
                       type="button"
                       key={cellKey}
-                      role="gridcell"
-                      aria-rowindex={slotIndex + 2}
-                      aria-colindex={dayIndex + 2}
+                      aria-label={`${day.label} ${timeStr}時間帯`}
                       data-testid="schedules-week-slot"
                       data-day={day.iso}
                       data-time={timeStr}
