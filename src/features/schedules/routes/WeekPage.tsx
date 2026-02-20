@@ -1,5 +1,5 @@
 import { type CSSProperties, type MouseEvent, useCallback, useEffect, useId, useMemo, useRef, useState } from 'react';
-import { useLocation } from 'react-router-dom';
+import { useLocation, useSearchParams } from 'react-router-dom';
 import { Alert, AlertTitle, Button, Dialog, DialogTitle, DialogContent, DialogActions, Snackbar, Stack, Typography } from '@mui/material';
 
 import { useAnnounce } from '@/a11y/LiveAnnouncer';
@@ -119,6 +119,8 @@ export default function WeekPage() {
   const scheduleUserOptions = useScheduleUserOptions();
   const defaultScheduleUser = scheduleUserOptions.length ? scheduleUserOptions[0] : null;
   const location = useLocation();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const orgParam = searchParams.get('org') ?? 'all';
   const isSchedulesView = location.pathname === '/schedules' || location.pathname.startsWith('/schedules/');
   const fabRef = useRef<HTMLButtonElement | null>(null);
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -197,16 +199,25 @@ export default function WeekPage() {
     if (dayLane) {
       params.set('lane', dayLane);
     }
+    if (orgParam !== 'all') {
+      params.set('org', orgParam);
+    }
     return `/schedules/day?${params.toString()}`;
-  }, [dayLane, resolvedActiveDateIso]);
-  const weekViewHref = useMemo(
-    () => `/schedules/week?date=${resolvedActiveDateIso}`,
-    [resolvedActiveDateIso],
-  );
-  const monthViewHref = useMemo(
-    () => `/schedules/month?date=${resolvedActiveDateIso}`,
-    [resolvedActiveDateIso],
-  );
+  }, [dayLane, orgParam, resolvedActiveDateIso]);
+  const weekViewHref = useMemo(() => {
+    const params = new URLSearchParams({ date: resolvedActiveDateIso });
+    if (orgParam !== 'all') {
+      params.set('org', orgParam);
+    }
+    return `/schedules/week?${params.toString()}`;
+  }, [orgParam, resolvedActiveDateIso]);
+  const monthViewHref = useMemo(() => {
+    const params = new URLSearchParams({ date: resolvedActiveDateIso });
+    if (orgParam !== 'all') {
+      params.set('org', orgParam);
+    }
+    return `/schedules/month?${params.toString()}`;
+  }, [orgParam, resolvedActiveDateIso]);
   const activeDayRange = useMemo(() => {
     const start = new Date(`${resolvedActiveDateIso}T00:00:00`);
     const end = new Date(start);
@@ -255,6 +266,20 @@ export default function WeekPage() {
       }
     },
     [canEdit, categoryFilter, setDialogParams],
+  );
+
+  const handleOrgChange = useCallback(
+    (event: React.ChangeEvent<HTMLSelectElement>) => {
+      const nextValue = event.target.value;
+      const next = new URLSearchParams(searchParams);
+      if (nextValue === 'all') {
+        next.delete('org');
+      } else {
+        next.set('org', nextValue);
+      }
+      setSearchParams(next, { replace: true });
+    },
+    [searchParams, setSearchParams],
   );
 
   // View dialog - open when clicking a schedule (for viewing details)
@@ -616,12 +641,12 @@ export default function WeekPage() {
           dayHref={dayViewHref}
           weekHref={weekViewHref}
           monthHref={monthViewHref}
-          modes={['day', 'week', 'month']}
+          modes={['day', 'week', 'month', 'org']}
           prevTestId={TESTIDS.SCHEDULES_PREV_WEEK}
           nextTestId={TESTIDS.SCHEDULES_NEXT_WEEK}
         >
           <SchedulesFilterResponsive
-            compact={compact}
+            compact={compact && mode !== 'org'}
             inlineStackProps={{
               sx: { mt: { xs: 0.5, sm: 0 }, minWidth: 260 },
               spacing: 0.5,
@@ -649,6 +674,23 @@ export default function WeekPage() {
                   <option value="Org">{scheduleCategoryLabels.Org}</option>
                 </select>
               </label>
+              {mode === 'org' && (
+                <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, width: '100%' }}>
+                  事業所:
+                  <select
+                    value={orgParam}
+                    onChange={handleOrgChange}
+                    style={{ padding: '4px 8px', borderRadius: 8, border: '1px solid rgba(0,0,0,0.2)' }}
+                    data-testid="schedule-org-select"
+                  >
+                    <option value="all">すべて</option>
+                    <option value="main">本部</option>
+                    <option value="shortstay">ショートステイ</option>
+                    <option value="respite">レスパイト</option>
+                    <option value="other">その他</option>
+                  </select>
+                </label>
+              )}
               <input
                 type="search"
                 value={query}
@@ -709,7 +751,7 @@ export default function WeekPage() {
           </div>
         ) : (
           <>
-            {mode === 'week' && (
+            {(mode === 'week' || mode === 'org') && (
               <WeekView
                 items={filteredItems}
                 loading={isLoading}
