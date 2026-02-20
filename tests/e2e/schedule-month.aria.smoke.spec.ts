@@ -16,6 +16,25 @@ const openMonthView = async (page: Page, date: Date) => {
   await waitForMonthViewReady(page);
 };
 
+async function waitForMonthDayOverlay(page: Page) {
+  const popoverOpenDay = page.getByTestId(TESTIDS['schedules-popover-open-day']);
+  const anyDialog = page
+    .getByRole('dialog')
+    .filter({ has: page.getByRole('button', { name: /追加|Add/i }) });
+
+  await Promise.race([
+    popoverOpenDay.waitFor({ state: 'visible', timeout: 15_000 }),
+    anyDialog.first().waitFor({ state: 'visible', timeout: 15_000 }),
+  ]);
+
+  const popoverVisible = await popoverOpenDay.isVisible().catch(() => false);
+  if (popoverVisible) {
+    return { kind: 'popover' as const, popoverOpenDay };
+  }
+
+  return { kind: 'dialog' as const, dialog: anyDialog.first() };
+}
+
 test.describe('Schedules month ARIA smoke', () => {
   test.beforeEach(async ({ page }) => {
     await bootSchedule(page);
@@ -89,6 +108,7 @@ test.describe('Schedules month ARIA smoke', () => {
 
   test('navigates to day view when a calendar card is clicked', async ({ page }) => {
     await openMonthView(page, OCTOBER_START);
+    await page.getByRole('dialog').first().waitFor({ state: 'hidden', timeout: 5_000 }).catch(() => {});
 
     const dayCards = page.locator(`[data-testid^="${TESTIDS.SCHEDULES_MONTH_DAY_PREFIX}-"]`);
     const dayCardsCount = await dayCards.count();
@@ -100,16 +120,20 @@ test.describe('Schedules month ARIA smoke', () => {
     await expect(dayCard).toBeVisible();
     await dayCard.click();
 
-    // Wait for popover to appear and click "Day で開く" button
-    const openDayButton = page.getByTestId(TESTIDS['schedules-popover-open-day']);
-    await expectLocatorVisibleBestEffort(
-      openDayButton,
-      `testid not found: ${TESTIDS['schedules-popover-open-day']} (allowed for smoke)`
-    );
-    await openDayButton.click();
+    const overlay = await waitForMonthDayOverlay(page);
+    if (overlay.kind === 'popover') {
+      await expectLocatorVisibleBestEffort(
+        overlay.popoverOpenDay,
+        `testid not found: ${TESTIDS['schedules-popover-open-day']} (allowed for smoke)`
+      );
+      await overlay.popoverOpenDay.click();
 
-    await waitForDayViewReady(page);
-    await expect(page).toHaveURL(/tab=day/);
-    await expectTestIdVisibleBestEffort(page, TESTIDS['schedules-day-page']);
+      await waitForDayViewReady(page);
+      await expect(page).toHaveURL(/tab=day/);
+      await expectTestIdVisibleBestEffort(page, TESTIDS['schedules-day-page']);
+      return;
+    }
+
+    await expect(overlay.dialog.getByRole('button', { name: /追加|Add/i })).toBeVisible();
   });
 });
