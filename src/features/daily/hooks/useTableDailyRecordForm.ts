@@ -4,6 +4,8 @@ import { useEffect, useMemo, useState } from 'react';
 import type { Dispatch, SetStateAction } from 'react';
 import type { User } from '@/types';
 
+const TABLE_DAILY_DRAFT_STORAGE_KEY = 'daily-table-record:draft:v1';
+
 export type UserRowData = {
   userId: string;
   userName: string;
@@ -51,8 +53,39 @@ export type UseTableDailyRecordFormResult = {
   handleRowDataChange: (userId: string, field: string, value: string | boolean) => void;
   handleProblemBehaviorChange: (userId: string, behaviorType: string, checked: boolean) => void;
   handleClearRow: (userId: string) => void;
+  showUnsentOnly: boolean;
+  setShowUnsentOnly: Dispatch<SetStateAction<boolean>>;
+  visibleRows: UserRowData[];
+  hasDraft: boolean;
+  draftSavedAt: string | null;
+  handleSaveDraft: () => void;
   handleSave: () => Promise<void>;
   saving: boolean;
+};
+
+type TableDailyRecordDraft = {
+  formData: TableDailyRecordData;
+  selectedUserIds: string[];
+  searchQuery: string;
+  showTodayOnly: boolean;
+  savedAt: string;
+};
+
+const createInitialFormData = (): TableDailyRecordData => ({
+  date: new Date().toISOString().split('T')[0],
+  reporter: {
+    name: '',
+    role: '生活支援員',
+  },
+  userRows: [],
+});
+
+const hasRowContent = (row: UserRowData): boolean => {
+  if (row.amActivity.trim() || row.pmActivity.trim() || row.lunchAmount.trim() || row.specialNotes.trim()) {
+    return true;
+  }
+
+  return Object.values(row.problemBehavior).some(Boolean);
 };
 
 export const useTableDailyRecordForm = ({
@@ -64,15 +97,10 @@ export const useTableDailyRecordForm = ({
   const [selectionManuallyEdited, setSelectionManuallyEdited] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [showTodayOnly, setShowTodayOnly] = useState(true);
-  const [formData, setFormData] = useState<TableDailyRecordData>({
-    date: new Date().toISOString().split('T')[0],
-    reporter: {
-      name: '',
-      role: '生活支援員',
-    },
-    userRows: [],
-  });
+  const [showUnsentOnly, setShowUnsentOnly] = useState(false);
+  const [formData, setFormData] = useState<TableDailyRecordData>(createInitialFormData);
   const [saving, setSaving] = useState(false);
+  const [draftSavedAt, setDraftSavedAt] = useState<string | null>(null);
 
   const { data: users = [] } = useUsers();
 
@@ -115,6 +143,14 @@ export const useTableDailyRecordForm = ({
       .map((id) => users.find((user) => user.userId === id))
       .filter((user): user is User => Boolean(user));
   }, [users, selectedUserIds]);
+
+  const visibleRows = useMemo(() => {
+    if (!showUnsentOnly) {
+      return formData.userRows;
+    }
+
+    return formData.userRows.filter(hasRowContent);
+  }, [formData.userRows, showUnsentOnly]);
 
   useEffect(() => {
     setFormData((prev) => {
@@ -174,6 +210,36 @@ export const useTableDailyRecordForm = ({
   useEffect(() => {
     if (!open) {
       setSelectionManuallyEdited(false);
+      setShowUnsentOnly(false);
+    }
+  }, [open]);
+
+  useEffect(() => {
+    if (!open) {
+      return;
+    }
+
+    try {
+      const rawDraft = localStorage.getItem(TABLE_DAILY_DRAFT_STORAGE_KEY);
+      if (!rawDraft) {
+        setDraftSavedAt(null);
+        return;
+      }
+
+      const parsed = JSON.parse(rawDraft) as Partial<TableDailyRecordDraft>;
+      if (!parsed.formData || !Array.isArray(parsed.selectedUserIds)) {
+        return;
+      }
+
+      setFormData(parsed.formData);
+      setSelectedUserIds(parsed.selectedUserIds);
+      setSearchQuery(typeof parsed.searchQuery === 'string' ? parsed.searchQuery : '');
+      setShowTodayOnly(typeof parsed.showTodayOnly === 'boolean' ? parsed.showTodayOnly : true);
+      setSelectionManuallyEdited(true);
+      setDraftSavedAt(typeof parsed.savedAt === 'string' ? parsed.savedAt : null);
+    } catch (error) {
+      console.error('下書き復元に失敗しました:', error);
+      setDraftSavedAt(null);
     }
   }, [open]);
 
@@ -272,6 +338,33 @@ export const useTableDailyRecordForm = ({
     }));
   };
 
+  const handleSaveDraft = () => {
+    const draft: TableDailyRecordDraft = {
+      formData,
+      selectedUserIds,
+      searchQuery,
+      showTodayOnly,
+      savedAt: new Date().toISOString(),
+    };
+
+    try {
+      localStorage.setItem(TABLE_DAILY_DRAFT_STORAGE_KEY, JSON.stringify(draft));
+      setDraftSavedAt(draft.savedAt);
+    } catch (error) {
+      console.error('下書き保存に失敗しました:', error);
+      alert('下書き保存に失敗しました。');
+    }
+  };
+
+  const clearDraft = () => {
+    try {
+      localStorage.removeItem(TABLE_DAILY_DRAFT_STORAGE_KEY);
+    } catch (error) {
+      console.error('下書き削除に失敗しました:', error);
+    }
+    setDraftSavedAt(null);
+  };
+
   const handleSave = async () => {
     if (selectedUserIds.length === 0) {
       alert('利用者を1人以上選択してください');
@@ -286,13 +379,14 @@ export const useTableDailyRecordForm = ({
     setSaving(true);
     try {
       await onSave(formData);
+      clearDraft();
       onClose();
       setSelectedUserIds([]);
-      setFormData({
-        date: new Date().toISOString().split('T')[0],
-        reporter: { name: '', role: '生活支援員' },
-        userRows: [],
-      });
+      setSearchQuery('');
+      setShowTodayOnly(true);
+      setShowUnsentOnly(false);
+      setSelectionManuallyEdited(false);
+      setFormData(createInitialFormData());
     } catch (error) {
       console.error('保存に失敗しました:', error);
       alert('保存に失敗しました。もう一度お試しください。');
@@ -317,6 +411,12 @@ export const useTableDailyRecordForm = ({
     handleRowDataChange,
     handleProblemBehaviorChange,
     handleClearRow,
+    showUnsentOnly,
+    setShowUnsentOnly,
+    visibleRows,
+    hasDraft: Boolean(draftSavedAt),
+    draftSavedAt,
+    handleSaveDraft,
     handleSave,
     saving,
   };
