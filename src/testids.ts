@@ -45,6 +45,11 @@ export const TESTIDS = {
   'pdca-daily-completion-value': 'pdca-daily-completion-value',
   'pdca-daily-leadtime-card': 'pdca-daily-leadtime-card',
   'pdca-daily-leadtime-value': 'pdca-daily-leadtime-value',
+  'pdca-daily-trend-card': 'pdca-daily-trend-card',
+  'pdca-weekly-completion-trend': 'pdca-weekly-completion-trend',
+  'pdca-monthly-completion-trend': 'pdca-monthly-completion-trend',
+  'pdca-weekly-leadtime-trend': 'pdca-weekly-leadtime-trend',
+  'pdca-monthly-leadtime-trend': 'pdca-monthly-leadtime-trend',
   ICEBERG_PDCA_EMPTY: 'iceberg-pdca-empty',
 
   // Dashboard Tabs (黒ノート機能個別タブ) 🌱 E2Eでタブ切替を細かく検査用
