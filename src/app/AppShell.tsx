@@ -988,7 +988,6 @@ const AppShell: React.FC<{ children: React.ReactNode }> = ({ children }) => {
             contentPaddingX={isFocusMode ? 0 : 16}
             contentPaddingY={contentPaddingY}
             viewportMode={viewportMode}
-            lockViewportHeight={!isSchedulesRoute}
           >
             {children}
           </AppShellLayout>
@@ -1001,7 +1000,6 @@ const AppShell: React.FC<{ children: React.ReactNode }> = ({ children }) => {
             contentPaddingX={isFocusMode ? 0 : 16}
             contentPaddingY={contentPaddingY}
             viewportMode={viewportMode}
-            lockViewportHeight={!isSchedulesRoute}
           >
             {children}
           </AppShellV2>

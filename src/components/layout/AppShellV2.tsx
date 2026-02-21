@@ -37,7 +37,7 @@ export function AppShellV2({
   contentPaddingX = 16,
   contentPaddingY = 16,
   viewportMode,
-  lockViewportHeight = true,
+  lockViewportHeight: legacyLockViewportHeight,
 }: Props) {
   const theme = useTheme();
   const isPhone = useMediaQuery(theme.breakpoints.down('sm'));
@@ -55,8 +55,10 @@ export function AppShellV2({
   const showActivity = Boolean(activity) && activityW > 0;
   const showSidebar = Boolean(sidebar) && sidebarW > 0;
   const showFooter = Boolean(footer);
+  const fallbackViewportMode: ShellViewportMode =
+    (legacyLockViewportHeight ?? true) ? 'fixed' : 'adaptive';
   const resolvedViewportMode: ShellViewportMode =
-    viewportMode ?? (lockViewportHeight ? 'fixed' : 'adaptive');
+    viewportMode ?? fallbackViewportMode;
 
   return (
     <Box
