@@ -82,3 +82,66 @@ test.describe('日次記録: /daily/table draft lifecycle', () => {
     await expect(page.getByTestId('daily-table-draft-status')).toHaveCount(0);
   });
 });
+
+test.describe('日次記録: /daily/table unsent recovery flow', () => {
+  test('unsent-only ON then submit turns filter OFF when unsent reaches zero', async ({ page }) => {
+    await page.goto('/daily/table');
+    await page.evaluate((draftStorageKey) => {
+      localStorage.removeItem(draftStorageKey);
+      localStorage.removeItem('daily-table-record:unsent-filter:v1');
+      const next = new URL(window.location.href);
+      next.searchParams.delete('unsent');
+      window.history.replaceState({}, '', next.toString());
+    }, TABLE_DAILY_DRAFT_STORAGE_KEY);
+
+    await page.evaluate((draftStorageKey) => {
+      localStorage.setItem(draftStorageKey, JSON.stringify({
+        formData: {
+          date: new Date().toISOString().split('T')[0],
+          reporter: { name: '未送信回収E2E', role: '生活支援員' },
+          userRows: [
+            {
+              userId: 'e2e-unsent-user',
+              userName: 'E2E 利用者',
+              amActivity: '未送信対象データ',
+              pmActivity: '',
+              lunchAmount: '',
+              problemBehavior: {
+                selfHarm: false,
+                violence: false,
+                loudVoice: false,
+                pica: false,
+                other: false,
+              },
+              specialNotes: '',
+            },
+          ],
+        },
+        selectedUserIds: ['e2e-unsent-user'],
+        searchQuery: '',
+        showTodayOnly: true,
+        savedAt: new Date().toISOString(),
+      }));
+    }, TABLE_DAILY_DRAFT_STORAGE_KEY);
+
+    await page.evaluate(() => {
+      localStorage.setItem('daily-table-record:unsent-filter:v1', '1');
+      const next = new URL(window.location.href);
+      next.searchParams.set('unsent', '1');
+      window.history.replaceState({}, '', next.toString());
+    });
+
+    await page.reload();
+    await expect(page).toHaveURL(/\?unsent=1/);
+
+    page.once('dialog', async (dialog) => {
+      await dialog.accept();
+    });
+    await page.getByRole('button', { name: /人分保存/ }).click();
+    await expect(page).toHaveURL(/\/dashboard/);
+
+    await page.goto('/daily/table');
+    await expect(page).not.toHaveURL(/\?unsent=1/);
+    await expect(page.getByTestId('daily-table-unsent-count-chip')).toHaveCount(0);
+  });
+});
