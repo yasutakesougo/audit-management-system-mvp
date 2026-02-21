@@ -30,6 +30,7 @@ import { TESTIDS } from '@/testids';
 
 import { IcebergPdcaEmptyState } from './components/IcebergPdcaEmptyState';
 import type { IcebergPdcaEmptyContext } from './components/icebergPdcaEmptyCopy';
+import { getDailySubmissionMetrics } from './dailyMetricsAdapter';
 import { useIcebergPdcaList, useCreatePdca, useUpdatePdca, useDeletePdca } from './queries';
 import type { IcebergPdcaItem, IcebergPdcaPhase } from './types';
 
@@ -56,6 +57,17 @@ export const IcebergPdcaPage: React.FC<IcebergPdcaPageProps> = ({ writeEnabled: 
   );
 
   const selectedUserId = searchParams.get('userId') ?? undefined;
+  const today = React.useMemo(() => new Date().toISOString().slice(0, 10), []);
+  const targetUserIds = React.useMemo(
+    () => users.filter((u) => u.IsActive !== false).map((u) => u.UserID ?? String(u.Id)),
+    [users],
+  );
+  const dailyMetrics = React.useMemo(
+    () => getDailySubmissionMetrics({ recordDate: today, targetUserIds }),
+    [today, targetUserIds],
+  );
+  const completionRateLabel = `${Math.round(dailyMetrics.completionRate * 100)}%`;
+  const leadTimeLabel = `${dailyMetrics.averageLeadTimeMinutes}分`;
   const selectedOption = React.useMemo(
     () => userOptions.find((opt) => opt.id === selectedUserId) ?? null,
     [selectedUserId, userOptions],
@@ -185,6 +197,25 @@ export const IcebergPdcaPage: React.FC<IcebergPdcaPageProps> = ({ writeEnabled: 
       </Typography>
 
       <Stack spacing={2} sx={{ mb: 2 }}>
+        <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1.5}>
+          <Paper variant="outlined" sx={{ p: 1.5, minWidth: 220 }} data-testid={TESTIDS['pdca-daily-completion-card']}>
+            <Typography variant="caption" color="text.secondary">当日入力完了率</Typography>
+            <Typography variant="h6" data-testid={TESTIDS['pdca-daily-completion-value']}>
+              {completionRateLabel}
+            </Typography>
+            <Typography variant="caption" color="text.secondary">
+              {dailyMetrics.submittedCount}/{dailyMetrics.targetCount} 名
+            </Typography>
+          </Paper>
+          <Paper variant="outlined" sx={{ p: 1.5, minWidth: 220 }} data-testid={TESTIDS['pdca-daily-leadtime-card']}>
+            <Typography variant="caption" color="text.secondary">未送信解消リードタイム</Typography>
+            <Typography variant="h6" data-testid={TESTIDS['pdca-daily-leadtime-value']}>
+              {leadTimeLabel}
+            </Typography>
+            <Typography variant="caption" color="text.secondary">平均</Typography>
+          </Paper>
+        </Stack>
+
         <Autocomplete
           options={userOptions}
           value={selectedOption}

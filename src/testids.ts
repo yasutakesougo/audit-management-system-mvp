@@ -41,6 +41,10 @@ export const TESTIDS = {
   'audit-heading': 'audit-heading',
   'iceberg-pdca-root': 'iceberg-pdca-root',
   'iceberg-pdca-empty': 'iceberg-pdca-empty',
+  'pdca-daily-completion-card': 'pdca-daily-completion-card',
+  'pdca-daily-completion-value': 'pdca-daily-completion-value',
+  'pdca-daily-leadtime-card': 'pdca-daily-leadtime-card',
+  'pdca-daily-leadtime-value': 'pdca-daily-leadtime-value',
   ICEBERG_PDCA_EMPTY: 'iceberg-pdca-empty',
 
   // Dashboard Tabs (黒ノート機能個別タブ) 🌱 E2Eでタブ切替を細かく検査用
