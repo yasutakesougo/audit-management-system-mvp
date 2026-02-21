@@ -255,7 +255,7 @@ const DayViewContent = ({
       <div
         aria-labelledby={listLabelId}
         role="group"
-        style={{ marginTop: isCompact ? 8 : 12 }}
+        style={{ marginTop: 0 }}
         data-testid="schedule-day-root"
       >
         <span

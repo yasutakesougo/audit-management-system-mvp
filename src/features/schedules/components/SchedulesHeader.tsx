@@ -130,7 +130,7 @@ export const SchedulesHeader: React.FC<Props> = ({
     <Stack
       direction={isSmall ? 'column' : 'row'}
       alignItems="center"
-      spacing={isSmall ? 0.5 : 0.75}
+      spacing={0}
       justifyContent={isSmall ? 'flex-start' : 'space-between'}
       sx={{ mb: headerBottom }}
       data-testid={TESTIDS.SCHEDULES_HEADER_ROOT}

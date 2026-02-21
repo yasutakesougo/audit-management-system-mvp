@@ -3,6 +3,8 @@ import { Box, useMediaQuery, useTheme } from '@mui/material';
 import { layoutTokens } from './layoutTokens';
 import { HeaderBand } from './HeaderBand';
 
+export type ShellViewportMode = 'fixed' | 'adaptive';
+
 export type AppShellProps = {
   title?: string;
   onSearchChange?: (value: string) => void;
@@ -19,6 +21,9 @@ export type AppShellProps = {
   contentPaddingX?: number;
   contentPaddingY?: number;
   contentMaxWidth?: number;
+  viewportMode?: ShellViewportMode;
+  /** @deprecated Use viewportMode instead */
+  lockViewportHeight?: boolean;
 
   children: React.ReactNode;
 };
@@ -34,17 +39,20 @@ export function AppShell(props: AppShellProps) {
 
   const activityWidth = showActivity ? props.activityWidth ?? layoutTokens.activityBar.width : 0;
   const sidebarWidth = showSidebar ? props.sidebarWidth ?? layoutTokens.sidebar.width : 0;
+  const headerHeight = layoutTokens.header.height;
   const contentPaddingX = props.contentPaddingX ?? 16;
   const contentPaddingY = props.contentPaddingY ?? 16;
   const contentMaxWidth = props.contentMaxWidth ?? 1200;
+  const viewportMode: ShellViewportMode =
+    props.viewportMode ?? ((props.lockViewportHeight ?? true) ? 'fixed' : 'adaptive');
 
   return (
     <Box
       sx={{
-        height: layoutTokens.app.height,
+        ...(viewportMode === 'fixed' ? { height: layoutTokens.app.height } : { minHeight: layoutTokens.app.height }),
         overflow: 'hidden',
         display: 'grid',
-        gridTemplateRows: `${showHeader ? 'auto' : '0px'} 1fr ${showFooter ? layoutTokens.footer.heightWithSafeArea : 0}px`,
+        gridTemplateRows: `${showHeader ? `${headerHeight}px` : '0px'} minmax(0, 1fr) ${showFooter ? layoutTokens.footer.heightWithSafeArea : '0px'}`,
         gridTemplateColumns: `${activityWidth}px ${sidebarWidth}px 1fr`,
         gridTemplateAreas: `
           "header header header"
@@ -57,7 +65,9 @@ export function AppShell(props: AppShellProps) {
         sx={{
           gridArea: 'header',
           display: showHeader ? 'block' : 'none',
-          minHeight: 0,
+          height: `${headerHeight}px`,
+          minHeight: `${headerHeight}px`,
+          maxHeight: `${headerHeight}px`,
           overflow: 'hidden',
         }}
       >

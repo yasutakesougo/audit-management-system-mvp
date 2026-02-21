@@ -209,6 +209,7 @@ const AppShell: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const isFocusMode = settings.layoutMode === 'focus';
   const isSchedulesRoute =
     location.pathname.startsWith('/schedules') || location.pathname.startsWith('/schedule');
+  const viewportMode = isSchedulesRoute ? 'adaptive' : 'fixed';
   const schedulesPaddingY = isSchedulesRoute ? 0 : 16;
   const contentPaddingY = isFocusMode ? 0 : schedulesPaddingY;
 
@@ -986,6 +987,8 @@ const AppShell: React.FC<{ children: React.ReactNode }> = ({ children }) => {
             sidebarWidth={showDesktopSidebar ? currentDrawerWidth : 0}
             contentPaddingX={isFocusMode ? 0 : 16}
             contentPaddingY={contentPaddingY}
+            viewportMode={viewportMode}
+            lockViewportHeight={!isSchedulesRoute}
           >
             {children}
           </AppShellLayout>
@@ -997,6 +1000,8 @@ const AppShell: React.FC<{ children: React.ReactNode }> = ({ children }) => {
             sidebarWidth={showDesktopSidebar ? currentDrawerWidth : 0}
             contentPaddingX={isFocusMode ? 0 : 16}
             contentPaddingY={contentPaddingY}
+            viewportMode={viewportMode}
+            lockViewportHeight={!isSchedulesRoute}
           >
             {children}
           </AppShellV2>
