@@ -8,6 +8,23 @@ import { emitDailySubmissionEvents } from '@/features/iceberg-pdca/dailyMetricsA
 const TABLE_DAILY_DRAFT_STORAGE_KEY = 'daily-table-record:draft:v1';
 const TABLE_DAILY_UNSENT_FILTER_STORAGE_KEY = 'daily-table-record:unsent-filter:v1';
 const TABLE_DAILY_UNSENT_FILTER_QUERY_KEY = 'unsent';
+const TABLE_DAILY_DATE_QUERY_KEY = 'date';
+
+const isValidDateValue = (value: string): boolean => /^\d{4}-\d{2}-\d{2}$/.test(value);
+
+const getDateFromUrl = (): string | null => {
+  if (typeof window === 'undefined') {
+    return null;
+  }
+
+  const params = new URLSearchParams(window.location.search);
+  const date = params.get(TABLE_DAILY_DATE_QUERY_KEY);
+  if (!date || !isValidDateValue(date)) {
+    return null;
+  }
+
+  return date;
+};
 
 const isUnsentFilterEnabledInUrl = (): boolean => {
   if (typeof window === 'undefined') {
@@ -105,7 +122,7 @@ type TableDailyRecordDraft = {
 };
 
 const createInitialFormData = (): TableDailyRecordData => ({
-  date: new Date().toISOString().split('T')[0],
+  date: getDateFromUrl() ?? new Date().toISOString().split('T')[0],
   reporter: {
     name: '',
     role: '生活支援員',
