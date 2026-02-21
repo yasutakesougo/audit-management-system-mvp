@@ -30,6 +30,11 @@ export type TrendMetrics = {
   leadTimeTrend: TrendDirection;
 };
 
+export const DEFAULT_TREND_TOLERANCE = {
+  completionRate: 0.02,
+  leadTimeMinutes: 5,
+} as const;
+
 const DAILY_PDCA_METRICS_STORAGE_KEY = 'pdca:daily-submission-events:v1';
 
 const toDayKey = (value: string): string => {
@@ -193,20 +198,36 @@ export const getStoredDailySubmissionEvents = (): DailySubmissionEvent[] => {
   return Object.values(readEventMap());
 };
 
-export const getTrend = (
-  current: number,
+export const getTrendDirection = (
   previous: number,
-  threshold = 0.005,
+  current: number,
+  tolerance: number = DEFAULT_TREND_TOLERANCE.completionRate,
 ): TrendDirection => {
-  if (current > previous + threshold) {
+  if (current > previous + tolerance) {
     return 'up';
   }
 
-  if (current < previous - threshold) {
+  if (current < previous - tolerance) {
     return 'down';
   }
 
   return 'flat';
+};
+
+export const getTrend = (
+  current: number,
+  previous: number,
+  threshold: number = DEFAULT_TREND_TOLERANCE.completionRate,
+): TrendDirection => {
+  return getTrendDirection(previous, current, threshold);
+};
+
+const getLeadTimeTrend = (
+  previous: number,
+  current: number,
+  tolerance: number = DEFAULT_TREND_TOLERANCE.leadTimeMinutes,
+): TrendDirection => {
+  return getTrendDirection(current, previous, tolerance);
 };
 
 export const getWeeklyMetrics = (params: {
@@ -238,8 +259,8 @@ export const getWeeklyMetrics = (params: {
   return {
     current,
     previous,
-    completionTrend: getTrend(current.completionRate, previous.completionRate),
-    leadTimeTrend: getTrend(previous.averageLeadTimeMinutes, current.averageLeadTimeMinutes),
+    completionTrend: getTrendDirection(previous.completionRate, current.completionRate),
+    leadTimeTrend: getLeadTimeTrend(previous.averageLeadTimeMinutes, current.averageLeadTimeMinutes),
   };
 };
 
@@ -275,8 +296,8 @@ export const getMonthlyMetrics = (params: {
   return {
     current,
     previous,
-    completionTrend: getTrend(current.completionRate, previous.completionRate),
-    leadTimeTrend: getTrend(previous.averageLeadTimeMinutes, current.averageLeadTimeMinutes),
+    completionTrend: getTrendDirection(previous.completionRate, current.completionRate),
+    leadTimeTrend: getLeadTimeTrend(previous.averageLeadTimeMinutes, current.averageLeadTimeMinutes),
   };
 };
 
