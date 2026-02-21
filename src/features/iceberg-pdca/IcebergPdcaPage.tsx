@@ -252,6 +252,9 @@ export const IcebergPdcaPage: React.FC<IcebergPdcaPageProps> = ({ writeEnabled: 
 
         <Paper variant="outlined" sx={{ p: 1.5 }} data-testid={TESTIDS['pdca-daily-trend-card']}>
           <Typography variant="subtitle2" sx={{ mb: 1 }}>週次 / 月次トレンド</Typography>
+          <Typography variant="caption" color="text.secondary" sx={{ mb: 1 }}>
+            {trendPeriod === 'weekly' ? '直近7日' : '直近30日'}の集計
+          </Typography>
           <ToggleButtonGroup
             value={trendPeriod}
             exclusive
