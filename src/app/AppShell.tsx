@@ -207,7 +207,8 @@ const AppShell: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const theme = useTheme();
   const { settings, updateSettings } = useSettingsContext();
   const isFocusMode = settings.layoutMode === 'focus';
-  const isSchedulesRoute = location.pathname.startsWith('/schedules');
+  const isSchedulesRoute =
+    location.pathname.startsWith('/schedules') || location.pathname.startsWith('/schedule');
   const schedulesPaddingY = isSchedulesRoute ? 0 : 16;
   const contentPaddingY = isFocusMode ? 0 : schedulesPaddingY;
 
