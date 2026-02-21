@@ -21,8 +21,6 @@ type Props = {
   contentPaddingX?: number; // default 16
   contentPaddingY?: number; // default 16
   viewportMode?: ShellViewportMode;
-  /** @deprecated Use viewportMode instead */
-  lockViewportHeight?: boolean;
 };
 
 export function AppShellV2({
@@ -36,8 +34,7 @@ export function AppShellV2({
   contentMaxWidth = 1200,
   contentPaddingX = 16,
   contentPaddingY = 16,
-  viewportMode,
-  lockViewportHeight: legacyLockViewportHeight,
+  viewportMode = 'fixed',
 }: Props) {
   const theme = useTheme();
   const isPhone = useMediaQuery(theme.breakpoints.down('sm'));
@@ -55,16 +52,12 @@ export function AppShellV2({
   const showActivity = Boolean(activity) && activityW > 0;
   const showSidebar = Boolean(sidebar) && sidebarW > 0;
   const showFooter = Boolean(footer);
-  const fallbackViewportMode: ShellViewportMode =
-    (legacyLockViewportHeight ?? true) ? 'fixed' : 'adaptive';
-  const resolvedViewportMode: ShellViewportMode =
-    viewportMode ?? fallbackViewportMode;
 
   return (
     <Box
       sx={{
         '--bottom-nav-height': '88px', // CSS variable for LandscapeFab positioning
-        ...(resolvedViewportMode === 'fixed' ? { height: '100dvh' } : { minHeight: '100dvh' }),
+        ...(viewportMode === 'fixed' ? { height: '100dvh' } : { minHeight: '100dvh' }),
         overflow: 'hidden',
         display: 'grid',
         gridTemplateAreas: `
