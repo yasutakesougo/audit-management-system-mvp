@@ -44,7 +44,7 @@ export function AppShell(props: AppShellProps) {
         height: layoutTokens.app.height,
         overflow: 'hidden',
         display: 'grid',
-        gridTemplateRows: `${showHeader ? layoutTokens.header.height : 0}px 1fr ${showFooter ? layoutTokens.footer.heightWithSafeArea : 0}px`,
+        gridTemplateRows: `${showHeader ? 'auto' : '0px'} 1fr ${showFooter ? layoutTokens.footer.heightWithSafeArea : 0}px`,
         gridTemplateColumns: `${activityWidth}px ${sidebarWidth}px 1fr`,
         gridTemplateAreas: `
           "header header header"
@@ -53,7 +53,14 @@ export function AppShell(props: AppShellProps) {
         `,
       }}
     >
-      <Box sx={{ gridArea: 'header', display: showHeader ? 'block' : 'none' }}>
+      <Box
+        sx={{
+          gridArea: 'header',
+          display: showHeader ? 'block' : 'none',
+          minHeight: 0,
+          overflow: 'hidden',
+        }}
+      >
         <HeaderBand
           title={props.title}
           onSearchChange={props.onSearchChange}
