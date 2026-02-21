@@ -99,4 +99,27 @@ test.describe('Schedule layout regression', () => {
 
     await expect(page.getByTestId(TESTIDS['handoff-footer-quicknote']).first()).toBeVisible();
   });
+
+  test('dashboard keeps main-only scroll responsibility', async ({ page }) => {
+    await page.goto('/dashboard');
+    await page.waitForLoadState('networkidle');
+
+    const scrollState = await page.evaluate(() => {
+      const html = getComputedStyle(document.documentElement).overflowY;
+      const body = getComputedStyle(document.body).overflowY;
+      const main = document.querySelector('main');
+      const mainOverflow = main ? getComputedStyle(main).overflowY : null;
+      return {
+        html,
+        body,
+        hasMain: Boolean(main),
+        mainOverflow,
+      };
+    });
+
+    expect(scrollState.hasMain).toBe(true);
+    expect(['hidden', 'clip']).toContain(scrollState.html);
+    expect(['hidden', 'clip']).toContain(scrollState.body);
+    expect(['auto', 'scroll']).toContain(scrollState.mainOverflow ?? '');
+  });
 });
