@@ -33,6 +33,7 @@ import { TESTIDS } from '@/testids';
 import { IcebergPdcaEmptyState } from './components/IcebergPdcaEmptyState';
 import type { IcebergPdcaEmptyContext } from './components/icebergPdcaEmptyCopy';
 import {
+  DEFAULT_TREND_TOLERANCE,
   getDailySubmissionMetrics,
   getMonthlyMetrics,
   getStoredDailySubmissionEvents,
@@ -94,6 +95,8 @@ export const IcebergPdcaPage: React.FC<IcebergPdcaPageProps> = ({ writeEnabled: 
   const activeCompletionLabel = trendPeriod === 'weekly' ? weeklyCompletionLabel : monthlyCompletionLabel;
   const activeLeadTimeLabel = trendPeriod === 'weekly' ? weeklyLeadTimeLabel : monthlyLeadTimeLabel;
   const activePeriodLabel = trendPeriod === 'weekly' ? '週次' : '月次';
+  const completionTolerancePoint = Math.round(DEFAULT_TREND_TOLERANCE.completionRate * 100);
+  const leadTimeToleranceMinutes = DEFAULT_TREND_TOLERANCE.leadTimeMinutes;
   const trendLabel = (trend: TrendDirection): string => {
     if (trend === 'up') return '↑';
     if (trend === 'down') return '↓';
@@ -270,6 +273,9 @@ export const IcebergPdcaPage: React.FC<IcebergPdcaPageProps> = ({ writeEnabled: 
             </Typography>
             <Typography variant="body2" data-testid={TESTIDS['pdca-weekly-leadtime-trend']}>
               {activePeriodLabel}平均リードタイム {activeLeadTimeLabel} {trendLabel(activeTrendMetrics.leadTimeTrend)}
+            </Typography>
+            <Typography variant="caption" color="text.secondary" sx={{ mt: 0.5 }}>
+              判定基準: 完了率 ±{completionTolerancePoint}pt / リードタイム ±{leadTimeToleranceMinutes}分
             </Typography>
           </Stack>
         </Paper>
