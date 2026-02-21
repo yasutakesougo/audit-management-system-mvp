@@ -3,8 +3,11 @@ import { isUserScheduledForDate } from '@/utils/attendanceUtils';
 import { useEffect, useMemo, useState } from 'react';
 import type { Dispatch, SetStateAction } from 'react';
 import type { User } from '@/types';
+import { useSearchParams } from 'react-router-dom';
 
 const TABLE_DAILY_DRAFT_STORAGE_KEY = 'daily-table-record:draft:v1';
+const TABLE_DAILY_UNSENT_FILTER_STORAGE_KEY = 'daily-table-record:unsent-filter:v1';
+const TABLE_DAILY_UNSENT_FILTER_QUERY_KEY = 'unsent';
 
 export type UserRowData = {
   userId: string;
@@ -56,6 +59,7 @@ export type UseTableDailyRecordFormResult = {
   showUnsentOnly: boolean;
   setShowUnsentOnly: Dispatch<SetStateAction<boolean>>;
   visibleRows: UserRowData[];
+  unsentRowCount: number;
   hasDraft: boolean;
   draftSavedAt: string | null;
   handleSaveDraft: () => void;
@@ -93,6 +97,7 @@ export const useTableDailyRecordForm = ({
   onClose,
   onSave,
 }: UseTableDailyRecordFormParams): UseTableDailyRecordFormResult => {
+  const [searchParams, setSearchParams] = useSearchParams();
   const [selectedUserIds, setSelectedUserIds] = useState<string[]>([]);
   const [selectionManuallyEdited, setSelectionManuallyEdited] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
@@ -144,6 +149,14 @@ export const useTableDailyRecordForm = ({
       .filter((user): user is User => Boolean(user));
   }, [users, selectedUserIds]);
 
+  const unsentRowCount = useMemo(() => {
+    const contentBasedCount = formData.userRows.filter(hasRowContent).length;
+    if (contentBasedCount > 0) {
+      return contentBasedCount;
+    }
+    return selectedUserIds.length;
+  }, [formData.userRows, selectedUserIds]);
+
   const visibleRows = useMemo(() => {
     if (!showUnsentOnly) {
       return formData.userRows;
@@ -155,7 +168,7 @@ export const useTableDailyRecordForm = ({
   useEffect(() => {
     setFormData((prev) => {
       const existingMap = new Map(prev.userRows.map((row) => [row.userId, row]));
-      const nextRows: UserRowData[] = selectedUsers.map((user) => {
+      const rowsFromResolvedUsers: UserRowData[] = selectedUsers.map((user) => {
         const userId = user.userId || '';
         const existing = existingMap.get(userId);
         if (existing) {
@@ -177,12 +190,41 @@ export const useTableDailyRecordForm = ({
           specialNotes: '',
         };
       });
+
+      const resolvedUserIds = new Set(rowsFromResolvedUsers.map((row) => row.userId));
+      const unresolvedButSelectedRows: UserRowData[] = selectedUserIds
+        .filter((userId) => !resolvedUserIds.has(userId))
+        .map((userId) => {
+          const existing = existingMap.get(userId);
+          if (existing) {
+            return existing;
+          }
+
+          return {
+            userId,
+            userName: userId,
+            amActivity: '',
+            pmActivity: '',
+            lunchAmount: '',
+            problemBehavior: {
+              selfHarm: false,
+              violence: false,
+              loudVoice: false,
+              pica: false,
+              other: false,
+            },
+            specialNotes: '',
+          };
+        });
+
+      const nextRows: UserRowData[] = [...rowsFromResolvedUsers, ...unresolvedButSelectedRows];
+
       return {
         ...prev,
         userRows: nextRows,
       };
     });
-  }, [selectedUsers]);
+  }, [selectedUsers, selectedUserIds]);
 
   useEffect(() => {
     if (showTodayOnly && selectedUserIds.length > 0) {
@@ -210,9 +252,53 @@ export const useTableDailyRecordForm = ({
   useEffect(() => {
     if (!open) {
       setSelectionManuallyEdited(false);
-      setShowUnsentOnly(false);
     }
   }, [open]);
+
+  useEffect(() => {
+    if (!open) {
+      return;
+    }
+
+    const fromQuery = searchParams.get(TABLE_DAILY_UNSENT_FILTER_QUERY_KEY) === '1';
+    const fromStorage = localStorage.getItem(TABLE_DAILY_UNSENT_FILTER_STORAGE_KEY) === '1';
+    setShowUnsentOnly(fromQuery || fromStorage);
+  }, [open, searchParams]);
+
+  useEffect(() => {
+    if (!open) {
+      return;
+    }
+
+    try {
+      if (showUnsentOnly) {
+        localStorage.setItem(TABLE_DAILY_UNSENT_FILTER_STORAGE_KEY, '1');
+      } else {
+        localStorage.removeItem(TABLE_DAILY_UNSENT_FILTER_STORAGE_KEY);
+      }
+    } catch (error) {
+      console.error('未送信フィルタの保存に失敗しました:', error);
+    }
+
+    const nextParams = new URLSearchParams(searchParams);
+    if (showUnsentOnly) {
+      nextParams.set(TABLE_DAILY_UNSENT_FILTER_QUERY_KEY, '1');
+    } else {
+      nextParams.delete(TABLE_DAILY_UNSENT_FILTER_QUERY_KEY);
+    }
+
+    const nextSerialized = nextParams.toString();
+    const currentSerialized = searchParams.toString();
+    if (nextSerialized !== currentSerialized) {
+      setSearchParams(nextParams, { replace: true });
+    }
+  }, [open, showUnsentOnly, searchParams, setSearchParams]);
+
+  useEffect(() => {
+    if (showUnsentOnly && unsentRowCount === 0) {
+      setShowUnsentOnly(false);
+    }
+  }, [showUnsentOnly, unsentRowCount]);
 
   useEffect(() => {
     if (!open) {
@@ -414,6 +500,7 @@ export const useTableDailyRecordForm = ({
     showUnsentOnly,
     setShowUnsentOnly,
     visibleRows,
+    unsentRowCount,
     hasDraft: Boolean(draftSavedAt),
     draftSavedAt,
     handleSaveDraft,

@@ -96,6 +96,7 @@ export const TESTIDS = {
   'daily-table-draft-save': 'daily-table-draft-save',
   'daily-table-draft-status': 'daily-table-draft-status',
   'daily-table-unsent-filter': 'daily-table-unsent-filter',
+  'daily-table-unsent-count-chip': 'daily-table-unsent-count-chip',
   'bulk-daily-record-form': 'bulk-daily-record-form',
   'bulk-daily-record-user-list': 'bulk-daily-record-user-list',
   'bulk-daily-record-user-row-prefix': 'bulk-daily-record-user-row-',

@@ -43,7 +43,6 @@ export function TableDailyRecordForm({
     showTodayOnly,
     setShowTodayOnly,
     filteredUsers,
-    selectedUsers,
     selectedUserIds,
     handleUserToggle,
     handleSelectAll,
@@ -54,6 +53,7 @@ export function TableDailyRecordForm({
     showUnsentOnly,
     setShowUnsentOnly,
     visibleRows,
+    unsentRowCount,
     hasDraft,
     draftSavedAt,
     handleSaveDraft,
@@ -65,6 +65,8 @@ export function TableDailyRecordForm({
     onSave,
   });
 
+  const displayedUnsentCount = Math.max(unsentRowCount, selectedUserIds.length);
+
   const content = (
     <>
       <DialogTitle>
@@ -73,15 +75,28 @@ export function TableDailyRecordForm({
             <GroupIcon />
             一覧形式ケース記録入力
           </Box>
-          {hasDraft && (
-            <Chip
-              label={`下書き保存済み${draftSavedAt ? ` (${new Date(draftSavedAt).toLocaleTimeString('ja-JP', { hour: '2-digit', minute: '2-digit' })})` : ''}`}
-              color="warning"
-              variant="outlined"
-              size="small"
-              data-testid={TESTIDS['daily-table-draft-status']}
-            />
-          )}
+          <Stack direction="row" spacing={1}>
+            {displayedUnsentCount > 0 && (
+              <Chip
+                label={`未送信 ${displayedUnsentCount}件`}
+                color={showUnsentOnly ? 'primary' : 'default'}
+                variant={showUnsentOnly ? 'filled' : 'outlined'}
+                size="small"
+                clickable
+                onClick={() => setShowUnsentOnly(true)}
+                data-testid={TESTIDS['daily-table-unsent-count-chip']}
+              />
+            )}
+            {hasDraft && (
+              <Chip
+                label={`下書き保存済み${draftSavedAt ? ` (${new Date(draftSavedAt).toLocaleTimeString('ja-JP', { hour: '2-digit', minute: '2-digit' })})` : ''}`}
+                color="warning"
+                variant="outlined"
+                size="small"
+                data-testid={TESTIDS['daily-table-draft-status']}
+              />
+            )}
+          </Stack>
         </Box>
         <Typography variant="body2" color="textSecondary" sx={{ mt: 1 }}>
           利用者を行として並べて、各項目を効率的に一覧入力できます
@@ -118,7 +133,7 @@ export function TableDailyRecordForm({
             onUserToggle={handleUserToggle}
           />
 
-          {selectedUsers.length > 0 && (
+          {formData.userRows.length > 0 && (
             <Stack spacing={1}>
               <Stack direction="row" justifyContent="flex-end">
                 <Button
