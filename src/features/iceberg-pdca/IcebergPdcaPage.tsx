@@ -95,6 +95,8 @@ export const IcebergPdcaPage: React.FC<IcebergPdcaPageProps> = ({ writeEnabled: 
   const activeCompletionLabel = trendPeriod === 'weekly' ? weeklyCompletionLabel : monthlyCompletionLabel;
   const activeLeadTimeLabel = trendPeriod === 'weekly' ? weeklyLeadTimeLabel : monthlyLeadTimeLabel;
   const activePeriodLabel = trendPeriod === 'weekly' ? '週次' : '月次';
+  const completionWorse = activeTrendMetrics.completionTrend === 'down';
+  const leadTimeWorse = activeTrendMetrics.leadTimeTrend === 'up';
   const completionTolerancePoint = Math.round(DEFAULT_TREND_TOLERANCE.completionRate * 100);
   const leadTimeToleranceMinutes = DEFAULT_TREND_TOLERANCE.leadTimeMinutes;
   const trendLabel = (trend: TrendDirection): string => {
@@ -271,10 +273,22 @@ export const IcebergPdcaPage: React.FC<IcebergPdcaPageProps> = ({ writeEnabled: 
             <ToggleButton value="monthly" data-testid={TESTIDS['pdca-trend-period-monthly']}>月</ToggleButton>
           </ToggleButtonGroup>
           <Stack spacing={0.5}>
-            <Typography variant="body2" data-testid={TESTIDS['pdca-weekly-completion-trend']}>
+            <Typography
+              variant="body2"
+              data-testid={TESTIDS['pdca-weekly-completion-trend']}
+              aria-label={completionWorse ? '完了率 悪化' : undefined}
+              sx={{ fontWeight: completionWorse ? 700 : undefined }}
+            >
+              {completionWorse ? '⚠ ' : ''}
               {activePeriodLabel}完了率 {activeCompletionLabel} {trendLabel(activeTrendMetrics.completionTrend)}
             </Typography>
-            <Typography variant="body2" data-testid={TESTIDS['pdca-weekly-leadtime-trend']}>
+            <Typography
+              variant="body2"
+              data-testid={TESTIDS['pdca-weekly-leadtime-trend']}
+              aria-label={leadTimeWorse ? 'リードタイム 悪化' : undefined}
+              sx={{ fontWeight: leadTimeWorse ? 700 : undefined }}
+            >
+              {leadTimeWorse ? '⚠ ' : ''}
               {activePeriodLabel}平均リードタイム {activeLeadTimeLabel} {trendLabel(activeTrendMetrics.leadTimeTrend)}
             </Typography>
             <Typography variant="caption" color="text.secondary" sx={{ mt: 0.5 }}>
