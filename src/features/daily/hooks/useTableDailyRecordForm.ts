@@ -3,11 +3,39 @@ import { isUserScheduledForDate } from '@/utils/attendanceUtils';
 import { useEffect, useMemo, useState } from 'react';
 import type { Dispatch, SetStateAction } from 'react';
 import type { User } from '@/types';
-import { useSearchParams } from 'react-router-dom';
 
 const TABLE_DAILY_DRAFT_STORAGE_KEY = 'daily-table-record:draft:v1';
 const TABLE_DAILY_UNSENT_FILTER_STORAGE_KEY = 'daily-table-record:unsent-filter:v1';
 const TABLE_DAILY_UNSENT_FILTER_QUERY_KEY = 'unsent';
+
+const isUnsentFilterEnabledInUrl = (): boolean => {
+  if (typeof window === 'undefined') {
+    return false;
+  }
+
+  const params = new URLSearchParams(window.location.search);
+  return params.get(TABLE_DAILY_UNSENT_FILTER_QUERY_KEY) === '1';
+};
+
+const syncUnsentFilterToUrl = (enabled: boolean): void => {
+  if (typeof window === 'undefined') {
+    return;
+  }
+
+  const nextUrl = new URL(window.location.href);
+  if (enabled) {
+    nextUrl.searchParams.set(TABLE_DAILY_UNSENT_FILTER_QUERY_KEY, '1');
+  } else {
+    nextUrl.searchParams.delete(TABLE_DAILY_UNSENT_FILTER_QUERY_KEY);
+  }
+
+  const nextRelative = `${nextUrl.pathname}${nextUrl.search}${nextUrl.hash}`;
+  const currentRelative = `${window.location.pathname}${window.location.search}${window.location.hash}`;
+
+  if (nextRelative !== currentRelative) {
+    window.history.replaceState({}, '', nextRelative);
+  }
+};
 
 export type UserRowData = {
   userId: string;
@@ -97,7 +125,6 @@ export const useTableDailyRecordForm = ({
   onClose,
   onSave,
 }: UseTableDailyRecordFormParams): UseTableDailyRecordFormResult => {
-  const [searchParams, setSearchParams] = useSearchParams();
   const [selectedUserIds, setSelectedUserIds] = useState<string[]>([]);
   const [selectionManuallyEdited, setSelectionManuallyEdited] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
@@ -260,10 +287,10 @@ export const useTableDailyRecordForm = ({
       return;
     }
 
-    const fromQuery = searchParams.get(TABLE_DAILY_UNSENT_FILTER_QUERY_KEY) === '1';
+    const fromQuery = isUnsentFilterEnabledInUrl();
     const fromStorage = localStorage.getItem(TABLE_DAILY_UNSENT_FILTER_STORAGE_KEY) === '1';
     setShowUnsentOnly(fromQuery || fromStorage);
-  }, [open, searchParams]);
+  }, [open]);
 
   useEffect(() => {
     if (!open) {
@@ -280,19 +307,8 @@ export const useTableDailyRecordForm = ({
       console.error('未送信フィルタの保存に失敗しました:', error);
     }
 
-    const nextParams = new URLSearchParams(searchParams);
-    if (showUnsentOnly) {
-      nextParams.set(TABLE_DAILY_UNSENT_FILTER_QUERY_KEY, '1');
-    } else {
-      nextParams.delete(TABLE_DAILY_UNSENT_FILTER_QUERY_KEY);
-    }
-
-    const nextSerialized = nextParams.toString();
-    const currentSerialized = searchParams.toString();
-    if (nextSerialized !== currentSerialized) {
-      setSearchParams(nextParams, { replace: true });
-    }
-  }, [open, showUnsentOnly, searchParams, setSearchParams]);
+    syncUnsentFilterToUrl(showUnsentOnly);
+  }, [open, showUnsentOnly]);
 
   useEffect(() => {
     if (showUnsentOnly && unsentRowCount === 0) {
