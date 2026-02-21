@@ -4,12 +4,15 @@ import { TableDailyRecordTable } from './components/TableDailyRecordTable';
 import { TableDailyRecordUserPicker } from './components/TableDailyRecordUserPicker';
 import { useTableDailyRecordForm, type TableDailyRecordData } from './hooks/useTableDailyRecordForm';
 import {
+  FilterList as FilterListIcon,
     Group as GroupIcon,
+  SaveAlt as SaveAltIcon,
     Save as SaveIcon
 } from '@mui/icons-material';
 import {
     Box,
     Button,
+  Chip,
     Dialog,
     DialogActions,
     DialogContent,
@@ -48,6 +51,12 @@ export function TableDailyRecordForm({
     handleRowDataChange,
     handleProblemBehaviorChange,
     handleClearRow,
+    showUnsentOnly,
+    setShowUnsentOnly,
+    visibleRows,
+    hasDraft,
+    draftSavedAt,
+    handleSaveDraft,
     handleSave,
     saving,
   } = useTableDailyRecordForm({
@@ -59,9 +68,20 @@ export function TableDailyRecordForm({
   const content = (
     <>
       <DialogTitle>
-        <Box display="flex" alignItems="center" gap={1}>
-          <GroupIcon />
-          一覧形式ケース記録入力
+        <Box display="flex" alignItems="center" justifyContent="space-between" gap={1}>
+          <Box display="flex" alignItems="center" gap={1}>
+            <GroupIcon />
+            一覧形式ケース記録入力
+          </Box>
+          {hasDraft && (
+            <Chip
+              label={`下書き保存済み${draftSavedAt ? ` (${new Date(draftSavedAt).toLocaleTimeString('ja-JP', { hour: '2-digit', minute: '2-digit' })})` : ''}`}
+              color="warning"
+              variant="outlined"
+              size="small"
+              data-testid={TESTIDS['daily-table-draft-status']}
+            />
+          )}
         </Box>
         <Typography variant="body2" color="textSecondary" sx={{ mt: 1 }}>
           利用者を行として並べて、各項目を効率的に一覧入力できます
@@ -99,12 +119,25 @@ export function TableDailyRecordForm({
           />
 
           {selectedUsers.length > 0 && (
-            <TableDailyRecordTable
-              rows={formData.userRows}
-              onRowDataChange={handleRowDataChange}
-              onProblemBehaviorChange={handleProblemBehaviorChange}
-              onClearRow={handleClearRow}
-            />
+            <Stack spacing={1}>
+              <Stack direction="row" justifyContent="flex-end">
+                <Button
+                  variant={showUnsentOnly ? 'contained' : 'outlined'}
+                  size="small"
+                  startIcon={<FilterListIcon />}
+                  onClick={() => setShowUnsentOnly((prev) => !prev)}
+                  data-testid={TESTIDS['daily-table-unsent-filter']}
+                >
+                  {showUnsentOnly ? '未送信のみ表示中' : '未送信のみ'}
+                </Button>
+              </Stack>
+              <TableDailyRecordTable
+                rows={visibleRows}
+                onRowDataChange={handleRowDataChange}
+                onProblemBehaviorChange={handleProblemBehaviorChange}
+                onClearRow={handleClearRow}
+              />
+            </Stack>
           )}
         </Stack>
       </DialogContent>
@@ -121,6 +154,17 @@ export function TableDailyRecordForm({
         }}
       >
         <Stack direction="row" spacing={1} sx={{ width: '100%' }}>
+          <Button
+            onClick={handleSaveDraft}
+            disabled={saving}
+            variant="outlined"
+            size="large"
+            sx={{ minHeight: 48, minWidth: 132 }}
+            startIcon={<SaveAltIcon />}
+            data-testid={TESTIDS['daily-table-draft-save']}
+          >
+            下書き保存
+          </Button>
           <Button
             onClick={onClose}
             disabled={saving}
@@ -148,7 +192,7 @@ export function TableDailyRecordForm({
   );
 
   if (variant === 'content') {
-    return <Box>{content}</Box>;
+    return <Box data-testid={TESTIDS['daily-table-record-form']}>{content}</Box>;
   }
 
   return (
