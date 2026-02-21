@@ -208,7 +208,7 @@ const AppShell: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { settings, updateSettings } = useSettingsContext();
   const isFocusMode = settings.layoutMode === 'focus';
   const isSchedulesRoute = location.pathname.startsWith('/schedules');
-  const schedulesPaddingY = isSchedulesRoute ? 8 : 16;
+  const schedulesPaddingY = isSchedulesRoute ? 0 : 16;
   const contentPaddingY = isFocusMode ? 0 : schedulesPaddingY;
 
   // ✅ 修正：Object を直接依存に入れず、boolean フラグを作る

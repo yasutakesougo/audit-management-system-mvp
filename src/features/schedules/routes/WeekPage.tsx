@@ -591,7 +591,7 @@ export default function WeekPage() {
           zIndex: 2,
           background: 'rgba(255,255,255,0.96)',
           backdropFilter: 'blur(6px)',
-          paddingTop: 8,
+          paddingTop: 0,
           paddingBottom: 8,
           borderBottom: '1px solid rgba(0,0,0,0.08)',
         }}
