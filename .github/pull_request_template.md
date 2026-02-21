@@ -26,6 +26,7 @@
 - [ ] **副作用の分離**: API/Storage/Telemetryがコンポーネントに漏れていない（adapter/clientへ）
 - [ ] **状態駆動**: 分岐は操作ではなく状態で表現されている
 - [ ] **エラー処理**: エラーが分類され、ユーザーへの救済導線がある
+- [ ] **レイアウト規約**: 新規ルートは `viewportMode`（`fixed` / `adaptive`）を明示し、[docs/layout/viewport-mode.md](docs/layout/viewport-mode.md) に従っている
 - [ ] (詳細: [docs/ui-architecture.md](docs/ui-architecture.md))
 
 ### CI/Infra Changes
