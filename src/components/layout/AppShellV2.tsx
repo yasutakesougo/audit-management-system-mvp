@@ -3,6 +3,8 @@ import { Box, useMediaQuery, useTheme } from '@mui/material';
 import { LAYOUT } from './layoutTokens';
 import { useLandscapeTablet } from '@/hooks/useLandscapeTablet';
 
+type ShellViewportMode = 'fixed' | 'adaptive';
+
 type Props = {
   header?: React.ReactNode;
   activity?: React.ReactNode;
@@ -18,6 +20,9 @@ type Props = {
   contentMaxWidth?: number; // default 1200
   contentPaddingX?: number; // default 16
   contentPaddingY?: number; // default 16
+  viewportMode?: ShellViewportMode;
+  /** @deprecated Use viewportMode instead */
+  lockViewportHeight?: boolean;
 };
 
 export function AppShellV2({
@@ -31,6 +36,8 @@ export function AppShellV2({
   contentMaxWidth = 1200,
   contentPaddingX = 16,
   contentPaddingY = 16,
+  viewportMode,
+  lockViewportHeight = true,
 }: Props) {
   const theme = useTheme();
   const isPhone = useMediaQuery(theme.breakpoints.down('sm'));
@@ -48,12 +55,14 @@ export function AppShellV2({
   const showActivity = Boolean(activity) && activityW > 0;
   const showSidebar = Boolean(sidebar) && sidebarW > 0;
   const showFooter = Boolean(footer);
+  const resolvedViewportMode: ShellViewportMode =
+    viewportMode ?? (lockViewportHeight ? 'fixed' : 'adaptive');
 
   return (
     <Box
       sx={{
         '--bottom-nav-height': '88px', // CSS variable for LandscapeFab positioning
-        height: '100dvh',
+        ...(resolvedViewportMode === 'fixed' ? { height: '100dvh' } : { minHeight: '100dvh' }),
         overflow: 'hidden',
         display: 'grid',
         gridTemplateAreas: `
@@ -61,7 +70,7 @@ export function AppShellV2({
           "activity sidebar main"
           "footer footer footer"
         `,
-        gridTemplateRows: `${headerH}px 1fr ${showFooter ? 'auto' : '0px'}`,
+        gridTemplateRows: `${headerH}px minmax(0, 1fr) ${showFooter ? 'auto' : '0px'}`,
         gridTemplateColumns: `${showActivity ? `${activityW}px` : '0px'} ${showSidebar ? `${sidebarW}px` : '0px'} 1fr`,
         bgcolor: 'background.default',
       }}

@@ -45,3 +45,4 @@ audit-report.json
 
 # runtime env (do not commit)
 public/env.runtime.json
+.auth/

@@ -166,7 +166,7 @@ const DayViewContent = ({
       id="panel-day"
       aria-labelledby={headingId}
       data-testid={TESTIDS['schedules-day-page']}
-      style={{ padding: '8px 0 16px' }}
+      style={{ padding: '0 0 16px' }}
     >
       <header
         style={{
@@ -255,7 +255,7 @@ const DayViewContent = ({
       <div
         aria-labelledby={listLabelId}
         role="group"
-        style={{ marginTop: isCompact ? 8 : 12 }}
+        style={{ marginTop: 0 }}
         data-testid="schedule-day-root"
       >
         <span

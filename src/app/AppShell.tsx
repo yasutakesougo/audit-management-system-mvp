@@ -207,8 +207,10 @@ const AppShell: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const theme = useTheme();
   const { settings, updateSettings } = useSettingsContext();
   const isFocusMode = settings.layoutMode === 'focus';
-  const isSchedulesRoute = location.pathname.startsWith('/schedules');
-  const schedulesPaddingY = isSchedulesRoute ? 8 : 16;
+  const isSchedulesRoute =
+    location.pathname.startsWith('/schedules') || location.pathname.startsWith('/schedule');
+  const viewportMode = isSchedulesRoute ? 'adaptive' : 'fixed';
+  const schedulesPaddingY = isSchedulesRoute ? 0 : 16;
   const contentPaddingY = isFocusMode ? 0 : schedulesPaddingY;
 
   // ✅ 修正：Object を直接依存に入れず、boolean フラグを作る
@@ -985,6 +987,8 @@ const AppShell: React.FC<{ children: React.ReactNode }> = ({ children }) => {
             sidebarWidth={showDesktopSidebar ? currentDrawerWidth : 0}
             contentPaddingX={isFocusMode ? 0 : 16}
             contentPaddingY={contentPaddingY}
+            viewportMode={viewportMode}
+            lockViewportHeight={!isSchedulesRoute}
           >
             {children}
           </AppShellLayout>
@@ -996,6 +1000,8 @@ const AppShell: React.FC<{ children: React.ReactNode }> = ({ children }) => {
             sidebarWidth={showDesktopSidebar ? currentDrawerWidth : 0}
             contentPaddingX={isFocusMode ? 0 : 16}
             contentPaddingY={contentPaddingY}
+            viewportMode={viewportMode}
+            lockViewportHeight={!isSchedulesRoute}
           >
             {children}
           </AppShellV2>

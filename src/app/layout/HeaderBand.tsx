@@ -19,8 +19,11 @@ export function HeaderBand(props: HeaderBandProps) {
       component="header"
       sx={(theme) => ({
         height: `${layoutTokens.header.height}px`,
+        minHeight: `${layoutTokens.header.height}px`,
+        maxHeight: `${layoutTokens.header.height}px`,
         display: 'flex',
         alignItems: 'center',
+        flexWrap: 'nowrap',
         gap: 1,
         px: 1,
         borderBottom: `1px solid ${theme.palette.divider}`,
@@ -29,7 +32,10 @@ export function HeaderBand(props: HeaderBandProps) {
       })}
     >
       {leftSlot}
-      <Typography variant="body2" sx={{ fontWeight: 700, whiteSpace: 'nowrap' }}>
+      <Typography
+        variant="body2"
+        sx={{ fontWeight: 700, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', minWidth: 0 }}
+      >
         {title}
       </Typography>
 
@@ -38,6 +44,7 @@ export function HeaderBand(props: HeaderBandProps) {
         sx={{
           ml: 1,
           flex: 1,
+          minWidth: 0,
           height: 32,
           display: 'flex',
           alignItems: 'center',
