@@ -18,6 +18,8 @@ import {
   Select,
   Stack,
   TextField,
+  ToggleButton,
+  ToggleButtonGroup,
   Typography,
 } from '@mui/material';
 import { useSearchParams } from 'react-router-dom';
@@ -50,6 +52,7 @@ export const IcebergPdcaPage: React.FC<IcebergPdcaPageProps> = ({ writeEnabled: 
   const { data: users = [], status: usersStatus } = useUsersStore();
   const [searchParams, setSearchParams] = useSearchParams();
   const userFilterRef = React.useRef<HTMLInputElement | null>(null);
+  const [trendPeriod, setTrendPeriod] = React.useState<'weekly' | 'monthly'>('weekly');
 
   const userOptions = React.useMemo(
     () =>
@@ -87,6 +90,10 @@ export const IcebergPdcaPage: React.FC<IcebergPdcaPageProps> = ({ writeEnabled: 
   const monthlyCompletionLabel = `${Math.round(monthlyMetrics.current.completionRate * 100)}%`;
   const weeklyLeadTimeLabel = `${weeklyMetrics.current.averageLeadTimeMinutes}分`;
   const monthlyLeadTimeLabel = `${monthlyMetrics.current.averageLeadTimeMinutes}分`;
+  const activeTrendMetrics = trendPeriod === 'weekly' ? weeklyMetrics : monthlyMetrics;
+  const activeCompletionLabel = trendPeriod === 'weekly' ? weeklyCompletionLabel : monthlyCompletionLabel;
+  const activeLeadTimeLabel = trendPeriod === 'weekly' ? weeklyLeadTimeLabel : monthlyLeadTimeLabel;
+  const activePeriodLabel = trendPeriod === 'weekly' ? '週次' : '月次';
   const trendLabel = (trend: TrendDirection): string => {
     if (trend === 'up') return '↑';
     if (trend === 'down') return '↓';
@@ -242,18 +249,27 @@ export const IcebergPdcaPage: React.FC<IcebergPdcaPageProps> = ({ writeEnabled: 
 
         <Paper variant="outlined" sx={{ p: 1.5 }} data-testid={TESTIDS['pdca-daily-trend-card']}>
           <Typography variant="subtitle2" sx={{ mb: 1 }}>週次 / 月次トレンド</Typography>
+          <ToggleButtonGroup
+            value={trendPeriod}
+            exclusive
+            size="small"
+            onChange={(_, value: 'weekly' | 'monthly' | null) => {
+              if (value) {
+                setTrendPeriod(value);
+              }
+            }}
+            sx={{ mb: 1 }}
+            data-testid={TESTIDS['pdca-trend-period-toggle']}
+          >
+            <ToggleButton value="weekly" data-testid={TESTIDS['pdca-trend-period-weekly']}>週</ToggleButton>
+            <ToggleButton value="monthly" data-testid={TESTIDS['pdca-trend-period-monthly']}>月</ToggleButton>
+          </ToggleButtonGroup>
           <Stack spacing={0.5}>
             <Typography variant="body2" data-testid={TESTIDS['pdca-weekly-completion-trend']}>
-              週次完了率 {weeklyCompletionLabel} {trendLabel(weeklyMetrics.completionTrend)}
-            </Typography>
-            <Typography variant="body2" data-testid={TESTIDS['pdca-monthly-completion-trend']}>
-              月次完了率 {monthlyCompletionLabel} {trendLabel(monthlyMetrics.completionTrend)}
+              {activePeriodLabel}完了率 {activeCompletionLabel} {trendLabel(activeTrendMetrics.completionTrend)}
             </Typography>
             <Typography variant="body2" data-testid={TESTIDS['pdca-weekly-leadtime-trend']}>
-              週次平均リードタイム {weeklyLeadTimeLabel} {trendLabel(weeklyMetrics.leadTimeTrend)}
-            </Typography>
-            <Typography variant="body2" data-testid={TESTIDS['pdca-monthly-leadtime-trend']}>
-              月次平均リードタイム {monthlyLeadTimeLabel} {trendLabel(monthlyMetrics.leadTimeTrend)}
+              {activePeriodLabel}平均リードタイム {activeLeadTimeLabel} {trendLabel(activeTrendMetrics.leadTimeTrend)}
             </Typography>
           </Stack>
         </Paper>
