@@ -1,8 +1,10 @@
 import { describe, expect, it } from 'vitest';
 
 import {
+  DEFAULT_TREND_TOLERANCE,
   getMonthlyMetrics,
   getTrend,
+  getTrendDirection,
   getWeeklyMetrics,
   type DailySubmissionEvent,
 } from '../dailyMetricsAdapter';
@@ -72,6 +74,14 @@ describe('dailyMetricsAdapter trend functions', () => {
   it('returns flat trend when difference is inside threshold', () => {
     expect(getTrend(0.5004, 0.5)).toBe('flat');
     expect(getTrend(0.5, 0.5004)).toBe('flat');
+  });
+
+  it('uses default completion tolerance for boundary decisions', () => {
+    const tolerance = DEFAULT_TREND_TOLERANCE.completionRate;
+
+    expect(getTrendDirection(0.5, 0.5 + tolerance - 0.001)).toBe('flat');
+    expect(getTrendDirection(0.5, 0.5 + tolerance + 0.001)).toBe('up');
+    expect(getTrendDirection(0.5, 0.5 - tolerance - 0.001)).toBe('down');
   });
 
   it('aggregates month boundary correctly for current and previous month', () => {
