@@ -30,7 +30,13 @@ import { TESTIDS } from '@/testids';
 
 import { IcebergPdcaEmptyState } from './components/IcebergPdcaEmptyState';
 import type { IcebergPdcaEmptyContext } from './components/icebergPdcaEmptyCopy';
-import { getDailySubmissionMetrics } from './dailyMetricsAdapter';
+import {
+  getDailySubmissionMetrics,
+  getMonthlyMetrics,
+  getStoredDailySubmissionEvents,
+  getWeeklyMetrics,
+  type TrendDirection,
+} from './dailyMetricsAdapter';
 import { useIcebergPdcaList, useCreatePdca, useUpdatePdca, useDeletePdca } from './queries';
 import type { IcebergPdcaItem, IcebergPdcaPhase } from './types';
 
@@ -66,8 +72,26 @@ export const IcebergPdcaPage: React.FC<IcebergPdcaPageProps> = ({ writeEnabled: 
     () => getDailySubmissionMetrics({ recordDate: today, targetUserIds }),
     [today, targetUserIds],
   );
+  const allSubmissionEvents = React.useMemo(() => getStoredDailySubmissionEvents(), [today]);
+  const weeklyMetrics = React.useMemo(
+    () => getWeeklyMetrics({ events: allSubmissionEvents, targetUserIds, referenceDate: new Date(today) }),
+    [allSubmissionEvents, targetUserIds, today],
+  );
+  const monthlyMetrics = React.useMemo(
+    () => getMonthlyMetrics({ events: allSubmissionEvents, targetUserIds, referenceDate: new Date(today) }),
+    [allSubmissionEvents, targetUserIds, today],
+  );
   const completionRateLabel = `${Math.round(dailyMetrics.completionRate * 100)}%`;
   const leadTimeLabel = `${dailyMetrics.averageLeadTimeMinutes}分`;
+  const weeklyCompletionLabel = `${Math.round(weeklyMetrics.current.completionRate * 100)}%`;
+  const monthlyCompletionLabel = `${Math.round(monthlyMetrics.current.completionRate * 100)}%`;
+  const weeklyLeadTimeLabel = `${weeklyMetrics.current.averageLeadTimeMinutes}分`;
+  const monthlyLeadTimeLabel = `${monthlyMetrics.current.averageLeadTimeMinutes}分`;
+  const trendLabel = (trend: TrendDirection): string => {
+    if (trend === 'up') return '↑';
+    if (trend === 'down') return '↓';
+    return '→';
+  };
   const selectedOption = React.useMemo(
     () => userOptions.find((opt) => opt.id === selectedUserId) ?? null,
     [selectedUserId, userOptions],
@@ -215,6 +239,24 @@ export const IcebergPdcaPage: React.FC<IcebergPdcaPageProps> = ({ writeEnabled: 
             <Typography variant="caption" color="text.secondary">平均</Typography>
           </Paper>
         </Stack>
+
+        <Paper variant="outlined" sx={{ p: 1.5 }} data-testid={TESTIDS['pdca-daily-trend-card']}>
+          <Typography variant="subtitle2" sx={{ mb: 1 }}>週次 / 月次トレンド</Typography>
+          <Stack spacing={0.5}>
+            <Typography variant="body2" data-testid={TESTIDS['pdca-weekly-completion-trend']}>
+              週次完了率 {weeklyCompletionLabel} {trendLabel(weeklyMetrics.completionTrend)}
+            </Typography>
+            <Typography variant="body2" data-testid={TESTIDS['pdca-monthly-completion-trend']}>
+              月次完了率 {monthlyCompletionLabel} {trendLabel(monthlyMetrics.completionTrend)}
+            </Typography>
+            <Typography variant="body2" data-testid={TESTIDS['pdca-weekly-leadtime-trend']}>
+              週次平均リードタイム {weeklyLeadTimeLabel} {trendLabel(weeklyMetrics.leadTimeTrend)}
+            </Typography>
+            <Typography variant="body2" data-testid={TESTIDS['pdca-monthly-leadtime-trend']}>
+              月次平均リードタイム {monthlyLeadTimeLabel} {trendLabel(monthlyMetrics.leadTimeTrend)}
+            </Typography>
+          </Stack>
+        </Paper>
 
         <Autocomplete
           options={userOptions}
