@@ -22,8 +22,6 @@ export type AppShellProps = {
   contentPaddingY?: number;
   contentMaxWidth?: number;
   viewportMode?: ShellViewportMode;
-  /** @deprecated Use viewportMode instead */
-  lockViewportHeight?: boolean;
 
   children: React.ReactNode;
 };
@@ -43,8 +41,7 @@ export function AppShell(props: AppShellProps) {
   const contentPaddingX = props.contentPaddingX ?? 16;
   const contentPaddingY = props.contentPaddingY ?? 16;
   const contentMaxWidth = props.contentMaxWidth ?? 1200;
-  const viewportMode: ShellViewportMode =
-    props.viewportMode ?? ((props.lockViewportHeight ?? true) ? 'fixed' : 'adaptive');
+  const viewportMode: ShellViewportMode = props.viewportMode ?? 'fixed';
 
   return (
     <Box
