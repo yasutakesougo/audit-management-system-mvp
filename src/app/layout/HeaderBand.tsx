@@ -19,6 +19,8 @@ export function HeaderBand(props: HeaderBandProps) {
       component="header"
       sx={(theme) => ({
         height: `${layoutTokens.header.height}px`,
+        minHeight: `${layoutTokens.header.height}px`,
+        maxHeight: `${layoutTokens.header.height}px`,
         display: 'flex',
         alignItems: 'center',
         gap: 1,

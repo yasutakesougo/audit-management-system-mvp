@@ -44,7 +44,7 @@ export function AppShell(props: AppShellProps) {
         height: layoutTokens.app.height,
         overflow: 'hidden',
         display: 'grid',
-        gridTemplateRows: `${showHeader ? 'auto' : '0px'} 1fr ${showFooter ? layoutTokens.footer.heightWithSafeArea : 0}px`,
+        gridTemplateRows: `${showHeader ? layoutTokens.header.height : 0}px 1fr ${showFooter ? layoutTokens.footer.heightWithSafeArea : 0}px`,
         gridTemplateColumns: `${activityWidth}px ${sidebarWidth}px 1fr`,
         gridTemplateAreas: `
           "header header header"
@@ -57,7 +57,9 @@ export function AppShell(props: AppShellProps) {
         sx={{
           gridArea: 'header',
           display: showHeader ? 'block' : 'none',
-          minHeight: 0,
+          height: showHeader ? `${layoutTokens.header.height}px` : 0,
+          minHeight: showHeader ? `${layoutTokens.header.height}px` : 0,
+          maxHeight: showHeader ? `${layoutTokens.header.height}px` : 0,
           overflow: 'hidden',
         }}
       >
