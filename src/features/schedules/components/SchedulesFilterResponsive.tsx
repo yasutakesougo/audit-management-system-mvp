@@ -71,6 +71,13 @@ export const SchedulesFilterResponsive: React.FC<SchedulesFilterResponsiveProps>
         onClick={handleOpen}
         aria-haspopup="dialog"
         data-testid={TESTIDS.SCHEDULES_FILTER_TOGGLE}
+        sx={{
+          whiteSpace: 'nowrap',
+          writingMode: 'horizontal-tb',
+          textOrientation: 'mixed',
+          minWidth: 96,
+          flexShrink: 0,
+        }}
       >
         絞り込み
       </Button>
