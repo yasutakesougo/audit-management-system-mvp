@@ -3,6 +3,7 @@ import { isUserScheduledForDate } from '@/utils/attendanceUtils';
 import { useEffect, useMemo, useState } from 'react';
 import type { Dispatch, SetStateAction } from 'react';
 import type { User } from '@/types';
+import { emitDailySubmissionEvents } from '@/features/iceberg-pdca/dailyMetricsAdapter';
 
 const TABLE_DAILY_DRAFT_STORAGE_KEY = 'daily-table-record:draft:v1';
 const TABLE_DAILY_UNSENT_FILTER_STORAGE_KEY = 'daily-table-record:unsent-filter:v1';
@@ -481,6 +482,16 @@ export const useTableDailyRecordForm = ({
     setSaving(true);
     try {
       await onSave(formData);
+
+      const submittedAt = new Date().toISOString();
+      const submissionEvents = selectedUserIds.map((userId) => ({
+        userId,
+        recordDate: formData.date,
+        submittedAt,
+        draftCreatedAt: draftSavedAt ?? undefined,
+      }));
+      emitDailySubmissionEvents(submissionEvents);
+
       clearDraft();
       onClose();
       setSelectedUserIds([]);
