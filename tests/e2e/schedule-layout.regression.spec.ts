@@ -122,4 +122,36 @@ test.describe('Schedule layout regression', () => {
     expect(['hidden', 'clip']).toContain(scrollState.body);
     expect(['auto', 'scroll']).toContain(scrollState.mainOverflow ?? '');
   });
+
+  test('daily table keeps main-only scroll responsibility', async ({ page }) => {
+    await page.goto('/daily/table');
+    await page.waitForLoadState('networkidle');
+    await expect(page).toHaveURL(/\/daily\/table/);
+
+    const scrollState = await page.evaluate(() => {
+      const html = getComputedStyle(document.documentElement).overflowY;
+      const body = getComputedStyle(document.body).overflowY;
+      const main = document.querySelector('main');
+      const mainOverflow = main ? getComputedStyle(main).overflowY : null;
+      const beforeWindowScrollY = window.scrollY;
+      window.scrollTo(0, 240);
+      const afterWindowScrollY = window.scrollY;
+
+      return {
+        html,
+        body,
+        hasMain: Boolean(main),
+        mainOverflow,
+        beforeWindowScrollY,
+        afterWindowScrollY,
+      };
+    });
+
+    expect(scrollState.hasMain).toBe(true);
+    expect(['hidden', 'clip']).toContain(scrollState.html);
+    expect(['hidden', 'clip']).toContain(scrollState.body);
+    expect(scrollState.beforeWindowScrollY).toBeLessThanOrEqual(1);
+    expect(scrollState.afterWindowScrollY).toBeLessThanOrEqual(1);
+    expect(['auto', 'scroll']).toContain(scrollState.mainOverflow ?? '');
+  });
 });
