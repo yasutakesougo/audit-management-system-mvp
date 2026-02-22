@@ -20,6 +20,7 @@ function createNoopFirestore(): Firestore {
     get(_target, prop) {
       if (prop === 'type') return 'firestore';
       if (prop === 'app') return null;
+      if (prop === 'toJSON') return () => ({ noop: true });
       // Return a function that logs a warning and returns a safe value
       return (...args: unknown[]) => {
         if (getFlag('DEV', false)) {
@@ -29,7 +30,7 @@ function createNoopFirestore(): Firestore {
       };
     },
   };
-  return new Proxy({}, handler) as Firestore;
+  return new Proxy({}, handler) as unknown as Firestore;
 }
 
 /**
