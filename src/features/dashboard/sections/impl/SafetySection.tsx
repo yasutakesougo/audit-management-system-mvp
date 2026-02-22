@@ -10,7 +10,7 @@
  * - あるいは ViewModel 層で状態を集中管理
  */
 
-import { DashboardSafetyHUD } from '../../DashboardSafetyHUD';
+import DashboardSafetyHUD from '../../DashboardSafetyHUD';
 import React from 'react';
 
 export type SafetySectionProps = {
