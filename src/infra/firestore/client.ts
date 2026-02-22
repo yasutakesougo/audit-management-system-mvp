@@ -23,7 +23,7 @@ if (getFlag('VITE_FIRESTORE_USE_EMULATOR', false)) {
   try {
     connectFirestoreEmulator(firestore, host, port);
   } catch (error) {
-    if (import.meta.env.DEV) {
+    if (getFlag('DEV', false)) {
       console.warn('[firestore] emulator connection skipped:', error);
     }
   }
