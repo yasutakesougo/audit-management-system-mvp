@@ -1,0 +1,25 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function signedIn() { return request.auth != null; }
+
+    match /orgs/{orgId}/events/{eventId} {
+      allow read: if signedIn();
+
+      allow create: if signedIn()
+        && request.resource.data.orgId == orgId
+        && !exists(/databases/$(database)/documents/orgs/$(orgId)/events/$(eventId));
+
+      allow update, delete: if false;
+    }
+
+    match /orgs/{orgId}/dailySnapshots/{snapId} {
+      allow read: if signedIn();
+
+      allow create, update: if signedIn()
+        && request.resource.data.orgId == orgId;
+
+      allow delete: if false;
+    }
+  }
+}
