@@ -243,6 +243,21 @@ const run = async (): Promise<void> => {
       throw error;
     });
 
+  // ✅ Step 1.5: Initialize Firebase Auth (anonymous) for Firestore rules
+  const completeFirebaseAuth = beginHydrationSpan('bootstrap:firebase-auth', { group: 'hydration', meta: { budget: 20 } });
+  if (hasWindow) {
+    try {
+      const { initFirebaseAuth } = await import('./infra/firestore/auth');
+      await initFirebaseAuth();
+      finalizeHydrationSpan(completeFirebaseAuth);
+    } catch (error) {
+      finalizeHydrationSpan(completeFirebaseAuth, error);
+      console.warn('[main] Firebase Auth init error (non-fatal, continuing)', error);
+    }
+  } else {
+    finalizeHydrationSpan(completeFirebaseAuth);
+  }
+
   // ✅ Step 2: Initialize MSAL singleton + handle redirect BEFORE React renders
   if (hasWindow) {
     const hasAuthResponse = (): boolean => {

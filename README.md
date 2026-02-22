@@ -176,7 +176,7 @@ src/
 
 ### Firestore Emulator (PDCA persistence)
 
-- Start Firestore emulator: `npm run firestore:emu`
+- Start Firestore + Auth emulators: `npm run firestore:emu`
 - Start app with emulator connection: `npm run dev:firestore`
 - Optional persisted emulator data: `npm run firestore:emu:export`
 
@@ -185,6 +185,11 @@ Environment flags used by the app:
 - `VITE_FIRESTORE_USE_EMULATOR=1`
 - `VITE_FIRESTORE_EMULATOR_HOST=127.0.0.1`
 - `VITE_FIRESTORE_EMULATOR_PORT=8080`
+- `VITE_FIREBASE_AUTH_USE_EMULATOR=1` (Auth emulator)
+- `VITE_FIREBASE_AUTH_EMULATOR_URL=http://localhost:9099` (Auth emulator URL)
+
+Note: Both Firestore and Auth emulators are started together with `npm run firestore:emu` (Firebase CLI defaults). App will automatically route to emulator if flags are set.
+
 
 > Override precedence: values passed directly to `ensureConfig` (e.g. in tests) always win. `VITE_SP_RESOURCE` / `VITE_SP_SITE_RELATIVE` from the env override `VITE_SP_SITE_URL`, and the full URL fallback is only used when both override values are omitted.
 
