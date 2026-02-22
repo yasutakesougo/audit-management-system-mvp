@@ -40,6 +40,7 @@ import {
   getWeeklyMetrics,
   type TrendDirection,
 } from './dailyMetricsAdapter';
+import { readDailySnapshot, type DailySnapshotMetrics } from './readDailySnapshot';
 import { useIcebergPdcaList, useCreatePdca, useUpdatePdca, useDeletePdca } from './queries';
 import type { IcebergPdcaItem, IcebergPdcaPhase } from './types';
 
@@ -68,6 +69,9 @@ export const IcebergPdcaPage: React.FC<IcebergPdcaPageProps> = ({ writeEnabled: 
 
   const selectedUserId = searchParams.get('userId') ?? undefined;
   const today = React.useMemo(() => new Date().toISOString().slice(0, 10), []);
+  const [dailySnapshotMetrics, setDailySnapshotMetrics] = React.useState<DailySnapshotMetrics | null>(null);
+  const orgId = getEnv('VITE_FIREBASE_ORG_ID') ?? 'demo-org';
+  const templateId = 'daily-support.v1';
   const supportRecordJumpTo = React.useMemo(() => {
     const params = new URLSearchParams({ date: today });
     if (selectedUserId) {
@@ -76,13 +80,60 @@ export const IcebergPdcaPage: React.FC<IcebergPdcaPageProps> = ({ writeEnabled: 
     return `/daily/support?${params.toString()}`;
   }, [selectedUserId, today]);
   const targetUserIds = React.useMemo(
-    () => users.filter((u) => u.IsActive !== false).map((u) => u.UserID ?? String(u.Id)),
-    [users],
+    () => (selectedUserId
+      ? [selectedUserId]
+      : users.filter((u) => u.IsActive !== false).map((u) => u.UserID ?? String(u.Id))),
+    [selectedUserId, users],
   );
   const dailyMetrics = React.useMemo(
     () => getDailySubmissionMetrics({ recordDate: today, targetUserIds }),
     [today, targetUserIds],
   );
+  React.useEffect(() => {
+    let disposed = false;
+
+    const loadSnapshot = async () => {
+      if (!selectedUserId) {
+        setDailySnapshotMetrics(null);
+        return;
+      }
+
+      try {
+        const snapshot = await readDailySnapshot({
+          orgId,
+          templateId,
+          targetDate: today,
+          targetUserId: selectedUserId,
+        });
+
+        if (!disposed) {
+          setDailySnapshotMetrics(snapshot);
+        }
+      } catch {
+        if (!disposed) {
+          setDailySnapshotMetrics(null);
+        }
+      }
+    };
+
+    void loadSnapshot();
+
+    return () => {
+      disposed = true;
+    };
+  }, [orgId, selectedUserId, templateId, today]);
+  const resolvedDailyMetrics = React.useMemo(() => {
+    if (!dailySnapshotMetrics) {
+      return dailyMetrics;
+    }
+
+    return {
+      ...dailyMetrics,
+      recordDate: dailySnapshotMetrics.targetDate ?? dailyMetrics.recordDate,
+      completionRate: dailySnapshotMetrics.completionRate,
+      averageLeadTimeMinutes: dailySnapshotMetrics.leadTimeMinutes,
+    };
+  }, [dailyMetrics, dailySnapshotMetrics]);
   const allSubmissionEvents = React.useMemo(() => getStoredDailySubmissionEvents(), [today]);
   const weeklyMetrics = React.useMemo(
     () => getWeeklyMetrics({ events: allSubmissionEvents, targetUserIds, referenceDate: new Date(today) }),
@@ -92,8 +143,8 @@ export const IcebergPdcaPage: React.FC<IcebergPdcaPageProps> = ({ writeEnabled: 
     () => getMonthlyMetrics({ events: allSubmissionEvents, targetUserIds, referenceDate: new Date(today) }),
     [allSubmissionEvents, targetUserIds, today],
   );
-  const completionRateLabel = `${Math.round(dailyMetrics.completionRate * 100)}%`;
-  const leadTimeLabel = `${dailyMetrics.averageLeadTimeMinutes}分`;
+  const completionRateLabel = `${Math.round(resolvedDailyMetrics.completionRate * 100)}%`;
+  const leadTimeLabel = `${resolvedDailyMetrics.averageLeadTimeMinutes}分`;
   const weeklyCompletionLabel = `${Math.round(weeklyMetrics.current.completionRate * 100)}%`;
   const monthlyCompletionLabel = `${Math.round(monthlyMetrics.current.completionRate * 100)}%`;
   const weeklyLeadTimeLabel = `${weeklyMetrics.current.averageLeadTimeMinutes}分`;
@@ -247,7 +298,7 @@ export const IcebergPdcaPage: React.FC<IcebergPdcaPageProps> = ({ writeEnabled: 
               {completionRateLabel}
             </Typography>
             <Typography variant="caption" color="text.secondary">
-              {dailyMetrics.submittedCount}/{dailyMetrics.targetCount} 名
+              {resolvedDailyMetrics.submittedCount}/{resolvedDailyMetrics.targetCount} 名
             </Typography>
           </Paper>
           <Paper variant="outlined" sx={{ p: 1.5, minWidth: 220 }} data-testid={TESTIDS['pdca-daily-leadtime-card']}>
