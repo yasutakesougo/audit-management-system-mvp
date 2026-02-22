@@ -104,8 +104,9 @@ test.describe('Users CRUD integration (full lifecycle)', () => {
     await expect(editDialog).not.toBeVisible({ timeout: 10000 });
     await page.waitForLoadState('networkidle');
 
-    // 編集後の名前が一覧に表示されることを確認
-    await expect(page.getByText(editedUserName, { exact: true })).toBeVisible({ timeout: 10000 });
+    // 編集後の名前がテーブルの行に表示されることを確認（strict mode violation回避のためスコープを限定）
+    const editedUserRow = page.locator('tr', { has: page.getByText(editedUserName) });
+    await expect(editedUserRow).toBeVisible({ timeout: 10000 });
 
     // ========================================
     // Step 4: ユーザー削除
