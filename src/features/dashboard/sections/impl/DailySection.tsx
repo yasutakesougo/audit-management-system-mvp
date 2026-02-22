@@ -39,6 +39,9 @@ export const DailySection: React.FC<DailySectionProps> = (props) => {
 
   return (
     <Paper elevation={3} sx={{ p: { xs: 2, sm: 2.5, md: 3 } }}>
+      <Typography variant="h5" sx={{ fontWeight: 700, mb: 2 }}>
+        日次記録状況
+      </Typography>
       <Stack
         direction={{ xs: 'column', md: 'row' }}
         spacing={1.5}

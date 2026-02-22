@@ -14,7 +14,7 @@ test.describe.skip('Auth Diagnostics', () => {
     
     // Check if DevTools API is available (only in dev mode)
     const hasDevTools = await page.evaluate(() => {
-      return typeof (window as any).__authDiagnostics !== 'undefined';
+      return typeof (window as typeof window & { __authDiagnostics?: unknown }).__authDiagnostics !== 'undefined';
     });
     
     if (!hasDevTools) {
@@ -24,8 +24,8 @@ test.describe.skip('Auth Diagnostics', () => {
     
     // Inject test event via DevTools API
     await page.evaluate(() => {
-      const diagnostics = (window as any).__authDiagnostics;
-      diagnostics.collect({
+      const diagnostics = (window as typeof window & { __authDiagnostics?: { collect: (obj: Record<string, unknown>) => void } }).__authDiagnostics;
+      diagnostics?.collect({
         route: '/test/e2e',
         reason: 'network-error',
         outcome: 'blocked',
@@ -36,14 +36,14 @@ test.describe.skip('Auth Diagnostics', () => {
     
     // Verify event was collected
     const events = await page.evaluate(() => {
-      const diagnostics = (window as any).__authDiagnostics;
-      return diagnostics.getRecent(10);
+      const diagnostics = (window as typeof window & { __authDiagnostics?: { getRecent: (count: number) => unknown[] } }).__authDiagnostics;
+      return diagnostics?.getRecent(10) ?? [];
     });
-    
+
     expect(events.length).toBeGreaterThan(0);
-    
+
     // Verify the test event is present
-    const testEvent = events.find((evt: any) => evt.route === '/test/e2e');
+    const testEvent = events.find((evt: unknown) => (evt as Record<string, unknown>)?.route === '/test/e2e');
     expect(testEvent).toBeDefined();
     expect(testEvent).toMatchObject({
       reason: 'network-error',
@@ -71,7 +71,7 @@ test.describe.skip('Auth Diagnostics', () => {
     
     // Collect multiple events
     await page.evaluate(() => {
-      const diagnostics = (window as any).__authDiagnostics;
+      const diagnostics = (window as typeof window & { __authDiagnostics?: { collect: (obj: Record<string, unknown>) => void } }).__authDiagnostics;
       
       diagnostics.collect({
         route: '/test/stats-1',
@@ -88,8 +88,8 @@ test.describe.skip('Auth Diagnostics', () => {
     
     // Get stats
     const stats = await page.evaluate(() => {
-      const diagnostics = (window as any).__authDiagnostics;
-      return diagnostics.getStats();
+      const diagnostics = (window as typeof window & { __authDiagnostics?: { getStats: () => unknown } }).__authDiagnostics;
+      return diagnostics?.getStats();
     });
     
     // Verify stats structure
