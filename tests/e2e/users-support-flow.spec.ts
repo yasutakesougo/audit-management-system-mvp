@@ -8,7 +8,7 @@ const waitForDetailSections = async (page: Page) => {
 };
 
 test.describe('users support flow', () => {
-	test.beforeEach(async ({ page }) => {
+	test.beforeEach(async ({ page }, testInfo) => {
 		await page.route('**/login.microsoftonline.com/**', (route) => route.fulfill({ status: 204, body: '' }));
 		await page.route('https://graph.microsoft.com/**', (route) =>
 			route.fulfill({
@@ -20,7 +20,7 @@ test.describe('users support flow', () => {
 
 		await bootUsersPage(page, {
 			seed: { usersMaster: true },
-		});
+		}, testInfo);
 	});
 
 	test('navigates from detail quick access to support procedure guidance', async ({ page }) => {

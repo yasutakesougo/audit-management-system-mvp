@@ -1,6 +1,7 @@
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import type { Page } from '@playwright/test';
+import type { TestInfo } from '@playwright/test';
 import { setupPlaywrightEnv } from './setupPlaywrightEnv';
 import { setupSharePointStubs } from './setupSharePointStubs';
 import type { IUserMaster } from '../../../src/features/users/types';
@@ -75,7 +76,7 @@ const buildDefaultLists = (
   ];
 };
 
-export async function bootUsersPage(page: Page, options: BootUsersOptions = {}): Promise<void> {
+export async function bootUsersPage(page: Page, options: BootUsersOptions = {}, testInfo?: TestInfo): Promise<void> {
   const envOverrides = { ...FEATURE_ENV, ...(options.envOverrides ?? {}) };
   const storageOverrides = { ...FEATURE_STORAGE, ...(options.storageOverrides ?? {}) };
   const shouldSeedUsers = options.seed?.usersMaster ?? false;
@@ -87,8 +88,7 @@ export async function bootUsersPage(page: Page, options: BootUsersOptions = {}):
   const route = options.route ?? '/users';
   const shouldNavigate = options.autoNavigate !== false;
 
-  // Bootstrap monitoring: JS/network failures only logged on failure
-  // Controlled by process.env.E2E_DEBUG for local debugging
+  // Bootstrap monitoring: JS/network failures + console errors logged on all CI runs
   const isDebug = process.env.E2E_DEBUG === '1' || process.env.CI === 'true';
   const reqFailed: string[] = [];
   const consoleErr: string[] = [];
@@ -189,3 +189,31 @@ export async function bootUsersPage(page: Page, options: BootUsersOptions = {}):
     }
   }
 }
+
+  // CI: Always attach error logs for diagnostics (visible in artifacts)
+  if (testInfo && process.env.CI === 'true') {
+    if (consoleErr.length > 0) {
+      console.log('\n⚠️ [CI DIAGNOSTICS] Console Errors Captured:');
+      consoleErr.forEach((err) => console.log('  ' + err));
+      await testInfo.attach('console-errors', {
+        body: consoleErr.join('\n'),
+        contentType: 'text/plain',
+      });
+    }
+    if (pageErr.length > 0) {
+      console.log('\n⚠️ [CI DIAGNOSTICS] Page Errors Captured:');
+      pageErr.forEach((err) => console.log('  ' + err));
+      await testInfo.attach('page-errors', {
+        body: pageErr.join('\n'),
+        contentType: 'text/plain',
+      });
+    }
+    if (reqFailed.length > 0) {
+      console.log('\n⚠️ [CI DIAGNOSTICS] Network Failures Captured:');
+      reqFailed.slice(0, 10).forEach((err) => console.log('  ' + err));
+      await testInfo.attach('request-failures', {
+        body: reqFailed.join('\n'),
+        contentType: 'text/plain',
+      });
+    }
+  }

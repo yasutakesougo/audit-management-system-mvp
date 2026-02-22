@@ -20,12 +20,12 @@ import { expect, test } from '@playwright/test';
 import { bootUsersPage } from './_helpers/bootUsersPage';
 
 test.describe('Users CRUD integration (full lifecycle)', () => {
-  test.beforeEach(async ({ page }) => {
-    // bootUsersPage でモック環境をセットアップ
+  test.beforeEach(async ({ page }, testInfo) => {
+    // bootUsersPage でモック環境をセットアップ（console errors を CI ログに出す）
     await bootUsersPage(page, {
       route: '/users',
       autoNavigate: true,
-    });
+    }, testInfo);
 
     // window.confirm をモック化（削除確認ダイアログ）
     page.on('dialog', async (dialog) => {
