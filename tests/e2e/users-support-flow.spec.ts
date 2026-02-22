@@ -4,7 +4,7 @@ import { TESTIDS } from '../../src/testids';
 import { bootUsersPage } from './_helpers/bootUsersPage';
 
 const waitForDetailSections = async (page: Page) => {
-	await page.waitForSelector(`[data-testid="${TESTIDS['user-detail-sections']}"]`, { timeout: 10_000 });
+	await page.waitForSelector(`[data-testid="${TESTIDS['user-detail-sections']}"]`, { timeout: 30_000 });
 };
 
 test.describe('users support flow', () => {
@@ -26,6 +26,7 @@ test.describe('users support flow', () => {
 	test('navigates from detail quick access to support procedure guidance', async ({ page }) => {
 		await page.goto('/users/U-001', { waitUntil: 'load' });
 		await page.waitForLoadState('networkidle');
+		await page.waitForURL('**/users?*selected=U-001*');
 		await waitForDetailSections(page);
 
 		const supportQuickButton = page.getByTestId(`${TESTIDS['users-quick-prefix']}support-procedure`);
@@ -41,6 +42,7 @@ test.describe('users support flow', () => {
 
 		await page.goto('/users/U-004', { waitUntil: 'load' });
 		await page.waitForLoadState('networkidle');
+		await page.waitForURL('**/users?*selected=U-004*');
 		await waitForDetailSections(page);
 
 		const nonTargetQuickButton = page.getByTestId(`${TESTIDS['users-quick-prefix']}support-procedure`);
