@@ -100,11 +100,11 @@ test.describe('Users CRUD integration (full lifecycle)', () => {
     await expect(saveButton).toBeVisible({ timeout: 5000 });
     await saveButton.click();
 
-    // ダイアログが閉じるまで待機
+    // ダイアログが閉じるまで待機（dialog 閉鎖が保存完了を意味する）
     await expect(editDialog).not.toBeVisible({ timeout: 10000 });
     await page.waitForLoadState('networkidle');
 
-    // 編集後の名前がテーブルの行に表示されることを確認（strict mode violation回避のためスコープを限定）
+    // 保存完了の証拠：テーブルに編集後の名前が出現することを確認
     const editedUserRow = page.locator('tr', { has: page.getByText(editedUserName) });
     await expect(editedUserRow).toBeVisible({ timeout: 10000 });
 
