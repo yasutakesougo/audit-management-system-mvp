@@ -1,6 +1,10 @@
 import { defineConfig, devices } from '@playwright/test';
 import type { ReporterDescription } from '@playwright/test';
 
+if (!process.env.TS_NODE_PROJECT) {
+  process.env.TS_NODE_PROJECT = 'tsconfig.playwright.json';
+}
+
 const isCI = !!process.env.CI;
 const skipBuild = process.env.PLAYWRIGHT_SKIP_BUILD === '1';
 const baseUrlEnv = process.env.PLAYWRIGHT_BASE_URL;
