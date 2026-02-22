@@ -70,6 +70,7 @@ export const IcebergPdcaPage: React.FC<IcebergPdcaPageProps> = ({ writeEnabled: 
   const selectedUserId = searchParams.get('userId') ?? undefined;
   const today = React.useMemo(() => new Date().toISOString().slice(0, 10), []);
   const [dailySnapshotMetrics, setDailySnapshotMetrics] = React.useState<DailySnapshotMetrics | null>(null);
+  const [snapshotWarning, setSnapshotWarning] = React.useState<string | null>(null);
   const orgId = getEnv('VITE_FIREBASE_ORG_ID') ?? 'demo-org';
   const templateId = 'daily-support.v1';
   const supportRecordJumpTo = React.useMemo(() => {
@@ -95,11 +96,12 @@ export const IcebergPdcaPage: React.FC<IcebergPdcaPageProps> = ({ writeEnabled: 
     const loadSnapshot = async () => {
       if (!selectedUserId) {
         setDailySnapshotMetrics(null);
+        setSnapshotWarning(null);
         return;
       }
 
       try {
-        const snapshot = await readDailySnapshot({
+        const snapshotResult = await readDailySnapshot({
           orgId,
           templateId,
           targetDate: today,
@@ -107,11 +109,32 @@ export const IcebergPdcaPage: React.FC<IcebergPdcaPageProps> = ({ writeEnabled: 
         });
 
         if (!disposed) {
-          setDailySnapshotMetrics(snapshot);
-        }
-      } catch {
-        if (!disposed) {
+          if (snapshotResult.status === 'ok') {
+            setDailySnapshotMetrics(snapshotResult.metrics);
+            setSnapshotWarning(null);
+            return;
+          }
+
           setDailySnapshotMetrics(null);
+          if (snapshotResult.status === 'invalid') {
+            console.warn('[iceberg-pdca] invalid daily snapshot detected', {
+              orgId,
+              templateId,
+              targetDate: today,
+              targetUserId: selectedUserId,
+              reason: snapshotResult.reason,
+            });
+            setSnapshotWarning('CHECK用スナップショットに不整合があるため、集計値を代替表示しています。');
+            return;
+          }
+
+          setSnapshotWarning(null);
+        }
+      } catch (error) {
+        if (!disposed) {
+          console.error('[iceberg-pdca] daily snapshot read failed', error);
+          setDailySnapshotMetrics(null);
+          setSnapshotWarning('CHECK用スナップショットの取得に失敗したため、集計値を代替表示しています。');
         }
       }
     };
@@ -554,6 +577,17 @@ export const IcebergPdcaPage: React.FC<IcebergPdcaPageProps> = ({ writeEnabled: 
           >
             <Alert severity="success" onClose={() => setSnackbar(null)} sx={{ width: '100%' }}>
               {snackbar}
+            </Alert>
+          </Snackbar>
+
+          <Snackbar
+            open={Boolean(snapshotWarning)}
+            autoHideDuration={5000}
+            onClose={() => setSnapshotWarning(null)}
+            anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
+          >
+            <Alert severity="warning" onClose={() => setSnapshotWarning(null)} sx={{ width: '100%' }}>
+              {snapshotWarning}
             </Alert>
           </Snackbar>
         </Box>
