@@ -68,6 +68,13 @@ export const IcebergPdcaPage: React.FC<IcebergPdcaPageProps> = ({ writeEnabled: 
 
   const selectedUserId = searchParams.get('userId') ?? undefined;
   const today = React.useMemo(() => new Date().toISOString().slice(0, 10), []);
+  const supportRecordJumpTo = React.useMemo(() => {
+    const params = new URLSearchParams({ date: today });
+    if (selectedUserId) {
+      params.set('userId', selectedUserId);
+    }
+    return `/daily/support?${params.toString()}`;
+  }, [selectedUserId, today]);
   const targetUserIds = React.useMemo(
     () => users.filter((u) => u.IsActive !== false).map((u) => u.UserID ?? String(u.Id)),
     [users],
@@ -297,11 +304,11 @@ export const IcebergPdcaPage: React.FC<IcebergPdcaPageProps> = ({ writeEnabled: 
             <Button
               size="small"
               component={RouterLink}
-              to={`/daily/table?date=${today}&unsent=1`}
-              aria-label="日次入力へ移動"
+              to={supportRecordJumpTo}
+              aria-label={`支援手順・行動記録へ移動（${today}）`}
               sx={{ alignSelf: 'flex-start', mt: 0.5 }}
             >
-              今日の入力へ
+              対象日の支援記録へ
             </Button>
           </Stack>
         </Paper>
