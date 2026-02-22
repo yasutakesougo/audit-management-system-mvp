@@ -11,13 +11,22 @@ const firebaseConfig = {
 };
 
 export function getFirebaseApp() {
+  const isE2E = getFlag('VITE_E2E', false);
+  
+  if (isE2E) {
+    console.log('[firebase] initialization skipped in E2E mode');
+    // Return a stub app object for E2E - Firebase SDK requires app instance
+    return null as any;
+  }
+  
   const apps = getApps();
   return apps.length ? apps[0]! : initializeApp(firebaseConfig);
 }
 
-const firestore = getFirestore(getFirebaseApp());
+const isE2E = getFlag('VITE_E2E', false);
+const firestore = isE2E ? (null as any) : getFirestore(getFirebaseApp());
 
-if (getFlag('VITE_FIRESTORE_USE_EMULATOR', false)) {
+if (!isE2E && getFlag('VITE_FIRESTORE_USE_EMULATOR', false)) {
   const host = get('VITE_FIRESTORE_EMULATOR_HOST', '127.0.0.1');
   const port = getNumber('VITE_FIRESTORE_EMULATOR_PORT', 8080);
   try {
