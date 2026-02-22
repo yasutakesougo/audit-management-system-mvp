@@ -1,7 +1,7 @@
 import { expect, test } from '@playwright/test';
 import type { Page } from '@playwright/test';
 import { TESTIDS } from '../../src/testids';
-import { bootUsersPage } from './_helpers/bootUsersPage';
+import { bootUsersPage } from './_helpers/bootUsersPage.mts';
 
 const waitForDetailSections = async (page: Page) => {
 	await page.waitForSelector(`[data-testid="${TESTIDS['user-detail-sections']}"]`, { timeout: 30_000 });

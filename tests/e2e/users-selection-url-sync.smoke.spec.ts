@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { bootUsersPage } from './_helpers/bootUsersPage';
+import { bootUsersPage } from './_helpers/bootUsersPage.mts';
 
 test.describe('Users selection URL sync', () => {
   test('persists selection in URL and restores on reload', async ({ page }) => {

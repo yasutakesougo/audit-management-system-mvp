@@ -10,7 +10,7 @@
  */
 
 import { expect, test } from '@playwright/test';
-import { bootUsersPage } from './_helpers/bootUsersPage';
+import { bootUsersPage } from './_helpers/bootUsersPage.mts';
 
 test.describe('Users CRUD smoke', () => {
   test.beforeEach(async ({ page }) => {

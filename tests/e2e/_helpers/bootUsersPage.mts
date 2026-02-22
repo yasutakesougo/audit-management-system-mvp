@@ -76,7 +76,7 @@ const buildDefaultLists = (
   ];
 };
 
-export async function bootUsersPage(page: Page, options: BootUsersOptions = {}, testInfo?: TestInfo): Promise<void> {
+export async function bootUsersPage(page: Page, options: BootUsersOptions = {}, _testInfo?: TestInfo): Promise<void> {
   const envOverrides = { ...FEATURE_ENV, ...(options.envOverrides ?? {}) };
   const storageOverrides = { ...FEATURE_STORAGE, ...(options.storageOverrides ?? {}) };
   const shouldSeedUsers = options.seed?.usersMaster ?? false;
@@ -188,14 +188,13 @@ export async function bootUsersPage(page: Page, options: BootUsersOptions = {}, 
       }
     }
   }
-}
 
   // CI: Always attach error logs for diagnostics (visible in artifacts)
-  if (testInfo && process.env.CI === 'true') {
+  if (_testInfo && process.env.CI === 'true') {
     if (consoleErr.length > 0) {
       console.log('\n⚠️ [CI DIAGNOSTICS] Console Errors Captured:');
       consoleErr.forEach((err) => console.log('  ' + err));
-      await testInfo.attach('console-errors', {
+      await _testInfo.attach('console-errors', {
         body: consoleErr.join('\n'),
         contentType: 'text/plain',
       });
@@ -203,7 +202,7 @@ export async function bootUsersPage(page: Page, options: BootUsersOptions = {}, 
     if (pageErr.length > 0) {
       console.log('\n⚠️ [CI DIAGNOSTICS] Page Errors Captured:');
       pageErr.forEach((err) => console.log('  ' + err));
-      await testInfo.attach('page-errors', {
+      await _testInfo.attach('page-errors', {
         body: pageErr.join('\n'),
         contentType: 'text/plain',
       });
@@ -211,9 +210,10 @@ export async function bootUsersPage(page: Page, options: BootUsersOptions = {}, 
     if (reqFailed.length > 0) {
       console.log('\n⚠️ [CI DIAGNOSTICS] Network Failures Captured:');
       reqFailed.slice(0, 10).forEach((err) => console.log('  ' + err));
-      await testInfo.attach('request-failures', {
+      await _testInfo.attach('request-failures', {
         body: reqFailed.join('\n'),
         contentType: 'text/plain',
       });
     }
   }
+}
