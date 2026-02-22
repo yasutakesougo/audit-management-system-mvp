@@ -30,10 +30,15 @@ export type TrendMetrics = {
   leadTimeTrend: TrendDirection;
 };
 
-export const DEFAULT_TREND_TOLERANCE = {
+export type TrendTolerance = Readonly<{
+  completionRate: number;
+  leadTimeMinutes: number;
+}>;
+
+export const DEFAULT_TREND_TOLERANCE: TrendTolerance = {
   completionRate: 0.02,
   leadTimeMinutes: 5,
-} as const;
+};
 
 const DAILY_PDCA_METRICS_STORAGE_KEY = 'pdca:daily-submission-events:v1';
 
