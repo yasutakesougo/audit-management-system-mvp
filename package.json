@@ -80,7 +80,7 @@
     "auth:setup": "PLAYWRIGHT_PROJECT=integration npx playwright test tests/integration/auth.sp.setup.spec.ts --project=integration:setup --headed",
     "typecheck": "tsc -p tsconfig.build.json --noEmit",
     "typecheck:full": "tsc -p tsconfig.ci.json --noEmit",
-    "lint": "eslint --ext .ts,.tsx src --max-warnings=0 --rule 'boundaries/element-types:off'",
+    "lint": "eslint --ext .ts,.tsx src --max-warnings=0",
     "lint:dev": "eslint --ext .ts,.tsx src --max-warnings=999",
     "lint:boundaries": "eslint --ext .ts,.tsx src --rule 'boundaries/element-types:warn' --max-warnings=99999",
     "guard:testids": "node scripts/verify-testids.mjs",

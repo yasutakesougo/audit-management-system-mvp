@@ -3,10 +3,11 @@ import type { DashboardAudience } from '@/features/auth/store';
 import { HYDRATION_FEATURES, estimatePayloadSize, startFeatureSpan } from '@/hydration/features';
 import { TESTIDS, tid } from '@/testids';
 import type { Schedule } from '@/lib/mappers';
+import { getDashboardAnchorIdByKey } from '@/features/dashboard/sections/buildSections';
 import AccessTimeIcon from '@mui/icons-material/AccessTime';
 import AssignmentIcon from '@mui/icons-material/Assignment';
 import DashboardIcon from '@mui/icons-material/Dashboard';
-import EventAvailableRoundedIcon from '@mui/icons-material/EventAvailableRounded';
+
 import MedicalIcon from '@mui/icons-material/LocalHospital';
 import MonitorHeartIcon from '@mui/icons-material/MonitorHeart';
 import PersonIcon from '@mui/icons-material/Person';
@@ -22,7 +23,7 @@ import Card from '@mui/material/Card';
 import CardContent from '@mui/material/CardContent';
 import CardHeader from '@mui/material/CardHeader';
 import Chip from '@mui/material/Chip';
-import Collapse from '@mui/material/Collapse';
+
 import Container from '@mui/material/Container';
 import Divider from '@mui/material/Divider';
 import Grid from '@mui/material/Grid';
@@ -41,7 +42,8 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { alpha } from '@mui/material/styles';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { PersonDaily, SeizureRecord } from '../domain/daily/types';
-import DashboardSafetyHUD from '@/features/dashboard/DashboardSafetyHUD';
+import { SafetySection, AttendanceSection, DailySection, ScheduleSection } from '@/features/dashboard/sections/impl';
+
 import { useDashboardViewModel, type DashboardBriefingChip, type DashboardSection, type DashboardSectionKey } from '@/features/dashboard/useDashboardViewModel';
 import { useAttendanceStore } from '@/features/attendance/store';
 import { useStaffStore } from '@/features/staff/store';
@@ -252,16 +254,9 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ audience = 'staff' }) => 
     navigate('/dashboard/briefing', { state: { tab } });
   }, [navigate, isMorningTime]);
 
-  const sectionIdByKey: Record<DashboardSectionKey, string> = {
-    safety: 'dashboard-section-safety',
-    attendance: 'dashboard-section-attendance',
-    schedule: 'dashboard-section-schedule',
-    handover: 'dashboard-section-handover',
-    stats: 'dashboard-section-stats',
-    adminOnly: 'dashboard-section-admin',
-    staffOnly: 'dashboard-section-staff',
-    daily: 'dashboard-section-daily',
-  };
+  // Phase 1: anchor ID を常に全 8 個揃える（ロール関係なく）
+  // これで scrollToSection(key) が undefined になることはない
+  const sectionIdByKey = getDashboardAnchorIdByKey();
 
   // ===== 「本日の変更」用の仮データ =====
   const dateLabel = new Intl.DateTimeFormat('ja-JP', {
@@ -284,7 +279,16 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ audience = 'staff' }) => 
     (sectionKey: DashboardSectionKey) => {
       const targetId = sectionIdByKey[sectionKey];
       const node = document.getElementById(targetId);
-      if (!node) return;
+
+      // ❌ 安全性：セクションが非表示でDOMにない場合
+      // 例：staff ロールが staffOnly へスクロール指定 → DOM には sec-staff が存在しない
+      if (!node) {
+        console.warn(
+          `[dashboard] section not found or hidden: ${sectionKey} -> #${targetId}`,
+        );
+        return;
+      }
+
       node.scrollIntoView({ behavior: 'smooth', block: 'start' });
       setHighlightSection(sectionKey);
       if (highlightTimerRef.current) {
@@ -639,281 +643,29 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ audience = 'staff' }) => 
   const renderSection = useCallback((section: DashboardSection) => {
     switch (section.key) {
       case 'safety':
-        return <DashboardSafetyHUD />;
+        return <SafetySection />;
       case 'attendance':
         return (
-          <Paper elevation={3} sx={{ p: { xs: 2, sm: 2.5, md: 3 } }}>
-            <Stack
-              direction={{ xs: 'column', md: 'row' }}
-              spacing={1.5}
-              alignItems={{ xs: 'flex-start', md: 'center' }}
-              justifyContent="space-between"
-              sx={{ mb: 2 }}
-            >
-              <Stack spacing={0.25} sx={{ minWidth: 0 }}>
-                <Typography variant="h6" fontWeight={800}>
-                  今日の通所 / 出勤状況
-                </Typography>
-                <Typography variant="body2" sx={{ opacity: 0.8 }}>
-                  利用者と職員の通所・出勤の状況をまとめて確認できます。
-                </Typography>
-              </Stack>
-              <Stack
-                spacing={0.75}
-                alignItems={{ xs: 'flex-start', md: 'flex-end' }}
-                sx={{ width: { xs: '100%', md: 'auto' }, minWidth: 180 }}
-              >
-                <Stack direction="row" spacing={1} flexWrap="nowrap" useFlexGap>
-                  <Button variant="contained" size="small" component={Link} to="/daily/attendance">
-                    通所入力
-                  </Button>
-                  <Button variant="outlined" size="small" component={Link} to="/staff/attendance">
-                    職員出勤
-                  </Button>
-                </Stack>
-                <Stack direction="row" spacing={1} flexWrap="nowrap" useFlexGap>
-                  <Button variant="text" size="small" component={Link} to="/daily/activity">
-                    支援記録
-                  </Button>
-                  <Button variant="text" size="small" component={Link} to="/handoff-timeline">
-                    申し送り
-                  </Button>
-                </Stack>
-              </Stack>
-            </Stack>
-            <Grid container spacing={{ xs: 2, sm: 2, md: 3 }} sx={{ mt: 2 }}>
-              <Grid size={{ xs: 12, sm: 4, md: 2 }}>
-                <Typography variant="h4" color="primary" sx={{ fontWeight: 800 }}>
-                  {attendanceSummary.facilityAttendees}
-                </Typography>
-                <Typography variant="body2" color="text.secondary">
-                  施設通所
-                </Typography>
-              </Grid>
-              <Grid size={{ xs: 12, sm: 4, md: 2 }}>
-                <Typography variant="h4" color="success.main" sx={{ fontWeight: 800 }}>
-                  {attendanceSummary.lateOrEarlyLeave}
-                </Typography>
-                <Typography variant="body2" color="text.secondary">
-                  遅刻・早退
-                </Typography>
-              </Grid>
-              <Grid size={{ xs: 12, sm: 4, md: 2 }}>
-                <Box>
-                  <Typography variant="h4" color="warning.main" sx={{ fontWeight: 800 }}>
-                    {attendanceSummary.absenceCount}
-                  </Typography>
-                  <Typography variant="body2" color="text.secondary">
-                    欠席
-                  </Typography>
-                </Box>
-              </Grid>
-              <Grid size={{ xs: 12, sm: 4, md: 2 }}>
-                <Typography variant="h4" color="text.primary" sx={{ fontWeight: 800 }}>
-                  {attendanceSummary.onDutyStaff}
-                </Typography>
-                <Typography variant="body2" color="text.secondary">
-                  出勤職員
-                </Typography>
-              </Grid>
-              <Grid size={{ xs: 12, sm: 4, md: 2 }}>
-                <Typography variant="h4" color="secondary.main" sx={{ fontWeight: 800 }}>
-                  {attendanceSummary.lateOrShiftAdjust}
-                </Typography>
-                <Typography variant="body2" color="text.secondary">
-                  シフト調整
-                </Typography>
-              </Grid>
-              <Grid size={{ xs: 12, sm: 4, md: 2 }}>
-                <Typography variant="h4" color="info.main" sx={{ fontWeight: 800 }}>
-                  {attendanceSummary.outStaff}
-                </Typography>
-                <Typography variant="body2" color="text.secondary">
-                  外出スタッフ
-                </Typography>
-              </Grid>
-            </Grid>
-            {(() => {
-              const hasNames =
-                (attendanceSummary.absenceNames?.length ?? 0) > 0 ||
-                (attendanceSummary.lateOrEarlyNames?.length ?? 0) > 0 ||
-                (attendanceSummary.outStaffNames?.length ?? 0) > 0;
-
-              if (!hasNames) return null;
-
-              const formatNames = (names?: string[]) => {
-                const list = names ?? [];
-                if (list.length === 0) return '該当者なし';
-                const shown = list.slice(0, 6).join('、');
-                const remaining = list.length - 6;
-                return remaining > 0 ? `${shown}、他${remaining}名` : shown;
-              };
-
-              const absenceCount = attendanceSummary.absenceNames?.length ?? 0;
-              const lateOrEarlyCount = attendanceSummary.lateOrEarlyNames?.length ?? 0;
-              const outStaffCount = attendanceSummary.outStaffNames?.length ?? 0;
-
-              return (
-                <Stack alignItems="flex-end" sx={{ mt: 1 }}>
-                  <Button
-                    size="small"
-                    variant="text"
-                    onClick={() => setShowAttendanceNames((prev) => !prev)}
-                    aria-expanded={showAttendanceNames}
-                  >
-                    {showAttendanceNames ? '閉じる' : '該当者を見る'}
-                  </Button>
-                  <Collapse in={showAttendanceNames} sx={{ width: '100%' }}>
-                    <Stack spacing={0.5} sx={{ mt: 0.5 }}>
-                      <Stack spacing={0.25}>
-                        <Typography variant="caption" sx={{ fontWeight: 700 }}>
-                          欠席（{absenceCount}）
-                        </Typography>
-                        <Typography variant="caption">
-                          {formatNames(attendanceSummary.absenceNames)}
-                        </Typography>
-                      </Stack>
-                      <Stack spacing={0.25}>
-                        <Typography variant="caption" sx={{ fontWeight: 700 }}>
-                          遅刻・早退（{lateOrEarlyCount}）
-                        </Typography>
-                        <Typography variant="caption">
-                          {formatNames(attendanceSummary.lateOrEarlyNames)}
-                        </Typography>
-                      </Stack>
-                      <Stack spacing={0.25}>
-                        <Typography variant="caption" sx={{ fontWeight: 700 }}>
-                          外出スタッフ（{outStaffCount}）
-                        </Typography>
-                        <Typography variant="caption">
-                          {formatNames(attendanceSummary.outStaffNames)}
-                        </Typography>
-                      </Stack>
-                    </Stack>
-                  </Collapse>
-                </Stack>
-              );
-            })()}
-          </Paper>
+          <AttendanceSection
+            attendanceSummary={attendanceSummary}
+            showAttendanceNames={showAttendanceNames}
+            onToggleAttendanceNames={setShowAttendanceNames}
+          />
         );
       case 'daily':
         return (
-          <Paper elevation={3} sx={{ p: { xs: 2, sm: 2.5, md: 3 } }}>
-            <Stack
-              direction={{ xs: 'column', md: 'row' }}
-              spacing={1.5}
-              alignItems={{ xs: 'flex-start', md: 'center' }}
-              justifyContent="space-between"
-              sx={{ mb: 2 }}
-            >
-              <Stack spacing={0.5} sx={{ minWidth: 0 }}>
-                <Typography variant="subtitle2" lineHeight={1.2} sx={{ fontWeight: 700 }}>
-                  ケース記録：未入力があります
-                </Typography>
-                <Typography variant="caption" lineHeight={1.3} color="text.secondary">
-                  未入力を優先して、入力と確認を進められます。
-                </Typography>
-              </Stack>
-              <Stack
-                spacing={0.75}
-                alignItems={{ xs: 'flex-start', md: 'flex-end' }}
-                sx={{ width: { xs: '100%', md: 'auto' }, minWidth: 180 }}
-              >
-                <Stack direction="row" spacing={1} flexWrap="nowrap" useFlexGap>
-                  <Button
-                    variant="contained"
-                    size="small"
-                    component={Link}
-                    to="/daily/activity"
-                    disabled={dailyRecordStatus.pending === 0}
-                  >
-                    未入力を入力する
-                  </Button>
-                  <Button variant="text" size="small" component={Link} to="/daily/table">
-                    一覧を見る
-                  </Button>
-                </Stack>
-              </Stack>
-            </Stack>
-            <Grid container spacing={{ xs: 2, sm: 3 }} sx={{ mt: 1 }}>
-              {dailyStatusCards.map(({ label, value, helper, color, emphasize }) => {
-                return (
-                  <Grid key={label} size={{ xs: 12, md: 4 }}>
-                    <Paper variant="outlined" sx={{ p: { xs: 2, sm: 2.5 }, height: '100%' }}>
-                      <Typography variant="h6" sx={{ fontWeight: 700 }}>
-                        {label}
-                      </Typography>
-                      <Typography
-                        variant="h4"
-                        sx={{ fontWeight: emphasize ? 800 : 700, color, mt: 1 }}
-                      >
-                        {value}
-                      </Typography>
-                      <Typography variant="caption" color="text.secondary" sx={{ mt: 0.5, display: 'block' }}>
-                        {helper}
-                      </Typography>
-                    </Paper>
-                  </Grid>
-                );
-              })}
-            </Grid>
-          </Paper>
+          <DailySection
+            dailyStatusCards={dailyStatusCards}
+            dailyRecordStatus={dailyRecordStatus}
+          />
         );
       case 'schedule':
         return (
-          <Paper elevation={3} sx={{ p: { xs: 2, sm: 2.5, md: 3 } }}>
-            <Stack
-              direction={{ xs: 'column', sm: 'row' }}
-              spacing={1}
-              alignItems={{ xs: 'flex-start', sm: 'center' }}
-              justifyContent="space-between"
-              sx={{ mb: 1.5 }}
-            >
-              <Typography variant="h5" sx={{ fontWeight: 700 }}>
-                {section.title ?? '今日の予定'}
-              </Typography>
-              {schedulesEnabled && (
-                <Button
-                  variant="outlined"
-                  startIcon={<EventAvailableRoundedIcon />}
-                  component={Link}
-                  to="/schedules/week"
-                  sx={{ alignSelf: { xs: 'stretch', sm: 'auto' } }}
-                >
-                  マスタースケジュールを開く
-                </Button>
-              )}
-            </Stack>
-            <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-              レーンごとの進行状況を確認できます。
-            </Typography>
-            <Grid container spacing={2}>
-              {[
-                { label: '利用者レーン', items: scheduleLanesToday.userLane },
-                { label: '職員レーン', items: scheduleLanesToday.staffLane },
-                { label: '組織レーン', items: scheduleLanesToday.organizationLane },
-              ].map(({ label, items }) => (
-                <Grid key={label} size={{ xs: 12, md: 4 }}>
-                  <Paper variant="outlined" sx={{ p: 2, height: '100%' }}>
-                    <Typography variant="subtitle1" sx={{ fontWeight: 700, mb: 1 }}>
-                      {label}
-                    </Typography>
-                    <List dense>
-                      {items.map((item) => (
-                        <ListItem key={item.id} disableGutters alignItems="flex-start" sx={{ py: 0.5 }}>
-                          <ListItemText
-                            primary={`${item.time} ${item.title}`}
-                            secondary={item.location ? `場所: ${item.location}` : item.owner ? `担当: ${item.owner}` : undefined}
-                            primaryTypographyProps={{ fontWeight: 600 }}
-                          />
-                        </ListItem>
-                      ))}
-                    </List>
-                  </Paper>
-                </Grid>
-              ))}
-            </Grid>
-          </Paper>
+          <ScheduleSection
+            title={section.title}
+            schedulesEnabled={schedulesEnabled}
+            scheduleLanesToday={scheduleLanesToday}
+          />
         );
       case 'handover':
         return (
