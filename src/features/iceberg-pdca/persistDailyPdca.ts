@@ -76,6 +76,7 @@ export async function upsertDailySnapshot(input: PersistDailyPdcaInput) {
     templateId: input.templateId,
     targetDate: input.targetDate,
     targetUserId: input.targetUserId,
+    createdAt: serverTimestamp(),
     completionRate: input.metrics?.completionRate ?? 0,
     leadTimeMinutes: input.metrics?.leadTimeMinutes ?? 0,
     submittedAt: submittedAtTs,
