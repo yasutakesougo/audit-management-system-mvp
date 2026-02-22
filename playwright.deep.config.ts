@@ -11,7 +11,7 @@ export default defineConfig({
   retries: isCI ? 1 : baseConfig.retries,
   workers: isCI ? 2 : baseConfig.workers,
   reporter: [['html', { open: 'never' }]],
-  testIgnore: [/.*smoke.*\.spec\.ts$/i, /auth-diagnostics\.spec\.ts$/],
+  testIgnore: [/.*smoke.*\.spec\.ts$/i, '**/auth-diagnostics.spec.ts'],
   use: {
     ...(baseConfig.use ?? {}),
     trace: 'on-first-retry',
