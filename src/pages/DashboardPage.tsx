@@ -1227,7 +1227,10 @@ const DashboardZoneLayout: React.FC<DashboardZoneLayoutProps> = ({
   const FOOTER_H = 56;
 
   return (
-    <Box sx={{ minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
+    <Box
+      data-testid={tid(TESTIDS['dashboard-page'])}
+      sx={{ minHeight: '100vh', display: 'flex', flexDirection: 'column' }}
+    >
       {/* ZONE 1: 朝30秒判断ゾーン（sticky wrapper 分離） */}
       <Box
         sx={{
