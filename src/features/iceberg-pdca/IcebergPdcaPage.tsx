@@ -22,7 +22,7 @@ import {
   ToggleButtonGroup,
   Typography,
 } from '@mui/material';
-import { useSearchParams } from 'react-router-dom';
+import { Link as RouterLink, useSearchParams } from 'react-router-dom';
 
 import { useFeatureFlag } from '@/config/featureFlags';
 import { useAuthStore } from '@/features/auth/store';
@@ -294,6 +294,15 @@ export const IcebergPdcaPage: React.FC<IcebergPdcaPageProps> = ({ writeEnabled: 
             <Typography variant="caption" color="text.secondary" sx={{ mt: 0.5 }}>
               判定基準: 完了率 ±{completionTolerancePoint}pt / リードタイム ±{leadTimeToleranceMinutes}分
             </Typography>
+            <Button
+              size="small"
+              component={RouterLink}
+              to={`/daily/table?date=${today}&unsent=1`}
+              aria-label="日次入力へ移動"
+              sx={{ alignSelf: 'flex-start', mt: 0.5 }}
+            >
+              今日の入力へ
+            </Button>
           </Stack>
         </Paper>
 
