@@ -16,3 +16,9 @@ export type { DailySectionProps, DailyStatusCard } from './DailySection';
 
 export { ScheduleSection } from './ScheduleSection';
 export type { ScheduleSectionProps, ScheduleLanes, ScheduleItem } from './ScheduleSection';
+
+export { AdminOnlySection } from './AdminOnlySection';
+export type { AdminOnlySectionProps } from './AdminOnlySection';
+
+export { StaffOnlySection } from './StaffOnlySection';
+export type { StaffOnlySectionProps } from './StaffOnlySection';
