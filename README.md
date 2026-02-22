@@ -202,6 +202,39 @@ Custom token mode flow:
 
 If custom token mode is enabled but exchange fails, auth falls back to anonymous only when fallback is enabled.
 
+### Firebase custom token exchange endpoint (Cloudflare Workers)
+
+The app expects a POST endpoint at `/api/firebase/exchange` (or any URL set in `VITE_FIREBASE_TOKEN_EXCHANGE_URL`).
+
+- Request: `Authorization: Bearer <msalAccessToken>`
+- Response 200: `{ firebaseCustomToken, orgId, actor, expiresInSec }`
+- Errors: `401` (invalid/missing token), `403` (tenant/org denied), `500` (server error)
+
+Required Worker secrets/vars:
+
+- `ALLOWED_TENANT_ID` (comma-separated allowed tenant IDs)
+- `ORG_ID_OVERRIDE` (optional fixed orgId)
+- `GOOGLE_SERVICE_ACCOUNT_JSON` (preferred single JSON secret)
+  - or split secrets: `FIREBASE_PROJECT_ID`, `FIREBASE_SERVICE_ACCOUNT_EMAIL`, `FIREBASE_SERVICE_ACCOUNT_PRIVATE_KEY`
+
+Example setup:
+
+```bash
+wrangler secret put GOOGLE_SERVICE_ACCOUNT_JSON
+wrangler secret put FIREBASE_SERVICE_ACCOUNT_PRIVATE_KEY
+wrangler secret put FIREBASE_SERVICE_ACCOUNT_EMAIL
+wrangler secret put FIREBASE_PROJECT_ID
+wrangler secret put ALLOWED_TENANT_ID
+```
+
+Frontend `.env` example:
+
+```bash
+VITE_FIREBASE_AUTH_MODE=customToken
+VITE_FIREBASE_TOKEN_EXCHANGE_URL=https://<your-worker-domain>/api/firebase/exchange
+VITE_FIREBASE_AUTH_ALLOW_ANON_FALLBACK=0
+```
+
 
 > Override precedence: values passed directly to `ensureConfig` (e.g. in tests) always win. `VITE_SP_RESOURCE` / `VITE_SP_SITE_RELATIVE` from the env override `VITE_SP_SITE_URL`, and the full URL fallback is only used when both override values are omitted.
 
