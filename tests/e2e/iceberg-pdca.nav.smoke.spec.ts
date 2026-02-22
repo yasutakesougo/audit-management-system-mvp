@@ -21,4 +21,17 @@ test.describe('Iceberg PDCA nav smoke', () => {
     await expect(page.getByText('利用者を選択してください')).toBeVisible();
     await expectTestIdVisibleBestEffort(page, TESTIDS['iceberg-pdca-empty']);
   });
+
+  test('navigates from PDCA link to /daily/support with date query', async ({ page }) => {
+    await bootstrapDashboard(page, { skipLogin: true, featureSchedules: true, initialPath: '/dashboard' });
+
+    await openMobileNav(page);
+    const navItem = page.getByTestId(TESTIDS.nav.icebergPdca).first();
+    const navVisible = await navItem.isVisible().catch(() => false);
+    test.skip(!navVisible, 'Iceberg PDCA nav entry is not available in this layout/feature set.');
+    await navItem.click();
+
+    await page.getByRole('link', { name: '対象日の支援記録へ' }).click();
+    await expect(page).toHaveURL(/\/daily\/support(?:\?.*)?[?&]date=\d{4}-\d{2}-\d{2}/);
+  });
 });

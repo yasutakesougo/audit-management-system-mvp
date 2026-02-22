@@ -30,6 +30,7 @@ import { useLocation, useSearchParams } from 'react-router-dom';
 const TimeBasedSupportRecordPage: React.FC = () => {
   const location = useLocation();
   const [, setSearchParams] = useSearchParams();
+  // Query contract: /daily/support?date=YYYY-MM-DD&userId=<id> (legacy user=<id> is also accepted).
   const initialSearchParams = useRef(new URLSearchParams(location.search)).current;
   const initialDateParam = initialSearchParams.get('date');
   const initialRecordDate =
