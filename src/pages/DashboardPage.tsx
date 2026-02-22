@@ -3,12 +3,11 @@ import type { DashboardAudience } from '@/features/auth/store';
 import { HYDRATION_FEATURES, estimatePayloadSize, startFeatureSpan } from '@/hydration/features';
 import { TESTIDS, tid } from '@/testids';
 import type { Schedule } from '@/lib/mappers';
-import { buildDashboardSections, getDashboardAnchorIdByKey } from '@/features/dashboard/sections/buildSections';
-import type { DashboardSectionKey } from '@/features/dashboard/sections/types';
+import { getDashboardAnchorIdByKey } from '@/features/dashboard/sections/buildSections';
 import AccessTimeIcon from '@mui/icons-material/AccessTime';
 import AssignmentIcon from '@mui/icons-material/Assignment';
 import DashboardIcon from '@mui/icons-material/Dashboard';
-import EventAvailableRoundedIcon from '@mui/icons-material/EventAvailableRounded';
+
 import MedicalIcon from '@mui/icons-material/LocalHospital';
 import MonitorHeartIcon from '@mui/icons-material/MonitorHeart';
 import PersonIcon from '@mui/icons-material/Person';
@@ -24,7 +23,7 @@ import Card from '@mui/material/Card';
 import CardContent from '@mui/material/CardContent';
 import CardHeader from '@mui/material/CardHeader';
 import Chip from '@mui/material/Chip';
-import Collapse from '@mui/material/Collapse';
+
 import Container from '@mui/material/Container';
 import Divider from '@mui/material/Divider';
 import Grid from '@mui/material/Grid';
@@ -44,7 +43,7 @@ import { alpha } from '@mui/material/styles';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { PersonDaily, SeizureRecord } from '../domain/daily/types';
 import { SafetySection, AttendanceSection, DailySection, ScheduleSection } from '@/features/dashboard/sections/impl';
-import DashboardSafetyHUD from '@/features/dashboard/DashboardSafetyHUD';
+
 import { useDashboardViewModel, type DashboardBriefingChip, type DashboardSection, type DashboardSectionKey } from '@/features/dashboard/useDashboardViewModel';
 import { useAttendanceStore } from '@/features/attendance/store';
 import { useStaffStore } from '@/features/staff/store';
