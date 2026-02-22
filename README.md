@@ -187,8 +187,20 @@ Environment flags used by the app:
 - `VITE_FIRESTORE_EMULATOR_PORT=8080`
 - `VITE_FIREBASE_AUTH_USE_EMULATOR=1` (Auth emulator)
 - `VITE_FIREBASE_AUTH_EMULATOR_URL=http://localhost:9099` (Auth emulator URL)
+- `VITE_FIREBASE_AUTH_MODE=anonymous|customToken` (default: anonymous)
+- `VITE_FIREBASE_TOKEN_EXCHANGE_URL=https://...` (required for customToken mode)
+- `VITE_FIREBASE_AUTH_ALLOW_ANON_FALLBACK=1|0` (optional; defaults to dev-only fallback when omitted)
 
 Note: Both Firestore and Auth emulators are started together with `npm run firestore:emu` (Firebase CLI defaults). App will automatically route to emulator if flags are set.
+
+Custom token mode flow:
+
+1. Acquire MSAL access token (existing silent acquire path)
+2. POST exchange endpoint with `Authorization: Bearer <msalAccessToken>`
+3. Receive `firebaseCustomToken`
+4. Sign in via Firebase `signInWithCustomToken`
+
+If custom token mode is enabled but exchange fails, auth falls back to anonymous only when fallback is enabled.
 
 
 > Override precedence: values passed directly to `ensureConfig` (e.g. in tests) always win. `VITE_SP_RESOURCE` / `VITE_SP_SITE_RELATIVE` from the env override `VITE_SP_SITE_URL`, and the full URL fallback is only used when both override values are omitted.
