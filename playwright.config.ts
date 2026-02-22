@@ -57,7 +57,7 @@ export default defineConfig({
   timeout: 60_000,
   retries: isCI ? 2 : 0,
   reporter: isCI ? ciReporters : 'list',
-  testIgnore: ['**/tests/e2e/auth-diagnostics.spec.ts', '**/auth-diagnostics.spec.ts'],
+  testIgnore: '**/tests/e2e/_disabled/**',
   use: {
     baseURL,
     trace: isCI ? 'on-first-retry' : 'off',

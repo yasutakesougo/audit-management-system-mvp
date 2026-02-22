@@ -94,17 +94,6 @@ jobs:
           PLAYWRIGHT_JUNIT_OUTPUT: 'test-results/junit-e2e-deep.xml'
           PW_USE_PREVIEW: '1'
         run: |
-          # Verify auth-diagnostics is excluded from test discovery
-          echo "[debug] listing tests..."
-          npx playwright test tests/e2e --config=playwright.config.ts --project=chromium --list > /tmp/pw-list.txt
-          
-          if grep -n "auth-diagnostics" /tmp/pw-list.txt; then
-            echo "::error::auth-diagnostics is still discovered (testIgnore not applied)"
-            exit 1
-          else
-            echo "[debug] auth-diagnostics is NOT discovered ✅"
-          fi
-          
           # Run all E2E tests excluding smoke tests
           if [ -n "${{ github.event.inputs.test_pattern }}" ]; then
             echo "Running custom test pattern: ${{ github.event.inputs.test_pattern }}"
