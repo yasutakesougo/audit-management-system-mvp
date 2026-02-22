@@ -1,0 +1,10 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "module": "NodeNext",
+    "moduleResolution": "NodeNext",
+    "types": ["node", "@playwright/test"]
+  },
+  "include": ["playwright.config.ts", "tests/e2e/**/*.ts", "tests/e2e/**/*.tsx"],
+  "exclude": ["node_modules", "dist", "build", "coverage"]
+}
