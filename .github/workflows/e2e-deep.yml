@@ -95,8 +95,15 @@ jobs:
           PW_USE_PREVIEW: '1'
         run: |
           # Verify auth-diagnostics is excluded from test discovery
-          echo "Checking test discovery exclusions..."
-          npx playwright test tests/e2e --config=playwright.config.ts --project=chromium --list | grep -n "auth-diagnostics" && exit 1 || true
+          echo "[debug] listing tests..."
+          npx playwright test tests/e2e --config=playwright.config.ts --project=chromium --list > /tmp/pw-list.txt
+          
+          if grep -n "auth-diagnostics" /tmp/pw-list.txt; then
+            echo "::error::auth-diagnostics is still discovered (testIgnore not applied)"
+            exit 1
+          else
+            echo "[debug] auth-diagnostics is NOT discovered ✅"
+          fi
           
           # Run all E2E tests excluding smoke tests
           if [ -n "${{ github.event.inputs.test_pattern }}" ]; then
