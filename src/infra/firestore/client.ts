@@ -1,7 +1,7 @@
 import { initializeApp, getApps } from 'firebase/app';
-import { getFirestore } from 'firebase/firestore';
+import { connectFirestoreEmulator, getFirestore } from 'firebase/firestore';
 
-import { get } from '@/env';
+import { get, getFlag, getNumber } from '@/env';
 
 const firebaseConfig = {
   apiKey: get('VITE_FIREBASE_API_KEY'),
@@ -15,4 +15,18 @@ export function getFirebaseApp() {
   return apps.length ? apps[0]! : initializeApp(firebaseConfig);
 }
 
-export const db = getFirestore(getFirebaseApp());
+const firestore = getFirestore(getFirebaseApp());
+
+if (getFlag('VITE_FIRESTORE_USE_EMULATOR', false)) {
+  const host = get('VITE_FIRESTORE_EMULATOR_HOST', '127.0.0.1');
+  const port = getNumber('VITE_FIRESTORE_EMULATOR_PORT', 8080);
+  try {
+    connectFirestoreEmulator(firestore, host, port);
+  } catch (error) {
+    if (getFlag('DEV', false)) {
+      console.warn('[firestore] emulator connection skipped:', error);
+    }
+  }
+}
+
+export const db = firestore;
