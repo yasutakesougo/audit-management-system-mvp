@@ -3,7 +3,7 @@ import { resolve } from 'node:path';
 import { expect, test } from '@playwright/test';
 import { TESTIDS } from '../../src/testids';
 import { scrollAndClick, waitForAppRoot, waitVisible } from './utils/pageReady';
-import { bootUsersPage } from './_helpers/bootUsersPage';
+import { bootUsersPage } from './_helpers/bootUsersPage.mts';
 
 type UsersMasterSeed = {
   users: Array<{

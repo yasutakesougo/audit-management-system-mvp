@@ -1,14 +1,14 @@
 import { expect, test } from '@playwright/test';
 import type { Page } from '@playwright/test';
 import { TESTIDS } from '../../src/testids';
-import { bootUsersPage } from './_helpers/bootUsersPage';
+import { bootUsersPage } from './_helpers/bootUsersPage.mts';
 
 const waitForDetailSections = async (page: Page) => {
 	await page.waitForSelector(`[data-testid="${TESTIDS['user-detail-sections']}"]`, { timeout: 30_000 });
 };
 
 test.describe('users support flow', () => {
-	test.beforeEach(async ({ page }) => {
+	test.beforeEach(async ({ page }, testInfo) => {
 		await page.route('**/login.microsoftonline.com/**', (route) => route.fulfill({ status: 204, body: '' }));
 		await page.route('https://graph.microsoft.com/**', (route) =>
 			route.fulfill({
@@ -20,7 +20,7 @@ test.describe('users support flow', () => {
 
 		await bootUsersPage(page, {
 			seed: { usersMaster: true },
-		});
+		}, testInfo);
 	});
 
 	test('navigates from detail quick access to support procedure guidance', async ({ page }) => {

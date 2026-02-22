@@ -12,7 +12,7 @@
 
 import { expect, test } from '@playwright/test';
 import { runA11ySmoke, runA11yScan } from './utils/a11y';
-import { bootUsersPage } from './_helpers/bootUsersPage';
+import { bootUsersPage } from './_helpers/bootUsersPage.mts';
 import * as fs from 'fs';
 import * as path from 'path';
 
