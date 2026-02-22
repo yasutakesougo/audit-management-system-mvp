@@ -30,10 +30,16 @@ import { useLocation, useSearchParams } from 'react-router-dom';
 const TimeBasedSupportRecordPage: React.FC = () => {
   const location = useLocation();
   const [, setSearchParams] = useSearchParams();
+  const initialSearchParams = useRef(new URLSearchParams(location.search)).current;
+  const initialDateParam = initialSearchParams.get('date');
+  const initialRecordDate =
+    initialDateParam && /^\d{4}-\d{2}-\d{2}$/.test(initialDateParam)
+      ? new Date(`${initialDateParam}T00:00:00`)
+      : new Date();
   const initialParams = useRef({
-    userId: new URLSearchParams(location.search).get('user') ?? undefined,
-    stepKey: new URLSearchParams(location.search).get('step') ?? undefined,
-    unfilledOnly: new URLSearchParams(location.search).get('unfilled') === '1',
+    userId: initialSearchParams.get('userId') ?? initialSearchParams.get('user') ?? undefined,
+    stepKey: initialSearchParams.get('step') ?? undefined,
+    unfilledOnly: initialSearchParams.get('unfilled') === '1',
   }).current;
   const initialUserId = initialParams.userId;
   const initialStepKey = initialParams.stepKey;
@@ -46,7 +52,7 @@ const TimeBasedSupportRecordPage: React.FC = () => {
     const stored = window.sessionStorage.getItem(ERROR_STORAGE_KEY);
     return stored ? new Error(stored) : null;
   });
-  const recordDate = useMemo(() => new Date(), []);
+  const recordDate = useMemo(() => initialRecordDate, [initialRecordDate]);
   const recordPanelRef = useRef<HTMLDivElement>(null);
   const procedureRepo = useInMemoryProcedureRepository();
   const { repo: behaviorRepo, data: behaviorRecords, error: behaviorError, clearError } = useInMemoryBehaviorRepository();
@@ -100,8 +106,10 @@ const TimeBasedSupportRecordPage: React.FC = () => {
       const nextParams = new URLSearchParams(prev);
       if (targetUserId) {
         nextParams.set('user', targetUserId);
+        nextParams.set('userId', targetUserId);
       } else {
         nextParams.delete('user');
+        nextParams.delete('userId');
       }
       const prevStep = prev.get('step') ?? undefined;
       const resolvedStep = selectedStepId ?? prevStep ?? initialParams.stepKey;
@@ -134,7 +142,7 @@ const TimeBasedSupportRecordPage: React.FC = () => {
     const prevParams = new URLSearchParams(prevSearch);
     const nextParams = new URLSearchParams(nextSearch);
     const allKeys = new Set<string>([...prevParams.keys(), ...nextParams.keys()]);
-    const allowedKeys = new Set(['step', 'user']);
+    const allowedKeys = new Set(['step', 'user', 'userId', 'date']);
     const onlyAllowedChanged = [...allKeys].every((key) => {
       if (!allowedKeys.has(key)) {
         return prevParams.get(key) === nextParams.get(key);
