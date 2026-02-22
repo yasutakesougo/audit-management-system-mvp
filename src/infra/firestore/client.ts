@@ -16,12 +16,12 @@ const firebaseConfig = {
  * are called in test environments without a valid Firebase configuration.
  */
 function createNoopFirestore(): Firestore {
-  const handler: ProxyHandler<any> = {
+  const handler: ProxyHandler<Record<string, unknown>> = {
     get(_target, prop) {
       if (prop === 'type') return 'firestore';
       if (prop === 'app') return null;
       // Return a function that logs a warning and returns a safe value
-      return (...args: any[]) => {
+      return (...args: unknown[]) => {
         if (getFlag('DEV', false)) {
           console.warn(`[firebase-noop] ${String(prop)} called with`, args);
         }
@@ -32,12 +32,24 @@ function createNoopFirestore(): Firestore {
   return new Proxy({}, handler) as Firestore;
 }
 
+/**
+ * Creates a stub Firebase app for E2E tests.
+ * Returns a minimal object that satisfies FirebaseApp type requirements.
+ */
+function createNoopFirebaseApp() {
+  return {
+    name: '[DEFAULT]',
+    options: firebaseConfig,
+    automaticDataCollectionEnabled: false,
+  };
+}
+
 export function getFirebaseApp() {
   const isE2E = getFlag('VITE_E2E', false);
   
   if (isE2E) {
     console.log('[firebase] disabled:', { VITE_E2E: getFlag('VITE_E2E', false) });
-    return null as any;
+    return createNoopFirebaseApp();
   }
   
   const apps = getApps();
