@@ -1,5 +1,5 @@
 import { initializeApp, getApps } from 'firebase/app';
-import { connectFirestoreEmulator, getFirestore } from 'firebase/firestore';
+import { connectFirestoreEmulator, getFirestore, type Firestore } from 'firebase/firestore';
 
 import { get, getFlag, getNumber } from '@/env';
 
@@ -10,12 +10,33 @@ const firebaseConfig = {
   appId: get('VITE_FIREBASE_APP_ID'),
 };
 
+/**
+ * Creates a no-op Firestore proxy for E2E tests.
+ * This prevents "Cannot read properties of null" errors when Firebase operations
+ * are called in test environments without a valid Firebase configuration.
+ */
+function createNoopFirestore(): Firestore {
+  const handler: ProxyHandler<any> = {
+    get(_target, prop) {
+      if (prop === 'type') return 'firestore';
+      if (prop === 'app') return null;
+      // Return a function that logs a warning and returns a safe value
+      return (...args: any[]) => {
+        if (getFlag('DEV', false)) {
+          console.warn(`[firebase-noop] ${String(prop)} called with`, args);
+        }
+        return createNoopFirestore(); // Chain-safe
+      };
+    },
+  };
+  return new Proxy({}, handler) as Firestore;
+}
+
 export function getFirebaseApp() {
   const isE2E = getFlag('VITE_E2E', false);
   
   if (isE2E) {
-    console.log('[firebase] initialization skipped in E2E mode');
-    // Return a stub app object for E2E - Firebase SDK requires app instance
+    console.log('[firebase] disabled:', { VITE_E2E: getFlag('VITE_E2E', false) });
     return null as any;
   }
   
@@ -24,7 +45,7 @@ export function getFirebaseApp() {
 }
 
 const isE2E = getFlag('VITE_E2E', false);
-const firestore = isE2E ? (null as any) : getFirestore(getFirebaseApp());
+const firestore = isE2E ? createNoopFirestore() : getFirestore(getFirebaseApp());
 
 if (!isE2E && getFlag('VITE_FIRESTORE_USE_EMULATOR', false)) {
   const host = get('VITE_FIRESTORE_EMULATOR_HOST', '127.0.0.1');
