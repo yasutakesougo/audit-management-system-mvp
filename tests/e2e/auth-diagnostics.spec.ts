@@ -61,7 +61,7 @@ test.describe.skip('Auth Diagnostics', () => {
     await page.waitForLoadState('networkidle');
     
     const hasDevTools = await page.evaluate(() => {
-      return typeof (window as any).__authDiagnostics !== 'undefined';
+      return typeof (window as typeof window & { __authDiagnostics?: unknown }).__authDiagnostics !== 'undefined';
     });
     
     if (!hasDevTools) {
@@ -113,7 +113,7 @@ test.describe.skip('Auth Diagnostics', () => {
     });
     
     const hasDevTools = await page.evaluate(() => {
-      return typeof (window as any).__authDiagnostics !== 'undefined';
+      return typeof (window as typeof window & { __authDiagnostics?: unknown }).__authDiagnostics !== 'undefined';
     });
     
     // In dev mode, API should exist; in production, it should not
