@@ -10,6 +10,7 @@ import { useUsersDemo } from '@/features/users/usersStoreDemo';
 import AccessTimeIcon from '@mui/icons-material/AccessTime';
 import PersonIcon from '@mui/icons-material/Person';
 import Alert from '@mui/material/Alert';
+import Button from '@mui/material/Button';
 import Box from '@mui/material/Box';
 import Chip from '@mui/material/Chip';
 import Container from '@mui/material/Container';
@@ -25,10 +26,17 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { flushSync } from 'react-dom';
 import { FullScreenDailyDialogPage } from '@/features/daily/components/FullScreenDailyDialogPage';
 import { useTimeBasedSupportRecordPage } from '@/pages/hooks/useTimeBasedSupportRecordPage';
-import { useLocation, useSearchParams } from 'react-router-dom';
+import { useLocation, useNavigate, useSearchParams } from 'react-router-dom';
+import { getEnv } from '@/lib/runtimeEnv';
+import {
+  makeIdempotencyKey,
+  persistDailySubmission,
+  type PersistDailyPdcaInput,
+} from '@/features/iceberg-pdca/persistDailyPdca';
 
 const TimeBasedSupportRecordPage: React.FC = () => {
   const location = useLocation();
+  const navigate = useNavigate();
   const [, setSearchParams] = useSearchParams();
   // Query contract: /daily/support?date=YYYY-MM-DD&userId=<id> (legacy user=<id> is also accepted).
   const initialSearchParams = useRef(new URLSearchParams(location.search)).current;
@@ -47,6 +55,7 @@ const TimeBasedSupportRecordPage: React.FC = () => {
   const initialUnfilledOnly = initialParams.unfilledOnly;
   const ERROR_STORAGE_KEY = 'daily-support-submit-error';
   const [snackbarOpen, setSnackbarOpen] = useState(false);
+  const [snackbarMessage, setSnackbarMessage] = useState('行動記録を保存しました');
   const [isEditOpen, setIsEditOpen] = useState(false);
   const [submitError, setSubmitError] = useState<Error | null>(() => {
     if (typeof window === 'undefined') return null;
@@ -54,7 +63,10 @@ const TimeBasedSupportRecordPage: React.FC = () => {
     return stored ? new Error(stored) : null;
   });
   const recordDate = useMemo(() => initialRecordDate, [initialRecordDate]);
+  const targetDate = useMemo(() => recordDate.toISOString().slice(0, 10), [recordDate]);
   const recordPanelRef = useRef<HTMLDivElement>(null);
+  const [retryPersist, setRetryPersist] = useState<PersistDailyPdcaInput | null>(null);
+  const retryKeyRef = useRef<string | null>(null);
   const procedureRepo = useInMemoryProcedureRepository();
   const { repo: behaviorRepo, data: behaviorRecords, error: behaviorError, clearError } = useInMemoryBehaviorRepository();
   const { data: users } = useUsersDemo();
@@ -95,6 +107,11 @@ const TimeBasedSupportRecordPage: React.FC = () => {
   }, [rawError]);
   const selectedUser = useMemo(() => users.find((user) => user.UserID === targetUserId), [users, targetUserId]);
   const previousSearchRef = useRef(location.search);
+  const orgId = getEnv('VITE_FIREBASE_ORG_ID') ?? 'demo-org';
+  const actorUserId = getEnv('VITE_FIREBASE_ACTOR_ID') ?? 'demo-actor';
+  const actorName = getEnv('VITE_FIREBASE_ACTOR_NAME') ?? undefined;
+  const clientVersion = getEnv('VITE_APP_VERSION') ?? 'dev';
+  const templateId = 'daily-support.v1';
 
   useEffect(() => {
     if (!initialUserId) return;
@@ -197,7 +214,62 @@ const TimeBasedSupportRecordPage: React.FC = () => {
         window.sessionStorage.removeItem(ERROR_STORAGE_KEY);
       }
       setSubmitError(null);
-      setSnackbarOpen(true);
+      const completionRate = totalSteps > 0
+        ? Math.max(0, (totalSteps - unfilledStepsCount) / totalSteps)
+        : 0;
+      const persistInput: PersistDailyPdcaInput = {
+        orgId,
+        templateId,
+        targetDate,
+        targetUserId,
+        actorUserId,
+        actorName,
+        type: 'DAILY_SUPPORT_SUBMITTED',
+        clientVersion,
+        metrics: {
+          completionRate,
+          leadTimeMinutes: 0,
+          unfilledCount: unfilledStepsCount,
+        },
+        submittedAt: new Date(),
+        sourceRoute: '/daily/support',
+        ref: 'auto:after-submit',
+      };
+      const idempotencyKey = makeIdempotencyKey(persistInput);
+      retryKeyRef.current = `pdca.retry:${orgId}:${idempotencyKey}`;
+      try {
+        await persistDailySubmission(persistInput);
+        if (typeof window !== 'undefined' && retryKeyRef.current) {
+          window.localStorage.removeItem(retryKeyRef.current);
+        }
+        setRetryPersist(null);
+        setSnackbarMessage('保存しました。CHECKへ移動します。');
+        setSnackbarOpen(true);
+        const params = new URLSearchParams({ userId: targetUserId, date: targetDate });
+        window.setTimeout(() => {
+          navigate(`/analysis/iceberg-pdca?${params.toString()}`);
+        }, 300);
+      } catch (persistError) {
+        const msg = String((persistError as Error | undefined)?.message ?? persistError);
+        const idempotentAlreadyDone =
+          msg.toLowerCase().includes('permission') ||
+          msg.toLowerCase().includes('denied') ||
+          msg.toLowerCase().includes('already exists');
+        if (idempotentAlreadyDone) {
+          setSnackbarMessage('保存済みを確認しました。CHECKへ移動します。');
+          setSnackbarOpen(true);
+          const params = new URLSearchParams({ userId: targetUserId, date: targetDate });
+          window.setTimeout(() => {
+            navigate(`/analysis/iceberg-pdca?${params.toString()}`);
+          }, 300);
+          return;
+        }
+        if (typeof window !== 'undefined' && retryKeyRef.current) {
+          window.localStorage.setItem(retryKeyRef.current, JSON.stringify(persistInput));
+        }
+        setRetryPersist(persistInput);
+        setSubmitError(new Error('Firestore保存に失敗しました。再送できます。'));
+      }
     } catch (err) {
       const error = err instanceof Error ? err : new Error('Failed to add behavior');
       if (typeof window !== 'undefined') {
@@ -207,7 +279,40 @@ const TimeBasedSupportRecordPage: React.FC = () => {
       // 🚨 store.error も更新されるが、UI 表示は submitError を優先
       console.debug('[handleRecordSubmit] error already in store:', err);
     }
-  }, [behaviorRepo, targetUserId]);
+  }, [
+    actorName,
+    actorUserId,
+    behaviorRepo,
+    clientVersion,
+    navigate,
+    orgId,
+    targetDate,
+    targetUserId,
+    templateId,
+    totalSteps,
+    unfilledStepsCount,
+  ]);
+
+  const handleRetryPersist = useCallback(async () => {
+    if (!retryPersist || !targetUserId) return;
+    try {
+      await persistDailySubmission(retryPersist);
+      if (typeof window !== 'undefined' && retryKeyRef.current) {
+        window.localStorage.removeItem(retryKeyRef.current);
+      }
+      setRetryPersist(null);
+      setSubmitError(null);
+      setSnackbarMessage('保存しました。CHECKへ移動します。');
+      setSnackbarOpen(true);
+      const params = new URLSearchParams({ userId: targetUserId, date: targetDate });
+      window.setTimeout(() => {
+        navigate(`/analysis/iceberg-pdca?${params.toString()}`);
+      }, 300);
+    } catch (persistError) {
+      const msg = String((persistError as Error | undefined)?.message ?? persistError);
+      setSubmitError(new Error(msg || 'Firestore保存に失敗しました。再送できます。'));
+    }
+  }, [navigate, retryPersist, targetDate, targetUserId]);
 
   const handleErrorClose = useCallback(() => {
     if (typeof window !== 'undefined') {
@@ -454,7 +559,7 @@ const TimeBasedSupportRecordPage: React.FC = () => {
         anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
       >
         <Alert onClose={handleSnackbarClose} severity="success" sx={{ width: '100%' }}>
-          行動記録を保存しました
+          {snackbarMessage}
         </Alert>
       </Snackbar>
       <Snackbar
@@ -464,7 +569,16 @@ const TimeBasedSupportRecordPage: React.FC = () => {
         anchorOrigin={{ vertical: 'top', horizontal: 'center' }}
         sx={{ zIndex: (theme) => theme.zIndex.modal + 2 }}
       >
-        <Alert onClose={handleErrorClose} severity="error" sx={{ width: '100%' }}>
+        <Alert
+          onClose={handleErrorClose}
+          severity="error"
+          sx={{ width: '100%' }}
+          action={retryPersist ? (
+            <Button color="inherit" size="small" onClick={handleRetryPersist}>
+              再送
+            </Button>
+          ) : undefined}
+        >
           {String(displayedError ?? '')}
         </Alert>
       </Snackbar>
