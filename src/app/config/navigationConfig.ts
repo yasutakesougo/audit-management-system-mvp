@@ -42,16 +42,34 @@ export const NAV_AUDIENCE = {
 } as const satisfies Record<'all' | 'staff' | 'admin', NavAudience>;
 
 /**
+ * i18n Keys for navigation group labels
+ * Used for future internationalization support (ja/en/etc)
+ */
+export const NAV_GROUP_I18N_KEYS = {
+  daily: 'NAV_GROUP.DAILY',
+  record: 'NAV_GROUP.RECORD',
+  review: 'NAV_GROUP.REVIEW',
+  master: 'NAV_GROUP.MASTER',
+  admin: 'NAV_GROUP.ADMIN',
+  settings: 'NAV_GROUP.SETTINGS',
+} as const;
+
+/**
  * Navigation group labels
  * Order: daily → record → review → master → admin → settings
+ * 
+ * Phase 1 UX Optimization (2026-02-23):
+ * - Updated emoji and text to improve clarity and visual hierarchy
+ * - Optimized for both full-width and collapsed sidebar views
+ * - Pairs with NAV_GROUP_I18N_KEYS for future i18n integration
  */
 export const groupLabel: Record<NavGroupKey, string> = {
-  daily: '🗓 日次',
-  record: '🗂 記録・運用',
-  review: '📊 振り返り・分析',
-  master: '👥 マスタ',
-  admin: '🛡 管理',
-  settings: '⚙️ 設定',
+  daily: '📌 今日の業務',
+  record: '📚 記録を参照',
+  review: '🔍 分析して改善',
+  master: '👥 利用者・職員',
+  admin: '🛡️ システム管理',
+  settings: '⚙️ 表示設定',
 };
 
 /**
