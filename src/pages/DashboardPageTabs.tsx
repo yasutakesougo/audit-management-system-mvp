@@ -2,7 +2,6 @@ import { useHandoffSummary } from '@/features/handoff/useHandoffSummary';
 import { useUsersStore } from '@/features/users/store';
 import { TESTIDS } from '@/testids';
 import lazyWithPreload from '@/utils/lazyWithPreload';
-import { RoomStatusTab } from '@/features/dashboard/tabs/RoomStatusTab';
 import { cancelIdle, runOnIdle } from '@/utils/runOnIdle';
 import Alert from '@mui/material/Alert';
 import Accordion from '@mui/material/Accordion';
@@ -29,7 +28,8 @@ const TABS = [
   { label: '申し送りタイムライン', value: 'timeline' },
   { label: '週次サマリー', value: 'weekly' },
   { label: '朝会', value: 'morning' },
-  { label: '夕会', value: 'evening' },  { label: '空き室情報', value: 'rooms' },  { label: '統合利用者プロファイル', value: 'profile' },
+  { label: '夕会', value: 'evening' },
+  { label: '統合利用者プロファイル', value: 'profile' },
 ] as const;
 
 type TabValue = (typeof TABS)[number]['value'];
@@ -290,11 +290,6 @@ const DashboardPageTabs: React.FC = () => {
               </AccordionDetails>
             </Accordion>
           </Stack>
-        )}
-        {tab === 'rooms' && (
-          <Paper elevation={3} sx={{ p: 3, mb: 3 }}>
-            <RoomStatusTab />
-          </Paper>
         )}
         {tab === 'evening' && (
           <Stack spacing={3}>
