@@ -121,7 +121,7 @@ export function pickGroup(item: NavItem, isAdmin: boolean): NavGroupKey {
     return 'record';
   }
 
-  // 振り返り・分析: analysis, iceberg, assessment
+  // 振り返り・分析: analysis, iceberg, assessment + 支援マスタ系（PDCAサイクル）
   if (
     testId === TESTIDS.nav.analysis ||
     testId === TESTIDS.nav.iceberg ||
@@ -130,10 +130,16 @@ export function pickGroup(item: NavItem, isAdmin: boolean): NavGroupKey {
     to.startsWith('/analysis') ||
     to.startsWith('/assessment') ||
     to.startsWith('/survey') ||
+    to === '/admin/step-templates' ||
+    to === '/admin/individual-support' ||
+    to === '/admin/templates' ||
     label.includes('分析') ||
     label.includes('氷山') ||
     label.includes('アセスメント') ||
-    label.includes('特性')
+    label.includes('特性') ||
+    label.includes('支援手順マスタ') ||
+    label.includes('個別支援手順') ||
+    label.includes('支援活動マスタ')
   ) {
     return 'review';
   }

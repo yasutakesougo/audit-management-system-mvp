@@ -408,12 +408,12 @@ describe('navigationConfig', () => {
     });
 
     it('should have correct group labels', () => {
-      expect(groupLabel.daily).toBe('🗓 日次');
-      expect(groupLabel.record).toBe('🗂 記録・運用');
-      expect(groupLabel.review).toBe('📊 振り返り・分析');
-      expect(groupLabel.master).toBe('👥 マスタ');
-      expect(groupLabel.admin).toBe('🛡 管理');
-      expect(groupLabel.settings).toBe('⚙️ 設定');
+      expect(groupLabel.daily).toBe('📌 今日の業務');
+      expect(groupLabel.record).toBe('📚 記録を参照');
+      expect(groupLabel.review).toBe('🔍 分析して改善');
+      expect(groupLabel.master).toBe('👥 利用者・職員');
+      expect(groupLabel.admin).toBe('🛡️ システム管理');
+      expect(groupLabel.settings).toBe('⚙️ 表示設定');
     });
 
     it('should have correct group order', () => {
