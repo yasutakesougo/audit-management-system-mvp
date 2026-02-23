@@ -18,6 +18,8 @@ concurrency:
 
 jobs:
   quality:
+    outputs:
+      ci_full: ${{ steps.changes.outputs.ci_full }}
     runs-on: ubuntu-latest
     timeout-minutes: 30
     env:
@@ -59,6 +61,15 @@ jobs:
               - '.github/workflows/test.yml'
               - '!docs/**'
               - '!**/*.md'
+            ci_full:
+              - 'src/**'
+              - 'tests/**'
+              - 'package.json'
+              - 'package-lock.json'
+              - 'pnpm-lock.yaml'
+              - 'yarn.lock'
+              - 'vitest.config.*'
+              - '.github/workflows/test.yml'
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
@@ -216,7 +227,7 @@ jobs:
 
   quality_extended:
     name: quality_extended
-    if: ${{ github.event_name == 'pull_request' }}
+    if: ${{ github.event_name == 'pull_request' && needs.quality.outputs.ci_full == 'true' }}
     runs-on: ubuntu-latest
     timeout-minutes: 30
     env:
