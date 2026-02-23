@@ -98,6 +98,8 @@ installSharePointFetchMock();
 
 // Mock localStorage for unit tests
 // jsdom provides localStorage but it needs to be properly initialized
+type LocalStorageIndex = Record<string, string | number>;
+
 class LocalStorageMock implements Storage {
   private store: Record<string, string> = {};
 
@@ -126,7 +128,7 @@ class LocalStorageMock implements Storage {
     return Object.keys(this.store).length;
   }
 
-  [key: string]: any;
+  [key: string]: string | number | LocalStorageIndex['string'] | LocalStorageIndex['number'];
   [index: number]: string;
 }
 
