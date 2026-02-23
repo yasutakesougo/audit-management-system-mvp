@@ -42,3 +42,25 @@ export type DashboardSectionDef = {
   audience: 'both' | 'admin' | 'staff';
 };
 
+/**
+ * 朝会・ブリーフィング用アラート定義
+ * 
+ * 役割：
+ * - 朝会時に「今、確認すべき重要情報」を優先度付して表示
+ * - 各アラートはセクションへのナビゲーション用anchorIdを持つ
+ * - severity に応じた視覚的強調（色・アイコン）
+ * 
+ * 使用例：
+ * - 欠席が3件 → { type: 'absent', severity: 'error', count: 3 }
+ * - 重要申し送り2件待ち → { type: 'urgent_handover', severity: 'warning', count: 2 }
+ */
+export type BriefingAlert = {
+  id: string;  // 'absent' | 'late' | 'urgent_handover' | 'critical_safety'
+  type: 'absent' | 'late' | 'urgent_handover' | 'critical_safety' | 'health_concern';
+  severity: 'error' | 'warning' | 'info';
+  label: string;  // 画面表示用ラベル（「本日欠席」など）
+  count: number;  // 該当件数
+  targetAnchorId: string;  // クリック時のジャンプ先（sec-attendance など）
+  description?: string;  // 追加説明（「田中、山田」など）
+};
+
