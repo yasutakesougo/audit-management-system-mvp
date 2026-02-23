@@ -593,7 +593,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ audience = 'staff' }) => 
               </Typography>
             </Box>
 
-            {/* 朝会・夕会情報ボタン */}
+            {/* 朝会・夕会情報、お部屋情報ボタン */}
             <Stack direction="row" spacing={1}>
               <Button
                 variant="contained"
@@ -603,6 +603,15 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ audience = 'staff' }) => 
                 color="primary"
               >
                 朝会・夕会情報
+              </Button>
+              <Button
+                variant="outlined"
+                onClick={() => {
+                  navigate('/room-management');
+                }}
+                size="small"
+              >
+                🏢 お部屋情報
               </Button>
             </Stack>
           </Box>
