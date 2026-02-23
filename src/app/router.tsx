@@ -55,6 +55,7 @@ const AdminDashboardPage = React.lazy(() =>
 );
 
 const DashboardBriefingPage = React.lazy(() => import('@/pages/DashboardPageTabs'));
+const RoomManagementPage = React.lazy(() => import('@/pages/RoomManagementPage'));
 
 const MeetingGuidePage = React.lazy(() => import('@/pages/MeetingGuidePage'));
 const HandoffTimelinePage = React.lazy(() => import('@/pages/HandoffTimelinePage'));
@@ -524,6 +525,20 @@ const SuspendedDashboardBriefingPage: React.FC = () => (
   </RouteHydrationErrorBoundary>
 );
 
+const SuspendedRoomManagementPage: React.FC = () => (
+  <RouteHydrationErrorBoundary>
+    <React.Suspense
+      fallback={(
+        <div className="p-4 text-sm text-slate-600" role="status">
+          お部屋情報を読み込んでいます…
+        </div>
+      )}
+    >
+      <RoomManagementPage />
+    </React.Suspense>
+  </RouteHydrationErrorBoundary>
+);
+
 const SuspendedHandoffTimelinePage: React.FC = () => (
   <RouteHydrationErrorBoundary>
     <React.Suspense
@@ -550,6 +565,7 @@ const childRoutes: RouteObject[] = [
     ),
   },
   { path: 'dashboard/briefing', element: <SuspendedDashboardBriefingPage /> },
+  { path: 'room-management', element: <SuspendedRoomManagementPage /> },
   { path: 'meeting-guide', element: <SuspendedMeetingGuidePage /> },
   { path: 'handoff-timeline', element: <SuspendedHandoffTimelinePage /> },
   { path: 'meeting-minutes', element: MeetingMinutesRoutes.List },

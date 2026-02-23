@@ -604,6 +604,14 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ audience = 'staff' }) => 
               >
                 朝会・夕会情報
               </Button>
+              <Button
+                variant="outlined"
+                onClick={() => navigate('/room-management')}
+                size="small"
+                color="primary"
+              >
+                お部屋情報
+              </Button>
             </Stack>
           </Box>
         </Box>
