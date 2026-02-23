@@ -556,6 +556,8 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ audience = 'staff' }) => 
     // ✨ Phase C-2: やることタブのデータ（スケジュールから自動生成）
     const todoItems = generateTodosFromSchedule(scheduleLanesToday);
 
+
+
     return [
       {
         id: 'users',
@@ -612,7 +614,8 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ audience = 'staff' }) => 
             const tabletParam = searchParams.get('tablet');
             const zeroScrollParam = searchParams.get('zeroscroll');
             const forceTablet = tabletParam === '1';
-            const forceZeroScroll = zeroScrollParam === '1';
+            // Zero-Scrollをデフォルトで有効化（?zeroscroll=0 で無効化可能）
+            const forceZeroScroll = zeroScrollParam !== '0';
             const windowWidth = typeof window !== 'undefined' ? window.innerWidth : 0;
             const meetsWidth = windowWidth >= 1024;
             const isTabletLandscape = forceTablet || meetsWidth;
@@ -631,7 +634,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ audience = 'staff' }) => 
               });
             }
             
-            // Phase C-1: Zero-Scroll Layout（?zeroscroll=1 で有効化）
+            // Phase C-1: Zero-Scroll Layout（デフォルト有効、?zeroscroll=0 で無効化可能）
             if (forceZeroScroll) {
               // 左ペイン: 申し送りセクション
               const handoverSection = vm.orderedSections.find(s => s.key === 'handover');
