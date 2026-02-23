@@ -1,6 +1,5 @@
 import DirectionsCarIcon from '@mui/icons-material/DirectionsCar';
 import MoreHorizIcon from '@mui/icons-material/MoreHoriz';
-import BlockIcon from '@mui/icons-material/Block';
 import { Box, Button, Chip, IconButton, Typography } from '@mui/material';
 import React from 'react';
 
@@ -45,7 +44,7 @@ export function AttendanceRow({
     <Box
       sx={{
         display: 'grid',
-        gridTemplateColumns: { xs: '1fr', md: '1.2fr 1.2fr 1fr auto' },
+        gridTemplateColumns: 'minmax(160px, 1.4fr) auto minmax(80px, 0.8fr) auto auto',
         gap: 1,
         alignItems: 'center',
         px: 1.5,
@@ -68,6 +67,9 @@ export function AttendanceRow({
         >
           {user.name}
         </Typography>
+        {visit.status === '当日欠席' ? (
+          <Chip label="欠席" size="small" variant="outlined" />
+        ) : null}
         {user.needsTransport ? (
           <Chip icon={<DirectionsCarIcon />} label="送迎" size="small" variant="outlined" />
         ) : null}
@@ -93,28 +95,23 @@ export function AttendanceRow({
         </Button>
       </Box>
 
-      <Box sx={{ display: 'flex', flexDirection: 'column', lineHeight: 1.2 }}>
-        <Typography sx={{ fontSize: 12 }} color="text.secondary">
-          滞在
-        </Typography>
-        <Typography sx={{ fontWeight: 700 }}>{visit.rangeText ?? '—'}</Typography>
-      </Box>
+      <Typography sx={{ fontWeight: 600, fontSize: 14, color: 'text.secondary' }}>
+        {visit.rangeText ?? '—'}
+      </Typography>
 
-      <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-        <Button
-          startIcon={<BlockIcon />}
-          variant="text"
-          color="inherit"
-          onClick={onAbsence}
-          disabled={!canAbsence}
-          sx={{ minHeight: 44 }}
-        >
-          欠席
-        </Button>
-        <IconButton onClick={onDetail} sx={{ width: 44, height: 44 }}>
-          <MoreHorizIcon />
-        </IconButton>
-      </Box>
+      <Button
+        variant="text"
+        color="inherit"
+        onClick={onAbsence}
+        disabled={!canAbsence}
+        sx={{ minHeight: 44, minWidth: 64, fontWeight: 700 }}
+      >
+        欠席
+      </Button>
+
+      <IconButton onClick={onDetail} sx={{ width: 44, height: 44 }}>
+        <MoreHorizIcon />
+      </IconButton>
     </Box>
   );
 }
