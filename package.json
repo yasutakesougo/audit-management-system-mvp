@@ -42,7 +42,7 @@
     "test:schedule:e2e": "playwright test tests/e2e/schedule-week.aria.smoke.spec.ts",
     "test:schedule-week": "PLAYWRIGHT_BASE_URL=http://localhost:5175 PLAYWRIGHT_WEB_SERVER_URL=http://localhost:5175 PLAYWRIGHT_WEB_SERVER_COMMAND=\"npm run dev:schedules\" VITE_E2E=1 VITE_SKIP_LOGIN=1 VITE_E2E_MSAL_MOCK=1 VITE_SKIP_SHAREPOINT=1 VITE_FEATURE_SCHEDULES=1 VITE_FEATURE_SCHEDULES_WEEK_V2=1 npx playwright test schedule-week --config=playwright.smoke.config.ts --project=smoke",
     "test:schedule": "npm run test:schedule:unit && npm run test:schedule:e2e",
-    "test:ci:required": "vitest run --run --reporter=default --pool=forks --maxWorkers=2",
+    "test:ci:required": "vitest run --reporter=default --pool=forks --maxWorkers=2 tests/unit/schedule*.spec.* tests/unit/schedules*.spec.* tests/unit/*schedules*.spec.* tests/unit/attendance*.spec.* src/features/attendance/__tests__/attendance*.spec.* src/features/dashboard/__tests__/attendanceSummary.spec.ts tests/unit/records.*.spec.ts tests/unit/exportCsv.spec.ts src/features/daily/__tests__/*.spec.ts src/features/daily/domain/__tests__/*.spec.ts tests/unit/users.store.spec.* tests/unit/users.api.spec.* tests/unit/users.form.spec.* tests/unit/auth*.spec.* tests/smoke/*.spec.ts*",
     "test:ci": "vitest run --run --reporter=verbose --no-file-parallelism --pool=forks --maxWorkers=1 --hookTimeout=${HOOK_TIMEOUT:-10000}",
     "test:hydration": "vitest run tests/unit/hydration --reporter=verbose --no-file-parallelism",
     "test:store": "vitest run tests/unit/users.store.spec.ts tests/unit/operation-hub.useOperationHubData.spec.ts tests/unit/operation-hub.useOperationHubData.branches.spec.ts tests/unit/operation-hub.useOperationHubData.full.spec.tsx --reporter=verbose --no-file-parallelism",
