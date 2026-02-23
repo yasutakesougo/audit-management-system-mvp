@@ -48,7 +48,6 @@ import { HandoffQuickNoteCard } from '@/features/handoff/HandoffQuickNoteCard';
 import RouteHydrationListener from '@/hydration/RouteHydrationListener';
 import { getAppConfig, isE2eMsalMockEnabled, readBool, shouldSkipLogin } from '@/lib/env';
 import { useSP } from '@/lib/spClient';
-import { PREFETCH_KEYS, type PrefetchKey } from '@/prefetch/routes';
 import { TESTIDS } from '@/testids';
 import SignInButton from '@/ui/components/SignInButton';
 import AssessmentRoundedIcon from '@mui/icons-material/AssessmentRounded';
@@ -70,106 +69,15 @@ import Fab from '@mui/material/Fab';
 import { ColorModeContext } from './theme';
 import { SettingsDialog } from '@/features/settings/SettingsDialog';
 import { useSettingsContext } from '@/features/settings/SettingsContext';
-
-type NavItem = {
-  label: string;
-  to: string;
-  isActive: (pathname: string) => boolean;
-  testId?: string;
-  icon?: React.ElementType;
-  prefetchKey?: PrefetchKey;
-  prefetchKeys?: PrefetchKey[];
-  audience?: NavAudience;
-};
-
-type NavAudience = 'all' | 'staff' | 'admin';
-
-const NAV_AUDIENCE = {
-  all: 'all',
-  staff: 'staff',
-  admin: 'admin',
-} as const satisfies Record<'all' | 'staff' | 'admin', NavAudience>;
-
-type NavGroupKey = 'daily' | 'record' | 'review' | 'master' | 'admin' | 'settings';
-
-// ✅ Side Menu Order Policy (2026-02): daily → record → review → master → admin → settings
-// - Routes/permissions/feature flags are unchanged; reorder only.
-// - Meeting minutes: archive and quick-create (朝会/夕会) belong to daily.
-// - Avoid duplicate "黒ノート": keep only list entry in side menu.
-const groupLabel: Record<NavGroupKey, string> = {
-  daily: '🗓 日次',
-  record: '🗂 記録・運用',
-  review: '📊 振り返り・分析',
-  master: '👥 マスタ',
-  admin: '🛡 管理',
-  settings: '⚙️ 設定',
-};
-
-function pickGroup(item: NavItem, isAdmin: boolean): NavGroupKey {
-  const { to, label, testId } = item;
-  // 日次: daily + handoff/meeting + meeting minutes
-  if (
-    testId === TESTIDS.nav.daily ||
-    to.startsWith('/daily') ||
-    to.startsWith('/dailysupport') ||
-    to.startsWith('/handoff') ||
-    to.startsWith('/meeting-guide') ||
-    to.startsWith('/meeting-minutes') ||
-    label.includes('日次') ||
-    label.includes('健康') ||
-    label.includes('申し送り') ||
-    label.includes('司会') ||
-    label.includes('朝会') ||
-    label.includes('夕会') ||
-    label.includes('議事録')
-  ) {
-    return 'daily';
-  }
-  // 記録・運用: records, schedules
-  if (testId === TESTIDS.nav.schedules || to.startsWith('/records') || to.startsWith('/schedule') || label.includes('黒ノート') || label.includes('月次')) {
-    return 'record';
-  }
-  // 振り返り・分析: analysis, iceberg, assessment
-  if (
-    testId === TESTIDS.nav.analysis ||
-    testId === TESTIDS.nav.iceberg ||
-    testId === TESTIDS.nav.icebergPdca ||
-    testId === TESTIDS.nav.assessment ||
-    to.startsWith('/analysis') ||
-    to.startsWith('/assessment') ||
-    to.startsWith('/survey') ||
-    label.includes('分析') ||
-    label.includes('氷山') ||
-    label.includes('アセスメント') ||
-    label.includes('特性')
-  ) {
-    return 'review';
-  }
-  // マスタ: users, staff
-  if (to.startsWith('/users') || to.startsWith('/staff') || label.includes('利用者') || label.includes('職員')) {
-    return 'master';
-  }
-  // 設定: label based
-  if (label.includes('設定')) {
-    return 'settings';
-  }
-  // 管理: checklist, audit, admin/* (管理者のみ)
-  if (
-    isAdmin &&
-    (testId === TESTIDS.nav.checklist ||
-      testId === TESTIDS.nav.audit ||
-      testId === TESTIDS.nav.admin ||
-      to.startsWith('/checklist') ||
-      to.startsWith('/audit') ||
-      to.startsWith('/admin') ||
-      label.includes('自己点検') ||
-      label.includes('監査'))
-  ) {
-    return 'admin';
-  }
-  // デフォルトは記録
-  return 'record';
-}
+import {
+  createNavItems,
+  filterNavItems,
+  groupNavItems,
+  groupLabel,
+  NAV_AUDIENCE,
+  type NavItem,
+  type NavAudience,
+} from '@/app/config/navigationConfig';
 
 const SKIP_LOGIN = shouldSkipLogin();
 const E2E_MSAL_MOCK_ENABLED = isE2eMsalMockEnabled();
@@ -264,241 +172,58 @@ const AppShell: React.FC<{ children: React.ReactNode }> = ({ children }) => {
     }
   }, [location.pathname, currentRole, setCurrentUserRole]);
 
+  // Icon mapping for navigation items
+  const iconMap: Record<string, React.ElementType> = {
+    '日次記録': AssignmentTurnedInRoundedIcon,
+    '健康記録': EditNoteIcon,
+    '申し送りタイムライン': HistoryIcon,
+    '司会ガイド': PsychologyIcon,
+    '朝会（作成）': AddCircleOutlineIcon,
+    '夕会（作成）': AddCircleOutlineIcon,
+    '議事録アーカイブ': EditNoteIcon,
+    '黒ノート一覧': AssignmentTurnedInRoundedIcon,
+    '月次記録': AssessmentRoundedIcon,
+    '分析': InsightsIcon,
+    '氷山分析': WorkspacesIcon,
+    '氷山PDCA': HistoryIcon,
+    'アセスメント': PsychologyIcon,
+    '特性アンケート': EditNoteIcon,
+    '利用者': PeopleAltRoundedIcon,
+    '職員': BadgeRoundedIcon,
+    '職員勤怠': BadgeRoundedIcon,
+    '支援手順マスタ': ChecklistRoundedIcon,
+    '個別支援手順': WorkspacesIcon,
+    '職員勤怠管理': BadgeRoundedIcon,
+    '自己点検': ChecklistRoundedIcon,
+    '監査ログ': AssessmentRoundedIcon,
+    '支援活動マスタ': SettingsRoundedIcon,
+    'スケジュール': EventAvailableRoundedIcon,
+    'コンプラ報告': ChecklistRoundedIcon,
+  };
+
   const navItems = useMemo(() => {
-    // Side-nav intentionally excludes:
-    // - /analysis/iceberg-pdca/edit (edit-only)
-    // - /dev/schedule-create-dialog (dev-only)
-    // - /daily/activity, /daily/support-checklist, /daily/time-based
-    // - /schedules/day, /schedules/month
-    const items: NavItem[] = [
-      {
-        label: '日次記録',
-        to: '/dailysupport',
-        isActive: (pathname) => pathname === '/dailysupport' || pathname.startsWith('/daily/'),
-        icon: AssignmentTurnedInRoundedIcon,
-        prefetchKey: PREFETCH_KEYS.dailyMenu,
-        testId: TESTIDS.nav.daily,
-        audience: NAV_AUDIENCE.all,
-      },
-      {
-        label: '健康記録',
-        to: '/daily/health',
-        isActive: (pathname) => pathname.startsWith('/daily/health'),
-        icon: EditNoteIcon,
-        audience: NAV_AUDIENCE.all,
-      },
-      {
-        label: '申し送りタイムライン',
-        to: '/handoff-timeline',
-        isActive: (pathname) => pathname.startsWith('/handoff-timeline'),
-        icon: HistoryIcon,
-        audience: NAV_AUDIENCE.all,
-      },
-      {
-        label: '司会ガイド',
-        to: '/meeting-guide',
-        isActive: (pathname) => pathname.startsWith('/meeting-guide'),
-        icon: PsychologyIcon,
-        audience: NAV_AUDIENCE.all,
-      },
-      {
-        label: '朝会（作成）',
-        to: '/meeting-minutes/new?category=朝会',
-        isActive: (pathname) => pathname.startsWith('/meeting-minutes/new'),
-        icon: AddCircleOutlineIcon,
-        audience: NAV_AUDIENCE.all,
-      },
-      {
-        label: '夕会（作成）',
-        to: '/meeting-minutes/new?category=夕会',
-        isActive: (pathname) => pathname.startsWith('/meeting-minutes/new'),
-        icon: AddCircleOutlineIcon,
-        audience: NAV_AUDIENCE.all,
-      },
-      {
-        label: '議事録アーカイブ',
-        to: '/meeting-minutes',
-        isActive: (pathname) => pathname.startsWith('/meeting-minutes'),
-        icon: EditNoteIcon,
-        audience: NAV_AUDIENCE.all,
-      },
-      {
-        label: '黒ノート一覧',
-        to: '/records',
-        isActive: (pathname) => pathname.startsWith('/records'),
-        icon: AssignmentTurnedInRoundedIcon,
-        audience: NAV_AUDIENCE.staff,
-      },
-      {
-        label: '月次記録',
-        to: '/records/monthly',
-        isActive: (pathname) => pathname.startsWith('/records/monthly'),
-        icon: AssessmentRoundedIcon,
-        audience: NAV_AUDIENCE.staff,
-      },
-      {
-        label: '分析',
-        to: '/analysis/dashboard',
-        isActive: (pathname) => pathname.startsWith('/analysis/dashboard'),
-        icon: InsightsIcon,
-        prefetchKey: PREFETCH_KEYS.analysisDashboard,
-        testId: TESTIDS.nav.analysis,
-        audience: NAV_AUDIENCE.staff,
-      },
-      {
-        label: '氷山分析',
-        to: '/analysis/iceberg',
-        isActive: (pathname) => pathname.startsWith('/analysis/iceberg'),
-        icon: WorkspacesIcon,
-        prefetchKey: PREFETCH_KEYS.iceberg,
-        testId: TESTIDS.nav.iceberg,
-        audience: NAV_AUDIENCE.staff,
-      },
-      {
-        label: 'アセスメント',
-        to: '/assessment',
-        isActive: (pathname) => pathname.startsWith('/assessment'),
-        icon: PsychologyIcon,
-        prefetchKey: PREFETCH_KEYS.assessmentDashboard,
-        testId: TESTIDS.nav.assessment,
-        audience: NAV_AUDIENCE.staff,
-      },
-      {
-        label: '特性アンケート',
-        to: '/survey/tokusei',
-        isActive: (pathname) => pathname.startsWith('/survey/tokusei'),
-        icon: EditNoteIcon,
-        audience: NAV_AUDIENCE.staff,
-      },
-      {
-        label: '利用者',
-        to: '/users',
-        isActive: (pathname: string) => pathname.startsWith('/users'),
-        icon: PeopleAltRoundedIcon,
-        prefetchKey: PREFETCH_KEYS.users,
-        audience: NAV_AUDIENCE.staff,
-      },
-      {
-        label: '職員',
-        to: '/staff',
-        isActive: (pathname: string) => pathname.startsWith('/staff') && !pathname.startsWith('/staff/attendance'),
-        icon: BadgeRoundedIcon,
-        prefetchKey: PREFETCH_KEYS.staff,
-        audience: NAV_AUDIENCE.staff,
-      },
-      ...(staffAttendanceEnabled ? [
-        {
-          label: '職員勤怠',
-          to: '/staff/attendance',
-          isActive: (pathname: string) => pathname.startsWith('/staff/attendance'),
-          icon: BadgeRoundedIcon,
-          prefetchKey: PREFETCH_KEYS.staff,
-          testId: TESTIDS.nav.staffAttendance,
-          audience: NAV_AUDIENCE.staff,
-        },
-      ] : []),
-      ...(isAdmin && (authzReady || SKIP_LOGIN) ? [
-        {
-          label: '支援手順マスタ',
-          to: '/admin/step-templates',
-          isActive: (pathname: string) => pathname.startsWith('/admin/step-templates'),
-          icon: ChecklistRoundedIcon,
-          audience: NAV_AUDIENCE.admin,
-        },
-        {
-          label: '個別支援手順',
-          to: '/admin/individual-support',
-          isActive: (pathname: string) => pathname.startsWith('/admin/individual-support'),
-          icon: WorkspacesIcon,
-          audience: NAV_AUDIENCE.admin,
-        },
-        {
-          label: '職員勤怠管理',
-          to: '/admin/staff-attendance',
-          isActive: (pathname: string) => pathname.startsWith('/admin/staff-attendance'),
-          icon: BadgeRoundedIcon,
-          audience: NAV_AUDIENCE.admin,
-        },
-        {
-          label: '自己点検',
-          to: '/checklist',
-          isActive: (pathname: string) => pathname.startsWith('/checklist'),
-          icon: ChecklistRoundedIcon,
-          prefetchKey: PREFETCH_KEYS.checklist,
-          testId: TESTIDS.nav.checklist,
-          audience: NAV_AUDIENCE.admin,
-        },
-        {
-          label: '監査ログ',
-          to: '/audit',
-          isActive: (pathname: string) => pathname.startsWith('/audit'),
-          testId: TESTIDS.nav.audit,
-          icon: AssessmentRoundedIcon,
-          prefetchKey: PREFETCH_KEYS.audit,
-          audience: NAV_AUDIENCE.admin,
-        },
-      ] : []),
-      {
-        label: '支援活動マスタ',
-        to: '/admin/templates',
-        isActive: (pathname: string) => pathname.startsWith('/admin'),
-        icon: SettingsRoundedIcon,
-        prefetchKey: PREFETCH_KEYS.adminTemplates,
-        prefetchKeys: [PREFETCH_KEYS.muiForms, PREFETCH_KEYS.muiOverlay],
-        testId: TESTIDS.nav.admin,
-        audience: NAV_AUDIENCE.admin,
-      },
-    ];
+    const items = createNavItems({
+      dashboardPath,
+      currentRole,
+      schedulesEnabled,
+      complianceFormEnabled,
+      icebergPdcaEnabled,
+      staffAttendanceEnabled,
+      isAdmin,
+      authzReady,
+      navAudience,
+      skipLogin: SKIP_LOGIN,
+    });
 
-    if (icebergPdcaEnabled && !items.some(item => item.testId === TESTIDS.nav.icebergPdca)) {
-      items.splice(3, 0, {
-        label: '氷山PDCA',
-        to: '/analysis/iceberg-pdca',
-        isActive: (pathname: string) => pathname.startsWith('/analysis/iceberg-pdca'),
-        icon: HistoryIcon,
-        prefetchKey: PREFETCH_KEYS.icebergPdcaBoard,
-        testId: TESTIDS.nav.icebergPdca,
-        audience: NAV_AUDIENCE.staff,
-      });
-    }
-
-    if (schedulesEnabled && !items.some(item => item.testId === TESTIDS.nav.schedules)) {
-      items.push({
-        label: 'スケジュール',
-        to: '/schedules/week',
-        isActive: (pathname: string) => pathname.startsWith('/schedule') || pathname.startsWith('/schedules'),
-        testId: TESTIDS.nav.schedules,
-        icon: EventAvailableRoundedIcon,
-        prefetchKey: PREFETCH_KEYS.schedulesWeek,
-        prefetchKeys: [PREFETCH_KEYS.muiForms, PREFETCH_KEYS.muiOverlay],
-        audience: NAV_AUDIENCE.staff,
-      });
-    }
-
-    if (complianceFormEnabled) {
-      items.push({
-        label: 'コンプラ報告',
-        to: '/compliance',
-        isActive: (pathname: string) => pathname.startsWith('/compliance'),
-        icon: ChecklistRoundedIcon,
-        audience: 'staff',
-      });
-    }
-
-    const isNavVisible = (item: NavItem): boolean => {
-      const audience = item.audience ?? 'all';
-      if (audience === 'all') return true;
-      if (audience === 'admin') return navAudience === 'admin';
-      return navAudience === 'admin' || navAudience === 'staff';
-    };
-
-    return items.filter(isNavVisible);
+    // Apply icon mapping
+    return items.map((item) => ({
+      ...item,
+      icon: iconMap[item.label],
+    }));
   }, [dashboardPath, currentRole, schedulesEnabled, complianceFormEnabled, icebergPdcaEnabled, staffAttendanceEnabled, isAdmin, authzReady, navAudience]);
 
   const filteredNavItems = useMemo(() => {
-    const q = navQuery.trim().toLowerCase();
-    if (!q) return navItems;
-    return navItems.filter((item) => (item.label ?? '').toLowerCase().includes(q));
+    return filterNavItems(navItems, navQuery);
   }, [navItems, navQuery]);
 
 
@@ -532,16 +257,7 @@ const AppShell: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   }, []);
 
   const groupedNavItems = useMemo(() => {
-    const ORDER: NavGroupKey[] = ['daily', 'record', 'review', 'master', 'admin', 'settings'];
-    const map = new Map<NavGroupKey, NavItem[]>();
-    ORDER.forEach((k) => map.set(k, []));
-
-    for (const item of filteredNavItems) {
-      const group = pickGroup(item, isAdmin);
-      map.get(group)!.push(item);
-    }
-
-    return { map, ORDER };
+    return groupNavItems(filteredNavItems, isAdmin);
   }, [filteredNavItems, isAdmin]);
 
   const currentPathname = location.pathname;  // ✅ 参照を安定化
