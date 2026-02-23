@@ -521,7 +521,7 @@ const AppShell: React.FC<{ children: React.ReactNode }> = ({ children }) => {
       role="navigation"
       aria-label="主要ナビゲーション"
       data-testid="nav-drawer"
-      sx={{ overflowY: 'auto', height: '100%', pt: 2, pb: 10 }}
+      sx={{ pt: 2, pb: 2 }}
     >
       {!navCollapsed && (
         <Box sx={{ px: 1.5, py: 1, pb: 1.5 }} key="nav-search">

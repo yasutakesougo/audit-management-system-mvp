@@ -98,7 +98,9 @@ export function AppShell(props: AppShellProps) {
           display: showSidebar ? 'block' : 'none',
           borderRight: showSidebar ? `1px solid ${t.palette.divider}` : 'none',
           background: t.palette.background.default,
-          overflow: 'hidden',
+          overflow: 'auto',
+          overscrollBehavior: 'contain',
+          WebkitOverflowScrolling: 'touch',
         })}
       >
         {props.sidebar}
