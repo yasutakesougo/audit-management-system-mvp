@@ -32,7 +32,7 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import { PersonDaily, SeizureRecord } from '../domain/daily/types';
 import { getSectionComponent, type SectionProps } from '@/features/dashboard/sections/registry';
 
-import { useDashboardViewModel, type DashboardBriefingChip, type DashboardSection, type DashboardSectionKey } from '@/features/dashboard/useDashboardViewModel';
+import { useDashboardViewModel, type DashboardSection, type DashboardSectionKey } from '@/features/dashboard/useDashboardViewModel';
 import { useDashboardSummary } from '@/features/dashboard/useDashboardSummary';
 import DashboardBriefingHUD from '@/features/dashboard/DashboardBriefingHUD';
 import { ZeroScrollLayout, type DashboardTab } from '@/features/dashboard/layouts/ZeroScrollLayout';
