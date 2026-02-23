@@ -167,4 +167,239 @@ describe('AppShell navigation', () => {
     expect(screen.queryByText(/SP Error/i)).toBeNull();
     unmount();
   });
+
+  describe('Feature flags', () => {
+    it('shows compliance link when feature flag is enabled', async () => {
+      const toggleMock = vi.fn();
+      const theme = createTheme();
+      const initialEntries = ['/'];
+      const routeEntries = Array.from(new Set([...initialEntries]));
+      const flagsWithCompliance = { ...defaultFlags, complianceForm: true };
+      
+      const getShell = () => (
+        <ThemeProvider theme={theme}>
+          <FeatureFlagsProvider value={flagsWithCompliance}>
+            <ColorModeContext.Provider value={{ mode: 'light', toggle: toggleMock, sticky: false }}>
+              <AppShell>
+                <div />
+              </AppShell>
+            </ColorModeContext.Provider>
+          </FeatureFlagsProvider>
+        </ThemeProvider>
+      );
+
+      renderWithAppProviders(getShell(), {
+        initialEntries,
+        future: routerFutureFlags,
+        routeChildren: routeEntries.map((path) => ({ path, element: getShell() })),
+      });
+
+      const openNavButton = screen.getByRole('button', { name: /サイドメニューを開く/i });
+      await userEvent.click(openNavButton);
+
+      const navRoot = screen.getByRole('navigation', { name: /主要ナビゲーション/i });
+      const nav = within(navRoot);
+      const links = nav.queryAllByRole('link');
+
+      const hasComplianceLink = links.some(link => link.getAttribute('href')?.includes('/compliance'));
+      expect(hasComplianceLink).toBe(true);
+    });
+
+    it('shows iceberg PDCA when feature flag is enabled', async () => {
+      const toggleMock = vi.fn();
+      const theme = createTheme();
+      const initialEntries = ['/'];
+      const flagsWithIcebergPdca = { ...defaultFlags, icebergPdca: true };
+      
+      const getShell = () => (
+        <ThemeProvider theme={theme}>
+          <FeatureFlagsProvider value={flagsWithIcebergPdca}>
+            <ColorModeContext.Provider value={{ mode: 'light', toggle: toggleMock, sticky: false }}>
+              <AppShell>
+                <div />
+              </AppShell>
+            </ColorModeContext.Provider>
+          </FeatureFlagsProvider>
+        </ThemeProvider>
+      );
+
+      renderWithAppProviders(getShell(), {
+        initialEntries,
+        future: routerFutureFlags,
+        routeChildren: Array.from(new Set([...initialEntries])).map((path) => ({ path, element: getShell() })),
+      });
+
+      const openNavButton = screen.getByRole('button', { name: /サイドメニューを開く/i });
+      await userEvent.click(openNavButton);
+
+      const navRoot = screen.getByRole('navigation', { name: /主要ナビゲーション/i });
+      const nav = within(navRoot);
+      const links = nav.queryAllByRole('link');
+
+      const hasIcebergPdcaLink = links.some(link => link.getAttribute('href')?.includes('/iceberg-pdca'));
+      expect(hasIcebergPdcaLink).toBe(true);
+    });
+
+    it('shows staff attendance when feature flag is enabled', async () => {
+      const toggleMock = vi.fn();
+      const theme = createTheme();
+      const initialEntries = ['/'];
+      const flagsWithStaffAttendance = { ...defaultFlags, staffAttendance: true };
+      
+      const getShell = () => (
+        <ThemeProvider theme={theme}>
+          <FeatureFlagsProvider value={flagsWithStaffAttendance}>
+            <ColorModeContext.Provider value={{ mode: 'light', toggle: toggleMock, sticky: false }}>
+              <AppShell>
+                <div />
+              </AppShell>
+            </ColorModeContext.Provider>
+          </FeatureFlagsProvider>
+        </ThemeProvider>
+      );
+
+      renderWithAppProviders(getShell(), {
+        initialEntries,
+        future: routerFutureFlags,
+        routeChildren: Array.from(new Set([...initialEntries])).map((path) => ({ path, element: getShell() })),
+      });
+
+      const openNavButton = screen.getByRole('button', { name: /サイドメニューを開く/i });
+      await userEvent.click(openNavButton);
+
+      const navRoot = screen.getByRole('navigation', { name: /主要ナビゲーション/i });
+      const nav = within(navRoot);
+      const links = nav.queryAllByRole('link');
+
+      const hasStaffAttendanceLink = links.some(link => link.textContent?.includes('職員勤怠'));
+      expect(hasStaffAttendanceLink).toBe(true);
+    });
+  });
+
+  describe('Search functionality', () => {
+    it('filters navigation items by search query', async () => {
+      const toggleMock = vi.fn();
+      const theme = createTheme();
+      const initialEntries = ['/'];
+      
+      const getShell = () => (
+        <ThemeProvider theme={theme}>
+          <FeatureFlagsProvider value={defaultFlags}>
+            <ColorModeContext.Provider value={{ mode: 'light', toggle: toggleMock, sticky: false }}>
+              <AppShell>
+                <div />
+              </AppShell>
+            </ColorModeContext.Provider>
+          </FeatureFlagsProvider>
+        </ThemeProvider>
+      );
+
+      renderWithAppProviders(getShell(), {
+        initialEntries,
+        future: routerFutureFlags,
+        routeChildren: Array.from(new Set([...initialEntries])).map((path) => ({ path, element: getShell() })),
+      });
+
+      const openNavButton = screen.getByRole('button', { name: /サイドメニューを開く/i });
+      await userEvent.click(openNavButton);
+
+      const navRoot = screen.getByRole('navigation', { name: /主要ナビゲーション/i });
+      const nav = within(navRoot);
+
+      // Find search input
+      const searchInput = nav.getByPlaceholderText(/メニュー検索/i);
+      expect(searchInput).toBeInTheDocument();
+
+      // Get initial link count
+      const linksBeforeSearch = nav.queryAllByRole('link');
+      const initialCount = linksBeforeSearch.length;
+
+      // Type a search query
+      await userEvent.type(searchInput, '記録');
+
+      // After search, fewer links should be visible
+      const linksAfterSearch = nav.queryAllByRole('link');
+      expect(linksAfterSearch.length).toBeLessThan(initialCount);
+      expect(linksAfterSearch.length).toBeGreaterThan(0);
+    });
+
+    it('clears search query when Escape is pressed', async () => {
+      const toggleMock = vi.fn();
+      const theme = createTheme();
+      const initialEntries = ['/'];
+      
+      const getShell = () => (
+        <ThemeProvider theme={theme}>
+          <FeatureFlagsProvider value={defaultFlags}>
+            <ColorModeContext.Provider value={{ mode: 'light', toggle: toggleMock, sticky: false }}>
+              <AppShell>
+                <div />
+              </AppShell>
+            </ColorModeContext.Provider>
+          </FeatureFlagsProvider>
+        </ThemeProvider>
+      );
+
+      renderWithAppProviders(getShell(), {
+        initialEntries,
+        future: routerFutureFlags,
+        routeChildren: Array.from(new Set([...initialEntries])).map((path) => ({ path, element: getShell() })),
+      });
+
+      const openNavButton = screen.getByRole('button', { name: /サイドメニューを開く/i });
+      await userEvent.click(openNavButton);
+
+      const navRoot = screen.getByRole('navigation', { name: /主要ナビゲーション/i });
+      const nav = within(navRoot);
+      const searchInput = nav.getByPlaceholderText(/メニュー検索/i) as HTMLInputElement;
+
+      // Type a search query
+      await userEvent.type(searchInput, '記録');
+      expect(searchInput.value).toBe('記録');
+
+      // Press Escape
+      await userEvent.keyboard('{Escape}');
+      expect(searchInput.value).toBe('');
+    });
+  });
+
+  describe('Navigation collapse', () => {
+    it('toggles navigation between collapsed and expanded states', async () => {
+      const toggleMock = vi.fn();
+      const theme = createTheme();
+      const initialEntries = ['/'];
+      
+      const getShell = () => (
+        <ThemeProvider theme={theme}>
+          <FeatureFlagsProvider value={defaultFlags}>
+            <ColorModeContext.Provider value={{ mode: 'light', toggle: toggleMock, sticky: false }}>
+              <AppShell>
+                <div />
+              </AppShell>
+            </ColorModeContext.Provider>
+          </FeatureFlagsProvider>
+        </ThemeProvider>
+      );
+
+      renderWithAppProviders(getShell(), {
+        initialEntries,
+        future: routerFutureFlags,
+        routeChildren: Array.from(new Set([...initialEntries])).map((path) => ({ path, element: getShell() })),
+      });
+
+      const openNavButton = screen.getByRole('button', { name: /サイドメニューを開く/i });
+      await userEvent.click(openNavButton);
+
+      // Find collapse/expand button
+      const collapseButton = screen.getByRole('button', { name: /ナビを折りたたみ/i });
+      expect(collapseButton).toBeInTheDocument();
+
+      // Click to collapse
+      await userEvent.click(collapseButton);
+
+      // Button label should change
+      const expandButton = await screen.findByRole('button', { name: /ナビを展開/i });
+      expect(expandButton).toBeInTheDocument();
+    });
+  });
 });
