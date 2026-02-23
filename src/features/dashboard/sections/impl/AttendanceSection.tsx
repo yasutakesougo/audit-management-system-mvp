@@ -59,7 +59,7 @@ export const AttendanceSection: React.FC<AttendanceSectionProps> = (props) => {
   };
 
   return (
-    <Paper elevation={3} sx={{ p: { xs: 2, sm: 2.5, md: 3 } }}>
+    <Paper elevation={3} sx={{ p: { xs: 2, sm: 2.5, md: 3 } }} data-testid="dashboard-section-attendance">
       <Stack
         direction={{ xs: 'column', md: 'row' }}
         spacing={1.5}

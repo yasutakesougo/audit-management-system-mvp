@@ -22,7 +22,6 @@ import Chip from '@mui/material/Chip';
 import Container from '@mui/material/Container';
 import Divider from '@mui/material/Divider';
 import Grid from '@mui/material/Grid';
-import LinearProgress from '@mui/material/LinearProgress';
 import List from '@mui/material/List';
 import ListItem from '@mui/material/ListItem';
 import ListItemText from '@mui/material/ListItemText';
@@ -31,9 +30,9 @@ import Stack from '@mui/material/Stack';
 import Typography from '@mui/material/Typography';
 import { useTheme } from '@mui/material';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Link, useNavigate, useLocation } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { PersonDaily, SeizureRecord } from '../domain/daily/types';
-import { SafetySection, AttendanceSection, DailySection, ScheduleSection, AdminOnlySection, StaffOnlySection } from '@/features/dashboard/sections/impl';
+import { getSectionComponent, type SectionProps } from '@/features/dashboard/sections/registry';
 
 import { useDashboardViewModel, type DashboardBriefingChip, type DashboardSection, type DashboardSectionKey } from '@/features/dashboard/useDashboardViewModel';
 import { useAttendanceStore } from '@/features/attendance/store';
@@ -613,230 +612,102 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ audience = 'staff' }) => 
     }
   }, []);
 
-  const assertNever = (value: never): never => {
-    throw new Error(`Unhandled dashboard section key: ${String(value)}`);
-  };
-
-  const renderSection = useCallback((section: DashboardSection) => {
-    switch (section.key) {
+  /**
+   * セクションキーに基づいて、対応するコンポーネントに渡す props を生成する
+   */
+  const getSectionProps = useCallback((key: DashboardSectionKey, section: DashboardSection): SectionProps[typeof key] => {
+    switch (key) {
       case 'safety':
-        return <SafetySection />;
+        return {};
       case 'attendance':
-        return (
-          <AttendanceSection
-            attendanceSummary={attendanceSummary}
-            showAttendanceNames={showAttendanceNames}
-            onToggleAttendanceNames={setShowAttendanceNames}
-          />
-        );
+        return {
+          attendanceSummary,
+          showAttendanceNames,
+          onToggleAttendanceNames: setShowAttendanceNames,
+        };
       case 'daily':
-        return (
-          <DailySection
-            dailyStatusCards={dailyStatusCards}
-            dailyRecordStatus={dailyRecordStatus}
-          />
-        );
+        return {
+          dailyStatusCards,
+          dailyRecordStatus,
+        };
       case 'schedule':
-        return (
-          <ScheduleSection
-            title={section.title}
-            schedulesEnabled={schedulesEnabled}
-            scheduleLanesToday={scheduleLanesToday}
-          />
-        );
+        return {
+          title: section.title,
+          schedulesEnabled,
+          scheduleLanesToday,
+        };
       case 'handover':
-        return (
-          <Paper elevation={3} sx={{ p: 3 }} {...tid(TESTIDS['dashboard-handoff-summary'])}>
-            <Stack spacing={2}>
-              <Stack
-                direction={{ xs: 'column', md: 'row' }}
-                spacing={1.5}
-                alignItems={{ xs: 'flex-start', md: 'center' }}
-                justifyContent="space-between"
-              >
-                <Stack spacing={0.5} sx={{ minWidth: 0 }}>
-                  <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap">
-                      <Typography variant="subtitle2" lineHeight={1.2} sx={{ fontWeight: 700 }}>
-                      {section.title ?? '申し送りタイムライン'}
-                    </Typography>
-                    {handoffCritical > 0 && (
-                      <Chip
-                        size="small"
-                        color="error"
-                        variant="filled"
-                        label={`重要・未完了 ${handoffCritical}件`}
-                      />
-                    )}
-                  </Stack>
-                  <Typography variant="caption" lineHeight={1.3} color="text.secondary">
-                    今日の申し送り状況を把握して、必要に応じて詳細を確認してください。
-                  </Typography>
-                </Stack>
-                <Stack
-                  spacing={0.75}
-                  alignItems={{ xs: 'flex-start', md: 'flex-end' }}
-                  sx={{ width: { xs: '100%', md: 'auto' }, minWidth: 180 }}
-                >
-                  <Stack direction="row" spacing={1} flexWrap="nowrap" useFlexGap>
-                    <Button
-                      variant="contained"
-                      startIcon={<AccessTimeIcon />}
-                      onClick={() => openTimeline('today')}
-                      size="small"
-                    >
-                      タイムラインを開く
-                    </Button>
-                  </Stack>
-                  <Stack direction="row" spacing={1} flexWrap="nowrap" useFlexGap>
-                    <Button variant="text" size="small" onClick={() => openTimeline('yesterday')}>
-                      前日の申し送り
-                    </Button>
-                    <Button variant="text" size="small" component={Link} to="/handoff-timeline">
-                      一覧を見る
-                    </Button>
-                  </Stack>
-                </Stack>
-              </Stack>
-              {handoffTotal > 0 ? (
-                <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1} flexWrap="wrap" useFlexGap>
-                  <Chip
-                    size="small"
-                    color="warning"
-                    variant={handoffStatus['未対応'] > 0 ? 'filled' : 'outlined'}
-                    label={`未対応 ${handoffStatus['未対応']}件`}
-                    {...tid(TESTIDS['dashboard-handoff-summary-alert'])}
-                  />
-                  <Chip
-                    size="small"
-                    color="info"
-                    variant={handoffStatus['対応中'] > 0 ? 'filled' : 'outlined'}
-                    label={`対応中 ${handoffStatus['対応中']}件`}
-                    {...tid(TESTIDS['dashboard-handoff-summary-action'])}
-                  />
-                  <Chip
-                    size="small"
-                    color="success"
-                    variant={handoffStatus['対応済'] > 0 ? 'filled' : 'outlined'}
-                    label={`対応済 ${handoffStatus['対応済']}件`}
-                  />
-                  <Chip
-                    size="small"
-                    variant="outlined"
-                    label={`合計 ${handoffTotal}件`}
-                    {...tid(TESTIDS['dashboard-handoff-summary-total'])}
-                  />
-                </Stack>
-              ) : (
-                <Alert severity="info" sx={{ borderRadius: 2 }}>
-                  まだ今日の申し送りは登録されていません。気づいたことがあれば /handoff-timeline から追加できます。
-                </Alert>
-              )}
-            </Stack>
-          </Paper>
-        );
+        return {
+          title: section.title ?? '申し送りタイムライン',
+          handoffTotal,
+          handoffCritical,
+          handoffStatus,
+          onOpenTimeline: openTimeline,
+        };
       case 'stats':
-        return (
-          <Stack direction={{ xs: 'column', md: 'row' }} spacing={2} sx={{ mb: 3 }}>
-            <Paper sx={{ p: 2, textAlign: 'center', flex: 1 }}>
-              <Typography variant="h4" color="primary">
-                {stats.totalUsers}名
-              </Typography>
-              <Typography variant="body2" color="text.secondary">
-                総利用者数
-              </Typography>
-            </Paper>
-
-            <Paper sx={{ p: 2, textAlign: 'center', flex: 1 }}>
-              <Typography variant="h4" color="success.main">
-                {stats.recordedUsers}名
-              </Typography>
-              <Typography variant="body2" color="text.secondary">
-                本日記録完了
-              </Typography>
-              <Box sx={{ mt: 1 }}>
-                <LinearProgress
-                  variant="determinate"
-                  value={stats.completionRate}
-                  sx={{ height: 6, borderRadius: 3 }}
-                />
-                <Typography variant="caption" color="text.secondary">
-                  {Math.round(stats.completionRate)}%
-                </Typography>
-              </Box>
-            </Paper>
-
-            <Paper sx={{ p: 2, textAlign: 'center', flex: 1 }}>
-              <Typography variant="h4" color="secondary.main">
-                {intensiveSupportUsers.length}名
-              </Typography>
-              <Typography variant="body2" color="text.secondary">
-                強度行動障害対象者
-              </Typography>
-            </Paper>
-
-            <Paper sx={{ p: 2, textAlign: 'center', flex: 1 }}>
-              <Typography variant="h4" color={stats.seizureCount > 0 ? 'error.main' : 'success.main'}>
-                {stats.seizureCount}件
-              </Typography>
-              <Typography variant="body2" color="text.secondary">
-                本日発作記録
-              </Typography>
-            </Paper>
-          </Stack>
-        );
+        return {
+          stats,
+          intensiveSupportUsersCount: intensiveSupportUsers.length,
+        };
       case 'adminOnly':
-        return vm.role === 'admin' ? (
-          <AdminOnlySection
-            tabValue={tabValue}
-            onTabChange={handleTabChange}
-            stats={stats}
-            intensiveSupportUsers={intensiveSupportUsers}
-            activeUsers={users}
-            usageMap={usageMap}
-          />
-        ) : null;
+        return {
+          tabValue,
+          onTabChange: handleTabChange,
+          stats,
+          intensiveSupportUsers,
+          activeUsers: users,
+          usageMap,
+        };
       case 'staffOnly':
-        return vm.role === 'staff' ? (
-          <StaffOnlySection
-            isMorningTime={isMorningTime}
-            isEveningTime={isEveningTime}
-            dailyStatusCards={dailyStatusCards}
-            prioritizedUsers={prioritizedUsers}
-            scheduleLanesToday={scheduleLanesToday}
-            scheduleLanesTomorrow={scheduleLanesTomorrow}
-            renderScheduleLanes={renderScheduleLanes}
-            stats={stats}
-            onOpenTimeline={openTimeline}
-          />
-        ) : null;
-      default:
-        return assertNever(section.key);
+        return {
+          isMorningTime,
+          isEveningTime,
+          dailyStatusCards,
+          prioritizedUsers,
+          scheduleLanesToday,
+          scheduleLanesTomorrow,
+          renderScheduleLanes,
+          stats,
+          onOpenTimeline: openTimeline,
+        };
     }
   }, [
     attendanceSummary,
+    showAttendanceNames,
     dailyStatusCards,
+    dailyRecordStatus,
+    schedulesEnabled,
+    scheduleLanesToday,
+    handoffTotal,
     handoffCritical,
     handoffStatus,
-    handoffTotal,
-    intensiveSupportUsers,
-    isEveningTime,
-    isMorningTime,
     openTimeline,
-    prioritizedUsers,
-    renderScheduleLanes,
-    scheduleLanesToday.organizationLane,
-    scheduleLanesToday.staffLane,
-    scheduleLanesToday.userLane,
-    scheduleLanesTomorrow.organizationLane,
-    scheduleLanesTomorrow.staffLane,
-    scheduleLanesTomorrow.userLane,
-    schedulesEnabled,
     stats,
+    intensiveSupportUsers,
     tabValue,
-    usageMap,
+    handleTabChange,
     users,
-    vm.role,
+    usageMap,
+    isMorningTime,
+    isEveningTime,
+    prioritizedUsers,
+    scheduleLanesTomorrow,
+    renderScheduleLanes,
   ]);
+
+  /**
+   * Registry パターンでコンポーネントを取得して render する
+   */
+  const renderSection = useCallback((section: DashboardSection) => {
+    // Role-based exclusion
+    if (section.key === 'adminOnly' && vm.role !== 'admin') return null;
+    if (section.key === 'staffOnly' && vm.role !== 'staff') return null;
+
+    const SectionComponent = getSectionComponent(section.key);
+    const props = getSectionProps(section.key, section);
+    
+    return <SectionComponent {...props} />;
+  }, [getSectionProps, vm.role]);
 
   return (
     <Container maxWidth="lg" data-testid="dashboard-page">
