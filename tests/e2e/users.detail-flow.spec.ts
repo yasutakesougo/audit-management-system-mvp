@@ -1,6 +1,6 @@
 import { expect, test } from '@playwright/test';
 import { TESTIDS } from '../../src/testids';
-import { bootUsersPage } from './_helpers/bootUsersPage';
+import { bootUsersPage } from './_helpers/bootUsersPage.mts';
 
 test.describe('users detail menu', () => {
   test.beforeEach(async ({ page }) => {

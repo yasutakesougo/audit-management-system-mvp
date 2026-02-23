@@ -17,15 +17,15 @@
  */
 
 import { expect, test } from '@playwright/test';
-import { bootUsersPage } from './_helpers/bootUsersPage';
+import { bootUsersPage } from './_helpers/bootUsersPage.mts';
 
 test.describe('Users CRUD integration (full lifecycle)', () => {
-  test.beforeEach(async ({ page }) => {
-    // bootUsersPage でモック環境をセットアップ
+  test.beforeEach(async ({ page }, testInfo) => {
+    // bootUsersPage でモック環境をセットアップ（console errors を CI ログに出す）
     await bootUsersPage(page, {
       route: '/users',
       autoNavigate: true,
-    });
+    }, testInfo);
 
     // window.confirm をモック化（削除確認ダイアログ）
     page.on('dialog', async (dialog) => {
@@ -100,12 +100,13 @@ test.describe('Users CRUD integration (full lifecycle)', () => {
     await expect(saveButton).toBeVisible({ timeout: 5000 });
     await saveButton.click();
 
-    // ダイアログが閉じるまで待機
+    // ダイアログが閉じるまで待機（dialog 閉鎖が保存完了を意味する）
     await expect(editDialog).not.toBeVisible({ timeout: 10000 });
     await page.waitForLoadState('networkidle');
 
-    // 編集後の名前が一覧に表示されることを確認
-    await expect(page.getByText(editedUserName, { exact: true })).toBeVisible({ timeout: 10000 });
+    // 保存完了の証拠：テーブルに編集後の名前が出現することを確認
+    const editedUserRow = page.locator('tr', { has: page.getByText(editedUserName) });
+    await expect(editedUserRow).toBeVisible({ timeout: 10000 });
 
     // ========================================
     // Step 4: ユーザー削除

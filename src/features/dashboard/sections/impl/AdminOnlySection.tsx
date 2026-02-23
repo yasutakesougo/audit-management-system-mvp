@@ -77,7 +77,7 @@ export function AdminOnlySection({
   usageMap: _usageMap,
 }: AdminOnlySectionProps) {
   return (
-    <>
+    <Box data-testid="dashboard-section-adminOnly">
       {/* タブナビゲーション */}
       <Card sx={{ mb: 3 }}>
         <Tabs
@@ -282,6 +282,6 @@ export function AdminOnlySection({
           )}
         </Stack>
       </TabPanel>
-    </>
+    </Box>
   );
 }

@@ -44,7 +44,7 @@ export const ScheduleSection: React.FC<ScheduleSectionProps> = (props) => {
   const { title = '今日の予定', schedulesEnabled, scheduleLanesToday } = props;
 
   return (
-    <Paper elevation={3} sx={{ p: { xs: 2, sm: 2.5, md: 3 } }}>
+    <Paper elevation={3} sx={{ p: { xs: 2, sm: 2.5, md: 3 } }} data-testid="dashboard-section-schedule">
       <Stack
         direction={{ xs: 'column', sm: 'row' }}
         spacing={1}

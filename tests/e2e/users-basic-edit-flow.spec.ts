@@ -2,7 +2,7 @@ import type { Page } from '@playwright/test';
 import { expect, test } from '@playwright/test';
 import { TESTIDS } from '../../src/testids';
 import { scrollAndClick, waitForAppRoot, waitVisible } from './utils/pageReady';
-import { bootUsersPage } from './_helpers/bootUsersPage';
+import { bootUsersPage } from './_helpers/bootUsersPage.mts';
 
 const TARGET_USER_NAME = '田中 太郎';
 

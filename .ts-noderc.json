@@ -1,0 +1,11 @@
+{
+  "extends": "./tsconfig.playwright.json",
+  "esm": true,
+  "experimentalEsm": true,
+  "compilerOptions": {
+    "module": "NodeNext",
+    "moduleResolution": "NodeNext",
+    "esModuleInterop": true,
+    "allowSyntheticDefaultImports": true
+  }
+}

@@ -1,6 +1,5 @@
 import { useFeatureFlags } from '@/config/featureFlags';
-import { canAccessDashboardAudience, isDashboardAudience, type DashboardAudience } from '@/features/auth/store';
-import { HYDRATION_FEATURES, estimatePayloadSize, startFeatureSpan } from '@/hydration/features';
+import { canAccessDashboardAudience, type DashboardAudience } from '@/features/auth/store';
 import { TESTIDS, tid } from '@/testids';
 import type { Schedule } from '@/lib/mappers';
 import { getDashboardAnchorIdByKey } from '@/features/dashboard/sections/buildSections';
@@ -22,7 +21,6 @@ import Chip from '@mui/material/Chip';
 import Container from '@mui/material/Container';
 import Divider from '@mui/material/Divider';
 import Grid from '@mui/material/Grid';
-import LinearProgress from '@mui/material/LinearProgress';
 import List from '@mui/material/List';
 import ListItem from '@mui/material/ListItem';
 import ListItemText from '@mui/material/ListItemText';
@@ -30,17 +28,17 @@ import Paper from '@mui/material/Paper';
 import Stack from '@mui/material/Stack';
 import Typography from '@mui/material/Typography';
 import { useTheme } from '@mui/material';
-import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Link, useNavigate, useLocation } from 'react-router-dom';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { PersonDaily, SeizureRecord } from '../domain/daily/types';
-import { SafetySection, AttendanceSection, DailySection, ScheduleSection, AdminOnlySection, StaffOnlySection } from '@/features/dashboard/sections/impl';
+import { getSectionComponent, type SectionProps } from '@/features/dashboard/sections/registry';
 
 import { useDashboardViewModel, type DashboardBriefingChip, type DashboardSection, type DashboardSectionKey } from '@/features/dashboard/useDashboardViewModel';
+import { useDashboardSummary } from '@/features/dashboard/useDashboardSummary';
 import { useAttendanceStore } from '@/features/attendance/store';
 import { useStaffStore } from '@/features/staff/store';
 import type { HandoffDayScope } from '../features/handoff/handoffTypes';
 import { useHandoffSummary } from '../features/handoff/useHandoffSummary';
-import { calculateUsageFromDailyRecords } from '../features/users/userMasterDashboardUtils';
 import { useUsersDemo } from '../features/users/usersStoreDemo';
 import type { AttendanceCounts } from '@/features/staff/attendance/port';
 import { getStaffAttendancePort } from '@/features/staff/attendance/storage';
@@ -288,190 +286,40 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ audience = 'staff' }) => 
     [scrollToSection],
   );
 
-  // 支援記録（ケース記録）データ（モック）
-  // TODO: 実データ接続時は SharePoint / PersonDaily 由来の記録で置き換える
-  const activityRecords = useMemo(() => {
-    const span = startFeatureSpan(HYDRATION_FEATURES.dashboard.activityModel, {
-      status: 'pending',
-      users: users.length,
-    });
-    try {
-      const records = generateMockActivityRecords(users, today);
-      span({
-        meta: {
-          status: 'ok',
-          recordCount: records.length,
-          bytes: estimatePayloadSize(records),
-        },
-      });
-      return records;
-    } catch (error) {
-      span({
-        meta: { status: 'error' },
-        error: error instanceof Error ? error.message : String(error),
-      });
-      throw error;
-    }
-  }, [users, today]);
+  // Get attendance counts (needed by useDashboardSummary)
+  const attendanceCounts = useAttendanceCounts(today);
 
-  // 支援記録（activityRecords）が保持する日付・利用者IDから月次利用実績を集計（完了記録のみカウント）
-  const usageMap = useMemo(() => {
-    const span = startFeatureSpan(HYDRATION_FEATURES.dashboard.usageAggregation, {
-      status: 'pending',
-      month: currentMonth,
-    });
-    try {
-      const map = calculateUsageFromDailyRecords(activityRecords, users, currentMonth, {
-        userKey: (record) => String(record.personId ?? ''),
-        dateKey: (record) => record.date ?? '',
-        countRule: (record) => record.status === '完了',
-      });
-      const entryCount = map && typeof map === 'object'
-        ? Object.keys(map as Record<string, unknown>).length
-        : 0;
-      span({
-        meta: {
-          status: 'ok',
-          entries: entryCount,
-          bytes: estimatePayloadSize(map),
-        },
-      });
-      return map;
-    } catch (error) {
-      span({
-        meta: { status: 'error' },
-        error: error instanceof Error ? error.message : String(error),
-      });
-      throw error;
-    }
-  }, [activityRecords, users, currentMonth]);
+  // Call consolidated dashboard summary hook
+  // (replaces 7 useMemo blocks: activityRecords, usageMap, stats, attendanceSummary, dailyRecordStatus, scheduleLanes, prioritizedUsers)
+  const summary = useDashboardSummary({
+    users,
+    today,
+    currentMonth,
+    visits,
+    staff,
+    attendanceCounts,
+    generateMockActivityRecords,
+  });
 
+  // Destructure all values from hook
+  const {
+    usageMap,
+    stats,
+    attendanceSummary,
+    dailyRecordStatus,
+    scheduleLanesToday,
+    scheduleLanesTomorrow,
+    prioritizedUsers,
+    intensiveSupportUsers,
+  } = summary;
+
+  // Keep development logging for usageMap
   useEffect(() => {
     if (process.env.NODE_ENV === 'development') {
       // eslint-disable-next-line no-console
       console.debug('[usageMap]', currentMonth, usageMap);
     }
   }, [usageMap, currentMonth]);
-
-  // 強度行動障害対象者
-  const intensiveSupportUsers = users.filter(user => user.IsSupportProcedureTarget);
-
-  // 統計計算
-  const stats = useMemo(() => {
-    const totalUsers = users.length;
-    const recordedUsers = activityRecords.filter(r => r.status === '完了').length;
-    const completionRate = totalUsers > 0 ? (recordedUsers / totalUsers) * 100 : 0;
-
-    // 問題行動統計
-    const problemBehaviorStats = activityRecords.reduce((acc, record) => {
-      const pb = record.data.problemBehavior;
-      if (pb) {
-        if (pb.selfHarm) acc.selfHarm++;
-        if (pb.violence) acc.violence++;
-        if (pb.loudVoice) acc.loudVoice++;
-        if (pb.pica) acc.pica++;
-        if (pb.other) acc.other++;
-      }
-      return acc;
-    }, { selfHarm: 0, violence: 0, loudVoice: 0, pica: 0, other: 0 });
-
-    // 発作統計
-    const seizureCount = activityRecords.filter(r =>
-      r.data.seizureRecord && r.data.seizureRecord.occurred
-    ).length;
-
-    // 昼食摂取統計
-    const lunchStats = activityRecords.reduce((acc, record) => {
-      const amount = record.data.mealAmount || 'なし';
-      acc[amount] = (acc[amount] || 0) + 1;
-      return acc;
-    }, {} as Record<string, number>);
-
-    return {
-      totalUsers,
-      recordedUsers,
-      completionRate,
-      problemBehaviorStats,
-      seizureCount,
-      lunchStats
-    };
-  }, [users, activityRecords]);
-
-  const attendanceCounts = useAttendanceCounts(today);
-
-  const attendanceSummary = useMemo(() => {
-    const visitList = Object.values(visits);
-    const userCodeMap = new Map<string, string>();
-
-    users.forEach((user, index) => {
-      const userCode = (user.UserID ?? '').trim() || `U${String(user.Id ?? index + 1).padStart(3, '0')}`;
-      const displayName = user.FullName ?? `利用者${index + 1}`;
-      userCodeMap.set(userCode, displayName);
-    });
-
-    const facilityAttendees = visitList.filter(
-      (visit) => visit.status === '通所中' || visit.status === '退所済'
-    ).length;
-
-    const lateOrEarlyVisits = visitList.filter((visit) => visit.isEarlyLeave === true);
-    const lateOrEarlyLeave = lateOrEarlyVisits.length;
-    const lateOrEarlyNames = Array.from(
-      new Set(
-        lateOrEarlyVisits
-          .map((visit) => userCodeMap.get(visit.userCode))
-          .filter((name): name is string => Boolean(name))
-      )
-    );
-    const absenceVisits = visitList.filter((visit) => visit.status === '当日欠席' || visit.status === '事前欠席');
-    const absenceNames = Array.from(
-      new Set(
-        absenceVisits
-          .map((visit) => userCodeMap.get(visit.userCode))
-          .filter((name): name is string => Boolean(name))
-      )
-    );
-    const absenceCount = absenceVisits.length;
-
-    // Get actual staff attendance via port (Phase 3.1-C)
-    const onDutyStaff = attendanceCounts.onDuty;
-
-    // Fallback to demo data if no attendance records yet
-    const staffCount = staff.length || 0;
-    const estimatedOnDutyStaff = Math.max(0, Math.round(staffCount * 0.6));
-    const finalOnDutyStaff = onDutyStaff > 0 ? onDutyStaff : estimatedOnDutyStaff;
-
-    const lateOrShiftAdjust = Math.max(0, Math.round(finalOnDutyStaff * 0.15));
-    const outStaff = Math.max(0, Math.round(finalOnDutyStaff * 0.2));
-    const outStaffNames = staff.slice(0, outStaff).map((member, index) => {
-      return member?.name ?? member?.staffId ?? `職員${index + 1}`;
-    });
-
-    return {
-      facilityAttendees,
-      lateOrEarlyLeave,
-      lateOrEarlyNames,
-      absenceCount,
-      absenceNames,
-      onDutyStaff: finalOnDutyStaff,
-      lateOrShiftAdjust,
-      outStaff,
-      outStaffNames,
-    };
-  }, [attendanceCounts.onDuty, staff.length, users, visits]);
-
-  const dailyRecordStatus = useMemo(() => {
-    const total = users.length;
-    const completed = activityRecords.filter((record) => record.status === '完了').length;
-    const inProgress = activityRecords.filter((record) => record.status === '作成中').length;
-    const pending = Math.max(total - completed - inProgress, 0);
-
-    return {
-      total,
-      pending,
-      inProgress,
-      completed,
-    };
-  }, [activityRecords, users.length]);
 
   const vm = useDashboardViewModel({
     role: audience,
@@ -498,42 +346,6 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ audience = 'staff' }) => 
     location?: string;
     owner?: string;
   };
-
-  const [scheduleLanesToday, scheduleLanesTomorrow] = useMemo<[
-    { userLane: ScheduleItem[]; staffLane: ScheduleItem[]; organizationLane: ScheduleItem[] },
-    { userLane: ScheduleItem[]; staffLane: ScheduleItem[]; organizationLane: ScheduleItem[] },
-  ]>(() => {
-    const baseUserLane = users.slice(0, 3).map((user, index) => ({
-      id: `user-${index}`,
-      time: `${(9 + index).toString().padStart(2, '0')}:00`,
-      title: `${user.FullName ?? `利用者${index + 1}`} ${['作業プログラム', '個別支援', 'リハビリ'][index % 3]}`,
-      location: ['作業室A', '相談室1', '療育室'][index % 3],
-    }));
-    const baseStaffLane = [
-      { id: 'staff-1', time: '08:45', title: '職員朝会 / 申し送り確認', owner: '生活支援課' },
-      { id: 'staff-2', time: '11:30', title: '通所記録レビュー', owner: '管理責任者' },
-      { id: 'staff-3', time: '15:30', title: '支援手順フィードバック会議', owner: '専門職チーム' },
-    ];
-    const baseOrganizationLane: ScheduleItem[] = [
-      { id: 'org-1', time: '10:00', title: '自治体監査ヒアリング', owner: '法人本部' },
-      { id: 'org-2', time: '13:30', title: '家族向け連絡会資料確認', owner: '連携推進室' },
-      { id: 'org-3', time: '16:00', title: '設備点検結果共有', owner: '施設管理' },
-    ];
-
-    const today = {
-      userLane: baseUserLane,
-      staffLane: baseStaffLane,
-      organizationLane: baseOrganizationLane,
-    };
-
-    const tomorrow = {
-      userLane: baseUserLane,
-      staffLane: baseStaffLane,
-      organizationLane: baseOrganizationLane,
-    };
-
-    return [today, tomorrow];
-  }, [users]);
 
   const renderScheduleLanes = (title: string, lanes: { userLane: ScheduleItem[]; staffLane: ScheduleItem[]; organizationLane: ScheduleItem[] }) => (
     <Card>
@@ -570,8 +382,6 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ audience = 'staff' }) => 
       </CardContent>
     </Card>
   );
-
-  const prioritizedUsers = useMemo(() => intensiveSupportUsers.slice(0, 3), [intensiveSupportUsers]);
 
   const dailyStatusCards = [
     {
@@ -613,230 +423,104 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ audience = 'staff' }) => 
     }
   }, []);
 
-  const assertNever = (value: never): never => {
-    throw new Error(`Unhandled dashboard section key: ${String(value)}`);
-  };
-
-  const renderSection = useCallback((section: DashboardSection) => {
-    switch (section.key) {
+  /**
+   * セクションキーに基づいて、対応するコンポーネントに渡す props を生成する
+   */
+  const getSectionProps = useCallback((key: DashboardSectionKey, section: DashboardSection): SectionProps[typeof key] => {
+    switch (key) {
       case 'safety':
-        return <SafetySection />;
+        return {};
       case 'attendance':
-        return (
-          <AttendanceSection
-            attendanceSummary={attendanceSummary}
-            showAttendanceNames={showAttendanceNames}
-            onToggleAttendanceNames={setShowAttendanceNames}
-          />
-        );
+        return {
+          attendanceSummary,
+          showAttendanceNames,
+          onToggleAttendanceNames: setShowAttendanceNames,
+        };
       case 'daily':
-        return (
-          <DailySection
-            dailyStatusCards={dailyStatusCards}
-            dailyRecordStatus={dailyRecordStatus}
-          />
-        );
+        return {
+          dailyStatusCards,
+          dailyRecordStatus,
+        };
       case 'schedule':
-        return (
-          <ScheduleSection
-            title={section.title}
-            schedulesEnabled={schedulesEnabled}
-            scheduleLanesToday={scheduleLanesToday}
-          />
-        );
+        return {
+          title: section.title,
+          schedulesEnabled,
+          scheduleLanesToday,
+        };
       case 'handover':
-        return (
-          <Paper elevation={3} sx={{ p: 3 }} {...tid(TESTIDS['dashboard-handoff-summary'])}>
-            <Stack spacing={2}>
-              <Stack
-                direction={{ xs: 'column', md: 'row' }}
-                spacing={1.5}
-                alignItems={{ xs: 'flex-start', md: 'center' }}
-                justifyContent="space-between"
-              >
-                <Stack spacing={0.5} sx={{ minWidth: 0 }}>
-                  <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap">
-                      <Typography variant="subtitle2" lineHeight={1.2} sx={{ fontWeight: 700 }}>
-                      {section.title ?? '申し送りタイムライン'}
-                    </Typography>
-                    {handoffCritical > 0 && (
-                      <Chip
-                        size="small"
-                        color="error"
-                        variant="filled"
-                        label={`重要・未完了 ${handoffCritical}件`}
-                      />
-                    )}
-                  </Stack>
-                  <Typography variant="caption" lineHeight={1.3} color="text.secondary">
-                    今日の申し送り状況を把握して、必要に応じて詳細を確認してください。
-                  </Typography>
-                </Stack>
-                <Stack
-                  spacing={0.75}
-                  alignItems={{ xs: 'flex-start', md: 'flex-end' }}
-                  sx={{ width: { xs: '100%', md: 'auto' }, minWidth: 180 }}
-                >
-                  <Stack direction="row" spacing={1} flexWrap="nowrap" useFlexGap>
-                    <Button
-                      variant="contained"
-                      startIcon={<AccessTimeIcon />}
-                      onClick={() => openTimeline('today')}
-                      size="small"
-                    >
-                      タイムラインを開く
-                    </Button>
-                  </Stack>
-                  <Stack direction="row" spacing={1} flexWrap="nowrap" useFlexGap>
-                    <Button variant="text" size="small" onClick={() => openTimeline('yesterday')}>
-                      前日の申し送り
-                    </Button>
-                    <Button variant="text" size="small" component={Link} to="/handoff-timeline">
-                      一覧を見る
-                    </Button>
-                  </Stack>
-                </Stack>
-              </Stack>
-              {handoffTotal > 0 ? (
-                <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1} flexWrap="wrap" useFlexGap>
-                  <Chip
-                    size="small"
-                    color="warning"
-                    variant={handoffStatus['未対応'] > 0 ? 'filled' : 'outlined'}
-                    label={`未対応 ${handoffStatus['未対応']}件`}
-                    {...tid(TESTIDS['dashboard-handoff-summary-alert'])}
-                  />
-                  <Chip
-                    size="small"
-                    color="info"
-                    variant={handoffStatus['対応中'] > 0 ? 'filled' : 'outlined'}
-                    label={`対応中 ${handoffStatus['対応中']}件`}
-                    {...tid(TESTIDS['dashboard-handoff-summary-action'])}
-                  />
-                  <Chip
-                    size="small"
-                    color="success"
-                    variant={handoffStatus['対応済'] > 0 ? 'filled' : 'outlined'}
-                    label={`対応済 ${handoffStatus['対応済']}件`}
-                  />
-                  <Chip
-                    size="small"
-                    variant="outlined"
-                    label={`合計 ${handoffTotal}件`}
-                    {...tid(TESTIDS['dashboard-handoff-summary-total'])}
-                  />
-                </Stack>
-              ) : (
-                <Alert severity="info" sx={{ borderRadius: 2 }}>
-                  まだ今日の申し送りは登録されていません。気づいたことがあれば /handoff-timeline から追加できます。
-                </Alert>
-              )}
-            </Stack>
-          </Paper>
-        );
+        return {
+          title: section.title ?? '申し送りタイムライン',
+          handoffTotal,
+          handoffCritical,
+          handoffStatus,
+          onOpenTimeline: openTimeline,
+        };
       case 'stats':
-        return (
-          <Stack direction={{ xs: 'column', md: 'row' }} spacing={2} sx={{ mb: 3 }}>
-            <Paper sx={{ p: 2, textAlign: 'center', flex: 1 }}>
-              <Typography variant="h4" color="primary">
-                {stats.totalUsers}名
-              </Typography>
-              <Typography variant="body2" color="text.secondary">
-                総利用者数
-              </Typography>
-            </Paper>
-
-            <Paper sx={{ p: 2, textAlign: 'center', flex: 1 }}>
-              <Typography variant="h4" color="success.main">
-                {stats.recordedUsers}名
-              </Typography>
-              <Typography variant="body2" color="text.secondary">
-                本日記録完了
-              </Typography>
-              <Box sx={{ mt: 1 }}>
-                <LinearProgress
-                  variant="determinate"
-                  value={stats.completionRate}
-                  sx={{ height: 6, borderRadius: 3 }}
-                />
-                <Typography variant="caption" color="text.secondary">
-                  {Math.round(stats.completionRate)}%
-                </Typography>
-              </Box>
-            </Paper>
-
-            <Paper sx={{ p: 2, textAlign: 'center', flex: 1 }}>
-              <Typography variant="h4" color="secondary.main">
-                {intensiveSupportUsers.length}名
-              </Typography>
-              <Typography variant="body2" color="text.secondary">
-                強度行動障害対象者
-              </Typography>
-            </Paper>
-
-            <Paper sx={{ p: 2, textAlign: 'center', flex: 1 }}>
-              <Typography variant="h4" color={stats.seizureCount > 0 ? 'error.main' : 'success.main'}>
-                {stats.seizureCount}件
-              </Typography>
-              <Typography variant="body2" color="text.secondary">
-                本日発作記録
-              </Typography>
-            </Paper>
-          </Stack>
-        );
+        return {
+          stats,
+          intensiveSupportUsersCount: intensiveSupportUsers.length,
+        };
       case 'adminOnly':
-        return canAccessDashboardAudience(vm.role, 'admin') ? (
-          <AdminOnlySection
-            tabValue={tabValue}
-            onTabChange={handleTabChange}
-            stats={stats}
-            intensiveSupportUsers={intensiveSupportUsers}
-            activeUsers={users}
-            usageMap={usageMap}
-          />
-        ) : null;
+        return {
+          tabValue,
+          onTabChange: handleTabChange,
+          stats,
+          intensiveSupportUsers,
+          activeUsers: users,
+          usageMap,
+        };
       case 'staffOnly':
-        return isDashboardAudience(vm.role, 'staff') ? (
-          <StaffOnlySection
-            isMorningTime={isMorningTime}
-            isEveningTime={isEveningTime}
-            dailyStatusCards={dailyStatusCards}
-            prioritizedUsers={prioritizedUsers}
-            scheduleLanesToday={scheduleLanesToday}
-            scheduleLanesTomorrow={scheduleLanesTomorrow}
-            renderScheduleLanes={renderScheduleLanes}
-            stats={stats}
-            onOpenTimeline={openTimeline}
-          />
-        ) : null;
+        return {
+          isMorningTime,
+          isEveningTime,
+          dailyStatusCards,
+          prioritizedUsers,
+          scheduleLanesToday,
+          scheduleLanesTomorrow,
+          renderScheduleLanes,
+          stats,
+          onOpenTimeline: openTimeline,
+        };
       default:
-        return assertNever(section.key);
+        throw new Error(`Unhandled dashboard section key: ${section.key}`);
     }
   }, [
     attendanceSummary,
+    showAttendanceNames,
     dailyStatusCards,
+    dailyRecordStatus,
+    schedulesEnabled,
+    scheduleLanesToday,
+    handoffTotal,
     handoffCritical,
     handoffStatus,
-    handoffTotal,
-    intensiveSupportUsers,
-    isEveningTime,
-    isMorningTime,
     openTimeline,
-    prioritizedUsers,
-    renderScheduleLanes,
-    scheduleLanesToday.organizationLane,
-    scheduleLanesToday.staffLane,
-    scheduleLanesToday.userLane,
-    scheduleLanesTomorrow.organizationLane,
-    scheduleLanesTomorrow.staffLane,
-    scheduleLanesTomorrow.userLane,
-    schedulesEnabled,
     stats,
+    intensiveSupportUsers,
     tabValue,
-    usageMap,
+    handleTabChange,
     users,
-    vm.role,
+    usageMap,
+    isMorningTime,
+    isEveningTime,
+    prioritizedUsers,
+    scheduleLanesTomorrow,
+    renderScheduleLanes,
   ]);
+
+  /**
+   * Registry パターンでコンポーネントを取得して render する
+   */
+  const renderSection = useCallback((section: DashboardSection) => {
+    // Role-based exclusion
+    if (section.key === 'adminOnly' && vm.role !== 'admin') return null;
+    if (section.key === 'staffOnly' && vm.role !== 'staff') return null;
+
+    const SectionComponent = getSectionComponent(section.key);
+    const props = getSectionProps(section.key, section);
+    
+    return <SectionComponent {...props} />;
+  }, [getSectionProps, vm.role]);
 
   return (
     <Container maxWidth="lg" data-testid="dashboard-page">
@@ -1158,6 +842,7 @@ const Zone1_MorningDecision: React.FC<Zone1_MorningDecisionProps> = ({
 
   return (
     <Box
+      data-testid="dashboard-zone-briefing"
       sx={{
         display: 'grid',
         gridTemplateColumns: '2fr 1fr',
@@ -1227,7 +912,10 @@ const DashboardZoneLayout: React.FC<DashboardZoneLayoutProps> = ({
   const FOOTER_H = 56;
 
   return (
-    <Box sx={{ minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
+    <Box
+      data-testid={tid(TESTIDS['dashboard-page'])}
+      sx={{ minHeight: '100vh', display: 'flex', flexDirection: 'column' }}
+    >
       {/* ZONE 1: 朝30秒判断ゾーン（sticky wrapper 分離） */}
       <Box
         sx={{
@@ -1258,15 +946,19 @@ const DashboardZoneLayout: React.FC<DashboardZoneLayoutProps> = ({
       >
         <Stack spacing={3}>
           {/* ZONE 2: 今日の予定（主役） */}
-          {renderSectionIfEnabled('schedule')}
+          <Box data-testid="dashboard-zone-today">
+            {renderSectionIfEnabled('schedule')}
+          </Box>
 
           {/* ZONE 3: 集計・作業（補助） */}
-          {renderSectionIfEnabled('safety')}
-          {renderSectionIfEnabled('attendance')}
-          {renderSectionIfEnabled('daily')}
-          {renderSectionIfEnabled('stats')}
-          {renderSectionIfEnabled('adminOnly')}
-          {renderSectionIfEnabled('staffOnly')}
+          <Box data-testid="dashboard-zone-work">
+            {renderSectionIfEnabled('safety')}
+            {renderSectionIfEnabled('attendance')}
+            {renderSectionIfEnabled('daily')}
+            {renderSectionIfEnabled('stats')}
+            {renderSectionIfEnabled('adminOnly')}
+            {renderSectionIfEnabled('staffOnly')}
+          </Box>
         </Stack>
       </Box>
     </Box>

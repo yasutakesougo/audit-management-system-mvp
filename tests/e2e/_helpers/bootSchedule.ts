@@ -40,16 +40,44 @@ const FEATURE_STORAGE: Record<string, string> = {
   demo: '0',
 };
 
+/**
+ * DEFAULT_ORG_FIXTURES: E2E test contract for org-based schedule views.
+ * Tests (e.g., schedule-org-tab.smoke.spec.ts) rely on these org codes:
+ * - 'all': All organizations view
+ * - 'main': Main facility
+ * - 'shortstay': Short-term stay service
+ * DO NOT remove or rename OrgCode values without updating dependent tests.
+ */
 const DEFAULT_ORG_FIXTURES = [
   {
+    Id: 500,
+    Title: '全事業所（統合ビュー）',
+    OrgCode: 'all',
+    OrgType: 'Virtual',
+    Audience: 'Staff,User',
+    SortOrder: 0,
+    IsActive: true,
+    Notes: 'All organizations view',
+  },
+  {
     Id: 501,
-    Title: '磯子区障害支援センター',
-    OrgCode: 'ORG-ISO',
-    OrgType: 'Center',
+    Title: '生活介護（本体）',
+    OrgCode: 'main',
+    OrgType: 'Main',
     Audience: 'Staff,User',
     SortOrder: 1,
     IsActive: true,
-    Notes: 'E2E demo org',
+    Notes: 'Main facility',
+  },
+  {
+    Id: 502,
+    Title: '短期入所',
+    OrgCode: 'shortstay',
+    OrgType: 'ShortStay',
+    Audience: 'Staff,User',
+    SortOrder: 2,
+    IsActive: true,
+    Notes: 'Short-term stay service',
   },
 ];
 

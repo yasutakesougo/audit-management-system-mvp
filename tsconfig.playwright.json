@@ -3,7 +3,18 @@
   "compilerOptions": {
     "module": "NodeNext",
     "moduleResolution": "NodeNext",
+    "esModuleInterop": true,
+    "allowSyntheticDefaultImports": true,
+    "allowImportingTsExtensions": true,
     "types": ["node", "@playwright/test"]
+  },
+  "ts-node": {
+    "esm": true,
+    "experimentalEsm": true,
+    "compilerOptions": {
+      "module": "NodeNext",
+      "moduleResolution": "NodeNext"
+    }
   },
   "include": ["playwright.config.ts", "tests/e2e/**/*.ts", "tests/e2e/**/*.tsx"],
   "exclude": ["node_modules", "dist", "build", "coverage"]

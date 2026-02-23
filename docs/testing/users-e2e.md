@@ -41,7 +41,7 @@ Users ページ（一覧・詳細・支援手順タブ）のエンドツーエ�
 ### 2-1. 最小パターン
 
 ```ts
-import { bootUsersPage } from './_helpers/bootUsersPage';
+import { bootUsersPage } from './_helpers/bootUsersPage.mts';
 
 test.beforeEach(async ({ page }) => {
   await bootUsersPage(page);
