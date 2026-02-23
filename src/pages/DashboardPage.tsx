@@ -39,7 +39,6 @@ import { ZeroScrollLayout, type DashboardTab } from '@/features/dashboard/layout
 import { UserStatusTab } from '@/features/dashboard/tabs/UserStatusTab';
 import { StaffStatusTab } from '@/features/dashboard/tabs/StaffStatusTab';
 import { TodoTab } from '@/features/dashboard/tabs/TodoTab';
-import { RoomStatusTab } from '@/features/dashboard/tabs/RoomStatusTab';
 import { generateTodosFromSchedule } from '@/features/dashboard/generateTodos';
 import { useAttendanceStore } from '@/features/attendance/store';
 import { useStaffStore } from '@/features/staff/store';
@@ -571,12 +570,6 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ audience = 'staff' }) => 
         label: '職員',
         count: staffTabData.absentStaff.length,
         component: <StaffStatusTab {...staffTabData} />,
-      },
-      {
-        id: 'rooms',
-        label: '空き室',
-        count: 4,
-        component: <RoomStatusTab />,
       },
       {
         id: 'todo',
