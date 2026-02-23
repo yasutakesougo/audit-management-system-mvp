@@ -117,33 +117,29 @@ export function useDashboardSummary(args: UseDashboardSummaryArgs): DashboardSum
     generateMockActivityRecords,
   } = args;
 
-  // DEV-only perf profiling setup (Vite optimized)
-  // import.meta.env.DEV is tree-shaken in production
-  const isDevProfiling = import.meta.env.DEV
-    && typeof localStorage !== 'undefined'
-    && localStorage.getItem('debug')?.includes('dashboard:perf');
+  // DEV-only perf profiling setup (gated by localStorage.debug = 'dashboard:perf')
+  const debugValue = typeof localStorage !== 'undefined' && localStorage.getItem ? localStorage.getItem('debug') : null;
+  const isDevProfiling = debugValue?.includes('dashboard:perf') ?? false;
 
   const perfMark = (label: string) => {
-    if (isDevProfiling) {
+    if (isDevProfiling && typeof performance !== 'undefined') {
       performance.mark(label);
     }
   };
 
   const perfMeasure = (label: string) => {
-    if (isDevProfiling && performance.getEntriesByName(label).length > 0) {
+    if (isDevProfiling && typeof performance !== 'undefined' && performance.getEntriesByName(label).length > 0) {
       try {
         performance.measure(`${label}-duration`, label);
         const duration = performance.getEntriesByName(`${label}-duration`)[0]?.duration || 0;
-        if (import.meta.env.DEV) {
-          // eslint-disable-next-line no-console
-          console.debug(
-            `[Dashboard Perf] ${label}: ${duration.toFixed(2)}ms`,
-          );
-        }
+        // eslint-disable-next-line no-console
+        console.log(
+          `[Dashboard Perf] ${label}: ${duration.toFixed(2)}ms`,
+        );
         performance.clearMarks(label);
         performance.clearMeasures(`${label}-duration`);
-      } catch {
-        // silently ignore perf API errors
+      } catch (e) {
+        console.error('[PERF MEASURE ERROR]', label, e);
       }
     }
   };
