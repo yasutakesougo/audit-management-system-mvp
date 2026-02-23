@@ -684,21 +684,33 @@ export default function WeekPage() {
                 </select>
               </label>
               {mode === 'org' && (
-                <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, width: '100%' }}>
-                  事業所:
-                  <select
-                    value={orgParam}
-                    onChange={handleOrgChange}
-                    style={{ padding: '4px 8px', borderRadius: 8, border: '1px solid rgba(0,0,0,0.2)' }}
-                    data-testid="schedule-org-select"
-                  >
-                    <option value="all">すべて</option>
-                    <option value="main">本部</option>
-                    <option value="shortstay">ショートステイ</option>
-                    <option value="respite">レスパイト</option>
-                    <option value="other">その他</option>
-                  </select>
-                </label>
+                <Stack direction="column" spacing={1} style={{ width: '100%' }} data-testid="schedule-org-tabpanel">
+                  <h3 style={{ margin: 0, fontSize: 14, fontWeight: 600 }}>組織別スケジュール</h3>
+                  <Stack direction="row" spacing={1} style={{ alignItems: 'center' }}>
+                    <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13 }}>
+                      事業所:
+                      <select
+                        value={orgParam}
+                        onChange={handleOrgChange}
+                        style={{ padding: '4px 8px', borderRadius: 8, border: '1px solid rgba(0,0,0,0.2)' }}
+                        data-testid="schedule-org-select"
+                      >
+                        <option value="all">全事業所（統合ビュー）</option>
+                        <option value="main">生活介護（本体）</option>
+                        <option value="shortstay">短期入所</option>
+                        <option value="respite">レスパイト</option>
+                        <option value="other">その他</option>
+                      </select>
+                    </label>
+                    <span data-testid="schedule-org-summary" style={{ fontSize: 13, color: '#666' }}>
+                      {orgParam === 'all' && '全事業所（統合ビュー）'}
+                      {orgParam === 'main' && '生活介護（本体）'}
+                      {orgParam === 'shortstay' && '短期入所'}
+                      {orgParam === 'respite' && 'レスパイト'}
+                      {orgParam === 'other' && 'その他'}
+                    </span>
+                  </Stack>
+                </Stack>
               )}
               <input
                 type="search"

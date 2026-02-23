@@ -173,7 +173,11 @@ jobs:
         if: github.event_name == 'workflow_dispatch' || (github.ref == 'refs/heads/main' && steps.changes.outputs.perf == 'true')
         run: npm run -s ci:perf-report
         env:
+          VITE_E2E: "1"
+          VITE_SKIP_LOGIN: "1"
           VITE_E2E_MSAL_MOCK: "1"
+          VITE_SKIP_SHAREPOINT: "1"
+          VITE_DEMO_MODE: "1"
           NOTIFY_WEBHOOK_URL: ${{ secrets.NOTIFY_WEBHOOK_URL }}
       - name: Upload perf summary artifact
         if: always()
