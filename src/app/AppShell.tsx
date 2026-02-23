@@ -130,9 +130,9 @@ const AppShell: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const staffAttendanceEnabled = Boolean(staffAttendance);
   const isDesktop = useMediaQuery(theme.breakpoints.up('md'));
   const [mobileOpen, setMobileOpen] = useState(false);
-  const [desktopNavOpen, setDesktopNavOpen] = useState(false);
+  const [desktopNavOpen, setDesktopNavOpen] = useState(true); // デフォルトで展開
   const [navQuery, setNavQuery] = useState('');
-  const [navCollapsed, setNavCollapsed] = useState(true);
+  const [navCollapsed, setNavCollapsed] = useState(false); // デフォルトで展開（ラベル表示）
   const [settingsDialogOpen, setSettingsDialogOpen] = useState(false);
   const drawerWidth = 240;
   const drawerMiniWidth = 64;
