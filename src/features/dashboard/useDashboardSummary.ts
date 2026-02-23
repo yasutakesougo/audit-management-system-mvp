@@ -1,14 +1,9 @@
 /**
- * Dashboard Summary Hook
- * 
- * DashboardPage の useMemo 群を集約し、計算ロジックを分離。
- * 
- * Purpose:
- * - ViewModel への入力を1箇所で生成
- * - Page の肥大化を防ぐ
- * - 集計ロジックの単体テスト可能化
- * 
- * Phase 3: Summary Hook化（ロジックリファクタ）
+ * Dashboard Summary Hook (Phase 3A: Logic Move Only)
+ *
+ * Consolidates 7 useMemo blocks from DashboardPage.tsx into a single hook.
+ * IMPORTANT: This is a DIRECT COPY of the original useMemo blocks.
+ * No logic changes, no type redefinitions. Uses existing domain types only.
  */
 
 import { useMemo } from 'react';
@@ -17,140 +12,79 @@ import type { PersonDaily } from '@/domain/daily/types';
 import type { Staff } from '@/types';
 import type { AttendanceCounts } from '@/features/staff/attendance/port';
 import { calculateUsageFromDailyRecords } from '@/features/users/userMasterDashboardUtils';
+import { startFeatureSpan, estimatePayloadSize, HYDRATION_FEATURES } from '@/hydration/features';
 
-// ============================================================================
-// Types (DashboardPage から移植)
-// ============================================================================
-
-export type ActivityRecord = {
-  personId: number | string;
-  date: string;
-  status: '未着手' | '作成中' | '完了';
-  data: {
-    amActivities: string[];
-    pmActivities: string[];
-    amNotes: string;
-    pmNotes: string;
-    mealAmount: PersonDaily['data']['mealAmount'];
-    problemBehavior: {
-      selfHarm: boolean;
-      violence: boolean;
-      loudVoice: boolean;
-      pica: boolean;
-      other: boolean;
-      otherDetail?: string;
-    };
-    seizureRecord: {
-      occurred: boolean;
-      time?: string;
-      duration?: string;
-      severity?: 'レ軽度' | '中等度' | '重度';
-      notes?: string;
-    };
-    specialNotes: string;
-  };
+// Attendance visit type
+type AttendanceVisitSnapshot = {
+  userCode: string;
+  status: string;
+  providedMinutes?: number;
+  isEarlyLeave?: boolean;
 };
 
-export type VisitRecord = {
-  date: string;
-  attendees: number;
-  lateCount: number;
-  earlyLeaveCount: number;
-  absenceCount: number;
-};
-
-export type ScheduleItem = {
-  id: string;
-  name: string;
-  startTime: string;
-  endTime: string;
-  staffIds: string[];
-};
-
-export type ScheduleLanes = {
-  schedule: ScheduleItem[];
-  byHour: Record<number, ScheduleItem[]>;
-};
-
-export type DashboardStats = {
-  totalUsers: number;
-  recordedUsers: number;
-  completionRate: number;
-  problemBehavior: number;
-  seizures: number;
-  lunch: number;
-};
-
-export type AttendanceSummaryData = {
-  facilityAttendees: number;
-  lateCount: number;
-  earlyLeaveCount: number;
-  absenceCount: number;
-  staffOnDuty: number;
-};
-
-export type DailyRecordStatus = {
-  total: number;
-  pending: number;
-  inProgress: number;
-  completed: number;
-};
-
-export type DashboardSummary = {
-  activityRecords: ActivityRecord[];
-  usageMap: Record<string, unknown>;
-  stats: DashboardStats;
-  attendanceSummary: AttendanceSummaryData;
-  dailyRecordStatus: DailyRecordStatus;
-  scheduleLanesToday: ScheduleLanes;
-  scheduleLanesTomorrow: ScheduleLanes;
-  prioritizedUsers: IUserMaster[];
-  intensiveSupportUsers: IUserMaster[];
-};
-
-export type UseDashboardSummaryArgs = {
+/**
+ * Arguments for useDashboardSummary hook
+ * All values required by the 7 original useMemo blocks
+ */
+export interface UseDashboardSummaryArgs {
   users: IUserMaster[];
   today: string;
   currentMonth: string;
-  visits: Record<string, VisitRecord>;
+  visits: Record<string, AttendanceVisitSnapshot>;
   staff: Staff[];
   attendanceCounts: AttendanceCounts;
-  generateMockActivityRecords: (users: IUserMaster[], date: string) => ActivityRecord[];
-};
-
-// ============================================================================
-// Hook Implementation
-// ============================================================================
+  generateMockActivityRecords: (users: IUserMaster[], today: string) => PersonDaily[];
+}
 
 /**
- * すべての Dashboard 計算ロジックを1つのフックに統合
- *
- * 使用例:
- * ```
- * const summary = useDashboardSummary({
- *   users,
- *   today,
- *   currentMonth,
- *   visits,
- *   staff,
- *   attendanceCounts,
- *   generateMockActivityRecords,
- * });
- *
- * const {
- *   activityRecords,
- *   stats,
- *   attendanceSummary,
- *   // ...
- * } = summary;
- * ```
- *
- * @param args Input state and callbacks
- * @returns Consolidated summary object with all 7+1 calculated values
- *
- * 注意:
- * - Phase 3-A: ロジックは変更なし（移動のみ）
- * - Phase 3-B: 入力引数の最小化（next PR）
+ * Return type: combines all 7 useMemo outputs
+ * Keys match DashboardPage variable names exactly
+ */
+export interface DashboardSummary {
+  activityRecords: PersonDaily[];
+  usageMap: Record<string, unknown>;
+  stats: {
+    totalUsers: number;
+    recordedUsers: number;
+    completionRate: number;
+    problemBehaviorStats: Record<string, number>;
+    seizureCount: number;
+    lunchStats: Record<string, number>;
+  };
+  attendanceSummary: {
+    facilityAttendees: number;
+    lateOrEarlyLeave: number;
+    lateOrEarlyNames: string[];
+    absenceCount: number;
+    absenceNames: string[];
+    onDutyStaff: number;
+    lateOrShiftAdjust: number;
+    outStaff: number;
+    outStaffNames: string[];
+  };
+  dailyRecordStatus: {
+    total: number;
+    pending: number;
+    inProgress: number;
+    completed: number;
+  };
+  scheduleLanesToday: {
+    userLane: Array<{ id: string; time: string; title: string; location?: string }>;
+    staffLane: Array<{ id: string; time: string; title: string; owner?: string }>;
+    organizationLane: Array<{ id: string; time: string; title: string; owner?: string }>;
+  };
+  scheduleLanesTomorrow: {
+    userLane: Array<{ id: string; time: string; title: string; location?: string }>;
+    staffLane: Array<{ id: string; time: string; title: string; owner?: string }>;
+    organizationLane: Array<{ id: string; time: string; title: string; owner?: string }>;
+  };
+  prioritizedUsers: IUserMaster[];
+  intensiveSupportUsers: IUserMaster[];
+}
+
+/**
+ * Main hook: consolidates 7 useMemo blocks from DashboardPage
+ * Returns DashboardSummary with all original variable names
  */
 export function useDashboardSummary(args: UseDashboardSummaryArgs): DashboardSummary {
   const {
@@ -163,76 +97,189 @@ export function useDashboardSummary(args: UseDashboardSummaryArgs): DashboardSum
     generateMockActivityRecords,
   } = args;
 
-  // Intensive support users (used in multiple calculations)
+  // ============================================================================
+  // 1. Activity Records (original: line 292-315)
+  // ============================================================================
+  const activityRecords = useMemo(() => {
+    const span = startFeatureSpan(HYDRATION_FEATURES.dashboard.activityModel, {
+      status: 'pending',
+      users: users.length,
+    });
+    try {
+      const records = generateMockActivityRecords(users, today);
+      span({
+        meta: {
+          status: 'ok',
+          recordCount: records.length,
+          bytes: estimatePayloadSize(records),
+        },
+      });
+      return records;
+    } catch (error) {
+      span({
+        meta: { status: 'error' },
+        error: error instanceof Error ? error.message : String(error),
+      });
+      throw error;
+    }
+  }, [users, today, generateMockActivityRecords]);
+
+  // ============================================================================
+  // 2. Usage Map (original: line 319-351)
+  // ============================================================================
+  const usageMap = useMemo(() => {
+    const span = startFeatureSpan(HYDRATION_FEATURES.dashboard.usageAggregation, {
+      status: 'pending',
+      month: currentMonth,
+    });
+    try {
+      const map = calculateUsageFromDailyRecords(activityRecords, users, currentMonth, {
+        userKey: (record) => String(record.personId ?? ''),
+        dateKey: (record) => record.date ?? '',
+        countRule: (record) => record.status === '完了',
+      });
+      const entryCount = map && typeof map === 'object'
+        ? Object.keys(map as Record<string, unknown>).length
+        : 0;
+      span({
+        meta: {
+          status: 'ok',
+          entries: entryCount,
+          bytes: estimatePayloadSize(map),
+        },
+      });
+      return map;
+    } catch (error) {
+      span({
+        meta: { status: 'error' },
+        error: error instanceof Error ? error.message : String(error),
+      });
+      throw error;
+    }
+  }, [activityRecords, users, currentMonth]);
+
+  // ============================================================================
+  // 3. Intensive Support Users (original: line 361-362)
+  // ============================================================================
   const intensiveSupportUsers = useMemo(
     () => users.filter(user => user.IsSupportProcedureTarget),
     [users],
   );
 
-  // 1. Activity Records
-  const activityRecords = useMemo(() => {
-    return generateMockActivityRecords(users, today);
-  }, [users, today, generateMockActivityRecords]);
-
-  // 2. Usage Map
-  const usageMap = useMemo(() => {
-    return calculateUsageFromDailyRecords(activityRecords, users, currentMonth);
-  }, [activityRecords, users, currentMonth]);
-
-  // 3. Stats
+  // ============================================================================
+  // 4. Stats (original: line 364-399)
+  // ============================================================================
   const stats = useMemo(() => {
     const totalUsers = users.length;
     const recordedUsers = activityRecords.filter(r => r.status === '完了').length;
     const completionRate = totalUsers > 0 ? (recordedUsers / totalUsers) * 100 : 0;
 
-    const problemBehavior = activityRecords.filter(r =>
-      r.data.problemBehavior.selfHarm ||
-      r.data.problemBehavior.violence ||
-      r.data.problemBehavior.loudVoice ||
-      r.data.problemBehavior.pica ||
-      r.data.problemBehavior.other
+    // 問題行動統計
+    const problemBehaviorStats = activityRecords.reduce((acc, record) => {
+      const pb = record.data.problemBehavior;
+      if (pb) {
+        if (pb.selfHarm) acc.selfHarm++;
+        if (pb.violence) acc.violence++;
+        if (pb.loudVoice) acc.loudVoice++;
+        if (pb.pica) acc.pica++;
+        if (pb.other) acc.other++;
+      }
+      return acc;
+    }, { selfHarm: 0, violence: 0, loudVoice: 0, pica: 0, other: 0 });
+
+    // 発作統計
+    const seizureCount = activityRecords.filter(r =>
+      r.data.seizureRecord && r.data.seizureRecord.occurred
     ).length;
 
-    const seizures = activityRecords.filter(r => r.data.seizureRecord.occurred).length;
-
-    const lunch = activityRecords.filter(r => r.data.mealAmount === '完食').length;
+    // 昼食摂取統計
+    const lunchStats = activityRecords.reduce((acc, record) => {
+      const amount = record.data.mealAmount || 'なし';
+      acc[amount] = (acc[amount] || 0) + 1;
+      return acc;
+    }, {} as Record<string, number>);
 
     return {
       totalUsers,
       recordedUsers,
-      completionRate: Math.round(completionRate),
-      problemBehavior,
-      seizures,
-      lunch,
+      completionRate,
+      problemBehaviorStats,
+      seizureCount,
+      lunchStats
     };
   }, [users, activityRecords]);
 
-  // 4. Attendance Summary
+  // ============================================================================
+  // 5. Attendance Summary (original: line 401-458)
+  // ============================================================================
   const attendanceSummary = useMemo(() => {
-    const onDuty = attendanceCounts.onDuty || [];
-    const facilityAttendees = onDuty.length;
-    const staffOnDuty = staff.length;
+    const visitList = Object.values(visits);
+    const userCodeMap = new Map<string, string>();
 
-    const todayVisits = visits[today];
-    const lateCount = todayVisits?.lateCount || 0;
-    const earlyLeaveCount = todayVisits?.earlyLeaveCount || 0;
-    const absenceCount = todayVisits?.absenceCount || 0;
+    users.forEach((user, index) => {
+      const userCode = (user.UserID ?? '').trim() || `U${String(user.Id ?? index + 1).padStart(3, '0')}`;
+      const displayName = user.FullName ?? `利用者${index + 1}`;
+      userCodeMap.set(userCode, displayName);
+    });
+
+    const facilityAttendees = visitList.filter(
+      (visit) => visit.status === '通所中' || visit.status === '退所済'
+    ).length;
+
+    const lateOrEarlyVisits = visitList.filter((visit) => visit.isEarlyLeave === true);
+    const lateOrEarlyLeave = lateOrEarlyVisits.length;
+    const lateOrEarlyNames = Array.from(
+      new Set(
+        lateOrEarlyVisits
+          .map((visit) => userCodeMap.get(visit.userCode))
+          .filter((name): name is string => Boolean(name))
+      )
+    );
+    const absenceVisits = visitList.filter((visit) => visit.status === '当日欠席' || visit.status === '事前欠席');
+    const absenceNames = Array.from(
+      new Set(
+        absenceVisits
+          .map((visit) => userCodeMap.get(visit.userCode))
+          .filter((name): name is string => Boolean(name))
+      )
+    );
+    const absenceCount = absenceVisits.length;
+
+    // Get actual staff attendance via port (Phase 3.1-C)
+    const onDutyStaff = attendanceCounts.onDuty;
+
+    // Fallback to demo data if no attendance records yet
+    const staffCount = staff.length || 0;
+    const estimatedOnDutyStaff = Math.max(0, Math.round(staffCount * 0.6));
+    const finalOnDutyStaff = onDutyStaff > 0 ? onDutyStaff : estimatedOnDutyStaff;
+
+    const lateOrShiftAdjust = Math.max(0, Math.round(finalOnDutyStaff * 0.15));
+    const outStaff = Math.max(0, Math.round(finalOnDutyStaff * 0.2));
+    const outStaffNames = staff.slice(0, outStaff).map((member, index) => {
+      return member?.name ?? member?.staffId ?? `職員${index + 1}`;
+    });
 
     return {
       facilityAttendees,
-      lateCount,
-      earlyLeaveCount,
+      lateOrEarlyLeave,
+      lateOrEarlyNames,
       absenceCount,
-      staffOnDuty,
+      absenceNames,
+      onDutyStaff: finalOnDutyStaff,
+      lateOrShiftAdjust,
+      outStaff,
+      outStaffNames,
     };
-  }, [attendanceCounts.onDuty, staff.length, visits, today]);
+  }, [attendanceCounts, staff.length, users, visits]);
 
-  // 5. Daily Record Status
+  // ============================================================================
+  // 6. Daily Record Status (original: line 460-472)
+  // ============================================================================
   const dailyRecordStatus = useMemo(() => {
-    const total = activityRecords.length;
-    const completed = activityRecords.filter(r => r.status === '完了').length;
-    const inProgress = activityRecords.filter(r => r.status === '作成中').length;
-    const pending = total - completed - inProgress;
+    const total = users.length;
+    const completed = activityRecords.filter((record) => record.status === '完了').length;
+    const inProgress = activityRecords.filter((record) => record.status === '作成中').length;
+    const pending = Math.max(total - completed - inProgress, 0);
 
     return {
       total,
@@ -240,27 +287,63 @@ export function useDashboardSummary(args: UseDashboardSummaryArgs): DashboardSum
       inProgress,
       completed,
     };
-  }, [activityRecords]);
+  }, [activityRecords, users.length]);
 
-  // 6. Schedule Lanes (Today & Tomorrow)
-  const [scheduleLanesToday, scheduleLanesTomorrow] = useMemo<[ScheduleLanes, ScheduleLanes]>(
-    () => {
-      const createScheduleLanes = (): ScheduleLanes => ({
-        schedule: [],
-        byHour: {},
-      });
+  // ============================================================================
+  // 7. Schedule Lanes (original: line 501-571)
+  // ============================================================================
+  type ScheduleItem = {
+    id: string;
+    time: string;
+    title: string;
+    location?: string;
+    owner?: string;
+  };
 
-      return [createScheduleLanes(), createScheduleLanes()];
-    },
-    [today],
-  );
+  const [scheduleLanesToday, scheduleLanesTomorrow] = useMemo<[
+    { userLane: ScheduleItem[]; staffLane: ScheduleItem[]; organizationLane: ScheduleItem[] },
+    { userLane: ScheduleItem[]; staffLane: ScheduleItem[]; organizationLane: ScheduleItem[] },
+  ]>(() => {
+    const baseUserLane = users.slice(0, 3).map((user, index) => ({
+      id: `user-${index}`,
+      time: `${(9 + index).toString().padStart(2, '0')}:00`,
+      title: `${user.FullName ?? `利用者${index + 1}`} ${['作業プログラム', '個別支援', 'リハビリ'][index % 3]}`,
+      location: ['作業室A', '相談室1', '療育室'][index % 3],
+    }));
+    const baseStaffLane = [
+      { id: 'staff-1', time: '08:45', title: '職員朝会 / 申し送り確認', owner: '生活支援課' },
+      { id: 'staff-2', time: '11:30', title: '通所記録レビュー', owner: '管理責任者' },
+      { id: 'staff-3', time: '15:30', title: '支援手順フィードバック会議', owner: '専門職チーム' },
+    ];
+    const baseOrganizationLane: ScheduleItem[] = [
+      { id: 'org-1', time: '10:00', title: '自治体監査ヒアリング', owner: '法人本部' },
+      { id: 'org-2', time: '13:30', title: '家族向け連絡会資料確認', owner: '連携推進室' },
+      { id: 'org-3', time: '16:00', title: '設備点検結果共有', owner: '施設管理' },
+    ];
 
-  // 7. Prioritized Users (top 3 intensive support)
-  const prioritizedUsers = useMemo(
-    () => intensiveSupportUsers.slice(0, 3),
-    [intensiveSupportUsers],
-  );
+    const today = {
+      userLane: baseUserLane,
+      staffLane: baseStaffLane,
+      organizationLane: baseOrganizationLane,
+    };
 
+    const tomorrow = {
+      userLane: baseUserLane,
+      staffLane: baseStaffLane,
+      organizationLane: baseOrganizationLane,
+    };
+
+    return [today, tomorrow];
+  }, [users]);
+
+  // ============================================================================
+  // 8. Prioritized Users (original: line 573)
+  // ============================================================================
+  const prioritizedUsers = useMemo(() => intensiveSupportUsers.slice(0, 3), [intensiveSupportUsers]);
+
+  // ============================================================================
+  // Return consolidated summary
+  // ============================================================================
   return {
     activityRecords,
     usageMap,
