@@ -25,7 +25,7 @@ import {
 import { Link as RouterLink, useSearchParams } from 'react-router-dom';
 
 import { useFeatureFlag } from '@/config/featureFlags';
-import { useAuthStore } from '@/features/auth/store';
+import { canAccessDashboardAudience, isDashboardAudience, useAuthStore } from '@/features/auth/store';
 import { useUsersStore } from '@/features/users/store';
 import { getEnv } from '@/lib/runtimeEnv';
 import { TESTIDS } from '@/testids';
@@ -224,10 +224,10 @@ export const IcebergPdcaPage: React.FC<IcebergPdcaPageProps> = ({ writeEnabled: 
   const updateMutation = useUpdatePdca(selectedUserId);
   const deleteMutation = useDeletePdca(selectedUserId);
 
-  const isAdmin = role === 'admin';
+  const isAdmin = canAccessDashboardAudience(role, 'admin');
   const writeEnabledRaw = writeEnabledProp ?? getEnv('VITE_WRITE_ENABLED');
   const writeEnabled = writeEnabledRaw === '1' || writeEnabledRaw === 'true' || writeEnabledRaw === true;
-  const canWrite = isAdmin || (role === 'staff' && writeEnabled);
+  const canWrite = isAdmin || (isDashboardAudience(role, 'staff') && writeEnabled);
   const isMutating =
     createMutation.isPending || updateMutation.isPending || deleteMutation.isPending;
 

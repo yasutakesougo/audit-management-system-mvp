@@ -4,7 +4,7 @@ import { InteractionStatus } from './interactionStatus';
 import { useCallback, useEffect, useRef } from 'react';
 import { getAppConfig, isE2eMsalMockEnabled, shouldSkipLogin } from '../lib/env';
 import { createE2EMsalAccount, persistMsalToken } from '../lib/msal';
-import { SP_RESOURCE } from './msalConfig';
+import { GRAPH_RESOURCE, GRAPH_SCOPES, LOGIN_SCOPES, SP_RESOURCE } from './msalConfig';
 import { useMsalContext } from './MsalProvider';
 
 // Simple global metrics object (not exposed on window unless debug)
@@ -152,7 +152,7 @@ export const useAuth = () => {
 
   const normalizeResource = (resource: string): string => resource.replace(/\/+$/, '');
   const ensureResource = (resource?: string): string => normalizeResource(resource ?? SP_RESOURCE);
-  const defaultScope = `${ensureResource()}/.default`;
+  const loginScopes = [...LOGIN_SCOPES];
 
   const acquireToken = useCallback(async (resource?: string): Promise<string | null> => {
     // Get fresh account list from instance to avoid stale closure
@@ -162,12 +162,15 @@ export const useAuth = () => {
 
     // しきい値（秒）。既定 5 分。
     const thresholdSec = Number(authConfig.VITE_MSAL_TOKEN_REFRESH_MIN || '300') || 300;
-    const scope = `${ensureResource(resource)}/.default`;
+    const targetResource = ensureResource(resource);
+    const scopes = targetResource === GRAPH_RESOURCE
+      ? [...GRAPH_SCOPES]
+      : [`${targetResource}/.default`];
 
     try {
       // 1回目: 通常のサイレント取得
       const first = await instance.acquireTokenSilent({
-        scopes: [scope],
+        scopes,
         account: activeAccount,
         forceRefresh: false,
       });
@@ -184,7 +187,7 @@ export const useAuth = () => {
       if (secondsLeft > 0 && secondsLeft < thresholdSec) {
         debugLog('soft refresh triggered', { secondsLeft, thresholdSec });
         const refreshed = await instance.acquireTokenSilent({
-          scopes: [scope],
+          scopes,
           account: activeAccount,
           forceRefresh: true,
         });
@@ -314,7 +317,7 @@ export const useAuth = () => {
 
       signInInFlight = (async () => {
         try {
-          await instance.loginRedirect({ scopes: [defaultScope], prompt: 'select_account' });
+          await instance.loginRedirect({ scopes: loginScopes, prompt: 'select_account' });
           return { success: true };
         } catch (error: any) {
           debugLog('loginRedirect failed', {

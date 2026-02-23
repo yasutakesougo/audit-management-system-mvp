@@ -30,6 +30,7 @@ export class SharePointBehaviorRepository implements BehaviorRepository {
   }
 
   async add(observation: Omit<BehaviorObservation, 'id'>): Promise<BehaviorObservation> {
+    this.assertPlanSlotKeyRequirement(observation);
     const internalNames = await this.sp.getListFieldInternalNames(this.listTitle);
     this.assertRequiredFields(internalNames, {
       userId: FIELD_MAP_DAILY_ACTIVITY.userId,
@@ -46,8 +47,10 @@ export class SharePointBehaviorRepository implements BehaviorRepository {
       },
       body: JSON.stringify(payload),
     });
-    const data = (await res.json().catch(() => payload)) as Record<string, unknown>;
-    return this.toDomain(data ?? payload);
+    const data = (await res.json().catch(() => ({}))) as Record<string, unknown>;
+    // SharePoint の作成レスポンスは列を省略する場合があるため、
+    // 入力 payload とマージして保存直後の UI 一貫性を担保する
+    return this.toDomain({ ...payload, ...data });
   }
 
   async getByUser(userId: string, options?: BehaviorQueryOptions): Promise<BehaviorObservation[]> {
@@ -116,9 +119,85 @@ export class SharePointBehaviorRepository implements BehaviorRepository {
     return (json.value ?? []).map((item) => this.toDomain(item));
   }
 
+  private serializeObservationPayload(observation: Omit<BehaviorObservation, 'id'>): string | null {
+    const text = observation.actualObservation ?? observation.memo ?? '';
+    const hasMeta = Boolean(observation.planSlotKey || observation.recordedAt || observation.plannedActivity);
+    if (!hasMeta) {
+      const normalized = text.trim();
+      return normalized.length ? normalized : null;
+    }
+
+    return JSON.stringify({
+      text,
+      meta: {
+        planSlotKey: observation.planSlotKey ?? null,
+        recordedAt: observation.recordedAt ?? null,
+        plannedActivity: observation.plannedActivity ?? null,
+      },
+    });
+  }
+
+  private parseObservationPayload(raw: unknown): {
+    actualObservation?: string;
+    planSlotKey?: string;
+    recordedAt?: string;
+    plannedActivity?: string;
+  } {
+    if (!raw) {
+      return {};
+    }
+
+    if (typeof raw === 'object') {
+      const parsed = raw as {
+        text?: unknown;
+        meta?: {
+          planSlotKey?: unknown;
+          recordedAt?: unknown;
+          plannedActivity?: unknown;
+        };
+      };
+      const actualObservation = typeof parsed.text === 'string' ? parsed.text : '';
+      const planSlotKey = typeof parsed.meta?.planSlotKey === 'string' ? parsed.meta.planSlotKey : undefined;
+      const recordedAt = typeof parsed.meta?.recordedAt === 'string' ? parsed.meta.recordedAt : undefined;
+      const plannedActivity = typeof parsed.meta?.plannedActivity === 'string' ? parsed.meta.plannedActivity : undefined;
+      return { actualObservation, planSlotKey, recordedAt, plannedActivity };
+    }
+
+    if (typeof raw !== 'string' || raw.length === 0) {
+      return {};
+    }
+
+    const trimmed = raw.trim();
+    if (!(trimmed.startsWith('{') && trimmed.endsWith('}'))) {
+      return { actualObservation: raw };
+    }
+
+    try {
+      const parsed = JSON.parse(trimmed) as {
+        text?: unknown;
+        meta?: {
+          planSlotKey?: unknown;
+          recordedAt?: unknown;
+          plannedActivity?: unknown;
+        };
+      };
+      const actualObservation = typeof parsed.text === 'string' ? parsed.text : raw;
+      const planSlotKey = typeof parsed.meta?.planSlotKey === 'string' ? parsed.meta.planSlotKey : undefined;
+      const recordedAt = typeof parsed.meta?.recordedAt === 'string' ? parsed.meta.recordedAt : undefined;
+      const plannedActivity = typeof parsed.meta?.plannedActivity === 'string' ? parsed.meta.plannedActivity : undefined;
+      return { actualObservation, planSlotKey, recordedAt, plannedActivity };
+    } catch {
+      return { actualObservation: raw };
+    }
+  }
+
   private toDomain(item: Record<string, unknown>): BehaviorObservation {
     const field = FIELD_MAP_DAILY_ACTIVITY;
     const get = <T = unknown>(key: string): T | undefined => item[key] as T | undefined;
+    const parsedObservation = this.parseObservationPayload(get<string | null>(field.observation));
+    const planSlotKeyFromColumn = get<string | null>(field.planSlotKey) ?? undefined;
+    const plannedActivityFromColumn = get<string | null>(field.plannedActivity) ?? undefined;
+    const recordedAtFromColumn = get<string | null>(field.recordedAtText) ?? undefined;
     return {
       id: String(get(field.id) ?? ''),
       userId: String(get(field.userId) ?? ''),
@@ -130,7 +209,10 @@ export class SharePointBehaviorRepository implements BehaviorRepository {
       durationMinutes: get<number | null>(field.duration) ?? undefined,
       memo: undefined,
       timeSlot: get<string | null>(field.timeSlot) ?? undefined,
-      actualObservation: get<string | null>(field.observation) ?? undefined,
+      plannedActivity: plannedActivityFromColumn ?? parsedObservation.plannedActivity,
+      planSlotKey: planSlotKeyFromColumn ?? parsedObservation.planSlotKey,
+      recordedAt: recordedAtFromColumn ?? parsedObservation.recordedAt,
+      actualObservation: parsedObservation.actualObservation,
     };
   }
 
@@ -140,11 +222,15 @@ export class SharePointBehaviorRepository implements BehaviorRepository {
   ): Record<string, unknown> {
     const fm = FIELD_MAP_DAILY_ACTIVITY;
     const order = this.toOrderMinutes(observation.timeSlot ?? '');
+    const observationPayload = this.serializeObservationPayload(observation);
     const payload: Record<string, unknown> = {
       [fm.userId]: observation.userId,
       [fm.recordDate]: observation.timestamp,
       [fm.timeSlot]: observation.timeSlot ?? null,
-      [fm.observation]: observation.actualObservation ?? observation.memo ?? null,
+      [fm.planSlotKey]: observation.planSlotKey ?? null,
+      [fm.plannedActivity]: observation.plannedActivity ?? null,
+      [fm.recordedAtText]: observation.recordedAt ?? null,
+      [fm.observation]: observationPayload,
       [fm.behavior]: observation.behavior,
       [fm.intensity]: observation.intensity,
       [fm.duration]: observation.durationMinutes ?? null,
@@ -159,6 +245,12 @@ export class SharePointBehaviorRepository implements BehaviorRepository {
     return Object.fromEntries(
       Object.entries(payload).filter(([key]) => allowed.has(key.toLowerCase()))
     );
+  }
+
+  private assertPlanSlotKeyRequirement(observation: Omit<BehaviorObservation, 'id'>): void {
+    if (!observation.timeSlot) return;
+    if (observation.planSlotKey) return;
+    throw new Error('[SharePointBehaviorRepository] planSlotKey is required when timeSlot is provided.');
   }
 
   private assertRequiredFields(internalNames: Set<string>, required: Record<string, string>): void {

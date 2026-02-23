@@ -19,12 +19,28 @@ import {
   Divider,
 } from '@mui/material';
 import DownloadIcon from '@mui/icons-material/Download';
+import { canAccess } from '@/auth/roles';
+import { useUserAuthz } from '@/auth/useUserAuthz';
 import { useStaffAttendanceAdmin } from '@/features/staff/attendance/hooks/useStaffAttendanceAdmin';
 import { useStaffAttendanceBulk } from '@/features/staff/attendance/hooks/useStaffAttendanceBulk';
 import { StaffAttendanceEditDialog } from '@/features/staff/attendance/components/StaffAttendanceEditDialog';
 import { StaffAttendanceBulkInputDrawer } from '@/features/staff/attendance/components/StaffAttendanceBulkInputDrawer';
 import { useStaffStore } from '@/features/staff/store';
 import type { StaffAttendance } from '@/features/staff/attendance/types';
+
+const STAFF_ATTENDANCE_FINALIZE_STORAGE_KEY = 'staff-attendance.finalized.v1';
+
+const loadLegacyFinalizedDayMap = (): Record<string, unknown> => {
+  if (typeof window === 'undefined') return {};
+  try {
+    const raw = window.localStorage.getItem(STAFF_ATTENDANCE_FINALIZE_STORAGE_KEY);
+    if (!raw) return {};
+    const parsed = JSON.parse(raw) as Record<string, unknown>;
+    return parsed && typeof parsed === 'object' ? parsed : {};
+  } catch {
+    return {};
+  }
+};
 
 function todayISO(): string {
   // YYYY-MM-DD（ブラウザのローカル日付）
@@ -75,9 +91,12 @@ function endOfWeekISO(base: Date): string {
 }
 
 export default function StaffAttendanceAdminPage(): JSX.Element {
+  const { role, ready } = useUserAuthz();
+  const canWriteByRole = ready && canAccess(role, 'reception');
   const [date, setDate] = useState<string>(() => todayISO());
   const [listDateFrom, setListDateFrom] = useState<string>(() => firstOfMonthISO());
   const [listDateTo, setListDateTo] = useState<string>(() => todayISO());
+  const legacyFinalizedDayMap = useMemo(() => loadLegacyFinalizedDayMap(), []);
   
   const [searchParams, setSearchParams] = useSearchParams();
   const { data: staffData } = useStaffStore();
@@ -104,6 +123,8 @@ export default function StaffAttendanceAdminPage(): JSX.Element {
     error,
     saving,
     save,
+    finalizeDay,
+    unfinalizeDay,
     port,
     recordDate,
     refetch,
@@ -116,6 +137,33 @@ export default function StaffAttendanceAdminPage(): JSX.Element {
     listLoading = false,
     listError,
   } = admin;
+  const effectiveWriteEnabled = writeEnabled && canWriteByRole;
+  const effectiveReadOnlyReason = !canWriteByRole
+    ? '更新操作は受付（reception）以上のみ利用できます。'
+    : readOnlyReason;
+  const isFinalized = useMemo(
+    () => items.some((item) => item.isFinalized === true) || Boolean(legacyFinalizedDayMap[date]),
+    [date, items, legacyFinalizedDayMap],
+  );
+  const finalizedInfoText = useMemo(() => {
+    const finalizedRecord = items.find((item) => item.isFinalized);
+    if (!finalizedRecord) return null;
+    const finalizedAt = finalizedRecord.finalizedAt;
+    const finalizedBy = finalizedRecord.finalizedBy;
+    if (!finalizedAt && !finalizedBy) return null;
+
+    const datetime = finalizedAt
+      ? new Date(finalizedAt).toLocaleString('ja-JP', {
+          year: 'numeric',
+          month: '2-digit',
+          day: '2-digit',
+          hour: '2-digit',
+          minute: '2-digit',
+        })
+      : null;
+    if (datetime && finalizedBy) return `${datetime} / ${finalizedBy}`;
+    return datetime ?? finalizedBy ?? null;
+  }, [items]);
 
   // URL 更新ヘルパー
   const updateSearchParams = useCallback(
@@ -271,8 +319,8 @@ export default function StaffAttendanceAdminPage(): JSX.Element {
     recordDate,
     items,
     refetch,
-    writeEnabled,
-    readOnlyReason,
+    writeEnabled: effectiveWriteEnabled,
+    readOnlyReason: effectiveReadOnlyReason,
   });
 
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -293,10 +341,30 @@ export default function StaffAttendanceAdminPage(): JSX.Element {
   };
 
   const handleSave = async (next: StaffAttendance) => {
-    if (!writeEnabled) return;
+    if (!effectiveWriteEnabled) return;
     await save(next);
     setDialogOpen(false);
     setSelected(null);
+  };
+
+  const handleFinalize = async () => {
+    if (!effectiveWriteEnabled) {
+      return;
+    }
+    if (isFinalized) {
+      return;
+    }
+    await finalizeDay();
+  };
+
+  const handleUnfinalize = async () => {
+    if (!effectiveWriteEnabled) {
+      return;
+    }
+    if (!isFinalized) {
+      return;
+    }
+    await unfinalizeDay();
   };
 
   return (
@@ -308,6 +376,32 @@ export default function StaffAttendanceAdminPage(): JSX.Element {
           </Typography>
 
           <Stack direction="row" spacing={1} alignItems="center">
+            {isFinalized && (
+              <Chip
+                size="small"
+                color="success"
+                label={finalizedInfoText ? `確定済み（${finalizedInfoText}）` : '確定済み'}
+                data-testid="staff-attendance-finalized-badge"
+              />
+            )}
+            <Button
+              variant="outlined"
+              size="small"
+              onClick={handleFinalize}
+              disabled={!effectiveWriteEnabled || isFinalized || items.length === 0 || saving}
+              data-testid="staff-attendance-finalize-btn"
+            >
+              確定
+            </Button>
+            <Button
+              variant="outlined"
+              size="small"
+              onClick={handleUnfinalize}
+              disabled={!effectiveWriteEnabled || !isFinalized || saving}
+              data-testid="staff-attendance-unfinalize-btn"
+            >
+              取消
+            </Button>
             <Chip
               size="small"
               label={connectionLabel}
@@ -376,9 +470,9 @@ export default function StaffAttendanceAdminPage(): JSX.Element {
             </Stack>
           )}
 
-          {readOnlyReason && (
+          {effectiveReadOnlyReason && (
             <Alert severity="warning" data-testid="staff-attendance-readonly">
-              {readOnlyReason}
+              {effectiveReadOnlyReason}
             </Alert>
           )}
 
@@ -413,7 +507,7 @@ export default function StaffAttendanceAdminPage(): JSX.Element {
                     onClick={() => handleRowClick(it)}
                     data-testid={`staff-attendance-row-${it.staffId}`}
                     sx={{ 
-                      cursor: writeEnabled ? 'pointer' : 'default',
+                      cursor: effectiveWriteEnabled ? 'pointer' : 'default',
                       ...(bulk.bulkMode && bulk.selectedIds.has(it.staffId) && {
                         backgroundColor: 'action.selected',
                       }),
@@ -446,7 +540,7 @@ export default function StaffAttendanceAdminPage(): JSX.Element {
         recordDate={date}
         initial={selected}
         saving={saving}
-        writeEnabled={writeEnabled}
+        writeEnabled={effectiveWriteEnabled}
         onClose={handleDialogClose}
         onSave={handleSave}
       />
@@ -456,7 +550,7 @@ export default function StaffAttendanceAdminPage(): JSX.Element {
         selectedCount={bulk.selectedCount}
         saving={bulk.saving}
         error={bulk.error}
-        writeEnabled={writeEnabled}
+        writeEnabled={effectiveWriteEnabled}
         onClose={bulk.closeDrawer}
         value={bulk.value}
         onChange={bulk.setValue}

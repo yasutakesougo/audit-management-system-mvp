@@ -7,6 +7,9 @@ export interface StaffAttendance {
   staffId: string;
   recordDate: RecordDate;
   status: StaffAttendanceStatus;
+  isFinalized?: boolean;
+  finalizedAt?: string;
+  finalizedBy?: string;
 
   // Phase 2.1 は optional のまま置いておく（PR-C以降で利用）
   checkInAt?: string; // ISO datetime

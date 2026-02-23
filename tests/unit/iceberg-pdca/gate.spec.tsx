@@ -11,6 +11,10 @@ vi.mock('@/config/featureFlags', () => ({
 const authState = { currentUserRole: 'staff' as const };
 vi.mock('@/features/auth/store', () => ({
   useAuthStore: (selector: (s: typeof authState) => unknown) => selector(authState),
+  canAccessDashboardAudience: (role: 'staff' | 'admin', required: 'staff' | 'admin') => {
+    if (required === 'staff') return true;
+    return role === 'admin';
+  },
 }));
 
 import { IcebergPdcaGate } from '@/features/iceberg-pdca/IcebergPdcaGate';

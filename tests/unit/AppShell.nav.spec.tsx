@@ -73,7 +73,7 @@ vi.mock('@/auth/useAuth', () => ({
 
 vi.mock('@/auth/useUserAuthz', () => ({
   useUserAuthz: () => ({
-    isAdmin: false,
+    role: 'viewer',
     ready: true,
   }),
 }));

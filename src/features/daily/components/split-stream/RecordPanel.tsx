@@ -166,10 +166,12 @@ export function RecordPanel(props: RecordPanelProps): JSX.Element {
   
   const observationText = actualObservation.trim();
   const slotSelected = Boolean(selectedSlot);
+  const requiresPlanSlot = schedule.length > 0;
   const hasObservation = observationText.length > 0;
   const canSubmit =
     !isLocked &&
-    (Boolean(selectedBehavior) || (slotSelected && hasObservation));
+    hasObservation &&
+    (!requiresPlanSlot || slotSelected);
   const debugAttrs = import.meta.env.DEV
     ? {
         'data-can-submit': String(canSubmit),
@@ -237,10 +239,12 @@ export function RecordPanel(props: RecordPanelProps): JSX.Element {
     if (isLocked) return;
     const observation = actualObservation.trim();
     if (!observation) return;
-    if (!selectedBehavior && !selectedSlot) return;
+    if (requiresPlanSlot && !selectedSlot) return;
     try {
       await onSubmit({
         timestamp: new Date().toISOString(),
+        planSlotKey: selectedSlot ? getScheduleKey(selectedSlot.time, selectedSlot.activity) : undefined,
+        recordedAt: timestamp,
         behavior: selectedBehavior ?? '日常記録',
         antecedent: selectedAntecedent,
         consequence: selectedConsequence,
@@ -415,6 +419,11 @@ export function RecordPanel(props: RecordPanelProps): JSX.Element {
                   </Stack>
                 ) : null}
               </Paper>
+              {!slotSelected ? (
+                <Alert severity="warning" sx={{ mt: 1 }}>
+                  Plan の時間帯を選択してから保存してください。
+                </Alert>
+              ) : null}
             </Box>
           ) : (
             <Alert severity="info">

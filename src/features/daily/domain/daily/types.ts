@@ -9,6 +9,8 @@ export interface BehaviorObservation {
   id: string;
   userId: string;
   timestamp: string;
+  planSlotKey?: string;
+  recordedAt?: string;
   antecedent: string | null;
   behavior: string;
   consequence: string | null;

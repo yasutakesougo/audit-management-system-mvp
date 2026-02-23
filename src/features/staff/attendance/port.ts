@@ -11,6 +11,11 @@ export type AttendanceCounts = {
   total: number;
 };
 
+export type AttendanceDayParams = {
+  recordDate: string;
+  finalizedBy?: string;
+};
+
 /**
  * StaffAttendancePort: Interface for CRUD operations
  * Implementations: localStorage (Phase 3.1-A), SharePoint (Phase 3.1-B)
@@ -61,4 +66,10 @@ export interface StaffAttendancePort {
    * @returns ok(AttendanceCounts) on success, err on failure
    */
   countByDate(date: string): Promise<Result<AttendanceCounts>>;
+
+  finalizeDay(params: AttendanceDayParams): Promise<Result<void>>;
+
+  unfinalizeDay(params: AttendanceDayParams): Promise<Result<void>>;
+
+  getDayFinalizedState(params: AttendanceDayParams): Promise<Result<boolean>>;
 }

@@ -1,5 +1,7 @@
 import { useStaffAttendanceStore } from './store';
 import type { StaffAttendanceStatus } from './types';
+import { canAccess } from '@/auth/roles';
+import { useUserAuthz } from '@/auth/useUserAuthz';
 import { useStaff } from '@/stores/useStaff';
 import Box from '@mui/material/Box';
 import Paper from '@mui/material/Paper';
@@ -11,7 +13,9 @@ import { useEffect, useState } from 'react';
 
 export const StaffAttendanceInput: React.FC = () => {
   const { staff } = useStaff();
+  const { role, ready } = useUserAuthz();
   const today = new Date().toISOString().slice(0, 10);
+  const canUpdateAttendance = ready && canAccess(role, 'reception');
 
   const [attendances, setAttendances] = useState(() => {
     const store = useStaffAttendanceStore();
@@ -19,6 +23,9 @@ export const StaffAttendanceInput: React.FC = () => {
   });
 
   const handleStatusChange = (staffId: string, status: StaffAttendanceStatus) => {
+    if (!canUpdateAttendance) {
+      return;
+    }
     const store = useStaffAttendanceStore();
     store.upsert({ staffId, recordDate: today, status });
     setAttendances(store.listByDate(today));
@@ -59,15 +66,29 @@ export const StaffAttendanceInput: React.FC = () => {
                 exclusive
                 size="small"
                 onChange={(_, val) => val && handleStatusChange(s.staffId, val)}
+                disabled={!canUpdateAttendance}
                 aria-label={`${s.name}の勤怠状態`}
+                data-testid={`staff-attendance-toggle-${s.staffId}`}
               >
-                <ToggleButton value="出勤" aria-label="出勤">
+                <ToggleButton
+                  value="出勤"
+                  aria-label="出勤"
+                  data-testid={`staff-attendance-status-${s.staffId}-present`}
+                >
                   出勤
                 </ToggleButton>
-                <ToggleButton value="欠勤" aria-label="欠勤">
+                <ToggleButton
+                  value="欠勤"
+                  aria-label="欠勤"
+                  data-testid={`staff-attendance-status-${s.staffId}-absent`}
+                >
                   欠勤
                 </ToggleButton>
-                <ToggleButton value="外出中" aria-label="外出中">
+                <ToggleButton
+                  value="外出中"
+                  aria-label="外出中"
+                  data-testid={`staff-attendance-status-${s.staffId}-away`}
+                >
                   外出
                 </ToggleButton>
               </ToggleButtonGroup>
