@@ -30,14 +30,14 @@ export interface Reservation {
   detail: string;
 }
 
-const ROOMS = ['プレイルーム', '和室', '相談室', '多目的室'];
+const ROOMS = ['プレイルーム', '和室（中）', '和室（小）'];
 const SLOTS = ['AM', 'PM'];
 const GROUPS = ['生活支援', 'さつき会', 'リバティ', '日中', '会議', '来客', 'その他'];
 
 export const RoomStatusTab: React.FC = () => {
   const [reservations, setReservations] = useState<Reservation[]>([
     { id: 1, room: 'プレイルーム', slot: 'AM', group: '生活支援', detail: '09:30~' },
-    { id: 2, room: '和室', slot: 'PM', group: '会議', detail: '14:00~' },
+    { id: 2, room: '和室（中）', slot: 'PM', group: '会議', detail: '14:00~' },
   ]);
 
   const [room, setRoom] = useState('プレイルーム');
