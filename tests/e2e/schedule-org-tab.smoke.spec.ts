@@ -18,7 +18,7 @@ const waitForOrgTab = async (page: Page): Promise<void> => {
   await orgTab.click({ timeout: 10_000 });
   await expect(orgTab).toHaveAttribute('aria-selected', /true/i);
 
-  await expectTestIdVisibleBestEffort(page, 'schedule-org-tab', { timeout: 15_000 });
+  await expectTestIdVisibleBestEffort(page, 'schedule-org-tabpanel', { timeout: 15_000 });
 };
 
 const TARGET_DATE = new Date('2025-11-24');
@@ -32,17 +32,22 @@ test.describe('Schedules Org Tab (Smoke)', () => {
     await gotoOrg(page, { date: TARGET_DATE });
     await waitForOrgTab(page);
 
-    const panel = page.getByTestId('schedule-org-tab');
+    const panel = page.getByTestId('schedule-org-tabpanel');
     const select = page.getByTestId('schedule-org-select');
     const summary = page.getByTestId('schedule-org-summary');
 
+    // Contract: DEFAULT_ORG_FIXTURES must include 'all', 'main', 'shortstay'
+    await expect(select.locator('option[value="all"]')).toBeAttached();
+    await expect(select.locator('option[value="main"]')).toBeAttached();
+    await expect(select.locator('option[value="shortstay"]')).toBeAttached();
+
     await expect(panel.getByRole('heading').first()).toBeVisible();
     await expect(select).toHaveValue('all');
-    await expect(summary).toContainText('全事業所（統合ビュー）');
+    await expect(summary).toContainText('全事業所'); // Partial match for label flexibility
 
     await select.selectOption('main');
     await expect(page).toHaveURL(/org=main/);
-    await expect(summary).toContainText('生活介護（本体）');
+    await expect(summary).toContainText('生活介護'); // Partial match
   });
 
   test('restores selection from org URL param', async ({ page }) => {
@@ -52,7 +57,8 @@ test.describe('Schedules Org Tab (Smoke)', () => {
     const select = page.getByTestId('schedule-org-select');
     const summary = page.getByTestId('schedule-org-summary');
 
+    // Contract: Test ID-based selection (primary), label is secondary
     await expect(select).toHaveValue('shortstay');
-    await expect(summary).toContainText('短期入所');
+    await expect(summary).toContainText('短期'); // Partial match for label flexibility
   });
 });

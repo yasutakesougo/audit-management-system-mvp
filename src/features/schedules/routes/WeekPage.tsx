@@ -684,7 +684,7 @@ export default function WeekPage() {
                 </select>
               </label>
               {mode === 'org' && (
-                <Stack direction="column" spacing={1} style={{ width: '100%' }} data-testid="schedule-org-tab">
+                <Stack direction="column" spacing={1} style={{ width: '100%' }} data-testid="schedule-org-tabpanel">
                   <h3 style={{ margin: 0, fontSize: 14, fontWeight: 600 }}>組織別スケジュール</h3>
                   <Stack direction="row" spacing={1} style={{ alignItems: 'center' }}>
                     <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13 }}>

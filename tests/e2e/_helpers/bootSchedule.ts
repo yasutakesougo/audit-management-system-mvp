@@ -40,6 +40,14 @@ const FEATURE_STORAGE: Record<string, string> = {
   demo: '0',
 };
 
+/**
+ * DEFAULT_ORG_FIXTURES: E2E test contract for org-based schedule views.
+ * Tests (e.g., schedule-org-tab.smoke.spec.ts) rely on these org codes:
+ * - 'all': All organizations view
+ * - 'main': Main facility
+ * - 'shortstay': Short-term stay service
+ * DO NOT remove or rename OrgCode values without updating dependent tests.
+ */
 const DEFAULT_ORG_FIXTURES = [
   {
     Id: 500,
