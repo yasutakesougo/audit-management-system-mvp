@@ -901,30 +901,6 @@ const Zone1_MorningDecision: React.FC<Zone1_MorningDecisionProps> = ({
   dateLabel,
   todayChanges,
 }) => {
-  // 🔍 デバッグ用 ref（右カラムのみ）
-  const rightColRef = useRef<HTMLDivElement>(null);
-
-  // 🔍 サイズ計測（最小化）
-  useEffect(() => {
-    if (!rightColRef.current) return;
-
-    const rect = rightColRef.current.getBoundingClientRect();
-    const { scrollHeight, clientHeight } = rightColRef.current;
-
-    const data = [{
-      name: '右カラム Box',
-      clientHeight,
-      scrollHeight,
-      rectHeight: rect.height.toFixed(1),
-      rectTop: rect.top.toFixed(1),
-      rectBottom: rect.bottom.toFixed(1),
-      isClipping: scrollHeight > clientHeight + 1,
-    }];
-
-    console.log('🔍 Zone1 計測:');
-    console.table(data);
-  }, []);
-
   return (
     <Box
       data-testid="dashboard-zone-briefing"
@@ -933,8 +909,6 @@ const Zone1_MorningDecision: React.FC<Zone1_MorningDecisionProps> = ({
         gridTemplateColumns: '2fr 1fr',
         gap: 2,
         alignItems: 'start',
-        outline: '3px solid yellow',
-        backgroundColor: 'rgba(255, 255, 0, 0.05)',
       }}
     >
       {/* 左（50%）：申し送りタイムライン（主役・最大） */}
@@ -943,7 +917,7 @@ const Zone1_MorningDecision: React.FC<Zone1_MorningDecisionProps> = ({
       </Box>
 
       {/* 中（25%）：本日の変更HUD */}
-      <Box ref={rightColRef} sx={{ outline: '3px solid cyan', backgroundColor: 'rgba(0, 255, 255, 0.05)' }}>
+      <Box>
         <TodayChangesCard dateLabel={dateLabel} changes={todayChanges} />
       </Box>
     </Box>
