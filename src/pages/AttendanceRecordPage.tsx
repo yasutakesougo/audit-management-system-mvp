@@ -23,6 +23,12 @@ import {
   upsertDailyByKey,
   type AttendanceDailyItem 
 } from '@/features/attendance/infra/attendanceDailyRepository';
+import { AttendanceRow } from '@/features/attendance/components/AttendanceRow';
+import {
+  isAttendanceError,
+  type AttendanceErrorCode,
+  useAttendanceActions,
+} from '@/features/attendance/hooks/useAttendanceActions';
 import { useAuth } from '@/auth/useAuth';
 import { createSpClient, ensureConfig } from '@/lib/spClient';
 import { warmDataEntryComponents } from '@/mui/warm';
@@ -58,7 +64,7 @@ import Switch from '@mui/material/Switch';
 import TextField from '@mui/material/TextField';
 import Tooltip from '@mui/material/Tooltip';
 import Typography from '@mui/material/Typography';
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { FullScreenDailyDialogPage } from '@/features/daily/components/FullScreenDailyDialogPage';
 
@@ -71,6 +77,13 @@ type UndoPayload = {
 };
 
 type FilterStatus = 'all' | 'pending' | 'completed' | 'absent';
+
+const ATTENDANCE_ERROR_MESSAGES: Record<AttendanceErrorCode, string> = {
+  CONFLICT: '他の端末で更新されています。画面を更新してから再試行してください。',
+  THROTTLED: 'サーバーが混み合っています。数十秒待ってから再度押してください。',
+  NETWORK: '通信エラーです。ネット接続を確認してください。',
+  UNKNOWN: '保存に失敗しました。管理者へ連絡してください。',
+};
 
 interface AbsenceDialogState {
   user: AttendanceUser;
@@ -219,10 +232,10 @@ const AttendanceRecordPage: React.FC<AttendanceRecordPageProps> = ({ 'data-testi
   }, [spClient, today]);
 
   // Save visit to SharePoint
-  const saveVisit = useCallback(async (userCode: string) => {
+  const saveVisitByMap = useCallback(async (userCode: string, sourceVisits: Record<string, AttendanceVisit>) => {
     if (!spClient) return; // Demo mode: no save
 
-    const visit = visits[userCode];
+    const visit = sourceVisits[userCode];
     const user = users.find(u => u.userCode === userCode);
     if (!visit || !user) return;
 
@@ -248,13 +261,42 @@ const AttendanceRecordPage: React.FC<AttendanceRecordPageProps> = ({ 'data-testi
       IsAbsenceAddonClaimable: !!visit.isAbsenceAddonClaimable,
     };
 
-    try {
-      await upsertDailyByKey(spClient, item);
-    } catch (error) {
-      console.error('Failed to save visit:', error);
-      openToast('保存に失敗しました', 'error');
-    }
-  }, [spClient, visits, users, today]);
+    await upsertDailyByKey(spClient, item);
+  }, [spClient, users, today]);
+
+  const saveVisit = useCallback(
+    async (userCode: string, sourceVisits?: Record<string, AttendanceVisit>) => {
+      const target = sourceVisits ?? visits;
+      try {
+        await saveVisitByMap(userCode, target);
+      } catch (error) {
+        console.error('Failed to save visit:', error);
+        openToast('保存に失敗しました', 'error');
+      }
+    },
+    [openToast, saveVisitByMap, visits],
+  );
+
+  const visitsRef = useRef(visits);
+  useEffect(() => {
+    visitsRef.current = visits;
+  }, [visits]);
+
+  const persistVisits = useCallback(
+    async (nextVisits: Record<string, AttendanceVisit>) => {
+      const prevVisits = visitsRef.current;
+      const changedUserCodes = Object.keys(nextVisits).filter(
+        (userCode) => nextVisits[userCode] !== prevVisits[userCode],
+      );
+
+      if (!changedUserCodes.length) return;
+
+      for (const userCode of changedUserCodes) {
+        await saveVisitByMap(userCode, nextVisits);
+      }
+    },
+    [saveVisitByMap],
+  );
 
   // 乖離件数（サマリー用）
   const discrepancyCount = useMemo(
@@ -310,62 +352,117 @@ const AttendanceRecordPage: React.FC<AttendanceRecordPageProps> = ({ 'data-testi
     return filtered;
   }, [users, searchQuery, filterStatus, visits]);
 
-  const handleCheckIn = useCallback(async (user: AttendanceUser) => {
-    setVisits((prev) => {
-      const current = prev[user.userCode];
-      if (!current || current.status === '当日欠席' || current.cntAttendIn === 1) {
-        return prev;
+  const attendanceActions = useAttendanceActions<Record<string, AttendanceVisit>>({
+    setVisits,
+    persist: persistVisits,
+    buildNextVisits: ({ prev, userId, type, nowIso }) => {
+      const current = prev[userId];
+      if (!current) return prev;
+
+      if (type === 'checkIn') {
+        if (current.status === '当日欠席' || current.cntAttendIn === 1) {
+          return prev;
+        }
+
+        return {
+          ...prev,
+          [userId]: {
+            ...current,
+            status: '通所中',
+            checkInAt: nowIso,
+            cntAttendIn: 1,
+          },
+        };
       }
-      setUndo({
-        userCode: user.userCode,
-        prevVisit: { ...current },
-        message: `${user.userName}さんの通所を取り消しますか？`,
-      });
-      const now = new Date().toISOString();
+
+      if (type === 'checkOut') {
+        if (!canCheckOut(current)) {
+          return prev;
+        }
+
+        const nowDate = new Date(nowIso);
+        return {
+          ...prev,
+          [userId]: {
+            ...current,
+            status: '退所済',
+            checkOutAt: nowIso,
+            cntAttendOut: 1,
+            isEarlyLeave: isBeforeCloseTime(nowDate),
+            providedMinutes: diffMinutes(current.checkInAt, nowIso),
+          },
+        };
+      }
+
+      if (type === 'markAbsent') {
+        return {
+          ...prev,
+          [userId]: {
+            ...current,
+            status: '当日欠席',
+          },
+        };
+      }
+
       return {
         ...prev,
-        [user.userCode]: {
+        [userId]: {
           ...current,
-          status: '通所中',
-          checkInAt: now,
-          cntAttendIn: 1
-        }
+          status: '未',
+          checkInAt: undefined,
+          checkOutAt: undefined,
+          cntAttendIn: 0,
+          cntAttendOut: 0,
+          providedMinutes: 0,
+          isEarlyLeave: false,
+        },
       };
-    });
-    openToast(`${user.userName}さんが通所しました`, 'success', { keepUndo: true });
+    },
+  });
 
-    // Save to SharePoint after state update
-    await saveVisit(user.userCode);
-  }, [saveVisit]);
+  const showAttendanceError = useCallback((error: unknown) => {
+    if (isAttendanceError(error)) {
+      openToast(ATTENDANCE_ERROR_MESSAGES[error.code], 'error');
+      return;
+    }
+    openToast(ATTENDANCE_ERROR_MESSAGES.UNKNOWN, 'error');
+  }, [openToast]);
+
+  const handleCheckIn = useCallback(async (user: AttendanceUser) => {
+    const current = visits[user.userCode];
+    if (!current || current.status === '当日欠席' || current.cntAttendIn === 1) return;
+
+    setUndo({
+      userCode: user.userCode,
+      prevVisit: { ...current },
+      message: `${user.userName}さんの通所を取り消しますか？`,
+    });
+
+    try {
+      await attendanceActions.checkIn(user.userCode);
+      openToast(`${user.userName}さんが通所しました`, 'success', { keepUndo: true });
+    } catch (error) {
+      showAttendanceError(error);
+    }
+  }, [attendanceActions, showAttendanceError, visits]);
 
   const handleCheckOut = useCallback(async (user: AttendanceUser) => {
-    setVisits((prev) => {
-      const current = prev[user.userCode];
-      if (!canCheckOut(current)) {
-        return prev;
-      }
-      setUndo({
-        userCode: user.userCode,
-        prevVisit: { ...current },
-        message: `${user.userName}さんの退所を取り消しますか？`,
-      });
-      const now = new Date();
-      return {
-        ...prev,
-        [user.userCode]: {
-          ...current,
-          checkOutAt: now.toISOString(),
-          cntAttendOut: 1,
-          isEarlyLeave: isBeforeCloseTime(now),
-          providedMinutes: diffMinutes(current.checkInAt, now.toISOString()),
-        }
-      };
-    });
-    openToast(`${user.userName}さんが退所しました`, 'success', { keepUndo: true });
+    const current = visits[user.userCode];
+    if (!canCheckOut(current)) return;
 
-    // Save to SharePoint after state update
-    await saveVisit(user.userCode);
-  }, [saveVisit]);
+    setUndo({
+      userCode: user.userCode,
+      prevVisit: { ...current },
+      message: `${user.userName}さんの退所を取り消しますか？`,
+    });
+
+    try {
+      await attendanceActions.checkOut(user.userCode);
+      openToast(`${user.userName}さんが退所しました`, 'success', { keepUndo: true });
+    } catch (error) {
+      showAttendanceError(error);
+    }
+  }, [attendanceActions, showAttendanceError, visits]);
 
   const handleTransportToggle = async (user: AttendanceUser, field: 'transportTo' | 'transportFrom') => {
     setVisits((prev) => {
@@ -562,10 +659,11 @@ const AttendanceRecordPage: React.FC<AttendanceRecordPageProps> = ({ 'data-testi
         <Stack spacing={2}>
           {filteredUsers.map((user) => {
             const visit = visits[user.userCode];
-            const disableCheckIn = visit.status === '当日欠席' || visit.cntAttendIn === 1;
-            const disableCheckOut = !canCheckOut(visit);
             const disableAbsence = visit.status !== '未' && visit.status !== '当日欠席';
             const absenceLimitReached = user.absenceClaimedThisMonth >= ABSENCE_MONTHLY_LIMIT;
+            const rangeText = visit.checkInAt && visit.checkOutAt
+              ? `${formatTime(visit.checkInAt)}〜${formatTime(visit.checkOutAt)}`
+              : '—';
 
             // ★ 追加: クエリで指定された利用者かどうか
             const isFocused = targetUserIdFromQuery === user.userCode;
@@ -583,268 +681,173 @@ const AttendanceRecordPage: React.FC<AttendanceRecordPageProps> = ({ 'data-testi
               >
                 <CardContent sx={{ py: 1.25 }}>
                   <Stack spacing={2}>
-                    <Box
+                    <AttendanceRow
+                      user={{
+                        id: user.userCode,
+                        name: `${user.userName}（${user.userCode}）`,
+                        needsTransport: user.isTransportTarget,
+                      }}
+                      visit={{
+                        status: visit.status,
+                        checkInAtText: visit.checkInAt ? formatTime(visit.checkInAt) : undefined,
+                        checkOutAtText: visit.checkOutAt ? formatTime(visit.checkOutAt) : undefined,
+                        rangeText,
+                      }}
+                      canAbsence={!disableAbsence}
+                      onCheckIn={() => handleCheckIn(user)}
+                      onCheckOut={() => handleCheckOut(user)}
+                      onAbsence={() => {
+                        if (!disableAbsence) {
+                          openAbsenceDialog(user);
+                        }
+                      }}
+                      onDetail={() => {
+                        navigate(`/daily/activity?userId=${user.userCode}&date=${today}`);
+                      }}
+                    />
+
+                    <Stack
+                      direction="row"
+                      spacing={1}
                       sx={{
-                        display: 'grid',
-                        gridTemplateColumns: { xs: '1fr', md: '1fr auto' },
-                        rowGap: 1,
-                        columnGap: 2,
-                        alignItems: 'start',
+                        flexWrap: 'wrap',
+                        justifyContent: { xs: 'flex-start', md: 'space-between' },
+                        rowGap: 0.75,
+                        alignItems: 'center',
                       }}
                     >
-                      <Box sx={{ minWidth: 0 }}>
-                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, minWidth: 0 }}>
-                          <Typography
-                            variant="subtitle1"
-                            noWrap
-                            sx={{ fontWeight: 700, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis' }}
-                          >
-                            {user.userName}
-                          </Typography>
-                          <Typography variant="caption" color="text.secondary" noWrap>
-                            ({user.userCode})
-                          </Typography>
-                          <Tooltip title={`ステータス: ${visit.status}`}>
-                            <Chip
-                              size="small"
-                              label={visit.status}
-                              color={
-                                visit.status === '退所済' ? 'success' :
-                                visit.status === '当日欠席' ? 'error' :
-                                visit.status === '通所中' ? 'primary' : 'default'
-                              }
-                              variant={visit.status === '未' ? 'outlined' : 'filled'}
-                              sx={{ flex: '0 0 auto' }}
-                            />
-                          </Tooltip>
-                        </Box>
+                      <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.75 }}>
+                        <Chip label={`実提供 ${visit.providedMinutes ?? 0}分`} size="small" />
+                        <Chip label={`算定 ${user.standardMinutes}分`} variant="outlined" size="small" />
+                        {visit.userConfirmedAt && (
+                          <Chip
+                            label={`確認 ${new Date(visit.userConfirmedAt).toLocaleTimeString('ja-JP', { hour: '2-digit', minute: '2-digit' })}`}
+                            color="success"
+                            size="small"
+                          />
+                        )}
+                        {(visit.providedMinutes ?? 0) > 0 && visit.providedMinutes! < user.standardMinutes * DISCREPANCY_THRESHOLD && (
+                          <Chip label="乖離あり（備考推奨）" color="warning" variant="outlined" size="small" />
+                        )}
+                        {visit.isEarlyLeave && (
+                          <Chip label="早退" color="warning" variant="outlined" size="small" />
+                        )}
+                        {visit.isAbsenceAddonClaimable && (
+                          <Chip label="欠席加算対象" color="warning" size="small" />
+                        )}
                       </Box>
-                      <Box>
-                        <Stack
-                          direction="row"
-                          spacing={1}
-                          sx={{
-                            flexWrap: 'wrap',
-                            justifyContent: { xs: 'flex-start', md: 'flex-end' },
-                            rowGap: 1,
-                            maxWidth: '100%',
-                          }}
-                        >
-                          <Tooltip title={disableCheckIn ? '通所済みまたは欠席日により実行不可' : ''}>
-                            <span>
-                              <Button
-                                variant="contained"
-                                onClick={() => handleCheckIn(user)}
-                                disabled={disableCheckIn}
-                                data-testid={`btn-checkin-${user.userCode}`}
-                              >
-                                通所
-                              </Button>
-                            </span>
-                          </Tooltip>
-                          <Tooltip title={disableCheckOut ? '通所後に退所できます' : ''}>
-                            <span>
-                              <Button
-                                variant="contained"
-                                color="success"
-                                onClick={() => handleCheckOut(user)}
-                                disabled={disableCheckOut}
-                                data-testid={`btn-checkout-${user.userCode}`}
-                              >
-                                退所
-                              </Button>
-                            </span>
-                          </Tooltip>
-                          <Tooltip title={disableAbsence ? '通所操作後は欠席へ切り替え不可' : ''}>
-                            <span>
-                              <Button
-                                variant="outlined"
-                                color="warning"
-                                onClick={() => openAbsenceDialog(user)}
-                                disabled={disableAbsence}
-                                startIcon={<AbsenceIcon />}
-                                data-testid={`btn-absence-${user.userCode}`}
-                                onMouseEnter={() => {
-                                  // ダイアログ関連コンポーネントの事前読み込み
-                                  // ホバー時に読み込んでクリック時の応答性を向上
-                                  if (!disableAbsence) {
-                                    warmDataEntryComponents();
-                                  }
-                                }}
-                              >
-                                欠席
-                              </Button>
-                            </span>
-                          </Tooltip>
-                          <Tooltip
-                            title={
-                              visit.userConfirmedAt
-                                ? `確認済: ${new Date(visit.userConfirmedAt).toLocaleTimeString('ja-JP', { hour: '2-digit', minute: '2-digit' })}`
-                                : (visit.status === '退所済' || visit.status === '当日欠席'
-                                  ? '確認できます'
-                                  : '退所または欠席確定後に確認可能')
-                            }
-                          >
-                            <span>
-                              {(() => {
-                                // --- E2E専用confirm強制有効化（src/env.tsのgetFlagで判定） ---
-                                const E2E_UNLOCK_CONFIRM = getFlag('VITE_E2E_UNLOCK_CONFIRM');
-                                const disabled = !!visit.userConfirmedAt || (visit.status !== '退所済' && visit.status !== '当日欠席');
-                                const disabledFinal = E2E_UNLOCK_CONFIRM ? false : disabled;
-                                if (typeof window !== 'undefined') {
-                                  type ConfirmDebugPayload = {
-                                    userCode: string;
-                                    disabled: boolean;
-                                    disabledFinal: boolean;
-                                    reasons: {
-                                      userConfirmedAt: boolean;
-                                      status: typeof visit.status;
-                                      E2E_UNLOCK_CONFIRM: boolean;
-                                    };
-                                  };
-                                  const debugWindow = window as typeof window & { __CONFIRM_DEBUG?: ConfirmDebugPayload };
-                                  debugWindow.__CONFIRM_DEBUG = {
-                                    userCode: user.userCode,
-                                    disabled,
-                                    disabledFinal,
-                                    reasons: {
-                                      userConfirmedAt: !!visit.userConfirmedAt,
-                                      status: visit.status,
-                                      E2E_UNLOCK_CONFIRM,
-                                    },
-                                  };
-                                }
-                                return (
-                                  <Button
-                                    variant="outlined"
-                                    color="success"
-                                    onClick={async () => {
-                                      setVisits((prev) => ({
-                                        ...prev,
-                                        [user.userCode]: {
-                                          ...prev[user.userCode],
-                                          userConfirmedAt: prev[user.userCode].userConfirmedAt ?? new Date().toISOString(),
-                                        },
-                                      }));
-                                      openToast('保存しました', 'success');
-                                      await saveVisit(user.userCode);
-                                    }}
-                                    disabled={disabledFinal}
-                                    startIcon={<CheckIcon />}
-                                    data-testid={`btn-confirm-${user.userCode}`}
-                                  >
-                                    利用者確認
-                                  </Button>
-                                );
-                              })()}
-                            </span>
-                          </Tooltip>
-                          <Tooltip title="初期状態へ戻します">
-                            <span>
-                              <Button
-                                variant="text"
-                                color="inherit"
-                                onClick={() => handleReset(user)}
-                                startIcon={<ResetIcon />}
-                                data-testid={`btn-reset-${user.userCode}`}
-                              >
-                                リセット
-                              </Button>
-                            </span>
-                          </Tooltip>
-                        </Stack>
-                      </Box>
-                      <Box>
-                        <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.75 }}>
-                          <Chip label={`通所 ${formatTime(visit.checkInAt)}`} size="small" />
-                          <Chip label={`退所 ${formatTime(visit.checkOutAt)}`} size="small" />
-                          <Chip label={`実提供 ${visit.providedMinutes ?? 0}分`} size="small" />
-                          <Chip label={`算定 ${user.standardMinutes}分`} variant="outlined" size="small" />
-                          {visit.userConfirmedAt && (
-                            <Chip
-                              label={`確認 ${new Date(visit.userConfirmedAt).toLocaleTimeString('ja-JP', { hour: '2-digit', minute: '2-digit' })}`}
-                              color="success"
-                              size="small"
-                            />
-                          )}
-                          {(visit.providedMinutes ?? 0) > 0 && visit.providedMinutes! < user.standardMinutes * DISCREPANCY_THRESHOLD && (
-                            <Chip label="乖離あり（備考推奨）" color="warning" variant="outlined" size="small" />
-                          )}
-                          {visit.isEarlyLeave && (
-                            <Chip label="早退" color="warning" variant="outlined" size="small" />
-                          )}
-                          {visit.isAbsenceAddonClaimable && (
-                            <Chip label="欠席加算対象" color="warning" size="small" />
-                          )}
-                        </Box>
-                      </Box>
-                      <Box>
-                        <Stack
-                          direction="row"
-                          spacing={1}
-                          sx={{
-                            flexWrap: 'wrap',
-                            justifyContent: { xs: 'flex-start', md: 'flex-end' },
-                            rowGap: 0.5,
-                            maxWidth: '100%',
-                          }}
-                        >
-                          {/* ★ 追加: 支援記録（ケース記録）へのクロスリンク */}
-                          <Tooltip title="今日の支援記録（ケース記録）（/daily/activity）を開きます">
-                            <span>
-                              <Button
-                                variant="text"
-                                color="inherit"
-                                size="small"
-                                sx={{
-                                  px: 0.5,
-                                  minWidth: 'auto',
-                                  color: 'text.secondary',
-                                  '&:hover': { color: 'primary.main' },
-                                }}
-                                onClick={() => {
-                                  navigate(`/daily/activity?userId=${user.userCode}&date=${today}`);
-                                }}
-                                data-testid={`btn-activity-${user.userCode}`}
-                              >
-                                支援記録を見る
-                              </Button>
-                            </span>
-                          </Tooltip>
 
-                          {/* ★ 追加: 申し送りタイムラインへのクロスリンク */}
-                          <Tooltip title="この利用者の申し送りタイムライン（/handoff-timeline）を開きます">
-                            <span>
-                              <Button
-                                variant="text"
-                                color="inherit"
-                                size="small"
-                                sx={{
-                                  px: 0.5,
-                                  minWidth: 'auto',
-                                  color: 'text.secondary',
-                                  '&:hover': { color: 'secondary.main' },
-                                }}
-                                onClick={() => {
-                                  navigate('/handoff-timeline', {
-                                    state: {
-                                      dayScope: 'today',
-                                      timeFilter: 'all',
-                                      userId: user.userCode,
-                                      date: today,
-                                      focus: true,
-                                    },
-                                  });
-                                }}
-                                data-testid={`btn-handoff-${user.userCode}`}
-                              >
-                                申し送りを見る
-                              </Button>
-                            </span>
-                          </Tooltip>
-                        </Stack>
-                      </Box>
-                    </Box>
+                      <Stack direction="row" spacing={1}>
+                        <Tooltip
+                          title={
+                            visit.userConfirmedAt
+                              ? `確認済: ${new Date(visit.userConfirmedAt).toLocaleTimeString('ja-JP', { hour: '2-digit', minute: '2-digit' })}`
+                              : (visit.status === '退所済' || visit.status === '当日欠席'
+                                ? '確認できます'
+                                : '退所または欠席確定後に確認可能')
+                          }
+                        >
+                          <span>
+                            {(() => {
+                              const E2E_UNLOCK_CONFIRM = getFlag('VITE_E2E_UNLOCK_CONFIRM');
+                              const disabled = !!visit.userConfirmedAt || (visit.status !== '退所済' && visit.status !== '当日欠席');
+                              const disabledFinal = E2E_UNLOCK_CONFIRM ? false : disabled;
+                              if (typeof window !== 'undefined') {
+                                type ConfirmDebugPayload = {
+                                  userCode: string;
+                                  disabled: boolean;
+                                  disabledFinal: boolean;
+                                  reasons: {
+                                    userConfirmedAt: boolean;
+                                    status: typeof visit.status;
+                                    E2E_UNLOCK_CONFIRM: boolean;
+                                  };
+                                };
+                                const debugWindow = window as typeof window & { __CONFIRM_DEBUG?: ConfirmDebugPayload };
+                                debugWindow.__CONFIRM_DEBUG = {
+                                  userCode: user.userCode,
+                                  disabled,
+                                  disabledFinal,
+                                  reasons: {
+                                    userConfirmedAt: !!visit.userConfirmedAt,
+                                    status: visit.status,
+                                    E2E_UNLOCK_CONFIRM,
+                                  },
+                                };
+                              }
+                              return (
+                                <Button
+                                  variant="outlined"
+                                  color="success"
+                                  onClick={async () => {
+                                    setVisits((prev) => ({
+                                      ...prev,
+                                      [user.userCode]: {
+                                        ...prev[user.userCode],
+                                        userConfirmedAt: prev[user.userCode].userConfirmedAt ?? new Date().toISOString(),
+                                      },
+                                    }));
+                                    openToast('保存しました', 'success');
+                                    await saveVisit(user.userCode);
+                                  }}
+                                  disabled={disabledFinal}
+                                  startIcon={<CheckIcon />}
+                                  data-testid={`btn-confirm-${user.userCode}`}
+                                  size="small"
+                                >
+                                  利用者確認
+                                </Button>
+                              );
+                            })()}
+                          </span>
+                        </Tooltip>
+
+                        <Tooltip title="初期状態へ戻します">
+                          <span>
+                            <Button
+                              variant="text"
+                              color="inherit"
+                              onClick={() => handleReset(user)}
+                              startIcon={<ResetIcon />}
+                              data-testid={`btn-reset-${user.userCode}`}
+                              size="small"
+                            >
+                              リセット
+                            </Button>
+                          </span>
+                        </Tooltip>
+
+                        <Tooltip title="この利用者の申し送りタイムライン（/handoff-timeline）を開きます">
+                          <span>
+                            <Button
+                              variant="text"
+                              color="inherit"
+                              size="small"
+                              sx={{
+                                px: 0.5,
+                                minWidth: 'auto',
+                                color: 'text.secondary',
+                                '&:hover': { color: 'secondary.main' },
+                              }}
+                              onClick={() => {
+                                navigate('/handoff-timeline', {
+                                  state: {
+                                    dayScope: 'today',
+                                    timeFilter: 'all',
+                                    userId: user.userCode,
+                                    date: today,
+                                    focus: true,
+                                  },
+                                });
+                              }}
+                              data-testid={`btn-handoff-${user.userCode}`}
+                            >
+                              申し送りを見る
+                            </Button>
+                          </span>
+                        </Tooltip>
+                      </Stack>
+                    </Stack>
 
                     {user.isTransportTarget ? (
                       <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2}>
