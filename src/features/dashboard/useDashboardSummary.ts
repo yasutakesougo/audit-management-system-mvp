@@ -11,8 +11,11 @@ import type { IUserMaster } from '@/sharepoint/fields';
 import type { PersonDaily } from '@/domain/daily/types';
 import type { Staff } from '@/types';
 import type { AttendanceCounts } from '@/features/staff/attendance/port';
+import type { BriefingAlert } from '@/features/dashboard/sections/types';
 import { calculateUsageFromDailyRecords } from '@/features/users/userMasterDashboardUtils';
 import { startFeatureSpan, estimatePayloadSize, HYDRATION_FEATURES } from '@/hydration/features';
+import { calculateStaffAvailability } from './staffAvailability';
+import type { StaffAvailability, StaffAssignment } from './staffAvailability';
 
 // Attendance visit type
 type AttendanceVisitSnapshot = {
@@ -97,6 +100,8 @@ export interface DashboardSummary {
   };
   prioritizedUsers: IUserMaster[];
   intensiveSupportUsers: IUserMaster[];
+  briefingAlerts: BriefingAlert[];  // ✨ 朝会用アラート
+  staffAvailability: StaffAvailability[];  // ✨ 職員フリー状態
 }
 
 /**
@@ -407,6 +412,95 @@ export function useDashboardSummary(args: UseDashboardSummaryArgs): DashboardSum
   perfMeasure('prioritizedUsers-calc');
 
   // ============================================================================
+  // 9. Briefing Alerts (朝会用アラート生成)
+  // ============================================================================
+  perfMark('briefingAlerts-calc');
+  const briefingAlerts = useMemo<BriefingAlert[]>(() => {
+    const alerts: BriefingAlert[] = [];
+
+    // 1️⃣ 欠席アラート
+    if (attendanceSummary.absenceCount > 0) {
+      alerts.push({
+        id: 'absent',
+        type: 'absent',
+        severity: 'error',
+        label: '本日欠席',
+        count: attendanceSummary.absenceCount,
+        targetAnchorId: 'sec-attendance',
+        description: attendanceSummary.absenceNames?.slice(0, 3).join('、'),
+      });
+    }
+
+    // 2️⃣ 遅刻・早退アラート
+    if (attendanceSummary.lateOrEarlyLeave > 0) {
+      alerts.push({
+        id: 'late',
+        type: 'late',
+        severity: 'warning',
+        label: '遅刻・早退',
+        count: attendanceSummary.lateOrEarlyLeave,
+        targetAnchorId: 'sec-attendance',
+        description: attendanceSummary.lateOrEarlyNames?.slice(0, 2).join('、'),
+      });
+    }
+
+    // 3️⃣ 健康懸念アラート
+    if (intensiveSupportUsers.length > 0) {
+      alerts.push({
+        id: 'health_concern',
+        type: 'health_concern',
+        severity: 'info',
+        label: 'ケア要注視',
+        count: intensiveSupportUsers.length,
+        targetAnchorId: 'sec-safety',
+        description: intensiveSupportUsers.slice(0, 2).map(u => u.FullName).join('、'),
+      });
+    }
+
+    // 4️⃣ 問題行動アラート
+    const problemBehaviorTotal = Object.values(stats.problemBehaviorStats || {})
+      .reduce((sum, val) => sum + (typeof val === 'number' ? val : 0), 0);
+    if (problemBehaviorTotal > 0) {
+      alerts.push({
+        id: 'critical_safety',
+        type: 'critical_safety',
+        severity: stats.seizureCount > 0 ? 'error' : 'warning',
+        label: stats.seizureCount > 0 ? '発作報告あり' : '問題行動',
+        count: stats.seizureCount > 0 ? stats.seizureCount : problemBehaviorTotal,
+        targetAnchorId: 'sec-safety',
+      });
+    }
+
+    return alerts;
+  }, [attendanceSummary, intensiveSupportUsers, stats.problemBehaviorStats, stats.seizureCount]);
+  perfMeasure('briefingAlerts-calc');
+
+  // ============================================================================
+  // 10. Staff Availability Calculation (Phase B)
+  // ============================================================================
+  perfMeasure('staffAvailability-calc');
+  const staffAvailability = useMemo(() => {
+    // scheduleLanesToday.staffLane から StaffAssignment を生成
+    const assignments: StaffAssignment[] = scheduleLanesToday.staffLane.map((item) => {
+      const [startTime, endTime] = item.time.split('-').map(t => t.trim());
+      return {
+        userId: item.id,
+        userName: item.title,
+        role: 'main',  // TODO: 実データから判定（現状はメイン担当と仮定）
+        startTime,
+        endTime: endTime ?? '18:00',
+      };
+    });
+
+    // 現在時刻を "HH:MM" 形式で取得
+    const now = new Date();
+    const currentTime = `${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}`;
+
+    return calculateStaffAvailability(staff, assignments, currentTime);
+  }, [staff, scheduleLanesToday.staffLane]);
+  perfMeasure('staffAvailability-calc');
+
+  // ============================================================================
   // Return consolidated summary
   // ============================================================================
   perfMeasure('useDashboardSummary-start');
@@ -421,5 +515,7 @@ export function useDashboardSummary(args: UseDashboardSummaryArgs): DashboardSum
     scheduleLanesTomorrow,
     prioritizedUsers,
     intensiveSupportUsers,
+    briefingAlerts,  // ✨ 新規
+    staffAvailability,  // ✨ Phase B 職員フリー状態
   };
 }

@@ -16,7 +16,6 @@ import Box from '@mui/material/Box';
 import Button from '@mui/material/Button';
 import Card from '@mui/material/Card';
 import CardContent from '@mui/material/CardContent';
-import Chip from '@mui/material/Chip';
 
 import Container from '@mui/material/Container';
 import Divider from '@mui/material/Divider';
@@ -33,8 +32,14 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import { PersonDaily, SeizureRecord } from '../domain/daily/types';
 import { getSectionComponent, type SectionProps } from '@/features/dashboard/sections/registry';
 
-import { useDashboardViewModel, type DashboardBriefingChip, type DashboardSection, type DashboardSectionKey } from '@/features/dashboard/useDashboardViewModel';
+import { useDashboardViewModel, type DashboardSection, type DashboardSectionKey } from '@/features/dashboard/useDashboardViewModel';
 import { useDashboardSummary } from '@/features/dashboard/useDashboardSummary';
+import DashboardBriefingHUD from '@/features/dashboard/DashboardBriefingHUD';
+import { ZeroScrollLayout, type DashboardTab } from '@/features/dashboard/layouts/ZeroScrollLayout';
+import { UserStatusTab } from '@/features/dashboard/tabs/UserStatusTab';
+import { StaffStatusTab } from '@/features/dashboard/tabs/StaffStatusTab';
+import { TodoTab } from '@/features/dashboard/tabs/TodoTab';
+import { generateTodosFromSchedule } from '@/features/dashboard/generateTodos';
 import { useAttendanceStore } from '@/features/attendance/store';
 import { useStaffStore } from '@/features/staff/store';
 import type { HandoffDayScope } from '../features/handoff/handoffTypes';
@@ -251,21 +256,23 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ audience = 'staff' }) => 
   };
 
   const scrollToSection = useCallback(
-    (sectionKey: DashboardSectionKey) => {
-      const targetId = sectionIdByKey[sectionKey];
+    (sectionKeyOrAnchorId: DashboardSectionKey | string) => {
+      // DashboardSectionKey の場合は sectionIdByKey で anchorId に変換
+      // string（anchorId）の場合はそのまま使用
+      const targetId = (sectionIdByKey as Record<string, string>)[sectionKeyOrAnchorId] ?? sectionKeyOrAnchorId;
       const node = document.getElementById(targetId);
 
       // ❌ 安全性：セクションが非表示でDOMにない場合
       // 例：staff ロールが staffOnly へスクロール指定 → DOM には sec-staff が存在しない
       if (!node) {
         console.warn(
-          `[dashboard] section not found or hidden: ${sectionKey} -> #${targetId}`,
+          `[dashboard] section not found or hidden: ${sectionKeyOrAnchorId} -> #${targetId}`,
         );
         return;
       }
 
       node.scrollIntoView({ behavior: 'smooth', block: 'start' });
-      setHighlightSection(sectionKey);
+      setHighlightSection(sectionKeyOrAnchorId as DashboardSectionKey);
       if (highlightTimerRef.current) {
         window.clearTimeout(highlightTimerRef.current);
       }
@@ -274,16 +281,6 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ audience = 'staff' }) => 
       }, 1400);
     },
     [sectionIdByKey],
-  );
-
-  const handleBriefingChipClick = useCallback(
-    (chip: DashboardBriefingChip) => {
-      const targetSection = chip.key === 'attention' || chip.key === 'pending'
-        ? 'handover'
-        : 'attendance';
-      scrollToSection(targetSection);
-    },
-    [scrollToSection],
   );
 
   // Get attendance counts (needed by useDashboardSummary)
@@ -311,6 +308,8 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ audience = 'staff' }) => 
     scheduleLanesTomorrow,
     prioritizedUsers,
     intensiveSupportUsers,
+    briefingAlerts,  // ✨ 新規
+    staffAvailability,  // ✨ Phase B: 職員フリー状態
   } = summary;
 
   // Keep development logging for usageMap
@@ -336,6 +335,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ audience = 'staff' }) => 
         isMorningTime,
         isEveningTime,
       },
+      briefingAlerts,  // ✨ 新規: ViewModel へ渡す
     },
   });
 
@@ -522,6 +522,62 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ audience = 'staff' }) => 
     return <SectionComponent {...props} />;
   }, [getSectionProps, vm.role]);
 
+  /**
+   * Phase C-1: Zero-Scroll Layout のタブデータ準備
+   * 利用者・職員・やることタブのデータを useMemo で計算
+   */
+  const zeroScrollTabs: DashboardTab[] = React.useMemo(() => {
+    // 利用者タブのデータ
+    const userTabData = {
+      attendeeCount: attendanceSummary.facilityAttendees,
+      absentUsers: attendanceSummary.absenceNames.map((name, index) => ({
+        id: `absent-${index}`,
+        name,
+        reason: '理由未記入', // TODO: 実データから取得
+      })),
+      lateOrEarlyUsers: attendanceSummary.lateOrEarlyNames.map((name, index) => ({
+        id: `late-${index}`,
+        name,
+        type: 'late' as const, // TODO: 実データで判別
+      })),
+    };
+
+    // 職員タブのデータ
+    const staffTabData = {
+      staffAvailability,  // ✨ Phase B で計算済み
+      absentStaff: attendanceSummary.outStaffNames.map((name, index) => ({
+        id: `out-staff-${index}`,
+        name,
+        reason: '外出', // TODO: 実データから取得
+      })),
+      lateOrAdjustStaff: [], // TODO: 実データから取得
+    };
+
+    // ✨ Phase C-2: やることタブのデータ（スケジュールから自動生成）
+    const todoItems = generateTodosFromSchedule(scheduleLanesToday);
+
+    return [
+      {
+        id: 'users',
+        label: '利用者',
+        count: userTabData.absentUsers.length + userTabData.lateOrEarlyUsers.length,
+        component: <UserStatusTab {...userTabData} />,
+      },
+      {
+        id: 'staff',
+        label: '職員',
+        count: staffTabData.absentStaff.length,
+        component: <StaffStatusTab {...staffTabData} />,
+      },
+      {
+        id: 'todo',
+        label: 'やること',
+        count: todoItems.length,
+        component: <TodoTab todos={todoItems} />,
+      },
+    ];
+  }, [attendanceSummary, staffAvailability, scheduleLanesToday]);
+
   return (
     <Container maxWidth="lg" data-testid="dashboard-page">
       <Box sx={{ py: { xs: 1.5, sm: 2, md: 2.5 } }}>
@@ -529,12 +585,9 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ audience = 'staff' }) => 
         <Box sx={{ mb: 3 }}>
           <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 1 }}>
             <Box>
-              <Typography variant="h4" component="h1" gutterBottom>
+              <Typography variant="h4" component="h1">
                 <DashboardIcon sx={{ verticalAlign: 'middle', mr: 2 }} />
                 黒ノート
-              </Typography>
-              <Typography variant="body1" color="text.secondary">
-                全利用者の活動状況と支援記録の統合的な管理・分析
               </Typography>
             </Box>
 
@@ -551,40 +604,15 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ audience = 'staff' }) => 
               </Button>
             </Stack>
           </Box>
-          {vm.briefingChips.length > 0 && (
-            <Stack
-              direction={{ xs: 'column', sm: 'row' }}
-              spacing={1}
-              alignItems={{ xs: 'flex-start', sm: 'center' }}
-              sx={{
-                mt: 1,
-                cursor: 'pointer',
-              }}
-            >
-              <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 700 }}>
-                今日の要点
-              </Typography>
-              <Stack direction="row" spacing={0.75} flexWrap="wrap" useFlexGap>
-                {vm.briefingChips.map((chip) => (
-                  <Chip
-                    key={chip.key}
-                    size="small"
-                    color={chip.kind}
-                    label={chip.label}
-                    clickable
-                    onClick={() => handleBriefingChipClick(chip)}
-                  />
-                ))}
-              </Stack>
-            </Stack>
-          )}
         </Box>
 
         <Stack spacing={{ xs: 2, sm: 3, md: 4 }} sx={{ mb: { xs: 2, sm: 3 } }}>
           {(() => {
             const searchParams = new URLSearchParams(location.search);
             const tabletParam = searchParams.get('tablet');
+            const zeroScrollParam = searchParams.get('zeroscroll');
             const forceTablet = tabletParam === '1';
+            const forceZeroScroll = zeroScrollParam === '1';
             const windowWidth = typeof window !== 'undefined' ? window.innerWidth : 0;
             const meetsWidth = windowWidth >= 1024;
             const isTabletLandscape = forceTablet || meetsWidth;
@@ -594,41 +622,87 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ audience = 'staff' }) => 
               console.log('[Dashboard Layout Debug]', {
                 'URL': location.search,
                 'tablet param': tabletParam,
+                'zeroscroll param': zeroScrollParam,
                 'forceTablet': forceTablet,
+                'forceZeroScroll': forceZeroScroll,
                 'window.innerWidth': windowWidth,
                 'meetsWidth (>=1024)': meetsWidth,
                 'isTabletLandscape (final)': isTabletLandscape,
               });
             }
             
-            if (isTabletLandscape) {
+            // Phase C-1: Zero-Scroll Layout（?zeroscroll=1 で有効化）
+            if (forceZeroScroll) {
+              // 左ペイン: 申し送りセクション
+              const handoverSection = vm.orderedSections.find(s => s.key === 'handover');
+              const leftContent = handoverSection ? renderSection(handoverSection) : (
+                <Typography color="text.secondary">申し送り情報がありません</Typography>
+              );
+
               return (
-                <DashboardZoneLayout
-                  sections={vm.sections}
-                  renderSection={renderSection}
-                  sectionIdByKey={sectionIdByKey}
-                  highlightSection={highlightSection}
-                  dateLabel={dateLabel}
-                  todayChanges={todayChanges}
+                <ZeroScrollLayout
+                  leftSection={leftContent}
+                  rightHeader={
+                    <DashboardBriefingHUD
+                      alerts={vm.briefingAlerts}
+                      isBriefingTime={vm.contextInfo.isBriefingTime}
+                      briefingType={vm.contextInfo.briefingType}
+                      onNavigateTo={scrollToSection}
+                    />
+                  }
+                  tabs={zeroScrollTabs}
                 />
               );
             }
+            
+            if (isTabletLandscape) {
+              return (
+                <>
+                  {/* ✨ 朝会・夕会HUD（アラート表示） */}
+                  <DashboardBriefingHUD
+                    alerts={vm.briefingAlerts}
+                    isBriefingTime={vm.contextInfo.isBriefingTime}
+                    briefingType={vm.contextInfo.briefingType}
+                    onNavigateTo={scrollToSection}
+                  />
+                  <DashboardZoneLayout
+                    sections={vm.orderedSections}  // ✨ orderedSections を使用
+                    renderSection={renderSection}
+                    sectionIdByKey={sectionIdByKey}
+                    highlightSection={highlightSection}
+                    dateLabel={dateLabel}
+                    todayChanges={todayChanges}
+                  />
+                </>
+              );
+            }
 
-            return vm.sections.map((section) => (
-              <Box
-                key={section.key}
-                id={sectionIdByKey[section.key]}
-                sx={(theme) => ({
-                  scrollMarginTop: { xs: 80, sm: 96 },
-                  transition: 'box-shadow 0.2s ease, outline-color 0.2s ease',
-                  outline: highlightSection === section.key ? '2px solid' : '2px solid transparent',
-                  outlineColor: highlightSection === section.key ? theme.palette.primary.main : 'transparent',
-                  borderRadius: highlightSection === section.key ? 2 : 0,
-                })}
-              >
-                {section.enabled === false ? null : renderSection(section)}
-              </Box>
-            ));
+            return (
+              <>
+                {/* ✨ 朝会・夕会HUD（アラート表示） */}
+                <DashboardBriefingHUD
+                  alerts={vm.briefingAlerts}
+                  isBriefingTime={vm.contextInfo.isBriefingTime}
+                  briefingType={vm.contextInfo.briefingType}
+                  onNavigateTo={scrollToSection}
+                />
+                {vm.orderedSections.map((section) => (  // ✨ orderedSections を使用
+                  <Box
+                    key={section.key}
+                    id={sectionIdByKey[section.key]}
+                    sx={(theme) => ({
+                      scrollMarginTop: { xs: 80, sm: 96 },
+                      transition: 'box-shadow 0.2s ease, outline-color 0.2s ease',
+                      outline: highlightSection === section.key ? '2px solid' : '2px solid transparent',
+                      outlineColor: highlightSection === section.key ? theme.palette.primary.main : 'transparent',
+                      borderRadius: highlightSection === section.key ? 2 : 0,
+                    })}
+                  >
+                    {section.enabled === false ? null : renderSection(section)}
+                  </Box>
+                ))}
+              </>
+            );
           })()}
         </Stack>
 
