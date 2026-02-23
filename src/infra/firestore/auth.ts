@@ -1,5 +1,5 @@
 import { getAuth, signInAnonymously, signInWithCustomToken } from 'firebase/auth';
-import { getFlag, get, isDev } from '@/env';
+import { getFlag, get } from '@/env';
 import { getFirebaseApp } from './client';
 
 type FirebaseAuthMode = 'anonymous' | 'customToken';
@@ -14,6 +14,31 @@ type CustomTokenExchangeResponse = {
   expiresInSec?: number;
 };
 
+const wait = (ms: number): Promise<void> => new Promise((resolve) => {
+  setTimeout(resolve, ms);
+});
+
+const waitForMsalAccount = async (params: {
+  getActiveAccount: () => unknown;
+  getAllAccounts: () => unknown[];
+  timeoutMs?: number;
+  intervalMs?: number;
+}): Promise<unknown | null> => {
+  const timeoutMs = params.timeoutMs ?? 5000;
+  const intervalMs = params.intervalMs ?? 250;
+  const startedAt = Date.now();
+
+  while (Date.now() - startedAt < timeoutMs) {
+    const account = params.getActiveAccount() ?? params.getAllAccounts()[0] ?? null;
+    if (account) {
+      return account;
+    }
+    await wait(intervalMs);
+  }
+
+  return params.getActiveAccount() ?? params.getAllAccounts()[0] ?? null;
+};
+
 const normalizeAuthMode = (rawMode: string): FirebaseAuthMode => {
   const normalized = rawMode.trim().toLowerCase();
   return normalized === 'customtoken' ? 'customToken' : 'anonymous';
@@ -25,32 +50,25 @@ const resolveAuthMode = (): FirebaseAuthMode => {
 };
 
 const allowAnonymousFallback = (): boolean => {
-  const raw = get('VITE_FIREBASE_AUTH_ALLOW_ANON_FALLBACK', '');
-  if (!raw) {
-    return isDev;
-  }
   return getFlag('VITE_FIREBASE_AUTH_ALLOW_ANON_FALLBACK', false);
 };
 
 const acquireMsalAccessToken = async (): Promise<string> => {
-  const [{ getPcaSingleton }, { SP_RESOURCE }] = await Promise.all([
+  const [{ getPcaSingleton }] = await Promise.all([
     import('@/auth/azureMsal'),
-    import('@/auth/msalConfig'),
   ]);
 
   const msal = await getPcaSingleton();
-  const account = msal.getActiveAccount() ?? msal.getAllAccounts()[0] ?? null;
+  const account = await waitForMsalAccount({
+    getActiveAccount: () => msal.getActiveAccount(),
+    getAllAccounts: () => msal.getAllAccounts(),
+  });
   if (!account) {
     throw new Error('MSAL account is not available for token exchange');
   }
 
-  const scopeResource = (SP_RESOURCE || get('VITE_SP_RESOURCE', '')).replace(/\/+$/, '');
-  if (!scopeResource) {
-    throw new Error('VITE_SP_RESOURCE is required for custom token exchange');
-  }
-
   const token = await msal.acquireTokenSilent({
-    scopes: [`${scopeResource}/.default`],
+    scopes: ['User.Read'],
     account,
   });
 

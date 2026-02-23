@@ -34,6 +34,52 @@ type ServiceAccountConfig = {
   privateKey: string;
 };
 
+const injectRuntimeEnvScript = (html: string, runtimeEnv: Record<string, string>): string => {
+  const payload = JSON.stringify(runtimeEnv)
+    .replace(/</g, '\\u003c')
+    .replace(/>/g, '\\u003e')
+    .replace(/&/g, '\\u0026')
+    .replace(/\u2028/g, '\\u2028')
+    .replace(/\u2029/g, '\\u2029');
+
+  const script = `<script>window.__ENV__=Object.assign({},window.__ENV__||{},${payload});</script>`;
+  if (html.includes('</head>')) {
+    return html.replace('</head>', `${script}</head>`);
+  }
+  if (html.includes('</body>')) {
+    return html.replace('</body>', `${script}</body>`);
+  }
+  return `${script}${html}`;
+};
+
+const RUNTIME_ENV_ALLOWLIST = new Set([
+  'VITE_FIREBASE_API_KEY',
+  'VITE_FIREBASE_AUTH_DOMAIN',
+  'VITE_FIREBASE_PROJECT_ID',
+  'VITE_FIREBASE_APP_ID',
+  'VITE_FIREBASE_AUTH_MODE',
+  'VITE_FIREBASE_TOKEN_EXCHANGE_URL',
+  'VITE_FIREBASE_AUTH_ALLOW_ANON_FALLBACK',
+  'VITE_SCHEDULE_ADMINS_GROUP_ID',
+  'VITE_AAD_RECEPTION_GROUP_ID',
+  'VITE_RECEPTION_GROUP_ID',
+  'VITE_AAD_ADMIN_GROUP_ID',
+  'VITE_ADMIN_GROUP_ID',
+]);
+
+const pickRuntimeEnvFromBindings = (env: Env): Record<string, string> => {
+  const runtimeEnv: Record<string, string> = {};
+  const bindings = env as unknown as Record<string, unknown>;
+
+  for (const [key, value] of Object.entries(bindings)) {
+    if (!RUNTIME_ENV_ALLOWLIST.has(key)) continue;
+    if (typeof value !== 'string') continue;
+    runtimeEnv[key] = value;
+  }
+
+  return runtimeEnv;
+};
+
 const jsonResponse = (status: number, payload: unknown): Response => {
   return new Response(JSON.stringify(payload), {
     status,
@@ -289,13 +335,15 @@ export default {
         headers: request.headers,
       });
       const indexResponse = await env.ASSETS.fetch(indexRequest);
+      const runtimeEnv = pickRuntimeEnvFromBindings(env);
+      const indexHtml = injectRuntimeEnvScript(await indexResponse.text(), runtimeEnv);
 
       const headers = new Headers(indexResponse.headers);
       headers.set('Cross-Origin-Opener-Policy', 'same-origin-allow-popups');
       headers.set('Cache-Control', 'no-store, must-revalidate');
       headers.set('Content-Type', 'text/html; charset=UTF-8');
 
-      return new Response(indexResponse.body, {
+      return new Response(indexHtml, {
         status: 200,
         headers,
       });

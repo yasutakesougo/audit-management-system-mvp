@@ -1,4 +1,5 @@
 import { useUserAuthz } from '@/auth/useUserAuthz';
+import { canAccess } from '@/auth/roles';
 import Paper from '@mui/material/Paper';
 import Stack from '@mui/material/Stack';
 import Typography from '@mui/material/Typography';
@@ -21,7 +22,7 @@ type AdminGateProps = {
  * 3. useUserAuthz fail-closed ロジック → env 未設定で全員ブロック
  */
 export default function AdminGate({ children }: AdminGateProps) {
-  const { isAdmin, ready, reason } = useUserAuthz();
+  const { role, ready, reason } = useUserAuthz();
   // E2E テストモード: AdminGate を権限チェックごとスキップ
   const isTestMode =
     import.meta.env.VITE_E2E === '1' ||
@@ -49,7 +50,7 @@ export default function AdminGate({ children }: AdminGateProps) {
   }
 
   // 管理者でない場合は 403
-  if (!isAdmin) {
+  if (!canAccess(role, 'admin')) {
     // 設定エラーの場合は特別なメッセージを表示
     const isMissingConfig = reason === 'missing-admin-group-id';
     

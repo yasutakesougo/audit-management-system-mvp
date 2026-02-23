@@ -51,8 +51,13 @@ export function useTimeBasedSupportRecordPage({
     if (!schedule.length || recentObservations.length === 0) return new Set<string>();
     const filled = new Set<string>();
     recentObservations.forEach((observation) => {
-      if (!observation.timeSlot) return;
-      filled.add(getScheduleKey(observation.timeSlot, observation.plannedActivity ?? ''));
+      if (observation.planSlotKey) {
+        filled.add(observation.planSlotKey);
+        return;
+      }
+      if (observation.timeSlot) {
+        filled.add(getScheduleKey(observation.timeSlot, observation.plannedActivity ?? ''));
+      }
     });
     return filled;
   }, [schedule, recentObservations]);

@@ -48,8 +48,7 @@ vi.mock('@/features/users', () => ({
 
 vi.mock('@/auth/useUserAuthz', () => ({
   useUserAuthz: () => ({
-    isAdmin: true,
-    isReception: false,
+    role: 'admin',
     ready: true,
     reason: undefined,
   }),
@@ -203,9 +202,14 @@ describe('router future flags smoke', () => {
     expect(await screen.findByTestId('dashboard-root', arrivalOptions)).toBeInTheDocument();
 
     // 副作用の検証: ルート遷移での想定外のAPI呼び出しや認証アクションが発生していないことを確認
-    const calls = (spFetchMock.mock.calls as unknown as any[]).map(([input]: any) =>
-      typeof input === 'string' ? input : input instanceof Request ? (input as Request).url : String(input),
-    );
+    const calls = spFetchMock.mock.calls.map((callArgs) => {
+      const input = callArgs[0] as unknown;
+      return typeof input === 'string'
+        ? input
+        : input instanceof Request
+          ? input.url
+          : String(input);
+    });
 
     const currentUserCalls = calls.filter((u) => u.includes('/currentuser?$select=Id'));
     const nonCurrentUserCalls = calls.filter((u) => !u.includes('/currentuser?$select=Id'));

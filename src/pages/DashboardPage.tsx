@@ -1,5 +1,5 @@
 import { useFeatureFlags } from '@/config/featureFlags';
-import type { DashboardAudience } from '@/features/auth/store';
+import { canAccessDashboardAudience, isDashboardAudience, type DashboardAudience } from '@/features/auth/store';
 import { HYDRATION_FEATURES, estimatePayloadSize, startFeatureSpan } from '@/hydration/features';
 import { TESTIDS, tid } from '@/testids';
 import type { Schedule } from '@/lib/mappers';
@@ -600,7 +600,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ audience = 'staff' }) => 
   };
 
   useEffect(() => {
-    if (vm.role !== 'admin') return;
+    if (!canAccessDashboardAudience(vm.role, 'admin')) return;
     const maxIndex = ADMIN_TABS.length - 1;
     if (tabValue > maxIndex) {
       setTabValue(0);
@@ -785,7 +785,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ audience = 'staff' }) => 
           </Stack>
         );
       case 'adminOnly':
-        return vm.role === 'admin' ? (
+        return canAccessDashboardAudience(vm.role, 'admin') ? (
           <AdminOnlySection
             tabValue={tabValue}
             onTabChange={handleTabChange}
@@ -796,7 +796,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ audience = 'staff' }) => 
           />
         ) : null;
       case 'staffOnly':
-        return vm.role === 'staff' ? (
+        return isDashboardAudience(vm.role, 'staff') ? (
           <StaffOnlySection
             isMorningTime={isMorningTime}
             isEveningTime={isEveningTime}

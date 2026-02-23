@@ -54,6 +54,8 @@ if (isTestEnv && effectiveTenantId === 'dummy-tenant-id') {
 
 export const SP_RESOURCE = appConfig.VITE_SP_RESOURCE;
 export const GRAPH_RESOURCE = 'https://graph.microsoft.com';
+export const GRAPH_SCOPES = ['User.Read', 'GroupMember.Read.All'] as const;
+export const LOGIN_SCOPES = ['openid', 'profile', 'offline_access', ...GRAPH_SCOPES] as const;
 
 const LOCAL_ORIGIN = 'http://localhost:5173';
 const runtimeOrigin = typeof window !== 'undefined' ? window.location.origin : LOCAL_ORIGIN;

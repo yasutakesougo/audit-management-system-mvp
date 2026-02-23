@@ -193,8 +193,8 @@ jobs:
           VITE_FEATURE_SCHEDULES: '1'
           PLAYWRIGHT_JUNIT_OUTPUT: 'test-results/junit-e2e-smoke-all.xml'
         run: |
-          npx playwright test tests/e2e \
-            --config=playwright.config.ts \
+          npx playwright test \
+            --config=playwright.smoke.config.ts \
             --project=smoke \
             --reporter=list,junit,html \
             --retries=1

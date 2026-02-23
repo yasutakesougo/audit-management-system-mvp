@@ -11,3 +11,4 @@ main = "src/worker.ts"
 directory = "./dist"
 # not_found_handling is handled manually in worker.ts for SPA routing
 binding = "ASSETS"
+run_worker_first = true

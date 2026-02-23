@@ -5,6 +5,7 @@ import { Alert, AlertTitle, Button, Dialog, DialogTitle, DialogContent, DialogAc
 import { useAnnounce } from '@/a11y/LiveAnnouncer';
 import { useAuth } from '@/auth/useAuth';
 import { useUserAuthz } from '@/auth/useUserAuthz';
+import { canAccess } from '@/auth/roles';
 import { isDev } from '@/env';
 import { MASTER_SCHEDULE_TITLE_JA } from '@/features/schedules/constants';
 import type { ScheduleCategory } from '@/features/schedules/domain/types';
@@ -37,9 +38,9 @@ export default function WeekPage() {
   const { isDesktopSize, isTabletSize } = useBreakpointFlags();
   const { isLandscape } = useOrientation();
   const { account } = useAuth();
-  const { isReception, isAdmin, ready } = useUserAuthz();
+  const { role, ready } = useUserAuthz();
   const myUpn = useMemo(() => (account?.username ?? '').trim().toLowerCase(), [account?.username]);
-  const canEditByRole = ready && (isReception || isAdmin);
+  const canEditByRole = ready && canAccess(role, 'reception');
   const schedulesTz = useMemo(() => resolveSchedulesTz(), []);
   const {
     route,
@@ -484,6 +485,11 @@ export default function WeekPage() {
 
   const handleScheduleDialogSubmit = useCallback(
     async (input: CreateScheduleEventInput) => {
+      if (!canEdit || !canWrite) {
+        showSnack('info', '受付/管理者のみ予定を作成・編集できます');
+        throw new Error('schedule submit blocked by authorization');
+      }
+
       if (dialogMode === 'edit' && dialogEventId) {
         const payload = buildUpdateInput(dialogEventId, input);
         await update(payload);
@@ -508,7 +514,7 @@ export default function WeekPage() {
 
       await create(draft);
     },
-    [create, dialogEventId, dialogMode, update],
+    [canEdit, canWrite, create, dialogEventId, dialogMode, showSnack, update],
   );
 
   const handleCreateDialogClose = useCallback(() => {
@@ -871,7 +877,7 @@ export default function WeekPage() {
         />
       ) : (
         <ScheduleCreateDialog
-          open={!suppressRouteDialog && createDialogOpen}
+          open={!suppressRouteDialog && createDialogOpen && canEdit && canWrite}
           mode="create"
           initialOverride={scheduleDialogModeProps.initialOverride}
           onClose={handleCreateDialogClose}

@@ -32,6 +32,7 @@ const TokuseiSurveyResultsPage = React.lazy(() => import('@/pages/TokuseiSurveyR
 const IcebergPdcaPage = React.lazy(() => import('@/pages/IcebergPdcaPage'));
 const IcebergAnalysisPage = React.lazy(() => import('@/pages/IcebergAnalysisPage'));
 const MonthlyRecordPage = React.lazy(() => import('@/pages/MonthlyRecordPage'));
+const BillingPage = React.lazy(() => import('@/pages/BillingPage'));
 
 const AttendanceRecordPage = React.lazy(() => import('@/pages/AttendanceRecordPage'));
 const StaffAttendanceAdminPage = React.lazy(() => import('@/pages/StaffAttendanceAdminPage'));
@@ -155,6 +156,20 @@ const SuspendedMonthlyRecordPage: React.FC = () => (
       )}
     >
       <MonthlyRecordPage />
+    </React.Suspense>
+  </RouteHydrationErrorBoundary>
+);
+
+const SuspendedBillingPage: React.FC = () => (
+  <RouteHydrationErrorBoundary>
+    <React.Suspense
+      fallback={(
+        <div className="p-4 text-sm text-slate-600" role="status">
+          請求処理画面を読み込んでいます…
+        </div>
+      )}
+    >
+      <BillingPage />
     </React.Suspense>
   </RouteHydrationErrorBoundary>
 );
@@ -529,7 +544,7 @@ const childRoutes: RouteObject[] = [
   {
     path: 'admin/dashboard',
     element: (
-      <RequireAudience audience="admin">
+      <RequireAudience requiredRole="admin">
         <SuspendedAdminDashboardPage />
       </RequireAudience>
     ),
@@ -544,7 +559,7 @@ const childRoutes: RouteObject[] = [
   {
     path: 'records',
     element: (
-      <RequireAudience audience="staff">
+      <RequireAudience requiredRole="viewer">
         <SuspendedRecordList />
       </RequireAudience>
     ),
@@ -552,15 +567,23 @@ const childRoutes: RouteObject[] = [
   {
     path: 'records/monthly',
     element: (
-      <RequireAudience audience="staff">
+      <RequireAudience requiredRole="reception">
         <SuspendedMonthlyRecordPage />
+      </RequireAudience>
+    ),
+  },
+  {
+    path: 'billing',
+    element: (
+      <RequireAudience requiredRole="reception">
+        <SuspendedBillingPage />
       </RequireAudience>
     ),
   },
   {
     path: 'checklist',
     element: (
-      <RequireAudience audience="admin">
+      <RequireAudience requiredRole="admin">
         <SuspendedChecklistPage />
       </RequireAudience>
     ),
@@ -568,7 +591,7 @@ const childRoutes: RouteObject[] = [
   {
     path: 'audit',
     element: (
-      <RequireAudience audience="admin">
+      <RequireAudience requiredRole="admin">
         <SuspendedAuditPanel />
       </RequireAudience>
     ),
@@ -576,7 +599,7 @@ const childRoutes: RouteObject[] = [
   {
     path: 'users',
     element: (
-      <RequireAudience audience="staff">
+      <RequireAudience requiredRole="viewer">
         <UsersPanel />
       </RequireAudience>
     ),
@@ -584,7 +607,7 @@ const childRoutes: RouteObject[] = [
   {
     path: 'users/:userId',
     element: (
-      <RequireAudience audience="staff">
+      <RequireAudience requiredRole="viewer">
         <SuspendedUserDetailPage />
       </RequireAudience>
     ),
@@ -592,7 +615,7 @@ const childRoutes: RouteObject[] = [
   {
     path: 'staff',
     element: (
-      <RequireAudience audience="staff">
+      <RequireAudience requiredRole="viewer">
         <StaffPanel />
       </RequireAudience>
     ),
@@ -601,7 +624,7 @@ const childRoutes: RouteObject[] = [
     path: 'staff/attendance',
     element: (
       <ProtectedRoute>
-        <RequireAudience audience="staff">
+        <RequireAudience requiredRole="reception">
           <SuspendedStaffAttendanceInput />
         </RequireAudience>
       </ProtectedRoute>
@@ -621,7 +644,7 @@ const childRoutes: RouteObject[] = [
   {
     path: 'analysis/dashboard',
     element: (
-      <RequireAudience audience="staff">
+      <RequireAudience requiredRole="viewer">
         <SuspendedAnalysisDashboardPage />
       </RequireAudience>
     ),
@@ -629,7 +652,7 @@ const childRoutes: RouteObject[] = [
   {
     path: 'analysis/iceberg-pdca',
     element: (
-      <RequireAudience audience="staff">
+      <RequireAudience requiredRole="viewer">
         <IcebergPdcaGate>
           <SuspendedIcebergPdcaPage />
         </IcebergPdcaGate>
@@ -639,7 +662,7 @@ const childRoutes: RouteObject[] = [
   {
     path: 'analysis/iceberg-pdca/edit',
     element: (
-      <RequireAudience audience="staff">
+      <RequireAudience requiredRole="viewer">
         <IcebergPdcaGate requireEdit>
           <SuspendedIcebergPdcaPage />
         </IcebergPdcaGate>
@@ -649,7 +672,7 @@ const childRoutes: RouteObject[] = [
   {
     path: 'analysis/iceberg',
     element: (
-      <RequireAudience audience="staff">
+      <RequireAudience requiredRole="viewer">
         <SuspendedIcebergAnalysisPage />
       </RequireAudience>
     ),
@@ -657,7 +680,7 @@ const childRoutes: RouteObject[] = [
   {
     path: 'assessment',
     element: (
-      <RequireAudience audience="staff">
+      <RequireAudience requiredRole="viewer">
         <SuspendedAssessmentDashboardPage />
       </RequireAudience>
     ),
@@ -665,7 +688,7 @@ const childRoutes: RouteObject[] = [
   {
     path: 'survey/tokusei',
     element: (
-      <RequireAudience audience="staff">
+      <RequireAudience requiredRole="viewer">
         <SuspendedTokuseiSurveyResultsPage />
       </RequireAudience>
     ),
@@ -673,7 +696,7 @@ const childRoutes: RouteObject[] = [
   {
     path: 'admin/templates',
     element: (
-      <RequireAudience audience="admin">
+      <RequireAudience requiredRole="admin">
         <SuspendedSupportActivityMasterPage />
       </RequireAudience>
     ),
@@ -681,7 +704,7 @@ const childRoutes: RouteObject[] = [
   {
     path: 'admin/step-templates',
     element: (
-      <RequireAudience audience="admin">
+      <RequireAudience requiredRole="admin">
         <SuspendedSupportStepMasterPage />
       </RequireAudience>
     ),
@@ -689,7 +712,7 @@ const childRoutes: RouteObject[] = [
   {
     path: 'admin/individual-support',
     element: (
-      <RequireAudience audience="admin">
+      <RequireAudience requiredRole="admin">
         <SuspendedIndividualSupportManagementPage />
       </RequireAudience>
     ),
@@ -697,7 +720,7 @@ const childRoutes: RouteObject[] = [
   {
     path: 'admin/staff-attendance',
     element: (
-      <RequireAudience audience="admin">
+      <RequireAudience requiredRole="reception">
         <SuspendedStaffAttendanceAdminPage />
       </RequireAudience>
     ),
@@ -707,7 +730,7 @@ const childRoutes: RouteObject[] = [
     element: (
       <SchedulesGate>
         <ProtectedRoute flag="schedules">
-          <RequireAudience audience="admin">
+          <RequireAudience requiredRole="admin">
             <SuspendedIntegratedResourceCalendarPage />
           </RequireAudience>
         </ProtectedRoute>
@@ -719,7 +742,7 @@ const childRoutes: RouteObject[] = [
     element: (
       <SchedulesGate>
         <ProtectedRoute flag="schedules">
-          <RequireAudience audience="staff">
+          <RequireAudience requiredRole="viewer">
             <Navigate to="/schedules/week" replace />
           </RequireAudience>
         </ProtectedRoute>
@@ -731,7 +754,7 @@ const childRoutes: RouteObject[] = [
     element: (
       <SchedulesGate>
         <ProtectedRoute flag="schedules">
-          <RequireAudience audience="staff">
+          <RequireAudience requiredRole="viewer">
             <Navigate to="/schedules/week" replace />
           </RequireAudience>
         </ProtectedRoute>
@@ -743,7 +766,7 @@ const childRoutes: RouteObject[] = [
     element: (
       <SchedulesGate>
         <ProtectedRoute flag="schedules">
-          <RequireAudience audience="staff">
+          <RequireAudience requiredRole="viewer">
             <Navigate to="/schedules/week" replace />
           </RequireAudience>
         </ProtectedRoute>
@@ -755,7 +778,7 @@ const childRoutes: RouteObject[] = [
     element: (
       <SchedulesGate>
         <ProtectedRoute flag="schedules">
-          <RequireAudience audience="staff">
+          <RequireAudience requiredRole="viewer">
             <SuspendedNewSchedulesWeekPage />
           </RequireAudience>
         </ProtectedRoute>
@@ -767,7 +790,7 @@ const childRoutes: RouteObject[] = [
     element: (
       <SchedulesGate>
         <ProtectedRoute flag="schedules">
-          <RequireAudience audience="staff">
+          <RequireAudience requiredRole="viewer">
             <SchedulesDayRedirect />
           </RequireAudience>
         </ProtectedRoute>
@@ -779,7 +802,7 @@ const childRoutes: RouteObject[] = [
     element: (
       <SchedulesGate>
         <ProtectedRoute flag="schedules">
-          <RequireAudience audience="staff">
+          <RequireAudience requiredRole="viewer">
             <SchedulesMonthRedirect />
           </RequireAudience>
         </ProtectedRoute>
@@ -791,7 +814,7 @@ const childRoutes: RouteObject[] = [
     element: (
       <SchedulesGate>
         <ProtectedRoute flag="schedules">
-          <RequireAudience audience="staff">
+          <RequireAudience requiredRole="viewer">
             <SchedulesTimelineRedirect />
           </RequireAudience>
         </ProtectedRoute>
@@ -803,7 +826,7 @@ const childRoutes: RouteObject[] = [
     element: (
       <SchedulesGate>
         <ProtectedRoute flag="schedules">
-          <RequireAudience audience="staff">
+          <RequireAudience requiredRole="viewer">
             <Navigate to="/schedules/week" replace />
           </RequireAudience>
         </ProtectedRoute>
@@ -820,7 +843,7 @@ const childRoutes: RouteObject[] = [
         element: (
           <SchedulesGate>
             <ProtectedRoute flag="schedules">
-              <RequireAudience audience="staff">
+              <RequireAudience requiredRole="viewer">
                 <SuspendedDevScheduleCreateDialogPage />
               </RequireAudience>
             </ProtectedRoute>

@@ -20,6 +20,8 @@ import TextField from '@mui/material/TextField';
 import Typography from '@mui/material/Typography';
 import React from 'react';
 import { useSearchParams } from 'react-router-dom';
+import { canAccess } from '../auth/roles';
+import { useUserAuthz } from '../auth/useUserAuthz';
 import { MonthlySummaryTable } from '../features/records/monthly/MonthlySummaryTable';
 import { UserKpiCards } from '../features/records/monthly/UserKpiCards';
 import { UserProgressChart } from '../features/records/monthly/UserProgressChart';
@@ -166,6 +168,7 @@ function useDemoSummaries(): MonthlySummary[] {
 
 export default function MonthlyRecordPage() {
   const [params, setParams] = useSearchParams();
+  const { role } = useUserAuthz();
   const [summaries] = React.useState<MonthlySummary[]>(useDemoSummaries());
   const [loading] = React.useState(false);
 
@@ -252,6 +255,9 @@ export default function MonthlyRecordPage() {
   };
 
   const handleGenerateMonthlyPdf = async () => {
+    if (!canAccess(role, 'reception')) {
+      return;
+    }
     if (import.meta.env.DEV) console.log(`PDF生成開始: ${selectedMonth} - 対象利用者数: ${filteredSummaries.length}`);
     // TODO: Power Automate API呼び出し実装
     // - 選択月のデータを準備
@@ -319,6 +325,7 @@ export default function MonthlyRecordPage() {
   const effectiveParamsText = `tab=${tab}; rawUser=${rawUserId ?? 'none'}; rawMonth=${
     rawMonth ?? 'none'
   }; user=${effectiveUserId ?? 'none'}; month=${detailMonth}`;
+  const canGenerateMonthlyPdf = canAccess(role, 'reception');
 
   return (
     <Container maxWidth="xl" data-testid={TESTIDS['monthly-page']}>
@@ -712,7 +719,7 @@ export default function MonthlyRecordPage() {
                         size="large"
                         startIcon={<CloudDownloadIcon />}
                         onClick={handleGenerateMonthlyPdf}
-                        disabled={filteredSummaries.length === 0}
+                        disabled={filteredSummaries.length === 0 || !canGenerateMonthlyPdf}
                         data-testid={TESTIDS['monthly-pdf-generate-btn']}
                         sx={{ mt: 2 }}
                       >

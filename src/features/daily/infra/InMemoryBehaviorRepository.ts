@@ -32,6 +32,9 @@ const applyOrder = (items: BehaviorObservation[], options?: BehaviorQueryOptions
 
 export class InMemoryBehaviorRepository implements BehaviorRepository {
   async add(observation: Omit<BehaviorObservation, 'id'>): Promise<BehaviorObservation> {
+    if (observation.timeSlot && !observation.planSlotKey) {
+      throw new Error('[InMemoryBehaviorRepository] planSlotKey is required when timeSlot is provided.');
+    }
     const newRecord: BehaviorObservation = {
       ...observation,
       id: `evt-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,

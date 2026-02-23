@@ -1,4 +1,5 @@
 import { useEffect, useMemo } from 'react';
+import { canAccessDashboardAudience, isDashboardAudience } from '@/features/auth/store';
 
 // NOTE:
 // - DashboardPage.tsx の「ロール判定・セクション構成・サマリー生成」を段階的にここへ移します。
@@ -71,8 +72,8 @@ export function useDashboardViewModel<TSummary = unknown>(
       { key: 'schedule', title: '今日の予定', enabled: true },
       { key: 'handover', title: '申し送りタイムライン', enabled: true },
       { key: 'stats', enabled: true },
-      { key: 'adminOnly', title: '管理者ダッシュボード', enabled: role === 'admin' },
-      { key: 'staffOnly', title: 'スタッフダッシュボード', enabled: role === 'staff' },
+      { key: 'adminOnly', title: '管理者ダッシュボード', enabled: canAccessDashboardAudience(role, 'admin') },
+      { key: 'staffOnly', title: 'スタッフダッシュボード', enabled: isDashboardAudience(role, 'staff') },
       { key: 'daily', title: '日次記録状況', enabled: true },
     ];
 

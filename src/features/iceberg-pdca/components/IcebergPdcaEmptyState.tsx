@@ -2,7 +2,7 @@ import * as React from 'react';
 import { Box, Button, Card, CardContent, Stack, Typography } from '@mui/material';
 
 import { useFeatureFlag } from '@/config/featureFlags';
-import { type DashboardAudience } from '@/features/auth/store';
+import { canAccessDashboardAudience, type DashboardAudience } from '@/features/auth/store';
 import { TESTIDS } from '@/testids';
 
 import { ICEBERG_PDCA_EMPTY_COPY, type IcebergPdcaEmptyContext } from './icebergPdcaEmptyCopy';
@@ -36,7 +36,7 @@ export const IcebergPdcaEmptyState: React.FC<Props> = ({
       );
     }
 
-    if (context === 'no-items-admin' && role === 'admin') {
+    if (context === 'no-items-admin' && role && canAccessDashboardAudience(role, 'admin')) {
       return (
         <Stack direction="row" spacing={1}>
           <Button

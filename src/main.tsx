@@ -243,22 +243,7 @@ const run = async (): Promise<void> => {
       throw error;
     });
 
-  // ✅ Step 1.5: Initialize Firebase Auth (anonymous) for Firestore rules
-  const completeFirebaseAuth = beginHydrationSpan('bootstrap:firebase-auth', { group: 'hydration', meta: { budget: 20 } });
-  if (hasWindow) {
-    try {
-      const { initFirebaseAuth } = await import('./infra/firestore/auth');
-      await initFirebaseAuth();
-      finalizeHydrationSpan(completeFirebaseAuth);
-    } catch (error) {
-      finalizeHydrationSpan(completeFirebaseAuth, error);
-      console.warn('[main] Firebase Auth init error (non-fatal, continuing)', error);
-    }
-  } else {
-    finalizeHydrationSpan(completeFirebaseAuth);
-  }
-
-  // ✅ Step 2: Initialize MSAL singleton + handle redirect BEFORE React renders
+  // ✅ Step 2: Initialize MSAL singleton + handle redirect BEFORE Firebase init
   if (hasWindow) {
     const hasAuthResponse = (): boolean => {
       const { hash, search } = window.location;
@@ -355,6 +340,21 @@ const run = async (): Promise<void> => {
       window.location.replace(redirectAfterAuth);
       return;
     }
+  }
+
+  // ✅ Step 2.5: Initialize Firebase Auth AFTER MSAL redirect completes (so accounts:1)
+  const completeFirebaseAuth = beginHydrationSpan('bootstrap:firebase-auth', { group: 'hydration', meta: { budget: 20 } });
+  if (hasWindow) {
+    try {
+      const { initFirebaseAuth } = await import('./infra/firestore/auth');
+      await initFirebaseAuth();
+      finalizeHydrationSpan(completeFirebaseAuth);
+    } catch (error) {
+      finalizeHydrationSpan(completeFirebaseAuth, error);
+      console.warn('[main] Firebase Auth init error (non-fatal, continuing)', error);
+    }
+  } else {
+    finalizeHydrationSpan(completeFirebaseAuth);
   }
 
   if (hasWindow && window.__ENV__?.VITE_AUDIT_DEBUG === '1') {
