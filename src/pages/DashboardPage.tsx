@@ -1,5 +1,5 @@
 import { useFeatureFlags } from '@/config/featureFlags';
-import type { DashboardAudience } from '@/features/auth/store';
+import { canAccessDashboardAudience, type DashboardAudience } from '@/features/auth/store';
 import { TESTIDS, tid } from '@/testids';
 import type { Schedule } from '@/lib/mappers';
 import { getDashboardAnchorIdByKey } from '@/features/dashboard/sections/buildSections';
@@ -410,7 +410,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ audience = 'staff' }) => 
   };
 
   useEffect(() => {
-    if (vm.role !== 'admin') return;
+    if (!canAccessDashboardAudience(vm.role, 'admin')) return;
     const maxIndex = ADMIN_TABS.length - 1;
     if (tabValue > maxIndex) {
       setTabValue(0);
@@ -481,6 +481,8 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ audience = 'staff' }) => 
           stats,
           onOpenTimeline: openTimeline,
         };
+      default:
+        throw new Error(`Unhandled dashboard section key: ${section.key}`);
     }
   }, [
     attendanceSummary,

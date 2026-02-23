@@ -18,6 +18,18 @@ const smokeTestMatch = [
   'tests/e2e/health.smoke.spec.ts',
   'tests/e2e/schedule-smoke.spec.ts',
   'tests/e2e/schedule-day.aria.smoke.spec.ts',
+  'tests/e2e/authz.admin-guard.spec.ts',
+  'tests/e2e/authz.reception-guard.spec.ts',
+  'tests/e2e/authz.reception-attendance-guard.spec.ts',
+  'tests/e2e/authz.reception-attendance-action.spec.ts',
+  'tests/e2e/authz.reception-attendance-bulk-action.spec.ts',
+  'tests/e2e/authz.reception-attendance-finalize-action.spec.ts',
+  'tests/e2e/authz.reception-attendance-unfinalize-action.spec.ts',
+  'tests/e2e/attendance.finalize-audit-meta.spec.ts',
+  'tests/e2e/authz.reception-billing-guard.spec.ts',
+  'tests/e2e/authz.reception-monthly-pdf-action.spec.ts',
+  'tests/e2e/authz.reception-schedule-week-create-save.smoke.spec.ts',
+  'tests/e2e/authz.reception-schedule-day-edit-save.smoke.spec.ts',
 ];
 
 const webServerEnvVarsSmoke = {

@@ -4,10 +4,10 @@ import { getRuntimeEnv as getRuntimeEnvRoot } from '@/env';
 import { fetchMyGroupIds } from '@/features/schedules/data/graphAdapter';
 import { useAuth } from '@/auth/useAuth';
 import { GRAPH_RESOURCE } from '@/auth/msalConfig';
+import type { Role } from '@/auth/roles';
 
 type UserAuthz = {
-  isReception: boolean;
-  isAdmin: boolean;
+  role: Role;
   ready: boolean;
   reason?: 'missing-admin-group-id' | 'demo-default-full-access';
 };
@@ -55,8 +55,34 @@ export const useUserAuthz = (): UserAuthz => {
   const [groupIds, setGroupIds] = useState<string[] | null>(null);
   const [error, setError] = useState<Error | null>(null);
 
-  const receptionGroupId = readOptionalEnv('VITE_RECEPTION_GROUP_ID');
-  const adminGroupId = readOptionalEnv('VITE_SCHEDULE_ADMINS_GROUP_ID');
+  const runtimeEnv = getRuntimeEnvRoot() as Record<string, unknown>;
+  const readRuntime = (key: string): string | undefined => {
+    const value = runtimeEnv[key];
+    if (typeof value !== 'string') return undefined;
+    const normalized = value.trim();
+    return normalized.length > 0 ? normalized : undefined;
+  };
+  const receptionGroupId =
+    readRuntime('VITE_AAD_RECEPTION_GROUP_ID')
+    ?? readRuntime('VITE_RECEPTION_GROUP_ID')
+    ?? readOptionalEnv('VITE_AAD_RECEPTION_GROUP_ID')
+    ?? readOptionalEnv('VITE_RECEPTION_GROUP_ID');
+  const adminGroupId =
+    readRuntime('VITE_AAD_ADMIN_GROUP_ID')
+    ?? readRuntime('VITE_ADMIN_GROUP_ID')
+    ?? readRuntime('VITE_SCHEDULE_ADMINS_GROUP_ID')
+    ?? readOptionalEnv('VITE_AAD_ADMIN_GROUP_ID')
+    ?? readOptionalEnv('VITE_ADMIN_GROUP_ID')
+    ?? readOptionalEnv('VITE_SCHEDULE_ADMINS_GROUP_ID');
+  const envReady =
+    typeof window === 'undefined'
+      ? true
+      : Boolean((window as typeof window & { __ENV__?: unknown }).__ENV__);
+  const testRoleRaw = readRuntime('VITE_TEST_ROLE') ?? readOptionalEnv('VITE_TEST_ROLE');
+  const testRole =
+    testRoleRaw === 'admin' || testRoleRaw === 'reception' || testRoleRaw === 'viewer'
+      ? testRoleRaw
+      : undefined;
 
   const myUpnNormalized = useMemo(
     () => (account?.username ?? '').trim().toLowerCase(),
@@ -123,21 +149,33 @@ export const useUserAuthz = (): UserAuthz => {
     const skipLogin = shouldSkipLogin(getRuntimeEnvRoot());
     
     // E2E: always grant admin access for test coverage (all nav items visible)
+    if ((isE2E || skipLogin) && testRole) {
+      return {
+        role: testRole,
+        ready: true,
+      } satisfies UserAuthz;
+    }
+
     if (isE2E || skipLogin) {
       return {
-        isReception: true,
-        isAdmin: true,
+        role: 'admin',
         ready: true,
         reason: 'demo-default-full-access',
       } satisfies UserAuthz;
     }
     
     // Fail-closed for admin group: if not configured in PROD, deny access
+    if (!envReady && !isDemoOrDev) {
+      return {
+        role: 'viewer',
+        ready: false,
+      } satisfies UserAuthz;
+    }
+
     if (!adminGroupId && !isDemoOrDev) {
       console.warn('[useUserAuthz] CRITICAL: Admin group ID is not configured in PROD mode. All users will be denied admin access.');
       return {
-        isReception: false,
-        isAdmin: false,
+        role: 'viewer',
         ready: true,
         reason: 'missing-admin-group-id',
       } satisfies UserAuthz;
@@ -146,8 +184,7 @@ export const useUserAuthz = (): UserAuthz => {
     // DEMO-only: grant full access if group ID is not set (convenience mode)
     if (!adminGroupId && isDemoOrDev) {
       return {
-        isReception: true,
-        isAdmin: true,
+        role: 'admin',
         ready: true,
         reason: 'demo-default-full-access',
       } satisfies UserAuthz;
@@ -155,17 +192,20 @@ export const useUserAuthz = (): UserAuthz => {
 
     const hasGroupConfig = Boolean(receptionGroupId) || Boolean(adminGroupId);
 
-    // Default-open policy: if no group IDs are configured, do not block edit flows.
+    // Role resolution order is strict: admin > reception > viewer.
+    // If membership cannot be resolved, fall back to viewer (handled by ready/error paths).
     const isReception = hasGroupConfig ? Boolean(receptionGroupId && ids.includes(receptionGroupId)) : true;
     const isAdmin = hasGroupConfig ? Boolean(adminGroupId && ids.includes(adminGroupId)) : true;
     const ready = hasGroupConfig ? groupIds !== null : true;
 
-    return { isReception, isAdmin, ready } satisfies UserAuthz;
-  }, [groupIds, receptionGroupId, adminGroupId]);
+    const role: Role = isAdmin ? 'admin' : isReception ? 'reception' : 'viewer';
+
+    return { role, ready } satisfies UserAuthz;
+  }, [groupIds, receptionGroupId, adminGroupId, envReady, testRole]);
 
   if (error) {
     // 権限判定が落ちてもアプリを壊さない（read-only にフォールバック）
-    return { isReception: false, isAdmin: false, ready: true };
+    return { role: 'viewer', ready: true };
   }
 
   return value;

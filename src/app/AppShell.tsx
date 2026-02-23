@@ -34,6 +34,7 @@ import { useTheme } from '@mui/material/styles';
 import React, { useCallback, useContext, useEffect, useMemo, useState } from 'react';
 // Navigation Icons
 import { useMsalContext } from '@/auth/MsalProvider';
+import { canAccess } from '@/auth/roles';
 import { useUserAuthz } from '@/auth/useUserAuthz';
 import NavLinkPrefetch from '@/components/NavLinkPrefetch';
 import { ActivityBar } from '@/app/layout/ActivityBar';
@@ -202,7 +203,8 @@ const AppShell: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const dashboardPath = useDashboardPath();
   const currentRole = useAuthStore((s) => s.currentUserRole);
   const setCurrentUserRole = useAuthStore((s) => s.setCurrentUserRole);
-  const { isAdmin, ready: authzReady } = useUserAuthz();
+  const { role, ready: authzReady } = useUserAuthz();
+  const isAdmin = canAccess(role, 'admin');
   const navAudience: NavAudience = isAdmin ? NAV_AUDIENCE.admin : NAV_AUDIENCE.staff;
   const theme = useTheme();
   const { settings, updateSettings } = useSettingsContext();

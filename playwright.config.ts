@@ -50,6 +50,15 @@ const webServerCommand = webServerCommandOverride
 // Allow reusing an externally started server when PLAYWRIGHT_WEB_SERVER_URL is provided (e.g., guardrails workflows).
 const reuseExistingServer = process.env.PW_REUSE_SERVER !== '0';
 const SMOKE_SPEC_PATTERN = /.*smoke.*\.spec\.ts$/i;
+const AUTHZ_ADMIN_GUARD_SPEC = 'tests/e2e/authz.admin-guard.spec.ts';
+const AUTHZ_RECEPTION_GUARD_SPEC = 'tests/e2e/authz.reception-guard.spec.ts';
+const AUTHZ_RECEPTION_ATTENDANCE_GUARD_SPEC = 'tests/e2e/authz.reception-attendance-guard.spec.ts';
+const AUTHZ_RECEPTION_ATTENDANCE_ACTION_SPEC = 'tests/e2e/authz.reception-attendance-action.spec.ts';
+const AUTHZ_RECEPTION_ATTENDANCE_BULK_ACTION_SPEC = 'tests/e2e/authz.reception-attendance-bulk-action.spec.ts';
+const AUTHZ_RECEPTION_ATTENDANCE_FINALIZE_ACTION_SPEC = 'tests/e2e/authz.reception-attendance-finalize-action.spec.ts';
+const AUTHZ_RECEPTION_ATTENDANCE_UNFINALIZE_ACTION_SPEC = 'tests/e2e/authz.reception-attendance-unfinalize-action.spec.ts';
+const AUTHZ_RECEPTION_BILLING_GUARD_SPEC = 'tests/e2e/authz.reception-billing-guard.spec.ts';
+const AUTHZ_RECEPTION_MONTHLY_PDF_ACTION_SPEC = 'tests/e2e/authz.reception-monthly-pdf-action.spec.ts';
 const desktopChrome = { ...devices['Desktop Chrome'] };
 
 export default defineConfig({
@@ -66,7 +75,7 @@ export default defineConfig({
   },
   projects: [
     { name: 'chromium', use: desktopChrome },
-    { name: 'smoke', use: desktopChrome, testMatch: SMOKE_SPEC_PATTERN },
+    { name: 'smoke', use: desktopChrome, testMatch: [SMOKE_SPEC_PATTERN, AUTHZ_ADMIN_GUARD_SPEC, AUTHZ_RECEPTION_GUARD_SPEC, AUTHZ_RECEPTION_ATTENDANCE_GUARD_SPEC, AUTHZ_RECEPTION_ATTENDANCE_ACTION_SPEC, AUTHZ_RECEPTION_ATTENDANCE_BULK_ACTION_SPEC, AUTHZ_RECEPTION_ATTENDANCE_FINALIZE_ACTION_SPEC, AUTHZ_RECEPTION_ATTENDANCE_UNFINALIZE_ACTION_SPEC, AUTHZ_RECEPTION_BILLING_GUARD_SPEC, AUTHZ_RECEPTION_MONTHLY_PDF_ACTION_SPEC] },
   ],
   webServer: {
     command: webServerCommand,

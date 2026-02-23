@@ -2,6 +2,21 @@ import { useSyncExternalStore } from 'react';
 
 export type DashboardAudience = 'staff' | 'admin';
 
+const DASHBOARD_AUDIENCE_LEVELS: Record<DashboardAudience, number> = {
+  staff: 0,
+  admin: 1,
+};
+
+export const canAccessDashboardAudience = (
+  role: DashboardAudience,
+  required: DashboardAudience,
+): boolean => DASHBOARD_AUDIENCE_LEVELS[role] >= DASHBOARD_AUDIENCE_LEVELS[required];
+
+export const isDashboardAudience = (
+  role: DashboardAudience,
+  expected: DashboardAudience,
+): boolean => role === expected;
+
 type AuthStoreState = {
   currentUserRole: DashboardAudience;
   setCurrentUserRole: (role: DashboardAudience) => void;

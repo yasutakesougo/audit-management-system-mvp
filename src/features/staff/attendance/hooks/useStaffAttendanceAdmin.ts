@@ -28,12 +28,15 @@ const createBlockedPort = (message: string): StaffAttendancePort => ({
   listByDate: async () => result.forbidden(message),
   listByDateRange: async () => result.forbidden(message),
   countByDate: async () => result.forbidden(message),
+  finalizeDay: async () => result.forbidden(message),
+  unfinalizeDay: async () => result.forbidden(message),
+  getDayFinalizedState: async () => result.forbidden(message),
 });
 
 export function useStaffAttendanceAdmin(recordDate: string) {
   const storageKind = React.useMemo(() => getStaffAttendanceStorageKind(), []);
   const writeEnabledEnv = React.useMemo(() => getStaffAttendanceWriteEnabled(), []);
-  const { acquireToken } = useAuth();
+  const { acquireToken, account } = useAuth();
   const [readOnlyReason, setReadOnlyReason] = React.useState<string | null>(null);
   const [spReady, setSpReady] = React.useState<boolean>(storageKind !== 'sharepoint');
   const [spCheckState, setSpCheckState] = React.useState<SpCheckState>(storageKind !== 'sharepoint' ? 'connected' : 'idle');
@@ -215,6 +218,53 @@ export function useStaffAttendanceAdmin(recordDate: string) {
     [port, spReady, readOnlyReason, storageKind]
   );
 
+  const finalizeDay = React.useCallback(async () => {
+    if (!writeEnabled) {
+      setState((s) => ({
+        ...s,
+        saving: false,
+        error: effectiveReadOnlyReason ?? '書き込みが無効です（読み取り専用）。',
+      }));
+      return;
+    }
+    setState((s) => ({ ...s, saving: true, error: null }));
+    const actor = account?.username?.trim() || account?.homeAccountId?.trim() || 'unknown';
+    const res = await port.finalizeDay({ recordDate, finalizedBy: actor });
+    if (!res.isOk) {
+      setState((s) => ({
+        ...s,
+        saving: false,
+        error: res.error.message || res.error.kind || 'unknown',
+      }));
+      return;
+    }
+    await refetch();
+    setState((s) => ({ ...s, saving: false }));
+  }, [account?.homeAccountId, account?.username, effectiveReadOnlyReason, port, recordDate, refetch, writeEnabled]);
+
+  const unfinalizeDay = React.useCallback(async () => {
+    if (!writeEnabled) {
+      setState((s) => ({
+        ...s,
+        saving: false,
+        error: effectiveReadOnlyReason ?? '書き込みが無効です（読み取り専用）。',
+      }));
+      return;
+    }
+    setState((s) => ({ ...s, saving: true, error: null }));
+    const res = await port.unfinalizeDay({ recordDate });
+    if (!res.isOk) {
+      setState((s) => ({
+        ...s,
+        saving: false,
+        error: res.error.message || res.error.kind || 'unknown',
+      }));
+      return;
+    }
+    await refetch();
+    setState((s) => ({ ...s, saving: false }));
+  }, [effectiveReadOnlyReason, port, recordDate, refetch, writeEnabled]);
+
   return {
     ...state,
     writeEnabled,
@@ -226,6 +276,8 @@ export function useStaffAttendanceAdmin(recordDate: string) {
     connectionLabel,
     refetch,
     save,
+    finalizeDay,
+    unfinalizeDay,
     fetchListByDateRange,
     // ✅ Bulk 用に公開（挙動は変えない）
     port,

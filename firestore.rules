@@ -2,11 +2,16 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
     function signedIn() { return request.auth != null; }
+    function orgClaimMatches(orgId) {
+      return signedIn()
+        && request.auth.token.orgId is string
+        && request.auth.token.orgId == orgId;
+    }
 
     match /orgs/{orgId}/events/{eventId} {
-      allow read: if signedIn();
+      allow read: if orgClaimMatches(orgId);
 
-      allow create: if signedIn()
+      allow create: if orgClaimMatches(orgId)
         && request.resource.data.orgId == orgId
         && !exists(/databases/$(database)/documents/orgs/$(orgId)/events/$(eventId));
 
@@ -14,9 +19,9 @@ service cloud.firestore {
     }
 
     match /orgs/{orgId}/dailySnapshots/{snapId} {
-      allow read: if signedIn();
+      allow read: if orgClaimMatches(orgId);
 
-      allow create, update: if signedIn()
+      allow create, update: if orgClaimMatches(orgId)
         && request.resource.data.orgId == orgId;
 
       allow delete: if false;

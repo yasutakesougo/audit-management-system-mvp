@@ -175,11 +175,11 @@ gh run view $RUN_ID --log-failed | tail -200
 
 ```bash
 # Use playwright.smoke.config.ts (includes VITE_E2E)
-npm run e2e:smoke
+npm run test:e2e:smoke
 
 # Or manually:
 VITE_E2E='1' VITE_DEMO_MODE='1' npm run preview &
-npx playwright test tests/e2e --config=playwright.config.ts --project=smoke
+npx playwright test --config=playwright.smoke.config.ts --project=smoke
 ```
 
 ### For CI (smoke.yml)
@@ -193,14 +193,15 @@ env:
 run: VITE_E2E='1' VITE_E2E_MSAL_MOCK='1' ... npm run build
 
 # Test step (Line 193-197):
-run: npx playwright test tests/e2e \
-  --config=playwright.config.ts \
+run: npx playwright test \
+  --config=playwright.smoke.config.ts \
   --project=smoke
 ```
 
 **Key Files**:
-- `playwright.config.ts` - Main config (used by CI with smoke project)
-- `playwright.smoke.config.ts` - Local smoke dev config
+
+- `playwright.smoke.config.ts` - Canonical smoke config (used by CI and local smoke command)
+- `playwright.config.ts` - Main config (full/default Playwright lanes)
 - `.github/workflows/smoke.yml` - CI workflow (sets env + runs tests)
 
 ---

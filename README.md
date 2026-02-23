@@ -189,7 +189,7 @@ Environment flags used by the app:
 - `VITE_FIREBASE_AUTH_EMULATOR_URL=http://localhost:9099` (Auth emulator URL)
 - `VITE_FIREBASE_AUTH_MODE=anonymous|customToken` (default: anonymous)
 - `VITE_FIREBASE_TOKEN_EXCHANGE_URL=https://...` (required for customToken mode)
-- `VITE_FIREBASE_AUTH_ALLOW_ANON_FALLBACK=1|0` (optional; defaults to dev-only fallback when omitted)
+- `VITE_FIREBASE_AUTH_ALLOW_ANON_FALLBACK=1|0` (optional; defaults to `0` when omitted)
 
 Note: Both Firestore and Auth emulators are started together with `npm run firestore:emu` (Firebase CLI defaults). App will automatically route to emulator if flags are set.
 

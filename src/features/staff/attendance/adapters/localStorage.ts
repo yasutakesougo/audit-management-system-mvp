@@ -87,6 +87,67 @@ export const createLocalStorageAdapter = (): StaffAttendancePort => ({
       return result.unknown('Failed to count attendance', e);
     }
   },
+
+  async finalizeDay(params): Promise<Result<void>> {
+    try {
+      const store = useStaffAttendanceStore();
+      const records = store
+        .listByDate(params.recordDate as RecordDate)
+        .slice()
+        .sort((left, right) => left.staffId.localeCompare(right.staffId));
+      if (records.length === 0) {
+        return result.notFound('No attendance records found for this date');
+      }
+
+      const finalizedAt = new Date().toISOString();
+      const finalizedBy = params.finalizedBy ?? 'unknown';
+      const representativeStaffId = records[0]?.staffId;
+      records.forEach((record) => {
+        store.upsert({
+          ...record,
+          isFinalized: record.staffId === representativeStaffId,
+          finalizedAt: record.staffId === representativeStaffId ? finalizedAt : undefined,
+          finalizedBy: record.staffId === representativeStaffId ? finalizedBy : undefined,
+        });
+      });
+      return result.ok(undefined);
+    } catch (e) {
+      return result.unknown('Failed to finalize attendance day', e);
+    }
+  },
+
+  async unfinalizeDay(params): Promise<Result<void>> {
+    try {
+      const store = useStaffAttendanceStore();
+      const records = store.listByDate(params.recordDate as RecordDate);
+      if (records.length === 0) {
+        return result.notFound('No attendance records found for this date');
+      }
+
+      records.forEach((record) => {
+        if (!record.isFinalized) return;
+        store.upsert({
+          ...record,
+          isFinalized: false,
+          finalizedAt: undefined,
+          finalizedBy: undefined,
+        });
+      });
+      return result.ok(undefined);
+    } catch (e) {
+      return result.unknown('Failed to unfinalize attendance day', e);
+    }
+  },
+
+  async getDayFinalizedState(params): Promise<Result<boolean>> {
+    try {
+      const store = useStaffAttendanceStore();
+      const records = store.listByDate(params.recordDate as RecordDate);
+      return result.ok(records.some((record) => record.isFinalized === true));
+    } catch (e) {
+      return result.unknown('Failed to read attendance day finalized state', e);
+    }
+  },
 });
 
 /**
