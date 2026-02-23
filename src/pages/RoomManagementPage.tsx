@@ -2,7 +2,7 @@ import React from 'react';
 import { Box, Container, Stack, Typography, Button } from '@mui/material';
 import { useNavigate } from 'react-router-dom';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
-import { RoomStatusTab } from '@/features/dashboard/tabs/RoomStatusTab';
+import RoomManagementTabs from '@/features/dashboard/tabs/RoomManagementTabs';
 
 const RoomManagementPage: React.FC = () => {
   const navigate = useNavigate();
@@ -26,7 +26,7 @@ const RoomManagementPage: React.FC = () => {
 
       {/* コンテンツ */}
       <Box sx={{ bgcolor: '#fff', borderRadius: 1, p: { xs: 2, md: 3 } }}>
-        <RoomStatusTab />
+        <RoomManagementTabs />
       </Box>
     </Container>
   );
