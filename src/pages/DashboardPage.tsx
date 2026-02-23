@@ -1029,6 +1029,7 @@ const Zone1_MorningDecision: React.FC<Zone1_MorningDecisionProps> = ({
 
   return (
     <Box
+      data-testid="dashboard-zone-briefing"
       sx={{
         display: 'grid',
         gridTemplateColumns: '2fr 1fr',
@@ -1132,15 +1133,19 @@ const DashboardZoneLayout: React.FC<DashboardZoneLayoutProps> = ({
       >
         <Stack spacing={3}>
           {/* ZONE 2: 今日の予定（主役） */}
-          {renderSectionIfEnabled('schedule')}
+          <Box data-testid="dashboard-zone-today">
+            {renderSectionIfEnabled('schedule')}
+          </Box>
 
           {/* ZONE 3: 集計・作業（補助） */}
-          {renderSectionIfEnabled('safety')}
-          {renderSectionIfEnabled('attendance')}
-          {renderSectionIfEnabled('daily')}
-          {renderSectionIfEnabled('stats')}
-          {renderSectionIfEnabled('adminOnly')}
-          {renderSectionIfEnabled('staffOnly')}
+          <Box data-testid="dashboard-zone-work">
+            {renderSectionIfEnabled('safety')}
+            {renderSectionIfEnabled('attendance')}
+            {renderSectionIfEnabled('daily')}
+            {renderSectionIfEnabled('stats')}
+            {renderSectionIfEnabled('adminOnly')}
+            {renderSectionIfEnabled('staffOnly')}
+          </Box>
         </Stack>
       </Box>
     </Box>
