@@ -22,3 +22,9 @@ export type { AdminOnlySectionProps } from './AdminOnlySection';
 
 export { StaffOnlySection } from './StaffOnlySection';
 export type { StaffOnlySectionProps } from './StaffOnlySection';
+
+export { HandoverSection } from './HandoverSection';
+export type { HandoverSectionProps } from './HandoverSection';
+
+export { StatsSection } from './StatsSection';
+export type { StatsSectionProps } from './StatsSection';

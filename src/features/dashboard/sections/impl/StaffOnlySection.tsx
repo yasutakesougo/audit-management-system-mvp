@@ -67,7 +67,7 @@ export function StaffOnlySection({
   onOpenTimeline,
 }: StaffOnlySectionProps) {
   return (
-    <Stack spacing={3}>
+    <Stack spacing={3} data-testid="dashboard-section-staffOnly">
       {/* 🌅 朝会カード */}
       <Card
         elevation={3}

@@ -12,12 +12,17 @@
 
 import DashboardSafetyHUD from '../../DashboardSafetyHUD';
 import React from 'react';
+import Box from '@mui/material/Box';
 
 export type SafetySectionProps = {
   // Phase 1-2 では空でOK（既存コンポーネントの中身を活用）
 };
 
 export const SafetySection: React.FC<SafetySectionProps> = () => {
-  return <DashboardSafetyHUD />;
+  return (
+    <Box data-testid="dashboard-section-safety">
+      <DashboardSafetyHUD />
+    </Box>
+  );
 };
 
