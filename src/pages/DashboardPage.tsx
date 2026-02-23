@@ -16,7 +16,6 @@ import Box from '@mui/material/Box';
 import Button from '@mui/material/Button';
 import Card from '@mui/material/Card';
 import CardContent from '@mui/material/CardContent';
-import Chip from '@mui/material/Chip';
 
 import Container from '@mui/material/Container';
 import Divider from '@mui/material/Divider';
@@ -39,7 +38,7 @@ import DashboardBriefingHUD from '@/features/dashboard/DashboardBriefingHUD';
 import { ZeroScrollLayout, type DashboardTab } from '@/features/dashboard/layouts/ZeroScrollLayout';
 import { UserStatusTab } from '@/features/dashboard/tabs/UserStatusTab';
 import { StaffStatusTab } from '@/features/dashboard/tabs/StaffStatusTab';
-import { TodoTab, type TodoItem } from '@/features/dashboard/tabs/TodoTab';
+import { TodoTab } from '@/features/dashboard/tabs/TodoTab';
 import { generateTodosFromSchedule } from '@/features/dashboard/generateTodos';
 import { useAttendanceStore } from '@/features/attendance/store';
 import { useStaffStore } from '@/features/staff/store';
@@ -282,16 +281,6 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ audience = 'staff' }) => 
       }, 1400);
     },
     [sectionIdByKey],
-  );
-
-  const handleBriefingChipClick = useCallback(
-    (chip: DashboardBriefingChip) => {
-      const targetSection = chip.key === 'attention' || chip.key === 'pending'
-        ? 'handover'
-        : 'attendance';
-      scrollToSection(targetSection);
-    },
-    [scrollToSection],
   );
 
   // Get attendance counts (needed by useDashboardSummary)
