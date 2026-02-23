@@ -102,6 +102,9 @@ export interface DashboardSummary {
 /**
  * Main hook: consolidates 7 useMemo blocks from DashboardPage
  * Returns DashboardSummary with all original variable names
+ *
+ * Performance profiling (DEV only):
+ * Set localStorage.debug = 'dashboard:perf' to see computation times
  */
 export function useDashboardSummary(args: UseDashboardSummaryArgs): DashboardSummary {
   const {
@@ -114,9 +117,42 @@ export function useDashboardSummary(args: UseDashboardSummaryArgs): DashboardSum
     generateMockActivityRecords,
   } = args;
 
+  // DEV-only perf profiling setup
+  const isDevProfiling = process.env.NODE_ENV === 'development'
+    && typeof localStorage !== 'undefined'
+    && localStorage.getItem('debug')?.includes('dashboard:perf');
+
+  const perfMark = (label: string) => {
+    if (isDevProfiling) {
+      performance.mark(label);
+    }
+  };
+
+  const perfMeasure = (label: string) => {
+    if (isDevProfiling && performance.getEntriesByName(label).length > 0) {
+      try {
+        performance.measure(`${label}-duration`, label);
+        const duration = performance.getEntriesByName(`${label}-duration`)[0]?.duration || 0;
+        if (process.env.NODE_ENV === 'development') {
+          // eslint-disable-next-line no-console
+          console.debug(
+            `[Dashboard Perf] ${label}: ${duration.toFixed(2)}ms`,
+          );
+        }
+        performance.clearMarks(label);
+        performance.clearMeasures(`${label}-duration`);
+      } catch {
+        // silently ignore perf API errors
+      }
+    }
+  };
+
+  perfMark('useDashboardSummary-start');
+
   // ============================================================================
   // 1. Activity Records (original: line 292-315)
   // ============================================================================
+  perfMark('activityRecords-calc');
   const activityRecords = useMemo(() => {
     const span = startFeatureSpan(HYDRATION_FEATURES.dashboard.activityModel, {
       status: 'pending',
@@ -140,10 +176,12 @@ export function useDashboardSummary(args: UseDashboardSummaryArgs): DashboardSum
       throw error;
     }
   }, [users, today, generateMockActivityRecords]);
+  perfMeasure('activityRecords-calc');
 
   // ============================================================================
   // 2. Usage Map (original: line 319-351)
   // ============================================================================
+  perfMark('usageMap-calc');
   const usageMap = useMemo(() => {
     const span = startFeatureSpan(HYDRATION_FEATURES.dashboard.usageAggregation, {
       status: 'pending',
@@ -174,18 +212,22 @@ export function useDashboardSummary(args: UseDashboardSummaryArgs): DashboardSum
       throw error;
     }
   }, [activityRecords, users, currentMonth]);
+  perfMeasure('usageMap-calc');
 
   // ============================================================================
   // 3. Intensive Support Users (original: line 361-362)
   // ============================================================================
+  perfMark('intensiveSupportUsers-calc');
   const intensiveSupportUsers = useMemo(
     () => users.filter(user => user.IsSupportProcedureTarget),
     [users],
   );
+  perfMeasure('intensiveSupportUsers-calc');
 
   // ============================================================================
   // 4. Stats (original: line 364-399)
   // ============================================================================
+  perfMark('stats-calc');
   const stats = useMemo(() => {
     const totalUsers = users.length;
     const recordedUsers = activityRecords.filter(r => r.status === '完了').length;
@@ -225,10 +267,12 @@ export function useDashboardSummary(args: UseDashboardSummaryArgs): DashboardSum
       lunchStats
     };
   }, [users, activityRecords]);
+  perfMeasure('stats-calc');
 
   // ============================================================================
   // 5. Attendance Summary (original: line 401-458)
   // ============================================================================
+  perfMark('attendanceSummary-calc');
   const attendanceSummary = useMemo(() => {
     const visitList = Object.values(visits);
     const userCodeMap = new Map<string, string>();
@@ -288,10 +332,12 @@ export function useDashboardSummary(args: UseDashboardSummaryArgs): DashboardSum
       outStaffNames,
     };
   }, [attendanceCounts, staff.length, users, visits]);
+  perfMeasure('attendanceSummary-calc');
 
   // ============================================================================
   // 6. Daily Record Status (original: line 460-472)
   // ============================================================================
+  perfMark('dailyRecordStatus-calc');
   const dailyRecordStatus = useMemo(() => {
     const total = users.length;
     const completed = activityRecords.filter((record) => record.status === '完了').length;
@@ -305,10 +351,12 @@ export function useDashboardSummary(args: UseDashboardSummaryArgs): DashboardSum
       completed,
     };
   }, [activityRecords, users.length]);
+  perfMeasure('dailyRecordStatus-calc');
 
   // ============================================================================
   // 7. Schedule Lanes (original: line 501-571)
   // ============================================================================
+  perfMark('scheduleLanes-calc');
   type ScheduleItem = {
     id: string;
     time: string;
@@ -352,15 +400,20 @@ export function useDashboardSummary(args: UseDashboardSummaryArgs): DashboardSum
 
     return [today, tomorrow];
   }, [users]);
+  perfMeasure('scheduleLanes-calc');
 
   // ============================================================================
   // 8. Prioritized Users (original: line 573)
   // ============================================================================
+  perfMark('prioritizedUsers-calc');
   const prioritizedUsers = useMemo(() => intensiveSupportUsers.slice(0, 3), [intensiveSupportUsers]);
+  perfMeasure('prioritizedUsers-calc');
 
   // ============================================================================
   // Return consolidated summary
   // ============================================================================
+  perfMeasure('useDashboardSummary-start');
+
   return {
     activityRecords,
     usageMap,
