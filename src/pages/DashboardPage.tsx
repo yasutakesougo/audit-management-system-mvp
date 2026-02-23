@@ -39,6 +39,7 @@ import { ZeroScrollLayout, type DashboardTab } from '@/features/dashboard/layout
 import { UserStatusTab } from '@/features/dashboard/tabs/UserStatusTab';
 import { StaffStatusTab } from '@/features/dashboard/tabs/StaffStatusTab';
 import { TodoTab } from '@/features/dashboard/tabs/TodoTab';
+import { RoomStatusTab, type RoomStatus } from '@/features/dashboard/tabs/RoomStatusTab';
 import { generateTodosFromSchedule } from '@/features/dashboard/generateTodos';
 import { useAttendanceStore } from '@/features/attendance/store';
 import { useStaffStore } from '@/features/staff/store';
@@ -556,6 +557,42 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ audience = 'staff' }) => 
     // ✨ Phase C-2: やることタブのデータ（スケジュールから自動生成）
     const todoItems = generateTodosFromSchedule(scheduleLanesToday);
 
+    // ✨ 空き室情報タブのデータ（モックデータ）
+    // TODO: 実際のスケジュールデータから部屋の使用状況を計算
+    const roomStatuses: RoomStatus[] = [
+      {
+        id: 'room-1',
+        name: '相談室A',
+        status: 'available',
+      },
+      {
+        id: 'room-2',
+        name: '相談室B',
+        status: 'occupied',
+        currentUser: 'Aさん',
+      },
+      {
+        id: 'room-3',
+        name: '多目的室',
+        status: 'reserved',
+        nextReservation: {
+          time: '14:00',
+          user: 'Bさん',
+        },
+      },
+      {
+        id: 'room-4',
+        name: '静養室',
+        status: 'available',
+        nextReservation: {
+          time: '15:30',
+          user: 'Cさん',
+        },
+      },
+    ];
+
+    const availableRoomCount = roomStatuses.filter(r => r.status === 'available').length;
+
     return [
       {
         id: 'users',
@@ -568,6 +605,12 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ audience = 'staff' }) => 
         label: '職員',
         count: staffTabData.absentStaff.length,
         component: <StaffStatusTab {...staffTabData} />,
+      },
+      {
+        id: 'rooms',
+        label: '空き室',
+        count: availableRoomCount,
+        component: <RoomStatusTab rooms={roomStatuses} />,
       },
       {
         id: 'todo',
