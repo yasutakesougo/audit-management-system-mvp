@@ -23,18 +23,35 @@ type AttendanceVisitSnapshot = {
 };
 
 /**
- * Arguments for useDashboardSummary hook
- * All values required by the 7 original useMemo blocks
+ * Dashboard input data (grouped for clarity)
  */
-export interface UseDashboardSummaryArgs {
+export interface DashboardInputData {
   users: IUserMaster[];
+  staff: Staff[];
+  visits: Record<string, AttendanceVisitSnapshot>;
+  attendanceCounts: AttendanceCounts;
+}
+
+/**
+ * Dashboard temporal data (date/period information)
+ */
+export interface DashboardTemporalData {
   today: string;
   currentMonth: string;
-  visits: Record<string, AttendanceVisitSnapshot>;
-  staff: Staff[];
-  attendanceCounts: AttendanceCounts;
+}
+
+/**
+ * Dashboard data generators (functions/callbacks)
+ */
+export interface DashboardGenerators {
   generateMockActivityRecords: (users: IUserMaster[], today: string) => PersonDaily[];
 }
+
+/**
+ * Arguments for useDashboardSummary hook
+ * Grouped for readability: entity data, temporal data, generators
+ */
+export interface UseDashboardSummaryArgs extends DashboardInputData, DashboardTemporalData, DashboardGenerators {}
 
 /**
  * Return type: combines all 7 useMemo outputs
