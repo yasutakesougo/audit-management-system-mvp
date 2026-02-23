@@ -117,8 +117,9 @@ export function useDashboardSummary(args: UseDashboardSummaryArgs): DashboardSum
     generateMockActivityRecords,
   } = args;
 
-  // DEV-only perf profiling setup
-  const isDevProfiling = process.env.NODE_ENV === 'development'
+  // DEV-only perf profiling setup (Vite optimized)
+  // import.meta.env.DEV is tree-shaken in production
+  const isDevProfiling = import.meta.env.DEV
     && typeof localStorage !== 'undefined'
     && localStorage.getItem('debug')?.includes('dashboard:perf');
 
@@ -133,7 +134,7 @@ export function useDashboardSummary(args: UseDashboardSummaryArgs): DashboardSum
       try {
         performance.measure(`${label}-duration`, label);
         const duration = performance.getEntriesByName(`${label}-duration`)[0]?.duration || 0;
-        if (process.env.NODE_ENV === 'development') {
+        if (import.meta.env.DEV) {
           // eslint-disable-next-line no-console
           console.debug(
             `[Dashboard Perf] ${label}: ${duration.toFixed(2)}ms`,
