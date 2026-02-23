@@ -88,7 +88,11 @@ jobs:
       - name: Nurse mini tests (optional)
         run: npm run test:nurse:mini
         continue-on-error: true
+      - name: Test (PR)
+        if: ${{ github.event_name == 'pull_request' }}
+        run: npm run test:ci:required
       - name: Test (coverage)
+        if: ${{ github.event_name != 'pull_request' }}
         run: npm run test:coverage -- --reporter=default
       - name: Free port 5173 (best-effort, lsof OR fuser)
         if: github.event_name == 'workflow_dispatch' || (github.ref == 'refs/heads/main' && steps.changes.outputs.playwright == 'true')
@@ -209,6 +213,28 @@ jobs:
               echo "coverage summary not found"
             } >> "$GITHUB_STEP_SUMMARY"
           fi
+
+  quality_extended:
+    name: quality_extended
+    if: ${{ github.event_name == 'pull_request' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      E2E_FEATURE_SCHEDULE_NAV: "1"
+      E2E_FEATURE_SCHEDULE_ACCEPTANCE: "1"
+      E2E_FEATURE_SCHEDULE_WEEK_MONTH_TAB: "1"
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+      - name: Install deps
+        run: npm ci
+      - name: Test (ci full)
+        run: npm run test:ci
 
   canary:
     runs-on: ubuntu-latest
