@@ -88,7 +88,11 @@ jobs:
       - name: Nurse mini tests (optional)
         run: npm run test:nurse:mini
         continue-on-error: true
+      - name: Test (PR)
+        if: ${{ github.event_name == 'pull_request' }}
+        run: npm run test:ci
       - name: Test (coverage)
+        if: ${{ github.event_name != 'pull_request' }}
         run: npm run test:coverage -- --reporter=default
       - name: Free port 5173 (best-effort, lsof OR fuser)
         if: github.event_name == 'workflow_dispatch' || (github.ref == 'refs/heads/main' && steps.changes.outputs.playwright == 'true')
