@@ -132,7 +132,7 @@ const AppShell: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [mobileOpen, setMobileOpen] = useState(false);
   const [desktopNavOpen, setDesktopNavOpen] = useState(false);
   const [navQuery, setNavQuery] = useState('');
-  const [navCollapsed, setNavCollapsed] = useState(true);
+  const [navCollapsed, setNavCollapsed] = useState(false);
   const [settingsDialogOpen, setSettingsDialogOpen] = useState(false);
   const drawerWidth = 240;
   const drawerMiniWidth = 64;

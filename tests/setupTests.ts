@@ -96,6 +96,50 @@ export function uninstallSharePointFetchMock(): void {
 
 installSharePointFetchMock();
 
+// Mock localStorage for unit tests
+// jsdom provides localStorage but it needs to be properly initialized
+class LocalStorageMock implements Storage {
+  private store: Record<string, string> = {};
+
+  clear(): void {
+    this.store = {};
+  }
+
+  getItem(key: string): string | null {
+    return this.store[key] ?? null;
+  }
+
+  setItem(key: string, value: string): void {
+    this.store[key] = String(value);
+  }
+
+  removeItem(key: string): void {
+    delete this.store[key];
+  }
+
+  key(index: number): string | null {
+    const keys = Object.keys(this.store);
+    return keys[index] ?? null;
+  }
+
+  get length(): number {
+    return Object.keys(this.store).length;
+  }
+
+  [key: string]: any;
+  [index: number]: string;
+}
+
+Object.defineProperty(globalThis, 'localStorage', {
+  value: new LocalStorageMock(),
+  writable: true,
+});
+
+Object.defineProperty(globalThis, 'sessionStorage', {
+  value: new LocalStorageMock(),
+  writable: true,
+});
+
 // Ensure the mock is present for each test and its call history does not leak across tests.
 beforeEach(() => {
   installSharePointFetchMock();
@@ -103,6 +147,9 @@ beforeEach(() => {
   if (isSpMockFetch(current) && typeof current.mockClear === 'function') {
     current.mockClear();
   }
+  // Clear localStorage between tests
+  globalThis.localStorage.clear();
+  globalThis.sessionStorage.clear();
 });
 
 afterAll(() => {
