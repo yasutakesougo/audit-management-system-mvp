@@ -154,6 +154,7 @@ const IcebergAnalysisPage: React.FC = () => {
       </Paper>
 
       <Box
+        data-testid="iceberg-page-canvas"
         sx={{
           flex: 1,
           minHeight: 0,
