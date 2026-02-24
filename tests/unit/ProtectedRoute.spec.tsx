@@ -40,6 +40,7 @@ const defaultFlags: FeatureFlagSnapshot = {
   complianceForm: false,
   schedulesWeekV2: false,
   icebergPdca: false,
+  icebergAnalysis: false,
   staffAttendance: false,
 };
 

@@ -66,6 +66,7 @@ describe('featureFlags config', () => {
       complianceForm: true,
       schedulesWeekV2: true,
       icebergPdca: true,
+      icebergAnalysis: false,
       staffAttendance: false,
       appShellVsCode: false,
     });
@@ -75,7 +76,7 @@ describe('featureFlags config', () => {
   });
 
   it('passes env override through to helper functions', () => {
-    const override = { 
+    const override = {
       VITE_FEATURE_SCHEDULES: '1',
       VITE_FEATURE_COMPLIANCE_FORM: '0',
       VITE_FEATURE_SCHEDULES_WEEK_V2: '1',
@@ -89,6 +90,7 @@ describe('featureFlags config', () => {
       complianceForm: false,
       schedulesWeekV2: true,
       icebergPdca: false,
+      icebergAnalysis: false,
       staffAttendance: false,
       appShellVsCode: false,
     });
@@ -113,6 +115,7 @@ describe('featureFlags config', () => {
       complianceForm: false,
       schedulesWeekV2: true,
       icebergPdca: false,
+      icebergAnalysis: false,
       staffAttendance: false,
       appShellVsCode: false,
     });
@@ -131,6 +134,7 @@ describe('featureFlags config', () => {
       complianceForm: false,
       schedulesWeekV2: true,
       icebergPdca: false,
+      icebergAnalysis: false,
       staffAttendance: false,
       appShellVsCode: false,
     });
@@ -150,6 +154,7 @@ describe('featureFlags config', () => {
       complianceForm: true,
       schedulesWeekV2: false,
       icebergPdca: true,
+      icebergAnalysis: false,
       staffAttendance: false,
       appShellVsCode: false,
     } satisfies FeatureFlagSnapshot;

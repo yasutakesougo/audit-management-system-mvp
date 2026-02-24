@@ -1,16 +1,17 @@
 import { isE2E } from '@/env';
 import { createContext, createElement, useContext, useMemo, type FC, type ReactNode } from 'react';
 import {
-  isAppShellVsCodeEnabled,
-  isComplianceFormEnabled,
-  isIcebergPdcaEnabled,
-  isSchedulesFeatureEnabled,
-  isSchedulesWeekV2Enabled,
-  isStaffAttendanceEnabled,
-  isTestMode,
-  readBool,
-  readOptionalEnv,
-  type EnvRecord,
+    isAppShellVsCodeEnabled,
+    isComplianceFormEnabled,
+    isIcebergAnalysisEnabled,
+    isIcebergPdcaEnabled,
+    isSchedulesFeatureEnabled,
+    isSchedulesWeekV2Enabled,
+    isStaffAttendanceEnabled,
+    isTestMode,
+    readBool,
+    readOptionalEnv,
+    type EnvRecord,
 } from '../lib/env';
 
 export type FeatureFlagSnapshot = {
@@ -18,6 +19,7 @@ export type FeatureFlagSnapshot = {
   complianceForm: boolean;
   schedulesWeekV2: boolean;
   icebergPdca: boolean;
+  icebergAnalysis: boolean;
   staffAttendance: boolean;
   appShellVsCode: boolean;
 };
@@ -100,6 +102,7 @@ export const resolveFeatureFlags = (envOverride?: EnvRecord): FeatureFlagSnapsho
     complianceForm: isComplianceFormEnabled(envOverride),
     schedulesWeekV2: isSchedulesWeekV2Enabled(envOverride),
     icebergPdca: isIcebergPdcaEnabled(envOverride),
+    icebergAnalysis: isIcebergAnalysisEnabled(envOverride),
     staffAttendance: isStaffAttendanceEnabled(envOverride),
     appShellVsCode: isAppShellVsCodeEnabled(envOverride),
   };
@@ -164,6 +167,7 @@ export const FeatureFlagsProvider: FC<FeatureFlagsProviderProps> = ({ value, chi
     snapshot.complianceForm,
     snapshot.schedulesWeekV2,
     snapshot.icebergPdca,
+    snapshot.icebergAnalysis,
     snapshot.staffAttendance,
     snapshot.appShellVsCode,
   ]);

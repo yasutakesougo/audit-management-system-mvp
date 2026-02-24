@@ -339,6 +339,26 @@
             <pnp:Field Type="Note" DisplayName="クライアント情報" StaticName="client_info" Name="client_info" NumLines="4" RichText="FALSE" />
           </pnp:Fields>
         </pnp:ListInstance>
+        <!-- =========================
+             7) 分析
+           ========================= -->
+        <!-- Iceberg_Analysis: 氷山モデル分析セッション -->
+        <pnp:ListInstance Title="Iceberg_Analysis" Description="氷山モデル分析セッション" TemplateType="100" Url="Lists/Iceberg_Analysis">
+          <pnp:Fields>
+            <pnp:Field Type="Text" DisplayName="UserID" Required="TRUE" Indexed="TRUE" StaticName="UserID0" Name="UserID0" />
+            <pnp:Field Type="Note" DisplayName="スナップショットJSON" StaticName="SnapshotJSON" Name="SnapshotJSON" NumLines="20" RichText="FALSE" />
+            <pnp:Field Type="Number" DisplayName="バージョン" StaticName="Version0" Name="Version0">
+              <Default>1</Default>
+            </pnp:Field>
+            <pnp:Field Type="Text" DisplayName="エントリハッシュ" EnforceUniqueValues="TRUE" Indexed="TRUE" StaticName="EntryHash0" Name="EntryHash0" MaxLength="128" />
+            <pnp:Field Type="Choice" DisplayName="ステータス" StaticName="Status0" Name="Status0">
+              <pnp:Choices>
+                <pnp:Choice>Draft</pnp:Choice>
+                <pnp:Choice>Final</pnp:Choice>
+              </pnp:Choices>
+            </pnp:Field>
+          </pnp:Fields>
+        </pnp:ListInstance>
       </pnp:Lists>
     </pnp:ProvisioningTemplate>
   </pnp:Templates>

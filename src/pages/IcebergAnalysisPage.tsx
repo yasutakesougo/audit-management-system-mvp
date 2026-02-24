@@ -1,14 +1,21 @@
 import { IcebergCanvas } from '@/features/analysis/components/iceberg/IcebergCanvas';
+import IcebergSessionList from '@/features/analysis/components/iceberg/IcebergSessionList';
+import type { IcebergAnalysisRecord } from '@/features/analysis/domain/icebergAnalysisRecord';
 import type { EnvironmentFactor } from '@/features/analysis/domain/icebergTypes';
+import { useIcebergAutoSave, type AutoSaveStatus } from '@/features/analysis/hooks/useIcebergAutoSave';
 import { useIcebergStore } from '@/features/analysis/stores/icebergStore';
 import type { AssessmentItem } from '@/features/assessment/domain/types';
 import type { BehaviorObservation } from '@/features/daily/domain/daily/types';
 import { useUsersDemo } from '@/features/users/usersStoreDemo';
 import AddLinkIcon from '@mui/icons-material/AddLink';
-import SaveIcon from '@mui/icons-material/Save';
+import CheckCircleOutlineIcon from '@mui/icons-material/CheckCircleOutline';
+import CloudOffIcon from '@mui/icons-material/CloudOff';
+import ErrorOutlineIcon from '@mui/icons-material/ErrorOutline';
+import SyncIcon from '@mui/icons-material/Sync';
 import WorkspacesIcon from '@mui/icons-material/Workspaces';
 import Box from '@mui/material/Box';
 import Button from '@mui/material/Button';
+import Chip from '@mui/material/Chip';
 import Container from '@mui/material/Container';
 import FormControl from '@mui/material/FormControl';
 import InputLabel from '@mui/material/InputLabel';
@@ -16,8 +23,9 @@ import MenuItem from '@mui/material/MenuItem';
 import Paper from '@mui/material/Paper';
 import Select, { type SelectChangeEvent } from '@mui/material/Select';
 import Stack from '@mui/material/Stack';
+import Tooltip from '@mui/material/Tooltip';
 import Typography from '@mui/material/Typography';
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 
 const createDemoBehaviors = (userId: string): BehaviorObservation[] => [
   {
@@ -67,11 +75,30 @@ const createDemoEnvironmentFactors = (): EnvironmentFactor[] => [
   },
 ];
 
+const SESSION_PANEL_WIDTH = 260;
+
+const SAVE_STATUS_CONFIG: Record<AutoSaveStatus, { label: string; color: 'default' | 'success' | 'error' | 'warning'; icon?: React.ReactElement }> = {
+  idle: { label: '未保存', color: 'default' },
+  saving: { label: '保存中…', color: 'warning', icon: <SyncIcon fontSize="small" sx={{ animation: 'spin 1s linear infinite', '@keyframes spin': { from: { transform: 'rotate(0deg)' }, to: { transform: 'rotate(360deg)' } } }} /> },
+  saved: { label: '保存済み', color: 'success', icon: <CheckCircleOutlineIcon fontSize="small" /> },
+  error: { label: '保存失敗', color: 'error', icon: <CloudOffIcon fontSize="small" /> },
+  conflict: { label: '他端末更新', color: 'error', icon: <ErrorOutlineIcon fontSize="small" /> },
+};
+
 const IcebergAnalysisPage: React.FC = () => {
-  const { currentSession, initSession, moveNode, addNodeFromData, linkNodes } = useIcebergStore();
+  const { currentSession, initSession, moveNode, addNodeFromData, linkNodes, restoreSession } = useIcebergStore();
   const { data: users } = useUsersDemo();
   const [targetUserId, setTargetUserId] = useState('');
+  const [activeRecordId, setActiveRecordId] = useState<string>();
   const activeSessionUserId = currentSession?.targetUserId;
+
+  // Auto-save hook — debounced 600ms
+  const { status: saveStatus, lastSavedAt, errorMessage, saveNow } = useIcebergAutoSave(currentSession);
+
+  const lastSavedLabel = useMemo(() => {
+    if (!lastSavedAt) return null;
+    return new Date(lastSavedAt).toLocaleTimeString('ja-JP');
+  }, [lastSavedAt]);
 
   useEffect(() => {
     if (!targetUserId) return;
@@ -79,11 +106,14 @@ const IcebergAnalysisPage: React.FC = () => {
     const user = users.find((u) => u.UserID === targetUserId);
     const title = user ? `${user.FullName}さんの分析セッション` : `${targetUserId}さんの分析セッション`;
     initSession(targetUserId, title);
+    setActiveRecordId(undefined);
   }, [activeSessionUserId, initSession, targetUserId, users]);
 
   useEffect(() => {
     if (!currentSession) return;
     if (currentSession.nodes.length > 0) return;
+    // Only inject demo data for brand-new sessions (not loaded ones)
+    if (activeRecordId) return;
 
     const behaviors = createDemoBehaviors(currentSession.targetUserId);
     const assessments = createDemoAssessments();
@@ -98,7 +128,7 @@ const IcebergAnalysisPage: React.FC = () => {
     environments.forEach((factor, index) =>
       addNodeFromData(factor, 'environment', { x: 120 + index * 260, y: 340 + index * 30 }),
     );
-  }, [addNodeFromData, currentSession]);
+  }, [addNodeFromData, currentSession, activeRecordId]);
 
   const handleAutoLink = () => {
     if (!currentSession) return;
@@ -108,9 +138,35 @@ const IcebergAnalysisPage: React.FC = () => {
     linkNodes(causes[0].id, behaviors[0].id);
   };
 
+  const handleManualSave = () => {
+    if (currentSession) {
+      void saveNow(currentSession);
+    }
+  };
+
   const handleUserChange = (event: SelectChangeEvent<string>) => {
     setTargetUserId(event.target.value);
   };
+
+  // Session list callbacks
+  const handleLoadSession = useCallback((record: IcebergAnalysisRecord) => {
+    restoreSession(record.snapshotJSON);
+    setActiveRecordId(record.id);
+    setTargetUserId(record.userId);
+  }, [restoreSession]);
+
+  const handleDuplicateSession = useCallback((record: IcebergAnalysisRecord) => {
+    const restored = restoreSession(record.snapshotJSON);
+    if (restored) {
+      // Init a new session with the same content but fresh ID
+      const title = `${record.title} (複製)`;
+      initSession(record.userId, title);
+      setTargetUserId(record.userId);
+      setActiveRecordId(undefined);
+    }
+  }, [restoreSession, initSession]);
+
+  const statusConfig = SAVE_STATUS_CONFIG[saveStatus];
 
   return (
     <Container maxWidth="xl" sx={{ height: '100vh', py: 2, display: 'flex', flexDirection: 'column' }}>
@@ -143,36 +199,80 @@ const IcebergAnalysisPage: React.FC = () => {
           </Box>
         </Box>
 
-        <Stack direction="row" spacing={2}>
+        <Stack direction="row" spacing={2} alignItems="center">
+          {/* Auto-save status indicator */}
+          {currentSession && (
+            <Tooltip title={errorMessage || ''} arrow placement="bottom">
+              <Chip
+                icon={statusConfig.icon}
+                label={lastSavedLabel ? `${statusConfig.label} (${lastSavedLabel})` : statusConfig.label}
+                color={statusConfig.color}
+                variant="outlined"
+                size="small"
+                data-testid="iceberg-save-status"
+              />
+            </Tooltip>
+          )}
+
           <Button variant="outlined" startIcon={<AddLinkIcon />} onClick={handleAutoLink} disabled={!currentSession}>
             仮説リンク (Demo)
           </Button>
-          <Button variant="contained" startIcon={<SaveIcon />} disabled={!currentSession}>
-            分析保存
+          <Button
+            variant="contained"
+            disabled={!currentSession || saveStatus === 'saving'}
+            onClick={handleManualSave}
+            data-testid="iceberg-save-btn"
+          >
+            {saveStatus === 'saving' ? '保存中...' : '今すぐ保存'}
           </Button>
         </Stack>
       </Paper>
 
-      <Box
-        sx={{
-          flex: 1,
-          minHeight: 0,
-          bgcolor: '#fafafa',
-          border: '1px solid #ddd',
-          borderRadius: 2,
-          position: 'relative',
-          p: 1,
-        }}
-      >
-        {currentSession ? (
-          <IcebergCanvas nodes={currentSession.nodes} links={currentSession.links} onMoveNode={moveNode} />
-        ) : (
-          <Box sx={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-            <Typography color="text.secondary" variant="h6">
-              上部のドロップダウンから分析対象を選択してください
-            </Typography>
-          </Box>
+      {/* Main content area: session list (left) + canvas (right) */}
+      <Box sx={{ flex: 1, minHeight: 0, display: 'flex', gap: 2 }}>
+        {/* Left panel: session list */}
+        {targetUserId && (
+          <Paper
+            sx={{
+              width: SESSION_PANEL_WIDTH,
+              minWidth: SESSION_PANEL_WIDTH,
+              overflow: 'hidden',
+              display: 'flex',
+              flexDirection: 'column',
+            }}
+            variant="outlined"
+          >
+            <IcebergSessionList
+              userId={targetUserId}
+              activeRecordId={activeRecordId}
+              onLoad={handleLoadSession}
+              onDuplicate={handleDuplicateSession}
+            />
+          </Paper>
         )}
+
+        {/* Right panel: canvas */}
+        <Box
+          sx={{
+            flex: 1,
+            minHeight: 0,
+            bgcolor: '#fafafa',
+            border: '1px solid #ddd',
+            borderRadius: 2,
+            position: 'relative',
+            p: 1,
+          }}
+        >
+          {currentSession ? (
+            <IcebergCanvas nodes={currentSession.nodes} links={currentSession.links} onMoveNode={moveNode} />
+          ) : (
+            <Box sx={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <Typography color="text.secondary" variant="h6">
+                上部のドロップダウンから分析対象を選択してください
+              </Typography>
+            </Box>
+          )}
+        </Box>
       </Box>
     </Container>
   );

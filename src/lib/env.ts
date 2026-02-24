@@ -371,6 +371,9 @@ export const isStaffAttendanceEnabled = (envOverride?: EnvRecord): boolean => {
 export const isIcebergPdcaEnabled = (envOverride?: EnvRecord): boolean =>
   readBool('VITE_FEATURE_ICEBERG_PDCA', false, envOverride);
 
+export const isIcebergAnalysisEnabled = (envOverride?: EnvRecord): boolean =>
+  readBool('VITE_FEATURE_ICEBERG_ANALYSIS', false, envOverride);
+
 export const isAppShellVsCodeEnabled = (envOverride?: EnvRecord): boolean =>
   readBool('VITE_FEATURE_APPSHELL_VSCODE', false, envOverride);
 
@@ -602,15 +605,15 @@ export const getSharePointDefaultScope = (envOverride?: EnvRecord): string => {
 
 /**
  * ✅ SINGLE SOURCE OF TRUTH: When to SKIP SharePoint
- * 
+ *
  * This is the canonical check for all stores (useOrgStore, useStaffStore, etc.)
  * to determine whether SharePoint API should be touched.
- * 
+ *
  * SharePoint is skipped if ANY of these are true:
  * 1. VITE_DEMO_MODE === '1' (true demo mode)
  * 2. VITE_SP_SITE_URL is not configured (empty/invalid baseUrl)
  * 3. VITE_SKIP_LOGIN is enabled (automation/testing mode)
- * 
+ *
  * This prevents accidental SharePoint calls in demo/test scenarios.
  */
 export const SP_SITE_URL = String(import.meta.env.VITE_SP_SITE_URL || '').trim();

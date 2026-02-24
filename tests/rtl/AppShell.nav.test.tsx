@@ -85,6 +85,7 @@ describe('AppShell navigation smoke test', () => {
     complianceForm: false,
     schedulesWeekV2: false,
     icebergPdca: false,
+  icebergAnalysis: false,
     staffAttendance: false,
   };
 

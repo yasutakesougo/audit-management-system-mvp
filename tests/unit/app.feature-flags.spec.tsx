@@ -24,12 +24,12 @@ const renderWithFlags = (flags: FeatureFlagSnapshot) =>
 
 describe('AppShell schedule flag', () => {
   it('hides schedule nav when flag is disabled', () => {
-    renderWithFlags({ schedules: false, complianceForm: false, schedulesWeekV2: false, icebergPdca: false, staffAttendance: false });
+    renderWithFlags({ schedules: false, complianceForm: false, schedulesWeekV2: false, icebergPdca: false, icebergAnalysis: false, staffAttendance: false, appShellVsCode: false });
     expect(screen.queryByTestId('nav-schedules')).toBeNull();
   });
 
   it('shows schedule nav when flag is enabled', async () => {
-    renderWithFlags({ schedules: true, complianceForm: false, schedulesWeekV2: true, icebergPdca: false, staffAttendance: false });
+    renderWithFlags({ schedules: true, complianceForm: false, schedulesWeekV2: true, icebergPdca: false, icebergAnalysis: false, staffAttendance: false, appShellVsCode: false });
     expect(await screen.findByTestId('nav-schedules')).toBeInTheDocument();
   });
 });

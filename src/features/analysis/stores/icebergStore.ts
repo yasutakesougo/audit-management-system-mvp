@@ -181,6 +181,23 @@ const loadSession = (sessionId: string) => {
   return existing;
 };
 
+/**
+ * Restore a session from a SharePoint snapshotJSON string.
+ * Used when loading a saved session from the session list.
+ */
+const restoreSession = (snapshotJSON: string): IcebergSession | null => {
+  try {
+    const parsed = JSON.parse(snapshotJSON) as IcebergSession;
+    if (!parsed.id || !parsed.targetUserId) return null;
+    persistSession(parsed);
+    emit();
+    return parsed;
+  } catch (err) {
+    console.error('[IcebergStore] Failed to restore session:', err);
+    return null;
+  }
+};
+
 export function useIcebergStore() {
   const store = useSyncExternalStore(subscribe, snapshot, snapshot);
 
@@ -196,6 +213,7 @@ export function useIcebergStore() {
     [],
   );
   const load = useCallback((sessionId: string) => loadSession(sessionId), []);
+  const restore = useCallback((json: string) => restoreSession(json), []);
 
   return {
     currentSession: store.currentSession,
@@ -206,5 +224,63 @@ export function useIcebergStore() {
     moveNode: move,
     linkNodes: link,
     loadSession: load,
+    restoreSession: restore,
   } as const;
 }
+
+/**
+ * Serialize IcebergSession to JSON for SharePoint storage.
+ * Includes all fields (volatile + content).
+ */
+export const serializeSession = (session: IcebergSession): string => {
+  const payload = {
+    id: session.id,
+    targetUserId: session.targetUserId,
+    title: session.title,
+    createdAt: session.createdAt,
+    updatedAt: session.updatedAt,
+    nodes: session.nodes,
+    links: session.links,
+  };
+  return JSON.stringify(payload);
+};
+
+/**
+ * Build canonical JSON for hashing — only content-stable fields.
+ * Excludes id, createdAt, updatedAt to ensure same content → same hash.
+ * Nodes are sorted by id, links by id for key ordering stability.
+ */
+const buildCanonicalPayload = (session: IcebergSession): string => {
+  const sortedNodes = [...session.nodes]
+    .sort((a, b) => a.id.localeCompare(b.id))
+    .map(({ id, type, label, details, sourceId, position }) => ({
+      id, type, label, details, sourceId, position,
+    }));
+
+  const sortedLinks = [...session.links]
+    .sort((a, b) => a.id.localeCompare(b.id))
+    .map(({ id, sourceNodeId, targetNodeId, confidence, note }) => ({
+      id, sourceNodeId, targetNodeId, confidence, note,
+    }));
+
+  return JSON.stringify({
+    targetUserId: session.targetUserId,
+    title: session.title,
+    nodes: sortedNodes,
+    links: sortedLinks,
+  });
+};
+
+/**
+ * Compute an SHA-256 hash for idempotent upsert.
+ * Uses only content-stable fields — same content always produces the same hash.
+ */
+export const computeEntryHash = async (session: IcebergSession): Promise<string> => {
+  const canonical = buildCanonicalPayload(session);
+  const data = new TextEncoder().encode(canonical);
+  const buffer = await crypto.subtle.digest('SHA-256', data);
+  const bytes = new Uint8Array(buffer);
+  return Array.from(bytes)
+    .map((b) => b.toString(16).padStart(2, '0'))
+    .join('');
+};
