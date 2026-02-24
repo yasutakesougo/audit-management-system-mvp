@@ -1,30 +1,29 @@
-import React, { useState, useMemo } from 'react';
-import {
-  Box,
-  Tab,
-  Tabs,
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableRow,
-  Card,
-  CardContent,
-  Typography,
-  Button,
-  Stack,
-  IconButton,
-  Dialog,
-  DialogTitle,
-  DialogContent,
-  DialogActions,
-  Paper,
-  Grid,
-} from '@mui/material';
-import { ChevronLeft as ChevronLeftIcon, ChevronRight as ChevronRightIcon } from '@mui/icons-material';
-import DeleteIcon from '@mui/icons-material/Delete';
-import ClearAllIcon from '@mui/icons-material/ClearAll';
 import { RoomStatusTab } from '@/features/dashboard/tabs/RoomStatusTab';
+import { ChevronLeft as ChevronLeftIcon, ChevronRight as ChevronRightIcon } from '@mui/icons-material';
+import ClearAllIcon from '@mui/icons-material/ClearAll';
+import DeleteIcon from '@mui/icons-material/Delete';
+import {
+    Box,
+    Button,
+    Card,
+    CardContent,
+    Dialog,
+    DialogActions,
+    DialogContent,
+    DialogTitle,
+    IconButton,
+    Paper,
+    Stack,
+    Tab,
+    Table,
+    TableBody,
+    TableCell,
+    TableHead,
+    TableRow,
+    Tabs,
+    Typography
+} from '@mui/material';
+import React, { useMemo, useState } from 'react';
 
 interface Reservation {
   id: number;
@@ -50,7 +49,7 @@ const groupColors: Record<string, { bg: string; text: string }> = {
 };
 
 export const RoomManagementTabs: React.FC = () => {
-  const [tab, setTab] = useState<'daily' | 'monthly'>(0 as any);
+  const [tab, setTab] = useState<number>(0);
   const [currentMonth, setCurrentMonth] = useState(new Date());
   const [reservations, setReservations] = useState<Reservation[]>([
     { id: 1, room: 'プレイルーム', slot: 'AM', group: '生活支援', detail: '09:30~' },

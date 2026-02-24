@@ -101,9 +101,9 @@ export function UserForm({
 
       {/* フォーム本体 */}
       <form
-        ref={formRef}
-        data-form="user"
+        ref={formRef as React.RefObject<HTMLFormElement>}
         onSubmit={handleSubmit}
+        noValidate
         role="form"
         aria-label={mode === 'create' ? '新規利用者登録フォーム' : '利用者情報編集フォーム'}
       >
