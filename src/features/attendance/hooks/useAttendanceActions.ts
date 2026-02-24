@@ -93,23 +93,17 @@ export function useAttendanceActions<TVisitMap>({
 }: UseAttendanceActionsArgs<TVisitMap>) {
   const inFlightRef = React.useRef<Set<string>>(new Set());
 
-  const run = React.useCallback(
-    async (userId: string, type: AttendanceActionType) => {
-      const key = `${userId}:${type}`;
-      if (inFlightRef.current.has(key)) return;
-      inFlightRef.current.add(key);
+  const applyAndPersist = React.useCallback(
+    async (update: (prev: TVisitMap) => TVisitMap, actionKey: string = 'custom') => {
+      if (inFlightRef.current.has(actionKey)) return;
+      inFlightRef.current.add(actionKey);
 
       let snapshot: TVisitMap | null = null;
       let optimisticNext: TVisitMap | null = null;
 
       setVisits((prev) => {
         snapshot = prev;
-        optimisticNext = buildNextVisits({
-          prev,
-          userId,
-          type,
-          nowIso: nowIso(),
-        });
+        optimisticNext = update(prev);
         return optimisticNext;
       });
 
@@ -123,10 +117,27 @@ export function useAttendanceActions<TVisitMap>({
         }
         throw classifyAttendanceError(error);
       } finally {
-        inFlightRef.current.delete(key);
+        inFlightRef.current.delete(actionKey);
       }
     },
-    [setVisits, persist, buildNextVisits, nowIso],
+    [persist, setVisits],
+  );
+
+  const run = React.useCallback(
+    async (userId: string, type: AttendanceActionType) => {
+      const key = `${userId}:${type}`;
+      await applyAndPersist(
+        (prev) =>
+          buildNextVisits({
+            prev,
+            userId,
+            type,
+            nowIso: nowIso(),
+          }),
+        key,
+      );
+    },
+    [applyAndPersist, buildNextVisits, nowIso],
   );
 
   const checkIn = React.useCallback((userId: string) => run(userId, 'checkIn'), [run]);
@@ -139,5 +150,6 @@ export function useAttendanceActions<TVisitMap>({
     checkOut,
     markAbsent,
     clearAbsent,
+    applyAndPersist,
   };
 }
