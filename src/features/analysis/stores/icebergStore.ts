@@ -6,8 +6,8 @@ import type {
     IcebergSession,
     NodePosition,
 } from '@/features/analysis/domain/icebergTypes';
-import type { AssessmentItem } from '@/features/assessment/domain/types';
-import type { BehaviorObservation } from '@/features/daily/domain/daily/types';
+import type { AssessmentItem } from '@/features/assessment';
+import type { BehaviorObservation } from '@/features/daily';
 import { useCallback, useSyncExternalStore } from 'react';
 
 type IcebergState = {
