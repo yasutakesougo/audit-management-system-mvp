@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { installTestResets } from '../helpers/reset';
 import { mergeTestConfig, setTestConfigOverride } from '../helpers/mockEnv';
+import { installTestResets } from '../helpers/reset';
 
 vi.mock('@/lib/env', async () => {
   const actual = await vi.importActual<typeof import('@/lib/env')>('@/lib/env');
@@ -330,7 +330,7 @@ describe('createSpClient CRUD helpers', () => {
   });
 
   it('logs token metrics snapshot when debug mode is enabled', async () => {
-    setTestConfigOverride({ VITE_AUDIT_DEBUG: '1' });
+    setTestConfigOverride({ VITE_AUDIT_DEBUG: true });
     fetchMock.mockResolvedValueOnce(new Response(null, { status: 204 }));
     const debugSpy = vi.spyOn(console, 'debug').mockImplementation(() => {});
 

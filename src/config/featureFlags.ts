@@ -1,16 +1,16 @@
 import { isE2E } from '@/env';
 import { createContext, createElement, useContext, useMemo, type FC, type ReactNode } from 'react';
 import {
-  isAppShellVsCodeEnabled,
-  isComplianceFormEnabled,
-  isIcebergPdcaEnabled,
-  isSchedulesFeatureEnabled,
-  isSchedulesWeekV2Enabled,
-  isStaffAttendanceEnabled,
-  isTestMode,
-  readBool,
-  readOptionalEnv,
-  type EnvRecord,
+    isAppShellVsCodeEnabled,
+    isComplianceFormEnabled,
+    isIcebergPdcaEnabled,
+    isSchedulesFeatureEnabled,
+    isSchedulesWeekV2Enabled,
+    isStaffAttendanceEnabled,
+    isTestMode,
+    readBool,
+    readOptionalEnv,
+    type EnvRecord,
 } from '../lib/env';
 
 export type FeatureFlagSnapshot = {
@@ -80,20 +80,20 @@ const isAutomationRuntime = (): boolean => {
  */
 const hasExplicitBoolEnv = (key: string, envOverride?: EnvRecord): boolean => {
   if (envOverride) {
-    const rawOverride = envOverride[key];
+    const rawOverride = (envOverride as Record<string, unknown>)[key];
     if (rawOverride === undefined || rawOverride === null) return false;
     const v = String(rawOverride).trim().toLowerCase();
     return v === '1' || v === '0' || v === 'true' || v === 'false';
   }
   const raw = readOptionalEnv(key);
   if (raw == null) return false;
-  const v = raw.trim().toLowerCase();
+  const v = String(raw).trim().toLowerCase();
   return v === '1' || v === '0' || v === 'true' || v === 'false';
 };
 
 export const resolveFeatureFlags = (envOverride?: EnvRecord): FeatureFlagSnapshot => {
   // Treat explicit envOverride as an automation-like context to apply safe defaults
-  const isAutomationEnv = envOverride ? true : (isE2E || isTestMode(envOverride) || isAutomationRuntime());
+  const isAutomationEnv = envOverride ? true : (isE2E || isTestMode() || isAutomationRuntime());
 
   const baseSnapshot: FeatureFlagSnapshot = {
     schedules: isSchedulesFeatureEnabled(envOverride),

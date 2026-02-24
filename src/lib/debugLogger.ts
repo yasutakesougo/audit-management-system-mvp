@@ -1,18 +1,14 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
-import { getAppConfig } from '@/lib/env';
-
-const debugConfig = getAppConfig();
-const enabled = debugConfig.VITE_AUDIT_DEBUG === '1' || debugConfig.VITE_AUDIT_DEBUG === 'true';
+import { env } from '@/lib/env';
 
 type Level = 'debug' | 'info' | 'warn' | 'error';
 
 function log(level: Level, ns: string, ...args: unknown[]) {
+  const isDebugEnabled = env.VITE_AUDIT_DEBUG;
   // Production: only show errors
   // Development: show all levels (respecting VITE_AUDIT_DEBUG for debug)
   if (!import.meta.env.DEV && level !== 'error') return;
-  if (!enabled && level === 'debug') return;
-  // eslint-disable-next-line no-console
-  (console as any)[level](`[audit:${ns}]`, ...args);
+  if (!isDebugEnabled && level === 'debug') return;
+  (console as unknown as Record<Level, (message?: unknown, ...optionalParams: unknown[]) => void>)[level](`[audit:${ns}]`, ...args);
 }
 
 export const auditLog = {
@@ -20,5 +16,5 @@ export const auditLog = {
   info: (ns: string, ...a: unknown[]) => log('info', ns, ...a),
   warn: (ns: string, ...a: unknown[]) => log('warn', ns, ...a),
   error: (ns: string, ...a: unknown[]) => log('error', ns, ...a),
-  enabled
+  get enabled() { return env.VITE_AUDIT_DEBUG; }
 };

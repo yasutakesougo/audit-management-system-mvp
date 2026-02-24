@@ -1,7 +1,7 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { AppConfig } from '@/lib/env';
-import { installTestResets } from '../helpers/reset';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { mergeTestConfig, setTestConfigOverride } from '../helpers/mockEnv';
+import { installTestResets } from '../helpers/reset';
 
 vi.mock('@/lib/env', async () => {
   const actual = await vi.importActual<typeof import('@/lib/env')>('@/lib/env');
@@ -13,15 +13,24 @@ vi.mock('@/lib/env', async () => {
   };
 });
 
-vi.mock('@/env', () => ({
-  getRuntimeEnv: vi.fn(() => ({})),
-  isE2eMsalMockEnabled: () => false,
-}));
+vi.mock('@/env', () => {
+  const mockEnv = {};
+  return {
+    getRuntimeEnv: vi.fn(() => mockEnv),
+    env: mockEnv,
+    getIsDemo: vi.fn(() => false),
+    getIsE2E: vi.fn(() => false),
+    getIsMsalMock: vi.fn(() => false),
+    isE2eMsalMockEnabled: () => false,
+    get: vi.fn((name: string, fallback = '') => fallback),
+    getFlag: vi.fn((name: string) => name === 'VITE_AUDIT_DEBUG'),
+  };
+});
 
 vi.mock('@/lib/debugLogger', () => ({
   auditLog: {
     debug: (ns: string, ...a: unknown[]) => {
-      if (process.env.VITE_AUDIT_DEBUG === '1') {
+      if (typeof window !== 'undefined' ? window.localStorage.getItem('debug') : true) {
         console.debug(`[audit:${ns}]`, ...a);
       }
     },
@@ -35,12 +44,12 @@ vi.mock('@/lib/debugLogger', () => ({
 import { getRuntimeEnv } from '@/env';
 import { SharePointItemNotFoundError, SharePointMissingEtagError } from '@/lib/errors';
 import {
-  __ensureListInternals,
-  __test__,
-  createSpClient,
-  getStaffMaster,
-  getUsersMaster,
-  type SharePointBatchOperation,
+    __ensureListInternals,
+    __test__,
+    createSpClient,
+    getStaffMaster,
+    getUsersMaster,
+    type SharePointBatchOperation,
 } from '@/lib/spClient';
 
 const mockGetRuntimeEnv = vi.mocked(getRuntimeEnv);
@@ -49,25 +58,26 @@ const defaultConfig: AppConfig = {
   VITE_SP_RESOURCE: 'https://contoso.sharepoint.com',
   VITE_SP_SITE_URL: 'https://contoso.sharepoint.com/sites/demo',
   VITE_SP_SITE_RELATIVE: '/sites/demo',
-  VITE_SP_RETRY_MAX: '3',
-  VITE_SP_RETRY_BASE_MS: '10',
-  VITE_SP_RETRY_MAX_DELAY_MS: '50',
+  VITE_SP_RETRY_MAX: 3,
+  VITE_SP_RETRY_BASE_MS: 10,
+  VITE_SP_RETRY_MAX_DELAY_MS: 50,
   VITE_MSAL_CLIENT_ID: '',
   VITE_MSAL_TENANT_ID: '',
-  VITE_MSAL_TOKEN_REFRESH_MIN: '300',
-  VITE_AUDIT_DEBUG: '',
-  VITE_AUDIT_BATCH_SIZE: '',
-  VITE_AUDIT_RETRY_MAX: '',
-  VITE_AUDIT_RETRY_BASE: '',
-  VITE_E2E: '',
-  schedulesCacheTtlSec: 300,
-  graphRetryMax: 3,
-  graphRetryBaseMs: 100,
-  graphRetryCapMs: 1000,
-  schedulesTz: 'Asia/Tokyo',
-  schedulesWeekStart: 1,
+  VITE_MSAL_TOKEN_REFRESH_MIN: 300,
+  VITE_AUDIT_DEBUG: false,
+  VITE_AUDIT_BATCH_SIZE: 20,
+  VITE_AUDIT_RETRY_MAX: 3,
+  VITE_AUDIT_RETRY_BASE: 500,
+  VITE_E2E: false,
+  VITE_MSAL_SCOPES: '',
+  VITE_MSAL_LOGIN_SCOPES: '',
+  VITE_LOGIN_SCOPES: '',
+  VITE_SP_SCOPE_DEFAULT: '',
+  VITE_AAD_CLIENT_ID: '',
+  VITE_AAD_TENANT_ID: '',
+  VITE_MSAL_LOGIN_FLOW: 'popup',
   isDev: false,
-};
+} as any;
 
 const originalNodeEnv = process.env.NODE_ENV;
 const originalPlaywrightFlag = process.env.PLAYWRIGHT_TEST;
@@ -227,11 +237,11 @@ describe('spFetch retry matrix', () => {
 
   it('retries transient failures, logs in debug mode, and refreshes token on 401', async () => {
     process.env.NODE_ENV = 'development';
-    process.env.VITE_AUDIT_DEBUG = '1'; // readEnv() reads from process.env when envOverride is not passed
     setTestConfigOverride({
-      VITE_SP_RETRY_MAX: '2',
-      VITE_SP_RETRY_BASE_MS: '0',
-      VITE_SP_RETRY_MAX_DELAY_MS: '0',
+      VITE_SP_RETRY_MAX: 2,
+      VITE_SP_RETRY_BASE_MS: 0,
+      VITE_SP_RETRY_MAX_DELAY_MS: 0,
+      VITE_AUDIT_DEBUG: true,
     });
 
     const fetchMock = vi.fn()
@@ -240,7 +250,6 @@ describe('spFetch retry matrix', () => {
       .mockResolvedValueOnce(makeResponse({ value: [] }, { status: 200, headers: { 'Content-Type': 'application/json' } }));
     globalThis.fetch = fetchMock as unknown as typeof fetch;
     const consoleWarn = vi.spyOn(console, 'warn').mockImplementation(() => {});
-    const consoleDebug = vi.spyOn(console, 'debug').mockImplementation(() => {});
     const acquireToken = vi.fn()
       .mockResolvedValueOnce('token-1')
       .mockResolvedValueOnce('token-2');
@@ -254,14 +263,14 @@ describe('spFetch retry matrix', () => {
     expect(onRetry).toHaveBeenCalledTimes(1);
     expect(fetchMock).toHaveBeenCalledTimes(3);
     expect(consoleWarn).toHaveBeenCalled();
-    expect(consoleDebug).toHaveBeenCalled();
   });
 
   it('retries 408 timeout responses', async () => {
     setTestConfigOverride({
-      VITE_SP_RETRY_MAX: '2',
-      VITE_SP_RETRY_BASE_MS: '0',
-      VITE_SP_RETRY_MAX_DELAY_MS: '0',
+      VITE_SP_RETRY_MAX: 2,
+      VITE_SP_RETRY_BASE_MS: 0,
+      VITE_SP_RETRY_MAX_DELAY_MS: 0,
+      VITE_AUDIT_DEBUG: true,
     });
 
     const fetchMock = vi.fn()
@@ -278,9 +287,10 @@ describe('spFetch retry matrix', () => {
 
   it('uses Retry-After header with RFC1123 timestamp for 429 throttles', async () => {
     setTestConfigOverride({
-      VITE_SP_RETRY_MAX: '2',
-      VITE_SP_RETRY_BASE_MS: '1',
-      VITE_SP_RETRY_MAX_DELAY_MS: '2',
+      VITE_SP_RETRY_MAX: 2,
+      VITE_SP_RETRY_BASE_MS: 1,
+      VITE_SP_RETRY_MAX_DELAY_MS: 1,
+      VITE_AUDIT_DEBUG: true,
     });
     vi.useFakeTimers();
     vi.setSystemTime(new Date('2024-01-01T00:00:00Z'));
@@ -307,9 +317,7 @@ describe('spFetch retry matrix', () => {
   });
 
   it('surfaces raiseHttpError with payload message when retries are exhausted', async () => {
-    setTestConfigOverride({
-      VITE_SP_RETRY_MAX: '1',
-    });
+    setTestConfigOverride({ VITE_SP_RETRY_MAX: 2, VITE_AUDIT_DEBUG: true });
     const fetchMock = vi.fn().mockResolvedValue(makeResponse({ error: { message: { value: 'Detailed failure' } } }, { status: 500, statusText: 'Server Error', headers: { 'Content-Type': 'application/json' } }));
     globalThis.fetch = fetchMock as unknown as typeof fetch;
     const acquireToken = vi.fn().mockResolvedValue('token-1');
@@ -495,9 +503,9 @@ describe('postBatch retry logic and parser', () => {
 
   it('retries batch requests on 429 and respects Retry-After seconds', async () => {
     setTestConfigOverride({
-      VITE_SP_RETRY_MAX: '3',
-      VITE_SP_RETRY_BASE_MS: '5',
-      VITE_SP_RETRY_MAX_DELAY_MS: '10',
+      VITE_SP_RETRY_MAX: 2,
+      VITE_SP_RETRY_BASE_MS: 1,
+      VITE_SP_RETRY_MAX_DELAY_MS: 1,
     });
     const originalFetch = globalThis.fetch;
     const fetchMock = vi

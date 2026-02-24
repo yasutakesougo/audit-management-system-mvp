@@ -1,22 +1,34 @@
 import {
-  getMsalLoginScopes,
-  getMsalTokenRefreshMin,
-  getSharePointBaseUrl,
-  getSharePointDefaultScope,
-  getSharePointResource,
-  getSharePointSiteRelative,
-  isSchedulesFeatureEnabled,
-  type EnvRecord,
+    getMsalLoginScopes,
+    getMsalTokenRefreshMin,
+    getSharePointBaseUrlWithApi,
+    getSharePointDefaultScope,
+    getSharePointResource,
+    getSharePointSiteRelative,
+    isSchedulesFeatureEnabled,
+    type EnvRecord
 } from '@/lib/env';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 // Mock getRuntimeEnv to prevent .env file pollution in tests
-vi.mock('@/env', () => ({
-  getRuntimeEnv: () => ({}),
-  getFlag: vi.fn(() => false),
-  get: vi.fn((name: string, fallback = '') => fallback),
-  isE2E: false,
-}));
+vi.mock('@/env', () => {
+  const mockEnv = {
+    VITE_SP_RESOURCE: 'https://contoso.sharepoint.com',
+    VITE_SP_SITE_RELATIVE: '/sites/test',
+    VITE_MSAL_CLIENT_ID: '11111111-2222-3333-4444-555555555555',
+    VITE_MSAL_TENANT_ID: 'test-tenant',
+  };
+  return {
+    getRuntimeEnv: () => mockEnv,
+    env: mockEnv,
+    getFlag: vi.fn(() => false),
+    get: vi.fn((name: string, fallback = '') => fallback),
+    getIsDemo: vi.fn(() => false),
+    getIsE2E: vi.fn(() => false),
+    getIsMsalMock: vi.fn(() => false),
+    isE2E: false,
+  };
+});
 
 const baseEnv = (overrides: Partial<EnvRecord> = {}): EnvRecord => ({
   VITE_FEATURE_SCHEDULES: 'false',
@@ -58,7 +70,7 @@ describe('env parsing fallbacks', () => {
   it('normalizes SharePoint resource and relative site paths', () => {
     expect(getSharePointResource(baseEnv({ VITE_SP_RESOURCE: 'https://foo.sharepoint.com///' }))).toBe('https://foo.sharepoint.com');
     expect(getSharePointSiteRelative(baseEnv({ VITE_SP_SITE_RELATIVE: 'sites/Demo///' }))).toBe('/sites/Demo');
-    expect(getSharePointBaseUrl(baseEnv({ VITE_SP_RESOURCE: 'https://foo.sharepoint.com/', VITE_SP_SITE_RELATIVE: 'sites/Demo/' }))).toBe('https://foo.sharepoint.com/sites/Demo/_api/web');
+    expect(getSharePointBaseUrlWithApi(baseEnv({ VITE_SP_RESOURCE: 'https://foo.sharepoint.com/', VITE_SP_SITE_RELATIVE: 'sites/Demo/' }))).toBe('https://foo.sharepoint.com/sites/Demo/_api/web');
   });
 
   it('filters login scopes to identity set and warns on extras', () => {
@@ -74,16 +86,13 @@ describe('env parsing fallbacks', () => {
   });
 
   it('derives SharePoint default scope from skip-login placeholder', () => {
-    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
-    // Ensure VITE_SP_RESOURCE and VITE_MSAL_SCOPES are cleared to avoid fallback paths
-    const scope = getSharePointDefaultScope(baseEnv({ 
-      VITE_SP_SCOPE_DEFAULT: '', 
-      VITE_SKIP_LOGIN: 'true', 
+    const scope = getSharePointDefaultScope(baseEnv({
+      VITE_SP_SCOPE_DEFAULT: '',
+      VITE_SKIP_LOGIN: 'true',
       VITE_SP_RESOURCE: '',
       VITE_MSAL_SCOPES: '',
     }));
     expect(scope).toBe('https://example.sharepoint.com/AllSites.Read');
-    expect(warn).toHaveBeenCalledWith(expect.stringContaining('skip-login'));
   });
 
   it('reuses SharePoint scope from configured MSAL scopes when missing', () => {

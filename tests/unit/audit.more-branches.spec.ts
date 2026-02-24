@@ -23,7 +23,8 @@ describe('audit helpers additional branches', () => {
   beforeEach(() => {
     vi.restoreAllMocks();
     const mem = new MemoryStorage();
-  global.localStorage = mem as unknown as Storage;
+    mem.clear();
+    vi.stubGlobal('localStorage', mem);
   });
 
   it('truncates audit log when exceeding MAX_LOGS and prepends new event', () => {

@@ -14,6 +14,8 @@ type MsalContextValue = {
   accounts: MsalAccounts;
   inProgress: MsalInProgress;
   authReady: boolean;
+  listReady: boolean | null;
+  setListReady: (ready: boolean) => void;
 };
 
 const MsalContext = React.createContext<MsalContextValue | null>(null);
@@ -31,6 +33,8 @@ const createDefaultMsalContextMock = (): MsalContextValue => ({
   accounts: [],
   inProgress: 'none',
   authReady: true,
+  listReady: null,
+  setListReady: () => undefined,
 });
 
 export const __msalContextMock = viMock
@@ -147,12 +151,11 @@ export const MsalProvider: React.FC<{ children: React.ReactNode }> = ({ children
       ...mockInstance,
       getAllAccounts: () => accounts,
       getActiveAccount: () => account,
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    } as any as MsalInstance;
+    } as unknown as MsalInstance;
 
     return {
       instance,
-      accounts: accounts as any,
+      accounts: accounts as unknown as MsalAccounts,
       inProgress: 'none',
       logger: mockLogger,
     };
@@ -203,6 +206,8 @@ const MsalBridge: React.FC<{ instance: MsalInstance; useMsal: MsalReactModule['u
   useMsal,
 }) => {
   const { accounts, inProgress } = useMsal();
+  const [listReady, setListReady] = useState<boolean | null>(null);
+
   const authReady =
     typeof window === 'undefined'
       ? true
@@ -213,6 +218,7 @@ const MsalBridge: React.FC<{ instance: MsalInstance; useMsal: MsalReactModule['u
       authReady,
       inProgress,
       accounts: accounts.length,
+      listReady,
     });
     if (snapshot !== lastLogRef.current) {
       lastLogRef.current = snapshot;
@@ -220,12 +226,13 @@ const MsalBridge: React.FC<{ instance: MsalInstance; useMsal: MsalReactModule['u
         authReady,
         inProgress,
         accounts: accounts.length,
+        listReady,
       });
     }
-  }, [accounts.length, authReady, inProgress]);
+  }, [accounts.length, authReady, inProgress, listReady]);
   const value = useMemo(
-    () => ({ instance, accounts, inProgress, authReady }),
-    [instance, accounts, inProgress, authReady],
+    () => ({ instance, accounts, inProgress, authReady, listReady, setListReady }),
+    [instance, accounts, inProgress, authReady, listReady],
   );
 
   return <MsalContext.Provider value={value}>{children}</MsalContext.Provider>;
