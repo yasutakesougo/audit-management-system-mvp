@@ -1,3 +1,4 @@
+import { IS_E2E } from '@/lib/env';
 import AnalyticsIcon from '@mui/icons-material/Analytics';
 import CloudDownloadIcon from '@mui/icons-material/CloudDownload';
 import PictureAsPdfIcon from '@mui/icons-material/PictureAsPdf';
@@ -10,12 +11,12 @@ import Container from '@mui/material/Container';
 import MenuItem from '@mui/material/MenuItem';
 import Stack from '@mui/material/Stack';
 import Tab from '@mui/material/Tab';
-import Tabs from '@mui/material/Tabs';
 import Table from '@mui/material/Table';
 import TableBody from '@mui/material/TableBody';
 import TableCell from '@mui/material/TableCell';
 import TableHead from '@mui/material/TableHead';
 import TableRow from '@mui/material/TableRow';
+import Tabs from '@mui/material/Tabs';
 import TextField from '@mui/material/TextField';
 import Typography from '@mui/material/Typography';
 import React from 'react';
@@ -123,7 +124,7 @@ type TabKey = 'summary' | 'user-detail' | 'pdf';
  * E2E用 Demo Seed から月次サマリーを取得（E2E限定）
  */
 function useDemoSummaries(): MonthlySummary[] {
-  const isE2E = import.meta.env.VITE_E2E === '1' || import.meta.env.VITE_E2E === 'true';
+  const isE2E = IS_E2E;
   const w = (typeof window !== 'undefined' ? window : {}) as E2ESeedWindow;
 
   if (isE2E && w.__E2E_SEED__?.startsWith('monthly.records.')) {
@@ -172,7 +173,7 @@ export default function MonthlyRecordPage() {
   const [summaries] = React.useState<MonthlySummary[]>(useDemoSummaries());
   const [loading] = React.useState(false);
 
-  const isE2E = import.meta.env.VITE_E2E === '1' || import.meta.env.VITE_E2E === 'true';
+  const isE2E = IS_E2E;
   const w = (typeof window !== 'undefined' ? window : {}) as E2ESeedWindow;
   const debugSeed = isE2E ? w.__E2E_SEED__ : 'none';
 
