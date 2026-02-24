@@ -1,8 +1,12 @@
-import type { ElementType, FC, MouseEvent as ReactMouseEvent, RefObject } from 'react';
-import { useMemo, useState } from 'react';
+import { TESTIDS, tid, tidWithSuffix } from '@/testids';
+import DeleteRoundedIcon from '@mui/icons-material/DeleteRounded';
+import EditRoundedIcon from '@mui/icons-material/EditRounded';
+import InfoOutlinedIcon from '@mui/icons-material/InfoOutlined';
+import RefreshRoundedIcon from '@mui/icons-material/RefreshRounded';
 import Box from '@mui/material/Box';
 import Button from '@mui/material/Button';
 import Checkbox from '@mui/material/Checkbox';
+import FormControlLabel from '@mui/material/FormControlLabel';
 import IconButton from '@mui/material/IconButton';
 import Paper from '@mui/material/Paper';
 import Stack from '@mui/material/Stack';
@@ -14,17 +18,13 @@ import TableHead from '@mui/material/TableHead';
 import TableRow from '@mui/material/TableRow';
 import TextField from '@mui/material/TextField';
 import Typography from '@mui/material/Typography';
-import DeleteRoundedIcon from '@mui/icons-material/DeleteRounded';
-import EditRoundedIcon from '@mui/icons-material/EditRounded';
-import InfoOutlinedIcon from '@mui/icons-material/InfoOutlined';
-import RefreshRoundedIcon from '@mui/icons-material/RefreshRounded';
-import FormControlLabel from '@mui/material/FormControlLabel';
+import type { ElementType, FC, MouseEvent as ReactMouseEvent, RefObject } from 'react';
+import { useMemo, useState } from 'react';
 import { Link as RouterLink } from 'react-router-dom';
-import Loading from '../../../ui/components/Loading';
 import ErrorState from '../../../ui/components/ErrorState';
-import UserDetailSections from '../UserDetailSections/index';
-import { TESTIDS, tid, tidWithSuffix } from '@/testids';
+import Loading from '../../../ui/components/Loading';
 import type { IUserMaster } from '../types';
+import UserDetailSections from '../UserDetailSections/index';
 
 type UsersListProps = {
   users: IUserMaster[];
@@ -32,7 +32,7 @@ type UsersListProps = {
   busyId: number | null;
   selectedUserKey: string | null;
   detailUser: IUserMaster | null;
-  detailSectionRef: RefObject<HTMLDivElement | null>;
+  detailSectionRef: RefObject<HTMLDivElement>;
   errorMessage: string | null;
   onRefresh: () => Promise<void> | void;
   onDelete: (id: number | string) => Promise<void> | void;
