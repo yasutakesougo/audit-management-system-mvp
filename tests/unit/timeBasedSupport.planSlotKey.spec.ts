@@ -9,6 +9,7 @@ const schedule = [
     time: '09:00',
     activity: '朝の受け入れ',
     instruction: '挨拶と体調確認',
+    isKey: false,
   },
 ];
 
