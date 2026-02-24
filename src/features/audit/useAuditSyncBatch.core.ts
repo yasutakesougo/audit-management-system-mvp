@@ -50,7 +50,7 @@ export const useAuditSyncBatch = () => {
     const batchConfig = getAppConfig();
     const envSizeRaw = batchConfig.VITE_AUDIT_BATCH_SIZE;
     const devMode = batchConfig.isDev;
-    let effective = chunkSize ?? (envSizeRaw ? parseInt(envSizeRaw, 10) : DEFAULT_CHUNK_SIZE);
+    let effective = chunkSize ?? (envSizeRaw || DEFAULT_CHUNK_SIZE);
     if (isNaN(effective) || effective <= 0) effective = DEFAULT_CHUNK_SIZE;
     if (effective > 500) effective = 500;
     const logs = getAuditLogs();
@@ -94,10 +94,10 @@ export const useAuditSyncBatch = () => {
 
     const transientStatus = (s: number) => s === 429 || s === 503 || s === 504;
     const sleep = (ms: number) => new Promise(r => setTimeout(r, ms));
-    const envRetry = batchConfig.VITE_AUDIT_RETRY_MAX ? parseInt(batchConfig.VITE_AUDIT_RETRY_MAX, 10) : NaN;
-    const MAX_RETRY = (!isNaN(envRetry) && envRetry > 0 && envRetry <= 5) ? envRetry : 3;
-    const backoffBaseRaw = batchConfig.VITE_AUDIT_RETRY_BASE ? parseInt(batchConfig.VITE_AUDIT_RETRY_BASE, 10) : NaN;
-    const backoffBase = (!isNaN(backoffBaseRaw) && backoffBaseRaw > 0) ? backoffBaseRaw : 200;
+    const envRetry = batchConfig.VITE_AUDIT_RETRY_MAX;
+    const MAX_RETRY = (envRetry && envRetry > 0 && envRetry <= 5) ? envRetry : 3;
+    const backoffBaseRaw = batchConfig.VITE_AUDIT_RETRY_BASE;
+    const backoffBase = (backoffBaseRaw && backoffBaseRaw > 0) ? backoffBaseRaw : 200;
 
     // Keep original logs for retention mapping
     let processedOffset = 0; // offset in original logs for current chunk start

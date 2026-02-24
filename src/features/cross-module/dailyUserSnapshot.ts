@@ -1,5 +1,7 @@
-import type { PersonDaily } from '../../domain/daily/types';
-import type { AttendanceUser, AttendanceVisit } from '../dashboard/attendanceSummary';
+import type { PersonDaily } from '@/features/daily';
+// Note: Dashboard is another feature, but it seems to be used as a public API here if available.
+// If not, we might need a barrel for dashboard too.
+import type { AttendanceUser, AttendanceVisit } from '@/features/dashboard';
 import {
     ActivityStatus,
     AttendanceStatus,

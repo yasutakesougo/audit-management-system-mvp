@@ -14,6 +14,7 @@ import {
 
 import { normalizeAttendanceDays } from '../attendance';
 import type { UserRepository, UserRepositoryGetParams, UserRepositoryListParams, UserRepositoryUpdateDto } from '../domain/UserRepository';
+import { userMasterCreateSchema, userMasterSchema } from '../schema';
 import type { IUserMaster, IUserMasterCreateDto } from '../types';
 
 const DEFAULT_TOP = 500;
@@ -86,6 +87,9 @@ export class SharePointUserRepository implements UserRepository {
   }
 
   public async create(payload: IUserMasterCreateDto): Promise<IUserMaster> {
+    // Validate request payload
+    userMasterCreateSchema.parse(payload);
+
     const request = this.toRequest(payload);
     const result = await this.list.items.add(request);
     return this.toDomain(result.data as UserRow);
@@ -157,7 +161,7 @@ export class SharePointUserRepository implements UserRepository {
     const transportTo = normalizeAttendanceDays(get(fields.transportToDays));
     const transportFrom = normalizeAttendanceDays(get(fields.transportFromDays));
 
-    return {
+    const domain = {
       Id: Number(get<number>(fields.id) ?? raw.Id),
       Title: get<string | null>(fields.title) ?? raw.Title ?? null,
       UserID: (get<string>(fields.userId) ?? raw.UserID) ?? '',
@@ -181,6 +185,15 @@ export class SharePointUserRepository implements UserRepository {
       Modified: get<string | null>(fields.modified) ?? raw.Modified ?? null,
       Created: get<string | null>(fields.created) ?? raw.Created ?? null,
     };
+
+    // Validate domain object structure (best-effort, might warn instead of throw if legacy data)
+    try {
+      userMasterSchema.parse(domain);
+    } catch (error) {
+      console.warn('[SharePointUserRepository] Domain object validation failed', error, domain);
+    }
+
+    return domain;
   }
 
   private toRequest(dto: Partial<IUserMasterCreateDto>): Record<string, unknown> {

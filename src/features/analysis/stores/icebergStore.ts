@@ -4,15 +4,15 @@ import type {
     IcebergNode,
     IcebergNodeType,
     IcebergSession,
-    NodePosition,
     IcebergSnapshot,
+    NodePosition,
 } from '@/features/analysis/domain/icebergTypes';
 import { icebergSnapshotSchema } from '@/features/analysis/domain/icebergTypes';
-import type { AssessmentItem } from '@/features/assessment/domain/types';
-import type { BehaviorObservation } from '@/features/daily/domain/daily/types';
-import { useCallback, useSyncExternalStore } from 'react';
 import type { IcebergRepository } from '@/features/analysis/infra/SharePointIcebergRepository';
 import { ConflictError } from '@/features/analysis/infra/SharePointIcebergRepository';
+import type { AssessmentItem } from '@/features/assessment';
+import type { BehaviorObservation } from '@/features/daily';
+import { useCallback, useSyncExternalStore } from 'react';
 
 type SaveState = 'idle' | 'saving' | 'saved' | 'conflict' | 'error';
 
@@ -323,7 +323,7 @@ export function useIcebergStore(repository?: IcebergRepository) {
     [],
   );
   const load = useCallback((sessionId: string) => loadSession(sessionId), []);
-  
+
   // Persistence callbacks (require repository)
   const savePersistent = useCallback(
     (opts: { userId: string; sessionId: string; title?: string }) => {

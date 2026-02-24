@@ -1,10 +1,10 @@
-import { useEffect, useMemo, useState } from 'react';
-import { readOptionalEnv, isE2eMsalMockEnabled, shouldSkipLogin } from '@/lib/env';
-import { getRuntimeEnv as getRuntimeEnvRoot } from '@/env';
-import { fetchMyGroupIds } from '@/features/schedules/data/graphAdapter';
-import { useAuth } from '@/auth/useAuth';
 import { GRAPH_RESOURCE } from '@/auth/msalConfig';
 import type { Role } from '@/auth/roles';
+import { useAuth } from '@/auth/useAuth';
+import { getRuntimeEnv as getRuntimeEnvRoot } from '@/env';
+import { fetchMyGroupIds } from '@/features/schedules/data/graphAdapter';
+import { IS_E2E, IS_MSAL_MOCK, isDemoModeEnabled, SHOULD_SKIP_LOGIN } from '@/lib/env';
+import { useEffect, useMemo, useState } from 'react';
 
 type UserAuthz = {
   role: Role;
@@ -64,21 +64,16 @@ export const useUserAuthz = (): UserAuthz => {
   };
   const receptionGroupId =
     readRuntime('VITE_AAD_RECEPTION_GROUP_ID')
-    ?? readRuntime('VITE_RECEPTION_GROUP_ID')
-    ?? readOptionalEnv('VITE_AAD_RECEPTION_GROUP_ID')
-    ?? readOptionalEnv('VITE_RECEPTION_GROUP_ID');
+    ?? readRuntime('VITE_RECEPTION_GROUP_ID');
   const adminGroupId =
     readRuntime('VITE_AAD_ADMIN_GROUP_ID')
     ?? readRuntime('VITE_ADMIN_GROUP_ID')
-    ?? readRuntime('VITE_SCHEDULE_ADMINS_GROUP_ID')
-    ?? readOptionalEnv('VITE_AAD_ADMIN_GROUP_ID')
-    ?? readOptionalEnv('VITE_ADMIN_GROUP_ID')
-    ?? readOptionalEnv('VITE_SCHEDULE_ADMINS_GROUP_ID');
+    ?? readRuntime('VITE_SCHEDULE_ADMINS_GROUP_ID');
   const envReady =
     typeof window === 'undefined'
       ? true
       : Boolean((window as typeof window & { __ENV__?: unknown }).__ENV__);
-  const testRoleRaw = readRuntime('VITE_TEST_ROLE') ?? readOptionalEnv('VITE_TEST_ROLE');
+  const testRoleRaw = readRuntime('VITE_TEST_ROLE');
   const testRole =
     testRoleRaw === 'admin' || testRoleRaw === 'reception' || testRoleRaw === 'viewer'
       ? testRoleRaw
@@ -95,8 +90,7 @@ export const useUserAuthz = (): UserAuthz => {
     const run = async () => {
       try {
         // 🟢 E2E / skip-login: bypass Graph entirely to prevent networkGuard failures
-        const runtimeEnv = getRuntimeEnvRoot();
-        if (isE2eMsalMockEnabled(runtimeEnv) || shouldSkipLogin(runtimeEnv)) {
+        if (IS_MSAL_MOCK || SHOULD_SKIP_LOGIN) {
           if (!cancelled) {
             // In E2E mode, grant admin access for comprehensive test coverage
             setGroupIds([adminGroupId || 'demo-admin-group-id']);
@@ -144,10 +138,10 @@ export const useUserAuthz = (): UserAuthz => {
 
   const value = useMemo(() => {
     const ids = groupIds ?? [];
-    const isDemoOrDev = import.meta.env.DEV || import.meta.env.VITE_DEMO_MODE === '1';
-    const isE2E = import.meta.env.VITE_E2E === '1';
-    const skipLogin = shouldSkipLogin(getRuntimeEnvRoot());
-    
+    const isDemoOrDev = import.meta.env.DEV || isDemoModeEnabled();
+    const isE2E = IS_E2E;
+    const skipLogin = SHOULD_SKIP_LOGIN;
+
     // E2E: always grant admin access for test coverage (all nav items visible)
     if ((isE2E || skipLogin) && testRole) {
       return {
@@ -163,7 +157,7 @@ export const useUserAuthz = (): UserAuthz => {
         reason: 'demo-default-full-access',
       } satisfies UserAuthz;
     }
-    
+
     // Fail-closed for admin group: if not configured in PROD, deny access
     if (!envReady && !isDemoOrDev) {
       return {

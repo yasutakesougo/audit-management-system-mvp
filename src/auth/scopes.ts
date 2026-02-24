@@ -1,8 +1,8 @@
 import {
-  getConfiguredMsalScopes,
-  getMsalLoginScopes,
-  getSharePointDefaultScope,
-  type EnvRecord,
+    getConfiguredMsalScopes,
+    getMsalLoginScopes,
+    getSharePointDefaultScope,
+    type EnvRecord,
 } from '../lib/env';
 
 /**
@@ -26,7 +26,9 @@ export const buildMsalScopes = (
 
   const loginScopes = getMsalLoginScopes(envOverride);
   const spDefault = getSharePointDefaultScope(envOverride);
-  return normalizeScopes([...loginScopes, spDefault]);
+  const all = [...loginScopes];
+  if (spDefault) all.push(spDefault);
+  return normalizeScopes(all);
 };
 
 function normalizeScopes(scopes: string[]): string[] {

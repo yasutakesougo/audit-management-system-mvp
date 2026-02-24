@@ -27,7 +27,7 @@ const setProcessEnv = (key: (typeof TRACKED_ENV_KEYS)[number], value: string | u
 const loadEnvModule = async (runtimeEnv: Record<string, string | undefined> = {}) => {
   vi.resetModules();
   vi.doMock('@/env', () => ({
-    getRuntimeEnv: () => ({ ...runtimeEnv }),
+    getRuntimeEnv: () => ({ ...process.env, ...runtimeEnv }),
     isDev: false,
   }));
   const mod = await import('@/lib/env');

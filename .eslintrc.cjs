@@ -16,7 +16,7 @@ module.exports = {
   rules: {
     // 段階導入: まず CI を通しつつ追って厳格化する予定
     'import/no-unresolved': 'error',
-  '@typescript-eslint/no-explicit-any': 'warn', // staged: warn -> later error
+    '@typescript-eslint/no-explicit-any': 'warn', // staged: warn -> later error
     '@typescript-eslint/ban-ts-comment': ['warn', {
       'ts-ignore': 'allow-with-description',
       'ts-expect-error': 'allow-with-description'
@@ -66,16 +66,64 @@ module.exports = {
         ]
       }
     ],
-    // Phase 1: boundaries (off) - Temporarily disabled to unblock PR1-3 commit
-    'boundaries/element-types': 'off'
+    // Phase 1: boundaries (on) - Enforcing modular architecture
+    'boundaries/element-types': [
+      'error',
+      {
+        default: 'allow',
+        message: '${file.type} is not allowed to import ${dependency.type}',
+        rules: [
+          {
+            from: 'feature-internal',
+            disallow: [['feature-internal', { feature: '!${file.feature}' }]],
+            message: 'Features must not import from other features internal modules. Use the public API (index.ts) instead.'
+          },
+          {
+            from: 'feature',
+            disallow: [['feature-internal', { feature: '!${file.feature}' }]],
+            message: 'Features must not import from other features internal modules. Use the public API (index.ts) instead.'
+          }
+        ]
+      }
+    ]
   },
   settings: {
     'boundaries/elements': [
-      { type: 'feature', pattern: 'src/features/*' },
-      { type: 'lib', pattern: 'src/lib/*' },
-      { type: 'utils', pattern: 'src/utils/*' },
-      { type: 'shared', pattern: 'src/components/*' },
-      { type: 'app', pattern: 'src/*' },
+      {
+        type: 'feature',
+        pattern: 'src/features/:feature/index.ts',
+        mode: 'file',
+        capture: ['feature']
+      },
+      {
+        type: 'feature-internal',
+        pattern: 'src/features/:feature/**',
+        capture: ['feature']
+      },
+      {
+        type: 'domain-schema',
+        pattern: 'src/domain/schemas/*'
+      },
+      {
+        type: 'domain-type',
+        pattern: 'src/domain/types/*'
+      },
+      {
+        type: 'lib',
+        pattern: 'src/lib/*'
+      },
+      {
+        type: 'utils',
+        pattern: 'src/utils/*'
+      },
+      {
+        type: 'shared',
+        pattern: 'src/components/*'
+      },
+      {
+        type: 'app',
+        pattern: 'src/*'
+      }
     ],
     'import/resolver': {
       typescript: {

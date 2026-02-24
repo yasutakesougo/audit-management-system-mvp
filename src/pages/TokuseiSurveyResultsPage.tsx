@@ -1,9 +1,10 @@
 import { summarizeTokuseiResponses, type TokuseiSurveyResponse } from '@/domain/assessment/tokusei';
 import { useTokuseiSurveyResponses } from '@/features/assessment/hooks/useTokuseiSurveyResponses';
+import { env } from '@/lib/env';
 import RefreshRoundedIcon from '@mui/icons-material/RefreshRounded';
 import SupportAgentRoundedIcon from '@mui/icons-material/SupportAgentRounded';
-import Alert from '@mui/material/Alert';
 import { Card, CardContent, CardHeader } from '@mui/material';
+import Alert from '@mui/material/Alert';
 import Box from '@mui/material/Box';
 import Button from '@mui/material/Button';
 import Chip from '@mui/material/Chip';
@@ -14,8 +15,8 @@ import InputLabel from '@mui/material/InputLabel';
 import List from '@mui/material/List';
 import ListItemButton from '@mui/material/ListItemButton';
 import ListItemText from '@mui/material/ListItemText';
-import OutlinedInput from '@mui/material/OutlinedInput';
 import MenuItem from '@mui/material/MenuItem';
+import OutlinedInput from '@mui/material/OutlinedInput';
 import Paper from '@mui/material/Paper';
 import Select from '@mui/material/Select';
 import Skeleton from '@mui/material/Skeleton';
@@ -118,9 +119,7 @@ const TokuseiSurveyResultsPage: React.FC = () => {
   const [fromDate, setFromDate] = useState('');
   const [toDate, setToDate] = useState('');
   const [activeResponseId, setActiveResponseId] = useState<number | null>(null);
-  const formsUrl = typeof import.meta.env.VITE_TOKUSEI_FORMS_URL === 'string'
-    ? import.meta.env.VITE_TOKUSEI_FORMS_URL
-    : undefined;
+  const formsUrl = env.VITE_TOKUSEI_FORMS_URL;
 
   const sortedData = useMemo(
     () =>
