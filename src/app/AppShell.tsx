@@ -636,8 +636,17 @@ const AppShell: React.FC<{ children: React.ReactNode }> = ({ children }) => {
           )}
           <Typography
             variant="subtitle1"
-            component="div"
-            sx={{ fontWeight: 600, lineHeight: '44px', height: 44, display: 'flex', alignItems: 'center' }}
+            component={RouterLink}
+            to={dashboardPath}
+            sx={{
+              fontWeight: 600,
+              lineHeight: '44px',
+              height: 44,
+              display: 'flex',
+              alignItems: 'center',
+              color: 'inherit',
+              textDecoration: 'none',
+            }}
           >
             磯子区障害者地域活動ホーム
           </Typography>
@@ -694,7 +703,24 @@ const AppShell: React.FC<{ children: React.ReactNode }> = ({ children }) => {
         <div data-testid="app-shell">
         {useVscodeShell ? (
           <AppShellLayout
-            title="磯子区障害者地域活動ホーム"
+            title={(
+              <Typography
+                component={RouterLink}
+                to={dashboardPath}
+                variant="body2"
+                sx={{
+                  fontWeight: 700,
+                  whiteSpace: 'nowrap',
+                  overflow: 'hidden',
+                  textOverflow: 'ellipsis',
+                  minWidth: 0,
+                  color: 'inherit',
+                  textDecoration: 'none',
+                }}
+              >
+                磯子区障害者地域活動ホーム
+              </Typography>
+            )}
             onSearchChange={setNavQuery}
             headerLeftSlot={headerLeftSlot}
             headerRightSlot={headerRightSlot}
