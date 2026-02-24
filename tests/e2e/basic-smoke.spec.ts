@@ -30,7 +30,7 @@ test.describe('Basic Dashboard', () => {
 
       // 認証なし/マウント失敗でも「HTMLが返っている」ことを確認する（CI安定化）
       await page.waitForLoadState('domcontentloaded');
-      await expect(page).toHaveTitle(/Audit Management MVP/i);
+      await expect(page).toHaveTitle('黒ノート');
 
       // root 自体は存在すればOK（hidden でも落とさない）
       const reactRoot = page.locator('#root, [data-reactroot]');

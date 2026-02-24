@@ -6,7 +6,7 @@ import { HeaderBand } from './HeaderBand';
 export type ShellViewportMode = 'fixed' | 'adaptive';
 
 export type AppShellProps = {
-  title?: string;
+  title?: React.ReactNode;
   onSearchChange?: (value: string) => void;
   headerLeftSlot?: React.ReactNode;
   headerRightSlot?: React.ReactNode;

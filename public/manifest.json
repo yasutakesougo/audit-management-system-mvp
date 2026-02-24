@@ -1,7 +1,7 @@
 {
-  "name": "監査管理システム",
-  "short_name": "監査管理",
-  "description": "福祉施設向け監査管理システム",
+  "name": "黒ノート",
+  "short_name": "黒ノート",
+  "description": "福祉施設向け黒ノート",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#ffffff",

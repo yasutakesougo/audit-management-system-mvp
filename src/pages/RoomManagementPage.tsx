@@ -1,34 +1,32 @@
 import React from 'react';
-import { Box, Container, Stack, Typography, Button } from '@mui/material';
-import { useNavigate } from 'react-router-dom';
-import ArrowBackIcon from '@mui/icons-material/ArrowBack';
-import RoomManagementTabs from '@/features/dashboard/tabs/RoomManagementTabs';
+import { RoomStatusTab } from '@/features/dashboard/tabs/RoomStatusTab';
+import { Container, Box, Paper, AppBar, Toolbar, Typography } from '@mui/material';
 
-const RoomManagementPage: React.FC = () => {
-  const navigate = useNavigate();
-
+/**
+ * Room Management Page - Independent page for room reservation management
+ * Provides access to room availability, reservations, and scheduling features
+ */
+export const RoomManagementPage: React.FC = () => {
   return (
-    <Container maxWidth="lg" sx={{ py: { xs: 2, md: 4 } }}>
-      {/* ヘッダー */}
-      <Stack direction="row" spacing={2} alignItems="center" sx={{ mb: 4 }}>
-        <Button
-          startIcon={<ArrowBackIcon />}
-          onClick={() => navigate(-1)}
-          variant="outlined"
-          size="small"
-        >
-          戻る
-        </Button>
-        <Typography variant="h4" component="h1" fontWeight="bold">
-          お部屋情報
-        </Typography>
-      </Stack>
+    <Box sx={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
+      {/* Page Header */}
+      <AppBar position="static" sx={{ background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)' }}>
+        <Toolbar>
+          <Typography variant="h6" component="div" sx={{ flexGrow: 1 }}>
+            🏢 お部屋情報
+          </Typography>
+        </Toolbar>
+      </AppBar>
 
-      {/* コンテンツ */}
-      <Box sx={{ bgcolor: '#fff', borderRadius: 1, p: { xs: 2, md: 3 } }}>
-        <RoomManagementTabs />
+      {/* Main Content */}
+      <Box sx={{ flex: 1, overflow: 'auto', p: 2 }}>
+        <Container maxWidth="lg">
+          <Paper elevation={3} sx={{ p: 2, minHeight: 'calc(100vh - 120px)' }}>
+            <RoomStatusTab />
+          </Paper>
+        </Container>
       </Box>
-    </Container>
+    </Box>
   );
 };
 
