@@ -1,9 +1,9 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import type { IPublicClientApplication } from '@azure/msal-browser';
-import { InteractionStatus } from './interactionStatus';
 import { useCallback, useEffect, useRef } from 'react';
 import { getAppConfig, isE2eMsalMockEnabled, shouldSkipLogin } from '../lib/env';
 import { createE2EMsalAccount, persistMsalToken } from '../lib/msal';
+import { InteractionStatus } from './interactionStatus';
 import { GRAPH_RESOURCE, GRAPH_SCOPES, LOGIN_SCOPES, SP_RESOURCE } from './msalConfig';
 import { useMsalContext } from './MsalProvider';
 
@@ -81,17 +81,31 @@ export const useAuth = () => {
       }
     }, []);
 
+    const isAuthenticatedE2E = typeof window !== 'undefined' && window.sessionStorage.getItem('__E2E_MOCK_AUTH__') === '1';
+
     return {
-      isAuthenticated: true,
-      account,
-      signIn: () => Promise.resolve({ success: false }),
-      signOut: () => Promise.resolve(),
+      isAuthenticated: isAuthenticatedE2E,
+      account: isAuthenticatedE2E ? account : null,
+      signIn: () => {
+        if (typeof window !== 'undefined') {
+          window.sessionStorage.setItem('__E2E_MOCK_AUTH__', '1');
+          window.location.reload();
+        }
+        return Promise.resolve({ success: true });
+      },
+      signOut: () => {
+        if (typeof window !== 'undefined') {
+          window.sessionStorage.removeItem('__E2E_MOCK_AUTH__');
+          window.location.reload();
+        }
+        return Promise.resolve();
+      },
       acquireToken,
       loading: false,
-      shouldSkipLogin: true,
+      shouldSkipLogin: false, // In E2E, we might want to test the interactive flow
       getListReadyState,
       setListReadyState,
-      tokenReady: true,
+      tokenReady: isAuthenticatedE2E,
     };
   }
 
