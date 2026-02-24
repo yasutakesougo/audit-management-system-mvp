@@ -1,11 +1,11 @@
 import * as React from 'react';
-import { Box, IconButton, InputBase, Paper, Typography } from '@mui/material';
+import { Box, IconButton, InputBase, Paper } from '@mui/material';
 import SearchIcon from '@mui/icons-material/Search';
 import MoreVertIcon from '@mui/icons-material/MoreVert';
 import { layoutTokens } from './layoutTokens';
 
 export type HeaderBandProps = {
-  title?: string;
+  title?: React.ReactNode;
   onSearchChange?: (value: string) => void;
   leftSlot?: React.ReactNode;
   rightSlot?: React.ReactNode;
@@ -32,12 +32,18 @@ export function HeaderBand(props: HeaderBandProps) {
       })}
     >
       {leftSlot}
-      <Typography
-        variant="body2"
-        sx={{ fontWeight: 700, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', minWidth: 0 }}
+      <Box
+        sx={{
+          typography: 'body2',
+          fontWeight: 700,
+          whiteSpace: 'nowrap',
+          overflow: 'hidden',
+          textOverflow: 'ellipsis',
+          minWidth: 0,
+        }}
       >
         {title}
-      </Typography>
+      </Box>
 
       <Paper
         variant="outlined"
