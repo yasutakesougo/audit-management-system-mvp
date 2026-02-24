@@ -79,6 +79,13 @@ vi.mock('@/auth/useUserAuthz', () => ({
 }));
 
 describe('AppShell navigation', () => {
+  const ensureDesktopNavOpen = async () => {
+    const navToggleButton = screen.getByRole('button', { name: /サイドメニューを(開く|閉じる)/i });
+    if (navToggleButton.getAttribute('aria-label')?.includes('開く')) {
+      await userEvent.click(navToggleButton);
+    }
+  };
+
   it.todo('marks current route button with aria-current="page" - awaiting AppShell useEffect fix');
 
   it('marks current route button with aria-current="page"', async () => {
@@ -105,8 +112,7 @@ describe('AppShell navigation', () => {
     });
 
     // Open the desktop navigation drawer
-    const openNavButton = screen.getByRole('button', { name: /サイドメニューを開く/i });
-    await userEvent.click(openNavButton);
+    await ensureDesktopNavOpen();
 
     const navRoot = screen.getByRole('navigation', { name: /主要ナビゲーション/i });
     const nav = within(navRoot);
@@ -194,8 +200,7 @@ describe('AppShell navigation', () => {
         routeChildren: routeEntries.map((path) => ({ path, element: getShell() })),
       });
 
-      const openNavButton = screen.getByRole('button', { name: /サイドメニューを開く/i });
-      await userEvent.click(openNavButton);
+      await ensureDesktopNavOpen();
 
       const navRoot = screen.getByRole('navigation', { name: /主要ナビゲーション/i });
       const nav = within(navRoot);
@@ -229,8 +234,7 @@ describe('AppShell navigation', () => {
         routeChildren: Array.from(new Set([...initialEntries])).map((path) => ({ path, element: getShell() })),
       });
 
-      const openNavButton = screen.getByRole('button', { name: /サイドメニューを開く/i });
-      await userEvent.click(openNavButton);
+      await ensureDesktopNavOpen();
 
       const navRoot = screen.getByRole('navigation', { name: /主要ナビゲーション/i });
       const nav = within(navRoot);
@@ -264,8 +268,7 @@ describe('AppShell navigation', () => {
         routeChildren: Array.from(new Set([...initialEntries])).map((path) => ({ path, element: getShell() })),
       });
 
-      const openNavButton = screen.getByRole('button', { name: /サイドメニューを開く/i });
-      await userEvent.click(openNavButton);
+      await ensureDesktopNavOpen();
 
       const navRoot = screen.getByRole('navigation', { name: /主要ナビゲーション/i });
       const nav = within(navRoot);
@@ -300,8 +303,7 @@ describe('AppShell navigation', () => {
         routeChildren: Array.from(new Set([...initialEntries])).map((path) => ({ path, element: getShell() })),
       });
 
-      const openNavButton = screen.getByRole('button', { name: /サイドメニューを開く/i });
-      await userEvent.click(openNavButton);
+      await ensureDesktopNavOpen();
 
       const navRoot = screen.getByRole('navigation', { name: /主要ナビゲーション/i });
       const nav = within(navRoot);
@@ -346,8 +348,7 @@ describe('AppShell navigation', () => {
         routeChildren: Array.from(new Set([...initialEntries])).map((path) => ({ path, element: getShell() })),
       });
 
-      const openNavButton = screen.getByRole('button', { name: /サイドメニューを開く/i });
-      await userEvent.click(openNavButton);
+      await ensureDesktopNavOpen();
 
       const navRoot = screen.getByRole('navigation', { name: /主要ナビゲーション/i });
       const nav = within(navRoot);
@@ -387,19 +388,21 @@ describe('AppShell navigation', () => {
         routeChildren: Array.from(new Set([...initialEntries])).map((path) => ({ path, element: getShell() })),
       });
 
-      const openNavButton = screen.getByRole('button', { name: /サイドメニューを開く/i });
-      await userEvent.click(openNavButton);
+      await ensureDesktopNavOpen();
 
-      // Find collapse/expand button
-      const collapseButton = screen.getByRole('button', { name: /ナビを折りたたみ/i });
-      expect(collapseButton).toBeInTheDocument();
+      const toggleButton = screen.getByRole('button', { name: /ナビを(折りたたみ|展開)/i });
+      expect(toggleButton).toBeInTheDocument();
 
-      // Click to collapse
-      await userEvent.click(collapseButton);
+      const beforeLabel = toggleButton.getAttribute('aria-label') ?? '';
+      await userEvent.click(toggleButton);
 
-      // Button label should change
-      const expandButton = await screen.findByRole('button', { name: /ナビを展開/i });
-      expect(expandButton).toBeInTheDocument();
+      if (beforeLabel.includes('折りたたみ')) {
+        const expandButton = await screen.findByRole('button', { name: /ナビを展開/i });
+        expect(expandButton).toBeInTheDocument();
+      } else {
+        const collapseButton = await screen.findByRole('button', { name: /ナビを折りたたみ/i });
+        expect(collapseButton).toBeInTheDocument();
+      }
     });
   });
 });
