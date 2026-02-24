@@ -1,6 +1,7 @@
 import { createSpClient, ensureConfig } from '@/lib/spClient';
 import { fetchSp } from '@/lib/fetchSp';
 import { toSafeError } from '@/lib/errors';
+import { get as getEnv } from '@/env';
 import type {
   DailyRecordRepository,
   SaveDailyRecordInput,
@@ -14,8 +15,7 @@ import type {
  * Can be overridden via environment variable
  */
 const getListTitle = (): string => {
-  const envValue = import.meta.env.VITE_SP_DAILY_RECORDS_LIST;
-  return typeof envValue === 'string' ? envValue : 'TableDailyRecords';
+  return getEnv('VITE_SP_DAILY_RECORDS_LIST', 'TableDailyRecords');
 };
 
 /**
