@@ -5,8 +5,8 @@ import { createIcebergRepository } from '@/features/analysis/infra/SharePointIce
 import type { AssessmentItem } from '@/features/assessment/domain/types';
 import type { BehaviorObservation } from '@/features/daily/domain/daily/types';
 import { useUsersDemo } from '@/features/users/usersStoreDemo';
-import { useAuth } from '@/lib/auth';
-import { getAppConfig } from '@/lib/config';
+import { useAuth } from '@/auth/useAuth';
+import { getAppConfig } from '@/lib/env';
 import AddLinkIcon from '@mui/icons-material/AddLink';
 import SaveIcon from '@mui/icons-material/Save';
 import WorkspacesIcon from '@mui/icons-material/Workspaces';

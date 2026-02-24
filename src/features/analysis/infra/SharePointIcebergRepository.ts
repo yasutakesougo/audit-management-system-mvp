@@ -1,7 +1,7 @@
 import { z } from 'zod';
 import { icebergSnapshotSchema, type IcebergSnapshot } from '../domain/icebergTypes';
 import { createSpClient } from '@/lib/spClient';
-import { getAppConfig } from '@/lib/config';
+import { getAppConfig } from '@/lib/env';
 
 // ===== Error Classes =====
 
