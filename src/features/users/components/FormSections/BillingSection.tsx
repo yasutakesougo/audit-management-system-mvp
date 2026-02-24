@@ -13,7 +13,7 @@ type Props = FormSectionProps & {
   certNumberRef: RefObject<HTMLInputElement | null>;
 };
 
-export function BillingSection({ values, setField, certNumberRef }: Props) {
+export function BillingSection({ values, errors, setField, certNumberRef }: Props) {
   return (
     <Box sx={{ mb: 3 }}>
       <Typography
@@ -41,6 +41,8 @@ export function BillingSection({ values, setField, certNumberRef }: Props) {
           inputRef={certNumberRef}
           value={values.RecipientCertNumber}
           onChange={(event) => setField('RecipientCertNumber', event.target.value)}
+          error={Boolean(errors.certNumber)}
+          helperText={errors.certNumber}
           placeholder="1234567890"
           variant="outlined"
           size="small"

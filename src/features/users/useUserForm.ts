@@ -40,7 +40,7 @@ export type FormValues = {
 };
 
 export type FormErrors = Partial<
-  Record<'fullName' | 'furigana' | 'certNumber' | 'dates' | 'grantPeriod', string>
+  Record<'fullName' | 'furigana' | 'certNumber' | 'dates' | 'grantPeriod' | 'transportAddition', string>
 >;
 
 export type MessageState = { type: 'success' | 'error'; text: string } | null;
@@ -306,6 +306,12 @@ export function useUserForm(
     if (!next.FullName.trim()) {
       errs.fullName = '氏名は必須です';
     }
+    if (!next.Furigana.trim()) {
+      errs.furigana = 'ふりがなは必須です';
+    }
+    if (next.RecipientCertNumber.trim() && !/^\d{10}$/.test(next.RecipientCertNumber.trim())) {
+      errs.certNumber = '受給者証番号は10桁の数字で入力してください';
+    }
     const startDate = next.ServiceStartDate.trim();
     const endDate = next.ServiceEndDate.trim();
     if (startDate && endDate && endDate <= startDate) {
@@ -423,17 +429,13 @@ export function useUserForm(
   // 強度行動障害フラグ同期
   // --------------------------------
   useEffect(() => {
-    if (values.IsHighIntensitySupportTarget === values.IsSupportProcedureTarget) {
-      return;
-    }
-    setValues((prev) => {
-      const nextValue = prev.IsHighIntensitySupportTarget || prev.IsSupportProcedureTarget;
-      return {
+    // 強度行動障害支援対象者の場合、支援手順記録対象は必須
+    if (values.IsHighIntensitySupportTarget && !values.IsSupportProcedureTarget) {
+      setValues((prev) => ({
         ...prev,
-        IsHighIntensitySupportTarget: nextValue,
-        IsSupportProcedureTarget: nextValue,
-      };
-    });
+        IsSupportProcedureTarget: true,
+      }));
+    }
   }, [values.IsHighIntensitySupportTarget, values.IsSupportProcedureTarget]);
 
   const handleSupportTargetToggle = useCallback((event: ChangeEvent<HTMLInputElement>) => {

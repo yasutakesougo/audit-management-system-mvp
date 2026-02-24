@@ -75,6 +75,7 @@ function WeekdayGroup({ label, field, selectedDays, toggleDay }: WeekdayGroupPro
 
 export function TransportAdditionSection({
   values,
+  errors,
   setField,
   toggleDay,
   handleSupportTargetToggle,
@@ -155,7 +156,8 @@ export function TransportAdditionSection({
             size="small"
             value={values.TransportAdditionType}
             onChange={(event) => setField('TransportAdditionType', event.target.value)}
-            helperText="送迎加算の請求区分（往復／片道／なし）"
+            error={Boolean(errors.transportAddition)}
+            helperText={errors.transportAddition || "送迎加算の請求区分（往復／片道／なし）"}
           >
             {TRANSPORT_ADDITION_OPTIONS.map((opt) => (
               <MenuItem key={opt.value} value={opt.value}>
