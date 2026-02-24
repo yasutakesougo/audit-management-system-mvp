@@ -1,9 +1,10 @@
 import ProtectedRoute from '@/app/ProtectedRoute';
+import { AuthCallbackRoute } from '@/auth/AuthCallbackRoute';
 import RequireAudience from '@/components/RequireAudience';
+import { MeetingMinutesRoutes } from '@/features/meeting-minutes/routes';
 import { nurseRoutes } from '@/features/nurse/routes/NurseRoutes';
 import { StaffPanel } from '@/features/staff';
 import { UsersPanel } from '@/features/users';
-import { MeetingMinutesRoutes } from '@/features/meeting-minutes/routes';
 import { RouteHydrationErrorBoundary } from '@/hydration/RouteHydrationListener';
 import { getAppConfig } from '@/lib/env';
 import lazyWithPreload from '@/utils/lazyWithPreload';
@@ -12,7 +13,6 @@ import { createBrowserRouter, Navigate, Outlet, type RouteObject, useLocation } 
 import AppShell from './AppShell';
 import { routerFutureFlags } from './routerFuture';
 import SchedulesGate from './SchedulesGate';
-import { AuthCallbackRoute } from '@/auth/AuthCallbackRoute';
 
 const RecordList = React.lazy(() => import('@/features/records/RecordList'));
 const ChecklistPage = React.lazy(() => import('@/features/compliance-checklist/ChecklistPage'));
@@ -55,6 +55,7 @@ const AdminDashboardPage = React.lazy(() =>
 );
 
 const DashboardBriefingPage = React.lazy(() => import('@/pages/DashboardPageTabs'));
+
 
 const MeetingGuidePage = React.lazy(() => import('@/pages/MeetingGuidePage'));
 const HandoffTimelinePage = React.lazy(() => import('@/pages/HandoffTimelinePage'));
@@ -527,7 +528,6 @@ const SuspendedDashboardBriefingPage: React.FC = () => (
 const RoomManagementPage = React.lazy(() => import('@/pages/RoomManagementPage').then((module) => ({
   default: module.RoomManagementPage ?? module.default,
 })));
-
 const SuspendedRoomManagementPage: React.FC = () => (
   <RouteHydrationErrorBoundary>
     <React.Suspense
