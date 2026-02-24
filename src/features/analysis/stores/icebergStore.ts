@@ -50,6 +50,7 @@ const snapshot = () => state;
 
 const persistSession = (session: IcebergSession) => {
   state = {
+    ...state,
     currentSession: session,
     sessions: {
       ...state.sessions,

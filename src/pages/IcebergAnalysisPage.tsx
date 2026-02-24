@@ -7,6 +7,7 @@ import type { BehaviorObservation } from '@/features/daily/domain/daily/types';
 import { useUsersDemo } from '@/features/users/usersStoreDemo';
 import { useSP } from '@/lib/spClient';
 import { useAuth } from '@/lib/auth';
+import { getAppConfig } from '@/lib/config';
 import AddLinkIcon from '@mui/icons-material/AddLink';
 import SaveIcon from '@mui/icons-material/Save';
 import WorkspacesIcon from '@mui/icons-material/Workspaces';
@@ -75,14 +76,23 @@ const createDemoEnvironmentFactors = (): EnvironmentFactor[] => [
 const IcebergAnalysisPage: React.FC = () => {
   const sp = useSP();
   const { acquireToken } = useAuth();
-  const spBaseUrl = sp ? 'sp-client-available' : ''; // spClient は singleton, baseUrl は config から取得
+  
+  // Get baseUrl from config (spClient uses this internally)
+  const config = useMemo(() => getAppConfig(), []);
+  const spSiteUrl = config.VITE_SP_SITE_URL || '';
   
   // Repository 初期化（acquireToken, baseUrl が安定したら再作成）
-  const repository = useMemo(() => {
-    return createIcebergRepository(acquireToken, spBaseUrl);
-  }, [acquireToken, spBaseUrl]);
+  const [repository, setRepository] = useState<Awaited<ReturnType<typeof createIcebergRepository>> | null>(null);
 
-  const { currentSession, initSession, moveNode, addNodeFromData, linkNodes, saveState, lastSaveError, savePersistent } = useIcebergStore(repository);
+  useEffect(() => {
+    const init = async () => {
+      const repo = await createIcebergRepository(acquireToken, spSiteUrl);
+      setRepository(repo);
+    };
+    init();
+  }, [acquireToken, spSiteUrl]);
+
+  const { currentSession, initSession, moveNode, addNodeFromData, linkNodes, saveState, lastSaveError, savePersistent } = useIcebergStore(repository ?? undefined);
   const { data: users } = useUsersDemo();
   const [targetUserId, setTargetUserId] = useState('');
   const activeSessionUserId = currentSession?.targetUserId;

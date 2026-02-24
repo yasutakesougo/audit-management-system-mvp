@@ -7,7 +7,6 @@ test.describe('Iceberg Analysis (/analysis/iceberg) smoke', () => {
     await bootstrapDashboard(page, {
       skipLogin: true,
       initialPath: '/analysis/iceberg',
-      seed: { usersMaster: true },
     });
   });
 
