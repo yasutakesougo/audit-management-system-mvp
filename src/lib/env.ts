@@ -1,4 +1,4 @@
-import { env as baseEnv, getIsDemo, getIsE2E, getIsMsalMock, type EnvRecord } from '@/env';
+import { env as baseEnv, getIsDemo, getIsE2E, getIsMsalMock, resetBaseEnvCache, type EnvRecord } from '@/env';
 import { getParsedEnv, resetParsedEnvForTests, validateEnv, type EnvSchema } from './env.schema';
 export type { EnvRecord };
 
@@ -304,6 +304,7 @@ export const readViteBool = readBool;
 
 /** Cache clearer helper */
 export const clearEnvCache = () => {
+    resetBaseEnvCache();
     resetParsedEnvForTests();
 };
 

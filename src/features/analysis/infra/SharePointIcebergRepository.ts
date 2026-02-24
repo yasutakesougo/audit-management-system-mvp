@@ -1,7 +1,7 @@
+import { getAppConfig } from '@/lib/env';
+import { createSpClient } from '@/lib/spClient';
 import { z } from 'zod';
 import { icebergSnapshotSchema, type IcebergSnapshot } from '../domain/icebergTypes';
-import { createSpClient } from '@/lib/spClient';
-import { getAppConfig } from '@/lib/env';
 
 // ===== Error Classes =====
 
@@ -86,7 +86,7 @@ async function raiseHttpError(response: Response, _context: { url: string; metho
 
 export async function createIcebergRepository(acquireToken: () => Promise<string | null>, baseUrl: string) {
   const config = getAppConfig();
-  const debugEnabled = config.VITE_AUDIT_DEBUG === '1' || config.VITE_AUDIT_DEBUG === 'true';
+  const debugEnabled = !!config.VITE_AUDIT_DEBUG;
   const dbg = (...args: unknown[]) => {
     if (debugEnabled) console.debug('[IcebergRepository]', ...args);
   };

@@ -21,6 +21,7 @@ const defaultFlags: FeatureFlagSnapshot = {
   schedulesWeekV2: false,
   icebergPdca: false,
   staffAttendance: false,
+  appShellVsCode: false,
 };
 
 beforeEach(() => {
@@ -105,7 +106,7 @@ describe('AppShell navigation', () => {
     });
 
     // Open the desktop navigation drawer
-    const openNavButton = screen.getByRole('button', { name: /サイドメニューを開く/i });
+    const openNavButton = screen.getByRole('button', { name: /サイドメニューを閉じる/i });
     await userEvent.click(openNavButton);
 
     const navRoot = screen.getByRole('navigation', { name: /主要ナビゲーション/i });
@@ -175,7 +176,7 @@ describe('AppShell navigation', () => {
       const initialEntries = ['/'];
       const routeEntries = Array.from(new Set([...initialEntries]));
       const flagsWithCompliance = { ...defaultFlags, complianceForm: true };
-      
+
       const getShell = () => (
         <ThemeProvider theme={theme}>
           <FeatureFlagsProvider value={flagsWithCompliance}>
@@ -194,7 +195,7 @@ describe('AppShell navigation', () => {
         routeChildren: routeEntries.map((path) => ({ path, element: getShell() })),
       });
 
-      const openNavButton = screen.getByRole('button', { name: /サイドメニューを開く/i });
+      const openNavButton = screen.getByRole('button', { name: /サイドメニューを閉じる/i });
       await userEvent.click(openNavButton);
 
       const navRoot = screen.getByRole('navigation', { name: /主要ナビゲーション/i });
@@ -210,7 +211,7 @@ describe('AppShell navigation', () => {
       const theme = createTheme();
       const initialEntries = ['/'];
       const flagsWithIcebergPdca = { ...defaultFlags, icebergPdca: true };
-      
+
       const getShell = () => (
         <ThemeProvider theme={theme}>
           <FeatureFlagsProvider value={flagsWithIcebergPdca}>
@@ -229,7 +230,7 @@ describe('AppShell navigation', () => {
         routeChildren: Array.from(new Set([...initialEntries])).map((path) => ({ path, element: getShell() })),
       });
 
-      const openNavButton = screen.getByRole('button', { name: /サイドメニューを開く/i });
+      const openNavButton = screen.getByRole('button', { name: /サイドメニューを閉じる/i });
       await userEvent.click(openNavButton);
 
       const navRoot = screen.getByRole('navigation', { name: /主要ナビゲーション/i });
@@ -245,7 +246,7 @@ describe('AppShell navigation', () => {
       const theme = createTheme();
       const initialEntries = ['/'];
       const flagsWithStaffAttendance = { ...defaultFlags, staffAttendance: true };
-      
+
       const getShell = () => (
         <ThemeProvider theme={theme}>
           <FeatureFlagsProvider value={flagsWithStaffAttendance}>
@@ -264,7 +265,7 @@ describe('AppShell navigation', () => {
         routeChildren: Array.from(new Set([...initialEntries])).map((path) => ({ path, element: getShell() })),
       });
 
-      const openNavButton = screen.getByRole('button', { name: /サイドメニューを開く/i });
+      const openNavButton = screen.getByRole('button', { name: /サイドメニューを閉じる/i });
       await userEvent.click(openNavButton);
 
       const navRoot = screen.getByRole('navigation', { name: /主要ナビゲーション/i });
@@ -281,7 +282,7 @@ describe('AppShell navigation', () => {
       const toggleMock = vi.fn();
       const theme = createTheme();
       const initialEntries = ['/'];
-      
+
       const getShell = () => (
         <ThemeProvider theme={theme}>
           <FeatureFlagsProvider value={defaultFlags}>
@@ -300,7 +301,7 @@ describe('AppShell navigation', () => {
         routeChildren: Array.from(new Set([...initialEntries])).map((path) => ({ path, element: getShell() })),
       });
 
-      const openNavButton = screen.getByRole('button', { name: /サイドメニューを開く/i });
+      const openNavButton = screen.getByRole('button', { name: /サイドメニューを閉じる/i });
       await userEvent.click(openNavButton);
 
       const navRoot = screen.getByRole('navigation', { name: /主要ナビゲーション/i });
@@ -327,7 +328,7 @@ describe('AppShell navigation', () => {
       const toggleMock = vi.fn();
       const theme = createTheme();
       const initialEntries = ['/'];
-      
+
       const getShell = () => (
         <ThemeProvider theme={theme}>
           <FeatureFlagsProvider value={defaultFlags}>
@@ -346,7 +347,7 @@ describe('AppShell navigation', () => {
         routeChildren: Array.from(new Set([...initialEntries])).map((path) => ({ path, element: getShell() })),
       });
 
-      const openNavButton = screen.getByRole('button', { name: /サイドメニューを開く/i });
+      const openNavButton = screen.getByRole('button', { name: /サイドメニューを閉じる/i });
       await userEvent.click(openNavButton);
 
       const navRoot = screen.getByRole('navigation', { name: /主要ナビゲーション/i });
@@ -368,7 +369,7 @@ describe('AppShell navigation', () => {
       const toggleMock = vi.fn();
       const theme = createTheme();
       const initialEntries = ['/'];
-      
+
       const getShell = () => (
         <ThemeProvider theme={theme}>
           <FeatureFlagsProvider value={defaultFlags}>
@@ -387,7 +388,7 @@ describe('AppShell navigation', () => {
         routeChildren: Array.from(new Set([...initialEntries])).map((path) => ({ path, element: getShell() })),
       });
 
-      const openNavButton = screen.getByRole('button', { name: /サイドメニューを開く/i });
+      const openNavButton = screen.getByRole('button', { name: /サイドメニューを閉じる/i });
       await userEvent.click(openNavButton);
 
       // Find collapse/expand button

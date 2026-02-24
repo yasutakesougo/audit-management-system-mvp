@@ -93,8 +93,11 @@ export function getRuntimeEnv(): EnvDict {
   if (cachedEnv) return cachedEnv;
 
   const merged = { ...INLINE_ENV } as EnvDict;
-  cachedEnv = merged;
   return merged;
+}
+
+export function resetBaseEnvCache() {
+  cachedEnv = null;
 }
 
 export function get(name: string, fallback = ''): string {

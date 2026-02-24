@@ -48,7 +48,7 @@ export const envSchema = z.object({
   VITE_MSAL_CLIENT_ID: z.string().min(1),
   VITE_MSAL_TENANT_ID: z.string().min(1),
 
-  // Auth / MSAL (Optional with defaults)
+  // MSAL / Auth
   VITE_MSAL_TOKEN_REFRESH_MIN: zIntFromString(300),
   VITE_MSAL_SCOPES: z.string().optional().default(''),
   VITE_MSAL_LOGIN_SCOPES: z.string().optional().default(''),
@@ -110,6 +110,9 @@ export const envSchema = z.object({
   VITE_E2E_MSAL_MOCK: zBoolFromString.optional().default(false),
   VITE_MSAL_MOCK: zBoolFromString.optional().default(false),
   VITE_AUDIT_DEBUG: zBoolFromString.optional().default(false),
+  VITE_AUDIT_BATCH_SIZE: zIntFromString(20),
+  VITE_AUDIT_RETRY_MAX: zIntFromString(3),
+  VITE_AUDIT_RETRY_BASE: zIntFromString(500),
   VITE_DEV: zBoolFromString.optional().default(false),
   VITE_DEBUG_ENV: zBoolFromString.optional().default(false),
   VITE_E2E_ENFORCE_AUDIENCE: zBoolFromString.optional().default(false),
@@ -128,10 +131,6 @@ export const envSchema = z.object({
   VITE_GRAPH_RETRY_CAP_MS: zIntFromString(2000),
   VITE_SCHEDULES_SAVE_MODE: z.enum(['real', 'mock']).optional().default('real'),
 
-  // Audit feature
-  VITE_AUDIT_BATCH_SIZE: zIntFromString(20),
-  VITE_AUDIT_RETRY_MAX: zIntFromString(3),
-  VITE_AUDIT_RETRY_BASE: zIntFromString(500),
 
   // Additional identifiers (found in code)
   VITE_AAD_ADMIN_GROUP_ID: z.string().optional(),
