@@ -5,19 +5,34 @@ import type {
     IcebergNodeType,
     IcebergSession,
     NodePosition,
+    IcebergSnapshot,
 } from '@/features/analysis/domain/icebergTypes';
+import { icebergSnapshotSchema } from '@/features/analysis/domain/icebergTypes';
 import type { AssessmentItem } from '@/features/assessment/domain/types';
 import type { BehaviorObservation } from '@/features/daily/domain/daily/types';
 import { useCallback, useSyncExternalStore } from 'react';
+import type { IcebergRepository } from '@/features/analysis/infra/SharePointIcebergRepository';
+import { ConflictError } from '@/features/analysis/infra/SharePointIcebergRepository';
+
+type SaveState = 'idle' | 'saving' | 'saved' | 'conflict' | 'error';
 
 type IcebergState = {
   currentSession: IcebergSession | null;
   sessions: Record<string, IcebergSession>;
+  // Persistence metadata
+  saveState: SaveState;
+  lastSaveError?: string;
+  lastSavedAt?: string;
+  lastEntryHash?: string;
 };
 
 let state: IcebergState = {
   currentSession: null,
   sessions: {},
+  saveState: 'idle',
+  lastSaveError: undefined,
+  lastSavedAt: undefined,
+  lastEntryHash: undefined,
 };
 
 const listeners = new Set<() => void>();
@@ -181,7 +196,118 @@ const loadSession = (sessionId: string) => {
   return existing;
 };
 
-export function useIcebergStore() {
+// ===== Persistence Functions (require repository) =====
+
+/** Local helper to compute entry hash for idempotency */
+function sha256Like(input: string): string {
+  let h = 0;
+  for (let i = 0; i < input.length; i++) {
+    const c = input.charCodeAt(i);
+    h = (h << 5) - h + c;
+    h = h & h;
+  }
+  return `h_${input.length}_${Math.abs(h)}`;
+}
+
+const saveSnapshot = async (
+  repository: IcebergRepository,
+  opts: { userId: string; sessionId: string; title?: string }
+) => {
+  const { userId, sessionId, title } = opts;
+
+  if (!state.currentSession) {
+    throw new Error('No active session to save');
+  }
+
+  // Build snapshot from current state
+  const snapshot: IcebergSnapshot = {
+    schemaVersion: 1,
+    userId,
+    sessionId,
+    title: title ?? state.currentSession.title ?? `Iceberg Session ${sessionId}`,
+    updatedAt: new Date().toISOString(),
+    nodes: state.currentSession.nodes,
+    links: state.currentSession.links,
+  };
+
+  // Validate with Zod
+  const validated = icebergSnapshotSchema.parse(snapshot);
+
+  // Compute idempotent key (nodes + links snapshot)
+  const payloadFingerprint = JSON.stringify({
+    n: validated.nodes.map((n) => [n.id, n.position]),
+    l: validated.links.map((l) => [l.id, l.sourceNodeId, l.targetNodeId]),
+  });
+  const entryHash = sha256Like(`${userId}:${sessionId}:${payloadFingerprint}`);
+
+  // Update save state
+  state = { ...state, saveState: 'saving', lastSaveError: undefined };
+  emit();
+
+  try {
+    const result = await repository.upsertSnapshot({
+      entryHash,
+      snapshot: validated,
+    });
+
+    state = {
+      ...state,
+      saveState: 'saved',
+      lastSavedAt: new Date().toISOString(),
+      lastEntryHash: entryHash,
+    };
+    emit();
+
+    return result;
+  } catch (e: unknown) {
+    const err = e as Record<string, unknown> | { message?: string };
+    if (e instanceof ConflictError) {
+      state = { ...state, saveState: 'conflict', lastSaveError: e.message };
+    } else {
+      state = { ...state, saveState: 'error', lastSaveError: String(err?.message ?? e) };
+    }
+    emit();
+    throw e;
+  }
+};
+
+const loadLatest = async (repository: IcebergRepository, userId: string) => {
+  state = { ...state, saveState: 'saving', lastSaveError: undefined };
+  emit();
+
+  try {
+    const latest = await repository.getLatestByUser(userId);
+    if (!latest) {
+      state = { ...state, saveState: 'idle' };
+      emit();
+      return null;
+    }
+
+    // Convert snapshot back to IcebergSession
+    const loaded: IcebergSession = {
+      id: latest.sessionId,
+      targetUserId: latest.userId,
+      title: latest.title,
+      createdAt: new Date().toISOString(), // Snapshot doesn't track createdAt
+      updatedAt: latest.updatedAt,
+      nodes: latest.nodes,
+      links: latest.links,
+    };
+
+    persistSession(loaded);
+    state = { ...state, saveState: 'saved', lastSavedAt: latest.updatedAt };
+    emit();
+
+    return loaded;
+  } catch (e: unknown) {
+    const err = e as Record<string, unknown> | { message?: string };
+    state = { ...state, saveState: 'error', lastSaveError: String(err?.message ?? e) };
+    emit();
+    throw e;
+  }
+};
+
+export function useIcebergStore(repository?: IcebergRepository) {
   const store = useSyncExternalStore(subscribe, snapshot, snapshot);
 
   const init = useCallback((userId: string, title: string) => initSession(userId, title), []);
@@ -196,15 +322,41 @@ export function useIcebergStore() {
     [],
   );
   const load = useCallback((sessionId: string) => loadSession(sessionId), []);
+  
+  // Persistence callbacks (require repository)
+  const savePersistent = useCallback(
+    (opts: { userId: string; sessionId: string; title?: string }) => {
+      if (!repository) {
+        throw new Error('Repository not provided to useIcebergStore');
+      }
+      return saveSnapshot(repository, opts);
+    },
+    [repository]
+  );
+
+  const loadPersistent = useCallback(
+    (userId: string) => {
+      if (!repository) {
+        throw new Error('Repository not provided to useIcebergStore');
+      }
+      return loadLatest(repository, userId);
+    },
+    [repository]
+  );
 
   return {
     currentSession: store.currentSession,
     sessions: store.sessions,
+    saveState: store.saveState,
+    lastSaveError: store.lastSaveError,
+    lastSavedAt: store.lastSavedAt,
     initSession: init,
     addNode,
     addNodeFromData: addNode,
     moveNode: move,
     linkNodes: link,
     loadSession: load,
+    savePersistent,
+    loadPersistent,
   } as const;
 }

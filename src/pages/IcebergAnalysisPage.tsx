@@ -1,14 +1,19 @@
 import { IcebergCanvas } from '@/features/analysis/components/iceberg/IcebergCanvas';
 import type { EnvironmentFactor } from '@/features/analysis/domain/icebergTypes';
 import { useIcebergStore } from '@/features/analysis/stores/icebergStore';
+import { createIcebergRepository } from '@/features/analysis/infra/SharePointIcebergRepository';
 import type { AssessmentItem } from '@/features/assessment/domain/types';
 import type { BehaviorObservation } from '@/features/daily/domain/daily/types';
 import { useUsersDemo } from '@/features/users/usersStoreDemo';
+import { useSP } from '@/lib/spClient';
+import { useAuth } from '@/lib/auth';
 import AddLinkIcon from '@mui/icons-material/AddLink';
 import SaveIcon from '@mui/icons-material/Save';
 import WorkspacesIcon from '@mui/icons-material/Workspaces';
+import Alert from '@mui/material/Alert';
 import Box from '@mui/material/Box';
 import Button from '@mui/material/Button';
+import CircularProgress from '@mui/material/CircularProgress';
 import Container from '@mui/material/Container';
 import FormControl from '@mui/material/FormControl';
 import InputLabel from '@mui/material/InputLabel';
@@ -17,7 +22,7 @@ import Paper from '@mui/material/Paper';
 import Select, { type SelectChangeEvent } from '@mui/material/Select';
 import Stack from '@mui/material/Stack';
 import Typography from '@mui/material/Typography';
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useMemo } from 'react';
 
 const createDemoBehaviors = (userId: string): BehaviorObservation[] => [
   {
@@ -68,10 +73,20 @@ const createDemoEnvironmentFactors = (): EnvironmentFactor[] => [
 ];
 
 const IcebergAnalysisPage: React.FC = () => {
-  const { currentSession, initSession, moveNode, addNodeFromData, linkNodes } = useIcebergStore();
+  const sp = useSP();
+  const { acquireToken } = useAuth();
+  const spBaseUrl = sp ? 'sp-client-available' : ''; // spClient は singleton, baseUrl は config から取得
+  
+  // Repository 初期化（acquireToken, baseUrl が安定したら再作成）
+  const repository = useMemo(() => {
+    return createIcebergRepository(acquireToken, spBaseUrl);
+  }, [acquireToken, spBaseUrl]);
+
+  const { currentSession, initSession, moveNode, addNodeFromData, linkNodes, saveState, lastSaveError, savePersistent } = useIcebergStore(repository);
   const { data: users } = useUsersDemo();
   const [targetUserId, setTargetUserId] = useState('');
   const activeSessionUserId = currentSession?.targetUserId;
+  const [isSaving, setIsSaving] = useState(false);
 
   useEffect(() => {
     if (!targetUserId) return;
@@ -106,6 +121,22 @@ const IcebergAnalysisPage: React.FC = () => {
     const behaviors = currentSession.nodes.filter((node) => node.type === 'behavior');
     if (!causes.length || !behaviors.length) return;
     linkNodes(causes[0].id, behaviors[0].id);
+  };
+
+  const handleSave = async () => {
+    if (!currentSession || !targetUserId) return;
+    setIsSaving(true);
+    try {
+      await savePersistent({
+        userId: targetUserId,
+        sessionId: currentSession.id,
+        title: currentSession.title,
+      });
+    } catch (e) {
+      console.error('[IcebergAnalysisPage] Save error:', e);
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   const handleUserChange = (event: SelectChangeEvent<string>) => {
@@ -147,11 +178,33 @@ const IcebergAnalysisPage: React.FC = () => {
           <Button variant="outlined" startIcon={<AddLinkIcon />} onClick={handleAutoLink} disabled={!currentSession}>
             仮説リンク (Demo)
           </Button>
-          <Button variant="contained" startIcon={<SaveIcon />} disabled={!currentSession}>
+          <Button
+            variant="contained"
+            startIcon={isSaving ? <CircularProgress size={20} /> : <SaveIcon />}
+            onClick={handleSave}
+            disabled={!currentSession || isSaving || saveState === 'saving'}
+          >
             分析保存
           </Button>
         </Stack>
       </Paper>
+
+      {/* 保存状態フィードバック */}
+      {saveState === 'saved' && (
+        <Alert severity="success" sx={{ mb: 2 }}>
+          保存しました 💾
+        </Alert>
+      )}
+      {saveState === 'error' && (
+        <Alert severity="error" sx={{ mb: 2 }}>
+          保存に失敗しました: {lastSaveError || '不明なエラー'}
+        </Alert>
+      )}
+      {saveState === 'conflict' && (
+        <Alert severity="warning" sx={{ mb: 2 }}>
+          他端末で更新されました。再読込してから保存してください。
+        </Alert>
+      )}
 
       <Box
         data-testid="iceberg-page-canvas"
