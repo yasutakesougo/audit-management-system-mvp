@@ -1,7 +1,23 @@
+import { z } from 'zod';
 import { getRuntimeEnv, isDev as runtimeIsDev } from '@/env';
+import { appEnvSchema } from './env.schema';
 
 type Primitive = string | number | boolean | undefined | null;
 export type EnvRecord = Record<string, Primitive>;
+
+export type AppEnv = z.infer<typeof appEnvSchema>;
+
+const _envParsed = appEnvSchema.safeParse(import.meta.env);
+if (!_envParsed.success) {
+  console.warn('[env] Environment validation failed (non-fatal):', _envParsed.error.flatten().fieldErrors);
+}
+/**
+ * Typed snapshot of build-time env variables validated by appEnvSchema.
+ * Falls back to empty object in CI when env vars are absent, so consumers
+ * should prefer the individual helper functions (readEnv, readBool, etc.)
+ * for robust runtime resolution including window.__ENV__ overrides.
+ */
+export const env: AppEnv = _envParsed.success ? _envParsed.data : ({} as AppEnv);
 
 export type AppConfig = {
   VITE_SP_RESOURCE: string;
