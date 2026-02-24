@@ -1,8 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import type { IPublicClientApplication } from '@azure/msal-browser';
 import { InteractionStatus } from './interactionStatus';
 import { useCallback, useEffect, useRef } from 'react';
-import { getAppConfig, isE2eMsalMockEnabled, shouldSkipLogin } from '../lib/env';
+import { getAppConfig, getConfiguredMsalScopes, getSharePointDefaultScope, isE2eMsalMockEnabled, shouldSkipLogin } from '../lib/env';
 import { createE2EMsalAccount, persistMsalToken } from '../lib/msal';
 import { GRAPH_RESOURCE, GRAPH_SCOPES, LOGIN_SCOPES, SP_RESOURCE } from './msalConfig';
 import { useMsalContext } from './MsalProvider';
@@ -32,24 +31,6 @@ type BasicAccountInfo = {
   username?: string;
   homeAccountId?: string;
 };
-
-const ensureActiveAccount = (instance: IPublicClientApplication) => {
-  let account = instance.getActiveAccount() as BasicAccountInfo | null;
-  if (!account) {
-    const all = (instance.getAllAccounts() as BasicAccountInfo[]) ?? [];
-    if (all.length > 0) {
-      const firstAccount = all[0];
-      instance.setActiveAccount(firstAccount);
-      account = firstAccount;
-      if (authConfig.isDev) {
-        const accountLabel = firstAccount.username ?? firstAccount.homeAccountId ?? '(unknown account)';
-        console.info('[MSAL] Active account auto-set:', accountLabel);
-      }
-    }
-  }
-  return account;
-};
-
 
 export const useAuth = () => {
   // StrictMode guard: prevent React 18 dev mode double-execution of signIn
@@ -154,24 +135,54 @@ export const useAuth = () => {
   const ensureResource = (resource?: string): string => normalizeResource(resource ?? SP_RESOURCE);
   const loginScopes = [...LOGIN_SCOPES];
 
+  const resolveSharePointScopes = (resource: string): string[] => {
+    const configured = getConfiguredMsalScopes();
+    if (configured.length > 0) {
+      return configured;
+    }
+    const fallback = getSharePointDefaultScope();
+    if (fallback) {
+      return [fallback];
+    }
+    return [`${resource}/.default`];
+  };
+
   const acquireToken = useCallback(async (resource?: string): Promise<string | null> => {
+    // Guard: Ensure activeAccount is set before attempting token allocation
+    // (session might have cleared cache, so re-check and set if needed)
+    let activeAccount = instance.getActiveAccount();
+    if (!activeAccount && accounts.length > 0) {
+      instance.setActiveAccount(accounts[0]);
+      activeAccount = instance.getActiveAccount();
+      debugLog('[acquireToken guard] active account re-ensured', {
+        accountCount: accounts.length,
+        set: (activeAccount as { username?: string })?.username,
+      });
+    }
+
     // Get fresh account list from instance to avoid stale closure
     const allAccounts = instance.getAllAccounts() as BasicAccountInfo[];
-    const activeAccount = ensureActiveAccount(instance) ?? (allAccounts[0] as BasicAccountInfo | undefined) ?? null;
-    if (!activeAccount) return null;
+    const finalAccount = activeAccount ?? (allAccounts[0] as BasicAccountInfo | undefined) ?? null;
+    if (!finalAccount) {
+      debugLog('[acquireToken] no active account available', {
+        getAllAccounts: allAccounts.length,
+        hasActiveAccount: !!activeAccount,
+      });
+      return null;
+    }
 
     // しきい値（秒）。既定 5 分。
     const thresholdSec = Number(authConfig.VITE_MSAL_TOKEN_REFRESH_MIN || '300') || 300;
     const targetResource = ensureResource(resource);
     const scopes = targetResource === GRAPH_RESOURCE
       ? [...GRAPH_SCOPES]
-      : [`${targetResource}/.default`];
+      : resolveSharePointScopes(targetResource);
 
     try {
       // 1回目: 通常のサイレント取得
       const first = await instance.acquireTokenSilent({
         scopes,
-        account: activeAccount,
+        account: finalAccount,
         forceRefresh: false,
       });
       tokenMetrics.acquireCount += 1;
@@ -188,7 +199,7 @@ export const useAuth = () => {
         debugLog('soft refresh triggered', { secondsLeft, thresholdSec });
         const refreshed = await instance.acquireTokenSilent({
           scopes,
-          account: activeAccount,
+          account: finalAccount,
           forceRefresh: true,
         });
         tokenMetrics.acquireCount += 1;
@@ -236,7 +247,7 @@ export const useAuth = () => {
       }
       return null;
     }
-  }, [instance]);
+  }, [instance, accounts]);
 
   const resolvedAccount = instance.getActiveAccount() ?? accounts[0] ?? null;
   const isAuthenticated = !!resolvedAccount;
@@ -245,6 +256,10 @@ export const useAuth = () => {
   useEffect(() => {
     if (!instance.getActiveAccount() && accounts.length > 0) {
       instance.setActiveAccount(accounts[0]);
+      debugLog('active account restored from accounts list', {
+        accountCount: accounts.length,
+        set: (accounts[0] as { username?: string })?.username,
+      });
     }
   }, [accounts, instance]);
 

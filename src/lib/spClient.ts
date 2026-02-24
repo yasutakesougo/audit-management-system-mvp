@@ -555,6 +555,14 @@ export function createSpClient(
 
   // baseUrl が空の場合は URL 初期化をスキップ（モックモード）
   const baseUrlInfo = baseUrl ? new URL(baseUrl) : null;
+  const deriveSiteRelative = (info: URL | null): string => {
+    if (!info) return '';
+    const normalized = info.pathname.replace(/\/_api\/web\/?$/u, '');
+    return normalized || '';
+  };
+  const proxyBaseUrl = typeof window !== 'undefined' ? `${window.location.origin}/api/sp` : '';
+  const proxyResource = baseUrlInfo?.origin ?? '';
+  const proxySiteRelative = deriveSiteRelative(baseUrlInfo);
 
   const normalizePath = (value: string): string => {
     if (!value) return value;
@@ -603,6 +611,12 @@ export function createSpClient(
     // In E2E with Playwright stubs (VITE_E2E_MSAL_MOCK), skip the mock layer to allow interception
     const isE2EWithMsalMock = isE2eMsalMockEnabled(runtimeEnv);
     const shouldMock = !isE2EWithMsalMock && (!baseUrl || baseUrl === '' || skipSharePoint(runtimeEnv) || shouldSkipLogin(runtimeEnv));
+    const useProxy =
+      !shouldMock &&
+      Boolean(proxyBaseUrl) &&
+      Boolean(proxyResource) &&
+      Boolean(proxySiteRelative) &&
+      readBool('VITE_SP_USE_PROXY', false, runtimeEnv as EnvRecord);
 
     // 🔍 デバッグログ: モック条件を確認
     const AUDIT_DEBUG = String(readEnv('VITE_AUDIT_DEBUG', '')) === '1';
@@ -710,13 +724,21 @@ export function createSpClient(
       return h;
     };
 
-    const resolveUrl = (targetPath: string) => (/^https?:\/\//i.test(targetPath) ? targetPath : `${baseUrl}${targetPath}`);
+    const resolveUrl = (targetPath: string) => {
+      if (/^https?:\/\//i.test(targetPath)) return targetPath;
+      if (useProxy) return `${proxyBaseUrl}${targetPath}`;
+      return `${baseUrl}${targetPath}`;
+    };
     const doFetch = async (token: string | null) => {
       const url = resolveUrl(resolvedPath);
       const AUDIT_DEBUG = String(readEnv('VITE_AUDIT_DEBUG', '')) === '1';
 
       // ヘッダー生成: undefined/null を絶対に入れない
       const headers = toHeaders(init.headers);
+      if (useProxy) {
+        headers.set('X-SP-RESOURCE', proxyResource);
+        headers.set('X-SP-SITE-RELATIVE', proxySiteRelative);
+      }
       // E2E/skip-login: only set Authorization if token exists
       if (token) {
         headers.set('Authorization', `Bearer ${token}`);

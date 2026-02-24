@@ -556,7 +556,7 @@ export const getMsalLoginScopes = (envOverride?: EnvRecord): string[] => {
 
 const DEMO_SHAREPOINT_SCOPE = 'https://example.sharepoint.com/AllSites.Read';
 
-const SHAREPOINT_SCOPE_PATTERN = /^https:\/\/[^/]+\.sharepoint\.com\/AllSites\.(Read|FullControl)$/i;
+const SHAREPOINT_SCOPE_PATTERN = /^https:\/\/[^/]+\.sharepoint\.com\/(AllSites\.(Read|FullControl)|\.default)$/i;
 const SHAREPOINT_RESOURCE_PATTERN = /^https:\/\/[^/]+\.sharepoint\.com$/i;
 
 export const getSharePointDefaultScope = (envOverride?: EnvRecord): string => {

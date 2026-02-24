@@ -98,7 +98,7 @@ export async function createIcebergRepository(acquireToken: () => Promise<string
    * List items 取得（OData クエリ）
    */
   async function getListItems(query: string): Promise<SharePointItem[]> {
-    const url = `/${LIST_TITLE}/items?${query}`;
+    const url = `/_api/web/lists/GetByTitle('${LIST_TITLE}')/items?${query}`;
     dbg('[getListItems]', { url });
 
     const res = await client.spFetch(url);
@@ -122,7 +122,7 @@ export async function createIcebergRepository(acquireToken: () => Promise<string
    * List item 作成
    */
   async function postListItem(body: Record<string, unknown>): Promise<SharePointItem> {
-    const url = `/${LIST_TITLE}/items`;
+    const url = `/_api/web/lists/GetByTitle('${LIST_TITLE}')/items`;
     dbg('[postListItem]', { url, keys: Object.keys(body) });
 
     const res = await client.spFetch(url, {
@@ -146,7 +146,7 @@ export async function createIcebergRepository(acquireToken: () => Promise<string
     body: Record<string, unknown>,
     etag?: string
   ): Promise<void> {
-    const url = `/${LIST_TITLE}/items(${id})`;
+    const url = `/_api/web/lists/GetByTitle('${LIST_TITLE}')/items(${id})`;
     dbg('[patchListItem]', { url, etag: etag ? 'present' : 'absent' });
 
     const headers: Record<string, string> = {

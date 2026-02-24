@@ -13,6 +13,8 @@ interface Env {
   FIREBASE_PROJECT_ID?: string;
   FIREBASE_SERVICE_ACCOUNT_EMAIL?: string;
   FIREBASE_SERVICE_ACCOUNT_PRIVATE_KEY?: string;
+  VITE_SP_RESOURCE?: string;
+  VITE_SP_SITE_RELATIVE?: string;
 }
 
 type GraphMeResponse = {
@@ -65,6 +67,15 @@ const RUNTIME_ENV_ALLOWLIST = new Set([
   'VITE_RECEPTION_GROUP_ID',
   'VITE_AAD_ADMIN_GROUP_ID',
   'VITE_ADMIN_GROUP_ID',
+  'VITE_AAD_CLIENT_ID',
+  'VITE_AAD_TENANT_ID',
+  'VITE_MSAL_REDIRECT_URI',
+  'VITE_MSAL_SCOPES',
+  'VITE_SP_SCOPE_DEFAULT',
+  'VITE_SP_USE_PROXY',
+  'VITE_SP_RESOURCE',
+  'VITE_SP_SITE_RELATIVE',
+  'VITE_SP_SITE_URL',
 ]);
 
 const pickRuntimeEnvFromBindings = (env: Env): Record<string, string> => {
@@ -136,6 +147,42 @@ const fetchGraphMe = async (accessToken: string): Promise<GraphMeResponse> => {
 
 const normalizePrivateKey = (value: string): string => {
   return value.replace(/\\n/g, '\n');
+};
+
+const normalizeSharePointResource = (value: string): string => value.trim().replace(/\/+$/u, '');
+
+const normalizeSharePointSite = (value: string): string => {
+  const trimmed = value.trim();
+  const prefixed = trimmed.startsWith('/') ? trimmed : `/${trimmed}`;
+  return prefixed.replace(/\/+$/u, '');
+};
+
+const isValidSharePointTarget = (resource: string, siteRelative: string): boolean => {
+  try {
+    const parsed = new URL(resource);
+    if (parsed.protocol !== 'https:') return false;
+    if (!/\.sharepoint\.com$/i.test(parsed.hostname)) return false;
+  } catch {
+    return false;
+  }
+
+  return siteRelative.startsWith('/sites/') || siteRelative.startsWith('/teams/');
+};
+
+const buildCorsHeaders = (origin: string | null): Headers => {
+  const headers = new Headers({
+    'Access-Control-Allow-Methods': 'GET,POST,PUT,PATCH,DELETE,OPTIONS',
+    'Access-Control-Allow-Headers':
+      'Authorization,Content-Type,Accept,If-Match,X-HTTP-Method,X-HTTP-Method-Override,X-SP-RESOURCE,X-SP-SITE-RELATIVE',
+    'Access-Control-Max-Age': '86400',
+  });
+
+  if (origin) {
+    headers.set('Access-Control-Allow-Origin', origin);
+    headers.set('Vary', 'Origin');
+  }
+
+  return headers;
 };
 
 const resolveServiceAccountConfig = (env: Env): ServiceAccountConfig => {
@@ -322,6 +369,65 @@ const handleFirebaseExchange = async (request: Request, env: Env): Promise<Respo
   }
 };
 
+const handleSharePointProxy = async (request: Request, env: Env): Promise<Response> => {
+  const url = new URL(request.url);
+  const origin = request.headers.get('Origin');
+  const corsHeaders = buildCorsHeaders(origin);
+
+  if (request.method === 'OPTIONS') {
+    return new Response(null, { status: 204, headers: corsHeaders });
+  }
+
+  const resource = request.headers.get('X-SP-RESOURCE') ?? env.VITE_SP_RESOURCE ?? '';
+  const siteRelative = request.headers.get('X-SP-SITE-RELATIVE') ?? env.VITE_SP_SITE_RELATIVE ?? '';
+  if (!resource || !siteRelative) {
+    return jsonResponse(400, { error: 'missing_sharepoint_target' });
+  }
+
+  const normalizedResource = normalizeSharePointResource(resource);
+  const normalizedSite = normalizeSharePointSite(siteRelative);
+  if (!isValidSharePointTarget(normalizedResource, normalizedSite)) {
+    return jsonResponse(400, { error: 'invalid_sharepoint_target' });
+  }
+
+  const proxyPath = url.pathname.replace(/^\/api\/sp/u, '') || '/';
+  const apiPath = proxyPath.startsWith('/_api/') ? proxyPath : `/_api/web${proxyPath}`;
+  const upstreamUrl = `${normalizedResource}${normalizedSite}${apiPath}${url.search}`;
+
+  const incomingAuth = request.headers.get('Authorization') ?? request.headers.get('authorization');
+  const incomingAccept = request.headers.get('Accept') ?? request.headers.get('accept');
+
+  const headers = new Headers(request.headers);
+  headers.delete('Host');
+  headers.delete('Content-Length');
+  headers.delete('Origin');
+  headers.delete('X-SP-RESOURCE');
+  headers.delete('X-SP-SITE-RELATIVE');
+  if (incomingAuth) {
+    headers.set('Authorization', incomingAuth);
+  }
+  if (!headers.get('Accept')) {
+    headers.set('Accept', incomingAccept ?? 'application/json;odata=nometadata');
+  }
+
+  const upstreamRequest = new Request(upstreamUrl, {
+    method: request.method,
+    headers,
+    body: request.body,
+    redirect: 'follow',
+  });
+
+  const upstreamResponse = await fetch(upstreamRequest);
+  const responseHeaders = new Headers(upstreamResponse.headers);
+  corsHeaders.forEach((value, key) => responseHeaders.set(key, value));
+  responseHeaders.set('Cache-Control', 'no-store');
+
+  return new Response(upstreamResponse.body, {
+    status: upstreamResponse.status,
+    headers: responseHeaders,
+  });
+};
+
 export default {
   async fetch(request: Request, env: Env): Promise<Response> {
     const url = new URL(request.url);
@@ -351,6 +457,10 @@ export default {
 
     if (url.pathname === '/api/firebase/exchange') {
       return handleFirebaseExchange(request, env);
+    }
+
+    if (url.pathname.startsWith('/api/sp')) {
+      return handleSharePointProxy(request, env);
     }
 
     // API routes - pass through
