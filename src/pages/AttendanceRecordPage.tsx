@@ -1,6 +1,5 @@
 /* eslint-disable boundaries/element-types */
 import { ABSENCE_MONTHLY_LIMIT, DISCREPANCY_THRESHOLD } from '@/config/serviceRecords';
-import { getFlag } from '@/env';
 import {
     buildAbsentVisit,
     buildInitialVisits,
@@ -24,6 +23,7 @@ import {
   type AttendanceDailyItem 
 } from '@/features/attendance/infra/attendanceDailyRepository';
 import { AttendanceRow } from '@/features/attendance/components/AttendanceRow';
+import { AttendanceDetailDrawer } from '@/features/attendance/components/AttendanceDetailDrawer';
 import {
   isAttendanceError,
   type AttendanceErrorCode,
@@ -33,19 +33,16 @@ import { useAuth } from '@/auth/useAuth';
 import { createSpClient, ensureConfig } from '@/lib/spClient';
 import { warmDataEntryComponents } from '@/mui/warm';
 import { TESTIDS } from '@/testids';
-import TransportIcon from '@mui/icons-material/AirportShuttle';
 import AttendanceIcon from '@mui/icons-material/AssignmentInd';
 import AbsenceIcon from '@mui/icons-material/CancelScheduleSend';
 import CheckIcon from '@mui/icons-material/CheckCircle';
 import BusIcon from '@mui/icons-material/DirectionsBus';
-import ResetIcon from '@mui/icons-material/Replay';
 import MorningIcon from '@mui/icons-material/School';
 import SearchIcon from '@mui/icons-material/Search';
 import EveningIcon from '@mui/icons-material/WbTwilight';
 import Alert from '@mui/material/Alert';
 import Button from '@mui/material/Button';
 import Card from '@mui/material/Card';
-import Box from '@mui/material/Box';
 import CardContent from '@mui/material/CardContent';
 import Chip from '@mui/material/Chip';
 import Container from '@mui/material/Container';
@@ -62,7 +59,6 @@ import Snackbar from '@mui/material/Snackbar';
 import Stack from '@mui/material/Stack';
 import Switch from '@mui/material/Switch';
 import TextField from '@mui/material/TextField';
-import Tooltip from '@mui/material/Tooltip';
 import Typography from '@mui/material/Typography';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
@@ -147,6 +143,7 @@ const AttendanceRecordPage: React.FC<AttendanceRecordPageProps> = ({ 'data-testi
   const [absenceDialog, setAbsenceDialog] = useState<AbsenceDialogState | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [filterStatus, setFilterStatus] = useState<FilterStatus>('all');
+  const [detailDrawer, setDetailDrawer] = useState<{ user: AttendanceUser; visit: AttendanceVisit } | null>(null);
 
   // SharePoint client setup
   const { acquireToken } = useAuth();
@@ -263,19 +260,6 @@ const AttendanceRecordPage: React.FC<AttendanceRecordPageProps> = ({ 'data-testi
 
     await upsertDailyByKey(spClient, item);
   }, [spClient, users, today]);
-
-  const saveVisit = useCallback(
-    async (userCode: string, sourceVisits?: Record<string, AttendanceVisit>) => {
-      const target = sourceVisits ?? visits;
-      try {
-        await saveVisitByMap(userCode, target);
-      } catch (error) {
-        console.error('Failed to save visit:', error);
-        openToast('保存に失敗しました', 'error');
-      }
-    },
-    [openToast, saveVisitByMap, visits],
-  );
 
   const visitsRef = useRef(visits);
   useEffect(() => {
@@ -428,6 +412,8 @@ const AttendanceRecordPage: React.FC<AttendanceRecordPageProps> = ({ 'data-testi
     openToast(ATTENDANCE_ERROR_MESSAGES.UNKNOWN, 'error');
   }, [openToast]);
 
+  const applyAndPersist = attendanceActions.applyAndPersist;
+
   const handleCheckIn = useCallback(async (user: AttendanceUser) => {
     const current = visits[user.userCode];
     if (!current || current.status === '当日欠席' || current.cntAttendIn === 1) return;
@@ -464,25 +450,6 @@ const AttendanceRecordPage: React.FC<AttendanceRecordPageProps> = ({ 'data-testi
     }
   }, [attendanceActions, showAttendanceError, visits]);
 
-  const handleTransportToggle = async (user: AttendanceUser, field: 'transportTo' | 'transportFrom') => {
-    setVisits((prev) => {
-      const current = prev[user.userCode];
-      if (!current || !user.isTransportTarget) {
-        return prev;
-      }
-      return {
-        ...prev,
-        [user.userCode]: {
-          ...current,
-          [field]: !current[field]
-        }
-      };
-    });
-    
-    // Save to SharePoint after state update
-    await saveVisit(user.userCode);
-  };
-
   const openAbsenceDialog = (user: AttendanceUser) => {
     const visit = visits[user.userCode];
     if (!visit) return;
@@ -509,43 +476,37 @@ const AttendanceRecordPage: React.FC<AttendanceRecordPageProps> = ({ 'data-testi
       ABSENCE_MONTHLY_LIMIT
     );
 
-    setVisits((prev) => ({
-      ...prev,
-      [user.userCode]: buildAbsentVisit(visit, {
-        morningContacted,
-        morningMethod,
-        eveningChecked,
-        eveningNote,
-        eligible,
-      }),
-    }));
-
-    if (eligible) {
-      setUsers((prev) =>
-        prev.map((entry) =>
-          entry.userCode === user.userCode
-            ? { ...entry, absenceClaimedThisMonth: entry.absenceClaimedThisMonth + 1 }
-            : entry
-        )
+    try {
+      await applyAndPersist(
+        (prev) => ({
+          ...prev,
+          [user.userCode]: buildAbsentVisit(visit, {
+            morningContacted,
+            morningMethod,
+            eveningChecked,
+            eveningNote,
+            eligible,
+          }),
+        }),
+        `absence:${user.userCode}`,
       );
-      openToast(`${user.userName}さんの欠席を記録しました（加算対象）`, 'success');
-    } else {
-      openToast(`${user.userName}さんの欠席を記録しました（加算対象外）`, 'warning');
-    }
-    closeAbsenceDialog();
-    
-    // Save to SharePoint after state update
-    await saveVisit(user.userCode);
-  };
 
-  const handleReset = async (user: AttendanceUser) => {
-    setVisits((prev) => ({
-      ...prev,
-      [user.userCode]: buildInitialVisits([user], today)[user.userCode]
-    }));
-    
-    // Save to SharePoint after state update
-    await saveVisit(user.userCode);
+      if (eligible) {
+        setUsers((prev) =>
+          prev.map((entry) =>
+            entry.userCode === user.userCode
+              ? { ...entry, absenceClaimedThisMonth: entry.absenceClaimedThisMonth + 1 }
+              : entry
+          )
+        );
+        openToast(`${user.userName}さんの欠席を記録しました（加算対象）`, 'success');
+      } else {
+        openToast(`${user.userName}さんの欠席を記録しました（加算対象外）`, 'warning');
+      }
+      closeAbsenceDialog();
+    } catch (error) {
+      showAttendanceError(error);
+    }
   };
 
   return (
@@ -660,7 +621,6 @@ const AttendanceRecordPage: React.FC<AttendanceRecordPageProps> = ({ 'data-testi
           {filteredUsers.map((user) => {
             const visit = visits[user.userCode];
             const disableAbsence = visit.status !== '未' && visit.status !== '当日欠席';
-            const absenceLimitReached = user.absenceClaimedThisMonth >= ABSENCE_MONTHLY_LIMIT;
             const rangeText = visit.checkInAt && visit.checkOutAt
               ? `${formatTime(visit.checkInAt)}〜${formatTime(visit.checkOutAt)}`
               : '—';
@@ -702,189 +662,9 @@ const AttendanceRecordPage: React.FC<AttendanceRecordPageProps> = ({ 'data-testi
                         }
                       }}
                       onDetail={() => {
-                        navigate(`/daily/activity?userId=${user.userCode}&date=${today}`);
+                        setDetailDrawer({ user, visit });
                       }}
                     />
-
-                    <Stack
-                      direction="row"
-                      spacing={1}
-                      sx={{
-                        flexWrap: 'wrap',
-                        justifyContent: { xs: 'flex-start', md: 'space-between' },
-                        rowGap: 0.75,
-                        alignItems: 'center',
-                      }}
-                    >
-                      <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.75 }}>
-                        <Chip label={`実提供 ${visit.providedMinutes ?? 0}分`} size="small" />
-                        <Chip label={`算定 ${user.standardMinutes}分`} variant="outlined" size="small" />
-                        {visit.userConfirmedAt && (
-                          <Chip
-                            label={`確認 ${new Date(visit.userConfirmedAt).toLocaleTimeString('ja-JP', { hour: '2-digit', minute: '2-digit' })}`}
-                            color="success"
-                            size="small"
-                          />
-                        )}
-                        {(visit.providedMinutes ?? 0) > 0 && visit.providedMinutes! < user.standardMinutes * DISCREPANCY_THRESHOLD && (
-                          <Chip label="乖離あり（備考推奨）" color="warning" variant="outlined" size="small" />
-                        )}
-                        {visit.isEarlyLeave && (
-                          <Chip label="早退" color="warning" variant="outlined" size="small" />
-                        )}
-                        {visit.isAbsenceAddonClaimable && (
-                          <Chip label="欠席加算対象" color="warning" size="small" />
-                        )}
-                      </Box>
-
-                      <Stack direction="row" spacing={1}>
-                        <Tooltip
-                          title={
-                            visit.userConfirmedAt
-                              ? `確認済: ${new Date(visit.userConfirmedAt).toLocaleTimeString('ja-JP', { hour: '2-digit', minute: '2-digit' })}`
-                              : (visit.status === '退所済' || visit.status === '当日欠席'
-                                ? '確認できます'
-                                : '退所または欠席確定後に確認可能')
-                          }
-                        >
-                          <span>
-                            {(() => {
-                              const E2E_UNLOCK_CONFIRM = getFlag('VITE_E2E_UNLOCK_CONFIRM');
-                              const disabled = !!visit.userConfirmedAt || (visit.status !== '退所済' && visit.status !== '当日欠席');
-                              const disabledFinal = E2E_UNLOCK_CONFIRM ? false : disabled;
-                              if (typeof window !== 'undefined') {
-                                type ConfirmDebugPayload = {
-                                  userCode: string;
-                                  disabled: boolean;
-                                  disabledFinal: boolean;
-                                  reasons: {
-                                    userConfirmedAt: boolean;
-                                    status: typeof visit.status;
-                                    E2E_UNLOCK_CONFIRM: boolean;
-                                  };
-                                };
-                                const debugWindow = window as typeof window & { __CONFIRM_DEBUG?: ConfirmDebugPayload };
-                                debugWindow.__CONFIRM_DEBUG = {
-                                  userCode: user.userCode,
-                                  disabled,
-                                  disabledFinal,
-                                  reasons: {
-                                    userConfirmedAt: !!visit.userConfirmedAt,
-                                    status: visit.status,
-                                    E2E_UNLOCK_CONFIRM,
-                                  },
-                                };
-                              }
-                              return (
-                                <Button
-                                  variant="outlined"
-                                  color="success"
-                                  onClick={async () => {
-                                    setVisits((prev) => ({
-                                      ...prev,
-                                      [user.userCode]: {
-                                        ...prev[user.userCode],
-                                        userConfirmedAt: prev[user.userCode].userConfirmedAt ?? new Date().toISOString(),
-                                      },
-                                    }));
-                                    openToast('保存しました', 'success');
-                                    await saveVisit(user.userCode);
-                                  }}
-                                  disabled={disabledFinal}
-                                  startIcon={<CheckIcon />}
-                                  data-testid={`btn-confirm-${user.userCode}`}
-                                  size="small"
-                                >
-                                  利用者確認
-                                </Button>
-                              );
-                            })()}
-                          </span>
-                        </Tooltip>
-
-                        <Tooltip title="初期状態へ戻します">
-                          <span>
-                            <Button
-                              variant="text"
-                              color="inherit"
-                              onClick={() => handleReset(user)}
-                              startIcon={<ResetIcon />}
-                              data-testid={`btn-reset-${user.userCode}`}
-                              size="small"
-                            >
-                              リセット
-                            </Button>
-                          </span>
-                        </Tooltip>
-
-                        <Tooltip title="この利用者の申し送りタイムライン（/handoff-timeline）を開きます">
-                          <span>
-                            <Button
-                              variant="text"
-                              color="inherit"
-                              size="small"
-                              sx={{
-                                px: 0.5,
-                                minWidth: 'auto',
-                                color: 'text.secondary',
-                                '&:hover': { color: 'secondary.main' },
-                              }}
-                              onClick={() => {
-                                navigate('/handoff-timeline', {
-                                  state: {
-                                    dayScope: 'today',
-                                    timeFilter: 'all',
-                                    userId: user.userCode,
-                                    date: today,
-                                    focus: true,
-                                  },
-                                });
-                              }}
-                              data-testid={`btn-handoff-${user.userCode}`}
-                            >
-                              申し送りを見る
-                            </Button>
-                          </span>
-                        </Tooltip>
-                      </Stack>
-                    </Stack>
-
-                    {user.isTransportTarget ? (
-                      <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2}>
-                        <FormControlLabel
-                          control={
-                            <Switch
-                              checked={visit.transportTo}
-                              onChange={() => handleTransportToggle(user, 'transportTo')}
-                            />
-                          }
-                          label="送迎（行き）"
-                        />
-                        <FormControlLabel
-                          control={
-                            <Switch
-                              checked={visit.transportFrom}
-                              onChange={() => handleTransportToggle(user, 'transportFrom')}
-                            />
-                          }
-                          label="送迎（帰り）"
-                        />
-                      </Stack>
-                    ) : (
-                      <Alert severity="info" icon={<TransportIcon />}>
-                        送迎対象外です
-                      </Alert>
-                    )}
-
-                    {visit.status === '当日欠席' && (
-                      <Alert severity={visit.isAbsenceAddonClaimable ? 'warning' : 'info'}>
-                        欠席対応: 朝連絡 {visit.absentMorningContacted ? '済' : '未'} / 夕方様子{' '}
-                        {visit.eveningChecked ? '済' : '未'}{' '}
-                        {absenceLimitReached && visit.isAbsenceAddonClaimable === false
-                          ? '（上限超過のため請求対象外）'
-                          : ''}
-                      </Alert>
-                    )}
                   </Stack>
                 </CardContent>
               </Card>
@@ -1019,6 +799,114 @@ const AttendanceRecordPage: React.FC<AttendanceRecordPageProps> = ({ 'data-testi
           </Stack>
         </DialogActions>
       </Dialog>
+
+      {/* 詳細Drawer */}
+      <AttendanceDetailDrawer
+        open={Boolean(detailDrawer)}
+        user={
+          detailDrawer
+            ? {
+                id: detailDrawer.user.userCode,
+                name: `${detailDrawer.user.userName}（${detailDrawer.user.userCode}）`,
+              }
+            : null
+        }
+        visit={
+          detailDrawer
+            ? {
+                status: detailDrawer.visit.status,
+                transportTo: detailDrawer.visit.transportTo,
+                transportFrom: detailDrawer.visit.transportFrom,
+                actualService: detailDrawer.visit.providedMinutes
+                  ? `${detailDrawer.visit.providedMinutes}分`
+                  : undefined,
+                billing: undefined, // TODO: 算定分数フィールドが実装されたら追加
+                isUserConfirmed: Boolean(detailDrawer.visit.userConfirmedAt),
+                absentMorningContacted: detailDrawer.visit.absentMorningContacted,
+                eveningChecked: detailDrawer.visit.eveningChecked,
+                isAbsenceAddonClaimable: detailDrawer.visit.isAbsenceAddonClaimable,
+                absenceLimitReached:
+                  detailDrawer.user.absenceClaimedThisMonth >= ABSENCE_MONTHLY_LIMIT,
+              }
+            : null
+        }
+        onClose={() => setDetailDrawer(null)}
+        onTransportToChange={(value) => {
+          if (!detailDrawer) return;
+          let nextVisit: AttendanceVisit | null = null;
+          void applyAndPersist((prev) => {
+            const current = prev[detailDrawer.user.userCode];
+            if (!current) return prev;
+            nextVisit = { ...current, transportTo: value };
+            return { ...prev, [detailDrawer.user.userCode]: nextVisit };
+          }, `drawer:${detailDrawer.user.userCode}:transportTo`).then(() => {
+            if (!nextVisit) return;
+            setDetailDrawer((prev) => (prev ? { ...prev, visit: nextVisit! } : prev));
+          });
+        }}
+        onTransportFromChange={(value) => {
+          if (!detailDrawer) return;
+          let nextVisit: AttendanceVisit | null = null;
+          void applyAndPersist((prev) => {
+            const current = prev[detailDrawer.user.userCode];
+            if (!current) return prev;
+            nextVisit = { ...current, transportFrom: value };
+            return { ...prev, [detailDrawer.user.userCode]: nextVisit };
+          }, `drawer:${detailDrawer.user.userCode}:transportFrom`).then(() => {
+            if (!nextVisit) return;
+            setDetailDrawer((prev) => (prev ? { ...prev, visit: nextVisit! } : prev));
+          });
+        }}
+        onUserConfirm={() => {
+          if (!detailDrawer) return;
+          let nextVisit: AttendanceVisit | null = null;
+          const currentlyConfirmed = Boolean(detailDrawer.visit.userConfirmedAt);
+          const newValue = currentlyConfirmed ? undefined : new Date().toISOString();
+          void applyAndPersist((prev) => {
+            const current = prev[detailDrawer.user.userCode];
+            if (!current) return prev;
+            nextVisit = { ...current, userConfirmedAt: newValue };
+            return { ...prev, [detailDrawer.user.userCode]: nextVisit };
+          }, `drawer:${detailDrawer.user.userCode}:confirm`).then(() => {
+            if (!nextVisit) return;
+            setDetailDrawer((prev) => (prev ? { ...prev, visit: nextVisit! } : prev));
+            openToast(newValue ? '利用者確認を完了しました' : '利用者確認を解除しました', 'success');
+          });
+        }}
+        onReset={() => {
+          if (!detailDrawer) return;
+          if (
+            !window.confirm(
+              `${detailDrawer.user.userName}さんの打刻を全てリセットします。この操作は取り消せません。よろしいですか？`
+            )
+          ) {
+            return;
+          }
+          let nextVisit: AttendanceVisit | null = null;
+          void applyAndPersist((prev) => {
+            const current = prev[detailDrawer.user.userCode];
+            if (!current) return prev;
+            const base = buildInitialVisits([detailDrawer.user], today)[detailDrawer.user.userCode];
+            nextVisit = {
+              ...base,
+              status: current.status,
+              absentMorningContacted: current.absentMorningContacted,
+              absentMorningMethod: current.absentMorningMethod,
+              eveningChecked: current.eveningChecked,
+              eveningNote: current.eveningNote,
+              isAbsenceAddonClaimable: current.isAbsenceAddonClaimable,
+            };
+            return { ...prev, [detailDrawer.user.userCode]: nextVisit };
+          }, `drawer:${detailDrawer.user.userCode}:reset`).then(() => {
+            setDetailDrawer(null);
+            openToast('打刻をリセットしました', 'info');
+          });
+        }}
+        onViewHandoff={() => {
+          if (!detailDrawer) return;
+          navigate(`/handoff-timeline?userId=${detailDrawer.user.userCode}`);
+        }}
+      />
       </>
     )}
       </Container>
