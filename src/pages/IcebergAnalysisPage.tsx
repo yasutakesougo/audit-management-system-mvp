@@ -5,7 +5,6 @@ import { createIcebergRepository } from '@/features/analysis/infra/SharePointIce
 import type { AssessmentItem } from '@/features/assessment/domain/types';
 import type { BehaviorObservation } from '@/features/daily/domain/daily/types';
 import { useUsersDemo } from '@/features/users/usersStoreDemo';
-import { useSP } from '@/lib/spClient';
 import { useAuth } from '@/lib/auth';
 import { getAppConfig } from '@/lib/config';
 import AddLinkIcon from '@mui/icons-material/AddLink';
@@ -74,7 +73,6 @@ const createDemoEnvironmentFactors = (): EnvironmentFactor[] => [
 ];
 
 const IcebergAnalysisPage: React.FC = () => {
-  const sp = useSP();
   const { acquireToken } = useAuth();
   
   // Get baseUrl from config (spClient uses this internally)
