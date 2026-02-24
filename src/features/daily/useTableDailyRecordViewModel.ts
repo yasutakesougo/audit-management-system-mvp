@@ -1,23 +1,11 @@
 import { useCallback, useState } from 'react';
 import { TESTIDS } from '@/testids';
 import { useCancelToDashboard } from '@/lib/nav/useCancelToDashboard';
+import { useDailyRecordRepository } from './repositoryFactory';
+import type { TableDailyRecordData } from './hooks/useTableDailyRecordForm';
 
-type TableDailyRecordPayload = {
-  date: string;
-  reporter: {
-    name: string;
-    role: string;
-  };
-  userRows: Array<{
-    userId: string;
-    userName: string;
-    amActivity: string;
-    pmActivity: string;
-    lunchAmount: string;
-    problemBehavior: Record<string, boolean>;
-    specialNotes: string;
-  }>;
-};
+// Re-export for backward compatibility
+export type TableDailyRecordPayload = TableDailyRecordData;
 
 type TableDailyRecordViewModel = {
   open: boolean;
@@ -30,6 +18,7 @@ type TableDailyRecordViewModel = {
 
 export const useTableDailyRecordViewModel = (): TableDailyRecordViewModel => {
   const cancelToDashboard = useCancelToDashboard();
+  const repository = useDailyRecordRepository();
   const [open, setOpen] = useState(true);
 
   const navigateBackToMenu = useCallback(() => {
@@ -40,12 +29,18 @@ export const useTableDailyRecordViewModel = (): TableDailyRecordViewModel => {
   const handleTableSave = useCallback(async (data: TableDailyRecordPayload) => {
     console.log('一覧形式記録保存@/daily/table:', data);
 
-    // TODO: 接続先が決まり次第 SharePoint (or API) 保存処理へ差し替え
-    await new Promise((resolve) => setTimeout(resolve, 1000));
-
-    alert(`${data.userRows.length}人分の活動記録を保存しました`);
-    navigateBackToMenu();
-  }, [navigateBackToMenu]);
+    try {
+      // Save to repository (SharePoint in production, InMemory in demo mode)
+      await repository.save(data);
+      
+      alert(`${data.userRows.length}人分の活動記録を保存しました`);
+      navigateBackToMenu();
+    } catch (error) {
+      console.error('日報保存に失敗しました:', error);
+      alert('保存に失敗しました。もう一度お試しください。');
+      throw error;
+    }
+  }, [repository, navigateBackToMenu]);
 
   return {
     open,
@@ -57,4 +52,4 @@ export const useTableDailyRecordViewModel = (): TableDailyRecordViewModel => {
   };
 };
 
-export type { TableDailyRecordPayload, TableDailyRecordViewModel };
+export type { TableDailyRecordViewModel };
