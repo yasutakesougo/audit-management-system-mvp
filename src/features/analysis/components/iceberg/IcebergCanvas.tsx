@@ -80,6 +80,7 @@ export const IcebergCanvas: React.FC<Props> = ({ nodes, links, onMoveNode }) => 
   return (
     <Box
       ref={containerRef}
+      data-testid="iceberg-canvas"
       sx={{
         width: '100%',
         height: '100%',
@@ -114,6 +115,7 @@ export const IcebergCanvas: React.FC<Props> = ({ nodes, links, onMoveNode }) => 
       </Box>
 
       <svg
+        data-testid="iceberg-links"
         style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', pointerEvents: 'none', zIndex: 0 }}
       >
         {renderLinks()}

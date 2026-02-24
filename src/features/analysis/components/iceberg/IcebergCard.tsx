@@ -48,6 +48,7 @@ export const IcebergCard: React.FC<Props> = ({ node, isSelected, onPointerDown, 
   return (
     <Card
       variant="outlined"
+      data-testid={`iceberg-card-${node.id}`}
       sx={{
         position: 'absolute',
         left: node.position.x,

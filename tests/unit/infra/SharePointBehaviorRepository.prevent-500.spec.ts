@@ -2,7 +2,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { SharePointBehaviorRepository } from '@/features/daily/infra/SharePointBehaviorRepository';
 
 describe('SharePointBehaviorRepository - Prevent 500 on missing required fields', () => {
-  let mockSp: any;
+  let mockSp: Record<string, unknown>;
 
   beforeEach(() => {
     mockSp = {
@@ -65,7 +65,8 @@ describe('SharePointBehaviorRepository - Prevent 500 on missing required fields'
     });
 
     // Act & Assert
-    const error = await repo.listByUser('I022').catch((e: Error) => e);
+    const result = await repo.listByUser('I022').catch((e: unknown) => e);
+    const error = result instanceof Error ? result : new Error(String(result));
 
     expect(error).toBeInstanceOf(Error);
     expect(error.message).toContain('必要な列が見つかりません');
