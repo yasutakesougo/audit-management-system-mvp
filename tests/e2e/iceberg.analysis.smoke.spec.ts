@@ -2,8 +2,8 @@ import { expect, test } from '@playwright/test';
 
 import { bootstrapDashboard } from './utils/bootstrapApp';
 
-test.describe('Iceberg Analysis smoke', () => {
-  test('loads page, selects user, sees nodes, and saves session', async ({ page }) => {
+test.describe('Iceberg Analysis', () => {
+  test('loads page, selects user, sees nodes, and saves manually', async ({ page }) => {
     await bootstrapDashboard(page, {
       skipLogin: true,
       featureSchedules: true,
@@ -13,31 +13,55 @@ test.describe('Iceberg Analysis smoke', () => {
     // Page title should be visible
     await expect(page.getByText('Iceberg Workspace')).toBeVisible({ timeout: 10_000 });
 
-    // Empty state should show prompt
-    await expect(page.getByText('上部のドロップダウンから分析対象を選択してください')).toBeVisible();
-
     // Select a user from the dropdown
     const userSelect = page.getByLabel('分析対象');
-    await expect(userSelect).toBeVisible({ timeout: 5_000 });
     await userSelect.click();
 
-    // Wait for dropdown options, pick the first user
+    // Pick the first user
     const firstOption = page.getByRole('option').first();
-    await expect(firstOption).toBeVisible({ timeout: 5_000 });
     await firstOption.click();
 
-    // Demo nodes should appear on the canvas
-    // The IcebergCard components contain behavior/assessment/environment labels
+    // Demo nodes should appear
     await expect(page.getByText('他害(叩く)')).toBeVisible({ timeout: 5_000 });
 
-    // Save button should be enabled
-    const saveBtn = page.getByTestId('iceberg-save-btn');
-    await expect(saveBtn).toBeEnabled();
+    // Status should be visible
+    const statusChip = page.getByTestId('iceberg-save-status');
+    await expect(statusChip).toBeVisible();
 
-    // Click save
+    // Click manual save
+    const saveBtn = page.getByTestId('iceberg-save-btn');
     await saveBtn.click();
 
-    // Snackbar with success message should appear
-    await expect(page.getByText('分析を保存しました')).toBeVisible({ timeout: 10_000 });
+    // Chip should show saved status
+    await expect(statusChip).toContainText('保存済み', { timeout: 10_000 });
+  });
+
+  test('auto-saves after change', async ({ page }) => {
+    await bootstrapDashboard(page, {
+      skipLogin: true,
+      featureSchedules: true,
+      initialPath: '/analysis/iceberg',
+    });
+
+    // Select user
+    const userSelect = page.getByLabel('分析対象');
+    await userSelect.click();
+    await page.getByRole('option').first().click();
+
+    // Wait for demo nodes
+    const node = page.getByText('他害(叩く)');
+    await expect(node).toBeVisible();
+
+    // Wait for initial auto-save to complete
+    const statusChip = page.getByTestId('iceberg-save-status');
+    await expect(statusChip).toContainText('保存済み', { timeout: 10_000 });
+
+    // Simulate a change by clicking "仮説リンク" which modifies the session
+    await page.getByText('仮説リンク (Demo)').click();
+
+    // Observe auto-save transition
+    // Saving status appears after 600ms debounce
+    await expect(statusChip).toContainText('保存中', { timeout: 2000 });
+    await expect(statusChip).toContainText('保存済み', { timeout: 10_000 });
   });
 });
