@@ -1,4 +1,4 @@
-import { describe, expect, it, beforeEach, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 // Mock @azure/msal-browser to avoid real MSAL initialization
 vi.mock('@azure/msal-browser', () => ({
@@ -12,9 +12,16 @@ vi.mock('@azure/msal-browser', () => ({
 }));
 
 // Mock env dependencies
-vi.mock('@/env', () => ({
-  getRuntimeEnv: vi.fn().mockResolvedValue({}),
-}));
+vi.mock('@/env', () => {
+  const mockEnv = {};
+  return {
+    getRuntimeEnv: vi.fn().mockResolvedValue(mockEnv),
+    env: mockEnv,
+    getIsDemo: vi.fn(() => false),
+    getIsE2E: vi.fn(() => false),
+    getIsMsalMock: vi.fn(() => false),
+  };
+});
 
 vi.mock('@/auth/msalConfig', () => ({
   msalConfig: {

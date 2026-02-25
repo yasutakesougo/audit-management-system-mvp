@@ -4,11 +4,13 @@ import '@formatjs/intl-getcanonicallocales';
 // Apply React Router v7 future flags globally across tests
 import './tests/setup/router-future-flags';
 // Vitest global setup: polyfill crypto.randomUUID if absent (Node < 19 environments)
+import { clearEnvCache } from '@/lib/env';
+import { resetParsedEnvForTests } from '@/lib/env.schema';
 import '@testing-library/jest-dom/vitest';
 import { cleanup } from '@testing-library/react';
 import { webcrypto } from 'crypto';
-import * as React from 'react';
 import { toHaveNoViolations } from 'jest-axe';
+import * as React from 'react';
 import { afterEach, beforeEach, expect, vi } from 'vitest';
 
 process.env.TZ ??= 'Asia/Tokyo';
@@ -53,14 +55,16 @@ expect.extend(toHaveNoViolations as unknown as Record<string, JestLikeMatcher>);
 beforeEach(() => {
 	// Ensure every test starts from a clean environment (covers vi.stubEnv/import.meta.env)
 	vi.unstubAllEnvs?.();
-	
+	clearEnvCache();
+	resetParsedEnvForTests();
+
 	// Clear test-specific vars: delete only keys we explicitly manage
 	for (const key of ENV_KEYS_TO_CLEAR) {
 		if (key in process.env) {
 			delete process.env[key];
 		}
 	}
-	
+
 	// Restore only tracked setup vars to their baseline state
 	for (const [k, v] of Object.entries(CLEAN_ENV)) {
 		if (v === undefined) {
@@ -79,14 +83,16 @@ afterEach(() => {
 	vi.clearAllTimers();
 	vi.useRealTimers(); // Prevent fake timers from leaking across tests
 	vi.unstubAllEnvs?.();
-	
+	clearEnvCache();
+	resetParsedEnvForTests();
+
 	// Clear test-specific vars: delete only keys we explicitly manage
 	for (const key of ENV_KEYS_TO_CLEAR) {
 		if (key in process.env) {
 			delete process.env[key];
 		}
 	}
-	
+
 	// Restore only tracked setup vars to their baseline state
 	for (const [k, v] of Object.entries(CLEAN_ENV)) {
 		if (v === undefined) {
@@ -222,13 +228,39 @@ vi.mock('@/hydration/RouteHydrationListener', async () => {
 });
 
 // ✅ AppShell test support: Mock browser APIs
+const createStorageMock = () => {
+	let store: Record<string, string> = {};
+	return {
+		getItem: vi.fn((key: string) => store[key] || null),
+		setItem: vi.fn((key: string, value: string) => {
+			store[key] = String(value);
+		}),
+		clear: vi.fn(() => {
+			store = {};
+		}),
+		removeItem: vi.fn((key: string) => {
+			delete store[key];
+		}),
+		length: 0,
+		key: vi.fn((index: number) => Object.keys(store)[index] || null),
+	};
+};
+
+if (typeof window !== 'undefined') {
+	const mockLS = createStorageMock();
+	vi.stubGlobal('localStorage', mockLS);
+
+	const mockSS = createStorageMock();
+	vi.stubGlobal('sessionStorage', mockSS);
+}
+
 // ResizeObserver for Drawer / Grid / Portal components
 class ResizeObserverMock {
 	observe() {}
 	unobserve() {}
 	disconnect() {}
 }
-(globalThis as any).ResizeObserver = ResizeObserverMock;
+(globalThis as any).ResizeObserver = ResizeObserverMock; // eslint-disable-line @typescript-eslint/no-explicit-any
 
 // matchMedia for MUI responsive hooks
 Object.defineProperty(window, 'matchMedia', {

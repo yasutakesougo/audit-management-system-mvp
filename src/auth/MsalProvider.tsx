@@ -1,7 +1,7 @@
+import { authDiagnostics } from '@/features/auth/diagnostics';
 import type { IPublicClientApplication } from '@azure/msal-browser';
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { isE2eMsalMockEnabled } from '../lib/env';
-import { authDiagnostics } from '@/features/auth/diagnostics';
 
 type MsalInstance = IPublicClientApplication;
 type MsalReactModule = typeof import('@azure/msal-react');
@@ -14,6 +14,8 @@ type MsalContextValue = {
   accounts: MsalAccounts;
   inProgress: MsalInProgress;
   authReady: boolean;
+  listReady: boolean | null;
+  setListReady: (ready: boolean) => void;
 };
 
 const MsalContext = React.createContext<MsalContextValue | null>(null);
@@ -31,6 +33,8 @@ const createDefaultMsalContextMock = (): MsalContextValue => ({
   accounts: [],
   inProgress: 'none',
   authReady: true,
+  listReady: null,
+  setListReady: () => undefined,
 });
 
 export const __msalContextMock = viMock
@@ -58,12 +62,12 @@ async function loadMsalInstance(): Promise<MsalInstance> {
         const { EventType } = await import('@azure/msal-browser');
 
         const instance = await getPcaSingleton();
-        
+
         // ✅ At this point:
         // - instance.initialize() was already called by getPcaSingleton()
         // - instance.handleRedirectPromise() was already called by main.tsx
         // - globalThis.__MSAL_PUBLIC_CLIENT__ is already set
-        
+
         // We just need to ensure active account is set (if not already done by main.tsx)
         const accounts = instance.getAllAccounts();
         if (!instance.getActiveAccount() && accounts.length > 0) {
@@ -130,12 +134,32 @@ export const MsalProvider: React.FC<{ children: React.ReactNode }> = ({ children
     [],
   );
 
-  const mockUseMsal: MsalReactModule['useMsal'] = () => ({
-    instance: mockInstance,
-    accounts: [],
-    inProgress: 'none',
-    logger: mockLogger,
-  });
+  const mockUseMsal: MsalReactModule['useMsal'] = () => {
+    const isAuthenticatedE2E = typeof window !== 'undefined' && window.sessionStorage.getItem('__E2E_MOCK_AUTH__') === '1';
+    const account = isAuthenticatedE2E ? {
+      homeAccountId: 'e2e-home-account',
+      localAccountId: 'e2e-local-account',
+      environment: 'e2e-mock',
+      tenantId: 'e2e-tenant',
+      username: 'e2e.user@example.com',
+      name: 'E2E Mock User',
+    } : null;
+
+    const accounts = account ? [account] : [];
+
+    const instance = {
+      ...mockInstance,
+      getAllAccounts: () => accounts,
+      getActiveAccount: () => account,
+    } as unknown as MsalInstance;
+
+    return {
+      instance,
+      accounts: accounts as unknown as MsalAccounts,
+      inProgress: 'none',
+      logger: mockLogger,
+    };
+  };
 
   const MockProvider: MsalProviderComponent = ({ children: mockChildren }) => <>{mockChildren}</>;
 
@@ -182,6 +206,8 @@ const MsalBridge: React.FC<{ instance: MsalInstance; useMsal: MsalReactModule['u
   useMsal,
 }) => {
   const { accounts, inProgress } = useMsal();
+  const [listReady, setListReady] = useState<boolean | null>(null);
+
   const authReady =
     typeof window === 'undefined'
       ? true
@@ -192,6 +218,7 @@ const MsalBridge: React.FC<{ instance: MsalInstance; useMsal: MsalReactModule['u
       authReady,
       inProgress,
       accounts: accounts.length,
+      listReady,
     });
     if (snapshot !== lastLogRef.current) {
       lastLogRef.current = snapshot;
@@ -199,12 +226,13 @@ const MsalBridge: React.FC<{ instance: MsalInstance; useMsal: MsalReactModule['u
         authReady,
         inProgress,
         accounts: accounts.length,
+        listReady,
       });
     }
-  }, [accounts.length, authReady, inProgress]);
+  }, [accounts.length, authReady, inProgress, listReady]);
   const value = useMemo(
-    () => ({ instance, accounts, inProgress, authReady }),
-    [instance, accounts, inProgress, authReady],
+    () => ({ instance, accounts, inProgress, authReady, listReady, setListReady }),
+    [instance, accounts, inProgress, authReady, listReady],
   );
 
   return <MsalContext.Provider value={value}>{children}</MsalContext.Provider>;

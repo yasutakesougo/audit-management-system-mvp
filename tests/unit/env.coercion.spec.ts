@@ -6,7 +6,7 @@ const trackedEnvKeys = [
   'VITE_LOGIN_SCOPES',
   'VITE_MSAL_LOGIN_SCOPES',
   'VITE_SP_SCOPE_DEFAULT',
-  'VITE_SP_RESOURCE',
+  // 'VITE_SP_RESOURCE', // Exempt: required by schema validation on import
   'VITE_DEMO_MODE',
   'VITE_SKIP_LOGIN',
   'DEV',
@@ -18,10 +18,20 @@ const originalEnv = trackedEnvKeys.reduce<Record<string, string | undefined>>((a
   return acc;
 }, {});
 
+const setRequiredEnvVars = () => {
+  process.env.VITE_SP_RESOURCE = 'https://contoso.sharepoint.com';
+  process.env.VITE_SP_SITE_RELATIVE = '/sites/test';
+  process.env.VITE_MSAL_CLIENT_ID = '11111111-2222-3333-4444-555555555555';
+  process.env.VITE_MSAL_TENANT_ID = 'test-tenant';
+};
+
+// Ensure required vars are present at module load to avoid validation crash on first import
+setRequiredEnvVars();
+
 const importEnvModule = async () => {
   const mod = await import('@/lib/env');
-  if (typeof mod.__resetAppConfigForTests === 'function') {
-    mod.__resetAppConfigForTests();
+  if (typeof (mod as any).__resetAppConfigForTests === 'function') { // eslint-disable-line @typescript-eslint/no-explicit-any
+    (mod as any).__resetAppConfigForTests(); // eslint-disable-line @typescript-eslint/no-explicit-any
   }
   return mod;
 };
@@ -42,6 +52,7 @@ beforeEach(() => {
   for (const key of trackedEnvKeys) {
     delete process.env[key];
   }
+  setRequiredEnvVars();
 });
 
 afterEach(() => {
@@ -63,7 +74,7 @@ describe('env boolean coercion via readBool', () => {
   it('treats undefined, null, and blanks as fallback', async () => {
     const env = await importEnvModule();
     expect(env.readBool('FEATURE', false, { FEATURE: undefined } as EnvRecord)).toBe(false);
-    expect(env.readBool('FEATURE', false, { FEATURE: null } as EnvRecord)).toBe(false);
+    expect(env.readBool('FEATURE', false, { FEATURE: null } as unknown as EnvRecord)).toBe(false);
     expect(env.readBool('FEATURE', false, { FEATURE: '' } as EnvRecord)).toBe(false);
   });
 

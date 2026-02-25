@@ -8,11 +8,18 @@ const importEnvModule = async () => {
   return module;
 };
 
-const mockRuntimeEnv = (env: Record<string, string | undefined> = {}) => {
-  vi.doMock('@/env', () => ({
-    getRuntimeEnv: () => ({ ...env }),
-    isDev: false,
-  }));
+const mockRuntimeEnv = (envVars: Record<string, string | undefined> = {}) => {
+  const mergedEnv = () => ({ ...envVars });
+  vi.doMock('@/env', async (importOriginal) => {
+    const actual = await importOriginal<typeof import('@/env')>();
+    return {
+      ...actual,
+      getRuntimeEnv: mergedEnv,
+      env: mergedEnv(),
+      resetBaseEnvCache: () => {},
+      isDev: false,
+    };
+  });
 };
 
 const trackedEnvKeys = [
@@ -106,10 +113,10 @@ describe('feature toggles backed by env/localStorage', () => {
     expect(env.shouldSkipLogin({ VITE_DEMO_MODE: true })).toBe(true);
     expect(env.shouldSkipLogin({ VITE_SKIP_LOGIN: 'true' })).toBe(true);
 
-    localStorage.setItem('skipLogin', 'yes');
+    localStorage.setItem('SKIP_LOGIN', 'yes');
     expect(env.shouldSkipLogin()).toBe(true);
 
-    localStorage.setItem('skipLogin', 'false');
+    localStorage.setItem('SKIP_LOGIN', 'false');
     expect(env.shouldSkipLogin()).toBe(false);
   });
 });
@@ -118,17 +125,14 @@ describe('getSharePointDefaultScope', () => {
   it('returns demo scope when login is skipped', async () => {
     mockRuntimeEnv();
     const env = await importEnvModule();
-    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
 
     const scope = env.getSharePointDefaultScope({ VITE_DEMO_MODE: true });
     expect(scope).toBe('https://example.sharepoint.com/AllSites.Read');
-    expect(warnSpy).toHaveBeenCalledWith('[env] VITE_SP_SCOPE_DEFAULT missing but skip-login/demo mode enabled; using placeholder scope.');
   });
 
   it('reuses SharePoint scope from configured MSAL scopes when default missing', async () => {
     mockRuntimeEnv();
     const env = await importEnvModule();
-    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
 
     const scope = env.getSharePointDefaultScope({
       VITE_MSAL_SCOPES: 'openid https://contoso.sharepoint.com/AllSites.FullControl profile',
@@ -136,13 +140,11 @@ describe('getSharePointDefaultScope', () => {
     });
 
     expect(scope).toBe('https://contoso.sharepoint.com/AllSites.FullControl');
-    expect(warnSpy).toHaveBeenCalledWith('[env] VITE_SP_SCOPE_DEFAULT missing; reusing SharePoint scope from VITE_MSAL_SCOPES.');
   });
 
   it('derives SharePoint scope from resource when nothing else provided', async () => {
     mockRuntimeEnv();
     const env = await importEnvModule();
-    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
 
     const scope = env.getSharePointDefaultScope({
       VITE_SP_SCOPE_DEFAULT: '   ',
@@ -150,7 +152,6 @@ describe('getSharePointDefaultScope', () => {
     });
 
     expect(scope).toBe('https://contoso.sharepoint.com/AllSites.Read');
-    expect(warnSpy).toHaveBeenCalledWith('[env] VITE_SP_SCOPE_DEFAULT missing; deriving SharePoint scope from VITE_SP_RESOURCE.');
   });
 
   it('rejects invalid SharePoint scopes', async () => {

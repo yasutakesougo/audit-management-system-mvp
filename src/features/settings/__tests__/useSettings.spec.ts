@@ -5,14 +5,28 @@
  * - reset functionality
  */
 
-import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { renderHook, act } from '@testing-library/react';
+import { act, renderHook } from '@testing-library/react';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { DEFAULT_SETTINGS, SETTINGS_STORAGE_KEY } from '../settingsModel';
 import { useSettings } from '../useSettings';
-import { SETTINGS_STORAGE_KEY, DEFAULT_SETTINGS } from '../settingsModel';
+
+// Global mock to prevent environment clobbering in these tests
+const store: Record<string, string> = {};
+const localVault = {
+  getItem: (key: string) => store[key] || null,
+  setItem: (key: string, value: string) => { store[key] = String(value); },
+  removeItem: (key: string) => { delete store[key]; },
+  clear: () => { for (const k in store) delete store[k]; },
+  key: (i: number) => Object.keys(store)[i] || null,
+  get length() { return Object.keys(store).length; },
+};
+// Also apply to globalThis for settingsModel.ts which useSettings depends on
+(globalThis as unknown as { localStorage: Storage }).localStorage = localVault;
 
 describe('useSettings', () => {
   beforeEach(() => {
-    localStorage.clear();
+    (globalThis as unknown as { localStorage: Storage }).localStorage = localVault;
+    localVault.clear();
     vi.clearAllMocks();
   });
 
@@ -34,7 +48,7 @@ describe('useSettings', () => {
       colorMode: 'dark' as const,
       density: 'compact' as const,
     };
-    localStorage.setItem(SETTINGS_STORAGE_KEY, JSON.stringify(stored));
+    localVault.setItem(SETTINGS_STORAGE_KEY, JSON.stringify(stored));
 
     const { result } = renderHook(() => useSettings());
 
@@ -75,9 +89,9 @@ describe('useSettings', () => {
       result.current.updateSettings({ colorMode: 'dark' });
     });
 
-    const stored = JSON.parse(
-      localStorage.getItem(SETTINGS_STORAGE_KEY)!
-    );
+    const storedStr = localVault.getItem(SETTINGS_STORAGE_KEY);
+    expect(storedStr).toBeTruthy();
+    const stored = JSON.parse(storedStr!);
     expect(stored.colorMode).toBe('dark');
   });
 

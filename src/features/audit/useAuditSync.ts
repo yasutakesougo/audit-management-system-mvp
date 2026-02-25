@@ -3,6 +3,7 @@ import { useCallback } from 'react';
 import { clearAudit, getAuditLogs } from '../../lib/audit';
 import { canonicalJSONStringify, computeEntryHash } from '../../lib/hashUtil';
 import { useSP } from '../../lib/spClient';
+import { auditInsertSchema } from './schema';
 import { AuditInsertItemDTO } from './types';
 
 // SharePoint リスト名
@@ -55,6 +56,9 @@ export const useAuditSync = () => {
 
       const body: AuditInsertItemDTO = { ...base, entry_hash };
       try {
+        // Validate before send
+        auditInsertSchema.parse(body);
+
         await addListItemByTitle<AuditInsertItemDTO, unknown>(AUDIT_LIST_NAME, body);
         success++;
       } catch (error) {

@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-const storageProto = Object.getPrototypeOf(window.localStorage);
+
 
 let consoleErrorSpy: ReturnType<typeof vi.spyOn>;
 
@@ -17,7 +17,7 @@ afterEach(() => {
 
 describe('audit final catch branches', () => {
   it('swallows write failures when pushing audit events', async () => {
-    const setSpy = vi.spyOn(storageProto, 'setItem').mockImplementation(() => {
+    const setSpy = vi.spyOn(window.localStorage, 'setItem').mockImplementation(() => {
       throw new Error('quota exceeded');
     });
 
@@ -42,7 +42,7 @@ describe('audit final catch branches', () => {
   });
 
   it('handles retain failures when localStorage.removeItem throws', async () => {
-    const getSpy = vi.spyOn(storageProto, 'getItem').mockReturnValue(
+    const getSpy = vi.spyOn(window.localStorage, 'getItem').mockReturnValue(
       JSON.stringify([
         {
           ts: '2025-05-01T00:00:00.000Z',
@@ -53,7 +53,7 @@ describe('audit final catch branches', () => {
         },
       ])
     );
-    const removeSpy = vi.spyOn(storageProto, 'removeItem').mockImplementation(() => {
+    const removeSpy = vi.spyOn(window.localStorage, 'removeItem').mockImplementation(() => {
       throw new Error('locked');
     });
 

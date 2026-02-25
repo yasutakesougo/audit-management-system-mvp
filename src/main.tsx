@@ -1,31 +1,14 @@
+import { clearEnvCache, type EnvRecord, getRuntimeEnv, IS_DEV as isDev } from '@/lib/env';
+import { guardProdMisconfig } from '@/lib/envGuards';
 import React from 'react';
 import ReactDOM from 'react-dom/client';
 import { installFatalHandlers } from './bootstrapFatal';
-import { getRuntimeEnv, isDev, clearEnvCache } from '@/env';
-import { guardProdMisconfig } from '@/lib/envGuards';
-import { resolveHydrationEntry } from './hydration/routes';
 import { beginHydrationSpan, finalizeHydrationSpan } from './lib/hydrationHud';
 
 // Install fatal error handlers BEFORE any other code executes
 installFatalHandlers();
 
-type EnvRecord = Record<string, string | undefined>;
 
-type MsalRedirectResult = {
-  account?: {
-    username?: string;
-    homeAccountId?: string;
-  };
-} | null;
-
-type IdleDeadline = {
-  didTimeout: boolean;
-  timeRemaining: () => number;
-};
-
-type IdleCallback = (deadline: IdleDeadline) => void;
-
-type IdleHandle = number;
 
 declare global {
   interface Window {
@@ -41,118 +24,46 @@ declare global {
 
 const RUNTIME_PATH_KEYS = new Set(['RUNTIME_ENV_PATH', 'VITE_RUNTIME_ENV_PATH']);
 
-/**
- * Error Boundary for catching unhandled React errors (especially on tablet)
- * Prevents white screen by showing error message + reload button
- */
-class ErrorBoundary extends React.Component<
-  { children: React.ReactNode },
-  { hasError: boolean; error: Error | null }
-> {
-  constructor(props: { children: React.ReactNode }) {
-    super(props);
-    this.state = { hasError: false, error: null };
-  }
 
-  static getDerivedStateFromError(error: Error) {
-    return { hasError: true, error };
-  }
-
-  componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
-    // eslint-disable-next-line no-console
-    console.error('[ErrorBoundary] React error caught:', error, errorInfo);
-  }
-
-  render() {
-    if (this.state.hasError) {
-      return (
-        <div
-          style={{
-            display: 'flex',
-            flexDirection: 'column',
-            alignItems: 'center',
-            justifyContent: 'center',
-            minHeight: '100vh',
-            padding: '20px',
-            backgroundColor: '#f5f5f5',
-            fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif',
-          }}
-        >
-          <h1 style={{ fontSize: '24px', marginBottom: '12px' }}>エラーが発生しました</h1>
-          <p style={{ fontSize: '14px', color: '#666', marginBottom: '20px', maxWidth: '500px' }}>
-            予期しないエラーが発生しました。下のボタンをクリックしてリロードしてください。
-          </p>
-          {this.state.error && (
-            <details style={{ marginBottom: '20px', maxWidth: '500px', width: '100%' }}>
-              <summary style={{ cursor: 'pointer', fontSize: '12px', color: '#999' }}>
-                エラー詳細を表示
-              </summary>
-              <pre
-                style={{
-                  fontSize: '11px',
-                  backgroundColor: '#fff',
-                  padding: '12px',
-                  borderRadius: '4px',
-                  overflow: 'auto',
-                  marginTop: '8px',
-                  border: '1px solid #ddd',
-                }}
-              >
-                {this.state.error.toString()}
-              </pre>
-            </details>
-          )}
-          <button
-            onClick={() => window.location.reload()}
-            style={{
-              padding: '12px 24px',
-              fontSize: '16px',
-              backgroundColor: '#1976d2',
-              color: 'white',
-              border: 'none',
-              borderRadius: '4px',
-              cursor: 'pointer',
-            }}
-          >
-            リロード
-          </button>
-        </div>
-      );
-    }
-
-    return this.props.children;
-  }
-}
-
-// 🔧 DOM lib との型競合回避のため、assertion ベースに変更
-const runOnIdle = (callback: () => void, timeout = 200): void => {
-  if (typeof window === 'undefined') {
-    callback();
-    return;
-  }
-  const idleWindow = window as Window & {
-    requestIdleCallback?: (callback: IdleCallback, options?: { timeout: number }) => IdleHandle;
-    cancelIdleCallback?: (handle: IdleHandle) => void;
-  };
-  const requestIdle = idleWindow.requestIdleCallback;
-  if (typeof requestIdle === 'function') {
-    requestIdle(() => callback(), { timeout });
-    return;
-  }
-  window.setTimeout(callback, timeout);
-};
 
 const getRuntimeEnvPath = (runtimeEnv: EnvRecord): string => {
   if (typeof window === 'undefined') return '';
   const fromWindow = window.__ENV__?.RUNTIME_ENV_PATH ?? window.__ENV__?.VITE_RUNTIME_ENV_PATH;
-  const fromRuntime = runtimeEnv.RUNTIME_ENV_PATH ?? runtimeEnv.VITE_RUNTIME_ENV_PATH;
-  return fromWindow || fromRuntime || '/env.runtime.json';
+  const anyEnv = runtimeEnv as Record<string, unknown>;
+  const fromRuntime = typeof anyEnv.RUNTIME_ENV_PATH === 'string' ? anyEnv.RUNTIME_ENV_PATH : (typeof anyEnv.VITE_RUNTIME_ENV_PATH === 'string' ? anyEnv.VITE_RUNTIME_ENV_PATH : undefined);
+  return String(fromWindow || fromRuntime || '/env.runtime.json');
 };
 
+// Ensure localStorage is fully functional in JSDOM (prevents shallow mock clobbering)
+if (typeof window !== 'undefined') {
+  class MockStorage implements Storage {
+    private store: Record<string, string> = {};
+    get length() { return Object.keys(this.store).length; }
+    clear() { this.store = {}; }
+    getItem(key: string) { return this.store[key] || null; }
+    key(index: number) { return Object.keys(this.store)[index] || null; }
+    removeItem(key: string) { delete this.store[key]; }
+    setItem(key: string, value: string) { this.store[key] = String(value); }
+  }
+
+  if (!window.localStorage || typeof window.localStorage.clear !== 'function') {
+    const mock = new MockStorage();
+    Object.defineProperty(window, 'localStorage', {
+      value: mock,
+      writable: true,
+      configurable: true,
+    });
+    // For Vitest isolation
+    if (typeof vi !== 'undefined' && vi.stubGlobal) {
+      vi.stubGlobal('localStorage', mock);
+    }
+  }
+}
+
 const loadRuntimeEnvFile = async (runtimeEnv: EnvRecord): Promise<EnvRecord> => {
-  if (typeof window === 'undefined') return {};
+  if (typeof window === 'undefined') return {} as EnvRecord;
   const path = getRuntimeEnvPath(runtimeEnv);
-  if (!path) return {};
+  if (!path) return {} as EnvRecord;
 
   try {
     const response = await fetch(path, { cache: 'no-store' });
@@ -161,17 +72,17 @@ const loadRuntimeEnvFile = async (runtimeEnv: EnvRecord): Promise<EnvRecord> => 
         // eslint-disable-next-line no-console
         console.warn(`[env] runtime config fetch failed: ${response.status} ${response.statusText}`);
       }
-      return {};
+      return {} as EnvRecord;
     }
 
     const data = (await response.json()) as EnvRecord;
-    return data ?? {};
+    return data ?? {} as EnvRecord;
   } catch (error) {
     if (isDev) {
       // eslint-disable-next-line no-console
       console.warn('[env] runtime config fetch error', error);
     }
-    return {};
+    return {} as EnvRecord;
   }
 };
 
@@ -179,16 +90,16 @@ const ensureRuntimeEnv = async (): Promise<EnvRecord> => {
   const baseEnv = getRuntimeEnv();
 
   if (typeof window === 'undefined') {
-    return baseEnv;
+    return baseEnv as EnvRecord;
   }
 
-  const existing = window.__ENV__ ?? {};
+  const existing = window.__ENV__ ?? ({} as EnvRecord);
   const hasRuntimeOverrides = Object.keys(existing).some((key) => !RUNTIME_PATH_KEYS.has(key));
   const runtimeOverrides = hasRuntimeOverrides
     ? { ...existing }
     : await loadRuntimeEnvFile({ ...baseEnv, ...existing });
 
-  const merged = { ...baseEnv, ...runtimeOverrides } satisfies EnvRecord;
+  const merged = { ...baseEnv, ...runtimeOverrides } as EnvRecord;
   window.__ENV__ = merged;
   clearEnvCache();
 
@@ -197,251 +108,12 @@ const ensureRuntimeEnv = async (): Promise<EnvRecord> => {
     const keyEnvKeys = Object.keys(merged).filter(key =>
       key.startsWith('VITE_') || key === 'MODE' || key === 'NODE_ENV'
     );
-    const keyEnv = Object.fromEntries(keyEnvKeys.map(key => [key, merged[key]]));
+    const keyEnv = Object.fromEntries(keyEnvKeys.map(key => [key, (merged as EnvRecord)[key]]));
     // eslint-disable-next-line no-console
     console.info('[env] runtime loaded:', keyEnv, `(+${Object.keys(merged).length - keyEnvKeys.length} more)`);
   }
-
   return merged;
 };
-
-const run = async (): Promise<void> => {
-  const hasWindow = typeof window !== 'undefined';
-  if (hasWindow && window.location.hostname === '127.0.0.1') {
-    const { protocol, port, pathname, search, hash } = window.location;
-    const nextUrl = `${protocol}//localhost${port ? `:${port}` : ''}${pathname}${search}${hash}`;
-    window.location.replace(nextUrl);
-    return;
-  }
-  const initialPathname = hasWindow ? window.location.pathname : '';
-  const initialSearch = hasWindow ? window.location.search ?? '' : '';
-  const initialRouteEntry = hasWindow ? resolveHydrationEntry(initialPathname, initialSearch) : null;
-  const completeInitialRoute = initialRouteEntry
-    ? beginHydrationSpan(initialRouteEntry.id, {
-        id: initialRouteEntry.id,
-        label: initialRouteEntry.label,
-        group: 'hydration:route',
-        meta: {
-          budget: initialRouteEntry.budget,
-          path: initialPathname,
-          search: initialSearch,
-          status: 'bootstrap',
-        },
-      })
-    : null;
-
-  const completeBootstrap = beginHydrationSpan('route:bootstrap', { group: 'hydration', meta: { budget: 100 } });
-  const completeEnv = beginHydrationSpan('bootstrap:env', { group: 'hydration', meta: { budget: 20 } });
-
-  // ✅ Step 1: Load runtime env FIRST (before MSAL init)
-  await ensureRuntimeEnv()
-    .then(() => {
-      finalizeHydrationSpan(completeEnv);
-    })
-    .catch((error) => {
-      finalizeHydrationSpan(completeEnv, error);
-      throw error;
-    });
-
-  // ✅ Step 2: Initialize MSAL singleton + handle redirect BEFORE Firebase init
-  if (hasWindow) {
-    const hasAuthResponse = (): boolean => {
-      const { hash, search } = window.location;
-      return hash.includes('code=') || hash.includes('state=') || search.includes('code=') || search.includes('state=');
-    };
-    const getInteractionStatus = (): string | null => {
-      try {
-        return window.sessionStorage.getItem('msal.interaction.status');
-      } catch {
-        return null;
-      }
-    };
-    const getHashPrefix = (value: string): string => (value ? value.slice(0, 48) : '');
-    const isAuthCallback = window.location.pathname === '/auth/callback';
-    let redirectAfterAuth: string | null = null;
-    let accountResolved = false;
-
-    try {
-      const { getPcaSingleton } = await import('./auth/azureMsal');
-      const msalInstance = await getPcaSingleton();
-
-      if (isAuthCallback) {
-        console.info('[msal] callback entry', {
-          href: window.location.href,
-          hashPrefix: getHashPrefix(window.location.hash),
-          interactionStatus: getInteractionStatus(),
-          accounts: msalInstance.getAllAccounts().length,
-        });
-      }
-
-      console.info('[msal] 🚀 singleton created, calling handleRedirectPromise...');
-      const result = (await msalInstance.handleRedirectPromise()) as MsalRedirectResult;
-
-      if (isAuthCallback) {
-        console.info('[msal] handleRedirectPromise result', {
-          returnedNull: result === null,
-          hasAccount: Boolean(result?.account),
-          accountsAfter: msalInstance.getAllAccounts().length,
-          interactionStatus: getInteractionStatus(),
-        });
-      }
-
-      if (result?.account) {
-        msalInstance.setActiveAccount(result.account);
-        accountResolved = true;
-      }
-
-      if (!accountResolved) {
-        const accounts = msalInstance.getAllAccounts();
-        if (accounts.length > 0) {
-          msalInstance.setActiveAccount(accounts[0]);
-          accountResolved = true;
-        }
-      }
-
-      if (accountResolved) {
-        const activeAccount = msalInstance.getActiveAccount();
-        const username = (activeAccount as { username?: string; homeAccountId?: string })?.username
-          ?? (activeAccount as { homeAccountId?: string })?.homeAccountId
-          ?? '(unknown)';
-        console.info('[msal] ✅ redirect success:', username);
-        const msalKeys = Object.keys(sessionStorage).filter(k => k.toLowerCase().includes('msal'));
-        console.info('[msal] sessionStorage MSAL keys:', msalKeys);
-
-        if (isAuthCallback && hasAuthResponse()) {
-          redirectAfterAuth = sessionStorage.getItem('postLoginRedirect') || '/dashboard';
-          sessionStorage.removeItem('postLoginRedirect');
-        }
-      } else {
-        console.info('[msal] ℹ️  handleRedirectPromise returned null (no account)');
-        if (isAuthCallback && hasAuthResponse()) {
-          console.info('[msal] callback stay', { reason: 'null-no-account' });
-        }
-      }
-    } catch (error) {
-      // Non-fatal: continue app bootstrap even if MSAL init/redirect fails
-      console.error('[msal] ❌ initialization/redirect error:', error);
-      if (isAuthCallback && hasAuthResponse()) {
-        console.info('[msal] callback stay', { reason: 'threw' });
-      }
-    } finally {
-      if (typeof window !== 'undefined') {
-        const ready = !isAuthCallback || !hasAuthResponse() || accountResolved;
-        window.__MSAL_REDIRECT_DONE__ = ready;
-        console.info('[msal] __MSAL_REDIRECT_DONE__ set', {
-          ready,
-          path: window.location.pathname,
-          search: window.location.search,
-        });
-      }
-    }
-
-    if (redirectAfterAuth) {
-      window.location.replace(redirectAfterAuth);
-      return;
-    }
-  }
-
-  // ✅ Step 2.5: Initialize Firebase Auth AFTER MSAL redirect completes (so accounts:1)
-  const completeFirebaseAuth = beginHydrationSpan('bootstrap:firebase-auth', { group: 'hydration', meta: { budget: 20 } });
-  if (hasWindow) {
-    try {
-      const { initFirebaseAuth } = await import('./infra/firestore/auth');
-      await initFirebaseAuth();
-      finalizeHydrationSpan(completeFirebaseAuth);
-    } catch (error) {
-      finalizeHydrationSpan(completeFirebaseAuth, error);
-      console.warn('[main] Firebase Auth init error (non-fatal, continuing)', error);
-    }
-  } else {
-    finalizeHydrationSpan(completeFirebaseAuth);
-  }
-
-  if (hasWindow && window.__ENV__?.VITE_AUDIT_DEBUG === '1') {
-    void Promise.all([import('./lib/fetchSp'), import('./lib/spClient')])
-      .then(([{ fetchSp }, { ensureConfig }]) => {
-        const helper = async ({ path, method = 'GET' }: { path: string; method?: string }) => {
-          const { baseUrl } = ensureConfig();
-          const url = path.startsWith('http') ? path : `${baseUrl}${path}`;
-          const response = await fetchSp(url, { method });
-          return response.json();
-        };
-        (window as Window & { __spFetch__?: typeof helper }).__spFetch__ = helper;
-        console.info('[debug] __spFetch__ exposed');
-      })
-      .catch((error) => {
-        console.warn('[debug] failed to expose __spFetch__', error);
-      });
-  }
-
-  const completeImports = beginHydrationSpan('bootstrap:imports', { group: 'hydration', meta: { budget: 30 } });
-
-  const modulesPromise = (Promise.all([
-    import('./app/ConfigErrorBoundary'),
-    import('./lib/debugLogger'),
-    import('./config/featureFlags'),
-  ]) as Promise<[
-    typeof import('./app/ConfigErrorBoundary'),
-    typeof import('./lib/debugLogger'),
-    typeof import('./config/featureFlags')
-  ]>)
-    .then((modules) => {
-      finalizeHydrationSpan(completeImports);
-      return modules;
-    })
-    .catch((error) => {
-      finalizeHydrationSpan(completeImports, error);
-      throw error;
-    });
-
-  const completeAppImport = beginHydrationSpan('bootstrap:app-module', { group: 'hydration', meta: { budget: 20 } });
-
-  const appPromise = (import('./App') as Promise<{ default: typeof import('./App').default }>)
-    .then((module) => {
-      finalizeHydrationSpan(completeAppImport);
-      return module;
-    })
-    .catch((error) => {
-      finalizeHydrationSpan(completeAppImport, error);
-      throw error;
-    });
-
-  const completeMetrics = beginHydrationSpan('bootstrap:metrics', { group: 'hydration', meta: { budget: 10 } });
-  void import('./metrics')
-    .then(() => {
-      finalizeHydrationSpan(completeMetrics);
-    })
-    .catch((error) => {
-      finalizeHydrationSpan(completeMetrics, error);
-    });
-
-  // ✅ DEV: Expose authDiagnostics to window for debugging
-  if (import.meta.env.DEV && hasWindow) {
-    void import('./features/auth/diagnostics/collector')
-      .then(({ exposeAuthDiagnosticsToWindow }) => {
-        exposeAuthDiagnosticsToWindow();
-      })
-      .catch((error) => {
-        console.warn('[main] failed to expose authDiagnostics to window', error);
-      });
-  }
-
-  const envSnapshot = (getRuntimeEnv() as EnvRecord) ?? null;
-
-  try {
-    // 🔧 runtime env を最優先で適用してからモジュールを読み込み
-    // (envPromise は既に await ensureRuntimeEnv() で完了済み)
-    
-    // ✅ NOW that runtime env is loaded, check for production misconfigurations
-    guardProdMisconfig();
-
-    const [modules, appModule] = await Promise.all([modulesPromise, appPromise]);
-    const [{ ConfigErrorBoundary }, { auditLog }, featureFlagsModule] = modules;
-    const { default: App } = appModule;
-    const { FeatureFlagsProvider, resolveFeatureFlags } = featureFlagsModule;
-    const flags = resolveFeatureFlags(envSnapshot ?? undefined);
-
-    const completeRender = beginHydrationSpan('bootstrap:render', { group: 'hydration', meta: { budget: 60 } });
 
 /**
  * Loading fallback for Suspense boundary
@@ -462,77 +134,112 @@ const SuspenseFallback = () => (
         style={{
           width: '40px',
           height: '40px',
+          border: '3px solid #f3f3f3',
+          borderTop: '3px solid #1976d2',
           borderRadius: '50%',
-          border: '4px solid #f3f3f3',
-          borderTop: '4px solid #1976d2',
           animation: 'spin 1s linear infinite',
           margin: '0 auto 16px',
         }}
       />
-      <style>{`@keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }`}</style>
-      <p style={{ color: '#666', fontSize: '14px' }}>読み込み中...</p>
+      <div style={{ fontSize: '14px', color: '#666' }}>読み込み中...</div>
+      <style>{`
+        @keyframes spin {
+          0% { transform: rotate(0deg); }
+          100% { transform: rotate(360deg); }
+        }
+      `}</style>
     </div>
   </div>
 );
 
-ReactDOM.createRoot(document.getElementById('root')!).render(
-  <ErrorBoundary>
-    <React.Suspense fallback={<SuspenseFallback />}>
+const bootstrap = async () => {
+  const beginTime = performance.now();
+  const hydrationSpan = beginHydrationSpan('bootstrap', { group: 'hydration' });
+
+  // 1. Runtime Env Loading (Essential for all subsequent steps)
+  // We MUST wait for this before lazy loading other modules that depend on 'env'
+  const envSnapshot = await ensureRuntimeEnv();
+
+  // 2. Parallel Loading of core infrastructure & UI
+  const modulesPromise = Promise.all([
+    import('./app/ConfigErrorBoundary'),
+    import('./lib/debugLogger'),
+    import('./config/featureFlags')
+  ]);
+  const appPromise = import('./App');
+
+  try {
+    // 🔧 runtime env を最優先で適用してからモジュールを読み込み
+    // (envPromise は既に await ensureRuntimeEnv() で完了済み)
+
+    // ✅ NOW that runtime env is loaded, check for production misconfigurations
+    guardProdMisconfig();
+
+    const [modules, appModule] = await Promise.all([modulesPromise, appPromise]);
+    const [{ ConfigErrorBoundary }, , featureFlagsModule] = modules;
+    const { default: App } = appModule;
+    const { FeatureFlagsProvider, resolveFeatureFlags } = featureFlagsModule;
+    const flags = resolveFeatureFlags(envSnapshot as EnvRecord);
+
+    const completeRender = beginHydrationSpan('bootstrap:render', { group: 'hydration', meta: { budget: 60 } });
+
+    const rootElement = document.getElementById('root');
+    if (!rootElement) throw new Error('Failed to find the root element');
+
+    const root = ReactDOM.createRoot(rootElement);
+
+    // Final Render Assembly
+    root.render(
       <React.StrictMode>
         <ConfigErrorBoundary>
           <FeatureFlagsProvider value={flags}>
-            <App />
+            <React.Suspense fallback={<SuspenseFallback />}>
+              <App />
+            </React.Suspense>
           </FeatureFlagsProvider>
         </ConfigErrorBoundary>
       </React.StrictMode>
-    </React.Suspense>
-  </ErrorBoundary>
     );
 
-    const settle = (error?: unknown) => {
-      finalizeHydrationSpan(completeRender, error);
-      finalizeHydrationSpan(completeBootstrap, error);
-      if (initialRouteEntry) {
-        finalizeHydrationSpan(completeInitialRoute, error, {
-          budget: initialRouteEntry.budget,
-          path: initialPathname,
-          search: initialSearch,
-          status: error ? 'failed' : 'completed',
-        });
-      }
-    };
+    completeRender();
+    finalizeHydrationSpan(hydrationSpan);
 
-    if (typeof window !== 'undefined' && typeof window.requestAnimationFrame === 'function') {
-      window.requestAnimationFrame(() => settle());
-    } else {
-      settle();
+    if (isDev) {
+      const elapsed = (performance.now() - beginTime).toFixed(1);
+      // eslint-disable-next-line no-console
+      console.info(`[bootstrap] Ready in ${elapsed}ms`);
     }
 
-    runOnIdle(() => {
-      if (envSnapshot && typeof window !== 'undefined' && (envSnapshot.MODE ?? '').toLowerCase() !== 'production') {
-        window.__FLAGS__ = flags;
-        if (isDev) {
-          // eslint-disable-next-line no-console
-          console.info('[flags]', flags);
-        }
-      }
-      auditLog.info('flags', flags);
-    });
   } catch (error) {
-    finalizeHydrationSpan(completeBootstrap, error);
-    if (initialRouteEntry) {
-      finalizeHydrationSpan(completeInitialRoute, error, {
-        budget: initialRouteEntry.budget,
-        path: initialPathname,
-        search: initialSearch,
-        status: 'failed',
-      });
+    finalizeHydrationSpan(hydrationSpan, { error: true });
+    // eslint-disable-next-line no-console
+    console.error('[bootstrap] Failed', error);
+
+    // Fallback: render basic error UI if entry fails
+    const rootElement = document.getElementById('root');
+    if (rootElement) {
+      const root = ReactDOM.createRoot(rootElement);
+      root.render(
+        <div style={{ padding: '40px', textAlign: 'center', fontFamily: 'sans-serif' }}>
+          <h1 style={{ color: '#d32f2f' }}>Fatal Initialization Error</h1>
+          <p>アプリケーションの起動に失敗しました。管理者にお問い合わせください。</p>
+          <pre style={{ fontSize: '10px', color: '#666', marginTop: '20px' }}>
+            {error instanceof Error ? error.message : String(error)}
+          </pre>
+          <button
+            onClick={() => {
+              clearEnvCache();
+              window.location.reload();
+            }}
+            style={{ marginTop: '20px', padding: '10px 20px', cursor: 'pointer' }}
+          >
+            キャッシュをクリアして再試行
+          </button>
+        </div>
+      );
     }
-    throw error;
   }
 };
 
-run().catch((error) => {
-  // eslint-disable-next-line no-console
-  console.error('[bootstrap error]', error);
-});
+// 起動
+void bootstrap();

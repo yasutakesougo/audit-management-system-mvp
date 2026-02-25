@@ -1,4 +1,4 @@
-import type { BehaviorObservation } from '@/features/daily/domain/daily/types';
+import type { BehaviorObservation } from '@/features/daily';
 import Box from '@mui/material/Box';
 import Card from '@mui/material/Card';
 import CardContent from '@mui/material/CardContent';

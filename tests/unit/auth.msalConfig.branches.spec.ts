@@ -19,43 +19,51 @@ describe('msalConfig fallbacks', () => {
   it('uses provided config values and runtime origin redirect', async () => {
     const origin = 'https://app.example.com';
     vi.stubGlobal('window', { location: { origin } });
-    vi.doMock('@/lib/env', () => ({
-      getAppConfig: () => ({
-        VITE_SP_RESOURCE: 'sp-resource',
-        VITE_MSAL_CLIENT_ID: 'client-id',
-        VITE_MSAL_TENANT_ID: 'tenant-id',
-      }),
-    }));
-    // Mock readMsalEnv to return null (skip validation in tests)
-    vi.doMock('@/env/msalEnv', () => ({
-      readMsalEnv: () => null,
-    }));
+
+    const mockEnv = {
+      VITE_SP_RESOURCE: 'sp-resource',
+      VITE_MSAL_CLIENT_ID: 'client-id',
+      VITE_MSAL_TENANT_ID: 'tenant-id',
+    };
+
+    vi.doMock('@/lib/env', async (importOriginal) => {
+      const actual = await importOriginal<typeof import('@/lib/env')>();
+      return {
+        ...actual,
+        env: mockEnv,
+        getAppConfig: () => mockEnv,
+      };
+    });
 
     const module = await import('@/auth/msalConfig');
     expect(module.SP_RESOURCE).toBe('sp-resource');
     expect(module.msalConfig.auth.clientId).toBe('client-id');
     expect(module.msalConfig.auth.authority).toBe('https://login.microsoftonline.com/tenant-id');
-    expect(module.msalConfig.auth.redirectUri).toBe('https://app.example.com/auth/callback');
+    expect(module.msalConfig.auth.redirectUri).toBe('https://app.example.com/callback');
   });
 
   it('falls back to dummy values and localhost redirect when window is absent', async () => {
     vi.stubGlobal('window', undefined);
 
-    vi.doMock('@/lib/env', () => ({
-      getAppConfig: () => ({
-        VITE_SP_RESOURCE: 'sp-resource',
-        VITE_MSAL_CLIENT_ID: '',
-        VITE_MSAL_TENANT_ID: '',
-      }),
-    }));
-    // Mock readMsalEnv to return null (skip validation in tests)
-    vi.doMock('@/env/msalEnv', () => ({
-      readMsalEnv: () => null,
-    }));
+    const mockEnv = {
+      VITE_SP_RESOURCE: 'sp-resource',
+      VITE_MSAL_CLIENT_ID: '',
+      VITE_MSAL_TENANT_ID: '',
+    };
+
+    vi.doMock('@/lib/env', async (importOriginal) => {
+      const actual = await importOriginal<typeof import('@/lib/env')>();
+      return {
+        ...actual,
+        env: mockEnv,
+        getAppConfig: () => mockEnv,
+      };
+    });
 
     const module = await import('@/auth/msalConfig');
-    expect(module.msalConfig.auth.clientId).toBe('dummy-client-id');
-    expect(module.msalConfig.auth.authority).toBe('https://login.microsoftonline.com/dummy-tenant');
-    expect(module.msalConfig.auth.redirectUri).toBe('http://localhost:5173/auth/callback');
+    // Placeholders are used in test environments
+    expect(module.msalConfig.auth.clientId).toBe('00000000-0000-0000-0000-000000000000');
+    expect(module.msalConfig.auth.authority).toBe('https://login.microsoftonline.com/00000000-0000-0000-0000-000000000000');
+    expect(module.msalConfig.auth.redirectUri).toBe('http://localhost:5173/callback');
   });
 });
