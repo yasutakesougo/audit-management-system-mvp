@@ -14,18 +14,21 @@ vi.mock('react-router-dom', async () => {
 });
 
 describe('useTableDailyRecordViewModel', () => {
+  const alertSpy = vi.fn();
+
   beforeEach(() => {
     navigateMock.mockClear();
+    vi.useFakeTimers();
+    vi.stubGlobal('alert', alertSpy);
   });
 
   afterEach(() => {
+    vi.unstubAllGlobals();
+    vi.restoreAllMocks();
     vi.useRealTimers();
   });
 
   it('returns expected shape and closes after save', async () => {
-    vi.useFakeTimers();
-    const alertSpy = vi.spyOn(window, 'alert').mockImplementation(() => {});
-
     const { result } = renderHook(() => useTableDailyRecordViewModel());
 
     expect(result.current.open).toBe(true);
@@ -51,14 +54,14 @@ describe('useTableDailyRecordViewModel', () => {
 
     await act(async () => {
       const savePromise = result.current.onSave(records);
-      await vi.advanceTimersByTimeAsync(800);
+      // ✅ CI(Linux/headless) 安定化: タイマー + microtask を確実に消化
+      await vi.runAllTimersAsync();
+      await Promise.resolve();
       await savePromise;
     });
 
     expect(alertSpy).toHaveBeenCalled();
     expect(navigateMock).toHaveBeenCalledWith('/dashboard', { replace: true });
     expect(result.current.open).toBe(false);
-
-    alertSpy.mockRestore();
   });
 });
