@@ -1,9 +1,9 @@
 /**
  * Navigation Configuration
- * 
+ *
  * This file contains all navigation-related configuration for the AppShell,
  * extracted from AppShell.tsx for better maintainability and testability.
- * 
+ *
  * @module app/config/navigationConfig
  */
 
@@ -57,7 +57,7 @@ export const NAV_GROUP_I18N_KEYS = {
 /**
  * Navigation group labels
  * Order: daily → record → review → master → admin → settings
- * 
+ *
  * Phase 1 UX Optimization (2026-02-23):
  * - Updated emoji and text to improve clarity and visual hierarchy
  * - Optimized for both full-width and collapsed sidebar views
@@ -83,7 +83,7 @@ export const NAV_GROUP_ORDER: NavGroupKey[] = ['daily', 'record', 'review', 'mas
 
 /**
  * Determines which navigation group a nav item belongs to
- * 
+ *
  * @param item - Navigation item
  * @param isAdmin - Whether the current user is an admin
  * @returns The group key for this item
@@ -133,6 +133,7 @@ export function pickGroup(item: NavItem, isAdmin: boolean): NavGroupKey {
     to === '/admin/step-templates' ||
     to === '/admin/individual-support' ||
     to === '/admin/templates' ||
+    to.startsWith('/support-plan-guide') ||
     label.includes('分析') ||
     label.includes('氷山') ||
     label.includes('アセスメント') ||
@@ -196,9 +197,9 @@ export interface CreateNavItemsConfig {
 
 /**
  * Creates the navigation items array based on feature flags and permissions
- * 
+ *
  * This function was extracted from AppShell.tsx's useMemo for better testability.
- * 
+ *
  * @param config - Configuration object containing all dependencies
  * @returns Array of navigation items
  */
@@ -313,6 +314,14 @@ export function createNavItems(config: CreateNavItemsConfig): NavItem[] {
       audience: NAV_AUDIENCE.staff,
     },
     {
+      label: '個別支援計画書',
+      to: '/support-plan-guide',
+      isActive: (pathname) => pathname.startsWith('/support-plan-guide'),
+      icon: undefined,
+      testId: TESTIDS.nav.supportPlanGuide,
+      audience: NAV_AUDIENCE.staff,
+    },
+    {
       label: '特性アンケート',
       to: '/survey/tokusei',
       isActive: (pathname) => pathname.startsWith('/survey/tokusei'),
@@ -338,7 +347,7 @@ export function createNavItems(config: CreateNavItemsConfig): NavItem[] {
   ];
 
   // Conditional items based on feature flags and permissions
-  
+
   if (staffAttendanceEnabled) {
     items.push({
       label: '職員勤怠',
@@ -407,7 +416,7 @@ export function createNavItems(config: CreateNavItemsConfig): NavItem[] {
   });
 
   // Feature-flagged items
-  
+
   if (icebergPdcaEnabled && !items.some(item => item.testId === TESTIDS.nav.icebergPdca)) {
     items.splice(3, 0, {
       label: '氷山PDCA',
@@ -456,7 +465,7 @@ export function createNavItems(config: CreateNavItemsConfig): NavItem[] {
 
 /**
  * Filters navigation items based on a search query
- * 
+ *
  * @param navItems - Array of navigation items to filter
  * @param query - Search query string
  * @returns Filtered array of navigation items
@@ -469,7 +478,7 @@ export function filterNavItems(navItems: NavItem[], query: string): NavItem[] {
 
 /**
  * Groups navigation items by their category
- * 
+ *
  * @param navItems - Array of navigation items to group
  * @param isAdmin - Whether the current user is an admin
  * @returns Map of group keys to navigation items and the display order

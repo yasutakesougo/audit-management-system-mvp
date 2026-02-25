@@ -61,6 +61,7 @@ import { env, getAppConfig, IS_E2E, IS_MSAL_MOCK, isDemoModeEnabled, SHOULD_SKIP
 import { useSP } from '@/lib/spClient';
 import { TESTIDS } from '@/testids';
 import SignInButton from '@/ui/components/SignInButton';
+import ArticleRoundedIcon from '@mui/icons-material/ArticleRounded';
 import AssessmentRoundedIcon from '@mui/icons-material/AssessmentRounded';
 import AssignmentTurnedInRoundedIcon from '@mui/icons-material/AssignmentTurnedInRounded';
 import BadgeRoundedIcon from '@mui/icons-material/BadgeRounded';
@@ -187,6 +188,7 @@ const AppShell: React.FC<{ children: React.ReactNode }> = ({ children }) => {
     '氷山分析': WorkspacesIcon,
     '氷山PDCA': HistoryIcon,
     'アセスメント': PsychologyIcon,
+    '個別支援計画書': ArticleRoundedIcon,
     '特性アンケート': EditNoteIcon,
     '利用者': PeopleAltRoundedIcon,
     '職員': BadgeRoundedIcon,

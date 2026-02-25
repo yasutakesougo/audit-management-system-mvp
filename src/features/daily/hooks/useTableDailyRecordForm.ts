@@ -1,9 +1,10 @@
-import { useUsers } from '@/stores/useUsers';
-import { isUserScheduledForDate } from '@/utils/attendanceUtils';
-import { useEffect, useMemo, useState } from 'react';
-import type { Dispatch, SetStateAction } from 'react';
-import type { User } from '@/types';
 import { emitDailySubmissionEvents } from '@/features/iceberg-pdca/dailyMetricsAdapter';
+import { useUsers } from '@/stores/useUsers';
+import type { User } from '@/types';
+import { isUserScheduledForDate } from '@/utils/attendanceUtils';
+import type { Dispatch, SetStateAction } from 'react';
+import { useEffect, useMemo, useState } from 'react';
+import { type DailyTableRecord, type LunchIntake, type ProblemBehaviorType } from '../infra/dailyTableRepository';
 
 const TABLE_DAILY_DRAFT_STORAGE_KEY = 'daily-table-record:draft:v1';
 const TABLE_DAILY_UNSENT_FILTER_STORAGE_KEY = 'daily-table-record:unsent-filter:v1';
@@ -83,7 +84,7 @@ export type TableDailyRecordData = {
 export type UseTableDailyRecordFormParams = {
   open: boolean;
   onClose: () => void;
-  onSave: (data: TableDailyRecordData) => Promise<void>;
+  onSave: (records: DailyTableRecord[]) => Promise<void>;
 };
 
 export type UseTableDailyRecordFormResult = {
@@ -136,6 +137,27 @@ const hasRowContent = (row: UserRowData): boolean => {
   }
 
   return Object.values(row.problemBehavior).some(Boolean);
+};
+
+const mapLunchAmount = (label: string): LunchIntake => {
+  switch (label) {
+    case '完食': return 'full';
+    case '8割': return '80';
+    case '半分': return 'half';
+    case '少量': return 'small';
+    case 'なし': return 'none';
+    default: return 'none';
+  }
+};
+
+const mapProblemBehaviors = (pb: UserRowData['problemBehavior']): ProblemBehaviorType[] => {
+  const out: ProblemBehaviorType[] = [];
+  if (pb.selfHarm) out.push('selfHarm');
+  if (pb.violence) out.push('violence');
+  if (pb.loudVoice) out.push('shouting');
+  if (pb.pica) out.push('pica');
+  if (pb.other) out.push('other');
+  return out;
 };
 
 export const useTableDailyRecordForm = ({
@@ -498,9 +520,28 @@ export const useTableDailyRecordForm = ({
 
     setSaving(true);
     try {
-      await onSave(formData);
-
+      // Map to persistence format
       const submittedAt = new Date().toISOString();
+      const recordsToSave: DailyTableRecord[] = selectedUserIds.map((uid) => {
+        const row = formData.userRows.find((r) => r.userId === uid);
+        return {
+          userId: uid,
+          recordDate: formData.date,
+          activities: {
+            am: row?.amActivity || '',
+            pm: row?.pmActivity || '',
+          },
+          lunchIntake: row ? mapLunchAmount(row.lunchAmount) : 'none',
+          problemBehaviors: row ? mapProblemBehaviors(row.problemBehavior) : [],
+          notes: row?.specialNotes || '',
+          submittedAt,
+          authorName: formData.reporter.name,
+          authorRole: formData.reporter.role,
+        };
+      });
+
+      await onSave(recordsToSave);
+
       const submissionEvents = selectedUserIds.map((userId) => ({
         userId,
         recordDate: formData.date,

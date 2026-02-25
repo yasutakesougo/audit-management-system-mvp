@@ -14,6 +14,7 @@ const NAV_TESTIDS = {
   schedules: 'nav-schedules',
   staffAttendance: 'nav-staff-attendance',
   nurse: 'nav-nurse',
+  supportPlanGuide: 'nav-support-plan-guide',
 } as const;
 
 const FOOTER_TESTIDS = {

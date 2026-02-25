@@ -1,6 +1,7 @@
-import { useCallback, useState } from 'react';
-import { TESTIDS } from '@/testids';
 import { useCancelToDashboard } from '@/lib/nav/useCancelToDashboard';
+import { TESTIDS } from '@/testids';
+import { useCallback, useState } from 'react';
+import { upsertDailyTableRecords, type DailyTableRecord } from './infra/dailyTableRepository';
 
 type TableDailyRecordPayload = {
   date: string;
@@ -25,7 +26,7 @@ type TableDailyRecordViewModel = {
   backTo: string;
   testId: string;
   onClose: () => void;
-  onSave: (data: TableDailyRecordPayload) => Promise<void>;
+  onSave: (records: DailyTableRecord[]) => Promise<void>;
 };
 
 export const useTableDailyRecordViewModel = (): TableDailyRecordViewModel => {
@@ -37,13 +38,16 @@ export const useTableDailyRecordViewModel = (): TableDailyRecordViewModel => {
     cancelToDashboard();
   }, [cancelToDashboard]);
 
-  const handleTableSave = useCallback(async (data: TableDailyRecordPayload) => {
-    console.log('一覧形式記録保存@/daily/table:', data);
+  const handleTableSave = useCallback(async (records: DailyTableRecord[]) => {
+    console.log('一覧形式記録保存 (新形式):', records);
 
-    // TODO: 接続先が決まり次第 SharePoint (or API) 保存処理へ差し替え
-    await new Promise((resolve) => setTimeout(resolve, 1000));
+    // Simulate API delay/request
+    await new Promise((resolve) => setTimeout(resolve, 800));
 
-    alert(`${data.userRows.length}人分の活動記録を保存しました`);
+    // Persist ONLY on success
+    upsertDailyTableRecords(records);
+
+    alert(`${records.length}人分の活動記録を保存しました`);
     navigateBackToMenu();
   }, [navigateBackToMenu]);
 
