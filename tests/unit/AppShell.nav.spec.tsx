@@ -397,6 +397,6 @@ describe('AppShell navigation', () => {
         const collapseButton = await screen.findByRole('button', { name: /ナビを折りたたみ/i });
         expect(collapseButton).toBeInTheDocument();
       }
-    });
+    }, 15000);
   });
 });

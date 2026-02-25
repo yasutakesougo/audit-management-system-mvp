@@ -2,7 +2,15 @@ import { env as baseEnv, getIsDemo, getIsE2E, getIsMsalMock, resetBaseEnvCache, 
 import { getParsedEnv, resetParsedEnvForTests, validateEnv, type EnvSchema } from './env.schema';
 export type { EnvRecord };
 
-export type AppConfig = EnvSchema;
+export interface AppConfig extends EnvSchema {
+  isDev: boolean;
+  schedulesTz: string;
+  schedulesWeekStart: number;
+  schedulesCacheTtlSec: number;
+  graphRetryMax: number;
+  graphRetryBaseMs: number;
+  graphRetryCapMs: number;
+}
 
 /**
  * Audit Management System - Environment Variables (Single Source of Truth)
@@ -308,19 +316,44 @@ export const clearEnvCache = () => {
     resetParsedEnvForTests();
 };
 
-export const getAppConfig = () => ({
-  ...env,
-  isDev: IS_DEV,
-  schedulesTz: env.VITE_SCHEDULES_TZ,
-  schedulesWeekStart: env.VITE_SCHEDULES_WEEK_START,
-  schedulesCacheTtlSec: env.VITE_SCHEDULES_CACHE_TTL,
-  graphRetryMax: env.VITE_GRAPH_RETRY_MAX,
-  graphRetryBaseMs: env.VITE_GRAPH_RETRY_BASE_MS,
-  graphRetryCapMs: env.VITE_GRAPH_RETRY_CAP_MS,
-});
+let cachedAppConfig: AppConfig | null = null;
+
+export const getAppConfig = (overrides?: Partial<EnvSchema>): AppConfig => {
+  if (overrides) {
+    // Override directly merges into a new object to avoid polluting cache
+    const base = getParsedEnv(overrides);
+    return {
+      ...base,
+      isDev: base.VITE_DEV || base.VITE_DEBUG_ENV,
+      schedulesTz: base.VITE_SCHEDULES_TZ,
+      schedulesWeekStart: base.VITE_SCHEDULES_WEEK_START,
+      schedulesCacheTtlSec: base.VITE_SCHEDULES_CACHE_TTL,
+      graphRetryMax: base.VITE_GRAPH_RETRY_MAX,
+      graphRetryBaseMs: base.VITE_GRAPH_RETRY_BASE_MS,
+      graphRetryCapMs: base.VITE_GRAPH_RETRY_CAP_MS,
+    };
+  }
+
+  if (cachedAppConfig) return cachedAppConfig;
+
+  cachedAppConfig = {
+    ...env,
+    isDev: IS_DEV,
+    schedulesTz: env.VITE_SCHEDULES_TZ,
+    schedulesWeekStart: env.VITE_SCHEDULES_WEEK_START,
+    schedulesCacheTtlSec: env.VITE_SCHEDULES_CACHE_TTL,
+    graphRetryMax: env.VITE_GRAPH_RETRY_MAX,
+    graphRetryBaseMs: env.VITE_GRAPH_RETRY_BASE_MS,
+    graphRetryCapMs: env.VITE_GRAPH_RETRY_CAP_MS,
+  };
+  return cachedAppConfig;
+};
 
 /**
  * 🚀 Vitest Helper: Reset internal state for module shadowing tests
  * @internal
  */
-export const __resetAppConfigForTests = () => {};
+export const __resetAppConfigForTests = () => {
+  cachedAppConfig = null;
+  resetParsedEnvForTests();
+};
