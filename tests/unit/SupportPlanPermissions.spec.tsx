@@ -49,7 +49,7 @@ describe('SupportPlanGuidePage Permissions', () => {
   });
 
   it('displays a read-only alert and disables inputs for viewer role', async () => {
-    (useUserAuthz as any).mockReturnValue({ role: 'viewer', ready: true });
+    vi.mocked(useUserAuthz).mockReturnValue({ role: 'viewer', ready: true });
 
     render(<SupportPlanGuidePage />);
 
@@ -64,7 +64,7 @@ describe('SupportPlanGuidePage Permissions', () => {
   });
 
   it('does not display alert and enables inputs for admin role', async () => {
-    (useUserAuthz as any).mockReturnValue({ role: 'admin', ready: true });
+    vi.mocked(useUserAuthz).mockReturnValue({ role: 'admin', ready: true });
 
     render(<SupportPlanGuidePage />);
 
@@ -80,7 +80,7 @@ describe('SupportPlanGuidePage Permissions', () => {
 
   it('guarded buttons are disabled for non-admin on the monitoring tab', async () => {
     const user = userEvent.setup();
-    (useUserAuthz as any).mockReturnValue({ role: 'viewer', ready: true });
+    vi.mocked(useUserAuthz).mockReturnValue({ role: 'viewer', ready: true });
 
     render(<SupportPlanGuidePage />);
 
