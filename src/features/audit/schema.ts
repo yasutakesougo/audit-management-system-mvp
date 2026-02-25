@@ -11,7 +11,7 @@ export const auditInsertSchema = z.object({
   action: z.string().min(1),
   entity: z.string().min(1),
   entity_id: z.string().nullable(),
-  channel: z.enum(['system', 'user', 'auto']),
+  channel: z.enum(['system', 'user', 'auto', 'UI', 'API', 'SPO', 'MSAL', 'System']),
   after_json: z.string().nullable(),
   entry_hash: z.string().min(1),
 });

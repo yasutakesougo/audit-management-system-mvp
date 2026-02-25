@@ -7,7 +7,7 @@ vi.mock('@/lib/env', async () => {
   const actual = await vi.importActual<typeof import('@/lib/env')>('@/lib/env');
   return {
     ...actual,
-    getAppConfig: (): AppConfig => mergeTestConfig(),
+    getAppConfig: (): AppConfig => mergeTestConfig() as any, // eslint-disable-line @typescript-eslint/no-explicit-any
     skipSharePoint: () => false,
     shouldSkipLogin: () => false,
   };
@@ -77,7 +77,7 @@ const defaultConfig: AppConfig = {
   VITE_AAD_TENANT_ID: '',
   VITE_MSAL_LOGIN_FLOW: 'popup',
   isDev: false,
-} as any;
+} as any; // eslint-disable-line @typescript-eslint/no-explicit-any
 
 const originalNodeEnv = process.env.NODE_ENV;
 const originalPlaywrightFlag = process.env.PLAYWRIGHT_TEST;

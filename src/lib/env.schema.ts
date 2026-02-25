@@ -240,9 +240,8 @@ let cachedParsedEnv: EnvSchema | null = null;
 export function getParsedEnv(overrides?: Partial<EnvSchema>): EnvSchema {
   const base = (globalThis as unknown as { __TEST_ENV__?: Record<string, unknown> }).__TEST_ENV__ || getRuntimeEnv() || import.meta.env;
 
-  if ((globalThis as unknown as { __TEST_ENV__?: Record<string, unknown> }).__TEST_ENV__ || overrides) {
-    // If we are in test environment and using __TEST_ENV__, we bypass the long-term cache
-    // to ensure reactivity to vi.stubEnv/stubBaseEnv.
+  if (overrides) {
+    // Overrides always bypass cache
     return parseEnv({ ...(base as unknown as Record<string, unknown>), ...overrides });
   }
 

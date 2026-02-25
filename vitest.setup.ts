@@ -260,7 +260,7 @@ class ResizeObserverMock {
 	unobserve() {}
 	disconnect() {}
 }
-(globalThis as any).ResizeObserver = ResizeObserverMock;
+(globalThis as any).ResizeObserver = ResizeObserverMock; // eslint-disable-line @typescript-eslint/no-explicit-any
 
 // matchMedia for MUI responsive hooks
 Object.defineProperty(window, 'matchMedia', {

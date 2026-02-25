@@ -216,6 +216,12 @@ export const isE2eMsalMockEnabled = (o?: EnvRecord) => {
 
 // Feature Flags (Function aliases)
 const readFlag = (key: string, storageKey: string, fallback: boolean, o?: EnvRecord) => {
+  // 1. Explicit overrides in 'o' always take precedence
+  if (o && key in o) {
+    return readBool(key, fallback, o);
+  }
+
+  // 2. Check localStorage
   const storage = getStorage();
   if (storage) {
     try {
@@ -228,6 +234,8 @@ const readFlag = (key: string, storageKey: string, fallback: boolean, o?: EnvRec
       }
     } catch { /* ignore */ }
   }
+
+  // 3. Fallback to process/meta env via readBool
   return readBool(key, fallback, o);
 };
 

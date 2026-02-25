@@ -3,7 +3,7 @@ import type { Role } from '@/auth/roles';
 import { useAuth } from '@/auth/useAuth';
 import { getRuntimeEnv as getRuntimeEnvRoot } from '@/env';
 import { fetchMyGroupIds } from '@/features/schedules/data/graphAdapter';
-import { IS_E2E, IS_MSAL_MOCK, isDemoModeEnabled, SHOULD_SKIP_LOGIN } from '@/lib/env';
+import { getAppConfig, IS_E2E, IS_MSAL_MOCK, isDemoModeEnabled, SHOULD_SKIP_LOGIN } from '@/lib/env';
 import { useEffect, useMemo, useState } from 'react';
 
 type UserAuthz = {
@@ -138,7 +138,7 @@ export const useUserAuthz = (): UserAuthz => {
 
   const value = useMemo(() => {
     const ids = groupIds ?? [];
-    const isDemoOrDev = import.meta.env.DEV || isDemoModeEnabled();
+    const isDemoOrDev = getAppConfig().isDev || isDemoModeEnabled();
     const isE2E = IS_E2E;
     const skipLogin = SHOULD_SKIP_LOGIN;
 

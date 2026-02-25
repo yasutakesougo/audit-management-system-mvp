@@ -49,7 +49,7 @@ beforeEach(() => {
   mockPersistMsalToken.mockReset();
   mockUseMsalContext.mockReset();
   sessionStorage.clear();
-  delete (globalThis as any).__TOKEN_METRICS__;
+  delete (globalThis as any).__TOKEN_METRICS__; // eslint-disable-line @typescript-eslint/no-explicit-any
   stubBaseEnv();
 });
 
@@ -117,7 +117,7 @@ describe('useAuth hook', () => {
     });
 
     expect(sessionStorage.getItem('spToken')).toBe('refreshed-token');
-    const metrics = (globalThis as any).__TOKEN_METRICS__;
+    const metrics = (globalThis as any).__TOKEN_METRICS__; // eslint-disable-line @typescript-eslint/no-explicit-any
     expect(metrics).toMatchObject({ acquireCount: 1, refreshCount: 1 });
   });
 
@@ -183,7 +183,7 @@ describe('useAuth hook', () => {
       await result.current.acquireToken('https://resource.example.com');
     });
 
-    const metrics = (globalThis as any).__TOKEN_METRICS__;
+    const metrics = (globalThis as any).__TOKEN_METRICS__; // eslint-disable-line @typescript-eslint/no-explicit-any
     expect(metrics).toMatchObject({ acquireCount: 1, refreshCount: 0 });
   });
 

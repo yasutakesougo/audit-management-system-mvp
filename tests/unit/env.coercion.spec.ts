@@ -30,8 +30,8 @@ setRequiredEnvVars();
 
 const importEnvModule = async () => {
   const mod = await import('@/lib/env');
-  if (typeof (mod as any).__resetAppConfigForTests === 'function') {
-    (mod as any).__resetAppConfigForTests();
+  if (typeof (mod as any).__resetAppConfigForTests === 'function') { // eslint-disable-line @typescript-eslint/no-explicit-any
+    (mod as any).__resetAppConfigForTests(); // eslint-disable-line @typescript-eslint/no-explicit-any
   }
   return mod;
 };
@@ -74,7 +74,7 @@ describe('env boolean coercion via readBool', () => {
   it('treats undefined, null, and blanks as fallback', async () => {
     const env = await importEnvModule();
     expect(env.readBool('FEATURE', false, { FEATURE: undefined } as EnvRecord)).toBe(false);
-    expect(env.readBool('FEATURE', false, { FEATURE: null } as EnvRecord)).toBe(false);
+    expect(env.readBool('FEATURE', false, { FEATURE: null } as unknown as EnvRecord)).toBe(false);
     expect(env.readBool('FEATURE', false, { FEATURE: '' } as EnvRecord)).toBe(false);
   });
 

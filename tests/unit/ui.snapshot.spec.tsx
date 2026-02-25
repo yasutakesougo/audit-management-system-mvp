@@ -38,7 +38,7 @@ vi.mock("@/lib/env", async (importOriginal) => {
     ...actual,
     readBool: (key: string, fallback = false, envOverride?: unknown) => {
       if (falseyKeys.has(key)) return false;
-      return actual.readBool(key, fallback, envOverride as any);
+      return actual.readBool(key, fallback, envOverride as any); // eslint-disable-line @typescript-eslint/no-explicit-any
     },
     shouldSkipLogin: () => false,
     isE2eMsalMockEnabled: () => false,

@@ -1,6 +1,7 @@
-import { createHash } from '@/utils/createHash';
+import { getAppConfig } from '@/lib/env';
 import { normalizeServiceType as normalizeSharePointServiceType } from '@/sharepoint/serviceTypes';
-import type { ScheduleRepository, ScheduleItem, DateRange, CreateScheduleInput, UpdateScheduleInput, ScheduleRepositoryListParams, ScheduleRepositoryMutationParams } from '../domain/ScheduleRepository';
+import { createHash } from '@/utils/createHash';
+import type { CreateScheduleInput, DateRange, ScheduleItem, ScheduleRepository, ScheduleRepositoryListParams, ScheduleRepositoryMutationParams, UpdateScheduleInput } from '../domain/ScheduleRepository';
 import type { ScheduleServiceType } from '../domain/types';
 
 /**
@@ -11,7 +12,7 @@ const formatISO = (date: Date): string => date.toISOString();
 /**
  * Add hours to date
  */
-const addHours = (date: Date, hours: number): Date => 
+const addHours = (date: Date, hours: number): Date =>
   new Date(date.getTime() + hours * 60 * 60 * 1000);
 
 /**
@@ -38,7 +39,7 @@ const toIsoString = (value: string): string => {
 /**
  * Normalize local datetime string (add seconds if missing)
  */
-const normalizeLocal = (value: string): string => 
+const normalizeLocal = (value: string): string =>
   (value.length === 16 ? `${value}:00` : value);
 
 /**
@@ -223,7 +224,7 @@ const resolveE2eSchedules = (): ScheduleItem[] | null => {
     if (!Array.isArray(parsed)) return null;
     return parsed as ScheduleItem[];
   } catch (error) {
-    if (import.meta.env.DEV) console.warn('[InMemoryScheduleRepository] E2E fixtures parse error:', error);
+    if (getAppConfig().isDev) console.warn('[InMemoryScheduleRepository] E2E fixtures parse error:', error);
     return null;
   }
 };
@@ -234,7 +235,7 @@ export type InMemoryScheduleRepositorySeed = {
 
 /**
  * InMemory Schedule Repository
- * 
+ *
  * In-memory implementation of ScheduleRepository for demo/test environments.
  * Supports E2E fixtures, scenario-based seeds, and stateful CRUD operations.
  */
@@ -294,7 +295,7 @@ export class InMemoryScheduleRepository implements ScheduleRepository {
     const acceptedOn = normalizeOptionalLocal(input.acceptedOn);
     const acceptedBy = normalizeOptionalText(input.acceptedBy);
     const acceptedNote = normalizeNote(input.acceptedNote);
-    
+
     // Generate entry hash for deduplication
     const entryHash = createHash({
       title,
@@ -364,8 +365,8 @@ export class InMemoryScheduleRepository implements ScheduleRepository {
     const normalizedServiceType = normalizeServiceType(input.serviceType);
     const acceptedOn = normalizeOptionalLocal(input.acceptedOn) ?? existingItem.acceptedOn;
     const acceptedBy = normalizeOptionalText(input.acceptedBy) ?? existingItem.acceptedBy;
-    const acceptedNote = input.acceptedNote !== undefined 
-      ? normalizeNote(input.acceptedNote) 
+    const acceptedNote = input.acceptedNote !== undefined
+      ? normalizeNote(input.acceptedNote)
       : existingItem.acceptedNote ?? null;
     const nextEtag = `"demo-${Date.now()}"`; // Bump etag on update
 

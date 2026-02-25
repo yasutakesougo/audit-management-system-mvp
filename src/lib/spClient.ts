@@ -1,10 +1,9 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
 import { useAuth } from '@/auth/useAuth';
-import { getRuntimeEnv as getRuntimeEnvRoot } from '@/env';
 import type { UnifiedResourceEvent } from '@/features/resources/types';
 import { auditLog } from '@/lib/debugLogger';
-import { env, getAppConfig, isE2eMsalMockEnabled, readBool, readEnv, shouldSkipLogin, skipSharePoint, type EnvRecord } from '@/lib/env';
+import { getAppConfig, isE2eMsalMockEnabled, readBool, readEnv, shouldSkipLogin, skipSharePoint, type EnvRecord } from '@/lib/env';
 import { useMemo } from 'react';
 import { AuthRequiredError, SharePointItemNotFoundError, SharePointMissingEtagError } from './errors';
 
@@ -18,7 +17,7 @@ const shouldBypassSharePointConfig = (envOverride?: EnvRecord): boolean => {
   }
 
   // Force SharePoint even in E2E/mock contexts when explicitly requested (e.g., Playwright stub mode)
-  const isForceSp = envOverride ? !!(envOverride as any).VITE_FORCE_SHAREPOINT : env.VITE_FORCE_SHAREPOINT;
+  const isForceSp = envOverride ? !!(envOverride as any).VITE_FORCE_SHAREPOINT : getAppConfig().VITE_FORCE_SHAREPOINT;
   if (isForceSp) {
     return false;
   }
@@ -443,7 +442,7 @@ const raiseHttpError = async (
   ctx?: { url?: string; method?: string }
 ): Promise<never> => {
   const detail = await readErrorPayload(res);
-  const AUDIT_DEBUG = env.VITE_AUDIT_DEBUG;
+  const AUDIT_DEBUG = getAppConfig().VITE_AUDIT_DEBUG;
 
   // 必ず1行はエラーとして残す（詳細なし）
   console.error('[SP ERROR]', {
@@ -600,12 +599,10 @@ export function createSpClient(
   const spFetch = async (path: string, init: RequestInit = {}): Promise<Response> => {
     const resolvedPath = normalizePath(path);
 
-    // 🔥 CRITICAL: Always read runtime env to respect env.runtime.json override
-    const runtimeEnv = getRuntimeEnvRoot() as Record<string, string>;
-    // In E2E with Playwright stubs (VITE_E2E_MSAL_MOCK), skip the mock layer to allow interception
-    const isE2EWithMsalMock = isE2eMsalMockEnabled(runtimeEnv);
-    const shouldMock = !isE2EWithMsalMock && (!baseUrl || baseUrl === '' || skipSharePoint(runtimeEnv) || shouldSkipLogin(runtimeEnv));
-    const AUDIT_DEBUG = env.VITE_AUDIT_DEBUG;
+    // 🔥 CRITICAL: Always use config to respect overrides and mocks
+    const isE2EWithMsalMock = isE2eMsalMockEnabled(config as any);
+    const shouldMock = !isE2EWithMsalMock && (!baseUrl || baseUrl === '' || skipSharePoint(config as any) || shouldSkipLogin(config as any));
+    const AUDIT_DEBUG = config.VITE_AUDIT_DEBUG;
 
     // 🔍 デバッグログ: モック条件を確認
     if (AUDIT_DEBUG || isE2EWithMsalMock) {
@@ -615,8 +612,8 @@ export function createSpClient(
         isE2EWithMsalMock,
         shouldMock,
         baseUrl: baseUrl ? `${baseUrl.substring(0, 40)}...` : '(empty)',
-        'VITE_E2E_MSAL_MOCK': runtimeEnv['VITE_E2E_MSAL_MOCK'],
-        'VITE_E2E': runtimeEnv['VITE_E2E'],
+        'VITE_E2E_MSAL_MOCK': config.VITE_E2E_MSAL_MOCK,
+        'VITE_E2E': config.VITE_E2E,
       });
     }
 
@@ -666,7 +663,7 @@ export function createSpClient(
     }
 
     // E2E/skip-login: allow fetch without token so Playwright stubs can intercept
-    const skipAuthCheck = shouldSkipLogin() || isE2eMsalMockEnabled();
+    const skipAuthCheck = shouldSkipLogin(config as any) || isE2eMsalMockEnabled(config as any);
 
     if (!token1 && !skipAuthCheck) {
       throw new AuthRequiredError();
@@ -715,7 +712,7 @@ export function createSpClient(
     const resolveUrl = (targetPath: string) => (/^https?:\/\//i.test(targetPath) ? targetPath : `${baseUrl}${targetPath}`);
     const doFetch = async (token: string | null) => {
       const url = resolveUrl(resolvedPath);
-      const AUDIT_DEBUG = !!env.VITE_AUDIT_DEBUG;
+      const AUDIT_DEBUG = !!config.VITE_AUDIT_DEBUG;
 
       // ヘッダー生成: undefined/null を絶対に入れない
       const headers = toHeaders(init.headers);
@@ -1274,15 +1271,12 @@ export function createSpClient(
 
   // $batch 投稿ヘルパー (429/503/504 リトライ対応)
   const postBatch = async (batchBody: string, boundary: string): Promise<Response> => {
-    // 🔥 CRITICAL: Always read runtime env to respect env.runtime.json override
-    const runtimeEnv = getRuntimeEnvRoot() as Record<string, string>;
-    // In E2E with Playwright stubs (VITE_E2E_MSAL_MOCK), skip the mock layer to allow interception
-    const isE2EWithMsalMock = isE2eMsalMockEnabled(runtimeEnv);
-    const shouldMock = !isE2EWithMsalMock && (!baseUrl || baseUrl === '' || skipSharePoint(runtimeEnv) || shouldSkipLogin(runtimeEnv));
+    const isE2EWithMsalMock = isE2eMsalMockEnabled(config as any);
+    const shouldMock = !isE2EWithMsalMock && (!baseUrl || baseUrl === '' || skipSharePoint(config as any) || shouldSkipLogin(config as any));
 
     // 開発環境・デモモード・スキップモードでのモック応答
     if (shouldMock) {
-      if (import.meta.env.DEV) {
+      if (config.isDev) {
         console.info('[DevMock] ✅ SharePoint Batch API モック');
       }
       // バッチ操作が成功したというモックレスポンスを返す
@@ -1327,7 +1321,7 @@ export function createSpClient(
   while (true) {
       const token = await acquireToken();
       // E2E/skip-login: allow batch without token so Playwright stubs can intercept
-      const skipAuthCheck = shouldSkipLogin() || isE2eMsalMockEnabled();
+      const skipAuthCheck = shouldSkipLogin(config as any) || isE2eMsalMockEnabled(config as any);
       if (!token && !skipAuthCheck) {
         throw new AuthRequiredError();
       }
@@ -1492,8 +1486,7 @@ const clampTop = (value: number | undefined): number => {
 };
 
 export async function getUsersMaster<TRow = Record<string, unknown>>(client: ListClient, top?: number): Promise<TRow[]> {
-  const env = getRuntimeEnvRoot();
-  const listTitle = sanitizeEnvValue(env.VITE_SP_LIST_USERS) || DEFAULT_USERS_LIST_TITLE;
+  const listTitle = sanitizeEnvValue(getAppConfig().VITE_SP_LIST_USERS) || DEFAULT_USERS_LIST_TITLE;
   const rows = await fetchListItemsWithFallback<TRow>(
     client,
     listTitle,
@@ -1505,9 +1498,8 @@ export async function getUsersMaster<TRow = Record<string, unknown>>(client: Lis
 }
 
 export async function getStaffMaster<TRow = Record<string, unknown>>(client: ListClient, top?: number): Promise<TRow[]> {
-  const env = getRuntimeEnvRoot();
-  const listTitleCandidate = sanitizeEnvValue(env.VITE_SP_LIST_STAFF) || DEFAULT_STAFF_LIST_TITLE;
-  const listGuidCandidate = sanitizeEnvValue(env.VITE_SP_LIST_STAFF_GUID);
+  const listTitleCandidate = sanitizeEnvValue(getAppConfig().VITE_SP_LIST_STAFF) || DEFAULT_STAFF_LIST_TITLE;
+  const listGuidCandidate = sanitizeEnvValue(getAppConfig().VITE_SP_LIST_STAFF_GUID);
   const identifier = resolveStaffListIdentifier(listTitleCandidate, listGuidCandidate);
   const listKey = identifier.type === 'guid' ? identifier.value : identifier.value;
   const rows = await fetchListItemsWithFallback<TRow>(
