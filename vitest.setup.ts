@@ -4,14 +4,21 @@ import '@formatjs/intl-getcanonicallocales';
 // Apply React Router v7 future flags globally across tests
 import './tests/setup/router-future-flags';
 // Vitest global setup: polyfill crypto.randomUUID if absent (Node < 19 environments)
+import { clearEnvCache } from '@/env';
+import { resetParsedEnvForTests } from '@/lib/env.schema';
 import '@testing-library/jest-dom/vitest';
 import { cleanup } from '@testing-library/react';
 import { webcrypto } from 'crypto';
-import * as React from 'react';
 import { toHaveNoViolations } from 'jest-axe';
+import * as React from 'react';
 import { afterEach, beforeEach, expect, vi } from 'vitest';
 
 process.env.TZ ??= 'Asia/Tokyo';
+
+beforeEach(() => {
+	clearEnvCache();
+	resetParsedEnvForTests();
+});
 // Provide safe defaults for MSAL-dependent modules during unit tests
 process.env.VITE_SCHEDULES_TZ ??= 'Asia/Tokyo';
 process.env.VITE_SCHEDULES_TZ ||= 'Asia/Tokyo';
@@ -53,14 +60,14 @@ expect.extend(toHaveNoViolations as unknown as Record<string, JestLikeMatcher>);
 beforeEach(() => {
 	// Ensure every test starts from a clean environment (covers vi.stubEnv/import.meta.env)
 	vi.unstubAllEnvs?.();
-	
+
 	// Clear test-specific vars: delete only keys we explicitly manage
 	for (const key of ENV_KEYS_TO_CLEAR) {
 		if (key in process.env) {
 			delete process.env[key];
 		}
 	}
-	
+
 	// Restore only tracked setup vars to their baseline state
 	for (const [k, v] of Object.entries(CLEAN_ENV)) {
 		if (v === undefined) {
@@ -79,14 +86,14 @@ afterEach(() => {
 	vi.clearAllTimers();
 	vi.useRealTimers(); // Prevent fake timers from leaking across tests
 	vi.unstubAllEnvs?.();
-	
+
 	// Clear test-specific vars: delete only keys we explicitly manage
 	for (const key of ENV_KEYS_TO_CLEAR) {
 		if (key in process.env) {
 			delete process.env[key];
 		}
 	}
-	
+
 	// Restore only tracked setup vars to their baseline state
 	for (const [k, v] of Object.entries(CLEAN_ENV)) {
 		if (v === undefined) {
