@@ -267,17 +267,15 @@ describe('TableDailyRecordForm', () => {
 
     await waitFor(() => {
       expect(mockOnSave).toHaveBeenCalledWith(
-        expect.objectContaining({
-          reporter: expect.objectContaining({
-            name: '支援員A'
-          }),
-          userRows: expect.arrayContaining([
-            expect.objectContaining({
-              userId: 'U001',
-              amActivity: '朝の体操'
+        expect.arrayContaining([
+          expect.objectContaining({
+            userId: 'U001',
+            authorName: '支援員A',
+            activities: expect.objectContaining({
+              am: '朝の体操'
             })
-          ])
-        })
+          })
+        ])
       );
     });
   });
