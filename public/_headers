@@ -1,7 +1,6 @@
 /*
   Cross-Origin-Opener-Policy: same-origin-allow-popups
-
-/index.html
-  Cross-Origin-Opener-Policy: same-origin-allow-popups
   Cache-Control: public, max-age=0, must-revalidate
 
+/index.html
+  Cache-Control: public, max-age=0, must-revalidate
