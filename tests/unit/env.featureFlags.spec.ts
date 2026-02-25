@@ -13,12 +13,6 @@ describe('env feature toggles', () => {
   });
 
   const baseEnv = (overrides: Partial<EnvRecord> = {}): EnvRecord => ({
-    VITE_FEATURE_SCHEDULES: 'false',
-    VITE_FEATURE_COMPLIANCE_FORM: 'false',
-    VITE_DEMO_MODE: 'false',
-    VITE_SKIP_LOGIN: 'false',
-    VITE_E2E: 'false',
-    VITE_E2E_MSAL_MOCK: 'false',
     ...overrides,
   });
 

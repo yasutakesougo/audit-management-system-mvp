@@ -1,4 +1,5 @@
-import { afterEach, vi } from 'vitest';
+import { __resetAppConfigForTests } from '@/lib/env';
+import { resetParsedEnvForTests } from '@/lib/env.schema';
 import { resetTestConfigOverride } from './mockEnv';
 
 /**
@@ -19,5 +20,8 @@ export function installTestResets() {
     vi.restoreAllMocks();
     // per-test config override をリセット
     resetTestConfigOverride();
+    // env schema / config cache をリセット
+    resetParsedEnvForTests();
+    __resetAppConfigForTests();
   });
 }

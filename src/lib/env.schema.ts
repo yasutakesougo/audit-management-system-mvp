@@ -72,6 +72,7 @@ export const envSchema = z.object({
   VITE_SP_LIST_STAFF: z.string().optional().default('Staff'),
   VITE_SP_LIST_STAFF_ATTENDANCE: z.string().optional().default('StaffAttendance'),
   VITE_SP_LIST_USERS: z.string().optional().default('Users'),
+  VITE_SP_LIST_STAFF_GUID: z.string().optional(),
   VITE_SP_LIST_PLAN_GOAL: z.string().optional().default('PlanGoals'),
   VITE_SP_LIST_NURSE_OBSERVATION: z.string().optional().default('NurseObservations'),
   VITE_SP_LIST_MEETING_SESSIONS: z.string().optional().default('MeetingSessions'),
@@ -169,7 +170,7 @@ export const envSchema = z.object({
   VITE_FIRESTORE_USE_EMULATOR: zBoolFromString.optional().default(false),
   VITE_FIRESTORE_EMULATOR_HOST: z.string().optional().default('127.0.0.1'),
   VITE_FIRESTORE_EMULATOR_PORT: zIntFromString(8080),
-});
+}).passthrough();
 
 export type EnvSchema = z.infer<typeof envSchema> & { [key: string]: unknown };
 export const appEnvSchema = envSchema;
