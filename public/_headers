@@ -1,17 +1,5 @@
 /*
-
-
-
- X-Frame-Options: DENY
-
-
-
- X-Content-Type-Options: nosniff
-
-
-
- Cross-Origin-Opener-Policy: same-origin-allow-popups
-
-
-
- Cache-Control: public, max-age=0, must-revalidate
+  X-Frame-Options: DENY
+  X-Content-Type-Options: nosniff
+  Cross-Origin-Opener-Policy: same-origin-allow-popups
+  Cache-Control: public, max-age=0, must-revalidate

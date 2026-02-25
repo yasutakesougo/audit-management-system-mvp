@@ -84,8 +84,8 @@ afterEach(() => {
 	// restoreAllMocks can interfere with module-level vi.mock() calls
 	vi.clearAllMocks();
 	vi.clearAllTimers();
-	vi.useRealTimers(); // Prevent fake timers from leaking across tests
 	vi.unstubAllEnvs?.();
+	vi.unstubAllGlobals?.();
 
 	// Clear test-specific vars: delete only keys we explicitly manage
 	for (const key of ENV_KEYS_TO_CLEAR) {
@@ -228,7 +228,53 @@ vi.mock('@/hydration/RouteHydrationListener', async () => {
 	};
 });
 
+// Mock useMediaQuery (MUI) for AppShell Drawer tests
+vi.mock('@mui/material/useMediaQuery', () => ({
+	default: () => false, // Always desktop mode for tests
+}));
+
 // ✅ AppShell test support: Mock browser APIs
+const createStorageMock = () => {
+	let store: Record<string, string> = {};
+	return {
+		getItem: vi.fn((key: string) => store[key] || null),
+		setItem: vi.fn((key: string, value: string) => {
+			store[key] = String(value);
+		}),
+		clear: vi.fn(() => {
+			store = {};
+		}),
+		removeItem: vi.fn((key: string) => {
+			delete store[key];
+		}),
+		length: 0,
+		key: vi.fn((index: number) => Object.keys(store)[index] || null),
+	};
+};
+
+if (typeof window !== 'undefined') {
+	const mockLS = createStorageMock();
+	vi.stubGlobal('localStorage', mockLS);
+
+	const mockSS = createStorageMock();
+	vi.stubGlobal('sessionStorage', mockSS);
+
+	// matchMedia for MUI responsive hooks
+	Object.defineProperty(window, 'matchMedia', {
+		writable: true,
+		value: vi.fn().mockImplementation((query: string) => ({
+			matches: false,
+			media: query,
+			onchange: null,
+			addListener: vi.fn(),
+			removeListener: vi.fn(),
+			addEventListener: vi.fn(),
+			removeEventListener: vi.fn(),
+			dispatchEvent: vi.fn(),
+		})),
+	});
+}
+
 // ResizeObserver for Drawer / Grid / Portal components
 class ResizeObserverMock {
 	observe() {}
@@ -236,23 +282,3 @@ class ResizeObserverMock {
 	disconnect() {}
 }
 (globalThis as any).ResizeObserver = ResizeObserverMock;
-
-// matchMedia for MUI responsive hooks
-Object.defineProperty(window, 'matchMedia', {
-	writable: true,
-	value: vi.fn().mockImplementation((query: string) => ({
-		matches: false,
-		media: query,
-		onchange: null,
-		addListener: vi.fn(),
-		removeListener: vi.fn(),
-		addEventListener: vi.fn(),
-		removeEventListener: vi.fn(),
-		dispatchEvent: vi.fn(),
-	})),
-});
-
-// Mock useMediaQuery (MUI) for AppShell Drawer tests
-vi.mock('@mui/material/useMediaQuery', () => ({
-	default: () => false, // Always desktop mode for tests
-}));
