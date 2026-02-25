@@ -1,33 +1,37 @@
+import { Alert, AlertTitle, Button, Dialog, DialogActions, DialogContent, DialogTitle, Snackbar, Stack, Typography } from '@mui/material';
 import { type CSSProperties, type MouseEvent, useCallback, useEffect, useId, useMemo, useRef, useState } from 'react';
 import { useLocation, useSearchParams } from 'react-router-dom';
-import { Alert, AlertTitle, Button, Dialog, DialogTitle, DialogContent, DialogActions, Snackbar, Stack, Typography } from '@mui/material';
 
 import { useAnnounce } from '@/a11y/LiveAnnouncer';
+import { useBreakpointFlags, useOrientation } from '@/app/LayoutContext';
+import { canAccess } from '@/auth/roles';
 import { useAuth } from '@/auth/useAuth';
 import { useUserAuthz } from '@/auth/useUserAuthz';
-import { canAccess } from '@/auth/roles';
 import { isDev } from '@/env';
-import { MASTER_SCHEDULE_TITLE_JA } from '@/features/schedules/constants';
-import type { ScheduleCategory } from '@/features/schedules/domain/types';
-import { scheduleCategoryLabels } from '@/features/schedules/domain/categoryLabels';
-import ScheduleCreateDialog from './ScheduleCreateDialog';
-import ScheduleViewDialog from './ScheduleViewDialog';
+import { buildSpLaneModel, type SpSyncStatus } from '@/features/dashboard/useDashboardSummary';
 import SchedulesFilterResponsive from '@/features/schedules/components/SchedulesFilterResponsive';
 import SchedulesHeader from '@/features/schedules/components/SchedulesHeader';
+import { SchedulesSpLane } from '@/features/schedules/components/SchedulesSpLane';
+import { MASTER_SCHEDULE_TITLE_JA } from '@/features/schedules/constants';
 import type { CreateScheduleEventInput, SchedItem, ScheduleServiceType } from '@/features/schedules/data';
 import type { InlineScheduleDraft } from '@/features/schedules/data/inlineScheduleDraft';
-import { useScheduleUserOptions } from '../hooks/useScheduleUserOptions';
-import { makeRange } from '../hooks/useSchedules';
-import { type ScheduleEditDialogValues, useSchedulesPageState, buildCreateDialogIntent, buildLocalDateTimeInput, buildNextSlot, buildUpdateInput, extractDatePart, extractTimePart, formatScheduleLocalInput, toDateIso, DEFAULT_END_TIME, DEFAULT_START_TIME } from '../hooks/useSchedulesPageState';
-import { useWeekPageUiState } from '../hooks/useWeekPageUiState';
+import { scheduleCategoryLabels } from '@/features/schedules/domain/categoryLabels';
+import type { ScheduleCategory } from '@/features/schedules/domain/types';
+import { isSchedulesSpEnabled } from '@/lib/env';
 import { TESTIDS } from '@/testids';
 import Loading from '@/ui/components/Loading';
 import { resolveSchedulesTz } from '@/utils/scheduleTz';
-import { useBreakpointFlags, useOrientation } from '@/app/LayoutContext';
+import { useScheduleUserOptions } from '../hooks/useScheduleUserOptions';
+import { makeRange } from '../hooks/useSchedules';
+import { buildCreateDialogIntent, buildLocalDateTimeInput, buildNextSlot, buildUpdateInput, DEFAULT_END_TIME, DEFAULT_START_TIME, extractDatePart, extractTimePart, formatScheduleLocalInput, type ScheduleEditDialogValues, toDateIso, useSchedulesPageState } from '../hooks/useSchedulesPageState';
+import { useSchedulesToday } from '../hooks/useSchedulesToday';
+import { useWeekPageUiState } from '../hooks/useWeekPageUiState';
+import ScheduleCreateDialog from './ScheduleCreateDialog';
+import ScheduleViewDialog from './ScheduleViewDialog';
 
 import DayView from './DayView';
-import WeekView from './WeekView';
 import MonthPage from './MonthPage';
+import WeekView from './WeekView';
 
 
 // Tracks whether the FAB should reclaim focus after the dialog closes across route remounts.
@@ -70,6 +74,21 @@ export default function WeekPage() {
     readOnlyReason,
     canWrite,
   } = useSchedulesPageState({ myUpn, canEditByRole, ready });
+
+  // Sync status for SharePoint Lane
+  const {
+    loading: spLoading,
+    error: spError,
+    data: spItems,
+    source: spSource
+  } = useSchedulesToday(10);
+
+  const spSyncStatus: SpSyncStatus = useMemo(() => ({
+    loading: spLoading,
+    error: spError,
+    itemCount: spItems.length,
+    source: spSource,
+  }), [spLoading, spError, spItems.length, spSource]);
   const {
     snack,
     setSnack,
@@ -90,21 +109,21 @@ export default function WeekPage() {
     setHighlightId,
   } = useWeekPageUiState();
   const announce = useAnnounce();
-  
+
   // View Dialog state (for viewing/editing schedule details)
   const [viewItem, setViewItem] = useState<SchedItem | null>(null);
-  
+
   // Legacy ?tab= redirect (互換性のため) - DISABLED to prevent infinite redirect loop
   // The tab param is now handled directly in the mode calculation below
   // No need to redirect between routes; WeekPage handles all tabs internally
   // useEffect(() => {
   //   const legacyTab = searchParams.get('tab');
   //   if (!legacyTab) return;
-  //   
+  //
   //   if (location.pathname === '/schedules/week' && LEGACY_TABS.includes(legacyTab as LegacyTab)) {
   //     return;
   //   }
-  //   
+  //
   //   const map: Record<LegacyTab, string> = {
   //     day: '/schedules/day',
   //     week: '/schedules/week',
@@ -114,7 +133,7 @@ export default function WeekPage() {
   //   const target = map[legacyTab as LegacyTab];
   //   if (target) navigate(target, { replace: true });
   // }, [searchParams, navigate, location.pathname]);
-  
+
   // FAB (create) = reception/admin only
   const [activeDateIso, setActiveDateIso] = useState<string | null>(() => toDateIso(focusDate));
   const scheduleUserOptions = useScheduleUserOptions();
@@ -126,7 +145,7 @@ export default function WeekPage() {
   const fabRef = useRef<HTMLButtonElement | null>(null);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [dialogInitialValues, setDialogInitialValues] = useState<ScheduleEditDialogValues | null>(null);
-  
+
   // Suppress route-dialog when view/inline edit is active (防波堤: 詳細/編集中はURL-dialogを開かせない)
   const suppressRouteDialog = Boolean(viewItem) || Boolean(dialogInitialValues);
   const [dayLane, setDayLane] = useState<ScheduleCategory | null>(null);
@@ -238,7 +257,7 @@ export default function WeekPage() {
   const handleFabClick = useCallback(
     (_event?: MouseEvent<HTMLButtonElement>) => {
       if (!canEdit) return; // Guard: Day tab + authorized users only
-      
+
       const iso = activeDateIso ?? defaultDateIso;
       if (!activeDateIso) {
         setActiveDateIso(iso);
@@ -302,7 +321,7 @@ export default function WeekPage() {
     // 1. Close other dialogs first
     setViewItem(null);
     clearDialogParams();
-    
+
     // 2. Authorization check (day/week共通)
     if (ready) {
       const assignedNormalized = (item.assignedTo ?? '').trim().toLowerCase();
@@ -322,7 +341,7 @@ export default function WeekPage() {
         return;
       }
     }
-    
+
     // 3. Prepare dialog values (JST基準で統一)
     const category = (item.category as ScheduleCategory) ?? 'User';
     setDayLane(category);
@@ -331,7 +350,7 @@ export default function WeekPage() {
     const endLocal = formatScheduleLocalInput(item.end, DEFAULT_END_TIME, schedulesTz);
     const dateIso = extractDatePart(startLocal) || toDateIso(new Date());
     setActiveDateIso(dateIso);
-    
+
     // 4. Set values first, then open
     const resolvedUserId =
       item.userId?.trim() ||
@@ -578,6 +597,11 @@ export default function WeekPage() {
     return () => clearTimeout(timeoutId);
   }, [focusScheduleId, filteredItems]);
 
+  const spLane = useMemo(() => {
+    const enabled = isSchedulesSpEnabled();
+    return buildSpLaneModel(enabled, spSyncStatus);
+  }, [spSyncStatus]);
+
 
   return (
     <section
@@ -588,7 +612,7 @@ export default function WeekPage() {
       tabIndex={-1}
       style={{ paddingBottom: 24 }}
     >
-      <div data-testid="schedules-week-root" style={{ display: 'contents' }}>
+      <div data-testid="schedules-week-root" style={{ display: 'flex', flexDirection: 'column' }}>
       <div
         className="schedule-sticky"
         style={{
@@ -741,75 +765,85 @@ export default function WeekPage() {
         })()}
       </div>
 
-      {readOnlyReason && (
-        <Alert
-          severity={readOnlyReason.kind === 'WRITE_DISABLED' ? 'info' : 'warning'}
-          sx={{ mb: 2 }}
-          action={
-            readOnlyReason.action ? (
-              <Button
-                color="inherit"
-                size="small"
-                onClick={readOnlyReason.action.onClick}
-                href={readOnlyReason.action.href}
-              >
-                {readOnlyReason.action.label}
-              </Button>
-            ) : undefined
-          }
-        >
-          <AlertTitle>{readOnlyReason.title}</AlertTitle>
-          {readOnlyReason.message}
-          {readOnlyReason.details && readOnlyReason.details.length > 0 && (
-            <Typography variant="caption" component="div" sx={{ mt: 1, opacity: 0.8 }}>
-              {readOnlyReason.details.join(' / ')}
-            </Typography>
+      <div style={{ display: 'flex', gap: 24, padding: isDesktopSize ? '0 24px' : '0 12px' }}>
+        <div style={{ flex: 1, minWidth: 0 }}>
+          {readOnlyReason && (
+            <Alert
+              severity={readOnlyReason.kind === 'WRITE_DISABLED' ? 'info' : 'warning'}
+              sx={{ mb: 2 }}
+              action={
+                readOnlyReason.action ? (
+                  <Button
+                    color="inherit"
+                    size="small"
+                    onClick={readOnlyReason.action.onClick}
+                    href={readOnlyReason.action.href}
+                  >
+                    {readOnlyReason.action.label}
+                  </Button>
+                ) : undefined
+              }
+            >
+              <AlertTitle>{readOnlyReason.title}</AlertTitle>
+              {readOnlyReason.message}
+              {readOnlyReason.details && readOnlyReason.details.length > 0 && (
+                <Typography variant="caption" component="div" sx={{ mt: 1, opacity: 0.8 }}>
+                  {readOnlyReason.details.join(' / ')}
+                </Typography>
+              )}
+            </Alert>
           )}
-        </Alert>
-      )}
 
-      <div>
-        {isLoading ? (
-          <div aria-busy="true" aria-live="polite" style={{ display: 'grid', gap: 16 }}>
-            <Loading />
-            <div style={skeletonStyle} />
-            <div style={skeletonStyle} />
-            <div style={skeletonStyle} />
+          <div>
+            {isLoading ? (
+              <div aria-busy="true" aria-live="polite" style={{ display: 'grid', gap: 16 }}>
+                <Loading />
+                <div style={skeletonStyle} />
+                <div style={skeletonStyle} />
+                <div style={skeletonStyle} />
+              </div>
+            ) : (
+              <>
+                {(mode === 'week' || mode === 'org') && (
+                  <WeekView
+                    items={filteredItems}
+                    loading={isLoading}
+                    range={weekRange}
+                    onDayClick={handleDayClick}
+                    onTimeSlotClick={handleTimeSlotClick}
+                    activeDateIso={resolvedActiveDateIso}
+                    onItemSelect={handleViewClick}
+                    highlightId={highlightId}
+                    compact={compact}
+                  />
+                )}
+                {mode === 'day' && (
+                  <DayView
+                    items={filteredItems}
+                    loading={isLoading}
+                    range={activeDayRange}
+                    categoryFilter={categoryFilter}
+                    emptyCtaLabel={categoryFilter === 'Org' ? '施設予定を追加' : '予定を追加'}
+                    compact={compact}
+                  />
+                )}
+                {mode === 'month' && (
+                  <MonthPage
+                    items={filteredItems}
+                    loading={isLoading}
+                    activeCategory={categoryFilter}
+                    compact={compact}
+                  />
+                )}
+              </>
+            )}
           </div>
-        ) : (
-          <>
-            {(mode === 'week' || mode === 'org') && (
-              <WeekView
-                items={filteredItems}
-                loading={isLoading}
-                range={weekRange}
-                onDayClick={handleDayClick}
-                onTimeSlotClick={handleTimeSlotClick}
-                activeDateIso={resolvedActiveDateIso}
-                onItemSelect={handleViewClick}
-                highlightId={highlightId}
-                compact={compact}
-              />
-            )}
-            {mode === 'day' && (
-              <DayView
-                items={filteredItems}
-                loading={isLoading}
-                range={activeDayRange}
-                categoryFilter={categoryFilter}
-                emptyCtaLabel={categoryFilter === 'Org' ? '施設予定を追加' : '予定を追加'}
-                compact={compact}
-              />
-            )}
-            {mode === 'month' && (
-              <MonthPage
-                items={filteredItems}
-                loading={isLoading}
-                activeCategory={categoryFilter}
-                compact={compact}
-              />
-            )}
-          </>
+        </div>
+
+        {isDesktopSize && (
+          <aside style={{ width: 280, flexShrink: 0, paddingTop: 16 }}>
+             <SchedulesSpLane model={spLane} />
+          </aside>
         )}
       </div>
 
@@ -857,13 +891,13 @@ export default function WeekPage() {
         <ScheduleCreateDialog
           open={dialogOpen}
           mode="edit"
-          eventId={dialogInitialValues.id}
+          eventId={dialogInitialValues!.id}
           initialOverride={{
-            ...dialogInitialValues,
+            ...dialogInitialValues!,
             serviceType:
-              dialogInitialValues.serviceType === null || dialogInitialValues.serviceType === undefined
+              dialogInitialValues!.serviceType === null || dialogInitialValues!.serviceType === undefined
                 ? ""
-                : dialogInitialValues.serviceType,
+                : dialogInitialValues!.serviceType,
           }}
           onClose={handleInlineDialogClose}
           onSubmit={handleInlineDialogSubmit}
@@ -999,7 +1033,7 @@ export default function WeekPage() {
             )}
 
             <Typography variant="caption" color="text.secondary">
-              発生時刻: {lastErrorAt ? new Date(lastErrorAt).toLocaleTimeString('ja-JP') : '-'}
+              発生時刻: {lastErrorAt ? new Date(lastErrorAt as number).toLocaleTimeString('ja-JP') : '-'}
             </Typography>
           </Stack>
         </DialogContent>
@@ -1024,5 +1058,3 @@ const skeletonStyle: CSSProperties = {
   background: 'linear-gradient(90deg, rgba(0,0,0,0.06) 25%, rgba(0,0,0,0.1) 37%, rgba(0,0,0,0.06) 63%)',
   animation: 'shine 1.4s ease infinite',
 };
-
-

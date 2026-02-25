@@ -1,3 +1,31 @@
+/**
+ * Vitest Global Setup (Main Branch)
+ *
+ * 🛠️ Hybrid Isolation Model
+ * -------------------------
+ * This setup implements a "Hybrid Isolation" model to balance test performance,
+ * module-level dependency support, and test isolation:
+ *
+ * 1. Persistent Stubs: Browser APIs (localStorage, matchMedia, etc.) are stubbed
+ *    at the module level. This ensures they are available during module evaluation
+ *    when test files are imported, preventing "ReferenceError: localStorage is not defined"
+ *    in high-concurrency environments.
+ *
+ * 2. Per-Test Data Clearance: `beforeEach` hooks clear the *data* within these mocks
+ *    (e.g., localStorage.clear()) without un-stubbing the global objects themselves.
+ *
+ * 3. Minimal Global Side Effects: We avoid `vi.unstubAllGlobals()` in `afterEach`
+ *    because it destructively removes the stubs needed by other modules still being
+ *    evaluated or lazy-loaded. Use `mockRestore()` on specific spies instead.
+ *
+ * 💡 Tip: restore vs clear
+ * ----------------------
+ * - `vi.clearAllMocks()`: Resets call history (mock.calls). SAFE.
+ * - `vi.resetAllMocks()`: Resets history + implementation to empty fn. USE CAUTION (affects vi.mock).
+ * - `vi.restoreAllMocks()`: Restores original implementation (from spies). USE CAUTION.
+ * - `mockRestore()`: Specific to a `vi.spyOn`. USE for per-test overrides.
+ */
+
 import '@formatjs/intl-datetimeformat/add-all-tz';
 import '@formatjs/intl-datetimeformat/polyfill';
 import '@formatjs/intl-getcanonicallocales';
@@ -15,13 +43,84 @@ import { afterEach, beforeEach, expect, vi } from 'vitest';
 
 process.env.TZ ??= 'Asia/Tokyo';
 
+// ✅ AppShell test support: Mock browser APIs
+const createStorageMock = () => {
+	let store: Record<string, string> = {};
+	return {
+		getItem: vi.fn((key: string) => store[key] || null),
+		setItem: vi.fn((key: string, value: string) => {
+			store[key] = String(value);
+		}),
+		clear: vi.fn(() => {
+			store = {};
+		}),
+		removeItem: vi.fn((key: string) => {
+			delete store[key];
+		}),
+		length: 0,
+		key: vi.fn((index: number) => Object.keys(store)[index] || null),
+	};
+};
+
+const mockLS = createStorageMock();
+const mockSS = createStorageMock();
+
+if (typeof window !== 'undefined') {
+	vi.stubGlobal('localStorage', mockLS);
+	vi.stubGlobal('sessionStorage', mockSS);
+
+	// matchMedia for MUI responsive hooks
+	Object.defineProperty(window, 'matchMedia', {
+		writable: true,
+		value: vi.fn().mockImplementation((query: string) => ({
+			matches: false,
+			media: query,
+			onchange: null,
+			addListener: vi.fn(),
+			removeListener: vi.fn(),
+			addEventListener: vi.fn(),
+			removeEventListener: vi.fn(),
+			dispatchEvent: vi.fn(),
+		})),
+	});
+}
+
+// ResizeObserver for Drawer / Grid / Portal components
+class ResizeObserverMock {
+	observe() {}
+	unobserve() {}
+	disconnect() {}
+}
+vi.stubGlobal('ResizeObserver', ResizeObserverMock);
+
+// Consolidated environment and browser API setup
 beforeEach(() => {
 	clearEnvCache();
 	resetParsedEnvForTests();
+	vi.unstubAllEnvs?.();
+
+	// Clear browser storage mocks
+	mockLS.clear();
+	mockSS.clear();
+
+	// Clear test-specific vars: delete only keys we explicitly manage
+	for (const key of ENV_KEYS_TO_CLEAR) {
+		if (key in process.env) {
+			delete process.env[key];
+		}
+	}
+
+	// Restore only tracked setup vars to their baseline state
+	for (const [k, v] of Object.entries(CLEAN_ENV)) {
+		if (v === undefined) {
+			delete process.env[k];
+		} else {
+			process.env[k] = v;
+		}
+	}
 });
 // Provide safe defaults for MSAL-dependent modules during unit tests
 process.env.VITE_SCHEDULES_TZ ??= 'Asia/Tokyo';
-process.env.VITE_SCHEDULES_TZ ||= 'Asia/Tokyo';
 process.env.VITE_MSAL_CLIENT_ID ??= '11111111-2222-3333-4444-555555555555';
 process.env.VITE_MSAL_TENANT_ID ??= 'test-tenant';
 process.env.VITE_MSAL_REDIRECT_URI ??= 'http://localhost:5173';
@@ -57,26 +156,6 @@ type JestLikeMatcher = (this: unknown, ...args: unknown[]) => { pass: boolean; m
 
 expect.extend(toHaveNoViolations as unknown as Record<string, JestLikeMatcher>);
 
-beforeEach(() => {
-	// Ensure every test starts from a clean environment (covers vi.stubEnv/import.meta.env)
-	vi.unstubAllEnvs?.();
-
-	// Clear test-specific vars: delete only keys we explicitly manage
-	for (const key of ENV_KEYS_TO_CLEAR) {
-		if (key in process.env) {
-			delete process.env[key];
-		}
-	}
-
-	// Restore only tracked setup vars to their baseline state
-	for (const [k, v] of Object.entries(CLEAN_ENV)) {
-		if (v === undefined) {
-			delete process.env[k];
-		} else {
-			process.env[k] = v;
-		}
-	}
-});
 
 afterEach(() => {
 	cleanup();
@@ -84,8 +163,12 @@ afterEach(() => {
 	// restoreAllMocks can interfere with module-level vi.mock() calls
 	vi.clearAllMocks();
 	vi.clearAllTimers();
-	vi.useRealTimers(); // Prevent fake timers from leaking across tests
 	vi.unstubAllEnvs?.();
+	// Avoid vi.unstubAllGlobals() as it clobbers the baseline browser API stubs
+	// required for top-level imports in subsequently loaded test files.
+	// Individual tests that use vi.stubGlobal should cleanup manually if needed,
+	// or we rely on the beforeEach re-application if we were to use it.
+	// For now, we keep the baseline stubs persistent.
 
 	// Clear test-specific vars: delete only keys we explicitly manage
 	for (const key of ENV_KEYS_TO_CLEAR) {
@@ -226,30 +309,6 @@ vi.mock('@/hydration/RouteHydrationListener', async () => {
 		RouteHydrationErrorBoundary: actual.RouteHydrationErrorBoundary ?? Passthrough,
 		default: Passthrough,
 	};
-});
-
-// ✅ AppShell test support: Mock browser APIs
-// ResizeObserver for Drawer / Grid / Portal components
-class ResizeObserverMock {
-	observe() {}
-	unobserve() {}
-	disconnect() {}
-}
-(globalThis as any).ResizeObserver = ResizeObserverMock;
-
-// matchMedia for MUI responsive hooks
-Object.defineProperty(window, 'matchMedia', {
-	writable: true,
-	value: vi.fn().mockImplementation((query: string) => ({
-		matches: false,
-		media: query,
-		onchange: null,
-		addListener: vi.fn(),
-		removeListener: vi.fn(),
-		addEventListener: vi.fn(),
-		removeEventListener: vi.fn(),
-		dispatchEvent: vi.fn(),
-	})),
 });
 
 // Mock useMediaQuery (MUI) for AppShell Drawer tests

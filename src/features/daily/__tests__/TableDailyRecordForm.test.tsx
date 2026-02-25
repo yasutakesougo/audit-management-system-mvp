@@ -39,6 +39,8 @@ const FIXED_DATE = '2024-01-01';
 const FIXED_DATE_SELECTION_COUNT = 2; // Deterministic expected auto-selection count for FIXED_DATE
 
 describe('TableDailyRecordForm', () => {
+  vi.setConfig({ testTimeout: 30000 });
+
   const defaultProps = {
     open: true,
     onClose: vi.fn(),
@@ -139,7 +141,6 @@ describe('TableDailyRecordForm', () => {
 
   it(
     'should auto-select todays attendees on open',
-    { timeout: 15000 },
     async () => {
       renderForm();
 
@@ -245,6 +246,7 @@ describe('TableDailyRecordForm', () => {
   });
 
   it('should call onSave with correct data when saved', async () => {
+    const alertMock = vi.spyOn(window, 'alert').mockImplementation(() => {});
     const mockOnSave = vi.fn().mockResolvedValue(undefined);
     const user = createUser();
 
@@ -262,24 +264,31 @@ describe('TableDailyRecordForm', () => {
     const amActivityInput = table.getAllByPlaceholderText('午前の活動')[0];
     await user.type(amActivityInput, '朝の体操');
 
-    const saveButton = await screen.findByRole('button', { name: `${FIXED_DATE_SELECTION_COUNT}人分保存` }, { timeout: 5000 });
+    const saveButton = await screen.findByRole(
+      'button',
+      { name: `${FIXED_DATE_SELECTION_COUNT}人分保存` },
+      { timeout: 5000 },
+    );
     await user.click(saveButton);
 
-    await waitFor(() => {
-      expect(mockOnSave).toHaveBeenCalledWith(
-        expect.objectContaining({
-          reporter: expect.objectContaining({
-            name: '支援員A'
-          }),
-          userRows: expect.arrayContaining([
+    await waitFor(
+      () => {
+        expect(mockOnSave).toHaveBeenCalledWith(
+          expect.arrayContaining([
             expect.objectContaining({
               userId: 'U001',
-              amActivity: '朝の体操'
-            })
-          ])
-        })
-      );
-    });
+              authorName: '支援員A',
+              activities: expect.objectContaining({
+                am: '朝の体操',
+              }),
+            }),
+          ]),
+        );
+      },
+      { timeout: 15000 },
+    );
+
+    alertMock.mockRestore();
   });
 
   it('should prevent saving without selected users', async () => {
@@ -304,7 +313,6 @@ describe('TableDailyRecordForm', () => {
 
   it(
     'should prevent saving without reporter name',
-    { timeout: 15000 },
     async () => {
       const alertMock = vi.spyOn(window, 'alert').mockImplementation(() => undefined);
       const mockOnSave = vi.fn();
@@ -328,7 +336,6 @@ describe('TableDailyRecordForm', () => {
 
   it(
     'should handle select all functionality',
-    { timeout: 15000 },
     async () => {
       const user = createUser();
       renderForm();

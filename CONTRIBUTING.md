@@ -54,13 +54,17 @@ npm run preflight:full
 
 If a preflight fails, address the issue and re-run the same command locally before pushing new commits.
 
-### Note: Test timeout during `npm run test:ci`
+## Test Isolation & CI Stability
 
-If a test legitimately takes longer than 10 seconds to clean up (e.g., heavy async fixtures), override the hook timeout:
+Maintaining a 100% green CI is a shared responsibility. We use a **Hybrid Isolation** model to ensure tests are fast yet deterministic.
 
-```bash
-HOOK_TIMEOUT=20000 npm run test:ci
-```
+### 🧪 Key Rules for Vitest
+- **Stubs are Persistent**: Browser API stubs (localStorage, matchMedia) are globally managed in `vitest.setup.ts`.
+- **Global Reset Prohibition**: 🚫 DO NOT use `vi.unstubAllGlobals()` in `afterEach`. This breaks the structural lock for concurrent or lazy-loaded tests.
+- **Data Reset**: Storage is cleared automatically in `beforeEach`.
+- **Timeouts**: Heavy UI tests should use a higher `findBy` timeout (up to 30s) to survive CI load.
+
+For a deep dive into the architecture, see [docs/ci-stabilization.md](docs/ci-stabilization.md).
 
 ## Local E2E testing (Schedules smoke suite)
 
@@ -141,4 +145,3 @@ When improving Schedule E2E test coverage, classify skips into **categories**:
 - **Preferred**: Use GitHub "Update branch" button or `git merge origin/main` to resolve BEHIND status.
 - **Avoid**: `git rebase origin/main` on PRs that are BEHIND can cause commit loss if branch state is unclear.
 - **Why**: Rebasing a BEHIND branch may eliminate unique commits, leading to PR closure without merge (see PR #472 incident).
-

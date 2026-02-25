@@ -19,6 +19,9 @@ export const EnvSchema = z.object({
     .regex(TIME_24H_PATTERN, 'Facility close time must be HH:MM (24h)')
     .default('18:00'),
 
+  // Feature Flags
+  VITE_FEATURE_SCHEDULES_SP: z.string().optional().default(''),
+
   // Azure AD / MSAL
   VITE_MSAL_CLIENT_ID: z.string().optional().default(''),
   VITE_MSAL_TENANT_ID: z.string().optional().default(''),

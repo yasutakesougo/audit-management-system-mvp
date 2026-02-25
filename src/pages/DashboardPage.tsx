@@ -1,8 +1,8 @@
 import { useFeatureFlags } from '@/config/featureFlags';
 import { canAccessDashboardAudience, type DashboardAudience } from '@/features/auth/store';
-import { TESTIDS, tid } from '@/testids';
-import type { Schedule } from '@/lib/mappers';
 import { getDashboardAnchorIdByKey } from '@/features/dashboard/sections/buildSections';
+import type { Schedule } from '@/lib/mappers';
+import { TESTIDS, tid } from '@/testids';
 import AccessTimeIcon from '@mui/icons-material/AccessTime';
 import AssignmentIcon from '@mui/icons-material/Assignment';
 import DashboardIcon from '@mui/icons-material/Dashboard';
@@ -17,6 +17,8 @@ import Button from '@mui/material/Button';
 import Card from '@mui/material/Card';
 import CardContent from '@mui/material/CardContent';
 
+import { getSectionComponent, type SectionProps } from '@/features/dashboard/sections/registry';
+import { useTheme } from '@mui/material';
 import Container from '@mui/material/Container';
 import Divider from '@mui/material/Divider';
 import Grid from '@mui/material/Grid';
@@ -26,27 +28,29 @@ import ListItemText from '@mui/material/ListItemText';
 import Paper from '@mui/material/Paper';
 import Stack from '@mui/material/Stack';
 import Typography from '@mui/material/Typography';
-import { useTheme } from '@mui/material';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { useNavigate, useLocation } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { PersonDaily, SeizureRecord } from '../domain/daily/types';
-import { getSectionComponent, type SectionProps } from '@/features/dashboard/sections/registry';
 
-import { useDashboardViewModel, type DashboardSection, type DashboardSectionKey } from '@/features/dashboard/useDashboardViewModel';
-import { useDashboardSummary } from '@/features/dashboard/useDashboardSummary';
+import { useAttendanceStore } from '@/features/attendance/store';
 import DashboardBriefingHUD from '@/features/dashboard/DashboardBriefingHUD';
+import { generateTodosFromSchedule } from '@/features/dashboard/generateTodos';
 import { ZeroScrollLayout, type DashboardTab } from '@/features/dashboard/layouts/ZeroScrollLayout';
-import { UserStatusTab } from '@/features/dashboard/tabs/UserStatusTab';
+import type { ScheduleLanes } from '@/features/dashboard/sections/impl/ScheduleSection';
 import { StaffStatusTab } from '@/features/dashboard/tabs/StaffStatusTab';
 import { TodoTab } from '@/features/dashboard/tabs/TodoTab';
-import { generateTodosFromSchedule } from '@/features/dashboard/generateTodos';
-import { useAttendanceStore } from '@/features/attendance/store';
+import { UserStatusTab } from '@/features/dashboard/tabs/UserStatusTab';
+import type { SpLaneModel, SpSyncStatus } from '@/features/dashboard/useDashboardSummary';
+import { useDashboardSummary } from '@/features/dashboard/useDashboardSummary';
+import { useDashboardViewModel, type DashboardSection, type DashboardSectionKey } from '@/features/dashboard/useDashboardViewModel';
+import { SchedulesSpLane } from '@/features/schedules/components/SchedulesSpLane';
+import { useSchedulesToday } from '@/features/schedules/hooks/useSchedulesToday';
+import type { AttendanceCounts } from '@/features/staff/attendance/port';
+import { getStaffAttendancePort } from '@/features/staff/attendance/storage';
 import { useStaffStore } from '@/features/staff/store';
 import type { HandoffDayScope } from '../features/handoff/handoffTypes';
 import { useHandoffSummary } from '../features/handoff/useHandoffSummary';
 import { useUsersDemo } from '../features/users/usersStoreDemo';
-import type { AttendanceCounts } from '@/features/staff/attendance/port';
-import { getStaffAttendancePort } from '@/features/staff/attendance/storage';
 import { IUserMaster } from '../sharepoint/fields';
 
 const useAttendanceCounts = (recordDate: string): AttendanceCounts => {
@@ -286,6 +290,22 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ audience = 'staff' }) => 
   // Get attendance counts (needed by useDashboardSummary)
   const attendanceCounts = useAttendanceCounts(today);
 
+  // Sync status for SharePoint Lane
+  const {
+    loading: spLoading,
+    error: spError,
+    data: spItems,
+    source: spSource
+  } = useSchedulesToday(10); // Check multiple items for status
+
+  const spSyncStatus: SpSyncStatus = {
+    loading: spLoading,
+    error: spError,
+    itemCount: spItems.length,
+    source: spSource,
+    // lastSyncAt: could be added if hook provides it
+  };
+
   // Call consolidated dashboard summary hook
   // (replaces 7 useMemo blocks: activityRecords, usageMap, stats, attendanceSummary, dailyRecordStatus, scheduleLanes, prioritizedUsers)
   const summary = useDashboardSummary({
@@ -296,6 +316,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ audience = 'staff' }) => 
     staff,
     attendanceCounts,
     generateMockActivityRecords,
+    spSyncStatus,
   });
 
   // Destructure all values from hook
@@ -310,6 +331,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ audience = 'staff' }) => 
     intensiveSupportUsers,
     briefingAlerts,  // ✨ 新規
     staffAvailability,  // ✨ Phase B: 職員フリー状態
+    spLane, // ✨ Constant SP Lane
   } = summary;
 
   // Keep development logging for usageMap
@@ -347,7 +369,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ audience = 'staff' }) => 
     owner?: string;
   };
 
-  const renderScheduleLanes = (title: string, lanes: { userLane: ScheduleItem[]; staffLane: ScheduleItem[]; organizationLane: ScheduleItem[] }) => (
+  const renderScheduleLanes = (title: string, lanes: { userLane: ScheduleItem[]; staffLane: ScheduleItem[]; organizationLane: ScheduleItem[] }, spLaneData: SpLaneModel) => (
     <Card>
       <CardContent sx={{ py: 1.25, px: 1.5 }}>
         <Typography variant="h6" sx={{ mb: 2 }}>
@@ -359,7 +381,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ audience = 'staff' }) => 
             { label: '職員レーン', items: lanes.staffLane },
             { label: '組織レーン', items: lanes.organizationLane },
           ].map(({ label, items }) => (
-            <Grid key={label} size={{ xs: 12, md: 4 }}>
+            <Grid key={label} size={{ xs: 12, md: 3 }}>
               <Paper variant="outlined" sx={{ p: 2, height: '100%' }}>
                 <Typography variant="subtitle2" sx={{ fontWeight: 700, mb: 1 }}>
                   {label}
@@ -378,6 +400,10 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ audience = 'staff' }) => 
               </Paper>
             </Grid>
           ))}
+          {/* Constant SP Lane column */}
+          <Grid size={{ xs: 12, md: 3 }}>
+            <SchedulesSpLane model={spLaneData} />
+          </Grid>
         </Grid>
       </CardContent>
     </Card>
@@ -446,6 +472,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ audience = 'staff' }) => 
           title: section.title,
           schedulesEnabled,
           scheduleLanesToday,
+          spLane,
         };
       case 'handover':
         return {
@@ -477,7 +504,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ audience = 'staff' }) => 
           prioritizedUsers,
           scheduleLanesToday,
           scheduleLanesTomorrow,
-          renderScheduleLanes,
+          renderScheduleLanes: (t: string, l: ScheduleLanes) => renderScheduleLanes(t, l, spLane),
           stats,
           onOpenTimeline: openTimeline,
         };
@@ -518,7 +545,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ audience = 'staff' }) => 
 
     const SectionComponent = getSectionComponent(section.key);
     const props = getSectionProps(section.key, section);
-    
+
     return <SectionComponent {...props} />;
   }, [getSectionProps, vm.role]);
 
@@ -628,7 +655,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ audience = 'staff' }) => 
             const windowWidth = typeof window !== 'undefined' ? window.innerWidth : 0;
             const meetsWidth = windowWidth >= 1024;
             const isTabletLandscape = forceTablet || meetsWidth;
-            
+
             // Debug: コンソールに出力
             if (typeof window !== 'undefined') {
               console.log('[Dashboard Layout Debug]', {
@@ -642,7 +669,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ audience = 'staff' }) => 
                 'isTabletLandscape (final)': isTabletLandscape,
               });
             }
-            
+
             // Phase C-1: Zero-Scroll Layout（デフォルト有効、?zeroscroll=0 で無効化可能）
             if (forceZeroScroll) {
               // 左ペイン: 申し送りセクション
@@ -666,7 +693,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ audience = 'staff' }) => 
                 />
               );
             }
-            
+
             if (isTabletLandscape) {
               return (
                 <>

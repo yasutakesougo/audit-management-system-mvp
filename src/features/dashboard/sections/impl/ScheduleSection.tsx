@@ -8,7 +8,9 @@
  * 現在：Page の renderSection(case 'schedule') の JSX をそのまま移動
  */
 
-import { Link } from 'react-router-dom';
+import type { SpLaneModel } from '@/features/dashboard/useDashboardSummary';
+import { SchedulesSpLane } from '@/features/schedules/components/SchedulesSpLane';
+import EventAvailableRoundedIcon from '@mui/icons-material/EventAvailableRounded';
 import Button from '@mui/material/Button';
 import Grid from '@mui/material/Grid';
 import List from '@mui/material/List';
@@ -17,8 +19,8 @@ import ListItemText from '@mui/material/ListItemText';
 import Paper from '@mui/material/Paper';
 import Stack from '@mui/material/Stack';
 import Typography from '@mui/material/Typography';
-import EventAvailableRoundedIcon from '@mui/icons-material/EventAvailableRounded';
 import React from 'react';
+import { Link } from 'react-router-dom';
 
 export type ScheduleItem = {
   id: string;
@@ -38,10 +40,11 @@ export type ScheduleSectionProps = {
   title?: string;
   schedulesEnabled: boolean;
   scheduleLanesToday: ScheduleLanes;
+  spLane: SpLaneModel;
 };
 
 export const ScheduleSection: React.FC<ScheduleSectionProps> = (props) => {
-  const { title = '今日の予定', schedulesEnabled, scheduleLanesToday } = props;
+  const { title = '今日の予定', schedulesEnabled, scheduleLanesToday, spLane } = props;
 
   return (
     <Paper elevation={3} sx={{ p: { xs: 2, sm: 2.5, md: 3 } }} data-testid="dashboard-section-schedule">
@@ -76,7 +79,7 @@ export const ScheduleSection: React.FC<ScheduleSectionProps> = (props) => {
           { label: '職員レーン', items: scheduleLanesToday.staffLane },
           { label: '組織レーン', items: scheduleLanesToday.organizationLane },
         ].map(({ label, items }) => (
-          <Grid key={label} size={{ xs: 12, md: 4 }}>
+          <Grid key={label} size={{ xs: 12, md: 3 }}>
             <Paper variant="outlined" sx={{ p: 2, height: '100%' }}>
               <Typography variant="subtitle1" sx={{ fontWeight: 700, mb: 1 }}>
                 {label}
@@ -106,6 +109,10 @@ export const ScheduleSection: React.FC<ScheduleSectionProps> = (props) => {
             </Paper>
           </Grid>
         ))}
+        {/* Constant SP Lane column */}
+        <Grid size={{ xs: 12, md: 3 }}>
+          <SchedulesSpLane model={spLane} />
+        </Grid>
       </Grid>
     </Paper>
   );

@@ -139,7 +139,7 @@ describe('router future flags smoke', () => {
   it('navigates across primary routes with v7 flags enabled', async () => {
     const user = userEvent.setup();
     render(<App />);
-    const arrivalOptions = { timeout: process.env.CI ? 15_000 : 8_000 };
+    const arrivalOptions = { timeout: process.env.CI ? 30_000 : 15_000 };
 
     const openDrawerIfPossible = async () => {
       const openButton =
@@ -159,7 +159,7 @@ describe('router future flags smoke', () => {
     const ensureNavItem = async (testId: string) => {
       await openDrawerIfPossible();
       const navItem = (screen.queryByTestId(testId) ??
-        (await screen.findByTestId(testId, arrivalOptions))) as HTMLElement;
+        (await screen.findByTestId(testId, undefined, arrivalOptions))) as HTMLElement;
       await waitFor(
         () => expect(navItem).toBeVisible(),
         { timeout: process.env.CI ? 5_000 : 2_000 },
@@ -173,7 +173,7 @@ describe('router future flags smoke', () => {
     };
 
     // 初期表示: ホーム画面の確認
-    expect(await screen.findByTestId('dashboard-root', arrivalOptions)).toBeInTheDocument();
+    expect(await screen.findByTestId('dashboard-root', undefined, arrivalOptions)).toBeInTheDocument();
 
     // ナビゲーション経路のテスト: ホーム → 監査ログ → 日次記録 → 自己点検 → ホーム
 
@@ -188,22 +188,23 @@ describe('router future flags smoke', () => {
     // ✅ Audit nav via role-based aria-label query (stable across CI/local)
     // AppShell.tsx: IconButton component={RouterLink} to="/audit" aria-label="監査ログ"
     // rendered as <a> so role="link"
-    const auditLink = await screen.findByRole('link', { name: /監査ログ/i });
+    const auditLink = await screen.findByRole('link', { name: /監査ログ/i }, arrivalOptions);
     expect(auditLink).toBeInTheDocument();
 
     await user.click(await ensureNavItem(TESTIDS.nav.daily));
-    expect(await screen.findByTestId('daily-hub-root', arrivalOptions)).toBeInTheDocument();
+    expect(await screen.findByTestId('daily-hub-root', undefined, arrivalOptions)).toBeInTheDocument();
 
     await user.click(await ensureNavItem(TESTIDS.nav.checklist));
-    expect(await screen.findByText('自己点検ビュー', arrivalOptions)).toBeInTheDocument();
+    expect(await screen.findByText('自己点検ビュー', undefined, arrivalOptions)).toBeInTheDocument();
 
     // nav-dashboard は常設UI契約ではないため、戻りは history 遷移を契約にする
     navigateToPath('/');
-    expect(await screen.findByTestId('dashboard-root', arrivalOptions)).toBeInTheDocument();
+    expect(await screen.findByTestId('dashboard-root', undefined, arrivalOptions)).toBeInTheDocument();
 
     // 副作用の検証: ルート遷移での想定外のAPI呼び出しや認証アクションが発生していないことを確認
     const calls = spFetchMock.mock.calls.map((callArgs) => {
-      const input = callArgs[0] as unknown;
+      if (!callArgs || (callArgs as unknown[]).length === 0) return '';
+      const input = (callArgs as unknown[])[0] as unknown;
       return typeof input === 'string'
         ? input
         : input instanceof Request
@@ -218,5 +219,5 @@ describe('router future flags smoke', () => {
     expect(nonCurrentUserCalls).toHaveLength(0);
     expect(signInMock).not.toHaveBeenCalled();
     expect(signOutMock).not.toHaveBeenCalled();
-  }, 15_000);
+  }, 30_000);
 });

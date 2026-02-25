@@ -6,16 +6,78 @@
  * No logic changes, no type redefinitions. Uses existing domain types only.
  */
 
-import { useMemo } from 'react';
-import type { IUserMaster } from '@/sharepoint/fields';
 import type { PersonDaily } from '@/domain/daily/types';
-import type { Staff } from '@/types';
-import type { AttendanceCounts } from '@/features/staff/attendance/port';
 import type { BriefingAlert } from '@/features/dashboard/sections/types';
+import type { AttendanceCounts } from '@/features/staff/attendance/port';
 import { calculateUsageFromDailyRecords } from '@/features/users/userMasterDashboardUtils';
-import { startFeatureSpan, estimatePayloadSize, HYDRATION_FEATURES } from '@/hydration/features';
+import { estimatePayloadSize, HYDRATION_FEATURES, startFeatureSpan } from '@/hydration/features';
+import { isSchedulesSpEnabled } from '@/lib/env';
+import type { IUserMaster } from '@/sharepoint/fields';
+import type { Staff } from '@/types';
+import { useMemo } from 'react';
+import type { StaffAssignment, StaffAvailability } from './staffAvailability';
 import { calculateStaffAvailability } from './staffAvailability';
-import type { StaffAvailability, StaffAssignment } from './staffAvailability';
+
+export type LaneState = 'disabled' | 'idle' | 'active' | 'error';
+
+export interface SpLaneModel {
+  state: LaneState;
+  title: string;
+  subtitle?: string;
+  lastSyncAt?: string;
+  itemCount?: number;
+  reason?: string;
+}
+
+/**
+ * Synchronization status input for buildSpLaneModel
+ */
+export interface SpSyncStatus {
+  loading: boolean;
+  error: Error | null;
+  itemCount: number;
+  source?: string;
+  lastSyncAt?: string;
+}
+
+/**
+ * Pure function to map low-level sync status to UI Model
+ */
+export function buildSpLaneModel(enabled: boolean, status: SpSyncStatus): SpLaneModel {
+  const title = 'SharePoint 外部連携';
+
+  if (!enabled) {
+    return {
+      state: 'disabled',
+      title,
+      reason: '機能フラグがオフです',
+    };
+  }
+
+  if (status.error) {
+    return {
+      state: 'error',
+      title,
+      reason: status.error.message,
+    };
+  }
+
+  if (status.loading) {
+    return {
+      state: 'idle',
+      title,
+      subtitle: '接続待機中...',
+    };
+  }
+
+  return {
+    state: 'active',
+    title,
+    subtitle: status.source === 'demo' ? 'デモデータ同期済み' : '同期済み',
+    itemCount: status.itemCount,
+    lastSyncAt: status.lastSyncAt,
+  };
+}
 
 // Attendance visit type
 type AttendanceVisitSnapshot = {
@@ -54,7 +116,9 @@ export interface DashboardGenerators {
  * Arguments for useDashboardSummary hook
  * Grouped for readability: entity data, temporal data, generators
  */
-export interface UseDashboardSummaryArgs extends DashboardInputData, DashboardTemporalData, DashboardGenerators {}
+export interface UseDashboardSummaryArgs extends DashboardInputData, DashboardTemporalData, DashboardGenerators {
+  spSyncStatus: SpSyncStatus;
+}
 
 /**
  * Return type: combines all 7 useMemo outputs
@@ -102,6 +166,7 @@ export interface DashboardSummary {
   intensiveSupportUsers: IUserMaster[];
   briefingAlerts: BriefingAlert[];  // ✨ 朝会用アラート
   staffAvailability: StaffAvailability[];  // ✨ 職員フリー状態
+  spLane: SpLaneModel; // ✨ Constant SP Lane
 }
 
 /**
@@ -120,6 +185,7 @@ export function useDashboardSummary(args: UseDashboardSummaryArgs): DashboardSum
     staff,
     attendanceCounts,
     generateMockActivityRecords,
+    spSyncStatus,
   } = args;
 
   // DEV-only perf profiling setup (gated by localStorage.debug = 'dashboard:perf')
@@ -501,6 +567,16 @@ export function useDashboardSummary(args: UseDashboardSummaryArgs): DashboardSum
   perfMeasure('staffAvailability-calc');
 
   // ============================================================================
+  // 11. Constant SP Lane (Phase A)
+  // ============================================================================
+  perfMark('spLane-calc');
+  const spLane = useMemo<SpLaneModel>(() => {
+    const enabled = isSchedulesSpEnabled();
+    return buildSpLaneModel(enabled, spSyncStatus);
+  }, [spSyncStatus]);
+  perfMeasure('spLane-calc');
+
+  // ============================================================================
   // Return consolidated summary
   // ============================================================================
   perfMeasure('useDashboardSummary-start');
@@ -517,5 +593,6 @@ export function useDashboardSummary(args: UseDashboardSummaryArgs): DashboardSum
     intensiveSupportUsers,
     briefingAlerts,  // ✨ 新規
     staffAvailability,  // ✨ Phase B 職員フリー状態
+    spLane,  // ✨ Constant SP Lane
   };
 }
