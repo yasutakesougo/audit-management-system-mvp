@@ -21,12 +21,25 @@ import { calculateStaffAvailability } from './staffAvailability';
 export type LaneState = 'disabled' | 'idle' | 'active' | 'error';
 
 export interface SpLaneModel {
+  version: number;
   state: LaneState;
   title: string;
   subtitle?: string;
   lastSyncAt?: string;
   itemCount?: number;
   reason?: string;
+  source?: string;
+  busy?: boolean;
+  onRetry?: () => void;
+  canRetry?: boolean;
+  details?: {
+    state: LaneState;
+    source?: string;
+    lastSyncAt?: string;
+    itemCount?: number;
+    error?: string;
+    reason?: string;
+  };
 }
 
 /**
@@ -38,6 +51,8 @@ export interface SpSyncStatus {
   itemCount: number;
   source?: string;
   lastSyncAt?: string;
+  isFetching?: boolean;
+  onRetry?: () => void;
 }
 
 /**
@@ -45,37 +60,70 @@ export interface SpSyncStatus {
  */
 export function buildSpLaneModel(enabled: boolean, status: SpSyncStatus): SpLaneModel {
   const title = 'SharePoint 外部連携';
+  const reason = enabled ? (status.error?.message ?? '') : '機能フラグがオフです';
+  const state: LaneState = !enabled ? 'disabled' : status.error ? 'error' : status.loading ? 'idle' : 'active';
+
+  const canRetry = state !== 'disabled' && (state === 'idle' || state === 'error');
+
+  const details = {
+    state,
+    source: status.source,
+    lastSyncAt: status.lastSyncAt,
+    itemCount: status.itemCount,
+    error: status.error?.message,
+    reason,
+  };
 
   if (!enabled) {
     return {
+      version: 1,
       state: 'disabled',
       title,
-      reason: '機能フラグがオフです',
+      reason,
+      details,
     };
   }
 
   if (status.error) {
     return {
+      version: 1,
       state: 'error',
       title,
-      reason: status.error.message,
+      reason,
+      source: status.source,
+      busy: status.isFetching,
+      onRetry: status.onRetry,
+      canRetry,
+      details,
     };
   }
 
   if (status.loading) {
     return {
+      version: 1,
       state: 'idle',
       title,
       subtitle: '接続待機中...',
+      source: status.source,
+      busy: status.isFetching,
+      onRetry: status.onRetry,
+      canRetry,
+      details,
     };
   }
 
   return {
+    version: 1,
     state: 'active',
     title,
     subtitle: status.source === 'demo' ? 'デモデータ同期済み' : '同期済み',
     itemCount: status.itemCount,
     lastSyncAt: status.lastSyncAt,
+    source: status.source,
+    busy: status.isFetching,
+    onRetry: status.onRetry,
+    canRetry,
+    details,
   };
 }
 

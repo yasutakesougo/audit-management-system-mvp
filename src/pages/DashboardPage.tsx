@@ -295,7 +295,9 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ audience = 'staff' }) => 
     loading: spLoading,
     error: spError,
     data: spItems,
-    source: spSource
+    source: spSource,
+    refetch: spRefetch,
+    isFetching: spIsFetching
   } = useSchedulesToday(10); // Check multiple items for status
 
   const spSyncStatus: SpSyncStatus = {
@@ -303,6 +305,8 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ audience = 'staff' }) => 
     error: spError,
     itemCount: spItems.length,
     source: spSource,
+    onRetry: spRefetch,
+    isFetching: spIsFetching,
     // lastSyncAt: could be added if hook provides it
   };
 

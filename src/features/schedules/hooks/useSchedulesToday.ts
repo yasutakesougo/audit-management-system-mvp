@@ -1,9 +1,9 @@
-import { HYDRATION_FEATURES, estimatePayloadSize, startFeatureSpan } from '@/hydration/features';
 import * as ScheduleAdapter from '@/adapters/schedules';
+import { HYDRATION_FEATURES, estimatePayloadSize, startFeatureSpan } from '@/hydration/features';
 import { isSchedulesFeatureEnabled } from '@/lib/env';
 import type { SafeError } from '@/lib/errors';
 import { formatInTimeZone } from '@/lib/tz';
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 export type MiniSchedule = {
 	id: number;
@@ -65,7 +65,10 @@ export function useSchedulesToday(max: number = 5) {
 	const [source, setSource] = useState<ScheduleAdapter.Source>('demo');
 	const [fallbackKind, setFallbackKind] = useState<ScheduleAdapter.CreateResult['fallbackKind'] | null>(null);
 	const [fallbackError, setFallbackError] = useState<SafeError | null>(null);
+	const [tick, setTick] = useState(0);
 	const abortRef = useRef<AbortController | null>(null);
+
+	const refetch = useCallback(() => setTick((t) => t + 1), []);
 
 	const todayISO = useMemo(() => {
 		const now = new Date();
@@ -199,7 +202,7 @@ export function useSchedulesToday(max: number = 5) {
 			alive = false;
 			controller.abort();
 		};
-	}, [safeMax, todayISO]);
+	}, [safeMax, todayISO, tick]);
 
 	return {
 		data,
@@ -209,5 +212,7 @@ export function useSchedulesToday(max: number = 5) {
 		fallbackKind,
 		fallbackError,
 		dateISO: todayISO,
+		refetch,
+		isFetching: loading,
 	};
 }

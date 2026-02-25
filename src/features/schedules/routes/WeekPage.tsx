@@ -80,7 +80,9 @@ export default function WeekPage() {
     loading: spLoading,
     error: spError,
     data: spItems,
-    source: spSource
+    source: spSource,
+    refetch: spRefetch,
+    isFetching: spIsFetching,
   } = useSchedulesToday(10);
 
   const spSyncStatus: SpSyncStatus = useMemo(() => ({
@@ -88,7 +90,9 @@ export default function WeekPage() {
     error: spError,
     itemCount: spItems.length,
     source: spSource,
-  }), [spLoading, spError, spItems.length, spSource]);
+    onRetry: spRefetch,
+    isFetching: spIsFetching,
+  }), [spLoading, spError, spItems.length, spSource, spRefetch, spIsFetching]);
   const {
     snack,
     setSnack,
