@@ -336,15 +336,16 @@ export const getAppConfig = (overrides?: Partial<EnvSchema>): AppConfig => {
 
   if (cachedAppConfig) return cachedAppConfig;
 
+  const parsed = getParsedEnv();
   cachedAppConfig = {
-    ...env,
+    ...parsed,
     isDev: IS_DEV,
-    schedulesTz: env.VITE_SCHEDULES_TZ,
-    schedulesWeekStart: env.VITE_SCHEDULES_WEEK_START,
-    schedulesCacheTtlSec: env.VITE_SCHEDULES_CACHE_TTL,
-    graphRetryMax: env.VITE_GRAPH_RETRY_MAX,
-    graphRetryBaseMs: env.VITE_GRAPH_RETRY_BASE_MS,
-    graphRetryCapMs: env.VITE_GRAPH_RETRY_CAP_MS,
+    schedulesTz: parsed.VITE_SCHEDULES_TZ,
+    schedulesWeekStart: parsed.VITE_SCHEDULES_WEEK_START,
+    schedulesCacheTtlSec: parsed.VITE_SCHEDULES_CACHE_TTL,
+    graphRetryMax: parsed.VITE_GRAPH_RETRY_MAX,
+    graphRetryBaseMs: parsed.VITE_GRAPH_RETRY_BASE_MS,
+    graphRetryCapMs: parsed.VITE_GRAPH_RETRY_CAP_MS,
   };
   return cachedAppConfig;
 };
