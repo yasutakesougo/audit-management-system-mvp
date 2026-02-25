@@ -14,6 +14,7 @@ const NAV_TESTIDS = {
   schedules: 'nav-schedules',
   staffAttendance: 'nav-staff-attendance',
   nurse: 'nav-nurse',
+  supportPlanGuide: 'nav-support-plan-guide',
 } as const;
 
 const FOOTER_TESTIDS = {
@@ -109,6 +110,8 @@ export const TESTIDS = {
   'daily-table-draft-status': 'daily-table-draft-status',
   'daily-table-unsent-filter': 'daily-table-unsent-filter',
   'daily-table-unsent-count-chip': 'daily-table-unsent-count-chip',
+  'daily-table-support-hint-icon': 'daily-table-support-hint-icon',
+  'daily-table-support-hint-text': 'daily-table-support-hint-text',
   'bulk-daily-record-form': 'bulk-daily-record-form',
   'bulk-daily-record-user-list': 'bulk-daily-record-user-list',
   'bulk-daily-record-user-row-prefix': 'bulk-daily-record-user-row-',
@@ -439,6 +442,10 @@ export const TESTIDS = {
 
   // Support Plan Guide HUD
   'support-plan-hud': 'support-plan-hud',
+  'support-plan-updated': 'support-plan-updated',
+  'monitoring-evidence-section': 'monitoring-evidence-section',
+  'support-plan-goal-icon': 'support-plan-goal-icon',
+  'support-plan-risk-icon': 'support-plan-risk-icon',
 } as const;
 
 type LeafValues<T> = T extends string
