@@ -1,5 +1,5 @@
-import { z } from 'zod';
 import { getRuntimeEnv, isDev as runtimeIsDev } from '@/env';
+import { z } from 'zod';
 import { appEnvSchema } from './env.schema';
 
 type Primitive = string | number | boolean | undefined | null;
@@ -287,6 +287,25 @@ const resolveIsTest = (envOverride?: EnvRecord): boolean => {
   return false;
 };
 
+export const isSchedulesSpEnabled = (envOverride?: EnvRecord): boolean => {
+  if (readBool('VITE_FEATURE_SCHEDULES_SP', false, envOverride)) {
+    return true;
+  }
+  if (typeof window !== 'undefined') {
+    try {
+      const flag = window.localStorage.getItem('feature:schedulesSp');
+      if (flag != null) {
+        const normalized = flag.trim().toLowerCase();
+        if (TRUTHY.has(normalized)) return true;
+        if (FALSY.has(normalized)) return false;
+      }
+    } catch {
+      // ignore
+    }
+  }
+  return false;
+};
+
 export const isTestMode = (envOverride?: EnvRecord): boolean => resolveIsTest(envOverride);
 
 export const isForceDemoEnabled = (envOverride?: EnvRecord): boolean =>
@@ -316,8 +335,6 @@ export const isSchedulesFeatureEnabled = (envOverride?: EnvRecord): boolean => {
   }
   return false;
 };
-
-
 
 export const isSchedulesWeekV2Enabled = (envOverride?: EnvRecord): boolean => {
   const envValue = readOptionalEnv('VITE_FEATURE_SCHEDULES_WEEK_V2', envOverride)?.trim().toLowerCase();
@@ -618,15 +635,15 @@ export const getSharePointDefaultScope = (envOverride?: EnvRecord): string => {
 
 /**
  * ✅ SINGLE SOURCE OF TRUTH: When to SKIP SharePoint
- * 
+ *
  * This is the canonical check for all stores (useOrgStore, useStaffStore, etc.)
  * to determine whether SharePoint API should be touched.
- * 
+ *
  * SharePoint is skipped if ANY of these are true:
  * 1. VITE_DEMO_MODE === '1' (true demo mode)
  * 2. VITE_SP_SITE_URL is not configured (empty/invalid baseUrl)
  * 3. VITE_SKIP_LOGIN is enabled (automation/testing mode)
- * 
+ *
  * This prevents accidental SharePoint calls in demo/test scenarios.
  */
 export const SP_SITE_URL = String(import.meta.env.VITE_SP_SITE_URL || '').trim();

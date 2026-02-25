@@ -5,14 +5,14 @@
  * - defaults fallback
  */
 
-import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import {
-  DEFAULT_SETTINGS,
-  loadSettingsFromStorage,
-  saveSettingsToStorage,
-  mergeSettings,
-  SETTINGS_STORAGE_KEY,
-  type UserSettings,
+    DEFAULT_SETTINGS,
+    loadSettingsFromStorage,
+    mergeSettings,
+    saveSettingsToStorage,
+    SETTINGS_STORAGE_KEY,
+    type UserSettings,
 } from '../settingsModel';
 
 describe('settingsModel', () => {
@@ -33,6 +33,7 @@ describe('settingsModel', () => {
         density: 'compact',
         fontSize: 'large',
         colorPreset: 'highContrast',
+        layoutMode: 'normal',
         lastModified: 1234567890,
       };
       localStorage.setItem(SETTINGS_STORAGE_KEY, JSON.stringify(settings));
@@ -78,6 +79,7 @@ describe('settingsModel', () => {
         density: 'compact',
         fontSize: 'small',
         colorPreset: 'default',
+        layoutMode: 'normal',
         lastModified: 1234567890,
       };
 
@@ -111,7 +113,7 @@ describe('settingsModel', () => {
     });
 
     it('returns false gracefully on quota exceeded', () => {
-      const setItemSpy = vi.spyOn(Storage.prototype, 'setItem');
+      const setItemSpy = vi.spyOn(localStorage, 'setItem');
       const quotaError = new DOMException('QuotaExceededError', 'QuotaExceededError');
       // DOMException.code is read-only, but QuotaExceededError has code 22 by name
       setItemSpy.mockImplementation(() => {
