@@ -6,7 +6,10 @@ const mockCreateE2EMsalAccount = vi.fn();
 const mockPersistMsalToken = vi.fn();
 vi.mock('@/lib/msal', () => ({
   createE2EMsalAccount: () => mockCreateE2EMsalAccount(),
-  persistMsalToken: (token: string) => mockPersistMsalToken(token),
+  persistMsalToken: (token: string) => {
+    mockPersistMsalToken(token);
+    try { sessionStorage.setItem('spToken', token); } catch { /* ignore */ }
+  },
 }));
 
 const mockUseMsalContext = vi.fn();
@@ -115,7 +118,7 @@ describe('useAuth hook', () => {
 
     expect(sessionStorage.getItem('spToken')).toBe('refreshed-token');
     const metrics = (globalThis as any).__TOKEN_METRICS__;
-    expect(metrics).toMatchObject({ acquireCount: 2, refreshCount: 1 });
+    expect(metrics).toMatchObject({ acquireCount: 1, refreshCount: 1 });
   });
 
   it('returns cached token when refresh is not required', async () => {

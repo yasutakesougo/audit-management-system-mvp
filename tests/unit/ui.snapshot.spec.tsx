@@ -23,8 +23,8 @@ vi.mock("@/auth/MsalProvider", () => ({
 	}),
 }));
 
-vi.mock("@/lib/env", async () => {
-  const actual = await vi.importActual<typeof import("@/lib/env")>("@/lib/env");
+vi.mock("@/lib/env", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@/lib/env")>();
   const falseyKeys = new Set([
     "VITE_SKIP_SHAREPOINT",
     "VITE_FORCE_SHAREPOINT",

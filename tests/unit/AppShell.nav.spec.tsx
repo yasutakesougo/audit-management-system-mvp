@@ -105,9 +105,6 @@ describe('AppShell navigation', () => {
       routeChildren: routeEntries.map((path) => ({ path, element: getShell() })),
     });
 
-    // Open the desktop navigation drawer
-    const openNavButton = screen.getByRole('button', { name: /サイドメニューを閉じる/i });
-    await userEvent.click(openNavButton);
 
     const navRoot = screen.getByRole('navigation', { name: /主要ナビゲーション/i });
     const nav = within(navRoot);
@@ -195,8 +192,6 @@ describe('AppShell navigation', () => {
         routeChildren: routeEntries.map((path) => ({ path, element: getShell() })),
       });
 
-      const openNavButton = screen.getByRole('button', { name: /サイドメニューを閉じる/i });
-      await userEvent.click(openNavButton);
 
       const navRoot = screen.getByRole('navigation', { name: /主要ナビゲーション/i });
       const nav = within(navRoot);
@@ -230,8 +225,6 @@ describe('AppShell navigation', () => {
         routeChildren: Array.from(new Set([...initialEntries])).map((path) => ({ path, element: getShell() })),
       });
 
-      const openNavButton = screen.getByRole('button', { name: /サイドメニューを閉じる/i });
-      await userEvent.click(openNavButton);
 
       const navRoot = screen.getByRole('navigation', { name: /主要ナビゲーション/i });
       const nav = within(navRoot);
@@ -265,8 +258,6 @@ describe('AppShell navigation', () => {
         routeChildren: Array.from(new Set([...initialEntries])).map((path) => ({ path, element: getShell() })),
       });
 
-      const openNavButton = screen.getByRole('button', { name: /サイドメニューを閉じる/i });
-      await userEvent.click(openNavButton);
 
       const navRoot = screen.getByRole('navigation', { name: /主要ナビゲーション/i });
       const nav = within(navRoot);
@@ -301,8 +292,6 @@ describe('AppShell navigation', () => {
         routeChildren: Array.from(new Set([...initialEntries])).map((path) => ({ path, element: getShell() })),
       });
 
-      const openNavButton = screen.getByRole('button', { name: /サイドメニューを閉じる/i });
-      await userEvent.click(openNavButton);
 
       const navRoot = screen.getByRole('navigation', { name: /主要ナビゲーション/i });
       const nav = within(navRoot);
@@ -347,8 +336,6 @@ describe('AppShell navigation', () => {
         routeChildren: Array.from(new Set([...initialEntries])).map((path) => ({ path, element: getShell() })),
       });
 
-      const openNavButton = screen.getByRole('button', { name: /サイドメニューを閉じる/i });
-      await userEvent.click(openNavButton);
 
       const navRoot = screen.getByRole('navigation', { name: /主要ナビゲーション/i });
       const nav = within(navRoot);
@@ -388,8 +375,6 @@ describe('AppShell navigation', () => {
         routeChildren: Array.from(new Set([...initialEntries])).map((path) => ({ path, element: getShell() })),
       });
 
-      const openNavButton = screen.getByRole('button', { name: /サイドメニューを閉じる/i });
-      await userEvent.click(openNavButton);
 
       // Find collapse/expand button
       const collapseButton = screen.getByRole('button', { name: /ナビを折りたたみ/i });
