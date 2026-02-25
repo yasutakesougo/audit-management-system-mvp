@@ -1,13 +1,60 @@
-import { useUsers } from '@/stores/useUsers';
-import { useEffect, useMemo, useState } from 'react';
-import type { Dispatch, SetStateAction } from 'react';
-import type { User } from '@/types';
 import { emitDailySubmissionEvents } from '@/features/iceberg-pdca/dailyMetricsAdapter';
-import { useTableDailyRecordRouting } from './useTableDailyRecordRouting';
-import { useTableDailyRecordFiltering } from './useTableDailyRecordFiltering';
-import { useTableDailyRecordPersistence } from './useTableDailyRecordPersistence';
-import { useTableDailyRecordSelection } from './useTableDailyRecordSelection';
-import type { DraftInput } from './useTableDailyRecordPersistence';
+import { useUsers } from '@/stores/useUsers';
+import type { User } from '@/types';
+import { isUserScheduledForDate } from '@/utils/attendanceUtils';
+import type { Dispatch, SetStateAction } from 'react';
+import { useEffect, useMemo, useState } from 'react';
+import { type DailyTableRecord, type LunchIntake, type ProblemBehaviorType } from '../infra/dailyTableRepository';
+
+const TABLE_DAILY_DRAFT_STORAGE_KEY = 'daily-table-record:draft:v1';
+const TABLE_DAILY_UNSENT_FILTER_STORAGE_KEY = 'daily-table-record:unsent-filter:v1';
+const TABLE_DAILY_UNSENT_FILTER_QUERY_KEY = 'unsent';
+const TABLE_DAILY_DATE_QUERY_KEY = 'date';
+
+const isValidDateValue = (value: string): boolean => /^\d{4}-\d{2}-\d{2}$/.test(value);
+
+const getDateFromUrl = (): string | null => {
+  if (typeof window === 'undefined') {
+    return null;
+  }
+
+  const params = new URLSearchParams(window.location.search);
+  const date = params.get(TABLE_DAILY_DATE_QUERY_KEY);
+  if (!date || !isValidDateValue(date)) {
+    return null;
+  }
+
+  return date;
+};
+
+const isUnsentFilterEnabledInUrl = (): boolean => {
+  if (typeof window === 'undefined') {
+    return false;
+  }
+
+  const params = new URLSearchParams(window.location.search);
+  return params.get(TABLE_DAILY_UNSENT_FILTER_QUERY_KEY) === '1';
+};
+
+const syncUnsentFilterToUrl = (enabled: boolean): void => {
+  if (typeof window === 'undefined') {
+    return;
+  }
+
+  const nextUrl = new URL(window.location.href);
+  if (enabled) {
+    nextUrl.searchParams.set(TABLE_DAILY_UNSENT_FILTER_QUERY_KEY, '1');
+  } else {
+    nextUrl.searchParams.delete(TABLE_DAILY_UNSENT_FILTER_QUERY_KEY);
+  }
+
+  const nextRelative = `${nextUrl.pathname}${nextUrl.search}${nextUrl.hash}`;
+  const currentRelative = `${window.location.pathname}${window.location.search}${window.location.hash}`;
+
+  if (nextRelative !== currentRelative) {
+    window.history.replaceState({}, '', nextRelative);
+  }
+};
 
 export type UserRowData = {
   userId: string;
@@ -37,7 +84,7 @@ export type TableDailyRecordData = {
 export type UseTableDailyRecordFormParams = {
   open: boolean;
   onClose: () => void;
-  onSave: (data: TableDailyRecordData) => Promise<void>;
+  onSave: (records: DailyTableRecord[]) => Promise<void>;
 };
 
 export type UseTableDailyRecordFormResult = {
@@ -67,8 +114,16 @@ export type UseTableDailyRecordFormResult = {
   saving: boolean;
 };
 
-const createInitialFormData = (initialDate?: string | null): TableDailyRecordData => ({
-  date: initialDate ?? new Date().toISOString().split('T')[0],
+type TableDailyRecordDraft = {
+  formData: TableDailyRecordData;
+  selectedUserIds: string[];
+  searchQuery: string;
+  showTodayOnly: boolean;
+  savedAt: string;
+};
+
+const createInitialFormData = (): TableDailyRecordData => ({
+  date: getDateFromUrl() ?? new Date().toISOString().split('T')[0],
   reporter: {
     name: '',
     role: '生活支援員',
@@ -84,49 +139,82 @@ const hasRowContent = (row: UserRowData): boolean => {
   return Object.values(row.problemBehavior).some(Boolean);
 };
 
+const mapLunchAmount = (label: string): LunchIntake => {
+  switch (label) {
+    case '完食': return 'full';
+    case '8割': return '80';
+    case '半分': return 'half';
+    case '少量': return 'small';
+    case 'なし': return 'none';
+    default: return 'none';
+  }
+};
+
+const mapProblemBehaviors = (pb: UserRowData['problemBehavior']): ProblemBehaviorType[] => {
+  const out: ProblemBehaviorType[] = [];
+  if (pb.selfHarm) out.push('selfHarm');
+  if (pb.violence) out.push('violence');
+  if (pb.loudVoice) out.push('shouting');
+  if (pb.pica) out.push('pica');
+  if (pb.other) out.push('other');
+  return out;
+};
+
 export const useTableDailyRecordForm = ({
   open,
   onClose,
   onSave,
 }: UseTableDailyRecordFormParams): UseTableDailyRecordFormResult => {
-  // Extract routing logic to separate hook
-  const { initialDateFromUrl, showUnsentOnly, setShowUnsentOnly } = useTableDailyRecordRouting(open);
-
-  const [formData, setFormData] = useState<TableDailyRecordData>(() => createInitialFormData(initialDateFromUrl));
+  const [selectedUserIds, setSelectedUserIds] = useState<string[]>([]);
+  const [selectionManuallyEdited, setSelectionManuallyEdited] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [showTodayOnly, setShowTodayOnly] = useState(true);
+  const [showUnsentOnly, setShowUnsentOnly] = useState(false);
+  const [formData, setFormData] = useState<TableDailyRecordData>(createInitialFormData);
   const [saving, setSaving] = useState(false);
+  const [draftSavedAt, setDraftSavedAt] = useState<string | null>(null);
 
   const { data: users = [] } = useUsers();
 
-  // Draft persistence logic extracted to separate hook
-  const { draftSavedAt, loadedDraft, saveDraft, clearDraft } = useTableDailyRecordPersistence({ open });
+  const attendanceFilteredUsers = useMemo(() => {
+    if (!showTodayOnly) {
+      return users;
+    }
 
-  // Extract filtering logic to separate hook
-  const targetDate = useMemo(() => new Date(formData.date), [formData.date]);
-  const {
-    filteredUsers,
-    attendanceFilteredUsers,
-    filters: { showTodayOnly, setShowTodayOnly, searchQuery, setSearchQuery },
-  } = useTableDailyRecordFiltering({ users, targetDate });
+    const targetDate = new Date(formData.date);
+    return users.filter((user) => {
+      const attendanceDays = user.attendanceDays;
+      if (!attendanceDays || !Array.isArray(attendanceDays) || attendanceDays.length === 0) {
+        return true;
+      }
+      return isUserScheduledForDate(
+        {
+          Id: user.id,
+          UserID: user.userId,
+          FullName: user.name || '',
+          AttendanceDays: attendanceDays,
+        },
+        targetDate,
+      );
+    });
+  }, [users, showTodayOnly, formData.date]);
 
-  // Extract selection logic to separate hook
-  const {
-    selectedUserIds,
-    selectedUsers,
-    selectionManuallyEdited: _selectionManuallyEdited,
-    handleUserToggle,
-    handleSelectAll,
-    handleClearAll,
-    setSelectedUserIds,
-    setSelectionManuallyEdited,
-  } = useTableDailyRecordSelection({
-    open,
-    showTodayOnly,
-    filteredUsers,
-    attendanceFilteredUsers,
-    targetDate,
-    users,
-    loadedDraftSelectedUserIds: loadedDraft?.selectedUserIds,
-  });
+  const filteredUsers = useMemo(() => {
+    if (!searchQuery.trim()) return attendanceFilteredUsers;
+    const query = searchQuery.toLowerCase();
+    return attendanceFilteredUsers.filter((user) => (
+      user.name?.toLowerCase().includes(query) ||
+      user.userId?.toLowerCase().includes(query) ||
+      user.furigana?.toLowerCase().includes(query) ||
+      user.nameKana?.toLowerCase().includes(query)
+    ));
+  }, [attendanceFilteredUsers, searchQuery]);
+
+  const selectedUsers = useMemo(() => {
+    return selectedUserIds
+      .map((id) => users.find((user) => user.userId === id))
+      .filter((user): user is User => Boolean(user));
+  }, [users, selectedUserIds]);
 
   const unsentRowCount = useMemo(() => {
     const contentBasedCount = formData.userRows.filter(hasRowContent).length;
@@ -205,23 +293,140 @@ export const useTableDailyRecordForm = ({
     });
   }, [selectedUsers, selectedUserIds]);
 
-  // Auto-disable unsent filter when no unsent rows remain
+  useEffect(() => {
+    if (showTodayOnly && selectedUserIds.length > 0) {
+      const targetDate = new Date(formData.date);
+      const validUserIds = selectedUserIds.filter((userId) => {
+        const user = users.find((u) => u.userId === userId);
+        if (!user || !user.attendanceDays || !Array.isArray(user.attendanceDays)) {
+          return true;
+        }
+
+        return isUserScheduledForDate({
+          Id: parseInt(userId),
+          UserID: userId,
+          FullName: user.name || '',
+          AttendanceDays: user.attendanceDays,
+        }, targetDate);
+      });
+
+      if (validUserIds.length !== selectedUserIds.length) {
+        setSelectedUserIds(validUserIds);
+      }
+    }
+  }, [formData.date, showTodayOnly, selectedUserIds, users]);
+
+  useEffect(() => {
+    if (!open) {
+      setSelectionManuallyEdited(false);
+    }
+  }, [open]);
+
+  useEffect(() => {
+    if (!open) {
+      return;
+    }
+
+    const fromQuery = isUnsentFilterEnabledInUrl();
+    const fromStorage = localStorage.getItem(TABLE_DAILY_UNSENT_FILTER_STORAGE_KEY) === '1';
+    setShowUnsentOnly(fromQuery || fromStorage);
+  }, [open]);
+
+  useEffect(() => {
+    if (!open) {
+      return;
+    }
+
+    try {
+      if (showUnsentOnly) {
+        localStorage.setItem(TABLE_DAILY_UNSENT_FILTER_STORAGE_KEY, '1');
+      } else {
+        localStorage.removeItem(TABLE_DAILY_UNSENT_FILTER_STORAGE_KEY);
+      }
+    } catch (error) {
+      console.error('未送信フィルタの保存に失敗しました:', error);
+    }
+
+    syncUnsentFilterToUrl(showUnsentOnly);
+  }, [open, showUnsentOnly]);
+
   useEffect(() => {
     if (showUnsentOnly && unsentRowCount === 0) {
       setShowUnsentOnly(false);
     }
-  }, [showUnsentOnly, unsentRowCount, setShowUnsentOnly]);
+  }, [showUnsentOnly, unsentRowCount]);
 
-  // Restore draft when loaded
   useEffect(() => {
-    if (!loadedDraft) {
+    if (!open) {
       return;
     }
 
-    setFormData(loadedDraft.formData);
-    setSearchQuery(loadedDraft.searchQuery);
-    setShowTodayOnly(loadedDraft.showTodayOnly);
-  }, [loadedDraft, setSearchQuery, setShowTodayOnly]);
+    try {
+      const rawDraft = localStorage.getItem(TABLE_DAILY_DRAFT_STORAGE_KEY);
+      if (!rawDraft) {
+        setDraftSavedAt(null);
+        return;
+      }
+
+      const parsed = JSON.parse(rawDraft) as Partial<TableDailyRecordDraft>;
+      if (!parsed.formData || !Array.isArray(parsed.selectedUserIds)) {
+        return;
+      }
+
+      setFormData(parsed.formData);
+      setSelectedUserIds(parsed.selectedUserIds);
+      setSearchQuery(typeof parsed.searchQuery === 'string' ? parsed.searchQuery : '');
+      setShowTodayOnly(typeof parsed.showTodayOnly === 'boolean' ? parsed.showTodayOnly : true);
+      setSelectionManuallyEdited(true);
+      setDraftSavedAt(typeof parsed.savedAt === 'string' ? parsed.savedAt : null);
+    } catch (error) {
+      console.error('下書き復元に失敗しました:', error);
+      setDraftSavedAt(null);
+    }
+  }, [open]);
+
+  useEffect(() => {
+    if (!open || !showTodayOnly || selectionManuallyEdited) {
+      return;
+    }
+
+    const todayUserIds = attendanceFilteredUsers
+      .map((user) => user.userId)
+      .filter((id): id is string => Boolean(id));
+
+    if (todayUserIds.length === 0) {
+      return;
+    }
+
+    const hasSameSelection = todayUserIds.length === selectedUserIds.length &&
+      todayUserIds.every((id) => selectedUserIds.includes(id));
+
+    if (!hasSameSelection) {
+      setSelectedUserIds(todayUserIds);
+    }
+  }, [open, showTodayOnly, attendanceFilteredUsers, selectionManuallyEdited, selectedUserIds]);
+
+  const handleUserToggle = (userId: string) => {
+    setSelectionManuallyEdited(true);
+    setSelectedUserIds((prev) => {
+      return prev.includes(userId)
+        ? prev.filter((id) => id !== userId)
+        : [...prev, userId];
+    });
+  };
+
+  const handleSelectAll = () => {
+    const allIds = filteredUsers
+      .map((user) => user.userId || '')
+      .filter((id): id is string => Boolean(id));
+    setSelectionManuallyEdited(true);
+    setSelectedUserIds(allIds);
+  };
+
+  const handleClearAll = () => {
+    setSelectionManuallyEdited(true);
+    setSelectedUserIds([]);
+  };
 
   const handleRowDataChange = (userId: string, field: string, value: string | boolean) => {
     setFormData((prev) => ({
@@ -276,13 +481,30 @@ export const useTableDailyRecordForm = ({
   };
 
   const handleSaveDraft = () => {
-    const input: DraftInput = {
+    const draft: TableDailyRecordDraft = {
       formData,
       selectedUserIds,
       searchQuery,
       showTodayOnly,
+      savedAt: new Date().toISOString(),
     };
-    saveDraft(input);
+
+    try {
+      localStorage.setItem(TABLE_DAILY_DRAFT_STORAGE_KEY, JSON.stringify(draft));
+      setDraftSavedAt(draft.savedAt);
+    } catch (error) {
+      console.error('下書き保存に失敗しました:', error);
+      alert('下書き保存に失敗しました。');
+    }
+  };
+
+  const clearDraft = () => {
+    try {
+      localStorage.removeItem(TABLE_DAILY_DRAFT_STORAGE_KEY);
+    } catch (error) {
+      console.error('下書き削除に失敗しました:', error);
+    }
+    setDraftSavedAt(null);
   };
 
   const handleSave = async () => {
@@ -298,9 +520,28 @@ export const useTableDailyRecordForm = ({
 
     setSaving(true);
     try {
-      await onSave(formData);
-
+      // Map to persistence format
       const submittedAt = new Date().toISOString();
+      const recordsToSave: DailyTableRecord[] = selectedUserIds.map((uid) => {
+        const row = formData.userRows.find((r) => r.userId === uid);
+        return {
+          userId: uid,
+          recordDate: formData.date,
+          activities: {
+            am: row?.amActivity || '',
+            pm: row?.pmActivity || '',
+          },
+          lunchIntake: row ? mapLunchAmount(row.lunchAmount) : 'none',
+          problemBehaviors: row ? mapProblemBehaviors(row.problemBehavior) : [],
+          notes: row?.specialNotes || '',
+          submittedAt,
+          authorName: formData.reporter.name,
+          authorRole: formData.reporter.role,
+        };
+      });
+
+      await onSave(recordsToSave);
+
       const submissionEvents = selectedUserIds.map((userId) => ({
         userId,
         recordDate: formData.date,

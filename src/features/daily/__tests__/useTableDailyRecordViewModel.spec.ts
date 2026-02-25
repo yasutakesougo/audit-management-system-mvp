@@ -1,5 +1,5 @@
-import { renderHook, act } from '@testing-library/react';
-import { describe, expect, it, vi, beforeEach, afterEach } from 'vitest';
+import { act, renderHook } from '@testing-library/react';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { useTableDailyRecordViewModel } from '../useTableDailyRecordViewModel';
 
@@ -33,25 +33,25 @@ describe('useTableDailyRecordViewModel', () => {
     expect(result.current.backTo).toBe('/dashboard');
     expect(result.current.testId).toBe('daily-table-record-page');
 
-    const payload = {
-      date: '2026-02-07',
-      reporter: { name: 'テスト', role: 'staff' },
-      userRows: [
-        {
-          userId: 'U001',
-          userName: '山田太郎',
-          amActivity: '朝の活動',
-          pmActivity: '午後の活動',
-          lunchAmount: '完食',
-          problemBehavior: { yelling: false },
-          specialNotes: '特になし',
+    const records = [
+      {
+        userId: 'U001',
+        userName: '山田太郎',
+        recordDate: '2026-02-07',
+        activities: {
+          am: '朝の活動',
+          pm: '午後の活動',
         },
-      ],
-    };
+        lunchIntake: 'full' as const,
+        problemBehaviors: [],
+        notes: '特になし',
+        submittedAt: new Date().toISOString(),
+      },
+    ];
 
     await act(async () => {
-      const savePromise = result.current.onSave(payload);
-      vi.runAllTimers();
+      const savePromise = result.current.onSave(records);
+      await vi.advanceTimersByTimeAsync(800);
       await savePromise;
     });
 

@@ -7,6 +7,9 @@ declare global {
     __AVAILABLE_ROUTES__?: string[];
   }
 }
+import { canAccess } from '@/auth/roles';
+import { useUserAuthz } from '@/auth/useUserAuthz';
+import { buildMonitoringEvidence } from '@/features/support-plan/monitoringEvidenceAdapter';
 import { useUsersStore } from '@/features/users/store';
 import type { IUserMaster } from '@/features/users/types';
 import { HYDRATION_FEATURES, estimatePayloadSize, startFeatureSpan } from '@/hydration/features';
@@ -14,14 +17,19 @@ import { PREFETCH_KEYS, prefetchByKey, warmRoute } from '@/prefetch/routes';
 import { TESTIDS, tid } from '@/testids';
 import { cancelIdle, runOnIdle } from '@/utils/runOnIdle';
 import ArticleRoundedIcon from '@mui/icons-material/ArticleRounded';
+import AutoStoriesIcon from '@mui/icons-material/AutoStories';
 import ContentCopyRoundedIcon from '@mui/icons-material/ContentCopyRounded';
 import FileDownloadRoundedIcon from '@mui/icons-material/FileDownloadRounded';
 import VerifiedUserRoundedIcon from '@mui/icons-material/VerifiedUserRounded';
+import Alert from '@mui/material/Alert';
 import Box from '@mui/material/Box';
 import Button from '@mui/material/Button';
 import Chip from '@mui/material/Chip';
 import Divider from '@mui/material/Divider';
 import LinearProgress from '@mui/material/LinearProgress';
+import List from '@mui/material/List';
+import ListItem from '@mui/material/ListItem';
+import ListItemText from '@mui/material/ListItemText';
 import Paper from '@mui/material/Paper';
 import type { SelectChangeEvent } from '@mui/material/Select';
 import Stack from '@mui/material/Stack';
@@ -764,6 +772,73 @@ const TabPanel: React.FC<{ current: SectionKey; value: SectionKey; children: Rea
     {current === value ? children : null}
   </Box>
 );
+const todayYmd = () => new Date().toISOString().split('T')[0];
+const minusDaysYmd = (ymd: string, days: number) => {
+  const d = new Date(ymd);
+  d.setDate(d.getDate() - days);
+  return d.toISOString().split('T')[0];
+};
+
+type MonitoringEvidenceSectionProps = {
+  userId: string;
+  onAppend: (text: string) => void;
+  isAdmin: boolean;
+};
+
+const MonitoringEvidenceSection: React.FC<MonitoringEvidenceSectionProps> = ({ userId, onAppend, isAdmin }) => {
+  const range = React.useMemo(() => {
+    const to = todayYmd();
+    return { from: minusDaysYmd(to, 60), to }; // 過去60日
+  }, []);
+
+  const evidence = React.useMemo(() => {
+    return buildMonitoringEvidence({ userId, range });
+  }, [userId, range]);
+
+  if (evidence.count === 0) return null;
+
+  return (
+    <Box sx={{ mt: 1, mb: 2 }}>
+      <Paper variant="outlined" sx={{ p: 2, bgcolor: 'action.hover', borderStyle: 'dashed' }}>
+        <Stack spacing={1.5}>
+          <Stack direction="row" justifyContent="space-between" alignItems="center">
+            <Stack direction="row" spacing={1} alignItems="center">
+              <AutoStoriesIcon fontSize="small" color="primary" />
+              <Typography variant="subtitle2" color="primary">
+                日次記録のエビデンス (過去60日: {evidence.count}件)
+              </Typography>
+            </Stack>
+            <Button
+              size="small"
+              variant="contained"
+              color="primary"
+              startIcon={<ContentCopyRoundedIcon />}
+              onClick={() => onAppend(evidence.text)}
+              disabled={!isAdmin}
+            >
+              評価文へ引用
+            </Button>
+          </Stack>
+          <Typography variant="caption" color="text.secondary">
+            ※ 一覧入力テーブルから自動集計された実績です。アセスメントやモニタリングの根拠として活用できます。
+          </Typography>
+          <Box sx={{ maxHeight: 200, overflowY: 'auto', bgcolor: 'background.paper', borderRadius: 1, p: 1, border: '1px solid', borderColor: 'divider' }}>
+            <List dense disablePadding>
+              {evidence.bullets.map((b: string, i: number) => (
+                <ListItem key={i} disableGutters sx={{ py: 0.25 }}>
+                  <ListItemText
+                    primary={b}
+                    primaryTypographyProps={{ variant: 'caption', sx: { display: 'block', lineHeight: 1.4 } }}
+                  />
+                </ListItem>
+              ))}
+            </List>
+          </Box>
+        </Stack>
+      </Paper>
+    </Box>
+  );
+};
 
 export default function SupportPlanGuidePage() {
   const [drafts, setDrafts] = React.useState<Record<string, SupportPlanDraft>>({});
@@ -773,6 +848,17 @@ export default function SupportPlanGuidePage() {
   const [_toast, setToast] = React.useState<ToastState>({ open: false, message: '', severity: 'success' });
   const [_lastSavedAt, setLastSavedAt] = React.useState<number | null>(null);
   const [liveMessage, setLiveMessage] = React.useState('');
+
+  const { role } = useUserAuthz();
+  const isAdmin = canAccess(role, 'admin');
+
+  const guardAdmin = <T,>(fn: (...args: unknown[]) => T) => (...args: unknown[]): T | undefined => {
+    if (!isAdmin) {
+      setToast({ open: true, message: '閲覧のみです（編集は管理者権限が必要）', severity: 'info' });
+      return;
+    }
+    return fn(...args);
+  };
   const theme = useTheme();
   const _isDesktop = useMediaQuery(theme.breakpoints.up('md'));
   const initialised = React.useRef(false);
@@ -1060,6 +1146,9 @@ export default function SupportPlanGuidePage() {
       window.clearTimeout(saveTimer.current);
     }
     saveTimer.current = window.setTimeout(() => {
+      if (!isAdmin) {
+        return;
+      }
       try {
         const payload = {
           version: 2,
@@ -1068,6 +1157,7 @@ export default function SupportPlanGuidePage() {
           drafts,
         };
         localStorage.setItem(STORAGE_KEY, JSON.stringify(payload));
+        window.dispatchEvent(new Event('support-plan-updated'));
         const now = Date.now();
         setLastSavedAt(now);
         setLiveMessage(`自動保存しました（${new Date(now).toLocaleTimeString('ja-JP')}）`);
@@ -1093,7 +1183,7 @@ export default function SupportPlanGuidePage() {
   }, [liveMessage]);
 
   const handleFieldChange = (key: keyof SupportPlanForm, value: string) => {
-    if (!activeDraftId) {
+    if (!activeDraftId || !isAdmin) {
       return;
     }
     setDrafts((prev) => {
@@ -1117,7 +1207,7 @@ export default function SupportPlanGuidePage() {
   };
 
   const handleAppendPhrase = (key: keyof SupportPlanForm, phrase: string) => {
-    if (!activeDraftId) {
+    if (!activeDraftId || !isAdmin) {
       return;
     }
     setDrafts((prev) => {
@@ -1492,20 +1582,23 @@ export default function SupportPlanGuidePage() {
             minRows={field.minRows ?? 2}
             fullWidth
             inputProps={{ maxLength: limit }}
+            disabled={!isAdmin}
           />
           {field.key === 'lastMonitoringDate' ? (
             <Stack direction="row" spacing={1} alignItems="center">
               <Button
                 size="small"
                 variant="outlined"
-                onClick={() => handleFieldChange('lastMonitoringDate', formatDateJP(new Date()))}
+                onClick={guardAdmin(() => handleFieldChange('lastMonitoringDate', formatDateJP(new Date())))}
+                disabled={!isAdmin}
               >
                 本日を記録
               </Button>
               <Button
                 size="small"
                 variant="text"
-                onClick={() => handleFieldChange('lastMonitoringDate', '')}
+                onClick={guardAdmin(() => handleFieldChange('lastMonitoringDate', ''))}
+                disabled={!isAdmin}
               >
                 クリア
               </Button>
@@ -1552,8 +1645,8 @@ export default function SupportPlanGuidePage() {
               variant="outlined"
               size="small"
               startIcon={<FileDownloadRoundedIcon />}
-              onClick={handleDownloadMarkdown}
-              disabled={!activeDraft}
+              onClick={guardAdmin(handleDownloadMarkdown)}
+              disabled={!activeDraft || !isAdmin}
             >
               Markdown保存
             </Button>
@@ -1610,6 +1703,11 @@ export default function SupportPlanGuidePage() {
   return (
     <Box sx={{ p: { xs: 2, md: 3 }, pb: 4 }}>
       <Stack spacing={3}>
+        {!isAdmin && (
+          <Alert severity="info" sx={{ mb: 1 }}>
+            このページは閲覧のみです。編集・保存は管理者（サビ管）権限が必要です。
+          </Alert>
+        )}
         <Paper
           variant="outlined"
           sx={{ p: { xs: 2, md: 3 } }}
@@ -1695,6 +1793,25 @@ export default function SupportPlanGuidePage() {
                       {section.description}
                     </Typography>
                   ) : null}
+
+                  {tab.key === 'monitoring' && activeDraft?.userId && (
+                    <MonitoringEvidenceSection
+                      userId={String(activeDraft.userId)}
+                      isAdmin={isAdmin}
+                      onAppend={(text) => {
+                        const currentVal = form.monitoringPlan || '';
+                        // Simple duplication check: if the exact evidence block header is already present, warn or skip
+                        const headerLine = text.split('\n')[0];
+                        if (currentVal.includes(headerLine)) {
+                          setToast({ open: true, message: 'この期間のエビデンスは既に引用されています。', severity: 'info' });
+                          return;
+                        }
+                        handleFieldChange('monitoringPlan', (currentVal ? currentVal + '\n\n' : '') + text);
+                        setToast({ open: true, message: 'エビデンスを引用しました。内容を調整してください。', severity: 'success' });
+                      }}
+                    />
+                  )}
+
                   <Stack spacing={2}>
                     {section.fields.map((field) => renderFieldCard(field))}
                   </Stack>
