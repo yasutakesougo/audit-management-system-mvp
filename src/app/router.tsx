@@ -64,6 +64,7 @@ const IntegratedResourceCalendarPage = React.lazy(() => import('@/pages/Integrat
 const SupportActivityMasterPage = React.lazy(() => import('@/pages/SupportActivityMasterPage'));
 const SupportStepMasterPage = React.lazy(() => import('@/pages/SupportStepMasterPage'));
 const IndividualSupportManagementPage = React.lazy(() => import('@/pages/IndividualSupportManagementPage'));
+const SupportPlanGuidePage = React.lazy(() => import('@/pages/SupportPlanGuidePage'));
 const UserDetailPage = React.lazy(() => import('@/pages/UserDetailPage'));
 
 // Dev harness（開発環境のみ）
@@ -212,6 +213,19 @@ const SuspendedAttendanceRecordPage: React.FC = () => (
       )}
     >
       <AttendanceRecordPage />
+    </React.Suspense>
+  </RouteHydrationErrorBoundary>
+);
+const SuspendedSupportPlanGuidePage: React.FC = () => (
+  <RouteHydrationErrorBoundary>
+    <React.Suspense
+      fallback={(
+        <div className="p-4 text-sm text-slate-600" role="status">
+          個別支援計画書を読み込んでいます…
+        </div>
+      )}
+    >
+      <SupportPlanGuidePage />
     </React.Suspense>
   </RouteHydrationErrorBoundary>
 );
@@ -596,6 +610,14 @@ const childRoutes: RouteObject[] = [
     element: (
       <RequireAudience requiredRole="reception">
         <SuspendedBillingPage />
+      </RequireAudience>
+    ),
+  },
+  {
+    path: 'support-plan-guide',
+    element: (
+      <RequireAudience requiredRole="viewer">
+        <SuspendedSupportPlanGuidePage />
       </RequireAudience>
     ),
   },

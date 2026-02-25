@@ -1,24 +1,27 @@
+import { TESTIDS } from '@/testids';
 import ClearIcon from '@mui/icons-material/Clear';
+import InfoOutlinedIcon from '@mui/icons-material/InfoOutlined';
+import WarningRoundedIcon from '@mui/icons-material/WarningRounded';
 import {
-  Box,
-  Chip,
-  FormControl,
-  IconButton,
-  MenuItem,
-  Paper,
-  Select,
-  Table,
-  TableBody,
-  TableCell,
-  TableContainer,
-  TableHead,
-  TableRow,
-  TextField,
-  Tooltip,
-  Typography,
+    Box,
+    Chip,
+    FormControl,
+    IconButton,
+    MenuItem,
+    Paper,
+    Select,
+    Table,
+    TableBody,
+    TableCell,
+    TableContainer,
+    TableHead,
+    TableRow,
+    TextField,
+    Tooltip,
+    Typography,
 } from '@mui/material';
 import React from 'react';
-import { TESTIDS } from '@/testids';
+import { useSupportPlanHints } from '../hooks/useSupportPlanHints';
 import type { UserRowData } from '../hooks/useTableDailyRecordForm';
 
 const LUNCH_OPTIONS = ['完食', '8割', '半分', '少量', 'なし'];
@@ -44,6 +47,8 @@ export const TableDailyRecordTable: React.FC<TableDailyRecordTableProps> = ({
   onProblemBehaviorChange,
   onClearRow,
 }) => {
+  const hintsMap = useSupportPlanHints();
+
   return (
     <Paper sx={{ p: 2 }}>
       <Typography variant="subtitle1" sx={{ mb: 2 }}>
@@ -67,13 +72,33 @@ export const TableDailyRecordTable: React.FC<TableDailyRecordTableProps> = ({
             {rows.map((row) => (
               <TableRow key={row.userId}>
                 <TableCell>
-                  <Typography variant="body2" sx={{ minWidth: 100 }}>
-                    {row.userName}
-                    <br />
-                    <Typography variant="caption" color="textSecondary">
-                      ({row.userId})
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                    <Typography variant="body2" sx={{ minWidth: 100 }}>
+                      {row.userName}
+                      <br />
+                      <Typography variant="caption" color="textSecondary">
+                        ({row.userId})
+                      </Typography>
                     </Typography>
-                  </Typography>
+                    {hintsMap[row.userId]?.longTermGoal && (
+                      <Tooltip title={`【長期目標】\n${hintsMap[row.userId]?.longTermGoal}`} arrow>
+                        <InfoOutlinedIcon
+                          data-testid="support-plan-goal-icon"
+                          aria-label="長期目標あり"
+                          sx={{ fontSize: 16, color: 'info.main', cursor: 'help' }}
+                        />
+                      </Tooltip>
+                    )}
+                    {hintsMap[row.userId]?.riskManagement && (
+                      <Tooltip title={`【配慮・リスク】\n${hintsMap[row.userId]?.riskManagement}`} arrow>
+                        <WarningRoundedIcon
+                          data-testid="support-plan-risk-icon"
+                          aria-label="リスク情報あり"
+                          sx={{ fontSize: 16, color: 'warning.main', cursor: 'help' }}
+                        />
+                      </Tooltip>
+                    )}
+                  </Box>
                 </TableCell>
 
                 <TableCell>
@@ -82,6 +107,15 @@ export const TableDailyRecordTable: React.FC<TableDailyRecordTableProps> = ({
                     placeholder="午前の活動"
                     value={row.amActivity}
                     onChange={(e) => onRowDataChange(row.userId, 'amActivity', e.target.value)}
+                    helperText={hintsMap[row.userId]?.dailySupports ? '支援手順あり' : undefined}
+                    FormHelperTextProps={{ sx: { fontSize: '0.65rem', m: 0, mt: 0.25 } }}
+                    InputProps={{
+                      endAdornment: hintsMap[row.userId]?.dailySupports ? (
+                        <Tooltip title={`【支援手順】\n${hintsMap[row.userId]?.dailySupports}`} arrow>
+                          <InfoOutlinedIcon sx={{ fontSize: 14, color: 'info.light', opacity: 0.7 }} />
+                        </Tooltip>
+                      ) : null,
+                    }}
                     onKeyDown={(e) => {
                       if (e.key === 'Tab' || e.key === 'Enter') {
                         // Tab移動を促進
@@ -97,6 +131,15 @@ export const TableDailyRecordTable: React.FC<TableDailyRecordTableProps> = ({
                     placeholder="午後の活動"
                     value={row.pmActivity}
                     onChange={(e) => onRowDataChange(row.userId, 'pmActivity', e.target.value)}
+                    helperText={hintsMap[row.userId]?.dailySupports ? '支援手順あり' : undefined}
+                    FormHelperTextProps={{ sx: { fontSize: '0.65rem', m: 0, mt: 0.25 } }}
+                    InputProps={{
+                      endAdornment: hintsMap[row.userId]?.dailySupports ? (
+                        <Tooltip title={`【支援手順】\n${hintsMap[row.userId]?.dailySupports}`} arrow>
+                          <InfoOutlinedIcon sx={{ fontSize: 14, color: 'info.light', opacity: 0.7 }} />
+                        </Tooltip>
+                      ) : null,
+                    }}
                     onKeyDown={(e) => {
                       if (e.key === 'Tab' || e.key === 'Enter') {
                         // Tab移動を促進

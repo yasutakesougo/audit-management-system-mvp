@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-const storageProto = Object.getPrototypeOf(window.localStorage);
+const storageProto = Storage.prototype;
 
 let consoleErrorSpy: ReturnType<typeof vi.spyOn>;
 
