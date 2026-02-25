@@ -88,7 +88,10 @@ export function saveSettingsToStorage(settings: UserSettings): boolean {
     localStorage.setItem(SETTINGS_STORAGE_KEY, JSON.stringify(toSave));
     return true;
   } catch (error) {
-    if (error instanceof DOMException && error.code === 22) {
+    if (
+      (error instanceof DOMException && (error.code === 22 || error.name === 'QuotaExceededError')) ||
+      (error instanceof Error && error.name === 'QuotaExceededError')
+    ) {
       console.warn('[settings] localStorage quota exceeded, skipping save');
       return false;
     }

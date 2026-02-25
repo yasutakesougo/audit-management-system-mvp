@@ -4,3 +4,4 @@
 /index.html
   Cross-Origin-Opener-Policy: same-origin-allow-popups
   Cache-Control: public, max-age=0, must-revalidate
+
