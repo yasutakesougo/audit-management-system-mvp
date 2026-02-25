@@ -29,6 +29,9 @@ test.describe('Dashboard - Constant SP Lane', () => {
     await expect(lane).toContainText('SharePoint 外部連携');
 
     // Safety: Verify state transition is happening with strict regex
-    await expect(lane).toHaveAttribute('data-state', /^(disabled|idle|active)$/);
+    await expect(lane).toHaveAttribute('data-state', /^(disabled|idle|active|error)$/);
+
+    // 3) Monitoring Hub Contract: verify source attribute exists and is valid
+    await expect(lane).toHaveAttribute('data-source', /^(demo|seed|sp|polling)$/);
   });
 });

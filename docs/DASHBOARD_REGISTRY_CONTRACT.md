@@ -77,6 +77,44 @@ await expect(page.locator('[data-testid="dashboard-section-stats"]')).toBeVisibl
 - Section-level testids で DOM 変更に強い
 - Registry 網羅性テストで key カバレッジを保証可能
 
+## Constant Frame + State Machine Pattern
+
+### 1) Architectural Intent
+The Dashboard uses a **Constant Frame** pattern for secondary or operational lanes (like SharePoint Sync). Unlike primary content which may conditionally render, a Constant Frame is **always mounted**.
+
+### 2) SP Lane Operational Contract
+The SharePoint Lane implements an explicit state machine that encodes operational truth through DOM attributes.
+
+```typescript
+interface SpLaneModel {
+  version: number;
+  state: 'disabled' | 'idle' | 'active' | 'error';
+  source?: 'seed' | 'sp' | 'polling' | 'demo';
+  busy?: boolean;
+  canRetry?: boolean;
+  onRetry?: () => void;
+  details?: SpSyncDetails;
+}
+```
+
+### 3) Testing Schema (Deterministic Verification)
+Behavior is detected via stable attributes, insulating tests from UI restyling.
+
+| Attribute       | Values                            | Purpose                                  |
+| --------------- | --------------------------------- | ---------------------------------------- |
+| `data-state`    | `disabled`, `idle`, `active`, `error` | Logic state of the lane                  |
+| `data-source`   | `seed`, `sp`, `polling`, `demo`   | Operational data source                  |
+| `data-busy`     | `1`, `undefined`                  | Indicates background activity (circular) |
+
+### 4) Exportable Design Primitives
+This pattern should be considered the baseline for:
+- Attendance Sync Queues
+- Offline Status Indicators
+- Background PDCA processing slots
+
+> [!IMPORTANT]
+> **Version Bump Policy**: When changing contract fields or logic states, bump the `version` and update corresponding unit and E2E assertions to prevent silent drift.
+
 ## Contract Evolution (Future)
 
 ### Phase 2: Layout Extraction
@@ -89,5 +127,5 @@ await expect(page.locator('[data-testid="dashboard-section-stats"]')).toBeVisibl
 
 ---
 
-**Status**: ✅ Implemented (Phase 1 - Registry Pattern)  
-**Next**: Layout extraction (Phase 2)
+**Status**: ✅ Implemented (Phase 1 & 2 - Registry & Constant Frame Patterns)
+**Next**: Layout extraction (Phase 3)

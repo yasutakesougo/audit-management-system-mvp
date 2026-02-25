@@ -20,7 +20,8 @@ test.describe('Schedules Week - SP Lane', () => {
     await expect(lane).toContainText('SharePoint 外部連携');
 
     // Safety: Verify state transition is happening with strict regex
-    await expect(lane).toHaveAttribute('data-state', /^(disabled|idle|active)$/);
+    await expect(lane).toHaveAttribute('data-state', /^(disabled|idle|active|error)$/);
+    await expect(lane).toHaveAttribute('data-source', /^(demo|seed|sp|polling)$/);
   });
 
   test('does not show SP lane on mobile viewport (because isDesktopSize gate)', async ({ page }) => {

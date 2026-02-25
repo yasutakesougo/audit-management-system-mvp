@@ -1,0 +1,29 @@
+## What
+- Stabilized \useTableDailyRecordViewModel.spec.ts\ for CI (Linux/headless) by:
+  - \i.stubGlobal('alert', ...)\
+  - deterministic async flush via \i.runAllTimersAsync()\ (+ microtask flush if needed)
+- Normalized \public/_headers\ formatting (2-space indentation, consolidated under \/*\) to satisfy Netlify header parser.
+- Restored test isolation in \itest.setup.ts\ by wiring \clearEnvCache\ and resetting mocked storage state between tests.
+- Hardened \^Gudit.final-catches.spec.ts\ localStorage spying to avoid prototype/environment variance.
+
+## Why
+- Main branch CI was red due to a CI-only flaky test and Netlify header parsing errors.
+- This PR applies a minimal, surgical patch (4 files) to restore stable green status.
+
+## Verification
+- \
+pm run lint\
+- \
+pm run typecheck\
+- \
+pm test src/features/daily/tests/useTableDailyRecordViewModel.spec.ts\
+- relevant audit unit test(s) passed locally
+
+## Files changed (4)
+- public/_headers
+- src/features/daily/tests/useTableDailyRecordViewModel.spec.ts
+- tests/unit/audit.final-catches.spec.ts
+- vitest.setup.ts
+
+> [!NOTE]
+> \integration-users\ is expected to fail on PR branches due to main-only constraints; it will run and pass on \main\ after merge.

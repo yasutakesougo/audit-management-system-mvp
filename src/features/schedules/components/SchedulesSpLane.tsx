@@ -1,18 +1,50 @@
 import ErrorOutlineIcon from '@mui/icons-material/ErrorOutline';
+import InfoOutlinedIcon from '@mui/icons-material/InfoOutlined';
+import RefreshIcon from '@mui/icons-material/Refresh';
 import SyncIcon from '@mui/icons-material/Sync';
 import SyncDisabledIcon from '@mui/icons-material/SyncDisabled';
-import { Box, Chip, CircularProgress, List, ListItem, ListItemText, Paper, Tooltip, Typography } from '@mui/material';
+import {
+    Box,
+    Button,
+    Chip,
+    CircularProgress,
+    Dialog,
+    DialogActions,
+    DialogContent,
+    DialogTitle,
+    IconButton,
+    List,
+    ListItem,
+    ListItemText,
+    Paper,
+    Stack,
+    Tooltip,
+    Typography,
+} from '@mui/material';
 import React from 'react';
 
 export type LaneState = 'disabled' | 'idle' | 'active' | 'error';
 
 export interface SpLaneModel {
+  version: number;
   state: LaneState;
   title: string;
   subtitle?: string;
   lastSyncAt?: string;
   itemCount?: number;
   reason?: string;
+  source?: string;
+  busy?: boolean;
+  onRetry?: () => void;
+  canRetry?: boolean;
+  details?: {
+    state: LaneState;
+    source?: string;
+    lastSyncAt?: string;
+    itemCount?: number;
+    error?: string;
+    reason?: string;
+  };
 }
 
 export interface SchedulesSpLaneProps {
@@ -23,10 +55,24 @@ export interface SchedulesSpLaneProps {
  * SchedulesSpLane Component
  *
  * A constant structural element for the SharePoint (SP) lane.
- * It handles its own states (Disabled/Idle/Active) driven by the SpLaneModel.
+ * Now enhanced as a "Monitoring Hub" with Retry and Status transparency.
  */
 export const SchedulesSpLane: React.FC<SchedulesSpLaneProps> = ({ model }) => {
-  const { state, title, subtitle, lastSyncAt, itemCount, reason } = model;
+  const {
+    state,
+    title,
+    subtitle,
+    lastSyncAt,
+    itemCount,
+    reason,
+    source,
+    busy,
+    onRetry,
+    canRetry,
+    details,
+  } = model;
+
+  const [detailsOpen, setDetailsOpen] = React.useState(false);
 
   const renderContent = () => {
     switch (state) {
@@ -76,6 +122,7 @@ export const SchedulesSpLane: React.FC<SchedulesSpLaneProps> = ({ model }) => {
             </Typography>
           </Box>
         );
+
       case 'error':
         return (
           <Box
@@ -88,6 +135,7 @@ export const SchedulesSpLane: React.FC<SchedulesSpLaneProps> = ({ model }) => {
               py: 4,
               backgroundColor: 'error.lighter',
               color: 'error.main',
+              borderRadius: 1,
             }}
           >
             <ErrorOutlineIcon sx={{ fontSize: 32, mb: 1 }} />
@@ -109,7 +157,10 @@ export const SchedulesSpLane: React.FC<SchedulesSpLaneProps> = ({ model }) => {
             <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 1.5 }}>
               <Chip
                 icon={<SyncIcon sx={{ fontSize: '14px !important' }} />}
-                label="同期済み"
+                label={
+                  source === 'demo' ? 'デモ同期済み' :
+                  source === 'seed' ? '保存データ同期' : '最新同期済み'
+                }
                 size="small"
                 color="success"
                 variant="outlined"
@@ -154,6 +205,58 @@ export const SchedulesSpLane: React.FC<SchedulesSpLaneProps> = ({ model }) => {
     }
   };
 
+  const renderDetailsDialog = () => {
+    if (!details) return null;
+    return (
+      <Dialog open={detailsOpen} onClose={() => setDetailsOpen(false)} maxWidth="xs" fullWidth>
+        <DialogTitle sx={{ fontWeight: 700 }}>同期ステータス詳細</DialogTitle>
+        <DialogContent dividers>
+          <Stack spacing={2}>
+            <Box>
+              <Typography variant="caption" color="text.secondary">現在の状態</Typography>
+              <Typography variant="body2" fontWeight={600}>{details.state.toUpperCase()}</Typography>
+            </Box>
+            <Box>
+              <Typography variant="caption" color="text.secondary">同期ソース</Typography>
+              <Typography variant="body2" fontWeight={600}>{details.source || '未接続'}</Typography>
+            </Box>
+            <Box>
+              <Typography variant="caption" color="text.secondary">最終同期時刻</Typography>
+              <Typography variant="body2" fontWeight={600}>
+                {details.lastSyncAt
+                  ? new Date(details.lastSyncAt).toLocaleString('ja-JP')
+                  : 'データなし'}
+              </Typography>
+            </Box>
+            <Box>
+              <Typography variant="caption" color="text.secondary">取得件数</Typography>
+              <Typography variant="body2" fontWeight={600}>
+                {details.itemCount !== undefined ? `${details.itemCount} 件` : '不明'}
+              </Typography>
+            </Box>
+            {details.error && (
+              <Box>
+                <Typography variant="caption" color="error">エラーメッセージ</Typography>
+                <Typography variant="caption" display="block" sx={{ mt: 0.5, p: 1, bgcolor: 'error.lighter', borderRadius: 0.5 }}>
+                  {details.error}
+                </Typography>
+              </Box>
+            )}
+            {details.reason && (
+              <Box>
+                <Typography variant="caption" color="text.secondary">ステータス理由</Typography>
+                <Typography variant="body2">{details.reason}</Typography>
+              </Box>
+            )}
+          </Stack>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setDetailsOpen(false)}>閉じる</Button>
+        </DialogActions>
+      </Dialog>
+    );
+  };
+
   return (
     <Paper
       variant="outlined"
@@ -178,19 +281,57 @@ export const SchedulesSpLane: React.FC<SchedulesSpLaneProps> = ({ model }) => {
       }}
       data-testid="schedules-sp-lane"
       data-state={state}
+      data-source={source}
+      data-busy={busy ? '1' : undefined}
+      data-version={model.version}
     >
-      <Box sx={{ display: 'flex', alignItems: 'center', mb: state === 'active' ? 1 : 2 }}>
+      <Box sx={{ display: 'flex', alignItems: 'center', mb: state === 'active' ? 0.5 : 2 }}>
         <Typography variant="subtitle2" sx={{ fontWeight: 700, flex: 1 }}>
           {title}
         </Typography>
-        {state === 'disabled' && (
-          <Tooltip title="設定で有効化できます">
-            <ErrorOutlineIcon sx={{ fontSize: 16, color: 'text.disabled' }} />
-          </Tooltip>
-        )}
+        <Stack direction="row" spacing={0.5} alignItems="center">
+          {canRetry && (
+            <Tooltip title={busy ? '同期中...' : '今すぐ同期'}>
+              <Box component="span">
+                <IconButton
+                  size="small"
+                  onClick={onRetry}
+                  disabled={busy}
+                  aria-label={busy ? '同期中' : '今すぐ同期'}
+                  sx={{
+                    color: state === 'error' ? 'error.main' : 'primary.main',
+                    bgcolor: state === 'error' ? 'error.lighter' : 'primary.lighter',
+                    '&:hover': {
+                      bgcolor: state === 'error' ? 'error.light' : 'primary.light',
+                    },
+                    '&.Mui-disabled': {
+                      color: state === 'error' ? 'error.light' : 'primary.light',
+                    },
+                  }}
+                >
+                  {busy ? (
+                    <CircularProgress size={16} color="inherit" />
+                  ) : (
+                    <RefreshIcon sx={{ fontSize: 18 }} />
+                  )}
+                </IconButton>
+              </Box>
+            </Tooltip>
+          )}
+          {state !== 'disabled' && (
+            <IconButton
+              size="small"
+              onClick={() => setDetailsOpen(true)}
+              aria-label="同期ステータス詳細を表示"
+            >
+              <InfoOutlinedIcon sx={{ fontSize: 18, color: 'text.secondary' }} />
+            </IconButton>
+          )}
+        </Stack>
       </Box>
 
       {renderContent()}
+      {renderDetailsDialog()}
     </Paper>
   );
 };
