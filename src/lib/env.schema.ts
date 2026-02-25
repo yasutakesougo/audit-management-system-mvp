@@ -172,6 +172,8 @@ export const envSchema = z.object({
 });
 
 export type EnvSchema = z.infer<typeof envSchema> & { [key: string]: unknown };
+export const appEnvSchema = envSchema;
+export type ParsedEnv = EnvSchema;
 
 /**
  * Direct schema-only parsing (bypasses validation safety/placeholders)

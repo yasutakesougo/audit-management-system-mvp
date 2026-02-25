@@ -607,7 +607,7 @@ export function DailyRecordForm({ open, onClose, record, onSave }: DailyRecordFo
               </Stack>
 
               <Stack direction="row" flexWrap="wrap" gap={0.5}>
-                {formData.data.amActivities.map((activity, index) => (
+                {formData.data.amActivities.map((activity: string, index: number) => (
                   <Chip
                     key={index}
                     label={activity}
@@ -661,7 +661,7 @@ export function DailyRecordForm({ open, onClose, record, onSave }: DailyRecordFo
               </Stack>
 
               <Stack direction="row" flexWrap="wrap" gap={0.5}>
-                {formData.data.pmActivities.map((activity, index) => (
+                {formData.data.pmActivities.map((activity: string, index: number) => (
                   <Chip
                     key={index}
                     label={activity}

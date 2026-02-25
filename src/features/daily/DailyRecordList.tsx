@@ -252,7 +252,7 @@ export function DailyRecordList({
                   <Box sx={{ mb: 1 }}>
                     <Typography variant="caption" color="text.secondary">午前:</Typography>
                     <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5, mt: 0.5 }}>
-                      {record.data.amActivities.map((activity, index) => (
+                      {record.data.amActivities.map((activity: string, index: number) => (
                         <Chip
                           key={index}
                           label={activity}
@@ -268,7 +268,7 @@ export function DailyRecordList({
                   <Box sx={{ mb: 1 }}>
                     <Typography variant="caption" color="text.secondary">午後:</Typography>
                     <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5, mt: 0.5 }}>
-                      {record.data.pmActivities.map((activity, index) => (
+                      {record.data.pmActivities.map((activity: string, index: number) => (
                         <Chip
                           key={index}
                           label={activity}
