@@ -19,6 +19,7 @@ export interface DateRange {
 }
 
 const STORAGE_KEY = 'ams-bulk-daily-v1';
+const PRUNE_LIMIT = 500; // 最大500レコード保持（溢れ防止）
 
 const norm = (v: unknown): string => String(v ?? '').trim();
 
@@ -53,6 +54,19 @@ const writeMap = (map: Record<string, DailyTableRecord>) => {
 export const buildDailyTableKey = (userId: string, recordDate: string) =>
   `${norm(userId)}::${recordDate}`;
 
+const pruneMap = (map: Record<string, DailyTableRecord>) => {
+  const entries = Object.entries(map);
+  if (entries.length <= PRUNE_LIMIT) return map;
+
+  // 日付順（recordDate昇順）にソートして、古いものを削除
+  entries.sort((a, b) => cmpYmd(a[1].recordDate, b[1].recordDate));
+
+  const countToRemove = entries.length - PRUNE_LIMIT;
+  const prunedEntries = entries.slice(countToRemove);
+
+  return Object.fromEntries(prunedEntries);
+};
+
 export const upsertDailyTableRecords = (records: DailyTableRecord[]) => {
   const map = readMap();
   for (const rec of records) {
@@ -67,7 +81,9 @@ export const upsertDailyTableRecords = (records: DailyTableRecord[]) => {
       recordDate,
     };
   }
-  writeMap(map);
+
+  const prunedMap = pruneMap(map);
+  writeMap(prunedMap);
 };
 
 export const getDailyTableRecords = (userId: string, range: DateRange): DailyTableRecord[] => {

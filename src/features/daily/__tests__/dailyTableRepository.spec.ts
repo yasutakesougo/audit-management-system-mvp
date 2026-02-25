@@ -77,4 +77,33 @@ describe('dailyTableRepository', () => {
     expect(results).toHaveLength(1);
     expect(results[0].userId).toBe('123');
   });
+
+  it('should prune old records when exceeding PRUNE_LIMIT', () => {
+    const records: DailyTableRecord[] = [];
+    // Create 510 records (PRUNE_LIMIT is 500)
+    for (let i = 0; i < 510; i++) {
+      // Use simple increment for stable dates (offset from a base date)
+      const d = new Date(2024, 0, 1, 12, 0, 0); // Noon to avoid TZ shifts
+      d.setDate(d.getDate() + i);
+      const date = d.toISOString().split('T')[0];
+      records.push({
+        userId: 'prune-user',
+        recordDate: date,
+        activities: { am: `Activity ${i}` },
+        submittedAt: new Date().toISOString(),
+      });
+    }
+
+    upsertDailyTableRecords(records);
+
+    const range = { from: '2024-01-01', to: '2026-01-01' };
+    const all = getDailyTableRecords('prune-user', range);
+
+    // Should be capped at 500
+    expect(all.length).toBe(500);
+    // The first 10 should be gone.
+    // i=0 is 2024-01-01, so i=10 is 2024-01-11.
+    // If we remove 10, the new index 0 should be the old index 10.
+    expect(all[0].recordDate).toMatch(/2024-01-11/);
+  });
 });
