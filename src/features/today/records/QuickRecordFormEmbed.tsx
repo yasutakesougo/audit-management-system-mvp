@@ -39,6 +39,9 @@ export const QuickRecordFormEmbed: React.FC<QuickRecordFormEmbedProps> = ({
 
   return (
     <Box data-testid="today-quickrecord-form-embed" sx={{ width: '100%', height: '100%', overflow: 'hidden' }}>
+      <Box data-testid="today-quickrecord-target-userid" sx={{ display: 'none' }}>
+        {userId ?? ''}
+      </Box>
       <TableDailyRecordForm
         open={true}
         variant="content"

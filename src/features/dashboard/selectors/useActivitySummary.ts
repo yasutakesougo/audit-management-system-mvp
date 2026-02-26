@@ -113,13 +113,25 @@ export function useActivitySummary(
     const inProgress = activityRecords.filter((record) => record.status === '作成中').length;
     const pending = Math.max(total - completed - inProgress, 0);
 
+    const recordedUserIds = new Set(
+      activityRecords
+        .filter(r => r.status === '完了' || r.status === '作成中')
+        .map(r => String(r.personId))
+    );
+
+    const pendingUserIds = users
+      .map(u => String(u.UserID))
+      .filter(id => !recordedUserIds.has(id))
+      .sort();
+
     return {
       total,
       pending,
       inProgress,
       completed,
+      pendingUserIds,
     };
-  }, [activityRecords, users.length]);
+  }, [activityRecords, users]);
 
   return {
     activityRecords,
