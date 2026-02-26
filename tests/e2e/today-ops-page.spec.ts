@@ -157,8 +157,8 @@ test.describe('Today Ops Screen', () => {
     await expect(page).not.toHaveURL(new RegExp(`userId=${firstUserId}`));
     await expect(page).toHaveURL(/.*userId=U-?\d+/);
 
-    // 5. Turn toggle OFF by checking the input
-    await toggle.uncheck({ force: true });
+    // 5. Turn toggle OFF by clicking the label text directly to bypass MUI strictly controlled input latency
+    await drawer.getByText('連続入力').click();
     await expect(toggle).not.toBeChecked();
 
     // Extract second user ID
