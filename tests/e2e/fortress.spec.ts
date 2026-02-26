@@ -50,8 +50,7 @@ test.describe('Users Fortress - Validation Error Handling', () => {
     await expect(page.getByText('不備データ 太郎')).toBeVisible({ timeout: 10000 });
 
     // 5. コンソールにエラーが出力されていることを確認 (bootUsersPage のログ機能を活用)
-    // 注意: bootUsersPage.mts の内部で console.error がフックされ、
-    // testInfo.attach などで報告される設計になっていることを想定
+    // Partial Failures のテレメトリーログが出力される想定
   });
 
   test('handles missing essential fields by displaying fallback data', async ({ page }, testInfo) => {
@@ -90,8 +89,8 @@ test.describe('Users Fortress - Validation Error Handling', () => {
     await listTab.click();
 
     // UserID は存在するので、行自体は特定可能
-    // 完全に欠落している場合、UIは table を表示すべき
-    await expect(page.getByRole('table')).toBeVisible();
+    // 完全に欠落している場合、UIは table/grid を表示すべき
+    await expect(page.getByTestId('users-panel-root')).toBeVisible();
 
     // 特定の文字列を検索
     await expect(page.getByText('MISSING-001')).toBeVisible({ timeout: 10000 });

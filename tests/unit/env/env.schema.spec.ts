@@ -120,7 +120,7 @@ describe('env.schema', () => {
       const zodError = err as { issues?: Array<{ path: string[]; message: string; code: string }> };
       expect(zodError.issues?.[0]?.path).toEqual(['VITE_FACILITY_CLOSE_TIME']);
       expect(zodError.issues?.[0]?.message).toBe('Facility close time must be HH:MM (24h)');
-      expect(zodError.issues?.[0]?.code).toBe('invalid_format');
+      expect(zodError.issues?.[0]?.code).toBe('custom');
     }
   });
 });

@@ -141,26 +141,48 @@ const DEFAULT_LIST_TEMPLATE = 100;
 
 type JsonRecord = Record<string, unknown>;
 
-/**
- * Validates a SharePoint OData JSON response (`{ value: [...] }`) against a provided Zod schema.
- * @param json The raw JSON response from `res.json()`.
- * @param itemSchema The Zod schema describing a single SharePoint item.
- * @returns A strongly typed array of validated items.
- * @throws {Error} If the schema validation fails, with logged details.
- */
 export function parseSpListResponse<T extends z.ZodTypeAny>(
   json: unknown,
   itemSchema: T
 ): z.infer<T>[] {
-  const schema = z.object({ value: z.array(itemSchema).default([]) });
-  const parsed = schema.safeParse(json);
+  // 1. Validate the outer OData envelope shape first
+  const envelopeSchema = z.object({ value: z.array(z.unknown()).default([]) });
+  const envelopeParsed = envelopeSchema.safeParse(json);
 
-  if (!parsed.success) {
-    console.error('[spClient] SharePoint API schema mismatch:', parsed.error.format());
-    throw new Error('SharePoint response structure validation failed.');
+  if (!envelopeParsed.success) {
+    console.error('[spClient] SharePoint API envelope mismatch:', envelopeParsed.error.format());
+    throw new Error('SharePoint response envelope validation failed. Expected { value: [...] }');
   }
 
-  return parsed.data.value;
+  const rawItems = envelopeParsed.data.value;
+  const validItems: z.infer<T>[] = [];
+  const errors: { index: number; id?: unknown; issues: z.ZodFormattedError<unknown> }[] = [];
+
+  // 2. Safely parse each item individually to support Partial Failures
+  rawItems.forEach((rawItem, index) => {
+    const itemParsed = itemSchema.safeParse(rawItem);
+    if (itemParsed.success) {
+      validItems.push(itemParsed.data);
+    } else {
+      // Capture identifier if available to help with tracing
+      const id = (rawItem as Record<string, unknown>)?.Id ?? (rawItem as Record<string, unknown>)?.ID;
+      errors.push({
+        index,
+        id,
+        issues: itemParsed.error.format(),
+      });
+    }
+  });
+
+  // 3. Telemetry hook: Log specific item failures without crashing the whole list
+  if (errors.length > 0) {
+    console.error(`[spClient] Partial validation failure: ${errors.length}/${rawItems.length} items failed schema.`, {
+      errors,
+      // Consider pushing this to Sentry/AppInsights here in the future
+    });
+  }
+
+  return validItems;
 }
 
 export type SharePointBatchOperation =

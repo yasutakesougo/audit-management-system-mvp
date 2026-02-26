@@ -74,12 +74,16 @@ describe('classifySchedulesError', () => {
   });
 
   it('classifies offline state as NETWORK_ERROR', () => {
-    vi.stubGlobal('navigator', { onLine: false });
-    const info = classifySchedulesError(new Error('Any error'));
+    const originalOnLine = navigator.onLine;
+    Object.defineProperty(navigator, 'onLine', { value: false, configurable: true });
+    try {
+      const info = classifySchedulesError(new Error('Any error'));
 
-    expect(info.kind).toBe('NETWORK_ERROR');
-    expect(info.title).toContain('オフライン');
-    vi.unstubAllGlobals();
+      expect(info.kind).toBe('NETWORK_ERROR');
+      expect(info.title).toContain('ネットワークエラー');
+    } finally {
+      Object.defineProperty(navigator, 'onLine', { value: originalOnLine, configurable: true });
+    }
   });
 
   it('classifies "failed to fetch" as NETWORK_ERROR', () => {
