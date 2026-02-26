@@ -68,7 +68,7 @@ describe('featureFlags config', () => {
       schedulesWeekV2: true,
       icebergPdca: true,
       staffAttendance: false,
-      appShellVsCode: true,
+      appShellVsCode: false,
       todayOps: true,
     });
 
@@ -92,7 +92,7 @@ describe('featureFlags config', () => {
       schedulesWeekV2: true,
       icebergPdca: false,
       staffAttendance: false,
-      appShellVsCode: true,
+      appShellVsCode: false,
       todayOps: true,
     });
   });
@@ -117,7 +117,7 @@ describe('featureFlags config', () => {
       schedulesWeekV2: true,
       icebergPdca: false,
       staffAttendance: false,
-      appShellVsCode: true,
+      appShellVsCode: false,
       todayOps: true,
     });
   });
@@ -136,7 +136,7 @@ describe('featureFlags config', () => {
       schedulesWeekV2: true,
       icebergPdca: false,
       staffAttendance: false,
-      appShellVsCode: true,
+      appShellVsCode: false,
       todayOps: true,
     });
   });
