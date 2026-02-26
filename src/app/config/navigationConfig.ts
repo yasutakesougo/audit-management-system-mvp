@@ -7,6 +7,7 @@
  * @module app/config/navigationConfig
  */
 
+import { isDevMode } from '@/lib/env';
 import type { PrefetchKey } from '@/prefetch/routes';
 import { PREFETCH_KEYS } from '@/prefetch/routes';
 import { TESTIDS } from '@/testids';
@@ -96,7 +97,7 @@ export function pickGroup(item: NavItem, isAdmin: boolean): NavGroupKey {
   if (item.group) return item.group;
 
   // DEV warning: flag items that lack explicit group (migration aid)
-  if (import.meta.env.DEV) {
+  if (isDevMode()) {
     console.warn(
       `[pickGroup] NavItem "${item.label}" (to=${item.to}) has no explicit group — falling back to label inference. ` +
       `Add \`group: '...'\` to suppress this warning.`,

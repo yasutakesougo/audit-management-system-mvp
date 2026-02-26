@@ -6,7 +6,7 @@
  */
 
 import { useMsalContext } from '@/auth/MsalProvider';
-import { getAppConfig, isE2eMsalMockEnabled, readBool, shouldSkipLogin } from '@/lib/env';
+import { getAppConfig, isDemoModeEnabled, isE2eMsalMockEnabled, readBool, shouldSkipLogin } from '@/lib/env';
 import { useSP } from '@/lib/spClient';
 import Box from '@mui/material/Box';
 import React, { useEffect, useMemo, useState } from 'react';
@@ -44,7 +44,7 @@ const ConnectionStatusReal: React.FC<{ sharePointDisabled: boolean }> = ({ share
   const accountsCount = accounts.length;
   const [state, setState] = useState<'checking' | 'ok' | 'error' | 'signedOut'>('checking');
   const bypassAccountGate = SKIP_LOGIN || E2E_MSAL_MOCK_ENABLED;
-  const isDemoMode = import.meta.env.VITE_DEMO_MODE === '1';
+  const isDemoMode = isDemoModeEnabled();
 
   useEffect(() => {
     if (isDemoMode) {
