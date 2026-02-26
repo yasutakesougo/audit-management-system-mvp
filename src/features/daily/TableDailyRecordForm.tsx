@@ -75,31 +75,39 @@ export function TableDailyRecordForm({
 
   // 1. Initialize date once
   useEffect(() => {
+    if (!open) return;
     if (didInitDateRef.current) return;
     didInitDateRef.current = true;
     if (initialDate) {
       setFormData((prev) => ({ ...prev, date: initialDate }));
     }
-  }, [initialDate, setFormData]);
+  }, [open, initialDate, setFormData]);
 
   const lastInitUserIdRef = useRef<string | null>(null);
 
   // 2. Initialize user once when available
   useEffect(() => {
+    if (!open) return;
     if (!initialUserId) return;
     if (lastInitUserIdRef.current === initialUserId) return;
+
+    if (!filteredUsers || filteredUsers.length === 0) return;
+    const targetUser = filteredUsers.find((u) => (u.userId || '').trim() === initialUserId.trim());
+    if (!targetUser) return;
 
     // Use a short delay so that useTableDailyRecordSelection's internal attendance-based
     // auto-selection finishes first, and then we forcefully overwrite it.
     const t = setTimeout(() => {
       handleClearAll();
-      handleUserToggle(initialUserId);
+      handleUserToggle(targetUser.userId || '');
       lastInitUserIdRef.current = initialUserId;
     }, 50);
 
     return () => clearTimeout(t);
   }, [
+    open,
     initialUserId,
+    filteredUsers,
     handleUserToggle,
     handleClearAll,
   ]);
