@@ -8,12 +8,12 @@ import {
     FIELD_MAP,
     LIST_CONFIG,
     ListKeys,
-    USERS_SELECT_FIELDS_SAFE,
-    type UserRow,
+    USERS_SELECT_FIELDS_SAFE
 } from '@/sharepoint/fields';
 
 import { normalizeAttendanceDays } from '../attendance';
 import type { UserRepository, UserRepositoryGetParams, UserRepositoryListParams, UserRepositoryUpdateDto } from '../domain/UserRepository';
+import { UserMasterDomainSchema } from '../schema';
 import type { IUserMaster, IUserMasterCreateDto } from '../types';
 
 const DEFAULT_TOP = 500;
@@ -56,7 +56,7 @@ export class SharePointUserRepository implements UserRepository {
     }
 
     const items = await query();
-    let mapped = items.map((item) => this.toDomain(item as UserRow));
+    let mapped = items.map((item) => this.toDomain(item));
 
     if (filters?.keyword) {
       const keyword = filters.keyword.trim().toLowerCase();
@@ -78,7 +78,7 @@ export class SharePointUserRepository implements UserRepository {
     }
     try {
       const item = await this.list.items.getById(numericId).select(...this.selectFields)();
-      return item ? this.toDomain(item as UserRow) : null;
+      return item ? this.toDomain(item) : null;
     } catch (error) {
       console.error('SharePointUserRepository.getById failed', error);
       return null;
@@ -88,7 +88,7 @@ export class SharePointUserRepository implements UserRepository {
   public async create(payload: IUserMasterCreateDto): Promise<IUserMaster> {
     const request = this.toRequest(payload);
     const result = await this.list.items.add(request);
-    return this.toDomain(result.data as UserRow);
+    return this.toDomain(result.data);
   }
 
   public async update(id: number | string, payload: UserRepositoryUpdateDto): Promise<IUserMaster> {
@@ -125,11 +125,19 @@ export class SharePointUserRepository implements UserRepository {
   }
 
   private createSpInstance(context?: ISPFXContext): SPFI {
+    const config = getAppConfig();
+    const siteUrl = `${config.VITE_SP_RESOURCE}${config.VITE_SP_SITE_RELATIVE}`;
     const resolvedContext = context ?? SharePointUserRepository.resolveGlobalSpfxContext();
-    if (!resolvedContext) {
-      throw new Error('[SharePointUserRepository] SPFx context is not available. Supply one via constructor options.');
+
+    // SPFx 環境（pageContext が存在）であれば SPFx プラグインを使用
+    if (resolvedContext && (resolvedContext as any).pageContext) {
+      return spfi(siteUrl).using(SPFx(resolvedContext));
     }
-    return spfi().using(SPFx(resolvedContext));
+
+    // E2E または Web モード（SPFx 以外）: URL を指定して初期化
+    // これにより SPFx コンテキスト不足によるエラー（reading 'web'）を回避し、
+    // Playwright のモックが fetch を介して正しく動作するようにする。
+    return spfi(siteUrl);
   }
 
   private static resolveGlobalSpfxContext(): ISPFXContext | undefined {
@@ -149,38 +157,16 @@ export class SharePointUserRepository implements UserRepository {
     return candidates.some((value) => value.includes(keyword));
   }
 
-  private toDomain(raw: UserRow): IUserMaster {
-    const fields = FIELD_MAP.Users_Master;
-    const record = raw as Record<string, unknown>;
-    const get = <T = unknown>(field: string): T | undefined => record[field] as T | undefined;
-    const attendance = normalizeAttendanceDays(get(fields.attendanceDays));
-    const transportTo = normalizeAttendanceDays(get(fields.transportToDays));
-    const transportFrom = normalizeAttendanceDays(get(fields.transportFromDays));
-
-    return {
-      Id: Number(get<number>(fields.id) ?? raw.Id),
-      Title: get<string | null>(fields.title) ?? raw.Title ?? null,
-      UserID: (get<string>(fields.userId) ?? raw.UserID) ?? '',
-      FullName: (get<string>(fields.fullName) ?? raw.FullName) ?? '',
-      Furigana: get<string | null>(fields.furigana) ?? raw.Furigana ?? null,
-      FullNameKana: get<string | null>(fields.fullNameKana) ?? raw.FullNameKana ?? null,
-      ContractDate: get<string | null>(fields.contractDate) ?? raw.ContractDate ?? null,
-      ServiceStartDate: get<string | null>(fields.serviceStartDate) ?? raw.ServiceStartDate ?? null,
-      ServiceEndDate: get<string | null>(fields.serviceEndDate) ?? raw.ServiceEndDate ?? null,
-      IsHighIntensitySupportTarget:
-        get<boolean | null>(fields.isHighIntensitySupportTarget) ?? null,
-      IsSupportProcedureTarget:
-        get<boolean | null>(fields.isSupportProcedureTarget) ?? null,
-      severeFlag: get<boolean | null>(fields.severeFlag) ?? null,
-      IsActive: get<boolean | null>(fields.isActive) ?? raw.IsActive ?? null,
-      TransportToDays: transportTo,
-      TransportFromDays: transportFrom,
-      AttendanceDays: attendance,
-      RecipientCertNumber: get<string | null>(fields.recipientCertNumber) ?? raw.RecipientCertNumber ?? null,
-      RecipientCertExpiry: get<string | null>(fields.recipientCertExpiry) ?? raw.RecipientCertExpiry ?? null,
-      Modified: get<string | null>(fields.modified) ?? raw.Modified ?? null,
-      Created: get<string | null>(fields.created) ?? raw.Created ?? null,
-    };
+  private toDomain(raw: unknown): IUserMaster {
+    try {
+      return UserMasterDomainSchema.parse(raw);
+    } catch (error) {
+      console.error('[SharePointUserRepository] Schema violation detected. This requires administrator attention.', {
+        id: (typeof raw === 'object' && raw !== null && 'Id' in raw) ? (raw as Record<string, unknown>).Id : 'unknown',
+        error,
+      });
+      throw error; // Re-throw to trigger the Operational Alert in the UI
+    }
   }
 
   private toRequest(dto: Partial<IUserMasterCreateDto>): Record<string, unknown> {

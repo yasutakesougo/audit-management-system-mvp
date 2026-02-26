@@ -10,10 +10,10 @@
  */
 
 import { expect, test } from '@playwright/test';
-import { bootUsersPage } from './_helpers/bootUsersPage.mts';
+import { bootUsersPage } from './_helpers/bootUsersPage';
 
 // TODO: Re-enable after optimizing smoke test performance (currently timing out at 20 min)
-test.describe.skip('Users CRUD smoke', () => {
+test.describe('Users CRUD smoke', () => {
   test.beforeEach(async ({ page }) => {
     // bootUsersPage で環境をセットアップ
     await bootUsersPage(page, {
@@ -33,16 +33,11 @@ test.describe.skip('Users CRUD smoke', () => {
     const testUserName = `テスト太郎_${Date.now()}`;
 
     // Step 1: Navigate to create tab
-    const createButton = page.getByRole('button', { name: /新規利用者登録/i });
+    const createButton = page.getByRole('tab', { name: /新規利用者登録/i }).or(page.getByRole('button', { name: /新規利用者登録/i })).first();
     await expect(createButton).toBeVisible({ timeout: 10000 });
     await createButton.click();
 
-    // Step 2: Auto-generate UserID
-    const autoButton = page.getByRole('button', { name: /自動/i });
-    await expect(autoButton).toBeVisible({ timeout: 5000 });
-    await autoButton.click();
-
-    // Step 3: Fill in user name and create
+    // Step 2: Fill in user name and create
     const nameInput = page.getByLabel(/氏名/i);
     await expect(nameInput).toBeVisible({ timeout: 5000 });
     await nameInput.fill(testUserName);
@@ -55,7 +50,7 @@ test.describe.skip('Users CRUD smoke', () => {
     await page.waitForLoadState('networkidle');
 
     // If still on create tab, click "利用者一覧を表示"
-    const listButton = page.getByRole('button', { name: /利用者一覧を表示/i });
+    const listButton = page.getByRole('tab', { name: /利用者一覧/i }).or(page.getByRole('button', { name: /利用者一覧を表示/i })).first();
     const isListButtonVisible = await listButton.isVisible({ timeout: 2000 }).catch(() => false);
     if (isListButtonVisible) {
       await listButton.click();
@@ -91,11 +86,8 @@ test.describe.skip('Users CRUD smoke', () => {
     });
 
     // Create user (same as above)
-    const createButton = page.getByRole('button', { name: /新規利用者登録/i });
+    const createButton = page.getByRole('tab', { name: /新規利用者登録/i }).or(page.getByRole('button', { name: /新規利用者登録/i })).first();
     await createButton.click();
-
-    const autoButton = page.getByRole('button', { name: /自動/i });
-    await autoButton.click();
 
     const nameInput = page.getByLabel(/氏名/i);
     await nameInput.fill(testUserName);
@@ -106,7 +98,7 @@ test.describe.skip('Users CRUD smoke', () => {
 
     await page.waitForLoadState('networkidle');
 
-    const listButton = page.getByRole('button', { name: /利用者一覧を表示/i });
+    const listButton = page.getByRole('tab', { name: /利用者一覧/i }).or(page.getByRole('button', { name: /利用者一覧を表示/i })).first();
     const isListButtonVisible = await listButton.isVisible({ timeout: 2000 }).catch(() => false);
     if (isListButtonVisible) {
       await listButton.click();

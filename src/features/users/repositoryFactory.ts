@@ -1,11 +1,13 @@
 import {
-  getAppConfig,
-  isDemoModeEnabled,
-  isForceDemoEnabled,
-  isTestMode,
-  shouldSkipLogin,
+    getAppConfig,
+    isDemoModeEnabled,
+    isForceDemoEnabled,
+    isTestMode,
+    readBool,
+    shouldSkipLogin,
 } from '@/lib/env';
 import { hasSpfxContext } from '@/lib/runtime';
+import { useMemo } from 'react';
 
 import type { UserRepository } from './domain/UserRepository';
 import { inMemoryUserRepository } from './infra/InMemoryUserRepository';
@@ -28,16 +30,37 @@ let overrideKind: UserRepositoryKind | null = null;
 const shouldUseDemoRepository = (): boolean => {
   const { isDev } = getAppConfig();
   const spfxContextAvailable = hasSpfxContext();
+
+  // E2Eで明示的に SharePoint リポジトリを使いたい場合のフラグ
+  if (typeof window !== 'undefined') {
+    try {
+      const flag = window.localStorage.getItem('feature:forceUsersSp');
+      if (flag === '1' || flag === 'true') {
+        return false;
+      }
+    } catch {
+      // ignore
+    }
+  }
+
+  // 環境変数での制御
+  if (readBool('VITE_FEATURE_USERS_SP', false)) {
+    return false;
+  }
+
   return (
     isDev ||
     isTestMode() ||
     isForceDemoEnabled() ||
     isDemoModeEnabled() ||
-    shouldSkipLogin() ||
+    shouldUseSkipLogin() ||
     // Workers/pages (non-SharePoint) runtime: avoid SPFx-only repository
     !spfxContextAvailable
   );
 };
+
+// 内部的に使用
+const shouldUseSkipLogin = (): boolean => shouldSkipLogin();
 
 const resolveKind = (forced?: UserRepositoryKind): UserRepositoryKind =>
   forced ?? (shouldUseDemoRepository() ? 'demo' : 'sharepoint');
@@ -128,4 +151,17 @@ export const getCurrentUserRepositoryKind = (): UserRepositoryKind => {
     return overrideKind ?? cachedKind ?? resolveKind();
   }
   return cachedKind ?? resolveKind();
+};
+
+/**
+ * React Hook: Get user repository instance
+ *
+ * Repository is memoized based on its configuration.
+ *
+ * @returns UserRepository instance
+ */
+export const useUserRepository = (options?: UserRepositoryFactoryOptions): UserRepository => {
+  return useMemo(() => {
+    return getUserRepository(options);
+  }, [options]);
 };

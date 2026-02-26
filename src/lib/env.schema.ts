@@ -36,7 +36,7 @@ export const EnvSchema = z.object({
  * Extended schema used as the single source of truth for the typed `env` export.
  * Adds E2E/write-guard flags on top of the core EnvSchema.
  */
-export const appEnvSchema = EnvSchema.extend({
+export const AppEnvSchema = EnvSchema.extend({
   VITE_E2E_MSAL_MOCK: z.string().optional().default(''),
   VITE_ALLOW_WRITE_FALLBACK: z.string().optional().default(''),
   VITE_WRITE_ENABLED: z.string().optional().default(''),

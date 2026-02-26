@@ -640,7 +640,7 @@ const childRoutes: RouteObject[] = [
   {
     path: 'users',
     element: (
-      <RequireAudience requiredRole="viewer">
+      <RequireAudience requiredRole="admin">
         <UsersPanel />
       </RequireAudience>
     ),
@@ -648,7 +648,7 @@ const childRoutes: RouteObject[] = [
   {
     path: 'users/:userId',
     element: (
-      <RequireAudience requiredRole="viewer">
+      <RequireAudience requiredRole="admin">
         <SuspendedUserDetailPage />
       </RequireAudience>
     ),
@@ -656,7 +656,7 @@ const childRoutes: RouteObject[] = [
   {
     path: 'staff',
     element: (
-      <RequireAudience requiredRole="viewer">
+      <RequireAudience requiredRole="admin">
         <StaffPanel />
       </RequireAudience>
     ),

@@ -1,13 +1,13 @@
 import { getRuntimeEnv, isDev as runtimeIsDev } from '@/env';
 import { z } from 'zod';
-import { appEnvSchema } from './env.schema';
+import { AppEnvSchema } from './env.schema';
 
 type Primitive = string | number | boolean | undefined | null;
 export type EnvRecord = Record<string, Primitive>;
 
-export type AppEnv = z.infer<typeof appEnvSchema>;
+export type AppEnv = z.infer<typeof AppEnvSchema>;
 
-const _envParsed = appEnvSchema.safeParse(import.meta.env);
+const _envParsed = AppEnvSchema.safeParse(import.meta.env);
 if (!_envParsed.success) {
   console.warn('[env] Environment validation failed (non-fatal):', _envParsed.error.flatten().fieldErrors);
 }

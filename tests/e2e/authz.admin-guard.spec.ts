@@ -1,4 +1,4 @@
-import { test, expect, type Page } from '@playwright/test';
+import { expect, test, type Page } from '@playwright/test';
 
 type TestRole = 'admin' | 'viewer';
 
@@ -35,18 +35,30 @@ test.describe('admin guard e2e', () => {
     await expect(page.getByRole('heading', { name: accessDeniedHeading })).toHaveCount(0);
   });
 
-  test('viewer is blocked when opening audit from app link', async ({ page }) => {
+  test('viewer is blocked when opening audit or users from app link', async ({ page }) => {
     await bootstrapRole(page, 'viewer');
-    await page.getByRole('link', { name: /監査ログ|Audit/ }).first().click();
 
+    // Check audit path
+    await page.getByRole('link', { name: /監査ログ|Audit/ }).first().click();
     await expect(page.getByRole('heading', { name: accessDeniedHeading })).toBeVisible();
     await expect(page.getByTestId('audit-root')).toHaveCount(0);
+
+    // Check users path
+    await page.goto('/dashboard'); // Back to dashboard
+    await page.getByRole('link', { name: /利用者|Users/ }).first().click();
+    await expect(page.getByRole('heading', { name: accessDeniedHeading })).toBeVisible();
+    await expect(page.getByTestId('users-panel-root')).toHaveCount(0);
   });
 
   test('viewer is blocked on direct admin route access', async ({ page }) => {
+    // Audit
     await bootstrapRole(page, 'viewer', '/audit');
-
     await expect(page.getByRole('heading', { name: accessDeniedHeading })).toBeVisible();
     await expect(page.getByTestId('audit-root')).toHaveCount(0);
+
+    // Users
+    await bootstrapRole(page, 'viewer', '/users');
+    await expect(page.getByRole('heading', { name: accessDeniedHeading })).toBeVisible();
+    await expect(page.getByTestId('users-panel-root')).toHaveCount(0);
   });
 });
