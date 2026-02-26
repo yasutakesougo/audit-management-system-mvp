@@ -19,7 +19,8 @@ export interface QuickRecordFormEmbedProps {
 
 export const QuickRecordFormEmbed: React.FC<QuickRecordFormEmbedProps> = ({
   userId,
-  _date,
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  date,
   onClose,
   onSaveSuccess,
 }) => {
