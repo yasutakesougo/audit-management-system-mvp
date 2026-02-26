@@ -1,12 +1,12 @@
-import { describe, it, expect } from 'vitest';
+import { DEFAULT_SETTINGS } from '@/features/settings/settingsModel';
+import { describe, expect, it } from 'vitest';
 import { createAppTheme } from '../createAppTheme';
-import { defaultSettings } from '@/features/settings/settingsModel';
 
 describe('createAppTheme', () => {
   describe('Density Spacing', () => {
     it('creates theme with comfortable density spacing (8px)', () => {
       const theme = createAppTheme({
-        ...defaultSettings,
+        ...DEFAULT_SETTINGS,
         density: 'comfortable',
       });
 
@@ -16,7 +16,7 @@ describe('createAppTheme', () => {
 
     it('creates theme with compact density spacing (4px)', () => {
       const theme = createAppTheme({
-        ...defaultSettings,
+        ...DEFAULT_SETTINGS,
         density: 'compact',
       });
 
@@ -26,7 +26,7 @@ describe('createAppTheme', () => {
 
     it('creates theme with spacious density spacing (12px)', () => {
       const theme = createAppTheme({
-        ...defaultSettings,
+        ...DEFAULT_SETTINGS,
         density: 'spacious',
       });
 
@@ -38,7 +38,7 @@ describe('createAppTheme', () => {
   describe('Component Overrides', () => {
     it('applies density to button padding', () => {
       const theme = createAppTheme({
-        ...defaultSettings,
+        ...DEFAULT_SETTINGS,
         density: 'compact',
       });
 
@@ -49,7 +49,7 @@ describe('createAppTheme', () => {
 
     it('applies density to DialogActions padding', () => {
       const theme = createAppTheme({
-        ...defaultSettings,
+        ...DEFAULT_SETTINGS,
         density: 'spacious',
       });
 
@@ -59,17 +59,17 @@ describe('createAppTheme', () => {
 
     it('applies TextField size based on density', () => {
       const compactTheme = createAppTheme({
-        ...defaultSettings,
+        ...DEFAULT_SETTINGS,
         density: 'compact',
       });
 
       const comfortableTheme = createAppTheme({
-        ...defaultSettings,
+        ...DEFAULT_SETTINGS,
         density: 'comfortable',
       });
 
       const spaciousTheme = createAppTheme({
-        ...defaultSettings,
+        ...DEFAULT_SETTINGS,
         density: 'spacious',
       });
 
@@ -80,7 +80,7 @@ describe('createAppTheme', () => {
 
     it('applies Card padding override', () => {
       const theme = createAppTheme({
-        ...defaultSettings,
+        ...DEFAULT_SETTINGS,
         density: 'comfortable',
       });
 
@@ -90,7 +90,7 @@ describe('createAppTheme', () => {
 
     it('applies Stack default spacing', () => {
       const theme = createAppTheme({
-        ...defaultSettings,
+        ...DEFAULT_SETTINGS,
         density: 'comfortable',
       });
 
@@ -101,7 +101,7 @@ describe('createAppTheme', () => {
 
   describe('Pure Function Properties', () => {
     it('returns new theme object on each call (immutability)', () => {
-      const settings = { ...defaultSettings, density: 'comfortable' as const };
+      const settings = { ...DEFAULT_SETTINGS, density: 'comfortable' as const };
       const theme1 = createAppTheme(settings);
       const theme2 = createAppTheme(settings);
 
@@ -110,7 +110,7 @@ describe('createAppTheme', () => {
     });
 
     it('does not mutate input settings', () => {
-      const settings = { ...defaultSettings, density: 'comfortable' as const };
+      const settings = { ...DEFAULT_SETTINGS, density: 'comfortable' as const };
       const settingsCopy = { ...settings };
 
       createAppTheme(settings);

@@ -1,11 +1,14 @@
-import { renderHook, act } from '@testing-library/react';
+import { act, renderHook } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { BehaviorObservation } from '../domain/daily/types';
 
 const repo = {
-  listByUser: vi.fn<Promise<BehaviorObservation[]>, [string, { order?: 'asc' | 'desc'; limit?: number } | undefined]>(),
-  getByUser: vi.fn<Promise<BehaviorObservation[]>, [string]>(),
-  add: vi.fn<Promise<BehaviorObservation>, [Omit<BehaviorObservation, 'id'>]>(),
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  listByUser: vi.fn<any>(),
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  getByUser: vi.fn<any>(),
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  add: vi.fn<any>(),
 };
 
 vi.mock('../infra/behaviorRepositoryFactory', () => ({

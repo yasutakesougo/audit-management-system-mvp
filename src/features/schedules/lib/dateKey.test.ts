@@ -23,7 +23,7 @@ describe('dateKey', () => {
 
     it('falls back to Asia/Tokyo when env not set', () => {
       const originalEnv = window.__ENV__;
-      (window as Record<string, unknown>).__ENV__ = undefined;
+      (window as unknown as Record<string, unknown>).__ENV__ = undefined;
       try {
         const key = toDateKey(new Date('2026-02-18T05:00:00.000Z'));
         expect(key).toMatch(/^\d{4}-\d{2}-\d{2}$/);
@@ -48,7 +48,7 @@ describe('dateKey', () => {
 
     it('falls back to Asia/Tokyo by default', () => {
       const originalEnv = window.__ENV__;
-      (window as Record<string, unknown>).__ENV__ = undefined;
+      (window as unknown as Record<string, unknown>).__ENV__ = undefined;
       try {
         expect(getSchedulesTz()).toBe('Asia/Tokyo');
       } finally {
