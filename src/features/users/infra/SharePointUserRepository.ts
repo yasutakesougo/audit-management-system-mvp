@@ -13,11 +13,7 @@ import {
 
 import { normalizeAttendanceDays } from '../attendance';
 import type { UserRepository, UserRepositoryGetParams, UserRepositoryListParams, UserRepositoryUpdateDto } from '../domain/UserRepository';
-<<<<<<< HEAD
-import { UserMasterDomainSchema } from '../schema';
-=======
-import { userMasterCreateSchema, userMasterSchema } from '../schema';
->>>>>>> main
+import { userMasterCreateSchema, UserMasterDomainSchema } from '../schema';
 import type { IUserMaster, IUserMasterCreateDto } from '../types';
 
 const DEFAULT_TOP = 500;
@@ -142,8 +138,6 @@ export class SharePointUserRepository implements UserRepository {
     }
 
     // E2E または Web モード（SPFx 以外）: URL を指定して初期化
-    // これにより SPFx コンテキスト不足によるエラー（reading 'web'）を回避し、
-    // Playwright のモックが fetch を介して正しく動作するようにする。
     return spfi(siteUrl);
   }
 
@@ -164,7 +158,6 @@ export class SharePointUserRepository implements UserRepository {
     return candidates.some((value) => value.includes(keyword));
   }
 
-<<<<<<< HEAD
   private toDomain(raw: unknown): IUserMaster {
     try {
       return UserMasterDomainSchema.parse(raw);
@@ -175,49 +168,6 @@ export class SharePointUserRepository implements UserRepository {
       });
       throw error; // Re-throw to trigger the Operational Alert in the UI
     }
-=======
-  private toDomain(raw: UserRow): IUserMaster {
-    const fields = FIELD_MAP.Users_Master;
-    const record = raw as Record<string, unknown>;
-    const get = <T = unknown>(field: string): T | undefined => record[field] as T | undefined;
-    const attendance = normalizeAttendanceDays(get(fields.attendanceDays));
-    const transportTo = normalizeAttendanceDays(get(fields.transportToDays));
-    const transportFrom = normalizeAttendanceDays(get(fields.transportFromDays));
-
-    const domain = {
-      Id: Number(get<number>(fields.id) ?? raw.Id),
-      Title: get<string | null>(fields.title) ?? raw.Title ?? null,
-      UserID: (get<string>(fields.userId) ?? raw.UserID) ?? '',
-      FullName: (get<string>(fields.fullName) ?? raw.FullName) ?? '',
-      Furigana: get<string | null>(fields.furigana) ?? raw.Furigana ?? null,
-      FullNameKana: get<string | null>(fields.fullNameKana) ?? raw.FullNameKana ?? null,
-      ContractDate: get<string | null>(fields.contractDate) ?? raw.ContractDate ?? null,
-      ServiceStartDate: get<string | null>(fields.serviceStartDate) ?? raw.ServiceStartDate ?? null,
-      ServiceEndDate: get<string | null>(fields.serviceEndDate) ?? raw.ServiceEndDate ?? null,
-      IsHighIntensitySupportTarget:
-        get<boolean | null>(fields.isHighIntensitySupportTarget) ?? null,
-      IsSupportProcedureTarget:
-        get<boolean | null>(fields.isSupportProcedureTarget) ?? null,
-      severeFlag: get<boolean | null>(fields.severeFlag) ?? null,
-      IsActive: get<boolean | null>(fields.isActive) ?? raw.IsActive ?? null,
-      TransportToDays: transportTo,
-      TransportFromDays: transportFrom,
-      AttendanceDays: attendance,
-      RecipientCertNumber: get<string | null>(fields.recipientCertNumber) ?? raw.RecipientCertNumber ?? null,
-      RecipientCertExpiry: get<string | null>(fields.recipientCertExpiry) ?? raw.RecipientCertExpiry ?? null,
-      Modified: get<string | null>(fields.modified) ?? raw.Modified ?? null,
-      Created: get<string | null>(fields.created) ?? raw.Created ?? null,
-    };
-
-    // Validate domain object structure (best-effort, might warn instead of throw if legacy data)
-    try {
-      userMasterSchema.parse(domain);
-    } catch (error) {
-      console.warn('[SharePointUserRepository] Domain object validation failed', error, domain);
-    }
-
-    return domain;
->>>>>>> main
   }
 
   private toRequest(dto: Partial<IUserMasterCreateDto>): Record<string, unknown> {

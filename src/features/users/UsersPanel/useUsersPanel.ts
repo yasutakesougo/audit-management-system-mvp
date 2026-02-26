@@ -149,7 +149,7 @@ export function useUsersPanel(): UseUsersPanelReturn {
         await refresh();
       } catch (err: unknown) {
         if (err instanceof ZodError) {
-          const messages = err.errors.map((e) => `${e.path.join('.')}: ${e.message}`);
+          const messages = err.issues.map((e) => `${e.path.join('.')}: ${e.message}`);
           setIntegrityErrors(messages);
         }
       }
@@ -282,7 +282,7 @@ export function useUsersPanel(): UseUsersPanelReturn {
 
     try {
       const blob = await pdf(
-        React.createElement(AchievementRecordPDF, pdfData) as any
+        React.createElement(AchievementRecordPDF, pdfData) as unknown as React.ReactElement
       ).toBlob();
 
       const url = URL.createObjectURL(blob);

@@ -117,10 +117,15 @@ const getEnvValue = (key: string, envOverride?: EnvRecord): Primitive => {
     }
   }
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const globalImport = (globalThis as any).import;
-  if (typeof globalImport !== 'undefined' && (globalImport as any).meta?.env && typeof (globalImport as any).meta.env === 'object') {
-    const metaEnv = (globalImport as any).meta.env as Record<string, Primitive>;
+  // Use unknown for globalThis property access
+  const globalImport = (globalThis as Record<string, unknown>).import;
+  if (typeof globalImport !== 'undefined' &&
+      globalImport &&
+      typeof globalImport === 'object' &&
+      'meta' in globalImport &&
+      (globalImport.meta as Record<string, unknown>)?.env &&
+      typeof (globalImport.meta as { env: unknown }).env === 'object') {
+    const metaEnv = (globalImport.meta as { env: Record<string, Primitive> }).env;
     const candidate = metaEnv[key];
     if (isMeaningful(candidate)) {
       return candidate;
@@ -640,9 +645,3 @@ export const SHOULD_SKIP_LOGIN = shouldSkipLogin();
 export const SHOULD_SKIP_SHAREPOINT = shouldSkipSharePoint();
 /** @deprecated Use isSchedulesFeatureEnabled() */
 export const IS_SCHEDULES_ENABLED = isSchedulesFeatureEnabled();
-
-/** @deprecated Prefer readEnv/getAppConfig helpers */
-export const env = {
-  VITE_AUDIT_DEBUG: isAuditDebugEnabled(),
-  VITE_TOKUSEI_FORMS_URL: readEnv('VITE_TOKUSEI_FORMS_URL', ''),
-} as const;
