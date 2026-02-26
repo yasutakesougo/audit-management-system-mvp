@@ -64,6 +64,14 @@
 - ✅ 現場職員の混乱
 - ✅ **Monitoring Hub Stability**: Monitoring Hub is now contract-versioned and CI-stable as of v1. 外部連携同期の安定性と観測性が基盤レイヤーとして確立されています。
 
+### Maintenance & Next Steps (Monitoring Hub Hardening v1)
+
+静置期間（Architecture Stabilizing Period）における管理タスクです：
+
+- [ ] [Issue: Monitoring Hub v1 Runbook 整備](https://github.com/yasutakesougo/audit-management-system-mvp/issues/613)
+- [ ] [Issue: Monitoring Hub v1 Evidence Pack (証跡) 作成](https://github.com/yasutakesougo/audit-management-system-mvp/issues/614)
+- [ ] [Issue: 次期同期ターゲットの棚卸しとバックログ化](https://github.com/yasutakesougo/audit-management-system-mvp/issues/615)
+
 **E2E テスト戦略**
 
 ゲートの回帰を防ぐため、以下の複数プロジェクトで段階的にテストしています：
