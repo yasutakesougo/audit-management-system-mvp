@@ -8,7 +8,7 @@
  * 現在：Page の renderSection(case 'schedule') の JSX をそのまま移動
  */
 
-import type { SpLaneModel } from '@/features/dashboard/useDashboardSummary';
+import { type SpLaneModel } from '@/features/dashboard/types/hub';
 import { SchedulesSpLane } from '@/features/schedules/components/SchedulesSpLane';
 import EventAvailableRoundedIcon from '@mui/icons-material/EventAvailableRounded';
 import Button from '@mui/material/Button';

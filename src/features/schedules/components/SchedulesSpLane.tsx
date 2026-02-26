@@ -22,30 +22,7 @@ import {
     Typography,
 } from '@mui/material';
 import React from 'react';
-
-export type LaneState = 'disabled' | 'idle' | 'active' | 'error';
-
-export interface SpLaneModel {
-  version: number;
-  state: LaneState;
-  title: string;
-  subtitle?: string;
-  lastSyncAt?: string;
-  itemCount?: number;
-  reason?: string;
-  source?: string;
-  busy?: boolean;
-  onRetry?: () => void;
-  canRetry?: boolean;
-  details?: {
-    state: LaneState;
-    source?: string;
-    lastSyncAt?: string;
-    itemCount?: number;
-    error?: string;
-    reason?: string;
-  };
-}
+import { sourceLabelMap, type SpLaneModel } from '../../dashboard/types/hub';
 
 export interface SchedulesSpLaneProps {
   model: SpLaneModel;
@@ -155,17 +132,17 @@ export const SchedulesSpLane: React.FC<SchedulesSpLaneProps> = ({ model }) => {
         return (
           <Box>
             <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 1.5 }}>
-              <Chip
-                icon={<SyncIcon sx={{ fontSize: '14px !important' }} />}
-                label={
-                  source === 'demo' ? 'デモ同期済み' :
-                  source === 'seed' ? '保存データ同期' : '最新同期済み'
-                }
-                size="small"
-                color="success"
-                variant="outlined"
-                sx={{ height: 20, fontSize: '0.65rem' }}
-              />
+              {source && (
+                <Chip
+                  icon={<SyncIcon sx={{ fontSize: '14px !important' }} />}
+                  label={sourceLabelMap[source] || source}
+                  size="small"
+                  color={source === 'sp' || source === 'polling' ? 'primary' : 'default'}
+                  variant="outlined"
+                  sx={{ height: 20, fontSize: '0.65rem', fontWeight: 600 }}
+                  data-source={source}
+                />
+              )}
               {lastSyncAt && (
                 <Typography variant="caption" color="text.secondary">
                   {new Date(lastSyncAt).toLocaleTimeString('ja-JP', { hour: '2-digit', minute: '2-digit' })}
@@ -216,10 +193,14 @@ export const SchedulesSpLane: React.FC<SchedulesSpLaneProps> = ({ model }) => {
               <Typography variant="caption" color="text.secondary">現在の状態</Typography>
               <Typography variant="body2" fontWeight={600}>{details.state.toUpperCase()}</Typography>
             </Box>
-            <Box>
-              <Typography variant="caption" color="text.secondary">同期ソース</Typography>
-              <Typography variant="body2" fontWeight={600}>{details.source || '未接続'}</Typography>
-            </Box>
+            {details.source && (
+              <Box>
+                <Typography variant="caption" color="text.secondary">データソース</Typography>
+                <Typography variant="body2" fontWeight={600}>
+                  {sourceLabelMap[details.source] || details.source}
+                </Typography>
+              </Box>
+            )}
             <Box>
               <Typography variant="caption" color="text.secondary">最終同期時刻</Typography>
               <Typography variant="body2" fontWeight={600}>
@@ -234,10 +215,22 @@ export const SchedulesSpLane: React.FC<SchedulesSpLaneProps> = ({ model }) => {
                 {details.itemCount !== undefined ? `${details.itemCount} 件` : '不明'}
               </Typography>
             </Box>
+            {details.errorKind && (
+              <Box>
+                <Typography variant="caption" color="text.secondary">エラーの種類</Typography>
+                <Typography variant="body2" fontWeight={600} color="error">{details.errorKind.toUpperCase()}</Typography>
+              </Box>
+            )}
+            {details.hint && (
+              <Box>
+                <Typography variant="caption" color="text.secondary">ヒント / 解決策</Typography>
+                <Typography variant="body2" sx={{ fontWeight: 500, color: 'primary.dark' }}>{details.hint}</Typography>
+              </Box>
+            )}
             {details.error && (
               <Box>
-                <Typography variant="caption" color="error">エラーメッセージ</Typography>
-                <Typography variant="caption" display="block" sx={{ mt: 0.5, p: 1, bgcolor: 'error.lighter', borderRadius: 0.5 }}>
+                <Typography variant="caption" color="error">技術的な詳細 (エラーメッセージ)</Typography>
+                <Typography variant="caption" display="block" sx={{ mt: 0.5, p: 1, bgcolor: 'error.lighter', borderRadius: 0.5, fontFamily: 'monospace' }}>
                   {details.error}
                 </Typography>
               </Box>
@@ -284,39 +277,52 @@ export const SchedulesSpLane: React.FC<SchedulesSpLaneProps> = ({ model }) => {
       data-source={source}
       data-busy={busy ? '1' : undefined}
       data-version={model.version}
+      data-error-kind={details?.errorKind}
+      data-can-retry={canRetry ? '1' : '0'}
+      data-cooldown-until={model.cooldownUntil}
+      data-failure-count={model.failureCount}
+      data-retry-after={model.retryAfter}
     >
       <Box sx={{ display: 'flex', alignItems: 'center', mb: state === 'active' ? 0.5 : 2 }}>
         <Typography variant="subtitle2" sx={{ fontWeight: 700, flex: 1 }}>
           {title}
         </Typography>
         <Stack direction="row" spacing={0.5} alignItems="center">
-          {canRetry && (
-            <Tooltip title={busy ? '同期中...' : '今すぐ同期'}>
-              <Box component="span">
-                <IconButton
-                  size="small"
-                  onClick={onRetry}
-                  disabled={busy}
-                  aria-label={busy ? '同期中' : '今すぐ同期'}
-                  sx={{
-                    color: state === 'error' ? 'error.main' : 'primary.main',
-                    bgcolor: state === 'error' ? 'error.lighter' : 'primary.lighter',
-                    '&:hover': {
-                      bgcolor: state === 'error' ? 'error.light' : 'primary.light',
-                    },
-                    '&.Mui-disabled': {
-                      color: state === 'error' ? 'error.light' : 'primary.light',
-                    },
-                  }}
-                >
-                  {busy ? (
-                    <CircularProgress size={16} color="inherit" />
-                  ) : (
-                    <RefreshIcon sx={{ fontSize: 18 }} />
-                  )}
-                </IconButton>
-              </Box>
-            </Tooltip>
+          {onRetry && (
+            <Stack direction="row" spacing={0.5} alignItems="center">
+              <Tooltip title={busy ? '同期中...' : (!canRetry ? '連投防止のため待機中' : '今すぐ同期')}>
+                <Box component="span">
+                  <IconButton
+                    size="small"
+                    onClick={onRetry}
+                    disabled={!canRetry}
+                    aria-label={busy ? '同期中' : '今すぐ同期'}
+                    sx={{
+                      color: state === 'error' ? 'error.main' : 'primary.main',
+                      bgcolor: state === 'error' ? 'error.lighter' : 'primary.lighter',
+                      '&:hover': {
+                        bgcolor: state === 'error' ? 'error.light' : 'primary.light',
+                      },
+                      '&.Mui-disabled': {
+                        color: state === 'error' ? 'error.light' : 'primary.light',
+                        opacity: 0.5,
+                      },
+                    }}
+                  >
+                    {busy ? (
+                      <CircularProgress size={16} color="inherit" />
+                    ) : (
+                      <RefreshIcon sx={{ fontSize: 18 }} />
+                    )}
+                  </IconButton>
+                </Box>
+              </Tooltip>
+              {!canRetry && !busy && model.cooldownUntil && (
+                <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.65rem' }}>
+                  待機中...
+                </Typography>
+              )}
+            </Stack>
           )}
           {state !== 'disabled' && (
             <IconButton

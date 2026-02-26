@@ -21,6 +21,7 @@ export const EnvSchema = z.object({
 
   // Feature Flags
   VITE_FEATURE_SCHEDULES_SP: z.string().optional().default(''),
+  VITE_IS_SKIP_SHAREPOINT: z.string().optional().default(''),
 
   // Azure AD / MSAL
   VITE_MSAL_CLIENT_ID: z.string().optional().default(''),
