@@ -1,6 +1,7 @@
+import type { SpLaneModel } from '@/features/dashboard/types/hub';
 import { fireEvent, render, screen } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
-import { SchedulesSpLane, type SpLaneModel } from '../SchedulesSpLane';
+import { SchedulesSpLane } from '../SchedulesSpLane';
 
 const renderLane = (model: SpLaneModel) => {
   render(<SchedulesSpLane model={model} />);

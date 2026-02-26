@@ -10,17 +10,29 @@
  * Detailed logic testing belongs in component/integration tests.
  */
 
-import { describe, it, expect } from 'vitest';
-import { renderHook } from '@testing-library/react';
-import { useDashboardSummary, type UseDashboardSummaryArgs } from '../useDashboardSummary';
-import type { IUserMaster } from '@/sharepoint/fields';
 import type { PersonDaily } from '@/domain/daily/types';
-import type { Staff } from '@/types';
 import type { AttendanceCounts } from '@/features/staff/attendance/port';
+import type { IUserMaster } from '@/sharepoint/fields';
+import type { Staff } from '@/types';
+import { renderHook } from '@testing-library/react';
+import { describe, expect, it } from 'vitest';
+import { useDashboardSummary } from '../useDashboardSummary';
 
 // ============================================================================
 // Test Fixtures (Minimal valid data)
 // ============================================================================
+
+export interface UseDashboardSummaryArgs {
+  users: IUserMaster[];
+  staff: Staff[];
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  visits: Record<string, any>;
+  today: string;
+  currentMonth: string;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  generateMockActivityRecords: any;
+  attendanceCounts: AttendanceCounts;
+}
 
 const createMinimalUser = (overrides?: Partial<IUserMaster>): IUserMaster => ({
   Id: 1,
@@ -64,7 +76,7 @@ const createMinimalStaff = (overrides?: Partial<Staff>): Staff => ({
   staffId: 'S001',
   name: 'Staff Member',
   ...overrides,
-});
+} as Staff);
 
 const createMinimalAttendanceCounts = (
   overrides?: Partial<AttendanceCounts>
@@ -101,7 +113,7 @@ describe('useDashboardSummary', () => {
         generateMockActivityRecords: mockGenerateMockActivityRecords,
       };
 
-      const { result } = renderHook(() => useDashboardSummary(args));
+      const { result } = renderHook(() => useDashboardSummary(args.users, args.staff, args.visits, args.today, args.currentMonth, args.generateMockActivityRecords, args.attendanceCounts, { state: 'idle' } as unknown as import('../types/hub').HubSyncStatus));
 
       // Verify all expected keys exist
       expect(result.current).toHaveProperty('activityRecords');
@@ -126,7 +138,7 @@ describe('useDashboardSummary', () => {
         generateMockActivityRecords: mockGenerateMockActivityRecords,
       };
 
-      const { result } = renderHook(() => useDashboardSummary(args));
+      const { result } = renderHook(() => useDashboardSummary(args.users, args.staff, args.visits, args.today, args.currentMonth, args.generateMockActivityRecords, args.attendanceCounts, { state: 'idle' } as unknown as import('../types/hub').HubSyncStatus));
 
       // Type checks
       expect(Array.isArray(result.current.activityRecords)).toBe(true);
@@ -153,7 +165,7 @@ describe('useDashboardSummary', () => {
         generateMockActivityRecords: mockGenerateMockActivityRecords,
       };
 
-      const { result } = renderHook(() => useDashboardSummary(args));
+      const { result } = renderHook(() => useDashboardSummary(args.users, args.staff, args.visits, args.today, args.currentMonth, args.generateMockActivityRecords, args.attendanceCounts, { state: 'idle' } as unknown as import('../types/hub').HubSyncStatus));
 
       expect(result.current.activityRecords).toEqual([]);
       expect(result.current.intensiveSupportUsers).toEqual([]);
@@ -172,7 +184,7 @@ describe('useDashboardSummary', () => {
         generateMockActivityRecords: mockGenerateMockActivityRecords,
       };
 
-      const { result } = renderHook(() => useDashboardSummary(args));
+      const { result } = renderHook(() => useDashboardSummary(args.users, args.staff, args.visits, args.today, args.currentMonth, args.generateMockActivityRecords, args.attendanceCounts, { state: 'idle' } as unknown as import('../types/hub').HubSyncStatus));
 
       // Should not throw
       expect(result.current.activityRecords.length).toBe(1);
@@ -192,7 +204,7 @@ describe('useDashboardSummary', () => {
         generateMockActivityRecords: mockGenerateMockActivityRecords,
       };
 
-      const { result } = renderHook(() => useDashboardSummary(args));
+      const { result } = renderHook(() => useDashboardSummary(args.users, args.staff, args.visits, args.today, args.currentMonth, args.generateMockActivityRecords, args.attendanceCounts, { state: 'idle' } as unknown as import('../types/hub').HubSyncStatus));
 
       expect(result.current.stats).toHaveProperty('totalUsers');
       expect(result.current.stats).toHaveProperty('recordedUsers');
@@ -215,7 +227,7 @@ describe('useDashboardSummary', () => {
         generateMockActivityRecords: mockGenerateMockActivityRecords,
       };
 
-      const { result } = renderHook(() => useDashboardSummary(args));
+      const { result } = renderHook(() => useDashboardSummary(args.users, args.staff, args.visits, args.today, args.currentMonth, args.generateMockActivityRecords, args.attendanceCounts, { state: 'idle' } as unknown as import('../types/hub').HubSyncStatus));
 
       expect(result.current.attendanceSummary).toHaveProperty('facilityAttendees');
       expect(result.current.attendanceSummary).toHaveProperty('lateOrEarlyLeave');
@@ -241,7 +253,7 @@ describe('useDashboardSummary', () => {
         generateMockActivityRecords: mockGenerateMockActivityRecords,
       };
 
-      const { result } = renderHook(() => useDashboardSummary(args));
+      const { result } = renderHook(() => useDashboardSummary(args.users, args.staff, args.visits, args.today, args.currentMonth, args.generateMockActivityRecords, args.attendanceCounts, { state: 'idle' } as unknown as import('../types/hub').HubSyncStatus));
 
       expect(result.current.dailyRecordStatus).toHaveProperty('total');
       expect(result.current.dailyRecordStatus).toHaveProperty('pending');
@@ -262,7 +274,7 @@ describe('useDashboardSummary', () => {
         generateMockActivityRecords: mockGenerateMockActivityRecords,
       };
 
-      const { result } = renderHook(() => useDashboardSummary(args));
+      const { result } = renderHook(() => useDashboardSummary(args.users, args.staff, args.visits, args.today, args.currentMonth, args.generateMockActivityRecords, args.attendanceCounts, { state: 'idle' } as unknown as import('../types/hub').HubSyncStatus));
 
       expect(result.current.scheduleLanesToday).toHaveProperty('userLane');
       expect(result.current.scheduleLanesToday).toHaveProperty('staffLane');
@@ -283,7 +295,7 @@ describe('useDashboardSummary', () => {
         generateMockActivityRecords: mockGenerateMockActivityRecords,
       };
 
-      const { result } = renderHook(() => useDashboardSummary(args));
+      const { result } = renderHook(() => useDashboardSummary(args.users, args.staff, args.visits, args.today, args.currentMonth, args.generateMockActivityRecords, args.attendanceCounts, { state: 'idle' } as unknown as import('../types/hub').HubSyncStatus));
 
       expect(result.current.scheduleLanesTomorrow).toHaveProperty('userLane');
       expect(result.current.scheduleLanesTomorrow).toHaveProperty('staffLane');
@@ -310,7 +322,7 @@ describe('useDashboardSummary', () => {
         generateMockActivityRecords: mockGenerateMockActivityRecords,
       };
 
-      const { result } = renderHook(() => useDashboardSummary(args));
+      const { result } = renderHook(() => useDashboardSummary(args.users, args.staff, args.visits, args.today, args.currentMonth, args.generateMockActivityRecords, args.attendanceCounts, { state: 'idle' } as unknown as import('../types/hub').HubSyncStatus));
 
       expect(result.current.intensiveSupportUsers.length).toBe(2);
       expect(result.current.intensiveSupportUsers.every(u => u.IsSupportProcedureTarget)).toBe(true);
@@ -332,7 +344,7 @@ describe('useDashboardSummary', () => {
         generateMockActivityRecords: mockGenerateMockActivityRecords,
       };
 
-      const { result } = renderHook(() => useDashboardSummary(args));
+      const { result } = renderHook(() => useDashboardSummary(args.users, args.staff, args.visits, args.today, args.currentMonth, args.generateMockActivityRecords, args.attendanceCounts, { state: 'idle' } as unknown as import('../types/hub').HubSyncStatus));
 
       expect(result.current.prioritizedUsers.length).toBe(3);
       expect(result.current.intensiveSupportUsers.length).toBe(4);

@@ -1,10 +1,10 @@
 import Home from '@/app/Home';
 import { routerFutureFlags } from '@/app/routerFuture';
 import { FeatureFlagsProvider, type FeatureFlagSnapshot } from '@/config/featureFlags';
+import { TESTIDS } from '@/testids';
 import { ThemeProvider, createTheme } from '@mui/material/styles';
 import { screen } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { TESTIDS } from '@/testids';
 import { renderWithAppProviders } from '../helpers/renderWithAppProviders';
 
 const isDemoModeEnabledMock = vi.fn((): boolean => false);
@@ -14,6 +14,8 @@ const featureFlagsState = vi.hoisted<FeatureFlagSnapshot>(() => ({
   schedulesWeekV2: false,
   icebergPdca: false,
   staffAttendance: false,
+  appShellVsCode: false,
+  todayOps: false,
 }));
 
 vi.mock('@/lib/env', async () => {

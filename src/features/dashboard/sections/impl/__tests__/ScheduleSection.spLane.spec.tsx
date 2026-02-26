@@ -1,4 +1,4 @@
-import type { SpLaneModel } from '@/features/dashboard/useDashboardSummary';
+import type { SpLaneModel } from '@/features/dashboard/types/hub';
 import { render, screen } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { describe, expect, it } from 'vitest';
@@ -8,8 +8,9 @@ describe('ScheduleSection (Constant SP Lane)', () => {
   it('always renders schedules-sp-lane as the 4th lane frame', () => {
     const spLane: SpLaneModel = {
       state: 'disabled',
-      title: 'SharePoint 外部連携',
-      reason: '機能フラグがオフです',
+      title: 'SP連携スケジュール',
+      reason: '連携オフ',
+      version: 1,
     };
 
     render(

@@ -1,5 +1,5 @@
-import { StaffAttendanceInputPage } from '@/pages/StaffAttendanceInputPage';
 import { FeatureFlagsProvider, type FeatureFlagSnapshot } from '@/config/featureFlags';
+import { StaffAttendanceInputPage } from '@/pages/StaffAttendanceInputPage';
 import { screen } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 import { renderWithAppProviders } from '../../helpers/renderWithAppProviders';
@@ -10,6 +10,8 @@ const baseFlags: FeatureFlagSnapshot = {
   schedulesWeekV2: false,
   icebergPdca: false,
   staffAttendance: false,
+  appShellVsCode: false,
+  todayOps: false,
 };
 
 const renderRoute = (flags: FeatureFlagSnapshot) =>

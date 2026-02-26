@@ -24,20 +24,30 @@ export const QuickRecordFormEmbed: React.FC<QuickRecordFormEmbedProps> = ({
   onSaveSuccess,
 }) => {
   const { save } = useTableDailyRecordSave();
+  const successfulSaveRef = React.useRef(false);
 
-  // PR6 Step E:
-  // - Save the data using shared daily save logic.
-  // - On success, close the drawer.
-  // - On failure, let the form's inner snackbar catch and display the error without closing.
   const handleSave = async (data: TableDailyRecordData) => {
     if (isDevMode() || isE2E()) {
       // eslint-disable-next-line no-console
       console.log('Intercepted Save in QuickRecordFormEmbed:', data);
     }
 
+    if (!userId && !date) {
+      return;
+    }
+
     await save(data); // 成功したらここを通る
+    successfulSaveRef.current = true;
     onSaveSuccess?.();
-    onClose();        // 成功時のみ閉じる
+    // Do NOT call onClose() here anymore. We let TodayOpsPage decide routing.
+  };
+
+  const interceptedOnClose = () => {
+    if (successfulSaveRef.current) {
+      successfulSaveRef.current = false;
+      return; // Ignore the rogue onClose() coming from TableDailyRecordForm after a successful save
+    }
+    onClose();
   };
 
   return (
@@ -48,7 +58,7 @@ export const QuickRecordFormEmbed: React.FC<QuickRecordFormEmbedProps> = ({
       <TableDailyRecordForm
         open={true}
         variant="content"
-        onClose={onClose}
+        onClose={interceptedOnClose}
         onSave={handleSave}
         initialUserId={userId}
         initialDate={date}

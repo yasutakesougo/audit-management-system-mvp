@@ -108,4 +108,73 @@ test.describe('Today Ops Screen', () => {
     await expect(drawer).not.toBeVisible();
     await expect(page).not.toHaveURL(/.*userId=/);
   });
+
+  test('continuous input toggle handles auto-next flow properly', async ({ page }) => {
+    // 1. Visit the today page
+    await page.goto('/today');
+
+    // Wait for the banner to be visible
+    const banner = page.getByTestId('today-hero-banner');
+    await expect(banner).toBeVisible({ timeout: 2000 });
+
+    // 2. Click the CTA
+    const ctaButton = page.getByTestId('today-hero-cta');
+    await ctaButton.click();
+
+    // Drawer should open
+    const drawer = page.getByTestId('today-quickrecord-drawer');
+    await expect(drawer).toBeVisible();
+
+    // 3. Verify toggle is ON by default
+    const toggle = drawer.locator('input[type="checkbox"]').first();
+    await expect(toggle).toBeAttached({ timeout: 2000 });
+    await expect(toggle).toBeChecked();
+
+    // 4. Extract first user ID
+    const embedForm = drawer.getByTestId('today-quickrecord-form-embed');
+    const targetUserIdText = await embedForm.getByTestId('today-quickrecord-target-userid').textContent();
+    const firstUserId = targetUserIdText?.trim() || '';
+    expect(firstUserId).toMatch(/^U-?\d+/);
+
+    // Mock the POST save API call to return 200 quickly
+    await page.route('/api/daily-records', async route => {
+      await route.fulfill({ status: 200, contentType: 'application/json', body: '{}' });
+    });
+
+    // Fill required reporter name
+    await embedForm.getByLabel('記録者名').fill('テスト太郎');
+
+    // Save
+    const saveBtn = embedForm.getByTestId('daily-table-main-save-button');
+    await saveBtn.click();
+
+    // Verify it moved to the next user
+    await expect(page).not.toHaveURL(new RegExp(`userId=${firstUserId}`));
+    await expect(page).toHaveURL(/.*userId=U-?\d+/);
+
+    // 5. Turn toggle OFF by forcefully unchecking the input
+    await toggle.uncheck({ force: true });
+    await expect(toggle).not.toBeChecked();
+
+    // Extract second user ID
+    const secondUserIdText = await embedForm.getByTestId('today-quickrecord-target-userid').textContent();
+    const secondUserId = secondUserIdText?.trim() || '';
+    expect(secondUserId).toMatch(/^U-?\d+/);
+
+    // Refill the required reporter name for the newly mounted form
+    await embedForm.getByLabel('記録者名').fill('テスト太郎2');
+
+    // Forcefully select the target user row
+    const targetUserCheckbox = embedForm.getByLabel(new RegExp(secondUserId)).locator('input[type="checkbox"]').first();
+    if (await targetUserCheckbox.isVisible()) {
+      await targetUserCheckbox.check({ force: true });
+    }
+
+    // Click save again
+    await embedForm.getByTestId('daily-table-main-save-button').click();
+
+    // Verfy it closes and resets URL because toggle is OFF
+    await expect(drawer).not.toBeVisible();
+    await expect(page).not.toHaveURL(/.*mode=unfilled/);
+  });
 });
