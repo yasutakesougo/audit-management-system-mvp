@@ -22,8 +22,8 @@ cert.pfx.b64
 .certs/
 .lighthouseci/
 lhci-results.json
-reports/
-logs/
+/reports/
+/logs/
 csp-reports/
 .vite.pid
 .vitest.pid
