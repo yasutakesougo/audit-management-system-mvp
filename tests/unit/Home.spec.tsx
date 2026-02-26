@@ -12,7 +12,10 @@ const featureFlagsState = vi.hoisted<FeatureFlagSnapshot>(() => ({
   schedules: false,
   complianceForm: false,
   schedulesWeekV2: false,
-  icebergPdca: false, staffAttendance: false, appShellVsCode: false, todayOps: false
+  icebergPdca: false,
+  staffAttendance: false,
+  appShellVsCode: false,
+  todayOps: false,
 }));
 
 vi.mock('@/lib/env', async () => {

@@ -8,8 +8,8 @@ describe('ScheduleSection (Constant SP Lane)', () => {
   it('always renders schedules-sp-lane as the 4th lane frame', () => {
     const spLane: SpLaneModel = {
       state: 'disabled',
-      title: 'SharePoint',
-      reason: 'Feature flag disabled',
+      title: 'SP連携スケジュール',
+      reason: '連携オフ',
       version: 1,
     };
 

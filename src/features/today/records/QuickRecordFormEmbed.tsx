@@ -37,7 +37,6 @@ export const QuickRecordFormEmbed: React.FC<QuickRecordFormEmbedProps> = ({
 
     await save(data); // 成功したらここを通る
     onSaveSuccess?.();
-    onClose();        // 成功時のみ閉じる
   };
 
   return (

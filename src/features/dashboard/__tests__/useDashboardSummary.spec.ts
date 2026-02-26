@@ -22,6 +22,18 @@ import { useDashboardSummary } from '../useDashboardSummary';
 // Test Fixtures (Minimal valid data)
 // ============================================================================
 
+export interface UseDashboardSummaryArgs {
+  users: IUserMaster[];
+  staff: Staff[];
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  visits: Record<string, any>;
+  today: string;
+  currentMonth: string;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  generateMockActivityRecords: any;
+  attendanceCounts: AttendanceCounts;
+}
+
 const createMinimalUser = (overrides?: Partial<IUserMaster>): IUserMaster => ({
   Id: 1,
   UserID: 'U001',

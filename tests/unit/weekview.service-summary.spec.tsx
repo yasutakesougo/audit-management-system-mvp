@@ -1,8 +1,9 @@
 import { WeekView } from '@/features/schedules';
 import { render, screen, within } from '@testing-library/react';
+import React from 'react';
 import { describe, expect, it } from 'vitest';
 
-type WeekItem = NonNullable<Parameters<typeof WeekView>[0]['items']>[number];
+type WeekItem = NonNullable<React.ComponentProps<typeof WeekView>['items']>[number];
 
 describe.skip('WeekView service summary chips', () => {
   const range = { from: '2025-03-03', to: '2025-03-10' };
@@ -16,7 +17,7 @@ describe.skip('WeekView service summary chips', () => {
         end: '2025-03-03T02:00:00.000Z',
         category: 'Org',
         serviceType: 'other',
-        etag: '"1"',
+        etag: 'w/"1"',
       },
       {
         id: 'other-2',
@@ -25,7 +26,7 @@ describe.skip('WeekView service summary chips', () => {
         end: '2025-03-03T04:00:00.000Z',
         category: 'Org',
         serviceType: 'other',
-        etag: '"1"',
+        etag: 'w/"2"',
       },
       {
         id: 'other-3',
@@ -34,7 +35,7 @@ describe.skip('WeekView service summary chips', () => {
         end: '2025-03-03T06:00:00.000Z',
         category: 'Org',
         serviceType: 'other',
-        etag: '"1"',
+        etag: 'w/"3"',
       },
       {
         id: 'meeting-other-day',
@@ -43,7 +44,7 @@ describe.skip('WeekView service summary chips', () => {
         end: '2025-03-04T02:00:00.000Z',
         category: 'Org',
         serviceType: 'meeting',
-        etag: '"1"',
+        etag: 'w/"4"',
       },
     ];
 
