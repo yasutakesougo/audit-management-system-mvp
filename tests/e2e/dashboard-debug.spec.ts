@@ -18,7 +18,7 @@ test.describe('Dashboard Debug', () => {
       }
     });
 
-    await page.goto('http://localhost:3000/dashboard?mode=morning');
+    await page.goto('/dashboard?mode=morning');
 
     // 十分な時間を待つ
     await page.waitForTimeout(10000);

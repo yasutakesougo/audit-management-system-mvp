@@ -1,5 +1,5 @@
-import { useUsersDemo } from '@/features/users/usersStoreDemo';
-import type { IUserMaster } from '@/features/users/types';
+import type { IUserMaster } from '@/features/users';
+import { useUsersDemo } from '@/features/users';
 import { useMemo } from 'react';
 
 type AttendanceVisitSnapshot = {

@@ -1,4 +1,6 @@
 import * as rootEnv from '@/env';
+import { __resetAppConfigForTests } from '@/lib/env';
+import { resetParsedEnvForTests } from '@/lib/env.schema';
 import { __test__, getStaffMaster, getUsersMaster } from '@/lib/spClient';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -11,6 +13,8 @@ const buildResponse = (payload: unknown) =>
 describe('spClient master list helpers', () => {
   beforeEach(() => {
     __test__.resetMissingOptionalFieldsCache();
+    resetParsedEnvForTests();
+    __resetAppConfigForTests();
   });
 
   afterEach(() => {

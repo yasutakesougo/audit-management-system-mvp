@@ -8,6 +8,7 @@ export type ResultError =
   | { kind: 'forbidden'; message?: string }
   | { kind: 'notFound'; message?: string }
   | { kind: 'validation'; message: string; details?: unknown }
+  | { kind: 'network'; message: string; cause?: unknown }
   | { kind: 'unknown'; message: string; cause?: unknown };
 
 export type Result<T> =

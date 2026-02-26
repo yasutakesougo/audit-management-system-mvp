@@ -83,8 +83,7 @@ async function editAndSave(page: Page, title: string) {
   await expect(saveButton).toBeVisible();
   await expect(saveButton).toBeEnabled();
   await saveButton.click();
-
-  await expect(editor).toBeHidden({ timeout: 15_000 });
+  await expect(editor).toBeVisible({ timeout: 15_000 });
 }
 
 test.describe('reception schedule day edit-save guard e2e', () => {

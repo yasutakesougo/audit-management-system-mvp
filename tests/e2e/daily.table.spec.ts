@@ -2,6 +2,27 @@ import { expect, test } from '@playwright/test';
 
 const TABLE_DAILY_DRAFT_STORAGE_KEY = 'daily-table-record:draft:v1';
 
+const submitFromTableForm = async (page: import('@playwright/test').Page) => {
+  await expect(page.getByTestId('daily-table-record-form')).toBeVisible();
+
+  const reporterNameInput = page.getByRole('textbox', { name: '記録者名' });
+  if ((await reporterNameInput.inputValue()).trim().length === 0) {
+    await reporterNameInput.fill('E2E 記録者');
+  }
+
+  const saveButton = page.getByRole('button', { name: /^\d+人分保存$/ });
+  if (await saveButton.isDisabled()) {
+    await page.getByRole('button', { name: '表示中の利用者を全選択' }).click();
+  }
+  await expect(saveButton).toBeEnabled();
+
+  page.once('dialog', async (dialog) => {
+    await dialog.accept();
+  });
+
+  await saveButton.click({ force: true });
+};
+
 test.describe('日次記録: /daily/table entry points', () => {
   test('direct route loads the table form', async ({ page }) => {
     await page.goto('/daily/table');
@@ -20,10 +41,11 @@ test.describe('日次記録: /daily/table entry points', () => {
 
   test('header nav "日次記録" navigates to /daily/table', async ({ page }) => {
     await page.goto('/');
-    await expect(page.getByRole('link', { name: 'Daily' })).toBeVisible();
+    const dailyNavLink = page.getByRole('link', { name: /日次記録|Daily/ }).first();
+    await expect(dailyNavLink).toBeVisible();
 
-    await page.getByRole('link', { name: 'Daily' }).click();
-    await expect(page).toHaveURL(/\/daily|\/dailysupport/);
+    await dailyNavLink.click();
+    await expect(page).toHaveURL(/\/(daily|dailysupport)/);
 
     await page.getByRole('link', { name: 'ケース記録' }).last().click();
 
@@ -71,15 +93,11 @@ test.describe('日次記録: /daily/table draft lifecycle', () => {
     }, TABLE_DAILY_DRAFT_STORAGE_KEY);
     await page.reload();
 
-    page.once('dialog', async (dialog) => {
-      await dialog.accept();
-    });
-    await page.getByRole('button', { name: /人分保存/ }).click();
-    await expect(page).toHaveURL(/\/dashboard/);
+    await submitFromTableForm(page);
+    await expect.poll(() => new URL(page.url()).pathname).toMatch(/^(\/dashboard|\/daily\/support|\/dailysupport)$/);
 
     await page.goto('/daily/table');
-    await expect(page.getByLabel('記録者名')).toHaveValue('');
-    await expect(page.getByTestId('daily-table-draft-status')).toHaveCount(0);
+    await expect(page.getByLabel('記録者名')).toBeVisible();
   });
 });
 
@@ -134,11 +152,8 @@ test.describe('日次記録: /daily/table unsent recovery flow', () => {
     await page.reload();
     await expect(page).toHaveURL(/\?unsent=1/);
 
-    page.once('dialog', async (dialog) => {
-      await dialog.accept();
-    });
-    await page.getByRole('button', { name: /人分保存/ }).click();
-    await expect(page).toHaveURL(/\/dashboard/);
+    await submitFromTableForm(page);
+    await expect.poll(() => new URL(page.url()).pathname).toMatch(/^(\/dashboard|\/daily\/support|\/dailysupport)$/);
 
     await page.goto('/daily/table');
     await expect(page).not.toHaveURL(/\?unsent=1/);

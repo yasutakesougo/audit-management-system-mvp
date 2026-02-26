@@ -1,3 +1,9 @@
+import { DailyAData, MealAmount, PersonDaily } from '@/features/daily';
+import {
+    buildSpecialNotesFromImportantHandoffs,
+    shouldAutoGenerateSpecialNotes,
+    useImportantHandoffsForDaily
+} from '@/features/handoff';
 import AccessTimeIcon from '@mui/icons-material/AccessTime';
 import DeleteIcon from '@mui/icons-material/Delete';
 import InfoOutlinedIcon from '@mui/icons-material/InfoOutlined';
@@ -27,14 +33,8 @@ import TextField from '@mui/material/TextField';
 import Typography from '@mui/material/Typography';
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { DailyAData, MealAmount, PersonDaily } from '../../domain/daily/types';
-import {
-    buildSpecialNotesFromImportantHandoffs,
-    shouldAutoGenerateSpecialNotes,
-    useImportantHandoffsForDaily
-} from '../handoff/hooks/useImportantHandoffsForDaily';
-import { useDailyUserOptions } from './useDailyUserOptions';
-import type { DailyUserOption } from './useDailyUserOptions';
+import type { DailyUserOption } from './index';
+import { useDailyUserOptions } from './index';
 
 interface DailyRecordFormProps {
   open: boolean;
@@ -607,7 +607,7 @@ export function DailyRecordForm({ open, onClose, record, onSave }: DailyRecordFo
               </Stack>
 
               <Stack direction="row" flexWrap="wrap" gap={0.5}>
-                {formData.data.amActivities.map((activity, index) => (
+                {formData.data.amActivities.map((activity: string, index: number) => (
                   <Chip
                     key={index}
                     label={activity}
@@ -661,7 +661,7 @@ export function DailyRecordForm({ open, onClose, record, onSave }: DailyRecordFo
               </Stack>
 
               <Stack direction="row" flexWrap="wrap" gap={0.5}>
-                {formData.data.pmActivities.map((activity, index) => (
+                {formData.data.pmActivities.map((activity: string, index: number) => (
                   <Chip
                     key={index}
                     label={activity}

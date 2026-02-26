@@ -14,10 +14,25 @@ test.describe('Dashboard Briefing Mode', () => {
   test.beforeEach(async ({ context }) => {
     // 朝会時間（8:15）にシステムクロックを固定
     await context.addInitScript(() => {
-      const mockDate = new Date('2026-02-23T08:15:00'); // 朝会時間帯
-      Date.now = () => mockDate.getTime();
+      const fixedTime = new Date('2026-02-23T08:15:00').getTime(); // 朝会時間帯
+      const OriginalDate = Date;
+      // @ts-expect-error - test runtime Date mock
+      class MockDate extends OriginalDate {
+        constructor(...args: ConstructorParameters<typeof Date>) {
+          if (args.length === 0) {
+            super(fixedTime);
+            return;
+          }
+          super(...args);
+        }
+        static now() {
+          return fixedTime;
+        }
+      }
+      // @ts-expect-error - test runtime Date mock
+      window.Date = MockDate;
       // @ts-expect-error - mockDate を window に設定（テスト用）
-      window.mockDate = mockDate;
+      window.mockDate = new OriginalDate(fixedTime);
     });
   });
 
@@ -129,8 +144,23 @@ test.describe('Dashboard Briefing Mode', () => {
   }) => {
     // 午後時刻に変更
     await context.addInitScript(() => {
-      const mockDate = new Date('2026-02-23T14:00:00'); // 午後
-      Date.now = () => mockDate.getTime();
+      const fixedTime = new Date('2026-02-23T14:00:00').getTime(); // 午後
+      const OriginalDate = Date;
+      // @ts-expect-error - test runtime Date mock
+      class MockDate extends OriginalDate {
+        constructor(...args: ConstructorParameters<typeof Date>) {
+          if (args.length === 0) {
+            super(fixedTime);
+            return;
+          }
+          super(...args);
+        }
+        static now() {
+          return fixedTime;
+        }
+      }
+      // @ts-expect-error - test runtime Date mock
+      window.Date = MockDate;
     });
 
     // ページをリロード
@@ -157,8 +187,23 @@ test.describe('Dashboard Briefing Mode', () => {
 
     // ケース2: 非朝会時間（12:00）に変更
     await context.addInitScript(() => {
-      const mockDate = new Date('2026-02-23T12:00:00'); // 昼
-      Date.now = () => mockDate.getTime();
+      const fixedTime = new Date('2026-02-23T12:00:00').getTime(); // 昼
+      const OriginalDate = Date;
+      // @ts-expect-error - test runtime Date mock
+      class MockDate extends OriginalDate {
+        constructor(...args: ConstructorParameters<typeof Date>) {
+          if (args.length === 0) {
+            super(fixedTime);
+            return;
+          }
+          super(...args);
+        }
+        static now() {
+          return fixedTime;
+        }
+      }
+      // @ts-expect-error - test runtime Date mock
+      window.Date = MockDate;
     });
 
     await page.reload();

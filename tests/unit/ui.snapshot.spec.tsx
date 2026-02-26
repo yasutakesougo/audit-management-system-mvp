@@ -23,8 +23,8 @@ vi.mock("@/auth/MsalProvider", () => ({
 	}),
 }));
 
-vi.mock("@/lib/env", async () => {
-  const actual = await vi.importActual<typeof import("@/lib/env")>("@/lib/env");
+vi.mock("@/lib/env", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@/lib/env")>();
   const falseyKeys = new Set([
     "VITE_SKIP_SHAREPOINT",
     "VITE_FORCE_SHAREPOINT",
@@ -38,7 +38,7 @@ vi.mock("@/lib/env", async () => {
     ...actual,
     readBool: (key: string, fallback = false, envOverride?: unknown) => {
       if (falseyKeys.has(key)) return false;
-      return actual.readBool(key, fallback, envOverride as any);
+      return actual.readBool(key, fallback, envOverride as any); // eslint-disable-line @typescript-eslint/no-explicit-any
     },
     shouldSkipLogin: () => false,
     isE2eMsalMockEnabled: () => false,

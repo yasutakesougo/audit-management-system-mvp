@@ -15,9 +15,24 @@ import {
     type UserSettings,
 } from '../settingsModel';
 
+// Global mock to prevent environment clobbering in these tests
+const store: Record<string, string> = {};
+const localVault = {
+  getItem: (key: string) => store[key] || null,
+  setItem: (key: string, value: string) => { store[key] = String(value); },
+  removeItem: (key: string) => { delete store[key]; },
+  clear: () => { for (const k in store) delete store[k]; },
+  key: (i: number) => Object.keys(store)[i] || null,
+  get length() { return Object.keys(store).length; },
+};
+
+// Also apply to globalThis for settingsModel.ts which uses it
+(globalThis as unknown as { localStorage: Storage }).localStorage = localVault;
+
 describe('settingsModel', () => {
   beforeEach(() => {
-    localStorage.clear();
+    (globalThis as unknown as { localStorage: Storage }).localStorage = localVault;
+    localVault.clear();
     vi.clearAllMocks();
   });
 
@@ -36,7 +51,7 @@ describe('settingsModel', () => {
         layoutMode: 'normal',
         lastModified: 1234567890,
       };
-      localStorage.setItem(SETTINGS_STORAGE_KEY, JSON.stringify(settings));
+      localVault.setItem(SETTINGS_STORAGE_KEY, JSON.stringify(settings));
 
       const loaded = loadSettingsFromStorage();
       expect(loaded.colorMode).toBe('dark');
@@ -45,14 +60,14 @@ describe('settingsModel', () => {
     });
 
     it('returns defaults when JSON is invalid', () => {
-      localStorage.setItem(SETTINGS_STORAGE_KEY, 'invalid json {');
+      localVault.setItem(SETTINGS_STORAGE_KEY, 'invalid json {');
       const loaded = loadSettingsFromStorage();
       expect(loaded).toEqual(DEFAULT_SETTINGS);
     });
 
     it('returns defaults when schema is incomplete', () => {
       const invalid = { colorMode: 'dark' }; // missing required fields
-      localStorage.setItem(SETTINGS_STORAGE_KEY, JSON.stringify(invalid));
+      localVault.setItem(SETTINGS_STORAGE_KEY, JSON.stringify(invalid));
       const loaded = loadSettingsFromStorage();
       expect(loaded).toEqual(DEFAULT_SETTINGS);
     });
@@ -65,7 +80,7 @@ describe('settingsModel', () => {
         // no colorPreset
         lastModified: Date.now(),
       };
-      localStorage.setItem(SETTINGS_STORAGE_KEY, JSON.stringify(partial));
+      localVault.setItem(SETTINGS_STORAGE_KEY, JSON.stringify(partial));
 
       const loaded = loadSettingsFromStorage();
       expect(loaded.colorPreset).toBe('default');
@@ -86,7 +101,7 @@ describe('settingsModel', () => {
       const result = saveSettingsToStorage(settings);
       expect(result).toBe(true);
 
-      const stored = localStorage.getItem(SETTINGS_STORAGE_KEY);
+      const stored = localVault.getItem(SETTINGS_STORAGE_KEY);
       expect(stored).toBeTruthy();
 
       const parsed = JSON.parse(stored!);
@@ -101,7 +116,7 @@ describe('settingsModel', () => {
       const after = Date.now();
 
       const stored = JSON.parse(
-        localStorage.getItem(SETTINGS_STORAGE_KEY)!
+        localVault.getItem(SETTINGS_STORAGE_KEY)!
       );
       expect(stored.lastModified).toBeGreaterThanOrEqual(before);
       expect(stored.lastModified).toBeLessThanOrEqual(after);
@@ -113,17 +128,16 @@ describe('settingsModel', () => {
     });
 
     it('returns false gracefully on quota exceeded', () => {
-      const setItemSpy = vi.spyOn(localStorage, 'setItem');
-      const quotaError = new DOMException('QuotaExceededError', 'QuotaExceededError');
-      // DOMException.code is read-only, but QuotaExceededError has code 22 by name
-      setItemSpy.mockImplementation(() => {
-        throw quotaError;
-      });
+      // Stub the instance method directly to avoid prototype issues
+      const originalSetItem = localVault.setItem;
+      localVault.setItem = () => {
+        throw new DOMException('QuotaExceededError', 'QuotaExceededError');
+      };
 
       const result = saveSettingsToStorage(DEFAULT_SETTINGS);
       expect(result).toBe(false);
 
-      setItemSpy.mockRestore();
+      localVault.setItem = originalSetItem;
     });
   });
 

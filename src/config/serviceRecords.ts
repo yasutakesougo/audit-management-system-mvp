@@ -1,6 +1,6 @@
-import { getParsedEnv, ParsedEnv, resetParsedEnvForTests } from '@/lib/env.schema';
+import { getParsedEnv, resetParsedEnvForTests, type EnvSchema } from '@/lib/env.schema';
 
-type ServiceRecordsOverrides = Partial<ParsedEnv>;
+type ServiceRecordsOverrides = Partial<EnvSchema>;
 
 type ServiceRecordsConfig = {
   discrepancyThreshold: number;

@@ -1,23 +1,7 @@
 import { getRuntimeEnv, isDev as runtimeIsDev } from '@/env';
-import { z } from 'zod';
-import { appEnvSchema } from './env.schema';
 
 type Primitive = string | number | boolean | undefined | null;
 export type EnvRecord = Record<string, Primitive>;
-
-export type AppEnv = z.infer<typeof appEnvSchema>;
-
-const _envParsed = appEnvSchema.safeParse(import.meta.env);
-if (!_envParsed.success) {
-  console.warn('[env] Environment validation failed (non-fatal):', _envParsed.error.flatten().fieldErrors);
-}
-/**
- * Typed snapshot of build-time env variables validated by appEnvSchema.
- * Falls back to empty object in CI when env vars are absent, so consumers
- * should prefer the individual helper functions (readEnv, readBool, etc.)
- * for robust runtime resolution including window.__ENV__ overrides.
- */
-export const env: AppEnv = _envParsed.success ? _envParsed.data : ({} as AppEnv);
 
 export type AppConfig = {
   VITE_SP_RESOURCE: string;
@@ -242,6 +226,10 @@ export const getAppConfig = (envOverride?: EnvRecord): AppConfig => {
 
 export const __resetAppConfigForTests = (): void => {
   appConfigCache = null;
+};
+
+export const clearEnvCache = (): void => {
+  __resetAppConfigForTests();
 };
 
 export const readOptionalEnv = (key: string, envOverride?: EnvRecord): string | undefined => {
@@ -663,3 +651,20 @@ export const IS_SKIP_SHAREPOINT = IS_DEMO || !SP_BASE_URL || IS_SKIP_LOGIN || IS
 // Legacy aliases (keep for backward compat, but prefer IS_SKIP_SHAREPOINT)
 export const SP_ENABLED = !IS_SKIP_SHAREPOINT;
 export const SP_DISABLED = IS_SKIP_SHAREPOINT;
+
+/** @deprecated Use isE2E() */
+export const IS_E2E = isE2E();
+/** @deprecated Use isE2eMsalMockEnabled() */
+export const IS_MSAL_MOCK = isE2eMsalMockEnabled();
+/** @deprecated Use shouldSkipLogin() */
+export const SHOULD_SKIP_LOGIN = shouldSkipLogin();
+/** @deprecated Use shouldSkipSharePoint() */
+export const SHOULD_SKIP_SHAREPOINT = shouldSkipSharePoint();
+/** @deprecated Use isSchedulesFeatureEnabled() */
+export const IS_SCHEDULES_ENABLED = isSchedulesFeatureEnabled();
+
+/** @deprecated Prefer readEnv/getAppConfig helpers */
+export const env = {
+  VITE_AUDIT_DEBUG: isAuditDebugEnabled(),
+  VITE_TOKUSEI_FORMS_URL: readEnv('VITE_TOKUSEI_FORMS_URL', ''),
+} as const;

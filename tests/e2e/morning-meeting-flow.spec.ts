@@ -1,168 +1,75 @@
 import { expect, test } from '@playwright/test';
 import { TESTIDS } from '../../src/testids';
 
-// 朝会専用ダッシュボードURL（ルートパスを使用）
-const MORNING_DASHBOARD_URL = '/?mode=morning';
+const BRIEFING_DASHBOARD_URL = '/dashboard/briefing';
 
 test.describe('Morning Meeting Flow', () => {
-  test('displays morning meeting dashboard with NextActionCard', async ({ page }) => {
-    await page.goto(MORNING_DASHBOARD_URL);
+  test('displays briefing dashboard and morning tab content', async ({ page }) => {
+    await page.goto(BRIEFING_DASHBOARD_URL);
 
-    // ダッシュボードページが表示される
-    const root = page.getByTestId(TESTIDS['dashboard-page']);
+    const root = page.getByTestId(TESTIDS['dashboard-page-tabs']);
     await expect(root).toBeVisible();
+    await expect(page.getByRole('heading', { name: '朝会・夕会情報' })).toBeVisible();
 
-    // 朝会モードボタンが選択されている
-    const morningModeButton = page.getByTestId('btn-morning-mode');
-    await expect(morningModeButton).toBeVisible();
+    await page.getByTestId(TESTIDS['dashboard-tab-morning']).click();
 
-    // BriefingPanelが表示される
-    const briefingPanel = page.getByTestId(TESTIDS['dashboard-briefing-panel']);
-    await expect(briefingPanel).toBeVisible();
-    await expect(briefingPanel).toContainText('おはようございます');
-
-    // Safety HUDが表示される
-    const safetyHud = page.getByTestId(TESTIDS['dashboard-safety-hud']);
-    await expect(safetyHud).toBeVisible();
-
-    // NextActionCardが表示される (朝会カード内)
-    const nextActionCard = page.getByTestId(TESTIDS['dashboard-next-action-card']);
-    await expect(nextActionCard).toBeVisible();
+    const morningGuide = page.getByTestId(TESTIDS['dashboard-briefing-guide-morning']);
+    await expect(morningGuide).toBeVisible();
+    await expect(page.getByText('申し送りタイムライン（昨日）')).toBeVisible();
   });
 
-  test('navigates from NextActionCard to appropriate work screen', async ({ page }) => {
-    await page.goto(MORNING_DASHBOARD_URL);
+  test('navigates from timeline tab to handoff timeline', async ({ page }) => {
+    await page.goto(BRIEFING_DASHBOARD_URL);
 
-    // 朝会カードが表示される
-    const morningCardHeading = page.getByRole('heading', { name: /朝会情報（9:00）/ });
-    await expect(morningCardHeading).toBeVisible();
-
-    // NextActionCardが表示されるまで待機
-    const nextActionCard = page.getByTestId(TESTIDS['dashboard-next-action-card']);
-    await expect(nextActionCard).toBeVisible();
-
-    // メインアクションボタンが表示される
-    const mainActionButton = page.getByTestId(TESTIDS['next-action-main-button']);
-    await expect(mainActionButton).toBeVisible();
-
-    // ボタンをクリック
-    await mainActionButton.click();
-
-    // ナビゲーションが発生することを確認（柔軟なチェック）
-    await page.waitForTimeout(1000); // 少し待つ
-
-    const currentUrl = page.url();
-    const validPaths = ['/daily/support', '/schedules/day', '/schedules/week'];
-    const hasValidPath = validPaths.some(path => currentUrl.includes(path));
-
-    // もしナビゲーションが発生しない場合でもテストは通す（実装依存）
-    if (hasValidPath) {
-      // 遷移先のページが正しく表示されることを確認
-      if (currentUrl.includes('/daily/support')) {
-        await expect(page.getByText('日常記録')).toBeVisible();
-      } else if (currentUrl.includes('/schedules/day')) {
-        await expect(page.getByText('スケジュール')).toBeVisible();
-      } else if (currentUrl.includes('/schedules/week')) {
-        await expect(page.getByText('週間スケジュール')).toBeVisible();
-      }
-    }
+    await page.getByTestId(TESTIDS['dashboard-tab-timeline']).click();
+    await page.getByRole('button', { name: 'タイムラインを開く' }).click();
+    await expect(page).toHaveURL(/\/handoff-timeline/);
   });
 
-  test('allows司会者 to access MeetingGuidePage', async ({ page }) => {
-    await page.goto(MORNING_DASHBOARD_URL);
+  test('shows meeting checklist when morning guide is expanded', async ({ page }) => {
+    await page.goto(BRIEFING_DASHBOARD_URL);
+    await page.getByTestId(TESTIDS['dashboard-tab-morning']).click();
 
-    // 司会ガイドボタンを探す
-    const meetingGuideButton = page.getByRole('button', { name: /🎯.*司会ガイド/ });
-    await expect(meetingGuideButton).toBeVisible();
-
-    // 新しいタブで開くことを確認（target="_blank"）
-    const [newPage] = await Promise.all([
-      page.context().waitForEvent('page'),
-      meetingGuideButton.click()
-    ]);
-
-    // 新しいタブでMeetingGuidePageが開かれることを確認
-    await newPage.waitForLoadState();
-    await expect(newPage).toHaveURL(/\/meeting-guide/);
-
-    // MeetingGuidePageの基本要素を確認
-    await expect(newPage.getByText('司会ガイド')).toBeVisible();
-    await expect(newPage.getByText(/現在時刻/)).toBeVisible();
-
-    // 元のダッシュボードページも開いたままであることを確認
-    await expect(page.getByTestId(TESTIDS['dashboard-page'])).toBeVisible();
-
-    await newPage.close();
+    const morningGuide = page.getByTestId(TESTIDS['dashboard-briefing-guide-morning']);
+    await expect(morningGuide).toBeVisible();
+    await morningGuide.getByText('進行ガイド（チェックリスト）').click();
+    await expect(page.getByText('安全指標の確認（注意事項があれば共有）')).toBeVisible();
   });
 
-  test('shows time-appropriate greeting in BriefingPanel', async ({ page }) => {
-    await page.goto(MORNING_DASHBOARD_URL);
+  test('shows morning-specific content', async ({ page }) => {
+    await page.goto(BRIEFING_DASHBOARD_URL);
+    await page.getByTestId(TESTIDS['dashboard-tab-morning']).click();
 
-    const briefingPanel = page.getByTestId(TESTIDS['dashboard-briefing-panel']);
-    await expect(briefingPanel).toBeVisible();
-
-    // 朝会モードでは「おはようございます」が表示される
-    await expect(briefingPanel).toContainText('おはようございます');
-
-    // 時間帯に応じた適切な内容が表示される
-    await expect(briefingPanel).toContainText('今日の業務');
+    await expect(page.getByText('安全指標サマリはダッシュボードの「安全インジケーター」で確認できます。')).toBeVisible();
+    await expect(page.getByText('申し送りタイムライン（昨日）')).toBeVisible();
   });
 
   test('displays responsive layout on mobile viewport', async ({ page }) => {
-    // モバイルビューポートに設定
     await page.setViewportSize({ width: 375, height: 667 });
-    await page.goto(MORNING_DASHBOARD_URL);
+    await page.goto(BRIEFING_DASHBOARD_URL);
 
-    // レスポンシブレイアウトが適用される
-    const briefingPanel = page.getByTestId(TESTIDS['dashboard-briefing-panel']);
-    await expect(briefingPanel).toBeVisible();
+    await expect(page.getByTestId(TESTIDS['dashboard-page-tabs'])).toBeVisible();
+    await page.getByTestId(TESTIDS['dashboard-tab-morning']).click();
+    await expect(page.getByTestId(TESTIDS['dashboard-briefing-guide-morning'])).toBeVisible();
 
-    // 朝会カードが表示される
-    const morningCardHeading = page.getByRole('heading', { name: /朝会情報（9:00）/ });
-    await expect(morningCardHeading).toBeVisible();
-
-    // NextActionCardがモバイルでも表示される
-    const nextActionCard = page.getByTestId(TESTIDS['dashboard-next-action-card']);
-    await expect(nextActionCard).toBeVisible();
-
-    // モバイル用の大きなタップエリアが利用可能
-    const mainActionButton = page.getByTestId(TESTIDS['next-action-main-button']);
-    await expect(mainActionButton).toBeVisible();
-
-    // タブレットビューポートでもテスト
     await page.setViewportSize({ width: 768, height: 1024 });
-    await expect(nextActionCard).toBeVisible();
-    await expect(mainActionButton).toBeVisible();
+    await expect(page.getByTestId(TESTIDS['dashboard-briefing-guide-morning'])).toBeVisible();
   });
 
   test('works correctly in evening mode', async ({ page }) => {
-    const eveningUrl = '/?mode=evening';
-    await page.goto(eveningUrl);
+    await page.goto(BRIEFING_DASHBOARD_URL);
+    await page.getByTestId(TESTIDS['dashboard-tab-evening']).click();
 
-    // 夕会モードボタンが選択される
-    const eveningModeButton = page.getByTestId('btn-evening-mode');
-    await expect(eveningModeButton).toBeVisible();
-
-    const briefingPanel = page.getByTestId(TESTIDS['dashboard-briefing-panel']);
-    await expect(briefingPanel).toBeVisible();
-
-    // 夕会モードでは「お疲れさまでした」が表示される
-    await expect(briefingPanel).toContainText('お疲れさまでした');
-
-    // 夕会カードが表示される
-    const eveningCardHeading = page.getByRole('heading', { name: /夕会情報（17:15）/ });
-    await expect(eveningCardHeading).toBeVisible();
+    await expect(page.getByTestId(TESTIDS['dashboard-briefing-guide-evening'])).toBeVisible();
+    await expect(page.getByText('記録状況の詳細はダッシュボードの「ケース記録」カードから確認できます。')).toBeVisible();
+    await expect(page.getByText('申し送りタイムライン（今日）')).toBeVisible();
   });
 
   test('handles loading states gracefully', async ({ page }) => {
-    await page.goto(MORNING_DASHBOARD_URL);
+    await page.goto(BRIEFING_DASHBOARD_URL);
 
-    // ローディング中でもレイアウトが崩れないことを確認
-    const root = page.getByTestId(TESTIDS['dashboard-page']);
+    const root = page.getByTestId(TESTIDS['dashboard-page-tabs']);
     await expect(root).toBeVisible();
-
-    // BriefingPanelがロードされる
-    const briefingPanel = page.getByTestId(TESTIDS['dashboard-briefing-panel']);
-    await expect(briefingPanel).toBeVisible({ timeout: 10000 });
+    await expect(page.getByTestId(TESTIDS['dashboard-briefing-page'])).toBeVisible({ timeout: 10000 });
   });
 });

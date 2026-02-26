@@ -1,0 +1,33 @@
+name: Nightly Snapshots
+
+on:
+  schedule:
+    - cron: '0 19 * * *' # JST 04:00 (after nightly health)
+  workflow_dispatch:
+
+jobs:
+  snapshot-tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+      - run: npm ci
+      - name: Run Snapshot Tests
+        run: npm run test:snapshot
+        env:
+          TZ: Asia/Tokyo
+          CI: "true"
+      - name: Notify failure
+        if: failure()
+        env:
+          NOTIFY_WEBHOOK_URL: ${{ secrets.NOTIFY_WEBHOOK_URL }}
+          NOTIFY_LAST_EXIT_CODE: "1"
+        run: |
+          if [ -n "$NOTIFY_WEBHOOK_URL" ]; then
+            node scripts/notify.mjs --title "🚨 Nightly Snapshot Suite Failed" "Snapshot tests detected UI regressions or environment mismatch."
+          else
+            echo "notification webhook not configured"
+          fi

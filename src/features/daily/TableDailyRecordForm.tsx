@@ -1,14 +1,18 @@
 import { TESTIDS } from '@/testids';
+import { TableDailyRecordHeader } from './components/TableDailyRecordHeader';
+import { TableDailyRecordTable } from './components/TableDailyRecordTable';
+import { TableDailyRecordUserPicker } from './components/TableDailyRecordUserPicker';
+import { useTableDailyRecordForm, type TableDailyRecordData } from './hooks/useTableDailyRecordForm';
 import {
-    FilterList as FilterListIcon,
+  FilterList as FilterListIcon,
     Group as GroupIcon,
-    SaveAlt as SaveAltIcon,
+  SaveAlt as SaveAltIcon,
     Save as SaveIcon
 } from '@mui/icons-material';
 import {
     Box,
     Button,
-    Chip,
+  Chip,
     Dialog,
     DialogActions,
     DialogContent,
@@ -16,16 +20,12 @@ import {
     Stack,
     Typography
 } from '@mui/material';
-import { TableDailyRecordHeader } from './components/TableDailyRecordHeader';
-import { TableDailyRecordTable } from './components/TableDailyRecordTable';
-import { TableDailyRecordUserPicker } from './components/TableDailyRecordUserPicker';
-import { useTableDailyRecordForm } from './hooks/useTableDailyRecordForm';
-import { type DailyTableRecord } from './infra/dailyTableRepository';
+import React from 'react';
 
 interface TableDailyRecordFormProps {
   open: boolean;
   onClose: () => void;
-  onSave: (records: DailyTableRecord[]) => Promise<void>;
+  onSave: (data: TableDailyRecordData) => Promise<void>;
   variant?: 'dialog' | 'content';
 }
 

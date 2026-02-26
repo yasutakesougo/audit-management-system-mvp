@@ -21,7 +21,7 @@ test.describe('Daily – Records flow', () => {
     await expect(page.getByText('鈴木次郎', { exact: false })).toBeVisible();
 
     // Verify FAB button exists (don't click it if it's not working reliably)
-    const fabButton = page.getByRole('button', { name: 'add' });
+    const fabButton = page.getByTestId('add-record-fab');
     await expect(fabButton).toBeVisible();
 
     // Test the bulk create button instead which should be more reliable

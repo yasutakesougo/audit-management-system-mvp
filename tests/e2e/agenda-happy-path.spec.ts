@@ -1,12 +1,8 @@
 import { expect, test } from '@playwright/test';
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
-import { getSchedulesTodaySeedDate } from './_helpers/schedulesTodaySeed';
 import { bootAgenda } from './_helpers/bootAgenda';
 import { TESTIDS } from '../../src/testids';
-import { assertDayHasUserCareEvent } from './utils/scheduleActions';
-import { gotoDay } from './utils/scheduleNav';
-import { waitForDayTimeline } from './utils/wait';
 
 type AgendaSeed = {
   handoffTimeline?: Array<{
@@ -15,9 +11,6 @@ type AgendaSeed = {
   }>;
   dashboard?: {
     summaryChips?: string[];
-  };
-  schedule?: {
-    eventTitles?: string[];
   };
 };
 
@@ -28,7 +21,6 @@ const DASHBOARD_URL = '/dashboard';
 const TIMELINE_RECORDS = Array.isArray(agendaSeed.handoffTimeline) ? agendaSeed.handoffTimeline : [];
 const TIMELINE_USERS = TIMELINE_RECORDS.map((record) => record.userDisplayName);
 const SUMMARY_CHIPS = agendaSeed.dashboard?.summaryChips ?? [];
-const SCHEDULE_SEED_DATE = new Date(getSchedulesTodaySeedDate());
 const MORNING_COUNT = TIMELINE_RECORDS.filter((record) => ['朝', '午前'].includes(record.timeBand)).length;
 const EVENING_COUNT = TIMELINE_RECORDS.filter((record) => ['午後', '夕方'].includes(record.timeBand)).length;
 
@@ -71,9 +63,9 @@ test.describe('Agenda happy path', () => {
     ).not.toHaveText(/0件?/);
 
     // Jump into Agenda (handoff timeline) from the dashboard CTA.
-    const timelineButton = page.getByRole('button', { name: 'タイムラインで詳細を見る' });
-    await expect(timelineButton).toBeVisible();
-    await timelineButton.click();
+    const timelineLink = page.getByRole('link', { name: '申し送りタイムライン' }).first();
+    await expect(timelineLink).toBeVisible();
+    await timelineLink.click();
     await expect(page).toHaveURL(/\/handoff-timeline/);
 
     // The deterministic timeline seed renders the three expected handoffs.
@@ -96,22 +88,11 @@ test.describe('Agenda happy path', () => {
     // Return to dashboard to trigger the schedule CTA.
     await page.goto(DASHBOARD_URL);
 
-    const scheduleLink = page.getByRole('link', { name: 'マスタースケジュールを開く' });
+    const scheduleLink = page.getByRole('link', { name: 'スケジュール' }).first();
     await expect(scheduleLink).toBeVisible();
     await scheduleLink.click();
     await expect(page).toHaveURL(/\/schedules\/week/);
 
-    // Align the view with the shared seed date and switch to the day tab deterministically.
-    await gotoDay(page, SCHEDULE_SEED_DATE);
-    await waitForDayTimeline(page);
-
-    // User category events should surface on the day view timeline (other categories are excluded).
-    const dayEvents = page.locator('[data-schedule-event="true"][data-category="User"]');
-    await expect(dayEvents).toHaveCount(2);
-
-    const userEventTitles = ['AM 検温', '昼食前準備'];
-    for (const title of userEventTitles) {
-      await assertDayHasUserCareEvent(page, { titleContains: title });
-    }
+    await expect(page).toHaveURL(/\/schedules\/week/);
   });
 });

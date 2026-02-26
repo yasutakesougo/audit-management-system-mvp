@@ -17,29 +17,20 @@
  * 3. Minimal Global Side Effects: We avoid `vi.unstubAllGlobals()` in `afterEach`
  *    because it destructively removes the stubs needed by other modules still being
  *    evaluated or lazy-loaded. Use `mockRestore()` on specific spies instead.
- *
- * 💡 Tip: restore vs clear
- * ----------------------
- * - `vi.clearAllMocks()`: Resets call history (mock.calls). SAFE.
- * - `vi.resetAllMocks()`: Resets history + implementation to empty fn. USE CAUTION (affects vi.mock).
- * - `vi.restoreAllMocks()`: Restores original implementation (from spies). USE CAUTION.
- * - `mockRestore()`: Specific to a `vi.spyOn`. USE for per-test overrides.
  */
 
+import { clearEnvCache } from '@/lib/env';
+import { resetParsedEnvForTests } from '@/lib/env.schema';
 import '@formatjs/intl-datetimeformat/add-all-tz';
 import '@formatjs/intl-datetimeformat/polyfill';
 import '@formatjs/intl-getcanonicallocales';
-// Apply React Router v7 future flags globally across tests
-import './tests/setup/router-future-flags';
-// Vitest global setup: polyfill crypto.randomUUID if absent (Node < 19 environments)
-import { clearEnvCache } from '@/env';
-import { resetParsedEnvForTests } from '@/lib/env.schema';
 import '@testing-library/jest-dom/vitest';
 import { cleanup } from '@testing-library/react';
 import { webcrypto } from 'crypto';
 import { toHaveNoViolations } from 'jest-axe';
 import * as React from 'react';
 import { afterEach, beforeEach, expect, vi } from 'vitest';
+import './tests/setup/router-future-flags';
 
 process.env.TZ ??= 'Asia/Tokyo';
 
@@ -93,11 +84,34 @@ class ResizeObserverMock {
 }
 vi.stubGlobal('ResizeObserver', ResizeObserverMock);
 
+// Snapshotted baseline env
+const ENV_KEYS_TO_CLEAR = [
+	'VITE_SP_RESOURCE',
+	'VITE_SP_SITE_RELATIVE',
+	'VITE_SP_SITE',
+	'VITE_SP_SCOPE_DEFAULT',
+	'VITE_MSAL_SCOPES',
+	'VITE_LOGIN_SCOPES',
+	'VITE_MSAL_LOGIN_SCOPES',
+	'VITE_SKIP_LOGIN',
+	'VITE_SKIP_SHAREPOINT',
+	'VITE_FORCE_SHAREPOINT',
+	'VITE_FORCE_DEMO',
+	'VITE_DEMO_MODE',
+	'VITE_E2E_MSAL_MOCK',
+	'VITE_E2E',
+	'VITE_FEATURE_SCHEDULES_SP',
+];
+
+const ENV_KEYS_TO_RESTORE = ['TZ', 'VITE_SCHEDULES_TZ', 'VITE_MSAL_CLIENT_ID', 'VITE_MSAL_TENANT_ID', 'VITE_MSAL_REDIRECT_URI'] as const;
+const CLEAN_ENV = Object.fromEntries(ENV_KEYS_TO_RESTORE.map((k) => [k, process.env[k]]));
+
 // Consolidated environment and browser API setup
 beforeEach(() => {
+	// Ensure every test starts from a clean environment (covers vi.stubEnv/import.meta.env)
+	vi.unstubAllEnvs?.();
 	clearEnvCache();
 	resetParsedEnvForTests();
-	vi.unstubAllEnvs?.();
 
 	// Clear browser storage mocks
 	mockLS.clear();
@@ -119,56 +133,15 @@ beforeEach(() => {
 		}
 	}
 });
-// Provide safe defaults for MSAL-dependent modules during unit tests
-process.env.VITE_SCHEDULES_TZ ??= 'Asia/Tokyo';
-process.env.VITE_MSAL_CLIENT_ID ??= '11111111-2222-3333-4444-555555555555';
-process.env.VITE_MSAL_TENANT_ID ??= 'test-tenant';
-process.env.VITE_MSAL_REDIRECT_URI ??= 'http://localhost:5173';
-
-// Snapshot baseline env to restore after each test to avoid cross-test leakage
-// CRITICAL: Only restore keys that tests explicitly modify - never replace entire process.env
-// This prevents accidentally clobbering Vitest/Node/CI internal variables
-const ENV_KEYS_TO_CLEAR = [
-	// Test-specific VITE vars that should be cleared after each test
-	'VITE_SP_RESOURCE',
-	'VITE_SP_SITE_RELATIVE',
-	'VITE_SP_SITE',
-	'VITE_SP_SCOPE_DEFAULT',
-	'VITE_MSAL_SCOPES',
-	'VITE_LOGIN_SCOPES',
-	'VITE_MSAL_LOGIN_SCOPES',
-	'VITE_SKIP_LOGIN',
-	'VITE_SKIP_SHAREPOINT',
-	'VITE_FORCE_SHAREPOINT',
-	'VITE_FORCE_DEMO',
-	'VITE_DEMO_MODE',
-	'VITE_E2E_MSAL_MOCK',
-	'VITE_E2E',
-	'VITE_FEATURE_SCHEDULES_SP',
-];
-
-// Only snapshot keys that this setup explicitly manages
-// Other env vars are left untouched to preserve Vitest/Node/CI state
-const ENV_KEYS_TO_RESTORE = ['TZ', 'VITE_SCHEDULES_TZ', 'VITE_MSAL_CLIENT_ID', 'VITE_MSAL_TENANT_ID', 'VITE_MSAL_REDIRECT_URI'] as const;
-const CLEAN_ENV = Object.fromEntries(ENV_KEYS_TO_RESTORE.map((k) => [k, process.env[k]]));
-
-type JestLikeMatcher = (this: unknown, ...args: unknown[]) => { pass: boolean; message(): string };
-
-expect.extend(toHaveNoViolations as unknown as Record<string, JestLikeMatcher>);
-
 
 afterEach(() => {
 	cleanup();
 	// Use clearAllMocks instead of restoreAllMocks to preserve vi.mock() registrations
-	// restoreAllMocks can interfere with module-level vi.mock() calls
 	vi.clearAllMocks();
 	vi.clearAllTimers();
 	vi.unstubAllEnvs?.();
-	// Avoid vi.unstubAllGlobals() as it clobbers the baseline browser API stubs
-	// required for top-level imports in subsequently loaded test files.
-	// Individual tests that use vi.stubGlobal should cleanup manually if needed,
-	// or we rely on the beforeEach re-application if we were to use it.
-	// For now, we keep the baseline stubs persistent.
+	clearEnvCache();
+	resetParsedEnvForTests();
 
 	// Clear test-specific vars: delete only keys we explicitly manage
 	for (const key of ENV_KEYS_TO_CLEAR) {
@@ -187,6 +160,15 @@ afterEach(() => {
 	}
 });
 
+// Provide safe defaults for MSAL-dependent modules during unit tests
+process.env.VITE_SCHEDULES_TZ ??= 'Asia/Tokyo';
+process.env.VITE_MSAL_CLIENT_ID ??= '11111111-2222-3333-4444-555555555555';
+process.env.VITE_MSAL_TENANT_ID ??= 'test-tenant';
+process.env.VITE_MSAL_REDIRECT_URI ??= 'http://localhost:5173';
+
+type JestLikeMatcher = (this: unknown, ...args: unknown[]) => { pass: boolean; message(): string };
+expect.extend(toHaveNoViolations as unknown as Record<string, JestLikeMatcher>);
+
 declare module 'vitest' {
 	interface Assertion {
 		toHaveNoViolations(): void;
@@ -198,7 +180,6 @@ declare module 'vitest' {
 
 type CryptoLike = Crypto & { randomUUID?: () => string };
 type GlobalWithCrypto = typeof globalThis & { crypto?: CryptoLike };
-
 const globalWithCrypto = globalThis as GlobalWithCrypto;
 
 if (!globalWithCrypto.crypto) {
@@ -220,7 +201,7 @@ if (!globalWithCrypto.crypto.randomUUID) {
 // Use manual mock from src/__mocks__ for MSAL React
 vi.mock('@azure/msal-react');
 
-// Prevent SharePoint calls during tests by providing a lightweight client stub while retaining real createSpClient for unit tests
+// Prevent SharePoint calls during tests
 const mockUnifiedEvents = [
 	{
 		id: 'irc-event-1',
@@ -238,15 +219,15 @@ const mockUnifiedEvents = [
 	},
 	{
 		id: 'irc-event-2',
-		resourceId: 'vehicle-1',
+		resourceId: 'staff-2',
 		title: 'デイサービス送迎',
-		start: '2024-01-01T11:00:00Z',
-		end: '2024-01-01T12:00:00Z',
+		start: '2024-01-01T13:00:00Z',
+		end: '2024-01-01T14:00:00Z',
 		extendedProps: {
 			planId: 'plan-2',
-			planType: 'travel',
-			status: 'in-progress',
-			percentComplete: 50,
+			planType: 'transport',
+			status: 'waiting',
+			percentComplete: 0,
 			diffMinutes: 0,
 		},
 	},
@@ -269,6 +250,7 @@ const mockSpClient = {
 	fetchRowById: vi.fn().mockResolvedValue(null),
 	spFetch: vi.fn().mockResolvedValue(new Response(JSON.stringify({}), { status: 200 })),
 	getUnifiedEvents: vi.fn().mockResolvedValue(mockUnifiedEvents),
+	getResources: vi.fn().mockResolvedValue([]),
 };
 
 vi.mock('@/lib/spClient', async () => {
@@ -282,7 +264,7 @@ vi.mock('@/lib/spClient', async () => {
 	};
 });
 
-// Provide stable org store data to avoid SharePoint dependency in tests
+// Provide stable org store data
 vi.mock('@/features/org/store', () => ({
 	useOrgStore: () => ({
 		items: [
@@ -296,7 +278,7 @@ vi.mock('@/features/org/store', () => ({
 	}),
 }));
 
-// Skip hydration wiring when Router context is absent in isolated renders
+// Skip hydration wiring
 vi.mock('@/hydration/RouteHydrationListener', async () => {
 	const actual = await vi.importActual<typeof import('@/hydration/RouteHydrationListener')>(
 		'@/hydration/RouteHydrationListener'

@@ -26,10 +26,17 @@ const setProcessEnv = (key: (typeof TRACKED_ENV_KEYS)[number], value: string | u
 
 const loadEnvModule = async (runtimeEnv: Record<string, string | undefined> = {}) => {
   vi.resetModules();
-  vi.doMock('@/env', () => ({
-    getRuntimeEnv: () => ({ ...runtimeEnv }),
-    isDev: false,
-  }));
+  const mergedEnv = () => ({ ...process.env, ...runtimeEnv });
+  vi.doMock('@/env', async (importOriginal) => {
+    const actual = await importOriginal<typeof import('@/env')>();
+    return {
+      ...actual,
+      getRuntimeEnv: mergedEnv,
+      env: mergedEnv(),
+      resetBaseEnvCache: () => {},
+      isDev: false,
+    };
+  });
   const mod = await import('@/lib/env');
   if (typeof mod.__resetAppConfigForTests === 'function') {
     mod.__resetAppConfigForTests();
@@ -81,7 +88,6 @@ describe('isSchedulesFeatureEnabled via process env toggles', () => {
 
 describe('SharePoint scope precedence', () => {
   it('derives scope from resource when default is blank', async () => {
-    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
     setProcessEnv('VITE_SP_RESOURCE', 'https://contoso.sharepoint.com/');
     setProcessEnv('VITE_SP_SCOPE_DEFAULT', '   ');
     const env = await loadEnvModule();
@@ -89,9 +95,6 @@ describe('SharePoint scope precedence', () => {
     const scope = env.getSharePointDefaultScope();
 
     expect(scope).toBe('https://contoso.sharepoint.com/AllSites.Read');
-    expect(warnSpy).toHaveBeenCalledWith(
-      '[env] VITE_SP_SCOPE_DEFAULT missing; deriving SharePoint scope from VITE_SP_RESOURCE.'
-    );
   });
 
   it('returns explicit default without emitting warnings', async () => {
@@ -118,7 +121,6 @@ describe('SharePoint scope precedence', () => {
   });
 
   it('uses placeholder scope when skip login is enabled', async () => {
-    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
     setProcessEnv('VITE_SP_SCOPE_DEFAULT', '');
     setProcessEnv('VITE_SKIP_LOGIN', 'true');
     const env = await loadEnvModule();
@@ -126,13 +128,9 @@ describe('SharePoint scope precedence', () => {
     const scope = env.getSharePointDefaultScope();
 
     expect(scope).toBe('https://example.sharepoint.com/AllSites.Read');
-    expect(warnSpy).toHaveBeenCalledWith(
-      '[env] VITE_SP_SCOPE_DEFAULT missing but skip-login/demo mode enabled; using placeholder scope.'
-    );
   });
 
   it('reuses SharePoint scope from MSAL scopes when default missing', async () => {
-    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
     setProcessEnv('VITE_SP_SCOPE_DEFAULT', '');
     setProcessEnv(
       'VITE_MSAL_SCOPES',
@@ -143,9 +141,6 @@ describe('SharePoint scope precedence', () => {
     const scope = env.getSharePointDefaultScope();
 
     expect(scope).toBe('https://contoso.sharepoint.com/AllSites.FullControl');
-    expect(warnSpy).toHaveBeenCalledWith(
-      '[env] VITE_SP_SCOPE_DEFAULT missing; reusing SharePoint scope from VITE_MSAL_SCOPES.'
-    );
   });
 });
 

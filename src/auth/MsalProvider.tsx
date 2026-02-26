@@ -58,12 +58,12 @@ async function loadMsalInstance(): Promise<MsalInstance> {
         const { EventType } = await import('@azure/msal-browser');
 
         const instance = await getPcaSingleton();
-        
+
         // ✅ At this point:
         // - instance.initialize() was already called by getPcaSingleton()
         // - instance.handleRedirectPromise() was already called by main.tsx
         // - globalThis.__MSAL_PUBLIC_CLIENT__ is already set
-        
+
         // We just need to ensure active account is set (if not already done by main.tsx)
         const accounts = instance.getAllAccounts();
         if (!instance.getActiveAccount() && accounts.length > 0) {

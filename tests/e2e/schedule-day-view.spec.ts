@@ -30,7 +30,7 @@ test.describe('Schedule day view', () => {
     await waitForDayViewReady(page);
     await assertDayHasUserCareEvent(page);
 
-    const heading = page.getByRole('heading', { level: 1, name: /スケジュール/ });
+    const heading = page.getByRole('heading', { name: /スケジュール|予定表/ }).first();
     await expect(heading).toBeVisible();
 
     const tablist = page.getByTestId(TESTIDS.SCHEDULES_WEEK_TABLIST).first();

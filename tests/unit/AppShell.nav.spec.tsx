@@ -181,7 +181,7 @@ describe('AppShell navigation', () => {
       const initialEntries = ['/'];
       const routeEntries = Array.from(new Set([...initialEntries]));
       const flagsWithCompliance = { ...defaultFlags, complianceForm: true };
-      
+
       const getShell = () => (
         <ThemeProvider theme={theme}>
           <FeatureFlagsProvider value={flagsWithCompliance}>
@@ -215,7 +215,7 @@ describe('AppShell navigation', () => {
       const theme = createTheme();
       const initialEntries = ['/'];
       const flagsWithIcebergPdca = { ...defaultFlags, icebergPdca: true };
-      
+
       const getShell = () => (
         <ThemeProvider theme={theme}>
           <FeatureFlagsProvider value={flagsWithIcebergPdca}>
@@ -249,7 +249,7 @@ describe('AppShell navigation', () => {
       const theme = createTheme();
       const initialEntries = ['/'];
       const flagsWithStaffAttendance = { ...defaultFlags, staffAttendance: true };
-      
+
       const getShell = () => (
         <ThemeProvider theme={theme}>
           <FeatureFlagsProvider value={flagsWithStaffAttendance}>
@@ -284,7 +284,7 @@ describe('AppShell navigation', () => {
       const toggleMock = vi.fn();
       const theme = createTheme();
       const initialEntries = ['/'];
-      
+
       const getShell = () => (
         <ThemeProvider theme={theme}>
           <FeatureFlagsProvider value={defaultFlags}>
@@ -329,7 +329,7 @@ describe('AppShell navigation', () => {
       const toggleMock = vi.fn();
       const theme = createTheme();
       const initialEntries = ['/'];
-      
+
       const getShell = () => (
         <ThemeProvider theme={theme}>
           <FeatureFlagsProvider value={defaultFlags}>
@@ -369,7 +369,7 @@ describe('AppShell navigation', () => {
       const toggleMock = vi.fn();
       const theme = createTheme();
       const initialEntries = ['/'];
-      
+
       const getShell = () => (
         <ThemeProvider theme={theme}>
           <FeatureFlagsProvider value={defaultFlags}>

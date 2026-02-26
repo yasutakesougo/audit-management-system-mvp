@@ -1,10 +1,16 @@
-import React from 'react';
-import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { screen, fireEvent } from '@testing-library/react';
+import { fireEvent, screen } from '@testing-library/react';
+import { describe, expect, it, vi } from 'vitest';
 import { renderWithRouter } from './_helpers/renderWithRouter';
-import AuditPanel from '../../src/features/audit/AuditPanel';
 
-// Mock hooks
+// Mock isDevMode to return true so the DEV-only button renders
+vi.mock('../../src/lib/env', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../../src/lib/env')>();
+  return {
+    ...actual,
+    isDevMode: () => true,
+  };
+});
+
 vi.mock('../../src/features/audit/useAuditSync', () => ({ useAuditSync: () => ({ syncAll: vi.fn() }) }));
 vi.mock('../../src/features/audit/useAuditSyncBatch', () => ({ useAuditSyncBatch: () => ({ syncAllBatch: vi.fn() }) }));
 vi.mock('../../src/lib/audit', () => ({
@@ -13,15 +19,12 @@ vi.mock('../../src/lib/audit', () => ({
   clearAudit: () => {},
   retainAuditWhere: () => {}
 }));
-vi.mock('../../src/lib/hashUtil', () => ({ canonicalJSONStringify: (o: any) => JSON.stringify(o), computeEntryHash: async () => 'h' }));
+vi.mock('../../src/lib/hashUtil', () => ({ canonicalJSONStringify: (o: unknown) => JSON.stringify(o), computeEntryHash: async () => 'h' }));
 vi.mock('../../src/lib/debugLogger', () => ({ auditLog: { debug: () => {}, error: () => {}, enabled: false } }));
 
-describe('AuditPanel metrics overlay (DEV button)', () => {
-  beforeEach(() => {
-    // Ensure DEV flag so the info button renders
-    (import.meta as any).env.DEV = true;
-  });
+import AuditPanel from '../../src/features/audit/AuditPanel';
 
+describe('AuditPanel metrics overlay (DEV button)', () => {
   it('opens and closes overlay', () => {
     renderWithRouter(<AuditPanel />);
     const btn = screen.getByRole('button', { name: 'batch metrics' });

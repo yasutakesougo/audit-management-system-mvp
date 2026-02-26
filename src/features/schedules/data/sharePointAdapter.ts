@@ -1,18 +1,20 @@
-import { toSafeError } from '@/lib/errors';
+import type { ScheduleCategory, ScheduleStatus } from '@/features/schedules/domain/types';
+import {
+    createSchedule,
+    removeSchedule,
+    updateSchedule,
+    type CreateScheduleInput,
+    type UpdateScheduleInput,
+} from '@/infra/sharepoint/repos/schedulesRepo';
+import { AuthRequiredError, toSafeError } from '@/lib/errors';
 import { fetchSp } from '@/lib/fetchSp';
-import { AuthRequiredError } from '@/lib/errors';
 import { withUserMessage } from '@/lib/notice';
 import { createSpClient, ensureConfig } from '@/lib/spClient';
 import { result } from '@/shared/result';
 import { SCHEDULES_DEBUG } from '../debug';
-import {
-  createSchedule,
-  updateSchedule,
-  removeSchedule,
-  type CreateScheduleInput,
-  type UpdateScheduleInput,
-} from '@/infra/sharepoint/repos/schedulesRepo';
-import type { ScheduleCategory, ScheduleStatus } from '@/features/schedules/domain/types';
+import type { DateRange, SchedItem, ScheduleServiceType, SchedulesPort } from './port';
+import { mapSpRowToSchedule, parseSpScheduleRows } from './spRowSchema';
+import { buildSchedulesListPath, getSchedulesListTitle, resolveSchedulesListIdentifier, SCHEDULES_FIELDS } from './spSchema';
 
 /**
  * Extract HTTP status code from various error shapes
@@ -29,17 +31,14 @@ const getHttpStatus = (e: unknown): number | undefined => {
     anyErr?.cause?.response?.status
   );
 };
-import type { DateRange, SchedItem, SchedulesPort, ScheduleServiceType } from './port';
-import { mapSpRowToSchedule, parseSpScheduleRows } from './spRowSchema';
-import { getSchedulesListTitle, SCHEDULES_FIELDS, buildSchedulesListPath, resolveSchedulesListIdentifier } from './spSchema';
 
 /**
  * Timezone-aware date key helpers
  * CRITICAL: Always use site timezone (JST) for dayKey/monthKey to prevent UTC offset bugs
- * 
+ *
  * Issue: Using toISOString().slice(0,10) on JST dates causes -9hr shift
  * Example: 2026-02-18 07:00 JST → 2026-02-17 22:00 UTC → dayKey='2026-02-17' (WRONG!)
- * 
+ *
  * Solution: Format date in site timezone directly using Intl.DateTimeFormat
  */
 const SCHEDULES_TZ = 'Asia/Tokyo';
@@ -290,7 +289,17 @@ const fetchRange = async (
   params.set('$select', select.join(','));
 
   const url = `${listPath}?${params.toString()}`;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  if (typeof window !== 'undefined' && (window as any).__ENV__?.VITE_E2E === '1') {
+    // eslint-disable-next-line no-console
+    console.log('[schedules] fetchRange starting fetch', { url, online: navigator.onLine });
+  }
   const response = await fetchSp(url);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  if (typeof window !== 'undefined' && (window as any).__ENV__?.VITE_E2E === '1') {
+    // eslint-disable-next-line no-console
+    console.log('[schedules] fetchRange response received', { status: response.status, ok: response.ok });
+  }
   if (!response.ok) {
     const message = await readSpErrorMessage(response);
     console.error('[schedules] SharePoint list query failed', {

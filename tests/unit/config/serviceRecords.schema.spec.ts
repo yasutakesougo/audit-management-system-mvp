@@ -1,14 +1,14 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
 import {
-  ABSENCE_MONTHLY_LIMIT,
-  DISCREPANCY_THRESHOLD,
-  FACILITY_CLOSE_TIME,
-  getServiceRecordsConfig,
-  getServiceThresholds,
-  resetServiceRecords,
+    ABSENCE_MONTHLY_LIMIT,
+    DISCREPANCY_THRESHOLD,
+    FACILITY_CLOSE_TIME,
+    getServiceRecordsConfig,
+    getServiceThresholds,
+    resetServiceRecords,
 } from '@/config/serviceRecords';
-import { resetParsedEnvForTests } from '@/lib/env.schema';
+import { parseEnv, resetParsedEnvForTests } from '@/lib/env.schema';
 
 /**
  * Service Records 設定の包括的なテスト
@@ -122,9 +122,8 @@ describe('config/serviceRecords', () => {
       VITE_FACILITY_CLOSE_TIME: 'invalid-time',
     });
 
-    // env.schema の Zod バリデーションで不正値が早期検出される
-    expect(() => getServiceRecordsConfig()).toThrow();
-    expect(() => getServiceThresholds()).toThrow();
+    // parseEnv は Zod バリデーションで不正値を検出し例外を投げる
+    expect(() => parseEnv({ VITE_FACILITY_CLOSE_TIME: 'invalid-time' })).toThrow();
   });
 
   it('handles edge cases in time calculations', () => {
