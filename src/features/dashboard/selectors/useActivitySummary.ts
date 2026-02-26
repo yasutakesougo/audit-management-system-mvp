@@ -3,6 +3,7 @@ import { calculateUsageFromDailyRecords } from '@/features/users/userMasterDashb
 import { estimatePayloadSize, HYDRATION_FEATURES, startFeatureSpan } from '@/hydration/features';
 import type { IUserMaster } from '@/sharepoint/fields';
 import { useMemo } from 'react';
+import { getPendingUserOrder } from './getPendingUserOrder';
 
 export function useActivitySummary(
   users: IUserMaster[],
@@ -119,10 +120,15 @@ export function useActivitySummary(
         .map(r => String(r.personId))
     );
 
-    const pendingUserIds = users
+    const rawPendingUserIds = users
       .map(u => String(u.UserID))
-      .filter(id => !recordedUserIds.has(id))
-      .sort();
+      .filter(id => !recordedUserIds.has(id));
+
+    const pendingUserIds = getPendingUserOrder({
+      users,
+      pendingUserIds: rawPendingUserIds,
+      policy: 'userId',
+    });
 
     return {
       total,
