@@ -94,6 +94,7 @@ export const QuickRecordDrawer: React.FC<QuickRecordDrawerProps> = ({
       >
         <QuickRecordFormEmbed
           userId={userId || undefined}
+          date={new Date().toISOString().split('T')[0]} // 本日
           onClose={onClose}
           onSaveSuccess={onSaveSuccess}
         />

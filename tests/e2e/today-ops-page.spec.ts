@@ -108,4 +108,73 @@ test.describe('Today Ops Screen', () => {
     await expect(drawer).not.toBeVisible();
     await expect(page).not.toHaveURL(/.*userId=/);
   });
+
+  test('continuous input toggle handles auto-next flow properly', async ({ page }) => {
+    // 1. Visit the today page
+    await page.goto('/today');
+
+    // Wait for the banner to be visible
+    const banner = page.getByTestId('today-hero-banner');
+    await expect(banner).toBeVisible({ timeout: 2000 });
+
+    // 2. Click the CTA
+    const ctaButton = page.getByTestId('today-hero-cta');
+    await ctaButton.click();
+
+    // Drawer should open
+    const drawer = page.getByTestId('today-quickrecord-drawer');
+    await expect(drawer).toBeVisible();
+
+    // 3. Verify toggle is ON by default
+    const toggle = drawer.locator('input[type="checkbox"]').first();
+    await expect(toggle).toBeAttached({ timeout: 2000 });
+    await expect(toggle).toBeChecked();
+
+    // 4. Extract first user ID from the invisible embed block (safe vs DOM layout changes)
+    const embedForm = drawer.getByTestId('today-quickrecord-form-embed');
+    const targetUserIdText = await embedForm.getByTestId('today-quickrecord-target-userid').textContent();
+    const firstUserId = targetUserIdText?.trim() || '';
+    expect(firstUserId).toMatch(/^U-?\d+/);
+
+    // Mock the POST save API call to return 200 quickly so we bypass server layers
+    await page.route('/api/daily-records', async route => {
+      await route.fulfill({ status: 200, contentType: 'application/json', body: '{}' });
+    });
+
+    // We do not need to fill full required form fields if they are missing required validation intercepts,
+    // but typically Daily Record requires some basic data. We will attempt a direct Save and observe the URL update.
+    // If the standard UI fails to save due to form emptiness, our mocked environment is typically configured to bypass it.
+
+    // Fill required form fields to pass internal useTableDailyRecordForm validation
+    await page.getByRole('textbox', { name: '記録者名' }).fill('E2E Reporter');
+
+    // Save
+    const saveBtn = embedForm.getByTestId('daily-table-main-save-button');
+    await expect(saveBtn).toBeVisible();
+    await saveBtn.click();
+
+    // Verify it moved to the next user
+    await expect(page).not.toHaveURL(new RegExp(`userId=${firstUserId}`));
+    await expect(page).toHaveURL(/.*userId=U-?\d+/);
+
+    // 5. Turn toggle OFF by clicking the label text directly to bypass MUI strictly controlled input latency
+    await drawer.getByText('連続入力').click();
+    await expect(toggle).not.toBeChecked();
+
+    // Extract second user ID
+    const secondUserIdText = await embedForm.getByTestId('today-quickrecord-target-userid').textContent();
+    const secondUserId = secondUserIdText?.trim() || '';
+    expect(secondUserId).toMatch(/^U-?\d+/);
+    expect(secondUserId).not.toEqual(firstUserId);
+
+    // Re-fill the reporter name because the form state resets after successful submission
+    await page.getByRole('textbox', { name: '記録者名' }).fill('E2E Reporter 2');
+
+    // Click save again
+    await saveBtn.click();
+
+    // Verify it closes and resets URL because toggle is OFF
+    await expect(drawer).not.toBeVisible();
+    await expect(page).not.toHaveURL(/.*mode=unfilled/);
+  });
 });
