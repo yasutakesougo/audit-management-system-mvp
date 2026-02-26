@@ -8,7 +8,8 @@ import {
     useMediaQuery,
     useTheme,
 } from '@mui/material';
-import React from 'react';
+import FormControlLabel from '@mui/material/FormControlLabel';
+import Switch from '@mui/material/Switch';
 import { QuickRecordFormEmbed } from './QuickRecordFormEmbed';
 
 export type QuickRecordDrawerProps = {
@@ -17,6 +18,8 @@ export type QuickRecordDrawerProps = {
   userId: string | null;
   onClose: () => void;
   onSaveSuccess?: () => void;
+  autoNextEnabled?: boolean;
+  setAutoNextEnabled?: (enabled: boolean) => void;
 };
 
 export const QuickRecordDrawer: React.FC<QuickRecordDrawerProps> = ({
@@ -25,6 +28,8 @@ export const QuickRecordDrawer: React.FC<QuickRecordDrawerProps> = ({
   userId,
   onClose,
   onSaveSuccess,
+  autoNextEnabled = true,
+  setAutoNextEnabled,
 }) => {
   const theme = useTheme();
   // タブレット以上は右側Drawer、スマホは全画面Dialog (PR3ガードレール#3)
@@ -56,9 +61,28 @@ export const QuickRecordDrawer: React.FC<QuickRecordDrawerProps> = ({
         <Typography variant="h6" fontWeight="bold">
           {title}
         </Typography>
-        <IconButton onClick={onClose} aria-label="close" data-testid="today-quickrecord-close">
-          <CloseIcon />
-        </IconButton>
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+          {mode === 'unfilled' && setAutoNextEnabled && (
+            <FormControlLabel
+              control={
+                <Switch
+                  size="small"
+                  checked={autoNextEnabled}
+                  onChange={(e) => setAutoNextEnabled(e.target.checked)}
+                  inputProps={{ 'aria-label': '連続入力' }}
+                />
+              }
+              label={
+                <Typography variant="body2" sx={{ userSelect: 'none' }}>
+                  連続入力
+                </Typography>
+              }
+            />
+          )}
+          <IconButton onClick={onClose} aria-label="close" data-testid="today-quickrecord-close">
+            <CloseIcon />
+          </IconButton>
+        </Box>
       </Box>
 
       <Box

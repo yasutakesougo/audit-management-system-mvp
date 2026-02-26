@@ -1,4 +1,4 @@
-import { useCallback } from 'react';
+import { useCallback, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 
 export type QuickRecordMode = 'unfilled' | 'user';
@@ -10,10 +10,13 @@ export type QuickRecordState = {
   openUnfilled: (targetUserId?: string) => void;
   openUser: (userId: string) => void;
   close: () => void;
+  autoNextEnabled: boolean;
+  setAutoNextEnabled: (enabled: boolean) => void;
 };
 
 export const useQuickRecord = (): QuickRecordState => {
   const [searchParams, setSearchParams] = useSearchParams();
+  const [autoNextEnabled, setAutoNextEnabled] = useState(true);
 
   const modeRaw = searchParams.get('mode');
   const mode = (modeRaw === 'unfilled' || modeRaw === 'user') ? modeRaw : null;
@@ -69,5 +72,7 @@ export const useQuickRecord = (): QuickRecordState => {
     openUnfilled,
     openUser,
     close,
+    autoNextEnabled,
+    setAutoNextEnabled,
   };
 };
