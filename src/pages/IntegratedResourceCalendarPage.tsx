@@ -764,8 +764,8 @@ export default function IntegratedResourceCalendarPage() {
    */
   useEffect(() => {
     const timer = setTimeout(() => {
-      const calendarApi = calendarRef.current?.getApi();
-      if (!calendarApi) return;
+      if (!calendarRef.current || typeof calendarRef.current.getApi !== 'function') return;
+      const calendarApi = calendarRef.current.getApi();
 
       const event = calendarApi.getEventById('plan-1');
       if (!event) return;

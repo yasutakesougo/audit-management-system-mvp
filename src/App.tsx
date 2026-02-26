@@ -1,29 +1,30 @@
+import { useAuth } from '@/auth/useAuth';
 import { HydrationHud } from '@/debug/HydrationHud';
 import type { CreateScheduleEventInput, SchedItem, SchedulesPort } from '@/features/schedules/data';
 import {
-  SchedulesProvider,
-  demoSchedulesPort,
-  makeGraphSchedulesPort,
-  makeMockScheduleCreator,
-  makeSharePointScheduleCreator,
-  makeSharePointSchedulesPort,
-  normalizeUserId,
+    SchedulesProvider,
+    demoSchedulesPort,
+    makeGraphSchedulesPort,
+    makeMockScheduleCreator,
+    makeSharePointScheduleCreator,
+    makeSharePointSchedulesPort,
+    normalizeUserId,
 } from '@/features/schedules/data';
+import { SettingsProvider, useSettingsContext } from '@/features/settings';
 import { hydrateStaffAttendanceFromStorage, saveStaffAttendanceToStorage } from '@/features/staff/attendance/persist';
-import { SettingsProvider } from '@/features/settings';
+import type { Result } from '@/shared/result';
 import CssBaseline from '@mui/material/CssBaseline';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import React, { useEffect, useMemo, type ReactNode } from 'react';
 import { RouterProvider } from 'react-router-dom';
+import { LayoutProvider, type LayoutDensity } from './app/LayoutContext';
 import { router } from './app/router';
 import { routerFutureFlags } from './app/routerFuture';
 import { ThemeRoot } from './app/theme';
 import { GRAPH_RESOURCE } from './auth/msalConfig';
 import { MsalProvider } from './auth/MsalProvider';
-import { useAuth } from '@/auth/useAuth';
-import type { Result } from '@/shared/result';
 import { ToastProvider, useToast } from './hooks/useToast';
-import { getScheduleSaveMode, readBool, readViteBool, isDemoModeEnabled, shouldSkipLogin } from './lib/env';
+import { getScheduleSaveMode, isDemoModeEnabled, readBool, readViteBool, shouldSkipLogin } from './lib/env';
 import { registerNotifier } from './lib/notice';
 import { hasSpfxContext } from './lib/runtime';
 
@@ -123,6 +124,17 @@ export const ToastNotifierBridge: React.FC = () => {
   return null;
 };
 
+function LayoutProviderBridge({ children }: BridgeProps) {
+  const { settings } = useSettingsContext();
+  // Map 'comfortable' from settings to 'standard' used in LayoutContext
+  const forceDensity: LayoutDensity = settings.density === 'comfortable' ? 'standard' : (settings.density as LayoutDensity);
+  return (
+    <LayoutProvider forceDensity={forceDensity}>
+      {children}
+    </LayoutProvider>
+  );
+}
+
 function App() {
   // ✅ 起動時に hydrate（1回だけ）
   useEffect(() => {
@@ -149,12 +161,14 @@ function App() {
             {/* 📢 グローバルトースト通知 */}
             <SettingsProvider>
               {/* ⚙️ ユーザー表示設定（theme density等） */}
-              <SchedulesProviderBridge>
-                {/* 📅 スケジュール機能のデータポート（Graph / デモ切替） */}
-                <ToastNotifierBridge />
+              <LayoutProviderBridge>
+                <SchedulesProviderBridge>
+                  {/* 📅 スケジュール機能のデータポート（Graph / デモ切替） */}
+                  <ToastNotifierBridge />
 
-                <RouterProvider router={router} future={routerFutureFlags} />
-              </SchedulesProviderBridge>
+                  <RouterProvider router={router} future={routerFutureFlags} />
+                </SchedulesProviderBridge>
+              </LayoutProviderBridge>
             </SettingsProvider>
           </ToastProvider>
           {/* 🔍 開発/検証用 HUD（本番では非表示可能） */}

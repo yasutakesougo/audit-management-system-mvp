@@ -5,20 +5,24 @@ import { useBreakpointFlags, useOrientation } from '@/app/LayoutContext';
 import { canAccess } from '@/auth/roles';
 import { useAuth } from '@/auth/useAuth';
 import { useUserAuthz } from '@/auth/useUserAuthz';
+import { type SpSyncStatus } from '@/features/dashboard/types/hub';
+import { buildSpLaneModel } from '@/features/dashboard/useDashboardSummary';
 import { ScheduleDialogManager } from '@/features/schedules/components/ScheduleDialogManager';
 import { ScheduleFAB } from '@/features/schedules/components/ScheduleFAB';
 import { ScheduleFilterBar } from '@/features/schedules/components/ScheduleFilterBar';
 import { ScheduleReadOnlyAlert } from '@/features/schedules/components/ScheduleReadOnlyAlert';
 import { ScheduleViewContainer } from '@/features/schedules/components/ScheduleViewContainer';
 import SchedulesHeader from '@/features/schedules/components/SchedulesHeader';
+import { SchedulesSpLane } from '@/features/schedules/components/SchedulesSpLane';
 import { MASTER_SCHEDULE_TITLE_JA } from '@/features/schedules/constants';
+import { isSchedulesSpEnabled } from '@/lib/env';
 import { TESTIDS } from '@/testids';
 import { resolveSchedulesTz } from '@/utils/scheduleTz';
 import { useScheduleUserOptions } from '../hooks/useScheduleUserOptions';
 import { useSchedulesPageState } from '../hooks/useSchedulesPageState';
+import { useSchedulesToday } from '../hooks/useSchedulesToday';
 import { useWeekPageOrchestrator } from '../hooks/useWeekPageOrchestrator';
 import { useWeekPageUiState } from '../hooks/useWeekPageUiState';
-
 
 export default function WeekPage() {
   // Layout & Auth
@@ -34,39 +38,46 @@ export default function WeekPage() {
   // Page state (business logic)
   const pageState = useSchedulesPageState({ myUpn, canEditByRole, ready });
   const {
-    route,
     mode,
     categoryFilter,
-    isLoading,
     filteredItems,
     lastError,
     clearLastError,
     refetch,
-    createDialogOpen,
-    scheduleDialogModeProps,
-    createDialogInitialDate,
-    createDialogInitialStartTime,
-    createDialogInitialEndTime,
     weekLabel,
-    readOnlyReason,
     canEdit,
     canWrite,
     weekRange,
   } = pageState;
 
+  // Sync status for SharePoint Lane (from origin/main)
+  const {
+    loading: spLoading,
+    error: spError,
+    fallbackError: spFallbackError,
+    data: spItems,
+    source: spSource,
+    refetch: spRefetch,
+    isFetching: spIsFetching,
+    failureCount: spFailureCount,
+    retryAfter: spRetryAfter,
+    cooldownUntil: spCooldownUntil,
+  } = useSchedulesToday(10);
+
+  const spSyncStatus: SpSyncStatus = useMemo(() => ({
+    loading: spLoading,
+    error: spError || spFallbackError,
+    itemCount: spItems.length,
+    source: spSource,
+    onRetry: spRefetch,
+    isFetching: spIsFetching,
+    failureCount: spFailureCount,
+    retryAfter: spRetryAfter,
+    cooldownUntil: spCooldownUntil,
+  }), [spLoading, spError, spFallbackError, spItems.length, spSource, spRefetch, spIsFetching, spFailureCount, spRetryAfter, spCooldownUntil]);
+
   // UI state (snackbar, conflict, highlights, etc.)
   const uiState = useWeekPageUiState();
-  const {
-    snack,
-    setSnack,
-    isInlineSaving,
-    isInlineDeleting,
-    conflictDetailOpen,
-    setConflictDetailOpen,
-    lastErrorAt,
-    conflictBusy,
-    highlightId,
-  } = uiState;
 
   // Orchestrator (all event handlers, navigation, local state)
   const orchestrator = useWeekPageOrchestrator({
@@ -113,16 +124,13 @@ export default function WeekPage() {
     handleTodayMonth,
     suppressRouteDialog,
     conflictOpen,
-    networkOpen,
   } = orchestrator;
 
   // Schedule user options
   const scheduleUserOptions = useScheduleUserOptions();
-  const defaultScheduleUser = scheduleUserOptions.length ? scheduleUserOptions[0] : null;
 
   // Layout flags
   const isSchedulesView = location.pathname === '/schedules' || location.pathname.startsWith('/schedules/');
-  // Fix: Show FAB on mobile/tablet if we are in schedules view (where it was previously hidden by !isSchedulesView)
   const showFab = !isDesktopSize && isSchedulesView;
   const compact = isTabletSize && isLandscape;
   const fabInset = `max(24px, calc(env(safe-area-inset-bottom, 0px) + 8px))`;
@@ -154,6 +162,11 @@ export default function WeekPage() {
   const navPrev = mode === 'month' ? handlePrevMonth : handlePrevWeek;
   const navNext = mode === 'month' ? handleNextMonth : handleNextWeek;
   const navToday = mode === 'month' ? handleTodayMonth : handleTodayWeek;
+
+  const spLane = useMemo(() => {
+    const enabled = isSchedulesSpEnabled();
+    return buildSpLaneModel(enabled, spSyncStatus);
+  }, [spSyncStatus]);
 
   return (
     <section
@@ -211,9 +224,9 @@ export default function WeekPage() {
           >
             <ScheduleFilterBar
               categoryFilter={categoryFilter}
-              onCategoryChange={(category) => route.setFilter({ category })}
+              onCategoryChange={(category) => pageState.route.setFilter({ category })}
               query={pageState.query}
-              onQueryChange={(q) => route.setFilter({ query: q })}
+              onQueryChange={(q) => pageState.route.setFilter({ query: q })}
               mode={mode}
               orgParam={orchestrator.orgParam}
               onOrgChange={handleOrgChange}
@@ -222,23 +235,31 @@ export default function WeekPage() {
           </SchedulesHeader>
         </div>
 
-        <ScheduleReadOnlyAlert readOnlyReason={readOnlyReason} />
+        <ScheduleReadOnlyAlert readOnlyReason={pageState.readOnlyReason} />
 
-        <div>
-          <ScheduleViewContainer
-            mode={mode}
-            isLoading={isLoading}
-            items={filteredItems}
-            weekRange={weekRange}
-            onDayClick={handleDayClick}
-            onTimeSlotClick={handleTimeSlotClick}
-            activeDateIso={resolvedActiveDateIso}
-            onItemSelect={handleViewClick}
-            highlightId={highlightId}
-            activeDayRange={activeDayRange}
-            categoryFilter={categoryFilter}
-            compact={compact}
-          />
+        <div style={{ display: 'flex', gap: 24, padding: isDesktopSize ? '0 24px' : '0 12px' }}>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <ScheduleViewContainer
+              mode={mode}
+              isLoading={pageState.isLoading}
+              items={filteredItems}
+              weekRange={weekRange}
+              onDayClick={handleDayClick}
+              onTimeSlotClick={handleTimeSlotClick}
+              activeDateIso={resolvedActiveDateIso}
+              onItemSelect={handleViewClick}
+              highlightId={uiState.highlightId}
+              activeDayRange={activeDayRange}
+              categoryFilter={categoryFilter}
+              compact={compact}
+            />
+          </div>
+
+          {isDesktopSize && (
+            <aside style={{ width: 280, flexShrink: 0, paddingTop: 16 }}>
+               <SchedulesSpLane model={spLane} />
+            </aside>
+          )}
         </div>
 
         {showFab && (
@@ -247,7 +268,7 @@ export default function WeekPage() {
             onClick={handleFabClick}
             fabRef={fabRef}
             resolvedActiveDateIso={resolvedActiveDateIso}
-            readOnlyMessage={readOnlyReason?.message}
+            readOnlyMessage={pageState.readOnlyReason?.message}
             fabInset={fabInset}
             fabInsetRight={fabInsetRight}
           />
@@ -263,35 +284,35 @@ export default function WeekPage() {
           onInlineDialogClose={handleInlineDialogClose}
           onInlineDialogSubmit={handleInlineDialogSubmit}
           onInlineDialogDelete={handleInlineDialogDelete}
-          isInlineSaving={isInlineSaving}
-          isInlineDeleting={isInlineDeleting}
-          createDialogOpen={createDialogOpen}
+          isInlineSaving={uiState.isInlineSaving}
+          isInlineDeleting={uiState.isInlineDeleting}
+          createDialogOpen={pageState.createDialogOpen}
           suppressRouteDialog={suppressRouteDialog}
           canEdit={canEdit}
           canWrite={canWrite}
-          scheduleDialogModeProps={scheduleDialogModeProps}
-          createDialogInitialDate={createDialogInitialDate}
-          createDialogInitialStartTime={createDialogInitialStartTime}
-          createDialogInitialEndTime={createDialogInitialEndTime}
+          scheduleDialogModeProps={pageState.scheduleDialogModeProps}
+          createDialogInitialDate={pageState.createDialogInitialDate}
+          createDialogInitialStartTime={pageState.createDialogInitialStartTime}
+          createDialogInitialEndTime={pageState.createDialogInitialEndTime}
           onCreateDialogClose={handleCreateDialogClose}
           onScheduleDialogSubmit={handleScheduleDialogSubmit}
           scheduleUserOptions={scheduleUserOptions}
-          defaultScheduleUser={defaultScheduleUser ?? undefined}
-          snack={snack}
-          onSnackClose={() => setSnack((s) => ({ ...s, open: false }))}
+          defaultScheduleUser={scheduleUserOptions[0]}
+          snack={uiState.snack}
+          onSnackClose={() => uiState.setSnack((s) => ({ ...s, open: false }))}
           conflictOpen={conflictOpen}
-          conflictDetailOpen={conflictDetailOpen}
-          onOpenConflictDetail={() => setConflictDetailOpen(true)}
-          onConflictDetailClose={() => setConflictDetailOpen(false)}
+          conflictDetailOpen={uiState.conflictDetailOpen}
+          onOpenConflictDetail={() => uiState.setConflictDetailOpen(true)}
+          onConflictDetailClose={() => uiState.setConflictDetailOpen(false)}
           onConflictDiscard={handleConflictDiscard}
           onConflictReload={handleConflictReload}
-          conflictBusy={conflictBusy}
+          conflictBusy={uiState.conflictBusy}
           lastError={lastError}
-          lastErrorAt={lastErrorAt}
+          lastErrorAt={uiState.lastErrorAt}
           onConflictRefetch={refetch}
           onClearLastError={clearLastError}
           onSetFocusScheduleId={uiState.setFocusScheduleId}
-          networkOpen={networkOpen}
+          networkOpen={orchestrator.networkOpen}
         />
       </div>
     </section>

@@ -40,7 +40,7 @@ test.describe('Dashboard happy path (handoff + agenda seeds)', () => {
     });
 
     await page.goto(DASHBOARD_ENTRY);
-    await page.waitForLoadState('networkidle');
+    await expect(page.getByTestId(TESTIDS['dashboard-page'])).toBeVisible();
     await expect(page).toHaveURL(/\/dashboard/);
 
     const summaryRoot = page.getByTestId(TESTIDS['dashboard-handoff-summary']);

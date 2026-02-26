@@ -14,18 +14,21 @@ vi.mock('react-router-dom', async () => {
 });
 
 describe('useTableDailyRecordViewModel', () => {
+  const alertSpy = vi.fn();
+
   beforeEach(() => {
     navigateMock.mockClear();
+    vi.useFakeTimers();
+    vi.stubGlobal('alert', alertSpy);
   });
 
   afterEach(() => {
+    vi.unstubAllGlobals();
+    vi.restoreAllMocks();
     vi.useRealTimers();
   });
 
   it('returns expected shape and closes after save', async () => {
-    vi.useFakeTimers();
-    const alertSpy = vi.spyOn(window, 'alert').mockImplementation(() => {});
-
     const { result } = renderHook(() => useTableDailyRecordViewModel());
 
     expect(result.current.open).toBe(true);
@@ -33,32 +36,38 @@ describe('useTableDailyRecordViewModel', () => {
     expect(result.current.backTo).toBe('/dashboard');
     expect(result.current.testId).toBe('daily-table-record-page');
 
-    const records = [
-      {
-        userId: 'U001',
-        userName: '山田太郎',
-        recordDate: '2026-02-07',
-        activities: {
-          am: '朝の活動',
-          pm: '午後の活動',
+    const payload = {
+      date: '2026-02-07',
+      reporter: { name: 'テスト担当者', role: '生活支援員' },
+      userRows: [
+        {
+          userId: 'U001',
+          userName: '山田太郎',
+          amActivity: '朝の活動',
+          pmActivity: '午後の活動',
+          lunchAmount: 'full',
+          problemBehavior: {
+            selfHarm: false,
+            violence: false,
+            loudVoice: false,
+            pica: false,
+            other: false,
+          },
+          specialNotes: '特になし',
         },
-        lunchIntake: 'full' as const,
-        problemBehaviors: [],
-        notes: '特になし',
-        submittedAt: new Date().toISOString(),
-      },
-    ];
+      ],
+    };
 
     await act(async () => {
-      const savePromise = result.current.onSave(records);
-      await vi.advanceTimersByTimeAsync(800);
+      const savePromise = result.current.onSave(payload);
+      // ✅ CI(Linux/headless) 安定化: タイマー + microtask を確実に消化
+      await vi.runAllTimersAsync();
+      await Promise.resolve();
       await savePromise;
     });
 
     expect(alertSpy).toHaveBeenCalled();
     expect(navigateMock).toHaveBeenCalledWith('/dashboard', { replace: true });
     expect(result.current.open).toBe(false);
-
-    alertSpy.mockRestore();
   });
 });

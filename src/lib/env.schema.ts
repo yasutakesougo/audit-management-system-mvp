@@ -1,6 +1,8 @@
 import { getRuntimeEnv } from '@/env';
 import { z } from 'zod';
 
+const TIME_24H_PATTERN = /^([01]?\d|2[0-3]):[0-5]\d$/;
+
 /**
  * Helper to parse boolean from string ("true", "1", "false", "0")
  */
@@ -153,7 +155,7 @@ export const envSchema = z.object({
     if (!Number.isInteger(v)) ctx.addIssue({ code: 'invalid_type' as const, expected: 'integer', received: 'float', message: 'Absence monthly limit must be an integer' });
   }),
   VITE_FACILITY_CLOSE_TIME: z.string().optional().default('18:00').superRefine((v, ctx) => {
-    if (!/^([0-1]?\d|2[0-3]):([0-5]\d)$/.test(v)) ctx.addIssue({ code: 'invalid_format' as 'custom', message: 'Facility close time must be HH:MM (24h)' });
+    if (!TIME_24H_PATTERN.test(v)) ctx.addIssue({ code: 'custom', message: 'Facility close time must be HH:MM (24h)' });
   }),
 
   // External URLs
