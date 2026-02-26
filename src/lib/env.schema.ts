@@ -1,4 +1,4 @@
-import { getRuntimeEnv } from '@/env';
+﻿import { getRuntimeEnv } from '@/env';
 import { z } from 'zod';
 
 const TIME_24H_PATTERN = /^([01]?\d|2[0-3]):[0-5]\d$/;
@@ -58,6 +58,10 @@ export const envSchema = z.object({
   VITE_SP_SCOPE_DEFAULT: z.string().optional(),
   VITE_AAD_CLIENT_ID: z.string().optional(),
   VITE_AAD_TENANT_ID: z.string().optional(),
+  VITE_SP_LIST_SCHEDULES: z.string().optional(),
+  VITE_SP_LIST_USERS: z.string().optional(),
+  VITE_SP_LIST_DAILY: z.string().optional(),
+  VITE_SP_LIST_STAFF: z.string().optional(),
   VITE_MSAL_AUTHORITY: zOptionalUrl,
   VITE_MSAL_REDIRECT_URI: z.string().optional(),
   VITE_MSAL_LOGIN_FLOW: z.string().optional().default('popup'),
@@ -65,15 +69,11 @@ export const envSchema = z.object({
   VITE_AZURE_TENANT_ID: z.string().optional(),
 
   // SharePoint Configuration
-  VITE_SP_LIST_SCHEDULES: z.string().optional().default('Schedules'),
   VITE_SP_RETRY_MAX: zIntFromString(4),
   VITE_SP_RETRY_BASE_MS: zIntFromString(400),
   VITE_SP_RETRY_MAX_DELAY_MS: zIntFromString(5000),
   VITE_SP_LIST_ACTIVITY_DIARY: z.string().optional().default('ActivityDiary'),
-  VITE_SP_LIST_DAILY: z.string().optional().default('DailyRecords'),
-  VITE_SP_LIST_STAFF: z.string().optional().default('Staff'),
   VITE_SP_LIST_STAFF_ATTENDANCE: z.string().optional().default('StaffAttendance'),
-  VITE_SP_LIST_USERS: z.string().optional().default('Users'),
   VITE_SP_LIST_STAFF_GUID: z.string().optional(),
   VITE_SP_LIST_PLAN_GOAL: z.string().optional().default('PlanGoals'),
   VITE_SP_LIST_NURSE_OBSERVATION: z.string().optional().default('NurseObservations'),
@@ -188,10 +188,6 @@ export const AppEnvSchema = envSchema;
  */
 export function parseEnv(raw: Record<string, unknown>): EnvSchema {
   const placeholders = {
-    VITE_SP_RESOURCE: 'https://contoso.sharepoint.com',
-    VITE_SP_SITE_RELATIVE: '/sites/test',
-    VITE_MSAL_CLIENT_ID: '00000000-0000-0000-0000-000000000000',
-    VITE_MSAL_TENANT_ID: 'test-tenant',
   };
   return envSchema.parse({ ...placeholders, ...raw });
 }
@@ -206,10 +202,6 @@ export function validateEnv(raw: Record<string, unknown>): EnvSchema {
     (typeof import.meta !== 'undefined' && (import.meta as unknown as { env?: { MODE?: string } }).env?.MODE === 'test');
 
   const placeholders = {
-    VITE_SP_RESOURCE: 'https://contoso.sharepoint.com',
-    VITE_SP_SITE_RELATIVE: '/sites/test',
-    VITE_MSAL_CLIENT_ID: '00000000-0000-0000-0000-000000000000',
-    VITE_MSAL_TENANT_ID: 'test-tenant',
   };
 
   // Pre-merge for tests to improve safeParse success rate and provide defaults
@@ -260,3 +252,5 @@ export function getParsedEnv(overrides?: Partial<EnvSchema>): EnvSchema {
 export function resetParsedEnvForTests() {
   cachedParsedEnv = null;
 }
+
+

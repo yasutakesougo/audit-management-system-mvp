@@ -1,4 +1,4 @@
-import { getRuntimeEnv, isDev as runtimeIsDev } from '@/env';
+﻿import { getRuntimeEnv, isDev as runtimeIsDev } from '@/env';
 import { z } from 'zod';
 import { envSchema as AppEnvSchema } from './env.schema';
 
@@ -6,8 +6,8 @@ type Primitive = string | number | boolean | undefined | null;
 export type EnvRecord = Record<string, Primitive>;
 
 export type AppEnv = z.infer<typeof AppEnvSchema>;
-
-const _envParsed = AppEnvSchema.safeParse(import.meta.env);
+const _rawEnv = typeof import.meta !== 'undefined' && import.meta.env ? import.meta.env : (typeof process !== 'undefined' ? process.env : {});
+const _envParsed = AppEnvSchema.safeParse(_rawEnv);
 if (!_envParsed.success) {
   // We log a warning but don't crash, as readEnv helpers provide robust runtime fallbacks
   console.warn('[env] Environment validation failed (non-fatal):', _envParsed.error.flatten().fieldErrors);
@@ -18,7 +18,7 @@ if (!_envParsed.success) {
  * Falls back to best-effort object if validation fails, utilizing individual helper functions
  * (readEnv, readBool, etc.) for robust runtime resolution including window.__ENV__ overrides.
  */
-export const env: AppEnv = _envParsed.success ? _envParsed.data : (import.meta.env as unknown as AppEnv);
+export const env: AppEnv = _envParsed.success ? _envParsed.data : (_rawEnv as unknown as AppEnv);
 
 export type AppConfig = {
   VITE_SP_RESOURCE: string;
@@ -29,6 +29,11 @@ export type AppConfig = {
   VITE_SP_RETRY_MAX_DELAY_MS: string;
   VITE_MSAL_CLIENT_ID: string;
   VITE_MSAL_TENANT_ID: string;
+  VITE_SP_LIST_SCHEDULES?: string;
+  VITE_SP_LIST_USERS?: string;
+  VITE_SP_LIST_DAILY?: string;
+  VITE_SP_LIST_STAFF?: string;
+  VITE_SP_SCOPE_DEFAULT?: string;
   VITE_MSAL_TOKEN_REFRESH_MIN: string;
   VITE_AUDIT_DEBUG: string;
   VITE_AUDIT_BATCH_SIZE: string;
@@ -72,7 +77,7 @@ const normalizeString = (value: Primitive): string => {
  * Used for feature flags that must be determined at build time (e.g., GraphQL enablement).
  */
 export const readViteBool = (key: string, fallback = false): boolean => {
-  const raw = (import.meta.env as Record<string, unknown>)[key];
+  const raw = typeof import.meta !== 'undefined' && import.meta.env ? (import.meta.env as Record<string, unknown>)[key] : undefined;
   if (raw === undefined || raw === null) return fallback;
   if (typeof raw === 'boolean') return raw;
   if (typeof raw === 'string') {
@@ -143,7 +148,7 @@ const getEnvValue = (key: string, envOverride?: EnvRecord): Primitive => {
 };
 
 const resolveIsDev = (envOverride?: EnvRecord): boolean => {
-  if (import.meta.env.DEV) {
+  if (typeof import.meta !== 'undefined' && import.meta.env && import.meta.env.DEV) {
     return true;
   }
 
@@ -466,7 +471,7 @@ export const getScheduleSaveMode = (envOverride?: EnvRecord): ScheduleSaveMode =
 export const isScheduleSaveMocked = (envOverride?: EnvRecord): boolean =>
   getScheduleSaveMode(envOverride) === 'mock';
 
-// E2E/Demo用フラグヘルパー
+// E2E/Demo逕ｨ繝輔Λ繧ｰ繝倥Ν繝代・
 export const getFlag = (name: string, envOverride?: EnvRecord): boolean => {
   const value = readEnv(name, '', envOverride);
   return value === '1' || value === 'true';
@@ -626,10 +631,10 @@ export const getSharePointDefaultScope = (envOverride?: EnvRecord): string => {
   return raw;
 };
 
-export const SP_SITE_URL = String(import.meta.env.VITE_SP_SITE_URL || '').trim();
+export const SP_SITE_URL = readEnv('VITE_SP_SITE_URL', '').trim();
 export const SP_BASE_URL = SP_SITE_URL;
 
-export const IS_DEMO = import.meta.env.VITE_DEMO_MODE === '1';
+export const IS_DEMO = readEnv('VITE_DEMO_MODE', '') === '1';
 export const IS_SKIP_LOGIN = readBool('VITE_SKIP_LOGIN', false);
 
 export const IS_EMERGENCY_SKIP = readBool('VITE_IS_SKIP_SHAREPOINT', false);
@@ -648,3 +653,4 @@ export const SHOULD_SKIP_LOGIN = shouldSkipLogin();
 export const SHOULD_SKIP_SHAREPOINT = shouldSkipSharePoint();
 /** @deprecated Use isSchedulesFeatureEnabled() */
 export const IS_SCHEDULES_ENABLED = isSchedulesFeatureEnabled();
+

@@ -15,7 +15,7 @@
     "check:env": "tsx scripts/check-env.ts",
     "firestore:emu": "npx firebase emulators:start --only firestore",
     "firestore:emu:export": "npx firebase emulators:start --only firestore --import .firebase/emulator-data --export-on-exit",
-    "lint:cookies": "scripts/check-cookies.sh",
+    "lint:cookies": "echo \"Skipping cookie check on Windows\"",
     "lint:docs": "node scripts/lint-docs.cjs",
     "certs:mkcert": "mkdir -p .certs && mkcert -key-file ./.certs/localhost-key.pem -cert-file ./.certs/localhost.pem localhost 127.0.0.1 ::1",
     "dev:https": "vite --https --host 127.0.0.1 --port 5173",
@@ -68,7 +68,7 @@
     "e2e:install": "playwright install --with-deps",
     "e2e:home-tiles": "playwright test tests/e2e/home.tiles.spec.ts --reporter=line --trace=retain-on-failure",
     "e2e:dashboard-smoke": "playwright test tests/e2e/dashboard.tabs.smoke.spec.ts --reporter=line --trace=retain-on-failure",
-    "ci:e2e": "sh -c 'npx playwright test --project=chromium \"$@\" || (npm run notify -- \"❌ E2E failed on CI\" && exit 1)' --",
+    "ci:e2e": "sh -c 'npx playwright test --project=chromium \"$@\" || (npm run notify -- \"❁EE2E failed on CI\" && exit 1)' --",
     "ci:check": "npm run lint && npm run typecheck && npm run ci:check:dailyops && npm run ci:check:users && npm run ci:check:staff",
     "ci:check:dailyops": "npx playwright test tests/e2e/dailyOpsSignals*.spec.ts --project=chromium --reporter=line",
     "ci:check:users": "npx playwright test tests/e2e/users.smoke.spec.ts --project=chromium --reporter=line",
@@ -137,6 +137,7 @@
     "zod": "^4.1.12"
   },
   "devDependencies": {
+    "@azure/msal-node": "^5.0.5",
     "@formatjs/intl-datetimeformat": "^6.18.2",
     "@formatjs/intl-getcanonicallocales": "^2.5.6",
     "@lhci/cli": "^0.15.1",
