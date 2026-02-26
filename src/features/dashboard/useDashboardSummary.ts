@@ -71,8 +71,12 @@ export function useDashboardSummary(
   perfMark('useDashboardSummary-start');
 
   // 1. Activity & Usage
+  const attendanceOrderUserIds = Object.values(visits)
+    .filter(v => v.status !== '当日欠席' && v.status !== '事前欠席')
+    .map(v => v.userCode);
+
   const { activityRecords, usageMap, intensiveSupportUsers, stats, dailyRecordStatus } =
-    useActivitySummary(users, today, currentMonth, generateMockActivityRecords);
+    useActivitySummary(users, today, currentMonth, generateMockActivityRecords, attendanceOrderUserIds);
 
   // 2. Attendance & Alerts
   const { attendanceSummary, briefingAlerts } =
