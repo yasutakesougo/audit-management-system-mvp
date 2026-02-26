@@ -102,6 +102,7 @@ export const TodayOpsPage: React.FC = () => {
 
   const handleSaveSuccess = React.useCallback(() => {
     if (!quickRecord.autoNextEnabled) {
+      quickRecord.close();
       return;
     }
 
@@ -121,6 +122,8 @@ export const TodayOpsPage: React.FC = () => {
       setTimeout(() => {
         quickRecord.openUnfilled(nextUserId);
       }, 0);
+    } else {
+      quickRecord.close();
     }
   }, [summary?.dailyRecordStatus?.pendingUserIds, quickRecord]);
 
