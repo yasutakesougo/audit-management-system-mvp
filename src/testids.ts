@@ -15,6 +15,9 @@ const NAV_TESTIDS = {
   schedules: 'nav-schedules',
   staffAttendance: 'nav-staff-attendance',
   nurse: 'nav-nurse',
+  billing: 'nav-billing',
+  integratedResourceCalendar: 'nav-integrated-resource-calendar',
+  navigationDiagnostics: 'nav-navigation-diagnostics',
 } as const;
 
 const FOOTER_TESTIDS = {
