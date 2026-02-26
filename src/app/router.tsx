@@ -64,6 +64,7 @@ const SupportActivityMasterPage = React.lazy(() => import('@/pages/SupportActivi
 const SupportStepMasterPage = React.lazy(() => import('@/pages/SupportStepMasterPage'));
 const IndividualSupportManagementPage = React.lazy(() => import('@/pages/IndividualSupportManagementPage'));
 const UserDetailPage = React.lazy(() => import('@/pages/UserDetailPage'));
+const NavigationDiagnosticsPage = React.lazy(() => import('@/pages/admin/NavigationDiagnosticsPage'));
 
 const StaffPanel = React.lazy(() => import('@/features/staff').then(m => ({ default: m.StaffPanel })));
 const UsersPanel = React.lazy(() => import('@/features/users').then(m => ({ default: m.UsersPanel })));
@@ -527,6 +528,20 @@ const SuspendedIntegratedResourceCalendarPage: React.FC = () => (
   </RouteHydrationErrorBoundary>
 );
 
+const SuspendedNavigationDiagnosticsPage: React.FC = () => (
+  <RouteHydrationErrorBoundary>
+    <React.Suspense
+      fallback={(
+        <div className="p-4 text-sm text-slate-600" role="status">
+          ナビ診断を読み込んでいます…
+        </div>
+      )}
+    >
+      <NavigationDiagnosticsPage />
+    </React.Suspense>
+  </RouteHydrationErrorBoundary>
+);
+
 const SuspendedMeetingGuidePage: React.FC = () => (
   <RouteHydrationErrorBoundary>
     <React.Suspense
@@ -603,6 +618,22 @@ const SuspendedTodayOpsPage: React.FC = () => (
   </RouteHydrationErrorBoundary>
 );
 
+const SupportPlanGuidePage = React.lazy(() => import('@/pages/SupportPlanGuidePage'));
+const SuspendedSupportPlanGuidePage: React.FC = () => (
+  <RouteHydrationErrorBoundary>
+    <React.Suspense
+      fallback={(
+        <div className="p-4 text-sm text-slate-600" role="status">
+          個別支援計画書モジュールを読み込んでいます…
+        </div>
+      )}
+    >
+      <SupportPlanGuidePage />
+    </React.Suspense>
+  </RouteHydrationErrorBoundary>
+);
+
+
 const childRoutes: RouteObject[] = [
   { path: 'auth/callback', element: <AuthCallbackRoute /> },
   { index: true, element: <DashboardRedirect /> },
@@ -628,6 +659,22 @@ const childRoutes: RouteObject[] = [
   },
   { path: 'room-management', element: <SuspendedRoomManagementPage /> },
   { path: 'meeting-guide', element: <SuspendedMeetingGuidePage /> },
+  {
+    path: 'compliance',
+    element: (
+      <RequireAudience requiredRole="viewer">
+        <div className="p-4">コンプラ報告（近日公開）</div>
+      </RequireAudience>
+    ),
+  },
+  {
+    path: 'support-plan-guide',
+    element: (
+      <RequireAudience requiredRole="viewer">
+        <SuspendedSupportPlanGuidePage />
+      </RequireAudience>
+    ),
+  },
   { path: 'handoff-timeline', element: <SuspendedHandoffTimelinePage /> },
   { path: 'meeting-minutes', element: MeetingMinutesRoutes.List },
   { path: 'meeting-minutes/new', element: MeetingMinutesRoutes.New },
@@ -813,6 +860,14 @@ const childRoutes: RouteObject[] = [
         </ProtectedRoute>
       </SchedulesGate>
     )
+  },
+  {
+    path: 'admin/navigation-diagnostics',
+    element: (
+      <RequireAudience requiredRole="admin">
+        <SuspendedNavigationDiagnosticsPage />
+      </RequireAudience>
+    ),
   },
   {
     path: 'schedule',
