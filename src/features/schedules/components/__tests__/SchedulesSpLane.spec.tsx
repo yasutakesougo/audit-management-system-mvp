@@ -59,7 +59,7 @@ describe('SchedulesSpLane', () => {
     expect(node).toHaveAttribute('data-state', 'active');
     expect(node).toHaveAttribute('data-source', 'sp');
 
-    expect(screen.getByText('最新同期済み')).toBeInTheDocument();
+    expect(screen.getByText('SharePoint 同期')).toBeInTheDocument();
     expect(screen.getByText('SP連携スケジュール')).toBeInTheDocument();
     expect(screen.getByText('3 件の項目を同期中')).toBeInTheDocument();
     expect(screen.getByText('テスト用サブタイトル')).toBeInTheDocument();
@@ -73,23 +73,34 @@ describe('SchedulesSpLane', () => {
     expect(screen.getByText('表示する項目はありません')).toBeInTheDocument();
   });
 
-  it('renders error state with error message', () => {
+  it('renders error state with error classification', async () => {
     const node = renderLane({
       version: 1,
       state: 'error',
       title: 'SharePoint 外部連携',
       reason: '認証エラーが発生しました',
       canRetry: true,
+      details: {
+        state: 'error',
+        errorKind: 'auth',
+        hint: 'ログインし直してください',
+      },
     });
 
     expect(node).toBeInTheDocument();
     expect(node).toHaveAttribute('data-state', 'error');
+    expect(node).toHaveAttribute('data-error-kind', 'auth');
 
     expect(screen.getByText('同期エラー')).toBeInTheDocument();
     expect(screen.getByText('認証エラーが発生しました')).toBeInTheDocument();
 
-    // Retry button should be present in error state
-    expect(screen.getByRole('button', { name: /今すぐ同期/i })).toBeInTheDocument();
+    // Verify hint in dialog
+    const infoButton = screen.getByRole('button', { name: /同期ステータス詳細を表示/i });
+    fireEvent.click(infoButton);
+
+    expect(await screen.findByText('同期ステータス詳細')).toBeInTheDocument();
+    expect(await screen.findByText('AUTH')).toBeInTheDocument();
+    expect(await screen.findByText('ログインし直してください')).toBeInTheDocument();
   });
 
   it('calls onRetry when retry button is clicked', () => {
@@ -112,12 +123,13 @@ describe('SchedulesSpLane', () => {
       version: 1,
       state: 'idle',
       title: 'SP Lane',
-      canRetry: true,
+      canRetry: false,
       busy: true,
+      onRetry: vi.fn(),
     });
 
     expect(node).toHaveAttribute('data-busy', '1');
-    const button = screen.getByRole('button', { name: /同期中/i });
+    const button = screen.getByRole('button', { name: '同期中' });
     expect(button).toBeDisabled();
   });
 
@@ -139,7 +151,7 @@ describe('SchedulesSpLane', () => {
 
     expect(await screen.findByText('同期ステータス詳細')).toBeInTheDocument();
     expect(await screen.findByText('ACTIVE')).toBeInTheDocument();
-    expect(await screen.findByText('sp')).toBeInTheDocument();
+    expect(await screen.findByText('SharePoint 同期')).toBeInTheDocument();
     expect(await screen.findByText('5 件')).toBeInTheDocument();
   });
 
@@ -150,5 +162,26 @@ describe('SchedulesSpLane', () => {
       title: 'Drift Test',
     });
     expect(node).toHaveAttribute('data-version', '99');
+  });
+
+  it('respects cooldownUntil by disabling retry button', () => {
+    const now = 10000;
+    vi.setSystemTime(now);
+
+    const node = renderLane({
+      version: 1,
+      state: 'error',
+      title: 'SP Lane',
+      canRetry: false, // buildSpLaneModel would set this to false if cooldown is active
+      cooldownUntil: now + 5000,
+      onRetry: vi.fn(),
+    });
+
+    expect(node).toHaveAttribute('data-can-retry', '0');
+    expect(node).toHaveAttribute('data-cooldown-until', '15000');
+
+    const button = screen.getByRole('button', { name: '今すぐ同期' });
+    expect(button).toBeDisabled();
+    expect(screen.getByText('待機中...')).toBeInTheDocument();
   });
 });

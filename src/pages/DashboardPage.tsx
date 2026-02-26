@@ -2,7 +2,6 @@ import { useFeatureFlags } from '@/config/featureFlags';
 import { canAccessDashboardAudience, type DashboardAudience } from '@/features/auth/store';
 import { getDashboardAnchorIdByKey } from '@/features/dashboard/sections/buildSections';
 import type { Schedule } from '@/lib/mappers';
-import { TESTIDS, tid } from '@/testids';
 import AccessTimeIcon from '@mui/icons-material/AccessTime';
 import AssignmentIcon from '@mui/icons-material/Assignment';
 import DashboardIcon from '@mui/icons-material/Dashboard';
@@ -11,16 +10,13 @@ import MedicalIcon from '@mui/icons-material/LocalHospital';
 import MonitorHeartIcon from '@mui/icons-material/MonitorHeart';
 import BehaviorIcon from '@mui/icons-material/Psychology';
 import TrendingUpIcon from '@mui/icons-material/TrendingUp';
-import Alert from '@mui/material/Alert';
 import Box from '@mui/material/Box';
 import Button from '@mui/material/Button';
 import Card from '@mui/material/Card';
 import CardContent from '@mui/material/CardContent';
 
 import { getSectionComponent, type SectionProps } from '@/features/dashboard/sections/registry';
-import { useTheme } from '@mui/material';
 import Container from '@mui/material/Container';
-import Divider from '@mui/material/Divider';
 import Grid from '@mui/material/Grid';
 import List from '@mui/material/List';
 import ListItem from '@mui/material/ListItem';
@@ -35,12 +31,13 @@ import { PersonDaily, SeizureRecord } from '../domain/daily/types';
 import { useAttendanceStore } from '@/features/attendance/store';
 import DashboardBriefingHUD from '@/features/dashboard/DashboardBriefingHUD';
 import { generateTodosFromSchedule } from '@/features/dashboard/generateTodos';
+import { DashboardLayout, type TodayChanges } from '@/features/dashboard/layouts/DashboardLayout';
 import { ZeroScrollLayout, type DashboardTab } from '@/features/dashboard/layouts/ZeroScrollLayout';
 import type { ScheduleLanes } from '@/features/dashboard/sections/impl/ScheduleSection';
 import { StaffStatusTab } from '@/features/dashboard/tabs/StaffStatusTab';
 import { TodoTab } from '@/features/dashboard/tabs/TodoTab';
 import { UserStatusTab } from '@/features/dashboard/tabs/UserStatusTab';
-import type { SpLaneModel, SpSyncStatus } from '@/features/dashboard/useDashboardSummary';
+import { type HubLaneModel, type SpLaneModel, type SpSyncStatus } from '@/features/dashboard/types/hub';
 import { useDashboardSummary } from '@/features/dashboard/useDashboardSummary';
 import { useDashboardViewModel, type DashboardSection, type DashboardSectionKey } from '@/features/dashboard/useDashboardViewModel';
 import { SchedulesSpLane } from '@/features/schedules/components/SchedulesSpLane';
@@ -294,34 +291,40 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ audience = 'staff' }) => 
   const {
     loading: spLoading,
     error: spError,
+    fallbackError: spFallbackError,
     data: spItems,
     source: spSource,
     refetch: spRefetch,
-    isFetching: spIsFetching
+    isFetching: spIsFetching,
+    failureCount: spFailureCount,
+    retryAfter: spRetryAfter,
+    cooldownUntil: spCooldownUntil,
   } = useSchedulesToday(10); // Check multiple items for status
 
   const spSyncStatus: SpSyncStatus = {
     loading: spLoading,
-    error: spError,
+    error: spError || spFallbackError,
     itemCount: spItems.length,
     source: spSource,
     onRetry: spRefetch,
     isFetching: spIsFetching,
-    // lastSyncAt: could be added if hook provides it
+    failureCount: spFailureCount,
+    retryAfter: spRetryAfter,
+    cooldownUntil: spCooldownUntil,
   };
 
   // Call consolidated dashboard summary hook
   // (replaces 7 useMemo blocks: activityRecords, usageMap, stats, attendanceSummary, dailyRecordStatus, scheduleLanes, prioritizedUsers)
-  const summary = useDashboardSummary({
+  const summary = useDashboardSummary(
     users,
+    staff,
+    visits,
     today,
     currentMonth,
-    visits,
-    staff,
-    attendanceCounts,
     generateMockActivityRecords,
+    attendanceCounts,
     spSyncStatus,
-  });
+  );
 
   // Destructure all values from hook
   const {
@@ -333,10 +336,12 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ audience = 'staff' }) => 
     scheduleLanesTomorrow,
     prioritizedUsers,
     intensiveSupportUsers,
-    briefingAlerts,  // ✨ 新規
-    staffAvailability,  // ✨ Phase B: 職員フリー状態
-    spLane, // ✨ Constant SP Lane
+    briefingAlerts,
+    staffAvailability,
+    monitoringHub,
   } = summary;
+
+  const spLane = monitoringHub.spLane;
 
   // Keep development logging for usageMap
   useEffect(() => {
@@ -373,7 +378,11 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ audience = 'staff' }) => 
     owner?: string;
   };
 
-  const renderScheduleLanes = (title: string, lanes: { userLane: ScheduleItem[]; staffLane: ScheduleItem[]; organizationLane: ScheduleItem[] }, spLaneData: SpLaneModel) => (
+  const renderScheduleLanes = (
+    title: string,
+    lanes: { userLane: ScheduleItem[]; staffLane: ScheduleItem[]; organizationLane: ScheduleItem[] },
+    hub: { spLane: SpLaneModel; presenceLane: HubLaneModel; dailyLane: HubLaneModel }
+  ) => (
     <Card>
       <CardContent sx={{ py: 1.25, px: 1.5 }}>
         <Typography variant="h6" sx={{ mb: 2 }}>
@@ -404,9 +413,13 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ audience = 'staff' }) => 
               </Paper>
             </Grid>
           ))}
-          {/* Constant SP Lane column */}
+          {/* Monitoring Hub (Phase A-7) */}
           <Grid size={{ xs: 12, md: 3 }}>
-            <SchedulesSpLane model={spLaneData} />
+            <Stack spacing={1.5}>
+              <SchedulesSpLane model={hub.spLane} />
+              <SchedulesSpLane model={hub.presenceLane} />
+              <SchedulesSpLane model={hub.dailyLane} />
+            </Stack>
           </Grid>
         </Grid>
       </CardContent>
@@ -508,7 +521,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ audience = 'staff' }) => 
           prioritizedUsers,
           scheduleLanesToday,
           scheduleLanesTomorrow,
-          renderScheduleLanes: (t: string, l: ScheduleLanes) => renderScheduleLanes(t, l, spLane),
+          renderScheduleLanes: (t: string, l: ScheduleLanes) => renderScheduleLanes(t, l, monitoringHub),
           stats,
           onOpenTimeline: openTimeline,
         };
@@ -701,15 +714,14 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ audience = 'staff' }) => 
             if (isTabletLandscape) {
               return (
                 <>
-                  {/* ✨ 朝会・夕会HUD（アラート表示） */}
                   <DashboardBriefingHUD
                     alerts={vm.briefingAlerts}
                     isBriefingTime={vm.contextInfo.isBriefingTime}
                     briefingType={vm.contextInfo.briefingType}
                     onNavigateTo={scrollToSection}
                   />
-                  <DashboardZoneLayout
-                    sections={vm.orderedSections}  // ✨ orderedSections を使用
+                  <DashboardLayout
+                    sections={vm.orderedSections}
                     renderSection={renderSection}
                     sectionIdByKey={sectionIdByKey}
                     highlightSection={highlightSection}
@@ -722,28 +734,20 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ audience = 'staff' }) => 
 
             return (
               <>
-                {/* ✨ 朝会・夕会HUD（アラート表示） */}
                 <DashboardBriefingHUD
                   alerts={vm.briefingAlerts}
                   isBriefingTime={vm.contextInfo.isBriefingTime}
                   briefingType={vm.contextInfo.briefingType}
                   onNavigateTo={scrollToSection}
                 />
-                {vm.orderedSections.map((section) => (  // ✨ orderedSections を使用
-                  <Box
-                    key={section.key}
-                    id={sectionIdByKey[section.key]}
-                    sx={(theme) => ({
-                      scrollMarginTop: { xs: 80, sm: 96 },
-                      transition: 'box-shadow 0.2s ease, outline-color 0.2s ease',
-                      outline: highlightSection === section.key ? '2px solid' : '2px solid transparent',
-                      outlineColor: highlightSection === section.key ? theme.palette.primary.main : 'transparent',
-                      borderRadius: highlightSection === section.key ? 2 : 0,
-                    })}
-                  >
-                    {section.enabled === false ? null : renderSection(section)}
-                  </Box>
-                ))}
+                <DashboardLayout
+                  sections={vm.orderedSections}
+                  renderSection={renderSection}
+                  sectionIdByKey={sectionIdByKey}
+                  highlightSection={highlightSection}
+                  dateLabel={dateLabel}
+                  todayChanges={todayChanges}
+                />
               </>
             );
           })()}
@@ -755,306 +759,8 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ audience = 'staff' }) => 
   );
 };
 
-// ===== 「本日の変更」コンポーネント群 =====
 
-type ChangeItem = {
-  id: string;
-  text: string;
-  tone?: 'info' | 'warn';
-};
 
-type TodayChanges = {
-  userChanges: ChangeItem[];
-  staffChanges: ChangeItem[];
-};
-
-function ChangeSection(props: { title: string; items: ChangeItem[] }) {
-  const { title, items } = props;
-
-  return (
-    <Stack spacing={0.5}>
-      <Typography variant="caption" sx={{ opacity: 0.85 }} fontWeight={700}>
-        {title}
-      </Typography>
-
-      <Stack spacing={0.5}>
-        {items.map((it) => (
-          <Alert
-            key={it.id}
-            severity={it.tone === 'warn' ? 'warning' : 'info'}
-            variant="outlined"
-            sx={{
-              py: 0.25,
-              '& .MuiAlert-message': { py: 0 },
-              borderRadius: 1,
-            }}
-          >
-            <Typography variant="body2">{it.text}</Typography>
-          </Alert>
-        ))}
-      </Stack>
-    </Stack>
-  );
-}
-
-function TodayChangesCard(props: {
-  dateLabel: string;
-  changes: TodayChanges;
-}) {
-  const { dateLabel, changes } = props;
-
-  const hasAny = changes.userChanges.length > 0 || changes.staffChanges.length > 0;
-
-  // ダミー生活支援情報（後で実データに）
-  const lifeSupportDummy = [
-    { type: '一時ケア', name: '山田', time: '10:00-11:00', transport: 'あり', staff: '佐藤' },
-    { type: 'SS', name: '鈴木', time: '15:00-16:00', transport: 'なし', staff: '高橋' },
-  ];
-
-  // 2件以下の場合は3件未満、3件以上の場合は多件
-  const lifeSupportVisible = lifeSupportDummy.slice(0, 2);
-  const lifeSupportHasMore = lifeSupportDummy.length > 2;
-
-  // 生活支援を2行テキストにまとめる（line-clamp用）
-  const lifeSupportLines = lifeSupportVisible.map((it) =>
-    `${it.type}：${it.name}(${it.time}) ${it.transport}`
-  );
-  const lifeSupportText = lifeSupportLines.join('\n');
-
-  return (
-    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0 }}>
-      <Stack direction="row" alignItems="baseline" justifyContent="space-between" spacing={1} sx={{ pb: 0.5 }}>
-        <Typography variant="caption" fontWeight={700} sx={{ opacity: 0.8 }}>
-          本日の確認
-        </Typography>
-        <Typography variant="caption" sx={{ opacity: 0.6 }}>
-          {dateLabel}
-        </Typography>
-      </Stack>
-
-      <Box
-        sx={{
-          minHeight: 0,
-          overflowX: 'hidden',
-          overflowY: 'hidden',
-          display: 'flex',
-          flexDirection: 'column',
-        }}
-      >
-        {/* 上段：本日の変更（自然高さ、スクロールなし） */}
-        <Box sx={{ flex: '0 0 auto' }}>
-          <Typography variant="caption" fontWeight={700} sx={{ opacity: 0.75, display: 'block', mb: 0.5 }}>
-            変更
-          </Typography>
-          {hasAny ? (
-            <Stack spacing={0.5}>
-              <ChangeSection title="利用者" items={changes.userChanges} />
-              <ChangeSection title="職員" items={changes.staffChanges} />
-            </Stack>
-          ) : (
-            <Box sx={{ userSelect: 'none' }}>
-              <Typography variant="body2" noWrap sx={{ opacity: 0.85 }}>
-                利用者：なし
-              </Typography>
-              <Typography variant="body2" noWrap sx={{ opacity: 0.85 }}>
-                職員：なし
-              </Typography>
-            </Box>
-          )}
-        </Box>
-
-        <Divider sx={{ opacity: 0.3, flexShrink: 0 }} />
-
-        {/* 下段：生活支援情報（2行固定表示） */}
-        <Box
-          sx={{
-            flex: '1 0 auto',
-            minHeight: 0,
-            overflow: 'hidden',
-            pb: 1,
-          }}
-        >
-          <Typography variant="caption" fontWeight={700} sx={{ opacity: 0.75, display: 'block', mb: 0.5 }}>
-            生活支援
-          </Typography>
-          {lifeSupportDummy.length > 0 ? (
-            <>
-              <Typography
-                variant="body2"
-                sx={{
-                  display: '-webkit-box',
-                  WebkitBoxOrient: 'vertical',
-                  WebkitLineClamp: 2,
-                  lineHeight: '20px',
-                  maxHeight: '48px',
-                  overflow: 'hidden',
-                  textOverflow: 'ellipsis',
-                  whiteSpace: 'pre-line',
-                  opacity: 0.8,
-                  pr: 0.5,
-                }}
-              >
-                {lifeSupportText}
-              </Typography>
-              {lifeSupportHasMore && (
-                <Typography variant="caption" sx={{ opacity: 0.6, mt: 0.25 }}>
-                  ほか +{lifeSupportDummy.length - 2}件
-                </Typography>
-              )}
-            </>
-          ) : (
-            <Typography variant="body2" sx={{ opacity: 0.85 }}>
-              対応なし（✓確認済み）
-            </Typography>
-          )}
-        </Box>
-
-        <span style={{ position: 'absolute', left: -9999, top: -9999 }}>
-          本日の確認情報：変更なし、生活支援対応なし
-        </span>
-      </Box>
-    </Box>
-  );
-}
-
-// ⸻
-// Zone 1: 朝30秒判断ゾーン（固定）
-// 左：申し送りタイムライン（主役・最大）
-// 右：本日の変更HUD（小・補助）
-// ⸻
-type Zone1_MorningDecisionProps = {
-  handoverNode: React.ReactNode;
-  dateLabel: string;
-  todayChanges: TodayChanges;
-};
-
-const Zone1_MorningDecision: React.FC<Zone1_MorningDecisionProps> = ({
-  handoverNode,
-  dateLabel,
-  todayChanges,
-}) => {
-  return (
-    <Box
-      data-testid="dashboard-zone-briefing"
-      sx={{
-        display: 'grid',
-        gridTemplateColumns: '2fr 1fr',
-        gap: 2,
-        alignItems: 'start',
-      }}
-    >
-      {/* 左（50%）：申し送りタイムライン（主役・最大） */}
-      <Box>
-        {handoverNode}
-      </Box>
-
-      {/* 中（25%）：本日の変更HUD */}
-      <Box>
-        <TodayChangesCard dateLabel={dateLabel} changes={todayChanges} />
-      </Box>
-    </Box>
-  );
-};
-
-// ⸻
-// Zone 2-3: スクロール領域（1カラム）
-// Zone 2: 今日の予定（主役）
-// Zone 3: 集計・作業（補助）
-// ⸻
-type DashboardZoneLayoutProps = {
-  sections: DashboardSection[];
-  renderSection: (section: DashboardSection) => React.ReactNode;
-  sectionIdByKey: Record<DashboardSectionKey, string>;
-  highlightSection?: DashboardSectionKey | null;
-  dateLabel: string;
-  todayChanges: TodayChanges;
-};
-
-const DashboardZoneLayout: React.FC<DashboardZoneLayoutProps> = ({
-  sections,
-  renderSection,
-  sectionIdByKey,
-  highlightSection,
-  dateLabel,
-  todayChanges,
-}) => {
-  const theme = useTheme();
-  const getSection = (key: DashboardSectionKey) => sections.find((s) => s.key === key);
-  const renderSectionIfEnabled = (key: DashboardSectionKey) => {
-    const section = getSection(key);
-    if (!section || section.enabled === false) return null;
-    return (
-      <Box
-        key={section.key}
-        id={sectionIdByKey[key]}
-        sx={{
-          scrollMarginTop: 96,
-          transition: 'box-shadow 0.2s ease, outline-color 0.2s ease',
-          outline: highlightSection === key ? '2px solid' : '2px solid transparent',
-          outlineColor: highlightSection === key ? theme.palette.primary.main : 'transparent',
-          borderRadius: highlightSection === key ? 2 : 0,
-        }}
-      >
-        {renderSection(section)}
-      </Box>
-    );
-  };
-
-  const FOOTER_H = 56;
-
-  return (
-    <Box
-      data-testid={tid(TESTIDS['dashboard-page'])}
-      sx={{ minHeight: '100vh', display: 'flex', flexDirection: 'column' }}
-    >
-      {/* ZONE 1: 朝30秒判断ゾーン（sticky wrapper 分離） */}
-      <Box
-        sx={{
-          position: 'sticky',
-          top: 0,
-          zIndex: 20,
-          backgroundColor: 'background.default',
-        }}
-      >
-        {/* 内部コンテンツ（通常レイアウト） */}
-        <Box sx={{ pb: 2 }}>
-          <Zone1_MorningDecision
-            handoverNode={renderSectionIfEnabled('handover')}
-            dateLabel={dateLabel}
-            todayChanges={todayChanges}
-          />
-        </Box>
-      </Box>
-
-      {/* ZONE 2-3: スクロール領域（1カラム） */}
-      <Box
-        sx={{
-          overflowY: 'auto',
-          flex: 1,
-          pr: 1,
-          pb: `${FOOTER_H}px`,
-        }}
-      >
-        <Stack spacing={3}>
-          {/* ZONE 2: 今日の予定（主役） */}
-          <Box data-testid="dashboard-zone-today">
-            {renderSectionIfEnabled('schedule')}
-          </Box>
-
-          {/* ZONE 3: 集計・作業（補助） */}
-          <Box data-testid="dashboard-zone-work">
-            {renderSectionIfEnabled('safety')}
-            {renderSectionIfEnabled('attendance')}
-            {renderSectionIfEnabled('daily')}
-            {renderSectionIfEnabled('stats')}
-            {renderSectionIfEnabled('adminOnly')}
-            {renderSectionIfEnabled('staffOnly')}
-          </Box>
-        </Stack>
-      </Box>
-    </Box>
-  );
-};
 
 export const AdminDashboardPage: React.FC = () => <DashboardPage audience="admin" />;
 export const StaffDashboardPage: React.FC = () => <DashboardPage audience="staff" />;

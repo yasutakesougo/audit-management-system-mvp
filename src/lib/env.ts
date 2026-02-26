@@ -434,7 +434,8 @@ export const shouldSkipLogin = (envOverride?: EnvRecord): boolean => {
 };
 
 export const shouldSkipSharePoint = (envOverride?: EnvRecord): boolean => {
-  return readBool('VITE_SKIP_SHAREPOINT', false, envOverride);
+  return readBool('VITE_SKIP_SHAREPOINT', false, envOverride) ||
+         readBool('VITE_IS_SKIP_SHAREPOINT', false, envOverride);
 };
 
 export const isUsersCrudEnabled = (envOverride?: EnvRecord): boolean => {
@@ -656,7 +657,8 @@ export const IS_SKIP_LOGIN = readBool('VITE_SKIP_LOGIN', false);
  * ✅ Master guard: Should we skip all SharePoint operations?
  * This is what stores actually check — more accurate than IS_DEMO alone.
  */
-export const IS_SKIP_SHAREPOINT = IS_DEMO || !SP_BASE_URL || IS_SKIP_LOGIN;
+export const IS_EMERGENCY_SKIP = readBool('VITE_IS_SKIP_SHAREPOINT', false);
+export const IS_SKIP_SHAREPOINT = IS_DEMO || !SP_BASE_URL || IS_SKIP_LOGIN || IS_EMERGENCY_SKIP;
 
 // Legacy aliases (keep for backward compat, but prefer IS_SKIP_SHAREPOINT)
 export const SP_ENABLED = !IS_SKIP_SHAREPOINT;

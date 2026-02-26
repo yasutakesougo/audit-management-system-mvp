@@ -1,6 +1,10 @@
 import * as ScheduleAdapter from '@/adapters/schedules';
+import {
+    calculateRetryAfterTimestamp,
+    getNextCooldownTimestamp
+} from '@/features/dashboard/logic/syncGuardrails';
 import { HYDRATION_FEATURES, estimatePayloadSize, startFeatureSpan } from '@/hydration/features';
-import { isSchedulesFeatureEnabled } from '@/lib/env';
+import { isSchedulesFeatureEnabled, shouldSkipSharePoint } from '@/lib/env';
 import type { SafeError } from '@/lib/errors';
 import { formatInTimeZone } from '@/lib/tz';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
@@ -57,6 +61,8 @@ const coerceId = (row: Record<string, unknown>, fallback: number): number => {
 	return fallback;
 };
 
+
+
 export function useSchedulesToday(max: number = 5) {
 	const safeMax = Math.max(0, Math.min(max, MAX_SAFE_ITEMS));
 	const [data, setData] = useState<MiniSchedule[]>([]);
@@ -66,9 +72,18 @@ export function useSchedulesToday(max: number = 5) {
 	const [fallbackKind, setFallbackKind] = useState<ScheduleAdapter.CreateResult['fallbackKind'] | null>(null);
 	const [fallbackError, setFallbackError] = useState<SafeError | null>(null);
 	const [tick, setTick] = useState(0);
+	const [failureCount, setFailureCount] = useState<number>(0);
+	const [retryAfter, setRetryAfter] = useState<number>(0);
+	const [cooldownUntil, setCooldownUntil] = useState<number>(0);
 	const abortRef = useRef<AbortController | null>(null);
 
-	const refetch = useCallback(() => setTick((t) => t + 1), []);
+	const refetch = useCallback(() => {
+		if (Date.now() < cooldownUntil) {
+			return;
+		}
+		setCooldownUntil(getNextCooldownTimestamp(5000));
+		setTick((t) => t + 1);
+	}, [cooldownUntil]);
 
 	const todayISO = useMemo(() => {
 		const now = new Date();
@@ -77,10 +92,11 @@ export function useSchedulesToday(max: number = 5) {
 
 	useEffect(() => {
 		let alive = true;
-		if (!isSchedulesFeatureEnabled()) {
+		if (!isSchedulesFeatureEnabled() || shouldSkipSharePoint()) {
 			setData([]);
 			setLoading(false);
 			setError(null);
+			setSource('demo');
 			return () => {
 				alive = false;
 			};
@@ -102,8 +118,15 @@ export function useSchedulesToday(max: number = 5) {
 
 		(async () => {
 			try {
+				if (typeof window !== 'undefined' && !window.navigator.onLine) {
+					throw new Error('Network Error: Offline');
+				}
 				setLoading(true);
 				setError(null);
+				if (shouldSkipSharePoint()) {
+					// Extra safety within async loop
+					throw new Error('SharePoint sync is disabled by configuration.');
+				}
 				const result = await ScheduleAdapter.list(todayISO, { signal: controller.signal });
 				const listResult: ScheduleAdapter.ListResult = Array.isArray(result)
 					? { items: result, source: 'demo' }
@@ -112,6 +135,8 @@ export function useSchedulesToday(max: number = 5) {
 				setSource(listResult.source);
 				setFallbackKind(listResult.fallbackKind ?? null);
 				setFallbackError(listResult.fallbackError ?? null);
+				setFailureCount(0);
+				setRetryAfter(0);
 
 				const rows = Array.isArray(listResult.items) ? listResult.items : [];
 
@@ -183,7 +208,12 @@ export function useSchedulesToday(max: number = 5) {
 					endSpan({ meta: { status: 'cancelled' } });
 					return;
 				}
+				// Handle non-abort errors
 				setError(err instanceof Error ? err : new Error(String(err)));
+				const nextFailureCount = failureCount + 1;
+				setFailureCount(nextFailureCount);
+				setRetryAfter(calculateRetryAfterTimestamp(nextFailureCount));
+
 				endSpan({
 					meta: { status: 'error' },
 					error: err instanceof Error ? err.message : String(err),
@@ -202,7 +232,7 @@ export function useSchedulesToday(max: number = 5) {
 			alive = false;
 			controller.abort();
 		};
-	}, [safeMax, todayISO, tick]);
+	}, [safeMax, todayISO, tick, failureCount]); // Add failureCount to dependencies for retryAfter calculation
 
 	return {
 		data,
@@ -214,5 +244,8 @@ export function useSchedulesToday(max: number = 5) {
 		dateISO: todayISO,
 		refetch,
 		isFetching: loading,
+		failureCount,
+		retryAfter,
+		cooldownUntil,
 	};
 }

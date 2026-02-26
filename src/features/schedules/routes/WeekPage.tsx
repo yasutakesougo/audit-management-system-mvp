@@ -8,7 +8,8 @@ import { canAccess } from '@/auth/roles';
 import { useAuth } from '@/auth/useAuth';
 import { useUserAuthz } from '@/auth/useUserAuthz';
 import { isDev } from '@/env';
-import { buildSpLaneModel, type SpSyncStatus } from '@/features/dashboard/useDashboardSummary';
+import { type SpSyncStatus } from '@/features/dashboard/types/hub';
+import { buildSpLaneModel } from '@/features/dashboard/useDashboardSummary';
 import SchedulesFilterResponsive from '@/features/schedules/components/SchedulesFilterResponsive';
 import SchedulesHeader from '@/features/schedules/components/SchedulesHeader';
 import { SchedulesSpLane } from '@/features/schedules/components/SchedulesSpLane';
@@ -79,20 +80,27 @@ export default function WeekPage() {
   const {
     loading: spLoading,
     error: spError,
+    fallbackError: spFallbackError,
     data: spItems,
     source: spSource,
     refetch: spRefetch,
     isFetching: spIsFetching,
+    failureCount: spFailureCount,
+    retryAfter: spRetryAfter,
+    cooldownUntil: spCooldownUntil,
   } = useSchedulesToday(10);
 
   const spSyncStatus: SpSyncStatus = useMemo(() => ({
     loading: spLoading,
-    error: spError,
+    error: spError || spFallbackError,
     itemCount: spItems.length,
     source: spSource,
     onRetry: spRefetch,
     isFetching: spIsFetching,
-  }), [spLoading, spError, spItems.length, spSource, spRefetch, spIsFetching]);
+    failureCount: spFailureCount,
+    retryAfter: spRetryAfter,
+    cooldownUntil: spCooldownUntil,
+  }), [spLoading, spError, spFallbackError, spItems.length, spSource, spRefetch, spIsFetching, spFailureCount, spRetryAfter, spCooldownUntil]);
   const {
     snack,
     setSnack,
