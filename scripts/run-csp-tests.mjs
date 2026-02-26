@@ -88,6 +88,7 @@ testProcess = spawn(playwrightBin, args, {
   cwd: projectRoot,
   env,
   stdio: 'inherit',
+  shell: process.platform === 'win32',
 });
 
 const [code] = await once(testProcess, 'exit');

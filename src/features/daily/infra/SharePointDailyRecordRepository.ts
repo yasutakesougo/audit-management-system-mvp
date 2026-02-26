@@ -355,7 +355,7 @@ export class SharePointDailyRecordRepository implements DailyRecordRepository {
       const payload = (await response.json()) as SharePointResponse<unknown>;
       const items = payload.value ?? [];
 
-      return items.length > 0 ? items[0] : null;
+      return items.length > 0 ? (items[0] as SharePointItem) : null;
     } catch (error) {
       console.warn('[SharePointDailyRecordRepository] Find by date error', {
         date,
