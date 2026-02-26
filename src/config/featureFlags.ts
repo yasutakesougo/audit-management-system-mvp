@@ -8,6 +8,7 @@ import {
     isSchedulesWeekV2Enabled,
     isStaffAttendanceEnabled,
     isTestMode,
+    isTodayOpsFeatureEnabled,
     readBool,
     readOptionalEnv,
     type EnvRecord,
@@ -20,6 +21,7 @@ export type FeatureFlagSnapshot = {
   icebergPdca: boolean;
   staffAttendance: boolean;
   appShellVsCode: boolean;
+  todayOps: boolean;
 };
 
 const _hasExplicitOverride = (storageKey: string, envKey: string, envOverride?: EnvRecord): boolean => {
@@ -102,6 +104,7 @@ export const resolveFeatureFlags = (envOverride?: EnvRecord): FeatureFlagSnapsho
     icebergPdca: isIcebergPdcaEnabled(envOverride),
     staffAttendance: isStaffAttendanceEnabled(envOverride),
     appShellVsCode: isAppShellVsCodeEnabled(envOverride),
+    todayOps: isTodayOpsFeatureEnabled(envOverride),
   };
 
   const explicitSchedules = hasExplicitBoolEnv('VITE_FEATURE_SCHEDULES', envOverride);
@@ -112,10 +115,14 @@ export const resolveFeatureFlags = (envOverride?: EnvRecord): FeatureFlagSnapsho
     // If no explicit override, default to true for schedules, and default PDCA off.
     const schedules = explicitSchedules ? readBool('VITE_FEATURE_SCHEDULES', true, envOverride) : true;
     const icebergPdca = explicitIcebergPdca ? readBool('VITE_FEATURE_ICEBERG_PDCA', false, envOverride) : false;
+    const explicitTodayOps = hasExplicitBoolEnv('VITE_FEATURE_TODAY_OPS', envOverride);
+    const todayOps = explicitTodayOps ? readBool('VITE_FEATURE_TODAY_OPS', false, envOverride) : true;
+
     return {
       ...baseSnapshot,
       schedules,
       icebergPdca,
+      todayOps,
     };
   }
 
@@ -166,6 +173,7 @@ export const FeatureFlagsProvider: FC<FeatureFlagsProviderProps> = ({ value, chi
     snapshot.icebergPdca,
     snapshot.staffAttendance,
     snapshot.appShellVsCode,
+    snapshot.todayOps,
   ]);
 
   return createElement(FeatureFlagsContext.Provider, { value: memoized }, children);

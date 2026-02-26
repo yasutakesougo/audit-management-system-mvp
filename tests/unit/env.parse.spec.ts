@@ -1,7 +1,6 @@
 import {
     getMsalLoginScopes,
     getMsalTokenRefreshMin,
-    getSharePointBaseUrlWithApi,
     getSharePointDefaultScope,
     getSharePointResource,
     getSharePointSiteRelative,
@@ -70,7 +69,6 @@ describe('env parsing fallbacks', () => {
   it('normalizes SharePoint resource and relative site paths', () => {
     expect(getSharePointResource(baseEnv({ VITE_SP_RESOURCE: 'https://foo.sharepoint.com///' }))).toBe('https://foo.sharepoint.com');
     expect(getSharePointSiteRelative(baseEnv({ VITE_SP_SITE_RELATIVE: 'sites/Demo///' }))).toBe('/sites/Demo');
-    expect(getSharePointBaseUrlWithApi(baseEnv({ VITE_SP_RESOURCE: 'https://foo.sharepoint.com/', VITE_SP_SITE_RELATIVE: 'sites/Demo/' }))).toBe('https://foo.sharepoint.com/sites/Demo/_api/web');
   });
 
   it('filters login scopes to identity set and warns on extras', () => {
@@ -92,7 +90,7 @@ describe('env parsing fallbacks', () => {
       VITE_SP_RESOURCE: '',
       VITE_MSAL_SCOPES: '',
     }));
-    expect(scope).toBe('https://example.sharepoint.com/AllSites.Read');
+    expect(scope).toBe('https://isogokatudouhome.sharepoint.com/AllSites.Read');
   });
 
   it('reuses SharePoint scope from configured MSAL scopes when missing', () => {

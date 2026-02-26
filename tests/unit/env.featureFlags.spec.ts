@@ -13,6 +13,11 @@ describe('env feature toggles', () => {
   });
 
   const baseEnv = (overrides: Partial<EnvRecord> = {}): EnvRecord => ({
+    VITE_FEATURE_SCHEDULES: 'false',
+    VITE_SKIP_LOGIN: 'false',
+    VITE_E2E: 'false',
+    VITE_E2E_MSAL_MOCK: 'false',
+    VITE_DEMO_MODE: 'false',
     ...overrides,
   });
 
@@ -33,10 +38,10 @@ describe('env feature toggles', () => {
     expect(shouldSkipLogin(baseEnv())).toBe(false);
     expect(shouldSkipLogin(baseEnv({ VITE_SKIP_LOGIN: 'true' }))).toBe(true);
 
-    localStorage.setItem('SKIP_LOGIN', 'YES');
+    localStorage.setItem('skipLogin', 'YES');
     expect(shouldSkipLogin(baseEnv())).toBe(true);
 
-    localStorage.setItem('SKIP_LOGIN', 'no');
+    localStorage.setItem('skipLogin', 'no');
     expect(shouldSkipLogin(baseEnv())).toBe(false);
   });
 });

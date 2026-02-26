@@ -393,7 +393,10 @@ export const isIcebergPdcaEnabled = (envOverride?: EnvRecord): boolean =>
   readBool('VITE_FEATURE_ICEBERG_PDCA', false, envOverride);
 
 export const isAppShellVsCodeEnabled = (envOverride?: EnvRecord): boolean =>
-  readBool('VITE_FEATURE_APPSHELL_VSCODE', false, envOverride);
+  readBool('VITE_FEATURE_APP_SHELL_VSCODE', true, envOverride);
+
+export const isTodayOpsFeatureEnabled = (envOverride?: EnvRecord): boolean =>
+  readBool('VITE_FEATURE_TODAY_OPS', false, envOverride);
 
 export const shouldSkipLogin = (envOverride?: EnvRecord): boolean => {
   if (
