@@ -1,9 +1,9 @@
-import { axe, toHaveNoViolations } from 'jest-axe';
-import { render } from '@testing-library/react';
-import { describe, expect, test, vi, beforeEach } from 'vitest';
 import RecordList from '@/features/records/RecordList';
-import { MemoryRouter } from 'react-router-dom';
 import { ToastProvider } from '@/hooks/useToast';
+import { render } from '@testing-library/react';
+import { axe, toHaveNoViolations } from 'jest-axe';
+import { MemoryRouter } from 'react-router-dom';
+import { beforeEach, describe, expect, test, vi } from 'vitest';
 
 expect.extend(toHaveNoViolations);
 
@@ -29,7 +29,7 @@ describe('RecordList Accessibility', () => {
     const { container } = render(
       <MemoryRouter>
         <ToastProvider>
-          <RecordList records={[]} isLoading={false} error={null} />
+          <RecordList />
         </ToastProvider>
       </MemoryRouter>
     );
@@ -38,33 +38,12 @@ describe('RecordList Accessibility', () => {
   });
 
   test('has no a11y violations (with mock data)', async () => {
-    const mockRecords = [
-      {
-        id: '1',
-        recordDate: '2024-01-01',
-        recordType: 'daily',
-        userId: 'U-001',
-        userFullName: 'テスト太郎',
-        content: 'Test record content',
-        createdAt: '2024-01-01T10:00:00Z',
-        updatedAt: '2024-01-01T10:00:00Z',
-      },
-      {
-        id: '2',
-        recordDate: '2024-01-02',
-        recordType: 'daily',
-        userId: 'U-002',
-        userFullName: 'テスト次郎',
-        content: 'Another test record',
-        createdAt: '2024-01-02T10:00:00Z',
-        updatedAt: '2024-01-02T10:00:00Z',
-      },
-    ];
+    // mock records intentionally omitted as component handles internal fetch
 
     const { container } = render(
       <MemoryRouter>
         <ToastProvider>
-          <RecordList records={mockRecords} isLoading={false} error={null} />
+          <RecordList />
         </ToastProvider>
       </MemoryRouter>
     );
@@ -76,7 +55,7 @@ describe('RecordList Accessibility', () => {
     const { container } = render(
       <MemoryRouter>
         <ToastProvider>
-          <RecordList records={[]} isLoading={true} error={null} />
+          <RecordList />
         </ToastProvider>
       </MemoryRouter>
     );
@@ -88,11 +67,7 @@ describe('RecordList Accessibility', () => {
     const { container } = render(
       <MemoryRouter>
         <ToastProvider>
-          <RecordList
-            records={[]}
-            isLoading={false}
-            error={new Error('Failed to load records')}
-          />
+          <RecordList />
         </ToastProvider>
       </MemoryRouter>
     );

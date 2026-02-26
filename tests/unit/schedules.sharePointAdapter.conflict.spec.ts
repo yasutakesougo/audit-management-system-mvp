@@ -1,6 +1,5 @@
-import { describe, it, expect, vi } from 'vitest';
 import { result } from '@/shared/result';
-import type { UpdateScheduleEventInput } from '@/features/schedules/data';
+import { describe, expect, it, vi } from 'vitest';
 
 /**
  * Phase 2-1b: Test 412 → result.conflict() mapping in SharePoint adapter
@@ -20,7 +19,8 @@ describe('sharePointAdapter conflict mapping (Phase 2-1b)', () => {
     const mockFetchItemById = vi.fn();
 
     // Simulate the update logic from makeSharePointScheduleUpdater
-    const input: UpdateScheduleEventInput = {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const input: any = {
       id: '123',
       title: 'Test Event',
       category: 'User',
@@ -56,16 +56,19 @@ describe('sharePointAdapter conflict mapping (Phase 2-1b)', () => {
 
     expect(res.isOk).toBe(false);
     if (!res.isOk) {
-      expect(res.error.kind).toBe('conflict');
-      expect(res.error.message).toContain('conflict');
-      expect(res.error.etag).toBe('"test-etag-123"');
-      expect(res.error.resource).toBe('schedule');
-      expect(res.error.op).toBe('update');
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const err = res.error as any;
+      expect(err.kind).toBe('conflict');
+      expect(err.message).toContain('conflict');
+      expect(err.etag).toBe('"test-etag-123"');
+      expect(err.resource).toBe('schedule');
+      expect(err.op).toBe('update');
     }
   });
 
   it('returns validation error when etag is missing', () => {
-    const input: UpdateScheduleEventInput = {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const input: any = {
       id: '123',
       title: 'Test',
       category: 'User',

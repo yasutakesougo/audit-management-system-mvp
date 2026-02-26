@@ -1,5 +1,5 @@
-import { describe, expect, test } from 'vitest';
 import { isErr, isOk, result } from '@/shared/result';
+import { describe, expect, test } from 'vitest';
 
 describe('result', () => {
   test('ok and isOk guard work', () => {
@@ -20,9 +20,11 @@ describe('result', () => {
     expect(isErr(b)).toBe(true);
 
     if (isErr(b)) {
-      expect(b.error.kind).toBe('conflict');
-      expect(b.error.message).toBe('Version mismatch');
-      expect(b.error.etag).toBe('"etag-123"');
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const err = b.error as any;
+      expect(err.kind).toBe('conflict');
+      expect(err.message).toBe('Version mismatch');
+      expect(err.etag).toBe('"etag-123"');
     }
   });
 

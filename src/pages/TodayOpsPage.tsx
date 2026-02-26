@@ -100,6 +100,30 @@ export const TodayOpsPage: React.FC = () => {
     };
   }, [summary, quickRecord.openUnfilled, quickRecord.openUser]);
 
+  const handleSaveSuccess = React.useCallback(() => {
+    if (!quickRecord.autoNextEnabled) {
+      return;
+    }
+
+    const pendingUserIds = summary?.dailyRecordStatus?.pendingUserIds || [];
+    const currentUserId = quickRecord.userId;
+
+    const idx = currentUserId ? pendingUserIds.indexOf(currentUserId) : -1;
+    let nextUserId: string | undefined;
+
+    if (idx >= 0 && idx + 1 < pendingUserIds.length) {
+      nextUserId = pendingUserIds[idx + 1];
+    } else if (idx === -1 && pendingUserIds.length > 0) {
+      nextUserId = pendingUserIds[0];
+    }
+
+    if (nextUserId) {
+      setTimeout(() => {
+        quickRecord.openUnfilled(nextUserId);
+      }, 0);
+    }
+  }, [summary?.dailyRecordStatus?.pendingUserIds, quickRecord]);
+
   return (
     <>
       <TodayOpsLayout {...layoutProps} />
@@ -110,6 +134,9 @@ export const TodayOpsPage: React.FC = () => {
         mode={quickRecord.mode}
         userId={quickRecord.userId}
         onClose={quickRecord.close}
+        onSaveSuccess={handleSaveSuccess}
+        autoNextEnabled={quickRecord.autoNextEnabled}
+        setAutoNextEnabled={quickRecord.setAutoNextEnabled}
       />
     </>
   );
