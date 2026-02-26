@@ -555,6 +555,24 @@ const SuspendedHandoffTimelinePage: React.FC = () => (
     </React.Suspense>
   </RouteHydrationErrorBoundary>
 );
+
+const TodayOpsPage = React.lazy(() => import('@/pages/TodayOpsPage').then((module) => ({
+  default: module.TodayOpsPage ?? module.default,
+})));
+const SuspendedTodayOpsPage: React.FC = () => (
+  <RouteHydrationErrorBoundary>
+    <React.Suspense
+      fallback={(
+        <div className="p-4 text-sm text-slate-600" role="status">
+          今日の業務を読み込んでいます…
+        </div>
+      )}
+    >
+      <TodayOpsPage />
+    </React.Suspense>
+  </RouteHydrationErrorBoundary>
+);
+
 const childRoutes: RouteObject[] = [
   { path: 'auth/callback', element: <AuthCallbackRoute /> },
   { index: true, element: <DashboardRedirect /> },
@@ -568,6 +586,16 @@ const childRoutes: RouteObject[] = [
     ),
   },
   { path: 'dashboard/briefing', element: <SuspendedDashboardBriefingPage /> },
+  {
+    path: 'today',
+    element: (
+      <ProtectedRoute flag="todayOps">
+        <RequireAudience requiredRole="viewer">
+          <SuspendedTodayOpsPage />
+        </RequireAudience>
+      </ProtectedRoute>
+    ),
+  },
   { path: 'room-management', element: <SuspendedRoomManagementPage /> },
   { path: 'meeting-guide', element: <SuspendedMeetingGuidePage /> },
   { path: 'handoff-timeline', element: <SuspendedHandoffTimelinePage /> },

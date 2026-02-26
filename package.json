@@ -27,7 +27,7 @@
     "bundle:assert": "node scripts/assert-chunk-size.mjs",
     "build:ci": "vite build --profile && npm run bundle:check && npm run bundle:assert",
     "preview": "vite preview",
-    "preview:e2e": "npm run build && node scripts/write-e2e-runtime-env.mjs && vite preview --host 127.0.0.1 --port 5173 --strictPort",
+    "preview:e2e": "VITE_SP_RESOURCE=https://contoso.sharepoint.com VITE_SP_SITE_RELATIVE=/sites/Audit npm run build && node scripts/write-e2e-runtime-env.mjs && VITE_SP_RESOURCE=https://contoso.sharepoint.com VITE_SP_SITE_RELATIVE=/sites/Audit vite preview --host 127.0.0.1 --port 5173 --strictPort",
     "preview:csp": "node scripts/preview-csp.mjs",
     "deploy:cf": "bash scripts/deploy-guard.sh && DEPLOY_TARGET=cloudflare npm run build && npx wrangler deploy",
     "config:print": "VITE_CONFIG_DEBUG=1 vite --force",
