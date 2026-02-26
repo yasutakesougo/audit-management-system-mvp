@@ -80,7 +80,7 @@ const parseSpItem = (item: unknown): DailyRecordItem | null => {
   const result = DailyRecordItemSchema.safeParse(item);
   if (!result.success) {
     console.error('[SharePointDailyRecordRepository] Failed to validate item', {
-      itemId: (item as any)?.Id,
+      itemId: (item && typeof item === 'object' && 'Id' in item) ? (item as Record<string, unknown>).Id : 'unknown',
       errors: result.error.flatten().fieldErrors,
     });
     return null;
@@ -352,7 +352,7 @@ export class SharePointDailyRecordRepository implements DailyRecordRepository {
         return null;
       }
 
-      const payload = (await response.json()) as SharePointResponse<any>;
+      const payload = (await response.json()) as SharePointResponse<unknown>;
       const items = payload.value ?? [];
 
       return items.length > 0 ? items[0] : null;

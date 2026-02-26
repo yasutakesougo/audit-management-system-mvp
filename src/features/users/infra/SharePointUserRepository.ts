@@ -130,7 +130,7 @@ export class SharePointUserRepository implements UserRepository {
     const resolvedContext = context ?? SharePointUserRepository.resolveGlobalSpfxContext();
 
     // SPFx 環境（pageContext が存在）であれば SPFx プラグインを使用
-    if (resolvedContext && (resolvedContext as any).pageContext) {
+    if (resolvedContext && (resolvedContext as ISPFXContext & { pageContext?: unknown }).pageContext) {
       return spfi(siteUrl).using(SPFx(resolvedContext));
     }
 
