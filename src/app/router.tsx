@@ -3,8 +3,7 @@ import { AuthCallbackRoute } from '@/auth/AuthCallbackRoute';
 import RequireAudience from '@/components/RequireAudience';
 import { MeetingMinutesRoutes } from '@/features/meeting-minutes/routes';
 import { nurseRoutes } from '@/features/nurse/routes/NurseRoutes';
-import { StaffPanel } from '@/features/staff';
-import { UsersPanel } from '@/features/users';
+
 import { RouteHydrationErrorBoundary } from '@/hydration/RouteHydrationListener';
 import { getAppConfig } from '@/lib/env';
 import lazyWithPreload from '@/utils/lazyWithPreload';
@@ -65,6 +64,9 @@ const SupportActivityMasterPage = React.lazy(() => import('@/pages/SupportActivi
 const SupportStepMasterPage = React.lazy(() => import('@/pages/SupportStepMasterPage'));
 const IndividualSupportManagementPage = React.lazy(() => import('@/pages/IndividualSupportManagementPage'));
 const UserDetailPage = React.lazy(() => import('@/pages/UserDetailPage'));
+
+const StaffPanel = React.lazy(() => import('@/features/staff').then(m => ({ default: m.StaffPanel })));
+const UsersPanel = React.lazy(() => import('@/features/users').then(m => ({ default: m.UsersPanel })));
 
 // Dev harness（開発環境のみ）
 const devHarnessEnabled = getAppConfig().isDev;
@@ -483,6 +485,34 @@ const SuspendedUserDetailPage: React.FC = () => (
   </RouteHydrationErrorBoundary>
 );
 
+const SuspendedStaffPanel: React.FC = () => (
+  <RouteHydrationErrorBoundary>
+    <React.Suspense
+      fallback={(
+        <div className="p-4 text-sm text-slate-600" role="status">
+          職員一覧を読み込んでいます…
+        </div>
+      )}
+    >
+      <StaffPanel />
+    </React.Suspense>
+  </RouteHydrationErrorBoundary>
+);
+
+const SuspendedUsersPanel: React.FC = () => (
+  <RouteHydrationErrorBoundary>
+    <React.Suspense
+      fallback={(
+        <div className="p-4 text-sm text-slate-600" role="status">
+          利用者一覧を読み込んでいます…
+        </div>
+      )}
+    >
+      <UsersPanel />
+    </React.Suspense>
+  </RouteHydrationErrorBoundary>
+);
+
 const SuspendedIntegratedResourceCalendarPage: React.FC = () => (
   <RouteHydrationErrorBoundary>
     <React.Suspense
@@ -647,7 +677,7 @@ const childRoutes: RouteObject[] = [
     path: 'users',
     element: (
       <RequireAudience requiredRole="admin">
-        <UsersPanel />
+        <SuspendedUsersPanel />
       </RequireAudience>
     ),
   },
@@ -663,7 +693,7 @@ const childRoutes: RouteObject[] = [
     path: 'staff',
     element: (
       <RequireAudience requiredRole="admin">
-        <StaffPanel />
+        <SuspendedStaffPanel />
       </RequireAudience>
     ),
   },

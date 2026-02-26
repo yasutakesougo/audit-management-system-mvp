@@ -1,8 +1,7 @@
-import react from '@vitejs/plugin-react'
 import legacy from '@vitejs/plugin-legacy'
+import react from '@vitejs/plugin-react'
 import fs from 'node:fs'
-import path from 'node:path'
-import { resolve } from 'node:path'
+import path, { resolve } from 'node:path'
 import { fileURLToPath, URL } from 'node:url'
 import { defineConfig, loadEnv } from 'vite'
 
@@ -21,12 +20,12 @@ const emptyShim = fileURLToPath(new URL('./src/shims/empty.ts', import.meta.url)
 export default defineConfig(({ mode }) => {
   // Load environment variables (.env.test.local will override .env.local in test mode)
   const env = loadEnv(mode, process.cwd(), '');
-  
+
   // HTTPS setup (mkcert certificates) - Issue #344
   const certsDir = path.resolve(process.cwd(), '.certs');
   const certPath = path.join(certsDir, 'localhost.pem');
   const keyPath = path.join(certsDir, 'localhost-key.pem');
-  
+
   const httpsConfig =
     fs.existsSync(certPath) && fs.existsSync(keyPath)
       ? {
@@ -34,7 +33,7 @@ export default defineConfig(({ mode }) => {
           cert: fs.readFileSync(certPath),
         }
       : undefined;
-  
+
   const normalizeBase = (value: string | undefined) => (value ? value.replace(/\/?$/, '') : undefined);
   const siteUrl =
     normalizeBase(env.VITE_SP_SITE_URL) ??
@@ -71,20 +70,20 @@ export default defineConfig(({ mode }) => {
     var params = new URLSearchParams(typeof window !== 'undefined' ? window.location.search : '');
     var shouldShow = params.get('b') === '1';
     if (!shouldShow) return;
-    
+
     var el = document.createElement('div');
     el.id = '__boot_beacon__';
     // pointer-events: none prevents click interception
     // z-index: 1100 is above app content but below MUI modals (1200+)
     el.style.cssText = 'position:fixed;z-index:1100;right:10px;bottom:10px;padding:8px 12px;background:rgba(0,0,0,0.85);color:#0f0;font:12px/1.35 monospace;border-radius:6px;pointer-events:none;max-width:320px';
     el.textContent = 'boot:html-ok';
-    
+
     // Close button
     var closeBtn = document.createElement('button');
     closeBtn.textContent = '×';
     closeBtn.style.cssText = 'position:absolute;top:2px;right:6px;background:transparent;border:none;color:#0f0;font-size:16px;cursor:pointer;padding:0 4px;pointer-events:auto';
     closeBtn.addEventListener('click', function () { el.remove(); });
-    
+
     document.addEventListener('DOMContentLoaded', function () {
       el.textContent = 'boot:dom-ok';
     });
@@ -96,7 +95,7 @@ export default defineConfig(({ mode }) => {
       var reason = (evt && evt.reason) ? String(evt.reason) : 'unknown';
       el.textContent = 'boot:rejection ' + reason.substring(0, 120);
     });
-    
+
     el.appendChild(closeBtn);
     document.documentElement.appendChild(el);
   })();
@@ -171,40 +170,39 @@ export default defineConfig(({ mode }) => {
               return 'babel-helpers'
             }
             if (
-              normalized.includes('/node_modules/react/') ||
-              normalized.includes('/node_modules/react-dom/') ||
-              normalized.includes('/node_modules/scheduler/') ||
-              normalized.includes('/@emotion/') ||
-              normalized.includes('/@mui/icons-material/')
+              normalized.includes('/@mui/') ||
+              normalized.includes('/@emotion/')
             ) {
-              return 'react';
+              return 'mui';
             }
-            if (normalized.includes('/@mui/material/')) {
-              return undefined;
+            if (normalized.includes('/@azure/')) {
+              return 'azure';
             }
-            if (
-              normalized.includes('/@mui/system/') ||
-              normalized.includes('/@mui/base/') ||
-              normalized.includes('/@mui/styled-engine/') ||
-              normalized.includes('/@mui/utils/') ||
-              normalized.includes('/@mui/private-')
-            ) {
-              return undefined;
+            if (normalized.includes('/firebase/')) {
+              return 'firebase';
+            }
+            if (normalized.includes('/@pnp/')) {
+              return 'pnp';
+            }
+            if (normalized.includes('/@fullcalendar/')) {
+              return 'fullcalendar';
+            }
+            if (normalized.includes('date-fns')) {
+              return 'date-fns';
             }
             if (normalized.includes('/@mui/x-data-grid')) {
               return 'datagrid';
             }
             if (
+              normalized.includes('/node_modules/react/') ||
+              normalized.includes('/node_modules/react-dom/') ||
+              normalized.includes('/node_modules/scheduler/') ||
               normalized.includes('/react-markdown/') ||
               normalized.includes('/remark-') ||
               normalized.includes('/rehype-') ||
-              normalized.includes('/micromark/')
+              normalized.includes('/micromark/') ||
+              normalized.includes('recharts')
             ) {
-              return 'react';
-            }
-            if (normalized.includes('recharts')) {
-              // Keep Recharts with the React bundle to avoid rollup helper cycles that
-              // can break React imports (forwardRef undefined when split).
               return 'react';
             }
             return undefined;
