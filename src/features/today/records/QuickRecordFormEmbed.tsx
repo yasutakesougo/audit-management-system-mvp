@@ -14,12 +14,14 @@ export interface QuickRecordFormEmbedProps {
   userId?: string;
   date?: string;
   onClose: () => void;
+  onSaveSuccess?: () => void;
 }
 
 export const QuickRecordFormEmbed: React.FC<QuickRecordFormEmbedProps> = ({
   userId,
   date,
   onClose,
+  onSaveSuccess,
 }) => {
   const { save } = useTableDailyRecordSave();
 
@@ -34,6 +36,7 @@ export const QuickRecordFormEmbed: React.FC<QuickRecordFormEmbedProps> = ({
     }
 
     await save(data); // 成功したらここを通る
+    onSaveSuccess?.();
     onClose();        // 成功時のみ閉じる
   };
 
