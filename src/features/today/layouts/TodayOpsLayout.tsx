@@ -1,6 +1,7 @@
-import { Box, Button, Container, Grid, Paper, Stack, Typography } from '@mui/material';
+import { Box, Container, Grid, Paper, Stack, Typography } from '@mui/material';
 import React from 'react';
 import { HeroUnfinishedBanner } from '../widgets/HeroUnfinishedBanner';
+import { UserCompactList, type UserRow } from '../widgets/UserCompactList';
 
 type HeroProps = {
   unfilledCount: number;
@@ -17,7 +18,6 @@ type NextAction = {
 };
 
 type TransportUser = { userId: string; name: string };
-type UserRow = { userId: string; name: string; status: 'present' | 'absent' | 'unknown' };
 type AlertItem = { id: string; message: string };
 
 export type TodayOpsProps = {
@@ -61,39 +61,10 @@ export const TodayOpsLayout: React.FC<TodayOpsProps> = ({ hero, nextAction, user
               👥 今日の利用者
             </Typography>
 
-            <Stack spacing={1.25}>
-              {users.items.length === 0 ? (
-                <Typography color="text.secondary">利用予定はありません</Typography>
-              ) : (
-                users.items.map((u) => (
-                  <Paper
-                    key={u.userId}
-                    role="button"
-                    tabIndex={0}
-                    onClick={() => users.onOpenQuickRecord(u.userId)}
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter' || e.key === ' ') users.onOpenQuickRecord(u.userId);
-                    }}
-                    sx={{
-                      p: 2,
-                      display: 'flex',
-                      justifyContent: 'space-between',
-                      alignItems: 'center',
-                      cursor: 'pointer',
-                      minHeight: 44, // タップ領域
-                      '&:hover': { bgcolor: 'action.hover' },
-                    }}
-                  >
-                    <Typography variant="body1" fontWeight={500}>
-                      {u.name}
-                    </Typography>
-                    <Button size="small" variant="outlined" sx={{ minHeight: 36 }}>
-                      記録
-                    </Button>
-                  </Paper>
-                ))
-              )}
-            </Stack>
+            <UserCompactList
+              items={users.items}
+              onOpenQuickRecord={users.onOpenQuickRecord}
+            />
           </Grid>
 
           {/* 右：補助線 */}

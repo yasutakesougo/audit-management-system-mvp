@@ -115,10 +115,14 @@ export const resolveFeatureFlags = (envOverride?: EnvRecord): FeatureFlagSnapsho
     // If no explicit override, default to true for schedules, and default PDCA off.
     const schedules = explicitSchedules ? readBool('VITE_FEATURE_SCHEDULES', true, envOverride) : true;
     const icebergPdca = explicitIcebergPdca ? readBool('VITE_FEATURE_ICEBERG_PDCA', false, envOverride) : false;
+    const explicitTodayOps = hasExplicitBoolEnv('VITE_FEATURE_TODAY_OPS', envOverride);
+    const todayOps = explicitTodayOps ? readBool('VITE_FEATURE_TODAY_OPS', false, envOverride) : true;
+
     return {
       ...baseSnapshot,
       schedules,
       icebergPdca,
+      todayOps,
     };
   }
 

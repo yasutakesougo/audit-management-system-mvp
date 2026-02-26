@@ -2,6 +2,8 @@ import { useAttendanceStore } from '@/features/attendance/store';
 import { useDashboardSummary } from '@/features/dashboard/useDashboardSummary';
 import { useStaffStore } from '@/features/staff/store';
 import { TodayOpsLayout } from '@/features/today/layouts/TodayOpsLayout';
+import { QuickRecordDrawer } from '@/features/today/records/QuickRecordDrawer';
+import { useQuickRecord } from '@/features/today/records/useQuickRecord';
 import { useUsersDemo } from '@/features/users/usersStoreDemo';
 import { isE2E } from '@/lib/env';
 import React, { useMemo } from 'react';
@@ -30,7 +32,10 @@ export const TodayOpsPage: React.FC = () => {
     mockSpSyncStatus
   );
 
-  // 2. Map to Layout Props (Defensive mapping)
+  // 2. Local State / URL State (PR3 Drawer)
+  const quickRecord = useQuickRecord();
+
+  // 3. Map to Layout Props (Defensive mapping)
   const layoutProps = useMemo(() => {
     // E2E環境では固定値を注入（VITE_E2E=1 または Playwright注入フラグ）
     const isE2EEnv = isE2E() || (typeof window !== 'undefined' && (window as unknown as { __E2E_TODAY_OPS_MOCK__?: boolean }).__E2E_TODAY_OPS_MOCK__);
@@ -39,14 +44,23 @@ export const TodayOpsPage: React.FC = () => {
     const realUnfilledCount = Math.max(0, summary?.dailyRecordStatus?.pending ?? 0);
     const unfilledCount = isE2EEnv ? 3 : realUnfilledCount;
 
+    const userItems = (users || []).map((u, i) => {
+      const userId = (u.UserID ?? '').trim() || `U${String(u.Id ?? i + 1).padStart(3, '0')}`;
+      const name = u.FullName ?? `利用者${i + 1}`;
+      const visit = visits[userId];
+      let status: 'present' | 'absent' | 'unknown' = 'unknown';
+      if (visit) {
+        if (visit.status === '通所中' || visit.status === '退所済') status = 'present';
+        else if (visit.status === '当日欠席' || visit.status === '事前欠席') status = 'absent';
+      }
+      return { userId, name, status };
+    });
+
     return {
       hero: {
         unfilledCount,
         approvalPendingCount: isE2EEnv ? 1 : 0, // 今後の拡張
-        onOpenUnfilled: () => {
-          // eslint-disable-next-line no-console
-          console.log('Open Quick Record for Unfilled (PR3 implementation pending)');
-        },
+        onOpenUnfilled: quickRecord.openUnfilled,
         onOpenApproval: () => {
           // eslint-disable-next-line no-console
           console.log('Open Approval Modal');
@@ -65,14 +79,13 @@ export const TodayOpsPage: React.FC = () => {
         },
       },
       users: {
-        items: [
-          { userId: 'I022', name: '中村 裕樹', status: 'present' as const },
-          { userId: 'I105', name: '山田 花子', status: 'present' as const },
-        ],
-        onOpenQuickRecord: (userId: string) => {
-          // eslint-disable-next-line no-console
-          console.log(`Open Quick Record for: ${userId}`);
-        },
+        items: isE2EEnv
+          ? [
+              { userId: 'I022', name: '中村 裕樹', status: 'present' as const },
+              { userId: 'I105', name: '山田 花子', status: 'present' as const },
+            ]
+          : userItems,
+        onOpenQuickRecord: quickRecord.openUser,
       },
       alerts: {
         items: [{ id: 'a1', message: '服薬の確認（昼食前）' }],
@@ -82,9 +95,21 @@ export const TodayOpsPage: React.FC = () => {
         },
       },
     };
-  }, [summary]);
+  }, [summary, quickRecord.openUnfilled, quickRecord.openUser]);
 
-  return <TodayOpsLayout {...layoutProps} />;
+  return (
+    <>
+      <TodayOpsLayout {...layoutProps} />
+
+      {/* PR3 Quick Record Drawer Overlay */}
+      <QuickRecordDrawer
+        open={quickRecord.isOpen}
+        mode={quickRecord.mode}
+        userId={quickRecord.userId}
+        onClose={quickRecord.close}
+      />
+    </>
+  );
 };
 
 export default TodayOpsPage;
