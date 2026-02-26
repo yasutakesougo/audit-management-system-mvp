@@ -7,7 +7,7 @@ export type QuickRecordState = {
   isOpen: boolean;
   mode: QuickRecordMode | null;
   userId: string | null;
-  openUnfilled: () => void;
+  openUnfilled: (targetUserId?: string) => void;
   openUser: (userId: string) => void;
   close: () => void;
 };
@@ -19,12 +19,16 @@ export const useQuickRecord = (): QuickRecordState => {
   const mode = (modeRaw === 'unfilled' || modeRaw === 'user') ? modeRaw : null;
   const userId = searchParams.get('userId');
 
-  const openUnfilled = useCallback(() => {
+  const openUnfilled = useCallback((targetUserId?: string) => {
     setSearchParams(
       (prev) => {
         const next = new URLSearchParams(prev);
         next.set('mode', 'unfilled');
-        next.delete('userId');
+        if (targetUserId) {
+          next.set('userId', targetUserId);
+        } else {
+          next.delete('userId');
+        }
         return next;
       },
       { replace: true }

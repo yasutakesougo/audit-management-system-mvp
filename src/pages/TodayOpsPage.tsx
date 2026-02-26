@@ -60,7 +60,10 @@ export const TodayOpsPage: React.FC = () => {
       hero: {
         unfilledCount,
         approvalPendingCount: isE2EEnv ? 1 : 0, // 今後の拡張
-        onOpenUnfilled: quickRecord.openUnfilled,
+        onOpenUnfilled: () => {
+          const firstUnfilledUserId = summary?.dailyRecordStatus?.pendingUserIds?.[0];
+          quickRecord.openUnfilled(firstUnfilledUserId);
+        },
         onOpenApproval: () => {
           // eslint-disable-next-line no-console
           console.log('Open Approval Modal');
