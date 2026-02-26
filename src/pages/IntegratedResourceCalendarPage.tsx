@@ -325,14 +325,14 @@ export default function IntegratedResourceCalendarPage() {
     });
   }
 
-  const sp = useSP();
+  const _sp = useSP();
   const ircSpClient = useMemo(() => {
-    const client = createIrcSpClient(sp);
+    const client = createIrcSpClient();
     if (import.meta.env.DEV) {
       console.log('[IRC] SpClient created:', { isE2E: isE2E, client });
     }
     return client;
-  }, [sp]);
+  }, []);
 
   const calendarRef = useRef<FullCalendar>(null);
   const [resources, setResources] = useState<ResourceInfo[]>([]);
@@ -356,9 +356,8 @@ export default function IntegratedResourceCalendarPage() {
         source: 'ircSpClient',
       });
       try {
-        // Step 1: Fetch resources (Lanes) - "Seed" data
-        // For "Seed Constant Display", we fetch this first.
-        const fetchedResources = await ircSpClient.getResources();
+        // Step 1: Resources (placeholder - not yet in client API)
+        const fetchedResources: ResourceInfo[] = [];
         setResources(fetchedResources);
 
         // Step 2: Fetch events

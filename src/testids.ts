@@ -18,6 +18,8 @@ const NAV_TESTIDS = {
   billing: 'nav-billing',
   integratedResourceCalendar: 'nav-integrated-resource-calendar',
   navigationDiagnostics: 'nav-navigation-diagnostics',
+  todayOps: 'nav-today-ops',
+  roomManagement: 'nav-room-management',
 } as const;
 
 const FOOTER_TESTIDS = {
@@ -172,7 +174,6 @@ export const TESTIDS = {
   'schedules-next': 'schedules-next',
   SCHEDULES_PREV_WEEK: 'schedules-prev-week',
   SCHEDULES_NEXT_WEEK: 'schedules-next-week',
-  SCHEDULES_TODAY: 'schedules-today',
   SCHEDULES_FAB_CREATE: 'schedules-fab-create',
   'schedules-week-live': 'schedules-week-live',
   'schedule-item-menu': 'schedule-item-menu',

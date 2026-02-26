@@ -1,9 +1,8 @@
+import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { SharePointBehaviorRepository } from '@/features/daily/infra/SharePointBehaviorRepository';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 describe('SharePointBehaviorRepository - Prevent 500 on missing required fields', () => {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  let mockSp: any;
+  let mockSp: Record<string, unknown>;
 
   beforeEach(() => {
     mockSp = {

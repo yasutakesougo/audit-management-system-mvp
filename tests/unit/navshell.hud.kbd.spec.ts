@@ -1,4 +1,4 @@
-import { shouldTriggerNavShellHud } from '@/app/AppShell';
+import { shouldTriggerNavShellHud } from '@/app/hudHelpers';
 import { describe, expect, it } from 'vitest';
 
 describe('shouldTriggerNavShellHud', () => {

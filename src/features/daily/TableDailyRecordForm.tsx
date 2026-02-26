@@ -1,14 +1,18 @@
 import { TESTIDS } from '@/testids';
+import { TableDailyRecordHeader } from './components/TableDailyRecordHeader';
+import { TableDailyRecordTable } from './components/TableDailyRecordTable';
+import { TableDailyRecordUserPicker } from './components/TableDailyRecordUserPicker';
+import { useTableDailyRecordForm, type TableDailyRecordData } from './hooks/useTableDailyRecordForm';
 import {
-    FilterList as FilterListIcon,
+  FilterList as FilterListIcon,
     Group as GroupIcon,
-    SaveAlt as SaveAltIcon,
+  SaveAlt as SaveAltIcon,
     Save as SaveIcon
 } from '@mui/icons-material';
 import {
     Box,
     Button,
-    Chip,
+  Chip,
     Dialog,
     DialogActions,
     DialogContent,
@@ -16,35 +20,21 @@ import {
     Stack,
     Typography
 } from '@mui/material';
-import { useEffect, useRef } from 'react';
-import { TableDailyRecordHeader } from './components/TableDailyRecordHeader';
-import { TableDailyRecordTable } from './components/TableDailyRecordTable';
-import { TableDailyRecordUserPicker } from './components/TableDailyRecordUserPicker';
-import { useTableDailyRecordForm, type TableDailyRecordData } from './hooks/useTableDailyRecordForm';
+import React from 'react';
 
 interface TableDailyRecordFormProps {
   open: boolean;
   onClose: () => void;
   onSave: (data: TableDailyRecordData) => Promise<void>;
   variant?: 'dialog' | 'content';
-  initialUserId?: string;
-  initialDate?: string;
 }
 
 export function TableDailyRecordForm({
   open,
   onClose,
   onSave,
-  variant = 'dialog',
-  initialUserId,
-  initialDate,
+  variant = 'dialog'
 }: TableDailyRecordFormProps) {
-  const form = useTableDailyRecordForm({
-    open,
-    onClose,
-    onSave,
-  });
-
   const {
     formData,
     setFormData,
@@ -69,48 +59,11 @@ export function TableDailyRecordForm({
     handleSaveDraft,
     handleSave,
     saving,
-  } = form;
-
-  const didInitDateRef = useRef(false);
-
-  // 1. Initialize date once
-  useEffect(() => {
-    if (!open) return;
-    if (didInitDateRef.current) return;
-    didInitDateRef.current = true;
-    if (initialDate) {
-      setFormData((prev) => ({ ...prev, date: initialDate }));
-    }
-  }, [open, initialDate, setFormData]);
-
-  const lastInitUserIdRef = useRef<string | null>(null);
-
-  // 2. Initialize user once when available
-  useEffect(() => {
-    if (!open) return;
-    if (!initialUserId) return;
-    if (lastInitUserIdRef.current === initialUserId) return;
-
-    // Use users array length as a heuristic that data has loaded before firing,
-    // but don't strictly require the exact ID to be found since E2E mocks could diverge.
-    if (!filteredUsers || filteredUsers.length === 0) return;
-
-    // Use a short delay so that useTableDailyRecordSelection's internal attendance-based
-    // auto-selection finishes first, and then we forcefully overwrite it.
-    const t = setTimeout(() => {
-      handleClearAll();
-      handleUserToggle(initialUserId);
-      lastInitUserIdRef.current = initialUserId;
-    }, 50);
-
-    return () => clearTimeout(t);
-  }, [
+  } = useTableDailyRecordForm({
     open,
-    initialUserId,
-    filteredUsers,
-    handleUserToggle,
-    handleClearAll,
-  ]);
+    onClose,
+    onSave,
+  });
 
   const displayedUnsentCount = Math.max(unsentRowCount, selectedUserIds.length);
 
@@ -245,7 +198,6 @@ export function TableDailyRecordForm({
             onClick={handleSave}
             disabled={saving || selectedUserIds.length === 0}
             startIcon={<SaveIcon />}
-            data-testid="daily-table-main-save-button"
           >
             {saving ? '保存中...' : `${selectedUserIds.length}人分保存`}
           </Button>

@@ -1,21 +1,21 @@
 /**
  * Navigation Configuration Tests
- * 
+ *
  * Unit tests for navigation configuration functions extracted from AppShell.tsx
  */
 
-import { describe, expect, it } from 'vitest';
 import {
-  createNavItems,
-  filterNavItems,
-  groupNavItems,
-  groupLabel,
-  NAV_AUDIENCE,
-  NAV_GROUP_ORDER,
-  pickGroup,
-  type NavItem,
+    createNavItems,
+    filterNavItems,
+    groupLabel,
+    groupNavItems,
+    NAV_AUDIENCE,
+    NAV_GROUP_ORDER,
+    pickGroup,
+    type NavItem,
 } from '@/app/config/navigationConfig';
 import { TESTIDS } from '@/testids';
+import { describe, expect, it } from 'vitest';
 
 describe('navigationConfig', () => {
   describe('pickGroup', () => {
@@ -181,6 +181,7 @@ describe('navigationConfig', () => {
       complianceFormEnabled: false,
       icebergPdcaEnabled: false,
       staffAttendanceEnabled: false,
+      todayOpsEnabled: false,
       isAdmin: false,
       authzReady: true,
       navAudience: NAV_AUDIENCE.staff,
@@ -188,7 +189,7 @@ describe('navigationConfig', () => {
 
     it('should create base navigation items for staff', () => {
       const items = createNavItems(baseConfig);
-      
+
       expect(items.length).toBeGreaterThan(0);
       expect(items.some((item) => item.label === '日次記録')).toBe(true);
       expect(items.some((item) => item.label === '健康記録')).toBe(true);
@@ -201,7 +202,7 @@ describe('navigationConfig', () => {
         ...baseConfig,
         schedulesEnabled: true,
       });
-      
+
       expect(items.some((item) => item.testId === TESTIDS.nav.schedules)).toBe(true);
     });
 
@@ -210,7 +211,7 @@ describe('navigationConfig', () => {
         ...baseConfig,
         schedulesEnabled: false,
       });
-      
+
       expect(items.some((item) => item.testId === TESTIDS.nav.schedules)).toBe(false);
     });
 
@@ -219,7 +220,7 @@ describe('navigationConfig', () => {
         ...baseConfig,
         complianceFormEnabled: true,
       });
-      
+
       expect(items.some((item) => item.label === 'コンプラ報告')).toBe(true);
     });
 
@@ -228,7 +229,7 @@ describe('navigationConfig', () => {
         ...baseConfig,
         icebergPdcaEnabled: true,
       });
-      
+
       expect(items.some((item) => item.testId === TESTIDS.nav.icebergPdca)).toBe(true);
     });
 
@@ -237,7 +238,7 @@ describe('navigationConfig', () => {
         ...baseConfig,
         staffAttendanceEnabled: true,
       });
-      
+
       expect(items.some((item) => item.testId === TESTIDS.nav.staffAttendance)).toBe(true);
     });
 
@@ -247,7 +248,7 @@ describe('navigationConfig', () => {
         isAdmin: true,
         navAudience: NAV_AUDIENCE.admin,
       });
-      
+
       expect(items.some((item) => item.testId === TESTIDS.nav.checklist)).toBe(true);
       expect(items.some((item) => item.testId === TESTIDS.nav.audit)).toBe(true);
       expect(items.some((item) => item.label === '支援手順マスタ')).toBe(true);
@@ -255,7 +256,7 @@ describe('navigationConfig', () => {
 
     it('should not include admin items for non-admin users', () => {
       const items = createNavItems(baseConfig);
-      
+
       expect(items.some((item) => item.testId === TESTIDS.nav.checklist)).toBe(false);
       expect(items.some((item) => item.testId === TESTIDS.nav.audit)).toBe(false);
       expect(items.some((item) => item.label === '支援手順マスタ')).toBe(false);
@@ -263,10 +264,10 @@ describe('navigationConfig', () => {
 
     it('should filter items by audience (all items visible to all)', () => {
       const items = createNavItems(baseConfig);
-      
+
       const allAudienceItems = items.filter((item) => item.audience === 'all');
       expect(allAudienceItems.length).toBeGreaterThan(0);
-      
+
       // All items with audience:'all' should be present
       expect(items.some((item) => item.label === '日次記録' && item.audience === 'all')).toBe(true);
       expect(items.some((item) => item.label === '健康記録' && item.audience === 'all')).toBe(true);
@@ -280,7 +281,7 @@ describe('navigationConfig', () => {
         skipLogin: true,
         navAudience: NAV_AUDIENCE.admin,
       });
-      
+
       expect(itemsWithSkip.some((item) => item.testId === TESTIDS.nav.checklist)).toBe(true);
     });
   });
@@ -372,7 +373,7 @@ describe('navigationConfig', () => {
 
     it('should group items correctly', () => {
       const { map, ORDER } = groupNavItems(sampleItems, false);
-      
+
       expect(ORDER).toEqual(NAV_GROUP_ORDER);
       expect(map.get('daily')).toHaveLength(1);
       expect(map.get('record')).toHaveLength(2); // 黒ノート + 自己点検 (non-admin default)
@@ -382,21 +383,39 @@ describe('navigationConfig', () => {
 
     it('should classify admin items correctly for admin users', () => {
       const { map } = groupNavItems(sampleItems, true);
-      
+
       expect(map.get('admin')).toHaveLength(1); // 自己点検
       expect(map.get('record')).toHaveLength(1); // 黒ノート only
     });
 
     it('should maintain group order', () => {
       const { ORDER } = groupNavItems(sampleItems, false);
-      
+
       expect(ORDER).toEqual(['daily', 'record', 'review', 'master', 'admin', 'settings']);
     });
 
-    it('should create empty arrays for unused groups', () => {
+    it('should omit empty groups from the map', () => {
       const { map } = groupNavItems(sampleItems, false);
-      
-      expect(map.get('settings')).toHaveLength(0);
+
+      // settings has no items, so it should not exist in the map
+      expect(map.has('settings')).toBe(false);
+
+      // groups with items should still exist
+      expect(map.has('daily')).toBe(true);
+      expect(map.has('record')).toBe(true);
+      expect(map.has('review')).toBe(true);
+      expect(map.has('master')).toBe(true);
+    });
+
+    it('should bring back a group automatically when items are added to it', () => {
+      const itemsWithSettings: NavItem[] = [
+        ...sampleItems,
+        { label: '表示設定', to: '/settings', isActive: () => false, group: 'settings' },
+      ];
+      const { map } = groupNavItems(itemsWithSettings, false);
+
+      expect(map.has('settings')).toBe(true);
+      expect(map.get('settings')).toHaveLength(1);
     });
   });
 

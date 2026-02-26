@@ -275,25 +275,6 @@ const resolveIsTest = (envOverride?: EnvRecord): boolean => {
   return false;
 };
 
-export const isSchedulesSpEnabled = (envOverride?: EnvRecord): boolean => {
-  if (readBool('VITE_FEATURE_SCHEDULES_SP', false, envOverride)) {
-    return true;
-  }
-  if (typeof window !== 'undefined') {
-    try {
-      const flag = window.localStorage.getItem('feature:schedulesSp');
-      if (flag != null) {
-        const normalized = flag.trim().toLowerCase();
-        if (TRUTHY.has(normalized)) return true;
-        if (FALSY.has(normalized)) return false;
-      }
-    } catch {
-      // ignore
-    }
-  }
-  return false;
-};
-
 export const isTestMode = (envOverride?: EnvRecord): boolean => resolveIsTest(envOverride);
 
 export const isForceDemoEnabled = (envOverride?: EnvRecord): boolean =>
@@ -323,6 +304,9 @@ export const isSchedulesFeatureEnabled = (envOverride?: EnvRecord): boolean => {
   }
   return false;
 };
+
+export const isSchedulesSpEnabled = (envOverride?: EnvRecord): boolean =>
+  isSchedulesFeatureEnabled(envOverride) && !shouldSkipSharePoint(envOverride) && !isDemoModeEnabled(envOverride);
 
 export const isSchedulesWeekV2Enabled = (envOverride?: EnvRecord): boolean => {
   const envValue = readOptionalEnv('VITE_FEATURE_SCHEDULES_WEEK_V2', envOverride)?.trim().toLowerCase();
@@ -393,7 +377,7 @@ export const isIcebergPdcaEnabled = (envOverride?: EnvRecord): boolean =>
   readBool('VITE_FEATURE_ICEBERG_PDCA', false, envOverride);
 
 export const isAppShellVsCodeEnabled = (envOverride?: EnvRecord): boolean =>
-  readBool('VITE_FEATURE_APP_SHELL_VSCODE', true, envOverride);
+  readBool('VITE_FEATURE_APPSHELL_VSCODE', false, envOverride);
 
 export const isTodayOpsFeatureEnabled = (envOverride?: EnvRecord): boolean =>
   readBool('VITE_FEATURE_TODAY_OPS', false, envOverride);
@@ -425,8 +409,7 @@ export const shouldSkipLogin = (envOverride?: EnvRecord): boolean => {
 };
 
 export const shouldSkipSharePoint = (envOverride?: EnvRecord): boolean => {
-  return readBool('VITE_SKIP_SHAREPOINT', false, envOverride) ||
-         readBool('VITE_IS_SKIP_SHAREPOINT', false, envOverride);
+  return readBool('VITE_SKIP_SHAREPOINT', false, envOverride);
 };
 
 export const isUsersCrudEnabled = (envOverride?: EnvRecord): boolean => {
@@ -648,8 +631,7 @@ export const IS_SKIP_LOGIN = readBool('VITE_SKIP_LOGIN', false);
  * ✅ Master guard: Should we skip all SharePoint operations?
  * This is what stores actually check — more accurate than IS_DEMO alone.
  */
-export const IS_EMERGENCY_SKIP = readBool('VITE_IS_SKIP_SHAREPOINT', false);
-export const IS_SKIP_SHAREPOINT = IS_DEMO || !SP_BASE_URL || IS_SKIP_LOGIN || IS_EMERGENCY_SKIP;
+export const IS_SKIP_SHAREPOINT = IS_DEMO || !SP_BASE_URL || IS_SKIP_LOGIN;
 
 // Legacy aliases (keep for backward compat, but prefer IS_SKIP_SHAREPOINT)
 export const SP_ENABLED = !IS_SKIP_SHAREPOINT;

@@ -19,6 +19,7 @@ export interface QuickRecordFormEmbedProps {
 
 export const QuickRecordFormEmbed: React.FC<QuickRecordFormEmbedProps> = ({
   userId,
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   date,
   onClose,
   onSaveSuccess,
@@ -49,8 +50,6 @@ export const QuickRecordFormEmbed: React.FC<QuickRecordFormEmbedProps> = ({
         variant="content"
         onClose={onClose}
         onSave={handleSave}
-        initialUserId={userId}
-        initialDate={date}
       />
     </Box>
   );

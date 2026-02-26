@@ -21,16 +21,16 @@ export const TodayOpsPage: React.FC = () => {
   const today = new Date().toISOString().split('T')[0];
   const currentMonth = today.slice(0, 7);
 
-  const summary = useDashboardSummary(
+  const summary = useDashboardSummary({
     users,
     staff,
     visits,
     today,
     currentMonth,
     generateMockActivityRecords,
-    mockAttendanceCounts,
-    mockSpSyncStatus
-  );
+    attendanceCounts: mockAttendanceCounts,
+    spSyncStatus: mockSpSyncStatus,
+  });
 
   // 2. Local State / URL State (PR3 Drawer)
   const quickRecord = useQuickRecord();

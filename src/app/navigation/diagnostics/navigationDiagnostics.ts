@@ -9,6 +9,7 @@ export type DiagnosticParams = {
   complianceFormEnabled: boolean;
   icebergPdcaEnabled: boolean;
   staffAttendanceEnabled: boolean;
+  todayOpsEnabled: boolean;
   searchText?: string;
 };
 
