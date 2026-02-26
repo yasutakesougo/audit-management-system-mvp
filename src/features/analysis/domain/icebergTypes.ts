@@ -1,6 +1,6 @@
-import type { AssessmentItem } from '@/features/assessment';
-import type { BehaviorObservation } from '@/features/daily';
 import { z } from 'zod';
+import type { AssessmentItem } from '@/features/assessment/domain/types';
+import type { BehaviorObservation } from '@/features/daily/domain/daily/types';
 
 export type IcebergNodeType = 'behavior' | 'assessment' | 'environment';
 

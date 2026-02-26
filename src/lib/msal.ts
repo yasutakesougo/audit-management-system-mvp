@@ -98,12 +98,12 @@ export const acquireSpAccessToken = async (scopes?: string[]): Promise<string> =
   // 🔥 CRITICAL FIX: Always read runtime env to respect env.runtime.json override
   const runtimeEnv = getRuntimeEnv() as Record<string, string>;
   if (isE2eMsalMockEnabled(runtimeEnv) || shouldSkipLogin(runtimeEnv)) {
-    // モックモード: トークン取得をスキップしてエラーを投げる（SharePointに偽トークンを送らない）
-    const errorMsg = '[msal] SkipLogin/E2E mode: acquireSpAccessToken disabled. Real SharePoint access requires VITE_SKIP_LOGIN=0';
+    // E2E/Mock mode: return dummy token to allow fetchSp to proceed to the real fetch call.
+    // This enables Playwright to intercept/fail the network request at the browser layer.
     if (isDev) {
-      console.error(errorMsg);
+      console.info('[msal] E2E mode: returning dummy token');
     }
-    throw new Error(errorMsg);
+    return 'e2e-dummy-access-token';
   }
 
   // singleflight: 同時多発のトークン取得を抑制

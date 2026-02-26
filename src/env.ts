@@ -86,6 +86,20 @@ export function getRuntimeEnv(): EnvDict {
       }
     }
 
+    // DEBUG: Log E2E flag state (dev + explicit flag only)
+    const debugEnvEnabled =
+      import.meta.env.DEV &&
+      (String(fromWindow?.VITE_DEBUG_ENV) === '1' || String(INLINE_ENV.VITE_DEBUG_ENV) === '1');
+    if (debugEnvEnabled) {
+      console.debug('[getRuntimeEnv] DEBUG:', {
+        'fromWindow.VITE_E2E_MSAL_MOCK': fromWindow?.VITE_E2E_MSAL_MOCK,
+        'fromWindow.VITE_E2E': fromWindow?.VITE_E2E,
+        'INLINE_ENV.VITE_E2E_MSAL_MOCK': INLINE_ENV.VITE_E2E_MSAL_MOCK,
+        'allowRuntimeOverrides': allowRuntimeOverrides,
+        'merged.VITE_E2E_MSAL_MOCK': merged.VITE_E2E_MSAL_MOCK,
+      });
+    }
+
     cachedEnv = merged;
     return merged;
   }
@@ -93,11 +107,8 @@ export function getRuntimeEnv(): EnvDict {
   if (cachedEnv) return cachedEnv;
 
   const merged = { ...INLINE_ENV } as EnvDict;
+  cachedEnv = merged;
   return merged;
-}
-
-export function resetBaseEnvCache() {
-  cachedEnv = null;
 }
 
 export function get(name: string, fallback = ''): string {
@@ -105,50 +116,73 @@ export function get(name: string, fallback = ''): string {
   return value ?? fallback;
 }
 
+export function getNumber(name: string, fallback: number): number {
+  const raw = get(name, String(fallback));
+  const numeric = Number(raw);
+  return Number.isFinite(numeric) ? numeric : fallback;
+}
+
 export function getFlag(name: string, fallback = false): boolean {
   const raw = get(name, fallback ? '1' : '0');
   const normalized = String(raw).toLowerCase();
-  return normalized === '1' || normalized === 'true' || normalized === 'yes' || normalized === 'on';
+  return normalized === '1' || normalized === 'true';
 }
 
-export const getIsDemo = () => {
-  if (typeof window !== 'undefined' && (window as unknown as { auditDemoMode?: boolean }).auditDemoMode) return true;
-  return isTruthyRuntimeValue(getRuntimeEnv().VITE_DEMO_MODE) || isTruthyRuntimeValue(getRuntimeEnv().VITE_FORCE_DEMO);
-};
+export function resolveIsDev(): boolean {
+  const inlineMode = (() => {
+    try {
+      if (typeof import.meta !== 'undefined' && (import.meta as ImportMeta)?.env?.MODE) {
+        return ((import.meta as ImportMeta).env.MODE ?? '') as string;
+      }
+    } catch {
+      // ignore environments where import.meta is unavailable (e.g., unit tests)
+    }
+    return undefined;
+  })();
 
-export const getIsE2E = () => isTruthyRuntimeValue(getRuntimeEnv().VITE_E2E);
+  if (typeof inlineMode === 'string' && inlineMode.toLowerCase() === 'development') {
+    return true;
+  }
 
-export const getIsMsalMock = () => {
-  const env = getRuntimeEnv();
-  return isTruthyRuntimeValue(env.VITE_E2E_MSAL_MOCK) || isTruthyRuntimeValue(env.VITE_MSAL_MOCK);
-};
+  if (get('MODE')?.toLowerCase() === 'development') {
+    return true;
+  }
 
-export const isDev = (() => {
-  const env = getRuntimeEnv();
-  const mode = (env.MODE || env.NODE_ENV || '').toLowerCase();
-  return mode === 'development' || isTruthyRuntimeValue(env.DEV) || isTruthyRuntimeValue(env.VITE_DEV);
-})();
+  if (getFlag('DEV', false)) {
+    return true;
+  }
 
-export const isE2E = getIsE2E();
-export const isE2eMsalMock = getIsMsalMock();
-export const isDemo = getIsDemo();
+  if (typeof process !== 'undefined' && process.env) {
+    const nodeMode = process.env.NODE_ENV ?? process.env.MODE ?? '';
+    if (nodeMode.toLowerCase() === 'development') {
+      return true;
+    }
+    const viteDev = process.env.VITE_DEV ?? '';
+    if (viteDev.toLowerCase() === 'true') {
+      return true;
+    }
+  }
 
-/**
- * Runtime environment record (loosely typed for low-level access)
- */
-export type EnvRecord = Record<string, string | number | boolean | undefined>;
-
-/**
- * Lightweight environment getter (used by @/lib/env for validation)
- */
-export const env = getRuntimeEnv();
-
-export function getNumber(name: string, fallback: number): number {
-  const value = get(name, '');
-  if (!value) return fallback;
-  const num = Number(value);
-  return isNaN(num) ? fallback : num;
+  return false;
 }
 
-export const isWriteEnabled = isTruthyRuntimeValue(getRuntimeEnv().VITE_WRITE_ENABLED);
-export const isE2eForceSchedulesWrite = isTruthyRuntimeValue(getRuntimeEnv().VITE_E2E_FORCE_SCHEDULES_WRITE);
+export const isDev = resolveIsDev();
+// 🔧 命名統一：環境フラグを定数化
+export const isE2E = getFlag('VITE_E2E', false);
+export const isE2eMsalMock = getFlag('VITE_E2E_MSAL_MOCK', false);
+export const isDemo = getFlag('VITE_DEMO', false);
+/**
+ * 書き込み操作の可否フラグ（デフォルト: true）
+ * 本番環境で安全に read-only モードにする際に使用
+ */
+export const isWriteEnabled = getFlag('VITE_WRITE_ENABLED', true);
+export const isE2eForceSchedulesWrite =
+  isE2E && isE2eMsalMock && getFlag('VITE_E2E_FORCE_SCHEDULES_WRITE', false);
+/**
+ * Clear the cached env after runtime env is loaded.
+ * Call this after window.__ENV__ is updated to ensure fresh reads.
+ * @internal
+ */
+export function clearEnvCache(): void {
+  cachedEnv = null;
+}

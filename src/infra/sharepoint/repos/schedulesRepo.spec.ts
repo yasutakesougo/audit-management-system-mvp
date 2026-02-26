@@ -1,19 +1,12 @@
-import { useSP } from '@/lib/spClient';
-import { describe, expect, it, vi } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 import type { CreateScheduleInput, UpdateScheduleInput } from './schedulesRepo';
+import { useSP } from '@/lib/spClient';
 
 // Mock env.ts to disable writes
-vi.mock('@/env', () => {
-  const mockEnv = {};
-  return {
-    isWriteEnabled: false,
-    getRuntimeEnv: () => mockEnv,
-    env: mockEnv,
-    getIsDemo: vi.fn(() => false),
-    getIsE2E: vi.fn(() => false),
-    getIsMsalMock: vi.fn(() => false),
-  };
-});
+vi.mock('@/env', () => ({
+  isWriteEnabled: false,
+  getRuntimeEnv: () => ({}),
+}));
 
 // Import after mock to ensure mocked value is used
 const { createSchedule, updateSchedule, removeSchedule, WriteDisabledError } = await import('./schedulesRepo');

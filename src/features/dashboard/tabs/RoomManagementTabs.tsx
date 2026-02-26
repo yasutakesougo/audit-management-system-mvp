@@ -34,8 +34,6 @@ interface Reservation {
   date?: string;
 }
 
-
-
 const groupColors: Record<string, { bg: string; text: string }> = {
   生活支援: { bg: '#dbeafe', text: '#1e40af' },
   さつき会: { bg: '#fef3c7', text: '#92400e' },
@@ -194,7 +192,7 @@ export const RoomManagementTabs: React.FC = () => {
                   ? `${currentMonth.getFullYear()}-${String(currentMonth.getMonth() + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`
                   : null;
                 const dayReservations = dateStr
-                  ? reservations.filter(_res => {
+                  ? reservations.filter(() => {
                       const resDate = `${new Date().getFullYear()}-${String(currentMonth.getMonth() + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
                       return resDate === dateStr;
                     })

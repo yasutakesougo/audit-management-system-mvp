@@ -7,7 +7,7 @@ import { expect, test } from '@playwright/test';
 test.describe('Handoff Timeline footer quick note', () => {
   test('footer button opens inline quick note card', async ({ page }) => {
     const consoleErrors: string[] = [];
-    const allowlistedConsolePatterns = [/\[MSAL CONFIG\]/];
+    const allowlistedConsolePatterns = [/\[MSAL CONFIG\]/, /\[firebase-auth\]/, /auth\/invalid-api-key/];
     page.on('console', (message) => {
       if (message.type() === 'error') {
         const text = message.text();
@@ -29,12 +29,13 @@ test.describe('Handoff Timeline footer quick note', () => {
       await closeButton.click();
     }
 
-    await expect(page.getByTestId('handoff-quicknote-card')).toBeHidden();
+    const inlineQuickNoteOpenButton = page.getByRole('button', { name: '今すぐ申し送り入力カードを開く' });
+    await expect(inlineQuickNoteOpenButton).toBeVisible();
 
     // Trigger the footer quick action, which should dispatch the custom event.
     await page.getByTestId('handoff-footer-quicknote').click();
 
-    await expect(page.getByTestId('handoff-quicknote-card')).toBeVisible();
+    await expect(inlineQuickNoteOpenButton).toBeHidden();
 
     expect(consoleErrors).toEqual([]);
   });

@@ -1,6 +1,6 @@
 /**
  * useWeekPageOrchestrator
- * 
+ *
  * Orchestrator hook for WeekPage - consolidates all local state, event handlers,
  * navigation logic, and side effects to keep WeekPage.tsx as a thin presentation layer.
  */
@@ -9,24 +9,25 @@ import { type MouseEvent, useCallback, useEffect, useMemo, useRef, useState } fr
 import { useSearchParams } from 'react-router-dom';
 
 import { useAnnounce } from '@/a11y/LiveAnnouncer';
-import { isDev } from '@/env';
-import type { ScheduleCategory } from '@/features/schedules/domain/types';
+import { isDev, isE2E } from '@/env';
 import type { CreateScheduleEventInput, SchedItem, ScheduleServiceType } from '@/features/schedules/data';
 import type { InlineScheduleDraft } from '@/features/schedules/data/inlineScheduleDraft';
+import type { ScheduleCategory } from '@/features/schedules/domain/types';
+import { classifySchedulesError } from '../errors';
 import { makeRange } from './useSchedules';
 import {
-  type ScheduleEditDialogValues,
-  buildCreateDialogIntent,
-  buildLocalDateTimeInput,
-  buildNextSlot,
-  buildUpdateInput,
-  extractDatePart,
-  extractTimePart,
-  formatScheduleLocalInput,
-  toDateIso,
-  DEFAULT_END_TIME,
-  DEFAULT_START_TIME,
-  useSchedulesPageState,
+    DEFAULT_END_TIME,
+    DEFAULT_START_TIME,
+    type ScheduleEditDialogValues,
+    buildCreateDialogIntent,
+    buildLocalDateTimeInput,
+    buildNextSlot,
+    buildUpdateInput,
+    extractDatePart,
+    extractTimePart,
+    formatScheduleLocalInput,
+    toDateIso,
+    useSchedulesPageState,
 } from './useSchedulesPageState';
 import { useWeekPageUiState } from './useWeekPageUiState';
 
@@ -60,17 +61,17 @@ export interface OrchestratorReturn {
   dialogOpen: boolean;
   dialogInitialValues: ScheduleEditDialogValues | null;
   dayLane: ScheduleCategory | null;
-  
+
   // Computed values
   resolvedActiveDateIso: string;
   dayViewHref: string;
   weekViewHref: string;
   monthViewHref: string;
   activeDayRange: { from: string; to: string };
-  
+
   // Refs
   fabRef: React.RefObject<HTMLButtonElement>;
-  
+
   // Event handlers
   handleDayClick: (dayIso: string, event?: MouseEvent<HTMLButtonElement>) => void;
   handleFabClick: (event?: MouseEvent<HTMLButtonElement>) => void;
@@ -86,7 +87,7 @@ export interface OrchestratorReturn {
   handleCreateDialogClose: () => void;
   handleConflictDiscard: () => void;
   handleConflictReload: () => Promise<void>;
-  
+
   // Navigation handlers
   handlePrevWeek: () => void;
   handleNextWeek: () => void;
@@ -94,11 +95,12 @@ export interface OrchestratorReturn {
   handlePrevMonth: () => void;
   handleNextMonth: () => void;
   handleTodayMonth: () => void;
-  
+
   // Computed flags
   suppressRouteDialog: boolean;
   conflictOpen: boolean;
-  
+  networkOpen: boolean;
+
   // Search params
   orgParam: string;
 }
@@ -122,7 +124,7 @@ export function useWeekPageOrchestrator(deps: OrchestratorDependencies): Orchest
     dialogMode,
     dialogEventId,
   } = pageState;
-  
+
   const {
     showSnack,
     isInlineSaving,
@@ -137,35 +139,35 @@ export function useWeekPageOrchestrator(deps: OrchestratorDependencies): Orchest
     setHighlightId,
     focusScheduleId,
   } = uiState;
-  
+
   const announce = useAnnounce();
   const [searchParams, setSearchParams] = useSearchParams();
   const orgParam = searchParams.get('org') ?? 'all';
-  
+
   // Local state
   const [viewItem, setViewItem] = useState<SchedItem | null>(null);
   const [activeDateIso, setActiveDateIso] = useState<string | null>(() => toDateIso(focusDate));
   const [dialogOpen, setDialogOpen] = useState(false);
   const [dialogInitialValues, setDialogInitialValues] = useState<ScheduleEditDialogValues | null>(null);
   const [dayLane, setDayLane] = useState<ScheduleCategory | null>(null);
-  
+
   // Refs
   const fabRef = useRef<HTMLButtonElement | null>(null);
-  
+
   // Route helpers
   const setDialogParams = route.setDialogParams;
   const clearDialogParams = route.clearDialogParams;
-  
+
   const primeRouteReset = useCallback(() => {
     if (typeof window === 'undefined') return;
     const scope = window as typeof window & { __suppressRouteReset__?: boolean };
     scope.__suppressRouteReset__ = true;
   }, []);
-  
+
   // Computed values
   const defaultDateIso = weekRange.from.slice(0, 10);
   const resolvedActiveDateIso = activeDateIso ?? defaultDateIso;
-  
+
   const dayViewHref = useMemo(() => {
     const params = new URLSearchParams({ date: resolvedActiveDateIso });
     if (dayLane) params.set('lane', dayLane);
@@ -173,43 +175,53 @@ export function useWeekPageOrchestrator(deps: OrchestratorDependencies): Orchest
     if (orgParam !== 'all') params.set('org', orgParam);
     return `/schedules/day?${params.toString()}`;
   }, [categoryFilter, dayLane, orgParam, resolvedActiveDateIso]);
-  
+
   const weekViewHref = useMemo(() => {
     const params = new URLSearchParams({ date: resolvedActiveDateIso });
     if (categoryFilter !== 'All') params.set('cat', categoryFilter);
     if (orgParam !== 'all') params.set('org', orgParam);
     return `/schedules/week?${params.toString()}`;
   }, [categoryFilter, orgParam, resolvedActiveDateIso]);
-  
+
   const monthViewHref = useMemo(() => {
     const params = new URLSearchParams({ date: resolvedActiveDateIso });
     if (categoryFilter !== 'All') params.set('cat', categoryFilter);
     if (orgParam !== 'all') params.set('org', orgParam);
     return `/schedules/month?${params.toString()}`;
   }, [categoryFilter, orgParam, resolvedActiveDateIso]);
-  
+
   const activeDayRange = useMemo(() => {
     const start = new Date(`${resolvedActiveDateIso}T00:00:00`);
     const end = new Date(start);
     end.setDate(end.getDate() + 1);
     return makeRange(start, end);
   }, [resolvedActiveDateIso]);
-  
+
   const suppressRouteDialog = Boolean(viewItem) || Boolean(dialogInitialValues);
   const conflictOpen = !!lastError && lastError.kind === 'conflict';
-  
+  const networkOpen = !!lastError && lastError.kind === 'network';
+
+  if (isE2E) {
+    // eslint-disable-next-line no-console
+    console.log('[orchestrator] state:', {
+      hasLastError: !!lastError,
+      lastErrorKind: lastError?.kind,
+      networkOpen,
+    });
+  }
+
   // Effects
   useEffect(() => {
     const nextIso = toDateIso(focusDate);
     setActiveDateIso((prev) => (prev === nextIso ? prev : nextIso));
   }, [focusDate]);
-  
+
   useEffect(() => {
     if (mode === 'day') {
       setDayLane(null);
     }
   }, [mode]);
-  
+
   useEffect(() => {
     if (!createDialogOpen && pendingFabFocus && fabRef.current) {
       fabRef.current.focus();
@@ -220,39 +232,50 @@ export function useWeekPageOrchestrator(deps: OrchestratorDependencies): Orchest
       pendingFabFocus = false;
     }
   }, [createDialogOpen]);
-  
+
   useEffect(() => {
     if (conflictOpen) {
       setLastErrorAt(Date.now());
     }
   }, [conflictOpen, setLastErrorAt]);
-  
+
+  // Effect: sync lastError to snack state for non-conflict errors (e.g. network/offline)
+  useEffect(() => {
+    if (lastError && lastError.kind !== 'conflict') {
+      // Small delay to ensure snackbar doesn't conflict with other UI transitions
+      const timer = setTimeout(() => {
+        showSnack('error', lastError.message || 'エラーが発生しました');
+      }, 50);
+      return () => clearTimeout(timer);
+    }
+  }, [lastError, showSnack]);
+
   // Phase 2-2b: Scroll to & highlight focused schedule after refetch completes
   useEffect(() => {
     if (!focusScheduleId) return;
-    
+
     const element = document.querySelector<HTMLElement>(`[data-schedule-id="${focusScheduleId}"]`);
     if (!element) return;
-    
+
     element.scrollIntoView({ block: 'center', behavior: 'smooth' });
     setHighlightId(focusScheduleId);
-    
+
     const timeoutId = setTimeout(() => {
       setHighlightId(null);
     }, 2000);
-    
+
     setFocusScheduleId(null);
-    
+
     return () => clearTimeout(timeoutId);
   }, [focusScheduleId, filteredItems, setFocusScheduleId, setHighlightId]);
-  
+
   // Announce week changes
   const weekAnnouncement = pageState.weekAnnouncement;
   useEffect(() => {
     if (!weekAnnouncement) return;
     announce(weekAnnouncement);
   }, [announce, weekAnnouncement]);
-  
+
   // Event handlers
   const syncDateParam = useCallback(
     (dateIso: string) => {
@@ -260,7 +283,7 @@ export function useWeekPageOrchestrator(deps: OrchestratorDependencies): Orchest
     },
     [route],
   );
-  
+
   const handleDayClick = useCallback(
     (dayIso: string, _event?: MouseEvent<HTMLButtonElement>) => {
       setActiveDateIso(dayIso);
@@ -270,11 +293,11 @@ export function useWeekPageOrchestrator(deps: OrchestratorDependencies): Orchest
     },
     [primeRouteReset, syncDateParam],
   );
-  
+
   const handleFabClick = useCallback(
     (_event?: MouseEvent<HTMLButtonElement>) => {
       if (!canEdit) return;
-      
+
       const iso = activeDateIso ?? defaultDateIso;
       if (!activeDateIso) {
         setActiveDateIso(iso);
@@ -286,18 +309,18 @@ export function useWeekPageOrchestrator(deps: OrchestratorDependencies): Orchest
     },
     [canEdit, activeDateIso, categoryFilter, defaultDateIso, primeRouteReset, setDialogParams],
   );
-  
+
   const handleTimeSlotClick = useCallback(
     (dayIso: string, time: string) => {
       if (!canEdit) return;
-      
+
       try {
         const [year, month, day] = dayIso.split('-').map(Number);
         const [h, m] = time.split(':').map(Number);
         const startDate = new Date(year, month - 1, day, h, m);
         const endDate = new Date(startDate);
         endDate.setMinutes(endDate.getMinutes() + 30);
-        
+
         const createCategory = categoryFilter && categoryFilter !== 'All' ? categoryFilter : 'User';
         const intent = buildCreateDialogIntent(createCategory, startDate, endDate);
         setDialogParams(intent);
@@ -307,7 +330,7 @@ export function useWeekPageOrchestrator(deps: OrchestratorDependencies): Orchest
     },
     [canEdit, categoryFilter, setDialogParams],
   );
-  
+
   const handleOrgChange = useCallback(
     (event: React.ChangeEvent<HTMLSelectElement>) => {
       const nextValue = event.target.value;
@@ -321,17 +344,17 @@ export function useWeekPageOrchestrator(deps: OrchestratorDependencies): Orchest
     },
     [searchParams, setSearchParams],
   );
-  
+
   const handleViewClick = useCallback((item: SchedItem) => {
     setViewItem(item);
   }, []);
-  
+
   const handleViewEdit = useCallback(
     (item: SchedItem) => {
       // 1. Close other dialogs first
       setViewItem(null);
       clearDialogParams();
-      
+
       // 2. Authorization check
       if (ready) {
         const assignedNormalized = (item.assignedTo ?? '').trim().toLowerCase();
@@ -354,7 +377,7 @@ export function useWeekPageOrchestrator(deps: OrchestratorDependencies): Orchest
           return;
         }
       }
-      
+
       // 3. Prepare dialog values
       const category = (item.category as ScheduleCategory) ?? 'User';
       setDayLane(category);
@@ -363,7 +386,7 @@ export function useWeekPageOrchestrator(deps: OrchestratorDependencies): Orchest
       const endLocal = formatScheduleLocalInput(item.end, DEFAULT_END_TIME, schedulesTz);
       const dateIso = extractDatePart(startLocal) || toDateIso(new Date());
       setActiveDateIso(dateIso);
-      
+
       const resolvedUserId =
         item.userId?.trim() ||
         (typeof item.userLookupId === 'string'
@@ -371,7 +394,7 @@ export function useWeekPageOrchestrator(deps: OrchestratorDependencies): Orchest
           : String(item.userLookupId ?? '')).trim();
       const resolvedTitle =
         item.title?.trim() || (item.personName?.trim() ? `${item.personName.trim()}の予定` : '');
-      
+
       setDialogInitialValues({
         id: item.id,
         title: resolvedTitle,
@@ -398,7 +421,7 @@ export function useWeekPageOrchestrator(deps: OrchestratorDependencies): Orchest
       clearDialogParams,
     ],
   );
-  
+
   const handleViewDelete = useCallback(
     async (id: string) => {
       if (isInlineDeleting) return;
@@ -416,18 +439,18 @@ export function useWeekPageOrchestrator(deps: OrchestratorDependencies): Orchest
     },
     [remove, showSnack, isInlineDeleting, setIsInlineDeleting],
   );
-  
+
   const clearInlineSelection = useCallback(() => {
     setDialogOpen(false);
     setDialogInitialValues(null);
   }, []);
-  
+
   const handleInlineDialogClose = useCallback(() => {
     clearInlineSelection();
   }, [clearInlineSelection]);
-  
+
   const inlineEditingEventId = dialogInitialValues?.id ?? null;
-  
+
   const handleInlineDialogSubmit = useCallback(
     async (input: CreateScheduleEventInput) => {
       if (!inlineEditingEventId || isInlineSaving) return;
@@ -438,6 +461,12 @@ export function useWeekPageOrchestrator(deps: OrchestratorDependencies): Orchest
         showSnack('success', '予定を更新しました');
         clearInlineSelection();
       } catch (e) {
+        const info = classifySchedulesError(e);
+        if (info.kind === 'CONFLICT') {
+          showSnack('warning', '更新が競合しました');
+          clearInlineSelection();
+          return;
+        }
         showSnack('error', '更新に失敗しました（権限・認証・ネットワークを確認）');
         throw e;
       } finally {
@@ -446,7 +475,7 @@ export function useWeekPageOrchestrator(deps: OrchestratorDependencies): Orchest
     },
     [clearInlineSelection, inlineEditingEventId, showSnack, update, isInlineSaving, setIsInlineSaving],
   );
-  
+
   const handleInlineDialogDelete = useCallback(
     async (eventId: string) => {
       if (isInlineDeleting) return;
@@ -456,6 +485,12 @@ export function useWeekPageOrchestrator(deps: OrchestratorDependencies): Orchest
         showSnack('success', '予定を削除しました');
         clearInlineSelection();
       } catch (e) {
+        const info = classifySchedulesError(e);
+        if (info.kind === 'CONFLICT') {
+          showSnack('warning', '削除が競合しました');
+          clearInlineSelection();
+          return;
+        }
         showSnack('error', '削除に失敗しました（権限・認証・ネットワークを確認）');
         throw e;
       } finally {
@@ -464,55 +499,70 @@ export function useWeekPageOrchestrator(deps: OrchestratorDependencies): Orchest
     },
     [clearInlineSelection, remove, showSnack, isInlineDeleting, setIsInlineDeleting],
   );
-  
+
   const handleScheduleDialogSubmit = useCallback(
     async (input: CreateScheduleEventInput) => {
       if (!canEdit || !canWrite) {
         showSnack('info', '受付/管理者のみ予定を作成・編集できます');
         throw new Error('schedule submit blocked by authorization');
       }
-      
-      if (dialogMode === 'edit' && dialogEventId) {
-        const payload = buildUpdateInput(dialogEventId, input);
-        await update(payload);
-        return;
+
+      try {
+        if (dialogMode === 'edit' && dialogEventId) {
+          const payload = buildUpdateInput(dialogEventId, input);
+          await update(payload);
+        } else {
+          const dateIso = extractDatePart(input.startLocal) || toDateIso(new Date());
+          const startTime = extractTimePart(input.startLocal) || DEFAULT_START_TIME;
+          const endTime = extractTimePart(input.endLocal) || DEFAULT_END_TIME;
+
+          const start = new Date(buildLocalDateTimeInput(input.startLocal, startTime)).toISOString();
+          const end = new Date(buildLocalDateTimeInput(input.endLocal, endTime)).toISOString();
+          const draft: InlineScheduleDraft = {
+            title: input.title.trim() || '予定',
+            dateIso,
+            startTime,
+            endTime,
+            start,
+            end,
+            sourceInput: input,
+          };
+
+          await create(draft);
+        }
+        // Success case: showSnack is NOT called here because the dialog closing is enough
+        // or the specific snack is shown by list updates if needed.
+        // Actually, for consistency with handleInlineDialogSubmit, we might want a snack.
+        // But the dialog itself often triggers a route change or close which is enough.
+        handleCreateDialogClose();
+      } catch (error) {
+        const info = classifySchedulesError(error);
+        if (info.kind === 'CONFLICT') {
+          showSnack('warning', '更新が競合しました');
+          handleCreateDialogClose();
+          return;
+        }
+        // re-throw for the dialog to show its internal error alert
+        throw error;
       }
-      
-      const dateIso = extractDatePart(input.startLocal) || toDateIso(new Date());
-      const startTime = extractTimePart(input.startLocal) || DEFAULT_START_TIME;
-      const endTime = extractTimePart(input.endLocal) || DEFAULT_END_TIME;
-      
-      const start = new Date(buildLocalDateTimeInput(input.startLocal, startTime)).toISOString();
-      const end = new Date(buildLocalDateTimeInput(input.endLocal, endTime)).toISOString();
-      const draft: InlineScheduleDraft = {
-        title: input.title.trim() || '予定',
-        dateIso,
-        startTime,
-        endTime,
-        start,
-        end,
-        sourceInput: input,
-      };
-      
-      await create(draft);
     },
     [canEdit, canWrite, create, dialogEventId, dialogMode, showSnack, update],
   );
-  
+
   const handleCreateDialogClose = useCallback(() => {
     pendingFabFocus = true;
     primeRouteReset();
     clearDialogParams();
   }, [clearDialogParams, primeRouteReset]);
-  
+
   const handleConflictDiscard = useCallback(() => {
     clearLastError();
     setConflictDetailOpen(false);
   }, [clearLastError, setConflictDetailOpen]);
-  
+
   const handleConflictReload = useCallback(async () => {
     if (conflictBusy) return;
-    
+
     try {
       setConflictBusy(true);
       await refetch();
@@ -522,7 +572,7 @@ export function useWeekPageOrchestrator(deps: OrchestratorDependencies): Orchest
       setConflictBusy(false);
     }
   }, [conflictBusy, refetch, clearLastError, setConflictBusy, setConflictDetailOpen]);
-  
+
   // Navigation handlers
   const shiftWeek = useCallback(
     (deltaWeeks: number) => {
@@ -536,22 +586,22 @@ export function useWeekPageOrchestrator(deps: OrchestratorDependencies): Orchest
     },
     [focusDate, primeRouteReset, route.dateIso, syncDateParam],
   );
-  
+
   const handlePrevWeek = useCallback(() => {
     shiftWeek(-1);
   }, [shiftWeek]);
-  
+
   const handleNextWeek = useCallback(() => {
     shiftWeek(1);
   }, [shiftWeek]);
-  
+
   const handleTodayWeek = useCallback(() => {
     const todayIso = toDateIso(new Date());
     setActiveDateIso(todayIso);
     primeRouteReset();
     syncDateParam(todayIso);
   }, [primeRouteReset, syncDateParam]);
-  
+
   const handlePrevMonth = useCallback(() => {
     const prevMonthDate = new Date(focusDate);
     prevMonthDate.setMonth(prevMonthDate.getMonth() - 1);
@@ -560,7 +610,7 @@ export function useWeekPageOrchestrator(deps: OrchestratorDependencies): Orchest
     primeRouteReset();
     syncDateParam(iso);
   }, [focusDate, primeRouteReset, syncDateParam]);
-  
+
   const handleNextMonth = useCallback(() => {
     const nextMonthDate = new Date(focusDate);
     nextMonthDate.setMonth(nextMonthDate.getMonth() + 1);
@@ -569,14 +619,14 @@ export function useWeekPageOrchestrator(deps: OrchestratorDependencies): Orchest
     primeRouteReset();
     syncDateParam(iso);
   }, [focusDate, primeRouteReset, syncDateParam]);
-  
+
   const handleTodayMonth = useCallback(() => {
     const todayIso = toDateIso(new Date());
     setActiveDateIso(todayIso);
     primeRouteReset();
     syncDateParam(todayIso);
   }, [primeRouteReset, syncDateParam]);
-  
+
   return {
     // Local state
     viewItem,
@@ -585,17 +635,17 @@ export function useWeekPageOrchestrator(deps: OrchestratorDependencies): Orchest
     dialogOpen,
     dialogInitialValues,
     dayLane,
-    
+
     // Computed values
     resolvedActiveDateIso,
     dayViewHref,
     weekViewHref,
     monthViewHref,
     activeDayRange,
-    
+
     // Refs
     fabRef,
-    
+
     // Event handlers
     handleDayClick,
     handleFabClick,
@@ -611,7 +661,7 @@ export function useWeekPageOrchestrator(deps: OrchestratorDependencies): Orchest
     handleCreateDialogClose,
     handleConflictDiscard,
     handleConflictReload,
-    
+
     // Navigation handlers
     handlePrevWeek,
     handleNextWeek,
@@ -619,11 +669,12 @@ export function useWeekPageOrchestrator(deps: OrchestratorDependencies): Orchest
     handlePrevMonth,
     handleNextMonth,
     handleTodayMonth,
-    
+
     // Computed flags
     suppressRouteDialog,
     conflictOpen,
-    
+    networkOpen,
+
     // Search params
     orgParam,
   };

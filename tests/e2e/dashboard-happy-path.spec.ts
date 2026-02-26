@@ -20,7 +20,7 @@ import { expect, test } from '@playwright/test';
 import { TESTIDS } from '../../src/testids';
 import { bootAgenda } from './_helpers/bootAgenda';
 
-const DASHBOARD_ENTRY = '/';
+const DASHBOARD_ENTRY = '/dashboard?zeroscroll=0';
 
 /**
  * Dashboard happy path (fixture-locked):
@@ -48,7 +48,8 @@ test.describe('Dashboard happy path (handoff + agenda seeds)', () => {
     await expect(summaryRoot.getByTestId(TESTIDS['dashboard-handoff-summary-alert'])).toContainText('1');
     await expect(summaryRoot.getByTestId(TESTIDS['dashboard-handoff-summary-action'])).toContainText('1');
 
-    await expect(page.getByRole('heading', { name: '今日の予定' })).toBeVisible();
+    const scheduleSection = page.getByTestId('dashboard-section-schedule');
+    await expect(scheduleSection.getByRole('heading', { name: '今日の予定' })).toBeVisible();
     await expect(page.getByText('職員朝会 / 申し送り確認').first()).toBeVisible();
     await expect(page.getByRole('link', { name: 'マスタースケジュールを開く' })).toBeVisible();
   });

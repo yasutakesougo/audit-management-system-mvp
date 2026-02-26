@@ -1,368 +1,651 @@
-import { env as baseEnv, getIsDemo, getIsE2E, getIsMsalMock, resetBaseEnvCache, type EnvRecord } from '@/env';
-import { getParsedEnv, resetParsedEnvForTests, validateEnv, type EnvSchema } from './env.schema';
-export type { EnvRecord };
+import { getRuntimeEnv, isDev as runtimeIsDev } from '@/env';
 
-export interface AppConfig extends EnvSchema {
-  isDev: boolean;
-  schedulesTz: string;
-  schedulesWeekStart: number;
+type Primitive = string | number | boolean | undefined | null;
+export type EnvRecord = Record<string, Primitive>;
+
+export type AppConfig = {
+  VITE_SP_RESOURCE: string;
+  VITE_SP_SITE_RELATIVE: string;
+  VITE_SP_SITE_URL: string;
+  VITE_SP_RETRY_MAX: string;
+  VITE_SP_RETRY_BASE_MS: string;
+  VITE_SP_RETRY_MAX_DELAY_MS: string;
+  VITE_MSAL_CLIENT_ID: string;
+  VITE_MSAL_TENANT_ID: string;
+  VITE_MSAL_TOKEN_REFRESH_MIN: string;
+  VITE_AUDIT_DEBUG: string;
+  VITE_AUDIT_BATCH_SIZE: string;
+  VITE_AUDIT_RETRY_MAX: string;
+  VITE_AUDIT_RETRY_BASE: string;
+  VITE_E2E: string;
   schedulesCacheTtlSec: number;
   graphRetryMax: number;
   graphRetryBaseMs: number;
   graphRetryCapMs: number;
-}
+  schedulesTz: string;
+  schedulesWeekStart: number;
+  isDev: boolean;
+};
+
+const TRUTHY = new Set(['1', 'true', 'yes', 'y', 'on', 'enabled']);
+const FALSY = new Set(['0', 'false', 'no', 'n', 'off', 'disabled']);
+
+const parseNumber = (value: string, fallback: number): number => {
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : fallback;
+};
+
+const clampWeekStart = (value: number, fallback = 1): number => {
+  if (!Number.isFinite(value)) return fallback;
+  const normalized = Math.trunc(value);
+  if (normalized < 0 || normalized > 6) return fallback;
+  return normalized;
+};
+
+const normalizeString = (value: Primitive): string => {
+  if (value === undefined || value === null) return '';
+  if (typeof value === 'string') return value;
+  if (typeof value === 'number') return Number.isFinite(value) ? String(value) : '';
+  if (typeof value === 'boolean') return value ? 'true' : 'false';
+  return '';
+};
 
 /**
- * Audit Management System - Environment Variables (Single Source of Truth)
- *
- * This module extends the raw @/env with Zod validation and provides
- * type-safe access to all configuration.
+ * Read Vite build-time environment variables directly from import.meta.env.
+ * Used for feature flags that must be determined at build time (e.g., GraphQL enablement).
+ * This bypasses runtime env handling and reads the value Vite baked into the code.
  */
-
-export const getRuntimeEnv = () => (globalThis as { __TEST_ENV__?: EnvRecord }).__TEST_ENV__ || baseEnv;
-
-// 1. Initialize and Validate (Fail Fast)
-try {
-  validateEnv(getRuntimeEnv() as EnvRecord);
-} catch (error) {
-  console.error('[env] CRITICAL: Environment validation failed.', error);
-  throw error;
-}
-
-/**
- * The validated, typed environment object. (Proxy-based for test reactivity)
- */
-export const env: EnvSchema = new Proxy({} as EnvSchema, {
-  get(_, prop) {
-    if (typeof prop !== 'string') return undefined;
-    return getParsedEnv()[prop as keyof EnvSchema];
-  },
-  ownKeys() {
-    return Reflect.ownKeys(getParsedEnv());
-  },
-  getOwnPropertyDescriptor(_, prop) {
-    return Reflect.getOwnPropertyDescriptor(getParsedEnv(), prop);
-  },
-});
-
-// --- Derived Helpers (Dynamic) ---
-
-export const getSPResource = () => (env.VITE_SP_RESOURCE || '').replace(/\/+$/, '');
-export const getSPSiteRelative = () => {
-  const raw = env.VITE_SP_SITE_RELATIVE || '';
-  const normalized = raw.replace(/\/+$/, '');
-  return normalized.startsWith('/') ? normalized : `/${normalized}`;
+export const readViteBool = (key: string, fallback = false): boolean => {
+  const raw = (import.meta.env as Record<string, unknown>)[key];
+  if (raw === undefined || raw === null) return fallback;
+  if (typeof raw === 'boolean') return raw;
+  if (typeof raw === 'string') {
+    const normalized = raw.trim().toLowerCase();
+    if (normalized === 'true' || normalized === '1' || normalized === 'yes') return true;
+    if (normalized === 'false' || normalized === '0' || normalized === 'no') return false;
+  }
+  return fallback;
 };
-export const getSPBaseUrl = () => `${getSPResource()}${getSPSiteRelative()}`;
-export const getSPApiWebUrl = () => `${getSPBaseUrl()}/_api/web`;
 
-/** @deprecated Use getSPResource() or env.VITE_SP_RESOURCE */
-export const SP_RESOURCE = getSPResource();
-/** @deprecated Use getSPSiteRelative() or env.VITE_SP_SITE_RELATIVE */
-export const SP_SITE_RELATIVE = getSPSiteRelative();
-/** @deprecated Use getSPBaseUrl() */
-export const SP_BASE_URL = getSPBaseUrl();
-/** @deprecated Use getSPApiWebUrl() */
-export const SP_API_WEB_URL = getSPApiWebUrl();
+const coerceBoolean = (value: Primitive, fallback = false): boolean => {
+  if (value === undefined || value === null) return fallback;
+  if (typeof value === 'boolean') return value;
+  if (typeof value === 'number') return value !== 0;
+  const normalized = String(value).trim().toLowerCase();
+  if (!normalized) return fallback;
+  if (TRUTHY.has(normalized)) return true;
+  if (FALSY.has(normalized)) return false;
+  return fallback;
+};
 
-// 2. Auth Scopes
-const parseScopes = (raw: string | undefined) => (raw || '').split(/[\s,]+/).map(s => s.trim()).filter(Boolean);
 
-export const getMsalScopes = () => parseScopes(env.VITE_MSAL_SCOPES);
-export const getLoginScopes = () => Array.from(new Set([
-  ...parseScopes(env.VITE_LOGIN_SCOPES),
-  ...parseScopes(env.VITE_MSAL_LOGIN_SCOPES),
-  'openid',
-  'profile'
-]));
+const getEnvValue = (key: string, envOverride?: EnvRecord): Primitive => {
+  // Helper: treat undefined and empty-string-like values as "missing"
+  const isMeaningful = (v: unknown): boolean => {
+    if (v === undefined || v === null) return false;
+    if (typeof v === 'string') return v.trim().length > 0;
+    return true; // numbers/booleans considered meaningful
+  };
 
-/** @deprecated Use getMsalScopes() */
-export const MSAL_SCOPES = getMsalScopes();
-/** @deprecated Use getLoginScopes() */
-export const LOGIN_SCOPES = getLoginScopes();
-
-// 3. Modes & Feature Flags
-
-/** @deprecated Use getIsDev() or env.VITE_DEV */
-export const IS_DEV = env.VITE_DEV || env.VITE_DEBUG_ENV;
-/** @deprecated Use getIsDemo() or env.VITE_DEMO_MODE */
-export const IS_DEMO = env.VITE_DEMO_MODE || env.VITE_FORCE_DEMO;
-/** @deprecated Use getIsE2E() */
-export const IS_E2E = env.VITE_E2E;
-/** @deprecated Use getIsMsalMock() */
-export const IS_MSAL_MOCK = env.VITE_E2E_MSAL_MOCK;
-
-export const isDevMode = (o?: EnvRecord) => (o ? !!o.VITE_DEV : IS_DEV);
-export const isTestMode = (o?: EnvRecord) => (o ? o.VITE_APP_ENV === 'test' : env.VITE_APP_ENV === 'test');
-export const isDevModeEnabled = (o?: EnvRecord) => isDevMode(o);
-export const isDemoModeEnabled = (o?: EnvRecord) => (o ? !!o.VITE_DEMO_MODE : getIsDemo());
-export const isForceDemoEnabled = (o?: EnvRecord) => (o ? !!o.VITE_FORCE_DEMO : env.VITE_FORCE_DEMO);
-
-const getStorage = () => (typeof window !== 'undefined' ? window.localStorage : (globalThis as unknown as { localStorage: Storage }).localStorage);
-
-export const shouldSkipLogin = (o?: EnvRecord): boolean => {
-  // 1. Check localStorage first
-  const storage = getStorage();
-  if (storage) {
-    try {
-      const flag = storage.getItem('SKIP_LOGIN');
-      if (flag !== null) {
-        const s = flag.toLowerCase().trim();
-        if (s === 'true' || s === '1' || s === 'yes' || s === 'on' || s === 'enabled') return true;
-        if (s === 'false' || s === '0' || s === 'no' || s === 'off' || s === 'disabled') return false;
-      }
-    } catch { /* ignore */ }
+  if (envOverride && key in envOverride && isMeaningful(envOverride[key])) {
+    return envOverride[key];
   }
 
-  // 2. Check override object or global env
-  const isDemoVal = o ? o.VITE_DEMO_MODE : getIsDemo();
-  const skipLoginVal = o ? o.VITE_SKIP_LOGIN : env.VITE_SKIP_LOGIN;
-  const e2eVal = o ? o.VITE_E2E : getIsE2E();
-  const msalMockVal = o ? o.VITE_E2E_MSAL_MOCK : getIsMsalMock();
-
-  const check = (v: unknown) => v === true || v === 'true' || v === '1' || (typeof v === 'string' && ['yes', 'on', 'enabled'].includes(v.toLowerCase()));
-
-  return check(isDemoVal) || check(skipLoginVal) || check(e2eVal) || check(msalMockVal);
-};
-
-export const shouldSkipSharePoint = (o?: EnvRecord) => {
-  if (o) return !!o.VITE_SKIP_SHAREPOINT;
-  return env.VITE_SKIP_SHAREPOINT || getIsDemo();
-};
-
-export const skipSharePoint = (o?: EnvRecord) => shouldSkipSharePoint(o);
-
-export const SHOULD_SKIP_LOGIN = shouldSkipLogin();
-export const SHOULD_SKIP_SHAREPOINT = shouldSkipSharePoint();
-export const IS_SKIP_SHAREPOINT = SHOULD_SKIP_SHAREPOINT;
-
-const isFeatureEnabled = (name: string, envValue: boolean): boolean => {
-  const storage = getStorage();
-  if (storage) {
-    try {
-      const flag = storage.getItem(`feature:${name}`);
-      if (flag === '1' || flag === 'true' || flag === 'on' || flag === 'enabled') return true;
-      if (flag === '0' || flag === 'false' || flag === 'off' || flag === 'disabled') return false;
-    } catch { /* ignore */ }
+  // ✅ Runtime env (window.__ENV__) should win over build-time
+  const runtime = getRuntimeEnv() as EnvRecord;
+  if (key in runtime && isMeaningful(runtime[key])) {
+    return runtime[key];
   }
-  return envValue;
-};
 
-export const IS_SCHEDULES_ENABLED = isFeatureEnabled('schedules', env.VITE_FEATURE_SCHEDULES);
-export const IS_USERS_CRUD_ENABLED = isFeatureEnabled('usersCrud', env.VITE_FEATURE_USERS_CRUD);
-export const IS_STAFF_ATTENDANCE_ENABLED = isFeatureEnabled('staffAttendance', env.VITE_FEATURE_STAFF_ATTENDANCE);
-export const IS_COMPLIANCE_FORM_ENABLED = isFeatureEnabled('complianceForm', env.VITE_FEATURE_COMPLIANCE_FORM);
-export const IS_ICEBERG_PDCA_ENABLED = isFeatureEnabled('icebergPdca', env.VITE_FEATURE_ICEBERG_PDCA);
-export const IS_APP_SHELL_VSCODE_ENABLED = isFeatureEnabled('appShellVsCode', env.VITE_FEATURE_APPSHELL_VSCODE);
-
-// 4. Persistence & Migration Helpers
-export const ALLOW_WRITE_FALLBACK = () => env.VITE_ALLOW_WRITE_FALLBACK;
-export const allowWriteFallback = ALLOW_WRITE_FALLBACK;
-export const GET_SCHEDULE_SAVE_MODE = () => env.VITE_SCHEDULES_SAVE_MODE;
-export const getScheduleSaveMode = GET_SCHEDULE_SAVE_MODE;
-
-// 2. SharePoint Resource & URLs (Helpers to support overrides if needed)
-export const getSharePointResource = (o?: EnvRecord) => (o ? String(o.VITE_SP_RESOURCE || '').replace(/\/+$/, '') : getSPResource());
-export const getSharePointBaseUrl = (o?: EnvRecord) => {
-  if (o) {
-    const res = getSharePointResource(o);
-    const rel = String(o.VITE_SP_SITE_RELATIVE || '').startsWith('/')
-      ? String(o.VITE_SP_SITE_RELATIVE).replace(/\/+$/, '')
-      : `/${String(o.VITE_SP_SITE_RELATIVE || '').replace(/\/+$/, '')}`;
-    return `${res}${rel}`;
-  }
-  return getSPBaseUrl();
-};
-
-export const getMsalLoginScopes = (o?: EnvRecord) => {
-  const parse = (raw: string | number | boolean | undefined) => String(raw || '').split(/[\s,]+/).map(s => s.trim()).filter(Boolean);
-  const rawScopes = o
-    ? [...parse(o.VITE_LOGIN_SCOPES), ...parse(o.VITE_MSAL_LOGIN_SCOPES)]
-    : [...parse(env.VITE_LOGIN_SCOPES), ...parse(env.VITE_MSAL_LOGIN_SCOPES)];
-
-  const identityScopes = ['openid', 'profile'];
-  const filtered = new Set<string>(['openid', 'profile']);
-
-  for (const s of rawScopes) {
-    if (identityScopes.includes(s)) {
-      filtered.add(s);
-    } else {
-      console.warn(`[env] Ignoring non-identity login scope "${s}". Only openid/profile are requested during login.`);
+  // Build-time env injected by Vite
+  if (typeof window !== 'undefined' && typeof import.meta !== 'undefined' && import.meta.env) {
+    const candidate = (import.meta.env as Record<string, Primitive>)[key];
+    if (isMeaningful(candidate)) {
+      return candidate as Primitive;
     }
   }
-  return Array.from(filtered);
-};
 
-export const getConfiguredMsalScopes = (o?: EnvRecord) => {
-  const raw = o ? o.VITE_MSAL_SCOPES : env.VITE_MSAL_SCOPES;
-  const rawStr = String(raw || '');
-
-  // Test expectation: log error for comma-only or malformed inputs
-  if (rawStr.trim() !== '' && rawStr.includes(',') && !rawStr.replace(/[\s,]/g, '')) {
-    console.error('[env] Failed to parse scopes from value:', rawStr);
+  // Node.js environment: use process.env or globalThis.import for SSR
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const globalImport = (globalThis as any).import;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  if (typeof globalImport !== 'undefined' && (globalImport as any).meta?.env && typeof (globalImport as any).meta.env === 'object') {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const metaEnv = (globalImport as any).meta.env as Record<string, Primitive>;
+    const candidate = metaEnv[key];
+    if (isMeaningful(candidate)) {
+      return candidate;
+    }
   }
 
-  const scopes = rawStr.split(/[\s,]+/).map((s: string) => s.trim()).filter(Boolean);
-  return Array.from(new Set(scopes));
-};
-
-export const isE2eMsalMockEnabled = (o?: EnvRecord) => {
-  if (o) {
-    if (o.VITE_E2E_MSAL_MOCK !== undefined) return String(o.VITE_E2E_MSAL_MOCK) === 'true' || o.VITE_E2E_MSAL_MOCK === true;
-    if (o.VITE_MSAL_MOCK !== undefined) return String(o.VITE_MSAL_MOCK) === 'true' || o.VITE_MSAL_MOCK === true;
-  }
-  return getIsMsalMock();
-};
-
-// Feature Flags (Function aliases)
-const readFlag = (key: string, storageKey: string, fallback: boolean, o?: EnvRecord) => {
-  // 1. Explicit overrides in 'o' always take precedence
-  if (o && key in o) {
-    return readBool(key, fallback, o);
+  if (typeof process !== 'undefined' && process.env) {
+    const candidate = process.env[key] as Primitive;
+    if (isMeaningful(candidate)) {
+      return candidate;
+    }
   }
 
-  // 2. Check localStorage
-  const storage = getStorage();
-  if (storage) {
-    try {
-      const stored = storage.getItem(storageKey);
-      if (stored !== null) {
-        const s = stored.toLowerCase().trim();
-        const result = (s === 'true' || s === '1' || s === 'yes' || s === 'on' || s === 'enabled');
-        if (result) return true;
-        if (s === 'false' || s === '0' || s === 'no' || s === 'off' || s === 'disabled') return false;
-      }
-    } catch { /* ignore */ }
+  return undefined;
+};
+
+const resolveIsDev = (envOverride?: EnvRecord): boolean => {
+  // Vite dev server は import.meta.env.DEV が true になるので、これを最優先
+  if (import.meta.env.DEV) {
+    return true;
   }
 
-  // 3. Fallback to process/meta env via readBool
-  return readBool(key, fallback, o);
-};
-
-export const isAppShellVsCodeEnabled = (o?: EnvRecord) => readFlag('VITE_FEATURE_APPSHELL_VSCODE', 'feature:appshell_vscode', false, o);
-export const isComplianceFormEnabled = (o?: EnvRecord) => readFlag('VITE_FEATURE_COMPLIANCE_FORM', 'feature:compliance_form', false, o);
-export const isIcebergPdcaEnabled = (o?: EnvRecord) => readFlag('VITE_FEATURE_ICEBERG_PDCA', 'feature:iceberg_pdca', false, o);
-export const isSchedulesFeatureEnabled = (o?: EnvRecord) => readFlag('VITE_FEATURE_SCHEDULES', 'feature:schedules', false, o);
-export const isSchedulesWeekV2Enabled = (o?: EnvRecord) => readFlag('VITE_FEATURE_SCHEDULES_WEEK_V2', 'feature:schedules_week_v2', false, o);
-export const isStaffAttendanceEnabled = (o?: EnvRecord) => readFlag('VITE_FEATURE_STAFF_ATTENDANCE', 'feature:staff_attendance', false, o);
-
-// --- Extended Helpers ---
-
-export const getMsalTokenRefreshMin = (o?: EnvRecord) => {
-  const val = o ? Number(o.VITE_MSAL_TOKEN_REFRESH_MIN) : env.VITE_MSAL_TOKEN_REFRESH_MIN;
-  return !isNaN(val) && val > 0 ? val : 300;
-};
-
-export const getSharePointSiteRelative = (o?: EnvRecord) => {
-  const val = String((o ? o.VITE_SP_SITE_RELATIVE : env.VITE_SP_SITE_RELATIVE) || '');
-  const normalized = val.replace(/\/+$/, '');
-  return normalized.startsWith('/') ? normalized : `/${normalized}`;
-};
-
-export const getSharePointBaseUrlWithApi = (o?: EnvRecord) => {
-  return `${getSharePointBaseUrl(o)}/_api/web`;
-};
-
-export const getSharePointDefaultScope = (o?: EnvRecord): string => {
-  const explicit = String((o ? o.VITE_SP_SCOPE_DEFAULT : env.VITE_SP_SCOPE_DEFAULT) || '').trim();
-
-  if (explicit && (explicit.includes('.default') || !explicit.includes('.sharepoint.com'))) {
-     throw new Error(`Invalid SharePoint scope: ${explicit}`);
+  const modeValue = getEnvValue('MODE', envOverride);
+  if (typeof modeValue === 'string' && modeValue.trim()) {
+    const normalized = modeValue.trim().toLowerCase();
+    if (normalized === 'development' || normalized === 'dev') {
+      return true;
+    }
+    // treat test as dev-like so demo paths stay enabled under Vitest and Playwright
+    if (normalized === 'test') {
+      return true;
+    }
   }
 
-  if (explicit && explicit !== '') return explicit;
-
-  const skipLog = o ? o.VITE_SKIP_LOGIN : env.VITE_SKIP_LOGIN;
-  const isDemoVal = o ? o.VITE_DEMO_MODE : IS_DEMO;
-  if (isDemoVal || skipLog === 'true' || (skipLog as unknown) === true) {
-    return 'https://example.sharepoint.com/AllSites.Read';
+  const viteDev = getEnvValue('VITE_DEV', envOverride);
+  if (viteDev !== undefined) {
+    return coerceBoolean(viteDev, runtimeIsDev);
   }
 
-  const msalScopes = getConfiguredMsalScopes(o);
-  const spScope = msalScopes.find(s => s.toLowerCase().includes('.sharepoint.com') && !s.toLowerCase().endsWith('.default'));
-  if (spScope) return spScope;
-
-  const res = getSharePointResource(o);
-  if (res && res !== '' && res.includes('.sharepoint.com')) {
-    return `${res}/AllSites.Read`;
+  const devValue = getEnvValue('DEV', envOverride);
+  if (devValue !== undefined) {
+    return coerceBoolean(devValue, runtimeIsDev);
   }
 
-  throw new Error('VITE_SP_SCOPE_DEFAULT is required (e.g. https://{host}.sharepoint.com/AllSites.Read)');
-};
-
-/** @deprecated Use env.VITE_... directly */
-export const readEnv = (key: string, fallback?: string, override?: Record<string, unknown>) => {
-  const source = (override || env) as Record<string, unknown>;
-  return (source[key] ?? fallback) as string;
-};
-
-/** @deprecated Use env.VITE_... directly */
-export const readBool = (key: string, fallback?: boolean, override?: Record<string, unknown>) => {
-  const source = (override || env) as Record<string, unknown>;
-  const val = source[key];
-  if (typeof val === 'boolean') return val;
-  if (typeof val === 'string') {
-    const s = val.toLowerCase().trim();
-    if (s === 'true' || s === '1' || s === 'yes' || s === 'on' || s === 'enabled') return true;
-    if (s === 'false' || s === '0' || s === 'no' || s === 'off') return false;
-  }
-  return !!fallback;
-};
-
-/** @deprecated Use env.VITE_... directly */
-export const readOptionalEnv = (key: string, fallback?: string, override?: Record<string, unknown>) => {
-  const source = (override || env) as Record<string, unknown>;
-  return (source[key] ?? fallback) as string | undefined;
-};
-
-/** @deprecated Use readBool */
-export const readViteBool = readBool;
-
-/** Cache clearer helper */
-export const clearEnvCache = () => {
-    resetBaseEnvCache();
-    resetParsedEnvForTests();
-};
-
-let cachedAppConfig: AppConfig | null = null;
-
-export const getAppConfig = (overrides?: Partial<EnvSchema>): AppConfig => {
-  if (overrides) {
-    // Override directly merges into a new object to avoid polluting cache
-    const base = getParsedEnv(overrides);
-    return {
-      ...base,
-      isDev: base.VITE_DEV || base.VITE_DEBUG_ENV,
-      schedulesTz: base.VITE_SCHEDULES_TZ,
-      schedulesWeekStart: base.VITE_SCHEDULES_WEEK_START,
-      schedulesCacheTtlSec: base.VITE_SCHEDULES_CACHE_TTL,
-      graphRetryMax: base.VITE_GRAPH_RETRY_MAX,
-      graphRetryBaseMs: base.VITE_GRAPH_RETRY_BASE_MS,
-      graphRetryCapMs: base.VITE_GRAPH_RETRY_CAP_MS,
-    };
+  const nodeEnv = getEnvValue('NODE_ENV', envOverride);
+  if (typeof nodeEnv === 'string' && nodeEnv.trim()) {
+    const normalized = nodeEnv.trim().toLowerCase();
+    if (normalized === 'development' || normalized === 'dev') {
+      return true;
+    }
+    if (normalized === 'test') {
+      return true;
+    }
   }
 
-  if (cachedAppConfig) return cachedAppConfig;
+  if (typeof process !== 'undefined' && process.env && 'NODE_ENV' in process.env) {
+    const normalized = String(process.env.NODE_ENV).toLowerCase();
+    if (normalized === 'development' || normalized === 'dev') {
+      return true;
+    }
+    if (normalized === 'test') {
+      return true;
+    }
+  }
 
-  const parsed = getParsedEnv();
-  cachedAppConfig = {
-    ...parsed,
-    isDev: IS_DEV,
-    schedulesTz: parsed.VITE_SCHEDULES_TZ,
-    schedulesWeekStart: parsed.VITE_SCHEDULES_WEEK_START,
-    schedulesCacheTtlSec: parsed.VITE_SCHEDULES_CACHE_TTL,
-    graphRetryMax: parsed.VITE_GRAPH_RETRY_MAX,
-    graphRetryBaseMs: parsed.VITE_GRAPH_RETRY_BASE_MS,
-    graphRetryCapMs: parsed.VITE_GRAPH_RETRY_CAP_MS,
+  return runtimeIsDev;
+};
+
+export const readEnv = (key: string, fallback = '', envOverride?: EnvRecord): string => {
+  const raw = getEnvValue(key, envOverride);
+  const normalized = normalizeString(raw);
+  return normalized === '' ? fallback : normalized;
+};
+
+let appConfigCache: AppConfig | null = null;
+
+export const getAppConfig = (envOverride?: EnvRecord): AppConfig => {
+  if (!envOverride && appConfigCache) {
+    return appConfigCache;
+  }
+
+  const cfg: AppConfig = {
+    VITE_SP_RESOURCE: readEnv('VITE_SP_RESOURCE', '', envOverride),
+    VITE_SP_SITE_RELATIVE: readEnv('VITE_SP_SITE_RELATIVE', '', envOverride),
+    VITE_SP_SITE_URL: readEnv('VITE_SP_SITE_URL', '', envOverride),
+    VITE_SP_RETRY_MAX: readEnv('VITE_SP_RETRY_MAX', '4', envOverride),
+    VITE_SP_RETRY_BASE_MS: readEnv('VITE_SP_RETRY_BASE_MS', '400', envOverride),
+    VITE_SP_RETRY_MAX_DELAY_MS: readEnv('VITE_SP_RETRY_MAX_DELAY_MS', '5000', envOverride),
+    VITE_MSAL_CLIENT_ID: readEnv('VITE_MSAL_CLIENT_ID', '', envOverride) || readEnv('VITE_AAD_CLIENT_ID', '', envOverride),
+    VITE_MSAL_TENANT_ID: readEnv('VITE_MSAL_TENANT_ID', '', envOverride) || readEnv('VITE_AAD_TENANT_ID', '', envOverride),
+    VITE_MSAL_TOKEN_REFRESH_MIN: readEnv('VITE_MSAL_TOKEN_REFRESH_MIN', '300', envOverride),
+    VITE_AUDIT_DEBUG: readEnv('VITE_AUDIT_DEBUG', '', envOverride),
+    VITE_AUDIT_BATCH_SIZE: readEnv('VITE_AUDIT_BATCH_SIZE', '', envOverride),
+    VITE_AUDIT_RETRY_MAX: readEnv('VITE_AUDIT_RETRY_MAX', '', envOverride),
+    VITE_AUDIT_RETRY_BASE: readEnv('VITE_AUDIT_RETRY_BASE', '', envOverride),
+    VITE_E2E: readEnv('VITE_E2E', '', envOverride),
+    schedulesCacheTtlSec: parseNumber(readEnv('VITE_SCHEDULES_CACHE_TTL', '60', envOverride), 60),
+    graphRetryMax: parseNumber(readEnv('VITE_GRAPH_RETRY_MAX', '2', envOverride), 2),
+    graphRetryBaseMs: parseNumber(readEnv('VITE_GRAPH_RETRY_BASE_MS', '300', envOverride), 300),
+    graphRetryCapMs: parseNumber(readEnv('VITE_GRAPH_RETRY_CAP_MS', '2000', envOverride), 2000),
+    schedulesTz: readEnv('VITE_SCHEDULES_TZ', '', envOverride).trim(),
+    schedulesWeekStart: clampWeekStart(parseNumber(readEnv('VITE_SCHEDULES_WEEK_START', '1', envOverride), 1)),
+    isDev: resolveIsDev(envOverride),
   };
-  return cachedAppConfig;
+
+  if (!envOverride) {
+    appConfigCache = cfg;
+  }
+
+  return cfg;
+};
+
+export const __resetAppConfigForTests = (): void => {
+  appConfigCache = null;
+};
+
+export const clearEnvCache = (): void => {
+  __resetAppConfigForTests();
+};
+
+export const readOptionalEnv = (key: string, envOverride?: EnvRecord): string | undefined => {
+  const raw = getEnvValue(key, envOverride);
+  const normalized = normalizeString(raw);
+  return normalized === '' ? undefined : normalized;
+};
+
+export const readBool = (key: string, fallback = false, envOverride?: EnvRecord): boolean =>
+  coerceBoolean(getEnvValue(key, envOverride), fallback);
+
+export const isDevMode = (envOverride?: EnvRecord): boolean => resolveIsDev(envOverride);
+
+export const isDemoModeEnabled = (envOverride?: EnvRecord): boolean => {
+  if (readBool('VITE_FORCE_DEMO', false, envOverride)) {
+    return true;
+  }
+  return readBool('VITE_DEMO_MODE', false, envOverride);
+};
+
+const resolveIsTest = (envOverride?: EnvRecord): boolean => {
+  const modeValue = getEnvValue('MODE', envOverride);
+  if (typeof modeValue === 'string' && modeValue.trim()) {
+    const normalized = modeValue.trim().toLowerCase();
+    if (normalized === 'test') {
+      return true;
+    }
+  }
+
+  const nodeEnv = getEnvValue('NODE_ENV', envOverride);
+  if (typeof nodeEnv === 'string' && nodeEnv.trim()) {
+    if (nodeEnv.trim().toLowerCase() === 'test') {
+      return true;
+    }
+  }
+
+  if (typeof process !== 'undefined' && process.env && 'NODE_ENV' in process.env) {
+    if (String(process.env.NODE_ENV).toLowerCase() === 'test') {
+      return true;
+    }
+  }
+
+  return false;
+};
+
+export const isTestMode = (envOverride?: EnvRecord): boolean => resolveIsTest(envOverride);
+
+export const isForceDemoEnabled = (envOverride?: EnvRecord): boolean =>
+  readBool('VITE_FORCE_DEMO', false, envOverride);
+
+export const isWriteEnabled = (envOverride?: EnvRecord): boolean =>
+  readBool('VITE_WRITE_ENABLED', false, envOverride);
+
+export const isAuditDebugEnabled = (envOverride?: EnvRecord): boolean =>
+  readBool('VITE_AUDIT_DEBUG', false, envOverride);
+
+export const isSchedulesFeatureEnabled = (envOverride?: EnvRecord): boolean => {
+  if (readBool('VITE_FEATURE_SCHEDULES', false, envOverride)) {
+    return true;
+  }
+  if (typeof window !== 'undefined') {
+    try {
+      const flag = window.localStorage.getItem('feature:schedules');
+      if (flag != null) {
+        const normalized = flag.trim().toLowerCase();
+        if (TRUTHY.has(normalized)) return true;
+        if (FALSY.has(normalized)) return false;
+      }
+    } catch {
+      // ignore storage access issues (private mode, etc.)
+    }
+  }
+  return false;
+};
+
+
+
+export const isSchedulesWeekV2Enabled = (envOverride?: EnvRecord): boolean => {
+  const envValue = readOptionalEnv('VITE_FEATURE_SCHEDULES_WEEK_V2', envOverride)?.trim().toLowerCase();
+  if (envValue) {
+    if (TRUTHY.has(envValue)) {
+      return true;
+    }
+    if (FALSY.has(envValue)) {
+      return false;
+    }
+  }
+
+  if (typeof window !== 'undefined') {
+    try {
+      const flag = window.localStorage.getItem('feature:schedulesWeekV2');
+      if (flag != null) {
+        const normalized = flag.trim().toLowerCase();
+        if (TRUTHY.has(normalized)) return true;
+        if (FALSY.has(normalized)) return false;
+      }
+    } catch {
+      // ignore storage access issues
+    }
+  }
+
+  return false;
+};
+
+export const isComplianceFormEnabled = (envOverride?: EnvRecord): boolean => {
+  if (readBool('VITE_FEATURE_COMPLIANCE_FORM', false, envOverride)) {
+    return true;
+  }
+  if (typeof window !== 'undefined') {
+    try {
+      const flag = window.localStorage.getItem('feature:complianceForm');
+      if (flag != null) {
+        const normalized = flag.trim().toLowerCase();
+        if (TRUTHY.has(normalized)) return true;
+        if (FALSY.has(normalized)) return false;
+      }
+    } catch {
+      // ignore storage access issues
+    }
+  }
+  return false;
+};
+
+export const isStaffAttendanceEnabled = (envOverride?: EnvRecord): boolean => {
+  if (readBool('VITE_FEATURE_STAFF_ATTENDANCE', false, envOverride)) {
+    return true;
+  }
+  if (typeof window !== 'undefined') {
+    try {
+      const flag = window.localStorage.getItem('feature:staffAttendance');
+      if (flag != null) {
+        const normalized = flag.trim().toLowerCase();
+        if (TRUTHY.has(normalized)) return true;
+        if (FALSY.has(normalized)) return false;
+      }
+    } catch {
+      // ignore storage access issues
+    }
+  }
+  return false;
+};
+
+export const isIcebergPdcaEnabled = (envOverride?: EnvRecord): boolean =>
+  readBool('VITE_FEATURE_ICEBERG_PDCA', false, envOverride);
+
+export const isAppShellVsCodeEnabled = (envOverride?: EnvRecord): boolean =>
+  readBool('VITE_FEATURE_APPSHELL_VSCODE', false, envOverride);
+
+export const shouldSkipLogin = (envOverride?: EnvRecord): boolean => {
+  if (
+    isDemoModeEnabled(envOverride) ||
+    readBool('VITE_SKIP_LOGIN', false, envOverride) ||
+    readBool('VITE_E2E', false, envOverride) ||
+    readBool('VITE_E2E_MSAL_MOCK', false, envOverride)
+  ) {
+    return true;
+  }
+
+  if (typeof window !== 'undefined') {
+    try {
+      const flag = window.localStorage.getItem('skipLogin');
+      if (flag != null) {
+        const normalized = flag.trim().toLowerCase();
+        if (TRUTHY.has(normalized)) return true;
+        if (FALSY.has(normalized)) return false;
+      }
+    } catch {
+      // ignore storage failures (e.g., private mode)
+    }
+  }
+
+  return false;
+};
+
+export const shouldSkipSharePoint = (envOverride?: EnvRecord): boolean => {
+  return readBool('VITE_SKIP_SHAREPOINT', false, envOverride);
+};
+
+export const isUsersCrudEnabled = (envOverride?: EnvRecord): boolean => {
+  if (readBool('VITE_FEATURE_USERS_CRUD', false, envOverride)) {
+    return true;
+  }
+  if (typeof window !== 'undefined') {
+    try {
+      const flag = window.localStorage.getItem('feature:usersCrud');
+      if (flag != null) {
+        const normalized = flag.trim().toLowerCase();
+        if (TRUTHY.has(normalized)) return true;
+        if (FALSY.has(normalized)) return false;
+      }
+    } catch {
+      // ignore storage access issues
+    }
+  }
+  return false;
+};
+
+export const isE2eMsalMockEnabled = (envOverride?: EnvRecord): boolean =>
+  readBool('VITE_E2E_MSAL_MOCK', false, envOverride);
+
+export const allowWriteFallback = (envOverride?: EnvRecord): boolean =>
+  readBool('VITE_ALLOW_WRITE_FALLBACK', false, envOverride);
+
+export type ScheduleSaveMode = 'mock' | 'real';
+
+export const getScheduleSaveMode = (envOverride?: EnvRecord): ScheduleSaveMode => {
+  const raw = readEnv('VITE_SCHEDULES_SAVE_MODE', 'real', envOverride).trim().toLowerCase();
+  return raw === 'mock' ? 'mock' : 'real';
+};
+
+export const isScheduleSaveMocked = (envOverride?: EnvRecord): boolean =>
+  getScheduleSaveMode(envOverride) === 'mock';
+
+// E2E/Demo用フラグヘルパー
+export const getFlag = (name: string, envOverride?: EnvRecord): boolean => {
+  const value = readEnv(name, '', envOverride);
+  return value === '1' || value === 'true';
+};
+
+export const isE2E = (envOverride?: EnvRecord): boolean => getFlag('VITE_E2E', envOverride);
+export const isDemo = (envOverride?: EnvRecord): boolean => getFlag('VITE_DEMO', envOverride);
+export const skipSharePoint = (envOverride?: EnvRecord): boolean => getFlag('VITE_SKIP_SHAREPOINT', envOverride);
+
+export const getSharePointResource = (envOverride?: EnvRecord): string => {
+  const resource = readEnv('VITE_SP_RESOURCE', '', envOverride).trim();
+  if (resource) {
+    return resource.replace(/\/+$/, '');
+  }
+  // If envOverride explicitly provided (even with empty VITE_SP_RESOURCE), don't fallback to runtime
+  if (envOverride && 'VITE_SP_RESOURCE' in envOverride) {
+    return '';
+  }
+  const runtime = getRuntimeEnv();
+  return (runtime.VITE_SP_RESOURCE ?? '').replace(/\/+$/, '');
+};
+
+export const getSharePointSiteRelative = (envOverride?: EnvRecord): string => {
+  const override = readEnv('VITE_SP_SITE_RELATIVE', '', envOverride).trim();
+  if (override) {
+    const normalized = override.startsWith('/') ? override : `/${override}`;
+    return normalized.replace(/\/+$/, '');
+  }
+  const runtime = getRuntimeEnv();
+  const fromEnv = (runtime.VITE_SP_SITE_RELATIVE ?? '').trim();
+  if (!fromEnv) {
+    return '';
+  }
+  const normalized = fromEnv.startsWith('/') ? fromEnv : `/${fromEnv}`;
+  return normalized.replace(/\/+$/, '');
+};
+
+export const getSharePointBaseUrl = (envOverride?: EnvRecord): string => {
+  const resource = getSharePointResource(envOverride);
+  const site = getSharePointSiteRelative(envOverride);
+  const base = site ? `${resource}${site}` : resource;
+  return `${base.replace(/\/$/, '')}/_api/web`;
+};
+
+export const getSchedulesListIdFromEnv = (envOverride?: EnvRecord): string => {
+  const override = readEnv('VITE_SP_LIST_SCHEDULES', '', envOverride).trim();
+  if (override) {
+    return override;
+  }
+  return 'Schedules';
+};
+
+const parseScopeList = (raw: string): string[] => {
+  if (!raw) return [];
+  const scopes = raw
+    .split(/[\s,]+/)
+    .map((scope) => scope.trim())
+    .filter(Boolean);
+
+  if (scopes.length === 0 && raw.trim().length > 0) {
+    console.error('[env] Failed to parse scopes from value:', raw);
+  }
+
+  const seen = new Set<string>();
+  const result: string[] = [];
+  for (const scope of scopes) {
+    if (scope && !seen.has(scope)) {
+      seen.add(scope);
+      result.push(scope);
+    }
+  }
+  return result;
+};
+
+export const getConfiguredMsalScopes = (envOverride?: EnvRecord): string[] => {
+  const raw = readEnv('VITE_MSAL_SCOPES', '', envOverride);
+  return parseScopeList(raw);
+};
+
+export const getMsalTokenRefreshMin = (envOverride?: EnvRecord): number => {
+  const raw = readEnv('VITE_MSAL_TOKEN_REFRESH_MIN', '', envOverride);
+  const parsed = Number(raw);
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : 300;
+};
+
+const IDENTITY_SCOPE_ALLOWLIST = new Set(['openid', 'profile']);
+const IDENTITY_SCOPE_ORDER = ['openid', 'profile'] as const;
+
+export const getMsalLoginScopes = (envOverride?: EnvRecord): string[] => {
+  const scopeKeys = ['VITE_LOGIN_SCOPES', 'VITE_MSAL_LOGIN_SCOPES'] as const;
+  const sanitized = new Set<string>();
+
+  for (const key of scopeKeys) {
+    const raw = readEnv(key, '', envOverride);
+    if (!raw) continue;
+    const parsed = parseScopeList(raw);
+    for (const scope of parsed) {
+      if (IDENTITY_SCOPE_ALLOWLIST.has(scope)) {
+        sanitized.add(scope);
+      } else {
+        console.warn(`[env] Ignoring non-identity login scope "${scope}". Only openid/profile are requested during login.`);
+      }
+    }
+  }
+
+  const result: string[] = [...IDENTITY_SCOPE_ORDER];
+  for (const scope of sanitized) {
+    if (!result.includes(scope)) {
+      result.push(scope);
+    }
+  }
+  return result;
+};
+
+const DEMO_SHAREPOINT_SCOPE = 'https://example.sharepoint.com/AllSites.Read';
+
+const SHAREPOINT_SCOPE_PATTERN = /^https:\/\/[^/]+\.sharepoint\.com\/AllSites\.(Read|FullControl)$/i;
+const SHAREPOINT_RESOURCE_PATTERN = /^https:\/\/[^/]+\.sharepoint\.com$/i;
+
+export const getSharePointDefaultScope = (envOverride?: EnvRecord): string => {
+  const raw = readEnv('VITE_SP_SCOPE_DEFAULT', '', envOverride).trim();
+  if (!raw) {
+    if (shouldSkipLogin(envOverride) || readBool('VITE_SKIP_SHAREPOINT', false, envOverride)) {
+      console.warn('[env] VITE_SP_SCOPE_DEFAULT missing but skip-login/demo mode enabled; using placeholder scope.');
+      return DEMO_SHAREPOINT_SCOPE;
+    }
+
+    const msalScopes = getConfiguredMsalScopes(envOverride);
+    const derived = msalScopes.find((scope) => SHAREPOINT_SCOPE_PATTERN.test(scope));
+    if (derived) {
+      console.warn('[env] VITE_SP_SCOPE_DEFAULT missing; reusing SharePoint scope from VITE_MSAL_SCOPES.');
+      return derived;
+    }
+    const resource = getSharePointResource(envOverride);
+    if (resource && SHAREPOINT_RESOURCE_PATTERN.test(resource)) {
+      const normalized = resource.replace(/\/$/, '');
+      const fallbackScope = `${normalized}/AllSites.Read`;
+      console.warn('[env] VITE_SP_SCOPE_DEFAULT missing; deriving SharePoint scope from VITE_SP_RESOURCE.');
+      return fallbackScope;
+    }
+
+    const allowPlaceholder =
+      readBool('VITE_E2E', false, envOverride) ||
+      readBool('VITE_E2E_MSAL_MOCK', false, envOverride);
+
+    if (allowPlaceholder) {
+      console.warn('[env] VITE_SP_SCOPE_DEFAULT missing but skip-login/demo mode enabled; using placeholder scope.');
+      return DEMO_SHAREPOINT_SCOPE;
+    }
+
+    throw new Error('VITE_SP_SCOPE_DEFAULT is required (e.g. https://{host}.sharepoint.com/AllSites.Read)');
+  }
+
+  if (!SHAREPOINT_SCOPE_PATTERN.test(raw)) {
+    throw new Error(`Invalid SharePoint scope: ${raw}`);
+  }
+
+  return raw;
 };
 
 /**
- * 🚀 Vitest Helper: Reset internal state for module shadowing tests
- * @internal
+ * ✅ SINGLE SOURCE OF TRUTH: When to SKIP SharePoint
+ *
+ * This is the canonical check for all stores (useOrgStore, useStaffStore, etc.)
+ * to determine whether SharePoint API should be touched.
+ *
+ * SharePoint is skipped if ANY of these are true:
+ * 1. VITE_DEMO_MODE === '1' (true demo mode)
+ * 2. VITE_SP_SITE_URL is not configured (empty/invalid baseUrl)
+ * 3. VITE_SKIP_LOGIN is enabled (automation/testing mode)
+ *
+ * This prevents accidental SharePoint calls in demo/test scenarios.
  */
-export const __resetAppConfigForTests = () => {
-  cachedAppConfig = null;
-  resetParsedEnvForTests();
-};
+export const SP_SITE_URL = String(import.meta.env.VITE_SP_SITE_URL || '').trim();
+export const SP_BASE_URL = SP_SITE_URL; // Alias for clarity
+
+export const IS_DEMO = import.meta.env.VITE_DEMO_MODE === '1';
+export const IS_SKIP_LOGIN = readBool('VITE_SKIP_LOGIN', false);
+
+/**
+ * ✅ Master guard: Should we skip all SharePoint operations?
+ * This is what stores actually check — more accurate than IS_DEMO alone.
+ */
+export const IS_SKIP_SHAREPOINT = IS_DEMO || !SP_BASE_URL || IS_SKIP_LOGIN;
+
+// Legacy aliases (keep for backward compat, but prefer IS_SKIP_SHAREPOINT)
+export const SP_ENABLED = !IS_SKIP_SHAREPOINT;
+export const SP_DISABLED = IS_SKIP_SHAREPOINT;
+
+/** @deprecated Use isE2E() */
+export const IS_E2E = isE2E();
+/** @deprecated Use isE2eMsalMockEnabled() */
+export const IS_MSAL_MOCK = isE2eMsalMockEnabled();
+/** @deprecated Use shouldSkipLogin() */
+export const SHOULD_SKIP_LOGIN = shouldSkipLogin();
+/** @deprecated Use shouldSkipSharePoint() */
+export const SHOULD_SKIP_SHAREPOINT = shouldSkipSharePoint();
+/** @deprecated Use isSchedulesFeatureEnabled() */
+export const IS_SCHEDULES_ENABLED = isSchedulesFeatureEnabled();
+
+/** @deprecated Prefer readEnv/getAppConfig helpers */
+export const env = {
+  VITE_AUDIT_DEBUG: isAuditDebugEnabled(),
+  VITE_TOKUSEI_FORMS_URL: readEnv('VITE_TOKUSEI_FORMS_URL', ''),
+} as const;

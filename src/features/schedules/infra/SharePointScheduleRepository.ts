@@ -1,20 +1,20 @@
-import { toSafeError } from '@/lib/errors';
+import { isE2E } from '@/env';
+import {
+    createSchedule,
+    removeSchedule,
+    updateSchedule,
+    type CreateScheduleInput as RepoCreateInput,
+    type UpdateScheduleInput as RepoUpdateInput,
+} from '@/infra/sharepoint/repos/schedulesRepo';
+import { AuthRequiredError, toSafeError } from '@/lib/errors';
 import { fetchSp } from '@/lib/fetchSp';
-import { AuthRequiredError } from '@/lib/errors';
 import { withUserMessage } from '@/lib/notice';
 import { createSpClient, ensureConfig } from '@/lib/spClient';
-import { SCHEDULES_DEBUG } from '../debug';
-import {
-  createSchedule,
-  updateSchedule,
-  removeSchedule,
-  type CreateScheduleInput as RepoCreateInput,
-  type UpdateScheduleInput as RepoUpdateInput,
-} from '@/infra/sharepoint/repos/schedulesRepo';
-import type { ScheduleRepository, ScheduleItem, DateRange, CreateScheduleInput, UpdateScheduleInput, ScheduleRepositoryListParams, ScheduleRepositoryMutationParams } from '../domain/ScheduleRepository';
-import type { ScheduleCategory, ScheduleStatus, ScheduleServiceType } from '../domain/types';
 import { mapSpRowToSchedule, parseSpScheduleRows } from '../data/spRowSchema';
-import { getSchedulesListTitle, SCHEDULES_FIELDS, buildSchedulesListPath } from '../data/spSchema';
+import { buildSchedulesListPath, getSchedulesListTitle, SCHEDULES_FIELDS } from '../data/spSchema';
+import { SCHEDULES_DEBUG } from '../debug';
+import type { CreateScheduleInput, DateRange, ScheduleItem, ScheduleRepository, ScheduleRepositoryListParams, ScheduleRepositoryMutationParams, UpdateScheduleInput } from '../domain/ScheduleRepository';
+import type { ScheduleCategory, ScheduleServiceType, ScheduleStatus } from '../domain/types';
 
 /**
  * Timezone-aware date key helpers
@@ -234,7 +234,7 @@ export type SharePointScheduleRepositoryOptions = {
 
 /**
  * SharePoint Schedule Repository
- * 
+ *
  * Implements ScheduleRepository interface for SharePoint backend.
  * Centralizes all SharePoint communication logic previously scattered
  * across sharePointAdapter.ts and useSchedules.ts.
@@ -270,13 +270,25 @@ export class SharePointScheduleRepository implements ScheduleRepository {
     try {
       const spConfig = ensureConfig();
       const baseUrl = spConfig.baseUrl;
-      if (!baseUrl) return false; // E2E/demo mode
+      if (!baseUrl) {
+        console.log('[schedules] [SharePointScheduleRepository] baseUrl is empty (bypass mode), assuming list exists');
+        return true;
+      }
 
       const client = this.getClient();
       const metadata = await client.tryGetListMetadata(this.listTitle);
+      console.log('[schedules] [SharePointScheduleRepository] checkListExists metadata:', metadata);
       return Boolean(metadata);
     } catch (error) {
-      console.error('[SharePointScheduleRepository] List existence check failed:', error);
+      const message = error instanceof Error ? error.message : String(error);
+      const is404 = /\b404\b/.test(message) || /Not Found/i.test(message) || /does not exist/i.test(message);
+
+      if (!is404) {
+        console.warn('[schedules] [SharePointScheduleRepository] checkListExists encountered non-404 error, propagating:', error);
+        throw error;
+      }
+
+      console.warn('[schedules] [SharePointScheduleRepository] List existence check confirmed 404:', error);
       return false;
     }
   }
@@ -308,7 +320,7 @@ export class SharePointScheduleRepository implements ScheduleRepository {
 
     const url = `${listPath}?${params.toString()}`;
     const response = await fetchSp(url);
-    
+
     if (!response.ok) {
       const message = await readSpErrorMessage(response);
       console.error('[SharePointScheduleRepository] List query failed', {
@@ -379,7 +391,7 @@ export class SharePointScheduleRepository implements ScheduleRepository {
           if (SCHEDULES_DEBUG) {
             console.info(`[SharePointScheduleRepository] ✅ stage=${stage.name} succeeded`);
           }
-          
+
           const allItems = sortByStart(rows.map(mapSpRowToSchedule).filter((item): item is ScheduleItem => Boolean(item)));
 
           // Visibility filtering
@@ -435,8 +447,28 @@ export class SharePointScheduleRepository implements ScheduleRepository {
     }
 
     try {
+      const { baseUrl } = ensureConfig();
+      // Bypass mutation if baseUrl is missing AND we are not in E2E mode.
+      // In E2E, we want to proceed to fetchSp so Playwright can intercept/mock the network layer.
+      if (!baseUrl && !isE2E) {
+        return {
+          id: String(Date.now()),
+          etag: '"1"',
+          title: input.title,
+          start: input.startLocal || new Date().toISOString(),
+          end: input.endLocal || new Date(Date.now() + 3600000).toISOString(),
+          category: input.category,
+          userId: input.userId || undefined,
+          personName: input.userName,
+          assignedStaffId: input.assignedStaffId,
+          status: input.status,
+          serviceType: input.serviceType as string,
+          notes: input.notes,
+          source: 'sharepoint',
+        };
+      }
       const client = this.getClient();
-      
+
       const startIso = input.startLocal || new Date().toISOString();
       const endIso = input.endLocal || new Date(Date.now() + 3600000).toISOString();
       const startDate = new Date(startIso);
@@ -476,6 +508,14 @@ export class SharePointScheduleRepository implements ScheduleRepository {
 
       return item;
     } catch (e) {
+      // Detect 412 Precondition Failed (ETag conflict)
+      const status = getHttpStatus(e);
+      if (status === 412) {
+        const conflictError = new Error('Schedule update conflict (412 Precondition Failed)');
+        (conflictError as { status?: number }).status = 412;
+        throw conflictError;
+      }
+
       const safeErr = toSafeError(e instanceof Error ? e : new Error(String(e)));
       throw withUserMessage(
         safeErr,
@@ -494,8 +534,27 @@ export class SharePointScheduleRepository implements ScheduleRepository {
     }
 
     try {
+      const { baseUrl } = ensureConfig();
+      // Bypass mutation if baseUrl is missing AND we are not in E2E mode.
+      // In E2E, we want to proceed to fetchSp so Playwright can intercept/mock the network layer.
+      if (!baseUrl && !isE2E) {
+        return {
+          id: input.id,
+          etag: '"' + (parseInt(input.etag?.replace(/"/g, '') || '0') + 1) + '"',
+          title: input.title,
+          start: input.startLocal || new Date().toISOString(),
+          end: input.endLocal || new Date(Date.now() + 3600000).toISOString(),
+          category: input.category,
+          userId: input.userId || undefined,
+          personName: input.userName,
+          serviceType: input.serviceType as string,
+          notes: input.notes,
+          status: input.status,
+          source: 'sharepoint',
+        };
+      }
       const client = this.getClient();
-      
+
       const idNum = Number(input.id);
       if (!Number.isFinite(idNum)) {
         throw new Error(`Invalid schedule ID: ${input.id}`);
@@ -566,8 +625,13 @@ export class SharePointScheduleRepository implements ScheduleRepository {
     }
 
     try {
+      const { baseUrl } = ensureConfig();
+      // Bypass mutation if baseUrl is missing AND we are not in E2E mode.
+      if (!baseUrl && !isE2E) {
+        return;
+      }
       const client = this.getClient();
-      
+
       const idNum = Number(id);
       if (!Number.isFinite(idNum)) {
         throw new Error(`Invalid schedule ID for delete: ${id}`);
@@ -575,6 +639,15 @@ export class SharePointScheduleRepository implements ScheduleRepository {
 
       await removeSchedule(client, idNum);
     } catch (error) {
+      // Detect 412
+      const status = getHttpStatus(error);
+      if (status === 412) {
+        const conflictError = new Error('Schedule removal conflict (412 Precondition Failed)');
+        (conflictError as { status?: number }).status = 412;
+        (conflictError as { id?: string }).id = id;
+        throw conflictError;
+      }
+
       throw withUserMessage(
         toSafeError(error instanceof Error ? error : new Error(String(error))),
         '予定の削除に失敗しました。時間をおいて再試行してください。'

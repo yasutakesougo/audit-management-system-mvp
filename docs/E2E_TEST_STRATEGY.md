@@ -1,175 +1,37 @@
-# E2E テスト戦略: 404 ゲート検証フェーズ化
+# E2E Test Strategy: /schedules
 
-## 概要
+This document outlines the strategy for ensuring high reliability of the Schedules feature through End-to-End (E2E) testing, specifically focusing on network resilience and conflict handling.
 
-`事故ゼロ運用` の list existence gate を回帰させないため、E2E テストを **2つのプロジェクト** に分け、各々異なるスコープで検証します。
+## 1. Adapter Strategy
 
-## プロジェクト構成
+To reliably test network-related logic (like offline snackbars and retry flows), we force the use of the **SharePoint Adapter** in E2E environments, even when `VITE_SKIP_SHAREPOINT=1` is set for other modules.
 
-### 1. chromium（通常 E2E）
+- **Flag**: `isE2E` (derived from `VITE_E2E=1`)
+- **Location**: `src/features/schedules/data/context.ts`
+- **Benefit**: The SharePoint adapter uses the standard `fetch` API. This allows Playwright to intercept and fail requests using `page.route` or `page.setOfflineMode(true)`, triggering the application's real error-handling paths.
 
-**環境設定**
-```
-VITE_SKIP_SHAREPOINT=1    # SharePoint API 呼び出し禁止
-VITE_DEMO_MODE=1          # In-memory ストア使用
-```
+## 2. E2E Bypass Mode
 
-**テスト対象**
-- `tests/e2e/schedules.list-existence-gate.spec.ts:4`
-  - "renders schedules week view successfully (tokenReady + listReady gate active)"
-  - ゲートが **正常なフロー** で過度にブロックしないことを確認
+When running in E2E mode without a real SharePoint environment (e.g., local development or standard CI), we use a "Bypass Mode" in the repository.
 
-**実行頻度**
-- CI の全テスト実行毎（高速: ~1秒）
+- **Mechanism**: If `baseUrl` is empty (detected in `SharePointScheduleRepository.ts`), mutations like `create`, `update`, and `remove` return successfully with mock data instead of attempting a real network request.
+- **Verification**: This ensures we can test the UI's reaction to *simulated* failures (like network timeouts) while still allowing the rest of the flow to proceed when "online" simulation is active.
 
-**目的**
-- ゲート実装の refactor 事故を **即座に検知**
-- ProtectedRoute や useAuth の変更による回帰を catch
+## 3. UI Resilience Guards
 
----
+Certain UI behaviors are modified during E2E tests to ensure deterministic verification.
 
-### 2. chromium-sp-integration（SharePoint 統合テスト）
+### Persistent Snackbars
+- **Logic**: In E2E mode, the network error Snackbar sets `autoHideDuration={undefined}`.
+- **Why**: This prevents the snackbar from disappearing before Playwright can assert its existence.
 
-**環境設定**
-```
-VITE_SKIP_SHAREPOINT=0               # SharePoint API 呼び出し許可
-VITE_DEMO_MODE=1                     # 他データは in-memory
-VITE_E2E=1                           # E2E mode (mock MSAL)
-VITE_FEATURE_SCHEDULES_SP=1          # Schedules 機能有効
-```
+### Input Guarding
+- **Logic**: The `onClose` handler for error snackbars ignores `clickaway` and `timeout` events in E2E mode.
+- **Why**: Ensures that random events during a test run don't prematurely clear the global `lastError` state, which is critical for verification.
 
-**テスト対象**
-- `tests/e2e/schedules.list-existence-gate.spec.ts:4`（同じ正常系）
-- `tests/e2e/schedules.list-existence-gate.spec.ts:25`（現在 `.skip`）
-  - "shows error when DailyOpsSignals list returns 404"
-  - ゲートが **404 エラー** で確実にエラー表示することを確認
-  - route.respond() で DailyOpsSignals API を 404 モック
+## 4. Conflict Testing (412 handling)
 
-**実行頻度**
-- 定期メンテナンス（週 1 回、nightly）
-- デプロイ前の本番事前検証
+We use Playwright's `route.fulfill` to simulate optimistic concurrency conflicts.
 
-**目的**
-- 実際の 404 エラーパスの正確性を事前検証
-- SharePoint 接続ロジックの統合テスト
-- 本番で発生しうる症状（list deletion, permission denied）への対応力確認
-
----
-
-## テストファイル構成
-
-```typescript
-// tests/e2e/schedules.list-existence-gate.spec.ts
-
-test.describe('Schedules: list existence gate', () => {
-  
-  // 全プロジェクトで実行（chromium 優先）
-  test('renders schedules week view successfully...', ...)
-  
-  // chromium-sp-integration のみで実行（nightly）
-  test.skip('shows error when DailyOpsSignals list returns 404', ...)
-  
-});
-```
-
----
-
-## 404 テストの有効化手順（将来）
-
-404 テストは現在 `.skip` 状態です。以下の条件が満たされたら有効化します：
-
-1. **route.respond() モック完成**
-   - DailyOpsSignals API 404 を確実に模擬
-   - Authentication headers ヘッダーの互換性確認
-
-2. **useSchedules.ts のエラーハンドリング確認**
-   - `tryGetListMetadata()` で 404 を正確に検知
-   - ProtectedRoute に listReady=false を通知
-
-3. **ProtectedRoute のエラー UI 表示確認**
-   - "スケジュール用の SharePoint リストが見つかりません" メッセージ表示
-   - 管理者連絡先表示
-
-有効化時は以下コマンドで検証：
-```bash
-# nightly 実行
-npx playwright test tests/e2e/schedules.list-existence-gate.spec.ts --project=chromium-sp-integration --reporter=list
-
-# 手動検証（開発時）
-PLAYWRIGHT_PROJECT=chromium-sp-integration npx playwright test ... --headed --debug
-```
-
----
-
-## セッションキャッシュ戦略
-
-List check は `sessionStorage.__listReady` でキャッシュされます：
-
-- **値: `null`** → 未実行、実行中
-- **値: `true`** → リスト存在確認済み、OK
-- **値: `false`** → リスト 404、エラー表示
-
-キャッシュ機能：
-- 同一セッション内での無駄な API 再実行を防止
-- 5 ページ遷移しても再チェック不要
-- セッション終了（ブラウザ閉じる、ログアウト）で reset
-
-> **注意**: リストを再作成した場合、キャッシュ有効期間内（セッション）では古い状態が参照され続けます。テストで事象確認時は、**ブラウザタブ全体を閉じるか、Dev Tools で sessionStorage 削除** してください。
-
----
-
-## CI/CD 統合
-
-### GitHub Actions 例
-
-```yaml
-# .github/workflows/test.yml
-- name: E2E (Fast Regression)
-  run: npx playwright test --project=chromium
-  timeout-minutes: 10
-
-# nightly job（別）
-- name: E2E Integration (Nightly)
-  if: github.event_name == 'schedule' || github.ref == 'refs/heads/main'
-  run: npx playwright test --project=chromium-sp-integration
-  timeout-minutes: 15
-```
-
----
-
-## 本番環境での検証チェックリスト
-
-デプロイ前に以下を確認：
-
-- [ ] chromium テスト通過（正常系）
-- [ ] chromium-sp-integration テスト通過（404 含む）
-- [ ] ProtectedRoute で listReady gate が有効か（コード検査）
-- [ ] useSchedules.ts で list check が実行されるか（DevTools Network タブ）
-- [ ] sessionStorage に `__listReady` キー存在確認
-
----
-
-## トラブルシューティング
-
-### テスト失敗: "element(s) not found" (エラーメッセージ)
-
-**原因**: VITE_SKIP_SHAREPOINT=1 で list check が実行されていない
-
-**対策**:
-1. `-project=chromium-sp-integration` で実行確認（SKIP_SHAREPOINT=0）
-2. それでも fail の場合、route.respond() パターン見直し
-
-### セッションキャッシュの影響で期待値と異なる
-
-**対策**:
-- テスト実行前に `sessionStorage.clear()` を追加
-- または private/incognito mode で実行
-
----
-
-## 参考リンク
-
-- [Production Safety Notes](../README.md#-production-safety-notes)
-- [useSchedules.ts](../src/features/schedules/useSchedules.ts) - List check 実装
-- [ProtectedRoute.tsx](../src/app/ProtectedRoute.tsx) - Gate 実装
-- [playwright.config.ts](../playwright.config.ts) - Project 設定
+- **Scenario**: When a save operation occurs, we intercept the request and return an HTTP `412 Precondition Failed`.
+- **UI Expectation**: The app must display the **Conflict Resolution Dialog**, allowing the user to "Reload and Retry".

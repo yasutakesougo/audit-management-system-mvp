@@ -27,7 +27,7 @@ import { bootAgenda } from './_helpers/bootAgenda';
  */
 
 // NOTE: dashboard route renders under /dashboard in current shell
-const DASHBOARD_URL = '/dashboard';
+const DASHBOARD_URL = '/dashboard?zeroscroll=0';
 
 test.describe('Dashboard smoke', () => {
   test.beforeEach(async ({ page }) => {

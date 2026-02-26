@@ -9,7 +9,9 @@ import {
     Stack,
     Typography,
 } from '@mui/material';
-import { useCallback } from 'react';
+import { useCallback, useMemo } from 'react';
+
+import { isE2E } from '@/env';
 
 import type { ResultError } from '@/shared/result';
 import type { CreateScheduleEventInput, SchedItem } from '../data';
@@ -65,6 +67,7 @@ export type ScheduleDialogManagerProps = {
   // Conflict handling
   conflictOpen: boolean;
   conflictDetailOpen: boolean;
+  onOpenConflictDetail: () => void;
   onConflictDetailClose: () => void;
   onConflictDiscard: () => void;
   onConflictReload: () => Promise<void>;
@@ -72,8 +75,9 @@ export type ScheduleDialogManagerProps = {
   lastError: ResultError | null;
   lastErrorAt: number | null;
   onConflictRefetch: () => void;
-  onConflictClearError: () => void;
+  onClearLastError: () => void;
   onSetFocusScheduleId: (id: string | null) => void;
+  networkOpen: boolean;
 };
 
 export function ScheduleDialogManager(props: ScheduleDialogManagerProps) {
@@ -103,8 +107,8 @@ export function ScheduleDialogManager(props: ScheduleDialogManagerProps) {
     defaultScheduleUser,
     snack,
     onSnackClose,
-    conflictOpen,
     conflictDetailOpen,
+    onOpenConflictDetail,
     onConflictDetailClose,
     onConflictDiscard,
     onConflictReload,
@@ -112,8 +116,9 @@ export function ScheduleDialogManager(props: ScheduleDialogManagerProps) {
     lastError,
     lastErrorAt,
     onConflictRefetch,
-    onConflictClearError,
+    onClearLastError,
     onSetFocusScheduleId,
+    networkOpen,
   } = props;
 
   const handleConflictRefetchWithFocus = useCallback(() => {
@@ -122,8 +127,8 @@ export function ScheduleDialogManager(props: ScheduleDialogManagerProps) {
       onSetFocusScheduleId(lastError.id);
     }
     onConflictRefetch();
-    onConflictClearError();
-  }, [lastError, onSetFocusScheduleId, onConflictRefetch, onConflictClearError]);
+    onClearLastError();
+  }, [lastError, onSetFocusScheduleId, onConflictRefetch, onClearLastError]);
 
   // Convert null to undefined for compatibility with ScheduleFormState
   const normalizeInitialOverride = useCallback(
@@ -137,6 +142,11 @@ export function ScheduleDialogManager(props: ScheduleDialogManagerProps) {
       return normalized;
     },
     [],
+  );
+
+  const normalizedInitialOverride = useMemo(
+    () => normalizeInitialOverride(scheduleDialogModeProps.initialOverride),
+    [normalizeInitialOverride, scheduleDialogModeProps.initialOverride],
   );
 
   return (
@@ -168,7 +178,7 @@ export function ScheduleDialogManager(props: ScheduleDialogManagerProps) {
           open={!suppressRouteDialog && createDialogOpen}
           mode="edit"
           eventId={scheduleDialogModeProps.eventId}
-          initialOverride={normalizeInitialOverride(scheduleDialogModeProps.initialOverride) ?? {}}
+          initialOverride={normalizedInitialOverride ?? {}}
           onClose={onCreateDialogClose}
           onSubmit={onScheduleDialogSubmit}
           users={scheduleUserOptions}
@@ -182,7 +192,7 @@ export function ScheduleDialogManager(props: ScheduleDialogManagerProps) {
         <ScheduleCreateDialog
           open={!suppressRouteDialog && createDialogOpen && canEdit && canWrite}
           mode="create"
-          initialOverride={normalizeInitialOverride(scheduleDialogModeProps.initialOverride)}
+          initialOverride={normalizedInitialOverride}
           onClose={onCreateDialogClose}
           onSubmit={onScheduleDialogSubmit}
           users={scheduleUserOptions}
@@ -203,40 +213,41 @@ export function ScheduleDialogManager(props: ScheduleDialogManagerProps) {
         isDeleting={isInlineDeleting}
       />
 
-      {/* Success/Error Snackbar */}
+      {/* Unified Snackbar for Success, Conflict, and Network Errors */}
       <Snackbar
-        open={snack.open}
-        autoHideDuration={3000}
-        onClose={onSnackClose}
-        anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
-      >
-        <Alert onClose={onSnackClose} severity={snack.severity} variant="filled" sx={{ width: '100%' }}>
-          {snack.message}
-        </Alert>
-      </Snackbar>
-
-      {/* Phase 2-1c: Conflict snackbar for etag mismatch */}
-      <Snackbar
-        open={conflictOpen}
-        autoHideDuration={8000}
-        onClose={onConflictClearError}
+        open={snack.open || networkOpen}
+        autoHideDuration={isE2E ? undefined : (lastError?.kind === 'network' ? 10000 : 3000)}
+        onClose={(event, reason) => {
+          if (isE2E && (reason === 'clickaway' || reason === 'timeout')) return;
+          onSnackClose();
+          if (lastError?.kind === 'network') onClearLastError();
+        }}
         anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
       >
         <Alert
-          severity="warning"
-          onClose={onConflictClearError}
+          data-testid={lastError?.kind === 'network' ? 'schedules-network-snackbar' : 'schedules-general-snackbar'}
+          onClose={lastError?.kind === 'network' ? onClearLastError : onSnackClose}
+          severity={lastError?.kind === 'conflict' ? 'warning' : lastError?.kind === 'network' ? 'error' : snack.severity}
+          variant="filled"
+          sx={{ width: '100%' }}
           action={
-            <Stack direction="row" spacing={0.5}>
-              <Button color="inherit" size="small" onClick={() => onConflictDetailClose()}>
-                詳細を見る
+            lastError?.kind === 'conflict' ? (
+              <Stack direction="row" spacing={0.5}>
+                <Button color="inherit" size="small" onClick={onOpenConflictDetail}>
+                  詳細を見る
+                </Button>
+                <Button color="inherit" size="small" onClick={handleConflictRefetchWithFocus}>
+                  最新を表示
+                </Button>
+              </Stack>
+            ) : lastError?.kind === 'network' ? (
+              <Button color="inherit" size="small" onClick={() => window.location.reload()}>
+                再試行
               </Button>
-              <Button color="inherit" size="small" onClick={handleConflictRefetchWithFocus}>
-                最新を表示
-              </Button>
-            </Stack>
+            ) : undefined
           }
         >
-          {lastError?.message ?? '更新が競合しました（最新を読み込み直してください）'}
+          {snack.message || lastError?.message || (lastError?.kind === 'conflict' ? '更新が競合しました' : 'エラーが発生しました')}
         </Alert>
       </Snackbar>
 
@@ -244,15 +255,16 @@ export function ScheduleDialogManager(props: ScheduleDialogManagerProps) {
       <Dialog
         open={conflictDetailOpen}
         onClose={(_, reason) => {
-          // backdrop / ESC も Discard 扱い
+          // backdrop / ESC も Close 扱い
           if (reason === 'backdropClick' || reason === 'escapeKeyDown') {
-            onConflictDiscard();
+            onConflictDetailClose();
             return;
           }
-          onConflictDiscard();
+          onConflictDetailClose();
         }}
         fullWidth
         maxWidth="sm"
+        data-testid="conflict-detail-dialog"
       >
         <DialogTitle>スケジュール更新が競合しました</DialogTitle>
 

@@ -62,5 +62,6 @@ export const bootstrapScheduleEnv = async (page: Page, options?: ScheduleEnvOpti
     for (const [key, value] of Object.entries(storage)) {
       window.localStorage.setItem(key, value);
     }
+    window.sessionStorage.clear();
   }, snapshot);
 };

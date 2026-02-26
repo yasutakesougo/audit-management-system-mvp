@@ -21,7 +21,6 @@ const defaultFlags: FeatureFlagSnapshot = {
   schedulesWeekV2: false,
   icebergPdca: false,
   staffAttendance: false,
-  appShellVsCode: false,
 };
 
 beforeEach(() => {
@@ -80,6 +79,12 @@ vi.mock('@/auth/useUserAuthz', () => ({
 }));
 
 describe('AppShell navigation', () => {
+  const ensureDesktopNavOpen = async () => {
+    const navToggleButton = screen.getByRole('button', { name: /サイドメニューを(開く|閉じる)/i });
+    if (navToggleButton.getAttribute('aria-label')?.includes('開く')) {
+      await userEvent.click(navToggleButton);
+    }
+  };
 
   it.todo('marks current route button with aria-current="page" - awaiting AppShell useEffect fix');
 
@@ -106,7 +111,8 @@ describe('AppShell navigation', () => {
       routeChildren: routeEntries.map((path) => ({ path, element: getShell() })),
     });
 
-
+    // Open the desktop navigation drawer
+    await ensureDesktopNavOpen();
 
     const navRoot = screen.getByRole('navigation', { name: /主要ナビゲーション/i });
     const nav = within(navRoot);
@@ -194,7 +200,7 @@ describe('AppShell navigation', () => {
         routeChildren: routeEntries.map((path) => ({ path, element: getShell() })),
       });
 
-
+      await ensureDesktopNavOpen();
 
       const navRoot = screen.getByRole('navigation', { name: /主要ナビゲーション/i });
       const nav = within(navRoot);
@@ -228,7 +234,7 @@ describe('AppShell navigation', () => {
         routeChildren: Array.from(new Set([...initialEntries])).map((path) => ({ path, element: getShell() })),
       });
 
-
+      await ensureDesktopNavOpen();
 
       const navRoot = screen.getByRole('navigation', { name: /主要ナビゲーション/i });
       const nav = within(navRoot);
@@ -262,7 +268,7 @@ describe('AppShell navigation', () => {
         routeChildren: Array.from(new Set([...initialEntries])).map((path) => ({ path, element: getShell() })),
       });
 
-
+      await ensureDesktopNavOpen();
 
       const navRoot = screen.getByRole('navigation', { name: /主要ナビゲーション/i });
       const nav = within(navRoot);
@@ -297,7 +303,7 @@ describe('AppShell navigation', () => {
         routeChildren: Array.from(new Set([...initialEntries])).map((path) => ({ path, element: getShell() })),
       });
 
-
+      await ensureDesktopNavOpen();
 
       const navRoot = screen.getByRole('navigation', { name: /主要ナビゲーション/i });
       const nav = within(navRoot);
@@ -342,7 +348,7 @@ describe('AppShell navigation', () => {
         routeChildren: Array.from(new Set([...initialEntries])).map((path) => ({ path, element: getShell() })),
       });
 
-
+      await ensureDesktopNavOpen();
 
       const navRoot = screen.getByRole('navigation', { name: /主要ナビゲーション/i });
       const nav = within(navRoot);
@@ -382,7 +388,7 @@ describe('AppShell navigation', () => {
         routeChildren: Array.from(new Set([...initialEntries])).map((path) => ({ path, element: getShell() })),
       });
 
-
+      await ensureDesktopNavOpen();
 
       const toggleButton = screen.getByRole('button', { name: /ナビを(折りたたみ|展開)/i });
       expect(toggleButton).toBeInTheDocument();
@@ -397,6 +403,6 @@ describe('AppShell navigation', () => {
         const collapseButton = await screen.findByRole('button', { name: /ナビを折りたたみ/i });
         expect(collapseButton).toBeInTheDocument();
       }
-    }, 15000);
+    });
   });
 });

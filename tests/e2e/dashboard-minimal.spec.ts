@@ -6,7 +6,7 @@ test.describe('Dashboard Phase II - Minimal E2E', () => {
     await page.waitForLoadState('networkidle');
 
     // 基本的なページロード確認
-    await expect(page).toHaveTitle(/Audit Management/);
+    await expect(page).toHaveTitle(/黒ノート/);
 
     // Dashboard ページ要素の確認
     const dashboardPage = page.getByTestId('dashboard-page');
@@ -20,7 +20,7 @@ test.describe('Dashboard Phase II - Minimal E2E', () => {
     await page.waitForLoadState('networkidle');
 
     // Safety HUD セクション確認
-    const safetyHUD = page.getByTestId('dashboard-safety-hud');
+    const safetyHUD = page.getByTestId('dashboard-briefing-hud');
     await expect(safetyHUD).toBeVisible();
 
     console.log('✅ Safety HUD is visible');
@@ -32,7 +32,7 @@ test.describe('Dashboard Phase II - Minimal E2E', () => {
 
     // 重要なキーワードが含まれていることを確認 - 実際のコンテンツに基づく
     const pageText = await page.textContent('body');
-    expect(pageText).toContain('Safety HUD'); // Safety HUDは確実に存在
+    expect(pageText).toContain('黒ノート');
 
     console.log('✅ Dashboard contains expected content');
   });

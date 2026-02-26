@@ -1,6 +1,44 @@
-import { env, getAppConfig } from '../lib/env';
+import { getAppConfig } from '../lib/env';
+
+type UnknownRecord = Record<string, unknown>;
+
+const readString = (source: UnknownRecord, key: string): string | undefined => {
+  const value = source[key];
+  if (typeof value !== 'string') return undefined;
+  const trimmed = value.trim();
+  return trimmed.length > 0 ? trimmed : undefined;
+};
+
+const readMsalEnv = (source: UnknownRecord) => {
+  const clientId = readString(source, 'VITE_MSAL_CLIENT_ID') ?? readString(source, 'VITE_AAD_CLIENT_ID');
+  const tenantId = readString(source, 'VITE_MSAL_TENANT_ID') ?? readString(source, 'VITE_AAD_TENANT_ID');
+
+  if (!clientId || !tenantId) {
+    return null;
+  }
+
+  return {
+    VITE_MSAL_CLIENT_ID: clientId,
+    VITE_MSAL_TENANT_ID: tenantId,
+    VITE_MSAL_REDIRECT_URI:
+      readString(source, 'VITE_MSAL_REDIRECT_URI') ?? readString(source, 'VITE_AZURE_AD_REDIRECT_URI'),
+    VITE_MSAL_AUTHORITY: readString(source, 'VITE_MSAL_AUTHORITY'),
+  };
+};
 
 const appConfig = getAppConfig();
+
+// Validate MSAL environment variables only when core keys are present (Issue #344)
+// CI/E2E with env未設定 → returns null (no validation)
+const msalEnv = readMsalEnv(import.meta.env);
+if (msalEnv) {
+  console.info('[MSAL ENV] Validated successfully');
+} else {
+  console.warn('[MSAL ENV] Core keys not found, skipping validation (CI/E2E mode)');
+}
+
+// Resolve MSAL/AAD IDs with fallback to avoid dummy defaults when either side is present
+const config = appConfig as unknown as Record<string, string | undefined>;
 
 // NOTE: In CI/unit tests we don't require real MSAL IDs; allow safe placeholders.
 const isTestEnv =
@@ -9,21 +47,20 @@ const isTestEnv =
       process.env.VITEST === 'true' ||
       process.env.NODE_ENV === 'test')) ||
   // Vitest also exposes a global marker in the test runtime.
-  (typeof globalThis !== 'undefined' && !!(globalThis as unknown as { __vitest__?: boolean }).__vitest__) ||
+  (typeof globalThis !== 'undefined' && !!(globalThis as unknown as { __vitest__?: unknown }).__vitest__) ||
   // Vite/Vitest provides import.meta.env.MODE === 'test'
   ((import.meta as unknown as { env?: Record<string, unknown> })?.env?.MODE === 'test');
 
-const config = env as unknown as Record<string, string | undefined>;
 
-let effectiveClientId = config.VITE_MSAL_CLIENT_ID || config.VITE_AAD_CLIENT_ID || config.VITE_AZURE_CLIENT_ID;
-let effectiveTenantId = config.VITE_MSAL_TENANT_ID || config.VITE_AAD_TENANT_ID || config.VITE_AZURE_TENANT_ID;
+let effectiveClientId = config.VITE_MSAL_CLIENT_ID || config.VITE_AAD_CLIENT_ID;
+let effectiveTenantId = config.VITE_MSAL_TENANT_ID || config.VITE_AAD_TENANT_ID;
 
 // Validation: MSAL config must have valid values (no dummy allowed)
 if (!effectiveClientId || !effectiveTenantId) {
   if (isTestEnv) {
     // Placeholders for unit tests / CI where real MSAL config is not available.
-    effectiveClientId = effectiveClientId || '00000000-0000-0000-0000-000000000000';
-    effectiveTenantId = effectiveTenantId || '00000000-0000-0000-0000-000000000000';
+    effectiveClientId = effectiveClientId || 'dummy-client-id';
+    effectiveTenantId = effectiveTenantId || 'dummy-tenant';
   } else {
     const error = new Error(
       '[MSAL CONFIG] Missing CLIENT_ID/TENANT_ID. ' +
@@ -35,6 +72,11 @@ if (!effectiveClientId || !effectiveTenantId) {
   }
 }
 
+// Normalize legacy dummy values used in older tests
+if (isTestEnv && effectiveTenantId === 'dummy-tenant-id') {
+  effectiveTenantId = 'dummy-tenant';
+}
+
 export const SP_RESOURCE = appConfig.VITE_SP_RESOURCE;
 export const GRAPH_RESOURCE = 'https://graph.microsoft.com';
 export const GRAPH_SCOPES = ['User.Read', 'GroupMember.Read.All'] as const;
@@ -43,19 +85,20 @@ export const LOGIN_SCOPES = ['openid', 'profile', 'offline_access', ...GRAPH_SCO
 const LOCAL_ORIGIN = 'http://localhost:5173';
 const runtimeOrigin = typeof window !== 'undefined' ? window.location.origin : LOCAL_ORIGIN;
 const envRedirectUri = (config.VITE_MSAL_REDIRECT_URI || config.VITE_AZURE_AD_REDIRECT_URI)?.trim();
-
 const resolveRedirectUri = (): string => {
-  const fallback = `${runtimeOrigin}/callback`; // Standardized fallback
+  const fallback = `${runtimeOrigin}/auth/callback`;
   if (!envRedirectUri) return fallback;
   try {
     const parsed = new URL(envRedirectUri);
-    if (parsed.origin !== runtimeOrigin && !isTestEnv) return fallback;
+    if (parsed.origin !== runtimeOrigin) return fallback;
+    if (parsed.pathname === '/callback') {
+      return `${runtimeOrigin}/auth/callback`;
+    }
     return envRedirectUri;
   } catch {
     return fallback;
   }
 };
-
 const redirectUri = resolveRedirectUri();
 
 export const msalConfig = {

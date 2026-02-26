@@ -1,87 +1,86 @@
 import LiveAnnouncer from '@/a11y/LiveAnnouncer';
-import AddCircleOutlineIcon from '@mui/icons-material/AddCircleOutline';
 import Brightness4Icon from '@mui/icons-material/Brightness4';
 import Brightness7Icon from '@mui/icons-material/Brightness7';
 import CloseIcon from '@mui/icons-material/Close';
 import EditNoteIcon from '@mui/icons-material/EditNote';
+import AddCircleOutlineIcon from '@mui/icons-material/AddCircleOutline';
 import HistoryIcon from '@mui/icons-material/History';
 import SearchIcon from '@mui/icons-material/Search';
 import AppBar from '@mui/material/AppBar';
 import Box from '@mui/material/Box';
 import Button from '@mui/material/Button';
-import Container from '@mui/material/Container';
-import Dialog from '@mui/material/Dialog';
-import DialogContent from '@mui/material/DialogContent';
-import DialogTitle from '@mui/material/DialogTitle';
 import Divider from '@mui/material/Divider';
 import Drawer from '@mui/material/Drawer';
-import IconButton from '@mui/material/IconButton';
-import InputAdornment from '@mui/material/InputAdornment';
 import List from '@mui/material/List';
 import ListItem from '@mui/material/ListItem';
 import ListItemButton from '@mui/material/ListItemButton';
 import ListItemIcon from '@mui/material/ListItemIcon';
 import ListItemText from '@mui/material/ListItemText';
 import ListSubheader from '@mui/material/ListSubheader';
+import Container from '@mui/material/Container';
+import Dialog from '@mui/material/Dialog';
+import DialogContent from '@mui/material/DialogContent';
+import DialogTitle from '@mui/material/DialogTitle';
+import IconButton from '@mui/material/IconButton';
+import InputAdornment from '@mui/material/InputAdornment';
 import Paper from '@mui/material/Paper';
 import Stack from '@mui/material/Stack';
-import { useTheme } from '@mui/material/styles';
 import TextField from '@mui/material/TextField';
 import Toolbar from '@mui/material/Toolbar';
 import Tooltip from '@mui/material/Tooltip';
 import Typography from '@mui/material/Typography';
 import useMediaQuery from '@mui/material/useMediaQuery';
+import { useTheme } from '@mui/material/styles';
 import React, { useCallback, useContext, useEffect, useMemo, useState } from 'react';
 // Navigation Icons
-import {
-    createNavItems,
-    filterNavItems,
-    groupLabel,
-    groupNavItems,
-    NAV_AUDIENCE,
-    type NavAudience,
-    type NavItem,
-} from '@/app/config/navigationConfig';
-import { ActivityBar } from '@/app/layout/ActivityBar';
-import { AppShell as AppShellLayout } from '@/app/layout/AppShell';
 import { useMsalContext } from '@/auth/MsalProvider';
 import { canAccess } from '@/auth/roles';
 import { useUserAuthz } from '@/auth/useUserAuthz';
-import { AppShellV2 } from '@/components/layout/AppShellV2';
 import NavLinkPrefetch from '@/components/NavLinkPrefetch';
+import { ActivityBar } from '@/app/layout/ActivityBar';
+import { AppShell as AppShellLayout } from '@/app/layout/AppShell';
+import { AppShellV2 } from '@/components/layout/AppShellV2';
 import { useFeatureFlags } from '@/config/featureFlags';
-import { AuthDiagnosticsPanel } from '@/features/auth/diagnostics';
 import { useAuthStore } from '@/features/auth/store';
+import { AuthDiagnosticsPanel } from '@/features/auth/diagnostics';
 import { useDashboardPath } from '@/features/dashboard/dashboardRouting';
 import { HandoffQuickNoteCard } from '@/features/handoff/HandoffQuickNoteCard';
-import { useSettingsContext } from '@/features/settings/SettingsContext';
-import { SettingsDialog } from '@/features/settings/SettingsDialog';
 import RouteHydrationListener from '@/hydration/RouteHydrationListener';
-import { env, getAppConfig, IS_E2E, IS_MSAL_MOCK, isDemoModeEnabled, SHOULD_SKIP_LOGIN, SHOULD_SKIP_SHAREPOINT } from '@/lib/env';
+import { getAppConfig, isE2eMsalMockEnabled, readBool, shouldSkipLogin } from '@/lib/env';
 import { useSP } from '@/lib/spClient';
 import { TESTIDS } from '@/testids';
 import SignInButton from '@/ui/components/SignInButton';
-import ArticleRoundedIcon from '@mui/icons-material/ArticleRounded';
 import AssessmentRoundedIcon from '@mui/icons-material/AssessmentRounded';
 import AssignmentTurnedInRoundedIcon from '@mui/icons-material/AssignmentTurnedInRounded';
 import BadgeRoundedIcon from '@mui/icons-material/BadgeRounded';
 import ChecklistRoundedIcon from '@mui/icons-material/ChecklistRounded';
-import ChevronLeftIcon from '@mui/icons-material/ChevronLeft';
-import ChevronRightIcon from '@mui/icons-material/ChevronRight';
-import CloseFullscreenRoundedIcon from '@mui/icons-material/CloseFullscreenRounded';
 import EventAvailableRoundedIcon from '@mui/icons-material/EventAvailableRounded';
 import InsightsIcon from '@mui/icons-material/Insights';
-import MenuIcon from '@mui/icons-material/Menu';
 import PeopleAltRoundedIcon from '@mui/icons-material/PeopleAltRounded';
 import PsychologyIcon from '@mui/icons-material/Psychology';
 import SettingsRoundedIcon from '@mui/icons-material/SettingsRounded';
 import WorkspacesIcon from '@mui/icons-material/Workspaces';
-import Fab from '@mui/material/Fab';
+import MenuIcon from '@mui/icons-material/Menu';
+import ChevronLeftIcon from '@mui/icons-material/ChevronLeft';
+import ChevronRightIcon from '@mui/icons-material/ChevronRight';
+import CloseFullscreenRoundedIcon from '@mui/icons-material/CloseFullscreenRounded';
 import { Link as RouterLink, useLocation, useNavigate } from 'react-router-dom';
+import Fab from '@mui/material/Fab';
 import { ColorModeContext } from './theme';
+import { SettingsDialog } from '@/features/settings/SettingsDialog';
+import { useSettingsContext } from '@/features/settings/SettingsContext';
+import {
+  createNavItems,
+  filterNavItems,
+  groupNavItems,
+  groupLabel,
+  NAV_AUDIENCE,
+  type NavItem,
+  type NavAudience,
+} from '@/app/config/navigationConfig';
 
-const SKIP_LOGIN = SHOULD_SKIP_LOGIN;
-const E2E_MSAL_MOCK_ENABLED = IS_MSAL_MOCK;
+const SKIP_LOGIN = shouldSkipLogin();
+const E2E_MSAL_MOCK_ENABLED = isE2eMsalMockEnabled();
 
 function useLockBodyScroll(enabled: boolean) {
   React.useLayoutEffect(() => {
@@ -188,7 +187,6 @@ const AppShell: React.FC<{ children: React.ReactNode }> = ({ children }) => {
     '氷山分析': WorkspacesIcon,
     '氷山PDCA': HistoryIcon,
     'アセスメント': PsychologyIcon,
-    '個別支援計画書': ArticleRoundedIcon,
     '特性アンケート': EditNoteIcon,
     '利用者': PeopleAltRoundedIcon,
     '職員': BadgeRoundedIcon,
@@ -374,7 +372,7 @@ const AppShell: React.FC<{ children: React.ReactNode }> = ({ children }) => {
     }
 
     return (
-      <List dense sx={{ px: 1 }}>
+      <List dense component="div" sx={{ px: 1 }}>
         {groupedNavItems.ORDER.map((groupKey) => {
           const items = groupedNavItems.map.get(groupKey) ?? [];
           if (items.length === 0) return null;
@@ -383,6 +381,7 @@ const AppShell: React.FC<{ children: React.ReactNode }> = ({ children }) => {
             <Box key={groupKey} sx={{ mb: 1.5 }}>
               {!navCollapsed && (
                 <ListSubheader
+                  component="div"
                   sx={{
                     bgcolor: 'background.paper',
                     lineHeight: 1.6,
@@ -812,8 +811,8 @@ const AppShell: React.FC<{ children: React.ReactNode }> = ({ children }) => {
 
 const ConnectionStatus: React.FC = () => {
   const isVitest = typeof process !== 'undefined' && Boolean(process.env?.VITEST);
-  const e2eMode = IS_E2E && !isVitest;
-  const sharePointDisabled = SHOULD_SKIP_SHAREPOINT;
+  const e2eMode = readBool('VITE_E2E', false) && !isVitest;
+  const sharePointDisabled = readBool('VITE_SKIP_SHAREPOINT', false);
   const shouldMockConnection = e2eMode || sharePointDisabled || E2E_MSAL_MOCK_ENABLED;
 
   return shouldMockConnection ? <ConnectionStatusMock /> : <ConnectionStatusReal sharePointDisabled={sharePointDisabled} />;
@@ -844,14 +843,14 @@ const ConnectionStatusMock: React.FC = () => {
 };
 
 const ConnectionStatusReal: React.FC<{ sharePointDisabled: boolean }> = ({ sharePointDisabled }) => {
-  const forceSharePoint = env.VITE_FORCE_SHAREPOINT;
-  const sharePointFeatureEnabled = env.VITE_FEATURE_SCHEDULES_SP;
+  const forceSharePoint = readBool('VITE_FORCE_SHAREPOINT', false);
+  const sharePointFeatureEnabled = readBool('VITE_FEATURE_SCHEDULES_SP', false);
   const { spFetch } = useSP();
   const { accounts } = useMsalContext();
   const accountsCount = accounts.length;
   const [state, setState] = useState<'checking' | 'ok' | 'error' | 'signedOut'>('checking');
   const bypassAccountGate = SKIP_LOGIN || E2E_MSAL_MOCK_ENABLED;
-  const isDemoMode = isDemoModeEnabled();
+  const isDemoMode = import.meta.env.VITE_DEMO_MODE === '1';
 
   useEffect(() => {
     // Complete demo mode bypass: Skip SharePoint entirely when demo mode is active

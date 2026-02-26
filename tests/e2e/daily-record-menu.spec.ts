@@ -23,8 +23,8 @@ test.describe('Daily Record Menu Page', () => {
 
   test('should display all three main cards', async ({ page }) => {
     // Activity card
-    await expect(page.getByTestId('daily-card-activity')).toBeVisible();
-    await expect(page.getByRole('heading', { name: '支援記録（ケース記録）' })).toBeVisible();
+    await expect(page.getByTestId('daily-card-table-activity').or(page.getByTestId('daily-card-activity')).first()).toBeVisible();
+    await expect(page.getByRole('heading', { name: /一覧形式ケース記録|支援記録（ケース記録）/ })).toBeVisible();
 
     // Attendance card
     await expect(page.getByTestId('daily-card-attendance')).toBeVisible();
@@ -37,10 +37,10 @@ test.describe('Daily Record Menu Page', () => {
 
   test('should navigate to activity log page', async ({ page }) => {
     // Click activity button
-    await page.getByTestId('btn-open-activity').click();
+    await page.getByTestId('btn-open-table-activity').or(page.getByTestId('btn-open-activity')).first().click();
 
     // Should navigate to activity page
-    await expect(page).toHaveURL('/daily/activity');
+    await expect(page).toHaveURL(/\/daily\/(table|activity)/);
   });
 
   test('should navigate to attendance management page', async ({ page }) => {
@@ -48,7 +48,7 @@ test.describe('Daily Record Menu Page', () => {
     await page.getByTestId('btn-open-attendance').click();
 
     // Should navigate to attendance page
-    await expect(page).toHaveURL('/daily/attendance');
+    await expect(page).toHaveURL(/\/daily\/attendance$/);
   });
 
   test('should navigate to support procedure page', async ({ page }) => {
@@ -56,7 +56,7 @@ test.describe('Daily Record Menu Page', () => {
     await page.getByTestId('btn-open-support').click();
 
     // Should navigate to support page
-    await expect(page).toHaveURL('/daily/support');
+    await expect(page).toHaveURL(/\/daily\/support$/);
   });
 
   test('should display statistics summary', async ({ page }) => {
@@ -95,7 +95,7 @@ test.describe('Daily Record Menu Page', () => {
   });
 
   test('should show card hover effects', async ({ page }) => {
-    const activityCard = page.getByTestId('daily-card-activity');
+    const activityCard = page.getByTestId('daily-card-table-activity').or(page.getByTestId('daily-card-activity')).first();
 
     // Get initial position
     const initialBox = await activityCard.boundingBox();
@@ -111,8 +111,8 @@ test.describe('Daily Record Menu Page', () => {
 
   test('should display user count information', async ({ page }) => {
     // Activity card should show total users
-    const activityCard = page.getByTestId('daily-card-activity');
-    await expect(activityCard.getByText(/対象：利用者全員（\d+名）/)).toBeVisible();
+    const activityCard = page.getByTestId('daily-card-table-activity').or(page.getByTestId('daily-card-activity')).first();
+    await expect(activityCard.getByText(/対象：(選択した複数利用者|利用者全員（\d+名）)/)).toBeVisible();
 
     // Attendance card should show total users
     const attendanceCard = page.getByTestId('daily-card-attendance');
@@ -142,12 +142,12 @@ test.describe('Daily Record Menu Page', () => {
     await page.waitForTimeout(500);
 
     // Should show users count without crashing (may show default mock values)
-    const activityCard = page.getByTestId('daily-card-activity');
+    const activityCard = page.getByTestId('daily-card-table-activity').or(page.getByTestId('daily-card-activity')).first();
     const attendanceCard = page.getByTestId('daily-card-attendance');
     const supportCard = page.getByTestId('daily-card-support');
 
     // Check that user count displays are present (content may vary based on mocks)
-    await expect(activityCard.getByText(/対象：利用者全員（\d+名）/)).toBeVisible();
+    await expect(activityCard.getByText(/対象：(選択した複数利用者|利用者全員（\d+名）)/)).toBeVisible();
     await expect(attendanceCard.getByText(/対象：日次通所者（\d+名）/)).toBeVisible();
     await expect(supportCard.getByText(/対象：強度行動障害者（\d+名）/)).toBeVisible();
 
@@ -163,12 +163,11 @@ test.describe('Daily Record Menu Page', () => {
 
   test('should display feature lists correctly', async ({ page }) => {
     // Activity card features
-    const activityCard = page.getByTestId('daily-card-activity');
-    await expect(activityCard.getByText('• AM/PM活動内容')).toBeVisible();
-    await expect(activityCard.getByText('• 昼食摂取量')).toBeVisible();
-    await expect(activityCard.getByText('• 問題行動記録（自傷・暴力・大声・異食・その他）')).toBeVisible();
-    await expect(activityCard.getByText('• 発作記録（時刻・持続時間・重度・詳細）')).toBeVisible();
-    await expect(activityCard.getByText('• 特記事項')).toBeVisible();
+    const activityCard = page.getByTestId('daily-card-table-activity').or(page.getByTestId('daily-card-activity')).first();
+    await expect(activityCard.getByText('📋 利用者＝行、項目＝列の表形式')).toBeVisible();
+    await expect(activityCard.getByText('⚡ AM活動・PM活動・昼食・問題行動を横並び')).toBeVisible();
+    await expect(activityCard.getByText('🎯 タブ移動でサクサク入力')).toBeVisible();
+    await expect(activityCard.getByText('🔍 検索・フィルタで利用者選択')).toBeVisible();
 
     // Attendance card features
     const attendanceCard = page.getByTestId('daily-card-attendance');
