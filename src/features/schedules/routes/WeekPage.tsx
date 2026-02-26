@@ -1,23 +1,23 @@
 import { useId, useMemo } from 'react';
 import { useLocation } from 'react-router-dom';
 
+import { useBreakpointFlags, useOrientation } from '@/app/LayoutContext';
+import { canAccess } from '@/auth/roles';
 import { useAuth } from '@/auth/useAuth';
 import { useUserAuthz } from '@/auth/useUserAuthz';
-import { canAccess } from '@/auth/roles';
-import { MASTER_SCHEDULE_TITLE_JA } from '@/features/schedules/constants';
-import SchedulesHeader from '@/features/schedules/components/SchedulesHeader';
-import { ScheduleFilterBar } from '@/features/schedules/components/ScheduleFilterBar';
 import { ScheduleDialogManager } from '@/features/schedules/components/ScheduleDialogManager';
-import { ScheduleViewContainer } from '@/features/schedules/components/ScheduleViewContainer';
 import { ScheduleFAB } from '@/features/schedules/components/ScheduleFAB';
+import { ScheduleFilterBar } from '@/features/schedules/components/ScheduleFilterBar';
 import { ScheduleReadOnlyAlert } from '@/features/schedules/components/ScheduleReadOnlyAlert';
-import { useScheduleUserOptions } from '../hooks/useScheduleUserOptions';
-import { useSchedulesPageState } from '../hooks/useSchedulesPageState';
-import { useWeekPageUiState } from '../hooks/useWeekPageUiState';
-import { useWeekPageOrchestrator } from '../hooks/useWeekPageOrchestrator';
+import { ScheduleViewContainer } from '@/features/schedules/components/ScheduleViewContainer';
+import SchedulesHeader from '@/features/schedules/components/SchedulesHeader';
+import { MASTER_SCHEDULE_TITLE_JA } from '@/features/schedules/constants';
 import { TESTIDS } from '@/testids';
 import { resolveSchedulesTz } from '@/utils/scheduleTz';
-import { useBreakpointFlags, useOrientation } from '@/app/LayoutContext';
+import { useScheduleUserOptions } from '../hooks/useScheduleUserOptions';
+import { useSchedulesPageState } from '../hooks/useSchedulesPageState';
+import { useWeekPageOrchestrator } from '../hooks/useWeekPageOrchestrator';
+import { useWeekPageUiState } from '../hooks/useWeekPageUiState';
 
 
 export default function WeekPage() {
@@ -278,15 +278,17 @@ export default function WeekPage() {
           onSnackClose={() => setSnack((s) => ({ ...s, open: false }))}
           conflictOpen={conflictOpen}
           conflictDetailOpen={conflictDetailOpen}
-          onConflictDetailClose={() => setConflictDetailOpen(true)}
+          onOpenConflictDetail={() => setConflictDetailOpen(true)}
+          onConflictDetailClose={() => setConflictDetailOpen(false)}
           onConflictDiscard={handleConflictDiscard}
           onConflictReload={handleConflictReload}
           conflictBusy={conflictBusy}
           lastError={lastError}
           lastErrorAt={lastErrorAt}
           onConflictRefetch={refetch}
-          onConflictClearError={clearLastError}
+          onClearLastError={clearLastError}
           onSetFocusScheduleId={uiState.setFocusScheduleId}
+          networkOpen={false}
         />
       </div>
     </section>

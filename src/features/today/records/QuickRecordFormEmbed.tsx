@@ -19,7 +19,7 @@ export interface QuickRecordFormEmbedProps {
 
 export const QuickRecordFormEmbed: React.FC<QuickRecordFormEmbedProps> = ({
   userId,
-  date,
+  _date,
   onClose,
   onSaveSuccess,
 }) => {
@@ -49,8 +49,6 @@ export const QuickRecordFormEmbed: React.FC<QuickRecordFormEmbedProps> = ({
         variant="content"
         onClose={onClose}
         onSave={handleSave}
-        initialUserId={userId}
-        initialDate={date}
       />
     </Box>
   );
