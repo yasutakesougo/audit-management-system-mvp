@@ -56,10 +56,15 @@ test.describe('Today Ops Screen', () => {
     const drawer = page.getByTestId('today-quickrecord-drawer');
     await expect(drawer).toBeVisible();
     await expect(page).toHaveURL(/.*mode=unfilled/);
+    await expect(page).toHaveURL(/.*userId=U-?\d+/);
 
     // Verify Drawer content is the embedded form form Step C
     const embedForm = drawer.getByTestId('today-quickrecord-form-embed');
     await expect(embedForm).toBeVisible();
+
+    // Verify Embed layer caught the target user id safely
+    const targetUserIdText = await embedForm.getByTestId('today-quickrecord-target-userid').textContent();
+    expect(targetUserIdText?.trim()).toMatch(/^U-?\d+/);
 
     // Close the Drawer
     const closeBtn = page.getByTestId('today-quickrecord-close');
