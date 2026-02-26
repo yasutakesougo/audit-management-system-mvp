@@ -1,5 +1,6 @@
 import { Box, Button, Container, Grid, Paper, Stack, Typography } from '@mui/material';
 import React from 'react';
+import { HeroUnfinishedBanner } from '../widgets/HeroUnfinishedBanner';
 
 type HeroProps = {
   unfilledCount: number;
@@ -28,53 +29,14 @@ export type TodayOpsProps = {
 };
 
 export const TodayOpsLayout: React.FC<TodayOpsProps> = ({ hero, nextAction, users, alerts }) => {
-  const isComplete = hero.unfilledCount === 0 && hero.approvalPendingCount === 0;
-
   return (
     <Box sx={{ minHeight: '100dvh', bgcolor: 'background.default', pb: 8 }}>
-      {/* PR1: Heroはここに仮置き（PR2でHeroUnfinishedBannerへ分離） */}
-      <Box
-        sx={{
-          position: 'sticky',
-          top: 0,
-          zIndex: 1100,
-          px: 2,
-          py: 1.5,
-          bgcolor: isComplete ? 'success.main' : 'error.main',
-          color: 'common.white',
-          display: 'flex',
-          gap: 2,
-          justifyContent: 'space-between',
-          alignItems: 'center',
-          boxShadow: 2,
-        }}
-      >
-        {isComplete ? (
-          <Typography variant="subtitle1" fontWeight="bold">
-            ✅ 本日完了
-          </Typography>
-        ) : (
-          <Typography variant="subtitle1" fontWeight="bold">
-            🔴 未記録 {hero.unfilledCount}件 / 🟡 承認待ち {hero.approvalPendingCount}件
-          </Typography>
-        )}
-
-        {!isComplete && (
-          <Button
-            variant="contained"
-            color="inherit"
-            onClick={hero.onOpenUnfilled}
-            sx={{
-              color: 'error.main',
-              fontWeight: 'bold',
-              minHeight: 44, // タップ領域
-              px: 2,
-            }}
-          >
-            今すぐ入力
-          </Button>
-        )}
-      </Box>
+      <HeroUnfinishedBanner
+        unfilledCount={hero.unfilledCount}
+        approvalPendingCount={hero.approvalPendingCount}
+        onClickPrimary={hero.onOpenUnfilled}
+        sticky={true}
+      />
 
       <Container maxWidth="lg" sx={{ mt: 3 }}>
         <Grid container spacing={3}>
