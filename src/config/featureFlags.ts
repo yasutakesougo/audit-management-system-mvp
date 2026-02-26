@@ -8,6 +8,7 @@ import {
     isSchedulesWeekV2Enabled,
     isStaffAttendanceEnabled,
     isTestMode,
+    isTodayOpsFeatureEnabled,
     readBool,
     readOptionalEnv,
     type EnvRecord,
@@ -20,6 +21,7 @@ export type FeatureFlagSnapshot = {
   icebergPdca: boolean;
   staffAttendance: boolean;
   appShellVsCode: boolean;
+  todayOps: boolean;
 };
 
 const _hasExplicitOverride = (storageKey: string, envKey: string, envOverride?: EnvRecord): boolean => {
@@ -102,6 +104,7 @@ export const resolveFeatureFlags = (envOverride?: EnvRecord): FeatureFlagSnapsho
     icebergPdca: isIcebergPdcaEnabled(envOverride),
     staffAttendance: isStaffAttendanceEnabled(envOverride),
     appShellVsCode: isAppShellVsCodeEnabled(envOverride),
+    todayOps: isTodayOpsFeatureEnabled(envOverride),
   };
 
   const explicitSchedules = hasExplicitBoolEnv('VITE_FEATURE_SCHEDULES', envOverride);
@@ -166,6 +169,7 @@ export const FeatureFlagsProvider: FC<FeatureFlagsProviderProps> = ({ value, chi
     snapshot.icebergPdca,
     snapshot.staffAttendance,
     snapshot.appShellVsCode,
+    snapshot.todayOps,
   ]);
 
   return createElement(FeatureFlagsContext.Provider, { value: memoized }, children);
