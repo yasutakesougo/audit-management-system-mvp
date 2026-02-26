@@ -16,8 +16,8 @@ export interface QuickRecordFormEmbedProps {
 }
 
 export const QuickRecordFormEmbed: React.FC<QuickRecordFormEmbedProps> = ({
-  userId: _userId,
-  date: _date,
+  userId,
+  date,
   onClose,
 }) => {
   // PR4 Minimum DoD: Ensure save just closes the form (we are not building save logic yet).
@@ -37,6 +37,8 @@ export const QuickRecordFormEmbed: React.FC<QuickRecordFormEmbedProps> = ({
         variant="content"
         onClose={onClose}
         onSave={handleSave}
+        initialUserId={userId}
+        initialDate={date}
       />
     </Box>
   );
