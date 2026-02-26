@@ -1,5 +1,6 @@
 import { TableDailyRecordForm } from '@/features/daily/TableDailyRecordForm';
 import type { TableDailyRecordData } from '@/features/daily/hooks/useTableDailyRecordForm';
+import { useTableDailyRecordSave } from '@/features/daily/useTableDailyRecordSave';
 import { isDevMode, isE2E } from '@/lib/env';
 import { Box } from '@mui/material';
 import React from 'react';
@@ -20,14 +21,20 @@ export const QuickRecordFormEmbed: React.FC<QuickRecordFormEmbedProps> = ({
   date,
   onClose,
 }) => {
-  // PR4 Minimum DoD: Ensure save just closes the form (we are not building save logic yet).
-  // The goal is just to render the form safely.
+  const { save } = useTableDailyRecordSave();
+
+  // PR6 Step E:
+  // - Save the data using shared daily save logic.
+  // - On success, close the drawer.
+  // - On failure, let the form's inner snackbar catch and display the error without closing.
   const handleSave = async (data: TableDailyRecordData) => {
     if (isDevMode() || isE2E()) {
       // eslint-disable-next-line no-console
       console.log('Intercepted Save in QuickRecordFormEmbed:', data);
     }
-    onClose();
+
+    await save(data); // 成功したらここを通る
+    onClose();        // 成功時のみ閉じる
   };
 
   return (
