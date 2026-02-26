@@ -21,12 +21,14 @@ export type NavAudience = 'all' | 'staff' | 'admin' | 'reception';
 export type NavItem = {
   label: string;
   to: string;
-  isActive: (pathname: string) => boolean;
+  isActive: (pathname: string, search?: string) => boolean;
   testId?: string;
   icon?: React.ElementType;
   prefetchKey?: PrefetchKey;
   prefetchKeys?: PrefetchKey[];
   audience?: NavAudience | NavAudience[];
+  /** Explicit group assignment. When set, pickGroup() uses this directly. */
+  group?: NavGroupKey;
 };
 
 export type NavGroupKey = 'daily' | 'record' | 'review' | 'master' | 'admin' | 'settings';
@@ -90,6 +92,17 @@ export const NAV_GROUP_ORDER: NavGroupKey[] = ['daily', 'record', 'review', 'mas
  * @returns The group key for this item
  */
 export function pickGroup(item: NavItem, isAdmin: boolean): NavGroupKey {
+  // Explicit group assignment takes priority over inference
+  if (item.group) return item.group;
+
+  // DEV warning: flag items that lack explicit group (migration aid)
+  if (import.meta.env.DEV) {
+    console.warn(
+      `[pickGroup] NavItem "${item.label}" (to=${item.to}) has no explicit group — falling back to label inference. ` +
+      `Add \`group: '...'\` to suppress this warning.`,
+    );
+  }
+
   const { to, label, testId } = item;
 
   // 日次: daily + handoff/meeting + meeting minutes
@@ -193,6 +206,7 @@ export interface CreateNavItemsConfig {
   complianceFormEnabled: boolean;
   icebergPdcaEnabled: boolean;
   staffAttendanceEnabled: boolean;
+  todayOpsEnabled: boolean;
   isAdmin: boolean;
   authzReady: boolean;
   navAudience: NavAudience;
@@ -213,6 +227,7 @@ export function createNavItems(config: CreateNavItemsConfig): NavItem[] {
     complianceFormEnabled,
     icebergPdcaEnabled,
     staffAttendanceEnabled,
+    todayOpsEnabled,
     isAdmin,
     authzReady,
     navAudience,
@@ -225,14 +240,29 @@ export function createNavItems(config: CreateNavItemsConfig): NavItem[] {
   // - /daily/activity, /daily/support-checklist, /daily/time-based
   // - /schedules/day, /schedules/month
   const items: NavItem[] = [
+    // todayOps gated: 今日の業務グループ先頭
+    ...(todayOpsEnabled
+      ? [
+          {
+            label: '今日の業務',
+            to: '/today',
+            isActive: (pathname: string) => pathname === '/today',
+            icon: undefined as React.ElementType | undefined,
+            testId: TESTIDS.nav.todayOps,
+            audience: NAV_AUDIENCE.all as NavAudience,
+            group: 'daily' as NavGroupKey,
+          },
+        ]
+      : []),
     {
       label: '日次記録',
       to: '/dailysupport',
       isActive: (pathname) => pathname === '/dailysupport' || pathname.startsWith('/daily/'),
-      icon: undefined, // Icons are imported in AppShell.tsx
+      icon: undefined,
       prefetchKey: PREFETCH_KEYS.dailyMenu,
       testId: TESTIDS.nav.daily,
       audience: NAV_AUDIENCE.all,
+      group: 'daily' as NavGroupKey,
     },
     {
       label: '健康記録',
@@ -240,6 +270,7 @@ export function createNavItems(config: CreateNavItemsConfig): NavItem[] {
       isActive: (pathname) => pathname.startsWith('/daily/health'),
       icon: undefined,
       audience: NAV_AUDIENCE.all,
+      group: 'daily' as NavGroupKey,
     },
     {
       label: '申し送りタイムライン',
@@ -247,6 +278,7 @@ export function createNavItems(config: CreateNavItemsConfig): NavItem[] {
       isActive: (pathname) => pathname.startsWith('/handoff-timeline'),
       icon: undefined,
       audience: NAV_AUDIENCE.all,
+      group: 'daily' as NavGroupKey,
     },
     {
       label: '司会ガイド',
@@ -254,20 +286,27 @@ export function createNavItems(config: CreateNavItemsConfig): NavItem[] {
       isActive: (pathname) => pathname.startsWith('/meeting-guide'),
       icon: undefined,
       audience: NAV_AUDIENCE.all,
+      group: 'daily' as NavGroupKey,
     },
     {
       label: '朝会（作成）',
       to: '/meeting-minutes/new?category=朝会',
-      isActive: (pathname) => pathname.startsWith('/meeting-minutes/new'),
+      isActive: (pathname, search = '') =>
+        pathname.startsWith('/meeting-minutes/new') &&
+        new URLSearchParams(search).get('category') === '朝会',
       icon: undefined,
       audience: NAV_AUDIENCE.all,
+      group: 'daily' as NavGroupKey,
     },
     {
       label: '夕会（作成）',
       to: '/meeting-minutes/new?category=夕会',
-      isActive: (pathname) => pathname.startsWith('/meeting-minutes/new'),
+      isActive: (pathname, search = '') =>
+        pathname.startsWith('/meeting-minutes/new') &&
+        new URLSearchParams(search).get('category') === '夕会',
       icon: undefined,
       audience: NAV_AUDIENCE.all,
+      group: 'daily' as NavGroupKey,
     },
     {
       label: '議事録アーカイブ',
@@ -275,6 +314,7 @@ export function createNavItems(config: CreateNavItemsConfig): NavItem[] {
       isActive: (pathname) => pathname.startsWith('/meeting-minutes'),
       icon: undefined,
       audience: NAV_AUDIENCE.all,
+      group: 'daily' as NavGroupKey,
     },
     {
       label: '黒ノート',
@@ -283,6 +323,7 @@ export function createNavItems(config: CreateNavItemsConfig): NavItem[] {
       icon: undefined,
       testId: TESTIDS.nav.dashboard,
       audience: NAV_AUDIENCE.staff,
+      group: 'record' as NavGroupKey,
     },
     {
       label: '黒ノート一覧',
@@ -290,6 +331,7 @@ export function createNavItems(config: CreateNavItemsConfig): NavItem[] {
       isActive: (pathname) => pathname.startsWith('/records'),
       icon: undefined,
       audience: NAV_AUDIENCE.staff,
+      group: 'record' as NavGroupKey,
     },
     {
       label: '月次記録',
@@ -297,6 +339,7 @@ export function createNavItems(config: CreateNavItemsConfig): NavItem[] {
       isActive: (pathname) => pathname.startsWith('/records/monthly'),
       icon: undefined,
       audience: NAV_AUDIENCE.staff,
+      group: 'record' as NavGroupKey,
     },
     {
       label: '分析',
@@ -306,6 +349,7 @@ export function createNavItems(config: CreateNavItemsConfig): NavItem[] {
       prefetchKey: PREFETCH_KEYS.analysisDashboard,
       testId: TESTIDS.nav.analysis,
       audience: NAV_AUDIENCE.staff,
+      group: 'review' as NavGroupKey,
     },
     {
       label: '氷山分析',
@@ -315,6 +359,7 @@ export function createNavItems(config: CreateNavItemsConfig): NavItem[] {
       prefetchKey: PREFETCH_KEYS.iceberg,
       testId: TESTIDS.nav.iceberg,
       audience: NAV_AUDIENCE.staff,
+      group: 'review' as NavGroupKey,
     },
     {
       label: 'アセスメント',
@@ -324,6 +369,7 @@ export function createNavItems(config: CreateNavItemsConfig): NavItem[] {
       prefetchKey: PREFETCH_KEYS.assessmentDashboard,
       testId: TESTIDS.nav.assessment,
       audience: NAV_AUDIENCE.staff,
+      group: 'review' as NavGroupKey,
     },
     {
       label: '特性アンケート',
@@ -331,6 +377,7 @@ export function createNavItems(config: CreateNavItemsConfig): NavItem[] {
       isActive: (pathname) => pathname.startsWith('/survey/tokusei'),
       icon: undefined,
       audience: NAV_AUDIENCE.staff,
+      group: 'review' as NavGroupKey,
     },
     {
       label: '個別支援計画書',
@@ -339,6 +386,7 @@ export function createNavItems(config: CreateNavItemsConfig): NavItem[] {
       icon: undefined,
       testId: TESTIDS.nav.supportPlanGuide,
       audience: NAV_AUDIENCE.staff,
+      group: 'review' as NavGroupKey,
     },
     {
       label: '利用者',
@@ -347,6 +395,7 @@ export function createNavItems(config: CreateNavItemsConfig): NavItem[] {
       icon: undefined,
       prefetchKey: PREFETCH_KEYS.users,
       audience: NAV_AUDIENCE.staff,
+      group: 'master' as NavGroupKey,
     },
     {
       label: '職員',
@@ -355,6 +404,7 @@ export function createNavItems(config: CreateNavItemsConfig): NavItem[] {
       icon: undefined,
       prefetchKey: PREFETCH_KEYS.staff,
       audience: NAV_AUDIENCE.staff,
+      group: 'master' as NavGroupKey,
     },
     {
       label: '請求処理',
@@ -363,6 +413,7 @@ export function createNavItems(config: CreateNavItemsConfig): NavItem[] {
       icon: undefined,
       testId: TESTIDS.nav.billing,
       audience: [NAV_AUDIENCE.reception, NAV_AUDIENCE.admin],
+      group: 'admin' as NavGroupKey,
     },
   ];
 
@@ -377,6 +428,7 @@ export function createNavItems(config: CreateNavItemsConfig): NavItem[] {
       prefetchKey: PREFETCH_KEYS.staff,
       testId: TESTIDS.nav.staffAttendance,
       audience: NAV_AUDIENCE.staff,
+      group: 'master' as NavGroupKey,
     });
   }
 
@@ -388,6 +440,7 @@ export function createNavItems(config: CreateNavItemsConfig): NavItem[] {
         isActive: (pathname: string) => pathname.startsWith('/admin/step-templates'),
         icon: undefined,
         audience: NAV_AUDIENCE.admin,
+        group: 'admin' as NavGroupKey,
       },
       {
         label: '個別支援手順',
@@ -395,6 +448,7 @@ export function createNavItems(config: CreateNavItemsConfig): NavItem[] {
         isActive: (pathname: string) => pathname.startsWith('/admin/individual-support'),
         icon: undefined,
         audience: NAV_AUDIENCE.admin,
+        group: 'admin' as NavGroupKey,
       },
       {
         label: '職員勤怠管理',
@@ -402,6 +456,7 @@ export function createNavItems(config: CreateNavItemsConfig): NavItem[] {
         isActive: (pathname: string) => pathname.startsWith('/admin/staff-attendance'),
         icon: undefined,
         audience: NAV_AUDIENCE.admin,
+        group: 'admin' as NavGroupKey,
       },
       {
         label: '自己点検',
@@ -411,6 +466,7 @@ export function createNavItems(config: CreateNavItemsConfig): NavItem[] {
         prefetchKey: PREFETCH_KEYS.checklist,
         testId: TESTIDS.nav.checklist,
         audience: NAV_AUDIENCE.admin,
+        group: 'admin' as NavGroupKey,
       },
       {
         label: '監査ログ',
@@ -420,6 +476,7 @@ export function createNavItems(config: CreateNavItemsConfig): NavItem[] {
         icon: undefined,
         prefetchKey: PREFETCH_KEYS.audit,
         audience: NAV_AUDIENCE.admin,
+        group: 'admin' as NavGroupKey,
       },
     );
     if (schedulesEnabled) {
@@ -430,6 +487,7 @@ export function createNavItems(config: CreateNavItemsConfig): NavItem[] {
         icon: undefined,
         testId: TESTIDS.nav.integratedResourceCalendar,
         audience: NAV_AUDIENCE.admin,
+        group: 'admin' as NavGroupKey,
       });
     }
 
@@ -440,6 +498,17 @@ export function createNavItems(config: CreateNavItemsConfig): NavItem[] {
       icon: undefined,
       testId: TESTIDS.nav.navigationDiagnostics,
       audience: NAV_AUDIENCE.admin,
+      group: 'admin' as NavGroupKey,
+    });
+
+    items.push({
+      label: 'お部屋管理',
+      to: '/room-management',
+      isActive: (pathname: string) => pathname.startsWith('/room-management'),
+      icon: undefined,
+      testId: TESTIDS.nav.roomManagement,
+      audience: NAV_AUDIENCE.admin,
+      group: 'admin' as NavGroupKey,
     });
   }
 
@@ -452,6 +521,7 @@ export function createNavItems(config: CreateNavItemsConfig): NavItem[] {
     prefetchKeys: [PREFETCH_KEYS.muiForms, PREFETCH_KEYS.muiOverlay],
     testId: TESTIDS.nav.admin,
     audience: NAV_AUDIENCE.admin,
+    group: 'admin' as NavGroupKey,
   });
 
   // Feature-flagged items
@@ -465,6 +535,7 @@ export function createNavItems(config: CreateNavItemsConfig): NavItem[] {
       prefetchKey: PREFETCH_KEYS.icebergPdcaBoard,
       testId: TESTIDS.nav.icebergPdca,
       audience: NAV_AUDIENCE.staff,
+      group: 'review' as NavGroupKey,
     });
   }
 
@@ -478,6 +549,7 @@ export function createNavItems(config: CreateNavItemsConfig): NavItem[] {
       prefetchKey: PREFETCH_KEYS.schedulesWeek,
       prefetchKeys: [PREFETCH_KEYS.muiForms, PREFETCH_KEYS.muiOverlay],
       audience: NAV_AUDIENCE.staff,
+      group: 'record' as NavGroupKey,
     });
   }
 
@@ -488,6 +560,7 @@ export function createNavItems(config: CreateNavItemsConfig): NavItem[] {
       isActive: (pathname: string) => pathname.startsWith('/compliance'),
       icon: undefined,
       audience: 'staff',
+      group: 'review' as NavGroupKey,
     });
   }
 
@@ -532,6 +605,11 @@ export function groupNavItems(
   for (const item of navItems) {
     const group = pickGroup(item, isAdmin);
     map.get(group)!.push(item);
+  }
+
+  // Remove empty groups (e.g. settings with no items) to avoid rendering empty sections
+  for (const [key, items] of map.entries()) {
+    if (!items || items.length === 0) map.delete(key);
   }
 
   return { map, ORDER: NAV_GROUP_ORDER };

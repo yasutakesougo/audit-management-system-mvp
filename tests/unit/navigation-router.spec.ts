@@ -1,5 +1,5 @@
+import { router } from '@/app/appRouter';
 import { createNavItems } from '@/app/config/navigationConfig';
-import { router } from '@/app/router';
 import type { RouteObject } from 'react-router-dom';
 import { describe, expect, it } from 'vitest';
 
@@ -13,6 +13,7 @@ describe('Navigation and Router integration', () => {
       complianceFormEnabled: true,
       icebergPdcaEnabled: true,
       staffAttendanceEnabled: true,
+      todayOpsEnabled: true,
       isAdmin: true,
       authzReady: true,
       navAudience: 'admin',
