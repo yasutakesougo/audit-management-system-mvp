@@ -68,8 +68,8 @@ describe('featureFlags config', () => {
       schedulesWeekV2: true,
       icebergPdca: true,
       staffAttendance: false,
-      appShellVsCode: false,
-      todayOps: false,
+      appShellVsCode: true,
+      todayOps: true,
     });
 
     // env override を使った場合、helper 関数にも override が渡される
@@ -92,8 +92,8 @@ describe('featureFlags config', () => {
       schedulesWeekV2: true,
       icebergPdca: false,
       staffAttendance: false,
-      appShellVsCode: false,
-      todayOps: false,
+      appShellVsCode: true,
+      todayOps: true,
     });
   });
 
@@ -117,8 +117,8 @@ describe('featureFlags config', () => {
       schedulesWeekV2: true,
       icebergPdca: false,
       staffAttendance: false,
-      appShellVsCode: false,
-      todayOps: false,
+      appShellVsCode: true,
+      todayOps: true,
     });
   });
 
@@ -136,8 +136,8 @@ describe('featureFlags config', () => {
       schedulesWeekV2: true,
       icebergPdca: false,
       staffAttendance: false,
-      appShellVsCode: false,
-      todayOps: false,
+      appShellVsCode: true,
+      todayOps: true,
     });
   });
 
