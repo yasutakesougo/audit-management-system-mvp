@@ -245,6 +245,7 @@ export function TableDailyRecordForm({
             onClick={handleSave}
             disabled={saving || selectedUserIds.length === 0}
             startIcon={<SaveIcon />}
+            data-testid="daily-table-main-save-button"
           >
             {saving ? '保存中...' : `${selectedUserIds.length}人分保存`}
           </Button>

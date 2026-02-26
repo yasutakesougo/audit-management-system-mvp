@@ -1,6 +1,8 @@
 import { useCallback, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 
+const AUTO_NEXT_STORAGE_KEY = 'ams_quick_auto_next';
+
 export type QuickRecordMode = 'unfilled' | 'user';
 
 export type QuickRecordState = {
@@ -16,7 +18,24 @@ export type QuickRecordState = {
 
 export const useQuickRecord = (): QuickRecordState => {
   const [searchParams, setSearchParams] = useSearchParams();
-  const [autoNextEnabled, setAutoNextEnabled] = useState(true);
+
+  const [autoNextEnabled, setAutoNextEnabledState] = useState(() => {
+    try {
+      const stored = localStorage.getItem(AUTO_NEXT_STORAGE_KEY);
+      return stored !== null ? stored === '1' : true;
+    } catch {
+      return true;
+    }
+  });
+
+  const setAutoNextEnabled = useCallback((enabled: boolean) => {
+    setAutoNextEnabledState(enabled);
+    try {
+      localStorage.setItem(AUTO_NEXT_STORAGE_KEY, enabled ? '1' : '0');
+    } catch {
+      // Ignore quota/access errors
+    }
+  }, []);
 
   const modeRaw = searchParams.get('mode');
   const mode = (modeRaw === 'unfilled' || modeRaw === 'user') ? modeRaw : null;
