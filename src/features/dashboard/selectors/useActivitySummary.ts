@@ -9,7 +9,8 @@ export function useActivitySummary(
   users: IUserMaster[],
   today: string,
   currentMonth: string,
-  generateMockActivityRecords: (users: IUserMaster[], date: string) => PersonDaily[]
+  generateMockActivityRecords: (users: IUserMaster[], date: string) => PersonDaily[],
+  attendanceOrderUserIds?: string[]
 ) {
   const activityRecords = useMemo(() => {
     const span = startFeatureSpan(HYDRATION_FEATURES.dashboard.activityModel, {
@@ -127,7 +128,8 @@ export function useActivitySummary(
     const pendingUserIds = getPendingUserOrder({
       users,
       pendingUserIds: rawPendingUserIds,
-      policy: 'userId',
+      policy: attendanceOrderUserIds?.length ? 'attendanceToday' : 'userId',
+      attendanceOrderUserIds,
     });
 
     return {
