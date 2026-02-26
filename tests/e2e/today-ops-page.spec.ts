@@ -1,6 +1,6 @@
 import { expect, test } from '@playwright/test';
 
-test.describe('Today Ops Screen', () => {
+test.describe('Today Ops Screen - Happy Path', () => {
   // Use VITE_E2E=1 to trigger the fallback Mock mechanism defined in TodayOpsPage
   test.use({
     extraHTTPHeaders: {
