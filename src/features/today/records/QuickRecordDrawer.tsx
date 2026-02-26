@@ -16,6 +16,7 @@ export type QuickRecordDrawerProps = {
   mode: 'unfilled' | 'user' | null;
   userId: string | null;
   onClose: () => void;
+  onSaveSuccess?: () => void;
 };
 
 export const QuickRecordDrawer: React.FC<QuickRecordDrawerProps> = ({
@@ -23,6 +24,7 @@ export const QuickRecordDrawer: React.FC<QuickRecordDrawerProps> = ({
   mode,
   userId,
   onClose,
+  onSaveSuccess,
 }) => {
   const theme = useTheme();
   // タブレット以上は右側Drawer、スマホは全画面Dialog (PR3ガードレール#3)
@@ -69,6 +71,7 @@ export const QuickRecordDrawer: React.FC<QuickRecordDrawerProps> = ({
         <QuickRecordFormEmbed
           userId={userId || undefined}
           onClose={onClose}
+          onSaveSuccess={onSaveSuccess}
         />
       </Box>
     </Box>
