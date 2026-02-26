@@ -1,5 +1,6 @@
 ﻿import { getRuntimeEnv } from '@/env';
 import { z } from 'zod';
+export { getRuntimeEnv };
 
 const TIME_24H_PATTERN = /^([01]?\d|2[0-3]):[0-5]\d$/;
 
@@ -188,6 +189,10 @@ export const AppEnvSchema = envSchema;
  */
 export function parseEnv(raw: Record<string, unknown>): EnvSchema {
   const placeholders = {
+    VITE_SP_RESOURCE: 'https://contoso.sharepoint.com',
+    VITE_SP_SITE_RELATIVE: '/sites/Audit',
+    VITE_MSAL_CLIENT_ID: 'dummy-client-id',
+    VITE_MSAL_TENANT_ID: 'dummy-tenant-id',
   };
   return envSchema.parse({ ...placeholders, ...raw });
 }
@@ -199,9 +204,13 @@ export function parseEnv(raw: Record<string, unknown>): EnvSchema {
 export function validateEnv(raw: Record<string, unknown>): EnvSchema {
   const isTest =
     (typeof process !== 'undefined' && (process.env.NODE_ENV === 'test' || process.env.VITEST)) ||
-    (typeof import.meta !== 'undefined' && (import.meta as unknown as { env?: { MODE?: string } }).env?.MODE === 'test');
+    (getRuntimeEnv()?.MODE === 'test');
 
   const placeholders = {
+    VITE_SP_RESOURCE: 'https://contoso.sharepoint.com',
+    VITE_SP_SITE_RELATIVE: '/sites/Audit',
+    VITE_MSAL_CLIENT_ID: 'dummy-client-id',
+    VITE_MSAL_TENANT_ID: 'dummy-tenant-id',
   };
 
   // Pre-merge for tests to improve safeParse success rate and provide defaults
@@ -236,7 +245,7 @@ export function validateEnv(raw: Record<string, unknown>): EnvSchema {
 let cachedParsedEnv: EnvSchema | null = null;
 
 export function getParsedEnv(overrides?: Partial<EnvSchema>): EnvSchema {
-  const base = (globalThis as unknown as { __TEST_ENV__?: Record<string, unknown> }).__TEST_ENV__ || getRuntimeEnv() || import.meta.env;
+  const base = (globalThis as unknown as { __TEST_ENV__?: Record<string, unknown> }).__TEST_ENV__ || getRuntimeEnv();
 
   if (overrides) {
     // Overrides always bypass cache
@@ -252,5 +261,3 @@ export function getParsedEnv(overrides?: Partial<EnvSchema>): EnvSchema {
 export function resetParsedEnvForTests() {
   cachedParsedEnv = null;
 }
-
-

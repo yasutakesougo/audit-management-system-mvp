@@ -60,6 +60,7 @@ const DashboardBriefingPage = React.lazy(() => import('@/pages/DashboardPageTabs
 const MeetingGuidePage = React.lazy(() => import('@/pages/MeetingGuidePage'));
 const HandoffTimelinePage = React.lazy(() => import('@/pages/HandoffTimelinePage'));
 const IntegratedResourceCalendarPage = React.lazy(() => import('@/pages/IntegratedResourceCalendarPage'));
+const DebugZodErrorPage = React.lazy(() => import('@/pages/DebugZodErrorPage'));
 
 const SupportActivityMasterPage = React.lazy(() => import('@/pages/SupportActivityMasterPage'));
 const SupportStepMasterPage = React.lazy(() => import('@/pages/SupportStepMasterPage'));
@@ -643,8 +644,19 @@ const SuspendedSmokeTestPage: React.FC = () => (
   </RouteHydrationErrorBoundary>
 );
 
+const SuspendedDebugZodErrorPage: React.FC = () => (
+  <RouteHydrationErrorBoundary>
+    <React.Suspense fallback={<div className="p-4 text-sm text-slate-600" role="status">デバッグ情報を読み込んでいます…</div>}>
+      <DebugZodErrorPage />
+    </React.Suspense>
+  </RouteHydrationErrorBoundary>
+);
+
 const childRoutes: RouteObject[] = [
-  ...(isDev ? [{ path: 'admin/debug/smoke-test', element: <SuspendedSmokeTestPage /> }] : []),
+  ...(isDev ? [
+    { path: 'admin/debug/smoke-test', element: <SuspendedSmokeTestPage /> },
+    { path: 'admin/debug/zod-error', element: <SuspendedDebugZodErrorPage /> }
+  ] : []),
 
   { path: 'auth/callback', element: <AuthCallbackRoute /> },
   { index: true, element: <DashboardRedirect /> },
