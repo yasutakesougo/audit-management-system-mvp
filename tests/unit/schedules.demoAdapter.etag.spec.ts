@@ -1,5 +1,5 @@
-import { describe, expect, test } from 'vitest';
 import { demoSchedulesPort } from '@/features/schedules/data/demoAdapter';
+import { describe, expect, test } from 'vitest';
 
 describe('demoAdapter etag', () => {
   test('list items always include etag', async () => {
@@ -18,7 +18,7 @@ describe('demoAdapter etag', () => {
   });
 
   test('created items include etag', async () => {
-    const result = await demoSchedulesPort.create({
+    const result = await demoSchedulesPort.create!({
       title: 'Test Event',
       category: 'Org',
       startLocal: '2026-01-28T10:00',
@@ -37,7 +37,7 @@ describe('demoAdapter etag', () => {
 
   test('updated items bump etag', async () => {
     // Create an item
-    const createResult = await demoSchedulesPort.create({
+    const createResult = await demoSchedulesPort.create!({
       title: 'Test Event',
       category: 'Org',
       startLocal: '2026-01-28T10:00',

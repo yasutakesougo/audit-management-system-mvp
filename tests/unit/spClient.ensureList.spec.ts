@@ -9,7 +9,7 @@ vi.mock('@/lib/env', async () => {
   };
 });
 
-import { __ensureListInternals, createSpClient } from '@/lib/spClient';
+import { __ensureListInternals, createSpClient, type SpFieldDef } from '@/lib/spClient';
 
 describe('spClient ensureListExists', () => {
   let fetchSpy: ReturnType<typeof vi.spyOn>;

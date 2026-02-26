@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { installTestResets } from '../helpers/reset';
 
 vi.mock('@/lib/env', async () => {
@@ -22,12 +22,12 @@ describe('spClient retries & refresh', () => {
   installTestResets();
 
   let fetchSpy: ReturnType<typeof vi.spyOn>;
-  let acquireToken: ReturnType<typeof vi.fn>;
+  let acquireToken: ReturnType<typeof vi.fn<() => Promise<string | null>>>;
 
   beforeEach(() => {
     fetchSpy = vi.spyOn(global, 'fetch');
     // per-test we will define token sequence explicitly
-    acquireToken = vi.fn();
+    acquireToken = vi.fn<() => Promise<string | null>>();
   });
 
   it('401 -> token refresh -> success (single refresh)', async () => {

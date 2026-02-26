@@ -1,5 +1,5 @@
-import { describe, it, expect, vi } from 'vitest';
 import type { StaffAttendance } from '@/features/staff/attendance/types';
+import { describe, expect, it, vi } from 'vitest';
 
 /**
  * Unit tests for useStaffAttendanceAdmin.fetchListByDateRange
@@ -241,15 +241,15 @@ describe('useStaffAttendanceAdmin - fetchListByDateRange', () => {
 
       expect(result.isOk).toBe(true);
       expect(result.value).toHaveLength(250);
-      
+
       // Verify first and last items from each page
       expect(result.value[0].staffId).toBe('S001');
       expect(result.value[199].staffId).toBe('S200');
       expect(result.value[200].staffId).toBe('S201');
       expect(result.value[249].staffId).toBe('S250');
-      
+
       // Verify all items have proper structure
-      result.value.forEach((item) => {
+      result.value.forEach((item: any) => {
         expect(item).toHaveProperty('staffId');
         expect(item).toHaveProperty('recordDate');
         expect(item).toHaveProperty('status');

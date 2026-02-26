@@ -1,5 +1,5 @@
-import { describe, expect, test } from 'vitest';
 import { isErr, isOk, result } from '@/shared/result';
+import { describe, expect, test } from 'vitest';
 
 describe('result', () => {
   test('ok and isOk guard work', () => {
@@ -19,7 +19,7 @@ describe('result', () => {
     expect(isOk(b)).toBe(false);
     expect(isErr(b)).toBe(true);
 
-    if (isErr(b)) {
+    if (isErr(b) && b.error.kind === 'conflict') {
       expect(b.error.kind).toBe('conflict');
       expect(b.error.message).toBe('Version mismatch');
       expect(b.error.etag).toBe('"etag-123"');

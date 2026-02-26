@@ -10,13 +10,13 @@
  * Detailed logic testing belongs in component/integration tests.
  */
 
-import { describe, it, expect } from 'vitest';
-import { renderHook } from '@testing-library/react';
-import { useDashboardSummary, type UseDashboardSummaryArgs } from '../useDashboardSummary';
-import type { IUserMaster } from '@/sharepoint/fields';
 import type { PersonDaily } from '@/domain/daily/types';
-import type { Staff } from '@/types';
 import type { AttendanceCounts } from '@/features/staff/attendance/port';
+import type { IUserMaster } from '@/sharepoint/fields';
+import type { Staff } from '@/types';
+import { renderHook } from '@testing-library/react';
+import { describe, expect, it } from 'vitest';
+import { useDashboardSummary } from '../useDashboardSummary';
 
 // ============================================================================
 // Test Fixtures (Minimal valid data)
@@ -61,10 +61,11 @@ const createMinimalPersonDaily = (overrides?: Partial<PersonDaily>): PersonDaily
 });
 
 const createMinimalStaff = (overrides?: Partial<Staff>): Staff => ({
+  id: 1,
   staffId: 'S001',
   name: 'Staff Member',
   ...overrides,
-});
+} as Staff);
 
 const createMinimalAttendanceCounts = (
   overrides?: Partial<AttendanceCounts>
@@ -88,10 +89,13 @@ const mockGenerateMockActivityRecords = (users: IUserMaster[], _today: string): 
 // Contract Tests
 // ============================================================================
 
+import type { HubSyncStatus } from '@/features/dashboard/types/hub';
+const mockSpSyncStatus: HubSyncStatus = { loading: false, error: null, itemCount: 0, source: 'sp' };
+
 describe('useDashboardSummary', () => {
   describe('API Contract', () => {
     it('returns all required keys in the result object', () => {
-      const args: UseDashboardSummaryArgs = {
+      const args = {
         users: [createMinimalUser()],
         today: '2026-02-23',
         currentMonth: '2026-02',
@@ -101,7 +105,7 @@ describe('useDashboardSummary', () => {
         generateMockActivityRecords: mockGenerateMockActivityRecords,
       };
 
-      const { result } = renderHook(() => useDashboardSummary(args));
+      const { result } = renderHook(() => useDashboardSummary(args.users, args.staff, args.visits, args.today, args.currentMonth, args.generateMockActivityRecords, args.attendanceCounts, mockSpSyncStatus));
 
       // Verify all expected keys exist
       expect(result.current).toHaveProperty('activityRecords');
@@ -116,7 +120,7 @@ describe('useDashboardSummary', () => {
     });
 
     it('returns correct types for each key', () => {
-      const args: UseDashboardSummaryArgs = {
+      const args = {
         users: [createMinimalUser()],
         today: '2026-02-23',
         currentMonth: '2026-02',
@@ -126,7 +130,7 @@ describe('useDashboardSummary', () => {
         generateMockActivityRecords: mockGenerateMockActivityRecords,
       };
 
-      const { result } = renderHook(() => useDashboardSummary(args));
+      const { result } = renderHook(() => useDashboardSummary(args.users, args.staff, args.visits, args.today, args.currentMonth, args.generateMockActivityRecords, args.attendanceCounts, mockSpSyncStatus));
 
       // Type checks
       expect(Array.isArray(result.current.activityRecords)).toBe(true);
@@ -143,7 +147,7 @@ describe('useDashboardSummary', () => {
 
   describe('Edge Cases', () => {
     it('handles empty users array without throwing', () => {
-      const args: UseDashboardSummaryArgs = {
+      const args = {
         users: [],
         today: '2026-02-23',
         currentMonth: '2026-02',
@@ -153,7 +157,7 @@ describe('useDashboardSummary', () => {
         generateMockActivityRecords: mockGenerateMockActivityRecords,
       };
 
-      const { result } = renderHook(() => useDashboardSummary(args));
+      const { result } = renderHook(() => useDashboardSummary(args.users, args.staff, args.visits, args.today, args.currentMonth, args.generateMockActivityRecords, args.attendanceCounts, mockSpSyncStatus));
 
       expect(result.current.activityRecords).toEqual([]);
       expect(result.current.intensiveSupportUsers).toEqual([]);
@@ -162,7 +166,7 @@ describe('useDashboardSummary', () => {
     });
 
     it('handles minimal valid data', () => {
-      const args: UseDashboardSummaryArgs = {
+      const args = {
         users: [createMinimalUser()],
         today: '2026-02-23',
         currentMonth: '2026-02',
@@ -172,7 +176,7 @@ describe('useDashboardSummary', () => {
         generateMockActivityRecords: mockGenerateMockActivityRecords,
       };
 
-      const { result } = renderHook(() => useDashboardSummary(args));
+      const { result } = renderHook(() => useDashboardSummary(args.users, args.staff, args.visits, args.today, args.currentMonth, args.generateMockActivityRecords, args.attendanceCounts, mockSpSyncStatus));
 
       // Should not throw
       expect(result.current.activityRecords.length).toBe(1);
@@ -182,7 +186,7 @@ describe('useDashboardSummary', () => {
 
   describe('Stats Shape Contract', () => {
     it('stats object has required properties', () => {
-      const args: UseDashboardSummaryArgs = {
+      const args = {
         users: [createMinimalUser()],
         today: '2026-02-23',
         currentMonth: '2026-02',
@@ -192,7 +196,7 @@ describe('useDashboardSummary', () => {
         generateMockActivityRecords: mockGenerateMockActivityRecords,
       };
 
-      const { result } = renderHook(() => useDashboardSummary(args));
+      const { result } = renderHook(() => useDashboardSummary(args.users, args.staff, args.visits, args.today, args.currentMonth, args.generateMockActivityRecords, args.attendanceCounts, mockSpSyncStatus));
 
       expect(result.current.stats).toHaveProperty('totalUsers');
       expect(result.current.stats).toHaveProperty('recordedUsers');
@@ -205,7 +209,7 @@ describe('useDashboardSummary', () => {
 
   describe('Attendance Summary Shape Contract', () => {
     it('attendanceSummary object has required properties', () => {
-      const args: UseDashboardSummaryArgs = {
+      const args = {
         users: [createMinimalUser()],
         today: '2026-02-23',
         currentMonth: '2026-02',
@@ -215,7 +219,7 @@ describe('useDashboardSummary', () => {
         generateMockActivityRecords: mockGenerateMockActivityRecords,
       };
 
-      const { result } = renderHook(() => useDashboardSummary(args));
+      const { result } = renderHook(() => useDashboardSummary(args.users, args.staff, args.visits, args.today, args.currentMonth, args.generateMockActivityRecords, args.attendanceCounts, mockSpSyncStatus));
 
       expect(result.current.attendanceSummary).toHaveProperty('facilityAttendees');
       expect(result.current.attendanceSummary).toHaveProperty('lateOrEarlyLeave');
@@ -231,7 +235,7 @@ describe('useDashboardSummary', () => {
 
   describe('Daily Record Status Shape Contract', () => {
     it('dailyRecordStatus object has required properties', () => {
-      const args: UseDashboardSummaryArgs = {
+      const args = {
         users: [createMinimalUser()],
         today: '2026-02-23',
         currentMonth: '2026-02',
@@ -241,7 +245,7 @@ describe('useDashboardSummary', () => {
         generateMockActivityRecords: mockGenerateMockActivityRecords,
       };
 
-      const { result } = renderHook(() => useDashboardSummary(args));
+      const { result } = renderHook(() => useDashboardSummary(args.users, args.staff, args.visits, args.today, args.currentMonth, args.generateMockActivityRecords, args.attendanceCounts, mockSpSyncStatus));
 
       expect(result.current.dailyRecordStatus).toHaveProperty('total');
       expect(result.current.dailyRecordStatus).toHaveProperty('pending');
@@ -252,7 +256,7 @@ describe('useDashboardSummary', () => {
 
   describe('Schedule Lanes Shape Contract', () => {
     it('scheduleLanesToday has required structure', () => {
-      const args: UseDashboardSummaryArgs = {
+      const args = {
         users: [createMinimalUser()],
         today: '2026-02-23',
         currentMonth: '2026-02',
@@ -262,7 +266,7 @@ describe('useDashboardSummary', () => {
         generateMockActivityRecords: mockGenerateMockActivityRecords,
       };
 
-      const { result } = renderHook(() => useDashboardSummary(args));
+      const { result } = renderHook(() => useDashboardSummary(args.users, args.staff, args.visits, args.today, args.currentMonth, args.generateMockActivityRecords, args.attendanceCounts, mockSpSyncStatus));
 
       expect(result.current.scheduleLanesToday).toHaveProperty('userLane');
       expect(result.current.scheduleLanesToday).toHaveProperty('staffLane');
@@ -273,7 +277,7 @@ describe('useDashboardSummary', () => {
     });
 
     it('scheduleLanesTomorrow has required structure', () => {
-      const args: UseDashboardSummaryArgs = {
+      const args = {
         users: [createMinimalUser()],
         today: '2026-02-23',
         currentMonth: '2026-02',
@@ -283,7 +287,7 @@ describe('useDashboardSummary', () => {
         generateMockActivityRecords: mockGenerateMockActivityRecords,
       };
 
-      const { result } = renderHook(() => useDashboardSummary(args));
+      const { result } = renderHook(() => useDashboardSummary(args.users, args.staff, args.visits, args.today, args.currentMonth, args.generateMockActivityRecords, args.attendanceCounts, mockSpSyncStatus));
 
       expect(result.current.scheduleLanesTomorrow).toHaveProperty('userLane');
       expect(result.current.scheduleLanesTomorrow).toHaveProperty('staffLane');
@@ -296,7 +300,7 @@ describe('useDashboardSummary', () => {
 
   describe('Intensive Support Users', () => {
     it('filters intensive support users correctly', () => {
-      const args: UseDashboardSummaryArgs = {
+      const args = {
         users: [
           createMinimalUser({ Id: 1, UserID: 'U001', IsSupportProcedureTarget: true }),
           createMinimalUser({ Id: 2, UserID: 'U002', IsSupportProcedureTarget: false }),
@@ -310,14 +314,14 @@ describe('useDashboardSummary', () => {
         generateMockActivityRecords: mockGenerateMockActivityRecords,
       };
 
-      const { result } = renderHook(() => useDashboardSummary(args));
+      const { result } = renderHook(() => useDashboardSummary(args.users, args.staff, args.visits, args.today, args.currentMonth, args.generateMockActivityRecords, args.attendanceCounts, mockSpSyncStatus));
 
       expect(result.current.intensiveSupportUsers.length).toBe(2);
-      expect(result.current.intensiveSupportUsers.every(u => u.IsSupportProcedureTarget)).toBe(true);
+      expect(result.current.intensiveSupportUsers.every((u: IUserMaster) => u.IsSupportProcedureTarget)).toBe(true);
     });
 
     it('returns top 3 prioritized users', () => {
-      const args: UseDashboardSummaryArgs = {
+      const args = {
         users: [
           createMinimalUser({ Id: 1, UserID: 'U001', IsSupportProcedureTarget: true }),
           createMinimalUser({ Id: 2, UserID: 'U002', IsSupportProcedureTarget: true }),
@@ -332,7 +336,7 @@ describe('useDashboardSummary', () => {
         generateMockActivityRecords: mockGenerateMockActivityRecords,
       };
 
-      const { result } = renderHook(() => useDashboardSummary(args));
+      const { result } = renderHook(() => useDashboardSummary(args.users, args.staff, args.visits, args.today, args.currentMonth, args.generateMockActivityRecords, args.attendanceCounts, mockSpSyncStatus));
 
       expect(result.current.prioritizedUsers.length).toBe(3);
       expect(result.current.intensiveSupportUsers.length).toBe(4);

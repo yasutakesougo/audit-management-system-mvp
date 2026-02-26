@@ -29,7 +29,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 
 describe('featureFlags config', () => {
   beforeEach(() => {
-    delete (process as Record<string, unknown>).env?.VITE_FEATURE_SCHEDULES;
+    delete (process.env as any).VITE_FEATURE_SCHEDULES;
 
     if (typeof window !== 'undefined') {
       try {
@@ -68,6 +68,7 @@ describe('featureFlags config', () => {
       icebergPdca: true,
       staffAttendance: false,
       appShellVsCode: false,
+      todayOps: false,
     });
 
     // env override を使った場合、helper 関数にも override が渡される
@@ -75,7 +76,7 @@ describe('featureFlags config', () => {
   });
 
   it('passes env override through to helper functions', () => {
-    const override = { 
+    const override = {
       VITE_FEATURE_SCHEDULES: '1',
       VITE_FEATURE_COMPLIANCE_FORM: '0',
       VITE_FEATURE_SCHEDULES_WEEK_V2: '1',
@@ -91,6 +92,7 @@ describe('featureFlags config', () => {
       icebergPdca: false,
       staffAttendance: false,
       appShellVsCode: false,
+      todayOps: false,
     });
   });
 
@@ -115,6 +117,7 @@ describe('featureFlags config', () => {
       icebergPdca: false,
       staffAttendance: false,
       appShellVsCode: false,
+      todayOps: false,
     });
   });
 
@@ -133,6 +136,7 @@ describe('featureFlags config', () => {
       icebergPdca: false,
       staffAttendance: false,
       appShellVsCode: false,
+      todayOps: false,
     });
   });
 
@@ -152,6 +156,7 @@ describe('featureFlags config', () => {
       icebergPdca: true,
       staffAttendance: false,
       appShellVsCode: false,
+      todayOps: false,
     } satisfies FeatureFlagSnapshot;
 
     render(

@@ -1,6 +1,6 @@
-import { describe, it, expect, vi } from 'vitest';
-import type { CreateScheduleInput, UpdateScheduleInput } from './schedulesRepo';
 import { useSP } from '@/lib/spClient';
+import { describe, expect, it, vi } from 'vitest';
+import type { CreateScheduleInput, UpdateScheduleInput } from './schedulesRepo';
 
 // Mock env.ts to disable writes
 vi.mock('@/env', () => ({
@@ -18,6 +18,11 @@ describe('schedulesRepo write gate', () => {
     start: new Date().toISOString(),
     personType: 'User' as const,
     personId: '1',
+    end: new Date().toISOString(),
+    rowKey: 'mock',
+    dayKey: 'mock',
+    monthKey: 'mock',
+    fiscalYear: '2026',
   };
   const mockUpdateInput: UpdateScheduleInput = { title: 'updated' };
 

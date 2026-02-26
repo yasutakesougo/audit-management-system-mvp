@@ -1,11 +1,11 @@
-import { renderHook, act } from '@testing-library/react';
+import { act, renderHook } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { BehaviorObservation } from '../domain/daily/types';
 
 const repo = {
-  listByUser: vi.fn<Promise<BehaviorObservation[]>, [string, { order?: 'asc' | 'desc'; limit?: number } | undefined]>(),
-  getByUser: vi.fn<Promise<BehaviorObservation[]>, [string]>(),
-  add: vi.fn<Promise<BehaviorObservation>, [Omit<BehaviorObservation, 'id'>]>(),
+  listByUser: vi.fn<(...args: unknown[]) => Promise<BehaviorObservation[]>>(),
+  getByUser: vi.fn<(...args: unknown[]) => Promise<BehaviorObservation[]>>(),
+  add: vi.fn<(...args: unknown[]) => Promise<BehaviorObservation>>(),
 };
 
 vi.mock('../infra/behaviorRepositoryFactory', () => ({
