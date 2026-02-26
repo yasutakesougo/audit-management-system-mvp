@@ -29,7 +29,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 
 describe('featureFlags config', () => {
   beforeEach(() => {
-    delete (process.env as any).VITE_FEATURE_SCHEDULES;
+    delete (process.env as Record<string, string | undefined>).VITE_FEATURE_SCHEDULES;
 
     if (typeof window !== 'undefined') {
       try {

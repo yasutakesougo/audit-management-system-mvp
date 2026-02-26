@@ -1,7 +1,7 @@
+import { getAppConfig } from '@/lib/env';
+import { createSpClient } from '@/lib/spClient';
 import { z } from 'zod';
 import { icebergSnapshotSchema, type IcebergSnapshot } from '../domain/icebergTypes';
-import { createSpClient } from '@/lib/spClient';
-import { getAppConfig } from '@/lib/env';
 
 // ===== Error Classes =====
 
@@ -36,16 +36,20 @@ const F = {
 
 // ===== Types =====
 
-type SharePointItem = {
-  Id?: number;
-  Title?: string;
-  EntryHash?: string;
-  SessionId?: string;
-  UserId?: string;
-  PayloadJson?: string;
-  SchemaVersion?: number;
-  UpdatedAt?: string;
-};
+import { parseSpListResponse } from '@/lib/spClient';
+
+const sharePointItemSchema = z.object({
+  Id: z.number().optional(),
+  Title: z.string().optional(),
+  EntryHash: z.string().optional(),
+  SessionId: z.string().optional(),
+  UserId: z.string().optional(),
+  PayloadJson: z.string().optional(),
+  SchemaVersion: z.number().optional(),
+  UpdatedAt: z.string().optional(),
+});
+
+type SharePointItem = z.infer<typeof sharePointItemSchema>;
 
 export type UpsertResult = {
   itemId: number;
@@ -106,16 +110,8 @@ export async function createIcebergRepository(acquireToken: () => Promise<string
       await raiseHttpError(res, { url, method: 'GET' });
     }
 
-    const json = (await res.json()) as unknown;
-    const listResponseSchema = z.object({
-      value: z.array(z.record(z.string(), z.unknown())).optional(),
-    });
-    const parsed = listResponseSchema.safeParse(json);
-    if (!parsed.success) {
-      throw new Error('SharePoint response structure changed (list items).');
-    }
-
-    return (parsed.data.value ?? []) as SharePointItem[];
+    const json = await res.json();
+    return parseSpListResponse(json, sharePointItemSchema);
   }
 
   /**
@@ -135,7 +131,14 @@ export async function createIcebergRepository(acquireToken: () => Promise<string
     }
 
     const json = await res.json();
-    return json as SharePointItem;
+    // spFetch to `/items(id)` returns a single object, not a { value: [] } array.
+    // Thus we need a separate utility or direct parse for single items.
+    const parsed = sharePointItemSchema.safeParse(json);
+    if (!parsed.success) {
+      console.error('[SharePointIcebergRepository] Single item schema mismatch:', parsed.error.format());
+      throw new Error('SharePoint response structure validation failed for single item.');
+    }
+    return parsed.data;
   }
 
   /**

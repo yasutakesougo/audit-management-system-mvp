@@ -5,6 +5,7 @@ import type { ResourceInfo, UnifiedResourceEvent } from '@/features/resources/ty
 import { auditLog } from '@/lib/debugLogger';
 import { getAppConfig, isE2eMsalMockEnabled, readBool, readEnv, shouldSkipLogin, skipSharePoint, type EnvRecord } from '@/lib/env';
 import { useMemo } from 'react';
+import { z } from 'zod';
 import { AuthRequiredError, SharePointItemNotFoundError, SharePointMissingEtagError } from './errors';
 
 const FALLBACK_SP_RESOURCE = 'https://example.sharepoint.com';
@@ -139,6 +140,28 @@ export function ensureConfig(envOverride?: { VITE_SP_RESOURCE?: string; VITE_SP_
 const DEFAULT_LIST_TEMPLATE = 100;
 
 type JsonRecord = Record<string, unknown>;
+
+/**
+ * Validates a SharePoint OData JSON response (`{ value: [...] }`) against a provided Zod schema.
+ * @param json The raw JSON response from `res.json()`.
+ * @param itemSchema The Zod schema describing a single SharePoint item.
+ * @returns A strongly typed array of validated items.
+ * @throws {Error} If the schema validation fails, with logged details.
+ */
+export function parseSpListResponse<T extends z.ZodTypeAny>(
+  json: unknown,
+  itemSchema: T
+): z.infer<T>[] {
+  const schema = z.object({ value: z.array(itemSchema).default([]) });
+  const parsed = schema.safeParse(json);
+
+  if (!parsed.success) {
+    console.error('[spClient] SharePoint API schema mismatch:', parsed.error.format());
+    throw new Error('SharePoint response structure validation failed.');
+  }
+
+  return parsed.data.value;
+}
 
 export type SharePointBatchOperation =
   | {

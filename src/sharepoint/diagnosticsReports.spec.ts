@@ -3,11 +3,11 @@
  * - Notified フラグの制御ロジックを検証
  */
 
-import { describe, it, expect } from 'vitest';
+import { describe, expect, it } from 'vitest';
 import {
-  shouldResetNotified,
-  type DiagnosticsReportInput,
-  type DiagnosticsReportItem,
+    shouldResetNotified,
+    type DiagnosticsReportInput,
+    type DiagnosticsReportItem,
 } from './diagnosticsReports';
 
 describe('shouldResetNotified', () => {
@@ -292,7 +292,7 @@ describe('shouldResetNotified', () => {
       const prev: DiagnosticsReportItem = {
         Id: 1,
         Title: 'health:https://test.sharepoint.com',
-        Overall: 'fail' as unknown as { Value: 'fail' },
+        Overall: { Value: 'fail' },
         TopIssue: 'Config',
         Notified: false,
         Created: '2026-01-25T00:00:00Z',
@@ -328,7 +328,7 @@ describe('shouldResetNotified', () => {
       const prev: DiagnosticsReportItem = {
         Id: 1,
         Title: 'health:https://test.sharepoint.com',
-        Overall: 'pass' as unknown as { Value: 'pass' },
+        Overall: { Value: 'pass' },
         Notified: true,
         Created: '2026-01-25T00:00:00Z',
         Modified: '2026-01-25T00:00:00Z',

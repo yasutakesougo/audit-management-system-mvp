@@ -589,21 +589,21 @@ export const getSharePointDefaultScope = (envOverride?: EnvRecord): string => {
   const raw = readEnv('VITE_SP_SCOPE_DEFAULT', '', envOverride).trim();
   if (!raw) {
     if (shouldSkipLogin(envOverride) || readBool('VITE_SKIP_SHAREPOINT', false, envOverride)) {
-      console.warn('[env] VITE_SP_SCOPE_DEFAULT missing but skip-login/demo mode enabled; using placeholder scope.');
+      if (!isTestMode(envOverride)) console.warn('[env] VITE_SP_SCOPE_DEFAULT missing but skip-login/demo mode enabled; using placeholder scope.');
       return DEMO_SHAREPOINT_SCOPE;
     }
 
     const msalScopes = getConfiguredMsalScopes(envOverride);
     const derived = msalScopes.find((scope) => SHAREPOINT_SCOPE_PATTERN.test(scope));
     if (derived) {
-      console.warn('[env] VITE_SP_SCOPE_DEFAULT missing; reusing SharePoint scope from VITE_MSAL_SCOPES.');
+      if (!isTestMode(envOverride)) console.warn('[env] VITE_SP_SCOPE_DEFAULT missing; reusing SharePoint scope from VITE_MSAL_SCOPES.');
       return derived;
     }
     const resource = getSharePointResource(envOverride);
     if (resource && SHAREPOINT_RESOURCE_PATTERN.test(resource)) {
       const normalized = resource.replace(/\/$/, '');
       const fallbackScope = `${normalized}/AllSites.Read`;
-      console.warn('[env] VITE_SP_SCOPE_DEFAULT missing; deriving SharePoint scope from VITE_SP_RESOURCE.');
+      if (!isTestMode(envOverride)) console.warn('[env] VITE_SP_SCOPE_DEFAULT missing; deriving SharePoint scope from VITE_SP_RESOURCE.');
       return fallbackScope;
     }
 
@@ -612,7 +612,7 @@ export const getSharePointDefaultScope = (envOverride?: EnvRecord): string => {
       readBool('VITE_E2E_MSAL_MOCK', false, envOverride);
 
     if (allowPlaceholder) {
-      console.warn('[env] VITE_SP_SCOPE_DEFAULT missing but skip-login/demo mode enabled; using placeholder scope.');
+      if (!isTestMode(envOverride)) console.warn('[env] VITE_SP_SCOPE_DEFAULT missing but skip-login/demo mode enabled; using placeholder scope.');
       return DEMO_SHAREPOINT_SCOPE;
     }
 

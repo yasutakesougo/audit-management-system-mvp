@@ -249,7 +249,7 @@ describe('useStaffAttendanceAdmin - fetchListByDateRange', () => {
       expect(result.value[249].staffId).toBe('S250');
 
       // Verify all items have proper structure
-      result.value.forEach((item: any) => {
+      result.value.forEach((item: StaffAttendance) => {
         expect(item).toHaveProperty('staffId');
         expect(item).toHaveProperty('recordDate');
         expect(item).toHaveProperty('status');

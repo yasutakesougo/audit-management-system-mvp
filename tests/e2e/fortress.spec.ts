@@ -8,7 +8,7 @@
  */
 
 import { expect, test } from '@playwright/test';
-import { bootUsersPage } from './_helpers/bootUsersPage';
+import { bootUsersPage } from './_helpers/bootUsersPage.mjs';
 
 test.describe('Users Fortress - Validation Error Handling', () => {
   test('gracefully handles malformed Id and UserID from SharePoint', async ({ page }, testInfo) => {
@@ -17,7 +17,7 @@ test.describe('Users Fortress - Validation Error Handling', () => {
       {
         Id: 'INVALID', // Should be number
         UserID: 12345, // Should be string
-      } as any
+      } as unknown as Record<string, unknown>
     ];
 
     await bootUsersPage(page, {
@@ -60,7 +60,7 @@ test.describe('Users Fortress - Validation Error Handling', () => {
       {
         Id: 999,
         UserID: 'MISSING-001',
-        FullName: undefined as any, // 必須
+        FullName: undefined as unknown as string, // 必須
         IsActive: true,
       }
     ];
@@ -74,7 +74,7 @@ test.describe('Users Fortress - Validation Error Handling', () => {
           {
             name: 'Users_Master',
             aliases: ['Users', 'UserDirectory', 'UserMaster'],
-            items: missingFieldsUsers as any[],
+            items: missingFieldsUsers as unknown as Record<string, unknown>[],
           },
           {
             name: 'Org_Master',

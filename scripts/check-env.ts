@@ -19,7 +19,7 @@ if (result.success) {
   const formatted = result.error.format();
   Object.keys(formatted).forEach((key) => {
     if (key !== '_errors') {
-      console.error(`  - ${key}: ${(formatted as any)[key]._errors.join(', ')}`);
+      console.error(`  - ${key}: ${(formatted as Record<string, { _errors: string[] }>)[key]?._errors.join(', ')}`);
     }
   });
   process.exit(1);

@@ -10,7 +10,7 @@
  */
 
 import { expect, test } from '@playwright/test';
-import { bootUsersPage } from './_helpers/bootUsersPage';
+import { bootUsersPage } from './_helpers/bootUsersPage.mjs';
 
 // TODO: Re-enable after optimizing smoke test performance (currently timing out at 20 min)
 test.describe('Users CRUD smoke', () => {

@@ -17,7 +17,7 @@
  */
 
 import { expect, test } from '@playwright/test';
-import { bootUsersPage } from './_helpers/bootUsersPage';
+import { bootUsersPage } from './_helpers/bootUsersPage.mjs';
 
 test.describe('Users CRUD integration (full lifecycle)', () => {
   test.beforeEach(async ({ page }, testInfo) => {
