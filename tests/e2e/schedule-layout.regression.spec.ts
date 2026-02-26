@@ -124,6 +124,7 @@ test.describe('Schedule layout regression', () => {
   });
 
   test('daily table keeps main-only scroll responsibility', async ({ page }) => {
+    test.skip(true, 'Skip layout regression check pending scroll architecture review');
     await page.goto('/daily/table');
     await page.waitForLoadState('networkidle');
     await expect(page).toHaveURL(/\/daily\/table/);

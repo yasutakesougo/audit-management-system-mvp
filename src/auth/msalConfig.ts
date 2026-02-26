@@ -1,5 +1,30 @@
 import { getAppConfig } from '../lib/env';
-import { readMsalEnv } from '@/env/msalEnv';
+
+type UnknownRecord = Record<string, unknown>;
+
+const readString = (source: UnknownRecord, key: string): string | undefined => {
+  const value = source[key];
+  if (typeof value !== 'string') return undefined;
+  const trimmed = value.trim();
+  return trimmed.length > 0 ? trimmed : undefined;
+};
+
+const readMsalEnv = (source: UnknownRecord) => {
+  const clientId = readString(source, 'VITE_MSAL_CLIENT_ID') ?? readString(source, 'VITE_AAD_CLIENT_ID');
+  const tenantId = readString(source, 'VITE_MSAL_TENANT_ID') ?? readString(source, 'VITE_AAD_TENANT_ID');
+
+  if (!clientId || !tenantId) {
+    return null;
+  }
+
+  return {
+    VITE_MSAL_CLIENT_ID: clientId,
+    VITE_MSAL_TENANT_ID: tenantId,
+    VITE_MSAL_REDIRECT_URI:
+      readString(source, 'VITE_MSAL_REDIRECT_URI') ?? readString(source, 'VITE_AZURE_AD_REDIRECT_URI'),
+    VITE_MSAL_AUTHORITY: readString(source, 'VITE_MSAL_AUTHORITY'),
+  };
+};
 
 const appConfig = getAppConfig();
 
@@ -66,6 +91,9 @@ const resolveRedirectUri = (): string => {
   try {
     const parsed = new URL(envRedirectUri);
     if (parsed.origin !== runtimeOrigin) return fallback;
+    if (parsed.pathname === '/callback') {
+      return `${runtimeOrigin}/auth/callback`;
+    }
     return envRedirectUri;
   } catch {
     return fallback;

@@ -1,9 +1,9 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import type { IPublicClientApplication } from '@azure/msal-browser';
-import { InteractionStatus } from './interactionStatus';
-import { useCallback, useEffect, useRef } from 'react';
+import { useCallback, useEffect, useMemo, useRef } from 'react';
 import { getAppConfig, isE2eMsalMockEnabled, shouldSkipLogin } from '../lib/env';
 import { createE2EMsalAccount, persistMsalToken } from '../lib/msal';
+import { InteractionStatus } from './interactionStatus';
 import { GRAPH_RESOURCE, GRAPH_SCOPES, LOGIN_SCOPES, SP_RESOURCE } from './msalConfig';
 import { useMsalContext } from './MsalProvider';
 
@@ -21,6 +21,15 @@ type SignInResult = { success: boolean };
 let signInInFlight: Promise<SignInResult> | null = null;
 let lastSignInAttemptTime = 0;
 const SIGN_IN_COOLDOWN_MS = 30000; // 30 seconds between attempts
+
+const mockAcquireToken = async (resource: string = SP_RESOURCE): Promise<string> => {
+  const scopeBase = resource.replace(/\/+$/, '');
+  const token = `mock-token:${scopeBase}/.default`;
+  persistMsalToken(token);
+  return token;
+};
+
+const skipAcquireToken = () => Promise.resolve(null);
 
 const authConfig = getAppConfig();
 const debugEnabled = authConfig.VITE_AUDIT_DEBUG === '1' || authConfig.VITE_AUDIT_DEBUG === 'true';
@@ -55,106 +64,35 @@ export const useAuth = () => {
   // StrictMode guard: prevent React 18 dev mode double-execution of signIn
   const signInAttemptedRef = useRef(false);
 
-  if (isE2eMsalMockEnabled()) {
-    const account = createE2EMsalAccount();
-    const acquireToken = useCallback(async (resource: string = SP_RESOURCE): Promise<string> => {
-      const scopeBase = resource.replace(/\/+$/, '');
-      const token = `mock-token:${scopeBase}/.default`;
-      persistMsalToken(token);
-      return token;
-    }, []);
+  const isMock = isE2eMsalMockEnabled();
+  const isSkip = shouldSkipLogin();
 
-    const getListReadyState = useCallback((): boolean | null => {
-      if (typeof window === 'undefined') return null;
-      const stored = window.sessionStorage.getItem('__listReady');
-      if (stored === 'true') return true;
-      if (stored === 'false') return false;
-      return null;
-    }, []);
+  const msalContext = useMsalContext();
+  const { instance, accounts, inProgress, authReady } = msalContext;
 
-    const setListReadyState = useCallback((value: boolean | null) => {
-      if (typeof window === 'undefined') return;
-      if (value === null) {
-        window.sessionStorage.removeItem('__listReady');
-      } else {
-        window.sessionStorage.setItem('__listReady', String(value));
-      }
-    }, []);
+  const getListReadyState = useCallback((): boolean | null => {
+    if (typeof window === 'undefined') return null;
+    const stored = window.sessionStorage.getItem('__listReady');
+    if (stored === 'true') return true;
+    if (stored === 'false') return false;
+    return null;
+  }, []);
 
-    return {
-      isAuthenticated: true,
-      account,
-      signIn: () => Promise.resolve({ success: false }),
-      signOut: () => Promise.resolve(),
-      acquireToken,
-      loading: false,
-      shouldSkipLogin: true,
-      getListReadyState,
-      setListReadyState,
-      tokenReady: true,
-    };
-  }
-
-  const { instance, accounts, inProgress, authReady } = useMsalContext();
-  const skipLogin = shouldSkipLogin();
-
-  const signInSessionKey =
-    typeof window === 'undefined' ? null : `__msal_signin_attempted__${window.location.origin}`;
-
-  useEffect(() => {
-    if (!signInSessionKey) return;
-    if (authReady || accounts.length > 0) {
-      window.sessionStorage.removeItem(signInSessionKey);
+  const setListReadyState = useCallback((value: boolean | null) => {
+    const branch = isMock ? 'mock' : isSkip ? 'skip' : 'default';
+    console.log(`[schedules] [useAuth:${branch}] setListReadyState called with:`, value);
+    if (typeof window === 'undefined') return;
+    if (value === null) {
+      window.sessionStorage.removeItem('__listReady');
+    } else {
+      window.sessionStorage.setItem('__listReady', String(value));
     }
-  }, [accounts.length, authReady, signInSessionKey]);
-
-  useEffect(() => {
-    if (skipLogin) {
-      return;
-    }
-    const current = instance.getActiveAccount();
-    if (!current && accounts[0]) {
-      instance.setActiveAccount(accounts[0]);
-    }
-  }, [instance, accounts, skipLogin]);
-
-  if (skipLogin) {
-    const getListReadyState = useCallback((): boolean | null => {
-      if (typeof window === 'undefined') return null;
-      const stored = window.sessionStorage.getItem('__listReady');
-      if (stored === 'true') return true;
-      if (stored === 'false') return false;
-      return null;
-    }, []);
-
-    const setListReadyState = useCallback((value: boolean | null) => {
-      if (typeof window === 'undefined') return;
-      if (value === null) {
-        window.sessionStorage.removeItem('__listReady');
-      } else {
-        window.sessionStorage.setItem('__listReady', String(value));
-      }
-    }, []);
-
-    return {
-      isAuthenticated: true,
-      account: null,
-      signIn: () => Promise.resolve({ success: false }),
-      signOut: () => Promise.resolve(),
-      acquireToken: () => Promise.resolve(null),
-      loading: false,
-      shouldSkipLogin: true,
-      getListReadyState,
-      setListReadyState,
-      tokenReady: true,
-    };
-  }
+  }, [isMock, isSkip]);
 
   const normalizeResource = (resource: string): string => resource.replace(/\/+$/, '');
   const ensureResource = (resource?: string): string => normalizeResource(resource ?? SP_RESOURCE);
-  const loginScopes = [...LOGIN_SCOPES];
 
-  const acquireToken = useCallback(async (resource?: string): Promise<string | null> => {
+  const defaultAcquireToken = useCallback(async (resource?: string): Promise<string | null> => {
     // Get fresh account list from instance to avoid stale closure
     const allAccounts = instance.getAllAccounts() as BasicAccountInfo[];
     const activeAccount = ensureActiveAccount(instance) ?? (allAccounts[0] as BasicAccountInfo | undefined) ?? null;
@@ -238,106 +176,125 @@ export const useAuth = () => {
     }
   }, [instance]);
 
-  const resolvedAccount = instance.getActiveAccount() ?? accounts[0] ?? null;
-  const isAuthenticated = !!resolvedAccount;
+  const acquireToken = isMock ? mockAcquireToken : isSkip ? skipAcquireToken : defaultAcquireToken;
 
-  // Ensure active account is restored on initial load to avoid "logged-in but untreated" states
+  const mockAccount = useMemo(() => createE2EMsalAccount(), []);
+  const resolvedAccount = isMock ? mockAccount : (instance.getActiveAccount() ?? accounts[0] ?? null);
+  const isAuthenticated = isMock || isSkip || !!resolvedAccount;
+  const tokenReady = isAuthenticated && (isMock || isSkip || (inProgress === InteractionStatus.None || inProgress === 'none'));
+
+  const signInSessionKey =
+    typeof window === 'undefined' ? null : `__msal_signin_attempted__${window.location.origin}`;
+
   useEffect(() => {
+    if (!signInSessionKey) return;
+    if (authReady || accounts.length > 0) {
+      window.sessionStorage.removeItem(signInSessionKey);
+    }
+  }, [accounts.length, authReady, signInSessionKey]);
+
+  useEffect(() => {
+    if (isSkip || isMock) {
+      return;
+    }
+    const current = instance.getActiveAccount();
+    if (!current && accounts[0]) {
+      instance.setActiveAccount(accounts[0]);
+    }
+  }, [instance, accounts, isSkip, isMock]);
+
+  // Ensure active account is restored on initial load (non-mock only)
+  useEffect(() => {
+    if (isMock || isSkip) return;
     if (!instance.getActiveAccount() && accounts.length > 0) {
       instance.setActiveAccount(accounts[0]);
     }
-  }, [accounts, instance]);
+  }, [accounts, instance, isMock, isSkip]);
 
-  // Token ready: account exists AND not in pending interaction
-  // This ensures that a real access token can be acquired before allowing features to use SharePoint
-  const tokenReady = isAuthenticated && (inProgress === InteractionStatus.None || inProgress === 'none');
+  const signIn = useCallback(async () => {
+    if (isMock || isSkip) return { success: false };
 
-  // List ready: Shared state for DailyOpsSignals existence check
-  // Initial state = null (checking), true (exists), false (404/error)
-  // Persisted in sessionStorage to avoid re-checking during same session
-  const getListReadyState = useCallback((): boolean | null => {
-    if (typeof window === 'undefined') return null;
-    const stored = window.sessionStorage.getItem('__listReady');
-    if (stored === 'true') return true;
-    if (stored === 'false') return false;
-    return null;
-  }, []);
-
-  const setListReadyState = useCallback((value: boolean | null) => {
-    if (typeof window === 'undefined') return;
-    if (value === null) {
-      window.sessionStorage.removeItem('__listReady');
-    } else {
-      window.sessionStorage.setItem('__listReady', String(value));
+    if (signInSessionKey) {
+      const alreadyAttempted = window.sessionStorage.getItem(signInSessionKey) === 'true';
+      if (alreadyAttempted) {
+        debugLog('login skipped (session guard)');
+        return { success: false };
+      }
+      window.sessionStorage.setItem(signInSessionKey, 'true');
     }
-  }, []);
+    const canInteract = inProgress === InteractionStatus.None || inProgress === 'none';
+    if (!canInteract) {
+      debugLog('login skipped (interaction in progress)');
+      return signInInFlight ?? { success: false };
+    }
 
-  return {
+    if (signInInFlight) {
+      debugLog('login skipped (already in flight)');
+      return signInInFlight;
+    }
+
+    // StrictMode guard
+    if (signInAttemptedRef.current) {
+      debugLog('[StrictMode Guard] signIn already attempted');
+      return { success: false };
+    }
+
+    const now = Date.now();
+    const timeSinceLastAttempt = now - lastSignInAttemptTime;
+    if (timeSinceLastAttempt < SIGN_IN_COOLDOWN_MS) {
+      debugLog(`login skipped (cooldown active)`);
+      return { success: false };
+    }
+    lastSignInAttemptTime = now;
+    signInAttemptedRef.current = true;
+
+    signInInFlight = (async () => {
+      try {
+        await instance.loginRedirect({ scopes: [...LOGIN_SCOPES], prompt: 'select_account' });
+        return { success: true };
+      } catch (error: any) {
+        debugLog('loginRedirect failed', {
+          name: error?.name,
+          code: error?.errorCode,
+        });
+        return { success: false };
+      } finally {
+        signInInFlight = null;
+        signInAttemptedRef.current = false;
+      }
+    })();
+
+    return signInInFlight;
+  }, [instance, inProgress, isMock, isSkip, signInSessionKey]);
+
+  const signOut = useCallback(() => (isMock || isSkip ? Promise.resolve() : instance.logoutRedirect()), [instance, isMock, isSkip]);
+
+  const loading = !isMock && !isSkip && inProgress !== 'none';
+
+  return useMemo(() => ({
     isAuthenticated,
     account: resolvedAccount,
     tokenReady,
     getListReadyState,
     setListReadyState,
-    signIn: async () => {
-      if (signInSessionKey) {
-        const alreadyAttempted = window.sessionStorage.getItem(signInSessionKey) === 'true';
-        if (alreadyAttempted) {
-          debugLog('login skipped (session guard)');
-          return { success: false };
-        }
-        window.sessionStorage.setItem(signInSessionKey, 'true');
-      }
-      const canInteract = inProgress === InteractionStatus.None || inProgress === 'none';
-      if (!canInteract) {
-        debugLog('login skipped (interaction in progress)');
-        return signInInFlight ?? { success: false };
-      }
-
-      if (signInInFlight) {
-        debugLog('login skipped (already in flight)');
-        return signInInFlight;
-      }
-
-      // StrictMode guard (React 18 dev): prevent double-execution on initial render
-      // If already attempted (even if not yet finished), skip to avoid duplicate MSAL popups
-      if (signInAttemptedRef.current) {
-        debugLog('[StrictMode Guard] signIn already attempted; skipping to prevent duplicate MSAL popup');
-        return { success: false };
-      }
-
-      // ③ Cooldown guard: prevent rapid-fire attempts
-      const now = Date.now();
-      const timeSinceLastAttempt = now - lastSignInAttemptTime;
-      if (timeSinceLastAttempt < SIGN_IN_COOLDOWN_MS) {
-        debugLog(`login skipped (cooldown active, ${timeSinceLastAttempt}ms / ${SIGN_IN_COOLDOWN_MS}ms)`);
-        return { success: false };
-      }
-      lastSignInAttemptTime = now;
-      signInAttemptedRef.current = true;
-
-      signInInFlight = (async () => {
-        try {
-          await instance.loginRedirect({ scopes: loginScopes, prompt: 'select_account' });
-          return { success: true };
-        } catch (error: any) {
-          debugLog('loginRedirect failed', {
-            name: error?.name,
-            code: error?.errorCode,
-          });
-          return { success: false };
-        } finally {
-          signInInFlight = null;
-          signInAttemptedRef.current = false;
-        }
-      })();
-
-      return signInInFlight;
-    },
-    signOut: () => instance.logoutRedirect(),
+    signIn,
+    signOut,
     acquireToken,
-    loading: inProgress !== 'none',
-    shouldSkipLogin: false,
-  };
+    loading,
+    shouldSkipLogin: isMock || isSkip,
+  }), [
+    isAuthenticated,
+    resolvedAccount,
+    tokenReady,
+    getListReadyState,
+    setListReadyState,
+    signIn,
+    signOut,
+    acquireToken,
+    loading,
+    isMock,
+    isSkip,
+  ]);
 };
 
 // IDE 補完用に公開フック型を輸出

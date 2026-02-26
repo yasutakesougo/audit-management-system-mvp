@@ -1,4 +1,4 @@
-import type { BehaviorObservation } from '@/features/daily/domain/daily/types';
+import type { BehaviorObservation } from '@/features/daily';
 import { useMemo } from 'react';
 
 export type DailyBehaviorStat = {

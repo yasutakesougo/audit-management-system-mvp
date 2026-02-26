@@ -37,8 +37,8 @@ import {
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 import { useFeatureFlags } from '@/config/featureFlags';
-import { HYDRATION_FEATURES, estimatePayloadSize, startFeatureSpan } from '@/hydration/features';
 import { isE2E } from '@/env';
+import { HYDRATION_FEATURES, estimatePayloadSize, startFeatureSpan } from '@/hydration/features';
 import { getAppConfig } from '@/lib/env';
 import { useLocation } from 'react-router-dom';
 import {
@@ -46,7 +46,8 @@ import {
     ResourceInfo,
     UnifiedResourceEvent
 } from '../features/resources/types';
-import { createIrcSpClient } from '../lib/spClient';
+import { classifySchedulesError, type SchedulesErrorInfo } from '../features/schedules/errors';
+import { createIrcSpClient, useSP } from '../lib/spClient';
 
 /**
  * リソース警告情報
@@ -293,31 +294,7 @@ const getDynamicEventClasses = (arg: { event: { extendedProps: Record<string, un
 /**
  * モックデータ
  */
-const mockResources: ResourceInfo[] = [
-  {
-    id: 'staff-1',
-    title: '田中 花子（正社員・看護師）',
-    type: 'staff',
-    employmentType: 'regular',
-    skills: ['看護師', '認知症ケア'],
-    maxHoursPerDay: 8
-  },
-  {
-    id: 'staff-2',
-    title: '佐藤 太郎（契約・介護福祉士）',
-    type: 'staff',
-    employmentType: 'contract',
-    skills: ['介護福祉士', '移乗介助'],
-    maxHoursPerDay: 8
-  },
-  {
-    id: 'vehicle-1',
-    title: '車両A（4名・車椅子対応）',
-    type: 'vehicle',
-    capacity: 4,
-    isWheelchairAccessible: true
-  }
-];
+// (mockResources removed, now dynamic)
 
 /**
  * 統合リソースカレンダーページ
@@ -348,16 +325,19 @@ export default function IntegratedResourceCalendarPage() {
     });
   }
 
+  const sp = useSP();
   const ircSpClient = useMemo(() => {
-    const client = createIrcSpClient();
+    const client = createIrcSpClient(sp);
     if (import.meta.env.DEV) {
       console.log('[IRC] SpClient created:', { isE2E: isE2E, client });
     }
     return client;
-  }, []);
+  }, [sp]);
 
   const calendarRef = useRef<FullCalendar>(null);
+  const [resources, setResources] = useState<ResourceInfo[]>([]);
   const [events, setEvents] = useState<UnifiedResourceEvent[]>([]);
+  const [lastError, setLastError] = useState<SchedulesErrorInfo | null>(null);
   const [snackbarOpen, setSnackbarOpen] = useState(false);
   const [snackbarMessage, setSnackbarMessage] = useState('');
   const [selectedEvent, setSelectedEvent] = useState<UnifiedResourceEvent | null>(null);
@@ -368,46 +348,54 @@ export default function IntegratedResourceCalendarPage() {
   // Issue 9 & 10 用: リソース毎の総計画時間と8h超過フラグ
   const [resourceWarnings, setResourceWarnings] = useState<Record<string, ResourceWarning>>({});
 
-  // IRC イベントデータ読み込み
+  // IRC データ読み込み (Lanes first, then events)
   useEffect(() => {
-    const loadEvents = async () => {
-      const eventSpan = startFeatureSpan(HYDRATION_FEATURES.integratedResourceCalendar.events, {
+    const loadData = async () => {
+      const dataSpan = startFeatureSpan(HYDRATION_FEATURES.integratedResourceCalendar.events, {
         status: 'pending',
         source: 'ircSpClient',
       });
       try {
+        // Step 1: Fetch resources (Lanes) - "Seed" data
+        // For "Seed Constant Display", we fetch this first.
+        const fetchedResources = await ircSpClient.getResources();
+        setResources(fetchedResources);
+
+        // Step 2: Fetch events
         const unifiedEvents = await ircSpClient.getUnifiedEvents();
-        if (import.meta.env.DEV) {
-          console.log('[IRC] Loaded events count:', unifiedEvents.length);
-          unifiedEvents.forEach((event, index) => {
-            console.log(`[IRC] Event ${index}:`, {
-              id: event.id,
-              title: event.title,
-              resourceId: event.resourceId,
-              editable: event.editable,
-              hasActual: !!event.extendedProps?.actualStart
-            });
-          });
-        }
         setEvents(unifiedEvents);
-        eventSpan({
+
+        setLastError(null); // Clear error on success
+
+        if (import.meta.env.DEV) {
+          console.log('[IRC] Loaded resources:', fetchedResources.length);
+          console.log('[IRC] Loaded events count:', unifiedEvents.length);
+        }
+
+        dataSpan({
           meta: {
             status: 'ok',
+            resourceCount: fetchedResources.length,
             eventCount: unifiedEvents.length,
-            bytes: estimatePayloadSize(unifiedEvents),
           },
         });
       } catch (error) {
-        console.error('[IRC] Failed to load events:', error);
-        eventSpan({
+        console.error('[IRC] Failed to load IRC data:', error);
+
+        const errorInfo = classifySchedulesError(error);
+        setLastError(errorInfo);
+        setSnackbarOpen(true);
+
+        dataSpan({
           meta: { status: 'error' },
           error: error instanceof Error ? error.message : String(error),
         });
-        setFeedbackMessage('イベントデータの読み込みに失敗しました');
+
+        setFeedbackMessage(errorInfo.message || 'データの読み込みに失敗しました');
       }
     };
 
-    loadEvents();
+    loadData();
   }, [ircSpClient]);
 
   /**
@@ -776,8 +764,8 @@ export default function IntegratedResourceCalendarPage() {
    */
   useEffect(() => {
     const timer = setTimeout(() => {
-      const calendarApi = calendarRef.current?.getApi();
-      if (!calendarApi) return;
+      if (!calendarRef.current || typeof calendarRef.current.getApi !== 'function') return;
+      const calendarApi = calendarRef.current.getApi();
 
       const event = calendarApi.getEventById('plan-1');
       if (!event) return;
@@ -951,7 +939,7 @@ export default function IntegratedResourceCalendarPage() {
               center: 'title',
               right: 'resourceTimelineDay,resourceTimelineWeek'
             }}
-            resources={mockResources}
+            resources={resources}
             resourceAreaColumns={resourceAreaColumns}
 
             // --- イベントソース（フィルタリング適用） ---
@@ -1049,13 +1037,26 @@ export default function IntegratedResourceCalendarPage() {
         </DialogActions>
       </Dialog>
 
-      {/* スナックバー */}
+      {/* スナックバー (Unified Pattern) */}
       <Snackbar
-        open={snackbarOpen}
-        autoHideDuration={3000}
-        onClose={() => setSnackbarOpen(false)}
-        message={snackbarMessage}
-      />
+        open={snackbarOpen || !!lastError}
+        autoHideDuration={6000}
+        onClose={() => {
+          setSnackbarOpen(false);
+          setLastError(null);
+        }}
+      >
+        <Alert
+          severity={lastError?.kind === 'NETWORK_ERROR' ? 'error' : 'warning'}
+          onClose={() => {
+            setSnackbarOpen(false);
+            setLastError(null);
+          }}
+          data-testid="irc-error-alert"
+        >
+          {lastError?.message || snackbarMessage}
+        </Alert>
+      </Snackbar>
 
       {/* ダブルブッキング・実績ロック用フィードバック */}
       <Snackbar

@@ -34,8 +34,14 @@ test.describe('Daily records end-to-end', () => {
       const globalWithEnv = window as typeof window & { __ENV__?: Record<string, string> };
       globalWithEnv.__ENV__ = {
         ...(globalWithEnv.__ENV__ ?? {}),
+        VITE_E2E: '1',
         VITE_E2E_MSAL_MOCK: '1',
         VITE_SKIP_LOGIN: '1',
+        VITE_FORCE_SHAREPOINT: '1',
+        VITE_E2E_ENFORCE_AUDIENCE: '1',
+        VITE_TEST_ROLE: 'viewer',
+        VITE_AAD_ADMIN_GROUP_ID: 'e2e-admin-group-id',
+        VITE_AAD_RECEPTION_GROUP_ID: 'e2e-reception-group-id',
         VITE_DEMO_MODE: '0',
     VITE_WRITE_ENABLED: '1',
     MODE: 'production',
@@ -64,7 +70,7 @@ test.describe('Daily records end-to-end', () => {
 
     await setupSharePointStubs(page, {
       currentUser: { status: 200, body: { Id: 12345 } },
-      fallback: { status: 404, body: 'not mocked' },
+      fallback: { status: 200, body: { value: [] } },
       lists: [
         {
           name: 'Users_Master',

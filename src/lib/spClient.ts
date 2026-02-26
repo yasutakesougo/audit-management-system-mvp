@@ -1,11 +1,10 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
-import { useMemo } from 'react';
 import { useAuth } from '@/auth/useAuth';
-import { getRuntimeEnv as getRuntimeEnvRoot } from '@/env';
-import type { UnifiedResourceEvent } from '@/features/resources/types';
+import type { ResourceInfo, UnifiedResourceEvent } from '@/features/resources/types';
 import { auditLog } from '@/lib/debugLogger';
 import { getAppConfig, isE2eMsalMockEnabled, readBool, readEnv, shouldSkipLogin, skipSharePoint, type EnvRecord } from '@/lib/env';
+import { useMemo } from 'react';
 import { AuthRequiredError, SharePointItemNotFoundError, SharePointMissingEtagError } from './errors';
 
 const FALLBACK_SP_RESOURCE = 'https://example.sharepoint.com';
@@ -18,7 +17,8 @@ const shouldBypassSharePointConfig = (envOverride?: EnvRecord): boolean => {
   }
 
   // Force SharePoint even in E2E/mock contexts when explicitly requested (e.g., Playwright stub mode)
-  if (readBool('VITE_FORCE_SHAREPOINT', false, envOverride)) {
+  const isForceSp = readBool('VITE_FORCE_SHAREPOINT', false, envOverride);
+  if (isForceSp) {
     return false;
   }
 
@@ -117,19 +117,19 @@ export function ensureConfig(envOverride?: { VITE_SP_RESOURCE?: string; VITE_SP_
     return { resource: '', siteRel: '', baseUrl: '' };
   }
 
-  const baseConfig = getAppConfig(overrideRecord);
-  const config = envOverride ? { ...baseConfig, ...(envOverride as Record<string, string | undefined>) } : baseConfig;
+  const baseConfig = getAppConfig();
+  const config = envOverride ? { ...baseConfig, ...(envOverride as object) } as any : baseConfig;
 
-  if (config.VITE_E2E === '1') {
+  if (config.VITE_E2E) {
     const resource = FALLBACK_SP_RESOURCE;
     const siteRel = FALLBACK_SP_SITE_RELATIVE;
     return { resource, siteRel, baseUrl: `${resource}${siteRel}/_api/web` };
   }
 
-  const rawResource = sanitizeEnvValue(config.VITE_SP_RESOURCE ?? '');
+  const rawResource = sanitizeEnvValue((config as any).VITE_SP_RESOURCE ?? '');
   const rawSiteRel = sanitizeEnvValue(
-    (config as unknown as { VITE_SP_SITE_RELATIVE?: string; VITE_SP_SITE?: string }).VITE_SP_SITE_RELATIVE ??
-      (config as unknown as { VITE_SP_SITE?: string }).VITE_SP_SITE ??
+    (config as any).VITE_SP_SITE_RELATIVE ??
+      (config as any).VITE_SP_SITE ??
       ''
   );
 
@@ -442,7 +442,7 @@ const raiseHttpError = async (
   ctx?: { url?: string; method?: string }
 ): Promise<never> => {
   const detail = await readErrorPayload(res);
-  const AUDIT_DEBUG = String(readEnv('VITE_AUDIT_DEBUG', '')) === '1';
+  const AUDIT_DEBUG = getAppConfig().VITE_AUDIT_DEBUG;
 
   // 必ず1行はエラーとして残す（詳細なし）
   console.error('[SP ERROR]', {
@@ -539,16 +539,14 @@ export function createSpClient(
   options: SpClientOptions = {}
 ) {
   const config = getAppConfig();
-  const parsePositiveNumber = (raw: string, fallback: number): number => {
-    const numeric = Number(raw);
-    return Number.isFinite(numeric) && numeric > 0 ? numeric : fallback;
-  };
+  const spSiteLegacy = readEnv('VITE_SP_SITE', '', config as unknown as EnvRecord);
+  const e2eMsalMockFlag = readEnv('VITE_E2E_MSAL_MOCK', '0', config as unknown as EnvRecord);
   const retrySettings = {
-    maxAttempts: parsePositiveNumber(config.VITE_SP_RETRY_MAX, 4),
-    baseDelay: parsePositiveNumber(config.VITE_SP_RETRY_BASE_MS, 400),
-    capDelay: parsePositiveNumber(config.VITE_SP_RETRY_MAX_DELAY_MS, 5000),
+    maxAttempts: Number(config.VITE_SP_RETRY_MAX) || 4,
+    baseDelay: Number(config.VITE_SP_RETRY_BASE_MS) || 400,
+    capDelay: Number(config.VITE_SP_RETRY_MAX_DELAY_MS) || 5000,
   } as const;
-  const debugEnabled = config.VITE_AUDIT_DEBUG === '1' || config.VITE_AUDIT_DEBUG === 'true';
+  const debugEnabled = !!config.VITE_AUDIT_DEBUG;
   function dbg(...a: unknown[]) { if (debugEnabled) console.debug('[spClient]', ...a); }
   const tokenMetricsCarrier = globalThis as { __TOKEN_METRICS__?: Record<string, unknown> };
   const { onRetry } = options;
@@ -558,10 +556,15 @@ export function createSpClient(
 
   const normalizePath = (value: string): string => {
     if (!value) return value;
-    if (!baseUrlInfo) return value; // モックモードでは正規化不要
-    if (/^https?:\/\//i.test(value)) {
+    const interpolated = value
+      .replace('{SP_SITE_URL}', config.VITE_SP_SITE_URL || '')
+      .replace('{SP_SITE}', spSiteLegacy || config.VITE_SP_SITE_RELATIVE || '')
+      .replace('{SP_RESOURCE}', config.VITE_SP_RESOURCE || '');
+
+    if (!baseUrlInfo) return interpolated;
+    if (/^https?:\/\//i.test(interpolated)) {
       try {
-        const target = new URL(value);
+        const target = new URL(interpolated);
         if (target.origin === baseUrlInfo.origin) {
           const basePath = baseUrlInfo.pathname.replace(/\/+$|$/u, '');
           const fullPath = `${target.pathname}${target.search}`;
@@ -571,12 +574,12 @@ export function createSpClient(
           }
           return `${target.pathname}${target.search}`;
         }
-        return value;
+        return interpolated;
       } catch {
-        return value;
+        return interpolated;
       }
     }
-    return value.startsWith('/') ? value : `/${value}`;
+    return interpolated.startsWith('/') ? interpolated : `/${interpolated}`;
   };
   const classifyRetry = (status: number): RetryReason | null => {
     if (status === 408) return 'timeout';
@@ -596,16 +599,16 @@ export function createSpClient(
   };
 
   const spFetch = async (path: string, init: RequestInit = {}): Promise<Response> => {
+    // eslint-disable-next-line no-console
+    console.warn('[spFetch] HIT', { path });
     const resolvedPath = normalizePath(path);
 
-    // 🔥 CRITICAL: Always read runtime env to respect env.runtime.json override
-    const runtimeEnv = getRuntimeEnvRoot() as Record<string, string>;
-    // In E2E with Playwright stubs (VITE_E2E_MSAL_MOCK), skip the mock layer to allow interception
-    const isE2EWithMsalMock = isE2eMsalMockEnabled(runtimeEnv);
-    const shouldMock = !isE2EWithMsalMock && (!baseUrl || baseUrl === '' || skipSharePoint(runtimeEnv) || shouldSkipLogin(runtimeEnv));
+    const isE2E = readBool('VITE_E2E', false, config as any);
+    const isE2EWithMsalMock = isE2eMsalMockEnabled(config as any);
+    const shouldMock = !isE2E && !isE2EWithMsalMock && (!baseUrl || baseUrl === '' || skipSharePoint(config as any) || shouldSkipLogin(config as any));
+    const AUDIT_DEBUG = config.VITE_AUDIT_DEBUG;
 
     // 🔍 デバッグログ: モック条件を確認
-    const AUDIT_DEBUG = String(readEnv('VITE_AUDIT_DEBUG', '')) === '1';
     if (AUDIT_DEBUG || isE2EWithMsalMock) {
       console.log('[spFetch]', {
         path: resolvedPath.substring(0, 80),
@@ -613,8 +616,8 @@ export function createSpClient(
         isE2EWithMsalMock,
         shouldMock,
         baseUrl: baseUrl ? `${baseUrl.substring(0, 40)}...` : '(empty)',
-        'VITE_E2E_MSAL_MOCK': runtimeEnv['VITE_E2E_MSAL_MOCK'],
-        'VITE_E2E': runtimeEnv['VITE_E2E'],
+        'VITE_E2E_MSAL_MOCK': e2eMsalMockFlag,
+        'VITE_E2E': config.VITE_E2E,
       });
     }
 
@@ -658,15 +661,26 @@ export function createSpClient(
       return mockResponse({ value: [] });
     }
 
-    const token1 = await acquireToken();
+    let token1: string | null = null;
+    try {
+      token1 = await acquireToken();
+    } catch (e) {
+      if (isE2E) {
+        throw new Error(`[msal] E2E mode network error during acquireToken: ${e instanceof Error ? e.message : String(e)}`);
+      }
+      throw e;
+    }
     if (debugEnabled && tokenMetricsCarrier.__TOKEN_METRICS__) {
       dbg('token metrics snapshot', tokenMetricsCarrier.__TOKEN_METRICS__);
     }
-    
+
     // E2E/skip-login: allow fetch without token so Playwright stubs can intercept
-    const skipAuthCheck = shouldSkipLogin() || isE2eMsalMockEnabled();
-    
+    const skipAuthCheck = shouldSkipLogin(config as any) || isE2eMsalMockEnabled(config as any);
+
     if (!token1 && !skipAuthCheck) {
+      if (isE2E) {
+        throw new Error('[msal] E2E mode network error: acquireSpAccessToken disabled. Simulation requires offline/stub handling.');
+      }
       throw new AuthRequiredError();
     }
 
@@ -713,7 +727,7 @@ export function createSpClient(
     const resolveUrl = (targetPath: string) => (/^https?:\/\//i.test(targetPath) ? targetPath : `${baseUrl}${targetPath}`);
     const doFetch = async (token: string | null) => {
       const url = resolveUrl(resolvedPath);
-      const AUDIT_DEBUG = String(readEnv('VITE_AUDIT_DEBUG', '')) === '1';
+      const AUDIT_DEBUG = !!config.VITE_AUDIT_DEBUG;
 
       // ヘッダー生成: undefined/null を絶対に入れない
       const headers = toHeaders(init.headers);
@@ -1106,7 +1120,12 @@ export function createSpClient(
       };
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
-      if (/\b404\b/.test(message) || /Not Found/i.test(message) || /does not exist/i.test(message)) {
+      const is404 = /\b404\b/.test(message) || /Not Found/i.test(message) || /does not exist/i.test(message);
+
+      // eslint-disable-next-line no-console
+      console.log('[schedules] [spClient] tryGetListMetadata caught error:', { message, is404 });
+
+      if (is404) {
         return null;
       }
       throw error;
@@ -1272,15 +1291,12 @@ export function createSpClient(
 
   // $batch 投稿ヘルパー (429/503/504 リトライ対応)
   const postBatch = async (batchBody: string, boundary: string): Promise<Response> => {
-    // 🔥 CRITICAL: Always read runtime env to respect env.runtime.json override
-    const runtimeEnv = getRuntimeEnvRoot() as Record<string, string>;
-    // In E2E with Playwright stubs (VITE_E2E_MSAL_MOCK), skip the mock layer to allow interception
-    const isE2EWithMsalMock = isE2eMsalMockEnabled(runtimeEnv);
-    const shouldMock = !isE2EWithMsalMock && (!baseUrl || baseUrl === '' || skipSharePoint(runtimeEnv) || shouldSkipLogin(runtimeEnv));
+    const isE2EWithMsalMock = isE2eMsalMockEnabled(config as any);
+    const shouldMock = !isE2EWithMsalMock && (!baseUrl || baseUrl === '' || skipSharePoint(config as any) || shouldSkipLogin(config as any));
 
     // 開発環境・デモモード・スキップモードでのモック応答
     if (shouldMock) {
-      if (import.meta.env.DEV) {
+      if (config.isDev) {
         console.info('[DevMock] ✅ SharePoint Batch API モック');
       }
       // バッチ操作が成功したというモックレスポンスを返す
@@ -1325,7 +1341,7 @@ export function createSpClient(
   while (true) {
       const token = await acquireToken();
       // E2E/skip-login: allow batch without token so Playwright stubs can intercept
-      const skipAuthCheck = shouldSkipLogin() || isE2eMsalMockEnabled();
+      const skipAuthCheck = shouldSkipLogin(config as any) || isE2eMsalMockEnabled(config as any);
       if (!token && !skipAuthCheck) {
         throw new AuthRequiredError();
       }
@@ -1490,8 +1506,7 @@ const clampTop = (value: number | undefined): number => {
 };
 
 export async function getUsersMaster<TRow = Record<string, unknown>>(client: ListClient, top?: number): Promise<TRow[]> {
-  const env = getRuntimeEnvRoot();
-  const listTitle = sanitizeEnvValue(env.VITE_SP_LIST_USERS) || DEFAULT_USERS_LIST_TITLE;
+  const listTitle = sanitizeEnvValue(readEnv('VITE_SP_LIST_USERS', '')) || DEFAULT_USERS_LIST_TITLE;
   const rows = await fetchListItemsWithFallback<TRow>(
     client,
     listTitle,
@@ -1503,9 +1518,8 @@ export async function getUsersMaster<TRow = Record<string, unknown>>(client: Lis
 }
 
 export async function getStaffMaster<TRow = Record<string, unknown>>(client: ListClient, top?: number): Promise<TRow[]> {
-  const env = getRuntimeEnvRoot();
-  const listTitleCandidate = sanitizeEnvValue(env.VITE_SP_LIST_STAFF) || DEFAULT_STAFF_LIST_TITLE;
-  const listGuidCandidate = sanitizeEnvValue(env.VITE_SP_LIST_STAFF_GUID);
+  const listTitleCandidate = sanitizeEnvValue(readEnv('VITE_SP_LIST_STAFF', '')) || DEFAULT_STAFF_LIST_TITLE;
+  const listGuidCandidate = sanitizeEnvValue(readEnv('VITE_SP_LIST_STAFF_GUID', ''));
   const identifier = resolveStaffListIdentifier(listTitleCandidate, listGuidCandidate);
   const listKey = identifier.type === 'guid' ? identifier.value : identifier.value;
   const rows = await fetchListItemsWithFallback<TRow>(
@@ -1527,12 +1541,33 @@ export const useSP = () => {
 
 export type IntegratedResourceCalendarClient = {
   getUnifiedEvents: () => Promise<UnifiedResourceEvent[]>;
+  getResources: () => Promise<ResourceInfo[]>;
 };
 
-export const createIrcSpClient = (): IntegratedResourceCalendarClient => ({
+export const createIrcSpClient = (sp: UseSP): IntegratedResourceCalendarClient => ({
   async getUnifiedEvents() {
     // Placeholder: wire to SharePoint/Graph once schema stabilizes
     return [];
+  },
+  async getResources() {
+    try {
+      const staff = await getStaffMaster<{
+        Id: number;
+        StaffID: string;
+        StaffName: string;
+        Role?: string;
+      }>(sp);
+
+      return staff.map((s) => ({
+        id: s.StaffID || String(s.Id),
+        title: s.StaffName || 'Unknown Staff',
+        type: 'staff',
+        employmentType: s.Role?.includes('正社員') ? 'regular' : 'contract',
+      }));
+    } catch (error) {
+      console.error('[IRC] Failed to fetch resources:', error);
+      throw error;
+    }
   },
 });
 

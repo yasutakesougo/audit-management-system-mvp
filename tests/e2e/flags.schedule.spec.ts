@@ -34,7 +34,7 @@ test.describe('schedule feature flag', () => {
 
     const maybeWeek = page.getByTestId(TESTIDS.SCHEDULES_PAGE_ROOT).or(page.getByTestId(TESTIDS['schedules-week-page']));
     if ((await maybeWeek.count()) > 0) {
-      await waitForScheduleReady(page);
+      await waitForScheduleReady(page, { tab: 'week' });
     }
 
     await expect(page.getByTestId(TESTIDS.nav.schedules)).toHaveCount(0);
@@ -65,7 +65,7 @@ test.describe('schedule feature flag', () => {
 
     const maybeWeek = page.getByTestId(TESTIDS.SCHEDULES_PAGE_ROOT).or(page.getByTestId(TESTIDS['schedules-week-page']));
     if ((await maybeWeek.count()) > 0) {
-      await waitForScheduleReady(page);
+      await waitForScheduleReady(page, { tab: 'week' });
     }
 
     const nav = page.getByTestId(TESTIDS.nav.schedules);
@@ -79,7 +79,7 @@ test.describe('schedule feature flag', () => {
     }
 
     await expect.poll(async () => page.url()).toMatch(/\/schedules\/week$/);
-    await waitForScheduleReady(page);
-    await expect(page.getByRole('heading', { name: /スケジュール/ })).toBeVisible();
+    await waitForScheduleReady(page, { tab: 'week' });
+    await expect(page.getByRole('heading', { name: /スケジュール|予定表/ })).toBeVisible();
   });
 });

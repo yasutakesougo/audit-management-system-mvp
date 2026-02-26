@@ -33,13 +33,25 @@ test.describe('daily -> PDCA integration', () => {
     }, [TABLE_DAILY_DRAFT_STORAGE_KEY, PDCA_DAILY_METRICS_STORAGE_KEY]);
 
     await page.reload();
+    await expect(page.getByTestId('daily-table-record-form')).toBeVisible();
+
+    const reporterNameInput = page.getByRole('textbox', { name: '記録者名' });
+    if ((await reporterNameInput.inputValue()).trim().length === 0) {
+      await reporterNameInput.fill('PDCA連携E2E');
+    }
+
+    const saveButton = page.getByRole('button', { name: /^\d+人分保存$/ });
+    if (await saveButton.isDisabled()) {
+      await page.getByRole('button', { name: '表示中の利用者を全選択' }).click();
+    }
+    await expect(saveButton).toBeEnabled();
 
     page.once('dialog', async (dialog) => {
       await dialog.accept();
     });
 
-    await page.getByRole('button', { name: /人分保存/ }).click();
-    await expect(page).toHaveURL(/\/dashboard/);
+    await saveButton.click({ force: true });
+    await expect.poll(() => new URL(page.url()).pathname).toMatch(/^(\/dashboard|\/daily\/support|\/dailysupport)$/);
 
     const storedMetrics = await page.evaluate((metricsStorageKey) => {
       const raw = localStorage.getItem(metricsStorageKey);

@@ -431,7 +431,7 @@ const run = async (): Promise<void> => {
   try {
     // 🔧 runtime env を最優先で適用してからモジュールを読み込み
     // (envPromise は既に await ensureRuntimeEnv() で完了済み)
-    
+
     // ✅ NOW that runtime env is loaded, check for production misconfigurations
     guardProdMisconfig();
 

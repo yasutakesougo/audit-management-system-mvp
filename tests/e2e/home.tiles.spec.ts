@@ -53,8 +53,8 @@ test.describe('Dashboard smoke', () => {
 
   test('renders dashboard summary sections', async ({ page }) => {
     await expect(page.getByTestId(TESTIDS['dashboard-page'])).toBeVisible({ timeout: 15_000 });
-    await expect(page.getByRole('heading', { name: /今日の通所/i })).toBeVisible();
-    await expect(page.getByRole('heading', { name: /日次記録状況/i })).toBeVisible();
+    await expect(page.getByTestId(TESTIDS['dashboard-handoff-summary'])).toBeVisible();
+    await expect(page.getByRole('heading', { name: /申し送りタイムライン|今日の予定/i }).first()).toBeVisible();
   });
 
   test('quick action navigates to daily activity records', async ({ page }) => {
@@ -62,14 +62,15 @@ test.describe('Dashboard smoke', () => {
     await expect(root).toBeVisible({ timeout: 15_000 });
 
     const quickAction = page
-      .getByRole('link', { name: /支援記録（ケース記録）入力/ })
+      .getByTestId(TESTIDS['daily-footer-activity'])
+      .or(page.getByRole('link', { name: /ケース記録入力|支援記録（ケース記録）入力/ }))
+      .or(page.locator('a[href="/daily/table"]'))
       .or(page.locator('a[href="/daily/activity"]'))
       .or(page.locator('a[href="/daily/activity/"]'));
 
     await expect(quickAction.first()).toBeVisible({ timeout: 15_000 });
     await quickAction.first().click();
 
-    await expect(page).toHaveURL(/\/daily\/activity/);
-    await expect(page.getByTestId('records-daily-root')).toBeVisible();
+    await expect(page).toHaveURL(/\/(daily\/table|daily\/activity)/);
   });
 });

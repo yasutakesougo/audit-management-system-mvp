@@ -323,7 +323,7 @@ export function useIcebergStore(repository?: IcebergRepository) {
     [],
   );
   const load = useCallback((sessionId: string) => loadSession(sessionId), []);
-  
+
   // Persistence callbacks (require repository)
   const savePersistent = useCallback(
     (opts: { userId: string; sessionId: string; title?: string }) => {

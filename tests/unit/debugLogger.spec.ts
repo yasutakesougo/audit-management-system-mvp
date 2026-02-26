@@ -39,9 +39,13 @@ describe('auditLog', () => {
 
   it('suppresses debug logs when debug mode disabled but forwards others', async () => {
     const consoleSpies = mockConsole();
-    vi.doMock('@/lib/env', () => ({
-      getAppConfig: () => ({ VITE_AUDIT_DEBUG: '0' }),
-    }));
+    vi.doMock('@/lib/env', () => {
+      const config = { VITE_AUDIT_DEBUG: false };
+      return {
+        getAppConfig: () => config,
+        env: config,
+      };
+    });
 
     const { auditLog } = await import('@/lib/debugLogger');
 
@@ -60,9 +64,13 @@ describe('auditLog', () => {
 
   it('emits debug logs when audit debug flag enabled', async () => {
     const consoleSpies = mockConsole();
-    vi.doMock('@/lib/env', () => ({
-      getAppConfig: () => ({ VITE_AUDIT_DEBUG: 'true' }),
-    }));
+    vi.doMock('@/lib/env', () => {
+      const config = { VITE_AUDIT_DEBUG: true };
+      return {
+        getAppConfig: () => config,
+        env: config,
+      };
+    });
 
     const { auditLog } = await import('@/lib/debugLogger');
 

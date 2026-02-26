@@ -358,7 +358,7 @@ export default {
       return env.ASSETS.fetch(request);
     }
 
-    if (url.pathname === '/auth/callback') {
+    if (url.pathname === '/auth/callback' || url.pathname === '/callback') {
       return serveIndex();
     }
 

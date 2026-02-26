@@ -1,6 +1,6 @@
 import { getRuntimeEnv, isDev as runtimeIsDev } from '@/env';
 import { z } from 'zod';
-import { AppEnvSchema } from './env.schema';
+import { envSchema as AppEnvSchema } from './env.schema';
 
 type Primitive = string | number | boolean | undefined | null;
 export type EnvRecord = Record<string, Primitive>;
@@ -9,15 +9,16 @@ export type AppEnv = z.infer<typeof AppEnvSchema>;
 
 const _envParsed = AppEnvSchema.safeParse(import.meta.env);
 if (!_envParsed.success) {
+  // We log a warning but don't crash, as readEnv helpers provide robust runtime fallbacks
   console.warn('[env] Environment validation failed (non-fatal):', _envParsed.error.flatten().fieldErrors);
 }
+
 /**
- * Typed snapshot of build-time env variables validated by appEnvSchema.
- * Falls back to empty object in CI when env vars are absent, so consumers
- * should prefer the individual helper functions (readEnv, readBool, etc.)
- * for robust runtime resolution including window.__ENV__ overrides.
+ * Typed snapshot of build-time env variables validated by AppEnvSchema.
+ * Falls back to best-effort object if validation fails, utilizing individual helper functions
+ * (readEnv, readBool, etc.) for robust runtime resolution including window.__ENV__ overrides.
  */
-export const env: AppEnv = _envParsed.success ? _envParsed.data : ({} as AppEnv);
+export const env: AppEnv = _envParsed.success ? _envParsed.data : (import.meta.env as unknown as AppEnv);
 
 export type AppConfig = {
   VITE_SP_RESOURCE: string;
@@ -69,7 +70,6 @@ const normalizeString = (value: Primitive): string => {
 /**
  * Read Vite build-time environment variables directly from import.meta.env.
  * Used for feature flags that must be determined at build time (e.g., GraphQL enablement).
- * This bypasses runtime env handling and reads the value Vite baked into the code.
  */
 export const readViteBool = (key: string, fallback = false): boolean => {
   const raw = (import.meta.env as Record<string, unknown>)[key];
@@ -94,26 +94,22 @@ const coerceBoolean = (value: Primitive, fallback = false): boolean => {
   return fallback;
 };
 
-
 const getEnvValue = (key: string, envOverride?: EnvRecord): Primitive => {
-  // Helper: treat undefined and empty-string-like values as "missing"
   const isMeaningful = (v: unknown): boolean => {
     if (v === undefined || v === null) return false;
     if (typeof v === 'string') return v.trim().length > 0;
-    return true; // numbers/booleans considered meaningful
+    return true;
   };
 
   if (envOverride && key in envOverride && isMeaningful(envOverride[key])) {
     return envOverride[key];
   }
 
-  // ✅ Runtime env (window.__ENV__) should win over build-time
   const runtime = getRuntimeEnv() as EnvRecord;
   if (key in runtime && isMeaningful(runtime[key])) {
     return runtime[key];
   }
 
-  // Build-time env injected by Vite
   if (typeof window !== 'undefined' && typeof import.meta !== 'undefined' && import.meta.env) {
     const candidate = (import.meta.env as Record<string, Primitive>)[key];
     if (isMeaningful(candidate)) {
@@ -121,12 +117,9 @@ const getEnvValue = (key: string, envOverride?: EnvRecord): Primitive => {
     }
   }
 
-  // Node.js environment: use process.env or globalThis.import for SSR
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const globalImport = (globalThis as any).import;
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   if (typeof globalImport !== 'undefined' && (globalImport as any).meta?.env && typeof (globalImport as any).meta.env === 'object') {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const metaEnv = (globalImport as any).meta.env as Record<string, Primitive>;
     const candidate = metaEnv[key];
     if (isMeaningful(candidate)) {
@@ -145,7 +138,6 @@ const getEnvValue = (key: string, envOverride?: EnvRecord): Primitive => {
 };
 
 const resolveIsDev = (envOverride?: EnvRecord): boolean => {
-  // Vite dev server は import.meta.env.DEV が true になるので、これを最優先
   if (import.meta.env.DEV) {
     return true;
   }
@@ -153,11 +145,7 @@ const resolveIsDev = (envOverride?: EnvRecord): boolean => {
   const modeValue = getEnvValue('MODE', envOverride);
   if (typeof modeValue === 'string' && modeValue.trim()) {
     const normalized = modeValue.trim().toLowerCase();
-    if (normalized === 'development' || normalized === 'dev') {
-      return true;
-    }
-    // treat test as dev-like so demo paths stay enabled under Vitest and Playwright
-    if (normalized === 'test') {
+    if (normalized === 'development' || normalized === 'dev' || normalized === 'test') {
       return true;
     }
   }
@@ -175,20 +163,14 @@ const resolveIsDev = (envOverride?: EnvRecord): boolean => {
   const nodeEnv = getEnvValue('NODE_ENV', envOverride);
   if (typeof nodeEnv === 'string' && nodeEnv.trim()) {
     const normalized = nodeEnv.trim().toLowerCase();
-    if (normalized === 'development' || normalized === 'dev') {
-      return true;
-    }
-    if (normalized === 'test') {
+    if (normalized === 'development' || normalized === 'dev' || normalized === 'test') {
       return true;
     }
   }
 
   if (typeof process !== 'undefined' && process.env && 'NODE_ENV' in process.env) {
     const normalized = String(process.env.NODE_ENV).toLowerCase();
-    if (normalized === 'development' || normalized === 'dev') {
-      return true;
-    }
-    if (normalized === 'test') {
+    if (normalized === 'development' || normalized === 'dev' || normalized === 'test') {
       return true;
     }
   }
@@ -244,6 +226,10 @@ export const __resetAppConfigForTests = (): void => {
   appConfigCache = null;
 };
 
+export const clearEnvCache = (): void => {
+  __resetAppConfigForTests();
+};
+
 export const readOptionalEnv = (key: string, envOverride?: EnvRecord): string | undefined => {
   const raw = getEnvValue(key, envOverride);
   const normalized = normalizeString(raw);
@@ -265,8 +251,7 @@ export const isDemoModeEnabled = (envOverride?: EnvRecord): boolean => {
 const resolveIsTest = (envOverride?: EnvRecord): boolean => {
   const modeValue = getEnvValue('MODE', envOverride);
   if (typeof modeValue === 'string' && modeValue.trim()) {
-    const normalized = modeValue.trim().toLowerCase();
-    if (normalized === 'test') {
+    if (modeValue.trim().toLowerCase() === 'test') {
       return true;
     }
   }
@@ -330,7 +315,7 @@ export const isSchedulesFeatureEnabled = (envOverride?: EnvRecord): boolean => {
         if (FALSY.has(normalized)) return false;
       }
     } catch {
-      // ignore storage access issues (private mode, etc.)
+      // ignore storage access issues
     }
   }
   return false;
@@ -426,7 +411,7 @@ export const shouldSkipLogin = (envOverride?: EnvRecord): boolean => {
         if (FALSY.has(normalized)) return false;
       }
     } catch {
-      // ignore storage failures (e.g., private mode)
+      // ignore storage failures
     }
   }
 
@@ -488,7 +473,6 @@ export const getSharePointResource = (envOverride?: EnvRecord): string => {
   if (resource) {
     return resource.replace(/\/+$/, '');
   }
-  // If envOverride explicitly provided (even with empty VITE_SP_RESOURCE), don't fallback to runtime
   if (envOverride && 'VITE_SP_RESOURCE' in envOverride) {
     return '';
   }
@@ -634,32 +618,31 @@ export const getSharePointDefaultScope = (envOverride?: EnvRecord): string => {
   return raw;
 };
 
-/**
- * ✅ SINGLE SOURCE OF TRUTH: When to SKIP SharePoint
- *
- * This is the canonical check for all stores (useOrgStore, useStaffStore, etc.)
- * to determine whether SharePoint API should be touched.
- *
- * SharePoint is skipped if ANY of these are true:
- * 1. VITE_DEMO_MODE === '1' (true demo mode)
- * 2. VITE_SP_SITE_URL is not configured (empty/invalid baseUrl)
- * 3. VITE_SKIP_LOGIN is enabled (automation/testing mode)
- *
- * This prevents accidental SharePoint calls in demo/test scenarios.
- */
 export const SP_SITE_URL = String(import.meta.env.VITE_SP_SITE_URL || '').trim();
-export const SP_BASE_URL = SP_SITE_URL; // Alias for clarity
+export const SP_BASE_URL = SP_SITE_URL;
 
 export const IS_DEMO = import.meta.env.VITE_DEMO_MODE === '1';
 export const IS_SKIP_LOGIN = readBool('VITE_SKIP_LOGIN', false);
 
-/**
- * ✅ Master guard: Should we skip all SharePoint operations?
- * This is what stores actually check — more accurate than IS_DEMO alone.
- */
 export const IS_EMERGENCY_SKIP = readBool('VITE_IS_SKIP_SHAREPOINT', false);
 export const IS_SKIP_SHAREPOINT = IS_DEMO || !SP_BASE_URL || IS_SKIP_LOGIN || IS_EMERGENCY_SKIP;
 
-// Legacy aliases (keep for backward compat, but prefer IS_SKIP_SHAREPOINT)
 export const SP_ENABLED = !IS_SKIP_SHAREPOINT;
 export const SP_DISABLED = IS_SKIP_SHAREPOINT;
+
+/** @deprecated Use isE2E() */
+export const IS_E2E = isE2E();
+/** @deprecated Use isE2eMsalMockEnabled() */
+export const IS_MSAL_MOCK = isE2eMsalMockEnabled();
+/** @deprecated Use shouldSkipLogin() */
+export const SHOULD_SKIP_LOGIN = shouldSkipLogin();
+/** @deprecated Use shouldSkipSharePoint() */
+export const SHOULD_SKIP_SHAREPOINT = shouldSkipSharePoint();
+/** @deprecated Use isSchedulesFeatureEnabled() */
+export const IS_SCHEDULES_ENABLED = isSchedulesFeatureEnabled();
+
+/** @deprecated Prefer readEnv/getAppConfig helpers */
+export const env = {
+  VITE_AUDIT_DEBUG: isAuditDebugEnabled(),
+  VITE_TOKUSEI_FORMS_URL: readEnv('VITE_TOKUSEI_FORMS_URL', ''),
+} as const;

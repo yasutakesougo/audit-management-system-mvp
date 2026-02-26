@@ -2,7 +2,7 @@
 // Ensures "today" label respects the configured timezone, not UTC
 
 export const getSchedulesTz = (): string =>
-  window.__ENV__?.VITE_SCHEDULES_TZ ?? 'Asia/Tokyo';
+  (window.__ENV__?.VITE_SCHEDULES_TZ as string) ?? 'Asia/Tokyo';
 
 /** Date -> "YYYY-MM-DD" in schedules timezone */
 export const toDateKey = (date: Date): string => {

@@ -3,6 +3,7 @@ import { normalizeAttendanceDays } from './attendance';
 
 /**
  * SharePoint Users_Master item schema (Raw data from API)
+ * Integrated with latest main branch fields (OrgCode, Role, Email, etc.)
  */
 export const SpUserMasterItemSchema = z.object({
   Id: z.number(),
@@ -14,7 +15,7 @@ export const SpUserMasterItemSchema = z.object({
   ContractDate: z.string().nullish(),
   ServiceStartDate: z.string().nullish(),
   ServiceEndDate: z.string().nullish(),
-  // Extended fields
+  // Extended fields from Audit System
   UsageStatus: z.string().nullish(),
   GrantMunicipality: z.string().nullish(),
   GrantPeriodStart: z.string().nullish(),
@@ -40,6 +41,13 @@ export const SpUserMasterItemSchema = z.object({
   // Metadata
   Created: z.string().nullish(),
   Modified: z.string().nullish(),
+
+  // --- Integration from Main Branch ---
+  OrgCode: z.string().nullish(),
+  OrgName: z.string().nullish(),
+  Role: z.string().nullish(),
+  Email: z.string().nullish(),
+  IsDisabled: z.boolean().nullish().default(false),
 });
 
 /**
@@ -77,7 +85,23 @@ export const UserMasterDomainSchema = SpUserMasterItemSchema.transform((sp) => (
   CopayPaymentMethod: sp.CopayPaymentMethod ?? null,
   Created: sp.Created ?? null,
   Modified: sp.Modified ?? null,
+
+  // --- Integration from Main Branch ---
+  OrgCode: sp.OrgCode ?? null,
+  OrgName: sp.OrgName ?? null,
+  Role: sp.Role ?? null,
+  Email: sp.Email ?? null,
+  IsDisabled: !!sp.IsDisabled,
 }));
 
 export type SpUserMasterRaw = z.infer<typeof SpUserMasterItemSchema>;
 export type UserMasterDomain = z.infer<typeof UserMasterDomainSchema>;
+
+/**
+ * Compatibility Aliases for latest main branch naming
+ */
+export const userMasterSchema = SpUserMasterItemSchema;
+export const userMasterCreateSchema = SpUserMasterItemSchema.omit({ Id: true, Created: true, Modified: true });
+
+export type UserMasterSchema = SpUserMasterRaw;
+export type UserMasterCreateSchema = z.infer<typeof userMasterCreateSchema>;

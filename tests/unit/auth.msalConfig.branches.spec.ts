@@ -58,4 +58,24 @@ describe('msalConfig fallbacks', () => {
     expect(module.msalConfig.auth.authority).toBe('https://login.microsoftonline.com/dummy-tenant');
     expect(module.msalConfig.auth.redirectUri).toBe('http://localhost:5173/auth/callback');
   });
+
+  it('normalizes legacy /callback env redirect to /auth/callback', async () => {
+    const origin = 'http://localhost:5173';
+    vi.stubGlobal('window', { location: { origin } });
+
+    vi.doMock('@/lib/env', () => ({
+      getAppConfig: () => ({
+        VITE_SP_RESOURCE: 'sp-resource',
+        VITE_MSAL_CLIENT_ID: 'client-id',
+        VITE_MSAL_TENANT_ID: 'tenant-id',
+        VITE_MSAL_REDIRECT_URI: 'http://localhost:5173/callback',
+      }),
+    }));
+    vi.doMock('@/env/msalEnv', () => ({
+      readMsalEnv: () => null,
+    }));
+
+    const module = await import('@/auth/msalConfig');
+    expect(module.msalConfig.auth.redirectUri).toBe('http://localhost:5173/auth/callback');
+  });
 });

@@ -1,6 +1,6 @@
-import { describe, it, expect } from 'vitest';
-import { classifySchedulesError, shouldFallbackToReadOnly } from './errors';
 import { WriteDisabledError } from '@/infra/sharepoint/repos/schedulesRepo';
+import { describe, expect, it } from 'vitest';
+import { classifySchedulesError, shouldFallbackToReadOnly } from './errors';
 
 describe('classifySchedulesError', () => {
   it('classifies WriteDisabledError as WRITE_DISABLED', () => {
@@ -71,6 +71,23 @@ describe('classifySchedulesError', () => {
     expect(info.kind).toBe('UNKNOWN');
     expect(info.title).toContain('エラー');
     expect(info.message).toBe('Something went wrong');
+  });
+
+  it('classifies offline state as NETWORK_ERROR', () => {
+    vi.stubGlobal('navigator', { onLine: false });
+    const info = classifySchedulesError(new Error('Any error'));
+
+    expect(info.kind).toBe('NETWORK_ERROR');
+    expect(info.title).toContain('オフライン');
+    vi.unstubAllGlobals();
+  });
+
+  it('classifies "failed to fetch" as NETWORK_ERROR', () => {
+    const error = new Error('Failed to fetch');
+    const info = classifySchedulesError(error);
+
+    expect(info.kind).toBe('NETWORK_ERROR');
+    expect(info.title).toContain('ネットワークエラー');
   });
 });
 
