@@ -11,7 +11,7 @@ on:
       skip_build:
         description: 'Skip build and typecheck (for testing only)'
         required: false
-        default: 'false'
+        default: false
         type: boolean
 
 concurrency:
@@ -86,8 +86,8 @@ jobs:
     timeout-minutes: 15
     needs: [lint, typecheck]
     if: |
-      always() && 
-      (needs.lint.result == 'success' || needs.lint.result == 'skipped') && 
+      always() &&
+      (needs.lint.result == 'success' || needs.lint.result == 'skipped') &&
       (needs.typecheck.result == 'success' || needs.typecheck.result == 'skipped')
     steps:
       - uses: actions/checkout@v4
@@ -108,12 +108,31 @@ jobs:
           retention-days: 7
           if-no-files-found: ignore
 
+  nav-integrity:
+    name: Navigation & Router Integrity
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    needs: [lint, typecheck]
+    if: |
+      always() &&
+      (needs.lint.result == 'success' || needs.lint.result == 'skipped') &&
+      (needs.typecheck.result == 'success' || needs.typecheck.result == 'skipped')
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - run: npm ci
+      - name: Enforce Navigation Consistency
+        run: npx vitest run tests/unit/app/navigation/nav-router-consistency.spec.ts tests/unit/pages/NavigationDiagnosticsPage.spec.tsx --reporter=verbose
+
   e2e-smoke:
     name: E2E Smoke (Chromium)
     runs-on: ubuntu-latest
     timeout-minutes: 20
-    needs: [vitest]
-    if: always() && needs.vitest.result == 'success'
+    needs: [vitest, nav-integrity]
+    if: always() && needs.vitest.result == 'success' && needs.nav-integrity.result == 'success'
     permissions:
       contents: read
       checks: write
@@ -126,7 +145,7 @@ jobs:
       VITE_SCHEDULES_TZ: Asia/Tokyo
     steps:
       - uses: actions/checkout@v4
-      
+
       - name: Print E2E env
         run: |
           echo "E2E_SAVE_MODE=$E2E_SAVE_MODE"
@@ -147,10 +166,10 @@ jobs:
 
       - name: Wait for preview server
         run: npx wait-on http://127.0.0.1:5173 --timeout 60000
-      
+
       - name: Verify server is responding
         run: curl -I http://127.0.0.1:5173 | head -5
-      
+
       - name: E2E router + nav smoke (chromium + smoke)
         id: smoke_core
         env:
@@ -176,7 +195,7 @@ jobs:
           echo "=== Run Core Smoke ==="
           npm run e2e:smoke:router-nav
         continue-on-error: true
-      
+
       - name: E2E all smoke tests
         id: smoke_all
         env:
@@ -199,7 +218,7 @@ jobs:
             --reporter=list,junit,html \
             --retries=1
         continue-on-error: true
-      
+
       - name: Generate smoke test summary
         if: always()
         run: |
@@ -208,7 +227,7 @@ jobs:
           echo "**Core Smoke Tests:** ${{ steps.smoke_core.outcome }}" >> $GITHUB_STEP_SUMMARY
           echo "**All Smoke Tests:** ${{ steps.smoke_all.outcome }}" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
-          
+
           # Parse JUnit reports if available
           if [ -f "test-results/junit-e2e-smoke-all.xml" ]; then
             tests=$(grep -o 'tests="[0-9]*"' test-results/junit-e2e-smoke-all.xml | head -1 | grep -o '[0-9]*' || echo "0")
@@ -216,7 +235,7 @@ jobs:
             echo "**Total Smoke Tests:** ${tests}" >> $GITHUB_STEP_SUMMARY
             echo "**Failures:** ${failures}" >> $GITHUB_STEP_SUMMARY
           fi
-      
+
       - name: Upload Playwright artifacts (always)
         if: always()
         uses: actions/upload-artifact@v4
@@ -227,7 +246,7 @@ jobs:
             test-results/**
           retention-days: 7
           if-no-files-found: warn
-      
+
       - name: Upload JUnit report
         if: always()
         uses: actions/upload-artifact@v4
@@ -236,7 +255,7 @@ jobs:
           path: test-results/junit-e2e-smoke-*.xml
           retention-days: 7
           if-no-files-found: warn
-      
+
       - name: Upload failure artifacts
         if: failure() || steps.smoke_core.outcome == 'failure' || steps.smoke_all.outcome == 'failure'
         uses: actions/upload-artifact@v4
@@ -248,13 +267,13 @@ jobs:
             logs/
           retention-days: 14
           if-no-files-found: warn
-      
+
       - name: Detect flaky smoke tests
         if: always()
         run: |
           echo "## Flaky Test Detection (Smoke)" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
-          
+
           if [ -d "test-results" ]; then
             retried=$(find test-results -name "*-retry*" -type d | wc -l)
             if [ "$retried" -gt 0 ]; then
@@ -266,12 +285,12 @@ jobs:
               echo "✅ No retries - all smoke tests stable" >> $GITHUB_STEP_SUMMARY
             fi
           fi
-      
+
       - name: Analyze flaky tests (detailed)
         if: always()
         run: node scripts/analyze-flaky-tests.mjs
         continue-on-error: true
-      
+
       - name: Upload flaky test report
         if: always()
         uses: actions/upload-artifact@v4
@@ -280,7 +299,7 @@ jobs:
           path: reports/flaky-tests.md
           retention-days: 30
           if-no-files-found: ignore
-      
+
       - name: Fail job if smoke tests failed
         if: steps.smoke_core.outcome == 'failure' || steps.smoke_all.outcome == 'failure'
         run: exit 1

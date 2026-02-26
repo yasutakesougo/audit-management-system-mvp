@@ -1,50 +1,61 @@
 import LiveAnnouncer from '@/a11y/LiveAnnouncer';
+import AddCircleOutlineIcon from '@mui/icons-material/AddCircleOutline';
 import Brightness4Icon from '@mui/icons-material/Brightness4';
 import Brightness7Icon from '@mui/icons-material/Brightness7';
 import CloseIcon from '@mui/icons-material/Close';
 import EditNoteIcon from '@mui/icons-material/EditNote';
-import AddCircleOutlineIcon from '@mui/icons-material/AddCircleOutline';
 import HistoryIcon from '@mui/icons-material/History';
 import SearchIcon from '@mui/icons-material/Search';
 import AppBar from '@mui/material/AppBar';
 import Box from '@mui/material/Box';
 import Button from '@mui/material/Button';
+import Container from '@mui/material/Container';
+import Dialog from '@mui/material/Dialog';
+import DialogContent from '@mui/material/DialogContent';
+import DialogTitle from '@mui/material/DialogTitle';
 import Divider from '@mui/material/Divider';
 import Drawer from '@mui/material/Drawer';
+import IconButton from '@mui/material/IconButton';
+import InputAdornment from '@mui/material/InputAdornment';
 import List from '@mui/material/List';
 import ListItem from '@mui/material/ListItem';
 import ListItemButton from '@mui/material/ListItemButton';
 import ListItemIcon from '@mui/material/ListItemIcon';
 import ListItemText from '@mui/material/ListItemText';
 import ListSubheader from '@mui/material/ListSubheader';
-import Container from '@mui/material/Container';
-import Dialog from '@mui/material/Dialog';
-import DialogContent from '@mui/material/DialogContent';
-import DialogTitle from '@mui/material/DialogTitle';
-import IconButton from '@mui/material/IconButton';
-import InputAdornment from '@mui/material/InputAdornment';
 import Paper from '@mui/material/Paper';
 import Stack from '@mui/material/Stack';
+import { useTheme } from '@mui/material/styles';
 import TextField from '@mui/material/TextField';
 import Toolbar from '@mui/material/Toolbar';
 import Tooltip from '@mui/material/Tooltip';
 import Typography from '@mui/material/Typography';
 import useMediaQuery from '@mui/material/useMediaQuery';
-import { useTheme } from '@mui/material/styles';
 import React, { useCallback, useContext, useEffect, useMemo, useState } from 'react';
 // Navigation Icons
+import {
+    createNavItems,
+    filterNavItems,
+    groupLabel,
+    groupNavItems,
+    NAV_AUDIENCE,
+    type NavAudience,
+    type NavItem,
+} from '@/app/config/navigationConfig';
+import { ActivityBar } from '@/app/layout/ActivityBar';
+import { AppShell as AppShellLayout } from '@/app/layout/AppShell';
 import { useMsalContext } from '@/auth/MsalProvider';
 import { canAccess } from '@/auth/roles';
 import { useUserAuthz } from '@/auth/useUserAuthz';
-import NavLinkPrefetch from '@/components/NavLinkPrefetch';
-import { ActivityBar } from '@/app/layout/ActivityBar';
-import { AppShell as AppShellLayout } from '@/app/layout/AppShell';
 import { AppShellV2 } from '@/components/layout/AppShellV2';
+import NavLinkPrefetch from '@/components/NavLinkPrefetch';
 import { useFeatureFlags } from '@/config/featureFlags';
-import { useAuthStore } from '@/features/auth/store';
 import { AuthDiagnosticsPanel } from '@/features/auth/diagnostics';
+import { useAuthStore } from '@/features/auth/store';
 import { useDashboardPath } from '@/features/dashboard/dashboardRouting';
 import { HandoffQuickNoteCard } from '@/features/handoff/HandoffQuickNoteCard';
+import { useSettingsContext } from '@/features/settings/SettingsContext';
+import { SettingsDialog } from '@/features/settings/SettingsDialog';
 import RouteHydrationListener from '@/hydration/RouteHydrationListener';
 import { getAppConfig, isE2eMsalMockEnabled, readBool, shouldSkipLogin } from '@/lib/env';
 import { useSP } from '@/lib/spClient';
@@ -54,30 +65,25 @@ import AssessmentRoundedIcon from '@mui/icons-material/AssessmentRounded';
 import AssignmentTurnedInRoundedIcon from '@mui/icons-material/AssignmentTurnedInRounded';
 import BadgeRoundedIcon from '@mui/icons-material/BadgeRounded';
 import ChecklistRoundedIcon from '@mui/icons-material/ChecklistRounded';
+import ChevronLeftIcon from '@mui/icons-material/ChevronLeft';
+import ChevronRightIcon from '@mui/icons-material/ChevronRight';
+import CloseFullscreenRoundedIcon from '@mui/icons-material/CloseFullscreenRounded';
 import EventAvailableRoundedIcon from '@mui/icons-material/EventAvailableRounded';
 import InsightsIcon from '@mui/icons-material/Insights';
+import MenuIcon from '@mui/icons-material/Menu';
 import PeopleAltRoundedIcon from '@mui/icons-material/PeopleAltRounded';
 import PsychologyIcon from '@mui/icons-material/Psychology';
 import SettingsRoundedIcon from '@mui/icons-material/SettingsRounded';
 import WorkspacesIcon from '@mui/icons-material/Workspaces';
-import MenuIcon from '@mui/icons-material/Menu';
-import ChevronLeftIcon from '@mui/icons-material/ChevronLeft';
-import ChevronRightIcon from '@mui/icons-material/ChevronRight';
-import CloseFullscreenRoundedIcon from '@mui/icons-material/CloseFullscreenRounded';
-import { Link as RouterLink, useLocation, useNavigate } from 'react-router-dom';
 import Fab from '@mui/material/Fab';
-import { ColorModeContext } from './theme';
-import { SettingsDialog } from '@/features/settings/SettingsDialog';
-import { useSettingsContext } from '@/features/settings/SettingsContext';
+import { Link as RouterLink, useLocation, useNavigate } from 'react-router-dom';
 import {
-  createNavItems,
-  filterNavItems,
-  groupNavItems,
-  groupLabel,
-  NAV_AUDIENCE,
-  type NavItem,
-  type NavAudience,
-} from '@/app/config/navigationConfig';
+    createFooterActions,
+    footerAccentByKey,
+    footerShortLabelByKey,
+    footerTestIds
+} from './config/footerActionsConfig';
+import { ColorModeContext } from './theme';
 
 const SKIP_LOGIN = shouldSkipLogin();
 const E2E_MSAL_MOCK_ENABLED = isE2eMsalMockEnabled();
@@ -952,71 +958,6 @@ const FooterQuickActions: React.FC<{ fixed?: boolean }> = ({ fixed = true }) => 
   const isHandoffTimeline =
     location.pathname === '/handoff-timeline' || location.pathname.startsWith('/handoff-timeline/');
 
-  type FooterAction = {
-    key: string;
-    label: string;
-    color: 'primary' | 'secondary' | 'info';
-    variant: 'contained' | 'outlined';
-    to?: string;
-    onClick?: () => void;
-  };
-
-  const footerTestIds: Record<string, string> = {
-    'schedules-month': TESTIDS['schedules-footer-month'],
-    'daily-attendance': TESTIDS['daily-footer-attendance'],
-    'daily-activity': TESTIDS['daily-footer-activity'],
-    'daily-support': TESTIDS['daily-footer-support'],
-    'handoff-quicknote': TESTIDS['handoff-footer-quicknote'],
-  };
-
-  const footerAccentByKey: Record<string, string> = {
-    'handoff-quicknote': '#C53030',
-    'schedules-month': '#B7791F',
-    'daily-attendance': '#2F855A',
-    'daily-activity': '#C05621',
-    'daily-support': '#6B46C1',
-  };
-
-  const footerShortLabelByKey: Record<string, string> = {
-    'handoff-quicknote': '申し送り',
-    'schedules-month': '予定',
-    'daily-attendance': '通所',
-    'daily-activity': 'ケース記録',
-    'daily-support': '支援手順',
-  };
-
-  const scheduleMonthAction: FooterAction = {
-    key: 'schedules-month',
-    label: 'スケジュール',
-    to: '/schedules/month',
-    color: 'info' as const,
-    variant: 'contained' as const,
-  };
-
-  const baseActions: FooterAction[] = [
-    {
-      key: 'daily-attendance',
-      label: '通所管理',
-      to: '/daily/attendance',
-      color: 'info' as const,
-      variant: 'contained' as const,
-    },
-    {
-      key: 'daily-activity',
-      label: 'ケース記録入力',
-      to: '/daily/table',
-      color: 'primary' as const,
-      variant: 'contained' as const,
-    },
-    {
-      key: 'daily-support',
-      label: '支援手順記録入力',
-      to: '/daily/support',
-      color: 'primary' as const,
-      variant: 'outlined' as const,
-    },
-  ] as const;
-
   const handleQuickNoteClick = () => {
     if (isHandoffTimeline) {
       if (typeof window !== 'undefined') {
@@ -1027,17 +968,16 @@ const FooterQuickActions: React.FC<{ fixed?: boolean }> = ({ fixed = true }) => 
     setQuickNoteOpen(true);
   };
 
-  const actions: FooterAction[] = [
-    {
-      key: 'handoff-quicknote',
-      label: '今すぐ申し送り',
-      color: 'secondary' as const,
-      variant: 'contained' as const,
-      onClick: handleQuickNoteClick,
-    },
-    scheduleMonthAction,
-    ...baseActions,
-  ];
+  const schedulesEnabled = Boolean(useFeatureFlags().schedules);
+  const actions = React.useMemo(() => {
+    const computedActions = createFooterActions({ schedulesEnabled });
+    return computedActions.map((action) => {
+      if (action.onClickKey === 'handoff-quicknote') {
+        return { ...action, onClick: handleQuickNoteClick };
+      }
+      return { ...action, onClick: undefined };
+    });
+  }, [schedulesEnabled, isHandoffTimeline]);
 
   return (
     <Box

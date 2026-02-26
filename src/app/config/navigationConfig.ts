@@ -16,7 +16,7 @@ import type React from 'react';
 // Type Definitions
 // ============================================================================
 
-export type NavAudience = 'all' | 'staff' | 'admin';
+export type NavAudience = 'all' | 'staff' | 'admin' | 'reception';
 
 export type NavItem = {
   label: string;
@@ -26,7 +26,7 @@ export type NavItem = {
   icon?: React.ElementType;
   prefetchKey?: PrefetchKey;
   prefetchKeys?: PrefetchKey[];
-  audience?: NavAudience;
+  audience?: NavAudience | NavAudience[];
 };
 
 export type NavGroupKey = 'daily' | 'record' | 'review' | 'master' | 'admin' | 'settings';
@@ -39,7 +39,8 @@ export const NAV_AUDIENCE = {
   all: 'all',
   staff: 'staff',
   admin: 'admin',
-} as const satisfies Record<'all' | 'staff' | 'admin', NavAudience>;
+  reception: 'reception',
+} as const satisfies Record<'all' | 'staff' | 'admin' | 'reception', NavAudience>;
 
 /**
  * i18n Keys for navigation group labels
@@ -113,10 +114,13 @@ export function pickGroup(item: NavItem, isAdmin: boolean): NavGroupKey {
   // 記録・運用: records, schedules
   if (
     testId === TESTIDS.nav.schedules ||
+    testId === TESTIDS.nav.billing ||
     to.startsWith('/records') ||
     to.startsWith('/schedule') ||
+    to.startsWith('/billing') ||
     label.includes('黒ノート') ||
-    label.includes('月次')
+    label.includes('月次') ||
+    label.includes('請求処理')
   ) {
     return 'record';
   }
@@ -273,6 +277,14 @@ export function createNavItems(config: CreateNavItemsConfig): NavItem[] {
       audience: NAV_AUDIENCE.all,
     },
     {
+      label: '黒ノート',
+      to: '/dashboard',
+      isActive: (pathname) => pathname === '/dashboard',
+      icon: undefined,
+      testId: TESTIDS.nav.dashboard,
+      audience: NAV_AUDIENCE.staff,
+    },
+    {
       label: '黒ノート一覧',
       to: '/records',
       isActive: (pathname) => pathname.startsWith('/records'),
@@ -344,6 +356,14 @@ export function createNavItems(config: CreateNavItemsConfig): NavItem[] {
       prefetchKey: PREFETCH_KEYS.staff,
       audience: NAV_AUDIENCE.staff,
     },
+    {
+      label: '請求処理',
+      to: '/billing',
+      isActive: (pathname) => pathname === '/billing' || pathname.startsWith('/billing/'),
+      icon: undefined,
+      testId: TESTIDS.nav.billing,
+      audience: [NAV_AUDIENCE.reception, NAV_AUDIENCE.admin],
+    },
   ];
 
   // Conditional items based on feature flags and permissions
@@ -402,6 +422,25 @@ export function createNavItems(config: CreateNavItemsConfig): NavItem[] {
         audience: NAV_AUDIENCE.admin,
       },
     );
+    if (schedulesEnabled) {
+      items.push({
+        label: '統合リソースカレンダー',
+        to: '/admin/integrated-resource-calendar',
+        isActive: (pathname: string) => pathname.startsWith('/admin/integrated-resource-calendar'),
+        icon: undefined,
+        testId: TESTIDS.nav.integratedResourceCalendar,
+        audience: NAV_AUDIENCE.admin,
+      });
+    }
+
+    items.push({
+      label: 'ナビ診断',
+      to: '/admin/navigation-diagnostics',
+      isActive: (pathname: string) => pathname.startsWith('/admin/navigation-diagnostics'),
+      icon: undefined,
+      testId: TESTIDS.nav.navigationDiagnostics,
+      audience: NAV_AUDIENCE.admin,
+    });
   }
 
   items.push({
@@ -454,10 +493,10 @@ export function createNavItems(config: CreateNavItemsConfig): NavItem[] {
 
   // Filter by audience
   const isNavVisible = (item: NavItem): boolean => {
-    const audience = item.audience ?? 'all';
-    if (audience === 'all') return true;
-    if (audience === 'admin') return navAudience === 'admin';
-    return navAudience === 'admin' || navAudience === 'staff';
+    const audienceList = Array.isArray(item.audience) ? item.audience : [item.audience ?? 'all'];
+    if (audienceList.includes('all')) return true;
+    if (navAudience === 'admin') return true; // admin sees everything (including staff/reception stuff if needed)
+    return audienceList.includes(navAudience);
   };
 
   return items.filter(isNavVisible);

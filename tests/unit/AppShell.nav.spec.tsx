@@ -88,9 +88,45 @@ describe('AppShell navigation', () => {
     }
   };
 
-  it.todo('marks current route button with aria-current="page" - awaiting AppShell useEffect fix');
-
   it('marks current route button with aria-current="page"', async () => {
+    const toggleMock = vi.fn();
+    const theme = createTheme();
+    const initialEntries = ['/users'];
+    const routeEntries = Array.from(new Set([...initialEntries, '/']));
+    const getShell = () => (
+      <ThemeProvider theme={theme}>
+        <FeatureFlagsProvider value={defaultFlags}>
+          <ColorModeContext.Provider value={{ mode: 'light', toggle: toggleMock, sticky: false }}>
+            <AppShell>
+              <div />
+            </AppShell>
+          </ColorModeContext.Provider>
+        </FeatureFlagsProvider>
+      </ThemeProvider>
+    );
+
+    renderWithAppProviders(getShell(), {
+      initialEntries,
+      future: routerFutureFlags,
+      routeChildren: routeEntries.map((path) => ({ path, element: getShell() })),
+    });
+
+    // Open the desktop navigation drawer
+    await ensureDesktopNavOpen();
+
+    const navRoot = screen.getByRole('navigation', { name: /主要ナビゲーション/i });
+    const nav = within(navRoot);
+
+    // '/users' に対応する「利用者」リンクが active になっているか確認
+    const activeLink = nav.getByRole('link', { name: /利用者/i });
+    expect(activeLink).toHaveAttribute('aria-current', 'page');
+
+    // active ではないリンクには aria-current が付いていないことを確認
+    const inactiveLink = nav.getByRole('link', { name: /黒ノート一覧/i });
+    expect(inactiveLink).not.toHaveAttribute('aria-current');
+  });
+
+  it('renders navigation links based on feature flags', async () => {
     const toggleMock = vi.fn();
     const theme = createTheme();
     const initialEntries = ['/users'];
@@ -135,7 +171,6 @@ describe('AppShell navigation', () => {
     const footer = await screen.findByRole('contentinfo');
     const footerWithin = within(footer);
     expect(footerWithin.queryByRole('link', { name: '新規予定' })).toBeNull();
-
   });
 
   it('leaves status neutral when ping aborts', async () => {
