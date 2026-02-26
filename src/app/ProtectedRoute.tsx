@@ -1,18 +1,18 @@
-import { InteractionStatus } from '@/auth/interactionStatus';
-import { useMsalContext } from '@/auth/MsalProvider';
 import { useAuth } from '@/auth/useAuth';
 import { useFeatureFlags, type FeatureFlagSnapshot } from '@/config/featureFlags';
 import { isE2E } from '@/env';
-import { authDiagnostics } from '@/features/auth/diagnostics/collector';
-import { buildAuthDiagCopyText, createAuthCorrId, summarizeAuthBlockReason, type AuthDiagSummary } from '@/lib/authDiag';
 import { getAppConfig, isDemoModeEnabled, readEnv } from '@/lib/env';
+import { InteractionStatus } from '@/auth/interactionStatus';
 import { createSpClient, ensureConfig } from '@/lib/spClient';
+import { buildAuthDiagCopyText, createAuthCorrId, summarizeAuthBlockReason, type AuthDiagSummary } from '@/lib/authDiag';
+import { authDiagnostics } from '@/features/auth/diagnostics/collector';
 import Button from '@mui/material/Button';
 import Paper from '@mui/material/Paper';
 import Stack from '@mui/material/Stack';
 import Typography from '@mui/material/Typography';
-import { useEffect, useMemo, useRef, useState, type ReactElement } from 'react';
-import { Navigate, useLocation, type NavigateProps } from 'react-router-dom';
+import { type ReactElement, useEffect, useMemo, useRef, useState } from 'react';
+import { Navigate, type NavigateProps, useLocation } from 'react-router-dom';
+import { useMsalContext } from '@/auth/MsalProvider';
 
 export type ProtectedRouteProps = {
   flag?: keyof FeatureFlagSnapshot;
@@ -20,7 +20,7 @@ export type ProtectedRouteProps = {
   fallbackPath?: NavigateProps['to'];
 };
 
-type ListGate = 'idle' | 'checking' | 'ready' | 'blocked' | 'error';
+type ListGate = 'idle' | 'checking' | 'ready' | 'blocked';
 
 /**
  * Development-only debug logging to avoid production noise
@@ -155,20 +155,9 @@ export default function ProtectedRoute({ flag, children, fallbackPath = '/' }: P
           setListGate('blocked');
         }
       } catch (error) {
-        const message = error instanceof Error ? error.message : String(error);
-        const is404 = /\b404\b/.test(message) || /Not Found/i.test(message) || /does not exist/i.test(message);
-
-        console.warn('[schedules] [ProtectedRoute] List existence check failed:', { message, is404 });
-
-        if (is404) {
-          setListReadyState(false);
-          setListGate('blocked');
-        } else {
-          // Network error or other - don't mark as blocked/missing
-          // But don't loop infinitely: stay in 'error' state which prevents re-trigger
-          console.warn('[schedules] [ProtectedRoute] Network error during check, staying in error state');
-          setListGate('error');
-        }
+        console.error('[ProtectedRoute] List existence check failed:', error);
+        setListReadyState(false);
+        setListGate('blocked');
       }
     };
 

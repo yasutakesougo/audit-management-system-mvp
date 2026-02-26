@@ -1,6 +1,6 @@
+import { describe, it, expect, vi } from 'vitest';
+import type { CreateScheduleInput, UpdateScheduleInput } from './schedulesRepo';
 import { useSP } from '@/lib/spClient';
-import { describe, expect, it, vi } from 'vitest';
-import type { UpdateScheduleInput } from './schedulesRepo';
 
 // Mock env.ts to disable writes
 vi.mock('@/env', () => ({
@@ -13,8 +13,7 @@ const { createSchedule, updateSchedule, removeSchedule, WriteDisabledError } = a
 
 describe('schedulesRepo write gate', () => {
   const mockClient = {} as ReturnType<typeof useSP>;
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const mockInput: any = {
+  const mockInput: CreateScheduleInput = {
     title: 'test',
     start: new Date().toISOString(),
     personType: 'User' as const,

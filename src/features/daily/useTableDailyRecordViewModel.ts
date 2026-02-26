@@ -1,8 +1,8 @@
-import { useCancelToDashboard } from '@/lib/nav/useCancelToDashboard';
-import { TESTIDS } from '@/testids';
 import { useCallback, useState } from 'react';
+import { TESTIDS } from '@/testids';
+import { useCancelToDashboard } from '@/lib/nav/useCancelToDashboard';
+import { useDailyRecordRepository } from './repositoryFactory';
 import type { TableDailyRecordData } from './hooks/useTableDailyRecordForm';
-import { useTableDailyRecordSave } from './useTableDailyRecordSave';
 
 // Re-export for backward compatibility
 export type TableDailyRecordPayload = TableDailyRecordData;
@@ -18,7 +18,7 @@ type TableDailyRecordViewModel = {
 
 export const useTableDailyRecordViewModel = (): TableDailyRecordViewModel => {
   const cancelToDashboard = useCancelToDashboard();
-  const { save } = useTableDailyRecordSave();
+  const repository = useDailyRecordRepository();
   const [open, setOpen] = useState(true);
 
   const navigateBackToMenu = useCallback(() => {
@@ -31,7 +31,7 @@ export const useTableDailyRecordViewModel = (): TableDailyRecordViewModel => {
 
     try {
       // Save to repository (SharePoint in production, InMemory in demo mode)
-      await save(data);
+      await repository.save(data);
 
       alert(`${data.userRows.length}人分の活動記録を保存しました`);
       navigateBackToMenu();
@@ -40,7 +40,7 @@ export const useTableDailyRecordViewModel = (): TableDailyRecordViewModel => {
       alert('保存に失敗しました。もう一度お試しください。');
       throw error;
     }
-  }, [save, navigateBackToMenu]);
+  }, [repository, navigateBackToMenu]);
 
   return {
     open,

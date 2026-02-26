@@ -44,6 +44,10 @@ test.describe('Iceberg Analysis (/analysis/iceberg) smoke', () => {
     const cards = page.locator('[data-testid^="iceberg-card-"]');
     const firstCard = cards.first();
 
+    // Get initial position (left, top from inline style)
+    const _initialLeft = await firstCard.evaluate((el) => el.style.left);
+    const _initialTop = await firstCard.evaluate((el) => el.style.top);
+
     // Drag the card 50px right, 50px down
     const box = await firstCard.boundingBox();
     if (!box) throw new Error('Card not found');

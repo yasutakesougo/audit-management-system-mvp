@@ -9,7 +9,7 @@ import { RouteHydrationErrorBoundary } from '@/hydration/RouteHydrationListener'
 import { getAppConfig } from '@/lib/env';
 import lazyWithPreload from '@/utils/lazyWithPreload';
 import React from 'react';
-import { createBrowserRouter, Navigate, Outlet, type RouteObject, useLocation } from 'react-router-dom';
+import { Navigate, Outlet, createBrowserRouter, useLocation, type RouteObject } from 'react-router-dom';
 import AppShell from './AppShell';
 import { routerFutureFlags } from './routerFuture';
 import SchedulesGate from './SchedulesGate';
@@ -956,7 +956,7 @@ const childRoutes: RouteObject[] = [
   nurseRoutes(),
 ];
 
-const routes: RouteObject[] = [
+export const routes: RouteObject[] = [
   {
     element: (
       <AppShell>
@@ -970,6 +970,3 @@ const routes: RouteObject[] = [
 export const router = createBrowserRouter(routes, {
   future: routerFutureFlags,
 });
-const RouterPlaceholder: React.FC = () => null;
-
-export default RouterPlaceholder;

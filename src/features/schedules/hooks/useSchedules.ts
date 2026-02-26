@@ -1,13 +1,13 @@
-import { useAuth } from '@/auth/useAuth';
-import { isE2eForceSchedulesWrite, isWriteEnabled } from '@/env';
-import { authDiagnostics } from '@/features/auth/diagnostics';
-import { toSafeError } from '@/lib/errors';
-import type { ResultError } from '@/shared/result';
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { type DateRange, type SchedItem, type UpdateScheduleEventInput } from '../data';
 import type { InlineScheduleDraft } from '../data/inlineScheduleDraft';
+import type { ResultError } from '@/shared/result';
+import { toSafeError } from '@/lib/errors';
+import { isE2eForceSchedulesWrite, isWriteEnabled } from '@/env';
 import { classifySchedulesError, shouldFallbackToReadOnly, type SchedulesErrorInfo } from '../errors';
 import { useScheduleRepository } from '../repositoryFactory';
+import { useAuth } from '@/auth/useAuth';
+import { authDiagnostics } from '@/features/auth/diagnostics';
 
 export type { InlineScheduleDraft } from '../data/inlineScheduleDraft';
 
@@ -41,8 +41,8 @@ export function useSchedules(range: DateRange): UseSchedulesResult {
   const repository = useScheduleRepository();
   const { getListReadyState, setListReadyState } = useAuth();
 
-  const clearLastError = useCallback(() => setLastError(null), []);
-  const refetch = useCallback(() => setReloadToken((v) => v + 1), []);
+  const clearLastError = () => setLastError(null);
+  const refetch = () => setReloadToken((v) => v + 1);
 
   const normalizedRange = useMemo(() => normalizeRange(range), [range.from, range.to]);
 
@@ -55,8 +55,8 @@ export function useSchedules(range: DateRange): UseSchedulesResult {
       try {
         // Use repository's checkListExists if available (SharePoint mode)
         const exists =
-          'checkListExists' in repository && typeof (repository as { checkListExists?: unknown }).checkListExists === 'function'
-            ? await (repository as { checkListExists: () => Promise<boolean> }).checkListExists()
+          'checkListExists' in repository && typeof repository.checkListExists === 'function'
+            ? await repository.checkListExists()
             : true; // Demo mode always returns true
 
         if (exists) {
@@ -70,19 +70,14 @@ export function useSchedules(range: DateRange): UseSchedulesResult {
           });
         }
       } catch (error) {
-        const message = error instanceof Error ? error.message : String(error);
-        const is404 = /\b404\b/.test(message) || /Not Found/i.test(message) || /does not exist/i.test(message);
-
-        if (is404) {
-          setListReadyState(false);
-        }
-
+        console.error('[useSchedules] List existence check failed:', error);
+        setListReadyState(false);
         authDiagnostics.collect({
           route: '/schedules',
           reason: error instanceof Error && error.message.includes('auth') ? 'login-failure' : 'network-error',
           outcome: 'blocked',
           detail: {
-            errorMessage: message,
+            errorMessage: error instanceof Error ? error.message : String(error),
           },
         });
       }
@@ -112,39 +107,40 @@ export function useSchedules(range: DateRange): UseSchedulesResult {
         }
         setItems(data);
       } catch (err) {
-        if (alive && !abortController.signal.aborted) {
-          const info = classifySchedulesError(err);
-          const errorMessage = err instanceof Error ? err.message : 'Failed to fetch schedules';
-          const resultError: ResultError = {
-            kind: info.kind === 'NETWORK_ERROR' ? 'network' : 'unknown',
-            message: info.message || errorMessage,
-            cause: err instanceof Error ? err : new Error(errorMessage),
-          };
+        // Handle errors gracefully without throwing
+        if (!alive || abortController.signal.aborted) return;
+        const error = err instanceof Error ? err.message : 'Failed to fetch schedules';
+        // eslint-disable-next-line no-console
+        console.error('[useSchedules] Failed to load schedule items', {
+          message: error,
+          err,
+          status: (err as { status?: number }).status,
+          url: (err as { url?: string }).url,
+          body: (err as { body?: string }).body,
+        });
+        setLastError({ message: error } as ResultError);
+        setItems([]); // Clear items on error
 
-          setLastError(resultError);
-          setItems([]); // Clear items on error
-
-          // Diagnose: Use classified reason
-          let reason = 'unknown-error';
-          const errorStatus = (err as { status?: number }).status;
-          if (errorStatus === 401 || errorStatus === 403) {
-            reason = 'login-failure';
-          } else if (errorStatus === 404) {
-            reason = 'list-not-found';
-          } else if (info.kind === 'NETWORK_ERROR') {
-            reason = 'network-error';
-          }
-
-          authDiagnostics.collect({
-            route: '/schedules',
-            reason,
-            outcome: 'blocked',
-            detail: {
-              errorMessage,
-              status: errorStatus,
-            },
-          });
+        // Diagnose: Categorize error and collect event
+        const errorStatus = (err as { status?: number }).status;
+        let reason = 'unknown-error';
+        if (errorStatus === 401 || errorStatus === 403) {
+          reason = 'login-failure';
+        } else if (errorStatus === 404) {
+          reason = 'list-not-found';
+        } else if (!navigator.onLine || error.includes('network')) {
+          reason = 'network-error';
         }
+
+        authDiagnostics.collect({
+          route: '/schedules',
+          reason,
+          outcome: 'blocked',
+          detail: {
+            errorMessage: error,
+            status: errorStatus,
+          },
+        });
       } finally {
         if (alive) {
           setLoading(false);
@@ -156,15 +152,14 @@ export function useSchedules(range: DateRange): UseSchedulesResult {
       alive = false;
       abortController.abort();
     };
-  }, [normalizedRange, repository, reloadToken]);
+  }, [normalizedRange.from, normalizedRange.to, repository, reloadToken]);
 
-  const create = useCallback(async (draft: InlineScheduleDraft) => {
+  const create = async (draft: InlineScheduleDraft) => {
     if (!draft.sourceInput) {
       throw new Error('Schedule draft is missing sourceInput');
     }
 
     try {
-      setLoading(true);
       const input = draft.sourceInput;
       const created = await repository.create({
         title: input.title,
@@ -205,26 +200,21 @@ export function useSchedules(range: DateRange): UseSchedulesResult {
           console.warn('[schedules] E2E localStorage write failed', error);
         }
       }
-      // return created; // Removed to match UseSchedulesResult interface
     } catch (error) {
       const safeError = toSafeError(error);
-      const info = classifySchedulesError(error);
-
       const resultError: ResultError = {
-        kind: info.kind === 'CONFLICT' ? 'conflict' : info.kind === 'NETWORK_ERROR' ? 'network' : 'unknown',
-        message: info.message || safeError.message,
+        kind: 'unknown',
+        message: safeError.message,
         cause: safeError,
       };
       setLastError(resultError);
+      console.warn('[schedules] create failed', resultError);
       throw error; // Re-throw for caller to handle
-    } finally {
-      setLoading(false);
     }
-  }, [repository]);
+  };
 
-  const update = useCallback(async (input: UpdateScheduleEventInput) => {
+  const update = async (input: UpdateScheduleEventInput) => {
     try {
-      setLoading(true);
       // Extract etag if available (for optimistic concurrency control)
       const etag = (input as { etag?: string }).etag;
 
@@ -268,44 +258,39 @@ export function useSchedules(range: DateRange): UseSchedulesResult {
       );
     } catch (error) {
       const safeError = toSafeError(error);
-      const info = classifySchedulesError(error);
+      // Phase 2-2b: Detect 412 conflict errors
+      const isConflict =
+        (error as { status?: number }).status === 412 ||
+        safeError.message.includes('412') ||
+        safeError.message.includes('conflict');
 
       const resultError: ResultError = {
-        kind: info.kind === 'CONFLICT' ? 'conflict' : info.kind === 'NETWORK_ERROR' ? 'network' : 'unknown',
-        message: info.message || safeError.message,
+        kind: isConflict ? 'conflict' : 'unknown',
+        message: safeError.message,
         cause: safeError,
         id: input.id, // Attach schedule id for post-refetch targeting
       };
 
       setLastError(resultError);
+      console.warn('[schedules] update failed', resultError);
       throw error; // Re-throw for caller to handle
-    } finally {
-      setLoading(false);
     }
-  }, [repository]);
+  };
 
-  const remove = useCallback(async (eventId: string): Promise<void> => {
+  const remove = async (eventId: string): Promise<void> => {
     try {
-      setLoading(true);
       await repository.remove(eventId);
       setLastError(null);
       lastMutationTsRef.current = Date.now();
       setItems((prev) => prev.filter((item) => item.id !== eventId));
     } catch (error) {
       const safeError = toSafeError(error);
-      const info = classifySchedulesError(error);
-      const resultError: ResultError = {
-        kind: info.kind === 'CONFLICT' ? 'conflict' : info.kind === 'NETWORK_ERROR' ? 'network' : 'unknown',
-        message: info.message || safeError.message,
-        cause: safeError,
-        id: eventId,
-      };
+      const resultError: ResultError = { kind: 'unknown', message: safeError.message, cause: safeError };
       setLastError(resultError);
+      console.warn('[schedules] remove failed', resultError);
       throw error;
-    } finally {
-      setLoading(false);
     }
-  }, [repository]);
+  };
 
   // Determine read-only reason
   const readOnlyReason = useMemo((): SchedulesErrorInfo | undefined => {
@@ -351,7 +336,7 @@ export function useSchedules(range: DateRange): UseSchedulesResult {
 
   const canWrite = isE2eForceSchedulesWrite ? true : !readOnlyReason;
 
-  return useMemo(() => ({
+  const returnValue = {
     items,
     loading,
     create,
@@ -362,18 +347,13 @@ export function useSchedules(range: DateRange): UseSchedulesResult {
     refetch,
     readOnlyReason,
     canWrite,
-  }), [
-    items,
-    loading,
-    create,
-    update,
-    remove,
-    lastError,
-    clearLastError,
-    refetch,
-    readOnlyReason,
-    canWrite,
-  ]);
+  };
+
+  if (typeof returnValue.remove !== 'function') {
+    console.error('[CRITICAL] useSchedules returning remove that is NOT a function:', typeof returnValue.remove);
+  }
+
+  return returnValue as UseSchedulesResult;
 }
 
 export const makeRange = (from: Date, to: Date): DateRange => ({

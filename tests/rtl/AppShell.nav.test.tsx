@@ -1,6 +1,6 @@
+import React, { type ReactNode } from 'react';
 import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import React, { type ReactNode } from 'react';
 import { MemoryRouter } from 'react-router-dom';
 import { describe, expect, it, vi } from 'vitest';
 
@@ -86,8 +86,6 @@ describe('AppShell navigation smoke test', () => {
     schedulesWeekV2: false,
     icebergPdca: false,
     staffAttendance: false,
-    appShellVsCode: false,
-    todayOps: false,
   };
 
   const colorMode = { mode: 'light' as const, toggle: vi.fn(), sticky: false };
