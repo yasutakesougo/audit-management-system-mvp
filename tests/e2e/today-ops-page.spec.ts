@@ -57,9 +57,9 @@ test.describe('Today Ops Screen', () => {
     await expect(drawer).toBeVisible();
     await expect(page).toHaveURL(/.*mode=unfilled/);
 
-    // Verify Drawer content
-    await expect(drawer).toContainText('未記録の一括照会');
-    await expect(drawer).toContainText('PR3 Placeholder');
+    // Verify Drawer content is the embedded form form Step C
+    const embedForm = drawer.getByTestId('today-quickrecord-form-embed');
+    await expect(embedForm).toBeVisible();
 
     // Close the Drawer
     const closeBtn = page.getByTestId('today-quickrecord-close');

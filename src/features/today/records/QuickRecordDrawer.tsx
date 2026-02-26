@@ -9,6 +9,7 @@ import {
     useTheme,
 } from '@mui/material';
 import React from 'react';
+import { QuickRecordFormEmbed } from './QuickRecordFormEmbed';
 
 export type QuickRecordDrawerProps = {
   open: boolean;
@@ -58,22 +59,17 @@ export const QuickRecordDrawer: React.FC<QuickRecordDrawerProps> = ({
         </IconButton>
       </Box>
 
-      {/* 仮のプレースホルダー領域 (PR3の後半でフォームをマウント予定) */}
       <Box
         sx={{
           flex: 1,
-          p: 3,
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
+          overflow: 'auto',
           bgcolor: 'background.default',
         }}
       >
-        <Typography color="text.secondary" align="center">
-          【PR3 Placeholder】<br />
-          ここに入力フォームがマウントされます。<br />
-          (mode: {mode}, user: {userId || 'none'})
-        </Typography>
+        <QuickRecordFormEmbed
+          userId={userId || undefined}
+          onClose={onClose}
+        />
       </Box>
     </Box>
   );
