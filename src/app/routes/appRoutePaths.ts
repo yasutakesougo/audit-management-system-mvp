@@ -63,7 +63,8 @@ export const APP_ROUTE_PATHS = [
   'schedules/timeline',
   'schedules/unified',
   'schedules/create',
-  'dev/schedule-create-dialog'
+  'dev/schedule-create-dialog',
+  'ibd',
 ] as const;
 
 export type AppRoutePath = typeof APP_ROUTE_PATHS[number];

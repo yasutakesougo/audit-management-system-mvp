@@ -691,12 +691,23 @@ const SuspendedIBDDemoPage: React.FC = () => (
   </RouteHydrationErrorBoundary>
 );
 
+const IBDHubPage = React.lazy(() => import('@/pages/IBDHubPage'));
+const SuspendedIBDHubPage: React.FC = () => (
+  <RouteHydrationErrorBoundary>
+    <React.Suspense fallback={<div className="p-4 text-sm text-slate-600" role="status">強度行動障害支援を読み込んでいます…</div>}>
+      <IBDHubPage />
+    </React.Suspense>
+  </RouteHydrationErrorBoundary>
+);
+
 const childRoutes: RouteObject[] = [
   ...(isDev ? [
     { path: 'admin/debug/smoke-test', element: <SuspendedSmokeTestPage /> },
     { path: 'admin/debug/zod-error', element: <SuspendedDebugZodErrorPage /> },
     { path: 'ibd-demo', element: <SuspendedIBDDemoPage /> },
   ] : []),
+
+  { path: 'ibd', element: <SuspendedIBDHubPage /> },
 
   { path: 'auth/callback', element: <AuthCallbackRoute /> },
   { index: true, element: <DashboardRedirect /> },
