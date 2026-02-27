@@ -1,5 +1,7 @@
 import { TESTIDS, tidWithSuffix } from '@/testids';
 import ArrowBackRoundedIcon from '@mui/icons-material/ArrowBackRounded';
+import EditRoundedIcon from '@mui/icons-material/EditRounded';
+import OpenInNewRoundedIcon from '@mui/icons-material/OpenInNewRounded';
 import PeopleAltRoundedIcon from '@mui/icons-material/PeopleAltRounded';
 import Alert from '@mui/material/Alert';
 import Avatar from '@mui/material/Avatar';
@@ -16,6 +18,7 @@ import Typography from '@mui/material/Typography';
 import React, { useCallback, useMemo, useRef, useState } from 'react';
 import { Link as RouterLink, useNavigate } from 'react-router-dom';
 import type { IUserMaster } from '../types';
+import { USAGE_STATUS_VALUES } from '../typesExtended';
 import { formatDateLabel, renderHighlights, resolveUserIdentifier } from './helpers';
 import {
     DEFAULT_TAB_KEY,
@@ -36,6 +39,7 @@ type UserDetailSectionsProps = {
   user: IUserMaster;
   backLink?: BackLinkProps;
   variant?: 'page' | 'embedded';
+  onEdit?: (user: IUserMaster) => void;
 };
 
 const renderSectionDetails = (section: MenuSection, user: IUserMaster, attendanceLabel: string) => {
@@ -109,7 +113,7 @@ const renderSectionDetails = (section: MenuSection, user: IUserMaster, attendanc
   );
 };
 
-const UserDetailSections: React.FC<UserDetailSectionsProps> = ({ user, backLink, variant = 'page' }) => {
+const UserDetailSections: React.FC<UserDetailSectionsProps> = ({ user, backLink, variant = 'page', onEdit }) => {
   const [activeTab, setActiveTab] = useState<MenuSection['key']>(DEFAULT_TAB_KEY);
   const tabPanelRef = useRef<HTMLDivElement | null>(null);
   const navigate = useNavigate();
@@ -220,6 +224,20 @@ const UserDetailSections: React.FC<UserDetailSectionsProps> = ({ user, backLink,
           </Stack>
 
           <Stack direction="row" spacing={0.5} flexWrap="wrap" sx={{ rowGap: 0.5 }}>
+            {isEmbedded && (
+              <Chip
+                label={
+                  user.UsageStatus === USAGE_STATUS_VALUES.TERMINATED ? '終了'
+                  : user.UsageStatus === USAGE_STATUS_VALUES.SUSPENDED || user.IsActive === false ? '休止'
+                  : '利用中'
+                }
+                color={
+                  user.UsageStatus === USAGE_STATUS_VALUES.TERMINATED || user.UsageStatus === USAGE_STATUS_VALUES.SUSPENDED || user.IsActive === false
+                    ? 'default' : 'success'
+                }
+                size="small"
+              />
+            )}
             {!isEmbedded && (
               <Chip label={`利用者コード: ${resolveUserIdentifier(user)}`} size="small" />
             )}
@@ -284,6 +302,35 @@ const UserDetailSections: React.FC<UserDetailSectionsProps> = ({ user, backLink,
                   </>
                 )}
               </Box>
+            </>
+          )}
+
+          {isEmbedded && (
+            <>
+              <Divider />
+              <Stack direction="row" spacing={1}>
+                {onEdit && (
+                  <Button
+                    variant="outlined"
+                    size="small"
+                    startIcon={<EditRoundedIcon />}
+                    onClick={() => onEdit(user)}
+                    sx={{ textTransform: 'none', flex: 1 }}
+                  >
+                    編集
+                  </Button>
+                )}
+                <Button
+                  variant="contained"
+                  size="small"
+                  startIcon={<OpenInNewRoundedIcon />}
+                  component={RouterLink as unknown as React.ElementType}
+                  to={`/users/${encodeURIComponent(user.UserID || String(user.Id))}`}
+                  sx={{ textTransform: 'none', flex: 1 }}
+                >
+                  詳細ページへ
+                </Button>
+              </Stack>
             </>
           )}
         </Stack>

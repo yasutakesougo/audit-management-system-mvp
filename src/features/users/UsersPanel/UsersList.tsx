@@ -420,6 +420,7 @@ const UsersList: FC<UsersListProps> = ({
                   user={detailUser}
                   variant="embedded"
                   backLink={{ onClick: onCloseDetail, label: '詳細表示を閉じる' }}
+                  onEdit={onEdit}
                 />
               </div>
             </Fade>
