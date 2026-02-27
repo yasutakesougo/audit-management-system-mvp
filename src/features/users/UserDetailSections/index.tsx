@@ -330,7 +330,7 @@ const UserDetailSections: React.FC<UserDetailSectionsProps> = ({ user, backLink,
                   to={`/users/${encodeURIComponent(user.UserID || String(user.Id))}`}
                   sx={{ textTransform: 'none', flex: 1 }}
                 >
-                  詳細ページへ
+                  詳細を開く
                 </Button>
               </Stack>
             </>
