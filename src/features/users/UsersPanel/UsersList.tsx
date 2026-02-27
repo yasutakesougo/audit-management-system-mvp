@@ -3,9 +3,11 @@ import DeleteRoundedIcon from '@mui/icons-material/DeleteRounded';
 import EditRoundedIcon from '@mui/icons-material/EditRounded';
 import InfoOutlinedIcon from '@mui/icons-material/InfoOutlined';
 import RefreshRoundedIcon from '@mui/icons-material/RefreshRounded';
+import SortRoundedIcon from '@mui/icons-material/SortRounded';
 import Box from '@mui/material/Box';
 import Button from '@mui/material/Button';
 import Checkbox from '@mui/material/Checkbox';
+import Chip from '@mui/material/Chip';
 import FormControlLabel from '@mui/material/FormControlLabel';
 import IconButton from '@mui/material/IconButton';
 import Paper from '@mui/material/Paper';
@@ -17,6 +19,8 @@ import TableContainer from '@mui/material/TableContainer';
 import TableHead from '@mui/material/TableHead';
 import TableRow from '@mui/material/TableRow';
 import TextField from '@mui/material/TextField';
+import ToggleButton from '@mui/material/ToggleButton';
+import Tooltip from '@mui/material/Tooltip';
 import Typography from '@mui/material/Typography';
 import type { ElementType, FC, MouseEvent as ReactMouseEvent, RefObject } from 'react';
 import { useMemo, useState } from 'react';
@@ -25,6 +29,12 @@ import ErrorState from '../../../ui/components/ErrorState';
 import Loading from '../../../ui/components/Loading';
 import type { IUserMaster } from '../types';
 import UserDetailSections from '../UserDetailSections/index';
+import {
+    getUserStatusChips,
+    isUserInactive,
+    sortUsersByPriority,
+    type StatusChip,
+} from './userStatusUtils';
 
 type UsersListProps = {
   users: IUserMaster[];
@@ -67,6 +77,7 @@ const UsersList: FC<UsersListProps> = ({
   const [search, setSearch] = useState('');
   const [onlyActive, setOnlyActive] = useState(false);
   const [onlySevere, setOnlySevere] = useState(false);
+  const [prioritySort, setPrioritySort] = useState(false);
 
   const filteredUsers = useMemo(() => {
     const needle = search.trim().toLowerCase();
@@ -87,6 +98,29 @@ const UsersList: FC<UsersListProps> = ({
       return matchesSearch;
     });
   }, [onlyActive, onlySevere, search, users]);
+
+  const displayUsers = useMemo(
+    () => (prioritySort ? sortUsersByPriority(filteredUsers) : filteredUsers),
+    [filteredUsers, prioritySort],
+  );
+
+  const renderChip = (chip: StatusChip) => {
+    const el = (
+      <Chip
+        key={chip.label}
+        label={chip.label}
+        color={chip.color}
+        variant={chip.variant ?? 'filled'}
+        size="small"
+        sx={{ height: 22, fontSize: '0.75rem' }}
+      />
+    );
+    return chip.tooltip ? (
+      <Tooltip key={chip.label} title={chip.tooltip} arrow>
+        {el}
+      </Tooltip>
+    ) : el;
+  };
 
   return (
     <Stack spacing={2.5}>
@@ -139,6 +173,19 @@ const UsersList: FC<UsersListProps> = ({
             label="重度加算対象のみ"
           />
         </Stack>
+      <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap">
+        <ToggleButton
+          value="priority"
+          selected={prioritySort}
+          onChange={() => setPrioritySort((prev) => !prev)}
+          size="small"
+          sx={{ textTransform: 'none', px: 1.5, height: 32 }}
+          aria-label="重要順で並び替え"
+        >
+          <SortRoundedIcon fontSize="small" sx={{ mr: 0.5 }} />
+          重要順
+        </ToggleButton>
+      </Stack>
       </Stack>
       <Stack direction={{ xs: 'column', lg: 'row' }} spacing={2.5} alignItems="stretch">
         <TableContainer
@@ -150,27 +197,47 @@ const UsersList: FC<UsersListProps> = ({
           <Table stickyHeader aria-label="利用者一覧テーブル">
             <TableHead>
               <TableRow>
-                <TableCell>ID</TableCell>
+                <TableCell sx={{ minWidth: 140, whiteSpace: 'nowrap' }}>状態</TableCell>
                 <TableCell>ユーザーID</TableCell>
                 <TableCell>氏名</TableCell>
                 <TableCell align="center">操作</TableCell>
               </TableRow>
             </TableHead>
             <TableBody>
-              {filteredUsers.map((user) => {
+              {displayUsers.map((user) => {
                 const rowBusy = busyId === Number(user.Id);
                 const userKey = user.UserID || String(user.Id);
                 const isSelected = selectedUserKey === userKey;
+                const inactive = isUserInactive(user);
+                const { visible: visibleChips, overflow: overflowChips } = getUserStatusChips(user);
+                const overflowText = overflowChips.map((c) => c.label).join(', ');
                 return (
                   <TableRow
                     key={user.Id}
                     hover
                     selected={isSelected}
+                    sx={inactive ? { opacity: 0.55 } : undefined}
                     {...tidWithSuffix(TESTIDS['users-list-table-row'], `-${userKey}`)}
                   >
-                    <TableCell>{user.Id}</TableCell>
+                    <TableCell sx={{ whiteSpace: 'nowrap' }}>
+                      <Stack direction="row" spacing={0.5} alignItems="center">
+                        {visibleChips.map(renderChip)}
+                        {overflowChips.length > 0 && (
+                          <Tooltip title={overflowText} arrow>
+                            <Chip
+                              label={`+${overflowChips.length}`}
+                              size="small"
+                              variant="outlined"
+                              sx={{ height: 22, fontSize: '0.7rem' }}
+                            />
+                          </Tooltip>
+                        )}
+                      </Stack>
+                    </TableCell>
                     <TableCell>{user.UserID}</TableCell>
-                    <TableCell>{user.FullName}</TableCell>
+                    <TableCell sx={inactive ? { color: 'text.secondary' } : undefined}>
+                      {user.FullName}
+                    </TableCell>
                     <TableCell align="center">
                       <Stack direction="row" spacing={1} justifyContent="center">
                         <IconButton
