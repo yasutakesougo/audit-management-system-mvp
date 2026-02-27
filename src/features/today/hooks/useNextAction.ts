@@ -72,6 +72,8 @@ export function useNextAction(
 
   const effectiveDateKey = dateKey ?? new Date().toISOString().split('T')[0];
 
+  // Select next item, skipping any that are already 'done' in the progress store.
+  // This ensures Done → 次予定 auto-advance works correctly.
   const nextItem = useMemo<NextActionItem | null>(() => {
     const current = nowMinutes();
 
@@ -82,17 +84,32 @@ export function useNextAction(
     ];
 
     const upcoming = allItems
-      .map(item => ({
-        ...item,
-        minutesUntil: parseTimeToMinutes(item.time) - current,
-      }))
+      .map(item => {
+        const eventId = buildStableEventId(item.id, item.time, item.title);
+        const key = buildProgressKey(effectiveDateKey, eventId);
+        return {
+          ...item,
+          minutesUntil: parseTimeToMinutes(item.time) - current,
+          _progressKey: key,
+        };
+      })
       .filter(item => item.minutesUntil > 0)
+      // Skip done items — this is the key P1-A fix
+      .filter(item => {
+        const p = progressStore.getProgress(item._progressKey);
+        return !p?.doneAt;
+      })
       .sort((a, b) => a.minutesUntil - b.minutesUntil);
 
-    return upcoming[0] ?? null;
-  }, [lanes]);
+    if (upcoming.length === 0) return null;
 
-  // Build stable key and get progress
+    // Strip internal field
+    const { _progressKey, ...selected } = upcoming[0];
+    void _progressKey; // suppress unused lint
+    return selected;
+  }, [lanes, effectiveDateKey, progressStore]);
+
+  // Build stable key for the selected item
   const progressKey = useMemo(() => {
     if (!nextItem) return null;
     const eventId = buildStableEventId(nextItem.id, nextItem.time, nextItem.title);
