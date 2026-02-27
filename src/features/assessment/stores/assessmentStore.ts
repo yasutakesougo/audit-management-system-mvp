@@ -1,7 +1,52 @@
+import { assessmentStoreSchema } from '@/features/assessment/domain/assessmentSchema';
 import { createDefaultAssessment, type UserAssessment } from '@/features/assessment/domain/types';
 import { useCallback, useSyncExternalStore } from 'react';
 
-let assessments: Record<string, UserAssessment> = {};
+// ---------------------------------------------------------------------------
+// localStorage persistence
+// ---------------------------------------------------------------------------
+
+const STORAGE_KEY = 'assessmentDraft.v1';
+const DEBOUNCE_MS = 600;
+
+function loadFromStorage(): Record<string, UserAssessment> {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (!raw) return {};
+    const parsed = assessmentStoreSchema.parse(JSON.parse(raw));
+    return parsed.data;
+  } catch {
+    // 破損 or スキーマ不一致 → 破棄してクリーンスタート
+    localStorage.removeItem(STORAGE_KEY);
+    return {};
+  }
+}
+
+let debounceTimer: ReturnType<typeof setTimeout> | null = null;
+
+function persistToStorage() {
+  if (debounceTimer) clearTimeout(debounceTimer);
+  debounceTimer = setTimeout(() => {
+    const payload = { version: 1 as const, data: assessments };
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(payload));
+  }, DEBOUNCE_MS);
+}
+
+/** テスト用: debounce を即座にフラッシュ */
+export function __flushPersist() {
+  if (debounceTimer) {
+    clearTimeout(debounceTimer);
+    debounceTimer = null;
+  }
+  const payload = { version: 1 as const, data: assessments };
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(payload));
+}
+
+// ---------------------------------------------------------------------------
+// In-memory store (hydrated from localStorage)
+// ---------------------------------------------------------------------------
+
+let assessments: Record<string, UserAssessment> = loadFromStorage();
 const listeners = new Set<() => void>();
 
 const emit = () => {
@@ -24,7 +69,34 @@ const saveAssessment = (data: UserAssessment) => {
     },
   };
   emit();
+  persistToStorage();
 };
+
+/**
+ * 指定ユーザーのドラフトを削除する（完了/送信時に呼び出し）
+ */
+export function clearAssessmentDraft(userId: string) {
+  const { [userId]: _, ...rest } = assessments;
+  assessments = rest;
+  emit();
+  persistToStorage();
+}
+
+/**
+ * テスト用: store をリセットし localStorage から再読み込み
+ */
+export function __resetStore() {
+  if (debounceTimer) {
+    clearTimeout(debounceTimer);
+    debounceTimer = null;
+  }
+  assessments = loadFromStorage();
+  emit();
+}
+
+// ---------------------------------------------------------------------------
+// React Hook
+// ---------------------------------------------------------------------------
 
 export function useAssessmentStore() {
   const store = useSyncExternalStore(subscribe, getAssessmentSnapshot, getAssessmentSnapshot);
@@ -69,5 +141,6 @@ export function useAssessmentStore() {
     getByUserId,
     save,
     seedDemoData,
+    clearDraft: clearAssessmentDraft,
   } as const;
 }
