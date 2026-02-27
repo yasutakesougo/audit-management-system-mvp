@@ -74,6 +74,30 @@ function useSections(): HubSection[] {
       }
     })();
 
+    // 支援活動マスタのメタ情報（件数・最終更新日）
+    const activityMeta = (() => {
+      try {
+        const raw = localStorage.getItem('ams.supportActivityTemplates.meta.v1');
+        if (!raw) return undefined;
+        const parsed = JSON.parse(raw) as { count?: number; updatedAt?: string };
+        const count = typeof parsed.count === 'number' ? parsed.count : undefined;
+        const updatedAt = parsed.updatedAt
+          ? new Date(parsed.updatedAt).toLocaleString('ja-JP', {
+              month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit',
+            })
+          : undefined;
+        return { count, updatedAt };
+      } catch {
+        return undefined;
+      }
+    })();
+    const activityMetaText = activityMeta
+      ? [
+          activityMeta.count !== undefined ? `${activityMeta.count}件` : '',
+          activityMeta.updatedAt ? `最終更新 ${activityMeta.updatedAt}` : '',
+        ].filter(Boolean).join('・') || undefined
+      : undefined;
+
     return [
       // ① 評価（Assessment）
       {
@@ -140,6 +164,7 @@ function useSections(): HubSection[] {
             description: '支援活動テンプレートの管理（日課・行事・特別活動）',
             icon: <ListAltIcon sx={{ fontSize: 32, color: '#e65100' }} />,
             adminOnly: true,
+            meta: activityMetaText,
           },
           {
             label: '支援手順マスタ',

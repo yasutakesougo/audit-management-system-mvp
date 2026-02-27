@@ -18,6 +18,7 @@ import { SupportActivityTemplateList } from '../features/support/SupportActivity
 // LocalStorage管理: 今はローカルストレージ版の簡易マスタです。
 // 将来的にSharePointの支援活動マスタへ移行予定
 const STORAGE_KEY = 'ams.supportActivityTemplates.v1';
+const META_KEY = 'ams.supportActivityTemplates.meta.v1';
 
 const buildDefaultTemplates = (): SupportActivityTemplate[] =>
   defaultSupportActivities.map((template, index) => ({
@@ -65,6 +66,11 @@ const SupportActivityMasterPage: React.FC = () => {
   useEffect(() => {
     if (typeof window !== 'undefined') {
       window.localStorage.setItem(STORAGE_KEY, JSON.stringify(templates));
+      // IBDハブ用メタ情報（件数・最終更新日）
+      window.localStorage.setItem(
+        META_KEY,
+        JSON.stringify({ count: templates.length, updatedAt: new Date().toISOString() }),
+      );
     }
   }, [templates]);
 
