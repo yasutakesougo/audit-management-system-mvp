@@ -91,34 +91,34 @@ describe('navigationConfig', () => {
       expect(pickGroup(item, false)).toBe('record');
     });
 
-    it('should classify analysis as review group', () => {
+    it('should classify analysis as ibd group', () => {
       const item: NavItem = {
         label: '分析',
         to: '/analysis/dashboard',
         isActive: () => false,
         testId: TESTIDS.nav.analysis,
       };
-      expect(pickGroup(item, false)).toBe('review');
+      expect(pickGroup(item, false)).toBe('ibd');
     });
 
-    it('should classify iceberg as review group', () => {
+    it('should classify iceberg as ibd group', () => {
       const item: NavItem = {
         label: '氷山分析',
         to: '/analysis/iceberg',
         isActive: () => false,
         testId: TESTIDS.nav.iceberg,
       };
-      expect(pickGroup(item, false)).toBe('review');
+      expect(pickGroup(item, false)).toBe('ibd');
     });
 
-    it('should classify assessment as review group', () => {
+    it('should classify assessment as ibd group', () => {
       const item: NavItem = {
         label: 'アセスメント',
         to: '/assessment',
         isActive: () => false,
         testId: TESTIDS.nav.assessment,
       };
-      expect(pickGroup(item, false)).toBe('review');
+      expect(pickGroup(item, false)).toBe('ibd');
     });
 
     it('should classify users and staff as master group', () => {
@@ -377,7 +377,7 @@ describe('navigationConfig', () => {
       expect(ORDER).toEqual(NAV_GROUP_ORDER);
       expect(map.get('daily')).toHaveLength(1);
       expect(map.get('record')).toHaveLength(2); // 黒ノート + 自己点検 (non-admin default)
-      expect(map.get('review')).toHaveLength(1);
+      expect(map.get('ibd')).toHaveLength(1);
       expect(map.get('master')).toHaveLength(1);
     });
 
@@ -391,7 +391,7 @@ describe('navigationConfig', () => {
     it('should maintain group order', () => {
       const { ORDER } = groupNavItems(sampleItems, false);
 
-      expect(ORDER).toEqual(['daily', 'record', 'review', 'master', 'admin', 'settings']);
+      expect(ORDER).toEqual(['daily', 'record', 'ibd', 'isp', 'master', 'admin', 'settings']);
     });
 
     it('should omit empty groups from the map', () => {
@@ -403,7 +403,7 @@ describe('navigationConfig', () => {
       // groups with items should still exist
       expect(map.has('daily')).toBe(true);
       expect(map.has('record')).toBe(true);
-      expect(map.has('review')).toBe(true);
+      expect(map.has('ibd')).toBe(true);
       expect(map.has('master')).toBe(true);
     });
 
@@ -429,14 +429,15 @@ describe('navigationConfig', () => {
     it('should have correct group labels', () => {
       expect(groupLabel.daily).toBe('📌 今日の業務');
       expect(groupLabel.record).toBe('📚 記録を参照');
-      expect(groupLabel.review).toBe('🔍 分析して改善');
+      expect(groupLabel.ibd).toBe('🧩 強度行動障害支援');
+      expect(groupLabel.isp).toBe('📋 個別支援計画');
       expect(groupLabel.master).toBe('👥 利用者・職員');
       expect(groupLabel.admin).toBe('🛡️ システム管理');
       expect(groupLabel.settings).toBe('⚙️ 表示設定');
     });
 
     it('should have correct group order', () => {
-      expect(NAV_GROUP_ORDER).toEqual(['daily', 'record', 'review', 'master', 'admin', 'settings']);
+      expect(NAV_GROUP_ORDER).toEqual(['daily', 'record', 'ibd', 'isp', 'master', 'admin', 'settings']);
     });
   });
 });

@@ -7,8 +7,8 @@ describe('Nav ↔ Router Consistency', () => {
   // Feature Flag matrices to ensure we test all possible conditional routes
   // ---------------------------------------------------------------------------
   const featureMatrices = [
-    { schedulesEnabled: true, complianceFormEnabled: true, icebergPdcaEnabled: true, staffAttendanceEnabled: true },
-    { schedulesEnabled: false, complianceFormEnabled: false, icebergPdcaEnabled: false, staffAttendanceEnabled: false },
+    { schedulesEnabled: true, complianceFormEnabled: true, icebergPdcaEnabled: true, staffAttendanceEnabled: true, todayOpsEnabled: true },
+    { schedulesEnabled: false, complianceFormEnabled: false, icebergPdcaEnabled: false, staffAttendanceEnabled: false, todayOpsEnabled: false },
   ];
 
   const roles: NavAudience[] = ['admin', 'staff', 'reception', 'all'];
