@@ -4,8 +4,8 @@
  * listByDate で当日分を一括取得し、UserCode → ServiceProvisionSummary の Map を返す。
  * Hook 不使用（純粋関数 + async）。cross-module 側から直接呼べる。
  */
-import type { ServiceProvisionRecord } from '@/features/service-provision/domain/types';
 import type { ServiceProvisionRepository } from '@/features/service-provision/domain/ServiceProvisionRepository';
+import type { ServiceProvisionRecord } from '@/features/service-provision/domain/types';
 import type { ServiceProvisionSummary } from './types';
 
 /**
@@ -15,14 +15,14 @@ export function toProvisionSummary(record: ServiceProvisionRecord): ServiceProvi
   return {
     hasRecord: true,
     status: record.status,
-    startHHMM: record.startHHMM,
-    endHHMM: record.endHHMM,
+    startHHMM: record.startHHMM ?? null,
+    endHHMM: record.endHHMM ?? null,
     additions: {
-      transport: record.hasTransport,
-      meal: record.hasMeal,
-      bath: record.hasBath,
-      extended: record.hasExtended,
-      absentSupport: record.hasAbsentSupport,
+      transport: record.hasTransport ?? false,
+      meal: record.hasMeal ?? false,
+      bath: record.hasBath ?? false,
+      extended: record.hasExtended ?? false,
+      absentSupport: record.hasAbsentSupport ?? false,
     },
     notePreview: record.note ? record.note.slice(0, 50) : undefined,
   };
