@@ -1,6 +1,18 @@
+/**
+ * TodayOpsLayout — 「今日の業務」画面レイアウト
+ *
+ * 左カラム: Hero → 出席サマリー → ブリーフィングアラート → 利用者一覧
+ * 右カラム: 次のアクション → 送迎状況(P1)
+ */
+import type { BriefingAlert } from '@/features/dashboard/sections/types';
 import { Box, Container, Grid, Paper, Stack, Typography } from '@mui/material';
 import React from 'react';
+import type { NextActionItem } from '../hooks/useNextAction';
+import type { AttendanceSummaryCardProps } from '../widgets/AttendanceSummaryCard';
+import { AttendanceSummaryCard } from '../widgets/AttendanceSummaryCard';
+import { BriefingAlertList } from '../widgets/BriefingAlertList';
 import { HeroUnfinishedBanner } from '../widgets/HeroUnfinishedBanner';
+import { NextActionCard } from '../widgets/NextActionCard';
 import { UserCompactList, type UserRow } from '../widgets/UserCompactList';
 
 type HeroProps = {
@@ -10,25 +22,24 @@ type HeroProps = {
   onOpenApproval: () => void;
 };
 
-type NextAction = {
-  title: string;
-  timeText: string;
-  onStart?: () => void;
-  onDone?: () => void;
-};
-
 type TransportUser = { userId: string; name: string };
-type AlertItem = { id: string; message: string };
 
 export type TodayOpsProps = {
   hero: HeroProps;
-  nextAction?: NextAction;
+  attendance: AttendanceSummaryCardProps;
+  briefingAlerts: BriefingAlert[];
+  nextAction: NextActionItem | null;
   transport: { pending: TransportUser[]; inProgress: TransportUser[]; onArrived: (id: string) => void };
   users: { items: UserRow[]; onOpenQuickRecord: (id: string) => void };
-  alerts: { items: AlertItem[]; onOpenDetail?: () => void };
 };
 
-export const TodayOpsLayout: React.FC<TodayOpsProps> = ({ hero, nextAction, users, alerts }) => {
+export const TodayOpsLayout: React.FC<TodayOpsProps> = ({
+  hero,
+  attendance,
+  briefingAlerts,
+  nextAction,
+  users,
+}) => {
   return (
     <Box sx={{ minHeight: '100dvh', bgcolor: 'background.default', pb: 8 }}>
       <HeroUnfinishedBanner
@@ -42,20 +53,9 @@ export const TodayOpsLayout: React.FC<TodayOpsProps> = ({ hero, nextAction, user
         <Grid container spacing={3}>
           {/* 左：主動線 */}
           <Grid size={{ xs: 12, md: 8 }}>
-            {alerts.items.length > 0 && (
-              <Paper sx={{ p: 2, mb: 3, borderLeft: 4, borderColor: 'warning.main' }}>
-                <Typography variant="subtitle2" color="warning.main" fontWeight="bold" gutterBottom>
-                  ⚠️ 重要アラート
-                </Typography>
-                <Stack spacing={1}>
-                  {alerts.items.map((a) => (
-                    <Typography key={a.id} variant="body2">
-                      {a.message}
-                    </Typography>
-                  ))}
-                </Stack>
-              </Paper>
-            )}
+            <AttendanceSummaryCard {...attendance} />
+
+            <BriefingAlertList alerts={briefingAlerts} />
 
             <Typography variant="h6" gutterBottom fontWeight="bold">
               👥 今日の利用者
@@ -70,28 +70,14 @@ export const TodayOpsLayout: React.FC<TodayOpsProps> = ({ hero, nextAction, user
           {/* 右：補助線 */}
           <Grid size={{ xs: 12, md: 4 }}>
             <Stack spacing={3}>
-              <Paper sx={{ p: 2 }}>
-                <Typography variant="subtitle2" fontWeight="bold" gutterBottom>
-                  次のアクション
-                </Typography>
-                {nextAction ? (
-                  <>
-                    <Typography variant="h6">{nextAction.timeText}</Typography>
-                    <Typography variant="body1">{nextAction.title}</Typography>
-                  </>
-                ) : (
-                  <Typography variant="body2" color="text.secondary">
-                    予定はありません
-                  </Typography>
-                )}
-              </Paper>
+              <NextActionCard nextAction={nextAction} />
 
               <Paper sx={{ p: 2 }}>
                 <Typography variant="subtitle2" fontWeight="bold" gutterBottom>
                   🚚 送迎状況
                 </Typography>
                 <Typography variant="body2" color="text.secondary">
-                  PR1では仮表示（PR2で実データ接続）
+                  P1で実データ接続予定
                 </Typography>
               </Paper>
             </Stack>
