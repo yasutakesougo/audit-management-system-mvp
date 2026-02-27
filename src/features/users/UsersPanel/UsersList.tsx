@@ -34,6 +34,7 @@ import ErrorState from '../../../ui/components/ErrorState';
 import Loading from '../../../ui/components/Loading';
 import type { IUserMaster } from '../types';
 import UserDetailSections from '../UserDetailSections/index';
+import { resolveUserIdentifier } from '../UserDetailSections/helpers';
 import {
     getUserStatusChips,
     isUserInactive,
@@ -324,7 +325,7 @@ const UsersList: FC<UsersListProps> = ({
             <TableBody>
               {displayUsers.map((user) => {
                 const rowBusy = busyId === Number(user.Id);
-                const userKey = user.UserID || String(user.Id);
+                const userKey = resolveUserIdentifier(user);
                 const isSelected = selectedUserKey === userKey;
                 const inactive = isUserInactive(user);
                 const { visible: visibleChips, overflow: overflowChips } = getUserStatusChips(user);
