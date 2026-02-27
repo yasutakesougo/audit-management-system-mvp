@@ -67,6 +67,7 @@ const SupportStepMasterPage = React.lazy(() => import('@/pages/SupportStepMaster
 const IndividualSupportManagementPage = React.lazy(() => import('@/pages/IndividualSupportManagementPage'));
 const UserDetailPage = React.lazy(() => import('@/pages/UserDetailPage'));
 const NavigationDiagnosticsPage = React.lazy(() => import('@/pages/admin/NavigationDiagnosticsPage'));
+const DataIntegrityPage = React.lazy(() => import('@/pages/admin/DataIntegrityPage'));
 
 const StaffPanel = React.lazy(() => import('@/features/staff').then(m => ({ default: m.StaffPanel })));
 const UsersPanel = React.lazy(() => import('@/features/users').then(m => ({ default: m.UsersPanel })));
@@ -544,6 +545,20 @@ const SuspendedNavigationDiagnosticsPage: React.FC = () => (
   </RouteHydrationErrorBoundary>
 );
 
+const SuspendedDataIntegrityPage: React.FC = () => (
+  <RouteHydrationErrorBoundary>
+    <React.Suspense
+      fallback={(
+        <div className="p-4 text-sm text-slate-600" role="status">
+          データ整合性チェックを読み込んでいます…
+        </div>
+      )}
+    >
+      <DataIntegrityPage />
+    </React.Suspense>
+  </RouteHydrationErrorBoundary>
+);
+
 const SuspendedMeetingGuidePage: React.FC = () => (
   <RouteHydrationErrorBoundary>
     <React.Suspense
@@ -889,6 +904,14 @@ const childRoutes: RouteObject[] = [
     element: (
       <RequireAudience requiredRole="admin">
         <SuspendedNavigationDiagnosticsPage />
+      </RequireAudience>
+    ),
+  },
+  {
+    path: 'admin/data-integrity',
+    element: (
+      <RequireAudience requiredRole="admin">
+        <SuspendedDataIntegrityPage />
       </RequireAudience>
     ),
   },
