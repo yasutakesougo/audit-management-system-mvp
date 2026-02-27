@@ -1,3 +1,5 @@
+export { logBriefingAction, logBriefingActionError } from './alertActions.logger';
+export type { BriefingActionErrorEvent, BriefingActionEvent } from './alertActions.logger';
 export { buildStorageKey, createLocalStorageRepo } from './alertActions.storage';
 export type { AlertActionRepository } from './alertActions.storage';
 export { ALERT_ACTION_DEFS, buildAlertKey } from './alertActions.types';

@@ -5,7 +5,10 @@
  * スコープ: 端末 × 日付 × ログインユーザー
  *
  * Key format: today-alert-actions.v1:{ymd}:{loginUserKey}
+ *
+ * @skill @observability-engineer — error classification on persist failure
  */
+import { classifyStorageError, logBriefingActionError } from './alertActions.logger';
 import type { ActionStatus, AlertActionState } from './alertActions.types';
 
 const STORAGE_PREFIX = 'today-alert-actions.v1';
@@ -18,7 +21,8 @@ export function buildStorageKey(ymd: string, loginUserKey: string): string {
 /** Repository Interface (将来 SP 実装に差し替え可能) */
 export interface AlertActionRepository {
   load(): AlertActionState;
-  setState(alertKey: string, status: ActionStatus): void;
+  /** Returns true on success, false on persist failure */
+  setState(alertKey: string, status: ActionStatus): boolean;
   getState(alertKey: string): ActionStatus;
   clear(): void;
 }
@@ -38,11 +42,26 @@ export function createLocalStorageRepo(ymd: string, loginUserKey: string): Alert
       }
     },
 
-    setState(alertKey: string, status: ActionStatus): void {
-      if (typeof window === 'undefined') return;
-      const current = this.load();
-      current[alertKey] = status;
-      window.localStorage.setItem(key, JSON.stringify(current));
+    setState(alertKey: string, status: ActionStatus): boolean {
+      if (typeof window === 'undefined') return false;
+      try {
+        const current = this.load();
+        current[alertKey] = status;
+        window.localStorage.setItem(key, JSON.stringify(current));
+        return true;
+      } catch (err) {
+        // Classify and log — don't throw (UI stays alive)
+        const parts = alertKey.split(':');
+        logBriefingActionError({
+          ymd,
+          alertType: parts[0] ?? 'unknown',
+          userId: parts[1] ?? 'unknown',
+          actionId: status,
+          errorClass: classifyStorageError(err),
+          message: err instanceof Error ? err.message : String(err),
+        });
+        return false;
+      }
     },
 
     getState(alertKey: string): ActionStatus {
