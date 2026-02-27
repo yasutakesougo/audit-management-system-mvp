@@ -1,16 +1,16 @@
 // src/features/auth/diagnostics/AuthDiagnosticsPanel.tsx
-import HelpIcon from '@mui/icons-material/Help';
+import { useState, useEffect, useCallback } from 'react';
 import Box from '@mui/material/Box';
-import Button from '@mui/material/Button';
+import Paper from '@mui/material/Paper';
+import Typography from '@mui/material/Typography';
+import Stack from '@mui/material/Stack';
 import Chip from '@mui/material/Chip';
 import Divider from '@mui/material/Divider';
+import Button from '@mui/material/Button';
 import IconButton from '@mui/material/IconButton';
-import Paper from '@mui/material/Paper';
-import Stack from '@mui/material/Stack';
-import Typography from '@mui/material/Typography';
-import { useCallback, useEffect, useState } from 'react';
+import HelpIcon from '@mui/icons-material/Help';
 import { authDiagnostics, type AuthDiagnosticEvent } from './collector';
-import { getReasonTitle, getRunbookLink } from './runbook';
+import { getRunbookLink, getReasonTitle } from './runbook';
 
 type AuthDiagnosticsPanelProps = {
   /** 表示する最大件数 */
@@ -45,7 +45,6 @@ const OutcomeBadge = ({ outcome }: { outcome: AuthDiagnosticEvent['outcome'] }) 
 export default function AuthDiagnosticsPanel({ limit = 10, pollInterval = 2000 }: AuthDiagnosticsPanelProps) {
   const [events, setEvents] = useState<AuthDiagnosticEvent[]>([]);
   const [stats, setStats] = useState<ReturnType<typeof authDiagnostics.snapshot> | null>(null);
-  const [expanded, setExpanded] = useState(false);
 
   const refresh = useCallback(() => {
     setEvents(authDiagnostics.getRecent(limit));
@@ -82,32 +81,6 @@ export default function AuthDiagnosticsPanel({ limit = 10, pollInterval = 2000 }
     .slice(0, 5);
   const recoveryPercent = (stats.recoveryRate * 100).toFixed(1);
 
-  // Collapsed: compact 1-line summary
-  if (!expanded) {
-    return (
-      <Paper
-        variant="outlined"
-        sx={{
-          px: 2, py: 0.75, maxWidth: 800, mx: 'auto', mt: 1,
-          cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 1,
-          '&:hover': { bgcolor: 'action.hover' },
-        }}
-        onClick={() => setExpanded(true)}
-      >
-        <Typography variant="caption" sx={{ fontWeight: 600, opacity: 0.7 }}>
-          Auth Diagnostics (Dev)
-        </Typography>
-        <Chip label={`${stats.total} events`} size="small" variant="outlined" sx={{ height: 20, fontSize: '0.7rem' }} />
-        {stats.byOutcome.blocked > 0 && (
-          <Chip label={`${stats.byOutcome.blocked} blocked`} size="small" color="error" sx={{ height: 20, fontSize: '0.7rem' }} />
-        )}
-        <Typography variant="caption" color="text.secondary" sx={{ ml: 'auto' }}>
-          ▶ クリックで展開
-        </Typography>
-      </Paper>
-    );
-  }
-
   return (
     <Paper variant="outlined" sx={{ p: 2, maxWidth: 800, mx: 'auto', mt: 2 }}>
       <Stack spacing={2}>
@@ -115,9 +88,6 @@ export default function AuthDiagnosticsPanel({ limit = 10, pollInterval = 2000 }
           <Typography variant="h6" fontWeight={600}>
             Auth Diagnostics (Dev)
           </Typography>
-          <Button size="small" variant="outlined" onClick={() => setExpanded(false)} sx={{ mr: 1 }}>
-            たたむ
-          </Button>
           <Button size="small" variant="outlined" onClick={handleClear}>
             クリア
           </Button>
