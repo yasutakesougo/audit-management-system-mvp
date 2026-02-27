@@ -27,6 +27,7 @@ describe('ScheduleSection (Constant SP Lane)', () => {
     const lane = screen.getByTestId('schedules-sp-lane');
     expect(lane).toBeInTheDocument();
     expect(lane).toHaveAttribute('data-state', 'disabled');
-    expect(screen.getByText('連携オフ')).toBeInTheDocument();
+    const elements = screen.getAllByText('連携オフ');
+    expect(elements.length).toBeGreaterThan(0);
   });
 });

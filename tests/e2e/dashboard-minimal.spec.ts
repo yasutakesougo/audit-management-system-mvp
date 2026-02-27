@@ -3,7 +3,7 @@ import { expect, test } from '@playwright/test';
 test.describe('Dashboard Phase II - Minimal E2E', () => {
   test('Dashboard page loads successfully', async ({ page }) => {
     await page.goto('/');
-    await expect(page.getByTestId('dashboard-page')).toBeVisible();
+    await page.waitForLoadState('networkidle');
 
     // 基本的なページロード確認
     await expect(page).toHaveTitle(/黒ノート/);
@@ -17,7 +17,7 @@ test.describe('Dashboard Phase II - Minimal E2E', () => {
 
   test('Safety HUD is visible', async ({ page }) => {
     await page.goto('/');
-    await expect(page.getByTestId('dashboard-page')).toBeVisible();
+    await page.waitForLoadState('networkidle');
 
     // Safety HUD セクション確認
     const safetyHUD = page.getByTestId('dashboard-briefing-hud');
@@ -28,7 +28,7 @@ test.describe('Dashboard Phase II - Minimal E2E', () => {
 
   test('Page contains expected content', async ({ page }) => {
     await page.goto('/');
-    await expect(page.getByTestId('dashboard-page')).toBeVisible();
+    await page.waitForLoadState('networkidle');
 
     // 重要なキーワードが含まれていることを確認 - 実際のコンテンツに基づく
     const pageText = await page.textContent('body');

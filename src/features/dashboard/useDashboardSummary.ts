@@ -35,17 +35,30 @@ export function buildSpLaneModel(enabled: boolean, status: SpSyncStatus): SpLane
 /**
  * Main hook: consolidates domain logic via modular selectors
  */
-export function useDashboardSummary(
-  users: IUserMaster[],
-  staff: Staff[],
-  visits: Record<string, AttendanceVisitSnapshot>,
-  today: string,
-  currentMonth: string,
-  generateMockActivityRecords: (users: IUserMaster[], date: string) => PersonDaily[],
-  attendanceCounts: AttendanceCounts,
-  spSyncStatus: HubSyncStatus,
-) {
+export function useDashboardSummary({
+  users,
+  staff,
+  visits,
+  today,
+  currentMonth,
+  generateMockActivityRecords,
+  attendanceCounts,
+  spSyncStatus,
+}: {
+  users: IUserMaster[];
+  staff: Staff[];
+  visits: Record<string, AttendanceVisitSnapshot>;
+  today: string;
+  currentMonth: string;
+  generateMockActivityRecords: (users: IUserMaster[], date: string) => PersonDaily[];
+  attendanceCounts: AttendanceCounts;
+  spSyncStatus?: HubSyncStatus;
+}) {
   const isDevProfiling = process.env.NODE_ENV === 'development';
+
+  // Normalize inputs: prevent Object.values(undefined) crash during initial render
+  const safeVisits = visits ?? {};
+  const safeAttendanceCounts = attendanceCounts ?? { onDuty: 0, out: 0, absent: 0, total: 0 };
 
   const perfMark = (label: string) => {
     if (isDevProfiling && typeof performance !== 'undefined') {
@@ -71,7 +84,7 @@ export function useDashboardSummary(
   perfMark('useDashboardSummary-start');
 
   // 1. Activity & Usage
-  const attendanceOrderUserIds = Object.values(visits)
+  const attendanceOrderUserIds = Object.values(safeVisits)
     .filter(v => v.status !== '当日欠席' && v.status !== '事前欠席')
     .map(v => v.userCode);
 
@@ -80,7 +93,7 @@ export function useDashboardSummary(
 
   // 2. Attendance & Alerts
   const { attendanceSummary, briefingAlerts } =
-    useAttendanceAnalytics(users, staff, visits, attendanceCounts);
+    useAttendanceAnalytics(users, staff, safeVisits, safeAttendanceCounts);
 
   // 3. Schedules
   const { scheduleLanesToday, scheduleLanesTomorrow } = useScheduleLanes(users);
@@ -101,7 +114,8 @@ export function useDashboardSummary(
     source: 'demo',
   };
 
-  const monitoringHub = useMonitoringHub(spSyncStatus, presenceSyncStatus, dailySyncStatus, spEnabled);
+  const defaultSyncStatus: HubSyncStatus = { loading: false, error: null, itemCount: 0, source: 'demo' };
+  const monitoringHub = useMonitoringHub(spSyncStatus ?? defaultSyncStatus, presenceSyncStatus, dailySyncStatus, spEnabled);
 
   // 5. Prioritized Users
   const prioritizedUsers = useMemo(() => intensiveSupportUsers.slice(0, 3), [intensiveSupportUsers]);

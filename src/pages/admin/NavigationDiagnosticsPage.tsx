@@ -37,6 +37,7 @@ export const NavigationDiagnosticsPage: React.FC = () => {
     complianceFormEnabled: true,
     icebergPdcaEnabled: true,
     staffAttendanceEnabled: true,
+    todayOpsEnabled: true,
   });
 
   const handleFlagChange = (event: React.ChangeEvent<HTMLInputElement>) => {

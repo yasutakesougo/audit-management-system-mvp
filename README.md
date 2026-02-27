@@ -62,15 +62,6 @@
 - ✅ 環境設定ミス（welfare vs app-test）での 404 地獄
 - ✅ 無限 API リトライ
 - ✅ 現場職員の混乱
-- ✅ **Monitoring Hub Stability**: Monitoring Hub is now contract-versioned and CI-stable as of v1. 外部連携同期の安定性と観測性が基盤レイヤーとして確立されています。
-
-### Maintenance & Next Steps (Monitoring Hub Hardening v1)
-
-静置期間（Architecture Stabilizing Period）における管理タスクです：
-
-- [ ] [Issue: Monitoring Hub v1 Runbook 整備](https://github.com/yasutakesougo/audit-management-system-mvp/issues/613)
-- [ ] [Issue: Monitoring Hub v1 Evidence Pack (証跡) 作成](https://github.com/yasutakesougo/audit-management-system-mvp/issues/614)
-- [ ] [Issue: 次期同期ターゲットの棚卸しとバックログ化](https://github.com/yasutakesougo/audit-management-system-mvp/issues/615)
 
 **E2E テスト戦略**
 
@@ -538,10 +529,10 @@ VITE_SP_RETRY_MAX_DELAY_MS=5000
    ```bash
    # macOS
    brew install mkcert nss
-
+   
    # Windows (Chocolatey)
    choco install mkcert
-
+   
    # Linux
    apt install libnss3-tools
    wget -O mkcert https://dl.filippo.io/mkcert/latest?for=linux/amd64
@@ -964,7 +955,7 @@ lastRefreshEpoch: <最後の refresh UNIX 秒>
 3. 成功後、今後の同期で 409 重複が“成功扱い”に収束し取りこぼしゼロへ
 
 ローカル / 手動実行例 (接続後):
-
+ 
 ```
 
 pwsh -File ./scripts/backfill-entry-hash.ps1 -SiteUrl <https://contoso.sharepoint.com/sites/Audit> -WhatIfMode

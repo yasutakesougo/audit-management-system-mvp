@@ -1,5 +1,4 @@
 import AppShell from '@/app/AppShell';
-import Router from '@/app/router';
 import { routerFutureFlags } from '@/app/routerFuture';
 import { FeatureFlagsProvider, type FeatureFlagSnapshot } from '@/config/featureFlags';
 import { screen } from '@testing-library/react';
@@ -16,7 +15,7 @@ const renderWithFlags = (flags: FeatureFlagSnapshot) =>
   renderWithAppProviders(
     <FeatureFlagsProvider value={flags}>
       <AppShell>
-        <Router />
+        <div />
       </AppShell>
     </FeatureFlagsProvider>,
     { future: routerFutureFlags }

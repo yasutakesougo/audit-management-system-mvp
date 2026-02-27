@@ -2,17 +2,11 @@ import LiveAnnouncer from '@/a11y/LiveAnnouncer';
 import AddCircleOutlineIcon from '@mui/icons-material/AddCircleOutline';
 import Brightness4Icon from '@mui/icons-material/Brightness4';
 import Brightness7Icon from '@mui/icons-material/Brightness7';
-import CloseIcon from '@mui/icons-material/Close';
 import EditNoteIcon from '@mui/icons-material/EditNote';
 import HistoryIcon from '@mui/icons-material/History';
 import SearchIcon from '@mui/icons-material/Search';
 import AppBar from '@mui/material/AppBar';
 import Box from '@mui/material/Box';
-import Button from '@mui/material/Button';
-import Container from '@mui/material/Container';
-import Dialog from '@mui/material/Dialog';
-import DialogContent from '@mui/material/DialogContent';
-import DialogTitle from '@mui/material/DialogTitle';
 import Divider from '@mui/material/Divider';
 import Drawer from '@mui/material/Drawer';
 import IconButton from '@mui/material/IconButton';
@@ -23,8 +17,6 @@ import ListItemButton from '@mui/material/ListItemButton';
 import ListItemIcon from '@mui/material/ListItemIcon';
 import ListItemText from '@mui/material/ListItemText';
 import ListSubheader from '@mui/material/ListSubheader';
-import Paper from '@mui/material/Paper';
-import Stack from '@mui/material/Stack';
 import { useTheme } from '@mui/material/styles';
 import TextField from '@mui/material/TextField';
 import Toolbar from '@mui/material/Toolbar';
@@ -33,6 +25,8 @@ import Typography from '@mui/material/Typography';
 import useMediaQuery from '@mui/material/useMediaQuery';
 import React, { useCallback, useContext, useEffect, useMemo, useState } from 'react';
 // Navigation Icons
+import { ConnectionStatus } from '@/app/components/ConnectionStatus';
+import { FooterQuickActions } from '@/app/components/FooterQuickActions';
 import {
     createNavItems,
     filterNavItems,
@@ -44,7 +38,6 @@ import {
 } from '@/app/config/navigationConfig';
 import { ActivityBar } from '@/app/layout/ActivityBar';
 import { AppShell as AppShellLayout } from '@/app/layout/AppShell';
-import { useMsalContext } from '@/auth/MsalProvider';
 import { canAccess } from '@/auth/roles';
 import { useUserAuthz } from '@/auth/useUserAuthz';
 import { AppShellV2 } from '@/components/layout/AppShellV2';
@@ -53,12 +46,10 @@ import { useFeatureFlags } from '@/config/featureFlags';
 import { AuthDiagnosticsPanel } from '@/features/auth/diagnostics';
 import { useAuthStore } from '@/features/auth/store';
 import { useDashboardPath } from '@/features/dashboard/dashboardRouting';
-import { HandoffQuickNoteCard } from '@/features/handoff/HandoffQuickNoteCard';
 import { useSettingsContext } from '@/features/settings/SettingsContext';
 import { SettingsDialog } from '@/features/settings/SettingsDialog';
 import RouteHydrationListener from '@/hydration/RouteHydrationListener';
-import { getAppConfig, isE2eMsalMockEnabled, readBool, shouldSkipLogin } from '@/lib/env';
-import { useSP } from '@/lib/spClient';
+import { shouldSkipLogin } from '@/lib/env';
 import { TESTIDS } from '@/testids';
 import SignInButton from '@/ui/components/SignInButton';
 import AssessmentRoundedIcon from '@mui/icons-material/AssessmentRounded';
@@ -77,16 +68,9 @@ import SettingsRoundedIcon from '@mui/icons-material/SettingsRounded';
 import WorkspacesIcon from '@mui/icons-material/Workspaces';
 import Fab from '@mui/material/Fab';
 import { Link as RouterLink, useLocation, useNavigate } from 'react-router-dom';
-import {
-    createFooterActions,
-    footerAccentByKey,
-    footerShortLabelByKey,
-    footerTestIds
-} from './config/footerActionsConfig';
 import { ColorModeContext } from './theme';
 
 const SKIP_LOGIN = shouldSkipLogin();
-const E2E_MSAL_MOCK_ENABLED = isE2eMsalMockEnabled();
 
 function useLockBodyScroll(enabled: boolean) {
   React.useLayoutEffect(() => {
@@ -112,7 +96,7 @@ const AppShell: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   useLockBodyScroll(true);
   const location = useLocation();
   const navigate = useNavigate();
-  const { schedules, complianceForm, icebergPdca, staffAttendance, appShellVsCode } = useFeatureFlags();
+  const { schedules, complianceForm, icebergPdca, staffAttendance, appShellVsCode, todayOps } = useFeatureFlags();
   const { mode, toggle } = useContext(ColorModeContext);
   const dashboardPath = useDashboardPath();
   const currentRole = useAuthStore((s) => s.currentUserRole);
@@ -215,6 +199,7 @@ const AppShell: React.FC<{ children: React.ReactNode }> = ({ children }) => {
       complianceFormEnabled,
       icebergPdcaEnabled,
       staffAttendanceEnabled,
+      todayOpsEnabled: todayOps,
       isAdmin,
       authzReady,
       navAudience,
@@ -226,7 +211,7 @@ const AppShell: React.FC<{ children: React.ReactNode }> = ({ children }) => {
       ...item,
       icon: iconMap[item.label],
     }));
-  }, [dashboardPath, currentRole, schedulesEnabled, complianceFormEnabled, icebergPdcaEnabled, staffAttendanceEnabled, isAdmin, authzReady, navAudience]);
+  }, [dashboardPath, currentRole, schedulesEnabled, complianceFormEnabled, icebergPdcaEnabled, staffAttendanceEnabled, todayOps, isAdmin, authzReady, navAudience]);
 
   const filteredNavItems = useMemo(() => {
     return filterNavItems(navItems, navQuery);
@@ -270,7 +255,7 @@ const AppShell: React.FC<{ children: React.ReactNode }> = ({ children }) => {
 
   const renderNavItem = useCallback((item: NavItem, onNavigate?: () => void) => {
     const { label, to, isActive, testId, icon: IconComponent, prefetchKey, prefetchKeys } = item;
-    const active = isActive(currentPathname);
+    const active = isActive(currentPathname, location.search);
     const isBlackNote = label.includes('黒ノート');
     const showLabel = !navCollapsed;
 
@@ -815,301 +800,6 @@ const AppShell: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   );
 };
 
-const ConnectionStatus: React.FC = () => {
-  const isVitest = typeof process !== 'undefined' && Boolean(process.env?.VITEST);
-  const e2eMode = readBool('VITE_E2E', false) && !isVitest;
-  const sharePointDisabled = readBool('VITE_SKIP_SHAREPOINT', false);
-  const shouldMockConnection = e2eMode || sharePointDisabled || E2E_MSAL_MOCK_ENABLED;
-
-  return shouldMockConnection ? <ConnectionStatusMock /> : <ConnectionStatusReal sharePointDisabled={sharePointDisabled} />;
-};
-
-const ConnectionStatusMock: React.FC = () => {
-  return (
-    <Box
-      role="status"
-      aria-live="polite"
-      data-testid="sp-connection-status"
-      data-connection-state="ok"
-      sx={{
-        background: '#2e7d32',
-        color: '#fff',
-        px: 1,
-        py: 0.25,
-        borderRadius: 12,
-        fontSize: 12,
-        fontWeight: 500,
-        minWidth: 90,
-        textAlign: 'center',
-      }}
-    >
-      SP Connected
-    </Box>
-  );
-};
-
-const ConnectionStatusReal: React.FC<{ sharePointDisabled: boolean }> = ({ sharePointDisabled }) => {
-  const forceSharePoint = readBool('VITE_FORCE_SHAREPOINT', false);
-  const sharePointFeatureEnabled = readBool('VITE_FEATURE_SCHEDULES_SP', false);
-  const { spFetch } = useSP();
-  const { accounts } = useMsalContext();
-  const accountsCount = accounts.length;
-  const [state, setState] = useState<'checking' | 'ok' | 'error' | 'signedOut'>('checking');
-  const bypassAccountGate = SKIP_LOGIN || E2E_MSAL_MOCK_ENABLED;
-  const isDemoMode = import.meta.env.VITE_DEMO_MODE === '1';
-
-  useEffect(() => {
-    // Complete demo mode bypass: Skip SharePoint entirely when demo mode is active
-    if (isDemoMode) {
-      // eslint-disable-next-line no-console
-      console.info('[demo] Skip SharePoint bootstrap');
-      setState('ok');
-      return;
-    }
-
-    const { isDev: isDevelopment } = getAppConfig();
-    const isVitest = typeof process !== 'undefined' && Boolean(process.env?.VITEST);
-    const shouldCheckSharePoint =
-      !sharePointDisabled && (!isDevelopment || isVitest || forceSharePoint || sharePointFeatureEnabled);
-
-    if (!shouldCheckSharePoint) {
-      console.info('SharePoint 接続チェックをスキップし、モック状態に設定');
-      setState('ok');
-      return;
-    }
-
-    if (!bypassAccountGate && accountsCount === 0) {
-      setState('signedOut');
-      return;
-    }
-
-    let cancelled = false;
-    const controller = new AbortController();
-
-    (async () => {
-      try {
-        setState('checking');
-        const result = await spFetch('/currentuser?$select=Id', { signal: controller.signal });
-        if (cancelled) return;
-        let ok = false;
-        if (result instanceof Response) {
-          ok = result.ok;
-        } else if (result && typeof result === 'object' && 'ok' in result) {
-          ok = Boolean((result as { ok?: unknown }).ok);
-        }
-        setState(ok ? 'ok' : 'error');
-      } catch (error) {
-        if (cancelled) return;
-        if (error instanceof DOMException && error.name === 'AbortError') {
-          setState('checking');
-          return;
-        }
-        console.warn('SharePoint 接続エラー:', error);
-        setState('error');
-      }
-    })();
-
-    return () => {
-      cancelled = true;
-      controller.abort();
-    };
-  }, [isDemoMode, accountsCount, bypassAccountGate, forceSharePoint, sharePointFeatureEnabled, sharePointDisabled]);
-
-  const { label, background } = useMemo(() => {
-    switch (state) {
-      case 'signedOut':
-        return { label: 'SP Sign-In', background: '#0277bd' };
-      case 'ok':
-        return { label: 'SP Connected', background: '#2e7d32' };
-      case 'error':
-        return { label: 'SP Error', background: '#d32f2f' };
-      default:
-        return { label: 'Checking', background: '#ffb300' };
-    }
-  }, [state]);
-
-  return (
-    <Box
-      role="status"
-      aria-live="polite"
-      data-testid="sp-connection-status"
-      data-connection-state={state}
-      sx={{
-        background,
-        color: '#fff',
-        px: 1,
-        py: 0.25,
-        borderRadius: 12,
-        fontSize: 12,
-        fontWeight: 500,
-        minWidth: 90,
-        textAlign: 'center',
-      }}
-    >
-      {label}
-    </Box>
-  );
-};
-
-const FooterQuickActions: React.FC<{ fixed?: boolean }> = ({ fixed = true }) => {
-  const location = useLocation();
-  const theme = useTheme();
-  const [quickNoteOpen, setQuickNoteOpen] = useState(false);
-  const isHandoffTimeline =
-    location.pathname === '/handoff-timeline' || location.pathname.startsWith('/handoff-timeline/');
-
-  const handleQuickNoteClick = () => {
-    if (isHandoffTimeline) {
-      if (typeof window !== 'undefined') {
-        window.dispatchEvent(new CustomEvent('handoff-open-quicknote'));
-      }
-      return;
-    }
-    setQuickNoteOpen(true);
-  };
-
-  const schedulesEnabled = Boolean(useFeatureFlags().schedules);
-  const actions = React.useMemo(() => {
-    const computedActions = createFooterActions({ schedulesEnabled });
-    return computedActions.map((action) => {
-      if (action.onClickKey === 'handoff-quicknote') {
-        return { ...action, onClick: handleQuickNoteClick };
-      }
-      return { ...action, onClick: undefined };
-    });
-  }, [schedulesEnabled, isHandoffTimeline]);
-
-  return (
-    <Box
-      component="footer"
-      role="contentinfo"
-      sx={{
-        position: fixed ? 'fixed' : 'static',
-        bottom: fixed ? { xs: 8, sm: 16 } : 'auto',
-        left: fixed ? 0 : 'auto',
-        width: '100%',
-        pointerEvents: fixed ? 'none' : 'auto',
-        zIndex: fixed ? ((theme) => theme.zIndex.appBar) : 'auto',
-      }}
-    >
-      <Container maxWidth="lg" sx={fixed ? { pointerEvents: 'auto' } : undefined}>
-        <Paper
-          elevation={6}
-          sx={{
-            height: 56,
-            borderRadius: 0,
-            px: { xs: 1, sm: 2 },
-            py: { xs: 0.5, sm: 1 },
-            pb: 'calc(1px * (var(--mobile-safe-area, 0)) + 0.5rem)',
-            backdropFilter: 'blur(6px)',
-            backgroundColor: (theme) =>
-              theme.palette.mode === 'dark'
-                ? 'rgba(33, 33, 33, 0.95)'
-                : 'rgba(255, 255, 255, 0.98)',
-            boxSizing: 'border-box',
-            display: 'flex',
-            alignItems: 'center',
-          }}
-        >
-          <Stack
-            direction="row"
-            spacing={0.5}
-            alignItems="center"
-            sx={{
-              width: '100%',
-              height: '100%',
-              overflowX: 'auto',
-              overflowY: 'hidden',
-              flexWrap: 'nowrap',
-              WebkitOverflowScrolling: 'touch',
-              scrollbarWidth: 'thin',
-              '&::-webkit-scrollbar': { height: 4 },
-            }}
-          >
-            {actions.map(({ key, label, to, color, variant: baseVariant, onClick }) => {
-              const displayLabel = footerShortLabelByKey[key] ?? label;
-              const commonProps = {
-                color,
-                size: 'small' as const,
-                fullWidth: true,
-                sx: {
-                  flex: 1,
-                  minHeight: 44,
-                  fontWeight: 600,
-                  fontSize: '0.75rem',
-                  whiteSpace: 'nowrap',
-                  py: 0.5,
-                },
-                'data-testid': footerTestIds[key],
-              };
-
-              if (to) {
-                const targetPath = to.split('?')[0];
-                const isActive = location.pathname.startsWith(targetPath);
-                const accent = footerAccentByKey[key] ?? theme.palette.primary.main;
-                const activeSx = isActive
-                  ? {
-                      color: accent,
-                      borderBottom: `3px solid ${accent}`,
-                      borderRadius: 0,
-                      fontWeight: 700,
-                      '&:hover': {
-                        backgroundColor: theme.palette.action.hover,
-                      },
-                    }
-                  : undefined;
-                return (
-                  <Button
-                    key={key}
-                    {...commonProps}
-                    component={RouterLink as unknown as React.ElementType}
-                    to={to}
-                    variant={isActive ? 'contained' : baseVariant}
-                    aria-current={isActive ? 'page' : undefined}
-                    sx={{ ...commonProps.sx, ...activeSx }}
-                  >
-                    {displayLabel}
-                  </Button>
-                );
-              }
-
-              return (
-                <Button
-                  key={key}
-                  {...commonProps}
-                  variant={baseVariant}
-                  startIcon={<EditNoteIcon />}
-                  onClick={onClick}
-                  data-testid={key === 'handoff-quicknote' ? TESTIDS['handoff-footer-quicknote'] : undefined}
-                >
-                  {displayLabel}
-                </Button>
-              );
-            })}
-          </Stack>
-        </Paper>
-      </Container>
-      {!isHandoffTimeline && (
-        <Dialog
-          open={quickNoteOpen}
-          onClose={() => setQuickNoteOpen(false)}
-          fullWidth
-          maxWidth="sm"
-        >
-          <DialogTitle sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-            今すぐ申し送り
-            <IconButton aria-label="申し送りダイアログを閉じる" onClick={() => setQuickNoteOpen(false)}>
-              <CloseIcon />
-            </IconButton>
-          </DialogTitle>
-          <DialogContent dividers>
-            <HandoffQuickNoteCard />
-          </DialogContent>
-        </Dialog>
-      )}
-    </Box>
-  );
-};
 
 export const shouldTriggerNavShellHud = (event: KeyboardEvent): boolean => {
   // Ignore repeated key events

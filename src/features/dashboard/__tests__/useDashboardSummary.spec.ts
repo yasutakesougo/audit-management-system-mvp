@@ -115,9 +115,10 @@ describe('useDashboardSummary', () => {
         staff: [createMinimalStaff()],
         attendanceCounts: createMinimalAttendanceCounts(),
         generateMockActivityRecords: mockGenerateMockActivityRecords,
+        spSyncStatus: mockSpSyncStatus,
       };
 
-      const { result } = renderHook(() => useDashboardSummary(args.users, args.staff, args.visits, args.today, args.currentMonth, args.generateMockActivityRecords, args.attendanceCounts, mockSpSyncStatus));
+      const { result } = renderHook(() => useDashboardSummary(args));
 
       // Verify all expected keys exist
       expect(result.current).toHaveProperty('activityRecords');
@@ -140,9 +141,10 @@ describe('useDashboardSummary', () => {
         staff: [createMinimalStaff()],
         attendanceCounts: createMinimalAttendanceCounts(),
         generateMockActivityRecords: mockGenerateMockActivityRecords,
+        spSyncStatus: mockSpSyncStatus,
       };
 
-      const { result } = renderHook(() => useDashboardSummary(args.users, args.staff, args.visits, args.today, args.currentMonth, args.generateMockActivityRecords, args.attendanceCounts, mockSpSyncStatus));
+      const { result } = renderHook(() => useDashboardSummary(args));
 
       // Type checks
       expect(Array.isArray(result.current.activityRecords)).toBe(true);
@@ -167,9 +169,10 @@ describe('useDashboardSummary', () => {
         staff: [],
         attendanceCounts: createMinimalAttendanceCounts(),
         generateMockActivityRecords: mockGenerateMockActivityRecords,
+        spSyncStatus: mockSpSyncStatus,
       };
 
-      const { result } = renderHook(() => useDashboardSummary(args.users, args.staff, args.visits, args.today, args.currentMonth, args.generateMockActivityRecords, args.attendanceCounts, mockSpSyncStatus));
+      const { result } = renderHook(() => useDashboardSummary(args));
 
       expect(result.current.activityRecords).toEqual([]);
       expect(result.current.intensiveSupportUsers).toEqual([]);
@@ -186,9 +189,10 @@ describe('useDashboardSummary', () => {
         staff: [createMinimalStaff()],
         attendanceCounts: createMinimalAttendanceCounts({ onDuty: 1 }),
         generateMockActivityRecords: mockGenerateMockActivityRecords,
+        spSyncStatus: mockSpSyncStatus,
       };
 
-      const { result } = renderHook(() => useDashboardSummary(args.users, args.staff, args.visits, args.today, args.currentMonth, args.generateMockActivityRecords, args.attendanceCounts, mockSpSyncStatus));
+      const { result } = renderHook(() => useDashboardSummary(args));
 
       // Should not throw
       expect(result.current.activityRecords.length).toBe(1);
@@ -206,9 +210,10 @@ describe('useDashboardSummary', () => {
         staff: [createMinimalStaff()],
         attendanceCounts: createMinimalAttendanceCounts(),
         generateMockActivityRecords: mockGenerateMockActivityRecords,
+        spSyncStatus: mockSpSyncStatus,
       };
 
-      const { result } = renderHook(() => useDashboardSummary(args.users, args.staff, args.visits, args.today, args.currentMonth, args.generateMockActivityRecords, args.attendanceCounts, mockSpSyncStatus));
+      const { result } = renderHook(() => useDashboardSummary(args));
 
       expect(result.current.stats).toHaveProperty('totalUsers');
       expect(result.current.stats).toHaveProperty('recordedUsers');
@@ -229,9 +234,10 @@ describe('useDashboardSummary', () => {
         staff: [createMinimalStaff()],
         attendanceCounts: createMinimalAttendanceCounts(),
         generateMockActivityRecords: mockGenerateMockActivityRecords,
+        spSyncStatus: mockSpSyncStatus,
       };
 
-      const { result } = renderHook(() => useDashboardSummary(args.users, args.staff, args.visits, args.today, args.currentMonth, args.generateMockActivityRecords, args.attendanceCounts, mockSpSyncStatus));
+      const { result } = renderHook(() => useDashboardSummary(args));
 
       expect(result.current.attendanceSummary).toHaveProperty('facilityAttendees');
       expect(result.current.attendanceSummary).toHaveProperty('lateOrEarlyLeave');
@@ -255,9 +261,10 @@ describe('useDashboardSummary', () => {
         staff: [createMinimalStaff()],
         attendanceCounts: createMinimalAttendanceCounts(),
         generateMockActivityRecords: mockGenerateMockActivityRecords,
+        spSyncStatus: mockSpSyncStatus,
       };
 
-      const { result } = renderHook(() => useDashboardSummary(args.users, args.staff, args.visits, args.today, args.currentMonth, args.generateMockActivityRecords, args.attendanceCounts, mockSpSyncStatus));
+      const { result } = renderHook(() => useDashboardSummary(args));
 
       expect(result.current.dailyRecordStatus).toHaveProperty('total');
       expect(result.current.dailyRecordStatus).toHaveProperty('pending');
@@ -276,9 +283,10 @@ describe('useDashboardSummary', () => {
         staff: [createMinimalStaff()],
         attendanceCounts: createMinimalAttendanceCounts(),
         generateMockActivityRecords: mockGenerateMockActivityRecords,
+        spSyncStatus: mockSpSyncStatus,
       };
 
-      const { result } = renderHook(() => useDashboardSummary(args.users, args.staff, args.visits, args.today, args.currentMonth, args.generateMockActivityRecords, args.attendanceCounts, mockSpSyncStatus));
+      const { result } = renderHook(() => useDashboardSummary(args));
 
       expect(result.current.scheduleLanesToday).toHaveProperty('userLane');
       expect(result.current.scheduleLanesToday).toHaveProperty('staffLane');
@@ -297,9 +305,10 @@ describe('useDashboardSummary', () => {
         staff: [createMinimalStaff()],
         attendanceCounts: createMinimalAttendanceCounts(),
         generateMockActivityRecords: mockGenerateMockActivityRecords,
+        spSyncStatus: mockSpSyncStatus,
       };
 
-      const { result } = renderHook(() => useDashboardSummary(args.users, args.staff, args.visits, args.today, args.currentMonth, args.generateMockActivityRecords, args.attendanceCounts, mockSpSyncStatus));
+      const { result } = renderHook(() => useDashboardSummary(args));
 
       expect(result.current.scheduleLanesTomorrow).toHaveProperty('userLane');
       expect(result.current.scheduleLanesTomorrow).toHaveProperty('staffLane');
@@ -324,9 +333,10 @@ describe('useDashboardSummary', () => {
         staff: [createMinimalStaff()],
         attendanceCounts: createMinimalAttendanceCounts(),
         generateMockActivityRecords: mockGenerateMockActivityRecords,
+        spSyncStatus: mockSpSyncStatus,
       };
 
-      const { result } = renderHook(() => useDashboardSummary(args.users, args.staff, args.visits, args.today, args.currentMonth, args.generateMockActivityRecords, args.attendanceCounts, mockSpSyncStatus));
+      const { result } = renderHook(() => useDashboardSummary(args));
 
       expect(result.current.intensiveSupportUsers.length).toBe(2);
       expect(result.current.intensiveSupportUsers.every((u: IUserMaster) => u.IsSupportProcedureTarget)).toBe(true);
@@ -346,12 +356,39 @@ describe('useDashboardSummary', () => {
         staff: [createMinimalStaff()],
         attendanceCounts: createMinimalAttendanceCounts(),
         generateMockActivityRecords: mockGenerateMockActivityRecords,
+        spSyncStatus: mockSpSyncStatus,
       };
 
-      const { result } = renderHook(() => useDashboardSummary(args.users, args.staff, args.visits, args.today, args.currentMonth, args.generateMockActivityRecords, args.attendanceCounts, mockSpSyncStatus));
+      const { result } = renderHook(() => useDashboardSummary(args));
 
       expect(result.current.prioritizedUsers.length).toBe(3);
       expect(result.current.intensiveSupportUsers.length).toBe(4);
+    });
+  });
+
+  describe('Null/Undefined Safety (TypeError regression)', () => {
+    it('does not throw when visits is undefined (cold load scenario)', () => {
+      const args = {
+        users: [createMinimalUser()],
+        today: '2026-02-23',
+        currentMonth: '2026-02',
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        visits: undefined as any,
+        staff: [createMinimalStaff()],
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        attendanceCounts: undefined as any,
+        generateMockActivityRecords: mockGenerateMockActivityRecords,
+        spSyncStatus: mockSpSyncStatus,
+      };
+
+      // This previously threw: TypeError: Cannot convert undefined or null to object
+      // at Object.values() in useDashboardSummary.ts
+      const { result } = renderHook(() => useDashboardSummary(args));
+
+      // Should return valid defaults without crashing
+      expect(result.current).toHaveProperty('activityRecords');
+      expect(result.current).toHaveProperty('attendanceSummary');
+      expect(result.current).toHaveProperty('stats');
     });
   });
 });

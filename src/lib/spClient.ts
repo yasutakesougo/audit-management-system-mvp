@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
 import { useAuth } from '@/auth/useAuth';
-import type { ResourceInfo, UnifiedResourceEvent } from '@/features/resources/types';
+import type { UnifiedResourceEvent } from '@/features/resources/types';
 import { auditLog } from '@/lib/debugLogger';
 import { getAppConfig, isE2eMsalMockEnabled, readBool, readEnv, shouldSkipLogin, skipSharePoint, type EnvRecord } from '@/lib/env';
 import { useMemo } from 'react';
@@ -644,13 +644,11 @@ export function createSpClient(
   };
 
   const spFetch = async (path: string, init: RequestInit = {}): Promise<Response> => {
-    // eslint-disable-next-line no-console
-    console.warn('[spFetch] HIT', { path });
     const resolvedPath = normalizePath(path);
 
-    const isE2E = readBool('VITE_E2E', false, config as any);
+    // 🔥 CRITICAL: Always use config to respect overrides and mocks
     const isE2EWithMsalMock = isE2eMsalMockEnabled(config as any);
-    const shouldMock = !isE2E && !isE2EWithMsalMock && (!baseUrl || baseUrl === '' || skipSharePoint(config as any) || shouldSkipLogin(config as any));
+    const shouldMock = !isE2EWithMsalMock && (!baseUrl || baseUrl === '' || skipSharePoint(config as any) || shouldSkipLogin(config as any));
     const AUDIT_DEBUG = config.VITE_AUDIT_DEBUG;
 
     // 🔍 デバッグログ: モック条件を確認
@@ -706,15 +704,7 @@ export function createSpClient(
       return mockResponse({ value: [] });
     }
 
-    let token1: string | null = null;
-    try {
-      token1 = await acquireToken();
-    } catch (e) {
-      if (isE2E) {
-        throw new Error(`[msal] E2E mode network error during acquireToken: ${e instanceof Error ? e.message : String(e)}`);
-      }
-      throw e;
-    }
+    const token1 = await acquireToken();
     if (debugEnabled && tokenMetricsCarrier.__TOKEN_METRICS__) {
       dbg('token metrics snapshot', tokenMetricsCarrier.__TOKEN_METRICS__);
     }
@@ -723,9 +713,6 @@ export function createSpClient(
     const skipAuthCheck = shouldSkipLogin(config as any) || isE2eMsalMockEnabled(config as any);
 
     if (!token1 && !skipAuthCheck) {
-      if (isE2E) {
-        throw new Error('[msal] E2E mode network error: acquireSpAccessToken disabled. Simulation requires offline/stub handling.');
-      }
       throw new AuthRequiredError();
     }
 
@@ -1165,12 +1152,7 @@ export function createSpClient(
       };
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
-      const is404 = /\b404\b/.test(message) || /Not Found/i.test(message) || /does not exist/i.test(message);
-
-      // eslint-disable-next-line no-console
-      console.log('[schedules] [spClient] tryGetListMetadata caught error:', { message, is404 });
-
-      if (is404) {
+      if (/\b404\b/.test(message) || /Not Found/i.test(message) || /does not exist/i.test(message)) {
         return null;
       }
       throw error;
@@ -1586,33 +1568,12 @@ export const useSP = () => {
 
 export type IntegratedResourceCalendarClient = {
   getUnifiedEvents: () => Promise<UnifiedResourceEvent[]>;
-  getResources: () => Promise<ResourceInfo[]>;
 };
 
-export const createIrcSpClient = (sp: UseSP): IntegratedResourceCalendarClient => ({
+export const createIrcSpClient = (): IntegratedResourceCalendarClient => ({
   async getUnifiedEvents() {
     // Placeholder: wire to SharePoint/Graph once schema stabilizes
     return [];
-  },
-  async getResources() {
-    try {
-      const staff = await getStaffMaster<{
-        Id: number;
-        StaffID: string;
-        StaffName: string;
-        Role?: string;
-      }>(sp);
-
-      return staff.map((s) => ({
-        id: s.StaffID || String(s.Id),
-        title: s.StaffName || 'Unknown Staff',
-        type: 'staff',
-        employmentType: s.Role?.includes('正社員') ? 'regular' : 'contract',
-      }));
-    } catch (error) {
-      console.error('[IRC] Failed to fetch resources:', error);
-      throw error;
-    }
   },
 });
 

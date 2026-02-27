@@ -1,3 +1,4 @@
+import type { UpdateScheduleEventInput } from '@/features/schedules/data';
 import { result } from '@/shared/result';
 import { describe, expect, it, vi } from 'vitest';
 
@@ -19,8 +20,7 @@ describe('sharePointAdapter conflict mapping (Phase 2-1b)', () => {
     const mockFetchItemById = vi.fn();
 
     // Simulate the update logic from makeSharePointScheduleUpdater
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const input: any = {
+    const input: UpdateScheduleEventInput = {
       id: '123',
       title: 'Test Event',
       category: 'User',
@@ -65,8 +65,7 @@ describe('sharePointAdapter conflict mapping (Phase 2-1b)', () => {
   });
 
   it('returns validation error when etag is missing', () => {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const input: any = {
+    const input: UpdateScheduleEventInput = {
       id: '123',
       title: 'Test',
       category: 'User',

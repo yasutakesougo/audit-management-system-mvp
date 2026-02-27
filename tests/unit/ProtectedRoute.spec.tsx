@@ -36,7 +36,7 @@ const createAuthenticatedState = (
   getListReadyState: vi.fn(() => true),
   setListReadyState: vi.fn(),
   ...overrides,
-} as ReturnType<typeof useAuth>);
+});
 
 const defaultFlags: FeatureFlagSnapshot = {
   schedules: true,

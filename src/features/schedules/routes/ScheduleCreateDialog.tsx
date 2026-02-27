@@ -1,29 +1,29 @@
 import {
-    Close as CloseIcon,
-    DeleteOutline as DeleteOutlineIcon,
-    EventAvailable as EventIcon,
-    Save as SaveIcon
+  Close as CloseIcon,
+  DeleteOutline as DeleteOutlineIcon,
+  EventAvailable as EventIcon,
+  Save as SaveIcon
 } from '@mui/icons-material';
 import {
-    Alert,
-    Box,
-    Button,
-    CircularProgress,
-    Dialog,
-    DialogActions,
-    DialogContent,
-    DialogTitle,
-    FormControl,
-    FormControlLabel,
-    FormHelperText,
-    InputLabel,
-    MenuItem,
-    Radio,
-    RadioGroup,
-    Select,
-    Stack,
-    TextField,
-    Typography
+  Alert,
+  Box,
+  Button,
+  CircularProgress,
+  Dialog,
+  DialogActions,
+  DialogContent,
+  DialogTitle,
+  FormControl,
+  FormControlLabel,
+  FormHelperText,
+  InputLabel,
+  MenuItem,
+  Radio,
+  RadioGroup,
+  Select,
+  Stack,
+  TextField,
+  Typography
 } from '@mui/material';
 import Autocomplete from '@mui/material/Autocomplete';
 import type { SelectChangeEvent } from '@mui/material/Select';
@@ -32,30 +32,29 @@ import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useAnnounce } from '@/a11y/LiveAnnouncer';
 import { TESTIDS } from '@/testids';
 import type {
-    CreateScheduleEventInput,
-    ScheduleCategory,
-    ScheduleServiceType,
-    ScheduleStatus,
+  CreateScheduleEventInput,
+  ScheduleCategory,
+  ScheduleServiceType,
+  ScheduleStatus,
 } from '../data';
 import {
-    scheduleCategoryLabels,
-    scheduleFacilityHelpText,
-    scheduleFacilityPlaceholder,
-} from '../domain/categoryLabels';
-import {
-    buildAutoTitle,
-    createInitialScheduleFormState,
-    SERVICE_TYPE_OPTIONS,
-    toCreateScheduleInput,
-    validateScheduleForm,
-    type ScheduleFormState,
-    type ScheduleUserOption,
+  buildAutoTitle,
+  createInitialScheduleFormState,
+  SERVICE_TYPE_OPTIONS,
+  toCreateScheduleInput,
+  validateScheduleForm,
+  type ScheduleFormState,
+  type ScheduleUserOption,
 } from '../domain/scheduleFormState';
-import { useOrgOptions, type OrgOption } from '../hooks/useOrgOptions';
-import { useStaffOptions, type StaffOption } from '../hooks/useStaffOptions';
-import type { WeekDialogMode } from '../hooks/useWeekPageRouteState';
 import { SCHEDULE_STATUS_OPTIONS } from '../statusMetadata';
 import { buildScheduleFailureAnnouncement, buildScheduleSuccessAnnouncement } from '../utils/scheduleAnnouncements';
+import { useOrgOptions, type OrgOption } from '../hooks/useOrgOptions';
+import { useStaffOptions, type StaffOption } from '../hooks/useStaffOptions';
+import {
+  scheduleCategoryLabels,
+  scheduleFacilityHelpText,
+  scheduleFacilityPlaceholder,
+} from '../domain/categoryLabels';
 
 // ===== Types for Dialog Component Only =====
 // (All business logic types moved to scheduleFormState.ts for Fast Refresh compatibility)
@@ -187,10 +186,6 @@ export const ScheduleCreateDialog: React.FC<ScheduleCreateDialogProps> = (props)
     () => errors.find((msg) => msg.includes('サービス種別を選択してください')),
     [errors],
   );
-  const hasValidationErrors = useMemo(
-    () => validateScheduleForm(form).errors.length > 0,
-    [form]
-  );
   const selectedStaffOption = useMemo(() => {
     if (!form.assignedStaffId) {
       return null;
@@ -202,16 +197,8 @@ export const ScheduleCreateDialog: React.FC<ScheduleCreateDialogProps> = (props)
     return staffOptions.find((option) => option.id === numeric) ?? null;
   }, [form.assignedStaffId, staffOptions]);
 
-  const lastOpenRef = useRef(false);
-  const lastEventIdRef = useRef<string | null>(null);
-  const lastModeRef = useRef<WeekDialogMode | null>(null);
-
-  // Initialization & Reset
   useEffect(() => {
-    const opening = open && !lastOpenRef.current;
-    const itemChanged = open && (eventId !== lastEventIdRef.current || mode !== lastModeRef.current);
-
-    if (opening || itemChanged) {
+    if (open) {
       setForm((prev) => {
         const next = createInitialScheduleFormState({
           initialDate,
@@ -229,9 +216,6 @@ export const ScheduleCreateDialog: React.FC<ScheduleCreateDialogProps> = (props)
       setErrors([]);
       setSubmitting(false);
     }
-    lastOpenRef.current = open;
-    lastEventIdRef.current = eventId ?? null;
-    lastModeRef.current = mode;
   }, [open, eventId, initialDate, initialStartTime, initialEndTime, defaultUser?.id, initialOverride, mode, resolvedDefaultTitle]);
 
   const titleLabel = mode === 'edit' ? 'スケジュール更新' : 'スケジュール新規作成';
@@ -815,13 +799,10 @@ export const ScheduleCreateDialog: React.FC<ScheduleCreateDialogProps> = (props)
           キャンセル
         </Button>
         <Button
-          color="primary"
           variant="contained"
-          onClick={() => {
-            handleSubmit();
-          }}
+          onClick={handleSubmit}
           startIcon={<SaveIcon />}
-          disabled={submitting || externalIsSubmitting || hasValidationErrors}
+          disabled={submitting || externalIsSubmitting}
           data-testid={submitTestId ?? TESTIDS['schedule-create-save']}
         >
             {submitting || externalIsSubmitting ? '保存中...' : primaryButtonLabel}
