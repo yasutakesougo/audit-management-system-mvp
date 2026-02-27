@@ -1,3 +1,4 @@
+import { TESTIDS, tidWithSuffix } from '@/testids';
 import ArrowBackRoundedIcon from '@mui/icons-material/ArrowBackRounded';
 import PeopleAltRoundedIcon from '@mui/icons-material/PeopleAltRounded';
 import Alert from '@mui/material/Alert';
@@ -14,16 +15,15 @@ import Tabs from '@mui/material/Tabs';
 import Typography from '@mui/material/Typography';
 import React, { useCallback, useMemo, useRef, useState } from 'react';
 import { Link as RouterLink, useNavigate } from 'react-router-dom';
-import { TESTIDS, tidWithSuffix } from '@/testids';
 import type { IUserMaster } from '../types';
 import { formatDateLabel, renderHighlights, resolveUserIdentifier } from './helpers';
 import {
-  DEFAULT_TAB_KEY,
-  menuSections,
-  NON_TABBED_SECTIONS,
-  QUICK_ACCESS_KEYS,
-  TAB_SECTION_KEYS,
-  TAB_SECTIONS,
+    DEFAULT_TAB_KEY,
+    menuSections,
+    NON_TABBED_SECTIONS,
+    QUICK_ACCESS_KEYS,
+    TAB_SECTION_KEYS,
+    TAB_SECTIONS,
 } from './menuSections';
 import type { MenuSection } from './types';
 
@@ -188,68 +188,108 @@ const UserDetailSections: React.FC<UserDetailSectionsProps> = ({ user, backLink,
       ? '利用者一覧を確認するか、新規利用者登録・基本情報・個別支援計画書・支援手順兼記録・モニタリングシートを選択してください。'
       : '利用者一覧を確認するか、新規利用者登録・基本情報・個別支援計画書・支援手順兼記録・モニタリングシートを選択してください。';
 
+  const isEmbedded = variant === 'embedded';
+
   return (
-  <Stack spacing={3} data-testid={TESTIDS['user-detail-sections']}>
+  <Stack spacing={isEmbedded ? 1.5 : 3} data-testid={TESTIDS['user-detail-sections']}>
       {backControl}
 
-      <Paper variant="outlined" sx={{ p: { xs: 2.5, md: 3 }, borderRadius: 3 }}>
-        <Stack spacing={2}>
+      <Paper variant="outlined" sx={{ p: isEmbedded ? 2 : { xs: 2.5, md: 3 }, borderRadius: isEmbedded ? 2 : 3 }}>
+        <Stack spacing={isEmbedded ? 1 : 2}>
           <Stack
-            direction={{ xs: 'column', sm: 'row' }}
-            spacing={2}
-            alignItems={{ xs: 'flex-start', sm: 'center' }}
+            direction="row"
+            spacing={isEmbedded ? 1.5 : 2}
+            alignItems="center"
           >
-            <Avatar sx={{ bgcolor: 'primary.main', color: '#fff', width: 56, height: 56 }}>
-              <PeopleAltRoundedIcon />
+            <Avatar sx={{ bgcolor: 'primary.main', color: '#fff', width: isEmbedded ? 40 : 56, height: isEmbedded ? 40 : 56 }}>
+              <PeopleAltRoundedIcon fontSize={isEmbedded ? 'small' : 'medium'} />
             </Avatar>
             <Box>
-              <Typography variant="overline" color="text.secondary">
-                利用者プロフィール
-              </Typography>
-              <Typography variant="h4" component="h1" sx={{ fontWeight: 600 }}>
+              {!isEmbedded && (
+                <Typography variant="overline" color="text.secondary">
+                  利用者プロフィール
+                </Typography>
+              )}
+              <Typography variant={isEmbedded ? 'h6' : 'h4'} component="h1" sx={{ fontWeight: 600, lineHeight: 1.2 }}>
                 {user.FullName || '氏名未登録'}
               </Typography>
-              <Typography variant="body2" color="text.secondary">
-                利用者コード: {resolveUserIdentifier(user)}
+              <Typography variant="caption" color="text.secondary">
+                {resolveUserIdentifier(user)}
               </Typography>
             </Box>
           </Stack>
 
-          <Stack direction="row" spacing={1} flexWrap="wrap">
-            <Chip label={`利用者コード: ${resolveUserIdentifier(user)}`} size="small" />
+          <Stack direction="row" spacing={0.5} flexWrap="wrap" sx={{ rowGap: 0.5 }}>
+            {!isEmbedded && (
+              <Chip label={`利用者コード: ${resolveUserIdentifier(user)}`} size="small" />
+            )}
             <Chip label={supportLabel} color={user.IsHighIntensitySupportTarget ? 'warning' : 'default'} size="small" />
             {user.IsSupportProcedureTarget && (
               <Chip label="支援手順対象" color="secondary" size="small" />
             )}
             <Chip label={isActive ? '在籍' : '退所'} color={isActive ? 'success' : 'default'} size="small" />
-            <Chip label={`契約日: ${formatDateLabel(user.ContractDate)}`} size="small" variant="outlined" />
-            <Chip label={`利用開始日: ${formatDateLabel(user.ServiceStartDate)}`} size="small" variant="outlined" />
-            {user.ServiceEndDate && (
-              <Chip label={`利用終了日: ${formatDateLabel(user.ServiceEndDate)}`} size="small" variant="outlined" />
+            {!isEmbedded && (
+              <>
+                <Chip label={`契約日: ${formatDateLabel(user.ContractDate)}`} size="small" variant="outlined" />
+                <Chip label={`利用開始日: ${formatDateLabel(user.ServiceStartDate)}`} size="small" variant="outlined" />
+                {user.ServiceEndDate && (
+                  <Chip label={`利用終了日: ${formatDateLabel(user.ServiceEndDate)}`} size="small" variant="outlined" />
+                )}
+              </>
             )}
           </Stack>
 
-          <Divider />
+          {!isEmbedded && (
+            <>
+              <Divider />
+              <Stack direction={{ xs: 'column', md: 'row' }} spacing={2}>
+                <Box flex={1}>
+                  <Typography variant="subtitle2" color="text.secondary">
+                    通所予定日
+                  </Typography>
+                  <Typography variant="body1">{attendanceLabel}</Typography>
+                </Box>
+                <Box flex={1}>
+                  <Typography variant="subtitle2" color="text.secondary">
+                    メモ
+                  </Typography>
+                  <Typography variant="body1" color="text.secondary">
+                    利用者関連の主要帳票へアクセスするためのメニューです。表示されている「利用者コード」はシステム用で、職員が覚える必要はありません。
+                  </Typography>
+                </Box>
+              </Stack>
+            </>
+          )}
 
-          <Stack direction={{ xs: 'column', md: 'row' }} spacing={2}>
-            <Box flex={1}>
-              <Typography variant="subtitle2" color="text.secondary">
-                通所予定日
-              </Typography>
-              <Typography variant="body1">{attendanceLabel}</Typography>
-            </Box>
-            <Box flex={1}>
-              <Typography variant="subtitle2" color="text.secondary">
-                メモ
-              </Typography>
-              <Typography variant="body1" color="text.secondary">
-                利用者関連の主要帳票へアクセスするためのメニューです。表示されている「利用者コード」はシステム用で、職員が覚える必要はありません。
-              </Typography>
-            </Box>
-          </Stack>
+          {isEmbedded && (
+            <>
+              <Divider />
+              <Box component="dl" sx={{ m: 0, display: 'grid', gridTemplateColumns: '100px 1fr', columnGap: 1.5, rowGap: 0.75, fontSize: '0.85rem' }}>
+                <Typography component="dt" variant="caption" color="text.secondary">契約日</Typography>
+                <Typography component="dd" variant="body2" sx={{ m: 0 }}>{formatDateLabel(user.ContractDate)}</Typography>
+                <Typography component="dt" variant="caption" color="text.secondary">利用開始日</Typography>
+                <Typography component="dd" variant="body2" sx={{ m: 0 }}>{formatDateLabel(user.ServiceStartDate)}</Typography>
+                {user.ServiceEndDate && (
+                  <>
+                    <Typography component="dt" variant="caption" color="text.secondary">利用終了日</Typography>
+                    <Typography component="dd" variant="body2" sx={{ m: 0 }}>{formatDateLabel(user.ServiceEndDate)}</Typography>
+                  </>
+                )}
+                <Typography component="dt" variant="caption" color="text.secondary">通所予定日</Typography>
+                <Typography component="dd" variant="body2" sx={{ m: 0 }}>{attendanceLabel}</Typography>
+                {user.RecipientCertNumber && (
+                  <>
+                    <Typography component="dt" variant="caption" color="text.secondary">受給者証番号</Typography>
+                    <Typography component="dd" variant="body2" sx={{ m: 0 }}>{user.RecipientCertNumber}</Typography>
+                  </>
+                )}
+              </Box>
+            </>
+          )}
         </Stack>
       </Paper>
 
+      {!isEmbedded && (
       <Paper variant="outlined" sx={{ p: { xs: 2.5, md: 3 }, borderRadius: 3 }}>
         <Stack spacing={3}>
           <Box>
@@ -430,6 +470,7 @@ const UserDetailSections: React.FC<UserDetailSectionsProps> = ({ user, backLink,
           })}
         </Stack>
       </Paper>
+      )}
 
       {NON_TABBED_SECTIONS.map((section) => {
         const IconComponent = section.icon;
@@ -470,13 +511,13 @@ const UserDetailSections: React.FC<UserDetailSectionsProps> = ({ user, backLink,
   );
 };
 
-export type { MenuSection };
 export {
-  DEFAULT_TAB_KEY,
-  menuSections,
-  NON_TABBED_SECTIONS,
-  QUICK_ACCESS_KEYS,
-  TAB_SECTION_KEYS,
-  TAB_SECTIONS,
+    DEFAULT_TAB_KEY,
+    menuSections,
+    NON_TABBED_SECTIONS,
+    QUICK_ACCESS_KEYS,
+    TAB_SECTION_KEYS,
+    TAB_SECTIONS
 };
+export type { MenuSection };
 export default UserDetailSections;
