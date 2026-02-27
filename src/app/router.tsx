@@ -1,4 +1,4 @@
-﻿import ProtectedRoute from '@/app/ProtectedRoute';
+import ProtectedRoute from '@/app/ProtectedRoute';
 import { AuthCallbackRoute } from '@/auth/AuthCallbackRoute';
 import RequireAudience from '@/components/RequireAudience';
 import { isDev } from '@/env';
@@ -650,6 +650,21 @@ const SuspendedSupportPlanGuidePage: React.FC = () => (
   </RouteHydrationErrorBoundary>
 );
 
+const ISPComparisonEditorPage = React.lazy(() => import('@/pages/ISPComparisonEditorPage'));
+const SuspendedISPComparisonEditorPage: React.FC = () => (
+  <RouteHydrationErrorBoundary>
+    <React.Suspense
+      fallback={(
+        <div className="p-4 text-sm text-slate-600" role="status">
+          ISP比較エディタを読み込んでいます…
+        </div>
+      )}
+    >
+      <ISPComparisonEditorPage />
+    </React.Suspense>
+  </RouteHydrationErrorBoundary>
+);
+
 const SmokeTestPage = React.lazy(() => import('@/pages/SmokeTestPage').then((module) => ({ default: module.default })));
 const SuspendedSmokeTestPage: React.FC = () => (
   <RouteHydrationErrorBoundary>
@@ -722,6 +737,10 @@ const childRoutes: RouteObject[] = [
         <SuspendedSupportPlanGuidePage />
       </RequireAudience>
     ),
+  },
+  {
+    path: 'isp-editor',
+    element: <SuspendedISPComparisonEditorPage />,
   },
   { path: 'handoff-timeline', element: <SuspendedHandoffTimelinePage /> },
   { path: 'meeting-minutes', element: MeetingMinutesRoutes.List },
