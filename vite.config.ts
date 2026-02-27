@@ -200,7 +200,9 @@ export default defineConfig(({ mode }) => {
               normalized.includes('/react-markdown/') ||
               normalized.includes('/react-router') ||
               normalized.includes('/react-hot-toast/') ||
-              normalized.includes('/react-is/') ||
+              // NOTE: react-is intentionally omitted — multiple versions exist
+              // (v16 from hoist-non-react-statics, v19 from MUI 7) and forcing
+              // them into one chunk causes AsyncMode runtime crash.
               normalized.includes('/remark-') ||
               normalized.includes('/rehype-') ||
               normalized.includes('/micromark/') ||
