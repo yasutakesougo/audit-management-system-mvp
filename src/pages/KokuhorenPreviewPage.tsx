@@ -3,41 +3,40 @@
  *
  * 出力可否判定 + Issue一覧 + CSV出力ボタン制御
  */
-import React, { useState } from 'react';
-import toast, { Toaster } from 'react-hot-toast';
-import {
-  Alert,
-  Box,
-  Button,
-  Chip,
-  CircularProgress,
-  Dialog,
-  DialogActions,
-  DialogContent,
-  DialogContentText,
-  DialogTitle,
-  Paper,
-  Stack,
-  Table,
-  TableBody,
-  TableCell,
-  TableContainer,
-  TableHead,
-  TableRow,
-  TextField,
-  Typography,
-} from '@mui/material';
-import VerifiedIcon from '@mui/icons-material/Verified';
+import DescriptionIcon from '@mui/icons-material/Description';
 import ErrorIcon from '@mui/icons-material/Error';
-import WarningAmberIcon from '@mui/icons-material/WarningAmber';
 import FileDownloadIcon from '@mui/icons-material/FileDownload';
 import RefreshIcon from '@mui/icons-material/Refresh';
-import DescriptionIcon from '@mui/icons-material/Description';
+import VerifiedIcon from '@mui/icons-material/Verified';
+import WarningAmberIcon from '@mui/icons-material/WarningAmber';
+import {
+    Alert,
+    Box,
+    Button,
+    Chip,
+    CircularProgress,
+    Dialog,
+    DialogActions,
+    DialogContent,
+    DialogContentText,
+    DialogTitle,
+    Paper,
+    Stack,
+    Table,
+    TableBody,
+    TableCell,
+    TableContainer,
+    TableHead,
+    TableRow,
+    TextField,
+    Typography,
+} from '@mui/material';
+import React, { useState } from 'react';
+import toast, { Toaster } from 'react-hot-toast';
 
 import { useKokuhorenMonthlyPreview } from '@/features/kokuhoren-preview/useKokuhorenMonthlyPreview';
 import type { ValidationLevel } from '@/features/kokuhoren-validation/types';
-import { generateKokuhorenCsv71, generateCsvFilename, downloadCsv } from '@/features/kokuhoren-csv';
-import { useGenerateOfficialForm } from '@/features/official-forms';
+// Imports for CSV and Official Forms are deferred to their respective PRs
 
 // ─── ヘルパー ────────────────────────────────────────────────
 
@@ -66,9 +65,6 @@ const KokuhorenPreviewPage: React.FC = () => {
   const hasWarning = (result?.summary.warningCount ?? 0) > 0;
 
   // ── 票面保存 Hook ──
-  const { status: formStatus, run: saveOfficialForms } = useGenerateOfficialForm();
-  const isSavingForms = formStatus === 'running';
-  const canSaveForms = !loading && !isSavingForms && !!month && (result?.summary.totalRecords ?? 0) > 0;
 
   const handleExportClick = () => {
     if (hasWarning) {
@@ -83,15 +79,7 @@ const KokuhorenPreviewPage: React.FC = () => {
 
     if (!lastInput) return;
 
-    try {
-      const csv = generateKokuhorenCsv71(lastInput);
-      const filename = generateCsvFilename(month);
-      downloadCsv(csv, filename);
-      toast.success(`${filename} をダウンロードしました`);
-    } catch (err) {
-      console.error('[KokuhorenPreviewPage] CSV export failed', err);
-      toast.error('CSV生成に失敗しました');
-    }
+    toast('CSV生成・ダウンロード機能は別PRで提供されます', { icon: 'ℹ️' });
   };
 
   return (
@@ -278,33 +266,12 @@ const KokuhorenPreviewPage: React.FC = () => {
             <Button
               variant="outlined"
               size="large"
-              startIcon={isSavingForms ? <CircularProgress size={20} /> : <DescriptionIcon />}
-              onClick={async () => {
-                if (hasWarning) {
-                  const ok = window.confirm(
-                    `注意事項が ${result?.summary.warningCount ?? 0} 件あります。このまま票面を保存しますか？`,
-                  );
-                  if (!ok) return;
-                }
-                try {
-                  const out = await saveOfficialForms({ monthISO: month });
-                  const s = out.saved.length;
-                  const f = out.failed.length;
-                  if (s > 0 && f === 0) {
-                    toast.success(`票面を保存しました（${s}件）`);
-                  } else if (s > 0) {
-                    toast(`保存完了: 成功 ${s} / 失敗 ${f}`, { icon: '⚠️' });
-                  } else {
-                    toast.error('保存に失敗しました');
-                  }
-                } catch {
-                  toast.error('票面保存に失敗しました（権限・テンプレ・ライブラリを確認）');
-                }
-              }}
-              disabled={!canSaveForms}
+              startIcon={<DescriptionIcon />}
+              onClick={() => toast('票面保存機能は別PRで提供されます', { icon: 'ℹ️' })}
+              disabled={true}
               data-testid="btn-save-official-forms"
             >
-              {isSavingForms ? '票面保存中...' : '票面を保存（Excel）'}
+              票面を保存（Excel）
             </Button>
           </Stack>
         </>
