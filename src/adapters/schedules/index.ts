@@ -2,7 +2,7 @@ import * as demo from '@/adapters/schedules/demo';
 import * as sharepoint from '@/adapters/schedules/sharepoint';
 import { HYDRATION_FEATURES, startFeatureSpan } from '@/hydration/features';
 import { allowWriteFallback, isDemoModeEnabled } from '@/lib/env';
-import { toSafeError, type SafeError } from '@/lib/errors';
+import { classifyError, toSafeError, type ErrorKind, type SafeError } from '@/lib/errors';
 import { withUserMessage } from '@/lib/notice';
 
 export type { Schedule, ScheduleDraft } from '@/adapters/schedules/demo';
@@ -13,46 +13,17 @@ export type CreateResult = {
 	schedule: demo.Schedule;
 	source: Source;
 	fallbackError?: SafeError;
-	fallbackKind?: 'network' | 'auth' | 'schema' | 'unknown';
+	fallbackKind?: ErrorKind;
 };
 
 export type ListResult = {
 	items: demo.Schedule[];
 	source: Source;
 	fallbackError?: SafeError;
-	fallbackKind?: CreateResult['fallbackKind'];
+	fallbackKind?: ErrorKind;
 };
 
 const isDemo = () => isDemoModeEnabled();
-
-/**
- * Classify SharePoint errors into categories for better fallback handling and metrics.
- * This helps distinguish between temporary network issues vs. permanent config problems.
- */
-const classifyError = (error: SafeError): CreateResult['fallbackKind'] => {
-	const normalized = `${error.code ?? ''} ${error.message ?? ''}`.toLowerCase();
-	// Authentication and authorization issues
-	if (
-		normalized.includes('interaction_required') ||
-		normalized.includes('consent_required') ||
-		normalized.includes('login_required') ||
-		normalized.includes('no signed-in account') ||
-		normalized.includes('aadsts70011') ||
-		normalized.includes(".default scope can't be combined") ||
-		/401|403|unauthor/.test(normalized)
-	) {
-		return 'auth';
-	}
-	// Network and temporary service issues
-	if (/429|503|504|network|fetch|timeout/.test(normalized)) {
-		return 'network';
-	}
-	// Schema and configuration issues
-	if (/does not exist|property|field|schema|invalid/.test(normalized)) {
-		return 'schema';
-	}
-	return 'unknown';
-};
 
 const warned = new Set<string>();
 
