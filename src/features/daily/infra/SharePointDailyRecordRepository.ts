@@ -1,4 +1,5 @@
 import { get as getEnv } from '@/env';
+import { HYDRATION_FEATURES, startFeatureSpan } from '@/hydration/features';
 import { toSafeError } from '@/lib/errors';
 import { fetchSp } from '@/lib/fetchSp';
 import { createSpClient, ensureConfig } from '@/lib/spClient';
@@ -160,12 +161,17 @@ export class SharePointDailyRecordRepository implements DailyRecordRepository {
       throw new Error('Operation aborted');
     }
 
+    const finishSpan = startFeatureSpan(HYDRATION_FEATURES.daily.save, {
+      date: input.date,
+      userCount: input.userRows.length,
+    });
     try {
       const { baseUrl } = ensureConfig();
       const listPath = buildListPath(baseUrl);
 
       // Check if item exists for this date
       const existingItem = await this.findItemByDate(input.date, params?.signal) as SharePointItem | null;
+      const mode = existingItem ? 'update' : 'create';
 
       // Prepare item data
       const userRowsJSON = JSON.stringify(input.userRows);
@@ -213,8 +219,10 @@ export class SharePointDailyRecordRepository implements DailyRecordRepository {
           throw new Error(`Failed to create daily record: ${message}`);
         }
       }
+      finishSpan({ meta: { status: 'ok', mode } });
     } catch (error) {
       const safeError = toSafeError(error);
+      finishSpan({ meta: { status: 'error' }, error: safeError.message });
       console.error('[SharePointDailyRecordRepository] Save failed', {
         date: input.date,
         userCount: input.userRows.length,
@@ -228,11 +236,15 @@ export class SharePointDailyRecordRepository implements DailyRecordRepository {
    * Load a daily record for a specific date
    */
   async load(date: string): Promise<DailyRecordItem | null> {
+    const finishSpan = startFeatureSpan(HYDRATION_FEATURES.daily.load, { date });
     try {
       const item = await this.findItemByDate(date);
-      return item ? parseSpItem(item) : null;
+      const result = item ? parseSpItem(item) : null;
+      finishSpan({ meta: { status: 'ok', found: result !== null } });
+      return result;
     } catch (error) {
       const safeError = toSafeError(error);
+      finishSpan({ meta: { status: 'error' }, error: safeError.message });
       console.error('[SharePointDailyRecordRepository] Load failed', {
         date,
         error: safeError.message,
@@ -249,6 +261,9 @@ export class SharePointDailyRecordRepository implements DailyRecordRepository {
       return [];
     }
 
+    const finishSpan = startFeatureSpan(HYDRATION_FEATURES.daily.list, {
+      range: params.range,
+    });
     try {
       const { baseUrl } = ensureConfig();
       const listPath = buildListPath(baseUrl);
@@ -297,9 +312,11 @@ export class SharePointDailyRecordRepository implements DailyRecordRepository {
         }
       }
 
+      finishSpan({ meta: { status: 'ok', itemCount: results.length } });
       return results;
     } catch (error) {
       const safeError = toSafeError(error);
+      finishSpan({ meta: { status: 'error' }, error: safeError.message });
       console.error('[SharePointDailyRecordRepository] List failed', {
         range: params.range,
         error: safeError.message,

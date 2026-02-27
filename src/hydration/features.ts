@@ -113,6 +113,26 @@ export const HYDRATION_FEATURES = {
       description: 'Week/month slot virtualization + memo builds',
     },
   },
+  daily: {
+    load: {
+      id: 'feature:daily:load',
+      label: 'Daily record load',
+      budget: 80,
+      description: 'SharePoint single-day record fetch + Zod validation',
+    },
+    save: {
+      id: 'feature:daily:save',
+      label: 'Daily record save',
+      budget: 120,
+      description: 'SharePoint daily record upsert (find existing + create/update)',
+    },
+    list: {
+      id: 'feature:daily:list',
+      label: 'Daily records list',
+      budget: 150,
+      description: 'SharePoint date-range query + batch Zod validation',
+    },
+  },
 } as const satisfies HydrationFeatureTree;
 
 // だいたいのペイロードサイズを文字数ベースで推定（HUD用メタ）
