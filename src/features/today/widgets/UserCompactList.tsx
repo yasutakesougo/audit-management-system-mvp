@@ -1,10 +1,12 @@
-import { Button, Paper, Stack, Typography } from '@mui/material';
+import CheckCircleIcon from '@mui/icons-material/CheckCircle';
+import { Box, Button, Paper, Stack, Typography } from '@mui/material';
 import React from 'react';
 
 export type UserRow = {
   userId: string;
   name: string;
   status: 'present' | 'absent' | 'unknown';
+  recordFilled?: boolean;
 };
 
 export type UserCompactListProps = {
@@ -50,9 +52,21 @@ export const UserCompactList: React.FC<UserCompactListProps> = ({ items, onOpenQ
             }),
           }}
         >
-          <Typography variant="body1" fontWeight={500}>
-            {u.name}
-          </Typography>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+            {u.recordFilled && (
+              <CheckCircleIcon
+                sx={{ fontSize: 18, color: 'success.main' }}
+                aria-label="記録済み"
+              />
+            )}
+            <Typography
+              variant="body1"
+              fontWeight={500}
+              sx={u.recordFilled ? { color: 'text.secondary' } : undefined}
+            >
+              {u.name}
+            </Typography>
+          </Box>
           <Button
             size="small"
             variant="outlined"
