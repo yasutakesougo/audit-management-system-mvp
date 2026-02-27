@@ -4,6 +4,7 @@
 // 4セクション: 評価(Assessment) → 分析(Analysis) → 支援設計(Design) → モニタリング(Monitor)
 // 各 Deep Dive ページへの導線 + メタ情報（件数・最終更新日・未完了ドラフト）
 // ---------------------------------------------------------------------------
+import { ASSESSMENT_DRAFT_KEY } from '@/features/assessment/domain/assessmentSchema';
 import AssessmentIcon from '@mui/icons-material/Assessment';
 import BuildIcon from '@mui/icons-material/Build';
 import DashboardIcon from '@mui/icons-material/Dashboard';
@@ -63,7 +64,7 @@ function useSections(): HubSection[] {
 
     const assessmentDraftExists = (() => {
       try {
-        const raw = localStorage.getItem('assessmentDraft.v1');
+        const raw = localStorage.getItem(ASSESSMENT_DRAFT_KEY);
         if (!raw) return false;
         const parsed = JSON.parse(raw);
         return Object.keys(parsed?.data ?? {}).length > 0;

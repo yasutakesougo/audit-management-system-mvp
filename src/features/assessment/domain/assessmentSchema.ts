@@ -40,3 +40,6 @@ export const assessmentStoreSchema = z.object({
 });
 
 export type AssessmentStorePayload = z.infer<typeof assessmentStoreSchema>;
+
+/** localStorage key — shared between store and hub page */
+export const ASSESSMENT_DRAFT_KEY = 'assessmentDraft.v1';

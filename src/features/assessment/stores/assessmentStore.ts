@@ -1,4 +1,4 @@
-import { assessmentStoreSchema } from '@/features/assessment/domain/assessmentSchema';
+import { ASSESSMENT_DRAFT_KEY, assessmentStoreSchema } from '@/features/assessment/domain/assessmentSchema';
 import { createDefaultAssessment, type UserAssessment } from '@/features/assessment/domain/types';
 import { useCallback, useSyncExternalStore } from 'react';
 
@@ -6,7 +6,7 @@ import { useCallback, useSyncExternalStore } from 'react';
 // localStorage persistence
 // ---------------------------------------------------------------------------
 
-const STORAGE_KEY = 'assessmentDraft.v1';
+const STORAGE_KEY = ASSESSMENT_DRAFT_KEY;
 const DEBOUNCE_MS = 600;
 
 function loadFromStorage(): Record<string, UserAssessment> {
