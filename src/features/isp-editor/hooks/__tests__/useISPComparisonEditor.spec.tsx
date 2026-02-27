@@ -1,20 +1,110 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { renderHook, act } from '@testing-library/react';
+
+// Mock useToast
+const mockShow = vi.fn();
+vi.mock('@/hooks/useToast', () => ({
+  useToast: () => ({ show: mockShow }),
+}));
+
+// Mock useUsersStore with sample users
+vi.mock('@/features/users/store', () => ({
+  useUsersStore: () => ({
+    data: [
+      { Id: 1, FullName: '山田 太郎', UserID: 'U001', RecipientCertExpiry: '2026-05-31' },
+      { Id: 2, FullName: '田中 花子', UserID: 'U002', RecipientCertExpiry: '2027-03-31' },
+    ],
+  }),
+}));
+
 import { useISPComparisonEditor } from '../useISPComparisonEditor';
 
 describe('useISPComparisonEditor', () => {
   beforeEach(() => {
     vi.useFakeTimers();
+    localStorage.clear();
+    mockShow.mockClear();
   });
   afterEach(() => {
     vi.useRealTimers();
+    localStorage.clear();
+  });
+
+  /* ── users list ── */
+  it('provides mapped users from store', () => {
+    const { result } = renderHook(() => useISPComparisonEditor());
+    expect(result.current.users).toHaveLength(2);
+    expect(result.current.users[0]).toEqual({ id: '1', label: '山田 太郎' });
+    expect(result.current.users[1]).toEqual({ id: '2', label: '田中 花子' });
+  });
+
+  /* ── selectUser ── */
+  it('selectUser switches plan userName', () => {
+    const { result } = renderHook(() => useISPComparisonEditor());
+    act(() => result.current.selectUser('2'));
+    expect(result.current.selectedUserId).toBe('2');
+    expect(result.current.currentPlan.userName).toBe('田中 花子');
+  });
+
+  /* ── dirty detection ── */
+  it('dirty is false on initial state', () => {
+    const { result } = renderHook(() => useISPComparisonEditor());
+    expect(result.current.dirty).toBe(false);
+  });
+
+  it('dirty becomes true after text change', () => {
+    const { result } = renderHook(() => useISPComparisonEditor());
+    const id = result.current.currentPlan.goals[0].id;
+    act(() => result.current.updateGoalText(id, 'テスト'));
+    expect(result.current.dirty).toBe(true);
+  });
+
+  /* ── save ── */
+  it('save calls toast and resets dirty', () => {
+    const { result } = renderHook(() => useISPComparisonEditor());
+    // Select user first
+    act(() => result.current.selectUser('1'));
+    // Make a change
+    const id = result.current.currentPlan.goals[0].id;
+    act(() => result.current.updateGoalText(id, 'テスト'));
+    expect(result.current.dirty).toBe(true);
+
+    // Save
+    act(() => result.current.save());
+    expect(result.current.dirty).toBe(false);
+    expect(result.current.lastSavedAt).toBeGreaterThan(0);
+    expect(mockShow).toHaveBeenCalledWith('success', '保存しました');
+  });
+
+  it('save without user shows warning toast', () => {
+    const { result } = renderHook(() => useISPComparisonEditor());
+    act(() => result.current.save());
+    expect(mockShow).toHaveBeenCalledWith('warning', '利用者を選択してください');
+  });
+
+  /* ── draft persistence on user switch ── */
+  it('selectUser loads existing draft', () => {
+    const { result } = renderHook(() => useISPComparisonEditor());
+
+    // Select user 1 and make a change
+    act(() => result.current.selectUser('1'));
+    const id = result.current.currentPlan.goals[0].id;
+    act(() => result.current.updateGoalText(id, '保存される目標'));
+    act(() => result.current.save());
+
+    // Switch to user 2
+    act(() => result.current.selectUser('2'));
+    expect(result.current.currentPlan.userName).toBe('田中 花子');
+
+    // Switch back to user 1 — should restore draft
+    act(() => result.current.selectUser('1'));
+    expect(result.current.currentPlan.goals[0].text).toBe('保存される目標');
   });
 
   /* ── updateGoalText ── */
   it('updates goal text', () => {
     const { result } = renderHook(() => useISPComparisonEditor());
     const id = result.current.currentPlan.goals[0].id;
-
     act(() => result.current.updateGoalText(id, 'テスト'));
     expect(result.current.currentPlan.goals.find((g) => g.id === id)?.text).toBe('テスト');
   });
@@ -40,15 +130,12 @@ describe('useISPComparisonEditor', () => {
 
     act(() => result.current.copyFromPrevious(id));
     expect(result.current.copiedId).toBe(id);
-    // テキストも前回の内容にコピーされている
     expect(result.current.currentPlan.goals.find((g) => g.id === id)?.text).not.toBe('');
 
     act(() => {
       vi.advanceTimersByTime(1500);
     });
     expect(result.current.copiedId).toBe(null);
-
-    // unmount中にtimerが残っても落ちないことを確認
     unmount();
   });
 
@@ -62,7 +149,6 @@ describe('useISPComparisonEditor', () => {
     act(() => result.current.updateGoalText(ids[0], 'x'));
     expect(result.current.progress.pct).toBe(Math.round((1 / ids.length) * 100));
 
-    // 全部埋める
     act(() => {
       ids.forEach((id) => result.current.updateGoalText(id, 'filled'));
     });
@@ -74,7 +160,6 @@ describe('useISPComparisonEditor', () => {
     const { result } = renderHook(() => useISPComparisonEditor());
     const id = result.current.currentPlan.goals[0].id;
 
-    // 初期状態: 全て未カバー
     expect(result.current.domainCoverage.every((d) => !d.covered)).toBe(true);
 
     act(() => result.current.toggleDomain(id, 'health'));
@@ -92,10 +177,7 @@ describe('useISPComparisonEditor', () => {
   it('diff is computed when showDiff is on and text is present', () => {
     const { result } = renderHook(() => useISPComparisonEditor());
     const id = result.current.currentPlan.goals[0].id;
-
-    // activeGoalId defaults to 'g1', copy from previous to get text
     act(() => result.current.copyFromPrevious(id));
-    // diff should exist (showDiff defaults to true)
     expect(result.current.diff).not.toBeNull();
     expect(result.current.diff!.length).toBeGreaterThan(0);
   });

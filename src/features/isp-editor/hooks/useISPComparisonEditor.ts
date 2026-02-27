@@ -3,6 +3,8 @@
  * 状態管理・ロジック・イベントハンドラを集約
  */
 import { useState, useMemo, useCallback, useEffect, useRef } from 'react';
+import { useToast } from '@/hooks/useToast';
+import { useUsersStore } from '@/features/users/store';
 import type { GoalItem, DiffSegment } from '../data/ispRepo';
 import {
   DOMAINS,
@@ -11,6 +13,8 @@ import {
   createEmptyCurrentPlan,
   parseYmdLocal,
   computeDiff,
+  loadDraft,
+  saveDraft,
 } from '../data/ispRepo';
 
 export interface DomainCoverage {
@@ -26,13 +30,88 @@ export interface ProgressInfo {
   pct: number;
 }
 
+export interface UserOption {
+  id: string;
+  label: string;
+}
+
+const CURRENT_PLAN_PERIOD = '2025年10月〜2026年3月';
+
 export function useISPComparisonEditor() {
-  const [currentPlan, setCurrentPlan] = useState(createEmptyCurrentPlan);
+  /* ── Users Store ── */
+  const { data: usersData } = useUsersStore();
+  const toast = useToast();
+
+  const users: UserOption[] = useMemo(() =>
+    usersData.map((u) => ({
+      id: String(u.Id),
+      label: u.FullName || u.UserID || `利用者 ${u.Id}`,
+    })),
+    [usersData],
+  );
+
+  /* ── User selection ── */
+  const [selectedUserId, setSelectedUserId] = useState<string | null>(null);
+
+  // Resolve the selected user for display purposes
+  const selectedUser = useMemo(() => {
+    if (!selectedUserId) return null;
+    return usersData.find((u) => String(u.Id) === selectedUserId) ?? null;
+  }, [usersData, selectedUserId]);
+
+  /* ── Core state ── */
+  const [currentPlan, setCurrentPlan] = useState(() => createEmptyCurrentPlan());
   const [showDiff, setShowDiff] = useState(true);
   const [showSmart, setShowSmart] = useState(false);
   const [activeGoalId, setActiveGoalId] = useState('g1');
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [sidebarOpen, setSidebarOpen] = useState(true);
+
+  /* ── Save / dirty ── */
+  const [lastSavedJson, setLastSavedJson] = useState<string>(() => JSON.stringify(createEmptyCurrentPlan()));
+  const [lastSavedAt, setLastSavedAt] = useState<number | null>(null);
+
+  const currentJson = useMemo(() => JSON.stringify(currentPlan), [currentPlan]);
+  const dirty = currentJson !== lastSavedJson;
+
+  /* ── User switch logic ── */
+  const selectUser = useCallback((userId: string) => {
+    // Auto-save current draft before switching
+    if (selectedUserId && dirty) {
+      saveDraft(selectedUserId, CURRENT_PLAN_PERIOD, currentPlan);
+    }
+
+    setSelectedUserId(userId);
+    const user = usersData.find((u) => String(u.Id) === userId);
+    const userName = user?.FullName || user?.UserID || `利用者 ${userId}`;
+    const certExpiry = user?.RecipientCertExpiry || '2026-05-31';
+
+    // Try to load existing draft
+    const draft = loadDraft(userId, CURRENT_PLAN_PERIOD);
+    if (draft) {
+      setCurrentPlan(draft);
+      const json = JSON.stringify(draft);
+      setLastSavedJson(json);
+    } else {
+      const newPlan = createEmptyCurrentPlan(userName, certExpiry);
+      setCurrentPlan(newPlan);
+      setLastSavedJson(JSON.stringify(newPlan));
+    }
+    setLastSavedAt(null);
+    setActiveGoalId('g1');
+  }, [selectedUserId, dirty, currentPlan, usersData]);
+
+  /* ── Save ── */
+  const save = useCallback(() => {
+    if (!selectedUserId) {
+      toast.show('warning', '利用者を選択してください');
+      return;
+    }
+    const result = saveDraft(selectedUserId, CURRENT_PLAN_PERIOD, currentPlan);
+    setLastSavedJson(currentJson);
+    setLastSavedAt(result.savedAt);
+    toast.show('success', '保存しました');
+  }, [selectedUserId, currentPlan, currentJson, toast]);
 
   /* ── 改善3: setTimeout クリーンアップ ── */
   const resetTimerRef = useRef<number | null>(null);
@@ -144,6 +223,13 @@ export function useISPComparisonEditor() {
     activeGoalId,
     copiedId,
     sidebarOpen,
+    // user selection
+    users,
+    selectedUserId,
+    selectedUser,
+    // save / dirty
+    dirty,
+    lastSavedAt,
     // derived
     daysRemaining,
     progress,
@@ -153,6 +239,8 @@ export function useISPComparisonEditor() {
     domainCoverage,
     previousPlan: MOCK_PREVIOUS,
     // actions
+    selectUser,
+    save,
     setActiveGoalId,
     copyFromPrevious,
     updateGoalText,

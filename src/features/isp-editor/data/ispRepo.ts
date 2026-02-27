@@ -3,14 +3,14 @@
  * 現在はモック。将来 SharePoint 実装へ差し替え。
  */
 
-/* ─── 型定義 ─── */
+/* ─── shared re-exports（後方互換） ─── */
+export { parseYmdLocal } from '@/features/isp/shared/date';
+export { DOMAINS } from '@/features/isp/shared/domains';
+export type { DomainDef } from '@/features/isp/shared/domains';
+export { computeDiff } from '@/features/isp/shared/diff';
+export type { DiffSegment } from '@/features/isp/shared/diff';
 
-export interface DomainDef {
-  id: string;
-  label: string;
-  color: string;
-  bg: string;
-}
+/* ─── 型定義 ─── */
 
 export interface GoalItem {
   id: string;
@@ -41,14 +41,6 @@ export interface SmartCriterion {
 }
 
 /* ─── 定数 ─── */
-
-export const DOMAINS: DomainDef[] = [
-  { id: 'health',    label: '健康・生活',                color: '#ef4444', bg: '#fef2f2' },
-  { id: 'motor',     label: '運動・感覚',                color: '#f59e0b', bg: '#fffbeb' },
-  { id: 'cognitive', label: '認知・行動',                color: '#3b82f6', bg: '#eff6ff' },
-  { id: 'language',  label: '言語・コミュニケーション',  color: '#8b5cf6', bg: '#f5f3ff' },
-  { id: 'social',    label: '人間関係・社会性',          color: '#10b981', bg: '#ecfdf5' },
-];
 
 export const SMART_CRITERIA: SmartCriterion[] = [
   { key: 'S', label: 'Specific（具体的）',   hint: '誰が・何を・どこで明確に' },
@@ -102,10 +94,10 @@ export const MOCK_PREVIOUS: ISPPlan = {
   ],
 };
 
-export function createEmptyCurrentPlan(): ISPPlan {
+export function createEmptyCurrentPlan(userName = '山田 太郎', certExpiry = '2026-05-31'): ISPPlan {
   return {
-    userName: '山田 太郎',
-    certExpiry: '2026-05-31',
+    userName,
+    certExpiry,
     planPeriod: '2025年10月〜2026年3月',
     status: 'draft',
     goals: [
@@ -118,64 +110,30 @@ export function createEmptyCurrentPlan(): ISPPlan {
   };
 }
 
-/* ─── ユーティリティ ─── */
+/* ─── LocalStorage Draft ─── */
 
-/** YYYY-MM-DD をローカル日付として解釈（JST 1日ズレ対策） */
-export function parseYmdLocal(ymd: string): Date {
-  const [y, m, d] = ymd.split('-').map(Number);
-  return new Date(y, m - 1, d); // local midnight
+const ISP_DRAFT_KEY = 'isp-editor.draft.v1';
+
+export function draftKey(userId: string, planPeriod: string): string {
+  return `${ISP_DRAFT_KEY}:${userId}:${planPeriod}`;
 }
 
-/** LCS-based character-level diff */
-export interface DiffSegment {
-  type: 'same' | 'add' | 'del';
-  text: string;
+export function loadDraft(userId: string, planPeriod: string): ISPPlan | null {
+  try {
+    const raw = localStorage.getItem(draftKey(userId, planPeriod));
+    if (!raw) return null;
+    return JSON.parse(raw) as ISPPlan;
+  } catch {
+    return null;
+  }
 }
 
-export function computeDiff(oldText: string, newText: string): DiffSegment[] {
-  if (!oldText && !newText) return [];
-  if (!oldText) return [{ type: 'add', text: newText }];
-  if (!newText) return [{ type: 'del', text: oldText }];
-  if (oldText === newText) return [{ type: 'same', text: oldText }];
+export function saveDraft(userId: string, planPeriod: string, plan: ISPPlan): { savedAt: number } {
+  const savedAt = Date.now();
+  localStorage.setItem(draftKey(userId, planPeriod), JSON.stringify(plan));
+  return { savedAt };
+}
 
-  const oldChars = oldText.split('');
-  const newChars = newText.split('');
-  const m = oldChars.length;
-  const n = newChars.length;
-
-  // LCS table
-  const dp: number[][] = Array.from({ length: m + 1 }, () => new Array(n + 1).fill(0));
-  for (let i = 1; i <= m; i++)
-    for (let j = 1; j <= n; j++)
-      dp[i][j] = oldChars[i - 1] === newChars[j - 1]
-        ? dp[i - 1][j - 1] + 1
-        : Math.max(dp[i - 1][j], dp[i][j - 1]);
-
-  // Backtrace
-  const rev: DiffSegment[] = [];
-  let i = m, j = n;
-  while (i > 0 || j > 0) {
-    if (i > 0 && j > 0 && oldChars[i - 1] === newChars[j - 1]) {
-      rev.push({ type: 'same', text: oldChars[i - 1] });
-      i--; j--;
-    } else if (j > 0 && (i === 0 || dp[i][j - 1] >= dp[i - 1][j])) {
-      rev.push({ type: 'add', text: newChars[j - 1] });
-      j--;
-    } else {
-      rev.push({ type: 'del', text: oldChars[i - 1] });
-      i--;
-    }
-  }
-  rev.reverse();
-
-  // Merge consecutive same-type segments
-  const result: DiffSegment[] = [];
-  for (const seg of rev) {
-    if (result.length && result[result.length - 1].type === seg.type) {
-      result[result.length - 1].text += seg.text;
-    } else {
-      result.push({ ...seg });
-    }
-  }
-  return result;
+export function deleteDraft(userId: string, planPeriod: string): void {
+  localStorage.removeItem(draftKey(userId, planPeriod));
 }

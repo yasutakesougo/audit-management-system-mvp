@@ -5,7 +5,7 @@
 import React from 'react';
 import type { GoalItem, DiffSegment, SmartCriterion } from '../data/ispRepo';
 import { DOMAINS, SMART_CRITERIA } from '../data/ispRepo';
-import type { DomainCoverage, ProgressInfo } from '../hooks/useISPComparisonEditor';
+import type { DomainCoverage, ProgressInfo, UserOption } from '../hooks/useISPComparisonEditor';
 
 /* ─── SVG Icons (dependency-free) ─── */
 const SvgIcon: React.FC<{ d: string; size?: number; color?: string; className?: string }> = ({
@@ -40,6 +40,14 @@ export interface ISPComparisonEditorViewProps {
   activeGoalId: string;
   copiedId: string | null;
   sidebarOpen: boolean;
+  // user selection
+  users: UserOption[];
+  selectedUserId: string | null;
+  onSelectUser: (userId: string) => void;
+  // save / dirty
+  dirty: boolean;
+  lastSavedAt: number | null;
+  onSave: () => void;
   // derived
   daysRemaining: number;
   progress: ProgressInfo;
@@ -60,6 +68,7 @@ export interface ISPComparisonEditorViewProps {
 const ISPComparisonEditorView: React.FC<ISPComparisonEditorViewProps> = (props) => {
   const {
     currentPlan, previousPlan, showDiff, showSmart, activeGoalId, copiedId, sidebarOpen,
+    users, selectedUserId, onSelectUser, dirty, lastSavedAt: _lastSavedAt, onSave,
     daysRemaining, progress, activeGoal, prevGoal, diff, domainCoverage,
     setActiveGoalId, copyFromPrevious, updateGoalText, toggleDomain,
     toggleSidebar, toggleDiff, toggleSmart,
@@ -150,9 +159,32 @@ const ISPComparisonEditorView: React.FC<ISPComparisonEditorViewProps> = (props) 
               <SvgIcon d={ICON_PATHS.sparkles} size={24} color="#6366f1" />
               個別支援計画 前回比較・更新エディタ
             </h1>
-            <p style={S.subtitle}>{currentPlan.userName}さん ｜ 計画期間: {currentPlan.planPeriod}</p>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginTop: 4 }}>
+              {/* User Selector */}
+              <label htmlFor="isp-user-select" style={{ fontSize: 13, color: '#6b7280', fontWeight: 500, whiteSpace: 'nowrap' as const }}>利用者:</label>
+              <select
+                id="isp-user-select"
+                aria-label="利用者を選択"
+                value={selectedUserId ?? ''}
+                onChange={(e) => onSelectUser(e.target.value)}
+                style={S.userSelect}
+              >
+                <option value="" disabled>選択してください</option>
+                {users.map((u) => (
+                  <option key={u.id} value={u.id}>{u.label}</option>
+                ))}
+              </select>
+              <span style={{ fontSize: 12, color: '#9ca3af' }}>計画期間: {currentPlan.planPeriod}</span>
+            </div>
           </div>
-          <div style={{ display: 'flex', gap: 10 }}>
+          <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
+            {dirty && (
+              <span style={S.unsavedBadge}>未保存</span>
+            )}
+            <button onClick={onSave} aria-label="保存"
+              style={{ ...S.headerBtn, background: dirty ? '#4f46e5' : '#f9fafb', color: dirty ? '#fff' : '#6b7280', borderColor: dirty ? '#4f46e5' : '#e5e7eb', fontWeight: dirty ? 700 : 500, transition: 'all 0.2s ease' }}>
+              <SvgIcon d={ICON_PATHS.file} size={16} color={dirty ? '#fff' : '#6b7280'} /> 保存
+            </button>
             <button onClick={toggleDiff} aria-pressed={showDiff}
               style={{ ...S.headerBtn, background: showDiff ? '#eef2ff' : '#f9fafb', color: showDiff ? '#4f46e5' : '#6b7280', borderColor: showDiff ? '#c7d2fe' : '#e5e7eb' }}>
               <SvgIcon d={ICON_PATHS.eye} size={16} /> 差分プレビュー
@@ -406,6 +438,16 @@ const S = {
     letterSpacing: '-0.02em',
   } as React.CSSProperties,
   subtitle: { fontSize: 13, color: '#6b7280', marginTop: 4 } as React.CSSProperties,
+  userSelect: {
+    padding: '6px 12px', fontSize: 13, border: '1.5px solid #d1d5db', borderRadius: 8,
+    background: '#fff', color: '#1f2937', outline: 'none', minWidth: 180,
+    transition: 'border-color 0.2s ease',
+  } as React.CSSProperties,
+  unsavedBadge: {
+    display: 'inline-flex', alignItems: 'center', padding: '3px 10px', fontSize: 11, fontWeight: 700,
+    color: '#dc2626', background: '#fef2f2', border: '1px solid #fecaca', borderRadius: 20,
+    animation: 'ispPulse 2s infinite',
+  } as React.CSSProperties,
   headerBtn: {
     display: 'flex', alignItems: 'center', gap: 6, padding: '8px 16px', border: '1.5px solid',
     borderRadius: 10, fontSize: 13, fontWeight: 600, transition: 'all 0.2s ease', background: '#f9fafb',

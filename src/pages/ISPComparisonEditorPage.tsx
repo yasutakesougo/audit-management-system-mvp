@@ -6,6 +6,6 @@ import { useISPComparisonEditor } from '@/features/isp-editor/hooks/useISPCompar
 import ISPComparisonEditorView from '@/features/isp-editor/components/ISPComparisonEditorView';
 
 export default function ISPComparisonEditorPage() {
-  const vm = useISPComparisonEditor();
-  return <ISPComparisonEditorView {...vm} />;
+  const { selectUser, save, ...rest } = useISPComparisonEditor();
+  return <ISPComparisonEditorView {...rest} onSelectUser={selectUser} onSave={save} />;
 }

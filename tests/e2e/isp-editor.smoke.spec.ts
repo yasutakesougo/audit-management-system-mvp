@@ -100,4 +100,18 @@ test.describe('ISP Editor — smoke', () => {
     await expect(page.getByText(/受給者証期限/)).toBeVisible();
     await expect(page.getByText(/\d+日/)).toBeVisible();
   });
+
+  test('user selector is visible and interactive', async ({ page }) => {
+    const userSelect = page.locator('#isp-user-select');
+    await expect(userSelect).toBeVisible();
+    await expect(userSelect).toHaveAttribute('aria-label', '利用者を選択');
+  });
+
+  test('save button shows toast on click', async ({ page }) => {
+    const saveBtn = page.getByRole('button', { name: /保存/ });
+    await expect(saveBtn).toBeVisible();
+    await saveBtn.click();
+    // User未選択時は warning toast が出る
+    await expect(page.getByText(/利用者を選択してください|保存しました/)).toBeVisible();
+  });
 });
