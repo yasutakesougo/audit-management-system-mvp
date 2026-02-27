@@ -3,27 +3,16 @@
  *
  * Uses localStorage repository scoped to date + login user.
  * loginUserKey: account.username from MSAL (email), fallback 'anonymous'.
- *
- * @skill @observability-engineer — prevStatus tracking for event logging
  */
 import { useAuth } from '@/auth/useAuth';
 import { useCallback, useMemo, useState } from 'react';
 import { createLocalStorageRepo } from './alertActions.storage';
 import type { ActionStatus, AlertActionState } from './alertActions.types';
 
-/** JST-safe local date (UTC toISOString is wrong during JST 00:00–08:59) */
-function getLocalYmd(): string {
-  const d = new Date();
-  const yyyy = d.getFullYear();
-  const mm = String(d.getMonth() + 1).padStart(2, '0');
-  const dd = String(d.getDate()).padStart(2, '0');
-  return `${yyyy}-${mm}-${dd}`;
-}
-
 export function useAlertActionState() {
   const { account } = useAuth();
   const loginUserKey = account?.username ?? 'anonymous';
-  const ymd = getLocalYmd();
+  const ymd = new Date().toISOString().split('T')[0];
 
   const repo = useMemo(
     () => createLocalStorageRepo(ymd, loginUserKey),
@@ -35,12 +24,10 @@ export function useAlertActionState() {
 
   const setState = useCallback(
     (alertKey: string, status: ActionStatus) => {
-      const prevStatus = states[alertKey] ?? 'todo';
-      const persisted = repo.setState(alertKey, status);
+      repo.setState(alertKey, status);
       setStates((prev) => ({ ...prev, [alertKey]: status }));
-      return { prevStatus, persisted };
     },
-    [repo, states],
+    [repo],
   );
 
   const getState = useCallback(
@@ -57,5 +44,5 @@ export function useAlertActionState() {
     [states],
   );
 
-  return { states, setState, getState, completionStats, ymd };
+  return { states, setState, getState, completionStats };
 }
