@@ -28,6 +28,7 @@ import {
     abcOptionMap,
     moodOptions,
 } from '../types';
+import { ABCFieldGroup } from './ABCFieldGroup';
 
 // ---------------------------------------------------------------------------
 // Props
@@ -176,28 +177,13 @@ export const DailyRecordsTab: React.FC<DailyRecordsTabProps> = ({
                     行動をABC分析で詳しく記録する
                   </Button>
                   <Collapse in={Boolean(state?.showABC)}>
-                    <Stack spacing={2} mt={2}>
-                      {(['antecedent', 'behavior', 'consequence'] as (keyof ABCSelection)[]).map((key) => (
-                        <Box key={key}>
-                          <Typography variant="subtitle2" sx={{ fontWeight: 600 }}>
-                            {key === 'antecedent' && 'A: 先行事象'}
-                            {key === 'behavior' && 'B: 行動'}
-                            {key === 'consequence' && 'C: 結果'}
-                          </Typography>
-                          <Stack direction="row" spacing={1} flexWrap="wrap">
-                            {abcOptionMap[key].map((option) => (
-                              <Chip
-                                key={option}
-                                label={option}
-                                color={state?.abc[key] === option ? 'primary' : 'default'}
-                                variant={state?.abc[key] === option ? 'filled' : 'outlined'}
-                                onClick={() => onABCSelect(slot.id, key, option)}
-                              />
-                            ))}
-                          </Stack>
-                        </Box>
-                      ))}
-                    </Stack>
+                    <Box mt={2}>
+                      <ABCFieldGroup
+                        value={state?.abc ?? { antecedent: '', behavior: '', consequence: '' }}
+                        onChange={(key, value) => onABCSelect(slot.id, key, value)}
+                        options={abcOptionMap}
+                      />
+                    </Box>
                   </Collapse>
                 </Box>
 
