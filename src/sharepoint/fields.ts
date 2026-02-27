@@ -225,6 +225,9 @@ export interface IUserMaster {
   TransportAdditionType?: string | null;
   MealAddition?: string | null;
   CopayPaymentMethod?: string | null;
+
+  // 取得レベルマーカー（Repository から付与、UI 側で表示判定に使用可）
+  __selectMode?: UserSelectMode;
 }
 
 export interface IUserMasterCreateDto {
@@ -320,7 +323,17 @@ export const FIELD_MAP = {
     recipientCertExpiry: 'RecipientCertExpiry',
     modified: 'Modified',
     created: 'Created',
-    // 400s or optional columns intentionally omitted for now
+    // ── 支給決定・請求加算（DETAIL/FULL モード用） ──
+    usageStatus: 'UsageStatus',
+    grantMunicipality: 'GrantMunicipality',
+    grantPeriodStart: 'GrantPeriodStart',
+    grantPeriodEnd: 'GrantPeriodEnd',
+    disabilitySupportLevel: 'DisabilitySupportLevel',
+    grantedDaysPerMonth: 'GrantedDaysPerMonth',
+    userCopayLimit: 'UserCopayLimit',
+    transportAdditionType: 'TransportAdditionType',
+    mealAddition: 'MealAddition',
+    copayPaymentMethod: 'CopayPaymentMethod',
   },
   Staff_Master: {
     id: 'Id',
@@ -400,21 +413,21 @@ export const FIELD_MAP = {
 
 /**
  * SupportTemplates list field mappings (確定版: 2026-02-12)
- * 
+ *
  * ✅ 実内部名（Fields API で確認済み）
  * - UserCode0, RowNo0, TimeSlot0, Activity0, PersonManual0, SupporterManual0, version（⚠️小文字）
  * - IsActive（存在確認済み）
- * 
+ *
  * ⚠️ 重要: intensity は version（Version0ではなく小文字!）
- * 
+ *
  * 🎯 戦略:
  * - Phase 1: UserID === userCode（ドメイン側で I022、SharePoint側でも UserCode0=I022）
  * - Phase 2: UserID統一列追加後に UserCode0 から移行
- * 
+ *
  * 📊 必須列（常に取得）:
  * - Id, UserCode0, RowNo0, Activity0, SupporterManual0, TimeSlot0, PersonManual0, version
  * - Created, Modified（SharePoint標準）
- * 
+ *
  * 🔧 オプション列（フィルタリング用）:
  * - IsActive（有効フラグ：true/false）
  */
@@ -423,21 +436,21 @@ export const FIELD_MAP_BEHAVIORS = {
   id: 'Id',
   userId: 'UserCode0',              // フィルタキー: $filter=UserCode0 eq 'I022'
   timestamp: 'RowNo0',              // ソート用: $orderby=RowNo0 asc|desc
-  
+
   // 📝 コンテンツ（ABC分析）
   antecedent: 'TimeSlot0',          // 先行条件（時間帯）
   behavior: 'Activity0',            // 行動（活動内容）
   consequence: 'SupporterManual0',  // 結果（支援者向けマニュアル）
   intensity: 'version',             // 🔥 強度（version・小文字！Version0ではない）
   duration: 'duration',             // 持続時間（オプション）
-  
+
   // 💬 補足
   memo: 'PersonManual0',            // 本人向けマニュアル
-  
+
   // 📅 メタデータ（SharePoint標準）
   created: 'Created',
   modified: 'Modified',
-  
+
   // 🔲 オプション（有効性フィルタ用）
   isActive: 'IsActive',             // 有効フラグ（Yes/No）
 } as const;
@@ -477,7 +490,7 @@ export const FIELD_MAP_ICEBERG_PDCA = {
 // Diagnostics_Reports リスト
 // ──────────────────────────────────────────────────────────────
 // 環境診断結果を記録するリスト
-// 
+//
 // 内部名が違う場合（e.g., "Report_x0020_Link"）の対応方法：
 // - 以下の FIELD_MAP_DIAGNOSTICS_REPORTS を修正するだけで OK
 // - 例: reportLink: 'Report_x0020_Link' と変更すれば全コード自動対応
@@ -487,19 +500,19 @@ export const DIAGNOSTICS_REPORTS_LIST_TITLE = 'Diagnostics_Reports' as const;
 
 /**
  * Diagnostics_Reports リスト用フィールド定義（内部名マップ）
- * 
+ *
  * 使用方法：
  * - コード内では logicalName（左側）を使用
  * - SharePoint API呼び出し時は value（右側）の内部名を使用
- * 
+ *
  * 内部名が変わった場合:
  * - このオブジェクトの value のみ修正すれば、全コード自動対応
- * 
+ *
  * @example
  * // ✅ 使用パターン
  * const fieldName = FIELD_MAP_DIAGNOSTICS_REPORTS.reportLink;
  * // fieldName = 'Report_x0020_Link' (内部名)
- * 
+ *
  * // ❌ 非推奨（内部名をハードコード）
  * const fieldName = 'Report_x0020_Link';
  */
@@ -518,10 +531,10 @@ export const FIELD_MAP_DIAGNOSTICS_REPORTS = {
 
 /**
  * Diagnostics_Reports の select フィールド（固定）
- * 
+ *
  * Power Automate/SharePoint は環境で返却形式が微妙に異なるため、
  * 取得列を固定しておくと、互換性問題を最小化できます。
- * 
+ *
  * 全キーを field map 経由で定義しているため、内部名変更時は
  * FIELD_MAP_DIAGNOSTICS_REPORTS を修正するだけで OK
  */
@@ -607,7 +620,7 @@ export const SUPPORT_TEMPLATES_LIST_TITLE = 'SupportTemplates' as const;
 
 /**
  * SupportTemplates リスト用フィールド定義（内部名マップ）
- * 
+ *
  * 重要: SharePoint で Fields API 取得時、実際の内部名には "0" サフィックスが付与されています
  * - userCode → UserCode0
  * - rowNo → RowNo0
@@ -615,16 +628,16 @@ export const SUPPORT_TEMPLATES_LIST_TITLE = 'SupportTemplates' as const;
  * - activity → Activity0
  * - personManual → PersonManual0
  * - supporterManual → SupporterManual0
- * 
+ *
  * 使用方法：
  * - コード内では logicalName（左側）を使用
  * - SharePoint API呼び出し時は value（右側）の内部名を使用
- * 
+ *
  * @example
  * // ✅ 使用パターン
  * const orderby = FIELD_MAP_SUPPORT_TEMPLATES.userCode;
  * // orderby = 'UserCode0' (内部名)
- * 
+ *
  * // ❌ 非推奨（内部名をハードコード）
  * const orderby = 'userCode'; // これは 500 エラーになる
  */
@@ -679,13 +692,13 @@ export async function buildSurveyTokuseiSelectFields(
     const availableLower = new Set(Array.from(availableFields).map((name) => name.toLowerCase()));
     const allCandidates = Object.values(FIELD_MAP_SURVEY_TOKUSEI);
     const selected = allCandidates.filter((fieldName) => fieldName === 'Id' || availableLower.has(fieldName.toLowerCase()));
-    
+
     // 🔍 デバッグ出力：何が存在して何が除外されたか可視化
     console.debug('[TokuseiSelect] 📊 Fields API から取得した内部名（最初の50個）:', Array.from(availableFields).slice(0, 50));
     console.debug('[TokuseiSelect] 📋 FIELD_MAP から candidate（全数）:', allCandidates);
     console.debug('[TokuseiSelect] ✅ selected（存在する列）:', selected);
     console.debug('[TokuseiSelect] ❌ dropped（見つからない列）:', allCandidates.filter(x => !selected.includes(x)));
-    
+
     return selected;
   } catch (error) {
     // Fallback: エラー時は既知フィールドの除外版を使う
@@ -726,7 +739,7 @@ export function buildSelectFieldsFromMap(
 
 /**
  * Behaviors リスト用の動的 $select ビルダー
- * 
+ *
  * 2段階フォールバック戦略:
  * 1st: Fields API成功 → 存在する列のみ選択
  * 2nd: Fields API失敗 → CSV確認済み列 + 標準列（高確率で存在）
@@ -788,7 +801,7 @@ export function buildIcebergPdcaSelectFields(existingInternalNames?: readonly st
 
 /**
  * SupportTemplates リスト用の動的 $select ビルダー
- * 
+ *
  * 重要：このリストの内部名には "0" サフィックスが付与されている
  * (UserCode0, RowNo0, TimeSlot0, Activity0, PersonManual0, SupporterManual0)
  */
@@ -836,7 +849,8 @@ export function buildHandoffSelectFields(existingInternalNames?: readonly string
   });
 }
 
-export const USERS_SELECT_FIELDS_SAFE = [
+// ── CORE: 一覧表示用（軽量 / 20列） ──
+export const USERS_SELECT_FIELDS_CORE = [
   FIELD_MAP.Users_Master.id,
   FIELD_MAP.Users_Master.title,
   FIELD_MAP.Users_Master.userId,
@@ -858,6 +872,40 @@ export const USERS_SELECT_FIELDS_SAFE = [
   FIELD_MAP.Users_Master.modified,
   FIELD_MAP.Users_Master.created,
 ] as const;
+
+// ── DETAIL: 詳細画面用（CORE + 支給決定情報） ──
+export const USERS_SELECT_FIELDS_DETAIL = [
+  ...USERS_SELECT_FIELDS_CORE,
+  FIELD_MAP.Users_Master.usageStatus,
+  FIELD_MAP.Users_Master.grantMunicipality,
+  FIELD_MAP.Users_Master.grantPeriodStart,
+  FIELD_MAP.Users_Master.grantPeriodEnd,
+  FIELD_MAP.Users_Master.disabilitySupportLevel,
+  FIELD_MAP.Users_Master.grantedDaysPerMonth,
+  FIELD_MAP.Users_Master.userCopayLimit,
+] as const;
+
+// ── FULL: 請求・監査用（DETAIL + 加算情報） ──
+export const USERS_SELECT_FIELDS_FULL = [
+  ...USERS_SELECT_FIELDS_DETAIL,
+  FIELD_MAP.Users_Master.transportAdditionType,
+  FIELD_MAP.Users_Master.mealAddition,
+  FIELD_MAP.Users_Master.copayPaymentMethod,
+] as const;
+
+// ── セレクトモード型 & リゾルバ ──
+export type UserSelectMode = 'core' | 'detail' | 'full';
+
+export function resolveUserSelectFields(mode: UserSelectMode = 'core'): readonly string[] {
+  switch (mode) {
+    case 'full':   return USERS_SELECT_FIELDS_FULL;
+    case 'detail': return USERS_SELECT_FIELDS_DETAIL;
+    default:       return USERS_SELECT_FIELDS_CORE;
+  }
+}
+
+/** @deprecated Use USERS_SELECT_FIELDS_CORE instead */
+export const USERS_SELECT_FIELDS_SAFE = USERS_SELECT_FIELDS_CORE;
 
 export const STAFF_SELECT_FIELDS_CANONICAL = [
   FIELD_MAP.Staff_Master.id,
@@ -884,11 +932,11 @@ export const STAFF_SELECT_FIELDS_CANONICAL = [
   FIELD_MAP.Staff_Master.baseWorkingDays,
 ] as const;
 
-export const USERS_SELECT_SAFE = joinSelect(USERS_SELECT_FIELDS_SAFE as readonly string[]);
+export const USERS_SELECT_SAFE = joinSelect(USERS_SELECT_FIELDS_CORE as readonly string[]);
 export const STAFF_SELECT = joinSelect(STAFF_SELECT_FIELDS_CANONICAL as readonly string[]);
 
 // Backwards compatibility exports (legacy names still in use)
-export const USERS_SELECT_FIELDS = USERS_SELECT_FIELDS_SAFE;
+export const USERS_SELECT_FIELDS = USERS_SELECT_FIELDS_CORE;
 
 // ──────────────────────────────────────────────────────────────
 // Daily record list fields

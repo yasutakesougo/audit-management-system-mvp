@@ -1,3 +1,4 @@
+import type { UserSelectMode } from '@/sharepoint/fields';
 import type { IUserMaster, IUserMasterCreateDto } from '../types';
 
 export type UserFilters = {
@@ -8,10 +9,12 @@ export type UserFilters = {
 export type UserRepositoryListParams = {
   filters?: UserFilters;
   top?: number;
+  selectMode?: UserSelectMode;
   signal?: AbortSignal;
 };
 
 export type UserRepositoryGetParams = {
+  selectMode?: UserSelectMode;
   signal?: AbortSignal;
 };
 
