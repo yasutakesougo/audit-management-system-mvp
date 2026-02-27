@@ -12,6 +12,7 @@ import Typography from '@mui/material/Typography';
 import * as React from 'react';
 import { useSearchParams } from 'react-router-dom';
 import type { PersonDaily } from '../../domain/daily/types';
+import { SummaryDashboard } from '../reports/dashboard/SummaryDashboard';
 import BulkDailyRecordList, { type BulkDailyRow } from './BulkDailyRecordList';
 import { DailyRecordForm } from './DailyRecordForm';
 import { DailyRecordList } from './DailyRecordList';
@@ -28,9 +29,9 @@ const srOnly = {
   whiteSpace: 'nowrap' as const,
 };
 
-type TabKey = 'bulk' | 'records' | 'form';
+type TabKey = 'bulk' | 'records' | 'form' | 'dashboard';
 const TAB_PARAM = 'tab' as const;
-const ALLOWED_TABS: TabKey[] = ['bulk', 'records', 'form'];
+const ALLOWED_TABS: TabKey[] = ['bulk', 'records', 'form', 'dashboard'];
 
 type PersonDailyUpsert = Omit<PersonDaily, 'id'> & { id?: number };
 
@@ -55,8 +56,8 @@ const DailyRecordWorkspace: React.FC<DailyRecordWorkspaceProps> = ({
   const [formOpen, setFormOpen] = React.useState(false);
   const [editingRecord, setEditingRecord] = React.useState<PersonDaily | undefined>();
 
-  const rawTab = (params.get(TAB_PARAM) as TabKey | null) ?? 'bulk';
-  const tab: TabKey = ALLOWED_TABS.includes(rawTab) ? rawTab : 'bulk';
+  const rawTab = (params.get(TAB_PARAM) as TabKey | null) ?? 'dashboard';
+  const tab: TabKey = ALLOWED_TABS.includes(rawTab) ? rawTab : 'dashboard';
 
   React.useEffect(() => {
     if (rawTab !== tab) {
@@ -68,7 +69,7 @@ const DailyRecordWorkspace: React.FC<DailyRecordWorkspaceProps> = ({
 
   const setTab = React.useCallback(
     (next: TabKey) => {
-      const normalized = ALLOWED_TABS.includes(next) ? next : 'bulk';
+      const normalized = ALLOWED_TABS.includes(next) ? next : 'dashboard';
       const nextParams = new URLSearchParams(params);
       nextParams.set(TAB_PARAM, normalized);
       setParams(nextParams, { replace: true });
@@ -271,6 +272,13 @@ const DailyRecordWorkspace: React.FC<DailyRecordWorkspaceProps> = ({
           sx={{ position: 'sticky', top: 0, bgcolor: 'background.paper', zIndex: 1, mb: 2 }}
         >
           <Tab
+            value="dashboard"
+            label="概況"
+            id="daily-tab-dashboard"
+            aria-controls="daily-tabpanel-dashboard"
+            data-testid="daily-tab-dashboard"
+          />
+          <Tab
             value="bulk"
             label="一覧入力"
             id="daily-tab-bulk"
@@ -292,6 +300,18 @@ const DailyRecordWorkspace: React.FC<DailyRecordWorkspaceProps> = ({
             data-testid="daily-tab-form"
           />
         </Tabs>
+
+        {/* 概況（ダッシュボード）タブ */}
+        <Box
+          role="tabpanel"
+          hidden={tab !== 'dashboard'}
+          id="daily-tabpanel-dashboard"
+          aria-labelledby="daily-tab-dashboard"
+        >
+          <Box component="section" aria-label="記録概況ダッシュボード" sx={{ py: 1 }}>
+            <SummaryDashboard />
+          </Box>
+        </Box>
 
         {/* 一覧入力タブ */}
         <Box

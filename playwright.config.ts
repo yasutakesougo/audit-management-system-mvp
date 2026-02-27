@@ -1,5 +1,5 @@
-import { defineConfig, devices } from '@playwright/test';
 import type { ReporterDescription } from '@playwright/test';
+import { defineConfig, devices } from '@playwright/test';
 
 if (!process.env.TS_NODE_PROJECT) {
   process.env.TS_NODE_PROJECT = 'tsconfig.playwright.json';
@@ -34,16 +34,16 @@ const webServerEnvVars = {
 };
 
 const webServerEnvString = Object.entries(webServerEnvVars)
-  .map(([key, value]) => `${key}=${value}`)
+  .map(([key, value]) => `${key}="${value}"`)
   .join(' ');
 
-const devCommand = `env ${webServerEnvString} npm run dev -- --host 127.0.0.1 --port ${devPort} --strictPort`;
+const devCommand = `npx cross-env ${webServerEnvString} npm run dev -- --host 127.0.0.1 --port ${devPort} --strictPort`;
 // Use preview:e2e which builds, writes deterministic runtime env, and starts preview
-const buildAndPreviewCommand = `npm run preview:e2e`;
+const buildAndPreviewCommand = `npx cross-env ${webServerEnvString} npm run preview:e2e`;
 
 const webServerCommand = webServerCommandOverride
   ? webServerCommandOverride
-  : skipBuild
+  : (skipBuild || !isCI)
     ? devCommand
     : buildAndPreviewCommand;
 

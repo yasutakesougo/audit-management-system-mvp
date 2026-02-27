@@ -5,6 +5,7 @@ import type { UnifiedResourceEvent } from '@/features/resources/types';
 import { auditLog } from '@/lib/debugLogger';
 import { getAppConfig, isE2eMsalMockEnabled, readBool, readEnv, shouldSkipLogin, skipSharePoint, type EnvRecord } from '@/lib/env';
 import { useMemo } from 'react';
+import { z } from 'zod';
 import { AuthRequiredError, SharePointItemNotFoundError, SharePointMissingEtagError } from './errors';
 
 const FALLBACK_SP_RESOURCE = 'https://example.sharepoint.com';
@@ -139,6 +140,50 @@ export function ensureConfig(envOverride?: { VITE_SP_RESOURCE?: string; VITE_SP_
 const DEFAULT_LIST_TEMPLATE = 100;
 
 type JsonRecord = Record<string, unknown>;
+
+export function parseSpListResponse<T extends z.ZodTypeAny>(
+  json: unknown,
+  itemSchema: T
+): z.infer<T>[] {
+  // 1. Validate the outer OData envelope shape first
+  const envelopeSchema = z.object({ value: z.array(z.unknown()).default([]) });
+  const envelopeParsed = envelopeSchema.safeParse(json);
+
+  if (!envelopeParsed.success) {
+    console.error('[spClient] SharePoint API envelope mismatch:', envelopeParsed.error.format());
+    throw new Error('SharePoint response envelope validation failed. Expected { value: [...] }');
+  }
+
+  const rawItems = envelopeParsed.data.value;
+  const validItems: z.infer<T>[] = [];
+  const errors: { index: number; id?: unknown; issues: z.ZodFormattedError<unknown> }[] = [];
+
+  // 2. Safely parse each item individually to support Partial Failures
+  rawItems.forEach((rawItem, index) => {
+    const itemParsed = itemSchema.safeParse(rawItem);
+    if (itemParsed.success) {
+      validItems.push(itemParsed.data);
+    } else {
+      // Capture identifier if available to help with tracing
+      const id = (rawItem as Record<string, unknown>)?.Id ?? (rawItem as Record<string, unknown>)?.ID;
+      errors.push({
+        index,
+        id,
+        issues: itemParsed.error.format(),
+      });
+    }
+  });
+
+  // 3. Telemetry hook: Log specific item failures without crashing the whole list
+  if (errors.length > 0) {
+    console.error(`[spClient] Partial validation failure: ${errors.length}/${rawItems.length} items failed schema.`, {
+      errors,
+      // Consider pushing this to Sentry/AppInsights here in the future
+    });
+  }
+
+  return validItems;
+}
 
 export type SharePointBatchOperation =
   | {

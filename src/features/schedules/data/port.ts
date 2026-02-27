@@ -1,6 +1,6 @@
-import type { ScheduleCategory, ScheduleItemCore, ScheduleVisibility, ScheduleStatus, ScheduleServiceType } from '@/features/schedules/domain';
-export type { ScheduleCategory, ScheduleVisibility, ScheduleStatus, ScheduleServiceType } from '@/features/schedules/domain';
+import type { ScheduleCategory, ScheduleItemCore, ScheduleServiceType, ScheduleStatus, ScheduleVisibility } from '@/features/schedules/domain';
 import type { Result } from '@/shared/result';
+export type { ScheduleCategory, ScheduleServiceType, ScheduleStatus, ScheduleVisibility } from '@/features/schedules/domain';
 
 export type DateRange = { from: string; to: string };
 
@@ -31,6 +31,7 @@ export type CreateScheduleEventInput = {
 
 export type UpdateScheduleEventInput = CreateScheduleEventInput & {
   id: string;
+  etag?: string;
 };
 
 export type SchedItem = ScheduleItemCore;

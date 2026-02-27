@@ -70,8 +70,9 @@ describe('dailyTableRepository', () => {
   });
 
   it('should handle numeric userId by normalizing to string', () => {
-    const record = { ...mockRecords[0], userId: 123 } as unknown as DailyTableRecord;
-    upsertDailyTableRecords([record]);
+    // Simulate runtime data skipping TypeScript checks, e.g. from an API response
+    const record = { ...mockRecords[0], userId: 123 as unknown as string };
+    upsertDailyTableRecords([record as DailyTableRecord]);
 
     const results = getDailyTableRecords('123', { from: '2026-02-01', to: '2026-02-28' });
     expect(results).toHaveLength(1);

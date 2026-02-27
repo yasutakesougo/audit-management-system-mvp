@@ -29,8 +29,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 
 describe('featureFlags config', () => {
   beforeEach(() => {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    delete (process as any).env?.VITE_FEATURE_SCHEDULES;
+    delete (process.env as Record<string, string | undefined>).VITE_FEATURE_SCHEDULES;
 
     if (typeof window !== 'undefined') {
       try {

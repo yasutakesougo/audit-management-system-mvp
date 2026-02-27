@@ -3,12 +3,9 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { BehaviorObservation } from '../domain/daily/types';
 
 const repo = {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  listByUser: vi.fn<any>(),
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  getByUser: vi.fn<any>(),
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  add: vi.fn<any>(),
+  listByUser: vi.fn<(...args: unknown[]) => Promise<BehaviorObservation[]>>(),
+  getByUser: vi.fn<(...args: unknown[]) => Promise<BehaviorObservation[]>>(),
+  add: vi.fn<(...args: unknown[]) => Promise<BehaviorObservation>>(),
 };
 
 vi.mock('../infra/behaviorRepositoryFactory', () => ({

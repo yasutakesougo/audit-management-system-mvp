@@ -1,18 +1,19 @@
+import type { Page, TestInfo } from '@playwright/test';
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
-import type { Page } from '@playwright/test';
-import type { TestInfo } from '@playwright/test';
+import { DEMO_USERS } from '../../../src/features/users/constants';
+import type { IUserMaster } from '../../../src/features/users/types';
 import { setupPlaywrightEnv } from './setupPlaywrightEnv';
 import { setupSharePointStubs } from './setupSharePointStubs';
-import type { IUserMaster } from '../../../src/features/users/types';
-import { DEMO_USERS } from '../../../src/features/users/constants';
 
 const FEATURE_ENV: Record<string, string> = {
   VITE_FEATURE_USERS_CRUD: '1',
+  VITE_FEATURE_USERS_SP: '1',
 };
 
 const FEATURE_STORAGE: Record<string, string> = {
   'feature:usersCrud': '1',
+  'feature:forceUsersSp': '1',
 };
 
 const USERS_MASTER_STORAGE_KEY = 'users.master.dev.v1';
@@ -79,6 +80,7 @@ const buildDefaultLists = (
 export async function bootUsersPage(page: Page, options: BootUsersOptions = {}, _testInfo?: TestInfo): Promise<void> {
   const envOverrides = { ...FEATURE_ENV, ...(options.envOverrides ?? {}) };
   const storageOverrides = { ...FEATURE_STORAGE, ...(options.storageOverrides ?? {}) };
+  // Determine users to use
   const shouldSeedUsers = options.seed?.usersMaster ?? false;
   const seededUsers = usersMasterFixture.users;
   const users = shouldSeedUsers && Array.isArray(seededUsers) && seededUsers.length > 0
@@ -87,6 +89,24 @@ export async function bootUsersPage(page: Page, options: BootUsersOptions = {}, 
   const orgItems = options.orgItems ?? DEFAULT_ORG_FIXTURES;
   const route = options.route ?? '/users';
   const shouldNavigate = options.autoNavigate !== false;
+
+  // 1. Setup SharePoint Stubs FIRST to catch all early requests
+  const sharePointOptions = options.sharePoint ?? {};
+  const { lists: overrideLists, extraLists, ...rest } = sharePointOptions;
+  const lists = overrideLists ?? [...buildDefaultLists(users, orgItems), ...(extraLists ?? [])];
+
+  await setupSharePointStubs(page, {
+    currentUser: { status: 200, body: { Id: 101 } },
+    fallback: { status: 200, body: { value: [] } },
+    ...rest,
+    lists,
+  });
+
+  // 2. Setup Environment and Storage
+  await setupPlaywrightEnv(page, {
+    envOverrides,
+    storageOverrides,
+  });
 
   // Bootstrap monitoring: JS/network failures + console errors logged on all CI runs
   const isDebug = process.env.E2E_DEBUG === '1' || process.env.CI === 'true';
@@ -115,17 +135,17 @@ export async function bootUsersPage(page: Page, options: BootUsersOptions = {}, 
   });
 
   page.on('console', (msg) => {
+    const text = msg.text();
     if (msg.type() === 'error') {
-      consoleErr.push(`[console.error] ${msg.text()}`);
+      consoleErr.push(`[console.error] ${text}`);
+    }
+    // Bridge to test stdout for visibility if debug or CI
+    if (isDebug) {
+      console.log(`[app-console] ${msg.type()}: ${text}`);
     }
   });
 
-  await setupPlaywrightEnv(page, {
-    envOverrides,
-    storageOverrides,
-  });
-
-  // Ensure app is initialized by navigating to root first
+  // 3. Navigate to root to initialize app context
   await page.goto('/', { waitUntil: 'load' });
   await page.waitForLoadState('networkidle');
 
@@ -142,23 +162,14 @@ export async function bootUsersPage(page: Page, options: BootUsersOptions = {}, 
     );
   }
 
-  const sharePointOptions = options.sharePoint ?? {};
-  const { lists: overrideLists, extraLists, ...rest } = sharePointOptions;
-  const lists = overrideLists ?? [...buildDefaultLists(users, orgItems), ...(extraLists ?? [])];
-
-  await setupSharePointStubs(page, {
-    currentUser: { status: 200, body: { Id: 101 } },
-    fallback: { status: 200, body: { value: [] } },
-    ...rest,
-    lists,
-  });
-
   if (shouldNavigate) {
+    if (isDebug) {
+      console.log(`[bootUsersPage] Navigating to ${route} (users.length=${users.length})`);
+    }
     await page.goto(route, { waitUntil: 'load' });
     await page.waitForLoadState('networkidle');
 
     // Verify: root element actually mounted after navigation
-    // Only log on failure (root is empty) or when E2E_DEBUG enabled
     await page.waitForTimeout(200);
     const rootHtml = await page.locator('#root').innerHTML().catch(() => '');
     const isMounted = rootHtml && rootHtml.trim() !== '';

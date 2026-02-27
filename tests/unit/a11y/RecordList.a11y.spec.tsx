@@ -38,7 +38,7 @@ describe('RecordList Accessibility', () => {
   });
 
   test('has no a11y violations (with mock data)', async () => {
-    // mock records intentionally omitted as component handles internal fetch
+    // mock data should be provided by API mock instead
 
     const { container } = render(
       <MemoryRouter>

@@ -1,15 +1,15 @@
 /**
  * AttendanceDaily SharePoint Repository
- * 
+ *
  * 通所記録日次データのリポジトリ
  * Keyベースでのupsert（更新または作成）操作を提供
  */
 
 import { createSpClient, ensureConfig } from '@/lib/spClient';
-import { 
-  ATTENDANCE_DAILY_LIST_TITLE, 
-  ATTENDANCE_DAILY_FIELDS,
-  ATTENDANCE_DAILY_SELECT_FIELDS 
+import {
+    ATTENDANCE_DAILY_FIELDS,
+    ATTENDANCE_DAILY_LIST_TITLE,
+    ATTENDANCE_DAILY_SELECT_FIELDS
 } from '@/sharepoint/fields';
 
 export type AttendanceDailyItem = {
@@ -38,10 +38,10 @@ type SharePointDailyRow = Record<string, unknown> & { Id?: number };
 
 const escapeODataString = (value: string): string => value.replace(/'/g, "''");
 
-const getString = (value: unknown): string | undefined => 
+const getString = (value: unknown): string | undefined =>
   typeof value === 'string' ? value : undefined;
 
-const getNumber = (value: unknown): number | undefined => 
+const getNumber = (value: unknown): number | undefined =>
   typeof value === 'number' ? value : undefined;
 
 const getBool = (value: unknown): boolean => Boolean(value);
@@ -115,7 +115,7 @@ export async function getDailyByDate(
   recordDate: string,
   listTitle: string = ATTENDANCE_DAILY_LIST_TITLE
 ): Promise<AttendanceDailyItem[]> {
-  const select = [...ATTENDANCE_DAILY_SELECT_FIELDS] as unknown as string[];
+  const select = [...ATTENDANCE_DAILY_SELECT_FIELDS];
   const filter = `${ATTENDANCE_DAILY_FIELDS.recordDate} eq '${escapeODataString(recordDate)}'`;
 
   const rows = await client.getListItemsByTitle<SharePointDailyRow>(
@@ -134,7 +134,7 @@ export async function getDailyByDate(
  * 1. Key で検索（top=1）
  * 2. 存在すれば PATCH (updateItemByTitle)
  * 3. 存在しなければ POST (addListItemByTitle)
- * 
+ *
  * @param client SharePoint client
  * @param item AttendanceDailyItem
  * @param listTitle リスト名（デフォルト: AttendanceDaily）
@@ -144,7 +144,7 @@ export async function upsertDailyByKey(
   item: AttendanceDailyItem,
   listTitle: string = ATTENDANCE_DAILY_LIST_TITLE
 ): Promise<void> {
-  const select = [...ATTENDANCE_DAILY_SELECT_FIELDS] as unknown as string[];
+  const select = [...ATTENDANCE_DAILY_SELECT_FIELDS];
   const filter = `${ATTENDANCE_DAILY_FIELDS.key} eq '${escapeODataString(item.Key)}'`;
 
   // 1) GET by Key (top 1)
@@ -179,9 +179,9 @@ export function createAttendanceDailyRepository(
   const client = createSpClient(acquireToken, ensureConfig().baseUrl);
 
   return {
-    getDailyByDate: (recordDate: string, listTitle?: string) => 
+    getDailyByDate: (recordDate: string, listTitle?: string) =>
       getDailyByDate(client, recordDate, listTitle),
-    upsertDailyByKey: (item: AttendanceDailyItem, listTitle?: string) => 
+    upsertDailyByKey: (item: AttendanceDailyItem, listTitle?: string) =>
       upsertDailyByKey(client, item, listTitle),
   };
 }

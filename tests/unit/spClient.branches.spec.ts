@@ -99,8 +99,7 @@ describe('spClient – retry & paging branches', () => {
   });
 
   it('surface text errors from non-JSON 500 responses', async () => {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    setTestConfigOverride({ VITE_SP_RETRY_MAX: 1 as any });
+    setTestConfigOverride({ VITE_SP_RETRY_MAX: 1 });
     const acquire = vi.fn().mockResolvedValue('token');
 
     const fetchSpy = vi.spyOn(globalThis, 'fetch');

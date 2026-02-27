@@ -1,6 +1,6 @@
 import ProtectedRoute from '@/app/ProtectedRoute';
-import { useAuth } from '@/auth/useAuth';
 import { routerFutureFlags } from '@/app/routerFuture';
+import { useAuth } from '@/auth/useAuth';
 import { FeatureFlagsProvider, type FeatureFlagSnapshot } from '@/config/featureFlags';
 import { cleanup, render, screen, waitFor } from '@testing-library/react';
 import React from 'react';
@@ -32,6 +32,9 @@ const createAuthenticatedState = (
   acquireToken: vi.fn(() => Promise.resolve(null)),
   loading: false,
   shouldSkipLogin: false,
+  tokenReady: true,
+  getListReadyState: vi.fn(() => true),
+  setListReadyState: vi.fn(),
   ...overrides,
 });
 
@@ -41,6 +44,8 @@ const defaultFlags: FeatureFlagSnapshot = {
   schedulesWeekV2: false,
   icebergPdca: false,
   staffAttendance: false,
+  appShellVsCode: false,
+  todayOps: false,
 };
 
 const LocationProbe: React.FC<{ testId: string }> = ({ testId }) => {

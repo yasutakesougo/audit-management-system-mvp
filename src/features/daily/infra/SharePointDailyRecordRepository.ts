@@ -1,14 +1,15 @@
-import { createSpClient, ensureConfig } from '@/lib/spClient';
-import { fetchSp } from '@/lib/fetchSp';
-import { toSafeError } from '@/lib/errors';
 import { get as getEnv } from '@/env';
+import { toSafeError } from '@/lib/errors';
+import { fetchSp } from '@/lib/fetchSp';
+import { createSpClient, ensureConfig } from '@/lib/spClient';
 import type {
-  DailyRecordRepository,
-  SaveDailyRecordInput,
-  DailyRecordItem,
-  DailyRecordRepositoryListParams,
-  DailyRecordRepositoryMutationParams,
+    DailyRecordItem,
+    DailyRecordRepository,
+    DailyRecordRepositoryListParams,
+    DailyRecordRepositoryMutationParams,
+    SaveDailyRecordInput,
 } from '../domain/DailyRecordRepository';
+import { DailyRecordItemSchema } from '../schema';
 
 /**
  * SharePoint List Name for Daily Records
@@ -40,22 +41,14 @@ type SharePointResponse<T> = {
 };
 
 /**
- * SharePoint item shape
+ * Minimal interface for SharePoint items during save/update operations
  */
-type SharePointDailyRecordItem = {
+interface SharePointItem {
   Id: number;
-  Title: string;
-  RecordDate?: string;
-  ReporterName?: string;
-  ReporterRole?: string;
-  UserRowsJSON?: string;
-  UserCount?: number;
-  Created?: string;
-  Modified?: string;
   __metadata?: {
     etag?: string;
   };
-};
+}
 
 /**
  * Read error message from SharePoint response
@@ -81,32 +74,18 @@ const readSpErrorMessage = async (response: Response): Promise<string> => {
 };
 
 /**
- * Parse SharePoint item to DailyRecordItem
+ * Parse SharePoint item to DailyRecordItem using Zod schema
  */
-const parseSpItem = (item: SharePointDailyRecordItem): DailyRecordItem | null => {
-  try {
-    const userRows = item.UserRowsJSON 
-      ? JSON.parse(item.UserRowsJSON) 
-      : [];
-
-    return {
-      id: String(item.Id),
-      date: item.Title,
-      reporter: {
-        name: item.ReporterName ?? '',
-        role: item.ReporterRole ?? '',
-      },
-      userRows,
-      createdAt: item.Created,
-      modifiedAt: item.Modified,
-    };
-  } catch (error) {
-    console.error('[SharePointDailyRecordRepository] Failed to parse item', {
-      itemId: item.Id,
-      error,
+const parseSpItem = (item: unknown): DailyRecordItem | null => {
+  const result = DailyRecordItemSchema.safeParse(item);
+  if (!result.success) {
+    console.error('[SharePointDailyRecordRepository] Failed to validate item', {
+      itemId: (item && typeof item === 'object' && 'Id' in item) ? (item as Record<string, unknown>).Id : 'unknown',
+      errors: result.error.flatten().fieldErrors,
     });
     return null;
   }
+  return result.data;
 };
 
 /**
@@ -134,12 +113,12 @@ type SharePointDailyRecordRepositoryOptions = {
 
 /**
  * SharePoint implementation of DailyRecordRepository
- * 
+ *
  * Uses "Single Item" strategy:
  * - One SharePoint item per day
  * - Multiple user rows stored as JSON in UserRowsJSON field
  * - Provides better transaction consistency and performance
- * 
+ *
  * SharePoint List Schema:
  * - Title (Single line text): YYYY-MM-DD format date
  * - RecordDate (Date): Date field for filtering
@@ -186,7 +165,7 @@ export class SharePointDailyRecordRepository implements DailyRecordRepository {
       const listPath = buildListPath(baseUrl);
 
       // Check if item exists for this date
-      const existingItem = await this.findItemByDate(input.date, params?.signal);
+      const existingItem = await this.findItemByDate(input.date, params?.signal) as SharePointItem | null;
 
       // Prepare item data
       const userRowsJSON = JSON.stringify(input.userRows);
@@ -273,7 +252,7 @@ export class SharePointDailyRecordRepository implements DailyRecordRepository {
     try {
       const { baseUrl } = ensureConfig();
       const listPath = buildListPath(baseUrl);
-      
+
       const { startDate, endDate } = params.range;
       const filter = buildDateRangeFilter(startDate, endDate);
 
@@ -306,7 +285,7 @@ export class SharePointDailyRecordRepository implements DailyRecordRepository {
         throw new Error(`Failed to list daily records: ${message}`);
       }
 
-      const payload = (await response.json()) as SharePointResponse<SharePointDailyRecordItem>;
+      const payload = (await response.json()) as SharePointResponse<unknown>;
       const items = payload.value ?? [];
 
       // Parse and filter out invalid items
@@ -334,9 +313,9 @@ export class SharePointDailyRecordRepository implements DailyRecordRepository {
    * @private
    */
   private async findItemByDate(
-    date: string, 
+    date: string,
     signal?: AbortSignal
-  ): Promise<SharePointDailyRecordItem | null> {
+  ): Promise<SharePointItem | null> {
     if (signal?.aborted) {
       return null;
     }
@@ -373,10 +352,10 @@ export class SharePointDailyRecordRepository implements DailyRecordRepository {
         return null;
       }
 
-      const payload = (await response.json()) as SharePointResponse<SharePointDailyRecordItem>;
+      const payload = (await response.json()) as SharePointResponse<unknown>;
       const items = payload.value ?? [];
 
-      return items.length > 0 ? items[0] : null;
+      return items.length > 0 ? (items[0] as SharePointItem) : null;
     } catch (error) {
       console.warn('[SharePointDailyRecordRepository] Find by date error', {
         date,

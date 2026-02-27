@@ -19,12 +19,10 @@ describe('result', () => {
     expect(isOk(b)).toBe(false);
     expect(isErr(b)).toBe(true);
 
-    if (isErr(b)) {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const err = b.error as any;
-      expect(err.kind).toBe('conflict');
-      expect(err.message).toBe('Version mismatch');
-      expect(err.etag).toBe('"etag-123"');
+    if (isErr(b) && b.error.kind === 'conflict') {
+      expect(b.error.kind).toBe('conflict');
+      expect(b.error.message).toBe('Version mismatch');
+      expect(b.error.etag).toBe('"etag-123"');
     }
   });
 

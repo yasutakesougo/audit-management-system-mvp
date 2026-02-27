@@ -78,7 +78,7 @@ describe('classifySchedulesError', () => {
   });
 
   it('classifies offline state as NETWORK_ERROR', () => {
-    vi.stubGlobal('navigator', { onLine: false });
+    Object.defineProperty(navigator, 'onLine', { value: false, configurable: true });
     const info = classifySchedulesError(new Error('Any error'));
 
     expect(info.kind).toBe('NETWORK_ERROR');
