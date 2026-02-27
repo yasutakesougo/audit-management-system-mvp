@@ -30,6 +30,7 @@ const smokeTestMatch = [
   'tests/e2e/authz.reception-monthly-pdf-action.spec.ts',
   'tests/e2e/authz.reception-schedule-week-create-save.smoke.spec.ts',
   'tests/e2e/authz.reception-schedule-day-edit-save.smoke.spec.ts',
+  'tests/e2e/isp-editor.smoke.spec.ts',
 ];
 
 const webServerEnvVarsSmoke = {
