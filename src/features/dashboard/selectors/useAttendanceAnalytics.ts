@@ -61,6 +61,16 @@ export function useAttendanceAnalytics(
       return member?.name ?? member?.staffId ?? `職員${index + 1}`;
     });
 
+    // Per-user items for actionable alerts (Today Execution Layer)
+    const absenceItems = absenceVisits.map((v) => ({
+      userId: v.userCode,
+      userName: userCodeMap.get(v.userCode) ?? v.userCode,
+    }));
+    const lateOrEarlyItems = lateOrEarlyVisits.map((v) => ({
+      userId: v.userCode,
+      userName: userCodeMap.get(v.userCode) ?? v.userCode,
+    }));
+
     return {
       facilityAttendees,
       lateOrEarlyLeave,
@@ -71,6 +81,8 @@ export function useAttendanceAnalytics(
       lateOrShiftAdjust,
       outStaff,
       outStaffNames,
+      absenceItems,
+      lateOrEarlyItems,
     };
   }, [attendanceCounts, staff.length, users, visits]);
 
@@ -86,6 +98,7 @@ export function useAttendanceAnalytics(
         count: attendanceSummary.absenceCount,
         targetAnchorId: 'sec-attendance',
         description: attendanceSummary.absenceNames?.slice(0, 3).join('、'),
+        items: attendanceSummary.absenceItems,
       });
     }
 
@@ -98,6 +111,7 @@ export function useAttendanceAnalytics(
         count: attendanceSummary.lateOrEarlyLeave,
         targetAnchorId: 'sec-attendance',
         description: attendanceSummary.lateOrEarlyNames?.slice(0, 3).join('、'),
+        items: attendanceSummary.lateOrEarlyItems,
       });
     }
 

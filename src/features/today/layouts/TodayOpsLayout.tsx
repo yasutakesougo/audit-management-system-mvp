@@ -10,7 +10,7 @@ import React from 'react';
 import type { NextActionWithProgress } from '../hooks/useNextAction';
 import type { AttendanceSummaryCardProps } from '../widgets/AttendanceSummaryCard';
 import { AttendanceSummaryCard } from '../widgets/AttendanceSummaryCard';
-import { BriefingAlertList } from '../widgets/BriefingAlertList';
+import { BriefingActionList } from '../widgets/BriefingActionList';
 import { HeroUnfinishedBanner } from '../widgets/HeroUnfinishedBanner';
 import { NextActionCard } from '../widgets/NextActionCard';
 import { UserCompactList, type UserRow } from '../widgets/UserCompactList';
@@ -55,7 +55,7 @@ export const TodayOpsLayout: React.FC<TodayOpsProps> = ({
           <Grid size={{ xs: 12, md: 8 }}>
             <AttendanceSummaryCard {...attendance} />
 
-            <BriefingAlertList alerts={briefingAlerts} />
+            <BriefingActionList alerts={briefingAlerts} />
 
             <Typography variant="h6" gutterBottom fontWeight="bold">
               👥 今日の利用者
