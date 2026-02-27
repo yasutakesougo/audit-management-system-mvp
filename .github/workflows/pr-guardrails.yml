@@ -48,3 +48,43 @@ jobs:
             }
 
             core.info('PR guardrails check passed.');
+
+  skill-label-check:
+    name: AI Skills protocol check
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check AI Skills section for hardening PRs
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const labels = (context.payload.pull_request.labels || []).map(l => l.name);
+            const isHardening = labels.some(l => l.startsWith('hardening-'));
+            const isRefactor  = labels.includes('refactor');
+            const isAdr       = labels.includes('adr');
+
+            if (!isHardening && !isRefactor && !isAdr) {
+              core.info('No skill-required labels found. Skipping check.');
+              return;
+            }
+
+            const body = context.payload.pull_request.body || '';
+            const hasSkillSection = body.includes('AI Skills') || body.includes('Skills:');
+            const hasEvidence     = body.includes('Evidence Pack') || body.includes('Evidence');
+
+            if (!hasSkillSection) {
+              core.warning(
+                `PR has label(s) [${labels.join(', ')}] but AI Skills section is missing. ` +
+                'See docs/ai-skills-protocol.md for guidance.'
+              );
+            }
+
+            if (isHardening && !hasEvidence) {
+              core.warning(
+                'Hardening PR is missing Evidence Pack. ' +
+                'Please document DoD evidence per docs/ai-skills-protocol.md §5.'
+              );
+            }
+
+            if (hasSkillSection) {
+              core.info('AI Skills protocol check passed.');
+            }
