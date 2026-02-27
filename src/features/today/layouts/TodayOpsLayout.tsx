@@ -7,7 +7,7 @@
 import type { BriefingAlert } from '@/features/dashboard/sections/types';
 import { Box, Container, Grid, Paper, Stack, Typography } from '@mui/material';
 import React from 'react';
-import type { NextActionItem } from '../hooks/useNextAction';
+import type { NextActionWithProgress } from '../hooks/useNextAction';
 import type { AttendanceSummaryCardProps } from '../widgets/AttendanceSummaryCard';
 import { AttendanceSummaryCard } from '../widgets/AttendanceSummaryCard';
 import { BriefingAlertList } from '../widgets/BriefingAlertList';
@@ -28,7 +28,7 @@ export type TodayOpsProps = {
   hero: HeroProps;
   attendance: AttendanceSummaryCardProps;
   briefingAlerts: BriefingAlert[];
-  nextAction: NextActionItem | null;
+  nextAction: NextActionWithProgress;
   transport: { pending: TransportUser[]; inProgress: TransportUser[]; onArrived: (id: string) => void };
   users: { items: UserRow[]; onOpenQuickRecord: (id: string) => void };
 };
