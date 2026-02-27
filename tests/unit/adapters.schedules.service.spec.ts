@@ -117,13 +117,13 @@ describe('schedules service', () => {
     expect(demo.list).not.toHaveBeenCalled();
   });
 
-  it('falls back to demo list when SharePoint fails and classifies network errors', async () => {
+  it('falls back to demo list when SharePoint fails and classifies timeout errors', async () => {
     sharepoint.list.mockRejectedValue(asError('timeout while fetch', 'ETIMEDOUT'));
 
     const result = await service.list('2025-01-10');
 
     expect(result.source).toBe('demo');
-    expect(result.fallbackKind).toBe('network');
+    expect(result.fallbackKind).toBe('timeout');
     expect(console.warn).toHaveBeenCalledTimes(1);
   });
 
