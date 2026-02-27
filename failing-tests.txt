@@ -1,7 +1,0 @@
-C:/Users/安武/.vscode/workspace/audit-management-system/tests/unit/DailyTableSupportHint.spec.tsx
-C:/Users/安武/.vscode/workspace/audit-management-system/tests/unit/env.feature-flags.spec.ts
-C:/Users/安武/.vscode/workspace/audit-management-system/tests/unit/env.featureFlags.spec.ts
-C:/Users/安武/.vscode/workspace/audit-management-system/tests/unit/env.parse.spec.ts
-C:/Users/安武/.vscode/workspace/audit-management-system/tests/unit/env/env.schema.spec.ts
-C:/Users/安武/.vscode/workspace/audit-management-system/src/features/schedules/errors.spec.ts
-C:/Users/安武/.vscode/workspace/audit-management-system/src/features/dashboard/__tests__/useDashboardSummary.spec.ts

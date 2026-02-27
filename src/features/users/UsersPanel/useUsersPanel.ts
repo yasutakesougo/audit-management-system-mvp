@@ -16,6 +16,7 @@ import { ZodError } from 'zod';
 import { AuthRequiredError } from '../../../lib/errors';
 import { useUsersStore } from '../store';
 import type { IUserMaster, IUserMasterCreateDto } from '../types';
+import { resolveUserIdentifier } from '../UserDetailSections/helpers';
 import { useUsersDemoSeed } from '../useUsersDemoSeed';
 
 // ---------------------------------------------------------------------------
@@ -163,7 +164,7 @@ export function useUsersPanel(): UseUsersPanelReturn {
 
   const detailUser = useMemo(() => {
     if (!detailUserKey) return null;
-    return data.find((user) => (user.UserID || String(user.Id)) === detailUserKey) ?? null;
+    return data.find((user) => resolveUserIdentifier(user) === detailUserKey) ?? null;
   }, [data, detailUserKey]);
 
   useEffect(() => {
