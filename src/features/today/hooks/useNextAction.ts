@@ -5,6 +5,7 @@
  * P1-A: Start/Done 状態を合成、actions を提供
  */
 import type { ScheduleItem } from '@/features/dashboard/selectors/useScheduleLanes';
+import { OPS_FLOW_ORDER } from '@/features/dashboard/selectors/useScheduleLanes';
 import { useMemo } from 'react';
 import {
     buildProgressKey,
@@ -19,6 +20,7 @@ export type NextActionItem = {
   title: string;
   location?: string;
   owner?: string;
+  opsStep?: string;
   minutesUntil: number;
 };
 
@@ -99,7 +101,14 @@ export function useNextAction(
         const p = progressStore.getProgress(item._progressKey);
         return !p?.doneAt;
       })
-      .sort((a, b) => a.minutesUntil - b.minutesUntil);
+      .sort((a, b) => {
+        const timeDiff = a.minutesUntil - b.minutesUntil;
+        if (timeDiff !== 0) return timeDiff;
+        // Tie-break: opsStep items by flow order, non-opsStep to end
+        const orderA = a.opsStep != null ? (OPS_FLOW_ORDER[a.opsStep as keyof typeof OPS_FLOW_ORDER] ?? 99) : 99;
+        const orderB = b.opsStep != null ? (OPS_FLOW_ORDER[b.opsStep as keyof typeof OPS_FLOW_ORDER] ?? 99) : 99;
+        return orderA - orderB;
+      });
 
     if (upcoming.length === 0) return null;
 
