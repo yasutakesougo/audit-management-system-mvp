@@ -139,6 +139,7 @@ export default defineConfig(({ mode }) => {
       },
     },
     resolve: {
+      dedupe: ['react-is'],
       alias: {
         '@': srcDir,
         '@/adapters': resolve(srcDir, 'adapters'),
@@ -200,15 +201,16 @@ export default defineConfig(({ mode }) => {
               normalized.includes('/react-markdown/') ||
               normalized.includes('/react-router') ||
               normalized.includes('/react-hot-toast/') ||
-              // NOTE: react-is intentionally omitted — multiple versions exist
-              // (v16 from hoist-non-react-statics, v19 from MUI 7) and forcing
-              // them into one chunk causes AsyncMode runtime crash.
+              normalized.includes('/react-is/') ||
               normalized.includes('/remark-') ||
               normalized.includes('/rehype-') ||
-              normalized.includes('/micromark/') ||
-              normalized.includes('recharts')
+              normalized.includes('/micromark/')
             ) {
               return 'react';
+            }
+            // recharts in its own chunk to break circular mui→react→mui
+            if (normalized.includes('recharts')) {
+              return 'recharts';
             }
             // ── Heavy report libs: lazy-loaded on export ──
             if (
