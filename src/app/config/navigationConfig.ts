@@ -635,6 +635,7 @@ export function groupNavItems(
 
   for (const item of navItems) {
     const group = pickGroup(item, isAdmin);
+    if (!map.has(group)) map.set(group, []);
     map.get(group)!.push(item);
   }
 
