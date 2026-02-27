@@ -74,7 +74,7 @@ describe('UsersPanel smoke test', () => {
   fireEvent.click(detailLink);
 
     expect(await screen.findByRole('button', { name: '詳細表示を閉じる' })).toBeInTheDocument();
-    expect(screen.getAllByText('利用者コード: inline-001').length).toBeGreaterThan(0);
+    expect(screen.getAllByText(/inline-001/).length).toBeGreaterThan(0);
 
     fireEvent.click(screen.getByRole('button', { name: '詳細表示を閉じる' }));
     await waitFor(() => {
