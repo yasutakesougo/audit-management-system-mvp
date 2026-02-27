@@ -32,7 +32,7 @@ export type NavItem = {
   group?: NavGroupKey;
 };
 
-export type NavGroupKey = 'daily' | 'record' | 'review' | 'master' | 'admin' | 'settings';
+export type NavGroupKey = 'daily' | 'record' | 'ibd' | 'isp' | 'master' | 'admin' | 'settings';
 
 // ============================================================================
 // Constants
@@ -52,7 +52,8 @@ export const NAV_AUDIENCE = {
 export const NAV_GROUP_I18N_KEYS = {
   daily: 'NAV_GROUP.DAILY',
   record: 'NAV_GROUP.RECORD',
-  review: 'NAV_GROUP.REVIEW',
+  ibd: 'NAV_GROUP.IBD',
+  isp: 'NAV_GROUP.ISP',
   master: 'NAV_GROUP.MASTER',
   admin: 'NAV_GROUP.ADMIN',
   settings: 'NAV_GROUP.SETTINGS',
@@ -70,7 +71,8 @@ export const NAV_GROUP_I18N_KEYS = {
 export const groupLabel: Record<NavGroupKey, string> = {
   daily: '📌 今日の業務',
   record: '📚 記録を参照',
-  review: '🔍 分析して改善',
+  ibd: '🧩 強度行動障害支援',
+  isp: '📋 個別支援計画',
   master: '👥 利用者・職員',
   admin: '🛡️ システム管理',
   settings: '⚙️ 表示設定',
@@ -79,7 +81,7 @@ export const groupLabel: Record<NavGroupKey, string> = {
 /**
  * Navigation groups display order
  */
-export const NAV_GROUP_ORDER: NavGroupKey[] = ['daily', 'record', 'review', 'master', 'admin', 'settings'];
+export const NAV_GROUP_ORDER: NavGroupKey[] = ['daily', 'record', 'ibd', 'isp', 'master', 'admin', 'settings'];
 
 // ============================================================================
 // Functions
@@ -139,7 +141,7 @@ export function pickGroup(item: NavItem, isAdmin: boolean): NavGroupKey {
     return 'record';
   }
 
-  // 振り返り・分析: analysis, iceberg, assessment + 支援マスタ系（PDCAサイクル）
+  // 強度行動障害支援: analysis, iceberg, assessment, survey, 支援マスタ系
   if (
     testId === TESTIDS.nav.analysis ||
     testId === TESTIDS.nav.iceberg ||
@@ -157,10 +159,21 @@ export function pickGroup(item: NavItem, isAdmin: boolean): NavGroupKey {
     label.includes('特性') ||
     label.includes('支援手順マスタ') ||
     label.includes('個別支援手順') ||
-    label.includes('支援活動マスタ') ||
+    label.includes('支援活動マスタ')
+  ) {
+    return 'ibd';
+  }
+
+  // 個別支援計画: ISP作成・更新
+  if (
+    testId === TESTIDS.nav.supportPlanGuide ||
+    testId === TESTIDS.nav.ispEditor ||
+    to.startsWith('/support-plan-guide') ||
+    to.startsWith('/isp-editor') ||
+    label.includes('ISP') ||
     label.includes('個別支援計画書')
   ) {
-    return 'review';
+    return 'isp';
   }
 
   // マスタ: users, staff
@@ -343,6 +356,14 @@ export function createNavItems(config: CreateNavItemsConfig): NavItem[] {
       group: 'record' as NavGroupKey,
     },
     {
+      label: '支援ハブ',
+      to: '/ibd',
+      isActive: (pathname) => pathname === '/ibd',
+      icon: undefined,
+      audience: NAV_AUDIENCE.staff,
+      group: 'ibd' as NavGroupKey,
+    },
+    {
       label: '分析',
       to: '/analysis/dashboard',
       isActive: (pathname) => pathname.startsWith('/analysis/dashboard'),
@@ -350,7 +371,7 @@ export function createNavItems(config: CreateNavItemsConfig): NavItem[] {
       prefetchKey: PREFETCH_KEYS.analysisDashboard,
       testId: TESTIDS.nav.analysis,
       audience: NAV_AUDIENCE.staff,
-      group: 'review' as NavGroupKey,
+      group: 'ibd' as NavGroupKey,
     },
     {
       label: '氷山分析',
@@ -450,7 +471,7 @@ export function createNavItems(config: CreateNavItemsConfig): NavItem[] {
         isActive: (pathname: string) => pathname.startsWith('/admin/step-templates'),
         icon: undefined,
         audience: NAV_AUDIENCE.admin,
-        group: 'admin' as NavGroupKey,
+        group: 'ibd' as NavGroupKey,
       },
       {
         label: '個別支援手順',
@@ -458,7 +479,7 @@ export function createNavItems(config: CreateNavItemsConfig): NavItem[] {
         isActive: (pathname: string) => pathname.startsWith('/admin/individual-support'),
         icon: undefined,
         audience: NAV_AUDIENCE.admin,
-        group: 'admin' as NavGroupKey,
+        group: 'ibd' as NavGroupKey,
       },
       {
         label: '職員勤怠管理',
@@ -531,7 +552,7 @@ export function createNavItems(config: CreateNavItemsConfig): NavItem[] {
     prefetchKeys: [PREFETCH_KEYS.muiForms, PREFETCH_KEYS.muiOverlay],
     testId: TESTIDS.nav.admin,
     audience: NAV_AUDIENCE.admin,
-    group: 'admin' as NavGroupKey,
+    group: 'ibd' as NavGroupKey,
   });
 
   // Feature-flagged items
@@ -545,7 +566,7 @@ export function createNavItems(config: CreateNavItemsConfig): NavItem[] {
       prefetchKey: PREFETCH_KEYS.icebergPdcaBoard,
       testId: TESTIDS.nav.icebergPdca,
       audience: NAV_AUDIENCE.staff,
-      group: 'review' as NavGroupKey,
+      group: 'ibd' as NavGroupKey,
     });
   }
 
@@ -570,7 +591,7 @@ export function createNavItems(config: CreateNavItemsConfig): NavItem[] {
       isActive: (pathname: string) => pathname.startsWith('/compliance'),
       icon: undefined,
       audience: 'staff',
-      group: 'review' as NavGroupKey,
+      group: 'admin' as NavGroupKey,
     });
   }
 
@@ -614,6 +635,7 @@ export function groupNavItems(
 
   for (const item of navItems) {
     const group = pickGroup(item, isAdmin);
+    if (!map.has(group)) map.set(group, []);
     map.get(group)!.push(item);
   }
 
