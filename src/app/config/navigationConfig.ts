@@ -32,7 +32,7 @@ export type NavItem = {
   group?: NavGroupKey;
 };
 
-export type NavGroupKey = 'daily' | 'record' | 'review' | 'master' | 'admin' | 'settings';
+export type NavGroupKey = 'daily' | 'record' | 'review' | 'isp' | 'master' | 'admin' | 'settings';
 
 // ============================================================================
 // Constants
@@ -53,6 +53,7 @@ export const NAV_GROUP_I18N_KEYS = {
   daily: 'NAV_GROUP.DAILY',
   record: 'NAV_GROUP.RECORD',
   review: 'NAV_GROUP.REVIEW',
+  isp: 'NAV_GROUP.ISP',
   master: 'NAV_GROUP.MASTER',
   admin: 'NAV_GROUP.ADMIN',
   settings: 'NAV_GROUP.SETTINGS',
@@ -71,6 +72,7 @@ export const groupLabel: Record<NavGroupKey, string> = {
   daily: '📌 今日の業務',
   record: '📚 記録を参照',
   review: '🔍 分析して改善',
+  isp: '📋 個別支援計画',
   master: '👥 利用者・職員',
   admin: '🛡️ システム管理',
   settings: '⚙️ 表示設定',
@@ -79,7 +81,7 @@ export const groupLabel: Record<NavGroupKey, string> = {
 /**
  * Navigation groups display order
  */
-export const NAV_GROUP_ORDER: NavGroupKey[] = ['daily', 'record', 'review', 'master', 'admin', 'settings'];
+export const NAV_GROUP_ORDER: NavGroupKey[] = ['daily', 'record', 'review', 'isp', 'master', 'admin', 'settings'];
 
 // ============================================================================
 // Functions
@@ -387,7 +389,7 @@ export function createNavItems(config: CreateNavItemsConfig): NavItem[] {
       icon: undefined,
       testId: TESTIDS.nav.supportPlanGuide,
       audience: NAV_AUDIENCE.staff,
-      group: 'review' as NavGroupKey,
+      group: 'isp' as NavGroupKey,
     },
     {
       label: 'ISP更新（前回比較）',
@@ -396,7 +398,7 @@ export function createNavItems(config: CreateNavItemsConfig): NavItem[] {
       icon: undefined,
       testId: TESTIDS.nav.ispEditor,
       audience: NAV_AUDIENCE.staff,
-      group: 'review' as NavGroupKey,
+      group: 'isp' as NavGroupKey,
     },
     {
       label: '利用者',
