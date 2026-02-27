@@ -30,6 +30,9 @@ const budgets = [
   { pattern: /msal-react.*\.js$/i, limitKb: 70 },
   { pattern: /SupportPlanGuidePage-.*\.js$/i, limitKb: 70 },
   { pattern: /SupportPlanGuidePage\.Markdown-.*\.js$/i, limitKb: 90 },
+  // App chunk: monolithic entry point — tracked for future code-splitting
+  { pattern: /App-.*\.js$/i, limitKb: 3000 },
+  { pattern: /App-legacy-.*\.js$/i, limitKb: 3000 },
 ];
 
 const limitKb = Number.parseFloat(process.env.BUNDLE_MAX_CHUNK_KB ?? '') || DEFAULT_LIMIT_KB;
