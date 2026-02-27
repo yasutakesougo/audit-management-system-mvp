@@ -26,6 +26,8 @@ import { SharePointDailyRecordItemSchema } from '@/features/daily/schema';
 import { SpUserMasterItemSchema } from '@/features/users/schema';
 import { useDataIntegrityScan } from '@/hooks/useDataIntegrityScan';
 import { formatScanSummary, type ScanResult, type ScanTarget } from '@/lib/dataIntegrityScanner';
+import { fetchSp } from '@/lib/fetchSp';
+import { ensureConfig } from '@/lib/spClient';
 import { USERS_SELECT_FIELDS_SAFE } from '@/sharepoint/fields';
 
 // ────────────────────────────────────────────────────────────────────────────
@@ -47,6 +49,48 @@ const SCAN_TARGETS: ScanTarget[] = [
   },
 ];
 
+const MAX_ITEMS_PER_REQUEST = 500;
+const MAX_PAGES = 4; // Safety limit: 500 × 4 = 2000 items max
+
+/**
+ * Fetch all raw items from a SharePoint list via REST API.
+ * Uses pagination ($skiptoken / odata.nextLink) to collect all items.
+ */
+async function fetchRawItems(
+  baseUrl: string,
+  listTitle: string,
+  selectFields: readonly string[],
+  signal?: AbortSignal,
+): Promise<unknown[]> {
+  const allItems: unknown[] = [];
+  const select = selectFields.join(',');
+  let url: string | null =
+    `${baseUrl}/_api/web/lists/GetByTitle('${encodeURIComponent(listTitle)}')/items?$select=${select}&$top=${MAX_ITEMS_PER_REQUEST}`;
+
+  for (let page = 0; page < MAX_PAGES && url; page++) {
+    if (signal?.aborted) break;
+
+    const response = await fetchSp(url);
+    if (!response.ok) {
+      console.warn(`[DataIntegrityPage] Failed to fetch ${listTitle}`, { status: response.status });
+      break;
+    }
+
+    const payload = (await response.json()) as {
+      value?: unknown[];
+      'odata.nextLink'?: string;
+    };
+
+    if (payload.value) {
+      allItems.push(...payload.value);
+    }
+
+    url = payload['odata.nextLink'] ?? null;
+  }
+
+  return allItems;
+}
+
 // ────────────────────────────────────────────────────────────────────────────
 // Component
 // ────────────────────────────────────────────────────────────────────────────
@@ -56,24 +100,32 @@ const SCAN_TARGETS: ScanTarget[] = [
  *
  * 全 SharePoint リストのデータを Zod スキーマで一括検証し、
  * 不整合レコードの一覧を表示するページ。
- *
- * ⚠ 本ページは VITE_AUDIT_DEBUG=true の環境でのみ有用です。
- *   データの取得にはブラウザから SharePoint への直接アクセスが必要です。
  */
 const DataIntegrityPage: React.FC = () => {
   const { status, progress, results, error, startScan, cancelScan } = useDataIntegrityScan();
   const [copied, setCopied] = useState(false);
+  const [fetchingData, setFetchingData] = useState(false);
 
-  // In a real integration, data would be fetched from SharePoint via PnP.
-  // For now, provide a placeholder that demonstrates the scan flow with mock data.
-  const handleStartScan = useCallback(() => {
-    // TODO: Replace with actual SP data fetching via repository.getAll()
-    // For demonstration, use empty data to show the zero-issue path
-    const data = new Map<string, unknown[]>(
-      SCAN_TARGETS.map((t) => [t.name, []]),
-    );
-    startScan(SCAN_TARGETS, data);
+  const handleStartScan = useCallback(async () => {
+    try {
+      setFetchingData(true);
+      const { baseUrl } = ensureConfig();
+
+      // Fetch raw data from SharePoint for each target
+      const data = new Map<string, unknown[]>();
+      for (const target of SCAN_TARGETS) {
+        const items = await fetchRawItems(baseUrl, target.listTitle, target.selectFields);
+        data.set(target.name, items);
+      }
+
+      setFetchingData(false);
+      startScan(SCAN_TARGETS, data);
+    } catch (err) {
+      setFetchingData(false);
+      console.error('[DataIntegrityPage] Failed to fetch data for scan', err);
+    }
   }, [startScan]);
+
 
   const handleCopy = useCallback(async () => {
     if (results.length === 0) return;
@@ -112,11 +164,12 @@ const DataIntegrityPage: React.FC = () => {
         <Button
           variant="contained"
           color="primary"
-          startIcon={status === 'scanning' ? <StopIcon /> : <PlayArrowIcon />}
+          disabled={fetchingData}
+          startIcon={fetchingData || status === 'scanning' ? <StopIcon /> : <PlayArrowIcon />}
           onClick={status === 'scanning' ? cancelScan : handleStartScan}
           data-testid="scan-action-btn"
         >
-          {status === 'scanning' ? 'スキャン中断' : 'スキャン開始'}
+          {fetchingData ? 'データ取得中...' : status === 'scanning' ? 'スキャン中断' : 'スキャン開始'}
         </Button>
 
         {results.length > 0 && (
