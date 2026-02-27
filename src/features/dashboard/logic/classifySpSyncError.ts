@@ -1,4 +1,4 @@
-import { classifyErrorWithHint, type ErrorClassification, type ErrorKind, type SafeError } from '@/lib/errors';
+import { classifyErrorWithHint, type ErrorKind, type SafeError } from '@/lib/errors';
 
 /**
  * @deprecated Use `classifyErrorWithHint` from `@/lib/errors` directly.

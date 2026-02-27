@@ -95,7 +95,9 @@ export default function Home() {
     ? {
         auth: '認証・同意が必要',
         network: 'ネットワーク障害',
+        timeout: '通信タイムアウト',
         schema: 'スキーマ不整合',
+        server: 'サーバーエラー',
         unknown: '不明なエラー',
       }[schedulesFallbackKind]
     : null;
