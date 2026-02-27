@@ -139,6 +139,7 @@ export default defineConfig(({ mode }) => {
       },
     },
     resolve: {
+      dedupe: ['react-is'],
       alias: {
         '@': srcDir,
         '@/adapters': resolve(srcDir, 'adapters'),
@@ -203,10 +204,13 @@ export default defineConfig(({ mode }) => {
               normalized.includes('/react-is/') ||
               normalized.includes('/remark-') ||
               normalized.includes('/rehype-') ||
-              normalized.includes('/micromark/') ||
-              normalized.includes('recharts')
+              normalized.includes('/micromark/')
             ) {
               return 'react';
+            }
+            // recharts in its own chunk to break circular mui→react→mui
+            if (normalized.includes('recharts')) {
+              return 'recharts';
             }
             // ── Heavy report libs: lazy-loaded on export ──
             if (

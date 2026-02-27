@@ -43,7 +43,6 @@ import { useUserAuthz } from '@/auth/useUserAuthz';
 import { AppShellV2 } from '@/components/layout/AppShellV2';
 import NavLinkPrefetch from '@/components/NavLinkPrefetch';
 import { useFeatureFlags } from '@/config/featureFlags';
-import { AuthDiagnosticsPanel } from '@/features/auth/diagnostics';
 import { useAuthStore } from '@/features/auth/store';
 import { useDashboardPath } from '@/features/dashboard/dashboardRouting';
 import { useSettingsContext } from '@/features/settings/SettingsContext';
@@ -792,7 +791,7 @@ const AppShell: React.FC<{ children: React.ReactNode }> = ({ children }) => {
             <CloseFullscreenRoundedIcon fontSize="small" />
           </Fab>
         )}
-        {import.meta.env.DEV && <AuthDiagnosticsPanel limit={15} pollInterval={2000} />}
+        {/* AuthDiagnosticsPanel — disabled to reduce layout noise. Enable via /auth/diagnostics if needed */}
         <SettingsDialog open={settingsDialogOpen} onClose={() => setSettingsDialogOpen(false)} />
       </div>
       </LiveAnnouncer>

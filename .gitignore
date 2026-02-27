@@ -7,11 +7,19 @@ dist
 # Test/coverage outputs
 coverage
 test-results
+test-results.json
 tests/.auth/storageState.json
 tmp/
 reports/flaky-tests.md
 playwright-report
 junit
+
+# CI/test run logs (large, do NOT commit)
+ci.log
+fast.log
+smoke.log
+preflight.log
+failing-tests.txt
 
 # Local certificates/keys (do NOT commit)
 key.pem

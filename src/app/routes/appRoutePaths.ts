@@ -13,6 +13,7 @@ export const APP_ROUTE_PATHS = [
   'meeting-guide',
   'compliance',
   'support-plan-guide',
+  'isp-editor',
   'handoff-timeline',
   'meeting-minutes',
   'meeting-minutes/new',
