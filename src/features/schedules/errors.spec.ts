@@ -1,6 +1,10 @@
 import { WriteDisabledError } from '@/infra/sharepoint/repos/schedulesRepo';
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { classifySchedulesError, shouldFallbackToReadOnly } from './errors';
+
+afterEach(() => {
+  vi.unstubAllGlobals();
+});
 
 describe('classifySchedulesError', () => {
   it('classifies WriteDisabledError as WRITE_DISABLED', () => {
@@ -78,7 +82,7 @@ describe('classifySchedulesError', () => {
     const info = classifySchedulesError(new Error('Any error'));
 
     expect(info.kind).toBe('NETWORK_ERROR');
-    expect(info.title).toContain('オフライン');
+    expect(info.title).toContain('ネットワークエラー');
     vi.unstubAllGlobals();
   });
 
