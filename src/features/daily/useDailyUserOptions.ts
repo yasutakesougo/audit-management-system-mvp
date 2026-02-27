@@ -8,6 +8,8 @@ export type DailyUserOption = {
   lookupId?: number;
   label: string;
   furigana?: string | null;
+  transportAdditionType?: string | null;
+  mealAddition?: string | null;
 };
 
 const buildOption = (user: IUserMaster): DailyUserOption | null => {
@@ -28,6 +30,8 @@ const buildOption = (user: IUserMaster): DailyUserOption | null => {
     lookupId: typeof user.Id === 'number' && Number.isFinite(user.Id) ? user.Id : undefined,
     label,
     furigana: furigana || null,
+    transportAdditionType: user.TransportAdditionType || null,
+    mealAddition: user.MealAddition || null,
   };
 };
 
