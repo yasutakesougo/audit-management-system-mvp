@@ -399,7 +399,7 @@ export function createNavItems(config: CreateNavItemsConfig): NavItem[] {
       isActive: (pathname) => pathname.startsWith('/survey/tokusei'),
       icon: undefined,
       audience: NAV_AUDIENCE.staff,
-      group: 'review' as NavGroupKey,
+      group: 'ibd' as NavGroupKey,
     },
     {
       label: 'ISP作成',
@@ -408,7 +408,7 @@ export function createNavItems(config: CreateNavItemsConfig): NavItem[] {
       icon: undefined,
       testId: TESTIDS.nav.supportPlanGuide,
       audience: NAV_AUDIENCE.staff,
-      group: 'review' as NavGroupKey,
+      group: 'isp' as NavGroupKey,
     },
     {
       label: 'ISP更新（前回比較）',
@@ -417,7 +417,7 @@ export function createNavItems(config: CreateNavItemsConfig): NavItem[] {
       icon: undefined,
       testId: TESTIDS.nav.ispEditor,
       audience: NAV_AUDIENCE.staff,
-      group: 'review' as NavGroupKey,
+      group: 'isp' as NavGroupKey,
     },
     {
       label: '利用者',
