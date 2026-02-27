@@ -5,12 +5,34 @@
 <!-- なぜ必要か / どんな痛みを解決するか -->
 
 ## Changes
-- [ ] 
+- [ ]
 
 ## Verification
 - [ ] Required checks are green
 - [ ] (If relevant) Smoke E2E passed
 - [ ] (If relevant) Artifacts confirmed (trace/screenshot/log)
+
+---
+
+## 🧭 AI Skills（[Protocol](docs/ai-skills-protocol.md)）
+
+<!-- 使ったスキル名を 2-3 個まで列挙。未使用なら N/A -->
+
+- Skills: <!-- 例: @react-best-practices, @testing-patterns -->
+- Scope: <!-- 例: src/features/schedules -->
+
+### Evidence Pack（`hardening-*` ラベル時は必須）
+
+- [ ] Unit: `npm test <scope>` PASS
+- [ ] E2E: 該当 smoke PASS（N/A 可）
+- [ ] Observability: ログ/イベント追加 or 紐付け
+- [ ] ADR/Doc: 変更記録リンク → <!-- docs/xxx.md -->
+
+### Hardening Exit Criteria（`hardening-*` ラベル時のみ）
+
+- [ ] 新規 Observability イベントが追加されている
+- [ ] 再発防止テストが追加されている
+- [ ] ADR or Runbook が更新されている
 
 ---
 
@@ -48,4 +70,3 @@
 
 ## 関連Issue/PR
 <!-- 関連するIssueやPRがあればリンク -->
-
