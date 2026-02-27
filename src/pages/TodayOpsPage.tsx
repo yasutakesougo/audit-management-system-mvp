@@ -1,37 +1,29 @@
-import { useAttendanceStore } from '@/features/attendance/store';
-import { useDashboardSummary } from '@/features/dashboard/useDashboardSummary';
-import { useStaffStore } from '@/features/staff/store';
+/**
+ * TodayOpsPage (Execution Layer)
+ *
+ * Positioning:
+ * - /dashboard: Decision Layer（判断・俯瞰・管理）
+ * - /today:     Execution Layer（実行・未処理ゼロ化）
+ *
+ * Guardrails:
+ * - 集約/分析ロジックを持たない（dashboard domain に寄せる）
+ * - データ参照は useTodaySummary（facade）経由に限定する
+ * - Today に新しい集約が必要なら dashboard 側に追加してから pick する
+ * - Today の追加は UIウィジェット or 実行操作 (QuickRecord等) に限定
+ *
+ * @see docs/adr/ADR-002-today-execution-layer-guardrails.md
+ */
+import { useTodaySummary } from '@/features/today/domain';
 import { useNextAction } from '@/features/today/hooks/useNextAction';
 import { TodayOpsLayout } from '@/features/today/layouts/TodayOpsLayout';
 import { QuickRecordDrawer } from '@/features/today/records/QuickRecordDrawer';
 import { useQuickRecord } from '@/features/today/records/useQuickRecord';
-import { useUsersDemo } from '@/features/users/usersStoreDemo';
 import { isE2E } from '@/lib/env';
 import React, { useMemo } from 'react';
 
-// 仮のモックジェネレーターとカウント (本来はポートから注入されるべきだが、まずはダッシュボードと同等に扱う)
-const generateMockActivityRecords = () => [];
-const mockAttendanceCounts = { onDuty: 0, out: 0, absent: 0, total: 0 };
-const mockSpSyncStatus = { loading: false, error: null, itemCount: 0, source: 'demo' as const };
-
 export const TodayOpsPage: React.FC = () => {
-  // 1. Data Fetching
-  const { data: users } = useUsersDemo();
-  const { visits } = useAttendanceStore();
-  const { staff } = useStaffStore();
-  const today = new Date().toISOString().split('T')[0];
-  const currentMonth = today.slice(0, 7);
-
-  const summary = useDashboardSummary({
-    users,
-    staff,
-    visits,
-    today,
-    currentMonth,
-    generateMockActivityRecords,
-    attendanceCounts: mockAttendanceCounts,
-    spSyncStatus: mockSpSyncStatus,
-  });
+  // 1. Data via Facade (Execution Layer はドメイン集約を持たない)
+  const summary = useTodaySummary();
 
   // 2. Derived: Next Action (hook で算出 — ページが太らない)
   const nextAction = useNextAction(summary.scheduleLanesToday);
@@ -50,10 +42,10 @@ export const TodayOpsPage: React.FC = () => {
     // 利用者一覧: recordFilled はページで計算（widget は表示だけ）
     const pendingUserIds = new Set(summary?.dailyRecordStatus?.pendingUserIds ?? []);
 
-    const userItems = (users || []).map((u, i) => {
+    const userItems = (summary.users || []).map((u, i) => {
       const userId = (u.UserID ?? '').trim() || `U${String(u.Id ?? i + 1).padStart(3, '0')}`;
       const name = u.FullName ?? `利用者${i + 1}`;
-      const visit = visits[userId];
+      const visit = summary.visits[userId];
       let status: 'present' | 'absent' | 'unknown' = 'unknown';
       if (visit) {
         if (visit.status === '通所中' || visit.status === '退所済') status = 'present';
@@ -109,7 +101,7 @@ export const TodayOpsPage: React.FC = () => {
         onOpenQuickRecord: quickRecord.openUser,
       },
     };
-  }, [summary, nextAction, quickRecord.openUnfilled, quickRecord.openUser, users, visits]);
+  }, [summary, nextAction, quickRecord.openUnfilled, quickRecord.openUser]);
 
   const handleSaveSuccess = React.useCallback(() => {
     if (!quickRecord.autoNextEnabled) {
