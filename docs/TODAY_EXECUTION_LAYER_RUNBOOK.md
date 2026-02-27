@@ -105,6 +105,39 @@ npx vitest run src/features/today tests/unit/today --reporter=verbose
 
 ---
 
+## 5. Chaos Test 準備（次回スプリント用）
+
+### 期待される挙動
+
+localStorage への書き込みが失敗しても：
+
+1. **UI は落ちない**（例外は `setState` 内で catch される）
+2. **`today.briefing_action_error` イベントが出力される**（`auditLog.error`）
+3. **`persistentLogger` にエラーが永続化される**
+4. **React state は更新される**（画面上は正常に見える。リロード後に状態が失われる可能性あり）
+
+### モック方法（テスト用）
+
+```typescript
+// jsdom 環境で localStorage.setItem を差し替え
+const original = window.localStorage.setItem.bind(window.localStorage);
+window.localStorage.setItem = vi.fn(() => {
+  throw new DOMException('Storage full', 'QuotaExceededError');
+});
+
+// テスト実行...
+
+window.localStorage.setItem = original; // 復元
+```
+
+### 次回スプリントの検証項目
+
+- [ ] E2E: ブリーフィングアラートの「done」を押した際、localStorage 失敗時に snackbar が表示されること（P1 実装後）
+- [ ] Unit: 全 `errorClass` パターンのカバレッジ確認 → **済（`alertActions.storage.spec.ts`）**
+- [ ] Integration: `today.briefing_action_error` イベントが DevTools Console に出力されること
+
+---
+
 ## 参照
 
 - [ADR-002: Today is an Execution Layer](./adr/ADR-002-today-execution-layer-guardrails.md)
