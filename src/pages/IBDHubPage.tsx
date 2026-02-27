@@ -4,6 +4,7 @@
 // 4セクション: 評価(Assessment) → 分析(Analysis) → 支援設計(Design) → モニタリング(Monitor)
 // 各 Deep Dive ページへの導線 + メタ情報（件数・最終更新日・未完了ドラフト）
 // ---------------------------------------------------------------------------
+import { buildUnfilledSupportUrl } from '@/app/links/dailySupportLinks';
 import { ASSESSMENT_DRAFT_KEY } from '@/features/assessment/domain/assessmentSchema';
 import AssessmentIcon from '@mui/icons-material/Assessment';
 import BuildIcon from '@mui/icons-material/Build';
@@ -163,7 +164,15 @@ function useSections(): HubSection[] {
         emoji: '👁️',
         title: 'モニタリング',
         subtitle: '現場の記録を追跡し、支援の効果を継続的に確認する',
+        highlight: '🚀 未記入の支援記録から順に入力できます',
         cards: [
+          {
+            label: '未記入の支援記録へ',
+            to: buildUnfilledSupportUrl(),
+            description: '今日の未記入を順に埋めます（自動で次に進みます）',
+            icon: <EditNoteIcon sx={{ fontSize: 32, color: '#00695c' }} />,
+            badge: 'おすすめ',
+          },
           {
             label: '日次記録（行動観察）',
             to: '/daily/table',
