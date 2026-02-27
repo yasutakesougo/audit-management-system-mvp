@@ -198,6 +198,9 @@ export default defineConfig(({ mode }) => {
               normalized.includes('/node_modules/react-dom/') ||
               normalized.includes('/node_modules/scheduler/') ||
               normalized.includes('/react-markdown/') ||
+              normalized.includes('/react-router') ||
+              normalized.includes('/react-hot-toast/') ||
+              normalized.includes('/react-is/') ||
               normalized.includes('/remark-') ||
               normalized.includes('/rehype-') ||
               normalized.includes('/micromark/') ||
@@ -205,6 +208,22 @@ export default defineConfig(({ mode }) => {
             ) {
               return 'react';
             }
+            // ── Heavy report libs: lazy-loaded on export ──
+            if (
+              normalized.includes('/xlsx/') ||
+              normalized.includes('/@react-pdf/') ||
+              normalized.includes('/react-pdf/')
+            ) {
+              return 'vendor-reports';
+            }
+            // ── Data / validation libs ──
+            if (normalized.includes('/zod/')) {
+              return 'zod';
+            }
+            if (normalized.includes('/@tanstack/')) {
+              return 'tanstack';
+            }
+            // ── Catch-all: let Rollup tree-shake into importing chunks ──
             return undefined;
           },
         },
