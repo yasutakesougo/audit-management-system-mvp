@@ -46,6 +46,9 @@ describe('auditLog', () => {
         env: config,
       };
     });
+    vi.doMock('@/lib/env.schema', () => ({
+      getRuntimeEnv: () => ({ MODE: 'development' }),
+    }));
 
     const { auditLog } = await import('@/lib/debugLogger');
 
@@ -71,6 +74,9 @@ describe('auditLog', () => {
         env: config,
       };
     });
+    vi.doMock('@/lib/env.schema', () => ({
+      getRuntimeEnv: () => ({ MODE: 'development' }),
+    }));
 
     const { auditLog } = await import('@/lib/debugLogger');
 
