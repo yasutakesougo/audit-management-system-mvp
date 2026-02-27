@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
+import type { UserSelectMode } from '@/sharepoint/fields';
 import type {
     UserRepository,
     UserRepositoryListParams,
@@ -167,7 +168,7 @@ export function useUsers(params?: UsersHookParams): UsersHookReturn {
   );
 }
 
-export function useUser(id?: number | string): UserHookReturn {
+export function useUser(id?: number | string, options?: { selectMode?: UserSelectMode }): UserHookReturn {
   const repository = useUserRepository();
   const [data, setData] = useState<IUserMaster | null>(null);
   const [status, setStatus] = useState<AsyncStatus>('idle');
@@ -184,7 +185,7 @@ export function useUser(id?: number | string): UserHookReturn {
     setStatus('loading');
     setError(null);
     try {
-      const row = await repository.getById(numericId, { signal });
+      const row = await repository.getById(numericId, { signal, selectMode: options?.selectMode });
       if (signal?.aborted) {
         return;
       }
@@ -197,7 +198,7 @@ export function useUser(id?: number | string): UserHookReturn {
       setError(err);
       setStatus('error');
     }
-  }, [numericId, repository]);
+  }, [numericId, repository, options?.selectMode]);
 
   useEffect(() => {
     const controller = new AbortController();
