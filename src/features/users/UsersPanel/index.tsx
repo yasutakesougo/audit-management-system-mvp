@@ -47,6 +47,9 @@ const UsersPanel = () => {
     handleCloseForm,
     handleCreateFormSuccess,
     handleEditFormSuccess,
+    handleExportAchievementPDF,
+    handleExportMonthlySummary,
+    integrityErrors,
     panelOpenButtonRef,
   } = useUsersPanel();
 
@@ -81,6 +84,7 @@ const UsersPanel = () => {
             <UsersMenu
               onNavigateToList={() => setActiveTab('list')}
               onNavigateToCreate={() => setActiveTab('create')}
+              onExportMonthlySummary={handleExportMonthlySummary}
             />
           )}
           {activeTab === 'list' && (
@@ -97,6 +101,8 @@ const UsersPanel = () => {
               onEdit={handleEditClick}
               onSelectDetail={handleDetailSelect}
               onCloseDetail={handleDetailClose}
+              onExportPDF={handleExportAchievementPDF}
+              integrityErrors={integrityErrors}
             />
           )}
           {activeTab === 'create' && (

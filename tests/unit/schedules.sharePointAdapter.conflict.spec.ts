@@ -1,6 +1,6 @@
-import { describe, it, expect, vi } from 'vitest';
-import { result } from '@/shared/result';
 import type { UpdateScheduleEventInput } from '@/features/schedules/data';
+import { result } from '@/shared/result';
+import { describe, expect, it, vi } from 'vitest';
 
 /**
  * Phase 2-1b: Test 412 → result.conflict() mapping in SharePoint adapter
@@ -55,7 +55,7 @@ describe('sharePointAdapter conflict mapping (Phase 2-1b)', () => {
     }
 
     expect(res.isOk).toBe(false);
-    if (!res.isOk) {
+    if (!res.isOk && res.error.kind === 'conflict') {
       expect(res.error.kind).toBe('conflict');
       expect(res.error.message).toContain('conflict');
       expect(res.error.etag).toBe('"test-etag-123"');

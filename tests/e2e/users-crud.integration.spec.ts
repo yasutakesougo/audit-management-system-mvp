@@ -17,7 +17,7 @@
  */
 
 import { expect, test } from '@playwright/test';
-import { bootUsersPage } from './_helpers/bootUsersPage.mts';
+import { bootUsersPage } from './_helpers/bootUsersPage.mjs';
 
 test.describe('Users CRUD integration (full lifecycle)', () => {
   test.beforeEach(async ({ page }, testInfo) => {
@@ -42,14 +42,9 @@ test.describe('Users CRUD integration (full lifecycle)', () => {
     // ========================================
     // Step 1: ユーザー追加
     // ========================================
-    const createButton = page.getByRole('button', { name: /新規利用者登録/i });
+    const createButton = page.getByRole('tab', { name: /新規利用者登録/i }).or(page.getByRole('button', { name: /新規利用者登録/i })).first();
     await expect(createButton).toBeVisible({ timeout: 10000 });
     await createButton.click();
-
-    // UserID 自動生成
-    const autoButton = page.getByRole('button', { name: /自動/i });
-    await expect(autoButton).toBeVisible({ timeout: 5000 });
-    await autoButton.click();
 
     // 名前入力
     const nameInput = page.getByLabel(/氏名/i);
@@ -67,7 +62,7 @@ test.describe('Users CRUD integration (full lifecycle)', () => {
     // Step 2: 一覧表示確認
     // ========================================
     // If still on create tab, navigate to list tab
-    const listButton = page.getByRole('button', { name: /利用者一覧を表示/i });
+    const listButton = page.getByRole('tab', { name: /利用者一覧/i }).or(page.getByRole('button', { name: /利用者一覧を表示/i })).first();
     const isListButtonVisible = await listButton.isVisible({ timeout: 2000 }).catch(() => false);
     if (isListButtonVisible) {
       await listButton.click();
@@ -94,6 +89,11 @@ test.describe('Users CRUD integration (full lifecycle)', () => {
     await expect(editNameInput).toBeVisible({ timeout: 5000 });
     await editNameInput.clear();
     await editNameInput.fill(editedUserName);
+
+    // ふりがなも必須なので入力
+    const editFuriganaInput = editDialog.getByRole('textbox', { name: 'ふりがな', exact: true });
+    await expect(editFuriganaInput).toBeVisible({ timeout: 5000 });
+    await editFuriganaInput.fill('とうごうてすとたろう');
 
     // 保存ボタンをクリック
     const saveButton = editDialog.getByRole('button', { name: /保存|更新/i });
@@ -131,11 +131,8 @@ test.describe('Users CRUD integration (full lifecycle)', () => {
     // ========================================
     // Step 1: ユーザー追加
     // ========================================
-    const createButton = page.getByRole('button', { name: /新規利用者登録/i });
+    const createButton = page.getByRole('tab', { name: /新規利用者登録/i }).or(page.getByRole('button', { name: /新規利用者登録/i })).first();
     await createButton.click();
-
-    const autoButton = page.getByRole('button', { name: /自動/i });
-    await autoButton.click();
 
     const nameInput = page.getByLabel(/氏名/i);
     await nameInput.fill(testUserName);
@@ -147,7 +144,7 @@ test.describe('Users CRUD integration (full lifecycle)', () => {
     await page.waitForLoadState('networkidle');
 
     // Navigate to list
-    const listButton = page.getByRole('button', { name: /利用者一覧を表示/i });
+    const listButton = page.getByRole('tab', { name: /利用者一覧/i }).or(page.getByRole('button', { name: /利用者一覧を表示/i })).first();
     const isListButtonVisible = await listButton.isVisible({ timeout: 2000 }).catch(() => false);
     if (isListButtonVisible) {
       await listButton.click();

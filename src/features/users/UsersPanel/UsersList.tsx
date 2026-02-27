@@ -3,9 +3,12 @@ import DeleteRoundedIcon from '@mui/icons-material/DeleteRounded';
 import EditRoundedIcon from '@mui/icons-material/EditRounded';
 import InfoOutlinedIcon from '@mui/icons-material/InfoOutlined';
 import PersonSearchRoundedIcon from '@mui/icons-material/PersonSearchRounded';
+import PictureAsPdfRoundedIcon from '@mui/icons-material/PictureAsPdfRounded';
 import RefreshRoundedIcon from '@mui/icons-material/RefreshRounded';
 import SearchRoundedIcon from '@mui/icons-material/SearchRounded';
 import SortRoundedIcon from '@mui/icons-material/SortRounded';
+import Alert from '@mui/material/Alert';
+import AlertTitle from '@mui/material/AlertTitle';
 import Box from '@mui/material/Box';
 import Button from '@mui/material/Button';
 import Chip from '@mui/material/Chip';
@@ -51,6 +54,8 @@ type UsersListProps = {
   onEdit: (user: IUserMaster) => void;
   onSelectDetail: (event: ReactMouseEvent<HTMLButtonElement>, user: IUserMaster) => void;
   onCloseDetail: () => void;
+  onExportPDF?: (userId: string) => void;
+  integrityErrors?: string[];
 };
 
 const UsersList: FC<UsersListProps> = ({
@@ -66,6 +71,8 @@ const UsersList: FC<UsersListProps> = ({
   onEdit,
   onSelectDetail,
   onCloseDetail,
+  onExportPDF,
+  integrityErrors = [],
 }) => {
   if (status === 'loading' && users.length === 0) {
     return <Loading />;
@@ -160,6 +167,24 @@ const UsersList: FC<UsersListProps> = ({
 
   return (
     <Stack spacing={1.5}>
+      {/* ── データ整合性エラー ── */}
+      {integrityErrors.length > 0 && (
+        <Alert severity="error" sx={{ mb: 1 }} data-testid="integrity-error-alert">
+          <AlertTitle sx={{ fontWeight: 700 }}>データ整合性エラーを検出しました</AlertTitle>
+          <Typography variant="body2" sx={{ mb: 1 }}>
+            SharePoint上のデータが期待される形式と一致しません。管理者はマニュアルに従い、リストの列設定を確認してください。
+          </Typography>
+          <ul style={{ margin: 0, paddingLeft: '1.2rem' }}>
+            {integrityErrors.slice(0, 5).map((err, idx) => (
+              <li key={idx} style={{ fontSize: '0.75rem' }}>{err}</li>
+            ))}
+            {integrityErrors.length > 5 && (
+              <li style={{ fontSize: '0.75rem' }}>他 {integrityErrors.length - 5} 件...</li>
+            )}
+          </ul>
+        </Alert>
+      )}
+
       {/* ── ① ヘッダー統合：1行にタイトル+件数+ボタン ── */}
       <Stack
         direction="row"
@@ -397,6 +422,16 @@ const UsersList: FC<UsersListProps> = ({
                           aria-label="削除"
                         >
                           <DeleteRoundedIcon fontSize="small" />
+                        </IconButton>
+                        <IconButton
+                          size="small"
+                          color="secondary"
+                          onClick={() => onExportPDF?.(userKey)}
+                          disabled={rowBusy}
+                          title="実績記録票 (PDF) 出力"
+                          aria-label="PDF出力"
+                        >
+                          <PictureAsPdfRoundedIcon fontSize="small" />
                         </IconButton>
                       </Stack>
                     </TableCell>

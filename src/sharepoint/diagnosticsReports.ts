@@ -8,9 +8,9 @@
 
 import type { UseSP } from '@/lib/spClient';
 import {
-  DIAGNOSTICS_REPORTS_LIST_TITLE,
-  DIAGNOSTICS_REPORTS_SELECT_FIELDS,
-  FIELD_MAP_DIAGNOSTICS_REPORTS,
+    DIAGNOSTICS_REPORTS_LIST_TITLE,
+    DIAGNOSTICS_REPORTS_SELECT_FIELDS,
+    FIELD_MAP_DIAGNOSTICS_REPORTS,
 } from '@/sharepoint/fields';
 
 export type DiagnosticsReportStatus = 'pass' | 'warn' | 'fail';
@@ -48,11 +48,11 @@ export interface DiagnosticsReportItem {
 
 /**
  * Notified フラグの状態を決定する（Power Automate取得フィルター用）
- * 
+ *
  * Power Automate フロー設計:
  * - Get items filter: Notified ne true (つまり Notified=false のレコードを拾う)
  * - 処理後: Patch で Notified=true に変更
- * 
+ *
  * ロジック:
  * 1. 初回作成（prev === null）:
  *    - warn/fail → false（Flow が拾う）
@@ -166,7 +166,7 @@ export async function upsertDiagnosticsReport(
   const filter = `${FIELD_MAP_DIAGNOSTICS_REPORTS.title} eq '${input.title.replace(/'/g, "''")}'`;
   const existing = await sp.getListItemsByTitle<{ Id: number }>(
     listTitle,
-    DIAGNOSTICS_REPORTS_SELECT_FIELDS as unknown as string[],
+    [...DIAGNOSTICS_REPORTS_SELECT_FIELDS],
     filter,
     undefined,
     1
@@ -219,11 +219,11 @@ export async function upsertDiagnosticsReport(
     try {
       await sp.updateItemByTitle(listTitle, id, payload);
       console.info('[diagnosticsReports] updated', { id, title: input.title });
-      
+
       // 更新後のアイテムを取得して返す
       const updated = await sp.getListItemsByTitle<DiagnosticsReportItem>(
         listTitle,
-        DIAGNOSTICS_REPORTS_SELECT_FIELDS as unknown as string[],
+        [...DIAGNOSTICS_REPORTS_SELECT_FIELDS],
         `${FIELD_MAP_DIAGNOSTICS_REPORTS.id} eq ${id}`,
         undefined,
         1

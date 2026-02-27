@@ -1,15 +1,15 @@
 /**
  * AttendanceUsers SharePoint Repository
- * 
+ *
  * 通所対象ユーザーマスタのリポジトリ
  * ユーザーコード、送迎対象フラグ、標準提供時間など
  */
 
 import { createSpClient, ensureConfig } from '@/lib/spClient';
-import { 
-  ATTENDANCE_USERS_LIST_TITLE, 
-  ATTENDANCE_USERS_FIELDS,
-  ATTENDANCE_USERS_SELECT_FIELDS 
+import {
+    ATTENDANCE_USERS_FIELDS,
+    ATTENDANCE_USERS_LIST_TITLE,
+    ATTENDANCE_USERS_SELECT_FIELDS
 } from '@/sharepoint/fields';
 
 export type AttendanceUserItem = {
@@ -52,7 +52,7 @@ export async function getActiveUsers(
   client: ReturnType<typeof createSpClient>,
   listTitle: string = ATTENDANCE_USERS_LIST_TITLE
 ): Promise<AttendanceUserItem[]> {
-  const select = [...ATTENDANCE_USERS_SELECT_FIELDS] as unknown as string[];
+  const select = [...ATTENDANCE_USERS_SELECT_FIELDS];
   const filter = `${ATTENDANCE_USERS_FIELDS.isActive} eq 1`;
   const orderby = ATTENDANCE_USERS_FIELDS.userCode;
 

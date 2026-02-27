@@ -1,10 +1,10 @@
-import ProtectedRoute from '@/app/ProtectedRoute';
+﻿import ProtectedRoute from '@/app/ProtectedRoute';
 import { AuthCallbackRoute } from '@/auth/AuthCallbackRoute';
 import RequireAudience from '@/components/RequireAudience';
+import { isDev } from '@/env';
 import { MeetingMinutesRoutes } from '@/features/meeting-minutes/routes';
 import { nurseRoutes } from '@/features/nurse/routes/NurseRoutes';
-import { StaffPanel } from '@/features/staff';
-import { UsersPanel } from '@/features/users';
+
 import { RouteHydrationErrorBoundary } from '@/hydration/RouteHydrationListener';
 import { getAppConfig } from '@/lib/env';
 import lazyWithPreload from '@/utils/lazyWithPreload';
@@ -60,14 +60,19 @@ const DashboardBriefingPage = React.lazy(() => import('@/pages/DashboardPageTabs
 const MeetingGuidePage = React.lazy(() => import('@/pages/MeetingGuidePage'));
 const HandoffTimelinePage = React.lazy(() => import('@/pages/HandoffTimelinePage'));
 const IntegratedResourceCalendarPage = React.lazy(() => import('@/pages/IntegratedResourceCalendarPage'));
+const DebugZodErrorPage = React.lazy(() => import('@/pages/DebugZodErrorPage'));
 
 const SupportActivityMasterPage = React.lazy(() => import('@/pages/SupportActivityMasterPage'));
 const SupportStepMasterPage = React.lazy(() => import('@/pages/SupportStepMasterPage'));
 const IndividualSupportManagementPage = React.lazy(() => import('@/pages/IndividualSupportManagementPage'));
 const UserDetailPage = React.lazy(() => import('@/pages/UserDetailPage'));
 const NavigationDiagnosticsPage = React.lazy(() => import('@/pages/admin/NavigationDiagnosticsPage'));
+const DataIntegrityPage = React.lazy(() => import('@/pages/admin/DataIntegrityPage'));
 
-// Dev harness（開発環境のみ）
+const StaffPanel = React.lazy(() => import('@/features/staff').then(m => ({ default: m.StaffPanel })));
+const UsersPanel = React.lazy(() => import('@/features/users').then(m => ({ default: m.UsersPanel })));
+
+// Dev harness・磯幕逋ｺ迺ｰ蠅・・縺ｿ・・
 const devHarnessEnabled = getAppConfig().isDev;
 const DevScheduleCreateDialogPage = devHarnessEnabled
   ? React.lazy(() => import('@/features/schedules/routes/DevScheduleCreateDialogPage'))
@@ -79,7 +84,7 @@ const SuspendedDevScheduleCreateDialogPage: React.FC | null = DevScheduleCreateD
         <React.Suspense
           fallback={(
             <div className="p-4 text-sm text-slate-600" role="status">
-              ScheduleCreateDialog を読み込んでいます…
+              ScheduleCreateDialog 繧定ｪｭ縺ｿ霎ｼ繧薙〒縺・∪縺吮ｦ
             </div>
           )}
         >
@@ -94,7 +99,7 @@ const SuspendedNewSchedulesWeekPage: React.FC = () => (
     <React.Suspense
       fallback={(
         <div className="p-4 text-sm text-slate-600" role="status">
-          週間予定を読み込んでいます…
+          騾ｱ髢謎ｺ亥ｮ壹ｒ隱ｭ縺ｿ霎ｼ繧薙〒縺・∪縺吮ｦ
         </div>
       )}
     >
@@ -139,7 +144,7 @@ const SuspendedDailyRecordPage: React.FC = () => (
     <React.Suspense
       fallback={(
         <div className="p-4 text-sm text-slate-600" role="status">
-          支援記録（ケース記録）を読み込んでいます…
+          謾ｯ謠ｴ險倬鹸・医こ繝ｼ繧ｹ險倬鹸・峨ｒ隱ｭ縺ｿ霎ｼ繧薙〒縺・∪縺吮ｦ
         </div>
       )}
     >
@@ -153,7 +158,7 @@ const SuspendedMonthlyRecordPage: React.FC = () => (
     <React.Suspense
       fallback={(
         <div className="p-4 text-sm text-slate-600" role="status">
-          月次記録を読み込んでいます…
+          譛域ｬ｡險倬鹸繧定ｪｭ縺ｿ霎ｼ繧薙〒縺・∪縺吮ｦ
         </div>
       )}
     >
@@ -167,7 +172,7 @@ const SuspendedBillingPage: React.FC = () => (
     <React.Suspense
       fallback={(
         <div className="p-4 text-sm text-slate-600" role="status">
-          請求処理画面を読み込んでいます…
+          隲区ｱょ・逅・判髱｢繧定ｪｭ縺ｿ霎ｼ繧薙〒縺・∪縺吮ｦ
         </div>
       )}
     >
@@ -181,7 +186,7 @@ const SuspendedDailyRecordMenuPage: React.FC = () => (
     <React.Suspense
       fallback={(
         <div className="p-4 text-sm text-slate-600" role="status">
-          日次記録メニューを読み込んでいます…
+          譌･谺｡險倬鹸繝｡繝九Η繝ｼ繧定ｪｭ縺ｿ霎ｼ繧薙〒縺・∪縺吮ｦ
         </div>
       )}
     >
@@ -195,7 +200,7 @@ const SuspendedTableDailyRecordPage: React.FC = () => (
     <React.Suspense
       fallback={(
         <div className="p-4 text-sm text-slate-600" role="status">
-          一覧形式ケース記録を読み込んでいます…
+          荳隕ｧ蠖｢蠑上こ繝ｼ繧ｹ險倬鹸繧定ｪｭ縺ｿ霎ｼ繧薙〒縺・∪縺吮ｦ
         </div>
       )}
     >
@@ -208,7 +213,7 @@ const SuspendedAttendanceRecordPage: React.FC = () => (
     <React.Suspense
       fallback={(
         <div className="p-4 text-sm text-slate-600" role="status">
-          通所管理ページを読み込んでいます…
+          騾壽園邂｡逅・・繝ｼ繧ｸ繧定ｪｭ縺ｿ霎ｼ繧薙〒縺・∪縺吮ｦ
         </div>
       )}
     >
@@ -222,7 +227,7 @@ const SuspendedTimeFlowSupportRecordPage: React.FC = () => (
     <React.Suspense
       fallback={(
         <div className="p-4 text-sm text-slate-600" role="status">
-          支援手順兼記録を読み込んでいます…
+          謾ｯ謠ｴ謇矩・・險倬鹸繧定ｪｭ縺ｿ霎ｼ繧薙〒縺・∪縺吮ｦ
         </div>
       )}
     >
@@ -236,7 +241,7 @@ const SuspendedTimeBasedSupportRecordPage: React.FC = () => (
     <React.Suspense
       fallback={(
         <div className="p-4 text-sm text-slate-600" role="status">
-          時間別支援記録を読み込んでいます…
+          譎る俣蛻･謾ｯ謠ｴ險倬鹸繧定ｪｭ縺ｿ霎ｼ繧薙〒縺・∪縺吮ｦ
         </div>
       )}
     >
@@ -250,7 +255,7 @@ const SuspendedAnalysisDashboardPage: React.FC = () => (
     <React.Suspense
       fallback={(
         <div className="p-4 text-sm text-slate-600" role="status">
-          行動分析ダッシュボードを読み込んでいます…
+          陦悟虚蛻・梵繝繝・す繝･繝懊・繝峨ｒ隱ｭ縺ｿ霎ｼ繧薙〒縺・∪縺吮ｦ
         </div>
       )}
     >
@@ -265,7 +270,7 @@ const SuspendedIcebergPdcaPage: React.FC = () => (
     <React.Suspense
       fallback={(
         <div className="p-4 text-sm text-slate-600" role="status">
-          氷山PDCAボードを読み込んでいます…
+          豌ｷ螻ｱPDCA繝懊・繝峨ｒ隱ｭ縺ｿ霎ｼ繧薙〒縺・∪縺吮ｦ
         </div>
       )}
     >
@@ -279,7 +284,7 @@ const SuspendedIcebergAnalysisPage: React.FC = () => (
     <React.Suspense
       fallback={(
         <div className="p-4 text-sm text-slate-600" role="status">
-          氷山分析ワークスペースを読み込んでいます…
+          豌ｷ螻ｱ蛻・梵繝ｯ繝ｼ繧ｯ繧ｹ繝壹・繧ｹ繧定ｪｭ縺ｿ霎ｼ繧薙〒縺・∪縺吮ｦ
         </div>
       )}
     >
@@ -293,7 +298,7 @@ const SuspendedAssessmentDashboardPage: React.FC = () => (
     <React.Suspense
       fallback={(
         <div className="p-4 text-sm text-slate-600" role="status">
-          アセスメント管理ページを読み込んでいます…
+          繧｢繧ｻ繧ｹ繝｡繝ｳ繝育ｮ｡逅・・繝ｼ繧ｸ繧定ｪｭ縺ｿ霎ｼ繧薙〒縺・∪縺吮ｦ
         </div>
       )}
     >
@@ -307,7 +312,7 @@ const SuspendedTokuseiSurveyResultsPage: React.FC = () => (
     <React.Suspense
       fallback={(
         <div className="p-4 text-sm text-slate-600" role="status">
-          特性アンケート結果を読み込んでいます…
+          迚ｹ諤ｧ繧｢繝ｳ繧ｱ繝ｼ繝育ｵ先棡繧定ｪｭ縺ｿ霎ｼ繧薙〒縺・∪縺吮ｦ
         </div>
       )}
     >
@@ -321,7 +326,7 @@ const SuspendedHealthObservationPage: React.FC = () => (
     <React.Suspense
       fallback={(
         <div className="p-4 text-sm text-slate-600" role="status">
-          健康記録入力画面を読み込んでいます…
+          蛛･蠎ｷ險倬鹸蜈･蜉帷判髱｢繧定ｪｭ縺ｿ霎ｼ繧薙〒縺・∪縺吮ｦ
         </div>
       )}
     >
@@ -335,7 +340,7 @@ const SuspendedStaffDashboardPage: React.FC = () => (
     <React.Suspense
       fallback={(
         <div className="p-4 text-sm text-slate-600" role="status">
-          ダッシュボードを読み込んでいます…
+          繝繝・す繝･繝懊・繝峨ｒ隱ｭ縺ｿ霎ｼ繧薙〒縺・∪縺吮ｦ
         </div>
       )}
     >
@@ -349,7 +354,7 @@ const SuspendedAdminDashboardPage: React.FC = () => (
     <React.Suspense
       fallback={(
         <div className="p-4 text-sm text-slate-600" role="status">
-          管理者ダッシュボードを読み込んでいます…
+          邂｡逅・・ム繝・す繝･繝懊・繝峨ｒ隱ｭ縺ｿ霎ｼ繧薙〒縺・∪縺吮ｦ
         </div>
       )}
     >
@@ -363,7 +368,7 @@ const SuspendedRecordList: React.FC = () => (
     <React.Suspense
       fallback={(
         <div className="p-4 text-sm text-slate-600" role="status">
-          黒ノートを読み込んでいます…
+          鮟偵ヮ繝ｼ繝医ｒ隱ｭ縺ｿ霎ｼ繧薙〒縺・∪縺吮ｦ
         </div>
       )}
     >
@@ -377,7 +382,7 @@ const SuspendedChecklistPage: React.FC = () => (
     <React.Suspense
       fallback={(
         <div className="p-4 text-sm text-slate-600" role="status">
-          自己点検ページを読み込んでいます…
+          閾ｪ蟾ｱ轤ｹ讀懊・繝ｼ繧ｸ繧定ｪｭ縺ｿ霎ｼ繧薙〒縺・∪縺吮ｦ
         </div>
       )}
     >
@@ -391,7 +396,7 @@ const SuspendedAuditPanel: React.FC = () => (
     <React.Suspense
       fallback={(
         <div className="p-4 text-sm text-slate-600" role="status">
-          監査ログを読み込んでいます…
+          逶｣譟ｻ繝ｭ繧ｰ繧定ｪｭ縺ｿ霎ｼ繧薙〒縺・∪縺吮ｦ
         </div>
       )}
     >
@@ -405,7 +410,7 @@ const SuspendedSupportActivityMasterPage: React.FC = () => (
     <React.Suspense
       fallback={(
         <div className="p-4 text-sm text-slate-600" role="status">
-          支援活動テンプレート管理を読み込んでいます…
+          謾ｯ謠ｴ豢ｻ蜍輔ユ繝ｳ繝励Ξ繝ｼ繝育ｮ｡逅・ｒ隱ｭ縺ｿ霎ｼ繧薙〒縺・∪縺吮ｦ
         </div>
       )}
     >
@@ -419,7 +424,7 @@ const SuspendedStaffAttendanceInput: React.FC = () => (
     <React.Suspense
       fallback={(
         <div className="p-4 text-sm text-slate-600" role="status">
-          職員勤怠入力を読み込んでいます…
+          閨ｷ蜩｡蜍､諤蜈･蜉帙ｒ隱ｭ縺ｿ霎ｼ繧薙〒縺・∪縺吮ｦ
         </div>
       )}
     >
@@ -433,7 +438,7 @@ const SuspendedStaffAttendanceAdminPage: React.FC = () => (
     <React.Suspense
       fallback={(
         <div className="p-4 text-sm text-slate-600" role="status">
-          職員出勤管理を読み込んでいます…
+          閨ｷ蜩｡蜃ｺ蜍､邂｡逅・ｒ隱ｭ縺ｿ霎ｼ繧薙〒縺・∪縺吮ｦ
         </div>
       )}
     >
@@ -447,7 +452,7 @@ const SuspendedSupportStepMasterPage: React.FC = () => (
     <React.Suspense
       fallback={(
         <div className="p-4 text-sm text-slate-600" role="status">
-          支援手順テンプレート管理を読み込んでいます…
+          謾ｯ謠ｴ謇矩・ユ繝ｳ繝励Ξ繝ｼ繝育ｮ｡逅・ｒ隱ｭ縺ｿ霎ｼ繧薙〒縺・∪縺吮ｦ
         </div>
       )}
     >
@@ -461,7 +466,7 @@ const SuspendedIndividualSupportManagementPage: React.FC = () => (
     <React.Suspense
       fallback={(
         <div className="p-4 text-sm text-slate-600" role="status">
-          個別支援手順管理を読み込んでいます…
+          蛟句挨謾ｯ謠ｴ謇矩・ｮ｡逅・ｒ隱ｭ縺ｿ霎ｼ繧薙〒縺・∪縺吮ｦ
         </div>
       )}
     >
@@ -475,11 +480,39 @@ const SuspendedUserDetailPage: React.FC = () => (
     <React.Suspense
       fallback={(
         <div className="p-4 text-sm text-slate-600" role="status">
-          利用者ページを読み込んでいます…
+          蛻ｩ逕ｨ閠・・繝ｼ繧ｸ繧定ｪｭ縺ｿ霎ｼ繧薙〒縺・∪縺吮ｦ
         </div>
       )}
     >
       <UserDetailPage />
+    </React.Suspense>
+  </RouteHydrationErrorBoundary>
+);
+
+const SuspendedStaffPanel: React.FC = () => (
+  <RouteHydrationErrorBoundary>
+    <React.Suspense
+      fallback={(
+        <div className="p-4 text-sm text-slate-600" role="status">
+          閨ｷ蜩｡荳隕ｧ繧定ｪｭ縺ｿ霎ｼ繧薙〒縺・∪縺吮ｦ
+        </div>
+      )}
+    >
+      <StaffPanel />
+    </React.Suspense>
+  </RouteHydrationErrorBoundary>
+);
+
+const SuspendedUsersPanel: React.FC = () => (
+  <RouteHydrationErrorBoundary>
+    <React.Suspense
+      fallback={(
+        <div className="p-4 text-sm text-slate-600" role="status">
+          蛻ｩ逕ｨ閠・ｸ隕ｧ繧定ｪｭ縺ｿ霎ｼ繧薙〒縺・∪縺吮ｦ
+        </div>
+      )}
+    >
+      <UsersPanel />
     </React.Suspense>
   </RouteHydrationErrorBoundary>
 );
@@ -489,7 +522,7 @@ const SuspendedIntegratedResourceCalendarPage: React.FC = () => (
     <React.Suspense
       fallback={(
         <div className="p-4 text-sm text-slate-600" role="status">
-          統合リソースカレンダーを読み込んでいます…
+          邨ｱ蜷医Μ繧ｽ繝ｼ繧ｹ繧ｫ繝ｬ繝ｳ繝繝ｼ繧定ｪｭ縺ｿ霎ｼ繧薙〒縺・∪縺吮ｦ
         </div>
       )}
     >
@@ -512,12 +545,26 @@ const SuspendedNavigationDiagnosticsPage: React.FC = () => (
   </RouteHydrationErrorBoundary>
 );
 
+const SuspendedDataIntegrityPage: React.FC = () => (
+  <RouteHydrationErrorBoundary>
+    <React.Suspense
+      fallback={(
+        <div className="p-4 text-sm text-slate-600" role="status">
+          データ整合性チェックを読み込んでいます…
+        </div>
+      )}
+    >
+      <DataIntegrityPage />
+    </React.Suspense>
+  </RouteHydrationErrorBoundary>
+);
+
 const SuspendedMeetingGuidePage: React.FC = () => (
   <RouteHydrationErrorBoundary>
     <React.Suspense
       fallback={(
         <div className="p-4 text-sm text-slate-600" role="status">
-          司会ガイドを読み込んでいます…
+          蜿ｸ莨壹ぎ繧､繝峨ｒ隱ｭ縺ｿ霎ｼ繧薙〒縺・∪縺吮ｦ
         </div>
       )}
     >
@@ -531,7 +578,7 @@ const SuspendedDashboardBriefingPage: React.FC = () => (
     <React.Suspense
       fallback={(
         <div className="p-4 text-sm text-slate-600" role="status">
-          朝会・夕会情報を読み込んでいます…
+          譛昜ｼ壹・螟穂ｼ壽ュ蝣ｱ繧定ｪｭ縺ｿ霎ｼ繧薙〒縺・∪縺吮ｦ
         </div>
       )}
     >
@@ -548,7 +595,7 @@ const SuspendedRoomManagementPage: React.FC = () => (
     <React.Suspense
       fallback={(
         <div className="p-4 text-sm text-slate-600" role="status">
-          お部屋情報を読み込んでいます…
+          縺企Κ螻区ュ蝣ｱ繧定ｪｭ縺ｿ霎ｼ繧薙〒縺・∪縺吮ｦ
         </div>
       )}
     >
@@ -562,7 +609,7 @@ const SuspendedHandoffTimelinePage: React.FC = () => (
     <React.Suspense
       fallback={(
         <div className="p-4 text-sm text-slate-600" role="status">
-          申し送りタイムラインを読み込んでいます…
+          逕ｳ縺鈴√ｊ繧ｿ繧､繝繝ｩ繧､繝ｳ繧定ｪｭ縺ｿ霎ｼ繧薙〒縺・∪縺吮ｦ
         </div>
       )}
     >
@@ -579,7 +626,7 @@ const SuspendedTodayOpsPage: React.FC = () => (
     <React.Suspense
       fallback={(
         <div className="p-4 text-sm text-slate-600" role="status">
-          今日の業務を読み込んでいます…
+          莉頑律縺ｮ讌ｭ蜍吶ｒ隱ｭ縺ｿ霎ｼ繧薙〒縺・∪縺吮ｦ
         </div>
       )}
     >
@@ -603,8 +650,29 @@ const SuspendedSupportPlanGuidePage: React.FC = () => (
   </RouteHydrationErrorBoundary>
 );
 
+const SmokeTestPage = React.lazy(() => import('@/pages/SmokeTestPage').then((module) => ({ default: module.default })));
+const SuspendedSmokeTestPage: React.FC = () => (
+  <RouteHydrationErrorBoundary>
+    <React.Suspense fallback={<div className="p-4 text-sm text-slate-600" role="status">スモークテストを読み込んでいます…</div>}>
+      <SmokeTestPage />
+    </React.Suspense>
+  </RouteHydrationErrorBoundary>
+);
+
+const SuspendedDebugZodErrorPage: React.FC = () => (
+  <RouteHydrationErrorBoundary>
+    <React.Suspense fallback={<div className="p-4 text-sm text-slate-600" role="status">デバッグ情報を読み込んでいます…</div>}>
+      <DebugZodErrorPage />
+    </React.Suspense>
+  </RouteHydrationErrorBoundary>
+);
 
 const childRoutes: RouteObject[] = [
+  ...(isDev ? [
+    { path: 'admin/debug/smoke-test', element: <SuspendedSmokeTestPage /> },
+    { path: 'admin/debug/zod-error', element: <SuspendedDebugZodErrorPage /> }
+  ] : []),
+
   { path: 'auth/callback', element: <AuthCallbackRoute /> },
   { index: true, element: <DashboardRedirect /> },
   { path: 'dashboard', element: <SuspendedStaffDashboardPage /> },
@@ -693,15 +761,15 @@ const childRoutes: RouteObject[] = [
   {
     path: 'users',
     element: (
-      <RequireAudience requiredRole="viewer">
-        <UsersPanel />
+      <RequireAudience requiredRole="admin">
+        <SuspendedUsersPanel />
       </RequireAudience>
     ),
   },
   {
     path: 'users/:userId',
     element: (
-      <RequireAudience requiredRole="viewer">
+      <RequireAudience requiredRole="admin">
         <SuspendedUserDetailPage />
       </RequireAudience>
     ),
@@ -709,8 +777,8 @@ const childRoutes: RouteObject[] = [
   {
     path: 'staff',
     element: (
-      <RequireAudience requiredRole="viewer">
-        <StaffPanel />
+      <RequireAudience requiredRole="admin">
+        <SuspendedStaffPanel />
       </RequireAudience>
     ),
   },
@@ -836,6 +904,14 @@ const childRoutes: RouteObject[] = [
     element: (
       <RequireAudience requiredRole="admin">
         <SuspendedNavigationDiagnosticsPage />
+      </RequireAudience>
+    ),
+  },
+  {
+    path: 'admin/data-integrity',
+    element: (
+      <RequireAudience requiredRole="admin">
+        <SuspendedDataIntegrityPage />
       </RequireAudience>
     ),
   },

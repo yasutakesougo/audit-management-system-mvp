@@ -89,6 +89,7 @@ describe('isSchedulesFeatureEnabled via process env toggles', () => {
 describe('SharePoint scope precedence', () => {
   it('derives scope from resource when default is blank', async () => {
     setProcessEnv('VITE_SP_RESOURCE', 'https://contoso.sharepoint.com/');
+    setProcessEnv('VITE_SP_SITE_RELATIVE', '/sites/demo');
     setProcessEnv('VITE_SP_SCOPE_DEFAULT', '   ');
     const env = await loadEnvModule();
 
@@ -99,6 +100,8 @@ describe('SharePoint scope precedence', () => {
 
   it('returns explicit default without emitting warnings', async () => {
     const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    setProcessEnv('VITE_SP_RESOURCE', 'https://contoso.sharepoint.com');
+    setProcessEnv('VITE_SP_SITE_RELATIVE', '/sites/demo');
     setProcessEnv('VITE_SP_SCOPE_DEFAULT', 'https://contoso.sharepoint.com/AllSites.FullControl');
     const env = await loadEnvModule();
 
@@ -112,6 +115,7 @@ describe('SharePoint scope precedence', () => {
     const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
     setProcessEnv('VITE_SP_SCOPE_DEFAULT', '   ');
     setProcessEnv('VITE_SP_RESOURCE', 'https://example.com/resource');
+    setProcessEnv('VITE_SP_SITE_RELATIVE', '/sites/demo');
     const env = await loadEnvModule();
 
     expect(() => env.getSharePointDefaultScope()).toThrow(

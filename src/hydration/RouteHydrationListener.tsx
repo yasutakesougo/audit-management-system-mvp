@@ -364,6 +364,9 @@ const RouteHydrationListener: React.FC<RouteHydrationListenerProps> = ({ childre
 
 export default RouteHydrationListener;
 
+import { persistentLogger } from '@/lib/persistentLogger';
+import { ActionableErrorInfo, formatZodError, isZodError } from '@/lib/zodErrorUtils';
+
 type RouteHydrationErrorBoundaryProps = {
   children: React.ReactNode;
   fallback?: React.ReactNode;
@@ -371,6 +374,8 @@ type RouteHydrationErrorBoundaryProps = {
 
 type RouteHydrationErrorBoundaryState = {
   hasError: boolean;
+  error?: unknown;
+  zodIssues?: ActionableErrorInfo[];
 };
 
 type RouteHydrationErrorBoundaryInnerProps = RouteHydrationErrorBoundaryProps & {
@@ -383,26 +388,77 @@ class RouteHydrationErrorBoundaryInner extends React.Component<
 > {
   state: RouteHydrationErrorBoundaryState = { hasError: false };
 
-  static getDerivedStateFromError(): RouteHydrationErrorBoundaryState {
-    return { hasError: true };
+  static getDerivedStateFromError(error: unknown): RouteHydrationErrorBoundaryState {
+    let zodIssues: ActionableErrorInfo[] | undefined;
+    if (isZodError(error)) {
+      zodIssues = formatZodError(error);
+    }
+    return { hasError: true, error, zodIssues };
   }
 
   componentDidCatch(error: unknown): void {
     this.props.onError(error);
+    persistentLogger.error(error, 'RouteHydrationErrorBoundary');
   }
 
   render(): React.ReactNode {
     if (this.state.hasError) {
       // E2E/DEMO環境: テスト継続のためエラーを無視してchildren通し
-      // 本番環境: ユーザーフレンドリーなフォールバックUI表示
       if (isE2E || isDemo) {
         console.warn('[E2E] RouteHydrationErrorBoundary: Bypassing error for E2E environment');
         return this.props.children;
       }
 
-      return this.props.fallback ?? (
-        <div role="alert" style={{ padding: '1rem', fontSize: '0.875rem' }}>
-          コンテンツの読み込みに失敗しました。
+      if (this.props.fallback) return this.props.fallback;
+
+      const { zodIssues } = this.state;
+
+      return (
+        <div role="alert" style={{
+          padding: '24px',
+          backgroundColor: '#fff5f5',
+          border: '1px solid #feb2b2',
+          borderRadius: '8px',
+          margin: '20px'
+        }}>
+          <h3 style={{ margin: '0 0 12px 0', color: '#c53030', fontSize: '16px' }}>
+            コンテンツの表示中にエラーが発生しました
+          </h3>
+
+          {zodIssues ? (
+            <div style={{ fontSize: '13px' }}>
+              <p style={{ marginBottom: '8px', color: '#742a2a' }}>
+                データ形式が定義（Zod）と一致しません。SharePointの入力値を確認してください：
+              </p>
+              <ul style={{ paddingLeft: '20px', color: '#9b2c2c', margin: '0 0 16px 0' }}>
+                {zodIssues.map((issue, i) => (
+                  <li key={i} style={{ marginBottom: '4px' }}>
+                    <strong>{issue.path}</strong>: {issue.message}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          ) : (
+            <p style={{ fontSize: '13px', color: '#718096', marginBottom: '16px' }}>
+              一時的な問題が発生したか、データの読み込みに失敗しました。
+            </p>
+          )}
+
+          <button
+            onClick={() => window.location.reload()}
+            style={{
+              padding: '8px 16px',
+              backgroundColor: '#e53e3e',
+              color: 'white',
+              border: 'none',
+              borderRadius: '4px',
+              cursor: 'pointer',
+              fontSize: '14px',
+              fontWeight: 600
+            }}
+          >
+            ページを再読み込み
+          </button>
         </div>
       );
     }

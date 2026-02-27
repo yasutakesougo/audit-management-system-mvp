@@ -73,6 +73,7 @@ const createMinimalPersonDaily = (overrides?: Partial<PersonDaily>): PersonDaily
 });
 
 const createMinimalStaff = (overrides?: Partial<Staff>): Staff => ({
+  id: 1,
   staffId: 'S001',
   name: 'Staff Member',
   ...overrides,
@@ -100,10 +101,13 @@ const mockGenerateMockActivityRecords = (users: IUserMaster[], _today: string): 
 // Contract Tests
 // ============================================================================
 
+import type { HubSyncStatus } from '@/features/dashboard/types/hub';
+const mockSpSyncStatus: HubSyncStatus = { loading: false, error: null, itemCount: 0, source: 'sp' };
+
 describe('useDashboardSummary', () => {
   describe('API Contract', () => {
     it('returns all required keys in the result object', () => {
-      const args: UseDashboardSummaryArgs = {
+      const args = {
         users: [createMinimalUser()],
         today: '2026-02-23',
         currentMonth: '2026-02',
@@ -111,6 +115,7 @@ describe('useDashboardSummary', () => {
         staff: [createMinimalStaff()],
         attendanceCounts: createMinimalAttendanceCounts(),
         generateMockActivityRecords: mockGenerateMockActivityRecords,
+        spSyncStatus: mockSpSyncStatus,
       };
 
       const { result } = renderHook(() => useDashboardSummary(args));
@@ -128,7 +133,7 @@ describe('useDashboardSummary', () => {
     });
 
     it('returns correct types for each key', () => {
-      const args: UseDashboardSummaryArgs = {
+      const args = {
         users: [createMinimalUser()],
         today: '2026-02-23',
         currentMonth: '2026-02',
@@ -136,6 +141,7 @@ describe('useDashboardSummary', () => {
         staff: [createMinimalStaff()],
         attendanceCounts: createMinimalAttendanceCounts(),
         generateMockActivityRecords: mockGenerateMockActivityRecords,
+        spSyncStatus: mockSpSyncStatus,
       };
 
       const { result } = renderHook(() => useDashboardSummary(args));
@@ -155,7 +161,7 @@ describe('useDashboardSummary', () => {
 
   describe('Edge Cases', () => {
     it('handles empty users array without throwing', () => {
-      const args: UseDashboardSummaryArgs = {
+      const args = {
         users: [],
         today: '2026-02-23',
         currentMonth: '2026-02',
@@ -163,6 +169,7 @@ describe('useDashboardSummary', () => {
         staff: [],
         attendanceCounts: createMinimalAttendanceCounts(),
         generateMockActivityRecords: mockGenerateMockActivityRecords,
+        spSyncStatus: mockSpSyncStatus,
       };
 
       const { result } = renderHook(() => useDashboardSummary(args));
@@ -174,7 +181,7 @@ describe('useDashboardSummary', () => {
     });
 
     it('handles minimal valid data', () => {
-      const args: UseDashboardSummaryArgs = {
+      const args = {
         users: [createMinimalUser()],
         today: '2026-02-23',
         currentMonth: '2026-02',
@@ -182,6 +189,7 @@ describe('useDashboardSummary', () => {
         staff: [createMinimalStaff()],
         attendanceCounts: createMinimalAttendanceCounts({ onDuty: 1 }),
         generateMockActivityRecords: mockGenerateMockActivityRecords,
+        spSyncStatus: mockSpSyncStatus,
       };
 
       const { result } = renderHook(() => useDashboardSummary(args));
@@ -194,7 +202,7 @@ describe('useDashboardSummary', () => {
 
   describe('Stats Shape Contract', () => {
     it('stats object has required properties', () => {
-      const args: UseDashboardSummaryArgs = {
+      const args = {
         users: [createMinimalUser()],
         today: '2026-02-23',
         currentMonth: '2026-02',
@@ -202,6 +210,7 @@ describe('useDashboardSummary', () => {
         staff: [createMinimalStaff()],
         attendanceCounts: createMinimalAttendanceCounts(),
         generateMockActivityRecords: mockGenerateMockActivityRecords,
+        spSyncStatus: mockSpSyncStatus,
       };
 
       const { result } = renderHook(() => useDashboardSummary(args));
@@ -217,7 +226,7 @@ describe('useDashboardSummary', () => {
 
   describe('Attendance Summary Shape Contract', () => {
     it('attendanceSummary object has required properties', () => {
-      const args: UseDashboardSummaryArgs = {
+      const args = {
         users: [createMinimalUser()],
         today: '2026-02-23',
         currentMonth: '2026-02',
@@ -225,6 +234,7 @@ describe('useDashboardSummary', () => {
         staff: [createMinimalStaff()],
         attendanceCounts: createMinimalAttendanceCounts(),
         generateMockActivityRecords: mockGenerateMockActivityRecords,
+        spSyncStatus: mockSpSyncStatus,
       };
 
       const { result } = renderHook(() => useDashboardSummary(args));
@@ -243,7 +253,7 @@ describe('useDashboardSummary', () => {
 
   describe('Daily Record Status Shape Contract', () => {
     it('dailyRecordStatus object has required properties', () => {
-      const args: UseDashboardSummaryArgs = {
+      const args = {
         users: [createMinimalUser()],
         today: '2026-02-23',
         currentMonth: '2026-02',
@@ -251,6 +261,7 @@ describe('useDashboardSummary', () => {
         staff: [createMinimalStaff()],
         attendanceCounts: createMinimalAttendanceCounts(),
         generateMockActivityRecords: mockGenerateMockActivityRecords,
+        spSyncStatus: mockSpSyncStatus,
       };
 
       const { result } = renderHook(() => useDashboardSummary(args));
@@ -264,7 +275,7 @@ describe('useDashboardSummary', () => {
 
   describe('Schedule Lanes Shape Contract', () => {
     it('scheduleLanesToday has required structure', () => {
-      const args: UseDashboardSummaryArgs = {
+      const args = {
         users: [createMinimalUser()],
         today: '2026-02-23',
         currentMonth: '2026-02',
@@ -272,6 +283,7 @@ describe('useDashboardSummary', () => {
         staff: [createMinimalStaff()],
         attendanceCounts: createMinimalAttendanceCounts(),
         generateMockActivityRecords: mockGenerateMockActivityRecords,
+        spSyncStatus: mockSpSyncStatus,
       };
 
       const { result } = renderHook(() => useDashboardSummary(args));
@@ -285,7 +297,7 @@ describe('useDashboardSummary', () => {
     });
 
     it('scheduleLanesTomorrow has required structure', () => {
-      const args: UseDashboardSummaryArgs = {
+      const args = {
         users: [createMinimalUser()],
         today: '2026-02-23',
         currentMonth: '2026-02',
@@ -293,6 +305,7 @@ describe('useDashboardSummary', () => {
         staff: [createMinimalStaff()],
         attendanceCounts: createMinimalAttendanceCounts(),
         generateMockActivityRecords: mockGenerateMockActivityRecords,
+        spSyncStatus: mockSpSyncStatus,
       };
 
       const { result } = renderHook(() => useDashboardSummary(args));
@@ -308,7 +321,7 @@ describe('useDashboardSummary', () => {
 
   describe('Intensive Support Users', () => {
     it('filters intensive support users correctly', () => {
-      const args: UseDashboardSummaryArgs = {
+      const args = {
         users: [
           createMinimalUser({ Id: 1, UserID: 'U001', IsSupportProcedureTarget: true }),
           createMinimalUser({ Id: 2, UserID: 'U002', IsSupportProcedureTarget: false }),
@@ -320,16 +333,17 @@ describe('useDashboardSummary', () => {
         staff: [createMinimalStaff()],
         attendanceCounts: createMinimalAttendanceCounts(),
         generateMockActivityRecords: mockGenerateMockActivityRecords,
+        spSyncStatus: mockSpSyncStatus,
       };
 
       const { result } = renderHook(() => useDashboardSummary(args));
 
       expect(result.current.intensiveSupportUsers.length).toBe(2);
-      expect(result.current.intensiveSupportUsers.every(u => u.IsSupportProcedureTarget)).toBe(true);
+      expect(result.current.intensiveSupportUsers.every((u: IUserMaster) => u.IsSupportProcedureTarget)).toBe(true);
     });
 
     it('returns top 3 prioritized users', () => {
-      const args: UseDashboardSummaryArgs = {
+      const args = {
         users: [
           createMinimalUser({ Id: 1, UserID: 'U001', IsSupportProcedureTarget: true }),
           createMinimalUser({ Id: 2, UserID: 'U002', IsSupportProcedureTarget: true }),
@@ -342,6 +356,7 @@ describe('useDashboardSummary', () => {
         staff: [createMinimalStaff()],
         attendanceCounts: createMinimalAttendanceCounts(),
         generateMockActivityRecords: mockGenerateMockActivityRecords,
+        spSyncStatus: mockSpSyncStatus,
       };
 
       const { result } = renderHook(() => useDashboardSummary(args));
@@ -363,6 +378,7 @@ describe('useDashboardSummary', () => {
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         attendanceCounts: undefined as any,
         generateMockActivityRecords: mockGenerateMockActivityRecords,
+        spSyncStatus: mockSpSyncStatus,
       };
 
       // This previously threw: TypeError: Cannot convert undefined or null to object

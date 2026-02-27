@@ -55,7 +55,6 @@
     ".vscode",
     ".vscode/**/*",
     "docs/**/*",
-    "reports/**/*",
     "logs/**/*",
     "tmp/**/*"
   ]
