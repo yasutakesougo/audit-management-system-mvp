@@ -4,6 +4,7 @@
 // 4セクション: 評価(Assessment) → 分析(Analysis) → 支援設計(Design) → モニタリング(Monitor)
 // 各 Deep Dive ページへの導線 + メタ情報（件数・最終更新日・未完了ドラフト）
 // ---------------------------------------------------------------------------
+import { buildUnfilledSupportUrl } from '@/app/links/dailySupportLinks';
 import { ASSESSMENT_DRAFT_KEY } from '@/features/assessment/domain/assessmentSchema';
 import AssessmentIcon from '@mui/icons-material/Assessment';
 import BuildIcon from '@mui/icons-material/Build';
@@ -73,6 +74,30 @@ function useSections(): HubSection[] {
       }
     })();
 
+    // 支援活動マスタのメタ情報（件数・最終更新日）
+    const activityMeta = (() => {
+      try {
+        const raw = localStorage.getItem('ams.supportActivityTemplates.meta.v1');
+        if (!raw) return undefined;
+        const parsed = JSON.parse(raw) as { count?: number; updatedAt?: string };
+        const count = typeof parsed.count === 'number' ? parsed.count : undefined;
+        const updatedAt = parsed.updatedAt
+          ? new Date(parsed.updatedAt).toLocaleString('ja-JP', {
+              month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit',
+            })
+          : undefined;
+        return { count, updatedAt };
+      } catch {
+        return undefined;
+      }
+    })();
+    const activityMetaText = activityMeta
+      ? [
+          activityMeta.count !== undefined ? `${activityMeta.count}件` : '',
+          activityMeta.updatedAt ? `最終更新 ${activityMeta.updatedAt}` : '',
+        ].filter(Boolean).join('・') || undefined
+      : undefined;
+
     return [
       // ① 評価（Assessment）
       {
@@ -139,6 +164,7 @@ function useSections(): HubSection[] {
             description: '支援活動テンプレートの管理（日課・行事・特別活動）',
             icon: <ListAltIcon sx={{ fontSize: 32, color: '#e65100' }} />,
             adminOnly: true,
+            meta: activityMetaText,
           },
           {
             label: '支援手順マスタ',
@@ -163,7 +189,15 @@ function useSections(): HubSection[] {
         emoji: '👁️',
         title: 'モニタリング',
         subtitle: '現場の記録を追跡し、支援の効果を継続的に確認する',
+        highlight: '🚀 未記入の支援記録から順に入力できます',
         cards: [
+          {
+            label: '未記入の支援記録へ',
+            to: buildUnfilledSupportUrl(),
+            description: '今日の未記入を順に埋めます（自動で次に進みます）',
+            icon: <EditNoteIcon sx={{ fontSize: 32, color: '#00695c' }} />,
+            badge: 'おすすめ',
+          },
           {
             label: '日次記録（行動観察）',
             to: '/daily/table',
