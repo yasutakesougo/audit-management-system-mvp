@@ -1,6 +1,7 @@
 import React from 'react';
+import DataIntegrityAlert from '../components/DataIntegrityAlert';
 import { persistentLogger } from '../lib/persistentLogger';
-import { ActionableErrorInfo, formatZodError, isZodError, translateZodIssue } from '../lib/zodErrorUtils';
+import { ActionableErrorInfo, formatZodError, isZodError } from '../lib/zodErrorUtils';
 
 interface ConfigErrorBoundaryState {
   hasError: boolean;
@@ -60,7 +61,12 @@ export class ConfigErrorBoundary extends React.Component<
             システム起動に必要な環境変数（.env）に不備が見つかりました。
           </p>
 
-          {zodIssues ? (
+          {zodIssues && isZodError(this.state.rawError) ? (
+            <DataIntegrityAlert
+              error={this.state.rawError}
+              context="env"
+            />
+          ) : zodIssues ? (
             <div style={{ marginBottom: '1.5rem' }}>
               <h4 style={{ marginBottom: '0.5rem' }}>不整合フィールド ({zodIssues.length}件):</h4>
               <ul style={{
@@ -72,24 +78,14 @@ export class ConfigErrorBoundary extends React.Component<
                 borderRadius: '4px',
                 backgroundColor: '#fff5f5'
               }}>
-                {(isZodError(this.state.rawError)
-                  ? this.state.rawError.issues.map((iss, idx) => (
-                      <li key={idx} style={{
-                        padding: '8px 12px',
-                        borderBottom: idx < zodIssues.length - 1 ? '1px solid #ffcdd2' : 'none'
-                      }}>
-                        <span style={{ color: '#c62828' }}>{translateZodIssue(iss)}</span>
-                      </li>
-                    ))
-                  : zodIssues.map((issue, idx) => (
-                      <li key={idx} style={{
-                        padding: '8px 12px',
-                        borderBottom: idx < zodIssues.length - 1 ? '1px solid #ffcdd2' : 'none'
-                      }}>
-                        <strong style={{ color: '#c62828' }}>{issue.path}:</strong> {issue.message}
-                      </li>
-                    ))
-                )}
+                {zodIssues.map((issue, idx) => (
+                  <li key={idx} style={{
+                    padding: '8px 12px',
+                    borderBottom: idx < zodIssues.length - 1 ? '1px solid #ffcdd2' : 'none'
+                  }}>
+                    <strong style={{ color: '#c62828' }}>{issue.path}:</strong> {issue.message}
+                  </li>
+                ))}
               </ul>
             </div>
           ) : (
