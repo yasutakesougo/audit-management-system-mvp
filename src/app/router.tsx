@@ -740,11 +740,7 @@ const childRoutes: RouteObject[] = [
   },
   {
     path: 'isp-editor',
-    element: (
-      <RequireAudience requiredRole="viewer">
-        <SuspendedISPComparisonEditorPage />
-      </RequireAudience>
-    ),
+    element: <SuspendedISPComparisonEditorPage />,
   },
   { path: 'handoff-timeline', element: <SuspendedHandoffTimelinePage /> },
   { path: 'meeting-minutes', element: MeetingMinutesRoutes.List },

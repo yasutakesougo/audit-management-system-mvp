@@ -8,6 +8,7 @@ const NAV_TESTIDS = {
   icebergPdca: 'nav-iceberg-pdca',
   assessment: 'nav-assessment',
   supportPlanGuide: 'nav-support-plan-guide',
+  ispEditor: 'nav-isp-editor',
   daily: 'nav-daily',
   checklist: 'nav-checklist',
   audit: 'nav-audit',
