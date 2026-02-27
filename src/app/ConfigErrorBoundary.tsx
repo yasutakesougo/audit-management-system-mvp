@@ -1,6 +1,6 @@
 import React from 'react';
 import { persistentLogger } from '../lib/persistentLogger';
-import { ActionableErrorInfo, formatZodError, isZodError } from '../lib/zodErrorUtils';
+import { ActionableErrorInfo, formatZodError, isZodError, translateZodIssue } from '../lib/zodErrorUtils';
 
 interface ConfigErrorBoundaryState {
   hasError: boolean;
@@ -72,14 +72,24 @@ export class ConfigErrorBoundary extends React.Component<
                 borderRadius: '4px',
                 backgroundColor: '#fff5f5'
               }}>
-                {zodIssues.map((issue, idx) => (
-                  <li key={idx} style={{
-                    padding: '8px 12px',
-                    borderBottom: idx < zodIssues.length - 1 ? '1px solid #ffcdd2' : 'none'
-                  }}>
-                    <strong style={{ color: '#c62828' }}>{issue.path}:</strong> {issue.message}
-                  </li>
-                ))}
+                {(isZodError(this.state.rawError)
+                  ? this.state.rawError.issues.map((iss, idx) => (
+                      <li key={idx} style={{
+                        padding: '8px 12px',
+                        borderBottom: idx < zodIssues.length - 1 ? '1px solid #ffcdd2' : 'none'
+                      }}>
+                        <span style={{ color: '#c62828' }}>{translateZodIssue(iss)}</span>
+                      </li>
+                    ))
+                  : zodIssues.map((issue, idx) => (
+                      <li key={idx} style={{
+                        padding: '8px 12px',
+                        borderBottom: idx < zodIssues.length - 1 ? '1px solid #ffcdd2' : 'none'
+                      }}>
+                        <strong style={{ color: '#c62828' }}>{issue.path}:</strong> {issue.message}
+                      </li>
+                    ))
+                )}
               </ul>
             </div>
           ) : (
