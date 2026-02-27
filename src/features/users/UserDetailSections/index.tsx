@@ -122,7 +122,7 @@ const UserDetailSections: React.FC<UserDetailSectionsProps> = ({ user, backLink,
     []
   );
 
-  const attendanceLabel = user.AttendanceDays?.length ? user.AttendanceDays.join('・') : '未設定';
+  const attendanceLabel = user.AttendanceDays?.length ? user.AttendanceDays.join('・') : '—';
   const supportLabel = user.IsHighIntensitySupportTarget ? '強度行動障害支援対象者' : '通常支援';
   const isActive = user.IsActive !== false;
 
@@ -223,7 +223,7 @@ const UserDetailSections: React.FC<UserDetailSectionsProps> = ({ user, backLink,
             </Box>
           </Stack>
 
-          <Stack direction="row" spacing={0.5} flexWrap="wrap" sx={{ rowGap: 0.5 }}>
+          <Stack direction="row" spacing={0.5} flexWrap="wrap" alignItems="center" sx={{ rowGap: 0.5 }}>
             {isEmbedded && (
               <Chip
                 label={
@@ -245,7 +245,9 @@ const UserDetailSections: React.FC<UserDetailSectionsProps> = ({ user, backLink,
             {user.IsSupportProcedureTarget && (
               <Chip label="支援手順対象" color="secondary" size="small" />
             )}
-            <Chip label={isActive ? '在籍' : '退所'} color={isActive ? 'success' : 'default'} size="small" />
+            {!isEmbedded && (
+              <Chip label={isActive ? '在籍' : '退所'} color={isActive ? 'success' : 'default'} size="small" />
+            )}
             {!isEmbedded && (
               <>
                 <Chip label={`契約日: ${formatDateLabel(user.ContractDate)}`} size="small" variant="outlined" />
@@ -297,8 +299,8 @@ const UserDetailSections: React.FC<UserDetailSectionsProps> = ({ user, backLink,
                 <Typography component="dd" variant="body2" sx={{ m: 0 }}>{attendanceLabel}</Typography>
                 {user.RecipientCertNumber && (
                   <>
-                    <Typography component="dt" variant="caption" color="text.secondary">受給者証番号</Typography>
-                    <Typography component="dd" variant="body2" sx={{ m: 0 }}>{user.RecipientCertNumber}</Typography>
+                    <Typography component="dt" variant="caption" color="text.secondary">受給者証</Typography>
+                    <Typography component="dd" variant="body2" sx={{ m: 0 }}>****{user.RecipientCertNumber.slice(-4)}</Typography>
                   </>
                 )}
               </Box>
