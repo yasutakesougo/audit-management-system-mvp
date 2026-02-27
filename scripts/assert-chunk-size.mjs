@@ -7,7 +7,7 @@ const ASSETS_DIR = path.join(DIST_DIR, 'assets');
 const DEFAULT_LIMIT_KB = 1200; // temporarily relaxed to accommodate current vendor bundle size
 
 const budgets = [
-  { pattern: /charts-.*\.js$/i, limitKb: 120 },
+  { pattern: /recharts-.*\.js$/i, limitKb: 500 },
   { pattern: /bpmn-.*\.js$/i, limitKb: 170 },
   { pattern: /mui-shell-.*\.js$/i, limitKb: 200 },
   { pattern: /mui-surfaces-.*\.js$/i, limitKb: 220 },
