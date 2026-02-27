@@ -1,8 +1,8 @@
+import type { BehaviorObservation } from '@/features/daily/domain/daily/types';
+import { getScheduleKey } from '@/features/daily/domain/getScheduleKey';
+import { useTimeBasedSupportRecordPage } from '@/pages/hooks/useTimeBasedSupportRecordPage';
 import { renderHook } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
-import { useTimeBasedSupportRecordPage } from '@/pages/hooks/useTimeBasedSupportRecordPage';
-import { getScheduleKey } from '@/features/daily/domain/getScheduleKey';
-import type { BehaviorObservation } from '@/features/daily/domain/daily/types';
 
 const schedule = [
   {
@@ -33,14 +33,14 @@ describe('useTimeBasedSupportRecordPage planSlotKey matching', () => {
       {
         id: 'obs-1',
         userId: 'u1',
-        timestamp: new Date('2026-02-22T09:15:00+09:00').toISOString(),
+        recordedAt: new Date('2026-02-22T09:15:00+09:00').toISOString(),
         planSlotKey: scheduleKey,
-        recordedAt: '09:15',
         timeSlot: '09:15',
         plannedActivity: '実測時刻入力',
-        antecedent: null,
+        antecedent: '',
+        antecedentTags: [],
         behavior: '日常記録',
-        consequence: null,
+        consequence: '',
         intensity: 1,
         actualObservation: '問題なし',
       },
@@ -64,12 +64,13 @@ describe('useTimeBasedSupportRecordPage planSlotKey matching', () => {
       {
         id: 'obs-2',
         userId: 'u1',
-        timestamp: new Date('2026-02-22T09:00:00+09:00').toISOString(),
+        recordedAt: new Date('2026-02-22T09:00:00+09:00').toISOString(),
         timeSlot: '09:00',
         plannedActivity: '朝の受け入れ',
-        antecedent: null,
+        antecedent: '',
+        antecedentTags: [],
         behavior: '日常記録',
-        consequence: null,
+        consequence: '',
         intensity: 1,
       },
     ];

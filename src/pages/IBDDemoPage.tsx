@@ -562,8 +562,8 @@ const IBDDemoPage = () => {
             </Typography>
 
             <ABCEntryForm
-              userId={DEMO_USER_ID}
-              recordedBy={100}
+              userId={String(DEMO_USER_ID)}
+              recordedBy="100"
               interventionUsed={selectedIntervention || undefined}
               onSave={(record) => {
                 addABCRecord(record);
@@ -589,7 +589,7 @@ const IBDDemoPage = () => {
               蓄積されたABCデータを分析。行動の機能分析とPBSに基づく代替行動の推奨。
             </Typography>
 
-            <ABCSummaryReport records={abcRecords.length > 0 ? abcRecords : getABCRecordsForUser(DEMO_USER_ID)} />
+            <ABCSummaryReport records={abcRecords.length > 0 ? abcRecords : getABCRecordsForUser(String(DEMO_USER_ID))} />
           </CardContent>
         </Card>
       </Stack>

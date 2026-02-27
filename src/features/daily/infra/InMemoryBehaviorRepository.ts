@@ -26,7 +26,7 @@ const applyLimit = (items: BehaviorObservation[], options?: BehaviorQueryOptions
 
 const applyOrder = (items: BehaviorObservation[], options?: BehaviorQueryOptions): BehaviorObservation[] => {
   if (!options?.order) return items;
-  const sorted = [...items].sort((a, b) => toTimestamp(a.timestamp) - toTimestamp(b.timestamp));
+  const sorted = [...items].sort((a, b) => toTimestamp(a.recordedAt) - toTimestamp(b.recordedAt));
   return options.order === 'desc' ? sorted.reverse() : sorted;
 };
 
@@ -40,7 +40,7 @@ export class InMemoryBehaviorRepository implements BehaviorRepository {
       id: `evt-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
     };
     inMemoryStore = [newRecord, ...inMemoryStore].sort(
-      (a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime(),
+      (a, b) => new Date(b.recordedAt).getTime() - new Date(a.recordedAt).getTime(),
     );
     return newRecord;
   }
@@ -52,7 +52,7 @@ export class InMemoryBehaviorRepository implements BehaviorRepository {
   async listByUser(userId: string, options?: BehaviorQueryOptions): Promise<BehaviorObservation[]> {
     const dateRange = options?.dateRange;
     const filtered = inMemoryStore.filter(
-      (behavior) => behavior.userId === userId && isWithinRange(behavior.timestamp, dateRange),
+      (behavior) => behavior.userId === userId && isWithinRange(behavior.recordedAt, dateRange),
     );
     const ordered = applyOrder(filtered, options);
     return applyLimit(ordered, options);
@@ -61,7 +61,7 @@ export class InMemoryBehaviorRepository implements BehaviorRepository {
   public seed(records: BehaviorObservation[]): void {
     if (!records.length) return;
     inMemoryStore = [...records, ...inMemoryStore].sort(
-      (a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime(),
+      (a, b) => new Date(b.recordedAt).getTime() - new Date(a.recordedAt).getTime(),
     );
   }
 

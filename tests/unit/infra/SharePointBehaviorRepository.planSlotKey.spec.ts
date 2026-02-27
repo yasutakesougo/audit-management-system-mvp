@@ -1,5 +1,5 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { SharePointBehaviorRepository } from '@/features/daily/infra/SharePointBehaviorRepository';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const requiredFields = new Set([
   'Id',
@@ -119,15 +119,15 @@ describe('SharePointBehaviorRepository planSlotKey mapping', () => {
     const repo = new SharePointBehaviorRepository({ sp: mockSp as never });
     const saved = await repo.add({
       userId: 'I022',
-      timestamp: '2026-02-22T10:00:00.000Z',
-      antecedent: null,
+      recordedAt: '19:23',
+      antecedent: '',
+      antecedentTags: [],
       behavior: '作業中断',
-      consequence: null,
+      consequence: '',
       intensity: 3,
       timeSlot: '10:00',
       plannedActivity: '作業活動',
       planSlotKey: '10:00|作業活動',
-      recordedAt: '19:23',
       actualObservation: 'てst',
     });
 
@@ -151,14 +151,14 @@ describe('SharePointBehaviorRepository planSlotKey mapping', () => {
     await expect(
       repo.add({
         userId: 'I022',
-        timestamp: '2026-02-22T10:00:00.000Z',
-        antecedent: null,
+        recordedAt: '19:23',
+        antecedent: '',
+        antecedentTags: [],
         behavior: '作業中断',
-        consequence: null,
+        consequence: '',
         intensity: 3,
         timeSlot: '10:00',
         plannedActivity: '作業活動',
-        recordedAt: '19:23',
         actualObservation: 'てst',
       }),
     ).rejects.toThrow(/planSlotKey is required/i);

@@ -23,13 +23,13 @@ export type BehaviorHeatmapProps = {
 export const BehaviorHeatmap: React.FC<BehaviorHeatmapProps> = ({ data, title = '時間帯別発生分布' }) => {
   const chartData = useMemo(() => (
     data.map((record) => {
-      const date = new Date(record.timestamp);
+      const date = new Date(record.recordedAt);
       return {
         hour: Number((date.getHours() + date.getMinutes() / 60).toFixed(2)),
         dateLabel: date.toLocaleDateString('ja-JP', { month: 'numeric', day: 'numeric' }),
         intensity: record.intensity,
         behavior: record.behavior,
-        timestamp: record.timestamp,
+        recordedAt: record.recordedAt,
       };
     })
   ), [data]);
@@ -79,7 +79,7 @@ export const BehaviorHeatmap: React.FC<BehaviorHeatmapProps> = ({ data, title = 
                         {point.behavior}
                       </Typography>
                       <Typography variant="caption" color="text.secondary">
-                        {new Date(point.timestamp).toLocaleString()}<br />
+                        {new Date(point.recordedAt).toLocaleString()}<br />
                         強度: Lv.{point.intensity}
                       </Typography>
                     </Box>

@@ -279,13 +279,11 @@ export function extractInterventionMethods(scenes: SupportScene[]): Intervention
 }
 
 // ===== D-2: ABC分析 =====
+// 基本型は domain/behavior から re-export（One Source of Truth）
 
-/** 行動の機能（応用行動分析の4機能） */
-export type BehaviorFunction =
-  | 'demand'       // 要求（物や活動を得たい）
-  | 'escape'       // 回避・拒否（嫌な刺激から逃れたい）
-  | 'attention'    // 注目（他者の関心を得たい）
-  | 'sensory';     // 感覚（感覚的な刺激を得たい/避けたい）
+export type { BehaviorFunction, BehaviorOutcome } from '@/domain/behavior';
+
+import type { BehaviorFunction, BehaviorOutcome } from '@/domain/behavior';
 
 export const BEHAVIOR_FUNCTION_LABELS: Record<BehaviorFunction, string> = {
   demand: '🎯 要求',
@@ -301,21 +299,23 @@ export const BEHAVIOR_FUNCTION_COLORS: Record<BehaviorFunction, string> = {
   sensory: '#2e7d32',
 } as const;
 
-/** 行動変化の方向 */
-export type BehaviorOutcome = 'increased' | 'decreased' | 'unchanged';
-
 export const BEHAVIOR_OUTCOME_LABELS: Record<BehaviorOutcome, string> = {
   increased: '↑ 増加',
   decreased: '↓ 減少',
   unchanged: '→ 変化なし',
 } as const;
 
-/** ABC分析レコード */
+/**
+ * ABC分析レコード（IBD分析特化）
+ *
+ * Note: behaviorIntensity / behaviorOutcome は分析用に required で保持。
+ * 日常記録は domain/behavior/ABCRecord を参照。
+ */
 export interface ABCRecord {
   id: string;
-  userId: number;
+  userId: string;
   recordedAt: string;          // 記録日（ISO 8601）
-  recordedBy: number;          // 記録者ID
+  recordedBy?: string;         // 記録者ID
 
   // A: 先行事象
   antecedent: string;          // 自由記述

@@ -18,7 +18,7 @@ export const useBehaviorAnalytics = (records: BehaviorObservation[]) => {
     const stats = new Map<string, { count: number; sumIntensity: number; maxIntensity: number }>();
 
     records.forEach((record) => {
-      const date = new Date(record.timestamp);
+      const date = new Date(record.recordedAt);
       if (Number.isNaN(date.getTime())) return;
       const dateKey = date.toISOString().slice(0, 10);
       const current = stats.get(dateKey) ?? { count: 0, sumIntensity: 0, maxIntensity: 0 };

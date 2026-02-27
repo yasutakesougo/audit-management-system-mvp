@@ -207,7 +207,7 @@ export function addABCRecord(record: ABCRecord): void {
   _abcRecords = [..._abcRecords, record];
 }
 
-export function getABCRecordsForUser(userId: number): ABCRecord[] {
+export function getABCRecordsForUser(userId: string): ABCRecord[] {
   return _abcRecords.filter((r) => r.userId === userId);
 }
 

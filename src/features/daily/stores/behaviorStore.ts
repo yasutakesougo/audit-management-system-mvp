@@ -11,7 +11,7 @@ export function useBehaviorStore() {
 
   const ensureDesc = useCallback((items: BehaviorObservation[]) => {
     return [...items].sort(
-      (a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime(),
+      (a, b) => new Date(b.recordedAt).getTime() - new Date(a.recordedAt).getTime(),
     );
   }, []);
 
@@ -88,10 +88,11 @@ export const seedDemoBehaviors = (userId: string, days = 7): number => {
       seeded.push({
         id: `demo-${userId}-${dayOffset}-${idx}-${eventDate.getTime()}`,
         userId,
-        timestamp: eventDate.toISOString(),
+        recordedAt: eventDate.toISOString(),
         behavior: pickRandom(MOCK_OBSERVATION_MASTER.behaviors),
-        antecedent: pickRandom(MOCK_OBSERVATION_MASTER.antecedents) ?? null,
-        consequence: pickRandom(MOCK_OBSERVATION_MASTER.consequences) ?? null,
+        antecedent: pickRandom(MOCK_OBSERVATION_MASTER.antecedents) ?? '',
+        antecedentTags: [],
+        consequence: pickRandom(MOCK_OBSERVATION_MASTER.consequences) ?? '',
         intensity: (Math.floor(Math.random() * 5) + 1) as BehaviorIntensity,
       });
     }

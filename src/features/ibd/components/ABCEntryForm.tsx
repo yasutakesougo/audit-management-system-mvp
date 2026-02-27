@@ -31,8 +31,8 @@ import {
 // ---------------------------------------------------------------------------
 
 type ABCEntryFormProps = {
-  userId: number;
-  recordedBy: number;
+  userId: string;
+  recordedBy?: string;
   /** 使用した介入方法（InterventionPickerPanel から連動） */
   interventionUsed?: string;
   onSave: (record: ABCRecord) => void;

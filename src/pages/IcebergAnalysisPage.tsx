@@ -1,11 +1,11 @@
+import { useAuth } from '@/auth/useAuth';
 import { IcebergCanvas } from '@/features/analysis/components/iceberg/IcebergCanvas';
 import type { EnvironmentFactor } from '@/features/analysis/domain/icebergTypes';
-import { useIcebergStore } from '@/features/analysis/stores/icebergStore';
 import { createIcebergRepository } from '@/features/analysis/infra/SharePointIcebergRepository';
+import { useIcebergStore } from '@/features/analysis/stores/icebergStore';
 import type { AssessmentItem } from '@/features/assessment/domain/types';
 import type { BehaviorObservation } from '@/features/daily/domain/daily/types';
 import { useUsersDemo } from '@/features/users/usersStoreDemo';
-import { useAuth } from '@/auth/useAuth';
 import { getAppConfig } from '@/lib/env';
 import AddLinkIcon from '@mui/icons-material/AddLink';
 import SaveIcon from '@mui/icons-material/Save';
@@ -22,28 +22,30 @@ import Paper from '@mui/material/Paper';
 import Select, { type SelectChangeEvent } from '@mui/material/Select';
 import Stack from '@mui/material/Stack';
 import Typography from '@mui/material/Typography';
-import React, { useEffect, useState, useMemo } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 
 const createDemoBehaviors = (userId: string): BehaviorObservation[] => [
   {
     id: `demo-beh-${userId}-1`,
     userId,
-    timestamp: new Date().toISOString(),
+    recordedAt: new Date().toISOString(),
     antecedent: '環境変化(音・光)',
+    antecedentTags: [],
     behavior: '他害(叩く)',
     consequence: '見守り',
     intensity: 4,
-    memo: '作業中に突然机を叩いた',
+    followUpNote: '作業中に突然机を叩いた',
   },
   {
     id: `demo-beh-${userId}-2`,
     userId,
-    timestamp: new Date().toISOString(),
+    recordedAt: new Date().toISOString(),
     antecedent: '待ち時間',
+    antecedentTags: [],
     behavior: '離席/飛び出し',
     consequence: '環境調整',
     intensity: 2,
-    memo: '給食前の待機中に離席',
+    followUpNote: '給食前の待機中に離席',
   },
 ];
 
@@ -74,11 +76,11 @@ const createDemoEnvironmentFactors = (): EnvironmentFactor[] => [
 
 const IcebergAnalysisPage: React.FC = () => {
   const { acquireToken } = useAuth();
-  
+
   // Get baseUrl from config (spClient uses this internally)
   const config = useMemo(() => getAppConfig(), []);
   const spSiteUrl = config.VITE_SP_SITE_URL || '';
-  
+
   // Repository 初期化（acquireToken, baseUrl が安定したら再作成）
   const [repository, setRepository] = useState<Awaited<ReturnType<typeof createIcebergRepository>> | null>(null);
 
