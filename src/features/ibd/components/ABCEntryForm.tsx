@@ -31,8 +31,8 @@ import {
 // ---------------------------------------------------------------------------
 
 type ABCEntryFormProps = {
-  userId: number;
-  recordedBy: number;
+  userId: string;
+  recordedBy?: string;
   /** 使用した介入方法（InterventionPickerPanel から連動） */
   interventionUsed?: string;
   onSave: (record: ABCRecord) => void;
@@ -82,7 +82,7 @@ const ABCEntryForm: FC<ABCEntryFormProps> = ({
       antecedent: antecedent.trim(),
       antecedentTags: selectedTags,
       behavior: behavior.trim(),
-      behaviorIntensity: intensity ?? 3,
+      intensity: (intensity ?? 3) as ABCRecord['intensity'],
       consequence: consequence.trim(),
       behaviorOutcome: outcome,
       estimatedFunction,

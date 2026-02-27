@@ -279,13 +279,11 @@ export function extractInterventionMethods(scenes: SupportScene[]): Intervention
 }
 
 // ===== D-2: ABC分析 =====
+// 基本型は domain/behavior から re-export（One Source of Truth）
 
-/** 行動の機能（応用行動分析の4機能） */
-export type BehaviorFunction =
-  | 'demand'       // 要求（物や活動を得たい）
-  | 'escape'       // 回避・拒否（嫌な刺激から逃れたい）
-  | 'attention'    // 注目（他者の関心を得たい）
-  | 'sensory';     // 感覚（感覚的な刺激を得たい/避けたい）
+export type { ABCRecord, BehaviorFunction, BehaviorOutcome } from '@/domain/behavior';
+
+import type { ABCRecord, BehaviorFunction, BehaviorOutcome } from '@/domain/behavior';
 
 export const BEHAVIOR_FUNCTION_LABELS: Record<BehaviorFunction, string> = {
   demand: '🎯 要求',
@@ -301,39 +299,13 @@ export const BEHAVIOR_FUNCTION_COLORS: Record<BehaviorFunction, string> = {
   sensory: '#2e7d32',
 } as const;
 
-/** 行動変化の方向 */
-export type BehaviorOutcome = 'increased' | 'decreased' | 'unchanged';
-
 export const BEHAVIOR_OUTCOME_LABELS: Record<BehaviorOutcome, string> = {
   increased: '↑ 増加',
   decreased: '↓ 減少',
   unchanged: '→ 変化なし',
 } as const;
 
-/** ABC分析レコード */
-export interface ABCRecord {
-  id: string;
-  userId: number;
-  recordedAt: string;          // 記録日（ISO 8601）
-  recordedBy: number;          // 記録者ID
-
-  // A: 先行事象
-  antecedent: string;          // 自由記述
-  antecedentTags: string[];    // よくあるパターンタグ
-
-  // B: 行動
-  behavior: string;            // 具体的な態様
-  behaviorIntensity: number;   // 強度（1-5）
-
-  // C: 結果
-  consequence: string;         // 周囲の反応
-  behaviorOutcome: BehaviorOutcome;
-
-  // 機能推定
-  estimatedFunction: BehaviorFunction | null;
-  // 使用した介入方法
-  interventionUsed?: string;   // InterventionMethod.label
-}
+// ABCRecord は @/domain/behavior から re-export 済み（上記）
 
 /** よくある先行事象のプリセット */
 export const COMMON_ANTECEDENT_TAGS: string[] = [
@@ -422,9 +394,11 @@ export function calculateABCSummary(records: ABCRecord[]): ABCSummary {
     if (rec.estimatedFunction) {
       functionBreakdown[rec.estimatedFunction]++;
     }
-    outcomeBreakdown[rec.behaviorOutcome]++;
+    if (rec.behaviorOutcome) {
+      outcomeBreakdown[rec.behaviorOutcome]++;
+    }
 
-    intensitySum += rec.behaviorIntensity;
+    intensitySum += rec.intensity;
     intensityCount++;
 
     for (const tag of rec.antecedentTags) {

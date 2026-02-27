@@ -1,11 +1,11 @@
-import { acquireSpAccessToken } from '@/lib/msal';
-import { ensureConfig, createSpClient } from '@/lib/spClient';
 import { getAppConfig } from '@/lib/env';
+import { acquireSpAccessToken } from '@/lib/msal';
+import { createSpClient, ensureConfig } from '@/lib/spClient';
 import {
-  buildDailyActivitySelectFields,
-  FIELD_MAP_DAILY_ACTIVITY,
-  LIST_CONFIG,
-  ListKeys,
+    buildDailyActivitySelectFields,
+    FIELD_MAP_DAILY_ACTIVITY,
+    LIST_CONFIG,
+    ListKeys,
 } from '@/sharepoint/fields';
 import type { BehaviorQueryOptions, BehaviorRepository } from '../domain/BehaviorRepository';
 import type { BehaviorObservation } from '../domain/daily/types';
@@ -62,7 +62,7 @@ export class SharePointBehaviorRepository implements BehaviorRepository {
 
     // 🔥 動的フィールド取得：テナント差分に完全対応
     const internalNames = await this.sp.getListFieldInternalNames(this.listTitle);
-    
+
     // 🚨 必須列の検証（500エラー根本対策）
     this.assertRequiredFields(internalNames, {
       userId: FIELD_MAP_DAILY_ACTIVITY.userId,
@@ -114,13 +114,13 @@ export class SharePointBehaviorRepository implements BehaviorRepository {
     const url = `/lists/getbytitle('${encodeURIComponent(this.listTitle)}')/items?${params.toString()}`;
     const res = await this.sp.spFetch(url, { method: 'GET' });
     const json = (await res.json().catch(() => ({ value: [] }))) as { value?: Record<string, unknown>[] };
-    
+
     // Phase 1: SharePoint userCode → ドメイン UserID (そのまま)
     return (json.value ?? []).map((item) => this.toDomain(item));
   }
 
   private serializeObservationPayload(observation: Omit<BehaviorObservation, 'id'>): string | null {
-    const text = observation.actualObservation ?? observation.memo ?? '';
+    const text = observation.actualObservation ?? observation.followUpNote ?? '';
     const hasMeta = Boolean(observation.planSlotKey || observation.recordedAt || observation.plannedActivity);
     if (!hasMeta) {
       const normalized = text.trim();
@@ -198,20 +198,20 @@ export class SharePointBehaviorRepository implements BehaviorRepository {
     const planSlotKeyFromColumn = get<string | null>(field.planSlotKey) ?? undefined;
     const plannedActivityFromColumn = get<string | null>(field.plannedActivity) ?? undefined;
     const recordedAtFromColumn = get<string | null>(field.recordedAtText) ?? undefined;
+    const resolvedRecordedAt = recordedAtFromColumn ?? parsedObservation.recordedAt ?? String(get(field.recordDate) ?? '');
     return {
       id: String(get(field.id) ?? ''),
       userId: String(get(field.userId) ?? ''),
-      timestamp: String(get(field.recordDate) ?? ''),
-      antecedent: null,
+      recordedAt: resolvedRecordedAt,
+      antecedent: '',
+      antecedentTags: [],
       behavior: String(get(field.behavior) ?? ''),
-      consequence: null,
+      consequence: '',
       intensity: Number(get(field.intensity) ?? 0) as BehaviorObservation['intensity'],
       durationMinutes: get<number | null>(field.duration) ?? undefined,
-      memo: undefined,
       timeSlot: get<string | null>(field.timeSlot) ?? undefined,
       plannedActivity: plannedActivityFromColumn ?? parsedObservation.plannedActivity,
       planSlotKey: planSlotKeyFromColumn ?? parsedObservation.planSlotKey,
-      recordedAt: recordedAtFromColumn ?? parsedObservation.recordedAt,
       actualObservation: parsedObservation.actualObservation,
     };
   }
@@ -225,7 +225,7 @@ export class SharePointBehaviorRepository implements BehaviorRepository {
     const observationPayload = this.serializeObservationPayload(observation);
     const payload: Record<string, unknown> = {
       [fm.userId]: observation.userId,
-      [fm.recordDate]: observation.timestamp,
+      [fm.recordDate]: observation.recordedAt,
       [fm.timeSlot]: observation.timeSlot ?? null,
       [fm.planSlotKey]: observation.planSlotKey ?? null,
       [fm.plannedActivity]: observation.plannedActivity ?? null,

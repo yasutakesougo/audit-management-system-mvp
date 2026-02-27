@@ -1,17 +1,25 @@
+import { FullScreenDailyDialogPage } from '@/features/daily/components/FullScreenDailyDialogPage';
 import { ProcedureEditor } from '@/features/daily/components/procedure/ProcedureEditor';
 import { ProcedurePanel, type ScheduleItem } from '@/features/daily/components/split-stream/ProcedurePanel';
 import { RecordPanel } from '@/features/daily/components/split-stream/RecordPanel';
 import { SplitStreamLayout } from '@/features/daily/components/split-stream/SplitStreamLayout';
 import type { BehaviorObservation } from '@/features/daily/domain/daily/types';
 import { getScheduleKey } from '@/features/daily/domain/getScheduleKey';
-import type { ProcedureItem } from '@/features/daily/stores/procedureStore';
 import { useInMemoryBehaviorRepository, useInMemoryProcedureRepository } from '@/features/daily/repositories/inMemory';
+import type { ProcedureItem } from '@/features/daily/stores/procedureStore';
+import {
+    makeIdempotencyKey,
+    persistDailySubmission,
+    type PersistDailyPdcaInput,
+} from '@/features/iceberg-pdca/persistDailyPdca';
 import { useUsersDemo } from '@/features/users/usersStoreDemo';
+import { getEnv } from '@/lib/runtimeEnv';
+import { useTimeBasedSupportRecordPage } from '@/pages/hooks/useTimeBasedSupportRecordPage';
 import AccessTimeIcon from '@mui/icons-material/AccessTime';
 import PersonIcon from '@mui/icons-material/Person';
 import Alert from '@mui/material/Alert';
-import Button from '@mui/material/Button';
 import Box from '@mui/material/Box';
+import Button from '@mui/material/Button';
 import Chip from '@mui/material/Chip';
 import Container from '@mui/material/Container';
 import FormControl from '@mui/material/FormControl';
@@ -24,15 +32,7 @@ import Stack from '@mui/material/Stack';
 import Typography from '@mui/material/Typography';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { flushSync } from 'react-dom';
-import { FullScreenDailyDialogPage } from '@/features/daily/components/FullScreenDailyDialogPage';
-import { useTimeBasedSupportRecordPage } from '@/pages/hooks/useTimeBasedSupportRecordPage';
 import { useLocation, useNavigate, useSearchParams } from 'react-router-dom';
-import { getEnv } from '@/lib/runtimeEnv';
-import {
-  makeIdempotencyKey,
-  persistDailySubmission,
-  type PersistDailyPdcaInput,
-} from '@/features/iceberg-pdca/persistDailyPdca';
 
 const TimeBasedSupportRecordPage: React.FC = () => {
   const location = useLocation();
@@ -528,7 +528,7 @@ const TimeBasedSupportRecordPage: React.FC = () => {
               {recentObservations.slice(0, 5).map((observation) => (
                 <Box key={observation.id} sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                   <Typography variant="caption" color="text.secondary" sx={{ minWidth: 60 }}>
-                    {new Date(observation.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                    {new Date(observation.recordedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                   </Typography>
                   <Chip
                     label={`${observation.behavior} / Lv.${observation.intensity}`}

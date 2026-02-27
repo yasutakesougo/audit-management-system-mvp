@@ -1,38 +1,26 @@
+// ---------------------------------------------------------------------------
 // Domain models for Iceberg-PDCA daily observations.
-// TODO: Replace mock master data with SharePoint-backed values once API wiring lands.
+//
+// ⚠️ MIGRATION NOTE (2026-02-27):
+// BehaviorObservation is now a backward-compatible alias for ABCRecord
+// from the unified domain/behavior module.
+// New code should import directly from '@/domain/behavior'.
+// ---------------------------------------------------------------------------
 
-export type BehaviorIntensity = 1 | 2 | 3 | 4 | 5;
+// Re-export unified types from domain/behavior
+export type {
+    ABCRecord,
+    BehaviorFunction,
+    BehaviorIntensity,
+    BehaviorMood,
+    BehaviorOutcome,
+    ObservationMaster
+} from '@/domain/behavior';
 
-export type BehaviorMood = '良好' | '普通' | 'やや不安定' | '不安定' | '高揚' | '疲労';
+export { DEFAULT_OBSERVATION_MASTER } from '@/domain/behavior';
 
-export interface BehaviorObservation {
-  id: string;
-  userId: string;
-  timestamp: string;
-  planSlotKey?: string;
-  recordedAt?: string;
-  antecedent: string | null;
-  behavior: string;
-  consequence: string | null;
-  intensity: BehaviorIntensity;
-  durationMinutes?: number;
-  memo?: string;
-  timeSlot?: string;
-  plannedActivity?: string;
-  actualObservation?: string;
-  staffResponse?: string;
-  userMood?: BehaviorMood;
-  followUpNote?: string;
-}
+// Backward-compatible alias — existing code uses BehaviorObservation
+export type { ABCRecord as BehaviorObservation } from '@/domain/behavior';
 
-export interface ObservationMaster {
-  antecedents: string[];
-  behaviors: string[];
-  consequences: string[];
-}
-
-export const MOCK_OBSERVATION_MASTER: ObservationMaster = {
-  antecedents: ['要求却下', '課題提示', '環境変化(音・光)', '待ち時間', '移動/切替', '不明'],
-  behaviors: ['自傷(叩く)', '他害(叩く/蹴る)', '器物破損', '大声/奇声', '離席/飛び出し', '拒否/座り込み'],
-  consequences: ['見守り', '環境調整', '声かけ', '身体的介入', 'スケジュール再提示']
-};
+// Backward-compatible alias for MOCK_OBSERVATION_MASTER
+export { DEFAULT_OBSERVATION_MASTER as MOCK_OBSERVATION_MASTER } from '@/domain/behavior';

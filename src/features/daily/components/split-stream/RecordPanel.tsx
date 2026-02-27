@@ -1,3 +1,4 @@
+import { getScheduleKey } from '@/features/daily/domain/getScheduleKey';
 import AccessTimeIcon from '@mui/icons-material/AccessTime';
 import LockIcon from '@mui/icons-material/Lock';
 import PersonOffIcon from '@mui/icons-material/PersonOff';
@@ -17,9 +18,8 @@ import ToggleButton from '@mui/material/ToggleButton';
 import ToggleButtonGroup from '@mui/material/ToggleButtonGroup';
 import Typography from '@mui/material/Typography';
 import type { ReactNode } from 'react';
-import { useEffect, useMemo, useRef, useState, memo } from 'react';
+import { memo, useEffect, useMemo, useRef, useState } from 'react';
 import { BehaviorIntensity, BehaviorMood, BehaviorObservation, MOCK_OBSERVATION_MASTER } from '../../domain/daily/types';
-import { getScheduleKey } from '@/features/daily/domain/getScheduleKey';
 import type { ScheduleItem } from './ProcedurePanel';
 
 export type RecordPanelLockState = 'unlocked' | 'no-user' | 'unconfirmed';
@@ -143,27 +143,27 @@ export function RecordPanel(props: RecordPanelProps): JSX.Element {
   );
 
   const isLocked = lockState !== 'unlocked';
-  
+
   // Sticky selection: keep last valid selection via ref (updated synchronously on event)
   const stickySlotRef = useRef<ScheduleItem | null>(null);
   const hasEverSelectedRef = useRef(false);
-  
+
   // Current slot lookup (may be null when '' is passed)
   const currentSelectedSlot = useMemo(
     () => schedule.find((item) => getScheduleKey(item.time, item.activity) === effectiveSelectedSlotKey) ?? null,
     [schedule, effectiveSelectedSlotKey]
   );
-  
+
   // Fallback to sticky when current is null
   const selectedSlot = currentSelectedSlot ?? stickySlotRef.current;
-  
+
   // Track if ever selected (for initial empty state)
   if (selectedSlot) {
     hasEverSelectedRef.current = true;
   }
-  
+
   const showEmptyState = !hasEverSelectedRef.current;
-  
+
   const observationText = actualObservation.trim();
   const slotSelected = Boolean(selectedSlot);
   const requiresPlanSlot = schedule.length > 0;
@@ -212,13 +212,13 @@ export function RecordPanel(props: RecordPanelProps): JSX.Element {
     // Prevent toggle deselection (null/'' state) to avoid empty frame flicker
     const normalized = next && next.trim() !== '' ? next : '';
     if (!normalized) return; // ← Block deselection completely
-    
+
     // Synchronously update sticky ref when valid slot is selected (before state update)
     const validSlot = schedule.find((item) => getScheduleKey(item.time, item.activity) === normalized);
     if (validSlot) {
       stickySlotRef.current = validSlot;
     }
-    
+
     if (isControlledSlot) {
       onSlotChange?.(next);
       return;
@@ -242,18 +242,17 @@ export function RecordPanel(props: RecordPanelProps): JSX.Element {
     if (requiresPlanSlot && !selectedSlot) return;
     try {
       await onSubmit({
-        timestamp: new Date().toISOString(),
+        recordedAt: new Date().toISOString(),
         planSlotKey: selectedSlot ? getScheduleKey(selectedSlot.time, selectedSlot.activity) : undefined,
-        recordedAt: timestamp,
         behavior: selectedBehavior ?? '日常記録',
-        antecedent: selectedAntecedent,
-        consequence: selectedConsequence,
+        antecedent: selectedAntecedent ?? '',
+        antecedentTags: [],
+        consequence: selectedConsequence ?? '',
         intensity,
         durationMinutes,
-        memo: memo.trim() || undefined,
         actualObservation: observation,
         staffResponse: staffResponse.trim() || undefined,
-        followUpNote: followUpNote.trim() || undefined,
+        followUpNote: followUpNote.trim() || memo.trim() || undefined,
         timeSlot: selectedSlot?.time,
         plannedActivity: selectedSlot?.activity,
         userMood: userMood ?? undefined

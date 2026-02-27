@@ -22,16 +22,17 @@ describe('useBehaviorStore', () => {
     repo.add.mockReset();
   });
 
-  it('fetchByUser returns 5 items sorted descending by timestamp', async () => {
+  it('fetchByUser returns 5 items sorted descending by recordedAt', async () => {
     const base = new Date('2025-01-01T09:00:00.000Z');
     const observations: BehaviorObservation[] = Array.from({ length: 7 }, (_, index) => ({
       id: `obs-${index}`,
       userId: 'U1',
-      timestamp: new Date(base.getTime() + index * 60_000).toISOString(),
-      antecedent: null,
+      recordedAt: new Date(base.getTime() + index * 60_000).toISOString(),
+      antecedent: '',
+      antecedentTags: [],
       behavior: 'test',
-      consequence: null,
-      intensity: 1,
+      consequence: '',
+      intensity: 1 as const,
     }));
 
     repo.listByUser.mockResolvedValueOnce([
@@ -52,10 +53,10 @@ describe('useBehaviorStore', () => {
 
     const { data } = result.current;
     expect(data).toHaveLength(5);
-    expect(data[0]?.timestamp).toBe(observations[6].timestamp);
+    expect(data[0]?.recordedAt).toBe(observations[6].recordedAt);
     for (let i = 0; i < data.length - 1; i += 1) {
-      const current = new Date(data[i]!.timestamp).getTime();
-      const next = new Date(data[i + 1]!.timestamp).getTime();
+      const current = new Date(data[i]!.recordedAt).getTime();
+      const next = new Date(data[i + 1]!.recordedAt).getTime();
       expect(current).toBeGreaterThanOrEqual(next);
     }
   });
@@ -64,10 +65,11 @@ describe('useBehaviorStore', () => {
     const newRecord: BehaviorObservation = {
       id: 'new-1',
       userId: 'U1',
-      timestamp: new Date('2025-01-01T10:00:00.000Z').toISOString(),
-      antecedent: null,
+      recordedAt: new Date('2025-01-01T10:00:00.000Z').toISOString(),
+      antecedent: '',
+      antecedentTags: [],
       behavior: 'test',
-      consequence: null,
+      consequence: '',
       intensity: 2,
     };
 
@@ -78,8 +80,9 @@ describe('useBehaviorStore', () => {
     await act(async () => {
       await result.current.add({
         userId: newRecord.userId,
-        timestamp: newRecord.timestamp,
+        recordedAt: newRecord.recordedAt,
         antecedent: newRecord.antecedent,
+        antecedentTags: newRecord.antecedentTags,
         behavior: newRecord.behavior,
         consequence: newRecord.consequence,
         intensity: newRecord.intensity,
