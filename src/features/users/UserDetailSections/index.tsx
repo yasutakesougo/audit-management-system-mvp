@@ -214,7 +214,7 @@ const UserDetailSections: React.FC<UserDetailSectionsProps> = ({ user, backLink,
                   利用者プロフィール
                 </Typography>
               )}
-              <Typography variant={isEmbedded ? 'h6' : 'h4'} component="h1" sx={{ fontWeight: 600, lineHeight: 1.2 }}>
+              <Typography variant={isEmbedded ? 'h6' : 'h4'} component={isEmbedded ? 'h4' : 'h1'} sx={{ fontWeight: 600, lineHeight: 1.2 }}>
                 {user.FullName || '氏名未登録'}
               </Typography>
               <Typography variant="caption" color="text.secondary">
