@@ -1,6 +1,10 @@
 import { WriteDisabledError } from '@/infra/sharepoint/repos/schedulesRepo';
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { classifySchedulesError, shouldFallbackToReadOnly } from './errors';
+
+afterEach(() => {
+  vi.unstubAllGlobals();
+});
 
 describe('classifySchedulesError', () => {
   it('classifies WriteDisabledError as WRITE_DISABLED', () => {
@@ -74,16 +78,12 @@ describe('classifySchedulesError', () => {
   });
 
   it('classifies offline state as NETWORK_ERROR', () => {
-    const originalOnLine = navigator.onLine;
     Object.defineProperty(navigator, 'onLine', { value: false, configurable: true });
-    try {
-      const info = classifySchedulesError(new Error('Any error'));
+    const info = classifySchedulesError(new Error('Any error'));
 
-      expect(info.kind).toBe('NETWORK_ERROR');
-      expect(info.title).toContain('ネットワークエラー');
-    } finally {
-      Object.defineProperty(navigator, 'onLine', { value: originalOnLine, configurable: true });
-    }
+    expect(info.kind).toBe('NETWORK_ERROR');
+    expect(info.title).toContain('ネットワークエラー');
+    vi.unstubAllGlobals();
   });
 
   it('classifies "failed to fetch" as NETWORK_ERROR', () => {
