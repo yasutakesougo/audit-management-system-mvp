@@ -491,6 +491,9 @@ export const FIELD_MAP = {
 /**
  * DailyActivityRecords リスト用フィールド定義（内部名）
  * Fields API で確認済み: UserCode, RecordDate, TimeSlot, Observation, Behavior, version, duration, Order
+ *
+ * NOTE: `intensity` → `version` と `duration` → `duration` は SharePoint 内部名が小文字。
+ * これはレガシースキーマの仕様であり、意図的なマッピング（変更不可）。
  */
 export const FIELD_MAP_DAILY_ACTIVITY = {
   id: 'Id',
