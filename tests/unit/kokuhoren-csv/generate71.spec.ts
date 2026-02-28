@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
-import { generateKokuhorenCsv71, generateCsvFilename } from '@/features/kokuhoren-csv/generate71';
-import type { MonthlyProvisionInput, DailyProvisionEntry, KokuhorenUserProfile } from '@/features/kokuhoren-validation/types';
+import { generateCsvFilename, generateKokuhorenCsv71 } from '@/features/kokuhoren-csv/generate71';
+import type { DailyProvisionEntry, KokuhorenUserProfile, MonthlyProvisionInput } from '@/features/kokuhoren-validation/types';
 
 // ─── ヘルパー ────────────────────────────────────────────────
 
@@ -56,7 +56,7 @@ describe('generateKokuhorenCsv71', () => {
     expect(cols[2]).toBe('15');
     // serviceCode = "1"（提供 → 文字列・引用符あり）
     expect(cols[3]).toBe('"1"');
-    // startHHMM = 930　
+    // startHHMM = 930
     expect(cols[4]).toBe('930');
     // endHHMM = 1530
     expect(cols[5]).toBe('1530');
