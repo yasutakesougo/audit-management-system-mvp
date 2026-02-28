@@ -5,6 +5,7 @@ import { createIcebergRepository } from '@/features/analysis/infra/SharePointIce
 import { useIcebergStore } from '@/features/analysis/stores/icebergStore';
 import type { AssessmentItem } from '@/features/assessment/domain/types';
 import type { BehaviorObservation } from '@/features/daily/domain/daily/types';
+import { IBDPageHeader } from '@/features/ibd/components/IBDPageHeader';
 import { useUsersDemo } from '@/features/users/usersStoreDemo';
 import { getAppConfig } from '@/lib/env';
 import AddLinkIcon from '@mui/icons-material/AddLink';
@@ -18,9 +19,7 @@ import Container from '@mui/material/Container';
 import FormControl from '@mui/material/FormControl';
 import InputLabel from '@mui/material/InputLabel';
 import MenuItem from '@mui/material/MenuItem';
-import Paper from '@mui/material/Paper';
 import Select, { type SelectChangeEvent } from '@mui/material/Select';
-import Stack from '@mui/material/Stack';
 import Typography from '@mui/material/Typography';
 import React, { useEffect, useMemo, useState } from 'react';
 
@@ -155,14 +154,13 @@ const IcebergAnalysisPage: React.FC = () => {
 
   return (
     <Container maxWidth="xl" sx={{ height: '100vh', py: 2, display: 'flex', flexDirection: 'column' }}>
-      <Paper sx={{ p: 2, mb: 2, display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 3 }}>
-        <Box display="flex" alignItems="center" gap={2}>
-          <WorkspacesIcon color="primary" fontSize="large" />
-          <Box>
-            <Typography variant="h6" fontWeight="bold">
-              Iceberg Workspace (氷山モデル分析)
-            </Typography>
-            <FormControl size="small" sx={{ mt: 1, minWidth: 240 }}>
+      <IBDPageHeader
+        title="氷山モデル分析"
+        subtitle="表面的な行動の背景にある環境要因を構造化"
+        icon={<WorkspacesIcon />}
+        actions={
+          <>
+            <FormControl size="small" sx={{ minWidth: 240 }}>
               <InputLabel id="iceberg-user-select-label">分析対象</InputLabel>
               <Select
                 labelId="iceberg-user-select-label"
@@ -181,23 +179,20 @@ const IcebergAnalysisPage: React.FC = () => {
                 ))}
               </Select>
             </FormControl>
-          </Box>
-        </Box>
-
-        <Stack direction="row" spacing={2}>
-          <Button variant="outlined" startIcon={<AddLinkIcon />} onClick={handleAutoLink} disabled={!currentSession}>
-            仮説リンク (Demo)
-          </Button>
-          <Button
-            variant="contained"
-            startIcon={isSaving ? <CircularProgress size={20} /> : <SaveIcon />}
-            onClick={handleSave}
-            disabled={!currentSession || isSaving || saveState === 'saving'}
-          >
-            分析保存
-          </Button>
-        </Stack>
-      </Paper>
+            <Button variant="outlined" startIcon={<AddLinkIcon />} onClick={handleAutoLink} disabled={!currentSession}>
+              仮説リンク (Demo)
+            </Button>
+            <Button
+              variant="contained"
+              startIcon={isSaving ? <CircularProgress size={20} /> : <SaveIcon />}
+              onClick={handleSave}
+              disabled={!currentSession || isSaving || saveState === 'saving'}
+            >
+              分析保存
+            </Button>
+          </>
+        }
+      />
 
       {/* 保存状態フィードバック */}
       {saveState === 'saved' && (

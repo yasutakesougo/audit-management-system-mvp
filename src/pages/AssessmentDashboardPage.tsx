@@ -4,6 +4,7 @@ import { ImportSurveyDialog } from '@/features/assessment/components/ImportSurve
 import { SensoryProfilePanel } from '@/features/assessment/components/SensoryProfilePanel';
 import type { AssessmentItem, SensoryProfile, UserAssessment } from '@/features/assessment/domain/types';
 import { useAssessmentStore } from '@/features/assessment/stores/assessmentStore';
+import { IBDPageHeader } from '@/features/ibd/components/IBDPageHeader';
 import { useUsersDemo } from '@/features/users/usersStoreDemo';
 import { isDemoModeEnabled } from '@/lib/env';
 import DownloadIcon from '@mui/icons-material/Download';
@@ -154,53 +155,46 @@ ${map.source.trim()}`,
 
   return (
     <Container maxWidth="xl" sx={{ py: 3, minHeight: '100vh' }}>
-      <Paper elevation={0} sx={{ p: 2, mb: 3, display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 2 }}>
-        <Box display="flex" alignItems="center" gap={2}>
-          <PersonIcon color="primary" fontSize="large" />
-          <Box>
-            <Typography variant="h5" fontWeight="bold">
-              アセスメント管理 (Iceberg Model)
-            </Typography>
-            <Typography variant="body2" color="text.secondary">
-              水面下の特性を構造化してチームで共有
-            </Typography>
-          </Box>
-        </Box>
-
-        <Box display="flex" alignItems="center" gap={2}>
-          <FormControl size="small" sx={{ minWidth: 240 }}>
-            <InputLabel id="assessment-target-label">対象者選択</InputLabel>
-            <Select
-              labelId="assessment-target-label"
-              label="対象者選択"
-              value={targetUserId}
-              onChange={(event) => setTargetUserId(event.target.value)}
-            >
-              <MenuItem value="">
-                <em>選択してください</em>
-              </MenuItem>
-              {users.map((user) => (
-                <MenuItem key={user.UserID} value={user.UserID}>
-                  {user.FullName}
+      <IBDPageHeader
+        title="アセスメント管理"
+        subtitle="水面下の特性を構造化してチームで共有"
+        icon={<PersonIcon />}
+        actions={
+          <>
+            <FormControl size="small" sx={{ minWidth: 240 }}>
+              <InputLabel id="assessment-target-label">対象者選択</InputLabel>
+              <Select
+                labelId="assessment-target-label"
+                label="対象者選択"
+                value={targetUserId}
+                onChange={(event) => setTargetUserId(event.target.value)}
+              >
+                <MenuItem value="">
+                  <em>選択してください</em>
                 </MenuItem>
-              ))}
-            </Select>
-          </FormControl>
+                {users.map((user) => (
+                  <MenuItem key={user.UserID} value={user.UserID}>
+                    {user.FullName}
+                  </MenuItem>
+                ))}
+              </Select>
+            </FormControl>
 
-          <Button
-            variant="outlined"
-            startIcon={<DownloadIcon />}
-            disabled={!formData}
-            onClick={() => setImportOpen(true)}
-          >
-            アンケート取込
-          </Button>
+            <Button
+              variant="outlined"
+              startIcon={<DownloadIcon />}
+              disabled={!formData}
+              onClick={() => setImportOpen(true)}
+            >
+              アンケート取込
+            </Button>
 
-          <Button variant="contained" startIcon={<SaveIcon />} disabled={!formData} onClick={handleSave}>
-            保存
-          </Button>
-        </Box>
-      </Paper>
+            <Button variant="contained" startIcon={<SaveIcon />} disabled={!formData} onClick={handleSave}>
+              保存
+            </Button>
+          </>
+        }
+      />
 
       {targetUserId && formData ? (
         <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
