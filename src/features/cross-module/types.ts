@@ -148,3 +148,26 @@ export interface DailySnapshotCollection {
     crossModuleIssues: number;
   };
 }
+// ========================================
+// Service Provision Snapshot Data
+// ========================================
+
+/**
+ * サービス提供実績の要約データ
+ */
+export type ServiceProvisionSummary = {
+  hasRecord: false;
+} | {
+  hasRecord: true;
+  status: string;
+  startHHMM: number | null;
+  endHHMM: number | null;
+  additions: {
+    transport: boolean;
+    meal: boolean;
+    bath: boolean;
+    extended: boolean;
+    absentSupport: boolean;
+  };
+  notePreview?: string;
+};
