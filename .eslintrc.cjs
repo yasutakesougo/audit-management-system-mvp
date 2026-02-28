@@ -66,6 +66,18 @@ module.exports = {
         ]
       }
     ],
+    // a11y: subtitle1/subtitle2 はデフォルトで <h6> を出力するため、
+    // component prop なしでの使用を禁止し heading-order 違反を防ぐ
+    // NOTE: 現在 ~180箇所が未修正のため off で待機。全修正後に warn → error へ段階昇格
+    'no-restricted-syntax': [
+      'off',
+      {
+        selector:
+          "JSXOpeningElement[name.name='Typography'][attributes.length>0]:has(JSXAttribute[name.name='variant'][value.value=/^subtitle[12]$/]):not(:has(JSXAttribute[name.name='component']))",
+        message:
+          'Typography variant="subtitle1/2" はデフォルトで <h6> を出力します。component="span" / "p" / "h3" 等を明示してください（a11y heading-order 対策）。'
+      }
+    ],
     // Phase 1: boundaries (off) - Temporarily disabled to unblock PR1-3 commit
     'boundaries/element-types': 'off'
   },

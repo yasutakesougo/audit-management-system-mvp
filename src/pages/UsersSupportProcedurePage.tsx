@@ -1,4 +1,4 @@
-import UsersBreadcrumbs from '@/features/users/components/UsersBreadcrumbs';
+﻿import UsersBreadcrumbs from '@/features/users/components/UsersBreadcrumbs';
 import Alert from '@mui/material/Alert';
 import Box from '@mui/material/Box';
 import Chip from '@mui/material/Chip';
@@ -205,7 +205,7 @@ const UsersSupportProcedurePage: FC = () => (
               const description = rest.join(':').trim();
               return (
                 <Paper variant="outlined" sx={{ p: 2 }} key={module}>
-                  <Typography variant="subtitle1" sx={{ fontWeight: 600 }}>
+                  <Typography variant="subtitle1" component="span" sx={{ fontWeight: 600 }}>
                     {title}
                   </Typography>
                   <Divider sx={{ my: 1 }} />

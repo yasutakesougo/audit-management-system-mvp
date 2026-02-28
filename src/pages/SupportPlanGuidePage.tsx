@@ -1,4 +1,4 @@
-declare global {
+﻿declare global {
   interface Window {
     __ORG_NAME__?: string;
     __ORG_ADDRESS__?: string;
@@ -804,7 +804,7 @@ const MonitoringEvidenceSection: React.FC<MonitoringEvidenceSectionProps> = ({ u
           <Stack direction="row" justifyContent="space-between" alignItems="center">
             <Stack direction="row" spacing={1} alignItems="center">
               <AutoStoriesIcon fontSize="small" color="primary" />
-              <Typography variant="subtitle2" color="primary">
+              <Typography variant="subtitle2" component="span" color="primary">
                 日次記録のエビデンス (過去60日: {evidence.count}件)
               </Typography>
             </Stack>
@@ -1789,7 +1789,7 @@ export default function SupportPlanGuidePage() {
               <TabPanel key={tab.key} current={activeTab} value={tab.key}>
                 <Stack spacing={2}>
                   {section.description ? (
-                    <Typography variant="subtitle1" sx={{ color: 'text.secondary' }}>
+                    <Typography variant="subtitle1" component="span" sx={{ color: 'text.secondary' }}>
                       {section.description}
                     </Typography>
                   ) : null}

@@ -1,4 +1,4 @@
-import CheckCircleIcon from '@mui/icons-material/CheckCircle';
+﻿import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import ContentCopyIcon from '@mui/icons-material/ContentCopy';
 import ErrorIcon from '@mui/icons-material/Error';
 import PlayArrowIcon from '@mui/icons-material/PlayArrow';
@@ -276,7 +276,7 @@ const DataIntegrityPage: React.FC = () => {
             .filter((r) => r.issues.length > 0)
             .map((r) => (
               <Box key={r.target} sx={{ mb: 3 }}>
-                <Typography variant="subtitle2" sx={{ mb: 1, color: 'warning.dark' }}>
+                <Typography variant="subtitle2" component="span" sx={{ mb: 1, color: 'warning.dark' }}>
                   {r.target} — {r.issues.length}件
                 </Typography>
                 <TableContainer component={Paper} variant="outlined">

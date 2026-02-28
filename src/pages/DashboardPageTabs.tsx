@@ -1,12 +1,14 @@
+import { TodayHandoffTimelineList, type HandoffStats } from '@/features/handoff/TodayHandoffTimelineList';
 import { useHandoffSummary } from '@/features/handoff/useHandoffSummary';
 import { useUsersStore } from '@/features/users/store';
 import { TESTIDS } from '@/testids';
 import lazyWithPreload from '@/utils/lazyWithPreload';
 import { cancelIdle, runOnIdle } from '@/utils/runOnIdle';
-import Alert from '@mui/material/Alert';
+import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import Accordion from '@mui/material/Accordion';
 import AccordionDetails from '@mui/material/AccordionDetails';
 import AccordionSummary from '@mui/material/AccordionSummary';
+import Alert from '@mui/material/Alert';
 import Box from '@mui/material/Box';
 import Button from '@mui/material/Button';
 import Chip from '@mui/material/Chip';
@@ -18,8 +20,6 @@ import Tabs from '@mui/material/Tabs';
 import Typography from '@mui/material/Typography';
 import React, { Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
-import { TodayHandoffTimelineList, type HandoffStats } from '@/features/handoff/TodayHandoffTimelineList';
 
 const WeeklySummaryChartLazy = lazyWithPreload(() => import('@/features/records/dashboard/WeeklySummaryChart'));
 
@@ -219,7 +219,7 @@ const DashboardPageTabs: React.FC = () => {
                 data-testid={TESTIDS['dashboard-briefing-summary-morning']}
               >
                 <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1} alignItems={{ xs: 'flex-start', sm: 'center' }}>
-                  <Typography variant="subtitle1" sx={{ fontWeight: 700 }}>
+                  <Typography variant="subtitle1" component="span" sx={{ fontWeight: 700 }}>
                     今日の要点
                   </Typography>
                   <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
@@ -249,7 +249,7 @@ const DashboardPageTabs: React.FC = () => {
             <Paper elevation={3} sx={{ p: 2, mb: 1.5 }}>
               <Stack spacing={2}>
                 <Stack direction="row" spacing={1} alignItems="center">
-                  <Typography variant="subtitle1" sx={{ fontWeight: 700 }}>
+                  <Typography variant="subtitle1" component="span" sx={{ fontWeight: 700 }}>
                     申し送りタイムライン（昨日）
                   </Typography>
                   <Chip size="small" label="朝会" color="primary" />
@@ -275,7 +275,7 @@ const DashboardPageTabs: React.FC = () => {
               data-testid={TESTIDS['dashboard-briefing-guide-morning']}
             >
               <AccordionSummary expandIcon={<ExpandMoreIcon />}>
-                <Typography variant="subtitle1" sx={{ fontWeight: 700 }}>
+                <Typography variant="subtitle1" component="span" sx={{ fontWeight: 700 }}>
                   進行ガイド（チェックリスト）
                 </Typography>
               </AccordionSummary>
@@ -300,7 +300,7 @@ const DashboardPageTabs: React.FC = () => {
                 data-testid={TESTIDS['dashboard-briefing-summary-evening']}
               >
                 <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1} alignItems={{ xs: 'flex-start', sm: 'center' }}>
-                  <Typography variant="subtitle1" sx={{ fontWeight: 700 }}>
+                  <Typography variant="subtitle1" component="span" sx={{ fontWeight: 700 }}>
                     今日の要点
                   </Typography>
                   <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
@@ -330,7 +330,7 @@ const DashboardPageTabs: React.FC = () => {
             <Paper elevation={3} sx={{ p: 2, mb: 1.5 }}>
               <Stack spacing={2}>
                 <Stack direction="row" spacing={1} alignItems="center">
-                  <Typography variant="subtitle1" sx={{ fontWeight: 700 }}>
+                  <Typography variant="subtitle1" component="span" sx={{ fontWeight: 700 }}>
                     申し送りタイムライン（今日）
                   </Typography>
                   <Chip size="small" label="夕会" color="secondary" />
@@ -356,7 +356,7 @@ const DashboardPageTabs: React.FC = () => {
               data-testid={TESTIDS['dashboard-briefing-guide-evening']}
             >
               <AccordionSummary expandIcon={<ExpandMoreIcon />}>
-                <Typography variant="subtitle1" sx={{ fontWeight: 700 }}>
+                <Typography variant="subtitle1" component="span" sx={{ fontWeight: 700 }}>
                   進行ガイド（チェックリスト）
                 </Typography>
               </AccordionSummary>

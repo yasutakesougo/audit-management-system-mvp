@@ -27,6 +27,13 @@ describe('Cross-Module Integration: DailyUserSnapshot', () => {
           hasIndividualSupport: true,
           hasRehabilitation: false,
         },
+        serviceProvisionData: {
+          hasRecord: true,
+          status: '提供',
+          startHHMM: 930,
+          endHHMM: 1600,
+          additions: { transport: false, meal: true, bath: false, extended: false, absentSupport: false },
+        },
       };
 
       const snapshot = buildDailyUserSnapshot(input);

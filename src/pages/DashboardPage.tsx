@@ -1,8 +1,8 @@
 import { useFeatureFlags } from '@/config/featureFlags';
 import { canAccessDashboardAudience, type DashboardAudience } from '@/features/auth/store';
-import { TESTIDS, tid } from '@/testids';
-import type { Schedule } from '@/lib/mappers';
 import { getDashboardAnchorIdByKey } from '@/features/dashboard/sections/buildSections';
+import type { Schedule } from '@/lib/mappers';
+import { TESTIDS, tid } from '@/testids';
 import AccessTimeIcon from '@mui/icons-material/AccessTime';
 import AssignmentIcon from '@mui/icons-material/Assignment';
 import DashboardIcon from '@mui/icons-material/Dashboard';
@@ -17,6 +17,8 @@ import Button from '@mui/material/Button';
 import Card from '@mui/material/Card';
 import CardContent from '@mui/material/CardContent';
 
+import { getSectionComponent, type SectionProps } from '@/features/dashboard/sections/registry';
+import { useTheme } from '@mui/material';
 import Container from '@mui/material/Container';
 import Divider from '@mui/material/Divider';
 import Grid from '@mui/material/Grid';
@@ -26,27 +28,25 @@ import ListItemText from '@mui/material/ListItemText';
 import Paper from '@mui/material/Paper';
 import Stack from '@mui/material/Stack';
 import Typography from '@mui/material/Typography';
-import { useTheme } from '@mui/material';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { useNavigate, useLocation } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { PersonDaily, SeizureRecord } from '../domain/daily/types';
-import { getSectionComponent, type SectionProps } from '@/features/dashboard/sections/registry';
 
-import { useDashboardViewModel, type DashboardSection, type DashboardSectionKey } from '@/features/dashboard/useDashboardViewModel';
-import { useDashboardSummary } from '@/features/dashboard/useDashboardSummary';
+import { useAttendanceStore } from '@/features/attendance/store';
 import DashboardBriefingHUD from '@/features/dashboard/DashboardBriefingHUD';
+import { generateTodosFromSchedule } from '@/features/dashboard/generateTodos';
 import { ZeroScrollLayout, type DashboardTab } from '@/features/dashboard/layouts/ZeroScrollLayout';
-import { UserStatusTab } from '@/features/dashboard/tabs/UserStatusTab';
 import { StaffStatusTab } from '@/features/dashboard/tabs/StaffStatusTab';
 import { TodoTab } from '@/features/dashboard/tabs/TodoTab';
-import { generateTodosFromSchedule } from '@/features/dashboard/generateTodos';
-import { useAttendanceStore } from '@/features/attendance/store';
+import { UserStatusTab } from '@/features/dashboard/tabs/UserStatusTab';
+import { useDashboardSummary } from '@/features/dashboard/useDashboardSummary';
+import { useDashboardViewModel, type DashboardSection, type DashboardSectionKey } from '@/features/dashboard/useDashboardViewModel';
+import type { AttendanceCounts } from '@/features/staff/attendance/port';
+import { getStaffAttendancePort } from '@/features/staff/attendance/storage';
 import { useStaffStore } from '@/features/staff/store';
 import type { HandoffDayScope } from '../features/handoff/handoffTypes';
 import { useHandoffSummary } from '../features/handoff/useHandoffSummary';
 import { useUsersDemo } from '../features/users/usersStoreDemo';
-import type { AttendanceCounts } from '@/features/staff/attendance/port';
-import { getStaffAttendancePort } from '@/features/staff/attendance/storage';
 import { IUserMaster } from '../sharepoint/fields';
 
 const useAttendanceCounts = (recordDate: string): AttendanceCounts => {
@@ -361,7 +361,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ audience = 'staff' }) => 
           ].map(({ label, items }) => (
             <Grid key={label} size={{ xs: 12, md: 4 }}>
               <Paper variant="outlined" sx={{ p: 2, height: '100%' }}>
-                <Typography variant="subtitle2" sx={{ fontWeight: 700, mb: 1 }}>
+                <Typography variant="subtitle2" component="span" sx={{ fontWeight: 700, mb: 1 }}>
                   {label}
                 </Typography>
                 <List dense>
@@ -518,7 +518,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ audience = 'staff' }) => 
 
     const SectionComponent = getSectionComponent(section.key);
     const props = getSectionProps(section.key, section);
-    
+
     return <SectionComponent {...props} />;
   }, [getSectionProps, vm.role]);
 
@@ -628,7 +628,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ audience = 'staff' }) => 
             const windowWidth = typeof window !== 'undefined' ? window.innerWidth : 0;
             const meetsWidth = windowWidth >= 1024;
             const isTabletLandscape = forceTablet || meetsWidth;
-            
+
             // Debug: コンソールに出力
             if (typeof window !== 'undefined') {
               console.log('[Dashboard Layout Debug]', {
@@ -642,7 +642,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ audience = 'staff' }) => 
                 'isTabletLandscape (final)': isTabletLandscape,
               });
             }
-            
+
             // Phase C-1: Zero-Scroll Layout（デフォルト有効、?zeroscroll=0 で無効化可能）
             if (forceZeroScroll) {
               // 左ペイン: 申し送りセクション
@@ -666,7 +666,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ audience = 'staff' }) => 
                 />
               );
             }
-            
+
             if (isTabletLandscape) {
               return (
                 <>

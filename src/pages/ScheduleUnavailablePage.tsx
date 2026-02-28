@@ -26,7 +26,7 @@ const ScheduleUnavailablePage = () => (
       {/* 開発者／検証者向けの案内（技術情報） - 開発環境でのみ表示 */}
       {isDev && (
         <Alert severity="info" role="status" data-testid="dev-instructions">
-          <Typography variant="subtitle2" fontWeight={600} gutterBottom>
+          <Typography variant="subtitle2" component="p" fontWeight={600} gutterBottom>
             開発・検証用メモ
           </Typography>
           <Typography variant="body2" component="p">
