@@ -89,3 +89,23 @@ export function mapSpTemplatesToStepTemplates(items: SupportTemplateItem[]): Sup
     .sort((a, b) => a.RowNo - b.RowNo)
     .map(mapSpTemplateToStepTemplate);
 }
+
+/**
+ * Domain SupportStepTemplate → SP SupportTemplateItem (逆変換)
+ * Create/Update 用。SP 側に存在しないフィールド (category, importance, etc.) は捨てる。
+ */
+export function mapStepTemplateToSpItem(
+  template: SupportStepTemplate,
+  userCode: string,
+  rowNo: number
+): Omit<SupportTemplateItem, 'Id' | 'Created' | 'Modified'> {
+  return {
+    Title: `${userCode}_${template.stepTitle}`,
+    UserCode: userCode,
+    RowNo: rowNo,
+    TimeSlot: template.timeSlot,
+    Activity: template.stepTitle,
+    PersonManual: template.targetBehavior || null,
+    SupporterManual: template.supportMethod || null,
+  };
+}

@@ -57,10 +57,11 @@ const SupportStepMasterPage: React.FC = () => {
   const { data: users } = useUsersDemo();
   const [selectedUserCode, setSelectedUserCode] = useState<string>('');
 
-  // ── SP テンプレート取得 ──
-  const { templates, spTemplates, isLoading, error } = useSupportStepTemplates(
-    selectedUserCode || null
-  );
+  // ── SP テンプレート取得 + Mutation ──
+  const {
+    templates, spTemplates, isLoading, isMutating, error,
+    createTemplate, updateTemplate, deleteTemplate,
+  } = useSupportStepTemplates(selectedUserCode || null);
 
   // ── UI state ──
   const [activeTab, setActiveTab] = useState(0);
@@ -92,47 +93,42 @@ const SupportStepMasterPage: React.FC = () => {
     setActiveTab(1);
   };
 
-  const handleDeleteTemplate = (templateId: string) => {
-    const template = templates.find((t) => t.id === templateId);
-    if (templateId.startsWith('default-') || templateId.startsWith('sp-') || template?.isDefault) {
-      setNotification({
-        open: true,
-        message: templateId.startsWith('sp-')
-          ? 'SharePoint テンプレートの削除は未対応です'
-          : 'デフォルトテンプレートは削除できません',
-        severity: 'warning',
-      });
+  const handleDeleteTemplate = async (templateId: string) => {
+    if (templateId.startsWith('default-')) {
+      setNotification({ open: true, message: 'デフォルトテンプレートは削除できません', severity: 'warning' });
       return;
     }
 
+    const ok = await deleteTemplate(templateId);
     setNotification({
       open: true,
-      message: 'テンプレートを削除しました',
-      severity: 'success',
+      message: ok ? 'テンプレートを削除しました' : 'テンプレート削除に失敗しました',
+      severity: ok ? 'success' : 'error',
     });
   };
 
-  const handleSaveTemplate = (template: SupportStepTemplate) => {
+  const handleSaveTemplate = async (template: SupportStepTemplate) => {
     if (editingTemplate) {
-      if (template.id.startsWith('default-') || template.id.startsWith('sp-') || template.isDefault) {
-        setNotification({
-          open: true,
-          message: 'このテンプレートは編集できません',
-          severity: 'warning',
-        });
+      if (template.id.startsWith('default-') || template.isDefault) {
+        setNotification({ open: true, message: 'デフォルトテンプレートは編集できません', severity: 'warning' });
         return;
       }
-
+      const ok = await updateTemplate(template);
       setNotification({
         open: true,
-        message: 'テンプレートを更新しました',
-        severity: 'success',
+        message: ok ? 'テンプレートを更新しました' : '更新に失敗しました',
+        severity: ok ? 'success' : 'error',
       });
     } else {
+      if (!selectedUserCode) {
+        setNotification({ open: true, message: '利用者を選択してください', severity: 'warning' });
+        return;
+      }
+      const ok = await createTemplate(template);
       setNotification({
         open: true,
-        message: 'テンプレートを作成しました',
-        severity: 'success',
+        message: ok ? 'テンプレートを作成しました' : '作成に失敗しました',
+        severity: ok ? 'success' : 'error',
       });
     }
 
@@ -190,6 +186,7 @@ const SupportStepMasterPage: React.FC = () => {
                 size="small"
                 startIcon={<AddIcon />}
                 onClick={handleAddTemplate}
+                disabled={isMutating}
                 data-testid="support-step-templates-add-button"
               >
                 新規作成

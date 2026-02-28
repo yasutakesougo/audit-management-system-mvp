@@ -1,8 +1,8 @@
 /**
  * SharePoint Procedure Template Repository
- * 
+ *
  * SupportTemplates リストから支援手順テンプレートを取得するリポジトリ
- * 
+ *
  * 重要: このリストの内部名には "0" サフィックスが付与されています
  * - userCode → UserCode0
  * - rowNo → RowNo0
@@ -10,11 +10,11 @@
  * - activity → Activity0
  * - personManual → PersonManual0
  * - supporterManual → SupporterManual0
- * 
+ *
  * ✅ 正しい使用例:
  * const orderby = FIELD_MAP_SUPPORT_TEMPLATES.rowNo; // 'RowNo0'
  * const filter = `${FIELD_MAP_SUPPORT_TEMPLATES.userCode} eq '${userId}'`; // 'UserCode0 eq ...'
- * 
+ *
  * ❌ 間違った使用例（500エラーになる）:
  * const orderby = 'rowNo'; // SharePoint に 'rowNo' 列は存在しない
  * const filter = `userCode eq '${userId}'`; // SharePoint に 'userCode' 列は存在しない
@@ -22,14 +22,14 @@
 
 import { createSpClient, ensureConfig } from '@/lib/spClient';
 import {
-  SUPPORT_TEMPLATES_LIST_TITLE,
-  FIELD_MAP_SUPPORT_TEMPLATES,
-  SUPPORT_TEMPLATES_SELECT_FIELDS,
+    FIELD_MAP_SUPPORT_TEMPLATES,
+    SUPPORT_TEMPLATES_LIST_TITLE,
+    SUPPORT_TEMPLATES_SELECT_FIELDS,
 } from '@/sharepoint/fields';
 
 /**
  * Support Template Item (Domain Model)
- * 
+ *
  * ドメインモデルのプロパティ名は SharePoint の内部名と異なります。
  * SharePoint の内部名には "0" サフィックスが付与されています：
  * - UserCode → UserCode0 (SharePoint 内部名)
@@ -38,13 +38,13 @@ import {
  * - Activity → Activity0 (SharePoint 内部名)
  * - PersonManual → PersonManual0 (SharePoint 内部名)
  * - SupporterManual → SupporterManual0 (SharePoint 内部名)
- * 
+ *
  * マッピングは FIELD_MAP_SUPPORT_TEMPLATES を使用して行われます。
- * 
+ *
  * @example
  * // SharePoint API レスポンス
  * { "Id": 1, "UserCode0": "I001", "RowNo0": 1, "TimeSlot0": "09:30-10:30" }
- * 
+ *
  * // ドメインモデル（このtype）
  * { Id: 1, UserCode: "I001", RowNo: 1, TimeSlot: "09:30-10:30" }
  */
@@ -68,7 +68,7 @@ type SharePointTemplateRow = Record<string, unknown> & { Id?: number };
  */
 const toSupportTemplate = (row: SharePointTemplateRow): SupportTemplateItem | null => {
   const fields = FIELD_MAP_SUPPORT_TEMPLATES;
-  
+
   const id = row[fields.id];
   const title = row[fields.title];
   const userCode = row[fields.userCode];
@@ -98,12 +98,12 @@ const toSupportTemplate = (row: SharePointTemplateRow): SupportTemplateItem | nu
 
 /**
  * 指定ユーザーの支援手順テンプレートを取得
- * 
+ *
  * @param client SharePoint client
  * @param userCode ユーザーコード (e.g., 'I001')
  * @param listTitle リスト名（デフォルト: SupportTemplates）
  * @returns SupportTemplateItem[]
- * 
+ *
  * @example
  * const templates = await getTemplatesByUser(client, 'I001');
  * // SELECT UserCode0, RowNo0, TimeSlot0, Activity0, PersonManual0, SupporterManual0
@@ -116,7 +116,7 @@ export async function getTemplatesByUser(
   listTitle: string = SUPPORT_TEMPLATES_LIST_TITLE
 ): Promise<SupportTemplateItem[]> {
   const fields = FIELD_MAP_SUPPORT_TEMPLATES;
-  
+
   // ✅ 正しい使い方: FIELD_MAP経由で内部名を取得
   const select = [...SUPPORT_TEMPLATES_SELECT_FIELDS];
   const filter = `${fields.userCode} eq '${escapeSingleQuotes(userCode)}'`; // UserCode0 eq 'I001'
@@ -136,7 +136,7 @@ export async function getTemplatesByUser(
 
 /**
  * すべての支援手順テンプレートを取得
- * 
+ *
  * @param client SharePoint client
  * @param listTitle リスト名（デフォルト: SupportTemplates）
  * @returns SupportTemplateItem[]
@@ -146,7 +146,7 @@ export async function getAllTemplates(
   listTitle: string = SUPPORT_TEMPLATES_LIST_TITLE
 ): Promise<SupportTemplateItem[]> {
   const fields = FIELD_MAP_SUPPORT_TEMPLATES;
-  
+
   const select = [...SUPPORT_TEMPLATES_SELECT_FIELDS];
   const orderby = `${fields.userCode} asc,${fields.rowNo} asc`; // UserCode0 asc, RowNo0 asc
 
@@ -170,17 +170,53 @@ function escapeSingleQuotes(value: string): string {
 }
 
 /**
+ * Domain → SharePoint body 変換
+ */
+function toSpBody(item: Partial<SupportTemplateItem>): Record<string, unknown> {
+  const fields = FIELD_MAP_SUPPORT_TEMPLATES;
+  const body: Record<string, unknown> = {};
+  if (item.Title !== undefined) body[fields.title] = item.Title;
+  if (item.UserCode !== undefined) body[fields.userCode] = item.UserCode;
+  if (item.RowNo !== undefined) body[fields.rowNo] = item.RowNo;
+  if (item.TimeSlot !== undefined) body[fields.timeSlot] = item.TimeSlot;
+  if (item.Activity !== undefined) body[fields.activity] = item.Activity;
+  if (item.PersonManual !== undefined) body[fields.personManual] = item.PersonManual ?? '';
+  if (item.SupporterManual !== undefined) body[fields.supporterManual] = item.SupporterManual ?? '';
+  return body;
+}
+
+/**
  * デフォルトクライアントでのヘルパー（認証付き）
  */
 export function createSupportTemplateRepository(
   acquireToken: () => Promise<string | null>
 ) {
   const client = createSpClient(acquireToken, ensureConfig().baseUrl);
+  const listTitle = SUPPORT_TEMPLATES_LIST_TITLE;
 
   return {
-    getTemplatesByUser: (userCode: string, listTitle?: string) =>
-      getTemplatesByUser(client, userCode, listTitle),
-    getAllTemplates: (listTitle?: string) =>
-      getAllTemplates(client, listTitle),
+    getTemplatesByUser: (userCode: string, lt?: string) =>
+      getTemplatesByUser(client, userCode, lt ?? listTitle),
+
+    getAllTemplates: (lt?: string) =>
+      getAllTemplates(client, lt ?? listTitle),
+
+    /** 新規テンプレートをSPに作成 */
+    createTemplate: async (item: Omit<SupportTemplateItem, 'Id' | 'Created' | 'Modified'>): Promise<SupportTemplateItem> => {
+      const body = toSpBody(item);
+      const result = await client.addListItemByTitle<Record<string, unknown>, SharePointTemplateRow>(listTitle, body);
+      return toSupportTemplate(result) ?? { ...item, Id: undefined };
+    },
+
+    /** 既存テンプレートを更新 */
+    updateTemplate: async (id: number, item: Partial<SupportTemplateItem>): Promise<void> => {
+      const body = toSpBody(item);
+      await client.updateItemByTitle(listTitle, id, body);
+    },
+
+    /** テンプレートを削除 */
+    deleteTemplate: async (id: number): Promise<void> => {
+      await client.deleteItemByTitle(listTitle, id);
+    },
   };
 }
