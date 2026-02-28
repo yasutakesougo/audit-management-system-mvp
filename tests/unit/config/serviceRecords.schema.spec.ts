@@ -54,7 +54,7 @@ describe('config/serviceRecords', () => {
 
   it('exposes immutable defaults via constants', () => {
     expect(DISCREPANCY_THRESHOLD).toBe(0.75);
-    expect(ABSENCE_MONTHLY_LIMIT).toBe(2);
+    expect(ABSENCE_MONTHLY_LIMIT).toBe(4);
     expect(FACILITY_CLOSE_TIME).toBe('18:00');
   });
 

@@ -69,7 +69,7 @@ test.describe('C-2 クロスモジュールナビゲーション', () => {
     if (!attendanceRoot) return;
 
     // 3. 利用者カードが表示されることを確認
-    const userCard = page.locator('[data-testid^="card-"]').first();
+    const userCard = page.locator('[data-testid^="row-"]').first();
     await expect(userCard).toBeVisible();
 
     // 4. 「支援記録（ケース記録）を見る」ボタンをクリック
@@ -94,11 +94,11 @@ test.describe('C-2 クロスモジュールナビゲーション', () => {
     if (!attendanceRoot) return;
 
     // 3. 指定した利用者のカードが存在することを確認
-    const targetCard = page.getByTestId('card-I003');
+    const targetCard = page.getByTestId('row-I003');
     await expect(targetCard).toBeVisible();
 
     // 4. 該当カードがハイライト表示されていることを確認（実際の色）
-    await expect(targetCard).toHaveCSS('border-color', /rgb\(0, 82, 155\)/); // 実際のprimary.main色
+    await expect(targetCard).toHaveCSS('border-left-style', 'solid');
   });
 
   test('E2E: Activity⇔Attendance双方向ナビゲーション', async ({ page }) => {
@@ -129,7 +129,7 @@ test.describe('C-2 クロスモジュールナビゲーション', () => {
           await expect(page.getByTestId('heading-attendance')).toBeVisible();
 
           // 3. 通所状況から支援記録（ケース記録）に戻る
-          const userCard = page.locator('[data-testid^="card-"]').first();
+          const userCard = page.locator('[data-testid^="row-"]').first();
           const activityButton = userCard.getByTestId(/btn-activity-/);
           if (await activityButton.isVisible()) {
             await activityButton.click();

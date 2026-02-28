@@ -5,6 +5,7 @@
  * テスト可能性とコンポーネント間の再利用性を向上。
  */
 import { ABSENCE_MONTHLY_LIMIT, FACILITY_CLOSE_TIME } from '@/config/serviceRecords';
+import type { AbsentSupportLog } from '@/features/service-provision/domain/absentSupportLog';
 import type { TransportMethod } from './transportMethod';
 
 export type AttendanceUser = {
@@ -52,6 +53,9 @@ export type AttendanceVisit = {
 
   isAbsenceAddonClaimable: boolean;
 
+  // 欠席時対応ログ（AbsentSupportLog を統合 — 制度要件補完用）
+  absentSupport?: AbsentSupportLog;
+
   providedMinutes: number;
 
   userConfirmedAt?: string;
@@ -90,6 +94,7 @@ export function buildAbsentVisit(
     eveningChecked: boolean;
     eveningNote: string;
     eligible: boolean;
+    absentSupport?: AbsentSupportLog;
   },
 ): AttendanceVisit {
   return {
@@ -106,6 +111,7 @@ export function buildAbsentVisit(
     eveningChecked: params.eveningChecked,
     eveningNote: params.eveningNote,
     isAbsenceAddonClaimable: params.eligible,
+    absentSupport: params.absentSupport,
     providedMinutes: 0,
     userConfirmedAt: undefined,
     isEarlyLeave: false,

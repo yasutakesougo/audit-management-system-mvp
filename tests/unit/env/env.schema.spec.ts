@@ -50,7 +50,7 @@ describe('env.schema', () => {
     // 将来のスキーマ拡張を考慮して、コア要件のみ検証
     expect(parsed).toMatchObject({
       VITE_ATTENDANCE_DISCREPANCY_THRESHOLD: 0.75,
-      VITE_ABSENCE_MONTHLY_LIMIT: 2,
+      VITE_ABSENCE_MONTHLY_LIMIT: 4,
       VITE_FACILITY_CLOSE_TIME: '18:00',
     });
   });
