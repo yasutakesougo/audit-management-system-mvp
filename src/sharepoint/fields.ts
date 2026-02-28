@@ -1,4 +1,3 @@
-import { readOptionalEnv } from '@/lib/env';
 import type { SpDailyItem, SpScheduleItem, SpStaffItem, SpUserItem } from '@/types';
 
 // SharePoint フィールド定義（暫定安全セット）
@@ -12,7 +11,7 @@ export type DailyRow = SpDailyItem;
 // Service Provision Records (SharePoint list: ServiceProvisionRecords)
 // ──────────────────────────────────────────────────────────────
 
-export const SERVICE_PROVISION_LIST_TITLE = readOptionalEnv('VITE_SP_LIST_SERVICE_PROVISION') ?? 'ServiceProvisionRecords';
+export const SERVICE_PROVISION_LIST_TITLE = 'ServiceProvisionRecords' as const;
 
 export const SERVICE_PROVISION_FIELDS = {
   id: 'Id',
@@ -65,7 +64,7 @@ export const SERVICE_PROVISION_SELECT_FIELDS = [
 // Internal names confirmed: OrgCode / OrgType / Audience / SortOrder / IsActive / Notes
 // ──────────────────────────────────────────────────────────────
 
-export const ORG_MASTER_LIST_TITLE = readOptionalEnv('VITE_SP_LIST_ORG_MASTER') ?? 'Org_Master';
+export const ORG_MASTER_LIST_TITLE = 'Org_Master' as const;
 
 export const ORG_MASTER_FIELDS = {
   id: 'Id',
@@ -93,7 +92,7 @@ export const ORG_MASTER_SELECT_FIELDS = [
 // Staff attendance (SharePoint list: Staff_Attendance)
 // ──────────────────────────────────────────────────────────────
 
-export const STAFF_ATTENDANCE_LIST_TITLE = readOptionalEnv('VITE_SP_LIST_STAFF_ATTENDANCE') ?? 'Staff_Attendance';
+export const STAFF_ATTENDANCE_LIST_TITLE = 'Staff_Attendance' as const;
 
 export const STAFF_ATTENDANCE_FIELDS = {
   id: 'Id',
@@ -129,7 +128,7 @@ export const STAFF_ATTENDANCE_SELECT_FIELDS = [
 // User Attendance Users (SharePoint list: AttendanceUsers)
 // ──────────────────────────────────────────────────────────────
 
-export const ATTENDANCE_USERS_LIST_TITLE = readOptionalEnv('VITE_SP_LIST_ATTENDANCE_USERS') ?? 'AttendanceUsers';
+export const ATTENDANCE_USERS_LIST_TITLE = 'AttendanceUsers' as const;
 
 export const ATTENDANCE_USERS_FIELDS = {
   id: 'Id',
@@ -159,7 +158,7 @@ export const ATTENDANCE_USERS_SELECT_FIELDS = [
 // User Attendance Daily (SharePoint list: AttendanceDaily)
 // ──────────────────────────────────────────────────────────────
 
-export const ATTENDANCE_DAILY_LIST_TITLE = readOptionalEnv('VITE_SP_LIST_ATTENDANCE_DAILY') ?? 'AttendanceDaily';
+export const ATTENDANCE_DAILY_LIST_TITLE = 'AttendanceDaily' as const;
 
 export const ATTENDANCE_DAILY_FIELDS = {
   id: 'Id',
@@ -187,6 +186,15 @@ export const ATTENDANCE_DAILY_FIELDS = {
   transportFromMethod: 'TransportFromMethod',
   transportToNote: 'TransportToNote',
   transportFromNote: 'TransportFromNote',
+
+  // Absent support fields (optional - require SP column creation)
+  // Not in SELECT to avoid 400 on envs without these columns
+  absentContactTimestamp: 'AbsentContactTimestamp',
+  absentReason: 'AbsentReason',
+  absentContactorType: 'AbsentContactorType',
+  absentSupportContent: 'AbsentSupportContent',
+  nextScheduledDate: 'NextScheduledDate',
+  staffInChargeId: 'StaffInChargeId',
 } as const;
 
 export const ATTENDANCE_DAILY_SELECT_FIELDS = [
@@ -215,7 +223,7 @@ export const ATTENDANCE_DAILY_SELECT_FIELDS = [
 // Meeting Minutes (SharePoint list: MeetingMinutes)
 // ──────────────────────────────────────────────────────────────
 
-export const MEETING_MINUTES_LIST_TITLE = readOptionalEnv('VITE_SP_LIST_MEETING_MINUTES') ?? 'MeetingMinutes';
+export const MEETING_MINUTES_LIST_TITLE = 'MeetingMinutes' as const;
 
 export const MEETING_MINUTES_FIELDS = {
   id: 'Id',
@@ -559,7 +567,7 @@ export const FIELD_MAP_ICEBERG_PDCA = {
 // - 例: reportLink: 'Report_x0020_Link' と変更すれば全コード自動対応
 // ──────────────────────────────────────────────────────────────
 
-export const DIAGNOSTICS_REPORTS_LIST_TITLE = readOptionalEnv('VITE_SP_LIST_DIAGNOSTICS_REPORTS') ?? 'Diagnostics_Reports';
+export const DIAGNOSTICS_REPORTS_LIST_TITLE = 'Diagnostics_Reports' as const;
 
 /**
  * Diagnostics_Reports リスト用フィールド定義（内部名マップ）
@@ -643,7 +651,6 @@ export const ICEBERG_PDCA_SELECT_FIELDS = [
 ] as const;
 
 export const FIELD_MAP_SURVEY_TOKUSEI = {
-  // -- 基本情報 --
   id: 'Id',
   responseId: 'ResponseId',
   responderEmail: 'ResponderEmail',
@@ -717,7 +724,7 @@ export const FIELD_MAP_SURVEY_TOKUSEI_ALL = {
 // 注意：内部名には "0" サフィックスが付与されている (UserCode0, RowNo0, etc.)
 // ──────────────────────────────────────────────────────────────
 
-export const SUPPORT_TEMPLATES_LIST_TITLE = readOptionalEnv('VITE_SP_LIST_SUPPORT_TEMPLATES') ?? 'SupportTemplates';
+export const SUPPORT_TEMPLATES_LIST_TITLE = 'SupportTemplates' as const;
 
 /**
  * SupportTemplates リスト用フィールド定義（内部名マップ）
@@ -768,16 +775,18 @@ export const SUPPORT_TEMPLATES_SELECT_FIELDS = [
   FIELD_MAP_SUPPORT_TEMPLATES.modified,
 ] as const;
 
-// Exclude aggregate-only fields that have no physical SP column.
-// Basic fields (ResponseId, GuardianName, etc.) were added via P1 provisioning.
-const AGGREGATE_ONLY_KEYS: ReadonlySet<string> = new Set([
-  'personality',      // Adapter 層で RelationalDifficulties + SituationalUnderstanding から生成
-  'sensoryFeatures',  // Adapter 層で 5感列 + SensoryFreeText から生成
-  'behaviorFeatures', // Adapter 層で こだわり + コミュニケーション + 行動列から生成
-]);
-
+// Exclude fields we know are missing based on 400 error cascade; allow others
 export const SURVEY_TOKUSEI_SELECT_FIELDS: readonly string[] = Object.entries(FIELD_MAP_SURVEY_TOKUSEI)
-  .filter(([key]) => !AGGREGATE_ONLY_KEYS.has(key))
+  .filter(([key]) =>
+    key !== 'responseId' &&
+    key !== 'guardianName' &&
+    key !== 'relation' &&
+    key !== 'heightCm' &&
+    key !== 'weightKg' &&
+    key !== 'personality' &&
+    key !== 'sensoryFeatures' &&
+    key !== 'behaviorFeatures'
+  )
   .map(([, value]) => value);
 /**
  * 動的に "存在する列だけ" を select フィールドに含める

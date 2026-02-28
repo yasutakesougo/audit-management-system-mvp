@@ -36,6 +36,8 @@ export interface AbsentSupportLog {
   // 共通
   /** 次回利用予定日（YYYY-MM-DD） */
   nextPlannedDate: string;
+  /** 対応職員ID（Staff_Master.StaffId 形式） */
+  staffInChargeId?: string;
 }
 
 // ─── 空ログ ─────────────────────────────────────────────
@@ -50,6 +52,7 @@ export const EMPTY_ABSENT_LOG: AbsentSupportLog = {
   followUpContent: '',
   followUpResult: '実施',
   nextPlannedDate: '',
+  staffInChargeId: '',
 };
 
 // ─── Note フォーマッタ ─────────────────────────────────

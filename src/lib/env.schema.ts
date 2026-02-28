@@ -83,19 +83,6 @@ export const envSchema = z.object({
   VITE_SP_HANDOFF_LIST_TITLE: z.string().optional().default('Handoff'),
   VITE_SP_HANDOFF_LIST_ID: z.string().optional(),
   VITE_SCHEDULES_LIST_TITLE: z.string().optional().default('Schedules'),
-
-  // SharePoint List Identifiers (Phase 2: centralized config)
-  VITE_SP_LIST_ORG_MASTER: z.string().optional().default('Org_Master'),
-  VITE_SP_LIST_ATTENDANCE_USERS: z.string().optional().default('AttendanceUsers'),
-  VITE_SP_LIST_ATTENDANCE_DAILY: z.string().optional().default('AttendanceDaily'),
-  VITE_SP_LIST_MEETING_MINUTES: z.string().optional().default('MeetingMinutes'),
-  VITE_SP_LIST_SUPPORT_TEMPLATES: z.string().optional().default('SupportTemplates'),
-  VITE_SP_LIST_DAILY_ACTIVITY_RECORDS: z.string().optional().default('DailyActivityRecords'),
-  VITE_SP_LIST_ICEBERG_PDCA: z.string().optional().default('Iceberg_PDCA'),
-  VITE_SP_LIST_DIAGNOSTICS_REPORTS: z.string().optional().default('Diagnostics_Reports'),
-  VITE_SP_LIST_OFFICIAL_FORMS: z.string().optional().default('OfficialForms'),
-  VITE_SP_LIST_SERVICE_PROVISION: z.string().optional().default('ServiceProvisionRecords'),
-  VITE_SP_LIST_SURVEY_TOKUSEI: z.string().optional().default('FormsResponses_Tokusei'),
   VITE_SP_TENANT: z.string().optional(),
   VITE_SP_SITE: z.string().optional(),
   VITE_SP_SITE_URL: z.string().optional(), // Legacy support
@@ -165,7 +152,7 @@ export const envSchema = z.object({
   VITE_ATTENDANCE_DISCREPANCY_THRESHOLD: zFloatFromString(0.75).superRefine((v, ctx) => {
     if (v <= 0) ctx.addIssue({ code: 'too_small' as const, minimum: 0, inclusive: false, type: 'number', message: 'Discrepancy threshold must be positive' } as unknown as Parameters<typeof ctx.addIssue>[0]);
   }),
-  VITE_ABSENCE_MONTHLY_LIMIT: zIntFromString(2).superRefine((v, ctx) => {
+  VITE_ABSENCE_MONTHLY_LIMIT: zIntFromString(4).superRefine((v, ctx) => {
     if (!Number.isInteger(v)) ctx.addIssue({ code: 'invalid_type' as const, expected: 'integer', received: 'float', message: 'Absence monthly limit must be an integer' });
   }),
   VITE_FACILITY_CLOSE_TIME: z.string().optional().default('18:00').superRefine((v, ctx) => {

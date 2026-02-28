@@ -426,16 +426,17 @@ const AttendanceRecordPage: React.FC<AttendanceRecordPageProps> = ({ 'data-testi
           disablePadding
           data-testid={`row-${user.userCode}`}
           secondaryAction={
-            <Stack direction="row" spacing={0.5} alignItems="center">
+            <Stack direction="row" spacing={{ xs: 3, sm: 2 }} alignItems="center">
               {/* 通所 */}
               <Tooltip title={disableCheckIn ? '通所済み/欠席' : '通所'}>
                 <span>
                   <IconButton
-                    size="small"
+                    size="medium"
                     color="primary"
                     disabled={disableCheckIn}
                     data-testid={`btn-checkin-${user.userCode}`}
                     onClick={(e) => { e.stopPropagation(); handleCheckIn(user); }}
+                    sx={{ minWidth: 48, minHeight: 48 }}
                   >
                     <LoginIcon fontSize="small" />
                   </IconButton>
@@ -446,11 +447,12 @@ const AttendanceRecordPage: React.FC<AttendanceRecordPageProps> = ({ 'data-testi
               <Tooltip title={disableCheckOut ? '通所後に退所可能' : '退所'}>
                 <span>
                   <IconButton
-                    size="small"
+                    size="medium"
                     color="success"
                     disabled={disableCheckOut}
                     data-testid={`btn-checkout-${user.userCode}`}
                     onClick={(e) => { e.stopPropagation(); handleCheckOut(user); }}
+                    sx={{ minWidth: 48, minHeight: 48 }}
                   >
                     <LogoutIcon fontSize="small" />
                   </IconButton>
@@ -461,7 +463,7 @@ const AttendanceRecordPage: React.FC<AttendanceRecordPageProps> = ({ 'data-testi
               <Tooltip title={disableAbsence ? '通所後は欠席不可' : '欠席'}>
                 <span>
                   <IconButton
-                    size="small"
+                    size="medium"
                     color="warning"
                     disabled={disableAbsence}
                     data-testid={`btn-absence-${user.userCode}`}
@@ -470,6 +472,7 @@ const AttendanceRecordPage: React.FC<AttendanceRecordPageProps> = ({ 'data-testi
                       if (!disableAbsence) warmDataEntryComponents();
                       openAbsenceDialog(user);
                     }}
+                    sx={{ minWidth: 48, minHeight: 48 }}
                   >
                     <AbsenceIcon fontSize="small" />
                   </IconButton>
@@ -484,13 +487,14 @@ const AttendanceRecordPage: React.FC<AttendanceRecordPageProps> = ({ 'data-testi
                     : '利用者確認'
                 }
               >
-                <span>
+                <span style={{ marginLeft: 8 }}>
                   <IconButton
-                    size="small"
+                    size="medium"
                     color="success"
                     disabled={confirmDisabledFinal}
                     data-testid={`btn-confirm-${user.userCode}`}
                     onClick={(e) => { e.stopPropagation(); handleUserConfirm(user); }}
+                    sx={{ minWidth: 48, minHeight: 48 }}
                   >
                     <CheckIcon fontSize="small" />
                   </IconButton>
@@ -517,7 +521,7 @@ const AttendanceRecordPage: React.FC<AttendanceRecordPageProps> = ({ 'data-testi
         >
           <ListItemButton
             onClick={() => toggleExpanded(user.userCode)}
-            sx={{ minHeight: 48, pr: 26 }}
+            sx={{ minHeight: 48, pr: 38 }}
           >
             <Stack direction="row" spacing={1} alignItems="center" sx={{ width: '100%', minWidth: 0 }}>
               <Typography noWrap sx={{ fontWeight: 700, minWidth: 0, flex: 1 }}>

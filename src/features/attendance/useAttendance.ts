@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 
+import type { AbsentSupportLog } from '@/features/service-provision/domain/absentSupportLog';
 import type { IUserMaster } from '@/features/users/types';
 
 import type { AttendanceDailyItem } from './infra/attendanceDailyRepository';
@@ -8,6 +9,38 @@ import { methodImpliesShuttle } from './transportMethod';
 import type { AttendanceFilter, AttendanceHookStatus, AttendanceRowVM } from './types';
 
 const todayIso = (): string => new Date().toISOString().split('T')[0];
+
+/**
+ * SP フラット列 → AbsentSupportLog 埋め込み型へ変換
+ * いずれかの欠席対応フィールドに値がある場合のみログを構築する。
+ */
+const buildAbsentSupportFromItem = (
+  item: AttendanceDailyItem,
+): AbsentSupportLog | undefined => {
+  // 1つでも値があるか判定
+  const hasAny =
+    item.AbsentContactTimestamp ||
+    item.AbsentReason ||
+    item.AbsentContactorType ||
+    item.AbsentSupportContent ||
+    item.NextScheduledDate ||
+    item.StaffInChargeId;
+
+  if (!hasAny) return undefined;
+
+  return {
+    contactDateTime: item.AbsentContactTimestamp ?? '',
+    contactPerson: item.AbsentContactorType ?? '',
+    absenceReason: item.AbsentReason ?? '',
+    supportContent: item.AbsentSupportContent ?? '',
+    followUpDateTime: '',
+    followUpTarget: '',
+    followUpContent: '',
+    followUpResult: '実施',
+    nextPlannedDate: item.NextScheduledDate ?? '',
+    staffInChargeId: item.StaffInChargeId ?? '',
+  };
+};
 
 const buildBaseVisit = (userCode: string, date: string): AttendanceRowVM => ({
   Id: -1,
@@ -66,6 +99,8 @@ const toVisit = (item: AttendanceDailyItem): AttendanceRowVM => ({
   userConfirmedAt: item.UserConfirmedAt ?? undefined,
   checkInAt: item.CheckInAt ?? undefined,
   checkOutAt: item.CheckOutAt ?? undefined,
+  // AbsentSupportLog 統合: SP フラット列 → 埋め込み型
+  absentSupport: buildAbsentSupportFromItem(item),
 });
 
 const toDailyItem = (row: AttendanceRowVM, date: string): AttendanceDailyItem => ({
@@ -95,6 +130,13 @@ const toDailyItem = (row: AttendanceRowVM, date: string): AttendanceDailyItem =>
   EveningChecked: row.eveningChecked,
   EveningNote: row.eveningNote,
   IsAbsenceAddonClaimable: row.isAbsenceAddonClaimable,
+  // AbsentSupportLog → SP フラット列
+  AbsentContactTimestamp: row.absentSupport?.contactDateTime || undefined,
+  AbsentReason: row.absentSupport?.absenceReason || undefined,
+  AbsentContactorType: row.absentSupport?.contactPerson || undefined,
+  AbsentSupportContent: row.absentSupport?.supportContent || undefined,
+  NextScheduledDate: row.absentSupport?.nextPlannedDate || undefined,
+  StaffInChargeId: row.absentSupport?.staffInChargeId || undefined,
 });
 
 const mergeRows = (

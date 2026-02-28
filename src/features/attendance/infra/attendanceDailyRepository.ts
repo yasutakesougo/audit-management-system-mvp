@@ -39,6 +39,14 @@ export type AttendanceDailyItem = {
   TransportFromMethod?: TransportMethod;
   TransportToNote?: string;
   TransportFromNote?: string;
+
+  // Absent support fields (optional - require SP column creation)
+  AbsentContactTimestamp?: string;
+  AbsentReason?: string;
+  AbsentContactorType?: string;
+  AbsentSupportContent?: string;
+  NextScheduledDate?: string;
+  StaffInChargeId?: string;
 };
 
 type SharePointDailyRow = Record<string, unknown> & { Id?: number };
@@ -87,6 +95,14 @@ const toAttendanceDaily = (row: SharePointDailyRow): AttendanceDailyItem | null 
     TransportFromMethod: parseTransportMethod(row[ATTENDANCE_DAILY_FIELDS.transportFromMethod]),
     TransportToNote: getString(row[ATTENDANCE_DAILY_FIELDS.transportToNote]) ?? undefined,
     TransportFromNote: getString(row[ATTENDANCE_DAILY_FIELDS.transportFromNote]) ?? undefined,
+
+    // Absent support (optional - may not exist in SP yet)
+    AbsentContactTimestamp: getString(row[ATTENDANCE_DAILY_FIELDS.absentContactTimestamp]) ?? undefined,
+    AbsentReason: getString(row[ATTENDANCE_DAILY_FIELDS.absentReason]) ?? undefined,
+    AbsentContactorType: getString(row[ATTENDANCE_DAILY_FIELDS.absentContactorType]) ?? undefined,
+    AbsentSupportContent: getString(row[ATTENDANCE_DAILY_FIELDS.absentSupportContent]) ?? undefined,
+    NextScheduledDate: getString(row[ATTENDANCE_DAILY_FIELDS.nextScheduledDate]) ?? undefined,
+    StaffInChargeId: getString(row[ATTENDANCE_DAILY_FIELDS.staffInChargeId]) ?? undefined,
   };
 };
 
@@ -126,6 +142,14 @@ const toSpPayload = (item: AttendanceDailyItem): Record<string, unknown> => {
     [ATTENDANCE_DAILY_FIELDS.transportFromMethod]: item.TransportFromMethod,
     [ATTENDANCE_DAILY_FIELDS.transportToNote]: item.TransportToNote,
     [ATTENDANCE_DAILY_FIELDS.transportFromNote]: item.TransportFromNote,
+
+    // Absent support (written to SP only when present)
+    [ATTENDANCE_DAILY_FIELDS.absentContactTimestamp]: item.AbsentContactTimestamp,
+    [ATTENDANCE_DAILY_FIELDS.absentReason]: item.AbsentReason,
+    [ATTENDANCE_DAILY_FIELDS.absentContactorType]: item.AbsentContactorType,
+    [ATTENDANCE_DAILY_FIELDS.absentSupportContent]: item.AbsentSupportContent,
+    [ATTENDANCE_DAILY_FIELDS.nextScheduledDate]: item.NextScheduledDate,
+    [ATTENDANCE_DAILY_FIELDS.staffInChargeId]: item.StaffInChargeId,
   });
 };
 
