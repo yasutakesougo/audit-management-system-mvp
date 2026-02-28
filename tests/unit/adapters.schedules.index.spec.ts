@@ -4,14 +4,23 @@ import { mapSchedule } from '@/lib/mappers';
 import { SCHEDULE_FIELD_END, SCHEDULE_FIELD_START, type ScheduleRow } from '@/sharepoint/fields';
 import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 
-const isDemoModeEnabled = vi.fn();
-const allowWriteFallback = vi.fn();
-
-const sharepointList = vi.fn();
-const sharepointCreate = vi.fn();
-const sharepointUpdate = vi.fn();
-const sharepointRemove = vi.fn();
-const sharepointCheckConflicts = vi.fn();
+const {
+  isDemoModeEnabled,
+  allowWriteFallback,
+  sharepointList,
+  sharepointCreate,
+  sharepointUpdate,
+  sharepointRemove,
+  sharepointCheckConflicts,
+} = vi.hoisted(() => ({
+  isDemoModeEnabled: vi.fn(),
+  allowWriteFallback: vi.fn(),
+  sharepointList: vi.fn(),
+  sharepointCreate: vi.fn(),
+  sharepointUpdate: vi.fn(),
+  sharepointRemove: vi.fn(),
+  sharepointCheckConflicts: vi.fn(),
+}));
 
 vi.mock('@/lib/env', async () => {
   const actual = await vi.importActual<typeof import('@/lib/env')>('@/lib/env');
