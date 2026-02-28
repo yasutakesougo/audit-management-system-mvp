@@ -1,12 +1,18 @@
 import DirectionsCarIcon from '@mui/icons-material/DirectionsCar';
 import MoreHorizIcon from '@mui/icons-material/MoreHoriz';
 import { Box, Button, Chip, IconButton, Typography } from '@mui/material';
-import React from 'react';
+
+import {
+    TRANSPORT_METHOD_LABEL,
+    resolveToMethod,
+    type TransportMethod,
+} from '../transportMethod';
 
 export type AttendanceRowUser = {
   id: string;
   name: string;
   needsTransport?: boolean;
+  defaultTransportToMethod?: TransportMethod;
 };
 
 export type AttendanceRowVisit = {
@@ -14,6 +20,8 @@ export type AttendanceRowVisit = {
   checkInAtText?: string;
   checkOutAtText?: string;
   rangeText?: string;
+  transportTo?: boolean;
+  transportToMethod?: TransportMethod;
 };
 
 export type AttendanceRowProps = {
@@ -70,9 +78,29 @@ export function AttendanceRow({
         {visit.status === '当日欠席' ? (
           <Chip label="欠席" size="small" variant="outlined" />
         ) : null}
-        {user.needsTransport ? (
-          <Chip icon={<DirectionsCarIcon />} label="送迎" size="small" variant="outlined" />
-        ) : null}
+        {(() => {
+          const method = resolveToMethod(
+            {
+              isTransportTarget: user.needsTransport ?? false,
+              defaultTransportToMethod: user.defaultTransportToMethod,
+            },
+            visit.transportTo !== undefined || visit.transportToMethod
+              ? {
+                  transportTo: visit.transportTo ?? false,
+                  transportFrom: false,
+                  transportToMethod: visit.transportToMethod,
+                }
+              : undefined,
+          );
+          return method !== 'self' ? (
+            <Chip
+              icon={<DirectionsCarIcon />}
+              label={TRANSPORT_METHOD_LABEL[method]}
+              size="small"
+              variant="outlined"
+            />
+          ) : null;
+        })()}
       </Box>
 
       <Box sx={{ display: 'flex', gap: 1 }}>

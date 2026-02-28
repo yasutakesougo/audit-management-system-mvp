@@ -11,6 +11,7 @@ import {
     ATTENDANCE_USERS_LIST_TITLE,
     ATTENDANCE_USERS_SELECT_FIELDS
 } from '@/sharepoint/fields';
+import { parseTransportMethod, type TransportMethod } from '../transportMethod';
 
 export type AttendanceUserItem = {
   Id?: number;
@@ -19,6 +20,12 @@ export type AttendanceUserItem = {
   IsTransportTarget: boolean;
   StandardMinutes: number;
   IsActive: boolean;
+
+  // Transport method defaults (optional - migration)
+  DefaultTransportToMethod?: TransportMethod;
+  DefaultTransportFromMethod?: TransportMethod;
+  DefaultTransportToNote?: string;
+  DefaultTransportFromNote?: string;
 };
 
 type SharePointUserRow = Record<string, unknown> & { Id?: number };
@@ -39,6 +46,16 @@ const toAttendanceUser = (row: SharePointUserRow): AttendanceUserItem | null => 
     IsTransportTarget: Boolean(isTransportTarget),
     StandardMinutes: typeof standardMinutes === 'number' ? standardMinutes : 0,
     IsActive: Boolean(isActive),
+
+    // Transport method defaults (optional - may not exist in SP yet)
+    DefaultTransportToMethod: parseTransportMethod(row[ATTENDANCE_USERS_FIELDS.defaultTransportToMethod]),
+    DefaultTransportFromMethod: parseTransportMethod(row[ATTENDANCE_USERS_FIELDS.defaultTransportFromMethod]),
+    DefaultTransportToNote: typeof row[ATTENDANCE_USERS_FIELDS.defaultTransportToNote] === 'string'
+      ? (row[ATTENDANCE_USERS_FIELDS.defaultTransportToNote] as string)
+      : undefined,
+    DefaultTransportFromNote: typeof row[ATTENDANCE_USERS_FIELDS.defaultTransportFromNote] === 'string'
+      ? (row[ATTENDANCE_USERS_FIELDS.defaultTransportFromNote] as string)
+      : undefined,
   };
 };
 

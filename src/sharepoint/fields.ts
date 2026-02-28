@@ -138,6 +138,12 @@ export const ATTENDANCE_USERS_FIELDS = {
   isTransportTarget: 'IsTransportTarget',
   standardMinutes: 'StandardMinutes',
   isActive: 'IsActive',
+
+  // Transport method default fields (optional - require SP column creation)
+  defaultTransportToMethod: 'DefaultTransportToMethod',
+  defaultTransportFromMethod: 'DefaultTransportFromMethod',
+  defaultTransportToNote: 'DefaultTransportToNote',
+  defaultTransportFromNote: 'DefaultTransportFromNote',
 } as const;
 
 export const ATTENDANCE_USERS_SELECT_FIELDS = [
@@ -175,6 +181,12 @@ export const ATTENDANCE_DAILY_FIELDS = {
   eveningChecked: 'EveningChecked',
   eveningNote: 'EveningNote',
   isAbsenceAddonClaimable: 'IsAbsenceAddonClaimable',
+
+  // Transport method enum fields (optional - require SP column creation)
+  transportToMethod: 'TransportToMethod',
+  transportFromMethod: 'TransportFromMethod',
+  transportToNote: 'TransportToNote',
+  transportFromNote: 'TransportFromNote',
 } as const;
 
 export const ATTENDANCE_DAILY_SELECT_FIELDS = [
