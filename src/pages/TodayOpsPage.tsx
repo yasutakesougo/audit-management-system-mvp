@@ -13,6 +13,7 @@
  *
  * @see docs/adr/ADR-002-today-execution-layer-guardrails.md
  */
+import { buildDailyHubFromTodayUrl } from '@/app/links/navigationLinks';
 import { useTodaySummary } from '@/features/today/domain';
 import { useNextAction } from '@/features/today/hooks/useNextAction';
 import { TodayOpsLayout } from '@/features/today/layouts/TodayOpsLayout';
@@ -20,8 +21,11 @@ import { QuickRecordDrawer } from '@/features/today/records/QuickRecordDrawer';
 import { useQuickRecord } from '@/features/today/records/useQuickRecord';
 import { isE2E } from '@/lib/env';
 import React, { useMemo } from 'react';
+import { useNavigate } from 'react-router-dom';
 
 export const TodayOpsPage: React.FC = () => {
+  const navigate = useNavigate();
+
   // 1. Data via Facade (Execution Layer はドメイン集約を持たない)
   const summary = useTodaySummary();
 
@@ -72,6 +76,10 @@ export const TodayOpsPage: React.FC = () => {
         onOpenApproval: () => {
           // eslint-disable-next-line no-console
           console.log('Open Approval Modal');
+        },
+        onOpenMenu: () => {
+          const today = new Date().toISOString().split('T')[0];
+          navigate(buildDailyHubFromTodayUrl(today));
         },
       },
       attendance: {

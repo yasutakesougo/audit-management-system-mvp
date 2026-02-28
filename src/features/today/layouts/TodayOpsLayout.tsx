@@ -20,6 +20,7 @@ type HeroProps = {
   approvalPendingCount: number;
   onOpenUnfilled: () => void;
   onOpenApproval: () => void;
+  onOpenMenu?: () => void;
 };
 
 type TransportUser = { userId: string; name: string };
@@ -46,6 +47,7 @@ export const TodayOpsLayout: React.FC<TodayOpsProps> = ({
         unfilledCount={hero.unfilledCount}
         approvalPendingCount={hero.approvalPendingCount}
         onClickPrimary={hero.onOpenUnfilled}
+        onClickSecondary={hero.onOpenMenu}
         sticky={true}
       />
 
