@@ -1,30 +1,58 @@
+import TimeIcon from '@mui/icons-material/AccessTime';
 import AddIcon from '@mui/icons-material/Add';
+import ArrowForwardIcon from '@mui/icons-material/ArrowForward';
 import DeleteIcon from '@mui/icons-material/Delete';
 import EditIcon from '@mui/icons-material/Edit';
 import FilterIcon from '@mui/icons-material/FilterList';
 import PersonIcon from '@mui/icons-material/Person';
 import SearchIcon from '@mui/icons-material/Search';
-import TimeIcon from '@mui/icons-material/AccessTime';
-import WorkIcon from '@mui/icons-material/Work';
+import SupportAgentIcon from '@mui/icons-material/SupportAgent';
+import WarningAmberIcon from '@mui/icons-material/WarningAmber';
 import Avatar from '@mui/material/Avatar';
 import Box from '@mui/material/Box';
 import Card from '@mui/material/Card';
 import CardContent from '@mui/material/CardContent';
 import Chip from '@mui/material/Chip';
-import Divider from '@mui/material/Divider';
 import Fab from '@mui/material/Fab';
 import FormControl from '@mui/material/FormControl';
 import IconButton from '@mui/material/IconButton';
 import InputLabel from '@mui/material/InputLabel';
 import MenuItem from '@mui/material/MenuItem';
+import Paper from '@mui/material/Paper';
 import Select from '@mui/material/Select';
 import Stack from '@mui/material/Stack';
 import TextField from '@mui/material/TextField';
 import Tooltip from '@mui/material/Tooltip';
 import Typography from '@mui/material/Typography';
 import React, { useMemo, useState } from 'react';
-import { SupportStepTemplate, defaultSupportStepTemplates } from '../../domain/support/step-templates';
+import {
+    SupportStepTemplate,
+    supportCategoryValues,
+    supportImportanceValues,
+} from '../../domain/support/step-templates';
 
+// ─── Shared color maps (Form と統一) ──────
+const IMPORTANCE_COLOR: Record<string, 'error' | 'warning' | 'info' | 'default'> = {
+  '必須': 'error',
+  '推奨': 'warning',
+  '任意': 'info',
+};
+
+const CATEGORY_BG: Record<string, string> = {
+  '朝の準備': '#f3e5f5',
+  '健康確認': '#e8f5e8',
+  '活動準備': '#fff3e0',
+  'AM活動': '#e1f5fe',
+  '昼食準備': '#fff8e1',
+  '昼食': '#fff8e1',
+  '休憩': '#f1f8e9',
+  'PM活動': '#fce4ec',
+  '終了準備': '#e0f2f1',
+  '振り返り': '#f9fbe7',
+  'その他': '#f5f5f5',
+};
+
+// ─── Types ────────────────────────────────
 interface SupportStepTemplateListProps {
   templates?: SupportStepTemplate[];
   onEdit?: (template: SupportStepTemplate) => void;
@@ -32,312 +60,217 @@ interface SupportStepTemplateListProps {
   onAdd?: () => void;
 }
 
+// ─── Component ────────────────────────────
 export const SupportStepTemplateList: React.FC<SupportStepTemplateListProps> = ({
-  templates,
+  templates = [],
   onEdit,
   onDelete,
-  onAdd
+  onAdd,
 }) => {
   const [searchQuery, setSearchQuery] = useState('');
   const [categoryFilter, setCategoryFilter] = useState('');
   const [importanceFilter, setImportanceFilter] = useState('');
 
-  // デフォルトテンプレートをIDと一緒に使用
-  const defaultTemplatesWithIds: SupportStepTemplate[] = useMemo(() =>
-    defaultSupportStepTemplates.map((template, index) => ({
-      ...template,
-      id: `default-${index + 1}`
-    })), []
-  );
-
-  const allTemplates = templates || defaultTemplatesWithIds;
-
-  // フィルタリング処理
-  const filteredTemplates = useMemo(() => {
-    return allTemplates.filter(template => {
-      const matchesSearch = searchQuery === '' ||
-        template.stepTitle.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        template.description.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        template.targetBehavior.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        template.supportMethod.toLowerCase().includes(searchQuery.toLowerCase());
-
-      const matchesCategory = categoryFilter === '' || template.category === categoryFilter;
-      const matchesImportance = importanceFilter === '' || template.importance === importanceFilter;
-
-      return matchesSearch && matchesCategory && matchesImportance;
+  const filtered = useMemo(() => {
+    const q = searchQuery.toLowerCase();
+    return templates.filter((t) => {
+      if (q && ![t.stepTitle, t.targetBehavior, t.supportMethod].some((s) => s.toLowerCase().includes(q)))
+        return false;
+      if (categoryFilter && t.category !== categoryFilter) return false;
+      if (importanceFilter && t.importance !== importanceFilter) return false;
+      return true;
     });
-  }, [allTemplates, searchQuery, categoryFilter, importanceFilter]);
-
-  // カテゴリの重要度による色分け
-  const getImportanceColor = (importance: string) => {
-    switch (importance) {
-      case '必須': return 'error';
-      case '推奨': return 'warning';
-      case '任意': return 'info';
-      default: return 'default';
-    }
-  };
-
-  // カテゴリの色分け
-  const getCategoryColor = (category: string) => {
-    const colorMap: Record<string, string> = {
-      '朝の準備': '#f3e5f5',
-      '健康確認': '#e8f5e8',
-      '活動準備': '#fff3e0',
-      'AM活動': '#e1f5fe',
-      '昼食準備': '#fff8e1',
-      '昼食': '#fff8e1',
-      '休憩': '#f1f8e9',
-      'PM活動': '#fce4ec',
-      '終了準備': '#e0f2f1',
-      '振り返り': '#f9fbe7',
-      'その他': '#f5f5f5'
-    };
-    return colorMap[category] || '#f5f5f5';
-  };
+  }, [templates, searchQuery, categoryFilter, importanceFilter]);
 
   return (
     <Box>
-      {/* 検索・フィルターエリア */}
-      <Card sx={{ mb: 3 }} elevation={2}>
-        <CardContent>
-          <Box
-            sx={{
-              display: 'grid',
-              gridTemplateColumns: {
-                xs: '1fr',
-                md: '2fr 1.5fr 1.5fr 1fr'
-              },
-              gap: 2,
-              alignItems: 'center'
-            }}
-          >
-            <TextField
-              fullWidth
-              label="検索"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              InputProps={{
-                startAdornment: <SearchIcon sx={{ mr: 1, color: 'text.secondary' }} />
-              }}
-              placeholder="手順名、説明、支援方法で検索..."
-            />
-            <FormControl fullWidth>
-              <InputLabel>カテゴリ</InputLabel>
-              <Select
-                value={categoryFilter}
-                label="カテゴリ"
-                onChange={(e) => setCategoryFilter(e.target.value)}
-              >
-                <MenuItem value="">すべて</MenuItem>
-                <MenuItem value="朝の準備">朝の準備</MenuItem>
-                <MenuItem value="健康確認">健康確認</MenuItem>
-                <MenuItem value="活動準備">活動準備</MenuItem>
-                <MenuItem value="AM活動">AM活動</MenuItem>
-                <MenuItem value="昼食準備">昼食準備</MenuItem>
-                <MenuItem value="昼食">昼食</MenuItem>
-                <MenuItem value="休憩">休憩</MenuItem>
-                <MenuItem value="PM活動">PM活動</MenuItem>
-                <MenuItem value="終了準備">終了準備</MenuItem>
-                <MenuItem value="振り返り">振り返り</MenuItem>
-                <MenuItem value="その他">その他</MenuItem>
-              </Select>
-            </FormControl>
-            <FormControl fullWidth>
-              <InputLabel>重要度</InputLabel>
-              <Select
-                value={importanceFilter}
-                label="重要度"
-                onChange={(e) => setImportanceFilter(e.target.value)}
-              >
-                <MenuItem value="">すべて</MenuItem>
-                <MenuItem value="必須">必須</MenuItem>
-                <MenuItem value="推奨">推奨</MenuItem>
-                <MenuItem value="任意">任意</MenuItem>
-              </Select>
-            </FormControl>
-            <Typography variant="body2" color="text.secondary" textAlign="center">
-              {filteredTemplates.length} 件のテンプレート
-            </Typography>
-          </Box>
-        </CardContent>
-      </Card>
-
-      {/* テンプレート一覧 */}
+      {/* ── フィルターバー ── */}
       <Box
-        sx={{
-          display: 'grid',
-          gridTemplateColumns: {
-            xs: '1fr',
-            md: 'repeat(2, 1fr)',
-            lg: 'repeat(3, 1fr)'
-          },
-          gap: 3
-        }}
+        display="grid"
+        gridTemplateColumns={{ xs: '1fr', md: '2fr 1fr 1fr auto' }}
+        gap={2}
+        mb={3}
       >
-        {filteredTemplates.map((template) => (
+        <TextField
+          size="small"
+          label="検索"
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
+          InputProps={{ startAdornment: <SearchIcon sx={{ mr: 1, color: 'text.secondary' }} /> }}
+          placeholder="手順名・本人の動き・支援者の動きで検索"
+        />
+        <FormControl size="small">
+          <InputLabel>カテゴリ</InputLabel>
+          <Select value={categoryFilter} label="カテゴリ" onChange={(e) => setCategoryFilter(e.target.value)}>
+            <MenuItem value="">すべて</MenuItem>
+            {supportCategoryValues.map((c) => (
+              <MenuItem key={c} value={c}>
+                {c}
+              </MenuItem>
+            ))}
+          </Select>
+        </FormControl>
+        <FormControl size="small">
+          <InputLabel>重要度</InputLabel>
+          <Select value={importanceFilter} label="重要度" onChange={(e) => setImportanceFilter(e.target.value)}>
+            <MenuItem value="">すべて</MenuItem>
+            {supportImportanceValues.map((i) => (
+              <MenuItem key={i} value={i}>
+                {i}
+              </MenuItem>
+            ))}
+          </Select>
+        </FormControl>
+        <Typography variant="body2" color="text.secondary" alignSelf="center" textAlign="center" whiteSpace="nowrap">
+          {filtered.length} 件
+        </Typography>
+      </Box>
+
+      {/* ── カード一覧 ── */}
+      <Stack spacing={2}>
+        {filtered.map((template) => (
           <Card
             key={template.id}
             sx={{
-              height: '100%',
-              borderLeft: `4px solid ${getCategoryColor(template.category)}`,
-              '&:hover': {
-                boxShadow: 3,
-                transform: 'translateY(-2px)',
-                transition: 'all 0.2s ease-in-out'
-              }
+              borderLeft: `4px solid ${CATEGORY_BG[template.category] || '#ccc'}`,
+              '&:hover': { boxShadow: 4, transition: 'box-shadow 0.2s' },
             }}
             elevation={1}
           >
-            <CardContent>
-              {/* ヘッダー部分 */}
-              <Box display="flex" justifyContent="space-between" alignItems="flex-start" mb={2}>
-                <Box flex={1}>
-                  <Box display="flex" alignItems="center" mb={1}>
-                    <Avatar sx={{ width: 32, height: 32, mr: 1, bgcolor: 'primary.main' }}>
-                      {template.iconEmoji || '📋'}
-                    </Avatar>
-                    <Box>
-                      <Typography variant="h6" component="div" sx={{ fontWeight: 600 }}>
-                        {template.stepTitle}
-                      </Typography>
-                      <Typography variant="body2" color="text.secondary">
+            <CardContent sx={{ pb: '12px !important' }}>
+              {/* ── Row 1: Header + Actions ── */}
+              <Box display="flex" justifyContent="space-between" alignItems="center" mb={1}>
+                <Box display="flex" alignItems="center" gap={1}>
+                  <Avatar sx={{ width: 32, height: 32, bgcolor: 'primary.main', fontSize: 16 }}>
+                    {template.iconEmoji || '📋'}
+                  </Avatar>
+                  <Box>
+                    <Typography variant="subtitle1" fontWeight={600} lineHeight={1.3}>
+                      {template.stepTitle}
+                    </Typography>
+                    <Stack direction="row" spacing={0.5} alignItems="center">
+                      <Typography variant="caption" color="text.secondary">
                         {template.timeSlot}
                       </Typography>
-                    </Box>
+                      <Chip
+                        label={template.category}
+                        size="small"
+                        sx={{ height: 20, fontSize: '0.7rem', bgcolor: CATEGORY_BG[template.category] }}
+                      />
+                      <Chip
+                        label={template.importance}
+                        size="small"
+                        sx={{ height: 20, fontSize: '0.7rem' }}
+                        color={IMPORTANCE_COLOR[template.importance] ?? 'default'}
+                      />
+                      <Chip
+                        icon={<TimeIcon sx={{ fontSize: '12px !important' }} />}
+                        label={`${template.duration}分`}
+                        size="small"
+                        variant="outlined"
+                        sx={{ height: 20, fontSize: '0.7rem' }}
+                      />
+                    </Stack>
                   </Box>
                 </Box>
 
-                <Box display="flex" gap={1}>
+                <Stack direction="row" spacing={0.5}>
                   <Tooltip title="編集">
-                    <IconButton
-                      size="small"
-                      onClick={() => onEdit?.(template)}
-                      sx={{ color: 'primary.main' }}
-                    >
+                    <IconButton size="small" onClick={() => onEdit?.(template)} color="primary">
                       <EditIcon fontSize="small" />
                     </IconButton>
                   </Tooltip>
                   <Tooltip title="削除">
-                    <IconButton
-                      size="small"
-                      onClick={() => onDelete?.(template.id)}
-                      sx={{ color: 'error.main' }}
-                    >
+                    <IconButton size="small" onClick={() => onDelete?.(template.id)} color="error">
                       <DeleteIcon fontSize="small" />
                     </IconButton>
                   </Tooltip>
-                </Box>
+                </Stack>
               </Box>
 
-              {/* チップ部分 */}
-              <Stack direction="row" spacing={1} mb={2}>
-                <Chip
-                  label={template.category}
-                  size="small"
-                  sx={{
-                    bgcolor: getCategoryColor(template.category),
-                    color: 'text.primary'
-                  }}
-                />
-                <Chip
-                  label={template.importance}
-                  size="small"
-                  color={getImportanceColor(template.importance) as 'error' | 'warning' | 'info' | 'default'}
-                />
-                <Chip
-                  icon={<TimeIcon />}
-                  label={`${template.duration}分`}
-                  size="small"
+              {/* ── Row 2: Split View — 本人の動き → 支援者の動き ── */}
+              <Box
+                display="grid"
+                gridTemplateColumns="1fr auto 1fr"
+                gap={1}
+                alignItems="stretch"
+              >
+                {/* 左: 本人の動き */}
+                <Paper
                   variant="outlined"
-                />
-                {template.isRequired && (
-                  <Chip
-                    label="必須"
-                    size="small"
-                    variant="outlined"
-                    color="error"
-                  />
-                )}
-              </Stack>
-
-              {/* 説明 */}
-              <Typography variant="body2" color="text.secondary" mb={2}>
-                {template.description}
-              </Typography>
-
-              <Divider sx={{ my: 2 }} />
-
-              {/* 目標行動・支援方法 */}
-              <Box>
-                <Box mb={2}>
-                  <Box display="flex" alignItems="center" mb={1}>
-                    <PersonIcon sx={{ fontSize: 16, mr: 0.5, color: 'primary.main' }} />
-                    <Typography variant="subtitle2" color="primary.main">
-                      目標とする行動
+                  sx={{ p: 1.5, borderColor: 'primary.light', borderRadius: 1.5 }}
+                >
+                  <Box display="flex" alignItems="center" gap={0.5} mb={0.5}>
+                    <PersonIcon sx={{ fontSize: 14, color: 'primary.main' }} />
+                    <Typography variant="caption" color="primary.main" fontWeight={700}>
+                      本人の動き
                     </Typography>
                   </Box>
-                  <Typography variant="body2" color="text.secondary" sx={{ fontSize: '0.85rem' }}>
-                    {template.targetBehavior}
+                  <Typography
+                    variant="body2"
+                    color="text.secondary"
+                    sx={{ fontSize: '0.8rem', lineHeight: 1.5 }}
+                  >
+                    {template.targetBehavior || '—'}
                   </Typography>
+                </Paper>
+
+                {/* 矢印 */}
+                <Box display="flex" alignItems="center">
+                  <ArrowForwardIcon sx={{ color: 'text.disabled', fontSize: 20 }} />
                 </Box>
 
-                <Box mb={2}>
-                  <Box display="flex" alignItems="center" mb={1}>
-                    <WorkIcon sx={{ fontSize: 16, mr: 0.5, color: 'secondary.main' }} />
-                    <Typography variant="subtitle2" color="secondary.main">
-                      職員の支援方法
+                {/* 右: 支援者の動き */}
+                <Paper
+                  variant="outlined"
+                  sx={{ p: 1.5, borderColor: 'secondary.light', borderRadius: 1.5 }}
+                >
+                  <Box display="flex" alignItems="center" gap={0.5} mb={0.5}>
+                    <SupportAgentIcon sx={{ fontSize: 14, color: 'secondary.main' }} />
+                    <Typography variant="caption" color="secondary.main" fontWeight={700}>
+                      支援者の動き
                     </Typography>
                   </Box>
-                  <Typography variant="body2" color="text.secondary" sx={{ fontSize: '0.85rem' }}>
-                    {template.supportMethod}
+                  <Typography
+                    variant="body2"
+                    color="text.secondary"
+                    sx={{ fontSize: '0.8rem', lineHeight: 1.5 }}
+                  >
+                    {template.supportMethod || '—'}
                   </Typography>
-                </Box>
-
-                {template.precautions && (
-                  <Box>
-                    <Typography variant="subtitle2" color="warning.main" sx={{ fontSize: '0.9rem', mb: 0.5 }}>
-                      ⚠️ 注意・配慮事項
-                    </Typography>
-                    <Typography variant="body2" color="text.secondary" sx={{ fontSize: '0.85rem' }}>
-                      {template.precautions}
-                    </Typography>
-                  </Box>
-                )}
+                </Paper>
               </Box>
+
+              {/* ── Row 3: 注意事項（あれば） ── */}
+              {template.precautions && (
+                <Box display="flex" alignItems="center" gap={0.5} mt={1}>
+                  <WarningAmberIcon sx={{ fontSize: 14, color: 'warning.main' }} />
+                  <Typography variant="caption" color="warning.main">
+                    {template.precautions}
+                  </Typography>
+                </Box>
+              )}
             </CardContent>
           </Card>
         ))}
-      </Box>
+      </Stack>
 
-      {/* 結果が0件の場合 */}
-      {filteredTemplates.length === 0 && (
-        <Card sx={{ mt: 3 }}>
-          <CardContent>
-            <Box textAlign="center" py={4}>
-              <FilterIcon sx={{ fontSize: 64, color: 'text.disabled', mb: 2 }} />
-              <Typography variant="h6" color="text.secondary" mb={1}>
-                該当するテンプレートが見つかりません
-              </Typography>
-              <Typography variant="body2" color="text.disabled">
-                検索条件を変更するか、新しいテンプレートを作成してください
-              </Typography>
-            </Box>
-          </CardContent>
-        </Card>
+      {/* ── 0件表示 ── */}
+      {filtered.length === 0 && (
+        <Box textAlign="center" py={6}>
+          <FilterIcon sx={{ fontSize: 48, color: 'text.disabled', mb: 1 }} />
+          <Typography variant="body1" color="text.secondary">
+            該当するテンプレートがありません
+          </Typography>
+        </Box>
       )}
 
-      {/* 新規作成ボタン */}
+      {/* ── FAB ── */}
       <Fab
         color="primary"
         aria-label="新規テンプレート作成"
         onClick={onAdd}
-        sx={{
-          position: 'fixed',
-          bottom: 24,
-          right: 24,
-          zIndex: 1000
-        }}
+        sx={{ position: 'fixed', bottom: 24, right: 24, zIndex: 1000 }}
       >
         <AddIcon />
       </Fab>
