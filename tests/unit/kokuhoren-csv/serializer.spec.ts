@@ -33,6 +33,7 @@ describe('serializeCell', () => {
   });
 
   it('number: 文字列数値 → 数値化して引用符なし', () => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     expect(serializeCell('456' as any, 'number')).toBe('456');
   });
 
@@ -41,6 +42,7 @@ describe('serializeCell', () => {
   });
 
   it('number: NaN文字列 → 空欄', () => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     expect(serializeCell('abc' as any, 'number')).toBe('');
   });
 
