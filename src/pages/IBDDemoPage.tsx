@@ -312,12 +312,12 @@ const IBDDemoPage = () => {
             <Stack direction="row" spacing={2}>
               <Paper variant="outlined" sx={{ p: 2, flex: 1, textAlign: 'center' }}>
                 <CheckCircleIcon color="success" sx={{ fontSize: 40 }} />
-                <Typography variant="subtitle1" fontWeight={600}>実践研修修了者</Typography>
+                <Typography variant="subtitle1" component="span" fontWeight={600}>実践研修修了者</Typography>
                 <Chip label="確定可能" color="success" size="small" />
               </Paper>
               <Paper variant="outlined" sx={{ p: 2, flex: 1, textAlign: 'center' }}>
                 <LockIcon color="error" sx={{ fontSize: 40 }} />
-                <Typography variant="subtitle1" fontWeight={600}>基礎研修 / 未修了</Typography>
+                <Typography variant="subtitle1" component="span" fontWeight={600}>基礎研修 / 未修了</Typography>
                 <Chip label="確定不可" color="error" size="small" />
                 <Typography variant="caption" display="block" color="text.secondary" sx={{ mt: 0.5 }}>
                   {canConfirmSPS(false).reason}
@@ -340,12 +340,12 @@ const IBDDemoPage = () => {
 
             <Stack spacing={2}>
               <Box>
-                <Typography variant="subtitle2" sx={{ mb: 1 }}>コンパクト表示:</Typography>
+                <Typography variant="subtitle2" component="span" sx={{ mb: 1 }}>コンパクト表示:</Typography>
                 <SupervisionCounterBadge userId={DEMO_USER_ID} />
               </Box>
               <Divider />
               <Box>
-                <Typography variant="subtitle2" sx={{ mb: 1 }}>詳細バナー表示:</Typography>
+                <Typography variant="subtitle2" component="span" sx={{ mb: 1 }}>詳細バナー表示:</Typography>
                 <SupervisionCounterBadge userId={DEMO_USER_ID} detailed />
               </Box>
             </Stack>
@@ -375,7 +375,7 @@ const IBDDemoPage = () => {
                       borderLeftColor: config.color,
                     }}
                   >
-                    <Typography variant="subtitle1" fontWeight={600} sx={{ color: config.color }}>
+                    <Typography variant="subtitle1" component="span" fontWeight={600} sx={{ color: config.color }}>
                       {config.label}
                     </Typography>
                     <Stack direction="row" spacing={0.5} flexWrap="wrap" useFlexGap sx={{ mt: 1 }}>
@@ -401,12 +401,12 @@ const IBDDemoPage = () => {
             </Typography>
 
             <Stack spacing={2}>
-              <Typography variant="subtitle2">通常表示:</Typography>
+              <Typography variant="subtitle2" component="span">通常表示:</Typography>
               <PositiveConditionsBanner
                 conditions={['静かな環境', '視覚的スケジュールの提示', '馴染みのスタッフ', 'イヤーマフ使用可能']}
                 sceneName="来所時"
               />
-              <Typography variant="subtitle2">コンパクト表示:</Typography>
+              <Typography variant="subtitle2" component="span">コンパクト表示:</Typography>
               <PositiveConditionsBanner
                 conditions={['決まった席', '静かな環境']}
                 sceneName="食事"
@@ -457,7 +457,7 @@ const IBDDemoPage = () => {
 
             {savedLogs.length > 0 && (
               <Stack spacing={1} sx={{ mt: 3 }}>
-                <Typography variant="subtitle2" fontWeight={600}>保存済みログ:</Typography>
+                <Typography variant="subtitle2" component="span" fontWeight={600}>保存済みログ:</Typography>
                 {savedLogs.map((log) => (
                   <Paper key={log.id} variant="outlined" sx={{ p: 1.5 }}>
                     <Typography variant="body2">

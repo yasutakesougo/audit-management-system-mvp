@@ -1,4 +1,4 @@
-import { summarizeTokuseiResponses, type TokuseiSurveyResponse } from '@/domain/assessment/tokusei';
+﻿import { summarizeTokuseiResponses, type TokuseiSurveyResponse } from '@/domain/assessment/tokusei';
 import { useTokuseiSurveyResponses } from '@/features/assessment/hooks/useTokuseiSurveyResponses';
 import { env } from '@/lib/env';
 import RefreshRoundedIcon from '@mui/icons-material/RefreshRounded';
@@ -39,7 +39,7 @@ const formatDateTime = (value: string): string => {
 
 const TokuseiDetailField: React.FC<{ label: string; value?: React.ReactNode }> = ({ label, value }) => (
   <Box>
-    <Typography variant="subtitle2" color="text.secondary" gutterBottom>
+    <Typography variant="subtitle2" component="span" color="text.secondary" gutterBottom>
       {label}
     </Typography>
     <Typography variant="body1" sx={{ whiteSpace: 'pre-wrap' }}>

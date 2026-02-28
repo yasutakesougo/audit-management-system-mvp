@@ -1,4 +1,4 @@
-import AddIcon from '@mui/icons-material/Add';
+﻿import AddIcon from '@mui/icons-material/Add';
 import AssignmentIcon from '@mui/icons-material/Assignment';
 import SearchIcon from '@mui/icons-material/Search';
 import TrendingUpIcon from '@mui/icons-material/TrendingUp';
@@ -514,7 +514,7 @@ const SupportRecordPage: React.FC = () => {
                       >
                         <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                           <Box>
-                            <Typography variant="subtitle1">
+                            <Typography variant="subtitle1" component="span">
                               {user.name}
                             </Typography>
                             <Typography variant="body2" color="text.secondary">
