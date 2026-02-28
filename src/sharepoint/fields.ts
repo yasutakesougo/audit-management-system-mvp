@@ -656,6 +656,7 @@ export const ICEBERG_PDCA_SELECT_FIELDS = [
 ] as const;
 
 export const FIELD_MAP_SURVEY_TOKUSEI = {
+  // -- 基本情報 --
   id: 'Id',
   responseId: 'ResponseId',
   responderEmail: 'ResponderEmail',
@@ -666,12 +667,47 @@ export const FIELD_MAP_SURVEY_TOKUSEI = {
   relation: 'Relation',
   heightCm: 'HeightCm',
   weightKg: 'WeightKg',
+  strengths: 'Strengths',
+  notes: 'Notes',
+  created: 'Created',
+
+  // -- 集約フィールド（SP 物理列なし — Adapter 層で動的に生成） --
   personality: 'Personality',
   sensoryFeatures: 'SensoryFeatures',
   behaviorFeatures: 'BehaviorFeatures',
-  strengths: 'Strengths',
-  notes: 'Notes',
-  created: 'Created'
+
+  // -- Forms メタ（SP 物理列あり） --
+  formRowId: 'FormRowId',
+  startTime: 'StartTime',
+  endTime: 'EndTime',
+
+  // -- 対人関係（SP 物理列あり） --
+  relationalDifficulties: 'RelationalDifficulties',
+  situationalUnderstanding: 'SituationalUnderstanding',
+
+  // -- 感覚（5感別 — SP 物理列あり） --
+  hearing: 'Hearing',
+  vision: 'Vision',
+  touch: 'Touch',
+  smell: 'Smell',
+  taste: 'Taste',
+  sensoryMultiSelect: 'SensoryMultiSelect',
+  sensoryFreeText: 'SensoryFreeText',
+
+  // -- こだわり（SP 物理列あり） --
+  difficultyWithChanges: 'DifficultyWithChanges',
+  interestInParts: 'InterestInParts',
+  repetitiveBehaviors: 'RepetitiveBehaviors',
+  fixedHabits: 'FixedHabits',
+
+  // -- コミュニケーション（SP 物理列あり） --
+  comprehensionDifficulty: 'ComprehensionDifficulty',
+  expressionDifficulty: 'ExpressionDifficulty',
+  interactionDifficulty: 'InteractionDifficulty',
+
+  // -- 行動（SP 物理列あり） --
+  behaviorMultiSelect: 'BehaviorMultiSelect',
+  behaviorEpisodes: 'BehaviorEpisodes',
 } as const;
 
 // ──────────────────────────────────────────────────────────────
@@ -732,18 +768,16 @@ export const SUPPORT_TEMPLATES_SELECT_FIELDS = [
   FIELD_MAP_SUPPORT_TEMPLATES.modified,
 ] as const;
 
-// Exclude fields we know are missing based on 400 error cascade; allow others
+// Exclude aggregate-only fields that have no physical SP column.
+// Basic fields (ResponseId, GuardianName, etc.) were added via P1 provisioning.
+const AGGREGATE_ONLY_KEYS: ReadonlySet<string> = new Set([
+  'personality',      // Adapter 層で RelationalDifficulties + SituationalUnderstanding から生成
+  'sensoryFeatures',  // Adapter 層で 5感列 + SensoryFreeText から生成
+  'behaviorFeatures', // Adapter 層で こだわり + コミュニケーション + 行動列から生成
+]);
+
 export const SURVEY_TOKUSEI_SELECT_FIELDS: readonly string[] = Object.entries(FIELD_MAP_SURVEY_TOKUSEI)
-  .filter(([key]) =>
-    key !== 'responseId' &&
-    key !== 'guardianName' &&
-    key !== 'relation' &&
-    key !== 'heightCm' &&
-    key !== 'weightKg' &&
-    key !== 'personality' &&
-    key !== 'sensoryFeatures' &&
-    key !== 'behaviorFeatures'
-  )
+  .filter(([key]) => !AGGREGATE_ONLY_KEYS.has(key))
   .map(([, value]) => value);
 /**
  * 動的に "存在する列だけ" を select フィールドに含める

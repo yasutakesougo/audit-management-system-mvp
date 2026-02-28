@@ -4,6 +4,7 @@ import { getBehaviorRepository, getInMemoryBehaviorRepository } from '../infra/b
 
 export function useBehaviorStore() {
   const [data, setData] = useState<BehaviorObservation[]>([]);
+  const [analysisData, setAnalysisData] = useState<BehaviorObservation[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<Error | null>(null);
   const repo = getBehaviorRepository();
@@ -53,11 +54,38 @@ export function useBehaviorStore() {
     setError(null);
   }, []);
 
+  /** Analysis 用: 日付範囲指定で大量データをフェッチ（Daily の RECENT_LIMIT に影響しない） */
+  const fetchForAnalysis = useCallback(async (userId: string, days = 30) => {
+    if (!userId) return;
+    setLoading(true);
+    try {
+      const endDate = new Date();
+      const startDate = new Date();
+      startDate.setDate(endDate.getDate() - days);
+      const result = await repo.listByUser(userId, {
+        dateRange: {
+          from: startDate.toISOString(),
+          to: endDate.toISOString(),
+        },
+        order: 'asc',
+        limit: 500,
+      });
+      setAnalysisData(result);
+    } catch (err) {
+      console.error('[behaviorStore] fetchForAnalysis failed:', err);
+      setError(err instanceof Error ? err : new Error('分析データの読込に失敗しました'));
+    } finally {
+      setLoading(false);
+    }
+  }, [repo]);
+
   return {
     data,
+    analysisData,
     loading,
     error,
     fetchByUser,
+    fetchForAnalysis,
     add,
     clearError,
   } as const;

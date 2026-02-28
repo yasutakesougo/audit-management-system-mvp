@@ -81,7 +81,7 @@ export const groupLabel: Record<NavGroupKey, string> = {
 /**
  * Navigation groups display order
  */
-export const NAV_GROUP_ORDER: NavGroupKey[] = ['daily', 'record', 'ibd', 'isp', 'master', 'admin', 'settings'];
+export const NAV_GROUP_ORDER: NavGroupKey[] = ['daily', 'record', 'isp', 'ibd', 'master', 'admin', 'settings'];
 
 // ============================================================================
 // Functions
@@ -376,12 +376,12 @@ export function createNavItems(config: CreateNavItemsConfig): NavItem[] {
     {
       label: '氷山分析',
       to: '/analysis/iceberg',
-      isActive: (pathname) => pathname.startsWith('/analysis/iceberg'),
+      isActive: (pathname) => pathname.startsWith('/analysis/iceberg') && !pathname.includes('pdca'),
       icon: undefined,
       prefetchKey: PREFETCH_KEYS.iceberg,
       testId: TESTIDS.nav.iceberg,
       audience: NAV_AUDIENCE.staff,
-      group: 'review' as NavGroupKey,
+      group: 'ibd' as NavGroupKey,
     },
     {
       label: 'アセスメント',
@@ -391,7 +391,7 @@ export function createNavItems(config: CreateNavItemsConfig): NavItem[] {
       prefetchKey: PREFETCH_KEYS.assessmentDashboard,
       testId: TESTIDS.nav.assessment,
       audience: NAV_AUDIENCE.staff,
-      group: 'review' as NavGroupKey,
+      group: 'ibd' as NavGroupKey,
     },
     {
       label: '特性アンケート',
