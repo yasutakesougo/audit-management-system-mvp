@@ -1,4 +1,5 @@
 ﻿import { summarizeTokuseiResponses, type TokuseiSurveyResponse } from '@/domain/assessment/tokusei';
+import FeatureChipList from '@/features/assessment/components/FeatureChipList';
 import { useTokuseiSurveyResponses } from '@/features/assessment/hooks/useTokuseiSurveyResponses';
 import { env } from '@/lib/env';
 import RefreshRoundedIcon from '@mui/icons-material/RefreshRounded';
@@ -392,9 +393,24 @@ const TokuseiSurveyResultsPage: React.FC = () => {
                               label={`記入日時: ${formatDateTime(activeResponse.fillDate)}`}
                               variant="outlined"
                             />
+                            {activeResponse.guardianName && (
+                              <Chip
+                                label={`保護者: ${activeResponse.guardianName}${activeResponse.relation ? `（${activeResponse.relation}）` : ''}`}
+                                variant="outlined"
+                              />
+                            )}
+                            {(activeResponse.heightCm != null || activeResponse.weightKg != null) && (
+                              <Chip
+                                label={[
+                                  activeResponse.heightCm != null ? `${activeResponse.heightCm}cm` : null,
+                                  activeResponse.weightKg != null ? `${activeResponse.weightKg}kg` : null,
+                                ].filter(Boolean).join(' / ')}
+                                variant="outlined"
+                                size="small"
+                              />
+                            )}
                           </Stack>
 
-                          {/* もし responderEmail を見せたいなら（存在する想定） */}
                           {activeResponse.responderEmail && (
                             <Typography variant="body2" color="text.secondary">
                               {`メール: ${activeResponse.responderEmail}`}
@@ -404,15 +420,15 @@ const TokuseiSurveyResultsPage: React.FC = () => {
                       </CardContent>
                     </Card>
 
-                    {/* 詳細（カード分割） */}
+                    {/* 詳細（チップベース Bento Grid レイアウト） */}
                     <Card variant="outlined">
                       <CardHeader
-                        title="性格・コミュニケーション"
+                        title="性格・対人関係"
                         titleTypographyProps={{ variant: 'subtitle1', fontWeight: 700 }}
                         sx={{ pb: 0.5 }}
                       />
                       <CardContent sx={{ pt: 1.5 }}>
-                        <TokuseiDetailField label="" value={activeResponse.personality} />
+                        <FeatureChipList value={activeResponse.personality} />
                       </CardContent>
                     </Card>
 
@@ -423,18 +439,18 @@ const TokuseiSurveyResultsPage: React.FC = () => {
                         sx={{ pb: 0.5 }}
                       />
                       <CardContent sx={{ pt: 1.5 }}>
-                        <TokuseiDetailField label="" value={activeResponse.sensoryFeatures} />
+                        <FeatureChipList value={activeResponse.sensoryFeatures} />
                       </CardContent>
                     </Card>
 
                     <Card variant="outlined">
                       <CardHeader
-                        title="行動の特徴"
+                        title="行動・コミュニケーション"
                         titleTypographyProps={{ variant: 'subtitle1', fontWeight: 700 }}
                         sx={{ pb: 0.5 }}
                       />
                       <CardContent sx={{ pt: 1.5 }}>
-                        <TokuseiDetailField label="" value={activeResponse.behaviorFeatures} />
+                        <FeatureChipList value={activeResponse.behaviorFeatures} />
                       </CardContent>
                     </Card>
 

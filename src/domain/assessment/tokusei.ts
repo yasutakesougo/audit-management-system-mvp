@@ -24,10 +24,215 @@ export type TokuseiSurveySummary = {
   latestSubmittedAt: string | null;
 };
 
+// ---------------------------------------------------------------------------
+// SP Raw Row Type — Forms 設問単位の細分化列をすべて含む
+// ---------------------------------------------------------------------------
+
+/**
+ * SharePoint FormsResponses_Tokusei リストの生データ型。
+ * Forms の個別設問に対応する細分化フィールドを持つ。
+ * フロントエンドのドメインモデル (TokuseiSurveyResponse) に変換するには
+ * mapSpRowToTokuseiResponse() を使用する。
+ */
+export type SpTokuseiRawRow = {
+  // -- 基本情報 --
+  Id: number;
+  ResponseId?: string;
+  ResponderEmail?: string;
+  ResponderName?: string;
+  FillDate?: string;
+  TargetUserName?: string;
+  GuardianName?: string;
+  Relation?: string;
+  HeightCm?: string | number | null;
+  WeightKg?: string | number | null;
+  Strengths?: string;
+  Notes?: string;
+  Created?: string;
+
+  // -- Forms メタ --
+  FormRowId?: number;
+  StartTime?: string;
+  EndTime?: string;
+
+  // -- 対人関係 --
+  RelationalDifficulties?: string;
+  SituationalUnderstanding?: string;
+
+  // -- 感覚（5感別） --
+  Hearing?: string;
+  Vision?: string;
+  Touch?: string;
+  Smell?: string;
+  Taste?: string;
+  SensoryMultiSelect?: string;
+  SensoryFreeText?: string;
+
+  // -- こだわり --
+  DifficultyWithChanges?: string;
+  InterestInParts?: string;
+  RepetitiveBehaviors?: string;
+  FixedHabits?: string;
+
+  // -- コミュニケーション --
+  ComprehensionDifficulty?: string;
+  ExpressionDifficulty?: string;
+  InteractionDifficulty?: string;
+
+  // -- 行動 --
+  BehaviorMultiSelect?: string;
+  BehaviorEpisodes?: string;
+};
+
+// ---------------------------------------------------------------------------
+// Helpers
+// ---------------------------------------------------------------------------
+
 const coerceNumber = (value: number | null | undefined): number | null => {
   if (typeof value !== 'number') return null;
   if (!Number.isFinite(value)) return null;
   return value;
+};
+
+/** 数値フィールド (string | number | null) → number | null */
+export const parseNumeric = (value: string | number | null | undefined): number | null => {
+  if (typeof value === 'number' && Number.isFinite(value)) return value;
+  if (typeof value === 'string') {
+    const normalized = value.replace(/[^0-9.-]/g, '').trim();
+    if (!normalized) return null;
+    const n = Number.parseFloat(normalized);
+    return Number.isFinite(n) ? n : null;
+  }
+  return null;
+};
+
+const str = (value: unknown): string => {
+  if (typeof value === 'string') return value.trim();
+  if (value === null || value === undefined) return '';
+  return String(value);
+};
+
+const optStr = (value: unknown): string | undefined => {
+  const v = str(value);
+  return v || undefined;
+};
+
+/**
+ * ラベル付きで行を結合するヘルパー。
+ * 空値はスキップされ、結果が空なら undefined を返す。
+ */
+const aggregateLabeled = (entries: [label: string, value: unknown][]): string | undefined => {
+  const lines = entries
+    .map(([label, value]) => {
+      const v = str(value);
+      return v ? `【${label}】${v}` : null;
+    })
+    .filter(Boolean);
+  return lines.length > 0 ? lines.join('\n') : undefined;
+};
+
+// ---------------------------------------------------------------------------
+// Parser: Aggregated string → Structured entries (for UI rendering)
+// ---------------------------------------------------------------------------
+
+/** Structured entry parsed from an aggregated feature string. */
+export type FeatureEntry = {
+  label: string;
+  content: string;
+};
+
+/**
+ * Parses an aggregated feature string (produced by `aggregateLabeled`) back
+ * into structured entries for chip-based UI rendering.
+ *
+ * Input format: `【ラベル1】内容1\n【ラベル2】内容2`
+ * Output: `[{ label: 'ラベル1', content: '内容1' }, ...]`
+ *
+ * Lines that don't match the `【...】` pattern are treated as unlabeled entries
+ * with label '情報'.
+ */
+export const parseAggregatedFeatures = (value: string | undefined): FeatureEntry[] => {
+  if (!value) return [];
+  const PATTERN = /^【([^】]+)】(.+)$/;
+  return value
+    .split('\n')
+    .map((line) => line.trim())
+    .filter(Boolean)
+    .map((line) => {
+      const match = PATTERN.exec(line);
+      if (match) {
+        return { label: match[1], content: match[2].trim() };
+      }
+      return { label: '情報', content: line };
+    });
+};
+
+// ---------------------------------------------------------------------------
+// Adapter: SP Raw → Domain
+// ---------------------------------------------------------------------------
+
+/**
+ * SP の細分化列をドメインモデルの集約フィールドに変換する。
+ *
+ * 変換ルール:
+ * - personality: RelationalDifficulties + SituationalUnderstanding を集約
+ * - sensoryFeatures: 5感別列 + SensoryMultiSelect + SensoryFreeText を集約
+ * - behaviorFeatures:
+ *     こだわり (DifficultyWithChanges, InterestInParts, RepetitiveBehaviors, FixedHabits)
+ *   + コミュニケーション (ComprehensionDifficulty, ExpressionDifficulty, InteractionDifficulty)
+ *   + 行動 (BehaviorMultiSelect, BehaviorEpisodes)
+ *   を集約
+ */
+export const mapSpRowToTokuseiResponse = (row: SpTokuseiRawRow): TokuseiSurveyResponse => {
+  const idRaw = row.Id;
+  const id = typeof idRaw === 'number' && Number.isFinite(idRaw) ? idRaw : 0;
+
+  return {
+    id,
+    responseId: str(row.ResponseId),
+    responderName: str(row.ResponderName),
+    responderEmail: optStr(row.ResponderEmail),
+    fillDate: str(row.FillDate ?? row.Created ?? ''),
+    targetUserName: str(row.TargetUserName),
+    guardianName: optStr(row.GuardianName),
+    relation: optStr(row.Relation),
+    heightCm: parseNumeric(row.HeightCm),
+    weightKg: parseNumeric(row.WeightKg),
+
+    // 集約: 対人関係 → personality
+    personality: aggregateLabeled([
+      ['対人関係の難しさ', row.RelationalDifficulties],
+      ['状況理解の難しさ', row.SituationalUnderstanding],
+    ]),
+
+    // 集約: 5感別 + 自由記述 → sensoryFeatures
+    sensoryFeatures: aggregateLabeled([
+      ['聴覚', row.Hearing],
+      ['視覚', row.Vision],
+      ['触覚', row.Touch],
+      ['嗅覚', row.Smell],
+      ['味覚', row.Taste],
+      ['該当する感覚', row.SensoryMultiSelect],
+      ['感覚の詳細', row.SensoryFreeText],
+    ]),
+
+    // 集約: こだわり + コミュニケーション + 行動 → behaviorFeatures
+    behaviorFeatures: aggregateLabeled([
+      ['変化への対応困難', row.DifficultyWithChanges],
+      ['物の一部への興味', row.InterestInParts],
+      ['繰り返し行動', row.RepetitiveBehaviors],
+      ['習慣への固執', row.FixedHabits],
+      ['理解の困難', row.ComprehensionDifficulty],
+      ['発信の困難', row.ExpressionDifficulty],
+      ['やり取りの困難', row.InteractionDifficulty],
+      ['該当する行動', row.BehaviorMultiSelect],
+      ['行動エピソード', row.BehaviorEpisodes],
+    ]),
+
+    strengths: optStr(row.Strengths),
+    notes: optStr(row.Notes),
+    createdAt: str(row.Created),
+  };
 };
 
 export const summarizeTokuseiResponses = (responses: TokuseiSurveyResponse[]): TokuseiSurveySummary => {

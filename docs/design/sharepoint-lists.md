@@ -241,8 +241,9 @@ SharePoint リスト設計の対応関係を整理したものです。
 
 - ListKey: `ListKeys.SurveyTokusei`
 - 定義: `FIELD_MAP_SURVEY_TOKUSEI`, `SURVEY_TOKUSEI_SELECT_FIELDS`
+- Adapter: `mapSpRowToTokuseiResponse()` — SP 細分化列 → ドメイン集約フィールド
 
-### 7-1. カラム一覧
+### 7-1. カラム一覧（基本情報）
 
 | 論理名 | 内部名 | 用途 |
 |--------|--------|------|
@@ -256,13 +257,32 @@ SharePoint リスト設計の対応関係を整理したものです。
 | relation | `Relation` | 続柄 |
 | heightCm | `HeightCm` | 身長 |
 | weightKg | `WeightKg` | 体重 |
-| personality | `Personality` | 性格・特徴 |
-| sensoryFeatures | `SensoryFeatures` | 感覚特性 |
-| behaviorFeatures | `BehaviorFeatures` | 行動の特徴 |
-| preferences | `Preferences` | 好きなこと |
 | strengths | `Strengths` | 強み |
 | notes | `Notes` | その他特記事項 |
 | created | `Created` | 作成日時 |
+
+### 7-2. カラム一覧（Forms 設問単位 → Adapter 層で集約）
+
+| 論理名 | 内部名 | 集約先ドメインフィールド |
+|--------|--------|------------------------|
+| relationalDifficulties | `RelationalDifficulties` | `personality` |
+| situationalUnderstanding | `SituationalUnderstanding` | `personality` |
+| hearing | `Hearing` | `sensoryFeatures` |
+| vision | `Vision` | `sensoryFeatures` |
+| touch | `Touch` | `sensoryFeatures` |
+| smell | `Smell` | `sensoryFeatures` |
+| taste | `Taste` | `sensoryFeatures` |
+| sensoryMultiSelect | `SensoryMultiSelect` | `sensoryFeatures` |
+| sensoryFreeText | `SensoryFreeText` | `sensoryFeatures` |
+| difficultyWithChanges | `DifficultyWithChanges` | `behaviorFeatures` |
+| interestInParts | `InterestInParts` | `behaviorFeatures` |
+| repetitiveBehaviors | `RepetitiveBehaviors` | `behaviorFeatures` |
+| fixedHabits | `FixedHabits` | `behaviorFeatures` |
+| comprehensionDifficulty | `ComprehensionDifficulty` | `behaviorFeatures` |
+| expressionDifficulty | `ExpressionDifficulty` | `behaviorFeatures` |
+| interactionDifficulty | `InteractionDifficulty` | `behaviorFeatures` |
+| behaviorMultiSelect | `BehaviorMultiSelect` | `behaviorFeatures` |
+| behaviorEpisodes | `BehaviorEpisodes` | `behaviorFeatures` |
 
 ---
 
