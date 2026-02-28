@@ -5,6 +5,7 @@
  * テスト可能性とコンポーネント間の再利用性を向上。
  */
 import { ABSENCE_MONTHLY_LIMIT, FACILITY_CLOSE_TIME } from '@/config/serviceRecords';
+import type { TransportMethod } from './transportMethod';
 
 export type AttendanceUser = {
   userCode: string;
@@ -12,6 +13,12 @@ export type AttendanceUser = {
   isTransportTarget: boolean;
   absenceClaimedThisMonth: number;
   standardMinutes: number;
+
+  // Transport method defaults (enum migration - optional for backward compat)
+  defaultTransportToMethod?: TransportMethod;
+  defaultTransportFromMethod?: TransportMethod;
+  defaultTransportToNote?: string;
+  defaultTransportFromNote?: string;
 };
 
 export type AttendanceStatus = '未' | '通所中' | '退所済' | '当日欠席';
@@ -28,6 +35,12 @@ export type AttendanceVisit = {
 
   transportTo: boolean;
   transportFrom: boolean;
+
+  // Transport method enum (migration - optional for backward compat)
+  transportToMethod?: TransportMethod;
+  transportFromMethod?: TransportMethod;
+  transportToNote?: string;
+  transportFromNote?: string;
 
   isEarlyLeave: boolean;
 
