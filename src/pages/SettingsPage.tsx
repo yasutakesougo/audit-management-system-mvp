@@ -30,7 +30,7 @@ export default function SettingsPage(): React.ReactElement {
             <Typography variant="body2" color="text.secondary">
               準備中...
             </Typography>
-            <Typography variant="subtitle2" sx={{ fontWeight: 600, mt: 2 }}>
+            <Typography variant="subtitle2" component="h2" sx={{ fontWeight: 600, mt: 2 }}>
               今後追加される項目：
             </Typography>
             <Box component="ul" sx={{ pl: 2 }}>
