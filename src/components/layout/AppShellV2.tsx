@@ -1,7 +1,7 @@
-import * as React from 'react';
-import { Box, useMediaQuery, useTheme } from '@mui/material';
-import { LAYOUT } from './layoutTokens';
 import { useLandscapeTablet } from '@/hooks/useLandscapeTablet';
+import { Box, useMediaQuery, useTheme } from '@mui/material';
+import * as React from 'react';
+import { LAYOUT } from './layoutTokens';
 
 type ShellViewportMode = 'fixed' | 'adaptive';
 
@@ -65,7 +65,7 @@ export function AppShellV2({
           "activity sidebar main"
           "footer footer footer"
         `,
-        gridTemplateRows: `${headerH}px minmax(0, 1fr) ${showFooter ? 'auto' : '0px'}`,
+        gridTemplateRows: `${headerH}px minmax(0, 1fr) ${showFooter ? `${footerH}px` : '0px'}`,
         gridTemplateColumns: `${showActivity ? `${activityW}px` : '0px'} ${showSidebar ? `${sidebarW}px` : '0px'} 1fr`,
         bgcolor: 'background.default',
       }}
@@ -159,7 +159,7 @@ export function AppShellV2({
           borderTop: showFooter ? `1px solid ${borderColor}` : 'none',
           display: showFooter ? 'flex' : 'none',
           alignItems: 'center',
-          overflow: 'visible',
+          overflow: 'hidden',
         }}
       >
         {footer}
