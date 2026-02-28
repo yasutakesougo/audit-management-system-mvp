@@ -58,6 +58,13 @@ export function buildDailyUserSnapshot(input: DailyUserSnapshotInput): DailyUser
   }
 
   // ========================================
+  // Service Provision Data Population
+  // ========================================
+  if (input.serviceProvisionData) {
+    snapshot.serviceProvision = input.serviceProvisionData;
+  }
+
+  // ========================================
   // Cross-Module Issue Detection
   // ========================================
   snapshot.crossModuleIssues = detectCrossModuleIssues(snapshot);
@@ -177,6 +184,41 @@ export function detectCrossModuleIssues(snapshot: DailyUserSnapshot): CrossModul
       message: '通所中ですが提供時間が記録されていません',
       involvedModules: ['attendance'],
       suggestedAction: '通所管理画面で提供時間を入力してください',
+    });
+  }
+
+  // ========================================
+  // Attendance x ServiceProvision 不整合チェック
+  // ========================================
+
+  // 5. 欠席なのに提供実績が「提供」
+  if (
+    snapshot.attendanceStatus === '当日欠席' &&
+    snapshot.serviceProvision?.hasRecord === true &&
+    snapshot.serviceProvision.status === '提供'
+  ) {
+    issues.push({
+      id: 'absence-provision-provided',
+      type: 'attendance_provision_mismatch',
+      severity: 'error',
+      message: '通所欠席にも関わらずサービス提供実績が「提供」になっています',
+      involvedModules: ['attendance', 'provision'],
+      suggestedAction: 'サービス提供実績のステータスを「欠席」に変更してください',
+    });
+  }
+
+  // 6. 通所中/退所済なのに提供実績未入力
+  if (
+    (snapshot.attendanceStatus === '通所中' || snapshot.attendanceStatus === '退所済') &&
+    (!snapshot.serviceProvision || snapshot.serviceProvision.hasRecord === false)
+  ) {
+    issues.push({
+      id: 'attended-no-provision-record',
+      type: 'attendance_provision_mismatch',
+      severity: 'warning',
+      message: `${snapshot.attendanceStatus}ですがサービス提供実績が未入力です`,
+      involvedModules: ['attendance', 'provision'],
+      suggestedAction: 'サービス提供実績を入力してください',
     });
   }
 

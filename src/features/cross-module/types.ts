@@ -78,6 +78,8 @@ export interface DailyUserSnapshot {
   // ========================================
   /** モジュール間整合性チェック結果 */
   crossModuleIssues?: CrossModuleIssue[];
+  /** サービス提供実績サマリ */
+  serviceProvision?: ServiceProvisionSummary;
   /** 最終更新日時 */
   lastUpdated?: string;
 }
@@ -89,13 +91,13 @@ export interface CrossModuleIssue {
   /** 不整合ID */
   id: string;
   /** 不整合の種別 */
-  type: 'attendance_activity_mismatch' | 'activity_irc_conflict' | 'data_missing';
+  type: 'attendance_activity_mismatch' | 'activity_irc_conflict' | 'data_missing' | 'attendance_provision_mismatch';
   /** 重要度 */
   severity: 'error' | 'warning' | 'info';
   /** 不整合の説明 */
   message: string;
   /** 関連するモジュール */
-  involvedModules: ('attendance' | 'activity' | 'irc')[];
+  involvedModules: ('attendance' | 'activity' | 'irc' | 'provision')[];
   /** 修正提案（オプション） */
   suggestedAction?: string;
 }
@@ -128,6 +130,8 @@ export interface DailyUserSnapshotInput {
     hasIndividualSupport?: boolean;
     hasRehabilitation?: boolean;
   };
+  /** サービス提供実績データ */
+  serviceProvisionData?: ServiceProvisionSummary;
 }
 
 /**
