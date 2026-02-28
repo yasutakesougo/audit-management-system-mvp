@@ -5,6 +5,8 @@ export type HeroUnfinishedBannerProps = {
   unfilledCount: number;
   approvalPendingCount?: number;
   onClickPrimary: () => void;
+  /** 「記録メニュー」への導線。undefined なら非表示（後方互換）。 */
+  onClickSecondary?: () => void;
   sticky?: boolean;
 };
 
@@ -12,6 +14,7 @@ export const HeroUnfinishedBanner: React.FC<HeroUnfinishedBannerProps> = ({
   unfilledCount,
   approvalPendingCount = 0,
   onClickPrimary,
+  onClickSecondary,
   sticky = true,
 }) => {
   const isComplete = unfilledCount === 0 && approvalPendingCount === 0;
@@ -50,20 +53,39 @@ export const HeroUnfinishedBanner: React.FC<HeroUnfinishedBannerProps> = ({
       )}
 
       {!isComplete && (
-        <Button
-          data-testid="today-hero-cta"
-          variant="contained"
-          color="inherit"
-          onClick={onClickPrimary}
-          sx={{
-            color: 'error.main',
-            fontWeight: 'bold',
-            minHeight: 44, // タッチデバイス向けの最小タップ領域
-            px: 2,
-          }}
-        >
-          今すぐ入力
-        </Button>
+        <Box sx={{ display: 'flex', gap: 1 }}>
+          <Button
+            data-testid="today-hero-cta"
+            variant="contained"
+            color="inherit"
+            onClick={onClickPrimary}
+            sx={{
+              color: 'error.main',
+              fontWeight: 'bold',
+              minHeight: 44,
+              px: 2,
+            }}
+          >
+            今すぐ入力
+          </Button>
+
+          {onClickSecondary && (
+            <Button
+              data-testid="today-hero-menu"
+              variant="outlined"
+              color="inherit"
+              onClick={onClickSecondary}
+              sx={{
+                fontWeight: 'bold',
+                minHeight: 44,
+                px: 2,
+                borderColor: 'rgba(255,255,255,0.5)',
+              }}
+            >
+              📋 記録メニュー
+            </Button>
+          )}
+        </Box>
       )}
     </Box>
   );
