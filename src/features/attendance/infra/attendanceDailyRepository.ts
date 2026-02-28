@@ -11,6 +11,7 @@ import {
     ATTENDANCE_DAILY_LIST_TITLE,
     ATTENDANCE_DAILY_SELECT_FIELDS
 } from '@/sharepoint/fields';
+import { methodImpliesShuttle, parseTransportMethod, type TransportMethod } from '../transportMethod';
 
 export type AttendanceDailyItem = {
   Id?: number;
@@ -32,6 +33,12 @@ export type AttendanceDailyItem = {
   EveningChecked?: boolean;
   EveningNote?: string;
   IsAbsenceAddonClaimable?: boolean;
+
+  // Transport method enum (optional - migration)
+  TransportToMethod?: TransportMethod;
+  TransportFromMethod?: TransportMethod;
+  TransportToNote?: string;
+  TransportFromNote?: string;
 };
 
 type SharePointDailyRow = Record<string, unknown> & { Id?: number };
@@ -74,6 +81,12 @@ const toAttendanceDaily = (row: SharePointDailyRow): AttendanceDailyItem | null 
     EveningChecked: getBool(row[ATTENDANCE_DAILY_FIELDS.eveningChecked]),
     EveningNote: getString(row[ATTENDANCE_DAILY_FIELDS.eveningNote]) ?? '',
     IsAbsenceAddonClaimable: getBool(row[ATTENDANCE_DAILY_FIELDS.isAbsenceAddonClaimable]),
+
+    // Transport method (optional - may not exist in SP yet)
+    TransportToMethod: parseTransportMethod(row[ATTENDANCE_DAILY_FIELDS.transportToMethod]),
+    TransportFromMethod: parseTransportMethod(row[ATTENDANCE_DAILY_FIELDS.transportFromMethod]),
+    TransportToNote: getString(row[ATTENDANCE_DAILY_FIELDS.transportToNote]) ?? undefined,
+    TransportFromNote: getString(row[ATTENDANCE_DAILY_FIELDS.transportFromNote]) ?? undefined,
   };
 };
 
@@ -91,8 +104,14 @@ const toSpPayload = (item: AttendanceDailyItem): Record<string, unknown> => {
     [ATTENDANCE_DAILY_FIELDS.checkOutAt]: item.CheckOutAt,
     [ATTENDANCE_DAILY_FIELDS.cntAttendIn]: item.CntAttendIn,
     [ATTENDANCE_DAILY_FIELDS.cntAttendOut]: item.CntAttendOut,
-    [ATTENDANCE_DAILY_FIELDS.transportTo]: item.TransportTo,
-    [ATTENDANCE_DAILY_FIELDS.transportFrom]: item.TransportFrom,
+    [ATTENDANCE_DAILY_FIELDS.transportTo]:
+      item.TransportToMethod
+        ? methodImpliesShuttle(item.TransportToMethod)
+        : item.TransportTo,
+    [ATTENDANCE_DAILY_FIELDS.transportFrom]:
+      item.TransportFromMethod
+        ? methodImpliesShuttle(item.TransportFromMethod)
+        : item.TransportFrom,
     [ATTENDANCE_DAILY_FIELDS.providedMinutes]: item.ProvidedMinutes,
     [ATTENDANCE_DAILY_FIELDS.isEarlyLeave]: item.IsEarlyLeave,
     [ATTENDANCE_DAILY_FIELDS.userConfirmedAt]: item.UserConfirmedAt,
@@ -101,6 +120,12 @@ const toSpPayload = (item: AttendanceDailyItem): Record<string, unknown> => {
     [ATTENDANCE_DAILY_FIELDS.eveningChecked]: item.EveningChecked,
     [ATTENDANCE_DAILY_FIELDS.eveningNote]: item.EveningNote,
     [ATTENDANCE_DAILY_FIELDS.isAbsenceAddonClaimable]: item.IsAbsenceAddonClaimable,
+
+    // Transport method (written to SP only when present)
+    [ATTENDANCE_DAILY_FIELDS.transportToMethod]: item.TransportToMethod,
+    [ATTENDANCE_DAILY_FIELDS.transportFromMethod]: item.TransportFromMethod,
+    [ATTENDANCE_DAILY_FIELDS.transportToNote]: item.TransportToNote,
+    [ATTENDANCE_DAILY_FIELDS.transportFromNote]: item.TransportFromNote,
   });
 };
 
