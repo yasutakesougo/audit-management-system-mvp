@@ -19,7 +19,7 @@ import IconButton from '@mui/material/IconButton';
 import Paper from '@mui/material/Paper';
 import Stack from '@mui/material/Stack';
 import { useTheme } from '@mui/material/styles';
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Link as RouterLink, useLocation } from 'react-router-dom';
 
 type FooterAction = {
@@ -59,8 +59,13 @@ export const FooterQuickActions: React.FC<{ fixed?: boolean }> = ({ fixed = true
   const location = useLocation();
   const theme = useTheme();
   const [quickNoteOpen, setQuickNoteOpen] = useState(false);
-  const isHandoffTimeline =
-    location.pathname === '/handoff-timeline' || location.pathname.startsWith('/handoff-timeline/');
+
+  // Listen for global open event from any page (e.g. /handoff-timeline page button)
+  useEffect(() => {
+    const handler = () => setQuickNoteOpen(true);
+    window.addEventListener('handoff-open-quicknote-dialog', handler);
+    return () => window.removeEventListener('handoff-open-quicknote-dialog', handler);
+  }, []);
 
   const scheduleMonthAction: FooterAction = {
     key: 'schedules-month',
@@ -95,12 +100,6 @@ export const FooterQuickActions: React.FC<{ fixed?: boolean }> = ({ fixed = true
   ] as const;
 
   const handleQuickNoteClick = () => {
-    if (isHandoffTimeline) {
-      if (typeof window !== 'undefined') {
-        window.dispatchEvent(new CustomEvent('handoff-open-quicknote'));
-      }
-      return;
-    }
     setQuickNoteOpen(true);
   };
 
@@ -226,24 +225,23 @@ export const FooterQuickActions: React.FC<{ fixed?: boolean }> = ({ fixed = true
           </Stack>
         </Paper>
       </Container>
-      {!isHandoffTimeline && (
-        <Dialog
-          open={quickNoteOpen}
-          onClose={() => setQuickNoteOpen(false)}
-          fullWidth
-          maxWidth="sm"
-        >
-          <DialogTitle sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-            今すぐ申し送り
-            <IconButton aria-label="申し送りダイアログを閉じる" onClick={() => setQuickNoteOpen(false)}>
-              <CloseIcon />
-            </IconButton>
-          </DialogTitle>
-          <DialogContent dividers>
-            <HandoffQuickNoteCard />
-          </DialogContent>
-        </Dialog>
-      )}
+      <Dialog
+        open={quickNoteOpen}
+        onClose={() => setQuickNoteOpen(false)}
+        fullWidth
+        maxWidth="sm"
+        data-testid="handoff-quicknote-dialog"
+      >
+        <DialogTitle sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+          今すぐ申し送り
+          <IconButton aria-label="申し送りダイアログを閉じる" onClick={() => setQuickNoteOpen(false)}>
+            <CloseIcon />
+          </IconButton>
+        </DialogTitle>
+        <DialogContent dividers>
+          <HandoffQuickNoteCard />
+        </DialogContent>
+      </Dialog>
     </Box>
   );
 };

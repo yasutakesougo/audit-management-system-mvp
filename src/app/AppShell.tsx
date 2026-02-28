@@ -376,6 +376,7 @@ const AppShell: React.FC<{ children: React.ReactNode }> = ({ children }) => {
                 <ListSubheader
                   component="div"
                   sx={{
+                    position: 'static',
                     bgcolor: 'background.paper',
                     lineHeight: 1.6,
                     py: 0.5,
@@ -515,7 +516,7 @@ const AppShell: React.FC<{ children: React.ReactNode }> = ({ children }) => {
       role="navigation"
       aria-label="主要ナビゲーション"
       data-testid="nav-drawer"
-      sx={{ pt: 2, pb: 2 }}
+      sx={{ pt: 2, pb: 2, height: '100%', overflow: 'auto' }}
     >
       {!navCollapsed && (
         <Box sx={{ px: 1.5, py: 1, pb: 1.5 }} key="nav-search">
