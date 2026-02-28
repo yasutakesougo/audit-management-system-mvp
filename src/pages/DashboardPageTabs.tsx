@@ -1,5 +1,6 @@
 import { TodayHandoffTimelineList, type HandoffStats } from '@/features/handoff/TodayHandoffTimelineList';
 import { useHandoffSummary } from '@/features/handoff/useHandoffSummary';
+import { useHandoffTimeline } from '@/features/handoff/useHandoffTimeline';
 import { useUsersStore } from '@/features/users/store';
 import { TESTIDS } from '@/testids';
 import lazyWithPreload from '@/utils/lazyWithPreload';
@@ -73,6 +74,10 @@ const DashboardPageTabs: React.FC = () => {
 
   const { total, byStatus, criticalCount } = useHandoffSummary({ dayScope: 'today' });
   const hasSummaryInfo = total > 0;
+
+  // v3: データ hook をダッシュボードで呼び出し（List に注入するため）
+  const morningTimeline = useHandoffTimeline('all', 'yesterday');
+  const eveningTimeline = useHandoffTimeline('all', 'today');
 
   const meetingGuide = useMemo(() => ({
     morning: {
@@ -255,8 +260,11 @@ const DashboardPageTabs: React.FC = () => {
                   <Chip size="small" label="朝会" color="primary" />
                 </Stack>
                 <TodayHandoffTimelineList
+                  items={morningTimeline.todayHandoffs}
+                  loading={morningTimeline.loading}
+                  error={morningTimeline.error}
+                  updateHandoffStatus={morningTimeline.updateHandoffStatus}
                   dayScope="yesterday"
-                  timeFilter="all"
                   maxItems={handoffPreviewLimit}
                   onStatsChange={setMorningHandoffStats}
                 />
@@ -336,8 +344,11 @@ const DashboardPageTabs: React.FC = () => {
                   <Chip size="small" label="夕会" color="secondary" />
                 </Stack>
                 <TodayHandoffTimelineList
+                  items={eveningTimeline.todayHandoffs}
+                  loading={eveningTimeline.loading}
+                  error={eveningTimeline.error}
+                  updateHandoffStatus={eveningTimeline.updateHandoffStatus}
                   dayScope="today"
-                  timeFilter="all"
                   maxItems={handoffPreviewLimit}
                   onStatsChange={setEveningHandoffStats}
                 />

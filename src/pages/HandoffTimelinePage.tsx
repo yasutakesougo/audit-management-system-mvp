@@ -1,25 +1,26 @@
 import { TESTIDS, tid } from '@/testids';
-import { AccessTime as AccessTimeIcon, Close as CloseIcon, EditNote as EditNoteIcon, Nightlight as EveningIcon, WbSunny as MorningIcon } from '@mui/icons-material';
-import { Alert, Box, Button, Chip, Collapse, Container, Divider, IconButton, Paper, Stack, ToggleButton, ToggleButtonGroup, Typography } from '@mui/material';
+import { AccessTime as AccessTimeIcon, EditNote as EditNoteIcon, Nightlight as EveningIcon, Groups as MeetingIcon, WbSunny as MorningIcon } from '@mui/icons-material';
+import { Box, Button, Chip, Container, Divider, Stack, ToggleButton, ToggleButtonGroup, Typography } from '@mui/material';
+import { useCallback } from 'react';
 import { useLocation } from 'react-router-dom';
 import HandoffCategorySummaryCard from '../features/handoff/HandoffCategorySummaryCard';
-import { HandoffQuickNoteCard } from '../features/handoff/HandoffQuickNoteCard';
-import type { HandoffDayScope, HandoffTimeFilter, MeetingMode } from '../features/handoff/handoffTypes';
-import { HANDOFF_DAY_SCOPE_LABELS, HANDOFF_TIME_FILTER_LABELS, MEETING_MODE_LABELS } from '../features/handoff/handoffTypes';
+import type { HandoffDayScope, HandoffTimeFilter } from '../features/handoff/handoffTypes';
+import { HANDOFF_DAY_SCOPE_LABELS, HANDOFF_TIME_FILTER_LABELS } from '../features/handoff/handoffTypes';
 import { TodayHandoffTimelineList } from '../features/handoff/TodayHandoffTimelineList';
+import { useHandoffTimeline } from '../features/handoff/useHandoffTimeline';
 import { useHandoffTimelineViewModel } from '../features/handoff/useHandoffTimelineViewModel';
 
 /**
  * 申し送りタイムラインページ
  *
  * 機能概要：
- * - いつでも画面を開けば入力しやすい申し送り作成
+ * - 今すぐ申し送りボタン → FooterQuickActions の Dialog を開く（UI統一）
  * - 今日の申し送りタイムライン表示と状態管理
  * - 時間帯別の申し送り整理（Step 7B: 朝会・夕会連携）
  * - 日付スコープ対応（Step 7C: MeetingGuideDrawer連携）
  *
  * 現場の都合に寄り添った設計：
- * - ワンクリック申し送り作成（時間帯自動判定）
+ * - ワンクリック申し送り作成（全ページ共通の Dialog UI）
  * - カテゴリー・重要度チップ選択
  * - 楽観的更新でストレスフリー
  * - 時間帯フィルタ（朝会は朝のことをちゃんと振り返る会）
@@ -31,20 +32,52 @@ export default function HandoffTimelinePage() {
   const navState = location.state as
     | { dayScope?: HandoffDayScope; timeFilter?: HandoffTimeFilter }
     | undefined;
+
+  // v3: VM → データ hook → useRef late-binding DI
+  //
+  // 1) VM: dayScope / timeFilter / meetingMode を管理
+  //    - workflowActions は内部 useRef で DI を late-binding
+  //    - 初回は updateHandoffStatus=undefined だが console.warn fallback
+  // 2) data hook: VM の dayScope/timeFilter でデータ取得
+  //    → updateHandoffStatus / todayHandoffs が返される
+  // 3) VM の useRef が毎レンダー同期されるため、
+  //    ボタンクリック時には常に最新の updateHandoffStatus が使われる
+
+  // データ hook を先に呼び（navState でデフォルト値を設定済み）、
+  // VM に DI 注入する。VM は dayScope/timeFilter を内部管理するが、
+  // data hook はそれを引数で受け取るため「VM → data hook」の順が必要。
+  // → useRef late-binding で解決: VM を先に呼んでも DI は毎レンダー同期される。
+
   const {
     dayScope,
     timeFilter,
-    isQuickNoteOpen,
     handoffStats,
     setHandoffStats,
-    quickNoteRef,
     handleDayScopeChange,
     handleTimeFilterChange,
-    openQuickNote,
-    closeQuickNote,
     meetingMode,
     handleMeetingModeChange,
+    workflowActions,
+    injectDI,
   } = useHandoffTimelineViewModel({ navState });
+
+  // データ hook: VM が管理する dayScope/timeFilter でデータ取得
+  const {
+    todayHandoffs,
+    loading: timelineLoading,
+    error: timelineError,
+    updateHandoffStatus,
+  } = useHandoffTimeline(timeFilter, dayScope);
+
+  // v3: DI 注入 — data hook の関数を VM の workflowActions に接続
+  // useRef 経由の late-binding なので同期的に呼んでOK
+  injectDI({ updateHandoffStatus, currentRecords: todayHandoffs });
+
+  // Dialog は FooterQuickActions が唯一のオーナー。
+  // ページ内ボタンからはグローバルイベントで Dialog を開く。
+  const openQuickNoteDialog = useCallback(() => {
+    window.dispatchEvent(new CustomEvent('handoff-open-quicknote-dialog'));
+  }, []);
 
   return (
     <Container maxWidth="lg" sx={{ py: 3 }} {...tid(TESTIDS['agenda-page-root'])}>
@@ -82,6 +115,28 @@ export default function HandoffTimelinePage() {
             rowGap: 1.5,
           }}
         >
+          {/* v3: 会議モード切替 (🌅朝会 / 🌆夕会 / 通常) */}
+          <ToggleButtonGroup
+            value={meetingMode}
+            exclusive
+            onChange={handleMeetingModeChange}
+            size="small"
+            color="primary"
+          >
+            <ToggleButton value="normal">
+              <MeetingIcon sx={{ mr: 0.5, fontSize: '1rem' }} />
+              通常
+            </ToggleButton>
+            <ToggleButton value="evening">
+              <EveningIcon sx={{ mr: 0.5, fontSize: '1rem' }} />
+              🌆 夕会
+            </ToggleButton>
+            <ToggleButton value="morning">
+              <MorningIcon sx={{ mr: 0.5, fontSize: '1rem' }} />
+              🌅 朝会
+            </ToggleButton>
+          </ToggleButtonGroup>
+
           {/* 日付スコープ切り替え（昨日←→今日）*/}
           <ToggleButtonGroup
             value={dayScope}
@@ -118,36 +173,7 @@ export default function HandoffTimelinePage() {
               午後〜夕方
             </ToggleButton>
           </ToggleButtonGroup>
-
-          {/* ミーティングモード切り替え */}
-          <ToggleButtonGroup
-            value={meetingMode}
-            exclusive
-            onChange={handleMeetingModeChange}
-            size="small"
-            color="primary"
-          >
-            {(Object.keys(MEETING_MODE_LABELS) as MeetingMode[]).map(mode => (
-              <ToggleButton key={mode} value={mode}>
-                {MEETING_MODE_LABELS[mode]}
-              </ToggleButton>
-            ))}
-          </ToggleButtonGroup>
         </Box>
-
-        {/* モード別サブヘッダー */}
-        {meetingMode !== 'normal' && (
-          <Alert
-            severity="info"
-            sx={{ mt: 1.5 }}
-            icon={meetingMode === 'evening' ? <EveningIcon /> : <MorningIcon />}
-          >
-            {meetingMode === 'evening'
-              ? '🌆 夕会モード: 未対応の申し送りを確認し、「確認済」「明日へ」「完了」を選択してください'
-              : '🌅 朝会モード: 昨日からの持越事項を確認し、処理完了したら「完了」を押してください'
-            }
-          </Alert>
-        )}
 
         {handoffStats && (
           <Box
@@ -182,47 +208,17 @@ export default function HandoffTimelinePage() {
         )}
       </Box>
 
-      {/* 即入力カード（画面上部固定配置 + 折りたたみ対応） */}
-      <Box ref={quickNoteRef}>
-        <Collapse in={isQuickNoteOpen} unmountOnExit>
-          <Paper
-            elevation={1}
-            sx={{
-              mb: 3,
-              position: { xs: 'static', md: 'sticky' },
-              top: { xs: 'auto', md: 16 },
-              zIndex: { xs: 'auto', md: 10 },
-              backgroundColor: 'background.paper',
-              border: '1px solid',
-              borderColor: 'divider',
-              maxHeight: { xs: 'none', md: '80vh' },
-              overflow: { xs: 'visible', md: 'auto' },
-            }}
-          >
-            <Box sx={{ display: 'flex', justifyContent: 'flex-end', p: 1 }}>
-              <IconButton
-                aria-label="申し送り入力カードを閉じる"
-                onClick={closeQuickNote}
-                size="small"
-              >
-                <CloseIcon fontSize="small" />
-              </IconButton>
-            </Box>
-            <HandoffQuickNoteCard />
-          </Paper>
-        </Collapse>
+      {/* 申し送り入力ボタン → FooterQuickActions の Dialog を開く */}
+      <Box sx={{ mb: 3, display: 'flex', justifyContent: 'flex-start' }}>
+        <Button
+          variant="outlined"
+          startIcon={<EditNoteIcon />}
+          onClick={openQuickNoteDialog}
+          data-testid="handoff-page-quicknote-open"
+        >
+          今すぐ申し送り
+        </Button>
       </Box>
-      {!isQuickNoteOpen && (
-        <Box sx={{ mb: 3, display: 'flex', justifyContent: 'flex-start' }}>
-          <Button
-            variant="outlined"
-            startIcon={<EditNoteIcon />}
-            onClick={openQuickNote}
-          >
-            今すぐ申し送り入力カードを開く
-          </Button>
-        </Box>
-      )}
 
       <Divider sx={{ my: 2 }} />
 
@@ -246,10 +242,14 @@ export default function HandoffTimelinePage() {
             </Typography>
           </Typography>
           <TodayHandoffTimelineList
-            timeFilter={timeFilter}
+            items={todayHandoffs}
+            loading={timelineLoading}
+            error={timelineError}
+            updateHandoffStatus={updateHandoffStatus}
             dayScope={dayScope}
-            meetingMode={meetingMode}
             onStatsChange={setHandoffStats}
+            meetingMode={meetingMode}
+            workflowActions={workflowActions}
           />
         </Box>
 

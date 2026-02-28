@@ -1,16 +1,17 @@
-import { useCallback, useEffect, useRef, useState, type MutableRefObject } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import type { HandoffStats } from './TodayHandoffTimelineList';
 import type {
     HandoffDayScope,
+    HandoffRecord,
     HandoffStatus,
-    HandoffStatusUpdate,
     HandoffTimeFilter,
-    MeetingMode
+    MeetingMode,
 } from './handoffTypes';
-import {
-    formatYmdLocal,
-    isTerminalStatus
-} from './handoffTypes';
+import { getAllowedActions } from './handoffTypes';
+
+// ────────────────────────────────────────────────────────────
+// Types
+// ────────────────────────────────────────────────────────────
 
 type HandoffTimelineNavState =
   | {
@@ -21,39 +22,139 @@ type HandoffTimelineNavState =
 
 type UseHandoffTimelineViewModelArgs = {
   navState?: HandoffTimelineNavState;
+  /** v3: データhookから注入される updateHandoffStatus */
+  updateHandoffStatus?: (id: number, newStatus: HandoffStatus, carryOverDate?: string) => Promise<void>;
+  /** v3: 現在表示中のレコード (ワークフローガード検証用) */
+  currentRecords?: HandoffRecord[];
+};
+
+/** v3: late-binding DI コンテナ (useRef で保持、Page 側から毎レンダー更新) */
+type WorkflowDI = {
+  updateHandoffStatus: ((id: number, newStatus: HandoffStatus, carryOverDate?: string) => Promise<void>) | undefined;
+  currentRecords: HandoffRecord[];
+};
+
+/**
+ * ワークフローアクション関数の型
+ * UI層はこれを受け取ってボタンの onClick に直結する
+ */
+export type WorkflowActions = {
+  /** 夕会: 未対応 → 確認済 */
+  markReviewed: (id: number) => Promise<void>;
+  /** 夕会: 確認済 → 明日へ持越 (carryOverDate を自動セット) */
+  markCarryOver: (id: number) => Promise<void>;
+  /** 夕会/朝会: → 完了 */
+  markClosed: (id: number) => Promise<void>;
 };
 
 export type HandoffTimelineViewModel = {
   // 既存
   dayScope: HandoffDayScope;
   timeFilter: HandoffTimeFilter;
-  isQuickNoteOpen: boolean;
   handoffStats: HandoffStats | null;
   setHandoffStats: (stats: HandoffStats | null) => void;
-  quickNoteRef: MutableRefObject<HTMLDivElement | null>;
   handleDayScopeChange: (_event: React.MouseEvent<HTMLElement>, newDayScope: HandoffDayScope) => void;
   handleTimeFilterChange: (_event: React.MouseEvent<HTMLElement>, newFilter: HandoffTimeFilter) => void;
-  openQuickNote: () => void;
-  closeQuickNote: () => void;
-
-  // ワークフロー拡張
+  // v3: ワークフロー拡張
   meetingMode: MeetingMode;
   handleMeetingModeChange: (_event: React.MouseEvent<HTMLElement>, newMode: MeetingMode) => void;
-  /** 未対応 → 確認済 (夕会) */
-  markReviewed: (id: number, currentStatus: HandoffStatus) => void;
-  /** 確認済 → 明日へ持越 + carryOverDate=今日 (夕会) */
-  markCarryOver: (id: number, currentStatus: HandoffStatus) => void;
-  /** → 完了 (夕会/朝会) */
-  markClosed: (id: number, currentStatus: HandoffStatus) => void;
-  /**
-   * ViewModel レベルで提供するフィルタ済み更新関数
-   * TodayHandoffTimelineList で使用
-   */
-  updateHandoffStatusVm: (id: number, update: HandoffStatusUpdate) => Promise<void> | void;
+  workflowActions: WorkflowActions;
+  /** v3: late-binding DI 注入関数。Page 側で data hook 後に呼ぶ。 */
+  injectDI: (di: {
+    updateHandoffStatus: (id: number, newStatus: HandoffStatus, carryOverDate?: string) => Promise<void>;
+    currentRecords: HandoffRecord[];
+  }) => void;
 };
+
+// ────────────────────────────────────────────────────────────
+// JST安全な日付フォーマット
+// ────────────────────────────────────────────────────────────
+
+/** YYYY-MM-DD を JST で生成 (timezone-safe) */
+function formatYmdLocal(date = new Date()): string {
+  const y = date.getFullYear();
+  const m = `${date.getMonth() + 1}`.padStart(2, '0');
+  const d = `${date.getDate()}`.padStart(2, '0');
+  return `${y}-${m}-${d}`;
+}
+
+// ────────────────────────────────────────────────────────────
+// Hook
+// ────────────────────────────────────────────────────────────
+
+/**
+ * ワークフローアクションを生成
+ *
+ * updateHandoffStatus: 既存の data hook (useHandoffTimeline) が提供する関数
+ * -> 楽観的更新 + rollback が既に組み込み済み
+ *
+ * ガード: getAllowedActions で不正遷移を防止 (no-op)
+ */
+function useWorkflowActions(
+  diRef: React.MutableRefObject<WorkflowDI>,
+  meetingMode: MeetingMode,
+): WorkflowActions {
+  const findRecord = useCallback(
+    (id: number) => diRef.current.currentRecords.find(r => r.id === id),
+    [diRef],
+  );
+
+  const isAllowed = useCallback(
+    (id: number, target: HandoffStatus): boolean => {
+      const record = findRecord(id);
+      if (!record) return false;
+      return getAllowedActions(record.status, meetingMode).includes(target);
+    },
+    [findRecord, meetingMode],
+  );
+
+  const markReviewed = useCallback(
+    async (id: number) => {
+      if (!isAllowed(id, '確認済')) {
+        console.warn(`[handoff] markReviewed blocked: id=${id} not allowed in ${meetingMode} mode`);
+        return;
+      }
+      const fn = diRef.current.updateHandoffStatus;
+      if (!fn) { console.warn('[handoff] updateHandoffStatus not provided'); return; }
+      await fn(id, '確認済');
+    },
+    [diRef, isAllowed, meetingMode],
+  );
+
+  const markCarryOver = useCallback(
+    async (id: number) => {
+      if (!isAllowed(id, '明日へ持越')) {
+        console.warn(`[handoff] markCarryOver blocked: id=${id} not allowed in ${meetingMode} mode`);
+        return;
+      }
+      const fn = diRef.current.updateHandoffStatus;
+      if (!fn) { console.warn('[handoff] updateHandoffStatus not provided'); return; }
+      const today = formatYmdLocal();
+      await fn(id, '明日へ持越', today);
+    },
+    [diRef, isAllowed, meetingMode],
+  );
+
+  const markClosed = useCallback(
+    async (id: number) => {
+      if (!isAllowed(id, '完了')) {
+        console.warn(`[handoff] markClosed blocked: id=${id} not allowed in ${meetingMode} mode`);
+        return;
+      }
+      const fn = diRef.current.updateHandoffStatus;
+      if (!fn) { console.warn('[handoff] updateHandoffStatus not provided'); return; }
+      await fn(id, '完了');
+    },
+    [diRef, isAllowed, meetingMode],
+  );
+
+  return { markReviewed, markCarryOver, markClosed };
+}
 
 export function useHandoffTimelineViewModel({
   navState,
+  updateHandoffStatus,
+  currentRecords = [],
 }: UseHandoffTimelineViewModelArgs): HandoffTimelineViewModel {
   const [dayScope, setDayScope] = useState<HandoffDayScope>(
     navState?.dayScope ?? 'today'
@@ -61,36 +162,21 @@ export function useHandoffTimelineViewModel({
   const [timeFilter, setTimeFilter] = useState<HandoffTimeFilter>(
     navState?.timeFilter ?? 'all'
   );
-  const [isQuickNoteOpen, setIsQuickNoteOpen] = useState(false);
   const [handoffStats, setHandoffStats] = useState<HandoffStats | null>(null);
-  const quickNoteRef = useRef<HTMLDivElement | null>(null);
+
+  // v3: 会議モード ('normal' | 'evening' | 'morning')
   const [meetingMode, setMeetingMode] = useState<MeetingMode>('normal');
 
-  // 外部から updateHandoffStatus を受け取るためのrefを用意
-  // TodayHandoffTimelineList 内部の useHandoffTimeline で実際のupdate関数が決まるので、
-  // VM からはコールバックを提供し、子から呼んでもらう形。
-  // → 実装詳細: 子コンポーネント側が updateHandoffStatus を持っているので、
-  //   VM はワークフローアクション用のラッパーのみ提供。
-  //   updateHandoffStatusVm は子に渡す用のパススルー関数。
-  const updateHandoffStatusRef = useRef<((id: number, update: HandoffStatusUpdate) => Promise<void> | void) | null>(null);
-
-  /**
-   * 子コンポーネントが実際のupdate関数を登録するためのsetter
-   * → 実際は TodayHandoffTimelineList の updateHandoffStatus をそのままパススルーする。
-   *   しかし updateHandoffStatus は useHandoffTimeline フック内で定義されるため、
-   *   VMレベルからは直接アクセスできない。
-   *
-   * 解決策: updateHandoffStatusVm を子にpropsで渡し、子側でラップして呼ぶ。
-   * VMのワークフローアクション (markReviewed等) → updateHandoffStatusVm → 子の updateHandoffStatus
-   */
-  const updateHandoffStatusVm = useCallback(
-    async (id: number, update: HandoffStatusUpdate) => {
-      if (updateHandoffStatusRef.current) {
-        await updateHandoffStatusRef.current(id, update);
-      }
-    },
-    []
-  );
+  // v3: late-binding DI (useRef)
+  // Page 側で data hook を VM の後に呼ぶため、
+  // useRef で保持して毎レンダー同期する。
+  // workflowActions 内の useCallback は diRef.current を読むので
+  // 常に最新の関数・データが使われる。
+  const diRef = useRef<WorkflowDI>({
+    updateHandoffStatus,
+    currentRecords,
+  });
+  diRef.current = { updateHandoffStatus, currentRecords };
 
   const navDayScope = navState?.dayScope;
   const navTimeFilter = navState?.timeFilter;
@@ -107,20 +193,6 @@ export function useHandoffTimelineViewModel({
   useEffect(() => {
     setHandoffStats(null);
   }, [dayScope, timeFilter]);
-
-  useEffect(() => {
-    const handler = () => {
-      setIsQuickNoteOpen(true);
-      window.setTimeout(() => {
-        if (quickNoteRef.current) {
-          quickNoteRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
-        }
-      }, 50);
-    };
-
-    window.addEventListener('handoff-open-quicknote', handler);
-    return () => window.removeEventListener('handoff-open-quicknote', handler);
-  }, []);
 
   const handleDayScopeChange = useCallback(
     (_event: React.MouseEvent<HTMLElement>, newDayScope: HandoffDayScope) => {
@@ -144,79 +216,44 @@ export function useHandoffTimelineViewModel({
     (_event: React.MouseEvent<HTMLElement>, newMode: MeetingMode) => {
       if (newMode !== null) {
         setMeetingMode(newMode);
+
+        // v3: モード切替時に自然なデフォルトを設定
+        if (newMode === 'morning') {
+          setDayScope('yesterday');
+          setTimeFilter('morning');
+        } else if (newMode === 'evening') {
+          setDayScope('today');
+          setTimeFilter('evening');
+        }
       }
     },
     []
   );
 
-  const openQuickNote = useCallback(() => {
-    setIsQuickNoteOpen(true);
-  }, []);
+  // v3: ワークフローアクション (useRef DI 経由で late-binding)
+  const workflowActions = useWorkflowActions(diRef, meetingMode);
 
-  const closeQuickNote = useCallback(() => {
-    setIsQuickNoteOpen(false);
-  }, []);
-
-  // ────────────────────────────────────────────────────────────
-  // ワークフローアクション
-  // ────────────────────────────────────────────────────────────
-
-  /**
-   * 夕会: 未対応 → 確認済
-   */
-  const markReviewed = useCallback(
-    (id: number, currentStatus: HandoffStatus) => {
-      if (currentStatus !== '未対応') return; // ガード
-      updateHandoffStatusVm(id, { status: '確認済' });
+  // v3: Page 側が data hook の後に呼ぶ DI 注入関数
+  const injectDI = useCallback(
+    (di: {
+      updateHandoffStatus: (id: number, newStatus: HandoffStatus, carryOverDate?: string) => Promise<void>;
+      currentRecords: HandoffRecord[];
+    }) => {
+      diRef.current = di;
     },
-    [updateHandoffStatusVm]
-  );
-
-  /**
-   * 夕会: 確認済 → 明日へ持越 + carryOverDate
-   */
-  const markCarryOver = useCallback(
-    (id: number, currentStatus: HandoffStatus) => {
-      if (currentStatus !== '確認済') return; // ガード
-      updateHandoffStatusVm(id, {
-        status: '明日へ持越',
-        carryOverDate: formatYmdLocal(new Date()),
-      });
-    },
-    [updateHandoffStatusVm]
-  );
-
-  /**
-   * 夕会/朝会: → 完了
-   * 確認済→完了 (夕会), 明日へ持越→完了 (朝会)
-   */
-  const markClosed = useCallback(
-    (id: number, currentStatus: HandoffStatus) => {
-      if (isTerminalStatus(currentStatus)) return; // 既に終端ならno-op
-      if (currentStatus === '未対応' || currentStatus === '対応中') return; // 通常フロー中はno-op
-      updateHandoffStatusVm(id, { status: '完了' });
-    },
-    [updateHandoffStatusVm]
+    [],
   );
 
   return {
     dayScope,
     timeFilter,
-    isQuickNoteOpen,
     handoffStats,
     setHandoffStats,
-    quickNoteRef,
     handleDayScopeChange,
     handleTimeFilterChange,
-    openQuickNote,
-    closeQuickNote,
-
-    // ワークフロー拡張
     meetingMode,
     handleMeetingModeChange,
-    markReviewed,
-    markCarryOver,
-    markClosed,
-    updateHandoffStatusVm,
+    workflowActions,
+    injectDI,
   };
 }

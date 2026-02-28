@@ -11,6 +11,7 @@ import {
     NewHandoffInput,
     SpHandoffItem,
     fromSpHandoffItem,
+    isTerminalStatus,
     toSpHandoffCreatePayload,
     toSpHandoffUpdatePayload,
 } from './handoffTypes';
@@ -105,46 +106,54 @@ class OptimisticUpdateManager {
   }
 }
 
-// ────────────────────────────────────────────────────────────
-// ローカル補完ストア（CarryOverDate）
-// SP列未追加期間に carryOverDate をローカルで補完する
-// SP列追加後は SP値優先で自動的に不要になる
-// ────────────────────────────────────────────────────────────
-
-const CARRY_OVER_PREFIX = 'handoffCarryOverDate.v1:';
-
+/**
+ * 明日へ持越日付のローカル補完ストア
+ * SharePoint側の CarryOverDate 列が準備されるまでのフォールバック。
+ * SP値が存在する場合はSP値優先（ローカル補完は自動的に不要になる）。
+ */
 export class CarryOverDateStore {
-  get(handoffId: string | number): string | null {
+  private static readonly KEY = 'handoff.carryOverDates.v1';
+
+  static get(id: number | string): string | undefined {
     try {
-      return window.localStorage.getItem(`${CARRY_OVER_PREFIX}${handoffId}`) ?? null;
+      const raw = localStorage.getItem(this.KEY);
+      if (!raw) return undefined;
+      const data = JSON.parse(raw) as Record<string, string>;
+      return data[String(id)];
     } catch {
-      return null;
+      return undefined;
     }
   }
 
-  set(handoffId: string | number, date: string): void {
+  static set(id: number | string, date: string): void {
     try {
-      window.localStorage.setItem(`${CARRY_OVER_PREFIX}${handoffId}`, date);
-    } catch {
-      console.warn('[CarryOverDateStore] Failed to write', handoffId);
+      const raw = localStorage.getItem(this.KEY);
+      const data: Record<string, string> = raw ? JSON.parse(raw) : {};
+      data[String(id)] = date;
+      localStorage.setItem(this.KEY, JSON.stringify(data));
+    } catch (e) {
+      console.error('[CarryOverDateStore] Save failed:', e);
     }
   }
 
-  clear(handoffId: string | number): void {
+  static clear(id: number | string): void {
     try {
-      window.localStorage.removeItem(`${CARRY_OVER_PREFIX}${handoffId}`);
-    } catch {
-      // noop
+      const raw = localStorage.getItem(this.KEY);
+      if (!raw) return;
+      const data: Record<string, string> = JSON.parse(raw);
+      delete data[String(id)];
+      localStorage.setItem(this.KEY, JSON.stringify(data));
+    } catch (e) {
+      console.error('[CarryOverDateStore] Clear failed:', e);
     }
   }
 }
-
-export const carryOverDateStore = new CarryOverDateStore();
 
 /**
  * SharePoint API ラッパークラス（最適化版）
  * 申し送りタイムライン機能のSharePointデータ操作を担当
  * Phase 8B: キャッシュ戦略、楽観的更新、エラーハンドリング強化
+ * v3: CarryOverDateStoreによるローカル補完対応
  */
 class HandoffApi {
   private cache = new HandoffCache();
@@ -257,11 +266,23 @@ class HandoffApi {
 
       const records = items.map(fromSpHandoffItem);
 
+      // v3: CarryOverDateStoreからのローカル補完マージ
+      // SP側に carryOverDate がない場合、ローカルストアから補完する
+      const mergedRecords = records.map(record => {
+        if (!record.carryOverDate) {
+          const localDate = CarryOverDateStore.get(record.id);
+          if (localDate) {
+            return { ...record, carryOverDate: localDate };
+          }
+        }
+        return record;
+      });
+
       // キャッシュに保存（ETagも保存）
       const etag = response.headers?.get('etag') ?? undefined;
-      this.cache.set(cacheKey, records, etag);
+      this.cache.set(cacheKey, mergedRecords, etag);
 
-      return this.optimisticManager.applyPendingUpdates(records);
+      return this.optimisticManager.applyPendingUpdates(mergedRecords);
     });
   }
 
@@ -311,12 +332,20 @@ class HandoffApi {
   }
 
   /**
-   * 申し送り記録を更新（楽観的更新版）
+   * 申し送り記録を更新（楽観的更新版 + v3: carryOverDate対応）
    */
   async updateHandoffRecord(
     id: string,
     updates: Partial<Pick<HandoffRecord, 'status' | 'severity' | 'category' | 'message' | 'title' | 'carryOverDate'>>
   ): Promise<HandoffRecord> {
+    // v3: CarryOverDateStore の更新（SP更新より先にローカルを書く）
+    if (updates.status === '明日へ持越' && updates.carryOverDate) {
+      CarryOverDateStore.set(id, updates.carryOverDate);
+    } else if (updates.status && isTerminalStatus(updates.status)) {
+      // 完了/対応済時はローカルキャッシュをクリーンアップ
+      CarryOverDateStore.clear(id);
+    }
+
     // 楽観的更新を設定
     this.optimisticManager.setPendingUpdate(id, updates);
 
@@ -354,6 +383,14 @@ class HandoffApi {
       }
       const data = await response.json();
       const updatedRecord = fromSpHandoffItem(data);
+
+      // v3: ローカル補完マージ
+      if (!updatedRecord.carryOverDate) {
+        const localDate = CarryOverDateStore.get(id);
+        if (localDate) {
+          updatedRecord.carryOverDate = localDate;
+        }
+      }
 
       // 楽観的更新をクリア
       this.optimisticManager.clearPendingUpdate(id);
