@@ -96,6 +96,11 @@ describe('classifySchedulesError', () => {
 });
 
 describe('shouldFallbackToReadOnly', () => {
+  beforeEach(() => {
+    // Ensure navigator.onLine is true — prevents leak from offline test above
+    Object.defineProperty(navigator, 'onLine', { value: true, configurable: true });
+  });
+
   it('returns true for WRITE_DISABLED', () => {
     const error = new WriteDisabledError('createSchedule');
     expect(shouldFallbackToReadOnly(error)).toBe(true);

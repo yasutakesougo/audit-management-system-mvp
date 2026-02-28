@@ -51,7 +51,7 @@ describe('classifySpSyncError', () => {
   it('defaults to unknown for unrecognized errors', () => {
     expect(classifySpSyncError({ message: 'Random' })).toEqual({
       errorKind: 'unknown',
-      hint: expect.stringContaining('同期中'),
+      hint: expect.stringContaining('予期しない'),
     });
   });
 });
