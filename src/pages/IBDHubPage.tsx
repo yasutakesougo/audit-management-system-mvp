@@ -241,7 +241,7 @@ function HubCardComponent({ card, onNavigate }: { card: HubCard; onNavigate: (to
           <Box sx={{ mt: 0.5 }}>{card.icon}</Box>
           <Box sx={{ flex: 1 }}>
             <Stack direction="row" spacing={1} alignItems="center" sx={{ mb: 0.5 }}>
-              <Typography variant="subtitle1" fontWeight={600}>
+              <Typography variant="subtitle1" component="span" fontWeight={600}>
                 {card.label}
               </Typography>
               {card.adminOnly && (

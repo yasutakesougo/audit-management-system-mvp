@@ -36,6 +36,7 @@ export function createMockDailyUserSnapshot(
         hasIndividualSupport: true,
         hasRehabilitation: false,
         mealAmount: '完食',
+        serviceProvision: { hasRecord: true, status: '提供', startHHMM: 930, endHHMM: 1600, additions: { transport: false, meal: true, bath: false, extended: false, absentSupport: false } },
       } as DailyUserSnapshot;
 
     case 'absence-activity-mismatch':
@@ -79,6 +80,7 @@ export function createMockDailyUserSnapshot(
         hasIndividualSupport: true,
         hasRehabilitation: true,
         mealAmount: '半分',
+        serviceProvision: { hasRecord: true, status: '提供', startHHMM: 930, endHHMM: 1600, additions: { transport: false, meal: true, bath: false, extended: false, absentSupport: false } },
       } as DailyUserSnapshot;
 
     case 'complete':
@@ -96,6 +98,7 @@ export function createMockDailyUserSnapshot(
         hasIndividualSupport: true,
         hasRehabilitation: false,
         mealAmount: '完食',
+        serviceProvision: { hasRecord: true, status: '提供', startHHMM: 930, endHHMM: 1600, additions: { transport: false, meal: true, bath: false, extended: false, absentSupport: false } },
       } as DailyUserSnapshot;
 
     case 'incomplete':

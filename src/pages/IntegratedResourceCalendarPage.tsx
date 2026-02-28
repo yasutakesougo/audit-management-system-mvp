@@ -1,4 +1,4 @@
-/**
+﻿/**
  * 統合リソースカレンダーページ
  * 管理者向け Plan vs Actual 統合ビュー
  */
@@ -807,7 +807,7 @@ export default function IntegratedResourceCalendarPage() {
         <Typography variant="h4" component="h1" gutterBottom>
           統合リソースカレンダー
         </Typography>
-        <Typography variant="subtitle1" color="text.secondary">
+        <Typography variant="subtitle1" component="span" color="text.secondary">
           Plan vs Actual 管理ビュー
         </Typography>
       </Box>
@@ -821,7 +821,7 @@ export default function IntegratedResourceCalendarPage() {
       <Paper elevation={0} sx={{ p: 2, mb: 2, bgcolor: 'grey.50' }}>
         <Stack direction="row" justifyContent="space-between" alignItems="center">
           <Stack direction="row" spacing={2} alignItems="center">
-            <Typography variant="subtitle2" color="text.secondary">
+            <Typography variant="subtitle2" component="span" color="text.secondary">
               表示設定
             </Typography>
             <FormControlLabel

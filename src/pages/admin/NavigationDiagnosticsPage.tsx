@@ -76,7 +76,7 @@ export const NavigationDiagnosticsPage: React.FC = () => {
       <Paper sx={{ p: 3, mb: 4 }} variant="outlined">
         <Stack direction={{ xs: 'column', md: 'row' }} spacing={4}>
           <Box>
-            <Typography variant="subtitle2" color="text.secondary" gutterBottom>
+            <Typography variant="subtitle2" component="p" color="text.secondary" gutterBottom>
               評価対象ロール (Role)
             </Typography>
             <RadioGroup
@@ -92,7 +92,7 @@ export const NavigationDiagnosticsPage: React.FC = () => {
           </Box>
 
           <Box flex={1}>
-            <Typography variant="subtitle2" color="text.secondary" gutterBottom>
+            <Typography variant="subtitle2" component="p" color="text.secondary" gutterBottom>
               Feature Flags 状態
             </Typography>
             <Stack direction="row" spacing={2} flexWrap="wrap">
@@ -229,7 +229,7 @@ export const NavigationDiagnosticsPage: React.FC = () => {
       {tab === 'matrix' && (
         <Stack spacing={4}>
           <TableContainer component={Paper} variant="outlined">
-            <Typography variant="subtitle1" fontWeight="bold" sx={{ p: 2 }}>Side Navigation</Typography>
+            <Typography variant="subtitle1" component="h3" fontWeight="bold" sx={{ p: 2 }}>Side Navigation</Typography>
             <Table size="small">
               <TableHead>
                 <TableRow>
@@ -255,7 +255,7 @@ export const NavigationDiagnosticsPage: React.FC = () => {
           </TableContainer>
 
           <TableContainer component={Paper} variant="outlined">
-            <Typography variant="subtitle1" fontWeight="bold" sx={{ p: 2 }}>Footer Navigation</Typography>
+            <Typography variant="subtitle1" component="h3" fontWeight="bold" sx={{ p: 2 }}>Footer Navigation</Typography>
             <Table size="small">
               <TableHead>
                 <TableRow>

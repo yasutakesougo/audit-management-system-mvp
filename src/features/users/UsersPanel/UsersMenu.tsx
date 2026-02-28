@@ -39,7 +39,7 @@ const UsersMenu: FC<UsersMenuProps> = ({
     </Stack>
 
     <Stack spacing={1.5}>
-      <Typography variant="subtitle2" sx={{ fontWeight: 600 }}>
+      <Typography variant="subtitle2" component="h4" sx={{ fontWeight: 600 }}>
         帳票出力・データエクスポート
       </Typography>
       <Button

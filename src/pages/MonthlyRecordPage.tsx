@@ -677,7 +677,7 @@ export default function MonthlyRecordPage() {
 
                       {/* 出力条件サマリー */}
                       <Box sx={{ p: 2, bgcolor: 'action.hover', borderRadius: 1 }}>
-                        <Typography variant="subtitle2" gutterBottom>
+                        <Typography variant="subtitle2" component="p" gutterBottom>
                           出力対象
                         </Typography>
 
@@ -740,7 +740,7 @@ export default function MonthlyRecordPage() {
                 <Card variant="outlined">
                   <CardContent>
                     <Stack spacing={1}>
-                      <Typography variant="subtitle2" color="text.secondary">
+                      <Typography variant="subtitle2" component="p" color="text.secondary">
                         🔧 Power Automate 連携
                       </Typography>
 

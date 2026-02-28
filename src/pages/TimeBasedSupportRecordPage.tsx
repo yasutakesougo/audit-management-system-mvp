@@ -1,4 +1,4 @@
-import { FullScreenDailyDialogPage } from '@/features/daily/components/FullScreenDailyDialogPage';
+﻿import { FullScreenDailyDialogPage } from '@/features/daily/components/FullScreenDailyDialogPage';
 import { ProcedureEditor } from '@/features/daily/components/procedure/ProcedureEditor';
 import { ProcedurePanel, type ScheduleItem } from '@/features/daily/components/split-stream/ProcedurePanel';
 import { RecordPanel } from '@/features/daily/components/split-stream/RecordPanel';
@@ -509,7 +509,7 @@ const TimeBasedSupportRecordPage: React.FC = () => {
       {targetUserId && (
         <Paper sx={{ p: 2, borderTop: 1, borderColor: 'divider', bgcolor: 'common.white' }}>
           <Box display="flex" alignItems="center" gap={1} mb={1}>
-            <Typography variant="subtitle1" fontWeight="bold">
+            <Typography variant="subtitle1" component="span" fontWeight="bold">
               直近の行動記録
             </Typography>
             <Chip label={`${recentObservations.length}件`} size="small" />

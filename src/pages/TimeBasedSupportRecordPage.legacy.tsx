@@ -1,4 +1,4 @@
-import AccessTimeIcon from '@mui/icons-material/AccessTime';
+﻿import AccessTimeIcon from '@mui/icons-material/AccessTime';
 import AssignmentIcon from '@mui/icons-material/Assignment';
 import PersonIcon from '@mui/icons-material/Person';
 import SearchIcon from '@mui/icons-material/Search';
@@ -222,7 +222,7 @@ const TimeBasedSupportRecordList: React.FC<TimeBasedSupportRecordListProps> = ({
               }}
             >
               <CardContent>
-                <Typography variant="subtitle1" gutterBottom>
+                <Typography variant="subtitle1" component="span" gutterBottom>
                   {record.timeSlot} - {record.status}
                 </Typography>
 
@@ -614,7 +614,7 @@ const TimeBasedSupportRecordPage: React.FC = () => {
               <Typography variant="h4" fontWeight="bold" color="primary">
                 時間別支援手順記録
               </Typography>
-              <Typography variant="subtitle1" color="text.secondary">
+              <Typography variant="subtitle1" component="span" color="text.secondary">
                 時間ごとの本人のやること、職員のやること、本人の様子、特記事項を記録
               </Typography>
             </Box>
@@ -755,7 +755,7 @@ const TimeBasedSupportRecordPage: React.FC = () => {
                         data-testid={`procedure-slot-${slotInfo.slot}`}
                       >
                         <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 1 }}>
-                          <Typography variant="subtitle1" fontWeight="bold">
+                          <Typography variant="subtitle1" component="span" fontWeight="bold">
                             {slotInfo.slot}
                           </Typography>
                           <Stack direction="row" spacing={1} alignItems="center">
