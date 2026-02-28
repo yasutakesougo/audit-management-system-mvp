@@ -1,13 +1,13 @@
+import { TESTIDS, tid } from '@/testids';
 import { AccessTime as AccessTimeIcon, Close as CloseIcon, EditNote as EditNoteIcon, Nightlight as EveningIcon, WbSunny as MorningIcon } from '@mui/icons-material';
-import { Box, Button, Chip, Collapse, Container, Divider, IconButton, Paper, Stack, ToggleButton, ToggleButtonGroup, Typography } from '@mui/material';
+import { Alert, Box, Button, Chip, Collapse, Container, Divider, IconButton, Paper, Stack, ToggleButton, ToggleButtonGroup, Typography } from '@mui/material';
 import { useLocation } from 'react-router-dom';
-import { useHandoffTimelineViewModel } from '../features/handoff/useHandoffTimelineViewModel';
 import HandoffCategorySummaryCard from '../features/handoff/HandoffCategorySummaryCard';
 import { HandoffQuickNoteCard } from '../features/handoff/HandoffQuickNoteCard';
-import type { HandoffDayScope, HandoffTimeFilter } from '../features/handoff/handoffTypes';
-import { HANDOFF_DAY_SCOPE_LABELS, HANDOFF_TIME_FILTER_LABELS } from '../features/handoff/handoffTypes';
+import type { HandoffDayScope, HandoffTimeFilter, MeetingMode } from '../features/handoff/handoffTypes';
+import { HANDOFF_DAY_SCOPE_LABELS, HANDOFF_TIME_FILTER_LABELS, MEETING_MODE_LABELS } from '../features/handoff/handoffTypes';
 import { TodayHandoffTimelineList } from '../features/handoff/TodayHandoffTimelineList';
-import { tid, TESTIDS } from '@/testids';
+import { useHandoffTimelineViewModel } from '../features/handoff/useHandoffTimelineViewModel';
 
 /**
  * 申し送りタイムラインページ
@@ -42,6 +42,8 @@ export default function HandoffTimelinePage() {
     handleTimeFilterChange,
     openQuickNote,
     closeQuickNote,
+    meetingMode,
+    handleMeetingModeChange,
   } = useHandoffTimelineViewModel({ navState });
 
   return (
@@ -116,7 +118,36 @@ export default function HandoffTimelinePage() {
               午後〜夕方
             </ToggleButton>
           </ToggleButtonGroup>
+
+          {/* ミーティングモード切り替え */}
+          <ToggleButtonGroup
+            value={meetingMode}
+            exclusive
+            onChange={handleMeetingModeChange}
+            size="small"
+            color="primary"
+          >
+            {(Object.keys(MEETING_MODE_LABELS) as MeetingMode[]).map(mode => (
+              <ToggleButton key={mode} value={mode}>
+                {MEETING_MODE_LABELS[mode]}
+              </ToggleButton>
+            ))}
+          </ToggleButtonGroup>
         </Box>
+
+        {/* モード別サブヘッダー */}
+        {meetingMode !== 'normal' && (
+          <Alert
+            severity="info"
+            sx={{ mt: 1.5 }}
+            icon={meetingMode === 'evening' ? <EveningIcon /> : <MorningIcon />}
+          >
+            {meetingMode === 'evening'
+              ? '🌆 夕会モード: 未対応の申し送りを確認し、「確認済」「明日へ」「完了」を選択してください'
+              : '🌅 朝会モード: 昨日からの持越事項を確認し、処理完了したら「完了」を押してください'
+            }
+          </Alert>
+        )}
 
         {handoffStats && (
           <Box
@@ -217,6 +248,7 @@ export default function HandoffTimelinePage() {
           <TodayHandoffTimelineList
             timeFilter={timeFilter}
             dayScope={dayScope}
+            meetingMode={meetingMode}
             onStatsChange={setHandoffStats}
           />
         </Box>

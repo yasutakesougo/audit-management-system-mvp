@@ -9,13 +9,15 @@
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { generateTitleFromMessage } from './generateTitleFromMessage';
-import { useHandoffApi } from './handoffApi';
+import { carryOverDateStore, useHandoffApi } from './handoffApi';
 import { handoffConfig } from './handoffConfig';
 import {
     HANDOFF_TIME_FILTER_PRESETS,
     HandoffDayScope,
     HandoffRecord,
+    HandoffStatusUpdate,
     HandoffTimeFilter,
+    isTerminalStatus,
     NewHandoffInput,
 } from './handoffTypes';
 
@@ -254,23 +256,31 @@ export function useHandoffTimeline(
   );
 
   /**
-   * 申し送りの状態を更新（Phase 8A: 2モード対応）
+   * 申し送りの状態を更新（Phase 8A: 2モード対応、ワークフロー拡張）
+   *
+   * @param id 対象の申し送りID
+   * @param update ステータスと任意の carryOverDate を含む更新ペイロード
    */
   const updateHandoffStatus = useCallback(
-    async (id: number, newStatus: HandoffRecord['status']) => {
+    async (id: number, update: HandoffStatusUpdate) => {
+      const { status: newStatus, carryOverDate } = update;
+      // 楽観的更新用の差分
+      const patch: Partial<HandoffRecord> = { status: newStatus };
+      if (carryOverDate !== undefined) patch.carryOverDate = carryOverDate;
+
       // 楽観的更新
       const previousState = state.todayHandoffs;
       setState(prev => ({
         ...prev,
         todayHandoffs: prev.todayHandoffs.map(item =>
-          item.id === id ? { ...item, status: newStatus } : item
+          item.id === id ? { ...item, ...patch } : item
         ),
       }));
 
       try {
         if (handoffConfig.storage === 'sharepoint') {
           // SharePoint API モード
-          await handoffApi.updateHandoffRecord(id.toString(), { status: newStatus });
+          await handoffApi.updateHandoffRecord(id.toString(), patch);
         } else {
           // localStorage モード（開発用）
           const store = loadStorage();
@@ -284,8 +294,8 @@ export function useHandoffTimeline(
                 if (item.id !== id) {
                   return item;
                 }
-                bucketUpdated = bucketUpdated || item.status !== newStatus;
-                return { ...item, status: newStatus };
+                bucketUpdated = true;
+                return { ...item, ...patch };
               });
               if (bucketUpdated) {
                 store[key] = nextBucket;
@@ -298,14 +308,24 @@ export function useHandoffTimeline(
           } else if (dateKey) {
             const existing = store[dateKey] ?? [];
             const updated = existing.map(item =>
-              item.id === id ? { ...item, status: newStatus } : item
+              item.id === id ? { ...item, ...patch } : item
             );
             store[dateKey] = updated;
             saveStorage(store);
           }
         }
 
-        console.log('[handoff] Status updated:', { id, newStatus });
+        console.log('[handoff] Status updated:', { id, newStatus, carryOverDate });
+
+        // CarryOverDateStore クリーンアップ
+        // 終端ステータスまたは非ワークフローステータスに戻った場合、ローカル補完を削除
+        if (isTerminalStatus(newStatus) || newStatus === '未対応' || newStatus === '対応中' || newStatus === '対応済') {
+          carryOverDateStore.clear(id);
+        }
+        // 明日へ持越 の場合はローカル補完に書き込み（SP未追加のフォールバック）
+        if (newStatus === '明日へ持越' && carryOverDate) {
+          carryOverDateStore.set(id, carryOverDate);
+        }
       } catch (error) {
         // エラー時は楽観的更新を取り消し
         setState(prev => ({
