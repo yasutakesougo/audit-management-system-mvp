@@ -1,3 +1,7 @@
+import { dailyPaths } from '@/app/links/dailyLinks';
+import { buildTodayReturnUrl, parseNavQuery } from '@/app/links/navigationLinks';
+import { useAttendanceStore } from '@/features/attendance/store';
+import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import AssignmentIcon from '@mui/icons-material/Assignment';
 import AttendanceIcon from '@mui/icons-material/AssignmentInd';
 import SupportIcon from '@mui/icons-material/AssignmentTurnedIn';
@@ -13,12 +17,10 @@ import Container from '@mui/material/Container';
 import Paper from '@mui/material/Paper';
 import Stack from '@mui/material/Stack';
 import Typography from '@mui/material/Typography';
-import React, { useMemo, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { useAttendanceStore } from '@/features/attendance/store';
-import { BulkDailyRecordForm } from '../features/daily/BulkDailyRecordForm';
-import { useUsersDemo } from '../features/users/usersStoreDemo';
+import React, { useMemo } from 'react';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import type { IUserMaster } from '../features/users/types';
+import { useUsersDemo } from '../features/users/usersStoreDemo';
 
 type DailyHubSummary = {
   activity: {
@@ -91,29 +93,16 @@ const useDailyHubSummary = (users: IUserMaster[]) => {
 
 const DailyRecordMenuPage: React.FC = () => {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const { from: navFrom, date: navDate } = parseNavQuery(searchParams);
+  const fromToday = navFrom === 'today';
   const { data: usersRaw } = useUsersDemo();
   const users = usersRaw ?? []; // ← 常に配列にしておく
   const dailyHubSummary = useDailyHubSummary(users);
 
-  // 複数利用者フォーム状態
-  const [bulkFormOpen, setBulkFormOpen] = useState(false);
-
   // 統計計算（安全ガード付き）
   const totalUsers = users.length;
   const intensiveSupportUsers = users.filter(user => user.IsSupportProcedureTarget).length;
-
-  // モック記録状況（実際のデータと連携予定）
-  const mockActivityProgress = Math.floor(totalUsers * 0.75); // 75%完了
-  const mockAttendanceProgress = Math.floor(totalUsers * 0.68); // 68%完了
-  const mockSupportProgress = Math.floor(intensiveSupportUsers * 0.6); // 60%完了
-
-  // 安全な割合計算
-  const activityPercent =
-    totalUsers > 0 ? Math.round((mockActivityProgress / totalUsers) * 100) : 0;
-  const attendancePercent =
-    totalUsers > 0 ? Math.round((mockAttendanceProgress / totalUsers) * 100) : 0;
-  const supportPercent =
-    intensiveSupportUsers > 0 ? Math.round((mockSupportProgress / intensiveSupportUsers) * 100) : 0;
 
   const activityCaption = useMemo(() => {
     const { pending, inProgress } = dailyHubSummary.activity;
@@ -140,37 +129,21 @@ const DailyRecordMenuPage: React.FC = () => {
       ? 'warning.main'
       : 'text.secondary';
 
-  // 複数利用者記録保存ハンドラ
-  const handleBulkSave = async (data: {
-    date: string;
-    reporter: { name: string; role: string };
-    commonActivities: {
-      amActivities: string[];
-      pmActivities: string[];
-      amNotes: string;
-      pmNotes: string;
-    };
-    individualNotes: Record<string, { specialNotes?: string }>;
-  }, selectedUserIds: string[]) => {
-    if (import.meta.env.DEV) console.log('複数利用者記録保存:', { data, selectedUserIds });
-
-    // TODO: 実際の保存処理を実装
-    // 1. 各利用者に対して個別の記録を作成
-    // 2. 共通活動データと個別メモを結合
-    // 3. SharePoint または API に保存
-
-    // モック保存処理
-    await new Promise(resolve => setTimeout(resolve, 1000));
-
-    alert(`${selectedUserIds.length}人分の活動記録を保存しました`);
-    setBulkFormOpen(false);
-  };
-
   return (
     <Container maxWidth="lg" data-testid="daily-record-menu">
       <Box data-testid="daily-hub-root" sx={{ py: 4 }}>
         {/* ヘッダー */}
         <Box sx={{ mb: 4, textAlign: 'center' }}>
+          {fromToday && (
+            <Button
+              data-testid="daily-hub-return-today"
+              startIcon={<ArrowBackIcon />}
+              onClick={() => navigate(buildTodayReturnUrl(navDate))}
+              sx={{ mb: 2 }}
+            >
+              ← 今日の運用へ戻る
+            </Button>
+          )}
           <Typography variant="h3" component="h1" gutterBottom>
             日次記録システム
           </Typography>
@@ -257,7 +230,7 @@ const DailyRecordMenuPage: React.FC = () => {
                 variant="contained"
                 size="large"
                 fullWidth
-                onClick={() => navigate('/daily/table')}
+                onClick={() => navigate(dailyPaths.table)}
                 startIcon={<GroupIcon />}
                 data-testid="btn-open-table-activity"
               >
@@ -331,7 +304,7 @@ const DailyRecordMenuPage: React.FC = () => {
                 size="large"
                 fullWidth
                 color="info"
-                onClick={() => navigate('/daily/attendance')}
+                onClick={() => navigate(dailyPaths.attendance)}
                 startIcon={<AttendanceIcon />}
                 data-testid="btn-open-attendance"
               >
@@ -414,7 +387,7 @@ const DailyRecordMenuPage: React.FC = () => {
                 size="large"
                 fullWidth
                 color="secondary"
-                onClick={() => navigate('/daily/support')}
+                onClick={() => navigate(dailyPaths.support)}
                 startIcon={<SupportIcon />}
                 data-testid="btn-open-support"
               >
@@ -431,7 +404,7 @@ const DailyRecordMenuPage: React.FC = () => {
                   textDecoration: 'underline',
                   '&:hover': { backgroundColor: 'transparent', color: 'text.primary' }
                 }}
-                onClick={() => navigate('/daily/time-based')}
+                onClick={() => navigate(dailyPaths.timeBased)}
               >
                 ※時間帯ごとに記録する画面はこちら
               </Button>
@@ -446,7 +419,7 @@ const DailyRecordMenuPage: React.FC = () => {
                   textDecoration: 'underline',
                   '&:hover': { backgroundColor: 'transparent', color: 'text.primary' }
                 }}
-                onClick={() => navigate('/daily/support-checklist')}
+                onClick={() => navigate(dailyPaths.supportChecklist)}
               >
                 ※従来のチェックリスト形式はこちら
               </Button>
@@ -454,7 +427,7 @@ const DailyRecordMenuPage: React.FC = () => {
           </Card>
         </Stack>
 
-        {/* 統計情報（簡易版） */}
+        {/* 統計情報（件数主表示） */}
         <Paper sx={{ p: 3 }} data-testid="daily-stats-summary">
           <Typography variant="h6" gutterBottom>
             本日の記録状況
@@ -466,49 +439,48 @@ const DailyRecordMenuPage: React.FC = () => {
             divider={<Box sx={{ borderLeft: '1px solid', borderColor: 'divider', height: '60px', display: { xs: 'none', sm: 'block' } }} />}
           >
             <Box sx={{ textAlign: 'center', flex: 1 }} data-testid="daily-stats-activity">
-              <Typography variant="h4" color="primary.main">
-                {mockActivityProgress} / {totalUsers}
+              <Typography variant="h4" color={activityCaptionColor}>
+                {dailyHubSummary.activity?.pending ?? 0}件
               </Typography>
               <Typography variant="body2" color="text.secondary">
-                支援記録（ケース記録） 記録済み
+                ケース記録 未入力
               </Typography>
-              <Typography variant="caption" color="success.main">
-                {activityPercent}% 完了
-              </Typography>
+              {(dailyHubSummary.activity?.inProgress ?? 0) > 0 && (
+                <Typography variant="caption" color="text.secondary">
+                  入力中 {dailyHubSummary.activity.inProgress}件
+                </Typography>
+              )}
             </Box>
 
             <Box sx={{ textAlign: 'center', flex: 1 }} data-testid="daily-stats-attendance">
-              <Typography variant="h4" color="info.main">
-                {mockAttendanceProgress} / {totalUsers}
+              <Typography variant="h4" color={attendanceCaptionColor}>
+                {(dailyHubSummary.attendance?.absence ?? 0) + (dailyHubSummary.attendance?.lateOrEarly ?? 0)}件
               </Typography>
               <Typography variant="body2" color="text.secondary">
-                通所管理 進捗
+                通所管理 要確認
               </Typography>
-              <Typography variant="caption" color="info.main">
-                {attendancePercent}% 完了
-              </Typography>
+              {((dailyHubSummary.attendance?.absence ?? 0) > 0 || (dailyHubSummary.attendance?.lateOrEarly ?? 0) > 0) && (
+                <Typography variant="caption" color="text.secondary">
+                  欠席 {dailyHubSummary.attendance.absence} / 遅刻・早退 {dailyHubSummary.attendance.lateOrEarly}
+                </Typography>
+              )}
             </Box>
 
             <Box sx={{ textAlign: 'center', flex: 1 }} data-testid="daily-stats-support">
-              <Typography variant="h4" color="secondary.main">
-                {mockSupportProgress} / {intensiveSupportUsers}
+              <Typography variant="h4" color={supportCaptionColor}>
+                {dailyHubSummary.support?.incomplete ?? 0}件
               </Typography>
               <Typography variant="body2" color="text.secondary">
-                支援手順記録 記録済み
+                支援手順記録 未記入
               </Typography>
-              <Typography variant="caption" color="warning.main">
-                {supportPercent}% 完了
-              </Typography>
+              {(dailyHubSummary.support?.total ?? 0) > 0 && (
+                <Typography variant="caption" color="text.secondary">
+                  対象 {dailyHubSummary.support.total}件中
+                </Typography>
+              )}
             </Box>
           </Stack>
         </Paper>
-
-        {/* 複数利用者支援記録（ケース記録）フォーム（旧版） */}
-        <BulkDailyRecordForm
-          open={bulkFormOpen}
-          onClose={() => setBulkFormOpen(false)}
-          onSave={handleBulkSave}
-        />
 
       </Box>
     </Container>

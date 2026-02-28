@@ -65,4 +65,32 @@ describe('HeroUnfinishedBanner', () => {
     // 関数が正しく呼び出されたか
     expect(handleClick).toHaveBeenCalledTimes(1);
   });
+
+  it('renders secondary button when onClickSecondary is provided', () => {
+    const handleSecondary = vi.fn();
+    render(
+      <HeroUnfinishedBanner
+        unfilledCount={2}
+        onClickPrimary={() => {}}
+        onClickSecondary={handleSecondary}
+      />
+    );
+
+    const menuBtn = screen.getByRole('button', { name: /記録メニュー/ });
+    expect(menuBtn).toBeInTheDocument();
+
+    fireEvent.click(menuBtn);
+    expect(handleSecondary).toHaveBeenCalledTimes(1);
+  });
+
+  it('does not render secondary button when onClickSecondary is omitted (backward compat)', () => {
+    render(
+      <HeroUnfinishedBanner
+        unfilledCount={2}
+        onClickPrimary={() => {}}
+      />
+    );
+
+    expect(screen.queryByRole('button', { name: /記録メニュー/ })).not.toBeInTheDocument();
+  });
 });
