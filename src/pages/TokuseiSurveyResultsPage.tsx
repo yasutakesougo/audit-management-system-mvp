@@ -1,6 +1,7 @@
 ﻿import { summarizeTokuseiResponses, type TokuseiSurveyResponse } from '@/domain/assessment/tokusei';
 import FeatureChipList from '@/features/assessment/components/FeatureChipList';
 import { useTokuseiSurveyResponses } from '@/features/assessment/hooks/useTokuseiSurveyResponses';
+import { IBDPageHeader } from '@/features/ibd/components/IBDPageHeader';
 import { env } from '@/lib/env';
 import RefreshRoundedIcon from '@mui/icons-material/RefreshRounded';
 import SupportAgentRoundedIcon from '@mui/icons-material/SupportAgentRounded';
@@ -199,19 +200,11 @@ const TokuseiSurveyResultsPage: React.FC = () => {
 
   return (
     <Stack spacing={3}>
-      <Paper sx={{ p: 3 }} elevation={0}>
-        <Stack direction={{ xs: 'column', md: 'row' }} spacing={3} alignItems={{ md: 'center' }} justifyContent="space-between">
-          <Stack direction="row" spacing={2} alignItems="center">
-            <SupportAgentRoundedIcon color="primary" fontSize="large" />
-            <Box>
-              <Typography variant="h5" fontWeight={600} gutterBottom>
-                特性アンケート結果
-              </Typography>
-              <Typography variant="body2" color="text.secondary">
-                Microsoft Forms 由来の特性ヒアリング結果を SharePoint から自動同期
-              </Typography>
-            </Box>
-          </Stack>
+      <IBDPageHeader
+        title="特性アンケート結果"
+        subtitle="Microsoft Forms 由来の特性ヒアリング結果を SharePoint から自動同期"
+        icon={<SupportAgentRoundedIcon />}
+        actions={
           <Stack direction="row" spacing={2} alignItems="center" flexWrap="wrap">
             <Chip label={`回答数: ${summary.totalResponses}`} color="primary" variant="outlined" />
             <Chip label={`対象者: ${summary.uniqueUsers}`} variant="outlined" />
@@ -220,8 +213,8 @@ const TokuseiSurveyResultsPage: React.FC = () => {
               最新更新: {summary.latestSubmittedAt ? formatDateTime(summary.latestSubmittedAt) : '未取得'}
             </Typography>
           </Stack>
-        </Stack>
-      </Paper>
+        }
+      />
 
       <Paper sx={{ p: 3 }}>
         <Stack direction={{ xs: 'column', md: 'row' }} spacing={2} mb={2} alignItems={{ xs: 'stretch', md: 'center' }}>

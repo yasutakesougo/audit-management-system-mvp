@@ -1,25 +1,28 @@
+import { useUsersDemo } from '@/features/users/usersStoreDemo';
 import AddIcon from '@mui/icons-material/Add';
 import TemplatesIcon from '@mui/icons-material/LibraryBooks';
+import ListAltIcon from '@mui/icons-material/ListAlt';
 import Alert from '@mui/material/Alert';
 import Box from '@mui/material/Box';
 import Button from '@mui/material/Button';
+import CircularProgress from '@mui/material/CircularProgress';
+import FormControl from '@mui/material/FormControl';
+import InputLabel from '@mui/material/InputLabel';
+import MenuItem from '@mui/material/MenuItem';
 import Paper from '@mui/material/Paper';
+import Select from '@mui/material/Select';
 import Snackbar from '@mui/material/Snackbar';
 import Tab from '@mui/material/Tab';
 import Tabs from '@mui/material/Tabs';
 import Typography from '@mui/material/Typography';
-import React, { useMemo, useState } from 'react';
-import { SupportStepTemplate, defaultSupportStepTemplates } from '../domain/support/step-templates';
+import React, { useState } from 'react';
+import { SupportStepTemplate } from '../domain/support/step-templates';
+import { IBDPageHeader } from '../features/ibd/components/IBDPageHeader';
 import { SupportStepTemplateForm } from '../features/support/SupportStepTemplateForm';
 import { SupportStepTemplateList } from '../features/support/SupportStepTemplateList';
+import { useSupportStepTemplates } from '../features/support/hooks/useSupportStepTemplates';
 
-// デフォルトテンプレートにID付与（コンポーネント外で一度だけ生成）
-const defaultTemplatesWithIds: SupportStepTemplate[] = defaultSupportStepTemplates.map((template, index) => ({
-  ...template,
-  id: `default-${index + 1}`,
-  isDefault: true
-}));
-
+// ─── TabPanel ────────────────────────────────────────────
 interface TabPanelProps {
   children?: React.ReactNode;
   index: number;
@@ -28,7 +31,6 @@ interface TabPanelProps {
 
 function TabPanel(props: TabPanelProps) {
   const { children, value, index, ...other } = props;
-
   return (
     <div
       role="tabpanel"
@@ -37,11 +39,7 @@ function TabPanel(props: TabPanelProps) {
       aria-labelledby={`template-tab-${index}`}
       {...other}
     >
-      {value === index && (
-        <Box sx={{ p: 3 }}>
-          {children}
-        </Box>
-      )}
+      {value === index && <Box sx={{ p: 3 }}>{children}</Box>}
     </div>
   );
 }
@@ -53,12 +51,20 @@ function a11yProps(index: number) {
   };
 }
 
+// ─── Page ────────────────────────────────────────────────
 const SupportStepMasterPage: React.FC = () => {
-  const [activeTab, setActiveTab] = useState(0);
+  // ── 利用者選択 ──
+  const { data: users } = useUsersDemo();
+  const [selectedUserCode, setSelectedUserCode] = useState<string>('');
 
-  // TODO: 将来的にはuseSupportStepTemplatesStore()などのhooksに置き換え予定
-  // 現在はローカル状態管理（SharePoint/API連携時に拡張）
-  const [templates, setTemplates] = useState<SupportStepTemplate[]>([]);
+  // ── SP テンプレート取得 + Mutation ──
+  const {
+    templates, spTemplates, isLoading, isMutating, error,
+    createTemplate, updateTemplate, deleteTemplate,
+  } = useSupportStepTemplates(selectedUserCode || null);
+
+  // ── UI state ──
+  const [activeTab, setActiveTab] = useState(0);
   const [editingTemplate, setEditingTemplate] = useState<SupportStepTemplate | null>(null);
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [notification, setNotification] = useState<{
@@ -71,11 +77,6 @@ const SupportStepMasterPage: React.FC = () => {
     severity: 'success',
   });
 
-  // デフォルトテンプレートとカスタムテンプレートを統合
-  const allTemplates = useMemo(() => {
-    return [...defaultTemplatesWithIds, ...templates];
-  }, [templates]);
-
   const handleTabChange = (_event: React.SyntheticEvent, newValue: number) => {
     setActiveTab(newValue);
   };
@@ -83,122 +84,137 @@ const SupportStepMasterPage: React.FC = () => {
   const handleAddTemplate = () => {
     setEditingTemplate(null);
     setIsFormOpen(true);
-    setActiveTab(1); // フォームタブに切り替え
+    setActiveTab(1);
   };
 
   const handleEditTemplate = (template: SupportStepTemplate) => {
     setEditingTemplate(template);
     setIsFormOpen(true);
-    setActiveTab(1); // フォームタブに切り替え
+    setActiveTab(1);
   };
 
-  // TODO: SharePoint/API連携時は以下の操作をhooks内でAPIコールに置き換え
-  const handleDeleteTemplate = (templateId: string) => {
-    // デフォルトテンプレートは削除不可（id prefix と isDefault の両方でチェック）
-    const template = allTemplates.find(t => t.id === templateId);
-    if (templateId.startsWith('default-') || template?.isDefault) {
-      setNotification({
-        open: true,
-        message: 'デフォルトテンプレートは削除できません',
-        severity: 'warning',
-      });
+  const handleDeleteTemplate = async (templateId: string) => {
+    if (templateId.startsWith('default-')) {
+      setNotification({ open: true, message: 'デフォルトテンプレートは削除できません', severity: 'warning' });
       return;
     }
 
-    // TODO: 実装時は await deleteTemplate(templateId); など
-    setTemplates(prev => prev.filter(template => template.id !== templateId));
+    const ok = await deleteTemplate(templateId);
     setNotification({
       open: true,
-      message: 'テンプレートを削除しました',
-      severity: 'success',
+      message: ok ? 'テンプレートを削除しました' : 'テンプレート削除に失敗しました',
+      severity: ok ? 'success' : 'error',
     });
   };
 
-  // TODO: SharePoint/API連携時は以下の操作をhooks内でAPIコールに置き換え
-  const handleSaveTemplate = (template: SupportStepTemplate) => {
+  const handleSaveTemplate = async (template: SupportStepTemplate) => {
     if (editingTemplate) {
-      // 既存テンプレートの編集
       if (template.id.startsWith('default-') || template.isDefault) {
-        // デフォルトテンプレートは編集不可
-        setNotification({
-          open: true,
-          message: 'デフォルトテンプレートは編集できません',
-          severity: 'warning',
-        });
+        setNotification({ open: true, message: 'デフォルトテンプレートは編集できません', severity: 'warning' });
         return;
       }
-
-      // TODO: 実装時は await updateTemplate(template); など
-      setTemplates(prev => prev.map(t => t.id === template.id ? template : t));
+      const ok = await updateTemplate(template);
       setNotification({
         open: true,
-        message: 'テンプレートを更新しました',
-        severity: 'success',
+        message: ok ? 'テンプレートを更新しました' : '更新に失敗しました',
+        severity: ok ? 'success' : 'error',
       });
     } else {
-      // 新規テンプレートの追加
-      const newTemplate = {
-        ...template,
-        id: `custom-${Date.now()}`, // TODO: 実装時はAPI側でUUID生成
-        isDefault: false, // カスタムテンプレートは常にisDefault: false
-      };
-
-      // TODO: 実装時は await createTemplate(newTemplate); など
-      setTemplates(prev => [...prev, newTemplate]);
+      if (!selectedUserCode) {
+        setNotification({ open: true, message: '利用者を選択してください', severity: 'warning' });
+        return;
+      }
+      const ok = await createTemplate(template);
       setNotification({
         open: true,
-        message: 'テンプレートを作成しました',
-        severity: 'success',
+        message: ok ? 'テンプレートを作成しました' : '作成に失敗しました',
+        severity: ok ? 'success' : 'error',
       });
     }
 
     setIsFormOpen(false);
     setEditingTemplate(null);
-    setActiveTab(0); // 一覧タブに切り替え
+    setActiveTab(0);
   };
 
   const handleCancelForm = () => {
     setIsFormOpen(false);
     setEditingTemplate(null);
-    setActiveTab(0); // 一覧タブに切り替え
+    setActiveTab(0);
   };
 
   const handleCloseNotification = () => {
-    setNotification(prev => ({ ...prev, open: false }));
+    setNotification((prev) => ({ ...prev, open: false }));
   };
+
+  // ── 利用者セレクタ ──
+  const userSelector = (
+    <FormControl size="small" sx={{ minWidth: 200 }}>
+      <InputLabel id="step-template-user-label">利用者</InputLabel>
+      <Select
+        labelId="step-template-user-label"
+        value={selectedUserCode}
+        label="利用者"
+        onChange={(e) => setSelectedUserCode(e.target.value)}
+        data-testid="step-template-user-select"
+      >
+        <MenuItem value="">
+          <em>デフォルトのみ</em>
+        </MenuItem>
+        {users.map((user) => (
+          <MenuItem key={user.UserID} value={user.UserID}>
+            {user.FullName}（{user.UserID}）
+          </MenuItem>
+        ))}
+      </Select>
+    </FormControl>
+  );
 
   return (
     <Box>
-      {/* ページヘッダー */}
-      <Paper elevation={1} sx={{ mb: 3 }}>
-        <Box sx={{ px: 3, py: 2 }}>
-          <Box display="flex" justifyContent="space-between" alignItems="center">
-            <Box>
-              <Typography variant="h4" component="h1" sx={{ fontWeight: 600, mb: 1 }}>
-                支援手順マスタ
-              </Typography>
-              <Typography variant="body1" color="text.secondary">
-                個別支援手順のマスタを管理します。利用者様の支援計画作成時に使用できます。
-              </Typography>
-            </Box>
-
+      {/* ── IBDPageHeader ── */}
+      <IBDPageHeader
+        title="支援手順マスタ"
+        subtitle="利用者ごとの個別支援手順を管理します"
+        icon={<ListAltIcon />}
+        actions={
+          <Box display="flex" gap={2} alignItems="center">
+            {userSelector}
             {!isFormOpen && (
               <Button
                 variant="contained"
-                size="large"
+                size="small"
                 startIcon={<AddIcon />}
                 onClick={handleAddTemplate}
-                sx={{ minWidth: 180 }}
+                disabled={isMutating}
                 data-testid="support-step-templates-add-button"
               >
-                新規テンプレート作成
+                新規作成
               </Button>
             )}
           </Box>
-        </Box>
-      </Paper>
+        }
+      />
 
-      {/* メインコンテンツ */}
+      {/* ── エラー表示 ── */}
+      {error && (
+        <Alert severity="error" sx={{ mb: 2 }}>
+          {error}
+        </Alert>
+      )}
+
+      {/* ── SP テンプレート件数バッジ ── */}
+      {selectedUserCode && !isLoading && (
+        <Alert severity="info" sx={{ mb: 2 }} icon={false}>
+          <Typography variant="body2">
+            <strong>{users.find((u) => u.UserID === selectedUserCode)?.FullName}</strong> さんの
+            支援手順: <strong>{spTemplates.length}</strong> 件（SharePoint）
+            + デフォルト 7 件
+          </Typography>
+        </Alert>
+      )}
+
+      {/* ── メインコンテンツ ── */}
       <Paper elevation={1}>
         <Box sx={{ borderBottom: 1, borderColor: 'divider' }}>
           <Tabs
@@ -227,29 +243,31 @@ const SupportStepMasterPage: React.FC = () => {
         </Box>
 
         <TabPanel value={activeTab} index={0}>
-          {allTemplates.length === 0 ? (
+          {isLoading ? (
+            <Box textAlign="center" py={8}>
+              <CircularProgress />
+              <Typography variant="body2" color="text.secondary" sx={{ mt: 2 }}>
+                SharePoint からテンプレートを取得中...
+              </Typography>
+            </Box>
+          ) : templates.length === 0 ? (
             <Box textAlign="center" py={8}>
               <Typography variant="h6" color="text.secondary" mb={2}>
                 テンプレートがありません
               </Typography>
               <Typography variant="body1" color="text.disabled" mb={3}>
-                新しい支援手順テンプレートを作成してください
+                利用者を選択するか、新しいテンプレートを作成してください
               </Typography>
-              <Button
-                variant="contained"
-                startIcon={<AddIcon />}
-                onClick={handleAddTemplate}
-              >
+              <Button variant="contained" startIcon={<AddIcon />} onClick={handleAddTemplate}>
                 テンプレート作成
               </Button>
             </Box>
           ) : (
             <SupportStepTemplateList
-              templates={allTemplates}
+              templates={templates}
               onEdit={handleEditTemplate}
               onDelete={handleDeleteTemplate}
               onAdd={handleAddTemplate}
-              data-testid="support-step-templates-list"
             />
           )}
         </TabPanel>
@@ -261,25 +279,19 @@ const SupportStepMasterPage: React.FC = () => {
               onSave={handleSaveTemplate}
               onCancel={handleCancelForm}
               isEditing={!!editingTemplate}
-              data-testid="support-step-templates-form"
             />
           </TabPanel>
         )}
       </Paper>
 
-      {/* 通知メッセージ */}
+      {/* ── 通知 ── */}
       <Snackbar
         open={notification.open}
         autoHideDuration={4000}
         onClose={handleCloseNotification}
         anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
-        data-testid="support-step-templates-notification"
       >
-        <Alert
-          onClose={handleCloseNotification}
-          severity={notification.severity}
-          variant="filled"
-        >
+        <Alert onClose={handleCloseNotification} severity={notification.severity} variant="filled">
           {notification.message}
         </Alert>
       </Snackbar>

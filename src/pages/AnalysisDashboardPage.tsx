@@ -5,6 +5,7 @@ import { useBehaviorAnalytics } from '@/features/analysis/hooks/useBehaviorAnaly
 import FeatureChipList from '@/features/assessment/components/FeatureChipList';
 import { useTokuseiSurveyResponses } from '@/features/assessment/hooks/useTokuseiSurveyResponses';
 import { seedDemoBehaviors, useBehaviorStore } from '@/features/daily/stores/behaviorStore';
+import { IBDPageHeader } from '@/features/ibd/components/IBDPageHeader';
 import { useUsersDemo } from '@/features/users/usersStoreDemo';
 import { isDemoModeEnabled } from '@/lib/env';
 import AssessmentIcon from '@mui/icons-material/Assessment';
@@ -18,7 +19,6 @@ import Container from '@mui/material/Container';
 import FormControl from '@mui/material/FormControl';
 import InputLabel from '@mui/material/InputLabel';
 import MenuItem from '@mui/material/MenuItem';
-import Paper from '@mui/material/Paper';
 import Select from '@mui/material/Select';
 import Typography from '@mui/material/Typography';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
@@ -93,74 +93,55 @@ const AnalysisDashboardPage: React.FC = () => {
 
   return (
     <Container maxWidth="xl" sx={{ py: 3, minHeight: '100vh' }} data-testid="analysis-dashboard-page">
-      {/* Header */}
-      <Paper
-        elevation={0}
-        sx={{
-          p: 2,
-          mb: 3,
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center',
-          flexWrap: 'wrap',
-          gap: 2,
-        }}
-      >
-        <Box display="flex" alignItems="center" gap={2}>
-          <AssessmentIcon color="primary" fontSize="large" />
-          <Box>
-            <Typography variant="h5" fontWeight="bold">
-              行動分析ダッシュボード
-            </Typography>
-            <Typography variant="body2" color="text.secondary">
-              FR-C01: 記録データを即座に可視化してフィードバック
-            </Typography>
-          </Box>
-        </Box>
-
-        <Box display="flex" alignItems="center" gap={2}>
-          <FormControl size="small" sx={{ minWidth: 220 }}>
-            <InputLabel id="analysis-target-user-label">分析対象者</InputLabel>
-            <Select
-              labelId="analysis-target-user-label"
-              label="分析対象者"
-              value={targetUserId}
-              onChange={(event) => setTargetUserId(event.target.value)}
-            >
-              <MenuItem value="">
-                <em>選択してください</em>
-              </MenuItem>
-              {users.map((user) => (
-                <MenuItem key={user.UserID} value={user.UserID}>
-                  {user.FullName}
+      <IBDPageHeader
+        title="行動分析ダッシュボード"
+        subtitle="記録データを即座に可視化してフィードバック"
+        icon={<AssessmentIcon />}
+        actions={
+          <>
+            <FormControl size="small" sx={{ minWidth: 220 }}>
+              <InputLabel id="analysis-target-user-label">分析対象者</InputLabel>
+              <Select
+                labelId="analysis-target-user-label"
+                label="分析対象者"
+                value={targetUserId}
+                onChange={(event) => setTargetUserId(event.target.value)}
+              >
+                <MenuItem value="">
+                  <em>選択してください</em>
                 </MenuItem>
-              ))}
-            </Select>
-          </FormControl>
+                {users.map((user) => (
+                  <MenuItem key={user.UserID} value={user.UserID}>
+                    {user.FullName}
+                  </MenuItem>
+                ))}
+              </Select>
+            </FormControl>
 
-          <FormControl size="small" sx={{ minWidth: 130 }}>
-            <InputLabel id="analysis-days-label">分析期間</InputLabel>
-            <Select
-              labelId="analysis-days-label"
-              label="分析期間"
-              value={analysisDays}
-              onChange={(event) => setAnalysisDays(Number(event.target.value))}
-            >
-              {ANALYSIS_DAYS_OPTIONS.map((opt) => (
-                <MenuItem key={opt.value} value={opt.value}>
-                  {opt.label}
-                </MenuItem>
-              ))}
-            </Select>
-          </FormControl>
+            <FormControl size="small" sx={{ minWidth: 130 }}>
+              <InputLabel id="analysis-days-label">分析期間</InputLabel>
+              <Select
+                labelId="analysis-days-label"
+                label="分析期間"
+                value={analysisDays}
+                onChange={(event) => setAnalysisDays(Number(event.target.value))}
+              >
+                {ANALYSIS_DAYS_OPTIONS.map((opt) => (
+                  <MenuItem key={opt.value} value={opt.value}>
+                    {opt.label}
+                  </MenuItem>
+                ))}
+              </Select>
+            </FormControl>
 
-          {targetUserId && demoModeEnabled && (
-            <Button variant="outlined" startIcon={<RefreshIcon />} onClick={handleSeedData} size="small">
-              デモデータ生成
-            </Button>
-          )}
-        </Box>
-      </Paper>
+            {targetUserId && demoModeEnabled && (
+              <Button variant="outlined" startIcon={<RefreshIcon />} onClick={handleSeedData} size="small">
+                デモデータ生成
+              </Button>
+            )}
+          </>
+        }
+      />
 
       {targetUserId ? (
         <Box

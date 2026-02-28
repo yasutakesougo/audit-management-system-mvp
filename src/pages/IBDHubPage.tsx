@@ -1,30 +1,25 @@
 // ---------------------------------------------------------------------------
-// IBDHubPage — 強度行動障害支援OS（統合ハブ）
+// IBDHubPage — 強度行動障害支援ステータスボード
 //
-// 4セクション: 評価(Assessment) → 分析(Analysis) → 支援設計(Design) → モニタリング(Monitor)
-// 各 Deep Dive ページへの導線 + メタ情報（件数・最終更新日・未完了ドラフト）
+// 4つのワークフロー段階を「ライブ状況 + アクション導線」で表示する
+// オペレーションボード。静的なディレクトリではなく、現場スタッフが
+// 「今何をすべきか」を瞬時に把握するための起点。
 // ---------------------------------------------------------------------------
-import { buildUnfilledSupportUrl } from '@/app/links/dailySupportLinks';
 import { ASSESSMENT_DRAFT_KEY } from '@/features/assessment/domain/assessmentSchema';
+import { IBDPageHeader } from '@/features/ibd/components/IBDPageHeader';
+import ArrowForwardIcon from '@mui/icons-material/ArrowForward';
 import AssessmentIcon from '@mui/icons-material/Assessment';
 import BuildIcon from '@mui/icons-material/Build';
-import DashboardIcon from '@mui/icons-material/Dashboard';
-import EditNoteIcon from '@mui/icons-material/EditNote';
-import InsightsIcon from '@mui/icons-material/Insights';
-import ListAltIcon from '@mui/icons-material/ListAlt';
-import MonitorHeartIcon from '@mui/icons-material/MonitorHeart';
 import PsychologyIcon from '@mui/icons-material/Psychology';
-import QuizIcon from '@mui/icons-material/Quiz';
-import ScienceIcon from '@mui/icons-material/Science';
 import TimelineIcon from '@mui/icons-material/Timeline';
 import TrendingUpIcon from '@mui/icons-material/TrendingUp';
-import Alert from '@mui/material/Alert';
 import Box from '@mui/material/Box';
+import Button from '@mui/material/Button';
 import Card from '@mui/material/Card';
-import CardActionArea from '@mui/material/CardActionArea';
 import CardContent from '@mui/material/CardContent';
 import Chip from '@mui/material/Chip';
 import Container from '@mui/material/Container';
+import Divider from '@mui/material/Divider';
 import Stack from '@mui/material/Stack';
 import Typography from '@mui/material/Typography';
 import React, { useMemo } from 'react';
@@ -34,36 +29,31 @@ import { useNavigate } from 'react-router-dom';
 // Types
 // ---------------------------------------------------------------------------
 
-interface HubCard {
+interface StatusLink {
   label: string;
   to: string;
-  description: string;
-  icon: React.ReactNode;
-  meta?: string;           // メタ情報（件数・更新日など）
-  badge?: string;           // DEV, 管理者 など
-  adminOnly?: boolean;
+  primary?: boolean;
 }
 
-interface HubSection {
+interface StatusSection {
   id: string;
-  emoji: string;
+  icon: React.ReactNode;
   title: string;
-  subtitle: string;
-  cards: HubCard[];
-  highlight?: string;      // 強調メッセージ（未完了ドラフトなど）
+  description: string;
+  accentColor: string;
+  metrics: Array<{ label: string; value: string | number }>;
+  links: StatusLink[];
+  alert?: string;
 }
 
 // ---------------------------------------------------------------------------
-// Section Definitions
+// Hooks — ステータス情報の集約
 // ---------------------------------------------------------------------------
 
-function useSections(): HubSection[] {
+function useHubStatus(): StatusSection[] {
   return useMemo(() => {
-    // TODO Phase 2: ここで assessmentStore / behaviorStore / icebergStore からメタ情報を取得
-    // const { getByUserId } = useAssessmentStore();
-    // const assessmentDraftExists = localStorage.getItem('assessmentDraft.v1') !== null;
-
-    const assessmentDraftExists = (() => {
+    // アセスメントドラフトの有無
+    const hasDraft = (() => {
       try {
         const raw = localStorage.getItem(ASSESSMENT_DRAFT_KEY);
         if (!raw) return false;
@@ -74,148 +64,79 @@ function useSections(): HubSection[] {
       }
     })();
 
-    // 支援活動マスタのメタ情報（件数・最終更新日）
+    // 支援活動マスタのメタ情報
     const activityMeta = (() => {
       try {
         const raw = localStorage.getItem('ams.supportActivityTemplates.meta.v1');
-        if (!raw) return undefined;
+        if (!raw) return { count: 0, updatedAt: '' };
         const parsed = JSON.parse(raw) as { count?: number; updatedAt?: string };
-        const count = typeof parsed.count === 'number' ? parsed.count : undefined;
-        const updatedAt = parsed.updatedAt
-          ? new Date(parsed.updatedAt).toLocaleString('ja-JP', {
-              month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit',
-            })
-          : undefined;
-        return { count, updatedAt };
+        return {
+          count: typeof parsed.count === 'number' ? parsed.count : 0,
+          updatedAt: parsed.updatedAt
+            ? new Date(parsed.updatedAt).toLocaleDateString('ja-JP', { month: 'numeric', day: 'numeric' })
+            : '',
+        };
       } catch {
-        return undefined;
+        return { count: 0, updatedAt: '' };
       }
     })();
-    const activityMetaText = activityMeta
-      ? [
-          activityMeta.count !== undefined ? `${activityMeta.count}件` : '',
-          activityMeta.updatedAt ? `最終更新 ${activityMeta.updatedAt}` : '',
-        ].filter(Boolean).join('・') || undefined
-      : undefined;
 
     return [
-      // ① 評価（Assessment）
       {
         id: 'assessment',
-        emoji: '📋',
+        icon: <AssessmentIcon />,
         title: '評価',
-        subtitle: '利用者の特性・感覚プロファイルを評価し、支援の土台を作る',
-        highlight: assessmentDraftExists ? '📝 未完了のドラフトがあります' : undefined,
-        cards: [
-          {
-            label: 'アセスメント',
-            to: '/assessment',
-            description: '感覚プロファイルの評価・ICF分類に基づくアイテム管理',
-            icon: <AssessmentIcon sx={{ fontSize: 32, color: '#2e7d32' }} />,
-            meta: assessmentDraftExists ? '下書きあり' : undefined,
-          },
-          {
-            label: '特性アンケート',
-            to: '/survey/tokusei',
-            description: 'Microsoft Forms連携の特性調査結果の一覧と分析',
-            icon: <QuizIcon sx={{ fontSize: 32, color: '#ed6c02' }} />,
-          },
+        description: '利用者の特性・感覚プロファイルを評価し支援の土台を作る',
+        accentColor: '#2e7d32',
+        metrics: [
+          { label: 'ドラフト', value: hasDraft ? '未完了あり' : 'なし' },
         ],
+        links: [
+          { label: 'アセスメント', to: '/assessment' },
+          { label: '特性アンケート', to: '/survey/tokusei', primary: true },
+        ],
+        alert: hasDraft ? '📝 未完了のドラフトがあります' : undefined,
       },
-
-      // ② 分析（Analysis）
       {
         id: 'analysis',
-        emoji: '📊',
+        icon: <TimelineIcon />,
         title: '分析',
-        subtitle: '行動の傾向を可視化し、背景要因を構造化して仮説を立てる',
-        cards: [
-          {
-            label: '行動分析ダッシュボード',
-            to: '/analysis/dashboard',
-            description: '行動のトレンドチャートと時間帯別ヒートマップで傾向を可視化',
-            icon: <TimelineIcon sx={{ fontSize: 32, color: '#1976d2' }} />,
-          },
-          {
-            label: '氷山モデル分析',
-            to: '/analysis/iceberg',
-            description: '表面的な行動の背景にある環境要因を氷山モデルで構造化',
-            icon: <PsychologyIcon sx={{ fontSize: 32, color: '#0288d1' }} />,
-          },
-          {
-            label: '氷山PDCA',
-            to: '/analysis/iceberg-pdca',
-            description: '氷山分析の仮説を検証し、PDCAサイクルで支援を改善',
-            icon: <ScienceIcon sx={{ fontSize: 32, color: '#7b1fa2' }} />,
-          },
+        description: '行動の傾向を可視化し背景要因を構造化して仮説を立てる',
+        accentColor: '#1976d2',
+        metrics: [],
+        links: [
+          { label: '行動分析ダッシュボード', to: '/analysis/dashboard', primary: true },
+          { label: '氷山モデル分析', to: '/analysis/iceberg' },
+          { label: '氷山PDCA', to: '/analysis/iceberg-pdca' },
         ],
       },
-
-      // ③ 支援設計（Design）
       {
         id: 'design',
-        emoji: '🛠️',
+        icon: <BuildIcon />,
         title: '支援設計',
-        subtitle: '場面別の手順書・個別支援計画を作成し、チームで共有する',
-        cards: [
-          {
-            label: '支援活動マスタ',
-            to: '/admin/templates',
-            description: '支援活動テンプレートの管理（日課・行事・特別活動）',
-            icon: <ListAltIcon sx={{ fontSize: 32, color: '#e65100' }} />,
-            adminOnly: true,
-            meta: activityMetaText,
-          },
-          {
-            label: '支援手順マスタ',
-            to: '/admin/step-templates',
-            description: '場面別の支援手順書テンプレートの作成・編集',
-            icon: <BuildIcon sx={{ fontSize: 32, color: '#5d4037' }} />,
-            adminOnly: true,
-          },
-          {
-            label: '個別支援手順',
-            to: '/admin/individual-support',
-            description: '利用者ごとの個別支援手順の管理（タイムライン + ABC記録）',
-            icon: <DashboardIcon sx={{ fontSize: 32, color: '#1565c0' }} />,
-            adminOnly: true,
-          },
+        description: '場面別の手順書・個別支援計画を作成しチームで共有する',
+        accentColor: '#e65100',
+        metrics: [
+          { label: 'テンプレート', value: activityMeta.count > 0 ? `${activityMeta.count}件` : '未作成' },
+          ...(activityMeta.updatedAt ? [{ label: '最終更新', value: activityMeta.updatedAt }] : []),
+        ],
+        links: [
+          { label: '支援活動マスタ', to: '/admin/templates', primary: true },
+          { label: '支援手順マスタ', to: '/admin/step-templates' },
+          { label: '個別支援手順', to: '/admin/individual-support' },
         ],
       },
-
-      // ④ モニタリング（Monitor）
       {
         id: 'monitor',
-        emoji: '👁️',
+        icon: <PsychologyIcon />,
         title: 'モニタリング',
-        subtitle: '現場の記録を追跡し、支援の効果を継続的に確認する',
-        highlight: '🚀 未記入の支援記録から順に入力できます',
-        cards: [
-          {
-            label: '未記入の支援記録へ',
-            to: buildUnfilledSupportUrl(),
-            description: '今日の未記入を順に埋めます（自動で次に進みます）',
-            icon: <EditNoteIcon sx={{ fontSize: 32, color: '#00695c' }} />,
-            badge: 'おすすめ',
-          },
-          {
-            label: '日次記録（行動観察）',
-            to: '/daily/table',
-            description: '日々の行動観察・ABC記録を入力。支援の最前線。',
-            icon: <EditNoteIcon sx={{ fontSize: 32, color: '#00897b' }} />,
-          },
-          {
-            label: '申し送りタイムライン',
-            to: '/handoff-timeline',
-            description: 'シフト交代時の申し送り事項をタイムラインで共有',
-            icon: <InsightsIcon sx={{ fontSize: 32, color: '#546e7a' }} />,
-          },
-          {
-            label: '健康バイタル',
-            to: '/daily/health',
-            description: '体温・血圧・SpO2等のバイタルサインを記録・追跡',
-            icon: <MonitorHeartIcon sx={{ fontSize: 32, color: '#c62828' }} />,
-          },
+        description: '現場の記録を追跡し支援の効果を継続的に確認する',
+        accentColor: '#00695c',
+        metrics: [],
+        links: [
+          { label: '日次記録（行動観察）', to: '/daily/table', primary: true },
+          { label: '健康バイタル', to: '/daily/health' },
+          { label: '申し送りタイムライン', to: '/handoff-timeline' },
         ],
       },
     ];
@@ -223,81 +144,99 @@ function useSections(): HubSection[] {
 }
 
 // ---------------------------------------------------------------------------
-// Sub-components
+// Status Card
 // ---------------------------------------------------------------------------
 
-function HubCardComponent({ card, onNavigate }: { card: HubCard; onNavigate: (to: string) => void }) {
+function StatusCard({
+  section,
+  onNavigate,
+}: {
+  section: StatusSection;
+  onNavigate: (to: string) => void;
+}) {
   return (
     <Card
       variant="outlined"
       sx={{
-        borderRadius: 2,
-        transition: 'box-shadow 0.2s, transform 0.15s',
-        '&:hover': { boxShadow: 4, transform: 'translateY(-2px)' },
-      }}
-    >
-      <CardActionArea onClick={() => onNavigate(card.to)} sx={{ p: 0 }}>
-        <CardContent sx={{ display: 'flex', gap: 2, alignItems: 'flex-start' }}>
-          <Box sx={{ mt: 0.5 }}>{card.icon}</Box>
-          <Box sx={{ flex: 1 }}>
-            <Stack direction="row" spacing={1} alignItems="center" sx={{ mb: 0.5 }}>
-              <Typography variant="subtitle1" component="span" fontWeight={600}>
-                {card.label}
-              </Typography>
-              {card.adminOnly && (
-                <Chip label="管理者" size="small" color="warning" variant="outlined" />
-              )}
-              {card.badge && (
-                <Chip label={card.badge} size="small" variant="outlined" />
-              )}
-              {card.meta && (
-                <Chip label={card.meta} size="small" color="info" variant="filled" />
-              )}
-            </Stack>
-            <Typography variant="body2" color="text.secondary">
-              {card.description}
-            </Typography>
-          </Box>
-        </CardContent>
-      </CardActionArea>
-    </Card>
-  );
-}
-
-function HubSectionComponent({
-  section,
-  onNavigate,
-}: {
-  section: HubSection;
-  onNavigate: (to: string) => void;
-}) {
-  return (
-    <Box
-      sx={{
-        p: 3,
         borderRadius: 3,
-        border: '1px solid',
-        borderColor: 'divider',
-        bgcolor: 'background.paper',
+        borderTop: `4px solid ${section.accentColor}`,
+        height: '100%',
+        display: 'flex',
+        flexDirection: 'column',
       }}
     >
-      <Typography variant="h6" fontWeight={700} gutterBottom>
-        {section.emoji} {section.title}
-      </Typography>
-      <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-        {section.subtitle}
-      </Typography>
-      {section.highlight && (
-        <Alert severity="info" variant="outlined" sx={{ mb: 2, borderRadius: 2 }}>
-          {section.highlight}
-        </Alert>
-      )}
-      <Stack spacing={1.5}>
-        {section.cards.map((card) => (
-          <HubCardComponent key={card.to} card={card} onNavigate={onNavigate} />
-        ))}
-      </Stack>
-    </Box>
+      <CardContent sx={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 2, p: 3 }}>
+        {/* Header */}
+        <Stack direction="row" spacing={1.5} alignItems="center">
+          <Box sx={{ color: section.accentColor, display: 'flex', '& .MuiSvgIcon-root': { fontSize: 28 } }}>
+            {section.icon}
+          </Box>
+          <Typography variant="h6" fontWeight={700}>
+            {section.title}
+          </Typography>
+        </Stack>
+
+        <Typography variant="body2" color="text.secondary" sx={{ lineHeight: 1.6 }}>
+          {section.description}
+        </Typography>
+
+        {/* Alert */}
+        {section.alert && (
+          <Chip
+            label={section.alert}
+            color="warning"
+            variant="outlined"
+            size="small"
+            sx={{ alignSelf: 'flex-start' }}
+          />
+        )}
+
+        {/* Metrics */}
+        {section.metrics.length > 0 && (
+          <>
+            <Divider />
+            <Stack direction="row" spacing={2} flexWrap="wrap">
+              {section.metrics.map((m) => (
+                <Box key={m.label}>
+                  <Typography variant="caption" color="text.secondary">
+                    {m.label}
+                  </Typography>
+                  <Typography variant="body2" fontWeight={600}>
+                    {m.value}
+                  </Typography>
+                </Box>
+              ))}
+            </Stack>
+          </>
+        )}
+
+        {/* Actions */}
+        <Box sx={{ mt: 'auto', pt: 1 }}>
+          <Divider sx={{ mb: 1.5 }} />
+          <Stack spacing={1}>
+            {section.links.map((link) => (
+              <Button
+                key={link.to}
+                variant={link.primary ? 'contained' : 'text'}
+                size="small"
+                endIcon={<ArrowForwardIcon />}
+                onClick={() => onNavigate(link.to)}
+                sx={{
+                  justifyContent: 'space-between',
+                  textTransform: 'none',
+                  fontWeight: link.primary ? 600 : 400,
+                  ...(link.primary
+                    ? { bgcolor: section.accentColor, '&:hover': { bgcolor: section.accentColor, filter: 'brightness(0.9)' } }
+                    : { color: 'text.secondary' }),
+                }}
+              >
+                {link.label}
+              </Button>
+            ))}
+          </Stack>
+        </Box>
+      </CardContent>
+    </Card>
   );
 }
 
@@ -307,34 +246,35 @@ function HubSectionComponent({
 
 const IBDHubPage: React.FC = () => {
   const navigate = useNavigate();
-  const sections = useSections();
+  const sections = useHubStatus();
 
   return (
-    <Container maxWidth="md" sx={{ py: 4 }} data-testid="ibd-hub-page">
-      {/* Header */}
-      <Box sx={{ mb: 4 }}>
-        <Stack direction="row" spacing={1} alignItems="center" sx={{ mb: 1 }}>
-          <TrendingUpIcon sx={{ fontSize: 28, color: 'primary.main' }} />
-          <Typography variant="h4" fontWeight={700}>
-            強度行動障害支援
-          </Typography>
-        </Stack>
-        <Typography variant="body1" color="text.secondary" sx={{ maxWidth: 600 }}>
-          評価 → 分析 → 支援設計 → モニタリング。
-          支援の全工程をここから管理します。
-        </Typography>
-      </Box>
+    <Container maxWidth="xl" sx={{ py: 3 }} data-testid="ibd-hub-page">
+      <IBDPageHeader
+        title="強度行動障害支援"
+        subtitle="評価 → 分析 → 支援設計 → モニタリング。支援の全工程をここから管理します。"
+        icon={<TrendingUpIcon />}
+      />
 
-      {/* Sections */}
-      <Stack spacing={3}>
+      <Box
+        sx={{
+          display: 'grid',
+          gap: 3,
+          gridTemplateColumns: {
+            xs: '1fr',
+            sm: 'repeat(2, 1fr)',
+            lg: 'repeat(4, 1fr)',
+          },
+        }}
+      >
         {sections.map((section) => (
-          <HubSectionComponent
+          <StatusCard
             key={section.id}
             section={section}
             onNavigate={(to) => navigate(to)}
           />
         ))}
-      </Stack>
+      </Box>
     </Container>
   );
 };

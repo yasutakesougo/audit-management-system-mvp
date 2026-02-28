@@ -1,5 +1,6 @@
 import { getAppConfig } from '@/lib/env';
 import { createSpClient } from '@/lib/spClient';
+import { FIELD_MAP_ICEBERG_ANALYSIS, LIST_CONFIG, ListKeys } from '@/sharepoint/fields';
 import { z } from 'zod';
 import { icebergSnapshotSchema, type IcebergSnapshot } from '../domain/icebergTypes';
 
@@ -22,17 +23,10 @@ export class SharePointListNotFoundError extends Error {
 
 // ===== Constants & Field Names =====
 
-const LIST_TITLE = 'Iceberg_Analysis';
+const LIST_TITLE = LIST_CONFIG[ListKeys.IcebergAnalysis].title;
 
-/** Map SharePoint field names (avoid internal name leak) */
-const F = {
-  entryHash: 'EntryHash',
-  sessionId: 'SessionId',
-  userId: 'UserId',
-  payloadJson: 'PayloadJson',
-  schemaVersion: 'SchemaVersion',
-  updatedAt: 'UpdatedAt',
-} as const;
+/** Alias for FIELD_MAP_ICEBERG_ANALYSIS (shorter reference in OData queries) */
+const F = FIELD_MAP_ICEBERG_ANALYSIS;
 
 // ===== Types =====
 
