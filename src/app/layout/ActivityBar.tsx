@@ -39,6 +39,11 @@ export function ActivityBar({ items }: ActivityBarProps) {
                   backgroundColor: theme.palette.action.hover,
                 },
               })}
+              onClick={(e) => {
+                if (e.currentTarget instanceof HTMLElement) {
+                  e.currentTarget.blur();
+                }
+              }}
             >
               <Icon fontSize="small" />
             </IconButton>

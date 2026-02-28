@@ -258,9 +258,12 @@ const AppShell: React.FC<{ children: React.ReactNode }> = ({ children }) => {
     const isBlackNote = label.includes('黒ノート');
     const showLabel = !navCollapsed;
 
-    const handleClick = () => {
-
+    const handleClick = (e: React.MouseEvent) => {
       if (onNavigate) onNavigate();
+      // SPA遷移時にフォーカスが残りTooltipが表示され続けるのを防ぐ
+      if (e.currentTarget instanceof HTMLElement) {
+        e.currentTarget.blur();
+      }
     };
 
     const commonProps = {
