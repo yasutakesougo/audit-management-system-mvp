@@ -4,8 +4,7 @@
  * SP REST API: /_api/web/GetFolderByServerRelativeUrl('/path')/Files/add(url='filename',overwrite=true)
  */
 import type { UseSP } from '@/lib/spClient';
-
-const LIBRARY_NAME = 'OfficialForms';
+import { getListRootFolderFilesPath } from '@/sharepoint/spListConfig';
 
 export interface UploadResult {
   /** SharePoint上のファイルURL */
@@ -28,7 +27,7 @@ export async function uploadToSharePointLibrary(
   bytes: ArrayBuffer,
 ): Promise<UploadResult> {
   const encodedFileName = encodeURIComponent(fileName);
-  const path = `/lists/getbytitle('${LIBRARY_NAME}')/RootFolder/Files/add(url='${encodedFileName}',overwrite=true)`;
+  const path = `${getListRootFolderFilesPath('official_forms')}/add(url='${encodedFileName}',overwrite=true)`;
 
   const res = await sp.spFetch(path, {
     method: 'POST',

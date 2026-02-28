@@ -7,21 +7,24 @@ import { SpOrgRowSchema } from '../features/org/data/orgRowSchema';
 import { parseSpScheduleRows } from '../features/schedules/data/spRowSchema';
 import { SpUserMasterItemSchema } from '../features/users/schema';
 import { getAppConfig } from '../lib/env';
+import { checkAllLists, type HealthCheckSummary, type ListCheckStatus } from '../sharepoint/spListHealthCheck';
 
 export default function SmokeTestPage() {
     const { instance, accounts } = useMsal();
     const [logs, setLogs] = useState<string[]>([]);
     const [isRunning, setIsRunning] = useState(false);
+    const [healthResult, setHealthResult] = useState<HealthCheckSummary | null>(null);
+    const [isHealthRunning, setIsHealthRunning] = useState(false);
 
     const log = (msg: string) => setLogs(prev => [...prev, msg]);
 
     const runDiagnostic = async () => {
         setIsRunning(true);
-        setLogs(["�E�噫 Starting Live Data Smoke Test..."]);
+        setLogs(["・ｽ蝎ｫ Starting Live Data Smoke Test..."]);
 
         try {
             if (accounts.length === 0) {
-                log("笶・[AUTH ERROR]: No active MSAL account found. Please login first.");
+                log("隨ｶ繝ｻ[AUTH ERROR]: No active MSAL account found. Please login first.");
                 setIsRunning(false);
                 return;
             }
@@ -30,7 +33,7 @@ export default function SmokeTestPage() {
             const provider = instance;
             const account = accounts[0];
 
-            log(`笨・Using account: ${account.username}`);
+            log(`隨ｨ繝ｻUsing account: ${account.username}`);
 
             const tokenResponse = await provider.acquireTokenSilent({
                 scopes: [env.VITE_SP_SCOPE_DEFAULT || "https://isogokatudouhome.sharepoint.com/AllSites.Read"],
@@ -38,7 +41,7 @@ export default function SmokeTestPage() {
             });
 
             const token = tokenResponse.accessToken;
-            log(`笨・Token acquired: ${token.substring(0, 15)}...`);
+            log(`隨ｨ繝ｻToken acquired: ${token.substring(0, 15)}...`);
             const targets = [
                 {
                     name: 'Schedules',
@@ -68,11 +71,11 @@ export default function SmokeTestPage() {
             ];
 
             for (const target of targets) {
-                log(`\n搭 Checking List: ${target.name} (List: ${target.listName})...`);
+                log(`\n謳ｭ Checking List: ${target.name} (List: ${target.listName})...`);
                 const baseUrl = env.VITE_SP_RESOURCE + env.VITE_SP_SITE_RELATIVE + '/_api/web';
                 const url = `${baseUrl}/lists/getByTitle('${target.listName}')/items?$top=50`;
-                
-                
+
+
 
                 try {
                     const response = await fetch(url, {
@@ -83,7 +86,7 @@ export default function SmokeTestPage() {
                     });
 
                     if (!response.ok) {
-                        log(`   笶・HTTP error! status: ${response.status}`);
+                        log(`   隨ｶ繝ｻHTTP error! status: ${response.status}`);
                         continue;
                     }
 
@@ -128,27 +131,77 @@ export default function SmokeTestPage() {
                         }
                     });
 
-                    log(`   笨・Passed: ${passed}`);
+                    log(`   隨ｨ繝ｻPassed: ${passed}`);
                     if (failed > 0) {
-                        log(`   笞�・・Failed: ${failed}`);
+                        log(`   隨橸ｿｽ繝ｻ繝ｻFailed: ${failed}`);
                         errors.forEach((err) => {
                             err.issues.forEach(issue => {
-                                log(`      笏披楳 [ID: ${err.id}] Path: "${issue.path.join('.')}" -> ${issue.message}`);
+                                log(`      隨乗喚讌ｳ [ID: ${err.id}] Path: "${issue.path.join('.')}" -> ${issue.message}`);
                             });
                         });
                     }
                 } catch (e: unknown) {
-                    log(`   笶・Failed to fetch or process list: ${e instanceof Error ? e.message : String(e)}`);
+                    log(`   隨ｶ繝ｻFailed to fetch or process list: ${e instanceof Error ? e.message : String(e)}`);
                 }
             }
-            log("\n�E�紁EDiagnostics Complete!");
+            log("\n・ｽ邏・Diagnostics Complete!");
 
         } catch (e: unknown) {
-            log(`笶・Fatal Error: ${e instanceof Error ? e.message : String(e)}`);
+            log(`隨ｶ繝ｻFatal Error: ${e instanceof Error ? e.message : String(e)}`);
         } finally {
             setIsRunning(false);
         }
     }
+
+    // ── Health Check: 24-list existence check ──────────────────
+    const runHealthCheck = async () => {
+        setIsHealthRunning(true);
+        setHealthResult(null);
+
+        try {
+            if (accounts.length === 0) {
+                log('❌ [AUTH ERROR]: No active MSAL account found for health check.');
+                setIsHealthRunning(false);
+                return;
+            }
+
+            const env = getAppConfig();
+            const account = accounts[0];
+            const tokenResponse = await instance.acquireTokenSilent({
+                scopes: [env.VITE_SP_SCOPE_DEFAULT || 'https://isogokatudouhome.sharepoint.com/AllSites.Read'],
+                account,
+            });
+            const token = tokenResponse.accessToken;
+            const baseUrl = env.VITE_SP_RESOURCE + env.VITE_SP_SITE_RELATIVE + '/_api/web';
+
+            const fetcher = async (path: string, init?: RequestInit): Promise<Response> => {
+                const url = path.startsWith('http') ? path : `${baseUrl}${path}`;
+                return fetch(url, {
+                    ...init,
+                    headers: {
+                        ...init?.headers as Record<string, string>,
+                        Authorization: `Bearer ${token}`,
+                    },
+                });
+            };
+
+            const result = await checkAllLists(fetcher);
+            setHealthResult(result);
+        } catch (err) {
+            log(`❌ Health check failed: ${err instanceof Error ? err.message : String(err)}`);
+        } finally {
+            setIsHealthRunning(false);
+        }
+    };
+
+    const statusIcon = (s: ListCheckStatus): string => {
+        switch (s) {
+            case 'ok': return '✅';
+            case 'not_found': return '❌';
+            case 'forbidden': return '🔒';
+            case 'error': return '⚠️';
+        }
+    };
 
     return (
         <div style={{ padding: '2rem', maxWidth: '800px', margin: '0 auto', fontFamily: 'monospace' }}>
@@ -171,7 +224,24 @@ export default function SmokeTestPage() {
                     marginBottom: '2rem'
                 }}
             >
-                {isRunning ? 'Running Diagnostics...' : '笁E��・・Run Smoke Test'}
+                {isRunning ? 'Running Diagnostics...' : '隨・ｽｶ繝ｻ繝ｻRun Smoke Test'}
+            </button>
+
+            <button
+                onClick={runHealthCheck}
+                disabled={isHealthRunning}
+                style={{
+                    padding: '10px 20px',
+                    fontSize: '14px',
+                    background: isHealthRunning ? '#ccc' : '#28a745',
+                    color: 'white',
+                    border: 'none',
+                    borderRadius: '4px',
+                    cursor: isHealthRunning ? 'not-allowed' : 'pointer',
+                    marginLeft: '8px',
+                }}
+            >
+                {isHealthRunning ? 'Checking Lists...' : '🏥 24-List Health Check'}
             </button>
 
             <div style={{
@@ -192,9 +262,50 @@ export default function SmokeTestPage() {
                     logs.map((L, i) => <div key={i}>{L}</div>)
                 )}
             </div>
+
+            {healthResult && (
+                <div style={{ marginTop: '1.5rem' }}>
+                    <h2 style={{ fontSize: '1.2rem', marginBottom: '0.5rem' }}>
+                        🏥 Health Check Results ({healthResult.ok}/{healthResult.total} OK)
+                    </h2>
+                    <div style={{ display: 'flex', gap: '1rem', marginBottom: '0.5rem', fontSize: '13px' }}>
+                        <span>✅ OK: {healthResult.ok}</span>
+                        <span>❌ Not Found: {healthResult.notFound}</span>
+                        <span>🔒 Forbidden: {healthResult.forbidden}</span>
+                        <span>⚠️ Error: {healthResult.errors}</span>
+                    </div>
+                    <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '13px' }}>
+                        <thead>
+                            <tr style={{ background: '#f0f0f0', textAlign: 'left' }}>
+                                <th style={{ padding: '6px 8px', border: '1px solid #ddd' }}>Status</th>
+                                <th style={{ padding: '6px 8px', border: '1px solid #ddd' }}>名前</th>
+                                <th style={{ padding: '6px 8px', border: '1px solid #ddd' }}>リスト名</th>
+                                <th style={{ padding: '6px 8px', border: '1px solid #ddd' }}>HTTP</th>
+                                <th style={{ padding: '6px 8px', border: '1px solid #ddd' }}>詳細</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {healthResult.results.map((r) => (
+                                <tr key={r.key} style={{ background: r.status === 'ok' ? '#f9fff9' : '#fff9f9' }}>
+                                    <td style={{ padding: '4px 8px', border: '1px solid #ddd', textAlign: 'center' }}>
+                                        {statusIcon(r.status)}
+                                    </td>
+                                    <td style={{ padding: '4px 8px', border: '1px solid #ddd' }}>{r.displayName}</td>
+                                    <td style={{ padding: '4px 8px', border: '1px solid #ddd', fontFamily: 'monospace', fontSize: '12px' }}>
+                                        {r.listName}
+                                    </td>
+                                    <td style={{ padding: '4px 8px', border: '1px solid #ddd', textAlign: 'center' }}>
+                                        {r.httpStatus ?? '—'}
+                                    </td>
+                                    <td style={{ padding: '4px 8px', border: '1px solid #ddd', color: '#c00', fontSize: '11px' }}>
+                                        {r.error ?? ''}
+                                    </td>
+                                </tr>
+                            ))}
+                        </tbody>
+                    </table>
+                </div>
+            )}
         </div>
     )
 }
-
-
-

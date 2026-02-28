@@ -1,3 +1,4 @@
+import { readOptionalEnv } from '@/lib/env';
 import type { SpDailyItem, SpScheduleItem, SpStaffItem, SpUserItem } from '@/types';
 
 // SharePoint フィールド定義（暫定安全セット）
@@ -11,7 +12,7 @@ export type DailyRow = SpDailyItem;
 // Service Provision Records (SharePoint list: ServiceProvisionRecords)
 // ──────────────────────────────────────────────────────────────
 
-export const SERVICE_PROVISION_LIST_TITLE = 'ServiceProvisionRecords' as const;
+export const SERVICE_PROVISION_LIST_TITLE = readOptionalEnv('VITE_SP_LIST_SERVICE_PROVISION') ?? 'ServiceProvisionRecords';
 
 export const SERVICE_PROVISION_FIELDS = {
   id: 'Id',
@@ -64,7 +65,7 @@ export const SERVICE_PROVISION_SELECT_FIELDS = [
 // Internal names confirmed: OrgCode / OrgType / Audience / SortOrder / IsActive / Notes
 // ──────────────────────────────────────────────────────────────
 
-export const ORG_MASTER_LIST_TITLE = 'Org_Master' as const;
+export const ORG_MASTER_LIST_TITLE = readOptionalEnv('VITE_SP_LIST_ORG_MASTER') ?? 'Org_Master';
 
 export const ORG_MASTER_FIELDS = {
   id: 'Id',
@@ -92,7 +93,7 @@ export const ORG_MASTER_SELECT_FIELDS = [
 // Staff attendance (SharePoint list: Staff_Attendance)
 // ──────────────────────────────────────────────────────────────
 
-export const STAFF_ATTENDANCE_LIST_TITLE = 'Staff_Attendance' as const;
+export const STAFF_ATTENDANCE_LIST_TITLE = readOptionalEnv('VITE_SP_LIST_STAFF_ATTENDANCE') ?? 'Staff_Attendance';
 
 export const STAFF_ATTENDANCE_FIELDS = {
   id: 'Id',
@@ -128,7 +129,7 @@ export const STAFF_ATTENDANCE_SELECT_FIELDS = [
 // User Attendance Users (SharePoint list: AttendanceUsers)
 // ──────────────────────────────────────────────────────────────
 
-export const ATTENDANCE_USERS_LIST_TITLE = 'AttendanceUsers' as const;
+export const ATTENDANCE_USERS_LIST_TITLE = readOptionalEnv('VITE_SP_LIST_ATTENDANCE_USERS') ?? 'AttendanceUsers';
 
 export const ATTENDANCE_USERS_FIELDS = {
   id: 'Id',
@@ -158,7 +159,7 @@ export const ATTENDANCE_USERS_SELECT_FIELDS = [
 // User Attendance Daily (SharePoint list: AttendanceDaily)
 // ──────────────────────────────────────────────────────────────
 
-export const ATTENDANCE_DAILY_LIST_TITLE = 'AttendanceDaily' as const;
+export const ATTENDANCE_DAILY_LIST_TITLE = readOptionalEnv('VITE_SP_LIST_ATTENDANCE_DAILY') ?? 'AttendanceDaily';
 
 export const ATTENDANCE_DAILY_FIELDS = {
   id: 'Id',
@@ -214,7 +215,7 @@ export const ATTENDANCE_DAILY_SELECT_FIELDS = [
 // Meeting Minutes (SharePoint list: MeetingMinutes)
 // ──────────────────────────────────────────────────────────────
 
-export const MEETING_MINUTES_LIST_TITLE = 'MeetingMinutes' as const;
+export const MEETING_MINUTES_LIST_TITLE = readOptionalEnv('VITE_SP_LIST_MEETING_MINUTES') ?? 'MeetingMinutes';
 
 export const MEETING_MINUTES_FIELDS = {
   id: 'Id',
@@ -560,7 +561,7 @@ export const FIELD_MAP_ICEBERG_PDCA = {
 // - 例: reportLink: 'Report_x0020_Link' と変更すれば全コード自動対応
 // ──────────────────────────────────────────────────────────────
 
-export const DIAGNOSTICS_REPORTS_LIST_TITLE = 'Diagnostics_Reports' as const;
+export const DIAGNOSTICS_REPORTS_LIST_TITLE = readOptionalEnv('VITE_SP_LIST_DIAGNOSTICS_REPORTS') ?? 'Diagnostics_Reports';
 
 /**
  * Diagnostics_Reports リスト用フィールド定義（内部名マップ）
@@ -680,7 +681,7 @@ export const FIELD_MAP_SURVEY_TOKUSEI = {
 // 注意：内部名には "0" サフィックスが付与されている (UserCode0, RowNo0, etc.)
 // ──────────────────────────────────────────────────────────────
 
-export const SUPPORT_TEMPLATES_LIST_TITLE = 'SupportTemplates' as const;
+export const SUPPORT_TEMPLATES_LIST_TITLE = readOptionalEnv('VITE_SP_LIST_SUPPORT_TEMPLATES') ?? 'SupportTemplates';
 
 /**
  * SupportTemplates リスト用フィールド定義（内部名マップ）
