@@ -4,6 +4,7 @@ import type { IUserMaster } from '@/features/users/types';
 
 import type { AttendanceDailyItem } from './infra/attendanceDailyRepository';
 import { useAttendanceRepository } from './repositoryFactory';
+import { methodImpliesShuttle } from './transportMethod';
 import type { AttendanceFilter, AttendanceHookStatus, AttendanceRowVM } from './types';
 
 const todayIso = (): string => new Date().toISOString().split('T')[0];
@@ -51,6 +52,10 @@ const toVisit = (item: AttendanceDailyItem): AttendanceRowVM => ({
   cntAttendOut: item.CntAttendOut ?? 0,
   transportTo: item.TransportTo ?? false,
   transportFrom: item.TransportFrom ?? false,
+  transportToMethod: item.TransportToMethod ?? undefined,
+  transportFromMethod: item.TransportFromMethod ?? undefined,
+  transportToNote: item.TransportToNote ?? undefined,
+  transportFromNote: item.TransportFromNote ?? undefined,
   isEarlyLeave: item.IsEarlyLeave ?? false,
   absentMorningContacted: item.AbsentMorningContacted ?? false,
   absentMorningMethod: (item.AbsentMorningMethod as AttendanceRowVM['absentMorningMethod']) ?? '',
@@ -72,8 +77,16 @@ const toDailyItem = (row: AttendanceRowVM, date: string): AttendanceDailyItem =>
   CheckOutAt: row.checkOutAt ?? null,
   CntAttendIn: row.cntAttendIn,
   CntAttendOut: row.cntAttendOut,
-  TransportTo: row.transportTo,
-  TransportFrom: row.transportFrom,
+  TransportTo: row.transportToMethod
+    ? methodImpliesShuttle(row.transportToMethod)
+    : row.transportTo,
+  TransportFrom: row.transportFromMethod
+    ? methodImpliesShuttle(row.transportFromMethod)
+    : row.transportFrom,
+  TransportToMethod: row.transportToMethod,
+  TransportFromMethod: row.transportFromMethod,
+  TransportToNote: row.transportToNote,
+  TransportFromNote: row.transportFromNote,
   ProvidedMinutes: row.providedMinutes,
   IsEarlyLeave: row.isEarlyLeave,
   UserConfirmedAt: row.userConfirmedAt ?? null,

@@ -2,17 +2,25 @@ import CloseIcon from '@mui/icons-material/Close';
 import DirectionsCarIcon from '@mui/icons-material/DirectionsCar';
 import ErrorOutlineIcon from '@mui/icons-material/ErrorOutline';
 import {
-  Box,
-  Button,
-  Chip,
-  Divider,
-  Drawer,
-  FormControlLabel,
-  IconButton,
-  Switch,
-  Typography,
+    Box,
+    Button,
+    Chip,
+    Divider,
+    Drawer,
+    FormControl,
+    IconButton,
+    InputLabel,
+    MenuItem,
+    Select,
+    type SelectChangeEvent,
+    Typography,
 } from '@mui/material';
-import React from 'react';
+
+import {
+    TRANSPORT_METHODS,
+    TRANSPORT_METHOD_LABEL,
+    type TransportMethod,
+} from '../transportMethod';
 
 export type AttendanceDetailDrawerUser = {
   id: string;
@@ -23,6 +31,10 @@ export type AttendanceDetailDrawerVisit = {
   status: '未' | '通所中' | '退所済' | '当日欠席';
   transportTo?: boolean;
   transportFrom?: boolean;
+  transportToMethod?: TransportMethod;
+  transportFromMethod?: TransportMethod;
+  transportToNote?: string;
+  transportFromNote?: string;
   actualService?: string;
   billing?: string;
   isUserConfirmed?: boolean;
@@ -37,8 +49,12 @@ export type AttendanceDetailDrawerProps = {
   user: AttendanceDetailDrawerUser | null;
   visit: AttendanceDetailDrawerVisit | null;
   onClose: () => void;
+  /** @deprecated use onTransportToMethodChange instead */
   onTransportToChange?: (value: boolean) => void;
+  /** @deprecated use onTransportFromMethodChange instead */
   onTransportFromChange?: (value: boolean) => void;
+  onTransportToMethodChange?: (method: TransportMethod) => void;
+  onTransportFromMethodChange?: (method: TransportMethod) => void;
   onUserConfirm?: () => void;
   onReset?: () => void;
   onViewHandoff?: () => void;
@@ -51,6 +67,8 @@ export function AttendanceDetailDrawer({
   onClose,
   onTransportToChange,
   onTransportFromChange,
+  onTransportToMethodChange,
+  onTransportFromMethodChange,
   onUserConfirm,
   onReset,
   onViewHandoff,
@@ -60,6 +78,26 @@ export function AttendanceDetailDrawer({
   }
 
   const isAbsent = visit.status === '当日欠席';
+
+  // Resolve displayed method: method field > boolean fallback
+  const toMethod: TransportMethod =
+    visit.transportToMethod ?? (visit.transportTo ? 'office_shuttle' : 'self');
+  const fromMethod: TransportMethod =
+    visit.transportFromMethod ?? (visit.transportFrom ? 'office_shuttle' : 'self');
+
+  const handleToMethodChange = (e: SelectChangeEvent<string>) => {
+    const method = e.target.value as TransportMethod;
+    onTransportToMethodChange?.(method);
+    // Legacy boolean callback for backward compat
+    onTransportToChange?.(method === 'office_shuttle');
+  };
+
+  const handleFromMethodChange = (e: SelectChangeEvent<string>) => {
+    const method = e.target.value as TransportMethod;
+    onTransportFromMethodChange?.(method);
+    // Legacy boolean callback for backward compat
+    onTransportFromChange?.(method === 'office_shuttle');
+  };
 
   return (
     <Drawer
@@ -112,29 +150,39 @@ export function AttendanceDetailDrawer({
         <Box>
           <Typography sx={{ fontWeight: 700, mb: 1, display: 'flex', alignItems: 'center', gap: 0.5 }}>
             <DirectionsCarIcon fontSize="small" />
-            送迎
+            送迎手段
           </Typography>
-          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1, pl: 1 }}>
-            <FormControlLabel
-              control={
-                <Switch
-                  checked={visit.transportTo ?? false}
-                  onChange={(e) => onTransportToChange?.(e.target.checked)}
-                  disabled={isAbsent}
-                />
-              }
-              label="送迎（行き）"
-            />
-            <FormControlLabel
-              control={
-                <Switch
-                  checked={visit.transportFrom ?? false}
-                  onChange={(e) => onTransportFromChange?.(e.target.checked)}
-                  disabled={isAbsent}
-                />
-              }
-              label="送迎（帰り）"
-            />
+          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, pl: 1 }}>
+            <FormControl size="small" fullWidth disabled={isAbsent}>
+              <InputLabel id="transport-to-label">行き</InputLabel>
+              <Select
+                labelId="transport-to-label"
+                value={toMethod}
+                label="行き"
+                onChange={handleToMethodChange}
+              >
+                {TRANSPORT_METHODS.map((m) => (
+                  <MenuItem key={m} value={m}>
+                    {TRANSPORT_METHOD_LABEL[m]}
+                  </MenuItem>
+                ))}
+              </Select>
+            </FormControl>
+            <FormControl size="small" fullWidth disabled={isAbsent}>
+              <InputLabel id="transport-from-label">帰り</InputLabel>
+              <Select
+                labelId="transport-from-label"
+                value={fromMethod}
+                label="帰り"
+                onChange={handleFromMethodChange}
+              >
+                {TRANSPORT_METHODS.map((m) => (
+                  <MenuItem key={m} value={m}>
+                    {TRANSPORT_METHOD_LABEL[m]}
+                  </MenuItem>
+                ))}
+              </Select>
+            </FormControl>
           </Box>
         </Box>
 
