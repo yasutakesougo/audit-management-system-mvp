@@ -1,18 +1,18 @@
+import { buildHandoffSelectFields } from '@/sharepoint/fields';
 import { useMemo } from 'react';
 import type { UseSP } from '../../lib/spClient';
 import { useSP } from '../../lib/spClient';
-import { buildHandoffSelectFields } from '@/sharepoint/fields';
 import { generateTitleFromMessage } from './generateTitleFromMessage';
 import { handoffConfig } from './handoffConfig';
 import {
-  HandoffDayScope,
-  HandoffRecord,
-  HandoffTimeFilter,
-  NewHandoffInput,
-  SpHandoffItem,
-  fromSpHandoffItem,
-  toSpHandoffCreatePayload,
-  toSpHandoffUpdatePayload,
+    HandoffDayScope,
+    HandoffRecord,
+    HandoffTimeFilter,
+    NewHandoffInput,
+    SpHandoffItem,
+    fromSpHandoffItem,
+    toSpHandoffCreatePayload,
+    toSpHandoffUpdatePayload,
 } from './handoffTypes';
 
 /**
@@ -104,6 +104,42 @@ class OptimisticUpdateManager {
     });
   }
 }
+
+// ────────────────────────────────────────────────────────────
+// ローカル補完ストア（CarryOverDate）
+// SP列未追加期間に carryOverDate をローカルで補完する
+// SP列追加後は SP値優先で自動的に不要になる
+// ────────────────────────────────────────────────────────────
+
+const CARRY_OVER_PREFIX = 'handoffCarryOverDate.v1:';
+
+export class CarryOverDateStore {
+  get(handoffId: string | number): string | null {
+    try {
+      return window.localStorage.getItem(`${CARRY_OVER_PREFIX}${handoffId}`) ?? null;
+    } catch {
+      return null;
+    }
+  }
+
+  set(handoffId: string | number, date: string): void {
+    try {
+      window.localStorage.setItem(`${CARRY_OVER_PREFIX}${handoffId}`, date);
+    } catch {
+      console.warn('[CarryOverDateStore] Failed to write', handoffId);
+    }
+  }
+
+  clear(handoffId: string | number): void {
+    try {
+      window.localStorage.removeItem(`${CARRY_OVER_PREFIX}${handoffId}`);
+    } catch {
+      // noop
+    }
+  }
+}
+
+export const carryOverDateStore = new CarryOverDateStore();
 
 /**
  * SharePoint API ラッパークラス（最適化版）
@@ -279,7 +315,7 @@ class HandoffApi {
    */
   async updateHandoffRecord(
     id: string,
-    updates: Partial<Pick<HandoffRecord, 'status' | 'severity' | 'category' | 'message' | 'title'>>
+    updates: Partial<Pick<HandoffRecord, 'status' | 'severity' | 'category' | 'message' | 'title' | 'carryOverDate'>>
   ): Promise<HandoffRecord> {
     // 楽観的更新を設定
     this.optimisticManager.setPendingUpdate(id, updates);
