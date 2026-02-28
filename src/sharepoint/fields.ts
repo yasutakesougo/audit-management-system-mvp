@@ -324,8 +324,9 @@ export enum ListKeys {
   UsersMaster = 'Users_Master',
   StaffMaster = 'Staff_Master',
   ComplianceCheckRules = 'Compliance_CheckRules',
-  Behaviors = 'Dat_Behaviors',
+
   DailyActivityRecords = 'DailyActivityRecords',
+  IcebergAnalysis = 'Iceberg_Analysis',
   IcebergPdca = 'Iceberg_PDCA',
   SurveyTokusei = 'FormsResponses_Tokusei',
   OrgMaster = 'Org_Master',
@@ -341,8 +342,9 @@ export const LIST_CONFIG: Record<ListKeys, { title: string }> = {
   [ListKeys.UsersMaster]: { title: 'Users_Master' },
   [ListKeys.StaffMaster]: { title: 'Staff_Master' },
   [ListKeys.ComplianceCheckRules]: { title: 'Compliance_CheckRules' },
-  [ListKeys.Behaviors]: { title: 'SupportTemplates' },
+
   [ListKeys.DailyActivityRecords]: { title: 'DailyActivityRecords' },
+  [ListKeys.IcebergAnalysis]: { title: 'Iceberg_Analysis' },
   [ListKeys.IcebergPdca]: { title: 'Iceberg_PDCA' },
   [ListKeys.SurveyTokusei]: { title: 'FormsResponses_Tokusei' },
   [ListKeys.OrgMaster]: { title: 'Org_Master' },
@@ -484,29 +486,7 @@ export const FIELD_MAP = {
  * 🔧 オプション列（フィルタリング用）:
  * - IsActive（有効フラグ：true/false）
  */
-export const FIELD_MAP_BEHAVIORS = {
-  // 🔑 主キー＆フィルタ
-  id: 'Id',
-  userId: 'UserCode0',              // フィルタキー: $filter=UserCode0 eq 'I022'
-  timestamp: 'RowNo0',              // ソート用: $orderby=RowNo0 asc|desc
 
-  // 📝 コンテンツ（ABC分析）
-  antecedent: 'TimeSlot0',          // 先行条件（時間帯）
-  behavior: 'Activity0',            // 行動（活動内容）
-  consequence: 'SupporterManual0',  // 結果（支援者向けマニュアル）
-  intensity: 'version',             // 🔥 強度（version・小文字！Version0ではない）
-  duration: 'duration',             // 持続時間（オプション）
-
-  // 💬 補足
-  memo: 'PersonManual0',            // 本人向けマニュアル
-
-  // 📅 メタデータ（SharePoint標準）
-  created: 'Created',
-  modified: 'Modified',
-
-  // 🔲 オプション（有効性フィルタ用）
-  isActive: 'IsActive',             // 有効フラグ（Yes/No）
-} as const;
 
 /**
  * DailyActivityRecords リスト用フィールド定義（内部名）
@@ -527,6 +507,21 @@ export const FIELD_MAP_DAILY_ACTIVITY = {
   order: 'Order',
   created: 'Created',
   modified: 'Modified',
+} as const;
+
+/**
+ * Iceberg_Analysis リスト用フィールド定義（内部名）
+ * JSON ペイロードに IcebergSnapshot 全体を格納するリスト
+ */
+export const FIELD_MAP_ICEBERG_ANALYSIS = {
+  id: 'Id',
+  title: 'Title',
+  entryHash: 'EntryHash',
+  sessionId: 'SessionId',
+  userId: 'UserId',
+  payloadJson: 'PayloadJson',
+  schemaVersion: 'SchemaVersion',
+  updatedAt: 'UpdatedAt',
 } as const;
 
 export const FIELD_MAP_ICEBERG_PDCA = {
@@ -604,18 +599,7 @@ export const DIAGNOSTICS_REPORTS_SELECT_FIELDS = [
   FIELD_MAP_DIAGNOSTICS_REPORTS.modified,
 ] as const;
 
-export const BEHAVIORS_SELECT_FIELDS = [
-  FIELD_MAP_BEHAVIORS.id,
-  FIELD_MAP_BEHAVIORS.userId,
-  FIELD_MAP_BEHAVIORS.timestamp,
-  FIELD_MAP_BEHAVIORS.antecedent,
-  FIELD_MAP_BEHAVIORS.behavior,
-  FIELD_MAP_BEHAVIORS.consequence,
-  FIELD_MAP_BEHAVIORS.intensity,
-  FIELD_MAP_BEHAVIORS.duration,
-  FIELD_MAP_BEHAVIORS.memo,
-  FIELD_MAP_BEHAVIORS.created
-] as const;
+
 
 export const DAILY_ACTIVITY_SELECT_FIELDS = [
   FIELD_MAP_DAILY_ACTIVITY.id,
@@ -659,11 +643,6 @@ export const FIELD_MAP_SURVEY_TOKUSEI = {
   notes: 'Notes',
   created: 'Created',
 
-  // -- 集約フィールド（SP 物理列なし — Adapter 層で動的に生成） --
-  personality: 'Personality',
-  sensoryFeatures: 'SensoryFeatures',
-  behaviorFeatures: 'BehaviorFeatures',
-
   // -- Forms メタ（SP 物理列あり） --
   formRowId: 'FormRowId',
   startTime: 'StartTime',
@@ -696,6 +675,24 @@ export const FIELD_MAP_SURVEY_TOKUSEI = {
   // -- 行動（SP 物理列あり） --
   behaviorMultiSelect: 'BehaviorMultiSelect',
   behaviorEpisodes: 'BehaviorEpisodes',
+} as const;
+
+/**
+ * Tokusei の派生フィールド（SP 物理列なし）
+ *
+ * ⚠️ OData $select には使用不可 — 400 エラーの原因になる。
+ * Adapter 層 (mapSpRowToTokuseiResponse) が個別 SP 列から動的に合成する。
+ */
+export const FIELD_DERIVED_TOKUSEI = {
+  personality: 'Personality',
+  sensoryFeatures: 'SensoryFeatures',
+  behaviorFeatures: 'BehaviorFeatures',
+} as const;
+
+/** FIELD_MAP_SURVEY_TOKUSEI（物理列）+ FIELD_DERIVED_TOKUSEI（派生列）の統合 */
+export const FIELD_MAP_SURVEY_TOKUSEI_ALL = {
+  ...FIELD_MAP_SURVEY_TOKUSEI,
+  ...FIELD_DERIVED_TOKUSEI,
 } as const;
 
 // ──────────────────────────────────────────────────────────────
@@ -824,32 +821,7 @@ export function buildSelectFieldsFromMap(
   return merged;
 }
 
-/**
- * Behaviors リスト用の動的 $select ビルダー
- *
- * 2段階フォールバック戦略:
- * 1st: Fields API成功 → 存在する列のみ選択
- * 2nd: Fields API失敗 → CSV確認済み列 + 標準列（高確率で存在）
- */
-export function buildBehaviorsSelectFields(existingInternalNames?: readonly string[]): readonly string[] {
-  return buildSelectFieldsFromMap(FIELD_MAP_BEHAVIORS, existingInternalNames, {
-    alwaysInclude: ['Id', 'Created', 'Modified'],  // SharePoint 標準列は常に含める
-    fallback: [
-      // 2nd fallback: Fields API で確認済みの実内部名（高確率で存在）
-      'Id',
-      'UserCode0',
-      'RowNo0',
-      'TimeSlot0',
-      'Activity0',
-      'PersonManual0',
-      'SupporterManual0',
-      'version',    // 🔥 小文字!（Version0ではない）
-      'IsActive',   // 有効フラグ
-      'Created',
-      'Modified',
-    ],
-  });
-}
+
 
 /**
  * DailyActivityRecords リスト用の動的 $select ビルダー
