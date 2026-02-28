@@ -3,8 +3,10 @@
  *
  * 時系列で申し送り一覧を表示
  * 状態変更・詳細表示などの操作も提供
+ * ワークフロー昇格: MeetingMode に応じたアクションボタン表示
  */
 
+import { TESTIDS, tid } from '@/testids';
 import {
     AccessTime as AccessTimeIcon,
     CheckCircle as CheckCircleIcon,
@@ -27,16 +29,30 @@ import {
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import type { DailyActivityNavState } from '../cross-module/navigationState';
-import type { HandoffDayScope, HandoffRecord, HandoffTimeFilter } from './handoffTypes';
-import { getNextStatus, getSeverityColor, HANDOFF_STATUS_META } from './handoffTypes';
+import type {
+    HandoffDayScope,
+    HandoffRecord,
+    HandoffStatusUpdate,
+    HandoffTimeFilter,
+    MeetingMode,
+    WorkflowAction
+} from './handoffTypes';
+import {
+    getAllowedActions,
+    getNextStatus,
+    getSeverityColor,
+    HANDOFF_STATUS_META,
+    isTerminalStatus,
+} from './handoffTypes';
 import { useHandoffTimeline } from './useHandoffTimeline';
-import { tid, TESTIDS } from '@/testids';
 
 export type HandoffStats = {
   total: number;
   completed: number;
   inProgress: number;
   pending: number;
+  reviewed: number;
+  carryOver: number;
 };
 
 /**
@@ -81,10 +97,11 @@ const saveSeenMap = (map: HandoffSeenMap) => {
  */
 type HandoffItemProps = {
   item: HandoffRecord;
-  onStatusChange: (id: number, status: HandoffRecord['status']) => Promise<void> | void;
+  meetingMode: MeetingMode;
+  onStatusChange: (id: number, update: HandoffStatusUpdate) => Promise<void> | void;
 };
 
-const HandoffItem: React.FC<HandoffItemProps> = ({ item, onStatusChange }) => {
+const HandoffItem: React.FC<HandoffItemProps> = ({ item, meetingMode, onStatusChange }) => {
   const [expanded, setExpanded] = useState(false);
   const [isSeen, setIsSeen] = useState(() => {
     const map = loadSeenMap();
@@ -101,7 +118,7 @@ const HandoffItem: React.FC<HandoffItemProps> = ({ item, onStatusChange }) => {
     const newStatus = getNextStatus(item.status);
 
     try {
-      await onStatusChange(item.id, newStatus);
+      await onStatusChange(item.id, { status: newStatus });
     } catch (error) {
       console.error('[handoff] Status update failed:', error);
     }
@@ -145,6 +162,24 @@ const HandoffItem: React.FC<HandoffItemProps> = ({ item, onStatusChange }) => {
     }
     setExpanded((prev) => !prev);
   };
+
+  // ワークフローアクション取得
+  const allowedActions = getAllowedActions(item.status, meetingMode);
+
+  const handleWorkflowAction = async (action: WorkflowAction) => {
+    try {
+      const update: HandoffStatusUpdate = { status: action.targetStatus };
+      if (action.setsCarryOverDate) {
+        const { formatYmdLocal: fmtYmd } = await import('./handoffTypes');
+        update.carryOverDate = fmtYmd(new Date());
+      }
+      await onStatusChange(item.id, update);
+    } catch (error) {
+      console.error('[handoff] Workflow action failed:', error);
+    }
+  };
+
+  const isCompleted = isTerminalStatus(item.status);
 
   return (
     <Card variant="outlined"
@@ -201,20 +236,36 @@ const HandoffItem: React.FC<HandoffItemProps> = ({ item, onStatusChange }) => {
 
             <Box sx={{ flexGrow: 1 }} />
 
-            {/* 対応状況チップ（クリックで状態変更） */}
-            <Chip
-              size="small"
-              label={HANDOFF_STATUS_META[item.status].label}
-              color={HANDOFF_STATUS_META[item.status].color}
-              variant={item.status === '対応済' ? 'filled' : 'outlined'}
-              onClick={handleStatusToggle}
-              clickable
-              icon={
-                item.status === '対応済' ? <CheckCircleIcon /> :
-                item.status === '対応中' ? <AccessTimeIcon /> :
-                <RadioButtonUncheckedIcon />
-              }
-            />
+            {/* 対応状況チップ */}
+            {meetingMode === 'normal' ? (
+              /* 通常モード: クリックで状態変更（従来Chipサイクル維持） */
+              <Chip
+                size="small"
+                label={HANDOFF_STATUS_META[item.status].label}
+                color={HANDOFF_STATUS_META[item.status].color}
+                variant={isCompleted ? 'filled' : 'outlined'}
+                onClick={handleStatusToggle}
+                clickable
+                icon={
+                  isCompleted ? <CheckCircleIcon /> :
+                  item.status === '対応中' ? <AccessTimeIcon /> :
+                  <RadioButtonUncheckedIcon />
+                }
+              />
+            ) : (
+              /* 夕会/朝会モード: 表示のみ（アクションボタンは別途） */
+              <Chip
+                size="small"
+                label={HANDOFF_STATUS_META[item.status].label}
+                color={HANDOFF_STATUS_META[item.status].color}
+                variant={isCompleted ? 'filled' : 'outlined'}
+                icon={
+                  isCompleted ? <CheckCircleIcon /> :
+                  item.status === '対応中' ? <AccessTimeIcon /> :
+                  <RadioButtonUncheckedIcon />
+                }
+              />
+            )}
           </Stack>
 
           {/* 本文 */}
@@ -224,7 +275,7 @@ const HandoffItem: React.FC<HandoffItemProps> = ({ item, onStatusChange }) => {
               sx={{
                 whiteSpace: 'pre-wrap',
                 lineHeight: 1.6,
-                color: item.status === '対応済' ? 'text.secondary' : 'text.primary'
+                color: isCompleted ? 'text.secondary' : 'text.primary'
               }}
               onClick={!isLongMessage ? markSeen : undefined}
             >
@@ -243,6 +294,23 @@ const HandoffItem: React.FC<HandoffItemProps> = ({ item, onStatusChange }) => {
               </Button>
             )}
           </Box>
+
+          {/* ワークフローアクションボタン（夕会/朝会モード） */}
+          {allowedActions.length > 0 && (
+            <Stack direction="row" spacing={1} sx={{ mt: 0.5 }}>
+              {allowedActions.map(action => (
+                <Button
+                  key={action.key}
+                  size="small"
+                  variant="outlined"
+                  onClick={() => handleWorkflowAction(action)}
+                  data-testid={`handoff-action-${action.key}`}
+                >
+                  {action.icon} {action.label}
+                </Button>
+              ))}
+            </Stack>
+          )}
 
           {/* 作成者情報（小さく表示） */}
           <Typography variant="caption" color="text.secondary">
@@ -277,6 +345,7 @@ const HandoffItem: React.FC<HandoffItemProps> = ({ item, onStatusChange }) => {
 type TodayHandoffTimelineListProps = {
   timeFilter?: HandoffTimeFilter;
   dayScope?: HandoffDayScope;
+  meetingMode?: MeetingMode;
   onStatsChange?: (stats: HandoffStats | null) => void;
   maxItems?: number;
 };
@@ -284,6 +353,7 @@ type TodayHandoffTimelineListProps = {
 export const TodayHandoffTimelineList: React.FC<TodayHandoffTimelineListProps> = ({
   timeFilter = 'all',
   dayScope = 'today',
+  meetingMode = 'normal',
   onStatsChange,
   maxItems,
 }) => {
@@ -293,11 +363,13 @@ export const TodayHandoffTimelineList: React.FC<TodayHandoffTimelineListProps> =
 
   const stats: HandoffStats = useMemo(() => {
     const total = safeHandoffs.length;
-    const completed = safeHandoffs.filter(item => item.status === '対応済').length;
+    const completed = safeHandoffs.filter(item => isTerminalStatus(item.status)).length;
     const inProgress = safeHandoffs.filter(item => item.status === '対応中').length;
     const pending = safeHandoffs.filter(item => item.status === '未対応').length;
+    const reviewed = safeHandoffs.filter(item => item.status === '確認済').length;
+    const carryOver = safeHandoffs.filter(item => item.status === '明日へ持越').length;
 
-    return { total, completed, inProgress, pending };
+    return { total, completed, inProgress, pending, reviewed, carryOver };
   }, [safeHandoffs]);
 
   const visibleHandoffs = useMemo(() => {
@@ -377,7 +449,7 @@ export const TodayHandoffTimelineList: React.FC<TodayHandoffTimelineListProps> =
         border: '1px solid',
         borderColor: 'primary.200'
       }}>
-        <Stack direction="row" spacing={3} alignItems="center">
+        <Stack direction="row" spacing={3} alignItems="center" flexWrap="wrap" useFlexGap>
           <Typography variant="body2" sx={{ fontWeight: 600 }}>
             📊 {statsLabel}
           </Typography>
@@ -391,6 +463,13 @@ export const TodayHandoffTimelineList: React.FC<TodayHandoffTimelineListProps> =
               color="default"
             />
           )}
+          {stats.reviewed > 0 && (
+            <Chip
+              size="small"
+              label={`確認済 ${stats.reviewed}件`}
+              color="info"
+            />
+          )}
           {stats.inProgress > 0 && (
             <Chip
               size="small"
@@ -398,10 +477,17 @@ export const TodayHandoffTimelineList: React.FC<TodayHandoffTimelineListProps> =
               color="warning"
             />
           )}
+          {stats.carryOver > 0 && (
+            <Chip
+              size="small"
+              label={`持越 ${stats.carryOver}件`}
+              color="primary"
+            />
+          )}
           {stats.completed > 0 && (
             <Chip
               size="small"
-              label={`対応済 ${stats.completed}件`}
+              label={`完了 ${stats.completed}件`}
               color="success"
             />
           )}
@@ -411,7 +497,12 @@ export const TodayHandoffTimelineList: React.FC<TodayHandoffTimelineListProps> =
       {/* 申し送り一覧 */}
       <Stack spacing={1.5} {...tid(TESTIDS['agenda-timeline-list'])}>
         {visibleHandoffs.map(item => (
-          <HandoffItem key={item.id} item={item} onStatusChange={updateHandoffStatus} />
+          <HandoffItem
+            key={item.id}
+            item={item}
+            meetingMode={meetingMode}
+            onStatusChange={updateHandoffStatus}
+          />
         ))}
       </Stack>
     </Stack>

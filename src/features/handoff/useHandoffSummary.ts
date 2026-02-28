@@ -10,6 +10,7 @@ import { useEffect, useState } from 'react';
 import { useHandoffApi } from './handoffApi';
 import { handoffConfig } from './handoffConfig';
 import type { HandoffCategory, HandoffDayScope, HandoffRecord, HandoffStatus } from './handoffTypes';
+import { isTerminalStatus } from './handoffTypes';
 
 const STORAGE_KEY = 'handoff.timeline.dev.v1';
 
@@ -78,6 +79,9 @@ export function useHandoffSummary(options?: { dayScope?: HandoffDayScope }): Han
       '未対応': 0,
       '対応中': 0,
       '対応済': 0,
+      '確認済': 0,
+      '明日へ持越': 0,
+      '完了': 0,
     },
     criticalCount: 0,
     byCategory: {
@@ -107,6 +111,9 @@ export function useHandoffSummary(options?: { dayScope?: HandoffDayScope }): Han
         let pending = 0;
         let inProgress = 0;
         let done = 0;
+        let reviewed = 0;
+        let carryOver = 0;
+        let closed = 0;
         let critical = 0;
 
         // カテゴリ別カウンター初期化
@@ -125,9 +132,12 @@ export function useHandoffSummary(options?: { dayScope?: HandoffDayScope }): Han
           if (item.status === '未対応') pending++;
           if (item.status === '対応中') inProgress++;
           if (item.status === '対応済') done++;
+          if (item.status === '確認済') reviewed++;
+          if (item.status === '明日へ持越') carryOver++;
+          if (item.status === '完了') closed++;
 
           // 重要・未完了カウント
-          if (item.severity === '重要' && item.status !== '対応済') {
+          if (item.severity === '重要' && !isTerminalStatus(item.status)) {
             critical++;
           }
 
@@ -141,6 +151,9 @@ export function useHandoffSummary(options?: { dayScope?: HandoffDayScope }): Han
             '未対応': pending,
             '対応中': inProgress,
             '対応済': done,
+            '確認済': reviewed,
+            '明日へ持越': carryOver,
+            '完了': closed,
           },
           criticalCount: critical,
           byCategory: categoryCount,
@@ -150,7 +163,7 @@ export function useHandoffSummary(options?: { dayScope?: HandoffDayScope }): Han
         // エラー時は空のサマリーを設定
         setSummary({
           total: 0,
-          byStatus: { '未対応': 0, '対応中': 0, '対応済': 0 },
+          byStatus: { '未対応': 0, '対応中': 0, '対応済': 0, '確認済': 0, '明日へ持越': 0, '完了': 0 },
           criticalCount: 0,
           byCategory: {
             '体調': 0,

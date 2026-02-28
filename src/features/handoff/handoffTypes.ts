@@ -74,10 +74,19 @@ export const HANDOFF_TIMELINE_COLUMNS = {
     choices: [
       '未対応',
       '対応中',
-      '対応済'
+      '対応済',
+      '確認済',
+      '明日へ持越',
+      '完了'
     ],
     defaultValue: '未対応',
-    description: 'フォローアップ状況。継続的な支援管理'
+    description: 'フォローアップ状況。夕会→朝会ワークフロー対応'
+  },
+
+  CarryOverDate: {
+    type: 'DateTime',
+    required: false,
+    description: '「明日へ持越」にした日付。朝会モードで前日分のみ表示するために使用'
   },
 
   // 時間・セッション管理
@@ -119,8 +128,31 @@ export const HANDOFF_TIMELINE_COLUMNS = {
     required: true,
     defaultValue: false,
     description: 'ドラフト保存機能用（v1では常にfalse）'
-  }
+  },
 } as const;
+
+// ────────────────────────────────────────────────────────────
+// ワークフロー定義（夕会→朝会昇格）
+// ────────────────────────────────────────────────────────────
+
+/**
+ * 夕会/朝会の業務モード
+ */
+export type MeetingMode = 'normal' | 'evening' | 'morning';
+
+export const MEETING_MODE_LABELS: Record<MeetingMode, string> = {
+  normal: '📋 通常',
+  evening: '🌆 夕会',
+  morning: '🌅 朝会',
+};
+
+/**
+ * ステータス更新ペイロード（API呼び出し用）
+ */
+export type HandoffStatusUpdate = {
+  status: HandoffStatus;
+  carryOverDate?: string; // YYYY-MM-DD
+};
 
 // ────────────────────────────────────────────────────────────
 // TypeScript 型定義
@@ -143,7 +175,10 @@ export type HandoffSeverity =
 export type HandoffStatus =
   | '未対応'
   | '対応中'
-  | '対応済';
+  | '対応済'
+  | '確認済'
+  | '明日へ持越'
+  | '完了';
 
 export type TimeBand =
   | '朝'
@@ -166,6 +201,7 @@ export interface HandoffRecord {
   status: HandoffStatus;
   timeBand: TimeBand;
   meetingSessionKey?: string;
+  carryOverDate?: string; // YYYY-MM-DD — 「明日へ持越」設定日
   sourceType?: string;
   sourceId?: number;
   sourceUrl?: string;
@@ -204,29 +240,113 @@ export interface NewHandoffInput {
 
 /**
  * ステータス表示用メタデータ（日本語ラベル対応）
+ * 対応済/完了 は UI上「完了」に統一
  */
-export const HANDOFF_STATUS_META = {
+export const HANDOFF_STATUS_META: Record<HandoffStatus, { label: string; color: 'default' | 'primary' | 'warning' | 'success' | 'info' }> = {
   '未対応': {
     label: '未対応',
-    color: 'default' as const,
+    color: 'default',
   },
   '対応中': {
     label: '対応中',
-    color: 'warning' as const,
+    color: 'warning',
   },
   '対応済': {
-    label: '対応済',
-    color: 'success' as const,
+    label: '完了', // UI統一: 対応済も「完了」表示
+    color: 'success',
   },
-} as const;
+  '確認済': {
+    label: '確認済',
+    color: 'info',
+  },
+  '明日へ持越': {
+    label: '明日へ',
+    color: 'primary',
+  },
+  '完了': {
+    label: '完了',
+    color: 'success',
+  },
+};
 
 /**
- * 状態を次のステップに進めるヘルパー
+ * 終端ステータス判定
+ * 対応済（従来フロー完了）と 完了（夕会/朝会フロー完了）を同一扱い
+ */
+export function isTerminalStatus(status: HandoffStatus): boolean {
+  return status === '対応済' || status === '完了';
+}
+
+/**
+ * 状態を次のステップに進めるヘルパー（従来フロー用・既存互換）
  */
 export function getNextStatus(current: HandoffStatus): HandoffStatus {
   if (current === '未対応') return '対応中';
   if (current === '対応中') return '対応済';
   return '未対応'; // 対応済 → 未対応へ戻る
+}
+
+// ────────────────────────────────────────────────────────────
+// ワークフロー遷移ロジック
+// ────────────────────────────────────────────────────────────
+
+/**
+ * ワークフローアクション定義
+ */
+export type WorkflowAction = {
+  key: string;
+  label: string;
+  icon: string;
+  targetStatus: HandoffStatus;
+  /** 「明日へ持越」の場合 true → carryOverDate を今日でセット */
+  setsCarryOverDate?: boolean;
+};
+
+const ACTION_REVIEWED: WorkflowAction = {
+  key: 'reviewed',
+  label: '確認済',
+  icon: '✅',
+  targetStatus: '確認済',
+};
+
+const ACTION_CARRY_OVER: WorkflowAction = {
+  key: 'carry_over',
+  label: '明日へ',
+  icon: '📅',
+  targetStatus: '明日へ持越',
+  setsCarryOverDate: true,
+};
+
+const ACTION_CLOSED: WorkflowAction = {
+  key: 'closed',
+  label: '完了',
+  icon: '🔒',
+  targetStatus: '完了',
+};
+
+/**
+ * 現在のステータスとモードに応じて許可されるアクションを返す
+ * 単一関数でUI側の分岐増殖を防ぐ
+ *
+ * // TODO: context?: { role?: 'admin' | 'staff' } で reopen アクションを追加
+ */
+export function getAllowedActions(
+  status: HandoffStatus,
+  mode: MeetingMode,
+): WorkflowAction[] {
+  if (mode === 'evening') {
+    if (status === '未対応') return [ACTION_REVIEWED];
+    if (status === '確認済') return [ACTION_CARRY_OVER, ACTION_CLOSED];
+    return [];
+  }
+
+  if (mode === 'morning') {
+    if (status === '明日へ持越') return [ACTION_CLOSED];
+    return [];
+  }
+
+  // normal: アクションボタンなし（既存Chipサイクルを維持）
+  return [];
 }
 
 // ────────────────────────────────────────────────────────────
@@ -289,6 +409,7 @@ export type SpHandoffItem = {
   Status: string;
   TimeBand: string;
   MeetingSessionKey?: string;
+  CarryOverDate?: string; // ISO date from SP DateTime column
   SourceType?: string;
   SourceId?: number;
   SourceUrl?: string;
@@ -303,6 +424,16 @@ export type SpHandoffItem = {
   EditorId?: number;
 };
 
+/** 既知の HandoffStatus 値かどうかを判定 */
+const VALID_STATUSES: ReadonlySet<string> = new Set<HandoffStatus>([
+  '未対応', '対応中', '対応済', '確認済', '明日へ持越', '完了',
+]);
+
+function normalizeStatus(raw: string): HandoffStatus {
+  if (VALID_STATUSES.has(raw)) return raw as HandoffStatus;
+  return '未対応'; // 未知ステータスのフォールバック
+}
+
 /**
  * SharePoint アイテムを内部型に変換
  */
@@ -315,9 +446,10 @@ export function fromSpHandoffItem(sp: SpHandoffItem): HandoffRecord {
     userDisplayName: sp.UserDisplayName,
     category: sp.Category as HandoffCategory,
     severity: sp.Severity as HandoffSeverity,
-    status: sp.Status as HandoffStatus,
+    status: normalizeStatus(sp.Status),
     timeBand: sp.TimeBand as TimeBand,
     meetingSessionKey: sp.MeetingSessionKey,
+    carryOverDate: sp.CarryOverDate ? sp.CarryOverDate.split('T')[0] : undefined,
     sourceType: sp.SourceType,
     sourceId: sp.SourceId,
     sourceUrl: sp.SourceUrl,
@@ -365,15 +497,19 @@ export function toSpHandoffCreatePayload(
  * SharePoint 更新用ペイロード（部分更新対応）
  */
 export function toSpHandoffUpdatePayload(
-  updates: Partial<Pick<HandoffRecord, 'status' | 'severity' | 'category' | 'message' | 'title'>>
-): Partial<Pick<SpHandoffItem, 'Status' | 'Severity' | 'Category' | 'Message' | 'Title'>> {
-  const payload: Partial<Pick<SpHandoffItem, 'Status' | 'Severity' | 'Category' | 'Message' | 'Title'>> = {};
+  updates: Partial<Pick<HandoffRecord, 'status' | 'severity' | 'category' | 'message' | 'title' | 'carryOverDate'>>
+): Partial<Pick<SpHandoffItem, 'Status' | 'Severity' | 'Category' | 'Message' | 'Title' | 'CarryOverDate'>> {
+  const payload: Partial<Pick<SpHandoffItem, 'Status' | 'Severity' | 'Category' | 'Message' | 'Title' | 'CarryOverDate'>> = {};
 
   if (updates.status !== undefined) payload.Status = updates.status;
   if (updates.severity !== undefined) payload.Severity = updates.severity;
   if (updates.category !== undefined) payload.Category = updates.category;
   if (updates.message !== undefined) payload.Message = updates.message;
   if (updates.title !== undefined) payload.Title = updates.title;
+  if (updates.carryOverDate !== undefined) {
+    // SP DateTime列にはISO形式で保存
+    payload.CarryOverDate = `${updates.carryOverDate}T00:00:00.000Z`;
+  }
 
   return payload;
 }
@@ -389,6 +525,7 @@ export interface HandoffSummary {
   severity: HandoffSeverity;
   status: HandoffStatus;
   timeBand: TimeBand;
+  carryOverDate?: string;
   createdAt: string;
   createdByName: string;
 }
@@ -446,11 +583,38 @@ export function getSeverityColor(severity: HandoffSeverity): 'default' | 'warnin
 /**
  * Status に応じた色設定（MUI用）
  */
-export function getStatusColor(status: HandoffStatus): 'default' | 'primary' | 'success' {
+export function getStatusColor(status: HandoffStatus): 'default' | 'primary' | 'success' | 'info' {
   switch (status) {
     case '対応済': return 'success';
+    case '完了': return 'success';
+    case '確認済': return 'info';
+    case '明日へ持越': return 'primary';
     case '対応中': return 'primary';
     case '未対応':
     default: return 'default';
   }
+}
+
+// ────────────────────────────────────────────────────────────
+// 日付ユーティリティ（timezone-safe）
+// ────────────────────────────────────────────────────────────
+
+/**
+ * ローカルタイムゾーン（JST）で YYYY-MM-DD を生成
+ * carryOverDate 等、日付のみの値に使用
+ */
+export function formatYmdLocal(date: Date = new Date()): string {
+  const y = date.getFullYear();
+  const m = `${date.getMonth() + 1}`.padStart(2, '0');
+  const d = `${date.getDate()}`.padStart(2, '0');
+  return `${y}-${m}-${d}`;
+}
+
+/**
+ * 昨日のローカル日付を YYYY-MM-DD で返す
+ */
+export function getYesterdayYmd(): string {
+  const d = new Date();
+  d.setDate(d.getDate() - 1);
+  return formatYmdLocal(d);
 }
