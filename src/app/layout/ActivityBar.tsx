@@ -1,5 +1,5 @@
-import * as React from 'react';
 import { Box, IconButton, Tooltip } from '@mui/material';
+import * as React from 'react';
 import { Link as RouterLink, useLocation } from 'react-router-dom';
 import { layoutTokens } from './layoutTokens';
 
@@ -24,7 +24,7 @@ export function ActivityBar({ items }: ActivityBarProps) {
         const Icon = item.icon;
 
         return (
-          <Tooltip key={item.to} title={item.label} placement="right" enterDelay={200}>
+          <Tooltip key={`${item.to}-${location.pathname}`} title={item.label} placement="right" enterDelay={200}>
             <IconButton
               component={RouterLink}
               to={item.to}

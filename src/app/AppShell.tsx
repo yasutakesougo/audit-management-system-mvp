@@ -292,7 +292,7 @@ const AppShell: React.FC<{ children: React.ReactNode }> = ({ children }) => {
             <IconComponent />
           </ListItemIcon>
         )}
-        {showLabel && <ListItemText primary={label} />}
+        {showLabel && <ListItemText primary={label} primaryTypographyProps={{ noWrap: true }} />}
       </>
     );
 
@@ -311,7 +311,7 @@ const AppShell: React.FC<{ children: React.ReactNode }> = ({ children }) => {
 
       if (navCollapsed && !showLabel) {
         return (
-          <Tooltip key={label} title={label} placement="right" enterDelay={100} disableInteractive>
+          <Tooltip key={`${label}-${currentPathname}`} title={label} placement="right" enterDelay={100} disableInteractive>
             <Box sx={{ width: '100%' }}>
               {button}
             </Box>
@@ -335,7 +335,7 @@ const AppShell: React.FC<{ children: React.ReactNode }> = ({ children }) => {
 
     if (navCollapsed && !showLabel) {
       return (
-        <Tooltip key={label} title={label} placement="right" enterDelay={100} disableInteractive>
+        <Tooltip key={`${label}-${currentPathname}`} title={label} placement="right" enterDelay={100} disableInteractive>
           <Box sx={{ width: '100%' }}>
             {button}
           </Box>
