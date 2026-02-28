@@ -258,9 +258,12 @@ const AppShell: React.FC<{ children: React.ReactNode }> = ({ children }) => {
     const isBlackNote = label.includes('黒ノート');
     const showLabel = !navCollapsed;
 
-    const handleClick = () => {
-
+    const handleClick = (e: React.MouseEvent) => {
       if (onNavigate) onNavigate();
+      // SPA遷移時にフォーカスが残りTooltipが表示され続けるのを防ぐ
+      if (e.currentTarget instanceof HTMLElement) {
+        e.currentTarget.blur();
+      }
     };
 
     const commonProps = {
@@ -292,7 +295,7 @@ const AppShell: React.FC<{ children: React.ReactNode }> = ({ children }) => {
             <IconComponent />
           </ListItemIcon>
         )}
-        {showLabel && <ListItemText primary={label} />}
+        {showLabel && <ListItemText primary={label} primaryTypographyProps={{ noWrap: true }} />}
       </>
     );
 
@@ -311,7 +314,7 @@ const AppShell: React.FC<{ children: React.ReactNode }> = ({ children }) => {
 
       if (navCollapsed && !showLabel) {
         return (
-          <Tooltip key={label} title={label} placement="right" enterDelay={100} disableInteractive>
+          <Tooltip key={`${label}-${currentPathname}`} title={label} placement="right" enterDelay={100} disableInteractive>
             <Box sx={{ width: '100%' }}>
               {button}
             </Box>
@@ -335,7 +338,7 @@ const AppShell: React.FC<{ children: React.ReactNode }> = ({ children }) => {
 
     if (navCollapsed && !showLabel) {
       return (
-        <Tooltip key={label} title={label} placement="right" enterDelay={100} disableInteractive>
+        <Tooltip key={`${label}-${currentPathname}`} title={label} placement="right" enterDelay={100} disableInteractive>
           <Box sx={{ width: '100%' }}>
             {button}
           </Box>
