@@ -1,8 +1,8 @@
 import { describe, expect, it, vi } from 'vitest';
 
+import { buildContractErrorMessage, validateSchedulesListContract, type ListFieldMeta } from './contract';
 import { SpScheduleCategoryRaw } from './spRowSchema';
 import { SCHEDULES_FIELDS } from './spSchema';
-import { buildContractErrorMessage, validateSchedulesListContract, type ListFieldMeta } from './contract';
 
 const baseFields: ListFieldMeta[] = [
   { internalName: SCHEDULES_FIELDS.title, type: 'Text', required: true },
@@ -21,6 +21,7 @@ const resolveTitle = async (env: Record<string, string | undefined>) => {
   vi.resetModules();
   vi.doMock('@/lib/env', () => ({
     readEnv: (key: string, fallback = '') => env[key] ?? fallback,
+    readOptionalEnv: (key: string) => env[key],
   }));
   const mod = await import('./spSchema');
   return mod.getSchedulesListTitle();
