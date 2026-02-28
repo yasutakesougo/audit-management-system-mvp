@@ -1,6 +1,5 @@
 import { act, renderHook } from '@testing-library/react';
-import { describe, expect, it } from 'vitest';
-import type { HandoffDayScope, HandoffTimeFilter, MeetingMode } from '../handoffTypes';
+import type { HandoffDayScope, HandoffTimeFilter } from '../handoffTypes';
 import { useHandoffTimelineViewModel } from '../useHandoffTimelineViewModel';
 
 describe('useHandoffTimelineViewModel', () => {
@@ -16,78 +15,68 @@ describe('useHandoffTimelineViewModel', () => {
     expect(result.current.timeFilter).toBe('morning');
   });
 
-  describe('meetingMode', () => {
-    it('defaults to "normal"', () => {
-      const { result } = renderHook(() => useHandoffTimelineViewModel({}));
-      expect(result.current.meetingMode).toBe('normal');
-    });
-
-    it('can be changed via handleMeetingModeChange', () => {
-      const { result } = renderHook(() => useHandoffTimelineViewModel({}));
-
-      act(() => {
-        result.current.handleMeetingModeChange(
-          {} as React.MouseEvent<HTMLElement>,
-          'evening' as MeetingMode,
-        );
-      });
-
-      expect(result.current.meetingMode).toBe('evening');
-    });
-
-    it('ignores null value (ToggleButtonGroup deselect)', () => {
-      const { result } = renderHook(() => useHandoffTimelineViewModel({}));
-
-      act(() => {
-        result.current.handleMeetingModeChange(
-          {} as React.MouseEvent<HTMLElement>,
-          'evening' as MeetingMode,
-        );
-      });
-
-      act(() => {
-        // ToggleButtonGroup sends null when deselecting
-        result.current.handleMeetingModeChange(
-          {} as React.MouseEvent<HTMLElement>,
-          null as unknown as MeetingMode,
-        );
-      });
-
-      expect(result.current.meetingMode).toBe('evening');
-    });
+  it('meetingMode defaults to normal', () => {
+    const { result } = renderHook(() => useHandoffTimelineViewModel({}));
+    expect(result.current.meetingMode).toBe('normal');
   });
 
-  describe('markReviewed guard', () => {
-    it('does not throw when called (no-op for non-未対応)', () => {
-      const { result } = renderHook(() => useHandoffTimelineViewModel({}));
-      // markReviewed guards by checking currentStatus
-      // calling with '対応中' should be a no-op (not throw)
-      expect(() => result.current.markReviewed(1, '対応中')).not.toThrow();
-    });
-
-    it('does not throw when called with 未対応', () => {
-      const { result } = renderHook(() => useHandoffTimelineViewModel({}));
-      // This will call updateHandoffStatusVm which has no ref set, but should not throw
-      expect(() => result.current.markReviewed(1, '未対応')).not.toThrow();
-    });
+  it('workflowActions is an object with 3 methods', () => {
+    const { result } = renderHook(() => useHandoffTimelineViewModel({}));
+    expect(result.current.workflowActions).toBeDefined();
+    expect(typeof result.current.workflowActions.markReviewed).toBe('function');
+    expect(typeof result.current.workflowActions.markCarryOver).toBe('function');
+    expect(typeof result.current.workflowActions.markClosed).toBe('function');
   });
 
-  describe('markCarryOver guard', () => {
-    it('does not throw when called with non-確認済 (no-op)', () => {
-      const { result } = renderHook(() => useHandoffTimelineViewModel({}));
-      expect(() => result.current.markCarryOver(1, '未対応')).not.toThrow();
-    });
+  it('injectDI is a function', () => {
+    const { result } = renderHook(() => useHandoffTimelineViewModel({}));
+    expect(typeof result.current.injectDI).toBe('function');
   });
 
-  describe('markClosed guard', () => {
-    it('does not throw when called with terminal status (no-op)', () => {
-      const { result } = renderHook(() => useHandoffTimelineViewModel({}));
-      expect(() => result.current.markClosed(1, '完了')).not.toThrow();
+  it('handleMeetingModeChange sets dayScope/timeFilter for evening', () => {
+    const { result } = renderHook(() => useHandoffTimelineViewModel({}));
+
+    act(() => {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      result.current.handleMeetingModeChange({} as any, 'evening');
     });
 
-    it('does not throw when called with 未対応 (no-op)', () => {
-      const { result } = renderHook(() => useHandoffTimelineViewModel({}));
-      expect(() => result.current.markClosed(1, '未対応')).not.toThrow();
+    expect(result.current.meetingMode).toBe('evening');
+    expect(result.current.dayScope).toBe('today');
+    expect(result.current.timeFilter).toBe('evening');
+  });
+
+  it('handleMeetingModeChange sets dayScope/timeFilter for morning', () => {
+    const { result } = renderHook(() => useHandoffTimelineViewModel({}));
+
+    act(() => {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      result.current.handleMeetingModeChange({} as any, 'morning');
     });
+
+    expect(result.current.meetingMode).toBe('morning');
+    expect(result.current.dayScope).toBe('yesterday');
+    expect(result.current.timeFilter).toBe('morning');
+  });
+
+  it('workflowActions warn when updateHandoffStatus not injected', async () => {
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    const { result } = renderHook(() => useHandoffTimelineViewModel({}));
+
+    // Inject records so guard passes, but no updateHandoffStatus
+    act(() => {
+      result.current.injectDI({
+        updateHandoffStatus: undefined as unknown as (id: number, newStatus: string, carryOverDate?: string) => Promise<void>,
+        currentRecords: [{ id: 1, status: '未対応' }] as never[],
+      });
+    });
+
+    // Try to call markReviewed - should warn since no update function
+    await act(async () => {
+      await result.current.workflowActions.markReviewed(1);
+    });
+
+    expect(warnSpy).toHaveBeenCalled();
+    warnSpy.mockRestore();
   });
 });

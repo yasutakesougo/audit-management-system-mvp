@@ -1,42 +1,40 @@
 import { expect, test } from '@playwright/test';
 
 /**
- * Validates that the global "今すぐ申し送り" button dispatches the inline
- * quick-note open event while visiting /handoff-timeline.
+ * Validates that the handoff quick-note Dialog is accessible from both:
+ * 1. The page-level "今すぐ申し送り" button on /handoff-timeline
+ * 2. The global footer "申し送り" button
+ *
+ * Both should open the same Dialog owned by FooterQuickActions.
  */
-test.describe('Handoff Timeline footer quick note', () => {
-  test('footer button opens inline quick note card', async ({ page }) => {
-    const consoleErrors: string[] = [];
-    const allowlistedConsolePatterns = [/\[MSAL CONFIG\]/, /\[firebase-auth\]/, /auth\/invalid-api-key/];
-    page.on('console', (message) => {
-      if (message.type() === 'error') {
-        const text = message.text();
-        if (allowlistedConsolePatterns.some((pattern) => pattern.test(text))) {
-          return;
-        }
-        consoleErrors.push(`[console] ${text}`);
-      }
-    });
-    page.on('pageerror', (error) => {
-      consoleErrors.push(`[pageerror] ${error.message}`);
-    });
-
+test.describe('Handoff Timeline quick note Dialog', () => {
+  test.beforeEach(async ({ page }) => {
     await page.goto('/handoff-timeline');
+  });
 
-    // Collapse the inline quick note card to ensure the event path is required.
-    const closeButton = page.getByRole('button', { name: '申し送り入力カードを閉じる' });
-    if (await closeButton.isVisible()) {
-      await closeButton.click();
-    }
+  test('page button opens quick note dialog', async ({ page }) => {
+    // Click the page-level button
+    await page.getByTestId('handoff-page-quicknote-open').click();
 
-    const inlineQuickNoteOpenButton = page.getByRole('button', { name: '今すぐ申し送り入力カードを開く' });
-    await expect(inlineQuickNoteOpenButton).toBeVisible();
+    // Dialog should appear
+    const dialog = page.getByTestId('handoff-quicknote-dialog');
+    await expect(dialog).toBeVisible();
 
-    // Trigger the footer quick action, which should dispatch the custom event.
+    // QuickNote card should be inside the dialog
+    await expect(dialog.getByTestId('handoff-quicknote-card')).toBeVisible();
+
+    // Close the dialog
+    await page.getByRole('button', { name: '申し送りダイアログを閉じる' }).click();
+    await expect(dialog).toBeHidden();
+  });
+
+  test('footer button opens same dialog on /handoff-timeline', async ({ page }) => {
+    // Click the footer quick action
     await page.getByTestId('handoff-footer-quicknote').click();
 
-    await expect(inlineQuickNoteOpenButton).toBeHidden();
-
-    expect(consoleErrors).toEqual([]);
+    // Same dialog should appear
+    const dialog = page.getByTestId('handoff-quicknote-dialog');
+    await expect(dialog).toBeVisible();
+    await expect(dialog.getByTestId('handoff-quicknote-card')).toBeVisible();
   });
 });

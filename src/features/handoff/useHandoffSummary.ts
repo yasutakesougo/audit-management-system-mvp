@@ -111,9 +111,6 @@ export function useHandoffSummary(options?: { dayScope?: HandoffDayScope }): Han
         let pending = 0;
         let inProgress = 0;
         let done = 0;
-        let reviewed = 0;
-        let carryOver = 0;
-        let closed = 0;
         let critical = 0;
 
         // カテゴリ別カウンター初期化
@@ -131,12 +128,9 @@ export function useHandoffSummary(options?: { dayScope?: HandoffDayScope }): Han
           // 状態別カウント
           if (item.status === '未対応') pending++;
           if (item.status === '対応中') inProgress++;
-          if (item.status === '対応済') done++;
-          if (item.status === '確認済') reviewed++;
-          if (item.status === '明日へ持越') carryOver++;
-          if (item.status === '完了') closed++;
+          if (item.status === '対応済' || item.status === '完了') done++;
 
-          // 重要・未完了カウント
+          // 重要・未完了カウント (v3: isTerminalStatus で判定)
           if (item.severity === '重要' && !isTerminalStatus(item.status)) {
             critical++;
           }
@@ -151,9 +145,9 @@ export function useHandoffSummary(options?: { dayScope?: HandoffDayScope }): Han
             '未対応': pending,
             '対応中': inProgress,
             '対応済': done,
-            '確認済': reviewed,
-            '明日へ持越': carryOver,
-            '完了': closed,
+            '確認済': items.filter(i => i.status === '確認済').length,
+            '明日へ持越': items.filter(i => i.status === '明日へ持越').length,
+            '完了': items.filter(i => i.status === '完了').length,
           },
           criticalCount: critical,
           byCategory: categoryCount,

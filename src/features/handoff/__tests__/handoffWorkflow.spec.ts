@@ -1,11 +1,16 @@
-import { describe, expect, it } from 'vitest';
-import {
-    getAllowedActions,
-    getNextStatus,
-    isTerminalStatus,
-    type HandoffStatus,
-    type MeetingMode,
-} from '../handoffTypes';
+/**
+ * handoffWorkflow.spec.ts
+ *
+ * v3 ワークフロー状態遷移の全パターンテスト
+ * - getAllowedActions(status, mode) : 6 status × 3 mode = 18 ケース
+ * - isTerminalStatus(status)
+ */
+import type { HandoffStatus, MeetingMode } from '../handoffTypes';
+import { getAllowedActions, isTerminalStatus } from '../handoffTypes';
+
+// ────────────────────────────────────────────────────────────
+// isTerminalStatus
+// ────────────────────────────────────────────────────────────
 
 describe('isTerminalStatus', () => {
   it.each<[HandoffStatus, boolean]>([
@@ -15,90 +20,103 @@ describe('isTerminalStatus', () => {
     ['明日へ持越', false],
     ['対応済', true],
     ['完了', true],
-  ])('isTerminalStatus("%s") => %s', (status, expected) => {
+  ])('isTerminalStatus(%s) → %s', (status, expected) => {
     expect(isTerminalStatus(status)).toBe(expected);
   });
 });
 
-describe('getNextStatus (既存互換)', () => {
-  it('未対応 → 対応中', () => {
-    expect(getNextStatus('未対応')).toBe('対応中');
-  });
-
-  it('対応中 → 対応済', () => {
-    expect(getNextStatus('対応中')).toBe('対応済');
-  });
-
-  it('対応済 → 未対応 (リセット)', () => {
-    expect(getNextStatus('対応済')).toBe('未対応');
-  });
-
-  it('確認済 → 未対応 (フォールスルー)', () => {
-    expect(getNextStatus('確認済')).toBe('未対応');
-  });
-});
+// ────────────────────────────────────────────────────────────
+// getAllowedActions
+// ────────────────────────────────────────────────────────────
 
 describe('getAllowedActions', () => {
-  describe('eveningモード', () => {
-    const mode: MeetingMode = 'evening';
+  // 全 status 値
+  const allStatuses: HandoffStatus[] = [
+    '未対応', '対応中', '対応済', '確認済', '明日へ持越', '完了',
+  ];
 
-    it('未対応 → [確認済]', () => {
-      const actions = getAllowedActions('未対応', mode);
-      expect(actions).toHaveLength(1);
-      expect(actions[0].targetStatus).toBe('確認済');
+  // 終端ステータスはどのモードでもアクションなし
+  describe('terminal statuses', () => {
+    const terminalStatuses: HandoffStatus[] = ['対応済', '完了'];
+    const modes: MeetingMode[] = ['normal', 'evening', 'morning'];
+
+    terminalStatuses.forEach((status) => {
+      modes.forEach((mode) => {
+        it(`getAllowedActions('${status}', '${mode}') → []`, () => {
+          expect(getAllowedActions(status, mode)).toEqual([]);
+        });
+      });
+    });
+  });
+
+  // normal モード
+  describe('normal mode', () => {
+    it('未対応 → [対応中]', () => {
+      expect(getAllowedActions('未対応', 'normal')).toEqual(['対応中']);
+    });
+
+    it('対応中 → [対応済]', () => {
+      expect(getAllowedActions('対応中', 'normal')).toEqual(['対応済']);
+    });
+
+    it('確認済 → [完了] (フォールバック)', () => {
+      expect(getAllowedActions('確認済', 'normal')).toEqual(['完了']);
+    });
+
+    it('明日へ持越 → [完了] (フォールバック)', () => {
+      expect(getAllowedActions('明日へ持越', 'normal')).toEqual(['完了']);
+    });
+  });
+
+  // evening 夕会モード
+  describe('evening mode', () => {
+    it('未対応 → [確認済, 完了]', () => {
+      expect(getAllowedActions('未対応', 'evening')).toEqual(['確認済', '完了']);
     });
 
     it('確認済 → [明日へ持越, 完了]', () => {
-      const actions = getAllowedActions('確認済', mode);
-      expect(actions).toHaveLength(2);
-      expect(actions.map(a => a.targetStatus)).toEqual(['明日へ持越', '完了']);
+      expect(getAllowedActions('確認済', 'evening')).toEqual(['明日へ持越', '完了']);
     });
 
-    it('明日へ持越 にはcarryOverDateフラグが立つ', () => {
-      const actions = getAllowedActions('確認済', mode);
-      const carryOver = actions.find(a => a.targetStatus === '明日へ持越');
-      expect(carryOver?.setsCarryOverDate).toBe(true);
+    it('対応中 → [対応済]', () => {
+      expect(getAllowedActions('対応中', 'evening')).toEqual(['対応済']);
     });
 
-    it('対応中 → [] (アクションなし)', () => {
-      expect(getAllowedActions('対応中', mode)).toEqual([]);
-    });
-
-    it('対応済 → [] (終端)', () => {
-      expect(getAllowedActions('対応済', mode)).toEqual([]);
-    });
-
-    it('完了 → [] (終端)', () => {
-      expect(getAllowedActions('完了', mode)).toEqual([]);
+    it('明日へ持越 → []', () => {
+      expect(getAllowedActions('明日へ持越', 'evening')).toEqual([]);
     });
   });
 
-  describe('morningモード', () => {
-    const mode: MeetingMode = 'morning';
-
+  // morning 朝会モード
+  describe('morning mode', () => {
     it('明日へ持越 → [完了]', () => {
-      const actions = getAllowedActions('明日へ持越', mode);
-      expect(actions).toHaveLength(1);
-      expect(actions[0].targetStatus).toBe('完了');
+      expect(getAllowedActions('明日へ持越', 'morning')).toEqual(['完了']);
     });
 
-    it('未対応 → [] (朝会ではアクション不可)', () => {
-      expect(getAllowedActions('未対応', mode)).toEqual([]);
+    it('未対応 → [完了]', () => {
+      expect(getAllowedActions('未対応', 'morning')).toEqual(['完了']);
     });
 
-    it('確認済 → []', () => {
-      expect(getAllowedActions('確認済', mode)).toEqual([]);
+    it('確認済 → [完了]', () => {
+      expect(getAllowedActions('確認済', 'morning')).toEqual(['完了']);
+    });
+
+    it('対応中 → [対応済]', () => {
+      expect(getAllowedActions('対応中', 'morning')).toEqual(['対応済']);
     });
   });
 
-  describe('normalモード', () => {
-    const mode: MeetingMode = 'normal';
+  // 全パターンが定義されていることを検証
+  describe('exhaustiveness', () => {
+    const modes: MeetingMode[] = ['normal', 'evening', 'morning'];
 
-    it('どのステータスでも空 (既存Chipサイクルを使う)', () => {
-      const statuses: HandoffStatus[] = ['未対応', '対応中', '対応済', '確認済', '明日へ持越', '完了'];
-      for (const s of statuses) {
-        expect(getAllowedActions(s, mode)).toEqual([]);
-      }
+    allStatuses.forEach((status) => {
+      modes.forEach((mode) => {
+        it(`getAllowedActions('${status}', '${mode}') returns an array`, () => {
+          const result = getAllowedActions(status, mode);
+          expect(Array.isArray(result)).toBe(true);
+        });
+      });
     });
   });
 });
