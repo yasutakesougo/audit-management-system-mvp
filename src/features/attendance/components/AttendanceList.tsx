@@ -10,6 +10,7 @@ type AttendanceListProps = {
   inputMode: AttendanceInputMode;
   tempDraftByUser?: Record<string, number>;
   onOpenTemp?: (userCode: string, userName: string) => void;
+  onOpenNurse?: (userCode: string) => void;
   onUpdateStatus: (userCode: string, status: AttendanceVisit['status']) => Promise<void>;
 };
 
@@ -19,6 +20,7 @@ export function AttendanceList({
   inputMode,
   tempDraftByUser = {},
   onOpenTemp,
+  onOpenNurse,
   onUpdateStatus,
 }: AttendanceListProps): JSX.Element {
   if (!rows.length) {
@@ -61,6 +63,7 @@ export function AttendanceList({
                 onCheckOut={() => void onUpdateStatus(row.userCode, '退所済')}
                 onAbsence={() => void onUpdateStatus(row.userCode, '当日欠席')}
                 onOpenTemp={onOpenTemp ? () => onOpenTemp(row.userCode, row.FullName ?? row.userCode) : undefined}
+                onOpenNurse={onOpenNurse ? () => onOpenNurse(row.userCode) : undefined}
                 onDetail={() => {}}
               />
             </CardContent>
