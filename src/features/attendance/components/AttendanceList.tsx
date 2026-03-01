@@ -41,7 +41,7 @@ export function AttendanceList({
           : '—';
 
         return (
-          <Card key={row.userCode} variant="outlined">
+          <Card key={row.userCode} variant="outlined" data-usercode={row.userCode}>
             <CardContent>
               <AttendanceRow
                 user={{
