@@ -45,4 +45,31 @@ describe('AttendanceRow', () => {
     const checkInBtn = screen.getByRole('button', { name: /通所済/ });
     expect(checkInBtn).toBeDisabled();
   });
+
+  it('shows temp button for checked-in row in checkInRun mode', () => {
+    const onOpenTemp = vi.fn();
+    render(
+      <AttendanceRow
+        {...baseProps}
+        visit={{ status: '通所中', checkInAtText: '09:00' }}
+        inputMode="checkInRun"
+        onOpenTemp={onOpenTemp}
+      />,
+    );
+
+    const tempBtn = screen.getByRole('button', { name: /検温/ });
+    expect(tempBtn).toBeInTheDocument();
+  });
+
+  it('displays temp chip when tempValue is provided', () => {
+    render(
+      <AttendanceRow
+        {...baseProps}
+        visit={{ status: '通所中', checkInAtText: '09:00' }}
+        tempValue={36.7}
+      />,
+    );
+
+    expect(screen.getByTestId('temp-chip')).toHaveTextContent('36.7℃');
+  });
 });

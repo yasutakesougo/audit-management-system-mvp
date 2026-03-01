@@ -1,14 +1,76 @@
 import ErrorOutlineIcon from '@mui/icons-material/ErrorOutline';
 import SyncIcon from '@mui/icons-material/Sync';
 import CheckCircleOutlineIcon from '@mui/icons-material/TaskAlt';
-import { Alert, Box, Button, Chip, Snackbar, Stack, ToggleButton, ToggleButtonGroup, Typography } from '@mui/material';
+import ThermostatIcon from '@mui/icons-material/Thermostat';
+import {
+    Alert,
+    Box,
+    Button,
+    Chip,
+    Dialog,
+    DialogActions,
+    DialogContent,
+    DialogTitle,
+    InputAdornment,
+    Snackbar,
+    Stack,
+    TextField,
+    ToggleButton,
+    ToggleButtonGroup,
+    Typography,
+} from '@mui/material';
+import { useCallback, useState } from 'react';
 
 import { AttendanceFilterBar } from './components/AttendanceFilterBar';
 import { AttendanceList } from './components/AttendanceList';
 import { useAttendance } from './useAttendance';
 
+// ── Temperature draft (local state, no save) ──
+
+type TempDialogState = {
+  open: boolean;
+  userCode: string;
+  userName: string;
+};
+
+const TEMP_DIALOG_CLOSED: TempDialogState = { open: false, userCode: '', userName: '' };
+
+const isValidTemp = (v: number): boolean => v >= 35.0 && v <= 42.0;
+
 const AttendancePanel = (): JSX.Element => {
   const { status, rows, filters, inputMode, savingUsers, notification, dismissNotification, actions } = useAttendance();
+
+  // ── Temperature draft state ──
+  const [tempDraftByUser, setTempDraftByUser] = useState<Record<string, number>>({});
+  const [tempDialog, setTempDialog] = useState<TempDialogState>(TEMP_DIALOG_CLOSED);
+  const [tempInput, setTempInput] = useState('');
+  const [tempError, setTempError] = useState('');
+
+  const openTempDialog = useCallback((userCode: string, userName: string) => {
+    const current = tempDraftByUser[userCode];
+    setTempInput(current != null ? String(current) : '');
+    setTempError('');
+    setTempDialog({ open: true, userCode, userName });
+  }, [tempDraftByUser]);
+
+  const closeTempDialog = useCallback(() => {
+    setTempDialog(TEMP_DIALOG_CLOSED);
+  }, []);
+
+  const commitTemp = useCallback(() => {
+    const parsed = parseFloat(tempInput);
+    if (Number.isNaN(parsed)) {
+      setTempError('数値を入力してください');
+      return;
+    }
+    if (!isValidTemp(parsed)) {
+      setTempError('35.0〜42.0 の範囲で入力してください');
+      return;
+    }
+    const rounded = Math.round(parsed * 10) / 10;
+    setTempDraftByUser((prev) => ({ ...prev, [tempDialog.userCode]: rounded }));
+    closeTempDialog();
+  }, [tempInput, tempDialog.userCode, closeTempDialog]);
 
   return (
     <Box sx={{ display: 'grid', gap: 2.5 }}>
@@ -55,7 +117,44 @@ const AttendancePanel = (): JSX.Element => {
         <ToggleButton value="checkInRun" sx={{ minHeight: 44, px: 2.5 }}>通所連続</ToggleButton>
       </ToggleButtonGroup>
 
-      <AttendanceList rows={rows} savingUsers={savingUsers} inputMode={inputMode} onUpdateStatus={actions.updateStatus} />
+      <AttendanceList
+        rows={rows}
+        savingUsers={savingUsers}
+        inputMode={inputMode}
+        tempDraftByUser={tempDraftByUser}
+        onOpenTemp={openTempDialog}
+        onUpdateStatus={actions.updateStatus}
+      />
+
+      {/* Temperature input dialog */}
+      <Dialog open={tempDialog.open} onClose={closeTempDialog} maxWidth="xs" fullWidth>
+        <DialogTitle sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+          <ThermostatIcon color="primary" />
+          検温（{tempDialog.userName}）
+        </DialogTitle>
+        <DialogContent>
+          <TextField
+            autoFocus
+            fullWidth
+            type="number"
+            label="体温"
+            value={tempInput}
+            onChange={(e) => { setTempInput(e.target.value); setTempError(''); }}
+            onKeyDown={(e) => { if (e.key === 'Enter') commitTemp(); }}
+            error={Boolean(tempError)}
+            helperText={tempError || '35.0〜42.0'}
+            inputProps={{ min: 35, max: 42, step: 0.1 }}
+            InputProps={{
+              endAdornment: <InputAdornment position="end">℃</InputAdornment>,
+            }}
+            sx={{ mt: 1 }}
+          />
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={closeTempDialog}>キャンセル</Button>
+          <Button variant="contained" onClick={commitTemp}>記録</Button>
+        </DialogActions>
+      </Dialog>
 
       <Snackbar
         open={notification.open}
