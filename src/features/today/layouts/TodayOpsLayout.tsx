@@ -10,6 +10,7 @@
  * @see docs/adr/ADR-002-today-execution-layer-guardrails.md
  */
 import type { BriefingAlert } from '@/features/dashboard/sections/types';
+import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import {
     Accordion,
@@ -47,6 +48,16 @@ function a11yTabPanelProps(index: number) {
     'aria-labelledby': `today-tab-${index}`,
     role: 'tabpanel' as const,
   };
+}
+
+/** Tab label with optional completion ✅ */
+function TabLabel({ emoji, text, isComplete }: { emoji: string; text: string; isComplete: boolean }) {
+  return (
+    <Box component="span" sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+      {emoji} {text}
+      {isComplete && <CheckCircleIcon sx={{ fontSize: 16, color: 'success.main', ml: 0.5 }} />}
+    </Box>
+  );
 }
 
 type HeroProps = {
@@ -111,9 +122,18 @@ export const TodayOpsLayout: React.FC<TodayOpsProps> = ({
                 },
               }}
             >
-              <Tab label="📊 出席" {...a11yTabProps(0)} />
-              <Tab label="📋 ブリーフィング" {...a11yTabProps(1)} />
-              <Tab label="👥 利用者" {...a11yTabProps(2)} />
+              <Tab
+                label={<TabLabel emoji="📊" text="出席" isComplete={attendance.facilityAttendees === 0 && attendance.absenceCount === 0 && attendance.lateOrEarlyLeave === 0} />}
+                {...a11yTabProps(0)}
+              />
+              <Tab
+                label={<TabLabel emoji="📋" text="ブリーフィング" isComplete={briefingAlerts.length === 0} />}
+                {...a11yTabProps(1)}
+              />
+              <Tab
+                label={<TabLabel emoji="👥" text="利用者" isComplete={users.items.length > 0 && users.items.every(u => u.recordFilled)} />}
+                {...a11yTabProps(2)}
+              />
             </Tabs>
 
             {/* TabPanel 0: 出席 — 常時マウント / hidden + display 切替 */}
