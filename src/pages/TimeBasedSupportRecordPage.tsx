@@ -127,6 +127,19 @@ const TimeBasedSupportRecordPage: React.FC = () => {
     return rawError;
   }, [rawError]);
   const selectedUser = useMemo(() => users.find((user) => user.UserID === targetUserId), [users, targetUserId]);
+
+  // Build observation preview map for Plan side tooltips
+  const savedObservationsMap = useMemo(() => {
+    const map = new Map<string, string>();
+    recentObservations.forEach((obs) => {
+      const key = obs.planSlotKey ?? '';
+      if (key && obs.actualObservation) {
+        map.set(key, obs.actualObservation.slice(0, 60) + (obs.actualObservation.length > 60 ? '…' : ''));
+      }
+    });
+    return map;
+  }, [recentObservations]);
+
   const previousSearchRef = useRef(location.search);
   const orgId = getEnv('VITE_FIREBASE_ORG_ID') ?? 'demo-org';
   const actorUserId = getEnv('VITE_FIREBASE_ACTOR_ID') ?? 'demo-actor';
@@ -424,6 +437,13 @@ const TimeBasedSupportRecordPage: React.FC = () => {
       userName: selectedUser.FullName,
       schedule,
       records,
+      observations: (() => {
+        const m = new Map<string, string>();
+        recentObservations.forEach((o) => {
+          if (o.planSlotKey && o.actualObservation) m.set(o.planSlotKey, o.actualObservation);
+        });
+        return m;
+      })(),
     });
     try {
       await navigator.clipboard.writeText(report);
@@ -562,6 +582,7 @@ const TimeBasedSupportRecordPage: React.FC = () => {
               unfilledCount={unfilledStepsCount}
               totalCount={totalSteps}
               interventionPlans={userInterventionPlans}
+              savedObservations={savedObservationsMap}
             />
           ) : (
             <ProcedurePanel title="支援手順 (Plan)">
