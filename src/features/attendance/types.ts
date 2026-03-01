@@ -9,3 +9,5 @@ export type AttendanceFilter = {
 };
 
 export type AttendanceHookStatus = 'loading' | 'success' | 'error';
+
+export type AttendanceInputMode = 'normal' | 'checkInRun';

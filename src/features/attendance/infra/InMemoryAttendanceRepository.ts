@@ -1,7 +1,8 @@
 import type {
-  AttendanceRepository,
-  AttendanceRepositoryListParams,
-  AttendanceRepositoryUpsertParams,
+    AttendanceRepository,
+    AttendanceRepositoryListParams,
+    AttendanceRepositoryUpsertParams,
+    ObservationTemperatureItem,
 } from '../domain/AttendanceRepository';
 import type { AttendanceDailyItem } from './attendanceDailyRepository';
 import type { AttendanceUserItem } from './attendanceUsersRepository';
@@ -44,6 +45,10 @@ class InMemoryAttendanceRepository implements AttendanceRepository {
       return;
     }
     this.dailyItems.push({ ...item });
+  }
+
+  public async getObservationsByDate(_recordDate: string): Promise<ObservationTemperatureItem[]> {
+    return [];
   }
 }
 

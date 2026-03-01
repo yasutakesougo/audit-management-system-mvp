@@ -1,14 +1,15 @@
 import { createSpClient, ensureConfig } from '@/lib/spClient';
 
 import type {
-  AttendanceRepository,
-  AttendanceRepositoryListParams,
-  AttendanceRepositoryUpsertParams,
+    AttendanceRepository,
+    AttendanceRepositoryListParams,
+    AttendanceRepositoryUpsertParams,
+    ObservationTemperatureItem,
 } from '../domain/AttendanceRepository';
 import {
-  getDailyByDate,
-  upsertDailyByKey,
-  type AttendanceDailyItem,
+    getDailyByDate,
+    upsertDailyByKey,
+    type AttendanceDailyItem,
 } from './attendanceDailyRepository';
 import { getActiveUsers, type AttendanceUserItem } from './attendanceUsersRepository';
 
@@ -47,5 +48,30 @@ export class SharePointAttendanceRepository implements AttendanceRepository {
   ): Promise<void> {
     if (params?.signal?.aborted) return;
     await upsertDailyByKey(this.spClient, item, this.listTitleDaily);
+  }
+
+  public async getObservationsByDate(recordDate: string): Promise<ObservationTemperatureItem[]> {
+    const listTitle = 'Nurse_Observation';
+    const dateStart = `${recordDate}T00:00:00.000Z`;
+    const dateEnd = `${recordDate}T23:59:59.999Z`;
+    const filter = `ObservedAt ge '${dateStart}' and ObservedAt le '${dateEnd}' and Temperature ne null`;
+
+    try {
+      type ObsRow = { UserLookupId: number; Temperature: number; ObservedAt: string };
+      const items = await this.spClient.getListItemsByTitle<ObsRow>(
+        listTitle,
+        ['UserLookupId', 'Temperature', 'ObservedAt'],
+        filter,
+      );
+
+      return items.map((item: ObsRow) => ({
+        userLookupId: item.UserLookupId,
+        temperature: item.Temperature,
+        observedAt: item.ObservedAt,
+      }));
+    } catch (error) {
+      console.error('SharePointAttendanceRepository.getObservationsByDate failed', error);
+      return [];
+    }
   }
 }

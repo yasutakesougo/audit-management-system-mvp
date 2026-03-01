@@ -1,12 +1,16 @@
+import CheckIcon from '@mui/icons-material/Check';
 import DirectionsCarIcon from '@mui/icons-material/DirectionsCar';
+import LocalHospitalIcon from '@mui/icons-material/LocalHospital';
 import MoreHorizIcon from '@mui/icons-material/MoreHoriz';
-import { Box, Button, Chip, IconButton, Typography } from '@mui/material';
+import ThermostatIcon from '@mui/icons-material/Thermostat';
+import { Box, Button, Chip, CircularProgress, IconButton, Tooltip, Typography } from '@mui/material';
 
 import {
     TRANSPORT_METHOD_LABEL,
     resolveToMethod,
     type TransportMethod,
 } from '../transportMethod';
+import type { AttendanceInputMode } from '../types';
 
 export type AttendanceRowUser = {
   id: string;
@@ -27,26 +31,51 @@ export type AttendanceRowVisit = {
 export type AttendanceRowProps = {
   user: AttendanceRowUser;
   visit: AttendanceRowVisit;
+  inputMode?: AttendanceInputMode;
+  tempValue?: number;
   canAbsence: boolean;
+  isSaving?: boolean;
   onCheckIn: () => void;
   onCheckOut: () => void;
   onAbsence: () => void;
+  onOpenTemp?: () => void;
+  onOpenNurse?: () => void;
   onDetail: () => void;
 };
 
 export function AttendanceRow({
   user,
   visit,
+  inputMode = 'normal',
+  tempValue,
   canAbsence,
+  isSaving = false,
   onCheckIn,
   onCheckOut,
   onAbsence,
+  onOpenTemp,
+  onOpenNurse,
   onDetail,
 }: AttendanceRowProps): JSX.Element {
   const isAbsent = visit.status === '当日欠席';
   const isDone = visit.status === '退所済' || Boolean(visit.checkOutAtText);
   const canCheckIn = visit.status === '未' && !visit.checkInAtText;
   const canCheckOut = visit.status === '通所中' && !isDone;
+  const savingSpinner = isSaving ? <CircularProgress size={16} sx={{ ml: 0.5 }} /> : null;
+
+  const isRunMode = inputMode === 'checkInRun';
+  // In checkInRun mode: check-in already done → show completed state
+  const checkInDone = isRunMode && !canCheckIn && (visit.status === '通所中' || isDone);
+  // Show temp button only in checkInRun mode for checked-in users
+  const showTempAction = isRunMode && !canCheckIn && !isAbsent && onOpenTemp;
+
+  // Show nurse navigation button when high temperature (red chip)
+  const showNurseAction = tempValue != null && tempValue >= 37.5 && onOpenNurse;
+
+  // Secondary action styles for checkInRun mode (disabled + faded)
+  const secondarySx = isRunMode
+    ? { opacity: 0.35, pointerEvents: 'none' as const }
+    : {};
 
   return (
     <Box
@@ -78,6 +107,16 @@ export function AttendanceRow({
         {visit.status === '当日欠席' ? (
           <Chip label="欠席" size="small" variant="outlined" />
         ) : null}
+        {tempValue != null ? (
+          <Chip
+            icon={<ThermostatIcon />}
+            label={`${tempValue}℃`}
+            size="small"
+            color={tempValue >= 37.5 ? 'error' : 'default'}
+            variant="outlined"
+            data-testid="temp-chip"
+          />
+        ) : null}
         {(() => {
           const method = resolveToMethod(
             {
@@ -106,20 +145,43 @@ export function AttendanceRow({
       <Box sx={{ display: 'flex', gap: 1 }}>
         <Button
           variant={canCheckIn ? 'contained' : 'outlined'}
-          disabled={!canCheckIn || isAbsent}
+          disabled={isSaving || !canCheckIn || isAbsent}
           onClick={onCheckIn}
-          sx={{ minHeight: 44, minWidth: 92, fontWeight: 700 }}
+          sx={{
+            minHeight: 44,
+            minWidth: isRunMode ? 140 : 92,
+            fontWeight: 700,
+          }}
+          startIcon={checkInDone ? <CheckIcon /> : undefined}
         >
-          {visit.checkInAtText && !canCheckIn ? `通所 ${visit.checkInAtText}` : '通所'}
+          {checkInDone
+            ? '通所済'
+            : visit.checkInAtText && !canCheckIn
+              ? `通所 ${visit.checkInAtText}`
+              : '通所'}
+          {isSaving && canCheckIn ? savingSpinner : null}
         </Button>
+
+        {showTempAction ? (
+          <Button
+            variant="outlined"
+            size="small"
+            onClick={onOpenTemp}
+            startIcon={<ThermostatIcon />}
+            sx={{ minHeight: 44, fontWeight: 700 }}
+          >
+            検温
+          </Button>
+        ) : null}
 
         <Button
           variant={canCheckOut ? 'contained' : 'outlined'}
-          disabled={!canCheckOut || isAbsent}
+          disabled={isSaving || !canCheckOut || isAbsent || isRunMode}
           onClick={onCheckOut}
-          sx={{ minHeight: 44, minWidth: 92, fontWeight: 700 }}
+          sx={{ minHeight: 44, minWidth: 92, fontWeight: 700, ...secondarySx }}
         >
           {visit.checkOutAtText && isDone ? `退所 ${visit.checkOutAtText}` : '退所'}
+          {isSaving && canCheckOut ? savingSpinner : null}
         </Button>
       </Box>
 
@@ -131,11 +193,23 @@ export function AttendanceRow({
         variant="text"
         color="inherit"
         onClick={onAbsence}
-        disabled={!canAbsence}
-        sx={{ minHeight: 44, minWidth: 64, fontWeight: 700 }}
+        disabled={isSaving || !canAbsence || isRunMode}
+        sx={{ minHeight: 44, minWidth: 64, fontWeight: 700, ...secondarySx }}
       >
         欠席
       </Button>
+
+      {showNurseAction ? (
+        <Tooltip title="看護記録へ">
+          <IconButton
+            onClick={onOpenNurse}
+            aria-label="看護記録を開く"
+            sx={{ width: 40, height: 40, color: 'error.main' }}
+          >
+            <LocalHospitalIcon fontSize="small" />
+          </IconButton>
+        </Tooltip>
+      ) : null}
 
       <IconButton onClick={onDetail} sx={{ width: 44, height: 44 }}>
         <MoreHorizIcon />
