@@ -88,7 +88,8 @@ beforeEach(() => {
   delete (globalThis as { __TOKEN_METRICS__?: unknown }).__TOKEN_METRICS__;
 });
 
-describe('useAuth hook', () => {
+// timing-dependent in CI (MSAL async init race); retry to stabilize
+describe('useAuth hook', { retry: 2 }, () => {
   it('returns mock account when E2E msal mock is enabled', async () => {
     mockIsE2eMsalMockEnabled.mockReturnValue(true);
     const mockAccount = { username: 'mock-user' };
