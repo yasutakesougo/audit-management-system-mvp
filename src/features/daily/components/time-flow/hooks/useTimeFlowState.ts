@@ -1,6 +1,7 @@
 // ---------------------------------------------------------------------------
 // B層: TimeFlow の全 State / Derived / Effects / Handlers を集約
 // ---------------------------------------------------------------------------
+import { useProcedureStore } from '@/features/daily/stores/procedureStore';
 import { getDashboardPath } from '@/features/dashboard/dashboardRouting';
 import { resolveSupportFlowForUser } from '@/features/planDeployment/supportFlow';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
@@ -88,6 +89,7 @@ export function useTimeFlowState(): UseTimeFlowStateResult {
   const returnUserId = searchParams.get('returnUserId');
 
   // ========== State =======================================================
+  const procedureStore = useProcedureStore();
   const [masterSupportActivities, setMasterSupportActivities] = useState<FlowSupportActivityTemplate[]>(
     DEFAULT_FLOW_MASTER_ACTIVITIES,
   );
@@ -104,10 +106,18 @@ export function useTimeFlowState(): UseTimeFlowStateResult {
 
   // ========== Derived (useMemo) ===========================================
 
+  // CSVインポート/localStorage の動的データを優先して計画を解決
+  const storedProcedures = useMemo(() => {
+    if (!selectedUser) return null;
+    return procedureStore.hasUserData(selectedUser)
+      ? procedureStore.getByUser(selectedUser)
+      : null;
+  }, [procedureStore, selectedUser]);
+
   const supportDeployment = useMemo<SupportPlanDeployment | null>(() => {
     if (!selectedUser) return null;
-    return resolveSupportFlowForUser(selectedUser);
-  }, [selectedUser]);
+    return resolveSupportFlowForUser(selectedUser, storedProcedures);
+  }, [selectedUser, storedProcedures]);
 
   const supportActivities = useMemo<FlowSupportActivityTemplate[]>(() => {
     if (supportDeployment?.activities && supportDeployment.activities.length > 0) {

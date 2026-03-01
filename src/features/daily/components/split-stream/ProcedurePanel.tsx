@@ -1,4 +1,8 @@
+import type { BehaviorInterventionPlan } from '@/features/analysis/domain/interventionTypes';
+import BipSummaryPopover from '@/features/daily/components/procedure/BipSummaryPopover';
+import { getScheduleKey } from '@/features/daily/domain/getScheduleKey';
 import EditIcon from '@mui/icons-material/Edit';
+import ShieldIcon from '@mui/icons-material/Shield';
 import Box from '@mui/material/Box';
 import Card from '@mui/material/Card';
 import CardContent from '@mui/material/CardContent';
@@ -6,13 +10,11 @@ import Chip from '@mui/material/Chip';
 import IconButton from '@mui/material/IconButton';
 import List from '@mui/material/List';
 import ListItem from '@mui/material/ListItem';
-import ListItemText from '@mui/material/ListItemText';
-import ToggleButton from '@mui/material/ToggleButton';
+import Switch from '@mui/material/Switch';
 import Typography from '@mui/material/Typography';
 import type { ReactNode } from 'react';
-import { useCallback, useEffect, useMemo, useRef, memo } from 'react';
+import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { flushSync } from 'react-dom';
-import { getScheduleKey } from '@/features/daily/domain/getScheduleKey';
 
 export type ScheduleItem = {
   id?: string;
@@ -20,6 +22,8 @@ export type ScheduleItem = {
   activity: string;
   instruction: string;
   isKey: boolean;
+  /** この時間帯に紐づく行動対応プラン（BIP）のIDリスト */
+  linkedInterventionIds?: string[];
 };
 
 type GuidedProcedurePanelProps = {
@@ -36,6 +40,8 @@ type GuidedProcedurePanelProps = {
   onToggleUnfilledOnly?: () => void;
   unfilledCount?: number;
   totalCount?: number;
+  /** BIPポップオーバー表示用の全プランデータ */
+  interventionPlans?: BehaviorInterventionPlan[];
   children?: undefined;
 };
 
@@ -70,6 +76,7 @@ export function ProcedurePanel(props: ProcedurePanelProps): JSX.Element {
     onToggleUnfilledOnly,
     unfilledCount,
     totalCount,
+    interventionPlans,
     children,
   } = isGuided
     ? props
@@ -80,6 +87,27 @@ export function ProcedurePanel(props: ProcedurePanelProps): JSX.Element {
   const scrollRef = useRef<HTMLDivElement>(null);
   const itemRefs = useRef(new Map<string, HTMLLIElement | null>());
   const lastScrolledStepRef = useRef<string | null>(null);
+
+  // BIP Popover state
+  const [bipAnchorEl, setBipAnchorEl] = useState<HTMLElement | null>(null);
+  const [bipPopoverPlans, setBipPopoverPlans] = useState<BehaviorInterventionPlan[]>([]);
+
+  const handleBipChipClick = useCallback(
+    (event: React.MouseEvent<HTMLDivElement>, linkedIds: string[]) => {
+      event.stopPropagation();
+      if (!interventionPlans) return;
+      const linked = interventionPlans.filter((p) => linkedIds.includes(p.id));
+      if (linked.length === 0) return;
+      setBipPopoverPlans(linked);
+      setBipAnchorEl(event.currentTarget);
+    },
+    [interventionPlans],
+  );
+
+  const handleBipPopoverClose = useCallback(() => {
+    setBipAnchorEl(null);
+    setBipPopoverPlans([]);
+  }, []);
 
   const scheduleKeys = useMemo(() => schedule.map((item) => getItemScheduleKey(item)), [schedule]);
   const visibleSchedule = useMemo(() => {
@@ -132,16 +160,11 @@ export function ProcedurePanel(props: ProcedurePanelProps): JSX.Element {
 
   return (
     <Card variant="outlined" sx={{ height: '100%', display: 'flex', flexDirection: 'column', bgcolor: 'grey.50' }}>
-      <CardContent sx={{ p: 2, borderBottom: 1, borderColor: 'divider' }}>
-        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 1 }}>
-          <Box>
-            <Typography variant="h6" component="h2" fontWeight="bold">
-              {title ?? '支援手順 (Plan)'}
-            </Typography>
-            <Typography variant="caption" color="text.secondary">
-              ※最後までスクロールして手順を確認してから記録を開始してください
-            </Typography>
-          </Box>
+      <CardContent sx={{ py: 1, px: 2, borderBottom: 1, borderColor: 'divider' }}>
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, overflow: 'hidden' }}>
+          <Typography variant="subtitle2" component="h2" fontWeight="bold" noWrap sx={{ flexShrink: 1, minWidth: 0 }}>
+            {title ?? '支援手順 (Plan)'}
+          </Typography>
           {onEdit && (
             <IconButton
               onClick={onEdit}
@@ -149,33 +172,30 @@ export function ProcedurePanel(props: ProcedurePanelProps): JSX.Element {
               color="primary"
               aria-label="手順を編集"
               data-testid="procedure-edit-button"
+              sx={{ flexShrink: 0 }}
             >
               <EditIcon fontSize="small" />
             </IconButton>
           )}
-          {(onToggleUnfilledOnly || typeof unfilledCount === 'number') && (
-            <Box display="flex" alignItems="center" gap={1} sx={{ ml: 'auto' }}>
-              {typeof unfilledCount === 'number' && typeof totalCount === 'number' && (
-                <Chip
-                  label={`未記入 ${unfilledCount}/${totalCount}`}
-                  size="small"
-                  color={unfilledCount === 0 ? 'success' : 'default'}
-                  variant={unfilledCount === 0 ? 'filled' : 'outlined'}
-                />
-              )}
-              {onToggleUnfilledOnly && (
-                <ToggleButton
-                  value="unfilled"
-                  selected={Boolean(showUnfilledOnly)}
-                  onChange={onToggleUnfilledOnly}
-                  size="small"
-                  color="primary"
-                >
-                  未記入のみ
-                </ToggleButton>
-              )}
-            </Box>
-          )}
+          <Box sx={{ ml: 'auto', display: 'flex', alignItems: 'center', gap: 0.5, flexShrink: 0 }}>
+            {typeof unfilledCount === 'number' && typeof totalCount === 'number' && (
+              <Chip
+                label={`${unfilledCount}/${totalCount}`}
+                size="small"
+                color={unfilledCount === 0 ? 'success' : 'default'}
+                variant={unfilledCount === 0 ? 'filled' : 'outlined'}
+                sx={{ height: 22, '& .MuiChip-label': { px: 0.8 } }}
+              />
+            )}
+            {onToggleUnfilledOnly && (
+              <Switch
+                checked={Boolean(showUnfilledOnly)}
+                onChange={onToggleUnfilledOnly}
+                size="small"
+                color="primary"
+              />
+            )}
+          </Box>
         </Box>
       </CardContent>
 
@@ -221,65 +241,55 @@ export function ProcedurePanel(props: ProcedurePanelProps): JSX.Element {
               sx={{
                 borderBottom: '1px solid',
                 borderColor: 'divider',
-                flexDirection: 'column',
+                flexDirection: 'row',
+                alignItems: 'center',
                 gap: 1,
-                py: 2,
-                px: 2,
+                py: 1,
+                px: 1.5,
                 bgcolor: isSelected ? 'primary.100' : item.isKey ? 'warning.50' : 'background.paper',
-                borderLeft: isFilled ? '4px solid' : '4px solid transparent',
+                borderLeft: isFilled ? '3px solid' : '3px solid transparent',
                 borderLeftColor: isSelected ? 'primary.main' : isFilled ? 'success.main' : 'transparent',
-                boxShadow: isSelected ? 2 : 0,
-                outline: isSelected ? '2px solid' : 'none',
-                outlineColor: isSelected ? 'primary.main' : undefined,
-                outlineOffset: '-2px',
-                transform: isSelected ? 'translateX(2px)' : 'none',
-                transition: 'box-shadow 0.2s ease, transform 0.2s ease, background-color 0.2s ease',
-                cursor: onSelectStep ? 'pointer' : 'default'
+                boxShadow: isSelected ? 1 : 0,
+                transition: 'background-color 0.15s ease',
+                cursor: onSelectStep ? 'pointer' : 'default',
+                minHeight: 0,
               }}
             >
-              <Box display="flex" justifyContent="space-between" width="100%" mb={0.5}>
-                <Typography variant="subtitle2" color="primary" fontWeight="bold">
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, width: '100%' }}>
+                <Typography variant="caption" color="primary" fontWeight="bold" sx={{ minWidth: 40, flexShrink: 0 }}>
                   {item.time}
                 </Typography>
-                <Box display="flex" alignItems="center" gap={1}>
-                  {filledStepIds && (
-                    <Chip
-                      label={isFilled ? '記録済み' : '未記入'}
-                      size="small"
-                      color={isFilled ? 'success' : 'default'}
-                      variant={isFilled ? 'filled' : 'outlined'}
-                    />
-                  )}
-                  {item.isKey && (
-                    <Typography variant="caption" color="warning.dark" fontWeight="bold">
-                      重要
-                    </Typography>
-                  )}
-                </Box>
+                <Typography variant="body2" fontWeight="bold" noWrap sx={{ flex: 1 }}>
+                  {item.activity}
+                </Typography>
+                {/* BIP シールドチップ */}
+                {(item.linkedInterventionIds?.length ?? 0) > 0 && interventionPlans && (
+                  <Chip
+                    icon={<ShieldIcon sx={{ fontSize: 14 }} />}
+                    label={item.linkedInterventionIds!.length}
+                    size="small"
+                    color="warning"
+                    variant="filled"
+                    onClick={(e) => handleBipChipClick(e, item.linkedInterventionIds!)}
+                    sx={{ cursor: 'pointer', fontWeight: 'bold', height: 22 }}
+                    data-testid={`bip-chip-${stepId}`}
+                  />
+                )}
+                {item.isKey && (
+                  <Typography variant="caption" color="warning.dark" fontWeight="bold">
+                    重要
+                  </Typography>
+                )}
+                {filledStepIds && (
+                  <Chip
+                    label={isFilled ? '済' : '未'}
+                    size="small"
+                    color={isFilled ? 'success' : 'default'}
+                    variant={isFilled ? 'filled' : 'outlined'}
+                    sx={{ height: 22, minWidth: 0, '& .MuiChip-label': { px: 0.8 } }}
+                  />
+                )}
               </Box>
-              <ListItemText
-                primary={
-                  <Typography variant="subtitle1" fontWeight="bold" sx={{ fontSize: '1.05rem' }}>
-                    {item.activity}
-                  </Typography>
-                }
-                secondary={
-                  <Typography
-                    variant="body2"
-                    color="text.primary"
-                    sx={{
-                      whiteSpace: 'pre-wrap',
-                      bgcolor: 'background.default',
-                      p: 1.5,
-                      borderRadius: 1,
-                      border: '1px dashed',
-                      borderColor: 'divider'
-                    }}
-                  >
-                    {item.instruction}
-                  </Typography>
-                }
-              />
             </ListItem>
           );
           })}
@@ -295,6 +305,13 @@ export function ProcedurePanel(props: ProcedurePanelProps): JSX.Element {
 
         <Box sx={{ p: 2 }} />
       </Box>
+
+      {/* BIP Summary Popover */}
+      <BipSummaryPopover
+        anchorEl={bipAnchorEl}
+        plans={bipPopoverPlans}
+        onClose={handleBipPopoverClose}
+      />
     </Card>
   );
 }

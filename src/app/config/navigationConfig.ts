@@ -384,6 +384,14 @@ export function createNavItems(config: CreateNavItemsConfig): NavItem[] {
       group: 'ibd' as NavGroupKey,
     },
     {
+      label: '行動対応プラン',
+      to: '/analysis/intervention',
+      isActive: (pathname) => pathname.startsWith('/analysis/intervention'),
+      icon: undefined,
+      audience: NAV_AUDIENCE.staff,
+      group: 'ibd' as NavGroupKey,
+    },
+    {
       label: 'アセスメント',
       to: '/assessment',
       isActive: (pathname) => pathname.startsWith('/assessment'),

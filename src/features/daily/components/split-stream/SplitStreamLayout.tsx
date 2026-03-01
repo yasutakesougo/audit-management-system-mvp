@@ -24,7 +24,7 @@ export function SplitStreamLayout({ plan, record, planRef, recordRef }: SplitStr
       <Box
         ref={planRef}
         sx={{
-          flex: 1,
+          flex: { xs: 1, md: 1 },
           minHeight: 0,
           overflowY: 'auto',
           pr: { md: 1 },
@@ -37,7 +37,7 @@ export function SplitStreamLayout({ plan, record, planRef, recordRef }: SplitStr
       <Box
         ref={recordRef}
         sx={{
-          flex: 1,
+          flex: { xs: 1, md: 3 },
           minHeight: 0,
           overflowY: 'auto',
           pl: { md: 1 },

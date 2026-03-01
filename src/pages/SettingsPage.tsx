@@ -1,3 +1,4 @@
+import { DemoLoaderCard } from '@/features/demo/DemoLoaderCard';
 import Box from '@mui/material/Box';
 import Container from '@mui/material/Container';
 import Paper from '@mui/material/Paper';
@@ -24,6 +25,8 @@ export default function SettingsPage(): React.ReactElement {
             システムの表示・通知・診断設定を管理します
           </Typography>
         </Box>
+
+        <DemoLoaderCard />
 
         <Paper variant="outlined" sx={{ p: 3 }}>
           <Stack spacing={2}>
