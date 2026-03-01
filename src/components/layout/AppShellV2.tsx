@@ -127,8 +127,6 @@ export function AppShellV2({
           overscrollBehavior: 'contain',
           WebkitOverflowScrolling: 'touch',
           backgroundColor: 'background.default',
-          position: 'relative',
-          isolation: 'isolate',
           ...(isLandscapeTablet && {
             maxWidth: 1200,
             margin: '0 auto',
