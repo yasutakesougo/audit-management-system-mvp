@@ -220,6 +220,48 @@ export const ATTENDANCE_DAILY_SELECT_FIELDS = [
 ] as const;
 
 // ──────────────────────────────────────────────────────────────
+// Plan Goals / ISP (SharePoint list: PlanGoals)
+// 支援計画目標 — ISPエディタのC層データソース
+//
+// ⚠️ 内部名（右側の値）は仮定。実際のSPリスト設定画面で確認し、
+//    差異があればここの値のみ修正すれば全コード自動対応。
+// ──────────────────────────────────────────────────────────────
+
+export const PLAN_GOALS_LIST_TITLE = 'PlanGoals' as const;
+
+export const PLAN_GOALS_FIELDS = {
+  id: 'Id',
+  title: 'Title',              // composite key or label
+  userCode: 'UserCode',         // links to Users_Master.UserID
+  goalType: 'GoalType',         // 'long' | 'short' | 'support'
+  goalLabel: 'GoalLabel',       // display label (e.g. '長期目標')
+  goalText: 'GoalText',         // goal body text (multi-line)
+  domains: 'Domains',           // comma-separated domain ids (e.g. 'health,social')
+  planPeriod: 'PlanPeriod',     // period text (e.g. '2025年4月〜2025年9月')
+  planStatus: 'PlanStatus',     // 'confirmed' | 'draft'
+  certExpiry: 'CertExpiry',     // YYYY-MM-DD (受給者証有効期限)
+  sortOrder: 'SortOrder',       // numeric ordering within a plan
+  created: 'Created',
+  modified: 'Modified',
+} as const;
+
+export const PLAN_GOALS_SELECT_FIELDS = [
+  PLAN_GOALS_FIELDS.id,
+  PLAN_GOALS_FIELDS.title,
+  PLAN_GOALS_FIELDS.userCode,
+  PLAN_GOALS_FIELDS.goalType,
+  PLAN_GOALS_FIELDS.goalLabel,
+  PLAN_GOALS_FIELDS.goalText,
+  PLAN_GOALS_FIELDS.domains,
+  PLAN_GOALS_FIELDS.planPeriod,
+  PLAN_GOALS_FIELDS.planStatus,
+  PLAN_GOALS_FIELDS.certExpiry,
+  PLAN_GOALS_FIELDS.sortOrder,
+  PLAN_GOALS_FIELDS.created,
+  PLAN_GOALS_FIELDS.modified,
+] as const;
+
+// ──────────────────────────────────────────────────────────────
 // Meeting Minutes (SharePoint list: MeetingMinutes)
 // ──────────────────────────────────────────────────────────────
 
@@ -356,6 +398,7 @@ export enum ListKeys {
   AttendanceDaily = 'AttendanceDaily',
   MeetingMinutes = 'MeetingMinutes',
   SupportTemplates = 'SupportTemplates',
+  PlanGoals = 'PlanGoals',
 }
 
 export const LIST_CONFIG: Record<ListKeys, { title: string }> = {
@@ -374,6 +417,7 @@ export const LIST_CONFIG: Record<ListKeys, { title: string }> = {
   [ListKeys.AttendanceDaily]: { title: 'AttendanceDaily' },
   [ListKeys.MeetingMinutes]: { title: 'MeetingMinutes' },
   [ListKeys.SupportTemplates]: { title: 'SupportTemplates' },
+  [ListKeys.PlanGoals]: { title: 'PlanGoals' },
 };
 
 export const FIELD_MAP = {

@@ -1,5 +1,5 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { TESTIDS } from '@/testids';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { AuditEvent, readAudit } from '../../lib/audit';
 import { isDevMode } from '../../lib/env';
 import UnsynedAuditBadge from '../../ui/components/UnsynedAuditBadge';
@@ -116,10 +116,10 @@ const AuditPanel: React.FC = () => {
             style={{ display: 'flex', gap: 6, fontSize: 11 }}
           >
             {/* Stable metric pill order for tests: New / Duplicates / Failed */}
-            <span data-metric="new" style={{ padding: '2px 6px', borderRadius: 12, background: '#1976d2', color: '#fff' }}>
+            <span data-metric="new" style={{ padding: '2px 6px', borderRadius: 12, background: '#5B8C5A', color: '#fff' }}>
               {auditMetricLabels.new} {typeof lastSuccess === 'number' ? Math.max(0,(lastSuccess - (lastDuplicates||0))) : 0}
             </span>
-            <span data-metric="duplicates" style={{ padding: '2px 6px', borderRadius: 12, background: '#0288d1', color: '#fff' }}>
+            <span data-metric="duplicates" style={{ padding: '2px 6px', borderRadius: 12, background: '#6B7280', color: '#fff' }}>
               {auditMetricLabels.duplicates} {lastDuplicates || 0}
             </span>
             <span data-metric="failed" style={{ padding: '2px 6px', borderRadius: 12, background: (lastFailed && lastFailed>0) ? '#d32f2f' : '#2e7d32', color: '#fff' }}>
@@ -165,7 +165,7 @@ ${metricsJson}
         </div>
       )}
       <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center', marginBottom: 8 }}>
-        <button onClick={handleExport} style={{ minHeight: 40 }} disabled={!logs.length}>CSVエクスポート</button>
+        <button onClick={handleExport} style={{ minHeight: 44 }} disabled={!logs.length}>CSVエクスポート</button>
         <label htmlFor="audit-action-filter" style={{ fontSize: 12, display: 'flex', flexDirection: 'column' }}>
           <span style={{ lineHeight: '14px' }}>Action</span>
           <select
@@ -196,7 +196,7 @@ ${metricsJson}
               setSyncing(false);
             }
           }}
-          style={{ minHeight: 40 }}
+          style={{ minHeight: 44 }}
           disabled={!logs.length || syncing}
         >
           {syncing ? '同期中…' : 'SPOへ同期'}
@@ -226,14 +226,14 @@ ${metricsJson}
               setSyncing(false);
             }
           }}
-          style={{ minHeight: 40 }}
+          style={{ minHeight: 44 }}
           disabled={!logs.length || syncing}
         >
           {syncing ? '一括同期中…' : 'SPOへ一括同期($batch)'}
         </button>
         {lastFailed && lastFailed > 0 && (
           <button
-            style={{ minHeight: 40 }}
+            style={{ minHeight: 44 }}
             disabled={syncing}
             onClick={async () => {
               // 失敗のみ残っているので再度バッチ同期で再送

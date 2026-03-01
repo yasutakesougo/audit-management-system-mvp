@@ -190,7 +190,7 @@ export const SP_LIST_REGISTRY: readonly SpListEntry[] = [
   {
     key: 'plan_goals',
     displayName: '支援計画目標',
-    resolve: () => envOr('VITE_SP_LIST_PLAN_GOAL', 'PlanGoals'),
+    resolve: () => envOr('VITE_SP_LIST_PLAN_GOAL', fromConfig(ListKeys.PlanGoals)),
     operations: ['R', 'W'],
     category: 'handoff',
   },

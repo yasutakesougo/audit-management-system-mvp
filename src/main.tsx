@@ -141,15 +141,15 @@ class ErrorBoundary extends React.Component<
                   padding: '12px 32px',
                   fontSize: '16px',
                   fontWeight: 600,
-                  backgroundColor: '#3b82f6',
+                  backgroundColor: '#5B8C5A',
                   color: 'white',
                   border: 'none',
                   borderRadius: '8px',
                   cursor: 'pointer',
                   transition: 'background 0.2s'
                 }}
-                onMouseOver={(e) => (e.currentTarget.style.backgroundColor = '#2563eb')}
-                onMouseOut={(e) => (e.currentTarget.style.backgroundColor = '#3b82f6')}
+                onMouseOver={(e) => (e.currentTarget.style.backgroundColor = '#4a7a49')}
+                onMouseOut={(e) => (e.currentTarget.style.backgroundColor = '#5B8C5A')}
               >
                 ページを更新
               </button>
@@ -550,7 +550,7 @@ const SuspenseFallback = () => (
           height: '40px',
           borderRadius: '50%',
           border: '4px solid #f3f3f3',
-          borderTop: '4px solid #1976d2',
+          borderTop: '4px solid #5B8C5A',
           animation: 'spin 1s linear infinite',
           margin: '0 auto 16px',
         }}

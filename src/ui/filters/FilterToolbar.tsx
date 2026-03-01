@@ -80,7 +80,7 @@ export default function FilterToolbar({
       const isActive = activeStatus === option.value;
       const baseClass = 'inline-flex items-center rounded border px-3 py-1 text-sm font-medium focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 transition';
       const stateClass = isActive
-        ? 'border-indigo-600 bg-indigo-600 text-white hover:bg-indigo-500 focus-visible:outline-indigo-600'
+        ? 'border-emerald-600 bg-emerald-600 text-white hover:bg-emerald-500 focus-visible:outline-emerald-600'
         : 'border-slate-700 text-slate-900 hover:bg-slate-50 focus-visible:outline-slate-800 dark:border-slate-200 dark:text-slate-100 dark:hover:bg-slate-800';
       return (
         <button

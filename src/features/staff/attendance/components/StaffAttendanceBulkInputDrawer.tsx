@@ -1,13 +1,12 @@
-import * as React from 'react';
 import {
-  Drawer,
-  Box,
-  Typography,
-  Stack,
-  Button,
-  TextField,
-  MenuItem,
-  Alert,
+    Alert,
+    Box,
+    Button,
+    Drawer,
+    MenuItem,
+    Stack,
+    TextField,
+    Typography,
 } from '@mui/material';
 import type { StaffAttendanceStatus } from '../types';
 
@@ -30,7 +29,7 @@ type Props = {
   onSave: () => void;
 };
 
-const STATUS_OPTIONS: StaffAttendanceStatus[] = ['出勤', '欠勤', '外出中'];
+const STATUS_OPTIONS: StaffAttendanceStatus[] = ['出勤', '欠勤'];
 
 export function StaffAttendanceBulkInputDrawer(props: Props): JSX.Element {
   const { open, selectedCount, saving, error, onClose, value, onChange, onSave, writeEnabled = true } = props;

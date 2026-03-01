@@ -62,6 +62,10 @@ module.exports = {
               '**/UserDetailSections{,.ts,.tsx,.js,.jsx}'
             ],
             message: 'Use features/users/UserDetailSections/index.tsx'
+          },
+          {
+            group: ['@/adapters/schedules', '@/adapters/schedules/*'],
+            message: 'Legacy adapter deleted. Use useScheduleRepository() from features/schedules/repositoryFactory.'
           }
         ]
       }

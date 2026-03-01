@@ -36,8 +36,7 @@ import {
     type NavAudience,
     type NavItem,
 } from '@/app/config/navigationConfig';
-import { ActivityBar } from '@/app/layout/ActivityBar';
-import { AppShell as AppShellLayout } from '@/app/layout/AppShell';
+
 import { canAccess } from '@/auth/roles';
 import { useUserAuthz } from '@/auth/useUserAuthz';
 import { AppShellV2 } from '@/components/layout/AppShellV2';
@@ -95,7 +94,7 @@ const AppShell: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   useLockBodyScroll(true);
   const location = useLocation();
   const navigate = useNavigate();
-  const { schedules, complianceForm, icebergPdca, staffAttendance, appShellVsCode, todayOps } = useFeatureFlags();
+  const { schedules, complianceForm, icebergPdca, staffAttendance, todayOps } = useFeatureFlags();
   const { mode, toggle } = useContext(ColorModeContext);
   const dashboardPath = useDashboardPath();
   const currentRole = useAuthStore((s) => s.currentUserRole);
@@ -401,115 +400,9 @@ const AppShell: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   };
 
   const showDesktopSidebar = !isFocusMode && isDesktop && desktopNavOpen;
-  const useVscodeShell = appShellVsCode && !isFocusMode;
-  const activityItems = useMemo(
-    () => [
-      {
-        label: 'Daily',
-        to: '/daily',
-        icon: EditNoteIcon,
-        isActive: (pathname: string) =>
-          pathname.startsWith('/daily') || pathname.startsWith('/dailysupport') || pathname.startsWith('/handoff') || pathname.startsWith('/meeting'),
-      },
-      {
-        label: 'Records',
-        to: '/records',
-        icon: AssignmentTurnedInRoundedIcon,
-        isActive: (pathname: string) => pathname.startsWith('/records') || pathname.startsWith('/monthly'),
-      },
-      {
-        label: 'Schedules',
-        to: '/schedules/week',
-        icon: EventAvailableRoundedIcon,
-        isActive: (pathname: string) => pathname.startsWith('/schedules') || pathname.startsWith('/schedule'),
-      },
-      {
-        label: 'Users',
-        to: '/users',
-        icon: PeopleAltRoundedIcon,
-        isActive: (pathname: string) => pathname.startsWith('/users') || pathname.startsWith('/staff'),
-      },
-      {
-        label: 'Audit',
-        to: '/audit',
-        icon: AssessmentRoundedIcon,
-        isActive: (pathname: string) => pathname.startsWith('/audit') || pathname.startsWith('/checklist'),
-      },
-    ],
-    [],
-  );
 
-  const headerLeftSlot = isFocusMode ? null : (
-    <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-      {!isDesktop && (
-        <IconButton
-          color="inherit"
-          aria-label="メニューを開く"
-          onClick={() => setMobileOpen(true)}
-          edge="start"
-          data-testid={TESTIDS['nav-open']}
-          size="small"
-          sx={{ p: 0.5 }}
-        >
-          <MenuIcon />
-        </IconButton>
-      )}
-      {isDesktop && (
-        <IconButton
-          color="inherit"
-          aria-label={desktopNavOpen ? 'サイドメニューを閉じる' : 'サイドメニューを開く'}
-          aria-expanded={desktopNavOpen}
-          onClick={() => setDesktopNavOpen((prev) => !prev)}
-          edge="start"
-          data-testid="desktop-nav-open"
-          size="small"
-          sx={{ p: 0.5 }}
-        >
-          <MenuIcon />
-        </IconButton>
-      )}
-    </Box>
-  );
 
-  const headerRightSlot = isFocusMode ? null : (
-    <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-      <ConnectionStatus />
-      <Tooltip title="表示設定">
-        <IconButton
-          color="inherit"
-          onClick={() => setSettingsDialogOpen(true)}
-          aria-label="表示設定"
-          size="small"
-          sx={{ p: 0.5 }}
-        >
-          <SettingsRoundedIcon />
-        </IconButton>
-      </Tooltip>
-      <Tooltip title={mode === 'dark' ? 'ライトテーマに切り替え' : 'ダークテーマに切り替え'}>
-        <IconButton
-          color="inherit"
-          onClick={toggle}
-          aria-label="テーマ切り替え"
-          aria-pressed={mode === 'dark' ? 'true' : 'false'}
-          size="small"
-          sx={{ p: 0.5 }}
-        >
-          {mode === 'dark' ? <Brightness7Icon /> : <Brightness4Icon />}
-        </IconButton>
-      </Tooltip>
-      <IconButton
-        component={RouterLink}
-        to="/audit"
-        color="inherit"
-        aria-label="監査ログ"
-        size="small"
-        sx={{ p: 0.5 }}
-      >
-        <HistoryIcon />
-      </IconButton>
-      <SignInButton />
-    </Box>
-  );
+
 
   const sidebarContent = showDesktopSidebar ? (
     <Box
@@ -556,7 +449,7 @@ const AppShell: React.FC<{ children: React.ReactNode }> = ({ children }) => {
 
   const footerContent = !isFocusMode ? <FooterQuickActions fixed={false} /> : null;
 
-  const headerContent = isFocusMode || useVscodeShell ? null : (
+  const headerContent = isFocusMode ? null : (
     <AppBar
       position="static"
       color="primary"
@@ -690,48 +583,13 @@ const AppShell: React.FC<{ children: React.ReactNode }> = ({ children }) => {
     </AppBar>
   );
 
-  const activityBarContent = isFocusMode || !useVscodeShell ? null : <ActivityBar items={activityItems} />;
+
 
   return (
     <RouteHydrationListener>
       <LiveAnnouncer>
         <div data-testid="app-shell">
-        {useVscodeShell ? (
-          <AppShellLayout
-            title={(
-              <Typography
-                component={RouterLink}
-                to={dashboardPath}
-                variant="body2"
-                sx={{
-                  fontWeight: 700,
-                  whiteSpace: 'nowrap',
-                  overflow: 'hidden',
-                  textOverflow: 'ellipsis',
-                  minWidth: 0,
-                  color: 'inherit',
-                  textDecoration: 'none',
-                }}
-              >
-                磯子区障害者地域活動ホーム
-              </Typography>
-            )}
-            onSearchChange={setNavQuery}
-            headerLeftSlot={headerLeftSlot}
-            headerRightSlot={headerRightSlot}
-            hideHeader={isFocusMode}
-            activityBar={activityBarContent}
-            sidebar={sidebarContent}
-            footer={footerContent}
-            sidebarWidth={showDesktopSidebar ? currentDrawerWidth : 0}
-            contentPaddingX={isFocusMode ? 0 : 16}
-            contentPaddingY={contentPaddingY}
-            viewportMode={viewportMode}
-          >
-            {children}
-          </AppShellLayout>
-        ) : (
-          <AppShellV2
+        <AppShellV2
             header={headerContent}
             sidebar={sidebarContent}
             footer={footerContent}
@@ -742,7 +600,6 @@ const AppShell: React.FC<{ children: React.ReactNode }> = ({ children }) => {
           >
             {children}
           </AppShellV2>
-        )}
 
         {!isFocusMode && !isDesktop && (
           <Drawer

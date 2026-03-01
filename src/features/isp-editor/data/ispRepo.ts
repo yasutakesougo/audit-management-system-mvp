@@ -1,7 +1,11 @@
 /**
  * C層: ISPデータリポジトリ
- * 現在はモック。将来 SharePoint 実装へ差し替え。
+ *
+ * SharePoint PlanGoals リストから ISP 目標データを取得/更新する。
+ * 開発モード（SP バイパス時）はモックデータにフォールバック。
  */
+import { PLAN_GOALS_FIELDS, PLAN_GOALS_SELECT_FIELDS } from '@/sharepoint/fields';
+import { resolveListTitle } from '@/sharepoint/spListConfig';
 
 /* ─── 型定義 ─── */
 
@@ -178,4 +182,156 @@ export function computeDiff(oldText: string, newText: string): DiffSegment[] {
     }
   }
   return result;
+}
+
+/* ─── SharePoint 連携 ─── */
+
+/**
+ * SharePoint PlanGoals リストの生行データ型
+ * fields.ts の PLAN_GOALS_FIELDS と 1:1 対応
+ */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export type SpPlanGoalRow = Record<string, any>;
+
+/**
+ * SP クライアント型（useSP() の戻り値互換）
+ */
+export type ISPSpClient = {
+  listItems: <T>(
+    listTitle: string,
+    options: {
+      select?: string[];
+      filter?: string;
+      orderby?: string;
+      top?: number;
+      signal?: AbortSignal;
+    },
+  ) => Promise<T[]>;
+  spFetch: (path: string, init?: RequestInit) => Promise<Response>;
+};
+
+/**
+ * SP 行 → GoalItem ドメインモデルへ変換
+ */
+export function mapSpRowToGoalItem(row: SpPlanGoalRow): GoalItem {
+  const F = PLAN_GOALS_FIELDS;
+  const domainsRaw = (row[F.domains] as string) ?? '';
+  return {
+    id: `sp-${row[F.id] ?? row.Id ?? 0}`,
+    type: (row[F.goalType] as GoalItem['type']) ?? 'support',
+    label: (row[F.goalLabel] as string) ?? '',
+    text: (row[F.goalText] as string) ?? '',
+    domains: domainsRaw ? domainsRaw.split(',').map((d) => d.trim()).filter(Boolean) : [],
+  };
+}
+
+/**
+ * SP 行の配列を前回・今回の ISPPlan ペアに組み立てる
+ */
+export function groupRowsIntoPlans(
+  rows: SpPlanGoalRow[],
+  userName: string,
+): { previous: ISPPlan | null; current: ISPPlan | null } {
+  const F = PLAN_GOALS_FIELDS;
+
+  // planStatus で confirmed / draft に分ける
+  const confirmedRows = rows.filter((r) => r[F.planStatus] === 'confirmed');
+  const draftRows = rows.filter((r) => r[F.planStatus] === 'draft');
+
+  const buildPlan = (subset: SpPlanGoalRow[], status: ISPPlan['status']): ISPPlan | null => {
+    if (subset.length === 0) return null;
+    const first = subset[0];
+    return {
+      userName,
+      certExpiry: (first[F.certExpiry] as string) ?? '',
+      planPeriod: (first[F.planPeriod] as string) ?? '',
+      status,
+      goals: subset.map(mapSpRowToGoalItem),
+    };
+  };
+
+  return {
+    previous: buildPlan(confirmedRows, 'confirmed'),
+    current: buildPlan(draftRows, 'draft'),
+  };
+}
+
+/**
+ * ISP プランを SharePoint から取得する
+ *
+ * @returns { previous, current } — それぞれ null の場合がある
+ */
+export async function fetchISPPlans(
+  client: ISPSpClient,
+  userCode: string,
+  signal?: AbortSignal,
+): Promise<{ previous: ISPPlan | null; current: ISPPlan | null }> {
+  const listTitle = resolveListTitle('plan_goals');
+  const F = PLAN_GOALS_FIELDS;
+
+  const rows = await client.listItems<SpPlanGoalRow>(listTitle, {
+    select: [...PLAN_GOALS_SELECT_FIELDS],
+    filter: `${F.userCode} eq '${userCode}'`,
+    orderby: `${F.sortOrder} asc`,
+    top: 100,
+    signal,
+  });
+
+  // userName は利用者マスタから別途取得が本来望ましいが、
+  // 最初の行の Title or 空文字で暫定対応
+  const userName = rows.length > 0 ? ((rows[0].Title as string) ?? '') : '';
+
+  return groupRowsIntoPlans(rows, userName);
+}
+
+/**
+ * 単一の目標を PlanGoals リストへ upsert する
+ *
+ * - SP Id が sp- 接頭辞付きの場合 → 既存アイテム更新 (PATCH)
+ * - それ以外 → 新規作成 (POST)
+ */
+export async function upsertGoal(
+  client: ISPSpClient,
+  goal: GoalItem,
+  userCode: string,
+  meta: { planPeriod: string; planStatus: ISPPlan['status']; certExpiry: string },
+): Promise<void> {
+  const listTitle = resolveListTitle('plan_goals');
+  const F = PLAN_GOALS_FIELDS;
+
+  const body: Record<string, unknown> = {
+    [F.userCode]: userCode,
+    [F.goalType]: goal.type,
+    [F.goalLabel]: goal.label,
+    [F.goalText]: goal.text,
+    [F.domains]: goal.domains.join(','),
+    [F.planPeriod]: meta.planPeriod,
+    [F.planStatus]: meta.planStatus,
+    [F.certExpiry]: meta.certExpiry,
+  };
+
+  const spIdMatch = goal.id.match(/^sp-(\d+)$/);
+
+  if (spIdMatch) {
+    // 既存アイテム更新
+    const itemId = Number(spIdMatch[1]);
+    const path = `/_api/web/lists/getbytitle('${encodeURIComponent(listTitle)}')/items(${itemId})`;
+    await client.spFetch(path, {
+      method: 'PATCH',
+      headers: {
+        'Content-Type': 'application/json;odata=verbose',
+        'IF-MATCH': '*',
+        'X-HTTP-Method': 'MERGE',
+      },
+      body: JSON.stringify(body),
+    });
+  } else {
+    // 新規作成
+    const path = `/_api/web/lists/getbytitle('${encodeURIComponent(listTitle)}')/items`;
+    await client.spFetch(path, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json;odata=verbose' },
+      body: JSON.stringify(body),
+    });
+  }
 }

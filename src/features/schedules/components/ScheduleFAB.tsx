@@ -1,5 +1,5 @@
-import type { RefObject } from 'react';
 import { TESTIDS } from '@/testids';
+import type { RefObject } from 'react';
 
 export interface ScheduleFABProps {
   canWrite: boolean;
@@ -13,7 +13,7 @@ export interface ScheduleFABProps {
 
 /**
  * ScheduleFAB - Floating Action Button for creating schedules
- * 
+ *
  * Displays a circular floating button in the bottom-right corner
  * for mobile/tablet views. Disabled when canWrite is false.
  */
@@ -41,7 +41,7 @@ export function ScheduleFAB({
         height: 56,
         borderRadius: '50%',
         border: 'none',
-        background: canWrite ? '#1976d2' : '#ccc',
+        background: canWrite ? '#5B8C5A' : '#ccc',
         color: '#fff',
         boxShadow: '0 4px 12px rgba(0,0,0,0.3)',
         fontSize: 28,

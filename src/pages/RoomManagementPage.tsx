@@ -1,16 +1,24 @@
-import React from 'react';
 import { RoomStatusTab } from '@/features/dashboard/tabs/RoomStatusTab';
-import { Container, Box, Paper, AppBar, Toolbar, Typography } from '@mui/material';
+import { AppBar, Box, Container, Paper, Toolbar, Typography } from '@mui/material';
+import { useTheme } from '@mui/material/styles';
+import React from 'react';
 
 /**
  * Room Management Page - Independent page for room reservation management
  * Provides access to room availability, reservations, and scheduling features
  */
 export const RoomManagementPage: React.FC = () => {
+  const theme = useTheme();
+
   return (
     <Box sx={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
       {/* Page Header */}
-      <AppBar position="static" sx={{ background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)' }}>
+      <AppBar
+        position="static"
+        sx={{
+          background: `linear-gradient(135deg, ${theme.palette.primary.main} 0%, ${theme.palette.primary.dark} 100%)`,
+        }}
+      >
         <Toolbar>
           <Typography variant="h6" component="div" sx={{ flexGrow: 1 }}>
             🏢 お部屋情報

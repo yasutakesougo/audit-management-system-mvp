@@ -16,7 +16,7 @@ import {
 } from 'recharts';
 
 const behaviorLegendItems = [
-  { label: '発生回数', color: '#5C6BC0', shape: 'bar' as const },
+  { label: '発生回数', color: '#5B8C5A', shape: 'bar' as const },
   { label: '平均強度', color: '#FF9800', shape: 'line' as const },
 ];
 
@@ -61,7 +61,7 @@ export const BehaviorTrendChart: React.FC<BehaviorTrendChartProps> = ({ data, ti
                 cursor={{ fill: 'rgba(0,0,0,0.04)' }}
                 contentStyle={{ borderRadius: 8, border: 'none', boxShadow: '0 4px 12px rgba(0,0,0,0.15)' }}
               />
-              <Bar yAxisId="count" dataKey="count" name="発生回数" barSize={24} fill="#5C6BC0" radius={[4, 4, 0, 0]} />
+              <Bar yAxisId="count" dataKey="count" name="発生回数" barSize={24} fill="#5B8C5A" radius={[4, 4, 0, 0]} />
               <Line
                 yAxisId="intensity"
                 type="monotone"

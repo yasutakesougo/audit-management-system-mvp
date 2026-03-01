@@ -9,34 +9,39 @@ import { useMsalContext } from '@/auth/MsalProvider';
 import { getAppConfig, isDemoModeEnabled, isE2eMsalMockEnabled, readBool, shouldSkipLogin } from '@/lib/env';
 import { useSP } from '@/lib/spClient';
 import Box from '@mui/material/Box';
+import { useTheme } from '@mui/material/styles';
 import React, { useEffect, useMemo, useState } from 'react';
 
 const SKIP_LOGIN = shouldSkipLogin();
 const E2E_MSAL_MOCK_ENABLED = isE2eMsalMockEnabled();
 
-const ConnectionStatusMock: React.FC = () => (
-  <Box
-    role="status"
-    aria-live="polite"
-    data-testid="sp-connection-status"
-    data-connection-state="ok"
-    sx={{
-      background: '#2e7d32',
-      color: '#fff',
-      px: 1,
-      py: 0.25,
-      borderRadius: 12,
-      fontSize: 12,
-      fontWeight: 500,
-      minWidth: 90,
-      textAlign: 'center',
-    }}
-  >
-    SP Connected
-  </Box>
-);
+const ConnectionStatusMock: React.FC = () => {
+  const theme = useTheme();
+  return (
+    <Box
+      role="status"
+      aria-live="polite"
+      data-testid="sp-connection-status"
+      data-connection-state="ok"
+      sx={{
+        background: theme.palette.success.dark,
+        color: theme.palette.common.white,
+        px: 1,
+        py: 0.25,
+        borderRadius: 12,
+        fontSize: 12,
+        fontWeight: 500,
+        minWidth: 90,
+        textAlign: 'center',
+      }}
+    >
+      SP Connected
+    </Box>
+  );
+};
 
 const ConnectionStatusReal: React.FC<{ sharePointDisabled: boolean }> = ({ sharePointDisabled }) => {
+  const theme = useTheme();
   const forceSharePoint = readBool('VITE_FORCE_SHAREPOINT', false);
   const sharePointFeatureEnabled = readBool('VITE_FEATURE_SCHEDULES_SP', false);
   const { spFetch } = useSP();
@@ -105,15 +110,15 @@ const ConnectionStatusReal: React.FC<{ sharePointDisabled: boolean }> = ({ share
   const { label, background } = useMemo(() => {
     switch (state) {
       case 'signedOut':
-        return { label: 'SP Sign-In', background: '#0277bd' };
+        return { label: 'SP Sign-In', background: theme.palette.primary.main };
       case 'ok':
-        return { label: 'SP Connected', background: '#2e7d32' };
+        return { label: 'SP Connected', background: theme.palette.success.dark };
       case 'error':
-        return { label: 'SP Error', background: '#d32f2f' };
+        return { label: 'SP Error', background: theme.palette.error.main };
       default:
-        return { label: 'Checking', background: '#ffb300' };
+        return { label: 'Checking', background: theme.palette.warning.main };
     }
-  }, [state]);
+  }, [state, theme]);
 
   return (
     <Box
@@ -123,7 +128,7 @@ const ConnectionStatusReal: React.FC<{ sharePointDisabled: boolean }> = ({ share
       data-connection-state={state}
       sx={{
         background,
-        color: '#fff',
+        color: theme.palette.common.white,
         px: 1,
         py: 0.25,
         borderRadius: 12,

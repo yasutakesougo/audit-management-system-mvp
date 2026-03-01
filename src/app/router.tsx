@@ -753,6 +753,10 @@ const childRoutes: RouteObject[] = [
     path: 'isp-editor',
     element: <SuspendedISPComparisonEditorPage />,
   },
+  {
+    path: 'isp-editor/:userId',
+    element: <SuspendedISPComparisonEditorPage />,
+  },
   { path: 'handoff-timeline', element: <SuspendedHandoffTimelinePage /> },
   { path: 'meeting-minutes', element: MeetingMinutesRoutes.List },
   { path: 'meeting-minutes/new', element: MeetingMinutesRoutes.New },

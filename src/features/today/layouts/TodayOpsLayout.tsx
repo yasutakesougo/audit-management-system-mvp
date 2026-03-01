@@ -31,7 +31,7 @@ export type TodayOpsProps = {
   briefingAlerts: BriefingAlert[];
   nextAction: NextActionWithProgress;
   transport: { pending: TransportUser[]; inProgress: TransportUser[]; onArrived: (id: string) => void };
-  users: { items: UserRow[]; onOpenQuickRecord: (id: string) => void };
+  users: { items: UserRow[]; onOpenQuickRecord: (id: string) => void; onOpenISP?: (id: string) => void };
 };
 
 export const TodayOpsLayout: React.FC<TodayOpsProps> = ({
@@ -66,6 +66,7 @@ export const TodayOpsLayout: React.FC<TodayOpsProps> = ({
             <UserCompactList
               items={users.items}
               onOpenQuickRecord={users.onOpenQuickRecord}
+              onOpenISP={users.onOpenISP}
             />
           </Grid>
 

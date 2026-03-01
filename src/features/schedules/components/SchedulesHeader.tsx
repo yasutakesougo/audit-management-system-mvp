@@ -2,11 +2,11 @@ import { TESTIDS } from '@/testids';
 import Box from '@mui/material/Box';
 import Button from '@mui/material/Button';
 import Stack from '@mui/material/Stack';
+import type { Theme } from '@mui/material/styles';
 import Tab from '@mui/material/Tab';
 import Tabs from '@mui/material/Tabs';
 import Typography from '@mui/material/Typography';
 import useMediaQuery from '@mui/material/useMediaQuery';
-import type { Theme } from '@mui/material/styles';
 import React, { type FocusEventHandler } from 'react';
 import { useNavigate } from 'react-router-dom';
 
@@ -106,7 +106,7 @@ export const SchedulesHeader: React.FC<Props> = ({
   const compactButtonSx = compact ? {
     px: 1,
     py: 0.5,
-    minHeight: 36,
+    minHeight: 44,
     '@media (pointer: coarse)': {
       minHeight: 44,
       minWidth: 44,

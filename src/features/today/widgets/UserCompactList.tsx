@@ -1,5 +1,6 @@
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
-import { Box, Button, Paper, Stack, Typography } from '@mui/material';
+import EditNoteIcon from '@mui/icons-material/EditNote';
+import { Box, Button, IconButton, Paper, Stack, Tooltip, Typography } from '@mui/material';
 import React from 'react';
 
 export type UserRow = {
@@ -12,13 +13,15 @@ export type UserRow = {
 export type UserCompactListProps = {
   items: UserRow[];
   onOpenQuickRecord: (id: string) => void;
+  onOpenISP?: (id: string) => void;
 };
 
 // rerender-memo: memoized row to avoid full-list re-renders
 const UserCompactRow = React.memo<{
   user: UserRow;
   onOpenQuickRecord: (id: string) => void;
-}>(function UserCompactRow({ user, onOpenQuickRecord }) {
+  onOpenISP?: (id: string) => void;
+}>(function UserCompactRow({ user, onOpenQuickRecord, onOpenISP }) {
   return (
     <Paper
       key={user.userId}
@@ -62,19 +65,35 @@ const UserCompactRow = React.memo<{
           {user.name}
         </Typography>
       </Box>
-      <Button
-        size="small"
-        variant="outlined"
-        tabIndex={-1} // 親のPaperがフォーカスを受け取るため
-        sx={{ minHeight: 36, pointerEvents: 'none' }}
-      >
-        記録
-      </Button>
+      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+        {onOpenISP ? (
+          <Tooltip title="個別支援計画（ISP）">
+            <IconButton
+              size="small"
+              color="primary"
+              onClick={(e) => { e.stopPropagation(); onOpenISP(user.userId); }}
+              onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') e.stopPropagation(); }}
+              aria-label={`${user.name}のISPを確認`}
+              sx={{ minHeight: 44, minWidth: 44, bgcolor: 'primary.50', '&:hover': { bgcolor: 'primary.100' } }}
+            >
+              <EditNoteIcon fontSize="small" />
+            </IconButton>
+          </Tooltip>
+        ) : null}
+        <Button
+          size="small"
+          variant="outlined"
+          tabIndex={-1}
+          sx={{ minHeight: 44, pointerEvents: 'none' }}
+        >
+          記録
+        </Button>
+      </Box>
     </Paper>
   );
 });
 
-export const UserCompactList: React.FC<UserCompactListProps> = ({ items, onOpenQuickRecord }) => {
+export const UserCompactList: React.FC<UserCompactListProps> = ({ items, onOpenQuickRecord, onOpenISP }) => {
   if (items.length === 0) {
     return (
       <Typography color="text.secondary" sx={{ py: 2 }}>
@@ -90,6 +109,7 @@ export const UserCompactList: React.FC<UserCompactListProps> = ({ items, onOpenQ
           key={u.userId}
           user={u}
           onOpenQuickRecord={onOpenQuickRecord}
+          onOpenISP={onOpenISP}
         />
       ))}
     </Stack>

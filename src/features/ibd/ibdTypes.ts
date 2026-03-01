@@ -5,10 +5,22 @@
 
 // ===== 支援計画シート (SPS) =====
 
+/** 個別支援計画（ISP）への参照 — ISP のライフサイクルに依存しないスナップショット参照 */
+export interface ISPReference {
+  /** ISP の有効開始日（バージョン特定用キー） */
+  ispEffectiveFrom: string;
+  /** 参照時点の ISP 短期目標（スナップショット） */
+  ispShortTermGoals?: string[];
+  /** リンク作成日（ISO 8601） */
+  linkedAt: string;
+}
+
 /** 支援計画シート (SPS) — 障害特性に基づく環境調整の戦略図 */
 export interface SupportPlanSheet {
   id: string;
   userId: number;             // 対象利用者ID
+  /** 紐づく個別支援計画への参照（スナップショット型） */
+  ispReference?: ISPReference;
   version: string;
   createdAt: string;          // 作成日（ISO 8601）
   updatedAt: string;          // 最終更新日
@@ -293,7 +305,7 @@ export const BEHAVIOR_FUNCTION_LABELS: Record<BehaviorFunction, string> = {
 } as const;
 
 export const BEHAVIOR_FUNCTION_COLORS: Record<BehaviorFunction, string> = {
-  demand: '#1976d2',
+  demand: '#5B8C5A',
   escape: '#ed6c02',
   attention: '#9c27b0',
   sensory: '#2e7d32',

@@ -346,7 +346,7 @@ export default function DailyPage() {
   const tableTextClass = compact ? 'text-xs' : 'text-sm sm:text-base';
   const cellClass = compact ? 'border px-3 py-2' : 'border px-4 py-3';
   const nowrapCellClass = `${cellClass} whitespace-nowrap`;
-  const rowHoverClass = compact ? 'hover:bg-blue-50/60' : 'hover:bg-blue-50/40';
+  const rowHoverClass = compact ? 'hover:bg-emerald-50/60' : 'hover:bg-emerald-50/40';
   const isCardMode = displayMode === 'sceneA';
 
   if (loading && !data) {
@@ -366,7 +366,7 @@ export default function DailyPage() {
           onClick={() => {
             void reload();
           }}
-          className="border px-3 py-1 rounded bg-blue-600 text-white"
+          className="border px-3 py-1 rounded bg-emerald-600 text-white"
         >
           再読み込み
         </button>

@@ -345,13 +345,13 @@ export default function DailyForm({ mode, initial, onDone, prefillNotice, prefil
         {showGeneralError ? (
           <div className="rounded-md border border-red-300 bg-red-50 px-3 py-2 text-sm text-red-800">{submitError}</div>
         ) : null}
-        <div className="rounded-lg bg-blue-50 p-3 text-sm text-blue-900">
+        <div className="rounded-lg bg-emerald-50 p-3 text-sm text-emerald-900">
           <ol className="list-decimal space-y-1 pl-5">
             <li>タイトルを入力</li>
             <li>日付・時間を入れる（終了は開始以降）</li>
             <li>担当スタッフ・利用者を選ぶ</li>
           </ol>
-          <div className="mt-2 text-xs text-blue-800">
+          <div className="mt-2 text-xs text-emerald-800">
             保存すると一覧に戻ります。未確定なら「記録の状態：下書き」のままでOKです。
           </div>
         </div>
@@ -360,7 +360,7 @@ export default function DailyForm({ mode, initial, onDone, prefillNotice, prefil
       <label className="flex flex-col gap-1 text-sm">
         <span className="font-medium text-gray-700">タイトル</span>
         <input
-          className="rounded-md border border-gray-300 px-3 py-2 shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+          className="rounded-md border border-gray-300 px-3 py-2 shadow-sm focus:border-emerald-600 focus:outline-none focus:ring-1 focus:ring-emerald-600"
           value={form.title ?? ''}
           onChange={setField('title')}
           required
@@ -372,7 +372,7 @@ export default function DailyForm({ mode, initial, onDone, prefillNotice, prefil
           <span className="font-medium text-gray-700">日付</span>
           <input
             type="date"
-            className="rounded-md border border-gray-300 px-3 py-2 shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+            className="rounded-md border border-gray-300 px-3 py-2 shadow-sm focus:border-emerald-600 focus:outline-none focus:ring-1 focus:ring-emerald-600"
             value={form.date ?? ''}
             onChange={setField('date')}
           />
@@ -382,7 +382,7 @@ export default function DailyForm({ mode, initial, onDone, prefillNotice, prefil
             <span className="font-medium text-gray-700">開始時刻</span>
             <input
               type="time"
-              className="rounded-md border border-gray-300 px-3 py-2 shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+              className="rounded-md border border-gray-300 px-3 py-2 shadow-sm focus:border-emerald-600 focus:outline-none focus:ring-1 focus:ring-emerald-600"
               value={form.startTime ?? ''}
               onChange={setField('startTime')}
             />
@@ -391,7 +391,7 @@ export default function DailyForm({ mode, initial, onDone, prefillNotice, prefil
             <span className="font-medium text-gray-700">終了時刻</span>
             <input
               type="time"
-              className="rounded-md border border-gray-300 px-3 py-2 shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+              className="rounded-md border border-gray-300 px-3 py-2 shadow-sm focus:border-emerald-600 focus:outline-none focus:ring-1 focus:ring-emerald-600"
               value={form.endTime ?? ''}
               onChange={setField('endTime')}
             />
@@ -405,7 +405,7 @@ export default function DailyForm({ mode, initial, onDone, prefillNotice, prefil
       <label className="flex flex-col gap-1 text-sm">
         <span className="font-medium text-gray-700">場所</span>
         <input
-          className="rounded-md border border-gray-300 px-3 py-2 shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+          className="rounded-md border border-gray-300 px-3 py-2 shadow-sm focus:border-emerald-600 focus:outline-none focus:ring-1 focus:ring-emerald-600"
           value={form.location ?? ''}
           onChange={setField('location')}
           placeholder="例: 事業所"
@@ -470,7 +470,7 @@ export default function DailyForm({ mode, initial, onDone, prefillNotice, prefil
       <label className="flex flex-col gap-1 text-sm">
         <span className="font-medium text-gray-700">担当スタッフ（数値ID）</span>
         <input
-          className="rounded-md border border-gray-300 px-3 py-2 shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+          className="rounded-md border border-gray-300 px-3 py-2 shadow-sm focus:border-emerald-600 focus:outline-none focus:ring-1 focus:ring-emerald-600"
           value={form.staffId ?? ''}
           onChange={setField('staffId')}
           placeholder="例：101"
@@ -480,7 +480,7 @@ export default function DailyForm({ mode, initial, onDone, prefillNotice, prefil
       <label className="flex flex-col gap-1 text-sm">
         <span className="font-medium text-gray-700">メモ</span>
         <textarea
-          className="min-h-[100px] rounded-md border border-gray-300 px-3 py-2 shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+          className="min-h-[100px] rounded-md border border-gray-300 px-3 py-2 shadow-sm focus:border-emerald-600 focus:outline-none focus:ring-1 focus:ring-emerald-600"
           value={form.notes ?? ''}
           onChange={setField('notes')}
         />
@@ -489,7 +489,7 @@ export default function DailyForm({ mode, initial, onDone, prefillNotice, prefil
       <label className="flex flex-col gap-1 text-sm">
         <span className="font-medium text-gray-700">食事ログ</span>
         <textarea
-          className="min-h-[80px] rounded-md border border-gray-300 px-3 py-2 shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+          className="min-h-[80px] rounded-md border border-gray-300 px-3 py-2 shadow-sm focus:border-emerald-600 focus:outline-none focus:ring-1 focus:ring-emerald-600"
           value={form.mealLog ?? ''}
           onChange={setField('mealLog')}
         />
@@ -498,7 +498,7 @@ export default function DailyForm({ mode, initial, onDone, prefillNotice, prefil
       <label className="flex flex-col gap-1 text-sm">
         <span className="font-medium text-gray-700">行動ログ</span>
         <textarea
-          className="min-h-[80px] rounded-md border border-gray-300 px-3 py-2 shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+          className="min-h-[80px] rounded-md border border-gray-300 px-3 py-2 shadow-sm focus:border-emerald-600 focus:outline-none focus:ring-1 focus:ring-emerald-600"
           value={form.behaviorLog ?? ''}
           onChange={setField('behaviorLog')}
         />
@@ -507,7 +507,7 @@ export default function DailyForm({ mode, initial, onDone, prefillNotice, prefil
       <label className="flex flex-col gap-1 text-sm">
         <span className="font-medium text-gray-700">記録の状態</span>
         <select
-          className="rounded-md border border-gray-300 px-3 py-2 shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+          className="rounded-md border border-gray-300 px-3 py-2 shadow-sm focus:border-emerald-600 focus:outline-none focus:ring-1 focus:ring-emerald-600"
           value={form.status ?? ''}
           onChange={setField('status')}
         >
@@ -523,7 +523,7 @@ export default function DailyForm({ mode, initial, onDone, prefillNotice, prefil
       <label className="flex flex-col gap-1 text-sm">
         <span className="font-medium text-gray-700">ドラフト JSON（任意）</span>
         <textarea
-          className="min-h-[80px] rounded-md border border-gray-300 px-3 py-2 shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+          className="min-h-[80px] rounded-md border border-gray-300 px-3 py-2 shadow-sm focus:border-emerald-600 focus:outline-none focus:ring-1 focus:ring-emerald-600"
           value={('draft' in form && typeof form.draft === 'string') ? form.draft : ''}
           onChange={(event) => {
             const value = event.target.value;

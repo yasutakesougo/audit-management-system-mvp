@@ -1,6 +1,6 @@
-import { useEffect, useMemo } from 'react';
 import { canAccessDashboardAudience, isDashboardAudience } from '@/features/auth/store';
 import type { BriefingAlert } from '@/features/dashboard/sections/types';
+import { useEffect, useMemo } from 'react';
 
 // NOTE:
 // - DashboardPage.tsx の「ロール判定・セクション構成・サマリー生成」を段階的にここへ移します。
@@ -48,7 +48,7 @@ export type DashboardSection = {
 };
 
 export type DashboardBriefingChip = {
-  key: 'attention' | 'pending' | 'absence' | 'late' | 'out-staff';
+  key: 'attention' | 'pending' | 'absence' | 'late';
   label: string;
   count: number;
   kind: 'default' | 'info' | 'warning' | 'error';
@@ -151,16 +151,6 @@ export function useDashboardViewModel<TSummary = unknown>(
         key: 'late',
         label: `遅刻・早退 ${late}`,
         count: late,
-        kind: 'info',
-      });
-    }
-
-    const outStaff = summaryInfo?.attendanceSummary?.outStaff ?? 0;
-    if (outStaff > 0) {
-      chips.push({
-        key: 'out-staff',
-        label: `外出スタッフ ${outStaff}`,
-        count: outStaff,
         kind: 'info',
       });
     }

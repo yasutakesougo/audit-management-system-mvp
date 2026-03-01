@@ -69,7 +69,7 @@ export const NextActionCard: React.FC<NextActionCardProps> = ({ nextAction }) =>
                   size="small"
                   startIcon={<PlayArrowIcon />}
                   onClick={actions.start}
-                  sx={{ minHeight: 36 }}
+                  sx={{ minHeight: 44 }}
                 >
                   開始
                 </Button>
@@ -93,7 +93,7 @@ export const NextActionCard: React.FC<NextActionCardProps> = ({ nextAction }) =>
                   size="small"
                   startIcon={<CheckCircleIcon />}
                   onClick={actions.done}
-                  sx={{ minHeight: 36 }}
+                  sx={{ minHeight: 44 }}
                 >
                   完了
                 </Button>

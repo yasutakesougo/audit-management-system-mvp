@@ -1,7 +1,6 @@
 import { isE2E } from '@/env';
 import { createContext, createElement, useContext, useMemo, type FC, type ReactNode } from 'react';
 import {
-    isAppShellVsCodeEnabled,
     isComplianceFormEnabled,
     isIcebergPdcaEnabled,
     isSchedulesFeatureEnabled,
@@ -20,7 +19,7 @@ export type FeatureFlagSnapshot = {
   schedulesWeekV2: boolean;
   icebergPdca: boolean;
   staffAttendance: boolean;
-  appShellVsCode: boolean;
+
   todayOps: boolean;
 };
 
@@ -103,7 +102,7 @@ export const resolveFeatureFlags = (envOverride?: EnvRecord): FeatureFlagSnapsho
     schedulesWeekV2: isSchedulesWeekV2Enabled(envOverride),
     icebergPdca: isIcebergPdcaEnabled(envOverride),
     staffAttendance: isStaffAttendanceEnabled(envOverride),
-    appShellVsCode: isAppShellVsCodeEnabled(envOverride),
+
     todayOps: isTodayOpsFeatureEnabled(envOverride),
   };
 
@@ -172,7 +171,7 @@ export const FeatureFlagsProvider: FC<FeatureFlagsProviderProps> = ({ value, chi
     snapshot.schedulesWeekV2,
     snapshot.icebergPdca,
     snapshot.staffAttendance,
-    snapshot.appShellVsCode,
+
     snapshot.todayOps,
   ]);
 

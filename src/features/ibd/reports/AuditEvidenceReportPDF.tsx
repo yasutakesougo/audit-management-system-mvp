@@ -54,7 +54,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#f0f4f8',
     padding: 4,
     paddingLeft: 8,
-    borderLeft: '3px solid #1976d2',
+    borderLeft: '3px solid #5B8C5A',
   },
   // テーブル
   table: {

@@ -9,29 +9,29 @@ export const getDayChipSx = ({ isToday, isSelected }: DayChipOptions): SxProps<T
   if (isToday && isSelected) {
     return {
       color: '#fff',
-      bgcolor: '#0D47A1',
+      bgcolor: 'primary.dark',
       boxShadow: 2,
-      outline: '2px solid #64B5F6',
+      outline: (t: Theme) => `2px solid ${t.palette.primary.light}`,
       outlineOffset: 1,
-      borderColor: '#0D47A1',
+      borderColor: 'primary.dark',
     };
   }
 
   if (isSelected) {
     return {
       color: '#fff',
-      bgcolor: '#0D47A1',
+      bgcolor: 'primary.dark',
       boxShadow: 1,
-      borderColor: '#0D47A1',
+      borderColor: 'primary.dark',
     };
   }
 
   if (isToday) {
     return {
-      bgcolor: 'rgba(25,118,210,0.08)',
-      outline: '2px solid #64B5F6',
+      bgcolor: (t: Theme) => `rgba(${hexToRgb(t.palette.primary.main)}, 0.08)`,
+      outline: (t: Theme) => `2px solid ${t.palette.primary.light}`,
       outlineOffset: 1,
-      borderColor: '#64B5F6',
+      borderColor: 'primary.light',
     };
   }
 
@@ -40,3 +40,10 @@ export const getDayChipSx = ({ isToday, isSelected }: DayChipOptions): SxProps<T
     borderColor: 'rgba(0,0,0,0.12)',
   };
 };
+
+/** Convert hex to r,g,b string for use in rgba() */
+function hexToRgb(hex: string): string {
+  const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+  if (!result) return '91,140,90';
+  return `${parseInt(result[1], 16)},${parseInt(result[2], 16)},${parseInt(result[3], 16)}`;
+}

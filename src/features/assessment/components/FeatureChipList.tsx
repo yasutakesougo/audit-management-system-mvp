@@ -18,7 +18,7 @@ import React from 'react';
 
 const LABEL_COLOR_MAP: Record<string, string> = {
   // 感覚
-  '聴覚': '#1565c0',
+  '聴覚': '#3D6B3C',
   '視覚': '#6a1b9a',
   '触覚': '#00695c',
   '嗅覚': '#e65100',

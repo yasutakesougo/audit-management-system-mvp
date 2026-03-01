@@ -246,8 +246,6 @@ describe('useDashboardSummary', () => {
       expect(result.current.attendanceSummary).toHaveProperty('absenceNames');
       expect(result.current.attendanceSummary).toHaveProperty('onDutyStaff');
       expect(result.current.attendanceSummary).toHaveProperty('lateOrShiftAdjust');
-      expect(result.current.attendanceSummary).toHaveProperty('outStaff');
-      expect(result.current.attendanceSummary).toHaveProperty('outStaffNames');
     });
   });
 

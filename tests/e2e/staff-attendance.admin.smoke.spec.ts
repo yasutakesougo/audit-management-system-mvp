@@ -1,6 +1,6 @@
-import { test, expect } from '@playwright/test';
-import { bootstrapDashboard } from './utils/bootstrapApp';
+import { expect, test } from '@playwright/test';
 import { expectLocatorVisibleBestEffort, expectTestIdVisibleBestEffort } from './_helpers/smoke';
+import { bootstrapDashboard } from './utils/bootstrapApp';
 
 const ATTENDANCE_KEY = 'staff-attendance.v1';
 
@@ -74,7 +74,7 @@ test.describe('staff attendance admin smoke', () => {
     const selects = await page.locator('div[class*="MuiSelect-select"]').all();
     if (selects.length > 0) {
       await selects[0].click();
-      await page.getByRole('option', { name: '外出中' }).click();
+      await page.getByRole('option', { name: '欠勤' }).click();
     }
 
     // Edit note (multiline TextField becomes a div wrapper with input inside)

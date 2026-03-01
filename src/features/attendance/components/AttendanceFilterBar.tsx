@@ -1,5 +1,5 @@
-import SearchIcon from '@mui/icons-material/Search';
 import RefreshIcon from '@mui/icons-material/Refresh';
+import SearchIcon from '@mui/icons-material/Search';
 import { Button, Card, CardContent, Stack, TextField } from '@mui/material';
 
 import type { AttendanceFilter } from '../types';
@@ -47,7 +47,7 @@ export function AttendanceFilterBar({
             startIcon={<RefreshIcon />}
             onClick={onRefresh}
             disabled={disabled}
-            sx={{ minHeight: 40 }}
+            sx={{ minHeight: 44 }}
           >
             再読込
           </Button>

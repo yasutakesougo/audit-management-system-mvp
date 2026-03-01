@@ -15,13 +15,21 @@ vi.mock('@mui/material/useMediaQuery', () => ({
 
 const spFetchMock = vi.fn(async (_path: string, _init?: RequestInit) => ({ ok: true }));
 
-const defaultFlags: FeatureFlagSnapshot = {
+/**
+ * Flag 工場: FeatureFlagSnapshot の全キーを明示的に列挙。
+ * フラグ追加時にコンパイルエラーで教えてくれる。
+ */
+const makeFlags = (overrides: Partial<FeatureFlagSnapshot> = {}): FeatureFlagSnapshot => ({
   schedules: true,
   complianceForm: false,
   schedulesWeekV2: false,
   icebergPdca: false,
   staffAttendance: false,
-};
+  todayOps: false,
+  ...overrides,
+});
+
+const defaultFlags: FeatureFlagSnapshot = makeFlags();
 
 beforeEach(() => {
   spFetchMock.mockReset();

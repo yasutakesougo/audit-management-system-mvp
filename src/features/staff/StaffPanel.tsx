@@ -77,7 +77,7 @@ const StaffPanel: React.FC = () => {
         </div>
         <button
           onClick={() => setShowCreateForm(true)}
-          className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white font-medium rounded-md transition-colors focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2"
+          className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-medium rounded-md transition-colors focus:outline-none focus:ring-2 focus:ring-emerald-600 focus:ring-offset-2"
         >
           新規職員登録
         </button>
@@ -189,7 +189,7 @@ const StaffPanel: React.FC = () => {
                           {staff.certifications.slice(0, 2).map((cert, index) => (
                             <span
                               key={index}
-                              className="inline-block bg-blue-100 text-blue-800 text-xs px-2 py-1 rounded-full"
+                              className="inline-block bg-emerald-100 text-emerald-800 text-xs px-2 py-1 rounded-full"
                             >
                               {cert}
                             </span>
@@ -218,7 +218,7 @@ const StaffPanel: React.FC = () => {
                     <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                       <button
                         onClick={() => handleEditClick(staff)}
-                        className="text-indigo-600 hover:text-indigo-900 transition-colors"
+                        className="text-emerald-600 hover:text-emerald-900 transition-colors"
                       >
                         編集
                       </button>

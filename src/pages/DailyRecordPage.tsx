@@ -1,3 +1,4 @@
+import { saveDailyRecord, validateDailyRecord } from '@/features/daily/dailyRecordLogic';
 import AccessTimeIcon from '@mui/icons-material/AccessTime';
 import AddIcon from '@mui/icons-material/Add';
 import SearchIcon from '@mui/icons-material/Search';
@@ -13,20 +14,20 @@ import MenuItem from '@mui/material/MenuItem';
 import Paper from '@mui/material/Paper';
 import Select from '@mui/material/Select';
 import Stack from '@mui/material/Stack';
+import { useTheme } from '@mui/material/styles';
 import TextField from '@mui/material/TextField';
 import Typography from '@mui/material/Typography';
 import { useEffect, useMemo, useState } from 'react';
 import { Toaster } from 'react-hot-toast';
 import { useLocation, useNavigate, useSearchParams } from 'react-router-dom';
-import { PersonDaily } from '../domain/daily/types';
 import { LandscapeFab } from '../components/ui/LandscapeFab';
+import { PersonDaily } from '../domain/daily/types';
+import { FullScreenDailyDialogPage } from '../features/daily/components/FullScreenDailyDialogPage';
 import { DailyRecordForm } from '../features/daily/DailyRecordForm';
 import { DailyRecordList } from '../features/daily/DailyRecordList';
 import { useDailyRecordViewModel } from '../features/daily/useDailyRecordViewModel';
-import { FullScreenDailyDialogPage } from '../features/daily/components/FullScreenDailyDialogPage';
 import { useHandoffSummary } from '../features/handoff/useHandoffSummary';
 import { useUsersDemo } from '../features/users/usersStoreDemo';
-import { saveDailyRecord, validateDailyRecord } from '@/features/daily/dailyRecordLogic';
 import { useSchedules } from '../stores/useSchedules';
 import { calculateAttendanceRate, getExpectedAttendeeCount } from '../utils/attendanceUtils';
 
@@ -191,6 +192,7 @@ export default function DailyRecordPage() {
   const navigate = useNavigate();
   const location = useLocation();
   const [searchParams] = useSearchParams();
+  const theme = useTheme();
 
   // 利用者マスタとスケジュールデータ
   const { data: usersData } = useUsersDemo();
@@ -287,7 +289,7 @@ export default function DailyRecordPage() {
       if (element) {
         element.scrollIntoView({ behavior: 'smooth', block: 'center' });
         setActiveHighlightUserId(highlightUserId);
-        
+
         // 1.5秒後に自動解除
         setTimeout(() => setActiveHighlightUserId(null), 1500);
       }
@@ -615,19 +617,19 @@ export default function DailyRecordPage() {
           toastOptions={{
             duration: 4000,
             style: {
-              background: '#363636',
-              color: '#fff',
+              background: theme.palette.grey[800],
+              color: theme.palette.common.white,
             },
             success: {
               iconTheme: {
-                primary: '#4aed88',
-                secondary: '#fff',
+                primary: theme.palette.success.main,
+                secondary: theme.palette.common.white,
               },
             },
             error: {
               iconTheme: {
-                primary: '#ff6b6b',
-                secondary: '#fff',
+                primary: theme.palette.error.main,
+                secondary: theme.palette.common.white,
               },
             },
           }}

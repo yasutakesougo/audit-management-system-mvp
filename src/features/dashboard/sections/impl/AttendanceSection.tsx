@@ -9,7 +9,6 @@
  * Props：Page 側の実装と一致（attendanceSummary / showAttendanceNames / setShowAttendanceNames）
  */
 
-import { Link } from 'react-router-dom';
 import Box from '@mui/material/Box';
 import Button from '@mui/material/Button';
 import Collapse from '@mui/material/Collapse';
@@ -18,6 +17,7 @@ import Paper from '@mui/material/Paper';
 import Stack from '@mui/material/Stack';
 import Typography from '@mui/material/Typography';
 import React from 'react';
+import { Link } from 'react-router-dom';
 
 /**
  * Page 側で計算済みの集計データ構造
@@ -31,8 +31,6 @@ export type AttendanceSummaryData = {
   absenceNames?: string[];
   onDutyStaff: number;
   lateOrShiftAdjust: number;
-  outStaff: number;
-  outStaffNames?: string[];
 };
 
 export type AttendanceSectionProps = {
@@ -151,26 +149,16 @@ export const AttendanceSection: React.FC<AttendanceSectionProps> = (props) => {
             シフト調整
           </Typography>
         </Grid>
-        <Grid size={{ xs: 12, sm: 4, md: 2 }}>
-          <Typography variant="h4" color="info.main" sx={{ fontWeight: 800 }}>
-            {attendanceSummary.outStaff}
-          </Typography>
-          <Typography variant="body2" color="text.secondary">
-            外出スタッフ
-          </Typography>
-        </Grid>
       </Grid>
       {(() => {
         const hasNames =
           (attendanceSummary.absenceNames?.length ?? 0) > 0 ||
-          (attendanceSummary.lateOrEarlyNames?.length ?? 0) > 0 ||
-          (attendanceSummary.outStaffNames?.length ?? 0) > 0;
+          (attendanceSummary.lateOrEarlyNames?.length ?? 0) > 0;
 
         if (!hasNames) return null;
 
         const absenceCount = attendanceSummary.absenceNames?.length ?? 0;
         const lateOrEarlyCount = attendanceSummary.lateOrEarlyNames?.length ?? 0;
-        const outStaffCount = attendanceSummary.outStaffNames?.length ?? 0;
 
         return (
           <Stack alignItems="flex-end" sx={{ mt: 1 }}>
@@ -200,14 +188,6 @@ export const AttendanceSection: React.FC<AttendanceSectionProps> = (props) => {
                   </Typography>
                   <Typography variant="caption">
                     {formatNames(attendanceSummary.lateOrEarlyNames)}
-                  </Typography>
-                </Stack>
-                <Stack spacing={0.25}>
-                  <Typography variant="caption" sx={{ fontWeight: 700 }}>
-                    外出スタッフ（{outStaffCount}）
-                  </Typography>
-                  <Typography variant="caption">
-                    {formatNames(attendanceSummary.outStaffNames)}
                   </Typography>
                 </Stack>
               </Stack>

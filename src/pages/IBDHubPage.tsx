@@ -22,6 +22,7 @@ import Container from '@mui/material/Container';
 import Divider from '@mui/material/Divider';
 import Stack from '@mui/material/Stack';
 import Typography from '@mui/material/Typography';
+import { useTheme, type Theme } from '@mui/material/styles';
 import React, { useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 
@@ -50,7 +51,7 @@ interface StatusSection {
 // Hooks — ステータス情報の集約
 // ---------------------------------------------------------------------------
 
-function useHubStatus(): StatusSection[] {
+function useHubStatus(theme: Theme): StatusSection[] {
   return useMemo(() => {
     // アセスメントドラフトの有無
     const hasDraft = (() => {
@@ -87,7 +88,7 @@ function useHubStatus(): StatusSection[] {
         icon: <AssessmentIcon />,
         title: '評価',
         description: '利用者の特性・感覚プロファイルを評価し支援の土台を作る',
-        accentColor: '#2e7d32',
+        accentColor: theme.palette.success.dark,
         metrics: [
           { label: 'ドラフト', value: hasDraft ? '未完了あり' : 'なし' },
         ],
@@ -102,7 +103,7 @@ function useHubStatus(): StatusSection[] {
         icon: <TimelineIcon />,
         title: '分析',
         description: '行動の傾向を可視化し背景要因を構造化して仮説を立てる',
-        accentColor: '#1976d2',
+        accentColor: theme.palette.primary.main,
         metrics: [],
         links: [
           { label: '行動分析ダッシュボード', to: '/analysis/dashboard', primary: true },
@@ -115,7 +116,7 @@ function useHubStatus(): StatusSection[] {
         icon: <BuildIcon />,
         title: '支援設計',
         description: '場面別の手順書・個別支援計画を作成しチームで共有する',
-        accentColor: '#e65100',
+        accentColor: theme.palette.warning.dark ?? theme.palette.warning.main,
         metrics: [
           { label: 'テンプレート', value: activityMeta.count > 0 ? `${activityMeta.count}件` : '未作成' },
           ...(activityMeta.updatedAt ? [{ label: '最終更新', value: activityMeta.updatedAt }] : []),
@@ -131,7 +132,7 @@ function useHubStatus(): StatusSection[] {
         icon: <PsychologyIcon />,
         title: 'モニタリング',
         description: '現場の記録を追跡し支援の効果を継続的に確認する',
-        accentColor: '#00695c',
+        accentColor: theme.palette.info.dark ?? theme.palette.info.main,
         metrics: [],
         links: [
           { label: '日次記録（行動観察）', to: '/daily/table', primary: true },
@@ -140,7 +141,7 @@ function useHubStatus(): StatusSection[] {
         ],
       },
     ];
-  }, []);
+  }, [theme.palette]);
 }
 
 // ---------------------------------------------------------------------------
@@ -246,7 +247,8 @@ function StatusCard({
 
 const IBDHubPage: React.FC = () => {
   const navigate = useNavigate();
-  const sections = useHubStatus();
+  const theme = useTheme();
+  const sections = useHubStatus(theme);
 
   return (
     <Container maxWidth="xl" sx={{ py: 3 }} data-testid="ibd-hub-page">

@@ -413,7 +413,7 @@ export function createNavItems(config: CreateNavItemsConfig): NavItem[] {
     {
       label: 'ISP更新（前回比較）',
       to: '/isp-editor',
-      isActive: (pathname) => pathname === '/isp-editor',
+      isActive: (pathname) => pathname.startsWith('/isp-editor'),
       icon: undefined,
       testId: TESTIDS.nav.ispEditor,
       audience: NAV_AUDIENCE.staff,

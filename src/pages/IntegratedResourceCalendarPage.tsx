@@ -34,6 +34,7 @@ import {
     Switch,
     Typography
 } from '@mui/material';
+import { alpha, useTheme } from '@mui/material/styles';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 import { useFeatureFlags } from '@/config/featureFlags';
@@ -307,6 +308,23 @@ export default function IntegratedResourceCalendarPage() {
   const location = useLocation();
   const { schedules } = useFeatureFlags();
   const appConfig = useMemo(() => getAppConfig(), []);
+  const theme = useTheme();
+
+  // CSS custom properties derived from theme for use in <style> block
+  const ircCssVars = useMemo(() => ({
+    '--irc-visit-bg': alpha(theme.palette.primary.main, 0.12),
+    '--irc-visit-border': theme.palette.primary.main,
+    '--irc-travel-bg': alpha('#9C27B0', 0.08),
+    '--irc-travel-border': '#9C27B0',
+    '--irc-break-bg': alpha(theme.palette.success?.main ?? '#4caf50', 0.10),
+    '--irc-break-border': theme.palette.success?.dark ?? '#388e3c',
+    '--irc-in-progress': theme.palette.primary.main,
+    '--irc-completed': theme.palette.success?.main ?? '#4caf50',
+    '--irc-delayed': theme.palette.warning.main,
+    '--irc-delayed-bg': alpha(theme.palette.warning.main, 0.12),
+    '--irc-cancelled-bg': alpha(theme.palette.error.main, 0.08),
+    '--irc-pulse-mid': theme.palette.primary.light ?? theme.palette.primary.main,
+  } as React.CSSProperties), [theme.palette]);
 
   // 1️⃣ デバッグマーカー: この関数が確実に実行されているかを確認
   if (import.meta.env.DEV) {
@@ -862,7 +880,7 @@ export default function IntegratedResourceCalendarPage() {
         </Stack>
       </Paper>
 
-      <Paper elevation={1}>
+      <Paper elevation={1} style={ircCssVars as React.CSSProperties}>
         <Box sx={{ height: '70vh' }}>
           <style>
             {`
@@ -872,18 +890,18 @@ export default function IntegratedResourceCalendarPage() {
             }
 
             .event-type-visit {
-              background-color: #e3f2fd;
-              border-left: 4px solid #1976d2;
+              background-color: var(--irc-visit-bg);
+              border-left: 4px solid var(--irc-visit-border);
             }
 
             .event-type-travel {
-              background-color: #f3e5f5;
-              border-left: 4px solid #7b1fa2;
+              background-color: var(--irc-travel-bg);
+              border-left: 4px solid var(--irc-travel-border);
             }
 
             .event-type-break {
-              background-color: #e8f5e8;
-              border-left: 4px solid #388e3c;
+              background-color: var(--irc-break-bg);
+              border-left: 4px solid var(--irc-break-border);
             }
 
             .event-status-waiting {
@@ -891,21 +909,21 @@ export default function IntegratedResourceCalendarPage() {
             }
 
             .event-status-in-progress {
-              border: 2px solid #1976d2;
+              border: 2px solid var(--irc-in-progress);
               animation: pulse 2s infinite;
             }
 
             .event-status-completed {
-              border: 2px solid #4caf50;
+              border: 2px solid var(--irc-completed);
             }
 
             .event-status-delayed {
-              border: 2px solid #ff9800;
-              background-color: #fff3e0 !important;
+              border: 2px solid var(--irc-delayed);
+              background-color: var(--irc-delayed-bg) !important;
             }
 
             .event-status-cancelled {
-              background-color: #ffebee !important;
+              background-color: var(--irc-cancelled-bg) !important;
               opacity: 0.5;
               text-decoration: line-through;
             }
@@ -920,9 +938,9 @@ export default function IntegratedResourceCalendarPage() {
             }
 
             @keyframes pulse {
-              0% { border-color: #1976d2; }
-              50% { border-color: #42a5f5; }
-              100% { border-color: #1976d2; }
+              0% { border-color: var(--irc-in-progress); }
+              50% { border-color: var(--irc-pulse-mid); }
+              100% { border-color: var(--irc-in-progress); }
             }
             `}
           </style>

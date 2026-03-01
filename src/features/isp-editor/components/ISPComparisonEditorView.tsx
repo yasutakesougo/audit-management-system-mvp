@@ -2,8 +2,9 @@
  * A層: ISP比較エディタ View（純粋表示＋props のみ）
  * a11y: role/aria 属性付き、キーボード完結対応
  */
-import React from 'react';
-import type { GoalItem, DiffSegment, SmartCriterion } from '../data/ispRepo';
+import { alpha, useTheme, type Theme } from '@mui/material/styles';
+import React, { useMemo } from 'react';
+import type { DiffSegment, GoalItem, SmartCriterion } from '../data/ispRepo';
 import { DOMAINS, SMART_CRITERIA } from '../data/ispRepo';
 import type { DomainCoverage, ProgressInfo } from '../hooks/useISPComparisonEditor';
 
@@ -55,6 +56,11 @@ export interface ISPComparisonEditorViewProps {
   toggleSidebar: () => void;
   toggleDiff: () => void;
   toggleSmart: () => void;
+  // data lifecycle
+  loading?: boolean;
+  error?: Error | null;
+  saving?: boolean;
+  savePlan?: () => void;
 }
 
 const ISPComparisonEditorView: React.FC<ISPComparisonEditorViewProps> = (props) => {
@@ -63,10 +69,30 @@ const ISPComparisonEditorView: React.FC<ISPComparisonEditorViewProps> = (props) 
     daysRemaining, progress, activeGoal, prevGoal, diff, domainCoverage,
     setActiveGoalId, copyFromPrevious, updateGoalText, toggleDomain,
     toggleSidebar, toggleDiff, toggleSmart,
+    loading, error, saving, savePlan,
   } = props;
+
+  const theme = useTheme();
+  const T = useMemo(() => getThemedStyles(theme), [theme]);
 
   return (
     <div className="isp-editor" style={S.container}>
+      {/* Loading Overlay */}
+      {loading && (
+        <div style={S.loadingOverlay}>
+          <div style={S.spinner} />
+          <p style={{ color: '#6b7280', fontSize: 14, marginTop: 12 }}>データを読み込み中…</p>
+        </div>
+      )}
+
+      {/* Error Banner */}
+      {error && !loading && (
+        <div style={S.errorBanner} role="alert">
+          <SvgIcon d={ICON_PATHS.alert} size={16} color="#dc2626" />
+          <span>データ取得に失敗しました。モックデータで表示しています。</span>
+        </div>
+      )}
+
       {/* ═══ LEFT SIDEBAR ═══ */}
       <aside
         style={{ ...S.sidebar, width: sidebarOpen ? 260 : 56, minWidth: sidebarOpen ? 260 : 56 }}
@@ -86,13 +112,13 @@ const ISPComparisonEditorView: React.FC<ISPComparisonEditorViewProps> = (props) 
         {sidebarOpen && (
           <div style={{ padding: '16px 20px', animation: 'ispFadeIn 0.3s ease' }}>
             <div style={S.sidebarHeader}>
-              <SvgIcon d={ICON_PATHS.file} size={20} color="#6366f1" />
-              <span style={{ fontWeight: 700, fontSize: 15, color: '#1e1b4b' }}>更新進捗</span>
+              <SvgIcon d={ICON_PATHS.file} size={20} color={theme.palette.primary.main} />
+              <span style={{ fontWeight: 700, fontSize: 15, color: theme.palette.primary.dark }}>更新進捗</span>
             </div>
 
             {/* Progress */}
             <div style={S.progressBarOuter} role="progressbar" aria-valuenow={progress.pct} aria-valuemin={0} aria-valuemax={100} aria-label="更新進捗">
-              <div style={{ ...S.progressBarInner, width: `${progress.pct}%` }} />
+              <div style={{ ...T.progressBarInner, width: `${progress.pct}%` }} />
             </div>
             <div style={{ fontSize: 12, color: '#6b7280', marginBottom: 20, textAlign: 'right' as const }}>
               {progress.pct}% 完了
@@ -127,7 +153,7 @@ const ISPComparisonEditorView: React.FC<ISPComparisonEditorViewProps> = (props) 
             {/* 5-Domain Coverage */}
             <div style={{ marginTop: 24 }}>
               <div style={{ fontSize: 12, fontWeight: 700, color: '#4b5563', marginBottom: 10, display: 'flex', alignItems: 'center', gap: 6 }}>
-                <SvgIcon d={ICON_PATHS.tag} size={14} color="#6366f1" /> 5領域カバレッジ
+                <SvgIcon d={ICON_PATHS.tag} size={14} color={theme.palette.primary.main} /> 5領域カバレッジ
               </div>
               {domainCoverage.map((d) => (
                 <div key={d.id} style={{ ...S.domainRow, background: d.covered ? d.bg : '#f9fafb', borderColor: d.covered ? d.color + '40' : '#e5e7eb' }}>
@@ -147,20 +173,34 @@ const ISPComparisonEditorView: React.FC<ISPComparisonEditorViewProps> = (props) 
         <header style={S.header}>
           <div>
             <h1 style={S.h1}>
-              <SvgIcon d={ICON_PATHS.sparkles} size={24} color="#6366f1" />
+              <SvgIcon d={ICON_PATHS.sparkles} size={24} color={theme.palette.primary.main} />
               個別支援計画 前回比較・更新エディタ
             </h1>
             <p style={S.subtitle}>{currentPlan.userName}さん ｜ 計画期間: {currentPlan.planPeriod}</p>
           </div>
           <div style={{ display: 'flex', gap: 10 }}>
             <button onClick={toggleDiff} aria-pressed={showDiff}
-              style={{ ...S.headerBtn, background: showDiff ? '#eef2ff' : '#f9fafb', color: showDiff ? '#4f46e5' : '#6b7280', borderColor: showDiff ? '#c7d2fe' : '#e5e7eb' }}>
+              style={{ ...S.headerBtn, background: showDiff ? alpha(theme.palette.primary.main, 0.08) : '#f9fafb', color: showDiff ? theme.palette.primary.dark : '#6b7280', borderColor: showDiff ? alpha(theme.palette.primary.main, 0.3) : '#e5e7eb' }}>
               <SvgIcon d={ICON_PATHS.eye} size={16} /> 差分プレビュー
             </button>
             <button onClick={toggleSmart} aria-pressed={showSmart}
               style={{ ...S.headerBtn, background: showSmart ? '#fefce8' : '#f9fafb', color: showSmart ? '#ca8a04' : '#6b7280', borderColor: showSmart ? '#fde68a' : '#e5e7eb' }}>
               <SvgIcon d={ICON_PATHS.sparkles} size={16} /> SMARTガイド
             </button>
+            {savePlan && (
+              <button onClick={savePlan} disabled={saving}
+                style={{
+                  ...S.headerBtn,
+                  background: saving ? '#e5e7eb' : theme.palette.primary.main,
+                  color: saving ? '#9ca3af' : '#fff',
+                  borderColor: saving ? '#d1d5db' : theme.palette.primary.main,
+                  opacity: saving ? 0.7 : 1,
+                }}
+                aria-busy={saving}
+              >
+                {saving ? '保存中…' : '▶ 保存'}
+              </button>
+            )}
           </div>
         </header>
 
@@ -197,9 +237,9 @@ const ISPComparisonEditorView: React.FC<ISPComparisonEditorViewProps> = (props) 
                 onClick={() => setActiveGoalId(g.id)}
                 style={{
                   ...S.tab,
-                  borderColor: isActive ? '#6366f1' : 'transparent',
-                  color: isActive ? '#4f46e5' : '#6b7280',
-                  background: isActive ? '#eef2ff' : 'transparent',
+                  borderColor: isActive ? theme.palette.primary.main : 'transparent',
+                  color: isActive ? theme.palette.primary.dark : '#6b7280',
+                  background: isActive ? alpha(theme.palette.primary.main, 0.08) : 'transparent',
                   fontWeight: isActive ? 700 : 500,
                 }}>
                 {g.label}
@@ -243,9 +283,9 @@ const ISPComparisonEditorView: React.FC<ISPComparisonEditorViewProps> = (props) 
             </div>
 
             {/* RIGHT: Current (Editable) */}
-            <div style={S.panelCurrent}>
+            <div style={{ ...S.panelCurrent, borderColor: alpha(theme.palette.primary.main, 0.3), boxShadow: `0 4px 24px ${alpha(theme.palette.primary.main, 0.08)}` }}>
               <div style={S.panelHeader}>
-                <span style={S.panelBadgeCurrent}>今回更新案</span>
+                <span style={{ ...S.panelBadgeCurrent, color: theme.palette.primary.dark, background: alpha(theme.palette.primary.main, 0.08) }}>今回更新案</span>
                 <button
                   onClick={() => copyFromPrevious(activeGoal.id)}
                   disabled={!prevGoal}
@@ -253,9 +293,9 @@ const ISPComparisonEditorView: React.FC<ISPComparisonEditorViewProps> = (props) 
                   style={{
                     ...S.copyBtn,
                     opacity: !prevGoal ? 0.4 : 1,
-                    background: copiedId === activeGoal.id ? '#dcfce7' : '#f0f9ff',
-                    color: copiedId === activeGoal.id ? '#16a34a' : '#2563eb',
-                    borderColor: copiedId === activeGoal.id ? '#86efac' : '#93c5fd',
+                    background: copiedId === activeGoal.id ? '#dcfce7' : alpha(theme.palette.primary.main, 0.06),
+                    color: copiedId === activeGoal.id ? '#16a34a' : theme.palette.primary.dark,
+                    borderColor: copiedId === activeGoal.id ? '#86efac' : alpha(theme.palette.primary.main, 0.4),
                   }}>
                   {copiedId === activeGoal.id
                     ? <><SvgIcon d={ICON_PATHS.check} size={14} /> 引用済</>
@@ -304,7 +344,7 @@ const ISPComparisonEditorView: React.FC<ISPComparisonEditorViewProps> = (props) 
               {/* Diff Preview — aria-live for screen reader */}
               {diff && (
                 <div style={S.diffBox} aria-live="polite" aria-atomic="true">
-                  <div style={{ fontSize: 11, fontWeight: 700, color: '#6366f1', marginBottom: 8, display: 'flex', alignItems: 'center', gap: 4 }}>
+                  <div style={{ fontSize: 11, fontWeight: 700, color: theme.palette.primary.main, marginBottom: 8, display: 'flex', alignItems: 'center', gap: 4 }}>
                     <SvgIcon d={ICON_PATHS.eye} size={14} /> 変更差分プレビュー（監査エビデンス）
                   </div>
                   <div style={{ fontSize: 14, lineHeight: 1.8 }}>
@@ -324,7 +364,7 @@ const ISPComparisonEditorView: React.FC<ISPComparisonEditorViewProps> = (props) 
       </main>
 
       {/* Scoped styles */}
-      <style>{cssRules}</style>
+      <style>{getCssRules(theme)}</style>
     </div>
   );
 };
@@ -332,20 +372,23 @@ const ISPComparisonEditorView: React.FC<ISPComparisonEditorViewProps> = (props) 
 export default ISPComparisonEditorView;
 
 /* ─── Scoped CSS (responsive + hover scope + animation) ─── */
-const cssRules = `
+const getCssRules = (t: Theme) => `
 @keyframes ispFadeIn {
   from { opacity: 0; transform: translateY(-8px); }
   to   { opacity: 1; transform: translateY(0); }
 }
+@keyframes ispSpin {
+  to { transform: rotate(360deg); }
+}
 .isp-editor textarea:focus {
   outline: none;
-  border-color: #818cf8 !important;
-  box-shadow: 0 0 0 3px rgba(129,140,248,0.15) !important;
+  border-color: ${t.palette.primary.main} !important;
+  box-shadow: 0 0 0 3px ${alpha(t.palette.primary.main, 0.15)} !important;
 }
 .isp-editor button { cursor: pointer; }
 .isp-editor button:hover { filter: brightness(0.96); }
 .isp-editor button:focus-visible {
-  outline: 2px solid #6366f1;
+  outline: 2px solid ${t.palette.primary.main};
   outline-offset: 2px;
 }
 * { box-sizing: border-box; }
@@ -358,11 +401,20 @@ const cssRules = `
 }
 `;
 
+/* ─── Theme-dependent styles (computed at render) ─── */
+const getThemedStyles = (t: Theme) => ({
+  progressBarInner: {
+    height: '100%', borderRadius: 99,
+    background: `linear-gradient(90deg, ${t.palette.primary.main}, ${t.palette.primary.light})`,
+    transition: 'width 0.6s ease',
+  } as React.CSSProperties,
+});
+
 /* ─── Inline Style Objects ─── */
 const S = {
   container: {
     display: 'flex', minHeight: '100vh',
-    background: 'linear-gradient(135deg, #f0f4ff 0%, #faf5ff 50%, #f0fdf4 100%)',
+    background: 'linear-gradient(135deg, #f0fdf4 0%, #f5f5f4 50%, #f0fdf4 100%)',
     fontFamily: "'Hiragino Sans','Hiragino Kaku Gothic ProN','Noto Sans JP',-apple-system,sans-serif",
   } as React.CSSProperties,
   sidebar: {
@@ -378,11 +430,6 @@ const S = {
   } as React.CSSProperties,
   sidebarHeader: { display: 'flex', alignItems: 'center', gap: 8, marginBottom: 16, marginTop: 24 } as React.CSSProperties,
   progressBarOuter: { height: 8, borderRadius: 99, background: '#e5e7eb', overflow: 'hidden' } as React.CSSProperties,
-  progressBarInner: {
-    height: '100%', borderRadius: 99,
-    background: 'linear-gradient(90deg, #6366f1, #a78bfa)',
-    transition: 'width 0.6s ease',
-  } as React.CSSProperties,
   stepRow: { display: 'flex', alignItems: 'center', gap: 10, marginBottom: 10 } as React.CSSProperties,
   stepDot: {
     width: 22, height: 22, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center',
@@ -402,7 +449,7 @@ const S = {
     marginBottom: 20, flexWrap: 'wrap' as const, gap: 12,
   } as React.CSSProperties,
   h1: {
-    fontSize: 22, fontWeight: 800, color: '#1e1b4b', margin: 0, display: 'flex', alignItems: 'center', gap: 10,
+    fontSize: 22, fontWeight: 800, color: '#1f2937', margin: 0, display: 'flex', alignItems: 'center', gap: 10,
     letterSpacing: '-0.02em',
   } as React.CSSProperties,
   subtitle: { fontSize: 13, color: '#6b7280', marginTop: 4 } as React.CSSProperties,
@@ -426,7 +473,7 @@ const S = {
   tab: {
     padding: '10px 16px', border: 'none', borderBottom: '3px solid', borderRadius: '8px 8px 0 0',
     fontSize: 13, transition: 'all 0.2s ease', whiteSpace: 'nowrap' as const,
-    display: 'flex', alignItems: 'center', gap: 4, background: 'transparent',
+    display: 'flex', alignItems: 'center', gap: 4, background: 'transparent', minHeight: 44,
   } as React.CSSProperties,
   comparisonGrid: {
     display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20,
@@ -437,8 +484,8 @@ const S = {
     boxShadow: '0 4px 24px rgba(0,0,0,0.04)',
   } as React.CSSProperties,
   panelCurrent: {
-    background: '#fff', borderRadius: 16, padding: 24, border: '1.5px solid #c7d2fe',
-    boxShadow: '0 4px 24px rgba(99,102,241,0.08)',
+    background: '#fff', borderRadius: 16, padding: 24, border: '1.5px solid #d1d5db',
+    boxShadow: '0 4px 24px rgba(0,0,0,0.04)',
   } as React.CSSProperties,
   panelHeader: {
     display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14,
@@ -447,7 +494,7 @@ const S = {
     fontSize: 12, fontWeight: 700, color: '#6b7280', background: '#f3f4f6', padding: '4px 12px', borderRadius: 8,
   } as React.CSSProperties,
   panelBadgeCurrent: {
-    fontSize: 12, fontWeight: 700, color: '#4f46e5', background: '#eef2ff', padding: '4px 12px', borderRadius: 8,
+    fontSize: 12, fontWeight: 700, padding: '4px 12px', borderRadius: 8,
   } as React.CSSProperties,
   readonlyBox: {
     padding: 16, background: '#f9fafb', borderRadius: 12, border: '1px solid #e5e7eb',
@@ -461,15 +508,15 @@ const S = {
   textarea: {
     width: '100%', padding: 16, borderRadius: 12, border: '1.5px solid #d1d5db',
     fontSize: 14, lineHeight: 1.8, color: '#1f2937', resize: 'vertical' as const,
-    minHeight: 120, fontFamily: 'inherit', transition: 'all 0.2s ease', background: '#fafbff',
+    minHeight: 120, fontFamily: 'inherit', transition: 'all 0.2s ease', background: '#f8faf7',
   } as React.CSSProperties,
   domainTag: { fontSize: 11, padding: '3px 10px', borderRadius: 99, fontWeight: 600 } as React.CSSProperties,
   domainToggle: {
     fontSize: 11, padding: '4px 12px', borderRadius: 99, border: '1.5px solid',
-    display: 'flex', alignItems: 'center', gap: 4, transition: 'all 0.2s ease', background: '#fff',
+    display: 'flex', alignItems: 'center', gap: 4, transition: 'all 0.2s ease', background: '#fff', minHeight: 44,
   } as React.CSSProperties,
   diffBox: {
-    marginTop: 16, padding: 16, background: '#f8fafc', borderRadius: 12, border: '1px dashed #c7d2fe',
+    marginTop: 16, padding: 16, background: '#f8fafc', borderRadius: 12, border: '1px dashed #d1d5db',
   } as React.CSSProperties,
   diffDel: {
     background: '#fee2e2', color: '#dc2626', textDecoration: 'line-through',
@@ -482,5 +529,19 @@ const S = {
   srOnly: {
     position: 'absolute' as const, width: 1, height: 1, padding: 0, margin: -1,
     overflow: 'hidden', clip: 'rect(0,0,0,0)', whiteSpace: 'nowrap' as const, border: 0,
+  } as React.CSSProperties,
+  loadingOverlay: {
+    position: 'absolute' as const, inset: 0, display: 'flex', flexDirection: 'column' as const,
+    alignItems: 'center', justifyContent: 'center', background: 'rgba(255,255,255,0.85)',
+    zIndex: 100, backdropFilter: 'blur(4px)',
+  } as React.CSSProperties,
+  spinner: {
+    width: 36, height: 36, border: '3px solid #e5e7eb', borderTopColor: '#10b981',
+    borderRadius: '50%', animation: 'ispSpin 0.8s linear infinite',
+  } as React.CSSProperties,
+  errorBanner: {
+    display: 'flex', alignItems: 'center', gap: 8, padding: '10px 16px',
+    background: '#fef2f2', border: '1px solid #fca5a5', borderRadius: 10,
+    fontSize: 13, color: '#dc2626', margin: '0 32px 12px', position: 'relative' as const, zIndex: 50,
   } as React.CSSProperties,
 };

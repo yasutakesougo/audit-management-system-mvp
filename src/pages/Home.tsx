@@ -103,7 +103,7 @@ export default function Home() {
     : null;
 
   const tiles = [
-    { to: '/users', label: '利用者マスタ', caption: '利用者情報を閲覧・管理', Icon: PeopleAltRoundedIcon, accent: 'text-blue-600 bg-blue-100', border: 'border-blue-200 hover:border-blue-300 hover:bg-blue-50' },
+    { to: '/users', label: '利用者マスタ', caption: '利用者情報を閲覧・管理', Icon: PeopleAltRoundedIcon, accent: 'text-emerald-600 bg-emerald-100', border: 'border-emerald-200 hover:border-emerald-300 hover:bg-emerald-50' },
   { to: '/dashboard', label: 'オペレーションハブ', caption: '施設全体の運営状況を俯瞰', Icon: DashboardRoundedIcon, accent: 'text-green-600 bg-green-100', border: 'border-green-200 hover:border-green-300 hover:bg-green-50' },
     { to: '/schedules/week', label: 'スケジュール', caption: '今日の予定をチェック', Icon: EventAvailableRoundedIcon, accent: 'text-purple-600 bg-purple-100', border: 'border-purple-200 hover:border-purple-300 hover:bg-purple-50' },
     { to: '/tablet-demo', label: 'モバイル予定ビュー', caption: 'スマホ向けの簡易ビュー', Icon: PhonelinkRoundedIcon, accent: 'text-amber-600 bg-amber-100', border: 'border-amber-200 hover:border-amber-300 hover:bg-amber-50' },

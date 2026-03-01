@@ -1,7 +1,7 @@
 import {
-  buildAttendanceKey,
-  type RecordDate,
-  type StaffAttendance,
+    buildAttendanceKey,
+    type RecordDate,
+    type StaffAttendance,
 } from './types';
 
 export interface StaffAttendanceStore {
@@ -50,7 +50,7 @@ const storeState: StaffAttendanceStore = {
   countByDate(recordDate) {
     const list = this.listByDate(recordDate);
     const onDuty = list.filter((a) => a.status === '出勤').length;
-    const out = list.filter((a) => a.status === '外出中').length;
+    const out = 0; // 外出中 status removed (Issue 1-1); kept for interface compat
     const absent = list.filter((a) => a.status === '欠勤').length;
     return { onDuty, out, absent, total: list.length };
   },
