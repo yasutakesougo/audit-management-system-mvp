@@ -1,15 +1,15 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
-import { type DateRange, type SchedItem, type UpdateScheduleEventInput } from '../data';
-import type { InlineScheduleDraft } from '../data/inlineScheduleDraft';
-import type { ResultError } from '@/shared/result';
-import { toSafeError } from '@/lib/errors';
+import { useAuth } from '@/auth/useAuth';
 import { isE2eForceSchedulesWrite, isWriteEnabled } from '@/env';
+import { authDiagnostics } from '@/features/auth/diagnostics';
+import { toSafeError } from '@/lib/errors';
+import type { ResultError } from '@/shared/result';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { type DateRange, type SchedItem, type UpdateScheduleEventInput } from '../domain';
+import type { InlineScheduleDraft } from '../domain/inlineScheduleDraft';
 import { classifySchedulesError, shouldFallbackToReadOnly, type SchedulesErrorInfo } from '../errors';
 import { useScheduleRepository } from '../repositoryFactory';
-import { useAuth } from '@/auth/useAuth';
-import { authDiagnostics } from '@/features/auth/diagnostics';
 
-export type { InlineScheduleDraft } from '../data/inlineScheduleDraft';
+export type { InlineScheduleDraft } from '../domain/inlineScheduleDraft';
 
 export type UseSchedulesResult = {
   items: SchedItem[];
