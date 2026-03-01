@@ -64,9 +64,11 @@ export function createSharePointBillingOrderRepository(): BillingOrderRepository
         }
 
         return items.map(mapItem);
-      } catch (err: any) {
-        console.error('[Billing] Fetch error:', err?.message ?? err);
-        console.error('[Billing] Status:', err?.status, 'URL:', billingBaseUrl + url);
+      } catch (err: unknown) {
+        const message = err instanceof Error ? err.message : String(err);
+        const status = (err as Record<string, unknown>)?.['status'];
+        console.error('[Billing] Fetch error:', message);
+        console.error('[Billing] Status:', status, 'URL:', billingBaseUrl + url);
         throw err;
       }
     },
