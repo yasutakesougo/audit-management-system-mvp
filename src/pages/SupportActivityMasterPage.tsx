@@ -3,7 +3,7 @@ import SettingsIcon from '@mui/icons-material/Settings';
 import Alert from '@mui/material/Alert';
 import Box from '@mui/material/Box';
 import Button from '@mui/material/Button';
-import Container from '@mui/material/Container';
+import Paper from '@mui/material/Paper';
 import Snackbar from '@mui/material/Snackbar';
 import React, { useCallback, useEffect, useState } from 'react';
 
@@ -154,11 +154,7 @@ const SupportActivityMasterPage: React.FC = () => {
   }, []);
 
   return (
-    <Container
-      maxWidth="xl"
-      sx={{ py: 3 }}
-      data-testid="support-activity-master-page"
-    >
+    <Box data-testid="support-activity-master-page">
       {/* ── IBDPageHeader ── */}
       <IBDPageHeader
         title="支援活動マスタ"
@@ -178,19 +174,14 @@ const SupportActivityMasterPage: React.FC = () => {
       />
 
       {/* メインコンテンツ */}
-      <Box sx={{
-        bgcolor: 'background.paper',
-        borderRadius: 2,
-        p: 3,
-        minHeight: 'calc(100vh - 200px)'
-      }}>
+      <Paper elevation={1} sx={{ p: 3 }}>
         <SupportActivityTemplateList
           templates={templates}
           onEdit={handleEdit}
           onDelete={handleDelete}
           onAdd={handleAdd}
         />
-      </Box>
+      </Paper>
 
       {/* 編集フォームダイアログ */}
       <SupportActivityTemplateForm
@@ -205,18 +196,17 @@ const SupportActivityMasterPage: React.FC = () => {
         open={snackbar.open}
         autoHideDuration={4000}
         onClose={handleSnackbarClose}
-        anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
+        anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
       >
         <Alert
           onClose={handleSnackbarClose}
           severity={snackbar.severity}
           variant="filled"
-          sx={{ width: '100%' }}
         >
           {snackbar.message}
         </Alert>
       </Snackbar>
-    </Container>
+    </Box>
   );
 };
 
