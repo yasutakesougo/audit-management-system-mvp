@@ -1,8 +1,9 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 import type { AbsentSupportLog } from '@/features/service-provision/domain/absentSupportLog';
 import type { IUserMaster } from '@/features/users/types';
 
+import { classifyAttendanceError, type AttendanceErrorCode } from './hooks/useAttendanceActions';
 import type { AttendanceDailyItem } from './infra/attendanceDailyRepository';
 import { useAttendanceRepository } from './repositoryFactory';
 import { methodImpliesShuttle } from './transportMethod';
@@ -213,10 +214,51 @@ const getNextStatusRow = (
   };
 };
 
+/** Map internal status to user-friendly label for notifications */
+const statusLabel = (s: AttendanceRowVM['status']): string => {
+  switch (s) {
+    case '通所中': return '通所';
+    case '退所済': return '退所';
+    case '当日欠席': return '欠席';
+    default: return s;
+  }
+};
+
+export type AttendanceNotification = {
+  open: boolean;
+  severity: 'success' | 'info' | 'warning' | 'error';
+  message: string;
+  actionLabel?: string;
+  onAction?: () => void;
+};
+
+const NOTIFICATION_CLOSED: AttendanceNotification = {
+  open: false,
+  severity: 'info',
+  message: '',
+};
+
+const errorMessage = (code: AttendanceErrorCode): { severity: 'warning' | 'error'; message: string } => {
+  switch (code) {
+    case 'CONFLICT':
+      return { severity: 'warning', message: '他で更新されています。最新を取得してください。' };
+    case 'NETWORK':
+      return { severity: 'error', message: '通信できません（オフラインの可能性）。' };
+    case 'THROTTLED':
+      return { severity: 'warning', message: 'サーバーが混み合っています。しばらくお待ちください。' };
+    case 'UNKNOWN':
+    default:
+      return { severity: 'error', message: '保存に失敗しました。' };
+  }
+};
+
 export type UseAttendanceReturn = {
   status: AttendanceHookStatus;
   rows: AttendanceRowVM[];
   filters: AttendanceFilter;
+  savingUsers: ReadonlySet<string>;
+  notification: AttendanceNotification;
+  dismissNotification: () => void;
   actions: {
     setFilters: (next: Partial<AttendanceFilter>) => void;
     updateStatus: (userCode: string, status: AttendanceRowVM['status']) => Promise<void>;
@@ -229,6 +271,15 @@ export function useAttendance(): UseAttendanceReturn {
   const [status, setStatus] = useState<AttendanceHookStatus>('loading');
   const [rowsRaw, setRowsRaw] = useState<AttendanceRowVM[]>([]);
   const [filters, setFiltersState] = useState<AttendanceFilter>({ date: todayIso(), query: '' });
+
+  // ── Per-user double-submit guard ──
+  const savingUsersRef = useRef<Set<string>>(new Set());
+  const [, setSavingTick] = useState(0);
+  const bumpSavingTick = useCallback(() => setSavingTick((t) => t + 1), []);
+
+  // ── Notification state ──
+  const [notification, setNotification] = useState<AttendanceNotification>(NOTIFICATION_CLOSED);
+  const dismissNotification = useCallback(() => setNotification(NOTIFICATION_CLOSED), []);
 
   const refresh = useCallback(async () => {
     setStatus('loading');
@@ -244,31 +295,85 @@ export function useAttendance(): UseAttendanceReturn {
       setStatus('error');
     }
   }, [filters.date, repository]);
-
   useEffect(() => {
     void refresh();
   }, [refresh]);
 
+  // Ref to always call the latest updateStatus from undo callbacks
+  const updateStatusRef = useRef<(userCode: string, status: AttendanceRowVM['status']) => Promise<void>>();
+
   const updateStatus = useCallback(
     async (userCode: string, nextStatus: AttendanceRowVM['status']) => {
+      // Per-user in-flight guard: skip if already saving for this user
+      if (savingUsersRef.current.has(userCode)) return;
+
       const current = rowsRaw.find((row) => row.userCode === userCode);
       if (!current) return;
 
+      const prevStatus = current.status;
+
+      savingUsersRef.current.add(userCode);
+      bumpSavingTick();
+
       const nowIso = new Date().toISOString();
       const nextRow = getNextStatusRow(current, nextStatus, nowIso);
+      const userName = current.FullName ?? userCode;
 
       setRowsRaw((prev) => prev.map((row) => (row.userCode === userCode ? nextRow : row)));
 
       try {
         await repository.upsertDailyByKey(toDailyItem(nextRow, filters.date));
+
+        // Absence gets an undo action (5s window); others get simple success
+        const label = statusLabel(nextStatus);
+        if (nextStatus === '当日欠席') {
+          setNotification({
+            open: true,
+            severity: 'success',
+            message: `${userName}さんを${label}にしました`,
+            actionLabel: '取り消し',
+            onAction: () => {
+              void updateStatusRef.current?.(userCode, prevStatus);
+            },
+          });
+        } else {
+          setNotification({
+            open: true,
+            severity: 'success',
+            message: `${userName}さんを${label}にしました`,
+          });
+        }
       } catch (error) {
         console.error('useAttendance.updateStatus failed', error);
-        await refresh();
-        setStatus('error');
+        const classified = classifyAttendanceError(error);
+        const { severity, message } = errorMessage(classified.code);
+
+        // Rollback to server state
+        try {
+          await refresh();
+        } catch {
+          // refresh failure is separate — don't overwrite save error
+        }
+
+        setNotification({
+          open: true,
+          severity,
+          message,
+          actionLabel: '再読込',
+          onAction: () => {
+            void refresh();
+          },
+        });
+      } finally {
+        savingUsersRef.current.delete(userCode);
+        bumpSavingTick();
       }
     },
-    [filters.date, refresh, repository, rowsRaw],
+    [bumpSavingTick, filters.date, refresh, repository, rowsRaw],
   );
+
+  // Keep ref in sync for undo callbacks
+  updateStatusRef.current = updateStatus;
 
   const setFilters = useCallback((next: Partial<AttendanceFilter>) => {
     setFiltersState((prev) => ({ ...prev, ...next }));
@@ -288,6 +393,9 @@ export function useAttendance(): UseAttendanceReturn {
     status,
     rows,
     filters,
+    savingUsers: savingUsersRef.current,
+    notification,
+    dismissNotification,
     actions: {
       setFilters,
       updateStatus,
