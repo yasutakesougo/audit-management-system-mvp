@@ -49,4 +49,21 @@ describe('AttendanceSummaryCard', () => {
 
     expect(screen.getByTestId('today-attendance-card')).toBeInTheDocument();
   });
+
+  it('shows empty state when all counts are 0', () => {
+    render(
+      <AttendanceSummaryCard
+        facilityAttendees={0}
+        absenceCount={0}
+        absenceNames={[]}
+        lateOrEarlyLeave={0}
+        lateOrEarlyNames={[]}
+      />
+    );
+
+    expect(screen.getByTestId('today-empty-attendance')).toBeInTheDocument();
+    expect(screen.getByText('出席データがありません')).toBeInTheDocument();
+    // testid for card wrapper should still be present
+    expect(screen.getByTestId('today-attendance-card')).toBeInTheDocument();
+  });
 });

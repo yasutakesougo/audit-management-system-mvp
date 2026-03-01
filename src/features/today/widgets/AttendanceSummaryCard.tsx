@@ -3,8 +3,10 @@
  *
  * 通所中/欠席/早退の件数をチップ形式で表示。
  */
+import InfoOutlinedIcon from '@mui/icons-material/InfoOutlined';
 import { Box, Chip, Paper, Typography } from '@mui/material';
 import React from 'react';
+import { EmptyStateBlock } from './EmptyStateBlock';
 
 export type AttendanceSummaryCardProps = {
   facilityAttendees: number;
@@ -21,6 +23,24 @@ export const AttendanceSummaryCard: React.FC<AttendanceSummaryCardProps> = ({
   lateOrEarlyLeave,
   lateOrEarlyNames,
 }) => {
+  const hasAnyData = facilityAttendees > 0 || absenceCount > 0 || lateOrEarlyLeave > 0;
+
+  if (!hasAnyData) {
+    return (
+      <Paper data-testid="today-attendance-card" sx={{ p: 2, mb: 3 }}>
+        <Typography variant="subtitle2" fontWeight="bold" gutterBottom>
+          📊 出席状況
+        </Typography>
+        <EmptyStateBlock
+          icon={<InfoOutlinedIcon />}
+          title="出席データがありません"
+          description="通所予定が登録されると表示されます。"
+          testId="today-empty-attendance"
+        />
+      </Paper>
+    );
+  }
+
   return (
     <Paper data-testid="today-attendance-card" sx={{ p: 2, mb: 3 }}>
       <Typography variant="subtitle2" fontWeight="bold" gutterBottom>

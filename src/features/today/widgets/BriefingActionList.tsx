@@ -11,6 +11,7 @@
  * @see docs/adr/ADR-002-today-execution-layer-guardrails.md
  */
 import type { BriefingAlert } from '@/features/dashboard/sections/types';
+import AssignmentTurnedInIcon from '@mui/icons-material/AssignmentTurnedIn';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import {
     Accordion,
@@ -21,6 +22,7 @@ import {
     Box,
     Button,
     Chip,
+    Paper,
     Stack,
     Typography,
 } from '@mui/material';
@@ -31,6 +33,7 @@ import {
     useAlertActionState,
     type ActionStatus,
 } from '../actions';
+import { EmptyStateBlock } from './EmptyStateBlock';
 
 export type BriefingActionListProps = {
   alerts: BriefingAlert[];
@@ -57,8 +60,19 @@ export const BriefingActionList: React.FC<BriefingActionListProps> = ({ alerts }
     }, 0);
   }, [alerts, completionStats, ymd]);
 
-  // Don't render anything if no alerts
-  if (alerts.length === 0) return null;
+  // Empty state: show completion message instead of null
+  if (alerts.length === 0) {
+    return (
+      <Paper data-testid="today-accordion-briefing" sx={{ p: 2, mb: 3 }}>
+        <EmptyStateBlock
+          icon={<AssignmentTurnedInIcon />}
+          title="ブリーフィング項目はありません"
+          description="確認が必要なアラートは発生していません。"
+          testId="today-empty-briefing"
+        />
+      </Paper>
+    );
+  }
 
   return (
     <Accordion
