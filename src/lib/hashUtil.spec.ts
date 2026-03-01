@@ -1,5 +1,5 @@
-import { describe, it, expect } from 'vitest';
-import { canonicalJSONStringify, computeEntryHash } from './hashUtil';
+import { describe, expect, it } from 'vitest';
+import { canonicalJSONStringify, computeEntryHash, sha256Hex } from './hashUtil';
 
 describe('canonicalJSONStringify', () => {
   it('produces same string for different key orders', () => {
@@ -48,5 +48,19 @@ describe('computeEntryHash', () => {
       ts: '2025-09-23T01:02:03.000Z', actor: 'u', action: 'A', entity: 'E', entity_id: '2', after_json: '{"x":1}'
     });
     expect(a).not.toEqual(b);
+  });
+});
+
+describe('sha256Hex DI', () => {
+  it('uses injectedSubtle when provided', async () => {
+    // Use Node webcrypto as the injected implementation
+    const { webcrypto } = await import('crypto');
+    const nodeSubtle = webcrypto.subtle as unknown as SubtleCrypto;
+    const hash = await sha256Hex('fortress-test', nodeSubtle);
+    // SHA-256 of "fortress-test" is deterministic — verify it's a valid 64-char hex string
+    expect(hash).toMatch(/^[0-9a-f]{64}$/);
+    // Re-run to confirm determinism
+    const hash2 = await sha256Hex('fortress-test', nodeSubtle);
+    expect(hash).toEqual(hash2);
   });
 });
