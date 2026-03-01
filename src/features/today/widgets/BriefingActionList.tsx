@@ -1,23 +1,30 @@
 /**
  * BriefingActionList — アクション型朝会アラート（Execution Layer）
  *
- * 従来の BriefingAlertList を "行動リスト" に進化。
- * 各アラートをグループヘッダー + per-user アクション行に分解。
+ * H-3 ガードレール準拠:
+ * - MUI <Accordion> を使用（Collapse 置換）
+ * - 複数同時展開OK（排他禁止）
+ * - 未完了ありなら expanded=true がデフォルト（ユーザー操作で折りたたみ可能）
+ * - ヘッダー: 「ブリーフィング」+ 未完了数バッジ
+ * - ヘッダー内に複数CTAを置かない
  *
  * @see docs/adr/ADR-002-today-execution-layer-guardrails.md
  */
 import type { BriefingAlert } from '@/features/dashboard/sections/types';
+import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import {
+    Accordion,
+    AccordionDetails,
+    AccordionSummary,
     Alert,
+    Badge,
     Box,
     Button,
     Chip,
-    Collapse,
-    Paper,
     Stack,
     Typography,
 } from '@mui/material';
-import React from 'react';
+import React, { useMemo } from 'react';
 import {
     ALERT_ACTION_DEFS,
     buildAlertKey,
@@ -40,9 +47,51 @@ export const BriefingActionList: React.FC<BriefingActionListProps> = ({ alerts }
   const { getState, setState, completionStats } = useAlertActionState();
   const ymd = new Date().toISOString().split('T')[0];
 
+  // Pending count across all alerts (for badge display)
+  const pendingCount = useMemo(() => {
+    return alerts.reduce((acc, alert) => {
+      const items = alert.items ?? [];
+      const keys = items.map((item) => buildAlertKey(alert.type, item.userId, ymd));
+      const stats = completionStats(keys);
+      return acc + (stats.total - stats.done);
+    }, 0);
+  }, [alerts, completionStats, ymd]);
+
+  // Don't render anything if no alerts
+  if (alerts.length === 0) return null;
+
   return (
-    <Collapse in={alerts.length > 0}>
-      <Paper data-testid="today-briefing-actions" sx={{ p: 2, mb: 3 }}>
+    <Accordion
+      data-testid="today-accordion-briefing"
+      defaultExpanded={pendingCount > 0}
+      disableGutters
+      sx={{
+        mb: 3,
+        '&::before': { display: 'none' },
+        boxShadow: 1,
+        borderRadius: 1,
+        overflow: 'hidden',
+      }}
+    >
+      <AccordionSummary
+        expandIcon={<ExpandMoreIcon />}
+        sx={{ minHeight: 48 }}
+      >
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+          <Typography variant="subtitle2" fontWeight="bold">
+            📋 ブリーフィング
+          </Typography>
+          {pendingCount > 0 && (
+            <Badge
+              badgeContent={pendingCount}
+              color="warning"
+              sx={{ '& .MuiBadge-badge': { fontSize: '0.7rem', minWidth: 20, height: 20 } }}
+            />
+          )}
+        </Box>
+      </AccordionSummary>
+
+      <AccordionDetails data-testid="today-briefing-actions" sx={{ pt: 0, px: 2, pb: 2 }}>
         <Stack spacing={2}>
           {alerts.map((alert) => {
             const items = alert.items ?? [];
@@ -151,7 +200,7 @@ export const BriefingActionList: React.FC<BriefingActionListProps> = ({ alerts }
             );
           })}
         </Stack>
-      </Paper>
-    </Collapse>
+      </AccordionDetails>
+    </Accordion>
   );
 };

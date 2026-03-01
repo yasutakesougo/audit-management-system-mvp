@@ -12,8 +12,9 @@ describe('HeroUnfinishedBanner', () => {
       />
     );
 
-    // ✅ 本日完了 のテキストが表示されること
-    expect(screen.getByText(/本日完了/)).toBeInTheDocument();
+    // EmptyStateHero が表示されること
+    expect(screen.getByText(/本日の対応は完了しました/)).toBeInTheDocument();
+    expect(screen.getByTestId('today-empty-hero')).toBeInTheDocument();
 
     // 今すぐ入力 ボタンが表示されないこと
     expect(screen.queryByRole('button', { name: /今すぐ入力/ })).not.toBeInTheDocument();

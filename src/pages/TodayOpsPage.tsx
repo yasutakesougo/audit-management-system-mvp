@@ -108,7 +108,9 @@ export const TodayOpsPage: React.FC = () => {
           : sortedUserItems,
         onOpenQuickRecord: quickRecord.openUser,
         onOpenISP: (userId: string) => navigate(`/isp-editor/${userId}`),
+        onEmptyAction: () => navigate('/schedules'),
       },
+      nextActionEmptyAction: () => navigate('/schedules'),
     };
   }, [summary, nextAction, quickRecord.openUnfilled, quickRecord.openUser]);
 

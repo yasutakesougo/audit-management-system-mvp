@@ -1,7 +1,9 @@
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import EditNoteIcon from '@mui/icons-material/EditNote';
+import GroupOffIcon from '@mui/icons-material/GroupOff';
 import { Box, Button, IconButton, Paper, Stack, Tooltip, Typography } from '@mui/material';
 import React from 'react';
+import { EmptyStateBlock } from './EmptyStateBlock';
 
 export type UserRow = {
   userId: string;
@@ -14,6 +16,8 @@ export type UserCompactListProps = {
   items: UserRow[];
   onOpenQuickRecord: (id: string) => void;
   onOpenISP?: (id: string) => void;
+  /** zero-users 時の弱いCTA（スケジュール確認等） */
+  onEmptyAction?: () => void;
 };
 
 // rerender-memo: memoized row to avoid full-list re-renders
@@ -93,12 +97,20 @@ const UserCompactRow = React.memo<{
   );
 });
 
-export const UserCompactList: React.FC<UserCompactListProps> = ({ items, onOpenQuickRecord, onOpenISP }) => {
+export const UserCompactList: React.FC<UserCompactListProps> = ({ items, onOpenQuickRecord, onOpenISP, onEmptyAction }) => {
   if (items.length === 0) {
     return (
-      <Typography color="text.secondary" sx={{ py: 2 }}>
-        利用予定はありません
-      </Typography>
+      <EmptyStateBlock
+        icon={<GroupOffIcon />}
+        title="本日の通所予定はありません"
+        description="共有事項や明日の予定を確認できます。"
+        primaryAction={
+          onEmptyAction
+            ? { label: 'スケジュールを確認', onClick: onEmptyAction, testId: 'today-empty-users-cta' }
+            : undefined
+        }
+        testId="today-empty-users"
+      />
     );
   }
 

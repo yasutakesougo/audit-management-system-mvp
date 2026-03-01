@@ -18,6 +18,7 @@ function makeProps(overrides: Partial<NextActionWithProgress> = {}): NextActionW
     progress: null,
     progressKey: 'test-key',
     status: 'idle',
+    urgency: 'medium',
     elapsedMinutes: null,
     actions: { start: noop, done: noop, reset: noop },
     ...overrides,
@@ -118,7 +119,8 @@ describe('NextActionCard', () => {
       />
     );
 
-    expect(screen.getByText(/本日の予定はすべて完了しました/)).toBeInTheDocument();
+    expect(screen.getByText(/次の予定はありません/)).toBeInTheDocument();
+    expect(screen.getByTestId('today-empty-next-action')).toBeInTheDocument();
   });
 
   it('has data-testid', () => {
