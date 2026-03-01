@@ -1,12 +1,14 @@
+import CheckIcon from '@mui/icons-material/Check';
 import DirectionsCarIcon from '@mui/icons-material/DirectionsCar';
 import MoreHorizIcon from '@mui/icons-material/MoreHoriz';
-import { Box, Button, Chip, IconButton, Typography } from '@mui/material';
+import { Box, Button, Chip, CircularProgress, IconButton, Typography } from '@mui/material';
 
 import {
     TRANSPORT_METHOD_LABEL,
     resolveToMethod,
     type TransportMethod,
 } from '../transportMethod';
+import type { AttendanceInputMode } from '../types';
 
 export type AttendanceRowUser = {
   id: string;
@@ -27,7 +29,9 @@ export type AttendanceRowVisit = {
 export type AttendanceRowProps = {
   user: AttendanceRowUser;
   visit: AttendanceRowVisit;
+  inputMode?: AttendanceInputMode;
   canAbsence: boolean;
+  isSaving?: boolean;
   onCheckIn: () => void;
   onCheckOut: () => void;
   onAbsence: () => void;
@@ -37,7 +41,9 @@ export type AttendanceRowProps = {
 export function AttendanceRow({
   user,
   visit,
+  inputMode = 'normal',
   canAbsence,
+  isSaving = false,
   onCheckIn,
   onCheckOut,
   onAbsence,
@@ -47,6 +53,16 @@ export function AttendanceRow({
   const isDone = visit.status === '退所済' || Boolean(visit.checkOutAtText);
   const canCheckIn = visit.status === '未' && !visit.checkInAtText;
   const canCheckOut = visit.status === '通所中' && !isDone;
+  const savingSpinner = isSaving ? <CircularProgress size={16} sx={{ ml: 0.5 }} /> : null;
+
+  const isRunMode = inputMode === 'checkInRun';
+  // In checkInRun mode: check-in already done → show completed state
+  const checkInDone = isRunMode && !canCheckIn && (visit.status === '通所中' || isDone);
+
+  // Secondary action styles for checkInRun mode (disabled + faded)
+  const secondarySx = isRunMode
+    ? { opacity: 0.35, pointerEvents: 'none' as const }
+    : {};
 
   return (
     <Box
@@ -106,20 +122,31 @@ export function AttendanceRow({
       <Box sx={{ display: 'flex', gap: 1 }}>
         <Button
           variant={canCheckIn ? 'contained' : 'outlined'}
-          disabled={!canCheckIn || isAbsent}
+          disabled={isSaving || !canCheckIn || isAbsent}
           onClick={onCheckIn}
-          sx={{ minHeight: 44, minWidth: 92, fontWeight: 700 }}
+          sx={{
+            minHeight: 44,
+            minWidth: isRunMode ? 140 : 92,
+            fontWeight: 700,
+          }}
+          startIcon={checkInDone ? <CheckIcon /> : undefined}
         >
-          {visit.checkInAtText && !canCheckIn ? `通所 ${visit.checkInAtText}` : '通所'}
+          {checkInDone
+            ? '通所済'
+            : visit.checkInAtText && !canCheckIn
+              ? `通所 ${visit.checkInAtText}`
+              : '通所'}
+          {isSaving && canCheckIn ? savingSpinner : null}
         </Button>
 
         <Button
           variant={canCheckOut ? 'contained' : 'outlined'}
-          disabled={!canCheckOut || isAbsent}
+          disabled={isSaving || !canCheckOut || isAbsent || isRunMode}
           onClick={onCheckOut}
-          sx={{ minHeight: 44, minWidth: 92, fontWeight: 700 }}
+          sx={{ minHeight: 44, minWidth: 92, fontWeight: 700, ...secondarySx }}
         >
           {visit.checkOutAtText && isDone ? `退所 ${visit.checkOutAtText}` : '退所'}
+          {isSaving && canCheckOut ? savingSpinner : null}
         </Button>
       </Box>
 
@@ -131,8 +158,8 @@ export function AttendanceRow({
         variant="text"
         color="inherit"
         onClick={onAbsence}
-        disabled={!canAbsence}
-        sx={{ minHeight: 44, minWidth: 64, fontWeight: 700 }}
+        disabled={isSaving || !canAbsence || isRunMode}
+        sx={{ minHeight: 44, minWidth: 64, fontWeight: 700, ...secondarySx }}
       >
         欠席
       </Button>

@@ -1,15 +1,17 @@
 import { Card, CardContent, Stack, Typography } from '@mui/material';
 
 import { formatTime, type AttendanceVisit } from '../attendance.logic';
-import type { AttendanceRowVM } from '../types';
+import type { AttendanceInputMode, AttendanceRowVM } from '../types';
 import { AttendanceRow } from './AttendanceRow';
 
 type AttendanceListProps = {
   rows: AttendanceRowVM[];
+  savingUsers: ReadonlySet<string>;
+  inputMode: AttendanceInputMode;
   onUpdateStatus: (userCode: string, status: AttendanceVisit['status']) => Promise<void>;
 };
 
-export function AttendanceList({ rows, onUpdateStatus }: AttendanceListProps): JSX.Element {
+export function AttendanceList({ rows, savingUsers, inputMode, onUpdateStatus }: AttendanceListProps): JSX.Element {
   if (!rows.length) {
     return (
       <Card>
@@ -42,7 +44,9 @@ export function AttendanceList({ rows, onUpdateStatus }: AttendanceListProps): J
                   checkOutAtText: row.checkOutAt ? formatTime(row.checkOutAt) : undefined,
                   rangeText,
                 }}
+                inputMode={inputMode}
                 canAbsence={row.status === '未' || row.status === '当日欠席'}
+                isSaving={savingUsers.has(row.userCode)}
                 onCheckIn={() => void onUpdateStatus(row.userCode, '通所中')}
                 onCheckOut={() => void onUpdateStatus(row.userCode, '退所済')}
                 onAbsence={() => void onUpdateStatus(row.userCode, '当日欠席')}
