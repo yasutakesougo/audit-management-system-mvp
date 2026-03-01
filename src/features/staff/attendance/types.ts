@@ -1,4 +1,4 @@
-export type StaffAttendanceStatus = '出勤' | '欠勤' | '外出中';
+export type StaffAttendanceStatus = '出勤' | '欠勤';
 
 // YYYY-MM-DD を想定（生成は util で統一してもOK）
 export type RecordDate = string;

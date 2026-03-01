@@ -124,7 +124,7 @@ VITE_SP_SITE_RELATIVE=/sites/<SiteName>`}</pre>
             <button
               onClick={this.handleReload}
               style={{
-                background: '#1976d2',
+                background: '#5B8C5A',
                 color: '#fff',
                 border: 'none',
                 padding: '0.75rem 1.25rem',
@@ -179,7 +179,7 @@ VITE_SP_SITE_RELATIVE=/sites/<SiteName>`}</pre>
           <button
             onClick={this.handleReload}
             style={{
-              background: '#1976d2',
+              background: '#5B8C5A',
               color: '#fff',
               border: 'none',
               padding: '0.5rem 1rem',

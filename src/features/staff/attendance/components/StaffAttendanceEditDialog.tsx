@@ -1,13 +1,13 @@
-import * as React from 'react';
 import {
-  Dialog,
-  DialogTitle,
-  DialogContent,
-  DialogActions,
-  Button,
-  TextField,
-  MenuItem,
+    Button,
+    Dialog,
+    DialogActions,
+    DialogContent,
+    DialogTitle,
+    MenuItem,
+    TextField,
 } from '@mui/material';
+import * as React from 'react';
 import type { StaffAttendance, StaffAttendanceStatus } from '../types';
 
 type Props = {
@@ -20,7 +20,7 @@ type Props = {
   writeEnabled?: boolean;
 };
 
-const STATUS_OPTIONS: StaffAttendanceStatus[] = ['出勤', '欠勤', '外出中'];
+const STATUS_OPTIONS: StaffAttendanceStatus[] = ['出勤', '欠勤'];
 
 export function StaffAttendanceEditDialog(props: Props): JSX.Element {
   const { open, recordDate, initial, onClose, onSave, saving = false, writeEnabled = true } = props;

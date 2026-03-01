@@ -33,8 +33,8 @@ import { Link as RouterLink } from 'react-router-dom';
 import ErrorState from '../../../ui/components/ErrorState';
 import Loading from '../../../ui/components/Loading';
 import type { IUserMaster } from '../types';
-import UserDetailSections from '../UserDetailSections/index';
 import { resolveUserIdentifier } from '../UserDetailSections/helpers';
+import UserDetailSections from '../UserDetailSections/index';
 import {
     getUserStatusChips,
     isUserInactive,
@@ -191,7 +191,7 @@ const UsersList: FC<UsersListProps> = ({
         direction="row"
         alignItems="center"
         spacing={1.5}
-        sx={{ minHeight: 40 }}
+        sx={{ minHeight: 44 }}
       >
         <Typography variant="h6" component="h3" sx={{ fontWeight: 700, fontSize: '1.15rem' }}>
           利用者一覧

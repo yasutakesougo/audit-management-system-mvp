@@ -253,14 +253,14 @@ export const createSharePointStaffAttendanceAdapter = (options: SharePointAdapte
         // Safety cap: 10 pages × 200 items per page = 2000 items max
         const maxPages = 10;
         const rows = await listByDateRangeRows(from, to, top);
-        
+
         if (rows.length >= top * maxPages) {
           return result.err({
             kind: 'validation',
             message: `Read list exceeded max items (${top * maxPages}). Please refine date range.`,
           });
         }
-        
+
         const list = (rows ?? []).map(toAttendance).filter((v): v is StaffAttendance => Boolean(v));
         return result.ok(list);
       } catch (error) {
@@ -276,7 +276,7 @@ export const createSharePointStaffAttendanceAdapter = (options: SharePointAdapte
         }
         const list = listResult.value;
         const onDuty = list.filter((a) => a.status === '出勤').length;
-        const out = list.filter((a) => a.status === '外出中').length;
+        const out = 0; // 外出中 status removed (Issue 1-1); kept for interface compat
         const absent = list.filter((a) => a.status === '欠勤').length;
         return result.ok({ onDuty, out, absent, total: list.length });
       } catch (error) {

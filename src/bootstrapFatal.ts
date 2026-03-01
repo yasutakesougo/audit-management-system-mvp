@@ -1,7 +1,7 @@
 /**
  * Fatal error handler for bootstrap phase
  * Catches errors before React renders, including chunk load failures
- * 
+ *
  * Purpose:
  * - window.error: Synchronous errors during initial load
  * - window.unhandledrejection: Async errors (import() failures, fetch, etc.)
@@ -80,7 +80,7 @@ function renderFatalPanel(title: string, detail?: unknown): void {
         style="
           padding: 10px 16px;
           font-size: 14px;
-          background-color: #1976d2;
+          background-color: #5B8C5A;
           color: white;
           border: none;
           border-radius: 4px;

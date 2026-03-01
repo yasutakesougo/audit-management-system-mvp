@@ -38,7 +38,7 @@ import { useStaffAttendanceBulk } from './hooks/useStaffAttendanceBulk';
 import { useStaffAttendanceWrite } from './hooks/useStaffAttendanceWrite';
 import type { StaffAttendance, StaffAttendanceStatus } from './types';
 
-const STATUS_OPTIONS: StaffAttendanceStatus[] = ['出勤', '欠勤', '外出中'];
+const STATUS_OPTIONS: StaffAttendanceStatus[] = ['出勤', '欠勤'];
 
 /**
  * ISO datetime → "HH:MM" (JST)

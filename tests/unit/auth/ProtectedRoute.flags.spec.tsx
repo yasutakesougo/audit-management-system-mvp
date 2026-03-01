@@ -79,7 +79,6 @@ const defaultFlags: FeatureFlagSnapshot = {
   schedulesWeekV2: false,
   icebergPdca: false,
   staffAttendance: false,
-  appShellVsCode: false,
   todayOps: false,
 };
 

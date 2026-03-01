@@ -309,7 +309,7 @@ function openPrintView(data: SupportPlanForm, title: string) {
   table.kv th, table.kv td { border: 1px solid #bbb; vertical-align: top; padding: 6pt 8pt; word-break: break-word; }
   table.kv th { background: #f8f9fa; width: 30%; font-size: 10.5pt; }
   table.kv td { width: 70%; font-size: 10pt; line-height: 1.6; }
-  tr.section th { background: #e8f0fe; font-weight: 700; text-align: center; font-size: 11pt; color: #1565c0; }
+  tr.section th { background: #E8F0E4; font-weight: 700; text-align: center; font-size: 11pt; color: #3D6B3C; }
   .signatures { display: grid; grid-template-columns: 1fr 1fr; gap: 8pt; margin: 20pt 0; }
   .signatures .box { border: 1px solid #999; min-height: 40pt; position: relative; padding: 6pt; }
   .signatures .box h3 { font-size: 10pt; margin: 0; }

@@ -1,5 +1,5 @@
-import { createTheme, type Theme } from '@mui/material/styles';
 import type { UserSettings } from '@/features/settings/settingsModel';
+import { createTheme, type Theme } from '@mui/material/styles';
 
 /**
  * Density spacing map (Phase 5 - local definition)
@@ -28,27 +28,27 @@ const fontSizeMap = {
  */
 const colorPresetMap = {
   default: {
-    primary: '#1976d2',      // MUI Blue
-    secondary: '#dc004e',    // MUI Pink
+    primary: '#5B8C5A',      // Sage Green
+    secondary: '#6B7280',    // Neutral Gray
   },
   highContrast: {
     primary: '#000000',      // Black
     secondary: '#ffffff',    // White
   },
   custom: {
-    primary: '#1976d2',      // Placeholder - will be overridden in Phase 7.2 v2
-    secondary: '#dc004e',
+    primary: '#5B8C5A',      // Placeholder - will be overridden in Phase 7.2 v2
+    secondary: '#6B7280',
   },
 } as const;
 
 /**
  * Creates MUI theme with user settings (density, fontSize, etc.)
- * 
+ *
  * Pure function - no side effects, easy to test
- * 
+ *
  * @param settings - User settings from SettingsContext
  * @returns MUI Theme object with density-aware spacing
- * 
+ *
  * @example
  * ```typescript
  * const theme = createAppTheme({ density: 'compact', ... });
@@ -58,7 +58,7 @@ const colorPresetMap = {
 export function createAppTheme(settings: UserSettings): Theme {
   const densityBase = densitySpacingMap[settings.density];
   const baseFontSize = fontSizeMap[settings.fontSize];
-  
+
   // Fallback to 'default' preset if colorPreset is not specified
   const safePresetKey = settings.colorPreset ?? 'default';
   const colorPreset = colorPresetMap[safePresetKey] ?? colorPresetMap.default;

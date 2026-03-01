@@ -1,4 +1,4 @@
-import { test, expect } from '@playwright/test';
+import { expect, test } from '@playwright/test';
 
 test.describe('ISP Editor — smoke', () => {
   test.beforeEach(async ({ page }) => {
@@ -28,15 +28,15 @@ test.describe('ISP Editor — smoke', () => {
   });
 
   test('copy from previous fills textarea and shows confirmation', async ({ page }) => {
-    // 長期目標タブがデフォルト
-    const copyBtn = page.getByRole('button', { name: /前回から引用/ });
+    // 長期目標タブがデフォルト — aria-label は '前回の長期目標を引用'
+    const copyBtn = page.getByRole('button', { name: /前回の.*を引用/ });
     await copyBtn.click();
 
-    // 引用済の確認表示
-    await expect(page.getByRole('button', { name: /引用済/ })).toBeVisible();
+    // 引用済の確認表示 — ボタンテキストが「引用済」に変わる
+    await expect(copyBtn).toContainText('引用済');
 
     // textareaに前回の内容が入る
-    const textarea = page.getByRole('textbox');
+    const textarea = page.getByRole('textbox', { name: /長期目標/ });
     await expect(textarea).not.toHaveValue('');
   });
 
@@ -53,7 +53,7 @@ test.describe('ISP Editor — smoke', () => {
 
   test('diff preview toggle works', async ({ page }) => {
     // まず引用してテキストを入れる
-    await page.getByRole('button', { name: /前回から引用/ }).click();
+    await page.getByRole('button', { name: /前回の.*を引用/ }).click();
 
     const diffToggle = page.getByRole('button', { name: /差分プレビュー/ });
 
@@ -86,7 +86,7 @@ test.describe('ISP Editor — smoke', () => {
   });
 
   test('textarea is keyboard-focusable', async ({ page }) => {
-    const textarea = page.getByRole('textbox');
+    const textarea = page.getByRole('textbox', { name: /長期目標/ });
     await textarea.focus();
     await expect(textarea).toBeFocused();
 

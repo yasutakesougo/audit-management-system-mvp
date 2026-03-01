@@ -111,7 +111,7 @@ export default function UserForm({ mode, initial, onDone }: UserFormProps) {
       <label className="flex flex-col gap-1 text-sm">
         <span className="font-medium text-gray-700">氏名 (Title)</span>
         <input
-          className="rounded-md border border-gray-300 px-3 py-2 shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+          className="rounded-md border border-gray-300 px-3 py-2 shadow-sm focus:border-emerald-600 focus:outline-none focus:ring-1 focus:ring-emerald-600"
           value={title}
           onChange={handleTitleChange}
           required
@@ -121,7 +121,7 @@ export default function UserForm({ mode, initial, onDone }: UserFormProps) {
       <label className="flex flex-col gap-1 text-sm">
         <span className="font-medium text-gray-700">ふりがな</span>
         <input
-          className="rounded-md border border-gray-300 px-3 py-2 shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+          className="rounded-md border border-gray-300 px-3 py-2 shadow-sm focus:border-emerald-600 focus:outline-none focus:ring-1 focus:ring-emerald-600"
           value={furigana}
           onChange={(event) => setFurigana(event.target.value)}
         />
@@ -131,7 +131,7 @@ export default function UserForm({ mode, initial, onDone }: UserFormProps) {
         <label className="flex flex-col gap-1 text-sm">
           <span className="font-medium text-gray-700">電話番号</span>
           <input
-            className="rounded-md border border-gray-300 px-3 py-2 shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+            className="rounded-md border border-gray-300 px-3 py-2 shadow-sm focus:border-emerald-600 focus:outline-none focus:ring-1 focus:ring-emerald-600"
             value={phone}
             onChange={(event) => setPhone(event.target.value)}
           />
@@ -139,7 +139,7 @@ export default function UserForm({ mode, initial, onDone }: UserFormProps) {
         <label className="flex flex-col gap-1 text-sm">
           <span className="font-medium text-gray-700">メールアドレス</span>
           <input
-            className="rounded-md border border-gray-300 px-3 py-2 shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+            className="rounded-md border border-gray-300 px-3 py-2 shadow-sm focus:border-emerald-600 focus:outline-none focus:ring-1 focus:ring-emerald-600"
             value={email}
             onChange={handleEmailChange}
           />
@@ -149,7 +149,7 @@ export default function UserForm({ mode, initial, onDone }: UserFormProps) {
       <label className="inline-flex items-center gap-2 text-sm font-medium text-gray-700">
         <input
           type="checkbox"
-          className="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
+          className="h-4 w-4 rounded border-gray-300 text-emerald-600 focus:ring-emerald-600"
           checked={isActive}
           onChange={(event) => setIsActive(event.target.checked)}
         />
@@ -159,7 +159,7 @@ export default function UserForm({ mode, initial, onDone }: UserFormProps) {
       <div className="flex gap-2">
         <button
           type="submit"
-          className="inline-flex items-center justify-center rounded-md bg-indigo-600 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 disabled:opacity-60"
+          className="inline-flex items-center justify-center rounded-md bg-emerald-600 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-emerald-700 focus:outline-none focus:ring-2 focus:ring-emerald-600 focus:ring-offset-2 disabled:opacity-60"
           disabled={busy}
         >
           {busy ? '保存中…' : submitLabel}

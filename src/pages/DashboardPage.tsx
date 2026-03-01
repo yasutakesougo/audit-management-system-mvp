@@ -545,11 +545,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ audience = 'staff' }) => 
     // 職員タブのデータ
     const staffTabData = {
       staffAvailability,  // ✨ Phase B で計算済み
-      absentStaff: attendanceSummary.outStaffNames.map((name, index) => ({
-        id: `out-staff-${index}`,
-        name,
-        reason: '外出', // TODO: 実データから取得
-      })),
+      absentStaff: [], // 外出中 status removed (Issue 1-1)
       lateOrAdjustStaff: [], // TODO: 実データから取得
     };
 

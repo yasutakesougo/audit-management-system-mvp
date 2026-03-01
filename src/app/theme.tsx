@@ -106,26 +106,26 @@ const base: ThemeOptions = {
           },
         }),
         outlinedPrimary: ({ theme }) => ({
-          color: theme.palette.primary.dark ?? '#0d47a1',
-          borderColor: theme.palette.primary.dark ?? '#0d47a1',
+          color: theme.palette.primary.dark,
+          borderColor: theme.palette.primary.dark,
           backgroundColor: theme.palette.mode === 'dark'
             ? alpha(theme.palette.primary.dark ?? theme.palette.primary.main, 0.12)
             : theme.palette.common.white,
           '&.MuiButton-sizeSmall': {
-            color: theme.palette.primary.dark ?? '#0d47a1',
-            borderColor: theme.palette.primary.dark ?? '#0d47a1',
+            color: theme.palette.primary.dark,
+            borderColor: theme.palette.primary.dark,
             fontWeight: 600,
           },
           '&[aria-pressed="false"]': {
             backgroundColor: theme.palette.common.white,
           },
           '&:hover': {
-            borderColor: theme.palette.primary.dark ?? '#0d47a1',
+            borderColor: theme.palette.primary.dark,
             backgroundColor: theme.palette.action.hover,
           },
           '&:active': {
-            color: theme.palette.primary.dark ?? '#0d47a1',
-            borderColor: theme.palette.primary.dark ?? '#0d47a1',
+            color: theme.palette.primary.dark,
+            borderColor: theme.palette.primary.dark,
             backgroundColor: theme.palette.action.selected,
           },
           '&.Mui-disabled': {
@@ -144,7 +144,7 @@ const base: ThemeOptions = {
     MuiListItemButton: { styleOverrides: { root: { minHeight: 48, py: 1.5 } } },
     MuiMenuItem: { styleOverrides: { root: { minHeight: 48, py: 1.5 } } },
     MuiTab: { styleOverrides: { root: { minHeight: 48 } } },
-    MuiCssBaseline: { styleOverrides: `*:focus-visible{outline:3px solid #0078d4;outline-offset:2px}` },
+    MuiCssBaseline: { styleOverrides: `*:focus-visible{outline:3px solid #5B8C5A;outline-offset:2px}` },
   },
 } as const;
 
@@ -177,9 +177,9 @@ export const ThemeRoot: React.FC<{ children: React.ReactNode }> = ({ children })
         mode === 'dark'
           ? {
               mode: 'dark',
-              primary: { main: '#7BB8FF', dark: '#5A9FDE' },
-              secondary: { main: '#7AD48A', dark: '#5AB36A' },
-              info: { main: '#58A6FF', contrastText: '#0A1929' },
+              primary: { main: '#86C485', dark: '#6BA36A' },
+              secondary: { main: '#9CA3AF', dark: '#6B7280' },
+              info: { main: '#86C485', contrastText: '#0A1929' },
               background: {
                 default: '#0D1117',  // GitHub dark base
                 paper: '#161B22',    // Card backgrounds
@@ -191,13 +191,13 @@ export const ThemeRoot: React.FC<{ children: React.ReactNode }> = ({ children })
             }
           : {
               mode: 'light',
-              primary: { main: '#2C6FB7', light: '#E6F0FA', dark: '#1F4E85' },
-              secondary: { main: '#4A5568', contrastText: '#ffffff' },
-              info: { main: '#2C6FB7', dark: '#1F4E85', contrastText: '#ffffff' },
-              warning: { main: '#C89B3C' },
+              primary: { main: '#5B8C5A', light: '#E8F0E4', dark: '#3D6B3C' },
+              secondary: { main: '#6B7280', contrastText: '#ffffff' },
+              info: { main: '#5B8C5A', dark: '#3D6B3C', contrastText: '#ffffff' },
+              warning: { main: '#D4A843' },
               error: { main: '#C94A4A' },
-              background: { default: '#F6F8FA', paper: '#FFFFFF' },
-              text: { primary: '#1F2933', secondary: '#4A5568' },
+              background: { default: '#F5F7F4', paper: '#FFFFFF' },
+              text: { primary: '#1F2933', secondary: '#4B5563' },
               divider: 'rgba(0,0,0,0.08)',
             },
       ...base,

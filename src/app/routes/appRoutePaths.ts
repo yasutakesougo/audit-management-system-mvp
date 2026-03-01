@@ -14,6 +14,7 @@ export const APP_ROUTE_PATHS = [
   'compliance',
   'support-plan-guide',
   'isp-editor',
+  'isp-editor/:userId',
   'handoff-timeline',
   'meeting-minutes',
   'meeting-minutes/new',

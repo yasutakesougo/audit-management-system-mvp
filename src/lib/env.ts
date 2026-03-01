@@ -387,8 +387,7 @@ export const isStaffAttendanceEnabled = (envOverride?: EnvRecord): boolean => {
 export const isIcebergPdcaEnabled = (envOverride?: EnvRecord): boolean =>
   readBool('VITE_FEATURE_ICEBERG_PDCA', false, envOverride);
 
-export const isAppShellVsCodeEnabled = (envOverride?: EnvRecord): boolean =>
-  readBool('VITE_FEATURE_APPSHELL_VSCODE', false, envOverride);
+
 
 export const isTodayOpsFeatureEnabled = (envOverride?: EnvRecord): boolean =>
   readBool('VITE_FEATURE_TODAY_OPS', false, envOverride);

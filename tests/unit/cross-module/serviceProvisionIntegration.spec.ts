@@ -1,19 +1,37 @@
 import { describe, expect, it } from 'vitest';
 
 import {
-  buildDailyUserSnapshot,
-  detectCrossModuleIssues,
+    buildDailyUserSnapshot,
+    detectCrossModuleIssues,
 } from '@/features/cross-module/dailyUserSnapshot';
-import type {
-  DailyUserSnapshot,
-  DailyUserSnapshotInput,
-  ServiceProvisionSummary,
-} from '@/features/cross-module/types';
 import {
-  toProvisionSummary,
-  EMPTY_PROVISION_SUMMARY,
+    EMPTY_PROVISION_SUMMARY,
+    toProvisionSummary,
 } from '@/features/cross-module/serviceProvisionSnapshot';
+import type {
+    DailyUserSnapshot,
+    DailyUserSnapshotInput,
+    ServiceProvisionSummary,
+} from '@/features/cross-module/types';
 import type { ServiceProvisionRecord } from '@/features/service-provision/domain/types';
+
+const DEFAULT_ADDITIONS = {
+  transport: false,
+  meal: false,
+  bath: false,
+  extended: false,
+  absentSupport: false,
+};
+
+/** Helper: 最小の hasRecord: true サマリを生成 */
+const mkProvision = (overrides: Partial<Omit<Extract<ServiceProvisionSummary, { hasRecord: true }>, 'hasRecord'>> = {}): ServiceProvisionSummary => ({
+  hasRecord: true,
+  status: '提供',
+  startHHMM: null,
+  endHHMM: null,
+  additions: DEFAULT_ADDITIONS,
+  ...overrides,
+} as ServiceProvisionSummary);
 
 // ─── toProvisionSummary ──────────────────────────────────────
 
@@ -39,6 +57,7 @@ describe('toProvisionSummary', () => {
     const summary = toProvisionSummary(baseRecord);
 
     expect(summary.hasRecord).toBe(true);
+    if (!summary.hasRecord) return; // narrow
     expect(summary.status).toBe('提供');
     expect(summary.startHHMM).toBe(930);
     expect(summary.endHHMM).toBe(1530);
@@ -49,6 +68,7 @@ describe('toProvisionSummary', () => {
 
   it('メモプレビューは50文字で切り捨て', () => {
     const summary = toProvisionSummary(baseRecord);
+    if (!summary.hasRecord) return; // narrow
 
     expect(summary.notePreview).toBeDefined();
     expect(summary.notePreview!.length).toBeLessThanOrEqual(50);
@@ -56,6 +76,7 @@ describe('toProvisionSummary', () => {
 
   it('メモが空ならプレビューはundefined', () => {
     const summary = toProvisionSummary({ ...baseRecord, note: '' });
+    if (!summary.hasRecord) return; // narrow
     expect(summary.notePreview).toBeUndefined();
   });
 });
@@ -81,10 +102,7 @@ describe('detectCrossModuleIssues — ServiceProvision rules', () => {
     const snapshot: DailyUserSnapshot = {
       ...base,
       attendanceStatus: '当日欠席',
-      serviceProvision: {
-        hasRecord: true,
-        status: '提供',
-      },
+      serviceProvision: mkProvision({ status: '提供' }),
     };
 
     const issues = detectCrossModuleIssues(snapshot);
@@ -101,10 +119,7 @@ describe('detectCrossModuleIssues — ServiceProvision rules', () => {
     const snapshot: DailyUserSnapshot = {
       ...base,
       attendanceStatus: '当日欠席',
-      serviceProvision: {
-        hasRecord: true,
-        status: '欠席',
-      },
+      serviceProvision: mkProvision({ status: '欠席' }),
     };
 
     const issues = detectCrossModuleIssues(snapshot);
@@ -145,10 +160,7 @@ describe('detectCrossModuleIssues — ServiceProvision rules', () => {
     const snapshot: DailyUserSnapshot = {
       ...base,
       attendanceStatus: '退所済',
-      serviceProvision: {
-        hasRecord: true,
-        status: '提供',
-      },
+      serviceProvision: mkProvision({ status: '提供' }),
     };
 
     const issues = detectCrossModuleIssues(snapshot);
@@ -178,20 +190,21 @@ describe('buildDailyUserSnapshot — ServiceProvision integration', () => {
       userId: 'I022',
       userName: 'テスト太郎',
       date: '2026-02-27',
-      serviceProvisionData: {
-        hasRecord: true,
+      serviceProvisionData: mkProvision({
         status: '提供',
         startHHMM: 930,
         endHHMM: 1530,
-      },
+      }),
     };
 
     const snapshot = buildDailyUserSnapshot(input);
 
     expect(snapshot.serviceProvision).toBeDefined();
-    expect(snapshot.serviceProvision!.hasRecord).toBe(true);
-    expect(snapshot.serviceProvision!.status).toBe('提供');
-    expect(snapshot.serviceProvision!.startHHMM).toBe(930);
+    const sp = snapshot.serviceProvision!;
+    expect(sp.hasRecord).toBe(true);
+    if (!sp.hasRecord) return; // narrow
+    expect(sp.status).toBe('提供');
+    expect(sp.startHHMM).toBe(930);
   });
 
   it('serviceProvisionData が未設定ならスナップショットにも反映されない', () => {
@@ -213,10 +226,7 @@ describe('buildDailyUserSnapshot — ServiceProvision integration', () => {
       attendanceData: {
         status: '当日欠席',
       },
-      serviceProvisionData: {
-        hasRecord: true,
-        status: '提供',
-      },
+      serviceProvisionData: mkProvision({ status: '提供' }),
     };
 
     const snapshot = buildDailyUserSnapshot(input);

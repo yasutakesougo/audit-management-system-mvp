@@ -2,15 +2,18 @@
  * B層: ISP比較エディタ ステートフック
  * 状態管理・ロジック・イベントハンドラを集約
  */
-import { useState, useMemo, useCallback, useEffect, useRef } from 'react';
-import type { GoalItem, DiffSegment } from '../data/ispRepo';
+import { useSP } from '@/lib/spClient';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import type { DiffSegment, GoalItem, ISPPlan } from '../data/ispRepo';
 import {
-  DOMAINS,
-  STATUS_STEPS,
-  MOCK_PREVIOUS,
-  createEmptyCurrentPlan,
-  parseYmdLocal,
-  computeDiff,
+    DOMAINS,
+    MOCK_PREVIOUS,
+    STATUS_STEPS,
+    computeDiff,
+    createEmptyCurrentPlan,
+    fetchISPPlans,
+    parseYmdLocal,
+    upsertGoal,
 } from '../data/ispRepo';
 
 export interface DomainCoverage {
@@ -26,8 +29,63 @@ export interface ProgressInfo {
   pct: number;
 }
 
-export function useISPComparisonEditor() {
+export interface UseISPComparisonEditorOptions {
+  userId?: string;
+}
+
+export function useISPComparisonEditor(options: UseISPComparisonEditorOptions = {}) {
+  const { userId } = options;
+  const sp = useSP();
+
+  /* ── データフェッチ状態 ── */
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<Error | null>(null);
+  const [saving, setSaving] = useState(false);
+  const [previousPlan, setPreviousPlan] = useState<ISPPlan>(MOCK_PREVIOUS);
+
   const [currentPlan, setCurrentPlan] = useState(createEmptyCurrentPlan);
+
+  /* ── SharePoint データ取得 ── */
+  useEffect(() => {
+    if (!userId || !sp?.listItems) {
+      setLoading(false);
+      return;
+    }
+
+    const abortController = new AbortController();
+    let cancelled = false;
+
+    (async () => {
+      setLoading(true);
+      setError(null);
+      try {
+        const result = await fetchISPPlans(sp, userId, abortController.signal);
+
+        if (cancelled) return;
+
+        // SP からデータが取得できた場合はそれを使用、
+        // おもけモード（空配列返却）の場合はモックにフォールバック
+        if (result.previous) {
+          setPreviousPlan(result.previous);
+        }
+        if (result.current) {
+          setCurrentPlan(result.current);
+        }
+      } catch (e) {
+        if (!cancelled) {
+          console.warn('[ISP Editor] SP fetch failed, using mock data:', e);
+          setError(e as Error);
+        }
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+      abortController.abort();
+    };
+  }, [userId, sp]);
   const [showDiff, setShowDiff] = useState(true);
   const [showSmart, setShowSmart] = useState(false);
   const [activeGoalId, setActiveGoalId] = useState('g1');
@@ -78,8 +136,8 @@ export function useISPComparisonEditor() {
   );
 
   const prevGoal: GoalItem | undefined = useMemo(
-    () => MOCK_PREVIOUS.goals.find((p) => p.id === activeGoalId),
-    [activeGoalId],
+    () => previousPlan.goals.find((p) => p.id === activeGoalId),
+    [activeGoalId, previousPlan.goals],
   );
 
   /** 差分計算 — showDiff ON かつテキストがある場合のみ */
@@ -91,7 +149,7 @@ export function useISPComparisonEditor() {
   /* ── 改善3: コピー + cleanupTimer ── */
   const copyFromPrevious = useCallback(
     (goalId: string) => {
-      const prev = MOCK_PREVIOUS.goals.find((g) => g.id === goalId);
+      const prev = previousPlan.goals.find((g) => g.id === goalId);
       if (!prev) return;
       setCurrentPlan((p) => ({
         ...p,
@@ -103,7 +161,7 @@ export function useISPComparisonEditor() {
       if (resetTimerRef.current) window.clearTimeout(resetTimerRef.current);
       resetTimerRef.current = window.setTimeout(() => setCopiedId(null), 1500);
     },
-    [],
+    [previousPlan.goals],
   );
 
   const updateGoalText = useCallback((goalId: string, text: string) => {
@@ -136,6 +194,27 @@ export function useISPComparisonEditor() {
   const toggleDiff = useCallback(() => setShowDiff((v) => !v), []);
   const toggleSmart = useCallback(() => setShowSmart((v) => !v), []);
 
+  /* ── 保存 ── */
+  const savePlan = useCallback(async () => {
+    if (!userId || !sp?.spFetch) return;
+    setSaving(true);
+    try {
+      const meta = {
+        planPeriod: currentPlan.planPeriod,
+        planStatus: currentPlan.status,
+        certExpiry: currentPlan.certExpiry,
+      };
+      await Promise.all(
+        currentPlan.goals.map((goal) => upsertGoal(sp, goal, userId, meta)),
+      );
+    } catch (e) {
+      console.error('[ISP Editor] Save failed:', e);
+      setError(e as Error);
+    } finally {
+      setSaving(false);
+    }
+  }, [userId, sp, currentPlan]);
+
   return {
     // state
     currentPlan,
@@ -144,6 +223,9 @@ export function useISPComparisonEditor() {
     activeGoalId,
     copiedId,
     sidebarOpen,
+    loading,
+    error,
+    saving,
     // derived
     daysRemaining,
     progress,
@@ -151,7 +233,7 @@ export function useISPComparisonEditor() {
     prevGoal,
     diff,
     domainCoverage,
-    previousPlan: MOCK_PREVIOUS,
+    previousPlan,
     // actions
     setActiveGoalId,
     copyFromPrevious,
@@ -160,5 +242,6 @@ export function useISPComparisonEditor() {
     toggleSidebar,
     toggleDiff,
     toggleSmart,
+    savePlan,
   };
 }

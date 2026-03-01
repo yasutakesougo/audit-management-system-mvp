@@ -1,8 +1,15 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { SharePointBehaviorRepository } from '@/features/daily/infra/SharePointBehaviorRepository';
+import type { createSpClient } from '@/lib/spClient';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+
+type SpClient = ReturnType<typeof createSpClient>;
 
 describe('SharePointBehaviorRepository - Prevent 500 on missing required fields', () => {
-  let mockSp: Record<string, unknown>;
+  let mockSp: {
+    getListFieldInternalNames: ReturnType<typeof vi.fn>;
+    spFetch: ReturnType<typeof vi.fn>;
+    [k: string]: unknown;
+  };
 
   beforeEach(() => {
     mockSp = {
@@ -18,7 +25,7 @@ describe('SharePointBehaviorRepository - Prevent 500 on missing required fields'
     );
 
     const repo = new SharePointBehaviorRepository({
-      sp: mockSp,
+      sp: mockSp as unknown as SpClient,
     });
 
     // Act & Assert
@@ -37,7 +44,7 @@ describe('SharePointBehaviorRepository - Prevent 500 on missing required fields'
     );
 
     const repo = new SharePointBehaviorRepository({
-      sp: mockSp,
+      sp: mockSp as unknown as SpClient,
     });
 
     // Act & Assert
@@ -61,7 +68,7 @@ describe('SharePointBehaviorRepository - Prevent 500 on missing required fields'
     );
 
     const repo = new SharePointBehaviorRepository({
-      sp: mockSp,
+      sp: mockSp as unknown as SpClient,
     });
 
     // Act & Assert
@@ -85,7 +92,7 @@ describe('SharePointBehaviorRepository - Prevent 500 on missing required fields'
     );
 
     const repo = new SharePointBehaviorRepository({
-      sp: mockSp,
+      sp: mockSp as unknown as SpClient,
     });
 
     // Act

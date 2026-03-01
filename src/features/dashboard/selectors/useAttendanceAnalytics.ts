@@ -56,10 +56,6 @@ export function useAttendanceAnalytics(
     const finalOnDutyStaff = onDutyStaff > 0 ? onDutyStaff : estimatedOnDutyStaff;
 
     const lateOrShiftAdjust = Math.max(0, Math.round(finalOnDutyStaff * 0.15));
-    const outStaff = Math.max(0, Math.round(finalOnDutyStaff * 0.2));
-    const outStaffNames = staff.slice(0, outStaff).map((member, index) => {
-      return member?.name ?? member?.staffId ?? `職員${index + 1}`;
-    });
 
     // Per-user items for actionable alerts (Today Execution Layer)
     const absenceItems = absenceVisits.map((v) => ({
@@ -79,8 +75,6 @@ export function useAttendanceAnalytics(
       absenceNames,
       onDutyStaff: finalOnDutyStaff,
       lateOrShiftAdjust,
-      outStaff,
-      outStaffNames,
       absenceItems,
       lateOrEarlyItems,
     };

@@ -1,8 +1,8 @@
 /**
  * User Detail Dialog (Phase C-2)
- * 
+ *
  * 目的：利用者の詳細情報をモーダルで表示
- * 
+ *
  * 表示内容：
  * - 利用者の基本情報（名前、ステータス）
  * - 欠席・遅刻理由の詳細
@@ -10,37 +10,39 @@
  * - 本日のバイタル記録（体温、血圧）
  * - ケア・フラグ（水分制限、入浴予定など）
  * - 特記事項（アレルギー、服薬情報）
- * 
+ *
  * データソース：
  * - attendanceSummary（出欠情報）
  * - briefingAlerts（Phase A のアラート情報）
  * - activityRecords（日報からのバイタル情報）
  */
 
-import React from 'react';
-import Dialog from '@mui/material/Dialog';
-import DialogTitle from '@mui/material/DialogTitle';
-import DialogContent from '@mui/material/DialogContent';
-import DialogActions from '@mui/material/DialogActions';
-import Button from '@mui/material/Button';
-import Box from '@mui/material/Box';
-import Typography from '@mui/material/Typography';
-import Stack from '@mui/material/Stack';
-import Chip from '@mui/material/Chip';
+import AccessTimeIcon from '@mui/icons-material/AccessTime';
+import EditNoteIcon from '@mui/icons-material/EditNote';
+import InfoIcon from '@mui/icons-material/Info';
+import LocalHospitalIcon from '@mui/icons-material/LocalHospital';
+import PersonIcon from '@mui/icons-material/Person';
+import PersonOffIcon from '@mui/icons-material/PersonOff';
+import PhoneIcon from '@mui/icons-material/Phone';
+import WarningIcon from '@mui/icons-material/Warning';
+import Alert from '@mui/material/Alert';
 import Avatar from '@mui/material/Avatar';
+import Box from '@mui/material/Box';
+import Button from '@mui/material/Button';
+import Chip from '@mui/material/Chip';
+import Dialog from '@mui/material/Dialog';
+import DialogActions from '@mui/material/DialogActions';
+import DialogContent from '@mui/material/DialogContent';
+import DialogTitle from '@mui/material/DialogTitle';
 import Divider from '@mui/material/Divider';
 import List from '@mui/material/List';
 import ListItem from '@mui/material/ListItem';
-import ListItemText from '@mui/material/ListItemText';
 import ListItemIcon from '@mui/material/ListItemIcon';
-import Alert from '@mui/material/Alert';
-import PersonIcon from '@mui/icons-material/Person';
-import PersonOffIcon from '@mui/icons-material/PersonOff';
-import AccessTimeIcon from '@mui/icons-material/AccessTime';
-import PhoneIcon from '@mui/icons-material/Phone';
-import LocalHospitalIcon from '@mui/icons-material/LocalHospital';
-import WarningIcon from '@mui/icons-material/Warning';
-import InfoIcon from '@mui/icons-material/Info';
+import ListItemText from '@mui/material/ListItemText';
+import Stack from '@mui/material/Stack';
+import Typography from '@mui/material/Typography';
+import React from 'react';
+import { useNavigate } from 'react-router-dom';
 
 /**
  * 利用者のステータス
@@ -178,6 +180,7 @@ export const UserDetailDialog: React.FC<UserDetailDialogProps> = ({
   onClose,
   user,
 }) => {
+  const navigate = useNavigate();
   if (!user) return null;
 
   const config = STATUS_CONFIG[user.status];
@@ -317,6 +320,14 @@ export const UserDetailDialog: React.FC<UserDetailDialogProps> = ({
       </DialogContent>
 
       <DialogActions>
+        <Button
+          startIcon={<EditNoteIcon />}
+          onClick={() => navigate(`/isp-editor/${user.id}`)}
+          color="primary"
+          sx={{ mr: 'auto', minHeight: 44 }}
+        >
+          ISPを確認
+        </Button>
         <Button onClick={onClose} variant="contained">
           閉じる
         </Button>

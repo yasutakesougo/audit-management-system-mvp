@@ -1,28 +1,29 @@
+import { useAnnounce } from '@/a11y/LiveAnnouncer';
+import { TESTIDS } from '@/testids';
+import Loading from '@/ui/components/Loading';
 import Badge from '@mui/material/Badge';
-import Button from '@mui/material/Button';
 import Box from '@mui/material/Box';
+import Button from '@mui/material/Button';
 import Typography from '@mui/material/Typography';
 import type { SxProps, Theme } from '@mui/material/styles';
-import { useAnnounce } from '@/a11y/LiveAnnouncer';
-import Loading from '@/ui/components/Loading';
-import { TESTIDS } from '@/testids';
-import type { ScheduleCategory } from '../domain/types';
-import { SCHEDULE_MONTH_SPACING } from '../constants';
-import { getDayChipSx } from '../theme/dateStyles';
-import { ScheduleEmptyHint } from '../components/ScheduleEmptyHint';
-import { DaySummaryDrawer } from '../components/DaySummaryDrawer';
-import { CreateScheduleDialog, type CreateScheduleDraft } from '../components/CreateScheduleDialog';
 import {
-  useCallback,
-  useEffect,
-  useLayoutEffect,
-  useMemo,
-  useRef,
-  useState,
-  type CSSProperties,
+    useCallback,
+    useEffect,
+    useLayoutEffect,
+    useMemo,
+    useRef,
+    useState,
+    type CSSProperties,
 } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import type { SchedItem } from '../data';import { toDateKey } from '../lib/dateKey';
+import { CreateScheduleDialog, type CreateScheduleDraft } from '../components/CreateScheduleDialog';
+import { DaySummaryDrawer } from '../components/DaySummaryDrawer';
+import { ScheduleEmptyHint } from '../components/ScheduleEmptyHint';
+import { SCHEDULE_MONTH_SPACING } from '../constants';
+import type { SchedItem } from '../data';
+import type { ScheduleCategory } from '../domain/types';
+import { toDateKey } from '../lib/dateKey';
+import { getDayChipSx } from '../theme/dateStyles';
 const WEEKDAY_LABELS = ['月', '火', '水', '木', '金', '土', '日'];
 
 type CalendarDay = {
@@ -271,7 +272,7 @@ export default function MonthPage({ items, loading = false, activeCategory = 'Al
                         {day.day}
                         {day.isToday ? <span style={todayDotStyle} aria-hidden="true" /> : null}
                         {day.isToday ? (
-                          <span style={{ fontSize: isCompact ? 10 : 12, color: '#1e88e5', marginLeft: 4 }}>(今日)</span>
+                          <span style={{ fontSize: isCompact ? 10 : 12, color: '#5B8C5A', marginLeft: 4 }}>(今日)</span>
                         ) : null}
                       </span>
                     </Badge>
@@ -337,7 +338,7 @@ const weekdayHeaderStyle = (index: number): CSSProperties => ({
   textAlign: 'center',
   fontSize: 12,
   fontWeight: 700,
-  color: index === 5 ? '#1e88e5' : index === 6 ? '#d14343' : 'rgba(0,0,0,0.65)',
+  color: index === 5 ? '#5B8C5A' : index === 6 ? '#d14343' : 'rgba(0,0,0,0.65)',
   padding: SCHEDULE_MONTH_SPACING.weekdayHeaderPaddingNormal,
 });
 
@@ -381,7 +382,7 @@ const todayDotStyle: CSSProperties = {
   width: 6,
   height: 6,
   borderRadius: '50%',
-  background: '#1565c0',
+  background: '#5B8C5A',
   display: 'inline-block',
 };
 

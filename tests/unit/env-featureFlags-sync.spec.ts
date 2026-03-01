@@ -8,7 +8,6 @@
  */
 import { resolveFeatureFlags, type FeatureFlagSnapshot } from '@/config/featureFlags';
 import {
-    isAppShellVsCodeEnabled,
     isComplianceFormEnabled,
     isIcebergPdcaEnabled,
     isSchedulesFeatureEnabled,
@@ -31,7 +30,7 @@ const FLAG_RESOLVER_MAP: Record<keyof FeatureFlagSnapshot, (envOverride?: EnvRec
   schedulesWeekV2: isSchedulesWeekV2Enabled,
   icebergPdca: isIcebergPdcaEnabled,
   staffAttendance: isStaffAttendanceEnabled,
-  appShellVsCode: isAppShellVsCodeEnabled,
+
   todayOps: isTodayOpsFeatureEnabled,
 };
 

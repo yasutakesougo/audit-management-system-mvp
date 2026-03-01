@@ -1,29 +1,22 @@
-import _Chip from '@mui/material/Chip';
-import _IconButton from '@mui/material/IconButton';
 import Menu from '@mui/material/Menu';
 import MenuItem from '@mui/material/MenuItem';
 import { useTheme } from '@mui/material/styles';
 import useMediaQuery from '@mui/material/useMediaQuery';
-import _MoreVertIcon from '@mui/icons-material/MoreVert';
-import React, { useCallback, useMemo, useState } from 'react';
 import type { MouseEvent } from 'react';
+import React, { useCallback, useMemo, useState } from 'react';
 
 import { TESTIDS } from '@/testids';
 
-import type { SchedItem } from '../data';
-import { SCHEDULES_DEBUG } from '../debug';
-import { getScheduleStatusMeta as _getScheduleStatusMeta } from '../statusMetadata';
-import { SERVICE_TYPE_COLOR, SERVICE_TYPE_META, normalizeServiceType, type ServiceTypeColor, type ServiceTypeKey } from '../serviceTypeMetadata';
-import { getDayChipSx as _getDayChipSx } from '../theme/dateStyles';
-import { type DateRange } from '../data';
-import { makeRange, useSchedules } from '../hooks/useSchedules';
-import type { ScheduleCategory as _ScheduleCategory } from '@/features/schedules/domain/types';
-import { scheduleCategoryLabels as _scheduleCategoryLabels } from '@/features/schedules/domain/categoryLabels';
 import {
-  WeekServiceSummaryChips,
-  type WeekServiceSummaryItem,
+    WeekServiceSummaryChips,
+    type WeekServiceSummaryItem,
 } from '../components/WeekServiceSummaryChips';
+import type { SchedItem } from '../data';
+import { type DateRange } from '../data';
+import { SCHEDULES_DEBUG } from '../debug';
+import { makeRange, useSchedules } from '../hooks/useSchedules';
 import { toDateKey } from '../lib/dateKey';
+import { SERVICE_TYPE_COLOR, SERVICE_TYPE_META, normalizeServiceType, type ServiceTypeColor, type ServiceTypeKey } from '../serviceTypeMetadata';
 
 export type WeekViewProps = {
   items?: WeekSchedItem[];
@@ -312,7 +305,7 @@ const WeekViewContent = ({ items, loading, onDayClick: _onDayClick, onTimeSlotCl
     weekDays.forEach((day) => {
       map.set(day.iso, []);
     });
-    
+
     // Always log for debugging week view issues
     console.log('[WeekView] 🔍 Grouping logic:', {
       weekDays: weekDays.map(d => ({ iso: d.iso, label: d.label })),
@@ -324,7 +317,7 @@ const WeekViewContent = ({ items, loading, onDayClick: _onDayClick, onTimeSlotCl
         dayKey: dayKeyInTz(parseAsDate(i.start)),
       })),
     });
-    
+
     items.forEach((item) => {
       // Use JST date key instead of UTC slice to prevent wrong day column assignment
       const key = dayKeyInTz(parseAsDate(item.start));
@@ -333,14 +326,14 @@ const WeekViewContent = ({ items, loading, onDayClick: _onDayClick, onTimeSlotCl
       }
       map.get(key)!.push(item);
     });
-    
+
     console.log('[WeekView] 🔍 Grouped result:', {
       mapKeys: Array.from(map.keys()),
       itemsByKey: Object.fromEntries(
         Array.from(map.entries()).map(([k, v]) => [k, v.length])
       ),
     });
-    
+
     return map;
   }, [items, weekDays]);
 
@@ -462,12 +455,12 @@ const WeekViewContent = ({ items, loading, onDayClick: _onDayClick, onTimeSlotCl
                 fontWeight: 700,
                 borderRight: dayIndex < 6 ? '1px solid rgba(15,23,42,0.08)' : 'none',
                 borderBottom: '1px solid rgba(15,23,42,0.08)',
-                backgroundColor: day.iso === todayIso ? '#E3F2FD' : '#fff',
+                backgroundColor: day.iso === todayIso ? '#E8F0E4' : '#fff',
               }}
             >
               <div>{day.label}</div>
               {day.iso === todayIso && (
-                <span style={{ fontSize: 10, color: '#0D47A1', fontWeight: 600 }}>今日</span>
+                <span style={{ fontSize: 10, color: '#3D6B3C', fontWeight: 600 }}>今日</span>
               )}
             </div>
           ))}

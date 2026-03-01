@@ -27,7 +27,7 @@ export type StaffBreakdownRow = {
   earlyLeaveCount: number;
 };
 
-export const ATTENDANCE_STATUS_SET = new Set(['出勤', '外出中', '遅刻', '早退']);
+export const ATTENDANCE_STATUS_SET = new Set(['出勤', '遅刻', '早退']);
 export const ABSENCE_STATUS_SET = new Set(['欠勤']);
 export const LATE_STATUS_SET = new Set(['遅刻']);
 export const EARLY_LEAVE_STATUS_SET = new Set(['早退']);

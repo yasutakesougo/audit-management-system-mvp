@@ -235,9 +235,9 @@ function getStatusStyle(status: ScheduleStatus): {
 			};
 		case 'next':
 			return {
-				cardBorder: 'border-blue-400 shadow-blue-100',
-				statusDot: 'bg-blue-500',
-				statusText: 'text-blue-700'
+				cardBorder: 'border-emerald-400 shadow-emerald-100',
+				statusDot: 'bg-emerald-500',
+				statusText: 'text-emerald-700'
 			};
 		case 'completed':
 			return {
@@ -336,7 +336,7 @@ const NextActionCard: React.FC<NextActionCardProps> = ({
 				<button
 					className={`w-full py-2 px-4 rounded-lg font-medium text-sm transition-colors ${
 						actionConfig.variant === 'primary'
-							? 'bg-blue-600 text-white hover:bg-blue-700'
+							? 'bg-emerald-600 text-white hover:bg-emerald-700'
 							: actionConfig.variant === 'success'
 							? 'bg-green-600 text-white hover:bg-green-700'
 							: actionConfig.variant === 'warning'

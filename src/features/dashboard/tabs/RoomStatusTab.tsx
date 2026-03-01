@@ -1,29 +1,30 @@
-import React, { useState, useMemo } from 'react';
-import {
-  Box,
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableRow,
-  TextField,
-  Select,
-  MenuItem,
-  Button,
-  Card,
-  CardContent,
-  Typography,
-  IconButton,
-  Dialog,
-  DialogTitle,
-  DialogContent,
-  DialogActions,
-  Chip,
-} from '@mui/material';
-import DeleteIcon from '@mui/icons-material/Delete';
 import ClearAllIcon from '@mui/icons-material/ClearAll';
+import DeleteIcon from '@mui/icons-material/Delete';
 import NavigateBeforeIcon from '@mui/icons-material/NavigateBefore';
 import NavigateNextIcon from '@mui/icons-material/NavigateNext';
+import {
+    Box,
+    Button,
+    Card,
+    CardContent,
+    Chip,
+    Dialog,
+    DialogActions,
+    DialogContent,
+    DialogTitle,
+    IconButton,
+    MenuItem,
+    Select,
+    Table,
+    TableBody,
+    TableCell,
+    TableHead,
+    TableRow,
+    TextField,
+    Typography,
+} from '@mui/material';
+import { alpha, useTheme } from '@mui/material/styles';
+import React, { useMemo, useState } from 'react';
 
 export interface Reservation {
   id: number;
@@ -65,6 +66,7 @@ const getDateString = (date: Date): string => {
 };
 
 export const RoomStatusTab: React.FC = () => {
+  const theme = useTheme();
   const today = new Date();
   const todayStr = getDateString(today);
 
@@ -214,13 +216,13 @@ export const RoomStatusTab: React.FC = () => {
             flex: 1,
             fontSize: '0.95rem',
             fontWeight: activeTab === 'today' ? '900' : '600',
-            color: activeTab === 'today' ? '#4f46e5' : '#9ca3af',
-            borderBottom: activeTab === 'today' ? '3px solid #4f46e5' : 'none',
+            color: activeTab === 'today' ? theme.palette.primary.dark : '#9ca3af',
+            borderBottom: activeTab === 'today' ? `3px solid ${theme.palette.primary.dark}` : 'none',
             borderRadius: 0,
             textTransform: 'none',
             py: 2.5,
-            '&:hover': { bgcolor: '#f9fafb', color: '#4f46e5' },
-            background: activeTab === 'today' ? '#f0f4ff' : 'transparent',
+            '&:hover': { bgcolor: '#f9fafb', color: theme.palette.primary.dark },
+            background: activeTab === 'today' ? theme.palette.primary.light : 'transparent',
           }}
         >
           📅 本日の状況
@@ -231,13 +233,13 @@ export const RoomStatusTab: React.FC = () => {
             flex: 1,
             fontSize: '0.95rem',
             fontWeight: activeTab === 'month' ? '900' : '600',
-            color: activeTab === 'month' ? '#4f46e5' : '#9ca3af',
-            borderBottom: activeTab === 'month' ? '3px solid #4f46e5' : 'none',
+            color: activeTab === 'month' ? theme.palette.primary.dark : '#9ca3af',
+            borderBottom: activeTab === 'month' ? `3px solid ${theme.palette.primary.dark}` : 'none',
             borderRadius: 0,
             textTransform: 'none',
             py: 2.5,
-            '&:hover': { bgcolor: '#f9fafb', color: '#4f46e5' },
-            background: activeTab === 'month' ? '#f0f4ff' : 'transparent',
+            '&:hover': { bgcolor: '#f9fafb', color: theme.palette.primary.dark },
+            background: activeTab === 'month' ? theme.palette.primary.light : 'transparent',
           }}
         >
           🗓️ 月間スケジュール
@@ -251,7 +253,7 @@ export const RoomStatusTab: React.FC = () => {
           <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
             {/* Status Table */}
             <Card sx={{ overflow: 'hidden', boxShadow: '0 4px 6px rgba(0, 0, 0, 0.05)' }}>
-              <Box sx={{ bgcolor: '#4f46e5', p: 2, color: 'white', fontWeight: 'bold', fontSize: '14px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <Box sx={{ bgcolor: theme.palette.primary.dark, p: 2, color: 'white', fontWeight: 'bold', fontSize: '14px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                   <span>📍</span>
                   <span>{formatDateDisplay(selectedDate)}</span>
@@ -313,7 +315,7 @@ export const RoomStatusTab: React.FC = () => {
             </Card>
 
             {/* Details */}
-            <Card sx={{ borderLeft: '4px solid #4f46e5', boxShadow: '0 4px 6px rgba(0, 0, 0, 0.05)' }}>
+            <Card sx={{ borderLeft: `4px solid ${theme.palette.primary.dark}`, boxShadow: '0 4px 6px rgba(0, 0, 0, 0.05)' }}>
               <CardContent>
                 <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3, pb: 2, borderBottom: '1px solid #e5e7eb' }}>
                   <Typography variant="h6" fontWeight="900" sx={{ display: 'flex', alignItems: 'center', gap: 1, color: '#1f2937' }}>
@@ -373,8 +375,8 @@ export const RoomStatusTab: React.FC = () => {
                             }}
                           >
                             <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, flex: 1, minWidth: 0 }}>
-                              <Box sx={{ bgcolor: '#f0f4ff', borderRadius: '6px', px: 1.5, py: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', minWidth: '44px' }}>
-                                <Typography variant="caption" sx={{ fontWeight: '900', color: '#4f46e5', fontSize: '10px' }}>
+                              <Box sx={{ bgcolor: theme.palette.primary.light, borderRadius: '6px', px: 1.5, py: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', minWidth: '44px' }}>
+                                <Typography variant="caption" sx={{ fontWeight: '900', color: theme.palette.primary.dark, fontSize: '10px' }}>
                                   {res.slot}
                                 </Typography>
                               </Box>
@@ -427,10 +429,10 @@ export const RoomStatusTab: React.FC = () => {
 
           {/* Right: Form */}
           <Box>
-            <Card sx={{ position: 'sticky', top: 16, borderTop: '4px solid #4f46e5', boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1)' }}>
+            <Card sx={{ position: 'sticky', top: 16, borderTop: `4px solid ${theme.palette.primary.dark}`, boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1)' }}>
               <CardContent>
                 <Typography variant="h6" fontWeight="900" sx={{ mb: 3, display: 'flex', alignItems: 'center', gap: 1, color: '#1f2937' }}>
-                  <Box sx={{ bgcolor: '#e0e7ff', color: '#4f46e5', width: 24, height: 24, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '12px', fontWeight: 'bold' }}>
+                  <Box sx={{ bgcolor: alpha(theme.palette.primary.main, 0.15), color: theme.palette.primary.dark, width: 24, height: 24, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '12px', fontWeight: 'bold' }}>
                     ＋
                   </Box>
                   予約の登録・更新
@@ -525,22 +527,22 @@ export const RoomStatusTab: React.FC = () => {
                     variant="contained"
                     fullWidth
                     sx={{
-                      bgcolor: submitSuccess ? '#10b981' : '#4f46e5',
+                      bgcolor: submitSuccess ? theme.palette.success.main : theme.palette.primary.dark,
                       fontWeight: 'bold',
                       py: 1.8,
                       fontSize: '13px',
                       borderRadius: '6px',
-                      '&:hover': { bgcolor: submitSuccess ? '#059669' : '#4338ca' },
+                      '&:hover': { bgcolor: submitSuccess ? theme.palette.success.dark : theme.palette.primary.main },
                       transition: 'all 0.3s ease',
-                      boxShadow: submitSuccess ? '0 4px 6px rgba(16, 185, 129, 0.3)' : '0 4px 6px rgba(79, 70, 229, 0.3)',
+                      boxShadow: submitSuccess ? `0 4px 6px ${alpha(theme.palette.success.main, 0.3)}` : `0 4px 6px ${alpha(theme.palette.primary.dark, 0.3)}`,
                     }}
                   >
                     {submitSuccess ? '✅ 保存完了しました' : 'この内容で保存する'}
                   </Button>
                 </Box>
 
-                <Box sx={{ mt: 4, p: 2, bgcolor: '#f0f4ff', borderRadius: '6px', border: '1px solid #e0e7ff' }}>
-                  <Typography variant="caption" sx={{ color: '#4f46e5', fontSize: '11px', lineHeight: 1.6, display: 'block' }}>
+                <Box sx={{ mt: 4, p: 2, bgcolor: theme.palette.primary.light, borderRadius: '6px', border: `1px solid ${alpha(theme.palette.primary.main, 0.15)}` }}>
+                  <Typography variant="caption" sx={{ color: theme.palette.primary.dark, fontSize: '11px', lineHeight: 1.6, display: 'block' }}>
                     💡 カレンダーの日付をクリックすると、その日の予定を素早く表示・編集できます。
                   </Typography>
                 </Box>
@@ -566,7 +568,7 @@ export const RoomStatusTab: React.FC = () => {
                   sx={{
                     bgcolor: 'white',
                     boxShadow: '0 1px 2px rgba(0, 0, 0, 0.05)',
-                    '&:hover': { bgcolor: '#f0f4ff' },
+                    '&:hover': { bgcolor: theme.palette.primary.light },
                     fontSize: '12px',
                   }}
                 >
@@ -585,18 +587,18 @@ export const RoomStatusTab: React.FC = () => {
                   sx={{
                     bgcolor: currentMonthDate.getFullYear() === today.getFullYear() &&
                       currentMonthDate.getMonth() === today.getMonth()
-                      ? '#4f46e5'
+                      ? theme.palette.primary.dark
                       : 'white',
                     color: currentMonthDate.getFullYear() === today.getFullYear() &&
                       currentMonthDate.getMonth() === today.getMonth()
                       ? 'white'
-                      : '#4f46e5',
+                      : theme.palette.primary.dark,
                     fontSize: '11px',
                     fontWeight: 'bold',
                     textTransform: 'none',
                     boxShadow: currentMonthDate.getFullYear() === today.getFullYear() &&
                       currentMonthDate.getMonth() === today.getMonth()
-                      ? '0 2px 4px rgba(79, 70, 229, 0.3)'
+                      ? `0 2px 4px ${alpha(theme.palette.primary.dark, 0.3)}`
                       : '0 1px 2px rgba(0, 0, 0, 0.05)',
                   }}
                 >
@@ -608,7 +610,7 @@ export const RoomStatusTab: React.FC = () => {
                   sx={{
                     bgcolor: 'white',
                     boxShadow: '0 1px 2px rgba(0, 0, 0, 0.05)',
-                    '&:hover': { bgcolor: '#f0f4ff' },
+                    '&:hover': { bgcolor: theme.palette.primary.light },
                     fontSize: '12px',
                   }}
                 >
@@ -626,13 +628,13 @@ export const RoomStatusTab: React.FC = () => {
                   key={`header-${day}`}
                   sx={{
                     p: 1.5,
-                    bgcolor: idx === 0 ? '#fef2f2' : idx === 6 ? '#f0f4ff' : '#f3f4f6',
+                    bgcolor: idx === 0 ? '#fef2f2' : idx === 6 ? theme.palette.primary.light : '#f3f4f6',
                     fontWeight: 'bold',
                     textAlign: 'center',
                     fontSize: '10px',
                     textTransform: 'uppercase',
                     letterSpacing: '0.5px',
-                    color: idx === 0 ? '#dc2626' : idx === 6 ? '#2563eb' : '#374151',
+                    color: idx === 0 ? '#dc2626' : idx === 6 ? theme.palette.primary.dark : '#374151',
                     borderRight: idx < 6 ? '1px solid #e5e7eb' : 'none',
                     borderBottom: '1px solid #e5e7eb',
                   }}
@@ -654,7 +656,7 @@ export const RoomStatusTab: React.FC = () => {
                     }}
                     sx={{
                       p: 1,
-                      bgcolor: dayInfo.date === todayStr ? '#f0f4ff' : 'white',
+                      bgcolor: dayInfo.date === todayStr ? theme.palette.primary.light : 'white',
                       borderRight: '1px solid #e5e7eb',
                       borderBottom: '1px solid #e5e7eb',
                       minHeight: '96px',
@@ -665,14 +667,14 @@ export const RoomStatusTab: React.FC = () => {
                       overflow: 'hidden',
                       position: 'relative',
                       '&:hover': {
-                        bgcolor: dayInfo.date !== todayStr ? '#f9fafb' : '#f0f4ff',
-                        borderColor: '#4f46e5',
-                        boxShadow: 'inset 0 0 0 2px rgba(79, 70, 229, 0.2)',
+                        bgcolor: dayInfo.date !== todayStr ? '#f9fafb' : theme.palette.primary.light,
+                        borderColor: theme.palette.primary.dark,
+                        boxShadow: `inset 0 0 0 2px ${alpha(theme.palette.primary.dark, 0.2)}`,
                       },
                       ...(dayInfo.date === selectedDate && {
-                        borderColor: '#4f46e5',
-                        boxShadow: 'inset 0 0 0 2px #4f46e5',
-                        bgcolor: '#f0f4ff',
+                        borderColor: theme.palette.primary.dark,
+                        boxShadow: `inset 0 0 0 2px ${theme.palette.primary.dark}`,
+                        bgcolor: theme.palette.primary.light,
                       }),
                     }}
                   >
@@ -687,7 +689,7 @@ export const RoomStatusTab: React.FC = () => {
                         width: '28px',
                         height: '28px',
                         borderRadius: '50%',
-                        bgcolor: dayInfo.date === todayStr ? '#4f46e5' : 'transparent',
+                        bgcolor: dayInfo.date === todayStr ? theme.palette.primary.dark : 'transparent',
                         color: dayInfo.date === todayStr ? 'white' : '#1f2937',
                         fontSize: '11px',
                         fontFamily: 'monospace',
