@@ -1,10 +1,10 @@
-import { useEffect, useMemo, useState } from 'react';
-import { readOptionalEnv, isE2eMsalMockEnabled, shouldSkipLogin } from '@/lib/env';
-import { getRuntimeEnv as getRuntimeEnvRoot } from '@/env';
-import { fetchMyGroupIds } from '@/features/schedules/data/graphAdapter';
-import { useAuth } from '@/auth/useAuth';
+import { fetchMyGroupIds } from '@/auth/fetchMyGroupIds';
 import { GRAPH_RESOURCE } from '@/auth/msalConfig';
 import type { Role } from '@/auth/roles';
+import { useAuth } from '@/auth/useAuth';
+import { getRuntimeEnv as getRuntimeEnvRoot } from '@/env';
+import { isE2eMsalMockEnabled, readOptionalEnv, shouldSkipLogin } from '@/lib/env';
+import { useEffect, useMemo, useState } from 'react';
 
 type UserAuthz = {
   role: Role;
