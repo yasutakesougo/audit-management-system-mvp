@@ -91,7 +91,8 @@ const AttendancePanel = (): JSX.Element => {
     setTempDraftByUser((prev) => ({ ...prev, [savedUserCode]: rounded }));
     closeTempDialog();
     // Persist to SharePoint via nurse observation upsert
-    void actions.saveTemperature(savedUserCode, rounded);
+    // C1.7: pass navigate callback for high-temp (≥37.5) Snackbar action
+    void actions.saveTemperature(savedUserCode, rounded, () => handleOpenNurse(savedUserCode));
 
     // C1.6: auto-scroll to next target in checkInRun mode
     if (inputMode === 'checkInRun') {
