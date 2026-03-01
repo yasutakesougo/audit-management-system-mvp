@@ -1,9 +1,13 @@
+import type { BipOption } from '@/features/daily/domain/toBipOptions';
 import type { ProcedureItem } from '@/features/daily/stores/procedureStore';
 import AddIcon from '@mui/icons-material/Add';
 import DeleteIcon from '@mui/icons-material/Delete';
+import ShieldIcon from '@mui/icons-material/Shield';
+import Autocomplete from '@mui/material/Autocomplete';
 import Box from '@mui/material/Box';
 import Button from '@mui/material/Button';
 import Checkbox from '@mui/material/Checkbox';
+import Chip from '@mui/material/Chip';
 import Dialog from '@mui/material/Dialog';
 import DialogActions from '@mui/material/DialogActions';
 import DialogContent from '@mui/material/DialogContent';
@@ -20,6 +24,8 @@ type ProcedureEditorProps = {
   initialItems: ProcedureItem[];
   onClose: () => void;
   onSave: (items: ProcedureItem[]) => void;
+  /** 紐付け可能な行動対応プラン（BIP）の選択肢 */
+  availablePlans?: BipOption[];
 };
 
 const createEmptyItem = (): ProcedureItem => ({
@@ -27,17 +33,19 @@ const createEmptyItem = (): ProcedureItem => ({
   time: '',
   activity: '',
   instruction: '',
-  isKey: false
+  isKey: false,
+  linkedInterventionIds: [],
 });
 
-export function ProcedureEditor({ open, initialItems, onClose, onSave }: ProcedureEditorProps): JSX.Element {
+export function ProcedureEditor({ open, initialItems, onClose, onSave, availablePlans = [] }: ProcedureEditorProps): JSX.Element {
   const [items, setItems] = useState<ProcedureItem[]>([]);
 
   useEffect(() => {
     if (!open) return;
     setItems(initialItems.map((item, index) => ({
       ...item,
-      id: item.id ?? `step-${index}`
+      id: item.id ?? `step-${index}`,
+      linkedInterventionIds: item.linkedInterventionIds ?? [],
     })));
   }, [open, initialItems]);
 
@@ -47,6 +55,14 @@ export function ProcedureEditor({ open, initialItems, onClose, onSave }: Procedu
 
   const handleFieldChange = (id: string | undefined, field: keyof ProcedureItem, value: string | boolean) => {
     setItems((prev) => prev.map((item) => (item.id === id ? { ...item, [field]: value } : item)));
+  };
+
+  const handleLinkedPlansChange = (id: string | undefined, selectedIds: string[]) => {
+    setItems((prev) =>
+      prev.map((item) =>
+        item.id === id ? { ...item, linkedInterventionIds: selectedIds } : item,
+      ),
+    );
   };
 
   const handleDelete = (id: string | undefined) => {
@@ -67,6 +83,8 @@ export function ProcedureEditor({ open, initialItems, onClose, onSave }: Procedu
     onClose();
   };
 
+  const hasBipOptions = availablePlans.length > 0;
+
   return (
     <Dialog open={open} onClose={onClose} fullWidth maxWidth="md">
       <DialogTitle>支援手順（Plan）の編集</DialogTitle>
@@ -77,7 +95,11 @@ export function ProcedureEditor({ open, initialItems, onClose, onSave }: Procedu
               まだ手順がありません。下の「手順を追加」から作成してください。
             </Typography>
           )}
-          {items.map((item) => (
+          {items.map((item) => {
+            const selectedPlans = availablePlans.filter((p) =>
+              item.linkedInterventionIds?.includes(p.id),
+            );
+            return (
             <Box key={item.id} sx={{ p: 2, border: '1px solid', borderColor: 'divider', borderRadius: 1 }}>
               <Stack spacing={2}>
                 <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2} alignItems="flex-start">
@@ -109,6 +131,47 @@ export function ProcedureEditor({ open, initialItems, onClose, onSave }: Procedu
                   multiline
                   minRows={2}
                 />
+
+                {/* BIP リンク選択 */}
+                {hasBipOptions && (
+                  <Autocomplete
+                    multiple
+                    options={availablePlans}
+                    getOptionLabel={(option) => option.label}
+                    value={selectedPlans}
+                    onChange={(_event, newValue) => {
+                      handleLinkedPlansChange(item.id, newValue.map((v) => v.id));
+                    }}
+                    isOptionEqualToValue={(option, value) => option.id === value.id}
+                    limitTags={2}
+                    size="small"
+                    renderInput={(params) => (
+                      <TextField
+                        {...params}
+                        label="関連する行動対応プラン（BIP）"
+                        placeholder="プランを選択..."
+                      />
+                    )}
+                    renderTags={(tagValue, getTagProps) =>
+                      tagValue.map((option, index) => {
+                        const { key, ...chipProps } = getTagProps({ index });
+                        return (
+                          <Chip
+                            key={key}
+                            {...chipProps}
+                            icon={<ShieldIcon />}
+                            label={option.label}
+                            size="small"
+                            color="warning"
+                            variant="outlined"
+                          />
+                        );
+                      })
+                    }
+                    data-testid={`bip-autocomplete-${item.id}`}
+                  />
+                )}
+
                 <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 1 }}>
                   <FormControlLabel
                     control={(
@@ -130,7 +193,8 @@ export function ProcedureEditor({ open, initialItems, onClose, onSave }: Procedu
                 </Box>
               </Stack>
             </Box>
-          ))}
+          );
+          })}
         </Box>
       </DialogContent>
       <DialogActions sx={{ justifyContent: 'space-between', px: 3, pb: 2 }}>

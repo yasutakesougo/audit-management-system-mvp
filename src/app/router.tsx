@@ -31,6 +31,7 @@ const AssessmentDashboardPage = React.lazy(() => import('@/pages/AssessmentDashb
 const TokuseiSurveyResultsPage = React.lazy(() => import('@/pages/TokuseiSurveyResultsPage'));
 const IcebergPdcaPage = React.lazy(() => import('@/pages/IcebergPdcaPage'));
 const IcebergAnalysisPage = React.lazy(() => import('@/pages/IcebergAnalysisPage'));
+const InterventionDashboardPage = React.lazy(() => import('@/pages/InterventionDashboardPage'));
 const MonthlyRecordPage = React.lazy(() => import('@/pages/MonthlyRecordPage'));
 const BillingPage = React.lazy(() => import('@/pages/BillingPage'));
 
@@ -68,6 +69,7 @@ const IndividualSupportManagementPage = React.lazy(() => import('@/pages/Individ
 const UserDetailPage = React.lazy(() => import('@/pages/UserDetailPage'));
 const NavigationDiagnosticsPage = React.lazy(() => import('@/pages/admin/NavigationDiagnosticsPage'));
 const DataIntegrityPage = React.lazy(() => import('@/pages/admin/DataIntegrityPage'));
+const CsvImportPage = React.lazy(() => import('@/pages/admin/CsvImportPage'));
 
 const StaffPanel = React.lazy(() => import('@/features/staff').then(m => ({ default: m.StaffPanel })));
 const UsersPanel = React.lazy(() => import('@/features/users').then(m => ({ default: m.UsersPanel })));
@@ -289,6 +291,16 @@ const SuspendedIcebergAnalysisPage: React.FC = () => (
       )}
     >
       <IcebergAnalysisPage />
+    </React.Suspense>
+  </RouteHydrationErrorBoundary>
+);
+
+const SuspendedInterventionDashboardPage: React.FC = () => (
+  <RouteHydrationErrorBoundary>
+    <React.Suspense
+      fallback={<div className="p-4 text-sm text-slate-600" role="status">行動対応プランを読み込んでいます…</div>}
+    >
+      <InterventionDashboardPage />
     </React.Suspense>
   </RouteHydrationErrorBoundary>
 );
@@ -555,6 +567,16 @@ const SuspendedDataIntegrityPage: React.FC = () => (
       )}
     >
       <DataIntegrityPage />
+    </React.Suspense>
+  </RouteHydrationErrorBoundary>
+);
+
+const SuspendedCsvImportPage: React.FC = () => (
+  <RouteHydrationErrorBoundary>
+    <React.Suspense
+      fallback={<div className="p-4 text-sm text-slate-600" role="status">CSVインポートを読み込んでいます…</div>}
+    >
+      <CsvImportPage />
     </React.Suspense>
   </RouteHydrationErrorBoundary>
 );
@@ -884,6 +906,14 @@ const childRoutes: RouteObject[] = [
     ),
   },
   {
+    path: 'analysis/intervention',
+    element: (
+      <RequireAudience requiredRole="viewer">
+        <SuspendedInterventionDashboardPage />
+      </RequireAudience>
+    ),
+  },
+  {
     path: 'assessment',
     element: (
       <RequireAudience requiredRole="viewer">
@@ -956,6 +986,14 @@ const childRoutes: RouteObject[] = [
     element: (
       <RequireAudience requiredRole="admin">
         <SuspendedDataIntegrityPage />
+      </RequireAudience>
+    ),
+  },
+  {
+    path: 'admin/csv-import',
+    element: (
+      <RequireAudience requiredRole="admin">
+        <SuspendedCsvImportPage />
       </RequireAudience>
     ),
   },

@@ -3,6 +3,7 @@ import FeatureChipList from '@/features/assessment/components/FeatureChipList';
 import { useTokuseiSurveyResponses } from '@/features/assessment/hooks/useTokuseiSurveyResponses';
 import { IBDPageHeader } from '@/features/ibd/components/IBDPageHeader';
 import { env } from '@/lib/env';
+import FilterAltOffRoundedIcon from '@mui/icons-material/FilterAltOffRounded';
 import RefreshRoundedIcon from '@mui/icons-material/RefreshRounded';
 import SupportAgentRoundedIcon from '@mui/icons-material/SupportAgentRounded';
 import { Card, CardContent, CardHeader } from '@mui/material';
@@ -13,6 +14,7 @@ import Chip from '@mui/material/Chip';
 import CircularProgress from '@mui/material/CircularProgress';
 import Divider from '@mui/material/Divider';
 import FormControl from '@mui/material/FormControl';
+import IconButton from '@mui/material/IconButton';
 import InputLabel from '@mui/material/InputLabel';
 import List from '@mui/material/List';
 import ListItemButton from '@mui/material/ListItemButton';
@@ -23,6 +25,7 @@ import Paper from '@mui/material/Paper';
 import Select from '@mui/material/Select';
 import Skeleton from '@mui/material/Skeleton';
 import Stack from '@mui/material/Stack';
+import Tooltip from '@mui/material/Tooltip';
 import Typography from '@mui/material/Typography';
 import React, { useEffect, useMemo, useState } from 'react';
 
@@ -198,6 +201,8 @@ const TokuseiSurveyResultsPage: React.FC = () => {
     setToDate('');
   };
 
+  const hasActiveFilters = selectedUser !== 'all' || searchQuery || fromDate || toDate;
+
   return (
     <Stack spacing={3}>
       <IBDPageHeader
@@ -205,20 +210,76 @@ const TokuseiSurveyResultsPage: React.FC = () => {
         subtitle="Microsoft Forms 由来の特性ヒアリング結果を SharePoint から自動同期"
         icon={<SupportAgentRoundedIcon />}
         actions={
-          <Stack direction="row" spacing={2} alignItems="center" flexWrap="wrap">
-            <Chip label={`回答数: ${summary.totalResponses}`} color="primary" variant="outlined" />
-            <Chip label={`対象者: ${summary.uniqueUsers}`} variant="outlined" />
-            <Chip label={`保護者/関係者: ${summary.uniqueGuardians}`} variant="outlined" />
-            <Typography variant="body2" color="text.secondary">
-              最新更新: {summary.latestSubmittedAt ? formatDateTime(summary.latestSubmittedAt) : '未取得'}
+          <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap" useFlexGap>
+            <Chip label={`回答数: ${summary.totalResponses}`} color="primary" variant="outlined" size="small" />
+            <Chip label={`対象者: ${summary.uniqueUsers}`} variant="outlined" size="small" />
+            <Chip label={`保護者/関係者: ${summary.uniqueGuardians}`} variant="outlined" size="small" />
+            <Typography variant="caption" color="text.secondary" sx={{ mr: 1 }}>
+              更新: {summary.latestSubmittedAt ? formatDateTime(summary.latestSubmittedAt) : '未取得'}
             </Typography>
+            <Tooltip title="フィルターをリセット" placement="bottom">
+              <Box component="span" sx={{ display: 'inline-flex' }}>
+                <IconButton
+                  onClick={resetFilters}
+                  disabled={!hasActiveFilters}
+                  size="small"
+                  sx={{
+                    border: '1px solid',
+                    borderColor: 'divider',
+                    borderRadius: 1,
+                    width: 32,
+                    height: 32,
+                  }}
+                >
+                  <FilterAltOffRoundedIcon fontSize="small" />
+                </IconButton>
+              </Box>
+            </Tooltip>
+            <Tooltip title="最新の回答を取得" placement="bottom">
+              <Box component="span" sx={{ display: 'inline-flex' }}>
+                <IconButton
+                  onClick={() => void refresh()}
+                  disabled={status === 'loading'}
+                  color="primary"
+                  size="small"
+                  sx={{
+                    border: '1px solid',
+                    borderColor: 'primary.main',
+                    borderRadius: 1,
+                    width: 32,
+                    height: 32,
+                  }}
+                >
+                  <RefreshRoundedIcon fontSize="small" />
+                </IconButton>
+              </Box>
+            </Tooltip>
+            <Tooltip title={formsUrl ? 'Formsを開く' : 'VITE_TOKUSEI_FORMS_URL が未設定です'} placement="bottom">
+              <Box component="span" sx={{ display: 'inline-flex' }}>
+                <Button
+                  variant="contained"
+                  color="secondary"
+                  size="small"
+                  onClick={() => formsUrl && window.open(formsUrl, '_blank', 'noreferrer')}
+                  disabled={!formsUrl}
+                  sx={{ height: 32, whiteSpace: 'nowrap', fontSize: '0.75rem' }}
+                >
+                  Formsを開く
+                </Button>
+              </Box>
+            </Tooltip>
           </Stack>
         }
       />
 
       <Paper sx={{ p: 3 }}>
-        <Stack direction={{ xs: 'column', md: 'row' }} spacing={2} mb={2} alignItems={{ xs: 'stretch', md: 'center' }}>
-          <FormControl size="small" sx={{ minWidth: { xs: '100%', sm: 220 } }}>
+        {/* フィルターバー（入力のみ、アクションはヘッダーに移動済み） */}
+        <Stack
+          direction="row"
+          useFlexGap
+          sx={{ flexWrap: 'wrap', gap: 2, mb: 2, alignItems: 'center' }}
+        >
+          <FormControl size="small" sx={{ minWidth: 200, flexGrow: { xs: 1, sm: 0 } }}>
             <InputLabel id="tokusei-target-label">対象者フィルター</InputLabel>
             <Select
               labelId="tokusei-target-label"
@@ -235,7 +296,7 @@ const TokuseiSurveyResultsPage: React.FC = () => {
             </Select>
           </FormControl>
 
-          <FormControl size="small" sx={{ minWidth: { xs: '100%', sm: 240 } }}>
+          <FormControl size="small" sx={{ minWidth: 220, flexGrow: { xs: 1, sm: 0 } }}>
             <InputLabel htmlFor="tokusei-search">検索（氏名・回答者）</InputLabel>
             <OutlinedInput
               id="tokusei-search"
@@ -246,7 +307,7 @@ const TokuseiSurveyResultsPage: React.FC = () => {
             />
           </FormControl>
 
-          <FormControl size="small" sx={{ minWidth: { xs: '100%', sm: 160 } }}>
+          <FormControl size="small" sx={{ minWidth: 160, flexGrow: { xs: 1, sm: 0 } }}>
             <InputLabel shrink>回答日(開始)</InputLabel>
             <OutlinedInput
               type="date"
@@ -257,7 +318,7 @@ const TokuseiSurveyResultsPage: React.FC = () => {
             />
           </FormControl>
 
-          <FormControl size="small" sx={{ minWidth: { xs: '100%', sm: 160 } }}>
+          <FormControl size="small" sx={{ minWidth: 160, flexGrow: { xs: 1, sm: 0 } }}>
             <InputLabel shrink>回答日(終了)</InputLabel>
             <OutlinedInput
               type="date"
@@ -267,24 +328,6 @@ const TokuseiSurveyResultsPage: React.FC = () => {
               label="回答日(終了)"
             />
           </FormControl>
-          <Button variant="outlined" startIcon={<RefreshRoundedIcon />} onClick={() => void refresh()} disabled={status === 'loading'}>
-            最新の回答を取得
-          </Button>
-          <Button
-            variant="text"
-            onClick={resetFilters}
-            disabled={selectedUser === 'all' && !searchQuery && !fromDate && !toDate}
-          >
-            フィルターをリセット
-          </Button>
-          <Button
-            variant="contained"
-            color="secondary"
-            onClick={() => formsUrl && window.open(formsUrl, '_blank', 'noreferrer')}
-            disabled={!formsUrl}
-          >
-            Formsを開く
-          </Button>
         </Stack>
 
         {showLoadingState && (
