@@ -16,10 +16,11 @@ describe('BriefingActionList', () => {
     const alerts = [
       {
         id: 'test-absence',
-        type: 'absence' as const,
+        type: 'absent' as const,
         severity: 'warning' as const,
         label: '本日欠席',
         count: 2,
+        targetAnchorId: 'sec-attendance',
         items: [
           { userId: 'U001', userName: '田中 太郎' },
           { userId: 'U002', userName: '山田 花子' },
