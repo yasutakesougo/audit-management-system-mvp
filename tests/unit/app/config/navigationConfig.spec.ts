@@ -391,7 +391,7 @@ describe('navigationConfig', () => {
     it('should maintain group order', () => {
       const { ORDER } = groupNavItems(sampleItems, false);
 
-      expect(ORDER).toEqual(['daily', 'record', 'ibd', 'isp', 'master', 'admin', 'settings']);
+      expect(ORDER).toEqual(['daily', 'record', 'isp', 'ibd', 'master', 'admin', 'settings']);
     });
 
     it('should omit empty groups from the map', () => {
@@ -437,7 +437,7 @@ describe('navigationConfig', () => {
     });
 
     it('should have correct group order', () => {
-      expect(NAV_GROUP_ORDER).toEqual(['daily', 'record', 'ibd', 'isp', 'master', 'admin', 'settings']);
+      expect(NAV_GROUP_ORDER).toEqual(['daily', 'record', 'isp', 'ibd', 'master', 'admin', 'settings']);
     });
   });
 });
