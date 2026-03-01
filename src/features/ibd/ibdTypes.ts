@@ -38,6 +38,26 @@ export interface SupportPlanSheet {
 
 export type SPSStatus = 'draft' | 'confirmed' | 'expired';
 
+/** SPS 改訂履歴エントリ — 旧バージョンの完全スナップショット */
+export interface SPSHistoryEntry {
+  id: string;
+  /** 元の SPS ID */
+  spsId: string;
+  userId: number;
+  /** スナップショット時のバージョン（例: "v1"） */
+  version: string;
+  /** スナップショット日時（ISO 8601） */
+  snapshotAt: string;
+  /** 改訂実施者 ID */
+  revisedBy: number | null;
+  /** 改訂理由 */
+  revisionReason: string;
+  /** 変更内容サマリ */
+  changesSummary: string;
+  /** 旧 SPS の完全コピー */
+  snapshot: SupportPlanSheet;
+}
+
 export interface IcebergModel {
   observableBehaviors: string[];       // 表面的な行動（見えている部分）
   underlyingFactors: string[];        // 背景要因（見えていない部分）

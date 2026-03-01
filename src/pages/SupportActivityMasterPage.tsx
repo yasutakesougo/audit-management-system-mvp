@@ -1,16 +1,13 @@
-import HomeIcon from '@mui/icons-material/Home';
 import RestoreIcon from '@mui/icons-material/Restore';
 import SettingsIcon from '@mui/icons-material/Settings';
 import Alert from '@mui/material/Alert';
 import Box from '@mui/material/Box';
-import Breadcrumbs from '@mui/material/Breadcrumbs';
 import Button from '@mui/material/Button';
 import Container from '@mui/material/Container';
-import Link from '@mui/material/Link';
 import Snackbar from '@mui/material/Snackbar';
-import Typography from '@mui/material/Typography';
 import React, { useCallback, useEffect, useState } from 'react';
-import { Link as RouterLink } from 'react-router-dom';
+
+import { IBDPageHeader } from '@/features/ibd/components/IBDPageHeader';
 import { SupportActivityTemplate, defaultSupportActivities } from '../domain/support/types';
 import { SupportActivityTemplateForm } from '../features/support/SupportActivityTemplateForm';
 import { SupportActivityTemplateList } from '../features/support/SupportActivityTemplateList';
@@ -162,58 +159,23 @@ const SupportActivityMasterPage: React.FC = () => {
       sx={{ py: 3 }}
       data-testid="support-activity-master-page"
     >
-      {/* パンくずナビ */}
-      <Breadcrumbs sx={{ mb: 3 }}>
-        <Link
-          component={RouterLink}
-          to="/"
-          sx={{ display: 'flex', alignItems: 'center', textDecoration: 'none' }}
-          color="inherit"
-        >
-          <HomeIcon sx={{ mr: 0.5, fontSize: 20 }} />
-          ホーム
-        </Link>
-        <Link
-          sx={{ display: 'flex', alignItems: 'center', textDecoration: 'none' }}
-          color="inherit"
-        >
-          <SettingsIcon sx={{ mr: 0.5, fontSize: 20 }} />
-          支援マスタ
-        </Link>
-        <Typography color="text.primary" sx={{ display: 'flex', alignItems: 'center' }}>
-          支援活動マスタ
-        </Typography>
-      </Breadcrumbs>
-
-      {/* ページタイトル */}
-      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 4 }}>
-        <Box>
-          <Typography variant="h4" component="h1" gutterBottom>
-            支援活動マスタ
-          </Typography>
-          <Typography variant="body1" color="text.secondary">
-            支援手順記録で使用する活動マスタの登録・編集・削除を行います。
-            <br />
-            マスタを作成することで、支援記録の入力が効率化されます。
-          </Typography>
-        </Box>
-        <Button
-          variant="outlined"
-          color="secondary"
-          startIcon={<RestoreIcon />}
-          onClick={handleResetToDefaults}
-          sx={{
-            textTransform: 'none',
-            fontWeight: 600,
-            borderRadius: 2,
-            px: 3,
-            flexShrink: 0,
-            ml: 2
-          }}
-        >
-          デフォルトに戻す
-        </Button>
-      </Box>
+      {/* ── IBDPageHeader ── */}
+      <IBDPageHeader
+        title="支援活動マスタ"
+        subtitle="支援手順記録で使用する活動マスタの登録・編集・削除を行います。"
+        icon={<SettingsIcon />}
+        actions={
+          <Button
+            variant="outlined"
+            color="secondary"
+            startIcon={<RestoreIcon />}
+            onClick={handleResetToDefaults}
+            size="small"
+          >
+            デフォルトに戻す
+          </Button>
+        }
+      />
 
       {/* メインコンテンツ */}
       <Box sx={{

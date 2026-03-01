@@ -1,0 +1,79 @@
+name: "🖥️ UI機能追加・改善"
+description: "UI変更を伴う機能追加・改善。状態マップの記入が必須です。"
+labels: ["ui"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        ## UI原則
+        このテンプレートは [UI原則宣言書](../../docs/ui-principles.md) に基づいています。
+        すべてのUI変更は6原則に照らしてレビューされます。
+
+  - type: textarea
+    id: summary
+    attributes:
+      label: "概要"
+      description: "何を変えるか、なぜ必要か（1-3行）"
+    validations:
+      required: true
+
+  - type: dropdown
+    id: target-screen
+    attributes:
+      label: "対象画面"
+      description: "改善対象の画面を選択"
+      options:
+        - "/today"
+        - "/attendance"
+        - "/schedule"
+        - "/dashboard"
+        - "/daily"
+        - "/support"
+        - "共通コンポーネント"
+        - "その他"
+    validations:
+      required: true
+
+  - type: textarea
+    id: state-map
+    attributes:
+      label: "状態マップ（必須）"
+      description: |
+        この機能が扱うすべての状態を定義してください。
+        該当しない状態は削除してOKです。
+      value: |
+        ### 状態マップ
+
+        | 状態 | UIの表示 | ユーザーの次の行動 |
+        |------|---------|-----------------|
+        | Idle（初期） |  |  |
+        | Loading |  |  |
+        | Success |  |  |
+        | Empty（0件） |  |  |
+        | Error（復旧可能） |  |  |
+        | Error（復旧不可） |  |  |
+        | Conflict（競合） |  |  |
+        | Offline |  |  |
+    validations:
+      required: true
+
+  - type: checkboxes
+    id: principles-check
+    attributes:
+      label: "UI原則チェック"
+      description: "この変更が遵守する原則を確認"
+      options:
+        - label: "迷わせない（Next Action明確）"
+        - label: "見落とさせない（未入力可視化）"
+        - label: "復帰できる（エラー救済導線あり）"
+        - label: "状態起点設計になっている"
+        - label: "CTAは1画面1つ"
+        - label: "アンチパターンを踏んでいない"
+
+  - type: textarea
+    id: acceptance-criteria
+    attributes:
+      label: "受け入れ条件"
+      description: "この Issue が完了したと言える条件"
+    validations:
+      required: true
