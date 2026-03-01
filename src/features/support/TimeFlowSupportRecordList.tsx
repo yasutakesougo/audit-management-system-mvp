@@ -152,7 +152,7 @@ const TimeFlowSupportRecordList: React.FC<TimeFlowSupportRecordListProps> = ({
     setFormOpen(true);
   };
 
-  const handleSaveRecord = (recordData: Omit<SupportRecord, 'id' | 'createdAt' | 'updatedAt'>) => {
+  const handleSaveRecord = async (recordData: Omit<SupportRecord, 'id' | 'createdAt' | 'updatedAt'>) => {
     if (editingRecord) {
       const updatedRecord: SupportRecord = {
         ...editingRecord,
