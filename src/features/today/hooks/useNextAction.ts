@@ -24,11 +24,21 @@ export type NextActionItem = {
   minutesUntil: number;
 };
 
+export type Urgency = 'low' | 'medium' | 'high';
+
+/** minutesUntil → urgency 境界値（B層ロジック） */
+export function deriveUrgency(minutesUntil: number): Urgency {
+  if (minutesUntil <= 10) return 'high';
+  if (minutesUntil <= 30) return 'medium';
+  return 'low';
+}
+
 export type NextActionWithProgress = {
   item: NextActionItem | null;
   progress: NextActionProgress | null;
   progressKey: string | null;
   status: 'idle' | 'started' | 'done';
+  urgency: Urgency;
   elapsedMinutes: number | null;  // minutes since start (null if not started)
   actions: {
     start: () => void;
@@ -159,11 +169,15 @@ export function useNextAction(
     },
   }), [progressKey, progressStore]);
 
+  // Urgency: derived from minutesUntil (B層 pure logic)
+  const urgency: Urgency = nextItem ? deriveUrgency(nextItem.minutesUntil) : 'low';
+
   return {
     item: nextItem,
     progress,
     progressKey,
     status,
+    urgency,
     elapsedMinutes,
     actions,
   };
