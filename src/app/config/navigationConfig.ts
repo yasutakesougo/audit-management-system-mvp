@@ -416,7 +416,7 @@ export function createNavItems(config: CreateNavItemsConfig): NavItem[] {
       isActive: (pathname) => pathname.startsWith('/isp-editor'),
       icon: undefined,
       testId: TESTIDS.nav.ispEditor,
-      audience: NAV_AUDIENCE.staff,
+      audience: NAV_AUDIENCE.all,
       group: 'isp' as NavGroupKey,
     },
     {

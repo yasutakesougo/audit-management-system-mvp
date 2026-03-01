@@ -5,6 +5,7 @@
 import type {
     ABCRecord,
     SPSAlertLevel,
+    SPSHistoryEntry,
     SupervisionLog,
     SupportPlanSheet,
 } from './ibdTypes';
@@ -42,6 +43,7 @@ export interface CanConfirmResult {
 // ---------------------------------------------------------------------------
 
 let _spsSheets: SupportPlanSheet[] = [];
+let _spsHistory: SPSHistoryEntry[] = [];
 let _supervisionLogs: SupervisionLog[] = [];
 let _supervisionCounters: SupervisionCounter[] = [];
 let _abcRecords: ABCRecord[] = [];
@@ -94,6 +96,59 @@ export function confirmSPS(
   });
 }
 
+/**
+ * SPS を改訂する（モニタリングミーティング後のバージョン更新）
+ * 1. 現行 SPS を SPSHistoryEntry としてスナップショット保存
+ * 2. SPS の version をインクリメント（v1 → v2）
+ * 3. updatedAt を現在日時に設定
+ * 4. nextReviewDueDate を updatedAt + 90 日にリセット
+ * 5. オプショナルな updates を SPS に適用
+ */
+export function reviseSPS(
+  spsId: string,
+  revisedBy: number | null,
+  revisionReason: string,
+  changesSummary: string,
+  updates?: Partial<Pick<SupportPlanSheet, 'icebergModel' | 'positiveConditions'>>,
+): boolean {
+  const current = _spsSheets.find((sps) => sps.id === spsId);
+  if (!current) return false;
+
+  // 1. スナップショット保存
+  const historyEntry: SPSHistoryEntry = {
+    id: `history-${spsId}-${Date.now()}`,
+    spsId: current.id,
+    userId: current.userId,
+    version: current.version,
+    snapshotAt: new Date().toISOString(),
+    revisedBy,
+    revisionReason,
+    changesSummary,
+    snapshot: { ...current },
+  };
+  _spsHistory = [..._spsHistory, historyEntry];
+
+  // 2-5. バージョンインクリメント + 日時更新
+  const currentVersionNum = parseInt(current.version.replace('v', ''), 10) || 1;
+  const newVersion = `v${currentVersionNum + 1}`;
+  const now = new Date().toISOString();
+  const nextReviewDueDate = calculateNextReviewDueDate(now);
+
+  _spsSheets = _spsSheets.map((sps) => {
+    if (sps.id !== spsId) return sps;
+    return {
+      ...sps,
+      version: newVersion,
+      updatedAt: now,
+      nextReviewDueDate,
+      ...(updates?.icebergModel ? { icebergModel: updates.icebergModel } : {}),
+      ...(updates?.positiveConditions ? { positiveConditions: updates.positiveConditions } : {}),
+    };
+  });
+
+  return true;
+}
+
 // ---------------------------------------------------------------------------
 // SPS クエリ
 // ---------------------------------------------------------------------------
@@ -110,6 +165,22 @@ export function getLatestSPS(userId: number): SupportPlanSheet | undefined {
   return _spsSheets
     .filter((sps) => sps.userId === userId)
     .sort((a, b) => b.createdAt.localeCompare(a.createdAt))[0];
+}
+
+// ---------------------------------------------------------------------------
+// SPS 改訂履歴クエリ
+// ---------------------------------------------------------------------------
+
+export function getSPSHistory(spsId: string): SPSHistoryEntry[] {
+  return _spsHistory
+    .filter((h) => h.spsId === spsId)
+    .sort((a, b) => b.snapshotAt.localeCompare(a.snapshotAt));
+}
+
+export function getSPSHistoryForUser(userId: number): SPSHistoryEntry[] {
+  return _spsHistory
+    .filter((h) => h.userId === userId)
+    .sort((a, b) => b.snapshotAt.localeCompare(a.snapshotAt));
 }
 
 // ---------------------------------------------------------------------------
@@ -221,6 +292,7 @@ export function getAllABCRecords(): ABCRecord[] {
 
 export function resetIBDStore(): void {
   _spsSheets = [];
+  _spsHistory = [];
   _supervisionLogs = [];
   _supervisionCounters = [];
   _abcRecords = [];
