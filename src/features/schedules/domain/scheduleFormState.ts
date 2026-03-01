@@ -1,3 +1,4 @@
+// contract:allow-interface — Form state interfaces are UI-layer contracts, not data shapes (SSOT = schema.ts)
 import { addHours, format } from 'date-fns';
 
 import type { CreateScheduleEventInput, ScheduleCategory, ScheduleServiceType, ScheduleStatus } from '../data';
