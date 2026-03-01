@@ -1,9 +1,15 @@
-import { Stack } from '@mui/material';
+import FormControl from '@mui/material/FormControl';
+import InputLabel from '@mui/material/InputLabel';
+import MenuItem from '@mui/material/MenuItem';
+import Select from '@mui/material/Select';
+import Stack from '@mui/material/Stack';
+import TextField from '@mui/material/TextField';
+import Typography from '@mui/material/Typography';
 
-import type { ScheduleCategory } from '../domain/types';
-import { scheduleCategoryLabels } from '../domain/categoryLabels';
-import SchedulesFilterResponsive from './SchedulesFilterResponsive';
 import { TESTIDS } from '@/testids';
+import { scheduleCategoryLabels } from '../domain/categoryLabels';
+import type { ScheduleCategory } from '../domain/types';
+import SchedulesFilterResponsive from './SchedulesFilterResponsive';
 
 export type ScheduleFilterBarProps = {
   categoryFilter: 'All' | ScheduleCategory;
@@ -15,6 +21,14 @@ export type ScheduleFilterBarProps = {
   onOrgChange?: (event: React.ChangeEvent<HTMLSelectElement>) => void;
   compact?: boolean;
 };
+
+const ORG_OPTIONS = [
+  { value: 'all', label: '全事業所（統合ビュー）' },
+  { value: 'main', label: '生活介護（本体）' },
+  { value: 'shortstay', label: '短期入所' },
+  { value: 'respite', label: 'レスパイト' },
+  { value: 'other', label: 'その他' },
+] as const;
 
 export function ScheduleFilterBar(props: ScheduleFilterBarProps) {
   const {
@@ -37,70 +51,77 @@ export function ScheduleFilterBar(props: ScheduleFilterBarProps) {
         alignItems: 'flex-end',
       }}
     >
-      <span style={{ fontSize: 12, fontWeight: 600, color: 'rgba(0,0,0,0.6)' }}>絞り込み</span>
+      <Typography variant="caption" fontWeight={600} color="text.secondary">
+        絞り込み
+      </Typography>
       <Stack
         direction={{ xs: 'column', md: 'row' }}
         spacing={1}
         alignItems={{ xs: 'stretch', md: 'center' }}
         sx={{ width: '100%' }}
       >
-        <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, width: '100%' }}>
-          カテゴリ:
-          <select
+        <FormControl size="small" sx={{ minWidth: 140 }}>
+          <InputLabel id="schedule-filter-category-label">カテゴリ</InputLabel>
+          <Select
+            labelId="schedule-filter-category-label"
+            label="カテゴリ"
             value={categoryFilter}
             onChange={(e) => onCategoryChange(e.target.value as 'All' | ScheduleCategory)}
-            style={{ padding: '4px 8px', borderRadius: 8, border: '1px solid rgba(0,0,0,0.2)' }}
             data-testid={TESTIDS['schedules-filter-category']}
           >
-            <option value="All">すべて</option>
-            <option value="User">{scheduleCategoryLabels.User}</option>
-            <option value="Staff">{scheduleCategoryLabels.Staff}</option>
-            <option value="Org">{scheduleCategoryLabels.Org}</option>
-          </select>
-        </label>
+            <MenuItem value="All">すべて</MenuItem>
+            <MenuItem value="User">{scheduleCategoryLabels.User}</MenuItem>
+            <MenuItem value="Staff">{scheduleCategoryLabels.Staff}</MenuItem>
+            <MenuItem value="Org">{scheduleCategoryLabels.Org}</MenuItem>
+          </Select>
+        </FormControl>
 
         {mode === 'org' && onOrgChange && (
-          <Stack direction="column" spacing={1} style={{ width: '100%' }} data-testid="schedule-org-tabpanel">
-            <h3 style={{ margin: 0, fontSize: 14, fontWeight: 600 }}>組織別スケジュール</h3>
-            <Stack direction="row" spacing={1} style={{ alignItems: 'center' }}>
-              <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13 }}>
-                事業所:
-                <select
+          <Stack direction="column" spacing={1} sx={{ width: '100%' }} data-testid="schedule-org-tabpanel">
+            <Typography variant="subtitle2" fontWeight={600}>
+              組織別スケジュール
+            </Typography>
+            <Stack direction="row" spacing={1} alignItems="center">
+              <FormControl size="small" sx={{ minWidth: 160 }}>
+                <InputLabel id="schedule-org-select-label">事業所</InputLabel>
+                <Select
+                  labelId="schedule-org-select-label"
+                  label="事業所"
                   value={orgParam}
-                  onChange={onOrgChange}
-                  style={{ padding: '4px 8px', borderRadius: 8, border: '1px solid rgba(0,0,0,0.2)' }}
+                  onChange={(e) => {
+                    // Bridge SelectChangeEvent to ChangeEvent<HTMLSelectElement> for backward compat
+                    const syntheticEvent = {
+                      target: { value: e.target.value },
+                    } as React.ChangeEvent<HTMLSelectElement>;
+                    onOrgChange(syntheticEvent);
+                  }}
                   data-testid="schedule-org-select"
                 >
-                  <option value="all">全事業所（統合ビュー）</option>
-                  <option value="main">生活介護（本体）</option>
-                  <option value="shortstay">短期入所</option>
-                  <option value="respite">レスパイト</option>
-                  <option value="other">その他</option>
-                </select>
-              </label>
-              <span data-testid="schedule-org-summary" style={{ fontSize: 13, color: '#666' }}>
-                {orgParam === 'all' && '全事業所（統合ビュー）'}
-                {orgParam === 'main' && '生活介護（本体）'}
-                {orgParam === 'shortstay' && '短期入所'}
-                {orgParam === 'respite' && 'レスパイト'}
-                {orgParam === 'other' && 'その他'}
-              </span>
+                  {ORG_OPTIONS.map((opt) => (
+                    <MenuItem key={opt.value} value={opt.value}>
+                      {opt.label}
+                    </MenuItem>
+                  ))}
+                </Select>
+              </FormControl>
+              <Typography
+                variant="body2"
+                color="text.secondary"
+                data-testid="schedule-org-summary"
+              >
+                {ORG_OPTIONS.find((o) => o.value === orgParam)?.label ?? ''}
+              </Typography>
             </Stack>
           </Stack>
         )}
 
-        <input
+        <TextField
+          size="small"
           type="search"
           value={query}
           onChange={(e) => onQueryChange(e.target.value)}
           placeholder="タイトル/場所/担当/利用者で検索"
-          style={{
-            flex: '1 1 280px',
-            minWidth: 240,
-            padding: '6px 10px',
-            borderRadius: 8,
-            border: '1px solid rgba(0,0,0,0.2)',
-          }}
+          sx={{ flex: '1 1 280px', minWidth: 240 }}
           aria-label="スケジュール検索"
           data-testid={TESTIDS['schedules-filter-query']}
         />
