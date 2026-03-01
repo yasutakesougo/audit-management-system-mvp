@@ -1,8 +1,10 @@
+// contract:allow-interface — Repository interface defines behavior contract, not data shapes (SSOT = schema.ts)
+import type { CreateScheduleInputZ, UpdateScheduleInputZ } from './schema';
 import type { ScheduleItemCore } from './types';
 
 /**
  * DateRange for schedule queries
- * 
+ *
  * CRITICAL: Dates must be in site timezone (Asia/Tokyo)
  * - from/to: ISO 8601 strings representing date boundaries in JST
  * - Example: { from: '2026-02-24T00:00:00+09:00', to: '2026-03-03T00:00:00+09:00' }
@@ -20,38 +22,26 @@ export type DateRange = {
 export type ScheduleItem = ScheduleItemCore;
 
 /**
- * Input for creating a new schedule
+ * Backwards-compatible alias for consumers migrating from data/port.ts
+ * SchedItem = ScheduleItemCore (domain canonical type)
  */
-export type CreateScheduleInput = {
-  title: string;
-  category: 'User' | 'Staff' | 'Org';
-  startLocal: string;
-  endLocal: string;
-  serviceType?: string | null;
-  userId?: string;
-  userLookupId?: string;
-  userName?: string;
-  assignedStaffId?: string;
-  locationName?: string;
-  notes?: string;
-  vehicleId?: string;
-  status?: 'Planned' | 'Postponed' | 'Cancelled';
-  statusReason?: string | null;
-  acceptedOn?: string | null;
-  acceptedBy?: string | null;
-  acceptedNote?: string | null;
-  ownerUserId?: string;
-  visibility?: 'org' | 'team' | 'private';
-  currentOwnerUserId?: string;
-};
+export type SchedItem = ScheduleItemCore;
 
 /**
- * Input for updating an existing schedule
+ * Input for creating a new schedule — SSOT derived from schema.ts
  */
-export type UpdateScheduleInput = CreateScheduleInput & {
-  id: string;
-  etag?: string; // For optimistic concurrency control
-};
+export type CreateScheduleInput = CreateScheduleInputZ;
+
+/**
+ * Input for updating an existing schedule — SSOT derived from schema.ts
+ */
+export type UpdateScheduleInput = UpdateScheduleInputZ;
+
+/**
+ * Backwards-compatible aliases for consumers migrating from data/port.ts
+ */
+export type CreateScheduleEventInput = CreateScheduleInput;
+export type UpdateScheduleEventInput = UpdateScheduleInput;
 
 /**
  * Parameters for listing schedules
@@ -70,10 +60,10 @@ export type ScheduleRepositoryMutationParams = {
 
 /**
  * Schedule Repository Interface
- * 
+ *
  * Abstracts schedule data access following the Repository Pattern.
  * Implementations: SharePointScheduleRepository, InMemoryScheduleRepository
- * 
+ *
  * Timezone Handling:
  * - All date boundaries (DateRange) assume Asia/Tokyo timezone
  * - Consumers must format dates in site timezone before calling repository
