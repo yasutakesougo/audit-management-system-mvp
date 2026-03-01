@@ -6,6 +6,7 @@
  */
 import { ChangeEvent, createRef, FormEvent, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { IUserMaster, IUserMasterCreateDto } from '../../sharepoint/fields';
+import { TRANSPORT_METHOD_LABEL, TRANSPORT_METHODS } from '../attendance/transportMethod';
 import { useUsersStore } from './store';
 
 // ---------------------------------------------------------------------------
@@ -22,9 +23,7 @@ export type FormValues = {
   IsHighIntensitySupportTarget: boolean;
   IsSupportProcedureTarget: boolean;
   IsActive: boolean;
-  TransportToDays: string[];
-  TransportFromDays: string[];
-  AttendanceDays: string[];
+  TransportSchedule: Record<string, { to: string; from: string }>;
   RecipientCertNumber: string;
   RecipientCertExpiry: string;
   UsageStatus: string;
@@ -44,6 +43,8 @@ export type FormErrors = Partial<
 >;
 
 export type MessageState = { type: 'success' | 'error'; text: string } | null;
+
+export type DayTransport = { to: string; from: string };
 
 export type DayField = 'TransportToDays' | 'TransportFromDays' | 'AttendanceDays';
 
@@ -99,6 +100,64 @@ export const COPAY_METHOD_OPTIONS = [
   { value: 'cash-transport', label: '現金（送迎時）' },
 ] as const;
 
+export const TRANSPORT_METHOD_OPTIONS = [
+  { value: '', label: '—' },
+  ...TRANSPORT_METHODS.map((m) => ({ value: m, label: TRANSPORT_METHOD_LABEL[m] })),
+] as const;
+
+// ---------------------------------------------------------------------------
+// Transport Schedule helpers
+// ---------------------------------------------------------------------------
+
+const EMPTY_SCHEDULE: Record<string, DayTransport> = {};
+
+export function parseTransportSchedule(json: string | null | undefined): Record<string, DayTransport> {
+  if (!json) return { ...EMPTY_SCHEDULE };
+  try {
+    const parsed = JSON.parse(json) as Record<string, DayTransport>;
+    if (typeof parsed !== 'object' || parsed === null) return { ...EMPTY_SCHEDULE };
+    return parsed;
+  } catch {
+    return { ...EMPTY_SCHEDULE };
+  }
+}
+
+function serializeTransportSchedule(schedule: Record<string, DayTransport>): string | null {
+  // Remove empty entries
+  const cleaned: Record<string, DayTransport> = {};
+  for (const [day, val] of Object.entries(schedule)) {
+    if (val.to || val.from) {
+      cleaned[day] = val;
+    }
+  }
+  return Object.keys(cleaned).length ? JSON.stringify(cleaned) : null;
+}
+
+function deriveTransportDays(
+  schedule: Record<string, DayTransport>,
+): { attendanceDays: string[]; transportToDays: string[]; transportFromDays: string[] } {
+  const weekdayOrder = WEEKDAYS.map((d) => d.value);
+  const attendanceDays: string[] = [];
+  const transportToDays: string[] = [];
+  const transportFromDays: string[] = [];
+
+  for (const day of weekdayOrder) {
+    const entry = schedule[day];
+    if (!entry) continue;
+    if (entry.to || entry.from) {
+      attendanceDays.push(day);
+    }
+    if (entry.to === 'office_shuttle') {
+      transportToDays.push(day);
+    }
+    if (entry.from === 'office_shuttle') {
+      transportFromDays.push(day);
+    }
+  }
+
+  return { attendanceDays, transportToDays, transportFromDays };
+}
+
 // ---------------------------------------------------------------------------
 // ユーティリティ
 // ---------------------------------------------------------------------------
@@ -119,9 +178,15 @@ export const toCreateDto = (values: FormValues): IUserMasterCreateDto => ({
   IsSupportProcedureTarget: values.IsSupportProcedureTarget,
   severeFlag: false,
   IsActive: values.IsActive,
-  TransportToDays: values.TransportToDays.length ? values.TransportToDays : null,
-  TransportFromDays: values.TransportFromDays.length ? values.TransportFromDays : null,
-  AttendanceDays: values.AttendanceDays.length ? values.AttendanceDays : null,
+  ...(() => {
+    const derived = deriveTransportDays(values.TransportSchedule);
+    return {
+      TransportToDays: derived.transportToDays.length ? derived.transportToDays : null,
+      TransportFromDays: derived.transportFromDays.length ? derived.transportFromDays : null,
+      AttendanceDays: derived.attendanceDays.length ? derived.attendanceDays : null,
+    };
+  })(),
+  TransportSchedule: serializeTransportSchedule(values.TransportSchedule),
   RecipientCertNumber: sanitize(values.RecipientCertNumber) || null,
   RecipientCertExpiry: sanitize(values.RecipientCertExpiry) || null,
   UsageStatus: sanitize(values.UsageStatus) || null,
@@ -146,9 +211,7 @@ const CLEARED_VALUES: FormValues = {
   IsHighIntensitySupportTarget: false,
   IsSupportProcedureTarget: false,
   IsActive: true,
-  TransportToDays: [],
-  TransportFromDays: [],
-  AttendanceDays: [],
+  TransportSchedule: {},
   RecipientCertNumber: '',
   RecipientCertExpiry: '',
   UsageStatus: '',
@@ -190,7 +253,7 @@ export type UseUserFormReturn = {
   };
   // Handlers
   setField: <K extends keyof FormValues>(key: K, value: FormValues[K]) => void;
-  toggleDay: (day: string, field: DayField) => void;
+  setScheduleDay: (day: string, direction: 'to' | 'from', method: string) => void;
   handleSupportTargetToggle: (event: ChangeEvent<HTMLInputElement>) => void;
   handleClose: () => void;
   handleSubmit: (event: FormEvent<HTMLFormElement>) => Promise<void>;
@@ -225,9 +288,7 @@ export function useUserForm(
       IsSupportProcedureTarget:
         user?.IsSupportProcedureTarget ?? user?.IsHighIntensitySupportTarget ?? false,
       IsActive: user?.IsActive ?? true,
-      TransportToDays: [...(user?.TransportToDays ?? [])],
-      TransportFromDays: [...(user?.TransportFromDays ?? [])],
-      AttendanceDays: [...(user?.AttendanceDays ?? [])],
+      TransportSchedule: parseTransportSchedule(user?.TransportSchedule),
       RecipientCertNumber: user?.RecipientCertNumber ?? '',
       RecipientCertExpiry: user?.RecipientCertExpiry ?? '',
       UsageStatus:
@@ -406,22 +467,18 @@ export function useUserForm(
   }, [handleClose, isSaving]);
 
   // --------------------------------
-  // setField / toggleDay
+  // setField / setScheduleDay
   // --------------------------------
   const setField = useCallback(<K extends keyof FormValues>(key: K, value: FormValues[K]) => {
     setValues((prev) => ({ ...prev, [key]: value }));
   }, []);
 
-  const toggleDay = useCallback((day: string, field: DayField) => {
+  const setScheduleDay = useCallback((day: string, direction: 'to' | 'from', method: string) => {
     setValues((prev) => {
-      const set = new Set(prev[field]);
-      if (set.has(day)) {
-        set.delete(day);
-      } else {
-        set.add(day);
-      }
-      const ordered = WEEKDAYS.map((d) => d.value).filter((d) => set.has(d));
-      return { ...prev, [field]: ordered };
+      const schedule = { ...prev.TransportSchedule };
+      const entry = schedule[day] ?? { to: '', from: '' };
+      schedule[day] = { ...entry, [direction]: method };
+      return { ...prev, TransportSchedule: schedule };
     });
   }, []);
 
@@ -515,7 +572,7 @@ export function useUserForm(
     formRef,
     errRefs,
     setField,
-    toggleDay,
+    setScheduleDay,
     handleSupportTargetToggle,
     handleClose,
     handleSubmit,

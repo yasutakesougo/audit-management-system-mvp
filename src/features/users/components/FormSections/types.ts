@@ -12,5 +12,5 @@ export type FormSectionProps = {
   values: FormValues;
   errors: FormErrors;
   setField: <K extends keyof FormValues>(key: K, value: FormValues[K]) => void;
-  toggleDay: (day: string, field: DayField) => void;
+  setScheduleDay: (day: string, direction: 'to' | 'from', method: string) => void;
 };
