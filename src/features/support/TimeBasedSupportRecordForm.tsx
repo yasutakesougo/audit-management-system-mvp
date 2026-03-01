@@ -11,6 +11,7 @@ import Alert from '@mui/material/Alert';
 import Box from '@mui/material/Box';
 import Button from '@mui/material/Button';
 import Chip from '@mui/material/Chip';
+import CircularProgress from '@mui/material/CircularProgress';
 import Dialog from '@mui/material/Dialog';
 import DialogActions from '@mui/material/DialogActions';
 import DialogContent from '@mui/material/DialogContent';
@@ -25,13 +26,13 @@ import RadioGroup from '@mui/material/RadioGroup';
 import Stack from '@mui/material/Stack';
 import TextField from '@mui/material/TextField';
 import Typography from '@mui/material/Typography';
-import React, { useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { SupportRecord, SupportRecordTimeSlot } from './types';
 
 interface SupportRecordFormProps {
   open: boolean;
   onClose: () => void;
-  onSave: (record: Omit<SupportRecord, 'id' | 'createdAt' | 'updatedAt'>) => void;
+  onSave: (record: Omit<SupportRecord, 'id' | 'createdAt' | 'updatedAt'>) => Promise<void>;
   timeSlot: SupportRecordTimeSlot;
   initialData?: SupportRecord;
   personId: string;
@@ -84,7 +85,49 @@ const TimeBasedSupportRecordForm: React.FC<SupportRecordFormProps> = ({
     status: initialData?.status || '未記録'
   });
 
-  const handleSave = () => {
+  // Phase 2: Saving 状態
+  const [isSaving, setIsSaving] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
+
+  // P0防波堤: 初期値スナップショット
+  const initialFormDataRef = useRef<string>('');
+  useEffect(() => {
+    initialFormDataRef.current = JSON.stringify(formData);
+  }, [open, initialData]); // formData is intentionally excluded - snapshot at mount/reopen only
+
+  // P0防波堤: isDirty 判定
+  const isDirty = useMemo(
+    () => initialFormDataRef.current !== '' && JSON.stringify(formData) !== initialFormDataRef.current,
+    [formData]
+  );
+
+  // P0防波堤: 未保存ガード付き閉じる処理（Phase 2: isSaving中はclose禁止）
+  const handleClose = useCallback(() => {
+    if (isSaving) return;
+    if (isDirty && !window.confirm('保存されていない変更があります。破棄して閉じますか？')) {
+      return;
+    }
+    setSaveError(null);
+    onClose();
+  }, [isDirty, isSaving, onClose]);
+
+  // P0防波堤: ブラウザ離脱時の警告
+  useEffect(() => {
+    if (!open) return;
+    const handler = (e: BeforeUnloadEvent) => {
+      if (isDirty) {
+        e.preventDefault();
+        e.returnValue = '';
+      }
+    };
+    window.addEventListener('beforeunload', handler);
+    return () => window.removeEventListener('beforeunload', handler);
+  }, [open, isDirty]);
+
+  // Phase 2: async保存 + 成功時のみclose + インラインエラー
+  const handleSave = useCallback(async () => {
+    if (isSaving) return;
+
     // 記録内容に応じてステータスを自動設定
     const hasBasicInfo = formData.userActivities.actual || formData.staffActivities.actual || formData.userCondition.behavior;
     const hasAnyContent = hasBasicInfo || formData.specialNotes.incidents || formData.specialNotes.concerns;
@@ -93,12 +136,22 @@ const TimeBasedSupportRecordForm: React.FC<SupportRecordFormProps> = ({
       ? (hasBasicInfo ? '記録済み' : '要確認')
       : '未記録';
 
-    onSave({
-      ...formData,
-      status
-    });
-    onClose();
-  };
+    setIsSaving(true);
+    setSaveError(null);
+    try {
+      await onSave({
+        ...formData,
+        status
+      });
+      // 成功: isDirtyリセット + close
+      initialFormDataRef.current = JSON.stringify(formData);
+      onClose();
+    } catch (e) {
+      setSaveError(e instanceof Error ? e.message : '保存に失敗しました');
+    } finally {
+      setIsSaving(false);
+    }
+  }, [isSaving, formData, onSave, onClose]);
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -110,7 +163,7 @@ const TimeBasedSupportRecordForm: React.FC<SupportRecordFormProps> = ({
   };
 
   return (
-    <Dialog open={open} onClose={onClose} maxWidth="lg" fullWidth>
+    <Dialog open={open} onClose={handleClose} maxWidth="lg" fullWidth>
       <DialogTitle>
         <Box display="flex" alignItems="center" gap={2}>
           <AccessTimeIcon color="primary" />
@@ -132,6 +185,12 @@ const TimeBasedSupportRecordForm: React.FC<SupportRecordFormProps> = ({
 
       <DialogContent>
         <Stack spacing={3}>
+          {/* Phase 2: インラインエラー表示 */}
+          {saveError && (
+            <Alert severity="error" onClose={() => setSaveError(null)} sx={{ whiteSpace: 'pre-line' }}>
+              {saveError}
+            </Alert>
+          )}
           <Alert severity="info" sx={{ mb: 2 }}>
             この時間帯（{timeSlot}）の記録を入力してください。本人のやること、職員のやること、本人の様子、特記事項を記録します。
           </Alert>
@@ -437,10 +496,11 @@ const TimeBasedSupportRecordForm: React.FC<SupportRecordFormProps> = ({
       >
         <Stack direction="row" spacing={1} sx={{ width: '100%' }}>
           <Button
-            onClick={onClose}
+            onClick={handleClose}
             variant="outlined"
             size="large"
             fullWidth
+            disabled={isSaving}
             sx={{ minHeight: 48 }}
           >
             キャンセル
@@ -451,9 +511,10 @@ const TimeBasedSupportRecordForm: React.FC<SupportRecordFormProps> = ({
             size="large"
             fullWidth
             sx={{ minHeight: 48 }}
-            disabled={!formData.reporter.name || !formData.userCondition.behavior}
+            disabled={(!formData.reporter.name || !formData.userCondition.behavior) || isSaving}
+            startIcon={isSaving ? <CircularProgress size={20} color="inherit" /> : undefined}
           >
-            保存
+            {isSaving ? '保存中...' : '保存'}
           </Button>
         </Stack>
       </DialogActions>

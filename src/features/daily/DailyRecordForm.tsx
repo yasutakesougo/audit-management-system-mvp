@@ -17,6 +17,7 @@ import Box from '@mui/material/Box';
 import Button from '@mui/material/Button';
 import Checkbox from '@mui/material/Checkbox';
 import Chip from '@mui/material/Chip';
+import CircularProgress from '@mui/material/CircularProgress';
 import Dialog from '@mui/material/Dialog';
 import DialogActions from '@mui/material/DialogActions';
 import DialogContent from '@mui/material/DialogContent';
@@ -31,7 +32,7 @@ import Skeleton from '@mui/material/Skeleton';
 import Stack from '@mui/material/Stack';
 import TextField from '@mui/material/TextField';
 import Typography from '@mui/material/Typography';
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import type { DailyUserOption } from './index';
 import { useDailyUserOptions } from './index';
@@ -40,7 +41,7 @@ interface DailyRecordFormProps {
   open: boolean;
   onClose: () => void;
   record?: PersonDaily;
-  onSave: (record: Omit<PersonDaily, 'id'>) => void;
+  onSave: (record: Omit<PersonDaily, 'id'>) => Promise<void>;
 }
 
 const mealOptions = [
@@ -164,11 +165,16 @@ export function DailyRecordForm({ open, onClose, record, onSave }: DailyRecordFo
   const navigate = useNavigate();
   const { options: userOptions, findByPersonId } = useDailyUserOptions();
 
+  const initialFormDataRef = useRef<string>('');
+
   const [formData, setFormData] = useState<Omit<PersonDaily, 'id'>>(
     () => createEmptyDailyRecord()
   );
 
   const [errors, setErrors] = useState<Record<string, string>>({});
+  // Phase 2: Saving 状態
+  const [isSaving, setIsSaving] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
   const [newActivityAM, setNewActivityAM] = useState('');
   const [newActivityPM, setNewActivityPM] = useState('');
 
@@ -217,7 +223,7 @@ export function DailyRecordForm({ open, onClose, record, onSave }: DailyRecordFo
   // レコードの初期化
   useEffect(() => {
     if (record) {
-      setFormData({
+      const initial = {
         personId: record.personId,
         personName: record.personName,
         date: record.date,
@@ -226,11 +232,44 @@ export function DailyRecordForm({ open, onClose, record, onSave }: DailyRecordFo
         draft: record.draft,
         kind: record.kind,
         data: record.data
-      });
+      };
+      setFormData(initial);
+      initialFormDataRef.current = JSON.stringify(initial);
     } else {
-      setFormData(createEmptyDailyRecord());
+      const initial = createEmptyDailyRecord();
+      setFormData(initial);
+      initialFormDataRef.current = JSON.stringify(initial);
     }
   }, [record, open]);
+
+  // P0防波堤: isDirty 判定
+  const isDirty = useMemo(
+    () => initialFormDataRef.current !== '' && JSON.stringify(formData) !== initialFormDataRef.current,
+    [formData]
+  );
+
+  // P0防波堤: 未保存ガード付き閉じる処理（Phase 2: isSaving中はclose禁止）
+  const handleClose = useCallback(() => {
+    if (isSaving) return;
+    if (isDirty && !window.confirm('保存されていない変更があります。破棄して閉じますか？')) {
+      return;
+    }
+    setSaveError(null);
+    onClose();
+  }, [isDirty, isSaving, onClose]);
+
+  // P0防波堤: ブラウザ離脱時の警告
+  useEffect(() => {
+    if (!open) return;
+    const handler = (e: BeforeUnloadEvent) => {
+      if (isDirty) {
+        e.preventDefault();
+        e.returnValue = '';
+      }
+    };
+    window.addEventListener('beforeunload', handler);
+    return () => window.removeEventListener('beforeunload', handler);
+  }, [open, isDirty]);
 
   // 🔽 Phase 9: 特記事項 自動下書き用エフェクト
   useEffect(() => {
@@ -413,12 +452,24 @@ export function DailyRecordForm({ open, onClose, record, onSave }: DailyRecordFo
     return Object.keys(newErrors).length === 0;
   };
 
-  const handleSave = () => {
-    if (validateForm()) {
-      onSave(formData);
+  // Phase 2: async保存 + 成功時のみclose + インラインエラー
+  const handleSave = useCallback(async () => {
+    if (isSaving) return;
+    if (!validateForm()) return;
+
+    setIsSaving(true);
+    setSaveError(null);
+    try {
+      await onSave(formData);
+      // 成功: isDirtyリセット + close
+      initialFormDataRef.current = JSON.stringify(formData);
       onClose();
+    } catch (e) {
+      setSaveError(e instanceof Error ? e.message : '保存に失敗しました');
+    } finally {
+      setIsSaving(false);
     }
-  };
+  }, [isSaving, validateForm, onSave, formData, onClose]);
 
   // リアルタイムバリデーション：必須項目の入力状況をチェック
   const isFormValid = formData.personId && formData.date && formData.reporter.name.trim();
@@ -426,7 +477,7 @@ export function DailyRecordForm({ open, onClose, record, onSave }: DailyRecordFo
   return (
     <Dialog
       open={open}
-      onClose={onClose}
+      onClose={handleClose}
       maxWidth="md"
       fullWidth
       PaperProps={{
@@ -450,6 +501,17 @@ export function DailyRecordForm({ open, onClose, record, onSave }: DailyRecordFo
 
       <DialogContent dividers data-testid="daily-record-form-content">
         <Stack spacing={3}>
+          {/* Phase 2: インラインエラー表示 */}
+          {saveError && (
+            <Alert
+              severity="error"
+              onClose={() => setSaveError(null)}
+              data-testid="save-error-alert"
+              sx={{ whiteSpace: 'pre-line' }}
+            >
+              {saveError}
+            </Alert>
+          )}
           {/* 基本情報 */}
           <Paper sx={{ p: 2 }} data-testid="basic-info-section">
             <Typography variant="subtitle1" sx={{ mb: 2, display: 'flex', alignItems: 'center' }}>
@@ -936,11 +998,12 @@ export function DailyRecordForm({ open, onClose, record, onSave }: DailyRecordFo
       >
         <Stack direction="row" spacing={1} sx={{ width: '100%' }}>
           <Button
-            onClick={onClose}
+            onClick={handleClose}
             data-testid="cancel-button"
             variant="outlined"
             size="large"
             fullWidth
+            disabled={isSaving}
             sx={{ minHeight: 48 }}
           >
             キャンセル
@@ -952,9 +1015,10 @@ export function DailyRecordForm({ open, onClose, record, onSave }: DailyRecordFo
             fullWidth
             sx={{ minHeight: 48 }}
             data-testid="save-button"
-            disabled={!isFormValid}
+            disabled={!isFormValid || isSaving}
+            startIcon={isSaving ? <CircularProgress size={20} color="inherit" /> : undefined}
           >
-            {record ? '更新' : '保存'}
+            {isSaving ? '保存中...' : record ? '更新' : '保存'}
           </Button>
         </Stack>
       </DialogActions>

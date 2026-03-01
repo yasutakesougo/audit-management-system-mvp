@@ -66,7 +66,7 @@ const mockRecord: PersonDaily = {
 describe('DailyRecordForm', () => {
   describe('フォーム初期化', () => {
     it('新規作成時に空のフォームを表示する', () => {
-      const mockOnSave = vi.fn();
+      const mockOnSave = vi.fn().mockResolvedValue(undefined);
       const mockOnClose = vi.fn();
 
       render(
@@ -85,7 +85,7 @@ describe('DailyRecordForm', () => {
     });
 
     it('編集時に既存データを表示する', () => {
-      const mockOnSave = vi.fn();
+      const mockOnSave = vi.fn().mockResolvedValue(undefined);
       const mockOnClose = vi.fn();
 
       render(
@@ -107,7 +107,7 @@ describe('DailyRecordForm', () => {
 
   describe('バリデーション', () => {
     it('必須項目が未入力の場合、保存ボタンが無効になる', () => {
-      const mockOnSave = vi.fn();
+      const mockOnSave = vi.fn().mockResolvedValue(undefined);
       const mockOnClose = vi.fn();
 
       render(
@@ -125,7 +125,7 @@ describe('DailyRecordForm', () => {
     });
 
     it('必須項目を入力すると保存ボタンが有効になる', async () => {
-      const mockOnSave = vi.fn();
+      const mockOnSave = vi.fn().mockResolvedValue(undefined);
       const mockOnClose = vi.fn();
 
       render(
@@ -161,7 +161,7 @@ describe('DailyRecordForm', () => {
 
   describe('型安全性の確認', () => {
     it('handleDataChangeが正しい型で動作する', async () => {
-      const mockOnSave = vi.fn();
+      const mockOnSave = vi.fn().mockResolvedValue(undefined);
       const mockOnClose = vi.fn();
 
       render(
@@ -192,7 +192,7 @@ describe('DailyRecordForm', () => {
 
   describe('フォーム送信', () => {
     it('保存時に正しいデータ構造でonSaveが呼ばれる', async () => {
-      const mockOnSave = vi.fn();
+      const mockOnSave = vi.fn().mockResolvedValue(undefined);
       const mockOnClose = vi.fn();
 
       render(

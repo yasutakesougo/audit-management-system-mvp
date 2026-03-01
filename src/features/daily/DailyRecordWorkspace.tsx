@@ -39,7 +39,7 @@ interface DailyRecordWorkspaceProps {
   records: PersonDaily[];
   onEdit: (record: PersonDaily) => void;
   onDelete: (recordId: number) => void;
-  onSave: (record: PersonDailyUpsert) => void;
+  onSave: (record: PersonDailyUpsert) => Promise<void>;
   onBulkSave?: (records: BulkDailyRow[]) => Promise<void>;
   selectedDate?: string;
 }
@@ -98,13 +98,13 @@ const DailyRecordWorkspace: React.FC<DailyRecordWorkspaceProps> = ({
   }, []);
 
   const handleSaveRecord = React.useCallback(
-    (record: Omit<PersonDaily, 'id'>) => {
+    async (record: Omit<PersonDaily, 'id'>) => {
       const recordForSave: PersonDailyUpsert =
         editingRecord != null ? { ...record, id: editingRecord.id } : record;
-      onSave(recordForSave);
-      handleCloseForm();
+      await onSave(recordForSave);
+      // Phase 2: close は Form が成功時に行うため、ここでは handleCloseForm を呼ばない
     },
-    [editingRecord, handleCloseForm, onSave],
+    [editingRecord, onSave],
   );
 
   const today = new Date().toISOString().split('T')[0];
