@@ -72,4 +72,34 @@ describe('AttendanceRow', () => {
 
     expect(screen.getByTestId('temp-chip')).toHaveTextContent('36.7℃');
   });
+
+  it('hides nurse button when tempValue < 37.5', () => {
+    render(
+      <AttendanceRow
+        {...baseProps}
+        visit={{ status: '通所中', checkInAtText: '09:00' }}
+        tempValue={37.4}
+        onOpenNurse={vi.fn()}
+      />,
+    );
+
+    expect(screen.queryByRole('button', { name: '看護記録を開く' })).not.toBeInTheDocument();
+  });
+
+  it('shows nurse button when tempValue >= 37.5 and calls handler on click', () => {
+    const onOpenNurse = vi.fn();
+    render(
+      <AttendanceRow
+        {...baseProps}
+        visit={{ status: '通所中', checkInAtText: '09:00' }}
+        tempValue={37.5}
+        onOpenNurse={onOpenNurse}
+      />,
+    );
+
+    const nurseBtn = screen.getByRole('button', { name: '看護記録を開く' });
+    expect(nurseBtn).toBeInTheDocument();
+    nurseBtn.click();
+    expect(onOpenNurse).toHaveBeenCalledTimes(1);
+  });
 });

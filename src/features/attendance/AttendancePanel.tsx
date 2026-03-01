@@ -3,23 +3,24 @@ import SyncIcon from '@mui/icons-material/Sync';
 import CheckCircleOutlineIcon from '@mui/icons-material/TaskAlt';
 import ThermostatIcon from '@mui/icons-material/Thermostat';
 import {
-    Alert,
-    Box,
-    Button,
-    Chip,
-    Dialog,
-    DialogActions,
-    DialogContent,
-    DialogTitle,
-    InputAdornment,
-    Snackbar,
-    Stack,
-    TextField,
-    ToggleButton,
-    ToggleButtonGroup,
-    Typography,
+  Alert,
+  Box,
+  Button,
+  Chip,
+  Dialog,
+  DialogActions,
+  DialogContent,
+  DialogTitle,
+  InputAdornment,
+  Snackbar,
+  Stack,
+  TextField,
+  ToggleButton,
+  ToggleButtonGroup,
+  Typography,
 } from '@mui/material';
-import { useCallback, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 
 import { AttendanceFilterBar } from './components/AttendanceFilterBar';
 import { AttendanceList } from './components/AttendanceList';
@@ -38,10 +39,21 @@ const TEMP_DIALOG_CLOSED: TempDialogState = { open: false, userCode: '', userNam
 const isValidTemp = (v: number): boolean => v >= 35.0 && v <= 42.0;
 
 const AttendancePanel = (): JSX.Element => {
-  const { status, rows, filters, inputMode, savingUsers, notification, dismissNotification, actions } = useAttendance();
+  const { status, rows, filters, inputMode, savingUsers, savedTempsByUser, notification, dismissNotification, actions } = useAttendance();
+  const navigate = useNavigate();
 
   // ── Temperature draft state ──
   const [tempDraftByUser, setTempDraftByUser] = useState<Record<string, number>>({});
+
+  // Merge: draft wins over saved
+  const tempByUser = useMemo(() => {
+    const out: Record<string, number> = { ...savedTempsByUser };
+    for (const [userCode, v] of Object.entries(tempDraftByUser)) {
+      if (v != null) out[userCode] = v;
+    }
+    return out;
+  }, [savedTempsByUser, tempDraftByUser]);
+
   const [tempDialog, setTempDialog] = useState<TempDialogState>(TEMP_DIALOG_CLOSED);
   const [tempInput, setTempInput] = useState('');
   const [tempError, setTempError] = useState('');
@@ -70,7 +82,13 @@ const AttendancePanel = (): JSX.Element => {
     const rounded = Math.round(parsed * 10) / 10;
     setTempDraftByUser((prev) => ({ ...prev, [tempDialog.userCode]: rounded }));
     closeTempDialog();
-  }, [tempInput, tempDialog.userCode, closeTempDialog]);
+    // Persist to SharePoint via nurse observation upsert
+    void actions.saveTemperature(tempDialog.userCode, rounded);
+  }, [tempInput, tempDialog.userCode, closeTempDialog, actions]);
+
+  const handleOpenNurse = useCallback((userCode: string) => {
+    navigate(`/nurse/observation?user=${userCode}`);
+  }, [navigate]);
 
   return (
     <Box sx={{ display: 'grid', gap: 2.5 }}>
@@ -121,8 +139,9 @@ const AttendancePanel = (): JSX.Element => {
         rows={rows}
         savingUsers={savingUsers}
         inputMode={inputMode}
-        tempDraftByUser={tempDraftByUser}
+        tempDraftByUser={tempByUser}
         onOpenTemp={openTempDialog}
+        onOpenNurse={handleOpenNurse}
         onUpdateStatus={actions.updateStatus}
       />
 
