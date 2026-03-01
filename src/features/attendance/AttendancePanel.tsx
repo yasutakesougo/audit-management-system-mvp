@@ -19,9 +19,10 @@ import {
   ToggleButtonGroup,
   Typography,
 } from '@mui/material';
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 
+import { getNextTargetUserCode, scrollToUserRow } from './attendance.autoNext';
 import { AttendanceFilterBar } from './components/AttendanceFilterBar';
 import { AttendanceList } from './components/AttendanceList';
 import { useAttendance } from './useAttendance';
@@ -54,6 +55,12 @@ const AttendancePanel = (): JSX.Element => {
     return out;
   }, [savedTempsByUser, tempDraftByUser]);
 
+  // Refs for stale-closure-safe auto-scroll
+  const rowsRef = useRef(rows);
+  useEffect(() => { rowsRef.current = rows; }, [rows]);
+  const tempByUserRef = useRef(tempByUser);
+  useEffect(() => { tempByUserRef.current = tempByUser; }, [tempByUser]);
+
   const [tempDialog, setTempDialog] = useState<TempDialogState>(TEMP_DIALOG_CLOSED);
   const [tempInput, setTempInput] = useState('');
   const [tempError, setTempError] = useState('');
@@ -80,11 +87,23 @@ const AttendancePanel = (): JSX.Element => {
       return;
     }
     const rounded = Math.round(parsed * 10) / 10;
-    setTempDraftByUser((prev) => ({ ...prev, [tempDialog.userCode]: rounded }));
+    const savedUserCode = tempDialog.userCode;
+    setTempDraftByUser((prev) => ({ ...prev, [savedUserCode]: rounded }));
     closeTempDialog();
     // Persist to SharePoint via nurse observation upsert
-    void actions.saveTemperature(tempDialog.userCode, rounded);
-  }, [tempInput, tempDialog.userCode, closeTempDialog, actions]);
+    void actions.saveTemperature(savedUserCode, rounded);
+
+    // C1.6: auto-scroll to next target in checkInRun mode
+    if (inputMode === 'checkInRun') {
+      setTimeout(() => {
+        const next = getNextTargetUserCode(
+          rowsRef.current,
+          { ...tempByUserRef.current, [savedUserCode]: rounded },
+        );
+        if (next) scrollToUserRow(next);
+      }, 0);
+    }
+  }, [tempInput, tempDialog.userCode, closeTempDialog, actions, inputMode]);
 
   const handleOpenNurse = useCallback((userCode: string) => {
     navigate(`/nurse/observation?user=${userCode}`);
