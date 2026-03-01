@@ -54,3 +54,30 @@ audit-report.json
 # runtime env (do not commit)
 public/env.runtime.json
 .auth/
+
+# Test output logs (scratch/debug – DO NOT commit)
+test_output*.log
+test_results.log
+test-output*.txt
+full_run.log
+full_test_results.log
+test_report.xml
+
+# CI/debug scratch files
+checks*.txt
+pr_body_new.txt
+runs*.json
+main_runs.json
+all_main_runs.json
+checks_raw.json
+final_results.json
+test_results.json
+
+# Root-level scratch
+nightly-report.md
+/100
+
+# Backup source files
+*.bak
+*.improved.tsx
+*.legacy.tsx

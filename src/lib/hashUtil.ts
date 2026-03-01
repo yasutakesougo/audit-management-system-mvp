@@ -21,12 +21,13 @@ export function canonicalJSONStringify(input: unknown): string {
   return JSON.stringify(norm(input));
 }
 
-export async function sha256Hex(data: string): Promise<string> {
+export async function sha256Hex(data: string, injectedSubtle?: SubtleCrypto): Promise<string> {
   const enc = new TextEncoder().encode(data);
-  // Try global crypto.subtle first; fall back to Node's webcrypto
-  const subtle = (globalThis.crypto && 'subtle' in globalThis.crypto)
-    ? globalThis.crypto.subtle
-    : (await import('crypto')).webcrypto.subtle;
+  // Use injected subtle (for tests), then try global crypto.subtle, then Node's webcrypto
+  const subtle = injectedSubtle
+    ?? (globalThis.crypto && 'subtle' in globalThis.crypto
+      ? globalThis.crypto.subtle
+      : (await import('crypto')).webcrypto.subtle);
   const buf = await subtle.digest('SHA-256', enc);
   return Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2, '0')).join('');
 }
