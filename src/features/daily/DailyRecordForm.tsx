@@ -31,7 +31,7 @@ import Skeleton from '@mui/material/Skeleton';
 import Stack from '@mui/material/Stack';
 import TextField from '@mui/material/TextField';
 import Typography from '@mui/material/Typography';
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import type { DailyUserOption } from './index';
 import { useDailyUserOptions } from './index';
@@ -164,6 +164,8 @@ export function DailyRecordForm({ open, onClose, record, onSave }: DailyRecordFo
   const navigate = useNavigate();
   const { options: userOptions, findByPersonId } = useDailyUserOptions();
 
+  const initialFormDataRef = useRef<string>('');
+
   const [formData, setFormData] = useState<Omit<PersonDaily, 'id'>>(
     () => createEmptyDailyRecord()
   );
@@ -217,7 +219,7 @@ export function DailyRecordForm({ open, onClose, record, onSave }: DailyRecordFo
   // レコードの初期化
   useEffect(() => {
     if (record) {
-      setFormData({
+      const initial = {
         personId: record.personId,
         personName: record.personName,
         date: record.date,
@@ -226,11 +228,42 @@ export function DailyRecordForm({ open, onClose, record, onSave }: DailyRecordFo
         draft: record.draft,
         kind: record.kind,
         data: record.data
-      });
+      };
+      setFormData(initial);
+      initialFormDataRef.current = JSON.stringify(initial);
     } else {
-      setFormData(createEmptyDailyRecord());
+      const initial = createEmptyDailyRecord();
+      setFormData(initial);
+      initialFormDataRef.current = JSON.stringify(initial);
     }
   }, [record, open]);
+
+  // P0防波堤: isDirty 判定
+  const isDirty = useMemo(
+    () => initialFormDataRef.current !== '' && JSON.stringify(formData) !== initialFormDataRef.current,
+    [formData]
+  );
+
+  // P0防波堤: 未保存ガード付き閉じる処理
+  const handleClose = useCallback(() => {
+    if (isDirty && !window.confirm('保存されていない変更があります。破棄して閉じますか？')) {
+      return;
+    }
+    onClose();
+  }, [isDirty, onClose]);
+
+  // P0防波堤: ブラウザ離脱時の警告
+  useEffect(() => {
+    if (!open) return;
+    const handler = (e: BeforeUnloadEvent) => {
+      if (isDirty) {
+        e.preventDefault();
+        e.returnValue = '';
+      }
+    };
+    window.addEventListener('beforeunload', handler);
+    return () => window.removeEventListener('beforeunload', handler);
+  }, [open, isDirty]);
 
   // 🔽 Phase 9: 特記事項 自動下書き用エフェクト
   useEffect(() => {
@@ -426,7 +459,7 @@ export function DailyRecordForm({ open, onClose, record, onSave }: DailyRecordFo
   return (
     <Dialog
       open={open}
-      onClose={onClose}
+      onClose={handleClose}
       maxWidth="md"
       fullWidth
       PaperProps={{
@@ -936,7 +969,7 @@ export function DailyRecordForm({ open, onClose, record, onSave }: DailyRecordFo
       >
         <Stack direction="row" spacing={1} sx={{ width: '100%' }}>
           <Button
-            onClick={onClose}
+            onClick={handleClose}
             data-testid="cancel-button"
             variant="outlined"
             size="large"

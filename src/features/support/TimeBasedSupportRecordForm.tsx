@@ -25,7 +25,7 @@ import RadioGroup from '@mui/material/RadioGroup';
 import Stack from '@mui/material/Stack';
 import TextField from '@mui/material/TextField';
 import Typography from '@mui/material/Typography';
-import React, { useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { SupportRecord, SupportRecordTimeSlot } from './types';
 
 interface SupportRecordFormProps {
@@ -84,6 +84,39 @@ const TimeBasedSupportRecordForm: React.FC<SupportRecordFormProps> = ({
     status: initialData?.status || '未記録'
   });
 
+  // P0防波堤: 初期値スナップショット
+  const initialFormDataRef = useRef<string>('');
+  useEffect(() => {
+    initialFormDataRef.current = JSON.stringify(formData);
+  }, [open, initialData]); // formData is intentionally excluded - snapshot at mount/reopen only
+
+  // P0防波堤: isDirty 判定
+  const isDirty = useMemo(
+    () => initialFormDataRef.current !== '' && JSON.stringify(formData) !== initialFormDataRef.current,
+    [formData]
+  );
+
+  // P0防波堤: 未保存ガード付き閉じる処理
+  const handleClose = useCallback(() => {
+    if (isDirty && !window.confirm('保存されていない変更があります。破棄して閉じますか？')) {
+      return;
+    }
+    onClose();
+  }, [isDirty, onClose]);
+
+  // P0防波堤: ブラウザ離脱時の警告
+  useEffect(() => {
+    if (!open) return;
+    const handler = (e: BeforeUnloadEvent) => {
+      if (isDirty) {
+        e.preventDefault();
+        e.returnValue = '';
+      }
+    };
+    window.addEventListener('beforeunload', handler);
+    return () => window.removeEventListener('beforeunload', handler);
+  }, [open, isDirty]);
+
   const handleSave = () => {
     // 記録内容に応じてステータスを自動設定
     const hasBasicInfo = formData.userActivities.actual || formData.staffActivities.actual || formData.userCondition.behavior;
@@ -110,7 +143,7 @@ const TimeBasedSupportRecordForm: React.FC<SupportRecordFormProps> = ({
   };
 
   return (
-    <Dialog open={open} onClose={onClose} maxWidth="lg" fullWidth>
+    <Dialog open={open} onClose={handleClose} maxWidth="lg" fullWidth>
       <DialogTitle>
         <Box display="flex" alignItems="center" gap={2}>
           <AccessTimeIcon color="primary" />
@@ -437,7 +470,7 @@ const TimeBasedSupportRecordForm: React.FC<SupportRecordFormProps> = ({
       >
         <Stack direction="row" spacing={1} sx={{ width: '100%' }}>
           <Button
-            onClick={onClose}
+            onClick={handleClose}
             variant="outlined"
             size="large"
             fullWidth

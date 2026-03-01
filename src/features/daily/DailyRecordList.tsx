@@ -11,9 +11,15 @@ import RestaurantIcon from '@mui/icons-material/Restaurant';
 import WarningIcon from '@mui/icons-material/Warning';
 import Avatar from '@mui/material/Avatar';
 import Box from '@mui/material/Box';
+import Button from '@mui/material/Button';
 import Card from '@mui/material/Card';
 import CardContent from '@mui/material/CardContent';
 import Chip from '@mui/material/Chip';
+import MuiDialog from '@mui/material/Dialog';
+import DialogActions from '@mui/material/DialogActions';
+import DialogContent from '@mui/material/DialogContent';
+import DialogContentText from '@mui/material/DialogContentText';
+import DialogTitle from '@mui/material/DialogTitle';
 import Divider from '@mui/material/Divider';
 import IconButton from '@mui/material/IconButton';
 import Menu from '@mui/material/Menu';
@@ -59,6 +65,8 @@ export function DailyRecordList({
 }: DailyRecordListProps) {
   const [anchorEl, setAnchorEl] = React.useState<null | HTMLElement>(null);
   const [selectedRecord, setSelectedRecord] = React.useState<PersonDaily | null>(null);
+  // P0防波堤: 削除確認ダイアログ用
+  const [deleteConfirmRecord, setDeleteConfirmRecord] = React.useState<PersonDaily | null>(null);
 
   // Utility function for meal amount formatting
   const formatMealAmount = (amount: PersonDaily['data']['mealAmount']) => {
@@ -83,11 +91,23 @@ export function DailyRecordList({
     handleMenuClose();
   };
 
+  // P0防波堤: 削除メニュークリック時は確認ダイアログを表示
   const handleDelete = () => {
     if (selectedRecord) {
-      onDelete(selectedRecord.id);
+      setDeleteConfirmRecord(selectedRecord);
     }
     handleMenuClose();
+  };
+
+  const handleConfirmDelete = () => {
+    if (deleteConfirmRecord) {
+      onDelete(deleteConfirmRecord.id);
+    }
+    setDeleteConfirmRecord(null);
+  };
+
+  const handleCancelDelete = () => {
+    setDeleteConfirmRecord(null);
   };
 
   const handleOpenAttendance = () => {
@@ -406,6 +426,38 @@ export function DailyRecordList({
           削除
         </MenuItem>
       </Menu>
+
+      {/* P0防波堤: 削除確認ダイアログ */}
+      <MuiDialog
+        open={deleteConfirmRecord !== null}
+        onClose={handleCancelDelete}
+        data-testid="delete-confirm-dialog"
+        aria-labelledby="delete-confirm-title"
+      >
+        <DialogTitle id="delete-confirm-title">記録の削除</DialogTitle>
+        <DialogContent>
+          <DialogContentText>
+            {deleteConfirmRecord?.personName}さんの記録（{deleteConfirmRecord?.date}）を削除します。
+            この操作は取り消せません。
+          </DialogContentText>
+        </DialogContent>
+        <DialogActions>
+          <Button
+            onClick={handleCancelDelete}
+            data-testid="delete-cancel-button"
+          >
+            キャンセル
+          </Button>
+          <Button
+            onClick={handleConfirmDelete}
+            color="error"
+            variant="contained"
+            data-testid="delete-confirm-button"
+          >
+            削除する
+          </Button>
+        </DialogActions>
+      </MuiDialog>
     </>
   );
 }
