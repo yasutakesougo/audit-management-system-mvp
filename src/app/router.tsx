@@ -946,7 +946,7 @@ const childRoutes: RouteObject[] = [
     ),
   },
   {
-    path: 'admin/individual-support',
+    path: 'admin/individual-support/:userCode?',
     element: (
       <RequireAudience requiredRole="admin">
         <SuspendedIndividualSupportManagementPage />

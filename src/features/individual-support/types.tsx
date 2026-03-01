@@ -1,24 +1,16 @@
 // ---------------------------------------------------------------------------
-// individual-support/types — 共有型 + 定数
+// individual-support/types — 共有型 + ヘルパー
+//
+// SupportStepTemplate (SP) → ScheduleSlot 変換を担う。
+// ハードコード定数は削除済み。
 // ---------------------------------------------------------------------------
-import HealthIcon from '@mui/icons-material/HealthAndSafety';
-import InfoIcon from '@mui/icons-material/Info';
-import PsychologyIcon from '@mui/icons-material/Psychology';
-import React from 'react';
+import type { SupportStepTemplate } from '@/domain/support/step-templates';
 
 // ---------------------------------------------------------------------------
 // Types
 // ---------------------------------------------------------------------------
 
 export type TabValue = 'plan' | 'records';
-
-export interface SupportSection {
-  id: string;
-  title: string;
-  description: string[];
-  color: string;
-  icon: React.ReactNode;
-}
 
 export interface ScheduleSlot {
   id: string;
@@ -54,81 +46,8 @@ export interface TimelineEntry {
 }
 
 // ---------------------------------------------------------------------------
-// Constants
+// Constants (UI のみ — SP 非依存)
 // ---------------------------------------------------------------------------
-
-export const TARGET_NAME = '山田 太郎 様';
-
-export const supportSections: SupportSection[] = [
-  {
-    id: 'prevention',
-    title: '予防的対応（落ち着いている時）',
-    description: [
-      '朝の挨拶では必ず視線を合わせ、落ち着いた声で伝えます。',
-      '活動の切り替え前に「あと5分で次の活動です」と予告します。',
-      '安心して過ごせるよう、好きな音楽をバックグラウンドで流します。',
-    ],
-    color: 'info.light',
-    icon: <HealthIcon fontSize="small" sx={{ mr: 1 }} />,
-  },
-  {
-    id: 'skills',
-    title: 'スキル獲得支援（行動の置き換え）',
-    description: [
-      '選択肢を2つ提示し、自分で選べたことを褒めます。',
-      '感情カードを使って気持ちを言葉で表現する練習をします。',
-      '成功体験を振り返り、自信を高める声掛けを行います。',
-    ],
-    color: 'success.light',
-    icon: <PsychologyIcon fontSize="small" sx={{ mr: 1 }} />,
-  },
-  {
-    id: 'crisis',
-    title: '緊急時対応（強いこだわり・パニックの兆候）',
-    description: [
-      '深呼吸の誘導と静かな声掛けで状況を受け止めます。',
-      '安全を確保し、余分な刺激（音・光）を減らします。',
-      '落ち着いたら「どうしたかった？」と確認し、再発予防の手立てを検討します。',
-    ],
-    color: 'warning.light',
-    icon: <InfoIcon fontSize="small" sx={{ mr: 1 }} />,
-  },
-];
-
-export const initialSchedule: ScheduleSlot[] = [
-  {
-    id: 'slot-0900',
-    time: '09:00',
-    activity: '朝の会',
-    selfTasks: ['朝の挨拶をする', '今日の予定を一緒に確認する'],
-    supporterTasks: ['視覚支援ボードを提示する', '落ち着いたトーンで進行をサポートする'],
-    isRecorded: false,
-  },
-  {
-    id: 'slot-1000',
-    time: '10:00',
-    activity: '感覚統合活動',
-    selfTasks: ['ボールプールで体を動かす', '5分間のスイングを楽しむ'],
-    supporterTasks: ['安全な範囲での動きを見守る', '手順の切り替えを予告する'],
-    isRecorded: false,
-  },
-  {
-    id: 'slot-1200',
-    time: '12:00',
-    activity: '昼食',
-    selfTasks: ['自分の席に座り、手を合わせて挨拶する', '好きなおかずから食べ始める'],
-    supporterTasks: ['食具の配置を整える', '落ち着いたペースで食べられるよう声掛けする'],
-    isRecorded: false,
-  },
-  {
-    id: 'slot-1500',
-    time: '15:00',
-    activity: '帰りの支度',
-    selfTasks: ['持ち物チェックリストを確認する', 'スタッフに今日楽しかったことを伝える'],
-    supporterTasks: ['チェックリストを一緒に指差し確認する', '達成したことを振り返りながら褒める'],
-    isRecorded: false,
-  },
-];
 
 export const moodOptions = ['落ち着いている', '楽しそう', '不安そう', '疲れている', 'サインが出ている'];
 
@@ -142,8 +61,35 @@ export const abcOptionMap: Record<keyof ABCSelection, string[]> = {
 // Helpers
 // ---------------------------------------------------------------------------
 
-export const buildInitialFormState = (schedule: ScheduleSlot[]): Record<string, SlotFormState> => {
-  return schedule.reduce<Record<string, SlotFormState>>((acc, slot) => {
+/**
+ * SupportStepTemplate → ScheduleSlot に変換する。
+ * SP テンプレートのフィールドを DailyRecordsTab が消費できる形に射影。
+ */
+export function toScheduleSlot(template: SupportStepTemplate): ScheduleSlot {
+  // timeSlot は "09:30-10:30" 形式 → 開始時刻のみ抽出
+  const startTime = template.timeSlot.split('-')[0] ?? template.timeSlot;
+
+  return {
+    id: template.id,
+    time: startTime,
+    activity: template.stepTitle,
+    selfTasks: template.targetBehavior
+      .split(/[、,]/)
+      .map((s) => s.trim())
+      .filter(Boolean),
+    supporterTasks: template.supportMethod
+      .split(/[、,]/)
+      .map((s) => s.trim())
+      .filter(Boolean),
+    isRecorded: false,
+  };
+}
+
+/**
+ * ScheduleSlot[] から初期フォーム状態を構築する。
+ */
+export const buildInitialFormState = (slots: ScheduleSlot[]): Record<string, SlotFormState> => {
+  return slots.reduce<Record<string, SlotFormState>>((acc, slot) => {
     acc[slot.id] = {
       mood: '',
       note: '',

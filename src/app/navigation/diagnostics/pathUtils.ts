@@ -95,7 +95,8 @@ export const ORPHAN_ALLOWLIST_DETAILS: AllowlistRoute[] = [
   { path: '/schedules/timeline', category: 'Drilldown', reason: 'スケジュールのタイムラインビュー' },
   { path: '/schedules/unified', category: 'Redirect', reason: '統合スケジュールへのリダイレクト' },
   { path: '/schedules/create', category: 'Creation', reason: 'スケジュール作成モーダル/ページ' },
-  { path: '/dev/schedule-create-dialog', category: 'Dev', reason: '開発用画面' }
+  { path: '/dev/schedule-create-dialog', category: 'Dev', reason: '開発用画面' },
+  { path: '/isp-editor/:userId', category: 'Detail', reason: 'ISP前回比較の利用者別詳細画面（TodayOps・UserDetailから遷移）' }
 ].map(item => ({ ...item, path: normalizeRouterPath(item.path) }));
 
 export const ORPHAN_ALLOWLIST = new Set(ORPHAN_ALLOWLIST_DETAILS.map(d => d.path));
