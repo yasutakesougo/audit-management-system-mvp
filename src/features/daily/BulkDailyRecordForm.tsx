@@ -1,4 +1,3 @@
-import { useUsers } from '@/stores/useUsers';
 import { TESTIDS } from '@/testids';
 import {
     AccessTime as AccessTimeIcon,
@@ -38,205 +37,41 @@ import {
     Tooltip,
     Typography
 } from '@mui/material';
-import { useMemo, useState } from 'react';
 
-// Types
-interface BulkActivityData {
-  date: string;
-  reporter: {
-    name: string;
-    role: string;
-  };
-  commonActivities: {
-    amActivities: string[];
-    pmActivities: string[];
-    amNotes: string;
-    pmNotes: string;
-  };
-  individualNotes: Record<string, {
-    amNotes?: string;
-    pmNotes?: string;
-    specialNotes?: string;
-    problemBehavior?: {
-      selfHarm: boolean;
-      violence: boolean;
-      loudVoice: boolean;
-      pica: boolean;
-      other: boolean;
-      otherDetail: string;
-    };
-  }>;
-}
-
-interface BulkDailyRecordFormProps {
-  open: boolean;
-  onClose: () => void;
-  onSave: (data: BulkActivityData, selectedUserIds: string[]) => Promise<void>;
-}
+import type { BulkDailyRecordFormProps } from './bulkDailyRecordFormLogic';
+import { REPORTER_ROLE_OPTIONS } from './bulkDailyRecordFormLogic';
+import { useBulkDailyRecordFormState } from './useBulkDailyRecordFormState';
 
 export function BulkDailyRecordForm({
   open,
   onClose,
   onSave
 }: BulkDailyRecordFormProps) {
-  // State
-  const [selectedUserIds, setSelectedUserIds] = useState<string[]>([]);
-  const [searchQuery, setSearchQuery] = useState('');
-  const [formData, setFormData] = useState<BulkActivityData>({
-    date: new Date().toISOString().split('T')[0],
-    reporter: {
-      name: '',
-      role: '生活支援員'
-    },
-    commonActivities: {
-      amActivities: [],
-      pmActivities: [],
-      amNotes: '',
-      pmNotes: ''
-    },
-    individualNotes: {}
-  });
-  const [newActivityAM, setNewActivityAM] = useState('');
-  const [newActivityPM, setNewActivityPM] = useState('');
-  const [saving, setSaving] = useState(false);
-
-  // Data
-  const { data: users = [] } = useUsers();
-
-  // Filtered users based on search
-  const filteredUsers = useMemo(() => {
-    if (!searchQuery.trim()) return users;
-    const query = searchQuery.toLowerCase();
-    return users.filter(user =>
-      user.name?.toLowerCase().includes(query) ||
-      user.userId?.toLowerCase().includes(query) ||
-      user.furigana?.toLowerCase().includes(query)
-    );
-  }, [users, searchQuery]);
-
-  // Selected users data
-  const selectedUsers = useMemo(() => {
-    return users.filter(user => selectedUserIds.includes(user.userId || ''));
-  }, [users, selectedUserIds]);
-
-  // Event handlers
-  const handleUserToggle = (userId: string) => {
-    setSelectedUserIds(prev => {
-      const newIds = prev.includes(userId)
-        ? prev.filter(id => id !== userId)
-        : [...prev, userId];
-
-      // Initialize individual notes for new users
-      if (!prev.includes(userId)) {
-        setFormData(prevData => ({
-          ...prevData,
-          individualNotes: {
-            ...prevData.individualNotes,
-            [userId]: {}
-          }
-        }));
-      }
-
-      return newIds;
-    });
-  };
-
-  const handleSelectAll = () => {
-    const allIds = filteredUsers.map(user => user.userId || '');
-    setSelectedUserIds(allIds);
-
-    // Initialize individual notes for all users
-    const newIndividualNotes: Record<string, object> = {};
-    allIds.forEach(id => {
-      newIndividualNotes[id] = {};
-    });
-
-    setFormData(prev => ({
-      ...prev,
-      individualNotes: {
-        ...prev.individualNotes,
-        ...newIndividualNotes
-      }
-    }));
-  };
-
-  const handleClearAll = () => {
-    setSelectedUserIds([]);
-  };
-
-  const handleAddActivity = (period: 'AM' | 'PM') => {
-    const newActivity = period === 'AM' ? newActivityAM : newActivityPM;
-    if (newActivity.trim()) {
-      const field = period === 'AM' ? 'amActivities' : 'pmActivities';
-      setFormData(prev => ({
-        ...prev,
-        commonActivities: {
-          ...prev.commonActivities,
-          [field]: [...prev.commonActivities[field], newActivity.trim()]
-        }
-      }));
-      if (period === 'AM') {
-        setNewActivityAM('');
-      } else {
-        setNewActivityPM('');
-      }
-    }
-  };
-
-  const handleRemoveActivity = (period: 'AM' | 'PM', index: number) => {
-    const field = period === 'AM' ? 'amActivities' : 'pmActivities';
-    setFormData(prev => ({
-      ...prev,
-      commonActivities: {
-        ...prev.commonActivities,
-        [field]: prev.commonActivities[field].filter((_, i) => i !== index)
-      }
-    }));
-  };
-
-  const handleIndividualNoteChange = (userId: string, field: string, value: string) => {
-    setFormData(prev => ({
-      ...prev,
-      individualNotes: {
-        ...prev.individualNotes,
-        [userId]: {
-          ...prev.individualNotes[userId],
-          [field]: value
-        }
-      }
-    }));
-  };
-
-  const handleSave = async () => {
-    if (selectedUserIds.length === 0) {
-      alert('利用者を1人以上選択してください');
-      return;
-    }
-
-    if (!formData.reporter.name.trim()) {
-      alert('記録者名を入力してください');
-      return;
-    }
-
-    setSaving(true);
-    try {
-      await onSave(formData, selectedUserIds);
-      onClose();
-      // Reset form
-      setSelectedUserIds([]);
-      setFormData({
-        date: new Date().toISOString().split('T')[0],
-        reporter: { name: '', role: '生活支援員' },
-        commonActivities: { amActivities: [], pmActivities: [], amNotes: '', pmNotes: '' },
-        individualNotes: {}
-      });
-    } catch (error) {
-      console.error('保存に失敗しました:', error);
-      alert('保存に失敗しました。もう一度お試しください。');
-    } finally {
-      setSaving(false);
-    }
-  };
+  const {
+    formData,
+    selectedUserIds,
+    searchQuery,
+    newActivityAM,
+    newActivityPM,
+    saving,
+    filteredUsers,
+    selectedUsers,
+    setSearchQuery,
+    setNewActivityAM,
+    setNewActivityPM,
+    handleUserToggle,
+    handleSelectAll,
+    handleClearAll,
+    handleAddActivity,
+    handleRemoveActivity,
+    handleIndividualNoteChange,
+    handleSave,
+    updateDate,
+    updateReporterName,
+    updateReporterRole,
+    updateAmNotes,
+    updatePmNotes,
+  } = useBulkDailyRecordFormState({ onClose, onSave });
 
   return (
     <Dialog
@@ -270,7 +105,7 @@ export function BulkDailyRecordForm({
                 type="date"
                 label="記録日"
                 value={formData.date}
-                onChange={(e) => setFormData(prev => ({ ...prev, date: e.target.value }))}
+                onChange={(e) => updateDate(e.target.value)}
                 InputLabelProps={{ shrink: true }}
                 sx={{ minWidth: 160 }}
               />
@@ -278,10 +113,7 @@ export function BulkDailyRecordForm({
                 fullWidth
                 label="記録者名"
                 value={formData.reporter.name}
-                onChange={(e) => setFormData(prev => ({
-                  ...prev,
-                  reporter: { ...prev.reporter, name: e.target.value }
-                }))}
+                onChange={(e) => updateReporterName(e.target.value)}
                 placeholder="記録者の氏名を入力"
               />
               <FormControl sx={{ minWidth: 120 }}>
@@ -289,16 +121,12 @@ export function BulkDailyRecordForm({
                 <Select
                   name="reporterRole"
                   value={formData.reporter.role}
-                  onChange={(e) => setFormData(prev => ({
-                    ...prev,
-                    reporter: { ...prev.reporter, role: e.target.value }
-                  }))}
+                  onChange={(e) => updateReporterRole(e.target.value)}
                   label="役職"
                 >
-                  <MenuItem value="生活支援員">生活支援員</MenuItem>
-                  <MenuItem value="管理者">管理者</MenuItem>
-                  <MenuItem value="看護師">看護師</MenuItem>
-                  <MenuItem value="其他">其他</MenuItem>
+                  {REPORTER_ROLE_OPTIONS.map(opt => (
+                    <MenuItem key={opt.value} value={opt.value}>{opt.label}</MenuItem>
+                  ))}
                 </Select>
               </FormControl>
             </Stack>
@@ -478,10 +306,7 @@ export function BulkDailyRecordForm({
                       rows={2}
                       label="午前の共通メモ"
                       value={formData.commonActivities.amNotes}
-                      onChange={(e) => setFormData(prev => ({
-                        ...prev,
-                        commonActivities: { ...prev.commonActivities, amNotes: e.target.value }
-                      }))}
+                      onChange={(e) => updateAmNotes(e.target.value)}
                       placeholder="午前中の様子や特記事項（全員共通）"
                     />
                   </Stack>
@@ -546,10 +371,7 @@ export function BulkDailyRecordForm({
                       rows={2}
                       label="午後の共通メモ"
                       value={formData.commonActivities.pmNotes}
-                      onChange={(e) => setFormData(prev => ({
-                        ...prev,
-                        commonActivities: { ...prev.commonActivities, pmNotes: e.target.value }
-                      }))}
+                      onChange={(e) => updatePmNotes(e.target.value)}
                       placeholder="午後の様子や特記事項（全員共通）"
                     />
                   </Stack>
