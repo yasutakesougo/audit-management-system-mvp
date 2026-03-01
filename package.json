@@ -160,9 +160,6 @@
     "@vitest/coverage-v8": "^4.0.16",
     "@vitest/ui": "^4.0.16",
     "axe-core": "^4.10.3",
-    "baseline-browser-mapping": "^2.9.16",
-    "changelogithub": "^13.16.0",
-    "cross-env": "^10.1.0",
     "eslint": "^8.57.0",
     "eslint-config-prettier": "^9.1.0",
     "eslint-import-resolver-typescript": "^4.4.4",
@@ -172,14 +169,12 @@
     "jest-axe": "^10.0.0",
     "jsdom": "^26.1.0",
     "lint-staged": "^15.5.2",
-    "magicast": "^0.3.5",
     "msw": "^2.12.4",
-    "ts-node": "^10.9.2",
     "tsx": "^4.20.6",
     "typescript": "^5.4.5",
     "vite": "^7.3.0",
     "vitest": "^4.0.16",
-    "wait-on": "^9.0.3"
+    "wait-on": "^9.0.4"
   },
   "overrides": {
     "date-fns-tz": "^3.2.0"
