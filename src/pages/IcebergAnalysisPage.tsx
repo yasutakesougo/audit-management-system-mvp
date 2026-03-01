@@ -1,14 +1,17 @@
 import { useAuth } from '@/auth/useAuth';
 import { IcebergCanvas } from '@/features/analysis/components/iceberg/IcebergCanvas';
 import type { EnvironmentFactor } from '@/features/analysis/domain/icebergTypes';
+import { sensoryToAssessmentItems } from '@/features/analysis/domain/sensoryToAssessmentItems';
 import { createIcebergRepository } from '@/features/analysis/infra/SharePointIcebergRepository';
 import { useIcebergStore } from '@/features/analysis/stores/icebergStore';
 import type { AssessmentItem } from '@/features/assessment/domain/types';
+import { useAssessmentStore } from '@/features/assessment/stores/assessmentStore';
 import type { BehaviorObservation } from '@/features/daily/domain/daily/types';
 import { IBDPageHeader } from '@/features/ibd/components/IBDPageHeader';
 import { useUsersDemo } from '@/features/users/usersStoreDemo';
 import { getAppConfig } from '@/lib/env';
 import AddLinkIcon from '@mui/icons-material/AddLink';
+import DownloadRoundedIcon from '@mui/icons-material/DownloadRounded';
 import SaveIcon from '@mui/icons-material/Save';
 import WorkspacesIcon from '@mui/icons-material/Workspaces';
 import Alert from '@mui/material/Alert';
@@ -20,8 +23,9 @@ import FormControl from '@mui/material/FormControl';
 import InputLabel from '@mui/material/InputLabel';
 import MenuItem from '@mui/material/MenuItem';
 import Select, { type SelectChangeEvent } from '@mui/material/Select';
+import Snackbar from '@mui/material/Snackbar';
 import Typography from '@mui/material/Typography';
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 
 const createDemoBehaviors = (userId: string): BehaviorObservation[] => [
   {
@@ -92,10 +96,55 @@ const IcebergAnalysisPage: React.FC = () => {
   }, [acquireToken, spSiteUrl]);
 
   const { currentSession, initSession, moveNode, addNodeFromData, linkNodes, saveState, lastSaveError, savePersistent } = useIcebergStore(repository ?? undefined);
+  const { getByUserId, seedDemoData } = useAssessmentStore();
   const { data: users } = useUsersDemo();
   const [targetUserId, setTargetUserId] = useState('');
   const activeSessionUserId = currentSession?.targetUserId;
   const [isSaving, setIsSaving] = useState(false);
+  const [snackbar, setSnackbar] = useState<{ open: boolean; message: string }>({ open: false, message: '' });
+
+  // ------ アセスメント取込ハンドラ ------
+  const handleImportAssessment = useCallback(() => {
+    if (!targetUserId || !currentSession) return;
+
+    // デモ用: assessmentStore にデータがなければ seed する
+    seedDemoData(targetUserId);
+
+    const assessment = getByUserId(targetUserId);
+    const manualItems = assessment.items ?? [];
+    const sensoryItems = sensoryToAssessmentItems(assessment.sensory);
+    const combinedItems = [...manualItems, ...sensoryItems];
+
+    if (combinedItems.length === 0) {
+      setSnackbar({ open: true, message: '取込可能な特性データがありません' });
+      return;
+    }
+
+    // 取込前のノード数を記録し、取込後の差分で追加件数を算出
+    const _nodeCountBefore = currentSession.nodes.length;
+
+    combinedItems.forEach((item, index) => {
+      const autoPos = {
+        x: 120 + (index % 3) * 240,
+        y: 350 + Math.floor(index / 3) * 100,
+      };
+      addNodeFromData(item, 'assessment', autoPos);
+    });
+
+    // addNodeFromData は重複を無視するので差分で判定
+    // currentSession は immutable snapshot なのでここでは combinedItems.length を使う
+    const potentialAdded = combinedItems.length;
+    const skipped = currentSession.nodes.filter(
+      (n) => n.type === 'assessment' && combinedItems.some((item) => n.sourceId === item.id),
+    ).length;
+    const addedCount = potentialAdded - skipped;
+
+    if (addedCount > 0) {
+      setSnackbar({ open: true, message: `${addedCount}件の特性を水面下に配置しました` });
+    } else {
+      setSnackbar({ open: true, message: 'すべて配置済みです（新しい特性はありません）' });
+    }
+  }, [targetUserId, currentSession, getByUserId, seedDemoData, addNodeFromData]);
 
   useEffect(() => {
     if (!targetUserId) return;
@@ -179,6 +228,14 @@ const IcebergAnalysisPage: React.FC = () => {
                 ))}
               </Select>
             </FormControl>
+            <Button
+              variant="outlined"
+              startIcon={<DownloadRoundedIcon />}
+              onClick={handleImportAssessment}
+              disabled={!targetUserId || !currentSession}
+            >
+              アセスメントから取込
+            </Button>
             <Button variant="outlined" startIcon={<AddLinkIcon />} onClick={handleAutoLink} disabled={!currentSession}>
               仮説リンク (Demo)
             </Button>
@@ -233,6 +290,15 @@ const IcebergAnalysisPage: React.FC = () => {
           </Box>
         )}
       </Box>
+
+      {/* 取込フィードバック Snackbar */}
+      <Snackbar
+        open={snackbar.open}
+        autoHideDuration={4000}
+        onClose={() => setSnackbar({ open: false, message: '' })}
+        message={snackbar.message}
+        anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
+      />
     </Container>
   );
 };

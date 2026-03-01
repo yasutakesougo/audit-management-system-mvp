@@ -196,6 +196,49 @@ const deployedPlans: Record<string, SupportPlanDeployment> = {
   },
 };
 
-export const resolveSupportFlowForUser = (userId: string): SupportPlanDeployment | null => {
+/**
+ * ユーザーの支援計画を解決する。
+ *
+ * 優先順位:
+ * 1. storedProcedures（CSVインポート/localStorage から復元されたデータ）
+ * 2. ハードコードされたデモ計画（deployedPlans)
+ * 3. null（計画なし）
+ */
+export const resolveSupportFlowForUser = (
+  userId: string,
+  storedProcedures?: { time: string; activity: string; instruction: string }[] | null,
+): SupportPlanDeployment | null => {
+  // 1. 動的データがあればそちらを使用
+  if (storedProcedures && storedProcedures.length > 0) {
+    return {
+      planId: `import-${userId}`,
+      planName: `${userId} 支援計画`,
+      version: '1.0',
+      deployedAt: new Date().toISOString(),
+      author: 'CSVインポート',
+      activities: storedProcedures.map((item) => ({
+        time: item.time,
+        title: item.activity.split(' - ')[0] || item.activity,
+        personTodo: item.activity.includes(' - ')
+          ? item.activity.split(' - ').slice(1).join(' - ')
+          : item.activity,
+        supporterTodo: item.instruction || '支援内容を設定してください',
+        stage: inferStageFromTime(item.time),
+      })),
+      summary: `CSVインポートによる支援計画（${storedProcedures.length}件の活動）`,
+    };
+  }
+  // 2. ハードコードフォールバック
   return deployedPlans[userId] ?? null;
 };
+
+/** 時間帯から戦略ステージを推定するヘルパー */
+function inferStageFromTime(time: string): SupportStrategyStage {
+  const match = time.match(/^(\d{1,2}):(\d{2})/);
+  if (!match) return 'proactive';
+  const hour = parseInt(match[1], 10);
+  if (hour < 11) return 'proactive';
+  if (hour < 13) return 'earlyResponse';
+  if (hour < 15) return 'proactive';
+  return 'postCrisis';
+}

@@ -1,0 +1,35 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <defs>
+    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#1565C0"/>
+      <stop offset="100%" style="stop-color:#1976d2"/>
+    </linearGradient>
+  </defs>
+  <!-- Background -->
+  <rect width="512" height="512" rx="80" fill="url(#bg)"/>
+  <!-- Clipboard body -->
+  <rect x="136" y="120" width="240" height="300" rx="16" fill="white" opacity="0.95"/>
+  <!-- Clipboard clip -->
+  <rect x="196" y="96" width="120" height="48" rx="12" fill="white" opacity="0.95"/>
+  <rect x="216" y="104" width="80" height="12" rx="6" fill="#1976d2"/>
+  <!-- Lines on clipboard -->
+  <rect x="176" y="190" width="160" height="8" rx="4" fill="#1976d2" opacity="0.3"/>
+  <rect x="176" y="220" width="120" height="8" rx="4" fill="#1976d2" opacity="0.3"/>
+  <rect x="176" y="250" width="140" height="8" rx="4" fill="#1976d2" opacity="0.3"/>
+  <rect x="176" y="280" width="100" height="8" rx="4" fill="#1976d2" opacity="0.3"/>
+  <!-- Check marks -->
+  <circle cx="186" cy="320" r="14" fill="#4CAF50"/>
+  <polyline points="178,320 184,326 194,314" fill="none" stroke="white" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+  <rect x="210" y="314" width="120" height="8" rx="4" fill="#4CAF50" opacity="0.5"/>
+  <!-- Shield icon (BIP link) -->
+  <circle cx="186" cy="355" r="14" fill="#FF9800"/>
+  <path d="M186,344 L178,348 L178,356 C178,362 186,366 186,366 C186,366 194,362 194,356 L194,348 Z" fill="white" opacity="0.9"/>
+  <rect x="210" y="349" width="100" height="8" rx="4" fill="#FF9800" opacity="0.5"/>
+  <!-- Link chain icon (bottom right) -->
+  <g transform="translate(356, 356)">
+    <circle cx="0" cy="0" r="48" fill="white" opacity="0.2"/>
+    <path d="M-12,-20 C-24,-20 -32,-12 -32,0 C-32,12 -24,20 -12,20 L-4,20" fill="none" stroke="white" stroke-width="5" stroke-linecap="round"/>
+    <path d="M12,20 C24,20 32,12 32,0 C32,-12 24,-20 12,-20 L4,-20" fill="none" stroke="white" stroke-width="5" stroke-linecap="round"/>
+    <line x1="-8" y1="0" x2="8" y2="0" stroke="white" stroke-width="5" stroke-linecap="round"/>
+  </g>
+</svg>
