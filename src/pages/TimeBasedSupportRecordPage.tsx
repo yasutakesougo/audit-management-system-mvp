@@ -1,11 +1,15 @@
-﻿import { FullScreenDailyDialogPage } from '@/features/daily/components/FullScreenDailyDialogPage';
+﻿import { useInterventionStore } from '@/features/analysis/stores/interventionStore';
+import { FullScreenDailyDialogPage } from '@/features/daily/components/FullScreenDailyDialogPage';
 import { ProcedureEditor } from '@/features/daily/components/procedure/ProcedureEditor';
 import { ProcedurePanel, type ScheduleItem } from '@/features/daily/components/split-stream/ProcedurePanel';
 import { RecordPanel } from '@/features/daily/components/split-stream/RecordPanel';
 import { SplitStreamLayout } from '@/features/daily/components/split-stream/SplitStreamLayout';
 import type { BehaviorObservation } from '@/features/daily/domain/daily/types';
+import { generateDailyReport } from '@/features/daily/domain/generateDailyReport';
 import { getScheduleKey } from '@/features/daily/domain/getScheduleKey';
+import { toBipOptions } from '@/features/daily/domain/toBipOptions';
 import { useInMemoryBehaviorRepository, useInMemoryProcedureRepository } from '@/features/daily/repositories/inMemory';
+import { useExecutionStore } from '@/features/daily/stores/executionStore';
 import type { ProcedureItem } from '@/features/daily/stores/procedureStore';
 import {
     makeIdempotencyKey,
@@ -16,6 +20,8 @@ import { useUsersDemo } from '@/features/users/usersStoreDemo';
 import { getEnv } from '@/lib/runtimeEnv';
 import { useTimeBasedSupportRecordPage } from '@/pages/hooks/useTimeBasedSupportRecordPage';
 import AccessTimeIcon from '@mui/icons-material/AccessTime';
+import ContentCopyIcon from '@mui/icons-material/ContentCopy';
+import EditIcon from '@mui/icons-material/Edit';
 import PersonIcon from '@mui/icons-material/Person';
 import Alert from '@mui/material/Alert';
 import Box from '@mui/material/Box';
@@ -23,6 +29,7 @@ import Button from '@mui/material/Button';
 import Chip from '@mui/material/Chip';
 import Container from '@mui/material/Container';
 import FormControl from '@mui/material/FormControl';
+import IconButton from '@mui/material/IconButton';
 import InputLabel from '@mui/material/InputLabel';
 import MenuItem from '@mui/material/MenuItem';
 import Paper from '@mui/material/Paper';
@@ -70,6 +77,10 @@ const TimeBasedSupportRecordPage: React.FC = () => {
   const procedureRepo = useInMemoryProcedureRepository();
   const { repo: behaviorRepo, data: behaviorRecords, error: behaviorError, clearError } = useInMemoryBehaviorRepository();
   const { data: users } = useUsersDemo();
+  const interventionStore = useInterventionStore();
+
+  // Execution records for daily report export
+  const executionStore = useExecutionStore();
 
   const {
     targetUserId,
@@ -97,6 +108,16 @@ const TimeBasedSupportRecordPage: React.FC = () => {
     initialStepKey,
     initialUnfilledOnly,
   });
+
+  // BIP data for cross-link (must be after targetUserId declaration)
+  const userInterventionPlans = useMemo(
+    () => (targetUserId ? interventionStore.getByUserId(targetUserId) : []),
+    [interventionStore, targetUserId],
+  );
+  const bipOptions = useMemo(
+    () => toBipOptions(userInterventionPlans),
+    [userInterventionPlans],
+  );
   // Filter out DailyActivityRecords list errors (not yet implemented in SharePoint)
   const rawError = submitError ?? behaviorError;
   const displayedError = useMemo(() => {
@@ -210,6 +231,25 @@ const TimeBasedSupportRecordPage: React.FC = () => {
         ...payload,
         userId: targetUserId,
       });
+
+      // Auto-derive status: 問題行動があれば「発動」、なければ「完了」
+      const slotKey = payload.planSlotKey;
+      if (slotKey) {
+        const hasBehaviorIncident = payload.behavior !== '日常記録' && payload.behavior !== '';
+        const autoStatus = hasBehaviorIncident ? 'triggered' as const : 'completed' as const;
+        executionStore.upsertRecord({
+          id: `${targetDate}-${targetUserId}-${slotKey}`,
+          date: targetDate,
+          userId: targetUserId,
+          scheduleItemId: slotKey,
+          status: autoStatus,
+          triggeredBipIds: [],
+          memo: hasBehaviorIncident ? `行動: ${payload.behavior}` : '',
+          recordedBy: '',
+          recordedAt: new Date().toISOString(),
+        });
+      }
+
       if (typeof window !== 'undefined') {
         window.sessionStorage.removeItem(ERROR_STORAGE_KEY);
       }
@@ -284,6 +324,7 @@ const TimeBasedSupportRecordPage: React.FC = () => {
     actorUserId,
     behaviorRepo,
     clientVersion,
+    executionStore,
     navigate,
     orgId,
     targetDate,
@@ -375,6 +416,26 @@ const TimeBasedSupportRecordPage: React.FC = () => {
     setShowUnfilledOnly((prev) => !prev);
   }, []);
 
+  const handleCopyReport = useCallback(async () => {
+    if (!targetUserId || !selectedUser) return;
+    const records = executionStore.getRecords(targetDate, targetUserId);
+    const report = generateDailyReport({
+      date: targetDate,
+      userName: selectedUser.FullName,
+      schedule,
+      records,
+    });
+    try {
+      await navigator.clipboard.writeText(report);
+      setSnackbarMessage('📋 日報をクリップボードにコピーしました！');
+      setSnackbarOpen(true);
+    } catch {
+      // Fallback: older browsers
+      setSnackbarMessage('クリップボードへのコピーに失敗しました');
+      setSnackbarOpen(true);
+    }
+  }, [executionStore, schedule, selectedUser, targetDate, targetUserId]);
+
   const handleSlotChange = useCallback((next: string) => {
     setSelectedStepId(next || null);
   }, []);
@@ -438,8 +499,31 @@ const TimeBasedSupportRecordPage: React.FC = () => {
                 ))}
               </Select>
             </FormControl>
+            {targetUserId && selectedUser && (
+              <IconButton
+                onClick={handleEditorOpen}
+                size="small"
+                color="primary"
+                aria-label="手順を編集"
+                data-testid="procedure-edit-button"
+              >
+                <EditIcon fontSize="small" />
+              </IconButton>
+            )}
           </Box>
         </Stack>
+        {targetUserId && selectedUser && (
+          <Button
+            variant="outlined"
+            size="small"
+            startIcon={<ContentCopyIcon />}
+            onClick={handleCopyReport}
+            data-testid="copy-daily-report-button"
+            sx={{ whiteSpace: 'nowrap' }}
+          >
+            日報コピー
+          </Button>
+        )}
       </Paper>
 
       {/* Error Alert (fixed, always visible) */}
@@ -468,7 +552,7 @@ const TimeBasedSupportRecordPage: React.FC = () => {
               schedule={schedule}
               isAcknowledged={isAcknowledged}
               onAcknowledged={handleAcknowledged}
-              onEdit={handleEditorOpen}
+
               selectedStepId={selectedStepId}
               onSelectStep={handleSelectStepAndScroll}
               filledStepIds={filledStepIds}
@@ -477,6 +561,7 @@ const TimeBasedSupportRecordPage: React.FC = () => {
               onToggleUnfilledOnly={handleToggleUnfilledOnly}
               unfilledCount={unfilledStepsCount}
               totalCount={totalSteps}
+              interventionPlans={userInterventionPlans}
             />
           ) : (
             <ProcedurePanel title="支援手順 (Plan)">
@@ -550,6 +635,7 @@ const TimeBasedSupportRecordPage: React.FC = () => {
         initialItems={schedule}
         onClose={handleEditorClose}
         onSave={handleProcedureSave}
+        availablePlans={bipOptions}
       />
 
       <Snackbar

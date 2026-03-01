@@ -1,7 +1,7 @@
 {
-  "name": "黒ノート",
-  "short_name": "黒ノート",
-  "description": "福祉施設向け黒ノート",
+  "name": "クロノート Link",
+  "short_name": "クロノート",
+  "description": "福祉施設スタッフ向け 支援記録・行動分析システム",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#ffffff",
