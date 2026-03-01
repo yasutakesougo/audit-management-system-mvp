@@ -40,7 +40,7 @@ export type DailyRecordViewModel<TRecord extends BaseRecord> = {
   handleEditRecord: (record: TRecord) => void;
   handleCloseForm: () => void;
   handleOpenAttendance: (record: { personId: string; date: string }) => void;
-  handleSaveRecord: (record: Omit<TRecord, 'id'>) => void;
+  handleSaveRecord: (record: Omit<TRecord, 'id'>) => Promise<void>;
   handleDeleteRecord: (recordId: number) => void;
   handleGenerateTodayRecords: () => void;
   handleBulkCreateMissing: () => void;
@@ -151,63 +151,42 @@ export function useDailyRecordViewModel<TRecord extends BaseRecord>(
   );
 
   const handleSaveRecord = useCallback(
-    (record: Omit<TRecord, 'id'>) => {
-      try {
-        // バリデーション実行
-        const validationResult = validateDailyRecord(record);
+    async (record: Omit<TRecord, 'id'>) => {
+      // バリデーション実行
+      const validationResult = validateDailyRecord(record);
 
-        if (!validationResult.isValid) {
-          // バリデーションエラーがある場合
-          const errorMessage = validationResult.errors.join('\n');
-          toast.error(`保存に失敗しました\n\n${errorMessage}`, {
-            duration: 6000,
-            style: {
-              maxWidth: '500px',
-            },
-          });
-          console.error('保存失敗 - バリデーションエラー:', validationResult.errors);
-          return;
-        }
+      if (!validationResult.isValid) {
+        // Phase 2: バリデーションエラーは throw して Form がインライン表示
+        throw new Error(validationResult.errors.join('\n'));
+      }
 
-        // 保存処理実行
-        const updatedRecords = saveDailyRecord(records, record, editingRecord?.id);
+      // 保存処理実行
+      const updatedRecords = saveDailyRecord(records, record, editingRecord?.id);
 
-        setRecords(updatedRecords);
+      setRecords(updatedRecords);
 
-        // フォームを閉じる
-        handleCloseForm();
+      // Phase 2: handleCloseForm() 削除 — close は Form が成功時に行う
 
-        // 成功通知
-        const operation = editingRecord ? '更新' : '新規作成';
-        toast.success(
-          `日次記録の${operation}が完了しました\n\n利用者: ${record.personName}\n日付: ${record.date}`,
-          {
-            duration: 4000,
-            style: {
-              maxWidth: '400px',
-            },
-          },
-        );
-
-        // 成功ログ
-        if (import.meta.env.DEV) {
-          console.log('保存成功:', {
-            operation,
-            personName: record.personName,
-            date: record.date,
-            status: record.status,
-          });
-        }
-      } catch (error) {
-        // 予期しないエラーをキャッチ
-        const errorMessage = error instanceof Error ? error.message : '不明なエラーが発生しました';
-        toast.error(`システムエラーが発生しました\n\n${errorMessage}`, {
-          duration: 8000,
+      // 成功通知
+      const operation = editingRecord ? '更新' : '新規作成';
+      toast.success(
+        `日次記録の${operation}が完了しました\n\n利用者: ${record.personName}\n日付: ${record.date}`,
+        {
+          duration: 4000,
           style: {
-            maxWidth: '500px',
+            maxWidth: '400px',
           },
+        },
+      );
+
+      // 成功ログ
+      if (import.meta.env.DEV) {
+        console.log('保存成功:', {
+          operation,
+          personName: record.personName,
+          date: record.date,
+          status: record.status,
         });
-        console.error('保存失敗 - システムエラー:', error);
       }
     },
     [
@@ -216,7 +195,6 @@ export function useDailyRecordViewModel<TRecord extends BaseRecord>(
       records,
       editingRecord,
       setRecords,
-      handleCloseForm,
     ],
   );
 

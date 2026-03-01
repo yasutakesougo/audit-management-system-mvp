@@ -60,7 +60,7 @@ const TimeBasedSupportRecordList: React.FC<TimeBasedSupportRecordListProps> = ({
     setFormOpen(true);
   };
 
-  const handleSaveRecord = (recordData: Omit<SupportRecord, 'id' | 'createdAt' | 'updatedAt'>) => {
+  const handleSaveRecord = async (recordData: Omit<SupportRecord, 'id' | 'createdAt' | 'updatedAt'>) => {
     if (editingRecord) {
       const updatedRecord: SupportRecord = {
         ...editingRecord,
