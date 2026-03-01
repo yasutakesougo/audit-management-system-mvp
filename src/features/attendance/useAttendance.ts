@@ -1,8 +1,13 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
+import { upsertObservation } from '@/features/nurse';
+import { makeSharePointListApi } from '@/features/nurse/sp/client';
+import { NURSE_LISTS } from '@/features/nurse/sp/constants';
+import type { ObservationListItem } from '@/features/nurse/sp/map';
 import type { AbsentSupportLog } from '@/features/service-provision/domain/absentSupportLog';
 import type { IUserMaster } from '@/features/users/types';
 
+import type { ObservationTemperatureItem } from './domain/AttendanceRepository';
 import { classifyAttendanceError, type AttendanceErrorCode } from './hooks/useAttendanceActions';
 import type { AttendanceDailyItem } from './infra/attendanceDailyRepository';
 import { useAttendanceRepository } from './repositoryFactory';
@@ -164,6 +169,30 @@ const mergeRows = (
   });
 };
 
+/**
+ * Build a userCode → temperature map from observations.
+ * If a user has multiple observations, the latest ObservedAt wins.
+ */
+export const buildSavedTemps = (
+  observations: ObservationTemperatureItem[],
+  lookupIdToUserCode: Map<number, string>,
+): Record<string, number> => {
+  const result: Record<string, number> = {};
+  const latestAt: Record<string, string> = {};
+
+  for (const obs of observations) {
+    const userCode = lookupIdToUserCode.get(obs.userLookupId);
+    if (!userCode) continue;
+
+    const prev = latestAt[userCode];
+    if (!prev || obs.observedAt > prev) {
+      result[userCode] = obs.temperature;
+      latestAt[userCode] = obs.observedAt;
+    }
+  }
+  return result;
+};
+
 const getNextStatusRow = (
   row: AttendanceRowVM,
   status: AttendanceRowVM['status'],
@@ -258,12 +287,14 @@ export type UseAttendanceReturn = {
   filters: AttendanceFilter;
   inputMode: AttendanceInputMode;
   savingUsers: ReadonlySet<string>;
+  savedTempsByUser: Record<string, number>;
   notification: AttendanceNotification;
   dismissNotification: () => void;
   actions: {
     setFilters: (next: Partial<AttendanceFilter>) => void;
     setInputMode: (mode: AttendanceInputMode) => void;
     updateStatus: (userCode: string, status: AttendanceRowVM['status']) => Promise<void>;
+    saveTemperature: (userCode: string, temperature: number, onHighTempAction?: () => void) => Promise<void>;
     refresh: () => Promise<void>;
   };
 };
@@ -282,6 +313,9 @@ export function useAttendance(): UseAttendanceReturn {
   // ── Input mode state ──
   const [inputMode, setInputMode] = useState<AttendanceInputMode>('normal');
 
+  // ── Saved temperatures from Observation list ──
+  const [savedTempsByUser, setSavedTempsByUser] = useState<Record<string, number>>({});
+
   // ── Notification state ──
   const [notification, setNotification] = useState<AttendanceNotification>(NOTIFICATION_CLOSED);
   const dismissNotification = useCallback(() => setNotification(NOTIFICATION_CLOSED), []);
@@ -295,6 +329,18 @@ export function useAttendance(): UseAttendanceReturn {
       ]);
       setRowsRaw(mergeRows(users, dailyItems, filters.date));
       setStatus('success');
+
+      // Load saved temperatures (non-blocking, failures are silent)
+      try {
+        const observations = await repository.getObservationsByDate(filters.date);
+        const lookupMap = new Map<number, string>();
+        for (const u of users) {
+          if (u.Id != null) lookupMap.set(u.Id, u.UserCode);
+        }
+        setSavedTempsByUser(buildSavedTemps(observations, lookupMap));
+      } catch (e) {
+        console.error('useAttendance: temperature load failed (non-fatal)', e);
+      }
     } catch (error) {
       console.error('useAttendance.refresh failed', error);
       setStatus('error');
@@ -384,6 +430,75 @@ export function useAttendance(): UseAttendanceReturn {
     setFiltersState((prev) => ({ ...prev, ...next }));
   }, []);
 
+  // ── Temperature save via upsertObservation (B-route) ──
+  const saveTemperature = useCallback(
+    async (userCode: string, temperature: number, onHighTempAction?: () => void) => {
+      if (savingUsersRef.current.has(userCode)) return;
+
+      const row = rowsRaw.find((r) => r.userCode === userCode);
+      if (!row) return;
+
+      const userName = row.FullName ?? userCode;
+      const lookupId = row.Id;
+      if (lookupId == null || lookupId < 0) {
+        setNotification({
+          open: true,
+          severity: 'error',
+          message: `${userName}さんのユーザーIDが不明です。`,
+        });
+        return;
+      }
+
+      savingUsersRef.current.add(userCode);
+      bumpSavingTick();
+
+      try {
+        const nowIso = new Date().toISOString();
+        const idempotencyKey = `att-temp-${userCode}-${filters.date}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+
+        const payload: ObservationListItem = {
+          UserLookupId: lookupId,
+          ObservedAt: nowIso,
+          Temperature: temperature,
+          IdempotencyKey: idempotencyKey,
+          Source: 'attendance',
+        };
+
+        const api = makeSharePointListApi();
+        await upsertObservation(api, NURSE_LISTS.observation, payload);
+
+        // C1.7: high-temp (≥37.5) fires warning + '看護記録へ' action
+        if (temperature >= 37.5 && onHighTempAction) {
+          setNotification({
+            open: true,
+            severity: 'warning',
+            message: `${userName}さんが高体温です（${temperature.toFixed(1)}℃）`,
+            actionLabel: '看護記録へ',
+            onAction: () => {
+              dismissNotification();
+              onHighTempAction();
+            },
+          });
+        } else {
+          setNotification({
+            open: true,
+            severity: 'success',
+            message: `${userName}さん ${temperature}℃ を記録しました`,
+          });
+        }
+      } catch (error) {
+        console.error('useAttendance.saveTemperature failed', error);
+        const classified = classifyAttendanceError(error);
+        const { severity, message } = errorMessage(classified.code);
+        setNotification({ open: true, severity, message });
+      } finally {
+        savingUsersRef.current.delete(userCode);
+        bumpSavingTick();
+      }
+    },
+    [bumpSavingTick, filters.date, rowsRaw, dismissNotification],
+  );
+
   const rows = useMemo(() => {
     const query = filters.query.trim().toLowerCase();
     if (!query) return rowsRaw;
@@ -400,12 +515,14 @@ export function useAttendance(): UseAttendanceReturn {
     filters,
     inputMode,
     savingUsers: savingUsersRef.current,
+    savedTempsByUser,
     notification,
     dismissNotification,
     actions: {
       setFilters,
       setInputMode,
       updateStatus,
+      saveTemperature,
       refresh,
     },
   };

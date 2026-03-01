@@ -1,7 +1,9 @@
 import CheckIcon from '@mui/icons-material/Check';
 import DirectionsCarIcon from '@mui/icons-material/DirectionsCar';
+import LocalHospitalIcon from '@mui/icons-material/LocalHospital';
 import MoreHorizIcon from '@mui/icons-material/MoreHoriz';
-import { Box, Button, Chip, CircularProgress, IconButton, Typography } from '@mui/material';
+import ThermostatIcon from '@mui/icons-material/Thermostat';
+import { Box, Button, Chip, CircularProgress, IconButton, Tooltip, Typography } from '@mui/material';
 
 import {
     TRANSPORT_METHOD_LABEL,
@@ -30,11 +32,14 @@ export type AttendanceRowProps = {
   user: AttendanceRowUser;
   visit: AttendanceRowVisit;
   inputMode?: AttendanceInputMode;
+  tempValue?: number;
   canAbsence: boolean;
   isSaving?: boolean;
   onCheckIn: () => void;
   onCheckOut: () => void;
   onAbsence: () => void;
+  onOpenTemp?: () => void;
+  onOpenNurse?: () => void;
   onDetail: () => void;
 };
 
@@ -42,11 +47,14 @@ export function AttendanceRow({
   user,
   visit,
   inputMode = 'normal',
+  tempValue,
   canAbsence,
   isSaving = false,
   onCheckIn,
   onCheckOut,
   onAbsence,
+  onOpenTemp,
+  onOpenNurse,
   onDetail,
 }: AttendanceRowProps): JSX.Element {
   const isAbsent = visit.status === '当日欠席';
@@ -58,6 +66,11 @@ export function AttendanceRow({
   const isRunMode = inputMode === 'checkInRun';
   // In checkInRun mode: check-in already done → show completed state
   const checkInDone = isRunMode && !canCheckIn && (visit.status === '通所中' || isDone);
+  // Show temp button only in checkInRun mode for checked-in users
+  const showTempAction = isRunMode && !canCheckIn && !isAbsent && onOpenTemp;
+
+  // Show nurse navigation button when high temperature (red chip)
+  const showNurseAction = tempValue != null && tempValue >= 37.5 && onOpenNurse;
 
   // Secondary action styles for checkInRun mode (disabled + faded)
   const secondarySx = isRunMode
@@ -93,6 +106,16 @@ export function AttendanceRow({
         </Typography>
         {visit.status === '当日欠席' ? (
           <Chip label="欠席" size="small" variant="outlined" />
+        ) : null}
+        {tempValue != null ? (
+          <Chip
+            icon={<ThermostatIcon />}
+            label={`${tempValue}℃`}
+            size="small"
+            color={tempValue >= 37.5 ? 'error' : 'default'}
+            variant="outlined"
+            data-testid="temp-chip"
+          />
         ) : null}
         {(() => {
           const method = resolveToMethod(
@@ -139,6 +162,18 @@ export function AttendanceRow({
           {isSaving && canCheckIn ? savingSpinner : null}
         </Button>
 
+        {showTempAction ? (
+          <Button
+            variant="outlined"
+            size="small"
+            onClick={onOpenTemp}
+            startIcon={<ThermostatIcon />}
+            sx={{ minHeight: 44, fontWeight: 700 }}
+          >
+            検温
+          </Button>
+        ) : null}
+
         <Button
           variant={canCheckOut ? 'contained' : 'outlined'}
           disabled={isSaving || !canCheckOut || isAbsent || isRunMode}
@@ -163,6 +198,18 @@ export function AttendanceRow({
       >
         欠席
       </Button>
+
+      {showNurseAction ? (
+        <Tooltip title="看護記録へ">
+          <IconButton
+            onClick={onOpenNurse}
+            aria-label="看護記録を開く"
+            sx={{ width: 40, height: 40, color: 'error.main' }}
+          >
+            <LocalHospitalIcon fontSize="small" />
+          </IconButton>
+        </Tooltip>
+      ) : null}
 
       <IconButton onClick={onDetail} sx={{ width: 44, height: 44 }}>
         <MoreHorizIcon />

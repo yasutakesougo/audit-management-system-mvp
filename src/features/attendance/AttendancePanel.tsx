@@ -1,14 +1,114 @@
 import ErrorOutlineIcon from '@mui/icons-material/ErrorOutline';
 import SyncIcon from '@mui/icons-material/Sync';
 import CheckCircleOutlineIcon from '@mui/icons-material/TaskAlt';
-import { Alert, Box, Button, Chip, Snackbar, Stack, ToggleButton, ToggleButtonGroup, Typography } from '@mui/material';
+import ThermostatIcon from '@mui/icons-material/Thermostat';
+import {
+  Alert,
+  Box,
+  Button,
+  Chip,
+  Dialog,
+  DialogActions,
+  DialogContent,
+  DialogTitle,
+  InputAdornment,
+  Snackbar,
+  Stack,
+  TextField,
+  ToggleButton,
+  ToggleButtonGroup,
+  Typography,
+} from '@mui/material';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 
+import { getNextTargetUserCode, scrollToUserRow } from './attendance.autoNext';
 import { AttendanceFilterBar } from './components/AttendanceFilterBar';
 import { AttendanceList } from './components/AttendanceList';
 import { useAttendance } from './useAttendance';
 
+// ── Temperature draft (local state, no save) ──
+
+type TempDialogState = {
+  open: boolean;
+  userCode: string;
+  userName: string;
+};
+
+const TEMP_DIALOG_CLOSED: TempDialogState = { open: false, userCode: '', userName: '' };
+
+const isValidTemp = (v: number): boolean => v >= 35.0 && v <= 42.0;
+
 const AttendancePanel = (): JSX.Element => {
-  const { status, rows, filters, inputMode, savingUsers, notification, dismissNotification, actions } = useAttendance();
+  const { status, rows, filters, inputMode, savingUsers, savedTempsByUser, notification, dismissNotification, actions } = useAttendance();
+  const navigate = useNavigate();
+
+  // ── Temperature draft state ──
+  const [tempDraftByUser, setTempDraftByUser] = useState<Record<string, number>>({});
+
+  // Merge: draft wins over saved
+  const tempByUser = useMemo(() => {
+    const out: Record<string, number> = { ...savedTempsByUser };
+    for (const [userCode, v] of Object.entries(tempDraftByUser)) {
+      if (v != null) out[userCode] = v;
+    }
+    return out;
+  }, [savedTempsByUser, tempDraftByUser]);
+
+  // Refs for stale-closure-safe auto-scroll
+  const rowsRef = useRef(rows);
+  useEffect(() => { rowsRef.current = rows; }, [rows]);
+  const tempByUserRef = useRef(tempByUser);
+  useEffect(() => { tempByUserRef.current = tempByUser; }, [tempByUser]);
+
+  const [tempDialog, setTempDialog] = useState<TempDialogState>(TEMP_DIALOG_CLOSED);
+  const [tempInput, setTempInput] = useState('');
+  const [tempError, setTempError] = useState('');
+
+  const openTempDialog = useCallback((userCode: string, userName: string) => {
+    const current = tempDraftByUser[userCode];
+    setTempInput(current != null ? String(current) : '');
+    setTempError('');
+    setTempDialog({ open: true, userCode, userName });
+  }, [tempDraftByUser]);
+
+  const closeTempDialog = useCallback(() => {
+    setTempDialog(TEMP_DIALOG_CLOSED);
+  }, []);
+
+  const commitTemp = useCallback(() => {
+    const parsed = parseFloat(tempInput);
+    if (Number.isNaN(parsed)) {
+      setTempError('数値を入力してください');
+      return;
+    }
+    if (!isValidTemp(parsed)) {
+      setTempError('35.0〜42.0 の範囲で入力してください');
+      return;
+    }
+    const rounded = Math.round(parsed * 10) / 10;
+    const savedUserCode = tempDialog.userCode;
+    setTempDraftByUser((prev) => ({ ...prev, [savedUserCode]: rounded }));
+    closeTempDialog();
+    // Persist to SharePoint via nurse observation upsert
+    // C1.7: pass navigate callback for high-temp (≥37.5) Snackbar action
+    void actions.saveTemperature(savedUserCode, rounded, () => handleOpenNurse(savedUserCode));
+
+    // C1.6: auto-scroll to next target in checkInRun mode
+    if (inputMode === 'checkInRun') {
+      setTimeout(() => {
+        const next = getNextTargetUserCode(
+          rowsRef.current,
+          { ...tempByUserRef.current, [savedUserCode]: rounded },
+        );
+        if (next) scrollToUserRow(next);
+      }, 0);
+    }
+  }, [tempInput, tempDialog.userCode, closeTempDialog, actions, inputMode]);
+
+  const handleOpenNurse = useCallback((userCode: string) => {
+    navigate(`/nurse/observation?user=${userCode}`);
+  }, [navigate]);
 
   return (
     <Box sx={{ display: 'grid', gap: 2.5 }}>
@@ -55,7 +155,45 @@ const AttendancePanel = (): JSX.Element => {
         <ToggleButton value="checkInRun" sx={{ minHeight: 44, px: 2.5 }}>通所連続</ToggleButton>
       </ToggleButtonGroup>
 
-      <AttendanceList rows={rows} savingUsers={savingUsers} inputMode={inputMode} onUpdateStatus={actions.updateStatus} />
+      <AttendanceList
+        rows={rows}
+        savingUsers={savingUsers}
+        inputMode={inputMode}
+        tempDraftByUser={tempByUser}
+        onOpenTemp={openTempDialog}
+        onOpenNurse={handleOpenNurse}
+        onUpdateStatus={actions.updateStatus}
+      />
+
+      {/* Temperature input dialog */}
+      <Dialog open={tempDialog.open} onClose={closeTempDialog} maxWidth="xs" fullWidth>
+        <DialogTitle sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+          <ThermostatIcon color="primary" />
+          検温（{tempDialog.userName}）
+        </DialogTitle>
+        <DialogContent>
+          <TextField
+            autoFocus
+            fullWidth
+            type="number"
+            label="体温"
+            value={tempInput}
+            onChange={(e) => { setTempInput(e.target.value); setTempError(''); }}
+            onKeyDown={(e) => { if (e.key === 'Enter') commitTemp(); }}
+            error={Boolean(tempError)}
+            helperText={tempError || '35.0〜42.0'}
+            inputProps={{ min: 35, max: 42, step: 0.1 }}
+            InputProps={{
+              endAdornment: <InputAdornment position="end">℃</InputAdornment>,
+            }}
+            sx={{ mt: 1 }}
+          />
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={closeTempDialog}>キャンセル</Button>
+          <Button variant="contained" onClick={commitTemp}>記録</Button>
+        </DialogActions>
+      </Dialog>
 
       <Snackbar
         open={notification.open}

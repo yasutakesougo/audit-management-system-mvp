@@ -1,7 +1,7 @@
 import { act, renderHook, waitFor } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-import type { AttendanceRepository } from '../../domain/AttendanceRepository';
+import type { AttendanceRepository, ObservationTemperatureItem } from '../../domain/AttendanceRepository';
 import type { AttendanceDailyItem } from '../../infra/attendanceDailyRepository';
 import type { AttendanceUserItem } from '../../infra/attendanceUsersRepository';
 
@@ -9,10 +9,23 @@ const repository = {
   getActiveUsers: vi.fn<() => Promise<AttendanceUserItem[]>>(),
   getDailyByDate: vi.fn<() => Promise<AttendanceDailyItem[]>>(),
   upsertDailyByKey: vi.fn<() => Promise<void>>(),
+  getObservationsByDate: vi.fn<() => Promise<ObservationTemperatureItem[]>>(),
 } satisfies AttendanceRepository;
 
 vi.mock('../../repositoryFactory', () => ({
   useAttendanceRepository: () => repository,
+}));
+
+// ── Nurse SP mocks for saveTemperature ──
+const mockUpsertObservation = vi.fn();
+vi.mock('@/features/nurse', () => ({
+  upsertObservation: (...args: unknown[]) => mockUpsertObservation(...args),
+}));
+vi.mock('@/features/nurse/sp/client', () => ({
+  makeSharePointListApi: () => ({ mode: 'stub' }),
+}));
+vi.mock('@/features/nurse/sp/constants', () => ({
+  NURSE_LISTS: { observation: 'Nurse_Observation' },
 }));
 
 import { useAttendance } from '../../useAttendance';
@@ -53,10 +66,14 @@ describe('useAttendance', () => {
     repository.getActiveUsers.mockReset();
     repository.getDailyByDate.mockReset();
     repository.upsertDailyByKey.mockReset();
+    repository.getObservationsByDate.mockReset();
+    mockUpsertObservation.mockReset();
 
     repository.getActiveUsers.mockResolvedValue(usersFixture);
     repository.getDailyByDate.mockResolvedValue(dailyFixture);
     repository.upsertDailyByKey.mockResolvedValue();
+    repository.getObservationsByDate.mockResolvedValue([]);
+    mockUpsertObservation.mockResolvedValue({ id: 999, created: true });
   });
 
   it('loads initial rows as merged AttendanceRowVM data', async () => {
@@ -157,5 +174,109 @@ describe('useAttendance', () => {
 
     expect(result.current.rows.find((row) => row.userCode === 'U001')?.status).toBe('退所済');
     expect(repository.getDailyByDate).toHaveBeenCalledTimes(2);
+  });
+
+  // ── saveTemperature tests ──
+
+  it('saveTemperature success → success notification with temperature', async () => {
+    const { result } = renderHook(() => useAttendance());
+
+    await waitFor(() => {
+      expect(result.current.status).toBe('success');
+    });
+
+    await act(async () => {
+      await result.current.actions.saveTemperature('U001', 36.5);
+    });
+
+    expect(mockUpsertObservation).toHaveBeenCalledTimes(1);
+    expect(result.current.notification.open).toBe(true);
+    expect(result.current.notification.severity).toBe('success');
+    expect(result.current.notification.message).toContain('36.5℃');
+    expect(result.current.notification.message).toContain('田中太郎');
+    // Normal temp: no action button
+    expect(result.current.notification.actionLabel).toBeUndefined();
+  });
+
+  it('saveTemperature high temp (≥37.5) → warning notification with 看護記録へ action', async () => {
+    const onHighTemp = vi.fn();
+
+    const { result } = renderHook(() => useAttendance());
+
+    await waitFor(() => {
+      expect(result.current.status).toBe('success');
+    });
+
+    await act(async () => {
+      await result.current.actions.saveTemperature('U001', 37.8, onHighTemp);
+    });
+
+    expect(mockUpsertObservation).toHaveBeenCalledTimes(1);
+    expect(result.current.notification.open).toBe(true);
+    expect(result.current.notification.severity).toBe('warning');
+    expect(result.current.notification.message).toContain('高体温');
+    expect(result.current.notification.message).toContain('37.8');
+    expect(result.current.notification.message).toContain('田中太郎');
+    expect(result.current.notification.actionLabel).toBe('看護記録へ');
+    expect(typeof result.current.notification.onAction).toBe('function');
+
+    // Clicking the action should call the navigate callback
+    act(() => {
+      result.current.notification.onAction!();
+    });
+    expect(onHighTemp).toHaveBeenCalledTimes(1);
+  });
+
+  it('saveTemperature 37.5 exact → still triggers high-temp warning', async () => {
+    const onHighTemp = vi.fn();
+
+    const { result } = renderHook(() => useAttendance());
+
+    await waitFor(() => {
+      expect(result.current.status).toBe('success');
+    });
+
+    await act(async () => {
+      await result.current.actions.saveTemperature('U001', 37.5, onHighTemp);
+    });
+
+    expect(result.current.notification.severity).toBe('warning');
+    expect(result.current.notification.actionLabel).toBe('看護記録へ');
+  });
+
+  it('saveTemperature failure → error notification', async () => {
+    mockUpsertObservation.mockRejectedValueOnce(new TypeError('Failed to fetch'));
+
+    const { result } = renderHook(() => useAttendance());
+
+    await waitFor(() => {
+      expect(result.current.status).toBe('success');
+    });
+
+    await act(async () => {
+      await result.current.actions.saveTemperature('U001', 37.2);
+    });
+
+    expect(result.current.notification.open).toBe(true);
+    expect(result.current.notification.severity).toBe('error');
+    expect(result.current.notification.message).toContain('通信できません');
+  });
+
+  // ── savedTempsByUser tests ──
+
+  it('maps observation UserLookupId to userCode in savedTempsByUser', async () => {
+    repository.getObservationsByDate.mockResolvedValueOnce([
+      { userLookupId: 1, temperature: 36.7, observedAt: '2026-02-24T01:00:00.000Z' },
+    ]);
+
+    const { result } = renderHook(() => useAttendance());
+
+    await waitFor(() => {
+      expect(result.current.status).toBe('success');
+    });
+
+    // Id=1 maps to UserCode='U001'
+    expect(result.current.savedTempsByUser['U001']).toBe(36.7);
+    expect(result.current.savedTempsByUser['U002']).toBeUndefined();
   });
 });
