@@ -1,6 +1,7 @@
 import CheckIcon from '@mui/icons-material/Check';
 import DirectionsCarIcon from '@mui/icons-material/DirectionsCar';
 import MoreHorizIcon from '@mui/icons-material/MoreHoriz';
+import ThermostatIcon from '@mui/icons-material/Thermostat';
 import { Box, Button, Chip, CircularProgress, IconButton, Typography } from '@mui/material';
 
 import {
@@ -30,11 +31,13 @@ export type AttendanceRowProps = {
   user: AttendanceRowUser;
   visit: AttendanceRowVisit;
   inputMode?: AttendanceInputMode;
+  tempValue?: number;
   canAbsence: boolean;
   isSaving?: boolean;
   onCheckIn: () => void;
   onCheckOut: () => void;
   onAbsence: () => void;
+  onOpenTemp?: () => void;
   onDetail: () => void;
 };
 
@@ -42,11 +45,13 @@ export function AttendanceRow({
   user,
   visit,
   inputMode = 'normal',
+  tempValue,
   canAbsence,
   isSaving = false,
   onCheckIn,
   onCheckOut,
   onAbsence,
+  onOpenTemp,
   onDetail,
 }: AttendanceRowProps): JSX.Element {
   const isAbsent = visit.status === '当日欠席';
@@ -58,6 +63,8 @@ export function AttendanceRow({
   const isRunMode = inputMode === 'checkInRun';
   // In checkInRun mode: check-in already done → show completed state
   const checkInDone = isRunMode && !canCheckIn && (visit.status === '通所中' || isDone);
+  // Show temp button only in checkInRun mode for checked-in users
+  const showTempAction = isRunMode && !canCheckIn && !isAbsent && onOpenTemp;
 
   // Secondary action styles for checkInRun mode (disabled + faded)
   const secondarySx = isRunMode
@@ -93,6 +100,16 @@ export function AttendanceRow({
         </Typography>
         {visit.status === '当日欠席' ? (
           <Chip label="欠席" size="small" variant="outlined" />
+        ) : null}
+        {tempValue != null ? (
+          <Chip
+            icon={<ThermostatIcon />}
+            label={`${tempValue}℃`}
+            size="small"
+            color={tempValue >= 37.5 ? 'error' : 'default'}
+            variant="outlined"
+            data-testid="temp-chip"
+          />
         ) : null}
         {(() => {
           const method = resolveToMethod(
@@ -138,6 +155,18 @@ export function AttendanceRow({
               : '通所'}
           {isSaving && canCheckIn ? savingSpinner : null}
         </Button>
+
+        {showTempAction ? (
+          <Button
+            variant="outlined"
+            size="small"
+            onClick={onOpenTemp}
+            startIcon={<ThermostatIcon />}
+            sx={{ minHeight: 44, fontWeight: 700 }}
+          >
+            検温
+          </Button>
+        ) : null}
 
         <Button
           variant={canCheckOut ? 'contained' : 'outlined'}
