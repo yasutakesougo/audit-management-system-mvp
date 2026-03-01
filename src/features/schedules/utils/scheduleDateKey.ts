@@ -1,7 +1,7 @@
 import { formatInTimeZone, fromZonedTime } from 'date-fns-tz';
 
+import type { SchedItem } from '@/features/schedules/domain';
 import { resolveSchedulesTz } from '@/utils/scheduleTz';
-import type { SchedItem } from '@/features/schedules/data';
 
 const OFFSET_PATTERN = /(?:Z|[+-]\d{2}:?\d{2})$/i;
 
