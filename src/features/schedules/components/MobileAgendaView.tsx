@@ -10,7 +10,9 @@ import Typography from '@mui/material/Typography';
 import { format } from 'date-fns';
 import { ja } from 'date-fns/locale';
 import React from 'react';
+import type { ScheduleStatus } from '../data';
 import { useSchedulesToday, type MiniSchedule } from '../hooks/useSchedulesToday';
+import { getScheduleStatusMeta } from '../statusMetadata';
 
 type ScheduleConflict = {
 	id?: string | number;
@@ -157,40 +159,16 @@ interface AgendaCardProps {
 	conflictIndex?: Record<string, ScheduleConflict[]>;
 }
 
-const AgendaCard: React.FC<AgendaCardProps> = ({ schedule, conflictIndex }) => {
-	const getStatusColor = (status?: string) => {
-		switch (status) {
-			case '確定':
-			case 'confirmed':
-				return 'success';
-			case '予定':
-			case 'planned':
-				return 'primary';
-			case '欠勤':
-			case 'absent':
-				return 'error';
-			case '休暇':
-			case 'holiday':
-				return 'warning';
-			default:
-				return 'default';
-		}
-	};
+/** Map MiniSchedule.status string to Chip color via statusMetadata SSOT */
+const STATUS_COLOR_MAP: Record<string, 'success' | 'warning' | 'error' | 'default'> = {
+	Planned: 'success',
+	Postponed: 'warning',
+	Cancelled: 'error',
+};
 
-	const getStatusLabel = (status?: string) => {
-		switch (status) {
-			case 'confirmed':
-				return '確定';
-			case 'planned':
-				return '予定';
-			case 'absent':
-				return '欠勤';
-			case 'holiday':
-				return '休暇';
-			default:
-				return status || '予定';
-		}
-	};
+const AgendaCard: React.FC<AgendaCardProps> = ({ schedule, conflictIndex }) => {
+	const statusMeta = getScheduleStatusMeta(schedule.status as ScheduleStatus | undefined);
+	const statusChipColor = STATUS_COLOR_MAP[schedule.status ?? ''] ?? 'default';
 
 	// Check for conflicts - Boolean()でキャストして型安全性を向上
 	// conflictIndex は undefined の可能性があるため、適切なガードを追加
@@ -243,9 +221,9 @@ const AgendaCard: React.FC<AgendaCardProps> = ({ schedule, conflictIndex }) => {
 						</Typography>
 						<Stack direction="row" spacing={1} alignItems="center">
 							<Chip
-								label={getStatusLabel(schedule.status)}
+								label={statusMeta.label}
 								size="small"
-								color={getStatusColor(schedule.status)}
+								color={statusChipColor}
 								variant="outlined"
 							/>
 							{schedule.allDay && (

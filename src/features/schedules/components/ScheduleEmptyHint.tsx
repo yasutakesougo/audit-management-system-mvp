@@ -1,9 +1,13 @@
-import Box from '@mui/material/Box';
-import Typography from '@mui/material/Typography';
-import type { SxProps, Theme } from '@mui/material/styles';
-import { TESTIDS } from '@/testids';
 import { scheduleFacilityEmptyCopy } from '@/features/schedules/domain/categoryLabels';
 import type { ScheduleCategory } from '@/features/schedules/domain/types';
+import { TESTIDS } from '@/testids';
+import AddIcon from '@mui/icons-material/Add';
+import CheckCircleOutlineIcon from '@mui/icons-material/CheckCircleOutline';
+import Box from '@mui/material/Box';
+import Button from '@mui/material/Button';
+import Stack from '@mui/material/Stack';
+import Typography from '@mui/material/Typography';
+import type { SxProps, Theme } from '@mui/material/styles';
 
 export type ScheduleEmptyHintProps = {
   view: 'day' | 'week' | 'month';
@@ -11,11 +15,14 @@ export type ScheduleEmptyHintProps = {
   sx?: SxProps<Theme>;
   compact?: boolean;
   categoryFilter?: 'All' | ScheduleCategory;
+  /** CTA: 新規作成ボタンの onClick コールバック */
+  onCreateClick?: () => void;
 };
 
 export function ScheduleEmptyHint(props: ScheduleEmptyHintProps) {
-  const { title } = props.categoryFilter === 'Org' ? scheduleFacilityEmptyCopy : { title: '予定はまだありません' };
-  const { sx, compact } = props;
+  const { categoryFilter, sx, compact, onCreateClick } = props;
+  const isOrg = categoryFilter === 'Org';
+  const { title } = isOrg ? scheduleFacilityEmptyCopy : { title: '予定はまだありません' };
   const emptyLine = title.endsWith('。') ? title : `${title}。`;
 
   return (
@@ -23,11 +30,37 @@ export function ScheduleEmptyHint(props: ScheduleEmptyHintProps) {
       role="status"
       aria-live="polite"
       data-testid={TESTIDS.SCHEDULES_EMPTY_HINT}
-      sx={{ mb: compact ? 0.5 : 1, ...sx }}
+      sx={{
+        mb: compact ? 0.5 : 1,
+        textAlign: 'center',
+        py: compact ? 2 : 3,
+        ...sx,
+      }}
     >
-      <Typography variant="body2" color="text.secondary" sx={{ fontSize: compact ? 12 : 13 }}>
-        {emptyLine}
-      </Typography>
+      <Stack spacing={compact ? 1 : 1.5} alignItems="center">
+        <CheckCircleOutlineIcon
+          sx={{ fontSize: compact ? 28 : 36, color: 'success.light', opacity: 0.7 }}
+        />
+        <Typography
+          variant={compact ? 'body2' : 'body1'}
+          color="text.secondary"
+          sx={{ fontSize: compact ? 12 : 14 }}
+        >
+          {emptyLine}
+        </Typography>
+
+        {onCreateClick && (
+          <Button
+            variant="outlined"
+            size={compact ? 'small' : 'medium'}
+            startIcon={<AddIcon />}
+            onClick={onCreateClick}
+            sx={{ mt: compact ? 0.5 : 1 }}
+          >
+            {isOrg ? '施設予定を追加' : '新しい予定を作成'}
+          </Button>
+        )}
+      </Stack>
     </Box>
   );
 }
