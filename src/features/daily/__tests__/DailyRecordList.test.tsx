@@ -180,7 +180,7 @@ describe('DailyRecordList', () => {
       expect(mockProps.onEdit).toHaveBeenCalledWith(record);
     });
 
-    it('calls onDelete when delete menu item is clicked', () => {
+    it('calls onDelete when delete is confirmed via dialog', () => {
       const record = createMockRecord({ id: 18 });
       render(<DailyRecordList {...mockProps} records={[record]} />);
 
@@ -190,7 +190,33 @@ describe('DailyRecordList', () => {
       const deleteMenuItem = screen.getByTestId('delete-record-menu-item-18');
       fireEvent.click(deleteMenuItem);
 
+      // P0防波堤: 確認ダイアログが表示される
+      expect(screen.getByTestId('delete-confirm-dialog')).toBeInTheDocument();
+      expect(screen.getByText(/テスト太郎さんの記録/)).toBeInTheDocument();
+      expect(screen.getByText(/この操作は取り消せません/)).toBeInTheDocument();
+
+      // 「削除する」をクリック
+      const confirmButton = screen.getByTestId('delete-confirm-button');
+      fireEvent.click(confirmButton);
+
       expect(mockProps.onDelete).toHaveBeenCalledWith(18);
+    });
+
+    it('does not call onDelete when delete is cancelled', () => {
+      const record = createMockRecord({ id: 20 });
+      render(<DailyRecordList {...mockProps} records={[record]} />);
+
+      const menuButton = screen.getByTestId('menu-button-20');
+      fireEvent.click(menuButton);
+
+      const deleteMenuItem = screen.getByTestId('delete-record-menu-item-20');
+      fireEvent.click(deleteMenuItem);
+
+      // 確認ダイアログの「キャンセル」をクリック
+      const cancelButton = screen.getByTestId('delete-cancel-button');
+      fireEvent.click(cancelButton);
+
+      expect(mockProps.onDelete).not.toHaveBeenCalled();
     });
   });
 
