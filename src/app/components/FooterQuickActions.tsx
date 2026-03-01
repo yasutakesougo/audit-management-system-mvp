@@ -33,8 +33,8 @@ type FooterAction = {
 
 const footerTestIds: Record<string, string> = {
   'schedules-month': TESTIDS['schedules-footer-month'],
-  'daily-attendance': TESTIDS['daily-footer-attendance'],
-  'daily-activity': TESTIDS['daily-footer-activity'],
+  'daily-attendance': TESTIDS.footer.dailyFooterAttendance,
+  'daily-activity': TESTIDS.footer.dailyFooterActivity,
   'daily-support': TESTIDS['daily-footer-support'],
   'handoff-quicknote': TESTIDS['handoff-footer-quicknote'],
 };

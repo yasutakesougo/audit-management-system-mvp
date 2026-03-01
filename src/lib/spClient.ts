@@ -8,6 +8,10 @@ import { useMemo } from 'react';
 import { z } from 'zod';
 import { AuthRequiredError, SharePointItemNotFoundError, SharePointMissingEtagError } from './errors';
 
+// NOTE: Type definitions and helpers have been extracted to lib/sp/ sub-modules
+// (spTypes.ts, spSchema.ts, spBatch.ts, spHelpers.ts) for independent import.
+// This file remains the canonical facade for backward compatibility.
+
 const FALLBACK_SP_RESOURCE = 'https://example.sharepoint.com';
 const FALLBACK_SP_SITE_RELATIVE = '/sites/demo';
 
