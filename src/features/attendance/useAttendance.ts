@@ -7,7 +7,7 @@ import { classifyAttendanceError, type AttendanceErrorCode } from './hooks/useAt
 import type { AttendanceDailyItem } from './infra/attendanceDailyRepository';
 import { useAttendanceRepository } from './repositoryFactory';
 import { methodImpliesShuttle } from './transportMethod';
-import type { AttendanceFilter, AttendanceHookStatus, AttendanceRowVM } from './types';
+import type { AttendanceFilter, AttendanceHookStatus, AttendanceInputMode, AttendanceRowVM } from './types';
 
 const todayIso = (): string => new Date().toISOString().split('T')[0];
 
@@ -256,11 +256,13 @@ export type UseAttendanceReturn = {
   status: AttendanceHookStatus;
   rows: AttendanceRowVM[];
   filters: AttendanceFilter;
+  inputMode: AttendanceInputMode;
   savingUsers: ReadonlySet<string>;
   notification: AttendanceNotification;
   dismissNotification: () => void;
   actions: {
     setFilters: (next: Partial<AttendanceFilter>) => void;
+    setInputMode: (mode: AttendanceInputMode) => void;
     updateStatus: (userCode: string, status: AttendanceRowVM['status']) => Promise<void>;
     refresh: () => Promise<void>;
   };
@@ -276,6 +278,9 @@ export function useAttendance(): UseAttendanceReturn {
   const savingUsersRef = useRef<Set<string>>(new Set());
   const [, setSavingTick] = useState(0);
   const bumpSavingTick = useCallback(() => setSavingTick((t) => t + 1), []);
+
+  // ── Input mode state ──
+  const [inputMode, setInputMode] = useState<AttendanceInputMode>('normal');
 
   // ── Notification state ──
   const [notification, setNotification] = useState<AttendanceNotification>(NOTIFICATION_CLOSED);
@@ -393,11 +398,13 @@ export function useAttendance(): UseAttendanceReturn {
     status,
     rows,
     filters,
+    inputMode,
     savingUsers: savingUsersRef.current,
     notification,
     dismissNotification,
     actions: {
       setFilters,
+      setInputMode,
       updateStatus,
       refresh,
     },
