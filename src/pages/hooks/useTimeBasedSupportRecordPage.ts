@@ -1,8 +1,8 @@
-import type { RecordPanelLockState } from '@/features/daily/components/split-stream/RecordPanel';
 import type { ScheduleItem } from '@/features/daily/components/split-stream/ProcedurePanel';
+import type { RecordPanelLockState } from '@/features/daily/components/split-stream/RecordPanel';
 import type { BehaviorObservation } from '@/features/daily/domain/daily/types';
-import type { BehaviorRepository, ProcedureRepository } from '@/features/daily/repositories/types';
 import { getScheduleKey } from '@/features/daily/domain/getScheduleKey';
+import type { BehaviorRepository, ProcedureRepository } from '@/features/daily/repositories/types';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 type UseTimeBasedSupportRecordPageArgs = {
@@ -134,19 +134,32 @@ export function useTimeBasedSupportRecordPage({
     if (!sourceId) return;
     const currentIndex = scheduleKeys.indexOf(sourceId);
     if (currentIndex < 0) return;
-    let nextId = scheduleKeys[currentIndex + 1] ?? sourceId;
-    if (showUnfilledOnly) {
-      for (let i = currentIndex + 1; i < scheduleKeys.length; i += 1) {
+
+    // Always advance to next unfilled slot (skip already-filled ones)
+    let nextId: string | null = null;
+    for (let i = currentIndex + 1; i < scheduleKeys.length; i += 1) {
+      const candidate = scheduleKeys[i];
+      if (!filledStepIds.has(candidate)) {
+        nextId = candidate;
+        break;
+      }
+    }
+    // If no unfilled after current, wrap around from beginning
+    if (!nextId) {
+      for (let i = 0; i < currentIndex; i += 1) {
         const candidate = scheduleKeys[i];
-        if (candidate !== sourceId && !filledStepIds.has(candidate)) {
+        if (!filledStepIds.has(candidate)) {
           nextId = candidate;
           break;
         }
       }
     }
+    // All filled — stay on current
+    if (!nextId) nextId = sourceId;
+
     setSelectedStepId(nextId);
     setScrollToStepId(nextId);
-  }, [filledStepIds, scheduleKeys, selectedStepId, showUnfilledOnly]);
+  }, [filledStepIds, scheduleKeys, selectedStepId]);
 
   return {
     targetUserId,

@@ -1,3 +1,4 @@
+// contract:allow-interface — DailyReportOptions is a function-local options type, not a domain shape
 // ---------------------------------------------------------------------------
 // generateDailyReport — 日報テキスト生成の純粋関数
 //
@@ -17,6 +18,8 @@ export type DailyReportOptions = {
   schedule: ScheduleItem[];
   /** 実施記録 */
   records: ExecutionRecord[];
+  /** 観察テキスト (scheduleKey → 観察文) */
+  observations?: Map<string, string>;
 };
 
 const STATUS_ICONS: Record<string, string> = {
@@ -41,7 +44,7 @@ const STATUS_ICONS: Record<string, string> = {
  * 完了: 2 | 発動: 1 | スキップ: 1 | 未記録: 0 (全4件)
  * ```
  */
-export function generateDailyReport({ date, userName, schedule, records }: DailyReportOptions): string {
+export function generateDailyReport({ date, userName, schedule, records, observations }: DailyReportOptions): string {
   // 日付フォーマット: YYYY-MM-DD → YYYY/MM/DD
   const formattedDate = date.replace(/-/g, '/');
 
@@ -87,6 +90,12 @@ export function generateDailyReport({ date, userName, schedule, records }: Daily
     }
 
     lines.push(line);
+
+    // 観察テキストがあればインデントで追加
+    const obsText = observations?.get(scheduleKey);
+    if (obsText) {
+      lines.push(`  └ ${obsText}`);
+    }
   }
 
   // フッター

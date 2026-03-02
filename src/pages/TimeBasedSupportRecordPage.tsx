@@ -20,14 +20,20 @@ import { useUsersDemo } from '@/features/users/usersStoreDemo';
 import { getEnv } from '@/lib/runtimeEnv';
 import { useTimeBasedSupportRecordPage } from '@/pages/hooks/useTimeBasedSupportRecordPage';
 import AccessTimeIcon from '@mui/icons-material/AccessTime';
+import CloseIcon from '@mui/icons-material/Close';
 import ContentCopyIcon from '@mui/icons-material/ContentCopy';
 import EditIcon from '@mui/icons-material/Edit';
+import HistoryIcon from '@mui/icons-material/History';
 import PersonIcon from '@mui/icons-material/Person';
 import Alert from '@mui/material/Alert';
+import Badge from '@mui/material/Badge';
 import Box from '@mui/material/Box';
 import Button from '@mui/material/Button';
 import Chip from '@mui/material/Chip';
 import Container from '@mui/material/Container';
+import Dialog from '@mui/material/Dialog';
+import DialogContent from '@mui/material/DialogContent';
+import DialogTitle from '@mui/material/DialogTitle';
 import FormControl from '@mui/material/FormControl';
 import IconButton from '@mui/material/IconButton';
 import InputLabel from '@mui/material/InputLabel';
@@ -64,6 +70,7 @@ const TimeBasedSupportRecordPage: React.FC = () => {
   const [snackbarOpen, setSnackbarOpen] = useState(false);
   const [snackbarMessage, setSnackbarMessage] = useState('行動記録を保存しました');
   const [isEditOpen, setIsEditOpen] = useState(false);
+  const [recentRecordsOpen, setRecentRecordsOpen] = useState(false);
   const [submitError, setSubmitError] = useState<Error | null>(() => {
     if (typeof window === 'undefined') return null;
     const stored = window.sessionStorage.getItem(ERROR_STORAGE_KEY);
@@ -127,6 +134,19 @@ const TimeBasedSupportRecordPage: React.FC = () => {
     return rawError;
   }, [rawError]);
   const selectedUser = useMemo(() => users.find((user) => user.UserID === targetUserId), [users, targetUserId]);
+
+  // Build observation preview map for Plan side tooltips
+  const savedObservationsMap = useMemo(() => {
+    const map = new Map<string, string>();
+    recentObservations.forEach((obs) => {
+      const key = obs.planSlotKey ?? '';
+      if (key && obs.actualObservation) {
+        map.set(key, obs.actualObservation.slice(0, 60) + (obs.actualObservation.length > 60 ? '…' : ''));
+      }
+    });
+    return map;
+  }, [recentObservations]);
+
   const previousSearchRef = useRef(location.search);
   const orgId = getEnv('VITE_FIREBASE_ORG_ID') ?? 'demo-org';
   const actorUserId = getEnv('VITE_FIREBASE_ACTOR_ID') ?? 'demo-actor';
@@ -424,6 +444,13 @@ const TimeBasedSupportRecordPage: React.FC = () => {
       userName: selectedUser.FullName,
       schedule,
       records,
+      observations: (() => {
+        const m = new Map<string, string>();
+        recentObservations.forEach((o) => {
+          if (o.planSlotKey && o.actualObservation) m.set(o.planSlotKey, o.actualObservation);
+        });
+        return m;
+      })(),
     });
     try {
       await navigator.clipboard.writeText(report);
@@ -513,16 +540,32 @@ const TimeBasedSupportRecordPage: React.FC = () => {
           </Box>
         </Stack>
         {targetUserId && selectedUser && (
-          <Button
-            variant="outlined"
-            size="small"
-            startIcon={<ContentCopyIcon />}
-            onClick={handleCopyReport}
-            data-testid="copy-daily-report-button"
-            sx={{ whiteSpace: 'nowrap' }}
-          >
-            日報コピー
-          </Button>
+          <Stack direction="row" spacing={1}>
+            <Button
+              variant="outlined"
+              size="small"
+              startIcon={
+                <Badge badgeContent={recentObservations.length} color="primary" max={99}>
+                  <HistoryIcon />
+                </Badge>
+              }
+              onClick={() => setRecentRecordsOpen(true)}
+              data-testid="recent-records-button"
+              sx={{ whiteSpace: 'nowrap' }}
+            >
+              直近記録
+            </Button>
+            <Button
+              variant="outlined"
+              size="small"
+              startIcon={<ContentCopyIcon />}
+              onClick={handleCopyReport}
+              data-testid="copy-daily-report-button"
+              sx={{ whiteSpace: 'nowrap' }}
+            >
+              日報コピー
+            </Button>
+          </Stack>
         )}
       </Paper>
 
@@ -562,6 +605,7 @@ const TimeBasedSupportRecordPage: React.FC = () => {
               unfilledCount={unfilledStepsCount}
               totalCount={totalSteps}
               interventionPlans={userInterventionPlans}
+              savedObservations={savedObservationsMap}
             />
           ) : (
             <ProcedurePanel title="支援手順 (Plan)">
@@ -591,12 +635,17 @@ const TimeBasedSupportRecordPage: React.FC = () => {
         />
       </Box>
 
-      {targetUserId && (
-        <Paper sx={{ p: 2, borderTop: 1, borderColor: 'divider', bgcolor: 'common.white' }}>
-          <Box display="flex" alignItems="center" gap={1} mb={1}>
-            <Typography variant="subtitle1" component="span" fontWeight="bold">
-              直近の行動記録
-            </Typography>
+      {/* 直近の行動記録 Dialog */}
+      <Dialog
+        open={recentRecordsOpen}
+        onClose={() => setRecentRecordsOpen(false)}
+        fullWidth
+        maxWidth="sm"
+        data-testid="recent-records-dialog"
+      >
+        <DialogTitle sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+          <Box display="flex" alignItems="center" gap={1}>
+            直近の行動記録
             <Chip label={`${recentObservations.length}件`} size="small" />
             {selectedUser && (
               <Typography variant="body2" color="text.secondary">
@@ -604,13 +653,18 @@ const TimeBasedSupportRecordPage: React.FC = () => {
               </Typography>
             )}
           </Box>
+          <IconButton aria-label="閉じる" onClick={() => setRecentRecordsOpen(false)} size="small">
+            <CloseIcon />
+          </IconButton>
+        </DialogTitle>
+        <DialogContent dividers>
           {recentObservations.length === 0 ? (
             <Typography variant="body2" color="text.secondary">
               記録はまだありません。Planを確認してから記録を開始してください。
             </Typography>
           ) : (
             <Stack spacing={1.5}>
-              {recentObservations.slice(0, 5).map((observation) => (
+              {recentObservations.slice(0, 10).map((observation) => (
                 <Box key={observation.id} sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                   <Typography variant="caption" color="text.secondary" sx={{ minWidth: 60 }}>
                     {new Date(observation.recordedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
@@ -627,8 +681,8 @@ const TimeBasedSupportRecordPage: React.FC = () => {
               ))}
             </Stack>
           )}
-        </Paper>
-      )}
+        </DialogContent>
+      </Dialog>
 
       <ProcedureEditor
         open={isEditOpen}

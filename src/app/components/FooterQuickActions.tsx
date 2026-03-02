@@ -1,10 +1,11 @@
 /**
  * FooterQuickActions — Fixed bottom action bar for quick access to daily workflows.
  *
- * Extracted from AppShell.tsx for maintainability.
- * Contains: attendance, case record, support procedure, handoff quick-note, schedule buttons.
+ * Renders actions defined in footerActionsConfig.ts (SSOT).
+ * This component is purely presentational — button definitions live in the config.
  */
 
+import { createFooterActions, type FooterAction } from '@/app/config/footerActionsConfig';
 import { HandoffQuickNoteCard } from '@/features/handoff/HandoffQuickNoteCard';
 import { TESTIDS } from '@/testids';
 import CloseIcon from '@mui/icons-material/Close';
@@ -18,42 +19,13 @@ import DialogTitle from '@mui/material/DialogTitle';
 import IconButton from '@mui/material/IconButton';
 import Paper from '@mui/material/Paper';
 import Stack from '@mui/material/Stack';
-import { useTheme } from '@mui/material/styles';
-import React, { useEffect, useState } from 'react';
+import { useTheme, type Theme } from '@mui/material/styles';
+import React, { useEffect, useMemo, useState } from 'react';
 import { Link as RouterLink, useLocation } from 'react-router-dom';
 
-type FooterAction = {
-  key: string;
-  label: string;
-  color: 'primary' | 'secondary' | 'info';
-  variant: 'contained' | 'outlined';
-  to?: string;
-  onClick?: () => void;
-};
-
-const footerTestIds: Record<string, string> = {
-  'schedules-month': TESTIDS['schedules-footer-month'],
-  'daily-attendance': TESTIDS['daily-footer-attendance'],
-  'daily-activity': TESTIDS['daily-footer-activity'],
-  'daily-support': TESTIDS['daily-footer-support'],
-  'handoff-quicknote': TESTIDS['handoff-footer-quicknote'],
-};
-
-const footerAccentByKey: Record<string, string> = {
-  'handoff-quicknote': '#C53030',
-  'schedules-month': '#B7791F',
-  'daily-attendance': '#2F855A',
-  'daily-activity': '#C05621',
-  'daily-support': '#6B46C1',
-};
-
-const footerShortLabelByKey: Record<string, string> = {
-  'handoff-quicknote': '申し送り',
-  'schedules-month': '予定',
-  'daily-attendance': '通所',
-  'daily-activity': 'ケース記録',
-  'daily-support': '支援手順',
-};
+// ─── Dialog action registry ──────────────────────────────────────────
+// Maps onClickKey → state setter. Extend here when adding new dialog actions.
+type DialogRegistry = Record<string, () => void>;
 
 export const FooterQuickActions: React.FC<{ fixed?: boolean }> = ({ fixed = true }) => {
   const location = useLocation();
@@ -67,77 +39,59 @@ export const FooterQuickActions: React.FC<{ fixed?: boolean }> = ({ fixed = true
     return () => window.removeEventListener('handoff-open-quicknote-dialog', handler);
   }, []);
 
-  const scheduleMonthAction: FooterAction = {
-    key: 'schedules-month',
-    label: 'スケジュール',
-    to: '/schedules/month',
-    color: 'info' as const,
-    variant: 'contained' as const,
-  };
+  const dialogHandlers: DialogRegistry = useMemo(
+    () => ({
+      'handoff-quicknote': () => setQuickNoteOpen(true),
+    }),
+    [],
+  );
 
-  const baseActions: FooterAction[] = [
-    {
-      key: 'daily-attendance',
-      label: '通所管理',
-      to: '/daily/attendance',
-      color: 'info' as const,
-      variant: 'contained' as const,
-    },
-    {
-      key: 'daily-activity',
-      label: 'ケース記録入力',
-      to: '/daily/table',
-      color: 'primary' as const,
-      variant: 'contained' as const,
-    },
-    {
-      key: 'daily-support',
-      label: '支援手順記録入力',
-      to: '/daily/support',
-      color: 'primary' as const,
-      variant: 'outlined' as const,
-    },
-  ] as const;
-
-  const handleQuickNoteClick = () => {
-    setQuickNoteOpen(true);
-  };
-
-  const actions: FooterAction[] = [
-    {
-      key: 'handoff-quicknote',
-      label: '今すぐ申し送り',
-      color: 'secondary' as const,
-      variant: 'contained' as const,
-      onClick: handleQuickNoteClick,
-    },
-    scheduleMonthAction,
-    ...baseActions,
-  ];
+  // Build actions from SSOT config.
+  // schedulesEnabled is intentionally false here — schedule button currently always shown
+  // via the hardcoded list. If schedule feature flag is needed, wire it through props/context.
+  const actions = useMemo(() => createFooterActions({ schedulesEnabled: true }), []);
 
   return (
     <Box
       component="footer"
       role="contentinfo"
-      sx={{
-        position: fixed ? 'fixed' : 'static',
-        bottom: fixed ? { xs: 8, sm: 16 } : 'auto',
-        left: fixed ? 0 : 'auto',
-        width: '100%',
-        pointerEvents: fixed ? 'none' : 'auto',
-        zIndex: fixed ? ((theme) => theme.zIndex.appBar) : 'auto',
-      }}
+      sx={
+        fixed
+          ? {
+              position: 'fixed',
+              bottom: { xs: 8, sm: 16 },
+              left: 0,
+              width: '100%',
+              pointerEvents: 'none',
+              zIndex: (theme) => theme.zIndex.appBar,
+            }
+          : {
+              width: '100%',
+              height: '100%',
+            }
+      }
     >
-      <Container maxWidth="lg" sx={fixed ? { pointerEvents: 'auto' } : undefined}>
+      <Container
+        maxWidth={fixed ? 'lg' : false}
+        disableGutters={!fixed}
+        sx={{
+          height: '100%',
+          ...(fixed ? { pointerEvents: 'auto' } : {}),
+        }}
+      >
         <Paper
-          elevation={6}
+          elevation={fixed ? 6 : 0}
           sx={{
-            height: 56,
+            height: '100%',
             borderRadius: 0,
             px: { xs: 1, sm: 2 },
-            py: { xs: 0.5, sm: 1 },
-            pb: 'calc(1px * (var(--mobile-safe-area, 0)) + 0.5rem)',
-            backdropFilter: 'blur(6px)',
+            py: 0,
+            ...(fixed
+              ? {
+                  pb: 'calc(1px * (var(--mobile-safe-area, 0)) + 0.5rem)',
+                }
+              : {}),
+            backdropFilter: fixed ? 'blur(6px)' : undefined,
             backgroundColor: (theme) =>
               theme.palette.mode === 'dark'
                 ? 'rgba(33, 33, 33, 0.95)'
@@ -162,66 +116,7 @@ export const FooterQuickActions: React.FC<{ fixed?: boolean }> = ({ fixed = true
               '&::-webkit-scrollbar': { height: 4 },
             }}
           >
-            {actions.map(({ key, label, to, color, variant: baseVariant, onClick }) => {
-              const displayLabel = footerShortLabelByKey[key] ?? label;
-              const commonProps = {
-                color,
-                size: 'small' as const,
-                fullWidth: true,
-                sx: {
-                  flex: 1,
-                  minHeight: 44,
-                  fontWeight: 600,
-                  fontSize: '0.75rem',
-                  whiteSpace: 'nowrap',
-                  py: 0.5,
-                },
-                'data-testid': footerTestIds[key],
-              };
-
-              if (to) {
-                const targetPath = to.split('?')[0];
-                const isActive = location.pathname.startsWith(targetPath);
-                const accent = footerAccentByKey[key] ?? theme.palette.primary.main;
-                const activeSx = isActive
-                  ? {
-                      color: accent,
-                      borderBottom: `3px solid ${accent}`,
-                      borderRadius: 0,
-                      fontWeight: 700,
-                      '&:hover': {
-                        backgroundColor: theme.palette.action.hover,
-                      },
-                    }
-                  : undefined;
-                return (
-                  <Button
-                    key={key}
-                    {...commonProps}
-                    component={RouterLink as unknown as React.ElementType}
-                    to={to}
-                    variant={isActive ? 'contained' : baseVariant}
-                    aria-current={isActive ? 'page' : undefined}
-                    sx={{ ...commonProps.sx, ...activeSx }}
-                  >
-                    {displayLabel}
-                  </Button>
-                );
-              }
-
-              return (
-                <Button
-                  key={key}
-                  {...commonProps}
-                  variant={baseVariant}
-                  startIcon={<EditNoteIcon />}
-                  onClick={onClick}
-                  data-testid={key === 'handoff-quicknote' ? TESTIDS['handoff-footer-quicknote'] : undefined}
-                >
-                  {displayLabel}
-                </Button>
-              );
-            })}
+            {actions.map((action) => renderAction(action, location.pathname, theme, dialogHandlers))}
           </Stack>
         </Paper>
       </Container>
@@ -245,5 +140,76 @@ export const FooterQuickActions: React.FC<{ fixed?: boolean }> = ({ fixed = true
     </Box>
   );
 };
+
+// ─── Render helpers ──────────────────────────────────────────────────
+
+function renderAction(
+  action: FooterAction,
+  currentPathname: string,
+  theme: Theme,
+  dialogHandlers: DialogRegistry,
+) {
+  const { key, shortLabel, to, color, variant: baseVariant, accent, testId, kind } = action;
+
+  const commonProps = {
+    color,
+    size: 'small' as const,
+    fullWidth: true,
+    sx: {
+      flex: 1,
+      minHeight: 44,
+      fontWeight: 600,
+      fontSize: '0.75rem',
+      whiteSpace: 'nowrap',
+      py: 0.5,
+    } as const,
+    'data-testid': testId,
+  };
+
+  if (kind === 'link' && to) {
+    const targetPath = to.split('?')[0];
+    const isActive = currentPathname.startsWith(targetPath);
+    const activeSx = isActive
+      ? {
+          color: accent,
+          borderBottom: `3px solid ${accent}`,
+          borderRadius: 0,
+          fontWeight: 700,
+          '&:hover': {
+            backgroundColor: theme.palette.action.hover,
+          },
+        }
+      : undefined;
+
+    return (
+      <Button
+        key={key}
+        {...commonProps}
+        component={RouterLink as unknown as React.ElementType}
+        to={to}
+        variant={isActive ? 'contained' : baseVariant}
+        aria-current={isActive ? 'page' : undefined}
+        sx={{ ...commonProps.sx, ...activeSx }}
+      >
+        {shortLabel}
+      </Button>
+    );
+  }
+
+  // kind === 'dialog'
+  const onClick = action.onClickKey ? dialogHandlers[action.onClickKey] : undefined;
+  return (
+    <Button
+      key={key}
+      {...commonProps}
+      variant={baseVariant}
+      startIcon={<EditNoteIcon />}
+      onClick={onClick}
+      data-testid={key === 'handoff-quicknote' ? TESTIDS['handoff-footer-quicknote'] : testId}
+    >
+      {shortLabel}
+    </Button>
+  );
+}
 
 export default FooterQuickActions;
