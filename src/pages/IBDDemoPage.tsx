@@ -19,13 +19,13 @@ import Stack from '@mui/material/Stack';
 import Typography from '@mui/material/Typography';
 import { useCallback, useState } from 'react';
 
-import ABCEntryForm from '@/features/ibd/components/ABCEntryForm';
-import ABCSummaryReport from '@/features/ibd/components/ABCSummaryReport';
-import InterventionPickerPanel from '@/features/ibd/components/InterventionPickerPanel';
-import ObservationFeedbackPanel from '@/features/ibd/components/ObservationFeedbackPanel';
-import PositiveConditionsBanner from '@/features/ibd/components/PositiveConditionsBanner';
-import SceneQuickView from '@/features/ibd/components/SceneQuickView';
-import SupervisionCounterBadge from '@/features/ibd/components/SupervisionCounterBadge';
+import ABCEntryForm from '@/features/ibd/core/components/ABCEntryForm';
+import ABCSummaryReport from '@/features/ibd/core/components/ABCSummaryReport';
+import InterventionPickerPanel from '@/features/ibd/core/components/InterventionPickerPanel';
+import ObservationFeedbackPanel from '@/features/ibd/core/components/ObservationFeedbackPanel';
+import PositiveConditionsBanner from '@/features/ibd/core/components/PositiveConditionsBanner';
+import SceneQuickView from '@/features/ibd/core/components/SceneQuickView';
+import SupervisionCounterBadge from '@/features/ibd/core/components/SupervisionCounterBadge';
 import {
     addABCRecord,
     addSPS,
@@ -38,11 +38,11 @@ import {
     getSupervisionCounter,
     incrementSupportCount,
     resetIBDStore,
-} from '@/features/ibd/ibdStore';
-import type { ABCRecord, SupervisionLog, SupportScene } from '@/features/ibd/ibdTypes';
-import { PDCA_RECOMMENDATION_LABELS, SUPPORT_CATEGORY_CONFIG } from '@/features/ibd/ibdTypes';
-import { AuditEvidenceReportPDF } from '@/features/ibd/reports/AuditEvidenceReportPDF';
-import { useAuditEvidenceReport } from '@/features/ibd/reports/useAuditEvidenceReport';
+} from '@/features/ibd/core/ibdStore';
+import type { ABCRecord, SupervisionLog, SupportScene } from '@/features/ibd/core/ibdTypes';
+import { PDCA_RECOMMENDATION_LABELS, SUPPORT_CATEGORY_CONFIG } from '@/features/ibd/core/ibdTypes';
+import { AuditEvidenceReportPDF } from '@/features/ibd/core/reports/AuditEvidenceReportPDF';
+import { useAuditEvidenceReport } from '@/features/ibd/core/reports/useAuditEvidenceReport';
 
 // ---------------------------------------------------------------------------
 // デモデータ

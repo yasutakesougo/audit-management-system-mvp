@@ -13,7 +13,7 @@ import {
     type SupportPlanSheet,
     type SupportProcedureManual,
     type SupportStrategyStage
-} from '@/features/ibd/ibdTypes';
+} from '@/features/ibd/core/ibdTypes';
 
 // ---------------------------------------------------------------------------
 // Types

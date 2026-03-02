@@ -7,7 +7,7 @@ import { describe, expect, it } from 'vitest';
 import type {
     SupportPlanSheet,
     SupportProcedureManual,
-} from '@/features/ibd/ibdTypes';
+} from '@/features/ibd/core/ibdTypes';
 
 import {
     buildSPSDrivenOptions,

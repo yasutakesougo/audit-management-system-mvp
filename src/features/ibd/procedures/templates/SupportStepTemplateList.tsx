@@ -29,7 +29,7 @@ import {
     SupportStepTemplate,
     supportCategoryValues,
     supportImportanceValues,
-} from '../../domain/support/step-templates';
+} from '@/domain/support/step-templates';
 
 // ─── Shared color maps (Form と統一) ──────
 const IMPORTANCE_COLOR: Record<string, 'error' | 'warning' | 'info' | 'default'> = {

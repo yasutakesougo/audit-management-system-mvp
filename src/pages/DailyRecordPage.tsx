@@ -21,7 +21,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { Toaster } from 'react-hot-toast';
 import { useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import { LandscapeFab } from '../components/ui/LandscapeFab';
-import { PersonDaily } from '../domain/daily/types';
+import { PersonDaily } from '@/domain/daily/types';
 import { FullScreenDailyDialogPage } from '../features/daily/components/FullScreenDailyDialogPage';
 import { DailyRecordForm } from '../features/daily/DailyRecordForm';
 import { DailyRecordList } from '../features/daily/DailyRecordList';

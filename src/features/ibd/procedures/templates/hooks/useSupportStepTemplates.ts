@@ -8,7 +8,7 @@
  * Mutation (create/update/delete) は SP に書き込み後、自動 refetch。
  */
 import { SupportStepTemplate, defaultSupportStepTemplates } from '@/domain/support/step-templates';
-import { createSupportTemplateRepository } from '@/features/support/infra/SharePointProcedureTemplateRepository';
+import { createSupportTemplateRepository } from '@/features/ibd/procedures/templates/infra/SharePointProcedureTemplateRepository';
 import { acquireSpAccessToken } from '@/lib/msal';
 import { useCallback, useEffect, useState } from 'react';
 import { mapSpTemplatesToStepTemplates, mapStepTemplateToSpItem } from '../adapter/spTemplateAdapter';

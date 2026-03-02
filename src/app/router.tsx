@@ -266,7 +266,7 @@ const SuspendedAnalysisDashboardPage: React.FC = () => (
   </RouteHydrationErrorBoundary>
 );
 
-import { IcebergPdcaGate } from '@/features/iceberg-pdca/IcebergPdcaGate';
+import { IcebergPdcaGate } from '@/features/ibd/analysis/pdca/IcebergPdcaGate';
 const SuspendedIcebergPdcaPage: React.FC = () => (
   <RouteHydrationErrorBoundary>
     <React.Suspense

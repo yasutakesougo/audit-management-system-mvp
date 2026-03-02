@@ -17,7 +17,7 @@ vi.mock('@/features/auth/store', () => ({
   },
 }));
 
-import { IcebergPdcaGate } from '@/features/iceberg-pdca/IcebergPdcaGate';
+import { IcebergPdcaGate } from '@/features/ibd/analysis/pdca/IcebergPdcaGate';
 
 describe('IcebergPdcaGate', () => {
   it('redirects staff to view route when edit is required', async () => {

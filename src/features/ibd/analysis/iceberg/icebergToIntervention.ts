@@ -1,4 +1,4 @@
-import type { IcebergSession } from '@/features/analysis/domain/icebergTypes';
+import type { IcebergSession } from '@/features/ibd/analysis/iceberg/icebergTypes';
 import type { BehaviorInterventionPlan } from '@/features/analysis/domain/interventionTypes';
 import { createEmptyStrategies } from '@/features/analysis/domain/interventionTypes';
 

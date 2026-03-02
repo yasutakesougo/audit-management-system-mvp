@@ -6,9 +6,9 @@
  * userId 未指定時は UserSelectionGrid を表示し、
  * 選択後に /isp-editor/:userId へ遷移する。
  */
-import { IBDPageHeader } from '@/features/ibd/components/IBDPageHeader';
-import ISPComparisonEditorView from '@/features/isp-editor/components/ISPComparisonEditorView';
-import { useISPComparisonEditor } from '@/features/isp-editor/hooks/useISPComparisonEditor';
+import { IBDPageHeader } from '@/features/ibd/core/components/IBDPageHeader';
+import ISPComparisonEditorView from '@/features/ibd/plans/isp-editor/components/ISPComparisonEditorView';
+import { useISPComparisonEditor } from '@/features/ibd/plans/isp-editor/hooks/useISPComparisonEditor';
 import { UserSelectionGrid } from '@/features/users/components/UserSelectionGrid';
 import { useUsersDemo } from '@/features/users/usersStoreDemo';
 import DescriptionIcon from '@mui/icons-material/Description';

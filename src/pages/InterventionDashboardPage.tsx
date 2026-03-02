@@ -8,8 +8,8 @@
 import InterventionStrategyForm from '@/features/analysis/components/InterventionStrategyForm';
 import { getIncompleteStrategies, STRATEGY_LABELS } from '@/features/analysis/domain/interventionTypes';
 import { useInterventionDashboard } from '@/features/analysis/hooks/useInterventionDashboard';
-import { useIcebergStore } from '@/features/analysis/stores/icebergStore';
-import { IBDPageHeader } from '@/features/ibd/components/IBDPageHeader';
+import { useIcebergStore } from '@/features/ibd/analysis/iceberg/icebergStore';
+import { IBDPageHeader } from '@/features/ibd/core/components/IBDPageHeader';
 import { useUsersDemo } from '@/features/users/usersStoreDemo';
 import AcUnitIcon from '@mui/icons-material/AcUnit';
 import AutoFixHighIcon from '@mui/icons-material/AutoFixHigh';

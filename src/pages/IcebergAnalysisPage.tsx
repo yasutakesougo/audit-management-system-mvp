@@ -1,13 +1,13 @@
 import { useAuth } from '@/auth/useAuth';
-import { IcebergCanvas } from '@/features/analysis/components/iceberg/IcebergCanvas';
-import type { EnvironmentFactor } from '@/features/analysis/domain/icebergTypes';
+import { IcebergCanvas } from '@/features/ibd/analysis/iceberg/IcebergCanvas';
+import type { EnvironmentFactor } from '@/features/ibd/analysis/iceberg/icebergTypes';
 import { sensoryToAssessmentItems } from '@/features/analysis/domain/sensoryToAssessmentItems';
-import { createIcebergRepository } from '@/features/analysis/infra/SharePointIcebergRepository';
-import { useIcebergStore } from '@/features/analysis/stores/icebergStore';
+import { createIcebergRepository } from '@/features/ibd/analysis/iceberg/SharePointIcebergRepository';
+import { useIcebergStore } from '@/features/ibd/analysis/iceberg/icebergStore';
 import type { AssessmentItem } from '@/features/assessment/domain/types';
 import { useAssessmentStore } from '@/features/assessment/stores/assessmentStore';
 import type { BehaviorObservation } from '@/features/daily/domain/daily/types';
-import { IBDPageHeader } from '@/features/ibd/components/IBDPageHeader';
+import { IBDPageHeader } from '@/features/ibd/core/components/IBDPageHeader';
 import { useUsersDemo } from '@/features/users/usersStoreDemo';
 import { getAppConfig } from '@/lib/env';
 import AddLinkIcon from '@mui/icons-material/AddLink';

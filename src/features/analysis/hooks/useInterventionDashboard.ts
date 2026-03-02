@@ -6,8 +6,8 @@
 // ---------------------------------------------------------------------------
 import { useCallback, useMemo, useState } from 'react';
 
-import { icebergToInterventionDrafts } from '@/features/analysis/domain/icebergToIntervention';
-import type { IcebergSession } from '@/features/analysis/domain/icebergTypes';
+import { icebergToInterventionDrafts } from '@/features/ibd/analysis/iceberg/icebergToIntervention';
+import type { IcebergSession } from '@/features/ibd/analysis/iceberg/icebergTypes';
 import type {
     BehaviorInterventionPlan,
     InterventionStorePayload,
