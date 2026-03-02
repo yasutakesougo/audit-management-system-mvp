@@ -1,7 +1,9 @@
 // ---------------------------------------------------------------------------
 // IBD ストア — SPS・観察ログの状態管理と算定要件ロジック
-// Module-level store pattern（zustand 不使用、プロジェクト慣習に準拠）
+// Zustand ベースのリアクティブストア
 // ---------------------------------------------------------------------------
+import { create } from 'zustand';
+
 import type {
     ABCRecord,
     SPSAlertLevel,
@@ -39,14 +41,30 @@ export interface CanConfirmResult {
 }
 
 // ---------------------------------------------------------------------------
-// Module-scope state
+// Zustand Store
 // ---------------------------------------------------------------------------
 
-let _spsSheets: SupportPlanSheet[] = [];
-let _spsHistory: SPSHistoryEntry[] = [];
-let _supervisionLogs: SupervisionLog[] = [];
-let _supervisionCounters: SupervisionCounter[] = [];
-let _abcRecords: ABCRecord[] = [];
+interface IbdState {
+  spsSheets: SupportPlanSheet[];
+  spsHistory: SPSHistoryEntry[];
+  supervisionLogs: SupervisionLog[];
+  supervisionCounters: SupervisionCounter[];
+  abcRecords: ABCRecord[];
+}
+
+const initialState: IbdState = {
+  spsSheets: [],
+  spsHistory: [],
+  supervisionLogs: [],
+  supervisionCounters: [],
+  abcRecords: [],
+};
+
+export const useIbdStore = create<IbdState>()(() => ({ ...initialState }));
+
+// 非 React 用のヘルパー
+const getState = useIbdStore.getState;
+const setState = useIbdStore.setState;
 
 // ---------------------------------------------------------------------------
 // SPS CRUD
@@ -55,23 +73,25 @@ let _abcRecords: ABCRecord[] = [];
 export function addSPS(sps: Omit<SupportPlanSheet, 'nextReviewDueDate'>): void {
   const nextReviewDueDate = calculateNextReviewDueDate(sps.createdAt);
   const fullSPS: SupportPlanSheet = { ...sps, nextReviewDueDate };
-  _spsSheets = [..._spsSheets, fullSPS];
+  setState((s) => ({ spsSheets: [...s.spsSheets, fullSPS] }));
 }
 
 export function updateSPS(id: string, updates: Partial<SupportPlanSheet>): void {
-  _spsSheets = _spsSheets.map((sps) => {
-    if (sps.id !== id) return sps;
-    const updated = { ...sps, ...updates };
-    // 確定更新の場合は次回見直し期限を再計算
-    if (updates.updatedAt && updates.status === 'confirmed') {
-      updated.nextReviewDueDate = calculateNextReviewDueDate(updates.updatedAt);
-    }
-    return updated;
-  });
+  setState((s) => ({
+    spsSheets: s.spsSheets.map((sps) => {
+      if (sps.id !== id) return sps;
+      const updated = { ...sps, ...updates };
+      // 確定更新の場合は次回見直し期限を再計算
+      if (updates.updatedAt && updates.status === 'confirmed') {
+        updated.nextReviewDueDate = calculateNextReviewDueDate(updates.updatedAt);
+      }
+      return updated;
+    }),
+  }));
 }
 
 export function removeSPS(id: string): void {
-  _spsSheets = _spsSheets.filter((sps) => sps.id !== id);
+  setState((s) => ({ spsSheets: s.spsSheets.filter((sps) => sps.id !== id) }));
 }
 
 /**
@@ -83,17 +103,19 @@ export function confirmSPS(
   confirmedByStaffId: number,
   confirmedAt: string,
 ): void {
-  _spsSheets = _spsSheets.map((sps) => {
-    if (sps.id !== spsId) return sps;
-    const nextReviewDueDate = calculateNextReviewDueDate(confirmedAt);
-    return {
-      ...sps,
-      status: 'confirmed' as const,
-      confirmedBy: confirmedByStaffId,
-      confirmedAt,
-      nextReviewDueDate,
-    };
-  });
+  setState((s) => ({
+    spsSheets: s.spsSheets.map((sps) => {
+      if (sps.id !== spsId) return sps;
+      const nextReviewDueDate = calculateNextReviewDueDate(confirmedAt);
+      return {
+        ...sps,
+        status: 'confirmed' as const,
+        confirmedBy: confirmedByStaffId,
+        confirmedAt,
+        nextReviewDueDate,
+      };
+    }),
+  }));
 }
 
 /**
@@ -111,7 +133,7 @@ export function reviseSPS(
   changesSummary: string,
   updates?: Partial<Pick<SupportPlanSheet, 'icebergModel' | 'positiveConditions'>>,
 ): boolean {
-  const current = _spsSheets.find((sps) => sps.id === spsId);
+  const current = getState().spsSheets.find((sps) => sps.id === spsId);
   if (!current) return false;
 
   // 1. スナップショット保存
@@ -126,7 +148,6 @@ export function reviseSPS(
     changesSummary,
     snapshot: { ...current },
   };
-  _spsHistory = [..._spsHistory, historyEntry];
 
   // 2-5. バージョンインクリメント + 日時更新
   const currentVersionNum = parseInt(current.version.replace('v', ''), 10) || 1;
@@ -134,17 +155,20 @@ export function reviseSPS(
   const now = new Date().toISOString();
   const nextReviewDueDate = calculateNextReviewDueDate(now);
 
-  _spsSheets = _spsSheets.map((sps) => {
-    if (sps.id !== spsId) return sps;
-    return {
-      ...sps,
-      version: newVersion,
-      updatedAt: now,
-      nextReviewDueDate,
-      ...(updates?.icebergModel ? { icebergModel: updates.icebergModel } : {}),
-      ...(updates?.positiveConditions ? { positiveConditions: updates.positiveConditions } : {}),
-    };
-  });
+  setState((s) => ({
+    spsHistory: [...s.spsHistory, historyEntry],
+    spsSheets: s.spsSheets.map((sps) => {
+      if (sps.id !== spsId) return sps;
+      return {
+        ...sps,
+        version: newVersion,
+        updatedAt: now,
+        nextReviewDueDate,
+        ...(updates?.icebergModel ? { icebergModel: updates.icebergModel } : {}),
+        ...(updates?.positiveConditions ? { positiveConditions: updates.positiveConditions } : {}),
+      };
+    }),
+  }));
 
   return true;
 }
@@ -154,15 +178,15 @@ export function reviseSPS(
 // ---------------------------------------------------------------------------
 
 export function getAllSPS(): SupportPlanSheet[] {
-  return _spsSheets;
+  return getState().spsSheets;
 }
 
 export function getSPSForUser(userId: number): SupportPlanSheet[] {
-  return _spsSheets.filter((sps) => sps.userId === userId);
+  return getState().spsSheets.filter((sps) => sps.userId === userId);
 }
 
 export function getLatestSPS(userId: number): SupportPlanSheet | undefined {
-  return _spsSheets
+  return getState().spsSheets
     .filter((sps) => sps.userId === userId)
     .sort((a, b) => b.createdAt.localeCompare(a.createdAt))[0];
 }
@@ -172,13 +196,13 @@ export function getLatestSPS(userId: number): SupportPlanSheet | undefined {
 // ---------------------------------------------------------------------------
 
 export function getSPSHistory(spsId: string): SPSHistoryEntry[] {
-  return _spsHistory
+  return getState().spsHistory
     .filter((h) => h.spsId === spsId)
     .sort((a, b) => b.snapshotAt.localeCompare(a.snapshotAt));
 }
 
 export function getSPSHistoryForUser(userId: number): SPSHistoryEntry[] {
-  return _spsHistory
+  return getState().spsHistory
     .filter((h) => h.userId === userId)
     .sort((a, b) => b.snapshotAt.localeCompare(a.snapshotAt));
 }
@@ -193,7 +217,7 @@ export function getExpiringSPSAlerts(
 ): SPSAlert[] {
   const alerts: SPSAlert[] = [];
 
-  for (const sps of _spsSheets) {
+  for (const sps of getState().spsSheets) {
     if (sps.status !== 'confirmed') continue;
     const daysRemaining = daysUntilSPSReview(sps.nextReviewDueDate, today);
     if (daysRemaining <= daysThreshold) {
@@ -216,7 +240,7 @@ export function getExpiringSPSAlerts(
 
 export function getSupervisionCounter(userId: number): SupervisionCounter {
   return (
-    _supervisionCounters.find((c) => c.userId === userId) ?? {
+    getState().supervisionCounters.find((c) => c.userId === userId) ?? {
       userId,
       supportCount: 0,
       lastObservedAt: null,
@@ -225,35 +249,45 @@ export function getSupervisionCounter(userId: number): SupervisionCounter {
 }
 
 export function incrementSupportCount(userId: number): void {
-  const existing = _supervisionCounters.find((c) => c.userId === userId);
-  if (existing) {
-    _supervisionCounters = _supervisionCounters.map((c) =>
-      c.userId === userId
-        ? { ...c, supportCount: c.supportCount + 1 }
-        : c
-    );
-  } else {
-    _supervisionCounters = [
-      ..._supervisionCounters,
-      { userId, supportCount: 1, lastObservedAt: null },
-    ];
-  }
+  setState((s) => {
+    const existing = s.supervisionCounters.find((c) => c.userId === userId);
+    if (existing) {
+      return {
+        supervisionCounters: s.supervisionCounters.map((c) =>
+          c.userId === userId
+            ? { ...c, supportCount: c.supportCount + 1 }
+            : c
+        ),
+      };
+    }
+    return {
+      supervisionCounters: [
+        ...s.supervisionCounters,
+        { userId, supportCount: 1, lastObservedAt: null },
+      ],
+    };
+  });
 }
 
 export function resetSupportCount(userId: number, observedAt: string): void {
-  const existing = _supervisionCounters.find((c) => c.userId === userId);
-  if (existing) {
-    _supervisionCounters = _supervisionCounters.map((c) =>
-      c.userId === userId
-        ? { ...c, supportCount: 0, lastObservedAt: observedAt }
-        : c
-    );
-  } else {
-    _supervisionCounters = [
-      ..._supervisionCounters,
-      { userId, supportCount: 0, lastObservedAt: observedAt },
-    ];
-  }
+  setState((s) => {
+    const existing = s.supervisionCounters.find((c) => c.userId === userId);
+    if (existing) {
+      return {
+        supervisionCounters: s.supervisionCounters.map((c) =>
+          c.userId === userId
+            ? { ...c, supportCount: 0, lastObservedAt: observedAt }
+            : c
+        ),
+      };
+    }
+    return {
+      supervisionCounters: [
+        ...s.supervisionCounters,
+        { userId, supportCount: 0, lastObservedAt: observedAt },
+      ],
+    };
+  });
 }
 
 // ---------------------------------------------------------------------------
@@ -261,13 +295,13 @@ export function resetSupportCount(userId: number, observedAt: string): void {
 // ---------------------------------------------------------------------------
 
 export function addSupervisionLog(log: SupervisionLog): void {
-  _supervisionLogs = [..._supervisionLogs, log];
+  setState((s) => ({ supervisionLogs: [...s.supervisionLogs, log] }));
   // 観察ログ保存時にカウンターを自動リセット
   resetSupportCount(log.userId, log.observedAt);
 }
 
 export function getSupervisionLogsForUser(userId: number): SupervisionLog[] {
-  return _supervisionLogs.filter((log) => log.userId === userId);
+  return getState().supervisionLogs.filter((log) => log.userId === userId);
 }
 
 // ---------------------------------------------------------------------------
@@ -275,15 +309,15 @@ export function getSupervisionLogsForUser(userId: number): SupervisionLog[] {
 // ---------------------------------------------------------------------------
 
 export function addABCRecord(record: ABCRecord): void {
-  _abcRecords = [..._abcRecords, record];
+  setState((s) => ({ abcRecords: [...s.abcRecords, record] }));
 }
 
 export function getABCRecordsForUser(userId: string): ABCRecord[] {
-  return _abcRecords.filter((r) => r.userId === userId);
+  return getState().abcRecords.filter((r) => r.userId === userId);
 }
 
 export function getAllABCRecords(): ABCRecord[] {
-  return _abcRecords;
+  return getState().abcRecords;
 }
 
 // ---------------------------------------------------------------------------
@@ -291,11 +325,7 @@ export function getAllABCRecords(): ABCRecord[] {
 // ---------------------------------------------------------------------------
 
 export function resetIBDStore(): void {
-  _spsSheets = [];
-  _spsHistory = [];
-  _supervisionLogs = [];
-  _supervisionCounters = [];
-  _abcRecords = [];
+  setState({ ...initialState });
 }
 
 // ---------------------------------------------------------------------------
