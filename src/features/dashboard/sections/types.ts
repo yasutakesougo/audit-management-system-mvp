@@ -55,8 +55,8 @@ export type DashboardSectionDef = {
  * - 重要申し送り2件待ち → { type: 'urgent_handover', severity: 'warning', count: 2 }
  */
 export type BriefingAlert = {
-  id: string;  // 'absent' | 'late' | 'urgent_handover' | 'critical_safety'
-  type: 'absent' | 'late' | 'urgent_handover' | 'critical_safety' | 'health_concern';
+  id: string;  // 'absent' | 'late' | 'urgent_handover' | 'critical_safety' | 'fever_alert' | 'evening_followup'
+  type: 'absent' | 'late' | 'urgent_handover' | 'critical_safety' | 'health_concern' | 'fever_alert' | 'evening_followup';
   severity: 'error' | 'warning' | 'info';
   label: string;  // 画面表示用ラベル（「本日欠席」など）
   count: number;  // 該当件数

@@ -176,7 +176,7 @@ function useHubStatus(
             : []),
         ],
         links: [
-          { label: '日次記録（行動観察）', to: '/daily/table', primary: true },
+          { label: '日次記録（行動観察）', to: '/daily/support', primary: true },
           { label: '健康バイタル', to: '/daily/health' },
           { label: '申し送りタイムライン', to: '/handoff-timeline' },
         ],

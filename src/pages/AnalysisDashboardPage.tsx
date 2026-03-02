@@ -7,9 +7,11 @@ import {
 } from '@/features/analysis/hooks/useAnalysisDashboardViewModel';
 import { useBehaviorAnalytics } from '@/features/analysis/hooks/useBehaviorAnalytics';
 import { useInterventionStore } from '@/features/analysis/stores/interventionStore';
+import { useAttendanceStore } from '@/features/attendance/store';
 import { seedDemoBehaviors, useBehaviorStore } from '@/features/daily/stores/behaviorStore';
 import { useExecutionStore } from '@/features/daily/stores/executionStore';
 import { useProcedureStore } from '@/features/daily/stores/procedureStore';
+import { AttendanceSummaryCard } from '@/features/dashboard/components/AttendanceSummaryCard';
 import { IBDPageHeader } from '@/features/ibd/components/IBDPageHeader';
 import { useUsersDemo } from '@/features/users/usersStoreDemo';
 import { isDemoModeEnabled } from '@/lib/env';
@@ -326,6 +328,8 @@ const EventTimeline: React.FC<{ events: RecentEvent[] }> = ({ events }) => (
   </Card>
 );
 
+
+
 // ---------------------------------------------------------------------------
 // Main Page Component
 // ---------------------------------------------------------------------------
@@ -337,6 +341,16 @@ const AnalysisDashboardPage: React.FC = () => {
   const [targetUserId, setTargetUserId] = useState<string>('');
   const [analysisDays, setAnalysisDays] = useState<number>(30);
   const autoSeededRef = useRef<Set<string>>(new Set());
+
+  // IBD 対象者のみに絞り込み
+  const ibdUsers = useMemo(
+    () => users.filter((u) => u.IsSupportProcedureTarget === true),
+    [users],
+  );
+  const ibdUserCodes = useMemo(
+    () => new Set(ibdUsers.map((u) => u.UserID)),
+    [ibdUsers],
+  );
 
   const { dailyStats } = useBehaviorAnalytics(analysisData);
   const selectedUserName = useMemo(
@@ -366,7 +380,8 @@ const AnalysisDashboardPage: React.FC = () => {
   }, [targetUserId, interventionStore]);
 
   // --- ViewModel ---
-  const vm = useAnalysisDashboardViewModel(analysisData, dailyStats, executionStats, activeBipCount);
+  const { visits: attendanceVisits } = useAttendanceStore();
+  const vm = useAnalysisDashboardViewModel(analysisData, dailyStats, executionStats, activeBipCount, attendanceVisits, ibdUserCodes);
 
   // Fetch analysis data when user or period changes
   useEffect(() => {
@@ -430,7 +445,7 @@ const AnalysisDashboardPage: React.FC = () => {
                 <MenuItem value="">
                   <em>選択してください</em>
                 </MenuItem>
-                {users.map((user) => (
+                {ibdUsers.map((user) => (
                   <MenuItem key={user.UserID} value={user.UserID}>
                     {user.FullName}
                   </MenuItem>
@@ -462,6 +477,16 @@ const AnalysisDashboardPage: React.FC = () => {
           </>
         }
       />
+
+      {/* Attendance Summary — IBD対象者のみの出欠サマリー */}
+      {vm.attendanceSummary && (
+        <Box sx={{ mt: 2 }}>
+          <AttendanceSummaryCard
+            data={vm.attendanceSummary}
+            title="📋 IBD対象者の出欠・稼働サマリー"
+          />
+        </Box>
+      )}
 
       {targetUserId ? (
         <Box

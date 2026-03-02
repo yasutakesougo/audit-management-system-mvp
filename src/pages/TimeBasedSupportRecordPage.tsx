@@ -1,9 +1,10 @@
 ﻿import { useInterventionStore } from '@/features/analysis/stores/interventionStore';
 import { FullScreenDailyDialogPage } from '@/features/daily/components/FullScreenDailyDialogPage';
 import { ProcedureEditor } from '@/features/daily/components/procedure/ProcedureEditor';
+import { BentoGridSupportLayout } from '@/features/daily/components/split-stream/BentoGridSupportLayout';
 import { ProcedurePanel, type ScheduleItem } from '@/features/daily/components/split-stream/ProcedurePanel';
 import { RecordPanel } from '@/features/daily/components/split-stream/RecordPanel';
-import { SplitStreamLayout } from '@/features/daily/components/split-stream/SplitStreamLayout';
+import SupportSummaryStrip from '@/features/daily/components/split-stream/SupportSummaryStrip';
 import type { BehaviorObservation } from '@/features/daily/domain/daily/types';
 import { generateDailyReport } from '@/features/daily/domain/generateDailyReport';
 import { getScheduleKey } from '@/features/daily/domain/getScheduleKey';
@@ -11,6 +12,7 @@ import { toBipOptions } from '@/features/daily/domain/toBipOptions';
 import { useInMemoryBehaviorRepository, useInMemoryProcedureRepository } from '@/features/daily/repositories/inMemory';
 import { useExecutionStore } from '@/features/daily/stores/executionStore';
 import type { ProcedureItem } from '@/features/daily/stores/procedureStore';
+import { getABCRecordsForUser, getLatestSPS, getSupervisionCounter } from '@/features/ibd/ibdStore';
 import {
     makeIdempotencyKey,
     persistDailySubmission,
@@ -447,6 +449,17 @@ const TimeBasedSupportRecordPage: React.FC = () => {
     setSelectedStepId(next || null);
   }, []);
 
+  // --- IBD Summary Data ---
+  const numericUserId = targetUserId ? Number(targetUserId.replace(/\D/g, '')) || 0 : 0;
+  const latestSPS = useMemo(() => numericUserId ? getLatestSPS(numericUserId) : undefined, [numericUserId]);
+  const supervisionCounter = useMemo(() => numericUserId ? getSupervisionCounter(numericUserId) : undefined, [numericUserId]);
+  const todayAbcCount = useMemo(() => {
+    if (!targetUserId) return 0;
+    const records = getABCRecordsForUser(targetUserId);
+    const todayStr = new Date().toISOString().slice(0, 10);
+    return records.filter((r) => r.recordedAt?.slice(0, 10) === todayStr).length;
+  }, [targetUserId]);
+
   return (
     <FullScreenDailyDialogPage
       title="支援（サポート記録）"
@@ -467,87 +480,6 @@ const TimeBasedSupportRecordPage: React.FC = () => {
         }}
         data-testid="iceberg-time-based-support-record-page"
       >
-      <Paper
-        elevation={0}
-        sx={{
-          p: 2,
-          borderBottom: 1,
-          borderColor: 'divider',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          flexWrap: 'wrap',
-          gap: 2,
-          borderRadius: 0
-        }}
-      >
-        <Stack direction="row" spacing={1.5} alignItems="center" flexWrap="wrap">
-          <AccessTimeIcon color="primary" />
-          <Box display="flex" alignItems="center" gap={2} flexWrap="wrap">
-            <Typography variant="h6" fontWeight="bold">
-              支援手順・行動記録（タイムライン）
-            </Typography>
-            <FormControl size="small" sx={{ minWidth: 220 }}>
-              <InputLabel id="iceberg-user-select-label">支援対象者</InputLabel>
-              <Select
-                labelId="iceberg-user-select-label"
-                value={targetUserId}
-                label="支援対象者"
-                onChange={(event) => handleUserChange(event.target.value)}
-                startAdornment={<PersonIcon fontSize="small" sx={{ mr: 1, color: 'text.secondary' }} />}
-              >
-                <MenuItem value="">
-                  <em>選択してください</em>
-                </MenuItem>
-                {users.map((user) => (
-                  <MenuItem key={user.UserID} value={user.UserID}>
-                    {user.FullName}
-                  </MenuItem>
-                ))}
-              </Select>
-            </FormControl>
-            {targetUserId && selectedUser && (
-              <IconButton
-                onClick={handleEditorOpen}
-                size="small"
-                color="primary"
-                aria-label="手順を編集"
-                data-testid="procedure-edit-button"
-              >
-                <EditIcon fontSize="small" />
-              </IconButton>
-            )}
-          </Box>
-        </Stack>
-        {targetUserId && selectedUser && (
-          <Stack direction="row" spacing={1}>
-            <Button
-              variant="outlined"
-              size="small"
-              startIcon={
-                <Badge badgeContent={recentObservations.length} color="primary" max={99}>
-                  <HistoryIcon />
-                </Badge>
-              }
-              onClick={() => setRecentRecordsOpen(true)}
-              data-testid="recent-records-button"
-              sx={{ whiteSpace: 'nowrap' }}
-            >
-              直近記録
-            </Button>
-            <Button
-              variant="outlined"
-              size="small"
-              startIcon={<ContentCopyIcon />}
-              onClick={handleCopyReport}
-              data-testid="copy-daily-report-button"
-              sx={{ whiteSpace: 'nowrap' }}
-            >
-              日報コピー
-            </Button>
-          </Stack>
-        )}
-      </Paper>
 
       {/* Error Alert (fixed, always visible) */}
       {displayedError ? (
@@ -567,15 +499,97 @@ const TimeBasedSupportRecordPage: React.FC = () => {
       ) : null}
 
       <Box sx={{ flex: 1, minHeight: 0, p: 2 }}>
-        <SplitStreamLayout
+        <BentoGridSupportLayout
           recordRef={recordPanelRef}
+          header={
+            <Paper
+              elevation={0}
+              sx={{
+                p: 2,
+                borderBottom: 1,
+                borderColor: 'divider',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                flexWrap: 'wrap',
+                gap: 2,
+                borderRadius: 1,
+              }}
+            >
+              <Stack direction="row" spacing={1.5} alignItems="center" flexWrap="wrap">
+                <AccessTimeIcon color="primary" />
+                <Box display="flex" alignItems="center" gap={2} flexWrap="wrap">
+                  <Typography variant="h6" fontWeight="bold">
+                    支援手順・行動記録（タイムライン）
+                  </Typography>
+                  <FormControl size="small" sx={{ minWidth: 220 }}>
+                    <InputLabel id="iceberg-user-select-label">支援対象者</InputLabel>
+                    <Select
+                      labelId="iceberg-user-select-label"
+                      value={targetUserId}
+                      label="支援対象者"
+                      onChange={(event) => handleUserChange(event.target.value)}
+                      startAdornment={<PersonIcon fontSize="small" sx={{ mr: 1, color: 'text.secondary' }} />}
+                    >
+                      <MenuItem value="">
+                        <em>選択してください</em>
+                      </MenuItem>
+                      {users.map((user) => (
+                        <MenuItem key={user.UserID} value={user.UserID}>
+                          {user.FullName}
+                        </MenuItem>
+                      ))}
+                    </Select>
+                  </FormControl>
+                  {targetUserId && selectedUser && (
+                    <IconButton
+                      onClick={handleEditorOpen}
+                      size="small"
+                      color="primary"
+                      aria-label="手順を編集"
+                      data-testid="procedure-edit-button"
+                    >
+                      <EditIcon fontSize="small" />
+                    </IconButton>
+                  )}
+                </Box>
+              </Stack>
+              {targetUserId && selectedUser && (
+                <Stack direction="row" spacing={1}>
+                  <Button
+                    variant="outlined"
+                    size="small"
+                    startIcon={
+                      <Badge badgeContent={recentObservations.length} color="primary" max={99}>
+                        <HistoryIcon />
+                      </Badge>
+                    }
+                    onClick={() => setRecentRecordsOpen(true)}
+                    data-testid="recent-records-button"
+                    sx={{ whiteSpace: 'nowrap' }}
+                  >
+                    直近記録
+                  </Button>
+                  <Button
+                    variant="outlined"
+                    size="small"
+                    startIcon={<ContentCopyIcon />}
+                    onClick={handleCopyReport}
+                    data-testid="copy-daily-report-button"
+                    sx={{ whiteSpace: 'nowrap' }}
+                  >
+                    日報コピー
+                  </Button>
+                </Stack>
+              )}
+            </Paper>
+          }
           plan={targetUserId ? (
             <ProcedurePanel
               title={selectedUser ? `${selectedUser.FullName} 様 (Plan)` : '支援手順 (Plan)'}
               schedule={schedule}
               isAcknowledged={isAcknowledged}
               onAcknowledged={handleAcknowledged}
-
               selectedStepId={selectedStepId}
               onSelectStep={handleSelectStepAndScroll}
               filledStepIds={filledStepIds}
@@ -610,6 +624,17 @@ const TimeBasedSupportRecordPage: React.FC = () => {
               onAfterSubmit={handleAfterSubmit}
               recordDate={recordDate}
             />
+          }
+          summary={
+            targetUserId ? (
+              <SupportSummaryStrip
+                totalSteps={totalSteps}
+                filledSteps={totalSteps - unfilledStepsCount}
+                abcCount={todayAbcCount}
+                supervisionSupportCount={supervisionCounter?.supportCount}
+                positiveConditions={latestSPS?.positiveConditions}
+              />
+            ) : undefined
           }
         />
       </Box>

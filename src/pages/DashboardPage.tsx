@@ -435,6 +435,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ audience = 'staff' }) => 
           attendanceSummary,
           showAttendanceNames,
           onToggleAttendanceNames: setShowAttendanceNames,
+          visits,
         };
       case 'daily':
         return {

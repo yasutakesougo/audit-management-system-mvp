@@ -12,6 +12,14 @@ import { INTERVENTION_DRAFT_KEY, type BehaviorInterventionPlan, type UserInterve
 import type { ScheduleItem } from '@/features/daily/components/split-stream/ProcedurePanel';
 import { EXECUTION_RECORD_KEY, type ExecutionRecord } from '@/features/daily/domain/executionRecordTypes';
 import { seedDemoBehaviors } from '@/features/daily/stores/behaviorStore';
+import {
+    addABCRecord,
+    addSPS,
+    addSupervisionLog,
+    confirmSPS,
+    incrementSupportCount,
+    resetIBDStore,
+} from '@/features/ibd/ibdStore';
 import { autoLinkBipToProcedures } from '@/features/import/domain/autoLinkBipToProcedures';
 
 // ---------------------------------------------------------------------------
@@ -174,6 +182,114 @@ function buildExecutionRecords(
 // ---------------------------------------------------------------------------
 
 // ---------------------------------------------------------------------------
+// 5. IBDデモデータ（SPS・観察ログ・ABCレコード）
+//    SupportSummaryStrip に表示するデータの装填
+// ---------------------------------------------------------------------------
+
+/**
+ * IBDストアにデモデータを装填する。
+ * SPS（確定済み・良い状態の条件付き）、観察カウンター（warning状態）、
+ * 今日のABCレコード（2件）をシードする。
+ *
+ * ⚠️ userId 型不一致の吸収:
+ *   - SPS / SupervisionLog: number (例: 1)
+ *   - ABCRecord: string (例: 'U-001')
+ */
+export function seedIbdDemoData(userId: string): { sps: number; supervisionLogs: number; abcRecords: number } {
+  resetIBDStore();
+
+  const numericUserId = Number(userId.replace(/\D/g, '')) || 0;
+  if (numericUserId === 0) {
+    console.warn(`[seedIbdDemoData] Invalid userId for numeric conversion: ${userId}`);
+    return { sps: 0, supervisionLogs: 0, abcRecords: 0 };
+  }
+
+  const now = new Date().toISOString();
+  const today = now.slice(0, 10);
+
+  // --- 1. SPS (支援計画シート) — confirmed + 良い状態の条件 ---
+  const spsId = `sps-demo-${userId}`;
+  addSPS({
+    id: spsId,
+    userId: numericUserId,
+    version: 'v1',
+    createdAt: now,
+    updatedAt: now,
+    status: 'draft',
+    confirmedBy: null,
+    confirmedAt: null,
+    icebergModel: {
+      observableBehaviors: ['大きな声を出す', '物を叩く・破く', '指の皮むき'],
+      underlyingFactors: [
+        'スケジュールの見通しが立たない不安',
+        '周囲の騒音や刺激への過敏',
+        '空き時間の手持ち無沙汰',
+      ],
+      environmentalAdjustments: [
+        '視覚的スケジュールの常時提示',
+        'イヤーマフの着用支援',
+        '感覚おもちゃの提供',
+      ],
+    },
+    positiveConditions: [
+      '視覚的なスケジュールの提示がある',
+      '活動の切り替え前に予告がある',
+      '静かなクールダウンエリアが確保されている',
+      'イヤーマフを本人の手の届く場所に置く',
+      '指示は短く具体的に伝える',
+    ],
+  });
+  confirmSPS(spsId, numericUserId, now);
+
+  // --- 2. Supervision (観察ログ + カウンター → warning状態) ---
+  //   addSupervisionLog は内部で resetSupportCount を呼ぶため、
+  //   ログ追加後に incrementSupportCount で warning 状態を作る
+  addSupervisionLog({
+    id: `sv-demo-${userId}-1`,
+    userId: numericUserId,
+    supervisorId: 999, // デモ監修者
+    observedAt: now,
+    notes: '視覚的スケジュールの提示がスムーズに行えており、本人の混乱も見られなかった。',
+    actionsTaken: ['手順書の確認', 'スタッフへのフィードバック'],
+  });
+  // カウンターを1回インクリメント → warning レベル
+  incrementSupportCount(numericUserId);
+
+  // --- 3. ABC Records — 今日の記録2件 ---
+  const abcDemoRecords = [
+    {
+      id: `abc-demo-${userId}-1`,
+      userId,
+      recordedAt: `${today}T10:30:00.000Z`,
+      antecedent: '予定外の活動変更を口頭で伝えた',
+      antecedentTags: ['予定の変更', '指示が理解できない'],
+      behavior: '机を叩いて大声を出す',
+      consequence: '絵カードを使って視覚的にスケジュールを再提示したところ、5分で落ち着いた',
+      intensity: 3 as const,
+      estimatedFunction: 'escape' as const,
+      behaviorOutcome: 'decreased' as const,
+    },
+    {
+      id: `abc-demo-${userId}-2`,
+      userId,
+      recordedAt: `${today}T14:15:00.000Z`,
+      antecedent: '周囲の利用者の話し声が大きくなった',
+      antecedentTags: ['騒音・大きな音', '感覚的な不快'],
+      behavior: '耳を塞いでうずくまる',
+      consequence: 'イヤーマフを手渡し、静かな部屋へ誘導した',
+      intensity: 2 as const,
+      estimatedFunction: 'sensory' as const,
+      behaviorOutcome: 'decreased' as const,
+    },
+  ];
+  for (const rec of abcDemoRecords) {
+    addABCRecord(rec);
+  }
+
+  return { sps: 1, supervisionLogs: 1, abcRecords: abcDemoRecords.length };
+}
+
+// ---------------------------------------------------------------------------
 // Main loader function
 // ---------------------------------------------------------------------------
 
@@ -192,6 +308,7 @@ export function loadMagicDemo(): {
   bips: number;
   executions: number;
   behaviors: number;
+  ibd: { sps: number; supervisionLogs: number; abcRecords: number };
 } {
   // ---- Auto-Link: BIP ↔ 日課 クロスリンク ----
   const linkedProcedures = autoLinkBipToProcedures(RAW_DEMO_PROCEDURES, DEMO_BIPS);
@@ -223,6 +340,9 @@ export function loadMagicDemo(): {
   // ---- Seed: Behaviors (via existing seed function) ----
   const behaviorCount = seedDemoBehaviors(DEMO_USER_ID, 30);
 
+  // ---- Seed: IBD (SPS + Supervision + ABC) ----
+  const ibdSummary = seedIbdDemoData(DEMO_USER_ID);
+
   // ---- Summary ----
   const totalExecRecords = Object.values(execData).reduce((sum, d) => sum + d.records.length, 0);
 
@@ -232,5 +352,6 @@ export function loadMagicDemo(): {
     bips: DEMO_BIPS.length,
     executions: totalExecRecords,
     behaviors: behaviorCount,
+    ibd: ibdSummary,
   };
 }

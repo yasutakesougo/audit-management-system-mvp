@@ -10,7 +10,7 @@
 import { SupportStepTemplate, defaultSupportStepTemplates } from '@/domain/support/step-templates';
 import { createSupportTemplateRepository } from '@/features/daily/infra/SharePointProcedureTemplateRepository';
 import { acquireSpAccessToken } from '@/lib/msal';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { mapSpTemplatesToStepTemplates, mapStepTemplateToSpItem } from '../adapter/spTemplateAdapter';
 
 // デフォルトテンプレート（ID付き、コンポーネント外で一度だけ生成）
@@ -176,8 +176,15 @@ export function useSupportStepTemplates(userCode: string | null): SupportStepTem
     [refetch]
   );
 
+  // templates を useMemo で安定化
+  // （毎 render で新配列を返すと downstream の useEffect が無限ループになる）
+  const templates = useMemo(
+    () => [...defaultTemplatesWithIds, ...spTemplates],
+    [spTemplates],
+  );
+
   return {
-    templates: [...defaultTemplatesWithIds, ...spTemplates],
+    templates,
     spTemplates,
     defaultTemplates: defaultTemplatesWithIds,
     isLoading,

@@ -145,8 +145,15 @@ const toDailyItem = (row: AttendanceRowVM, date: string): AttendanceDailyItem =>
   StaffInChargeId: row.absentSupport?.staffInChargeId || undefined,
 });
 
+/** Convert date string (YYYY-MM-DD) to Japanese weekday label */
+const WEEKDAY_LABELS = ['日', '月', '火', '水', '木', '金', '土'] as const;
+const getWeekdayLabel = (dateStr: string): string => {
+  const d = new Date(dateStr + 'T00:00:00');
+  return WEEKDAY_LABELS[d.getDay()];
+};
+
 const mergeRows = (
-  users: Array<{ Id?: number; Title: string; UserCode: string; IsActive: boolean }>,
+  users: Array<{ Id?: number; Title: string; UserCode: string; IsActive: boolean; AttendanceDays?: string[] }>,
   dailyItems: AttendanceDailyItem[],
   date: string,
 ): AttendanceRowVM[] => {
@@ -155,18 +162,29 @@ const mergeRows = (
     dailyByCode.set(item.UserCode, toVisit(item));
   });
 
-  return users.map((item) => {
-    const master = toMasterUser(item);
-    const base = dailyByCode.get(item.UserCode) ?? buildBaseVisit(item.UserCode, date);
-    return {
-      ...master,
-      ...base,
-      FullName: master.FullName,
-      UserID: master.UserID,
-      Id: master.Id,
-      Title: master.Title,
-    };
-  });
+  const weekday = getWeekdayLabel(date);
+
+  return users
+    .filter((item) => {
+      // Already has a daily record for this date → always show (振替 etc.)
+      if (dailyByCode.has(item.UserCode)) return true;
+      // No AttendanceDays defined → show always (backwards compat)
+      if (!item.AttendanceDays || item.AttendanceDays.length === 0) return true;
+      // Filter by scheduled day
+      return item.AttendanceDays.includes(weekday);
+    })
+    .map((item) => {
+      const master = toMasterUser(item);
+      const base = dailyByCode.get(item.UserCode) ?? buildBaseVisit(item.UserCode, date);
+      return {
+        ...master,
+        ...base,
+        FullName: master.FullName,
+        UserID: master.UserID,
+        Id: master.Id,
+        Title: master.Title,
+      };
+    });
 };
 
 /**
@@ -294,6 +312,7 @@ export type UseAttendanceReturn = {
     setFilters: (next: Partial<AttendanceFilter>) => void;
     setInputMode: (mode: AttendanceInputMode) => void;
     updateStatus: (userCode: string, status: AttendanceRowVM['status']) => Promise<void>;
+    updateStatusWithAbsentSupport: (userCode: string, log: AbsentSupportLog) => Promise<void>;
     saveTemperature: (userCode: string, temperature: number, onHighTempAction?: () => void) => Promise<void>;
     refresh: () => Promise<void>;
   };
@@ -311,7 +330,7 @@ export function useAttendance(): UseAttendanceReturn {
   const bumpSavingTick = useCallback(() => setSavingTick((t) => t + 1), []);
 
   // ── Input mode state ──
-  const [inputMode, setInputMode] = useState<AttendanceInputMode>('normal');
+  const [inputMode, setInputMode] = useState<AttendanceInputMode>('checkInRun');
 
   // ── Saved temperatures from Observation list ──
   const [savedTempsByUser, setSavedTempsByUser] = useState<Record<string, number>>({});
@@ -426,6 +445,60 @@ export function useAttendance(): UseAttendanceReturn {
   // Keep ref in sync for undo callbacks
   updateStatusRef.current = updateStatus;
 
+  // ── Absence with AbsentSupportLog ──
+  const updateStatusWithAbsentSupport = useCallback(
+    async (userCode: string, log: AbsentSupportLog) => {
+      if (savingUsersRef.current.has(userCode)) return;
+
+      const current = rowsRaw.find((row) => row.userCode === userCode);
+      if (!current) return;
+
+      savingUsersRef.current.add(userCode);
+      bumpSavingTick();
+
+      const nowIso = new Date().toISOString();
+      const hasFollowUp = Boolean(log.followUpDateTime || log.followUpContent);
+      const nextRow: AttendanceRowVM = {
+        ...getNextStatusRow(current, '当日欠席', nowIso),
+        absentSupport: log,
+        absentMorningContacted: true,
+        eveningChecked: hasFollowUp,
+      };
+      const userName = current.FullName ?? userCode;
+
+      setRowsRaw((prev) => prev.map((row) => (row.userCode === userCode ? nextRow : row)));
+
+      try {
+        await repository.upsertDailyByKey(toDailyItem(nextRow, filters.date));
+        setNotification({
+          open: true,
+          severity: 'success',
+          message: `${userName}さんを欠席にしました（詳細記録済）`,
+          actionLabel: '取り消し',
+          onAction: () => {
+            void updateStatusRef.current?.(userCode, current.status);
+          },
+        });
+      } catch (error) {
+        console.error('useAttendance.updateStatusWithAbsentSupport failed', error);
+        const classified = classifyAttendanceError(error);
+        const { severity, message } = errorMessage(classified.code);
+        try { await refresh(); } catch { /* refresh failure is separate */ }
+        setNotification({
+          open: true,
+          severity,
+          message,
+          actionLabel: '再読込',
+          onAction: () => { void refresh(); },
+        });
+      } finally {
+        savingUsersRef.current.delete(userCode);
+        bumpSavingTick();
+      }
+    },
+    [bumpSavingTick, filters.date, refresh, repository, rowsRaw],
+  );
+
   const setFilters = useCallback((next: Partial<AttendanceFilter>) => {
     setFiltersState((prev) => ({ ...prev, ...next }));
   }, []);
@@ -522,6 +595,7 @@ export function useAttendance(): UseAttendanceReturn {
       setFilters,
       setInputMode,
       updateStatus,
+      updateStatusWithAbsentSupport,
       saveTemperature,
       refresh,
     },
