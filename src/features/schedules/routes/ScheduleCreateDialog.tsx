@@ -26,7 +26,7 @@ import {
     Typography
 } from '@mui/material';
 import Autocomplete from '@mui/material/Autocomplete';
-import React from 'react';
+import React, { useState } from 'react';
 
 import { TESTIDS } from '@/testids';
 import type {
@@ -103,8 +103,10 @@ export const ScheduleCreateDialog: React.FC<ScheduleCreateDialogProps> = (props)
   } = props;
 
   const vm = useScheduleCreateForm(props);
+  const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
 
   return (
+    <>
     <Dialog
       open={props.open}
       onClose={vm.handleClose}
@@ -429,16 +431,7 @@ export const ScheduleCreateDialog: React.FC<ScheduleCreateDialogProps> = (props)
       <DialogActions>
         {mode === 'edit' && eventId && onDelete && (
           <Button
-            onClick={async () => {
-              const confirmed = window.confirm('この予定を削除します。よろしいですか？');
-              if (!confirmed) return;
-              try {
-                await onDelete(eventId);
-                props.onClose();
-              } catch (error) {
-                console.error('Failed to delete schedule:', error);
-              }
-            }}
+            onClick={() => setDeleteConfirmOpen(true)}
             startIcon={<DeleteOutlineIcon />}
             color="error"
             disabled={vm.submitting || vm.externalIsDeleting}
@@ -468,6 +461,47 @@ export const ScheduleCreateDialog: React.FC<ScheduleCreateDialogProps> = (props)
       </DialogActions>
       </Box>
     </Dialog>
+
+    {/* 削除確認ダイアログ */}
+    {mode === 'edit' && eventId && onDelete && (
+      <Dialog
+        open={deleteConfirmOpen}
+        onClose={() => setDeleteConfirmOpen(false)}
+        maxWidth="xs"
+        aria-labelledby="schedule-delete-confirm-title"
+      >
+        <DialogTitle id="schedule-delete-confirm-title">予定の削除</DialogTitle>
+        <DialogContent>
+          <Typography>
+            この予定を削除します。よろしいですか？
+          </Typography>
+          <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
+            この操作は元に戻せません。
+          </Typography>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setDeleteConfirmOpen(false)} autoFocus>
+            キャンセル
+          </Button>
+          <Button
+            onClick={async () => {
+              setDeleteConfirmOpen(false);
+              try {
+                await onDelete(eventId);
+                props.onClose();
+              } catch (error) {
+                console.error('Failed to delete schedule:', error);
+              }
+            }}
+            color="error"
+            variant="contained"
+          >
+            削除する
+          </Button>
+        </DialogActions>
+      </Dialog>
+    )}
+    </>
   );
 };
 
