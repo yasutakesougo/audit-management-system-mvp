@@ -26,10 +26,10 @@ export {
 } from './repositoryFactory';
 
 // Components & Hooks
-export { DailyRecordForm } from './DailyRecordForm';
-export { DailyRecordList } from './DailyRecordList';
-export { useDailyUserOptions } from './useDailyUserOptions';
-export type { DailyUserOption } from './useDailyUserOptions';
+export { DailyRecordForm } from './forms/DailyRecordForm';
+export { DailyRecordList } from './lists/DailyRecordList';
+export { useDailyUserOptions } from './forms/useDailyUserOptions';
+export type { DailyUserOption } from './forms/useDailyUserOptions';
 
 // Domain Types
 export * from '../../domain/daily/types';

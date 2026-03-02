@@ -72,7 +72,7 @@ vi.mock('@/pages/DailyRecordMenuPage', () => ({
   default: () => <h1 data-testid="daily-hub-root" />,
 }));
 
-vi.mock('@/features/daily/TableDailyRecordPage', () => ({
+vi.mock('@/features/daily/table/TableDailyRecordPage', () => ({
   __esModule: true,
   default: () => <h1 data-testid="daily-table-root" />,
 }));

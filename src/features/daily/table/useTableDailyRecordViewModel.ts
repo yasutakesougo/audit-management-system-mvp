@@ -1,8 +1,8 @@
 import { useCallback, useState } from 'react';
 import { TESTIDS } from '@/testids';
 import { useCancelToDashboard } from '@/lib/nav/useCancelToDashboard';
-import { useDailyRecordRepository } from './repositoryFactory';
-import type { TableDailyRecordData } from './hooks/useTableDailyRecordForm';
+import { useDailyRecordRepository } from '../repositoryFactory';
+import type { TableDailyRecordData } from '../hooks/useTableDailyRecordForm';
 
 // Re-export for backward compatibility
 export type TableDailyRecordPayload = TableDailyRecordData;

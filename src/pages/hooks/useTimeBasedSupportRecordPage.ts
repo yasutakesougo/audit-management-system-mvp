@@ -2,7 +2,7 @@ import type { ScheduleItem } from '@/features/daily/components/split-stream/Proc
 import type { RecordPanelLockState } from '@/features/daily/components/split-stream/RecordPanel';
 import type { BehaviorObservation } from '@/features/daily/domain/daily/types';
 import { getScheduleKey } from '@/features/daily/domain/getScheduleKey';
-import type { BehaviorRepository, ProcedureRepository } from '@/features/daily/repositories/types';
+import type { BehaviorRepository, ProcedureRepository } from '@/features/daily/infra/repositoryTypes';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 type UseTimeBasedSupportRecordPageArgs = {

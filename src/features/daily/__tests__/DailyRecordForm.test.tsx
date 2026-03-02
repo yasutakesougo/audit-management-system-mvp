@@ -3,8 +3,8 @@ import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router-dom';
 import { describe, expect, it, vi } from 'vitest';
 import { PersonDaily } from '../../../domain/daily/types';
-import { DailyRecordForm } from '../DailyRecordForm';
-import type { DailyUserOption } from '../useDailyUserOptions';
+import { DailyRecordForm } from '../forms/DailyRecordForm';
+import type { DailyUserOption } from '../forms/useDailyUserOptions';
 
 const dailyUserOptions: DailyUserOption[] = [
   {

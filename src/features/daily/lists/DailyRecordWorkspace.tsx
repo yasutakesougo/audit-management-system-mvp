@@ -11,10 +11,10 @@ import Tabs from '@mui/material/Tabs';
 import Typography from '@mui/material/Typography';
 import * as React from 'react';
 import { useSearchParams } from 'react-router-dom';
-import type { PersonDaily } from '../../domain/daily/types';
-import { SummaryDashboard } from '../reports/dashboard/SummaryDashboard';
+import type { PersonDaily } from '../../../domain/daily/types';
+import { SummaryDashboard } from '../../reports/dashboard/SummaryDashboard';
+import { DailyRecordForm } from '../forms/DailyRecordForm';
 import BulkDailyRecordList, { type BulkDailyRow } from './BulkDailyRecordList';
-import { DailyRecordForm } from './DailyRecordForm';
 import { DailyRecordList } from './DailyRecordList';
 
 const srOnly = {

@@ -1,5 +1,5 @@
-import type { ScheduleItem } from '@/features/daily/components/split-stream/ProcedurePanel';
-import type { BehaviorObservation } from '@/features/daily/domain/daily/types';
+import type { ScheduleItem } from '../components/split-stream/ProcedurePanel';
+import type { BehaviorObservation } from '../domain/daily/types';
 
 export type ProcedureStep = ScheduleItem;
 export type BehaviorRecord = BehaviorObservation;

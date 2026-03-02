@@ -3,10 +3,10 @@ import { render, screen } from '@testing-library/react';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { describe, expect, it, vi } from 'vitest';
 
-import TableDailyRecordPage from '@/features/daily/TableDailyRecordPage';
+import TableDailyRecordPage from '@/features/daily/table/TableDailyRecordPage';
 import { TESTIDS } from '@/testids';
 
-vi.mock('@/features/daily/TableDailyRecordForm', () => ({
+vi.mock('@/features/daily/forms/TableDailyRecordForm', () => ({
   TableDailyRecordForm: () => (
     <div data-testid={TESTIDS['daily-table-record-form']}>mock-table-form</div>
   ),

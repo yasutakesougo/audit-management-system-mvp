@@ -20,8 +20,8 @@ import {
     validateDailyRecordForm,
     type ProblemBehaviorSuggestion,
 } from './dailyRecordFormLogic';
-import type { DailyUserOption } from './index';
-import { useDailyUserOptions } from './index';
+import type { DailyUserOption } from '../index';
+import { useDailyUserOptions } from '../index';
 
 export interface DailyRecordFormStateParams {
   open: boolean;

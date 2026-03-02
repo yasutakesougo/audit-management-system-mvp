@@ -11,7 +11,7 @@ import {
   searchRecordsByName,
   updateDailyRecord,
   validateDailyRecord
-} from '@/features/daily/dailyRecordLogic';
+} from '@/features/daily/domain/dailyRecordLogic';
 
 // テスト用のモックデータ
 const createMockRecord = (overrides: Partial<PersonDaily> = {}): PersonDaily => ({
