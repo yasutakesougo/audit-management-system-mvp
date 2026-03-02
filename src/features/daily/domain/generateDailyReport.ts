@@ -64,6 +64,7 @@ export function generateDailyReport({ date, userName, schedule, records, observa
   // 集計カウンター
   let completedCount = 0;
   let triggeredCount = 0;
+  let skippedCount = 0;
   let unrecordedCount = 0;
 
   // 各時間帯
@@ -76,6 +77,7 @@ export function generateDailyReport({ date, userName, schedule, records, observa
     switch (status) {
       case 'completed': completedCount++; break;
       case 'triggered': triggeredCount++; break;
+      case 'skipped': skippedCount++; break;
       default: unrecordedCount++; break;
     }
 
@@ -99,7 +101,7 @@ export function generateDailyReport({ date, userName, schedule, records, observa
   // フッター
   lines.push(separator);
   lines.push(
-    `完了: ${completedCount} | 発動: ${triggeredCount} | 未記録: ${unrecordedCount} (全${schedule.length}件)`,
+    `完了: ${completedCount} | 発動: ${triggeredCount} | スキップ: ${skippedCount} | 未記録: ${unrecordedCount} (全${schedule.length}件)`,
   );
 
   return lines.join('\n');
