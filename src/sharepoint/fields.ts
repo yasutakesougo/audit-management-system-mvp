@@ -261,6 +261,58 @@ export const PLAN_GOALS_SELECT_FIELDS = [
   PLAN_GOALS_FIELDS.modified,
 ] as const;
 
+/**
+ * SharePoint PlanGoals リスト行 — 読み取り型
+ *
+ * listItems<SpPlanGoalItem>() の戻り型として使用。
+ * SP REST API のレスポンス JSON と 1:1 対応。
+ */
+export interface SpPlanGoalItem {
+  Id: number;
+  Title?: string | null;
+  UserCode: string;
+  GoalType: 'long' | 'short' | 'support';
+  GoalLabel: string;
+  GoalText: string;
+  Domains?: string | null;          // comma-separated (e.g. 'health,social')
+  PlanPeriod?: string | null;
+  PlanStatus: 'confirmed' | 'draft';
+  CertExpiry?: string | null;       // YYYY-MM-DD
+  SortOrder?: number | null;
+  Created?: string | null;
+  Modified?: string | null;
+}
+
+/**
+ * PlanGoals リストへの PATCH/POST リクエストボディ型
+ *
+ * undefined は送信せず、null は SP 側で空値クリアにマッピング。
+ */
+export interface PlanGoalPayload {
+  UserCode: string;
+  GoalType: 'long' | 'short' | 'support';
+  GoalLabel: string;
+  GoalText: string;
+  Domains: string;                   // comma-joined
+  PlanPeriod?: string | null;
+  PlanStatus: 'confirmed' | 'draft';
+  CertExpiry?: string | null;
+  SortOrder?: number | null;
+}
+
+/**
+ * PlanGoals リスト用の動的 $select ビルダー
+ *
+ * テナントによるフィールド差分に耐えるため、
+ * Fields API で取得した内部名リストと突合して安全なクエリを組み立てる。
+ */
+export function buildPlanGoalsSelectFields(existingInternalNames?: readonly string[]): readonly string[] {
+  return buildSelectFieldsFromMap(PLAN_GOALS_FIELDS, existingInternalNames, {
+    alwaysInclude: ['Id', 'Created', 'Modified'],
+    fallback: [...PLAN_GOALS_SELECT_FIELDS],
+  });
+}
+
 // ──────────────────────────────────────────────────────────────
 // Meeting Minutes (SharePoint list: MeetingMinutes)
 // ──────────────────────────────────────────────────────────────
@@ -399,6 +451,7 @@ export enum ListKeys {
   MeetingMinutes = 'MeetingMinutes',
   SupportTemplates = 'SupportTemplates',
   PlanGoals = 'PlanGoals',
+  SupportPlans = 'SupportPlans',
 }
 
 export const LIST_CONFIG: Record<ListKeys, { title: string }> = {
@@ -418,6 +471,7 @@ export const LIST_CONFIG: Record<ListKeys, { title: string }> = {
   [ListKeys.MeetingMinutes]: { title: 'MeetingMinutes' },
   [ListKeys.SupportTemplates]: { title: 'SupportTemplates' },
   [ListKeys.PlanGoals]: { title: 'PlanGoals' },
+  [ListKeys.SupportPlans]: { title: 'SupportPlans' },
 };
 
 export const FIELD_MAP = {
@@ -1212,3 +1266,39 @@ export const FIELD_MAP_BILLING_ORDERS = {
   milk: 'Milk',
   drinkPrice: 'DrinkPrice',
 } as const;
+
+// ──────────────────────────────────────────────────────────────
+// SupportPlans (SharePoint list: SupportPlans)
+// 個別支援計画 — Draft → Confirmed → Obsolete ライフサイクル
+//
+// フォームデータは FormDataJson カラムに JSON シリアライズして格納。
+// スキーマ変更（項目追加等）に SP リスト側の列変更が不要。
+// ──────────────────────────────────────────────────────────────
+
+export const SUPPORT_PLANS_LIST_TITLE = 'SupportPlans' as const;
+
+export const SUPPORT_PLANS_FIELDS = {
+  id: 'Id',
+  title: 'Title',              // composite key: <userCode>:<draftId>
+  draftId: 'DraftId',          // UUID (matches client-side draft.id)
+  userCode: 'UserCode',        // links to Users_Master.UserID
+  draftName: 'DraftName',      // display name (利用者名)
+  formDataJson: 'FormDataJson',// JSON of SupportPlanForm (17 fields)
+  status: 'Status',            // 'draft' | 'confirmed' | 'obsolete'
+  schemaVersion: 'SchemaVersion', // number (currently 2)
+  created: 'Created',
+  modified: 'Modified',
+} as const;
+
+export const SUPPORT_PLANS_SELECT_FIELDS = [
+  SUPPORT_PLANS_FIELDS.id,
+  SUPPORT_PLANS_FIELDS.title,
+  SUPPORT_PLANS_FIELDS.draftId,
+  SUPPORT_PLANS_FIELDS.userCode,
+  SUPPORT_PLANS_FIELDS.draftName,
+  SUPPORT_PLANS_FIELDS.formDataJson,
+  SUPPORT_PLANS_FIELDS.status,
+  SUPPORT_PLANS_FIELDS.schemaVersion,
+  SUPPORT_PLANS_FIELDS.created,
+  SUPPORT_PLANS_FIELDS.modified,
+] as const;
