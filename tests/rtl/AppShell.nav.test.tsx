@@ -114,8 +114,8 @@ describe('AppShell navigation smoke test', () => {
     const ids = [
       'nav-daily',
       TESTIDS['handoff-footer-quicknote'],
-      TESTIDS['daily-footer-attendance'],
-      TESTIDS['daily-footer-activity'],
+      TESTIDS.footer.dailyFooterAttendance,
+      TESTIDS.footer.dailyFooterActivity,
       'daily-footer-support',
     ];
 

@@ -50,7 +50,13 @@ describe('Navigation and Router integration', () => {
           continue; // nurse uses nested routes internally
         }
 
-        const exists = configuredPaths.has(toPath);
+        const exists = configuredPaths.has(toPath) ||
+          [...configuredPaths].some(rp => {
+            // Match nav href "/admin/individual-support" against router path "/admin/individual-support/:userCode?"
+            const segments = rp.split('/');
+            const staticPrefix = segments.filter(s => !s.startsWith(':')).join('/');
+            return staticPrefix === toPath && segments.some(s => s.startsWith(':'));
+          });
         expect(exists, `Route for nav item "${item.label}" (${item.to}) is missing in router`).toBe(true);
       }
     }

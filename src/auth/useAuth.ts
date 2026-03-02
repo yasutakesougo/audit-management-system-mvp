@@ -1,9 +1,9 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
+
 import type { IPublicClientApplication } from '@azure/msal-browser';
-import { InteractionStatus } from './interactionStatus';
 import { useCallback, useEffect, useRef } from 'react';
 import { getAppConfig, isE2eMsalMockEnabled, shouldSkipLogin } from '../lib/env';
 import { createE2EMsalAccount, persistMsalToken } from '../lib/msal';
+import { InteractionStatus } from './interactionStatus';
 import { GRAPH_RESOURCE, GRAPH_SCOPES, LOGIN_SCOPES, SP_RESOURCE } from './msalConfig';
 import { useMsalContext } from './MsalProvider';
 
@@ -213,12 +213,13 @@ export const useAuth = () => {
 
       sessionStorage.setItem('spToken', first.accessToken);
       return first.accessToken;
-    } catch (error: any) {
+    } catch (error: unknown) {
       // MSAL エラーの詳細な処理
+      const msalError = error as { name?: string; errorCode?: string; message?: string };
       debugLog('acquireTokenSilent failed', {
-        errorName: error?.name,
-        errorCode: error?.errorCode,
-        message: error?.message || 'Unknown error'
+        errorName: msalError?.name,
+        errorCode: msalError?.errorCode,
+        message: msalError?.message || 'Unknown error'
       });
 
       sessionStorage.removeItem('spToken');
@@ -226,9 +227,9 @@ export const useAuth = () => {
       console.warn('[auth] acquireTokenSilent failed', error);
 
       const interactionRequired =
-        error?.errorCode === 'interaction_required' ||
-        error?.errorCode === 'consent_required' ||
-        error?.errorCode === 'login_required';
+        msalError?.errorCode === 'interaction_required' ||
+        msalError?.errorCode === 'consent_required' ||
+        msalError?.errorCode === 'login_required';
       if (interactionRequired) {
         debugLog('acquireTokenSilent requires interaction; suppressing auto-redirect');
       } else {
@@ -319,10 +320,11 @@ export const useAuth = () => {
         try {
           await instance.loginRedirect({ scopes: loginScopes, prompt: 'select_account' });
           return { success: true };
-        } catch (error: any) {
+        } catch (error: unknown) {
+          const msalError = error as { name?: string; errorCode?: string };
           debugLog('loginRedirect failed', {
-            name: error?.name,
-            code: error?.errorCode,
+            name: msalError?.name,
+            code: msalError?.errorCode,
           });
           return { success: false };
         } finally {

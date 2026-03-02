@@ -1,11 +1,11 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
+import { useToast } from '@/hooks/useToast';
 import React, { useEffect, useState } from 'react';
-import Loading from '../../ui/components/Loading';
-import ErrorState from '../../ui/components/ErrorState';
 import { pushAudit } from '../../lib/audit';
+import ErrorState from '../../ui/components/ErrorState';
+import Loading from '../../ui/components/Loading';
 import { useRecordsApi } from './api';
 import { mapToRecordItem, RecordItem, SupportRecordInsertDTO, SupportRecordItem } from './types';
-import { useToast } from '@/hooks/useToast';
 
 const RecordList: React.FC = () => {
   const [records, setRecords] = useState<RecordItem[]>([]);
@@ -23,9 +23,10 @@ const RecordList: React.FC = () => {
       setRecords(mapped);
       pushAudit({ actor: 'user', action: 'READ_LIST', entity: 'SupportRecord_Daily', channel: 'UI', after: { count: items.length } });
       setError(null);
-    } catch (e: any) {
-      setError(e.message);
-      show('error', e instanceof Error ? e.message : '日次記録の取得に失敗しました');
+    } catch (e: unknown) {
+      const msg = e instanceof Error ? e.message : '日次記録の取得に失敗しました';
+      setError(msg);
+      show('error', msg);
     } finally {
       setLoading(false);
     }
@@ -55,10 +56,10 @@ const RecordList: React.FC = () => {
       setForm({ Title: '' });
       setError(null);
       show('success', '保存しました');
-    } catch (e: any) {
-      setError(e.message);
-      const message = e instanceof Error ? e.message : '保存に失敗しました。時間をおいて再度お試しください。';
-      show('error', message);
+    } catch (e: unknown) {
+      const msg = e instanceof Error ? e.message : '保存に失敗しました。時間をおいて再度お試しください。';
+      setError(msg);
+      show('error', msg);
     } finally {
       setLoading(false);
     }

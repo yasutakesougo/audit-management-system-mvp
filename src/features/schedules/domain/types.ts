@@ -10,7 +10,7 @@ import type { ScheduleCore, ScheduleDetail, ScheduleFull } from './schema';
 // ─── Enum types (kept as simple literals for ergonomics) ────────────────────
 
 export type ScheduleVisibility = 'org' | 'team' | 'private';
-export type ScheduleCategory = 'User' | 'Staff' | 'Org';
+export type ScheduleCategory = 'User' | 'Staff' | 'Org' | 'LivingSupport';
 export type ScheduleSource = 'sharepoint' | 'graph' | 'demo';
 export type ScheduleStatus = 'Planned' | 'Postponed' | 'Cancelled';
 export type ScheduleServiceType = 'absence' | 'late' | 'earlyLeave' | string;

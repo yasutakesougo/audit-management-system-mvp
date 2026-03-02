@@ -2,8 +2,8 @@ import { expect, test } from '@playwright/test';
 
 import { TESTIDS } from '../../src/testids';
 import { openMobileNav } from './_helpers/openMobileNav';
-import { bootstrapDashboard } from './utils/bootstrapApp';
 import { expectTestIdVisibleBestEffort } from './_helpers/smoke';
+import { bootstrapDashboard } from './utils/bootstrapApp';
 
 test.describe('Iceberg PDCA nav smoke', () => {
   test('navigates via nav and shows empty state for unmatched user', async ({ page }) => {
@@ -19,7 +19,7 @@ test.describe('Iceberg PDCA nav smoke', () => {
 
     await expect(page.getByRole('combobox', { name: '利用者で絞り込み' })).toBeVisible();
     await expect(page.getByText('利用者を選択してください')).toBeVisible();
-    await expectTestIdVisibleBestEffort(page, TESTIDS['iceberg-pdca-empty']);
+    await expectTestIdVisibleBestEffort(page, TESTIDS.ICEBERG_PDCA_EMPTY);
   });
 
   test('navigates from PDCA link to /daily/support with date query', async ({ page }) => {
