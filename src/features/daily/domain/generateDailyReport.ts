@@ -1,3 +1,4 @@
+// contract:allow-interface — DailyReportOptions is a function-local options type, not a domain shape
 // ---------------------------------------------------------------------------
 // generateDailyReport — 日報テキスト生成の純粋関数
 //

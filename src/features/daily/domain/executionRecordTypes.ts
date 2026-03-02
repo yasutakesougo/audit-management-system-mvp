@@ -1,3 +1,4 @@
+// contract:allow-interface — Execution record domain types with co-located Zod schemas
 import { z } from 'zod';
 
 // ---------------------------------------------------------------------------
