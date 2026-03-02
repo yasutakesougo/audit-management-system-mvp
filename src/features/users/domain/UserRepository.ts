@@ -1,3 +1,4 @@
+// contract:allow-interface — Repository interface defines behavior contract, not data shapes (SSOT = schema.ts)
 import type { UserSelectMode } from '@/sharepoint/fields';
 import type { IUserMaster, IUserMasterCreateDto } from '../types';
 

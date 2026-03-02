@@ -1,3 +1,4 @@
+import { pushAudit } from '@/lib/audit';
 import {
     getAppConfig,
     isDemoModeEnabled,
@@ -72,7 +73,7 @@ const createRepository = (
   if (kind === 'demo') {
     return inMemoryUserRepository;
   }
-  return new SharePointUserRepository(options);
+  return new SharePointUserRepository({ ...options, audit: pushAudit });
 };
 
 const shouldUseCache = (kind: UserRepositoryKind, options?: UserRepositoryFactoryOptions): boolean => {
