@@ -5,103 +5,31 @@ import PersonIcon from '@mui/icons-material/Person';
 import SaveIcon from '@mui/icons-material/Save';
 import WorkIcon from '@mui/icons-material/Work';
 import {
-  Alert,
-  Box,
-  Button,
-  Checkbox,
-  Chip,
-  CircularProgress,
-  FormControlLabel,
-  IconButton,
-  Paper,
-  Snackbar,
-  TextField,
-  Typography,
+    Alert,
+    Box,
+    Button,
+    Checkbox,
+    Chip,
+    CircularProgress,
+    FormControlLabel,
+    IconButton,
+    Paper,
+    Snackbar,
+    TextField,
+    Typography,
 } from "@mui/material";
 import { createRef, FormEvent, useCallback, useEffect, useMemo, useRef, useState } from "react";
 
-type StaffFormProps = {
-  staff?: Staff;
-  mode?: "create" | "update";
-  onSuccess?: (staff: Staff) => void;
-  onDone?: (staff: Staff) => void;
-  onClose?: () => void;
-};
+import type { Errors, FormValues, MessageState, StaffFormProps } from './domain/staffFormDomain';
+import {
+    BASE_WEEKDAY_DEFAULTS,
+    BASE_WEEKDAY_OPTIONS,
+    CERTIFICATION_OPTIONS,
+    DAYS,
+    toStaffStorePayload,
+    validateStaffForm,
+} from './domain/staffFormDomain';
 
-type MessageState = { type: "success" | "error"; text: string } | null;
-
-type FormValues = {
-  StaffID: string;
-  FullName: string;
-  Email: string;
-  Phone: string;
-  Role: string;
-  WorkDays: string[];
-  Certifications: string[];
-  IsActive: boolean;
-  BaseShiftStartTime: string;
-  BaseShiftEndTime: string;
-  BaseWorkingDays: string[];
-};
-
-type Errors = Partial<Record<"fullName" | "email" | "phone" | "baseShift", string>>;
-
-const DAYS: { value: string; label: string }[] = [
-  { value: "Mon", label: "月" },
-  { value: "Tue", label: "火" },
-  { value: "Wed", label: "水" },
-  { value: "Thu", label: "木" },
-  { value: "Fri", label: "金" },
-  { value: "Sat", label: "土" },
-  { value: "Sun", label: "日" },
-];
-
-const BASE_WEEKDAY_OPTIONS: { value: string; label: string }[] = [
-  { value: "月", label: "月" },
-  { value: "火", label: "火" },
-  { value: "水", label: "水" },
-  { value: "木", label: "木" },
-  { value: "金", label: "金" },
-];
-
-const BASE_WEEKDAY_DEFAULTS = BASE_WEEKDAY_OPTIONS.map((option) => option.value);
-
-const emailRe = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-const timeRe = /^\d{2}:\d{2}$/;
-
-const sanitize = (value: string) => {
-  const trimmed = value.trim();
-  return trimmed.length ? trimmed : undefined;
-};
-
-const toStaffStorePayload = (values: FormValues): Partial<Staff> => {
-  const baseStart = values.BaseShiftStartTime.trim();
-  const baseEnd = values.BaseShiftEndTime.trim();
-  const workingDays = values.BaseWorkingDays.filter(Boolean);
-
-  return {
-    staffId: sanitize(values.StaffID),
-    name: sanitize(values.FullName),
-    email: sanitize(values.Email),
-    phone: sanitize(values.Phone),
-    role: sanitize(values.Role),
-    workDays: values.WorkDays.length ? [...values.WorkDays] : undefined,
-    certifications: values.Certifications.length ? [...values.Certifications] : undefined,
-    active: values.IsActive,
-    baseShiftStartTime: baseStart ? baseStart : undefined,
-    baseShiftEndTime: baseEnd ? baseEnd : undefined,
-    baseWorkingDays: workingDays.length ? [...workingDays] : undefined,
-  };
-};
-
-
-const CERTIFICATION_OPTIONS: { value: string; label: string }[] = [
-  { value: "普通運転免許", label: "普通運転免許" },
-  { value: "介護福祉士", label: "介護福祉士" },
-  { value: "看護師", label: "看護師" },
-  { value: "保育士", label: "保育士" },
-  { value: "社会福祉士", label: "社会福祉士" },
-];
 
 export function StaffForm({ staff, mode = staff ? "update" : "create", onSuccess, onDone, onClose }: StaffFormProps) {
   const { createStaff, updateStaff } = useStaff();
@@ -166,31 +94,7 @@ export function StaffForm({ staff, mode = staff ? "update" : "create", onSuccess
   );
 
   const validate = useCallback(
-    (next: FormValues): Errors => {
-      const errs: Errors = {};
-      if (!next.FullName.trim() && !next.StaffID.trim()) {
-        errs.fullName = "氏名（またはスタッフID）のいずれかは必須です";
-      }
-      if (next.Email && !emailRe.test(next.Email.trim())) {
-        errs.email = "メール形式が不正です";
-      }
-      if (next.Phone) {
-        const digits = next.Phone.replace(/\D/g, "");
-        if (digits.length < 10) {
-          errs.phone = "電話番号を正しく入力してください";
-        }
-      }
-      const start = next.BaseShiftStartTime.trim();
-      const end = next.BaseShiftEndTime.trim();
-      const hasStart = start.length > 0;
-      const hasEnd = end.length > 0;
-      if ((hasStart && !timeRe.test(start)) || (hasEnd && !timeRe.test(end))) {
-        errs.baseShift = "時刻はHH:MM形式で入力してください";
-      } else if (hasStart && hasEnd && end <= start) {
-        errs.baseShift = "基本勤務の終了時刻は開始時刻より後にしてください";
-      }
-      return errs;
-    },
+    (next: FormValues): Errors => validateStaffForm(next),
     []
   );
 
