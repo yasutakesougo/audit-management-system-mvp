@@ -97,6 +97,73 @@ export const UserMasterDomainSchema = SpUserMasterItemSchema.transform((sp) => (
 export type SpUserMasterRaw = z.infer<typeof SpUserMasterItemSchema>;
 export type UserMasterDomain = z.infer<typeof UserMasterDomainSchema>;
 
+// ---------------------------------------------------------------------------
+// Domain output schemas — UserSelectMode 階層 (core ⊂ detail ⊂ full)
+//
+// `resolveUserSelectFields` の $select 階層と 1:1 に対応。
+// PR-B で types.ts の IUserMaster を z.infer<> 導出に置き換える際の SSOT。
+// ---------------------------------------------------------------------------
+
+/** CORE: 一覧・ピッカーで必須（ID/表示名/状態/検索キー/日付/フラグ） */
+export const UserCoreSchema = z.object({
+  Id: z.number(),
+  Title: z.string().nullable(),
+  UserID: z.string(),
+  FullName: z.string(),
+  Furigana: z.string().nullable().optional(),
+  FullNameKana: z.string().nullable().optional(),
+  ContractDate: z.string().nullable().optional(),
+  ServiceStartDate: z.string().nullable().optional(),
+  ServiceEndDate: z.string().nullable().optional(),
+  IsHighIntensitySupportTarget: z.boolean().nullable().optional(),
+  IsSupportProcedureTarget: z.boolean().nullable().optional(),
+  severeFlag: z.boolean().nullable().optional(),
+  IsActive: z.boolean().nullable().optional(),
+  TransportToDays: z.array(z.string()).nullable().optional(),
+  TransportFromDays: z.array(z.string()).nullable().optional(),
+  TransportSchedule: z.string().nullable().optional(),
+  AttendanceDays: z.array(z.string()).nullable().optional(),
+  RecipientCertNumber: z.string().nullable().optional(),
+  RecipientCertExpiry: z.string().nullable().optional(),
+  Modified: z.string().nullable().optional(),
+  Created: z.string().nullable().optional(),
+  // selectMode marker (set by Repository)
+  __selectMode: z.enum(['core', 'detail', 'full']).optional(),
+});
+
+/** DETAIL: 詳細画面用（CORE + 支給決定情報） */
+export const UserDetailSchema = UserCoreSchema.extend({
+  UsageStatus: z.string().nullable().optional(),
+  GrantMunicipality: z.string().nullable().optional(),
+  GrantPeriodStart: z.string().nullable().optional(),
+  GrantPeriodEnd: z.string().nullable().optional(),
+  DisabilitySupportLevel: z.string().nullable().optional(),
+  GrantedDaysPerMonth: z.string().nullable().optional(),
+  UserCopayLimit: z.string().nullable().optional(),
+});
+
+/** FULL: 請求・監査用（DETAIL + 加算情報 + main branch 拡張） */
+export const UserFullSchema = UserDetailSchema.extend({
+  TransportAdditionType: z.string().nullable().optional(),
+  MealAddition: z.string().nullable().optional(),
+  CopayPaymentMethod: z.string().nullable().optional(),
+  // main branch integration fields
+  OrgCode: z.string().nullable().optional(),
+  OrgName: z.string().nullable().optional(),
+  Role: z.string().nullable().optional(),
+  Email: z.string().nullable().optional(),
+  IsDisabled: z.boolean().nullable().optional(),
+});
+
+/** Domain output types derived from Zod schemas */
+export type UserCore = z.infer<typeof UserCoreSchema>;
+export type UserDetail = z.infer<typeof UserDetailSchema>;
+export type UserFull = z.infer<typeof UserFullSchema>;
+
+// ---------------------------------------------------------------------------
+// Compatibility Aliases (既存 export を維持 — PR-B まで利用側は触らない)
+// ---------------------------------------------------------------------------
+
 /**
  * Compatibility Aliases for latest main branch naming
  */

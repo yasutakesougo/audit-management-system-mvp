@@ -319,6 +319,7 @@ export interface IUserMaster {
   IsActive?: boolean | null;
   TransportToDays?: string[] | null;
   TransportFromDays?: string[] | null;
+  TransportSchedule?: string | null;  // JSON: Record<曜日, { to: TransportMethod, from: TransportMethod }>
   AttendanceDays?: string[] | null;
   RecipientCertNumber?: string | null;
   RecipientCertExpiry?: string | null;
@@ -359,6 +360,7 @@ export interface IUserMasterCreateDto {
   IsActive?: boolean | null;
   TransportToDays?: string[] | null;
   TransportFromDays?: string[] | null;
+  TransportSchedule?: string | null;
   AttendanceDays?: string[] | null;
   RecipientCertNumber?: string | null;
   RecipientCertExpiry?: string | null;
