@@ -1,6 +1,6 @@
-import { TableDailyRecordForm } from '@/features/daily/TableDailyRecordForm';
+import { TableDailyRecordForm } from '@/features/daily/forms/TableDailyRecordForm';
 import type { TableDailyRecordData } from '@/features/daily/hooks/useTableDailyRecordForm';
-import { useTableDailyRecordSave } from '@/features/daily/useTableDailyRecordSave';
+import { useTableDailyRecordSave } from '@/features/daily/table/useTableDailyRecordSave';
 import { isDevMode, isE2E } from '@/lib/env';
 import { Box } from '@mui/material';
 import React from 'react';

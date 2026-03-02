@@ -1,4 +1,4 @@
-import { saveDailyRecord, validateDailyRecord } from '@/features/daily/dailyRecordLogic';
+import { saveDailyRecord, validateDailyRecord } from '@/features/daily/domain/dailyRecordLogic';
 import AccessTimeIcon from '@mui/icons-material/AccessTime';
 import AddIcon from '@mui/icons-material/Add';
 import SearchIcon from '@mui/icons-material/Search';
@@ -23,9 +23,9 @@ import { useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import { LandscapeFab } from '../components/ui/LandscapeFab';
 import { PersonDaily } from '@/domain/daily/types';
 import { FullScreenDailyDialogPage } from '../features/daily/components/FullScreenDailyDialogPage';
-import { DailyRecordForm } from '../features/daily/DailyRecordForm';
-import { DailyRecordList } from '../features/daily/DailyRecordList';
-import { useDailyRecordViewModel } from '../features/daily/useDailyRecordViewModel';
+import { DailyRecordForm } from '../features/daily/forms/DailyRecordForm';
+import { DailyRecordList } from '../features/daily/lists/DailyRecordList';
+import { useDailyRecordViewModel } from '../features/daily/lists/useDailyRecordViewModel';
 import { useHandoffSummary } from '../features/handoff/useHandoffSummary';
 import { useUsersDemo } from '../features/users/usersStoreDemo';
 import { useSchedules } from '../stores/useSchedules';

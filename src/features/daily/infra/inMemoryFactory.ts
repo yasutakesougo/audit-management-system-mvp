@@ -1,7 +1,7 @@
 import { useMemo } from 'react';
-import { useProcedureStore } from '@/features/daily/stores/procedureStore';
-import { useBehaviorStore } from '@/features/daily/stores/behaviorStore';
-import type { BehaviorRecord, BehaviorRepository, ProcedureRepository, ProcedureStep } from './types';
+import { useProcedureStore } from '../stores/procedureStore';
+import { useBehaviorStore } from '../stores/behaviorStore';
+import type { BehaviorRecord, BehaviorRepository, ProcedureRepository, ProcedureStep } from './repositoryTypes';
 
 export function useInMemoryProcedureRepository(): ProcedureRepository {
   const { getByUser, save } = useProcedureStore();

@@ -1,7 +1,7 @@
 import React from 'react';
 
-import { FullScreenDailyDialogPage } from './components/FullScreenDailyDialogPage';
-import { TableDailyRecordForm } from './TableDailyRecordForm';
+import { FullScreenDailyDialogPage } from '../components/FullScreenDailyDialogPage';
+import { TableDailyRecordForm } from '../forms/TableDailyRecordForm';
 import { useTableDailyRecordViewModel } from './useTableDailyRecordViewModel';
 
 export const TableDailyRecordPage: React.FC = () => {
