@@ -7,6 +7,8 @@
 // ---------------------------------------------------------------------------
 import { ASSESSMENT_DRAFT_KEY } from '@/features/assessment/domain/assessmentSchema';
 import { IBDPageHeader } from '@/features/ibd/core/components/IBDPageHeader';
+import { ProactiveAlertBanner } from '@/features/ibd/core/components/ProactiveAlertBanner';
+import { useProactiveSPSAlerts } from '@/features/ibd/core/useProactiveSPSAlerts';
 import { useSPSAlerts } from '@/features/ibd/core/useSPSAlerts';
 import { useSupportStepTemplates } from '@/features/ibd/procedures/templates/hooks/useSupportStepTemplates';
 import { useUsersDemo } from '@/features/users/usersStoreDemo';
@@ -365,6 +367,7 @@ const IBDHubPage: React.FC = () => {
   // SP メトリクス
   const templateMetrics = useTemplateMetrics(ibdUsers);
   const spsAlerts = useSPSAlerts(30);
+  const proactiveAlerts = useProactiveSPSAlerts(ibdUsers);
 
   // ステータスカードデータ
   const sections = useHubStatus(theme, ibdUsers, templateMetrics, spsAlerts);
@@ -380,6 +383,13 @@ const IBDHubPage: React.FC = () => {
         subtitle="評価 → 分析 → 支援設計 → モニタリング。支援の全工程をここから管理します。"
         icon={<TrendingUpIcon />}
       />
+
+      {proactiveAlerts.hasAlerts && (
+        <ProactiveAlertBanner
+          alerts={proactiveAlerts.alerts}
+          onSelectUser={(userId) => navigate(`/admin/individual-support/${userId}`)}
+        />
+      )}
 
       <Box
         sx={{
