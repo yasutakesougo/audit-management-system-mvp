@@ -8,6 +8,7 @@ import type { BehaviorObservation } from '@/features/daily/domain/daily/types';
 import { generateDailyReport } from '@/features/daily/domain/generateDailyReport';
 import { getScheduleKey } from '@/features/daily/domain/getScheduleKey';
 import { toBipOptions } from '@/features/daily/domain/toBipOptions';
+import { useDailySupportUserFilter } from '@/features/daily/hooks/useDailySupportUserFilter';
 import { useInMemoryBehaviorRepository, useInMemoryProcedureRepository } from '@/features/daily/repositories/inMemory';
 import { useExecutionStore } from '@/features/daily/stores/executionStore';
 import type { ProcedureItem } from '@/features/daily/stores/procedureStore';
@@ -16,12 +17,14 @@ import {
     persistDailySubmission,
     type PersistDailyPdcaInput,
 } from '@/features/iceberg-pdca/persistDailyPdca';
+import { DISABILITY_SUPPORT_LEVEL_OPTIONS } from '@/features/users/typesExtended';
 import { useUsersDemo } from '@/features/users/usersStoreDemo';
 import { getEnv } from '@/lib/runtimeEnv';
 import { useTimeBasedSupportRecordPage } from '@/pages/hooks/useTimeBasedSupportRecordPage';
 import AccessTimeIcon from '@mui/icons-material/AccessTime';
 import ContentCopyIcon from '@mui/icons-material/ContentCopy';
 import EditIcon from '@mui/icons-material/Edit';
+import FilterListOffIcon from '@mui/icons-material/FilterListOff';
 import PersonIcon from '@mui/icons-material/Person';
 import Alert from '@mui/material/Alert';
 import Box from '@mui/material/Box';
@@ -36,6 +39,8 @@ import Paper from '@mui/material/Paper';
 import Select from '@mui/material/Select';
 import Snackbar from '@mui/material/Snackbar';
 import Stack from '@mui/material/Stack';
+import ToggleButton from '@mui/material/ToggleButton';
+import Tooltip from '@mui/material/Tooltip';
 import Typography from '@mui/material/Typography';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { flushSync } from 'react-dom';
@@ -77,6 +82,7 @@ const TimeBasedSupportRecordPage: React.FC = () => {
   const procedureRepo = useInMemoryProcedureRepository();
   const { repo: behaviorRepo, data: behaviorRecords, error: behaviorError, clearError } = useInMemoryBehaviorRepository();
   const { data: users } = useUsersDemo();
+  const { filter, updateFilter, resetFilter, filteredUsers, hasActiveFilter } = useDailySupportUserFilter(users);
   const interventionStore = useInterventionStore();
 
   // Execution records for daily report export
@@ -492,7 +498,7 @@ const TimeBasedSupportRecordPage: React.FC = () => {
                 <MenuItem value="">
                   <em>選択してください</em>
                 </MenuItem>
-                {users.map((user) => (
+                {filteredUsers.map((user) => (
                   <MenuItem key={user.UserID} value={user.UserID}>
                     {user.FullName}
                   </MenuItem>
@@ -523,6 +529,87 @@ const TimeBasedSupportRecordPage: React.FC = () => {
           >
             日報コピー
           </Button>
+        )}
+      </Paper>
+
+      {/* ── User Filter Bar ── */}
+      <Paper
+        elevation={0}
+        sx={{
+          px: 2,
+          py: 1,
+          borderBottom: 1,
+          borderColor: 'divider',
+          borderRadius: 0,
+          display: 'flex',
+          alignItems: 'center',
+          gap: 1.5,
+          flexWrap: 'wrap',
+          bgcolor: hasActiveFilter ? 'action.hover' : 'background.paper',
+        }}
+        data-testid="daily-support-user-filter-bar"
+      >
+        <FormControl size="small" sx={{ minWidth: 130 }}>
+          <InputLabel id="filter-support-level-label">支援区分</InputLabel>
+          <Select
+            labelId="filter-support-level-label"
+            value={filter.supportLevel}
+            label="支援区分"
+            onChange={(e) => updateFilter({ supportLevel: e.target.value })}
+            data-testid="filter-support-level"
+          >
+            {DISABILITY_SUPPORT_LEVEL_OPTIONS.map((opt) => (
+              <MenuItem key={opt.value} value={opt.value}>
+                {opt.label}
+              </MenuItem>
+            ))}
+          </Select>
+        </FormControl>
+
+        <FormControl size="small" sx={{ minWidth: 120 }}>
+          <InputLabel id="filter-usage-status-label">ステータス</InputLabel>
+          <Select
+            labelId="filter-usage-status-label"
+            value={filter.usageStatus}
+            label="ステータス"
+            onChange={(e) => updateFilter({ usageStatus: e.target.value })}
+            data-testid="filter-usage-status"
+          >
+            <MenuItem value="">（全て）</MenuItem>
+            <MenuItem value="active">利用中</MenuItem>
+            <MenuItem value="pending">開始待ち</MenuItem>
+            <MenuItem value="suspended">休止中</MenuItem>
+            <MenuItem value="terminated">契約終了</MenuItem>
+          </Select>
+        </FormControl>
+
+        <Tooltip title="強度行動障害支援対象者のみ表示">
+          <ToggleButton
+            value="highIntensity"
+            selected={filter.highIntensityOnly}
+            onChange={() => updateFilter({ highIntensityOnly: !filter.highIntensityOnly })}
+            size="small"
+            sx={{ textTransform: 'none', fontSize: '0.8rem', px: 1.5 }}
+            data-testid="filter-high-intensity"
+          >
+            強度行動障害
+          </ToggleButton>
+        </Tooltip>
+
+        {hasActiveFilter && (
+          <>
+            <Chip
+              label={`${filteredUsers.length}/${users.length}人`}
+              size="small"
+              color="primary"
+              variant="outlined"
+            />
+            <Tooltip title="フィルターをリセット">
+              <IconButton size="small" onClick={resetFilter} aria-label="フィルターをリセット">
+                <FilterListOffIcon fontSize="small" />
+              </IconButton>
+            </Tooltip>
+          </>
         )}
       </Paper>
 
