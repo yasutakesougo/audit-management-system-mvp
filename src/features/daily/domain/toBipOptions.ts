@@ -1,3 +1,4 @@
+// contract:allow-interface — BipOption is a DTO bridge type, not a domain shape (kept here to decouple Daily from Analysis)
 // ---------------------------------------------------------------------------
 // toBipOptions — Domain bridge utility
 //
