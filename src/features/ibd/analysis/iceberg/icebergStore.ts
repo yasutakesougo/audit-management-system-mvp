@@ -1,18 +1,19 @@
+import type { AssessmentItem } from '@/features/assessment/domain/types';
+import type { BehaviorObservation } from '@/features/daily/domain/daily/types';
+import type { IcebergRepository } from '@/features/ibd/analysis/iceberg/SharePointIcebergRepository';
+import { ConflictError } from '@/features/ibd/analysis/iceberg/errors';
 import type {
     EnvironmentFactor,
     HypothesisLink,
     IcebergNode,
     IcebergNodeType,
     IcebergSession,
-    NodePosition,
     IcebergSnapshot,
+    NodePosition,
 } from '@/features/ibd/analysis/iceberg/icebergTypes';
 import { icebergSnapshotSchema } from '@/features/ibd/analysis/iceberg/icebergTypes';
-import type { AssessmentItem } from '@/features/assessment/domain/types';
-import type { BehaviorObservation } from '@/features/daily/domain/daily/types';
+import { sha256Hex } from '@/lib/hashUtil';
 import { useCallback, useSyncExternalStore } from 'react';
-import type { IcebergRepository } from '@/features/ibd/analysis/iceberg/SharePointIcebergRepository';
-import { ConflictError } from '@/features/ibd/analysis/iceberg/SharePointIcebergRepository';
 
 type SaveState = 'idle' | 'saving' | 'saved' | 'conflict' | 'error';
 
@@ -199,16 +200,7 @@ const loadSession = (sessionId: string) => {
 
 // ===== Persistence Functions (require repository) =====
 
-/** Local helper to compute entry hash for idempotency */
-function sha256Like(input: string): string {
-  let h = 0;
-  for (let i = 0; i < input.length; i++) {
-    const c = input.charCodeAt(i);
-    h = (h << 5) - h + c;
-    h = h & h;
-  }
-  return `h_${input.length}_${Math.abs(h)}`;
-}
+
 
 const saveSnapshot = async (
   repository: IcebergRepository,
@@ -239,7 +231,7 @@ const saveSnapshot = async (
     n: validated.nodes.map((n) => [n.id, n.position]),
     l: validated.links.map((l) => [l.id, l.sourceNodeId, l.targetNodeId]),
   });
-  const entryHash = sha256Like(`${userId}:${sessionId}:${payloadFingerprint}`);
+  const entryHash = await sha256Hex(`${userId}:${sessionId}:${payloadFingerprint}`);
 
   // Update save state
   state = { ...state, saveState: 'saving', lastSaveError: undefined };
