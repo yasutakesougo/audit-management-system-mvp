@@ -195,6 +195,13 @@ export const SP_LIST_REGISTRY: readonly SpListEntry[] = [
     category: 'handoff',
   },
   {
+    key: 'support_plans',
+    displayName: '個別支援計画',
+    resolve: () => envOr('VITE_SP_LIST_SUPPORT_PLANS', fromConfig(ListKeys.SupportPlans)),
+    operations: ['R', 'W', 'D'],
+    category: 'handoff',
+  },
+  {
     key: 'iceberg_pdca',
     displayName: '氷山モデルPDCA',
     resolve: () => envOr('VITE_SP_LIST_ICEBERG_PDCA', fromConfig(ListKeys.IcebergPdca)),
