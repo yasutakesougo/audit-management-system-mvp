@@ -1,4 +1,4 @@
-import type { IcebergNode } from '@/features/analysis/domain/icebergTypes';
+import type { IcebergNode } from '@/features/ibd/analysis/iceberg/icebergTypes';
 import DragIndicatorIcon from '@mui/icons-material/DragIndicator';
 import Box from '@mui/material/Box';
 import Card from '@mui/material/Card';

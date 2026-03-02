@@ -10,7 +10,7 @@ import { useInterventionStore } from '@/features/analysis/stores/interventionSto
 import { seedDemoBehaviors, useBehaviorStore } from '@/features/daily/stores/behaviorStore';
 import { useExecutionStore } from '@/features/daily/stores/executionStore';
 import { useProcedureStore } from '@/features/daily/stores/procedureStore';
-import { IBDPageHeader } from '@/features/ibd/components/IBDPageHeader';
+import { IBDPageHeader } from '@/features/ibd/core/components/IBDPageHeader';
 import { useUsersDemo } from '@/features/users/usersStoreDemo';
 import { isDemoModeEnabled } from '@/lib/env';
 import AssessmentIcon from '@mui/icons-material/Assessment';

@@ -16,11 +16,11 @@ import Tab from '@mui/material/Tab';
 import Tabs from '@mui/material/Tabs';
 import Typography from '@mui/material/Typography';
 import React, { useState } from 'react';
-import { SupportStepTemplate } from '../domain/support/step-templates';
-import { IBDPageHeader } from '../features/ibd/components/IBDPageHeader';
-import { SupportStepTemplateForm } from '../features/support/SupportStepTemplateForm';
-import { SupportStepTemplateList } from '../features/support/SupportStepTemplateList';
-import { useSupportStepTemplates } from '../features/support/hooks/useSupportStepTemplates';
+import { SupportStepTemplate } from '@/domain/support/step-templates';
+import { IBDPageHeader } from '../features/ibd/core/components/IBDPageHeader';
+import { SupportStepTemplateForm } from '../features/ibd/procedures/templates/SupportStepTemplateForm';
+import { SupportStepTemplateList } from '../features/ibd/procedures/templates/SupportStepTemplateList';
+import { useSupportStepTemplates } from '../features/ibd/procedures/templates/hooks/useSupportStepTemplates';
 
 // ─── TabPanel ────────────────────────────────────────────
 interface TabPanelProps {

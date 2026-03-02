@@ -1,3 +1,17 @@
+import {
+    antecedentValues,
+    behaviorValues,
+    consequenceValues,
+    createEmptyIncidentDraft,
+    deriveSuggestedFunction,
+    functionValues,
+    highRiskIncidentDraftSchema,
+    severityValues,
+    type ConsequenceValue,
+    type FunctionValue,
+    type HighRiskIncidentDraft,
+} from '@/domain/support/highRiskIncident';
+import { TESTIDS, tid } from '@/testids';
 import Alert from '@mui/material/Alert';
 import Autocomplete from '@mui/material/Autocomplete';
 import Box from '@mui/material/Box';
@@ -12,9 +26,9 @@ import Divider from '@mui/material/Divider';
 import FormControl from '@mui/material/FormControl';
 import FormControlLabel from '@mui/material/FormControlLabel';
 import FormGroup from '@mui/material/FormGroup';
-import Grid from '@mui/material/PigmentGrid';
 import InputLabel from '@mui/material/InputLabel';
 import MenuItem from '@mui/material/MenuItem';
+import Grid from '@mui/material/PigmentGrid';
 import Select from '@mui/material/Select';
 import Slider, { type SliderProps } from '@mui/material/Slider';
 import Stack from '@mui/material/Stack';
@@ -27,20 +41,6 @@ import ToggleButton from '@mui/material/ToggleButton';
 import ToggleButtonGroup from '@mui/material/ToggleButtonGroup';
 import Typography from '@mui/material/Typography';
 import { useEffect, useMemo, useState } from 'react';
-import {
-  antecedentValues,
-  behaviorValues,
-  consequenceValues,
-  createEmptyIncidentDraft,
-  deriveSuggestedFunction,
-  functionValues,
-  highRiskIncidentDraftSchema,
-  severityValues,
-  type ConsequenceValue,
-  type FunctionValue,
-  type HighRiskIncidentDraft,
-} from '../../domain/support/highRiskIncident';
-import { TESTIDS, tid } from '../../testids';
 
 const steps = [
   '行動の特定 (B)',

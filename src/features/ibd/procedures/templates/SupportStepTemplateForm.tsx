@@ -30,7 +30,7 @@ import {
     standardTimeSlotValues,
     supportCategoryValues,
     supportImportanceValues,
-} from '../../domain/support/step-templates';
+} from '@/domain/support/step-templates';
 
 // ─── Types ────────────────────────────────
 interface SupportStepTemplateFormProps {

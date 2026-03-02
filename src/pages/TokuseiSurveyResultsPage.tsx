@@ -1,7 +1,7 @@
 ﻿import { summarizeTokuseiResponses, type TokuseiSurveyResponse } from '@/domain/assessment/tokusei';
 import FeatureChipList from '@/features/assessment/components/FeatureChipList';
 import { useTokuseiSurveyResponses } from '@/features/assessment/hooks/useTokuseiSurveyResponses';
-import { IBDPageHeader } from '@/features/ibd/components/IBDPageHeader';
+import { IBDPageHeader } from '@/features/ibd/core/components/IBDPageHeader';
 import { env } from '@/lib/env';
 import FilterAltOffRoundedIcon from '@mui/icons-material/FilterAltOffRounded';
 import RefreshRoundedIcon from '@mui/icons-material/RefreshRounded';

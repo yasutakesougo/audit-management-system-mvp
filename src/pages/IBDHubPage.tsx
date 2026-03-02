@@ -6,9 +6,9 @@
 // ドリルダウンで /admin/individual-support/:userCode へ遷移する。
 // ---------------------------------------------------------------------------
 import { ASSESSMENT_DRAFT_KEY } from '@/features/assessment/domain/assessmentSchema';
-import { IBDPageHeader } from '@/features/ibd/components/IBDPageHeader';
-import { useSPSAlerts } from '@/features/ibd/useSPSAlerts';
-import { useSupportStepTemplates } from '@/features/support/hooks/useSupportStepTemplates';
+import { IBDPageHeader } from '@/features/ibd/core/components/IBDPageHeader';
+import { useSPSAlerts } from '@/features/ibd/core/useSPSAlerts';
+import { useSupportStepTemplates } from '@/features/ibd/procedures/templates/hooks/useSupportStepTemplates';
 import { useUsersDemo } from '@/features/users/usersStoreDemo';
 import ArrowForwardIcon from '@mui/icons-material/ArrowForward';
 import AssessmentIcon from '@mui/icons-material/Assessment';

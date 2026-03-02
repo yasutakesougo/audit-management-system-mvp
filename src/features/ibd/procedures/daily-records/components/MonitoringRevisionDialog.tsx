@@ -21,7 +21,7 @@ import TextField from '@mui/material/TextField';
 import Typography from '@mui/material/Typography';
 import React, { useState } from 'react';
 
-import type { SPSHistoryEntry, SupportPlanSheet } from '@/features/ibd/ibdTypes';
+import type { SPSHistoryEntry, SupportPlanSheet } from '@/features/ibd/core/ibdTypes';
 
 interface MonitoringRevisionDialogProps {
   open: boolean;

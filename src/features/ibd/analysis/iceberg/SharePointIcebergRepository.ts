@@ -2,7 +2,7 @@ import { getAppConfig } from '@/lib/env';
 import { createSpClient } from '@/lib/spClient';
 import { FIELD_MAP_ICEBERG_ANALYSIS, LIST_CONFIG, ListKeys } from '@/sharepoint/fields';
 import { z } from 'zod';
-import { icebergSnapshotSchema, type IcebergSnapshot } from '../domain/icebergTypes';
+import { icebergSnapshotSchema, type IcebergSnapshot } from './icebergTypes';
 
 // ===== Error Classes =====
 

@@ -9,7 +9,7 @@
 }
 import { canAccess } from '@/auth/roles';
 import { useUserAuthz } from '@/auth/useUserAuthz';
-import { buildMonitoringEvidence } from '@/features/support-plan/monitoringEvidenceAdapter';
+import { buildMonitoringEvidence } from '@/features/ibd/plans/support-plan/monitoringEvidenceAdapter';
 import { useUsersStore } from '@/features/users/store';
 import type { IUserMaster } from '@/features/users/types';
 import { HYDRATION_FEATURES, estimatePayloadSize, startFeatureSpan } from '@/hydration/features';

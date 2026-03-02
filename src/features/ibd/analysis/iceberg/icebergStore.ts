@@ -6,13 +6,13 @@ import type {
     IcebergSession,
     NodePosition,
     IcebergSnapshot,
-} from '@/features/analysis/domain/icebergTypes';
-import { icebergSnapshotSchema } from '@/features/analysis/domain/icebergTypes';
+} from '@/features/ibd/analysis/iceberg/icebergTypes';
+import { icebergSnapshotSchema } from '@/features/ibd/analysis/iceberg/icebergTypes';
 import type { AssessmentItem } from '@/features/assessment/domain/types';
 import type { BehaviorObservation } from '@/features/daily/domain/daily/types';
 import { useCallback, useSyncExternalStore } from 'react';
-import type { IcebergRepository } from '@/features/analysis/infra/SharePointIcebergRepository';
-import { ConflictError } from '@/features/analysis/infra/SharePointIcebergRepository';
+import type { IcebergRepository } from '@/features/ibd/analysis/iceberg/SharePointIcebergRepository';
+import { ConflictError } from '@/features/ibd/analysis/iceberg/SharePointIcebergRepository';
 
 type SaveState = 'idle' | 'saving' | 'saved' | 'conflict' | 'error';
 

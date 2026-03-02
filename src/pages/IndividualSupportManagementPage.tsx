@@ -22,18 +22,18 @@ import Snackbar from '@mui/material/Snackbar';
 import Tab from '@mui/material/Tab';
 import Tabs from '@mui/material/Tabs';
 
-import { IBDPageHeader } from '@/features/ibd/components/IBDPageHeader';
-import { addSPS, confirmSPS, getLatestSPS, getSPSHistory } from '@/features/ibd/ibdStore';
-import { useSPSRevision } from '@/features/ibd/useSPSHistory';
-import { useSupportStepTemplates } from '@/features/support/hooks/useSupportStepTemplates';
+import { IBDPageHeader } from '@/features/ibd/core/components/IBDPageHeader';
+import { addSPS, confirmSPS, getLatestSPS, getSPSHistory } from '@/features/ibd/core/ibdStore';
+import { useSPSRevision } from '@/features/ibd/core/useSPSHistory';
+import { useSupportStepTemplates } from '@/features/ibd/procedures/templates/hooks/useSupportStepTemplates';
 import { UserSelectionGrid } from '@/features/users/components/UserSelectionGrid';
 import { useUsersDemo } from '@/features/users/usersStoreDemo';
 import React, { useEffect, useMemo, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 
-import { DailyRecordsTab } from '@/features/individual-support/components/DailyRecordsTab';
-import { MonitoringRevisionDialog } from '@/features/individual-support/components/MonitoringRevisionDialog';
-import { SupportPlanTab } from '@/features/individual-support/components/SupportPlanTab';
+import { DailyRecordsTab } from '@/features/ibd/procedures/daily-records/components/DailyRecordsTab';
+import { MonitoringRevisionDialog } from '@/features/ibd/procedures/daily-records/components/MonitoringRevisionDialog';
+import { SupportPlanTab } from '@/features/ibd/procedures/daily-records/components/SupportPlanTab';
 import {
     type ABCSelection,
     type ScheduleSlot,
@@ -42,7 +42,7 @@ import {
     type TimelineEntry,
     buildInitialFormState,
     toScheduleSlot,
-} from '@/features/individual-support/types';
+} from '@/features/ibd/procedures/daily-records/types';
 
 
 
@@ -91,8 +91,8 @@ const IndividualSupportManagementPage: React.FC = () => {
 
   // SPS 関連
   const { revise: reviseSPS } = useSPSRevision();
-  const [activeSPS, setActiveSPS] = useState<import('@/features/ibd/ibdTypes').SupportPlanSheet | null>(null);
-  const [activeSPSHistory, setActiveSPSHistory] = useState<import('@/features/ibd/ibdTypes').SPSHistoryEntry[]>([]);
+  const [activeSPS, setActiveSPS] = useState<import('@/features/ibd/core/ibdTypes').SupportPlanSheet | null>(null);
+  const [activeSPSHistory, setActiveSPSHistory] = useState<import('@/features/ibd/core/ibdTypes').SPSHistoryEntry[]>([]);
 
   /** モニタリングダイアログを開く前に SPS を確保する */
   const handleOpenMonitoring = () => {

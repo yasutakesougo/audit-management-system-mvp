@@ -1,5 +1,5 @@
-import { IcebergCard } from '@/features/analysis/components/iceberg/IcebergCard';
-import type { HypothesisLink, IcebergNode, NodePosition } from '@/features/analysis/domain/icebergTypes';
+import { IcebergCard } from '@/features/ibd/analysis/iceberg/IcebergCard';
+import type { HypothesisLink, IcebergNode, NodePosition } from '@/features/ibd/analysis/iceberg/icebergTypes';
 import Box from '@mui/material/Box';
 import Typography from '@mui/material/Typography';
 import React, { useRef, useState } from 'react';

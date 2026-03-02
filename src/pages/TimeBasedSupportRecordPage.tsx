@@ -16,7 +16,7 @@ import {
     makeIdempotencyKey,
     persistDailySubmission,
     type PersistDailyPdcaInput,
-} from '@/features/iceberg-pdca/persistDailyPdca';
+} from '@/features/ibd/analysis/pdca/persistDailyPdca';
 import { DISABILITY_SUPPORT_LEVEL_OPTIONS } from '@/features/users/typesExtended';
 import { useUsersDemo } from '@/features/users/usersStoreDemo';
 import { getEnv } from '@/lib/runtimeEnv';

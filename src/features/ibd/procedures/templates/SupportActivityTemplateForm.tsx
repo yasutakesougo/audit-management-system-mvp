@@ -24,7 +24,7 @@ import TextField from '@mui/material/TextField';
 import Typography from '@mui/material/Typography';
 import React, { useEffect, useState } from 'react';
 import { z } from 'zod';
-import { SupportActivityTemplate, SupportActivityTemplateZ } from '../../domain/support/types';
+import { SupportActivityTemplate, SupportActivityTemplateZ } from '@/domain/support/types';
 
 interface SupportActivityTemplateFormProps {
   open: boolean;
