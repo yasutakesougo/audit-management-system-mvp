@@ -6,16 +6,11 @@
 // ---------------------------------------------------------------------------
 import EditNoteIcon from '@mui/icons-material/EditNote';
 import FavoriteIcon from '@mui/icons-material/Favorite';
-import PersonIcon from '@mui/icons-material/Person';
 import ScheduleIcon from '@mui/icons-material/Schedule';
 import SupportIcon from '@mui/icons-material/Support';
 import Alert from '@mui/material/Alert';
 import Box from '@mui/material/Box';
 import Button from '@mui/material/Button';
-import Card from '@mui/material/Card';
-import CardActionArea from '@mui/material/CardActionArea';
-import CardContent from '@mui/material/CardContent';
-import Chip from '@mui/material/Chip';
 import CircularProgress from '@mui/material/CircularProgress';
 import FormControl from '@mui/material/FormControl';
 import InputLabel from '@mui/material/InputLabel';
@@ -26,12 +21,12 @@ import Select from '@mui/material/Select';
 import Snackbar from '@mui/material/Snackbar';
 import Tab from '@mui/material/Tab';
 import Tabs from '@mui/material/Tabs';
-import Typography from '@mui/material/Typography';
 
 import { IBDPageHeader } from '@/features/ibd/components/IBDPageHeader';
 import { addSPS, confirmSPS, getLatestSPS, getSPSHistory } from '@/features/ibd/ibdStore';
 import { useSPSRevision } from '@/features/ibd/useSPSHistory';
 import { useSupportStepTemplates } from '@/features/support/hooks/useSupportStepTemplates';
+import { UserSelectionGrid } from '@/features/users/components/UserSelectionGrid';
 import { useUsersDemo } from '@/features/users/usersStoreDemo';
 import React, { useEffect, useMemo, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
@@ -49,53 +44,7 @@ import {
     toScheduleSlot,
 } from '@/features/individual-support/types';
 
-// ---------------------------------------------------------------------------
-// Sub-component: 利用者選択カード
-// ---------------------------------------------------------------------------
 
-interface UserSelectionProps {
-  users: Array<{ Id: number; UserID: string; FullName: string }>;
-  onSelect: (userCode: string) => void;
-}
-
-const UserSelectionGrid: React.FC<UserSelectionProps> = ({ users, onSelect }) => (
-  <Box sx={{ p: { xs: 2, md: 3 } }}>
-    <Typography variant="h6" sx={{ fontWeight: 600, mb: 2 }}>
-      対象利用者を選択してください
-    </Typography>
-    <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
-      強度行動障害支援の対象となる利用者の個別支援手順を管理します。
-    </Typography>
-    <Box
-      sx={{
-        display: 'grid',
-        gap: 2,
-        gridTemplateColumns: { xs: '1fr', sm: 'repeat(2, 1fr)', md: 'repeat(3, 1fr)' },
-      }}
-    >
-      {users.map((user) => (
-        <Card key={user.Id} variant="outlined" sx={{ borderRadius: 2 }}>
-          <CardActionArea onClick={() => onSelect(user.UserID)} sx={{ p: 2 }}>
-            <CardContent sx={{ textAlign: 'center' }}>
-              <PersonIcon sx={{ fontSize: 48, color: 'primary.main', mb: 1 }} />
-              <Typography variant="h6" sx={{ fontWeight: 600 }}>
-                {user.FullName}
-              </Typography>
-              <Chip label={user.UserID} size="small" variant="outlined" sx={{ mt: 1 }} />
-            </CardContent>
-          </CardActionArea>
-        </Card>
-      ))}
-    </Box>
-    {users.length === 0 && (
-      <Paper variant="outlined" sx={{ p: 4, textAlign: 'center' }}>
-        <Typography color="text.secondary">
-          強度行動障害支援の対象利用者が登録されていません。
-        </Typography>
-      </Paper>
-    )}
-  </Box>
-);
 
 // ---------------------------------------------------------------------------
 // Main Component
@@ -306,7 +255,12 @@ const IndividualSupportManagementPage: React.FC = () => {
           icon={<SupportIcon />}
         />
         <Paper elevation={1}>
-          <UserSelectionGrid users={ibdUsers} onSelect={handleUserSelect} />
+          <UserSelectionGrid
+            users={ibdUsers}
+            onSelect={handleUserSelect}
+            title="対象利用者を選択してください"
+            subtitle="強度行動障害支援の対象となる利用者の個別支援手順を管理します。IBD対象者は優先表示されています。"
+          />
         </Paper>
       </Box>
     );
