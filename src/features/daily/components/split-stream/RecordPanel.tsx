@@ -407,11 +407,21 @@ export function RecordPanel(props: RecordPanelProps): JSX.Element {
                         {selectedSlot.time}
                       </Typography>
                     </Box>
-                    <Box flex={1}>
-                      <Typography variant="caption" color="text.secondary" fontWeight="bold">
-                        支援者のやること (Instruction)
+                    <Box
+                      flex={1.5}
+                      sx={{
+                        borderLeft: '3px solid',
+                        borderLeftColor: 'primary.main',
+                        pl: 1.5,
+                        bgcolor: 'primary.50',
+                        borderRadius: 1,
+                        py: 1,
+                      }}
+                    >
+                      <Typography variant="caption" color="primary.dark" fontWeight="bold">
+                        📋 支援者のやること (Instruction)
                       </Typography>
-                      <Typography variant="body2" sx={{ whiteSpace: 'pre-wrap' }}>
+                      <Typography variant="body1" sx={{ whiteSpace: 'pre-wrap', fontWeight: 500 }}>
                         {selectedSlot.instruction}
                       </Typography>
                     </Box>

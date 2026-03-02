@@ -11,6 +11,7 @@ import IconButton from '@mui/material/IconButton';
 import List from '@mui/material/List';
 import ListItem from '@mui/material/ListItem';
 import Switch from '@mui/material/Switch';
+import Tooltip from '@mui/material/Tooltip';
 import Typography from '@mui/material/Typography';
 import type { ReactNode } from 'react';
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
@@ -42,6 +43,8 @@ type GuidedProcedurePanelProps = {
   totalCount?: number;
   /** BIPポップオーバー表示用の全プランデータ */
   interventionPlans?: BehaviorInterventionPlan[];
+  /** 保存済みスロットの観察テキスト (slotKey → 観察文) */
+  savedObservations?: Map<string, string>;
   children?: undefined;
 };
 
@@ -77,6 +80,7 @@ export function ProcedurePanel(props: ProcedurePanelProps): JSX.Element {
     unfilledCount,
     totalCount,
     interventionPlans,
+    savedObservations,
     children,
   } = isGuided
     ? props
@@ -280,15 +284,23 @@ export function ProcedurePanel(props: ProcedurePanelProps): JSX.Element {
                     重要
                   </Typography>
                 )}
-                {filledStepIds && (
-                  <Chip
-                    label={isFilled ? '済' : '未'}
-                    size="small"
-                    color={isFilled ? 'success' : 'default'}
-                    variant={isFilled ? 'filled' : 'outlined'}
-                    sx={{ height: 22, minWidth: 0, '& .MuiChip-label': { px: 0.8 } }}
-                  />
-                )}
+                {filledStepIds && (() => {
+                  const obsText = isFilled ? savedObservations?.get(stepId) : undefined;
+                  const chip = (
+                    <Chip
+                      label={isFilled ? '済' : '未'}
+                      size="small"
+                      color={isFilled ? 'success' : 'default'}
+                      variant={isFilled ? 'filled' : 'outlined'}
+                      sx={{ height: 22, minWidth: 0, '& .MuiChip-label': { px: 0.8 } }}
+                    />
+                  );
+                  return obsText ? (
+                    <Tooltip title={obsText} arrow placement="top">
+                      {chip}
+                    </Tooltip>
+                  ) : chip;
+                })()}
               </Box>
             </ListItem>
           );
