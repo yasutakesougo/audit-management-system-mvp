@@ -61,6 +61,8 @@ export interface ISPComparisonEditorViewProps {
   error?: Error | null;
   saving?: boolean;
   savePlan?: () => void;
+  // optional user switcher (injected by page wrapper)
+  userSwitcher?: React.ReactNode;
 }
 
 const ISPComparisonEditorView: React.FC<ISPComparisonEditorViewProps> = (props) => {
@@ -70,6 +72,7 @@ const ISPComparisonEditorView: React.FC<ISPComparisonEditorViewProps> = (props) 
     setActiveGoalId, copyFromPrevious, updateGoalText, toggleDomain,
     toggleSidebar, toggleDiff, toggleSmart,
     loading, error, saving, savePlan,
+    userSwitcher,
   } = props;
 
   const theme = useTheme();
@@ -178,7 +181,8 @@ const ISPComparisonEditorView: React.FC<ISPComparisonEditorViewProps> = (props) 
             </h1>
             <p style={S.subtitle}>{currentPlan.userName}さん ｜ 計画期間: {currentPlan.planPeriod}</p>
           </div>
-          <div style={{ display: 'flex', gap: 10 }}>
+          <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
+            {userSwitcher}
             <button onClick={toggleDiff} aria-pressed={showDiff}
               style={{ ...S.headerBtn, background: showDiff ? alpha(theme.palette.primary.main, 0.08) : '#f9fafb', color: showDiff ? theme.palette.primary.dark : '#6b7280', borderColor: showDiff ? alpha(theme.palette.primary.main, 0.3) : '#e5e7eb' }}>
               <SvgIcon d={ICON_PATHS.eye} size={16} /> 差分プレビュー

@@ -8,6 +8,7 @@ import Avatar from '@mui/material/Avatar';
 import Box from '@mui/material/Box';
 import Button from '@mui/material/Button';
 import Chip from '@mui/material/Chip';
+import CircularProgress from '@mui/material/CircularProgress';
 import Divider from '@mui/material/Divider';
 import Grid from '@mui/material/Grid';
 import Paper from '@mui/material/Paper';
@@ -15,7 +16,7 @@ import Stack from '@mui/material/Stack';
 import Tab from '@mui/material/Tab';
 import Tabs from '@mui/material/Tabs';
 import Typography from '@mui/material/Typography';
-import React, { useCallback, useMemo, useRef, useState } from 'react';
+import React, { Suspense, useCallback, useMemo, useRef, useState } from 'react';
 import { Link as RouterLink, useNavigate } from 'react-router-dom';
 import type { IUserMaster } from '../types';
 import { USAGE_STATUS_VALUES } from '../typesExtended';
@@ -29,6 +30,10 @@ import {
     TAB_SECTIONS,
 } from './menuSections';
 import type { MenuSection } from './types';
+
+const ISPSummarySectionLazy = React.lazy(() =>
+  import('./ISPSummarySection').then((m) => ({ default: m.ISPSummarySection })),
+);
 
 type BackLinkProps =
   | { label?: string; to: string }
@@ -89,6 +94,11 @@ const renderSectionDetails = (section: MenuSection, user: IUserMaster, attendanc
         {renderHighlights(section.highlights)}
       </Stack>
     );
+  }
+
+  // support-plan タブは ISPSummarySectionLazy で直接レンダリング（tabpanel 側参照）
+  if (section.key === 'support-plan') {
+    return null;
   }
 
   const supportProcedureWarning = section.key === 'support-procedure' && !user.IsSupportProcedureTarget;
@@ -511,7 +521,20 @@ const UserDetailSections: React.FC<UserDetailSectionsProps> = ({ user, backLink,
                       <Chip size="small" {...chipProps} />
                     </Stack>
                     <Divider />
-                    {renderSectionDetails(section, user, attendanceLabel)}
+                    {section.key === 'support-plan' ? (
+                      <Suspense
+                        fallback={
+                          <Stack direction="row" spacing={1} alignItems="center" sx={{ p: 2 }}>
+                            <CircularProgress size={20} />
+                            <span>個別支援計画書を準備中…</span>
+                          </Stack>
+                        }
+                      >
+                        <ISPSummarySectionLazy userId={user.UserID} />
+                      </Suspense>
+                    ) : (
+                      renderSectionDetails(section, user, attendanceLabel)
+                    )}
                   </Stack>
                 )}
               </Box>

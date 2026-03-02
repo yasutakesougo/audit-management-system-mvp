@@ -44,7 +44,7 @@ const menuSections: MenuSection[] = [
     description: '次期評価に向けた個別支援計画書のドラフトと確定版を参照します。',
     icon: DescriptionRoundedIcon,
     avatarColor: 'secondary.main',
-    status: 'coming-soon',
+    status: 'available',
     highlights: [
       '短期・中期目標の設定と進捗レビュー',
       '支援内容の見直しや家族との合意記録',
@@ -136,10 +136,10 @@ const QUICK_ACCESS_KEYS: MenuSectionKey[] = [
 const DEFAULT_TAB_KEY = TAB_SECTIONS[0]?.key ?? menuSections[0].key;
 
 export {
-  DEFAULT_TAB_KEY,
-  menuSections,
-  NON_TABBED_SECTIONS,
-  QUICK_ACCESS_KEYS,
-  TAB_SECTION_KEYS,
-  TAB_SECTIONS,
+    DEFAULT_TAB_KEY,
+    menuSections,
+    NON_TABBED_SECTIONS,
+    QUICK_ACCESS_KEYS,
+    TAB_SECTION_KEYS,
+    TAB_SECTIONS
 };
