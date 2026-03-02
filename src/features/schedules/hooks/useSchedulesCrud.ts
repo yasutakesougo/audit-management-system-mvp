@@ -29,10 +29,7 @@ import {
     toDateIso,
 } from './useSchedulesPageState';
 
-// Tracks whether the FAB should reclaim focus after the dialog closes across route remounts.
-let pendingFabFocus = false;
 
-export { pendingFabFocus };
 
 export interface CrudDeps {
   // CRUD operations from pageState
@@ -66,6 +63,7 @@ export interface CrudDeps {
   categoryFilter: ScheduleCategory | 'All';
   setActiveDateIso: (iso: string) => void;
   primeRouteReset: () => void;
+  setPendingFabFocus: (v: boolean) => void;
   setDialogParams: (params: import('./useWeekPageRouteState').DialogIntentParams) => void;
   clearDialogParams: () => void;
 }
@@ -99,6 +97,7 @@ export function useSchedulesCrud(deps: CrudDeps): CrudReturn {
     setConflictDetailOpen, conflictBusy, setConflictBusy,
     myUpn, canEditByRole, ready, canEdit, canWrite, schedulesTz,
     categoryFilter,    setActiveDateIso, primeRouteReset,
+    setPendingFabFocus,
     setDialogParams, clearDialogParams,
   } = deps;
 
@@ -321,10 +320,10 @@ export function useSchedulesCrud(deps: CrudDeps): CrudReturn {
   );
 
   const handleCreateDialogClose = useCallback(() => {
-    pendingFabFocus = true;
+    setPendingFabFocus(true);
     primeRouteReset();
     clearDialogParams();
-  }, [clearDialogParams, primeRouteReset]);
+  }, [clearDialogParams, primeRouteReset, setPendingFabFocus]);
 
   const handleConflictDiscard = useCallback(() => {
     clearLastError();
