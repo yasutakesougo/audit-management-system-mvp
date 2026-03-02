@@ -39,6 +39,7 @@ import {
     scheduleFacilityHelpText
 } from '../domain/categoryLabels';
 import {
+    LIVING_SUPPORT_SERVICE_TYPE_OPTIONS,
     SERVICE_TYPE_OPTIONS,
     type ScheduleFormState,
     type ScheduleUserOption,
@@ -85,6 +86,7 @@ export type ScheduleCreateDialogProps = ScheduleCreateDialogBaseProps & (Schedul
 
 const CATEGORY_OPTIONS: { value: string; label: string; helper: string }[] = [
   { value: 'User', label: scheduleCategoryLabels.User, helper: '利用者予定：利用者とサービス種別を指定' },
+  { value: 'LivingSupport', label: scheduleCategoryLabels.LivingSupport, helper: '生活支援：一時ケア・ショートステイ・会議等' },
   { value: 'Staff', label: scheduleCategoryLabels.Staff, helper: '職員予定：担当職員を選択' },
   { value: 'Org', label: scheduleCategoryLabels.Org, helper: `施設予定：${scheduleFacilityHelpText}` },
 ];
@@ -249,7 +251,7 @@ export const ScheduleCreateDialog: React.FC<ScheduleCreateDialogProps> = (props)
             />
           </Stack>
 
-          {vm.form.category === 'User' && (
+          {(vm.form.category === 'User' || vm.form.category === 'LivingSupport') && (
             <FormControl fullWidth required error={Boolean(vm.serviceTypeErrorMessage)}>
               <InputLabel id="schedule-create-service-type-label">サービス種別</InputLabel>
               <Select
@@ -262,7 +264,10 @@ export const ScheduleCreateDialog: React.FC<ScheduleCreateDialogProps> = (props)
                 inputProps={{ 'aria-label': 'サービス種別' }}
                 data-testid={TESTIDS['schedule-create-service-type']}
               >
-                {SERVICE_TYPE_OPTIONS.map((opt) => (
+                {(vm.form.category === 'LivingSupport'
+                  ? LIVING_SUPPORT_SERVICE_TYPE_OPTIONS
+                  : SERVICE_TYPE_OPTIONS
+                ).map((opt) => (
                   <MenuItem key={opt.value} value={opt.value}>
                     {opt.label}
                   </MenuItem>

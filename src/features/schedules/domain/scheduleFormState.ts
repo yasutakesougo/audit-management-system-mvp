@@ -16,6 +16,14 @@ export const SERVICE_TYPE_OPTIONS: { value: ScheduleServiceType; label: string }
   { value: 'other', label: 'その他' },
 ];
 
+/** 生活支援カテゴリ用サービス種別 */
+export const LIVING_SUPPORT_SERVICE_TYPE_OPTIONS: { value: ScheduleServiceType; label: string }[] = [
+  { value: 'respite', label: '一時ケア' },
+  { value: 'shortStay', label: 'ショートステイ' },
+  { value: 'newRegistration', label: '新規登録' },
+  { value: 'meeting', label: '会議' },
+  { value: 'other', label: 'その他' },
+];
 export function buildAutoTitle(params: {
   userName?: string;
   serviceType?: ScheduleServiceType | string | null;
@@ -166,6 +174,11 @@ export function validateScheduleForm(form: ScheduleFormState): ScheduleFormValid
   }
 
   if (form.category === 'User' && !form.serviceType) {
+    errors.push('サービス種別を選択してください');
+  }
+
+  // 生活支援: serviceType 必須
+  if (form.category === 'LivingSupport' && !form.serviceType) {
     errors.push('サービス種別を選択してください');
   }
 
