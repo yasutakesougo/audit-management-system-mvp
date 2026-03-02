@@ -21,7 +21,7 @@ const AuditPanel = React.lazy(() => import('@/features/audit/AuditPanel'));
 const NewSchedulesWeekPage = lazyWithPreload(() => import('@/features/schedules/routes/WeekPage'));
 const DailyRecordPage = React.lazy(() => import('@/pages/DailyRecordPage'));
 const DailyRecordMenuPage = React.lazy(() => import('@/pages/DailyRecordMenuPage'));
-const TableDailyRecordPage = React.lazy(() => import('@/features/daily/TableDailyRecordPage'));
+const TableDailyRecordPage = React.lazy(() => import('@/features/daily/table/TableDailyRecordPage'));
 const TimeFlowSupportRecordPage = React.lazy(() => import('@/pages/TimeFlowSupportRecordPage'));
 const TimeBasedSupportRecordPage = React.lazy(() => import('@/pages/TimeBasedSupportRecordPage'));
 

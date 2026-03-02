@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 import { act, renderHook } from '@testing-library/react';
-import { useDailyRecordViewModel } from '../useDailyRecordViewModel';
+import { useDailyRecordViewModel } from '../lists/useDailyRecordViewModel';
 
 type PersonDaily = {
   id: number;

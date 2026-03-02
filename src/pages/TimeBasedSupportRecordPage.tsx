@@ -9,7 +9,7 @@ import { generateDailyReport } from '@/features/daily/domain/generateDailyReport
 import { getScheduleKey } from '@/features/daily/domain/getScheduleKey';
 import { toBipOptions } from '@/features/daily/domain/toBipOptions';
 import { useDailySupportUserFilter } from '@/features/daily/hooks/useDailySupportUserFilter';
-import { useInMemoryBehaviorRepository, useInMemoryProcedureRepository } from '@/features/daily/repositories/inMemory';
+import { useInMemoryBehaviorRepository, useInMemoryProcedureRepository } from '@/features/daily/infra/inMemoryFactory';
 import { useExecutionStore } from '@/features/daily/stores/executionStore';
 import type { ProcedureItem } from '@/features/daily/stores/procedureStore';
 import {

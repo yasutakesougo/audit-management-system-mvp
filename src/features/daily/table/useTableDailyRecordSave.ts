@@ -1,6 +1,6 @@
 import { useCallback } from 'react';
-import type { TableDailyRecordData } from './hooks/useTableDailyRecordForm';
-import { useDailyRecordRepository } from './repositoryFactory';
+import type { TableDailyRecordData } from '../hooks/useTableDailyRecordForm';
+import { useDailyRecordRepository } from '../repositoryFactory';
 
 export const useTableDailyRecordSave = () => {
   const repository = useDailyRecordRepository();
