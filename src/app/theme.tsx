@@ -88,6 +88,14 @@ const base: ThemeOptions = {
           '&:focus-visible': { outline: '3px solid currentColor', outlineOffset: 2 },
           '&.Mui-disabled': { opacity: 1 },
         },
+        sizeSmall: {
+          minHeight: 44,
+          minWidth: 44,
+          '@media (pointer: coarse)': {
+            minHeight: 48,
+            minWidth: 48,
+          },
+        },
         containedInfo: ({ theme }) => ({
           color: theme.palette.info.contrastText,
           '&.Mui-disabled': {
@@ -139,7 +147,29 @@ const base: ThemeOptions = {
         }),
       },
     },
-    MuiIconButton: { styleOverrides: { root: { minWidth: 48, minHeight: 48 } } },
+    MuiIconButton: {
+      styleOverrides: {
+        root: { minWidth: 48, minHeight: 48 },
+        sizeSmall: {
+          minWidth: 44,
+          minHeight: 44,
+          '@media (pointer: coarse)': {
+            minWidth: 48,
+            minHeight: 48,
+          },
+        },
+      },
+    },
+    MuiChip: {
+      styleOverrides: {
+        sizeSmall: {
+          minHeight: 32,
+          '@media (pointer: coarse)': {
+            minHeight: 36,
+          },
+        },
+      },
+    },
     MuiTextField: { styleOverrides: { root: { '& .MuiInputBase-root': { minHeight: 48 } } } },
     MuiListItemButton: { styleOverrides: { root: { minHeight: 48, py: 1.5 } } },
     MuiMenuItem: { styleOverrides: { root: { minHeight: 48, py: 1.5 } } },
