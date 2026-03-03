@@ -19,7 +19,7 @@ import {
     confirmSPS,
     incrementSupportCount,
     resetIBDStore,
-} from '@/features/ibd/ibdStore';
+} from '@/features/ibd/core/ibdStore';
 import { autoLinkBipToProcedures } from '@/features/import/domain/autoLinkBipToProcedures';
 
 // ---------------------------------------------------------------------------

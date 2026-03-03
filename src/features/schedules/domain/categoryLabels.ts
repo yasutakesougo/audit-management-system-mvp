@@ -4,6 +4,7 @@ export const scheduleCategoryLabels: Record<ScheduleCategory, string> = {
   User: '利用者',
   Staff: '職員',
   Org: '施設',
+  LivingSupport: '生活支援',
 };
 
 export const scheduleFacilityPlaceholder = '例）会議／全体予定／共有タスク';

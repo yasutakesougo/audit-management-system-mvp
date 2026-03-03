@@ -7,10 +7,10 @@ import Paper from '@mui/material/Paper';
 import Snackbar from '@mui/material/Snackbar';
 import React, { useCallback, useEffect, useState } from 'react';
 
-import { IBDPageHeader } from '@/features/ibd/components/IBDPageHeader';
-import { SupportActivityTemplate, defaultSupportActivities } from '../domain/support/types';
-import { SupportActivityTemplateForm } from '../features/support/SupportActivityTemplateForm';
-import { SupportActivityTemplateList } from '../features/support/SupportActivityTemplateList';
+import { IBDPageHeader } from '@/features/ibd/core/components/IBDPageHeader';
+import { SupportActivityTemplate, defaultSupportActivities } from '@/domain/support/types';
+import { SupportActivityTemplateForm } from '../features/ibd/procedures/templates/SupportActivityTemplateForm';
+import { SupportActivityTemplateList } from '../features/ibd/procedures/templates/SupportActivityTemplateList';
 
 // LocalStorage管理: 今はローカルストレージ版の簡易マスタです。
 // 将来的にSharePointの支援活動マスタへ移行予定

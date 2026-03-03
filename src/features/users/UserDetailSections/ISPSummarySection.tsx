@@ -20,7 +20,7 @@ import TextField from '@mui/material/TextField';
 import Typography from '@mui/material/Typography';
 import React, { useCallback, useState } from 'react';
 
-import { useISPComparisonEditor } from '@/features/isp-editor/hooks/useISPComparisonEditor';
+import { useISPComparisonEditor } from '@/features/ibd/plans/isp-editor/hooks/useISPComparisonEditor';
 import type { GoalItem } from '@/features/shared/goal/goalTypes';
 import { DOMAINS } from '@/features/shared/goal/goalTypes';
 

@@ -18,7 +18,7 @@ import Stack from '@mui/material/Stack';
 import Typography from '@mui/material/Typography';
 import React from 'react';
 
-import { buildMonitoringEvidence } from '@/features/support-plan/monitoringEvidenceAdapter';
+import { buildMonitoringEvidence } from '@/features/ibd/plans/support-plan/monitoringEvidenceAdapter';
 import type { MonitoringEvidenceSectionProps, ToastState } from '../../types';
 import { findSection, minusDaysYmd, todayYmd } from '../../utils/helpers';
 import FieldCard from './FieldCard';

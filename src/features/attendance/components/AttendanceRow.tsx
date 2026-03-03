@@ -193,8 +193,8 @@ export function AttendanceRow({
         variant="text"
         color="inherit"
         onClick={onAbsence}
-        disabled={isSaving || !canAbsence}
-        sx={{ minHeight: 44, minWidth: 64, fontWeight: 700 }}
+        disabled={isSaving || !canAbsence || isRunMode}
+        sx={{ minHeight: 44, minWidth: 64, fontWeight: 700, ...secondarySx }}
       >
         欠席
       </Button>

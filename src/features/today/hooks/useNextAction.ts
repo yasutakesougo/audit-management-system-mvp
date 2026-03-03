@@ -47,72 +47,6 @@ export type NextActionWithProgress = {
   };
 };
 
-// ---------------------------------------------------------------------------
-// ViewModel builder (pure function — テスト対象)
-// ---------------------------------------------------------------------------
-
-export type NextActionViewModel =
-  | { kind: 'empty' }
-  | {
-      kind: 'active';
-      time: string;
-      title: string;
-      owner: string | null;
-      minutesUntilLabel: string;
-      elapsedLabel: string | null;
-      status: 'idle' | 'started' | 'done';
-      onStart: () => void;
-      onDone: () => void;
-    };
-
-/**
- * formatMinutes — 分数を「あと X時間Y分」形式の文字列に変換
- */
-function formatMinutesUntil(minutes: number): string {
-  const h = Math.floor(minutes / 60);
-  const m = minutes % 60;
-  if (h > 0 && m > 0) return `あと ${h}時間${m}分`;
-  if (h > 0) return `あと ${h}時間`;
-  return `あと ${m}分`;
-}
-
-/**
- * formatElapsed — 経過分数を「X分経過」形式の文字列に変換
- */
-function formatElapsed(minutes: number): string {
-  const h = Math.floor(minutes / 60);
-  const m = minutes % 60;
-  if (h > 0 && m > 0) return `${h}時間${m}分経過`;
-  if (h > 0) return `${h}時間経過`;
-  return `${minutes}分経過`;
-}
-
-/**
- * buildNextActionViewModel — NextActionWithProgress → ViewModel (pure)
- */
-export function buildNextActionViewModel(
-  input: Omit<NextActionWithProgress, 'viewModel'>,
-): NextActionViewModel {
-  if (!input.item) return { kind: 'empty' };
-
-  const elapsedLabel =
-    input.status === 'started' && input.elapsedMinutes != null
-      ? formatElapsed(input.elapsedMinutes)
-      : null;
-
-  return {
-    kind: 'active',
-    time: input.item.time,
-    title: input.item.title,
-    owner: input.item.owner ?? null,
-    minutesUntilLabel: formatMinutesUntil(input.item.minutesUntil),
-    elapsedLabel,
-    status: input.status,
-    onStart: input.actions.start,
-    onDone: input.actions.done,
-  };
-}
-
 /**
  * Parse "HH:MM" into minutes since midnight
  */
@@ -136,6 +70,58 @@ function calcElapsedMinutes(isoString: string): number {
   const started = new Date(isoString).getTime();
   const now = Date.now();
   return Math.max(0, Math.round((now - started) / 60000));
+}
+
+// ---------------------------------------------------------------------------
+// buildNextActionViewModel — pure view-model builder (tested independently)
+// ---------------------------------------------------------------------------
+
+type NextActionViewModelEmpty = { kind: 'empty' };
+type NextActionViewModelActive = {
+  kind: 'active';
+  time: string;
+  title: string;
+  owner: string | null;
+  minutesUntilLabel: string;
+  status: 'idle' | 'started' | 'done';
+  urgency: Urgency;
+  elapsedLabel: string | null;
+  onStart: () => void;
+  onDone: () => void;
+};
+
+export type NextActionViewModel = NextActionViewModelEmpty | NextActionViewModelActive;
+
+function formatMinutes(m: number): string {
+  const hours = Math.floor(m / 60);
+  const mins = m % 60;
+  if (hours > 0 && mins > 0) return `${hours}時間${mins}分`;
+  if (hours > 0) return `${hours}時間`;
+  return `${mins}分`;
+}
+
+export function buildNextActionViewModel(
+  input: Omit<NextActionWithProgress, 'viewModel'>,
+): NextActionViewModel {
+  if (!input.item) return { kind: 'empty' };
+
+  const elapsedLabel =
+    input.status === 'started' && input.elapsedMinutes != null
+      ? `${formatMinutes(input.elapsedMinutes)}経過`
+      : null;
+
+  return {
+    kind: 'active',
+    time: input.item.time,
+    title: input.item.title,
+    owner: input.item.owner ?? null,
+    minutesUntilLabel: `あと ${formatMinutes(input.item.minutesUntil)}`,
+    status: input.status,
+    urgency: input.urgency,
+    elapsedLabel,
+    onStart: input.actions.start,
+    onDone: input.actions.done,
+  };
 }
 
 export function useNextAction(

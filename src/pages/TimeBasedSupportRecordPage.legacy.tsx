@@ -23,7 +23,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { ProcedurePanel } from '@/features/daily/components/split-stream/ProcedurePanel';
 import { RecordPanel } from '@/features/daily/components/split-stream/RecordPanel';
 import { SplitStreamLayout } from '@/features/daily/components/split-stream/SplitStreamLayout';
-import { ExtendedTimeSlot, extendedTimeSlotValues } from '../domain/support/step-templates';
+import { ExtendedTimeSlot, extendedTimeSlotValues } from '@/domain/support/step-templates';
 
 // ユーティリティ関数：決定論的ID生成
 const generateDeterministicId = (prefix: string, ...identifiers: (string | number)[]): number => {

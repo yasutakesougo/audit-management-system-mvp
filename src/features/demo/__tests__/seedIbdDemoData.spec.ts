@@ -6,7 +6,7 @@ import {
     getLatestSPS,
     getSupervisionCounter,
     resetIBDStore,
-} from '@/features/ibd/ibdStore';
+} from '@/features/ibd/core/ibdStore';
 import { beforeEach, describe, expect, it } from 'vitest';
 import { seedIbdDemoData } from '../loadMagicDemo';
 

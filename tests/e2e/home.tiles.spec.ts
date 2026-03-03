@@ -1,6 +1,6 @@
 import { expect, test } from '@playwright/test';
-import { setupSharePointStubs } from './_helpers/setupSharePointStubs';
 import { TESTIDS } from '../../src/testids';
+import { setupSharePointStubs } from './_helpers/setupSharePointStubs';
 
 test.describe('Dashboard smoke', () => {
   test.beforeEach(async ({ page }) => {
@@ -62,7 +62,7 @@ test.describe('Dashboard smoke', () => {
     await expect(root).toBeVisible({ timeout: 15_000 });
 
     const quickAction = page
-      .getByTestId(TESTIDS['daily-footer-activity'])
+      .getByTestId(TESTIDS.footer.dailyFooterActivity)
       .or(page.getByRole('link', { name: /ケース記録入力|支援記録（ケース記録）入力/ }))
       .or(page.locator('a[href="/daily/table"]'))
       .or(page.locator('a[href="/daily/activity"]'))

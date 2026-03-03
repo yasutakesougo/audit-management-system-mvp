@@ -2,7 +2,7 @@ import { useUsers } from '@/stores/useUsers';
 import { useEffect, useMemo, useState } from 'react';
 import type { Dispatch, SetStateAction } from 'react';
 import type { User } from '@/types';
-import { emitDailySubmissionEvents } from '@/features/iceberg-pdca/dailyMetricsAdapter';
+import { emitDailySubmissionEvents } from '@/features/ibd/analysis/pdca/dailyMetricsAdapter';
 import { useTableDailyRecordRouting } from './useTableDailyRecordRouting';
 import { useTableDailyRecordFiltering } from './useTableDailyRecordFiltering';
 import { useTableDailyRecordPersistence } from './useTableDailyRecordPersistence';

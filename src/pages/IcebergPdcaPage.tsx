@@ -1,5 +1,5 @@
 import { getEnv } from '@/lib/runtimeEnv';
-import { IcebergPdcaPage } from '@/features/iceberg-pdca/IcebergPdcaPage';
+import { IcebergPdcaPage } from '@/features/ibd/analysis/pdca/IcebergPdcaPage';
 
 const Page = (): JSX.Element => {
   const writeEnabled = getEnv('VITE_WRITE_ENABLED') === '1';

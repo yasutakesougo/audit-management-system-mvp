@@ -1,3 +1,4 @@
+// contract:allow-interface — Repository interfaces define behavior contracts, not data shapes (SSOT = schema.ts)
 import type { BehaviorObservation } from './daily/types';
 
 export type BehaviorDateRange = {

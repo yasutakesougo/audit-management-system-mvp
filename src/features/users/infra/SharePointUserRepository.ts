@@ -3,6 +3,8 @@ import '@pnp/sp/items';
 import '@pnp/sp/lists';
 import '@pnp/sp/webs';
 
+import type { AuditEvent } from '@/lib/audit';
+
 import { getAppConfig } from '@/lib/env';
 import {
     FIELD_MAP,
@@ -28,6 +30,8 @@ export type SharePointUserRepositoryOptions = {
   sp?: SPFI;
   spfxContext?: ISPFXContext;
   defaultTop?: number;
+  /** Audit logger — called after successful create/update/remove */
+  audit?: (event: Omit<AuditEvent, 'ts'>) => void;
 };
 
 // ---------------------------------------------------------------------------
@@ -51,10 +55,12 @@ export class SharePointUserRepository implements UserRepository {
   private readonly sp: SPFI;
   private readonly listTitle = LIST_CONFIG[ListKeys.UsersMaster].title;
   private readonly defaultTop: number;
+  private readonly audit?: (event: Omit<AuditEvent, 'ts'>) => void;
 
   constructor(options: SharePointUserRepositoryOptions = {}) {
     this.ensureSharePointConfig();
     this.defaultTop = options.defaultTop ?? DEFAULT_TOP;
+    this.audit = options.audit;
     this.sp = options.sp ?? this.createSpInstance(options.spfxContext);
   }
 
@@ -117,7 +123,13 @@ export class SharePointUserRepository implements UserRepository {
 
     const request = this.toRequest(payload);
     const result = await this.list.items.add(request);
-    return this.toDomain(result.data as UserRow, 'full');
+    const created = this.toDomain(result.data as UserRow, 'full');
+    this.audit?.({
+      actor: 'user', entity: 'Users_Master', action: 'create',
+      entity_id: String(created.Id), channel: 'UI',
+      after: { item: created },
+    });
+    return created;
   }
 
   public async update(id: number | string, payload: UserRepositoryUpdateDto): Promise<IUserMaster> {
@@ -131,6 +143,11 @@ export class SharePointUserRepository implements UserRepository {
     if (!updated) {
       throw new Error(`Unable to load updated record for id ${numericId}`);
     }
+    this.audit?.({
+      actor: 'user', entity: 'Users_Master', action: 'update',
+      entity_id: String(numericId), channel: 'UI',
+      after: { patch: payload },
+    });
     return updated;
   }
 
@@ -140,6 +157,10 @@ export class SharePointUserRepository implements UserRepository {
       throw new Error(`Invalid id passed to SharePointUserRepository.remove: ${String(id)}`);
     }
     await this.list.items.getById(numericId).recycle();
+    this.audit?.({
+      actor: 'user', entity: 'Users_Master', action: 'delete',
+      entity_id: String(numericId), channel: 'UI',
+    });
   }
 
   // ── Select fallback ──────────────────────────────────────────

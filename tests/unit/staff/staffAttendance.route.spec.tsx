@@ -29,9 +29,9 @@ const renderRoute = (flags: FeatureFlagSnapshot) =>
   });
 
 describe('staff attendance route contract', () => {
-  it('shows empty state when flag is disabled', () => {
+  it('shows read-only view when flag is disabled', () => {
     renderRoute(baseFlags);
-    expect(screen.getByTestId('staff-attendance-empty-state')).toBeInTheDocument();
+    expect(screen.getByTestId('staff-attendance-readonly-root')).toBeInTheDocument();
   });
 
   it('shows input when flag is enabled', () => {

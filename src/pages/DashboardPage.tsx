@@ -30,7 +30,7 @@ import Stack from '@mui/material/Stack';
 import Typography from '@mui/material/Typography';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { PersonDaily, SeizureRecord } from '../domain/daily/types';
+import { PersonDaily, SeizureRecord } from '@/domain/daily/types';
 
 import { useAttendanceStore } from '@/features/attendance/store';
 import DashboardBriefingHUD from '@/features/dashboard/DashboardBriefingHUD';

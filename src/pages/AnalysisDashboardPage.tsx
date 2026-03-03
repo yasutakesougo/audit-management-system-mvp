@@ -12,7 +12,7 @@ import { seedDemoBehaviors, useBehaviorStore } from '@/features/daily/stores/beh
 import { useExecutionStore } from '@/features/daily/stores/executionStore';
 import { useProcedureStore } from '@/features/daily/stores/procedureStore';
 import { AttendanceSummaryCard } from '@/features/dashboard/components/AttendanceSummaryCard';
-import { IBDPageHeader } from '@/features/ibd/components/IBDPageHeader';
+import { IBDPageHeader } from '@/features/ibd/core/components/IBDPageHeader';
 import { useUsersDemo } from '@/features/users/usersStoreDemo';
 import { isDemoModeEnabled } from '@/lib/env';
 import AssessmentIcon from '@mui/icons-material/Assessment';

@@ -16,7 +16,7 @@ import { z } from 'zod';
 // ─── Enum Schemas ───────────────────────────────────────────────────────────
 
 export const ScheduleVisibilitySchema = z.enum(['org', 'team', 'private']);
-export const ScheduleCategorySchema = z.enum(['User', 'Staff', 'Org']);
+export const ScheduleCategorySchema = z.enum(['User', 'Staff', 'Org', 'LivingSupport']);
 export const ScheduleSourceSchema = z.enum(['sharepoint', 'graph', 'demo']);
 export const ScheduleStatusSchema = z.enum(['Planned', 'Postponed', 'Cancelled']);
 

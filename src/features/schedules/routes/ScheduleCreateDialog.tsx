@@ -26,7 +26,7 @@ import {
     Typography
 } from '@mui/material';
 import Autocomplete from '@mui/material/Autocomplete';
-import React from 'react';
+import React, { useState } from 'react';
 
 import { TESTIDS } from '@/testids';
 import type {
@@ -39,6 +39,7 @@ import {
     scheduleFacilityHelpText
 } from '../domain/categoryLabels';
 import {
+    LIVING_SUPPORT_SERVICE_TYPE_OPTIONS,
     SERVICE_TYPE_OPTIONS,
     type ScheduleFormState,
     type ScheduleUserOption,
@@ -85,6 +86,7 @@ export type ScheduleCreateDialogProps = ScheduleCreateDialogBaseProps & (Schedul
 
 const CATEGORY_OPTIONS: { value: string; label: string; helper: string }[] = [
   { value: 'User', label: scheduleCategoryLabels.User, helper: '利用者予定：利用者とサービス種別を指定' },
+  { value: 'LivingSupport', label: scheduleCategoryLabels.LivingSupport, helper: '生活支援：一時ケア・ショートステイ・会議等' },
   { value: 'Staff', label: scheduleCategoryLabels.Staff, helper: '職員予定：担当職員を選択' },
   { value: 'Org', label: scheduleCategoryLabels.Org, helper: `施設予定：${scheduleFacilityHelpText}` },
 ];
@@ -103,8 +105,10 @@ export const ScheduleCreateDialog: React.FC<ScheduleCreateDialogProps> = (props)
   } = props;
 
   const vm = useScheduleCreateForm(props);
+  const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
 
   return (
+    <>
     <Dialog
       open={props.open}
       onClose={vm.handleClose}
@@ -249,7 +253,7 @@ export const ScheduleCreateDialog: React.FC<ScheduleCreateDialogProps> = (props)
             />
           </Stack>
 
-          {vm.form.category === 'User' && (
+          {(vm.form.category === 'User' || vm.form.category === 'LivingSupport') && (
             <FormControl fullWidth required error={Boolean(vm.serviceTypeErrorMessage)}>
               <InputLabel id="schedule-create-service-type-label">サービス種別</InputLabel>
               <Select
@@ -262,7 +266,10 @@ export const ScheduleCreateDialog: React.FC<ScheduleCreateDialogProps> = (props)
                 inputProps={{ 'aria-label': 'サービス種別' }}
                 data-testid={TESTIDS['schedule-create-service-type']}
               >
-                {SERVICE_TYPE_OPTIONS.map((opt) => (
+                {(vm.form.category === 'LivingSupport'
+                  ? LIVING_SUPPORT_SERVICE_TYPE_OPTIONS
+                  : SERVICE_TYPE_OPTIONS
+                ).map((opt) => (
                   <MenuItem key={opt.value} value={opt.value}>
                     {opt.label}
                   </MenuItem>
@@ -429,16 +436,7 @@ export const ScheduleCreateDialog: React.FC<ScheduleCreateDialogProps> = (props)
       <DialogActions>
         {mode === 'edit' && eventId && onDelete && (
           <Button
-            onClick={async () => {
-              const confirmed = window.confirm('この予定を削除します。よろしいですか？');
-              if (!confirmed) return;
-              try {
-                await onDelete(eventId);
-                props.onClose();
-              } catch (error) {
-                console.error('Failed to delete schedule:', error);
-              }
-            }}
+            onClick={() => setDeleteConfirmOpen(true)}
             startIcon={<DeleteOutlineIcon />}
             color="error"
             disabled={vm.submitting || vm.externalIsDeleting}
@@ -468,6 +466,47 @@ export const ScheduleCreateDialog: React.FC<ScheduleCreateDialogProps> = (props)
       </DialogActions>
       </Box>
     </Dialog>
+
+    {/* 削除確認ダイアログ */}
+    {mode === 'edit' && eventId && onDelete && (
+      <Dialog
+        open={deleteConfirmOpen}
+        onClose={() => setDeleteConfirmOpen(false)}
+        maxWidth="xs"
+        aria-labelledby="schedule-delete-confirm-title"
+      >
+        <DialogTitle id="schedule-delete-confirm-title">予定の削除</DialogTitle>
+        <DialogContent>
+          <Typography>
+            この予定を削除します。よろしいですか？
+          </Typography>
+          <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
+            この操作は元に戻せません。
+          </Typography>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setDeleteConfirmOpen(false)} autoFocus>
+            キャンセル
+          </Button>
+          <Button
+            onClick={async () => {
+              setDeleteConfirmOpen(false);
+              try {
+                await onDelete(eventId);
+                props.onClose();
+              } catch (error) {
+                console.error('Failed to delete schedule:', error);
+              }
+            }}
+            color="error"
+            variant="contained"
+          >
+            削除する
+          </Button>
+        </DialogActions>
+      </Dialog>
+    )}
+    </>
   );
 };
 

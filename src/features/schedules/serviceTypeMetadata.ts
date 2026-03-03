@@ -4,6 +4,8 @@ export type ServiceTypeKey =
   | 'normal'
   | 'transport'
   | 'respite'
+  | 'shortStay'
+  | 'newRegistration'
   | 'meeting'
   | 'training'
   | 'nursing'
@@ -24,6 +26,8 @@ const RAW_TO_KEY: { [key: string]: ServiceTypeKey } = {
   normal: 'normal',
   transport: 'transport',
   respite: 'respite',
+  shortStay: 'shortStay',
+  newRegistration: 'newRegistration',
   meeting: 'meeting',
   training: 'training',
   nursing: 'nursing',
@@ -38,7 +42,7 @@ const RAW_TO_KEY: { [key: string]: ServiceTypeKey } = {
   '送迎': 'transport',
   '一時ケア・短期': 'respite',
   '一時ケア': 'respite',
-  'ショートステイ': 'respite',
+  'ショートステイ': 'shortStay',
   '看護': 'nursing',
   '欠席・休み': 'absence',
   '欠席': 'absence',
@@ -49,6 +53,7 @@ const RAW_TO_KEY: { [key: string]: ServiceTypeKey } = {
   'イベント': 'meeting',
   '来客': 'meeting',
   '研修': 'training',
+  '新規登録': 'newRegistration',
   'その他': 'other',
 };
 
@@ -56,6 +61,8 @@ export const SERVICE_TYPE_COLOR: { [K in ServiceTypeKey]: ServiceTypeColor } = {
   normal: 'info',
   transport: 'info',
   respite: 'success',
+  shortStay: 'success',
+  newRegistration: 'warning',
   meeting: 'primary',
   training: 'primary',
   nursing: 'secondary',
@@ -70,6 +77,8 @@ const SERVICE_TYPE_LABEL: { [K in ServiceTypeKey]: string } = {
   normal: SERVICE_TYPE_LABELS.normal,
   transport: SERVICE_TYPE_LABELS.transport,
   respite: SERVICE_TYPE_LABELS.respite,
+  shortStay: 'ショートステイ',
+  newRegistration: '新規登録',
   meeting: SERVICE_TYPE_LABELS.meeting,
   training: SERVICE_TYPE_LABELS.training,
   nursing: SERVICE_TYPE_LABELS.nursing,

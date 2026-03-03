@@ -4,7 +4,7 @@ import {
     calculateNextReviewDueDate,
     daysUntilSPSReview,
     getSPSAlertLevel,
-} from '@/features/ibd/ibdTypes';
+} from '@/features/ibd/core/ibdTypes';
 
 import {
     addSPS,
@@ -21,9 +21,9 @@ import {
     resetIBDStore,
     resetSupportCount,
     updateSPS,
-} from '@/features/ibd/ibdStore';
+} from '@/features/ibd/core/ibdStore';
 
-import type { SupervisionLog, SupportPlanSheet } from '@/features/ibd/ibdTypes';
+import type { SupervisionLog, SupportPlanSheet } from '@/features/ibd/core/ibdTypes';
 
 // ---------------------------------------------------------------------------
 // ibdTypes — ユーティリティ関数テスト

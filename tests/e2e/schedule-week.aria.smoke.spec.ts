@@ -1,6 +1,6 @@
 import '@/test/captureSp400';
-import { expect, test, type Locator, type Page } from '@playwright/test';
 import { TESTIDS } from '@/testids';
+import { expect, test, type Locator, type Page } from '@playwright/test';
 import { bootstrapDashboard } from './utils/bootstrapApp';
 import { gotoScheduleWeek } from './utils/scheduleWeek';
 
@@ -30,7 +30,7 @@ const getWeekView = async (page: Page) =>
     page.getByTestId(TESTIDS['schedules-week-grid'] ?? 'schedules-week-grid'),
     page.getByRole('grid', { name: /週ごとの予定一覧|週|week/i }),
     page.getByTestId(TESTIDS.SCHEDULES_WEEK_VIEW ?? 'schedules-week-view'),
-    page.getByTestId(TESTIDS['schedule-week-view'] ?? 'schedule-week-view'),
+    page.getByTestId(TESTIDS.SCHEDULE_WEEK_VIEW ?? 'schedule-week-view'),
   ]);
 
 test.describe('Schedule week page – ARIA smoke', () => {

@@ -1,5 +1,5 @@
-import { icebergToInterventionDrafts } from '@/features/analysis/domain/icebergToIntervention';
-import type { IcebergSession } from '@/features/analysis/domain/icebergTypes';
+import { icebergToInterventionDrafts } from '@/features/ibd/analysis/iceberg/icebergToIntervention';
+import type { IcebergSession } from '@/features/ibd/analysis/iceberg/icebergTypes';
 import { describe, expect, it } from 'vitest';
 
 const createSession = (overrides: Partial<IcebergSession> = {}): IcebergSession => ({

@@ -1,5 +1,5 @@
 /**
- * SharePoint リスト レジストリ — 全24リストの Single Source of Truth
+ * SharePoint リスト レジストリ — 全25リストの Single Source of Truth
  *
  * 各エントリは以下を保持:
  * - key: プログラム内で使用するユニーク識別子

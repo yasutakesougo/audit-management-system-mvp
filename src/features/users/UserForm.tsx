@@ -64,7 +64,7 @@ export function UserForm({
     formRef,
     errRefs,
     setField,
-    toggleDay,
+    setScheduleDay,
     handleSupportTargetToggle,
     handleClose,
     handleSubmit,
@@ -123,7 +123,7 @@ export function UserForm({
           values={values}
           errors={errors}
           setField={setField}
-          toggleDay={toggleDay}
+          setScheduleDay={setScheduleDay}
           systemAssignedCode={systemAssignedCode}
           errRefs={errRefs}
         />
@@ -133,7 +133,7 @@ export function UserForm({
           values={values}
           errors={errors}
           setField={setField}
-          toggleDay={toggleDay}
+          setScheduleDay={setScheduleDay}
         />
 
         {/* 受給者証・負担情報（請求セクションの一部） */}
@@ -141,7 +141,7 @@ export function UserForm({
           values={values}
           errors={errors}
           setField={setField}
-          toggleDay={toggleDay}
+          setScheduleDay={setScheduleDay}
           certNumberRef={errRefs.certNumber}
         />
 
@@ -150,7 +150,7 @@ export function UserForm({
           values={values}
           errors={errors}
           setField={setField}
-          toggleDay={toggleDay}
+          setScheduleDay={setScheduleDay}
           handleSupportTargetToggle={handleSupportTargetToggle}
         />
 

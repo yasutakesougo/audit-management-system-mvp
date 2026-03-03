@@ -4,7 +4,7 @@ import { ImportSurveyDialog } from '@/features/assessment/components/ImportSurve
 import { SensoryProfilePanel } from '@/features/assessment/components/SensoryProfilePanel';
 import type { AssessmentItem, SensoryProfile, UserAssessment } from '@/features/assessment/domain/types';
 import { useAssessmentStore } from '@/features/assessment/stores/assessmentStore';
-import { IBDPageHeader } from '@/features/ibd/components/IBDPageHeader';
+import { IBDPageHeader } from '@/features/ibd/core/components/IBDPageHeader';
 import { useUsersDemo } from '@/features/users/usersStoreDemo';
 import { isDemoModeEnabled } from '@/lib/env';
 import DownloadIcon from '@mui/icons-material/Download';

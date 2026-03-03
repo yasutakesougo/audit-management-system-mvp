@@ -1,7 +1,7 @@
 import { fireEvent, render, screen } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { PersonDaily } from '../../../domain/daily/types';
-import { DailyRecordList } from '../DailyRecordList';
+import { DailyRecordList } from '../lists/DailyRecordList';
 
 // Create a mock record with proper data structure
 const createMockRecord = (overrides = {}): PersonDaily => ({
