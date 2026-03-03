@@ -12,6 +12,8 @@ type AttendanceListProps = {
   onOpenTemp?: (userCode: string, userName: string) => void;
   onOpenNurse?: (userCode: string) => void;
   onUpdateStatus: (userCode: string, status: AttendanceVisit['status']) => Promise<void>;
+  onAbsence?: (userCode: string) => void;
+  onDetail?: (userCode: string) => void;
 };
 
 export function AttendanceList({
@@ -22,6 +24,8 @@ export function AttendanceList({
   onOpenTemp,
   onOpenNurse,
   onUpdateStatus,
+  onAbsence,
+  onDetail,
 }: AttendanceListProps): JSX.Element {
   if (!rows.length) {
     return (
@@ -61,10 +65,10 @@ export function AttendanceList({
                 isSaving={savingUsers.has(row.userCode)}
                 onCheckIn={() => void onUpdateStatus(row.userCode, '通所中')}
                 onCheckOut={() => void onUpdateStatus(row.userCode, '退所済')}
-                onAbsence={() => void onUpdateStatus(row.userCode, '当日欠席')}
+                onAbsence={onAbsence ? () => onAbsence(row.userCode) : () => void onUpdateStatus(row.userCode, '当日欠席')}
                 onOpenTemp={onOpenTemp ? () => onOpenTemp(row.userCode, row.FullName ?? row.userCode) : undefined}
                 onOpenNurse={onOpenNurse ? () => onOpenNurse(row.userCode) : undefined}
-                onDetail={() => {}}
+                onDetail={() => onDetail?.(row.userCode)}
               />
             </CardContent>
           </Card>

@@ -1,5 +1,5 @@
 /**
- * SharePoint リスト レジストリ — 全24リストの Single Source of Truth
+ * SharePoint リスト レジストリ — 全25リストの Single Source of Truth
  *
  * 各エントリは以下を保持:
  * - key: プログラム内で使用するユニーク識別子
@@ -192,6 +192,13 @@ export const SP_LIST_REGISTRY: readonly SpListEntry[] = [
     displayName: '支援計画目標',
     resolve: () => envOr('VITE_SP_LIST_PLAN_GOAL', fromConfig(ListKeys.PlanGoals)),
     operations: ['R', 'W'],
+    category: 'handoff',
+  },
+  {
+    key: 'support_plans',
+    displayName: '個別支援計画',
+    resolve: () => envOr('VITE_SP_LIST_SUPPORT_PLANS', fromConfig(ListKeys.SupportPlans)),
+    operations: ['R', 'W', 'D'],
     category: 'handoff',
   },
   {

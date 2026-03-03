@@ -21,6 +21,9 @@ export type AttendanceUserItem = {
   StandardMinutes: number;
   IsActive: boolean;
 
+  // 通所予定曜日（例: ['月','水','金']）
+  AttendanceDays?: string[];
+
   // Transport method defaults (optional - migration)
   DefaultTransportToMethod?: TransportMethod;
   DefaultTransportFromMethod?: TransportMethod;

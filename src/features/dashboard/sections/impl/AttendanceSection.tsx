@@ -9,6 +9,8 @@
  * Props：Page 側の実装と一致（attendanceSummary / showAttendanceNames / setShowAttendanceNames）
  */
 
+import { buildAttendanceSummaryData, type AttendanceVisitInput } from '@/features/analysis/hooks/useAnalysisDashboardViewModel';
+import { AttendanceSummaryCard } from '@/features/dashboard/components/AttendanceSummaryCard';
 import Box from '@mui/material/Box';
 import Button from '@mui/material/Button';
 import Collapse from '@mui/material/Collapse';
@@ -16,7 +18,7 @@ import Grid from '@mui/material/Grid';
 import Paper from '@mui/material/Paper';
 import Stack from '@mui/material/Stack';
 import Typography from '@mui/material/Typography';
-import React from 'react';
+import React, { useMemo } from 'react';
 import { Link } from 'react-router-dom';
 
 /**
@@ -37,6 +39,8 @@ export type AttendanceSectionProps = {
   attendanceSummary: AttendanceSummaryData;
   showAttendanceNames: boolean;
   onToggleAttendanceNames: (next: boolean) => void;
+  /** 出欠サマリーカード用の生データ */
+  visits?: Record<string, AttendanceVisitInput>;
 };
 
 /**
@@ -45,8 +49,13 @@ export type AttendanceSectionProps = {
  * - state 管理なし（Page の state を props で受け取る）
  */
 export const AttendanceSection: React.FC<AttendanceSectionProps> = (props) => {
-  const { attendanceSummary, showAttendanceNames, onToggleAttendanceNames } =
+  const { attendanceSummary, showAttendanceNames, onToggleAttendanceNames, visits } =
     props;
+
+  const summaryData = useMemo(() => {
+    if (!visits || Object.keys(visits).length === 0) return undefined;
+    return buildAttendanceSummaryData(visits);
+  }, [visits]);
 
   const formatNames = (names?: string[]) => {
     const list = names ?? [];
@@ -195,6 +204,15 @@ export const AttendanceSection: React.FC<AttendanceSectionProps> = (props) => {
           </Stack>
         );
       })()}
+
+      {/* 出欠サマリードーナツ */}
+      {summaryData && (
+        <AttendanceSummaryCard
+          data={summaryData}
+          title="📋 施設全体の出欠割合"
+          withCard={false}
+        />
+      )}
     </Paper>
   );
 };

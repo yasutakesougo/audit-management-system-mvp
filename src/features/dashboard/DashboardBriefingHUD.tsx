@@ -1,26 +1,26 @@
 /**
  * Dashboard Briefing HUD (Head-Up Display)
- * 
+ *
  * 朝会・夕会の時間帯に表示される「情報の入り口」
- * 
+ *
  * 責務：
  * - BriefingAlert の視覚的な表現
  * - セクションへのナビゲーション
  * - 時間帯に応じた視覚的変化
- * 
+ *
  * Features:
  * - アラートの重要度別色分け（error/warning/info）
  * - 件数バッジ
  * - クリック時のセクションジャンプ
  */
 
-import React from 'react';
-import { Box, Stack, Chip, Typography, Alert, useTheme } from '@mui/material';
-import EventIcon from '@mui/icons-material/Event';
-import WarningIcon from '@mui/icons-material/Warning';
-import ErrorIcon from '@mui/icons-material/Error';
-import InfoIcon from '@mui/icons-material/Info';
 import type { BriefingAlert } from '@/features/dashboard/sections/types';
+import ErrorIcon from '@mui/icons-material/Error';
+import EventIcon from '@mui/icons-material/Event';
+import InfoIcon from '@mui/icons-material/Info';
+import WarningIcon from '@mui/icons-material/Warning';
+import { Alert, Box, Chip, Stack, Typography, useTheme } from '@mui/material';
+import React from 'react';
 
 export type DashboardBriefingHUDProps = {
   alerts: BriefingAlert[];
@@ -44,6 +44,10 @@ const getAlertIcon = (type: BriefingAlert['type']) => {
       return <ErrorIcon />;
     case 'health_concern':
       return <InfoIcon />;
+    case 'fever_alert':
+      return <ErrorIcon />;
+    case 'evening_followup':
+      return <WarningIcon />;
     default:
       return <InfoIcon />;
   }
@@ -59,6 +63,8 @@ const getAlertTypeLabel = (type: BriefingAlert['type']): string => {
     urgent_handover: '重要申し送り',
     critical_safety: '安全アラート',
     health_concern: 'ケア要注視',
+    fever_alert: '発熱',
+    evening_followup: '夕方フォロー未完了',
   };
   return labels[type] ?? 'その他';
 };

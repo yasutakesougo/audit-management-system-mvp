@@ -58,6 +58,7 @@ export type AttendanceDetailDrawerProps = {
   onUserConfirm?: () => void;
   onReset?: () => void;
   onViewHandoff?: () => void;
+  onEditAbsenceDetail?: () => void;
 };
 
 export function AttendanceDetailDrawer({
@@ -72,6 +73,7 @@ export function AttendanceDetailDrawer({
   onUserConfirm,
   onReset,
   onViewHandoff,
+  onEditAbsenceDetail,
 }: AttendanceDetailDrawerProps): JSX.Element {
   if (!user || !visit) {
     return <Drawer anchor="right" open={false} onClose={onClose} />;
@@ -104,6 +106,7 @@ export function AttendanceDetailDrawer({
       anchor="right"
       open={open}
       onClose={onClose}
+      sx={{ zIndex: 1400 }}
       PaperProps={{
         sx: { width: { xs: '100%', sm: 400 }, p: 2 },
       }}
@@ -143,6 +146,16 @@ export function AttendanceDetailDrawer({
                 ) : null}
               </Box>
             </Box>
+            {onEditAbsenceDetail ? (
+              <Button
+                variant="outlined"
+                fullWidth
+                onClick={onEditAbsenceDetail}
+                sx={{ justifyContent: 'flex-start', minHeight: 44 }}
+              >
+                欠席詳細を編集
+              </Button>
+            ) : null}
             <Divider />
           </>
         ) : null}

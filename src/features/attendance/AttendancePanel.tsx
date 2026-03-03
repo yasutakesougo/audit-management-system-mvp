@@ -1,20 +1,13 @@
 import ErrorOutlineIcon from '@mui/icons-material/ErrorOutline';
 import SyncIcon from '@mui/icons-material/Sync';
 import CheckCircleOutlineIcon from '@mui/icons-material/TaskAlt';
-import ThermostatIcon from '@mui/icons-material/Thermostat';
 import {
   Alert,
   Box,
   Button,
   Chip,
-  Dialog,
-  DialogActions,
-  DialogContent,
-  DialogTitle,
-  InputAdornment,
   Snackbar,
   Stack,
-  TextField,
   ToggleButton,
   ToggleButtonGroup,
   Typography,
@@ -22,9 +15,14 @@ import {
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 
+import type { AbsentSupportLog } from '@/features/service-provision/domain/absentSupportLog';
+
 import { getNextTargetUserCode, scrollToUserRow } from './attendance.autoNext';
+import { AbsenceDetailDialog } from './components/AbsenceDetailDialog';
+import { AttendanceDetailDrawer } from './components/AttendanceDetailDrawer';
 import { AttendanceFilterBar } from './components/AttendanceFilterBar';
 import { AttendanceList } from './components/AttendanceList';
+import { TemperatureKeypad } from './components/TemperatureKeypad';
 import { useAttendance } from './useAttendance';
 
 // ── Temperature draft (local state, no save) ──
@@ -36,8 +34,6 @@ type TempDialogState = {
 };
 
 const TEMP_DIALOG_CLOSED: TempDialogState = { open: false, userCode: '', userName: '' };
-
-const isValidTemp = (v: number): boolean => v >= 35.0 && v <= 42.0;
 
 const AttendancePanel = (): JSX.Element => {
   const { status, rows, filters, inputMode, savingUsers, savedTempsByUser, notification, dismissNotification, actions } = useAttendance();
@@ -62,53 +58,102 @@ const AttendancePanel = (): JSX.Element => {
   useEffect(() => { tempByUserRef.current = tempByUser; }, [tempByUser]);
 
   const [tempDialog, setTempDialog] = useState<TempDialogState>(TEMP_DIALOG_CLOSED);
-  const [tempInput, setTempInput] = useState('');
-  const [tempError, setTempError] = useState('');
 
   const openTempDialog = useCallback((userCode: string, userName: string) => {
-    const current = tempDraftByUser[userCode];
-    setTempInput(current != null ? String(current) : '');
-    setTempError('');
     setTempDialog({ open: true, userCode, userName });
-  }, [tempDraftByUser]);
+  }, []);
 
   const closeTempDialog = useCallback(() => {
     setTempDialog(TEMP_DIALOG_CLOSED);
   }, []);
 
-  const commitTemp = useCallback(() => {
-    const parsed = parseFloat(tempInput);
-    if (Number.isNaN(parsed)) {
-      setTempError('数値を入力してください');
-      return;
-    }
-    if (!isValidTemp(parsed)) {
-      setTempError('35.0〜42.0 の範囲で入力してください');
-      return;
-    }
-    const rounded = Math.round(parsed * 10) / 10;
+  const handleTempConfirm = useCallback((temperature: number) => {
     const savedUserCode = tempDialog.userCode;
-    setTempDraftByUser((prev) => ({ ...prev, [savedUserCode]: rounded }));
+    setTempDraftByUser((prev) => ({ ...prev, [savedUserCode]: temperature }));
     closeTempDialog();
     // Persist to SharePoint via nurse observation upsert
-    // C1.7: pass navigate callback for high-temp (≥37.5) Snackbar action
-    void actions.saveTemperature(savedUserCode, rounded, () => handleOpenNurse(savedUserCode));
+    void actions.saveTemperature(savedUserCode, temperature, () => handleOpenNurse(savedUserCode));
 
     // C1.6: auto-scroll to next target in checkInRun mode
     if (inputMode === 'checkInRun') {
       setTimeout(() => {
         const next = getNextTargetUserCode(
           rowsRef.current,
-          { ...tempByUserRef.current, [savedUserCode]: rounded },
+          { ...tempByUserRef.current, [savedUserCode]: temperature },
         );
         if (next) scrollToUserRow(next);
       }, 0);
     }
-  }, [tempInput, tempDialog.userCode, closeTempDialog, actions, inputMode]);
+  }, [tempDialog.userCode, closeTempDialog, actions, inputMode]);
 
   const handleOpenNurse = useCallback((userCode: string) => {
     navigate(`/nurse/observation?user=${userCode}`);
   }, [navigate]);
+
+  // ── Detail drawer state ──
+  const [detailUserCode, setDetailUserCode] = useState<string | null>(null);
+  const detailRow = useMemo(
+    () => (detailUserCode ? rows.find((r) => r.userCode === detailUserCode) ?? null : null),
+    [detailUserCode, rows],
+  );
+  const handleOpenDetail = useCallback((userCode: string) => {
+    setDetailUserCode(userCode);
+  }, []);
+  const handleCloseDetail = useCallback(() => {
+    setDetailUserCode(null);
+  }, []);
+
+  // ── Absence detail dialog state ──
+  type AbsenceDialogState = {
+    open: boolean;
+    userCode: string;
+    userName: string;
+    /** Non-null when editing existing absence */
+    editData?: AbsentSupportLog;
+  };
+  const [absenceDialog, setAbsenceDialog] = useState<AbsenceDialogState>({
+    open: false, userCode: '', userName: '',
+  });
+
+  const handleAbsenceClick = useCallback((userCode: string) => {
+    const row = rows.find((r) => r.userCode === userCode);
+    const userName = row?.FullName ?? userCode;
+    setAbsenceDialog({
+      open: true,
+      userCode,
+      userName,
+      editData: row?.absentSupport,
+    });
+  }, [rows]);
+
+  const closeAbsenceDialog = useCallback(() => {
+    setAbsenceDialog((prev) => ({ ...prev, open: false }));
+  }, []);
+
+  const handleAbsenceSubmit = useCallback((log: AbsentSupportLog) => {
+    closeAbsenceDialog();
+    void actions.updateStatusWithAbsentSupport(absenceDialog.userCode, log);
+  }, [absenceDialog.userCode, actions, closeAbsenceDialog]);
+
+  const handleAbsenceSkip = useCallback(() => {
+    closeAbsenceDialog();
+    void actions.updateStatus(absenceDialog.userCode, '当日欠席');
+  }, [absenceDialog.userCode, actions, closeAbsenceDialog]);
+
+  const handleAbsenceCancel = useCallback(() => {
+    closeAbsenceDialog();
+  }, [closeAbsenceDialog]);
+
+  /** Open absence dialog in edit mode from drawer */
+  const handleEditAbsenceFromDrawer = useCallback(() => {
+    if (!detailRow) return;
+    setAbsenceDialog({
+      open: true,
+      userCode: detailRow.userCode,
+      userName: detailRow.FullName ?? detailRow.userCode,
+      editData: detailRow.absentSupport,
+    });
+  }, [detailRow]);
 
   return (
     <Box sx={{ display: 'grid', gap: 2.5 }}>
@@ -163,37 +208,52 @@ const AttendancePanel = (): JSX.Element => {
         onOpenTemp={openTempDialog}
         onOpenNurse={handleOpenNurse}
         onUpdateStatus={actions.updateStatus}
+        onAbsence={handleAbsenceClick}
+        onDetail={handleOpenDetail}
       />
 
-      {/* Temperature input dialog */}
-      <Dialog open={tempDialog.open} onClose={closeTempDialog} maxWidth="xs" fullWidth>
-        <DialogTitle sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-          <ThermostatIcon color="primary" />
-          検温（{tempDialog.userName}）
-        </DialogTitle>
-        <DialogContent>
-          <TextField
-            autoFocus
-            fullWidth
-            type="number"
-            label="体温"
-            value={tempInput}
-            onChange={(e) => { setTempInput(e.target.value); setTempError(''); }}
-            onKeyDown={(e) => { if (e.key === 'Enter') commitTemp(); }}
-            error={Boolean(tempError)}
-            helperText={tempError || '35.0〜42.0'}
-            inputProps={{ min: 35, max: 42, step: 0.1 }}
-            InputProps={{
-              endAdornment: <InputAdornment position="end">℃</InputAdornment>,
-            }}
-            sx={{ mt: 1 }}
-          />
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={closeTempDialog}>キャンセル</Button>
-          <Button variant="contained" onClick={commitTemp}>記録</Button>
-        </DialogActions>
-      </Dialog>
+      {/* Detail drawer */}
+      <AttendanceDetailDrawer
+        open={detailUserCode != null}
+        user={detailRow ? { id: detailRow.userCode, name: detailRow.FullName ?? detailRow.userCode } : null}
+        visit={detailRow ? {
+          status: detailRow.status,
+          transportTo: detailRow.transportTo,
+          transportFrom: detailRow.transportFrom,
+          transportToMethod: detailRow.transportToMethod,
+          transportFromMethod: detailRow.transportFromMethod,
+          transportToNote: detailRow.transportToNote,
+          transportFromNote: detailRow.transportFromNote,
+          isUserConfirmed: Boolean(detailRow.userConfirmedAt),
+          absentMorningContacted: detailRow.absentMorningContacted,
+          eveningChecked: detailRow.eveningChecked,
+          isAbsenceAddonClaimable: detailRow.isAbsenceAddonClaimable,
+        } : null}
+        onClose={handleCloseDetail}
+        onEditAbsenceDetail={
+          detailRow?.status === '当日欠席' ? handleEditAbsenceFromDrawer : undefined
+        }
+        onReset={detailUserCode ? () => { void actions.updateStatus(detailUserCode, '未'); handleCloseDetail(); } : undefined}
+      />
+
+      {/* Temperature keypad (replaces old TextField dialog) */}
+      <TemperatureKeypad
+        open={tempDialog.open}
+        userName={tempDialog.userName}
+        initialValue={tempDraftByUser[tempDialog.userCode]}
+        onConfirm={handleTempConfirm}
+        onCancel={closeTempDialog}
+      />
+
+      {/* Absence detail dialog */}
+      <AbsenceDetailDialog
+        open={absenceDialog.open}
+        userName={absenceDialog.userName}
+        initialData={absenceDialog.editData}
+        onSubmit={handleAbsenceSubmit}
+        onSkip={handleAbsenceSkip}
+        onCancel={handleAbsenceCancel}
+      />
 
       <Snackbar
         open={notification.open}

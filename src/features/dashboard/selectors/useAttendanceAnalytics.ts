@@ -9,7 +9,14 @@ export interface AttendanceVisitSnapshot {
   status: string;
   providedMinutes?: number;
   isEarlyLeave?: boolean;
+  /** 検温値 (℃) — 37.5以上で発熱アラート */
+  temperature?: number;
+  /** 欠席者の夕方フォロー完了フラグ */
+  eveningChecked?: boolean;
 }
+
+/** 発熱閾値: useAttendance.ts と統一 */
+const FEVER_THRESHOLD = 37.5;
 
 export function useAttendanceAnalytics(
   users: IUserMaster[],
@@ -67,6 +74,40 @@ export function useAttendanceAnalytics(
       userName: userCodeMap.get(v.userCode) ?? v.userCode,
     }));
 
+    // ── 🌡️ 発熱者の抽出 ──
+    const feverVisits = visitList.filter(
+      (visit) => visit.temperature != null && visit.temperature >= FEVER_THRESHOLD
+    );
+    const feverCount = feverVisits.length;
+    const feverNames = Array.from(
+      new Set(
+        feverVisits
+          .map((visit) => userCodeMap.get(visit.userCode))
+          .filter((name): name is string => Boolean(name))
+      )
+    );
+    const feverItems = feverVisits.map((v) => ({
+      userId: v.userCode,
+      userName: userCodeMap.get(v.userCode) ?? v.userCode,
+    }));
+
+    // ── ⚠️ 夕方フォロー未完了（欠席者で eveningChecked !== true）──
+    const eveningPendingVisits = absenceVisits.filter(
+      (visit) => visit.eveningChecked !== true
+    );
+    const eveningPendingCount = eveningPendingVisits.length;
+    const eveningPendingNames = Array.from(
+      new Set(
+        eveningPendingVisits
+          .map((visit) => userCodeMap.get(visit.userCode))
+          .filter((name): name is string => Boolean(name))
+      )
+    );
+    const eveningPendingItems = eveningPendingVisits.map((v) => ({
+      userId: v.userCode,
+      userName: userCodeMap.get(v.userCode) ?? v.userCode,
+    }));
+
     return {
       facilityAttendees,
       lateOrEarlyLeave,
@@ -77,6 +118,12 @@ export function useAttendanceAnalytics(
       lateOrShiftAdjust,
       absenceItems,
       lateOrEarlyItems,
+      feverCount,
+      feverNames,
+      feverItems,
+      eveningPendingCount,
+      eveningPendingNames,
+      eveningPendingItems,
     };
   }, [attendanceCounts, staff.length, users, visits]);
 
@@ -106,6 +153,34 @@ export function useAttendanceAnalytics(
         targetAnchorId: 'sec-attendance',
         description: attendanceSummary.lateOrEarlyNames?.slice(0, 3).join('、'),
         items: attendanceSummary.lateOrEarlyItems,
+      });
+    }
+
+    // 🌡️ 発熱アラート（37.5℃以上）
+    if (attendanceSummary.feverCount > 0) {
+      alerts.push({
+        id: 'fever_alert',
+        type: 'fever_alert',
+        severity: 'error',
+        label: '発熱',
+        count: attendanceSummary.feverCount,
+        targetAnchorId: 'sec-attendance',
+        description: attendanceSummary.feverNames?.slice(0, 3).join('、'),
+        items: attendanceSummary.feverItems,
+      });
+    }
+
+    // ⚠️ 夕方フォロー未完了
+    if (attendanceSummary.eveningPendingCount > 0) {
+      alerts.push({
+        id: 'evening_followup',
+        type: 'evening_followup',
+        severity: 'warning',
+        label: '夕方フォロー未完了',
+        count: attendanceSummary.eveningPendingCount,
+        targetAnchorId: 'sec-attendance',
+        description: attendanceSummary.eveningPendingNames?.slice(0, 3).join('、'),
+        items: attendanceSummary.eveningPendingItems,
       });
     }
 
