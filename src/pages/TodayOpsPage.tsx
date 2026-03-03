@@ -20,6 +20,7 @@ import { TodayOpsLayout } from '@/features/today/layouts/TodayOpsLayout';
 import { QuickRecordDrawer } from '@/features/today/records/QuickRecordDrawer';
 import { useQuickRecord } from '@/features/today/records/useQuickRecord';
 import { isE2E } from '@/lib/env';
+import { Alert, Snackbar } from '@mui/material';
 import React, { useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 
@@ -34,6 +35,9 @@ export const TodayOpsPage: React.FC = () => {
 
   // 3. Local State / URL State (Quick Record Drawer)
   const quickRecord = useQuickRecord();
+
+  // End-of-queue completion notification (#631)
+  const [showCompletionToast, setShowCompletionToast] = React.useState(false);
 
   // 4. Map to Layout Props (Defensive mapping)
   const layoutProps = useMemo(() => {
@@ -137,7 +141,9 @@ export const TodayOpsPage: React.FC = () => {
         quickRecord.openUnfilled(nextUserId);
       }, 0);
     } else {
+      // End-of-queue: close drawer + show completion toast
       quickRecord.close();
+      setShowCompletionToast(true);
     }
   }, [summary?.dailyRecordStatus?.pendingUserIds, quickRecord]);
 
@@ -155,6 +161,24 @@ export const TodayOpsPage: React.FC = () => {
         autoNextEnabled={quickRecord.autoNextEnabled}
         setAutoNextEnabled={quickRecord.setAutoNextEnabled}
       />
+
+      {/* End-of-queue completion toast (#631) */}
+      <Snackbar
+        open={showCompletionToast}
+        autoHideDuration={4000}
+        onClose={() => setShowCompletionToast(false)}
+        anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
+        data-testid="today-completion-toast"
+      >
+        <Alert
+          onClose={() => setShowCompletionToast(false)}
+          severity="success"
+          variant="filled"
+          sx={{ width: '100%', fontWeight: 'bold' }}
+        >
+          ✅ 全員の記録が完了しました
+        </Alert>
+      </Snackbar>
     </>
   );
 };
