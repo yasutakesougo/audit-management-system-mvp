@@ -32,7 +32,7 @@ export type NavItem = {
   group?: NavGroupKey;
 };
 
-export type NavGroupKey = 'daily' | 'record' | 'ibd' | 'isp' | 'master' | 'admin' | 'settings';
+export type NavGroupKey = 'daily' | 'record' | 'ibd' | 'isp' | 'master' | 'ops' | 'admin' | 'settings';
 
 // ============================================================================
 // Constants
@@ -55,6 +55,7 @@ export const NAV_GROUP_I18N_KEYS = {
   ibd: 'NAV_GROUP.IBD',
   isp: 'NAV_GROUP.ISP',
   master: 'NAV_GROUP.MASTER',
+  ops: 'NAV_GROUP.OPS',
   admin: 'NAV_GROUP.ADMIN',
   settings: 'NAV_GROUP.SETTINGS',
 } as const;
@@ -74,6 +75,7 @@ export const groupLabel: Record<NavGroupKey, string> = {
   ibd: '🧩 強度行動障害支援',
   isp: '📋 個別支援計画',
   master: '👥 利用者・職員',
+  ops: '🏢 運営管理',
   admin: '🛡️ システム管理',
   settings: '⚙️ 表示設定',
 };
@@ -81,7 +83,7 @@ export const groupLabel: Record<NavGroupKey, string> = {
 /**
  * Navigation groups display order
  */
-export const NAV_GROUP_ORDER: NavGroupKey[] = ['daily', 'record', 'isp', 'ibd', 'master', 'admin', 'settings'];
+export const NAV_GROUP_ORDER: NavGroupKey[] = ['daily', 'record', 'isp', 'ibd', 'master', 'ops', 'admin', 'settings'];
 
 // ============================================================================
 // Functions
@@ -130,13 +132,10 @@ export function pickGroup(item: NavItem, isAdmin: boolean): NavGroupKey {
   // 記録・運用: records, schedules
   if (
     testId === TESTIDS.nav.schedules ||
-    testId === TESTIDS.nav.billing ||
     to.startsWith('/records') ||
     to.startsWith('/schedule') ||
-    to.startsWith('/billing') ||
     label.includes('黒ノート') ||
-    label.includes('月次') ||
-    label.includes('請求処理')
+    label.includes('月次')
   ) {
     return 'record';
   }
@@ -189,6 +188,26 @@ export function pickGroup(item: NavItem, isAdmin: boolean): NavGroupKey {
   // 設定: label based
   if (label.includes('設定')) {
     return 'settings';
+  }
+
+  // 運営管理: billing, attendance, room, compliance
+  if (
+    testId === TESTIDS.nav.billing ||
+    testId === TESTIDS.nav.staffAttendance ||
+    testId === TESTIDS.nav.integratedResourceCalendar ||
+    testId === TESTIDS.nav.roomManagement ||
+    to.startsWith('/billing') ||
+    to.startsWith('/staff/attendance') ||
+    to.startsWith('/admin/staff-attendance') ||
+    to.startsWith('/admin/integrated-resource-calendar') ||
+    to.startsWith('/room-management') ||
+    to.startsWith('/compliance') ||
+    label.includes('請求') ||
+    label.includes('勤怠') ||
+    label.includes('お部屋') ||
+    label.includes('コンプラ')
+  ) {
+    return 'ops';
   }
 
   // 管理: checklist, audit, admin/* (管理者のみ)
@@ -452,7 +471,7 @@ export function createNavItems(config: CreateNavItemsConfig): NavItem[] {
       icon: undefined,
       testId: TESTIDS.nav.billing,
       audience: [NAV_AUDIENCE.reception, NAV_AUDIENCE.admin],
-      group: 'admin' as NavGroupKey,
+      group: 'ops' as NavGroupKey,
     },
   ];
 
@@ -467,7 +486,7 @@ export function createNavItems(config: CreateNavItemsConfig): NavItem[] {
       prefetchKey: PREFETCH_KEYS.staff,
       testId: TESTIDS.nav.staffAttendance,
       audience: NAV_AUDIENCE.staff,
-      group: 'master' as NavGroupKey,
+      group: 'ops' as NavGroupKey,
     });
   }
 
@@ -495,7 +514,7 @@ export function createNavItems(config: CreateNavItemsConfig): NavItem[] {
         isActive: (pathname: string) => pathname.startsWith('/admin/staff-attendance'),
         icon: undefined,
         audience: NAV_AUDIENCE.admin,
-        group: 'admin' as NavGroupKey,
+        group: 'ops' as NavGroupKey,
       },
       {
         label: '自己点検',
@@ -526,7 +545,7 @@ export function createNavItems(config: CreateNavItemsConfig): NavItem[] {
         icon: undefined,
         testId: TESTIDS.nav.integratedResourceCalendar,
         audience: NAV_AUDIENCE.admin,
-        group: 'admin' as NavGroupKey,
+        group: 'ops' as NavGroupKey,
       });
     }
 
@@ -547,7 +566,7 @@ export function createNavItems(config: CreateNavItemsConfig): NavItem[] {
       icon: undefined,
       testId: TESTIDS.nav.roomManagement,
       audience: NAV_AUDIENCE.admin,
-      group: 'admin' as NavGroupKey,
+      group: 'ops' as NavGroupKey,
     });
 
     items.push({
@@ -608,7 +627,7 @@ export function createNavItems(config: CreateNavItemsConfig): NavItem[] {
       isActive: (pathname: string) => pathname.startsWith('/compliance'),
       icon: undefined,
       audience: 'staff',
-      group: 'admin' as NavGroupKey,
+      group: 'ops' as NavGroupKey,
     });
   }
 

@@ -57,6 +57,7 @@ export const APP_ROUTE_PATHS = [
   'admin/integrated-resource-calendar',
   'admin/navigation-diagnostics',
   'admin/csv-import',
+  'admin/mode-switch',
   'schedule',
   'schedule/*',
   'schedules',
