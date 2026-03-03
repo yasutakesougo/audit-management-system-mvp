@@ -47,6 +47,23 @@ export type RecentEvent = {
   dateLabel: string;
 };
 
+/** 出欠サマリーの入力（ViewModel 用の軽量型） */
+export type AttendanceVisitInput = {
+  status: string;
+  temperature?: number;
+  eveningChecked?: boolean;
+};
+
+/** 出欠サマリー集計結果 */
+export type AttendanceSummaryData = {
+  attending: number;      // 通所中 + 退所済
+  absent: number;         // 当日欠席 + 事前欠席
+  undecided: number;      // その他
+  feverCount: number;     // 37.5℃以上
+  eveningPending: number; // 欠席者で夕方フォロー未完了
+  donut: DonutSegment[];  // 出欠割合ドーナツ用
+};
+
 /** ViewModel 全体 */
 export type AnalysisDashboardViewModel = {
   kpis: KpiCard[];
@@ -54,12 +71,63 @@ export type AnalysisDashboardViewModel = {
   donut: DonutSegment[];
   trend: DailyBehaviorStat[];
   recentEvents: RecentEvent[];
+  attendanceSummary?: AttendanceSummaryData;
   hasData: boolean;
 };
 
 // ---------------------------------------------------------------------------
-// Pure helper (testable)
+// Pure helpers (testable)
 // ---------------------------------------------------------------------------
+
+/** 発熱閾値 — useAttendanceAnalytics.ts と統一 */
+const FEVER_THRESHOLD = 37.5;
+
+/** 出欠サマリーを O(N) 1ループで集計 */
+export function buildAttendanceSummaryData(
+  visits: Record<string, AttendanceVisitInput>,
+): AttendanceSummaryData {
+  let attending = 0;
+  let absent = 0;
+  let undecided = 0;
+  let feverCount = 0;
+  let eveningPending = 0;
+
+  for (const visit of Object.values(visits)) {
+    // 1. 出欠ステータス
+    if (visit.status === '通所中' || visit.status === '退所済') {
+      attending++;
+    } else if (visit.status === '当日欠席' || visit.status === '事前欠席') {
+      absent++;
+      // 夕方フォロー未完了（欠席者のみ対象）
+      if (visit.eveningChecked !== true) {
+        eveningPending++;
+      }
+    } else {
+      undecided++;
+    }
+
+    // 2. 発熱判定
+    if (visit.temperature != null && visit.temperature >= FEVER_THRESHOLD) {
+      feverCount++;
+    }
+  }
+
+  const total = attending + absent + undecided;
+  const pct = (n: number) => (total > 0 ? Number(((n / total) * 100).toFixed(1)) : 0);
+
+  return {
+    attending,
+    absent,
+    undecided,
+    feverCount,
+    eveningPending,
+    donut: [
+      { label: '通所', value: attending, color: '#5B8C5A', percentage: pct(attending) },
+      { label: '欠席', value: absent, color: '#d32f2f', percentage: pct(absent) },
+      { label: '未定', value: undecided, color: '#9E9E9E', percentage: pct(undecided) },
+    ],
+  };
+}
 
 /** 24時間ヒートマップを生成 */
 export function buildHourlyHeatmap(records: BehaviorObservation[]): HeatmapCell[] {
@@ -135,6 +203,9 @@ export function useAnalysisDashboardViewModel(
   dailyStats: DailyBehaviorStat[],
   executionStats: { completed: number; triggered: number; skipped: number; total: number },
   activeBipCount: number,
+  attendanceVisits?: Record<string, AttendanceVisitInput>,
+  /** IBD 対象者の UserCode セット。指定時は出欠サマリーを IBD ユーザーのみに絞る */
+  ibdUserCodes?: Set<string>,
 ): AnalysisDashboardViewModel {
   return useMemo(() => {
     const totalIncidents = analysisData.length;
@@ -199,13 +270,28 @@ export function useAnalysisDashboardViewModel(
     );
     const recentEvents = buildRecentEvents(analysisData);
 
+    // IBD 対象者のみにフィルタリング（ibdUserCodes が指定されている場合）
+    const filteredVisits = attendanceVisits
+      ? ibdUserCodes
+        ? Object.entries(attendanceVisits).reduce((acc, [userCode, visit]) => {
+            if (ibdUserCodes.has(userCode)) acc[userCode] = visit;
+            return acc;
+          }, {} as Record<string, AttendanceVisitInput>)
+        : attendanceVisits
+      : undefined;
+
+    const attendanceSummary = filteredVisits
+      ? buildAttendanceSummaryData(filteredVisits)
+      : undefined;
+
     return {
       kpis,
       heatmap,
       donut,
       trend: dailyStats,
       recentEvents,
+      attendanceSummary,
       hasData: totalIncidents > 0 || executionStats.total > 0,
     };
-  }, [analysisData, dailyStats, executionStats, activeBipCount]);
+  }, [analysisData, dailyStats, executionStats, activeBipCount, attendanceVisits, ibdUserCodes]);
 }

@@ -1,3 +1,4 @@
+// contract:allow-interface — helper return types for logic functions, not domain entities
 import type { PersonDaily } from '@/domain/daily/types';
 
 export type DailyRecordWithoutId = Omit<PersonDaily, 'id'>;

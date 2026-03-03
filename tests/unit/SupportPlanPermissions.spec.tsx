@@ -64,8 +64,8 @@ describe('SupportPlanGuidePage Permissions', () => {
     // Check for the informational alert
     expect(screen.getByText(/このページは閲覧のみです/)).toBeInTheDocument();
 
-    // Check that text fields are disabled (we check the one for lastMonitoringDate as a sample)
-    const inputs = screen.getAllByRole('textbox');
+    // Wait for lazy-loaded tab to render, then check inputs are disabled
+    const inputs = await screen.findAllByRole('textbox');
     inputs.forEach(input => {
       expect(input).toBeDisabled();
     });
@@ -79,8 +79,8 @@ describe('SupportPlanGuidePage Permissions', () => {
     // Check alert is NOT there
     expect(screen.queryByText(/このページは閲覧のみです/)).not.toBeInTheDocument();
 
-    // Check that inputs are NOT disabled
-    const inputs = screen.getAllByRole('textbox');
+    // Wait for lazy-loaded tab to render, then check inputs are enabled
+    const inputs = await screen.findAllByRole('textbox');
     inputs.forEach(input => {
       expect(input).not.toBeDisabled();
     });

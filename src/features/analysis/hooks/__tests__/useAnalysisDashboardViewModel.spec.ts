@@ -1,6 +1,7 @@
 import type { BehaviorObservation } from '@/features/daily';
 import { describe, expect, it } from 'vitest';
 import {
+    buildAttendanceSummaryData,
     buildDonutData,
     buildHourlyHeatmap,
     buildRecentEvents,
@@ -113,5 +114,119 @@ describe('buildRecentEvents', () => {
     const records = Array.from({ length: 5 }, (_, i) => makeRecord(10, 3, i));
     const result = buildRecentEvents(records, 3);
     expect(result).toHaveLength(3);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// buildAttendanceSummaryData
+// ---------------------------------------------------------------------------
+
+describe('buildAttendanceSummaryData', () => {
+  it('空の visits では全てゼロを返す', () => {
+    const result = buildAttendanceSummaryData({});
+    expect(result.attending).toBe(0);
+    expect(result.absent).toBe(0);
+    expect(result.undecided).toBe(0);
+    expect(result.feverCount).toBe(0);
+    expect(result.eveningPending).toBe(0);
+    expect(result.donut).toHaveLength(3);
+    expect(result.donut.every((s) => s.percentage === 0)).toBe(true);
+  });
+
+  it('通所中・退所済を attending に分類する', () => {
+    const result = buildAttendanceSummaryData({
+      U1: { status: '通所中' },
+      U2: { status: '退所済' },
+      U3: { status: '通所中' },
+    });
+    expect(result.attending).toBe(3);
+    expect(result.absent).toBe(0);
+    expect(result.undecided).toBe(0);
+  });
+
+  it('当日欠席・事前欠席を absent に分類する', () => {
+    const result = buildAttendanceSummaryData({
+      U1: { status: '当日欠席' },
+      U2: { status: '事前欠席' },
+    });
+    expect(result.absent).toBe(2);
+    expect(result.attending).toBe(0);
+  });
+
+  it('その他のステータスを undecided に分類する', () => {
+    const result = buildAttendanceSummaryData({
+      U1: { status: '未連絡' },
+      U2: { status: '遅刻連絡済' },
+    });
+    expect(result.undecided).toBe(2);
+    expect(result.attending).toBe(0);
+    expect(result.absent).toBe(0);
+  });
+
+  it('37.5℃以上を発熱としてカウントする', () => {
+    const result = buildAttendanceSummaryData({
+      U1: { status: '通所中', temperature: 38.2 },
+      U2: { status: '通所中', temperature: 37.5 },  // 境界値
+      U3: { status: '通所中', temperature: 37.4 },  // セーフ
+    });
+    expect(result.feverCount).toBe(2);
+  });
+
+  it('temperature が undefined の場合は発熱対象外', () => {
+    const result = buildAttendanceSummaryData({
+      U1: { status: '通所中' },
+    });
+    expect(result.feverCount).toBe(0);
+  });
+
+  it('欠席者で eveningChecked !== true の場合に eveningPending をカウントする', () => {
+    const result = buildAttendanceSummaryData({
+      U1: { status: '当日欠席', eveningChecked: false },
+      U2: { status: '事前欠席' },  // eveningChecked undefined → 未完了
+      U3: { status: '当日欠席', eveningChecked: true },  // 完了済み
+    });
+    expect(result.eveningPending).toBe(2);
+  });
+
+  it('通所中の利用者は eveningChecked !== true でも eveningPending 対象外', () => {
+    const result = buildAttendanceSummaryData({
+      U1: { status: '通所中', eveningChecked: false },
+    });
+    expect(result.eveningPending).toBe(0);
+  });
+
+  it('ドーナツの割合が正しく計算される', () => {
+    const result = buildAttendanceSummaryData({
+      U1: { status: '通所中' },
+      U2: { status: '通所中' },
+      U3: { status: '通所中' },
+      U4: { status: '通所中' },
+      U5: { status: '通所中' },
+      U6: { status: '通所中' },
+      U7: { status: '通所中' },
+      U8: { status: '当日欠席' },
+      U9: { status: '当日欠席' },
+      U10: { status: '未連絡' },
+    });
+    expect(result.donut[0].label).toBe('通所');
+    expect(result.donut[0].percentage).toBe(70);
+    expect(result.donut[1].label).toBe('欠席');
+    expect(result.donut[1].percentage).toBe(20);
+    expect(result.donut[2].label).toBe('未定');
+    expect(result.donut[2].percentage).toBe(10);
+  });
+
+  it('複合ケース：発熱+欠席+夕方フォロー未完了', () => {
+    const result = buildAttendanceSummaryData({
+      U1: { status: '通所中', temperature: 38.5 },           // 通所+発熱
+      U2: { status: '当日欠席', eveningChecked: false },       // 欠席+夕方未完了
+      U3: { status: '退所済', temperature: 36.5 },             // 通所（正常）
+      U4: { status: '事前欠席', eveningChecked: true },        // 欠席+夕方完了
+    });
+    expect(result.attending).toBe(2);
+    expect(result.absent).toBe(2);
+    expect(result.undecided).toBe(0);
+    expect(result.feverCount).toBe(1);
+    expect(result.eveningPending).toBe(1);
   });
 });

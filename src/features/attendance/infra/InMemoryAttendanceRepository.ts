@@ -52,4 +52,22 @@ class InMemoryAttendanceRepository implements AttendanceRepository {
   }
 }
 
-export const inMemoryAttendanceRepository: AttendanceRepository = new InMemoryAttendanceRepository();
+/**
+ * Default seed data for local dev / demo mode.
+ * Derived from DEMO_USERS so user list stays consistent across the app.
+ */
+import { DEMO_USERS } from '@/features/users/constants';
+
+const seedUsers: AttendanceUserItem[] = DEMO_USERS.map((u) => ({
+  Id: u.Id,
+  Title: u.FullName,
+  UserCode: u.UserID,
+  IsTransportTarget: false,
+  StandardMinutes: 360,
+  IsActive: true,
+  AttendanceDays: u.AttendanceDays ?? undefined,
+}));
+
+export const inMemoryAttendanceRepository: AttendanceRepository = new InMemoryAttendanceRepository({
+  users: seedUsers,
+});

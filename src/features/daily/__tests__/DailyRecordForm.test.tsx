@@ -21,7 +21,7 @@ const dailyUserOptions: DailyUserOption[] = [
   },
 ];
 
-vi.mock('../useDailyUserOptions', () => ({
+vi.mock('../forms/useDailyUserOptions', () => ({
   useDailyUserOptions: () => ({
     options: dailyUserOptions,
     findByPersonId: (personId?: string | null) =>

@@ -31,7 +31,7 @@ export const DemoLoaderCard: React.FC = () => {
       // 2. Inject linked procedures into in-memory store
       procedureStore.save(DEMO_USER_ID, summary.procedures);
 
-      const msg = `✅ デモデータ装填完了！ 日課${summary.procedureCount}件, BIP${summary.bips}件, 実施記録${summary.executions}件, 行動記録${summary.behaviors}件`;
+      const msg = `✅ デモデータ装填完了！ 日課${summary.procedureCount}件, BIP${summary.bips}件, 実施記録${summary.executions}件, 行動記録${summary.behaviors}件, IBD(SPS${summary.ibd.sps}/観察${summary.ibd.supervisionLogs}/ABC${summary.ibd.abcRecords})`;
       setResult(msg);
       setOpen(true);
     } catch (err) {
