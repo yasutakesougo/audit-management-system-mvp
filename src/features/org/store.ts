@@ -1,7 +1,8 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef } from 'react';
+import { create } from 'zustand';
 
-import { useSP } from '@/lib/spClient';
 import { logSkipSharePointGuard, shouldSkipSharePoint } from '@/lib/sharepoint/skipSharePoint';
+import { useSP } from '@/lib/spClient';
 
 import {
     ORG_MASTER_FIELDS,
@@ -12,16 +13,8 @@ import {
 } from './data/orgRowSchema';
 
 // ============================================================================
-// In-flight dedupe: Prevent multiple simultaneous Org_Master fetches
-// (solves React 18 StrictMode double-invocation in dev)
+// Types
 // ============================================================================
-let orgLoadPromise: Promise<void> | null = null;
-
-// ============================================================================
-// Module-scope cache: Session-wide cache to prevent refetch on remount
-// (survives React state reset, route transitions, and HMR)
-// ============================================================================
-let orgCachedOptions: OrgOption[] | null = null;
 
 export type OrgOption = {
   id: string;
@@ -65,37 +58,56 @@ const sortRecords = (records: OrgMasterRecord[]): OrgMasterRecord[] =>
     return a.label.localeCompare(b.label, 'ja');
   });
 
+// ============================================================================
+// Zustand Store for module-level cache/dedupe state
+// ============================================================================
+
+interface OrgCacheState {
+  orgLoadPromise: Promise<void> | null;
+  orgCachedOptions: OrgOption[] | null;
+}
+
+const useOrgCacheStore = create<OrgCacheState>()(() => ({
+  orgLoadPromise: null,
+  orgCachedOptions: null,
+}));
+
+// ============================================================================
+// React Hook
+// ============================================================================
+
 export function useOrgStore(): OrgStoreState {
   const sp = useSP();
   const spRef = useRef(sp);
-  
+
   // Keep ref updated to latest sp client (for refresh after auth state change)
   useEffect(() => {
     spRef.current = sp;
   }, [sp]);
 
-  const [items, setItems] = useState<OrgOption[]>([]);
-  const [loading, setLoading] = useState<boolean>(true);
-  const [error, setError] = useState<string | null>(null);
-  const [loadedOnce, setLoadedOnce] = useState<boolean>(false);
+  // Use Zustand for items/loading/error/loadedOnce state
+  const [items, setItems] = useOrgLocalState();
+  const [loading, setLoading] = useOrgLocalLoadingState();
+  const [error, setError] = useOrgLocalErrorState();
+  const [loadedOnce, setLoadedOnce] = useOrgLocalLoadedState();
 
   const loadOrgOptions = useCallback(async (signal?: AbortSignal) => {
+    const cacheState = useOrgCacheStore.getState();
+
     // Guard -1: Skip SharePoint (demo / baseUrl empty / skip-login / automation)
-    // ✅ Master guard: prevents ALL SharePoint operations in non-SP scenarios
-    // ✅ Promise is never created if SharePoint should be skipped
     if (shouldSkipSharePoint()) {
       logSkipSharePointGuard('useOrgStore');
-      orgCachedOptions = null; // Clear cache
+      useOrgCacheStore.setState({ orgCachedOptions: null }); // Clear cache
       setItems(FALLBACK_ORG_OPTIONS);
       setLoadedOnce(true);
-      setLoading(false); // ← CRITICAL: complete state transition
-      return; // ← EXIT POINT: SHAREPOINT SKIPPED - PROMISE NEVER CREATED
+      setLoading(false);
+      return;
     }
 
     // Guard 0: Module cache hit (only for SP mode)
-    if (orgCachedOptions) {
+    if (cacheState.orgCachedOptions) {
       console.debug('[useOrgStore] Guard 0: cache hit, restoring from module cache');
-      setItems(orgCachedOptions);
+      setItems(cacheState.orgCachedOptions);
       setLoadedOnce(true);
       setLoading(false);
       return;
@@ -108,10 +120,9 @@ export function useOrgStore(): OrgStoreState {
     }
 
     // Guard 2: In-flight dedupe (StrictMode protection)
-    // If already fetching, return the same promise instead of fetching again
-    if (orgLoadPromise) {
+    if (cacheState.orgLoadPromise) {
       console.debug('[useOrgStore] Guard 2: in-flight promise found, reusing');
-      return orgLoadPromise;
+      return cacheState.orgLoadPromise;
     }
 
     if (signal?.aborted) {
@@ -119,9 +130,7 @@ export function useOrgStore(): OrgStoreState {
     }
 
     console.debug('[useOrgStore] Guard 3: creating new load promise (SharePoint fetch)');
-    // Guard 3: Promise先取り確保（await前に確保して、同時呼び出しを同じPromiseに吸収）
-    // ✅ sharePointDisabled NEVER true here — Guard -1 already handled all demo mode cases
-    orgLoadPromise = (async () => {
+    const promise = (async () => {
       setLoading(true);
       setError(null);
       try {
@@ -165,10 +174,10 @@ export function useOrgStore(): OrgStoreState {
 
         const sortedRecords = sortRecords(activeRecords);
         const nextItems = sortedRecords.length ? buildOrgOptions(sortedRecords) : FALLBACK_ORG_OPTIONS;
-        
+
         // Cache successful result at module scope
-        orgCachedOptions = nextItems;
-        
+        useOrgCacheStore.setState({ orgCachedOptions: nextItems });
+
         setItems(nextItems);
         setLoadedOnce(true);
       } catch (err) {
@@ -185,12 +194,12 @@ export function useOrgStore(): OrgStoreState {
           setLoading(false);
         }
         // Clear in-flight cache on completion (both success and failure)
-        // This allows retry on next call if needed
-        orgLoadPromise = null;
+        useOrgCacheStore.setState({ orgLoadPromise: null });
       }
     })();
 
-    return orgLoadPromise;
+    useOrgCacheStore.setState({ orgLoadPromise: promise });
+    return promise;
   }, []); // No dependencies: IS_DEMO is module-level constant, sp via spRef
 
   const refresh = useCallback(async () => {
@@ -199,7 +208,6 @@ export function useOrgStore(): OrgStoreState {
 
   useEffect(() => {
     // Guard: only load if not already loaded
-    // This prevents infinite effect cycles even if loadOrgOptions reference changes
     if (loadedOnce) {
       return;
     }
@@ -210,4 +218,28 @@ export function useOrgStore(): OrgStoreState {
   }, [loadedOnce, loadOrgOptions]);
 
   return { items, loading, error, loadedOnce, refresh };
+}
+
+// ============================================================================
+// Internal state hooks — thin wrappers using React useState
+// (org/store uses React local state for items/loading/error/loadedOnce;
+//  only the cross-render dedupe vars are moved to Zustand)
+// ============================================================================
+
+import { useState } from 'react';
+
+function useOrgLocalState(): [OrgOption[], (v: OrgOption[]) => void] {
+  return useState<OrgOption[]>([]);
+}
+
+function useOrgLocalLoadingState(): [boolean, (v: boolean) => void] {
+  return useState<boolean>(true);
+}
+
+function useOrgLocalErrorState(): [string | null, (v: string | null) => void] {
+  return useState<string | null>(null);
+}
+
+function useOrgLocalLoadedState(): [boolean, (v: boolean) => void] {
+  return useState<boolean>(false);
 }

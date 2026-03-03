@@ -1,6 +1,6 @@
 import { useEffect, useMemo } from 'react';
 
-import { useOrgStore, type OrgOption } from '@/features/org/store';
+import { useOrgStore, type OrgOption } from '@/features/org';
 
 export const useOrgOptions = (): OrgOption[] => {
   const { items, loading, loadedOnce, refresh } = useOrgStore();
@@ -16,4 +16,4 @@ export const useOrgOptions = (): OrgOption[] => {
   return useMemo(() => items, [items]);
 };
 
-export type { OrgOption } from '@/features/org/store';
+export type { OrgOption } from '@/features/org';

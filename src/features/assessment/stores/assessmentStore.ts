@@ -1,6 +1,7 @@
 import { ASSESSMENT_DRAFT_KEY, assessmentStoreSchema } from '@/features/assessment/domain/assessmentSchema';
 import { createDefaultAssessment, type UserAssessment } from '@/features/assessment/domain/types';
-import { useCallback, useSyncExternalStore } from 'react';
+import { useCallback } from 'react';
+import { create } from 'zustand';
 
 // ---------------------------------------------------------------------------
 // localStorage persistence
@@ -27,6 +28,7 @@ let debounceTimer: ReturnType<typeof setTimeout> | null = null;
 function persistToStorage() {
   if (debounceTimer) clearTimeout(debounceTimer);
   debounceTimer = setTimeout(() => {
+    const { assessments } = useAssessmentStoreBase.getState();
     const payload = { version: 1 as const, data: assessments };
     localStorage.setItem(STORAGE_KEY, JSON.stringify(payload));
   }, DEBOUNCE_MS);
@@ -38,37 +40,33 @@ export function __flushPersist() {
     clearTimeout(debounceTimer);
     debounceTimer = null;
   }
+  const { assessments } = useAssessmentStoreBase.getState();
   const payload = { version: 1 as const, data: assessments };
   localStorage.setItem(STORAGE_KEY, JSON.stringify(payload));
 }
 
 // ---------------------------------------------------------------------------
-// In-memory store (hydrated from localStorage)
+// Zustand Store
 // ---------------------------------------------------------------------------
 
-let assessments: Record<string, UserAssessment> = loadFromStorage();
-const listeners = new Set<() => void>();
+interface AssessmentStoreState {
+  assessments: Record<string, UserAssessment>;
+}
 
-const emit = () => {
-  listeners.forEach((listener) => listener());
-};
-
-const subscribe = (listener: () => void) => {
-  listeners.add(listener);
-  return () => listeners.delete(listener);
-};
-
-const getAssessmentSnapshot = () => assessments;
+const useAssessmentStoreBase = create<AssessmentStoreState>()(() => ({
+  assessments: loadFromStorage(),
+}));
 
 const saveAssessment = (data: UserAssessment) => {
-  assessments = {
-    ...assessments,
-    [data.userId]: {
-      ...data,
-      updatedAt: new Date().toISOString(),
+  useAssessmentStoreBase.setState((state) => ({
+    assessments: {
+      ...state.assessments,
+      [data.userId]: {
+        ...data,
+        updatedAt: new Date().toISOString(),
+      },
     },
-  };
-  emit();
+  }));
   persistToStorage();
 };
 
@@ -76,9 +74,10 @@ const saveAssessment = (data: UserAssessment) => {
  * 指定ユーザーのドラフトを削除する（完了/送信時に呼び出し）
  */
 export function clearAssessmentDraft(userId: string) {
-  const { [userId]: _, ...rest } = assessments;
-  assessments = rest;
-  emit();
+  useAssessmentStoreBase.setState((state) => {
+    const { [userId]: _, ...rest } = state.assessments;
+    return { assessments: rest };
+  });
   persistToStorage();
 }
 
@@ -90,8 +89,7 @@ export function __resetStore() {
     clearTimeout(debounceTimer);
     debounceTimer = null;
   }
-  assessments = loadFromStorage();
-  emit();
+  useAssessmentStoreBase.setState({ assessments: loadFromStorage() });
 }
 
 // ---------------------------------------------------------------------------
@@ -99,7 +97,7 @@ export function __resetStore() {
 // ---------------------------------------------------------------------------
 
 export function useAssessmentStore() {
-  const store = useSyncExternalStore(subscribe, getAssessmentSnapshot, getAssessmentSnapshot);
+  const store = useAssessmentStoreBase((s) => s.assessments);
 
   const getByUserId = useCallback(
     (userId: string): UserAssessment => {

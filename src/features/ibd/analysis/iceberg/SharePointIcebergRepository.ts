@@ -6,13 +6,11 @@ import { icebergSnapshotSchema, type IcebergSnapshot } from './icebergTypes';
 
 // ===== Error Classes =====
 
-/** Conflict status code (412 Precondition Failed) - ETag mismatch */
-export class ConflictError extends Error {
-  constructor(message = 'Conflict: ETag mismatch (412)') {
-    super(message);
-    this.name = 'ConflictError';
-  }
-}
+/** Re-export ConflictError from domain layer for backward compatibility */
+import { ConflictError } from './errors';
+export { ConflictError } from './errors';
+
+
 
 export class SharePointListNotFoundError extends Error {
   constructor(message = 'List not found') {

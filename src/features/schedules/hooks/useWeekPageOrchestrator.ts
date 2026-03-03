@@ -16,7 +16,7 @@ import { useAnnounce } from '@/a11y/LiveAnnouncer';
 import { isE2E } from '@/env';
 import type { CreateScheduleEventInput, SchedItem } from '@/features/schedules/domain';
 import type { ScheduleCategory } from '@/features/schedules/domain/types';
-import { pendingFabFocus, useSchedulesCrud } from './useSchedulesCrud';
+import { useSchedulesCrud } from './useSchedulesCrud';
 import { useSchedulesNavigation } from './useSchedulesNavigation';
 import type { ScheduleEditDialogValues } from './useSchedulesPageState';
 import { useSchedulesPageState } from './useSchedulesPageState';
@@ -121,6 +121,7 @@ export function useWeekPageOrchestrator(deps: OrchestratorDependencies): Orchest
   const [searchParams, setSearchParams] = useSearchParams();
   const orgParam = searchParams.get('org') ?? 'all';
   const fabRef = useRef<HTMLButtonElement | null>(null);
+  const pendingFabFocusRef = useRef(false);
 
   // ─── Sub-hook: Navigation ─────────────────────────────────────────────────
   const nav = useSchedulesNavigation({
@@ -144,6 +145,7 @@ export function useWeekPageOrchestrator(deps: OrchestratorDependencies): Orchest
     categoryFilter,
     setActiveDateIso: nav.setActiveDateIso,
     primeRouteReset: nav.primeRouteReset,
+    setPendingFabFocus: (v: boolean) => { pendingFabFocusRef.current = v; },
     setDialogParams: route.setDialogParams,
     clearDialogParams: route.clearDialogParams,
   });
@@ -172,8 +174,9 @@ export function useWeekPageOrchestrator(deps: OrchestratorDependencies): Orchest
 
   // FAB focus management after dialog close
   useEffect(() => {
-    if (!createDialogOpen && pendingFabFocus && fabRef.current) {
+    if (!createDialogOpen && pendingFabFocusRef.current && fabRef.current) {
       fabRef.current.focus();
+      pendingFabFocusRef.current = false;
       return;
     }
   }, [createDialogOpen]);
