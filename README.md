@@ -1,6 +1,6 @@
 # 磯子区障害者地域活動ホーム (React + SharePoint SPA)
 
-> 📌 クイックリンク: [プロビジョニング手順 / WhatIf レビュー](docs/provisioning.md#whatif-ドライラン-と-job-summary) ｜ [SharePoint スキーマ定義](provision/schema.xml) ｜ [プロジェクトボード自動連携](docs/project-auto-integration.md) ｜ **[UI Baseline (Phase 1)](docs/UI_BASELINE.md)** ｜ [UI Architecture](docs/ui-architecture.md)
+> 📌 クイックリンク: [プロビジョニング手順 / WhatIf レビュー](docs/provisioning.md#whatif-ドライラン-と-job-summary) ｜ [SharePoint スキーマ定義](provision/schema.xml) ｜ [プロジェクトボード自動連携](docs/project-auto-integration.md) ｜ **[UI Baseline (Phase 1)](docs/UI_BASELINE.md)** ｜ [UI Architecture](docs/ui-architecture.md) ｜ [Monitoring Hub Runbook](docs/ops/monitoring-hub-v1-runbook.md) ｜ [TodayOps Runbook](docs/runbook/today-ops-rollout.md)
 
 <!-- Badges -->
 
@@ -529,10 +529,10 @@ VITE_SP_RETRY_MAX_DELAY_MS=5000
    ```bash
    # macOS
    brew install mkcert nss
-   
+
    # Windows (Chocolatey)
    choco install mkcert
-   
+
    # Linux
    apt install libnss3-tools
    wget -O mkcert https://dl.filippo.io/mkcert/latest?for=linux/amd64
@@ -955,7 +955,7 @@ lastRefreshEpoch: <最後の refresh UNIX 秒>
 3. 成功後、今後の同期で 409 重複が“成功扱い”に収束し取りこぼしゼロへ
 
 ローカル / 手動実行例 (接続後):
- 
+
 ```
 
 pwsh -File ./scripts/backfill-entry-hash.ps1 -SiteUrl <https://contoso.sharepoint.com/sites/Audit> -WhatIfMode
