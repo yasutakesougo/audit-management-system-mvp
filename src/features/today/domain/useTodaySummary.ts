@@ -8,9 +8,9 @@
  *
  * @see docs/adr/ADR-002-today-execution-layer-guardrails.md
  */
-import { useAttendanceStore } from '@/features/attendance/store';
-import { useDashboardSummary } from '@/features/dashboard/useDashboardSummary';
-import { useStaffStore } from '@/features/staff/store';
+import { useAttendanceStore } from '@/features/attendance';
+import { useDashboardSummary } from '@/features/dashboard';
+import { useStaffStore } from '@/features/staff';
 import { useUsersDemo } from '@/features/users/usersStoreDemo';
 import { useMemo } from 'react';
 

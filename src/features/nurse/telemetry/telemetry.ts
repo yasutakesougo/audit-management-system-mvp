@@ -1,3 +1,5 @@
+import { create } from 'zustand';
+
 export type NurseTelemetryEvent =
   | 'nurse_queue_flushed_total'
   | 'nurse_queue_failed_total'
@@ -7,13 +9,24 @@ export type TelemetryPayload = Record<string, unknown>;
 
 export type TelemetryTransport = (event: NurseTelemetryEvent, payload: TelemetryPayload) => void;
 
-let transport: TelemetryTransport | null = null;
+// ---------------------------------------------------------------------------
+// Zustand Store
+// ---------------------------------------------------------------------------
+
+interface TelemetryState {
+  transport: TelemetryTransport | null;
+}
+
+const useTelemetryStore = create<TelemetryState>()(() => ({
+  transport: null,
+}));
 
 export const setTelemetryTransport = (next: TelemetryTransport | null) => {
-  transport = next;
+  useTelemetryStore.setState({ transport: next });
 };
 
 export const emitTelemetry = (event: NurseTelemetryEvent, payload: TelemetryPayload = {}) => {
+  const { transport } = useTelemetryStore.getState();
   if (transport) {
     transport(event, payload);
     return;

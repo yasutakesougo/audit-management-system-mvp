@@ -1,11 +1,12 @@
 // ---------------------------------------------------------------------------
 // procedureStore — 支援手順（時間割）ストア
 //
-// executionStore と同じパターン: useSyncExternalStore + localStorage
+// Zustand ベースのリアクティブストア + localStorage 永続化
 // CSVインポートで登録されたデータがリロード後も維持される。
 // ---------------------------------------------------------------------------
 import type { ScheduleItem } from '@/features/daily/components/split-stream/ProcedurePanel';
-import { useCallback, useSyncExternalStore } from 'react';
+import { useCallback } from 'react';
+import { create } from 'zustand';
 
 export type ProcedureItem = ScheduleItem;
 
@@ -53,6 +54,7 @@ let debounceTimer: ReturnType<typeof setTimeout> | null = null;
 function persistToStorage() {
   if (debounceTimer) clearTimeout(debounceTimer);
   debounceTimer = setTimeout(() => {
+    const { store } = useProcedureStoreBase.getState();
     const payload = { version: 1 as const, data: store };
     localStorage.setItem(STORAGE_KEY, JSON.stringify(payload));
   }, DEBOUNCE_MS);
@@ -64,27 +66,22 @@ export function __flushPersist() {
     clearTimeout(debounceTimer);
     debounceTimer = null;
   }
+  const { store } = useProcedureStoreBase.getState();
   const payload = { version: 1 as const, data: store };
   localStorage.setItem(STORAGE_KEY, JSON.stringify(payload));
 }
 
 // ---------------------------------------------------------------------------
-// In-memory store
+// Zustand Store
 // ---------------------------------------------------------------------------
 
-let store: Record<string, ProcedureItem[]> = loadFromStorage();
-const listeners = new Set<() => void>();
+interface ProcedureStoreState {
+  store: Record<string, ProcedureItem[]>;
+}
 
-const emit = () => {
-  listeners.forEach((listener) => listener());
-};
-
-const subscribe = (listener: () => void) => {
-  listeners.add(listener);
-  return () => listeners.delete(listener);
-};
-
-const getSnapshot = () => store;
+const useProcedureStoreBase = create<ProcedureStoreState>()(() => ({
+  store: loadFromStorage(),
+}));
 
 /** テスト用: store をリセット（localStorage から再読み込み） */
 export function __resetStore() {
@@ -92,8 +89,7 @@ export function __resetStore() {
     clearTimeout(debounceTimer);
     debounceTimer = null;
   }
-  store = loadFromStorage();
-  emit();
+  useProcedureStoreBase.setState({ store: loadFromStorage() });
 }
 
 /** テスト用: store を完全クリア */
@@ -102,9 +98,8 @@ export function __clearStore() {
     clearTimeout(debounceTimer);
     debounceTimer = null;
   }
-  store = {};
+  useProcedureStoreBase.setState({ store: {} });
   localStorage.removeItem(STORAGE_KEY);
-  emit();
 }
 
 // ---------------------------------------------------------------------------
@@ -112,7 +107,7 @@ export function __clearStore() {
 // ---------------------------------------------------------------------------
 
 export function useProcedureStore() {
-  const snapshot = useSyncExternalStore(subscribe, getSnapshot, getSnapshot);
+  const snapshot = useProcedureStoreBase((s) => s.store);
 
   /**
    * ユーザーの時間割を取得する。
@@ -132,8 +127,9 @@ export function useProcedureStore() {
    */
   const save = useCallback((userId: string, items: ProcedureItem[]) => {
     if (!userId) return;
-    store = { ...store, [userId]: items };
-    emit();
+    useProcedureStoreBase.setState((s) => ({
+      store: { ...s.store, [userId]: items },
+    }));
     persistToStorage();
   }, []);
 

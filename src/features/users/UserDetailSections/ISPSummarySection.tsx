@@ -14,8 +14,8 @@ import Stack from '@mui/material/Stack';
 import Typography from '@mui/material/Typography';
 import React from 'react';
 
-import type { GoalItem } from '@/features/ibd/plans/isp-editor/data/ispRepo';
-import { useISPComparisonEditor } from '@/features/ibd/plans/isp-editor/hooks/useISPComparisonEditor';
+import type { GoalItem } from '@/features/ibd';
+import { useISPComparisonEditor } from '@/features/ibd';
 
 /* ── 型 ──────────────────────────────────────── */
 

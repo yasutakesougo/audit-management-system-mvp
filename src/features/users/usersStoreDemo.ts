@@ -1,10 +1,11 @@
 import type { SafeError } from '@/lib/errors';
-import { useCallback, useMemo, useSyncExternalStore } from 'react';
+import { useCallback, useMemo } from 'react';
+import { create } from 'zustand';
 import { normalizeAttendanceDays } from './attendance';
 import { DEMO_USERS } from './constants';
 import type { IUserMaster, IUserMasterCreateDto } from './types';
-import { ensureUserId } from './utils/userId';
 import type { AsyncStatus } from './useUsers';
+import { ensureUserId } from './utils/userId';
 
 type UsersHookReturn = {
   data: IUserMaster[];
@@ -21,30 +22,26 @@ const cloneUser = (user: IUserMaster): IUserMaster => ({
   AttendanceDays: normalizeAttendanceDays(user.AttendanceDays),
 });
 
-const initializeUsers = (initial: IUserMaster[]): void => {
-  users = initial.map(cloneUser);
-  nextId = users.length ? Math.max(...users.map((u) => Number(u.Id) || 0)) + 1 : 1;
-};
+// ---------------------------------------------------------------------------
+// Zustand Store
+// ---------------------------------------------------------------------------
 
-let users: IUserMaster[] = [];
-let nextId = 1;
+interface UsersDemoState {
+  users: IUserMaster[];
+  nextId: number;
+}
 
-initializeUsers(DEMO_USERS);
+function buildInitialState(initial: IUserMaster[]): UsersDemoState {
+  const users = initial.map(cloneUser);
+  const nextId = users.length ? Math.max(...users.map((u) => Number(u.Id) || 0)) + 1 : 1;
+  return { users, nextId };
+}
 
-const listeners = new Set<() => void>();
+const useUsersDemoStore = create<UsersDemoState>()(() => buildInitialState(DEMO_USERS));
 
-const snapshot = () => users;
-
-const subscribe = (listener: () => void) => {
-  listeners.add(listener);
-  return () => listeners.delete(listener);
-};
-
-const emit = () => {
-  for (const listener of listeners) {
-    listener();
-  }
-};
+// ---------------------------------------------------------------------------
+// Pure helpers
+// ---------------------------------------------------------------------------
 
 const coerceId = (id: number | string): number => {
   const numeric = Number(id);
@@ -54,11 +51,10 @@ const coerceId = (id: number | string): number => {
   return numeric;
 };
 
-const fromDto = (dto: IUserMasterCreateDto): IUserMaster => {
-  const id = nextId++;
+const fromDto = (dto: IUserMasterCreateDto, nextId: number): IUserMaster => {
   return {
-    Id: id,
-    UserID: ensureUserId(dto.UserID, id),
+    Id: nextId,
+    UserID: ensureUserId(dto.UserID, nextId),
     FullName: dto.FullName,
     ContractDate: dto.ContractDate ?? undefined,
     IsHighIntensitySupportTarget: dto.IsHighIntensitySupportTarget ?? false,
@@ -68,61 +64,78 @@ const fromDto = (dto: IUserMasterCreateDto): IUserMaster => {
   };
 };
 
+// ---------------------------------------------------------------------------
+// Exported actions (backward-compatible)
+// ---------------------------------------------------------------------------
+
 export function seedDemoUsers(initial: IUserMaster[] = DEMO_USERS): void {
-  initializeUsers(initial);
-  emit();
+  useUsersDemoStore.setState(buildInitialState(initial));
 }
 
 export function resetDemoUsers(): void {
-  initializeUsers(DEMO_USERS);
-  emit();
+  useUsersDemoStore.setState(buildInitialState(DEMO_USERS));
 }
 
+// ---------------------------------------------------------------------------
+// React Hook (backward-compatible)
+// ---------------------------------------------------------------------------
+
 export function useUsersDemo(): UsersHookReturn {
-  const data = useSyncExternalStore(subscribe, snapshot, snapshot);
+  const data = useUsersDemoStore((s) => s.users);
 
   const refresh = useCallback(async () => {
-    emit();
+    // Trigger re-render by touching state
+    useUsersDemoStore.setState((s) => ({ ...s }));
   }, []);
 
   const create = useCallback(async (payload: IUserMasterCreateDto) => {
-    const record = fromDto(payload);
-    users = [record, ...users];
-    emit();
-    return record;
+    let record: IUserMaster | null = null;
+    useUsersDemoStore.setState((s) => {
+      record = fromDto(payload, s.nextId);
+      return {
+        users: [record, ...s.users],
+        nextId: s.nextId + 1,
+      };
+    });
+    return record!;
   }, []);
 
   const update = useCallback(async (id: number | string, payload: Partial<IUserMasterCreateDto>) => {
     const numericId = coerceId(id);
     let updated: IUserMaster | null = null;
-    users = users.map((row) => {
-      if (row.Id === numericId) {
-        updated = {
-          ...row,
-          ...payload,
-        } as IUserMaster;
-        if (payload.AttendanceDays !== undefined) {
-          updated.AttendanceDays = normalizeAttendanceDays(payload.AttendanceDays);
+
+    useUsersDemoStore.setState((s) => {
+      const users = s.users.map((row) => {
+        if (row.Id === numericId) {
+          updated = {
+            ...row,
+            ...payload,
+          } as IUserMaster;
+          if (payload.AttendanceDays !== undefined) {
+            updated.AttendanceDays = normalizeAttendanceDays(payload.AttendanceDays);
+          }
+          return updated;
         }
-        return updated;
+        return row;
+      });
+
+      if (!updated) {
+        throw new Error(`User with id ${numericId} not found`);
       }
-      return row;
+      const ensured = updated as IUserMaster;
+      ensured.AttendanceDays = normalizeAttendanceDays(ensured.AttendanceDays);
+
+      return { users };
     });
 
-    if (!updated) {
-      throw new Error(`User with id ${numericId} not found`);
-    }
-    const ensured = updated as IUserMaster;
-    ensured.AttendanceDays = normalizeAttendanceDays(ensured.AttendanceDays);
-
-    emit();
-    return ensured;
+    return updated!;
   }, []);
 
   const remove = useCallback(async (id: number | string) => {
     const numericId = coerceId(id);
-    users = users.filter((row) => row.Id !== numericId);
-    emit();
+    useUsersDemoStore.setState((s) => ({
+      users: s.users.filter((row) => row.Id !== numericId),
+    }));
   }, []);
 
   return useMemo(
