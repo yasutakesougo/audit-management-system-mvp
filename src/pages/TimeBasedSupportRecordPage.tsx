@@ -507,171 +507,6 @@ const TimeBasedSupportRecordPage: React.FC = () => {
         data-testid="iceberg-time-based-support-record-page"
       >
 
-      <Paper
-        elevation={0}
-        sx={{
-          p: 2,
-          borderBottom: 1,
-          borderColor: 'divider',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          flexWrap: 'wrap',
-          gap: 2,
-          borderRadius: 0
-        }}
-      >
-        <Stack direction="row" spacing={1.5} alignItems="center" flexWrap="wrap">
-          <AccessTimeIcon color="primary" />
-          <Box display="flex" alignItems="center" gap={2} flexWrap="wrap">
-            <Typography variant="h6" fontWeight="bold">
-              支援手順・行動記録（タイムライン）
-            </Typography>
-            <FormControl size="small" sx={{ minWidth: 220 }}>
-              <InputLabel id="iceberg-user-select-label">支援対象者</InputLabel>
-              <Select
-                labelId="iceberg-user-select-label"
-                value={targetUserId}
-                label="支援対象者"
-                onChange={(event) => handleUserChange(event.target.value)}
-                startAdornment={<PersonIcon fontSize="small" sx={{ mr: 1, color: 'text.secondary' }} />}
-              >
-                <MenuItem value="">
-                  <em>選択してください</em>
-                </MenuItem>
-                {filteredUsers.map((user) => (
-                  <MenuItem key={user.UserID} value={user.UserID}>
-                    {user.FullName}
-                  </MenuItem>
-                ))}
-              </Select>
-            </FormControl>
-            {targetUserId && selectedUser && (
-              <IconButton
-                onClick={handleEditorOpen}
-                size="small"
-                color="primary"
-                aria-label="手順を編集"
-                data-testid="procedure-edit-button"
-              >
-                <EditIcon fontSize="small" />
-              </IconButton>
-            )}
-          </Box>
-        </Stack>
-        {targetUserId && selectedUser && (
-          <Stack direction="row" spacing={1}>
-            <Button
-              variant="outlined"
-              size="small"
-              startIcon={
-                <Badge badgeContent={recentObservations.length} color="primary" max={99}>
-                  <HistoryIcon />
-                </Badge>
-              }
-              onClick={() => setRecentRecordsOpen(true)}
-              data-testid="recent-records-button"
-              sx={{ whiteSpace: 'nowrap' }}
-            >
-              直近記録
-            </Button>
-            <Button
-              variant="outlined"
-              size="small"
-              startIcon={<ContentCopyIcon />}
-              onClick={handleCopyReport}
-              data-testid="copy-daily-report-button"
-              sx={{ whiteSpace: 'nowrap' }}
-            >
-              日報コピー
-            </Button>
-          </Stack>
-        )}
-      </Paper>
-
-      {/* ── User Filter Bar ── */}
-      <Paper
-        elevation={0}
-        sx={{
-          px: 2,
-          py: 1,
-          borderBottom: 1,
-          borderColor: 'divider',
-          borderRadius: 0,
-          display: 'flex',
-          alignItems: 'center',
-          gap: 1.5,
-          flexWrap: 'wrap',
-          bgcolor: hasActiveFilter ? 'action.hover' : 'background.paper',
-        }}
-        data-testid="daily-support-user-filter-bar"
-      >
-        <FormControl size="small" sx={{ minWidth: 130 }}>
-          <InputLabel id="filter-support-level-label">支援区分</InputLabel>
-          <Select
-            labelId="filter-support-level-label"
-            value={filter.supportLevel}
-            label="支援区分"
-            onChange={(e) => updateFilter({ supportLevel: e.target.value })}
-            data-testid="filter-support-level"
-          >
-            {DISABILITY_SUPPORT_LEVEL_OPTIONS.map((opt) => (
-              <MenuItem key={opt.value} value={opt.value}>
-                {opt.label}
-              </MenuItem>
-            ))}
-          </Select>
-        </FormControl>
-
-        <FormControl size="small" sx={{ minWidth: 120 }}>
-          <InputLabel id="filter-usage-status-label">ステータス</InputLabel>
-          <Select
-            labelId="filter-usage-status-label"
-            value={filter.usageStatus}
-            label="ステータス"
-            onChange={(e) => updateFilter({ usageStatus: e.target.value })}
-            data-testid="filter-usage-status"
-          >
-            <MenuItem value="">（全て）</MenuItem>
-            <MenuItem value="active">利用中</MenuItem>
-            <MenuItem value="pending">開始待ち</MenuItem>
-            <MenuItem value="suspended">休止中</MenuItem>
-            <MenuItem value="terminated">契約終了</MenuItem>
-          </Select>
-        </FormControl>
-
-        <Tooltip title="強度行動障害支援対象者のみ表示">
-          <ToggleButton
-            value="highIntensity"
-            selected={filter.highIntensityOnly}
-            onChange={() => updateFilter({ highIntensityOnly: !filter.highIntensityOnly })}
-            size="small"
-            sx={{ textTransform: 'none', fontSize: '0.8rem', px: 1.5 }}
-            data-testid="filter-high-intensity"
-          >
-            強度行動障害
-          </ToggleButton>
-        </Tooltip>
-
-        {hasActiveFilter && (
-          <>
-            <Chip
-              label={`${filteredUsers.length}/${users.length}人`}
-              size="small"
-              color="primary"
-              variant="outlined"
-            />
-            <Tooltip title="フィルターをリセット">
-              <IconButton size="small" onClick={resetFilter} aria-label="フィルターをリセット">
-                <FilterListOffIcon fontSize="small" />
-              </IconButton>
-            </Tooltip>
-          </>
-        )}
-      </Paper>
-
-
-
       {/* Error Alert (fixed, always visible) */}
       {displayedError ? (
         <Box
@@ -693,6 +528,7 @@ const TimeBasedSupportRecordPage: React.FC = () => {
         <BentoGridSupportLayout
           recordRef={recordPanelRef}
           header={
+            <>
             <Paper
               elevation={0}
               sx={{
@@ -705,6 +541,8 @@ const TimeBasedSupportRecordPage: React.FC = () => {
                 flexWrap: 'wrap',
                 gap: 2,
                 borderRadius: 1,
+                borderBottomLeftRadius: 0,
+                borderBottomRightRadius: 0,
               }}
             >
               <Stack direction="row" spacing={1.5} alignItems="center" flexWrap="wrap">
@@ -725,7 +563,7 @@ const TimeBasedSupportRecordPage: React.FC = () => {
                       <MenuItem value="">
                         <em>選択してください</em>
                       </MenuItem>
-                      {users.map((user) => (
+                      {filteredUsers.map((user) => (
                         <MenuItem key={user.UserID} value={user.UserID}>
                           {user.FullName}
                         </MenuItem>
@@ -774,6 +612,90 @@ const TimeBasedSupportRecordPage: React.FC = () => {
                 </Stack>
               )}
             </Paper>
+            {/* ── User Filter Bar ── */}
+            <Paper
+              elevation={0}
+              sx={{
+                px: 2,
+                py: 1,
+                borderTop: 0,
+                borderBottom: 1,
+                borderColor: 'divider',
+                borderRadius: 0,
+                borderBottomLeftRadius: 4,
+                borderBottomRightRadius: 4,
+                display: 'flex',
+                alignItems: 'center',
+                gap: 1.5,
+                flexWrap: 'wrap',
+                bgcolor: hasActiveFilter ? 'action.hover' : 'background.paper',
+              }}
+              data-testid="daily-support-user-filter-bar"
+            >
+              <FormControl size="small" sx={{ minWidth: 130 }}>
+                <InputLabel id="filter-support-level-label">支援区分</InputLabel>
+                <Select
+                  labelId="filter-support-level-label"
+                  value={filter.supportLevel}
+                  label="支援区分"
+                  onChange={(e) => updateFilter({ supportLevel: e.target.value })}
+                  data-testid="filter-support-level"
+                >
+                  {DISABILITY_SUPPORT_LEVEL_OPTIONS.map((opt) => (
+                    <MenuItem key={opt.value} value={opt.value}>
+                      {opt.label}
+                    </MenuItem>
+                  ))}
+                </Select>
+              </FormControl>
+
+              <FormControl size="small" sx={{ minWidth: 120 }}>
+                <InputLabel id="filter-usage-status-label">ステータス</InputLabel>
+                <Select
+                  labelId="filter-usage-status-label"
+                  value={filter.usageStatus}
+                  label="ステータス"
+                  onChange={(e) => updateFilter({ usageStatus: e.target.value })}
+                  data-testid="filter-usage-status"
+                >
+                  <MenuItem value="">（全て）</MenuItem>
+                  <MenuItem value="active">利用中</MenuItem>
+                  <MenuItem value="pending">開始待ち</MenuItem>
+                  <MenuItem value="suspended">休止中</MenuItem>
+                  <MenuItem value="terminated">契約終了</MenuItem>
+                </Select>
+              </FormControl>
+
+              <Tooltip title="強度行動障害支援対象者のみ表示">
+                <ToggleButton
+                  value="highIntensity"
+                  selected={filter.highIntensityOnly}
+                  onChange={() => updateFilter({ highIntensityOnly: !filter.highIntensityOnly })}
+                  size="small"
+                  sx={{ textTransform: 'none', fontSize: '0.8rem', px: 1.5 }}
+                  data-testid="filter-high-intensity"
+                >
+                  強度行動障害
+                </ToggleButton>
+              </Tooltip>
+
+              {hasActiveFilter && (
+                <>
+                  <Chip
+                    label={`${filteredUsers.length}/${users.length}人`}
+                    size="small"
+                    color="primary"
+                    variant="outlined"
+                  />
+                  <Tooltip title="フィルターをリセット">
+                    <IconButton size="small" onClick={resetFilter} aria-label="フィルターをリセット">
+                      <FilterListOffIcon fontSize="small" />
+                    </IconButton>
+                  </Tooltip>
+                </>
+              )}
+            </Paper>
+            </>
           }
           plan={targetUserId ? (
             <ProcedurePanel

@@ -1,27 +1,27 @@
-import {
-    Box,
-    Stack,
-    useTheme,
-} from '@mui/material';
+/**
+ * DashboardZoneLayout — Zone-based layout for tablet landscape view.
+ * Extracted from DashboardPage.tsx to reduce file size.
+ */
+
+import type { DashboardSection, DashboardSectionKey } from '@/features/dashboard/useDashboardViewModel';
+import { TESTIDS, tid } from '@/testids';
+import { useTheme } from '@mui/material';
+import Box from '@mui/material/Box';
+import Stack from '@mui/material/Stack';
 import React from 'react';
-import { type DashboardSection, type DashboardSectionKey } from '../useDashboardViewModel';
 
-import { TodayChangesCard, type TodayChanges } from '../components/TodayChangesCard';
-
-// Re-export types for backward compatibility
-export type { ChangeItem, TodayChanges } from '../components/TodayChangesCard';
+import { TodayChangesCard, type TodayChanges } from './TodayChangesCard';
 
 // ⸻
-// Zone 1: 朝30秒判断ゾーン
-// 左：申し送りタイムライン
-// 右：本日の変更HUD
+// Zone 1: 朝30秒判断ゾーン（固定）
+// 左：申し送りタイムライン（主役・最大）
+// 右：本日の変更HUD（小・補助）
 // ⸻
-
-interface Zone1_MorningDecisionProps {
+type Zone1_MorningDecisionProps = {
   handoverNode: React.ReactNode;
   dateLabel: string;
   todayChanges: TodayChanges;
-}
+};
 
 const Zone1_MorningDecision: React.FC<Zone1_MorningDecisionProps> = ({
   handoverNode,
@@ -38,7 +38,12 @@ const Zone1_MorningDecision: React.FC<Zone1_MorningDecisionProps> = ({
         alignItems: 'start',
       }}
     >
-      <Box>{handoverNode}</Box>
+      {/* 左（50%）：申し送りタイムライン（主役・最大） */}
+      <Box>
+        {handoverNode}
+      </Box>
+
+      {/* 中（25%）：本日の変更HUD */}
       <Box>
         <TodayChangesCard dateLabel={dateLabel} changes={todayChanges} />
       </Box>
@@ -47,18 +52,20 @@ const Zone1_MorningDecision: React.FC<Zone1_MorningDecisionProps> = ({
 };
 
 // ⸻
-// Main Layout: DashboardLayout
+// Zone 2-3: スクロール領域（1カラム）
+// Zone 2: 今日の予定（主役）
+// Zone 3: 集計・作業（補助）
 // ⸻
-export interface DashboardLayoutProps {
+type DashboardZoneLayoutProps = {
   sections: DashboardSection[];
   renderSection: (section: DashboardSection) => React.ReactNode;
   sectionIdByKey: Record<DashboardSectionKey, string>;
   highlightSection?: DashboardSectionKey | null;
   dateLabel: string;
   todayChanges: TodayChanges;
-}
+};
 
-export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
+export const DashboardZoneLayout: React.FC<DashboardZoneLayoutProps> = ({
   sections,
   renderSection,
   sectionIdByKey,
@@ -68,7 +75,6 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
 }) => {
   const theme = useTheme();
   const getSection = (key: DashboardSectionKey) => sections.find((s) => s.key === key);
-
   const renderSectionIfEnabled = (key: DashboardSectionKey) => {
     const section = getSection(key);
     if (!section || section.enabled === false) return null;
@@ -92,8 +98,11 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
   const FOOTER_H = 56;
 
   return (
-    <Stack spacing={{ xs: 2, sm: 3, md: 4 }} sx={{ mb: { xs: 2, sm: 3 } }}>
-      {/* ZONE 1: 朝30秒判断ゾーン */}
+    <Box
+      data-testid={tid(TESTIDS['dashboard-page'])}
+      sx={{ minHeight: '100vh', display: 'flex', flexDirection: 'column' }}
+    >
+      {/* ZONE 1: 朝30秒判断ゾーン（sticky wrapper 分離） */}
       <Box
         sx={{
           position: 'sticky',
@@ -102,6 +111,7 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
           backgroundColor: 'background.default',
         }}
       >
+        {/* 内部コンテンツ（通常レイアウト） */}
         <Box sx={{ pb: 2 }}>
           <Zone1_MorningDecision
             handoverNode={renderSectionIfEnabled('handover')}
@@ -111,7 +121,7 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
         </Box>
       </Box>
 
-      {/* ZONE 2-3: スクロール領域 */}
+      {/* ZONE 2-3: スクロール領域（1カラム） */}
       <Box
         sx={{
           overflowY: 'auto',
@@ -121,12 +131,12 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
         }}
       >
         <Stack spacing={3}>
-          {/* ZONE 2: 今日の予定 */}
+          {/* ZONE 2: 今日の予定（主役） */}
           <Box data-testid="dashboard-zone-today">
             {renderSectionIfEnabled('schedule')}
           </Box>
 
-          {/* ZONE 3: 集計・作業 */}
+          {/* ZONE 3: 集計・作業（補助） */}
           <Box data-testid="dashboard-zone-work">
             {renderSectionIfEnabled('safety')}
             {renderSectionIfEnabled('attendance')}
@@ -137,6 +147,6 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
           </Box>
         </Stack>
       </Box>
-    </Stack>
+    </Box>
   );
 };
