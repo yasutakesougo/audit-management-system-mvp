@@ -13,7 +13,7 @@ describe('HeroUnfinishedBanner', () => {
     );
 
     // EmptyStateHero が表示されること
-    expect(screen.getByText(/本日の対応は完了しました/)).toBeInTheDocument();
+    expect(screen.getByText(/本日の記録は完了です/)).toBeInTheDocument();
     expect(screen.getByTestId('today-empty-hero')).toBeInTheDocument();
 
     // 今すぐ入力 ボタンが表示されないこと
