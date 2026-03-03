@@ -1,4 +1,6 @@
 
+import { normalizeUserId } from '@/lib/normalizeUserId';
+
 export type PendingOrderPolicy = 'userId' | 'attendanceToday';
 
 export function getPendingUserOrder(args: {
@@ -14,14 +16,27 @@ export function getPendingUserOrder(args: {
     return [...pendingUserIds].sort();
   }
 
-  const pendingSet = new Set(pendingUserIds);
+  // Normalize to canonical form for comparison (e.g. "U-001" → "U001")
+  const pendingByNorm = new Map<string, string>();
+  for (const id of pendingUserIds) {
+    pendingByNorm.set(normalizeUserId(id), id);
+  }
 
-  const orderedFromAttendance = attendanceOrderUserIds.filter(id => pendingSet.has(id));
-  const orderedSet = new Set(orderedFromAttendance);
+  const orderedOriginals: string[] = [];
+  const matchedNorms = new Set<string>();
+
+  for (const attId of attendanceOrderUserIds) {
+    const norm = normalizeUserId(attId);
+    const original = pendingByNorm.get(norm);
+    if (original && !matchedNorms.has(norm)) {
+      orderedOriginals.push(original);
+      matchedNorms.add(norm);
+    }
+  }
 
   const leftovers = pendingUserIds
-    .filter(id => !orderedSet.has(id))
+    .filter(id => !matchedNorms.has(normalizeUserId(id)))
     .sort();
 
-  return [...orderedFromAttendance, ...leftovers];
+  return [...orderedOriginals, ...leftovers];
 }

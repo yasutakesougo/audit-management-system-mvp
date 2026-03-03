@@ -1,16 +1,17 @@
 import { fromZonedTime } from 'date-fns-tz';
 
 import { createSpClient, ensureConfig } from '@/lib/spClient';
-import type { CreateScheduleEventInput, SchedItem, ScheduleServiceType, ScheduleStatus, ScheduleVisibility, SchedulesPort } from './port';
 import { result } from '@/shared/result';
-import { getSchedulesListTitle, SCHEDULES_FIELDS, DEFAULT_SCHEDULE_VISIBILITY, OWNER_USER_ID_ME } from './spSchema';
-import { resolveSchedulesTz } from '@/utils/scheduleTz';
 import { normalizeServiceType as normalizeSharePointServiceType } from '@/sharepoint/serviceTypes';
+import { resolveSchedulesTz } from '@/utils/scheduleTz';
+import type { CreateScheduleEventInput, SchedItem, ScheduleServiceType, SchedulesPort, ScheduleStatus, ScheduleVisibility } from './port';
+import { DEFAULT_SCHEDULE_VISIBILITY, getSchedulesListTitle, OWNER_USER_ID_ME, SCHEDULES_FIELDS } from './spSchema';
 
 const DEFAULT_TITLE = '予定';
 const SCHEDULES_TZ = resolveSchedulesTz();
 
-export const normalizeUserId = (value: string): string => value.trim().toUpperCase().replace(/[^A-Z0-9]/g, '');
+import { normalizeUserId } from '@/lib/normalizeUserId';
+export { normalizeUserId };
 
 const trimText = (value?: string | null): string | undefined => {
   if (typeof value !== 'string') {
