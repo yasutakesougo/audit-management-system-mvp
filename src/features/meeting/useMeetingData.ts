@@ -22,15 +22,21 @@ import type {
     MeetingSession,
     MeetingStepId,
     MeetingStepRecord,
+    SpMeetingParticipationItem,
+    SpMeetingPriorityItem,
     SpMeetingSessionItem,
     SpMeetingStepItem
 } from './meetingDataTypes';
 import {
+    fromSpMeetingParticipationFields,
+    fromSpMeetingPriorityFields,
     fromSpMeetingSessionFields,
     fromSpMeetingStepFields,
     generateMeetingSessionKey,
     MEETING_LIST_NAMES,
     MEETING_SELECT_FIELDS,
+    toSpMeetingParticipationFields,
+    toSpMeetingPriorityFields,
     toSpMeetingSessionFields,
     toSpMeetingStepFields
 } from './meetingDataTypes';
@@ -38,8 +44,8 @@ import {
 // Environment-driven list configuration
 const SESSIONS_LIST = readOptionalEnv('VITE_SP_LIST_MEETING_SESSIONS') || MEETING_LIST_NAMES.SESSIONS;
 const STEPS_LIST = readOptionalEnv('VITE_SP_LIST_MEETING_STEPS') || MEETING_LIST_NAMES.STEPS;
-// const PARTICIPATION_LIST = readOptionalEnv('VITE_SP_LIST_MEETING_PARTICIPATION') || MEETING_LIST_NAMES.PARTICIPATION;
-// const PRIORITY_LIST = readOptionalEnv('VITE_SP_LIST_MEETING_PRIORITY') || MEETING_LIST_NAMES.PRIORITY_RECORDS;
+const PARTICIPATION_LIST = readOptionalEnv('VITE_SP_LIST_MEETING_PARTICIPATION') || MEETING_LIST_NAMES.PARTICIPATION;
+const PRIORITY_LIST = readOptionalEnv('VITE_SP_LIST_MEETING_PRIORITY') || MEETING_LIST_NAMES.PRIORITY_RECORDS;
 
 // Feature flags
 const MEETING_PERSISTENCE_ENABLED = readOptionalEnv('VITE_MEETING_PERSISTENCE_ENABLED') === 'true';
@@ -514,13 +520,28 @@ export function useMeetingData(options: UseMeetingDataOptions = {}): MeetingData
     }
   }, [enablePersistence, getListItemsByTitle, setLoading, resetError, setError]);
 
-  // Get priority records by session ID (stubbed for Phase 5A)
-  const getMeetingPriorityRecords = useCallback(async (_sessionId: number): Promise<MeetingPriorityRecord[]> => {
+  // Get priority records by session ID
+  const getMeetingPriorityRecords = useCallback(async (sessionId: number): Promise<MeetingPriorityRecord[]> => {
     if (!enablePersistence) return [];
 
-    // TODO: Implement when PRIORITY_LIST is available
-    return [];
-  }, [enablePersistence]);
+    setLoading(true);
+    resetError();
+
+    try {
+      const items = await getListItemsByTitle<SpMeetingPriorityItem>(
+        PRIORITY_LIST,
+        [MEETING_SELECT_FIELDS.PRIORITY_RECORDS],
+        `SessionId eq ${sessionId}`,
+        'Priority',
+      );
+
+      setLoading(false);
+      return items.map(fromSpMeetingPriorityFields);
+    } catch (error) {
+      setError(error as Error);
+      return [];
+    }
+  }, [enablePersistence, getListItemsByTitle, setLoading, resetError, setError]);
 
   // Add meeting step record
   const addMeetingStep = useCallback(async (sessionId: number, stepData: {
@@ -597,36 +618,274 @@ export function useMeetingData(options: UseMeetingDataOptions = {}): MeetingData
     }
   }, [enablePersistence, getListItemsByTitle, spFetch, setLoading, resetError, setError]);
 
-  // Placeholder implementations for remaining functions
-  const addParticipant = useCallback(async (_participation: Omit<MeetingParticipation, 'id' | 'createdAt' | 'updatedAt'>): Promise<MeetingParticipation> => {
-    // TODO: Implement participation management
-    throw new Error('Not implemented yet');
-  }, []);
+  // ──────────────────────────────────────────────────────────────
+  // Participation Management (Data-access via meetingDataTypes mappers)
+  // ──────────────────────────────────────────────────────────────
 
-  const updateParticipation = useCallback(async (_participationId: number, _updates: Partial<MeetingParticipation>): Promise<MeetingParticipation> => {
-    // TODO: Implement participation update
-    throw new Error('Not implemented yet');
-  }, []);
+  const addParticipant = useCallback(async (
+    participationData: Omit<MeetingParticipation, 'id' | 'createdAt' | 'updatedAt'>,
+  ): Promise<MeetingParticipation> => {
+    if (!enablePersistence) {
+      throw new Error('Meeting persistence is disabled');
+    }
 
-  const getMeetingParticipants = useCallback(async (_sessionId: number): Promise<MeetingParticipation[]> => {
-    // TODO: Implement participant retrieval
-    return [];
-  }, []);
+    setLoading(true);
+    resetError();
 
-  const addPriorityRecord = useCallback(async (_priority: Omit<MeetingPriorityRecord, 'id' | 'createdAt' | 'updatedAt'>): Promise<MeetingPriorityRecord> => {
-    // TODO: Implement priority record management
-    throw new Error('Not implemented yet');
-  }, []);
+    try {
+      const now = new Date().toISOString();
+      const participationWithTimestamps: MeetingParticipation = {
+        ...participationData,
+        createdAt: now,
+        updatedAt: now,
+      };
 
-  const updatePriorityRecord = useCallback(async (_priorityId: number, _updates: Partial<MeetingPriorityRecord>): Promise<MeetingPriorityRecord> => {
-    // TODO: Implement priority record update
-    throw new Error('Not implemented yet');
-  }, []);
+      const spFields = toSpMeetingParticipationFields(participationWithTimestamps);
+      const result = await addListItemByTitle(PARTICIPATION_LIST, spFields) as {
+        Id: number;
+        Created: string;
+        Modified: string;
+      };
 
-  const getMeetingPriorities = useCallback(async (_sessionId: number): Promise<MeetingPriorityRecord[]> => {
-    // TODO: Implement priority record retrieval
-    return [];
-  }, []);
+      const created: MeetingParticipation = {
+        ...participationWithTimestamps,
+        id: result.Id,
+        createdAt: result.Created || now,
+        updatedAt: result.Modified || now,
+      };
+
+      setLoading(false);
+
+      meetingLogger.sharePointSyncSucceeded({
+        sessionKey: created.sessionKey,
+        operation: 'create',
+      });
+
+      return created;
+    } catch (error) {
+      setError(error as Error);
+
+      meetingLogger.sharePointSyncFailed({
+        sessionKey: participationData.sessionKey,
+        operation: 'create',
+        error,
+      });
+
+      throw error;
+    }
+  }, [enablePersistence, addListItemByTitle, setLoading, resetError, setError]);
+
+  const updateParticipation = useCallback(async (
+    participationId: number,
+    updates: Partial<MeetingParticipation>,
+  ): Promise<MeetingParticipation> => {
+    if (!enablePersistence) {
+      throw new Error('Meeting persistence is disabled');
+    }
+
+    setLoading(true);
+    resetError();
+
+    try {
+      const now = new Date().toISOString();
+
+      // Fetch current record to merge
+      const existing = await getListItemsByTitle<SpMeetingParticipationItem>(
+        PARTICIPATION_LIST,
+        [MEETING_SELECT_FIELDS.PARTICIPATION],
+        `Id eq ${participationId}`,
+      );
+
+      if (existing.length === 0) {
+        throw new Error(`Participation record ${participationId} not found`);
+      }
+
+      const current = fromSpMeetingParticipationFields(existing[0]);
+      const merged: MeetingParticipation = { ...current, ...updates, updatedAt: now };
+      const spFields = toSpMeetingParticipationFields(merged);
+
+      const res = await spFetch(
+        `/lists/getbytitle('${PARTICIPATION_LIST}')/items(${participationId})`,
+        {
+          method: 'PATCH',
+          headers: {
+            'Content-Type': 'application/json',
+            'IF-MATCH': '*',
+            'X-HTTP-Method': 'MERGE',
+          },
+          body: JSON.stringify(spFields),
+        },
+      );
+
+      if (!res.ok) {
+        throw new Error('Failed to update participation record');
+      }
+
+      setLoading(false);
+      return merged;
+    } catch (error) {
+      setError(error as Error);
+      throw error;
+    }
+  }, [enablePersistence, getListItemsByTitle, spFetch, setLoading, resetError, setError]);
+
+  const getMeetingParticipants = useCallback(async (
+    sessionId: number,
+  ): Promise<MeetingParticipation[]> => {
+    if (!enablePersistence) return [];
+
+    setLoading(true);
+    resetError();
+
+    try {
+      const items = await getListItemsByTitle<SpMeetingParticipationItem>(
+        PARTICIPATION_LIST,
+        [MEETING_SELECT_FIELDS.PARTICIPATION],
+        `SessionId eq ${sessionId}`,
+        'ParticipantName',
+      );
+
+      setLoading(false);
+      return items.map(fromSpMeetingParticipationFields);
+    } catch (error) {
+      setError(error as Error);
+      return [];
+    }
+  }, [enablePersistence, getListItemsByTitle, setLoading, resetError, setError]);
+
+  // ──────────────────────────────────────────────────────────────
+  // Priority Record Management (Data-access via meetingDataTypes mappers)
+  // ──────────────────────────────────────────────────────────────
+
+  const addPriorityRecord = useCallback(async (
+    priorityData: Omit<MeetingPriorityRecord, 'id' | 'createdAt' | 'updatedAt'>,
+  ): Promise<MeetingPriorityRecord> => {
+    if (!enablePersistence) {
+      throw new Error('Meeting persistence is disabled');
+    }
+
+    setLoading(true);
+    resetError();
+
+    try {
+      const now = new Date().toISOString();
+      const recordWithTimestamps: MeetingPriorityRecord = {
+        ...priorityData,
+        createdAt: now,
+        updatedAt: now,
+      };
+
+      const spFields = toSpMeetingPriorityFields(recordWithTimestamps);
+      const result = await addListItemByTitle(PRIORITY_LIST, spFields) as {
+        Id: number;
+        Created: string;
+        Modified: string;
+      };
+
+      const created: MeetingPriorityRecord = {
+        ...recordWithTimestamps,
+        id: result.Id,
+        createdAt: result.Created || now,
+        updatedAt: result.Modified || now,
+      };
+
+      setLoading(false);
+
+      meetingLogger.sharePointSyncSucceeded({
+        sessionKey: created.sessionKey,
+        operation: 'create',
+      });
+
+      return created;
+    } catch (error) {
+      setError(error as Error);
+
+      meetingLogger.sharePointSyncFailed({
+        sessionKey: priorityData.sessionKey,
+        operation: 'create',
+        error,
+      });
+
+      throw error;
+    }
+  }, [enablePersistence, addListItemByTitle, setLoading, resetError, setError]);
+
+  const updatePriorityRecord = useCallback(async (
+    priorityId: number,
+    updates: Partial<MeetingPriorityRecord>,
+  ): Promise<MeetingPriorityRecord> => {
+    if (!enablePersistence) {
+      throw new Error('Meeting persistence is disabled');
+    }
+
+    setLoading(true);
+    resetError();
+
+    try {
+      const now = new Date().toISOString();
+
+      const existing = await getListItemsByTitle<SpMeetingPriorityItem>(
+        PRIORITY_LIST,
+        [MEETING_SELECT_FIELDS.PRIORITY_RECORDS],
+        `Id eq ${priorityId}`,
+      );
+
+      if (existing.length === 0) {
+        throw new Error(`Priority record ${priorityId} not found`);
+      }
+
+      const current = fromSpMeetingPriorityFields(existing[0]);
+      const merged: MeetingPriorityRecord = { ...current, ...updates, updatedAt: now };
+      const spFields = toSpMeetingPriorityFields(merged);
+
+      const res = await spFetch(
+        `/lists/getbytitle('${PRIORITY_LIST}')/items(${priorityId})`,
+        {
+          method: 'PATCH',
+          headers: {
+            'Content-Type': 'application/json',
+            'IF-MATCH': '*',
+            'X-HTTP-Method': 'MERGE',
+          },
+          body: JSON.stringify(spFields),
+        },
+      );
+
+      if (!res.ok) {
+        throw new Error('Failed to update priority record');
+      }
+
+      setLoading(false);
+      return merged;
+    } catch (error) {
+      setError(error as Error);
+      throw error;
+    }
+  }, [enablePersistence, getListItemsByTitle, spFetch, setLoading, resetError, setError]);
+
+  const getMeetingPriorities = useCallback(async (
+    sessionId: number,
+  ): Promise<MeetingPriorityRecord[]> => {
+    if (!enablePersistence) return [];
+
+    setLoading(true);
+    resetError();
+
+    try {
+      const items = await getListItemsByTitle<SpMeetingPriorityItem>(
+        PRIORITY_LIST,
+        [MEETING_SELECT_FIELDS.PRIORITY_RECORDS],
+        `SessionId eq ${sessionId}`,
+        'Priority',
+      );
+
+      setLoading(false);
+      return items.map(fromSpMeetingPriorityFields);
+    } catch (error) {
+      setError(error as Error);
+      return [];
+    }
+  }, [enablePersistence, getListItemsByTitle, setLoading, resetError, setError]);
 
   // Return combined state and actions
   return useMemo(() => ({
