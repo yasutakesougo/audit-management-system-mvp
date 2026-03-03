@@ -121,13 +121,17 @@ export class SharePointScheduleRepository implements ScheduleRepository {
       const spConfig = ensureConfig();
       const baseUrl = spConfig.baseUrl;
       if (!baseUrl) {
-        console.log('[schedules] [SharePointScheduleRepository] baseUrl is empty (bypass mode), assuming list exists');
+        if (SCHEDULES_DEBUG) {
+          console.log('[schedules] [SharePointScheduleRepository] baseUrl is empty (bypass mode), assuming list exists');
+        }
         return true;
       }
 
       const client = this.getClient();
       const metadata = await client.tryGetListMetadata(this.listTitle);
-      console.log('[schedules] [SharePointScheduleRepository] checkListExists metadata:', metadata);
+      if (SCHEDULES_DEBUG) {
+        console.log('[schedules] [SharePointScheduleRepository] checkListExists metadata:', metadata);
+      }
       return Boolean(metadata);
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
