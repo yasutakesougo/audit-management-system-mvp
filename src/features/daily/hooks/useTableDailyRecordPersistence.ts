@@ -5,7 +5,8 @@
  * 将来的な IndexedDB や Server 連携への移行を容易にする。
  */
 
-import { useState, useEffect } from 'react';
+import { useEffect, useState } from 'react';
+import toast from 'react-hot-toast';
 import type { TableDailyRecordData } from './useTableDailyRecordForm';
 
 /** Storage key for draft persistence */
@@ -139,7 +140,7 @@ export function useTableDailyRecordPersistence({
       setDraftSavedAt(draft.savedAt);
     } catch (error) {
       console.error('下書き保存に失敗しました:', error);
-      alert('下書き保存に失敗しました。');
+      toast.error('下書き保存に失敗しました。', { duration: 3000 });
     }
   };
 

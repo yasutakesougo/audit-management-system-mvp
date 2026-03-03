@@ -1,13 +1,15 @@
-import { useUsers } from '@/stores/useUsers';
-import { useEffect, useMemo, useState } from 'react';
-import type { Dispatch, SetStateAction } from 'react';
-import type { User } from '@/types';
 import { emitDailySubmissionEvents } from '@/features/ibd/analysis/pdca/dailyMetricsAdapter';
-import { useTableDailyRecordRouting } from './useTableDailyRecordRouting';
+import { useUsers } from '@/stores/useUsers';
+import type { User } from '@/types';
+import type { Dispatch, SetStateAction } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import toast from 'react-hot-toast';
 import { useTableDailyRecordFiltering } from './useTableDailyRecordFiltering';
-import { useTableDailyRecordPersistence } from './useTableDailyRecordPersistence';
-import { useTableDailyRecordSelection } from './useTableDailyRecordSelection';
 import type { DraftInput } from './useTableDailyRecordPersistence';
+import { useTableDailyRecordPersistence } from './useTableDailyRecordPersistence';
+import { useTableDailyRecordRouting } from './useTableDailyRecordRouting';
+import { useTableDailyRecordRowHandlers } from './useTableDailyRecordRowHandlers';
+import { useTableDailyRecordSelection } from './useTableDailyRecordSelection';
 
 export type UserRowData = {
   userId: string;
@@ -32,6 +34,18 @@ export type TableDailyRecordData = {
     role: string;
   };
   userRows: UserRowData[];
+};
+
+/** バリデーションエラー構造 */
+export type TableDailyRecordValidationErrors = {
+  /** 日付に関するエラー */
+  date?: string;
+  /** 記録者名に関するエラー */
+  reporterName?: string;
+  /** 利用者選択に関するエラー */
+  selectedUsers?: string;
+  /** 行データに関するエラー（key = userId） */
+  rows?: Record<string, string>;
 };
 
 export type UseTableDailyRecordFormParams = {
@@ -65,6 +79,10 @@ export type UseTableDailyRecordFormResult = {
   handleSaveDraft: () => void;
   handleSave: () => Promise<void>;
   saving: boolean;
+  /** バリデーションエラー（空オブジェクト = エラーなし） */
+  validationErrors: TableDailyRecordValidationErrors;
+  /** バリデーションエラーをクリアする */
+  clearValidationErrors: () => void;
 };
 
 const createInitialFormData = (initialDate?: string | null): TableDailyRecordData => ({
@@ -76,12 +94,41 @@ const createInitialFormData = (initialDate?: string | null): TableDailyRecordDat
   userRows: [],
 });
 
-const hasRowContent = (row: UserRowData): boolean => {
-  if (row.amActivity.trim() || row.pmActivity.trim() || row.lunchAmount.trim() || row.specialNotes.trim()) {
-    return true;
+/** YYYY-MM-DD 形式の日付バリデーション */
+const isValidDate = (value: string): boolean => {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) return false;
+  const d = new Date(value);
+  return !isNaN(d.getTime());
+};
+
+/**
+ * フォームデータのバリデーション
+ * @returns エラーオブジェクト（空 = エラーなし）
+ */
+const validateFormData = (
+  formData: TableDailyRecordData,
+  selectedUserIds: string[],
+): TableDailyRecordValidationErrors => {
+  const errors: TableDailyRecordValidationErrors = {};
+
+  // 日付
+  if (!formData.date.trim()) {
+    errors.date = '日付を入力してください';
+  } else if (!isValidDate(formData.date)) {
+    errors.date = '有効な日付を入力してください（例: 2026-03-03）';
   }
 
-  return Object.values(row.problemBehavior).some(Boolean);
+  // 記録者名
+  if (!formData.reporter.name.trim()) {
+    errors.reporterName = '記録者名を入力してください';
+  }
+
+  // 利用者選択
+  if (selectedUserIds.length === 0) {
+    errors.selectedUsers = '利用者を1人以上選択してください';
+  }
+
+  return errors;
 };
 
 export const useTableDailyRecordForm = ({
@@ -89,18 +136,22 @@ export const useTableDailyRecordForm = ({
   onClose,
   onSave,
 }: UseTableDailyRecordFormParams): UseTableDailyRecordFormResult => {
-  // Extract routing logic to separate hook
+  // ── Routing ───────────────────────────────────────
   const { initialDateFromUrl, showUnsentOnly, setShowUnsentOnly } = useTableDailyRecordRouting(open);
 
+  // ── Core state ────────────────────────────────────
   const [formData, setFormData] = useState<TableDailyRecordData>(() => createInitialFormData(initialDateFromUrl));
   const [saving, setSaving] = useState(false);
+  const [validationErrors, setValidationErrors] = useState<TableDailyRecordValidationErrors>({});
+
+  const clearValidationErrors = useCallback(() => setValidationErrors({}), []);
 
   const { data: users = [] } = useUsers();
 
-  // Draft persistence logic extracted to separate hook
+  // ── Persistence ───────────────────────────────────
   const { draftSavedAt, loadedDraft, saveDraft, clearDraft } = useTableDailyRecordPersistence({ open });
 
-  // Extract filtering logic to separate hook
+  // ── Filtering ─────────────────────────────────────
   const targetDate = useMemo(() => new Date(formData.date), [formData.date]);
   const {
     filteredUsers,
@@ -108,7 +159,7 @@ export const useTableDailyRecordForm = ({
     filters: { showTodayOnly, setShowTodayOnly, searchQuery, setSearchQuery },
   } = useTableDailyRecordFiltering({ users, targetDate });
 
-  // Extract selection logic to separate hook
+  // ── Selection ─────────────────────────────────────
   const {
     selectedUserIds,
     selectedUsers,
@@ -128,82 +179,22 @@ export const useTableDailyRecordForm = ({
     loadedDraftSelectedUserIds: loadedDraft?.selectedUserIds,
   });
 
-  const unsentRowCount = useMemo(() => {
-    const contentBasedCount = formData.userRows.filter(hasRowContent).length;
-    if (contentBasedCount > 0) {
-      return contentBasedCount;
-    }
-    return selectedUserIds.length;
-  }, [formData.userRows, selectedUserIds]);
+  // ── Row handlers (抽出済み) ───────────────────────
+  const {
+    handleRowDataChange,
+    handleProblemBehaviorChange,
+    handleClearRow,
+    visibleRows,
+    unsentRowCount,
+  } = useTableDailyRecordRowHandlers({
+    setFormData,
+    selectedUsers,
+    selectedUserIds,
+    showUnsentOnly,
+    formData,
+  });
 
-  const visibleRows = useMemo(() => {
-    if (!showUnsentOnly) {
-      return formData.userRows;
-    }
-
-    return formData.userRows.filter(hasRowContent);
-  }, [formData.userRows, showUnsentOnly]);
-
-  useEffect(() => {
-    setFormData((prev) => {
-      const existingMap = new Map(prev.userRows.map((row) => [row.userId, row]));
-      const rowsFromResolvedUsers: UserRowData[] = selectedUsers.map((user) => {
-        const userId = user.userId || '';
-        const existing = existingMap.get(userId);
-        if (existing) {
-          return existing;
-        }
-        return {
-          userId,
-          userName: user.name || '',
-          amActivity: '',
-          pmActivity: '',
-          lunchAmount: '',
-          problemBehavior: {
-            selfHarm: false,
-            violence: false,
-            loudVoice: false,
-            pica: false,
-            other: false,
-          },
-          specialNotes: '',
-        };
-      });
-
-      const resolvedUserIds = new Set(rowsFromResolvedUsers.map((row) => row.userId));
-      const unresolvedButSelectedRows: UserRowData[] = selectedUserIds
-        .filter((userId) => !resolvedUserIds.has(userId))
-        .map((userId) => {
-          const existing = existingMap.get(userId);
-          if (existing) {
-            return existing;
-          }
-
-          return {
-            userId,
-            userName: userId,
-            amActivity: '',
-            pmActivity: '',
-            lunchAmount: '',
-            problemBehavior: {
-              selfHarm: false,
-              violence: false,
-              loudVoice: false,
-              pica: false,
-              other: false,
-            },
-            specialNotes: '',
-          };
-        });
-
-      const nextRows: UserRowData[] = [...rowsFromResolvedUsers, ...unresolvedButSelectedRows];
-
-      return {
-        ...prev,
-        userRows: nextRows,
-      };
-    });
-  }, [selectedUsers, selectedUserIds]);
+  // ── Side effects ──────────────────────────────────
 
   // Auto-disable unsent filter when no unsent rows remain
   useEffect(() => {
@@ -223,57 +214,7 @@ export const useTableDailyRecordForm = ({
     setShowTodayOnly(loadedDraft.showTodayOnly);
   }, [loadedDraft, setSearchQuery, setShowTodayOnly]);
 
-  const handleRowDataChange = (userId: string, field: string, value: string | boolean) => {
-    setFormData((prev) => ({
-      ...prev,
-      userRows: prev.userRows.map((row) =>
-        row.userId === userId
-          ? { ...row, [field]: value }
-          : row
-      ),
-    }));
-  };
-
-  const handleProblemBehaviorChange = (userId: string, behaviorType: string, checked: boolean) => {
-    setFormData((prev) => ({
-      ...prev,
-      userRows: prev.userRows.map((row) =>
-        row.userId === userId
-          ? {
-              ...row,
-              problemBehavior: {
-                ...row.problemBehavior,
-                [behaviorType]: checked,
-              },
-            }
-          : row
-      ),
-    }));
-  };
-
-  const handleClearRow = (userId: string) => {
-    setFormData((prev) => ({
-      ...prev,
-      userRows: prev.userRows.map((row) =>
-        row.userId === userId
-          ? {
-              ...row,
-              amActivity: '',
-              pmActivity: '',
-              lunchAmount: '',
-              problemBehavior: {
-                selfHarm: false,
-                violence: false,
-                loudVoice: false,
-                pica: false,
-                other: false,
-              },
-              specialNotes: '',
-            }
-          : row
-      ),
-    }));
-  };
+  // ── Actions ───────────────────────────────────────
 
   const handleSaveDraft = () => {
     const input: DraftInput = {
@@ -286,13 +227,17 @@ export const useTableDailyRecordForm = ({
   };
 
   const handleSave = async () => {
-    if (selectedUserIds.length === 0) {
-      alert('利用者を1人以上選択してください');
-      return;
-    }
+    // バリデーション実行
+    const errors = validateFormData(formData, selectedUserIds);
+    setValidationErrors(errors);
 
-    if (!formData.reporter.name.trim()) {
-      alert('記録者名を入力してください');
+    if (Object.keys(errors).length > 0) {
+      // 最初のエラーメッセージをトーストに表示
+      const firstError = Object.values(errors)[0];
+      const errorMessage = typeof firstError === 'string'
+        ? firstError
+        : '入力内容にエラーがあります';
+      toast.error(errorMessage, { duration: 4000 });
       return;
     }
 
@@ -310,6 +255,11 @@ export const useTableDailyRecordForm = ({
       emitDailySubmissionEvents(submissionEvents);
 
       clearDraft();
+      setValidationErrors({});
+      toast.success(
+        `${selectedUserIds.length}人分の活動記録を保存しました`,
+        { duration: 3000 },
+      );
       onClose();
       setSelectedUserIds([]);
       setSearchQuery('');
@@ -319,11 +269,13 @@ export const useTableDailyRecordForm = ({
       setFormData(createInitialFormData());
     } catch (error) {
       console.error('保存に失敗しました:', error);
-      alert('保存に失敗しました。もう一度お試しください。');
+      toast.error('保存に失敗しました。もう一度お試しください。', { duration: 5000 });
     } finally {
       setSaving(false);
     }
   };
+
+  // ── Return ────────────────────────────────────────
 
   return {
     formData,
@@ -350,5 +302,7 @@ export const useTableDailyRecordForm = ({
     handleSaveDraft,
     handleSave,
     saving,
+    validationErrors,
+    clearValidationErrors,
   };
 };

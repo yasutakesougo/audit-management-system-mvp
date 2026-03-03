@@ -73,15 +73,6 @@ export class SharePointBehaviorRepository implements BehaviorRepository {
     const selectFields = buildDailyActivitySelectFields(Array.from(internalNames));
     const timestampField = FIELD_MAP_DAILY_ACTIVITY.recordDate;
 
-    const isDev = typeof window !== 'undefined' && window.location.hostname === 'localhost';
-    if (isDev) {
-      console.log('[daily/support] Fields検証OK', {
-        userId,
-        totalFields: internalNames.size,
-        selectedFields: selectFields.length,
-      });
-    }
-
     const filters: string[] = [
       `${FIELD_MAP_DAILY_ACTIVITY.userId} eq '${this.escapeSingleQuotes(userId)}'`,
     ];
