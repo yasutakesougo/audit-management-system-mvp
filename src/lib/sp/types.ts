@@ -1,14 +1,16 @@
 /**
- * SharePoint Client Types & Schemas
+ * SharePoint Client — Type Definitions (Single Source of Truth)
  *
- * spClient.ts から抽出された型定義・スキーマ。
- * 各 SP Repository が直接インポート可能。
+ * Consolidated from former types.ts + spTypes.ts.
+ * Every SP module imports types from this file only.
  */
 import { z } from 'zod';
 
 // ─── Basic types ─────────────────────────────────────────────────
 
 export type JsonRecord = Record<string, unknown>;
+
+// ─── Retry types ─────────────────────────────────────────────────
 
 export type RetryReason = 'throttle' | 'timeout' | 'server';
 
@@ -118,10 +120,30 @@ export type FieldsCacheEntry = {
   internalNames: string[];
 };
 
+// ─── E2E Debug ───────────────────────────────────────────────────
+
 export type E2eDebugWindow = Window & {
   __E2E_BATCH_URL__?: string;
   __E2E_BATCH_ATTEMPTS__?: number;
 };
+
+// ─── Zod helper ──────────────────────────────────────────────────
+
+export type SpListItems<T extends z.ZodTypeAny> = z.infer<T>[];
+
+// ─── List items query ────────────────────────────────────────────
+
+export type ListItemsOptions = {
+  select?: string[];
+  filter?: string;
+  orderby?: string;
+  expand?: string;
+  top?: number;
+  pageCap?: number;
+  signal?: AbortSignal;
+};
+
+// ─── Staff identifier ────────────────────────────────────────────
 
 export type StaffIdentifier = { type: 'guid' | 'title'; value: string };
 
@@ -133,7 +155,7 @@ export type StaffIdentifier = { type: 'guid' | 'title'; value: string };
  */
 export function parseSpListResponse<T extends z.ZodTypeAny>(
   json: unknown,
-  itemSchema: T
+  itemSchema: T,
 ): z.infer<T>[] {
   // 1. Validate the outer OData envelope shape first
   const envelopeSchema = z.object({ value: z.array(z.unknown()).default([]) });
@@ -155,7 +177,8 @@ export function parseSpListResponse<T extends z.ZodTypeAny>(
       validItems.push(itemParsed.data);
     } else {
       // Capture identifier if available to help with tracing
-      const id = (rawItem as Record<string, unknown>)?.Id ?? (rawItem as Record<string, unknown>)?.ID;
+      const id =
+        (rawItem as Record<string, unknown>)?.Id ?? (rawItem as Record<string, unknown>)?.ID;
       errors.push({
         index,
         id,
@@ -166,22 +189,18 @@ export function parseSpListResponse<T extends z.ZodTypeAny>(
 
   // 3. Telemetry hook: Log specific item failures without crashing the whole list
   if (errors.length > 0) {
-    console.error(`[spClient] Partial validation failure: ${errors.length}/${rawItems.length} items failed schema.`, {
-      errors,
-      // Consider pushing this to Sentry/AppInsights here in the future
-    });
+    console.error(
+      `[spClient] Partial validation failure: ${errors.length}/${rawItems.length} items failed schema.`,
+      {
+        errors,
+        // Consider pushing this to Sentry/AppInsights here in the future
+      },
+    );
   }
 
   return validItems;
 }
 
-// ─── XML / GUID helpers ─────────────────────────────────────────
+// ─── XML / GUID helpers (re-exported from spSchema for backward compat) ──
 
-export const escapeXml = (value: string): string =>
-  value.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
-
-export const trimGuidBraces = (value: string): string => value.replace(/[{}]/g, '').trim();
-export const withGuidBraces = (value: string): string => {
-  const trimmed = trimGuidBraces(value);
-  return trimmed ? `{${trimmed}}` : '';
-};
+export { escapeXml, trimGuidBraces, withGuidBraces } from './spSchema';

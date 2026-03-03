@@ -18,7 +18,7 @@ import {
     resolveListPath,
     safeJsonParse,
     safeJsonStringify,
-} from './spHelpers';
+} from './helpers';
 import { buildFieldSchema, trimGuidBraces } from './spSchema';
 import type {
     EnsureListOptions,
@@ -29,7 +29,7 @@ import type {
     ListItemsOptions,
     SharePointListMetadata,
     SpFieldDef,
-} from './spTypes';
+} from './types';
 
 // ── Dependency interfaces ──────────────────────────────────────────────────
 // These thin signatures decouple list operations from the full spClient.
