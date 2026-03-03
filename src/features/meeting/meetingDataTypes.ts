@@ -292,7 +292,89 @@ export function fromSpMeetingStepFields(item: SpMeetingStepItem): MeetingStepRec
   };
 }
 
-// Similar transformation functions for participation and priority records...
+/**
+ * Convert domain MeetingParticipation to SharePoint fields
+ */
+export function toSpMeetingParticipationFields(
+  p: MeetingParticipation,
+): Omit<SpMeetingParticipationItem, 'Id' | 'Created' | 'Modified' | '@odata.etag'> {
+  return {
+    Title: `${p.participantName} - ${p.sessionKey}`,
+    SessionId: p.sessionId,
+    SessionKey: p.sessionKey,
+    ParticipantUserId: p.participantUserId,
+    ParticipantName: p.participantName,
+    Role: p.role,
+    AttendanceStatus: p.attendanceStatus,
+    JoinTime: p.joinTime,
+    LeaveTime: p.leaveTime,
+    Notes: p.notes,
+  };
+}
+
+/**
+ * Convert SharePoint item to domain MeetingParticipation
+ */
+export function fromSpMeetingParticipationFields(item: SpMeetingParticipationItem): MeetingParticipation {
+  return {
+    id: item.Id,
+    sessionId: item.SessionId,
+    sessionKey: item.SessionKey,
+    participantUserId: item.ParticipantUserId,
+    participantName: item.ParticipantName,
+    role: item.Role as ParticipantRole,
+    attendanceStatus: item.AttendanceStatus as AttendanceStatus,
+    joinTime: item.JoinTime,
+    leaveTime: item.LeaveTime,
+    notes: item.Notes,
+    createdAt: item.Created,
+    updatedAt: item.Modified,
+  };
+}
+
+/**
+ * Convert domain MeetingPriorityRecord to SharePoint fields
+ */
+export function toSpMeetingPriorityFields(
+  pr: MeetingPriorityRecord,
+): Omit<SpMeetingPriorityItem, 'Id' | 'Created' | 'Modified' | '@odata.etag'> {
+  return {
+    Title: `${pr.userName} priority - ${pr.sessionKey}`,
+    SessionId: pr.sessionId,
+    SessionKey: pr.sessionKey,
+    UserId: pr.userId,
+    UserName: pr.userName,
+    Priority: pr.priority,
+    FollowUpReason: pr.followUpReason,
+    DiscussionNotes: pr.discussionNotes,
+    ActionItems: pr.actionItems,
+    AssignedStaffId: pr.assignedStaffId,
+    FollowUpDeadline: pr.followUpDeadline,
+    Resolved: pr.resolved,
+  };
+}
+
+/**
+ * Convert SharePoint item to domain MeetingPriorityRecord
+ */
+export function fromSpMeetingPriorityFields(item: SpMeetingPriorityItem): MeetingPriorityRecord {
+  return {
+    id: item.Id,
+    sessionId: item.SessionId,
+    sessionKey: item.SessionKey,
+    userId: item.UserId,
+    userName: item.UserName,
+    priority: item.Priority as MeetingPriorityRecord['priority'],
+    followUpReason: item.FollowUpReason,
+    discussionNotes: item.DiscussionNotes,
+    actionItems: item.ActionItems,
+    assignedStaffId: item.AssignedStaffId,
+    followUpDeadline: item.FollowUpDeadline,
+    resolved: item.Resolved,
+    createdAt: item.Created,
+    updatedAt: item.Modified,
+  };
+}
 
 /**
  * Generate idempotency key for meeting sessions
