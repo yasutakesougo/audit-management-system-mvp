@@ -1,22 +1,22 @@
-import React from 'react';
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  Stack,
-  Typography,
-  Alert,
-  List,
-  ListItem,
-  ListItemAvatar,
-  ListItemText,
-  Avatar,
-  Paper,
-} from '@mui/material';
-import { alpha } from '@mui/material/styles';
+import { ScheduleLanesWidget } from '@/features/dashboard/components/ScheduleLanesWidget';
 import HandoffSummaryForMeeting from '@/features/handoff/HandoffSummaryForMeeting';
 import type { HandoffDayScope } from '@/features/handoff/handoffTypes';
 import type { IUserMaster } from '@/sharepoint/fields';
+import {
+    Alert,
+    Avatar,
+    Card,
+    CardContent,
+    CardHeader,
+    List,
+    ListItem,
+    ListItemAvatar,
+    ListItemText,
+    Paper,
+    Stack,
+    Typography,
+} from '@mui/material';
+import { alpha } from '@mui/material/styles';
 import type { ScheduleLanes } from './ScheduleSection';
 
 export interface StaffOnlySectionProps {
@@ -38,8 +38,6 @@ export interface StaffOnlySectionProps {
   scheduleLanesToday: ScheduleLanes;
   /** Schedule lanes for tomorrow */
   scheduleLanesTomorrow: ScheduleLanes;
-  /** Display schedule lanes function */
-  renderScheduleLanes: (title: string, lanes: ScheduleLanes) => React.ReactNode;
   /** Stats data */
   stats: {
     seizureCount: number;
@@ -62,7 +60,6 @@ export function StaffOnlySection({
   prioritizedUsers,
   scheduleLanesToday,
   scheduleLanesTomorrow,
-  renderScheduleLanes,
   stats,
   onOpenTimeline,
 }: StaffOnlySectionProps) {
@@ -124,7 +121,7 @@ export function StaffOnlySection({
               </CardContent>
             </Card>
 
-            {renderScheduleLanes('今日の予定', scheduleLanesToday)}
+            <ScheduleLanesWidget title="今日の予定" lanes={scheduleLanesToday} />
           </Stack>
         </CardContent>
       </Card>
@@ -218,7 +215,7 @@ export function StaffOnlySection({
               onOpenTimeline={() => onOpenTimeline('today')}
             />
 
-            {renderScheduleLanes('明日の予定', scheduleLanesTomorrow)}
+            <ScheduleLanesWidget title="明日の予定" lanes={scheduleLanesTomorrow} />
           </Stack>
         </CardContent>
       </Card>
