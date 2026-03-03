@@ -1,3 +1,4 @@
+import { PageHeader } from '@/components/PageHeader';
 import { useFeatureFlags } from '@/config/featureFlags';
 import { canAccessDashboardAudience, type DashboardAudience } from '@/features/auth/store';
 import { DashboardZoneLayout } from '@/features/dashboard/components/DashboardZoneLayout';
@@ -582,16 +583,10 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ audience = 'staff' }) => 
     <Container maxWidth="lg" data-testid="dashboard-page">
       <Box sx={{ py: { xs: 1.5, sm: 2, md: 2.5 } }}>
         {/* ヘッダー */}
-        <Box sx={{ mb: 3 }}>
-          <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 1 }}>
-            <Box>
-              <Typography variant="h4" component="h1">
-                <DashboardIcon sx={{ verticalAlign: 'middle', mr: 2 }} />
-                黒ノート
-              </Typography>
-            </Box>
-
-            {/* 朝会・夕会情報、お部屋情報ボタン */}
+        <PageHeader
+          title="黒ノート"
+          icon={<DashboardIcon />}
+          actions={
             <Stack direction="row" spacing={1}>
               <Button
                 variant="contained"
@@ -612,8 +607,8 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ audience = 'staff' }) => 
                 🏢 お部屋情報
               </Button>
             </Stack>
-          </Box>
-        </Box>
+          }
+        />
 
         <Stack spacing={{ xs: 2, sm: 3, md: 4 }} sx={{ mb: { xs: 2, sm: 3 } }}>
           {(() => {

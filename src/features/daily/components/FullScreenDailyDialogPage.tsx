@@ -1,14 +1,14 @@
-import * as React from 'react';
-import { useNavigate } from 'react-router-dom';
-import {
-  AppBar,
-  Box,
-  Button,
-  Toolbar,
-  Typography,
-} from '@mui/material';
 import CloseIcon from '@mui/icons-material/Close';
 import HomeOutlinedIcon from '@mui/icons-material/HomeOutlined';
+import {
+    AppBar,
+    Box,
+    Button,
+    Toolbar,
+    Typography,
+} from '@mui/material';
+import * as React from 'react';
+import { useNavigate } from 'react-router-dom';
 
 type FullScreenDailyDialogPageProps = {
   open?: boolean;
@@ -96,7 +96,7 @@ export function FullScreenDailyDialogPage({
             キャンセル
           </Button>
 
-          <Typography sx={{ flex: 1 }} variant="h6">
+          <Typography sx={{ flex: 1 }} variant="h6" component="h1" data-page-heading="true">
             {title}
           </Typography>
 

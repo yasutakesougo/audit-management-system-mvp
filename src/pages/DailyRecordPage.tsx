@@ -1,3 +1,5 @@
+import { PageHeader } from '@/components/PageHeader';
+import { PersonDaily } from '@/domain/daily/types';
 import { saveDailyRecord, validateDailyRecord } from '@/features/daily/domain/dailyRecordLogic';
 import AccessTimeIcon from '@mui/icons-material/AccessTime';
 import AddIcon from '@mui/icons-material/Add';
@@ -21,7 +23,6 @@ import { useEffect, useMemo, useState } from 'react';
 import { Toaster } from 'react-hot-toast';
 import { useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import { LandscapeFab } from '../components/ui/LandscapeFab';
-import { PersonDaily } from '@/domain/daily/types';
 import { FullScreenDailyDialogPage } from '../features/daily/components/FullScreenDailyDialogPage';
 import { DailyRecordForm } from '../features/daily/forms/DailyRecordForm';
 import { DailyRecordList } from '../features/daily/lists/DailyRecordList';
@@ -353,14 +354,10 @@ export default function DailyRecordPage() {
       <Container maxWidth="lg" data-testid="records-daily-root">
         <Box sx={{ py: 3 }}>
         {/* ヘッダー */}
-        <Box sx={{ mb: 3 }}>
-          <Typography variant="h4" component="h1" gutterBottom>
-            支援記録（ケース記録）
-          </Typography>
-          <Typography variant="body1" color="text.secondary">
-            利用者全員の日々の活動状況、問題行動、発作記録を管理します
-          </Typography>
-        </Box>
+        <PageHeader
+          title="支援記録（ケース記録）"
+          subtitle="利用者全員の日々の活動状況、問題行動、発作記録を管理します"
+        />
 
         {/* Phase 1A: 申し送りサマリーカード */}
         {handoffTotal > 0 && (

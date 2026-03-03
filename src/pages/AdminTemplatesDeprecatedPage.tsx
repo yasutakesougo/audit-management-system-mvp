@@ -1,14 +1,13 @@
-import * as React from 'react';
+import { PageHeader } from '@/components/PageHeader';
 import { Alert, Box, Button, Card, CardContent, Stack, Typography } from '@mui/material';
+import * as React from 'react';
 import { Link as RouterLink } from 'react-router-dom';
 
 const AdminTemplatesDeprecatedPage: React.FC = () => {
   return (
     <Box sx={{ p: 2 }}>
       <Stack spacing={2} sx={{ maxWidth: 840, mx: 'auto' }}>
-        <Typography variant="h5" component="h1">
-          管理ページの移動について
-        </Typography>
+        <PageHeader title="管理ページの移動について" />
 
         <Alert severity="info">
           このページ（支援活動テンプレート管理）は、アプリ設定ページへ統合されました。
