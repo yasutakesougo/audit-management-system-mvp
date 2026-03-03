@@ -3,7 +3,7 @@
  * Extracted from spClient.ts for single-responsibility.
  */
 
-import type { SpFieldDef } from './spTypes';
+import type { SpFieldDef } from './types';
 
 // ── XML helpers ──
 export const escapeXml = (value: string): string =>

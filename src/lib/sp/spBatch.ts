@@ -3,7 +3,7 @@
  * Extracted from spClient.ts for single-responsibility.
  */
 
-import type { SharePointBatchOperation, SharePointBatchResult } from './spTypes';
+import type { SharePointBatchOperation, SharePointBatchResult } from './types';
 
 /**
  * Build a multipart/mixed batch request body from operations.
