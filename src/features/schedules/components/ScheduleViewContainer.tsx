@@ -1,11 +1,11 @@
 import type { MouseEvent } from 'react';
 
-import type { SchedItem, DateRange } from '../data';
+import Loading from '@/ui/components/Loading';
+import type { DateRange, SchedItem } from '../data';
 import type { ScheduleCategory } from '../domain/types';
-import WeekView from '../routes/WeekView';
 import DayView from '../routes/DayView';
 import MonthPage from '../routes/MonthPage';
-import Loading from '@/ui/components/Loading';
+import WeekView from '../routes/WeekView';
 
 export type ScheduleViewContainerProps = {
   mode: 'day' | 'week' | 'month' | 'org';
@@ -26,6 +26,9 @@ export type ScheduleViewContainerProps = {
 
   // Common
   compact: boolean;
+
+  // Month View additional callback
+  onAddClick?: (dayIso: string) => void;
 };
 
 const skeletonStyle: React.CSSProperties = {
@@ -98,6 +101,8 @@ export function ScheduleViewContainer(props: ScheduleViewContainerProps) {
         loading={isLoading}
         activeCategory={categoryFilter}
         compact={compact}
+        onDayClick={onDayClick}
+        onAddClick={props.onAddClick ?? ((dayIso) => onTimeSlotClick(dayIso, '09:00'))}
       />
     );
   }
