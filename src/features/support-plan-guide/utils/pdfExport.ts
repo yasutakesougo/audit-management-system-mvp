@@ -2,10 +2,32 @@
  * SupportPlanGuide — PDF印刷プレビュー
  *
  * openPrintView() を SupportPlanGuidePage.tsx から抽出。
- * 振る舞いの変更は一切なし（純粋リファクタリング）。
+ *
+ * Phase 5: form.goals (GoalItem[]) のみを出力ソースとする。
  */
+import type { GoalItem } from '@/features/shared/goal/goalTypes';
 import type { SupportPlanForm } from '../types';
 import { formatDateJP } from './helpers';
+
+// ── Goal → HTML 変換ヘルパー ──
+
+/** GoalItem[] を type でフィルタし、HTML <ul><li> を構築する */
+function goalsToHtml(
+  goals: GoalItem[] | undefined,
+  type: GoalItem['type'],
+  esc: (s: string) => string,
+): string {
+  const filtered = goals?.filter((g) => g.type === type) ?? [];
+  if (filtered.length === 0) return '';
+  const items = filtered
+    .map((g) => {
+      const label = g.label?.trim() ? `<strong>${esc(g.label.trim())}</strong>: ` : '';
+      const text = esc(g.text?.trim() ?? '').replace(/\n/g, '<br/>');
+      return `<li>${label}${text}</li>`;
+    })
+    .join('');
+  return `<ul style="margin:2pt 0;padding-left:16pt;">${items}</ul>`;
+}
 
 // PDFプレビュー/印刷（表組み・ロゴ・ページ番号・押印枠 + 事業所情報 + セクション見出し）
 export function openPrintView(data: SupportPlanForm, title: string) {
@@ -22,6 +44,12 @@ export function openPrintView(data: SupportPlanForm, title: string) {
       ? `<tr><th>${esc(label)}</th><td>${esc(value).replace(/\n/g, '<br/>')}</td></tr>`
       : '';
 
+  // 1行（HTMLを直接渡すバージョン — goal用）
+  const rowHtml = (label: string, html: string) =>
+    html && html.trim()
+      ? `<tr><th>${esc(label)}</th><td>${html}</td></tr>`
+      : '';
+
   // セクション見出し＋中身（空なら非表示）
   const section = (titleText: string, inner: string) =>
     inner && inner.trim()
@@ -36,6 +64,17 @@ export function openPrintView(data: SupportPlanForm, title: string) {
     fax: window.__ORG_FAX__ ?? 'FAX 045-000-0001',
   };
 
+  // ── 目標セクション: goals のみ ──
+  const longGoalsHtml = goalsToHtml(data.goals, 'long', esc);
+  const shortGoalsHtml = goalsToHtml(data.goals, 'short', esc);
+  const supportGoalsHtml = goalsToHtml(data.goals, 'support', esc);
+
+  const secGoals =
+    rowHtml('長期目標（6か月以上）', longGoalsHtml) +
+    rowHtml('短期目標（3か月目安）', shortGoalsHtml);
+
+  const secSupports = rowHtml('支援内容', supportGoalsHtml);
+
   // 各セクションの行を構築
   const secBasic =
     row('利用者名 / ID', data.serviceUserName) +
@@ -45,14 +84,6 @@ export function openPrintView(data: SupportPlanForm, title: string) {
   const secAssessment =
     row('ニーズ・課題の要約', data.assessmentSummary) +
     row('強み・活用資源', data.strengths);
-
-  const secGoals =
-    row('長期目標（6か月以上）', data.longTermGoal) +
-    row('短期目標（3か月目安）', data.shortTermGoals);
-
-  const secSupports =
-    row('日中支援（身体介護・相談等）', data.dailySupports) +
-    row('創作・生産 / 機能訓練', data.creativeActivities);
 
   const secDecision =
     row('意思決定支援の工夫', data.decisionSupport) +
@@ -106,6 +137,8 @@ export function openPrintView(data: SupportPlanForm, title: string) {
   table.kv th, table.kv td { border: 1px solid #bbb; vertical-align: top; padding: 6pt 8pt; word-break: break-word; }
   table.kv th { background: #f8f9fa; width: 30%; font-size: 10.5pt; }
   table.kv td { width: 70%; font-size: 10pt; line-height: 1.6; }
+  table.kv td ul { margin: 2pt 0; padding-left: 16pt; }
+  table.kv td li { margin-bottom: 4pt; }
   tr.section th { background: #E8F0E4; font-weight: 700; text-align: center; font-size: 11pt; color: #3D6B3C; }
   .signatures { display: grid; grid-template-columns: 1fr 1fr; gap: 8pt; margin: 20pt 0; }
   .signatures .box { border: 1px solid #999; min-height: 40pt; position: relative; padding: 6pt; }

@@ -2,11 +2,36 @@
  * SupportPlanGuide — Markdown生成・エクスポート
  *
  * buildMarkdown() を SupportPlanGuidePage.tsx から抽出。
- * 振る舞いの変更は一切なし（純粋リファクタリング）。
+ *
+ * Phase 5: form.goals (GoalItem[]) のみを出力ソースとする。
  */
+import type { GoalItem } from '@/features/shared/goal/goalTypes';
 import type { SupportPlanForm } from '../types';
 
+// ── Goal → Markdown 変換ヘルパー ──
+
+/** GoalItem[] を type でフィルタし、箇条書き Markdown 行を生成する */
+function goalsToLines(goals: GoalItem[] | undefined, type: GoalItem['type']): string[] {
+  const filtered = goals?.filter((g) => g.type === type) ?? [];
+  if (filtered.length === 0) return [];
+  return filtered.map((g) => {
+    const label = g.label?.trim() ? `**${g.label.trim()}**: ` : '';
+    const text = g.text?.trim() ?? '';
+    return `- ${label}${text}`;
+  });
+}
+
 export const buildMarkdown = (form: SupportPlanForm) => {
+  // ── 目標セクション: goals のみ ──
+  const longGoalLines = goalsToLines(form.goals, 'long');
+  const shortGoalLines = goalsToLines(form.goals, 'short');
+  const supportGoalLines = goalsToLines(form.goals, 'support');
+
+  const goalSectionLines = [
+    ...(longGoalLines.length > 0 ? ['### 長期目標', ...longGoalLines] : []),
+    ...(shortGoalLines.length > 0 ? ['### 短期目標', ...shortGoalLines] : []),
+  ];
+
   const sections: Array<{ title: string; lines: string[] }> = [
     {
       title: '基本情報',
@@ -25,17 +50,11 @@ export const buildMarkdown = (form: SupportPlanForm) => {
     },
     {
       title: '目標（SMART）',
-      lines: [
-        form.longTermGoal && `長期目標: ${form.longTermGoal}`,
-        form.shortTermGoals && `短期目標: ${form.shortTermGoals}`,
-      ].filter(Boolean) as string[],
+      lines: goalSectionLines,
     },
     {
       title: '具体的支援内容',
-      lines: [
-        form.dailySupports && `日中支援: ${form.dailySupports}`,
-        form.creativeActivities && `創作/生産活動: ${form.creativeActivities}`,
-      ].filter(Boolean) as string[],
+      lines: supportGoalLines,
     },
     {
       title: '意思決定支援・会議記録',

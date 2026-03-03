@@ -12,7 +12,7 @@ import TextField from '@mui/material/TextField';
 import Typography from '@mui/material/Typography';
 import React from 'react';
 
-import type { FieldConfig, SupportPlanForm } from '../../types';
+import type { FieldConfig, SupportPlanForm, SupportPlanStringFieldKey } from '../../types';
 import { FIELD_LIMITS } from '../../types';
 import { formatDateJP } from '../../utils/helpers';
 
@@ -20,8 +20,8 @@ export type FieldCardProps = {
   field: FieldConfig;
   form: SupportPlanForm;
   isAdmin: boolean;
-  onFieldChange: (key: keyof SupportPlanForm, value: string) => void;
-  onAppendPhrase: (key: keyof SupportPlanForm, phrase: string) => void;
+  onFieldChange: (key: SupportPlanStringFieldKey, value: string) => void;
+  onAppendPhrase: (key: SupportPlanStringFieldKey, phrase: string) => void;
   /** guardAdmin wraps callbacks so non-admin users get a toast instead */
   guardAdmin: <T>(fn: (...args: unknown[]) => T) => (...args: unknown[]) => T | undefined;
 };

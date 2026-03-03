@@ -9,6 +9,7 @@
 import type { SelectChangeEvent } from '@mui/material/Select';
 import React from 'react';
 
+import type { GoalItem } from '@/features/shared/goal/goalTypes';
 import type { IUserMaster } from '@/features/users/types';
 import { estimatePayloadSize, HYDRATION_FEATURES, startFeatureSpan } from '@/hydration/features';
 import { useSupportPlanDraftRepository } from '../repositoryFactory';
@@ -17,6 +18,7 @@ import type {
     SectionKey,
     SupportPlanDraft,
     SupportPlanForm,
+    SupportPlanStringFieldKey,
     ToastState,
     UserOption,
 } from '../types';
@@ -79,8 +81,8 @@ export type UseSupportPlanFormReturn = {
   setActiveDraftId: (id: string) => void;
   setPreviewMode: (mode: 'render' | 'source') => void;
   setToast: (toast: ToastState) => void;
-  handleFieldChange: (key: keyof SupportPlanForm, value: string) => void;
-  handleAppendPhrase: (key: keyof SupportPlanForm, phrase: string) => void;
+  handleFieldChange: (key: SupportPlanStringFieldKey, value: string) => void;
+  handleAppendPhrase: (key: SupportPlanStringFieldKey, phrase: string) => void;
   handleReset: () => void;
   handleCopyMarkdown: () => Promise<void>;
   handleDownloadMarkdown: () => void;
@@ -90,6 +92,12 @@ export type UseSupportPlanFormReturn = {
   handleMasterUserChange: (event: SelectChangeEvent<string>) => void;
   handleDeleteDraft: () => void;
   handleRenameDraft: (name: string) => void;
+
+  // ── Goal Actions (Phase 3) ──
+  handleGoalChange: (goalId: string, updates: Partial<GoalItem>) => void;
+  handleToggleDomain: (goalId: string, domainId: string) => void;
+  handleAddGoal: (type: 'long' | 'short' | 'support', defaultLabel: string) => void;
+  handleDeleteGoal: (goalId: string) => void;
 };
 
 // ────────────────────────────────────────────
@@ -546,7 +554,7 @@ export function useSupportPlanForm({
   // HANDLERS
   // ════════════════════════════════════════════
 
-  const handleFieldChange = (key: keyof SupportPlanForm, value: string) => {
+  const handleFieldChange = (key: SupportPlanStringFieldKey, value: string) => {
     if (!activeDraftId || !isAdmin) {
       return;
     }
@@ -570,7 +578,7 @@ export function useSupportPlanForm({
     });
   };
 
-  const handleAppendPhrase = (key: keyof SupportPlanForm, phrase: string) => {
+  const handleAppendPhrase = (key: SupportPlanStringFieldKey, phrase: string) => {
     if (!activeDraftId || !isAdmin) {
       return;
     }
@@ -892,6 +900,99 @@ export function useSupportPlanForm({
     // SP save is handled by the auto-save effect (drafts changed → debounced sync)
   };
 
+  // ── Goal Actions (Phase 3) ──
+
+  const handleGoalChange = (goalId: string, updates: Partial<GoalItem>) => {
+    if (!activeDraftId || !isAdmin) return;
+    setDrafts((prev) => {
+      const target = prev[activeDraftId];
+      if (!target) return prev;
+      return {
+        ...prev,
+        [activeDraftId]: {
+          ...target,
+          data: {
+            ...target.data,
+            goals: target.data.goals.map((g) =>
+              g.id === goalId ? { ...g, ...updates } : g,
+            ),
+          },
+          updatedAt: new Date().toISOString(),
+        },
+      };
+    });
+  };
+
+  const handleToggleDomain = (goalId: string, domainId: string) => {
+    if (!activeDraftId || !isAdmin) return;
+    setDrafts((prev) => {
+      const target = prev[activeDraftId];
+      if (!target) return prev;
+      return {
+        ...prev,
+        [activeDraftId]: {
+          ...target,
+          data: {
+            ...target.data,
+            goals: target.data.goals.map((g) => {
+              if (g.id !== goalId) return g;
+              const next = g.domains.includes(domainId)
+                ? g.domains.filter((d) => d !== domainId)
+                : [...g.domains, domainId];
+              return { ...g, domains: next };
+            }),
+          },
+          updatedAt: new Date().toISOString(),
+        },
+      };
+    });
+  };
+
+  const handleAddGoal = (type: 'long' | 'short' | 'support', defaultLabel: string) => {
+    if (!activeDraftId || !isAdmin) return;
+    const newGoal: GoalItem = {
+      id: crypto.randomUUID(),
+      type,
+      label: defaultLabel,
+      text: '',
+      domains: [],
+    };
+    setDrafts((prev) => {
+      const target = prev[activeDraftId];
+      if (!target) return prev;
+      return {
+        ...prev,
+        [activeDraftId]: {
+          ...target,
+          data: {
+            ...target.data,
+            goals: [...target.data.goals, newGoal],
+          },
+          updatedAt: new Date().toISOString(),
+        },
+      };
+    });
+  };
+
+  const handleDeleteGoal = (goalId: string) => {
+    if (!activeDraftId || !isAdmin) return;
+    setDrafts((prev) => {
+      const target = prev[activeDraftId];
+      if (!target) return prev;
+      return {
+        ...prev,
+        [activeDraftId]: {
+          ...target,
+          data: {
+            ...target.data,
+            goals: target.data.goals.filter((g) => g.id !== goalId),
+          },
+          updatedAt: new Date().toISOString(),
+        },
+      };
+    });
+  };
+
   // ════════════════════════════════════════════
   // Return
   // ════════════════════════════════════════════
@@ -938,5 +1039,11 @@ export function useSupportPlanForm({
     handleMasterUserChange,
     handleDeleteDraft,
     handleRenameDraft,
+
+    // Goal Actions (Phase 3)
+    handleGoalChange,
+    handleToggleDomain,
+    handleAddGoal,
+    handleDeleteGoal,
   };
 }

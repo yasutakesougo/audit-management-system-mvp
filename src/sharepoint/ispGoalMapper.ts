@@ -9,7 +9,6 @@
  *   - GoalItem.domains (string[]) ↔ SP Domains (comma CSV)
  *   - SP Id → GoalItem.id は "sp-{Id}" 規約を維持（upsertGoal 互換）
  */
-import { migrateV2TextToGoals } from '@/features/shared/goal/goalMigration';
 import type { GoalItem } from '@/features/shared/goal/goalTypes';
 import type { SupportPlanForm } from '@/features/support-plan-guide/types';
 import {
@@ -114,20 +113,12 @@ export function normalizeGoalForSP(
  * ──────────────────────────────────────────────────────────────── */
 
 /**
- * SupportPlanForm のフリーテキスト目標フィールドを
- * 構造化された GoalItem[] に変換する。
+ * SupportPlanForm の構造化目標データを返す。
  *
- * support-plan-guide の v2 フリーテキスト形式と
- * isp-editor の構造化形式を統合するブリッジ関数。
+ * Phase 5: form.goals が唯一のデータソース。
  */
 export function formToGoals(form: SupportPlanForm): GoalItem[] {
-  return [
-    ...migrateV2TextToGoals(form.longTermGoal, 'long', '長期目標'),
-    ...migrateV2TextToGoals(form.shortTermGoals, 'short', '短期目標'),
-    ...migrateV2TextToGoals(form.dailySupports, 'support', '日常生活支援'),
-    ...migrateV2TextToGoals(form.creativeActivities, 'support', '創作活動支援'),
-    ...migrateV2TextToGoals(form.decisionSupport, 'support', '意思決定支援'),
-  ];
+  return form.goals ?? [];
 }
 
 /* ────────────────────────────────────────────────────────────────

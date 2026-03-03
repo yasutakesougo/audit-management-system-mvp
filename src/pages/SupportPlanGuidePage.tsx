@@ -124,6 +124,12 @@ export default function SupportPlanGuidePage() {
     handleAppendPhrase,
     handleCopyMarkdown,
     handleDownloadMarkdown,
+
+    // Goal Actions (Phase 3)
+    handleGoalChange,
+    handleToggleDomain,
+    handleAddGoal,
+    handleDeleteGoal,
   } = hook;
 
   // ── guardAdmin (UI-only helper) ──
@@ -162,6 +168,11 @@ export default function SupportPlanGuidePage() {
     onFieldChange: handleFieldChange,
     onAppendPhrase: handleAppendPhrase,
     guardAdmin,
+    // Goal Actions (Phase 3)
+    onGoalChange: handleGoalChange,
+    onToggleDomain: handleToggleDomain,
+    onAddGoal: handleAddGoal,
+    onDeleteGoal: handleDeleteGoal,
   };
 
   // ── Draft progress chip (render helper) ──

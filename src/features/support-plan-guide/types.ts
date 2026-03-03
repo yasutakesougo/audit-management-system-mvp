@@ -4,6 +4,7 @@
  * SupportPlanGuidePage.tsx から抽出。
  * 振る舞いの変更は一切なし（純粋リファクタリング）。
  */
+import type { GoalItem } from '@/features/shared/goal/goalTypes';
 import type { IUserMaster } from '@/features/users/types';
 
 // ────────────────────────────────────────────
@@ -16,10 +17,6 @@ export type SupportPlanForm = {
   planPeriod: string;
   assessmentSummary: string;
   strengths: string;
-  longTermGoal: string;
-  shortTermGoals: string;
-  dailySupports: string;
-  creativeActivities: string;
   decisionSupport: string;
   conferenceNotes: string;
   monitoringPlan: string;
@@ -28,7 +25,12 @@ export type SupportPlanForm = {
   complianceControls: string;
   improvementIdeas: string;
   lastMonitoringDate: string; // 直近のモニタ実施日 (YYYY/MM/DD)
+  /** 構造化目標データ */
+  goals: GoalItem[];
 };
+
+/** SupportPlanForm のうち string フィールドのみのキー集合 */
+export type SupportPlanStringFieldKey = Exclude<keyof SupportPlanForm, 'goals'>;
 
 export type SectionKey =
   | 'overview'
@@ -42,7 +44,7 @@ export type SectionKey =
   | 'preview';
 
 export type FieldConfig = {
-  key: keyof SupportPlanForm;
+  key: SupportPlanStringFieldKey;
   label: string;
   helper?: string;
   placeholder?: string;
@@ -105,10 +107,6 @@ export const defaultFormState: SupportPlanForm = {
   planPeriod: '',
   assessmentSummary: '',
   strengths: '',
-  longTermGoal: '',
-  shortTermGoals: '',
-  dailySupports: '',
-  creativeActivities: '',
   decisionSupport: '',
   conferenceNotes: '',
   monitoringPlan: '',
@@ -117,18 +115,15 @@ export const defaultFormState: SupportPlanForm = {
   complianceControls: '',
   improvementIdeas: '',
   lastMonitoringDate: '',
+  goals: [],
 };
 
-export const FIELD_LIMITS: Record<keyof SupportPlanForm, number> = {
+export const FIELD_LIMITS: Record<SupportPlanStringFieldKey, number> = {
   serviceUserName: 80,
   supportLevel: 200,
   planPeriod: 120,
   assessmentSummary: 900,
   strengths: 600,
-  longTermGoal: 450,
-  shortTermGoals: 900,
-  dailySupports: 1100,
-  creativeActivities: 900,
   decisionSupport: 900,
   conferenceNotes: 800,
   monitoringPlan: 800,
@@ -139,17 +134,14 @@ export const FIELD_LIMITS: Record<keyof SupportPlanForm, number> = {
   lastMonitoringDate: 20,
 };
 
-export const REQUIRED_FIELDS: Array<keyof SupportPlanForm> = [
+export const REQUIRED_FIELDS: SupportPlanStringFieldKey[] = [
   'serviceUserName',
   'supportLevel',
   'planPeriod',
   'assessmentSummary',
-  'longTermGoal',
-  'shortTermGoals',
-  'dailySupports',
   'decisionSupport',
   'monitoringPlan',
   'riskManagement',
 ];
 
-export const FIELD_KEYS = Object.keys(defaultFormState) as Array<keyof SupportPlanForm>;
+export const FIELD_KEYS = Object.keys(FIELD_LIMITS) as SupportPlanStringFieldKey[];

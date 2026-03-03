@@ -124,17 +124,19 @@ describe('normalizeGoalForSP', () => {
 /* ─── formToGoals ─── */
 
 describe('formToGoals', () => {
-  it('converts SupportPlanForm fields to GoalItem[]', () => {
+  it('returns form.goals directly', () => {
+    const goalItems: GoalItem[] = [
+      { id: 'g1', type: 'long', label: '長期目標', text: '日中活動に参加する', domains: ['health'] },
+      { id: 'g2', type: 'short', label: '短期目標①', text: '目標A', domains: [] },
+      { id: 'g3', type: 'short', label: '短期目標②', text: '目標B', domains: [] },
+      { id: 'g4', type: 'support', label: '日常支援', text: '日常支援1', domains: [] },
+    ];
     const form: SupportPlanForm = {
       serviceUserName: 'テスト',
       supportLevel: '区分3',
       planPeriod: '2026年4月〜',
       assessmentSummary: '',
       strengths: '',
-      longTermGoal: '日中活動に参加する',
-      shortTermGoals: '目標A\n目標B',
-      dailySupports: '日常支援1',
-      creativeActivities: '',
       decisionSupport: '意思決定を支援する',
       conferenceNotes: '',
       monitoringPlan: '',
@@ -143,29 +145,21 @@ describe('formToGoals', () => {
       complianceControls: '',
       improvementIdeas: '',
       lastMonitoringDate: '',
+      goals: goalItems,
     };
     const goals = formToGoals(form);
 
-    // longTermGoal=1 + shortTermGoals=2 + dailySupports=1 + decisionSupport=1 = 5
-    expect(goals).toHaveLength(5);
-    expect(goals[0].type).toBe('long');
-    expect(goals[1].type).toBe('short');
-    expect(goals[2].type).toBe('short');
-    expect(goals[3].type).toBe('support');
-    expect(goals[4].type).toBe('support');
+    expect(goals).toHaveLength(4);
+    expect(goals).toEqual(goalItems);
   });
 
-  it('returns empty for empty form', () => {
+  it('returns empty for form with empty goals', () => {
     const form: SupportPlanForm = {
       serviceUserName: '',
       supportLevel: '',
       planPeriod: '',
       assessmentSummary: '',
       strengths: '',
-      longTermGoal: '',
-      shortTermGoals: '',
-      dailySupports: '',
-      creativeActivities: '',
       decisionSupport: '',
       conferenceNotes: '',
       monitoringPlan: '',
@@ -174,6 +168,7 @@ describe('formToGoals', () => {
       complianceControls: '',
       improvementIdeas: '',
       lastMonitoringDate: '',
+      goals: [],
     };
     expect(formToGoals(form)).toHaveLength(0);
   });

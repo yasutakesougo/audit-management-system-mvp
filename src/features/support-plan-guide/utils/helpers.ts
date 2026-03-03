@@ -145,6 +145,12 @@ export const sanitizeForm = (data: Partial<SupportPlanForm> | undefined): Suppor
       sanitized[key] = sanitizeValue(value, FIELD_LIMITS[key]);
     }
   });
+
+  // 構造化目標データの保持
+  if (Array.isArray(data.goals)) {
+    sanitized.goals = data.goals;
+  }
+
   return sanitized;
 };
 
@@ -222,53 +228,13 @@ export const SECTIONS: SectionConfig[] = [
     key: 'smart',
     label: 'SMART目標',
     description: 'SMARTフレームで長期・短期目標を明確化します。',
-    fields: [
-      {
-        key: 'longTermGoal',
-        label: '長期目標（6か月以上）',
-        required: true,
-        minRows: 3,
-        placeholder: '例: 本人の意思表示を尊重しながら、創作活動に主体的に参加できる。',
-        helper: 'SMART（具体性／測定可能性／達成可能性／関連性／期限）を意識して記載してください。',
-        quickPhrases: ['【SMART】具体性: ／測定可能性: ／達成可能性: ／関連性: ／期限: '],
-      },
-      {
-        key: 'shortTermGoals',
-        label: '短期目標（3か月目安）',
-        required: true,
-        minRows: 4,
-        placeholder: '- 週3回の創作活動に参加し、作品を1点完成させる\n- 月1回の個別面談で自己評価を記録する',
-        helper: '箇条書き推奨。達成基準や評価方法を明記してください。',
-        quickPhrases: ['- 週 回 ／ 月 回（達成基準: ）', '- 面談頻度: 月1回（評価: 支援記録サマリー + 本人ヒアリング）'],
-      },
-    ],
+    fields: [],
   },
   {
     key: 'supports',
     label: '支援内容',
     description: '日中支援や創作活動など具体的な提供内容を記載します。',
-    fields: [
-      {
-        key: 'dailySupports',
-        label: '日中支援（身体介護・相談等）',
-        required: true,
-        minRows: 4,
-        placeholder: '例: 10:00 入浴介助（支援員2名で移乗）、13:00 相談支援…',
-        helper: '5W1Hで誰が、いつ、どこで、何を、どのように行うかを明確に。',
-        quickPhrases: [
-          '5W1H: 誰( )／何( )／いつ( )／どこで( )／なぜ( )／どのように( )',
-          '合理的配慮: 前日リマインド／視覚支援／事前体験',
-        ],
-      },
-      {
-        key: 'creativeActivities',
-        label: '創作・生産 / 機能訓練',
-        minRows: 4,
-        placeholder: '例: 火曜 午後: 音楽セッション（外部講師と連携）…',
-        helper: 'PT/OT/音楽療法など専門職連携や評価方法を含めましょう。',
-        quickPhrases: ['活動内容: ', '役割分担: ', '評価方法: '],
-      },
-    ],
+    fields: [],
   },
   {
     key: 'decision',
