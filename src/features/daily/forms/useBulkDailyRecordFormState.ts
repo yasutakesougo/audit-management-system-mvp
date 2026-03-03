@@ -8,6 +8,7 @@
 
 import { useUsers } from '@/stores/useUsers';
 import { useCallback, useMemo, useState } from 'react';
+import toast from 'react-hot-toast';
 
 import type { BulkActivityData, BulkDailyRecordFormProps } from './bulkDailyRecordFormLogic';
 import { createEmptyBulkActivityData, filterUsers } from './bulkDailyRecordFormLogic';
@@ -129,12 +130,12 @@ export function useBulkDailyRecordFormState(props: Pick<BulkDailyRecordFormProps
 
   const handleSave = useCallback(async () => {
     if (selectedUserIds.length === 0) {
-      alert('利用者を1人以上選択してください');
+      toast.error('利用者を1人以上選択してください', { duration: 4000 });
       return;
     }
 
     if (!formData.reporter.name.trim()) {
-      alert('記録者名を入力してください');
+      toast.error('記録者名を入力してください', { duration: 4000 });
       return;
     }
 
@@ -147,7 +148,7 @@ export function useBulkDailyRecordFormState(props: Pick<BulkDailyRecordFormProps
       setFormData(createEmptyBulkActivityData());
     } catch (error) {
       console.error('保存に失敗しました:', error);
-      alert('保存に失敗しました。もう一度お試しください。');
+      toast.error('保存に失敗しました。もう一度お試しください。', { duration: 5000 });
     } finally {
       setSaving(false);
     }

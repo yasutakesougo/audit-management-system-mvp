@@ -1,4 +1,5 @@
 import { act, renderHook } from '@testing-library/react';
+import toast from 'react-hot-toast';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { useTableDailyRecordViewModel } from '../table/useTableDailyRecordViewModel';
@@ -13,19 +14,31 @@ vi.mock('react-router-dom', async () => {
   };
 });
 
-describe('useTableDailyRecordViewModel', () => {
-  const alertSpy = vi.fn();
+// Mock repository
+const mockSave = vi.fn().mockResolvedValue(undefined);
+vi.mock('../repositoryFactory', () => ({
+  useDailyRecordRepository: () => ({
+    save: mockSave,
+  }),
+}));
 
+// Mock react-hot-toast
+vi.mock('react-hot-toast', () => ({
+  default: {
+    error: vi.fn(),
+    success: vi.fn(),
+  },
+}));
+
+describe('useTableDailyRecordViewModel', () => {
   beforeEach(() => {
     navigateMock.mockClear();
-    vi.useFakeTimers();
-    vi.stubGlobal('alert', alertSpy);
+    mockSave.mockClear();
+    vi.mocked(toast.error).mockClear();
   });
 
   afterEach(() => {
-    vi.unstubAllGlobals();
     vi.restoreAllMocks();
-    vi.useRealTimers();
   });
 
   it('returns expected shape and closes after save', async () => {
@@ -59,15 +72,32 @@ describe('useTableDailyRecordViewModel', () => {
     };
 
     await act(async () => {
-      const savePromise = result.current.onSave(payload);
-      // ✅ CI(Linux/headless) 安定化: タイマー + microtask を確実に消化
-      await vi.runAllTimersAsync();
-      await Promise.resolve();
-      await savePromise;
+      await result.current.onSave(payload);
     });
 
-    expect(alertSpy).toHaveBeenCalled();
+    expect(mockSave).toHaveBeenCalledWith(payload);
     expect(navigateMock).toHaveBeenCalledWith('/dashboard', { replace: true });
     expect(result.current.open).toBe(false);
+  });
+
+  it('shows toast error on save failure', async () => {
+    mockSave.mockRejectedValueOnce(new Error('Save failed'));
+    const { result } = renderHook(() => useTableDailyRecordViewModel());
+
+    await expect(
+      act(async () => {
+        await result.current.onSave({
+          date: '2026-02-07',
+          reporter: { name: 'テスト担当者', role: '生活支援員' },
+          userRows: [],
+        });
+      }),
+    ).rejects.toThrow('Save failed');
+
+    expect(vi.mocked(toast.error)).toHaveBeenCalledWith(
+      '保存に失敗しました。もう一度お試しください。',
+      { duration: 5000 },
+    );
+    expect(result.current.open).toBe(true);
   });
 });

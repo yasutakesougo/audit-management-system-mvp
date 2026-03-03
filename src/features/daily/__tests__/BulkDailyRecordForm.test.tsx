@@ -1,8 +1,17 @@
 import { TESTIDS } from '@/testids';
 import { cleanup, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import toast from 'react-hot-toast';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { BulkDailyRecordForm } from '../forms/BulkDailyRecordForm';
+
+// Mock react-hot-toast
+vi.mock('react-hot-toast', () => ({
+  default: {
+    error: vi.fn(),
+    success: vi.fn(),
+  },
+}));
 
 // Mock useUsers hook
 const mockUsers = [
@@ -196,7 +205,6 @@ describe('BulkDailyRecordForm', () => {
   });
 
   it('prevents saving without reporter name', async () => {
-    const alertSpy = vi.spyOn(window, 'alert').mockImplementation(() => undefined);
     const mockOnSave = vi.fn();
     const user = userEvent.setup();
 
@@ -206,9 +214,8 @@ describe('BulkDailyRecordForm', () => {
     const saveButton = screen.getByRole('button', { name: '1人分保存' });
     await user.click(saveButton);
 
-    expect(alertSpy).toHaveBeenCalledWith('記録者名を入力してください');
+    expect(vi.mocked(toast.error)).toHaveBeenCalledWith('記録者名を入力してください', { duration: 4000 });
     expect(mockOnSave).not.toHaveBeenCalled();
-    alertSpy.mockRestore();
   });
 
   it('handles select all functionality', async () => {

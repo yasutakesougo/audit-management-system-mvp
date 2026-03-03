@@ -178,16 +178,6 @@ export function useDailyRecordViewModel<TRecord extends BaseRecord>(
           },
         },
       );
-
-      // 成功ログ
-      if (import.meta.env.DEV) {
-        console.log('保存成功:', {
-          operation,
-          personName: record.personName,
-          date: record.date,
-          status: record.status,
-        });
-      }
     },
     [
       validateDailyRecord,

@@ -1,18 +1,16 @@
 import { TESTIDS } from '@/testids';
-import { TableDailyRecordHeader } from '../components/TableDailyRecordHeader';
-import { TableDailyRecordTable } from '../components/TableDailyRecordTable';
-import { TableDailyRecordUserPicker } from '../components/TableDailyRecordUserPicker';
-import { useTableDailyRecordForm, type TableDailyRecordData } from '../hooks/useTableDailyRecordForm';
 import {
-  FilterList as FilterListIcon,
+    FilterList as FilterListIcon,
     Group as GroupIcon,
-  SaveAlt as SaveAltIcon,
+    SaveAlt as SaveAltIcon,
     Save as SaveIcon
 } from '@mui/icons-material';
 import {
+    Alert,
     Box,
     Button,
-  Chip,
+    Chip,
+    Collapse,
     Dialog,
     DialogActions,
     DialogContent,
@@ -20,7 +18,11 @@ import {
     Stack,
     Typography
 } from '@mui/material';
-import React from 'react';
+import { Toaster } from 'react-hot-toast';
+import { TableDailyRecordHeader } from '../components/TableDailyRecordHeader';
+import { TableDailyRecordTable } from '../components/TableDailyRecordTable';
+import { TableDailyRecordUserPicker } from '../components/TableDailyRecordUserPicker';
+import { useTableDailyRecordForm, type TableDailyRecordData } from '../hooks/useTableDailyRecordForm';
 
 interface TableDailyRecordFormProps {
   open: boolean;
@@ -59,6 +61,8 @@ export function TableDailyRecordForm({
     handleSaveDraft,
     handleSave,
     saving,
+    validationErrors,
+    clearValidationErrors,
   } = useTableDailyRecordForm({
     open,
     onClose,
@@ -66,6 +70,8 @@ export function TableDailyRecordForm({
   });
 
   const displayedUnsentCount = Math.max(unsentRowCount, selectedUserIds.length);
+
+  const hasValidationErrors = Object.keys(validationErrors).length > 0;
 
   const content = (
     <>
@@ -132,6 +138,25 @@ export function TableDailyRecordForm({
             selectedUserIds={selectedUserIds}
             onUserToggle={handleUserToggle}
           />
+
+          {/* バリデーションエラー表示 */}
+          <Collapse in={hasValidationErrors}>
+            <Alert
+              severity="error"
+              onClose={clearValidationErrors}
+              sx={{ mt: 1 }}
+              data-testid="daily-table-validation-errors"
+            >
+              <Typography variant="subtitle2" sx={{ fontWeight: 600, mb: 0.5 }}>
+                入力内容を確認してください
+              </Typography>
+              <Box component="ul" sx={{ m: 0, pl: 2 }}>
+                {validationErrors.date && <li>{validationErrors.date}</li>}
+                {validationErrors.reporterName && <li>{validationErrors.reporterName}</li>}
+                {validationErrors.selectedUsers && <li>{validationErrors.selectedUsers}</li>}
+              </Box>
+            </Alert>
+          </Collapse>
 
           {formData.userRows.length > 0 && (
             <Stack spacing={1}>
@@ -207,7 +232,12 @@ export function TableDailyRecordForm({
   );
 
   if (variant === 'content') {
-    return <Box data-testid={TESTIDS['daily-table-record-form']}>{content}</Box>;
+    return (
+      <Box data-testid={TESTIDS['daily-table-record-form']}>
+        <Toaster position="top-center" />
+        {content}
+      </Box>
+    );
   }
 
   return (
@@ -218,6 +248,7 @@ export function TableDailyRecordForm({
       fullWidth
       data-testid={TESTIDS['daily-table-record-form']}
     >
+      <Toaster position="top-center" />
       {content}
     </Dialog>
   );

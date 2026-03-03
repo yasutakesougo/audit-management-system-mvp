@@ -1,8 +1,9 @@
-import { useCallback, useState } from 'react';
-import { TESTIDS } from '@/testids';
 import { useCancelToDashboard } from '@/lib/nav/useCancelToDashboard';
-import { useDailyRecordRepository } from '../repositoryFactory';
+import { TESTIDS } from '@/testids';
+import { useCallback, useState } from 'react';
+import toast from 'react-hot-toast';
 import type { TableDailyRecordData } from '../hooks/useTableDailyRecordForm';
+import { useDailyRecordRepository } from '../repositoryFactory';
 
 // Re-export for backward compatibility
 export type TableDailyRecordPayload = TableDailyRecordData;
@@ -27,17 +28,13 @@ export const useTableDailyRecordViewModel = (): TableDailyRecordViewModel => {
   }, [cancelToDashboard]);
 
   const handleTableSave = useCallback(async (data: TableDailyRecordPayload) => {
-    console.log('一覧形式記録保存@/daily/table:', data);
-
     try {
       // Save to repository (SharePoint in production, InMemory in demo mode)
       await repository.save(data);
-
-      alert(`${data.userRows.length}人分の活動記録を保存しました`);
       navigateBackToMenu();
     } catch (error) {
       console.error('日報保存に失敗しました:', error);
-      alert('保存に失敗しました。もう一度お試しください。');
+      toast.error('保存に失敗しました。もう一度お試しください。', { duration: 5000 });
       throw error;
     }
   }, [repository, navigateBackToMenu]);
