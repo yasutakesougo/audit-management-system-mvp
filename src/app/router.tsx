@@ -113,7 +113,7 @@ const SuspendedTimeBasedSupportRecordPage = createSuspended(TimeBasedSupportReco
 const _SuspendedAnalysisDashboardPage = createSuspended(AnalysisDashboardPage, '行動分析ダッシュボードを読み込んでいます…');
 const SuspendedAnalysisWorkspacePage = createSuspended(AnalysisWorkspacePage, '分析ワークスペースを読み込んでいます…');
 const _SuspendedIcebergPdcaPage = createSuspended(IcebergPdcaPage, '氷山PDCAボードを読み込んでいます…');
-const _SuspendedIcebergAnalysisPage = createSuspended(IcebergAnalysisPage, '氷山分析ワークスペースを読み込んでいます…');
+const SuspendedIcebergAnalysisPage = createSuspended(IcebergAnalysisPage, '氷山分析ワークスペースを読み込んでいます…');
 const SuspendedInterventionDashboardPage = createSuspended(InterventionDashboardPage, '行動対応プランを読み込んでいます…');
 const SuspendedAssessmentDashboardPage = createSuspended(AssessmentDashboardPage, 'アセスメント管理ページを読み込んでいます…');
 const SuspendedTokuseiSurveyResultsPage = createSuspended(TokuseiSurveyResultsPage, '特性アンケート結果を読み込んでいます…');
@@ -344,6 +344,14 @@ const childRoutes: RouteObject[] = [
   { path: 'analysis/iceberg-pdca', element: <Navigate to="/analysis?tab=pdca" replace /> },
   { path: 'analysis/iceberg-pdca/edit', element: <Navigate to="/analysis?tab=pdca" replace /> },
   { path: 'analysis/iceberg', element: <Navigate to="/analysis?tab=iceberg" replace /> },
+  {
+    path: 'analysis/iceberg-standalone',
+    element: (
+      <RequireAudience requiredRole="viewer">
+        <SuspendedIcebergAnalysisPage />
+      </RequireAudience>
+    ),
+  },
   {
     path: 'analysis/intervention',
     element: (

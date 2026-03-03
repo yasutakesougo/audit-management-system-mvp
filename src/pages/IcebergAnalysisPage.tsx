@@ -1,12 +1,12 @@
 import { useAuth } from '@/auth/useAuth';
-import { IcebergCanvas } from '@/features/ibd/analysis/iceberg/IcebergCanvas';
-import type { EnvironmentFactor } from '@/features/ibd/analysis/iceberg/icebergTypes';
 import { sensoryToAssessmentItems } from '@/features/analysis/domain/sensoryToAssessmentItems';
-import { createIcebergRepository } from '@/features/ibd/analysis/iceberg/SharePointIcebergRepository';
-import { useIcebergStore } from '@/features/ibd/analysis/iceberg/icebergStore';
 import type { AssessmentItem } from '@/features/assessment/domain/types';
 import { useAssessmentStore } from '@/features/assessment/stores/assessmentStore';
 import type { BehaviorObservation } from '@/features/daily/domain/daily/types';
+import { IcebergCanvas } from '@/features/ibd/analysis/iceberg/IcebergCanvas';
+import { createIcebergRepository } from '@/features/ibd/analysis/iceberg/SharePointIcebergRepository';
+import { useIcebergStore } from '@/features/ibd/analysis/iceberg/icebergStore';
+import type { EnvironmentFactor } from '@/features/ibd/analysis/iceberg/icebergTypes';
 import { IBDPageHeader } from '@/features/ibd/core/components/IBDPageHeader';
 import { useUsersDemo } from '@/features/users/usersStoreDemo';
 import { getAppConfig } from '@/lib/env';
@@ -154,9 +154,13 @@ const IcebergAnalysisPage: React.FC = () => {
     initSession(targetUserId, title);
   }, [activeSessionUserId, initSession, targetUserId, users]);
 
+  const seededRef = React.useRef<Set<string>>(new Set());
+
   useEffect(() => {
     if (!currentSession) return;
     if (currentSession.nodes.length > 0) return;
+    if (seededRef.current.has(currentSession.targetUserId)) return;
+    seededRef.current.add(currentSession.targetUserId);
 
     const behaviors = createDemoBehaviors(currentSession.targetUserId);
     const assessments = createDemoAssessments();
@@ -171,7 +175,7 @@ const IcebergAnalysisPage: React.FC = () => {
     environments.forEach((factor, index) =>
       addNodeFromData(factor, 'environment', { x: 120 + index * 260, y: 340 + index * 30 }),
     );
-  }, [addNodeFromData, currentSession]);
+  }, [currentSession?.targetUserId, currentSession?.nodes.length]);
 
   const handleAutoLink = () => {
     if (!currentSession) return;

@@ -20,7 +20,7 @@ import {
 // Lazy-loaded tab panels
 // ---------------------------------------------------------------------------
 const AnalysisDashboardPanel = React.lazy(() => import('@/pages/AnalysisDashboardPage'));
-const IcebergCanvasPanel = React.lazy(() => import('@/pages/IcebergAnalysisPage'));
+const _IcebergCanvasPanel = React.lazy(() => import('@/pages/IcebergAnalysisPage'));
 const PdcaPanel = React.lazy(() => import('@/pages/IcebergPdcaPage'));
 
 // ---------------------------------------------------------------------------
@@ -136,7 +136,33 @@ export const AnalysisWorkspacePage: React.FC = () => {
         }
       >
         {activeTab === 'dashboard' && <AnalysisDashboardPanel />}
-        {activeTab === 'iceberg' && <IcebergCanvasPanel />}
+        {activeTab === 'iceberg' && (
+          <Box sx={{ py: 6, textAlign: 'center' }}>
+            <Typography variant="h6" gutterBottom>🧊 氷山モデル分析</Typography>
+            <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+              氷山モデルはキャンバス操作のため専用画面で開きます
+            </Typography>
+            <Box
+              component="a"
+              href="/analysis/iceberg-standalone"
+              sx={{
+                display: 'inline-block',
+                px: 3, py: 1.5,
+                bgcolor: 'primary.main',
+                color: 'primary.contrastText',
+                borderRadius: 1,
+                textDecoration: 'none',
+                '&:hover': { bgcolor: 'primary.dark' },
+              }}
+              onClick={(e: React.MouseEvent) => {
+                e.preventDefault();
+                window.open('/analysis/iceberg-standalone', '_blank');
+              }}
+            >
+              氷山モデルを開く ↗
+            </Box>
+          </Box>
+        )}
         {activeTab === 'pdca' && <PdcaPanel />}
       </React.Suspense>
     </Box>

@@ -47,6 +47,7 @@ export const APP_ROUTE_PATHS = [
   'analysis/iceberg-pdca',
   'analysis/iceberg-pdca/edit',
   'analysis/iceberg',
+  'analysis/iceberg-standalone',
   'analysis/intervention',
   'assessment',
   'survey/tokusei',
