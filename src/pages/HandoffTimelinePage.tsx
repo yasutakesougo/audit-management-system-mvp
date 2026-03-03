@@ -1,3 +1,4 @@
+import { PageHeader } from '@/components/PageHeader';
 import { TESTIDS, tid } from '@/testids';
 import { AccessTime as AccessTimeIcon, EditNote as EditNoteIcon, Nightlight as EveningIcon, Groups as MeetingIcon, WbSunny as MorningIcon } from '@mui/icons-material';
 import { Box, Button, Chip, Container, Divider, Stack, ToggleButton, ToggleButtonGroup, Typography } from '@mui/material';
@@ -83,26 +84,25 @@ export default function HandoffTimelinePage() {
     <Container maxWidth="lg" sx={{ py: 3 }} {...tid(TESTIDS['agenda-page-root'])}>
       {/* ページヘッダー */}
       <Box sx={{ mb: 3 }}>
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 1 }}>
-          <AccessTimeIcon color="primary" sx={{ fontSize: 32 }} />
-          <Typography variant="h4" component="h1" sx={{ fontWeight: 600 }}>
-            申し送りタイムライン
-          </Typography>
-          {(dayScope === 'yesterday' || navState?.dayScope) && (
-            <Chip
-              label={HANDOFF_DAY_SCOPE_LABELS[dayScope]}
-              color={dayScope === 'yesterday' ? 'secondary' : 'primary'}
-              variant="filled"
-              sx={{ fontSize: '0.875rem' }}
-            />
-          )}
-        </Box>
-        <Typography variant="body1" color="text.secondary">
-          {dayScope === 'yesterday'
-            ? '前日からの申し送り事項を確認できます（朝会での引き継ぎ確認用）'
-            : 'いつでも簡単に申し送りを記録・確認できます'
+        <PageHeader
+          title="申し送りタイムライン"
+          subtitle={
+            dayScope === 'yesterday'
+              ? '前日からの申し送り事項を確認できます（朝会での引き継ぎ確認用）'
+              : 'いつでも簡単に申し送りを記録・確認できます'
           }
-        </Typography>
+          icon={<AccessTimeIcon />}
+          actions={
+            (dayScope === 'yesterday' || navState?.dayScope) ? (
+              <Chip
+                label={HANDOFF_DAY_SCOPE_LABELS[dayScope]}
+                color={dayScope === 'yesterday' ? 'secondary' : 'primary'}
+                variant="filled"
+                sx={{ fontSize: '0.875rem' }}
+              />
+            ) : undefined
+          }
+        />
 
         {/* Step 7B: 時間帯フィルタ + Step 7C: 日付スコープ切り替え */}
         <Box

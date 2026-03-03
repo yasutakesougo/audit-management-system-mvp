@@ -1,3 +1,4 @@
+import { PageHeader } from '@/components/PageHeader';
 import { DemoLoaderCard } from '@/features/demo/DemoLoaderCard';
 import Box from '@mui/material/Box';
 import Container from '@mui/material/Container';
@@ -17,14 +18,7 @@ export default function SettingsPage(): React.ReactElement {
   return (
     <Container maxWidth="md" sx={{ py: 3 }}>
       <Stack spacing={3}>
-        <Box>
-          <Typography variant="h5" component="h1" sx={{ fontWeight: 600, mb: 1 }}>
-            設定
-          </Typography>
-          <Typography variant="body2" color="text.secondary">
-            システムの表示・通知・診断設定を管理します
-          </Typography>
-        </Box>
+        <PageHeader title="設定" subtitle="システムの表示・通知・診断設定を管理します" />
 
         <DemoLoaderCard />
 

@@ -1,4 +1,5 @@
 import { useDensity, useDisplayMode } from '@/app/LayoutContext';
+import { PageHeader } from '@/components/PageHeader';
 import { useUsersStore } from '@/features/users/store';
 import { useFiltersSync } from '@/hooks/useFiltersSync';
 import { usePersistedFilters } from '@/hooks/usePersistedFilters';
@@ -376,9 +377,7 @@ export default function DailyPage() {
 
   return (
     <div className="p-4 space-y-3">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <h1 className="text-xl font-bold">日次記録</h1>
-      </div>
+      <PageHeader title="日次記録" />
       <FilterToolbar
         query={queryValue}
         onQueryChange={handleQueryChange}

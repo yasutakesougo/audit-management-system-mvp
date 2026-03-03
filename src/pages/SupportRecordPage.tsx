@@ -1,4 +1,5 @@
-﻿import AddIcon from '@mui/icons-material/Add';
+﻿import { PageHeader } from '@/components/PageHeader';
+import AddIcon from '@mui/icons-material/Add';
 import AssignmentIcon from '@mui/icons-material/Assignment';
 import SearchIcon from '@mui/icons-material/Search';
 import TrendingUpIcon from '@mui/icons-material/TrendingUp';
@@ -304,14 +305,10 @@ const SupportRecordPage: React.FC = () => {
     <Container maxWidth="lg">
       <Box sx={{ py: { xs: 2, sm: 3, md: 4 } }}>
         {/* ヘッダー */}
-        <Box sx={{ mb: { xs: 2, sm: 3 } }}>
-          <Typography variant="h4" component="h1" gutterBottom>
-            支援手順記録
-          </Typography>
-          <Typography variant="body1" color="text.secondary">
-            個別支援計画に基づく19項目の支援手順実施状況を記録・管理します
-          </Typography>
-        </Box>
+        <PageHeader
+          title="支援手順記録"
+          subtitle="個別支援計画に基づく19項目の支援手順実施状況を記録・管理します"
+        />
 
         {/* 統計情報（本日分） */}
         <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2} sx={{ mb: { xs: 2, sm: 3 } }}>
