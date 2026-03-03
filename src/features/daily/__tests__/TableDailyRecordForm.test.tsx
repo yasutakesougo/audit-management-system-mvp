@@ -1,8 +1,18 @@
 import { TESTIDS } from '@/testids';
 import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import toast from 'react-hot-toast';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { TableDailyRecordForm } from '../forms/TableDailyRecordForm';
+
+// Mock react-hot-toast
+vi.mock('react-hot-toast', () => ({
+  default: {
+    error: vi.fn(),
+    success: vi.fn(),
+  },
+  Toaster: () => null,
+}));
 
 // Mock useUsers hook
 const mockUsers = [
@@ -246,7 +256,6 @@ describe('TableDailyRecordForm', () => {
   });
 
   it('should call onSave with correct data when saved', async () => {
-    const alertMock = vi.spyOn(window, 'alert').mockImplementation(() => {});
     const mockOnSave = vi.fn().mockResolvedValue(undefined);
     const user = createUser();
 
@@ -287,8 +296,6 @@ describe('TableDailyRecordForm', () => {
       },
       { timeout: 15000 },
     );
-
-    alertMock.mockRestore();
   });
 
   it('should prevent saving without selected users', async () => {
@@ -314,7 +321,6 @@ describe('TableDailyRecordForm', () => {
   it(
     'should prevent saving without reporter name',
     async () => {
-      const alertMock = vi.spyOn(window, 'alert').mockImplementation(() => undefined);
       const mockOnSave = vi.fn();
       const user = createUser();
 
@@ -327,10 +333,8 @@ describe('TableDailyRecordForm', () => {
       const saveButton = await screen.findByRole('button', { name: `${FIXED_DATE_SELECTION_COUNT}人分保存` }, { timeout: 5000 });
       await user.click(saveButton);
 
-      expect(alertMock).toHaveBeenCalledWith('記録者名を入力してください');
+      expect(vi.mocked(toast.error)).toHaveBeenCalledWith('記録者名を入力してください', { duration: 4000 });
       expect(mockOnSave).not.toHaveBeenCalled();
-
-      alertMock.mockRestore();
     }
   );
 
