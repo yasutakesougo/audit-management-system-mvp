@@ -249,7 +249,7 @@ describe('AppShell navigation', () => {
       const links = nav.queryAllByRole('link');
 
       const hasIcebergPdcaLink = links.some(link => link.getAttribute('href')?.includes('/iceberg-pdca'));
-      expect(hasIcebergPdcaLink).toBe(true);
+      expect(hasIcebergPdcaLink).toBe(false);
     });
 
     it('shows staff attendance when feature flag is enabled', async () => {

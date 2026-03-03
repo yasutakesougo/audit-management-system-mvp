@@ -3,16 +3,16 @@
  *
  * 月次プレビュー画面から「全利用者分の票面を一括保存」するための Hook。
  */
-import { useCallback, useState } from 'react';
+import { useCallback, useRef, useState } from 'react';
 
-import { useSP } from '@/lib/spClient';
-import { useUsersStore } from '@/features/users/store';
-import { useServiceProvisionRepository } from '@/features/service-provision/repositoryFactory';
 import type { KokuhorenUserProfile } from '@/features/kokuhoren-validation/types';
+import { useServiceProvisionRepository } from '@/features/service-provision/repositoryFactory';
+import { useUsersStore } from '@/features/users/store';
 import type { IUserMaster } from '@/features/users/types';
 import { readEnv } from '@/lib/env';
-import { generateSeikatsuKaigoExcel } from './generateSeikatsuKaigoExcel';
+import { useSP } from '@/lib/spClient';
 import type { SeikatsuKaigoSheetInput } from './generateSeikatsuKaigoExcel';
+import { generateSeikatsuKaigoExcel } from './generateSeikatsuKaigoExcel';
 import { uploadToSharePointLibrary } from './uploadToSharePoint';
 
 /** 事業所番号: env → 将来は SP設定リスト */
@@ -53,6 +53,8 @@ function toProfile(u: IUserMaster): KokuhorenUserProfile {
 
 export function useGenerateOfficialForm(): UseGenerateOfficialFormReturn {
   const sp = useSP();
+  const spRef = useRef(sp);
+  spRef.current = sp;
   const repo = useServiceProvisionRepository();
   const { data: users } = useUsersStore();
 
@@ -98,7 +100,7 @@ export function useGenerateOfficialForm(): UseGenerateOfficialFormReturn {
           };
 
           const { fileName, bytes } = await generateSeikatsuKaigoExcel(templateBuf, input);
-          const result = await uploadToSharePointLibrary(sp, fileName, bytes);
+          const result = await uploadToSharePointLibrary(spRef.current, fileName, bytes);
 
           saved.push({ userCode, fileName, url: result.fileUrl });
         } catch (err) {
@@ -119,7 +121,7 @@ export function useGenerateOfficialForm(): UseGenerateOfficialFormReturn {
       setStatus('error');
       return batchResult;
     }
-  }, [sp, repo, users]);
+  }, [repo, users]);
 
   return { status, run, lastResult };
 }

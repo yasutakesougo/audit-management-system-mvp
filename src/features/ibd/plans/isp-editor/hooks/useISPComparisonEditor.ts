@@ -36,6 +36,8 @@ export interface UseISPComparisonEditorOptions {
 export function useISPComparisonEditor(options: UseISPComparisonEditorOptions = {}) {
   const { userId } = options;
   const sp = useSP();
+  const spRef = useRef(sp);
+  spRef.current = sp;
 
   /* ── データフェッチ状態 ── */
   const [loading, setLoading] = useState(true);
@@ -85,7 +87,7 @@ export function useISPComparisonEditor(options: UseISPComparisonEditorOptions = 
       cancelled = true;
       abortController.abort();
     };
-  }, [userId, sp]);
+  }, [userId]);
   const [showDiff, setShowDiff] = useState(true);
   const [showSmart, setShowSmart] = useState(false);
   const [activeGoalId, setActiveGoalId] = useState('g1');
@@ -196,7 +198,8 @@ export function useISPComparisonEditor(options: UseISPComparisonEditorOptions = 
 
   /* ── 保存 ── */
   const savePlan = useCallback(async () => {
-    if (!userId || !sp?.spFetch) return;
+    const currentSp = spRef.current;
+    if (!userId || !currentSp?.spFetch) return;
     setSaving(true);
     try {
       const meta = {
@@ -205,7 +208,7 @@ export function useISPComparisonEditor(options: UseISPComparisonEditorOptions = 
         certExpiry: currentPlan.certExpiry,
       };
       await Promise.all(
-        currentPlan.goals.map((goal) => upsertGoal(sp, goal, userId, meta)),
+        currentPlan.goals.map((goal) => upsertGoal(currentSp, goal, userId, meta)),
       );
     } catch (e) {
       console.error('[ISP Editor] Save failed:', e);
@@ -213,7 +216,7 @@ export function useISPComparisonEditor(options: UseISPComparisonEditorOptions = 
     } finally {
       setSaving(false);
     }
-  }, [userId, sp, currentPlan]);
+  }, [userId, currentPlan]);
 
   return {
     // state

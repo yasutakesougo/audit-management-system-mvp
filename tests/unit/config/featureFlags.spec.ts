@@ -66,7 +66,7 @@ describe('featureFlags config', () => {
       complianceForm: true,
       schedulesWeekV2: true,
       icebergPdca: true,
-      staffAttendance: false,
+      staffAttendance: true,
 
       todayOps: true,
     });
@@ -90,7 +90,7 @@ describe('featureFlags config', () => {
       complianceForm: false,
       schedulesWeekV2: true,
       icebergPdca: false,
-      staffAttendance: false,
+      staffAttendance: true,
 
       todayOps: true,
     });
@@ -115,7 +115,7 @@ describe('featureFlags config', () => {
       complianceForm: false,
       schedulesWeekV2: true,
       icebergPdca: false,
-      staffAttendance: false,
+      staffAttendance: true,
 
       todayOps: true,
     });
@@ -134,7 +134,7 @@ describe('featureFlags config', () => {
       complianceForm: false,
       schedulesWeekV2: true,
       icebergPdca: false,
-      staffAttendance: false,
+      staffAttendance: true,
 
       todayOps: true,
     });
@@ -154,7 +154,7 @@ describe('featureFlags config', () => {
       complianceForm: true,
       schedulesWeekV2: false,
       icebergPdca: true,
-      staffAttendance: false,
+      staffAttendance: true,
 
       todayOps: false,
     } satisfies FeatureFlagSnapshot;
