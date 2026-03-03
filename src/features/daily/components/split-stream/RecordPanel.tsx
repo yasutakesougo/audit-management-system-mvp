@@ -3,14 +3,11 @@ import AccessTimeIcon from '@mui/icons-material/AccessTime';
 import LockIcon from '@mui/icons-material/Lock';
 import PersonOffIcon from '@mui/icons-material/PersonOff';
 import SaveIcon from '@mui/icons-material/Save';
-import Alert from '@mui/material/Alert';
 import Box from '@mui/material/Box';
 import Button from '@mui/material/Button';
 import Card from '@mui/material/Card';
 import CardContent from '@mui/material/CardContent';
 import Chip from '@mui/material/Chip';
-import Divider from '@mui/material/Divider';
-import Paper from '@mui/material/Paper';
 import Slider from '@mui/material/Slider';
 import Stack from '@mui/material/Stack';
 import TextField from '@mui/material/TextField';
@@ -19,7 +16,9 @@ import ToggleButtonGroup from '@mui/material/ToggleButtonGroup';
 import Typography from '@mui/material/Typography';
 import type { ReactNode } from 'react';
 import { memo, useEffect, useMemo, useRef, useState } from 'react';
-import { BehaviorIntensity, BehaviorMood, BehaviorObservation, MOCK_OBSERVATION_MASTER } from '../../domain/daily/types';
+import { type BehaviorIntensity, BehaviorMood, type BehaviorObservation } from '../../domain/daily/types';
+import AbcRecordSection from './AbcRecordSection';
+import PlanSlotSelector from './PlanSlotSelector';
 import type { ScheduleItem } from './ProcedurePanel';
 
 export type RecordPanelLockState = 'unlocked' | 'no-user' | 'unconfirmed';
@@ -181,7 +180,6 @@ export function RecordPanel(props: RecordPanelProps): JSX.Element {
         'data-locked': String(isLocked),
       }
     : {};
-  const chipSize = useMemo(() => ({ py: 1.2, px: 1.5, fontSize: '0.95rem' }), []);
 
   useEffect(() => {
     if (!schedule.length) {
@@ -341,104 +339,16 @@ export function RecordPanel(props: RecordPanelProps): JSX.Element {
             </Stack>
           </Box>
 
-          {schedule.length ? (
-            <Box>
-              <Typography variant="caption" color="text.secondary">
-                対象の時間帯を選択 (Plan参照)
-              </Typography>
-              <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1, mt: 1, mb: 2 }}>
-                {schedule.map((item) => {
-                  const key = getScheduleKey(item.time, item.activity);
-                  const isSelected = effectiveSelectedSlotKey === key;
-                  return (
-                    <Chip
-                      key={key}
-                      label={item.time}
-                      color={isSelected ? 'primary' : 'default'}
-                      variant={isSelected ? 'filled' : 'outlined'}
-                      onClick={() => !isLocked && handleSlotChange(key)}
-                      disabled={isLocked}
-                      sx={{ fontWeight: isSelected ? 'bold' : undefined, minWidth: 72 }}
-                    />
-                  );
-                })}
-              </Box>
-              {/* Single Paper always mounted to prevent DOM swap flicker */}
-              <Paper
-                ref={selectedActivityRef}
-                variant="outlined"
-                sx={{
-                  p: 2,
-                  bgcolor: 'background.paper',
-                  borderColor: selectedSlot ? 'primary.main' : 'divider',
-                  boxShadow: 0,
-                  minHeight: { xs: 140, md: 180 },
-                  display: 'flex',
-                  // GPU compositing optimization (prevent subpixel artifacts)
-                  isolation: 'isolate',
-                  contain: 'paint',
-                  transform: 'translateZ(0)',
-                  backfaceVisibility: 'hidden',
-                }}
-              >
-                {showEmptyState ? (
-                  <Box
-                    sx={{
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      width: '100%',
-                    }}
-                  >
-                    <Typography variant="body2" color="text.secondary">
-                      時間帯を選択すると、支援内容(Plan)が表示されます
-                    </Typography>
-                  </Box>
-                ) : selectedSlot ? (
-                  <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2} sx={{ width: '100%' }}>
-                    <Box flex={1}>
-                      <Typography variant="caption" color="text.secondary" fontWeight="bold">
-                        本人のやること (Activity)
-                      </Typography>
-                      <Typography variant="body1" fontWeight="bold">
-                        {selectedSlot.activity}
-                      </Typography>
-                      <Typography variant="body2" color="text.secondary">
-                        {selectedSlot.time}
-                      </Typography>
-                    </Box>
-                    <Box
-                      flex={1.5}
-                      sx={{
-                        borderLeft: '3px solid',
-                        borderLeftColor: 'primary.main',
-                        pl: 1.5,
-                        bgcolor: 'primary.50',
-                        borderRadius: 1,
-                        py: 1,
-                      }}
-                    >
-                      <Typography variant="caption" color="primary.dark" fontWeight="bold">
-                        📋 支援者のやること (Instruction)
-                      </Typography>
-                      <Typography variant="body1" sx={{ whiteSpace: 'pre-wrap', fontWeight: 500 }}>
-                        {selectedSlot.instruction}
-                      </Typography>
-                    </Box>
-                  </Stack>
-                ) : null}
-              </Paper>
-              {!slotSelected ? (
-                <Alert severity="warning" sx={{ mt: 1 }}>
-                  Plan の時間帯を選択してから保存してください。
-                </Alert>
-              ) : null}
-            </Box>
-          ) : (
-            <Alert severity="info">
-              ProcedurePanel 未選択のため時間割とリンクしていません。通常の行動記録が行えます。
-            </Alert>
-          )}
+          <PlanSlotSelector
+            schedule={schedule}
+            effectiveSelectedSlotKey={effectiveSelectedSlotKey}
+            selectedSlot={selectedSlot}
+            showEmptyState={showEmptyState}
+            slotSelected={slotSelected}
+            isLocked={isLocked}
+            selectedActivityRef={selectedActivityRef}
+            onSlotChange={handleSlotChange}
+          />
 
           <Box>
             <Typography variant="subtitle2" gutterBottom>
@@ -530,95 +440,17 @@ export function RecordPanel(props: RecordPanelProps): JSX.Element {
             disabled={isLocked}
           />
 
-          <Divider>
-            <Chip label="問題行動があった場合のみ入力" size="small" />
-          </Divider>
-
-          <Box>
-            <Typography variant="caption" color="text.secondary">
-              特異行動・インシデント (ABC記録)
-            </Typography>
-            <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1, mt: 1 }}>
-              {MOCK_OBSERVATION_MASTER.behaviors.map((behavior) => {
-                const isSelected = selectedBehavior === behavior;
-                return (
-                  <Chip
-                    key={behavior}
-                    label={behavior}
-                    color={isSelected ? 'error' : 'default'}
-                    variant={isSelected ? 'filled' : 'outlined'}
-                    onClick={() => !isLocked && setSelectedBehavior((prev) => (prev === behavior ? null : behavior))}
-                    sx={chipSize}
-                    disabled={isLocked}
-                  />
-                );
-              })}
-            </Box>
-          </Box>
-
-          {selectedBehavior && (
-            <Box sx={{ animation: 'fadeIn 0.3s ease', pl: 2, borderLeft: '4px solid', borderColor: 'error.light' }}>
-              <Stack spacing={2}>
-                <Box>
-                  <Typography variant="caption" color="text.secondary">
-                    強度 (Intensity)
-                  </Typography>
-                  <Slider
-                    value={intensity}
-                    min={1}
-                    max={5}
-                    step={1}
-                    marks
-                    valueLabelDisplay="auto"
-                    onChange={(_, value) => setIntensity(value as BehaviorIntensity)}
-                    sx={{ color: 'error.main' }}
-                    data-testid="behavior-intensity-slider"
-                    disabled={isLocked}
-                  />
-                </Box>
-
-                <Box>
-                  <Typography variant="caption" color="text.secondary">
-                    直前の状況 (Antecedent)
-                  </Typography>
-                  <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5, mt: 0.5 }}>
-                    {MOCK_OBSERVATION_MASTER.antecedents.map((antecedent) => (
-                      <Chip
-                        key={antecedent}
-                        label={antecedent}
-                        size="small"
-                        color={selectedAntecedent === antecedent ? 'primary' : 'default'}
-                        onClick={() =>
-                          setSelectedAntecedent((prev) => (prev === antecedent ? null : antecedent))
-                        }
-                        disabled={isLocked}
-                      />
-                    ))}
-                  </Box>
-                </Box>
-
-                <Box>
-                  <Typography variant="caption" color="text.secondary">
-                    対応・結果 (Consequence)
-                  </Typography>
-                  <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5, mt: 0.5 }}>
-                    {MOCK_OBSERVATION_MASTER.consequences.map((consequence) => (
-                      <Chip
-                        key={consequence}
-                        label={consequence}
-                        size="small"
-                        color={selectedConsequence === consequence ? 'success' : 'default'}
-                        onClick={() =>
-                          setSelectedConsequence((prev) => (prev === consequence ? null : consequence))
-                        }
-                        disabled={isLocked}
-                      />
-                    ))}
-                  </Box>
-                </Box>
-              </Stack>
-            </Box>
-          )}
+          <AbcRecordSection
+            selectedBehavior={selectedBehavior}
+            selectedAntecedent={selectedAntecedent}
+            selectedConsequence={selectedConsequence}
+            intensity={intensity}
+            isLocked={isLocked}
+            onBehaviorChange={setSelectedBehavior}
+            onAntecedentChange={setSelectedAntecedent}
+            onConsequenceChange={setSelectedConsequence}
+            onIntensityChange={setIntensity}
+          />
         </Stack>
       </CardContent>
 
