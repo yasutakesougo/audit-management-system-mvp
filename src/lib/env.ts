@@ -548,14 +548,3 @@ export const IS_SKIP_SHAREPOINT = IS_DEMO || !SP_BASE_URL || IS_SKIP_LOGIN || IS
 
 export const SP_ENABLED = !IS_SKIP_SHAREPOINT;
 export const SP_DISABLED = IS_SKIP_SHAREPOINT;
-
-/** @deprecated Use isE2E() */
-export const IS_E2E = isE2E();
-/** @deprecated Use isE2eMsalMockEnabled() */
-export const IS_MSAL_MOCK = isE2eMsalMockEnabled();
-/** @deprecated Use shouldSkipLogin() */
-export const SHOULD_SKIP_LOGIN = shouldSkipLogin();
-/** @deprecated Use shouldSkipSharePoint() */
-export const SHOULD_SKIP_SHAREPOINT = shouldSkipSharePoint();
-/** @deprecated Use isSchedulesFeatureEnabled() */
-export const IS_SCHEDULES_ENABLED = isSchedulesFeatureEnabled();
