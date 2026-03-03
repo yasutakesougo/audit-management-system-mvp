@@ -9,17 +9,6 @@
 }
 import { canAccess } from '@/auth/roles';
 import { useUserAuthz } from '@/auth/useUserAuthz';
-import {
-    AssessmentTab,
-    DecisionTab,
-    ExcellenceTab,
-    MonitoringTab,
-    OverviewTab,
-    PreviewTab,
-    RiskTab,
-    SmartTab,
-    SupportsTab,
-} from '@/features/support-plan-guide/components/tabs';
 import { useSupportPlanForm } from '@/features/support-plan-guide/hooks/useSupportPlanForm';
 import type {
     SectionKey,
@@ -50,8 +39,21 @@ import Stack from '@mui/material/Stack';
 import Tab from '@mui/material/Tab';
 import Tabs from '@mui/material/Tabs';
 import Tooltip from '@mui/material/Tooltip';
-import React from 'react';
+import React, { Suspense } from 'react';
 import { useLocation } from 'react-router-dom';
+
+// Lazy-loaded tab components (code-split to stay under 70 kB budget)
+const OverviewTab = React.lazy(() => import('@/features/support-plan-guide/components/tabs/OverviewTab'));
+const AssessmentTab = React.lazy(() => import('@/features/support-plan-guide/components/tabs/AssessmentTab'));
+const SmartTab = React.lazy(() => import('@/features/support-plan-guide/components/tabs/SmartTab'));
+const SupportsTab = React.lazy(() => import('@/features/support-plan-guide/components/tabs/SupportsTab'));
+const DecisionTab = React.lazy(() => import('@/features/support-plan-guide/components/tabs/DecisionTab'));
+const MonitoringTab = React.lazy(() => import('@/features/support-plan-guide/components/tabs/MonitoringTab'));
+const RiskTab = React.lazy(() => import('@/features/support-plan-guide/components/tabs/RiskTab'));
+const ExcellenceTab = React.lazy(() => import('@/features/support-plan-guide/components/tabs/ExcellenceTab'));
+const PreviewTab = React.lazy(() => import('@/features/support-plan-guide/components/tabs/PreviewTab'));
+
+const TabFallback = <CircularProgress size={20} sx={{ m: 2 }} />;
 
 // ────────────────────────────────────────────
 // TabPanel (internal)
@@ -69,7 +71,7 @@ const TabPanel: React.FC<{ current: SectionKey; value: SectionKey; children: Rea
     aria-labelledby={`support-plan-tab-${value}`}
     sx={{ mt: 2 }}
   >
-    {current === value ? children : null}
+    {current === value ? <Suspense fallback={TabFallback}>{children}</Suspense> : null}
   </Box>
 );
 
