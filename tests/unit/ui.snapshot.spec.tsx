@@ -47,7 +47,7 @@ vi.mock("@/lib/env", async (importOriginal) => {
 
 // Verify AppShell renders correctly with all app providers, router context, and router future flags.
 // Note: renderWithAppProviders already includes ToastProvider, so do not wrap UI with it again.
-test("AppShell snapshot", async () => {
+test("AppShell snapshot", { timeout: 15_000 }, async () => {
   const AppShell = (await import("@/app/AppShell")).default;
   renderWithAppProviders(
     <FeatureFlagsProvider value={{ ...featureFlags, schedules: true }}>

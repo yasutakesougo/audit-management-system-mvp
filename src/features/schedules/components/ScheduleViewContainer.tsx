@@ -103,6 +103,7 @@ export function ScheduleViewContainer(props: ScheduleViewContainerProps) {
         compact={compact}
         onDayClick={onDayClick}
         onAddClick={props.onAddClick ?? ((dayIso) => onTimeSlotClick(dayIso, '09:00'))}
+        onItemSelect={onItemSelect}
       />
     );
   }

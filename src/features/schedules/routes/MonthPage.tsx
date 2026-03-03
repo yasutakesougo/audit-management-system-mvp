@@ -48,9 +48,10 @@ type MonthPageProps = {
   compact?: boolean;
   onDayClick?: (dayIso: string) => void;
   onAddClick?: (dayIso: string) => void;
+  onItemSelect?: (item: SchedItem) => void;
 };
 
-export default function MonthPage({ items, loading = false, activeCategory = 'All', compact, onDayClick: _onDayClick, onAddClick }: MonthPageProps) {
+export default function MonthPage({ items, loading = false, activeCategory = 'All', compact, onDayClick: _onDayClick, onAddClick, onItemSelect }: MonthPageProps) {
   const announce = useAnnounce();
   const [searchParams, setSearchParams] = useSearchParams();
   const isCompact = Boolean(compact);
@@ -310,6 +311,7 @@ export default function MonthPage({ items, loading = false, activeCategory = 'Al
         items={items}
         onClose={handlePanelClose}
         onAdd={handleAddFromPanel}
+        onItemClick={onItemSelect}
       />
 
       {/* Create Schedule Dialog delegated to parent ScheduleDialogManager */}

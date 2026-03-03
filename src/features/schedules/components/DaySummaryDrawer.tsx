@@ -1,15 +1,15 @@
-import React, { useMemo } from 'react';
+import { Add as AddIcon, Close as CloseIcon } from '@mui/icons-material';
 import {
-  Drawer,
-  Box,
-  IconButton,
-  Typography,
-  Stack,
-  Button,
-  useTheme,
-  useMediaQuery,
+    Box,
+    Button,
+    Drawer,
+    IconButton,
+    Stack,
+    Typography,
+    useMediaQuery,
+    useTheme,
 } from '@mui/material';
-import { Close as CloseIcon, Add as AddIcon } from '@mui/icons-material';
+import React, { useMemo } from 'react';
 import type { SchedItem } from '../data';
 
 interface DaySummaryDrawerProps {
@@ -18,6 +18,7 @@ interface DaySummaryDrawerProps {
   items: SchedItem[];
   onClose: () => void;
   onAdd: () => void;
+  onItemClick?: (item: SchedItem) => void;
 }
 
 const parseDateIso = (iso: string): Date => {
@@ -39,6 +40,7 @@ export const DaySummaryDrawer: React.FC<DaySummaryDrawerProps> = ({
   items,
   onClose,
   onAdd,
+  onItemClick,
 }) => {
   const theme = useTheme();
   const isTablet = useMediaQuery(theme.breakpoints.down('md'));
@@ -135,6 +137,7 @@ export const DaySummaryDrawer: React.FC<DaySummaryDrawerProps> = ({
               {sortedItems.map((item, idx) => (
                 <Box
                   key={idx}
+                  onClick={() => onItemClick?.(item)}
                   sx={{
                     p: 1.5,
                     border: '1px solid',
