@@ -1,4 +1,4 @@
-import { useSyncExternalStore } from 'react';
+import { create } from 'zustand';
 import type { FlushSummary } from './useNurseSync';
 
 export type SyncSource = 'manual' | 'online' | 'auto';
@@ -17,40 +17,32 @@ export type LastSyncState = {
   updatedAt?: string;
 };
 
-type Listener = () => void;
+// ---------------------------------------------------------------------------
+// Zustand Store
+// ---------------------------------------------------------------------------
 
-const listeners = new Set<Listener>();
+const stamp = () => new Date().toISOString();
 
-const subscribe = (listener: Listener) => {
-  listeners.add(listener);
-  return () => listeners.delete(listener);
-};
-
-let state: LastSyncState = {
+const initialState: LastSyncState = {
   status: 'idle',
   source: 'manual',
   sent: 0,
   remaining: 0,
 };
 
-const getSnapshot = () => state;
-
-const notify = () => {
-  for (const listener of listeners) {
-    listener();
-  }
-};
-
-const stamp = () => new Date().toISOString();
+const useLastSyncStore = create<LastSyncState>()(() => ({ ...initialState }));
 
 const assignState = (partial: Partial<LastSyncState>) => {
-  state = {
-    ...state,
+  useLastSyncStore.setState((prev) => ({
+    ...prev,
     ...partial,
     updatedAt: partial.updatedAt ?? stamp(),
-  };
-  notify();
+  }));
 };
+
+// ---------------------------------------------------------------------------
+// Actions (backward-compatible)
+// ---------------------------------------------------------------------------
 
 export const markSyncPending = (source: SyncSource) => {
   assignState({
@@ -97,7 +89,15 @@ export const resetLastSync = () => {
   });
 };
 
-export const useLastSync = (): LastSyncState => useSyncExternalStore(subscribe, getSnapshot, getSnapshot);
+// ---------------------------------------------------------------------------
+// React Hook (backward-compatible)
+// ---------------------------------------------------------------------------
+
+export const useLastSync = (): LastSyncState => useLastSyncStore();
+
+// ---------------------------------------------------------------------------
+// Utility
+// ---------------------------------------------------------------------------
 
 export const formatLastSyncCaption = (snapshot: LastSyncState): string => {
   switch (snapshot.status) {
@@ -114,12 +114,7 @@ export const formatLastSyncCaption = (snapshot: LastSyncState): string => {
 
 // Test exports
 export const __resetLastSyncStoreForTests = () => {
-  assignState({
-    status: 'idle',
-    source: 'manual',
-    sent: 0,
-    remaining: 0,
-  });
+  useLastSyncStore.setState({ ...initialState, updatedAt: stamp() });
 };
 
-export const getLastSyncSnapshot = (): LastSyncState => getSnapshot();
+export const getLastSyncSnapshot = (): LastSyncState => useLastSyncStore.getState();
