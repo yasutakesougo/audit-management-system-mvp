@@ -549,6 +549,15 @@ export function createNavItems(config: CreateNavItemsConfig): NavItem[] {
       audience: NAV_AUDIENCE.admin,
       group: 'admin' as NavGroupKey,
     });
+
+    items.push({
+      label: 'モード切替',
+      to: '/admin/mode-switch',
+      isActive: (pathname: string) => pathname.startsWith('/admin/mode-switch'),
+      icon: undefined,
+      audience: NAV_AUDIENCE.admin,
+      group: 'admin' as NavGroupKey,
+    });
   }
 
   items.push({
