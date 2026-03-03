@@ -1,10 +1,11 @@
 // ---------------------------------------------------------------------------
 // executionStore — 実施記録の永続化ストア
 //
-// interventionStore と同じパターン: useSyncExternalStore + localStorage
+// Zustand ベースのリアクティブストア + localStorage 永続化
 // デバイスローカル永続化（MVP段階）
 // ---------------------------------------------------------------------------
-import { useCallback, useSyncExternalStore } from 'react';
+import { useCallback } from 'react';
+import { create } from 'zustand';
 
 import {
     EXECUTION_RECORD_KEY,
@@ -38,6 +39,7 @@ let debounceTimer: ReturnType<typeof setTimeout> | null = null;
 function persistToStorage() {
   if (debounceTimer) clearTimeout(debounceTimer);
   debounceTimer = setTimeout(() => {
+    const { store } = useExecutionStoreBase.getState();
     const payload = { version: 1 as const, data: store };
     localStorage.setItem(STORAGE_KEY, JSON.stringify(payload));
   }, DEBOUNCE_MS);
@@ -49,38 +51,36 @@ export function __flushPersist() {
     clearTimeout(debounceTimer);
     debounceTimer = null;
   }
+  const { store } = useExecutionStoreBase.getState();
   const payload = { version: 1 as const, data: store };
   localStorage.setItem(STORAGE_KEY, JSON.stringify(payload));
 }
 
 // ---------------------------------------------------------------------------
-// In-memory store
+// Zustand Store
 // ---------------------------------------------------------------------------
 
-let store: Record<string, DailyUserRecords> = loadFromStorage();
-const listeners = new Set<() => void>();
+interface ExecutionStoreState {
+  store: Record<string, DailyUserRecords>;
+}
 
-const emit = () => listeners.forEach((l) => l());
-
-const subscribe = (listener: () => void) => {
-  listeners.add(listener);
-  return () => listeners.delete(listener);
-};
-
-const getSnapshot = () => store;
+const useExecutionStoreBase = create<ExecutionStoreState>()(() => ({
+  store: loadFromStorage(),
+}));
 
 function saveDailyRecords(date: string, userId: string, records: ExecutionRecord[]) {
   const key = makeDailyUserKey(date, userId);
-  store = {
-    ...store,
-    [key]: {
-      date,
-      userId,
-      records,
-      updatedAt: new Date().toISOString(),
+  useExecutionStoreBase.setState((s) => ({
+    store: {
+      ...s.store,
+      [key]: {
+        date,
+        userId,
+        records,
+        updatedAt: new Date().toISOString(),
+      },
     },
-  };
-  emit();
+  }));
   persistToStorage();
 }
 
@@ -90,8 +90,7 @@ export function __resetStore() {
     clearTimeout(debounceTimer);
     debounceTimer = null;
   }
-  store = loadFromStorage();
-  emit();
+  useExecutionStoreBase.setState({ store: loadFromStorage() });
 }
 
 // ---------------------------------------------------------------------------
@@ -99,7 +98,7 @@ export function __resetStore() {
 // ---------------------------------------------------------------------------
 
 export function useExecutionStore() {
-  const snapshot = useSyncExternalStore(subscribe, getSnapshot, getSnapshot);
+  const snapshot = useExecutionStoreBase((s) => s.store);
 
   /** 日付×ユーザーの全記録を取得 */
   const getRecords = useCallback(
