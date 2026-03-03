@@ -16,7 +16,7 @@ import {
     type CSSProperties,
 } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { CreateScheduleDialog, type CreateScheduleDraft } from '../components/CreateScheduleDialog';
+// CreateScheduleDialog removed: now delegated to parent via onDayClick/onAddClick
 import { DaySummaryDrawer } from '../components/DaySummaryDrawer';
 import { ScheduleEmptyHint } from '../components/ScheduleEmptyHint';
 import { SCHEDULE_MONTH_SPACING } from '../constants';
@@ -46,9 +46,11 @@ type MonthPageProps = {
   loading?: boolean;
   activeCategory?: 'All' | ScheduleCategory;
   compact?: boolean;
+  onDayClick?: (dayIso: string) => void;
+  onAddClick?: (dayIso: string) => void;
 };
 
-export default function MonthPage({ items, loading = false, activeCategory = 'All', compact }: MonthPageProps) {
+export default function MonthPage({ items, loading = false, activeCategory = 'All', compact, onDayClick: _onDayClick, onAddClick }: MonthPageProps) {
   const announce = useAnnounce();
   const [searchParams, setSearchParams] = useSearchParams();
   const isCompact = Boolean(compact);
@@ -104,19 +106,15 @@ export default function MonthPage({ items, loading = false, activeCategory = 'Al
     setSelectedDateIso(null);
   }, []);
 
-  // Create schedule dialog state
-  const [isCreateOpen, setIsCreateOpen] = useState(false);
-  const [createDateIso, setCreateDateIso] = useState<string | null>(null);
-
+  // Delegate creation to parent (ScheduleDialogManager in WeekPage)
   const handleAddFromPanel = useCallback(() => {
     if (!selectedDateIso) return;
-    setCreateDateIso(selectedDateIso);
-    setIsCreateOpen(true);
-  }, [selectedDateIso]);
-
-  const handleCloseCreate = useCallback(() => {
-    setIsCreateOpen(false);
-  }, []);
+    // Close drawer first, then open create dialog
+    setSelectedDateIso(null);
+    if (onAddClick) {
+      onAddClick(selectedDateIso);
+    }
+  }, [selectedDateIso, onAddClick]);
 
   useEffect(() => {
     if (monthAnnouncement) {
@@ -125,8 +123,9 @@ export default function MonthPage({ items, loading = false, activeCategory = 'Al
   }, [announce, monthAnnouncement]);
 
   const handleDaySelect = useCallback(
-    (e: React.MouseEvent<HTMLElement>, iso: string) => {
-      // Open day summary panel (new unified flow)
+    (_e: React.MouseEvent<HTMLElement>, iso: string) => {
+      // Only open drawer — do NOT call onDayClick here
+      // (URL changes from onDayClick reset state and prevent drawer from opening)
       setSelectedDateIso(iso);
     },
     [],
@@ -313,17 +312,7 @@ export default function MonthPage({ items, loading = false, activeCategory = 'Al
         onAdd={handleAddFromPanel}
       />
 
-      {/* Create Schedule Dialog (Month: all-day default) */}
-      <CreateScheduleDialog
-        open={isCreateOpen}
-        dateIso={createDateIso}
-        defaultAllDay
-        onClose={handleCloseCreate}
-        onSubmit={(draft: CreateScheduleDraft) => {
-          // TODO: Persist to repository (next PR)
-          console.log('[create-schedule-draft-month]', draft);
-        }}
-      />
+      {/* Create Schedule Dialog delegated to parent ScheduleDialogManager */}
     </section>
   );
 }

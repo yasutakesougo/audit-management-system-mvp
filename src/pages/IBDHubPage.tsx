@@ -131,9 +131,9 @@ function useHubStatus(
         accentColor: theme.palette.primary.main,
         metrics: [],
         links: [
-          { label: '行動分析ダッシュボード', to: '/analysis/dashboard', primary: true },
-          { label: '氷山モデル分析', to: '/analysis/iceberg' },
-          { label: '氷山PDCA', to: '/analysis/iceberg-pdca' },
+          { label: '分析ワークスペース', to: '/analysis', primary: true },
+          { label: '氷山モデル', to: '/analysis?tab=iceberg' },
+          { label: 'PDCA', to: '/analysis?tab=pdca' },
         ],
       },
       // ── 支援設計 ──

@@ -112,6 +112,13 @@ export function AppShellV2({
           overflow: 'auto',
           overscrollBehavior: 'contain',
           WebkitOverflowScrolling: 'touch',
+          // adaptive モードでもサイドバーをビューポート内に固定
+          ...(viewportMode === 'adaptive' && {
+            position: 'sticky',
+            top: 0,
+            alignSelf: 'start',
+            maxHeight: `calc(100dvh - ${headerH}px - ${showFooter ? footerH : 0}px)`,
+          }),
         }}
       >
         {sidebar}

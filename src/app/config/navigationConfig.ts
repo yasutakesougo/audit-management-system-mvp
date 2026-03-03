@@ -32,7 +32,7 @@ export type NavItem = {
   group?: NavGroupKey;
 };
 
-export type NavGroupKey = 'daily' | 'record' | 'ibd' | 'isp' | 'master' | 'admin' | 'settings';
+export type NavGroupKey = 'daily' | 'record' | 'ibd' | 'isp' | 'master' | 'ops' | 'admin' | 'settings';
 
 // ============================================================================
 // Constants
@@ -55,6 +55,7 @@ export const NAV_GROUP_I18N_KEYS = {
   ibd: 'NAV_GROUP.IBD',
   isp: 'NAV_GROUP.ISP',
   master: 'NAV_GROUP.MASTER',
+  ops: 'NAV_GROUP.OPS',
   admin: 'NAV_GROUP.ADMIN',
   settings: 'NAV_GROUP.SETTINGS',
 } as const;
@@ -74,6 +75,7 @@ export const groupLabel: Record<NavGroupKey, string> = {
   ibd: '🧩 強度行動障害支援',
   isp: '📋 個別支援計画',
   master: '👥 利用者・職員',
+  ops: '🏢 運営管理',
   admin: '🛡️ システム管理',
   settings: '⚙️ 表示設定',
 };
@@ -81,7 +83,7 @@ export const groupLabel: Record<NavGroupKey, string> = {
 /**
  * Navigation groups display order
  */
-export const NAV_GROUP_ORDER: NavGroupKey[] = ['daily', 'record', 'isp', 'ibd', 'master', 'admin', 'settings'];
+export const NAV_GROUP_ORDER: NavGroupKey[] = ['daily', 'record', 'isp', 'ibd', 'master', 'ops', 'admin', 'settings'];
 
 // ============================================================================
 // Functions
@@ -130,13 +132,10 @@ export function pickGroup(item: NavItem, isAdmin: boolean): NavGroupKey {
   // 記録・運用: records, schedules
   if (
     testId === TESTIDS.nav.schedules ||
-    testId === TESTIDS.nav.billing ||
     to.startsWith('/records') ||
     to.startsWith('/schedule') ||
-    to.startsWith('/billing') ||
     label.includes('黒ノート') ||
-    label.includes('月次') ||
-    label.includes('請求処理')
+    label.includes('月次')
   ) {
     return 'record';
   }
@@ -191,6 +190,26 @@ export function pickGroup(item: NavItem, isAdmin: boolean): NavGroupKey {
     return 'settings';
   }
 
+  // 運営管理: billing, attendance, room, compliance
+  if (
+    testId === TESTIDS.nav.billing ||
+    testId === TESTIDS.nav.staffAttendance ||
+    testId === TESTIDS.nav.integratedResourceCalendar ||
+    testId === TESTIDS.nav.roomManagement ||
+    to.startsWith('/billing') ||
+    to.startsWith('/staff/attendance') ||
+    to.startsWith('/admin/staff-attendance') ||
+    to.startsWith('/admin/integrated-resource-calendar') ||
+    to.startsWith('/room-management') ||
+    to.startsWith('/compliance') ||
+    label.includes('請求') ||
+    label.includes('勤怠') ||
+    label.includes('お部屋') ||
+    label.includes('コンプラ')
+  ) {
+    return 'ops';
+  }
+
   // 管理: checklist, audit, admin/* (管理者のみ)
   if (
     isAdmin &&
@@ -239,7 +258,7 @@ export function createNavItems(config: CreateNavItemsConfig): NavItem[] {
   const {
     schedulesEnabled,
     complianceFormEnabled,
-    icebergPdcaEnabled,
+    icebergPdcaEnabled: _icebergPdcaEnabled,
     staffAttendanceEnabled,
     todayOpsEnabled,
     isAdmin,
@@ -364,22 +383,12 @@ export function createNavItems(config: CreateNavItemsConfig): NavItem[] {
       group: 'ibd' as NavGroupKey,
     },
     {
-      label: '分析',
-      to: '/analysis/dashboard',
-      isActive: (pathname) => pathname.startsWith('/analysis/dashboard'),
+      label: '分析ワークスペース',
+      to: '/analysis',
+      isActive: (pathname) => pathname.startsWith('/analysis'),
       icon: undefined,
       prefetchKey: PREFETCH_KEYS.analysisDashboard,
       testId: TESTIDS.nav.analysis,
-      audience: NAV_AUDIENCE.staff,
-      group: 'ibd' as NavGroupKey,
-    },
-    {
-      label: '氷山分析',
-      to: '/analysis/iceberg',
-      isActive: (pathname) => pathname.startsWith('/analysis/iceberg') && !pathname.includes('pdca'),
-      icon: undefined,
-      prefetchKey: PREFETCH_KEYS.iceberg,
-      testId: TESTIDS.nav.iceberg,
       audience: NAV_AUDIENCE.staff,
       group: 'ibd' as NavGroupKey,
     },
@@ -452,7 +461,7 @@ export function createNavItems(config: CreateNavItemsConfig): NavItem[] {
       icon: undefined,
       testId: TESTIDS.nav.billing,
       audience: [NAV_AUDIENCE.reception, NAV_AUDIENCE.admin],
-      group: 'admin' as NavGroupKey,
+      group: 'ops' as NavGroupKey,
     },
   ];
 
@@ -467,7 +476,7 @@ export function createNavItems(config: CreateNavItemsConfig): NavItem[] {
       prefetchKey: PREFETCH_KEYS.staff,
       testId: TESTIDS.nav.staffAttendance,
       audience: NAV_AUDIENCE.staff,
-      group: 'master' as NavGroupKey,
+      group: 'ops' as NavGroupKey,
     });
   }
 
@@ -495,7 +504,7 @@ export function createNavItems(config: CreateNavItemsConfig): NavItem[] {
         isActive: (pathname: string) => pathname.startsWith('/admin/staff-attendance'),
         icon: undefined,
         audience: NAV_AUDIENCE.admin,
-        group: 'admin' as NavGroupKey,
+        group: 'ops' as NavGroupKey,
       },
       {
         label: '自己点検',
@@ -526,7 +535,7 @@ export function createNavItems(config: CreateNavItemsConfig): NavItem[] {
         icon: undefined,
         testId: TESTIDS.nav.integratedResourceCalendar,
         audience: NAV_AUDIENCE.admin,
-        group: 'admin' as NavGroupKey,
+        group: 'ops' as NavGroupKey,
       });
     }
 
@@ -547,7 +556,7 @@ export function createNavItems(config: CreateNavItemsConfig): NavItem[] {
       icon: undefined,
       testId: TESTIDS.nav.roomManagement,
       audience: NAV_AUDIENCE.admin,
-      group: 'admin' as NavGroupKey,
+      group: 'ops' as NavGroupKey,
     });
 
     items.push({
@@ -573,19 +582,7 @@ export function createNavItems(config: CreateNavItemsConfig): NavItem[] {
   });
 
   // Feature-flagged items
-
-  if (icebergPdcaEnabled && !items.some(item => item.testId === TESTIDS.nav.icebergPdca)) {
-    items.splice(3, 0, {
-      label: '氷山PDCA',
-      to: '/analysis/iceberg-pdca',
-      isActive: (pathname: string) => pathname.startsWith('/analysis/iceberg-pdca'),
-      icon: undefined,
-      prefetchKey: PREFETCH_KEYS.icebergPdcaBoard,
-      testId: TESTIDS.nav.icebergPdca,
-      audience: NAV_AUDIENCE.staff,
-      group: 'ibd' as NavGroupKey,
-    });
-  }
+  // NOTE: 氷山PDCA は /analysis?tab=pdca に統合済み
 
   if (schedulesEnabled && !items.some(item => item.testId === TESTIDS.nav.schedules)) {
     items.push({
@@ -608,7 +605,7 @@ export function createNavItems(config: CreateNavItemsConfig): NavItem[] {
       isActive: (pathname: string) => pathname.startsWith('/compliance'),
       icon: undefined,
       audience: 'staff',
-      group: 'admin' as NavGroupKey,
+      group: 'ops' as NavGroupKey,
     });
   }
 
