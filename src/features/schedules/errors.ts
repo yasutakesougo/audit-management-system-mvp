@@ -44,7 +44,7 @@ export function classifySchedulesError(error: unknown): SchedulesErrorInfo {
   const lowerMessage = message.toLowerCase();
 
   // eslint-disable-next-line no-console
-  console.log('[schedules] [classify] error message info:', { message, lowerMessage, onLine: typeof navigator !== 'undefined' ? navigator.onLine : 'N/A' });
+  console.warn('[schedules] [classify] error message info:', { message, lowerMessage, onLine: typeof navigator !== 'undefined' ? navigator.onLine : 'N/A' });
 
   // Offline check
   if (typeof navigator !== 'undefined' && !navigator.onLine) {

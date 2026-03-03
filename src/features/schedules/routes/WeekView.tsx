@@ -185,17 +185,19 @@ const WeekViewContent = ({ items, loading, onDayClick: _onDayClick, onTimeSlotCl
       map.set(day.iso, []);
     });
 
-    // Always log for debugging week view issues
-    console.log('[WeekView] 🔍 Grouping logic:', {
-      weekDays: weekDays.map(d => ({ iso: d.iso, label: d.label })),
-      itemsCount: items.length,
-      itemSamples: items.slice(0, 3).map(i => ({
-        id: i.id,
-        start: i.start,
-        parsed: parseAsDate(i.start).toISOString(),
-        dayKey: dayKeyInTz(parseAsDate(i.start)),
-      })),
-    });
+    if (SCHEDULES_DEBUG) {
+      // eslint-disable-next-line no-console -- diagnostics for dev/E2E only
+      console.log('[WeekView] 🔍 Grouping logic:', {
+        weekDays: weekDays.map(d => ({ iso: d.iso, label: d.label })),
+        itemsCount: items.length,
+        itemSamples: items.slice(0, 3).map(i => ({
+          id: i.id,
+          start: i.start,
+          parsed: parseAsDate(i.start).toISOString(),
+          dayKey: dayKeyInTz(parseAsDate(i.start)),
+        })),
+      });
+    }
 
     items.forEach((item) => {
       // Use JST date key instead of UTC slice to prevent wrong day column assignment
@@ -206,12 +208,15 @@ const WeekViewContent = ({ items, loading, onDayClick: _onDayClick, onTimeSlotCl
       map.get(key)!.push(item);
     });
 
-    console.log('[WeekView] 🔍 Grouped result:', {
-      mapKeys: Array.from(map.keys()),
-      itemsByKey: Object.fromEntries(
-        Array.from(map.entries()).map(([k, v]) => [k, v.length])
-      ),
-    });
+    if (SCHEDULES_DEBUG) {
+      // eslint-disable-next-line no-console -- diagnostics for dev/E2E only
+      console.log('[WeekView] 🔍 Grouped result:', {
+        mapKeys: Array.from(map.keys()),
+        itemsByKey: Object.fromEntries(
+          Array.from(map.entries()).map(([k, v]) => [k, v.length])
+        ),
+      });
+    }
 
     return map;
   }, [items, weekDays]);

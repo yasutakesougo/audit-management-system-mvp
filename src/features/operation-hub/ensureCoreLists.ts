@@ -1,5 +1,5 @@
-import { useCallback, useEffect, useState } from "react";
 import type { UseSP } from "@/lib/spClient";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 export async function ensureOperationHubLists(_sp?: UseSP): Promise<void> {
   // placeholder implementation for MVP
@@ -8,21 +8,23 @@ export async function ensureOperationHubLists(_sp?: UseSP): Promise<void> {
 
 export function useEnsureOperationHubLists(sp?: UseSP) {
   const [ensuring, setEnsuring] = useState(false);
+  const spRef = useRef(sp);
+  spRef.current = sp;
 
   useEffect(() => {
     if (!sp) return;
     void ensureOperationHubLists(sp);
-  }, [sp]);
+  }, []);
 
   const ensure = useCallback(async () => {
     if (ensuring) return;
     setEnsuring(true);
     try {
-      await ensureOperationHubLists(sp);
+      await ensureOperationHubLists(spRef.current);
     } finally {
       setEnsuring(false);
     }
-  }, [ensuring, sp]);
+  }, [ensuring]);
 
   return { ensuring, ensure };
 }

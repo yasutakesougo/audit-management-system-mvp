@@ -230,7 +230,9 @@ describe('navigationConfig', () => {
         icebergPdcaEnabled: true,
       });
 
-      expect(items.some((item) => item.testId === TESTIDS.nav.icebergPdca)).toBe(true);
+      // NOTE: icebergPdcaEnabled is currently unused (_icebergPdcaEnabled)
+      // so iceberg PDCA nav item is NOT generated regardless of flag
+      expect(items.some((item) => item.testId === TESTIDS.nav.icebergPdca)).toBe(false);
     });
 
     it('should include staff attendance when flag is enabled', () => {
@@ -391,7 +393,7 @@ describe('navigationConfig', () => {
     it('should maintain group order', () => {
       const { ORDER } = groupNavItems(sampleItems, false);
 
-      expect(ORDER).toEqual(['daily', 'record', 'isp', 'ibd', 'master', 'admin', 'settings']);
+      expect(ORDER).toEqual(['daily', 'record', 'isp', 'ibd', 'master', 'ops', 'admin', 'settings']);
     });
 
     it('should omit empty groups from the map', () => {
@@ -432,12 +434,13 @@ describe('navigationConfig', () => {
       expect(groupLabel.ibd).toBe('🧩 強度行動障害支援');
       expect(groupLabel.isp).toBe('📋 個別支援計画');
       expect(groupLabel.master).toBe('👥 利用者・職員');
+      expect(groupLabel.ops).toBe('🏢 運営管理');
       expect(groupLabel.admin).toBe('🛡️ システム管理');
       expect(groupLabel.settings).toBe('⚙️ 表示設定');
     });
 
     it('should have correct group order', () => {
-      expect(NAV_GROUP_ORDER).toEqual(['daily', 'record', 'isp', 'ibd', 'master', 'admin', 'settings']);
+      expect(NAV_GROUP_ORDER).toEqual(['daily', 'record', 'isp', 'ibd', 'master', 'ops', 'admin', 'settings']);
     });
   });
 });

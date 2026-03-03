@@ -1,15 +1,15 @@
-import { useCallback, useMemo } from 'react';
-import { formatInTimeZone } from '@/lib/tz';
-import { addMinutes, differenceInCalendarDays, differenceInMinutes, isAfter, isBefore } from 'date-fns';
-import type { Staff, User } from '@/types';
 import type { Schedule } from '@/lib/mappers';
-import { useSchedules } from '@/stores/useSchedules';
-import { useUsers } from '@/stores/useUsers';
-import { useStaff } from '@/stores/useStaff';
-import { getNow } from '@/utils/getNow';
-import { formatRangeLocal } from '@/utils/datetime';
-import { ensureOperationHubLists, useEnsureOperationHubLists } from './ensureCoreLists';
 import { useSP } from '@/lib/spClient';
+import { formatInTimeZone } from '@/lib/tz';
+import { useSchedules } from '@/stores/useSchedules';
+import { useStaff } from '@/stores/useStaff';
+import { useUsers } from '@/stores/useUsers';
+import type { Staff, User } from '@/types';
+import { formatRangeLocal } from '@/utils/datetime';
+import { getNow } from '@/utils/getNow';
+import { addMinutes, differenceInCalendarDays, differenceInMinutes, isAfter, isBefore } from 'date-fns';
+import { useCallback, useMemo, useRef } from 'react';
+import { ensureOperationHubLists, useEnsureOperationHubLists } from './ensureCoreLists';
 
 export type KpiCardData = {
   id: string;
@@ -360,6 +360,8 @@ const toMobileTasks = (
 
 export function useOperationHubData(): OperationHubData {
   const sp = useSP();
+  const spRef = useRef(sp);
+  spRef.current = sp;
   useEnsureOperationHubLists(sp);
 
   const {
@@ -516,9 +518,9 @@ export function useOperationHubData(): OperationHubData {
   );
 
   const refresh = useCallback(async () => {
-    await ensureOperationHubLists(sp);
+    await ensureOperationHubLists(spRef.current);
     await Promise.allSettled([reloadSchedules(), reloadUsers(), reloadStaff()]);
-  }, [reloadSchedules, reloadStaff, reloadUsers, sp]);
+  }, [reloadSchedules, reloadStaff, reloadUsers]);
 
   return {
     loading,

@@ -1,11 +1,11 @@
-import { useCallback } from 'react';
+import { useCallback, useRef } from 'react';
 
 import { useAuth } from '@/auth/useAuth';
 import { useSP } from '@/lib/spClient';
 import { buildHandoffSelectFields, FIELD_MAP_HANDOFF } from '@/sharepoint/fields';
 
-import { handoffConfig } from './handoffConfig';
 import { generateTitleFromMessage } from './generateTitleFromMessage';
+import { handoffConfig } from './handoffConfig';
 import type { HandoffRecord, NewHandoffInput } from './handoffTypes';
 import { fromSpHandoffItem, toSpHandoffCreatePayload } from './handoffTypes';
 
@@ -73,6 +73,8 @@ const escapeODataString = (value: string): string => value.replace(/'/g, "''");
 
 export const useCreateHandoffFromExternalSource = () => {
   const sp = useSP();
+  const spRef = useRef(sp);
+  spRef.current = sp;
   const { account } = useAuth();
 
   return useCallback(
@@ -118,7 +120,8 @@ export const useCreateHandoffFromExternalSource = () => {
         return { created: true, itemId: record.id };
       }
 
-      const existingFields = await sp.getListFieldInternalNames(handoffConfig.listTitle);
+      const currentSp = spRef.current;
+      const existingFields = await currentSp.getListFieldInternalNames(handoffConfig.listTitle);
       const selectFields = buildHandoffSelectFields(Array.from(existingFields)).join(',');
       const sourceKeyField = FIELD_MAP_HANDOFF.sourceKey;
       const hasSourceKey = existingFields.has(sourceKeyField);
@@ -126,7 +129,7 @@ export const useCreateHandoffFromExternalSource = () => {
       if (hasSourceKey) {
         const filter = `${sourceKeyField} eq '${escapeODataString(source.sourceKey)}'`;
         const query = `?$select=${encodeURIComponent(selectFields)}&$filter=${encodeURIComponent(filter)}&$top=1`;
-        const response = await sp.spFetch(
+        const response = await currentSp.spFetch(
           `lists/getbytitle('${handoffConfig.listTitle}')/items${query}`,
         );
         if (response.ok) {
@@ -154,7 +157,7 @@ export const useCreateHandoffFromExternalSource = () => {
         sourceLabel: source.sourceLabel,
       });
 
-      const createRes = await sp.spFetch(
+      const createRes = await currentSp.spFetch(
         `lists/getbytitle('${handoffConfig.listTitle}')/items`,
         {
           method: 'POST',
@@ -171,6 +174,6 @@ export const useCreateHandoffFromExternalSource = () => {
       const itemId = created.d?.Id ?? 0;
       return { created: true, itemId };
     },
-    [account?.username, sp],
+    [account?.username],
   );
 };
