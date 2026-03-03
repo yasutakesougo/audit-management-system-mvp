@@ -1,12 +1,13 @@
-import { icebergToInterventionDrafts } from '@/features/ibd/analysis/iceberg/icebergToIntervention';
-import type { IcebergSession } from '@/features/ibd/analysis/iceberg/icebergTypes';
 import {
     INTERVENTION_DRAFT_KEY,
     interventionStoreSchema,
     type BehaviorInterventionPlan,
     type UserInterventionPlans,
 } from '@/features/analysis/domain/interventionTypes';
-import { useCallback, useSyncExternalStore } from 'react';
+import { icebergToInterventionDrafts } from '@/features/ibd/analysis/iceberg/icebergToIntervention';
+import type { IcebergSession } from '@/features/ibd/analysis/iceberg/icebergTypes';
+import { useCallback } from 'react';
+import { create } from 'zustand';
 
 // ---------------------------------------------------------------------------
 // localStorage persistence
@@ -32,6 +33,7 @@ let debounceTimer: ReturnType<typeof setTimeout> | null = null;
 function persistToStorage() {
   if (debounceTimer) clearTimeout(debounceTimer);
   debounceTimer = setTimeout(() => {
+    const { interventions } = useInterventionStoreBase.getState();
     const payload = { version: 1 as const, data: interventions };
     localStorage.setItem(STORAGE_KEY, JSON.stringify(payload));
   }, DEBOUNCE_MS);
@@ -43,36 +45,34 @@ export function __flushPersist() {
     clearTimeout(debounceTimer);
     debounceTimer = null;
   }
+  const { interventions } = useInterventionStoreBase.getState();
   const payload = { version: 1 as const, data: interventions };
   localStorage.setItem(STORAGE_KEY, JSON.stringify(payload));
 }
 
 // ---------------------------------------------------------------------------
-// In-memory store
+// Zustand Store
 // ---------------------------------------------------------------------------
 
-let interventions: Record<string, UserInterventionPlans> = loadFromStorage();
-const listeners = new Set<() => void>();
+interface InterventionStoreState {
+  interventions: Record<string, UserInterventionPlans>;
+}
 
-const emit = () => listeners.forEach((l) => l());
-
-const subscribe = (listener: () => void) => {
-  listeners.add(listener);
-  return () => listeners.delete(listener);
-};
-
-const getSnapshot = () => interventions;
+const useInterventionStoreBase = create<InterventionStoreState>()(() => ({
+  interventions: loadFromStorage(),
+}));
 
 function saveUserPlans(userId: string, plans: BehaviorInterventionPlan[]) {
-  interventions = {
-    ...interventions,
-    [userId]: {
-      userId,
-      plans,
-      updatedAt: new Date().toISOString(),
+  useInterventionStoreBase.setState((s) => ({
+    interventions: {
+      ...s.interventions,
+      [userId]: {
+        userId,
+        plans,
+        updatedAt: new Date().toISOString(),
+      },
     },
-  };
-  emit();
+  }));
   persistToStorage();
 }
 
@@ -82,8 +82,7 @@ export function __resetStore() {
     clearTimeout(debounceTimer);
     debounceTimer = null;
   }
-  interventions = loadFromStorage();
-  emit();
+  useInterventionStoreBase.setState({ interventions: loadFromStorage() });
 }
 
 // ---------------------------------------------------------------------------
@@ -91,7 +90,7 @@ export function __resetStore() {
 // ---------------------------------------------------------------------------
 
 export function useInterventionStore() {
-  const store = useSyncExternalStore(subscribe, getSnapshot, getSnapshot);
+  const store = useInterventionStoreBase((s) => s.interventions);
 
   /** ユーザーの全プランを取得（なければ空配列） */
   const getByUserId = useCallback(
