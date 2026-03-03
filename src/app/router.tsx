@@ -27,6 +27,7 @@ const TimeBasedSupportRecordPage = React.lazy(() => import('@/pages/TimeBasedSup
 
 const HealthObservationPage = React.lazy(() => import('@/pages/HealthObservationPage'));
 const AnalysisDashboardPage = React.lazy(() => import('@/pages/AnalysisDashboardPage'));
+const AnalysisWorkspacePage = React.lazy(() => import('@/pages/AnalysisWorkspacePage'));
 const AssessmentDashboardPage = React.lazy(() => import('@/pages/AssessmentDashboardPage'));
 const TokuseiSurveyResultsPage = React.lazy(() => import('@/pages/TokuseiSurveyResultsPage'));
 const IcebergPdcaPage = React.lazy(() => import('@/pages/IcebergPdcaPage'));
@@ -98,7 +99,6 @@ const SuspendedDevScheduleCreateDialogPage: React.FC | null = DevScheduleCreateD
   : null;
 
 // --- Suspended wrappers via createSuspended helper ---------------------
-import { IcebergPdcaGate } from '@/features/ibd/analysis/pdca/IcebergPdcaGate';
 import { createSuspended } from './createSuspended';
 
 const SuspendedNewSchedulesWeekPage = createSuspended(NewSchedulesWeekPage, '週間予定を読み込んでいます…');
@@ -110,9 +110,10 @@ const SuspendedTableDailyRecordPage = createSuspended(TableDailyRecordPage, '一
 const SuspendedAttendanceRecordPage = createSuspended(AttendanceRecordPage, '通園管理ページを読み込んでいます…');
 const SuspendedTimeFlowSupportRecordPage = createSuspended(TimeFlowSupportRecordPage, '支援記録を読み込んでいます…');
 const SuspendedTimeBasedSupportRecordPage = createSuspended(TimeBasedSupportRecordPage, '時間別支援記録を読み込んでいます…');
-const SuspendedAnalysisDashboardPage = createSuspended(AnalysisDashboardPage, '行動分析ダッシュボードを読み込んでいます…');
-const SuspendedIcebergPdcaPage = createSuspended(IcebergPdcaPage, '氷山PDCAボードを読み込んでいます…');
-const SuspendedIcebergAnalysisPage = createSuspended(IcebergAnalysisPage, '氷山分析ワークスペースを読み込んでいます…');
+const _SuspendedAnalysisDashboardPage = createSuspended(AnalysisDashboardPage, '行動分析ダッシュボードを読み込んでいます…');
+const SuspendedAnalysisWorkspacePage = createSuspended(AnalysisWorkspacePage, '分析ワークスペースを読み込んでいます…');
+const _SuspendedIcebergPdcaPage = createSuspended(IcebergPdcaPage, '氷山PDCAボードを読み込んでいます…');
+const _SuspendedIcebergAnalysisPage = createSuspended(IcebergAnalysisPage, '氷山分析ワークスペースを読み込んでいます…');
 const SuspendedInterventionDashboardPage = createSuspended(InterventionDashboardPage, '行動対応プランを読み込んでいます…');
 const SuspendedAssessmentDashboardPage = createSuspended(AssessmentDashboardPage, 'アセスメント管理ページを読み込んでいます…');
 const SuspendedTokuseiSurveyResultsPage = createSuspended(TokuseiSurveyResultsPage, '特性アンケート結果を読み込んでいます…');
@@ -329,43 +330,20 @@ const childRoutes: RouteObject[] = [
   { path: 'daily/support-checklist', element: <SuspendedTimeFlowSupportRecordPage /> },
   { path: 'daily/time-based', element: <Navigate to="/daily/support" replace /> },
   { path: 'daily/health', element: <SuspendedHealthObservationPage /> },
-  { path: 'analysis', element: <Navigate to="/analysis/dashboard" replace /> },
+  // 統合分析ワークスペース
   {
-    path: 'analysis/dashboard',
+    path: 'analysis',
     element: (
       <RequireAudience requiredRole="viewer">
-        <SuspendedAnalysisDashboardPage />
+        <SuspendedAnalysisWorkspacePage />
       </RequireAudience>
     ),
   },
-  {
-    path: 'analysis/iceberg-pdca',
-    element: (
-      <RequireAudience requiredRole="viewer">
-        <IcebergPdcaGate>
-          <SuspendedIcebergPdcaPage />
-        </IcebergPdcaGate>
-      </RequireAudience>
-    ),
-  },
-  {
-    path: 'analysis/iceberg-pdca/edit',
-    element: (
-      <RequireAudience requiredRole="viewer">
-        <IcebergPdcaGate requireEdit>
-          <SuspendedIcebergPdcaPage />
-        </IcebergPdcaGate>
-      </RequireAudience>
-    ),
-  },
-  {
-    path: 'analysis/iceberg',
-    element: (
-      <RequireAudience requiredRole="viewer">
-        <SuspendedIcebergAnalysisPage />
-      </RequireAudience>
-    ),
-  },
+  // 旧URL互換リダイレクト
+  { path: 'analysis/dashboard', element: <Navigate to="/analysis?tab=dashboard" replace /> },
+  { path: 'analysis/iceberg-pdca', element: <Navigate to="/analysis?tab=pdca" replace /> },
+  { path: 'analysis/iceberg-pdca/edit', element: <Navigate to="/analysis?tab=pdca" replace /> },
+  { path: 'analysis/iceberg', element: <Navigate to="/analysis?tab=iceberg" replace /> },
   {
     path: 'analysis/intervention',
     element: (

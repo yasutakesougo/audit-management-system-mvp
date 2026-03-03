@@ -40,52 +40,50 @@ export const PageHeader: React.FC<PageHeaderProps> = ({
   <Box
     data-testid={testId}
     sx={{
-      py: 1,
+      py: 0,
       px: 0,
-      mb: 1.5,
+      mb: 0.5,
       display: 'flex',
       justifyContent: 'space-between',
       alignItems: 'center',
       flexWrap: 'wrap',
-      gap: 1,
-      borderBottom: 1,
-      borderColor: 'divider',
+      gap: 0.5,
+      minHeight: 0,
     }}
   >
-    <Box display="flex" alignItems="center" gap={1}>
+    <Box display="flex" alignItems="center" gap={0.5}>
       {icon && (
         <Box
           sx={{
-            color: 'text.secondary',
+            color: 'text.disabled',
             display: 'flex',
             alignItems: 'center',
-            '& .MuiSvgIcon-root': { fontSize: 22 },
+            '& .MuiSvgIcon-root': { fontSize: 16 },
           }}
         >
           {icon}
         </Box>
       )}
-      <Box>
-        <Typography
-          variant="h6"
-          fontWeight={600}
-          component="h1"
-          data-page-heading="true"
-          id={headingId}
-          sx={{ fontSize: '1.1rem', lineHeight: 1.4 }}
-        >
-          {title}
+      <Typography
+        variant="body2"
+        fontWeight={500}
+        component="h1"
+        data-page-heading="true"
+        id={headingId}
+        color="text.secondary"
+        sx={{ fontSize: '0.8rem', lineHeight: 1.2 }}
+      >
+        {title}
+      </Typography>
+      {subtitle && (
+        <Typography variant="caption" color="text.disabled" sx={{ fontSize: '0.7rem' }}>
+          {"— "}{subtitle}
         </Typography>
-        {subtitle && (
-          <Typography variant="caption" color="text.secondary">
-            {subtitle}
-          </Typography>
-        )}
-      </Box>
+      )}
     </Box>
 
     {actions && (
-      <Box display="flex" alignItems="center" gap={1} flexWrap="wrap">
+      <Box display="flex" alignItems="center" gap={0.5} flexWrap="wrap">
         {actions}
       </Box>
     )}

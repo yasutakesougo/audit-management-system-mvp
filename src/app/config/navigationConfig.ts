@@ -258,7 +258,7 @@ export function createNavItems(config: CreateNavItemsConfig): NavItem[] {
   const {
     schedulesEnabled,
     complianceFormEnabled,
-    icebergPdcaEnabled,
+    icebergPdcaEnabled: _icebergPdcaEnabled,
     staffAttendanceEnabled,
     todayOpsEnabled,
     isAdmin,
@@ -383,22 +383,12 @@ export function createNavItems(config: CreateNavItemsConfig): NavItem[] {
       group: 'ibd' as NavGroupKey,
     },
     {
-      label: '分析',
-      to: '/analysis/dashboard',
-      isActive: (pathname) => pathname.startsWith('/analysis/dashboard'),
+      label: '分析ワークスペース',
+      to: '/analysis',
+      isActive: (pathname) => pathname.startsWith('/analysis'),
       icon: undefined,
       prefetchKey: PREFETCH_KEYS.analysisDashboard,
       testId: TESTIDS.nav.analysis,
-      audience: NAV_AUDIENCE.staff,
-      group: 'ibd' as NavGroupKey,
-    },
-    {
-      label: '氷山分析',
-      to: '/analysis/iceberg',
-      isActive: (pathname) => pathname.startsWith('/analysis/iceberg') && !pathname.includes('pdca'),
-      icon: undefined,
-      prefetchKey: PREFETCH_KEYS.iceberg,
-      testId: TESTIDS.nav.iceberg,
       audience: NAV_AUDIENCE.staff,
       group: 'ibd' as NavGroupKey,
     },
@@ -592,19 +582,7 @@ export function createNavItems(config: CreateNavItemsConfig): NavItem[] {
   });
 
   // Feature-flagged items
-
-  if (icebergPdcaEnabled && !items.some(item => item.testId === TESTIDS.nav.icebergPdca)) {
-    items.splice(3, 0, {
-      label: '氷山PDCA',
-      to: '/analysis/iceberg-pdca',
-      isActive: (pathname: string) => pathname.startsWith('/analysis/iceberg-pdca'),
-      icon: undefined,
-      prefetchKey: PREFETCH_KEYS.icebergPdcaBoard,
-      testId: TESTIDS.nav.icebergPdca,
-      audience: NAV_AUDIENCE.staff,
-      group: 'ibd' as NavGroupKey,
-    });
-  }
+  // NOTE: 氷山PDCA は /analysis?tab=pdca に統合済み
 
   if (schedulesEnabled && !items.some(item => item.testId === TESTIDS.nav.schedules)) {
     items.push({

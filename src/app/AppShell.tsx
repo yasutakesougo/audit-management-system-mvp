@@ -409,10 +409,15 @@ const AppShell: React.FC<{ children: React.ReactNode }> = ({ children }) => {
       role="navigation"
       aria-label="主要ナビゲーション"
       data-testid="nav-drawer"
-      sx={{ pt: 2, pb: 2, height: '100%', overflow: 'auto' }}
+      sx={{
+        display: 'flex',
+        flexDirection: 'column',
+        height: '100%',
+        overflow: 'hidden',
+      }}
     >
       {!navCollapsed && (
-        <Box sx={{ px: 1.5, py: 1, pb: 1.5 }} key="nav-search">
+        <Box sx={{ px: 1.5, py: 1, pb: 1.5, flexShrink: 0 }} key="nav-search">
           <TextField
             key="nav-search-field"
             value={navQuery}
@@ -432,7 +437,7 @@ const AppShell: React.FC<{ children: React.ReactNode }> = ({ children }) => {
           />
         </Box>
       )}
-      <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: navCollapsed ? 'center' : 'flex-end', px: 1, py: 0.5 }}>
+      <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: navCollapsed ? 'center' : 'flex-end', px: 1, py: 0.5, flexShrink: 0 }}>
         <Tooltip title={navCollapsed ? 'ナビを展開' : 'ナビを折りたたみ'} placement="right" enterDelay={100}>
           <IconButton
             onClick={handleToggleNavCollapse}
@@ -443,7 +448,9 @@ const AppShell: React.FC<{ children: React.ReactNode }> = ({ children }) => {
           </IconButton>
         </Tooltip>
       </Box>
-      {renderGroupedNavList()}
+      <Box sx={{ flex: 1, overflowY: 'auto', overflowX: 'hidden', minHeight: 0 }}>
+        {renderGroupedNavList()}
+      </Box>
     </Box>
   ) : null;
 
