@@ -1,36 +1,40 @@
 /**
  * Todo Tab (やることタブ)
- * 
+ *
  * 目的：今日やるべきタスクを優先度順に表示
- * 
+ *
  * 表示内容：
  * - 服薬介助が必要な利用者
  * - 通院同行の予定
  * - 特別清掃・点検項目
  * - その他の期限付きタスク
- * 
+ *
  * Phase C-2 Final:
  * - TodoDetailDialog との統合
  * - クリックで詳細手順を表示
  * - 利用者詳細へのリンク
  */
 
-import React, { useState } from 'react';
-import Box from '@mui/material/Box';
-import Typography from '@mui/material/Typography';
-import List from '@mui/material/List';
-import ListItem from '@mui/material/ListItem';
-import ListItemText from '@mui/material/ListItemText';
-import ListItemIcon from '@mui/material/ListItemIcon';
-import Chip from '@mui/material/Chip';
-import Divider from '@mui/material/Divider';
-import Stack from '@mui/material/Stack';
-import MedicationIcon from '@mui/icons-material/Medication';
-import LocalHospitalIcon from '@mui/icons-material/LocalHospital';
-import CleaningServicesIcon from '@mui/icons-material/CleaningServices';
-import AssignmentIcon from '@mui/icons-material/Assignment';
+import { EmptyState } from '@/features/dashboard/components/EmptyState';
 import { TodoDetailDialog } from '@/features/dashboard/dialogs/TodoDetailDialog';
 import { UserDetailDialog, type UserDetail } from '@/features/dashboard/dialogs/UserDetailDialog';
+import AssignmentIcon from '@mui/icons-material/Assignment';
+import CleaningServicesIcon from '@mui/icons-material/CleaningServices';
+import LocalHospitalIcon from '@mui/icons-material/LocalHospital';
+import MedicationIcon from '@mui/icons-material/Medication';
+import TaskAltIcon from '@mui/icons-material/TaskAlt';
+import Box from '@mui/material/Box';
+import Chip from '@mui/material/Chip';
+import Divider from '@mui/material/Divider';
+import List from '@mui/material/List';
+import ListItem from '@mui/material/ListItem';
+import ListItemIcon from '@mui/material/ListItemIcon';
+import ListItemText from '@mui/material/ListItemText';
+import Skeleton from '@mui/material/Skeleton';
+import Stack from '@mui/material/Stack';
+import Typography from '@mui/material/Typography';
+import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 
 export interface TodoItem {
   id: string;
@@ -49,6 +53,8 @@ export interface TodoItem {
 export interface TodoTabProps {
   /** タスクリスト */
   todos: TodoItem[];
+  /** ローディング中フラグ */
+  loading?: boolean;
 }
 
 /**
@@ -99,7 +105,9 @@ const PRIORITY_CONFIG = {
  * やることタブコンテンツ
  * 今日の優先タスクを時系列で表示
  */
-export const TodoTab: React.FC<TodoTabProps> = ({ todos }) => {
+export const TodoTab: React.FC<TodoTabProps> = ({ todos, loading = false }) => {
+  const navigate = useNavigate();
+
   // モーダル状態管理（Todo詳細）
   const [selectedTodo, setSelectedTodo] = useState<TodoItem | null>(null);
   const [isTodoDetailOpen, setIsTodoDetailOpen] = useState(false);
@@ -122,24 +130,13 @@ export const TodoTab: React.FC<TodoTabProps> = ({ todos }) => {
 
   // 利用者詳細を開く（TodoDetailDialogから呼ばれる）
   const handleOpenUserDetail = (userId: string) => {
-    // Mock data：実際のデータから取得する
+    // 実データが登録されるまでは最小限の情報で表示
     const userDetail: UserDetail = {
       id: userId,
-      name: `${userId}さん`,
-      status: 'present', // TODO: 実データから取得
-      vitals: {
-        bloodPressure: '120/80',
-        pulse: 72,
-        temperature: 36.5,
-      },
-      emergencyContacts: [
-        {
-          relationship: '家族',
-          name: '連絡先未登録',
-          phone: '-',
-        },
-      ],
-      notes: '詳細情報は記録を参照してください',
+      name: `${userId}`,
+      status: 'present',
+      emergencyContacts: [],
+      notes: '詳細情報は利用者マスターを参照してください',
     };
     setSelectedUser(userDetail);
     setIsUserDetailOpen(true);
@@ -164,6 +161,53 @@ export const TodoTab: React.FC<TodoTabProps> = ({ todos }) => {
     cleaning: todos.filter(t => t.type === 'cleaning').length,
     other: todos.filter(t => t.type === 'other').length,
   };
+
+  // ── Loading skeleton ──
+  if (loading) {
+    return (
+      <Box>
+        <Box sx={{ mb: 3 }}>
+          <Skeleton variant="text" width={160} height={32} />
+          <Skeleton variant="text" width={200} height={20} sx={{ mt: 1 }} />
+          <Stack direction="row" spacing={1} sx={{ mt: 2 }}>
+            {[1, 2, 3].map((i) => (
+              <Skeleton key={i} variant="rounded" width={100} height={24} />
+            ))}
+          </Stack>
+        </Box>
+        <Divider sx={{ my: 2 }} />
+        {[1, 2, 3, 4].map((i) => (
+          <Skeleton key={i} variant="rounded" height={56} sx={{ mb: 1, borderRadius: 1 }} />
+        ))}
+      </Box>
+    );
+  }
+
+  // ── Empty State ──
+  if (todos.length === 0) {
+    return (
+      <Box>
+        <Typography variant="h6" sx={{ mb: 2 }}>
+          ✅ 本日のタスク
+        </Typography>
+        <EmptyState
+          icon={<TaskAltIcon />}
+          title="まだタスクが登録されていません"
+          description="スケジュールを登録すると、服薬介助・通院同行・清掃点検などのタスクが自動的にここに表示されます。"
+          action={{
+            label: 'スケジュールを登録する',
+            onClick: () => navigate('/schedules'),
+          }}
+          secondaryAction={{
+            label: '利用者一覧を見る',
+            onClick: () => navigate('/users'),
+            variant: 'outlined',
+          }}
+          minHeight={280}
+        />
+      </Box>
+    );
+  }
 
   return (
     <Box>
@@ -217,61 +261,55 @@ export const TodoTab: React.FC<TodoTabProps> = ({ todos }) => {
         <Typography variant="subtitle1" sx={{ mb: 1, fontWeight: 700 }}>
           タスク一覧（優先度順）
         </Typography>
-        {sortedTodos.length === 0 ? (
-          <Typography variant="body2" color="text.secondary" sx={{ pl: 2 }}>
-            本日のタスクはありません
-          </Typography>
-        ) : (
-          <List>
-            {sortedTodos.map((todo) => {
-              const typeConfig = TASK_TYPE_CONFIG[todo.type];
-              const priorityConfig = PRIORITY_CONFIG[todo.priority];
-              return (
-                <ListItem
-                  key={todo.id}
-                  onClick={() => handleTodoClick(todo)}
-                  sx={{
-                    bgcolor: 'background.paper',
-                    border: 1,
-                    borderColor: 'divider',
-                    borderRadius: 1,
-                    mb: 1,
-                    '&:hover': {
-                      bgcolor: 'action.hover',
-                      cursor: 'pointer',
-                      transform: 'translateX(4px)',
-                    },
-                    transition: 'all 0.2s ease',
-                  }}
-                >
-                  <ListItemIcon sx={{ color: `${typeConfig.color}.main` }}>
-                    {typeConfig.icon}
-                  </ListItemIcon>
-                  <ListItemText
-                    primary={
-                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                        <Typography variant="body2" sx={{ fontWeight: 'bold' }}>
-                          {todo.title}
-                        </Typography>
-                        <Chip
-                          label={priorityConfig.label}
-                          size="small"
-                          color={priorityConfig.color}
-                        />
-                      </Box>
-                    }
-                    secondary={
-                      <>
-                        {todo.deadline && `期限: ${todo.deadline}`}
-                        {todo.assignee && ` | 担当: ${todo.assignee}`}
-                      </>
-                    }
-                  />
-                </ListItem>
-              );
-            })}
-          </List>
-        )}
+        <List>
+          {sortedTodos.map((todo) => {
+            const typeConfig = TASK_TYPE_CONFIG[todo.type];
+            const priorityConfig = PRIORITY_CONFIG[todo.priority];
+            return (
+              <ListItem
+                key={todo.id}
+                onClick={() => handleTodoClick(todo)}
+                sx={{
+                  bgcolor: 'background.paper',
+                  border: 1,
+                  borderColor: 'divider',
+                  borderRadius: 1,
+                  mb: 1,
+                  '&:hover': {
+                    bgcolor: 'action.hover',
+                    cursor: 'pointer',
+                    transform: 'translateX(4px)',
+                  },
+                  transition: 'all 0.2s ease',
+                }}
+              >
+                <ListItemIcon sx={{ color: `${typeConfig.color}.main` }}>
+                  {typeConfig.icon}
+                </ListItemIcon>
+                <ListItemText
+                  primary={
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                      <Typography variant="body2" sx={{ fontWeight: 'bold' }}>
+                        {todo.title}
+                      </Typography>
+                      <Chip
+                        label={priorityConfig.label}
+                        size="small"
+                        color={priorityConfig.color}
+                      />
+                    </Box>
+                  }
+                  secondary={
+                    <>
+                      {todo.deadline && `期限: ${todo.deadline}`}
+                      {todo.assignee && ` | 担当: ${todo.assignee}`}
+                    </>
+                  }
+                />
+              </ListItem>
+            );
+          })}
+        </List>
       </Box>
 
       {/* タスク詳細モーダル */}
