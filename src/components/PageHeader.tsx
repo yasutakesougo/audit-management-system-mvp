@@ -1,13 +1,13 @@
 import Box from '@mui/material/Box';
-import Paper from '@mui/material/Paper';
 import Typography from '@mui/material/Typography';
 import React from 'react';
 
 // ---------------------------------------------------------------------------
 // PageHeader — アプリ全体で使う統一ページヘッダー
 //
-// 全ページで一貫した見出し + レイアウトを提供する。
-// ・variant="h5" / fontWeight 700 / component="h1" で固定
+// コンテンツ領域を最大化するため、控えめなデザインを採用。
+// ・variant="h6" / fontWeight 600 / fontSize 1.1rem で主張を抑制
+// ・背景なし、下ボーダーで区切り
 // ・data-page-heading="true" により useRouteFocusManager と連携
 // ・subtitle / icon / actions スロットを持つ
 //
@@ -37,56 +37,57 @@ export const PageHeader: React.FC<PageHeaderProps> = ({
   testId,
   headingId,
 }) => (
-  <Paper
-    elevation={0}
+  <Box
     data-testid={testId}
     sx={{
-      p: 2,
-      mb: 3,
+      py: 0,
+      px: 0,
+      mb: 0.5,
       display: 'flex',
       justifyContent: 'space-between',
       alignItems: 'center',
       flexWrap: 'wrap',
-      gap: 2,
+      gap: 0.5,
+      minHeight: 0,
     }}
   >
-    <Box display="flex" alignItems="center" gap={2}>
+    <Box display="flex" alignItems="center" gap={0.5}>
       {icon && (
         <Box
           sx={{
-            color: 'primary.main',
+            color: 'text.disabled',
             display: 'flex',
             alignItems: 'center',
-            '& .MuiSvgIcon-root': { fontSize: 32 },
+            '& .MuiSvgIcon-root': { fontSize: 16 },
           }}
         >
           {icon}
         </Box>
       )}
-      <Box>
-        <Typography
-          variant="h5"
-          fontWeight={700}
-          component="h1"
-          data-page-heading="true"
-          id={headingId}
-        >
-          {title}
+      <Typography
+        variant="body2"
+        fontWeight={500}
+        component="h1"
+        data-page-heading="true"
+        id={headingId}
+        color="text.secondary"
+        sx={{ fontSize: '0.8rem', lineHeight: 1.2 }}
+      >
+        {title}
+      </Typography>
+      {subtitle && (
+        <Typography variant="caption" color="text.disabled" sx={{ fontSize: '0.7rem' }}>
+          {"— "}{subtitle}
         </Typography>
-        {subtitle && (
-          <Typography variant="body2" color="text.secondary">
-            {subtitle}
-          </Typography>
-        )}
-      </Box>
+      )}
     </Box>
 
     {actions && (
-      <Box display="flex" alignItems="center" gap={2} flexWrap="wrap">
+      <Box display="flex" alignItems="center" gap={0.5} flexWrap="wrap">
         {actions}
       </Box>
     )}
-  </Paper>
+  </Box>
 );
 
 export default PageHeader;

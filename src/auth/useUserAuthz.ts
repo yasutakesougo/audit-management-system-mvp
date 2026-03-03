@@ -99,8 +99,12 @@ export const useUserAuthz = (): UserAuthz => {
         if (isE2eMsalMockEnabled(runtimeEnv) || shouldSkipLogin(runtimeEnv)) {
           if (!cancelled) {
             // In E2E mode, grant admin access for comprehensive test coverage
-            setGroupIds([adminGroupId || 'demo-admin-group-id']);
-            setError(null);      // Clear any previous errors
+            const demoIds = [adminGroupId || 'demo-admin-group-id'];
+            setGroupIds(prev => {
+              const same = prev && prev.length === demoIds.length && prev.every((id, i) => id === demoIds[i]);
+              return same ? prev : demoIds;
+            });
+            setError(prev => prev === null ? prev : null);
           }
           return;
         }
