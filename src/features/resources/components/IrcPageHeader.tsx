@@ -4,7 +4,7 @@
 import { Alert, Box, Typography } from '@mui/material';
 import React from 'react';
 
-import { isE2E } from '@/env';
+import { isDev, isE2E } from '@/env';
 
 export interface IrcPageHeaderProps {
   /** Debug banner を表示するか */
@@ -12,7 +12,7 @@ export interface IrcPageHeaderProps {
 }
 
 export const IrcPageHeader: React.FC<IrcPageHeaderProps> = ({
-  showDebugBanner = import.meta.env.DEV,
+  showDebugBanner = isDev,
 }) => (
   <>
     {showDebugBanner && (

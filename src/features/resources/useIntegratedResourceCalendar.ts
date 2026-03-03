@@ -18,7 +18,7 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useLocation } from 'react-router-dom';
 
 import { useFeatureFlags } from '@/config/featureFlags';
-import { isE2E } from '@/env';
+import { isDev, isE2E } from '@/env';
 import { estimatePayloadSize, HYDRATION_FEATURES, startFeatureSpan } from '@/hydration/features';
 import { getAppConfig } from '@/lib/env';
 
@@ -54,7 +54,7 @@ export function useIntegratedResourceCalendar() {
   const theme = useTheme();
 
   // Debug logging (dev only)
-  if (import.meta.env.DEV) {
+  if (isDev) {
     console.log('[IRC] mounted', {
       pathname: location.pathname,
       isE2E,
@@ -71,7 +71,7 @@ export function useIntegratedResourceCalendar() {
   const _sp = useSP();
   const ircSpClient = useMemo(() => {
     const client = createIrcSpClient();
-    if (import.meta.env.DEV) {
+    if (isDev) {
       console.log('[IRC] SpClient created:', { isE2E, client });
     }
     return client;
@@ -111,7 +111,7 @@ export function useIntegratedResourceCalendar() {
         setEvents(unifiedEvents);
         setLastError(null);
 
-        if (import.meta.env.DEV) {
+        if (isDev) {
           console.log('[IRC] Loaded resources:', fetchedResources.length);
           console.log('[IRC] Loaded events count:', unifiedEvents.length);
         }
@@ -210,7 +210,7 @@ export function useIntegratedResourceCalendar() {
       const eventProps = event.extendedProps as UnifiedResourceEvent['extendedProps'];
       const hasActual = eventProps?.actualStart;
 
-      if (import.meta.env.DEV) {
+      if (isDev) {
         console.log('[IRC] eventDidMount called', {
           id: event.id,
           title: event.title,
@@ -227,7 +227,7 @@ export function useIntegratedResourceCalendar() {
           : `irc-event-editable-${event.id}`;
 
         element.setAttribute('data-testid', testId);
-        if (import.meta.env.DEV) {
+        if (isDev) {
           console.log('[IRC] eventDidMount E2E testid set', {
             id: event.id,
             testId,
@@ -447,7 +447,7 @@ export function useIntegratedResourceCalendar() {
       setEvents((prev) => [...prev, newEvent]);
       showSnackbar('予定を作成しました');
 
-      if (showOnlyUnrecorded && import.meta.env.DEV) {
+      if (showOnlyUnrecorded && isDev) {
         console.log('[IRC] New event created in unrecorded filter mode');
       }
     },
