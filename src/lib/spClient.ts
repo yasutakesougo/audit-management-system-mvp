@@ -10,8 +10,8 @@ import { AuthRequiredError } from './errors';
 // --- Config helpers imported from @/lib/sp/config (SSOT) --------------------
 import { ensureConfig } from '@/lib/sp/config';
 export { ensureConfig } from '@/lib/sp/config';
-// --- Batch payload/parse imported from @/lib/sp/batch (SSOT) -----------------
-import { buildBatchPayload as buildBatchPayloadImported, parseBatchResponse as parseBatchResponseImported } from '@/lib/sp/batch';
+// --- Batch payload/parse imported from @/lib/sp/spBatch (SSOT) ---------------
+import { buildBatchPayload as buildBatchPayloadImported, parseBatchResponse as parseBatchResponseImported } from '@/lib/sp/spBatch';
 
 
 
@@ -47,15 +47,15 @@ import type {
 } from '@/lib/sp/types';
 
 
-// ─── Field cache & schema imported from @/lib/sp/fieldCache (SSOT) ──────────
+// ─── Field cache & schema imported from SSOT modules ────────────────────────
 import {
-    buildFieldSchema,
     buildSelectFields,
     extractMissingField,
     getMissingSet,
     markOptionalMissing,
     resetMissingOptionalFieldsCache
-} from '@/lib/sp/fieldCache';
+} from '@/lib/sp/helpers';
+import { buildFieldSchema } from '@/lib/sp/spSchema';
 
 const sanitizeEnvValue = (value: unknown): string => (typeof value === 'string' ? value.trim() : '');
 const DEFAULT_USERS_LIST_TITLE = 'Users_Master';
@@ -69,6 +69,7 @@ const STAFF_OPTIONAL_FIELDS = ['StaffID', 'AttendanceDays', 'Certifications', 'D
 
 // ─── Path & error helpers imported from @/lib/sp/helpers (SSOT) ─────────────
 import {
+    buildItemPath,
     buildListItemsPath,
     raiseHttpError
 } from '@/lib/sp/helpers';
@@ -582,7 +583,7 @@ export function createSpClient(
   const batch = async (operations: SharePointBatchOperation[]): Promise<SharePointBatchResult[]> => {
     if (!operations.length) return [];
     const boundary = `batch_${Math.random().toString(36).slice(2)}`;
-    const requestBody = buildBatchPayloadImported(operations, boundary, normalizePath);
+    const requestBody = buildBatchPayloadImported(operations, boundary, normalizePath, buildItemPath);
     const res = await postBatch(requestBody, boundary);
     const contentType = res.headers.get('Content-Type') ?? '';
     const match = /boundary=([^;]+)/i.exec(contentType);
@@ -674,8 +675,8 @@ export async function createSchedule<T extends Record<string, unknown>>(_sp: Use
 
 export const __ensureListInternals = { buildFieldSchema };
 
-// Re-export cache clear utilities from fieldCache
-export { clearAllFieldsCache, clearFieldsCacheFor } from '@/lib/sp/fieldCache';
+// Re-export cache clear utilities from helpers (SSOT)
+export { clearAllFieldsCache, clearFieldsCacheFor } from '@/lib/sp/helpers';
 
 // test-only export (intentionally non-exported in production bundles usage scope)
 export const __test__ = {

@@ -255,3 +255,32 @@ export const raiseHttpError = async (
 export const resetMissingOptionalFieldsCache = (): void => {
   missingOptionalFieldsCache.clear();
 };
+
+// ── Cache clear utilities (debug / admin) ───────────────────────────────────
+
+/**
+ * Fields キャッシュを手動クリア（デバッグ用）
+ */
+export function clearFieldsCacheFor(listTitle: string, siteUrl: string): void {
+  if (typeof sessionStorage === 'undefined') return;
+  const key = makeFieldsCacheKey(siteUrl, listTitle);
+  sessionStorage.removeItem(key);
+  console.log('[spClient][fieldsCache] 🗑️ cleared', { listTitle });
+}
+
+/**
+ * 全 Fields キャッシュをクリア
+ */
+export function clearAllFieldsCache(): void {
+  if (typeof sessionStorage === 'undefined') return;
+  const prefix = 'sp.fieldsCache.v1::';
+  let count = 0;
+  for (let i = sessionStorage.length - 1; i >= 0; i--) {
+    const key = sessionStorage.key(i);
+    if (key?.startsWith(prefix)) {
+      sessionStorage.removeItem(key);
+      count++;
+    }
+  }
+  console.log('[spClient][fieldsCache] 🗑️ cleared all', { count });
+}
