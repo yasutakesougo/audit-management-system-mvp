@@ -70,6 +70,7 @@ const UserDetailPage = React.lazy(() => import('@/pages/UserDetailPage'));
 const NavigationDiagnosticsPage = React.lazy(() => import('@/pages/admin/NavigationDiagnosticsPage'));
 const DataIntegrityPage = React.lazy(() => import('@/pages/admin/DataIntegrityPage'));
 const CsvImportPage = React.lazy(() => import('@/pages/admin/CsvImportPage'));
+const ModeSwitchPage = React.lazy(() => import('@/pages/admin/ModeSwitchPage'));
 
 const StaffPanel = React.lazy(() => import('@/features/staff').then(m => ({ default: m.StaffPanel })));
 const UsersPanel = React.lazy(() => import('@/features/users').then(m => ({ default: m.UsersPanel })));
@@ -133,6 +134,7 @@ const SuspendedIntegratedResourceCalendarPage = createSuspended(IntegratedResour
 const SuspendedNavigationDiagnosticsPage = createSuspended(NavigationDiagnosticsPage, 'ナビ診断を読み込んでいます…');
 const SuspendedDataIntegrityPage = createSuspended(DataIntegrityPage, 'データ整合性チェックを読み込んでいます…');
 const SuspendedCsvImportPage = createSuspended(CsvImportPage, 'CSVインポートを読み込んでいます…');
+const SuspendedModeSwitchPage = createSuspended(ModeSwitchPage, 'モード切替を読み込んでいます…');
 const SuspendedMeetingGuidePage = createSuspended(MeetingGuidePage, '会議ガイドを読み込んでいます…');
 const SuspendedDashboardBriefingPage = createSuspended(DashboardBriefingPage, '最新の大切情報を読み込んでいます…');
 const RoomManagementPage = React.lazy(() => import('@/pages/RoomManagementPage').then((module) => ({ default: module.RoomManagementPage ?? module.default })));
@@ -453,6 +455,14 @@ const childRoutes: RouteObject[] = [
     element: (
       <RequireAudience requiredRole="admin">
         <SuspendedCsvImportPage />
+      </RequireAudience>
+    ),
+  },
+  {
+    path: 'admin/mode-switch',
+    element: (
+      <RequireAudience requiredRole="admin">
+        <SuspendedModeSwitchPage />
       </RequireAudience>
     ),
   },
