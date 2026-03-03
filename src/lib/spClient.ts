@@ -5,7 +5,6 @@ import type { UnifiedResourceEvent } from '@/features/resources/types';
 import { auditLog } from '@/lib/debugLogger';
 import { getAppConfig, isE2eMsalMockEnabled, readBool, readEnv, shouldSkipLogin, skipSharePoint, type EnvRecord } from '@/lib/env';
 import { useMemo } from 'react';
-import { z } from 'zod';
 import { AuthRequiredError, SharePointItemNotFoundError, SharePointMissingEtagError } from './errors';
 
 // NOTE: Type definitions and helpers have been extracted to lib/sp/ sub-modules
@@ -143,243 +142,56 @@ export function ensureConfig(envOverride?: { VITE_SP_RESOURCE?: string; VITE_SP_
 
 const DEFAULT_LIST_TEMPLATE = 100;
 
-type JsonRecord = Record<string, unknown>;
+// ─── Types & schemas imported from @/lib/sp/types (SSOT) ────────────────────
+import {
+    trimGuidBraces,
+    type JsonRecord,
+    type RetryReason
+} from '@/lib/sp/types';
 
-export function parseSpListResponse<T extends z.ZodTypeAny>(
-  json: unknown,
-  itemSchema: T
-): z.infer<T>[] {
-  // 1. Validate the outer OData envelope shape first
-  const envelopeSchema = z.object({ value: z.array(z.unknown()).default([]) });
-  const envelopeParsed = envelopeSchema.safeParse(json);
+// Re-export for backward compatibility — existing importers don't need to change
+export {
+    parseSpListResponse,
+    type JsonRecord
+} from '@/lib/sp/types';
+export type {
+    EnsureListResult, SharePointBatchOperation,
+    SharePointBatchResult,
+    SharePointRetryMeta,
+    SpClientOptions,
+    SpFieldDef
+} from '@/lib/sp/types';
 
-  if (!envelopeParsed.success) {
-    console.error('[spClient] SharePoint API envelope mismatch:', envelopeParsed.error.format());
-    throw new Error('SharePoint response envelope validation failed. Expected { value: [...] }');
-  }
+// Internal type imports (not re-exported — used only within this file)
+import type {
+    E2eDebugWindow,
+    EnsureListOptions,
+    EnsureListResult,
+    ExistingFieldShape,
+    FieldsCacheEntry,
+    SharePointBatchOperation,
+    SharePointBatchResult,
+    SharePointListMetadata,
+    SpClientOptions,
+    SpFieldDef,
+    StaffIdentifier
+} from '@/lib/sp/types';
 
-  const rawItems = envelopeParsed.data.value;
-  const validItems: z.infer<T>[] = [];
-  const errors: { index: number; id?: unknown; issues: z.ZodFormattedError<unknown> }[] = [];
 
-  // 2. Safely parse each item individually to support Partial Failures
-  rawItems.forEach((rawItem, index) => {
-    const itemParsed = itemSchema.safeParse(rawItem);
-    if (itemParsed.success) {
-      validItems.push(itemParsed.data);
-    } else {
-      // Capture identifier if available to help with tracing
-      const id = (rawItem as Record<string, unknown>)?.Id ?? (rawItem as Record<string, unknown>)?.ID;
-      errors.push({
-        index,
-        id,
-        issues: itemParsed.error.format(),
-      });
-    }
-  });
-
-  // 3. Telemetry hook: Log specific item failures without crashing the whole list
-  if (errors.length > 0) {
-    console.error(`[spClient] Partial validation failure: ${errors.length}/${rawItems.length} items failed schema.`, {
-      errors,
-      // Consider pushing this to Sentry/AppInsights here in the future
-    });
-  }
-
-  return validItems;
-}
-
-export type SharePointBatchOperation =
-  | {
-      kind: 'create';
-      list: string;
-      body: JsonRecord;
-      headers?: Record<string, string>;
-    }
-  | {
-      kind: 'update';
-      list: string;
-      id: number;
-      body: JsonRecord;
-      etag?: string;
-      method?: 'PATCH' | 'MERGE';
-      headers?: Record<string, string>;
-    }
-  | {
-      kind: 'delete';
-      list: string;
-      id: number;
-      etag?: string;
-      headers?: Record<string, string>;
-    };
-
-export type SharePointBatchResult<T = unknown> = {
-  ok: boolean;
-  status: number;
-  data?: T | string;
-};
-
-type RetryReason = 'throttle' | 'timeout' | 'server';
-
-export type SharePointRetryMeta = {
-  attempt: number;
-  status?: number;
-  reason: RetryReason;
-  delayMs: number;
-};
-
-export interface SpClientOptions {
-  onRetry?: (response: Response, meta: SharePointRetryMeta) => void;
-}
-
-type SpFieldType =
-  | 'Text'
-  | 'Note'
-  | 'Choice'
-  | 'MultiChoice'
-  | 'Number'
-  | 'Boolean'
-  | 'Lookup'
-  | 'DateTime'
-  | 'Currency';
-
-export interface SpFieldDef {
-  internalName: string;
-  type: SpFieldType;
-  displayName?: string;
-  description?: string;
-  required?: boolean;
-  choices?: readonly string[];
-  default?: string | number | boolean;
-  lookupListId?: string;
-  lookupFieldName?: string;
-  allowMultiple?: boolean;
-  dateTimeFormat?: 'DateOnly' | 'DateTime';
-  richText?: boolean;
-  addToDefaultView?: boolean;
-}
-
-interface EnsureListOptions {
-  baseTemplate?: number;
-}
-
-interface ExistingFieldShape {
-  InternalName: string;
-  TypeAsString?: string;
-  Required?: boolean;
-}
-
-interface EnsureListResult {
-  listId: string;
-  title: string;
-}
-
-interface SharePointListMetadata {
-  Id?: string;
-  Title?: string;
-  d?: {
-    Id?: string;
-    Title?: string;
-  };
-}
-
-const escapeXml = (value: string): string =>
-  value.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
-
-const trimGuidBraces = (value: string): string => value.replace(/[{}]/g, '').trim();
-const withGuidBraces = (value: string): string => {
-  const trimmed = trimGuidBraces(value);
-  return trimmed ? `{${trimmed}}` : '';
-};
-
-// ────────────────────────────────────────────────────────────────────────────
-// Fields Cache（sessionStorage）
-// ────────────────────────────────────────────────────────────────────────────
-const FIELDS_CACHE_TTL_MS = 20 * 60 * 1000; // 20分
-
-type FieldsCacheEntry = {
-  v: 1;
-  savedAt: number;
-  listTitle: string;
-  siteUrl: string;
-  internalNames: string[];
-};
-
-function nowMs(): number {
-  return Date.now();
-}
-
-function safeJsonParse<T>(raw: string | null): T | null {
-  if (!raw) return null;
-  try {
-    return JSON.parse(raw) as T;
-  } catch {
-    return null;
-  }
-}
-
-function safeJsonStringify(obj: unknown): string | null {
-  try {
-    return JSON.stringify(obj);
-  } catch {
-    return null;
-  }
-}
-
-function makeFieldsCacheKey(siteUrl: string, listTitle: string): string {
-  return `sp.fieldsCache.v1::${siteUrl}::${listTitle}`;
-}
-
-type E2eDebugWindow = Window & {
-  __E2E_BATCH_URL__?: string;
-  __E2E_BATCH_ATTEMPTS__?: number;
-};
-
-const buildFieldSchema = (def: SpFieldDef): string => {
-  const attributes: string[] = [];
-  const addAttr = (key: string, raw: string | number | boolean | undefined) => {
-    if (raw === undefined || raw === null || raw === '') return;
-    const value = typeof raw === 'boolean' ? (raw ? 'TRUE' : 'FALSE') : String(raw);
-    attributes.push(`${key}="${escapeXml(value)}"`);
-  };
-
-  addAttr('Name', def.internalName);
-  addAttr('StaticName', def.internalName);
-  addAttr('DisplayName', def.displayName ?? def.internalName);
-  addAttr('Type', def.type);
-  if (def.required) addAttr('Required', 'TRUE');
-  if (def.richText) addAttr('RichText', 'TRUE');
-  if (def.dateTimeFormat) addAttr('Format', def.dateTimeFormat);
-  if (def.type === 'Lookup') {
-    if (def.lookupListId) addAttr('List', withGuidBraces(def.lookupListId));
-    addAttr('ShowField', def.lookupFieldName ?? 'Title');
-    if (def.allowMultiple) addAttr('Mult', 'TRUE');
-  } else if (def.allowMultiple) {
-    addAttr('Mult', 'TRUE');
-  }
-
-  if (def.type === 'Boolean' && typeof def.default === 'boolean') {
-    addAttr('Default', def.default ? '1' : '0');
-  }
-
-  const inner: string[] = [];
-  if (def.description) {
-    inner.push(`<Description>${escapeXml(def.description)}</Description>`);
-  }
-  if ((def.type === 'Choice' || def.type === 'MultiChoice') && def.choices?.length) {
-    const choiceXml = def.choices.map((choice) => `<CHOICE>${escapeXml(choice)}</CHOICE>`).join('');
-    inner.push(`<CHOICES>${choiceXml}</CHOICES>`);
-    if (def.default && typeof def.default === 'string') {
-      inner.push(`<Default>${escapeXml(def.default)}</Default>`);
-    }
-  } else if (def.default !== undefined && def.type !== 'Boolean') {
-    inner.push(`<Default>${escapeXml(String(def.default))}</Default>`);
-  }
-
-  const attrs = attributes.join(' ');
-  const body = inner.join('');
-  return `<Field ${attrs}>${body}</Field>`;
-};
+// ─── Field cache & schema imported from @/lib/sp/fieldCache (SSOT) ──────────
+import {
+    buildFieldSchema,
+    buildSelectFields,
+    extractMissingField,
+    FIELDS_CACHE_TTL_MS,
+    getMissingSet,
+    makeFieldsCacheKey,
+    markOptionalMissing,
+    nowMs,
+    resetMissingOptionalFieldsCache,
+    safeJsonParse,
+    safeJsonStringify,
+} from '@/lib/sp/fieldCache';
 
 const sanitizeEnvValue = (value: unknown): string => (typeof value === 'string' ? value.trim() : '');
 
@@ -392,38 +204,8 @@ const USERS_OPTIONAL_FIELDS = ['FullNameKana', 'Furigana', 'Email', 'Phone', 'Bi
 const STAFF_BASE_FIELDS = ['Id', 'StaffID', 'StaffName', 'Role', 'Phone', 'Email'] as const;
 const STAFF_OPTIONAL_FIELDS = ['StaffID', 'AttendanceDays', 'Certifications', 'Department', 'Notes'] as const;
 
-const missingOptionalFieldsCache = new Map<string, Set<string>>();
-
-const getMissingSet = (listTitle: string): Set<string> => {
-  let current = missingOptionalFieldsCache.get(listTitle);
-  if (!current) {
-    current = new Set<string>();
-    missingOptionalFieldsCache.set(listTitle, current);
-  }
-  return current;
-};
-
-const markOptionalMissing = (listTitle: string, field: string) => {
-  if (!field) return;
-  getMissingSet(listTitle).add(field);
-};
-
-const extractMissingField = (message: string): string | null => {
-  const match = message.match(/'([^']+)'/);
-  if (match && match[1]) {
-    return match[1];
-  }
-  return null;
-};
-
-const buildSelectFields = (baseFields: readonly string[], optionalFields: readonly string[], missing: Set<string>): string[] => {
-  const base = baseFields.filter((field) => !missing.has(field));
-  const optional = optionalFields.filter((field) => !missing.has(field));
-  const merged = [...base, ...optional];
-  return Array.from(new Set(merged));
-};
-
 const normalizeGuidCandidate = (value: string): string => trimGuidBraces(value.replace(/^guid:/i, ''));
+
 
 const buildListItemsPath = (listTitle: string, select: string[], top: number): string => {
   const queryParts: string[] = [];
@@ -559,7 +341,7 @@ const fetchListItemsWithFallback = async <TRow>(
   throw new Error(`Failed to fetch list "${listTitle}" after optional field retries. Last query: ${finalPath}`);
 };
 
-type StaffIdentifier = { type: 'guid' | 'title'; value: string };
+
 
 const resolveStaffListIdentifier = (titleOverride: string, guidOverride: string): StaffIdentifier => {
   const normalizedGuid = trimGuidBraces(guidOverride);
@@ -1588,40 +1370,13 @@ export async function createSchedule<T extends Record<string, unknown>>(_sp: Use
 
 export const __ensureListInternals = { buildFieldSchema };
 
-/**
- * Fields キャッシュを手動クリア（デバッグ用）
- */
-export function clearFieldsCacheFor(listTitle: string, siteUrl?: string): void {
-  if (typeof sessionStorage === 'undefined') return;
-  const url = siteUrl || ensureConfig().baseUrl;
-  const key = makeFieldsCacheKey(url, listTitle);
-  sessionStorage.removeItem(key);
-  console.log('[spClient][fieldsCache] 🗑️ cleared', { listTitle });
-}
-
-/**
- * 全 Fields キャッシュをクリア
- */
-export function clearAllFieldsCache(): void {
-  if (typeof sessionStorage === 'undefined') return;
-  const prefix = 'sp.fieldsCache.v1::';
-  let count = 0;
-  for (let i = sessionStorage.length - 1; i >= 0; i--) {
-    const key = sessionStorage.key(i);
-    if (key?.startsWith(prefix)) {
-      sessionStorage.removeItem(key);
-      count++;
-    }
-  }
-  console.log('[spClient][fieldsCache] 🗑️ cleared all', { count });
-}
+// Re-export cache clear utilities from fieldCache
+export { clearAllFieldsCache, clearFieldsCacheFor } from '@/lib/sp/fieldCache';
 
 // test-only export (intentionally non-exported in production bundles usage scope)
 export const __test__ = {
   ensureConfig,
-  resetMissingOptionalFieldsCache(): void {
-    missingOptionalFieldsCache.clear();
-  },
+  resetMissingOptionalFieldsCache,
   resolveStaffListIdentifier,
 };
 
