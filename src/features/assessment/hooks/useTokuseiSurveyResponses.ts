@@ -21,7 +21,6 @@ export function useTokuseiSurveyResponses() {
   spRef.current = sp;
   const demoMode = isDemoModeEnabled();
   const [state, setState] = useState<HookState>({ data: [], status: 'idle', error: null });
-  const loadedRef = useRef(false);
 
   const load = useCallback(async (signal?: AbortSignal) => {
     setState((prev) => ({ ...prev, status: 'loading', error: null }));
@@ -61,8 +60,6 @@ export function useTokuseiSurveyResponses() {
   }, [demoMode]);
 
   useEffect(() => {
-    if (loadedRef.current) return;
-    loadedRef.current = true;
     const controller = new AbortController();
     void load(controller.signal);
     return () => controller.abort();
