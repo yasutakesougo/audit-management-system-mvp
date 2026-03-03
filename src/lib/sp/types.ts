@@ -1,0 +1,187 @@
+/**
+ * SharePoint Client Types & Schemas
+ *
+ * spClient.ts から抽出された型定義・スキーマ。
+ * 各 SP Repository が直接インポート可能。
+ */
+import { z } from 'zod';
+
+// ─── Basic types ─────────────────────────────────────────────────
+
+export type JsonRecord = Record<string, unknown>;
+
+export type RetryReason = 'throttle' | 'timeout' | 'server';
+
+export type SharePointRetryMeta = {
+  attempt: number;
+  status?: number;
+  reason: RetryReason;
+  delayMs: number;
+};
+
+export interface SpClientOptions {
+  onRetry?: (response: Response, meta: SharePointRetryMeta) => void;
+}
+
+// ─── Batch types ─────────────────────────────────────────────────
+
+export type SharePointBatchOperation =
+  | {
+      kind: 'create';
+      list: string;
+      body: JsonRecord;
+      headers?: Record<string, string>;
+    }
+  | {
+      kind: 'update';
+      list: string;
+      id: number;
+      body: JsonRecord;
+      etag?: string;
+      method?: 'PATCH' | 'MERGE';
+      headers?: Record<string, string>;
+    }
+  | {
+      kind: 'delete';
+      list: string;
+      id: number;
+      etag?: string;
+      headers?: Record<string, string>;
+    };
+
+export type SharePointBatchResult<T = unknown> = {
+  ok: boolean;
+  status: number;
+  data?: T | string;
+};
+
+// ─── Field / List types ──────────────────────────────────────────
+
+export type SpFieldType =
+  | 'Text'
+  | 'Note'
+  | 'Choice'
+  | 'MultiChoice'
+  | 'Number'
+  | 'Boolean'
+  | 'Lookup'
+  | 'DateTime'
+  | 'Currency';
+
+export interface SpFieldDef {
+  internalName: string;
+  type: SpFieldType;
+  displayName?: string;
+  description?: string;
+  required?: boolean;
+  choices?: readonly string[];
+  default?: string | number | boolean;
+  lookupListId?: string;
+  lookupFieldName?: string;
+  allowMultiple?: boolean;
+  dateTimeFormat?: 'DateOnly' | 'DateTime';
+  richText?: boolean;
+  addToDefaultView?: boolean;
+}
+
+export interface EnsureListOptions {
+  baseTemplate?: number;
+}
+
+export interface ExistingFieldShape {
+  InternalName: string;
+  TypeAsString?: string;
+  Required?: boolean;
+}
+
+export interface EnsureListResult {
+  listId: string;
+  title: string;
+}
+
+export interface SharePointListMetadata {
+  Id?: string;
+  Title?: string;
+  d?: {
+    Id?: string;
+    Title?: string;
+  };
+}
+
+// ─── Fields Cache types ──────────────────────────────────────────
+
+export type FieldsCacheEntry = {
+  v: 1;
+  savedAt: number;
+  listTitle: string;
+  siteUrl: string;
+  internalNames: string[];
+};
+
+export type E2eDebugWindow = Window & {
+  __E2E_BATCH_URL__?: string;
+  __E2E_BATCH_ATTEMPTS__?: number;
+};
+
+export type StaffIdentifier = { type: 'guid' | 'title'; value: string };
+
+// ─── Response parsing ────────────────────────────────────────────
+
+/**
+ * Parse a SharePoint REST API list response with per-item Zod validation.
+ * Invalid items are logged but not included in the result (Partial Failure pattern).
+ */
+export function parseSpListResponse<T extends z.ZodTypeAny>(
+  json: unknown,
+  itemSchema: T
+): z.infer<T>[] {
+  // 1. Validate the outer OData envelope shape first
+  const envelopeSchema = z.object({ value: z.array(z.unknown()).default([]) });
+  const envelopeParsed = envelopeSchema.safeParse(json);
+
+  if (!envelopeParsed.success) {
+    console.error('[spClient] SharePoint API envelope mismatch:', envelopeParsed.error.format());
+    throw new Error('SharePoint response envelope validation failed. Expected { value: [...] }');
+  }
+
+  const rawItems = envelopeParsed.data.value;
+  const validItems: z.infer<T>[] = [];
+  const errors: { index: number; id?: unknown; issues: z.ZodFormattedError<unknown> }[] = [];
+
+  // 2. Safely parse each item individually to support Partial Failures
+  rawItems.forEach((rawItem, index) => {
+    const itemParsed = itemSchema.safeParse(rawItem);
+    if (itemParsed.success) {
+      validItems.push(itemParsed.data);
+    } else {
+      // Capture identifier if available to help with tracing
+      const id = (rawItem as Record<string, unknown>)?.Id ?? (rawItem as Record<string, unknown>)?.ID;
+      errors.push({
+        index,
+        id,
+        issues: itemParsed.error.format(),
+      });
+    }
+  });
+
+  // 3. Telemetry hook: Log specific item failures without crashing the whole list
+  if (errors.length > 0) {
+    console.error(`[spClient] Partial validation failure: ${errors.length}/${rawItems.length} items failed schema.`, {
+      errors,
+      // Consider pushing this to Sentry/AppInsights here in the future
+    });
+  }
+
+  return validItems;
+}
+
+// ─── XML / GUID helpers ─────────────────────────────────────────
+
+export const escapeXml = (value: string): string =>
+  value.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+
+export const trimGuidBraces = (value: string): string => value.replace(/[{}]/g, '').trim();
+export const withGuidBraces = (value: string): string => {
+  const trimmed = trimGuidBraces(value);
+  return trimmed ? `{${trimmed}}` : '';
+};

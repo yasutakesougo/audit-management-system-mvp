@@ -5,7 +5,6 @@ import type { UnifiedResourceEvent } from '@/features/resources/types';
 import { auditLog } from '@/lib/debugLogger';
 import { getAppConfig, isE2eMsalMockEnabled, readBool, readEnv, shouldSkipLogin, skipSharePoint, type EnvRecord } from '@/lib/env';
 import { useMemo } from 'react';
-import { z } from 'zod';
 import { AuthRequiredError, SharePointItemNotFoundError, SharePointMissingEtagError } from './errors';
 
 // NOTE: Type definitions and helpers have been extracted to lib/sp/ sub-modules
@@ -143,167 +142,50 @@ export function ensureConfig(envOverride?: { VITE_SP_RESOURCE?: string; VITE_SP_
 
 const DEFAULT_LIST_TEMPLATE = 100;
 
-type JsonRecord = Record<string, unknown>;
+// ─── Types & schemas imported from @/lib/sp/types (SSOT) ────────────────────
+import {
+    escapeXml,
+    trimGuidBraces,
+    withGuidBraces,
+    type JsonRecord,
+    type RetryReason
+} from '@/lib/sp/types';
 
-export function parseSpListResponse<T extends z.ZodTypeAny>(
-  json: unknown,
-  itemSchema: T
-): z.infer<T>[] {
-  // 1. Validate the outer OData envelope shape first
-  const envelopeSchema = z.object({ value: z.array(z.unknown()).default([]) });
-  const envelopeParsed = envelopeSchema.safeParse(json);
+// Re-export for backward compatibility — existing importers don't need to change
+export {
+    parseSpListResponse,
+    type JsonRecord
+} from '@/lib/sp/types';
+export type {
+    EnsureListResult, SharePointBatchOperation,
+    SharePointBatchResult,
+    SharePointRetryMeta,
+    SpClientOptions,
+    SpFieldDef
+} from '@/lib/sp/types';
 
-  if (!envelopeParsed.success) {
-    console.error('[spClient] SharePoint API envelope mismatch:', envelopeParsed.error.format());
-    throw new Error('SharePoint response envelope validation failed. Expected { value: [...] }');
-  }
+// Internal type imports (not re-exported — used only within this file)
+import type {
+    E2eDebugWindow,
+    EnsureListOptions,
+    EnsureListResult,
+    ExistingFieldShape,
+    FieldsCacheEntry,
+    SharePointBatchOperation,
+    SharePointBatchResult,
+    SharePointListMetadata,
+    SpClientOptions,
+    SpFieldDef,
+    StaffIdentifier
+} from '@/lib/sp/types';
 
-  const rawItems = envelopeParsed.data.value;
-  const validItems: z.infer<T>[] = [];
-  const errors: { index: number; id?: unknown; issues: z.ZodFormattedError<unknown> }[] = [];
-
-  // 2. Safely parse each item individually to support Partial Failures
-  rawItems.forEach((rawItem, index) => {
-    const itemParsed = itemSchema.safeParse(rawItem);
-    if (itemParsed.success) {
-      validItems.push(itemParsed.data);
-    } else {
-      // Capture identifier if available to help with tracing
-      const id = (rawItem as Record<string, unknown>)?.Id ?? (rawItem as Record<string, unknown>)?.ID;
-      errors.push({
-        index,
-        id,
-        issues: itemParsed.error.format(),
-      });
-    }
-  });
-
-  // 3. Telemetry hook: Log specific item failures without crashing the whole list
-  if (errors.length > 0) {
-    console.error(`[spClient] Partial validation failure: ${errors.length}/${rawItems.length} items failed schema.`, {
-      errors,
-      // Consider pushing this to Sentry/AppInsights here in the future
-    });
-  }
-
-  return validItems;
-}
-
-export type SharePointBatchOperation =
-  | {
-      kind: 'create';
-      list: string;
-      body: JsonRecord;
-      headers?: Record<string, string>;
-    }
-  | {
-      kind: 'update';
-      list: string;
-      id: number;
-      body: JsonRecord;
-      etag?: string;
-      method?: 'PATCH' | 'MERGE';
-      headers?: Record<string, string>;
-    }
-  | {
-      kind: 'delete';
-      list: string;
-      id: number;
-      etag?: string;
-      headers?: Record<string, string>;
-    };
-
-export type SharePointBatchResult<T = unknown> = {
-  ok: boolean;
-  status: number;
-  data?: T | string;
-};
-
-type RetryReason = 'throttle' | 'timeout' | 'server';
-
-export type SharePointRetryMeta = {
-  attempt: number;
-  status?: number;
-  reason: RetryReason;
-  delayMs: number;
-};
-
-export interface SpClientOptions {
-  onRetry?: (response: Response, meta: SharePointRetryMeta) => void;
-}
-
-type SpFieldType =
-  | 'Text'
-  | 'Note'
-  | 'Choice'
-  | 'MultiChoice'
-  | 'Number'
-  | 'Boolean'
-  | 'Lookup'
-  | 'DateTime'
-  | 'Currency';
-
-export interface SpFieldDef {
-  internalName: string;
-  type: SpFieldType;
-  displayName?: string;
-  description?: string;
-  required?: boolean;
-  choices?: readonly string[];
-  default?: string | number | boolean;
-  lookupListId?: string;
-  lookupFieldName?: string;
-  allowMultiple?: boolean;
-  dateTimeFormat?: 'DateOnly' | 'DateTime';
-  richText?: boolean;
-  addToDefaultView?: boolean;
-}
-
-interface EnsureListOptions {
-  baseTemplate?: number;
-}
-
-interface ExistingFieldShape {
-  InternalName: string;
-  TypeAsString?: string;
-  Required?: boolean;
-}
-
-interface EnsureListResult {
-  listId: string;
-  title: string;
-}
-
-interface SharePointListMetadata {
-  Id?: string;
-  Title?: string;
-  d?: {
-    Id?: string;
-    Title?: string;
-  };
-}
-
-const escapeXml = (value: string): string =>
-  value.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
-
-const trimGuidBraces = (value: string): string => value.replace(/[{}]/g, '').trim();
-const withGuidBraces = (value: string): string => {
-  const trimmed = trimGuidBraces(value);
-  return trimmed ? `{${trimmed}}` : '';
-};
 
 // ────────────────────────────────────────────────────────────────────────────
 // Fields Cache（sessionStorage）
 // ────────────────────────────────────────────────────────────────────────────
 const FIELDS_CACHE_TTL_MS = 20 * 60 * 1000; // 20分
 
-type FieldsCacheEntry = {
-  v: 1;
-  savedAt: number;
-  listTitle: string;
-  siteUrl: string;
-  internalNames: string[];
-};
+
 
 function nowMs(): number {
   return Date.now();
@@ -330,10 +212,7 @@ function makeFieldsCacheKey(siteUrl: string, listTitle: string): string {
   return `sp.fieldsCache.v1::${siteUrl}::${listTitle}`;
 }
 
-type E2eDebugWindow = Window & {
-  __E2E_BATCH_URL__?: string;
-  __E2E_BATCH_ATTEMPTS__?: number;
-};
+
 
 const buildFieldSchema = (def: SpFieldDef): string => {
   const attributes: string[] = [];
@@ -559,7 +438,7 @@ const fetchListItemsWithFallback = async <TRow>(
   throw new Error(`Failed to fetch list "${listTitle}" after optional field retries. Last query: ${finalPath}`);
 };
 
-type StaffIdentifier = { type: 'guid' | 'title'; value: string };
+
 
 const resolveStaffListIdentifier = (titleOverride: string, guidOverride: string): StaffIdentifier => {
   const normalizedGuid = trimGuidBraces(guidOverride);
