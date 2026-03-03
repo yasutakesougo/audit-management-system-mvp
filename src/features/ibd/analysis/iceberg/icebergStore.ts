@@ -13,11 +13,12 @@ import type {
 } from '@/features/ibd/analysis/iceberg/icebergTypes';
 import { icebergSnapshotSchema } from '@/features/ibd/analysis/iceberg/icebergTypes';
 import { sha256Hex } from '@/lib/hashUtil';
-import { useCallback, useSyncExternalStore } from 'react';
+import { useCallback } from 'react';
+import { create } from 'zustand';
 
 type SaveState = 'idle' | 'saving' | 'saved' | 'conflict' | 'error';
 
-type IcebergState = {
+interface IcebergState {
   currentSession: IcebergSession | null;
   sessions: Record<string, IcebergSession>;
   // Persistence metadata
@@ -25,9 +26,13 @@ type IcebergState = {
   lastSaveError?: string;
   lastSavedAt?: string;
   lastEntryHash?: string;
-};
+}
 
-let state: IcebergState = {
+// ---------------------------------------------------------------------------
+// Zustand Store
+// ---------------------------------------------------------------------------
+
+const initialState: IcebergState = {
   currentSession: null,
   sessions: {},
   saveState: 'idle',
@@ -36,28 +41,25 @@ let state: IcebergState = {
   lastEntryHash: undefined,
 };
 
-const listeners = new Set<() => void>();
+const useIcebergStoreBase = create<IcebergState>()(() => ({ ...initialState }));
 
-const emit = () => {
-  listeners.forEach((listener) => listener());
-};
+// Non-React helpers
+const getState = useIcebergStoreBase.getState;
+const setState = useIcebergStoreBase.setState;
 
-const subscribe = (listener: () => void) => {
-  listeners.add(listener);
-  return () => listeners.delete(listener);
-};
-
-const snapshot = () => state;
+// ---------------------------------------------------------------------------
+// Internal helpers
+// ---------------------------------------------------------------------------
 
 const persistSession = (session: IcebergSession) => {
-  state = {
-    ...state,
+  setState((s) => ({
+    ...s,
     currentSession: session,
     sessions: {
-      ...state.sessions,
+      ...s.sessions,
       [session.id]: session,
     },
-  };
+  }));
 };
 
 const inferBehaviorDetails = (source: BehaviorObservation): string | undefined => {
@@ -127,18 +129,17 @@ const initSession = (userId: string, title: string): IcebergSession => {
     links: [],
   };
   persistSession(newSession);
-  emit();
   return newSession;
 };
 
 const updateSession = (updater: (session: IcebergSession) => IcebergSession | null) => {
+  const state = getState();
   if (!state.currentSession) {
     return;
   }
   const updated = updater(state.currentSession);
   if (!updated) return;
   persistSession({ ...updated, updatedAt: new Date().toISOString() });
-  emit();
 };
 
 const addNodeFromData = (data: NodeSource, type: IcebergNodeType, initialPos?: NodePosition) => {
@@ -189,24 +190,23 @@ const linkNodes = (sourceNodeId: string, targetNodeId: string, confidence: Hypot
 };
 
 const loadSession = (sessionId: string) => {
+  const state = getState();
   const existing = state.sessions[sessionId];
   if (!existing) {
     return null;
   }
   persistSession(existing);
-  emit();
   return existing;
 };
 
 // ===== Persistence Functions (require repository) =====
-
-
 
 const saveSnapshot = async (
   repository: IcebergRepository,
   opts: { userId: string; sessionId: string; title?: string }
 ) => {
   const { userId, sessionId, title } = opts;
+  const state = getState();
 
   if (!state.currentSession) {
     throw new Error('No active session to save');
@@ -234,8 +234,7 @@ const saveSnapshot = async (
   const entryHash = await sha256Hex(`${userId}:${sessionId}:${payloadFingerprint}`);
 
   // Update save state
-  state = { ...state, saveState: 'saving', lastSaveError: undefined };
-  emit();
+  setState((s) => ({ ...s, saveState: 'saving', lastSaveError: undefined }));
 
   try {
     const result = await repository.upsertSnapshot({
@@ -243,36 +242,32 @@ const saveSnapshot = async (
       snapshot: validated,
     });
 
-    state = {
-      ...state,
+    setState((s) => ({
+      ...s,
       saveState: 'saved',
       lastSavedAt: new Date().toISOString(),
       lastEntryHash: entryHash,
-    };
-    emit();
+    }));
 
     return result;
   } catch (e: unknown) {
     const err = e as Record<string, unknown> | { message?: string };
     if (e instanceof ConflictError) {
-      state = { ...state, saveState: 'conflict', lastSaveError: e.message };
+      setState((s) => ({ ...s, saveState: 'conflict', lastSaveError: e.message }));
     } else {
-      state = { ...state, saveState: 'error', lastSaveError: String(err?.message ?? e) };
+      setState((s) => ({ ...s, saveState: 'error', lastSaveError: String(err?.message ?? e) }));
     }
-    emit();
     throw e;
   }
 };
 
 const loadLatest = async (repository: IcebergRepository, userId: string) => {
-  state = { ...state, saveState: 'saving', lastSaveError: undefined };
-  emit();
+  setState((s) => ({ ...s, saveState: 'saving', lastSaveError: undefined }));
 
   try {
     const latest = await repository.getLatestByUser(userId);
     if (!latest) {
-      state = { ...state, saveState: 'idle' };
-      emit();
+      setState((s) => ({ ...s, saveState: 'idle' }));
       return null;
     }
 
@@ -288,20 +283,22 @@ const loadLatest = async (repository: IcebergRepository, userId: string) => {
     };
 
     persistSession(loaded);
-    state = { ...state, saveState: 'saved', lastSavedAt: latest.updatedAt };
-    emit();
+    setState((s) => ({ ...s, saveState: 'saved', lastSavedAt: latest.updatedAt }));
 
     return loaded;
   } catch (e: unknown) {
     const err = e as Record<string, unknown> | { message?: string };
-    state = { ...state, saveState: 'error', lastSaveError: String(err?.message ?? e) };
-    emit();
+    setState((s) => ({ ...s, saveState: 'error', lastSaveError: String(err?.message ?? e) }));
     throw e;
   }
 };
 
+// ---------------------------------------------------------------------------
+// React Hook (backward-compatible)
+// ---------------------------------------------------------------------------
+
 export function useIcebergStore(repository?: IcebergRepository) {
-  const store = useSyncExternalStore(subscribe, snapshot, snapshot);
+  const store = useIcebergStoreBase();
 
   const init = useCallback((userId: string, title: string) => initSession(userId, title), []);
   const addNode = useCallback(
