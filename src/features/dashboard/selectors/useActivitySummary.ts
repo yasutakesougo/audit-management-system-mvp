@@ -1,6 +1,7 @@
 import type { PersonDaily } from '@/domain/daily/types';
 import { calculateUsageFromDailyRecords } from '@/features/users/userMasterDashboardUtils';
 import { estimatePayloadSize, HYDRATION_FEATURES, startFeatureSpan } from '@/hydration/features';
+import { normalizeUserId } from '@/lib/normalizeUserId';
 import type { IUserMaster } from '@/sharepoint/fields';
 import { useMemo } from 'react';
 import { getPendingUserOrder } from './getPendingUserOrder';
@@ -118,12 +119,12 @@ export function useActivitySummary(
     const recordedUserIds = new Set(
       activityRecords
         .filter(r => r.status === '完了' || r.status === '作成中')
-        .map(r => String(r.personId))
+        .map(r => normalizeUserId(String(r.personId)))
     );
 
     const rawPendingUserIds = users
       .map(u => String(u.UserID))
-      .filter(id => !recordedUserIds.has(id));
+      .filter(id => !recordedUserIds.has(normalizeUserId(id)));
 
     const pendingUserIds = getPendingUserOrder({
       users,
