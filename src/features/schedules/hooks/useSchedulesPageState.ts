@@ -214,7 +214,7 @@ export const useSchedulesPageState = ({ myUpn, canEditByRole, ready }: Schedules
   const mode = route.mode;
   const categoryFilter = route.filter.category;
   const query = route.filter.query;
-  const canEdit = (mode === 'day' || mode === 'week') && (canEditByRole || isE2eForceSchedulesWrite);
+  const canEdit = (mode === 'day' || mode === 'week' || mode === 'month') && (canEditByRole || isE2eForceSchedulesWrite);
 
   const focusDate = route.focusDate;
   const weekRange = useMemo(() => {

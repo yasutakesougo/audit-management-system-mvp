@@ -50,7 +50,7 @@ type MonthPageProps = {
   onAddClick?: (dayIso: string) => void;
 };
 
-export default function MonthPage({ items, loading = false, activeCategory = 'All', compact, onDayClick, onAddClick }: MonthPageProps) {
+export default function MonthPage({ items, loading = false, activeCategory = 'All', compact, onDayClick: _onDayClick, onAddClick }: MonthPageProps) {
   const announce = useAnnounce();
   const [searchParams, setSearchParams] = useSearchParams();
   const isCompact = Boolean(compact);
@@ -109,6 +109,8 @@ export default function MonthPage({ items, loading = false, activeCategory = 'Al
   // Delegate creation to parent (ScheduleDialogManager in WeekPage)
   const handleAddFromPanel = useCallback(() => {
     if (!selectedDateIso) return;
+    // Close drawer first, then open create dialog
+    setSelectedDateIso(null);
     if (onAddClick) {
       onAddClick(selectedDateIso);
     }
@@ -121,13 +123,12 @@ export default function MonthPage({ items, loading = false, activeCategory = 'Al
   }, [announce, monthAnnouncement]);
 
   const handleDaySelect = useCallback(
-    (e: React.MouseEvent<HTMLElement>, iso: string) => {
-      // Notify parent (updates activeDateIso in WeekPage)
-      onDayClick?.(iso);
-      // Open day summary panel
+    (_e: React.MouseEvent<HTMLElement>, iso: string) => {
+      // Only open drawer — do NOT call onDayClick here
+      // (URL changes from onDayClick reset state and prevent drawer from opening)
       setSelectedDateIso(iso);
     },
-    [onDayClick],
+    [],
   );
 
   const headingId = TESTIDS.SCHEDULES_MONTH_HEADING_ID;
