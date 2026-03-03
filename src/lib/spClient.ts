@@ -1,151 +1,26 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
+﻿/* eslint-disable @typescript-eslint/no-explicit-any */
 
 import { useAuth } from '@/auth/useAuth';
 import type { UnifiedResourceEvent } from '@/features/resources/types';
 import { auditLog } from '@/lib/debugLogger';
-import { getAppConfig, isE2eMsalMockEnabled, readBool, readEnv, shouldSkipLogin, skipSharePoint, type EnvRecord } from '@/lib/env';
+import { getAppConfig, isE2eMsalMockEnabled, readEnv, shouldSkipLogin, skipSharePoint, type EnvRecord } from '@/lib/env';
 import { useMemo } from 'react';
-import { AuthRequiredError, SharePointItemNotFoundError, SharePointMissingEtagError } from './errors';
+import { AuthRequiredError } from './errors';
 
-// NOTE: Type definitions and helpers have been extracted to lib/sp/ sub-modules
-// (spTypes.ts, spSchema.ts, spBatch.ts, spHelpers.ts) for independent import.
-// This file remains the canonical facade for backward compatibility.
+// --- Config helpers imported from @/lib/sp/config (SSOT) --------------------
+import { ensureConfig } from '@/lib/sp/config';
+export { ensureConfig } from '@/lib/sp/config';
+// --- Batch payload/parse imported from @/lib/sp/batch (SSOT) -----------------
+import { buildBatchPayload as buildBatchPayloadImported, parseBatchResponse as parseBatchResponseImported } from '@/lib/sp/batch';
 
-const FALLBACK_SP_RESOURCE = 'https://example.sharepoint.com';
-const FALLBACK_SP_SITE_RELATIVE = '/sites/demo';
 
-const shouldBypassSharePointConfig = (envOverride?: EnvRecord): boolean => {
-  // Respect explicit SharePoint overrides even when test/demo flags are set
-  if (envOverride && ('VITE_SP_RESOURCE' in envOverride || 'VITE_SP_SITE_RELATIVE' in envOverride || 'VITE_SP_SITE' in envOverride || 'VITE_SP_SITE_URL' in envOverride)) {
-    return false;
-  }
 
-  // Force SharePoint even in E2E/mock contexts when explicitly requested (e.g., Playwright stub mode)
-  const isForceSp = readBool('VITE_FORCE_SHAREPOINT', false, envOverride);
-  if (isForceSp) {
-    return false;
-  }
-
-  if (isE2eMsalMockEnabled(envOverride)) {
-    return true;
-  }
-  if (readBool('VITE_E2E', false, envOverride)) {
-    return true;
-  }
-  if (skipSharePoint(envOverride)) {
-    return true;
-  }
-  if (shouldSkipLogin(envOverride)) {
-    return true;
-  }
-  if (typeof process !== 'undefined' && process.env?.PLAYWRIGHT_TEST === '1') {
-    return true;
-  }
-  return false;
-};
-
-const normalizeSiteRelative = (value: string): string => {
-  const trimmed = value.trim();
-  const prefixed = trimmed.startsWith('/') ? trimmed : `/${trimmed}`;
-  return prefixed.replace(/\/+$/, '');
-};
-
-const normalizeResource = (value: string): string => value.trim().replace(/\/+$/, '');
-
-export function ensureConfig(envOverride?: { VITE_SP_RESOURCE?: string; VITE_SP_SITE_RELATIVE?: string; VITE_SP_SITE?: string; VITE_SP_SITE_URL?: string }) {
-  const overrideRecord = envOverride as EnvRecord | undefined;
-  const hasExplicitOverride = envOverride !== undefined;
-
-  const _pickSite = () => {
-    const primary = readEnv('VITE_SP_SITE_RELATIVE', '', overrideRecord).trim();
-    if (primary) return primary;
-    const legacy = readEnv('VITE_SP_SITE', '', overrideRecord).trim();
-    return legacy;
-  };
-
-  const isPlaceholder = (s: string) => {
-    const normalized = (s ?? '').trim();
-    if (!normalized) return true;
-
-    const lower = normalized.toLowerCase();
-    if (normalized.includes('<') || normalized.includes('__')) return true;
-    if (/<[^>]+>/.test(normalized)) return true;
-    if (lower.includes('fill') || lower.includes('your')) return true;
-
-    return false;
-  };
-
-  const validateAndNormalize = (resourceRaw: string, siteRaw: string) => {
-    const overrideResource = sanitizeEnvValue(resourceRaw);
-    const overrideSiteRel = sanitizeEnvValue(siteRaw);
-
-    if (isPlaceholder(overrideResource) || isPlaceholder(overrideSiteRel)) {
-      throw new Error([
-        'SharePoint 接続設定が未完了です。',
-        'VITE_SP_RESOURCE 例: https://contoso.sharepoint.com（末尾スラッシュ不要）',
-        'VITE_SP_SITE_RELATIVE 例: /sites/AuditSystem（先頭スラッシュ必須・末尾不要）',
-        '`.env` を実値で更新し、開発サーバーを再起動してください。'
-      ].join('\n'));
-    }
-
-    let overrideUrl: URL;
-    try {
-      overrideUrl = new URL(overrideResource);
-    } catch {
-      throw new Error(`VITE_SP_RESOURCE の形式が不正です: ${overrideResource}`);
-    }
-
-    if (overrideUrl.protocol !== 'https:' || !/\.sharepoint\.com$/i.test(overrideUrl.hostname)) {
-      throw new Error(`VITE_SP_RESOURCE の形式が不正です: ${overrideResource}`);
-    }
-
-    const siteCandidate = normalizeSiteRelative(overrideSiteRel);
-    if (!siteCandidate.startsWith('/sites/') && !siteCandidate.startsWith('/teams/')) {
-      throw new Error(`VITE_SP_SITE_RELATIVE の形式が不正です: ${overrideSiteRel}`);
-    }
-
-    const resource = normalizeResource(overrideUrl.origin);
-    const siteRel = siteCandidate;
-    return { resource, siteRel, baseUrl: `${resource}${siteRel}/_api/web` };
-  };
-
-  if (hasExplicitOverride) {
-    return validateAndNormalize(
-      envOverride?.VITE_SP_RESOURCE ?? '',
-      envOverride?.VITE_SP_SITE_RELATIVE ?? envOverride?.VITE_SP_SITE ?? ''
-    );
-  }
-
-  if (shouldBypassSharePointConfig(overrideRecord)) {
-    // E2E/demo/mock/skip-login 等では SharePoint を外部に出さない
-    return { resource: '', siteRel: '', baseUrl: '' };
-  }
-
-  const baseConfig = getAppConfig();
-  const config = envOverride ? { ...baseConfig, ...(envOverride as object) } as any : baseConfig;
-
-  if (config.VITE_E2E) {
-    const resource = FALLBACK_SP_RESOURCE;
-    const siteRel = FALLBACK_SP_SITE_RELATIVE;
-    return { resource, siteRel, baseUrl: `${resource}${siteRel}/_api/web` };
-  }
-
-  const rawResource = sanitizeEnvValue((config as any).VITE_SP_RESOURCE ?? '');
-  const rawSiteRel = sanitizeEnvValue(
-    (config as any).VITE_SP_SITE_RELATIVE ??
-      (config as any).VITE_SP_SITE ??
-      ''
-  );
-
-  return validateAndNormalize(rawResource, rawSiteRel);
-}
-
-const DEFAULT_LIST_TEMPLATE = 100;
+// List CRUD operations delegated to spLists.ts
+import { createListOperations } from '@/lib/sp/spLists';
 
 // ─── Types & schemas imported from @/lib/sp/types (SSOT) ────────────────────
 import {
     trimGuidBraces,
-    type JsonRecord,
     type RetryReason
 } from '@/lib/sp/types';
 
@@ -165,15 +40,9 @@ export type {
 // Internal type imports (not re-exported — used only within this file)
 import type {
     E2eDebugWindow,
-    EnsureListOptions,
-    EnsureListResult,
-    ExistingFieldShape,
-    FieldsCacheEntry,
     SharePointBatchOperation,
     SharePointBatchResult,
-    SharePointListMetadata,
     SpClientOptions,
-    SpFieldDef,
     StaffIdentifier
 } from '@/lib/sp/types';
 
@@ -183,18 +52,12 @@ import {
     buildFieldSchema,
     buildSelectFields,
     extractMissingField,
-    FIELDS_CACHE_TTL_MS,
     getMissingSet,
-    makeFieldsCacheKey,
     markOptionalMissing,
-    nowMs,
-    resetMissingOptionalFieldsCache,
-    safeJsonParse,
-    safeJsonStringify,
+    resetMissingOptionalFieldsCache
 } from '@/lib/sp/fieldCache';
 
 const sanitizeEnvValue = (value: unknown): string => (typeof value === 'string' ? value.trim() : '');
-
 const DEFAULT_USERS_LIST_TITLE = 'Users_Master';
 const DEFAULT_STAFF_LIST_TITLE = 'Staff_Master';
 
@@ -208,8 +71,7 @@ const STAFF_OPTIONAL_FIELDS = ['StaffID', 'AttendanceDays', 'Certifications', 'D
 import {
     buildItemPath,
     buildListItemsPath,
-    raiseHttpError,
-    resolveListPath
+    raiseHttpError
 } from '@/lib/sp/helpers';
 
 
@@ -329,15 +191,6 @@ export function createSpClient(
     return null;
   };
 
-  type ListItemsOptions = {
-    select?: string[];
-    filter?: string;
-    orderby?: string;
-    expand?: string;
-    top?: number;
-    pageCap?: number;
-    signal?: AbortSignal;
-  };
 
   const spFetch = async (path: string, init: RequestInit = {}): Promise<Response> => {
     const resolvedPath = normalizePath(path);
@@ -604,413 +457,25 @@ export function createSpClient(
     return response;
   };
 
-  const getListItemsByTitle = async <T>(
-    listTitle: string,
-    select?: string[],
-    filter?: string,
-    orderby?: string,
-    top: number = 500,
-    signal?: AbortSignal
-  ): Promise<T[]> => {
-    const params = new URLSearchParams();
-    if (select?.length) params.append('$select', select.join(','));
-    if (filter) params.append('$filter', filter);
-    if (orderby) params.append('$orderby', orderby);
-    params.append('$top', String(top));
-    const path = `/lists/getbytitle('${encodeURIComponent(listTitle)}')/items?${params.toString()}`;
-    const res = await spFetch(path, signal ? { signal } : undefined);
-    const data = await res.json();
-    return data.value || [];
-  };
-
-  const listItems = async <TRow = JsonRecord>(
-    listIdentifier: string,
-    options: ListItemsOptions = {}
-  ): Promise<TRow[]> => {
-    const { select, filter, orderby, expand, top = 100, pageCap, signal } = options;
-    const params = new URLSearchParams();
-    if (select?.length) params.append('$select', select.join(','));
-    if (filter) params.append('$filter', filter);
-    if (orderby) params.append('$orderby', orderby);
-    if (expand) params.append('$expand', expand);
-    params.append('$top', String(top));
-    const basePath = resolveListPath(listIdentifier);
-    const query = params.toString();
-    const initialPath = query ? `${basePath}/items?${query}` : `${basePath}/items`;
-    const AUDIT_DEBUG = String(readEnv('VITE_AUDIT_DEBUG', '')) === '1';
-    if (AUDIT_DEBUG) {
-      console.log('[spClient.listItems] 🚀 initialPath=', initialPath);
-    }
-    const rows: TRow[] = [];
-    let nextPath: string | null = initialPath;
-    let pages = 0;
-    const maxPages = typeof pageCap === 'number' && pageCap > 0 ? Math.floor(pageCap) : Number.POSITIVE_INFINITY;
-
-    while (nextPath && pages < maxPages) {
-      if (AUDIT_DEBUG) {
-        console.log('[spClient.listItems] 📡 spFetch call with path=', nextPath);
-      }
-      const res = await spFetch(nextPath, signal ? { signal } : {});
-      const payload = await res.json().catch(() => ({}) as Record<string, unknown>) as {
-        value?: unknown[];
-        '@odata.nextLink'?: string;
-        nextLink?: string;
-      };
-      const batch = (Array.isArray(payload.value) ? payload.value : []) as TRow[];
-      rows.push(...batch);
-      pages += 1;
-      const nextLinkRaw = typeof payload['@odata.nextLink'] === 'string'
-        ? payload['@odata.nextLink']
-        : typeof payload.nextLink === 'string'
-          ? payload.nextLink
-          : null;
-      if (!nextLinkRaw) {
-        nextPath = null;
-        continue;
-      }
-      nextPath = normalizePath(nextLinkRaw);
-    }
-
-    return rows;
-  };
-
-  const addListItemByTitle = async <TBody extends object, TResult = unknown>(
-    listTitle: string,
-    body: TBody
-  ): Promise<TResult> => {
-    const path = `/lists/getbytitle('${encodeURIComponent(listTitle)}')/items`;
-    const res = await spFetch(path, { method: 'POST', body: JSON.stringify(body) });
-    return await res.json() as TResult;
-  };
+  // ── Delegate list CRUD to spLists.ts (single source of truth) ────────────
+  const listOps = createListOperations(spFetch, normalizePath, baseUrl);
+  const {
+    getListItemsByTitle,
+    listItems,
+    addListItemByTitle,
+    getItemById,
+    getItemByIdWithEtag,
+    createItem,
+    updateItemByTitle,
+    updateItem,
+    deleteItemByTitle,
+    deleteItem,
+    tryGetListMetadata,
+    getListFieldInternalNames,
+    ensureListExists,
+  } = listOps;
+  /** @deprecated Use `addListItemByTitle`. Kept for backward compatibility. */
   const addItemByTitle = addListItemByTitle;
-
-  const coerceResult = async <TResult>(res: Response): Promise<TResult> => {
-    if (res.status === 204) {
-      return undefined as unknown as TResult;
-    }
-    const contentLength = res.headers.get('Content-Length');
-    if (contentLength === '0') {
-      return undefined as unknown as TResult;
-    }
-    const contentType = res.headers.get('Content-Type') ?? '';
-    if (!/json/i.test(contentType)) {
-      return undefined as unknown as TResult;
-    }
-    const text = await res.text();
-    if (!text) {
-      return undefined as unknown as TResult;
-    }
-    try {
-      return JSON.parse(text) as TResult;
-    } catch {
-      return undefined as unknown as TResult;
-    }
-  };
-
-  const patchListItem = async <TBody extends object>(
-    listIdentifier: string,
-    id: number,
-    body: TBody,
-    ifMatch?: string
-  ): Promise<Response> => {
-    const itemPath = buildItemPath(listIdentifier, id);
-    const payload = JSON.stringify(body);
-    const attempt = async (etag: string | undefined): Promise<Response | null> => {
-      try {
-        // SharePoint Online: POST+X-HTTP-Method:MERGE は PATCH より安定
-        return await spFetch(itemPath, {
-          method: 'POST',
-          headers: {
-            'Accept': 'application/json;odata=nometadata',
-            'X-HTTP-Method': 'MERGE',
-            'If-Match': etag ?? '*',
-            'OData-Version': '4.0',
-            'Content-Type': 'application/json;odata=nometadata',
-          },
-          body: payload,
-        });
-      } catch (error) {
-        if ((error as { status?: number }).status === 412) {
-          return null;
-        }
-        throw error;
-      }
-    };
-
-    const first = await attempt(ifMatch);
-    if (first) return first;
-
-    let latest: Response;
-    try {
-      latest = await spFetch(buildItemPath(listIdentifier, id, ['Id']), { method: 'GET' });
-    } catch (error) {
-      if ((error as { status?: number }).status === 404) {
-        throw new SharePointItemNotFoundError();
-      }
-      throw error;
-    }
-    const refreshedEtag = latest.headers.get('ETag');
-    if (!refreshedEtag) {
-      throw new SharePointMissingEtagError();
-    }
-
-  const second = await attempt(refreshedEtag);
-    if (second) return second;
-    throw new SharePointMissingEtagError('SharePoint returned 412 after refreshing ETag');
-  };
-
-  const updateItemByTitle = async <TBody extends object, TResult = unknown>(
-    listTitle: string,
-    id: number,
-    body: TBody,
-    options?: { ifMatch?: string }
-  ): Promise<TResult> => {
-    const res = await patchListItem<TBody>(listTitle, id, body, options?.ifMatch);
-    return coerceResult<TResult>(res);
-  };
-
-  const deleteItemByTitle = async (listTitle: string, id: number): Promise<void> => {
-    const path = buildItemPath(listTitle, id);
-    await spFetch(path, {
-      method: 'DELETE',
-      headers: {
-        'If-Match': '*',
-      },
-    });
-  };
-
-  const getItemById = async <T>(
-    listTitle: string,
-    id: number,
-    select: string[] = [],
-    signal?: AbortSignal
-  ): Promise<T> => {
-    const path = buildItemPath(listTitle, id, select);
-    const res = await spFetch(path, signal ? { signal } : undefined);
-    return (await res.json()) as T;
-  };
-
-  const getItemByIdWithEtag = async <T>(
-    listTitle: string,
-    id: number,
-    select: string[] = [],
-    signal?: AbortSignal
-  ): Promise<{ item: T; etag: string | null }> => {
-    const path = buildItemPath(listTitle, id, select);
-    const res = await spFetch(path, signal ? { signal } : undefined);
-    const item = (await res.json()) as T;
-    const etag = res.headers.get('ETag');
-    return { item, etag };
-  };
-
-  const createItem = async <TBody extends object, TResult = unknown>(
-    listTitle: string,
-    body: TBody
-  ): Promise<TResult> => {
-    const path = buildItemPath(listTitle);
-    const res = await spFetch(path, {
-      method: 'POST',
-      body: JSON.stringify(body),
-    });
-    return coerceResult<TResult>(res);
-  };
-
-  const updateItem = async <TBody extends object, TResult = unknown>(
-    listIdentifier: string,
-    id: number,
-    body: TBody,
-    options?: { ifMatch?: string }
-  ): Promise<TResult> => {
-    const res = await patchListItem<TBody>(listIdentifier, id, body, options?.ifMatch);
-    return coerceResult<TResult>(res);
-  };
-
-  const deleteItem = async (listIdentifier: string, id: number): Promise<void> => {
-    const path = buildItemPath(listIdentifier, id);
-    await spFetch(path, {
-      method: 'DELETE',
-      headers: { 'If-Match': '*' },
-    });
-  };
-
-  const tryGetListMetadata = async (listTitle: string): Promise<EnsureListResult | null> => {
-    const encoded = encodeURIComponent(listTitle);
-    const path = `/lists/getbytitle('${encoded}')?$select=Id,Title`;
-    try {
-  const res = await spFetch(path);
-  const json = (await res.json().catch(() => ({}))) as SharePointListMetadata;
-  const nested = json.d ?? {};
-  const rawId = typeof json.Id === 'string' ? json.Id : (typeof nested.Id === 'string' ? nested.Id : '');
-  const rawTitle = typeof json.Title === 'string' ? json.Title : (typeof nested.Title === 'string' ? nested.Title : '');
-      return {
-        listId: trimGuidBraces(rawId),
-        title: rawTitle || listTitle,
-      };
-    } catch (error) {
-      const message = error instanceof Error ? error.message : String(error);
-      if (/\b404\b/.test(message) || /Not Found/i.test(message) || /does not exist/i.test(message)) {
-        return null;
-      }
-      throw error;
-    }
-  };
-
-  const fetchExistingFields = async (listTitle: string): Promise<Map<string, ExistingFieldShape>> => {
-    const encoded = encodeURIComponent(listTitle);
-    const path = `/lists/getbytitle('${encoded}')/fields?$select=InternalName,TypeAsString,Required`;
-    const res = await spFetch(path);
-    const json = (await res.json().catch(() => ({ value: [] }))) as { value?: ExistingFieldShape[] };
-    const map = new Map<string, ExistingFieldShape>();
-    for (const row of json.value ?? []) {
-      if (!row || typeof row.InternalName !== 'string') continue;
-      map.set(row.InternalName, row);
-    }
-    return map;
-  };
-
-  const getListFieldInternalNames = async (listTitle: string): Promise<Set<string>> => {
-    const debug = String(readEnv('VITE_AUDIT_DEBUG', '')) === '1';
-    const siteUrl = baseUrl;
-    const cacheKey = makeFieldsCacheKey(siteUrl, listTitle);
-
-    // 1) キャッシュヒット判定
-    if (typeof sessionStorage !== 'undefined') {
-      const cached = safeJsonParse<FieldsCacheEntry>(sessionStorage.getItem(cacheKey));
-      if (cached && cached.v === 1) {
-        const age = nowMs() - cached.savedAt;
-        const valid =
-          cached.siteUrl === siteUrl &&
-          cached.listTitle === listTitle &&
-          age >= 0 &&
-          age < FIELDS_CACHE_TTL_MS;
-
-        if (valid && Array.isArray(cached.internalNames) && cached.internalNames.length > 0) {
-          if (debug) {
-            console.log('[spClient][fieldsCache] ✅ hit', {
-              listTitle,
-              count: cached.internalNames.length,
-              ageMs: age,
-            });
-          }
-          return new Set(cached.internalNames);
-        }
-
-        // 期限切れ/不正 → 破棄
-        if (debug) {
-          console.log('[spClient][fieldsCache] ⏰ stale/invalid -> drop', { listTitle, ageMs: age });
-        }
-        sessionStorage.removeItem(cacheKey);
-      } else if (cached) {
-        // JSON は読めたが形が違う
-        sessionStorage.removeItem(cacheKey);
-      }
-    }
-
-    // 2) Network fetch（Fields API）
-    const encoded = encodeURIComponent(listTitle);
-    const path = `/lists/getbytitle('${encoded}')/fields?$select=InternalName&$top=500`;
-
-    try {
-      const res = await spFetch(path);
-      const json = (await res.json().catch(() => ({ value: [] }))) as {
-        value?: { InternalName?: string }[];
-      };
-      const names = new Set<string>();
-      for (const field of json.value ?? []) {
-        if (field?.InternalName) {
-          names.add(field.InternalName);
-        }
-      }
-
-      // 3) キャッシュ保存（空は保存しない）
-      if (typeof sessionStorage !== 'undefined' && names.size > 0) {
-        const entry: FieldsCacheEntry = {
-          v: 1,
-          savedAt: nowMs(),
-          listTitle,
-          siteUrl,
-          internalNames: Array.from(names),
-        };
-        const s = safeJsonStringify(entry);
-        if (s) {
-          sessionStorage.setItem(cacheKey, s);
-          if (debug) {
-            console.log('[spClient][fieldsCache] 💾 save', { listTitle, count: names.size });
-          }
-        }
-      } else if (debug && names.size === 0) {
-        console.log('[spClient][fieldsCache] ⚠️ fetched empty (not cached)', { listTitle });
-      }
-
-      return names;
-    } catch (e) {
-      // 4) 失敗時はキャッシュを残さない
-      if (typeof sessionStorage !== 'undefined') {
-        sessionStorage.removeItem(cacheKey);
-      }
-      if (debug) {
-        console.warn('[spClient][fieldsCache] ❌ fetch failed', { listTitle, error: e });
-      }
-      throw e;
-    }
-  };
-
-  const addFieldToList = async (listTitle: string, field: SpFieldDef) => {
-    const encoded = encodeURIComponent(listTitle);
-    const schema = buildFieldSchema(field);
-    const body = {
-      parameters: {
-        SchemaXml: schema,
-        AddToDefaultView: field.addToDefaultView ?? false,
-      },
-    };
-    await spFetch(`/lists/getbytitle('${encoded}')/fields/createfieldasxml`, {
-      method: 'POST',
-      body: JSON.stringify(body),
-    });
-  };
-
-  const ensureListExists = async (
-    listTitle: string,
-    fields: SpFieldDef[],
-    options: EnsureListOptions = {}
-  ): Promise<EnsureListResult> => {
-    const baseTemplate = options.baseTemplate ?? DEFAULT_LIST_TEMPLATE;
-    let ensured = await tryGetListMetadata(listTitle);
-    if (!ensured) {
-      const createBody = {
-        __metadata: { type: 'SP.List' },
-        BaseTemplate: baseTemplate,
-        Title: listTitle,
-      };
-  const res = await spFetch('/lists', { method: 'POST', body: JSON.stringify(createBody) });
-  const json = (await res.json().catch(() => ({}))) as SharePointListMetadata;
-  const nested = json.d ?? {};
-  const rawId = typeof json.Id === 'string' ? json.Id : (typeof nested.Id === 'string' ? nested.Id : '');
-  const rawTitle = typeof json.Title === 'string' ? json.Title : (typeof nested.Title === 'string' ? nested.Title : '');
-      ensured = {
-        listId: trimGuidBraces(rawId),
-        title: rawTitle || listTitle,
-      };
-    }
-
-    if (fields.length) {
-      const existing = await fetchExistingFields(listTitle);
-      for (const field of fields) {
-        const current = existing.get(field.internalName);
-        if (current) {
-          if (field.required && current.Required === false) {
-            const currentLabel = current.Required ? 'TRUE' : 'FALSE';
-            console.warn(`[spClient] Field "${field.internalName}" required flag differs (current=${currentLabel}).`);
-          }
-          continue;
-        }
-        await addFieldToList(listTitle, field);
-      }
-    }
-
-    return ensured ?? { listId: '', title: listTitle };
-  };
 
   // $batch 投稿ヘルパー (429/503/504 リトライ対応)
   const postBatch = async (batchBody: string, boundary: string): Promise<Response> => {
@@ -1114,87 +579,17 @@ export function createSpClient(
     throw new Error('Batch API が最大リトライ回数に達しました。');
   };
 
-  const buildBatchPayload = (operations: SharePointBatchOperation[], boundary: string): string => {
-    const lines: string[] = [];
-    for (const operation of operations) {
-      const method = operation.kind === 'create'
-        ? 'POST'
-        : operation.kind === 'update'
-          ? (operation.method ?? 'PATCH')
-          : 'DELETE';
-      const targetPath = normalizePath(
-        operation.kind === 'create'
-          ? buildItemPath(operation.list)
-          : buildItemPath(operation.list, operation.id)
-      );
-      const headers: Record<string, string> = {
-        Accept: 'application/json;odata=nometadata',
-        ...(operation.headers ?? {}),
-      };
-      if (method === 'POST' || method === 'PATCH' || method === 'MERGE') {
-        headers['Content-Type'] = headers['Content-Type'] ?? 'application/json;odata=nometadata';
-      }
-      if ((operation.kind === 'update' || operation.kind === 'delete') && !headers['If-Match']) {
-        headers['If-Match'] = operation.etag ?? '*';
-      }
-
-      lines.push(`--${boundary}`);
-      lines.push('Content-Type: application/http');
-      lines.push('Content-Transfer-Encoding: binary');
-      lines.push('');
-      lines.push(`${method} ${targetPath} HTTP/1.1`);
-      for (const [key, value] of Object.entries(headers)) {
-        lines.push(`${key}: ${value}`);
-      }
-      lines.push('');
-      if (operation.kind === 'create' || operation.kind === 'update') {
-        lines.push(JSON.stringify(operation.body ?? {}));
-        lines.push('');
-      }
-    }
-    lines.push(`--${boundary}--`);
-    lines.push('');
-    return lines.join('\r\n');
-  };
-
-  const parseBatchResponse = (payload: string, boundary: string): SharePointBatchResult[] => {
-    const results: SharePointBatchResult[] = [];
-    const segments = payload.split(`--${boundary}`);
-    for (const segment of segments) {
-      const trimmed = segment.trim();
-      if (!trimmed || trimmed === '--') continue;
-      const httpIndex = trimmed.indexOf('HTTP/1.1');
-      if (httpIndex === -1) continue;
-      const httpPayload = trimmed.slice(httpIndex);
-      const [statusLine] = httpPayload.split('\r\n');
-      const statusMatch = /HTTP\/1\.1\s+(\d{3})/i.exec(statusLine ?? '');
-      if (!statusMatch) continue;
-      const status = Number(statusMatch[1]);
-      const bodyIndex = httpPayload.indexOf('\r\n\r\n');
-      const rawBody = bodyIndex >= 0 ? httpPayload.slice(bodyIndex + 4).trim() : '';
-      let data: unknown;
-      if (rawBody) {
-        try {
-          data = JSON.parse(rawBody);
-        } catch {
-          data = rawBody;
-        }
-      }
-      results.push({ ok: status >= 200 && status < 300, status, data });
-    }
-    return results;
-  };
-
+  // batch: uses imported buildBatchPayload / parseBatchResponse from sp/batch.ts
   const batch = async (operations: SharePointBatchOperation[]): Promise<SharePointBatchResult[]> => {
     if (!operations.length) return [];
     const boundary = `batch_${Math.random().toString(36).slice(2)}`;
-    const requestBody = buildBatchPayload(operations, boundary);
+    const requestBody = buildBatchPayloadImported(operations, boundary, normalizePath);
     const res = await postBatch(requestBody, boundary);
     const contentType = res.headers.get('Content-Type') ?? '';
     const match = /boundary=([^;]+)/i.exec(contentType);
     const responseBoundary = match ? match[1].trim() : boundary;
     const text = await res.text();
-    return parseBatchResponse(text, responseBoundary);
+    return parseBatchResponseImported(text, responseBoundary);
   };
 
   return {

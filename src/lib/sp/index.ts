@@ -25,3 +25,7 @@ export {
     resetMissingOptionalFieldsCache, resolveListPath, resolveStaffListIdentifier, safeJsonParse,
     safeJsonStringify, sanitizeEnvValue
 } from './spHelpers';
+
+// List CRUD operations (factory)
+export { createListOperations } from './spLists';
+export type { NormalizePathFn, SpFetchFn, SpListOperations } from './spLists';
