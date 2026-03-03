@@ -1,40 +1,44 @@
 /**
  * Staff Status Tab (職員タブ)
- * 
+ *
  * 目的：職員の出勤状況と「フリー」状態を可視化
- * 
+ *
  * Phase B 統合：
  * - staffAvailability（4段階判定）を活用
  * - 🟢 free: 完全フリー、ヘルプ可能
  * - 🟡 partial: 30分以内に予定あり
  * - 🟠 busy: サポート役として稼働中
  * - ⚫ occupied: メイン担当中、対応不可
- * 
+ *
  * 表示内容：
  * - 出勤職員一覧（フリー状態付き）
  * - 欠席・遅刻職員リスト
  * - 次にフリーになる時間表示
  */
 
-import React, { useState } from 'react';
-import Box from '@mui/material/Box';
-import Typography from '@mui/material/Typography';
-import List from '@mui/material/List';
-import ListItem from '@mui/material/ListItem';
-import ListItemText from '@mui/material/ListItemText';
-import ListItemIcon from '@mui/material/ListItemIcon';
-import Chip from '@mui/material/Chip';
-import Divider from '@mui/material/Divider';
-import Card from '@mui/material/Card';
-import CardContent from '@mui/material/CardContent';
-import Stack from '@mui/material/Stack';
+import { EmptyState } from '@/features/dashboard/components/EmptyState';
+import { StaffDetailDialog } from '@/features/dashboard/dialogs/StaffDetailDialog';
+import type { StaffAvailability, StaffAvailabilityStatus } from '@/features/dashboard/staffAvailability';
+import BadgeIcon from '@mui/icons-material/Badge';
+import BlockIcon from '@mui/icons-material/Block';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
+import PersonOffIcon from '@mui/icons-material/PersonOff';
 import ScheduleIcon from '@mui/icons-material/Schedule';
 import WarningIcon from '@mui/icons-material/Warning';
-import BlockIcon from '@mui/icons-material/Block';
-import PersonOffIcon from '@mui/icons-material/PersonOff';
-import type { StaffAvailability, StaffAvailabilityStatus } from '@/features/dashboard/staffAvailability';
-import { StaffDetailDialog } from '@/features/dashboard/dialogs/StaffDetailDialog';
+import Box from '@mui/material/Box';
+import Card from '@mui/material/Card';
+import CardContent from '@mui/material/CardContent';
+import Chip from '@mui/material/Chip';
+import Divider from '@mui/material/Divider';
+import List from '@mui/material/List';
+import ListItem from '@mui/material/ListItem';
+import ListItemIcon from '@mui/material/ListItemIcon';
+import ListItemText from '@mui/material/ListItemText';
+import Skeleton from '@mui/material/Skeleton';
+import Stack from '@mui/material/Stack';
+import Typography from '@mui/material/Typography';
+import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 
 export interface StaffStatusTabProps {
   /** 職員のフリー状態情報（Phase B） */
@@ -50,6 +54,8 @@ export interface StaffStatusTabProps {
     id: string;
     name: string;
   }>;
+  /** ローディング中フラグ */
+  loading?: boolean;
 }
 
 /**
@@ -101,7 +107,10 @@ export const StaffStatusTab: React.FC<StaffStatusTabProps> = ({
   staffAvailability,
   absentStaff,
   lateOrAdjustStaff,
+  loading = false,
 }) => {
+  const navigate = useNavigate();
+
   // フリー職員数をカウント
   const freeStaffCount = staffAvailability.filter(s => s.status === 'free').length;
   const partialFreeCount = staffAvailability.filter(s => s.status === 'partial').length;
@@ -118,6 +127,61 @@ export const StaffStatusTab: React.FC<StaffStatusTabProps> = ({
   const handleCloseDialog = () => {
     setDialogOpen(false);
   };
+
+  // ── Loading skeleton ──
+  if (loading) {
+    return (
+      <Box>
+        <Box sx={{ mb: 3 }}>
+          <Skeleton variant="text" width={200} height={32} />
+          <Stack direction="row" spacing={1} sx={{ mt: 1 }}>
+            {[1, 2, 3].map((i) => (
+              <Skeleton key={i} variant="rounded" width={120} height={24} />
+            ))}
+          </Stack>
+        </Box>
+        <Divider sx={{ my: 2 }} />
+        <Box sx={{ mb: 3 }}>
+          <Skeleton variant="text" width={200} height={28} />
+          {[1, 2, 3].map((i) => (
+            <Skeleton key={i} variant="rounded" height={64} sx={{ mb: 1, borderRadius: 1 }} />
+          ))}
+        </Box>
+        <Divider sx={{ my: 2 }} />
+        <Box>
+          <Skeleton variant="text" width={160} height={28} />
+          <Skeleton variant="rounded" height={48} sx={{ mb: 1, borderRadius: 1 }} />
+        </Box>
+      </Box>
+    );
+  }
+
+  // ── Empty State ──
+  const hasNoData = staffAvailability.length === 0 && absentStaff.length === 0 && lateOrAdjustStaff.length === 0;
+  if (hasNoData) {
+    return (
+      <Box>
+        <Typography variant="h6" sx={{ mb: 2 }}>
+          🧑‍💼 職員状況サマリー
+        </Typography>
+        <EmptyState
+          icon={<BadgeIcon />}
+          title="職員の勤務情報がまだありません"
+          description="スケジュールを登録すると、職員のフリー状態・欠席・勤務調整の情報がここに自動表示されます。"
+          action={{
+            label: 'スケジュールを登録する',
+            onClick: () => navigate('/schedules'),
+          }}
+          secondaryAction={{
+            label: '職員一覧を見る',
+            onClick: () => navigate('/staff'),
+            variant: 'outlined',
+          }}
+          minHeight={280}
+        />
+      </Box>
+    );
+  }
 
   return (
     <Box>
