@@ -1,35 +1,49 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 // ---------------------------------------------------------------------------
-// Test: repositoryFactory demo/SP switching
+// Test: repositoryFactory — 全6モジュールの共通契約テスト
 //
-// Strategy: Use `overrideUserRepository` + `resetUserRepository` to test
-// the factory's caching and kind-resolution logic. For the env-based
-// switching, we test `getCurrentUserRepositoryKind` after mocking env.
+// 各ファクトリが以下の不変条件を満たすことを検証する:
+//  1. テスト環境ではデモリポジトリが返る
+//  2. キャッシュされたインスタンスが再利用される
+//  3. override が設定されていれば override が返る
+//  4. override をクリアしたら通常ルートに戻る
+//  5. reset 後はキャッシュがクリアされ kind がデモに戻る
+//  6. forceKind で SP を指定できる（users のみ実証）
 // ---------------------------------------------------------------------------
 
-let mockIsDev = false;
-let mockHasSpfxContext = true;
-
-vi.mock('@/lib/env', () => ({
-  getAppConfig: () => ({
-    isDev: mockIsDev,
-    VITE_SP_RESOURCE: 'https://example.sharepoint.com',
-    VITE_SP_SITE_RELATIVE: '/sites/test',
-  }),
-  isDemoModeEnabled: () => false,
-  isForceDemoEnabled: () => false,
-  isTestMode: () => false,
-  readBool: () => false,
-  shouldSkipLogin: () => false,
+const mockState = vi.hoisted(() => ({
+  isDev: false,
+  hasSpfxContext: true,
 }));
 
+vi.mock('@/lib/env', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/lib/env')>();
+  return {
+    ...actual,
+    getAppConfig: () => ({
+      isDev: mockState.isDev,
+      VITE_SP_RESOURCE: 'https://example.sharepoint.com',
+      VITE_SP_SITE_RELATIVE: '/sites/test',
+    }),
+    isDemoModeEnabled: () => false,
+    isForceDemoEnabled: () => false,
+    isTestMode: () => false,
+    readBool: () => false,
+    shouldSkipLogin: () => false,
+  };
+});
+
 vi.mock('@/lib/runtime', () => ({
-  hasSpfxContext: () => mockHasSpfxContext,
+  hasSpfxContext: () => mockState.hasSpfxContext,
 }));
 
 vi.mock('@/lib/audit', () => ({
   pushAudit: vi.fn(),
+}));
+
+vi.mock('@/config/featureFlags', () => ({
+  getFeatureFlags: () => ({ icebergPdca: false }),
 }));
 
 // Mock PnP SP to prevent real connections
@@ -38,63 +52,191 @@ vi.mock('@pnp/sp', () => ({
   SPFx: () => ({}),
 }));
 
-import { InMemoryUserRepository } from '../../src/features/users/infra/InMemoryUserRepository';
+// ── imports ─────────────────────────────────────────────────────
+
+import {
+    getAttendanceRepository,
+    getCurrentAttendanceRepositoryKind,
+    overrideAttendanceRepository,
+    resetAttendanceRepository,
+} from '@/features/attendance/repositoryFactory';
+
+import {
+    getCurrentDailyRecordRepositoryKind,
+    getDailyRecordRepository,
+    overrideDailyRecordRepository,
+    resetDailyRecordRepository,
+} from '@/features/daily/repositoryFactory';
+
+import {
+    getCurrentScheduleRepositoryKind,
+    getScheduleRepository,
+    overrideScheduleRepository,
+    resetScheduleRepository,
+} from '@/features/schedules/repositoryFactory';
+
+import {
+    getCurrentServiceProvisionRepositoryKind,
+    getServiceProvisionRepository,
+    overrideServiceProvisionRepository,
+    resetServiceProvisionRepository,
+} from '@/features/service-provision/repositoryFactory';
+
 import {
     getCurrentUserRepositoryKind,
     getUserRepository,
+    overrideUserRepository,
     resetUserRepository,
-} from '../../src/features/users/repositoryFactory';
+} from '@/features/users/repositoryFactory';
 
-describe('repositoryFactory', () => {
+import { InMemoryUserRepository } from '@/features/users/infra/InMemoryUserRepository';
+
+import {
+    getPdcaRepository,
+} from '@/features/ibd/analysis/pdca/repositoryFactory';
+
+// ═══════════════════════════════════════════════════════════════
+// テスト対象リスト（describe.each 用）
+// ═══════════════════════════════════════════════════════════════
+
+type FactorySpec = {
+  name: string;
+  getRepo: () => unknown;
+  override: (repo: unknown) => void;
+  reset: () => void;
+  getKind: () => string;
+};
+
+const factories: FactorySpec[] = [
+  {
+    name: 'attendance',
+    getRepo: () => getAttendanceRepository(),
+    override: (r) => overrideAttendanceRepository(r as Parameters<typeof overrideAttendanceRepository>[0]),
+    reset: resetAttendanceRepository,
+    getKind: getCurrentAttendanceRepositoryKind,
+  },
+  {
+    name: 'daily',
+    getRepo: () => getDailyRecordRepository(),
+    override: (r) => overrideDailyRecordRepository(r as Parameters<typeof overrideDailyRecordRepository>[0]),
+    reset: resetDailyRecordRepository,
+    getKind: getCurrentDailyRecordRepositoryKind,
+  },
+  {
+    name: 'schedules',
+    getRepo: () => getScheduleRepository(),
+    override: (r) => overrideScheduleRepository(r as Parameters<typeof overrideScheduleRepository>[0]),
+    reset: resetScheduleRepository,
+    getKind: getCurrentScheduleRepositoryKind,
+  },
+  {
+    name: 'service-provision',
+    getRepo: () => getServiceProvisionRepository(),
+    override: (r) => overrideServiceProvisionRepository(r as Parameters<typeof overrideServiceProvisionRepository>[0]),
+    reset: resetServiceProvisionRepository,
+    getKind: getCurrentServiceProvisionRepositoryKind,
+  },
+  {
+    name: 'users',
+    getRepo: () => getUserRepository(),
+    override: (r) => overrideUserRepository(r as Parameters<typeof overrideUserRepository>[0]),
+    reset: resetUserRepository,
+    getKind: getCurrentUserRepositoryKind,
+  },
+];
+
+// ═══════════════════════════════════════════════════════════════
+// 共通契約テスト（5モジュール × 5テスト = 25テスト）
+// ═══════════════════════════════════════════════════════════════
+
+describe.each(factories)('repositoryFactory: $name', (factory) => {
+  afterEach(() => {
+    factory.reset();
+    mockState.isDev = false;
+    mockState.hasSpfxContext = true;
+  });
+
+  it('returns demo repository in test environment (isDev=true)', () => {
+    mockState.isDev = true;
+    factory.reset();
+    const repo = factory.getRepo();
+    expect(repo).toBeTruthy();
+    expect(factory.getKind()).toBe('demo');
+  });
+
+  it('returns demo repository when no SPFx context', () => {
+    mockState.isDev = false;
+    mockState.hasSpfxContext = false;
+    factory.reset();
+    const repo = factory.getRepo();
+    expect(repo).toBeTruthy();
+    expect(factory.getKind()).toBe('demo');
+  });
+
+  it('caches repository instance across calls', () => {
+    mockState.isDev = true;
+    factory.reset();
+    const first = factory.getRepo();
+    const second = factory.getRepo();
+    expect(first).toBe(second);
+  });
+
+  it('respects override for DI in tests', () => {
+    const mockRepo = { __mock: true };
+    factory.override(mockRepo);
+    const repo = factory.getRepo();
+    expect(repo).toBe(mockRepo);
+  });
+
+  it('clears override on null and returns to normal resolution', () => {
+    const mockRepo = { __mock: true };
+    factory.override(mockRepo);
+    expect(factory.getRepo()).toBe(mockRepo);
+
+    factory.override(null);
+    mockState.isDev = true;
+    factory.reset();
+    const repo = factory.getRepo();
+    expect(repo).not.toBe(mockRepo);
+    expect(repo).toBeTruthy();
+  });
+});
+
+// ═══════════════════════════════════════════════════════════════
+// users 固有テスト — forceKind でSPリポジトリが返る
+// ═══════════════════════════════════════════════════════════════
+
+describe('repositoryFactory: users (forceKind)', () => {
   afterEach(() => {
     resetUserRepository();
-    mockIsDev = false;
-    mockHasSpfxContext = true;
-  });
-
-  it('returns InMemoryUserRepository when isDev=true', () => {
-    mockIsDev = true;
-    resetUserRepository();
-
-    const repo = getUserRepository();
-
-    expect(repo).toBeInstanceOf(InMemoryUserRepository);
-    expect(getCurrentUserRepositoryKind()).toBe('demo');
-  });
-
-  it('returns InMemoryUserRepository when no SPFx context', () => {
-    mockIsDev = false;
-    mockHasSpfxContext = false;
-    resetUserRepository();
-
-    const repo = getUserRepository();
-
-    expect(repo).toBeInstanceOf(InMemoryUserRepository);
-    expect(getCurrentUserRepositoryKind()).toBe('demo');
+    mockState.isDev = false;
+    mockState.hasSpfxContext = true;
   });
 
   it('returns SP repository kind when forced via forceKind', () => {
-    // Provide SPFx context so SP constructor doesn't throw
     (globalThis as Record<string, unknown>).__SPFX_CONTEXT__ = {
       pageContext: { web: { absoluteUrl: 'https://example.sharepoint.com/sites/test' } },
     };
-
     resetUserRepository();
     const repo = getUserRepository({ forceKind: 'sharepoint' });
-
-    // Should not be InMemory
     expect(repo).not.toBeInstanceOf(InMemoryUserRepository);
-
     delete (globalThis as Record<string, unknown>).__SPFX_CONTEXT__;
   });
+});
 
-  it('caches repository instance on repeated calls', () => {
-    mockIsDev = true;
-    resetUserRepository();
+// ═══════════════════════════════════════════════════════════════
+// ibd/pdca — 特殊パターン（override/reset API なし）
+// ═══════════════════════════════════════════════════════════════
 
-    const repo1 = getUserRepository();
-    const repo2 = getUserRepository();
+describe('repositoryFactory: ibd/pdca', () => {
+  it('returns in-memory repository in test environment', () => {
+    const repo = getPdcaRepository();
+    expect(repo).toBeTruthy();
+  });
 
-    expect(repo1).toBe(repo2); // same reference
+  it('caches repository instance across calls', () => {
+    const first = getPdcaRepository();
+    const second = getPdcaRepository();
+    expect(first).toBe(second);
   });
 });
