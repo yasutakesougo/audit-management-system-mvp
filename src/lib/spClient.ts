@@ -69,7 +69,6 @@ const STAFF_OPTIONAL_FIELDS = ['StaffID', 'AttendanceDays', 'Certifications', 'D
 
 // ─── Path & error helpers imported from @/lib/sp/helpers (SSOT) ─────────────
 import {
-    buildItemPath,
     buildListItemsPath,
     raiseHttpError
 } from '@/lib/sp/helpers';

@@ -1,6 +1,6 @@
 import { canAccess } from '@/auth/roles';
 import { useUserAuthz } from '@/auth/useUserAuthz';
-import { IS_E2E, IS_MSAL_MOCK, SHOULD_SKIP_LOGIN } from '@/lib/env';
+import { isE2E, isE2eMsalMockEnabled, shouldSkipLogin } from '@/lib/env';
 import Paper from '@mui/material/Paper';
 import Stack from '@mui/material/Stack';
 import Typography from '@mui/material/Typography';
@@ -25,7 +25,7 @@ type AdminGateProps = {
 export default function AdminGate({ children }: AdminGateProps) {
   const { role, ready, reason } = useUserAuthz();
   // E2E テストモード: AdminGate を権限チェックごとスキップ
-  const isTestMode = IS_E2E || IS_MSAL_MOCK || SHOULD_SKIP_LOGIN;
+  const isTestMode = isE2E() || isE2eMsalMockEnabled() || shouldSkipLogin();
   if (isTestMode) {
     return <>{children}</>;
   }

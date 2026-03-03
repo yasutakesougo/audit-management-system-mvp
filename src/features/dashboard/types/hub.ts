@@ -1,5 +1,7 @@
-import type { SafeError } from '@/lib/errors';
-import { type SpSyncErrorKind } from '../logic/classifySpSyncError';
+import type { ErrorKind, SafeError } from '@/lib/errors';
+
+/** @deprecated Alias kept for backward compatibility. Use `ErrorKind` directly. */
+type SpSyncErrorKind = ErrorKind;
 
 export type LaneState = 'disabled' | 'idle' | 'active' | 'error';
 export type SpLaneSource = 'seed' | 'sp' | 'polling' | 'demo';

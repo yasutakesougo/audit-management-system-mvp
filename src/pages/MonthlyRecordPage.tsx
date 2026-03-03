@@ -1,4 +1,4 @@
-import { IS_E2E } from '@/lib/env';
+import { isE2E } from '@/lib/env';
 import AnalyticsIcon from '@mui/icons-material/Analytics';
 import CloudDownloadIcon from '@mui/icons-material/CloudDownload';
 import PictureAsPdfIcon from '@mui/icons-material/PictureAsPdf';
@@ -124,10 +124,10 @@ type TabKey = 'summary' | 'user-detail' | 'pdf';
  * E2E用 Demo Seed から月次サマリーを取得（E2E限定）
  */
 function useDemoSummaries(): MonthlySummary[] {
-  const isE2E = IS_E2E;
+  const e2e = isE2E();
   const w = (typeof window !== 'undefined' ? window : {}) as E2ESeedWindow;
 
-  if (isE2E && w.__E2E_SEED__?.startsWith('monthly.records.')) {
+  if (e2e && w.__E2E_SEED__?.startsWith('monthly.records.')) {
     const fixture = w.__E2E_FIXTURE_MONTHLY_RECORDS__;
     if (fixture?.summaryRows) {
       return fixture.summaryRows.map((row) => {
@@ -173,9 +173,9 @@ export default function MonthlyRecordPage() {
   const [summaries] = React.useState<MonthlySummary[]>(useDemoSummaries());
   const [loading] = React.useState(false);
 
-  const isE2E = IS_E2E;
+  const e2e = isE2E();
   const w = (typeof window !== 'undefined' ? window : {}) as E2ESeedWindow;
-  const debugSeed = isE2E ? w.__E2E_SEED__ : 'none';
+  const debugSeed = e2e ? w.__E2E_SEED__ : 'none';
 
   const [selectedMonth, setSelectedMonth] = React.useState<YearMonth>(DEFAULT_MONTH);
   const [keyword, setKeyword] = React.useState('');
@@ -331,12 +331,12 @@ export default function MonthlyRecordPage() {
   return (
     <Container maxWidth="xl" data-testid={TESTIDS['monthly-page']}>
       {/* Debug seed info (E2E only) */}
-      {isE2E && (
+      {e2e && (
         <Box sx={srOnly} data-testid="monthly-debug-seed">
           {debugSeed}
         </Box>
       )}
-      {isE2E && (
+      {e2e && (
         <Box sx={srOnly} data-testid="monthly-debug-summaries-count">
           {summaries.length}
         </Box>

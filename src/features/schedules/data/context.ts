@@ -1,5 +1,5 @@
 import { isE2E, isE2eForceSchedulesWrite } from '@/env';
-import { IS_SCHEDULES_ENABLED, isDemoModeEnabled, SHOULD_SKIP_SHAREPOINT } from '@/lib/env';
+import { isDemoModeEnabled, isSchedulesFeatureEnabled, shouldSkipSharePoint } from '@/lib/env';
 import { createContext, useContext } from 'react';
 import { demoSchedulesPort } from './demoAdapter';
 import type { SchedulesPort } from './port';
@@ -8,9 +8,9 @@ import { makeSharePointSchedulesPort } from './sharePointAdapter';
 // Demo mode or SharePoint disabled: use demo adapter
 // Otherwise: use SharePoint adapter
 const useSharePoint =
-  IS_SCHEDULES_ENABLED &&
+  isSchedulesFeatureEnabled() &&
   !isDemoModeEnabled() &&
-  (!SHOULD_SKIP_SHAREPOINT || isE2E) &&
+  (!shouldSkipSharePoint() || isE2E) &&
   !isE2eForceSchedulesWrite;
 
 const schedulesPort = useSharePoint
