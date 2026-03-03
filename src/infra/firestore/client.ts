@@ -1,4 +1,4 @@
-import { initializeApp, getApps } from 'firebase/app';
+import { getApps, initializeApp } from 'firebase/app';
 import { connectFirestoreEmulator, getFirestore, type Firestore } from 'firebase/firestore';
 
 import { get, getFlag, getNumber } from '@/env';
@@ -47,20 +47,30 @@ function createNoopFirebaseApp() {
 
 export function getFirebaseApp() {
   const isE2E = getFlag('VITE_E2E', false);
-  
+
   if (isE2E) {
     console.log('[firebase] disabled:', { VITE_E2E: getFlag('VITE_E2E', false) });
     return createNoopFirebaseApp();
   }
-  
+
+  // Skip Firebase when API key is not configured (graceful degradation)
+  const apiKey = firebaseConfig.apiKey;
+  if (!apiKey || apiKey === 'undefined' || apiKey === 'null') {
+    if (getFlag('DEV', false)) {
+      console.info('[firebase] ⏭️ skipped: VITE_FIREBASE_API_KEY is not configured');
+    }
+    return createNoopFirebaseApp();
+  }
+
   const apps = getApps();
   return apps.length ? apps[0]! : initializeApp(firebaseConfig);
 }
 
 const isE2E = getFlag('VITE_E2E', false);
-const firestore = isE2E ? createNoopFirestore() : getFirestore(getFirebaseApp());
+const isFirebaseConfigured = !!firebaseConfig.apiKey && firebaseConfig.apiKey !== 'undefined' && firebaseConfig.apiKey !== 'null';
+const firestore = (isE2E || !isFirebaseConfigured) ? createNoopFirestore() : getFirestore(getFirebaseApp());
 
-if (!isE2E && getFlag('VITE_FIRESTORE_USE_EMULATOR', false)) {
+if (!isE2E && isFirebaseConfigured && getFlag('VITE_FIRESTORE_USE_EMULATOR', false)) {
   const host = get('VITE_FIRESTORE_EMULATOR_HOST', '127.0.0.1');
   const port = getNumber('VITE_FIRESTORE_EMULATOR_PORT', 8080);
   try {
