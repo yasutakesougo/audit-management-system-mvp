@@ -79,21 +79,30 @@ const createDemoEnvironmentFactors = (): EnvironmentFactor[] => [
 
 const IcebergAnalysisPage: React.FC = () => {
   const { acquireToken } = useAuth();
+  // Ref で acquireToken を安定化（参照が毎レンダーで変わっても useEffect が再発火しない）
+  const acquireTokenRef = React.useRef(acquireToken);
+  acquireTokenRef.current = acquireToken;
 
   // Get baseUrl from config (spClient uses this internally)
   const config = useMemo(() => getAppConfig(), []);
   const spSiteUrl = config.VITE_SP_SITE_URL || '';
 
-  // Repository 初期化（acquireToken, baseUrl が安定したら再作成）
+  // Repository 初期化（一度だけ）
   const [repository, setRepository] = useState<Awaited<ReturnType<typeof createIcebergRepository>> | null>(null);
+  const repoInitRef = React.useRef(false);
 
   useEffect(() => {
+    if (repoInitRef.current) return;
+    repoInitRef.current = true;
     const init = async () => {
-      const repo = await createIcebergRepository(acquireToken, spSiteUrl);
+      const repo = await createIcebergRepository(
+        (...args: Parameters<typeof acquireToken>) => acquireTokenRef.current(...args),
+        spSiteUrl,
+      );
       setRepository(repo);
     };
     init();
-  }, [acquireToken, spSiteUrl]);
+  }, [spSiteUrl]);
 
   const { currentSession, initSession, moveNode, addNodeFromData, linkNodes, saveState, lastSaveError, savePersistent } = useIcebergStore(repository ?? undefined);
   const { getByUserId, seedDemoData } = useAssessmentStore();
