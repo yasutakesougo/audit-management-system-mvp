@@ -253,6 +253,22 @@ export const readOptionalEnv = (key: string, envOverride?: EnvRecord): string | 
 export const readBool = (key: string, fallback = false, envOverride?: EnvRecord): boolean =>
   coerceBoolean(getEnvValue(key, envOverride), fallback);
 
+/** Read a feature flag from localStorage (browser-only, ignores errors) */
+const readLocalStorageFlag = (key: string): boolean | undefined => {
+  if (typeof window === 'undefined') return undefined;
+  try {
+    const flag = window.localStorage.getItem(key);
+    if (flag != null) {
+      const normalized = flag.trim().toLowerCase();
+      if (TRUTHY.has(normalized)) return true;
+      if (FALSY.has(normalized)) return false;
+    }
+  } catch {
+    // ignore storage access issues
+  }
+  return undefined;
+};
+
 export const isDevMode = (envOverride?: EnvRecord): boolean => resolveIsDev(envOverride);
 
 export const isDemoModeEnabled = (envOverride?: EnvRecord): boolean => {
@@ -297,24 +313,8 @@ export const isWriteEnabled = (envOverride?: EnvRecord): boolean =>
 export const isAuditDebugEnabled = (envOverride?: EnvRecord): boolean =>
   readBool('VITE_AUDIT_DEBUG', false, envOverride);
 
-export const isSchedulesFeatureEnabled = (envOverride?: EnvRecord): boolean => {
-  if (readBool('VITE_FEATURE_SCHEDULES', false, envOverride)) {
-    return true;
-  }
-  if (typeof window !== 'undefined') {
-    try {
-      const flag = window.localStorage.getItem('feature:schedules');
-      if (flag != null) {
-        const normalized = flag.trim().toLowerCase();
-        if (TRUTHY.has(normalized)) return true;
-        if (FALSY.has(normalized)) return false;
-      }
-    } catch {
-      // ignore storage access issues
-    }
-  }
-  return false;
-};
+export const isSchedulesFeatureEnabled = (envOverride?: EnvRecord): boolean =>
+  readBool('VITE_FEATURE_SCHEDULES', false, envOverride) || readLocalStorageFlag('feature:schedules') || false;
 
 export const isSchedulesSpEnabled = (envOverride?: EnvRecord): boolean =>
   isSchedulesFeatureEnabled(envOverride) && !shouldSkipSharePoint(envOverride) && !isDemoModeEnabled(envOverride);
@@ -322,67 +322,17 @@ export const isSchedulesSpEnabled = (envOverride?: EnvRecord): boolean =>
 export const isSchedulesWeekV2Enabled = (envOverride?: EnvRecord): boolean => {
   const envValue = readOptionalEnv('VITE_FEATURE_SCHEDULES_WEEK_V2', envOverride)?.trim().toLowerCase();
   if (envValue) {
-    if (TRUTHY.has(envValue)) {
-      return true;
-    }
-    if (FALSY.has(envValue)) {
-      return false;
-    }
+    if (TRUTHY.has(envValue)) return true;
+    if (FALSY.has(envValue)) return false;
   }
-
-  if (typeof window !== 'undefined') {
-    try {
-      const flag = window.localStorage.getItem('feature:schedulesWeekV2');
-      if (flag != null) {
-        const normalized = flag.trim().toLowerCase();
-        if (TRUTHY.has(normalized)) return true;
-        if (FALSY.has(normalized)) return false;
-      }
-    } catch {
-      // ignore storage access issues
-    }
-  }
-
-  return false;
+  return readLocalStorageFlag('feature:schedulesWeekV2') ?? false;
 };
 
-export const isComplianceFormEnabled = (envOverride?: EnvRecord): boolean => {
-  if (readBool('VITE_FEATURE_COMPLIANCE_FORM', false, envOverride)) {
-    return true;
-  }
-  if (typeof window !== 'undefined') {
-    try {
-      const flag = window.localStorage.getItem('feature:complianceForm');
-      if (flag != null) {
-        const normalized = flag.trim().toLowerCase();
-        if (TRUTHY.has(normalized)) return true;
-        if (FALSY.has(normalized)) return false;
-      }
-    } catch {
-      // ignore storage access issues
-    }
-  }
-  return false;
-};
+export const isComplianceFormEnabled = (envOverride?: EnvRecord): boolean =>
+  readBool('VITE_FEATURE_COMPLIANCE_FORM', false, envOverride) || readLocalStorageFlag('feature:complianceForm') || false;
 
-export const isStaffAttendanceEnabled = (envOverride?: EnvRecord): boolean => {
-  if (readBool('VITE_FEATURE_STAFF_ATTENDANCE', false, envOverride)) {
-    return true;
-  }
-  if (typeof window !== 'undefined') {
-    try {
-      const flag = window.localStorage.getItem('feature:staffAttendance');
-      if (flag != null) {
-        const normalized = flag.trim().toLowerCase();
-        if (TRUTHY.has(normalized)) return true;
-        if (FALSY.has(normalized)) return false;
-      }
-    } catch {
-      // ignore storage access issues
-    }
-  }
-  return false;
-};
+export const isStaffAttendanceEnabled = (envOverride?: EnvRecord): boolean =>
+  readBool('VITE_FEATURE_STAFF_ATTENDANCE', false, envOverride) || readLocalStorageFlag('feature:staffAttendance') || false;
 
 export const isIcebergPdcaEnabled = (envOverride?: EnvRecord): boolean =>
   readBool('VITE_FEATURE_ICEBERG_PDCA', false, envOverride);
@@ -392,54 +342,20 @@ export const isIcebergPdcaEnabled = (envOverride?: EnvRecord): boolean =>
 export const isTodayOpsFeatureEnabled = (envOverride?: EnvRecord): boolean =>
   readBool('VITE_FEATURE_TODAY_OPS', false, envOverride);
 
-export const shouldSkipLogin = (envOverride?: EnvRecord): boolean => {
-  if (
-    isDemoModeEnabled(envOverride) ||
-    readBool('VITE_SKIP_LOGIN', false, envOverride) ||
-    readBool('VITE_E2E', false, envOverride) ||
-    readBool('VITE_E2E_MSAL_MOCK', false, envOverride)
-  ) {
-    return true;
-  }
-
-  if (typeof window !== 'undefined') {
-    try {
-      const flag = window.localStorage.getItem('skipLogin');
-      if (flag != null) {
-        const normalized = flag.trim().toLowerCase();
-        if (TRUTHY.has(normalized)) return true;
-        if (FALSY.has(normalized)) return false;
-      }
-    } catch {
-      // ignore storage failures
-    }
-  }
-
-  return false;
-};
+export const shouldSkipLogin = (envOverride?: EnvRecord): boolean =>
+  isDemoModeEnabled(envOverride) ||
+  readBool('VITE_SKIP_LOGIN', false, envOverride) ||
+  readBool('VITE_E2E', false, envOverride) ||
+  readBool('VITE_E2E_MSAL_MOCK', false, envOverride) ||
+  readLocalStorageFlag('skipLogin') ||
+  false;
 
 export const shouldSkipSharePoint = (envOverride?: EnvRecord): boolean => {
   return readBool('VITE_SKIP_SHAREPOINT', false, envOverride);
 };
 
-export const isUsersCrudEnabled = (envOverride?: EnvRecord): boolean => {
-  if (readBool('VITE_FEATURE_USERS_CRUD', false, envOverride)) {
-    return true;
-  }
-  if (typeof window !== 'undefined') {
-    try {
-      const flag = window.localStorage.getItem('feature:usersCrud');
-      if (flag != null) {
-        const normalized = flag.trim().toLowerCase();
-        if (TRUTHY.has(normalized)) return true;
-        if (FALSY.has(normalized)) return false;
-      }
-    } catch {
-      // ignore storage access issues
-    }
-  }
-  return false;
-};
+export const isUsersCrudEnabled = (envOverride?: EnvRecord): boolean =>
+  readBool('VITE_FEATURE_USERS_CRUD', false, envOverride) || readLocalStorageFlag('feature:usersCrud') || false;
 
 export const isE2eMsalMockEnabled = (envOverride?: EnvRecord): boolean =>
   readBool('VITE_E2E_MSAL_MOCK', false, envOverride);
