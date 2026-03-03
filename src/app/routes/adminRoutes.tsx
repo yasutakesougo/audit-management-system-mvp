@@ -16,6 +16,7 @@ import {
     SuspendedDebugZodErrorPage,
     SuspendedIndividualSupportManagementPage,
     SuspendedIntegratedResourceCalendarPage,
+    SuspendedModeSwitchPage,
     SuspendedNavigationDiagnosticsPage,
     SuspendedSmokeTestPage,
     SuspendedStaffAttendanceAdminPage,
@@ -157,6 +158,14 @@ export const adminRoutes: RouteObject[] = [
     element: (
       <RequireAudience requiredRole="admin">
         <SuspendedCsvImportPage />
+      </RequireAudience>
+    ),
+  },
+  {
+    path: 'admin/mode-switch',
+    element: (
+      <RequireAudience requiredRole="admin">
+        <SuspendedModeSwitchPage />
       </RequireAudience>
     ),
   },
