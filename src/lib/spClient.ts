@@ -1,144 +1,19 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
+﻿/* eslint-disable @typescript-eslint/no-explicit-any */
 
 import { useAuth } from '@/auth/useAuth';
 import type { UnifiedResourceEvent } from '@/features/resources/types';
 import { auditLog } from '@/lib/debugLogger';
-import { getAppConfig, isE2eMsalMockEnabled, readBool, readEnv, shouldSkipLogin, skipSharePoint, type EnvRecord } from '@/lib/env';
+import { getAppConfig, isE2eMsalMockEnabled, readEnv, shouldSkipLogin, skipSharePoint, type EnvRecord } from '@/lib/env';
 import { useMemo } from 'react';
 import { AuthRequiredError } from './errors';
 
-// NOTE: Type definitions and helpers have been extracted to lib/sp/ sub-modules
-// (spTypes.ts, spSchema.ts, spBatch.ts, spHelpers.ts) for independent import.
-// This file remains the canonical facade for backward compatibility.
+// --- Config helpers imported from @/lib/sp/config (SSOT) --------------------
+import { ensureConfig } from '@/lib/sp/config';
+export { ensureConfig } from '@/lib/sp/config';
+// --- Batch payload/parse imported from @/lib/sp/batch (SSOT) -----------------
+import { buildBatchPayload as buildBatchPayloadImported, parseBatchResponse as parseBatchResponseImported } from '@/lib/sp/batch';
 
-const FALLBACK_SP_RESOURCE = 'https://example.sharepoint.com';
-const FALLBACK_SP_SITE_RELATIVE = '/sites/demo';
 
-const shouldBypassSharePointConfig = (envOverride?: EnvRecord): boolean => {
-  // Respect explicit SharePoint overrides even when test/demo flags are set
-  if (envOverride && ('VITE_SP_RESOURCE' in envOverride || 'VITE_SP_SITE_RELATIVE' in envOverride || 'VITE_SP_SITE' in envOverride || 'VITE_SP_SITE_URL' in envOverride)) {
-    return false;
-  }
-
-  // Force SharePoint even in E2E/mock contexts when explicitly requested (e.g., Playwright stub mode)
-  const isForceSp = readBool('VITE_FORCE_SHAREPOINT', false, envOverride);
-  if (isForceSp) {
-    return false;
-  }
-
-  if (isE2eMsalMockEnabled(envOverride)) {
-    return true;
-  }
-  if (readBool('VITE_E2E', false, envOverride)) {
-    return true;
-  }
-  if (skipSharePoint(envOverride)) {
-    return true;
-  }
-  if (shouldSkipLogin(envOverride)) {
-    return true;
-  }
-  if (typeof process !== 'undefined' && process.env?.PLAYWRIGHT_TEST === '1') {
-    return true;
-  }
-  return false;
-};
-
-const normalizeSiteRelative = (value: string): string => {
-  const trimmed = value.trim();
-  const prefixed = trimmed.startsWith('/') ? trimmed : `/${trimmed}`;
-  return prefixed.replace(/\/+$/, '');
-};
-
-const normalizeResource = (value: string): string => value.trim().replace(/\/+$/, '');
-
-export function ensureConfig(envOverride?: { VITE_SP_RESOURCE?: string; VITE_SP_SITE_RELATIVE?: string; VITE_SP_SITE?: string; VITE_SP_SITE_URL?: string }) {
-  const overrideRecord = envOverride as EnvRecord | undefined;
-  const hasExplicitOverride = envOverride !== undefined;
-
-  const _pickSite = () => {
-    const primary = readEnv('VITE_SP_SITE_RELATIVE', '', overrideRecord).trim();
-    if (primary) return primary;
-    const legacy = readEnv('VITE_SP_SITE', '', overrideRecord).trim();
-    return legacy;
-  };
-
-  const isPlaceholder = (s: string) => {
-    const normalized = (s ?? '').trim();
-    if (!normalized) return true;
-
-    const lower = normalized.toLowerCase();
-    if (normalized.includes('<') || normalized.includes('__')) return true;
-    if (/<[^>]+>/.test(normalized)) return true;
-    if (lower.includes('fill') || lower.includes('your')) return true;
-
-    return false;
-  };
-
-  const validateAndNormalize = (resourceRaw: string, siteRaw: string) => {
-    const overrideResource = sanitizeEnvValue(resourceRaw);
-    const overrideSiteRel = sanitizeEnvValue(siteRaw);
-
-    if (isPlaceholder(overrideResource) || isPlaceholder(overrideSiteRel)) {
-      throw new Error([
-        'SharePoint 接続設定が未完了です。',
-        'VITE_SP_RESOURCE 例: https://contoso.sharepoint.com（末尾スラッシュ不要）',
-        'VITE_SP_SITE_RELATIVE 例: /sites/AuditSystem（先頭スラッシュ必須・末尾不要）',
-        '`.env` を実値で更新し、開発サーバーを再起動してください。'
-      ].join('\n'));
-    }
-
-    let overrideUrl: URL;
-    try {
-      overrideUrl = new URL(overrideResource);
-    } catch {
-      throw new Error(`VITE_SP_RESOURCE の形式が不正です: ${overrideResource}`);
-    }
-
-    if (overrideUrl.protocol !== 'https:' || !/\.sharepoint\.com$/i.test(overrideUrl.hostname)) {
-      throw new Error(`VITE_SP_RESOURCE の形式が不正です: ${overrideResource}`);
-    }
-
-    const siteCandidate = normalizeSiteRelative(overrideSiteRel);
-    if (!siteCandidate.startsWith('/sites/') && !siteCandidate.startsWith('/teams/')) {
-      throw new Error(`VITE_SP_SITE_RELATIVE の形式が不正です: ${overrideSiteRel}`);
-    }
-
-    const resource = normalizeResource(overrideUrl.origin);
-    const siteRel = siteCandidate;
-    return { resource, siteRel, baseUrl: `${resource}${siteRel}/_api/web` };
-  };
-
-  if (hasExplicitOverride) {
-    return validateAndNormalize(
-      envOverride?.VITE_SP_RESOURCE ?? '',
-      envOverride?.VITE_SP_SITE_RELATIVE ?? envOverride?.VITE_SP_SITE ?? ''
-    );
-  }
-
-  if (shouldBypassSharePointConfig(overrideRecord)) {
-    // E2E/demo/mock/skip-login 等では SharePoint を外部に出さない
-    return { resource: '', siteRel: '', baseUrl: '' };
-  }
-
-  const baseConfig = getAppConfig();
-  const config = envOverride ? { ...baseConfig, ...(envOverride as object) } as any : baseConfig;
-
-  if (config.VITE_E2E) {
-    const resource = FALLBACK_SP_RESOURCE;
-    const siteRel = FALLBACK_SP_SITE_RELATIVE;
-    return { resource, siteRel, baseUrl: `${resource}${siteRel}/_api/web` };
-  }
-
-  const rawResource = sanitizeEnvValue((config as any).VITE_SP_RESOURCE ?? '');
-  const rawSiteRel = sanitizeEnvValue(
-    (config as any).VITE_SP_SITE_RELATIVE ??
-      (config as any).VITE_SP_SITE ??
-      ''
-  );
-
-  return validateAndNormalize(rawResource, rawSiteRel);
-}
 
 // List CRUD operations delegated to spLists.ts
 import { createListOperations } from '@/lib/sp/spLists';
@@ -183,7 +58,6 @@ import {
 } from '@/lib/sp/fieldCache';
 
 const sanitizeEnvValue = (value: unknown): string => (typeof value === 'string' ? value.trim() : '');
-
 const DEFAULT_USERS_LIST_TITLE = 'Users_Master';
 const DEFAULT_STAFF_LIST_TITLE = 'Staff_Master';
 
@@ -705,87 +579,17 @@ export function createSpClient(
     throw new Error('Batch API が最大リトライ回数に達しました。');
   };
 
-  const buildBatchPayload = (operations: SharePointBatchOperation[], boundary: string): string => {
-    const lines: string[] = [];
-    for (const operation of operations) {
-      const method = operation.kind === 'create'
-        ? 'POST'
-        : operation.kind === 'update'
-          ? (operation.method ?? 'PATCH')
-          : 'DELETE';
-      const targetPath = normalizePath(
-        operation.kind === 'create'
-          ? buildItemPath(operation.list)
-          : buildItemPath(operation.list, operation.id)
-      );
-      const headers: Record<string, string> = {
-        Accept: 'application/json;odata=nometadata',
-        ...(operation.headers ?? {}),
-      };
-      if (method === 'POST' || method === 'PATCH' || method === 'MERGE') {
-        headers['Content-Type'] = headers['Content-Type'] ?? 'application/json;odata=nometadata';
-      }
-      if ((operation.kind === 'update' || operation.kind === 'delete') && !headers['If-Match']) {
-        headers['If-Match'] = operation.etag ?? '*';
-      }
-
-      lines.push(`--${boundary}`);
-      lines.push('Content-Type: application/http');
-      lines.push('Content-Transfer-Encoding: binary');
-      lines.push('');
-      lines.push(`${method} ${targetPath} HTTP/1.1`);
-      for (const [key, value] of Object.entries(headers)) {
-        lines.push(`${key}: ${value}`);
-      }
-      lines.push('');
-      if (operation.kind === 'create' || operation.kind === 'update') {
-        lines.push(JSON.stringify(operation.body ?? {}));
-        lines.push('');
-      }
-    }
-    lines.push(`--${boundary}--`);
-    lines.push('');
-    return lines.join('\r\n');
-  };
-
-  const parseBatchResponse = (payload: string, boundary: string): SharePointBatchResult[] => {
-    const results: SharePointBatchResult[] = [];
-    const segments = payload.split(`--${boundary}`);
-    for (const segment of segments) {
-      const trimmed = segment.trim();
-      if (!trimmed || trimmed === '--') continue;
-      const httpIndex = trimmed.indexOf('HTTP/1.1');
-      if (httpIndex === -1) continue;
-      const httpPayload = trimmed.slice(httpIndex);
-      const [statusLine] = httpPayload.split('\r\n');
-      const statusMatch = /HTTP\/1\.1\s+(\d{3})/i.exec(statusLine ?? '');
-      if (!statusMatch) continue;
-      const status = Number(statusMatch[1]);
-      const bodyIndex = httpPayload.indexOf('\r\n\r\n');
-      const rawBody = bodyIndex >= 0 ? httpPayload.slice(bodyIndex + 4).trim() : '';
-      let data: unknown;
-      if (rawBody) {
-        try {
-          data = JSON.parse(rawBody);
-        } catch {
-          data = rawBody;
-        }
-      }
-      results.push({ ok: status >= 200 && status < 300, status, data });
-    }
-    return results;
-  };
-
+  // batch: uses imported buildBatchPayload / parseBatchResponse from sp/batch.ts
   const batch = async (operations: SharePointBatchOperation[]): Promise<SharePointBatchResult[]> => {
     if (!operations.length) return [];
     const boundary = `batch_${Math.random().toString(36).slice(2)}`;
-    const requestBody = buildBatchPayload(operations, boundary);
+    const requestBody = buildBatchPayloadImported(operations, boundary, normalizePath);
     const res = await postBatch(requestBody, boundary);
     const contentType = res.headers.get('Content-Type') ?? '';
     const match = /boundary=([^;]+)/i.exec(contentType);
     const responseBoundary = match ? match[1].trim() : boundary;
     const text = await res.text();
-    return parseBatchResponse(text, responseBoundary);
+    return parseBatchResponseImported(text, responseBoundary);
   };
 
   return {
