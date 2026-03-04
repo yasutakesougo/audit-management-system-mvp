@@ -15,6 +15,7 @@ export const useToast = (): ToastContextValue => useContext(ToastContext);
 
 export function ToastProvider({ children, notify }: { children: React.ReactNode; notify?: ToastFn }) {
   const handler: ToastFn = notify ?? ((message, severity = 'info') => {
+    // eslint-disable-next-line no-console
     console.log(`[toast:${severity}]`, message);
   });
 

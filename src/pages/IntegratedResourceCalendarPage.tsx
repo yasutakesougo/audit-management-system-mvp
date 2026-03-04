@@ -72,11 +72,13 @@ export default function IntegratedResourceCalendarPage() {
   const ircCssVars = useMemo(() => buildIrcCssVars(theme.palette), [theme.palette]);
 
   if (import.meta.env.DEV) {
+    // eslint-disable-next-line no-console
     console.log('[IRC] mounted', {
       pathname: location.pathname,
       isE2E,
       timestamp: new Date().toISOString(),
     });
+    // eslint-disable-next-line no-console
     console.log('[IRC] Current environment:', {
       VITE_E2E: isE2E,
       VITE_SP_RESOURCE: appConfig.VITE_SP_RESOURCE,
@@ -87,7 +89,10 @@ export default function IntegratedResourceCalendarPage() {
   const _sp = useSP();
   const ircSpClient = useMemo(() => {
     const client = createIrcSpClient();
-    if (import.meta.env.DEV) console.log('[IRC] SpClient created:', { isE2E, client });
+    if (import.meta.env.DEV) {
+      // eslint-disable-next-line no-console
+      console.log('[IRC] SpClient created:', { isE2E, client });
+    }
     return client;
   }, []);
 
@@ -117,7 +122,9 @@ export default function IntegratedResourceCalendarPage() {
         setEvents(unifiedEvents);
         setLastError(null);
         if (import.meta.env.DEV) {
+          // eslint-disable-next-line no-console
           console.log('[IRC] Loaded resources:', fetchedResources.length);
+          // eslint-disable-next-line no-console
           console.log('[IRC] Loaded events count:', unifiedEvents.length);
         }
         dataSpan({ meta: { status: 'ok', resourceCount: fetchedResources.length, eventCount: unifiedEvents.length } });
@@ -178,6 +185,7 @@ export default function IntegratedResourceCalendarPage() {
     const eventProps = event.extendedProps as UnifiedResourceEvent['extendedProps'];
     const hasActual = eventProps?.actualStart;
     if (import.meta.env.DEV) {
+      // eslint-disable-next-line no-console
       console.log('[IRC] eventDidMount called', { id: event.id, title: event.title, allEventsLength: visibleEvents.length });
     }
     const eventData = events.find((e) => e.id === event.id);
@@ -186,6 +194,7 @@ export default function IntegratedResourceCalendarPage() {
       const testId = isLocked ? 'irc-event-locked' : `irc-event-editable-${event.id}`;
       element.setAttribute('data-testid', testId);
       if (import.meta.env.DEV) {
+        // eslint-disable-next-line no-console
         console.log('[IRC] eventDidMount E2E testid set', { id: event.id, title: event.title, hasActual: !!hasActual, isLocked, testId });
       }
     }
@@ -274,7 +283,10 @@ export default function IntegratedResourceCalendarPage() {
     const newEvent: UnifiedResourceEvent = { id: `plan-${Date.now()}`, resourceId: info.resource?.id || '', title, start: info.startStr, end: info.endStr, editable: true, extendedProps: { planId: `plan-${Date.now()}`, planType: 'visit', status: 'waiting' } };
     setEvents((prev) => [...prev, newEvent]);
     showSnackbar('予定を作成しました');
-    if (showOnlyUnrecorded) console.log('[IRC] New event created in unrecorded filter mode');
+    if (import.meta.env.DEV && showOnlyUnrecorded) {
+      // eslint-disable-next-line no-console
+      console.log('[IRC] New event created in unrecorded filter mode');
+    }
   };
 
   const handleDeleteEvent = useCallback((eventId: string) => {

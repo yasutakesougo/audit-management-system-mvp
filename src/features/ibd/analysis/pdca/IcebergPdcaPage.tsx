@@ -1,27 +1,27 @@
-import * as React from 'react';
 import {
-  Alert,
-  Autocomplete,
-  Box,
-  Button,
-  CircularProgress,
-  Dialog,
-  DialogActions,
-  DialogContent,
-  DialogContentText,
-  DialogTitle,
-  FormControl,
-  InputLabel,
-  MenuItem,
-  Paper,
-  Snackbar,
-  Select,
-  Stack,
-  TextField,
-  ToggleButton,
-  ToggleButtonGroup,
-  Typography,
+    Alert,
+    Autocomplete,
+    Box,
+    Button,
+    CircularProgress,
+    Dialog,
+    DialogActions,
+    DialogContent,
+    DialogContentText,
+    DialogTitle,
+    FormControl,
+    InputLabel,
+    MenuItem,
+    Paper,
+    Select,
+    Snackbar,
+    Stack,
+    TextField,
+    ToggleButton,
+    ToggleButtonGroup,
+    Typography,
 } from '@mui/material';
+import * as React from 'react';
 import { Link as RouterLink, useSearchParams } from 'react-router-dom';
 
 import { useFeatureFlag } from '@/config/featureFlags';
@@ -33,15 +33,15 @@ import { TESTIDS } from '@/testids';
 import { IcebergPdcaEmptyState } from './components/IcebergPdcaEmptyState';
 import type { IcebergPdcaEmptyContext } from './components/icebergPdcaEmptyCopy';
 import {
-  DEFAULT_TREND_TOLERANCE,
-  getDailySubmissionMetrics,
-  getMonthlyMetrics,
-  getStoredDailySubmissionEvents,
-  getWeeklyMetrics,
-  type TrendDirection,
+    DEFAULT_TREND_TOLERANCE,
+    getDailySubmissionMetrics,
+    getMonthlyMetrics,
+    getStoredDailySubmissionEvents,
+    getWeeklyMetrics,
+    type TrendDirection,
 } from './dailyMetricsAdapter';
+import { useCreatePdca, useDeletePdca, useIcebergPdcaList, useUpdatePdca } from './queries';
 import { readDailySnapshot, type DailySnapshotMetrics } from './readDailySnapshot';
-import { useIcebergPdcaList, useCreatePdca, useUpdatePdca, useDeletePdca } from './queries';
 import type { IcebergPdcaItem, IcebergPdcaPhase } from './types';
 import { toLocalDateISO } from '@/utils/getNow';
 
@@ -237,6 +237,7 @@ export const IcebergPdcaPage: React.FC<IcebergPdcaPageProps> = ({ writeEnabled: 
 
   const debugEnabled = getEnv('VITE_AUDIT_DEBUG') === '1';
   if (import.meta.env.DEV && debugEnabled) {
+    // eslint-disable-next-line no-console
     console.log('[iceberg-pdca]', {
       role,
       isAdmin,

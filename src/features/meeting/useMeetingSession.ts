@@ -100,6 +100,7 @@ export function useMeetingSession(sessionKey: string, kind: MeetingKind) {
     if (!sessionState.session) return;
 
     try {
+      // eslint-disable-next-line no-console
       console.log('Mock upsertStepRecord:', stepData);
 
       // Log step toggle action

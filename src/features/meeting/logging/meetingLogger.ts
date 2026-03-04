@@ -65,6 +65,7 @@ function emitLog(evt: MeetingLogEvent): void {
       console.warn(line, evt.context ?? {});
       break;
     default:
+      // eslint-disable-next-line no-console
       console.log(line, evt.context ?? {});
       break;
   }
