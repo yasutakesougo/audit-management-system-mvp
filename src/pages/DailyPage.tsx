@@ -19,7 +19,7 @@ import { useStaff } from '@/stores/useStaff';
 import FilterToolbar, { type StatusOption } from '@/ui/filters/FilterToolbar';
 import { buildSearchParams as buildSearchParamsUtil, normalizeFilters as normalizeFiltersUtil } from '@/utils/filters';
 import { formatCount } from '@/utils/formatCount';
-import { getNow } from '@/utils/getNow';
+import { toLocalDateISO } from '@/utils/getNow';
 import { normalizeRange } from '@/utils/range';
 import Button from '@mui/material/Button';
 import FormControlLabel from '@mui/material/FormControlLabel';
@@ -161,7 +161,7 @@ export default function DailyPage() {
     })),
     [],
   );
-  const todayISO = useMemo(() => getNow().toISOString().slice(0, 10), []);
+  const todayISO = useMemo(() => toLocalDateISO(), []);
   const advancedPanelId = useId();
 
   const sortedRows = useMemo(() => {
