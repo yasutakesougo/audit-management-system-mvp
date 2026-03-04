@@ -17,6 +17,7 @@ import { buildDailyHubFromTodayUrl } from '@/app/links/navigationLinks';
 import { useTodaySummary } from '@/features/today/domain';
 import { useNextAction } from '@/features/today/hooks/useNextAction';
 import { TodayOpsLayout } from '@/features/today/layouts/TodayOpsLayout';
+import { recordAutoNextComplete, recordAutoNextSave } from '@/features/today/records/autoNextCounters';
 import { QuickRecordDrawer } from '@/features/today/records/QuickRecordDrawer';
 import { useQuickRecord } from '@/features/today/records/useQuickRecord';
 import { isE2E } from '@/lib/env';
@@ -124,6 +125,9 @@ export const TodayOpsPage: React.FC = () => {
       return;
     }
 
+    // Record auto-next save counter (#632)
+    recordAutoNextSave();
+
     const pendingUserIds = summary?.dailyRecordStatus?.pendingUserIds || [];
     const currentUserId = quickRecord.userId;
 
@@ -141,9 +145,10 @@ export const TodayOpsPage: React.FC = () => {
         quickRecord.openUnfilled(nextUserId);
       }, 0);
     } else {
-      // End-of-queue: close drawer + show completion toast
+      // End-of-queue: close drawer + show completion toast + record complete (#632)
       quickRecord.close();
       setShowCompletionToast(true);
+      recordAutoNextComplete();
     }
   }, [summary?.dailyRecordStatus?.pendingUserIds, quickRecord]);
 
