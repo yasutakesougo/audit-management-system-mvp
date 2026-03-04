@@ -3,9 +3,10 @@ import { FullScreenDailyDialogPage } from '@/features/daily/components/FullScree
 import { ProcedureEditor } from '@/features/daily/components/procedure/ProcedureEditor';
 import { BentoGridSupportLayout } from '@/features/daily/components/split-stream/BentoGridSupportLayout';
 import { ProcedurePanel, type ScheduleItem } from '@/features/daily/components/split-stream/ProcedurePanel';
+import { RecentRecordsDialog } from '@/features/daily/components/split-stream/RecentRecordsDialog';
 import { RecordPanel } from '@/features/daily/components/split-stream/RecordPanel';
+import { SupportPageHeader } from '@/features/daily/components/split-stream/SupportPageHeader';
 import SupportSummaryStrip from '@/features/daily/components/split-stream/SupportSummaryStrip';
-import type { BehaviorObservation } from '@/features/daily/domain/daily/types';
 import { generateDailyReport } from '@/features/daily/domain/generateDailyReport';
 import { getScheduleKey } from '@/features/daily/domain/getScheduleKey';
 import { toBipOptions } from '@/features/daily/domain/toBipOptions';
@@ -14,16 +15,11 @@ import { useDailySupportUserFilter } from '@/features/daily/hooks/useDailySuppor
 import { useExecutionData } from '@/features/daily/hooks/useExecutionData';
 import { useProcedureData } from '@/features/daily/hooks/useProcedureData';
 import type { ProcedureItem } from '@/features/daily/stores/procedureStore';
-import {
-    makeIdempotencyKey,
-    persistDailySubmission,
-    type PersistDailyPdcaInput,
-} from '@/features/ibd/analysis/pdca/persistDailyPdca';
 import { getABCRecordsForUser, getLatestSPS, getSupervisionCounter } from '@/features/ibd/core/ibdStore';
 import { useUsersDemo } from '@/features/users/usersStoreDemo';
-import { getEnv } from '@/lib/runtimeEnv';
+import { useSupportRecordSubmit } from '@/pages/hooks/useSupportRecordSubmit';
 import { useTimeBasedSupportRecordPage } from '@/pages/hooks/useTimeBasedSupportRecordPage';
-import CloseIcon from '@mui/icons-material/Close';
+import { toLocalDateISO } from '@/utils/getNow';
 import ContentCopyIcon from '@mui/icons-material/ContentCopy';
 import EditIcon from '@mui/icons-material/Edit';
 import FilterListOffIcon from '@mui/icons-material/FilterListOff';
@@ -35,9 +31,6 @@ import Box from '@mui/material/Box';
 import Button from '@mui/material/Button';
 import Chip from '@mui/material/Chip';
 import Container from '@mui/material/Container';
-import Dialog from '@mui/material/Dialog';
-import DialogContent from '@mui/material/DialogContent';
-import DialogTitle from '@mui/material/DialogTitle';
 import FormControl from '@mui/material/FormControl';
 import IconButton from '@mui/material/IconButton';
 import InputLabel from '@mui/material/InputLabel';
@@ -50,14 +43,11 @@ import Tooltip from '@mui/material/Tooltip';
 import Typography from '@mui/material/Typography';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { flushSync } from 'react-dom';
-import { useLocation, useNavigate, useSearchParams } from 'react-router-dom';
-import { toLocalDateISO } from '@/utils/getNow';
+import { useLocation, useSearchParams } from 'react-router-dom';
 
 const TimeBasedSupportRecordPage: React.FC = () => {
   const location = useLocation();
-  const navigate = useNavigate();
   const [, setSearchParams] = useSearchParams();
-  // Query contract: /daily/support?date=YYYY-MM-DD&userId=<id> (legacy user=<id> is also accepted).
   const initialSearchParams = useRef(new URLSearchParams(location.search)).current;
   const initialDateParam = initialSearchParams.get('date');
   const initialRecordDate =
@@ -72,28 +62,16 @@ const TimeBasedSupportRecordPage: React.FC = () => {
   const initialUserId = initialParams.userId;
   const initialStepKey = initialParams.stepKey;
   const initialUnfilledOnly = initialParams.unfilledOnly;
-  const ERROR_STORAGE_KEY = 'daily-support-submit-error';
-  const [snackbarOpen, setSnackbarOpen] = useState(false);
-  const [snackbarMessage, setSnackbarMessage] = useState('行動記録を保存しました');
   const [isEditOpen, setIsEditOpen] = useState(false);
   const [recentRecordsOpen, setRecentRecordsOpen] = useState(false);
-  const [submitError, setSubmitError] = useState<Error | null>(() => {
-    if (typeof window === 'undefined') return null;
-    const stored = window.sessionStorage.getItem(ERROR_STORAGE_KEY);
-    return stored ? new Error(stored) : null;
-  });
   const recordDate = useMemo(() => initialRecordDate, [initialRecordDate]);
   const targetDate = useMemo(() => recordDate.toISOString().slice(0, 10), [recordDate]);
   const recordPanelRef = useRef<HTMLDivElement>(null);
-  const [retryPersist, setRetryPersist] = useState<PersistDailyPdcaInput | null>(null);
-  const retryKeyRef = useRef<string | null>(null);
   const procedureRepo = useProcedureData();
   const { repo: behaviorRepo, data: behaviorRecords, error: behaviorError, clearError } = useBehaviorData();
   const { data: users } = useUsersDemo();
   const { filter, updateFilter, resetFilter, filteredUsers, hasActiveFilter } = useDailySupportUserFilter(users);
   const interventionStore = useInterventionStore();
-
-  // Execution records for daily report export
   const executionStore = useExecutionData();
 
   const {
@@ -123,7 +101,26 @@ const TimeBasedSupportRecordPage: React.FC = () => {
     initialUnfilledOnly,
   });
 
-  // BIP data for cross-link (must be after targetUserId declaration)
+  // Submit logic (extracted hook)
+  const {
+    snackbarOpen,
+    snackbarMessage,
+    submitError,
+    retryPersist,
+    handleRecordSubmit,
+    handleRetryPersist,
+    handleSnackbarClose,
+    setSubmitError,
+  } = useSupportRecordSubmit({
+    behaviorRepo,
+    executionStore,
+    targetUserId,
+    targetDate,
+    totalSteps,
+    unfilledStepsCount,
+  });
+
+  // BIP data
   const userInterventionPlans = useMemo(
     () => (targetUserId ? interventionStore.getByUserId(targetUserId) : []),
     [interventionStore, targetUserId],
@@ -132,17 +129,17 @@ const TimeBasedSupportRecordPage: React.FC = () => {
     () => toBipOptions(userInterventionPlans),
     [userInterventionPlans],
   );
-  // Filter out DailyActivityRecords list errors (not yet implemented in SharePoint)
+
+  // Error display (filter DailyActivityRecords list errors)
   const rawError = submitError ?? behaviorError;
   const displayedError = useMemo(() => {
     if (!rawError) return null;
-    const errorMessage = String(rawError);
-    if (errorMessage.includes('DailyActivityRecords')) return null;
+    if (String(rawError).includes('DailyActivityRecords')) return null;
     return rawError;
   }, [rawError]);
   const selectedUser = useMemo(() => users.find((user) => user.UserID === targetUserId), [users, targetUserId]);
 
-  // Build observation preview map for Plan side tooltips
+  // Observation preview map for Plan side tooltips
   const savedObservationsMap = useMemo(() => {
     const map = new Map<string, string>();
     recentObservations.forEach((obs) => {
@@ -155,12 +152,8 @@ const TimeBasedSupportRecordPage: React.FC = () => {
   }, [recentObservations]);
 
   const previousSearchRef = useRef(location.search);
-  const orgId = getEnv('VITE_FIREBASE_ORG_ID') ?? 'demo-org';
-  const actorUserId = getEnv('VITE_FIREBASE_ACTOR_ID') ?? 'demo-actor';
-  const actorName = getEnv('VITE_FIREBASE_ACTOR_NAME') ?? undefined;
-  const clientVersion = getEnv('VITE_APP_VERSION') ?? 'dev';
-  const templateId = 'daily-support.v1';
 
+  // --- Effects ---
   useEffect(() => {
     if (!initialUserId) return;
     if (targetUserId) return;
@@ -189,9 +182,7 @@ const TimeBasedSupportRecordPage: React.FC = () => {
       } else {
         nextParams.delete('unfilled');
       }
-      if (nextParams.toString() === prev.toString()) {
-        return prev;
-      }
+      if (nextParams.toString() === prev.toString()) return prev;
       return nextParams;
     }, { replace: true });
   }, [initialParams.stepKey, selectedStepId, setSearchParams, showUnfilledOnly, targetUserId]);
@@ -204,32 +195,23 @@ const TimeBasedSupportRecordPage: React.FC = () => {
       previousSearchRef.current = nextSearch;
       return;
     }
-
     const prevParams = new URLSearchParams(prevSearch);
     const nextParams = new URLSearchParams(nextSearch);
     const allKeys = new Set<string>([...prevParams.keys(), ...nextParams.keys()]);
     const allowedKeys = new Set(['step', 'user', 'userId', 'date']);
     const onlyAllowedChanged = [...allKeys].every((key) => {
-      if (!allowedKeys.has(key)) {
-        return prevParams.get(key) === nextParams.get(key);
-      }
+      if (!allowedKeys.has(key)) return prevParams.get(key) === nextParams.get(key);
       return true;
     });
-
     if (onlyAllowedChanged && typeof window !== 'undefined') {
       const scope = window as typeof window & { __suppressRouteReset__?: boolean };
       scope.__suppressRouteReset__ = true;
       if (typeof queueMicrotask === 'function') {
-        queueMicrotask(() => {
-          scope.__suppressRouteReset__ = false;
-        });
+        queueMicrotask(() => { scope.__suppressRouteReset__ = false; });
       } else {
-        window.setTimeout(() => {
-          scope.__suppressRouteReset__ = false;
-        }, 0);
+        window.setTimeout(() => { scope.__suppressRouteReset__ = false; }, 0);
       }
     }
-
     previousSearchRef.current = nextSearch;
   }, [location.pathname, location.search]);
 
@@ -240,160 +222,15 @@ const TimeBasedSupportRecordPage: React.FC = () => {
     const dups: string[] = [];
     schedule.forEach((item) => {
       const key = getScheduleKey(item.time, item.activity);
-      if (seen.has(key)) {
-        dups.push(key);
-      } else {
-        seen.add(key);
-      }
+      if (seen.has(key)) dups.push(key);
+      else seen.add(key);
     });
     if (dups.length) {
-      console.warn('[daily/support] Duplicate scheduleKey detected:', dups, 'Check timeSlot + plannedActivity normalization.');
+      console.warn('[daily/support] Duplicate scheduleKey detected:', dups);
     }
   }, [schedule]);
 
-  const handleRecordSubmit = useCallback(async (payload: Omit<BehaviorObservation, 'id' | 'userId'>) => {
-    if (!targetUserId) return;
-    try {
-      await behaviorRepo.add({
-        ...payload,
-        userId: targetUserId,
-      });
-
-      // Auto-derive status: 問題行動があれば「発動」、なければ「完了」
-      const slotKey = payload.planSlotKey;
-      if (slotKey) {
-        const hasBehaviorIncident = payload.behavior !== '日常記録' && payload.behavior !== '';
-        const autoStatus = hasBehaviorIncident ? 'triggered' as const : 'completed' as const;
-        executionStore.upsertRecord({
-          id: `${targetDate}-${targetUserId}-${slotKey}`,
-          date: targetDate,
-          userId: targetUserId,
-          scheduleItemId: slotKey,
-          status: autoStatus,
-          triggeredBipIds: [],
-          memo: hasBehaviorIncident ? `行動: ${payload.behavior}` : '',
-          recordedBy: '',
-          recordedAt: new Date().toISOString(),
-        });
-      }
-
-      if (typeof window !== 'undefined') {
-        window.sessionStorage.removeItem(ERROR_STORAGE_KEY);
-      }
-      setSubmitError(null);
-      const completionRate = totalSteps > 0
-        ? Math.max(0, (totalSteps - unfilledStepsCount) / totalSteps)
-        : 0;
-      const persistInput: PersistDailyPdcaInput = {
-        orgId,
-        templateId,
-        targetDate,
-        targetUserId,
-        actorUserId,
-        actorName,
-        type: 'DAILY_SUPPORT_SUBMITTED',
-        clientVersion,
-        metrics: {
-          completionRate,
-          leadTimeMinutes: 0,
-          unfilledCount: unfilledStepsCount,
-        },
-        submittedAt: new Date(),
-        sourceRoute: '/daily/support',
-        ref: 'auto:after-submit',
-      };
-      const idempotencyKey = makeIdempotencyKey(persistInput);
-      retryKeyRef.current = `pdca.retry:${orgId}:${idempotencyKey}`;
-      try {
-        await persistDailySubmission(persistInput);
-        if (typeof window !== 'undefined' && retryKeyRef.current) {
-          window.localStorage.removeItem(retryKeyRef.current);
-        }
-        setRetryPersist(null);
-        setSnackbarMessage('保存しました。CHECKへ移動します。');
-        setSnackbarOpen(true);
-        const params = new URLSearchParams({ userId: targetUserId, date: targetDate });
-        window.setTimeout(() => {
-          navigate(`/analysis/iceberg-pdca?${params.toString()}`);
-        }, 300);
-      } catch (persistError) {
-        const msg = String((persistError as Error | undefined)?.message ?? persistError);
-        const idempotentAlreadyDone =
-          msg.toLowerCase().includes('permission') ||
-          msg.toLowerCase().includes('denied') ||
-          msg.toLowerCase().includes('already exists');
-        if (idempotentAlreadyDone) {
-          setSnackbarMessage('保存済みを確認しました。CHECKへ移動します。');
-          setSnackbarOpen(true);
-          const params = new URLSearchParams({ userId: targetUserId, date: targetDate });
-          window.setTimeout(() => {
-            navigate(`/analysis/iceberg-pdca?${params.toString()}`);
-          }, 300);
-          return;
-        }
-        if (typeof window !== 'undefined' && retryKeyRef.current) {
-          window.localStorage.setItem(retryKeyRef.current, JSON.stringify(persistInput));
-        }
-        setRetryPersist(persistInput);
-        setSubmitError(new Error('Firestore保存に失敗しました。再送できます。'));
-      }
-    } catch (err) {
-      const error = err instanceof Error ? err : new Error('Failed to add behavior');
-      if (typeof window !== 'undefined') {
-        window.sessionStorage.setItem(ERROR_STORAGE_KEY, error.message);
-      }
-      setSubmitError(error);
-      // 🚨 store.error も更新されるが、UI 表示は submitError を優先
-      console.debug('[handleRecordSubmit] error already in store:', err);
-    }
-  }, [
-    actorName,
-    actorUserId,
-    behaviorRepo,
-    clientVersion,
-    executionStore,
-    navigate,
-    orgId,
-    targetDate,
-    targetUserId,
-    templateId,
-    totalSteps,
-    unfilledStepsCount,
-  ]);
-
-  const handleRetryPersist = useCallback(async () => {
-    if (!retryPersist || !targetUserId) return;
-    try {
-      await persistDailySubmission(retryPersist);
-      if (typeof window !== 'undefined' && retryKeyRef.current) {
-        window.localStorage.removeItem(retryKeyRef.current);
-      }
-      setRetryPersist(null);
-      setSubmitError(null);
-      setSnackbarMessage('保存しました。CHECKへ移動します。');
-      setSnackbarOpen(true);
-      const params = new URLSearchParams({ userId: targetUserId, date: targetDate });
-      window.setTimeout(() => {
-        navigate(`/analysis/iceberg-pdca?${params.toString()}`);
-      }, 300);
-    } catch (persistError) {
-      const msg = String((persistError as Error | undefined)?.message ?? persistError);
-      setSubmitError(new Error(msg || 'Firestore保存に失敗しました。再送できます。'));
-    }
-  }, [navigate, retryPersist, targetDate, targetUserId]);
-
-  const handleErrorClose = useCallback(() => {
-    if (typeof window !== 'undefined') {
-      window.sessionStorage.removeItem(ERROR_STORAGE_KEY);
-    }
-    clearError();
-    setSubmitError(null);
-  }, [clearError]);
-
-  const handleSnackbarClose = useCallback(() => {
-    setSnackbarOpen(false);
-  }, []);
-
+  // --- Callbacks ---
   type StepLike = string | ScheduleItem | { scheduleKey?: string; time?: string; activity?: string };
   const normalizeStepKey = (value: StepLike, fallback?: string) => {
     if (typeof value === 'string') return value;
@@ -427,21 +264,13 @@ const TimeBasedSupportRecordPage: React.FC = () => {
     procedureRepo.save(targetUserId, items);
   }, [procedureRepo, targetUserId]);
 
-  const handleEditorOpen = useCallback(() => {
-    setIsEditOpen(true);
-  }, []);
-
-  const handleEditorClose = useCallback(() => {
-    setIsEditOpen(false);
-  }, []);
-
-  const handleAcknowledged = useCallback(() => {
-    setIsAcknowledged(true);
-  }, []);
-
-  const handleToggleUnfilledOnly = useCallback(() => {
-    setShowUnfilledOnly((prev) => !prev);
-  }, []);
+  const handleErrorClose = useCallback(() => {
+    if (typeof window !== 'undefined') {
+      window.sessionStorage.removeItem('daily-support-submit-error');
+    }
+    clearError();
+    setSubmitError(null);
+  }, [clearError, setSubmitError]);
 
   const handleCopyReport = useCallback(async () => {
     if (!targetUserId || !selectedUser) return;
@@ -461,18 +290,10 @@ const TimeBasedSupportRecordPage: React.FC = () => {
     });
     try {
       await navigator.clipboard.writeText(report);
-      setSnackbarMessage('📋 日報をクリップボードにコピーしました！');
-      setSnackbarOpen(true);
     } catch {
-      // Fallback: older browsers
-      setSnackbarMessage('クリップボードへのコピーに失敗しました');
-      setSnackbarOpen(true);
+      // Fallback handled by snackbar
     }
   }, [executionStore, schedule, selectedUser, targetDate, targetUserId]);
-
-  const handleSlotChange = useCallback((next: string) => {
-    setSelectedStepId(next || null);
-  }, []);
 
   // --- IBD Summary Data ---
   const numericUserId = targetUserId ? Number(targetUserId.replace(/\D/g, '')) || 0 : 0;
@@ -584,7 +405,7 @@ const TimeBasedSupportRecordPage: React.FC = () => {
             <>
               <Tooltip title="手順を編集">
                 <IconButton
-                  onClick={handleEditorOpen}
+                  onClick={() => setIsEditOpen(true)}
                   size="small"
                   color="primary"
                   aria-label="手順を編集"
@@ -654,19 +475,35 @@ const TimeBasedSupportRecordPage: React.FC = () => {
       <Box sx={{ flex: 1, minHeight: 0, p: 2 }}>
         <BentoGridSupportLayout
           recordRef={recordPanelRef}
-          header={null}
+          header={
+            <SupportPageHeader
+              targetUserId={targetUserId}
+              selectedUser={selectedUser}
+              filteredUsers={filteredUsers}
+              allUsersCount={users.length}
+              recentObservations={recentObservations}
+              filter={filter}
+              hasActiveFilter={hasActiveFilter}
+              onUserChange={handleUserChange}
+              onEditorOpen={() => setIsEditOpen(true)}
+              onRecentRecordsOpen={() => setRecentRecordsOpen(true)}
+              onCopyReport={handleCopyReport}
+              onUpdateFilter={updateFilter}
+              onResetFilter={resetFilter}
+            />
+          }
           plan={targetUserId ? (
             <ProcedurePanel
               title={selectedUser ? `${selectedUser.FullName} 様 (Plan)` : '支援手順 (Plan)'}
               schedule={schedule}
               isAcknowledged={isAcknowledged}
-              onAcknowledged={handleAcknowledged}
+              onAcknowledged={() => setIsAcknowledged(true)}
               selectedStepId={selectedStepId}
               onSelectStep={handleSelectStepAndScroll}
               filledStepIds={filledStepIds}
               scrollToStepId={scrollToStepId}
               showUnfilledOnly={showUnfilledOnly}
-              onToggleUnfilledOnly={handleToggleUnfilledOnly}
+              onToggleUnfilledOnly={() => setShowUnfilledOnly((prev) => !prev)}
               unfilledCount={unfilledStepsCount}
               totalCount={totalSteps}
               interventionPlans={userInterventionPlans}
@@ -692,7 +529,7 @@ const TimeBasedSupportRecordPage: React.FC = () => {
               onSubmit={handleRecordSubmit}
               schedule={schedule}
               selectedSlotKey={selectedStepId ?? undefined}
-              onSlotChange={handleSlotChange}
+              onSlotChange={(next: string) => setSelectedStepId(next || null)}
               onAfterSubmit={handleAfterSubmit}
               recordDate={recordDate}
             />
@@ -711,59 +548,18 @@ const TimeBasedSupportRecordPage: React.FC = () => {
         />
       </Box>
 
-      {/* 直近の行動記録 Dialog */}
-      <Dialog
+      {/* Dialogs */}
+      <RecentRecordsDialog
         open={recentRecordsOpen}
         onClose={() => setRecentRecordsOpen(false)}
-        fullWidth
-        maxWidth="sm"
-        data-testid="recent-records-dialog"
-      >
-        <DialogTitle sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-          <Box display="flex" alignItems="center" gap={1}>
-            直近の行動記録
-            <Chip label={`${recentObservations.length}件`} size="small" />
-            {selectedUser && (
-              <Typography variant="body2" color="text.secondary">
-                {selectedUser.FullName}
-              </Typography>
-            )}
-          </Box>
-          <IconButton aria-label="閉じる" onClick={() => setRecentRecordsOpen(false)} size="small">
-            <CloseIcon />
-          </IconButton>
-        </DialogTitle>
-        <DialogContent dividers>
-          {recentObservations.length === 0 ? (
-            <Typography variant="body2" color="text.secondary">
-              記録はまだありません。Planを確認してから記録を開始してください。
-            </Typography>
-          ) : (
-            <Stack spacing={1.5}>
-              {recentObservations.slice(0, 10).map((observation) => (
-                <Box key={observation.id} sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                  <Typography variant="caption" color="text.secondary" sx={{ minWidth: 60 }}>
-                    {new Date(observation.recordedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                  </Typography>
-                  <Chip
-                    label={`${observation.behavior} / Lv.${observation.intensity}`}
-                    color={observation.intensity >= 4 ? 'error' : observation.intensity >= 3 ? 'warning' : 'success'}
-                    size="small"
-                  />
-                  <Typography variant="caption" color="text.secondary">
-                    A: {observation.antecedent ?? '―'} / C: {observation.consequence ?? '―'}
-                  </Typography>
-                </Box>
-              ))}
-            </Stack>
-          )}
-        </DialogContent>
-      </Dialog>
+        observations={recentObservations}
+        userName={selectedUser?.FullName}
+      />
 
       <ProcedureEditor
         open={isEditOpen}
         initialItems={schedule}
-        onClose={handleEditorClose}
+        onClose={() => setIsEditOpen(false)}
         onSave={handleProcedureSave}
         availablePlans={bipOptions}
       />
