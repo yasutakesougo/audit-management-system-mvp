@@ -1,16 +1,16 @@
 /**
- * DailyRecordForm
+ * DailyRecordForm — Thin Orchestrator
  *
- * Thin composition component — all logic delegated to:
- * - useDailyRecordFormState: state, handlers, effects, validation
- * - dailyRecordFormLogic: pure functions, constants
+ * Composes:
+ *   - useDailyRecordFormState: all state, handlers, effects, validation
+ *   - dailyRecordFormLogic: pure functions, constants
+ *   - DailyRecordFormActivities: AM/PM activity sections
+ *   - DailyRecordFormBehavior: problem behavior + seizure + suggestion
  *
- * 1028 → ~560 lines (JSX only, no inline logic)
+ * 564 → ~220 lines (composition only, no inline logic)
  */
 
 import type { MealAmount, PersonDaily } from '@/features/daily';
-import AccessTimeIcon from '@mui/icons-material/AccessTime';
-import DeleteIcon from '@mui/icons-material/Delete';
 import InfoOutlinedIcon from '@mui/icons-material/InfoOutlined';
 import OpenInNewIcon from '@mui/icons-material/OpenInNew';
 import PersonIcon from '@mui/icons-material/Person';
@@ -20,7 +20,6 @@ import AlertTitle from '@mui/material/AlertTitle';
 import Autocomplete from '@mui/material/Autocomplete';
 import Box from '@mui/material/Box';
 import Button from '@mui/material/Button';
-import Checkbox from '@mui/material/Checkbox';
 import Chip from '@mui/material/Chip';
 import CircularProgress from '@mui/material/CircularProgress';
 import Dialog from '@mui/material/Dialog';
@@ -28,7 +27,6 @@ import DialogActions from '@mui/material/DialogActions';
 import DialogContent from '@mui/material/DialogContent';
 import DialogTitle from '@mui/material/DialogTitle';
 import FormControl from '@mui/material/FormControl';
-import FormControlLabel from '@mui/material/FormControlLabel';
 import InputLabel from '@mui/material/InputLabel';
 import MenuItem from '@mui/material/MenuItem';
 import Paper from '@mui/material/Paper';
@@ -38,6 +36,8 @@ import Stack from '@mui/material/Stack';
 import TextField from '@mui/material/TextField';
 import Typography from '@mui/material/Typography';
 
+import { DailyRecordFormActivities } from './DailyRecordFormActivities';
+import { DailyRecordFormBehavior } from './DailyRecordFormBehavior';
 import { isProblemBehaviorEmpty, mealOptions } from './dailyRecordFormLogic';
 import { useDailyRecordFormState } from './useDailyRecordFormState';
 
@@ -71,7 +71,7 @@ export function DailyRecordForm({ open, onClose, record, onSave }: DailyRecordFo
 
       <DialogContent dividers data-testid="daily-record-form-content">
         <Stack spacing={3}>
-          {/* Phase 2: インラインエラー表示 */}
+          {/* Save error alert */}
           {s.saveError && (
             <Alert
               severity="error"
@@ -83,7 +83,7 @@ export function DailyRecordForm({ open, onClose, record, onSave }: DailyRecordFo
             </Alert>
           )}
 
-          {/* 基本情報 */}
+          {/* Basic info section */}
           <Paper sx={{ p: 2 }} data-testid="basic-info-section">
             <Typography variant="subtitle1" sx={{ mb: 2, display: 'flex', alignItems: 'center' }}>
               <PersonIcon sx={{ mr: 1 }} />
@@ -138,7 +138,7 @@ export function DailyRecordForm({ open, onClose, record, onSave }: DailyRecordFo
             </Stack>
           </Paper>
 
-          {/* Phase 1B: 関連申し送りの可視化 */}
+          {/* Related handoffs banner */}
           {s.formData.personId && (
             <>
               {s.loadingHandoffs && <Skeleton variant="rectangular" height={80} />}
@@ -193,111 +193,31 @@ export function DailyRecordForm({ open, onClose, record, onSave }: DailyRecordFo
             </>
           )}
 
-          {/* 午前の活動 */}
-          <Paper sx={{ p: 2 }}>
-            <Typography variant="subtitle1" sx={{ mb: 2, display: 'flex', alignItems: 'center' }}>
-              <AccessTimeIcon sx={{ mr: 1 }} />
-              午前の活動
-            </Typography>
+          {/* AM activities */}
+          <DailyRecordFormActivities
+            period="AM"
+            activities={s.formData.data.amActivities}
+            notes={s.formData.data.amNotes || ''}
+            newActivity={s.newActivityAM}
+            onNewActivityChange={s.setNewActivityAM}
+            onAddActivity={() => s.handleAddActivity('AM')}
+            onRemoveActivity={(index) => s.handleRemoveActivity('AM', index)}
+            onNotesChange={(value) => s.handleDataChange('amNotes', value)}
+          />
 
-            <Box sx={{ mb: 2 }}>
-              <Stack direction="row" spacing={1} sx={{ mb: 1 }}>
-                <TextField
-                  size="small"
-                  placeholder="活動内容を入力"
-                  value={s.newActivityAM}
-                  onChange={(e) => s.setNewActivityAM(e.target.value)}
-                  onKeyPress={(e) => {
-                    if (e.key === 'Enter') s.handleAddActivity('AM');
-                  }}
-                  sx={{ flexGrow: 1 }}
-                />
-                <Button
-                  variant="outlined"
-                  onClick={() => s.handleAddActivity('AM')}
-                  disabled={!s.newActivityAM.trim()}
-                >
-                  追加
-                </Button>
-              </Stack>
+          {/* PM activities */}
+          <DailyRecordFormActivities
+            period="PM"
+            activities={s.formData.data.pmActivities}
+            notes={s.formData.data.pmNotes || ''}
+            newActivity={s.newActivityPM}
+            onNewActivityChange={s.setNewActivityPM}
+            onAddActivity={() => s.handleAddActivity('PM')}
+            onRemoveActivity={(index) => s.handleRemoveActivity('PM', index)}
+            onNotesChange={(value) => s.handleDataChange('pmNotes', value)}
+          />
 
-              <Stack direction="row" flexWrap="wrap" gap={0.5}>
-                {s.formData.data.amActivities.map((activity: string, index: number) => (
-                  <Chip
-                    key={index}
-                    label={activity}
-                    onDelete={() => s.handleRemoveActivity('AM', index)}
-                    deleteIcon={<DeleteIcon />}
-                    size="small"
-                  />
-                ))}
-              </Stack>
-            </Box>
-
-            <TextField
-              fullWidth
-              multiline
-              rows={3}
-              label="午前の記録・メモ"
-              value={s.formData.data.amNotes || ''}
-              onChange={(e) => s.handleDataChange('amNotes', e.target.value)}
-              placeholder="午前中の様子や特記事項を記録"
-            />
-          </Paper>
-
-          {/* 午後の活動 */}
-          <Paper sx={{ p: 2 }}>
-            <Typography variant="subtitle1" sx={{ mb: 2, display: 'flex', alignItems: 'center' }}>
-              <AccessTimeIcon sx={{ mr: 1 }} />
-              午後の活動
-            </Typography>
-
-            <Box sx={{ mb: 2 }}>
-              <Stack direction="row" spacing={1} sx={{ mb: 1 }}>
-                <TextField
-                  size="small"
-                  placeholder="活動内容を入力"
-                  value={s.newActivityPM}
-                  onChange={(e) => s.setNewActivityPM(e.target.value)}
-                  onKeyPress={(e) => {
-                    if (e.key === 'Enter') s.handleAddActivity('PM');
-                  }}
-                  sx={{ flexGrow: 1 }}
-                />
-                <Button
-                  variant="outlined"
-                  onClick={() => s.handleAddActivity('PM')}
-                  disabled={!s.newActivityPM.trim()}
-                >
-                  追加
-                </Button>
-              </Stack>
-
-              <Stack direction="row" flexWrap="wrap" gap={0.5}>
-                {s.formData.data.pmActivities.map((activity: string, index: number) => (
-                  <Chip
-                    key={index}
-                    label={activity}
-                    onDelete={() => s.handleRemoveActivity('PM', index)}
-                    deleteIcon={<DeleteIcon />}
-                    size="small"
-                  />
-                ))}
-              </Stack>
-            </Box>
-
-            <TextField
-              fullWidth
-              multiline
-              rows={3}
-              label="午後の記録・メモ"
-              value={s.formData.data.pmNotes || ''}
-              onChange={(e) => s.handleDataChange('pmNotes', e.target.value)}
-              placeholder="午後の様子や特記事項を記録"
-            />
-          </Paper>
-
-          {/* 食事記録 */}
+          {/* Meal record */}
           <Paper sx={{ p: 2 }}>
             <Typography variant="subtitle1" sx={{ mb: 2, display: 'flex', alignItems: 'center' }}>
               <RestaurantIcon sx={{ mr: 1 }} />
@@ -323,163 +243,25 @@ export function DailyRecordForm({ open, onClose, record, onSave }: DailyRecordFo
             </FormControl>
           </Paper>
 
-          {/* 問題行動 - 申し送りからの自動提案バナー */}
-          {s.formData.personId &&
-            s.formData.date &&
-            !s.loadingHandoffs &&
-            !s.handoffError &&
-            s.problemSuggestion &&
-            !s.problemSuggestionApplied &&
-            isProblemBehaviorEmpty(s.formData.data.problemBehavior) && (
-              <Alert severity="info" sx={{ p: 2 }}>
-                <Stack spacing={1}>
-                  <Typography variant="subtitle2">
-                    💡 申し送りの内容から、問題行動の候補があります
-                  </Typography>
-                  <Typography variant="body2">
-                    必要であれば「提案を反映」を押すと、自傷・暴力・大声・異食などのチェックを
-                    自動でオンにします。不要な項目は後から外すことができます。
-                  </Typography>
-                  <Stack direction="row" spacing={1} flexWrap="wrap">
-                    {s.problemSuggestion.selfHarm && <Chip label="自傷（候補）" size="small" />}
-                    {s.problemSuggestion.violence && <Chip label="暴力（候補）" size="small" />}
-                    {s.problemSuggestion.loudVoice && <Chip label="大声（候補）" size="small" />}
-                    {s.problemSuggestion.pica && <Chip label="異食（候補）" size="small" />}
-                    {s.problemSuggestion.other && <Chip label="その他（候補）" size="small" />}
-                  </Stack>
-                  <Box>
-                    <Button variant="outlined" size="small" onClick={s.applyProblemBehaviorSuggestion}>
-                      提案を反映
-                    </Button>
-                  </Box>
-                </Stack>
-              </Alert>
-            )}
+          {/* Problem behavior + Seizure sections */}
+          <DailyRecordFormBehavior
+            problemBehavior={s.formData.data.problemBehavior}
+            seizureRecord={s.formData.data.seizureRecord}
+            onProblemBehaviorChange={s.handleProblemBehaviorChange}
+            onSeizureRecordChange={s.handleSeizureRecordChange}
+            showSuggestion={
+              !!s.formData.personId &&
+              !!s.formData.date &&
+              !s.loadingHandoffs &&
+              !s.handoffError &&
+              !s.problemSuggestionApplied &&
+              isProblemBehaviorEmpty(s.formData.data.problemBehavior)
+            }
+            problemSuggestion={s.problemSuggestion}
+            onApplySuggestion={s.applyProblemBehaviorSuggestion}
+          />
 
-          {/* 問題行動 */}
-          <Paper sx={{ p: 2 }}>
-            <Typography variant="subtitle1" sx={{ mb: 2 }}>
-              問題行動
-            </Typography>
-
-            <Stack direction="row" flexWrap="wrap" spacing={1} sx={{ mb: 2 }}>
-              <FormControlLabel
-                control={
-                  <Checkbox
-                    checked={s.formData.data.problemBehavior?.selfHarm || false}
-                    onChange={(e) => s.handleProblemBehaviorChange('selfHarm', e.target.checked)}
-                  />
-                }
-                label="自傷"
-              />
-              <FormControlLabel
-                control={
-                  <Checkbox
-                    checked={s.formData.data.problemBehavior?.violence || false}
-                    onChange={(e) => s.handleProblemBehaviorChange('violence', e.target.checked)}
-                  />
-                }
-                label="暴力"
-              />
-              <FormControlLabel
-                control={
-                  <Checkbox
-                    checked={s.formData.data.problemBehavior?.loudVoice || false}
-                    onChange={(e) => s.handleProblemBehaviorChange('loudVoice', e.target.checked)}
-                  />
-                }
-                label="大声"
-              />
-              <FormControlLabel
-                control={
-                  <Checkbox
-                    checked={s.formData.data.problemBehavior?.pica || false}
-                    onChange={(e) => s.handleProblemBehaviorChange('pica', e.target.checked)}
-                  />
-                }
-                label="異食"
-              />
-              <FormControlLabel
-                control={
-                  <Checkbox
-                    checked={s.formData.data.problemBehavior?.other || false}
-                    onChange={(e) => s.handleProblemBehaviorChange('other', e.target.checked)}
-                  />
-                }
-                label="その他"
-              />
-            </Stack>
-
-            {s.formData.data.problemBehavior?.other && (
-              <TextField
-                fullWidth
-                label="その他詳細"
-                value={s.formData.data.problemBehavior?.otherDetail || ''}
-                onChange={(e) => s.handleProblemBehaviorChange('otherDetail', e.target.value)}
-                multiline
-                rows={2}
-                sx={{ mt: 2 }}
-              />
-            )}
-          </Paper>
-
-          {/* 発作記録 */}
-          <Paper sx={{ p: 2 }}>
-            <Typography variant="subtitle1" sx={{ mb: 2 }}>
-              発作記録
-            </Typography>
-
-            <FormControlLabel
-              control={
-                <Checkbox
-                  checked={s.formData.data.seizureRecord?.occurred || false}
-                  onChange={(e) => s.handleSeizureRecordChange('occurred', e.target.checked)}
-                />
-              }
-              label="発作あり"
-              sx={{ mb: 2 }}
-            />
-
-            {s.formData.data.seizureRecord?.occurred && (
-              <Stack spacing={2}>
-                <TextField
-                  label="発作時刻"
-                  type="time"
-                  value={s.formData.data.seizureRecord?.time || ''}
-                  onChange={(e) => s.handleSeizureRecordChange('time', e.target.value)}
-                  InputLabelProps={{ shrink: true }}
-                />
-                <TextField
-                  label="持続時間"
-                  placeholder="例：約5分"
-                  value={s.formData.data.seizureRecord?.duration || ''}
-                  onChange={(e) => s.handleSeizureRecordChange('duration', e.target.value)}
-                />
-                <FormControl>
-                  <InputLabel>重症度</InputLabel>
-                  <Select
-                    name="seizureSeverity"
-                    value={s.formData.data.seizureRecord?.severity || ''}
-                    onChange={(e) => s.handleSeizureRecordChange('severity', e.target.value)}
-                    label="重症度"
-                  >
-                    <MenuItem value="軽度">軽度</MenuItem>
-                    <MenuItem value="中等度">中等度</MenuItem>
-                    <MenuItem value="重度">重度</MenuItem>
-                  </Select>
-                </FormControl>
-                <TextField
-                  label="発作メモ"
-                  multiline
-                  rows={2}
-                  value={s.formData.data.seizureRecord?.notes || ''}
-                  onChange={(e) => s.handleSeizureRecordChange('notes', e.target.value)}
-                />
-              </Stack>
-            )}
-          </Paper>
-
-          {/* 特記事項 */}
+          {/* Special notes */}
           <Paper sx={{ p: 2 }}>
             <Typography variant="subtitle1" sx={{ mb: 2 }}>
               特記事項
