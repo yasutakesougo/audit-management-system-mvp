@@ -405,7 +405,7 @@ const TimeBasedSupportRecordPage: React.FC = () => {
             <>
               <Tooltip title="手順を編集">
                 <IconButton
-                  onClick={handleEditorOpen}
+                  onClick={() => setIsEditOpen(true)}
                   size="small"
                   color="primary"
                   aria-label="手順を編集"
