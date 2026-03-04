@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type { HandoffStats } from './TodayHandoffTimelineList';
+import { getAllowedActions } from './handoffStateMachine';
 import type {
     HandoffDayScope,
     HandoffRecord,
@@ -7,7 +8,6 @@ import type {
     HandoffTimeFilter,
     MeetingMode,
 } from './handoffTypes';
-import { getAllowedActions } from './handoffTypes';
 
 // ────────────────────────────────────────────────────────────
 // Types

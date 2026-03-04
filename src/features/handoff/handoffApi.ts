@@ -5,15 +5,17 @@ import { useSP } from '../../lib/spClient';
 import { generateTitleFromMessage } from './generateTitleFromMessage';
 import { handoffConfig } from './handoffConfig';
 import {
+    fromSpHandoffItem,
+    toSpHandoffCreatePayload,
+    toSpHandoffUpdatePayload,
+} from './handoffMappers';
+import { isTerminalStatus } from './handoffStateMachine';
+import type {
     HandoffDayScope,
     HandoffRecord,
     HandoffTimeFilter,
     NewHandoffInput,
     SpHandoffItem,
-    fromSpHandoffItem,
-    isTerminalStatus,
-    toSpHandoffCreatePayload,
-    toSpHandoffUpdatePayload,
 } from './handoffTypes';
 
 /**

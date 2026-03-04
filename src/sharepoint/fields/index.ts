@@ -1,0 +1,136 @@
+/**
+ * SharePoint フィールド定義 — バレル re-export
+ *
+ * 旧 fields.ts の公開 API をすべて維持。
+ * 42+ ファイルからの `import ... from '@/sharepoint/fields'` が
+ * 修正不要で動作するよう、全シンボルを re-export する。
+ */
+
+// ── 共通ユーティリティ ──
+export { buildSelectFieldsFromMap, joinSelect } from './fieldUtils';
+
+// ── リストレジストリ ──
+export { LIST_CONFIG, ListKeys } from './listRegistry';
+
+// ── Users_Master ──
+export {
+    resolveUserSelectFields, USERS_MASTER_FIELD_MAP, USERS_SELECT_FIELDS, USERS_SELECT_FIELDS_CORE,
+    USERS_SELECT_FIELDS_DETAIL,
+    USERS_SELECT_FIELDS_FULL, USERS_SELECT_FIELDS_SAFE,
+    USERS_SELECT_SAFE, type IUserMaster,
+    type IUserMasterCreateDto,
+    type UserSelectMode
+} from './userFields';
+export type { UserRow } from './userFields';
+
+// ── Staff_Master ──
+export {
+    STAFF_MASTER_FIELD_MAP, STAFF_SELECT, STAFF_SELECT_FIELDS_CANONICAL
+} from './staffFields';
+export type { StaffRow } from './staffFields';
+
+// ── Schedules ──
+export {
+    SCHEDULE_FIELD_ASSIGNED_STAFF,
+    SCHEDULE_FIELD_ASSIGNED_STAFF_ID, SCHEDULE_FIELD_BILLING_FLAGS, SCHEDULE_FIELD_CATEGORY, SCHEDULE_FIELD_CREATED_AT, SCHEDULE_FIELD_DAY_KEY, SCHEDULE_FIELD_DAY_PART, SCHEDULE_FIELD_END, SCHEDULE_FIELD_ENTRY_HASH, SCHEDULE_FIELD_EXTERNAL_CONTACT, SCHEDULE_FIELD_EXTERNAL_NAME,
+    SCHEDULE_FIELD_EXTERNAL_ORG, SCHEDULE_FIELD_FISCAL_YEAR,
+    SCHEDULE_FIELD_MONTH_KEY, SCHEDULE_FIELD_NOTE, SCHEDULE_FIELD_ORG_AUDIENCE, SCHEDULE_FIELD_ORG_EXTERNAL_NAME, SCHEDULE_FIELD_ORG_RESOURCE_ID, SCHEDULE_FIELD_PERSON_ID,
+    SCHEDULE_FIELD_PERSON_NAME, SCHEDULE_FIELD_PERSON_TYPE, SCHEDULE_FIELD_RELATED_RESOURCE,
+    SCHEDULE_FIELD_RELATED_RESOURCE_ID,
+    SCHEDULE_FIELD_ROW_KEY, SCHEDULE_FIELD_SERVICE_TYPE, SCHEDULE_FIELD_STAFF_IDS,
+    SCHEDULE_FIELD_STAFF_NAMES, SCHEDULE_FIELD_START, SCHEDULE_FIELD_STATUS, SCHEDULE_FIELD_SUB_TYPE, SCHEDULE_FIELD_TARGET_USER,
+    SCHEDULE_FIELD_TARGET_USER_ID, SCHEDULE_FIELD_UPDATED_AT,
+    SCHEDULES_BASE_FIELDS, SCHEDULES_COMMON_OPTIONAL_FIELDS, SCHEDULES_DEVELOPMENT_OPTIONAL_FIELDS, SCHEDULES_FIELD_MAP, SCHEDULES_MINIMAL_FIELDS, SCHEDULES_SELECT_FIELDS, SCHEDULES_STAFF_TEXT_FIELDS
+} from './scheduleFields';
+export type { ScheduleRow } from './scheduleFields';
+
+// ── DailyActivityRecords + Daily record fields ──
+export {
+    buildDailyActivitySelectFields, DAILY_ACTIVITY_SELECT_FIELDS, DAILY_FIELD_BEHAVIOR_LOG, DAILY_FIELD_DATE, DAILY_FIELD_DRAFT, DAILY_FIELD_END_TIME,
+    DAILY_FIELD_LOCATION, DAILY_FIELD_MEAL_LOG, DAILY_FIELD_NOTES, DAILY_FIELD_STAFF_ID, DAILY_FIELD_START_TIME, DAILY_FIELD_STATUS, DAILY_FIELD_USER_ID, FIELD_MAP_DAILY_ACTIVITY
+} from './dailyFields';
+export type { DailyRow } from './dailyFields';
+
+// ── Attendance (Staff, Users, Daily) ──
+export {
+    ATTENDANCE_DAILY_FIELDS, ATTENDANCE_DAILY_LIST_TITLE, ATTENDANCE_DAILY_SELECT_FIELDS, ATTENDANCE_USERS_FIELDS, ATTENDANCE_USERS_LIST_TITLE, ATTENDANCE_USERS_SELECT_FIELDS, STAFF_ATTENDANCE_FIELD_MAP, STAFF_ATTENDANCE_FIELDS, STAFF_ATTENDANCE_LIST_TITLE, STAFF_ATTENDANCE_SELECT_FIELDS
+} from './attendanceFields';
+
+// ── PlanGoals (ISP) ──
+export {
+    buildPlanGoalsSelectFields, PLAN_GOALS_FIELDS, PLAN_GOALS_LIST_TITLE, PLAN_GOALS_SELECT_FIELDS, type PlanGoalPayload, type SpPlanGoalItem
+} from './planGoalFields';
+
+// ── MeetingMinutes ──
+export {
+    MEETING_MINUTES_FIELDS, MEETING_MINUTES_LIST_TITLE, MEETING_MINUTES_SELECT_FIELDS
+} from './meetingMinutesFields';
+
+// ── ServiceProvision ──
+export {
+    SERVICE_PROVISION_FIELDS, SERVICE_PROVISION_LIST_TITLE, SERVICE_PROVISION_SELECT_FIELDS
+} from './serviceProvisionFields';
+
+// ── Org_Master ──
+export {
+    ORG_MASTER_FIELDS, ORG_MASTER_LIST_TITLE, ORG_MASTER_SELECT_FIELDS
+} from './orgMasterFields';
+
+// ── Diagnostics_Reports ──
+export {
+    DIAGNOSTICS_REPORTS_LIST_TITLE, DIAGNOSTICS_REPORTS_SELECT_FIELDS, FIELD_MAP_DIAGNOSTICS_REPORTS
+} from './diagnosticsFields';
+
+// ── Iceberg ──
+export {
+    buildIcebergPdcaSelectFields, FIELD_MAP_ICEBERG_ANALYSIS,
+    FIELD_MAP_ICEBERG_PDCA,
+    ICEBERG_PDCA_SELECT_FIELDS
+} from './icebergFields';
+
+// ── Survey/Tokusei ──
+export {
+    buildSurveyTokuseiSelectFields, FIELD_DERIVED_TOKUSEI, FIELD_MAP_SURVEY_TOKUSEI, FIELD_MAP_SURVEY_TOKUSEI_ALL,
+    SURVEY_TOKUSEI_SELECT_FIELDS
+} from './surveyTokuseiFields';
+
+// ── SupportTemplates ──
+export {
+    buildSupportTemplatesSelectFields, FIELD_MAP_SUPPORT_TEMPLATES, SUPPORT_TEMPLATES_LIST_TITLE, SUPPORT_TEMPLATES_SELECT_FIELDS
+} from './supportTemplateFields';
+
+// ── Handoff ──
+export {
+    buildHandoffSelectFields, FIELD_MAP_HANDOFF
+} from './handoffFields';
+
+// ── BillingOrders ──
+export {
+    BILLING_ORDERS_LIST_ID,
+    FIELD_MAP_BILLING_ORDERS
+} from './billingFields';
+
+// ── SupportPlans ──
+export {
+    SUPPORT_PLANS_FIELDS, SUPPORT_PLANS_LIST_TITLE, SUPPORT_PLANS_SELECT_FIELDS
+} from './supportPlanFields';
+
+// ──────────────────────────────────────────────────────────────
+// 統合 FIELD_MAP（後方互換用）
+//
+// 旧コードは `FIELD_MAP.Users_Master.xxx` のようにアクセスする。
+// 各ドメインの個別 field map を統合して公開する。
+// ──────────────────────────────────────────────────────────────
+import { STAFF_ATTENDANCE_FIELD_MAP } from './attendanceFields';
+import { ORG_MASTER_FIELDS } from './orgMasterFields';
+import { SCHEDULES_FIELD_MAP } from './scheduleFields';
+import { STAFF_MASTER_FIELD_MAP } from './staffFields';
+import { USERS_MASTER_FIELD_MAP } from './userFields';
+
+export const FIELD_MAP = {
+  Users_Master: USERS_MASTER_FIELD_MAP,
+  Staff_Master: STAFF_MASTER_FIELD_MAP,
+  Staff_Attendance: STAFF_ATTENDANCE_FIELD_MAP,
+  Org_Master: ORG_MASTER_FIELDS,
+  Schedules: SCHEDULES_FIELD_MAP,
+} as const;

@@ -4,107 +4,37 @@
  * v1.0: localStorage mock実装
  * v1.1: 時間帯フィルタ対応（Step 7B）
  * v2.0: SharePoint API対応（Phase 8A）
+ * v2.1: 監査ログ自動記録（ステータス変更・新規作成）
  * 後でSharePoint API実装に差し替え可能な設計
  */
 
+import { useAuth } from '@/auth/useAuth';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { generateTitleFromMessage } from './generateTitleFromMessage';
 import { useHandoffApi } from './handoffApi';
+import { useHandoffAuditApi } from './handoffAuditApi';
 import { handoffConfig } from './handoffConfig';
+import { HANDOFF_TIME_FILTER_PRESETS } from './handoffConstants';
 import {
-    HANDOFF_TIME_FILTER_PRESETS,
+    generateId,
+    getDateKeyForScope,
+    getRecentDateKeys,
+    getTodayKey,
+    loadStorage,
+    saveStorage,
+} from './handoffStorageUtils';
+import type {
     HandoffDayScope,
     HandoffRecord,
     HandoffTimeFilter,
     NewHandoffInput,
 } from './handoffTypes';
 
-const STORAGE_KEY = 'handoff.timeline.dev.v1';
-
 type HandoffTimelineState = {
   todayHandoffs: HandoffRecord[];
   loading: boolean;
   error: string | null;
 };
-
-/**
- * 日付キーを生成（YYYY-MM-DD形式）
- */
-function getTodayKey(date = new Date()): string {
-  const y = date.getFullYear();
-  const m = `${date.getMonth() + 1}`.padStart(2, '0');
-  const d = `${date.getDate()}`.padStart(2, '0');
-  return `${y}-${m}-${d}`;
-}
-
-/**
- * 日付スコープに応じた日付キーを取得（Step 7C）
- */
-function getDateKeyForScope(dayScope: HandoffDayScope): string | null {
-  const now = new Date();
-  if (dayScope === 'yesterday') {
-    const yesterday = new Date(now);
-    yesterday.setDate(now.getDate() - 1);
-    return getTodayKey(yesterday);
-  }
-  if (dayScope === 'week') {
-    return null;
-  }
-  return getTodayKey(now);
-}
-
-function getRecentDateKeys(days: number): string[] {
-  const keys: string[] = [];
-  const now = new Date();
-  for (let offset = 0; offset < days; offset += 1) {
-    const target = new Date(now);
-    target.setDate(now.getDate() - offset);
-    keys.push(getTodayKey(target));
-  }
-  return keys;
-}
-
-type StorageShape = Record<string, HandoffRecord[]>;
-
-/**
- * localStorage からデータを読み込み
- */
-function loadStorage(): StorageShape {
-  try {
-    const raw = window.localStorage.getItem(STORAGE_KEY);
-    if (!raw) return {};
-    return JSON.parse(raw) as StorageShape;
-  } catch {
-    return {};
-  }
-}
-
-/**
- * localStorage にデータを保存
- */
-function saveStorage(data: StorageShape) {
-  try {
-    window.localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
-  } catch {
-    // 保存失敗は非致命的エラーとして処理
-    console.warn('Failed to save handoff data to localStorage');
-  }
-}
-
-/**
- * 一意IDを生成
- */
-function generateId(): number {
-  if (typeof crypto !== 'undefined' && 'randomUUID' in crypto) {
-    // UUIDのハッシュから数値IDを生成
-    const uuid = crypto.randomUUID();
-    const hash = uuid.replace(/-/g, '').slice(0, 8);
-    return parseInt(hash, 16);
-  }
-
-  // フォールバック: タイムスタンプベース
-  return Date.now() + Math.floor(Math.random() * 1000);
-}
 
 /**
  * 申し送りタイムライン管理フック（Step 7C: dayScope対応）
@@ -118,6 +48,8 @@ export function useHandoffTimeline(
   dayScope: HandoffDayScope = 'today'
 ) {
   const handoffApi = useHandoffApi(); // フックでAPIインスタンスを取得
+  const auditApi = useHandoffAuditApi(); // 監査ログAPIインスタンス
+  const { account } = useAuth(); // 操作者情報
 
   const [state, setState] = useState<HandoffTimelineState>({
     todayHandoffs: [],
@@ -242,7 +174,17 @@ export function useHandoffTimeline(
         }
       }
 
-      // 本番では meetingLogger などでログ出力
+      // 監査ログ記録（fire-and-forget: UXをブロックしない）
+      const changedBy = account?.name ?? account?.username ?? newRecord.createdByName;
+      const changedByAccount = account?.username ?? 'unknown';
+      auditApi.recordCreation(
+        newRecord.id,
+        changedBy,
+        changedByAccount,
+      ).catch(e => {
+        console.warn('[handoff-audit] 新規作成の監査ログ記録に失敗:', e);
+      });
+
       console.log('[handoff] Created:', {
         id: newRecord.id,
         userDisplayName: newRecord.userDisplayName,
@@ -250,14 +192,19 @@ export function useHandoffTimeline(
         severity: newRecord.severity,
       });
     },
-    [], // dateKey依存を削除（常にtoday keyを使用）
+    [auditApi, account], // auditApi, account 依存追加
   );
 
   /**
    * 申し送りの状態を更新（Phase 8A: 2モード対応 + v3: carryOverDate対応）
+   * v2.1: 成功時に監査ログを自動記録
    */
   const updateHandoffStatus = useCallback(
     async (id: number, newStatus: HandoffRecord['status'], carryOverDate?: string) => {
+      // 変更前のステータスを記録（監査ログ用）
+      const targetRecord = state.todayHandoffs.find(item => item.id === id);
+      const oldStatus = targetRecord?.status;
+
       // 楽観的更新
       const previousState = state.todayHandoffs;
       setState(prev => ({
@@ -308,7 +255,20 @@ export function useHandoffTimeline(
           }
         }
 
-        console.log('[handoff] Status updated:', { id, newStatus });
+        // 監査ログ記録（fire-and-forget: UXをブロックしない）
+        const changedBy = account?.name ?? account?.username ?? 'システム';
+        const changedByAccount = account?.username ?? 'unknown';
+        auditApi.recordStatusChange(
+          id,
+          oldStatus ?? '不明',
+          newStatus,
+          changedBy,
+          changedByAccount,
+        ).catch(e => {
+          console.warn('[handoff-audit] ステータス変更の監査ログ記録に失敗:', e);
+        });
+
+        console.log('[handoff] Status updated:', { id, oldStatus, newStatus });
       } catch (error) {
         // エラー時は楽観的更新を取り消し
         setState(prev => ({
@@ -322,7 +282,7 @@ export function useHandoffTimeline(
         throw new Error('状態更新に失敗しました');
       }
     },
-    [dateKey, state.todayHandoffs],
+    [dateKey, state.todayHandoffs, auditApi, account],
   );
 
   // 初回ロード

@@ -3,10 +3,13 @@
  *
  * 「今すぐ申し送り」機能
  * いつでも画面上部から素早く申し送りを追加可能
+ * v2: 送信成功フィードバック（✅ 送信しました！）
  */
 
 import type { IUserMaster } from '@/sharepoint/fields';
+import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import {
+    Alert,
     Box,
     Button,
     Card,
@@ -14,13 +17,14 @@ import {
     CardContent,
     CardHeader,
     Chip,
+    Collapse,
     Divider,
     MenuItem,
     Stack,
     TextField,
     Typography,
 } from '@mui/material';
-import React, { useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useUsersDemo } from '../users/usersStoreDemo';
 import type { HandoffCategory, HandoffSeverity } from './handoffTypes';
 import { getTimeBandPlaceholder, useCurrentTimeBand } from './useCurrentTimeBand';
@@ -40,6 +44,9 @@ const CATEGORY_OPTIONS: HandoffCategory[] = [
 
 const SEVERITY_OPTIONS: HandoffSeverity[] = ['通常', '要注意', '重要'];
 
+/** 送信フィードバックの表示時間 (ms) */
+const SUCCESS_DISPLAY_MS = 3000;
+
 export const HandoffQuickNoteCard: React.FC = () => {
   const timeBand = useCurrentTimeBand();
   const { createHandoff } = useHandoffTimeline();
@@ -51,12 +58,30 @@ export const HandoffQuickNoteCard: React.FC = () => {
   const [message, setMessage] = useState('');
   const [submitting, setSubmitting] = useState(false);
 
+  // v2: 送信結果フィードバック
+  const [submitResult, setSubmitResult] = useState<'success' | 'error' | null>(null);
+  const timerRef = useRef<ReturnType<typeof setTimeout>>();
+
+  // 自動非表示タイマーのクリーンアップ
+  useEffect(() => {
+    return () => {
+      if (timerRef.current) clearTimeout(timerRef.current);
+    };
+  }, []);
+
+  const showFeedback = useCallback((result: 'success' | 'error') => {
+    setSubmitResult(result);
+    if (timerRef.current) clearTimeout(timerRef.current);
+    timerRef.current = setTimeout(() => setSubmitResult(null), SUCCESS_DISPLAY_MS);
+  }, []);
+
   const placeholder = useMemo(() => getTimeBandPlaceholder(timeBand), [timeBand]);
 
   const handleSubmit = async () => {
     if (!message.trim()) return;
 
     setSubmitting(true);
+    setSubmitResult(null);
     try {
       const userCode = target === 'ALL' ? 'ALL' : target.UserID.toString();
       const userDisplayName = target === 'ALL' ? '全体' : target.FullName;
@@ -71,13 +96,14 @@ export const HandoffQuickNoteCard: React.FC = () => {
         title: `${userDisplayName} / ${category}`,
       });
 
-      // 送信成功時はフォームをクリア
+      // 送信成功時はフォームをクリア + フィードバック表示
       setMessage('');
+      showFeedback('success');
 
       // カテゴリ・重要度はリセットしない（連続入力しやすくするため）
     } catch (error) {
       console.error('[handoff] Submit failed:', error);
-      // エラーハンドリングは useHandoffTimeline で行われている
+      showFeedback('error');
     } finally {
       setSubmitting(false);
     }
@@ -94,6 +120,32 @@ export const HandoffQuickNoteCard: React.FC = () => {
       />
       <CardContent>
         <Stack spacing={2}>
+          {/* v2: 送信結果フィードバック */}
+          <Collapse in={submitResult !== null}>
+            {submitResult === 'success' && (
+              <Alert
+                severity="success"
+                icon={<CheckCircleIcon fontSize="inherit" />}
+                onClose={() => setSubmitResult(null)}
+                sx={{
+                  fontWeight: 600,
+                  '& .MuiAlert-message': { fontSize: '0.95rem' },
+                }}
+              >
+                ✅ 送信しました！タイムラインに反映されました。
+              </Alert>
+            )}
+            {submitResult === 'error' && (
+              <Alert
+                severity="error"
+                onClose={() => setSubmitResult(null)}
+                sx={{ fontWeight: 600 }}
+              >
+                ⚠️ 送信に失敗しました。もう一度お試しください。
+              </Alert>
+            )}
+          </Collapse>
+
           {/* 対象選択 + 時間帯表示 */}
           <Stack direction="row" spacing={1} alignItems="center">
             <TextField
