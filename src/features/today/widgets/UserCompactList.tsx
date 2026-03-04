@@ -1,3 +1,4 @@
+import { motionTokens } from '@/app/theme';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import EditNoteIcon from '@mui/icons-material/EditNote';
 import GroupOffIcon from '@mui/icons-material/GroupOff';
@@ -45,7 +46,7 @@ const UserCompactRow = React.memo<{
         alignItems: 'center',
         cursor: 'pointer',
         minHeight: 44, // タップ領域確保 (PR3要件)
-        transition: 'background-color 0.2s',
+        transition: motionTokens.transition.bgColor,
         '&:hover, &:focus-visible': { bgcolor: 'action.hover' },
         outline: 'none',
         ...(user.status === 'absent' && {

@@ -6,6 +6,7 @@
  */
 
 import { ThemeProvider, createTheme } from '@mui/material/styles';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import React from 'react';
@@ -21,13 +22,18 @@ vi.mock('../useCurrentMeeting');
 const mockUseCurrentMeeting = vi.mocked(useCurrentMeeting);
 
 const theme = createTheme();
+const queryClient = new QueryClient({
+  defaultOptions: { queries: { retry: false } },
+});
 
 const TestWrapper: React.FC<{ children: React.ReactNode }> = ({ children }) => (
-  <MemoryRouter>
-    <ThemeProvider theme={theme}>
-      {children}
-    </ThemeProvider>
-  </MemoryRouter>
+  <QueryClientProvider client={queryClient}>
+    <MemoryRouter>
+      <ThemeProvider theme={theme}>
+        {children}
+      </ThemeProvider>
+    </MemoryRouter>
+  </QueryClientProvider>
 );
 
 describe('Phase 5B: MeetingGuidePage ↔ MeetingGuideDrawer リアルタイム同期', () => {

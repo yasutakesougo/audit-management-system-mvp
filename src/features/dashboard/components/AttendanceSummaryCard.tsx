@@ -6,6 +6,7 @@
  * 両方で使用可能。
  */
 
+import { motionTokens } from '@/app/theme';
 import type { AttendanceSummaryData } from '@/features/analysis/hooks/useAnalysisDashboardViewModel';
 import LocalFireDepartmentIcon from '@mui/icons-material/LocalFireDepartment';
 import NightsStayIcon from '@mui/icons-material/NightsStay';
@@ -61,7 +62,7 @@ const DonutContent: React.FC<{ data: AttendanceSummaryData; title: string }> = (
                     strokeDasharray={`${dashLen} ${circumference - dashLen}`}
                     strokeDashoffset={dashOffset}
                     strokeLinecap="butt"
-                    style={{ transform: 'rotate(-90deg)', transformOrigin: '50% 50%', transition: 'stroke-dasharray 0.5s ease-out' }}
+                    style={{ transform: 'rotate(-90deg)', transformOrigin: '50% 50%', transition: motionTokens.transition.chartStroke }}
                   />
                 );
               })}

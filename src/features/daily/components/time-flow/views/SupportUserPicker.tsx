@@ -2,6 +2,7 @@
 // SupportUserPicker — 利用者ピッカー
 // ---------------------------------------------------------------------------
 
+import { motionTokens } from '@/app/theme';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import Alert from '@mui/material/Alert';
 import Avatar from '@mui/material/Avatar';
@@ -82,7 +83,7 @@ const SupportUserPicker: React.FC<SupportUserPickerProps> = ({
                   borderWidth: isSelected ? 2 : 1,
                   borderColor: isSelected ? 'primary.main' : 'divider',
                   boxShadow: isSelected ? 6 : 1,
-                  transition: 'border-color 0.2s ease, box-shadow 0.2s ease',
+                  transition: motionTokens.transition.sectionHighlightBasic,
                 }}
               >
                 <CardActionArea onClick={() => onSelect(user.id)} sx={{ p: 2 }}>

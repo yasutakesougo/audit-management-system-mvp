@@ -16,6 +16,7 @@
  * - 次にフリーになる時間表示
  */
 
+import { motionTokens } from '@/app/theme';
 import { EmptyState } from '@/features/dashboard/components/EmptyState';
 import { StaffDetailDialog } from '@/features/dashboard/dialogs/StaffDetailDialog';
 import type { StaffAvailability, StaffAvailabilityStatus } from '@/features/dashboard/staffAvailability';
@@ -219,7 +220,7 @@ export const StaffStatusTab: React.FC<StaffStatusTabProps> = ({
                     boxShadow: 2,
                     cursor: 'pointer',
                     transform: 'translateY(-2px)',
-                    transition: 'all 0.2s ease',
+                    transition: motionTokens.transition.hoverAll,
                   },
                 }}
                 onClick={() => handleStaffClick(staff)}  // ✨ クリックイベント追加

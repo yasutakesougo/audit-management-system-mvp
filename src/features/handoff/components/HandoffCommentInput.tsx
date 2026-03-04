@@ -7,6 +7,7 @@
  * - 送信完了後に入力欄をクリア
  */
 
+import { motionTokens } from '@/app/theme';
 import SendIcon from '@mui/icons-material/Send';
 import CircularProgress from '@mui/material/CircularProgress';
 import IconButton from '@mui/material/IconButton';
@@ -83,7 +84,7 @@ export const HandoffCommentInput: React.FC<HandoffCommentInputProps> = ({
         size="small"
         sx={{
           flexShrink: 0,
-          transition: 'all 0.2s ease',
+          transition: motionTokens.transition.hoverAll,
           '&:not(:disabled):hover': {
             bgcolor: 'primary.main',
             color: 'white',

@@ -10,6 +10,7 @@
  * - クリックで詳細モーダル表示（バイタル、特記事項など）
  */
 
+import { motionTokens } from '@/app/theme';
 import { EmptyState } from '@/features/dashboard/components/EmptyState';
 import { UserDetailDialog, type UserDetail } from '@/features/dashboard/dialogs/UserDetailDialog';
 import AccessTimeIcon from '@mui/icons-material/AccessTime';
@@ -171,7 +172,7 @@ export const UserStatusTab: React.FC<UserStatusTabProps> = ({
                     bgcolor: 'error.light',
                     cursor: 'pointer',
                     transform: 'translateY(-2px)',
-                    transition: 'all 0.2s ease',
+                    transition: motionTokens.transition.hoverAll,
                   },
                 }}
                 onClick={() => handleUserClick(user.id, user.name, 'absent', user.reason)}  // ✨ クリックイベント
@@ -214,7 +215,7 @@ export const UserStatusTab: React.FC<UserStatusTabProps> = ({
                     bgcolor: 'warning.light',
                     cursor: 'pointer',
                     transform: 'translateY(-2px)',
-                    transition: 'all 0.2s ease',
+                    transition: motionTokens.transition.hoverAll,
                   },
                 }}
                 onClick={() => handleUserClick(user.id, user.name, user.type)}  // ✨ クリックイベント

@@ -14,6 +14,7 @@
  * - クリック時のセクションジャンプ
  */
 
+import { motionTokens } from '@/app/theme';
 import type { BriefingAlert } from '@/features/dashboard/sections/types';
 import ErrorIcon from '@mui/icons-material/Error';
 import EventIcon from '@mui/icons-material/Event';
@@ -119,7 +120,7 @@ export const DashboardBriefingHUD: React.FC<DashboardBriefingHUDProps> = ({
         borderRadius: 1.5,
         boxShadow: isBriefingTime ? 3 : 0,
         mb: 3,
-        transition: 'all 0.3s ease',
+        transition: motionTokens.transition.cardInteractive,
       }}
       data-testid="dashboard-briefing-hud"
     >
@@ -162,7 +163,7 @@ export const DashboardBriefingHUD: React.FC<DashboardBriefingHUDProps> = ({
                 transform: 'scale(1.05)',
                 boxShadow: 2,
               },
-              transition: 'all 0.2s ease',
+              transition: motionTokens.transition.hoverAll,
             }}
             data-testid={`briefing-alert-${alert.id}`}
           />

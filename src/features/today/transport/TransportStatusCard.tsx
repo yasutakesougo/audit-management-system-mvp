@@ -14,6 +14,7 @@
  * All state management is delegated to useTransportStatus hook.
  */
 
+import { motionTokens } from '@/app/theme';
 import CheckCircleOutlineIcon from '@mui/icons-material/CheckCircleOutline';
 import DirectionsBusIcon from '@mui/icons-material/DirectionsBus';
 import PersonOffIcon from '@mui/icons-material/PersonOff';
@@ -99,7 +100,7 @@ function DirectionProgress({ summary }: { summary: TransportDirectionSummary }) 
           '& .MuiLinearProgress-bar': {
             borderRadius: 4,
             bgcolor: isComplete ? 'success.main' : 'primary.main',
-            transition: 'width 0.4s ease-in-out',
+            transition: `width ${motionTokens.duration.slow} ${motionTokens.easing.smooth}`,
           },
         }}
       />
@@ -141,7 +142,7 @@ const TransportLegRow = React.memo(function TransportLegRow({
         bgcolor: isOverdue ? 'error.50' : 'transparent',
         borderLeft: isOverdue ? '3px solid' : 'none',
         borderColor: isOverdue ? 'error.main' : 'transparent',
-        transition: 'background-color 0.3s ease',
+        transition: motionTokens.transition.bgColorSlow,
         '&:hover': {
           bgcolor: isOverdue ? 'error.100' : 'action.hover',
         },

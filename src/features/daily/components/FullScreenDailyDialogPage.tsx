@@ -77,26 +77,37 @@ export function FullScreenDailyDialogPage({
         inset: 0,
         bgcolor: 'background.default',
         zIndex: 1300,
-        overflow: 'auto',
+        overflow: 'hidden',
         display: 'flex',
         flexDirection: 'column',
       }}
     >
       <AppBar position="sticky" color="default" elevation={1}>
-        <Toolbar variant="dense" sx={{ gap: 0.5 }}>
+        <Toolbar variant="dense" sx={{ gap: 0.5, minWidth: 0 }}>
           <Button
             onClick={handleClose}
             startIcon={<CloseIcon fontSize="small" />}
             variant="text"
             size="small"
-            sx={{ minWidth: 90, fontSize: '0.8rem' }}
+            sx={{ minWidth: 90, fontSize: '0.8rem', flexShrink: 0 }}
             disabled={busy}
             data-testid="daily-dialog-close"
           >
             キャンセル
           </Button>
 
-          <Typography sx={{ flex: 1 }} variant="subtitle1" component="h1" data-page-heading="true">
+          <Typography
+            sx={{
+              flex: 1,
+              minWidth: 0,
+              overflow: 'hidden',
+              textOverflow: 'ellipsis',
+              whiteSpace: 'nowrap',
+            }}
+            variant="subtitle1"
+            component="h1"
+            data-page-heading="true"
+          >
             {title}
           </Typography>
 
@@ -107,14 +118,14 @@ export function FullScreenDailyDialogPage({
             startIcon={<HomeOutlinedIcon fontSize="small" />}
             variant="outlined"
             size="small"
-            sx={{ minHeight: 32, fontSize: '0.78rem', px: 1.5 }}
+            sx={{ minHeight: 32, fontSize: '0.78rem', px: 1.5, flexShrink: 0 }}
           >
             日次ハブ
           </Button>
         </Toolbar>
       </AppBar>
 
-      <Box sx={{ flex: 1, overflow: 'auto' }}>
+      <Box sx={{ flex: 1, minHeight: 0, overflow: 'hidden' }}>
         {children}
       </Box>
     </Box>

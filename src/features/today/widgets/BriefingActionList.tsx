@@ -10,6 +10,7 @@
  *
  * @see docs/adr/ADR-002-today-execution-layer-guardrails.md
  */
+import { motionTokens } from '@/app/theme';
 import type { BriefingAlert } from '@/features/dashboard/sections/types';
 import AssignmentTurnedInIcon from '@mui/icons-material/AssignmentTurnedIn';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
@@ -161,7 +162,7 @@ export const BriefingActionList: React.FC<BriefingActionListProps> = ({ alerts }
                             borderRadius: 1,
                             bgcolor: status === 'done' ? 'action.hover' : 'transparent',
                             opacity: status === 'done' ? 0.7 : 1,
-                            transition: 'all 0.2s ease',
+                            transition: motionTokens.transition.hoverAll,
                           }}
                         >
                           <Typography

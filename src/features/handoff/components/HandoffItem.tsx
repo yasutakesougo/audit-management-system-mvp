@@ -9,6 +9,7 @@
  * - 会議モード別ワークフローアクションボタン
  */
 
+import { motionTokens } from '@/app/theme';
 import { TESTIDS, tid } from '@/testids';
 import {
     AccessTime as AccessTimeIcon,
@@ -195,7 +196,7 @@ export const HandoffItem: React.FC<HandoffItemProps> = ({
           boxShadow: `inset 4px 0 8px -4px ${severityStyle.glowColor}, 0 1px 3px rgba(0,0,0,0.04)`,
         }),
         // ステータス変更時の pulse アニメーション
-        transition: 'all 0.3s ease',
+        transition: motionTokens.transition.cardInteractive,
         ...(statusPulse && {
           boxShadow: (theme) =>
             `0 0 0 2px ${theme.palette.primary.main}40`,
@@ -276,7 +277,7 @@ export const HandoffItem: React.FC<HandoffItemProps> = ({
                 fontWeight: 600,
                 fontSize: '0.7rem',
                 height: 26,
-                transition: 'transform 0.2s ease',
+                transition: motionTokens.transition.hoverTransform,
                 '&:active': { transform: 'scale(0.95)' },
               }}
             />
@@ -502,7 +503,7 @@ export const HandoffItem: React.FC<HandoffItemProps> = ({
                           fontSize: '0.8rem',
                           fontWeight: 600,
                           borderRadius: 2,
-                          transition: 'all 0.2s ease',
+                          transition: motionTokens.transition.hoverAll,
                           '&:active': { transform: 'scale(0.97)' },
                         }}
                       >

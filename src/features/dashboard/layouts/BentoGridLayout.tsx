@@ -38,6 +38,7 @@ import { alpha, useTheme } from '@mui/material/styles';
 import useMediaQuery from '@mui/material/useMediaQuery';
 import React from 'react';
 
+import { motionTokens } from '@/app/theme';
 import { BentoCard } from '@/components/ui/BentoGrid';
 import { CommandBar } from '@/features/dashboard/components/CommandBar';
 import type { TodayChanges } from '@/features/dashboard/components/TodayChangesCard';
@@ -46,6 +47,8 @@ import DashboardBriefingHUD from '@/features/dashboard/DashboardBriefingHUD';
 import type { BriefingAlert } from '@/features/dashboard/sections/types';
 import type { DashboardSection, DashboardSectionKey } from '@/features/dashboard/useDashboardViewModel';
 import { CompactNewHandoffInput } from '@/features/handoff/components/CompactNewHandoffInput';
+import { HandoffLiveFeed } from '@/features/handoff/components/HandoffLiveFeed';
+import type { HandoffDayScope, HandoffRecord, HandoffStatus } from '@/features/handoff/handoffTypes';
 
 // ── Props ──
 export interface BentoGridLayoutProps {
@@ -70,6 +73,14 @@ export interface BentoGridLayoutProps {
   // Today changes
   dateLabel: string;
   todayChanges: TodayChanges;
+
+  // Handoff Live Feed data
+  handoffTimelineItems: HandoffRecord[];
+  handoffTimelineLoading: boolean;
+  handoffTimelineError: string | null;
+  handoffTimelineUpdateStatus?: (id: number, newStatus: HandoffStatus, carryOverDate?: string) => Promise<void>;
+  handoffTimelineReload?: () => void;
+  onOpenTimeline?: (scope: HandoffDayScope) => void;
 }
 
 export const BentoGridLayout: React.FC<BentoGridLayoutProps> = ({
@@ -87,6 +98,12 @@ export const BentoGridLayout: React.FC<BentoGridLayoutProps> = ({
   scrollToSection,
   dateLabel,
   todayChanges,
+  handoffTimelineItems,
+  handoffTimelineLoading,
+  handoffTimelineError,
+  handoffTimelineUpdateStatus,
+  handoffTimelineReload,
+  onOpenTimeline,
 }) => {
   const theme = useTheme();
   const isWide = useMediaQuery('(min-width: 1024px)');
@@ -100,6 +117,7 @@ export const BentoGridLayout: React.FC<BentoGridLayoutProps> = ({
   const renderSectionIfEnabled = (key: DashboardSectionKey) => {
     const section = getSection(key);
     if (!section || section.enabled === false) return null;
+    const isHighlighted = highlightSection === key;
     return (
       <BentoCard
         key={section.key}
@@ -107,7 +125,26 @@ export const BentoGridLayout: React.FC<BentoGridLayoutProps> = ({
         variant={key === 'handover' ? 'accent' : 'default'}
         sx={{
           scrollMarginTop: 96,
-          outline: highlightSection === key ? `2px solid ${theme.palette.primary.main}` : 'none',
+          transition: motionTokens.transition.sectionHighlight,
+          outline: isHighlighted ? '2px solid' : '2px solid transparent',
+          outlineColor: isHighlighted ? theme.palette.primary.main : 'transparent',
+          outlineOffset: isHighlighted ? 2 : 0,
+          borderRadius: isHighlighted ? 2 : 0,
+          // Phase 9: チップクリック時のハイライト + フェードインアニメーション
+          ...(isHighlighted ? {
+            animation:
+              `sectionPop ${motionTokens.duration.slow} ${motionTokens.easing.pop}, sectionFadeIn ${motionTokens.duration.slower} ${motionTokens.easing.decel}`,
+            boxShadow: `0 0 0 4px ${theme.palette.primary.main}20`,
+          } : {}),
+          '@keyframes sectionPop': {
+            '0%': { transform: 'scale(1)', boxShadow: 'none' },
+            '40%': { transform: 'scale(1.008)', boxShadow: `0 0 0 6px ${theme.palette.primary.main}30` },
+            '100%': { transform: 'scale(1)', boxShadow: `0 0 0 4px ${theme.palette.primary.main}20` },
+          },
+          '@keyframes sectionFadeIn': {
+            '0%': { opacity: 0.4, outlineColor: 'transparent' },
+            '100%': { opacity: 1, outlineColor: theme.palette.primary.main },
+          },
         }}
       >
         <Box id={sectionIdByKey[key]}>
@@ -141,6 +178,31 @@ export const BentoGridLayout: React.FC<BentoGridLayoutProps> = ({
     <TodayChangesCard dateLabel={dateLabel} changes={todayChanges} />
   );
 
+  const liveFeed = (
+    <HandoffLiveFeed
+      items={handoffTimelineItems}
+      loading={handoffTimelineLoading}
+      error={handoffTimelineError}
+      updateHandoffStatus={handoffTimelineUpdateStatus}
+      onReload={handoffTimelineReload}
+      onOpenTimeline={onOpenTimeline}
+      compact={false}
+    />
+  );
+
+  const liveFeedCompact = (
+    <HandoffLiveFeed
+      items={handoffTimelineItems}
+      loading={handoffTimelineLoading}
+      error={handoffTimelineError}
+      updateHandoffStatus={handoffTimelineUpdateStatus}
+      onReload={handoffTimelineReload}
+      onOpenTimeline={onOpenTimeline}
+      compact
+      maxItems={5}
+    />
+  );
+
   const mainSections = (
     <>
       {renderSectionIfEnabled('handover')}
@@ -172,6 +234,7 @@ export const BentoGridLayout: React.FC<BentoGridLayoutProps> = ({
       <Stack spacing={2} data-testid="bento-grid-narrow">
         {commandBar}
         <CompactNewHandoffInput />
+        {liveFeedCompact}
         {briefingHUD}
         {mainSections}
         {todayChangesCard}
@@ -212,6 +275,7 @@ export const BentoGridLayout: React.FC<BentoGridLayoutProps> = ({
         <Box sx={{ flexShrink: 0, px: 0.5, pb: 1 }}>
           <Stack spacing={1.5}>
             <CompactNewHandoffInput />
+            {liveFeedCompact}
             {briefingHUD}
           </Stack>
         </Box>
@@ -290,6 +354,7 @@ export const BentoGridLayout: React.FC<BentoGridLayoutProps> = ({
         <Stack spacing={2}>
           <BentoCard variant="subtle" noHover>{briefingHUD}</BentoCard>
           <BentoCard variant="accent" noHover><CompactNewHandoffInput /></BentoCard>
+          <BentoCard variant="subtle" noHover>{liveFeed}</BentoCard>
           <BentoCard variant="subtle" noHover>{todayChangesCard}</BentoCard>
         </Stack>
       </Box>

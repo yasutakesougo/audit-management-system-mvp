@@ -1,3 +1,4 @@
+import { motionTokens } from '@/app/theme';
 import { Box, Button, Typography } from '@mui/material';
 import React from 'react';
 import { EmptyStateHero } from './EmptyStateHero';
@@ -31,7 +32,7 @@ export const HeroUnfinishedBanner: React.FC<HeroUnfinishedBannerProps> = ({
             color: 'common.white',
             boxShadow: 1,
             py: 0.75,
-            transition: 'all 0.3s ease',
+            transition: motionTokens.transition.cardInteractive,
           },
           sticky && {
             position: 'sticky',

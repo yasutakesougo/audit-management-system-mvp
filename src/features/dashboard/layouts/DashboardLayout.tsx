@@ -1,3 +1,4 @@
+import { motionTokens } from '@/app/theme';
 import {
     Box,
     Stack,
@@ -78,7 +79,7 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
         id={sectionIdByKey[key]}
         sx={{
           scrollMarginTop: 96,
-          transition: 'box-shadow 0.2s ease, outline-color 0.2s ease',
+          transition: motionTokens.transition.sectionHighlightBasic,
           outline: highlightSection === key ? '2px solid' : '2px solid transparent',
           outlineColor: highlightSection === key ? theme.palette.primary.main : 'transparent',
           borderRadius: highlightSection === key ? 2 : 0,

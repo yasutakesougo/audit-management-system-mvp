@@ -9,6 +9,7 @@
 import type { User } from '@/types';
 import type { Dispatch, SetStateAction } from 'react';
 import { useCallback, useEffect, useMemo } from 'react';
+import { getLastActivitiesForUser } from './useLastActivities';
 import type { TableDailyRecordData, UserRowData } from './useTableDailyRecordForm';
 
 // ─── Types ──────────────────────────────────────────────
@@ -49,21 +50,24 @@ const hasRowContent = (row: UserRowData): boolean => {
   return Object.values(row.problemBehavior).some(Boolean);
 };
 
-const createEmptyRow = (userId: string, userName: string): UserRowData => ({
-  userId,
-  userName,
-  amActivity: '',
-  pmActivity: '',
-  lunchAmount: '',
-  problemBehavior: {
-    selfHarm: false,
-    violence: false,
-    loudVoice: false,
-    pica: false,
-    other: false,
-  },
-  specialNotes: '',
-});
+const createEmptyRow = (userId: string, userName: string): UserRowData => {
+  const last = getLastActivitiesForUser(userId);
+  return {
+    userId,
+    userName,
+    amActivity: last?.amActivity ?? '',
+    pmActivity: last?.pmActivity ?? '',
+    lunchAmount: '',
+    problemBehavior: {
+      selfHarm: false,
+      violence: false,
+      loudVoice: false,
+      pica: false,
+      other: false,
+    },
+    specialNotes: '',
+  };
+};
 
 // ─── Hook ───────────────────────────────────────────────
 

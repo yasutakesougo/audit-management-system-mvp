@@ -21,8 +21,8 @@ export type DailySupportUserFilter = {
 
 const DEFAULT_FILTER: DailySupportUserFilter = {
   supportLevel: '',
-  usageStatus: '',
-  highIntensityOnly: false,
+  usageStatus: 'active',
+  highIntensityOnly: true,
 };
 
 function resolveEffectiveStatus(user: IUserMaster): string {

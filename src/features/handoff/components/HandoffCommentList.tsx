@@ -12,6 +12,7 @@
  * - 楽観的更新のコメント（id < 0）には送信中インジケーター
  */
 
+import { motionTokens } from '@/app/theme';
 import { useAuth } from '@/auth/useAuth';
 import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline';
 import Avatar from '@mui/material/Avatar';
@@ -113,7 +114,7 @@ export const HandoffCommentList: React.FC<HandoffCommentListProps> = ({
               py: 0.75,
               borderRadius: 1.5,
               bgcolor: bgColor,
-              transition: 'background-color 0.3s ease',
+              transition: motionTokens.transition.bgColorSlow,
               '&:hover': {
                 bgcolor: alpha(theme.palette.action.hover, 0.06),
               },
@@ -174,7 +175,7 @@ export const HandoffCommentList: React.FC<HandoffCommentListProps> = ({
                         p: 0.25,
                         opacity: 0,
                         '.MuiBox-root:hover &': { opacity: 1 },
-                        transition: 'opacity 0.15s ease',
+                        transition: `opacity ${motionTokens.duration.fast} ${motionTokens.easing.standard}`,
                         color: 'text.disabled',
                         '&:hover': { color: 'error.main' },
                       }}

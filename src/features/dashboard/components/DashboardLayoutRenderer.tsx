@@ -9,6 +9,7 @@
  * Presentational コンポーネント。ロジックを持たず、渡されたデータを配置するだけ。
  */
 
+import { motionTokens } from '@/app/theme';
 import Box from '@mui/material/Box';
 import Typography from '@mui/material/Typography';
 import React from 'react';
@@ -22,6 +23,9 @@ import type { DashboardTab } from '@/features/dashboard/layouts/ZeroScrollLayout
 import { ZeroScrollLayout } from '@/features/dashboard/layouts/ZeroScrollLayout';
 import type { BriefingAlert } from '@/features/dashboard/sections/types';
 import type { DashboardSection, DashboardSectionKey } from '@/features/dashboard/useDashboardViewModel';
+import { HandoffLiveFeed } from '@/features/handoff/components/HandoffLiveFeed';
+import type { HandoffDayScope, HandoffRecord, HandoffStatus } from '@/features/handoff/handoffTypes';
+import Stack from '@mui/material/Stack';
 
 // ── Props ──
 export interface DashboardLayoutRendererProps {
@@ -51,6 +55,14 @@ export interface DashboardLayoutRendererProps {
   handoffCritical?: number;
   attendanceRatio?: { present: number; total: number };
   dailyRecordRatio?: { done: number; total: number };
+
+  // 📡 Handoff Live Feed data
+  handoffTimelineItems?: HandoffRecord[];
+  handoffTimelineLoading?: boolean;
+  handoffTimelineError?: string | null;
+  handoffTimelineUpdateStatus?: (id: number, newStatus: HandoffStatus, carryOverDate?: string) => Promise<void>;
+  handoffTimelineReload?: () => void;
+  onOpenTimeline?: (scope: HandoffDayScope) => void;
 }
 
 export const DashboardLayoutRenderer: React.FC<DashboardLayoutRendererProps> = ({
@@ -70,6 +82,12 @@ export const DashboardLayoutRenderer: React.FC<DashboardLayoutRendererProps> = (
   handoffCritical = 0,
   attendanceRatio,
   dailyRecordRatio,
+  handoffTimelineItems = [],
+  handoffTimelineLoading = false,
+  handoffTimelineError = null,
+  handoffTimelineUpdateStatus,
+  handoffTimelineReload,
+  onOpenTimeline,
 }) => {
   // ── 🍱 Bento Grid ──
   if (layoutMode === 'bentoGrid') {
@@ -89,6 +107,12 @@ export const DashboardLayoutRenderer: React.FC<DashboardLayoutRendererProps> = (
         scrollToSection={scrollToSection}
         dateLabel={dateLabel}
         todayChanges={todayChanges}
+        handoffTimelineItems={handoffTimelineItems}
+        handoffTimelineLoading={handoffTimelineLoading}
+        handoffTimelineError={handoffTimelineError}
+        handoffTimelineUpdateStatus={handoffTimelineUpdateStatus}
+        handoffTimelineReload={handoffTimelineReload}
+        onOpenTimeline={onOpenTimeline}
       />
     );
   }
@@ -96,10 +120,24 @@ export const DashboardLayoutRenderer: React.FC<DashboardLayoutRendererProps> = (
   // ── Zero-Scroll ──
   if (layoutMode === 'zeroScroll') {
     const handoverSection = orderedSections.find((s) => s.key === 'handover');
-    const leftContent = handoverSection ? (
-      renderSection(handoverSection)
-    ) : (
-      <Typography color="text.secondary">申し送り情報がありません</Typography>
+    const leftContent = (
+      <Stack spacing={2}>
+        {handoverSection ? (
+          renderSection(handoverSection)
+        ) : (
+          <Typography color="text.secondary">申し送り情報がありません</Typography>
+        )}
+        <HandoffLiveFeed
+          items={handoffTimelineItems}
+          loading={handoffTimelineLoading}
+          error={handoffTimelineError}
+          updateHandoffStatus={handoffTimelineUpdateStatus}
+          onReload={handoffTimelineReload}
+          onOpenTimeline={onOpenTimeline}
+          compact
+          maxItems={6}
+        />
+      </Stack>
     );
 
     return (
@@ -155,7 +193,7 @@ export const DashboardLayoutRenderer: React.FC<DashboardLayoutRendererProps> = (
           id={sectionIdByKey[section.key]}
           sx={(theme) => ({
             scrollMarginTop: { xs: 80, sm: 96 },
-            transition: 'box-shadow 0.2s ease, outline-color 0.2s ease',
+            transition: motionTokens.transition.sectionHighlightBasic,
             outline: highlightSection === section.key ? '2px solid' : '2px solid transparent',
             outlineColor:
               highlightSection === section.key ? theme.palette.primary.main : 'transparent',

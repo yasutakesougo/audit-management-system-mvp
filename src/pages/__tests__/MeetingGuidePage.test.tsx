@@ -1,6 +1,7 @@
 import { TESTIDS } from '@/testids';
 import CssBaseline from '@mui/material/CssBaseline';
 import { createTheme, ThemeProvider } from '@mui/material/styles';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { fireEvent, render, screen, within } from '@testing-library/react';
 import React from 'react';
 import { MemoryRouter } from 'react-router-dom';
@@ -8,15 +9,20 @@ import { describe, expect, it } from 'vitest';
 import MeetingGuidePage from '../MeetingGuidePage';
 
 const theme = createTheme();
+const queryClient = new QueryClient({
+  defaultOptions: { queries: { retry: false } },
+});
 
 const renderWithProviders = (component: React.ReactElement) => {
   return render(
-    <MemoryRouter initialEntries={['/meeting-guide']}>
-      <ThemeProvider theme={theme}>
-        <CssBaseline />
-        {component}
-      </ThemeProvider>
-    </MemoryRouter>
+    <QueryClientProvider client={queryClient}>
+      <MemoryRouter initialEntries={['/meeting-guide']}>
+        <ThemeProvider theme={theme}>
+          <CssBaseline />
+          {component}
+        </ThemeProvider>
+      </MemoryRouter>
+    </QueryClientProvider>
   );
 };
 

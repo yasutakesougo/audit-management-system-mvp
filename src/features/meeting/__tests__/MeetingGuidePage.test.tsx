@@ -1,16 +1,23 @@
 import { ThemeProvider, createTheme } from '@mui/material/styles';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { cleanup, fireEvent, render, screen } from '@testing-library/react';
 import { BrowserRouter } from 'react-router-dom';
 import { afterEach, describe, expect, test, vi } from 'vitest';
 import MeetingGuidePage from '../../../pages/MeetingGuidePage';
 
-// テスト用のテーマプロバイダー + Router
+// テスト用のテーマプロバイダー + Router + QueryClient
+const queryClient = new QueryClient({
+  defaultOptions: { queries: { retry: false } },
+});
+
 const TestWrapper = ({ children }: { children: React.ReactNode }) => {
   const theme = createTheme();
   return (
-    <BrowserRouter>
-      <ThemeProvider theme={theme}>{children}</ThemeProvider>
-    </BrowserRouter>
+    <QueryClientProvider client={queryClient}>
+      <BrowserRouter>
+        <ThemeProvider theme={theme}>{children}</ThemeProvider>
+      </BrowserRouter>
+    </QueryClientProvider>
   );
 };
 

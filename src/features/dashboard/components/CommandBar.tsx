@@ -10,6 +10,7 @@
  * - All Clear 出現時のファンファーレ的アニメーション
  */
 
+import { motionTokens } from '@/app/theme';
 import AssignmentLateIcon from '@mui/icons-material/AssignmentLate';
 import CheckCircleOutlineIcon from '@mui/icons-material/CheckCircleOutline';
 import EditNoteIcon from '@mui/icons-material/EditNote';
@@ -207,7 +208,7 @@ export const CommandBar: React.FC<CommandBarProps> = ({
             fontSize: '0.8rem',
             borderRadius: 2,
             cursor: onChipClick ? 'pointer' : 'default',
-            transition: 'all 0.2s ease',
+            transition: motionTokens.transition.hoverAll,
             '& .MuiChip-icon': { color: chip.color },
             '&:hover': onChipClick
               ? {

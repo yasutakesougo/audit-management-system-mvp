@@ -1,9 +1,14 @@
 import { TESTIDS } from '@/testids';
+import { TextField } from '@mui/material';
 import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import toast from 'react-hot-toast';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { TableDailyRecordForm } from '../forms/TableDailyRecordForm';
+import {
+    useTableDailyRecordForm,
+    type TableDailyRecordData,
+} from '../hooks/useTableDailyRecordForm';
 
 // Mock react-hot-toast
 vi.mock('react-hot-toast', () => ({
@@ -48,6 +53,63 @@ vi.mock('@/stores/useUsers', () => ({
 const FIXED_DATE = '2024-01-01';
 const FIXED_DATE_SELECTION_COUNT = 2; // Deterministic expected auto-selection count for FIXED_DATE
 
+/**
+ * テスト用ラッパー:
+ * AppBarに移動した date / reporter フィールドをテスト内に再構成
+ */
+function TableDailyRecordFormTestWrapper(props: {
+  open: boolean;
+  onClose: () => void;
+  onSave: (data: TableDailyRecordData) => Promise<void>;
+}) {
+  const formState = useTableDailyRecordForm(props);
+
+  if (!props.open) return null;
+
+  return (
+    <>
+      {/* AppBar相当のメタ情報フィールド */}
+      <TextField
+        type="date"
+        label="記録日"
+        size="small"
+        value={formState.formData.date}
+        onChange={(e) =>
+          formState.setFormData((prev) => ({ ...prev, date: e.target.value }))
+        }
+        InputLabelProps={{ shrink: true }}
+      />
+      <TextField
+        label="記録者名"
+        size="small"
+        value={formState.formData.reporter.name}
+        onChange={(e) =>
+          formState.setFormData((prev) => ({
+            ...prev,
+            reporter: { ...prev.reporter, name: e.target.value },
+          }))
+        }
+      />
+
+      <TableDailyRecordForm
+        open={props.open}
+        onClose={props.onClose}
+        onSave={props.onSave}
+        variant="content"
+        controlledState={formState}
+      />
+
+      {/* AppBar相当のアクションボタン（variant="content"ではフッターが出ないため） */}
+      <button
+        onClick={formState.handleSave}
+        disabled={formState.saving || formState.selectedUserIds.length === 0}
+      >
+        {formState.saving ? '保存中...' : `${formState.selectedUserIds.length}人分保存`}
+      </button>
+    </>
+  );
+}
+
 describe('TableDailyRecordForm', () => {
   vi.setConfig({ testTimeout: 30000 });
 
@@ -58,7 +120,7 @@ describe('TableDailyRecordForm', () => {
   };
 
   const renderForm = (overrideProps: Partial<typeof defaultProps> = {}) =>
-    render(<TableDailyRecordForm {...defaultProps} {...overrideProps} />);
+    render(<TableDailyRecordFormTestWrapper {...defaultProps} {...overrideProps} />);
 
   const getReporterInput = () => screen.getAllByLabelText('記録者名')[0];
   const getDateInput = () => screen.getAllByLabelText('記録日')[0];

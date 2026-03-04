@@ -2,8 +2,9 @@ import { emitDailySubmissionEvents } from '@/features/ibd/analysis/pdca/dailyMet
 import { useUsers } from '@/stores/useUsers';
 import type { User } from '@/types';
 import type { Dispatch, SetStateAction } from 'react';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import toast from 'react-hot-toast';
+import { saveLastActivities } from './useLastActivities';
 import { useTableDailyRecordFiltering } from './useTableDailyRecordFiltering';
 import type { DraftInput } from './useTableDailyRecordPersistence';
 import { useTableDailyRecordPersistence } from './useTableDailyRecordPersistence';
@@ -217,7 +218,7 @@ export const useTableDailyRecordForm = ({
 
   // ── Actions ───────────────────────────────────────
 
-  const handleSaveDraft = () => {
+  const handleSaveDraft = useCallback(() => {
     const input: DraftInput = {
       formData,
       selectedUserIds,
@@ -225,7 +226,29 @@ export const useTableDailyRecordForm = ({
       showTodayOnly,
     };
     saveDraft(input);
-  };
+  }, [formData, selectedUserIds, searchQuery, showTodayOnly, saveDraft]);
+
+  // ── Auto-save draft (debounced) ────────────────────
+  const autoSaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    // 行データがなければ自動保存しない（初期状態）
+    if (formData.userRows.length === 0) return;
+
+    if (autoSaveTimerRef.current) {
+      clearTimeout(autoSaveTimerRef.current);
+    }
+
+    autoSaveTimerRef.current = setTimeout(() => {
+      handleSaveDraft();
+    }, 2000);
+
+    return () => {
+      if (autoSaveTimerRef.current) {
+        clearTimeout(autoSaveTimerRef.current);
+      }
+    };
+  }, [formData, selectedUserIds, handleSaveDraft]);
 
   const handleSave = async () => {
     // バリデーション実行
@@ -257,6 +280,10 @@ export const useTableDailyRecordForm = ({
 
       clearDraft();
       setValidationErrors({});
+
+      // 前回の午前・午後活動を保存（次回のプリフィル用）
+      saveLastActivities(formData.userRows);
+
       toast.success(
         `${selectedUserIds.length}人分の活動記録を保存しました`,
         { duration: 3000 },

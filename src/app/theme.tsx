@@ -295,3 +295,62 @@ export const uiTokens = {
     h2: 22,
   },
 } as const;
+
+// ── Motion Design Tokens ──
+// Single source of truth for all transition durations, easings, and pre-composed shorthands.
+// Usage: import { motionTokens } from '@/app/theme';
+//        sx={{ transition: motionTokens.transition.fadeContent }}
+
+export const motionTokens = {
+  /** Duration values (ms for JS, string for CSS) */
+  duration: {
+    instant: '0.1s',     // 100ms — tooltip, ripple
+    fast: '0.15s',       // 150ms — micro-interactions (tag click, icon swap)
+    normal: '0.2s',      // 200ms — standard UI feedback (slot change, hover, border)
+    moderate: '0.3s',    // 300ms — section highlight, card expand
+    slow: '0.4s',        // 400ms — pop animation, progress bar
+    slower: '0.5s',      // 500ms — chart stroke, section fade-in
+  },
+
+  /** Easing curves */
+  easing: {
+    standard: 'ease',                                // General purpose
+    decel: 'ease-out',                               // Elements entering view
+    accel: 'ease-in',                                // Elements leaving view
+    smooth: 'ease-in-out',                           // Symmetric move
+    pop: 'cubic-bezier(0.34, 1.56, 0.64, 1)',       // Overshoot bounce (sectionPop)
+    spring: 'cubic-bezier(0.175, 0.885, 0.32, 1.275)', // Elastic feel
+  },
+
+  /** Pre-composed CSS transition shorthand strings */
+  transition: {
+    // ── Micro-interactions ──
+    microAll: 'all 0.15s ease',                      // Quick tag/icon feedback
+    hoverAll: 'all 0.2s ease',                       // Standard hover state
+    hoverTransform: 'transform 0.2s ease',           // Card lift on hover
+    hoverElevation: 'transform 0.2s, box-shadow 0.2s', // Card hover with shadow
+
+    // ── Content transitions ──
+    fadeContent: 'opacity 0.2s ease',                // Slot change fade-in
+    fadeBorder: 'border-color 0.2s ease',            // Border color smooth change
+    fadeContentWithBorder: 'opacity 0.2s ease, border-color 0.2s ease',
+
+    // ── Section highlights ──
+    sectionHighlight: 'box-shadow 0.3s ease, outline-color 0.3s ease, transform 0.3s ease, opacity 0.4s ease',
+    sectionHighlightBasic: 'box-shadow 0.2s ease, outline-color 0.2s ease',
+
+    // ── Progress / Charts ──
+    progressBar: 'width 0.4s ease-out',
+    chartStroke: 'stroke-dasharray 0.5s ease-out',
+
+    // ── Background ──
+    bgColor: 'background-color 0.2s ease',
+    bgColorSlow: 'background-color 0.3s ease',
+
+    // ── Composite ──
+    cardInteractive: 'all 0.3s ease',               // Full card interaction
+    expandCollapse: 'all 0.25s ease',                // Expand/collapse panels
+  },
+} as const;
+
+export type MotionTokens = typeof motionTokens;
