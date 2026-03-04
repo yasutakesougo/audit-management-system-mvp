@@ -9,6 +9,7 @@ import {
 } from '@/features/ibd/core/ibdStore';
 import { beforeEach, describe, expect, it } from 'vitest';
 import { seedIbdDemoData } from '../loadMagicDemo';
+import { toLocalDateISO } from '@/utils/getNow';
 
 describe('seedIbdDemoData', () => {
   beforeEach(() => {
@@ -40,7 +41,7 @@ describe('seedIbdDemoData', () => {
     // 3. ABC Records — 2 records with today's date
     const abcRecords = getABCRecordsForUser(testUserId);
     expect(abcRecords).toHaveLength(2);
-    const today = new Date().toISOString().slice(0, 10);
+    const today = toLocalDateISO();
     expect(abcRecords[0].recordedAt.slice(0, 10)).toBe(today);
     expect(abcRecords[1].recordedAt.slice(0, 10)).toBe(today);
   });

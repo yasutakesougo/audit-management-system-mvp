@@ -7,6 +7,7 @@
 import type { ScheduleItem } from '@/features/dashboard/selectors/useScheduleLanes';
 import { OPS_FLOW_ORDER } from '@/features/dashboard/selectors/useScheduleLanes';
 import { useMemo } from 'react';
+import { toLocalDateISO } from '@/utils/getNow';
 import {
     buildProgressKey,
     buildStableEventId,
@@ -134,7 +135,7 @@ export function useNextAction(
 ): NextActionWithProgress {
   const progressStore = useNextActionProgress();
 
-  const effectiveDateKey = dateKey ?? new Date().toISOString().split('T')[0];
+  const effectiveDateKey = dateKey ?? toLocalDateISO();
 
   // Select next item, skipping any that are already 'done' in the progress store.
   // This ensures Done → 次予定 auto-advance works correctly.

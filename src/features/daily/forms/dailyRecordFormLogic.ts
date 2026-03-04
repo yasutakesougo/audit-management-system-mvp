@@ -6,6 +6,7 @@
  */
 
 import type { DailyAData, PersonDaily } from '@/features/daily';
+import { toLocalDateISO } from '@/utils/getNow';
 
 // ─── Types ────────────────────────────────────────────────────────────────
 
@@ -78,7 +79,7 @@ export function createEmptyDailyRecord(): Omit<PersonDaily, 'id'> {
   return {
     personId: '',
     personName: '',
-    date: new Date().toISOString().split('T')[0],
+    date: toLocalDateISO(),
     status: '作成中',
     reporter: { name: '' },
     draft: { isDraft: true },

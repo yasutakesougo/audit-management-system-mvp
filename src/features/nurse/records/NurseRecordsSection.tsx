@@ -13,6 +13,7 @@ import TableRow from '@mui/material/TableRow';
 import TextField from '@mui/material/TextField';
 import Typography from '@mui/material/Typography';
 import React from 'react';
+import { toLocalDateISO } from '@/utils/getNow';
 
 type NurseRecordsSectionProps = BoxProps & {
   user?: string;
@@ -95,7 +96,7 @@ const NurseRecordsSection: React.FC<NurseRecordsSectionProps> = ({
     onUserChange(debouncedUser);
   }, [debouncedUser, onUserChange, user]);
 
-  const effectiveDate = date ?? new Date().toISOString().slice(0, 10);
+  const effectiveDate = date ?? toLocalDateISO();
 
   const filteredRecords = React.useMemo(() => {
     const matchUser = (recordUser: string) => {

@@ -12,12 +12,13 @@ import type { MeetingKind } from './meetingSteps';
 import { mergeStepRecordsWithTemplates, useMeetingSteps } from './meetingSteps';
 import { useMeetingSession } from './useMeetingData';
 import { usePriorityFollowUsers } from './usePriorityFollowUsers';
+import { toLocalDateISO } from '@/utils/getNow';
 
 /**
  * 今日のセッションキーを生成
  */
 function buildSessionKeyForToday(kind: MeetingKind): string {
-  const today = new Date().toISOString().split('T')[0];
+  const today = toLocalDateISO();
   return `${today}_${kind}`;
 }
 

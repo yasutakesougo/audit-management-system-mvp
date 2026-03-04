@@ -6,6 +6,7 @@
  */
 
 import type { PersonDaily } from '@/domain/daily/types';
+import { toLocalDateISO } from '@/utils/getNow';
 
 // ─── Mock Users ─────────────────────────────────────────────────────────────
 
@@ -24,7 +25,7 @@ export const mockRecords: PersonDaily[] = [
     id: 1,
     personId: '001',
     personName: '田中太郎',
-    date: new Date().toISOString().split('T')[0],
+    date: toLocalDateISO(),
     status: '完了',
     reporter: { name: '職員A' },
     draft: { isDraft: false },
@@ -57,7 +58,7 @@ export const mockRecords: PersonDaily[] = [
     id: 2,
     personId: '002',
     personName: '佐藤花子',
-    date: new Date().toISOString().split('T')[0],
+    date: toLocalDateISO(),
     status: '作成中',
     reporter: { name: '職員B' },
     draft: { isDraft: true },
@@ -90,7 +91,7 @@ export const mockRecords: PersonDaily[] = [
     id: 3,
     personId: '003',
     personName: '鈴木次郎',
-    date: new Date().toISOString().split('T')[0],
+    date: toLocalDateISO(),
     status: '未作成',
     reporter: { name: '' },
     draft: { isDraft: true },
@@ -124,7 +125,7 @@ export const mockRecords: PersonDaily[] = [
 // ─── Record Generators ──────────────────────────────────────────────────────
 
 export const generateTodayRecords = (): PersonDaily[] => {
-  const today = new Date().toISOString().split('T')[0];
+  const today = toLocalDateISO();
   return mockUsers.map((name, index) => {
     const userId = String(index + 1).padStart(3, '0');
     const statuses: Array<'完了' | '作成中' | '未作成'> = ['完了', '作成中', '未作成'];

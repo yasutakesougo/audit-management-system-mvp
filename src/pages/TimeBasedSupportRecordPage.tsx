@@ -53,6 +53,7 @@ import Typography from '@mui/material/Typography';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { flushSync } from 'react-dom';
 import { useLocation, useNavigate, useSearchParams } from 'react-router-dom';
+import { toLocalDateISO } from '@/utils/getNow';
 
 const TimeBasedSupportRecordPage: React.FC = () => {
   const location = useLocation();
@@ -482,7 +483,7 @@ const TimeBasedSupportRecordPage: React.FC = () => {
   const todayAbcCount = useMemo(() => {
     if (!targetUserId) return 0;
     const records = getABCRecordsForUser(targetUserId);
-    const todayStr = new Date().toISOString().slice(0, 10);
+    const todayStr = toLocalDateISO();
     return records.filter((r) => r.recordedAt?.slice(0, 10) === todayStr).length;
   }, [targetUserId]);
 

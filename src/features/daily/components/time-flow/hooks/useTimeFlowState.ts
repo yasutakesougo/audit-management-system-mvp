@@ -6,6 +6,7 @@ import { getDashboardPath } from '@/features/dashboard/dashboardRouting';
 import { resolveSupportFlowForUser } from '@/features/planDeployment/supportFlow';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
+import { toLocalDateISO } from '@/utils/getNow';
 import {
     mockSupportUsers,
     SUPPORT_ACTIVITY_STORAGE_KEY,
@@ -95,7 +96,7 @@ export function useTimeFlowState(): UseTimeFlowStateResult {
   );
   const [selectedUser, setSelectedUser] = useState<string>(initialUserId || '');
   const [selectedDate, setSelectedDate] = useState<string>(
-    new Date().toISOString().split('T')[0],
+    toLocalDateISO(),
   );
   const [searchTerm, setSearchTerm] = useState<string>('');
   const [selectedPlanType, setSelectedPlanType] = useState<string>('');
