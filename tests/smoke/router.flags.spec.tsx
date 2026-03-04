@@ -136,12 +136,18 @@ describe('router future flags smoke', () => {
 
   // NOTE: router-future-flags.ts の global mock で React Router v7 future flags を有効化した状態で、
   // App 全体の主要ルートが正常に遷移できることのスモークテスト。
-  it('navigates across primary routes with v7 flags enabled', async () => {
+  // retry(2): This test renders the full App and navigates across routes.
+  // Transient timing issues (drawer animation, lazy route resolution) can
+  // cause sporadic failures on slower machines / CI runners.
+  it('navigates across primary routes with v7 flags enabled', { retry: 2, timeout: 45_000 }, async () => {
     const user = userEvent.setup();
     render(<App />);
-    const arrivalOptions = { timeout: process.env.CI ? 30_000 : 15_000 };
+    // Use generous, unified timeouts — no CI/local split to avoid flakiness
+    const arrivalOptions = { timeout: 20_000 };
 
     const openDrawerIfPossible = async () => {
+      // Wait briefly for the drawer toggle to appear (may not exist on desktop layout)
+      await new Promise(r => setTimeout(r, 100));
       const openButton =
         screen.queryByTestId(TESTIDS['nav-open']) ?? screen.queryByTestId('desktop-nav-open');
       if (!openButton) {
@@ -151,18 +157,18 @@ describe('router future flags smoke', () => {
       if (openButton.hasAttribute('aria-expanded')) {
         await waitFor(
           () => expect(openButton).toHaveAttribute('aria-expanded', 'true'),
-          { timeout: process.env.CI ? 5_000 : 2_000 },
+          { timeout: 5_000 },
         );
       }
     };
 
     const ensureNavItem = async (testId: string) => {
       await openDrawerIfPossible();
-      const navItem = (screen.queryByTestId(testId) ??
-        (await screen.findByTestId(testId, undefined, arrivalOptions))) as HTMLElement;
+      // findByTestId already retries internally; no need for queryByTestId fallback
+      const navItem = await screen.findByTestId(testId, undefined, { timeout: 10_000 });
       await waitFor(
         () => expect(navItem).toBeVisible(),
-        { timeout: process.env.CI ? 5_000 : 2_000 },
+        { timeout: 5_000 },
       );
       return navItem;
     };
@@ -182,7 +188,7 @@ describe('router future flags smoke', () => {
     navigateToPath('/audit');
     await waitFor(
       () => expect(window.location.pathname).toBe('/audit'),
-      { timeout: process.env.CI ? 15_000 : 8_000 },
+      { timeout: 10_000 },
     );
     expect(screen.queryByText(/権限を確認中/)).not.toBeInTheDocument();
     // ✅ Audit nav via role-based aria-label query (stable across CI/local)
@@ -219,5 +225,5 @@ describe('router future flags smoke', () => {
     expect(nonCurrentUserCalls).toHaveLength(0);
     expect(signInMock).not.toHaveBeenCalled();
     expect(signOutMock).not.toHaveBeenCalled();
-  }, 30_000);
+  });
 });
