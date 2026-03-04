@@ -41,7 +41,7 @@ import {
 } from '@/features/ibd/core/ibdStore';
 import type { ABCRecord, SupervisionLog, SupportScene } from '@/features/ibd/core/ibdTypes';
 import { PDCA_RECOMMENDATION_LABELS, SUPPORT_CATEGORY_CONFIG } from '@/features/ibd/core/ibdTypes';
-import { AuditEvidenceReportPDF } from '@/features/ibd/core/reports/AuditEvidenceReportPDF';
+
 import { useAuditEvidenceReport } from '@/features/ibd/core/reports/useAuditEvidenceReport';
 
 // ---------------------------------------------------------------------------
@@ -496,7 +496,10 @@ const IBDDemoPage = () => {
                 onClick={async () => {
                   setPdfLoading(true);
                   try {
-                    const { pdf } = await import('@react-pdf/renderer');
+                    const [{ pdf }, { AuditEvidenceReportPDF }] = await Promise.all([
+                      import('@react-pdf/renderer'),
+                      import('@/features/ibd/core/reports/AuditEvidenceReportPDF'),
+                    ]);
                     const reportData = prepareReportData('デモ管理者');
                     const blob = await pdf(<AuditEvidenceReportPDF data={reportData} />).toBlob();
                     const url = URL.createObjectURL(blob);
