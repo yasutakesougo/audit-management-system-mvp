@@ -6,48 +6,15 @@ import { buildHandoffSelectFields, FIELD_MAP_HANDOFF } from '@/sharepoint/fields
 
 import { generateTitleFromMessage } from './generateTitleFromMessage';
 import { handoffConfig } from './handoffConfig';
+import { fromSpHandoffItem, toSpHandoffCreatePayload } from './handoffMappers';
+import {
+    generateId,
+    getTodayKey,
+    loadStorage,
+    saveStorage,
+} from './handoffStorageUtils';
 import type { HandoffRecord, NewHandoffInput } from './handoffTypes';
-import { fromSpHandoffItem, toSpHandoffCreatePayload } from './handoffTypes';
 
-const STORAGE_KEY = 'handoff.timeline.dev.v1';
-
-type StorageShape = Record<string, HandoffRecord[]>;
-
-const safeJson = <T,>(value: string | null, fallback: T): T => {
-  if (!value) return fallback;
-  try {
-    return JSON.parse(value) as T;
-  } catch {
-    return fallback;
-  }
-};
-
-const loadStorage = (): StorageShape =>
-  safeJson<StorageShape>(window.localStorage.getItem(STORAGE_KEY), {});
-
-const saveStorage = (data: StorageShape) => {
-  try {
-    window.localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
-  } catch {
-    console.warn('[handoff] Failed to save local storage');
-  }
-};
-
-const generateId = (): number => {
-  if (typeof crypto !== 'undefined' && 'randomUUID' in crypto) {
-    const uuid = crypto.randomUUID();
-    const hash = uuid.replace(/-/g, '').slice(0, 8);
-    return parseInt(hash, 16);
-  }
-  return Date.now() + Math.floor(Math.random() * 1000);
-};
-
-const getTodayKey = (date = new Date()): string => {
-  const y = date.getFullYear();
-  const m = `${date.getMonth() + 1}`.padStart(2, '0');
-  const d = `${date.getDate()}`.padStart(2, '0');
-  return `${y}-${m}-${d}`;
-};
 
 export type HandoffExternalSource = {
   sourceType: 'meeting-minutes';
