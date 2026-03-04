@@ -38,6 +38,7 @@ import { alpha, useTheme } from '@mui/material/styles';
 import useMediaQuery from '@mui/material/useMediaQuery';
 import React from 'react';
 
+import { BentoCard } from '@/components/ui/BentoGrid';
 import { CommandBar } from '@/features/dashboard/components/CommandBar';
 import type { TodayChanges } from '@/features/dashboard/components/TodayChangesCard';
 import { TodayChangesCard } from '@/features/dashboard/components/TodayChangesCard';
@@ -100,19 +101,19 @@ export const BentoGridLayout: React.FC<BentoGridLayoutProps> = ({
     const section = getSection(key);
     if (!section || section.enabled === false) return null;
     return (
-      <Box
+      <BentoCard
         key={section.key}
-        id={sectionIdByKey[key]}
+        testId={`bento-section-${key}`}
+        variant={key === 'handover' ? 'accent' : 'default'}
         sx={{
           scrollMarginTop: 96,
-          transition: 'box-shadow 0.2s ease, outline-color 0.2s ease',
-          outline: highlightSection === key ? '2px solid' : '2px solid transparent',
-          outlineColor: highlightSection === key ? theme.palette.primary.main : 'transparent',
-          borderRadius: highlightSection === key ? 2 : 0,
+          outline: highlightSection === key ? `2px solid ${theme.palette.primary.main}` : 'none',
         }}
       >
-        {renderSection(section)}
-      </Box>
+        <Box id={sectionIdByKey[key]}>
+          {renderSection(section)}
+        </Box>
+      </BentoCard>
     );
   };
 
@@ -287,9 +288,9 @@ export const BentoGridLayout: React.FC<BentoGridLayoutProps> = ({
         data-testid="bento-action-rail"
       >
         <Stack spacing={2}>
-          {briefingHUD}
-          <CompactNewHandoffInput />
-          {todayChangesCard}
+          <BentoCard variant="subtle" noHover>{briefingHUD}</BentoCard>
+          <BentoCard variant="accent" noHover><CompactNewHandoffInput /></BentoCard>
+          <BentoCard variant="subtle" noHover>{todayChangesCard}</BentoCard>
         </Stack>
       </Box>
     </Box>
