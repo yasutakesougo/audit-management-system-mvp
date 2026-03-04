@@ -1,24 +1,23 @@
+import { TESTIDS } from '@/testids';
 import ClearIcon from '@mui/icons-material/Clear';
 import {
-  Box,
-  Chip,
-  FormControl,
-  IconButton,
-  MenuItem,
-  Paper,
-  Select,
-  Table,
-  TableBody,
-  TableCell,
-  TableContainer,
-  TableHead,
-  TableRow,
-  TextField,
-  Tooltip,
-  Typography,
+    Box,
+    Chip,
+    FormControl,
+    IconButton,
+    MenuItem,
+    Select,
+    Table,
+    TableBody,
+    TableCell,
+    TableContainer,
+    TableHead,
+    TableRow,
+    TextField,
+    Tooltip,
+    Typography
 } from '@mui/material';
 import React from 'react';
-import { TESTIDS } from '@/testids';
 import type { UserRowData } from '../hooks/useTableDailyRecordForm';
 
 const LUNCH_OPTIONS = ['完食', '8割', '半分', '少量', 'なし'];
@@ -45,78 +44,73 @@ export const TableDailyRecordTable: React.FC<TableDailyRecordTableProps> = ({
   onClearRow,
 }) => {
   return (
-    <Paper sx={{ p: 2 }}>
-      <Typography variant="subtitle1" sx={{ mb: 2 }}>
-        一覧入力テーブル
-      </Typography>
-
-      <TableContainer data-testid={TESTIDS['daily-table-record-form-table']} sx={{ maxHeight: 400 }}>
+    <TableContainer
+      data-testid={TESTIDS['daily-table-record-form-table']}
+      sx={{
+        maxHeight: 'calc(100vh - 220px)',
+        border: '1px solid',
+        borderColor: 'divider',
+        borderRadius: 1,
+      }}
+    >
         <Table size="small" stickyHeader>
           <TableHead>
             <TableRow>
-              <TableCell>利用者</TableCell>
-              <TableCell>午前活動</TableCell>
-              <TableCell>午後活動</TableCell>
-              <TableCell>昼食摂取</TableCell>
-              <TableCell>問題行動</TableCell>
-              <TableCell>特記事項</TableCell>
-              <TableCell>操作</TableCell>
+              <TableCell sx={{ py: 0.5, fontSize: '0.75rem' }}>利用者</TableCell>
+              <TableCell sx={{ py: 0.5, fontSize: '0.75rem' }}>午前活動</TableCell>
+              <TableCell sx={{ py: 0.5, fontSize: '0.75rem' }}>午後活動</TableCell>
+              <TableCell sx={{ py: 0.5, fontSize: '0.75rem' }}>昼食摂取</TableCell>
+              <TableCell sx={{ py: 0.5, fontSize: '0.75rem' }}>問題行動</TableCell>
+              <TableCell sx={{ py: 0.5, fontSize: '0.75rem' }}>特記事項</TableCell>
+              <TableCell sx={{ py: 0.5, fontSize: '0.75rem', width: 40 }}></TableCell>
             </TableRow>
           </TableHead>
           <TableBody>
             {rows.map((row) => (
               <TableRow key={row.userId}>
-                <TableCell>
-                  <Typography variant="body2" sx={{ minWidth: 100 }}>
+                <TableCell sx={{ py: 0.5, whiteSpace: 'nowrap' }}>
+                  <Typography variant="body2" sx={{ fontSize: '0.8rem', lineHeight: 1.3 }}>
                     {row.userName}
-                    <br />
-                    <Typography variant="caption" color="textSecondary">
-                      ({row.userId})
+                    <Typography component="span" variant="caption" color="textSecondary" sx={{ ml: 0.5 }}>
+                      {row.userId}
                     </Typography>
                   </Typography>
                 </TableCell>
 
-                <TableCell>
+                <TableCell sx={{ py: 0.5 }}>
                   <TextField
                     size="small"
-                    placeholder="午前の活動"
+                    placeholder="午前"
                     value={row.amActivity}
                     onChange={(e) => onRowDataChange(row.userId, 'amActivity', e.target.value)}
-                    onKeyDown={(e) => {
-                      if (e.key === 'Tab' || e.key === 'Enter') {
-                        // Tab移動を促進
-                      }
-                    }}
-                    sx={{ minWidth: 150 }}
+                    sx={{ minWidth: 110 }}
+                    inputProps={{ style: { fontSize: '0.8rem', padding: '6px 8px' } }}
                   />
                 </TableCell>
 
-                <TableCell>
+                <TableCell sx={{ py: 0.5 }}>
                   <TextField
                     size="small"
-                    placeholder="午後の活動"
+                    placeholder="午後"
                     value={row.pmActivity}
                     onChange={(e) => onRowDataChange(row.userId, 'pmActivity', e.target.value)}
-                    onKeyDown={(e) => {
-                      if (e.key === 'Tab' || e.key === 'Enter') {
-                        // Tab移動を促進
-                      }
-                    }}
-                    sx={{ minWidth: 150 }}
+                    sx={{ minWidth: 110 }}
+                    inputProps={{ style: { fontSize: '0.8rem', padding: '6px 8px' } }}
                   />
                 </TableCell>
 
-                <TableCell>
-                  <FormControl size="small" sx={{ minWidth: 100 }}>
+                <TableCell sx={{ py: 0.5 }}>
+                  <FormControl size="small" sx={{ minWidth: 75 }}>
                     <Select
                       name={`lunchAmount-${row.userId}`}
                       value={row.lunchAmount}
                       onChange={(e) => onRowDataChange(row.userId, 'lunchAmount', e.target.value)}
                       displayEmpty
+                      sx={{ fontSize: '0.8rem' }}
                     >
-                      <MenuItem value="">選択</MenuItem>
+                      <MenuItem value="" sx={{ fontSize: '0.8rem' }}>-</MenuItem>
                       {LUNCH_OPTIONS.map((option) => (
-                        <MenuItem key={option} value={option}>
+                        <MenuItem key={option} value={option} sx={{ fontSize: '0.8rem' }}>
                           {option}
                         </MenuItem>
                       ))}
@@ -124,8 +118,8 @@ export const TableDailyRecordTable: React.FC<TableDailyRecordTableProps> = ({
                   </FormControl>
                 </TableCell>
 
-                <TableCell>
-                  <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5, minWidth: 150 }}>
+                <TableCell sx={{ py: 0.5 }}>
+                  <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.25, minWidth: 120 }}>
                     {(Object.keys(PROBLEM_BEHAVIOR_LABELS) as Array<keyof UserRowData['problemBehavior']>).map((type) => (
                       <Chip
                         key={type}
@@ -135,27 +129,29 @@ export const TableDailyRecordTable: React.FC<TableDailyRecordTableProps> = ({
                         clickable
                         onClick={() => onProblemBehaviorChange(row.userId, type, !row.problemBehavior[type])}
                         color={row.problemBehavior[type] ? 'warning' : 'default'}
+                        sx={{ height: 22, fontSize: '0.7rem' }}
                       />
                     ))}
                   </Box>
                 </TableCell>
 
-                <TableCell>
+                <TableCell sx={{ py: 0.5 }}>
                   <TextField
                     size="small"
-                    placeholder="特記事項"
+                    placeholder="特記"
                     value={row.specialNotes}
                     onChange={(e) => onRowDataChange(row.userId, 'specialNotes', e.target.value)}
-                    sx={{ minWidth: 200 }}
+                    sx={{ minWidth: 140 }}
                     multiline
                     maxRows={2}
+                    inputProps={{ style: { fontSize: '0.8rem', padding: '4px 8px' } }}
                   />
                 </TableCell>
 
-                <TableCell>
-                  <Tooltip title="この行をクリア">
+                <TableCell sx={{ py: 0.5, px: 0.5 }}>
+                  <Tooltip title="クリア">
                     <IconButton size="small" aria-label="この行をクリア" onClick={() => onClearRow(row.userId)}>
-                      <ClearIcon />
+                      <ClearIcon fontSize="small" />
                     </IconButton>
                   </Tooltip>
                 </TableCell>
@@ -163,7 +159,6 @@ export const TableDailyRecordTable: React.FC<TableDailyRecordTableProps> = ({
             ))}
           </TableBody>
         </Table>
-      </TableContainer>
-    </Paper>
+    </TableContainer>
   );
 };

@@ -83,20 +83,20 @@ export function FullScreenDailyDialogPage({
       }}
     >
       <AppBar position="sticky" color="default" elevation={1}>
-        <Toolbar variant="dense" sx={{ gap: 1 }}>
+        <Toolbar variant="dense" sx={{ gap: 0.5 }}>
           <Button
             onClick={handleClose}
-            startIcon={<CloseIcon />}
+            startIcon={<CloseIcon fontSize="small" />}
             variant="text"
-            size="large"
-            sx={{ minWidth: 120 }}
+            size="small"
+            sx={{ minWidth: 90, fontSize: '0.8rem' }}
             disabled={busy}
             data-testid="daily-dialog-close"
           >
             キャンセル
           </Button>
 
-          <Typography sx={{ flex: 1 }} variant="h6" component="h1" data-page-heading="true">
+          <Typography sx={{ flex: 1 }} variant="subtitle1" component="h1" data-page-heading="true">
             {title}
           </Typography>
 
@@ -104,12 +104,12 @@ export function FullScreenDailyDialogPage({
 
           <Button
             onClick={handleHubClick}
-            startIcon={<HomeOutlinedIcon />}
-            variant="contained"
-            size="large"
-            sx={{ minWidth: 160 }}
+            startIcon={<HomeOutlinedIcon fontSize="small" />}
+            variant="outlined"
+            size="small"
+            sx={{ minHeight: 32, fontSize: '0.78rem', px: 1.5 }}
           >
-            日次ハブへ
+            日次ハブ
           </Button>
         </Toolbar>
       </AppBar>
