@@ -18,7 +18,7 @@ import {
     type TransportUserInfo,
     type TransportVisitInfo,
 } from '../transportStatusLogic';
-import { isTerminalStatus, TRANSPORT_TRANSITIONS, type TransportLeg } from '../transportTypes';
+import { isTerminalStatus, TRANSPORT_TRANSITIONS, type TransportLeg, type TransportLegStatus } from '../transportTypes';
 
 // ─── Factories ──────────────────────────────────────────────────────────────
 
@@ -236,7 +236,7 @@ describe('isTerminalStatus', () => {
     ['absent', true],
     ['self', true],
   ])('%s → %s', (status, expected) => {
-    expect(isTerminalStatus(status as any)).toBe(expected);
+    expect(isTerminalStatus(status as TransportLegStatus)).toBe(expected);
   });
 });
 
