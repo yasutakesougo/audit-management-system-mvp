@@ -21,6 +21,7 @@ import {
     resetIBDStore,
 } from '@/features/ibd/core/ibdStore';
 import { autoLinkBipToProcedures } from '@/features/import/domain/autoLinkBipToProcedures';
+import { toLocalDateISO } from '@/utils/getNow';
 
 // ---------------------------------------------------------------------------
 // Constants — Demo protagonist（桂川さんモデル）
@@ -29,7 +30,7 @@ import { autoLinkBipToProcedures } from '@/features/import/domain/autoLinkBipToP
 /** デモの主人公（田中太郎枠を桂川さんとして使用） */
 export const DEMO_USER_ID = 'U-001';
 export const DEMO_USER_NAME = '田中 太郎';
-export const DEMO_DATE = new Date().toISOString().slice(0, 10); // 今日
+export const DEMO_DATE = toLocalDateISO(); // 今日
 
 // ---------------------------------------------------------------------------
 // 1. 日課表（ProcedureStore）— 桂川さんの1日スケジュール

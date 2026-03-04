@@ -1,5 +1,6 @@
 import { useCallback, useMemo, useState, type Dispatch, type SetStateAction } from 'react';
 import toast from 'react-hot-toast';
+import { toLocalDateISO } from '@/utils/getNow';
 
 /**
  * DailyRecordPage (/daily/activity) ViewModel
@@ -216,7 +217,7 @@ export function useDailyRecordViewModel<TRecord extends BaseRecord>(
   }, [generateTodayRecords, setRecords]);
 
   const handleBulkCreateMissing = useCallback(() => {
-    const today = new Date().toISOString().split('T')[0];
+    const today = toLocalDateISO();
     const existingPersonIds = records
       .filter((record) => record.date === today)
       .map((record) => record.personId);
@@ -248,7 +249,7 @@ export function useDailyRecordViewModel<TRecord extends BaseRecord>(
   }, [records, setRecords, mockUsers, createMissingRecord]);
 
   const handleBulkComplete = useCallback(() => {
-    const today = new Date().toISOString().split('T')[0];
+    const today = toLocalDateISO();
     let completedCount = 0;
 
     const updatedRecords = records.map((record) => {

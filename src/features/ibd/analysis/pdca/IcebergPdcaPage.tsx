@@ -43,6 +43,7 @@ import {
 import { readDailySnapshot, type DailySnapshotMetrics } from './readDailySnapshot';
 import { useIcebergPdcaList, useCreatePdca, useUpdatePdca, useDeletePdca } from './queries';
 import type { IcebergPdcaItem, IcebergPdcaPhase } from './types';
+import { toLocalDateISO } from '@/utils/getNow';
 
 type IcebergPdcaPageProps = {
   writeEnabled?: boolean;
@@ -68,7 +69,7 @@ export const IcebergPdcaPage: React.FC<IcebergPdcaPageProps> = ({ writeEnabled: 
   );
 
   const selectedUserId = searchParams.get('userId') ?? undefined;
-  const today = React.useMemo(() => new Date().toISOString().slice(0, 10), []);
+  const today = React.useMemo(() => toLocalDateISO(), []);
   const [dailySnapshotMetrics, setDailySnapshotMetrics] = React.useState<DailySnapshotMetrics | null>(null);
   const [snapshotWarning, setSnapshotWarning] = React.useState<string | null>(null);
   const orgId = getEnv('VITE_FIREBASE_ORG_ID') ?? 'demo-org';

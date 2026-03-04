@@ -31,6 +31,7 @@ import Select from '@mui/material/Select';
 import Tooltip from '@mui/material/Tooltip';
 import Typography from '@mui/material/Typography';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { toLocalDateISO } from '@/utils/getNow';
 
 // ---------------------------------------------------------------------------
 // Constants
@@ -365,7 +366,7 @@ const AnalysisDashboardPage: React.FC = () => {
 
   const executionStats = useMemo(() => {
     if (!targetUserId) return { completed: 0, triggered: 0, skipped: 0, total: 0 };
-    const today = new Date().toISOString().slice(0, 10);
+    const today = toLocalDateISO();
     const procedures = procedureStore.getByUser(targetUserId);
     const records = executionStore.getRecords(today, targetUserId);
     const completed = records.filter((r) => r.status === 'completed').length;

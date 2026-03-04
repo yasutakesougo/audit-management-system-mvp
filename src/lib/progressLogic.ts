@@ -1,3 +1,4 @@
+import { toLocalDateISO } from '@/utils/getNow';
 /**
  * Dashboard Progress Tracking Logic
  *
@@ -160,7 +161,7 @@ export const calculateDailyProgress = (
   }
 
   return {
-    date: new Date().toISOString().split('T')[0],
+    date: toLocalDateISO(),
     totalTasks: taskProgress.total,
     completedTasks: taskProgress.completed,
     attendanceRate: attendanceProgress.percentage,

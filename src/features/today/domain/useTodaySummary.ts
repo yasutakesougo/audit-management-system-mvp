@@ -13,6 +13,7 @@ import { useDashboardSummary } from '@/features/dashboard';
 import { useStaffStore } from '@/features/staff';
 import { useUsersDemo } from '@/features/users/usersStoreDemo';
 import { useMemo } from 'react';
+import { toLocalDateISO } from '@/utils/getNow';
 
 // ─── Internal: Dashboard-irrelevant defaults ────────────────────────────
 const generateMockActivityRecords = () => [];
@@ -32,7 +33,7 @@ export function useTodaySummary() {
   const { data: users } = useUsersDemo();
   const { visits } = useAttendanceStore();
   const { staff } = useStaffStore();
-  const today = new Date().toISOString().split('T')[0];
+  const today = toLocalDateISO();
   const currentMonth = today.slice(0, 7);
 
   // ─── 2. Delegate to shared domain aggregation ───

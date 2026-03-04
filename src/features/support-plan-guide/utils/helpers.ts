@@ -8,6 +8,7 @@
 import type { IUserMaster } from '@/features/users/types';
 import type { DeadlineInfo, SectionConfig, SectionKey, SupportPlanDraft, SupportPlanForm } from '../types';
 import { defaultFormState, FIELD_KEYS, FIELD_LIMITS, NAME_LIMIT, REQUIRED_FIELDS } from '../types';
+import { toLocalDateISO } from '@/utils/getNow';
 
 // ────────────────────────────────────────────
 // 日付ヘルパー
@@ -42,7 +43,7 @@ export const formatDateJP = (d?: Date) =>
 
 export const daysDiff = (a: Date, b: Date) => Math.round((a.getTime() - b.getTime()) / (1000 * 60 * 60 * 24));
 
-export const todayYmd = () => new Date().toISOString().split('T')[0];
+export const todayYmd = () => toLocalDateISO();
 export const minusDaysYmd = (ymd: string, days: number) => {
   const d = new Date(ymd);
   d.setDate(d.getDate() - days);

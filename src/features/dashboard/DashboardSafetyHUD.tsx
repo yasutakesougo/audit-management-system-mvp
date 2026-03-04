@@ -16,13 +16,14 @@ import { buildCrossModuleDashboardAlerts } from '@/features/dashboard/crossModul
 import { convertDashboardAlertsToSafetyHUD, getAlertIcon } from '@/lib/safetyHUDLogic';
 import { TESTIDS, tid, tidWithSuffix } from '@/testids';
 import { isE2E } from '@/env';
+import { toLocalDateISO } from '@/utils/getNow';
 
 export type DashboardSafetyHUDProps = {
   /** 集計日。指定しない場合は本日の日付で生成 */
   date?: string;
 };
 
-const defaultDate = (): string => new Date().toISOString().slice(0, 10);
+const defaultDate = (): string => toLocalDateISO();
 
 const severityChipColor: Record<'error' | 'warning' | 'info', 'error' | 'warning' | 'info'> = {
   error: 'error',

@@ -13,8 +13,9 @@ import type { AttendanceDailyItem } from './infra/attendanceDailyRepository';
 import { useAttendanceRepository } from './repositoryFactory';
 import { methodImpliesShuttle } from './transportMethod';
 import type { AttendanceFilter, AttendanceHookStatus, AttendanceInputMode, AttendanceRowVM } from './types';
+import { toLocalDateISO } from '@/utils/getNow';
 
-const todayIso = (): string => new Date().toISOString().split('T')[0];
+const todayIso = (): string => toLocalDateISO();
 
 /**
  * SP フラット列 → AbsentSupportLog 埋め込み型へ変換

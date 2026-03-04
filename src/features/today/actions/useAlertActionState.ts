@@ -8,11 +8,12 @@ import { useAuth } from '@/auth/useAuth';
 import { useCallback, useMemo, useState } from 'react';
 import { createLocalStorageRepo } from './alertActions.storage';
 import type { ActionStatus, AlertActionState } from './alertActions.types';
+import { toLocalDateISO } from '@/utils/getNow';
 
 export function useAlertActionState() {
   const { account } = useAuth();
   const loginUserKey = account?.username ?? 'anonymous';
-  const ymd = new Date().toISOString().split('T')[0];
+  const ymd = toLocalDateISO();
 
   const repo = useMemo(
     () => createLocalStorageRepo(ymd, loginUserKey),

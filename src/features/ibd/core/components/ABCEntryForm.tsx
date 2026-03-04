@@ -19,6 +19,7 @@ import type { FC } from 'react';
 import { useCallback, useState } from 'react';
 
 import type { ABCRecord, BehaviorFunction, BehaviorOutcome } from '../ibdTypes';
+import { toLocalDateISO } from '@/utils/getNow';
 import {
     BEHAVIOR_FUNCTION_COLORS,
     BEHAVIOR_FUNCTION_LABELS,
@@ -77,7 +78,7 @@ const ABCEntryForm: FC<ABCEntryFormProps> = ({
     const record: ABCRecord = {
       id: `abc-${Date.now()}`,
       userId,
-      recordedAt: new Date().toISOString().split('T')[0],
+      recordedAt: toLocalDateISO(),
       recordedBy,
       antecedent: antecedent.trim(),
       antecedentTags: selectedTags,
