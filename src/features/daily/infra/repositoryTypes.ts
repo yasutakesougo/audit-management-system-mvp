@@ -1,13 +1,17 @@
-import type { ScheduleItem } from '../components/split-stream/ProcedurePanel';
+/**
+ * Repository types — backward-compatible re-exports.
+ *
+ * Original definitions have been promoted to proper domain Ports:
+ * - ProcedureRepository → domain/ProcedureRepository.ts
+ * - BehaviorRepository  → domain/BehaviorRepository.ts (already existed)
+ *
+ * This file re-exports them so that existing consumers
+ * (e.g. useTimeBasedSupportRecordPage.ts) continue to compile.
+ */
 import type { BehaviorObservation } from '../domain/daily/types';
+export type { ProcedureRepository, ProcedureStep } from '../domain/ProcedureRepository';
 
-export type ProcedureStep = ScheduleItem;
 export type BehaviorRecord = BehaviorObservation;
-
-export interface ProcedureRepository {
-  getByUser(userId: string): ProcedureStep[];
-  save(userId: string, steps: ProcedureStep[]): void;
-}
 
 export interface BehaviorRepository {
   fetchByUser(userId: string): Promise<void>;

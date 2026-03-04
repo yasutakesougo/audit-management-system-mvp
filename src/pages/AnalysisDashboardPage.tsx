@@ -8,8 +8,8 @@ import {
 import { useBehaviorAnalytics } from '@/features/analysis/hooks/useBehaviorAnalytics';
 import { useInterventionStore } from '@/features/analysis/stores/interventionStore';
 import { useAttendanceStore } from '@/features/attendance/store';
+import { useExecutionData } from '@/features/daily/hooks/useExecutionData';
 import { seedDemoBehaviors, useBehaviorStore } from '@/features/daily/stores/behaviorStore';
-import { useExecutionStore } from '@/features/daily/stores/executionStore';
 import { useProcedureStore } from '@/features/daily/stores/procedureStore';
 import { AttendanceSummaryCard } from '@/features/dashboard/components/AttendanceSummaryCard';
 import { IBDPageHeader } from '@/features/ibd/core/components/IBDPageHeader';
@@ -359,7 +359,7 @@ const AnalysisDashboardPage: React.FC = () => {
   );
 
   // --- Execution stats ---
-  const executionStore = useExecutionStore();
+  const executionStore = useExecutionData();
   const procedureStore = useProcedureStore();
   const interventionStore = useInterventionStore();
 
