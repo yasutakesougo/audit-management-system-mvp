@@ -206,7 +206,7 @@ export function seedIbdDemoData(userId: string): { sps: number; supervisionLogs:
   }
 
   const now = new Date().toISOString();
-  const today = now.slice(0, 10);
+  const today = toLocalDateISO();
 
   // --- 1. SPS (支援計画シート) — confirmed + 良い状態の条件 ---
   const spsId = `sps-demo-${userId}`;

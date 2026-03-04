@@ -1,5 +1,6 @@
 import { useObsWorkspaceParams } from '@/features/nurse/observation/useObsWorkspaceParams';
 import { NURSE_USERS } from '@/features/nurse/users';
+import { toLocalDateISO } from '@/utils/getNow';
 import { renderHook } from '@testing-library/react';
 import React, { type PropsWithChildren } from 'react';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
@@ -24,7 +25,7 @@ describe('useObsWorkspaceParams', () => {
   }
 
   it('normalizes missing params', () => {
-    const today = new Date().toISOString().slice(0, 10);
+    const today = toLocalDateISO();
     const { result } = renderHook(() => useObsWorkspaceParams(), {
       wrapper: createWrapper('/nurse/observation'),
     });
@@ -34,7 +35,7 @@ describe('useObsWorkspaceParams', () => {
   });
 
   it('repairs invalid inputs', () => {
-    const today = new Date().toISOString().slice(0, 10);
+    const today = toLocalDateISO();
     const { result } = renderHook(() => useObsWorkspaceParams(), {
       wrapper: createWrapper('/nurse/observation?user=XYZ&date=2025-99-99'),
     });
