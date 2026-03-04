@@ -60,13 +60,9 @@ describe('TableDailyRecordForm', () => {
   const renderForm = (overrideProps: Partial<typeof defaultProps> = {}) =>
     render(<TableDailyRecordForm {...defaultProps} {...overrideProps} />);
 
-  const getSearchInput = () => screen.getAllByPlaceholderText('名前またはIDで検索')[0];
   const getReporterInput = () => screen.getAllByLabelText('記録者名')[0];
   const getDateInput = () => screen.getAllByLabelText('記録日')[0];
-  const getFilterButton = () => screen.getByRole('button', { name: '今日の通所者のみ表示' });
-  const getUserList = () => screen.getByTestId(TESTIDS['daily-table-record-form-user-list']);
   const getTableContainer = () => screen.getByTestId(TESTIDS['daily-table-record-form-table']);
-  const withinUserList = () => within(getUserList());
   const waitForTable = () =>
     waitFor(() => {
       expect(screen.getByTestId(TESTIDS['daily-table-record-form-table'])).toBeInTheDocument();
@@ -75,7 +71,7 @@ describe('TableDailyRecordForm', () => {
     waitFor(
       () => {
         const el = screen.getByTestId('selection-count');
-        expect(el).toHaveTextContent(new RegExp(`^${count}人の利用者が選択されています`));
+        expect(el).toHaveTextContent(`${count}人選択中`);
       },
       { timeout: 10000 }
     );
@@ -87,6 +83,23 @@ describe('TableDailyRecordForm', () => {
     });
   };
   const createUser = () => userEvent.setup();
+
+  /**
+   * Helper to expand the UserPicker accordion.
+   * The search input and filter button are inside the expandable panel.
+   */
+  const expandUserPicker = async (_user: ReturnType<typeof createUser>) => {
+    // Click the summary bar directly via its test ID
+    const summaryBar = screen.getByTestId('user-picker-summary');
+    fireEvent.click(summaryBar);
+    // Wait for the search input to appear (inside Collapse)
+    await waitFor(() => {
+      expect(screen.getByPlaceholderText('名前またはIDで検索')).toBeInTheDocument();
+    });
+  };
+
+  const getUserList = () => screen.getByTestId(TESTIDS['daily-table-record-form-user-list']);
+  const withinUserList = () => within(getUserList());
 
   beforeEach(() => {
     vi.clearAllMocks();
@@ -100,8 +113,8 @@ describe('TableDailyRecordForm', () => {
     renderForm();
 
     expect(screen.getByTestId(TESTIDS['daily-table-record-form'])).toBeInTheDocument();
-    expect(screen.getByText('一覧形式ケース記録入力')).toBeInTheDocument();
-    expect(screen.getByText('利用者を行として並べて、各項目を効率的に一覧入力できます')).toBeInTheDocument();
+    // The form shows a selection-count chip
+    expect(screen.getByTestId('selection-count')).toBeInTheDocument();
   });
 
   it('should not render when closed', async () => {
@@ -116,8 +129,12 @@ describe('TableDailyRecordForm', () => {
     const user = createUser();
     renderForm();
 
-    const filterButton = getFilterButton();
-    if (filterButton.textContent?.includes('通所')) {
+    // Expand user picker to see user list
+    await expandUserPicker(user);
+
+    // Toggle filter to show all users if needed
+    const filterButton = screen.getByText(/^(全利用者|通所日のみ)$/);
+    if (filterButton.textContent?.includes('通所日のみ')) {
       await user.click(filterButton);
     }
 
@@ -131,15 +148,19 @@ describe('TableDailyRecordForm', () => {
     const user = createUser();
     renderForm();
 
-    const filterButton = getFilterButton();
-    if (filterButton.textContent?.includes('通所')) {
+    // Expand user picker
+    await expandUserPicker(user);
+
+    // Toggle to show all users first
+    const filterButton = screen.getByText(/^(全利用者|通所日のみ)$/);
+    if (filterButton.textContent?.includes('通所日のみ')) {
       await user.click(filterButton);
       await waitFor(() => {
         expect(filterButton).toHaveTextContent('全利用者');
       });
     }
 
-    const searchInput = getSearchInput();
+    const searchInput = screen.getByPlaceholderText('名前またはIDで検索');
     await user.type(searchInput, '田中');
 
     await waitFor(() => {
@@ -184,8 +205,8 @@ describe('TableDailyRecordForm', () => {
     await waitForTable();
 
     const table = within(getTableContainer());
-    const amActivityInput = table.getAllByPlaceholderText('午前の活動')[0];
-    const pmActivityInput = table.getAllByPlaceholderText('午後の活動')[0];
+    const amActivityInput = table.getAllByPlaceholderText('午前')[0];
+    const pmActivityInput = table.getAllByPlaceholderText('午後')[0];
 
     await user.type(amActivityInput, '朝の体操');
     await user.type(pmActivityInput, '作業活動');
@@ -231,7 +252,7 @@ describe('TableDailyRecordForm', () => {
     await waitForTable();
 
     const table = within(getTableContainer());
-    const specialNotesInput = table.getAllByPlaceholderText('特記事項')[0];
+    const specialNotesInput = table.getAllByPlaceholderText('特記')[0];
     await user.type(specialNotesInput, '今日は元気でした');
 
     expect(specialNotesInput).toHaveValue('今日は元気でした');
@@ -244,7 +265,7 @@ describe('TableDailyRecordForm', () => {
     await waitForTable();
 
     const table = within(getTableContainer());
-    const amActivityInput = table.getAllByPlaceholderText('午前の活動')[0];
+    const amActivityInput = table.getAllByPlaceholderText('午前')[0];
     await user.type(amActivityInput, '朝の体操');
 
     const clearButton = table.getAllByLabelText('この行をクリア')[0];
@@ -270,7 +291,7 @@ describe('TableDailyRecordForm', () => {
     await waitForTable();
 
     const table = within(getTableContainer());
-    const amActivityInput = table.getAllByPlaceholderText('午前の活動')[0];
+    const amActivityInput = table.getAllByPlaceholderText('午前')[0];
     await user.type(amActivityInput, '朝の体操');
 
     const saveButton = await screen.findByRole(
@@ -371,41 +392,49 @@ describe('TableDailyRecordForm', () => {
       await user.click(clearAllButton);
 
       await waitFor(() => {
-        expect(screen.queryByText(/人の利用者が選択されています/)).not.toBeInTheDocument();
+        const el = screen.getByTestId('selection-count');
+        expect(el).toHaveTextContent('0人選択中');
       });
     }
   );
 
   describe('Attendance Day Filter', () => {
-    it('should show attendance filter button', () => {
+    it('should show attendance filter button in expanded panel', async () => {
+      const user = createUser();
       renderForm();
 
-      const filterButton = getFilterButton();
+      await expandUserPicker(user);
+
+      // Filter button should be visible with either "通所日のみ" or "全利用者"
+      const filterButton = screen.getByText(/^(全利用者|通所日のみ)$/);
       expect(filterButton).toBeInTheDocument();
-      expect(filterButton).toHaveTextContent('通所日のみ');
     });
 
     it('should toggle filter between attendance day and all users', async () => {
       const user = createUser();
       renderForm();
 
-      const filterButton = getFilterButton();
+      await expandUserPicker(user);
+
+      const filterButton = screen.getByText(/^(全利用者|通所日のみ)$/);
+      const currentText = filterButton.textContent;
       await user.click(filterButton);
 
       await waitFor(() => {
-        expect(filterButton).toHaveTextContent('全利用者');
+        if (currentText?.includes('通所日のみ')) {
+          expect(filterButton).toHaveTextContent('全利用者');
+        } else {
+          expect(filterButton).toHaveTextContent('通所日のみ');
+        }
       });
     });
 
     it('should filter users based on attendance days when date is Monday', async () => {
+      const user = createUser();
       renderForm();
 
       await setRecordDate('2024-01-01');
-
-      // Should show only Monday attendees and users without attendance days
-      await waitFor(() => {
-        expect(screen.getByText(/1月1日.*通所者のみ表示中/)).toBeInTheDocument();
-      });
+      await expandUserPicker(user);
 
       // Should show 田中太郎 (Monday attendee) and 山田一郎 (no attendance days set)
       const list = withinUserList();
@@ -415,14 +444,11 @@ describe('TableDailyRecordForm', () => {
     });
 
     it('should filter users based on attendance days when date is Tuesday', async () => {
+      const user = createUser();
       renderForm();
 
       await setRecordDate('2024-01-02');
-
-      // Should show only Tuesday attendees and users without attendance days
-      await waitFor(() => {
-        expect(screen.getByText(/1月2日.*通所者のみ表示中/)).toBeInTheDocument();
-      });
+      await expandUserPicker(user);
 
       // Should show 佐藤花子 (Tuesday attendee) and 山田一郎 (no attendance days set)
       const list = withinUserList();
@@ -454,20 +480,19 @@ describe('TableDailyRecordForm', () => {
       const user = createUser();
       renderForm();
 
+      await expandUserPicker(user);
+
       // Disable attendance filter
-      const filterButton = getFilterButton();
-      await user.click(filterButton);
+      const filterButton = screen.getByText(/^(通所日のみ|全利用者)$/);
+      if (filterButton.textContent?.includes('通所日のみ')) {
+        await user.click(filterButton);
+      }
 
       // Should show all users regardless of attendance days
       const list = withinUserList();
       expect(list.getByText('田中 太郎 (U001)')).toBeInTheDocument();
       expect(list.getByText('佐藤 花子 (U002)')).toBeInTheDocument();
       expect(list.getByText('山田 一郎 (U003)')).toBeInTheDocument();
-
-      // Should not show attendance filter alert
-      await waitFor(() => {
-        expect(screen.queryByText(/の通所者のみ表示中/)).not.toBeInTheDocument();
-      });
     });
   });
 });

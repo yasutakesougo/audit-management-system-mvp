@@ -111,7 +111,7 @@ describe('TableDailyRecordTable Support Hints', () => {
       />
     );
 
-    const amInput = screen.getByPlaceholderText('午前の活動');
+    const amInput = screen.getByPlaceholderText('午前');
     fireEvent.change(amInput, { target: { value: 'Walking' } });
 
     // Verify that the call only contains standard fields
