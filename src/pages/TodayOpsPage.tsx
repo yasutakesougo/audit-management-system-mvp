@@ -20,6 +20,7 @@ import { TodayOpsLayout } from '@/features/today/layouts/TodayOpsLayout';
 import { recordAutoNextComplete, recordAutoNextSave } from '@/features/today/records/autoNextCounters';
 import { QuickRecordDrawer } from '@/features/today/records/QuickRecordDrawer';
 import { useQuickRecord } from '@/features/today/records/useQuickRecord';
+import { useTransportStatus } from '@/features/today/transport';
 import { isE2E } from '@/lib/env';
 import { Alert, Snackbar } from '@mui/material';
 import React, { useMemo } from 'react';
@@ -34,7 +35,10 @@ export const TodayOpsPage: React.FC = () => {
   // 2. Derived: Next Action (hook で算出 — ページが太らない)
   const nextAction = useNextAction(summary.scheduleLanesToday);
 
-  // 3. Local State / URL State (Quick Record Drawer)
+  // 3. Transport Status (Composable Hook — #635)
+  const transport = useTransportStatus();
+
+  // 4. Local State / URL State (Quick Record Drawer)
   const quickRecord = useQuickRecord();
 
   // End-of-queue completion notification (#631)
@@ -97,11 +101,18 @@ export const TodayOpsPage: React.FC = () => {
       briefingAlerts: summary?.briefingAlerts ?? [],
       nextAction,
       transport: {
-        pending: [],
-        inProgress: [],
+        pending: transport.isReady
+          ? transport.status.legs
+              .filter((l) => l.direction === transport.activeDirection && (l.status === 'pending' || l.status === 'in-progress'))
+              .map((l) => ({ userId: l.userId, name: l.userName }))
+          : [],
+        inProgress: transport.isReady
+          ? transport.status.legs
+              .filter((l) => l.direction === transport.activeDirection && l.status === 'arrived')
+              .map((l) => ({ userId: l.userId, name: l.userName }))
+          : [],
         onArrived: (userId: string) => {
-          // eslint-disable-next-line no-console
-          console.log(`Marked as arrived: ${userId}`);
+          transport.markArrived(userId, transport.activeDirection);
         },
       },
       users: {

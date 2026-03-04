@@ -36,3 +36,7 @@ export {
     getDefaultDirection,
     parseHHmmToMinutes
 } from './transportStatusLogic';
+
+// Hook
+export { useTransportStatus } from './useTransportStatus';
+export type { UseTransportStatusReturn } from './useTransportStatus';
