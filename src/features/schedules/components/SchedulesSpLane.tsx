@@ -35,6 +35,17 @@ export interface SchedulesSpLaneProps {
  * Now enhanced as a "Monitoring Hub" with Retry and Status transparency.
  */
 export const SchedulesSpLane: React.FC<SchedulesSpLaneProps> = ({ model }) => {
+  // Defensive guard: prevent crash when model is undefined
+  if (!model) {
+    return (
+      <Paper variant="outlined" sx={{ p: 2, opacity: 0.5 }} data-testid="schedules-sp-lane">
+        <Typography variant="body2" color="text.secondary">
+          SP連携データを読み込み中...
+        </Typography>
+      </Paper>
+    );
+  }
+
   const {
     state,
     title,

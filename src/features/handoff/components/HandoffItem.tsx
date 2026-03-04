@@ -150,25 +150,50 @@ export const HandoffItem: React.FC<HandoffItemProps> = ({
     setExpanded((prev) => !prev);
   };
 
-  // ── 重要度に基づくアクセントカラー ──
-  const accentColor =
-    item.severity === '重要' ? 'error.main' :
-    item.severity === '要注意' ? 'warning.main' :
-    'grey.400';
+  // ── 重要度に基づくアクセントカラー & ビジュアル階層 ──
+  const severityStyle = (() => {
+    switch (item.severity) {
+      case '重要':
+        return {
+          borderLeftWidth: 5,
+          borderLeftColor: isCompleted ? 'grey.300' : 'error.main',
+          bgTint: isCompleted ? undefined : 'rgba(211, 47, 47, 0.04)', // error tint
+          glowColor: isCompleted ? undefined : 'rgba(211, 47, 47, 0.08)',
+        };
+      case '要注意':
+        return {
+          borderLeftWidth: 4,
+          borderLeftColor: isCompleted ? 'grey.300' : 'warning.main',
+          bgTint: isCompleted ? undefined : 'rgba(237, 108, 2, 0.03)', // warning tint
+          glowColor: undefined,
+        };
+      default:
+        return {
+          borderLeftWidth: 3,
+          borderLeftColor: isCompleted ? 'grey.300' : 'grey.400',
+          bgTint: undefined,
+          glowColor: undefined,
+        };
+    }
+  })();
 
   return (
     <Card
       variant="outlined"
       sx={{
-        // 左ボーダー: 完了済みはグレー化、それ以外は重要度カラー
-        borderLeft: item.severity === '重要' ? '4px solid' : '3px solid',
-        borderLeftColor: isCompleted ? 'grey.300' : accentColor,
+        // 左ボーダー: 重要度に応じた太さ + カラー
+        borderLeft: `${severityStyle.borderLeftWidth}px solid`,
+        borderLeftColor: severityStyle.borderLeftColor,
         // 完了済みカードの視覚的フィードバック
         opacity: isCompleted ? 0.65 : 1,
-        // 未確認カードは柔らかいハイライト
+        // 未確認カードは柔らかいハイライト、重要度に応じた背景ティント
         bgcolor: isSeen
-          ? 'background.paper'
+          ? (severityStyle.bgTint || 'background.paper')
           : 'action.hover',
+        // 重要カードの微かなグロー効果
+        ...(severityStyle.glowColor && !isCompleted && {
+          boxShadow: `inset 4px 0 8px -4px ${severityStyle.glowColor}, 0 1px 3px rgba(0,0,0,0.04)`,
+        }),
         // ステータス変更時の pulse アニメーション
         transition: 'all 0.3s ease',
         ...(statusPulse && {
@@ -178,7 +203,10 @@ export const HandoffItem: React.FC<HandoffItemProps> = ({
         '&:hover': {
           bgcolor: isCompleted
             ? 'background.paper'
-            : 'action.hover',
+            : (severityStyle.bgTint || 'action.hover'),
+          ...(item.severity === '重要' && !isCompleted && {
+            boxShadow: `inset 5px 0 12px -4px rgba(211, 47, 47, 0.12), 0 2px 6px rgba(0,0,0,0.06)`,
+          }),
         },
       }}
       {...tid(TESTIDS['agenda-timeline-item'])}
@@ -328,11 +356,15 @@ export const HandoffItem: React.FC<HandoffItemProps> = ({
               {displayMessage}
             </Typography>
 
-            {/* 展開/折りたたみ */}
+            {/* 長文の展開/折りたたみ（テキスト表示のみ） */}
             {isLongMessage && (
               <Button
                 size="small"
-                onClick={handleToggleExpand}
+                onClick={() => {
+                  // テキスト展開のみ（コメント展開とは独立）
+                  setExpanded((prev) => !prev);
+                  if (!expanded) markSeen();
+                }}
                 endIcon={expanded ? <ExpandLessIcon /> : <ExpandMoreIcon />}
                 sx={{
                   mt: 0.25,
@@ -346,6 +378,25 @@ export const HandoffItem: React.FC<HandoffItemProps> = ({
               </Button>
             )}
           </Box>
+
+          {/* ── コメント・詳細展開ボタン（常に表示） ── */}
+          <Button
+            size="small"
+            onClick={handleToggleExpand}
+            startIcon={<ChatBubbleOutlineIcon sx={{ fontSize: 14 }} />}
+            endIcon={expanded ? <ExpandLessIcon /> : <ExpandMoreIcon />}
+            sx={{
+              mt: 0.5,
+              p: 0,
+              fontSize: '0.72rem',
+              color: 'text.secondary',
+              textTransform: 'none',
+              justifyContent: 'flex-start',
+              '&:hover': { color: 'primary.main' },
+            }}
+          >
+            {expanded ? '閉じる' : '💬 コメント · 詳細'}
+          </Button>
 
           {/* ── 展開時: コメント + 更新履歴タブ (Collapseでアニメーション) ── */}
           <Collapse in={expanded} timeout={250}>

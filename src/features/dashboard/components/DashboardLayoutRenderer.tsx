@@ -2,8 +2,8 @@
  * DashboardLayoutRenderer — レイアウトモード別の描画コンポーネント
  *
  * 責務:
- * - layoutMode ('zeroScroll' | 'tabletLandscape' | 'standard') に基づく条件分岐
- * - ZeroScrollLayout / DashboardZoneLayout / 標準リストの描画
+ * - layoutMode ('bentoGrid' | 'zeroScroll' | 'tabletLandscape' | 'standard') に基づく条件分岐
+ * - BentoGridLayout / ZeroScrollLayout / DashboardZoneLayout / 標準リストの描画
  * - BriefingHUD の配置
  *
  * Presentational コンポーネント。ロジックを持たず、渡されたデータを配置するだけ。
@@ -17,6 +17,7 @@ import DashboardBriefingHUD from '@/features/dashboard/DashboardBriefingHUD';
 import { DashboardZoneLayout } from '@/features/dashboard/components/DashboardZoneLayout';
 import type { TodayChanges } from '@/features/dashboard/components/TodayChangesCard';
 import type { DashboardLayoutMode } from '@/features/dashboard/hooks/useDashboardLayoutMode';
+import { BentoGridLayout } from '@/features/dashboard/layouts/BentoGridLayout';
 import type { DashboardTab } from '@/features/dashboard/layouts/ZeroScrollLayout';
 import { ZeroScrollLayout } from '@/features/dashboard/layouts/ZeroScrollLayout';
 import type { BriefingAlert } from '@/features/dashboard/sections/types';
@@ -38,12 +39,18 @@ export interface DashboardLayoutRendererProps {
   briefingType?: 'morning' | 'evening';
   scrollToSection: (sectionKeyOrAnchorId: DashboardSectionKey | string) => void;
 
-  // Today changes (tabletLandscape only)
+  // Today changes
   dateLabel: string;
   todayChanges: TodayChanges;
 
   // ZeroScroll tabs
   zeroScrollTabs: DashboardTab[];
+
+  // 🍱 Bento Grid KPI data
+  handoffPending?: number;
+  handoffCritical?: number;
+  attendanceRatio?: { present: number; total: number };
+  dailyRecordRatio?: { done: number; total: number };
 }
 
 export const DashboardLayoutRenderer: React.FC<DashboardLayoutRendererProps> = ({
@@ -59,7 +66,33 @@ export const DashboardLayoutRenderer: React.FC<DashboardLayoutRendererProps> = (
   dateLabel,
   todayChanges,
   zeroScrollTabs,
+  handoffPending = 0,
+  handoffCritical = 0,
+  attendanceRatio,
+  dailyRecordRatio,
 }) => {
+  // ── 🍱 Bento Grid ──
+  if (layoutMode === 'bentoGrid') {
+    return (
+      <BentoGridLayout
+        sections={orderedSections}
+        renderSection={renderSection}
+        sectionIdByKey={sectionIdByKey}
+        highlightSection={highlightSection}
+        handoffPending={handoffPending}
+        handoffCritical={handoffCritical}
+        attendanceRatio={attendanceRatio}
+        dailyRecordRatio={dailyRecordRatio}
+        briefingAlerts={briefingAlerts}
+        isBriefingTime={isBriefingTime}
+        briefingType={briefingType}
+        scrollToSection={scrollToSection}
+        dateLabel={dateLabel}
+        todayChanges={todayChanges}
+      />
+    );
+  }
+
   // ── Zero-Scroll ──
   if (layoutMode === 'zeroScroll') {
     const handoverSection = orderedSections.find((s) => s.key === 'handover');
