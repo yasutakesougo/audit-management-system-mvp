@@ -36,3 +36,15 @@ export {
 // List CRUD operations (factory)
 export { createListOperations } from './spLists';
 export type { NormalizePathFn, SpFetchFn, SpListOperations } from './spLists';
+
+// Fetch (HTTP fetch + retry + mock)
+export { createNormalizePath, createSpFetch } from './spFetch';
+export type { SpFetchDeps } from './spFetch';
+
+// Batch POST (retry-aware)
+export { createPostBatch } from './spPostBatch';
+export type { PostBatchDeps } from './spPostBatch';
+
+// Master data fetchers
+export { fetchListItemsWithFallback, getStaffMaster, getUsersMaster } from './spMasters';
+export type { ListClient } from './spMasters';
