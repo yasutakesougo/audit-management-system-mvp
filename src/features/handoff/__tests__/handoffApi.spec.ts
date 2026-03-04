@@ -513,4 +513,174 @@ describe('HandoffApi', () => {
       expect(stats.categoryStats).toEqual({});
     });
   });
+
+  // ─── getUserHandoffRecords ──────────────────────────────
+  describe('getUserHandoffRecords', () => {
+    it('UserCode フィルタを含むクエリで SP を呼ぶ', async () => {
+      const items = [createSpItem({ Id: 10, UserCode: 'U001' })];
+      mockSP.spFetch.mockResolvedValue(mockResponse({ value: items }));
+
+      const api = createHandoffApi(mockSP as never);
+      const records = await api.getUserHandoffRecords('U001');
+
+      expect(records).toHaveLength(1);
+      expect(records[0].userCode).toBe('U001');
+
+      const call = mockSP.spFetch.mock.calls[0][0];
+      expect(call).toContain("UserCode eq 'U001'");
+    });
+
+    it('today スコープで日付フィルタが追加される', async () => {
+      mockSP.spFetch.mockResolvedValue(mockResponse({ value: [] }));
+
+      const api = createHandoffApi(mockSP as never);
+      await api.getUserHandoffRecords('U001', 'today');
+
+      const call = mockSP.spFetch.mock.calls[0][0];
+      expect(call).toContain("UserCode eq 'U001'");
+      expect(call).toContain('CreatedAt ge');
+      expect(call).toContain('CreatedAt le');
+    });
+
+    it('yesterday スコープで前日フィルタが構築される', async () => {
+      mockSP.spFetch.mockResolvedValue(mockResponse({ value: [] }));
+
+      const api = createHandoffApi(mockSP as never);
+      await api.getUserHandoffRecords('U001', 'yesterday');
+
+      const call = mockSP.spFetch.mock.calls[0][0];
+      expect(call).toContain('CreatedAt ge');
+      expect(call).toContain('CreatedAt le');
+    });
+
+    it('timeFilter が morning の場合 TimeBand フィルタが追加される', async () => {
+      mockSP.spFetch.mockResolvedValue(mockResponse({ value: [] }));
+
+      const api = createHandoffApi(mockSP as never);
+      await api.getUserHandoffRecords('U001', 'today', 'morning');
+
+      const call = mockSP.spFetch.mock.calls[0][0];
+      expect(call).toContain("TimeBand eq 'morning'");
+    });
+
+    it('API エラー時に日本語エラーをスローする', async () => {
+      mockSP.spFetch.mockResolvedValue(mockResponse({}, 500));
+
+      const api = createHandoffApi(mockSP as never);
+
+      await expect(
+        api.getUserHandoffRecords('U001')
+      ).rejects.toThrow('ユーザー別申し送り記録の取得に失敗しました');
+    });
+
+    it('空の応答を安全に処理する', async () => {
+      mockSP.spFetch.mockResolvedValue(mockResponse({ value: [] }));
+
+      const api = createHandoffApi(mockSP as never);
+      const records = await api.getUserHandoffRecords('U999');
+
+      expect(records).toEqual([]);
+    });
+  });
+
+  // ─── getMeetingHandoffRecords ───────────────────────────
+  describe('getMeetingHandoffRecords', () => {
+    it('MeetingSessionKey フィルタで SP を呼ぶ', async () => {
+      const items = [
+        createSpItem({ Id: 20, MeetingSessionKey: '2026-03-04_morning' }),
+        createSpItem({ Id: 21, MeetingSessionKey: '2026-03-04_morning' }),
+      ];
+      mockSP.spFetch.mockResolvedValue(mockResponse({ value: items }));
+
+      const api = createHandoffApi(mockSP as never);
+      const records = await api.getMeetingHandoffRecords('2026-03-04_morning');
+
+      expect(records).toHaveLength(2);
+
+      const call = mockSP.spFetch.mock.calls[0][0];
+      expect(call).toContain("MeetingSessionKey eq '2026-03-04_morning'");
+    });
+
+    it('結果が CreatedAt desc で並べ替えられる', async () => {
+      mockSP.spFetch.mockResolvedValue(mockResponse({ value: [] }));
+
+      const api = createHandoffApi(mockSP as never);
+      await api.getMeetingHandoffRecords('2026-03-04_evening');
+
+      const call = mockSP.spFetch.mock.calls[0][0];
+      expect(call).toContain('$orderby=CreatedAt desc');
+    });
+
+    it('API エラー時に日本語エラーをスローする', async () => {
+      mockSP.spFetch.mockResolvedValue(mockResponse({}, 500));
+
+      const api = createHandoffApi(mockSP as never);
+
+      await expect(
+        api.getMeetingHandoffRecords('2026-03-04_morning')
+      ).rejects.toThrow('会議用申し送り記録の取得に失敗しました');
+    });
+
+    it('空の応答を安全に処理する', async () => {
+      mockSP.spFetch.mockResolvedValue(mockResponse({}));
+
+      const api = createHandoffApi(mockSP as never);
+      const records = await api.getMeetingHandoffRecords('nonexistent');
+
+      expect(records).toEqual([]);
+    });
+  });
+
+  // ─── キャッシュ無効化 (create/update 後) ─────────────────
+  describe('キャッシュ無効化', () => {
+    it('createHandoffRecord 後にキャッシュが無効化され再フェッチされる', async () => {
+      // 1. GET でキャッシュ
+      mockSP.spFetch.mockResolvedValue(mockResponse({ value: [createSpItem()] }));
+      const api = createHandoffApi(mockSP as never);
+      await api.getHandoffRecords('today', 'all');
+      expect(mockSP.spFetch).toHaveBeenCalledTimes(1);
+
+      // 2. POST (create)
+      const createdItem = createSpItem({ Id: 50 });
+      mockSP.spFetch.mockResolvedValue(mockResponse(createdItem));
+      await api.createHandoffRecord({
+        userCode: 'U001',
+        userDisplayName: 'テスト太郎',
+        category: '体調',
+        severity: '通常',
+        timeBand: '朝',
+        message: 'テスト',
+      });
+
+      // 3. 再GET — キャッシュ無効化されたので再フェッチ
+      mockSP.spFetch.mockResolvedValue(mockResponse({ value: [] }));
+      await api.getHandoffRecords('today', 'all');
+
+      // spFetch: 1(初回GET) + 1(POST) + 1(再GET) = 3回以上
+      expect(mockSP.spFetch.mock.calls.length).toBeGreaterThanOrEqual(3);
+    });
+
+    it('updateHandoffRecord 後にキャッシュが無効化される', async () => {
+      // 1. GET でキャッシュ
+      mockSP.spFetch.mockResolvedValue(mockResponse({ value: [createSpItem()] }));
+      const api = createHandoffApi(mockSP as never);
+      await api.getHandoffRecords('today', 'all');
+      const callsAfterGet = mockSP.spFetch.mock.calls.length;
+
+      // 2. PATCH (update)
+      const patchResponse = mockResponse({}, 200);
+      const refetchItem = createSpItem({ Id: 1, Status: '対応済' });
+      mockSP.spFetch
+        .mockResolvedValueOnce(patchResponse)
+        .mockResolvedValueOnce(mockResponse(refetchItem));
+      await api.updateHandoffRecord('1', { status: '対応済' });
+
+      // 3. 再GET — キャッシュ無効化
+      mockSP.spFetch.mockResolvedValue(mockResponse({ value: [] }));
+      await api.getHandoffRecords('today', 'all');
+
+      // 再GET が発生している（キャッシュから返さない）
+      expect(mockSP.spFetch.mock.calls.length).toBeGreaterThan(callsAfterGet + 2);
+    });
+  });
 });

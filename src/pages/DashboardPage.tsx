@@ -100,6 +100,21 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ audience = 'staff' }) => 
             dateLabel={page.dateLabel}
             todayChanges={page.todayChanges}
             zeroScrollTabs={zeroScrollTabs}
+            // 🍱 Bento Grid KPI data
+            handoffPending={page.handoffStatus['未対応'] ?? 0}
+            handoffCritical={page.handoffCritical}
+            attendanceRatio={
+              page.attendanceSummary
+                ? {
+                    present: page.attendanceSummary.facilityAttendees ?? 0,
+                    total: page.attendanceSummary.onDutyStaff ?? 0,
+                  }
+                : undefined
+            }
+            dailyRecordRatio={{
+              done: page.dailyRecordStatus.completed,
+              total: page.dailyRecordStatus.total,
+            }}
           />
         </Stack>
       </Box>
