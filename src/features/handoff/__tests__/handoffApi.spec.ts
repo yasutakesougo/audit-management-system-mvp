@@ -286,16 +286,23 @@ describe('HandoffApi', () => {
 
       const api = createHandoffApi(mockSP as never);
 
-      await expect(
-        api.createHandoffRecord({
-          userCode: 'U001',
-          userDisplayName: 'テスト太郎',
-          category: '体調',
-          severity: '通常',
-          timeBand: '朝',
-          message: 'テスト',
-        })
-      ).rejects.toThrow('申し送り記録の作成に失敗しました');
+      // callWithRetry が setTimeout で exponential backoff (500→1000→2000ms) するため、
+      // vi.runAllTimersAsync() でリトライ遅延を即座にフラッシュする
+      const promise = api.createHandoffRecord({
+        userCode: 'U001',
+        userDisplayName: 'テスト太郎',
+        category: '体調',
+        severity: '通常',
+        timeBand: '朝',
+        message: 'テスト',
+      });
+      // Unhandled rejection 防止: タイマーフラッシュ前にキャッチハンドラを付与
+      promise.catch(() => {});
+
+      // リトライ待機中のタイマーをすべて進める
+      await vi.runAllTimersAsync();
+
+      await expect(promise).rejects.toThrow('申し送り記録の作成に失敗しました');
     });
   });
 
@@ -360,9 +367,15 @@ describe('HandoffApi', () => {
 
       const api = createHandoffApi(mockSP as never);
 
-      await expect(
-        api.updateHandoffRecord('1', { status: '対応中' })
-      ).rejects.toThrow('申し送り記録の更新に失敗しました');
+      // callWithRetry が setTimeout で exponential backoff するため、
+      // vi.runAllTimersAsync() でリトライ遅延を即座にフラッシュする
+      const promise = api.updateHandoffRecord('1', { status: '対応中' });
+      // Unhandled rejection 防止: タイマーフラッシュ前にキャッチハンドラを付与
+      promise.catch(() => {});
+
+      await vi.runAllTimersAsync();
+
+      await expect(promise).rejects.toThrow('申し送り記録の更新に失敗しました');
     });
   });
 
