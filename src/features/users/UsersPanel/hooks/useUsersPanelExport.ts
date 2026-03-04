@@ -2,12 +2,12 @@
  * useUsersPanelExport
  *
  * PDF・Excel 出力ハンドラ
+ *
+ * Heavy report libraries (@react-pdf/renderer, xlsx) are loaded lazily
+ * via dynamic import() so they stay out of the initial bundle.
  */
 import { useDailyRecordRepository } from '@/features/daily/repositoryFactory';
-import { AchievementRecordPDF } from '@/features/reports/achievement/AchievementRecordPDF';
 import { useAchievementPDF } from '@/features/reports/achievement/useAchievementPDF';
-import { exportMonthlySummary } from '@/features/reports/monthly/MonthlySummaryExcel';
-import { pdf } from '@react-pdf/renderer';
 import { endOfMonth, format, parseISO, startOfMonth } from 'date-fns';
 import React, { useCallback } from 'react';
 import type { IUserMaster } from '../../types';
@@ -30,6 +30,12 @@ export function useUsersPanelExport(
     if (!pdfData) return;
 
     try {
+      // Lazy-load heavy PDF libs only when user clicks export
+      const [{ pdf }, { AchievementRecordPDF }] = await Promise.all([
+        import('@react-pdf/renderer'),
+        import('@/features/reports/achievement/AchievementRecordPDF'),
+      ]);
+
       const blob = await pdf(
         React.createElement(AchievementRecordPDF, pdfData) as unknown as React.ReactElement
       ).toBlob();
@@ -60,6 +66,11 @@ export function useUsersPanelExport(
           endDate: format(end, 'yyyy-MM-dd'),
         },
       });
+
+      // Lazy-load xlsx only when user clicks export
+      const { exportMonthlySummary } = await import(
+        '@/features/reports/monthly/MonthlySummaryExcel'
+      );
 
       exportMonthlySummary({
         month: targetMonth,

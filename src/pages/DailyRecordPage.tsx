@@ -1,23 +1,28 @@
+/**
+ * DailyRecordPage — Thin Orchestrator
+ *
+ * Composes:
+ *   - dailyRecordMockData: mock data, generators, factory
+ *   - useDailyRecordViewModel: state, handlers, filtering
+ *   - DailyRecordStatsPanel: statistics cards
+ *   - DailyRecordFilterPanel: search/status/date filters
+ *   - DailyRecordBulkActions: bulk operation buttons
+ *
+ * 639 → ~220 lines (composition only)
+ */
+
 import { PageHeader } from '@/components/PageHeader';
 import { PersonDaily } from '@/domain/daily/types';
 import { saveDailyRecord, validateDailyRecord } from '@/features/daily/domain/dailyRecordLogic';
 import AccessTimeIcon from '@mui/icons-material/AccessTime';
 import AddIcon from '@mui/icons-material/Add';
-import SearchIcon from '@mui/icons-material/Search';
 import Box from '@mui/material/Box';
 import Button from '@mui/material/Button';
 import Card from '@mui/material/Card';
 import CardContent from '@mui/material/CardContent';
-import Chip from '@mui/material/Chip';
 import Container from '@mui/material/Container';
-import FormControl from '@mui/material/FormControl';
-import InputLabel from '@mui/material/InputLabel';
-import MenuItem from '@mui/material/MenuItem';
-import Paper from '@mui/material/Paper';
-import Select from '@mui/material/Select';
 import Stack from '@mui/material/Stack';
 import { useTheme } from '@mui/material/styles';
-import TextField from '@mui/material/TextField';
 import Typography from '@mui/material/Typography';
 import { useEffect, useMemo, useState } from 'react';
 import { Toaster } from 'react-hot-toast';
@@ -31,171 +36,22 @@ import { useHandoffSummary } from '../features/handoff/useHandoffSummary';
 import { useUsersDemo } from '../features/users/usersStoreDemo';
 import { useSchedules } from '../stores/useSchedules';
 import { calculateAttendanceRate, getExpectedAttendeeCount } from '../utils/attendanceUtils';
-
-// 32人分の通所者リスト
-const mockUsers = [
-  '田中太郎', '佐藤花子', '鈴木次郎', '高橋美咲', '山田健一', '渡辺由美', '伊藤雄介',
-  '中村恵子', '小林智子', '加藤秀樹', '吉田京子', '清水達也', '松本麻衣', '森田健二',
-  '池田理恵', '石井大輔', '橋本真理', '藤田和也', '長谷川瞳', '村上拓海', '坂本彩香',
-  '岡田裕太', '近藤美和', '福田誠', '前田愛', '木村康平', '内田千春', '西川雅人',
-  '斎藤洋子', '三浦大輔', '小野寺美加', '新井智也'
-];
-
-// サンプルの日次記録データ（一部のみ）
-const mockRecords: PersonDaily[] = [
-  {
-    id: 1,
-    personId: '001',
-    personName: '田中太郎',
-    date: new Date().toISOString().split('T')[0],
-    status: '完了',
-    reporter: { name: '職員A' },
-    draft: { isDraft: false },
-    kind: 'A',
-    data: {
-      amActivities: ['散歩', '体操'],
-      pmActivities: ['読書', 'テレビ鑑賞'],
-      amNotes: '今日は調子が良く、積極的に活動に参加していました。',
-      pmNotes: '午後は少し疲れた様子でしたが、落ち着いて過ごしていました。',
-      mealAmount: '完食',
-      problemBehavior: {
-        selfHarm: false,
-        violence: false,
-        loudVoice: false,
-        pica: false,
-        other: false,
-        otherDetail: ''
-      },
-      seizureRecord: {
-        occurred: false,
-        time: '',
-        duration: '',
-        severity: undefined,
-        notes: ''
-      },
-      specialNotes: '特に問題なく過ごせました。'
-    }
-  },
-  {
-    id: 2,
-    personId: '002',
-    personName: '佐藤花子',
-    date: new Date().toISOString().split('T')[0],
-    status: '作成中',
-    reporter: { name: '職員B' },
-    draft: { isDraft: true },
-    kind: 'A',
-    data: {
-      amActivities: ['ラジオ体操'],
-      pmActivities: [],
-      amNotes: '',
-      pmNotes: '',
-      mealAmount: '少なめ',
-      problemBehavior: {
-        selfHarm: false,
-        violence: false,
-        loudVoice: false,
-        pica: false,
-        other: false,
-        otherDetail: ''
-      },
-      seizureRecord: {
-        occurred: false,
-        time: '',
-        duration: '',
-        severity: undefined,
-        notes: ''
-      },
-      specialNotes: ''
-    }
-  },
-  {
-    id: 3,
-    personId: '003',
-    personName: '鈴木次郎',
-    date: new Date().toISOString().split('T')[0],
-    status: '未作成',
-    reporter: { name: '' },
-    draft: { isDraft: true },
-    kind: 'A',
-    data: {
-      amActivities: [],
-      pmActivities: [],
-      amNotes: '',
-      pmNotes: '',
-      mealAmount: '完食',
-      problemBehavior: {
-        selfHarm: false,
-        violence: false,
-        loudVoice: false,
-        pica: false,
-        other: false,
-        otherDetail: ''
-      },
-      seizureRecord: {
-        occurred: false,
-        time: '',
-        duration: '',
-        severity: undefined,
-        notes: ''
-      },
-      specialNotes: ''
-    }
-  }
-];
-
-// 今日の日付の全通所者分の記録を生成する関数
-const generateTodayRecords = (): PersonDaily[] => {
-  const today = new Date().toISOString().split('T')[0];
-  return mockUsers.map((name, index) => {
-    const userId = String(index + 1).padStart(3, '0');
-    const statuses: Array<'完了' | '作成中' | '未作成'> = ['完了', '作成中', '未作成'];
-    const status = statuses[Math.floor(Math.random() * statuses.length)];
-
-    return {
-      id: index + 1,
-      personId: userId,
-      personName: name,
-      date: today,
-      status,
-      reporter: { name: status === '未作成' ? '' : '職員' + String.fromCharCode(65 + (index % 5)) },
-      draft: { isDraft: status !== '完了' },
-      kind: 'A' as const,
-      data: {
-        amActivities: status === '未作成' ? [] : ['活動' + (index % 3 + 1)],
-        pmActivities: status === '完了' ? ['活動' + ((index + 1) % 3 + 1)] : [],
-        amNotes: status === '完了' ? '順調に過ごしています。' : '',
-        pmNotes: status === '完了' ? '問題なく活動できました。' : '',
-        mealAmount: (['完食', '多め', '半分', '少なめ', 'なし'] as const)[index % 5],
-        problemBehavior: {
-          selfHarm: Math.random() > 0.9,
-          violence: Math.random() > 0.9,
-          loudVoice: Math.random() > 0.85,
-          pica: Math.random() > 0.95,
-          other: Math.random() > 0.9,
-          otherDetail: Math.random() > 0.9 ? 'その他の詳細' : ''
-        },
-        seizureRecord: {
-          occurred: Math.random() > 0.95,
-          time: Math.random() > 0.95 ? '14:30' : '',
-          duration: Math.random() > 0.95 ? '約3分' : '',
-          severity: Math.random() > 0.95 ? (['軽度', '中等度', '重度'] as const)[Math.floor(Math.random() * 3)] : undefined,
-          notes: Math.random() > 0.95 ? '発作の詳細' : ''
-        },
-        specialNotes: status === '完了' && Math.random() > 0.7 ? '特記事項があります。' : ''
-      }
-    };
-  });
-};
+import { DailyRecordBulkActions } from './DailyRecordBulkActions';
+import { DailyRecordFilterPanel } from './DailyRecordFilterPanel';
+import {
+    createMissingRecord,
+    generateTodayRecords,
+    mockRecords,
+    mockUsers,
+} from './dailyRecordMockData';
+import { DailyRecordStatsPanel } from './DailyRecordStatsPanel';
 
 export default function DailyRecordPage() {
-  // Navigation hook for cross-module navigation
   const navigate = useNavigate();
   const location = useLocation();
   const [searchParams] = useSearchParams();
   const theme = useTheme();
 
-  // 利用者マスタとスケジュールデータ
   const { data: usersData } = useUsersDemo();
   const { data: schedulesData } = useSchedules();
 
@@ -215,39 +71,7 @@ export default function DailyRecordPage() {
     saveDailyRecord,
     generateTodayRecords,
     mockUsers,
-    createMissingRecord: (name, userId, date, index) => ({
-      id: Date.now() + index,
-      personId: userId,
-      personName: name,
-      date,
-      status: '未作成',
-      reporter: { name: '' },
-      draft: { isDraft: true },
-      kind: 'A',
-      data: {
-        amActivities: [],
-        pmActivities: [],
-        amNotes: '',
-        pmNotes: '',
-        mealAmount: '完食',
-        problemBehavior: {
-          selfHarm: false,
-          violence: false,
-          loudVoice: false,
-          pica: false,
-          other: false,
-          otherDetail: '',
-        },
-        seizureRecord: {
-          occurred: false,
-          time: '',
-          duration: '',
-          severity: undefined,
-          notes: '',
-        },
-        specialNotes: '',
-      },
-    }),
+    createMissingRecord,
   });
 
   const {
@@ -271,54 +95,45 @@ export default function DailyRecordPage() {
     handleBulkComplete,
   } = vm;
 
-  // Phase 1A: 申し送りサマリー
+  // Phase 1A: handoff summary
   const {
     total: handoffTotal,
-    criticalCount: handoffCritical
+    criticalCount: handoffCritical,
   } = useHandoffSummary({ dayScope: 'today' });
 
-  // Phase 2-1: ハイライト表示用の一時状態（1.5秒で自動解除）
+  // Phase 2-1: highlight state (auto-dismiss after 1.5s)
   const [activeHighlightUserId, setActiveHighlightUserId] = useState<string | null>(null);
 
-  // Phase 2-1: スクロール＋ハイライト処理
   useEffect(() => {
     if (!highlightUserId) return;
-
-    // 記録一覧が描画された後にスクロールしたいので、軽く遅延
     const timer = setTimeout(() => {
       const element = document.querySelector(`[data-person-id="${highlightUserId}"]`);
       if (element) {
         element.scrollIntoView({ behavior: 'smooth', block: 'center' });
         setActiveHighlightUserId(highlightUserId);
-
-        // 1.5秒後に自動解除
         setTimeout(() => setActiveHighlightUserId(null), 1500);
       }
     }, 100);
-
     return () => clearTimeout(timer);
   }, [highlightUserId, records]);
 
-  // 今日の予定通所者数を計算
+  // Attendance calculation
   const todayAttendanceInfo = useMemo(() => {
     const today = new Date();
     if (!usersData || !schedulesData) {
-      // データが読み込まれていない場合は従来の32名固定
       return { expectedCount: 32, attendanceRate: 0 };
     }
 
-    // 型変換（IUserMasterからUserMasterへ）
-    const adaptedUsers = usersData.map(user => ({
+    const adaptedUsers = usersData.map((user) => ({
       Id: user.Id,
       UserID: user.UserID,
       FullName: user.FullName,
       AttendanceDays: user.AttendanceDays || [],
       ServiceStartDate: user.ServiceStartDate || undefined,
-      ServiceEndDate: user.ServiceEndDate || undefined
+      ServiceEndDate: user.ServiceEndDate || undefined,
     }));
 
-    // スケジュールデータも型変換
-    const adaptedSchedules = schedulesData.map(schedule => ({
+    const adaptedSchedules = schedulesData.map((schedule) => ({
       id: schedule.id,
       userId: schedule.userId?.toString() || schedule.personId?.toString(),
       personId: schedule.personId?.toString(),
@@ -326,24 +141,21 @@ export default function DailyRecordPage() {
       startLocal: schedule.startLocal || undefined,
       startUtc: schedule.startUtc || undefined,
       status: schedule.status,
-      category: schedule.category || undefined
+      category: schedule.category || undefined,
     }));
 
     const { expectedCount, absentUserIds } = getExpectedAttendeeCount(
       adaptedUsers,
       adaptedSchedules,
-      today
+      today,
     );
 
-    const todayRecords = records.filter(r => r.date === today.toISOString().split('T')[0]);
-    const actualCount = todayRecords.filter(r => r.status === '完了').length;
+    const todayRecords = records.filter((r) => r.date === today.toISOString().split('T')[0]);
+    const actualCount = todayRecords.filter((r) => r.status === '完了').length;
     const attendanceRate = calculateAttendanceRate(actualCount, expectedCount);
 
     return { expectedCount, attendanceRate, actualCount, absentUserIds };
   }, [usersData, schedulesData, records]);
-
-
-  // handlers & filters are provided by view model
 
   return (
     <FullScreenDailyDialogPage
@@ -353,284 +165,139 @@ export default function DailyRecordPage() {
     >
       <Container maxWidth="lg" data-testid="records-daily-root">
         <Box sx={{ py: 3 }}>
-        {/* ヘッダー */}
-        <PageHeader
-          title="支援記録（ケース記録）"
-          subtitle="利用者全員の日々の活動状況、問題行動、発作記録を管理します"
-        />
+          <PageHeader
+            title="支援記録（ケース記録）"
+            subtitle="利用者全員の日々の活動状況、問題行動、発作記録を管理します"
+          />
 
-        {/* Phase 1A: 申し送りサマリーカード */}
-        {handoffTotal > 0 && (
-          <Card
-            sx={{
-              mb: 2,
-              bgcolor: handoffCritical > 0 ? 'error.50' : 'info.50',
-              border: '1px solid',
-              borderColor: handoffCritical > 0 ? 'error.200' : 'info.200'
-            }}
-            data-testid="daily-handoff-summary"
-          >
-            <CardContent>
-              <Stack
-                direction={{ xs: 'column', sm: 'row' }}
-                justifyContent="space-between"
-                alignItems={{ xs: 'flex-start', sm: 'center' }}
-                spacing={2}
-              >
-                <Stack direction="row" spacing={2} alignItems="center">
-                  <AccessTimeIcon
-                    color={handoffCritical > 0 ? 'error' : 'primary'}
-                    sx={{ fontSize: 32 }}
-                  />
-                  <Box>
-                    <Typography variant="h6" sx={{ fontWeight: 600 }}>
-                      本日の申し送り: {handoffTotal}件
-                    </Typography>
-                    {handoffCritical > 0 && (
-                      <Typography variant="body2" color="error.main" sx={{ mt: 0.5 }}>
-                        ⚠️ 重要 {handoffCritical}件 - 要確認
+          {/* Handoff summary banner */}
+          {handoffTotal > 0 && (
+            <Card
+              sx={{
+                mb: 2,
+                bgcolor: handoffCritical > 0 ? 'error.50' : 'info.50',
+                border: '1px solid',
+                borderColor: handoffCritical > 0 ? 'error.200' : 'info.200',
+              }}
+              data-testid="daily-handoff-summary"
+            >
+              <CardContent>
+                <Stack
+                  direction={{ xs: 'column', sm: 'row' }}
+                  justifyContent="space-between"
+                  alignItems={{ xs: 'flex-start', sm: 'center' }}
+                  spacing={2}
+                >
+                  <Stack direction="row" spacing={2} alignItems="center">
+                    <AccessTimeIcon
+                      color={handoffCritical > 0 ? 'error' : 'primary'}
+                      sx={{ fontSize: 32 }}
+                    />
+                    <Box>
+                      <Typography variant="h6" sx={{ fontWeight: 600 }}>
+                        本日の申し送り: {handoffTotal}件
                       </Typography>
-                    )}
-                  </Box>
+                      {handoffCritical > 0 && (
+                        <Typography variant="body2" color="error.main" sx={{ mt: 0.5 }}>
+                          ⚠️ 重要 {handoffCritical}件 - 要確認
+                        </Typography>
+                      )}
+                    </Box>
+                  </Stack>
+                  <Button
+                    variant="contained"
+                    size="medium"
+                    startIcon={<AccessTimeIcon />}
+                    onClick={() =>
+                      navigate('/handoff-timeline', {
+                        state: { dayScope: 'today', timeFilter: 'all' },
+                      })
+                    }
+                    sx={{ minWidth: { xs: '100%', sm: 'auto' } }}
+                    data-testid="daily-handoff-summary-cta"
+                  >
+                    タイムラインで確認
+                  </Button>
                 </Stack>
-                <Button
-                  variant="contained"
-                  size="medium"
-                  startIcon={<AccessTimeIcon />}
-                  onClick={() => navigate('/handoff-timeline', {
-                    state: { dayScope: 'today', timeFilter: 'all' }
-                  })}
-                  sx={{ minWidth: { xs: '100%', sm: 'auto' } }}
-                  data-testid="daily-handoff-summary-cta"
-                >
-                  タイムラインで確認
-                </Button>
-              </Stack>
-            </CardContent>
-          </Card>
-        )}
+              </CardContent>
+            </Card>
+          )}
 
-        {/* 統計情報（本日分） */}
-        <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2} sx={{ mb: 3 }} data-testid="daily-stats-panel">
-          <Paper sx={{ p: 2, textAlign: 'center', flex: 1 }} data-testid="total-records-stat">
-            <Typography variant="h6" color="primary">
-              <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 1 }}>
-                <span data-testid="total-records-count">
-                  {(() => {
-                    const todayStr = new Date().toISOString().split('T')[0];
-                    const todayRecords = records.filter(r => r.date === todayStr);
-                    return todayRecords.length;
-                  })()} / {todayAttendanceInfo.expectedCount}
-                </span>
-                <Chip
-                  size="small"
-                  label={`${todayAttendanceInfo.attendanceRate}%`}
-                  color={
-                    todayAttendanceInfo.attendanceRate >= 90
-                      ? "success"
-                      : todayAttendanceInfo.attendanceRate >= 70
-                        ? "warning"
-                        : "error"
-                  }
-                  sx={{ fontSize: '0.7rem' }}
-                  data-testid="attendance-rate-chip"
-                />
-              </Box>
-            </Typography>
-            <Typography variant="body2" color="text.secondary">
-              本日記録数（予定通所者）
-            </Typography>
-          </Paper>
-          <Paper sx={{ p: 2, textAlign: 'center', flex: 1 }} data-testid="completed-records-stat">
-            <Typography variant="h6" color="success.main" data-testid="completed-count">
-              {(() => {
-                const today = new Date().toISOString().split('T')[0];
-                return records.filter(r => r.date === today && r.status === '完了').length;
-              })()}
-            </Typography>
-            <Typography variant="body2" color="text.secondary">
-              完了
-            </Typography>
-          </Paper>
-          <Paper sx={{ p: 2, textAlign: 'center', flex: 1 }} data-testid="in-progress-records-stat">
-            <Typography variant="h6" color="warning.main" data-testid="in-progress-count">
-              {(() => {
-                const today = new Date().toISOString().split('T')[0];
-                return records.filter(r => r.date === today && r.status === '作成中').length;
-              })()}
-            </Typography>
-            <Typography variant="body2" color="text.secondary">
-              作成中
-            </Typography>
-          </Paper>
-          <Paper sx={{ p: 2, textAlign: 'center', flex: 1 }} data-testid="not-started-records-stat">
-            <Typography variant="h6" color="text.secondary" data-testid="not-started-count">
-              {(() => {
-                const today = new Date().toISOString().split('T')[0];
-                return records.filter(r => r.date === today && r.status === '未作成').length;
-              })()}
-            </Typography>
-            <Typography variant="body2" color="text.secondary">
-              未作成
-            </Typography>
-          </Paper>
-          <Paper sx={{ p: 2, textAlign: 'center', flex: 1 }} data-testid="absent-records-stat">
-            <Typography variant="h6" color="info.main" data-testid="absent-count">
-              {todayAttendanceInfo.absentUserIds?.length || 0}
-            </Typography>
-            <Typography variant="body2" color="text.secondary">
-              欠席予定者
-            </Typography>
-          </Paper>
-        </Stack>
+          <DailyRecordStatsPanel
+            records={records}
+            expectedCount={todayAttendanceInfo.expectedCount}
+            attendanceRate={todayAttendanceInfo.attendanceRate}
+            absentUserIds={todayAttendanceInfo.absentUserIds}
+          />
 
-        {/* フィルター */}
-        <Card sx={{ mb: 3 }} data-testid="filter-panel">
-          <CardContent>
-            <Typography variant="h6" gutterBottom>
-              フィルター
-            </Typography>
-            <Stack direction={{ xs: 'column', md: 'row' }} spacing={2}>
-              <TextField
-                size="small"
-                placeholder="利用者名またはIDで検索"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                InputProps={{
-                  startAdornment: <SearchIcon sx={{ mr: 1, color: 'text.secondary' }} />
-                }}
-                sx={{ minWidth: 200 }}
-                data-testid="search-input"
-              />
+          <DailyRecordFilterPanel
+            searchQuery={searchQuery}
+            onSearchQueryChange={setSearchQuery}
+            statusFilter={statusFilter}
+            onStatusFilterChange={setStatusFilter}
+            dateFilter={dateFilter}
+            onDateFilterChange={setDateFilter}
+            onClear={() => {
+              setSearchQuery('');
+              setStatusFilter('all');
+              setDateFilter('');
+            }}
+          />
 
-              <FormControl size="small" sx={{ minWidth: 120 }}>
-                <InputLabel>ステータス</InputLabel>
-                <Select
-                  value={statusFilter}
-                  onChange={(e) => setStatusFilter(e.target.value)}
-                  label="ステータス"
-                  data-testid="status-filter-select"
-                >
-                  <MenuItem value="all">すべて</MenuItem>
-                  <MenuItem value="完了">完了</MenuItem>
-                  <MenuItem value="作成中">作成中</MenuItem>
-                  <MenuItem value="未作成">未作成</MenuItem>
-                </Select>
-              </FormControl>
+          <DailyRecordBulkActions
+            onGenerateTodayRecords={handleGenerateTodayRecords}
+            onBulkCreateMissing={handleBulkCreateMissing}
+            onBulkComplete={handleBulkComplete}
+          />
 
-              <TextField
-                size="small"
-                type="date"
-                label="日付"
-                value={dateFilter}
-                onChange={(e) => setDateFilter(e.target.value)}
-                InputLabelProps={{ shrink: true }}
-                sx={{ minWidth: 150 }}
-                data-testid="date-filter-input"
-              />
+          <DailyRecordList
+            records={filteredRecords}
+            onEdit={handleEditRecord}
+            onDelete={handleDeleteRecord}
+            onOpenAttendance={handleOpenAttendance}
+            highlightUserId={highlightUserId}
+            highlightDate={highlightDate}
+            activeHighlightUserId={activeHighlightUserId}
+            data-testid="daily-record-list"
+          />
 
-              <Button
-                variant="outlined"
-                onClick={() => {
-                  setSearchQuery('');
-                  setStatusFilter('all');
-                  setDateFilter('');
-                }}
-                data-testid="clear-filters-button"
-              >
-                クリア
-              </Button>
-            </Stack>
-          </CardContent>
-        </Card>
+          <DailyRecordForm
+            open={formOpen}
+            onClose={handleCloseForm}
+            record={editingRecord}
+            onSave={handleSaveRecord}
+            data-testid="daily-record-form"
+          />
 
-        {/* 一括操作ボタン */}
-        <Card sx={{ mb: 2 }} data-testid="bulk-operations-card">
-          <CardContent>
-            <Typography variant="h6" gutterBottom>
-              一括操作
-            </Typography>
-            <Stack direction="row" spacing={2} flexWrap="wrap">
-              <Button
-                variant="contained"
-                onClick={handleGenerateTodayRecords}
-                color="primary"
-                data-testid="bulk-generate-today-records-button"
-              >
-                本日分全員作成（32名）
-              </Button>
-              <Button
-                variant="outlined"
-                onClick={handleBulkCreateMissing}
-                color="secondary"
-                data-testid="bulk-create-missing-button"
-              >
-                未作成分追加
-              </Button>
-              <Button
-                variant="outlined"
-                onClick={handleBulkComplete}
-                color="success"
-                data-testid="bulk-complete-button"
-              >
-                本日分一括完了
-              </Button>
-            </Stack>
-          </CardContent>
-        </Card>
+          <LandscapeFab
+            icon={<AddIcon />}
+            ariaLabel="新規記録作成"
+            onClick={handleOpenForm}
+            testId="add-record-fab"
+          />
 
-        {/* 記録リスト */}
-        <DailyRecordList
-          records={filteredRecords}
-          onEdit={handleEditRecord}
-          onDelete={handleDeleteRecord}
-          onOpenAttendance={handleOpenAttendance}
-          highlightUserId={highlightUserId}
-          highlightDate={highlightDate}
-          activeHighlightUserId={activeHighlightUserId}
-          data-testid="daily-record-list"
-        />
-
-        {/* フォームダイアログ */}
-        <DailyRecordForm
-          open={formOpen}
-          onClose={handleCloseForm}
-          record={editingRecord}
-          onSave={handleSaveRecord}
-          data-testid="daily-record-form"
-        />
-
-        {/* 新規作成FAB */}
-        <LandscapeFab
-          icon={<AddIcon />}
-          ariaLabel="新規記録作成"
-          onClick={handleOpenForm}
-          testId="add-record-fab"
-        />
-
-        {/* Toast通知 */}
-        <Toaster
-          position="top-right"
-          toastOptions={{
-            duration: 4000,
-            style: {
-              background: theme.palette.grey[800],
-              color: theme.palette.common.white,
-            },
-            success: {
-              iconTheme: {
-                primary: theme.palette.success.main,
-                secondary: theme.palette.common.white,
+          <Toaster
+            position="top-right"
+            toastOptions={{
+              duration: 4000,
+              style: {
+                background: theme.palette.grey[800],
+                color: theme.palette.common.white,
               },
-            },
-            error: {
-              iconTheme: {
-                primary: theme.palette.error.main,
-                secondary: theme.palette.common.white,
+              success: {
+                iconTheme: {
+                  primary: theme.palette.success.main,
+                  secondary: theme.palette.common.white,
+                },
               },
-            },
-          }}
-        />
+              error: {
+                iconTheme: {
+                  primary: theme.palette.error.main,
+                  secondary: theme.palette.common.white,
+                },
+              },
+            }}
+          />
         </Box>
       </Container>
     </FullScreenDailyDialogPage>
