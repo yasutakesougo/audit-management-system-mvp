@@ -20,8 +20,8 @@ export const EmptyStateHero: React.FC<EmptyStateHeroProps> = ({
   return (
     <EmptyStateBlock
       icon={<CheckCircleOutlineIcon />}
-      title="本日の対応は完了しました"
-      description="お疲れさまでした。次の準備に進めます。"
+      title="✅ 本日の記録は完了です"
+      description="お疲れさまでした。スケジュールの確認や記録メニューに進めます。"
       primaryAction={
         onClickMenu
           ? {

@@ -24,11 +24,14 @@ export const HeroUnfinishedBanner: React.FC<HeroUnfinishedBannerProps> = ({
     return (
       <Box
         data-testid="today-hero-banner"
+        data-complete="true"
         sx={[
           {
-            bgcolor: 'success.main',
+            bgcolor: 'success.dark',
             color: 'common.white',
-            boxShadow: 2,
+            boxShadow: 1,
+            py: 0.75,
+            transition: 'all 0.3s ease',
           },
           sticky && {
             position: 'sticky',
