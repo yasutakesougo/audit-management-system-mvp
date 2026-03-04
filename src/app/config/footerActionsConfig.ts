@@ -21,9 +21,9 @@ type CreateFooterActionsParams = {
   schedulesEnabled?: boolean;
 };
 
-export const createFooterActions = ({
-  schedulesEnabled = false,
-}: CreateFooterActionsParams): FooterAction[] => {
+export const createFooterActions = (
+  _params: CreateFooterActionsParams = {},
+): FooterAction[] => {
   const actions: FooterAction[] = [
     {
       key: 'handoff-quicknote',
@@ -37,20 +37,6 @@ export const createFooterActions = ({
       onClickKey: 'handoff-quicknote',
     },
   ];
-
-  if (schedulesEnabled) {
-    actions.push({
-      key: 'schedules-month',
-      label: 'スケジュール',
-      shortLabel: '予定',
-      color: 'info',
-      variant: 'contained',
-      accent: '#B7791F',
-      testId: TESTIDS['schedules-footer-month'],
-      kind: 'link',
-      to: '/schedules/month',
-    });
-  }
 
   actions.push(
     {

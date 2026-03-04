@@ -23,6 +23,9 @@ import type { DashboardTab } from '@/features/dashboard/layouts/ZeroScrollLayout
 import { ZeroScrollLayout } from '@/features/dashboard/layouts/ZeroScrollLayout';
 import type { BriefingAlert } from '@/features/dashboard/sections/types';
 import type { DashboardSection, DashboardSectionKey } from '@/features/dashboard/useDashboardViewModel';
+import { HandoffLiveFeed } from '@/features/handoff/components/HandoffLiveFeed';
+import type { HandoffDayScope, HandoffRecord, HandoffStatus } from '@/features/handoff/handoffTypes';
+import Stack from '@mui/material/Stack';
 
 // ── Props ──
 export interface DashboardLayoutRendererProps {
@@ -52,6 +55,14 @@ export interface DashboardLayoutRendererProps {
   handoffCritical?: number;
   attendanceRatio?: { present: number; total: number };
   dailyRecordRatio?: { done: number; total: number };
+
+  // 📡 Handoff Live Feed data
+  handoffTimelineItems?: HandoffRecord[];
+  handoffTimelineLoading?: boolean;
+  handoffTimelineError?: string | null;
+  handoffTimelineUpdateStatus?: (id: number, newStatus: HandoffStatus, carryOverDate?: string) => Promise<void>;
+  handoffTimelineReload?: () => void;
+  onOpenTimeline?: (scope: HandoffDayScope) => void;
 }
 
 export const DashboardLayoutRenderer: React.FC<DashboardLayoutRendererProps> = ({
@@ -71,6 +82,12 @@ export const DashboardLayoutRenderer: React.FC<DashboardLayoutRendererProps> = (
   handoffCritical = 0,
   attendanceRatio,
   dailyRecordRatio,
+  handoffTimelineItems = [],
+  handoffTimelineLoading = false,
+  handoffTimelineError = null,
+  handoffTimelineUpdateStatus,
+  handoffTimelineReload,
+  onOpenTimeline,
 }) => {
   // ── 🍱 Bento Grid ──
   if (layoutMode === 'bentoGrid') {
@@ -90,6 +107,12 @@ export const DashboardLayoutRenderer: React.FC<DashboardLayoutRendererProps> = (
         scrollToSection={scrollToSection}
         dateLabel={dateLabel}
         todayChanges={todayChanges}
+        handoffTimelineItems={handoffTimelineItems}
+        handoffTimelineLoading={handoffTimelineLoading}
+        handoffTimelineError={handoffTimelineError}
+        handoffTimelineUpdateStatus={handoffTimelineUpdateStatus}
+        handoffTimelineReload={handoffTimelineReload}
+        onOpenTimeline={onOpenTimeline}
       />
     );
   }
@@ -97,10 +120,24 @@ export const DashboardLayoutRenderer: React.FC<DashboardLayoutRendererProps> = (
   // ── Zero-Scroll ──
   if (layoutMode === 'zeroScroll') {
     const handoverSection = orderedSections.find((s) => s.key === 'handover');
-    const leftContent = handoverSection ? (
-      renderSection(handoverSection)
-    ) : (
-      <Typography color="text.secondary">申し送り情報がありません</Typography>
+    const leftContent = (
+      <Stack spacing={2}>
+        {handoverSection ? (
+          renderSection(handoverSection)
+        ) : (
+          <Typography color="text.secondary">申し送り情報がありません</Typography>
+        )}
+        <HandoffLiveFeed
+          items={handoffTimelineItems}
+          loading={handoffTimelineLoading}
+          error={handoffTimelineError}
+          updateHandoffStatus={handoffTimelineUpdateStatus}
+          onReload={handoffTimelineReload}
+          onOpenTimeline={onOpenTimeline}
+          compact
+          maxItems={6}
+        />
+      </Stack>
     );
 
     return (

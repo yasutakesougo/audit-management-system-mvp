@@ -23,8 +23,9 @@ import { generateMockActivityRecords } from '@/features/dashboard/mocks/mockData
 import { getDashboardAnchorIdByKey } from '@/features/dashboard/sections/buildSections';
 import { useDashboardSummary } from '@/features/dashboard/useDashboardSummary';
 import { useDashboardViewModel, type DashboardSectionKey, type DashboardViewModel } from '@/features/dashboard/useDashboardViewModel';
-import type { HandoffDayScope } from '@/features/handoff/handoffTypes';
+import type { HandoffDayScope, HandoffRecord, HandoffStatus } from '@/features/handoff/handoffTypes';
 import { useHandoffSummary } from '@/features/handoff/useHandoffSummary';
+import { useHandoffTimeline } from '@/features/handoff/useHandoffTimeline';
 import { useAttendanceCounts } from '@/features/staff/attendance/useAttendanceCounts';
 import { useStaffStore } from '@/features/staff/store';
 import { useUsersDemo } from '@/features/users/usersStoreDemo';
@@ -86,6 +87,13 @@ export interface UseDashboardPageReturn {
   handoffCritical: number;
   handoffStatus: Record<string, number>;
 
+  // Handoff Live Feed data
+  handoffTimelineItems: HandoffRecord[];
+  handoffTimelineLoading: boolean;
+  handoffTimelineError: string | null;
+  handoffTimelineUpdateStatus: (id: number, newStatus: HandoffStatus, carryOverDate?: string) => Promise<void>;
+  handoffTimelineReload: () => void;
+
   // Timing
   isMorningTime: boolean;
   isEveningTime: boolean;
@@ -127,6 +135,15 @@ export function useDashboardPage(audience: DashboardAudience = 'staff'): UseDash
     byStatus: handoffStatus,
     criticalCount: handoffCritical,
   } = useHandoffSummary({ dayScope: 'today' });
+
+  // ── Handoff Live Feed データ ──
+  const {
+    todayHandoffs: handoffTimelineItems,
+    loading: handoffTimelineLoading,
+    error: handoffTimelineError,
+    updateHandoffStatus: handoffTimelineUpdateStatus,
+    reload: handoffTimelineReload,
+  } = useHandoffTimeline('all', 'today');
 
   // ── Time calculations ──
   const today = toLocalDateISO();
@@ -311,6 +328,11 @@ export function useDashboardPage(audience: DashboardAudience = 'staff'): UseDash
     handoffTotal,
     handoffCritical,
     handoffStatus,
+    handoffTimelineItems,
+    handoffTimelineLoading,
+    handoffTimelineError,
+    handoffTimelineUpdateStatus,
+    handoffTimelineReload,
     isMorningTime,
     isEveningTime,
     users,

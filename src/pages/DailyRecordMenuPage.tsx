@@ -2,6 +2,7 @@ import { dailyPaths } from '@/app/links/dailyLinks';
 import { buildTodayReturnUrl, parseNavQuery } from '@/app/links/navigationLinks';
 import { motionTokens } from '@/app/theme';
 import { useAttendanceStore } from '@/features/attendance/store';
+import { CommandBar } from '@/features/dashboard/components/CommandBar';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import AssignmentIcon from '@mui/icons-material/Assignment';
 import AttendanceIcon from '@mui/icons-material/AssignmentInd';
@@ -15,10 +16,9 @@ import CardActions from '@mui/material/CardActions';
 import CardContent from '@mui/material/CardContent';
 import Chip from '@mui/material/Chip';
 import Container from '@mui/material/Container';
-import Paper from '@mui/material/Paper';
 import Stack from '@mui/material/Stack';
 import Typography from '@mui/material/Typography';
-import React, { useMemo } from 'react';
+import React, { useCallback, useMemo } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import type { IUserMaster } from '../features/users/types';
 import { useUsersDemo } from '../features/users/usersStoreDemo';
@@ -130,27 +130,65 @@ const DailyRecordMenuPage: React.FC = () => {
       ? 'warning.main'
       : 'text.secondary';
 
+  // ── CommandBar KPI 算出 ──
+  const attendanceIssues = dailyHubSummary.attendance.absence + dailyHubSummary.attendance.lateOrEarly;
+  const activityDone = totalUsers - dailyHubSummary.activity.pending - dailyHubSummary.activity.inProgress;
+
+  // CommandBar チップクリック → 該当カードへスクロール
+  const handleChipClick = useCallback((section: string) => {
+    const idMap: Record<string, string> = {
+      pending: 'daily-card-table-activity',
+      critical: 'daily-card-attendance',
+      attendance: 'daily-card-attendance',
+      daily: 'daily-card-table-activity',
+    };
+    const targetId = idMap[section];
+    if (targetId) {
+      document.getElementById(targetId)?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
+  }, []);
+
+  // 日付ラベル
+  const dateLabel = useMemo(() => {
+    const d = navDate ? new Date(navDate) : new Date();
+    const weekdays = ['日', '月', '火', '水', '木', '金', '土'];
+    return `${d.getMonth() + 1}/${d.getDate()}（${weekdays[d.getDay()]}）`;
+  }, [navDate]);
+
   return (
     <Container maxWidth="lg" data-testid="daily-record-menu">
-      <Box data-testid="daily-hub-root" sx={{ py: 4 }}>
-        {/* ヘッダー */}
-        <Box sx={{ mb: 4, textAlign: 'center' }}>
-          {fromToday && (
-            <Button
-              data-testid="daily-hub-return-today"
-              startIcon={<ArrowBackIcon />}
-              onClick={() => navigate(buildTodayReturnUrl(navDate))}
-              sx={{ mb: 2 }}
-            >
-              ← 今日の運用へ戻る
-            </Button>
-          )}
-          <Typography variant="h3" component="h1" gutterBottom>
-            日次記録システム
-          </Typography>
-          <Typography variant="h6" color="text.secondary">
-            記録の種類を選択してください
-          </Typography>
+      <Box data-testid="daily-hub-root" sx={{ py: 3 }}>
+        {/* ── コンパクトヘッダー + CommandBar ── */}
+        <Box sx={{ mb: 3 }}>
+          <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 2 }}>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+              {fromToday && (
+                <Button
+                  data-testid="daily-hub-return-today"
+                  startIcon={<ArrowBackIcon />}
+                  onClick={() => navigate(buildTodayReturnUrl(navDate))}
+                  size="small"
+                >
+                  今日の運用へ
+                </Button>
+              )}
+              <Typography variant="h6" component="h1" sx={{ fontWeight: 700 }}>
+                日次記録
+              </Typography>
+              <Typography variant="body2" color="text.secondary">
+                {dateLabel}
+              </Typography>
+            </Box>
+          </Box>
+
+          {/* KPI CommandBar — ファーストビュー最上部 */}
+          <CommandBar
+            pendingHandoffs={dailyHubSummary.activity.pending}
+            criticalAlerts={attendanceIssues}
+            attendanceRatio={{ present: totalUsers - dailyHubSummary.attendance.absence, total: totalUsers }}
+            dailyRecordRatio={{ done: activityDone > 0 ? activityDone : 0, total: totalUsers }}
+            onChipClick={handleChipClick}
+          />
         </Box>
 
         {/* メニューカード */}
@@ -427,61 +465,6 @@ const DailyRecordMenuPage: React.FC = () => {
             </CardActions>
           </Card>
         </Stack>
-
-        {/* 統計情報（件数主表示） */}
-        <Paper sx={{ p: 3 }} data-testid="daily-stats-summary">
-          <Typography variant="h6" gutterBottom>
-            本日の記録状況
-          </Typography>
-
-          <Stack
-            direction={{ xs: 'column', sm: 'row' }}
-            spacing={3}
-            divider={<Box sx={{ borderLeft: '1px solid', borderColor: 'divider', height: '60px', display: { xs: 'none', sm: 'block' } }} />}
-          >
-            <Box sx={{ textAlign: 'center', flex: 1 }} data-testid="daily-stats-activity">
-              <Typography variant="h4" color={activityCaptionColor}>
-                {dailyHubSummary.activity?.pending ?? 0}件
-              </Typography>
-              <Typography variant="body2" color="text.secondary">
-                ケース記録 未入力
-              </Typography>
-              {(dailyHubSummary.activity?.inProgress ?? 0) > 0 && (
-                <Typography variant="caption" color="text.secondary">
-                  入力中 {dailyHubSummary.activity.inProgress}件
-                </Typography>
-              )}
-            </Box>
-
-            <Box sx={{ textAlign: 'center', flex: 1 }} data-testid="daily-stats-attendance">
-              <Typography variant="h4" color={attendanceCaptionColor}>
-                {(dailyHubSummary.attendance?.absence ?? 0) + (dailyHubSummary.attendance?.lateOrEarly ?? 0)}件
-              </Typography>
-              <Typography variant="body2" color="text.secondary">
-                通所管理 要確認
-              </Typography>
-              {((dailyHubSummary.attendance?.absence ?? 0) > 0 || (dailyHubSummary.attendance?.lateOrEarly ?? 0) > 0) && (
-                <Typography variant="caption" color="text.secondary">
-                  欠席 {dailyHubSummary.attendance.absence} / 遅刻・早退 {dailyHubSummary.attendance.lateOrEarly}
-                </Typography>
-              )}
-            </Box>
-
-            <Box sx={{ textAlign: 'center', flex: 1 }} data-testid="daily-stats-support">
-              <Typography variant="h4" color={supportCaptionColor}>
-                {dailyHubSummary.support?.incomplete ?? 0}件
-              </Typography>
-              <Typography variant="body2" color="text.secondary">
-                支援手順記録 未記入
-              </Typography>
-              {(dailyHubSummary.support?.total ?? 0) > 0 && (
-                <Typography variant="caption" color="text.secondary">
-                  対象 {dailyHubSummary.support.total}件中
-                </Typography>
-              )}
-            </Box>
-          </Stack>
-        </Paper>
 
       </Box>
     </Container>

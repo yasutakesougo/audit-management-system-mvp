@@ -80,6 +80,8 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ audience = 'staff' }) => 
           actions={
             <DashboardHeaderActions
               onOpenBriefing={page.openBriefing}
+              onNavigateToSchedule={() => page.navigate('/schedules/month')}
+              schedulesEnabled={page.schedulesEnabled}
               onNavigateToRoomManagement={() => page.navigate('/room-management')}
             />
           }
@@ -115,6 +117,13 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ audience = 'staff' }) => 
               done: page.dailyRecordStatus.completed,
               total: page.dailyRecordStatus.total,
             }}
+            // 📡 Handoff Live Feed data
+            handoffTimelineItems={page.handoffTimelineItems}
+            handoffTimelineLoading={page.handoffTimelineLoading}
+            handoffTimelineError={page.handoffTimelineError}
+            handoffTimelineUpdateStatus={page.handoffTimelineUpdateStatus}
+            handoffTimelineReload={page.handoffTimelineReload}
+            onOpenTimeline={page.openTimeline}
           />
         </Stack>
       </Box>
