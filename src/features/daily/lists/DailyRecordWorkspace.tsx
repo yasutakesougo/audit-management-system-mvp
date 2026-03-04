@@ -16,6 +16,7 @@ import { SummaryDashboard } from '../../reports/dashboard/SummaryDashboard';
 import { DailyRecordForm } from '../forms/DailyRecordForm';
 import BulkDailyRecordList, { type BulkDailyRow } from './BulkDailyRecordList';
 import { DailyRecordList } from './DailyRecordList';
+import { toLocalDateISO } from '@/utils/getNow';
 
 const srOnly = {
   border: 0,
@@ -107,7 +108,7 @@ const DailyRecordWorkspace: React.FC<DailyRecordWorkspaceProps> = ({
     [editingRecord, onSave],
   );
 
-  const today = new Date().toISOString().split('T')[0];
+  const today = toLocalDateISO();
   const currentDate = selectedDate || today;
 
   // 今日の記録統計

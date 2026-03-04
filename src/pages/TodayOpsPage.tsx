@@ -25,6 +25,7 @@ import { isE2E } from '@/lib/env';
 import { Alert, Snackbar } from '@mui/material';
 import React, { useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { toLocalDateISO } from '@/utils/getNow';
 
 export const TodayOpsPage: React.FC = () => {
   const navigate = useNavigate();
@@ -87,7 +88,7 @@ export const TodayOpsPage: React.FC = () => {
           console.log('Open Approval Modal');
         },
         onOpenMenu: () => {
-          const today = new Date().toISOString().split('T')[0];
+          const today = toLocalDateISO();
           navigate(buildDailyHubFromTodayUrl(today));
         },
       },

@@ -28,6 +28,7 @@ import { useHandoffSummary } from '@/features/handoff/useHandoffSummary';
 import { useAttendanceCounts } from '@/features/staff/attendance/useAttendanceCounts';
 import { useStaffStore } from '@/features/staff/store';
 import { useUsersDemo } from '@/features/users/usersStoreDemo';
+import { toLocalDateISO } from '@/utils/getNow';
 
 // ── 定数 ──
 const ADMIN_TABS = [
@@ -128,7 +129,7 @@ export function useDashboardPage(audience: DashboardAudience = 'staff'): UseDash
   } = useHandoffSummary({ dayScope: 'today' });
 
   // ── Time calculations ──
-  const today = new Date().toISOString().split('T')[0];
+  const today = toLocalDateISO();
   const currentMonth = today.slice(0, 7);
   const currentHour = new Date().getHours();
   const isMorningTime = currentHour >= 8 && currentHour < 12;

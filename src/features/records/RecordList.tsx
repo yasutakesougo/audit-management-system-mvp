@@ -1,6 +1,5 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 import { useToast } from '@/hooks/useToast';
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { pushAudit } from '../../lib/audit';
 import ErrorState from '../../ui/components/ErrorState';
 import Loading from '../../ui/components/Loading';
@@ -15,7 +14,7 @@ const RecordList: React.FC = () => {
   const { list, add } = useRecordsApi();
   const { show } = useToast();
 
-  const loadRecords = async () => {
+  const loadRecords = useCallback(async () => {
     setLoading(true);
     try {
       const items = await list();
@@ -30,9 +29,9 @@ const RecordList: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [list, show]);
 
-  useEffect(() => { loadRecords(); }, []);
+  useEffect(() => { void loadRecords(); }, [loadRecords]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();

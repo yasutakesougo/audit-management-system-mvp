@@ -21,6 +21,7 @@ import PrintIcon from "@mui/icons-material/Print";
 
 import { useStaffAttendanceAdmin } from "@/features/staff/attendance/hooks/useStaffAttendanceAdmin";
 import { useStaffStore } from "@/features/staff/store";
+import { toLocalDateISO } from '@/utils/getNow';
 import {
   buildMonthlySummary,
   buildStaffBreakdown,
@@ -49,7 +50,7 @@ const monthToRange = (ym: string): { from: string; to: string } => {
 export default function StaffAttendanceMonthlySummaryPage() {
   const [searchParams, setSearchParams] = useSearchParams();
   const monthParam = searchParams.get('month') ?? '';
-  const recordDate = useMemo(() => new Date().toISOString().slice(0, 10), []);
+  const recordDate = useMemo(() => toLocalDateISO(), []);
   const {
     listItems,
     listLoading,

@@ -16,6 +16,7 @@ import {
 } from '../ibdStore';
 import type { PDCARecommendation } from '../ibdTypes';
 import { PDCA_RECOMMENDATION_LABELS } from '../ibdTypes';
+import { toLocalDateISO } from '@/utils/getNow';
 
 // ---------------------------------------------------------------------------
 // ヘルパー
@@ -39,7 +40,7 @@ function truncate(text: string, maxLen = 100): string {
 // ---------------------------------------------------------------------------
 
 export function useAuditEvidenceReport(userId: number, userName: string) {
-  const today = useMemo(() => new Date().toISOString().split('T')[0], []);
+  const today = useMemo(() => toLocalDateISO(), []);
 
   const prepareReportData = useCallback(
     (generatedBy: string): AuditEvidenceReportData => {

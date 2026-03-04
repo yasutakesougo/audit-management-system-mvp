@@ -21,6 +21,7 @@ import TextField from '@mui/material/TextField';
 import Typography from '@mui/material/Typography';
 import React, { useCallback, useMemo, useReducer, useRef, useState } from 'react';
 import { LandscapeFab } from '../components/ui/LandscapeFab';
+import { toLocalDateISO } from '@/utils/getNow';
 
 // 支援手順記録の型定義
 // TODO: 将来的にsrc/types/support.tsなどの共通モジュールに移動予定
@@ -208,7 +209,7 @@ const generateMockDailyRecord = (user: typeof mockSupportUsers[0], date: string)
 
 const SupportRecordPage: React.FC = () => {
   const [selectedUser, setSelectedUser] = useState<string>('');
-  const [dateFilter, setDateFilter] = useState(new Date().toISOString().split('T')[0]);
+  const [dateFilter, setDateFilter] = useState(toLocalDateISO());
   const [searchQuery, setSearchQuery] = useState('');
 
   // 安定したデータ管理のためのref（レンダリング入力にしない）

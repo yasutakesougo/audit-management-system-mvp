@@ -1,7 +1,8 @@
 import * as React from 'react';
 import { useDailyOpsSignals } from '@/features/dailyOps/data/useDailyOpsSignals';
+import { toLocalDateISO } from '@/utils/getNow';
 
-const todayIso = (): string => new Date().toISOString().slice(0, 10);
+const todayIso = (): string => toLocalDateISO();
 
 export function DailyOpsSignalsSmokeTest(): JSX.Element {
   const date = todayIso();

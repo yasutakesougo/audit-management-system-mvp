@@ -1,3 +1,4 @@
+import { toLocalDateISO } from '@/utils/getNow';
 /**
  * bulkDailyRecordFormLogic.ts
  *
@@ -53,7 +54,7 @@ export const REPORTER_ROLE_OPTIONS = [
 
 export function createEmptyBulkActivityData(): BulkActivityData {
   return {
-    date: new Date().toISOString().split('T')[0],
+    date: toLocalDateISO(),
     reporter: {
       name: '',
       role: '生活支援員',
