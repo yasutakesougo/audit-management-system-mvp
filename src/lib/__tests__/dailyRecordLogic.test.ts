@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { PersonDaily } from '../../domain/daily/types';
+import { toLocalDateISO } from '@/utils/getNow';
 import {
   addDailyRecord,
   calculateDailyRecordStats,
@@ -373,7 +374,7 @@ describe('dailyRecordLogic', () => {
     });
 
     it('日付を指定しない場合、今日の日付を使用する', () => {
-      const today = new Date().toISOString().split('T')[0];
+      const today = toLocalDateISO();
       const records = [
         createMockRecord({ id: 1, date: today, status: '完了' })
       ];

@@ -20,6 +20,7 @@ import TableRow from '@mui/material/TableRow';
 import TextField from '@mui/material/TextField';
 import Typography from '@mui/material/Typography';
 import React, { useMemo, useState } from 'react';
+import { toLocalDateISO } from '@/utils/getNow';
 
 type MedicationInventoryEntry = {
   id: number;
@@ -178,7 +179,7 @@ const MedicationRound: React.FC = () => {
     dosage: '',
     stock: 0,
     unit: '錠',
-    expirationDate: new Date().toISOString().slice(0, 10),
+    expirationDate: toLocalDateISO(),
     prescribedBy: '',
     storage: '',
     notes: '',
@@ -235,7 +236,7 @@ const MedicationRound: React.FC = () => {
       dosage: '',
       stock: 0,
       unit: '錠',
-      expirationDate: new Date().toISOString().slice(0, 10),
+      expirationDate: toLocalDateISO(),
       prescribedBy: '',
       storage: '',
       notes: '',

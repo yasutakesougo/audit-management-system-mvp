@@ -20,7 +20,7 @@
  * - SP書き込みは将来の Phase で接続（現在はローカルステートのみ）
  */
 
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTodaySummary } from '../domain';
 import {
     applyTransition,
@@ -123,6 +123,15 @@ export function useTransportStatus(): UseTransportStatusReturn {
     () => getDefaultDirection(),
   );
 
+  // Track whether user has manually overridden the direction
+  const userOverriddenRef = useRef(false);
+
+  // Wrap setActiveDirection to detect manual changes
+  const handleSetActiveDirection = useCallback((dir: TransportDirection) => {
+    userOverriddenRef.current = true;
+    setActiveDirection(dir);
+  }, []);
+
   // Transport legs state (source of truth for UI)
   const [legs, setLegs] = useState<TransportLeg[]>([]);
 
@@ -134,14 +143,11 @@ export function useTransportStatus(): UseTransportStatusReturn {
     const timer = setInterval(() => {
       setCurrentTime(formatHHmm(new Date()));
 
-      // Also check if default direction should switch
-      const newDefault = getDefaultDirection();
-      setActiveDirection((_prev) => {
-        // Only auto-switch if user hasn't manually changed
-        // (We track this by checking if current matches previous default)
-        // For simplicity, always auto-switch
-        return newDefault;
-      });
+      // Only auto-switch direction if user hasn't manually changed
+      if (!userOverriddenRef.current) {
+        const newDefault = getDefaultDirection();
+        setActiveDirection(newDefault);
+      }
     }, 60_000);
 
     return () => clearInterval(timer);
@@ -223,7 +229,7 @@ export function useTransportStatus(): UseTransportStatusReturn {
   return {
     status,
     activeDirection,
-    setActiveDirection,
+    setActiveDirection: handleSetActiveDirection,
     transition,
     markInProgress,
     markArrived,

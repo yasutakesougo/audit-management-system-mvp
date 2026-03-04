@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import type { HandoffDayScope, HandoffRecord } from '../handoffTypes';
 import { useHandoffTimeline } from '../useHandoffTimeline';
+import { toLocalDateISO } from '@/utils/getNow';
 
 /**
  * 日次記録用の重要申し送り情報
@@ -31,7 +32,7 @@ export function useImportantHandoffsForDaily(personId: string, date: string) {
   const [error, setError] = useState<string | null>(null);
 
   // 日付からdayScopeを決定
-  const today = new Date().toISOString().split('T')[0]; // YYYY-MM-DD
+  const today = toLocalDateISO(); // YYYY-MM-DD
   const yesterday = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString().split('T')[0];
 
   let dayScope: HandoffDayScope = 'today';

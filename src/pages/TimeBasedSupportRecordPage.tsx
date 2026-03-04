@@ -9,9 +9,10 @@ import type { BehaviorObservation } from '@/features/daily/domain/daily/types';
 import { generateDailyReport } from '@/features/daily/domain/generateDailyReport';
 import { getScheduleKey } from '@/features/daily/domain/getScheduleKey';
 import { toBipOptions } from '@/features/daily/domain/toBipOptions';
+import { useBehaviorData } from '@/features/daily/hooks/useBehaviorData';
 import { useDailySupportUserFilter } from '@/features/daily/hooks/useDailySupportUserFilter';
-import { useInMemoryBehaviorRepository, useInMemoryProcedureRepository } from '@/features/daily/infra/inMemoryFactory';
-import { useExecutionStore } from '@/features/daily/stores/executionStore';
+import { useExecutionData } from '@/features/daily/hooks/useExecutionData';
+import { useProcedureData } from '@/features/daily/hooks/useProcedureData';
 import type { ProcedureItem } from '@/features/daily/stores/procedureStore';
 import {
     makeIdempotencyKey,
@@ -50,6 +51,7 @@ import Typography from '@mui/material/Typography';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { flushSync } from 'react-dom';
 import { useLocation, useNavigate, useSearchParams } from 'react-router-dom';
+import { toLocalDateISO } from '@/utils/getNow';
 
 const TimeBasedSupportRecordPage: React.FC = () => {
   const location = useLocation();
@@ -85,14 +87,14 @@ const TimeBasedSupportRecordPage: React.FC = () => {
   const recordPanelRef = useRef<HTMLDivElement>(null);
   const [retryPersist, setRetryPersist] = useState<PersistDailyPdcaInput | null>(null);
   const retryKeyRef = useRef<string | null>(null);
-  const procedureRepo = useInMemoryProcedureRepository();
-  const { repo: behaviorRepo, data: behaviorRecords, error: behaviorError, clearError } = useInMemoryBehaviorRepository();
+  const procedureRepo = useProcedureData();
+  const { repo: behaviorRepo, data: behaviorRecords, error: behaviorError, clearError } = useBehaviorData();
   const { data: users } = useUsersDemo();
   const { filter, updateFilter, resetFilter, filteredUsers, hasActiveFilter } = useDailySupportUserFilter(users);
   const interventionStore = useInterventionStore();
 
   // Execution records for daily report export
-  const executionStore = useExecutionStore();
+  const executionStore = useExecutionData();
 
   const {
     targetUserId,
@@ -479,7 +481,7 @@ const TimeBasedSupportRecordPage: React.FC = () => {
   const todayAbcCount = useMemo(() => {
     if (!targetUserId) return 0;
     const records = getABCRecordsForUser(targetUserId);
-    const todayStr = new Date().toISOString().slice(0, 10);
+    const todayStr = toLocalDateISO();
     return records.filter((r) => r.recordedAt?.slice(0, 10) === todayStr).length;
   }, [targetUserId]);
 

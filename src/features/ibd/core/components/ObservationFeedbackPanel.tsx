@@ -25,6 +25,7 @@ import { useCallback, useState } from 'react';
 
 import type { PDCARecommendation, SupervisionLog } from '../ibdTypes';
 import { PDCA_RECOMMENDATION_LABELS } from '../ibdTypes';
+import { toLocalDateISO } from '@/utils/getNow';
 
 // ---------------------------------------------------------------------------
 // Props
@@ -121,7 +122,7 @@ const ObservationFeedbackPanel: FC<ObservationFeedbackPanelProps> = ({
       id: `obs-${Date.now()}`,
       userId,
       supervisorId,
-      observedAt: new Date().toISOString().split('T')[0],
+      observedAt: toLocalDateISO(),
       notes,
       actionsTaken: actionsTaken
         .split('\n')

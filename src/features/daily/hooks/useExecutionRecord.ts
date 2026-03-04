@@ -6,10 +6,9 @@
 import { useCallback } from 'react';
 
 import { type RecordStatus, makeRecordId } from '../domain/executionRecordTypes';
-import { useExecutionStore } from '../stores/executionStore';
-
+import { useExecutionData } from './useExecutionData';
 export function useExecutionRecord(date: string, userId: string, scheduleItemId: string) {
-  const { getRecord, upsertRecord } = useExecutionStore();
+  const { getRecord, upsertRecord } = useExecutionData();
 
   const record = getRecord(date, userId, scheduleItemId);
 

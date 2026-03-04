@@ -1,6 +1,7 @@
 import { NURSE_USERS } from '@/features/nurse/users';
 import { useCallback, useEffect, useMemo } from 'react';
 import { useSearchParams } from 'react-router-dom';
+import { toLocalDateISO } from '@/utils/getNow';
 
 export type WorkspaceTab = 'seizure' | 'bp';
 
@@ -15,7 +16,7 @@ export type PartialParams = Partial<Pick<WorkspaceParams, 'user' | 'date' | 'tab
 
 const isoPattern = /^\d{4}-\d{2}-\d{2}$/;
 
-const todayISO = (): string => new Date().toISOString().slice(0, 10);
+const todayISO = (): string => toLocalDateISO();
 
 const isValidISODate = (value: string): boolean => {
   if (!isoPattern.test(value)) {

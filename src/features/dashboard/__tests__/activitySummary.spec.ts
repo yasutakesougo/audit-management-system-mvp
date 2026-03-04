@@ -1,13 +1,14 @@
 import { describe, expect, it } from 'vitest';
 import type { PersonDaily } from '../../../domain/daily/types';
 import { buildActivitySummary } from '../activitySummary';
+import { toLocalDateISO } from '@/utils/getNow';
 
 // Helper function to create mock PersonDaily records
 const createMockPersonDaily = (overrides: Partial<PersonDaily> = {}): PersonDaily => ({
   id: 1,
   personId: '001',
   personName: '田中太郎',
-  date: new Date().toISOString().split('T')[0],
+  date: toLocalDateISO(),
   status: '完了',
   reporter: { name: '職員A' },
   draft: { isDraft: false },
@@ -26,7 +27,7 @@ const createMockPersonDaily = (overrides: Partial<PersonDaily> = {}): PersonDail
 });
 
 describe('buildActivitySummary', () => {
-  const today = new Date().toISOString().split('T')[0];
+  const today = toLocalDateISO();
 
   describe('基本的な集計機能', () => {
     it('完了/作成中/未作成を正しく集計する', () => {

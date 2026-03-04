@@ -5,6 +5,7 @@ import { describe, expect, it, vi } from 'vitest';
 import { PersonDaily } from '../../../domain/daily/types';
 import { DailyRecordForm } from '../forms/DailyRecordForm';
 import type { DailyUserOption } from '../forms/useDailyUserOptions';
+import { toLocalDateISO } from '@/utils/getNow';
 
 // @/features/handoff バレルをモックして QueryClient/useAuth 依存を断つ
 vi.mock('@/features/handoff', () => ({
@@ -91,7 +92,7 @@ describe('DailyRecordForm', () => {
         </MemoryRouter>
       );
 
-      const today = new Date().toISOString().split('T')[0];
+      const today = toLocalDateISO();
       expect(screen.getByLabelText('日付')).toHaveValue(today);
       expect(screen.getByRole('textbox', { name: /記録者名/ })).toHaveValue('');
     });

@@ -11,6 +11,7 @@ import { useTableDailyRecordPersistence } from './useTableDailyRecordPersistence
 import { useTableDailyRecordRouting } from './useTableDailyRecordRouting';
 import { useTableDailyRecordRowHandlers } from './useTableDailyRecordRowHandlers';
 import { useTableDailyRecordSelection } from './useTableDailyRecordSelection';
+import { toLocalDateISO } from '@/utils/getNow';
 
 export type UserRowData = {
   userId: string;
@@ -87,7 +88,7 @@ export type UseTableDailyRecordFormResult = {
 };
 
 const createInitialFormData = (initialDate?: string | null): TableDailyRecordData => ({
-  date: initialDate ?? new Date().toISOString().split('T')[0],
+  date: initialDate ?? toLocalDateISO(),
   reporter: {
     name: '',
     role: '生活支援員',

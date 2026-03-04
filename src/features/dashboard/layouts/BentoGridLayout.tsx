@@ -39,6 +39,7 @@ import useMediaQuery from '@mui/material/useMediaQuery';
 import React from 'react';
 
 import { motionTokens } from '@/app/theme';
+import { BentoCard } from '@/components/ui/BentoGrid';
 import { CommandBar } from '@/features/dashboard/components/CommandBar';
 import type { TodayChanges } from '@/features/dashboard/components/TodayChangesCard';
 import { TodayChangesCard } from '@/features/dashboard/components/TodayChangesCard';
@@ -102,9 +103,10 @@ export const BentoGridLayout: React.FC<BentoGridLayoutProps> = ({
     if (!section || section.enabled === false) return null;
     const isHighlighted = highlightSection === key;
     return (
-      <Box
+      <BentoCard
         key={section.key}
-        id={sectionIdByKey[key]}
+        testId={`bento-section-${key}`}
+        variant={key === 'handover' ? 'accent' : 'default'}
         sx={{
           scrollMarginTop: 96,
           transition: motionTokens.transition.sectionHighlight,
@@ -129,8 +131,10 @@ export const BentoGridLayout: React.FC<BentoGridLayoutProps> = ({
           },
         }}
       >
-        {renderSection(section)}
-      </Box>
+        <Box id={sectionIdByKey[key]}>
+          {renderSection(section)}
+        </Box>
+      </BentoCard>
     );
   };
 
@@ -305,9 +309,9 @@ export const BentoGridLayout: React.FC<BentoGridLayoutProps> = ({
         data-testid="bento-action-rail"
       >
         <Stack spacing={2}>
-          {briefingHUD}
-          <CompactNewHandoffInput />
-          {todayChangesCard}
+          <BentoCard variant="subtle" noHover>{briefingHUD}</BentoCard>
+          <BentoCard variant="accent" noHover><CompactNewHandoffInput /></BentoCard>
+          <BentoCard variant="subtle" noHover>{todayChangesCard}</BentoCard>
         </Stack>
       </Box>
     </Box>

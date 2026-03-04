@@ -17,7 +17,7 @@ import Divider from '@mui/material/Divider';
 import Paper from '@mui/material/Paper';
 import Stack from '@mui/material/Stack';
 import Typography from '@mui/material/Typography';
-import { useCallback, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 
 import ABCEntryForm from '@/features/ibd/core/components/ABCEntryForm';
 import ABCSummaryReport from '@/features/ibd/core/components/ABCSummaryReport';
@@ -43,6 +43,7 @@ import type { ABCRecord, SupervisionLog, SupportScene } from '@/features/ibd/cor
 import { PDCA_RECOMMENDATION_LABELS, SUPPORT_CATEGORY_CONFIG } from '@/features/ibd/core/ibdTypes';
 
 import { useAuditEvidenceReport } from '@/features/ibd/core/reports/useAuditEvidenceReport';
+import { toLocalDateISO } from '@/utils/getNow';
 
 // ---------------------------------------------------------------------------
 // デモデータ
@@ -173,9 +174,9 @@ const IBDDemoPage = () => {
   }, []);
 
   // Initialize on mount
-  useState(() => {
+  useEffect(() => {
     initDemoData();
-  });
+  }, []);
 
   // Handlers
   const handleAddObservation = useCallback(() => {
@@ -183,7 +184,7 @@ const IBDDemoPage = () => {
       id: `log-${Date.now()}`,
       userId: DEMO_USER_ID,
       supervisorId: 100,
-      observedAt: new Date().toISOString().split('T')[0],
+      observedAt: toLocalDateISO(),
       notes: '安定した状態で活動参加。食事場面での工夫が効果的。',
       actionsTaken: ['計画通り支援を実施', '環境調整の効果を確認'],
     });
@@ -225,7 +226,7 @@ const IBDDemoPage = () => {
   // Get current state for display
   const counter = getSupervisionCounter(DEMO_USER_ID);
   const allSPS = getAllSPS();
-  const alerts = getExpiringSPSAlerts(90, new Date().toISOString().split('T')[0]);
+  const alerts = getExpiringSPSAlerts(90, toLocalDateISO());
 
   return (
     <Container maxWidth="lg" sx={{ py: 4 }} data-testid="ibd-demo-page" key={refreshKey}>
@@ -505,7 +506,7 @@ const IBDDemoPage = () => {
                     const url = URL.createObjectURL(blob);
                     const a = document.createElement('a');
                     a.href = url;
-                    a.download = `IBD_監査エビデンス_デモ利用者太郎_${new Date().toISOString().split('T')[0]}.pdf`;
+                    a.download = `IBD_監査エビデンス_デモ利用者太郎_${toLocalDateISO()}.pdf`;
                     a.click();
                     URL.revokeObjectURL(url);
                     setLastAction('✅ 監査エビデンスレポートをダウンロードしました');

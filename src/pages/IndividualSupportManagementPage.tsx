@@ -34,6 +34,7 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { DailyRecordsTab } from '@/features/ibd/procedures/daily-records/components/DailyRecordsTab';
 import { MonitoringRevisionDialog } from '@/features/ibd/procedures/daily-records/components/MonitoringRevisionDialog';
 import { SupportPlanTab } from '@/features/ibd/procedures/daily-records/components/SupportPlanTab';
+import { toLocalDateISO } from '@/utils/getNow';
 import {
     type ABCSelection,
     type ScheduleSlot,
@@ -102,7 +103,7 @@ const IndividualSupportManagementPage: React.FC = () => {
 
     // なければデモ用 SPS を自動生成
     if (!sps) {
-      const now = new Date().toISOString().split('T')[0];
+      const now = toLocalDateISO();
       const spsId = `sps-${selectedUser.UserID}-auto`;
       addSPS({
         id: spsId,

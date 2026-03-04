@@ -1,8 +1,9 @@
 import type { Daily } from '@/lib/mappers';
+import { toLocalDateISO } from '@/utils/getNow';
 import { useCallback, useEffect, useState } from 'react';
 
 const baseDate = new Date();
-const toDateOnly = (date: Date) => date.toISOString().slice(0, 10);
+const toDateOnly = (date: Date) => toLocalDateISO(date);
 const delay = (ms = 0) => new Promise<void>((resolve) => setTimeout(resolve, ms));
 
 const sanitizeOverrides = <T extends Record<string, unknown>>(input: Partial<T>): Partial<T> =>

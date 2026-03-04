@@ -147,14 +147,14 @@ describe('HandoffItem', () => {
 
   // ─── 既読/未確認バッジ ──────────────────────────────────
   describe('既読/未確認バッジ', () => {
-    it('未確認の場合パルスドットが表示される', () => {
+    it('未確認の場合「未確認」ドットインジケーターが表示される', () => {
       vi.mocked(loadSeenMap).mockReturnValue({});
       renderItem();
-      // v5: テキストではなく FiberManualRecordIcon（パルスドット）で未確認を表示
+      // 未確認時は FiberManualRecordIcon（ドットインジケーター）が表示される
       expect(screen.getByTestId('FiberManualRecordIcon')).toBeInTheDocument();
     });
 
-    it('既読の場合パルスドットが表示されない', () => {
+    it('既読の場合「未確認」ドットインジケーターが表示されない', () => {
       vi.mocked(loadSeenMap).mockReturnValue({ '1': '2026-03-04T00:00:00Z' });
       renderItem();
       expect(screen.queryByTestId('FiberManualRecordIcon')).not.toBeInTheDocument();

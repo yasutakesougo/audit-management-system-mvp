@@ -4,6 +4,7 @@ import { buildStaffAttendanceRows, type AttendanceRowStatus } from '@/features/s
 import { useStaffAttendanceDay } from '@/features/staff/attendance/hooks/useStaffAttendanceDay';
 import { useStaff } from '@/stores/useStaff';
 import EmptyState from '@/ui/components/EmptyState';
+import { toLocalDateISO } from '@/utils/getNow';
 import LockIcon from '@mui/icons-material/Lock';
 import RefreshIcon from '@mui/icons-material/Refresh';
 import { Alert, Box, Chip, CircularProgress, IconButton, Paper, Stack, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Tooltip, Typography } from '@mui/material';
@@ -58,7 +59,7 @@ const STATUS_VARIANT: Record<AttendanceRowStatus, 'filled' | 'outlined'> = {
 };
 
 const StaffAttendanceReadOnlyView: React.FC<{ className?: string }> = ({ className }) => {
-  const today = new Date().toISOString().slice(0, 10);
+  const today = toLocalDateISO();
   const { items, isLoading, error, reload, storageKind } = useStaffAttendanceDay(today);
   const { staff, isLoading: staffLoading } = useStaff();
 

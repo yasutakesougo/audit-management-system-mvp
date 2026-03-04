@@ -11,6 +11,7 @@ import {
 import FormControlLabel from '@mui/material/FormControlLabel';
 import Switch from '@mui/material/Switch';
 import { QuickRecordFormEmbed } from './QuickRecordFormEmbed';
+import { toLocalDateISO } from '@/utils/getNow';
 
 export type QuickRecordDrawerProps = {
   open: boolean;
@@ -94,7 +95,7 @@ export const QuickRecordDrawer: React.FC<QuickRecordDrawerProps> = ({
       >
         <QuickRecordFormEmbed
           userId={userId || undefined}
-          date={new Date().toISOString().split('T')[0]} // 本日
+          date={toLocalDateISO()} // 本日
           onClose={onClose}
           onSaveSuccess={onSaveSuccess}
         />

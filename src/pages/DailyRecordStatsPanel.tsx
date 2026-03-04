@@ -6,6 +6,7 @@
  */
 
 import type { PersonDaily } from '@/domain/daily/types';
+import { toLocalDateISO } from '@/utils/getNow';
 import Box from '@mui/material/Box';
 import Chip from '@mui/material/Chip';
 import Paper from '@mui/material/Paper';
@@ -30,7 +31,7 @@ export function DailyRecordStatsPanel({
   attendanceRate,
   absentUserIds,
 }: DailyRecordStatsPanelProps) {
-  const todayStr = useMemo(() => new Date().toISOString().split('T')[0], []);
+  const todayStr = useMemo(() => toLocalDateISO(), []);
   const todayRecords = useMemo(
     () => records.filter((r) => r.date === todayStr),
     [records, todayStr],

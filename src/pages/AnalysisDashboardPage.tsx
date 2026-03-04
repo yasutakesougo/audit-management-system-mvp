@@ -9,8 +9,8 @@ import {
 import { useBehaviorAnalytics } from '@/features/analysis/hooks/useBehaviorAnalytics';
 import { useInterventionStore } from '@/features/analysis/stores/interventionStore';
 import { useAttendanceStore } from '@/features/attendance/store';
+import { useExecutionData } from '@/features/daily/hooks/useExecutionData';
 import { seedDemoBehaviors, useBehaviorStore } from '@/features/daily/stores/behaviorStore';
-import { useExecutionStore } from '@/features/daily/stores/executionStore';
 import { useProcedureStore } from '@/features/daily/stores/procedureStore';
 import { AttendanceSummaryCard } from '@/features/dashboard/components/AttendanceSummaryCard';
 import { IBDPageHeader } from '@/features/ibd/core/components/IBDPageHeader';
@@ -32,6 +32,7 @@ import Select from '@mui/material/Select';
 import Tooltip from '@mui/material/Tooltip';
 import Typography from '@mui/material/Typography';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { toLocalDateISO } from '@/utils/getNow';
 
 // ---------------------------------------------------------------------------
 // Constants
@@ -360,13 +361,13 @@ const AnalysisDashboardPage: React.FC = () => {
   );
 
   // --- Execution stats ---
-  const executionStore = useExecutionStore();
+  const executionStore = useExecutionData();
   const procedureStore = useProcedureStore();
   const interventionStore = useInterventionStore();
 
   const executionStats = useMemo(() => {
     if (!targetUserId) return { completed: 0, triggered: 0, skipped: 0, total: 0 };
-    const today = new Date().toISOString().slice(0, 10);
+    const today = toLocalDateISO();
     const procedures = procedureStore.getByUser(targetUserId);
     const records = executionStore.getRecords(today, targetUserId);
     const completed = records.filter((r) => r.status === 'completed').length;

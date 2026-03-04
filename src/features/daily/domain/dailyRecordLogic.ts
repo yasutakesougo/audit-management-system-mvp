@@ -1,5 +1,6 @@
 // contract:allow-interface — helper return types for logic functions, not domain entities
 import type { PersonDaily } from '@/domain/daily/types';
+import { toLocalDateISO } from '@/utils/getNow';
 
 export type DailyRecordWithoutId = Omit<PersonDaily, 'id'>;
 
@@ -182,7 +183,7 @@ export function filterRecordsByDate(records: PersonDaily[], date: string): Perso
  * 日次記録の統計を計算する
  */
 export function calculateDailyRecordStats(records: PersonDaily[], date?: string): DailyRecordStats {
-  const targetDate = date && date.trim() ? date.trim() : new Date().toISOString().split('T')[0];
+  const targetDate = date && date.trim() ? date.trim() : toLocalDateISO();
   const todaysRecords = filterRecordsByDate(records, targetDate);
 
   const total = todaysRecords.length;

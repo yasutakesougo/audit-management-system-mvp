@@ -365,9 +365,9 @@ export default function MonthlyRecordPage() {
               sx={{ minWidth: 180 }}
             >
               {monthOptions.map((month) => (
-                <option key={month} value={month}>
+                <MenuItem key={month} value={month}>
                   {month}
-                </option>
+                </MenuItem>
               ))}
             </TextField>
             <TextField

@@ -35,6 +35,7 @@ import {
     type ActionStatus,
 } from '../actions';
 import { EmptyStateBlock } from './EmptyStateBlock';
+import { toLocalDateISO } from '@/utils/getNow';
 
 export type BriefingActionListProps = {
   alerts: BriefingAlert[];
@@ -49,7 +50,7 @@ const STATUS_CHIP: Record<ActionStatus, { label: string; color: 'default' | 'war
 
 export const BriefingActionList: React.FC<BriefingActionListProps> = ({ alerts }) => {
   const { getState, setState, completionStats } = useAlertActionState();
-  const ymd = new Date().toISOString().split('T')[0];
+  const ymd = toLocalDateISO();
 
   // Pending count across all alerts (for badge display)
   const pendingCount = useMemo(() => {

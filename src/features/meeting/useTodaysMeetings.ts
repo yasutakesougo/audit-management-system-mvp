@@ -10,6 +10,7 @@ import type { MeetingSession } from './meetingDataTypes';
 import { generateMeetingSessionKey } from './meetingDataTypes';
 import { useMeetingData } from './useMeetingData';
 import { useMeetingSession } from './useMeetingSession';
+import { toLocalDateISO } from '@/utils/getNow';
 
 /**
  * Hook for今日の会議 operations
@@ -17,7 +18,7 @@ import { useMeetingSession } from './useMeetingSession';
  */
 export function useTodaysMeetings() {
   const meetingData = useMeetingData();
-  const today = new Date().toISOString().split('T')[0];
+  const today = toLocalDateISO();
 
   const morningSessionKey = generateMeetingSessionKey(today, 'morning');
   const eveningSessionKey = generateMeetingSessionKey(today, 'evening');
