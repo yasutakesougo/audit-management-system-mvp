@@ -1,3 +1,4 @@
+import { motionTokens } from '@/app/theme';
 import { RoomStatusTab } from '@/features/dashboard/tabs/RoomStatusTab';
 import { ChevronLeft as ChevronLeftIcon, ChevronRight as ChevronRightIcon } from '@mui/icons-material';
 import ClearAllIcon from '@mui/icons-material/ClearAll';
@@ -215,7 +216,7 @@ export const RoomManagementTabs: React.FC = () => {
                       flexDirection: 'column',
                       gap: 0.5,
                       overflow: 'hidden',
-                      transition: 'background-color 0.2s',
+                      transition: motionTokens.transition.bgColor,
                       '&:hover': day !== null ? { bgcolor: '#f3f4f6' } : {},
                     }}
                   >

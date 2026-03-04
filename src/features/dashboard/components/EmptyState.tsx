@@ -5,6 +5,7 @@
  * centered icon + message + optional CTA button.
  */
 
+import { motionTokens } from '@/app/theme';
 import Box from '@mui/material/Box';
 import Button from '@mui/material/Button';
 import Paper from '@mui/material/Paper';
@@ -61,7 +62,7 @@ export const EmptyState: React.FC<EmptyStateProps> = ({
         background: isDark
           ? `linear-gradient(135deg, ${alpha(theme.palette.primary.dark, 0.04)} 0%, ${alpha(theme.palette.background.paper, 0.6)} 100%)`
           : `linear-gradient(135deg, ${alpha(theme.palette.primary.light, 0.05)} 0%, ${alpha(theme.palette.background.paper, 0.8)} 100%)`,
-        transition: 'border-color 0.2s ease',
+        transition: motionTokens.transition.fadeBorder,
         '&:hover': {
           borderColor: alpha(theme.palette.primary.main, 0.3),
         },

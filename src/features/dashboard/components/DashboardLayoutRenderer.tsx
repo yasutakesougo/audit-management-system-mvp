@@ -9,6 +9,7 @@
  * Presentational コンポーネント。ロジックを持たず、渡されたデータを配置するだけ。
  */
 
+import { motionTokens } from '@/app/theme';
 import Box from '@mui/material/Box';
 import Typography from '@mui/material/Typography';
 import React from 'react';
@@ -155,7 +156,7 @@ export const DashboardLayoutRenderer: React.FC<DashboardLayoutRendererProps> = (
           id={sectionIdByKey[section.key]}
           sx={(theme) => ({
             scrollMarginTop: { xs: 80, sm: 96 },
-            transition: 'box-shadow 0.2s ease, outline-color 0.2s ease',
+            transition: motionTokens.transition.sectionHighlightBasic,
             outline: highlightSection === section.key ? '2px solid' : '2px solid transparent',
             outlineColor:
               highlightSection === section.key ? theme.palette.primary.main : 'transparent',

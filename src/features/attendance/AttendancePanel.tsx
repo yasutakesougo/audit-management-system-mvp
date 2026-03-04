@@ -1,16 +1,14 @@
 import ErrorOutlineIcon from '@mui/icons-material/ErrorOutline';
-import SyncIcon from '@mui/icons-material/Sync';
 import CheckCircleOutlineIcon from '@mui/icons-material/TaskAlt';
 import {
-  Alert,
-  Box,
-  Button,
-  Chip,
-  Snackbar,
-  Stack,
-  ToggleButton,
-  ToggleButtonGroup,
-  Typography,
+    Alert,
+    Box,
+    Button,
+    Chip,
+    Snackbar,
+    Stack,
+    ToggleButton,
+    ToggleButtonGroup
 } from '@mui/material';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
@@ -156,24 +154,7 @@ const AttendancePanel = (): JSX.Element => {
   }, [detailRow]);
 
   return (
-    <Box sx={{ display: 'grid', gap: 2.5 }}>
-      <Stack spacing={0.75}>
-        <Typography variant="h4" component="h1" data-testid="heading-attendance">
-          通所（出欠）
-        </Typography>
-        <Typography color="text.secondary">利用者一覧を検索し、状態を即時更新できます。</Typography>
-      </Stack>
-
-      <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1}>
-        <Chip
-          icon={<SyncIcon />}
-          color={status === 'loading' ? 'warning' : 'default'}
-          label={`状態: ${status}`}
-          variant={status === 'loading' ? 'filled' : 'outlined'}
-        />
-        <Chip icon={<CheckCircleOutlineIcon />} label={`件数: ${rows.length}`} variant="outlined" />
-      </Stack>
-
+    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1, flex: 1, minHeight: 0 }}>
       {status === 'error' ? (
         <Alert icon={<ErrorOutlineIcon />} severity="error">
           出欠データの読み込みに失敗しました。再読込を実行してください。
@@ -189,28 +170,37 @@ const AttendancePanel = (): JSX.Element => {
         disabled={status === 'loading'}
       />
 
-      <ToggleButtonGroup
-        value={inputMode}
-        exclusive
-        onChange={(_, v) => { if (v) actions.setInputMode(v); }}
-        size="small"
-        sx={{ alignSelf: 'flex-start' }}
-      >
-        <ToggleButton value="normal" sx={{ minHeight: 44, px: 2.5 }}>通常</ToggleButton>
-        <ToggleButton value="checkInRun" sx={{ minHeight: 44, px: 2.5 }}>通所連続</ToggleButton>
-      </ToggleButtonGroup>
+      <Stack direction="row" spacing={1} alignItems="center">
+        <ToggleButtonGroup
+          value={inputMode}
+          exclusive
+          onChange={(_, v) => { if (v) actions.setInputMode(v); }}
+          size="small"
+        >
+          <ToggleButton value="normal" sx={{ minHeight: 36, px: 2 }}>通常</ToggleButton>
+          <ToggleButton value="checkInRun" sx={{ minHeight: 36, px: 2 }}>通所連続</ToggleButton>
+        </ToggleButtonGroup>
+        <Chip
+          icon={<CheckCircleOutlineIcon />}
+          label={`${rows.length}名`}
+          variant="outlined"
+          size="small"
+        />
+      </Stack>
 
-      <AttendanceList
-        rows={rows}
-        savingUsers={savingUsers}
-        inputMode={inputMode}
-        tempDraftByUser={tempByUser}
-        onOpenTemp={openTempDialog}
-        onOpenNurse={handleOpenNurse}
-        onUpdateStatus={actions.updateStatus}
-        onAbsence={handleAbsenceClick}
-        onDetail={handleOpenDetail}
-      />
+      <Box sx={{ flex: 1, minHeight: 0, overflow: 'auto' }}>
+        <AttendanceList
+          rows={rows}
+          savingUsers={savingUsers}
+          inputMode={inputMode}
+          tempDraftByUser={tempByUser}
+          onOpenTemp={openTempDialog}
+          onOpenNurse={handleOpenNurse}
+          onUpdateStatus={actions.updateStatus}
+          onAbsence={handleAbsenceClick}
+          onDetail={handleOpenDetail}
+        />
+      </Box>
 
       {/* Detail drawer */}
       <AttendanceDetailDrawer

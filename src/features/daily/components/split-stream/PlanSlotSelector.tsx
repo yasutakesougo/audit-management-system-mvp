@@ -3,6 +3,7 @@
  *
  * RecordPanel から抽出。スケジュールの時間帯チップ選択 + Activity/Instruction 表示。
  */
+import { motionTokens } from '@/app/theme';
 import { getScheduleKey } from '@/features/daily/domain/getScheduleKey';
 import Alert from '@mui/material/Alert';
 import Box from '@mui/material/Box';
@@ -11,7 +12,7 @@ import Paper from '@mui/material/Paper';
 import Stack from '@mui/material/Stack';
 import Typography from '@mui/material/Typography';
 import type { RefObject } from 'react';
-import { memo } from 'react';
+import { memo, useEffect, useRef, useState } from 'react';
 import type { ScheduleItem } from './ProcedurePanel';
 
 type PlanSlotSelectorProps = {
@@ -35,6 +36,23 @@ function PlanSlotSelector({
   selectedActivityRef,
   onSlotChange,
 }: PlanSlotSelectorProps): JSX.Element | null {
+  // ── Fade-in transition on slot change ──
+  const [contentOpacity, setContentOpacity] = useState(1);
+  const prevSlotKeyRef = useRef(effectiveSelectedSlotKey);
+
+  useEffect(() => {
+    if (prevSlotKeyRef.current !== effectiveSelectedSlotKey && effectiveSelectedSlotKey) {
+      // Trigger fade: dip to 0, then restore to 1 after a frame
+      setContentOpacity(0);
+      const raf = requestAnimationFrame(() => {
+        setContentOpacity(1);
+      });
+      prevSlotKeyRef.current = effectiveSelectedSlotKey;
+      return () => cancelAnimationFrame(raf);
+    }
+    prevSlotKeyRef.current = effectiveSelectedSlotKey;
+  }, [effectiveSelectedSlotKey]);
+
   if (!schedule.length) {
     return (
       <Alert severity="info">
@@ -73,6 +91,7 @@ function PlanSlotSelector({
           p: 2,
           bgcolor: 'background.paper',
           borderColor: selectedSlot ? 'primary.main' : 'divider',
+          transition: motionTokens.transition.fadeBorder,
           boxShadow: 0,
           minHeight: { xs: 140, md: 180 },
           display: 'flex',
@@ -97,37 +116,45 @@ function PlanSlotSelector({
             </Typography>
           </Box>
         ) : selectedSlot ? (
-          <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2} sx={{ width: '100%' }}>
-            <Box flex={1}>
-              <Typography variant="caption" color="text.secondary" fontWeight="bold">
-                本人のやること (Activity)
-              </Typography>
-              <Typography variant="body1" fontWeight="bold">
-                {selectedSlot.activity}
-              </Typography>
-              <Typography variant="body2" color="text.secondary">
-                {selectedSlot.time}
-              </Typography>
-            </Box>
-            <Box
-              flex={1.5}
-              sx={{
-                borderLeft: '3px solid',
-                borderLeftColor: 'primary.main',
-                pl: 1.5,
-                bgcolor: 'primary.50',
-                borderRadius: 1,
-                py: 1,
-              }}
-            >
-              <Typography variant="caption" color="primary.dark" fontWeight="bold">
-                📋 支援者のやること (Instruction)
-              </Typography>
-              <Typography variant="body1" sx={{ whiteSpace: 'pre-wrap', fontWeight: 500 }}>
-                {selectedSlot.instruction}
-              </Typography>
-            </Box>
-          </Stack>
+          <Box
+            sx={{
+              opacity: contentOpacity,
+              transition: motionTokens.transition.fadeContent,
+              width: '100%',
+            }}
+          >
+            <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2} sx={{ width: '100%' }}>
+              <Box flex={1}>
+                <Typography variant="caption" color="text.secondary" fontWeight="bold">
+                  本人のやること (Activity)
+                </Typography>
+                <Typography variant="body1" fontWeight="bold">
+                  {selectedSlot.activity}
+                </Typography>
+                <Typography variant="body2" color="text.secondary">
+                  {selectedSlot.time}
+                </Typography>
+              </Box>
+              <Box
+                flex={1.5}
+                sx={{
+                  borderLeft: '3px solid',
+                  borderLeftColor: 'primary.main',
+                  pl: 1.5,
+                  bgcolor: 'primary.50',
+                  borderRadius: 1,
+                  py: 1,
+                }}
+              >
+                <Typography variant="caption" color="primary.dark" fontWeight="bold">
+                  📋 支援者のやること (Instruction)
+                </Typography>
+                <Typography variant="body1" sx={{ whiteSpace: 'pre-wrap', fontWeight: 500 }}>
+                  {selectedSlot.instruction}
+                </Typography>
+              </Box>
+            </Stack>
+          </Box>
         ) : null}
       </Paper>
       {!slotSelected ? (

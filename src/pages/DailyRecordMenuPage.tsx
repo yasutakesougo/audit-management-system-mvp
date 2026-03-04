@@ -1,5 +1,6 @@
 import { dailyPaths } from '@/app/links/dailyLinks';
 import { buildTodayReturnUrl, parseNavQuery } from '@/app/links/navigationLinks';
+import { motionTokens } from '@/app/theme';
 import { useAttendanceStore } from '@/features/attendance/store';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import AssignmentIcon from '@mui/icons-material/Assignment';
@@ -165,7 +166,7 @@ const DailyRecordMenuPage: React.FC = () => {
               flex: 1,
               display: 'flex',
               flexDirection: 'column',
-              transition: 'transform 0.2s, elevation 0.2s',
+              transition: motionTokens.transition.hoverElevation,
               border: '2px solid',
               borderColor: 'primary.main',
               '&:hover': {
@@ -246,7 +247,7 @@ const DailyRecordMenuPage: React.FC = () => {
               flex: 1,
               display: 'flex',
               flexDirection: 'column',
-              transition: 'transform 0.2s, elevation 0.2s',
+              transition: motionTokens.transition.hoverElevation,
               '&:hover': {
                 transform: 'translateY(-4px)',
                 elevation: 8
@@ -320,7 +321,7 @@ const DailyRecordMenuPage: React.FC = () => {
               flex: 1,
               display: 'flex',
               flexDirection: 'column',
-              transition: 'transform 0.2s, elevation 0.2s',
+              transition: motionTokens.transition.hoverElevation,
               '&:hover': {
                 transform: 'translateY(-4px)',
                 elevation: 8

@@ -14,6 +14,7 @@
  * - 連続入力に最適化（カテゴリ・重要度はリセットしない）
  */
 
+import { motionTokens } from '@/app/theme';
 import type { IUserMaster } from '@/sharepoint/fields';
 import CheckCircleOutlineIcon from '@mui/icons-material/CheckCircleOutline';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
@@ -161,7 +162,7 @@ export const CompactNewHandoffInput: React.FC<CompactNewHandoffInputProps> = ({
         border: `1px solid ${alpha(theme.palette.primary.main, 0.15)}`,
         bgcolor: alpha(theme.palette.background.paper, 0.85),
         overflow: 'hidden',
-        transition: 'all 0.25s ease',
+        transition: motionTokens.transition.expandCollapse,
         '&:focus-within': {
           borderColor: alpha(theme.palette.primary.main, 0.4),
           boxShadow: `0 0 0 3px ${alpha(theme.palette.primary.main, 0.08)}`,
@@ -209,7 +210,7 @@ export const CompactNewHandoffInput: React.FC<CompactNewHandoffInputProps> = ({
             fontSize: 18,
             color: 'text.secondary',
             transform: expanded ? 'rotate(180deg)' : 'none',
-            transition: 'transform 0.25s ease',
+            transition: `transform ${motionTokens.duration.normal} ${motionTokens.easing.standard}`,
           }}
         />
       </Box>
@@ -312,7 +313,7 @@ export const CompactNewHandoffInput: React.FC<CompactNewHandoffInputProps> = ({
                       fontSize: '0.7rem',
                       height: 24,
                       '& .MuiChip-label': { px: 0.75 },
-                      transition: 'all 0.15s ease',
+                      transition: motionTokens.transition.microAll,
                     }}
                   />
                 ))}
@@ -342,7 +343,7 @@ export const CompactNewHandoffInput: React.FC<CompactNewHandoffInputProps> = ({
                       fontSize: '0.7rem',
                       height: 24,
                       '& .MuiChip-label': { px: 0.75 },
-                      transition: 'all 0.15s ease',
+                      transition: motionTokens.transition.microAll,
                     }}
                   />
                 ))}
@@ -387,7 +388,7 @@ export const CompactNewHandoffInput: React.FC<CompactNewHandoffInputProps> = ({
                   bgcolor: canSend
                     ? alpha(theme.palette.primary.main, 0.1)
                     : 'transparent',
-                  transition: 'all 0.2s ease',
+                  transition: motionTokens.transition.hoverAll,
                   '&:not(:disabled):hover': {
                     bgcolor: theme.palette.primary.main,
                     color: 'white',

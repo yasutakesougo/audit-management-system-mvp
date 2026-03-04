@@ -47,7 +47,9 @@ export const TableDailyRecordTable: React.FC<TableDailyRecordTableProps> = ({
     <TableContainer
       data-testid={TESTIDS['daily-table-record-form-table']}
       sx={{
-        maxHeight: 'calc(100vh - 220px)',
+        flex: 1,
+        minHeight: 0,
+        overflow: 'auto',
         border: '1px solid',
         borderColor: 'divider',
         borderRadius: 1,

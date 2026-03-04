@@ -5,6 +5,7 @@
  * P1-A: Start/Done ボタン + 経過時間 + 完了状態
  * PR-3: sticky 化 + urgency に応じた左ボーダー/背景色
  */
+import { motionTokens } from '@/app/theme';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import EventAvailableIcon from '@mui/icons-material/EventAvailable';
 import PlayArrowIcon from '@mui/icons-material/PlayArrow';
@@ -91,7 +92,7 @@ export const NextActionCard: React.FC<NextActionCardProps> = ({ nextAction, onEm
         borderLeft: 4,
         borderColor: URGENCY_BORDER_COLOR[urgency],
         bgcolor: urgencyBg,
-        transition: 'border-color 0.3s, background-color 0.3s',
+        transition: `border-color ${motionTokens.duration.moderate} ${motionTokens.easing.standard}, background-color ${motionTokens.duration.moderate} ${motionTokens.easing.standard}`,
       }}
     >
       <Typography variant="subtitle2" fontWeight="bold" gutterBottom>

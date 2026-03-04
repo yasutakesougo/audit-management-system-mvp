@@ -38,7 +38,7 @@ export function AttendanceList({
   }
 
   return (
-    <Stack spacing={1.5}>
+    <Stack spacing={0.75}>
       {rows.map((row) => {
         const rangeText = row.checkInAt && row.checkOutAt
           ? `${formatTime(row.checkInAt)}〜${formatTime(row.checkOutAt)}`
@@ -46,7 +46,7 @@ export function AttendanceList({
 
         return (
           <Card key={row.userCode} variant="outlined" data-usercode={row.userCode}>
-            <CardContent>
+            <CardContent sx={{ py: 1, px: 1.5, '&:last-child': { pb: 1 } }}>
               <AttendanceRow
                 user={{
                   id: row.userCode,

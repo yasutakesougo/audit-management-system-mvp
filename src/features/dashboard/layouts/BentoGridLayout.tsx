@@ -38,6 +38,7 @@ import { alpha, useTheme } from '@mui/material/styles';
 import useMediaQuery from '@mui/material/useMediaQuery';
 import React from 'react';
 
+import { motionTokens } from '@/app/theme';
 import { CommandBar } from '@/features/dashboard/components/CommandBar';
 import type { TodayChanges } from '@/features/dashboard/components/TodayChangesCard';
 import { TodayChangesCard } from '@/features/dashboard/components/TodayChangesCard';
@@ -99,16 +100,33 @@ export const BentoGridLayout: React.FC<BentoGridLayoutProps> = ({
   const renderSectionIfEnabled = (key: DashboardSectionKey) => {
     const section = getSection(key);
     if (!section || section.enabled === false) return null;
+    const isHighlighted = highlightSection === key;
     return (
       <Box
         key={section.key}
         id={sectionIdByKey[key]}
         sx={{
           scrollMarginTop: 96,
-          transition: 'box-shadow 0.2s ease, outline-color 0.2s ease',
-          outline: highlightSection === key ? '2px solid' : '2px solid transparent',
-          outlineColor: highlightSection === key ? theme.palette.primary.main : 'transparent',
-          borderRadius: highlightSection === key ? 2 : 0,
+          transition: motionTokens.transition.sectionHighlight,
+          outline: isHighlighted ? '2px solid' : '2px solid transparent',
+          outlineColor: isHighlighted ? theme.palette.primary.main : 'transparent',
+          outlineOffset: isHighlighted ? 2 : 0,
+          borderRadius: isHighlighted ? 2 : 0,
+          // Phase 9: チップクリック時のハイライト + フェードインアニメーション
+          ...(isHighlighted ? {
+            animation:
+              `sectionPop ${motionTokens.duration.slow} ${motionTokens.easing.pop}, sectionFadeIn ${motionTokens.duration.slower} ${motionTokens.easing.decel}`,
+            boxShadow: `0 0 0 4px ${theme.palette.primary.main}20`,
+          } : {}),
+          '@keyframes sectionPop': {
+            '0%': { transform: 'scale(1)', boxShadow: 'none' },
+            '40%': { transform: 'scale(1.008)', boxShadow: `0 0 0 6px ${theme.palette.primary.main}30` },
+            '100%': { transform: 'scale(1)', boxShadow: `0 0 0 4px ${theme.palette.primary.main}20` },
+          },
+          '@keyframes sectionFadeIn': {
+            '0%': { opacity: 0.4, outlineColor: 'transparent' },
+            '100%': { opacity: 1, outlineColor: theme.palette.primary.main },
+          },
         }}
       >
         {renderSection(section)}

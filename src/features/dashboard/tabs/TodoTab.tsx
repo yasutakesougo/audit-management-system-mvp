@@ -15,6 +15,7 @@
  * - 利用者詳細へのリンク
  */
 
+import { motionTokens } from '@/app/theme';
 import { EmptyState } from '@/features/dashboard/components/EmptyState';
 import { TodoDetailDialog } from '@/features/dashboard/dialogs/TodoDetailDialog';
 import { UserDetailDialog, type UserDetail } from '@/features/dashboard/dialogs/UserDetailDialog';
@@ -280,7 +281,7 @@ export const TodoTab: React.FC<TodoTabProps> = ({ todos, loading = false }) => {
                     cursor: 'pointer',
                     transform: 'translateX(4px)',
                   },
-                  transition: 'all 0.2s ease',
+                  transition: motionTokens.transition.hoverAll,
                 }}
               >
                 <ListItemIcon sx={{ color: `${typeConfig.color}.main` }}>

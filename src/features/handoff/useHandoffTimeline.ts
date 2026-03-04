@@ -5,16 +5,20 @@
  * v1.1: 時間帯フィルタ対応（Step 7B）
  * v2.0: SharePoint API対応（Phase 8A）
  * v2.1: 監査ログ自動記録（ステータス変更・新規作成）
- * 後でSharePoint API実装に差し替え可能な設計
+ * v3.0: Phase 9 — TanStack Query キャッシュ無効化連携
+ *       作成・更新成功時に handoffKeys を invalidate し、
+ *       ダッシュボード KPI をリアルタイム同期する。
  */
 
 import { useAuth } from '@/auth/useAuth';
+import { useQueryClient } from '@tanstack/react-query';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { generateTitleFromMessage } from './generateTitleFromMessage';
 import { useHandoffApi } from './handoffApi';
 import { useHandoffAuditApi } from './handoffAuditApi';
 import { handoffConfig } from './handoffConfig';
 import { HANDOFF_TIME_FILTER_PRESETS } from './handoffConstants';
+import { handoffKeys } from './handoffQueryKeys';
 import {
     generateId,
     getDateKeyForScope,
@@ -50,6 +54,7 @@ export function useHandoffTimeline(
   const handoffApi = useHandoffApi(); // フックでAPIインスタンスを取得
   const auditApi = useHandoffAuditApi(); // 監査ログAPIインスタンス
   const { account } = useAuth(); // 操作者情報
+  const queryClient = useQueryClient(); // Phase 9: キャッシュ無効化用
 
   const [state, setState] = useState<HandoffTimelineState>({
     todayHandoffs: [],
@@ -191,8 +196,13 @@ export function useHandoffTimeline(
         category: newRecord.category,
         severity: newRecord.severity,
       });
+
+      // Phase 9: 全 handoff キャッシュを無効化
+      // → useHandoffSummary (KPI) + useHandoffTimeline が再取得
+      // → CommandBar がフラッシュアニメーション付きで更新
+      void queryClient.invalidateQueries({ queryKey: handoffKeys.all });
     },
-    [auditApi, account], // auditApi, account 依存追加
+    [auditApi, account, queryClient], // auditApi, account, queryClient 依存
   );
 
   /**
@@ -269,6 +279,9 @@ export function useHandoffTimeline(
         });
 
         console.log('[handoff] Status updated:', { id, oldStatus, newStatus });
+
+        // Phase 9: 全 handoff キャッシュを無効化
+        void queryClient.invalidateQueries({ queryKey: handoffKeys.all });
       } catch (error) {
         // エラー時は楽観的更新を取り消し
         setState(prev => ({
@@ -282,7 +295,7 @@ export function useHandoffTimeline(
         throw new Error('状態更新に失敗しました');
       }
     },
-    [dateKey, state.todayHandoffs, auditApi, account],
+    [dateKey, state.todayHandoffs, auditApi, account, queryClient],
   );
 
   // 初回ロード

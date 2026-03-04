@@ -154,8 +154,9 @@ export function useDashboardSummary({
     briefingAlerts,
     staffAvailability,
     monitoringHub,
-    handoffTotal: 12, // Demo
-    handoffStatus: { pending: 4, ongoing: 6, completed: 2 }, // Demo
-    handoffCritical: 1, // Demo
+    // ✅ Phase 9: handoff デモ値を除去
+    // handoffTotal / handoffStatus / handoffCritical は
+    // useDashboardPage が useHandoffSummary（TanStack Query）から直接取得する。
+    // ここでの二重化はデータ不整合の原因だったため削除。
   };
 }

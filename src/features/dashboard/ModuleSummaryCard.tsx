@@ -1,3 +1,4 @@
+import { motionTokens } from '@/app/theme';
 import Box from '@mui/material/Box';
 import Card from '@mui/material/Card';
 import CardContent from '@mui/material/CardContent';
@@ -33,7 +34,7 @@ export function ModuleSummaryCard({ summary, testid, onClick }: ModuleSummaryCar
     <Card
       sx={{
         cursor: onClick ? 'pointer' : 'default',
-        transition: 'transform 0.2s, box-shadow 0.2s',
+        transition: motionTokens.transition.hoverElevation,
         '&:hover': onClick ? {
           transform: 'translateY(-2px)',
           boxShadow: 4

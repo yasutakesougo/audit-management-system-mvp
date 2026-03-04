@@ -1,3 +1,4 @@
+import { motionTokens } from '@/app/theme';
 import { env } from '@/lib/env';
 import { translateZodIssue } from '@/lib/zodErrorUtils';
 import CloseIcon from '@mui/icons-material/Close';
@@ -120,7 +121,7 @@ const DataIntegrityAlert: React.FC<DataIntegrityAlertProps> = ({
                 <ExpandMoreIcon
                   sx={{
                     transform: expanded ? 'rotate(180deg)' : 'none',
-                    transition: 'transform 0.2s',
+                    transition: motionTokens.transition.hoverTransform,
                   }}
                 />
               }

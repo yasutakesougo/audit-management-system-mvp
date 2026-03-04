@@ -1,26 +1,27 @@
 /**
  * Zero-Scroll Dashboard Layout (Phase C-1)
- * 
+ *
  * 目的：「画面と目が合った瞬間に状況がわかる」ミッションコントロール UI
- * 
+ *
  * 設計思想：
  * - タブレット/PC 画面の高さを 100% 活用
  * - スクロールバーを各ペイン内に閉じ込める
  * - 左ペイン（40%）: 申し送りタイムライン
  * - 右ペイン（60%）: 状況把握タブ（利用者・職員・やること）
- * 
+ *
  * レスポンシブ対応：
  * - PC/タブレット横: 左右分割（4:6）
  * - スマホ/タブレット縦: タブのみ表示（申し送りは別ページ）
  */
 
-import React, { useState } from 'react';
+import { FadeSlide } from '@/features/dashboard/components/FadeSlide';
+import Badge from '@mui/material/Badge';
 import Box from '@mui/material/Box';
+import { useTheme } from '@mui/material/styles';
 import Tab from '@mui/material/Tab';
 import Tabs from '@mui/material/Tabs';
-import Badge from '@mui/material/Badge';
 import useMediaQuery from '@mui/material/useMediaQuery';
-import { useTheme } from '@mui/material/styles';
+import React, { useRef, useState } from 'react';
 
 /**
  * タブ定義
@@ -54,7 +55,7 @@ export interface ZeroScrollLayoutProps {
 
 /**
  * ゼロ・スクロール・ダッシュボード・レイアウト
- * 
+ *
  * 画面を左右に分割し、各ペイン内でのみスクロール可能にすることで
  * 「スクロールなしで全体を俯瞰できる」UX を実現
  */
@@ -68,11 +69,16 @@ export const ZeroScrollLayout: React.FC<ZeroScrollLayoutProps> = ({
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('md'));
   const [internalActiveTab, setInternalActiveTab] = useState(0);
+  const prevTabRef = useRef(0); // Phase 9: 方向認識トランジション用
 
   // 外部制御または内部制御
   const activeTab = controlledActiveTab ?? internalActiveTab;
 
+  // スライド方向: 右のタブへ→左からスライドイン, 左のタブへ→右からスライドイン
+  const slideDirection = activeTab > prevTabRef.current ? 'left' : 'right';
+
   const handleTabChange = (_event: React.SyntheticEvent, newValue: number) => {
+    prevTabRef.current = activeTab; // 現在のタブを保存してから切り替え
     if (onTabChange) {
       onTabChange(newValue);
     } else {
@@ -145,7 +151,13 @@ export const ZeroScrollLayout: React.FC<ZeroScrollLayoutProps> = ({
             }}
             data-testid={`tab-content-${tabs[activeTab]?.id}`}
           >
-            {tabs[activeTab]?.component}
+            <FadeSlide
+              transitionKey={activeTab}
+              direction={slideDirection}
+              duration={250}
+            >
+              {tabs[activeTab]?.component}
+            </FadeSlide>
           </Box>
         </Box>
       </Box>
@@ -251,7 +263,13 @@ export const ZeroScrollLayout: React.FC<ZeroScrollLayoutProps> = ({
             }}
             data-testid={`tab-content-${tabs[activeTab]?.id}`}
           >
-            {tabs[activeTab]?.component}
+            <FadeSlide
+              transitionKey={activeTab}
+              direction={slideDirection}
+              duration={250}
+            >
+              {tabs[activeTab]?.component}
+            </FadeSlide>
           </Box>
         </Box>
       </Box>

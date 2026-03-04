@@ -1,24 +1,17 @@
 import { TESTIDS } from '@/testids';
-import {
-    FilterList as FilterListIcon,
-    SaveAlt as SaveAltIcon,
-    Save as SaveIcon
-} from '@mui/icons-material';
+import { SaveAlt as SaveAltIcon, Save as SaveIcon } from '@mui/icons-material';
 import {
     Alert,
     Box,
     Button,
-    Chip,
     Collapse,
     Dialog,
     DialogActions,
     DialogContent,
-    DialogTitle,
     Stack,
     Typography
 } from '@mui/material';
 import { Toaster } from 'react-hot-toast';
-import { TableDailyRecordHeader } from '../components/TableDailyRecordHeader';
 import { TableDailyRecordTable } from '../components/TableDailyRecordTable';
 import { TableDailyRecordUserPicker } from '../components/TableDailyRecordUserPicker';
 import {
@@ -56,7 +49,6 @@ export function TableDailyRecordForm({
 
   const {
     formData,
-    setFormData,
     searchQuery,
     setSearchQuery,
     showTodayOnly,
@@ -69,12 +61,7 @@ export function TableDailyRecordForm({
     handleRowDataChange,
     handleProblemBehaviorChange,
     handleClearRow,
-    showUnsentOnly,
-    setShowUnsentOnly,
     visibleRows,
-    unsentRowCount,
-    hasDraft,
-    draftSavedAt,
     handleSaveDraft,
     handleSave,
     saving,
@@ -82,58 +69,13 @@ export function TableDailyRecordForm({
     clearValidationErrors,
   } = state;
 
-  const displayedUnsentCount = Math.max(unsentRowCount, selectedUserIds.length);
-
   const hasValidationErrors = Object.keys(validationErrors).length > 0;
 
   const content = (
     <>
-      {/* ── Compact title bar ── */}
-      <DialogTitle sx={{ py: 1, px: 2 }}>
-        <Stack direction="row" alignItems="center" justifyContent="space-between">
-          <TableDailyRecordHeader
-            date={formData.date}
-            reporterName={formData.reporter.name}
-            reporterRole={formData.reporter.role}
-            onDateChange={(value) => setFormData((prev) => ({ ...prev, date: value }))}
-            onReporterNameChange={(value) => setFormData((prev) => ({
-              ...prev,
-              reporter: { ...prev.reporter, name: value },
-            }))}
-            onReporterRoleChange={(value) => setFormData((prev) => ({
-              ...prev,
-              reporter: { ...prev.reporter, role: value },
-            }))}
-          />
-
-          <Stack direction="row" spacing={0.5} sx={{ ml: 2, flexShrink: 0 }}>
-            {displayedUnsentCount > 0 && (
-              <Chip
-                label={`未送信 ${displayedUnsentCount}件`}
-                color={showUnsentOnly ? 'primary' : 'default'}
-                variant={showUnsentOnly ? 'filled' : 'outlined'}
-                size="small"
-                clickable
-                onClick={() => setShowUnsentOnly(true)}
-                data-testid={TESTIDS['daily-table-unsent-count-chip']}
-              />
-            )}
-            {hasDraft && (
-              <Chip
-                label={`下書き${draftSavedAt ? ` ${new Date(draftSavedAt).toLocaleTimeString('ja-JP', { hour: '2-digit', minute: '2-digit' })}` : ''}`}
-                color="warning"
-                variant="outlined"
-                size="small"
-                data-testid={TESTIDS['daily-table-draft-status']}
-              />
-            )}
-          </Stack>
-        </Stack>
-      </DialogTitle>
-
       {/* ── Main content ── */}
-      <DialogContent dividers sx={{ py: 1, px: 2 }}>
-        <Stack spacing={1}>
+      <DialogContent dividers sx={{ py: 1, px: 2, display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0 }}>
+        <Stack spacing={1} sx={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column' }}>
           {/* User picker (accordion) */}
           <TableDailyRecordUserPicker
             formDate={formData.date}
@@ -169,26 +111,14 @@ export function TableDailyRecordForm({
 
           {/* Table area — takes remaining space */}
           {formData.userRows.length > 0 && (
-            <Stack spacing={0.5}>
-              <Stack direction="row" justifyContent="flex-end">
-                <Button
-                  variant={showUnsentOnly ? 'contained' : 'outlined'}
-                  size="small"
-                  startIcon={<FilterListIcon />}
-                  onClick={() => setShowUnsentOnly((prev) => !prev)}
-                  data-testid={TESTIDS['daily-table-unsent-filter']}
-                  sx={{ fontSize: '0.75rem' }}
-                >
-                  {showUnsentOnly ? '未送信のみ表示中' : '未送信のみ'}
-                </Button>
-              </Stack>
+            <Box sx={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column' }}>
               <TableDailyRecordTable
                 rows={visibleRows}
                 onRowDataChange={handleRowDataChange}
                 onProblemBehaviorChange={handleProblemBehaviorChange}
                 onClearRow={handleClearRow}
               />
-            </Stack>
+            </Box>
           )}
         </Stack>
       </DialogContent>
@@ -248,7 +178,7 @@ export function TableDailyRecordForm({
 
   if (variant === 'content') {
     return (
-      <Box data-testid={TESTIDS['daily-table-record-form']}>
+      <Box data-testid={TESTIDS['daily-table-record-form']} sx={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
         <Toaster position="top-center" />
         {content}
       </Box>

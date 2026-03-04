@@ -1,3 +1,4 @@
+import { motionTokens } from '@/app/theme';
 import type { ReactNode } from 'react';
 import { Link, NavLink } from 'react-router-dom';
 // MUI Components
@@ -151,7 +152,7 @@ export default function Home() {
                   variant="outlined"
                   sx={{
                     height: '100%',
-                    transition: 'all 0.2s ease-in-out',
+                    transition: motionTokens.transition.hoverAll,
                     '&:hover': {
                       boxShadow: 4,
                       transform: 'translateY(-2px)',

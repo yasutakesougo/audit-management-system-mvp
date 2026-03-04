@@ -1,3 +1,4 @@
+import { motionTokens } from '@/app/theme';
 import ClearAllIcon from '@mui/icons-material/ClearAll';
 import DeleteIcon from '@mui/icons-material/Delete';
 import NavigateBeforeIcon from '@mui/icons-material/NavigateBefore';
@@ -329,7 +330,7 @@ export const RoomStatusTab: React.FC = () => {
                               alignItems: 'center',
                               gap: 2,
                               cursor: 'pointer',
-                              transition: 'all 0.2s ease',
+                              transition: motionTokens.transition.hoverAll,
                               position: 'relative',
                               overflow: 'hidden',
                               '&:hover': {
@@ -371,7 +372,7 @@ export const RoomStatusTab: React.FC = () => {
                             <Box
                               sx={{
                                 color: '#d1d5db',
-                                transition: 'all 0.2s ease',
+                                transition: motionTokens.transition.hoverAll,
                                 '&:hover': { color: '#ef4444' },
                                 flexShrink: 0,
                                 display: 'flex',
@@ -498,7 +499,7 @@ export const RoomStatusTab: React.FC = () => {
                       fontSize: '13px',
                       borderRadius: '6px',
                       '&:hover': { bgcolor: submitSuccess ? theme.palette.success.dark : theme.palette.primary.main },
-                      transition: 'all 0.3s ease',
+                      transition: motionTokens.transition.cardInteractive,
                       boxShadow: submitSuccess ? `0 4px 6px ${alpha(theme.palette.success.main, 0.3)}` : `0 4px 6px ${alpha(theme.palette.primary.dark, 0.3)}`,
                     }}
                   >
@@ -626,7 +627,7 @@ export const RoomStatusTab: React.FC = () => {
                       borderBottom: '1px solid #e5e7eb',
                       minHeight: '96px',
                       cursor: 'pointer',
-                      transition: 'all 0.2s ease',
+                      transition: motionTokens.transition.hoverAll,
                       display: 'flex',
                       flexDirection: 'column',
                       overflow: 'hidden',

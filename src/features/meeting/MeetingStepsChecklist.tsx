@@ -1,3 +1,4 @@
+import { motionTokens } from '@/app/theme';
 import {
     CheckCircle as CheckCircleIcon,
     Warning as WarningIcon,
@@ -68,7 +69,7 @@ const MeetingStepsChecklist: React.FC<MeetingStepsChecklistProps> = ({
               bgcolor: step.completed ? 'success.50' : 'background.paper',
               borderColor: step.completed ? 'success.main' : 'grey.300',
               cursor: 'pointer',
-              transition: 'all 0.2s',
+              transition: motionTokens.transition.hoverAll,
               '&:hover': {
                 borderColor: step.completed ? 'success.dark' : `${colorVariant}.main`,
                 bgcolor: step.completed ? 'success.100' : `${colorVariant}.50`

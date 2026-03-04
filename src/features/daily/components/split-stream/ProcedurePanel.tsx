@@ -1,3 +1,4 @@
+import { motionTokens } from '@/app/theme';
 import type { BehaviorInterventionPlan } from '@/features/analysis/domain/interventionTypes';
 import BipSummaryPopover from '@/features/daily/components/procedure/BipSummaryPopover';
 import { getScheduleKey } from '@/features/daily/domain/getScheduleKey';
@@ -254,7 +255,7 @@ export function ProcedurePanel(props: ProcedurePanelProps): JSX.Element {
                 borderLeft: isFilled ? '3px solid' : '3px solid transparent',
                 borderLeftColor: isSelected ? 'primary.main' : isFilled ? 'success.main' : 'transparent',
                 boxShadow: isSelected ? 1 : 0,
-                transition: 'background-color 0.15s ease',
+                transition: `background-color ${motionTokens.duration.fast} ${motionTokens.easing.standard}`,
                 cursor: onSelectStep ? 'pointer' : 'default',
                 minHeight: 0,
               }}

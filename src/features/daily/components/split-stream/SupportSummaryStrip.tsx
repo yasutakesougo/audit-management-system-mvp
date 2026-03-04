@@ -2,6 +2,7 @@
 // SupportSummaryStrip — IBD 戦術ダッシュボード（Bento ストリップ）
 // 進捗 / ABC分析 / 観察カウンター / 良い状態の条件 を水平カード表示
 // ---------------------------------------------------------------------------
+import { motionTokens } from '@/app/theme';
 import AssessmentIcon from '@mui/icons-material/Assessment';
 import CheckCircleOutlineIcon from '@mui/icons-material/CheckCircleOutline';
 import VisibilityIcon from '@mui/icons-material/Visibility';
@@ -108,7 +109,7 @@ function SupportSummaryStrip({
           borderLeft: '3px solid',
           borderLeftColor: abcCount > 0 ? 'warning.main' : 'grey.300',
           cursor: onAbcQuickClick ? 'pointer' : 'default',
-          transition: 'box-shadow 0.2s',
+          transition: `box-shadow ${motionTokens.duration.normal} ${motionTokens.easing.standard}`,
           '&:hover': onAbcQuickClick ? { boxShadow: 2 } : {},
         }}
         onClick={onAbcQuickClick}

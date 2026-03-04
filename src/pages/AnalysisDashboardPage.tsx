@@ -1,3 +1,4 @@
+import { motionTokens } from '@/app/theme';
 import {
     useAnalysisDashboardViewModel,
     type DonutSegment,
@@ -63,7 +64,7 @@ const KpiStatCard: React.FC<{ kpi: KpiCard }> = ({ kpi }) => {
         justifyContent: 'space-between',
         height: '100%',
         borderLeft: `4px solid ${kpi.color}`,
-        transition: 'box-shadow 0.2s',
+        transition: `box-shadow ${motionTokens.duration.normal} ${motionTokens.easing.standard}`,
         '&:hover': { boxShadow: 3 },
       }}
     >
@@ -116,7 +117,7 @@ const CssBarChart: React.FC<{ data: { label: string; value: number; color: strin
                   width: `${(d.value / max) * 100}%`,
                   bgcolor: d.color,
                   borderRadius: 1,
-                  transition: 'width 0.4s ease-out',
+                  transition: motionTokens.transition.progressBar,
                 }}
               />
               <Typography
@@ -188,7 +189,7 @@ const SvgDonutChart: React.FC<{ segments: DonutSegment[] }> = ({ segments }) => 
                   style={{
                     transform: 'rotate(-90deg)',
                     transformOrigin: '50% 50%',
-                    transition: 'stroke-dasharray 0.5s ease-out',
+                    transition: motionTokens.transition.chartStroke,
                   }}
                 />
               );
@@ -248,7 +249,7 @@ const CssHeatmap: React.FC<{ cells: HeatmapCell[] }> = ({ cells }) => (
               alignItems: 'center',
               justifyContent: 'center',
               cursor: 'default',
-              transition: 'background-color 0.3s',
+              transition: motionTokens.transition.bgColorSlow,
             }}
           >
             <Typography variant="caption" sx={{ fontSize: '0.6rem', color: cell.intensity > 0.5 ? '#fff' : 'text.secondary' }}>
@@ -542,7 +543,7 @@ const AnalysisDashboardPage: React.FC = () => {
                           height: `${heightPct}%`,
                           bgcolor: d.maxIntensity >= 4 ? '#d32f2f' : d.maxIntensity >= 2 ? '#FF9800' : '#5B8C5A',
                           borderRadius: 0.5,
-                          transition: 'height 0.4s ease-out',
+                          transition: `height ${motionTokens.duration.slow} ${motionTokens.easing.decel}`,
                           minHeight: 2,
                         }}
                       />
