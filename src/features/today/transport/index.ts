@@ -40,3 +40,7 @@ export {
 // Hook
 export { useTransportStatus } from './useTransportStatus';
 export type { UseTransportStatusReturn } from './useTransportStatus';
+
+// UI Widget
+export { TransportStatusCard } from './TransportStatusCard';
+export type { TransportStatusCardProps } from './TransportStatusCard';

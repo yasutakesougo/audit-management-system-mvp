@@ -115,6 +115,18 @@ export const TodayOpsPage: React.FC = () => {
           transport.markArrived(userId, transport.activeDirection);
         },
       },
+      // Phase 3: Full TransportStatusCard props
+      transportCard: transport.isReady
+        ? {
+            legs: transport.status.legs,
+            toSummary: transport.status.to,
+            fromSummary: transport.status.from,
+            activeDirection: transport.activeDirection,
+            onDirectionChange: transport.setActiveDirection,
+            onTransition: transport.transition,
+            currentTime: transport.currentTime,
+          }
+        : undefined,
       users: {
         items: isE2EEnv
           ? [
