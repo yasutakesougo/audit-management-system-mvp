@@ -213,12 +213,17 @@ export default defineConfig(({ mode }) => {
               return 'recharts';
             }
             // ── Heavy report libs: lazy-loaded on export ──
+            if (normalized.includes('/xlsx/')) {
+              return 'vendor-xlsx';
+            }
+            if (normalized.includes('/@react-pdf/pdfkit/')) {
+              return 'vendor-pdfkit';
+            }
             if (
-              normalized.includes('/xlsx/') ||
               normalized.includes('/@react-pdf/') ||
               normalized.includes('/react-pdf/')
             ) {
-              return 'vendor-reports';
+              return 'vendor-pdf';
             }
             // ── Data / validation libs ──
             if (normalized.includes('/zod/')) {
