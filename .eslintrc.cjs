@@ -15,6 +15,7 @@ module.exports = {
   ],
   rules: {
     // 段階導入: まず CI を通しつつ追って厳格化する予定
+    'no-console': ['warn', { allow: ['warn', 'error', 'info', 'debug'] }],
     'import/no-unresolved': 'error',
   '@typescript-eslint/no-explicit-any': 'warn', // staged: warn -> later error
     '@typescript-eslint/ban-ts-comment': ['warn', {
@@ -151,6 +152,35 @@ module.exports = {
       files: ['**/*.stories.tsx', '**/*.stories.ts'],
       rules: {
         'import/no-unresolved': 'off', // Storybook decorators may use optional packages
+      }
+    },
+    {
+      // テスト・シミュレーション・デバッグページでは console.log を許可
+      files: [
+        '**/*.test.{ts,tsx}',
+        '**/*.spec.{ts,tsx}',
+        '**/__tests__/**',
+        '**/*.simulation.ts',
+        '**/DebugZodErrorPage.tsx',
+      ],
+      rules: {
+        'no-console': 'off',
+      }
+    },
+    {
+      // インフラ層・SP通信・低レベルライブラリでは診断ログを許可
+      files: [
+        'src/infra/**',
+        'src/lib/sp/**',
+        'src/debug/**',
+        'src/metrics.ts',
+        'src/env.ts',
+        'src/mui/preload-strategies.ts',
+        'src/auth/useAuth.ts',
+        'src/sharepoint/fields/**',
+      ],
+      rules: {
+        'no-console': 'off',
       }
     }
   ]

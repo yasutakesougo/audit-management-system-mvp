@@ -55,11 +55,13 @@ export function useIntegratedResourceCalendar() {
 
   // Debug logging (dev only)
   if (isDev) {
+    // eslint-disable-next-line no-console
     console.log('[IRC] mounted', {
       pathname: location.pathname,
       isE2E,
       timestamp: new Date().toISOString(),
     });
+    // eslint-disable-next-line no-console
     console.log('[IRC] Current environment:', {
       VITE_E2E: isE2E,
       VITE_SP_RESOURCE: appConfig.VITE_SP_RESOURCE,
@@ -72,6 +74,7 @@ export function useIntegratedResourceCalendar() {
   const ircSpClient = useMemo(() => {
     const client = createIrcSpClient();
     if (isDev) {
+      // eslint-disable-next-line no-console
       console.log('[IRC] SpClient created:', { isE2E, client });
     }
     return client;
@@ -112,7 +115,9 @@ export function useIntegratedResourceCalendar() {
         setLastError(null);
 
         if (isDev) {
+          // eslint-disable-next-line no-console
           console.log('[IRC] Loaded resources:', fetchedResources.length);
+          // eslint-disable-next-line no-console
           console.log('[IRC] Loaded events count:', unifiedEvents.length);
         }
 
@@ -211,6 +216,7 @@ export function useIntegratedResourceCalendar() {
       const hasActual = eventProps?.actualStart;
 
       if (isDev) {
+        // eslint-disable-next-line no-console
         console.log('[IRC] eventDidMount called', {
           id: event.id,
           title: event.title,
@@ -228,6 +234,7 @@ export function useIntegratedResourceCalendar() {
 
         element.setAttribute('data-testid', testId);
         if (isDev) {
+          // eslint-disable-next-line no-console
           console.log('[IRC] eventDidMount E2E testid set', {
             id: event.id,
             testId,
@@ -448,6 +455,7 @@ export function useIntegratedResourceCalendar() {
       showSnackbar('予定を作成しました');
 
       if (showOnlyUnrecorded && isDev) {
+        // eslint-disable-next-line no-console
         console.log('[IRC] New event created in unrecorded filter mode');
       }
     },

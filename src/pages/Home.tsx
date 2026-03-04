@@ -65,14 +65,18 @@ export default function Home() {
 
   // デバッグ情報をコンソールに出力
   if (import.meta.env.DEV) {
+    // eslint-disable-next-line no-console
     console.log('[Home] Component rendered!');
+    // eslint-disable-next-line no-console
     console.log('[Home] Demo mode enabled:', demoModeEnabled);
+    // eslint-disable-next-line no-console
     console.log('[Home] Users debug:', {
       usersStatus,
       usersCount: users?.length,
       usersError: usersError ? String(usersError) : null,
       users: users?.slice(0, 3) // 最初の3件のみ表示
     });
+    // eslint-disable-next-line no-console
     console.log('[Home] useUsersStore result:', { users, usersStatus, usersError });
   }
   const { data: staff } = useStaff();

@@ -1,1 +1,0 @@
-console.log(window.__RUNTIME_ENV__)  // runtime loaded の値

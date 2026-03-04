@@ -433,7 +433,7 @@ export function useUserForm(
   // handleClose
   // --------------------------------
   const handleClose = useCallback(() => {
-    console.log('UserForm handleClose called, isDirty:', isDirty);
+
     blurActiveElement();
     if (isDirty) {
       if (confirmDialogTimer.current !== null) {
@@ -443,7 +443,7 @@ export function useUserForm(
         setShowConfirmDialog(true);
       }, 0);
     } else {
-      console.log('Calling onClose callback');
+
       onClose?.();
     }
   }, [blurActiveElement, isDirty, onClose]);
