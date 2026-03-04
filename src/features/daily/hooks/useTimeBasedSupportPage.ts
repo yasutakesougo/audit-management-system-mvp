@@ -15,9 +15,10 @@ import type { BehaviorObservation } from '@/features/daily/domain/daily/types';
 import { generateDailyReport } from '@/features/daily/domain/generateDailyReport';
 import { getScheduleKey } from '@/features/daily/domain/getScheduleKey';
 import { toBipOptions } from '@/features/daily/domain/toBipOptions';
+import { useBehaviorData } from '@/features/daily/hooks/useBehaviorData';
 import { useDailySupportUserFilter } from '@/features/daily/hooks/useDailySupportUserFilter';
-import { useInMemoryBehaviorRepository, useInMemoryProcedureRepository } from '@/features/daily/infra/inMemoryFactory';
-import { useExecutionStore } from '@/features/daily/stores/executionStore';
+import { useExecutionData } from '@/features/daily/hooks/useExecutionData';
+import { useProcedureData } from '@/features/daily/hooks/useProcedureData';
 import type { ProcedureItem } from '@/features/daily/stores/procedureStore';
 import {
     makeIdempotencyKey,
@@ -70,14 +71,14 @@ export function useTimeBasedSupportPage() {
   const retryKeyRef = useRef<string | null>(null);
 
   // ── Repositories \u0026 stores ─────────────────────────────────────────────────
-  const procedureRepo = useInMemoryProcedureRepository();
+  const procedureRepo = useProcedureData();
   const { repo: behaviorRepo, data: behaviorRecords, error: behaviorError, clearError } =
-    useInMemoryBehaviorRepository();
+    useBehaviorData();
   const { data: users } = useUsersDemo();
   const { filter, updateFilter, resetFilter, filteredUsers, hasActiveFilter } =
     useDailySupportUserFilter(users);
   const interventionStore = useInterventionStore();
-  const executionStore = useExecutionStore();
+  const executionStore = useExecutionData();
 
   // ── Core hook (schedule, step navigation, etc.) ─────────────────────────
   const core = useTimeBasedSupportRecordPage({
