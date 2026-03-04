@@ -95,7 +95,7 @@ export function HealthDiagnosisPage(props: { ctx: HealthContext }) {
         setSavingState((p) => ({ ...p, success: false }));
       }, 3000);
 
-      console.log('[HealthDiagnosisPage] Successfully saved diagnostics to SharePoint');
+
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
       setSavingState({ saving: false, success: false, error: msg });

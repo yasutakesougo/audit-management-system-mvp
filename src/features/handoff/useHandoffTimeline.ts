@@ -98,12 +98,15 @@ export function useHandoffTimeline(
           console.warn('[handoff-audit] 新規作成の監査ログ記録に失敗:', e);
         });
 
-        console.log('[handoff] Created:', {
-          id: newRecord.id,
-          userDisplayName: newRecord.userDisplayName,
-          category: newRecord.category,
-          severity: newRecord.severity,
-        });
+        if (import.meta.env.DEV) {
+          // eslint-disable-next-line no-console
+          console.log('[handoff] Created:', {
+            id: newRecord.id,
+            userDisplayName: newRecord.userDisplayName,
+            category: newRecord.category,
+            severity: newRecord.severity,
+          });
+        }
       } catch (error) {
         setState(prev => ({
           ...prev,
@@ -151,7 +154,10 @@ export function useHandoffTimeline(
           console.warn('[handoff-audit] ステータス変更の監査ログ記録に失敗:', e);
         });
 
-        console.log('[handoff] Status updated:', { id, oldStatus, newStatus });
+        if (import.meta.env.DEV) {
+          // eslint-disable-next-line no-console
+          console.log('[handoff] Status updated:', { id, oldStatus, newStatus });
+        }
       } catch (error) {
         // ロールバック
         setState(prev => ({

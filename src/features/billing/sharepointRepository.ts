@@ -50,16 +50,21 @@ export function createSharePointBillingOrderRepository(): BillingOrderRepository
     async list() {
       const url = `/lists/GetById('${listId}')/items?$top=500`;
 
-      console.log('[Billing] fetching via spClient:', billingBaseUrl + url);
+      if (import.meta.env.DEV) {
+        // eslint-disable-next-line no-console
+        console.log('[Billing] fetching via spClient:', billingBaseUrl + url);
+      }
       try {
         const res = await sp.spFetch(url, { method: 'GET' });
         const json = (await res.json().catch(() => ({ value: [] }))) as { value?: SpItem[] };
         const items = json.value ?? [];
 
-        if (items.length > 0) {
+        if (import.meta.env.DEV && items.length > 0) {
+          // eslint-disable-next-line no-console
           console.log('[Billing] Sample item keys:', Object.keys(items[0]));
+          // eslint-disable-next-line no-console
           console.log('[Billing] First item:', items[0]);
-        } else {
+        } else if (items.length === 0) {
           console.warn('[Billing] No items returned from List3');
         }
 

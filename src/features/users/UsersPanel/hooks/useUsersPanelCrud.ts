@@ -108,8 +108,8 @@ export function useUsersPanelCrud(
 
   // ---- Form dialog handlers ----
   const handleCreateFormSuccess = useCallback(
-    (newUser: IUserMaster) => {
-      console.log('利用者が作成されました:', newUser);
+    (_newUser: IUserMaster) => {
+
       setShowCreateForm(false);
       void refresh();
       setActiveTabRef.current('list');
@@ -118,8 +118,8 @@ export function useUsersPanelCrud(
   );
 
   const handleEditFormSuccess = useCallback(
-    (updatedUser: IUserMaster) => {
-      console.log('利用者情報が更新されました:', updatedUser);
+    (_updatedUser: IUserMaster) => {
+
       setShowEditForm(false);
       setSelectedUser(null);
       void refresh();

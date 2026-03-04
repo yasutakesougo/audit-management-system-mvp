@@ -237,10 +237,16 @@ export default function MonthlyRecordPage() {
   }, [filteredSummaries]);
 
   const handleReaggregate = async (userId: string, yearMonth: YearMonth) => {
-    if (import.meta.env.DEV) console.log(`再集計開始: ${userId} - ${yearMonth}`);
+    if (import.meta.env.DEV) {
+      // eslint-disable-next-line no-console
+      console.log(`再集計開始: ${userId} - ${yearMonth}`);
+    }
     // TODO: API呼び出し実装
     await new Promise(resolve => setTimeout(resolve, 1000)); // モック遅延
-    if (import.meta.env.DEV) console.log(`再集計完了: ${userId} - ${yearMonth}`);
+    if (import.meta.env.DEV) {
+      // eslint-disable-next-line no-console
+      console.log(`再集計完了: ${userId} - ${yearMonth}`);
+    }
   };
 
   const handleUserSelect = (userId: string, yearMonth: YearMonth) => {
@@ -259,13 +265,19 @@ export default function MonthlyRecordPage() {
     if (!canAccess(role, 'reception')) {
       return;
     }
-    if (import.meta.env.DEV) console.log(`PDF生成開始: ${selectedMonth} - 対象利用者数: ${filteredSummaries.length}`);
+    if (import.meta.env.DEV) {
+      // eslint-disable-next-line no-console
+      console.log(`PDF生成開始: ${selectedMonth} - 対象利用者数: ${filteredSummaries.length}`);
+    }
     // TODO: Power Automate API呼び出し実装
     // - 選択月のデータを準備
     // - フィルター条件を含めたリクエスト作成
     // - Power Automate フローをトリガー
     await new Promise(resolve => setTimeout(resolve, 2000)); // モック遅延
-    if (import.meta.env.DEV) console.log(`PDF生成完了: ${selectedMonth}`);
+    if (import.meta.env.DEV) {
+      // eslint-disable-next-line no-console
+      console.log(`PDF生成完了: ${selectedMonth}`);
+    }
   };
 
   const rawUserId = params.get('user');

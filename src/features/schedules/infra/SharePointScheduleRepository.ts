@@ -122,6 +122,7 @@ export class SharePointScheduleRepository implements ScheduleRepository {
       const baseUrl = spConfig.baseUrl;
       if (!baseUrl) {
         if (SCHEDULES_DEBUG) {
+          // eslint-disable-next-line no-console
           console.log('[schedules] [SharePointScheduleRepository] baseUrl is empty (bypass mode), assuming list exists');
         }
         return true;
@@ -130,6 +131,7 @@ export class SharePointScheduleRepository implements ScheduleRepository {
       const client = this.getClient();
       const metadata = await client.tryGetListMetadata(this.listTitle);
       if (SCHEDULES_DEBUG) {
+        // eslint-disable-next-line no-console
         console.log('[schedules] [SharePointScheduleRepository] checkListExists metadata:', metadata);
       }
       return Boolean(metadata);
@@ -243,6 +245,7 @@ export class SharePointScheduleRepository implements ScheduleRepository {
             signal,
           });
           if (SCHEDULES_DEBUG) {
+            // eslint-disable-next-line no-console
             console.info(`[SharePointScheduleRepository] ✅ stage=${stage.name} succeeded`);
           }
 

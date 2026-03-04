@@ -15,14 +15,14 @@ const StaffPanel: React.FC = () => {
   const [showCreateForm, setShowCreateForm] = useState(false);
   const [showEditForm, setShowEditForm] = useState(false);
 
-  const handleCreateSuccess = (newStaff: Staff) => {
-    console.log('職員が作成されました:', newStaff);
+  const handleCreateSuccess = (_newStaff: Staff) => {
+
     setShowCreateForm(false);
     reload();
   };
 
-  const handleEditSuccess = (updatedStaff: Staff) => {
-    console.log('職員情報が更新されました:', updatedStaff);
+  const handleEditSuccess = (_updatedStaff: Staff) => {
+
     setShowEditForm(false);
     setSelectedStaff(null);
     reload();

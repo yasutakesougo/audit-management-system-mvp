@@ -190,6 +190,7 @@ export const useScheduleRepository = (): ScheduleRepository => {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const changed = (window as any).__LAST_REPO__ !== repo;
     if (changed) {
+      // eslint-disable-next-line no-console
       console.log('[schedules] [useScheduleRepository] repository instance CHANGED');
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       (window as any).__LAST_REPO__ = repo;
