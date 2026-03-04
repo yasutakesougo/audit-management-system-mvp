@@ -1,14 +1,21 @@
 import MeetingGuidePage from '@/pages/MeetingGuidePage';
 import { TESTIDS } from '@/testids';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { render, screen, within } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { describe, expect, it } from 'vitest';
 
+const queryClient = new QueryClient({
+  defaultOptions: { queries: { retry: false } },
+});
+
 const renderWithRouter = () =>
   render(
-    <MemoryRouter initialEntries={['/meeting-guide']}>
-      <MeetingGuidePage />
-    </MemoryRouter>
+    <QueryClientProvider client={queryClient}>
+      <MemoryRouter initialEntries={['/meeting-guide']}>
+        <MeetingGuidePage />
+      </MemoryRouter>
+    </QueryClientProvider>
   );
 
 describe('MeetingGuidePage', () => {

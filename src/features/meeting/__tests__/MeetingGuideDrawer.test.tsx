@@ -1,17 +1,24 @@
 import { ThemeProvider, createTheme } from '@mui/material/styles';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { cleanup, fireEvent, render, screen } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
 import MeetingGuideDrawer from '../MeetingGuideDrawer';
 import { useCurrentMeeting } from '../useCurrentMeeting';
 
-// テスト用のテーマプロバイダー
+// テスト用のテーマプロバイダー + QueryClient
+const queryClient = new QueryClient({
+  defaultOptions: { queries: { retry: false } },
+});
+
 const TestWrapper = ({ children }: { children: React.ReactNode }) => {
   const theme = createTheme();
   return (
-    <MemoryRouter>
-      <ThemeProvider theme={theme}>{children}</ThemeProvider>
-    </MemoryRouter>
+    <QueryClientProvider client={queryClient}>
+      <MemoryRouter>
+        <ThemeProvider theme={theme}>{children}</ThemeProvider>
+      </MemoryRouter>
+    </QueryClientProvider>
   );
 };
 

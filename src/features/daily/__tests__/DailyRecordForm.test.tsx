@@ -6,6 +6,18 @@ import { PersonDaily } from '../../../domain/daily/types';
 import { DailyRecordForm } from '../forms/DailyRecordForm';
 import type { DailyUserOption } from '../forms/useDailyUserOptions';
 
+// @/features/handoff バレルをモックして QueryClient/useAuth 依存を断つ
+vi.mock('@/features/handoff', () => ({
+  useImportantHandoffsForDaily: () => ({
+    items: [],
+    loading: false,
+    error: null,
+    count: 0,
+  }),
+  shouldAutoGenerateSpecialNotes: () => false,
+  buildSpecialNotesFromImportantHandoffs: () => '',
+}));
+
 const dailyUserOptions: DailyUserOption[] = [
   {
     id: '001',
