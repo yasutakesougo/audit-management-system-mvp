@@ -62,6 +62,7 @@ export const TableDailyRecordUserPicker: React.FC<TableDailyRecordUserPickerProp
         direction="row"
         spacing={1}
         alignItems="center"
+        data-testid="user-picker-summary"
         sx={{
           px: 1.5,
           py: 0.75,
