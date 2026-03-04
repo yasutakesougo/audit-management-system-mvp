@@ -131,8 +131,8 @@ function PlanSlotSelector({
         ) : null}
       </Paper>
       {!slotSelected ? (
-        <Alert severity="warning" sx={{ mt: 1 }}>
-          Plan の時間帯を選択してから保存してください。
+        <Alert severity="info" sx={{ mt: 1 }}>
+          💡 上の時間帯チップを選択すると、Plan の内容が表示されます。
         </Alert>
       ) : null}
     </Box>

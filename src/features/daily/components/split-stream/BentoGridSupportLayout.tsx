@@ -51,16 +51,16 @@ export function BentoGridSupportLayout({
         display: 'grid',
         height: '100%',
         overflow: 'hidden',
-        gap: { xs: 1.5, md: 2 },
+        gap: { xs: 1, md: 1.5 },
         // Mobile: single column
         gridTemplateColumns: { xs: '1fr', md: '3fr 7fr' },
         gridTemplateRows: {
           xs: 'auto auto 1fr auto',
-          md: 'auto 1fr auto',
+          md: 'auto minmax(0, 1fr) auto',
         },
         gridTemplateAreas: {
           xs: `"header" "plan" "record" "summary"`,
-          md: `"header header" "plan record" "plan summary"`,
+          md: `"header header" "plan record" "summary summary"`,
         },
       }}
       data-testid="bento-grid-support-layout"

@@ -47,7 +47,6 @@ function SupportSummaryStrip({
   onAbcQuickClick,
 }: SupportSummaryStripProps) {
   const progress = totalSteps > 0 ? Math.round((filledSteps / totalSteps) * 100) : 0;
-  const unfilledCount = totalSteps - filledSteps;
 
   // 観察カウンター状態
   const supervisionLevel: 'ok' | 'warning' | 'overdue' =
@@ -59,7 +58,7 @@ function SupportSummaryStrip({
     <Box
       sx={{
         display: 'grid',
-        gap: 1.5,
+        gap: 1,
         gridTemplateColumns: {
           xs: 'repeat(2, 1fr)',
           sm: 'repeat(4, 1fr)',
@@ -71,22 +70,22 @@ function SupportSummaryStrip({
       <Card
         variant="outlined"
         sx={{
-          p: 1.5,
+          p: 1,
           display: 'flex',
           flexDirection: 'column',
-          gap: 0.5,
+          gap: 0.25,
           borderLeft: '3px solid',
           borderLeftColor: progress >= 100 ? 'success.main' : 'primary.main',
         }}
       >
-        <Typography variant="caption" color="text.secondary" fontWeight={600}>
+        <Typography variant="caption" color="text.secondary" fontWeight={600} sx={{ fontSize: '0.7rem', lineHeight: 1.2 }}>
           記録進捗
         </Typography>
         <Box sx={{ display: 'flex', alignItems: 'baseline', gap: 0.5 }}>
-          <Typography variant="h5" fontWeight={800} color={progress >= 100 ? 'success.main' : 'primary.main'}>
+          <Typography variant="h6" fontWeight={800} color={progress >= 100 ? 'success.main' : 'primary.main'} sx={{ fontSize: '1.1rem' }}>
             {progress}%
           </Typography>
-          <Typography variant="caption" color="text.secondary">
+          <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.65rem' }}>
             ({filledSteps}/{totalSteps})
           </Typography>
         </Box>
@@ -94,23 +93,18 @@ function SupportSummaryStrip({
           variant="determinate"
           value={progress}
           color={progress >= 100 ? 'success' : 'primary'}
-          sx={{ height: 6, borderRadius: 3 }}
+          sx={{ height: 4, borderRadius: 2 }}
         />
-        {unfilledCount > 0 && (
-          <Typography variant="caption" color="text.secondary">
-            残り {unfilledCount} 件
-          </Typography>
-        )}
       </Card>
 
       {/* 2. ABC Quick Card */}
       <Card
         variant="outlined"
         sx={{
-          p: 1.5,
+          p: 1,
           display: 'flex',
           flexDirection: 'column',
-          gap: 0.5,
+          gap: 0.25,
           borderLeft: '3px solid',
           borderLeftColor: abcCount > 0 ? 'warning.main' : 'grey.300',
           cursor: onAbcQuickClick ? 'pointer' : 'default',
@@ -120,38 +114,35 @@ function SupportSummaryStrip({
         onClick={onAbcQuickClick}
       >
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-          <AssessmentIcon sx={{ fontSize: 16, color: 'warning.main' }} />
-          <Typography variant="caption" color="text.secondary" fontWeight={600}>
+          <AssessmentIcon sx={{ fontSize: 14, color: 'warning.main' }} />
+          <Typography variant="caption" color="text.secondary" fontWeight={600} sx={{ fontSize: '0.7rem', lineHeight: 1.2 }}>
             ABC分析
           </Typography>
         </Box>
-        <Typography variant="h5" fontWeight={800} color={abcCount > 0 ? 'warning.main' : 'text.secondary'}>
-          {abcCount}
-          <Typography component="span" variant="body2" color="text.secondary" sx={{ ml: 0.5 }}>
-            件
+        <Box sx={{ display: 'flex', alignItems: 'baseline', gap: 0.5 }}>
+          <Typography variant="h6" fontWeight={800} color={abcCount > 0 ? 'warning.main' : 'text.secondary'} sx={{ fontSize: '1.1rem' }}>
+            {abcCount}
           </Typography>
-        </Typography>
-        <Typography variant="caption" color="text.secondary">
-          本日の記録
-        </Typography>
+          <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.65rem' }}>件</Typography>
+        </Box>
       </Card>
 
       {/* 3. Supervision Counter Card */}
       <Card
         variant="outlined"
         sx={{
-          p: 1.5,
+          p: 1,
           display: 'flex',
           flexDirection: 'column',
-          gap: 0.5,
+          gap: 0.25,
           borderLeft: '3px solid',
           borderLeftColor: `${supervisionColor}.main`,
         }}
       >
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-          <VisibilityIcon sx={{ fontSize: 16, color: `${supervisionColor}.main` }} />
-          <Typography variant="caption" color="text.secondary" fontWeight={600}>
-            観察カウンター
+          <VisibilityIcon sx={{ fontSize: 14, color: `${supervisionColor}.main` }} />
+          <Typography variant="caption" color="text.secondary" fontWeight={600} sx={{ fontSize: '0.7rem', lineHeight: 1.2 }}>
+            観察
           </Typography>
         </Box>
         <Tooltip
@@ -174,6 +165,7 @@ function SupportSummaryStrip({
             color={supervisionColor}
             size="small"
             variant={supervisionLevel === 'ok' ? 'outlined' : 'filled'}
+            sx={{ height: 22, fontSize: '0.7rem' }}
           />
         </Tooltip>
       </Card>
@@ -182,31 +174,31 @@ function SupportSummaryStrip({
       <Card
         variant="outlined"
         sx={{
-          p: 1.5,
+          p: 1,
           display: 'flex',
           flexDirection: 'column',
-          gap: 0.5,
+          gap: 0.25,
           borderLeft: '3px solid',
           borderLeftColor: positiveConditions.length > 0 ? 'success.main' : 'grey.300',
         }}
       >
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-          <CheckCircleOutlineIcon sx={{ fontSize: 16, color: 'success.main' }} />
-          <Typography variant="caption" color="text.secondary" fontWeight={600}>
-            良い状態の条件
+          <CheckCircleOutlineIcon sx={{ fontSize: 14, color: 'success.main' }} />
+          <Typography variant="caption" color="text.secondary" fontWeight={600} sx={{ fontSize: '0.7rem', lineHeight: 1.2 }}>
+            良い状態
           </Typography>
         </Box>
         {positiveConditions.length > 0 ? (
           <Stack direction="row" spacing={0.5} flexWrap="wrap" useFlexGap>
             {positiveConditions.slice(0, 3).map((c) => (
-              <Chip key={c} label={c} size="small" color="success" variant="outlined" />
+              <Chip key={c} label={c} size="small" color="success" variant="outlined" sx={{ height: 20, fontSize: '0.65rem' }} />
             ))}
             {positiveConditions.length > 3 && (
-              <Chip label={`+${positiveConditions.length - 3}`} size="small" variant="outlined" />
+              <Chip label={`+${positiveConditions.length - 3}`} size="small" variant="outlined" sx={{ height: 20, fontSize: '0.65rem' }} />
             )}
           </Stack>
         ) : (
-          <Typography variant="caption" color="text.secondary">
+          <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.7rem' }}>
             SPS未登録
           </Typography>
         )}

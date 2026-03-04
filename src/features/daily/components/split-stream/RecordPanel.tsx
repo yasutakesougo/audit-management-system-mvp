@@ -280,7 +280,6 @@ export function RecordPanel(props: RecordPanelProps): JSX.Element {
       variant="outlined"
       sx={{
         height: '100%',
-        minHeight: { xs: 320, md: 420 },
         display: 'flex',
         flexDirection: 'column',
         position: 'relative',
@@ -463,7 +462,16 @@ export function RecordPanel(props: RecordPanelProps): JSX.Element {
           disabled={!canSubmit}
           startIcon={<SaveIcon />}
           onClick={handleSubmit}
-          sx={{ height: 56, fontWeight: 'bold' }}
+          sx={{
+            height: 48,
+            fontWeight: 'bold',
+            '&.Mui-disabled': {
+              bgcolor: 'grey.100',
+              color: 'text.disabled',
+              border: '1px solid',
+              borderColor: 'grey.300',
+            },
+          }}
           data-testid="behavior-submit-button"
           {...debugAttrs}
         >
