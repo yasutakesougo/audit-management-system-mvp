@@ -4,6 +4,7 @@ import { toSafeError } from '@/lib/errors';
 import { fetchSp } from '@/lib/fetchSp';
 import { createSpClient, ensureConfig } from '@/lib/spClient';
 import type {
+    ApproveRecordInput,
     DailyRecordItem,
     DailyRecordRepository,
     DailyRecordRepositoryListParams,
@@ -319,6 +320,74 @@ export class SharePointDailyRecordRepository implements DailyRecordRepository {
       finishSpan({ meta: { status: 'error' }, error: safeError.message });
       console.error('[SharePointDailyRecordRepository] List failed', {
         range: params.range,
+        error: safeError.message,
+      });
+      throw safeError;
+    }
+  }
+
+  /**
+   * Approve a daily record for a specific date
+   * Updates approval metadata on existing SharePoint item
+   */
+  async approve(
+    input: ApproveRecordInput,
+    params?: DailyRecordRepositoryMutationParams,
+  ): Promise<DailyRecordItem> {
+    if (params?.signal?.aborted) {
+      throw new Error('Operation aborted');
+    }
+
+    const finishSpan = startFeatureSpan(HYDRATION_FEATURES.daily.save, {
+      date: input.date,
+      operation: 'approve',
+    });
+    try {
+      const { baseUrl } = ensureConfig();
+      const listPath = buildListPath(baseUrl);
+
+      const existingItem = await this.findItemByDate(input.date, params?.signal) as SharePointItem | null;
+      if (!existingItem) {
+        throw new Error(`Record not found for date: ${input.date}`);
+      }
+
+      // PATCH approval metadata
+      const updateUrl = `${listPath}/items(${existingItem.Id})`;
+      const approvalData = {
+        ApprovalStatus: 'approved',
+        ApprovedBy: input.approverName,
+        ApprovedAt: new Date().toISOString(),
+      };
+
+      const response = await fetchSp(updateUrl, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json;odata=verbose',
+          'Accept': 'application/json;odata=verbose',
+          'IF-MATCH': existingItem.__metadata?.etag ?? '*',
+          'X-HTTP-Method': 'MERGE',
+        },
+        body: JSON.stringify(approvalData),
+      });
+
+      if (!response.ok) {
+        const message = await readSpErrorMessage(response);
+        throw new Error(`Failed to approve daily record: ${message}`);
+      }
+
+      // Re-fetch to get the updated record
+      const updated = await this.load(input.date);
+      if (!updated) {
+        throw new Error('Failed to re-fetch approved record');
+      }
+
+      finishSpan({ meta: { status: 'ok' } });
+      return { ...updated, approvalStatus: 'approved', approvedBy: input.approverName, approvedAt: approvalData.ApprovedAt };
+    } catch (error) {
+      const safeError = toSafeError(error);
+      finishSpan({ meta: { status: 'error' }, error: safeError.message });
+      console.error('[SharePointDailyRecordRepository] Approve failed', {
+        date: input.date,
         error: safeError.message,
       });
       throw safeError;

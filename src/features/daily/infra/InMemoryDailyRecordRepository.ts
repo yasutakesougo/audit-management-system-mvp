@@ -1,9 +1,10 @@
 import type {
-  DailyRecordRepository,
-  SaveDailyRecordInput,
-  DailyRecordItem,
-  DailyRecordRepositoryListParams,
-  DailyRecordRepositoryMutationParams,
+    ApproveRecordInput,
+    DailyRecordItem,
+    DailyRecordRepository,
+    DailyRecordRepositoryListParams,
+    DailyRecordRepositoryMutationParams,
+    SaveDailyRecordInput
 } from '../domain/DailyRecordRepository';
 import type { UserRowData } from '../hooks/useTableDailyRecordForm';
 
@@ -140,12 +141,12 @@ const createDefaultRecords = (): DailyRecordItem[] => {
 
 /**
  * In-Memory implementation of DailyRecordRepository
- * 
+ *
  * Used for:
  * - Demo mode (VITE_DEMO_MODE=1)
  * - Unit tests
  * - Development without SharePoint access
- * 
+ *
  * Data is stored in memory and lost on page refresh.
  * See SharePointDailyRecordRepository for persistent implementation.
  */
@@ -219,6 +220,36 @@ export class InMemoryDailyRecordRepository implements DailyRecordRepository {
     results.sort((a, b) => b.date.localeCompare(a.date));
 
     return results;
+  }
+
+  /**
+   * Approve a daily record for a specific date
+   * Sets approval metadata on the record
+   */
+  async approve(
+    input: ApproveRecordInput,
+    params?: DailyRecordRepositoryMutationParams,
+  ): Promise<DailyRecordItem> {
+    if (params?.signal?.aborted) {
+      throw new Error('Operation aborted');
+    }
+
+    const record = this.data.get(input.date);
+    if (!record) {
+      throw new Error(`Record not found for date: ${input.date}`);
+    }
+
+    const now = new Date().toISOString();
+    const approved: DailyRecordItem = {
+      ...record,
+      approvalStatus: 'approved',
+      approvedBy: input.approverName,
+      approvedAt: now,
+      modifiedAt: now,
+    };
+
+    this.data.set(input.date, approved);
+    return { ...approved };
   }
 
   /**

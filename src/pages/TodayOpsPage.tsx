@@ -15,12 +15,14 @@
  */
 import { buildDailyHubFromTodayUrl } from '@/app/links/navigationLinks';
 import { useTodaySummary } from '@/features/today/domain';
+import { useApprovalFlow } from '@/features/today/hooks/useApprovalFlow';
 import { useNextAction } from '@/features/today/hooks/useNextAction';
 import { TodayBentoLayout } from '@/features/today/layouts/TodayBentoLayout';
 import { recordAutoNextComplete, recordAutoNextSave } from '@/features/today/records/autoNextCounters';
 import { QuickRecordDrawer } from '@/features/today/records/QuickRecordDrawer';
 import { useQuickRecord } from '@/features/today/records/useQuickRecord';
 import { useTransportStatus } from '@/features/today/transport';
+import { ApprovalDialog } from '@/features/today/widgets/ApprovalDialog';
 import { isE2E } from '@/lib/env';
 import { toLocalDateISO } from '@/utils/getNow';
 import { Alert, Snackbar } from '@mui/material';
@@ -41,6 +43,9 @@ export const TodayOpsPage: React.FC = () => {
 
   // 4. Local State / URL State (Quick Record Drawer)
   const quickRecord = useQuickRecord();
+
+  // 5. Approval Flow (#765)
+  const approvalFlow = useApprovalFlow();
 
   // End-of-queue completion notification (#631)
   const [showCompletionToast, setShowCompletionToast] = React.useState(false);
@@ -78,14 +83,13 @@ export const TodayOpsPage: React.FC = () => {
     return {
       hero: {
         unfilledCount,
-        approvalPendingCount: isE2EEnv ? 1 : 0,
+        approvalPendingCount: isE2EEnv ? 1 : Math.max(0, summary?.dailyRecordStatus?.inProgress ?? 0),
         onOpenUnfilled: () => {
           const firstUnfilledUserId = summary?.dailyRecordStatus?.pendingUserIds?.[0];
           quickRecord.openUnfilled(firstUnfilledUserId);
         },
         onOpenApproval: () => {
-          // eslint-disable-next-line no-console
-          console.log('Open Approval Modal');
+          approvalFlow.open();
         },
         onOpenMenu: () => {
           const today = toLocalDateISO();
@@ -141,7 +145,7 @@ export const TodayOpsPage: React.FC = () => {
       },
       nextActionEmptyAction: () => navigate('/schedules'),
     };
-  }, [summary, nextAction, quickRecord.openUnfilled, quickRecord.openUser]);
+  }, [summary, nextAction, quickRecord.openUnfilled, quickRecord.openUser, approvalFlow.open]);
 
   const handleSaveSuccess = React.useCallback(() => {
     if (!quickRecord.autoNextEnabled) {
@@ -208,6 +212,16 @@ export const TodayOpsPage: React.FC = () => {
           ✅ 全員の記録が完了しました
         </Alert>
       </Snackbar>
+
+      {/* Approval Dialog (#765) */}
+      <ApprovalDialog
+        open={approvalFlow.isOpen}
+        targetDate={approvalFlow.targetDate}
+        isApproving={approvalFlow.isApproving}
+        error={approvalFlow.error}
+        onApprove={approvalFlow.approve}
+        onClose={approvalFlow.close}
+      />
     </>
   );
 };

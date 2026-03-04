@@ -15,6 +15,15 @@ export type DailyRecordDateRange = {
 };
 
 /**
+ * Input for approving a daily record
+ */
+export type ApproveRecordInput = {
+  date: string;           // YYYY-MM-DD: target record date
+  approverName: string;   // Name of the approver
+  approverRole: string;   // Role of the approver
+};
+
+/**
  * Payload for saving a daily record — SSOT derived from schema.ts
  * @see DailyRecordDomainSchema in schema.ts
  */
@@ -24,9 +33,12 @@ export type SaveDailyRecordInput = DailyRecordDomain;
  * Saved daily record item — SSOT derived from schema.ts + server metadata
  */
 export type DailyRecordItem = DailyRecordDomain & {
-  id?: string;          // SharePoint item ID (if persisted)
-  createdAt?: string;   // ISO 8601 timestamp
-  modifiedAt?: string;  // ISO 8601 timestamp
+  id?: string;                 // SharePoint item ID (if persisted)
+  createdAt?: string;          // ISO 8601 timestamp
+  modifiedAt?: string;         // ISO 8601 timestamp
+  approvalStatus?: 'pending' | 'approved';  // Approval state
+  approvedBy?: string;         // Approver name
+  approvedAt?: string;         // ISO 8601 timestamp of approval
 };
 
 /**
@@ -99,4 +111,18 @@ export interface DailyRecordRepository {
    * - May return partial results if signal is aborted
    */
   list(params: DailyRecordRepositoryListParams): Promise<DailyRecordItem[]>;
+
+  /**
+   * Approve a daily record for a specific date
+   *
+   * @param input - Approval input containing date and approver info
+   * @param params - Optional mutation parameters (abort signal)
+   * @returns Promise of the approved record item
+   *
+   * @remarks
+   * - Sets the record status to 'approved' (承認済)
+   * - Records the approver name, role, and timestamp
+   * - Throws if the record for the given date does not exist
+   */
+  approve(input: ApproveRecordInput, params?: DailyRecordRepositoryMutationParams): Promise<DailyRecordItem>;
 }
