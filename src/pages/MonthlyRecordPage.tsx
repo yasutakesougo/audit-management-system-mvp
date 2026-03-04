@@ -26,85 +26,9 @@ import { useUserAuthz } from '../auth/useUserAuthz';
 import { MonthlySummaryTable } from '../features/records/monthly/MonthlySummaryTable';
 import { UserKpiCards } from '../features/records/monthly/UserKpiCards';
 import { UserProgressChart } from '../features/records/monthly/UserProgressChart';
-import { getCurrentYearMonth, parseIsoDate, parseYearMonth } from '../features/records/monthly/map';
+import { DEFAULT_MONTH, useDemoSummaries, type E2ESeedWindow } from '../features/records/monthly/monthlyRecordSeedData';
 import type { MonthlySummary, YearMonth } from '../features/records/monthly/types';
 import { TESTIDS } from '../testids';
-
-/**
- * E2E Seed データ型定義
- */
-interface E2ESeedWindow extends Window {
-  __E2E_SEED__?: string;
-  __E2E_FIXTURE_MONTHLY_RECORDS__?: {
-    summaryRows?: Array<{
-      userId: string;
-      userName: string;
-      month: string;
-      total: number;
-      completed: number;
-    }>;
-  };
-}
-
-// モックデータ（後でAPIから取得）
-const mockMonthlySummaries: MonthlySummary[] = [
-  {
-    userId: 'I001',
-    yearMonth: '2025-11' as YearMonth,
-    displayName: '田中太郎',
-    lastUpdatedUtc: '2024-11-06T10:30:00Z',
-    kpi: {
-      totalDays: 22,
-      plannedRows: 418, // 22日 × 19行/日
-      completedRows: 380,
-      inProgressRows: 25,
-      emptyRows: 13,
-      specialNotes: 8,
-      incidents: 2,
-    },
-    completionRate: 90.91,
-    firstEntryDate: '2025-11-01',
-    lastEntryDate: '2025-11-05',
-  },
-  {
-    userId: 'I002',
-    yearMonth: '2025-11' as YearMonth,
-    displayName: '佐藤花子',
-    lastUpdatedUtc: '2024-11-06T09:15:00Z',
-    kpi: {
-      totalDays: 22,
-      plannedRows: 418,
-      completedRows: 295,
-      inProgressRows: 48,
-      emptyRows: 75,
-      specialNotes: 12,
-      incidents: 0,
-    },
-    completionRate: 70.57,
-    firstEntryDate: '2025-11-01',
-    lastEntryDate: '2025-11-05',
-  },
-  {
-    userId: 'I003',
-    yearMonth: '2025-11' as YearMonth,
-    displayName: '鈴木次郎',
-    lastUpdatedUtc: '2024-11-06T11:45:00Z',
-    kpi: {
-      totalDays: 22,
-      plannedRows: 418,
-      completedRows: 201,
-      inProgressRows: 82,
-      emptyRows: 135,
-      specialNotes: 5,
-      incidents: 1,
-    },
-    completionRate: 48.09,
-    firstEntryDate: '2025-11-02',
-    lastEntryDate: '2025-11-05',
-  },
-];
-
-const DEFAULT_MONTH: YearMonth = mockMonthlySummaries[0]?.yearMonth ?? getCurrentYearMonth();
 
 const srOnly = {
   border: 0,
@@ -119,53 +43,6 @@ const srOnly = {
 };
 
 type TabKey = 'summary' | 'user-detail' | 'pdf';
-
-/**
- * E2E用 Demo Seed から月次サマリーを取得（E2E限定）
- */
-function useDemoSummaries(): MonthlySummary[] {
-  const e2e = isE2E();
-  const w = (typeof window !== 'undefined' ? window : {}) as E2ESeedWindow;
-
-  if (e2e && w.__E2E_SEED__?.startsWith('monthly.records.')) {
-    const fixture = w.__E2E_FIXTURE_MONTHLY_RECORDS__;
-    if (fixture?.summaryRows) {
-      return fixture.summaryRows.map((row) => {
-        // 型安全な変換: YearMonth と IsoDate をパース
-        const yearMonth = parseYearMonth(row.month);
-        const firstEntryDate = parseIsoDate(`${row.month}-01`);
-        const lastEntryDate = parseIsoDate(`${row.month}-01`);
-
-        if (!yearMonth) {
-          console.warn(`Invalid YearMonth in E2E fixture: ${row.month}`);
-        }
-
-        return {
-          userId: row.userId,
-          yearMonth: yearMonth ?? '2025-01' as YearMonth, // Fallback
-          displayName: row.userName,
-          lastUpdatedUtc: new Date().toISOString(),
-          kpi: {
-            totalDays: 22,
-            plannedRows: 418,
-            completedRows: row.completed ?? 0,
-            inProgressRows: 0,
-            emptyRows: (row.total ?? 0) - (row.completed ?? 0),
-            specialNotes: 0,
-            incidents: 0,
-          },
-          completionRate: row.total ? (row.completed / row.total) * 100 : 0,
-          firstEntryDate: firstEntryDate ?? undefined,
-          lastEntryDate: lastEntryDate ?? undefined,
-        };
-      });
-    }
-    // Empty seed: return empty array
-    return [];
-  }
-
-  return mockMonthlySummaries;
-}
 
 export default function MonthlyRecordPage() {
   const [params, setParams] = useSearchParams();
@@ -244,10 +121,8 @@ export default function MonthlyRecordPage() {
   };
 
   const handleUserSelect = (userId: string, yearMonth: YearMonth) => {
-    // 選択されたユーザーの月に合わせてフィルタを調整
     setSelectedMonth(yearMonth);
 
-    // タブを user-detail に切り替え、URLパラメータにユーザー情報を設定
     const newParams = new URLSearchParams(params);
     newParams.set('tab', 'user-detail');
     newParams.set('user', userId);
@@ -261,9 +136,6 @@ export default function MonthlyRecordPage() {
     }
     if (import.meta.env.DEV) console.log(`PDF生成開始: ${selectedMonth} - 対象利用者数: ${filteredSummaries.length}`);
     // TODO: Power Automate API呼び出し実装
-    // - 選択月のデータを準備
-    // - フィルター条件を含めたリクエスト作成
-    // - Power Automate フローをトリガー
     await new Promise(resolve => setTimeout(resolve, 2000)); // モック遅延
     if (import.meta.env.DEV) console.log(`PDF生成完了: ${selectedMonth}`);
   };
@@ -430,42 +302,13 @@ export default function MonthlyRecordPage() {
           data-testid="monthly-workspace-tabs"
           sx={{ position: 'sticky', top: 0, bgcolor: 'background.paper', zIndex: 1, mb: 2 }}
         >
-          <Tab
-            value="summary"
-            label="組織サマリー"
-            id="monthly-tab-summary"
-            aria-controls="monthly-tabpanel-summary"
-            data-testid={TESTIDS['monthly-tab-summary']}
-            icon={<TableViewIcon />}
-            iconPosition="start"
-          />
-          <Tab
-            value="user-detail"
-            label="利用者別詳細"
-            id="monthly-tab-user-detail"
-            aria-controls="monthly-tabpanel-user-detail"
-            data-testid={TESTIDS['monthly-tab-detail']}
-            icon={<AnalyticsIcon />}
-            iconPosition="start"
-          />
-          <Tab
-            value="pdf"
-            label="月次PDF"
-            id="monthly-tab-pdf"
-            aria-controls="monthly-tabpanel-pdf"
-            data-testid={TESTIDS['monthly-tab-pdf']}
-            icon={<PictureAsPdfIcon />}
-            iconPosition="start"
-          />
+          <Tab value="summary" label="組織サマリー" id="monthly-tab-summary" aria-controls="monthly-tabpanel-summary" data-testid={TESTIDS['monthly-tab-summary']} icon={<TableViewIcon />} iconPosition="start" />
+          <Tab value="user-detail" label="利用者別詳細" id="monthly-tab-user-detail" aria-controls="monthly-tabpanel-user-detail" data-testid={TESTIDS['monthly-tab-detail']} icon={<AnalyticsIcon />} iconPosition="start" />
+          <Tab value="pdf" label="月次PDF" id="monthly-tab-pdf" aria-controls="monthly-tabpanel-pdf" data-testid={TESTIDS['monthly-tab-pdf']} icon={<PictureAsPdfIcon />} iconPosition="start" />
         </Tabs>
 
         {/* 組織サマリータブ */}
-        <Box
-          role="tabpanel"
-          hidden={tab !== 'summary'}
-          id="monthly-tabpanel-summary"
-          aria-labelledby="monthly-tab-summary"
-        >
+        <Box role="tabpanel" hidden={tab !== 'summary'} id="monthly-tabpanel-summary" aria-labelledby="monthly-tab-summary">
           <Box component="section" aria-label="組織サマリー表示">
             <Typography component="p" sx={srOnly}>
               全利用者の月次記録完了状況を一覧表示し、再集計や詳細確認ができます。
@@ -480,17 +323,8 @@ export default function MonthlyRecordPage() {
         </Box>
 
         {/* 利用者別詳細タブ */}
-        <Box
-          role="tabpanel"
-          hidden={tab !== 'user-detail'}
-          id="monthly-tabpanel-user-detail"
-          aria-labelledby="monthly-tab-user-detail"
-        >
-          <Box
-            component="section"
-            aria-label="利用者別詳細表示"
-            sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}
-          >
+        <Box role="tabpanel" hidden={tab !== 'user-detail'} id="monthly-tabpanel-user-detail" aria-labelledby="monthly-tab-user-detail">
+          <Box component="section" aria-label="利用者別詳細表示" sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
             <Typography component="p" sx={srOnly}>
               選択した利用者の月次記録詳細とKPIカードを表示します。
             </Typography>
@@ -498,23 +332,12 @@ export default function MonthlyRecordPage() {
             <Box data-testid={TESTIDS['monthly-user-detail-mounted']} sx={{ fontSize: 12, color: 'text.secondary' }}>
               User Detail mounted
             </Box>
-            <Box
-              data-testid={TESTIDS['monthly-user-detail-effective-params']}
-              sx={{ fontSize: 12, color: 'text.secondary' }}
-            >
+            <Box data-testid={TESTIDS['monthly-user-detail-effective-params']} sx={{ fontSize: 12, color: 'text.secondary' }}>
               {effectiveParamsText}
             </Box>
 
             <Stack direction={{ xs: 'column', md: 'row' }} spacing={2} alignItems="flex-start">
-              <TextField
-                select
-                size="small"
-                label="利用者"
-                value={effectiveUserId ?? ''}
-                onChange={(event) => handleDetailUserChange(event.target.value)}
-                data-testid={TESTIDS['monthly-detail-user-select']}
-                sx={{ minWidth: 220 }}
-              >
+              <TextField select size="small" label="利用者" value={effectiveUserId ?? ''} onChange={(event) => handleDetailUserChange(event.target.value)} data-testid={TESTIDS['monthly-detail-user-select']} sx={{ minWidth: 220 }}>
                 {userOptions.map((user) => (
                   <MenuItem key={user.userId} value={user.userId}>
                     {user.displayName} ({user.userId})
@@ -522,15 +345,7 @@ export default function MonthlyRecordPage() {
                 ))}
               </TextField>
 
-              <TextField
-                select
-                size="small"
-                label="対象月"
-                value={detailMonth}
-                onChange={(event) => handleDetailMonthChange(event.target.value as YearMonth)}
-                data-testid={TESTIDS['monthly-detail-month-select']}
-                sx={{ minWidth: 180 }}
-              >
+              <TextField select size="small" label="対象月" value={detailMonth} onChange={(event) => handleDetailMonthChange(event.target.value as YearMonth)} data-testid={TESTIDS['monthly-detail-month-select']} sx={{ minWidth: 180 }}>
                 {monthOptions.map((month) => (
                   <MenuItem key={month} value={month}>
                     {month}
@@ -541,19 +356,11 @@ export default function MonthlyRecordPage() {
 
             {(() => {
               if (summaries.length === 0) {
-                // No data at all
                 return (
-                  <Box
-                    sx={{ display: 'flex', justifyContent: 'center', py: 8 }}
-                    data-testid={TESTIDS['monthly-detail-empty-state']}
-                  >
+                  <Box sx={{ display: 'flex', justifyContent: 'center', py: 8 }} data-testid={TESTIDS['monthly-detail-empty-state']}>
                     <Box sx={{ textAlign: 'center' }}>
-                      <Typography variant="h6" gutterBottom>
-                        データが見つかりませんでした
-                      </Typography>
-                      <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
-                        月次記録データがありません。
-                      </Typography>
+                      <Typography variant="h6" gutterBottom>データが見つかりませんでした</Typography>
+                      <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>月次記録データがありません。</Typography>
                     </Box>
                   </Box>
                 );
@@ -563,12 +370,8 @@ export default function MonthlyRecordPage() {
                 return (
                   <Box sx={{ display: 'flex', justifyContent: 'center', py: 8 }}>
                     <Box sx={{ textAlign: 'center' }}>
-                      <Typography variant="h6" gutterBottom>
-                        利用者別詳細
-                      </Typography>
-                      <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
-                        組織サマリーから利用者を選択してください
-                      </Typography>
+                      <Typography variant="h6" gutterBottom>利用者別詳細</Typography>
+                      <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>組織サマリーから利用者を選択してください</Typography>
                     </Box>
                   </Box>
                 );
@@ -576,20 +379,11 @@ export default function MonthlyRecordPage() {
 
               if (!detailSummary) {
                 return (
-                  <Box
-                    sx={{ display: 'flex', justifyContent: 'center', py: 8 }}
-                    data-testid={TESTIDS['monthly-detail-empty-state']}
-                  >
+                  <Box sx={{ display: 'flex', justifyContent: 'center', py: 8 }} data-testid={TESTIDS['monthly-detail-empty-state']}>
                     <Box sx={{ textAlign: 'center' }}>
-                      <Typography variant="h6" gutterBottom>
-                        データが見つかりませんでした
-                      </Typography>
-                      <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
-                        選択した利用者 ({effectiveUserId}) の {detailMonth} のデータが見つかりませんでした。
-                      </Typography>
-                      <Typography variant="body2" color="text.secondary">
-                        フィルター条件を確認してください。
-                      </Typography>
+                      <Typography variant="h6" gutterBottom>データが見つかりませんでした</Typography>
+                      <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>選択した利用者 ({effectiveUserId}) の {detailMonth} のデータが見つかりませんでした。</Typography>
+                      <Typography variant="body2" color="text.secondary">フィルター条件を確認してください。</Typography>
                     </Box>
                   </Box>
                 );
@@ -597,14 +391,10 @@ export default function MonthlyRecordPage() {
 
               return (
                 <Stack spacing={3}>
-                  {/* KPIカード表示 */}
                   <Box data-testid={TESTIDS['monthly-detail-kpi-root']}>
                     <UserKpiCards summary={detailSummary} avgCompletionRate={stats.avgCompletionRate} />
                   </Box>
-
-                  {/* プログレスチャート表示 */}
                   <UserProgressChart summary={detailSummary} />
-
                   <Box data-testid={TESTIDS['monthly-detail-records-table']}>
                     <Table aria-label="月次詳細テーブル" role="table">
                       <TableHead>
@@ -614,32 +404,12 @@ export default function MonthlyRecordPage() {
                         </TableRow>
                       </TableHead>
                       <TableBody>
-                        <TableRow>
-                          <TableCell>完了率</TableCell>
-                          <TableCell align="right">{detailSummary.completionRate}%</TableCell>
-                        </TableRow>
-                        <TableRow>
-                          <TableCell>完了行数 / 予定行数</TableCell>
-                          <TableCell align="right">
-                            {detailSummary.kpi.completedRows} / {detailSummary.kpi.plannedRows}
-                          </TableCell>
-                        </TableRow>
-                        <TableRow>
-                          <TableCell>進行中</TableCell>
-                          <TableCell align="right">{detailSummary.kpi.inProgressRows}</TableCell>
-                        </TableRow>
-                        <TableRow>
-                          <TableCell>未入力</TableCell>
-                          <TableCell align="right">{detailSummary.kpi.emptyRows}</TableCell>
-                        </TableRow>
-                        <TableRow>
-                          <TableCell>特記事項</TableCell>
-                          <TableCell align="right">{detailSummary.kpi.specialNotes}</TableCell>
-                        </TableRow>
-                        <TableRow>
-                          <TableCell>インシデント</TableCell>
-                          <TableCell align="right">{detailSummary.kpi.incidents}</TableCell>
-                        </TableRow>
+                        <TableRow><TableCell>完了率</TableCell><TableCell align="right">{detailSummary.completionRate}%</TableCell></TableRow>
+                        <TableRow><TableCell>完了行数 / 予定行数</TableCell><TableCell align="right">{detailSummary.kpi.completedRows} / {detailSummary.kpi.plannedRows}</TableCell></TableRow>
+                        <TableRow><TableCell>進行中</TableCell><TableCell align="right">{detailSummary.kpi.inProgressRows}</TableCell></TableRow>
+                        <TableRow><TableCell>未入力</TableCell><TableCell align="right">{detailSummary.kpi.emptyRows}</TableCell></TableRow>
+                        <TableRow><TableCell>特記事項</TableCell><TableCell align="right">{detailSummary.kpi.specialNotes}</TableCell></TableRow>
+                        <TableRow><TableCell>インシデント</TableCell><TableCell align="right">{detailSummary.kpi.incidents}</TableCell></TableRow>
                       </TableBody>
                     </Table>
                   </Box>
@@ -650,12 +420,7 @@ export default function MonthlyRecordPage() {
         </Box>
 
         {/* 月次PDFタブ */}
-        <Box
-          role="tabpanel"
-          hidden={tab !== 'pdf'}
-          id="monthly-tabpanel-pdf"
-          aria-labelledby="monthly-tab-pdf"
-        >
+        <Box role="tabpanel" hidden={tab !== 'pdf'} id="monthly-tabpanel-pdf" aria-labelledby="monthly-tab-pdf">
           <Box component="section" aria-label="月次PDF出力">
             <Typography component="p" sx={srOnly}>
               月次記録をPDF形式で出力・ダウンロードできます。
@@ -663,70 +428,37 @@ export default function MonthlyRecordPage() {
 
             <Box sx={{ maxWidth: 600, mx: 'auto' }}>
               <Stack spacing={3}>
-                {/* PDF出力情報カード */}
                 <Card>
                   <CardContent>
                     <Stack spacing={2}>
-                      <Typography variant="h6" gutterBottom>
-                        月次記録PDF出力
-                      </Typography>
-
-                      <Typography variant="body2" color="text.secondary">
-                        選択した条件に基づいて月次記録のPDFレポートを生成します。
-                      </Typography>
-
-                      {/* 出力条件サマリー */}
+                      <Typography variant="h6" gutterBottom>月次記録PDF出力</Typography>
+                      <Typography variant="body2" color="text.secondary">選択した条件に基づいて月次記録のPDFレポートを生成します。</Typography>
                       <Box sx={{ p: 2, bgcolor: 'action.hover', borderRadius: 1 }}>
-                        <Typography variant="subtitle2" component="p" gutterBottom>
-                          出力対象
-                        </Typography>
-
+                        <Typography variant="subtitle2" component="p" gutterBottom>出力対象</Typography>
                         <Stack spacing={1}>
                           <Stack direction="row" justifyContent="space-between">
                             <Typography variant="body2">対象月:</Typography>
-                            <Typography variant="body2" color="primary.main">
-                              {selectedMonth}
-                            </Typography>
+                            <Typography variant="body2" color="primary.main">{selectedMonth}</Typography>
                           </Stack>
-
                           <Stack direction="row" justifyContent="space-between">
                             <Typography variant="body2">対象利用者数:</Typography>
-                            <Typography variant="body2" color="primary.main">
-                              {filteredSummaries.length}名
-                            </Typography>
+                            <Typography variant="body2" color="primary.main">{filteredSummaries.length}名</Typography>
                           </Stack>
-
                           {keyword && (
                             <Stack direction="row" justifyContent="space-between">
                               <Typography variant="body2">絞り込み条件:</Typography>
-                              <Typography variant="body2" color="primary.main">
-                                "{keyword}"
-                              </Typography>
+                              <Typography variant="body2" color="primary.main">"{keyword}"</Typography>
                             </Stack>
                           )}
-
                           <Stack direction="row" justifyContent="space-between">
                             <Typography variant="body2">平均完了率:</Typography>
-                            <Typography variant="body2" color="info.main">
-                              {stats.avgCompletionRate}%
-                            </Typography>
+                            <Typography variant="body2" color="info.main">{stats.avgCompletionRate}%</Typography>
                           </Stack>
                         </Stack>
                       </Box>
-
-                      {/* PDF生成ボタン */}
-                      <Button
-                        variant="contained"
-                        size="large"
-                        startIcon={<CloudDownloadIcon />}
-                        onClick={handleGenerateMonthlyPdf}
-                        disabled={filteredSummaries.length === 0 || !canGenerateMonthlyPdf}
-                        data-testid={TESTIDS['monthly-pdf-generate-btn']}
-                        sx={{ mt: 2 }}
-                      >
+                      <Button variant="contained" size="large" startIcon={<CloudDownloadIcon />} onClick={handleGenerateMonthlyPdf} disabled={filteredSummaries.length === 0 || !canGenerateMonthlyPdf} data-testid={TESTIDS['monthly-pdf-generate-btn']} sx={{ mt: 2 }}>
                         月次PDFレポートを生成
                       </Button>
-
                       {filteredSummaries.length === 0 && (
                         <Typography variant="caption" color="warning.main" textAlign="center">
                           対象データがありません。フィルター条件を確認してください。
@@ -736,19 +468,14 @@ export default function MonthlyRecordPage() {
                   </CardContent>
                 </Card>
 
-                {/* Power Automate 連携情報 */}
                 <Card variant="outlined">
                   <CardContent>
                     <Stack spacing={1}>
-                      <Typography variant="subtitle2" component="p" color="text.secondary">
-                        🔧 Power Automate 連携
-                      </Typography>
-
+                      <Typography variant="subtitle2" component="p" color="text.secondary">🔧 Power Automate 連携</Typography>
                       <Typography variant="body2" color="text.secondary">
                         PDFレポート生成は Power Automate ワークフローを通じて処理されます。
                         生成が完了すると、メール通知またはダウンロードリンクが提供されます。
                       </Typography>
-
                       <Typography variant="caption" color="text.secondary">
                         ※ 現在は開発中のため、実際のPDF生成は行われません
                       </Typography>

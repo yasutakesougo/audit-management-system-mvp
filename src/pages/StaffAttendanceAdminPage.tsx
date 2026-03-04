@@ -30,7 +30,6 @@ import {
     Typography,
 } from '@mui/material';
 import { useCallback, useMemo, useState } from 'react';
-import { useSearchParams } from 'react-router-dom';
 
 const STAFF_ATTENDANCE_FINALIZE_STORAGE_KEY = 'staff-attendance.finalized.v1';
 
@@ -52,7 +51,7 @@ export default function StaffAttendanceAdminPage(): JSX.Element {
   const [date, setDate] = useState<string>(() => todayISO());
   const legacyFinalizedDayMap = useMemo(() => loadLegacyFinalizedDayMap(), []);
 
-  const [searchParams] = useSearchParams();
+
   const { data: staffData } = useStaffStore();
 
   const admin = useStaffAttendanceAdmin(date);
