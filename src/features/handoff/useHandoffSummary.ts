@@ -3,33 +3,30 @@
  *
  * 朝会・夕会システムで申し送り状況を表示するための軽量hook
  * useHandoffTimelineとは別で、統計情報のみ取得
- * Phase 8A: SharePoint API対応
+ *
+ * v3.0: Ports & Adapters 化 — Factory 経由でインフラ層にアクセス
  */
 
 import { useEffect, useState } from 'react';
-import { useHandoffApi } from './handoffApi';
-import { handoffConfig } from './handoffConfig';
 import { isTerminalStatus } from './handoffStateMachine';
-import { loadRecordsFromStorage } from './handoffStorageUtils';
-import type { HandoffCategory, HandoffDayScope, HandoffRecord, HandoffStatus } from './handoffTypes';
+import type { HandoffCategory, HandoffDayScope, HandoffStatus } from './handoffTypes';
+import { useHandoffData } from './hooks/useHandoffData';
 
 type HandoffSummary = {
   total: number;
   byStatus: Record<HandoffStatus, number>;
-  // 重要度ベースで何かやりたくなった時用
-  criticalCount: number; // severity === '重要' && status !== '対応済'
-  // カテゴリ別集計（Step 7A追加）
+  criticalCount: number;
   byCategory: Record<HandoffCategory, number>;
 };
 
 /**
- * 申し送りサマリー情報を取得するフック（Phase 8A: 2モード対応）
+ * 申し送りサマリー情報を取得するフック（v3.0: Port 経由）
  *
  * @param options dayScope指定可能（朝会=昨日、夕会=今日）
  */
 export function useHandoffSummary(options?: { dayScope?: HandoffDayScope }): HandoffSummary {
   const dayScope = options?.dayScope ?? 'today';
-  const handoffApi = useHandoffApi(); // フックでAPIインスタンスを取得
+  const { repo } = useHandoffData();
 
   const [summary, setSummary] = useState<HandoffSummary>({
     total: 0,
@@ -56,22 +53,14 @@ export function useHandoffSummary(options?: { dayScope?: HandoffDayScope }): Han
   useEffect(() => {
     async function loadSummary() {
       try {
-        let items: HandoffRecord[];
-
-        if (handoffConfig.storage === 'sharepoint') {
-          // SharePoint API モード
-          items = await handoffApi.getHandoffRecords(dayScope, 'all');
-        } else {
-          // localStorage モード（開発用）
-          items = loadRecordsFromStorage(dayScope);
-        }
+        // Port 経由でデータ取得（Adapter 内部で localStorage/SP を判別）
+        const items = await repo.getRecords(dayScope, 'all');
 
         let pending = 0;
         let inProgress = 0;
         let done = 0;
         let critical = 0;
 
-        // カテゴリ別カウンター初期化
         const categoryCount: Record<HandoffCategory, number> = {
           '体調': 0,
           '行動面': 0,
@@ -83,18 +72,17 @@ export function useHandoffSummary(options?: { dayScope?: HandoffDayScope }): Han
         };
 
         for (const item of items) {
-          // 状態別カウント
           if (item.status === '未対応') pending++;
           if (item.status === '対応中') inProgress++;
           if (item.status === '対応済' || item.status === '完了') done++;
 
-          // 重要・未完了カウント (v3: isTerminalStatus で判定)
           if (item.severity === '重要' && !isTerminalStatus(item.status)) {
             critical++;
           }
 
-          // カテゴリ別カウント（Step 7A）
-          categoryCount[item.category]++;
+          if (item.category in categoryCount) {
+            categoryCount[item.category as HandoffCategory]++;
+          }
         }
 
         setSummary({
@@ -112,7 +100,6 @@ export function useHandoffSummary(options?: { dayScope?: HandoffDayScope }): Han
         });
       } catch (error) {
         console.error('[handoff] Summary load failed:', error);
-        // エラー時は空のサマリーを設定
         setSummary({
           total: 0,
           byStatus: { '未対応': 0, '対応中': 0, '対応済': 0, '確認済': 0, '明日へ持越': 0, '完了': 0 },
@@ -131,7 +118,7 @@ export function useHandoffSummary(options?: { dayScope?: HandoffDayScope }): Han
     }
 
     loadSummary();
-  }, [dayScope]);
+  }, [repo, dayScope]);
 
   return summary;
 }

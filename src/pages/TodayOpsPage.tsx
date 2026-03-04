@@ -16,16 +16,16 @@
 import { buildDailyHubFromTodayUrl } from '@/app/links/navigationLinks';
 import { useTodaySummary } from '@/features/today/domain';
 import { useNextAction } from '@/features/today/hooks/useNextAction';
-import { TodayOpsLayout } from '@/features/today/layouts/TodayOpsLayout';
+import { TodayBentoLayout } from '@/features/today/layouts/TodayBentoLayout';
 import { recordAutoNextComplete, recordAutoNextSave } from '@/features/today/records/autoNextCounters';
 import { QuickRecordDrawer } from '@/features/today/records/QuickRecordDrawer';
 import { useQuickRecord } from '@/features/today/records/useQuickRecord';
 import { useTransportStatus } from '@/features/today/transport';
 import { isE2E } from '@/lib/env';
+import { toLocalDateISO } from '@/utils/getNow';
 import { Alert, Snackbar } from '@mui/material';
 import React, { useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { toLocalDateISO } from '@/utils/getNow';
 
 export const TodayOpsPage: React.FC = () => {
   const navigate = useNavigate();
@@ -178,7 +178,7 @@ export const TodayOpsPage: React.FC = () => {
 
   return (
     <>
-      <TodayOpsLayout {...layoutProps} />
+      <TodayBentoLayout {...layoutProps} />
 
       {/* Quick Record Drawer Overlay */}
       <QuickRecordDrawer
