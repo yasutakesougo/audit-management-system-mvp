@@ -11,11 +11,7 @@
  */
 import type { BriefingAlert } from '@/features/dashboard/sections/types';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
-import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import {
-    Accordion,
-    AccordionDetails,
-    AccordionSummary,
     Box,
     Container,
     Grid,
@@ -26,6 +22,7 @@ import {
 } from '@mui/material';
 import React, { useState } from 'react';
 import type { NextActionWithProgress } from '../hooks/useNextAction';
+import { TransportStatusCard, type TransportStatusCardProps } from '../transport';
 import type { AttendanceSummaryCardProps } from '../widgets/AttendanceSummaryCard';
 import { AttendanceSummaryCard } from '../widgets/AttendanceSummaryCard';
 import { BriefingActionList } from '../widgets/BriefingActionList';
@@ -77,6 +74,8 @@ export type TodayOpsProps = {
   nextAction: NextActionWithProgress;
   nextActionEmptyAction?: NextActionCardProps['onEmptyAction'];
   transport: { pending: TransportUser[]; inProgress: TransportUser[]; onArrived: (id: string) => void };
+  /** Phase 3: Full transport status card props (replaces accordion) */
+  transportCard?: TransportStatusCardProps;
   users: { items: UserRow[]; onOpenQuickRecord: (id: string) => void; onOpenISP?: (id: string) => void; onEmptyAction?: () => void };
 };
 
@@ -86,6 +85,7 @@ export const TodayOpsLayout: React.FC<TodayOpsProps> = ({
   briefingAlerts,
   nextAction,
   nextActionEmptyAction,
+  transportCard,
   users,
 }) => {
   // view-only state: tab index のみ
@@ -180,35 +180,19 @@ export const TodayOpsLayout: React.FC<TodayOpsProps> = ({
             <Stack spacing={3}>
               <NextActionCard nextAction={nextAction} onEmptyAction={nextActionEmptyAction} />
 
-              {/* 送迎プレースホルダ — Accordion で折りたたみ */}
-              <Accordion
-                data-testid="today-accordion-transport"
-                defaultExpanded={false}
-                disableGutters
-                sx={{
-                  '&::before': { display: 'none' },
-                  boxShadow: 1,
-                  borderRadius: 1,
-                  overflow: 'hidden',
-                }}
-              >
-                <AccordionSummary
-                  expandIcon={<ExpandMoreIcon />}
-                  sx={{
-                    minHeight: 48,
-                    '& .MuiAccordionSummary-content': { my: 1 },
-                  }}
+              {/* 送迎状況 — TransportStatusCard (Phase 3) or placeholder */}
+              {transportCard ? (
+                <TransportStatusCard {...transportCard} />
+              ) : (
+                <Box
+                  data-testid="today-accordion-transport"
+                  sx={{ p: 2, bgcolor: 'grey.50', borderRadius: 1, textAlign: 'center' }}
                 >
-                  <Typography variant="subtitle2" fontWeight="bold">
-                    🚚 送迎状況
-                  </Typography>
-                </AccordionSummary>
-                <AccordionDetails>
                   <Typography variant="body2" color="text.secondary">
-                    P1で実データ接続予定
+                    🚚 送迎機能は準備中です
                   </Typography>
-                </AccordionDetails>
-              </Accordion>
+                </Box>
+              )}
             </Stack>
           </Grid>
         </Grid>
