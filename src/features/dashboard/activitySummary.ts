@@ -1,4 +1,5 @@
 import { PersonDaily } from '../../domain/daily/types';
+import { toLocalDateISO } from '../../utils/getNow';
 import { DashboardAlert, ModuleSummary } from './dashboardSummary.types';
 
 export interface ActivitySummaryResult {
@@ -13,7 +14,7 @@ export function buildActivitySummary(
   records: PersonDaily[],
   expectedCount: number
 ): ActivitySummaryResult {
-  const today = new Date().toISOString().slice(0, 10);
+  const today = toLocalDateISO();
   const todayRecords = records.filter(r => r.date === today);
 
   const done = todayRecords.filter(r => r.status === '完了').length;

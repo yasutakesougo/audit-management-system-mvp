@@ -9,6 +9,7 @@
  * - 編集: StaffAttendanceEditDialog
  * - 一括: StaffAttendanceBulkInputDrawer + useStaffAttendanceBulk
  */
+import { toLocalDateISO } from '@/utils/getNow';
 import { useMemo, useState } from 'react';
 
 import EditIcon from '@mui/icons-material/Edit';
@@ -59,7 +60,7 @@ function formatTimeLike(v?: string | null): string {
 }
 
 export const StaffAttendanceInput: React.FC = () => {
-  const today = useMemo(() => new Date().toISOString().slice(0, 10), []);
+  const today = useMemo(() => toLocalDateISO(), []);
   const { staff } = useStaff();
 
   const {
