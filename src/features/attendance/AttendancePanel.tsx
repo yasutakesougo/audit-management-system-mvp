@@ -101,6 +101,23 @@ const AttendancePanel = (): JSX.Element => {
     setDetailUserCode(null);
   }, []);
 
+  // ── Transport method change handler ──
+  const handleTransportToMethodChange = useCallback((method: import('../attendance/transportMethod').TransportMethod) => {
+    if (!detailUserCode) return;
+    void actions.updateRowFields(detailUserCode, { transportToMethod: method });
+  }, [detailUserCode, actions]);
+
+  const handleTransportFromMethodChange = useCallback((method: import('../attendance/transportMethod').TransportMethod) => {
+    if (!detailUserCode) return;
+    void actions.updateRowFields(detailUserCode, { transportFromMethod: method });
+  }, [detailUserCode, actions]);
+
+  // ── User confirm handler ──
+  const handleUserConfirm = useCallback(() => {
+    if (!detailUserCode) return;
+    void actions.updateRowFields(detailUserCode, { userConfirmedAt: new Date().toISOString() });
+  }, [detailUserCode, actions]);
+
   // ── Absence detail dialog state ──
   type AbsenceDialogState = {
     open: boolean;
@@ -220,6 +237,9 @@ const AttendancePanel = (): JSX.Element => {
           isAbsenceAddonClaimable: detailRow.isAbsenceAddonClaimable,
         } : null}
         onClose={handleCloseDetail}
+        onTransportToMethodChange={handleTransportToMethodChange}
+        onTransportFromMethodChange={handleTransportFromMethodChange}
+        onUserConfirm={handleUserConfirm}
         onEditAbsenceDetail={
           detailRow?.status === '当日欠席' ? handleEditAbsenceFromDrawer : undefined
         }

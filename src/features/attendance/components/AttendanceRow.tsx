@@ -81,7 +81,10 @@ export function AttendanceRow({
     <Box
       sx={{
         display: 'grid',
-        gridTemplateColumns: 'minmax(160px, 1.4fr) auto minmax(80px, 0.8fr) auto auto',
+        gridTemplateColumns: {
+          xs: '1fr auto',
+          sm: 'minmax(160px, 1.4fr) auto minmax(80px, 0.8fr) auto',
+        },
         gap: 1,
         alignItems: 'center',
         px: 1.5,
@@ -189,31 +192,33 @@ export function AttendanceRow({
         {visit.rangeText ?? '—'}
       </Typography>
 
-      <Button
-        variant="text"
-        color="inherit"
-        onClick={onAbsence}
-        disabled={isSaving || !canAbsence || isRunMode}
-        sx={{ minHeight: 44, minWidth: 64, fontWeight: 700, ...secondarySx }}
-      >
-        欠席
-      </Button>
+      <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+        <Button
+          variant="text"
+          color="inherit"
+          onClick={onAbsence}
+          disabled={isSaving || !canAbsence}
+          sx={{ minHeight: 44, minWidth: 64, fontWeight: 700 }}
+        >
+          欠席
+        </Button>
 
-      {showNurseAction ? (
-        <Tooltip title="看護記録へ">
-          <IconButton
-            onClick={onOpenNurse}
-            aria-label="看護記録を開く"
-            sx={{ width: 40, height: 40, color: 'error.main' }}
-          >
-            <LocalHospitalIcon fontSize="small" />
-          </IconButton>
-        </Tooltip>
-      ) : null}
+        {showNurseAction ? (
+          <Tooltip title="看護記録へ">
+            <IconButton
+              onClick={onOpenNurse}
+              aria-label="看護記録を開く"
+              sx={{ width: 40, height: 40, color: 'error.main' }}
+            >
+              <LocalHospitalIcon fontSize="small" />
+            </IconButton>
+          </Tooltip>
+        ) : null}
 
-      <IconButton onClick={onDetail} sx={{ width: 44, height: 44 }}>
-        <MoreHorizIcon />
-      </IconButton>
+        <IconButton onClick={onDetail} sx={{ width: 44, height: 44 }}>
+          <MoreHorizIcon />
+        </IconButton>
+      </Box>
     </Box>
   );
 }
