@@ -24,7 +24,7 @@ const LUNCH_OPTIONS = ['完食', '8割', '半分', '少量', 'なし'];
 
 const PROBLEM_BEHAVIOR_LABELS: Record<keyof UserRowData['problemBehavior'], string> = {
   selfHarm: '自傷',
-  violence: '暴力',
+  otherInjury: '他傷',
   loudVoice: '大声',
   pica: '異食',
   other: 'その他',

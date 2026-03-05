@@ -59,7 +59,7 @@ const mockRecord: PersonDaily = {
     mealAmount: '完食',
     problemBehavior: {
       selfHarm: true,
-      violence: false,
+      otherInjury: false,
       loudVoice: false,
       pica: false,
       other: false,
@@ -236,7 +236,7 @@ describe('DailyRecordForm', () => {
           mealAmount: '完食',
           problemBehavior: expect.objectContaining({
             selfHarm: true,
-            violence: false
+            otherInjury: false
           })
         })
       });

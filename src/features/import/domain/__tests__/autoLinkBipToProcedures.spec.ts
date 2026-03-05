@@ -106,7 +106,7 @@ describe('autoLinkBipToProcedures', () => {
         targetBehavior: '食事中の他害',
       }),
       makePlan({
-        id: 'bip-violence',
+        id: 'bip-otherInjury',
         targetBehavior: '他害行為',
         strategies: { ...createEmptyStrategies(), prevention: '配膳時にトラブルが起こりやすい' },
       }),
@@ -114,7 +114,7 @@ describe('autoLinkBipToProcedures', () => {
 
     const result = autoLinkBipToProcedures(procs, plans);
     expect(result[0].linkedInterventionIds).toContain('bip-meal');
-    expect(result[0].linkedInterventionIds).toContain('bip-violence');
+    expect(result[0].linkedInterventionIds).toContain('bip-otherInjury');
   });
 
   it('preserves existing linkedInterventionIds', () => {

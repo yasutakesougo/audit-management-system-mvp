@@ -61,7 +61,7 @@ describe('useTableDailyRecordViewModel', () => {
           lunchAmount: 'full',
           problemBehavior: {
             selfHarm: false,
-            violence: false,
+            otherInjury: false,
             loudVoice: false,
             pica: false,
             other: false,

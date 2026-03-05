@@ -11,6 +11,8 @@
  */
 
 import type { MealAmount, PersonDaily } from '@/features/daily';
+import AttachFileIcon from '@mui/icons-material/AttachFile';
+import GavelIcon from '@mui/icons-material/Gavel';
 import InfoOutlinedIcon from '@mui/icons-material/InfoOutlined';
 import OpenInNewIcon from '@mui/icons-material/OpenInNew';
 import PersonIcon from '@mui/icons-material/Person';
@@ -20,6 +22,7 @@ import AlertTitle from '@mui/material/AlertTitle';
 import Autocomplete from '@mui/material/Autocomplete';
 import Box from '@mui/material/Box';
 import Button from '@mui/material/Button';
+import Checkbox from '@mui/material/Checkbox';
 import Chip from '@mui/material/Chip';
 import CircularProgress from '@mui/material/CircularProgress';
 import Dialog from '@mui/material/Dialog';
@@ -27,6 +30,7 @@ import DialogActions from '@mui/material/DialogActions';
 import DialogContent from '@mui/material/DialogContent';
 import DialogTitle from '@mui/material/DialogTitle';
 import FormControl from '@mui/material/FormControl';
+import FormControlLabel from '@mui/material/FormControlLabel';
 import InputLabel from '@mui/material/InputLabel';
 import MenuItem from '@mui/material/MenuItem';
 import Paper from '@mui/material/Paper';
@@ -260,6 +264,39 @@ export function DailyRecordForm({ open, onClose, record, onSave }: DailyRecordFo
             problemSuggestion={s.problemSuggestion}
             onApplySuggestion={s.applyProblemBehaviorSuggestion}
           />
+
+          {/* Compliance fields — 法的記録 */}
+          <Paper sx={{ p: 2 }}>
+            <Typography variant="subtitle1" sx={{ mb: 2, display: 'flex', alignItems: 'center' }}>
+              <GavelIcon sx={{ mr: 1 }} />
+              法的記録
+            </Typography>
+            <Stack direction="row" spacing={3}>
+              <FormControlLabel
+                control={
+                  <Checkbox
+                    checked={s.formData.data.restraint || false}
+                    onChange={(e) => s.handleDataChange('restraint', e.target.checked as never)}
+                  />
+                }
+                label="拘束あり"
+              />
+              <FormControlLabel
+                control={
+                  <Checkbox
+                    checked={s.formData.data.hasAttachment || false}
+                    onChange={(e) => s.handleDataChange('hasAttachment', e.target.checked as never)}
+                  />
+                }
+                label={
+                  <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                    <AttachFileIcon sx={{ fontSize: 18, mr: 0.5 }} />
+                    別紙あり
+                  </Box>
+                }
+              />
+            </Stack>
+          </Paper>
 
           {/* Special notes */}
           <Paper sx={{ p: 2 }}>
