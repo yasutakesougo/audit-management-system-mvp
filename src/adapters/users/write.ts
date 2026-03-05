@@ -27,7 +27,7 @@ export type UserItem = {
 const SITE = `${readOptionalEnv('VITE_SP_SITE_URL') ?? 'https://contoso.sharepoint.com/sites/wf'}/_api/web`;
 const USERS_LIST = "lists/getbytitle('Users')/items";
 
-// TODO: Consider migrating to spClient integration for consistent auth handling
+// @see Issue #767: createUsersClient() ファクトリパターンへの完全移行を検討（下記 L122）
 const fetcher = (path: string, init?: RequestInit) => fetch(path, init);
 
 const buildUsersUrl = (_list: string, itemId?: number) =>

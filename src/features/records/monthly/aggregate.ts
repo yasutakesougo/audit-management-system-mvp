@@ -21,7 +21,7 @@ export function toYearMonth(date: Date): YearMonth {
 
 /**
  * YearMonth から月の営業日数を算出
- * TODO: 祝日マスタとの連携で精度向上
+ * @see Issue #767: 祝日マスタとの連携で精度向上予定
  */
 export function getWorkingDaysInMonth(yearMonth: YearMonth): number {
   const [year, month] = yearMonth.split('-').map(Number);

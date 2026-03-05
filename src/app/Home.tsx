@@ -250,7 +250,7 @@ export default function Home() {
                 id: mini.id.toString(),
                 title: mini.title,
                 start: mini.startText,
-                end: mini.startText, // TODO: MiniSchedule に endText を追加するか、NextActionCard で end を Optional 対応する
+                end: mini.startText, // @see Issue #767: MiniSchedule に endText を追加するか、NextActionCard で end を Optional 対応
                 status: mini.status || '承認済み',
               }))}
             />
