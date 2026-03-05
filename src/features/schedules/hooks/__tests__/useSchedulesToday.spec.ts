@@ -104,6 +104,7 @@ describe('useSchedulesToday (Repository integration)', () => {
       id: 1,
       title: '朝のミーティング',
       startText: '09:00',
+      endText: '09:00',
       status: 'Planned',
       allDay: false,
     });
