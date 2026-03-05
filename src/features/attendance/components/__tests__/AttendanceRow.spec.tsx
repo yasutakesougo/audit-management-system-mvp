@@ -28,9 +28,9 @@ describe('AttendanceRow', () => {
     const checkInBtn = screen.getByRole('button', { name: /通所/ });
     expect(checkInBtn).toBeEnabled();
 
-    // Secondary actions visible but disabled
+    // Secondary actions: checkout disabled (未 status), absence still enabled
     expect(screen.getByRole('button', { name: /退所/ })).toBeDisabled();
-    expect(screen.getByRole('button', { name: /欠席/ })).toBeDisabled();
+    expect(screen.getByRole('button', { name: /欠席/ })).toBeEnabled();
   });
 
   it('shows completed state for checked-in row in checkInRun mode', () => {

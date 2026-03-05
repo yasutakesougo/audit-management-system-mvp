@@ -13,43 +13,47 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import toast, { Toaster } from 'react-hot-toast';
 
-import {
-  Autocomplete,
-  Box,
-  Button,
-  Checkbox,
-  Chip,
-  CircularProgress,
-  Collapse,
-  Divider,
-  FormControl,
-  FormControlLabel,
-  InputLabel,
-  MenuItem,
-  Paper,
-  Radio,
-  RadioGroup,
-  Select,
-  Stack,
-  Table,
-  TableBody,
-  TableCell,
-  TableContainer,
-  TableHead,
-  TableRow,
-  TextField,
-  Typography,
-} from '@mui/material';
-import SaveIcon from '@mui/icons-material/Save';
 import AssignmentIcon from '@mui/icons-material/Assignment';
 import ListAltIcon from '@mui/icons-material/ListAlt';
+import SaveIcon from '@mui/icons-material/Save';
+import {
+    Autocomplete,
+    Box,
+    Button,
+    Checkbox,
+    Chip,
+    CircularProgress,
+    Collapse,
+    Divider,
+    FormControl,
+    FormControlLabel,
+    InputLabel,
+    MenuItem,
+    Paper,
+    Radio,
+    RadioGroup,
+    Select,
+    Stack,
+    Table,
+    TableBody,
+    TableCell,
+    TableContainer,
+    TableHead,
+    TableRow,
+    TextField,
+    Typography,
+} from '@mui/material';
 
-import { useDailyUserOptions } from '@/features/daily';
 import type { DailyUserOption } from '@/features/daily';
-import { useServiceProvisionSave, useServiceProvisionList } from '@/features/service-provision';
+import { useDailyUserOptions } from '@/features/daily';
+import type { ServiceProvisionRecord, ServiceProvisionStatus, UpsertProvisionInput } from '@/features/service-provision';
+import { useServiceProvisionList, useServiceProvisionSave } from '@/features/service-provision';
+import IsokatsuSheetPreview from '@/features/service-provision/components/IsokatsuSheetPreview';
 import type { AbsentSupportLog, FollowUpResult } from '@/features/service-provision/domain/absentSupportLog';
 import { EMPTY_ABSENT_LOG, buildNoteWithAbsentLog } from '@/features/service-provision/domain/absentSupportLog';
-import type { ServiceProvisionStatus, ServiceProvisionRecord, UpsertProvisionInput } from '@/features/service-provision';
+import { useSyncAttendance } from '@/features/service-provision/useSyncAttendance';
+import PrintIcon from '@mui/icons-material/Print';
+import SyncIcon from '@mui/icons-material/Sync';
 
 // ─── ヘルパー ────────────────────────────────────────────────
 
@@ -111,6 +115,10 @@ const ServiceProvisionFormPage: React.FC = () => {
   // 日次一覧
   const [recordDate, setRecordDate] = useState(todayISO());
   const { records, loading: listLoading, refresh } = useServiceProvisionList(recordDate);
+
+  // 通園データ同期
+  const { syncStatus, syncedCount, syncError, syncMonth } = useSyncAttendance();
+  const isSyncing = syncStatus === 'syncing';
 
   // フォーム状態
   const [selectedUser, setSelectedUser] = useState<DailyUserOption | null>(null);
@@ -224,6 +232,44 @@ const ServiceProvisionFormPage: React.FC = () => {
           利用者ごとの提供実績を記録・保存します。
         </Typography>
       </Stack>
+
+      {/* ── 通園データ同期 ────────────────────────── */}
+      <Paper sx={{ p: 2, mb: 2, bgcolor: '#f0f4ff' }}>
+        <Stack direction="row" alignItems="center" spacing={2}>
+          <SyncIcon color="info" />
+          <Box sx={{ flex: 1 }}>
+            <Typography variant="subtitle2">通園管理データを同期</Typography>
+            <Typography variant="caption" color="text.secondary">
+              /daily/attendance の入退所データをサービス提供実績に変換します
+            </Typography>
+          </Box>
+          <Button
+            variant="outlined"
+            size="small"
+            startIcon={isSyncing ? <CircularProgress size={16} /> : <SyncIcon />}
+            disabled={isSyncing}
+            onClick={async () => {
+              const monthStr = recordDate.slice(0, 7);
+              const count = await syncMonth(monthStr);
+              if (count > 0) {
+                toast.success(`${count}件の実績を同期しました`);
+                await refresh();
+              } else if (syncError) {
+                toast.error(`同期エラー: ${syncError}`);
+              } else {
+                toast('同期対象のデータがありませんでした', { icon: 'ℹ️' });
+              }
+            }}
+          >
+            {isSyncing ? '同期中...' : `${recordDate.slice(0, 7)} 月の同期`}
+          </Button>
+        </Stack>
+        {syncStatus === 'done' && syncedCount > 0 && (
+          <Typography variant="caption" color="success.main" sx={{ mt: 0.5, display: 'block' }}>
+            ✓ {syncedCount}件の実績を同期完了
+          </Typography>
+        )}
+      </Paper>
 
       <Paper sx={{ p: 3 }}>
         <Stack spacing={2.5}>
@@ -554,8 +600,44 @@ const ServiceProvisionFormPage: React.FC = () => {
           </TableContainer>
         )}
       </Paper>
+
+      {/* ── いそかつ書式プレビュー ─────────────────────── */}
+      <Paper sx={{ p: 3, mt: 3, overflow: 'auto' }}>
+        <Typography
+          variant="h6"
+          sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 2 }}
+        >
+          <PrintIcon color="primary" />
+          帳票プレビュー（いそかつ書式）
+        </Typography>
+        <IsokatsuSheetPreview
+          yearMonth={recordDate.slice(0, 7)}
+          userName="吉田　卓"
+          recipientCertNumber="0009536301"
+          supportGrade={5}
+          contractDays={23}
+          facilityNumber="1410700510"
+          facilityName="磯子区障害者地域活動ホーム"
+          records={records.length > 0 ? records : SAMPLE_RECORDS}
+        />
+      </Paper>
     </Box>
   );
 };
+
+// ─── サンプルデータ（いそかつ書式プレビュー用） ────────────
+
+const SAMPLE_RECORDS: ServiceProvisionRecord[] = [
+  { id: 1, entryKey: 'I031|2026-03-02', userCode: 'I031', recordDateISO: '2026-03-02', status: '提供', startHHMM: 930, endHHMM: 1600, hasTransportPickup: true, hasTransportDropoff: true, hasMeal: true, hasBath: false },
+  { id: 2, entryKey: 'I031|2026-03-03', userCode: 'I031', recordDateISO: '2026-03-03', status: '提供', startHHMM: 930, endHHMM: 1600, hasTransportPickup: true, hasTransportDropoff: true, hasMeal: true, hasBath: false },
+  { id: 3, entryKey: 'I031|2026-03-04', userCode: 'I031', recordDateISO: '2026-03-04', status: '提供', startHHMM: 930, endHHMM: 1600, hasTransportPickup: true, hasTransportDropoff: true, hasMeal: true, hasBath: true },
+  { id: 4, entryKey: 'I031|2026-03-05', userCode: 'I031', recordDateISO: '2026-03-05', status: '欠席', note: '発熱のため' },
+  { id: 5, entryKey: 'I031|2026-03-06', userCode: 'I031', recordDateISO: '2026-03-06', status: '提供', startHHMM: 930, endHHMM: 1600, hasTransportPickup: true, hasTransportDropoff: true, hasMeal: true, hasBath: false },
+  { id: 6, entryKey: 'I031|2026-03-09', userCode: 'I031', recordDateISO: '2026-03-09', status: '提供', startHHMM: 930, endHHMM: 1600, hasTransportPickup: true, hasTransportDropoff: true, hasMeal: true, hasBath: false },
+  { id: 7, entryKey: 'I031|2026-03-10', userCode: 'I031', recordDateISO: '2026-03-10', status: '提供', startHHMM: 930, endHHMM: 1600, hasTransportPickup: true, hasTransportDropoff: true, hasMeal: true, hasBath: false },
+  { id: 8, entryKey: 'I031|2026-03-11', userCode: 'I031', recordDateISO: '2026-03-11', status: '提供', startHHMM: 930, endHHMM: 1600, hasTransportPickup: true, hasTransportDropoff: true, hasMeal: true, hasBath: true },
+  { id: 9, entryKey: 'I031|2026-03-12', userCode: 'I031', recordDateISO: '2026-03-12', status: '提供', startHHMM: 930, endHHMM: 1600, hasTransportPickup: true, hasTransportDropoff: true, hasMeal: true, hasBath: false },
+  { id: 10, entryKey: 'I031|2026-03-13', userCode: 'I031', recordDateISO: '2026-03-13', status: '提供', startHHMM: 930, endHHMM: 1600, hasTransportPickup: true, hasTransportDropoff: true, hasMeal: true, hasBath: false },
+];
 
 export default ServiceProvisionFormPage;

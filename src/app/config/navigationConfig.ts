@@ -375,6 +375,14 @@ export function createNavItems(config: CreateNavItemsConfig): NavItem[] {
       group: 'record' as NavGroupKey,
     },
     {
+      label: 'サービス提供実績記録',
+      to: '/records/service-provision',
+      isActive: (pathname) => pathname.startsWith('/records/service-provision'),
+      icon: undefined,
+      audience: NAV_AUDIENCE.staff,
+      group: 'record' as NavGroupKey,
+    },
+    {
       label: '支援ハブ',
       to: '/ibd',
       isActive: (pathname) => pathname === '/ibd',

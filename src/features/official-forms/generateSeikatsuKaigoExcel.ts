@@ -1,30 +1,36 @@
 /**
- * 生活介護サービス提供実績記録票 — Excel生成
+ * 生活介護サービス提供実績記録票 — Excel生成（いそかつ書式準拠）
  *
  * テンプレ xlsx をベースにセル差し込みで生成。
  * ExcelJS を使用（ブラウザ互換）。
  *
- * セルマッピング（テンプレ解析結果）:
+ * ■ テンプレ: 「いそかつ書式」シート（new実績記録票(自動）2025(R7).xlsm）
+ *
+ * セルマッピング（いそかつ書式 解析結果）:
  *   ヘッダ:
- *     E2: 年月（令和＿＿年＿＿月分）
- *     I4: 受給者証番号
- *     T4: 支給決定障害者氏名
- *     AR4: 事業所番号（事業者名）
- *   日次データ（Row 11～41 = 日:1～31）:
- *     A: 日番号（テンプレにプリセット）
- *     I: サービス提供の状況
- *     N: 開始時間
- *     S: 終了時間
- *     X: 算定時間数
- *     AA: 送迎加算・往
- *     AC: 送迎加算・復
- *     AJ: 食事提供加算
- *     AP: 入浴支援加算
+ *     E5:  年月（serial date → 令和表記はマクロ担当。システムは K5 に月番号）
+ *     J6:  受給者証番号（10桁をセル J6〜S6 に1桁ずつ）
+ *     T6:  支給決定障害者氏名（AH6 に値）
+ *     AS6: 事業所番号（BP6〜BY6 に1桁ずつ）
+ *     N9:  契約支給量（日数）
+ *   日次データ（Row 14～44 = 日:1～31）:
+ *     D:  日付（テンプレにプリセット serial date）
+ *     G:  曜日
+ *     J:  サービス提供の状況
+ *     M:  開始時間（HH部分）  Q: コロン（テンプレ）
+ *     V:  終了時間（HH部分）  Z: コロン（テンプレ）
+ *     AE: 算定時間数
+ *     AI: 送迎加算・往
+ *     AK: 送迎加算・復
+ *     AR: 食事提供加算
+ *     AX: 入浴支援加算
+ *     BN: 利用者確認欄
+ *     BS: 備考
  */
-import ExcelJS from 'exceljs';
-import type { ServiceProvisionRecord } from '@/features/service-provision/domain/types';
-import type { KokuhorenUserProfile } from '@/features/kokuhoren-validation/types';
 import { calcDurationMinutes, durationToTimeCode } from '@/features/kokuhoren-validation/derive';
+import type { KokuhorenUserProfile } from '@/features/kokuhoren-validation/types';
+import type { ServiceProvisionRecord } from '@/features/service-provision/domain/types';
+import ExcelJS from 'exceljs';
 
 // ─── 入力型 ──────────────────────────────────────────────────
 
@@ -53,7 +59,8 @@ export interface SeikatsuKaigoSheetOutput {
 
 // ─── ヘルパー ────────────────────────────────────────────────
 
-const DATA_ROW_START = 11; // Row 11 = 日:1
+/** いそかつ書式の日次データ開始行（Row 14 = 1日目） */
+const DATA_ROW_START = 14;
 
 /** YYYY-MM → '令和XX年XX月分' */
 function toWarekiMonth(yearMonth: string): string {
@@ -62,12 +69,12 @@ function toWarekiMonth(yearMonth: string): string {
   return `令和${String(reiwa).padStart(2, '　')}年${String(m).padStart(2, '　')}月分`;
 }
 
-/** HHMM → "HH:MM" */
-function formatHHMM(hhmm: number | null | undefined): string {
-  if (hhmm == null) return '';
+/** HHMM → 時間部分と分部分を分離 */
+function splitHHMM(hhmm: number | null | undefined): { h: string; m: string } | null {
+  if (hhmm == null) return null;
   const h = Math.floor(hhmm / 100);
   const m = hhmm % 100;
-  return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
+  return { h: String(h).padStart(2, '0'), m: String(m).padStart(2, '0') };
 }
 
 /** 日付文字列からその月の日数を取得 */
@@ -85,26 +92,33 @@ function getWeekday(yearMonth: string, day: number): string {
   return WEEKDAY_NAMES[d.getDay()];
 }
 
-// ─── セル差し込みカラム定義 ──────────────────────────────────
+// ─── いそかつ書式 セル差し込みカラム定義 ─────────────────────
 
-/** ExcelJS での列番号（1-indexed） */
+/**
+ * ExcelJS での列番号（1-indexed）
+ * いそかつ書式シートの解析結果に基づく
+ */
 const COL = {
-  day: 1,       // A
-  weekday: 6,   // F
-  status: 9,    // I
-  start: 14,    // N
-  end: 19,      // S
-  timeCode: 24, // X
-  pickUp: 27,   // AA
-  dropOff: 29,  // AC
-  meal: 36,     // AJ
-  bath: 42,     // AP
+  day: 4,        // D — 日付
+  weekday: 7,    // G — 曜日
+  status: 10,    // J — サービス提供の状況
+  startH: 13,    // M — 開始時間（HH部分）
+  startM: 18,    // R — 開始時間（MM部分、コロンはQ=17にテンプレ済み）
+  endH: 22,      // V — 終了時間（HH部分）
+  endM: 27,      // AA — 終了時間（MM部分、コロンはZ=26にテンプレ済み）
+  timeCode: 31,  // AE — 算定時間数
+  pickUp: 35,    // AI — 送迎加算・往
+  dropOff: 37,   // AK — 送迎加算・復
+  meal: 44,      // AR — 食事提供加算
+  bath: 50,      // AX — 入浴支援加算
+  userConfirm: 66, // BN — 利用者確認欄
+  note: 71,      // BS — 備考
 } as const;
 
 // ─── メイン生成 ──────────────────────────────────────────────
 
 /**
- * テンプレ xlsx をロードし、セル差し込みで生成
+ * テンプレ xlsx をロードし、セル差し込みで生成（いそかつ書式準拠）
  *
  * @param templateBuffer - テンプレ xlsx のバイナリ
  * @param input - 差し込みデータ
@@ -117,18 +131,36 @@ export async function generateSeikatsuKaigoExcel(
   const wb = new ExcelJS.Workbook();
   await wb.xlsx.load(templateBuffer);
 
-  const ws = wb.worksheets[0];
+  // いそかつ書式シートを使用（シート名で検索、なければ最初のシート）
+  const ws = wb.worksheets.find(s => s.name.includes('いそかつ')) ?? wb.worksheets[0];
   if (!ws) throw new Error('テンプレートにワークシートがありません');
 
   // ── ヘッダ差し込み ─────────────────────────────
-  // E2: 年月
-  ws.getCell('E2').value = toWarekiMonth(input.yearMonth);
-  // I4: 受給者証番号
-  ws.getCell('I4').value = input.user.recipientCertNumber ?? '';
-  // T4: 氏名
-  ws.getCell('T4').value = input.user.userName;
-  // AR4: 事業所番号
-  ws.getCell('AR4').value = input.facility.facilityNumber;
+  // E5: 年月（令和表記）
+  ws.getCell('E5').value = toWarekiMonth(input.yearMonth);
+  // K5: 月番号
+  const [, monthNum] = input.yearMonth.split('-').map(Number);
+  ws.getCell('K5').value = monthNum;
+
+  // T6 (col 19+1=20): 氏名 → AH6 (col 34)
+  ws.getCell('AH6').value = input.user.userName;
+
+  // 受給者証番号: J6〜S6 に1桁ずつ（10桁）
+  const certNum = (input.user.recipientCertNumber ?? '').padStart(10, '0');
+  for (let i = 0; i < 10; i++) {
+    ws.getRow(6).getCell(10 + i).value = parseInt(certNum[i], 10); // J=10, K=11, ..., S=19
+  }
+
+  // 事業所番号: BP6〜BY6 に1桁ずつ（10桁）
+  const facNum = input.facility.facilityNumber.padStart(10, '0');
+  for (let i = 0; i < 10; i++) {
+    ws.getRow(6).getCell(68 + i).value = parseInt(facNum[i], 10); // BP=68, BQ=69, ..., BY=77
+  }
+
+  // 事業所名: BG8
+  if (input.facility.facilityName) {
+    ws.getCell('BG8').value = input.facility.facilityName;
+  }
 
   // ── レコードを日ごとにマップ ────────────────────
   const recordByDay = new Map<number, ServiceProvisionRecord>();
@@ -139,13 +171,13 @@ export async function generateSeikatsuKaigoExcel(
 
   const maxDay = daysInMonth(input.yearMonth);
 
-  // ── 日次データ差し込み（Row 11 = day 1 → Row 41 = day 31）
+  // ── 日次データ差し込み（Row 14 = day 1 → Row 44 = day 31）
   for (let day = 1; day <= 31; day++) {
     const rowNum = DATA_ROW_START + (day - 1);
     const row = ws.getRow(rowNum);
 
     if (day > maxDay) {
-      // その月に存在しない日は空欄（テンプレの日番号もクリア）
+      // その月に存在しない日は空欄
       continue;
     }
 
@@ -159,9 +191,19 @@ export async function generateSeikatsuKaigoExcel(
     row.getCell(COL.status).value = record.status;
 
     if (record.status === '提供') {
-      // 開始/終了
-      row.getCell(COL.start).value = formatHHMM(record.startHHMM);
-      row.getCell(COL.end).value = formatHHMM(record.endHHMM);
+      // 開始時間（HH:MM を分割して配置）
+      const startParts = splitHHMM(record.startHHMM);
+      if (startParts) {
+        row.getCell(COL.startH).value = startParts.h;
+        row.getCell(COL.startM).value = startParts.m;
+      }
+
+      // 終了時間
+      const endParts = splitHHMM(record.endHHMM);
+      if (endParts) {
+        row.getCell(COL.endH).value = endParts.h;
+        row.getCell(COL.endM).value = endParts.m;
+      }
 
       // 算定時間コード
       if (record.startHHMM != null && record.endHHMM != null) {
@@ -178,6 +220,9 @@ export async function generateSeikatsuKaigoExcel(
     // 加算
     if (record.hasMeal) row.getCell(COL.meal).value = 1;
     if (record.hasBath) row.getCell(COL.bath).value = 1;
+
+    // 備考
+    if (record.note) row.getCell(COL.note).value = record.note;
   }
 
   // ── 出力 ───────────────────────────────────────

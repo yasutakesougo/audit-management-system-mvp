@@ -15,6 +15,7 @@ import {
     type SelectChangeEvent,
     Typography,
 } from '@mui/material';
+import { useEffect, useState } from 'react';
 
 import {
     TRANSPORT_METHODS,
@@ -75,20 +76,31 @@ export function AttendanceDetailDrawer({
   onViewHandoff,
   onEditAbsenceDetail,
 }: AttendanceDetailDrawerProps): JSX.Element {
+  // ── Local state for transport methods (immediate UI feedback) ──
+  const [localToMethod, setLocalToMethod] = useState<TransportMethod>('self');
+  const [localFromMethod, setLocalFromMethod] = useState<TransportMethod>('self');
+
+  // Sync from props when drawer opens or visit changes
+  useEffect(() => {
+    if (visit) {
+      setLocalToMethod(
+        visit.transportToMethod ?? (visit.transportTo ? 'office_shuttle' : 'self'),
+      );
+      setLocalFromMethod(
+        visit.transportFromMethod ?? (visit.transportFrom ? 'office_shuttle' : 'self'),
+      );
+    }
+  }, [visit]);
+
   if (!user || !visit) {
     return <Drawer anchor="right" open={false} onClose={onClose} />;
   }
 
   const isAbsent = visit.status === '当日欠席';
 
-  // Resolve displayed method: method field > boolean fallback
-  const toMethod: TransportMethod =
-    visit.transportToMethod ?? (visit.transportTo ? 'office_shuttle' : 'self');
-  const fromMethod: TransportMethod =
-    visit.transportFromMethod ?? (visit.transportFrom ? 'office_shuttle' : 'self');
-
   const handleToMethodChange = (e: SelectChangeEvent<string>) => {
     const method = e.target.value as TransportMethod;
+    setLocalToMethod(method);
     onTransportToMethodChange?.(method);
     // Legacy boolean callback for backward compat
     onTransportToChange?.(method === 'office_shuttle');
@@ -96,6 +108,7 @@ export function AttendanceDetailDrawer({
 
   const handleFromMethodChange = (e: SelectChangeEvent<string>) => {
     const method = e.target.value as TransportMethod;
+    setLocalFromMethod(method);
     onTransportFromMethodChange?.(method);
     // Legacy boolean callback for backward compat
     onTransportFromChange?.(method === 'office_shuttle');
@@ -170,9 +183,10 @@ export function AttendanceDetailDrawer({
               <InputLabel id="transport-to-label">行き</InputLabel>
               <Select
                 labelId="transport-to-label"
-                value={toMethod}
+                value={localToMethod}
                 label="行き"
                 onChange={handleToMethodChange}
+                MenuProps={{ sx: { zIndex: 1500 } }}
               >
                 {TRANSPORT_METHODS.map((m) => (
                   <MenuItem key={m} value={m}>
@@ -185,9 +199,10 @@ export function AttendanceDetailDrawer({
               <InputLabel id="transport-from-label">帰り</InputLabel>
               <Select
                 labelId="transport-from-label"
-                value={fromMethod}
+                value={localFromMethod}
                 label="帰り"
                 onChange={handleFromMethodChange}
+                MenuProps={{ sx: { zIndex: 1500 } }}
               >
                 {TRANSPORT_METHODS.map((m) => (
                   <MenuItem key={m} value={m}>
