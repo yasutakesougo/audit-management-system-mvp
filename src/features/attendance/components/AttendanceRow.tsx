@@ -176,9 +176,9 @@ export function AttendanceRow({
 
         <Button
           variant={canCheckOut ? 'contained' : 'outlined'}
-          disabled={isSaving || !canCheckOut || isAbsent || isRunMode}
+          disabled={isSaving || !canCheckOut || isAbsent}
           onClick={onCheckOut}
-          sx={{ minHeight: 44, minWidth: 92, fontWeight: 700, ...secondarySx }}
+          sx={{ minHeight: 44, minWidth: 92, fontWeight: 700, ...(isRunMode && !canCheckOut ? secondarySx : {}) }}
         >
           {visit.checkOutAtText && isDone ? `退所 ${visit.checkOutAtText}` : '退所'}
           {isSaving && canCheckOut ? savingSpinner : null}
