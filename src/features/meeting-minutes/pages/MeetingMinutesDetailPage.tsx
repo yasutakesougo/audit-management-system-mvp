@@ -283,6 +283,7 @@ export function MeetingMinutesDetailPage(props: { repo: MeetingMinutesRepository
           <Button
             variant="contained"
             disabled={sending || (!sendSummary && !sendDecisions && !sendActions)}
+            startIcon={sending ? <CircularProgress size={16} color="inherit" /> : undefined}
             onClick={async () => {
               setSending(true);
               setSendError(null);
@@ -330,7 +331,6 @@ export function MeetingMinutesDetailPage(props: { repo: MeetingMinutesRepository
           </Button>
         </DialogActions>
       </Dialog>
-            startIcon={sending ? <CircularProgress size={16} color="inherit" /> : undefined}
     </Box>
   );
 }
