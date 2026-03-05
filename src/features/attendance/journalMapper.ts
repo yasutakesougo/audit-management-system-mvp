@@ -11,7 +11,20 @@ import type { TransportMethod } from '@/features/attendance/transportMethod';
 // ── Output Types ────────────────────────────────────────────────────────────
 
 export type JournalAttendanceStatus = '出席' | '欠席' | '遅刻' | '早退' | '休日';
-export type JournalTransportCode = '' | '活送迎→○' | '家族→K' | '電車→D' | 'バス→B' | '徒歩→T';
+export type JournalTransportCode =
+  | ''
+  | '活送迎→○'
+  | '家族→K'
+  | '家族(車)→KK'
+  | '家族(電車)→KD'
+  | '家族(バス)→KB'
+  | '家族(徒歩)→KT'
+  | '電車→D'
+  | 'バス→B'
+  | '徒歩→T'
+  | 'ＳＳ'
+  | '一時ケア'
+  | string; // other_facility uses free-text
 
 export interface PersonalDayEntry {
   day: number;
@@ -58,16 +71,24 @@ export function mapStatusToJournal(
 const TRANSPORT_METHOD_TO_JOURNAL: Record<TransportMethod, JournalTransportCode> = {
   office_shuttle: '活送迎→○',
   family: '家族→K',
+  family_car: '家族(車)→KK',
+  family_train: '家族(電車)→KD',
+  family_bus: '家族(バス)→KB',
+  family_walk: '家族(徒歩)→KT',
   self: '徒歩→T',
   guide_helper: '活送迎→○', // ガイドヘルパーは送迎扱い
+  short_stay: 'ＳＳ',
+  temporary_care: '一時ケア',
+  other_facility: '', // noteに施設名
   other: '',
 };
 
 /**
  * TransportMethod enum → 日誌の送迎コード
  */
-export function mapTransportToJournal(method?: TransportMethod): JournalTransportCode {
+export function mapTransportToJournal(method?: TransportMethod, note?: string): JournalTransportCode {
   if (!method) return '';
+  if (method === 'other_facility' && note?.trim()) return note.trim();
   return TRANSPORT_METHOD_TO_JOURNAL[method] ?? '';
 }
 
@@ -116,9 +137,9 @@ export function mapVisitToJournalEntry(
     day: date.getDate(),
     dow: DOW_LABELS[date.getDay()],
     attendance: mapStatusToJournal(visit.status, visit.isEarlyLeave),
-    arrivalTransport: isAbsent ? '' : mapTransportToJournal(visit.transportToMethod),
+    arrivalTransport: isAbsent ? '' : mapTransportToJournal(visit.transportToMethod, visit.transportToNote),
     arrivalTime: isAbsent ? '' : formatTimeJST(visit.checkInAt),
-    departTransport: isAbsent ? '' : mapTransportToJournal(visit.transportFromMethod),
+    departTransport: isAbsent ? '' : mapTransportToJournal(visit.transportFromMethod, visit.transportFromNote),
     departTime: isAbsent ? '' : formatTimeJST(visit.checkOutAt),
     mealAmount: isAbsent ? undefined : extra?.mealAmount,
     amActivity: isAbsent ? '' : (extra?.amActivity ?? ''),
