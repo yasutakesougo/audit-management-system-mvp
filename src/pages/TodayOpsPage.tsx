@@ -20,6 +20,7 @@ import { useNextAction } from '@/features/today/hooks/useNextAction';
 import { TodayBentoLayout } from '@/features/today/layouts/TodayBentoLayout';
 import { recordAutoNextComplete, recordAutoNextSave } from '@/features/today/records/autoNextCounters';
 import { QuickRecordDrawer } from '@/features/today/records/QuickRecordDrawer';
+import { resolveNextUser } from '@/features/today/records/resolveNextUser';
 import { useQuickRecord } from '@/features/today/records/useQuickRecord';
 import { useTransportStatus } from '@/features/today/transport';
 import { ApprovalDialog } from '@/features/today/widgets/ApprovalDialog';
@@ -157,16 +158,7 @@ export const TodayOpsPage: React.FC = () => {
     recordAutoNextSave();
 
     const pendingUserIds = summary?.dailyRecordStatus?.pendingUserIds || [];
-    const currentUserId = quickRecord.userId;
-
-    const idx = currentUserId ? pendingUserIds.indexOf(currentUserId) : -1;
-    let nextUserId: string | undefined;
-
-    if (idx >= 0 && idx + 1 < pendingUserIds.length) {
-      nextUserId = pendingUserIds[idx + 1];
-    } else if (idx === -1 && pendingUserIds.length > 0) {
-      nextUserId = pendingUserIds[0];
-    }
+    const nextUserId = resolveNextUser(quickRecord.userId, pendingUserIds);
 
     if (nextUserId) {
       setTimeout(() => {
