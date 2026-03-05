@@ -262,16 +262,18 @@ const TimeBasedSupportRecordPage: React.FC = () => {
           </Box>
         ) : null}
 
-        {/* ── Stepper ── */}
-        <Box sx={{ px: 2, pt: 1.5, pb: 0.5 }}>
-          <Stepper activeStep={wizard.stepIndex} alternativeLabel>
-            {wizard.stepLabels.map((label) => (
-              <Step key={label}>
-                <StepLabel>{label}</StepLabel>
-              </Step>
-            ))}
-          </Stepper>
-        </Box>
+        {/* ── Stepper (Record ステップでは非表示 → 入力スペース確保) ── */}
+        {wizard.step !== 'record' && (
+          <Box sx={{ px: 2, pt: 1.5, pb: 0.5 }}>
+            <Stepper activeStep={wizard.stepIndex} alternativeLabel>
+              {wizard.stepLabels.map((label) => (
+                <Step key={label}>
+                  <StepLabel>{label}</StepLabel>
+                </Step>
+              ))}
+            </Stepper>
+          </Box>
+        )}
 
         {/* ── Step Content ── */}
         <Box sx={{ flex: 1, minHeight: 0, overflow: 'hidden' }}>

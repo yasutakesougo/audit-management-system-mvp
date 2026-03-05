@@ -3,6 +3,8 @@
  *
  * 選択された時間帯の記録フォームを表示。
  * 保存後は Step 2 (Plan) に戻って次の時間帯を選択（連続入力フロー）。
+ *
+ * NOTE: ヘッダーはコンパクトに1行で表示し、縦スペースを最大化。
  */
 import type { ScheduleItem } from '@/features/daily/components/split-stream/ProcedurePanel';
 import { RecordPanel, type RecordPanelLockState } from '@/features/daily/components/split-stream/RecordPanel';
@@ -10,7 +12,7 @@ import type { BehaviorObservation } from '@/features/daily/domain/daily/types';
 import { getScheduleKey } from '@/features/daily/domain/getScheduleKey';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import Box from '@mui/material/Box';
-import Button from '@mui/material/Button';
+import IconButton from '@mui/material/IconButton';
 import Typography from '@mui/material/Typography';
 import React, { memo, useCallback } from 'react';
 
@@ -56,30 +58,43 @@ export const RecordInputStep: React.FC<RecordInputStepProps> = memo(({
   }, [onAfterSubmit]);
 
   return (
-    <Box sx={{ p: 2, height: '100%', display: 'flex', flexDirection: 'column', gap: 1 }}>
-      {/* ── Header ── */}
-      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, pb: 1 }}>
-        <Button
-          startIcon={<ArrowBackIcon />}
-          onClick={onBack}
-          size="small"
-          sx={{ textTransform: 'none' }}
-        >
-          Plan へ戻る
-        </Button>
-        <Box sx={{ flex: 1 }}>
-          <Typography variant="h6" fontWeight={600}>
-            {userName} 様
-          </Typography>
-          {slotLabel && (
-            <Typography variant="caption" color="text.secondary">
-              {slotLabel.time} — {slotLabel.activity}
+    <Box sx={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
+      {/* ── Compact header: [←] ユーザー名 | 09:15 持ち物整理 ── */}
+      <Box
+        sx={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: 0.5,
+          px: 1,
+          py: 0.5,
+          borderBottom: 1,
+          borderColor: 'divider',
+          bgcolor: 'background.paper',
+          minHeight: 40,
+        }}
+      >
+        <IconButton onClick={onBack} size="small" aria-label="Plan へ戻る">
+          <ArrowBackIcon fontSize="small" />
+        </IconButton>
+        <Typography variant="subtitle2" fontWeight={600} noWrap>
+          {userName}
+        </Typography>
+        {slotLabel && (
+          <>
+            <Typography variant="body2" color="text.secondary" sx={{ mx: 0.5 }}>
+              ›
             </Typography>
-          )}
-        </Box>
+            <Typography variant="subtitle2" color="primary.main" fontWeight={600} noWrap>
+              {slotLabel.time}
+            </Typography>
+            <Typography variant="body2" color="text.secondary" noWrap sx={{ flex: 1, minWidth: 0 }}>
+              {slotLabel.activity}
+            </Typography>
+          </>
+        )}
       </Box>
 
-      {/* ── Record form (既存コンポーネント再利用) ── */}
+      {/* ── Record form (RecordPanel compact mode) ── */}
       <Box sx={{ flex: 1, minHeight: 0, overflowY: 'auto' }}>
         <RecordPanel
           lockState={lockState}
@@ -89,6 +104,7 @@ export const RecordInputStep: React.FC<RecordInputStepProps> = memo(({
           onSlotChange={onSlotChange}
           onAfterSubmit={handleAfterSubmit}
           recordDate={recordDate}
+          compact
         />
       </Box>
     </Box>

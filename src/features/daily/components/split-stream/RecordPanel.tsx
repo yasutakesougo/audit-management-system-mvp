@@ -32,6 +32,8 @@ type InteractiveRecordPanelProps = {
   onSlotChange?: (next: string) => void;
   onAfterSubmit?: (slotKey: string | null) => void;
   recordDate?: Date;
+  /** コンパクトモード: タイトル行非表示、余白縮小 (ウィザード用) */
+  compact?: boolean;
   children?: undefined;
 };
 
@@ -117,7 +119,7 @@ export function RecordPanel(props: RecordPanelProps): JSX.Element {
     );
   }
 
-  const { title, lockState, onSubmit, schedule = [], selectedSlotKey: controlledSlotKey, onSlotChange, onAfterSubmit, recordDate } = props;
+  const { title, lockState, onSubmit, schedule = [], selectedSlotKey: controlledSlotKey, onSlotChange, onAfterSubmit, recordDate, compact = false } = props;
   const [selectedBehavior, setSelectedBehavior] = useState<string | null>(null);
   const [selectedAntecedent, setSelectedAntecedent] = useState<string | null>(null);
   const [selectedConsequence, setSelectedConsequence] = useState<string | null>(null);
@@ -277,13 +279,15 @@ export function RecordPanel(props: RecordPanelProps): JSX.Element {
 
   return (
     <Card
-      variant="outlined"
+      variant={compact ? 'elevation' : 'outlined'}
+      elevation={0}
       sx={{
         height: '100%',
         display: 'flex',
         flexDirection: 'column',
         position: 'relative',
         transition: 'none',
+        ...(compact && { border: 'none', borderRadius: 0 }),
         // hover/focus でピクつきやすい MUI の定番クラスだけ止める
         '& .MuiButtonBase-root, & .MuiChip-root, & .MuiToggleButton-root, & .MuiIconButton-root': {
           transition: 'none !important',
@@ -326,17 +330,19 @@ export function RecordPanel(props: RecordPanelProps): JSX.Element {
           </Typography>
         </Box>
       )}
-      <CardContent sx={{ flex: 1, overflowY: 'auto', p: 2, opacity: isLocked ? 0.5 : 1 }}>
-        <Stack spacing={3}>
-          <Box display="flex" justifyContent="space-between" alignItems="center" flexWrap="wrap" gap={1}>
-            <Typography variant="h6" component="h2" fontWeight="bold">
-              {title ?? '支援・行動記録 (Do)'}
-            </Typography>
-            <Stack direction="row" spacing={1} alignItems="center">
-              <Chip label={`記録日 ${recordDateLabel}`} size="small" />
-              <Chip icon={<AccessTimeIcon />} label={timestamp} size="small" />
-            </Stack>
-          </Box>
+      <CardContent sx={{ flex: 1, overflowY: 'auto', p: compact ? 1 : 2, opacity: isLocked ? 0.5 : 1 }}>
+        <Stack spacing={compact ? 1.5 : 3}>
+          {!compact && (
+            <Box display="flex" justifyContent="space-between" alignItems="center" flexWrap="wrap" gap={1}>
+              <Typography variant="h6" component="h2" fontWeight="bold">
+                {title ?? '支援・行動記録 (Do)'}
+              </Typography>
+              <Stack direction="row" spacing={1} alignItems="center">
+                <Chip label={`記録日 ${recordDateLabel}`} size="small" />
+                <Chip icon={<AccessTimeIcon />} label={timestamp} size="small" />
+              </Stack>
+            </Box>
+          )}
 
           <PlanSlotSelector
             schedule={schedule}
