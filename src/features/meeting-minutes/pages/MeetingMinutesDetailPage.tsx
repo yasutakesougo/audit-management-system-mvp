@@ -192,6 +192,28 @@ export function MeetingMinutesDetailPage(props: { repo: MeetingMinutesRepository
               </Box>
             </Stack>
 
+            {isDailyMeeting && (minutes.staffAttendance || minutes.userHealthNotes) && (
+              <>
+                <Divider />
+                {minutes.staffAttendance && (
+                  <Box>
+                    <Typography variant="subtitle2">
+                      {minutes.category === '朝会' ? '👥 職員の出欠・配置確認' : '👥 夜勤・翌日の配置'}
+                    </Typography>
+                    {renderMultiline(minutes.staffAttendance)}
+                  </Box>
+                )}
+                {minutes.userHealthNotes && (
+                  <Box>
+                    <Typography variant="subtitle2">
+                      {minutes.category === '朝会' ? '🏥 利用者の体調・特記事項' : '🏥 日中の利用者の様子'}
+                    </Typography>
+                    {renderMultiline(minutes.userHealthNotes)}
+                  </Box>
+                )}
+              </>
+            )}
+
             <Divider />
 
             <Box>

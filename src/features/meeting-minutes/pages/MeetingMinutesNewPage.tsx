@@ -1,9 +1,9 @@
 import * as React from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 
-import type { MeetingMinutesRepository } from '../sp/repository';
-import { useCreateMeetingMinutes } from '../hooks/useMeetingMinutes';
 import { MeetingMinutesForm, createDefaultDraft } from '../components/MeetingMinutesForm';
+import { useCreateMeetingMinutes } from '../hooks/useMeetingMinutes';
+import type { MeetingMinutesRepository } from '../sp/repository';
 import type { MeetingCategory } from '../types';
 
 const isMeetingCategory = (value: string | null): value is MeetingCategory =>
@@ -20,18 +20,34 @@ export function MeetingMinutesNewPage(props: { repo: MeetingMinutesRepository })
   const [searchParams] = useSearchParams();
   const create = useCreateMeetingMinutes(repo);
 
+  const categoryParam = searchParams.get('category');
+
   const [draft, setDraft] = React.useState(() => {
     const base = createDefaultDraft();
-    const category = searchParams.get('category');
-    if (!isMeetingCategory(category)) {
+    if (!isMeetingCategory(categoryParam)) {
       return base;
     }
     return {
       ...base,
-      category,
-      title: `${category}_${base.meetingDate}`,
+      category: categoryParam,
+      title: `${categoryParam}_${base.meetingDate}`,
     };
   });
+
+  // サイドメニューで朝会⇔夕会を切り替えたときにdraftを再初期化
+  React.useEffect(() => {
+    if (isMeetingCategory(categoryParam)) {
+      setDraft((prev) => {
+        if (prev.category === categoryParam) return prev;
+        const base = createDefaultDraft();
+        return {
+          ...base,
+          category: categoryParam,
+          title: `${categoryParam}_${base.meetingDate}`,
+        };
+      });
+    }
+  }, [categoryParam]);
 
   return (
     <MeetingMinutesForm

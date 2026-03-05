@@ -16,4 +16,7 @@ export type MeetingMinutes = {
   isPublished?: boolean;
   created?: string;
   modified?: string;
+  // 朝会・夕会専用フィールド
+  staffAttendance?: string;    // 職員の出欠・配置状況
+  userHealthNotes?: string;    // 利用者の体調・特記事項
 };
