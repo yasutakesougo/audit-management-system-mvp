@@ -1,6 +1,6 @@
 import {
-	calculateRetryAfterTimestamp,
-	getNextCooldownTimestamp
+    calculateRetryAfterTimestamp,
+    getNextCooldownTimestamp
 } from '@/features/dashboard/logic/syncGuardrails';
 import { HYDRATION_FEATURES, estimatePayloadSize, startFeatureSpan } from '@/hydration/features';
 import { isSchedulesFeatureEnabled, shouldSkipSharePoint } from '@/lib/env';
@@ -14,6 +14,7 @@ export type MiniSchedule = {
 	id: number;
 	title: string;
 	startText: string;
+	endText?: string;
 	status?: string;
 	allDay?: boolean;
 };
@@ -40,16 +41,29 @@ const fallbackTimeFormatter = new Intl.DateTimeFormat('ja-JP', {
 /** Convert a typed ScheduleItem to a MiniSchedule for the dashboard widget */
 const toMiniSchedule = (item: ScheduleItem, index: number): MiniSchedule => {
 	let startText = FALLBACK_START_TEXT;
+	let endText: string | undefined;
 	if (item.allDay) {
 		startText = '終日';
-	} else if (item.start?.trim()) {
-		try {
-			startText = formatInTimeZone(new Date(item.start), TIMEZONE, 'HH:mm');
-		} catch {
-			const d = new Date(item.start);
-			startText = Number.isNaN(d.getTime())
-				? FALLBACK_START_TEXT
-				: fallbackTimeFormatter.format(d);
+	} else {
+		if (item.start?.trim()) {
+			try {
+				startText = formatInTimeZone(new Date(item.start), TIMEZONE, 'HH:mm');
+			} catch {
+				const d = new Date(item.start);
+				startText = Number.isNaN(d.getTime())
+					? FALLBACK_START_TEXT
+					: fallbackTimeFormatter.format(d);
+			}
+		}
+		if (item.end?.trim()) {
+			try {
+				endText = formatInTimeZone(new Date(item.end), TIMEZONE, 'HH:mm');
+			} catch {
+				const d = new Date(item.end);
+				if (!Number.isNaN(d.getTime())) {
+					endText = fallbackTimeFormatter.format(d);
+				}
+			}
 		}
 	}
 
@@ -59,6 +73,7 @@ const toMiniSchedule = (item: ScheduleItem, index: number): MiniSchedule => {
 		id: Number.isFinite(numericId) ? numericId : index + 1,
 		title: item.title?.trim() || (item.allDay ? '終日の予定' : '予定'),
 		startText,
+		endText,
 		status: item.status ?? undefined,
 		allDay: item.allDay === true,
 	};
