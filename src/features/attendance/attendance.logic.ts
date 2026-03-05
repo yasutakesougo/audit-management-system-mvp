@@ -249,3 +249,39 @@ export function formatTime(iso?: string | null): string {
     timeZone: 'Asia/Tokyo',
   });
 }
+
+// ── Auto-checkout (batch discharge) ──────────────────────────
+
+/** サービス提供終了時刻（利用者の退所基準時刻） */
+export const SERVICE_END_TIME = '16:00';
+
+/**
+ * 自動退所の対象となる利用者コードを返す。
+ * 現在時刻が SERVICE_END_TIME を過ぎており、ステータスが '通所中' のユーザーが対象。
+ */
+export function getAutoCheckOutTargets(
+  visits: Pick<AttendanceVisit, 'userCode' | 'status'>[],
+  now: Date,
+  serviceEndTime: string = SERVICE_END_TIME,
+): string[] {
+  // まだサービス終了時刻前なら対象なし
+  if (isBeforeCloseTime(now, serviceEndTime)) return [];
+
+  return visits
+    .filter((v) => v.status === '通所中')
+    .map((v) => v.userCode);
+}
+
+/**
+ * サービス終了時刻の ISO タイムスタンプを構築する。
+ * recordDate (YYYY-MM-DD) + serviceEndTime (HH:mm) → JST ISO 文字列。
+ * 退所タイムスタンプとして使用（実際の操作時刻ではなくサービス終了時刻を記録）。
+ */
+export function buildServiceEndTimestamp(
+  recordDate: string,
+  serviceEndTime: string = SERVICE_END_TIME,
+): string {
+  const [hh, mm] = serviceEndTime.split(':').map((v) => parseInt(v, 10));
+  const padded = `${String(hh).padStart(2, '0')}:${String(mm).padStart(2, '0')}`;
+  return new Date(`${recordDate}T${padded}:00+09:00`).toISOString();
+}

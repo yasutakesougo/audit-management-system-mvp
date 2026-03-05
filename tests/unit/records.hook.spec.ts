@@ -1,7 +1,9 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { renderHook } from '@testing-library/react';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 // We will import the hook factory and mock useSP it depends on.
 import { useRecordsApi } from '../../src/features/records/api';
+import type { SupportRecordInsertDTO } from '../../src/features/records/types';
 
 const getListItemsByTitle = vi.fn();
 const addListItemByTitle = vi.fn();
@@ -18,8 +20,8 @@ describe('useRecordsApi', () => {
 
   it('list delegates to getListItemsByTitle with expected args and returns items', async () => {
     getListItemsByTitle.mockResolvedValueOnce([{ Id: 1, Title: 'R1' }]);
-    const api = useRecordsApi();
-    const rows = await api.list();
+    const { result } = renderHook(() => useRecordsApi());
+    const rows = await result.current.list();
     expect(rows.length).toBe(1);
     expect(getListItemsByTitle).toHaveBeenCalledTimes(1);
     const args = getListItemsByTitle.mock.calls[0];
@@ -31,8 +33,9 @@ describe('useRecordsApi', () => {
 
   it('add delegates to addListItemByTitle and returns created row', async () => {
     addListItemByTitle.mockResolvedValueOnce({ Id: 99, Title: 'Created' });
-    const api = useRecordsApi();
-    const created = await api.add({ Title: 'X' } as any);
+    const { result } = renderHook(() => useRecordsApi());
+    const body: SupportRecordInsertDTO = { Title: 'X' };
+    const created = await result.current.add(body);
     expect(created.Id).toBe(99);
     expect(addListItemByTitle).toHaveBeenCalledWith('SupportRecord_Daily', { Title: 'X' });
   });

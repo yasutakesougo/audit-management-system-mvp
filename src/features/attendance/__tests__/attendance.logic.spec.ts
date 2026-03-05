@@ -6,10 +6,12 @@
 
 import { describe, expect, it } from 'vitest';
 import {
+    buildServiceEndTimestamp,
     canCheckOut,
     computeAbsenceEligibility,
     diffMinutes,
     formatTime,
+    getAutoCheckOutTargets,
     getDiscrepancyCount,
     isBeforeCloseTime,
     type AttendanceUser,
@@ -227,5 +229,58 @@ describe('canCheckOut', () => {
 
     expect(canCheckOut(checkedOutVisit)).toBe(false);
     expect(canCheckOut(undefined)).toBe(false);
+  });
+});
+
+describe('getAutoCheckOutTargets', () => {
+  const visits: Pick<AttendanceVisit, 'userCode' | 'status'>[] = [
+    { userCode: 'U001', status: '通所中' },
+    { userCode: 'U002', status: '退所済' },
+    { userCode: 'U003', status: '通所中' },
+    { userCode: 'U004', status: '未' },
+    { userCode: 'U005', status: '当日欠席' },
+  ];
+
+  it('returns empty before service end time', () => {
+    const before = new Date('2025-11-17T15:59:00');
+    expect(getAutoCheckOutTargets(visits, before, '16:00')).toEqual([]);
+  });
+
+  it('returns 通所中 user codes at exactly service end time', () => {
+    const exactly = new Date('2025-11-17T16:00:00');
+    expect(getAutoCheckOutTargets(visits, exactly, '16:00')).toEqual(['U001', 'U003']);
+  });
+
+  it('returns 通所中 user codes after service end time', () => {
+    const after = new Date('2025-11-17T17:30:00');
+    expect(getAutoCheckOutTargets(visits, after, '16:00')).toEqual(['U001', 'U003']);
+  });
+
+  it('returns empty when no 通所中 users exist after service end', () => {
+    const noActive: Pick<AttendanceVisit, 'userCode' | 'status'>[] = [
+      { userCode: 'U001', status: '退所済' },
+      { userCode: 'U002', status: '未' },
+    ];
+    const after = new Date('2025-11-17T17:00:00');
+    expect(getAutoCheckOutTargets(noActive, after, '16:00')).toEqual([]);
+  });
+
+  it('returns empty for empty visits array', () => {
+    const after = new Date('2025-11-17T17:00:00');
+    expect(getAutoCheckOutTargets([], after, '16:00')).toEqual([]);
+  });
+});
+
+describe('buildServiceEndTimestamp', () => {
+  it('builds correct JST ISO timestamp for 16:00', () => {
+    const iso = buildServiceEndTimestamp('2025-11-17', '16:00');
+    // 16:00 JST = 07:00 UTC
+    expect(iso).toBe('2025-11-17T07:00:00.000Z');
+  });
+
+  it('builds correct JST ISO timestamp for 18:00', () => {
+    const iso = buildServiceEndTimestamp('2025-11-17', '18:00');
+    // 18:00 JST = 09:00 UTC
+    expect(iso).toBe('2025-11-17T09:00:00.000Z');
   });
 });
