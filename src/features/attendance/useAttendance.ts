@@ -315,6 +315,7 @@ export type UseAttendanceReturn = {
     setInputMode: (mode: AttendanceInputMode) => void;
     updateStatus: (userCode: string, status: AttendanceRowVM['status']) => Promise<void>;
     updateStatusWithAbsentSupport: (userCode: string, log: AbsentSupportLog) => Promise<void>;
+    updateRowFields: (userCode: string, fields: Partial<AttendanceRowVM>) => Promise<void>;
     saveTemperature: (userCode: string, temperature: number, onHighTempAction?: () => void) => Promise<void>;
     refresh: () => Promise<void>;
   };
@@ -564,6 +565,49 @@ export function useAttendance(): UseAttendanceReturn {
     [bumpSavingTick, filters.date, refresh, repository, rowsRaw],
   );
 
+  // ── Partial row field update (transport, userConfirm, etc.) ──
+  const updateRowFields = useCallback(
+    async (userCode: string, fields: Partial<AttendanceRowVM>) => {
+      if (savingUsersRef.current.has(userCode)) return;
+
+      const current = rowsRaw.find((row) => row.userCode === userCode);
+      if (!current) return;
+
+      savingUsersRef.current.add(userCode);
+      bumpSavingTick();
+
+      const nextRow: AttendanceRowVM = { ...current, ...fields };
+      const userName = current.FullName ?? userCode;
+
+      setRowsRaw((prev) => prev.map((row) => (row.userCode === userCode ? nextRow : row)));
+
+      try {
+        await repository.upsertDailyByKey(toDailyItem(nextRow, filters.date));
+        setNotification({
+          open: true,
+          severity: 'success',
+          message: `${userName}さんの情報を更新しました`,
+        });
+      } catch (error) {
+        console.error('useAttendance.updateRowFields failed', error);
+        const classified = classifyAttendanceError(error);
+        const { severity, message } = errorMessage(classified.code);
+        try { await refresh(); } catch { /* refresh failure is separate */ }
+        setNotification({
+          open: true,
+          severity,
+          message,
+          actionLabel: '再読込',
+          onAction: () => { void refresh(); },
+        });
+      } finally {
+        savingUsersRef.current.delete(userCode);
+        bumpSavingTick();
+      }
+    },
+    [bumpSavingTick, filters.date, refresh, repository, rowsRaw],
+  );
+
   const setFilters = useCallback((next: Partial<AttendanceFilter>) => {
     setFiltersState((prev) => ({ ...prev, ...next }));
   }, []);
@@ -661,6 +705,7 @@ export function useAttendance(): UseAttendanceReturn {
       setInputMode,
       updateStatus,
       updateStatusWithAbsentSupport,
+      updateRowFields,
       saveTemperature,
       refresh,
     },

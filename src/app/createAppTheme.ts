@@ -2,7 +2,8 @@ import type { UserSettings } from '@/features/settings/settingsModel';
 import { createTheme, type Theme } from '@mui/material/styles';
 
 /**
- * Density spacing map (Phase 5 - local definition)
+ * Density spacing map (Phase 5)
+ * Canonical definition for density-aware spacing values.
  */
 const densitySpacingMap = {
   compact: 4,      // Tighter spacing
