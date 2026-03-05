@@ -7,13 +7,14 @@ import type { ObservationListItem } from '@/features/nurse/sp/map';
 import type { AbsentSupportLog } from '@/features/service-provision/domain/absentSupportLog';
 import type { IUserMaster } from '@/features/users/types';
 
+import { toLocalDateISO } from '@/utils/getNow';
+import { buildServiceEndTimestamp, getAutoCheckOutTargets, isBeforeCloseTime, SERVICE_END_TIME } from './attendance.logic';
 import type { ObservationTemperatureItem } from './domain/AttendanceRepository';
 import { classifyAttendanceError, type AttendanceErrorCode } from './hooks/useAttendanceActions';
 import type { AttendanceDailyItem } from './infra/attendanceDailyRepository';
 import { useAttendanceRepository } from './repositoryFactory';
 import { methodImpliesShuttle } from './transportMethod';
 import type { AttendanceFilter, AttendanceHookStatus, AttendanceInputMode, AttendanceRowVM } from './types';
-import { toLocalDateISO } from '@/utils/getNow';
 
 const todayIso = (): string => toLocalDateISO();
 
@@ -340,6 +341,9 @@ export function useAttendance(): UseAttendanceReturn {
   const [notification, setNotification] = useState<AttendanceNotification>(NOTIFICATION_CLOSED);
   const dismissNotification = useCallback(() => setNotification(NOTIFICATION_CLOSED), []);
 
+  // ── Auto-checkout guard (tracks which date has been auto-checked-out) ──
+  const autoCheckOutDoneRef = useRef<string>('');
+
   const refresh = useCallback(async () => {
     setStatus('loading');
     try {
@@ -347,7 +351,8 @@ export function useAttendance(): UseAttendanceReturn {
         repository.getActiveUsers(),
         repository.getDailyByDate({ recordDate: filters.date }),
       ]);
-      setRowsRaw(mergeRows(users, dailyItems, filters.date));
+      const merged = mergeRows(users, dailyItems, filters.date);
+      setRowsRaw(merged);
       setStatus('success');
 
       // Load saved temperatures (non-blocking, failures are silent)
@@ -361,6 +366,45 @@ export function useAttendance(): UseAttendanceReturn {
       } catch (e) {
         console.error('useAttendance: temperature load failed (non-fatal)', e);
       }
+
+      // ── Auto-checkout: 16:00 過ぎに「通所中」→「退所済」を一括処理 ──
+      const today = todayIso();
+      if (filters.date === today && autoCheckOutDoneRef.current !== today) {
+        const targets = getAutoCheckOutTargets(merged, new Date());
+        if (targets.length > 0) {
+          autoCheckOutDoneRef.current = today;
+          const checkOutIso = buildServiceEndTimestamp(today);
+          const checkedOutRows = merged.map((row) =>
+            targets.includes(row.userCode)
+              ? getNextStatusRow(row, '退所済', checkOutIso)
+              : row,
+          );
+          setRowsRaw(checkedOutRows);
+
+          try {
+            await Promise.all(
+              checkedOutRows
+                .filter((r) => targets.includes(r.userCode))
+                .map((r) => repository.upsertDailyByKey(toDailyItem(r, filters.date))),
+            );
+            const names = checkedOutRows
+              .filter((r) => targets.includes(r.userCode))
+              .map((r) => r.FullName ?? r.userCode)
+              .join('、');
+            setNotification({
+              open: true,
+              severity: 'info',
+              message: `${targets.length}名を自動退所しました（${names}）`,
+            });
+          } catch (error) {
+            console.error('useAttendance: autoCheckOut persist failed', error);
+            autoCheckOutDoneRef.current = ''; // allow retry on next refresh
+          }
+        } else if (!isBeforeCloseTime(new Date(), SERVICE_END_TIME)) {
+          // Past service end but no targets → mark as done
+          autoCheckOutDoneRef.current = today;
+        }
+      }
     } catch (error) {
       console.error('useAttendance.refresh failed', error);
       setStatus('error');
@@ -369,6 +413,26 @@ export function useAttendance(): UseAttendanceReturn {
   useEffect(() => {
     void refresh();
   }, [refresh]);
+
+  // ── Timer: 16:00 到達時に refresh を発火して自動退所をトリガー ──
+  useEffect(() => {
+    const today = todayIso();
+    if (filters.date !== today) return;
+    if (autoCheckOutDoneRef.current === today) return;
+
+    const now = new Date();
+    if (!isBeforeCloseTime(now, SERVICE_END_TIME)) return; // already past
+
+    const [hh, mm] = SERVICE_END_TIME.split(':').map((v) => parseInt(v, 10));
+    const target = new Date(now.getTime());
+    target.setHours(hh, mm, 0, 0);
+    const delay = target.getTime() - now.getTime() + 2000; // +2s buffer
+
+    const timer = setTimeout(() => {
+      void refresh();
+    }, delay);
+    return () => clearTimeout(timer);
+  }, [filters.date, refresh]);
 
   // Ref to always call the latest updateStatus from undo callbacks
   const updateStatusRef = useRef<(userCode: string, status: AttendanceRowVM['status']) => Promise<void>>();
