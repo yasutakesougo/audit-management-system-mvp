@@ -383,6 +383,22 @@ export function createNavItems(config: CreateNavItemsConfig): NavItem[] {
       group: 'record' as NavGroupKey,
     },
     {
+      label: '業務日誌プレビュー',
+      to: '/records/journal',
+      isActive: (pathname) => pathname === '/records/journal',
+      icon: undefined,
+      audience: NAV_AUDIENCE.staff,
+      group: 'record' as NavGroupKey,
+    },
+    {
+      label: '個人月次業務日誌',
+      to: '/records/journal/personal',
+      isActive: (pathname) => pathname.startsWith('/records/journal/personal'),
+      icon: undefined,
+      audience: NAV_AUDIENCE.staff,
+      group: 'record' as NavGroupKey,
+    },
+    {
       label: '支援ハブ',
       to: '/ibd',
       isActive: (pathname) => pathname === '/ibd',
