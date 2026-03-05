@@ -10,6 +10,7 @@ import {
     SuspendedHandoffTimelinePage,
     SuspendedMonthlyRecordPage,
     SuspendedRecordList,
+    SuspendedServiceProvisionFormPage,
 } from './lazyPages';
 
 export const recordRoutes: RouteObject[] = [
@@ -26,6 +27,14 @@ export const recordRoutes: RouteObject[] = [
     element: (
       <RequireAudience requiredRole="reception">
         <SuspendedMonthlyRecordPage />
+      </RequireAudience>
+    ),
+  },
+  {
+    path: 'records/service-provision',
+    element: (
+      <RequireAudience requiredRole="reception">
+        <SuspendedServiceProvisionFormPage />
       </RequireAudience>
     ),
   },

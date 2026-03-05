@@ -29,6 +29,7 @@ const IcebergPdcaPage = React.lazy(() => import('@/pages/IcebergPdcaPage'));
 const IcebergAnalysisPage = React.lazy(() => import('@/pages/IcebergAnalysisPage'));
 const InterventionDashboardPage = React.lazy(() => import('@/pages/InterventionDashboardPage'));
 const MonthlyRecordPage = React.lazy(() => import('@/pages/MonthlyRecordPage'));
+const ServiceProvisionFormPage = React.lazy(() => import('@/pages/ServiceProvisionFormPage'));
 const BillingPage = React.lazy(() => import('@/pages/BillingPage'));
 
 const AttendanceRecordPage = React.lazy(() => import('@/pages/AttendanceRecordPage'));
@@ -99,6 +100,7 @@ export const SuspendedDevScheduleCreateDialogPage: React.FC | null = DevSchedule
 export const SuspendedNewSchedulesWeekPage = createSuspended(NewSchedulesWeekPage, '週間予定を読み込んでいます…');
 export const SuspendedDailyRecordPage = createSuspended(DailyRecordPage, '支援記録を読み込んでいます…');
 export const SuspendedMonthlyRecordPage = createSuspended(MonthlyRecordPage, '月次記録を読み込んでいます…');
+export const SuspendedServiceProvisionFormPage = createSuspended(ServiceProvisionFormPage, 'サービス提供実績記録を読み込んでいます…');
 export const SuspendedBillingPage = createSuspended(BillingPage, '請求管理画面を読み込んでいます…');
 export const SuspendedDailyRecordMenuPage = createSuspended(DailyRecordMenuPage, '日次記録メニューを読み込んでいます…');
 export const SuspendedTableDailyRecordPage = createSuspended(TableDailyRecordPage, '一覧形式ケース記録を読み込んでいます…');
