@@ -100,7 +100,7 @@ const AuditPanel: React.FC = () => {
         <UnsynedAuditBadge
           style={{
             // 監査ページでクリックした場合のカスタム動作を追加するための準備
-            // TODO: 将来的に現在のページでの動作をカスタマイズする場合に使用
+            // @see Issue #767: 将来的に現在のページでの動作をカスタマイズする場合に使用
           }}
         />
         {(lastTotal !== undefined) && (

@@ -36,12 +36,12 @@ export function useZeroScrollTabs(params: UseZeroScrollTabsParams): DashboardTab
       absentUsers: attendanceSummary.absenceNames.map((name, index) => ({
         id: `absent-${index}`,
         name,
-        reason: '理由未記入', // @backlog: SP実データ連携時に取得ロジックへ置換
+        reason: '理由未記入', // @see Issue #767: attendanceSummary に理由フィールド追加後に実データ取得
       })),
       lateOrEarlyUsers: attendanceSummary.lateOrEarlyNames.map((name, index) => ({
         id: `late-${index}`,
         name,
-        type: 'late' as const, // @backlog: SP実データで判別
+        type: 'late' as const, // @see Issue #767: attendanceSummary に遅刻/早退タイプ追加後に実データで判別
       })),
     };
 
@@ -49,7 +49,7 @@ export function useZeroScrollTabs(params: UseZeroScrollTabsParams): DashboardTab
     const staffTabData = {
       staffAvailability,
       absentStaff: [] as never[], // 外出中 status removed (Issue 1-1)
-      lateOrAdjustStaff: [] as never[], // @backlog: SP実データから取得
+      lateOrAdjustStaff: [] as never[], // @see Issue #767: staffAvailability に遅刻/調整データ追加後に実データ取得
     };
 
     // やることタブのデータ（スケジュールから自動生成）

@@ -21,5 +21,5 @@ export const mockPdcaItems: IcebergPdcaItem[] = [
     createdAt: '2025-12-08T09:00:00+09:00',
     updatedAt: '2025-12-08T09:00:00+09:00',
   },
-  // TODO: CHECK / ACT も1〜2件ずつ追記していく
+  // @see Issue #767: CHECK / ACT も1〜2件ずつ追記予定
 ];

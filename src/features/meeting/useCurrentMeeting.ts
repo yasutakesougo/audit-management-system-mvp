@@ -34,6 +34,7 @@ function buildSessionKeyForToday(kind: MeetingKind): string {
 export function useCurrentMeeting(kind: MeetingKind) {
   const sessionKey = buildSessionKeyForToday(kind);
   const { account } = useAuth();
+  const currentUserId = account?.username ?? 'anonymous';
 
   // SharePoint統合セッション
   const {
@@ -96,7 +97,7 @@ export function useCurrentMeeting(kind: MeetingKind) {
         stepId: stepId.toString(),
         stepTitle,
         completed: newCompleted,
-        userId: account?.username ?? 'unknown',
+        userId: currentUserId,
       });
     } catch (error) {
       console.error('Failed to sync step with SharePoint:', error);
@@ -104,7 +105,7 @@ export function useCurrentMeeting(kind: MeetingKind) {
       stepsHook.toggleStep(stepId);
       throw error;
     }
-  }, [mergedSteps, stepsHook, upsertStepRecord, sessionKey, kind, account]);
+  }, [mergedSteps, stepsHook, upsertStepRecord, sessionKey, kind]);
 
   // 進行状況統計
   const stats = useMemo(() => {

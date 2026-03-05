@@ -20,7 +20,7 @@ import { meetingLogger } from '@/features/meeting/logging/meetingLogger';
 import type { MeetingKind } from '@/features/meeting/meetingSteps';
 import { useCurrentMeeting } from '@/features/meeting/useCurrentMeeting';
 import { TESTIDS, tid } from '@/testids';
-// TODO: 将来的にはMeetingGuideDrawerとの連携も予定
+// @see Issue #767: MeetingGuideDrawerとの連携は将来実装予定
 
 /**
  * セッションキーを人間向けの表記に変換
