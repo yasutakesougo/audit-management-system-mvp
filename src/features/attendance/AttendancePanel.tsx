@@ -112,6 +112,17 @@ const AttendancePanel = (): JSX.Element => {
     void actions.updateRowFields(detailUserCode, { transportFromMethod: method });
   }, [detailUserCode, actions]);
 
+  // ── Transport note change handlers ──
+  const handleTransportToNoteChange = useCallback((note: string) => {
+    if (!detailUserCode) return;
+    void actions.updateRowFields(detailUserCode, { transportToNote: note });
+  }, [detailUserCode, actions]);
+
+  const handleTransportFromNoteChange = useCallback((note: string) => {
+    if (!detailUserCode) return;
+    void actions.updateRowFields(detailUserCode, { transportFromNote: note });
+  }, [detailUserCode, actions]);
+
   // ── User confirm handler ──
   const handleUserConfirm = useCallback(() => {
     if (!detailUserCode) return;
@@ -239,6 +250,8 @@ const AttendancePanel = (): JSX.Element => {
         onClose={handleCloseDetail}
         onTransportToMethodChange={handleTransportToMethodChange}
         onTransportFromMethodChange={handleTransportFromMethodChange}
+        onTransportToNoteChange={handleTransportToNoteChange}
+        onTransportFromNoteChange={handleTransportFromNoteChange}
         onUserConfirm={handleUserConfirm}
         onEditAbsenceDetail={
           detailRow?.status === '当日欠席' ? handleEditAbsenceFromDrawer : undefined
