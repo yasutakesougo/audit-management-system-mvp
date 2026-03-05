@@ -20,26 +20,12 @@ import { useUsersDemo } from '@/features/users/usersStoreDemo';
 import { useSupportRecordSubmit } from '@/pages/hooks/useSupportRecordSubmit';
 import { useTimeBasedSupportRecordPage } from '@/pages/hooks/useTimeBasedSupportRecordPage';
 import { toLocalDateISO } from '@/utils/getNow';
-import ContentCopyIcon from '@mui/icons-material/ContentCopy';
-import EditIcon from '@mui/icons-material/Edit';
-import FilterListOffIcon from '@mui/icons-material/FilterListOff';
-import HistoryIcon from '@mui/icons-material/History';
-import PersonIcon from '@mui/icons-material/Person';
 import Alert from '@mui/material/Alert';
-import Badge from '@mui/material/Badge';
 import Box from '@mui/material/Box';
 import Button from '@mui/material/Button';
-import Chip from '@mui/material/Chip';
 import Container from '@mui/material/Container';
-import FormControl from '@mui/material/FormControl';
-import IconButton from '@mui/material/IconButton';
-import InputLabel from '@mui/material/InputLabel';
-import MenuItem from '@mui/material/MenuItem';
-import Select from '@mui/material/Select';
 import Snackbar from '@mui/material/Snackbar';
 import Stack from '@mui/material/Stack';
-import ToggleButton from '@mui/material/ToggleButton';
-import Tooltip from '@mui/material/Tooltip';
 import Typography from '@mui/material/Typography';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { flushSync } from 'react-dom';
@@ -311,133 +297,6 @@ const TimeBasedSupportRecordPage: React.FC = () => {
       title="支援手順兼記録"
       backTo="/dashboard"
       testId="daily-support-page"
-      headerActions={
-        <Stack direction="row" spacing={0.5} alignItems="center">
-          {/* ── User Selector ── */}
-          <FormControl size="small" sx={{ minWidth: 140 }}>
-            <InputLabel id="iceberg-user-select-label">対象者</InputLabel>
-            <Select
-              labelId="iceberg-user-select-label"
-              value={targetUserId}
-              label="対象者"
-              onChange={(event) => handleUserChange(event.target.value)}
-              startAdornment={<PersonIcon fontSize="small" sx={{ mr: 0.5, color: 'text.secondary' }} />}
-              data-testid="user-select"
-              sx={{
-                bgcolor: 'background.paper',
-                '& .MuiOutlinedInput-notchedOutline': { borderColor: 'divider' },
-                fontSize: '0.85rem',
-              }}
-            >
-              <MenuItem value="">
-                <em>選択</em>
-              </MenuItem>
-              {filteredUsers.map((user) => (
-                <MenuItem key={user.UserID} value={user.UserID}>
-                  {user.FullName}
-                </MenuItem>
-              ))}
-            </Select>
-          </FormControl>
-
-          {/* ── Status Filter ── */}
-          <FormControl size="small" sx={{ minWidth: 100 }}>
-            <InputLabel id="filter-usage-status-label">状態</InputLabel>
-            <Select
-              labelId="filter-usage-status-label"
-              value={filter.usageStatus}
-              label="状態"
-              onChange={(e) => updateFilter({ usageStatus: e.target.value })}
-              data-testid="filter-usage-status"
-              sx={{
-                bgcolor: 'background.paper',
-                '& .MuiOutlinedInput-notchedOutline': { borderColor: 'divider' },
-                fontSize: '0.85rem',
-              }}
-            >
-              <MenuItem value="">(全て)</MenuItem>
-              <MenuItem value="active">利用中</MenuItem>
-              <MenuItem value="pending">待ち</MenuItem>
-              <MenuItem value="suspended">休止</MenuItem>
-              <MenuItem value="terminated">終了</MenuItem>
-            </Select>
-          </FormControl>
-
-          {/* ── High Intensity Toggle ── */}
-          <Tooltip title="強度行動障害支援対象者のみ表示">
-            <ToggleButton
-              value="highIntensity"
-              selected={filter.highIntensityOnly}
-              onChange={() => updateFilter({ highIntensityOnly: !filter.highIntensityOnly })}
-              size="small"
-              sx={{ textTransform: 'none', fontSize: '0.75rem', px: 1, py: 0.5 }}
-              data-testid="filter-high-intensity"
-            >
-              強度
-            </ToggleButton>
-          </Tooltip>
-
-          {/* ── Filter Count ── */}
-          {hasActiveFilter && (
-            <>
-              <Chip
-                label={`${filteredUsers.length}/${users.length}`}
-                size="small"
-                color="primary"
-                variant="outlined"
-                sx={{ fontSize: '0.7rem', height: 24 }}
-              />
-              <Tooltip title="フィルターリセット">
-                <IconButton size="small" onClick={resetFilter} aria-label="フィルターをリセット">
-                  <FilterListOffIcon fontSize="small" />
-                </IconButton>
-              </Tooltip>
-            </>
-          )}
-
-          {/* ── Divider — filter vs action groups ── */}
-          {targetUserId && selectedUser && (
-            <Box sx={{ borderLeft: 2, borderColor: 'grey.300', height: 28, mx: 1 }} />
-          )}
-
-          {/* ── Action Icons ── */}
-          {targetUserId && selectedUser && (
-            <>
-              <Tooltip title="手順を編集">
-                <IconButton
-                  onClick={() => setIsEditOpen(true)}
-                  size="small"
-                  color="primary"
-                  aria-label="手順を編集"
-                  data-testid="procedure-edit-button"
-                >
-                  <EditIcon fontSize="small" />
-                </IconButton>
-              </Tooltip>
-              <Tooltip title={`直近記録 (${recentObservations.length}件)`}>
-                <IconButton
-                  onClick={() => setRecentRecordsOpen(true)}
-                  size="small"
-                  data-testid="recent-records-button"
-                >
-                  <Badge badgeContent={recentObservations.length} color="primary" max={99}>
-                    <HistoryIcon fontSize="small" />
-                  </Badge>
-                </IconButton>
-              </Tooltip>
-              <Tooltip title="日報コピー">
-                <IconButton
-                  onClick={handleCopyReport}
-                  size="small"
-                  data-testid="copy-daily-report-button"
-                >
-                  <ContentCopyIcon fontSize="small" />
-                </IconButton>
-              </Tooltip>
-            </>
-          )}
-        </Stack>
-      }
     >
       <Container
         maxWidth="xl"
