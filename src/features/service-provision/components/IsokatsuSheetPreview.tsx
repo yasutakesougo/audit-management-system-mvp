@@ -110,8 +110,7 @@ const IsokatsuSheetPreview: React.FC<IsokatsuSheetPreviewProps> = ({
     if (r.hasBath) tBath++;
   }
 
-  // 全列数: 日付(1) + 曜日(1) + 状況(1) + 開始(1) + 終了(1) + 算定(1) + 往(1) + 復(1) + 訪問(1) + 食事(1) + 体験(1) + 入浴(1) + 喀痰(1) + 緊急(1) + 集中(1) + 確認(1) + 備考(1) = 17
-  const TOTAL_COLS = 17;
+
 
   return (
     <Box
