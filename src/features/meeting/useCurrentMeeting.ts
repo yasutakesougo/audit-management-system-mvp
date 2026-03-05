@@ -5,6 +5,8 @@
  * MeetingGuidePageとMeetingGuideDrawerが同じセッションデータを共有
  */
 
+import { useAuth } from '@/auth/useAuth';
+import { toLocalDateISO } from '@/utils/getNow';
 import { useCallback, useMemo } from 'react';
 import { useHandoffSummary } from '../handoff/useHandoffSummary';
 import { meetingLogger } from './logging/meetingLogger';
@@ -12,7 +14,6 @@ import type { MeetingKind } from './meetingSteps';
 import { mergeStepRecordsWithTemplates, useMeetingSteps } from './meetingSteps';
 import { useMeetingSession } from './useMeetingData';
 import { usePriorityFollowUsers } from './usePriorityFollowUsers';
-import { toLocalDateISO } from '@/utils/getNow';
 
 /**
  * 今日のセッションキーを生成
@@ -32,6 +33,7 @@ function buildSessionKeyForToday(kind: MeetingKind): string {
  */
 export function useCurrentMeeting(kind: MeetingKind) {
   const sessionKey = buildSessionKeyForToday(kind);
+  const { account } = useAuth();
 
   // SharePoint統合セッション
   const {
@@ -94,7 +96,7 @@ export function useCurrentMeeting(kind: MeetingKind) {
         stepId: stepId.toString(),
         stepTitle,
         completed: newCompleted,
-        userId: 'currentUser', // TODO: 実際のユーザーIDを取得
+        userId: account?.username ?? 'unknown',
       });
     } catch (error) {
       console.error('Failed to sync step with SharePoint:', error);
@@ -102,7 +104,7 @@ export function useCurrentMeeting(kind: MeetingKind) {
       stepsHook.toggleStep(stepId);
       throw error;
     }
-  }, [mergedSteps, stepsHook, upsertStepRecord, sessionKey, kind]);
+  }, [mergedSteps, stepsHook, upsertStepRecord, sessionKey, kind, account]);
 
   // 進行状況統計
   const stats = useMemo(() => {
