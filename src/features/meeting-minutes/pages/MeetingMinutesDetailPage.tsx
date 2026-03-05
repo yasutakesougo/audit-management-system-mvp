@@ -1,27 +1,27 @@
-import * as React from 'react';
 import {
-  Box,
-  Button,
-  Checkbox,
-  Chip,
-  CircularProgress,
-  Dialog,
-  DialogActions,
-  DialogContent,
-  DialogTitle,
-  Divider,
-  FormControlLabel,
-  Paper,
-  Stack,
-  TextField,
-  Typography,
+    Box,
+    Button,
+    Checkbox,
+    Chip,
+    CircularProgress,
+    Dialog,
+    DialogActions,
+    DialogContent,
+    DialogTitle,
+    Divider,
+    FormControlLabel,
+    Paper,
+    Stack,
+    TextField,
+    Typography,
 } from '@mui/material';
+import * as React from 'react';
 import { Link as RouterLink, useNavigate, useParams } from 'react-router-dom';
 
-import type { MeetingMinutesRepository } from '../sp/repository';
-import { useMeetingMinutesDetail } from '../hooks/useMeetingMinutes';
 import { useCreateHandoffFromExternalSource } from '@/features/handoff/useCreateHandoffFromExternalSource';
 import { useToast } from '@/hooks/useToast';
+import { useMeetingMinutesDetail } from '../hooks/useMeetingMinutes';
+import type { MeetingMinutesRepository } from '../sp/repository';
 
 const renderMultiline = (value?: string) =>
   (value ?? '')
@@ -191,6 +191,28 @@ export function MeetingMinutesDetailPage(props: { repo: MeetingMinutesRepository
                 </Typography>
               </Box>
             </Stack>
+
+            {isDailyMeeting && (minutes.staffAttendance || minutes.userHealthNotes) && (
+              <>
+                <Divider />
+                {minutes.staffAttendance && (
+                  <Box>
+                    <Typography variant="subtitle2">
+                      {minutes.category === '朝会' ? '👥 職員の出欠・配置確認' : '👥 夜勤・翌日の配置'}
+                    </Typography>
+                    {renderMultiline(minutes.staffAttendance)}
+                  </Box>
+                )}
+                {minutes.userHealthNotes && (
+                  <Box>
+                    <Typography variant="subtitle2">
+                      {minutes.category === '朝会' ? '🏥 利用者の体調・特記事項' : '🏥 日中の利用者の様子'}
+                    </Typography>
+                    {renderMultiline(minutes.userHealthNotes)}
+                  </Box>
+                )}
+              </>
+            )}
 
             <Divider />
 

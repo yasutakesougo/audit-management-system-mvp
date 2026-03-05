@@ -1,7 +1,7 @@
-import * as React from 'react';
 import { Box, Button, MenuItem, Stack, TextField, Typography } from '@mui/material';
 
 import type { MeetingCategory, MeetingMinutes } from '../types';
+import { DailyMeetingExtension } from './DailyMeetingExtension';
 
 const CATEGORIES: MeetingCategory[] = ['職員会議', '朝会', '夕会', 'ケース会議', '委員会', 'その他'];
 
@@ -32,6 +32,8 @@ export function createDefaultDraft(): MeetingMinutesDraft {
     isPublished: true,
     created: undefined,
     modified: undefined,
+    staffAttendance: '',
+    userHealthNotes: '',
   };
 }
 
@@ -48,6 +50,8 @@ export function MeetingMinutesForm(props: {
 
   const set = <K extends keyof MeetingMinutesDraft>(key: K, v: MeetingMinutesDraft[K]) =>
     onChange({ ...value, [key]: v });
+
+  const isDailyMeeting = value.category === '朝会' || value.category === '夕会';
 
   return (
     <Box sx={{ p: 2 }}>
@@ -102,6 +106,17 @@ export function MeetingMinutesForm(props: {
             fullWidth
           />
         </Stack>
+
+        {/* ── 朝会・夕会専用セクション ── */}
+        {isDailyMeeting && (
+          <DailyMeetingExtension
+            category={value.category}
+            staffAttendance={value.staffAttendance ?? ''}
+            userHealthNotes={value.userHealthNotes ?? ''}
+            onStaffAttendanceChange={(v) => set('staffAttendance', v)}
+            onUserHealthNotesChange={(v) => set('userHealthNotes', v)}
+          />
+        )}
 
         <TextField
           label="要点（Summary）"
