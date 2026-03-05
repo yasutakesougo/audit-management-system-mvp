@@ -23,7 +23,7 @@ const createMockRecord = (overrides = {}): PersonDaily => ({
     mealAmount: '完食',
     problemBehavior: {
       selfHarm: false,
-      violence: false,
+      otherInjury: false,
       loudVoice: false,
       pica: false,
       other: false
@@ -116,7 +116,7 @@ describe('DailyRecordList', () => {
           ...createMockRecord().data, // Include all base data
           problemBehavior: {
             selfHarm: true,
-            violence: false,
+            otherInjury: false,
             loudVoice: false,
             pica: false,
             other: false,
@@ -137,7 +137,7 @@ describe('DailyRecordList', () => {
           ...createMockRecord().data, // Include all base data
           problemBehavior: {
             selfHarm: false,
-            violence: false,
+            otherInjury: false,
             loudVoice: false,
             pica: false,
             other: false,
@@ -149,7 +149,7 @@ describe('DailyRecordList', () => {
       const { container } = render(<DailyRecordList {...mockProps} records={[record]} />);
 
       expect(container).not.toHaveTextContent('自傷');
-      expect(container).not.toHaveTextContent('暴力');
+      expect(container).not.toHaveTextContent('他傷');
       expect(container).not.toHaveTextContent('大声');
       expect(container).not.toHaveTextContent('異食');
       expect(container).not.toHaveTextContent('その他');

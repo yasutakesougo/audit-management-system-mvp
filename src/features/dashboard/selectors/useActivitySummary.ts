@@ -82,13 +82,13 @@ export function useActivitySummary(
       const pb = record.data.problemBehavior;
       if (pb) {
         if (pb.selfHarm) acc.selfHarm++;
-        if (pb.violence) acc.violence++;
+        if (pb.otherInjury) acc.otherInjury++;
         if (pb.loudVoice) acc.loudVoice++;
         if (pb.pica) acc.pica++;
         if (pb.other) acc.other++;
       }
       return acc;
-    }, { selfHarm: 0, violence: 0, loudVoice: 0, pica: 0, other: 0 });
+    }, { selfHarm: 0, otherInjury: 0, loudVoice: 0, pica: 0, other: 0 });
 
     const seizureCount = activityRecords.filter(r =>
       r.data.seizureRecord && r.data.seizureRecord.occurred

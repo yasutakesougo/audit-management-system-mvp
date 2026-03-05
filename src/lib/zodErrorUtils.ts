@@ -137,7 +137,7 @@ export const FIELD_LABEL_MAP: Readonly<Record<string, string>> = {
   // --- Daily: Problem Behavior ---
   problemBehavior: '行動記録',
   selfHarm: '自傷',
-  violence: '他害',
+  otherInjury: '他傷',
   loudVoice: '大声',
   pica: '異食',
   other: 'その他',

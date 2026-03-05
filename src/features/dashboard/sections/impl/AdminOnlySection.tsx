@@ -1,25 +1,25 @@
-import React from 'react';
-import {
-  Card,
-  CardContent,
-  Tabs,
-  Tab,
-  Stack,
-  Typography,
-  Chip,
-  Alert,
-  LinearProgress,
-  Box,
-  Button,
-  Divider,
-  Paper,
-} from '@mui/material';
-import RestaurantIcon from '@mui/icons-material/Restaurant';
-import BehaviorIcon from '@mui/icons-material/Psychology';
+import type { IUserMaster } from '@/sharepoint/fields';
 import MedicalIcon from '@mui/icons-material/LocalHospital';
 import PersonIcon from '@mui/icons-material/Person';
+import BehaviorIcon from '@mui/icons-material/Psychology';
+import RestaurantIcon from '@mui/icons-material/Restaurant';
 import WarningIcon from '@mui/icons-material/Warning';
-import type { IUserMaster } from '@/sharepoint/fields';
+import {
+    Alert,
+    Box,
+    Button,
+    Card,
+    CardContent,
+    Chip,
+    Divider,
+    LinearProgress,
+    Paper,
+    Stack,
+    Tab,
+    Tabs,
+    Typography,
+} from '@mui/material';
+import React from 'react';
 
 export interface AdminOnlySectionProps {
   tabValue: number;
@@ -29,7 +29,7 @@ export interface AdminOnlySectionProps {
     lunchStats: Record<string, number>;
     problemBehaviorStats: {
       selfHarm: number;
-      violence: number;
+      otherInjury: number;
       loudVoice: number;
       pica: number;
       other: number;
@@ -126,8 +126,8 @@ export function AdminOnlySection({
                   color={stats.problemBehaviorStats.selfHarm > 0 ? 'error' : 'default'}
                 />
                 <Chip
-                  label={`暴力: ${stats.problemBehaviorStats.violence}件`}
-                  color={stats.problemBehaviorStats.violence > 0 ? 'error' : 'default'}
+                  label={`他傷: ${stats.problemBehaviorStats.otherInjury}件`}
+                  color={stats.problemBehaviorStats.otherInjury > 0 ? 'error' : 'default'}
                 />
                 <Chip
                   label={`大声: ${stats.problemBehaviorStats.loudVoice}件`}
@@ -155,9 +155,9 @@ export function AdminOnlySection({
               本日、自傷行動が{stats.problemBehaviorStats.selfHarm}件発生しています。該当者の個別対応を確認してください。
             </Alert>
           )}
-          {stats.problemBehaviorStats.violence > 0 && (
+          {stats.problemBehaviorStats.otherInjury > 0 && (
             <Alert severity="error" icon={<WarningIcon />}>
-              本日、暴力行動が{stats.problemBehaviorStats.violence}件発生しています。環境調整・支援方法の見直しを検討してください。
+              本日、他傷行動が{stats.problemBehaviorStats.otherInjury}件発生しています。環境調整・支援方法の見直しを検討してください。
             </Alert>
           )}
           {Object.values(stats.problemBehaviorStats).every(count => count === 0) && (

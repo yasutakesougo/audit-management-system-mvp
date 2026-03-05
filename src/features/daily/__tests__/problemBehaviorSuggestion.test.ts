@@ -9,7 +9,7 @@ function buildProblemBehaviorSuggestion(
   handoffs: { message: string; category?: string }[]
 ): {
   selfHarm: boolean;
-  violence: boolean;
+  otherInjury: boolean;
   loudVoice: boolean;
   pica: boolean;
   other: boolean;
@@ -17,7 +17,7 @@ function buildProblemBehaviorSuggestion(
 } {
   const suggestion = {
     selfHarm: false,
-    violence: false,
+    otherInjury: false,
     loudVoice: false,
     pica: false,
     other: false,
@@ -33,7 +33,7 @@ function buildProblemBehaviorSuggestion(
 
   // 暴力・他害系
   if (text.match(/他害|職員.*殴る|職員.*蹴る|職員.*叩く|利用者.*殴る|利用者.*蹴る|利用者.*叩く|暴力/) && !suggestion.selfHarm) {
-    suggestion.violence = true;
+    suggestion.otherInjury = true;
   }
 
   // 大声・奇声系
@@ -47,7 +47,7 @@ function buildProblemBehaviorSuggestion(
   }
 
   // その他（今は「その他詳細」に文全体を入れるだけ、将来拡張可）
-  if (!suggestion.selfHarm && !suggestion.violence && !suggestion.loudVoice && !suggestion.pica) {
+  if (!suggestion.selfHarm && !suggestion.otherInjury && !suggestion.loudVoice && !suggestion.pica) {
     if (text.trim().length > 0) {
       suggestion.other = true;
       suggestion.otherDetail = '申し送り内容に基づく行動上の注意あり';
@@ -59,7 +59,7 @@ function buildProblemBehaviorSuggestion(
 
 function isProblemBehaviorEmpty(pb: {
   selfHarm: boolean;
-  violence: boolean;
+  otherInjury: boolean;
   loudVoice: boolean;
   pica: boolean;
   other: boolean;
@@ -68,7 +68,7 @@ function isProblemBehaviorEmpty(pb: {
   if (!pb) return true;
   return (
     !pb.selfHarm &&
-    !pb.violence &&
+    !pb.otherInjury &&
     !pb.loudVoice &&
     !pb.pica &&
     !pb.other &&
@@ -86,7 +86,7 @@ describe('Problem Behavior Suggestion System (Phase 11B)', () => {
       const result = buildProblemBehaviorSuggestion(handoffs);
 
       expect(result.selfHarm).toBe(true);
-      expect(result.violence).toBe(false);
+      expect(result.otherInjury).toBe(false);
       expect(result.loudVoice).toBe(false);
       expect(result.pica).toBe(false);
       expect(result.other).toBe(false);
@@ -100,7 +100,7 @@ describe('Problem Behavior Suggestion System (Phase 11B)', () => {
       const result = buildProblemBehaviorSuggestion(handoffs);
 
       expect(result.selfHarm).toBe(false);
-      expect(result.violence).toBe(true);
+      expect(result.otherInjury).toBe(true);
       expect(result.loudVoice).toBe(false);
       expect(result.pica).toBe(false);
       expect(result.other).toBe(false);
@@ -114,7 +114,7 @@ describe('Problem Behavior Suggestion System (Phase 11B)', () => {
       const result = buildProblemBehaviorSuggestion(handoffs);
 
       expect(result.selfHarm).toBe(false);
-      expect(result.violence).toBe(false);
+      expect(result.otherInjury).toBe(false);
       expect(result.loudVoice).toBe(true);
       expect(result.pica).toBe(false);
       expect(result.other).toBe(false);
@@ -128,7 +128,7 @@ describe('Problem Behavior Suggestion System (Phase 11B)', () => {
       const result = buildProblemBehaviorSuggestion(handoffs);
 
       expect(result.selfHarm).toBe(false);
-      expect(result.violence).toBe(false);
+      expect(result.otherInjury).toBe(false);
       expect(result.loudVoice).toBe(false);
       expect(result.pica).toBe(true);
       expect(result.other).toBe(false);
@@ -142,7 +142,7 @@ describe('Problem Behavior Suggestion System (Phase 11B)', () => {
       const result = buildProblemBehaviorSuggestion(handoffs);
 
       expect(result.selfHarm).toBe(true);
-      expect(result.violence).toBe(false);
+      expect(result.otherInjury).toBe(false);
       expect(result.loudVoice).toBe(true);
       expect(result.pica).toBe(false);
       expect(result.other).toBe(false);
@@ -156,7 +156,7 @@ describe('Problem Behavior Suggestion System (Phase 11B)', () => {
       const result = buildProblemBehaviorSuggestion(handoffs);
 
       expect(result.selfHarm).toBe(false);
-      expect(result.violence).toBe(false);
+      expect(result.otherInjury).toBe(false);
       expect(result.loudVoice).toBe(false);
       expect(result.pica).toBe(false);
       expect(result.other).toBe(true);
@@ -169,7 +169,7 @@ describe('Problem Behavior Suggestion System (Phase 11B)', () => {
       const result = buildProblemBehaviorSuggestion(handoffs);
 
       expect(result.selfHarm).toBe(false);
-      expect(result.violence).toBe(false);
+      expect(result.otherInjury).toBe(false);
       expect(result.loudVoice).toBe(false);
       expect(result.pica).toBe(false);
       expect(result.other).toBe(false);
@@ -186,7 +186,7 @@ describe('Problem Behavior Suggestion System (Phase 11B)', () => {
       const result = buildProblemBehaviorSuggestion(handoffs);
 
       expect(result.selfHarm).toBe(false);
-      expect(result.violence).toBe(true);
+      expect(result.otherInjury).toBe(true);
       expect(result.loudVoice).toBe(true);
       expect(result.pica).toBe(false);
       expect(result.other).toBe(false);
@@ -198,7 +198,7 @@ describe('Problem Behavior Suggestion System (Phase 11B)', () => {
       const empty1 = undefined;
       const empty2 = {
         selfHarm: false,
-        violence: false,
+        otherInjury: false,
         loudVoice: false,
         pica: false,
         other: false,
@@ -212,7 +212,7 @@ describe('Problem Behavior Suggestion System (Phase 11B)', () => {
     it('データが入っている問題行動を正しく判定する', () => {
       const notEmpty1 = {
         selfHarm: true,
-        violence: false,
+        otherInjury: false,
         loudVoice: false,
         pica: false,
         other: false,
@@ -221,7 +221,7 @@ describe('Problem Behavior Suggestion System (Phase 11B)', () => {
 
       const notEmpty2 = {
         selfHarm: false,
-        violence: false,
+        otherInjury: false,
         loudVoice: false,
         pica: false,
         other: true,
@@ -239,22 +239,22 @@ describe('Problem Behavior Suggestion System (Phase 11B)', () => {
         {
           name: '自傷の典型パターン',
           handoffs: [{ message: '利用者Aさんが午前中に自分を叩く行為が数回見られました。注意深く見守りが必要です。' }],
-          expected: { selfHarm: true, violence: false, loudVoice: false, pica: false, other: false }
+          expected: { selfHarm: true, otherInjury: false, loudVoice: false, pica: false, other: false }
         },
         {
           name: '他害の典型パターン',
           handoffs: [{ message: '利用者Bさんが興奮状態になり、近くにいた職員を殴る行為がありました。' }],
-          expected: { selfHarm: false, violence: true, loudVoice: false, pica: false, other: false }
+          expected: { selfHarm: false, otherInjury: true, loudVoice: false, pica: false, other: false }
         },
         {
           name: '異食の典型パターン',
           handoffs: [{ message: '利用者Cさんが作業中に紙を口に入れる行為がありました。拾い食いにも注意。' }],
-          expected: { selfHarm: false, violence: false, loudVoice: false, pica: true, other: false }
+          expected: { selfHarm: false, otherInjury: false, loudVoice: false, pica: true, other: false }
         },
         {
           name: '複合的な問題行動',
           handoffs: [{ message: '利用者Dさんが大声で怒鳴った後、自分の頭を打つ行為がありました。職員への暴力はありませんでした。' }],
-          expected: { selfHarm: true, violence: false, loudVoice: true, pica: false, other: false }
+          expected: { selfHarm: true, otherInjury: false, loudVoice: true, pica: false, other: false }
         }
       ];
 
@@ -262,7 +262,7 @@ describe('Problem Behavior Suggestion System (Phase 11B)', () => {
         const result = buildProblemBehaviorSuggestion(scenario.handoffs);
 
         expect(result.selfHarm, `${scenario.name}: selfHarm`).toBe(scenario.expected.selfHarm);
-        expect(result.violence, `${scenario.name}: violence`).toBe(scenario.expected.violence);
+        expect(result.otherInjury, `${scenario.name}: otherInjury`).toBe(scenario.expected.otherInjury);
         expect(result.loudVoice, `${scenario.name}: loudVoice`).toBe(scenario.expected.loudVoice);
         expect(result.pica, `${scenario.name}: pica`).toBe(scenario.expected.pica);
         expect(result.other, `${scenario.name}: other`).toBe(scenario.expected.other);

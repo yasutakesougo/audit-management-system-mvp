@@ -43,7 +43,7 @@ export interface StaffOnlySectionProps {
     seizureCount: number;
     problemBehaviorStats: {
       selfHarm: number;
-      violence: number;
+      otherInjury: number;
       loudVoice: number;
       pica: number;
       other: number;

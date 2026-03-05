@@ -230,7 +230,7 @@ export function useDailyRecordFormState({
         ...prev.data,
         problemBehavior: {
           selfHarm: false,
-          violence: false,
+          otherInjury: false,
           loudVoice: false,
           pica: false,
           other: false,
@@ -308,7 +308,7 @@ export function useDailyRecordFormState({
         ...prev.data,
         problemBehavior: {
           selfHarm: prev.data.problemBehavior?.selfHarm || problemSuggestion.selfHarm,
-          violence: prev.data.problemBehavior?.violence || problemSuggestion.violence,
+          otherInjury: prev.data.problemBehavior?.otherInjury || problemSuggestion.otherInjury,
           loudVoice: prev.data.problemBehavior?.loudVoice || problemSuggestion.loudVoice,
           pica: prev.data.problemBehavior?.pica || problemSuggestion.pica,
           other: prev.data.problemBehavior?.other || problemSuggestion.other,

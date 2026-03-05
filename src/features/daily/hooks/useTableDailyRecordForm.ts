@@ -21,7 +21,7 @@ export type UserRowData = {
   lunchAmount: string;
   problemBehavior: {
     selfHarm: boolean;
-    violence: boolean;
+    otherInjury: boolean;
     loudVoice: boolean;
     pica: boolean;
     other: boolean;

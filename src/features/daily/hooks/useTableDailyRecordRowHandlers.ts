@@ -60,7 +60,7 @@ const createEmptyRow = (userId: string, userName: string): UserRowData => {
     lunchAmount: '',
     problemBehavior: {
       selfHarm: false,
-      violence: false,
+      otherInjury: false,
       loudVoice: false,
       pica: false,
       other: false,
@@ -189,7 +189,7 @@ export function useTableDailyRecordRowHandlers({
                 lunchAmount: '',
                 problemBehavior: {
                   selfHarm: false,
-                  violence: false,
+                  otherInjury: false,
                   loudVoice: false,
                   pica: false,
                   other: false,

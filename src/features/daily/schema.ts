@@ -11,13 +11,13 @@ export const DailyRecordUserRowSchema = z.object({
   lunchAmount: z.string().default(''),
   problemBehavior: z.object({
     selfHarm: z.boolean().default(false),
-    violence: z.boolean().default(false),
+    otherInjury: z.boolean().default(false),
     loudVoice: z.boolean().default(false),
     pica: z.boolean().default(false),
     other: z.boolean().default(false),
   }).default({
     selfHarm: false,
-    violence: false,
+    otherInjury: false,
     loudVoice: false,
     pica: false,
     other: false,
