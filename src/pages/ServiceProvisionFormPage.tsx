@@ -51,7 +51,9 @@ import { useServiceProvisionList, useServiceProvisionSave } from '@/features/ser
 import IsokatsuSheetPreview from '@/features/service-provision/components/IsokatsuSheetPreview';
 import type { AbsentSupportLog, FollowUpResult } from '@/features/service-provision/domain/absentSupportLog';
 import { EMPTY_ABSENT_LOG, buildNoteWithAbsentLog } from '@/features/service-provision/domain/absentSupportLog';
+import { useSyncAttendance } from '@/features/service-provision/useSyncAttendance';
 import PrintIcon from '@mui/icons-material/Print';
+import SyncIcon from '@mui/icons-material/Sync';
 
 // ─── ヘルパー ────────────────────────────────────────────────
 
@@ -113,6 +115,10 @@ const ServiceProvisionFormPage: React.FC = () => {
   // 日次一覧
   const [recordDate, setRecordDate] = useState(todayISO());
   const { records, loading: listLoading, refresh } = useServiceProvisionList(recordDate);
+
+  // 通園データ同期
+  const { syncStatus, syncedCount, syncError, syncMonth } = useSyncAttendance();
+  const isSyncing = syncStatus === 'syncing';
 
   // フォーム状態
   const [selectedUser, setSelectedUser] = useState<DailyUserOption | null>(null);
@@ -226,6 +232,44 @@ const ServiceProvisionFormPage: React.FC = () => {
           利用者ごとの提供実績を記録・保存します。
         </Typography>
       </Stack>
+
+      {/* ── 通園データ同期 ────────────────────────── */}
+      <Paper sx={{ p: 2, mb: 2, bgcolor: '#f0f4ff' }}>
+        <Stack direction="row" alignItems="center" spacing={2}>
+          <SyncIcon color="info" />
+          <Box sx={{ flex: 1 }}>
+            <Typography variant="subtitle2">通園管理データを同期</Typography>
+            <Typography variant="caption" color="text.secondary">
+              /daily/attendance の入退所データをサービス提供実績に変換します
+            </Typography>
+          </Box>
+          <Button
+            variant="outlined"
+            size="small"
+            startIcon={isSyncing ? <CircularProgress size={16} /> : <SyncIcon />}
+            disabled={isSyncing}
+            onClick={async () => {
+              const monthStr = recordDate.slice(0, 7);
+              const count = await syncMonth(monthStr);
+              if (count > 0) {
+                toast.success(`${count}件の実績を同期しました`);
+                await refresh();
+              } else if (syncError) {
+                toast.error(`同期エラー: ${syncError}`);
+              } else {
+                toast('同期対象のデータがありませんでした', { icon: 'ℹ️' });
+              }
+            }}
+          >
+            {isSyncing ? '同期中...' : `${recordDate.slice(0, 7)} 月の同期`}
+          </Button>
+        </Stack>
+        {syncStatus === 'done' && syncedCount > 0 && (
+          <Typography variant="caption" color="success.main" sx={{ mt: 0.5, display: 'block' }}>
+            ✓ {syncedCount}件の実績を同期完了
+          </Typography>
+        )}
+      </Paper>
 
       <Paper sx={{ p: 3 }}>
         <Stack spacing={2.5}>
