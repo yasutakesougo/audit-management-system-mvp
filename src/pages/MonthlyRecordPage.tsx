@@ -118,7 +118,7 @@ export default function MonthlyRecordPage() {
       // eslint-disable-next-line no-console
       console.log(`再集計開始: ${userId} - ${yearMonth}`);
     }
-    // TODO: API呼び出し実装
+    // @backlog: API実装時に置換
     await new Promise(resolve => setTimeout(resolve, 1000)); // モック遅延
     if (import.meta.env.DEV) {
       // eslint-disable-next-line no-console
@@ -144,7 +144,7 @@ export default function MonthlyRecordPage() {
       // eslint-disable-next-line no-console
       console.log(`PDF生成開始: ${selectedMonth} - 対象利用者数: ${filteredSummaries.length}`);
     }
-    // TODO: Power Automate API呼び出し実装
+    // @backlog: Power Automate API実装時に置換
     await new Promise(resolve => setTimeout(resolve, 2000)); // モック遅延
     if (import.meta.env.DEV) {
       // eslint-disable-next-line no-console

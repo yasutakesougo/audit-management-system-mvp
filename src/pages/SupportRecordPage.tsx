@@ -1,4 +1,5 @@
 ﻿import { PageHeader } from '@/components/PageHeader';
+import { toLocalDateISO } from '@/utils/getNow';
 import AddIcon from '@mui/icons-material/Add';
 import AssignmentIcon from '@mui/icons-material/Assignment';
 import SearchIcon from '@mui/icons-material/Search';
@@ -21,10 +22,9 @@ import TextField from '@mui/material/TextField';
 import Typography from '@mui/material/Typography';
 import React, { useCallback, useMemo, useReducer, useRef, useState } from 'react';
 import { LandscapeFab } from '../components/ui/LandscapeFab';
-import { toLocalDateISO } from '@/utils/getNow';
 
 // 支援手順記録の型定義
-// TODO: 将来的にsrc/types/support.tsなどの共通モジュールに移動予定
+// @backlog: 共通モジュール化時にsrc/types/support.tsなどに移動
 interface SupportStep {
   id: string;
   stepNumber: number;
@@ -85,7 +85,7 @@ interface DailySupportRecord {
 }
 
 // デフォルト支援手順テンプレート
-// TODO: 将来的にsrc/constants/supportSteps.tsなどに移動予定
+// @backlog: 共通モジュール化時にsrc/constants/supportSteps.tsなどに移動
 const defaultSupportSteps: Omit<SupportStep, 'id'>[] = [
   { stepNumber: 1, category: '朝の準備', title: '朝の挨拶', description: '明るく挨拶をして一日を始める', targetBehavior: '自発的に挨拶する', supportMethod: '職員から先に挨拶し、応答を促す', duration: 5, importance: '必須' },
   { stepNumber: 2, category: '朝の準備', title: '持ち物確認', description: '必要な持ち物を確認する', targetBehavior: '自分で持ち物をチェックする', supportMethod: 'チェックリストを使って一緒に確認', duration: 10, importance: '必須' },
@@ -121,7 +121,7 @@ const mockSupportUsers = [
 ];
 
 // ユーティリティ関数
-// TODO: 将来的にsrc/utils/supportRecord.tsなどに移動予定
+// @backlog: 共通モジュール化時にsrc/utils/supportRecord.tsなどに移動
 
 // デフォルト支援手順の生成
 const generateSupportSteps = (personId: string): SupportStep[] => {
