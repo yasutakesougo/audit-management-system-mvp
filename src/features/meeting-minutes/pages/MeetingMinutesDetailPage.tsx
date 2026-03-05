@@ -1,27 +1,27 @@
-import * as React from 'react';
 import {
-  Box,
-  Button,
-  Checkbox,
-  Chip,
-  CircularProgress,
-  Dialog,
-  DialogActions,
-  DialogContent,
-  DialogTitle,
-  Divider,
-  FormControlLabel,
-  Paper,
-  Stack,
-  TextField,
-  Typography,
+    Box,
+    Button,
+    Checkbox,
+    Chip,
+    CircularProgress,
+    Dialog,
+    DialogActions,
+    DialogContent,
+    DialogTitle,
+    Divider,
+    FormControlLabel,
+    Paper,
+    Stack,
+    TextField,
+    Typography,
 } from '@mui/material';
+import * as React from 'react';
 import { Link as RouterLink, useNavigate, useParams } from 'react-router-dom';
 
-import type { MeetingMinutesRepository } from '../sp/repository';
-import { useMeetingMinutesDetail } from '../hooks/useMeetingMinutes';
 import { useCreateHandoffFromExternalSource } from '@/features/handoff/useCreateHandoffFromExternalSource';
 import { useToast } from '@/hooks/useToast';
+import { useMeetingMinutesDetail } from '../hooks/useMeetingMinutes';
+import type { MeetingMinutesRepository } from '../sp/repository';
 
 const renderMultiline = (value?: string) =>
   (value ?? '')
@@ -261,6 +261,7 @@ export function MeetingMinutesDetailPage(props: { repo: MeetingMinutesRepository
           <Button
             variant="contained"
             disabled={sending || (!sendSummary && !sendDecisions && !sendActions)}
+            startIcon={sending ? <CircularProgress size={16} color="inherit" /> : undefined}
             onClick={async () => {
               setSending(true);
               setSendError(null);
@@ -308,7 +309,6 @@ export function MeetingMinutesDetailPage(props: { repo: MeetingMinutesRepository
           </Button>
         </DialogActions>
       </Dialog>
-            startIcon={sending ? <CircularProgress size={16} color="inherit" /> : undefined}
     </Box>
   );
 }
