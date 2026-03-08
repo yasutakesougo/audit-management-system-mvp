@@ -6,17 +6,21 @@
  *
  * Grid 配置 (md 4-column):
  * ┌──────────────────────────────────────┐
- * │         Hero (full-width: 4col)       │
- * ├──────────┬───────────┬───────────────┤
- * │ Attendance│ NextAction│   Transport   │
- * │  (1col)   │  (1col)   │   (2col)      │
- * ├──────────┴───────────┼───────────────┤
- * │   Users (3col)        │  Briefing     │
- * │                       │   (1col)      │
- * └───────────────────────┴───────────────┘
+ * │    Hero (full-width, sticky banner)   │
+ * ├──────────┬───────────────────────────┤
+ * │Attendance│      Briefing (3col)       │
+ * │  (1col)  │                            │
+ * ├──────────┴───────────────────────────┤
+ * │     ServiceStructure (full 4col)      │
+ * ├───────────────────────┬──────────────┤
+ * │   Users (3col)        │  NextAction  │
+ * │                       │   (1col)     │
+ * ├───────────────────────┴──────────────┤
+ * │        Transport (full 4col)          │
+ * └──────────────────────────────────────┘
  *
  * Mobile (1-column): すべて縦並び
- * Tablet (2-column): Hero(2) → Attendance + NextAction → Transport(2) → Users(2) → Briefing(2)
+ * Tablet (2-column): Hero → Attendance(1)+Briefing(2) → Service(2) → Users(2)+Next(1) → Transport(2)
  *
  * Layout state は view-only。データ集約・副作用は追加しない。
  *
@@ -119,13 +123,47 @@ export const TodayBentoLayout: React.FC<TodayBentoProps> = ({
 
       {/* ── Bento Grid ── */}
       <BentoContainer sx={{ mt: 3 }}>
-        {/* ── Row 1: Attendance (1) + NextAction (1) + Transport (2) ── */}
+        {/* ── Row 1: Attendance (1) + Briefing (3) — 朝会確認導線 ── */}
         <BentoCard
           colSpan={{ xs: 1, sm: 1, md: 1 }}
           testId="bento-attendance"
         >
           <SectionLabel emoji="📊" text="出席状況" />
           <AttendanceSummaryCard {...attendance} />
+        </BentoCard>
+
+        <BentoCard
+          colSpan={{ xs: 1, sm: 2, md: 3 }}
+          variant="subtle"
+          testId="bento-briefing"
+        >
+          <SectionLabel emoji="📋" text="申し送り" />
+          <BriefingActionList alerts={briefingAlerts} />
+        </BentoCard>
+
+        {/* ── Row 2: Service Structure (full-width) — 朝会確認の一部 ── */}
+        {serviceStructure && (
+          <BentoCard
+            colSpan={{ xs: 1, sm: 2, md: 4 }}
+            testId="bento-service-structure"
+          >
+            <SectionLabel emoji="🏢" text="業務体制" />
+            <TodayServiceStructureCard serviceStructure={serviceStructure} />
+          </BentoCard>
+        )}
+
+        {/* ── Row 3: Users (3) + NextAction (1) — 実行導線 ── */}
+        <BentoCard
+          colSpan={{ xs: 1, sm: 2, md: 3 }}
+          testId="bento-users"
+        >
+          <SectionLabel emoji="👥" text="利用者一覧" />
+          <UserCompactList
+            items={users.items}
+            onOpenQuickRecord={users.onOpenQuickRecord}
+            onOpenISP={users.onOpenISP}
+            onEmptyAction={users.onEmptyAction}
+          />
         </BentoCard>
 
         <BentoCard
@@ -137,8 +175,9 @@ export const TodayBentoLayout: React.FC<TodayBentoProps> = ({
           <NextActionCard nextAction={nextAction} onEmptyAction={nextActionEmptyAction} />
         </BentoCard>
 
+        {/* ── Row 4: Transport (full-width) ── */}
         <BentoCard
-          colSpan={{ xs: 1, sm: 2, md: 2 }}
+          colSpan={{ xs: 1, sm: 2, md: 4 }}
           testId="bento-transport"
         >
           <SectionLabel emoji="🚌" text="送迎状況" />
@@ -159,40 +198,6 @@ export const TodayBentoLayout: React.FC<TodayBentoProps> = ({
             </Box>
           )}
         </BentoCard>
-
-        {/* ── Row 2: Users (3) + Briefing (1) ── */}
-        <BentoCard
-          colSpan={{ xs: 1, sm: 2, md: 3 }}
-          testId="bento-users"
-        >
-          <SectionLabel emoji="👥" text="利用者一覧" />
-          <UserCompactList
-            items={users.items}
-            onOpenQuickRecord={users.onOpenQuickRecord}
-            onOpenISP={users.onOpenISP}
-            onEmptyAction={users.onEmptyAction}
-          />
-        </BentoCard>
-
-        <BentoCard
-          colSpan={{ xs: 1, sm: 2, md: 1 }}
-          variant="subtle"
-          testId="bento-briefing"
-        >
-          <SectionLabel emoji="📋" text="申し送り" />
-          <BriefingActionList alerts={briefingAlerts} />
-        </BentoCard>
-
-        {/* ── Row 3: Service Structure (full-width) ── */}
-        {serviceStructure && (
-          <BentoCard
-            colSpan={{ xs: 1, sm: 2, md: 4 }}
-            testId="bento-service-structure"
-          >
-            <SectionLabel emoji="🏢" text="業務体制" />
-            <TodayServiceStructureCard serviceStructure={serviceStructure} />
-          </BentoCard>
-        )}
       </BentoContainer>
     </Box>
   );

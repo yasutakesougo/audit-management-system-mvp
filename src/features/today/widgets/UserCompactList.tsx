@@ -2,9 +2,14 @@ import { motionTokens } from '@/app/theme';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import EditNoteIcon from '@mui/icons-material/EditNote';
 import GroupOffIcon from '@mui/icons-material/GroupOff';
+import KeyboardArrowDownIcon from '@mui/icons-material/KeyboardArrowDown';
+import KeyboardArrowUpIcon from '@mui/icons-material/KeyboardArrowUp';
 import { Box, Button, IconButton, Paper, Stack, Tooltip, Typography } from '@mui/material';
-import React from 'react';
+import React, { useMemo, useState } from 'react';
 import { EmptyStateBlock } from './EmptyStateBlock';
+
+/** 初期表示件数 — 未記録優先で上位 n 件を表示 */
+const INITIAL_DISPLAY_COUNT = 6;
 
 export type UserRow = {
   userId: string;
@@ -40,7 +45,7 @@ const UserCompactRow = React.memo<{
         }
       }}
       sx={{
-        p: 2,
+        p: 1.5,
         display: 'flex',
         justifyContent: 'space-between',
         alignItems: 'center',
@@ -99,6 +104,19 @@ const UserCompactRow = React.memo<{
 });
 
 export const UserCompactList: React.FC<UserCompactListProps> = ({ items, onOpenQuickRecord, onOpenISP, onEmptyAction }) => {
+  const [expanded, setExpanded] = useState(false);
+
+  // 未記録を先頭に並べる（元の順序を保ちつつ）
+  const sorted = useMemo(() => {
+    const unfilled = items.filter((u) => !u.recordFilled);
+    const filled = items.filter((u) => u.recordFilled);
+    return [...unfilled, ...filled];
+  }, [items]);
+
+  const needsFold = sorted.length > INITIAL_DISPLAY_COUNT;
+  const visible = expanded || !needsFold ? sorted : sorted.slice(0, INITIAL_DISPLAY_COUNT);
+  const hiddenCount = sorted.length - INITIAL_DISPLAY_COUNT;
+
   if (items.length === 0) {
     return (
       <EmptyStateBlock
@@ -116,8 +134,8 @@ export const UserCompactList: React.FC<UserCompactListProps> = ({ items, onOpenQ
   }
 
   return (
-    <Stack spacing={1.25}>
-      {items.map((u) => (
+    <Stack spacing={1}>
+      {visible.map((u) => (
         <UserCompactRow
           key={u.userId}
           user={u}
@@ -125,6 +143,24 @@ export const UserCompactList: React.FC<UserCompactListProps> = ({ items, onOpenQ
           onOpenISP={onOpenISP}
         />
       ))}
+      {needsFold && (
+        <Button
+          size="small"
+          variant="text"
+          onClick={() => setExpanded((prev) => !prev)}
+          startIcon={expanded ? <KeyboardArrowUpIcon /> : <KeyboardArrowDownIcon />}
+          data-testid="users-show-more"
+          sx={{
+            textTransform: 'none',
+            fontSize: '0.8rem',
+            color: 'text.secondary',
+            alignSelf: 'center',
+            mt: 0.5,
+          }}
+        >
+          {expanded ? '折りたたむ' : `他 ${hiddenCount} 名を表示`}
+        </Button>
+      )}
     </Stack>
   );
 };
