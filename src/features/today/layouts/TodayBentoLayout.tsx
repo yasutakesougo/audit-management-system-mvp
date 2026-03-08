@@ -25,6 +25,7 @@
  */
 import { BentoCard, BentoContainer } from '@/components/ui/BentoGrid';
 import type { BriefingAlert } from '@/features/dashboard/sections/types';
+import type { ServiceStructure } from '@/features/today/domain/serviceStructure.types';
 import {
     Box,
     Typography,
@@ -38,6 +39,7 @@ import { BriefingActionList } from '../widgets/BriefingActionList';
 import { HeroUnfinishedBanner } from '../widgets/HeroUnfinishedBanner';
 import type { NextActionCardProps } from '../widgets/NextActionCard';
 import { NextActionCard } from '../widgets/NextActionCard';
+import { TodayServiceStructureCard } from '../widgets/TodayServiceStructureCard';
 import { UserCompactList, type UserRow } from '../widgets/UserCompactList';
 
 // ─── Types ───────────────────────────────────────────────────
@@ -56,6 +58,7 @@ export type TodayBentoProps = {
   hero: HeroProps;
   attendance: AttendanceSummaryCardProps;
   briefingAlerts: BriefingAlert[];
+  serviceStructure?: ServiceStructure;
   nextAction: NextActionWithProgress;
   nextActionEmptyAction?: NextActionCardProps['onEmptyAction'];
   transport: { pending: TransportUser[]; inProgress: TransportUser[]; onArrived: (id: string) => void };
@@ -91,6 +94,7 @@ export const TodayBentoLayout: React.FC<TodayBentoProps> = ({
   hero,
   attendance,
   briefingAlerts,
+  serviceStructure,
   nextAction,
   nextActionEmptyAction,
   transportCard,
@@ -178,6 +182,17 @@ export const TodayBentoLayout: React.FC<TodayBentoProps> = ({
           <SectionLabel emoji="📋" text="申し送り" />
           <BriefingActionList alerts={briefingAlerts} />
         </BentoCard>
+
+        {/* ── Row 3: Service Structure (full-width) ── */}
+        {serviceStructure && (
+          <BentoCard
+            colSpan={{ xs: 1, sm: 2, md: 4 }}
+            testId="bento-service-structure"
+          >
+            <SectionLabel emoji="🏢" text="業務体制" />
+            <TodayServiceStructureCard serviceStructure={serviceStructure} />
+          </BentoCard>
+        )}
       </BentoContainer>
     </Box>
   );

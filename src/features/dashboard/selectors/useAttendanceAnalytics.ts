@@ -57,6 +57,34 @@ export function useAttendanceAnalytics(
     );
     const absenceCount = absenceVisits.length;
 
+    // ── 欠席内訳: 当日欠席 / 事前欠席 ──
+    const sameDayAbsenceVisits = absenceVisits.filter((visit) => visit.status === '当日欠席');
+    const priorAbsenceVisits = absenceVisits.filter((visit) => visit.status === '事前欠席');
+    const sameDayAbsenceCount = sameDayAbsenceVisits.length;
+    const priorAbsenceCount = priorAbsenceVisits.length;
+    const sameDayAbsenceNames = Array.from(
+      new Set(
+        sameDayAbsenceVisits
+          .map((visit) => userCodeMap.get(visit.userCode))
+          .filter((name): name is string => Boolean(name))
+      )
+    );
+    const priorAbsenceNames = Array.from(
+      new Set(
+        priorAbsenceVisits
+          .map((visit) => userCodeMap.get(visit.userCode))
+          .filter((name): name is string => Boolean(name))
+      )
+    );
+    const sameDayAbsenceItems = sameDayAbsenceVisits.map((v) => ({
+      userId: v.userCode,
+      userName: userCodeMap.get(v.userCode) ?? v.userCode,
+    }));
+    const priorAbsenceItems = priorAbsenceVisits.map((v) => ({
+      userId: v.userCode,
+      userName: userCodeMap.get(v.userCode) ?? v.userCode,
+    }));
+
     const onDutyStaff = attendanceCounts.onDuty;
     const staffCount = staff.length || 0;
     const estimatedOnDutyStaff = Math.max(0, Math.round(staffCount * 0.6));
@@ -108,12 +136,22 @@ export function useAttendanceAnalytics(
       userName: userCodeMap.get(v.userCode) ?? v.userCode,
     }));
 
+    // 予定人数
+    const scheduledCount = users.length;
+
     return {
+      scheduledCount,
       facilityAttendees,
       lateOrEarlyLeave,
       lateOrEarlyNames,
       absenceCount,
       absenceNames,
+      sameDayAbsenceCount,
+      sameDayAbsenceNames,
+      sameDayAbsenceItems,
+      priorAbsenceCount,
+      priorAbsenceNames,
+      priorAbsenceItems,
       onDutyStaff: finalOnDutyStaff,
       lateOrShiftAdjust,
       absenceItems,
@@ -140,6 +178,8 @@ export function useAttendanceAnalytics(
         targetAnchorId: 'sec-attendance',
         description: attendanceSummary.absenceNames?.slice(0, 3).join('、'),
         items: attendanceSummary.absenceItems,
+        section: 'today',
+        tags: ['重要'],
       });
     }
 
@@ -153,6 +193,8 @@ export function useAttendanceAnalytics(
         targetAnchorId: 'sec-attendance',
         description: attendanceSummary.lateOrEarlyNames?.slice(0, 3).join('、'),
         items: attendanceSummary.lateOrEarlyItems,
+        section: 'today',
+        tags: ['新規'],
       });
     }
 
@@ -167,6 +209,8 @@ export function useAttendanceAnalytics(
         targetAnchorId: 'sec-attendance',
         description: attendanceSummary.feverNames?.slice(0, 3).join('、'),
         items: attendanceSummary.feverItems,
+        section: 'today',
+        tags: ['重要'],
       });
     }
 
@@ -181,6 +225,8 @@ export function useAttendanceAnalytics(
         targetAnchorId: 'sec-attendance',
         description: attendanceSummary.eveningPendingNames?.slice(0, 3).join('、'),
         items: attendanceSummary.eveningPendingItems,
+        section: 'ongoing',
+        tags: ['継続'],
       });
     }
 

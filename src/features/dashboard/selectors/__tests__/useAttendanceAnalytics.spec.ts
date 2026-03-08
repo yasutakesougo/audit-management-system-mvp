@@ -47,6 +47,8 @@ describe('useAttendanceAnalytics — 発熱アラート', () => {
     expect(alert!.label).toBe('発熱');
     expect(alert!.count).toBe(1);
     expect(alert!.items).toEqual([{ userId: 'U001', userName: '田中太郎' }]);
+    expect(alert!.section).toBe('today');
+    expect(alert!.tags).toEqual(['重要']);
   });
 
   it('ちょうど37.5℃でもアラートを生成する (境界値)', () => {
@@ -110,6 +112,8 @@ describe('useAttendanceAnalytics — 夕方フォロー未完了', () => {
     expect(alert!.severity).toBe('warning');
     expect(alert!.label).toBe('夕方フォロー未完了');
     expect(alert!.count).toBe(1);
+    expect(alert!.section).toBe('ongoing');
+    expect(alert!.tags).toEqual(['継続']);
   });
 
   it('欠席者で eveningChecked=undefined でもアラートを生成する (デフォルト未チェック)', () => {
@@ -191,5 +195,58 @@ describe('useAttendanceAnalytics — 複合ケース', () => {
     expect(briefingAlerts.find((a) => a.type === 'late')).toBeDefined();
     // evening follow-up は完了済みなのでアラートなし
     expect(briefingAlerts.find((a) => a.type === 'evening_followup')).toBeUndefined();
+  });
+});
+
+describe('useAttendanceAnalytics — section/tags 分類', () => {
+  it('absent は section=today, tags=[重要] を持つ', () => {
+    const visits = {
+      U001: makeVisit({ userCode: 'U001', status: '当日欠席' }),
+    };
+    const { briefingAlerts } = run(visits);
+    const alert = briefingAlerts.find((a) => a.type === 'absent');
+    expect(alert!.section).toBe('today');
+    expect(alert!.tags).toEqual(['重要']);
+  });
+
+  it('late は section=today, tags=[新規] を持つ', () => {
+    const visits = {
+      U001: makeVisit({ userCode: 'U001', status: '通所中', isEarlyLeave: true }),
+    };
+    const { briefingAlerts } = run(visits);
+    const alert = briefingAlerts.find((a) => a.type === 'late');
+    expect(alert!.section).toBe('today');
+    expect(alert!.tags).toEqual(['新規']);
+  });
+
+  it('fever_alert は section=today, tags=[重要] を持つ', () => {
+    const visits = {
+      U001: makeVisit({ userCode: 'U001', temperature: 38.0 }),
+    };
+    const { briefingAlerts } = run(visits);
+    const alert = briefingAlerts.find((a) => a.type === 'fever_alert');
+    expect(alert!.section).toBe('today');
+    expect(alert!.tags).toEqual(['重要']);
+  });
+
+  it('evening_followup は section=ongoing, tags=[継続] を持つ', () => {
+    const visits = {
+      U001: makeVisit({ userCode: 'U001', status: '当日欠席', eveningChecked: false }),
+    };
+    const { briefingAlerts } = run(visits);
+    const alert = briefingAlerts.find((a) => a.type === 'evening_followup');
+    expect(alert!.section).toBe('ongoing');
+    expect(alert!.tags).toEqual(['継続']);
+  });
+
+  it('today と ongoing のアラートが同時に生成される', () => {
+    const visits = {
+      U001: makeVisit({ userCode: 'U001', status: '当日欠席', eveningChecked: false, temperature: 38.0 }),
+    };
+    const { briefingAlerts } = run(visits);
+    const todayAlerts = briefingAlerts.filter((a) => a.section === 'today');
+    const ongoingAlerts = briefingAlerts.filter((a) => a.section === 'ongoing');
+    expect(todayAlerts.length).toBeGreaterThan(0);
+    expect(ongoingAlerts.length).toBeGreaterThan(0);
   });
 });
