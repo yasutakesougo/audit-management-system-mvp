@@ -8,14 +8,12 @@
 ![Provision WhatIf](https://github.com/yasutakesougo/audit-management-system-mvp/actions/workflows/provision-sharepoint.yml/badge.svg)
 ![Lint](https://img.shields.io/badge/lint-pass-brightgreen)
 ![TypeCheck](https://img.shields.io/badge/types-pass-informational)
-![Coverage Lines](https://img.shields.io/badge/coverage-70%25%2B-green)
+![Coverage Lines](https://img.shields.io/badge/coverage-44%25%2B-green)
 
 <!-- markdownlint-disable MD040 -->
 
-> Quality Gate (Vitest 4 暫定): Lines >= 44% / Functions >= 38% / Branches >= 37% / Statements >= 43%
-> Note: thresholds were lowered after Vitest 4 migration; raise incrementally once coverage recovers.
+> Quality Gate: Lines >= 44% / Functions >= 38% / Statements >= 43% / Branches >= 37% (vitest.config.ts thresholds)
 > CI note: docs-only PRs (e.g., README/docs) skip Playwright smoke + LHCI; workflow/config changes trigger them for safety.
-> **QA snapshot (v0.9.2):** Coverage 88.27% • Branch 71.70% • Lighthouse Perf 97 • A11y 100 • Errors 0.07%/mo
 
 ## レポートリンク
 
@@ -32,7 +30,7 @@
 
 ## 開発時のよくある落とし穴
 
-- `import.meta.env` を直接参照すると lint / pre-push の制御に阻まれるので、必ず `src/lib/env.ts` のヘルパー経由で値を取得する
+- 設定値の参照は `src/lib/env.ts` のヘルパー経由を推奨します。`import.meta.env.DEV` のような dev-only ガードは許容されますが、設定値を直接読むと runtime override や test isolation をバイパスします
 - VS Code の Problems が急増したときは `src/lib/env.ts` や `.env` 差分をまず確認すると、型/エラーの原因を素早く特定できる
 - **React 18 開発モード (StrictMode)**: `useEffect` と認証フローが意図的に二重実行されます。MSAL の重複ログインを防ぐため、`useAuth.signIn()` はモジュールレベルの singleflight ガード (`signInInFlight`) で保護されています。この動作は正常で、本番環境（StrictMode なし）には影響しません。
 
@@ -46,7 +44,7 @@
    - SharePoint token 取得完了まで子コンポーネントを実行しない
    - MSAL popup の自動起動を防止
 
-2. **List existence check** (`useSchedules.ts`)
+2. **List existence check** (`src/lib/sp/spListSchema.ts` via `spClient.ts`)
    - アプリ起動時に `DailyOpsSignals` リストの存在確認
    - 404 または permissions error の場合、ユーザーに即座に通知
    - sessionStorage にキャッシュして同一セッション内での再チェックを回避
@@ -110,14 +108,7 @@ This ensures all production deployments are traceable to a specific main commit 
 
 ## Local Operation Mode
 
-> 拠点内 LAN でのロータッチ運用を想定した「ローカル運用モード」の概要です。
-> Local mode documentation (`docs/local-mode.md`, `docs/local-mode-sop.md`) is planned but not yet published.
-
-- 🏠 **Overview** — SharePoint と OneDrive の同期枠内で動作するオフライン・ファーストなモード。監査ログは端末内に保持され、ネットワーク復帰後に一括同期します。
-- ⚙️ **Key Requirements** — 現場オペレーション用タブレット（iPad 等）とバックオフィス PC、SharePoint Online サイト、OneDrive またはファイルサーバーの自動バックアップ先、日報同期用の Power Automate フローもしくは cron 相当。
-- 🧩 **QA Baseline** — 品質保証の指標は [`CHANGELOG.md` の Target Metrics 表](CHANGELOG.md#target-metrics) を参照し、ライン/ブランチカバレッジや Lighthouse/axe-core のしきい値を達成したビルドのみを展開します。
-- 💾 **Backup & Recovery** — 監査ログ CSV と SharePoint リストを日次でエクスポートし、30 日以上のローテーションで保管します。障害時はローカル端末から直近の CSV を復元して SharePoint に再投入できます。
-- 🔐 **Access & Security** — データは Microsoft 365 テナントと拠点内ファイルサーバー内に閉じ、LAN 外への持ち出しは禁止。MSAL 設定は本番テナントのアプリ登録を利用し、権限は最小限に絞ります。
+> ローカル運用モードは将来の拡張として検討中です。現在運用ドキュメントはありません。
 
 Ops フィードバックはこちら → [docs/ops-feedback.md](docs/ops-feedback.md)
 
@@ -309,7 +300,7 @@ npm run dev
     2. 補助リーダーが必要なら同ファイルに `read*` 系ヘルパーを追加する
     3. `.env.example` と README の表にプレースホルダー/説明を追記する
 - **Config layer / adapters only:** low-level reads belong in `src/config/**` and should use the helpers exported from `env.ts`.
-- **Never** call `import.meta.env` directly in feature or lib code—the linter and pre-push/CI guard will fail the build.
+- **Prefer** `getAppConfig()` / `readViteEnv()` over direct `import.meta.env` access in feature code. `import.meta.env.DEV` guards for dev-only logging are acceptable; reading config values directly bypasses runtime override and test isolation layers.
 
 > **MSAL defaults:** The example `.env` ships wired to the “Audit SPA” registration
 > (`clientId=619be9a1-ccc4-46b5-878b-ea921b4ce0ae`, tenant `650ea331-3451-4bd8-8b5d-b88cc49e6144`).
@@ -889,7 +880,7 @@ Categories: { throttle:1, server:1 }
 - Duration: バッチ要求～解析完了までの経過時間
 - Categories: 失敗を HTTP ステータスグループで集計（server/auth/throttle/bad_request/not_found/other）
 
-再送ボタン（例: 「失敗のみ再送」）を押すと Failed > 0 のものだけ再バッチ化します。全件成功した場合はローカル保持をクリアします。
+再送ボタン（「失敗のみ再送」）は UI に存在しますが、現状は残存する localStorage 全体を再同期します。`retainAuditWhere()` による選択的保持は定義済みですが同期フローへの接続は未完了です。
 
 ### E2E 部分失敗シナリオ
 `tests/e2e/audit-partial-failure.spec.ts` で $batch をモックし、部分成功 + duplicate + 再送成功パターンを検証しています。
@@ -982,14 +973,14 @@ Found in `src/features/audit/AuditPanel.tsx` – quoting & escaping ensures RFC4
 | 部分失敗解析 | 対応（Content-ID 単位で success/failed 集計） | エラー詳細の UI 表示 / リトライ対象抽出 |
 | リトライ | なし | 429/503/一時エラーで指数バックオフ |
 | チャンクサイズ調整 | 固定 100 | `.env` (`VITE_AUDIT_BATCH_SIZE`) で可変化 |
-| ローカルログ削除 | 全件成功時に自動クリア済み | 失敗分のみ保持 / リトライキュー分離 |
+| ローカルログ削除 | `clearAudit()` / `retainAuditWhere()` ユーティリティ定義済み | 同期フローへの接続は未完了（将来: 全件成功時に自動クリア / 失敗分のみ保持）|
 
 ### 実装概要
 1. ローカル監査ログを DTO に変換
 2. 100件単位に分割
 3. `multipart/mixed` ($batch + changeset) 形式の本文を生成（各リクエストに `Content-ID` 付与）
 4. `POST https://{tenant}.sharepoint.com/sites/.../_api/$batch`
-5. レスポンス multipart を解析し、`Content-ID` ごとの HTTP ステータスから成功/失敗件数算出（全件成功時はローカル監査ログを自動クリア）
+5. レスポンス multipart を解析し、`Content-ID` ごとの HTTP ステータスから成功/失敗件数算出（`clearAudit()` による自動クリアは定義済みだが同期フローへの接続は未完了）
 
 現在は最小限パーサ（HTTP/1.1 行 + Content-ID 抽出）で成功/失敗をカウント。レスポンス JSON の個別本文まではまだマッピングしていません（必要になれば拡張可能）。
 
@@ -1029,8 +1020,8 @@ Found in `src/features/audit/AuditPanel.tsx` – quoting & escaping ensures RFC4
 | エラー分類表示 | auth / throttle / server / bad_request / not_found / other | バッチ結果下に簡易内訳表示 |
 | 所要時間計測 | durationMs | 処理 ms をメトリクス & メッセージに表示 |
 | 重複 (409) | 成功扱い (duplicates カウント) | Idempotent なので再送不要 |
-| 部分失敗保持 | 成功済みを除去し失敗分のみローカル再保持 | Content-ID から元インデックスを逆引きし正確に失敗行のみ保持 |
-| ログクリア | 全件 (成功+重複) カバー時のみ完全クリア | データ消失リスク回避 |
+| 部分失敗保持 | `retainAuditWhere()` ユーティリティ定義済み（同期フックへの接続は未完了）| Content-ID から元インデックスを逆引きし正確に失敗行のみ保持 |
+| ログクリア | `clearAudit()` ユーティリティ定義済み（同期フックへの接続は未完了）| 全件 (成功+重複) カバー時のみ完全クリア |
 | UI 表示 | `成功/総数 (重複 X 失敗 Y)` 形式 | 重複増加を可視化 |
 
 将来拡張余地:
@@ -1352,7 +1343,7 @@ API permissions should include delegated permissions to SharePoint (e.g. `Sites.
 
 ## Docs
 
-- Local Operation Mode: planned but not yet published (see README § Local Operation Mode)
+- Feature Catalog: `docs/feature-catalog.md` (domains, routes, RBAC, feature flags)
 - SharePoint CRUD Notes: `docs/sharepoint-crud-notes.md` (DELETE/PATCH UX and network handling)
 - Metrics: `docs/releases/v0.9.2.metrics.yaml`
 
