@@ -1,6 +1,6 @@
 # 磯子区障害者地域活動ホーム (React + SharePoint SPA)
 
-> 📌 クイックリンク: [プロビジョニング手順 / WhatIf レビュー](docs/provisioning.md#whatif-ドライラン-と-job-summary) ｜ [SharePoint スキーマ定義](provision/schema.xml) ｜ [プロジェクトボード自動連携](docs/project-auto-integration.md) ｜ **[UI Baseline (Phase 1)](docs/UI_BASELINE.md)** ｜ [UI Architecture](docs/ui-architecture.md) ｜ [Monitoring Hub Runbook](docs/ops/monitoring-hub-v1-runbook.md) ｜ [TodayOps Runbook](docs/runbook/today-ops-rollout.md)
+> 📌 クイックリンク: [プロビジョニング手順 / WhatIf レビュー](docs/provisioning.md#whatif-ドライラン-と-job-summary) ｜ [SharePoint スキーマ定義](provision/schema.xml) ｜ [プロジェクトボード自動連携](docs/project-auto-integration.md) ｜ **[UI Baseline (Phase 1)](docs/UI_BASELINE.md)** ｜ [UI Architecture](docs/ui-architecture.md) ｜ [Monitoring Hub Runbook](docs/ops/monitoring-hub-v1-runbook.md) ｜ [TodayOps Runbook](docs/runbook/today-ops-rollout.md) ｜ [Feature Catalog](docs/feature-catalog.md) ｜ [Env Reference](docs/env-reference.md)
 
 <!-- Badges -->
 
@@ -683,6 +683,17 @@ The nightly health workflow runs comprehensive type checking to surface any issu
 
 ### Test & Coverage
 
+#### Continuous Integration
+
+This project employs a multi‑layered CI pipeline to balance fast feedback on pull requests with thorough regression and integration testing. Every PR runs basic static analysis and smoke tests, while heavier E2E and performance suites are reserved for main‑branch pushes, nightly schedules or manual triggers. Docs‑only changes automatically skip the heavy tests thanks to path filtering.
+
+- **Fast feedback:** Smoke tests run lint, typecheck, unit tests and a minimal set of E2E checks on every PR.
+- **Deep and regression tests:** Comprehensive E2E suites are executed on the main branch, on nightly schedules or manually.
+- **Provisioning & integration:** Separate workflows handle SharePoint list provisioning and daily integration scenarios.
+- **Nightly and monthly health checks:** Scheduled jobs exercise the application end‑to‑end and audit security dependencies.
+
+> For a complete list of workflows, their triggers and behaviour, see **[`docs/ci-workflows.md`](docs/ci-workflows.md)** (to be created).
+
 #### CI/CD Test Strategy
 
 **📚 New Documentation (February 2026):**
@@ -1304,7 +1315,8 @@ API permissions should include delegated permissions to SharePoint (e.g. `Sites.
 
 ## License
 
-Internal / TBD.
+© 2026 Audit Management System. All rights reserved.
+本ソフトウェアは内部利用専用です。無断複製・再配布を禁じます。
 
 <!-- markdownlint-enable MD040 -->
 
