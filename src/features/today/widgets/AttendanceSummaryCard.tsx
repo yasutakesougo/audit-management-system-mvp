@@ -1,7 +1,8 @@
 /**
  * AttendanceSummaryCard — 出席状況サマリー
  *
- * 通所中/欠席/早退の件数をチップ形式で表示。
+ * 予定人数 / 通所済み / 当日欠席(記録重要) / 事前欠席 / 遅刻・早退を表示。
+ * 当日欠席は欠席加算に直結するため「記録重要」ラベルで強調する。
  */
 import InfoOutlinedIcon from '@mui/icons-material/InfoOutlined';
 import { Box, Chip, Paper, Typography } from '@mui/material';
@@ -9,21 +10,28 @@ import React from 'react';
 import { EmptyStateBlock } from './EmptyStateBlock';
 
 export type AttendanceSummaryCardProps = {
+  scheduledCount: number;
   facilityAttendees: number;
-  absenceCount: number;
-  absenceNames: string[];
+  sameDayAbsenceCount: number;
+  sameDayAbsenceNames: string[];
+  priorAbsenceCount: number;
+  priorAbsenceNames: string[];
   lateOrEarlyLeave: number;
   lateOrEarlyNames: string[];
 };
 
 export const AttendanceSummaryCard: React.FC<AttendanceSummaryCardProps> = ({
+  scheduledCount,
   facilityAttendees,
-  absenceCount,
-  absenceNames,
+  sameDayAbsenceCount,
+  sameDayAbsenceNames,
+  priorAbsenceCount,
+  priorAbsenceNames,
   lateOrEarlyLeave,
   lateOrEarlyNames,
 }) => {
-  const hasAnyData = facilityAttendees > 0 || absenceCount > 0 || lateOrEarlyLeave > 0;
+  const totalAbsence = sameDayAbsenceCount + priorAbsenceCount;
+  const hasAnyData = facilityAttendees > 0 || totalAbsence > 0 || lateOrEarlyLeave > 0;
 
   if (!hasAnyData) {
     return (
@@ -43,23 +51,45 @@ export const AttendanceSummaryCard: React.FC<AttendanceSummaryCardProps> = ({
 
   return (
     <Paper data-testid="today-attendance-card" sx={{ p: 2, mb: 3 }}>
-      <Typography variant="subtitle2" fontWeight="bold" gutterBottom>
-        📊 出席状況
-      </Typography>
+      {/* Header: タイトル + 予定人数 */}
+      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
+        <Typography variant="subtitle2" fontWeight="bold">
+          📊 出席状況
+        </Typography>
+        {scheduledCount > 0 && (
+          <Chip
+            label={`予定 ${scheduledCount}名`}
+            size="small"
+            variant="outlined"
+            sx={{ fontWeight: 600, fontSize: '0.7rem' }}
+          />
+        )}
+      </Box>
 
-      <Box sx={{ display: 'flex', gap: 1.5, flexWrap: 'wrap', mb: 1 }}>
+      {/* Chips Row */}
+      <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap', mb: 1 }}>
         <Chip
-          label={`通所中 ${facilityAttendees}名`}
+          label={`通所済 ${facilityAttendees}名`}
           color="success"
           size="small"
           variant="filled"
         />
-        {absenceCount > 0 && (
+        {sameDayAbsenceCount > 0 && (
           <Chip
-            label={`欠席 ${absenceCount}名`}
+            label={`🔴 当日欠席 ${sameDayAbsenceCount}名`}
             color="error"
             size="small"
             variant="filled"
+            data-testid="chip-same-day-absence"
+          />
+        )}
+        {priorAbsenceCount > 0 && (
+          <Chip
+            label={`事前欠席 ${priorAbsenceCount}名`}
+            color="default"
+            size="small"
+            variant="outlined"
+            data-testid="chip-prior-absence"
           />
         )}
         {lateOrEarlyLeave > 0 && (
@@ -72,17 +102,40 @@ export const AttendanceSummaryCard: React.FC<AttendanceSummaryCardProps> = ({
         )}
       </Box>
 
-      {absenceCount > 0 && absenceNames.length > 0 && (
-        <Typography variant="caption" color="text.secondary">
-          欠席: {absenceNames.join('、')}
+      {/* 当日欠席: 記録重要 + 名前リスト */}
+      {sameDayAbsenceCount > 0 && (
+        <Box sx={{ mb: 0.5 }}>
+          <Typography
+            variant="caption"
+            data-testid="same-day-absence-important"
+            sx={{
+              color: 'error.main',
+              fontWeight: 700,
+              fontSize: '0.7rem',
+            }}
+          >
+            ⚠ 記録重要
+          </Typography>
+          {sameDayAbsenceNames.length > 0 && (
+            <Typography variant="caption" color="text.secondary" sx={{ ml: 1 }}>
+              {sameDayAbsenceNames.join('、')}
+            </Typography>
+          )}
+        </Box>
+      )}
+
+      {/* 事前欠席: 名前リスト */}
+      {priorAbsenceCount > 0 && priorAbsenceNames.length > 0 && (
+        <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 0.5 }}>
+          事前欠席: {priorAbsenceNames.join('、')}
         </Typography>
       )}
+
+      {/* 遅刻・早退: 名前リスト */}
       {lateOrEarlyLeave > 0 && lateOrEarlyNames.length > 0 && (
-        <Box>
-          <Typography variant="caption" color="text.secondary">
-            遅刻・早退: {lateOrEarlyNames.join('、')}
-          </Typography>
-        </Box>
+        <Typography variant="caption" color="text.secondary">
+          遅刻・早退: {lateOrEarlyNames.join('、')}
+        </Typography>
       )}
     </Paper>
   );

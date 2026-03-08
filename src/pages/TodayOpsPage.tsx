@@ -98,13 +98,17 @@ export const TodayOpsPage: React.FC = () => {
         },
       },
       attendance: {
+        scheduledCount: summary.users?.length ?? 0,
         facilityAttendees: summary?.attendanceSummary?.facilityAttendees ?? 0,
-        absenceCount: summary?.attendanceSummary?.absenceCount ?? 0,
-        absenceNames: summary?.attendanceSummary?.absenceNames ?? [],
+        sameDayAbsenceCount: summary?.attendanceSummary?.sameDayAbsenceCount ?? 0,
+        sameDayAbsenceNames: summary?.attendanceSummary?.sameDayAbsenceNames ?? [],
+        priorAbsenceCount: summary?.attendanceSummary?.priorAbsenceCount ?? 0,
+        priorAbsenceNames: summary?.attendanceSummary?.priorAbsenceNames ?? [],
         lateOrEarlyLeave: summary?.attendanceSummary?.lateOrEarlyLeave ?? 0,
         lateOrEarlyNames: summary?.attendanceSummary?.lateOrEarlyNames ?? [],
       },
       briefingAlerts: summary?.briefingAlerts ?? [],
+      serviceStructure: summary?.serviceStructure,
       nextAction,
       transport: {
         pending: transport.isReady
