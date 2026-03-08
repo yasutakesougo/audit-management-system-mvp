@@ -88,16 +88,16 @@ function AlertSection({
   return (
     <Box>
       <Typography
-        variant="overline"
+        variant="subtitle2"
         sx={{
           display: 'flex',
           alignItems: 'center',
           gap: 0.5,
           fontWeight: 700,
-          letterSpacing: '0.06em',
+          letterSpacing: '0.04em',
           color: 'text.secondary',
-          fontSize: '0.65rem',
-          mb: 0.5,
+          fontSize: '0.75rem',
+          mb: 1,
         }}
       >
         {emoji} {title}
@@ -166,8 +166,8 @@ function AlertSection({
                         sx={{
                           display: 'flex',
                           alignItems: 'center',
-                          gap: 1,
-                          py: 0.5,
+                          gap: 0.75,
+                          py: 0.25,
                           px: 1,
                           borderRadius: 1,
                           bgcolor: status === 'done' ? 'action.hover' : 'transparent',
@@ -190,7 +190,7 @@ function AlertSection({
                           label={chipConfig.label}
                           color={chipConfig.color}
                           variant="filled"
-                          sx={{ minWidth: 56 }}
+                          sx={{ minWidth: 48 }}
                         />
 
                         {actionDefs.map((action) => (
@@ -202,9 +202,10 @@ function AlertSection({
                             onClick={() => setState(key, 'done')}
                             sx={{
                               textTransform: 'none',
-                              fontSize: '0.75rem',
+                              fontSize: '0.7rem',
                               minWidth: 'auto',
-                              px: 1,
+                              minHeight: 32,
+                              px: 0.5,
                             }}
                           >
                             {action.label}
@@ -308,7 +309,7 @@ export const BriefingActionList: React.FC<BriefingActionListProps> = ({ alerts }
         </Box>
       </AccordionSummary>
 
-      <AccordionDetails data-testid="today-briefing-actions" sx={{ pt: 0, px: 2, pb: 2 }}>
+      <AccordionDetails data-testid="today-briefing-actions" sx={{ pt: 0, px: 2.5, pb: 2 }}>
         <Stack spacing={2.5}>
           {/* Section A: 今日の共有事項 */}
           <AlertSection
@@ -323,7 +324,7 @@ export const BriefingActionList: React.FC<BriefingActionListProps> = ({ alerts }
 
           {/* Divider between sections (only if both have content) */}
           {todayAlerts.length > 0 && ongoingAlerts.length > 0 && (
-            <Box sx={{ borderTop: 1, borderColor: 'divider' }} />
+            <Box sx={{ borderTop: 1, borderColor: 'divider', my: 1 }} />
           )}
 
           {/* Section B: 最近の引き継ぎ要点 */}

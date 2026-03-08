@@ -80,16 +80,16 @@ function PresenceIndicator({ label, present, names }: { label: string; present: 
 function SectionHeader({ emoji, title }: { emoji: string; title: string }) {
   return (
     <Typography
-      variant="overline"
+      variant="subtitle2"
       sx={{
         display: 'flex',
         alignItems: 'center',
         gap: 0.5,
         fontWeight: 700,
-        letterSpacing: '0.06em',
+        letterSpacing: '0.04em',
         color: 'text.secondary',
-        fontSize: '0.65rem',
-        mb: 0.5,
+        fontSize: '0.75rem',
+        mb: 0.75,
       }}
     >
       {emoji} {title}
@@ -116,13 +116,13 @@ export const TodayServiceStructureCard: React.FC<TodayServiceStructureCardProps>
   return (
     <Paper
       data-testid="today-service-structure-card"
-      sx={{ p: 2, mb: 3 }}
+      sx={{ p: 2.5, mb: 3 }}
     >
       <Typography variant="subtitle2" fontWeight="bold" sx={{ mb: 1.5 }}>
         🏢 今日の業務体制
       </Typography>
 
-      <Stack spacing={2}>
+      <Stack spacing={1.5}>
         {/* ── A. 生活介護 ── */}
         <Box>
           <SectionHeader emoji="🟢" title="生活介護" />
@@ -144,7 +144,7 @@ export const TodayServiceStructureCard: React.FC<TodayServiceStructureCardProps>
           )}
         </Box>
 
-        <Divider />
+        <Divider sx={{ my: 0.5 }} />
 
         {/* ── B. 生活支援（ショートステイ・一時ケア） ── */}
         <Box>
@@ -198,7 +198,7 @@ export const TodayServiceStructureCard: React.FC<TodayServiceStructureCardProps>
           )}
         </Box>
 
-        <Divider />
+        <Divider sx={{ my: 0.5 }} />
 
         {/* ── C. 判断窓口 ── */}
         <Box data-testid="section-decision-support">
