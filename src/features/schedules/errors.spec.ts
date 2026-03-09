@@ -40,7 +40,7 @@ describe('classifySchedulesError', () => {
 
     expect(info.kind).toBe('LIST_MISSING');
     expect(info.title).toContain('見つかりません');
-    expect(info.message).toContain('ScheduleEvents');
+    expect(info.message).toContain('Schedules');
   });
 
   it('classifies HTTP 429 as THROTTLED', () => {
@@ -65,7 +65,7 @@ describe('classifySchedulesError', () => {
     const info = classifySchedulesError(error);
 
     expect(info.kind).toBe('LIST_MISSING');
-    expect(info.message).toContain('ScheduleEvents');
+    expect(info.message).toContain('Schedules');
   });
 
   it('classifies unknown errors as UNKNOWN', () => {

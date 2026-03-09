@@ -46,7 +46,7 @@ export default function SmokeTestPage() {
                 {
                     name: 'Schedules',
                     schema: parseSpScheduleRows,
-                    listName: env.VITE_SP_LIST_SCHEDULES || 'ScheduleEvents',
+                    listName: env.VITE_SP_LIST_SCHEDULES || 'Schedules',
                 },
                 {
                     name: 'Users',
