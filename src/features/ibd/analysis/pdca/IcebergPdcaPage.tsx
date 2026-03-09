@@ -1,49 +1,34 @@
 import {
-    Alert,
     Autocomplete,
     Box,
-    Button,
     CircularProgress,
-    Dialog,
-    DialogActions,
-    DialogContent,
-    DialogContentText,
-    DialogTitle,
-    FormControl,
-    InputLabel,
-    MenuItem,
-    Paper,
-    Select,
-    Snackbar,
-    Stack,
     TextField,
-    ToggleButton,
-    ToggleButtonGroup,
     Typography,
 } from '@mui/material';
 import * as React from 'react';
-import { Link as RouterLink, useSearchParams } from 'react-router-dom';
+import { useSearchParams } from 'react-router-dom';
 
 import { useFeatureFlag } from '@/config/featureFlags';
 import { canAccessDashboardAudience, isDashboardAudience, useAuthStore } from '@/features/auth/store';
 import { useUsersStore } from '@/features/users/store';
 import { getEnv } from '@/lib/runtimeEnv';
 import { TESTIDS } from '@/testids';
+import { toLocalDateISO } from '@/utils/getNow';
 
+import { IcebergPdcaFormSection } from './IcebergPdcaFormSection';
+import { IcebergPdcaMetrics } from './IcebergPdcaMetrics';
 import { IcebergPdcaEmptyState } from './components/IcebergPdcaEmptyState';
 import type { IcebergPdcaEmptyContext } from './components/icebergPdcaEmptyCopy';
 import {
-    DEFAULT_TREND_TOLERANCE,
     getDailySubmissionMetrics,
     getMonthlyMetrics,
     getStoredDailySubmissionEvents,
     getWeeklyMetrics,
-    type TrendDirection,
 } from './dailyMetricsAdapter';
+import { resolveDailyMetrics } from './icebergPdcaHelpers';
 import { useCreatePdca, useDeletePdca, useIcebergPdcaList, useUpdatePdca } from './queries';
 import { readDailySnapshot, type DailySnapshotMetrics } from './readDailySnapshot';
 import type { IcebergPdcaItem, IcebergPdcaPhase } from './types';
-import { toLocalDateISO } from '@/utils/getNow';
 
 type IcebergPdcaPageProps = {
   writeEnabled?: boolean;
@@ -146,18 +131,11 @@ export const IcebergPdcaPage: React.FC<IcebergPdcaPageProps> = ({ writeEnabled: 
       disposed = true;
     };
   }, [orgId, selectedUserId, templateId, today]);
-  const resolvedDailyMetrics = React.useMemo(() => {
-    if (!dailySnapshotMetrics) {
-      return dailyMetrics;
-    }
 
-    return {
-      ...dailyMetrics,
-      recordDate: dailySnapshotMetrics.targetDate ?? dailyMetrics.recordDate,
-      completionRate: dailySnapshotMetrics.completionRate,
-      averageLeadTimeMinutes: dailySnapshotMetrics.leadTimeMinutes,
-    };
-  }, [dailyMetrics, dailySnapshotMetrics]);
+  const resolvedDailyMetricsValue = React.useMemo(
+    () => resolveDailyMetrics(dailyMetrics, dailySnapshotMetrics),
+    [dailyMetrics, dailySnapshotMetrics],
+  );
   const allSubmissionEvents = React.useMemo(() => getStoredDailySubmissionEvents(), [today]);
   const weeklyMetrics = React.useMemo(
     () => getWeeklyMetrics({ events: allSubmissionEvents, targetUserIds, referenceDate: new Date(today) }),
@@ -167,25 +145,7 @@ export const IcebergPdcaPage: React.FC<IcebergPdcaPageProps> = ({ writeEnabled: 
     () => getMonthlyMetrics({ events: allSubmissionEvents, targetUserIds, referenceDate: new Date(today) }),
     [allSubmissionEvents, targetUserIds, today],
   );
-  const completionRateLabel = `${Math.round(resolvedDailyMetrics.completionRate * 100)}%`;
-  const leadTimeLabel = `${resolvedDailyMetrics.averageLeadTimeMinutes}分`;
-  const weeklyCompletionLabel = `${Math.round(weeklyMetrics.current.completionRate * 100)}%`;
-  const monthlyCompletionLabel = `${Math.round(monthlyMetrics.current.completionRate * 100)}%`;
-  const weeklyLeadTimeLabel = `${weeklyMetrics.current.averageLeadTimeMinutes}分`;
-  const monthlyLeadTimeLabel = `${monthlyMetrics.current.averageLeadTimeMinutes}分`;
-  const activeTrendMetrics = trendPeriod === 'weekly' ? weeklyMetrics : monthlyMetrics;
-  const activeCompletionLabel = trendPeriod === 'weekly' ? weeklyCompletionLabel : monthlyCompletionLabel;
-  const activeLeadTimeLabel = trendPeriod === 'weekly' ? weeklyLeadTimeLabel : monthlyLeadTimeLabel;
-  const activePeriodLabel = trendPeriod === 'weekly' ? '週次' : '月次';
-  const completionWorse = activeTrendMetrics.completionTrend === 'down';
-  const leadTimeWorse = activeTrendMetrics.leadTimeTrend === 'up';
-  const completionTolerancePoint = Math.round(DEFAULT_TREND_TOLERANCE.completionRate * 100);
-  const leadTimeToleranceMinutes = DEFAULT_TREND_TOLERANCE.leadTimeMinutes;
-  const trendLabel = (trend: TrendDirection): string => {
-    if (trend === 'up') return '↑';
-    if (trend === 'down') return '↓';
-    return '→';
-  };
+
   const selectedOption = React.useMemo(
     () => userOptions.find((opt) => opt.id === selectedUserId) ?? null,
     [selectedUserId, userOptions],
@@ -315,106 +275,42 @@ export const IcebergPdcaPage: React.FC<IcebergPdcaPageProps> = ({ writeEnabled: 
         行動の背景・気づき・改善を「見える化」する支援設計ツール
       </Typography>
 
-      <Stack spacing={2} sx={{ mb: 2 }}>
-        <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1.5}>
-          <Paper variant="outlined" sx={{ p: 1.5, minWidth: 220 }} data-testid={TESTIDS['pdca-daily-completion-card']}>
-            <Typography variant="caption" color="text.secondary">当日入力完了率</Typography>
-            <Typography variant="h6" data-testid={TESTIDS['pdca-daily-completion-value']}>
-              {completionRateLabel}
-            </Typography>
-            <Typography variant="caption" color="text.secondary">
-              {resolvedDailyMetrics.submittedCount}/{resolvedDailyMetrics.targetCount} 名
-            </Typography>
-          </Paper>
-          <Paper variant="outlined" sx={{ p: 1.5, minWidth: 220 }} data-testid={TESTIDS['pdca-daily-leadtime-card']}>
-            <Typography variant="caption" color="text.secondary">未送信解消リードタイム</Typography>
-            <Typography variant="h6" data-testid={TESTIDS['pdca-daily-leadtime-value']}>
-              {leadTimeLabel}
-            </Typography>
-            <Typography variant="caption" color="text.secondary">平均</Typography>
-          </Paper>
-        </Stack>
+      <IcebergPdcaMetrics
+        resolvedDailyMetrics={resolvedDailyMetricsValue}
+        weeklyMetrics={weeklyMetrics}
+        monthlyMetrics={monthlyMetrics}
+        trendPeriod={trendPeriod}
+        setTrendPeriod={setTrendPeriod}
+        supportRecordJumpTo={supportRecordJumpTo}
+        today={today}
+      />
 
-        <Paper variant="outlined" sx={{ p: 1.5 }} data-testid={TESTIDS['pdca-daily-trend-card']}>
-          <Typography variant="subtitle2" sx={{ mb: 1 }}>週次 / 月次トレンド</Typography>
-          <Typography variant="caption" color="text.secondary" sx={{ mb: 1 }}>
-            {trendPeriod === 'weekly' ? '直近7日' : '直近30日'}の集計
-          </Typography>
-          <ToggleButtonGroup
-            value={trendPeriod}
-            exclusive
+      <Autocomplete
+        options={userOptions}
+        value={selectedOption}
+        loading={usersStatus === 'idle' || usersStatus === 'loading'}
+        onChange={handleUserChange}
+        getOptionLabel={(opt) => opt.label}
+        isOptionEqualToValue={(opt, val) => opt.id === val.id}
+        renderInput={(params) => (
+          <TextField
+            {...params}
+            label="利用者で絞り込み"
+            placeholder="田中 太郎"
             size="small"
-            onChange={(_, value: 'weekly' | 'monthly' | null) => {
-              if (value) {
-                setTrendPeriod(value);
+            inputRef={(node) => {
+              const ref = params.InputProps.ref;
+              if (typeof ref === 'function') {
+                ref(node);
+              } else if (ref) {
+                (ref as React.MutableRefObject<HTMLInputElement | null>).current = node;
               }
+              userFilterRef.current = node;
             }}
-            sx={{ mb: 1 }}
-            data-testid={TESTIDS['pdca-trend-period-toggle']}
-          >
-            <ToggleButton value="weekly" data-testid={TESTIDS['pdca-trend-period-weekly']}>週</ToggleButton>
-            <ToggleButton value="monthly" data-testid={TESTIDS['pdca-trend-period-monthly']}>月</ToggleButton>
-          </ToggleButtonGroup>
-          <Stack spacing={0.5}>
-            <Typography
-              variant="body2"
-              data-testid={TESTIDS['pdca-weekly-completion-trend']}
-              aria-label={completionWorse ? '完了率 悪化' : undefined}
-              sx={{ fontWeight: completionWorse ? 700 : undefined }}
-            >
-              {completionWorse ? '⚠ ' : ''}
-              {activePeriodLabel}完了率 {activeCompletionLabel} {trendLabel(activeTrendMetrics.completionTrend)}
-            </Typography>
-            <Typography
-              variant="body2"
-              data-testid={TESTIDS['pdca-weekly-leadtime-trend']}
-              aria-label={leadTimeWorse ? 'リードタイム 悪化' : undefined}
-              sx={{ fontWeight: leadTimeWorse ? 700 : undefined }}
-            >
-              {leadTimeWorse ? '⚠ ' : ''}
-              {activePeriodLabel}平均リードタイム {activeLeadTimeLabel} {trendLabel(activeTrendMetrics.leadTimeTrend)}
-            </Typography>
-            <Typography variant="caption" color="text.secondary" sx={{ mt: 0.5 }}>
-              判定基準: 完了率 ±{completionTolerancePoint}pt / リードタイム ±{leadTimeToleranceMinutes}分
-            </Typography>
-            <Button
-              size="small"
-              component={RouterLink}
-              to={supportRecordJumpTo}
-              aria-label={`支援手順・行動記録へ移動（${today}）`}
-              sx={{ alignSelf: 'flex-start', mt: 0.5 }}
-            >
-              対象日の支援記録へ
-            </Button>
-          </Stack>
-        </Paper>
-
-        <Autocomplete
-          options={userOptions}
-          value={selectedOption}
-          loading={usersStatus === 'idle' || usersStatus === 'loading'}
-          onChange={handleUserChange}
-          getOptionLabel={(opt) => opt.label}
-          isOptionEqualToValue={(opt, val) => opt.id === val.id}
-          renderInput={(params) => (
-            <TextField
-              {...params}
-              label="利用者で絞り込み"
-              placeholder="田中 太郎"
-              size="small"
-              inputRef={(node) => {
-                const ref = params.InputProps.ref;
-                if (typeof ref === 'function') {
-                  ref(node);
-                } else if (ref) {
-                  (ref as React.MutableRefObject<HTMLInputElement | null>).current = node;
-                }
-                userFilterRef.current = node;
-              }}
-            />
-          )}
-        />
-      </Stack>
+          />
+        )}
+        sx={{ mb: 2 }}
+      />
 
       {context ? (
         <IcebergPdcaEmptyState
@@ -430,169 +326,25 @@ export const IcebergPdcaPage: React.FC<IcebergPdcaPageProps> = ({ writeEnabled: 
           <Typography variant="body2">読み込み中…</Typography>
         </Box>
       ) : (
-        <Box>
-          {canWrite && selectedUserId && (
-            <Paper sx={{ p: 2, mb: 2 }} variant="outlined" component="form" onSubmit={handleSubmit}>
-              <Stack spacing={1.5}>
-                <Typography variant="subtitle1">
-                  {formState.mode === 'edit' ? 'PDCAを編集' : 'PDCAを新規作成'}
-                </Typography>
-                <TextField
-                  label="タイトル"
-                  size="small"
-                  value={formState.title}
-                  onChange={(e) => setFormState((prev) => ({ ...prev, title: e.target.value }))}
-                  required
-                />
-                <TextField
-                  label="概要"
-                  size="small"
-                  multiline
-                  minRows={2}
-                  value={formState.summary}
-                  onChange={(e) => setFormState((prev) => ({ ...prev, summary: e.target.value }))}
-                />
-                <FormControl size="small">
-                  <InputLabel id="pdca-phase-label">Phase</InputLabel>
-                  <Select
-                    labelId="pdca-phase-label"
-                    label="Phase"
-                    value={formState.phase}
-                    onChange={(e) =>
-                      setFormState((prev) => ({ ...prev, phase: e.target.value as IcebergPdcaPhase }))
-                    }
-                  >
-                    <MenuItem value="PLAN">PLAN</MenuItem>
-                    <MenuItem value="DO">DO</MenuItem>
-                    <MenuItem value="CHECK">CHECK</MenuItem>
-                    <MenuItem value="ACT">ACT</MenuItem>
-                  </Select>
-                </FormControl>
-                <Stack direction="row" spacing={1}>
-                  <Button
-                    type="submit"
-                    variant="contained"
-                    size="small"
-                    disabled={!selectedUserId || !formState.title.trim() || isMutating}
-                  >
-                    {formState.mode === 'edit' ? '保存' : '作成'}
-                  </Button>
-                  {formState.mode === 'edit' && (
-                    <Button
-                      type="button"
-                      variant="text"
-                      size="small"
-                      onClick={() => setFormState({ mode: 'create', title: '', summary: '', phase: 'PLAN' })}
-                      disabled={isMutating}
-                    >
-                      キャンセル
-                    </Button>
-                  )}
-                </Stack>
-              </Stack>
-            </Paper>
-          )}
-
-          <Stack spacing={1.5}>
-            {items.map((item) => (
-              <Paper key={item.id} sx={{ p: 2 }} variant="outlined">
-                <Stack direction="row" justifyContent="space-between" alignItems="flex-start" spacing={1}>
-                  <Box>
-                    <Typography variant="subtitle2" sx={{ mb: 0.5 }}>
-                      {item.title}
-                    </Typography>
-                    <Typography variant="caption" sx={{ color: 'text.secondary', display: 'block' }}>
-                      Phase: {item.phase} / 更新: {item.updatedAt}
-                    </Typography>
-                    {item.summary ? (
-                      <Typography variant="body2" sx={{ mt: 0.5 }}>
-                        {item.summary}
-                      </Typography>
-                    ) : null}
-                  </Box>
-                  {canWrite && (
-                    <Stack direction="row" spacing={1}>
-                      <Button
-                        size="small"
-                        variant="outlined"
-                        onClick={() => startEdit(item)}
-                        disabled={isMutating}
-                      >
-                        編集
-                      </Button>
-                      <Button
-                        size="small"
-                        color="error"
-                        variant="outlined"
-                        onClick={() => askDelete(item)}
-                        disabled={isMutating}
-                      >
-                        削除
-                      </Button>
-                    </Stack>
-                  )}
-                </Stack>
-              </Paper>
-            ))}
-            {items.length === 0 && (
-              <Typography variant="body2" sx={{ color: 'text.secondary' }}>
-                PDCA項目はまだありません。
-              </Typography>
-            )}
-          </Stack>
-
-          <Dialog open={Boolean(deleteTarget)} onClose={closeDelete} fullWidth maxWidth="xs">
-            <DialogTitle>この記録を削除しますか？</DialogTitle>
-            <DialogContent>
-              <DialogContentText>削除すると元に戻せません。</DialogContentText>
-              {deleteTarget ? (
-                <Box sx={{ mt: 1.5 }}>
-                  <Typography variant="subtitle2">{deleteTarget.title}</Typography>
-                  {deleteTarget.summary ? (
-                    <Typography variant="body2" sx={{ mt: 0.5, whiteSpace: 'pre-wrap' }}>
-                      {deleteTarget.summary}
-                    </Typography>
-                  ) : null}
-                </Box>
-              ) : null}
-            </DialogContent>
-            <DialogActions>
-              <Button onClick={closeDelete} disabled={deleteMutation.isPending}>
-                キャンセル
-              </Button>
-              <Button
-                color="error"
-                variant="contained"
-                onClick={handleDelete}
-                disabled={!deleteTarget || deleteMutation.isPending}
-              >
-                削除
-              </Button>
-            </DialogActions>
-          </Dialog>
-
-          <Snackbar
-            open={Boolean(snackbar)}
-            autoHideDuration={4000}
-            onClose={() => setSnackbar(null)}
-            anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
-          >
-            <Alert severity="success" onClose={() => setSnackbar(null)} sx={{ width: '100%' }}>
-              {snackbar}
-            </Alert>
-          </Snackbar>
-
-          <Snackbar
-            open={Boolean(snapshotWarning)}
-            autoHideDuration={5000}
-            onClose={() => setSnapshotWarning(null)}
-            anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
-          >
-            <Alert severity="warning" onClose={() => setSnapshotWarning(null)} sx={{ width: '100%' }}>
-              {snapshotWarning}
-            </Alert>
-          </Snackbar>
-        </Box>
+        <IcebergPdcaFormSection
+          items={items}
+          canWrite={canWrite}
+          selectedUserId={selectedUserId}
+          isMutating={isMutating}
+          formState={formState}
+          setFormState={setFormState}
+          onSubmit={handleSubmit}
+          onStartEdit={startEdit}
+          onDelete={askDelete}
+          deleteTarget={deleteTarget}
+          onCloseDelete={closeDelete}
+          onConfirmDelete={handleDelete}
+          isDeleting={deleteMutation.isPending}
+          snackbar={snackbar}
+          onCloseSnackbar={() => setSnackbar(null)}
+          snapshotWarning={snapshotWarning}
+          onCloseSnapshotWarning={() => setSnapshotWarning(null)}
+        />
       )}
     </Box>
   );
