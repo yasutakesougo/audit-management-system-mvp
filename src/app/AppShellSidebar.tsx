@@ -281,8 +281,7 @@ export const MobileNavContent: React.FC<{
         <TextField
           value={navQuery}
           onChange={(e) => onNavQueryChange(e.target.value)}
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          onKeyDown={(e) => onNavSearchKeyDown(e as any, onNavigate)}
+          onKeyDown={(e) => onNavSearchKeyDown(e as React.KeyboardEvent<HTMLInputElement>, onNavigate)}
           size="small"
           placeholder="メニュー検索"
           fullWidth

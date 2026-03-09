@@ -11,7 +11,7 @@ import { getAppConfig, readBool, readEnv, readOptionalEnv } from '@/lib/env';
  */
 export const handoffConfig = {
   // SharePoint リスト設定
-  listTitle: readEnv('VITE_SP_HANDOFF_LIST_TITLE', 'Handoff_Timeline'),
+  listTitle: readEnv('VITE_SP_HANDOFF_LIST_TITLE', 'Handoff'),
   listId: readOptionalEnv('VITE_SP_HANDOFF_LIST_ID'),
 
   // ストレージ戦略切り替え
