@@ -19,7 +19,7 @@ const createMockPersonDaily = (overrides: Partial<PersonDaily> = {}): PersonDail
     amNotes: '順調',
     pmNotes: '問題なし',
     mealAmount: '完食',
-    problemBehavior: { selfHarm: false, violence: false, loudVoice: false, pica: false, other: false, otherDetail: '' },
+    problemBehavior: { selfHarm: false, otherInjury: false, loudVoice: false, pica: false, other: false, otherDetail: '' },
     seizureRecord: { occurred: false, time: '', duration: '', severity: undefined, notes: '' },
     specialNotes: ''
   },

@@ -261,9 +261,9 @@ export function createNavItems(config: CreateNavItemsConfig): NavItem[] {
     icebergPdcaEnabled: _icebergPdcaEnabled,
     staffAttendanceEnabled,
     todayOpsEnabled,
-    isAdmin,
+    isAdmin: _isAdmin, // TODO: プレリリース中は未使用
     authzReady,
-    navAudience,
+    navAudience: _navAudience, // TODO: プレリリース中は未使用。復元時に rename すること
     skipLogin = false,
   } = config;
 
@@ -383,6 +383,22 @@ export function createNavItems(config: CreateNavItemsConfig): NavItem[] {
       group: 'record' as NavGroupKey,
     },
     {
+      label: '業務日誌プレビュー',
+      to: '/records/journal',
+      isActive: (pathname) => pathname === '/records/journal',
+      icon: undefined,
+      audience: NAV_AUDIENCE.staff,
+      group: 'record' as NavGroupKey,
+    },
+    {
+      label: '個人月次業務日誌',
+      to: '/records/journal/personal',
+      isActive: (pathname) => pathname.startsWith('/records/journal/personal'),
+      icon: undefined,
+      audience: NAV_AUDIENCE.staff,
+      group: 'record' as NavGroupKey,
+    },
+    {
       label: '支援ハブ',
       to: '/ibd',
       isActive: (pathname) => pathname === '/ibd',
@@ -488,7 +504,8 @@ export function createNavItems(config: CreateNavItemsConfig): NavItem[] {
     });
   }
 
-  if (isAdmin && (authzReady || skipLogin)) {
+  // TODO: プレリリース中は isAdmin チェックを無効化。正式リリース時に `isAdmin &&` を復元すること。
+  if (authzReady || skipLogin) {
     items.push(
       {
         label: '支援手順マスタ',
@@ -618,11 +635,13 @@ export function createNavItems(config: CreateNavItemsConfig): NavItem[] {
   }
 
   // Filter by audience
-  const isNavVisible = (item: NavItem): boolean => {
-    const audienceList = Array.isArray(item.audience) ? item.audience : [item.audience ?? 'all'];
-    if (audienceList.includes('all')) return true;
-    if (navAudience === 'admin') return true; // admin sees everything (including staff/reception stuff if needed)
-    return audienceList.includes(navAudience);
+  const isNavVisible = (_item: NavItem): boolean => {
+    // TODO: プレリリース期間中は全メニュー表示。正式リリース時に audience フィルタを復元すること。
+    return true;
+    // const audienceList = Array.isArray(item.audience) ? item.audience : [item.audience ?? 'all'];
+    // if (audienceList.includes('all')) return true;
+    // if (navAudience === 'admin') return true;
+    // return audienceList.includes(navAudience);
   };
 
   return items.filter(isNavVisible);

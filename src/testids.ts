@@ -420,6 +420,19 @@ export const TESTIDS = {
   'agenda-filter-morning': 'agenda-filter-morning',
   'agenda-filter-evening': 'agenda-filter-evening',
 
+  // Business Journal Preview
+  'journal-preview-page': 'journal-preview-page',
+  'journal-preview-month-select': 'journal-preview-month-select',
+  'journal-preview-grid': 'journal-preview-grid',
+  'journal-preview-detail-dialog': 'journal-preview-detail-dialog',
+  'journal-preview-cell': 'journal-preview-cell',
+
+  // Personal Journal
+  'personal-journal-page': 'personal-journal-page',
+  'personal-journal-user-select': 'personal-journal-user-select',
+  'personal-journal-month-select': 'personal-journal-month-select',
+  'personal-journal-table': 'personal-journal-table',
+
   // Support Plan Guide HUD
   'support-plan-hud': 'support-plan-hud',
 } as const;

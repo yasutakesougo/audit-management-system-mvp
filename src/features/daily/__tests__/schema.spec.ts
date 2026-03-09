@@ -16,7 +16,7 @@ describe('Daily Module Zod Schemas', () => {
             amActivity: '散歩',
             pmActivity: '昼寝',
             lunchAmount: '完食',
-            problemBehavior: { selfHarm: false, violence: false, loudVoice: true, pica: false, other: false },
+            problemBehavior: { selfHarm: false, otherInjury: false, loudVoice: true, pica: false, other: false },
             specialNotes: '元気でした',
           }
         ]),
@@ -76,7 +76,7 @@ describe('Daily Module Zod Schemas', () => {
             amActivity: '入浴',
             pmActivity: 'レク',
             lunchAmount: '半分',
-            problemBehavior: { selfHarm: false, violence: false, loudVoice: false, pica: false, other: false },
+            problemBehavior: { selfHarm: false, otherInjury: false, loudVoice: false, pica: false, other: false },
             specialNotes: '',
           }
         ]),

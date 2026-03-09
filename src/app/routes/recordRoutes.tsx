@@ -7,8 +7,10 @@ import type { RouteObject } from 'react-router-dom';
 
 import {
     SuspendedBillingPage,
+    SuspendedBusinessJournalPreviewPage,
     SuspendedHandoffTimelinePage,
     SuspendedMonthlyRecordPage,
+    SuspendedPersonalJournalPage,
     SuspendedRecordList,
     SuspendedServiceProvisionFormPage,
 } from './lazyPages';
@@ -27,6 +29,22 @@ export const recordRoutes: RouteObject[] = [
     element: (
       <RequireAudience requiredRole="reception">
         <SuspendedMonthlyRecordPage />
+      </RequireAudience>
+    ),
+  },
+  {
+    path: 'records/journal',
+    element: (
+      <RequireAudience requiredRole="viewer">
+        <SuspendedBusinessJournalPreviewPage />
+      </RequireAudience>
+    ),
+  },
+  {
+    path: 'records/journal/personal',
+    element: (
+      <RequireAudience requiredRole="viewer">
+        <SuspendedPersonalJournalPage />
       </RequireAudience>
     ),
   },

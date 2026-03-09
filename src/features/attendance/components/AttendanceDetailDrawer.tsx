@@ -10,17 +10,20 @@ import {
     FormControl,
     IconButton,
     InputLabel,
+    ListSubheader,
     MenuItem,
     Select,
     type SelectChangeEvent,
+    TextField,
     Typography,
 } from '@mui/material';
 import { useEffect, useState } from 'react';
 
 import {
-    TRANSPORT_METHODS,
+    TRANSPORT_METHOD_GROUPS,
     TRANSPORT_METHOD_LABEL,
     type TransportMethod,
+    requiresNote,
 } from '../transportMethod';
 
 export type AttendanceDetailDrawerUser = {
@@ -56,6 +59,8 @@ export type AttendanceDetailDrawerProps = {
   onTransportFromChange?: (value: boolean) => void;
   onTransportToMethodChange?: (method: TransportMethod) => void;
   onTransportFromMethodChange?: (method: TransportMethod) => void;
+  onTransportToNoteChange?: (note: string) => void;
+  onTransportFromNoteChange?: (note: string) => void;
   onUserConfirm?: () => void;
   onReset?: () => void;
   onViewHandoff?: () => void;
@@ -71,6 +76,8 @@ export function AttendanceDetailDrawer({
   onTransportFromChange,
   onTransportToMethodChange,
   onTransportFromMethodChange,
+  onTransportToNoteChange,
+  onTransportFromNoteChange,
   onUserConfirm,
   onReset,
   onViewHandoff,
@@ -79,6 +86,8 @@ export function AttendanceDetailDrawer({
   // ── Local state for transport methods (immediate UI feedback) ──
   const [localToMethod, setLocalToMethod] = useState<TransportMethod>('self');
   const [localFromMethod, setLocalFromMethod] = useState<TransportMethod>('self');
+  const [localToNote, setLocalToNote] = useState('');
+  const [localFromNote, setLocalFromNote] = useState('');
 
   // Sync from props when drawer opens or visit changes
   useEffect(() => {
@@ -89,6 +98,8 @@ export function AttendanceDetailDrawer({
       setLocalFromMethod(
         visit.transportFromMethod ?? (visit.transportFrom ? 'office_shuttle' : 'self'),
       );
+      setLocalToNote(visit.transportToNote ?? '');
+      setLocalFromNote(visit.transportFromNote ?? '');
     }
   }, [visit]);
 
@@ -113,6 +124,29 @@ export function AttendanceDetailDrawer({
     // Legacy boolean callback for backward compat
     onTransportFromChange?.(method === 'office_shuttle');
   };
+
+  const handleToNoteChange = (value: string) => {
+    setLocalToNote(value);
+    onTransportToNoteChange?.(value);
+  };
+
+  const handleFromNoteChange = (value: string) => {
+    setLocalFromNote(value);
+    onTransportFromNoteChange?.(value);
+  };
+
+  /** Render grouped <MenuItem> with <ListSubheader> separators */
+  const renderTransportMenuItems = () =>
+    TRANSPORT_METHOD_GROUPS.flatMap((group) => [
+      <ListSubheader key={`header-${group.label}`} sx={{ lineHeight: '32px', fontSize: '0.75rem', bgcolor: 'background.paper' }}>
+        {group.label}
+      </ListSubheader>,
+      ...group.methods.map((m) => (
+        <MenuItem key={m} value={m} sx={{ pl: 3 }}>
+          {TRANSPORT_METHOD_LABEL[m]}
+        </MenuItem>
+      )),
+    ]);
 
   return (
     <Drawer
@@ -188,13 +222,20 @@ export function AttendanceDetailDrawer({
                 onChange={handleToMethodChange}
                 MenuProps={{ sx: { zIndex: 1500 } }}
               >
-                {TRANSPORT_METHODS.map((m) => (
-                  <MenuItem key={m} value={m}>
-                    {TRANSPORT_METHOD_LABEL[m]}
-                  </MenuItem>
-                ))}
+                {renderTransportMenuItems()}
               </Select>
             </FormControl>
+            {requiresNote(localToMethod) ? (
+              <TextField
+                size="small"
+                fullWidth
+                disabled={isAbsent}
+                label={localToMethod === 'other_facility' ? '施設名' : '備考'}
+                value={localToNote}
+                onChange={(e) => handleToNoteChange(e.target.value)}
+                placeholder={localToMethod === 'other_facility' ? '施設名を入力' : '備考を入力'}
+              />
+            ) : null}
             <FormControl size="small" fullWidth disabled={isAbsent}>
               <InputLabel id="transport-from-label">帰り</InputLabel>
               <Select
@@ -204,13 +245,20 @@ export function AttendanceDetailDrawer({
                 onChange={handleFromMethodChange}
                 MenuProps={{ sx: { zIndex: 1500 } }}
               >
-                {TRANSPORT_METHODS.map((m) => (
-                  <MenuItem key={m} value={m}>
-                    {TRANSPORT_METHOD_LABEL[m]}
-                  </MenuItem>
-                ))}
+                {renderTransportMenuItems()}
               </Select>
             </FormControl>
+            {requiresNote(localFromMethod) ? (
+              <TextField
+                size="small"
+                fullWidth
+                disabled={isAbsent}
+                label={localFromMethod === 'other_facility' ? '施設名' : '備考'}
+                value={localFromNote}
+                onChange={(e) => handleFromNoteChange(e.target.value)}
+                placeholder={localFromMethod === 'other_facility' ? '施設名を入力' : '備考を入力'}
+              />
+            ) : null}
           </Box>
         </Box>
 

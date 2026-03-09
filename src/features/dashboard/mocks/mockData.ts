@@ -37,14 +37,14 @@ export const generateMockActivityRecords = (users: IUserMaster[], date: string):
         mealAmount,
         problemBehavior: hasProblems ? {
           selfHarm: Math.random() < 0.3,
-          violence: Math.random() < 0.2,
+          otherInjury: Math.random() < 0.2,
           loudVoice: Math.random() < 0.4,
           pica: Math.random() < 0.1,
           other: Math.random() < 0.2,
           otherDetail: Math.random() < 0.2 ? '落ち着かない様子が見られました' : ''
         } : {
           selfHarm: false,
-          violence: false,
+          otherInjury: false,
           loudVoice: false,
           pica: false,
           other: false
