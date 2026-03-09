@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import type { HandoffStats } from './TodayHandoffTimelineList';
+import { logWorkflowBlocked } from './actions/handoffActions.logger';
 import { getAllowedActions } from './handoffStateMachine';
 import type {
     HandoffDayScope,
@@ -8,6 +8,7 @@ import type {
     HandoffTimeFilter,
     MeetingMode,
 } from './handoffTypes';
+import type { HandoffStats } from './TodayHandoffTimelineList';
 
 // ────────────────────────────────────────────────────────────
 // Types
@@ -111,11 +112,11 @@ function useWorkflowActions(
   const markReviewed = useCallback(
     async (id: number) => {
       if (!isAllowed(id, '確認済')) {
-        console.warn(`[handoff] markReviewed blocked: id=${id} not allowed in ${meetingMode} mode`);
+        logWorkflowBlocked({ id, attemptedAction: 'markReviewed', meetingMode, reason: 'state_guard' });
         return;
       }
       const fn = diRef.current.updateHandoffStatus;
-      if (!fn) { console.warn('[handoff] updateHandoffStatus not provided'); return; }
+      if (!fn) { logWorkflowBlocked({ id, attemptedAction: 'markReviewed', meetingMode, reason: 'di_not_provided' }); return; }
       await fn(id, '確認済');
     },
     [diRef, isAllowed, meetingMode],
@@ -124,11 +125,11 @@ function useWorkflowActions(
   const markCarryOver = useCallback(
     async (id: number) => {
       if (!isAllowed(id, '明日へ持越')) {
-        console.warn(`[handoff] markCarryOver blocked: id=${id} not allowed in ${meetingMode} mode`);
+        logWorkflowBlocked({ id, attemptedAction: 'markCarryOver', meetingMode, reason: 'state_guard' });
         return;
       }
       const fn = diRef.current.updateHandoffStatus;
-      if (!fn) { console.warn('[handoff] updateHandoffStatus not provided'); return; }
+      if (!fn) { logWorkflowBlocked({ id, attemptedAction: 'markCarryOver', meetingMode, reason: 'di_not_provided' }); return; }
       const today = formatYmdLocal();
       await fn(id, '明日へ持越', today);
     },
@@ -138,11 +139,11 @@ function useWorkflowActions(
   const markClosed = useCallback(
     async (id: number) => {
       if (!isAllowed(id, '完了')) {
-        console.warn(`[handoff] markClosed blocked: id=${id} not allowed in ${meetingMode} mode`);
+        logWorkflowBlocked({ id, attemptedAction: 'markClosed', meetingMode, reason: 'state_guard' });
         return;
       }
       const fn = diRef.current.updateHandoffStatus;
-      if (!fn) { console.warn('[handoff] updateHandoffStatus not provided'); return; }
+      if (!fn) { logWorkflowBlocked({ id, attemptedAction: 'markClosed', meetingMode, reason: 'di_not_provided' }); return; }
       await fn(id, '完了');
     },
     [diRef, isAllowed, meetingMode],
