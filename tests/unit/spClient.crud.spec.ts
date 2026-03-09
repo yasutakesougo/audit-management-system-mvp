@@ -33,8 +33,14 @@ const minimalSchedulePayload: Parameters<typeof createSchedule>[1] = {
 vi.mock('@/lib/debugLogger', () => ({
   auditLog: {
     debug: vi.fn(),
+    info: vi.fn(),
+    warn: vi.fn(),
+    error: vi.fn(),
   },
 }));
+
+
+import { auditLog } from '@/lib/debugLogger';
 
 describe('createSpClient CRUD helpers', () => {
   installTestResets();
@@ -332,15 +338,14 @@ describe('createSpClient CRUD helpers', () => {
   it('logs token metrics snapshot when debug mode is enabled', async () => {
     setTestConfigOverride({ VITE_AUDIT_DEBUG: true });
     fetchMock.mockResolvedValueOnce(new Response(null, { status: 204 }));
-    const debugSpy = vi.spyOn(console, 'debug').mockImplementation(() => {});
+    const mockedAuditDebug = vi.mocked(auditLog.debug);
 
     (globalThis as { __TOKEN_METRICS__?: Record<string, unknown> }).__TOKEN_METRICS__ = { refreshed: true };
 
     const client = createSpClient(acquireToken, baseUrl);
     await client.spFetch('/lists');
 
-    expect(debugSpy).toHaveBeenCalledWith('[spClient]', 'token metrics snapshot', expect.objectContaining({ refreshed: true }));
-    debugSpy.mockRestore();
+    expect(mockedAuditDebug).toHaveBeenCalledWith('sp', 'token metrics snapshot', expect.objectContaining({ refreshed: true }));
   });
 
   it('createSchedule resolves without touching SharePoint', async () => {

@@ -26,6 +26,7 @@ import { SharePointDailyRecordItemSchema } from '@/features/daily/schema';
 import { SpUserMasterItemSchema } from '@/features/users/schema';
 import { useDataIntegrityScan } from '@/hooks/useDataIntegrityScan';
 import { formatScanSummary, type ScanResult, type ScanTarget } from '@/lib/dataIntegrityScanner';
+import { auditLog } from '@/lib/debugLogger';
 import { fetchSp } from '@/lib/fetchSp';
 import { ensureConfig } from '@/lib/spClient';
 import { USERS_SELECT_FIELDS_SAFE } from '@/sharepoint/fields';
@@ -72,7 +73,7 @@ async function fetchRawItems(
 
     const response = await fetchSp(url);
     if (!response.ok) {
-      console.warn(`[DataIntegrityPage] Failed to fetch ${listTitle}`, { status: response.status });
+      auditLog.warn('data-integrity', 'fetch_list_failed', { listTitle, status: response.status });
       break;
     }
 
@@ -122,7 +123,9 @@ const DataIntegrityPage: React.FC = () => {
       startScan(SCAN_TARGETS, data);
     } catch (err) {
       setFetchingData(false);
-      console.error('[DataIntegrityPage] Failed to fetch data for scan', err);
+      auditLog.error('data-integrity', 'fetch_scan_data_failed', {
+        error: err instanceof Error ? err.message : String(err),
+      });
     }
   }, [startScan]);
 
@@ -135,8 +138,7 @@ const DataIntegrityPage: React.FC = () => {
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
     } catch {
-      // eslint-disable-next-line no-console
-      console.warn('[DataIntegrityPage] clipboard API not available');
+      auditLog.warn('data-integrity', 'clipboard_api_unavailable');
     }
   }, [results]);
 

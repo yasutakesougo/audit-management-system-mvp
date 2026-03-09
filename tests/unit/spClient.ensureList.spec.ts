@@ -9,6 +9,16 @@ vi.mock('@/lib/env', async () => {
   };
 });
 
+vi.mock('@/lib/debugLogger', () => ({
+  auditLog: {
+    debug: vi.fn(),
+    info: vi.fn(),
+    warn: vi.fn(),
+    error: vi.fn(),
+  },
+}));
+
+import { auditLog } from '@/lib/debugLogger';
 import { __ensureListInternals, createSpClient, type SpFieldDef } from '@/lib/spClient';
 
 describe('spClient ensureListExists', () => {
@@ -129,30 +139,22 @@ describe('spClient ensureListExists', () => {
   });
 
   it('warns when an existing field misses the required flag', async () => {
-    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    const mockedWarn = vi.mocked(auditLog.warn);
 
-    try {
-      fetchSpy
-        .mockResolvedValueOnce(new Response(JSON.stringify({ Id: '{ABC}', Title: 'Existing' }), { status: 200 }))
-        .mockResolvedValueOnce(new Response(JSON.stringify({
-          value: [
-            { InternalName: 'NeedsRequired', TypeAsString: 'Text', Required: false },
-          ],
-        }), { status: 200 }));
+    fetchSpy
+      .mockResolvedValueOnce(new Response(JSON.stringify({ Id: '{ABC}', Title: 'Existing' }), { status: 200 }))
+      .mockResolvedValueOnce(new Response(JSON.stringify({
+        value: [
+          { InternalName: 'NeedsRequired', TypeAsString: 'Text', Required: false },
+        ],
+      }), { status: 200 }));
 
-      const client = createSpClient(acquireToken, 'https://contoso.sharepoint.com/sites/wf/_api/web');
-      const result = await client.ensureListExists('Existing', [
-        { internalName: 'NeedsRequired', type: 'Text', required: true },
-      ]);
+    const client = createSpClient(acquireToken, 'https://contoso.sharepoint.com/sites/wf/_api/web');
+    const result = await client.ensureListExists('Existing', [
+      { internalName: 'NeedsRequired', type: 'Text', required: true },
+    ]);
 
-      expect(result).toEqual({ listId: 'ABC', title: 'Existing' });
-      const sawWarning = warnSpy.mock.calls.some((args: unknown[]) => {
-        const [message] = args;
-        return typeof message === 'string' && message.includes('required flag differs (current=FALSE)');
-      });
-      expect(sawWarning).toBe(true);
-    } finally {
-      warnSpy.mockRestore();
-    }
+    expect(result).toEqual({ listId: 'ABC', title: 'Existing' });
+    expect(mockedWarn).toHaveBeenCalledWith('sp:fields', 'required_flag_mismatch', expect.objectContaining({ field: 'NeedsRequired' }));
   });
 });

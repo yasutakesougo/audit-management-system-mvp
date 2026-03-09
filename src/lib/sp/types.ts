@@ -4,6 +4,7 @@
  * Consolidated from former types.ts + spTypes.ts.
  * Every SP module imports types from this file only.
  */
+import { auditLog } from '@/lib/debugLogger';
 import { z } from 'zod';
 
 // ─── Basic types ─────────────────────────────────────────────────
@@ -162,7 +163,7 @@ export function parseSpListResponse<T extends z.ZodTypeAny>(
   const envelopeParsed = envelopeSchema.safeParse(json);
 
   if (!envelopeParsed.success) {
-    console.error('[spClient] SharePoint API envelope mismatch:', envelopeParsed.error.format());
+    auditLog.error('sp', 'envelope_mismatch', { error: envelopeParsed.error.format() });
     throw new Error('SharePoint response envelope validation failed. Expected { value: [...] }');
   }
 
@@ -189,11 +190,13 @@ export function parseSpListResponse<T extends z.ZodTypeAny>(
 
   // 3. Telemetry hook: Log specific item failures without crashing the whole list
   if (errors.length > 0) {
-    console.error(
-      `[spClient] Partial validation failure: ${errors.length}/${rawItems.length} items failed schema.`,
+    auditLog.error(
+      'sp',
+      'partial_validation_failure',
       {
+        failedCount: errors.length,
+        totalCount: rawItems.length,
         errors,
-        // Consider pushing this to Sentry/AppInsights here in the future
       },
     );
   }

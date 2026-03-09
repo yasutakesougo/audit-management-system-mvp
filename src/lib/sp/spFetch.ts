@@ -121,10 +121,10 @@ function computeDelay(attempt: number, res: Response, baseDelay: number, capDela
 
 export function createSpFetch(deps: SpFetchDeps) {
   const { acquireToken, baseUrl, config, retrySettings, debugEnabled, onRetry } = deps;
-  const e2eMsalMockFlag = config.VITE_E2E_MSAL_MOCK;
+  const _e2eMsalMockFlag = config.VITE_E2E_MSAL_MOCK;
   const tokenMetricsCarrier = globalThis as { __TOKEN_METRICS__?: Record<string, unknown> };
 
-  function dbg(...a: unknown[]) { if (debugEnabled) console.debug('[spClient]', ...a); }
+  const dbg = (event: string, data?: Record<string, unknown>) => { auditLog.debug('sp', event, data); };
 
   const resolveUrl = (targetPath: string) =>
     /^https?:\/\//i.test(targetPath) ? targetPath : `${baseUrl}${targetPath}`;
@@ -138,21 +138,19 @@ export function createSpFetch(deps: SpFetchDeps) {
     const AUDIT_DEBUG = config.VITE_AUDIT_DEBUG;
 
     if (AUDIT_DEBUG || isE2EWithMsalMock) {
-      console.log('[spFetch]', {
+      auditLog.debug('sp:fetch', 'request', {
         path: resolvedPath.substring(0, 80),
         method: init.method || 'GET',
         isE2EWithMsalMock,
         shouldMock,
         baseUrl: baseUrl ? `${baseUrl.substring(0, 40)}...` : '(empty)',
-        'VITE_E2E_MSAL_MOCK': e2eMsalMockFlag,
-        'VITE_E2E': config.VITE_E2E,
       });
     }
 
     // Dev / demo / skip-login mock responses
     if (shouldMock) {
       if (AUDIT_DEBUG) {
-        console.info(`[DevMock] ✅ SharePoint API モック: ${init.method || 'GET'} ${resolvedPath}`);
+        auditLog.debug('sp:mock', 'mock_response', { method: init.method || 'GET', path: resolvedPath });
       }
       const mockResponse = (data: any, status = 200) => {
         const response = new Response(JSON.stringify(data), {
@@ -194,7 +192,7 @@ export function createSpFetch(deps: SpFetchDeps) {
       const method = (init.method ?? 'GET').toUpperCase();
 
       if (AUDIT_DEBUG) {
-        console.warn('[spFetch] reached', { method, url: url.split('?')[0] });
+        auditLog.debug('sp:fetch', 'reached', { method, url: url.split('?')[0] });
       }
 
       if (['POST', 'PUT', 'PATCH', 'MERGE'].includes(method)) {
@@ -207,7 +205,7 @@ export function createSpFetch(deps: SpFetchDeps) {
           headers.set('Content-Type', 'application/json;odata=nometadata');
         }
         if (process.env.NODE_ENV === 'development') {
-          console.warn('[spFetch] PATCH/POST headers FINAL', {
+          auditLog.debug('sp:fetch', 'write_headers', {
             method,
             Accept: headers.get('Accept'),
             ContentType: headers.get('Content-Type'),
@@ -222,7 +220,7 @@ export function createSpFetch(deps: SpFetchDeps) {
       }
 
       if (AUDIT_DEBUG) {
-        console.log('[spClient] 📡 fetch', {
+        auditLog.debug('sp:fetch', 'outbound', {
           method, url: url.split('?')[0],
           Accept: headers.get('Accept'), ContentType: headers.get('Content-Type'),
         });
@@ -248,11 +246,11 @@ export function createSpFetch(deps: SpFetchDeps) {
       const delayMs = computeDelay(attempt, response, baseDelay, capDelay);
       if (onRetry) {
         try { onRetry(response, { attempt, status: response.status, reason, delayMs }); }
-        catch (error) { if (debugEnabled) console.warn('[spClient] onRetry callback failed', error); }
+        catch (error) { auditLog.debug('sp:retry', 'callback_failed', { error: error instanceof Error ? (error as Error).message : String(error) }); }
       }
       auditLog.debug('sp:retry', { attempt, status: response.status, reason, delayMs });
       if (debugEnabled) {
-        console.warn('[spRetry]', JSON.stringify({ phase: 'single', status: response.status, nextAttempt: attempt + 1, waitMs: delayMs }));
+        auditLog.debug('sp:retry', 'single', { status: response.status, nextAttempt: attempt + 1, waitMs: delayMs });
       }
       if (delayMs > 0) { await sleep(delayMs); } else { await Promise.resolve(); }
       attempt += 1;

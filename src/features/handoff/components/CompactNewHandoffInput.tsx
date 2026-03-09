@@ -129,8 +129,7 @@ export const CompactNewHandoffInput: React.FC<CompactNewHandoffInputProps> = ({
       setMessage('');
       showFeedback('success');
       onSuccess?.();
-    } catch (error) {
-      console.error('[CompactNewHandoffInput] Submit failed:', error);
+    } catch {
       showFeedback('error');
     } finally {
       setSubmitting(false);

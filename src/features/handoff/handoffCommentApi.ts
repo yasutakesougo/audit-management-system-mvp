@@ -6,11 +6,13 @@
  */
 
 import { useCallback, useMemo, useState } from 'react';
+import { auditLog } from '../../lib/debugLogger';
 import type { UseSP } from '../../lib/spClient';
 import { useSP } from '../../lib/spClient';
 import type { HandoffComment, NewCommentInput, SpHandoffCommentItem } from './handoffCommentTypes';
 import { fromSpCommentItem, toSpCommentCreatePayload } from './handoffCommentTypes';
 import { handoffConfig } from './handoffConfig';
+import { toErrorMessage } from './handoffLoggerUtils';
 
 // ────────────────────────────────────────────────────────────
 // localStorage ストレージ
@@ -33,7 +35,7 @@ function saveCommentStorage(data: CommentStorageShape): void {
   try {
     window.localStorage.setItem(COMMENT_STORAGE_KEY, JSON.stringify(data));
   } catch {
-    console.warn('[handoff-comment] Failed to save localStorage');
+    auditLog.warn('handoff', 'comment.storage_save_failed');
   }
 }
 
@@ -210,7 +212,7 @@ class HandoffCommentApi {
         }
       }
     } catch (error) {
-      console.error('[handoff-comment] Failed to get counts from SP:', error);
+      auditLog.error('handoff', 'comment.get_counts_failed', { error: toErrorMessage(error) });
     }
 
     return result;

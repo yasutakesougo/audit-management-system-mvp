@@ -4,6 +4,7 @@
  * Consolidated from former helpers.ts + spHelpers.ts.
  * Pure functions for path building, error handling, cache management, etc.
  */
+import { auditLog } from '@/lib/debugLogger';
 import { getAppConfig } from '@/lib/env';
 import { trimGuidBraces } from './spSchema';
 import type { RetryReason, StaffIdentifier } from './types';
@@ -223,7 +224,7 @@ export const raiseHttpError = async (
   const AUDIT_DEBUG = getAppConfig().VITE_AUDIT_DEBUG;
 
   // 必ず1行はエラーとして残す（詳細なし）
-  console.error('[SP ERROR]', {
+  auditLog.error('sp', 'http_error', {
     status: res.status,
     statusText: res.statusText,
     method: ctx?.method,
@@ -232,7 +233,7 @@ export const raiseHttpError = async (
 
   // 詳細は AUDIT_DEBUG 時のみ
   if (AUDIT_DEBUG) {
-    console.error('[SP ERROR][detail]', {
+    auditLog.debug('sp', 'http_error_detail', {
       status: res.status,
       statusText: res.statusText,
       method: ctx?.method,
@@ -265,7 +266,7 @@ export function clearFieldsCacheFor(listTitle: string, siteUrl: string): void {
   if (typeof sessionStorage === 'undefined') return;
   const key = makeFieldsCacheKey(siteUrl, listTitle);
   sessionStorage.removeItem(key);
-  console.log('[spClient][fieldsCache] 🗑️ cleared', { listTitle });
+  auditLog.info('sp:fields', 'cache_cleared', { listTitle });
 }
 
 /**
@@ -282,5 +283,5 @@ export function clearAllFieldsCache(): void {
       count++;
     }
   }
-  console.log('[spClient][fieldsCache] 🗑️ cleared all', { count });
+  auditLog.info('sp:fields', 'cache_cleared_all', { count });
 }

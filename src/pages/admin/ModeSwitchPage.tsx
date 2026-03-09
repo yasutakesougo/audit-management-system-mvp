@@ -10,6 +10,7 @@
  */
 
 import PageHeader from '@/components/PageHeader';
+import { auditLog } from '@/lib/debugLogger';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import LockRoundedIcon from '@mui/icons-material/LockRounded';
 import SecurityRoundedIcon from '@mui/icons-material/SecurityRounded';
@@ -71,7 +72,7 @@ function setDemoMode(enabled: boolean): void {
       localStorage.removeItem(DEMO_STORAGE_KEY);
     }
   } catch {
-    console.warn('[ModeSwitchPage] Failed to update localStorage');
+    auditLog.warn('mode-switch', 'local_storage_update_failed');
   }
 }
 
