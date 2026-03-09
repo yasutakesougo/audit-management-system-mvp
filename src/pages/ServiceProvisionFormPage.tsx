@@ -14,99 +14,47 @@ import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import toast, { Toaster } from 'react-hot-toast';
 
 import AssignmentIcon from '@mui/icons-material/Assignment';
-import ListAltIcon from '@mui/icons-material/ListAlt';
 import SaveIcon from '@mui/icons-material/Save';
 import {
     Autocomplete,
     Box,
     Button,
     Checkbox,
-    Chip,
     CircularProgress,
     Collapse,
-    Divider,
     FormControl,
     FormControlLabel,
     InputLabel,
     MenuItem,
     Paper,
-    Radio,
-    RadioGroup,
     Select,
     Stack,
-    Table,
-    TableBody,
-    TableCell,
-    TableContainer,
-    TableHead,
-    TableRow,
     TextField,
-    Typography,
+    Typography
 } from '@mui/material';
 
 import type { DailyUserOption } from '@/features/daily';
 import { useDailyUserOptions } from '@/features/daily';
-import type { ServiceProvisionRecord, ServiceProvisionStatus, UpsertProvisionInput } from '@/features/service-provision';
+import type { ServiceProvisionStatus, UpsertProvisionInput } from '@/features/service-provision';
 import { useServiceProvisionList, useServiceProvisionSave } from '@/features/service-provision';
+import { AbsentSupportLogForm } from '@/features/service-provision/components/AbsentSupportLogForm';
 import IsokatsuSheetPreview from '@/features/service-provision/components/IsokatsuSheetPreview';
-import type { AbsentSupportLog, FollowUpResult } from '@/features/service-provision/domain/absentSupportLog';
-import { EMPTY_ABSENT_LOG, buildNoteWithAbsentLog } from '@/features/service-provision/domain/absentSupportLog';
+import { ProvisionDailyTable } from '@/features/service-provision/components/ProvisionDailyTable';
+import type { AbsentSupportLog } from '@/features/service-provision/domain/absentSupportLog';
+import { buildNoteWithAbsentLog, EMPTY_ABSENT_LOG } from '@/features/service-provision/domain/absentSupportLog';
+import {
+    parseHHMM,
+    SERVICE_PROVISION_SAMPLE_RECORDS,
+    STATUS_OPTIONS,
+    todayISO
+} from '@/features/service-provision/serviceProvisionFormHelpers';
 import { useSyncAttendance } from '@/features/service-provision/useSyncAttendance';
 import PrintIcon from '@mui/icons-material/Print';
 import SyncIcon from '@mui/icons-material/Sync';
 
-// ─── ヘルパー ────────────────────────────────────────────────
-
-const todayISO = (): string => {
-  const d = new Date();
-  const yyyy = d.getFullYear();
-  const mm = String(d.getMonth() + 1).padStart(2, '0');
-  const dd = String(d.getDate()).padStart(2, '0');
-  return `${yyyy}-${mm}-${dd}`;
-};
-
-/** "HH:MM" → HHMM数値。不正なら null */
-const parseHHMM = (value: string): number | null => {
-  if (!value) return null;
-  const match = value.match(/^(\d{1,2}):(\d{2})$/);
-  if (!match) return null;
-  const hh = parseInt(match[1], 10);
-  const mm = parseInt(match[2], 10);
-  if (hh < 0 || hh > 23 || mm < 0 || mm > 59) return null;
-  return hh * 100 + mm;
-};
-
-/** HHMM数値 → "HH:MM" */
-const formatHHMM = (value: number | null | undefined): string => {
-  if (value == null) return '—';
-  const hh = Math.floor(value / 100);
-  const mm = value % 100;
-  return `${String(hh).padStart(2, '0')}:${String(mm).padStart(2, '0')}`;
-};
-
-const STATUS_OPTIONS: ServiceProvisionStatus[] = ['提供', '欠席', 'その他'];
-
-const STATUS_COLOR: Record<ServiceProvisionStatus, 'success' | 'warning' | 'default'> = {
-  '提供': 'success',
-  '欠席': 'warning',
-  'その他': 'default',
-};
-
-/** 加算フラグをラベル配列に変換 */
-const getAddonLabels = (r: ServiceProvisionRecord): string[] => {
-  const labels: string[] = [];
-  if (r.hasTransportPickup && r.hasTransportDropoff) labels.push('送迎:往復');
-  else if (r.hasTransportPickup) labels.push('送迎:往');
-  else if (r.hasTransportDropoff) labels.push('送迎:復');
-  else if (r.hasTransport) labels.push('送迎');
-  if (r.hasMeal) labels.push('食事');
-  if (r.hasBath) labels.push('入浴');
-  if (r.hasExtended) labels.push('延長');
-  if (r.hasAbsentSupport) labels.push('欠席対応');
-  return labels;
-};
-
 // ─── コンポーネント ──────────────────────────────────────────
+
+
 
 const ServiceProvisionFormPage: React.FC = () => {
   const { options: userOptions } = useDailyUserOptions();
@@ -419,92 +367,7 @@ const ServiceProvisionFormPage: React.FC = () => {
 
           {/* 欠席時対応ログ展開 */}
           <Collapse in={hasAbsentSupport}>
-            <Divider sx={{ my: 2 }} />
-            <Typography variant="subtitle2" sx={{ mb: 1 }}>① 欠席連絡受け入れ</Typography>
-            <Stack spacing={1.5} sx={{ mb: 2 }}>
-              <TextField
-                label="受電日時"
-                type="datetime-local"
-                size="small"
-                value={absentLog.contactDateTime}
-                onChange={(e) => setLogField('contactDateTime', e.target.value)}
-                InputLabelProps={{ shrink: true }}
-              />
-              <TextField
-                label="連絡者（相手）"
-                size="small"
-                placeholder="例: 母"
-                value={absentLog.contactPerson}
-                onChange={(e) => setLogField('contactPerson', e.target.value)}
-              />
-              <TextField
-                label="欠席理由"
-                size="small"
-                placeholder="例: 発熱"
-                value={absentLog.absenceReason}
-                onChange={(e) => setLogField('absenceReason', e.target.value)}
-              />
-              <TextField
-                label="対応内容（相談援助）"
-                size="small"
-                multiline
-                minRows={2}
-                placeholder="例: 水分摂取・受診を助言"
-                value={absentLog.supportContent}
-                onChange={(e) => setLogField('supportContent', e.target.value)}
-              />
-            </Stack>
-
-            <Typography variant="subtitle2" sx={{ mb: 1 }}>② 様子伺い（夕方連絡）</Typography>
-            <Stack spacing={1.5} sx={{ mb: 2 }}>
-              <FormControl size="small">
-                <Typography variant="caption" sx={{ mb: 0.5 }}>結果</Typography>
-                <RadioGroup
-                  row
-                  value={absentLog.followUpResult}
-                  onChange={(e) => setLogField('followUpResult', e.target.value as FollowUpResult)}
-                >
-                  <FormControlLabel value="実施" control={<Radio size="small" />} label="実施" />
-                  <FormControlLabel value="不通" control={<Radio size="small" />} label="不通" />
-                  <FormControlLabel value="不要" control={<Radio size="small" />} label="不要" />
-                </RadioGroup>
-              </FormControl>
-              <TextField
-                label="連絡日時"
-                type="datetime-local"
-                size="small"
-                value={absentLog.followUpDateTime}
-                onChange={(e) => setLogField('followUpDateTime', e.target.value)}
-                InputLabelProps={{ shrink: true }}
-              />
-              <TextField
-                label="連絡先"
-                size="small"
-                placeholder="例: 母"
-                value={absentLog.followUpTarget}
-                onChange={(e) => setLogField('followUpTarget', e.target.value)}
-              />
-              <TextField
-                label="確認内容"
-                size="small"
-                multiline
-                minRows={2}
-                placeholder={absentLog.followUpResult === '不通' ? '例: 留守電あり、折返し依頼' : '例: 熱は下がった、明日利用予定'}
-                value={absentLog.followUpContent}
-                onChange={(e) => setLogField('followUpContent', e.target.value)}
-              />
-            </Stack>
-
-            <TextField
-              label="次回利用予定日"
-              type="date"
-              size="small"
-              value={absentLog.nextPlannedDate}
-              onChange={(e) => setLogField('nextPlannedDate', e.target.value)}
-              InputLabelProps={{ shrink: true }}
-              sx={{ mb: 2 }}
-            />
-            <Divider sx={{ mb: 2 }} />
+            <AbsentSupportLogForm absentLog={absentLog} setLogField={setLogField} />
           </Collapse>
 
           <TextField
@@ -536,70 +399,7 @@ const ServiceProvisionFormPage: React.FC = () => {
       </Paper>
 
       {/* ── 日次一覧 ───────────────────────────────────── */}
-      <Paper sx={{ p: 3, mt: 3 }}>
-        <Typography
-          variant="h6"
-          sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 2 }}
-          data-testid="heading-daily-list"
-        >
-          <ListAltIcon color="primary" />
-          {recordDate} の実績一覧
-          {listLoading && <CircularProgress size={18} sx={{ ml: 1 }} />}
-        </Typography>
-
-        {records.length === 0 && !listLoading ? (
-          <Typography color="text.secondary" variant="body2" sx={{ py: 2, textAlign: 'center' }}>
-            この日の実績はまだありません
-          </Typography>
-        ) : (
-          <TableContainer>
-            <Table size="small">
-              <TableHead>
-                <TableRow>
-                  <TableCell>利用者</TableCell>
-                  <TableCell>状況</TableCell>
-                  <TableCell>開始</TableCell>
-                  <TableCell>終了</TableCell>
-                  <TableCell>加算</TableCell>
-                  <TableCell>メモ</TableCell>
-                </TableRow>
-              </TableHead>
-              <TableBody>
-                {records.map((r) => (
-                  <TableRow key={r.entryKey} hover>
-                    <TableCell sx={{ fontWeight: 500 }}>{r.userCode}</TableCell>
-                    <TableCell>
-                      <Chip
-                        label={r.status}
-                        size="small"
-                        color={STATUS_COLOR[r.status] ?? 'default'}
-                        variant="outlined"
-                      />
-                    </TableCell>
-                    <TableCell>{formatHHMM(r.startHHMM)}</TableCell>
-                    <TableCell>{formatHHMM(r.endHHMM)}</TableCell>
-                    <TableCell>
-                      {getAddonLabels(r).map((label) => (
-                        <Chip key={label} label={label} size="small" sx={{ mr: 0.5, mb: 0.5 }} />
-                      ))}
-                    </TableCell>
-                    <TableCell
-                      sx={{
-                        maxWidth: 200,
-                        overflow: 'hidden',
-                        textOverflow: 'ellipsis',
-                        whiteSpace: 'nowrap',
-                      }}
-                    >
-                      {r.note || '—'}
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </TableContainer>
-        )}
-      </Paper>
+      <ProvisionDailyTable records={records} loading={listLoading} recordDate={recordDate} />
 
       {/* ── いそかつ書式プレビュー ─────────────────────── */}
       <Paper sx={{ p: 3, mt: 3, overflow: 'auto' }}>
@@ -618,26 +418,11 @@ const ServiceProvisionFormPage: React.FC = () => {
           contractDays={23}
           facilityNumber="1410700510"
           facilityName="磯子区障害者地域活動ホーム"
-          records={records.length > 0 ? records : SAMPLE_RECORDS}
+          records={records.length > 0 ? records : SERVICE_PROVISION_SAMPLE_RECORDS}
         />
       </Paper>
     </Box>
   );
 };
-
-// ─── サンプルデータ（いそかつ書式プレビュー用） ────────────
-
-const SAMPLE_RECORDS: ServiceProvisionRecord[] = [
-  { id: 1, entryKey: 'I031|2026-03-02', userCode: 'I031', recordDateISO: '2026-03-02', status: '提供', startHHMM: 930, endHHMM: 1600, hasTransportPickup: true, hasTransportDropoff: true, hasMeal: true, hasBath: false },
-  { id: 2, entryKey: 'I031|2026-03-03', userCode: 'I031', recordDateISO: '2026-03-03', status: '提供', startHHMM: 930, endHHMM: 1600, hasTransportPickup: true, hasTransportDropoff: true, hasMeal: true, hasBath: false },
-  { id: 3, entryKey: 'I031|2026-03-04', userCode: 'I031', recordDateISO: '2026-03-04', status: '提供', startHHMM: 930, endHHMM: 1600, hasTransportPickup: true, hasTransportDropoff: true, hasMeal: true, hasBath: true },
-  { id: 4, entryKey: 'I031|2026-03-05', userCode: 'I031', recordDateISO: '2026-03-05', status: '欠席', note: '発熱のため' },
-  { id: 5, entryKey: 'I031|2026-03-06', userCode: 'I031', recordDateISO: '2026-03-06', status: '提供', startHHMM: 930, endHHMM: 1600, hasTransportPickup: true, hasTransportDropoff: true, hasMeal: true, hasBath: false },
-  { id: 6, entryKey: 'I031|2026-03-09', userCode: 'I031', recordDateISO: '2026-03-09', status: '提供', startHHMM: 930, endHHMM: 1600, hasTransportPickup: true, hasTransportDropoff: true, hasMeal: true, hasBath: false },
-  { id: 7, entryKey: 'I031|2026-03-10', userCode: 'I031', recordDateISO: '2026-03-10', status: '提供', startHHMM: 930, endHHMM: 1600, hasTransportPickup: true, hasTransportDropoff: true, hasMeal: true, hasBath: false },
-  { id: 8, entryKey: 'I031|2026-03-11', userCode: 'I031', recordDateISO: '2026-03-11', status: '提供', startHHMM: 930, endHHMM: 1600, hasTransportPickup: true, hasTransportDropoff: true, hasMeal: true, hasBath: true },
-  { id: 9, entryKey: 'I031|2026-03-12', userCode: 'I031', recordDateISO: '2026-03-12', status: '提供', startHHMM: 930, endHHMM: 1600, hasTransportPickup: true, hasTransportDropoff: true, hasMeal: true, hasBath: false },
-  { id: 10, entryKey: 'I031|2026-03-13', userCode: 'I031', recordDateISO: '2026-03-13', status: '提供', startHHMM: 930, endHHMM: 1600, hasTransportPickup: true, hasTransportDropoff: true, hasMeal: true, hasBath: false },
-];
 
 export default ServiceProvisionFormPage;
