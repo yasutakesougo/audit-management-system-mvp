@@ -25,7 +25,7 @@ vi.mock('@/features/nurse/sp/client', () => ({
   makeSharePointListApi: () => ({ mode: 'stub' }),
 }));
 vi.mock('@/features/nurse/sp/constants', () => ({
-  NURSE_LISTS: { observation: 'Nurse_Observation' },
+  NURSE_LISTS: { observation: 'NurseObservations' },
 }));
 
 import { useAttendance } from '../../useAttendance';
@@ -63,6 +63,10 @@ const dailyFixture: AttendanceDailyItem[] = [
 
 describe('useAttendance', () => {
   beforeEach(() => {
+    // Freeze time to 10:00 JST (01:00 UTC) to prevent 16:00 auto-checkout from triggering
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    vi.setSystemTime(new Date('2026-02-24T01:00:00.000Z'));
+
     repository.getActiveUsers.mockReset();
     repository.getDailyByDate.mockReset();
     repository.upsertDailyByKey.mockReset();
@@ -74,6 +78,10 @@ describe('useAttendance', () => {
     repository.upsertDailyByKey.mockResolvedValue();
     repository.getObservationsByDate.mockResolvedValue([]);
     mockUpsertObservation.mockResolvedValue({ id: 999, created: true });
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
   });
 
   it('loads initial rows as merged AttendanceRowVM data', async () => {
