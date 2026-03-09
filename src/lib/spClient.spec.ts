@@ -98,7 +98,8 @@ describe('parseSpListResponse', () => {
     // Should log the failures
     expect(errorSpy).toHaveBeenCalled();
     const logCall = errorSpy.mock.calls[0];
-    expect(logCall[0]).toContain('Partial validation failure: 2/4 items failed schema.');
+    expect(logCall[0]).toContain('[audit:sp]');
+    expect(logCall[1]).toContain('partial_validation_failure');
   });
 
   it('returns empty array when the value array is missing due to default([])', async () => {
