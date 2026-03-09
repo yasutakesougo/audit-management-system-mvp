@@ -14,6 +14,12 @@
 
 import { useAuth } from '@/auth/useAuth';
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import {
+    classifyAuditPersistError,
+    logAuditPersistFailed,
+    logHandoffCreated,
+    logStatusChanged,
+} from './actions/handoffActions.logger';
 import type {
     HandoffDayScope,
     HandoffRecord,
@@ -88,25 +94,27 @@ export function useHandoffTimeline(
         }));
 
         // 監査ログ記録（fire-and-forget）
-        const changedBy = account?.name ?? account?.username ?? newRecord.createdByName;
         const changedByAccount = account?.username ?? 'unknown';
         auditRepo.recordCreation(
           newRecord.id,
-          changedBy,
+          changedByAccount,
           changedByAccount,
         ).catch(e => {
-          console.warn('[handoff-audit] 新規作成の監査ログ記録に失敗:', e);
+          logAuditPersistFailed({
+            handoffId: newRecord.id,
+            action: 'creation',
+            errorClass: classifyAuditPersistError(e),
+            message: e instanceof Error ? e.message : String(e),
+          });
         });
 
-        if (import.meta.env.DEV) {
-          // eslint-disable-next-line no-console
-          console.log('[handoff] Created:', {
-            id: newRecord.id,
-            userDisplayName: newRecord.userDisplayName,
-            category: newRecord.category,
-            severity: newRecord.severity,
-          });
-        }
+        logHandoffCreated({
+          id: newRecord.id,
+          category: newRecord.category,
+          severity: newRecord.severity,
+          changedByAccount: account?.username ?? 'unknown',
+          source: 'useHandoffTimeline',
+        });
       } catch (error) {
         setState(prev => ({
           ...prev,
@@ -142,22 +150,30 @@ export function useHandoffTimeline(
         await repo.updateStatus(id, newStatus, dayScope, carryOverDate);
 
         // 監査ログ記録（fire-and-forget）
-        const changedBy = account?.name ?? account?.username ?? 'システム';
         const changedByAccount = account?.username ?? 'unknown';
         auditRepo.recordStatusChange(
           id,
           oldStatus ?? '不明',
           newStatus,
-          changedBy,
+          changedByAccount,
           changedByAccount,
         ).catch(e => {
-          console.warn('[handoff-audit] ステータス変更の監査ログ記録に失敗:', e);
+          logAuditPersistFailed({
+            handoffId: id,
+            action: 'status_change',
+            errorClass: classifyAuditPersistError(e),
+            message: e instanceof Error ? e.message : String(e),
+          });
         });
 
-        if (import.meta.env.DEV) {
-          // eslint-disable-next-line no-console
-          console.log('[handoff] Status updated:', { id, oldStatus, newStatus });
-        }
+        logStatusChanged({
+          id,
+          oldStatus: oldStatus ?? '不明',
+          newStatus,
+          meetingMode: 'unknown',
+          changedByAccount: account?.username ?? 'unknown',
+          source: 'useHandoffTimeline',
+        });
       } catch (error) {
         // ロールバック
         setState(prev => ({

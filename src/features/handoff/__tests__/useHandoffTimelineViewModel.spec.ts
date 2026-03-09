@@ -2,7 +2,18 @@ import { act, renderHook } from '@testing-library/react';
 import type { HandoffDayScope, HandoffTimeFilter } from '../handoffTypes';
 import { useHandoffTimelineViewModel } from '../useHandoffTimelineViewModel';
 
+// Mock the logger to verify structured calls
+const { mockLogWorkflowBlocked } = vi.hoisted(() => ({
+  mockLogWorkflowBlocked: vi.fn(),
+}));
+
+vi.mock('../actions/handoffActions.logger', () => ({
+  logWorkflowBlocked: mockLogWorkflowBlocked,
+}));
+
 describe('useHandoffTimelineViewModel', () => {
+  beforeEach(() => vi.clearAllMocks());
+
   it('initializes state from navigation values', () => {
     const navState = {
       dayScope: 'yesterday' as HandoffDayScope,
@@ -59,9 +70,14 @@ describe('useHandoffTimelineViewModel', () => {
     expect(result.current.timeFilter).toBe('morning');
   });
 
-  it('workflowActions warn when updateHandoffStatus not injected', async () => {
-    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+  it('calls logWorkflowBlocked with di_not_provided when updateHandoffStatus not injected', async () => {
     const { result } = renderHook(() => useHandoffTimelineViewModel({}));
+
+    // Switch to evening mode where 未対応 → 確認済 is allowed
+    act(() => {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      result.current.handleMeetingModeChange({} as any, 'evening');
+    });
 
     // Inject records so guard passes, but no updateHandoffStatus
     act(() => {
@@ -71,12 +87,17 @@ describe('useHandoffTimelineViewModel', () => {
       });
     });
 
-    // Try to call markReviewed - should warn since no update function
+    // Try to call markReviewed - should log structured event since no update function
     await act(async () => {
       await result.current.workflowActions.markReviewed(1);
     });
 
-    expect(warnSpy).toHaveBeenCalled();
-    warnSpy.mockRestore();
+    expect(mockLogWorkflowBlocked).toHaveBeenCalledWith(
+      expect.objectContaining({
+        id: 1,
+        attemptedAction: 'markReviewed',
+        reason: 'di_not_provided',
+      }),
+    );
   });
 });
