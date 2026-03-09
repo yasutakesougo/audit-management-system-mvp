@@ -172,10 +172,12 @@ export default function SmokeTestPage() {
                 account,
             });
             const token = tokenResponse.accessToken;
-            const baseUrl = env.VITE_SP_RESOURCE + env.VITE_SP_SITE_RELATIVE + '/_api/web';
+            // buildListCheckPath() returns paths like "/_api/web/lists/getbytitle('...')"
+            // so the base must be the site URL only (without /_api/web suffix)
+            const siteBaseUrl = env.VITE_SP_RESOURCE + env.VITE_SP_SITE_RELATIVE;
 
             const fetcher = async (path: string, init?: RequestInit): Promise<Response> => {
-                const url = path.startsWith('http') ? path : `${baseUrl}${path}`;
+                const url = path.startsWith('http') ? path : `${siteBaseUrl}${path}`;
                 return fetch(url, {
                     ...init,
                     headers: {
