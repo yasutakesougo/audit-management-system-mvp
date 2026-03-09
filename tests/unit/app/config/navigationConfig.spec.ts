@@ -286,6 +286,35 @@ describe('navigationConfig', () => {
 
       expect(itemsWithSkip.some((item) => item.testId === TESTIDS.nav.checklist)).toBe(true);
     });
+
+    it('should exclude admin-audience items for staff navAudience', () => {
+      const items = createNavItems({
+        ...baseConfig,
+        isAdmin: false,
+        navAudience: NAV_AUDIENCE.staff,
+      });
+
+      // admin-audience items like 請求処理 (audience: [reception, admin]) should be hidden from staff
+      expect(items.some((item) => item.label === '請求処理')).toBe(false);
+
+      // all-audience items should still be visible
+      expect(items.some((item) => item.label === '日次記録')).toBe(true);
+      expect(items.some((item) => item.label === '健康記録')).toBe(true);
+    });
+
+    it('should show all items for admin navAudience (admin sees everything)', () => {
+      const items = createNavItems({
+        ...baseConfig,
+        isAdmin: true,
+        navAudience: NAV_AUDIENCE.admin,
+      });
+
+      // admin audience sees all items regardless of their audience setting
+      expect(items.some((item) => item.label === '日次記録')).toBe(true);
+      expect(items.some((item) => item.label === '請求処理')).toBe(true);
+      expect(items.some((item) => item.testId === TESTIDS.nav.checklist)).toBe(true);
+      expect(items.some((item) => item.testId === TESTIDS.nav.audit)).toBe(true);
+    });
   });
 
   describe('filterNavItems', () => {

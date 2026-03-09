@@ -261,9 +261,9 @@ export function createNavItems(config: CreateNavItemsConfig): NavItem[] {
     icebergPdcaEnabled: _icebergPdcaEnabled,
     staffAttendanceEnabled,
     todayOpsEnabled,
-    isAdmin: _isAdmin, // TODO: プレリリース中は未使用
+    isAdmin,
     authzReady,
-    navAudience: _navAudience, // TODO: プレリリース中は未使用。復元時に rename すること
+    navAudience,
     skipLogin = false,
   } = config;
 
@@ -504,8 +504,7 @@ export function createNavItems(config: CreateNavItemsConfig): NavItem[] {
     });
   }
 
-  // TODO: プレリリース中は isAdmin チェックを無効化。正式リリース時に `isAdmin &&` を復元すること。
-  if (authzReady || skipLogin) {
+  if (isAdmin && (authzReady || skipLogin)) {
     items.push(
       {
         label: '支援手順マスタ',
@@ -635,13 +634,11 @@ export function createNavItems(config: CreateNavItemsConfig): NavItem[] {
   }
 
   // Filter by audience
-  const isNavVisible = (_item: NavItem): boolean => {
-    // TODO: プレリリース期間中は全メニュー表示。正式リリース時に audience フィルタを復元すること。
-    return true;
-    // const audienceList = Array.isArray(item.audience) ? item.audience : [item.audience ?? 'all'];
-    // if (audienceList.includes('all')) return true;
-    // if (navAudience === 'admin') return true;
-    // return audienceList.includes(navAudience);
+  const isNavVisible = (item: NavItem): boolean => {
+    const audienceList = Array.isArray(item.audience) ? item.audience : [item.audience ?? 'all'];
+    if (audienceList.includes('all')) return true;
+    if (navAudience === 'admin') return true;
+    return audienceList.includes(navAudience);
   };
 
   return items.filter(isNavVisible);
