@@ -29,7 +29,7 @@ const resolveTitle = async (env: Record<string, string | undefined>) => {
 
 describe('schedules contract', () => {
   it('resolves list title with correct precedence', async () => {
-    await expect(resolveTitle({})).resolves.toBe('ScheduleEvents');
+    await expect(resolveTitle({})).resolves.toBe('Schedules');
     await expect(resolveTitle({ VITE_SP_LIST_SCHEDULES: 'LegacySchedules' })).resolves.toBe('LegacySchedules');
     await expect(resolveTitle({ VITE_SCHEDULES_LIST_TITLE: 'PreferredSchedules' })).resolves.toBe('PreferredSchedules');
     await expect(resolveTitle({
