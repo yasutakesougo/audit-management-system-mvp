@@ -7,6 +7,19 @@
  * Layout: rows = days of month, columns match the Excel:
  * 日付 | 曜日 | 出欠 | 朝(送迎) | 帰り(送迎) | 食事 |
  */
+import {
+    ABSENT_BG,
+    CELL_BORDER,
+    cellSx,
+    getDowColor,
+    HEADER_BG,
+    headerCellSx,
+    MOCK_USERS,
+    SIGN_CELL_BORDER,
+    toJapaneseEra,
+    WEEKEND_BG,
+} from '@/features/attendance/components/personal-journal/personalJournalHelpers';
+import { personalJournalPrintStyles } from '@/features/attendance/components/personal-journal/personalJournalPrintStyles';
 import { usePersonalJournalData } from '@/features/attendance/usePersonalJournalData';
 import { useHandoffTimeline } from '@/features/handoff/useHandoffTimeline';
 import { TESTIDS } from '@/testids';
@@ -14,7 +27,6 @@ import PrintIcon from '@mui/icons-material/Print';
 import Box from '@mui/material/Box';
 import Button from '@mui/material/Button';
 import Container from '@mui/material/Container';
-import GlobalStyles from '@mui/material/GlobalStyles';
 import MenuItem from '@mui/material/MenuItem';
 import Stack from '@mui/material/Stack';
 import Table from '@mui/material/Table';
@@ -28,180 +40,7 @@ import Typography from '@mui/material/Typography';
 import React from 'react';
 import { useSearchParams } from 'react-router-dom';
 
-// ── Mock Users (will be replaced by user master integration) ────────────────
 
-const MOCK_USERS = [
-  { id: 'U001', name: '吉田 卓' },
-  { id: 'U002', name: '田中 太郎' },
-  { id: 'U003', name: '鈴木 花子' },
-  { id: 'U004', name: '佐藤 一郎' },
-  { id: 'U005', name: '高橋 美咲' },
-  { id: 'U006', name: '山田 健二' },
-  { id: 'U007', name: '渡辺 愛子' },
-  { id: 'U008', name: '伊藤 誠' },
-  { id: 'U009', name: '中村 さくら' },
-  { id: 'U010', name: '小林 大輔' },
-] as const;
-
-// ── Styling ─────────────────────────────────────────────────────────────────
-
-const CELL_BORDER = '1px solid #333';
-const HEADER_BG = '#e8e8e8';
-const WEEKEND_BG = '#f5f5f5';
-const ABSENT_BG = '#fff3e0';
-
-const cellSx = {
-  borderRight: CELL_BORDER,
-  borderBottom: CELL_BORDER,
-  px: 0.5,
-  py: 0.25,
-  fontSize: 11,
-  lineHeight: 1.3,
-  whiteSpace: 'nowrap' as const,
-} as const;
-
-const headerCellSx = {
-  ...cellSx,
-  bgcolor: HEADER_BG,
-  fontWeight: 700,
-  textAlign: 'center' as const,
-  position: 'sticky' as const,
-  top: 0,
-  zIndex: 2,
-} as const;
-
-// ── Fiscal year helper ──────────────────────────────────────────────────────
-
-function toJapaneseEra(year: number): string {
-  // Reiwa era started 2019
-  const reiwaYear = year - 2018;
-  if (reiwaYear >= 1) return `令和${reiwaYear}年度`;
-  return `${year}年度`;
-}
-
-// ── Print Styles ────────────────────────────────────────────────────────────
-
-const SIGN_CELL_BORDER = '1px solid #333';
-
-const printStyles = (
-  <GlobalStyles
-    styles={{
-      '[data-print="only"]': { display: 'none' },
-      '@page': {
-        size: 'A4 landscape',
-        margin: '4mm 4mm 14mm 4mm',
-      },
-      '@media print': {
-        // Hide screen-only UI
-        '[data-print="hide"]': { display: 'none !important' },
-        '[data-print="only"]': { display: 'block !important' },
-
-        body: {
-          WebkitPrintColorAdjust: 'exact',
-          printColorAdjust: 'exact',
-          background: '#fff',
-          overflow: 'visible !important',
-        },
-
-        'html, body': {
-          height: 'auto !important',
-          overflow: 'visible !important',
-        },
-
-        // ── AppShell Reset ──────────────────────────────────────────
-        // Hide AppBar (header), sidebar (navigation), footer, mobile drawer, FABs
-        '.MuiAppBar-root': { display: 'none !important' },
-        '.MuiDrawer-root': { display: 'none !important' },
-        '.MuiFab-root': { display: 'none !important' },
-        '[data-testid="app-shell"]': {
-          display: 'block !important',
-          height: 'auto !important',
-          overflow: 'visible !important',
-        },
-
-        // Reset AppShellV2 grid → single area, no header/sidebar/footer
-        '[data-testid="app-shell"] > div': {
-          display: 'block !important',
-          height: 'auto !important',
-          overflow: 'visible !important',
-          gridTemplateAreas: 'none !important' as string,
-          gridTemplateRows: 'auto !important',
-          gridTemplateColumns: '1fr !important',
-        },
-
-        // Hide grid areas except main
-        '[data-testid="app-shell"] > div > div:not(main)': {
-          display: 'none !important',
-        },
-
-        // Main content area: remove scroll constraints
-        main: {
-          overflow: 'visible !important',
-          maxWidth: 'none !important',
-          height: 'auto !important',
-        },
-
-        'main > div': {
-          maxWidth: 'none !important',
-          padding: '0 !important',
-        },
-
-        // ── Content Layer ───────────────────────────────────────────
-        '.MuiContainer-root': {
-          maxWidth: 'none !important',
-          paddingLeft: '0 !important',
-          paddingRight: '0 !important',
-        },
-
-        '.MuiPaper-root': {
-          boxShadow: 'none !important',
-        },
-
-        // Compact table cells for print — fit on single A4 landscape page
-        '.MuiTableCell-root': {
-          paddingTop: '1px !important',
-          paddingBottom: '1px !important',
-          paddingLeft: '3px !important',
-          paddingRight: '3px !important',
-          fontSize: '7pt !important',
-          lineHeight: '1.15 !important',
-        },
-
-        // Stretch table to fill full page height
-        '.MuiTableContainer-root': {
-          border: 'none !important',
-          overflow: 'visible !important',
-        },
-
-        '.MuiTable-root': {
-          width: '100% !important',
-        },
-
-        // Repeat table header on every printed page
-        thead: {
-          display: 'table-header-group',
-        },
-
-        // Stretch data rows to fill 2 pages
-        // 22 weekday rows × 15mm ≈ 330mm → fills 2 A4 landscape pages
-        '.MuiTableRow-root': {
-          breakInside: 'avoid',
-          pageBreakInside: 'avoid',
-        },
-        'tbody .MuiTableRow-root': {
-          height: '14mm !important',
-        },
-
-        // Remove padding from page container
-        '[data-testid="personal-journal-page"] > div': {
-          padding: '0 !important',
-        },
-
-
-      },
-    }}
-  />
-);
 
 // ── Component ───────────────────────────────────────────────────────────────
 
@@ -275,15 +114,11 @@ export default function PersonalJournalPage() {
     return { attended, absent, late };
   }, [entries]);
 
-  const getDowColor = (dow: string): string => {
-    if (dow === '日') return '#d32f2f';
-    if (dow === '土') return '#1565c0';
-    return '#333';
-  };
+
 
   return (
     <>
-    {printStyles}
+    {personalJournalPrintStyles}
     <Container
       maxWidth={false}
       sx={{ px: { xs: 1, md: 2 } }}
