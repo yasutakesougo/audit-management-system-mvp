@@ -10,7 +10,7 @@ export const getSchedulesListTitle = (): string => {
   const legacy = readEnv('VITE_SP_LIST_SCHEDULES', '').trim();
   if (legacy) return legacy;
 
-  return 'ScheduleEvents';
+  return 'Schedules';
 };
 
 const normalizeGuid = (raw: string): string => raw.replace(/^guid:/i, '').replace(/[{}]/g, '').trim();

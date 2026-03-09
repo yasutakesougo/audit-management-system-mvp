@@ -51,7 +51,7 @@ export class SharePointAttendanceRepository implements AttendanceRepository {
   }
 
   public async getObservationsByDate(recordDate: string): Promise<ObservationTemperatureItem[]> {
-    const listTitle = 'Nurse_Observation';
+    const listTitle = 'NurseObservations';
     const dateStart = `${recordDate}T00:00:00.000Z`;
     const dateEnd = `${recordDate}T23:59:59.999Z`;
     const filter = `ObservedAt ge '${dateStart}' and ObservedAt le '${dateEnd}' and Temperature ne null`;

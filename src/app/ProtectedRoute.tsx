@@ -4,6 +4,7 @@ import { useAuth } from '@/auth/useAuth';
 import { useFeatureFlags, type FeatureFlagSnapshot } from '@/config/featureFlags';
 import { isE2E } from '@/env';
 import { authDiagnostics } from '@/features/auth/diagnostics/collector';
+import { getSchedulesListTitle } from '@/features/schedules/data/spSchema';
 import { createAuthCorrId, summarizeAuthBlockReason, type AuthDiagSummary } from '@/lib/authDiag';
 import { getAppConfig, isDemoModeEnabled, readEnv } from '@/lib/env';
 import { createSpClient, ensureConfig } from '@/lib/spClient';
@@ -134,14 +135,13 @@ export default function ProtectedRoute({ flag, children, fallbackPath = '/' }: P
           return;
         }
 
-        const listName = readEnv('VITE_SP_LIST_SCHEDULES', 'ScheduleEvents');
+        const listName = getSchedulesListTitle();
         // eslint-disable-next-line no-console
-        console.log('[env-check] VITE_SP_LIST_SCHEDULES =', listName);
+        console.log('[env-check] schedules list title =', listName);
         debug(`[schedules] Checking list existence: ${listName}`);
 
         const client = createSpClient(acquireToken, baseUrl);
-        const listNameStr = typeof listName === 'string' ? listName : 'ScheduleEvents';
-        const metadata = await client.tryGetListMetadata(listNameStr);
+        const metadata = await client.tryGetListMetadata(listName);
 
         if (metadata) {
           debug('[schedules] List exists:', listName);
