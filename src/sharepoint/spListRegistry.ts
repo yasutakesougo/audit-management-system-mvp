@@ -144,7 +144,7 @@ export const SP_LIST_REGISTRY: readonly SpListEntry[] = [
   {
     key: 'schedule_events',
     displayName: 'スケジュール',
-    resolve: () => envOr('VITE_SP_LIST_SCHEDULES', 'ScheduleEvents'),
+    resolve: () => envOr('VITE_SP_LIST_SCHEDULES', 'Schedules'),
     operations: ['R', 'W', 'D'],
     category: 'schedule',
   },

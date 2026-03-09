@@ -29,7 +29,7 @@ import type { SpHandoffItem } from '../handoffTypes';
 // handoffConfig — listTitle を固定値に
 vi.mock('../handoffConfig', () => ({
   handoffConfig: {
-    listTitle: 'Handoff_Timeline',
+    listTitle: 'Handoff',
     listId: undefined,
     storage: 'sharepoint',
     debug: false,
@@ -155,7 +155,7 @@ describe('HandoffApi', () => {
       await api.getHandoffRecords('today', 'all');
 
       const call = mockSP.spFetch.mock.calls[0][0];
-      expect(call).toContain("lists/getbytitle('Handoff_Timeline')/items");
+      expect(call).toContain("lists/getbytitle('Handoff')/items");
       expect(call).toContain('$filter=');
       expect(call).toContain('CreatedAt ge');
       expect(call).toContain('CreatedAt le');

@@ -25,7 +25,7 @@ vi.mock('@/features/nurse/sp/client', () => ({
   makeSharePointListApi: () => ({ mode: 'stub' }),
 }));
 vi.mock('@/features/nurse/sp/constants', () => ({
-  NURSE_LISTS: { observation: 'Nurse_Observation' },
+  NURSE_LISTS: { observation: 'NurseObservations' },
 }));
 
 import { useAttendance } from '../../useAttendance';

@@ -5,6 +5,8 @@
  * user-facing messages and suggested actions.
  */
 
+import { getSchedulesListTitle } from './data/spSchema';
+
 export type SchedulesErrorKind =
   | 'WRITE_DISABLED'
   | 'AUTH_REQUIRED'
@@ -126,7 +128,7 @@ export function classifySchedulesError(error: unknown): SchedulesErrorInfo {
       return {
         kind: 'LIST_MISSING',
         title: 'リストが見つかりません',
-        message: 'SharePoint に ScheduleEvents リストが見つかりませんでした。',
+        message: `SharePoint に ${getSchedulesListTitle()} リストが見つかりませんでした。`,
         action: {
           label: '管理者に確認',
           href: undefined,
@@ -170,7 +172,7 @@ export function classifySchedulesError(error: unknown): SchedulesErrorInfo {
     return {
       kind: 'LIST_MISSING',
       title: 'リストが見つかりません',
-      message: 'SharePoint に ScheduleEvents リストが見つかりませんでした。',
+      message: `SharePoint に ${getSchedulesListTitle()} リストが見つかりませんでした。`,
       action: {
         label: '管理者に確認',
         href: undefined,
