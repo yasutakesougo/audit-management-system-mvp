@@ -7,6 +7,7 @@
  * Layout: rows = days of month, columns match the Excel:
  * 日付 | 曜日 | 出欠 | 朝(送迎) | 帰り(送迎) | 食事 |
  */
+import { PersonalJournalControls } from '@/features/attendance/components/personal-journal/PersonalJournalControls';
 import {
     ABSENT_BG,
     CELL_BORDER,
@@ -19,15 +20,13 @@ import {
     toJapaneseEra,
     WEEKEND_BG,
 } from '@/features/attendance/components/personal-journal/personalJournalHelpers';
+import { PersonalJournalLegend } from '@/features/attendance/components/personal-journal/PersonalJournalLegend';
 import { personalJournalPrintStyles } from '@/features/attendance/components/personal-journal/personalJournalPrintStyles';
 import { usePersonalJournalData } from '@/features/attendance/usePersonalJournalData';
 import { useHandoffTimeline } from '@/features/handoff/useHandoffTimeline';
 import { TESTIDS } from '@/testids';
-import PrintIcon from '@mui/icons-material/Print';
 import Box from '@mui/material/Box';
-import Button from '@mui/material/Button';
 import Container from '@mui/material/Container';
-import MenuItem from '@mui/material/MenuItem';
 import Stack from '@mui/material/Stack';
 import Table from '@mui/material/Table';
 import TableBody from '@mui/material/TableBody';
@@ -35,7 +34,6 @@ import TableCell from '@mui/material/TableCell';
 import TableContainer from '@mui/material/TableContainer';
 import TableHead from '@mui/material/TableHead';
 import TableRow from '@mui/material/TableRow';
-import TextField from '@mui/material/TextField';
 import Typography from '@mui/material/Typography';
 import React from 'react';
 import { useSearchParams } from 'react-router-dom';
@@ -125,50 +123,14 @@ export default function PersonalJournalPage() {
       data-testid={TESTIDS['personal-journal-page']}
     >
       <Box sx={{ py: 2 }}>
-        {/* Controls — hidden when printing */}
-        <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2} sx={{ mb: 2 }} alignItems="center" data-print="hide">
-          <TextField
-            select
-            size="small"
-            label="利用者"
-            value={selectedUserId}
-            onChange={(e) => setSelectedUserId(e.target.value)}
-            data-testid={TESTIDS['personal-journal-user-select']}
-            sx={{ minWidth: 180 }}
-          >
-            {MOCK_USERS.map((u) => (
-              <MenuItem key={u.id} value={u.id}>
-                {u.name}
-              </MenuItem>
-            ))}
-          </TextField>
-
-          <TextField
-            select
-            size="small"
-            label="対象月"
-            value={`${selectedYear}-${String(selectedMonth).padStart(2, '0')}`}
-            onChange={(e) => handleMonthChange(e.target.value)}
-            data-testid={TESTIDS['personal-journal-month-select']}
-            sx={{ minWidth: 180 }}
-          >
-            {monthOptions.map((opt) => (
-              <MenuItem key={opt.value} value={opt.value}>
-                {opt.label}
-              </MenuItem>
-            ))}
-          </TextField>
-
-          <Button
-            variant="outlined"
-            size="small"
-            startIcon={<PrintIcon />}
-            onClick={() => window.print()}
-            sx={{ ml: 'auto' }}
-          >
-            印刷
-          </Button>
-        </Stack>
+        <PersonalJournalControls
+          selectedUserId={selectedUserId}
+          setSelectedUserId={setSelectedUserId}
+          selectedYear={selectedYear}
+          selectedMonth={selectedMonth}
+          handleMonthChange={handleMonthChange}
+          monthOptions={monthOptions}
+        />
 
         {/* ── Excel-style Journal Table ────────────────────────────────── */}
         <TableContainer
@@ -480,33 +442,7 @@ export default function PersonalJournalPage() {
           </Table>
         </TableContainer>
 
-        {/* Footer legend */}
-        <Box
-          sx={{
-            mt: 1,
-            p: 1,
-            border: '1px solid #ccc',
-            borderRadius: 0.5,
-            bgcolor: '#fafafa',
-            fontSize: 10,
-            color: 'text.secondary',
-          }}
-        >
-          <Typography variant="caption" component="p" sx={{ fontSize: 10 }}>
-            活送迎→○ 家族の送迎→K（車使用→K 電車使用→D バス使用→B 徒歩→T）
-          </Typography>
-          <Typography variant="caption" component="p" sx={{ fontSize: 10 }}>
-            他施設の送迎→他施設の名前 ショートステイ時→SS（明けも書く） 一時ケア→一時ケア
-          </Typography>
-          <Typography variant="caption" component="p" sx={{ fontSize: 10 }}>
-            ※その他遅刻・早退などあったら送迎場所や理由も書く。
-          </Typography>
-        </Box>
-
-        <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 1, textAlign: 'right' }} data-print="hide">
-          ※ 現在はモックデータを表示しています
-        </Typography>
-
+        <PersonalJournalLegend />
 
       </Box>
     </Container>
