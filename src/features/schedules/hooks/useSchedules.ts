@@ -4,6 +4,7 @@ import { authDiagnostics } from '@/features/auth/diagnostics';
 import { toSafeError } from '@/lib/errors';
 import type { ResultError } from '@/shared/result';
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { getSchedulesListTitle } from '../data/spSchema';
 import { type DateRange, type SchedItem, type UpdateScheduleEventInput } from '../domain';
 import type { InlineScheduleDraft } from '../domain/inlineScheduleDraft';
 import { classifySchedulesError, shouldFallbackToReadOnly, type SchedulesErrorInfo } from '../errors';
@@ -46,7 +47,7 @@ export function useSchedules(range: DateRange): UseSchedulesResult {
 
   const normalizedRange = useMemo(() => normalizeRange(range), [range.from, range.to]);
 
-  // One-time check: verify ScheduleEvents list exists at app startup
+  // One-time check: verify schedules list exists at app startup
   useEffect(() => {
     if (listCheckDoneRef.current) return;
     listCheckDoneRef.current = true;
@@ -316,7 +317,7 @@ export function useSchedules(range: DateRange): UseSchedulesResult {
       return {
         kind: 'LIST_MISSING',
         title: 'リストが見つかりません',
-        message: 'SharePoint に ScheduleEvents リストが見つかりませんでした。',
+        message: `SharePoint に ${getSchedulesListTitle()} リストが見つかりませんでした。`,
         action: {
           label: '管理者に確認',
         },
