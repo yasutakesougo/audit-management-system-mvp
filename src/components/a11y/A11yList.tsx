@@ -50,7 +50,7 @@ export type A11yRowButtonProps = CommonProps & {
   disabled?: boolean;
   ariaLabel?: string;
   ariaDescribedBy?: string;
-  onClick?: (e: React.MouseEvent<HTMLDivElement>) => void;
+  onClick?: (e: React.MouseEvent<HTMLDivElement> | KeyboardEvent<HTMLDivElement>) => void;
   onKeyDown?: (e: KeyboardEvent<HTMLDivElement>) => void;
   tabIndex?: number;
 };
@@ -71,13 +71,11 @@ export function A11yRowButton(props: A11yRowButtonProps) {
       // Prevent page scroll on Space
       e.preventDefault();
       if (onClick) {
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        onClick((e as unknown) as any);
+        onClick(e);
       }
     } else if (e.key === 'Enter') {
       if (onClick) {
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        onClick((e as unknown) as any);
+        onClick(e);
       }
     }
   };

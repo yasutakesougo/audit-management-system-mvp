@@ -3,7 +3,7 @@ import React from 'react';
 /**
  * Minimal dev harness for Users feature
  * Purpose: Hermetic E2E testing (no external SharePoint/Graph calls)
- * 
+ *
  * Future: Can be replaced with actual UsersPanel once demo mode stabilizes
  */
 export function UsersDevHarnessPage(): JSX.Element {
@@ -32,7 +32,7 @@ export function UsersDevHarnessPage(): JSX.Element {
         {/* Future: Placeholder for actual UsersPanel when demo mode is stable */}
         <section style={{ marginTop: 16, padding: 8, border: '1px solid #ccc' }}>
           <p style={{ color: '#666', fontSize: 12 }}>
-            [TODO] Load actual UsersPanel here (demo/in-memory mode only)
+            [DEV-ONLY] UsersPanel placeholder — hermetic E2E テスト用。デモモード安定後に置換予定
           </p>
         </section>
       </section>
