@@ -22,9 +22,9 @@ const { configGetter } = vi.hoisted(() => {
     schedulesWeekStart: 1,
     isDev: false,
   } as const;
-  
+
   const getter = vi.fn(() => cfg);
-  
+
   return {
     baseConfig: cfg,
     configGetter: getter,
@@ -45,6 +45,9 @@ vi.mock('@/lib/env', async () => {
 vi.mock('@/lib/debugLogger', () => ({
   auditLog: {
     debug: vi.fn(),
+    info: vi.fn(),
+    warn: vi.fn(),
+    error: vi.fn(),
   },
 }));
 

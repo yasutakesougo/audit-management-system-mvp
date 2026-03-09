@@ -8,7 +8,9 @@
  * v3.1: computeHandoffSummary を純粋関数として分離（テスト容易性向上）
  */
 
+import { auditLog } from '@/lib/debugLogger';
 import { useEffect, useState } from 'react';
+import { toErrorMessage } from './handoffLoggerUtils';
 import { isTerminalStatus } from './handoffStateMachine';
 import type { HandoffCategory, HandoffDayScope, HandoffRecord, HandoffStatus } from './handoffTypes';
 import { useHandoffData } from './hooks/useHandoffData';
@@ -97,7 +99,7 @@ export function useHandoffSummary(options?: { dayScope?: HandoffDayScope }): Han
         const items = await repo.getRecords(dayScope, 'all');
         setSummary(computeHandoffSummary(items));
       } catch (error) {
-        console.error('[handoff] Summary load failed:', error);
+        auditLog.error('handoff', 'summary.load_failed', { error: toErrorMessage(error) });
         setSummary(createEmptySummary());
       }
     }

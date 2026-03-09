@@ -106,9 +106,8 @@ export const HandoffItem: React.FC<HandoffItemProps> = ({
       setStatusPulse(true);
       await onStatusChange(item.id, newStatus);
       setTimeout(() => setStatusPulse(false), 600);
-    } catch (error) {
+    } catch {
       setStatusPulse(false);
-      console.error('[handoff] Status update failed:', error);
     }
   };
 

@@ -13,6 +13,7 @@
  */
 
 import { useAuth } from '@/auth/useAuth';
+import { auditLog } from '@/lib/debugLogger';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
     classifyAuditPersistError,
@@ -20,6 +21,7 @@ import {
     logHandoffCreated,
     logStatusChanged,
 } from './actions/handoffActions.logger';
+import { toErrorMessage } from './handoffLoggerUtils';
 import type {
     HandoffDayScope,
     HandoffRecord,
@@ -75,7 +77,7 @@ export function useHandoffTimeline(
         loading: false,
         error: 'データの読み込みに失敗しました',
       });
-      console.error('[handoff] Load failed:', error);
+      auditLog.error('handoff', 'timeline.load_failed', { error: toErrorMessage(error) });
     }
   }, [repo, dayScope, timeFilter]);
 
@@ -115,12 +117,11 @@ export function useHandoffTimeline(
           changedByAccount: account?.username ?? 'unknown',
           source: 'useHandoffTimeline',
         });
-      } catch (error) {
+      } catch {
         setState(prev => ({
           ...prev,
           error: '申し送りの作成に失敗しました',
         }));
-        console.error('[handoff] Create failed:', error);
         throw new Error('申し送りの作成に失敗しました');
       }
     },
@@ -174,14 +175,13 @@ export function useHandoffTimeline(
           changedByAccount: account?.username ?? 'unknown',
           source: 'useHandoffTimeline',
         });
-      } catch (error) {
+      } catch {
         // ロールバック
         setState(prev => ({
           ...prev,
           todayHandoffs: previousState,
           error: '状態更新に失敗しました',
         }));
-        console.error('[handoff] Status update failed:', error);
         throw new Error('状態更新に失敗しました');
       }
     },

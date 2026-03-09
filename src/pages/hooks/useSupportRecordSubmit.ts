@@ -11,6 +11,7 @@ import {
     persistDailySubmission,
     type PersistDailyPdcaInput,
 } from '@/features/ibd/analysis/pdca/persistDailyPdca';
+import { auditLog } from '@/lib/debugLogger';
 import { getEnv } from '@/lib/runtimeEnv';
 import { useCallback, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
@@ -142,7 +143,9 @@ export function useSupportRecordSubmit({
         window.sessionStorage.setItem(ERROR_STORAGE_KEY, error.message);
       }
       setSubmitError(error);
-      console.debug('[handleRecordSubmit] error already in store:', err);
+      auditLog.debug('support-record-submit', 'error_already_in_store', {
+        error: err instanceof Error ? err.message : String(err),
+      });
     }
   }, [
     actorName,

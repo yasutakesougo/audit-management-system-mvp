@@ -249,7 +249,9 @@ describe('spFetch retry matrix', () => {
       .mockResolvedValueOnce(makeResponse('', { status: 401, statusText: 'Unauthorized' }))
       .mockResolvedValueOnce(makeResponse({ value: [] }, { status: 200, headers: { 'Content-Type': 'application/json' } }));
     globalThis.fetch = fetchMock as unknown as typeof fetch;
-    const consoleWarn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    // Enable mock's auditLog.debug → console.debug delegation
+    if (typeof window !== 'undefined') window.localStorage.setItem('debug', '1');
+    const consoleDebug = vi.spyOn(console, 'debug').mockImplementation(() => {});
     const acquireToken = vi.fn()
       .mockResolvedValueOnce('token-1')
       .mockResolvedValueOnce('token-2');
@@ -262,7 +264,9 @@ describe('spFetch retry matrix', () => {
 
     expect(onRetry).toHaveBeenCalledTimes(1);
     expect(fetchMock).toHaveBeenCalledTimes(3);
-    expect(consoleWarn).toHaveBeenCalled();
+    expect(consoleDebug).toHaveBeenCalled();
+    consoleDebug.mockRestore();
+    if (typeof window !== 'undefined') window.localStorage.removeItem('debug');
   });
 
   it('retries 408 timeout responses', async () => {
@@ -479,7 +483,8 @@ describe('ensureListExists and metadata helpers', () => {
       { internalName: 'Display', type: 'Text', required: true },
     ]);
 
-    expect(warn).toHaveBeenCalledWith(expect.stringContaining('Field "Display" required flag differs'));
+    // auditLog.warn mock delegates to console.warn with structured data
+    expect(warn).toHaveBeenCalledWith('[audit:sp:fields]', 'required_flag_mismatch', expect.objectContaining({ field: 'Display' }));
     warn.mockRestore();
   });
 
