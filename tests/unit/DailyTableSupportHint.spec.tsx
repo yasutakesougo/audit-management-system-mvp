@@ -25,7 +25,7 @@ describe('TableDailyRecordTable Support Hints', () => {
       lunchAmount: '',
       problemBehavior: {
         selfHarm: false,
-        violence: false,
+        otherInjury: false,
         loudVoice: false,
         pica: false,
         other: false
