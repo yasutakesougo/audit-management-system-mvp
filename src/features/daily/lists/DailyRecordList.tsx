@@ -165,7 +165,7 @@ export function DailyRecordList({
             !!record.data.problemBehavior &&
             (
               record.data.problemBehavior.selfHarm ||
-              record.data.problemBehavior.violence ||
+              record.data.problemBehavior.otherInjury ||
               record.data.problemBehavior.loudVoice ||
               record.data.problemBehavior.pica ||
               record.data.problemBehavior.other
@@ -323,8 +323,8 @@ export function DailyRecordList({
                     {record.data.problemBehavior?.selfHarm && (
                       <Chip label="自傷" size="small" color="warning" />
                     )}
-                    {record.data.problemBehavior?.violence && (
-                      <Chip label="暴力" size="small" color="warning" />
+                    {record.data.problemBehavior?.otherInjury && (
+                      <Chip label="他傷" size="small" color="warning" />
                     )}
                     {record.data.problemBehavior?.loudVoice && (
                       <Chip label="大声" size="small" color="warning" />
@@ -348,6 +348,20 @@ export function DailyRecordList({
                     color="error"
                     icon={<WarningIcon />}
                   />
+                </Box>
+              )}
+
+              {/* 法的記録: 拘束・別紙 */}
+              {(record.data.restraint || record.data.hasAttachment) && (
+                <Box sx={{ mb: 2 }}>
+                  <Stack direction="row" spacing={1}>
+                    {record.data.restraint && (
+                      <Chip label="拘束あり" size="small" color="error" />
+                    )}
+                    {record.data.hasAttachment && (
+                      <Chip label="別紙あり" size="small" color="info" variant="outlined" />
+                    )}
+                  </Stack>
                 </Box>
               )}
 

@@ -59,7 +59,7 @@ const createMinimalPersonDaily = (overrides?: Partial<PersonDaily>): PersonDaily
     mealAmount: '完食',
     problemBehavior: {
       selfHarm: false,
-      violence: false,
+      otherInjury: false,
       loudVoice: false,
       pica: false,
       other: false,

@@ -54,6 +54,8 @@ export type DashboardSectionDef = {
  * - 欠席が3件 → { type: 'absent', severity: 'error', count: 3 }
  * - 重要申し送り2件待ち → { type: 'urgent_handover', severity: 'warning', count: 2 }
  */
+export type BriefingTag = '新規' | '重要' | '継続' | '今週の変更';
+
 export type BriefingAlert = {
   id: string;  // 'absent' | 'late' | 'urgent_handover' | 'critical_safety' | 'fever_alert' | 'evening_followup'
   type: 'absent' | 'late' | 'urgent_handover' | 'critical_safety' | 'health_concern' | 'fever_alert' | 'evening_followup';
@@ -64,4 +66,8 @@ export type BriefingAlert = {
   description?: string;  // 追加説明（「田中、山田」など）
   /** Per-user items for actionable alerts (Today Execution Layer) */
   items?: { userId: string; userName: string }[];
+  /** Section classification for Today two-layer display */
+  section?: 'today' | 'ongoing';
+  /** Visual tags for context (新規, 重要, 継続, etc.) */
+  tags?: BriefingTag[];
 };

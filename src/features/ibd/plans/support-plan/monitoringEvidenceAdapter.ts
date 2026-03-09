@@ -26,7 +26,7 @@ const LUNCH_LABELS: Record<string, string> = {
 
 const BEHAVIOR_LABELS: Record<string, string> = {
   selfHarm: '自傷',
-  violence: '暴力',
+  otherInjury: '他傷',
   shouting: '大声',
   pica: '異食',
   other: 'その他',

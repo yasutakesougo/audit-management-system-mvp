@@ -26,7 +26,7 @@ export interface BulkActivityData {
     specialNotes?: string;
     problemBehavior?: {
       selfHarm: boolean;
-      violence: boolean;
+      otherInjury: boolean;
       loudVoice: boolean;
       pica: boolean;
       other: boolean;

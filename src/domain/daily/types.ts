@@ -84,7 +84,7 @@ export type MealAmount = z.infer<typeof MealAmountZ>;
 /** Problem behavior tracking */
 export const ProblemBehaviorZ = z.object({
   selfHarm: z.boolean().default(false), // 自傷
-  violence: z.boolean().default(false), // 暴力
+  otherInjury: z.boolean().default(false), // 他傷
   loudVoice: z.boolean().default(false), // 大声
   pica: z.boolean().default(false), // 異食
   other: z.boolean().default(false), // その他
@@ -109,9 +109,11 @@ export const DailyADataZ = z.object({
   pmActivities: StringList,
   pmNotes: z.string().optional(),
   mealAmount: MealAmountZ.optional(),
+  restraint: z.boolean().optional(),           // 拘束（無/有）
   problemBehavior: ProblemBehaviorZ.optional(),
   seizureRecord: SeizureRecordZ.optional(),
   specialNotes: z.string().optional(),
+  hasAttachment: z.boolean().optional(),       // 別紙（無/有）
 });
 export type DailyAData = z.infer<typeof DailyADataZ>;
 

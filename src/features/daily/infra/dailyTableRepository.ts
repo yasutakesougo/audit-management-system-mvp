@@ -1,5 +1,5 @@
 export type LunchIntake = 'full' | '80' | 'half' | 'small' | 'none';
-export type ProblemBehaviorType = 'selfHarm' | 'violence' | 'shouting' | 'pica' | 'other';
+export type ProblemBehaviorType = 'selfHarm' | 'otherInjury' | 'shouting' | 'pica' | 'other';
 
 export interface DailyTableRecord {
   userId: string;              // normalized string

@@ -1,34 +1,30 @@
 ﻿import { useInterventionStore } from '@/features/analysis/stores/interventionStore';
 import { FullScreenDailyDialogPage } from '@/features/daily/components/FullScreenDailyDialogPage';
 import { ProcedureEditor } from '@/features/daily/components/procedure/ProcedureEditor';
-import { BentoGridSupportLayout } from '@/features/daily/components/split-stream/BentoGridSupportLayout';
-import { ProcedurePanel, type ScheduleItem } from '@/features/daily/components/split-stream/ProcedurePanel';
 import { RecentRecordsDialog } from '@/features/daily/components/split-stream/RecentRecordsDialog';
-import { RecordPanel } from '@/features/daily/components/split-stream/RecordPanel';
-import { SupportPageHeader } from '@/features/daily/components/split-stream/SupportPageHeader';
-import SupportSummaryStrip from '@/features/daily/components/split-stream/SupportSummaryStrip';
+import { PlanSelectionStep } from '@/features/daily/components/wizard/PlanSelectionStep';
+import { RecordInputStep } from '@/features/daily/components/wizard/RecordInputStep';
+import { UserSelectionStep } from '@/features/daily/components/wizard/UserSelectionStep';
 import { generateDailyReport } from '@/features/daily/domain/generateDailyReport';
-import { getScheduleKey } from '@/features/daily/domain/getScheduleKey';
 import { toBipOptions } from '@/features/daily/domain/toBipOptions';
 import { useBehaviorData } from '@/features/daily/hooks/useBehaviorData';
 import { useDailySupportUserFilter } from '@/features/daily/hooks/useDailySupportUserFilter';
 import { useExecutionData } from '@/features/daily/hooks/useExecutionData';
 import { useProcedureData } from '@/features/daily/hooks/useProcedureData';
+import { useSupportWizard } from '@/features/daily/hooks/useSupportWizard';
 import type { ProcedureItem } from '@/features/daily/stores/procedureStore';
-import { getABCRecordsForUser, getLatestSPS, getSupervisionCounter } from '@/features/ibd/core/ibdStore';
 import { useUsersDemo } from '@/features/users/usersStoreDemo';
 import { useSupportRecordSubmit } from '@/pages/hooks/useSupportRecordSubmit';
 import { useTimeBasedSupportRecordPage } from '@/pages/hooks/useTimeBasedSupportRecordPage';
-import { toLocalDateISO } from '@/utils/getNow';
 import Alert from '@mui/material/Alert';
 import Box from '@mui/material/Box';
 import Button from '@mui/material/Button';
 import Container from '@mui/material/Container';
 import Snackbar from '@mui/material/Snackbar';
-import Stack from '@mui/material/Stack';
-import Typography from '@mui/material/Typography';
-import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { flushSync } from 'react-dom';
+import Step from '@mui/material/Step';
+import StepLabel from '@mui/material/StepLabel';
+import Stepper from '@mui/material/Stepper';
+import React, { useCallback, useMemo, useRef, useState } from 'react';
 import { useLocation, useSearchParams } from 'react-router-dom';
 
 const TimeBasedSupportRecordPage: React.FC = () => {
@@ -45,14 +41,13 @@ const TimeBasedSupportRecordPage: React.FC = () => {
     stepKey: initialSearchParams.get('step') ?? undefined,
     unfilledOnly: initialSearchParams.get('unfilled') === '1',
   }).current;
-  const initialUserId = initialParams.userId;
-  const initialStepKey = initialParams.stepKey;
-  const initialUnfilledOnly = initialParams.unfilledOnly;
+
   const [isEditOpen, setIsEditOpen] = useState(false);
   const [recentRecordsOpen, setRecentRecordsOpen] = useState(false);
   const recordDate = useMemo(() => initialRecordDate, [initialRecordDate]);
   const targetDate = useMemo(() => recordDate.toISOString().slice(0, 10), [recordDate]);
-  const recordPanelRef = useRef<HTMLDivElement>(null);
+
+  // ── Data hooks (same as before) ──
   const procedureRepo = useProcedureData();
   const { repo: behaviorRepo, data: behaviorRecords, error: behaviorError, clearError } = useBehaviorData();
   const { data: users } = useUsersDemo();
@@ -60,6 +55,10 @@ const TimeBasedSupportRecordPage: React.FC = () => {
   const interventionStore = useInterventionStore();
   const executionStore = useExecutionData();
 
+  // ── Wizard state ──
+  const wizard = useSupportWizard(initialParams.userId, initialParams.stepKey);
+
+  // ── Core record page hook (uses wizard's userId) ──
   const {
     targetUserId,
     handleUserChange,
@@ -68,26 +67,25 @@ const TimeBasedSupportRecordPage: React.FC = () => {
     recentObservations,
     isAcknowledged,
     setIsAcknowledged,
-    selectedStepId,
+    selectedStepId: _selectedStepId,
     setSelectedStepId,
-    scrollToStepId,
+    scrollToStepId: _scrollToStepId,
     showUnfilledOnly,
     setShowUnfilledOnly,
     recordLockState,
     totalSteps,
     unfilledStepsCount,
-    handleSelectStep,
     handleAfterSubmit,
   } = useTimeBasedSupportRecordPage({
     procedureRepo,
     behaviorRepo,
     behaviorRecords,
-    initialUserId,
-    initialStepKey,
-    initialUnfilledOnly,
+    initialUserId: wizard.wizardUserId || initialParams.userId,
+    initialStepKey: wizard.wizardSlotId || initialParams.stepKey,
+    initialUnfilledOnly: initialParams.unfilledOnly,
   });
 
-  // Submit logic (extracted hook)
+  // ── Submit logic ──
   const {
     snackbarOpen,
     snackbarMessage,
@@ -100,32 +98,28 @@ const TimeBasedSupportRecordPage: React.FC = () => {
   } = useSupportRecordSubmit({
     behaviorRepo,
     executionStore,
-    targetUserId,
+    targetUserId: wizard.wizardUserId || targetUserId,
     targetDate,
     totalSteps,
     unfilledStepsCount,
   });
 
-  // BIP data
+  // ── Derived data ──
+  const selectedUser = useMemo(
+    () => users.find((user) => user.UserID === (wizard.wizardUserId || targetUserId)),
+    [users, wizard.wizardUserId, targetUserId],
+  );
+
   const userInterventionPlans = useMemo(
-    () => (targetUserId ? interventionStore.getByUserId(targetUserId) : []),
-    [interventionStore, targetUserId],
-  );
-  const bipOptions = useMemo(
-    () => toBipOptions(userInterventionPlans),
-    [userInterventionPlans],
+    () => {
+      const uid = wizard.wizardUserId || targetUserId;
+      return uid ? interventionStore.getByUserId(uid) : [];
+    },
+    [interventionStore, wizard.wizardUserId, targetUserId],
   );
 
-  // Error display (filter DailyActivityRecords list errors)
-  const rawError = submitError ?? behaviorError;
-  const displayedError = useMemo(() => {
-    if (!rawError) return null;
-    if (String(rawError).includes('DailyActivityRecords')) return null;
-    return rawError;
-  }, [rawError]);
-  const selectedUser = useMemo(() => users.find((user) => user.UserID === targetUserId), [users, targetUserId]);
+  const bipOptions = useMemo(() => toBipOptions(userInterventionPlans), [userInterventionPlans]);
 
-  // Observation preview map for Plan side tooltips
   const savedObservationsMap = useMemo(() => {
     const map = new Map<string, string>();
     recentObservations.forEach((obs) => {
@@ -137,118 +131,44 @@ const TimeBasedSupportRecordPage: React.FC = () => {
     return map;
   }, [recentObservations]);
 
-  const previousSearchRef = useRef(location.search);
+  // Error display
+  const rawError = submitError ?? behaviorError;
+  const displayedError = useMemo(() => {
+    if (!rawError) return null;
+    if (String(rawError).includes('DailyActivityRecords')) return null;
+    return rawError;
+  }, [rawError]);
 
-  // --- Effects ---
-  useEffect(() => {
-    if (!initialUserId) return;
-    if (targetUserId) return;
-    handleUserChange(initialUserId);
-  }, [handleUserChange, initialUserId, targetUserId]);
+  // ── Wizard event handlers ──
 
-  useEffect(() => {
-    setSearchParams((prev) => {
-      const nextParams = new URLSearchParams(prev);
-      if (targetUserId) {
-        nextParams.set('user', targetUserId);
-        nextParams.set('userId', targetUserId);
-      } else {
-        nextParams.delete('user');
-        nextParams.delete('userId');
-      }
-      const prevStep = prev.get('step') ?? undefined;
-      const resolvedStep = selectedStepId ?? prevStep ?? initialParams.stepKey;
-      if (resolvedStep) {
-        nextParams.set('step', resolvedStep);
-      } else {
-        nextParams.delete('step');
-      }
-      if (showUnfilledOnly) {
-        nextParams.set('unfilled', '1');
-      } else {
-        nextParams.delete('unfilled');
-      }
-      if (nextParams.toString() === prev.toString()) return prev;
-      return nextParams;
-    }, { replace: true });
-  }, [initialParams.stepKey, selectedStepId, setSearchParams, showUnfilledOnly, targetUserId]);
+  const handleWizardSelectUser = useCallback((userId: string) => {
+    wizard.selectUserAndProceed(userId);
+    handleUserChange(userId);
+  }, [wizard, handleUserChange]);
 
-  useEffect(() => {
-    const prevSearch = previousSearchRef.current;
-    const nextSearch = location.search;
-    if (prevSearch === nextSearch) return;
-    if (location.pathname !== '/daily/support') {
-      previousSearchRef.current = nextSearch;
-      return;
-    }
-    const prevParams = new URLSearchParams(prevSearch);
-    const nextParams = new URLSearchParams(nextSearch);
-    const allKeys = new Set<string>([...prevParams.keys(), ...nextParams.keys()]);
-    const allowedKeys = new Set(['step', 'user', 'userId', 'date']);
-    const onlyAllowedChanged = [...allKeys].every((key) => {
-      if (!allowedKeys.has(key)) return prevParams.get(key) === nextParams.get(key);
-      return true;
-    });
-    if (onlyAllowedChanged && typeof window !== 'undefined') {
-      const scope = window as typeof window & { __suppressRouteReset__?: boolean };
-      scope.__suppressRouteReset__ = true;
-      if (typeof queueMicrotask === 'function') {
-        queueMicrotask(() => { scope.__suppressRouteReset__ = false; });
-      } else {
-        window.setTimeout(() => { scope.__suppressRouteReset__ = false; }, 0);
-      }
-    }
-    previousSearchRef.current = nextSearch;
-  }, [location.pathname, location.search]);
+  const handleWizardSelectSlot = useCallback((stepId: string) => {
+    wizard.selectPlanAndProceed(stepId);
+    setSelectedStepId(stepId);
+    setIsAcknowledged(true);
+  }, [wizard, setSelectedStepId, setIsAcknowledged]);
 
-  useEffect(() => {
-    if (process.env.NODE_ENV === 'production') return;
-    if (!schedule.length) return;
-    const seen = new Set<string>();
-    const dups: string[] = [];
-    schedule.forEach((item) => {
-      const key = getScheduleKey(item.time, item.activity);
-      if (seen.has(key)) dups.push(key);
-      else seen.add(key);
-    });
-    if (dups.length) {
-      console.warn('[daily/support] Duplicate scheduleKey detected:', dups);
-    }
-  }, [schedule]);
+  const handleWizardAfterSubmit = useCallback((slotKey: string | null) => {
+    handleAfterSubmit(slotKey);
+    wizard.returnToPlanAfterSave();
+  }, [handleAfterSubmit, wizard]);
 
-  // --- Callbacks ---
-  type StepLike = string | ScheduleItem | { scheduleKey?: string; time?: string; activity?: string };
-  const normalizeStepKey = (value: StepLike, fallback?: string) => {
-    if (typeof value === 'string') return value;
-    if ('scheduleKey' in value && value.scheduleKey) return value.scheduleKey;
-    if ('time' in value && 'activity' in value && value.time && value.activity) {
-      return getScheduleKey(value.time, value.activity);
-    }
-    return fallback ?? '';
-  };
-
-  const handleSelectStepAndScroll = useCallback((step: StepLike, stepId?: string) => {
-    const resolvedStepId = normalizeStepKey(step, stepId);
-    if (!resolvedStepId) return;
-    flushSync(() => {
-      handleSelectStep(resolvedStepId);
-      setIsAcknowledged(true);
-    });
-    if (typeof window === 'undefined') return;
-    window.requestAnimationFrame(() => {
-      const node = recordPanelRef.current;
-      if (!node) return;
-      const rect = node.getBoundingClientRect();
-      const inView = rect.top >= 0 && rect.bottom <= window.innerHeight;
-      if (inView) return;
-      node.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-    });
-  }, [handleSelectStep, setIsAcknowledged]);
+  const handleRecordSubmitWrapper = useCallback(
+    async (data: Parameters<typeof handleRecordSubmit>[0]) => {
+      await handleRecordSubmit(data);
+    },
+    [handleRecordSubmit],
+  );
 
   const handleProcedureSave = useCallback((items: ProcedureItem[]) => {
-    if (!targetUserId) return;
-    procedureRepo.save(targetUserId, items);
-  }, [procedureRepo, targetUserId]);
+    const uid = wizard.wizardUserId || targetUserId;
+    if (!uid) return;
+    procedureRepo.save(uid, items);
+  }, [procedureRepo, wizard.wizardUserId, targetUserId]);
 
   const handleErrorClose = useCallback(() => {
     if (typeof window !== 'undefined') {
@@ -258,9 +178,10 @@ const TimeBasedSupportRecordPage: React.FC = () => {
     setSubmitError(null);
   }, [clearError, setSubmitError]);
 
-  const handleCopyReport = useCallback(async () => {
-    if (!targetUserId || !selectedUser) return;
-    const records = executionStore.getRecords(targetDate, targetUserId);
+  const _handleCopyReport = useCallback(async () => {
+    const uid = wizard.wizardUserId || targetUserId;
+    if (!uid || !selectedUser) return;
+    const records = executionStore.getRecords(targetDate, uid);
     const report = generateDailyReport({
       date: targetDate,
       userName: selectedUser.FullName,
@@ -279,18 +200,30 @@ const TimeBasedSupportRecordPage: React.FC = () => {
     } catch {
       // Fallback handled by snackbar
     }
-  }, [executionStore, schedule, selectedUser, targetDate, targetUserId]);
+  }, [executionStore, schedule, selectedUser, targetDate, wizard.wizardUserId, targetUserId, recentObservations]);
 
-  // --- IBD Summary Data ---
-  const numericUserId = targetUserId ? Number(targetUserId.replace(/\D/g, '')) || 0 : 0;
-  const latestSPS = useMemo(() => numericUserId ? getLatestSPS(numericUserId) : undefined, [numericUserId]);
-  const supervisionCounter = useMemo(() => numericUserId ? getSupervisionCounter(numericUserId) : undefined, [numericUserId]);
-  const todayAbcCount = useMemo(() => {
-    if (!targetUserId) return 0;
-    const records = getABCRecordsForUser(targetUserId);
-    const todayStr = toLocalDateISO();
-    return records.filter((r) => r.recordedAt?.slice(0, 10) === todayStr).length;
-  }, [targetUserId]);
+  // URL sync
+  React.useEffect(() => {
+    setSearchParams((prev) => {
+      const nextParams = new URLSearchParams(prev);
+      const uid = wizard.wizardUserId || targetUserId;
+      if (uid) {
+        nextParams.set('user', uid);
+        nextParams.set('userId', uid);
+      } else {
+        nextParams.delete('user');
+        nextParams.delete('userId');
+      }
+      if (wizard.wizardSlotId) {
+        nextParams.set('step', wizard.wizardSlotId);
+      } else {
+        nextParams.delete('step');
+      }
+      nextParams.set('wizard', wizard.step);
+      if (nextParams.toString() === prev.toString()) return prev;
+      return nextParams;
+    }, { replace: true });
+  }, [wizard.step, wizard.wizardUserId, wizard.wizardSlotId, targetUserId, setSearchParams]);
 
   return (
     <FullScreenDailyDialogPage
@@ -305,154 +238,136 @@ const TimeBasedSupportRecordPage: React.FC = () => {
           height: '100%',
           display: 'flex',
           flexDirection: 'column',
-          bgcolor: 'grey.100',
-          backgroundColor: 'background.default',
+          bgcolor: 'background.default',
           position: 'relative',
           isolation: 'isolate',
           overflow: 'hidden',
         }}
         data-testid="iceberg-time-based-support-record-page"
       >
+        {/* Error Alert */}
+        {displayedError ? (
+          <Box
+            sx={{
+              position: 'fixed',
+              top: 12,
+              left: 12,
+              right: 12,
+              zIndex: (theme) => theme.zIndex.modal + 3,
+            }}
+          >
+            <Alert severity="error" onClose={handleErrorClose}>
+              {String(displayedError)}
+            </Alert>
+          </Box>
+        ) : null}
 
-      {/* Error Alert (fixed, always visible) */}
-      {displayedError ? (
-        <Box
-          sx={{
-            position: 'fixed',
-            top: 12,
-            left: 12,
-            right: 12,
-            zIndex: (theme) => theme.zIndex.modal + 3,
-          }}
-        >
-          <Alert severity="error" onClose={handleErrorClose}>
-            {String(displayedError)}
-          </Alert>
-        </Box>
-      ) : null}
+        {/* ── Stepper (Record ステップでは非表示 → 入力スペース確保) ── */}
+        {wizard.step !== 'record' && (
+          <Box sx={{ px: 2, pt: 1.5, pb: 0.5 }}>
+            <Stepper activeStep={wizard.stepIndex} alternativeLabel>
+              {wizard.stepLabels.map((label) => (
+                <Step key={label}>
+                  <StepLabel>{label}</StepLabel>
+                </Step>
+              ))}
+            </Stepper>
+          </Box>
+        )}
 
-      <Box sx={{ flex: 1, minHeight: 0, p: 2 }}>
-        <BentoGridSupportLayout
-          recordRef={recordPanelRef}
-          header={
-            <SupportPageHeader
-              targetUserId={targetUserId}
-              selectedUser={selectedUser}
+        {/* ── Step Content ── */}
+        <Box sx={{ flex: 1, minHeight: 0, overflow: 'hidden' }}>
+          {wizard.step === 'user' && (
+            <UserSelectionStep
               filteredUsers={filteredUsers}
               allUsersCount={users.length}
-              recentObservations={recentObservations}
               filter={filter}
               hasActiveFilter={hasActiveFilter}
-              onUserChange={handleUserChange}
-              onEditorOpen={() => setIsEditOpen(true)}
-              onRecentRecordsOpen={() => setRecentRecordsOpen(true)}
-              onCopyReport={handleCopyReport}
               onUpdateFilter={updateFilter}
               onResetFilter={resetFilter}
+              onSelectUser={handleWizardSelectUser}
             />
-          }
-          plan={targetUserId ? (
-            <ProcedurePanel
-              title={selectedUser ? `${selectedUser.FullName} 様 (Plan)` : '支援手順 (Plan)'}
+          )}
+
+          {wizard.step === 'plan' && (
+            <PlanSelectionStep
+              userName={selectedUser?.FullName ?? ''}
               schedule={schedule}
               isAcknowledged={isAcknowledged}
               onAcknowledged={() => setIsAcknowledged(true)}
-              selectedStepId={selectedStepId}
-              onSelectStep={handleSelectStepAndScroll}
               filledStepIds={filledStepIds}
-              scrollToStepId={scrollToStepId}
               showUnfilledOnly={showUnfilledOnly}
               onToggleUnfilledOnly={() => setShowUnfilledOnly((prev) => !prev)}
               unfilledCount={unfilledStepsCount}
               totalCount={totalSteps}
               interventionPlans={userInterventionPlans}
               savedObservations={savedObservationsMap}
+              onSelectSlot={handleWizardSelectSlot}
+              onBack={() => wizard.goToStep('user')}
             />
-          ) : (
-            <ProcedurePanel title="支援手順 (Plan)">
-              <Stack spacing={2} alignItems="center" justifyContent="center" sx={{ minHeight: 320, textAlign: 'center' }}>
-                <Typography variant="body1" fontWeight="bold">
-                  支援対象者を選択して時間割を表示
-                </Typography>
-                <Typography variant="body2" color="text.secondary">
-                  左列には ProcedureStore から読み込んだ時間ごとのスケジュールが表示されます。
-                  対象者を選ぶとスクロールで Plan を確認できます。
-                </Typography>
-              </Stack>
-            </ProcedurePanel>
           )}
-          record={
-            <RecordPanel
-              title="行動記録 (Do)"
+
+          {wizard.step === 'record' && (
+            <RecordInputStep
+              userName={selectedUser?.FullName ?? ''}
+              selectedSlotKey={wizard.wizardSlotId}
               lockState={recordLockState}
-              onSubmit={handleRecordSubmit}
+              onSubmit={handleRecordSubmitWrapper}
               schedule={schedule}
-              selectedSlotKey={selectedStepId ?? undefined}
-              onSlotChange={(next: string) => setSelectedStepId(next || null)}
-              onAfterSubmit={handleAfterSubmit}
               recordDate={recordDate}
+              onSlotChange={handleWizardSelectSlot}
+              onAfterSubmit={() => handleWizardAfterSubmit(wizard.wizardSlotId || null)}
+              onBack={() => wizard.goToStep('plan')}
             />
-          }
-          summary={
-            targetUserId ? (
-              <SupportSummaryStrip
-                totalSteps={totalSteps}
-                filledSteps={totalSteps - unfilledStepsCount}
-                abcCount={todayAbcCount}
-                supervisionSupportCount={supervisionCounter?.supportCount}
-                positiveConditions={latestSPS?.positiveConditions}
-              />
-            ) : undefined
-          }
+          )}
+        </Box>
+
+        {/* Dialogs */}
+        <RecentRecordsDialog
+          open={recentRecordsOpen}
+          onClose={() => setRecentRecordsOpen(false)}
+          observations={recentObservations}
+          userName={selectedUser?.FullName}
         />
-      </Box>
 
-      {/* Dialogs */}
-      <RecentRecordsDialog
-        open={recentRecordsOpen}
-        onClose={() => setRecentRecordsOpen(false)}
-        observations={recentObservations}
-        userName={selectedUser?.FullName}
-      />
+        <ProcedureEditor
+          open={isEditOpen}
+          initialItems={schedule}
+          onClose={() => setIsEditOpen(false)}
+          onSave={handleProcedureSave}
+          availablePlans={bipOptions}
+        />
 
-      <ProcedureEditor
-        open={isEditOpen}
-        initialItems={schedule}
-        onClose={() => setIsEditOpen(false)}
-        onSave={handleProcedureSave}
-        availablePlans={bipOptions}
-      />
-
-      <Snackbar
-        open={snackbarOpen}
-        autoHideDuration={3000}
-        onClose={handleSnackbarClose}
-        anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
-      >
-        <Alert onClose={handleSnackbarClose} severity="success" sx={{ width: '100%' }}>
-          {snackbarMessage}
-        </Alert>
-      </Snackbar>
-      <Snackbar
-        open={Boolean(displayedError)}
-        autoHideDuration={null}
-        onClose={handleErrorClose}
-        anchorOrigin={{ vertical: 'top', horizontal: 'center' }}
-        sx={{ zIndex: (theme) => theme.zIndex.modal + 2 }}
-      >
-        <Alert
-          onClose={handleErrorClose}
-          severity="error"
-          sx={{ width: '100%' }}
-          action={retryPersist ? (
-            <Button color="inherit" size="small" onClick={handleRetryPersist}>
-              再送
-            </Button>
-          ) : undefined}
+        <Snackbar
+          open={snackbarOpen}
+          autoHideDuration={3000}
+          onClose={handleSnackbarClose}
+          anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
         >
-          {String(displayedError ?? '')}
-        </Alert>
-      </Snackbar>
+          <Alert onClose={handleSnackbarClose} severity="success" sx={{ width: '100%' }}>
+            {snackbarMessage}
+          </Alert>
+        </Snackbar>
+        <Snackbar
+          open={Boolean(displayedError)}
+          autoHideDuration={null}
+          onClose={handleErrorClose}
+          anchorOrigin={{ vertical: 'top', horizontal: 'center' }}
+          sx={{ zIndex: (theme) => theme.zIndex.modal + 2 }}
+        >
+          <Alert
+            onClose={handleErrorClose}
+            severity="error"
+            sx={{ width: '100%' }}
+            action={retryPersist ? (
+              <Button color="inherit" size="small" onClick={handleRetryPersist}>
+                再送
+              </Button>
+            ) : undefined}
+          >
+            {String(displayedError ?? '')}
+          </Alert>
+        </Snackbar>
       </Container>
     </FullScreenDailyDialogPage>
   );

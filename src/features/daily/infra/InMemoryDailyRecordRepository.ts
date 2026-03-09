@@ -65,7 +65,7 @@ const createDefaultRecords = (): DailyRecordItem[] => {
         lunchAmount: i % 3 === 0 ? '完食' : '8割',
         problemBehavior: {
           selfHarm: false,
-          violence: false,
+          otherInjury: false,
           loudVoice: i === 0, // Only on most recent day
           pica: false,
           other: false,
@@ -80,7 +80,7 @@ const createDefaultRecords = (): DailyRecordItem[] => {
         lunchAmount: '完食',
         problemBehavior: {
           selfHarm: false,
-          violence: false,
+          otherInjury: false,
           loudVoice: false,
           pica: false,
           other: false,
@@ -95,7 +95,7 @@ const createDefaultRecords = (): DailyRecordItem[] => {
         lunchAmount: i === 2 ? '半分' : '完食',
         problemBehavior: {
           selfHarm: false,
-          violence: false,
+          otherInjury: false,
           loudVoice: false,
           pica: false,
           other: i === 2, // Problem on day -2
@@ -114,7 +114,7 @@ const createDefaultRecords = (): DailyRecordItem[] => {
         lunchAmount: '8割',
         problemBehavior: {
           selfHarm: false,
-          violence: false,
+          otherInjury: false,
           loudVoice: false,
           pica: false,
           other: false,

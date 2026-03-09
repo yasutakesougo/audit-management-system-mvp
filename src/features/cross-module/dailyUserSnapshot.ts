@@ -94,7 +94,7 @@ export function buildDailyUserSnapshotFromExistingData(
     // problemBehaviorは複数のboolean値の組み合わせ
     const problemBehavior = personDaily.data.problemBehavior;
     const hasProblemBehavior = problemBehavior ?
-      (problemBehavior.selfHarm || problemBehavior.violence || problemBehavior.loudVoice || problemBehavior.pica || problemBehavior.other) : false;
+      (problemBehavior.selfHarm || problemBehavior.otherInjury || problemBehavior.loudVoice || problemBehavior.pica || problemBehavior.other) : false;
 
     input.activityData = {
       status: personDaily.status as ActivityStatus,

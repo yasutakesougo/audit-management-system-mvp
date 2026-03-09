@@ -24,7 +24,7 @@ import type { ProblemBehaviorSuggestion } from './dailyRecordFormLogic';
 
 interface ProblemBehavior {
   selfHarm?: boolean;
-  violence?: boolean;
+  otherInjury?: boolean;
   loudVoice?: boolean;
   pica?: boolean;
   other?: boolean;
@@ -68,12 +68,12 @@ function ProblemSuggestionBanner({
           💡 申し送りの内容から、問題行動の候補があります
         </Typography>
         <Typography variant="body2">
-          必要であれば「提案を反映」を押すと、自傷・暴力・大声・異食などのチェックを
+          必要であれば「提案を反映」を押すと、自傷・他傷・大声・異食などのチェックを
           自動でオンにします。不要な項目は後から外すことができます。
         </Typography>
         <Stack direction="row" spacing={1} flexWrap="wrap">
           {suggestion.selfHarm && <Chip label="自傷（候補）" size="small" />}
-          {suggestion.violence && <Chip label="暴力（候補）" size="small" />}
+          {suggestion.otherInjury && <Chip label="他傷（候補）" size="small" />}
           {suggestion.loudVoice && <Chip label="大声（候補）" size="small" />}
           {suggestion.pica && <Chip label="異食（候補）" size="small" />}
           {suggestion.other && <Chip label="その他（候補）" size="small" />}
@@ -116,11 +116,11 @@ function ProblemBehaviorSection({
         <FormControlLabel
           control={
             <Checkbox
-              checked={problemBehavior?.violence || false}
-              onChange={(e) => onChange('violence', e.target.checked)}
+              checked={problemBehavior?.otherInjury || false}
+              onChange={(e) => onChange('otherInjury', e.target.checked)}
             />
           }
-          label="暴力"
+          label="他傷"
         />
         <FormControlLabel
           control={

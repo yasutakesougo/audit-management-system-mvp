@@ -38,7 +38,7 @@ export const mockRecords: PersonDaily[] = [
       mealAmount: '完食',
       problemBehavior: {
         selfHarm: false,
-        violence: false,
+        otherInjury: false,
         loudVoice: false,
         pica: false,
         other: false,
@@ -71,7 +71,7 @@ export const mockRecords: PersonDaily[] = [
       mealAmount: '少なめ',
       problemBehavior: {
         selfHarm: false,
-        violence: false,
+        otherInjury: false,
         loudVoice: false,
         pica: false,
         other: false,
@@ -104,7 +104,7 @@ export const mockRecords: PersonDaily[] = [
       mealAmount: '完食',
       problemBehavior: {
         selfHarm: false,
-        violence: false,
+        otherInjury: false,
         loudVoice: false,
         pica: false,
         other: false,
@@ -148,7 +148,7 @@ export const generateTodayRecords = (): PersonDaily[] => {
         mealAmount: (['完食', '多め', '半分', '少なめ', 'なし'] as const)[index % 5],
         problemBehavior: {
           selfHarm: Math.random() > 0.9,
-          violence: Math.random() > 0.9,
+          otherInjury: Math.random() > 0.9,
           loudVoice: Math.random() > 0.85,
           pica: Math.random() > 0.95,
           other: Math.random() > 0.9,
@@ -191,7 +191,7 @@ export const createMissingRecord = (
     mealAmount: '完食',
     problemBehavior: {
       selfHarm: false,
-      violence: false,
+      otherInjury: false,
       loudVoice: false,
       pica: false,
       other: false,
