@@ -261,9 +261,9 @@ export function createNavItems(config: CreateNavItemsConfig): NavItem[] {
     icebergPdcaEnabled: _icebergPdcaEnabled,
     staffAttendanceEnabled,
     todayOpsEnabled,
-    isAdmin: _isAdmin, // TODO: プレリリース中は未使用
+    isAdmin: _isAdmin, // NOTE: プレリリース中は isAdmin ゲートを無効化しているため未使用（L507 参照）
     authzReady,
-    navAudience: _navAudience, // TODO: プレリリース中は未使用。復元時に rename すること
+    navAudience: _navAudience, // NOTE: プレリリース中は audience フィルタを無効化しているため未使用（L638 参照）
     skipLogin = false,
   } = config;
 
