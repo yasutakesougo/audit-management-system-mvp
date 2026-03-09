@@ -5,6 +5,7 @@
  * All functions accept `SpFetchFn` + `NormalizePathFn` via closure injection.
  */
 
+import { auditLog } from '@/lib/debugLogger';
 import { readEnv } from '@/lib/env';
 
 import { buildItemPath, resolveListPath } from './helpers';
@@ -61,7 +62,7 @@ export async function listItems<TRow = JsonRecord>(
 
   const AUDIT_DEBUG = String(readEnv('VITE_AUDIT_DEBUG', '')) === '1';
   if (AUDIT_DEBUG) {
-    console.log('[spLists.listItems] 🚀 initialPath=', initialPath);
+    auditLog.debug('sp:read', 'list_items_start', { path: initialPath });
   }
 
   const rows: TRow[] = [];
@@ -74,7 +75,7 @@ export async function listItems<TRow = JsonRecord>(
 
   while (nextPath && pages < maxPages) {
     if (AUDIT_DEBUG) {
-      console.log('[spLists.listItems] 📡 spFetch call with path=', nextPath);
+      auditLog.debug('sp:read', 'list_items_page', { path: nextPath });
     }
     const res = await spFetch(nextPath, signal ? { signal } : {});
     const payload = (await res.json().catch(() => ({}) as Record<string, unknown>)) as {

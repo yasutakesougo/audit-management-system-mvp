@@ -5,6 +5,7 @@
  * 重複していた localStorage 操作関数を集約。
  */
 
+import { auditLog } from '@/lib/debugLogger';
 import type { HandoffDayScope, HandoffRecord } from './handoffTypes';
 
 // ────────────────────────────────────────────────────────────
@@ -81,7 +82,7 @@ export function saveStorage(data: HandoffStorageShape): void {
   try {
     window.localStorage.setItem(HANDOFF_STORAGE_KEY, JSON.stringify(data));
   } catch {
-    console.warn('[handoff] Failed to save data to localStorage');
+    auditLog.warn('handoff', 'storage.save_failed');
   }
 }
 

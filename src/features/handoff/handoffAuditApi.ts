@@ -5,6 +5,7 @@
  * handoffConfig.storage の値に応じて localStorage / SharePoint を切り替え。
  */
 
+import { auditLog } from '@/lib/debugLogger';
 import { useCallback, useMemo, useState } from 'react';
 import type { UseSP } from '../../lib/spClient';
 import { useSP } from '../../lib/spClient';
@@ -38,7 +39,7 @@ function saveAuditStorage(data: AuditStorageShape): void {
   try {
     window.localStorage.setItem(AUDIT_STORAGE_KEY, JSON.stringify(data));
   } catch {
-    console.warn('[handoff-audit] Failed to save localStorage');
+    auditLog.warn('handoff', 'handoff.audit_storage_save_failed');
   }
 }
 

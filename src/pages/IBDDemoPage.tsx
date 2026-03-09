@@ -19,6 +19,8 @@ import Stack from '@mui/material/Stack';
 import Typography from '@mui/material/Typography';
 import { useCallback, useEffect, useState } from 'react';
 
+import { auditLog } from '@/lib/debugLogger';
+
 import ABCEntryForm from '@/features/ibd/core/components/ABCEntryForm';
 import ABCSummaryReport from '@/features/ibd/core/components/ABCSummaryReport';
 import InterventionPickerPanel from '@/features/ibd/core/components/InterventionPickerPanel';
@@ -511,7 +513,9 @@ const IBDDemoPage = () => {
                     URL.revokeObjectURL(url);
                     setLastAction('✅ 監査エビデンスレポートをダウンロードしました');
                   } catch (err) {
-                    console.error('PDF generation error:', err);
+                    auditLog.error('ibd-demo', 'pdf_generation_failed', {
+                      error: err instanceof Error ? err.message : String(err),
+                    });
                     setLastAction(`❌ PDF生成エラー: ${err instanceof Error ? err.message : String(err)}`);
                   } finally {
                     setPdfLoading(false);

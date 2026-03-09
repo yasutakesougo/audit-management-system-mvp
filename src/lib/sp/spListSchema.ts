@@ -5,6 +5,7 @@
  * All functions accept `SpFetchFn` via explicit parameter injection.
  */
 
+import { auditLog } from '@/lib/debugLogger';
 import { readEnv } from '@/lib/env';
 
 import {
@@ -117,7 +118,7 @@ export async function getListFieldInternalNames(
 
       if (valid && Array.isArray(cached.internalNames) && cached.internalNames.length > 0) {
         if (debug) {
-          console.log('[spLists][fieldsCache] ✅ hit', {
+          auditLog.debug('sp:fields', 'cache_hit', {
             listTitle,
             count: cached.internalNames.length,
             ageMs: age,
@@ -128,7 +129,7 @@ export async function getListFieldInternalNames(
 
       // Stale / invalid → drop
       if (debug) {
-        console.log('[spLists][fieldsCache] ⏰ stale/invalid -> drop', {
+        auditLog.debug('sp:fields', 'cache_stale', {
           listTitle,
           ageMs: age,
         });
@@ -168,11 +169,11 @@ export async function getListFieldInternalNames(
       if (s) {
         sessionStorage.setItem(cacheKey, s);
         if (debug) {
-          console.log('[spLists][fieldsCache] 💾 save', { listTitle, count: names.size });
+          auditLog.debug('sp:fields', 'cache_save', { listTitle, count: names.size });
         }
       }
     } else if (debug && names.size === 0) {
-      console.log('[spLists][fieldsCache] ⚠️ fetched empty (not cached)', { listTitle });
+      auditLog.debug('sp:fields', 'cache_empty', { listTitle });
     }
 
     return names;
@@ -182,7 +183,7 @@ export async function getListFieldInternalNames(
       sessionStorage.removeItem(cacheKey);
     }
     if (debug) {
-      console.warn('[spLists][fieldsCache] ❌ fetch failed', { listTitle, error: e });
+      auditLog.warn('sp:fields', 'fetch_failed', { listTitle, error: e });
     }
     throw e;
   }
@@ -254,10 +255,7 @@ export async function ensureListExists(
       const current = existing.get(field.internalName);
       if (current) {
         if (field.required && current.Required === false) {
-          const currentLabel = current.Required ? 'TRUE' : 'FALSE';
-          console.warn(
-            `[spLists] Field "${field.internalName}" required flag differs (current=${currentLabel}).`,
-          );
+          auditLog.warn('sp:fields', 'required_flag_mismatch', { field: field.internalName, currentRequired: current.Required });
         }
         continue;
       }

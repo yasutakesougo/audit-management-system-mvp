@@ -3,6 +3,7 @@
  * Phase 8A: SharePoint API実装
  */
 
+import { auditLog } from '@/lib/debugLogger';
 import { getAppConfig, readBool, readEnv, readOptionalEnv } from '@/lib/env';
 
 /**
@@ -43,8 +44,7 @@ export function validateHandoffConfig(): { valid: boolean; errors: string[] } {
  */
 export function logHandoffConfig() {
   if (handoffConfig.debug) {
-    // eslint-disable-next-line no-console
-    console.log('[handoff] Configuration:', {
+    auditLog.info('handoff', 'handoff.config_loaded', {
       storage: handoffConfig.storage,
       listTitle: handoffConfig.listTitle,
       hasListId: !!handoffConfig.listId,
@@ -52,7 +52,7 @@ export function logHandoffConfig() {
 
     const validation = validateHandoffConfig();
     if (!validation.valid) {
-      console.warn('[handoff] Configuration errors:', validation.errors);
+      auditLog.warn('handoff', 'handoff.config_invalid', { errors: validation.errors });
     }
   }
 }
