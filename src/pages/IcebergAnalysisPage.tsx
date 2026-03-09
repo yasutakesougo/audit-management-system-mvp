@@ -9,6 +9,7 @@ import { useIcebergStore } from '@/features/ibd/analysis/iceberg/icebergStore';
 import type { EnvironmentFactor } from '@/features/ibd/analysis/iceberg/icebergTypes';
 import { IBDPageHeader } from '@/features/ibd/core/components/IBDPageHeader';
 import { useUsersDemo } from '@/features/users/usersStoreDemo';
+import { auditLog } from '@/lib/debugLogger';
 import { getAppConfig } from '@/lib/env';
 import AddLinkIcon from '@mui/icons-material/AddLink';
 import DownloadRoundedIcon from '@mui/icons-material/DownloadRounded';
@@ -204,7 +205,9 @@ const IcebergAnalysisPage: React.FC = () => {
         title: currentSession.title,
       });
     } catch (e) {
-      console.error('[IcebergAnalysisPage] Save error:', e);
+      auditLog.error('iceberg-analysis', 'save_failed', {
+        error: e instanceof Error ? e.message : String(e),
+      });
     } finally {
       setIsSaving(false);
     }

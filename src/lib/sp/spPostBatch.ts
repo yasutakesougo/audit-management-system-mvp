@@ -6,6 +6,7 @@
  * The batch payload builder/parser remain in spBatch.ts (SSOT).
  */
 
+import { auditLog } from '@/lib/debugLogger';
 import { isE2eMsalMockEnabled, shouldSkipLogin, skipSharePoint } from '@/lib/env';
 import { AuthRequiredError } from '@/lib/errors';
 import type { E2eDebugWindow } from './types';
@@ -32,7 +33,7 @@ export function createPostBatch(deps: PostBatchDeps) {
     // Mock response for dev/demo/skip-login
     if (shouldMock) {
       if (config.isDev) {
-        console.info('[DevMock] ✅ SharePoint Batch API モック');
+        auditLog.debug('sp:batch', 'mock_response');
       }
       const mockBatchResponse = (opCount: number) => {
         const parts: string[] = [];
@@ -96,7 +97,7 @@ export function createPostBatch(deps: PostBatchDeps) {
           else { const ts = Date.parse(ra); if (!isNaN(ts)) waitMs = Math.max(0, ts - Date.now()); }
         }
         if (waitMs == null) waitMs = computeBackoff(attempt);
-        if (debugEnabled) console.warn('[spRetry]', JSON.stringify({ phase: 'batch', status: res.status, nextAttempt: attempt + 1, waitMs }));
+        if (debugEnabled) auditLog.debug('sp:retry', 'batch', { status: res.status, nextAttempt: attempt + 1, waitMs });
         await sleep(waitMs);
         attempt += 1;
         continue;

@@ -1,9 +1,11 @@
+import { auditLog } from '@/lib/debugLogger';
 import { buildHandoffSelectFields } from '@/sharepoint/fields';
 import { useMemo } from 'react';
 import type { UseSP } from '../../lib/spClient';
 import { useSP } from '../../lib/spClient';
 import { generateTitleFromMessage } from './generateTitleFromMessage';
 import { handoffConfig } from './handoffConfig';
+import { toErrorMessage } from './handoffLoggerUtils';
 import {
     fromSpHandoffItem,
     toSpHandoffCreatePayload,
@@ -134,7 +136,7 @@ export class CarryOverDateStore {
       data[String(id)] = date;
       localStorage.setItem(this.KEY, JSON.stringify(data));
     } catch (e) {
-      console.error('[CarryOverDateStore] Save failed:', e);
+      auditLog.error('handoff', 'carryover_store.save_failed', { error: toErrorMessage(e) });
     }
   }
 
@@ -146,7 +148,7 @@ export class CarryOverDateStore {
       delete data[String(id)];
       localStorage.setItem(this.KEY, JSON.stringify(data));
     } catch (e) {
-      console.error('[CarryOverDateStore] Clear failed:', e);
+      auditLog.error('handoff', 'carryover_store.clear_failed', { error: toErrorMessage(e) });
     }
   }
 }
@@ -328,7 +330,7 @@ class HandoffApi {
     } catch (error) {
       // エラー時は楽観的更新をロールバック
       this.invalidateRelatedCaches();
-      console.error('申し送り記録作成エラー:', error);
+      auditLog.error('handoff', 'api.create_failed', { error: toErrorMessage(error) });
       throw new Error('申し送り記録の作成に失敗しました');
     }
   }
@@ -402,7 +404,7 @@ class HandoffApi {
     } catch (error) {
       // エラー時は楽観的更新をロールバック
       this.optimisticManager.clearPendingUpdate(id);
-      console.error('申し送り記録更新エラー:', error);
+      auditLog.error('handoff', 'api.update_failed', { error: toErrorMessage(error) });
       throw new Error('申し送り記録の更新に失敗しました');
     }
   }
@@ -435,7 +437,7 @@ class HandoffApi {
 
       this.invalidateRelatedCaches();
     } catch (error) {
-      console.error('申し送り記録削除エラー:', error);
+      auditLog.error('handoff', 'api.delete_failed', { error: toErrorMessage(error) });
       throw new Error('申し送り記録の削除に失敗しました');
     }
   }
@@ -490,7 +492,7 @@ class HandoffApi {
 
       return items.map(fromSpHandoffItem);
     } catch (error) {
-      console.error('ユーザー別申し送り記録取得エラー:', error);
+      auditLog.error('handoff', 'api.get_user_records_failed', { error: toErrorMessage(error) });
       throw new Error('ユーザー別申し送り記録の取得に失敗しました');
     }
   }
@@ -517,7 +519,7 @@ class HandoffApi {
 
       return items.map(fromSpHandoffItem);
     } catch (error) {
-      console.error('会議用申し送り記録取得エラー:', error);
+      auditLog.error('handoff', 'api.get_meeting_records_failed', { error: toErrorMessage(error) });
       throw new Error('会議用申し送り記録の取得に失敗しました');
     }
   }
@@ -557,7 +559,7 @@ class HandoffApi {
         timeBandStats,
       };
     } catch (error) {
-      console.error('申し送り統計取得エラー:', error);
+      auditLog.error('handoff', 'api.get_stats_failed', { error: toErrorMessage(error) });
       throw new Error('申し送り統計の取得に失敗しました');
     }
   }

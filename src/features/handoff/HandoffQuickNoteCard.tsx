@@ -101,8 +101,7 @@ export const HandoffQuickNoteCard: React.FC = () => {
       showFeedback('success');
 
       // カテゴリ・重要度はリセットしない（連続入力しやすくするため）
-    } catch (error) {
-      console.error('[handoff] Submit failed:', error);
+    } catch {
       showFeedback('error');
     } finally {
       setSubmitting(false);
