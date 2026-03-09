@@ -14,14 +14,12 @@ import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import toast, { Toaster } from 'react-hot-toast';
 
 import AssignmentIcon from '@mui/icons-material/Assignment';
-import ListAltIcon from '@mui/icons-material/ListAlt';
 import SaveIcon from '@mui/icons-material/Save';
 import {
     Autocomplete,
     Box,
     Button,
     Checkbox,
-    Chip,
     CircularProgress,
     Collapse,
     FormControl,
@@ -31,12 +29,6 @@ import {
     Paper,
     Select,
     Stack,
-    Table,
-    TableBody,
-    TableCell,
-    TableContainer,
-    TableHead,
-    TableRow,
     TextField,
     Typography
 } from '@mui/material';
@@ -47,16 +39,14 @@ import type { ServiceProvisionStatus, UpsertProvisionInput } from '@/features/se
 import { useServiceProvisionList, useServiceProvisionSave } from '@/features/service-provision';
 import { AbsentSupportLogForm } from '@/features/service-provision/components/AbsentSupportLogForm';
 import IsokatsuSheetPreview from '@/features/service-provision/components/IsokatsuSheetPreview';
+import { ProvisionDailyTable } from '@/features/service-provision/components/ProvisionDailyTable';
 import type { AbsentSupportLog } from '@/features/service-provision/domain/absentSupportLog';
 import { buildNoteWithAbsentLog, EMPTY_ABSENT_LOG } from '@/features/service-provision/domain/absentSupportLog';
 import {
-    formatHHMM,
-    getAddonLabels,
     parseHHMM,
     SERVICE_PROVISION_SAMPLE_RECORDS,
-    STATUS_COLOR,
     STATUS_OPTIONS,
-    todayISO,
+    todayISO
 } from '@/features/service-provision/serviceProvisionFormHelpers';
 import { useSyncAttendance } from '@/features/service-provision/useSyncAttendance';
 import PrintIcon from '@mui/icons-material/Print';
@@ -409,70 +399,7 @@ const ServiceProvisionFormPage: React.FC = () => {
       </Paper>
 
       {/* ── 日次一覧 ───────────────────────────────────── */}
-      <Paper sx={{ p: 3, mt: 3 }}>
-        <Typography
-          variant="h6"
-          sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 2 }}
-          data-testid="heading-daily-list"
-        >
-          <ListAltIcon color="primary" />
-          {recordDate} の実績一覧
-          {listLoading && <CircularProgress size={18} sx={{ ml: 1 }} />}
-        </Typography>
-
-        {records.length === 0 && !listLoading ? (
-          <Typography color="text.secondary" variant="body2" sx={{ py: 2, textAlign: 'center' }}>
-            この日の実績はまだありません
-          </Typography>
-        ) : (
-          <TableContainer>
-            <Table size="small">
-              <TableHead>
-                <TableRow>
-                  <TableCell>利用者</TableCell>
-                  <TableCell>状況</TableCell>
-                  <TableCell>開始</TableCell>
-                  <TableCell>終了</TableCell>
-                  <TableCell>加算</TableCell>
-                  <TableCell>メモ</TableCell>
-                </TableRow>
-              </TableHead>
-              <TableBody>
-                {records.map((r) => (
-                  <TableRow key={r.entryKey} hover>
-                    <TableCell sx={{ fontWeight: 500 }}>{r.userCode}</TableCell>
-                    <TableCell>
-                      <Chip
-                        label={r.status}
-                        size="small"
-                        color={STATUS_COLOR[r.status] ?? 'default'}
-                        variant="outlined"
-                      />
-                    </TableCell>
-                    <TableCell>{formatHHMM(r.startHHMM)}</TableCell>
-                    <TableCell>{formatHHMM(r.endHHMM)}</TableCell>
-                    <TableCell>
-                      {getAddonLabels(r).map((label) => (
-                        <Chip key={label} label={label} size="small" sx={{ mr: 0.5, mb: 0.5 }} />
-                      ))}
-                    </TableCell>
-                    <TableCell
-                      sx={{
-                        maxWidth: 200,
-                        overflow: 'hidden',
-                        textOverflow: 'ellipsis',
-                        whiteSpace: 'nowrap',
-                      }}
-                    >
-                      {r.note || '—'}
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </TableContainer>
-        )}
-      </Paper>
+      <ProvisionDailyTable records={records} loading={listLoading} recordDate={recordDate} />
 
       {/* ── いそかつ書式プレビュー ─────────────────────── */}
       <Paper sx={{ p: 3, mt: 3, overflow: 'auto' }}>
