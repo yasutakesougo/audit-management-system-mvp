@@ -73,7 +73,22 @@ export function useSupportWizard(
   }, []);
 
   const goToStep = useCallback((target: SupportWizardStep) => {
-    setStep(target);
+    setStep((prev) => {
+      const currentIdx = STEPS.indexOf(prev);
+      const targetIdx = STEPS.indexOf(target);
+      // 後方遷移のとき、それ以降で設定された状態をクリア
+      if (targetIdx <= currentIdx) {
+        if (targetIdx <= 1) {
+          // plan 以前に戻る → スロット選択をリセット
+          setWizardSlotId('');
+        }
+        if (targetIdx === 0) {
+          // user に戻る → ユーザー選択もリセット
+          setWizardUserId('');
+        }
+      }
+      return target;
+    });
   }, []);
 
   /** Step 1 → Step 2: ユーザー選択 → Plan へ */
