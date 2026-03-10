@@ -9,6 +9,7 @@ import type { RouteObject } from 'react-router-dom';
 
 import {
     SuspendedAdminDashboardPage,
+    SuspendedAdminHubPage,
     SuspendedAuditPanel,
     SuspendedChecklistPage,
     SuspendedCsvImportPage,
@@ -37,6 +38,14 @@ export const adminRoutes: RouteObject[] = [
     { path: 'admin/debug/opening-verification', element: <SuspendedOpeningVerificationPage /> },
   ] : []),
 
+  {
+    path: 'admin',
+    element: (
+      <RequireAudience requiredRole="admin">
+        <SuspendedAdminHubPage />
+      </RequireAudience>
+    ),
+  },
   {
     path: 'admin/dashboard',
     element: (
