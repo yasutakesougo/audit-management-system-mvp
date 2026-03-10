@@ -96,7 +96,7 @@ export const DashboardZoneLayout: React.FC<DashboardZoneLayoutProps> = ({
     );
   };
 
-  const FOOTER_H = 56;
+  const FOOTER_H = 44;
 
   return (
     <Box

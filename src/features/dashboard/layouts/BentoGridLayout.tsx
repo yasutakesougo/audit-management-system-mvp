@@ -224,7 +224,7 @@ export const BentoGridLayout: React.FC<BentoGridLayoutProps> = ({
     },
   };
 
-  const FOOTER_H = 56;
+  const FOOTER_H = 44;
 
   // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
   // Narrow (< 600px): スマートフォン — 最小限スタック
@@ -314,11 +314,11 @@ export const BentoGridLayout: React.FC<BentoGridLayoutProps> = ({
           "command command"
           "main    rail"
         `,
-        gridTemplateColumns: '1fr 340px',
+        gridTemplateColumns: '1fr 380px',
         gridTemplateRows: 'auto 1fr',
-        gap: 2,
+        gap: 2.5,
         height: `calc(100vh - ${FOOTER_H + 100}px)`,
-        minHeight: 500,
+        minHeight: 480,
         overflow: 'hidden',
       }}
     >
@@ -337,7 +337,7 @@ export const BentoGridLayout: React.FC<BentoGridLayoutProps> = ({
         }}
         data-testid="bento-main-anchor"
       >
-        <Stack spacing={2.5}>
+        <Stack spacing={2}>
           {mainSections}
         </Stack>
       </Box>
