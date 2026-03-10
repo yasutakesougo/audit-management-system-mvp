@@ -11,6 +11,7 @@
 import LiveAnnouncer from '@/a11y/LiveAnnouncer';
 import { FooterQuickActions } from '@/app/components/FooterQuickActions';
 import { AppShellV2 } from '@/components/layout/AppShellV2';
+import { isDev } from '@/env';
 import { SettingsDialog } from '@/features/settings/SettingsDialog';
 import RouteHydrationListener from '@/hydration/RouteHydrationListener';
 import CloseFullscreenRoundedIcon from '@mui/icons-material/CloseFullscreenRounded';
@@ -20,6 +21,11 @@ import React from 'react';
 import { AppShellHeader } from './AppShellHeader';
 import { AppShellSidebar, MobileNavContent } from './AppShellSidebar';
 import { useAppShellState } from './useAppShellState';
+
+// ── Dev Panel (lazy, DEV only — zero production cost) ────────────────────
+const LazySpDevPanel = isDev
+  ? React.lazy(() => import('@/debug/SpDevPanel'))
+  : null;
 
 function useLockBodyScroll(enabled: boolean) {
   React.useLayoutEffect(() => {
@@ -151,6 +157,11 @@ const AppShell: React.FC<{ children: React.ReactNode }> = ({ children }) => {
             </Fab>
           )}
           <SettingsDialog open={settingsDialogOpen} onClose={() => setSettingsDialogOpen(false)} />
+          {LazySpDevPanel && (
+            <React.Suspense fallback={null}>
+              <LazySpDevPanel />
+            </React.Suspense>
+          )}
         </div>
       </LiveAnnouncer>
     </RouteHydrationListener>
