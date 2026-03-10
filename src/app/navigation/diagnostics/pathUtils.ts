@@ -103,6 +103,10 @@ export const ORPHAN_ALLOWLIST_DETAILS: AllowlistRoute[] = [
   { path: '/analysis/iceberg', category: 'Redirect', reason: '統合ワークスペースのicebergタブへリダイレクト' },
   { path: '/analysis/iceberg-pdca', category: 'Redirect', reason: '統合ワークスペースのpdcaタブへリダイレクト' },
   { path: '/analysis/iceberg-standalone', category: 'Standalone', reason: '氷山モデルCanvas専用画面（別ウィンドウ）' },
+  { path: '/admin/debug/zod-error', category: 'Dev', reason: '開発用Zodエラー確認画面' },
+  { path: '/admin/debug/opening-verification', category: 'Dev', reason: '開発用テナント検証ツール' },
+  { path: '/admin/debug/smoke-test', category: 'Dev', reason: '開発用スモークテスト画面' },
+  { path: '/admin/data-integrity', category: 'Admin', reason: '管理者用データ整合性確認画面' },
 ].map(item => ({ ...item, path: normalizeRouterPath(item.path) }));
 
 export const ORPHAN_ALLOWLIST = new Set(ORPHAN_ALLOWLIST_DETAILS.map(d => d.path));
