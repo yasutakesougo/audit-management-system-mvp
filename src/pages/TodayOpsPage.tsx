@@ -14,6 +14,7 @@
  * @see docs/adr/ADR-002-today-execution-layer-guardrails.md
  */
 import { buildDailyHubFromTodayUrl } from '@/app/links/navigationLinks';
+import { useAuthStore } from '@/features/auth/store';
 import { useTodaySummary } from '@/features/today/domain';
 import { useApprovalFlow } from '@/features/today/hooks/useApprovalFlow';
 import { useNextAction } from '@/features/today/hooks/useNextAction';
@@ -27,11 +28,29 @@ import { ApprovalDialog } from '@/features/today/widgets/ApprovalDialog';
 import { isE2E } from '@/lib/env';
 import { toLocalDateISO } from '@/utils/getNow';
 import { Alert, Snackbar } from '@mui/material';
-import React, { useMemo } from 'react';
-import { useNavigate } from 'react-router-dom';
+import React, { useEffect, useMemo, useRef } from 'react';
+import { useLocation, useNavigate } from 'react-router-dom';
 
 export const TodayOpsPage: React.FC = () => {
   const navigate = useNavigate();
+  const location = useLocation();
+  const role = useAuthStore((s) => s.currentUserRole);
+
+  // ── Landing Telemetry (Trial Observation) ────────────────────────
+  // 1回だけ記録。StrictMode の二重発火を ref で防止。
+  const landingLoggedRef = useRef(false);
+  useEffect(() => {
+    if (landingLoggedRef.current) return;
+    landingLoggedRef.current = true;
+    // eslint-disable-next-line no-console
+    console.info('[todayops:landing]', {
+      path: location.pathname,
+      search: location.search,
+      role,
+      ts: new Date().toISOString(),
+    });
+  }, [location.pathname, location.search, role]);
+  // ────────────────────────────────────────────────────────────────
 
   // 1. Data via Facade (Execution Layer はドメイン集約を持たない)
   const summary = useTodaySummary();
