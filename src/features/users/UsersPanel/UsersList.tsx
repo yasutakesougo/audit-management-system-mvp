@@ -51,8 +51,8 @@ type UsersListProps = {
   detailSectionRef: RefObject<HTMLDivElement>;
   errorMessage: string | null;
   onRefresh: () => Promise<void> | void;
-  onDelete: (id: number | string) => Promise<void> | void;
-  onEdit: (user: IUserMaster) => void;
+  onDelete?: (id: number | string) => Promise<void> | void;
+  onEdit?: (user: IUserMaster) => void;
   onSelectDetail: (event: ReactMouseEvent<HTMLButtonElement>, user: IUserMaster) => void;
   onCloseDetail: () => void;
   onExportPDF?: (userId: string) => void;
@@ -398,32 +398,36 @@ const UsersList: FC<UsersListProps> = ({
                         >
                           <InfoOutlinedIcon fontSize="small" />
                         </IconButton>
-                        <IconButton
-                          size="small"
-                          color="primary"
-                          onClick={(event: ReactMouseEvent<HTMLButtonElement>) => {
-                            event.stopPropagation();
-                            onEdit(user);
-                          }}
-                          disabled={rowBusy}
-                          title="編集"
-                          aria-label="編集"
-                        >
-                          <EditRoundedIcon fontSize="small" />
-                        </IconButton>
-                        <IconButton
-                          size="small"
-                          color="error"
-                          onClick={(event: ReactMouseEvent<HTMLButtonElement>) => {
-                            event.stopPropagation();
-                            onDelete(user.Id);
-                          }}
-                          disabled={rowBusy}
-                          title="削除"
-                          aria-label="削除"
-                        >
-                          <DeleteRoundedIcon fontSize="small" />
-                        </IconButton>
+                        {onEdit && (
+                          <IconButton
+                            size="small"
+                            color="primary"
+                            onClick={(event: ReactMouseEvent<HTMLButtonElement>) => {
+                              event.stopPropagation();
+                              onEdit(user);
+                            }}
+                            disabled={rowBusy}
+                            title="編集"
+                            aria-label="編集"
+                          >
+                            <EditRoundedIcon fontSize="small" />
+                          </IconButton>
+                        )}
+                        {onDelete && (
+                          <IconButton
+                            size="small"
+                            color="error"
+                            onClick={(event: ReactMouseEvent<HTMLButtonElement>) => {
+                              event.stopPropagation();
+                              onDelete(user.Id);
+                            }}
+                            disabled={rowBusy}
+                            title="削除"
+                            aria-label="削除"
+                          >
+                            <DeleteRoundedIcon fontSize="small" />
+                          </IconButton>
+                        )}
                         <IconButton
                           size="small"
                           color="secondary"
