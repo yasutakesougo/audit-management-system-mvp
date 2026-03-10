@@ -1,8 +1,10 @@
 /**
  * Settings Model - User display preferences
- * Supports: dark mode, density, font size, color customization
+ * Supports: dark mode, density, font size, color customization, nav visibility
  * Persisted to localStorage for session continuity
  */
+
+import type { NavGroupKey } from '@/app/config/navigationConfig.types';
 
 /** User display preferences */
 export type UserSettings = {
@@ -21,6 +23,12 @@ export type UserSettings = {
   // Layout mode (Phase 6: Focus Mode)
   layoutMode: 'normal' | 'focus';
 
+  // Hidden navigation groups (sidebar menu visibility)
+  hiddenNavGroups: NavGroupKey[];
+
+  // Hidden individual navigation items (by path)
+  hiddenNavItems: string[];
+
   // Timestamp for sync validation
   lastModified: number;
 };
@@ -32,6 +40,8 @@ export const DEFAULT_SETTINGS: UserSettings = {
   fontSize: 'medium',
   colorPreset: 'default',
   layoutMode: 'normal',
+  hiddenNavGroups: [],
+  hiddenNavItems: [],
   lastModified: Date.now(),
 };
 
@@ -66,6 +76,8 @@ export function loadSettingsFromStorage(): UserSettings {
       fontSize: parsed.fontSize as UserSettings['fontSize'],
       colorPreset: parsed.colorPreset || 'default',
       layoutMode: parsed.layoutMode || 'normal',
+      hiddenNavGroups: Array.isArray(parsed.hiddenNavGroups) ? parsed.hiddenNavGroups : [],
+      hiddenNavItems: Array.isArray(parsed.hiddenNavItems) ? parsed.hiddenNavItems : [],
       lastModified: parsed.lastModified || Date.now(),
     };
   } catch (error) {
