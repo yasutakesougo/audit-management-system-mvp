@@ -1,5 +1,5 @@
+import { get, getFlag } from '@/env';
 import { getAuth, signInAnonymously, signInWithCustomToken } from 'firebase/auth';
-import { getFlag, get } from '@/env';
 import { getFirebaseApp } from './client';
 
 type FirebaseAuthMode = 'anonymous' | 'customToken';
@@ -137,22 +137,22 @@ const signInWithConfiguredStrategy = async (
 
 /**
  * Initialize Firebase Authentication (anonymous mode)
- * 
+ *
  * Purpose:
  * - Satisfies Firestore rules `signedIn()` precondition
  * - Firestore rules require authenticated UID to track events
- * 
+ *
  * Strategy:
  * - Anonymous auth: No user interaction, instant token, perfect for demo + local dev
  * - Emulator support: Routes to local emulator if VITE_FIREBASE_AUTH_USE_EMULATOR=1
  * - Non-blocking: If auth fails, app continues (graceful degradation)
  * - Token refresh: Automatic via Firebase SDK
- * 
+ *
  * Designed for easy swap:
  * - Replace signInAnonymously() with custom token / MSAL exchange
  * - No dependency on Firestore client.ts (separate init)
  * - Emulator pattern mirrors Firestore client
- * 
+ *
  * @throws {FirebaseError} On fatal auth config errors (logs only, does not throw)
  */
 export async function initFirebaseAuth(): Promise<void> {
@@ -160,6 +160,15 @@ export async function initFirebaseAuth(): Promise<void> {
   const isE2E = getFlag('VITE_E2E', false);
   if (isE2E) {
     console.log('[firebase-auth] disabled:', { VITE_E2E: getFlag('VITE_E2E', false) });
+    return;
+  }
+
+  // Skip Firebase auth when API key is not configured (graceful degradation)
+  const apiKey = get('VITE_FIREBASE_API_KEY', '');
+  if (!apiKey || apiKey === 'undefined' || apiKey === 'null') {
+    if (getFlag('DEV', false)) {
+      console.info('[firebase-auth] ⏭️ skipped: VITE_FIREBASE_API_KEY is not configured');
+    }
     return;
   }
 

@@ -187,8 +187,7 @@ class HandoffCommentApi {
   }
 
   private async getCommentCountsSP(handoffIds: number[]): Promise<Record<number, number>> {
-    // バッチで取得するには全件取得→集計が最もシンプル
-    // 大量データ時は SharePoint View や Group By に切り替え検討
+    // ページング取得で List View Threshold (5000件制限) を回避
     const result: Record<number, number> = {};
     for (const id of handoffIds) {
       result[id] = 0;
@@ -198,18 +197,28 @@ class HandoffCommentApi {
 
     const filterParts = handoffIds.map(id => `HandoffId eq ${id}`);
     const filter = filterParts.join(' or ');
-    const query = `?$select=Id,HandoffId&$filter=${encodeURIComponent(filter)}&$top=5000`;
+    const PAGE_SIZE = 200;
+    let nextUrl: string | null =
+      `lists/getbytitle('${SP_COMMENT_LIST_TITLE}')/items?$select=Id,HandoffId&$filter=${encodeURIComponent(filter)}&$top=${PAGE_SIZE}`;
 
     try {
-      const response = await this.sp.spFetch(
-        `lists/getbytitle('${SP_COMMENT_LIST_TITLE}')/items${query}`
-      );
-      if (response.ok) {
-        const data = await response.json();
-        const items: { HandoffId: number }[] = data.value || [];
+      while (nextUrl) {
+        const response = await this.sp.spFetch(nextUrl);
+        if (!response.ok) break;
+
+        const data: {
+          value?: { HandoffId: number }[];
+          '@odata.nextLink'?: string;
+          'd'?: { __next?: string; results?: { HandoffId: number }[] };
+        } = await response.json();
+
+        const items = data.value ?? data.d?.results ?? [];
         for (const item of items) {
           result[item.HandoffId] = (result[item.HandoffId] || 0) + 1;
         }
+
+        // SharePoint REST API returns @odata.nextLink (nometadata) or d.__next (verbose)
+        nextUrl = data['@odata.nextLink'] ?? data.d?.__next ?? null;
       }
     } catch (error) {
       auditLog.error('handoff', 'comment.get_counts_failed', { error: toErrorMessage(error) });

@@ -1,4 +1,5 @@
 
+import { isWriteEnabled } from '@/env';
 import { useMsal } from '@azure/msal-react';
 import { useState } from 'react';
 import { z, type ZodIssue } from 'zod';
@@ -211,6 +212,36 @@ export default function SmokeTestPage() {
             <p style={{ marginBottom: '2rem', color: '#666' }}>
                 This page uses your active browser session to download real production data and test it against the local schemas.
             </p>
+
+            {!isWriteEnabled && (
+                <div
+                    data-testid="smoke-test-write-disabled-warning"
+                    style={{
+                        background: '#fff3cd',
+                        border: '2px solid #ffc107',
+                        borderRadius: '8px',
+                        padding: '1rem 1.5rem',
+                        marginBottom: '1.5rem',
+                        display: 'flex',
+                        alignItems: 'flex-start',
+                        gap: '0.75rem',
+                    }}
+                >
+                    <span style={{ fontSize: '1.5rem', lineHeight: 1 }}>⚠️</span>
+                    <div>
+                        <strong style={{ display: 'block', marginBottom: '0.25rem', color: '#856404' }}>
+                            書き込みが無効です
+                        </strong>
+                        <span style={{ color: '#856404' }}>
+                            この環境では書き込みが無効です。記録の保存・更新・削除はすべてブロックされます。
+                        </span>
+                        <br />
+                        <code style={{ fontWeight: 700, color: '#856404', background: '#ffeeba', padding: '2px 6px', borderRadius: '3px', marginTop: '4px', display: 'inline-block' }}>
+                            .env の VITE_WRITE_ENABLED=1 を設定してください。
+                        </code>
+                    </div>
+                </div>
+            )}
 
             <button
                 onClick={runDiagnostic}

@@ -1,3 +1,4 @@
+import { WriteDisabledBanner } from '@/components/WriteDisabledBanner';
 import { HydrationHud } from '@/debug/HydrationHud';
 import { SettingsProvider } from '@/features/settings';
 import { hydrateStaffAttendanceFromStorage, saveStaffAttendanceToStorage } from '@/features/staff/attendance/persist';
@@ -55,6 +56,7 @@ function App() {
       <QueryClientProvider client={queryClient}>
         <ThemeRoot>
           <CssBaseline />
+          <WriteDisabledBanner />
           {/* 🎨 MUIテーマ + グローバルスタイル */}
           <ToastProvider>
             {/* 📢 グローバルトースト通知 */}

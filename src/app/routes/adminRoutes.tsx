@@ -18,6 +18,7 @@ import {
     SuspendedIntegratedResourceCalendarPage,
     SuspendedModeSwitchPage,
     SuspendedNavigationDiagnosticsPage,
+    SuspendedOpeningVerificationPage,
     SuspendedSmokeTestPage,
     SuspendedStaffAttendanceAdminPage,
     SuspendedStaffAttendanceInput,
@@ -33,6 +34,7 @@ export const adminRoutes: RouteObject[] = [
   ...(isDev ? [
     { path: 'admin/debug/smoke-test', element: <SuspendedSmokeTestPage /> },
     { path: 'admin/debug/zod-error', element: <SuspendedDebugZodErrorPage /> },
+    { path: 'admin/debug/opening-verification', element: <SuspendedOpeningVerificationPage /> },
   ] : []),
 
   {
