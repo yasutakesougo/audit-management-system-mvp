@@ -12,6 +12,7 @@ export const DEMO_USERS: IUserMaster[] = [
     IsSupportProcedureTarget: true,
     ServiceEndDate: null,
     AttendanceDays: ['月', '火', '水', '木', '金'],
+    LastAssessmentDate: '2026-01-15',
   },
   {
     Id: 2,
@@ -23,6 +24,7 @@ export const DEMO_USERS: IUserMaster[] = [
     IsSupportProcedureTarget: true,
     ServiceEndDate: null,
     AttendanceDays: ['月', '水', '金'],
+    LastAssessmentDate: '2026-02-10',
   },
   {
     Id: 3,
@@ -34,6 +36,7 @@ export const DEMO_USERS: IUserMaster[] = [
     IsSupportProcedureTarget: true,
     ServiceEndDate: null,
     AttendanceDays: ['火', '木', '金'],
+    LastAssessmentDate: '2025-12-20',
   },
   // 通常利用者（29名）- 支援記録（ケース記録）のみ
   {
