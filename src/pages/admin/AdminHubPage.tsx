@@ -5,7 +5,10 @@
  * 今後の管理機能追加はここにカードを追加するだけで対応可能。
  */
 import AdminPanelSettingsIcon from '@mui/icons-material/AdminPanelSettings';
+import BadgeIcon from '@mui/icons-material/Badge';
 import BuildIcon from '@mui/icons-material/Build';
+import CalendarMonthIcon from '@mui/icons-material/CalendarMonth';
+import CategoryIcon from '@mui/icons-material/Category';
 import DashboardIcon from '@mui/icons-material/Dashboard';
 import FactCheckIcon from '@mui/icons-material/FactCheck';
 import SettingsIcon from '@mui/icons-material/Settings';
@@ -97,6 +100,27 @@ const ADMIN_TOOLS: AdminTool[] = [
     description: '利用者別の支援手順管理',
     to: '/admin/individual-support',
     icon: <AdminPanelSettingsIcon />,
+    category: 'system',
+  },
+  {
+    label: '支援活動マスタ',
+    description: '支援活動テンプレートの管理',
+    to: '/admin/templates',
+    icon: <CategoryIcon />,
+    category: 'system',
+  },
+  {
+    label: '職員勤怠管理',
+    description: '職員の出勤・勤務管理',
+    to: '/admin/staff-attendance',
+    icon: <BadgeIcon />,
+    category: 'system',
+  },
+  {
+    label: '統合リソースカレンダー',
+    description: 'リソースの統合スケジュール管理',
+    to: '/admin/integrated-resource-calendar',
+    icon: <CalendarMonthIcon />,
     category: 'system',
   },
 ];

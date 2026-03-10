@@ -408,7 +408,7 @@ export function createNavItems(config: CreateNavItemsConfig): NavItem[] {
   items.push({
     label: '支援活動マスタ',
     to: '/admin/templates',
-    isActive: (pathname: string) => pathname.startsWith('/admin'),
+    isActive: (pathname: string) => pathname.startsWith('/admin/templates'),
     icon: undefined,
     prefetchKey: PREFETCH_KEYS.adminTemplates,
     prefetchKeys: [PREFETCH_KEYS.muiForms, PREFETCH_KEYS.muiOverlay],
