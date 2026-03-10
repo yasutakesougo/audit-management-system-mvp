@@ -90,7 +90,7 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
     );
   };
 
-  const FOOTER_H = 56;
+  const FOOTER_H = 44;
 
   return (
     <Stack spacing={{ xs: 2, sm: 3, md: 4 }} sx={{ mb: { xs: 2, sm: 3 } }}>

@@ -74,9 +74,9 @@ describe('TodayServiceStructureCard — 生活支援', () => {
     render(<TodayServiceStructureCard serviceStructure={fullStructure} />);
 
     expect(screen.getByTestId('section-life-support')).toBeInTheDocument();
-    expect(screen.getByText('ショートステイ 1件')).toBeInTheDocument();
-    expect(screen.getByText('一時ケア 2件')).toBeInTheDocument();
-    expect(screen.getByText('受け入れ窓口')).toBeInTheDocument();
+    expect(screen.getByText('SS 1件')).toBeInTheDocument();
+    expect(screen.getByText('一時 2件')).toBeInTheDocument();
+    expect(screen.getByText('窓口')).toBeInTheDocument();
     expect(screen.getByText('高橋、伊藤')).toBeInTheDocument();
   });
 
@@ -90,7 +90,7 @@ describe('TodayServiceStructureCard — 生活支援', () => {
     render(<TodayServiceStructureCard serviceStructure={emptyLifeSupport} />);
 
     expect(screen.getByTestId('empty-life-support')).toBeInTheDocument();
-    expect(screen.getByText('本日の生活支援受け入れ予定はありません')).toBeInTheDocument();
+    expect(screen.getByText('受け入れ予定なし')).toBeInTheDocument();
   });
 });
 
@@ -127,9 +127,10 @@ describe('TodayServiceStructureCard — 全体', () => {
     expect(screen.getByTestId('today-service-structure-card')).toBeInTheDocument();
   });
 
-  it('タイトルが表示される', () => {
+  it('セクションヘッダーが表示される', () => {
     render(<TodayServiceStructureCard serviceStructure={fullStructure} />);
 
-    expect(screen.getByText(/今日の業務体制/)).toBeInTheDocument();
+    expect(screen.getByText(/生活介護/)).toBeInTheDocument();
+    expect(screen.getByText(/判断窓口/)).toBeInTheDocument();
   });
 });

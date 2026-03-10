@@ -17,7 +17,7 @@ export const HeroUnfinishedBanner: React.FC<HeroUnfinishedBannerProps> = ({
   approvalPendingCount = 0,
   onClickPrimary,
   onClickSecondary,
-  sticky = true,
+  // sticky is accepted for backward compatibility but no longer used (inline layout)
 }) => {
   const isComplete = unfilledCount === 0 && approvalPendingCount === 0;
 
@@ -26,20 +26,13 @@ export const HeroUnfinishedBanner: React.FC<HeroUnfinishedBannerProps> = ({
       <Box
         data-testid="today-hero-banner"
         data-complete="true"
-        sx={[
-          {
-            bgcolor: 'success.dark',
-            color: 'common.white',
-            boxShadow: 1,
-            py: 0.75,
-            transition: motionTokens.transition.cardInteractive,
-          },
-          sticky && {
-            position: 'sticky',
-            top: 0,
-            zIndex: 1100,
-          },
-        ]}
+        sx={{
+          bgcolor: 'success.dark',
+          color: 'common.white',
+          boxShadow: 1,
+          py: 0.5,
+          transition: motionTokens.transition.cardInteractive,
+        }}
       >
         <EmptyStateHero onClickMenu={onClickSecondary} />
       </Box>
@@ -49,31 +42,25 @@ export const HeroUnfinishedBanner: React.FC<HeroUnfinishedBannerProps> = ({
   return (
     <Box
       data-testid="today-hero-banner"
-      sx={[
-        {
-          px: 2,
-          py: 1.5,
-          bgcolor: 'error.main',
-          color: 'common.white',
-          display: 'flex',
-          gap: 2,
-          justifyContent: 'space-between',
-          alignItems: 'center',
-          boxShadow: 2,
-        },
-        sticky && {
-          position: 'sticky',
-          top: 0,
-          zIndex: 1100,
-        },
-      ]}
+      sx={{
+        px: 2,
+        py: 0.75,
+        bgcolor: 'error.main',
+        color: 'common.white',
+        display: 'flex',
+        gap: 1.5,
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        boxShadow: 1,
+        borderRadius: 1,
+      }}
     >
-      <Typography variant="subtitle1" fontWeight="bold">
+      <Typography variant="body2" fontWeight="bold" sx={{ fontSize: '0.82rem' }}>
         🔴 未記録 {unfilledCount}件
         {approvalPendingCount > 0 && ` / 🟡 承認待ち ${approvalPendingCount}件`}
       </Typography>
 
-      <Box sx={{ display: 'flex', gap: 1 }}>
+      <Box sx={{ display: 'flex', gap: 0.75, flexShrink: 0 }}>
         <Button
           data-testid="today-hero-cta"
           variant="contained"
@@ -82,8 +69,9 @@ export const HeroUnfinishedBanner: React.FC<HeroUnfinishedBannerProps> = ({
           sx={{
             color: 'error.main',
             fontWeight: 'bold',
-            minHeight: 44,
-            px: 2,
+            minHeight: 32,
+            px: 1.5,
+            fontSize: '0.75rem',
           }}
         >
           今すぐ入力
@@ -97,12 +85,13 @@ export const HeroUnfinishedBanner: React.FC<HeroUnfinishedBannerProps> = ({
             onClick={onClickSecondary}
             sx={{
               fontWeight: 'bold',
-              minHeight: 44,
-              px: 2,
+              minHeight: 32,
+              px: 1.5,
+              fontSize: '0.75rem',
               borderColor: 'rgba(255,255,255,0.5)',
             }}
           >
-            📋 記録メニュー
+            記録メニュー
           </Button>
         )}
       </Box>
