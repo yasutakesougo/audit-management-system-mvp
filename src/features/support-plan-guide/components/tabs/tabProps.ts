@@ -5,7 +5,7 @@
  * PreviewTab は独自のPropsを持つため別途定義。
  */
 import type { GoalItem } from '@/features/shared/goal/goalTypes';
-import type { SupportPlanForm, SupportPlanStringFieldKey } from '../../types';
+import type { SupportPlanForm, SupportPlanStringFieldKey, UserOption } from '../../types';
 
 /** 8つのセクションタブ(overview〜excellence) が共通で受け取る Props */
 export type SectionTabProps = {
@@ -29,4 +29,14 @@ export type SectionTabProps = {
   onAddGoal?: (type: GoalItem['type'], defaultLabel: string) => void;
   /** 目標の削除 */
   onDeleteGoal?: (goalId: string) => void;
+
+  // ── User Link (利用者マスタ紐付け) ──
+  /** 利用者マスタ選択肢（OverviewTab で使用） */
+  userOptions?: UserOption[];
+  /** 現在のドラフトに紐づいている利用者ID */
+  linkedUserId?: number | string | null;
+  /** 現在のドラフトに紐づいている利用者コード */
+  linkedUserCode?: string | null;
+  /** 利用者マスタから利用者を選択するハンドラ */
+  onSelectUser?: (userId: string) => void;
 };
