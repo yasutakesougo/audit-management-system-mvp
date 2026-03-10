@@ -28,9 +28,18 @@ export function recordLanding(event: LandingEvent): void {
     clientTs: new Date().toISOString(),
   };
 
-  addDoc(collection(db, 'telemetry'), payload).catch((err) => {
-    // Fire-and-forget: ログだけ残して握りつぶす
+  try {
+    // Guard: db may be a noop Proxy (E2E / unconfigured Firebase)
+    // Firebase SDK's collection() validates the first arg with instanceof —
+    // a Proxy object will fail this check and throw a FirebaseError.
+    addDoc(collection(db, 'telemetry'), payload).catch((err) => {
+      // Fire-and-forget: ログだけ残して握りつぶす
+      // eslint-disable-next-line no-console
+      console.warn('[todayops:landing] telemetry write failed', err);
+    });
+  } catch (err) {
+    // Synchronous throw from collection() when db is invalid (noop Proxy, undefined, etc.)
     // eslint-disable-next-line no-console
-    console.warn('[todayops:landing] telemetry write failed', err);
-  });
+    console.warn('[todayops:landing] telemetry skipped (db not ready)', err);
+  }
 }
