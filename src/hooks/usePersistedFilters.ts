@@ -1,7 +1,6 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
-type Options<T extends Record<string, any>> = {
+type Options<T extends Record<string, unknown>> = {
   storageKey: string;
   defaults: T;
   migrateFromKeys?: string[];
@@ -53,7 +52,7 @@ const deriveMigrationFlagKey = (storageKey: string): string => {
   return parts.join('.');
 };
 
-export function usePersistedFilters<T extends Record<string, any>>({
+export function usePersistedFilters<T extends Record<string, unknown>>({
   storageKey,
   defaults,
   migrateFromKeys = [],
@@ -156,7 +155,7 @@ export function usePersistedFilters<T extends Record<string, any>>({
       if (debounceKeySet.has(key)) return;
       const nextValue = filters[key];
       if (!deepEqual(immediate[key], nextValue)) {
-        (immediate as any)[key] = nextValue;
+        (immediate as Record<keyof T, unknown>)[key] = nextValue;
         changedImmediate = true;
       }
     });
@@ -177,7 +176,7 @@ export function usePersistedFilters<T extends Record<string, any>>({
         pendingKeys.forEach((key) => {
           const nextValue = filters[key];
           if (!deepEqual(nextState[key], nextValue)) {
-            (nextState as any)[key] = nextValue;
+            (nextState as Record<keyof T, unknown>)[key] = nextValue;
             changed = true;
           }
         });
