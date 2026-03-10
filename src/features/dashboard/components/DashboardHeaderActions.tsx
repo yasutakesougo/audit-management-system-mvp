@@ -22,39 +22,52 @@ export interface DashboardHeaderActionsProps {
   schedulesEnabled?: boolean;
 }
 
+const actionBtnSx = {
+  fontSize: '0.72rem',
+  px: 1.25,
+  py: 0.4,
+  minHeight: 28,
+  whiteSpace: 'nowrap',
+  borderRadius: 1.5,
+  textTransform: 'none',
+} as const;
+
 export const DashboardHeaderActions: React.FC<DashboardHeaderActionsProps> = ({
   onOpenBriefing,
   onNavigateToRoomManagement,
   onNavigateToSchedule,
   schedulesEnabled = false,
 }) => (
-  <Stack direction="row" spacing={1}>
+  <Stack direction="row" spacing={0.75} alignItems="center">
     <Button
-      variant="contained"
-      startIcon={<AccessTimeIcon />}
+      variant="outlined"
+      startIcon={<AccessTimeIcon sx={{ fontSize: '14px !important' }} />}
       onClick={onOpenBriefing}
       size="small"
       color="primary"
+      sx={actionBtnSx}
     >
       朝会・夕会情報
     </Button>
     {schedulesEnabled && onNavigateToSchedule && (
       <Button
-        variant="contained"
-        startIcon={<CalendarMonthIcon />}
+        variant="outlined"
+        startIcon={<CalendarMonthIcon sx={{ fontSize: '14px !important' }} />}
         onClick={onNavigateToSchedule}
         size="small"
         color="info"
+        sx={actionBtnSx}
       >
-        📅 予定
+        予定
       </Button>
     )}
     <Button
       variant="outlined"
       onClick={onNavigateToRoomManagement}
       size="small"
+      sx={actionBtnSx}
     >
-      🏢 お部屋情報
+      お部屋情報
     </Button>
   </Stack>
 );
