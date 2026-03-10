@@ -80,8 +80,8 @@ type BentoCardProps = {
 
 const variantStyles: Record<string, SxProps<Theme>> = {
   default: {
-    bgcolor: 'rgba(255, 255, 255, 0.06)',
-    border: '1px solid rgba(255, 255, 255, 0.08)',
+    bgcolor: 'rgba(255, 255, 255, 0.92)',
+    border: '1px solid rgba(0, 0, 0, 0.08)',
     backdropFilter: 'blur(12px)',
   },
   hero: {
@@ -90,13 +90,13 @@ const variantStyles: Record<string, SxProps<Theme>> = {
     color: '#fff',
   },
   accent: {
-    bgcolor: 'rgba(79, 70, 229, 0.08)',
-    border: '1px solid rgba(79, 70, 229, 0.15)',
+    bgcolor: 'rgba(79, 70, 229, 0.04)',
+    border: '1px solid rgba(79, 70, 229, 0.12)',
     backdropFilter: 'blur(12px)',
   },
   subtle: {
-    bgcolor: 'rgba(255, 255, 255, 0.03)',
-    border: '1px solid rgba(255, 255, 255, 0.05)',
+    bgcolor: 'rgba(250, 250, 250, 0.95)',
+    border: '1px solid rgba(0, 0, 0, 0.06)',
   },
 };
 

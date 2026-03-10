@@ -157,11 +157,11 @@ function renderAction(
     fullWidth: true,
     sx: {
       flex: 1,
-      minHeight: 44,
+      minHeight: 36,
       fontWeight: 600,
       fontSize: '0.75rem',
       whiteSpace: 'nowrap',
-      py: 0.5,
+      py: 0.25,
     } as const,
     'data-testid': testId,
   };
