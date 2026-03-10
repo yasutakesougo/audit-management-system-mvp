@@ -394,6 +394,15 @@ export function createNavItems(config: CreateNavItemsConfig): NavItem[] {
       audience: NAV_AUDIENCE.admin,
       group: 'admin' as NavGroupKey,
     });
+
+    items.push({
+      label: '管理ツール',
+      to: '/admin',
+      isActive: (pathname: string) => pathname === '/admin',
+      icon: undefined,
+      audience: NAV_AUDIENCE.admin,
+      group: 'admin' as NavGroupKey,
+    });
   }
 
   items.push({
