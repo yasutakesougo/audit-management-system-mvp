@@ -1,5 +1,6 @@
 ﻿import { useInterventionStore } from '@/features/analysis/stores/interventionStore';
 import { FullScreenDailyDialogPage } from '@/features/daily/components/FullScreenDailyDialogPage';
+
 import { ProcedureEditor } from '@/features/daily/components/procedure/ProcedureEditor';
 import { RecentRecordsDialog } from '@/features/daily/components/split-stream/RecentRecordsDialog';
 import { PlanSelectionStep } from '@/features/daily/components/wizard/PlanSelectionStep';
@@ -157,6 +158,17 @@ const TimeBasedSupportRecordPage: React.FC = () => {
     wizard.returnToPlanAfterSave();
   }, [handleAfterSubmit, wizard]);
 
+  /** Plan → User: wizard + core の両方の userId をクリア */
+  const handleWizardBackToUser = useCallback(() => {
+    wizard.goToStep('user');
+    handleUserChange('');  // core フックの targetUserId もクリア
+  }, [wizard, handleUserChange]);
+
+  /** Record → Plan: wizard の slotId をクリア（userId は維持） */
+  const handleWizardBackToPlan = useCallback(() => {
+    wizard.goToStep('plan');
+  }, [wizard]);
+
   const handleRecordSubmitWrapper = useCallback(
     async (data: Parameters<typeof handleRecordSubmit>[0]) => {
       await handleRecordSubmit(data);
@@ -230,6 +242,7 @@ const TimeBasedSupportRecordPage: React.FC = () => {
       title="支援手順兼記録"
       backTo="/dashboard"
       testId="daily-support-page"
+
     >
       <Container
         maxWidth="xl"
@@ -303,7 +316,7 @@ const TimeBasedSupportRecordPage: React.FC = () => {
               interventionPlans={userInterventionPlans}
               savedObservations={savedObservationsMap}
               onSelectSlot={handleWizardSelectSlot}
-              onBack={() => wizard.goToStep('user')}
+              onBack={handleWizardBackToUser}
             />
           )}
 
@@ -317,7 +330,7 @@ const TimeBasedSupportRecordPage: React.FC = () => {
               recordDate={recordDate}
               onSlotChange={handleWizardSelectSlot}
               onAfterSubmit={() => handleWizardAfterSubmit(wizard.wizardSlotId || null)}
-              onBack={() => wizard.goToStep('plan')}
+              onBack={handleWizardBackToPlan}
             />
           )}
         </Box>
