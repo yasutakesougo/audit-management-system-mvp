@@ -23,6 +23,7 @@ import { recordAutoNextComplete, recordAutoNextSave } from '@/features/today/rec
 import { QuickRecordDrawer } from '@/features/today/records/QuickRecordDrawer';
 import { resolveNextUser } from '@/features/today/records/resolveNextUser';
 import { useQuickRecord } from '@/features/today/records/useQuickRecord';
+import { recordLanding } from '@/features/today/telemetry/recordLanding';
 import { useTransportStatus } from '@/features/today/transport';
 import { ApprovalDialog } from '@/features/today/widgets/ApprovalDialog';
 import { isE2E } from '@/lib/env';
@@ -38,16 +39,17 @@ export const TodayOpsPage: React.FC = () => {
 
   // ── Landing Telemetry (Trial Observation) ────────────────────────
   // 1回だけ記録。StrictMode の二重発火を ref で防止。
+  // Firestore telemetry コレクションに永続化（fire-and-forget）。
   const landingLoggedRef = useRef(false);
   useEffect(() => {
     if (landingLoggedRef.current) return;
     landingLoggedRef.current = true;
-    // eslint-disable-next-line no-console
-    console.info('[todayops:landing]', {
+    recordLanding({
       path: location.pathname,
       search: location.search,
       role,
-      ts: new Date().toISOString(),
+      referrer: typeof document !== 'undefined' ? document.referrer : '',
+      userAgent: typeof navigator !== 'undefined' ? navigator.userAgent : '',
     });
   }, [location.pathname, location.search, role]);
   // ────────────────────────────────────────────────────────────────
