@@ -34,17 +34,29 @@ Roles are resolved via Azure AD group membership in [`useUserAuthz`](../src/auth
 
 Route-level enforcement is provided by [`RequireAudience`](../src/components/RequireAudience.tsx).
 
-### Current Enforcement State
-
-> [!WARNING]
-> **`canAccess()` in [`roles.ts`](../src/auth/roles.ts) is hardcoded to `return true`** (全メニュー開放モード).
-> The original logic `ROLE_LEVEL[role] >= ROLE_LEVEL[required]` is commented out.
-> As a result, all role checks are effectively bypassed regardless of the `Intended Role` values listed below.
+### Current Enforcement State (2026-03-10 verified)
 
 > [!NOTE]
-> The **Intended Role** column throughout this document represents the **design-time access requirement** as declared
-> in route definitions with `RequireAudience`. It does **not** reflect the current effective access, which is unrestricted
-> due to the `canAccess()` override. Restoring the original `canAccess()` logic will immediately enforce these intended roles.
+> **`canAccess()` in [`roles.ts`](../src/auth/roles.ts) correctly enforces the role hierarchy:**
+> `ROLE_LEVEL[role] >= ROLE_LEVEL[required]` (viewer=1 < reception=2 < admin=3).
+> Combined with [`RequireAudience`](../src/components/RequireAudience.tsx), route-level role enforcement is **active**.
+
+**Effective enforcement summary:**
+
+| Condition | Behavior |
+|-----------|----------|
+| Normal production (MSAL authenticated) | `useUserAuthz` resolves role via Azure AD group membership → `canAccess()` enforces level hierarchy |
+| `VITE_SKIP_LOGIN=1` or E2E mode | `RequireAudience` **bypasses** all role checks (line 22-24) — all routes accessible |
+| `VITE_AAD_ADMIN_GROUP_ID` not set in PROD | Fail-closed: all users resolve to `viewer` — admin pages show 403 |
+| `VITE_AAD_ADMIN_GROUP_ID` not set in DEV | Demo convenience: all users resolve to `admin` |
+
+> [!CAUTION]
+> **31 of 72 routes lack `RequireAudience` guards entirely** (see Summary table at bottom).
+> These routes — including all `/daily/*`, `/handoff-timeline`, `/nurse/*` — are accessible to any authenticated user
+> regardless of role. This is **intentional** for frontline staff workflows but should be reviewed before multi-facility rollout.
+>
+> The **Intended Role** column below shows `—` for unguarded routes. Where a role is listed, it is **actively enforced**
+> via `RequireAudience` + `canAccess()` in production.
 
 ---
 
