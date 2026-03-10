@@ -11,6 +11,7 @@ import React from 'react';
 import { findSection } from '../../utils/helpers';
 import FieldCard from './FieldCard';
 import type { SectionTabProps } from './tabProps';
+import UserLinkSection from './UserLinkSection';
 
 const OverviewTab: React.FC<SectionTabProps> = (props) => {
   const section = findSection('overview');
@@ -18,6 +19,19 @@ const OverviewTab: React.FC<SectionTabProps> = (props) => {
 
   return (
     <Stack spacing={2}>
+      {/* ── Step 1: 利用者マスタ紐付け ── */}
+      {props.userOptions && props.onSelectUser && (
+        <UserLinkSection
+          linkedUserId={props.linkedUserId}
+          linkedUserCode={props.linkedUserCode}
+          linkedUserName={props.form.serviceUserName}
+          userOptions={props.userOptions}
+          isAdmin={props.isAdmin}
+          onSelectUser={props.onSelectUser}
+        />
+      )}
+
+      {/* ── Step 2: フィールド入力 ── */}
       {section.description ? (
         <Typography variant="subtitle1" component="span" sx={{ color: 'text.secondary' }}>
           {section.description}
