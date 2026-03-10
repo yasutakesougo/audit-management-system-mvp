@@ -26,10 +26,12 @@ import {
     Button,
     Chip,
     Paper,
+    Snackbar,
     Stack,
     Typography,
 } from '@mui/material';
-import React, { useMemo } from 'react';
+import React, { useCallback, useMemo, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import {
     ALERT_ACTION_DEFS,
     buildAlertKey,
@@ -63,7 +65,7 @@ function AlertSection({
   emoji,
   alerts,
   getState,
-  setState,
+  onAction,
   completionStats,
   ymd,
 }: {
@@ -71,7 +73,7 @@ function AlertSection({
   emoji: string;
   alerts: BriefingAlert[];
   getState: (key: string) => ActionStatus;
-  setState: (key: string, status: ActionStatus) => void;
+  onAction: (actionId: string, alertKey: string, userName: string) => void;
   completionStats: (keys: string[]) => { done: number; total: number };
   ymd: string;
 }) {
@@ -198,8 +200,8 @@ function AlertSection({
                             key={action.id}
                             size="small"
                             variant={action.primary ? 'contained' : 'text'}
-                            disabled={status === 'done'}
-                            onClick={() => setState(key, 'done')}
+                            disabled={action.id !== 'handover-create' && status === 'done'}
+                            onClick={() => onAction(action.id, key, item.userName)}
                             sx={{
                               textTransform: 'none',
                               fontSize: '0.7rem',
@@ -236,6 +238,29 @@ function AlertSection({
 export const BriefingActionList: React.FC<BriefingActionListProps> = ({ alerts }) => {
   const { getState, setState, completionStats } = useAlertActionState();
   const ymd = toLocalDateISO();
+  const navigate = useNavigate();
+  const [snackbarMsg, setSnackbarMsg] = useState<string | null>(null);
+
+  /** Briefing row action handler — 各ボタンに実際の動作を接続 */
+  const handleAction = useCallback((actionId: string, alertKey: string, userName: string) => {
+    if (actionId === 'handover-create') {
+      // 既存の申し送りダイアログを開く
+      window.dispatchEvent(new CustomEvent('handoff-open-quicknote-dialog'));
+    } else if (actionId === 'contact-confirm') {
+      // 欠席情報の登録: 出欠ページに遷移して欠席ダイアログを自動起動
+      // alertKey = "absent:USER_CODE:YYYY-MM-DD"
+      const userCode = alertKey.split(':')[1];
+      navigate(`/daily/attendance?absence=${userCode}`);
+    } else {
+      // その他の確認系アクション: ステータス更新 + フィードバック
+      setState(alertKey, 'done');
+      const actionLabel = actionId === 'arrival-confirm' ? '到着確認'
+        : actionId === 'departure-confirm' ? '退所確認'
+        : actionId === 'transport-confirm' ? '送迎確認'
+        : '確認';
+      setSnackbarMsg(`✅ ${userName}：${actionLabel}済み`);
+    }
+  }, [setState, navigate]);
 
   // Split into today vs ongoing sections
   const { todayAlerts, ongoingAlerts } = useMemo(() => {
@@ -279,6 +304,7 @@ export const BriefingActionList: React.FC<BriefingActionListProps> = ({ alerts }
   }
 
   return (
+    <>
     <Accordion
       data-testid="today-accordion-briefing"
       defaultExpanded={pendingCount > 0}
@@ -317,7 +343,7 @@ export const BriefingActionList: React.FC<BriefingActionListProps> = ({ alerts }
             emoji="📌"
             alerts={todayAlerts}
             getState={getState}
-            setState={setState}
+            onAction={handleAction}
             completionStats={completionStats}
             ymd={ymd}
           />
@@ -333,12 +359,20 @@ export const BriefingActionList: React.FC<BriefingActionListProps> = ({ alerts }
             emoji="🔄"
             alerts={ongoingAlerts}
             getState={getState}
-            setState={setState}
+            onAction={handleAction}
             completionStats={completionStats}
             ymd={ymd}
           />
         </Stack>
       </AccordionDetails>
     </Accordion>
+    <Snackbar
+      open={snackbarMsg !== null}
+      autoHideDuration={2000}
+      onClose={() => setSnackbarMsg(null)}
+      message={snackbarMsg}
+      anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
+    />
+    </>
   );
 };
