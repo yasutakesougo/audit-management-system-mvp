@@ -92,6 +92,7 @@ describe('BulkDailyRecordList', () => {
         <BulkDailyRecordList
           selectedDate="2024-01-15"
           onSaveRow={mockOnSaveRow}
+          mockSaveDelay={0}
         />
       );
 
@@ -113,10 +114,12 @@ describe('BulkDailyRecordList', () => {
       });
     });
 
-    it('onSaveRowが未提供の場合、モックが使用される', async () => {
+    it('onSaveRowが未提供の場合、フォールバックが使用される', async () => {
+      // mockSaveDelay=0 でデフォルト 500ms 待機を排除し、テストを決定論的にする
       render(
         <BulkDailyRecordList
           selectedDate="2024-01-15"
+          mockSaveDelay={0}
         />
       );
 
@@ -129,13 +132,14 @@ describe('BulkDailyRecordList', () => {
       const saveButton = within(firstRow).getByRole('button', { name: '田中太郎 を保存' });
       fireEvent.click(saveButton);
 
-      // モック処理が完了することを確認（500msの遅延）
+      // フォールバック処理が完了し saved 状態になることを確認
+      // timeout は 2000ms に設定してリソース競合への耐性を持たせる
       await waitFor(
         () => {
           const statusCell = screen.getByTestId('daily-bulk-status-001');
           expect(statusCell).toHaveAttribute('data-status', 'saved');
         },
-        { timeout: 1000 }
+        { timeout: 2000 }
       );
     });
   });

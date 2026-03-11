@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 /**
  * SharePoint $batch POST — retry-aware batch submission
  *
@@ -7,6 +6,7 @@
  */
 
 import { auditLog } from '@/lib/debugLogger';
+import type { EnvRecord } from '@/lib/env';
 import { isE2eMsalMockEnabled, shouldSkipLogin, skipSharePoint } from '@/lib/env';
 import { AuthRequiredError } from '@/lib/errors';
 import type { E2eDebugWindow } from './types';
@@ -16,7 +16,7 @@ import type { E2eDebugWindow } from './types';
 export type PostBatchDeps = {
   acquireToken: () => Promise<string | null>;
   baseUrl: string;
-  config: Record<string, any>;
+  config: EnvRecord;
   retrySettings: { maxAttempts: number; baseDelay: number; capDelay: number };
   debugEnabled: boolean;
 };
@@ -27,8 +27,8 @@ export function createPostBatch(deps: PostBatchDeps) {
   const { acquireToken, baseUrl, config, retrySettings, debugEnabled } = deps;
 
   return async function postBatch(batchBody: string, boundary: string): Promise<Response> {
-    const isE2EWithMsalMock = isE2eMsalMockEnabled(config as any);
-    const shouldMock = !isE2EWithMsalMock && (!baseUrl || baseUrl === '' || skipSharePoint(config as any) || shouldSkipLogin(config as any));
+    const isE2EWithMsalMock = isE2eMsalMockEnabled(config);
+    const shouldMock = !isE2EWithMsalMock && (!baseUrl || baseUrl === '' || skipSharePoint(config) || shouldSkipLogin(config));
 
     // Mock response for dev/demo/skip-login
     if (shouldMock) {
@@ -68,7 +68,7 @@ export function createPostBatch(deps: PostBatchDeps) {
     // eslint-disable-next-line no-constant-condition
     while (true) {
       const token = await acquireToken();
-      const skipAuthCheck = shouldSkipLogin(config as any) || isE2eMsalMockEnabled(config as any);
+      const skipAuthCheck = shouldSkipLogin(config) || isE2eMsalMockEnabled(config);
       if (!token && !skipAuthCheck) throw new AuthRequiredError();
 
       const headers = new Headers({ 'Content-Type': `multipart/mixed; boundary=${boundary}` });

@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 /**
  * SharePoint Fetch — HTTP fetch + retry + mock logic
  *
@@ -7,6 +6,7 @@
  */
 
 import { auditLog } from '@/lib/debugLogger';
+import type { EnvRecord } from '@/lib/env';
 import { isE2eMsalMockEnabled, shouldSkipLogin, skipSharePoint } from '@/lib/env';
 import { AuthRequiredError } from '@/lib/errors';
 import { raiseHttpError } from './helpers';
@@ -17,7 +17,7 @@ import type { RetryReason, SpClientOptions } from './types';
 export type SpFetchDeps = {
   acquireToken: () => Promise<string | null>;
   baseUrl: string;
-  config: Record<string, any>;
+  config: EnvRecord;
   retrySettings: { maxAttempts: number; baseDelay: number; capDelay: number };
   debugEnabled: boolean;
   spSiteLegacy: string;
@@ -27,7 +27,7 @@ export type SpFetchDeps = {
 // ─── normalizePath (extracted as standalone) ────────────────────────────────
 
 export function createNormalizePath(
-  config: Record<string, any>,
+  config: EnvRecord,
   spSiteLegacy: string,
   baseUrl: string,
 ) {
@@ -35,10 +35,13 @@ export function createNormalizePath(
 
   return function normalizePath(value: string): string {
     if (!value) return value;
+    const siteUrl = String(config.VITE_SP_SITE_URL ?? '');
+    const siteRelative = String(config.VITE_SP_SITE_RELATIVE ?? '');
+    const resource = String(config.VITE_SP_RESOURCE ?? '');
     const interpolated = value
-      .replace('{SP_SITE_URL}', config.VITE_SP_SITE_URL || '')
-      .replace('{SP_SITE}', spSiteLegacy || config.VITE_SP_SITE_RELATIVE || '')
-      .replace('{SP_RESOURCE}', config.VITE_SP_RESOURCE || '');
+      .replace('{SP_SITE_URL}', siteUrl)
+      .replace('{SP_SITE}', spSiteLegacy || siteRelative)
+      .replace('{SP_RESOURCE}', resource);
 
     if (!baseUrlInfo) return interpolated;
     if (/^https?:\/\//i.test(interpolated)) {
@@ -82,7 +85,7 @@ function toHeaders(input?: HeadersInit): Headers {
   const h = new Headers();
   if (!input) return h;
 
-  const isInvalidValue = (v: any): boolean => {
+  const isInvalidValue = (v: unknown): boolean => {
     if (v === undefined || v === null) return true;
     const str = `${v}`.trim();
     if (str === '') return true;
@@ -133,8 +136,8 @@ export function createSpFetch(deps: SpFetchDeps) {
     const resolvedPath = path; // normalizePath is applied BEFORE calling spFetch by createSpClient
 
     // Mock decision
-    const isE2EWithMsalMock = isE2eMsalMockEnabled(config as any);
-    const shouldMock = !isE2EWithMsalMock && (!baseUrl || baseUrl === '' || skipSharePoint(config as any) || shouldSkipLogin(config as any));
+    const isE2EWithMsalMock = isE2eMsalMockEnabled(config);
+    const shouldMock = !isE2EWithMsalMock && (!baseUrl || baseUrl === '' || skipSharePoint(config) || shouldSkipLogin(config));
     const AUDIT_DEBUG = config.VITE_AUDIT_DEBUG;
 
     if (AUDIT_DEBUG || isE2EWithMsalMock) {
@@ -152,7 +155,7 @@ export function createSpFetch(deps: SpFetchDeps) {
       if (AUDIT_DEBUG) {
         auditLog.debug('sp:mock', 'mock_response', { method: init.method || 'GET', path: resolvedPath });
       }
-      const mockResponse = (data: any, status = 200) => {
+      const mockResponse = (data: unknown, status = 200) => {
         const response = new Response(JSON.stringify(data), {
           status,
           statusText: status === 200 ? 'OK' : 'Error',
@@ -182,7 +185,7 @@ export function createSpFetch(deps: SpFetchDeps) {
       dbg('token metrics snapshot', tokenMetricsCarrier.__TOKEN_METRICS__);
     }
 
-    const skipAuthCheck = shouldSkipLogin(config as any) || isE2eMsalMockEnabled(config as any);
+    const skipAuthCheck = shouldSkipLogin(config) || isE2eMsalMockEnabled(config);
     if (!token1 && !skipAuthCheck) throw new AuthRequiredError();
 
     const doFetch = async (token: string | null) => {
