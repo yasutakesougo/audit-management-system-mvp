@@ -370,6 +370,14 @@ export const TESTIDS = {
 
   // Staff feature
   'staff-panel-root': 'staff-panel-root',
+  'staff-form-root': 'staff-form-root',
+  'staff-form-submit': 'staff-form-submit',
+  'staff-form-close': 'staff-form-close',
+  'staff-form-fullname': 'staff-form-fullname',
+  'staff-form-staffid': 'staff-form-staffid',
+  'staff-form-email': 'staff-form-email',
+  'staff-form-phone': 'staff-form-phone',
+  'staff-form-role': 'staff-form-role',
 
   // User Menu関連
   'user-menu-trigger': 'user-menu-trigger',
