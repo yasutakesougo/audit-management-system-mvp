@@ -1,9 +1,23 @@
+/**
+ * handoffApi.ts — SharePoint API wrapper for the handoff feature.
+ *
+ * Refactored in NR23: Internal infrastructure classes extracted to dedicated files.
+ * - HandoffCache + OptimisticUpdateManager → handoffApiCache.ts
+ * - CarryOverDateStore                     → handoffStorageUtils.ts
+ *
+ * Public API is unchanged:
+ *   useHandoffApi, createHandoffApi, CarryOverDateStore (re-exported)
+ *
+ * Phase 8B: キャッシュ戦略とエラーハンドリング強化
+ * v3: CarryOverDateStore によるローカル補完対応
+ */
 import { auditLog } from '@/lib/debugLogger';
 import { buildHandoffSelectFields } from '@/sharepoint/fields';
 import { useMemo } from 'react';
 import type { UseSP } from '../../lib/spClient';
 import { useSP } from '../../lib/spClient';
 import { generateTitleFromMessage } from './generateTitleFromMessage';
+import { HandoffCache, OptimisticUpdateManager } from './handoffApiCache';
 import { handoffConfig } from './handoffConfig';
 import { toErrorMessage } from './handoffLoggerUtils';
 import {
@@ -12,6 +26,7 @@ import {
     toSpHandoffUpdatePayload,
 } from './handoffMappers';
 import { isTerminalStatus } from './handoffStateMachine';
+import { CarryOverDateStore } from './handoffStorageUtils';
 import type {
     HandoffDayScope,
     HandoffRecord,
@@ -20,144 +35,15 @@ import type {
     SpHandoffItem,
 } from './handoffTypes';
 
-/**
- * Phase 8B: パフォーマンス最適化
- * キャッシュ戦略とエラーハンドリング強化
- */
-
-// TTLキャッシュ (15秒)
-const CACHE_TTL_MS = 15_000;
-type CacheEntry<T> = {
-  data: T;
-  timestamp: number;
-  etag?: string;
-};
-
-class HandoffCache {
-  private cache = new Map<string, CacheEntry<unknown>>();
-
-  private isExpired(entry: CacheEntry<unknown>): boolean {
-    return Date.now() - entry.timestamp > CACHE_TTL_MS;
-  }
-
-  get<T>(key: string): T | null {
-    const entry = this.cache.get(key);
-    if (!entry || this.isExpired(entry)) {
-      this.cache.delete(key);
-      return null;
-    }
-    return entry.data as T;
-  }
-
-  set<T>(key: string, data: T, etag?: string): void {
-    this.cache.set(key, {
-      data,
-      timestamp: Date.now(),
-      etag,
-    });
-    this.cleanup();
-  }
-
-  getETag(key: string): string | null {
-    const entry = this.cache.get(key);
-    return entry?.etag || null;
-  }
-
-  clear(): void {
-    this.cache.clear();
-  }
-
-  invalidateByPrefix(prefix: string): void {
-    for (const key of this.cache.keys()) {
-      if (key.startsWith(prefix)) {
-        this.cache.delete(key);
-      }
-    }
-  }
-
-  // 容量制限（LRU風）
-  private cleanup(): void {
-    if (this.cache.size > 100) {
-      const oldEntries = Array.from(this.cache.entries())
-        .filter(([, entry]) => this.isExpired(entry))
-        .slice(0, 20);
-      oldEntries.forEach(([key]) => this.cache.delete(key));
-    }
-  }
-}
-
-// 楽観的更新の状態管理
-class OptimisticUpdateManager {
-  private pendingUpdates = new Map<string, Partial<HandoffRecord>>();
-
-  setPendingUpdate(id: string, update: Partial<HandoffRecord>): void {
-    this.pendingUpdates.set(id, update);
-  }
-
-  getPendingUpdate(id: string): Partial<HandoffRecord> | null {
-    return this.pendingUpdates.get(id) || null;
-  }
-
-  clearPendingUpdate(id: string): void {
-    this.pendingUpdates.delete(id);
-  }
-
-  applyPendingUpdates(records: HandoffRecord[]): HandoffRecord[] {
-    return records.map(record => {
-      const pending = this.getPendingUpdate(String(record.id));
-      return pending ? { ...record, ...pending } : record;
-    });
-  }
-}
-
-/**
- * 明日へ持越日付のローカル補完ストア
- * SharePoint側の CarryOverDate 列が準備されるまでのフォールバック。
- * SP値が存在する場合はSP値優先（ローカル補完は自動的に不要になる）。
- */
-export class CarryOverDateStore {
-  private static readonly KEY = 'handoff.carryOverDates.v1';
-
-  static get(id: number | string): string | undefined {
-    try {
-      const raw = localStorage.getItem(this.KEY);
-      if (!raw) return undefined;
-      const data = JSON.parse(raw) as Record<string, string>;
-      return data[String(id)];
-    } catch {
-      return undefined;
-    }
-  }
-
-  static set(id: number | string, date: string): void {
-    try {
-      const raw = localStorage.getItem(this.KEY);
-      const data: Record<string, string> = raw ? JSON.parse(raw) : {};
-      data[String(id)] = date;
-      localStorage.setItem(this.KEY, JSON.stringify(data));
-    } catch (e) {
-      auditLog.error('handoff', 'carryover_store.save_failed', { error: toErrorMessage(e) });
-    }
-  }
-
-  static clear(id: number | string): void {
-    try {
-      const raw = localStorage.getItem(this.KEY);
-      if (!raw) return;
-      const data: Record<string, string> = JSON.parse(raw);
-      delete data[String(id)];
-      localStorage.setItem(this.KEY, JSON.stringify(data));
-    } catch (e) {
-      auditLog.error('handoff', 'carryover_store.clear_failed', { error: toErrorMessage(e) });
-    }
-  }
-}
+// Re-export CarryOverDateStore for backward compatibility.
+// External code that imports from './handoffApi' continues to work unchanged.
+export { CarryOverDateStore };
 
 /**
  * SharePoint API ラッパークラス（最適化版）
- * 申し送りタイムライン機能のSharePointデータ操作を担当
+ * 申し送りタイムライン機能の SharePoint データ操作を担当
  * Phase 8B: キャッシュ戦略、楽観的更新、エラーハンドリング強化
- * v3: CarryOverDateStoreによるローカル補完対応
+ * v3: CarryOverDateStore によるローカル補完対応
  */
 class HandoffApi {
   private cache = new HandoffCache();
@@ -169,7 +55,7 @@ class HandoffApi {
   }
 
   /**
-   * エラーリトライ機能付きのSPクライアント呼び出し
+   * エラーリトライ機能付きの SP クライアント呼び出し
    */
   private async callWithRetry<T>(
     operation: () => Promise<T>,
@@ -199,9 +85,10 @@ class HandoffApi {
 
     throw lastError!;
   }
+
   /**
    * 指定条件で申し送り記録を取得（最適化版）
-   * Phase 8B: キャッシュ戦略とETag活用
+   * Phase 8B: キャッシュ戦略と ETag 活用
    */
   async getHandoffRecords(
     dayScope: HandoffDayScope = 'today',
@@ -225,7 +112,6 @@ class HandoffApi {
         startOfDay.setHours(0, 0, 0, 0);
         const endOfDay = new Date(now);
         endOfDay.setHours(23, 59, 59, 999);
-
         filterQuery = `CreatedAt ge '${startOfDay.toISOString()}' and CreatedAt le '${endOfDay.toISOString()}'`;
       } else if (dayScope === 'yesterday') {
         const yesterday = new Date(now);
@@ -234,13 +120,11 @@ class HandoffApi {
         startOfYesterday.setHours(0, 0, 0, 0);
         const endOfYesterday = new Date(yesterday);
         endOfYesterday.setHours(23, 59, 59, 999);
-
         filterQuery = `CreatedAt ge '${startOfYesterday.toISOString()}' and CreatedAt le '${endOfYesterday.toISOString()}'`;
       } else if (dayScope === 'week') {
         const weekAgo = new Date(now);
         weekAgo.setDate(weekAgo.getDate() - 7);
         weekAgo.setHours(0, 0, 0, 0);
-
         filterQuery = `CreatedAt ge '${weekAgo.toISOString()}'`;
       }
 
@@ -270,8 +154,7 @@ class HandoffApi {
 
       const records = items.map(fromSpHandoffItem);
 
-      // v3: CarryOverDateStoreからのローカル補完マージ
-      // SP側に carryOverDate がない場合、ローカルストアから補完する
+      // v3: CarryOverDateStore からのローカル補完マージ
       const mergedRecords = records.map(record => {
         if (!record.carryOverDate) {
           const localDate = CarryOverDateStore.get(record.id);
@@ -282,7 +165,7 @@ class HandoffApi {
         return record;
       });
 
-      // キャッシュに保存（ETagも保存）
+      // キャッシュに保存（ETag も保存）
       const etag = response.headers?.get('etag') ?? undefined;
       this.cache.set(cacheKey, mergedRecords, etag);
 
@@ -292,16 +175,13 @@ class HandoffApi {
 
   /**
    * 新しい申し送り記録を作成（楽観的更新版）
-   * Phase 8B: 楽観的更新で即座にUI反映
+   * Phase 8B: 楽観的更新で即座に UI 反映
    */
   async createHandoffRecord(input: NewHandoffInput): Promise<HandoffRecord> {
-    // タイトル自動生成
     const title = generateTitleFromMessage(input.message);
 
-    // 即座にキャッシュを無効化（楽観的更新）
     this.invalidateRelatedCaches();
 
-    // バックグラウンドで実際のAPI呼び出し
     try {
       const payload = toSpHandoffCreatePayload({ ...input, title });
       const response = await this.callWithRetry(async () => {
@@ -309,9 +189,7 @@ class HandoffApi {
           `lists/getbytitle('${handoffConfig.listTitle}')/items`,
           {
             method: 'POST',
-            headers: {
-              'Content-Type': 'application/json;odata=verbose',
-            },
+            headers: { 'Content-Type': 'application/json;odata=verbose' },
             body: JSON.stringify(payload),
           }
         );
@@ -322,13 +200,9 @@ class HandoffApi {
       });
 
       const actualRecord = fromSpHandoffItem(response.data);
-
-      // 実際のレコードでキャッシュを更新
       this.invalidateRelatedCaches();
-
       return actualRecord;
     } catch (error) {
-      // エラー時は楽観的更新をロールバック
       this.invalidateRelatedCaches();
       auditLog.error('handoff', 'api.create_failed', { error: toErrorMessage(error) });
       throw new Error('申し送り記録の作成に失敗しました');
@@ -336,21 +210,19 @@ class HandoffApi {
   }
 
   /**
-   * 申し送り記録を更新（楽観的更新版 + v3: carryOverDate対応）
+   * 申し送り記録を更新（楽観的更新版 + v3: carryOverDate 対応）
    */
   async updateHandoffRecord(
     id: string,
     updates: Partial<Pick<HandoffRecord, 'status' | 'severity' | 'category' | 'message' | 'title' | 'carryOverDate'>>
   ): Promise<HandoffRecord> {
-    // v3: CarryOverDateStore の更新（SP更新より先にローカルを書く）
+    // v3: CarryOverDateStore の更新（SP 更新より先にローカルを書く）
     if (updates.status === '明日へ持越' && updates.carryOverDate) {
       CarryOverDateStore.set(id, updates.carryOverDate);
     } else if (updates.status && isTerminalStatus(updates.status)) {
-      // 完了/対応済時はローカルキャッシュをクリーンアップ
       CarryOverDateStore.clear(id);
     }
 
-    // 楽観的更新を設定
     this.optimisticManager.setPendingUpdate(id, updates);
 
     try {
@@ -396,24 +268,14 @@ class HandoffApi {
         }
       }
 
-      // 楽観的更新をクリア
       this.optimisticManager.clearPendingUpdate(id);
       this.invalidateRelatedCaches();
-
       return updatedRecord;
     } catch (error) {
-      // エラー時は楽観的更新をロールバック
       this.optimisticManager.clearPendingUpdate(id);
       auditLog.error('handoff', 'api.update_failed', { error: toErrorMessage(error) });
       throw new Error('申し送り記録の更新に失敗しました');
     }
-  }
-
-  /**
-   * 関連キャッシュの無効化
-   */
-  private invalidateRelatedCaches(): void {
-    this.cache.invalidateByPrefix('handoff:');
   }
 
   /**
@@ -425,9 +287,7 @@ class HandoffApi {
         `lists/getbytitle('${handoffConfig.listTitle}')/items(${id})`,
         {
           method: 'DELETE',
-          headers: {
-            'If-Match': '*'
-          }
+          headers: { 'If-Match': '*' },
         }
       );
 
@@ -454,13 +314,11 @@ class HandoffApi {
       let filterQuery = `UserCode eq '${userCode}'`;
       const now = new Date();
 
-      // 日付フィルタリング追加
       if (dayScope === 'today') {
         const startOfDay = new Date(now);
         startOfDay.setHours(0, 0, 0, 0);
         const endOfDay = new Date(now);
         endOfDay.setHours(23, 59, 59, 999);
-
         filterQuery += ` and CreatedAt ge '${startOfDay.toISOString()}' and CreatedAt le '${endOfDay.toISOString()}'`;
       } else if (dayScope === 'yesterday') {
         const yesterday = new Date(now);
@@ -469,11 +327,9 @@ class HandoffApi {
         startOfYesterday.setHours(0, 0, 0, 0);
         const endOfYesterday = new Date(yesterday);
         endOfYesterday.setHours(23, 59, 59, 999);
-
         filterQuery += ` and CreatedAt ge '${startOfYesterday.toISOString()}' and CreatedAt le '${endOfYesterday.toISOString()}'`;
       }
 
-      // 時間帯フィルタリング追加
       if (timeFilter !== 'all') {
         filterQuery += ` and TimeBand eq '${timeFilter}'`;
       }
@@ -489,7 +345,6 @@ class HandoffApi {
       }
       const data = await response.json();
       const items: SpHandoffItem[] = data.value || [];
-
       return items.map(fromSpHandoffItem);
     } catch (error) {
       auditLog.error('handoff', 'api.get_user_records_failed', { error: toErrorMessage(error) });
@@ -500,9 +355,7 @@ class HandoffApi {
   /**
    * 会議セッション用の申し送り記録を取得
    */
-  async getMeetingHandoffRecords(
-    meetingSessionKey: string
-  ): Promise<HandoffRecord[]> {
+  async getMeetingHandoffRecords(meetingSessionKey: string): Promise<HandoffRecord[]> {
     try {
       const filterQuery = `MeetingSessionKey eq '${meetingSessionKey}'`;
       const existingFields = await this.sp.getListFieldInternalNames(handoffConfig.listTitle);
@@ -516,7 +369,6 @@ class HandoffApi {
       }
       const data = await response.json();
       const items: SpHandoffItem[] = data.value || [];
-
       return items.map(fromSpHandoffItem);
     } catch (error) {
       auditLog.error('handoff', 'api.get_meeting_records_failed', { error: toErrorMessage(error) });
@@ -527,9 +379,7 @@ class HandoffApi {
   /**
    * 申し送り統計データを取得
    */
-  async getHandoffSummaryStats(
-    dayScope: HandoffDayScope = 'today'
-  ): Promise<{
+  async getHandoffSummaryStats(dayScope: HandoffDayScope = 'today'): Promise<{
     totalCount: number;
     categoryStats: Record<string, number>;
     severityStats: Record<string, number>;
@@ -551,25 +401,28 @@ class HandoffApi {
         timeBandStats[record.timeBand] = (timeBandStats[record.timeBand] || 0) + 1;
       });
 
-      return {
-        totalCount: records.length,
-        categoryStats,
-        severityStats,
-        statusStats,
-        timeBandStats,
-      };
+      return { totalCount: records.length, categoryStats, severityStats, statusStats, timeBandStats };
     } catch (error) {
       auditLog.error('handoff', 'api.get_stats_failed', { error: toErrorMessage(error) });
       throw new Error('申し送り統計の取得に失敗しました');
     }
   }
+
+  /** 関連キャッシュの無効化 */
+  private invalidateRelatedCaches(): void {
+    this.cache.invalidateByPrefix('handoff:');
+  }
 }
 
-// HandoffApi用のフック
+// ────────────────────────────────────────────────────────────
+// Public exports
+// ────────────────────────────────────────────────────────────
+
+/** HandoffApi 用の React フック */
 export const useHandoffApi = () => {
   const sp = useSP();
   return useMemo(() => new HandoffApi(sp), [sp]);
 };
 
-// 後方互換性のため
+/** 後方互換性のため（テストはこのファクトリ経由でインスタンスを生成） */
 export const createHandoffApi = (sp: UseSP) => new HandoffApi(sp);
