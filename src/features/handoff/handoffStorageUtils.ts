@@ -148,3 +148,53 @@ export function saveSeenMap(map: HandoffSeenMap): void {
     // noop
   }
 }
+
+// ────────────────────────────────────────────────────────────
+// CarryOverDateStore
+// ────────────────────────────────────────────────────────────
+
+/**
+ * 明日へ持越日付のローカル補完ストア (NR23: handoffApi.ts から移動)
+ *
+ * SharePoint 側の CarryOverDate 列が準備されるまでのフォールバック。
+ * SP 値が存在する場合は SP 値優先（ローカル補完は自動的に不要になる）。
+ *
+ * @public — `handoffApi.ts` から re-export されるため、外部インポートパスは変わらない。
+ */
+export class CarryOverDateStore {
+  private static readonly KEY = 'handoff.carryOverDates.v1';
+
+  static get(id: number | string): string | undefined {
+    try {
+      const raw = localStorage.getItem(this.KEY);
+      if (!raw) return undefined;
+      const data = JSON.parse(raw) as Record<string, string>;
+      return data[String(id)];
+    } catch {
+      return undefined;
+    }
+  }
+
+  static set(id: number | string, date: string): void {
+    try {
+      const raw = localStorage.getItem(this.KEY);
+      const data: Record<string, string> = raw ? JSON.parse(raw) : {};
+      data[String(id)] = date;
+      localStorage.setItem(this.KEY, JSON.stringify(data));
+    } catch (e) {
+      auditLog.error('handoff', 'carryover_store.save_failed', { error: String(e) });
+    }
+  }
+
+  static clear(id: number | string): void {
+    try {
+      const raw = localStorage.getItem(this.KEY);
+      if (!raw) return;
+      const data: Record<string, string> = JSON.parse(raw);
+      delete data[String(id)];
+      localStorage.setItem(this.KEY, JSON.stringify(data));
+    } catch (e) {
+      auditLog.error('handoff', 'carryover_store.clear_failed', { error: String(e) });
+    }
+  }
+}
