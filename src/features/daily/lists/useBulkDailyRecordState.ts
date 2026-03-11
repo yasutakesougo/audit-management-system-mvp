@@ -20,11 +20,17 @@ import {
 export interface UseBulkDailyRecordStateOptions {
   onSave?: (records: BulkDailyRow[]) => Promise<void>;
   onSaveRow?: (row: BulkDailyRow) => Promise<void>;
+  /**
+   * Milliseconds to wait in the fallback mock save (when onSaveRow is not provided).
+   * Override with 0 in tests to avoid real-time waits and eliminate flakiness.
+   * @default 500
+   */
+  mockSaveDelay?: number;
 }
 
 // ─── Hook ───────────────────────────────────────────────────────────────────
 
-export function useBulkDailyRecordState({ onSave, onSaveRow }: UseBulkDailyRecordStateOptions) {
+export function useBulkDailyRecordState({ onSave, onSaveRow, mockSaveDelay = 500 }: UseBulkDailyRecordStateOptions) {
   const [rows, setRows] = React.useState<BulkDailyRow[]>(createInitialRows);
   const [isSubmitting, setIsSubmitting] = React.useState(false);
   const [announceMessage, setAnnounceMessage] = React.useState<string>('');
@@ -82,7 +88,7 @@ export function useBulkDailyRecordState({ onSave, onSaveRow }: UseBulkDailyRecor
         if (onSaveRow) {
           await onSaveRow(row);
         } else {
-          await new Promise((resolve) => setTimeout(resolve, 500));
+          await new Promise((resolve) => setTimeout(resolve, mockSaveDelay));
         }
         updateRow(index, { status: 'saved' });
         setAnnounceMessage(`${row.userName}の記録を保存しました。`);

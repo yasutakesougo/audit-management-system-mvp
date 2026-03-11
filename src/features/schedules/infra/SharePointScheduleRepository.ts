@@ -82,6 +82,32 @@ export type SharePointScheduleRepositoryOptions = {
   currentOwnerUserId?: string; // For visibility filtering
 };
 
+// ─── Local types to avoid `as any` casts ────────────────────────────────────
+
+/** Extended input that may optionally carry SP-specific fields */
+type ScheduleInputExtended = {
+  targetUserId?: string;
+  orgAudience?: string;
+};
+
+/** Minimal shape returned by createSchedule / updateSchedule */
+type ScheduleRepoResult = {
+  id: number;
+  etag?: string;
+  title: string;
+  eventDate: string;
+  endDate: string;
+  status?: string;
+  serviceType?: string;
+  personType: string;
+  personId: string;
+  personName?: string;
+  assignedStaffId?: string;
+  note?: string;
+  createdAt?: string;
+  updatedAt?: string;
+};
+
 /**
  * SharePoint Schedule Repository
  *
@@ -345,19 +371,18 @@ export class SharePointScheduleRepository implements ScheduleRepository {
         personName: input.userName,
         assignedStaffId: input.assignedStaffId,
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        targetUserId: (input as any).targetUserId,
+        targetUserId: (input as unknown as ScheduleInputExtended).targetUserId,
         rowKey: generateRowKey(),
         dayKey,
         monthKey,
         fiscalYear,
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        orgAudience: (input as any).orgAudience,
+        orgAudience: (input as unknown as ScheduleInputExtended).orgAudience,
         notes: input.notes,
       };
 
       const created = await createSchedule(client, createPayload);
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const item = mapRepoScheduleToScheduleItem(created as any);
+      const item = mapRepoScheduleToScheduleItem(created as unknown as ScheduleRepoResult);
 
       if (!item) {
         throw new Error('Failed to map created schedule');
@@ -437,18 +462,17 @@ export class SharePointScheduleRepository implements ScheduleRepository {
         personName: input.userName,
         assignedStaffId: input.assignedStaffId,
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        targetUserId: (input as any).targetUserId,
+        targetUserId: (input as unknown as ScheduleInputExtended).targetUserId,
         dayKey,
         monthKey,
         fiscalYear: String(startDate.getFullYear()),
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        orgAudience: (input as any).orgAudience,
+        orgAudience: (input as unknown as ScheduleInputExtended).orgAudience,
         notes: input.notes,
       };
 
       const updated = await updateSchedule(client, idNum, etag, updatePayload);
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const item = mapRepoScheduleToScheduleItem(updated as any);
+      const item = mapRepoScheduleToScheduleItem(updated as unknown as ScheduleRepoResult);
 
       if (!item) {
         throw new Error('Failed to map updated schedule');
