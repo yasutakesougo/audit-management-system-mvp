@@ -6,6 +6,8 @@ import { EmptyStateHero } from './EmptyStateHero';
 export type HeroUnfinishedBannerProps = {
   unfilledCount: number;
   approvalPendingCount?: number;
+  /** 最優先ユーザー名（未記録の最初のユーザー） */
+  highestPriorityUserName?: string;
   onClickPrimary: () => void;
   /** 「記録メニュー」への導線。undefined なら非表示（後方互換）。 */
   onClickSecondary?: () => void;
@@ -15,6 +17,7 @@ export type HeroUnfinishedBannerProps = {
 export const HeroUnfinishedBanner: React.FC<HeroUnfinishedBannerProps> = ({
   unfilledCount,
   approvalPendingCount = 0,
+  highestPriorityUserName,
   onClickPrimary,
   onClickSecondary,
   // sticky is accepted for backward compatibility but no longer used (inline layout)
@@ -43,22 +46,33 @@ export const HeroUnfinishedBanner: React.FC<HeroUnfinishedBannerProps> = ({
     <Box
       data-testid="today-hero-banner"
       sx={{
-        px: 2,
-        py: 0.75,
+        px: 2.5,
+        py: 2,
         bgcolor: 'error.main',
         color: 'common.white',
         display: 'flex',
         gap: 1.5,
         justifyContent: 'space-between',
         alignItems: 'center',
-        boxShadow: 1,
-        borderRadius: 1,
+        boxShadow: 3,
+        borderRadius: 2,
       }}
     >
-      <Typography variant="body2" fontWeight="bold" sx={{ fontSize: '0.82rem' }}>
-        🔴 未記録 {unfilledCount}件
-        {approvalPendingCount > 0 && ` / 🟡 承認待ち ${approvalPendingCount}件`}
-      </Typography>
+      <Box>
+        <Typography variant="body1" fontWeight="bold" sx={{ fontSize: '1rem' }}>
+          🔴 未記録 {unfilledCount}件
+          {approvalPendingCount > 0 && ` / 🟡 承認待ち ${approvalPendingCount}件`}
+        </Typography>
+        {highestPriorityUserName && (
+          <Typography
+            variant="caption"
+            sx={{ opacity: 0.9, mt: 0.25, display: 'block', fontSize: '0.8rem' }}
+            data-testid="today-hero-priority-user"
+          >
+            👤 次の対象: {highestPriorityUserName}
+          </Typography>
+        )}
+      </Box>
 
       <Box sx={{ display: 'flex', gap: 0.75, flexShrink: 0 }}>
         <Button
@@ -69,12 +83,12 @@ export const HeroUnfinishedBanner: React.FC<HeroUnfinishedBannerProps> = ({
           sx={{
             color: 'error.main',
             fontWeight: 'bold',
-            minHeight: 32,
-            px: 1.5,
-            fontSize: '0.75rem',
+            minHeight: 44,
+            px: 2.5,
+            fontSize: '0.85rem',
           }}
         >
-          今すぐ入力
+          記録を入力する
         </Button>
 
         {onClickSecondary && (
@@ -85,7 +99,7 @@ export const HeroUnfinishedBanner: React.FC<HeroUnfinishedBannerProps> = ({
             onClick={onClickSecondary}
             sx={{
               fontWeight: 'bold',
-              minHeight: 32,
+              minHeight: 44,
               px: 1.5,
               fontSize: '0.75rem',
               borderColor: 'rgba(255,255,255,0.5)',
