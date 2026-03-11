@@ -1,3 +1,4 @@
+export { ColorPresetControl } from './ColorPresetControl';
 export { DensityControl } from './DensityControl';
 export { FontSizeControl } from './FontSizeControl';
-export { ColorPresetControl } from './ColorPresetControl';
+export { NavGroupVisibilityControl } from './NavGroupVisibilityControl';

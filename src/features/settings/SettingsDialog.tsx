@@ -1,26 +1,29 @@
-import React, { useCallback, useContext } from 'react';
+import type { NavGroupKey, NavItem } from '@/app/config/navigationConfig.types';
+import { ColorModeContext } from '@/app/theme';
+import Brightness4Icon from '@mui/icons-material/Brightness4';
+import Brightness7Icon from '@mui/icons-material/Brightness7';
+import CloseIcon from '@mui/icons-material/Close';
 import Dialog from '@mui/material/Dialog';
 import DialogContent from '@mui/material/DialogContent';
 import DialogTitle from '@mui/material/DialogTitle';
-import IconButton from '@mui/material/IconButton';
-import CloseIcon from '@mui/icons-material/Close';
-import Stack from '@mui/material/Stack';
+import Divider from '@mui/material/Divider';
 import FormControlLabel from '@mui/material/FormControlLabel';
+import IconButton from '@mui/material/IconButton';
+import Stack from '@mui/material/Stack';
 import Switch from '@mui/material/Switch';
 import Typography from '@mui/material/Typography';
-import Divider from '@mui/material/Divider';
-import Brightness4Icon from '@mui/icons-material/Brightness4';
-import Brightness7Icon from '@mui/icons-material/Brightness7';
-import { ColorModeContext } from '@/app/theme';
+import React, { useCallback, useContext } from 'react';
 import { useSettingsContext } from './SettingsContext';
-import { DensityControl, FontSizeControl, ColorPresetControl } from './components';
+import { ColorPresetControl, DensityControl, FontSizeControl, NavGroupVisibilityControl } from './components';
 
 interface SettingsDialogProps {
   open: boolean;
   onClose: () => void;
+  /** All nav items (unfiltered) for individual menu visibility controls */
+  navItems?: NavItem[];
 }
 
-export const SettingsDialog: React.FC<SettingsDialogProps> = ({ open, onClose }) => {
+export const SettingsDialog: React.FC<SettingsDialogProps> = ({ open, onClose, navItems = [] }) => {
   const { mode, toggle } = useContext(ColorModeContext);
   const { settings, updateSettings } = useSettingsContext();
 
@@ -34,6 +37,14 @@ export const SettingsDialog: React.FC<SettingsDialogProps> = ({ open, onClose })
 
   const handleColorPresetChange = useCallback((newPreset: 'default' | 'highContrast' | 'custom') => {
     updateSettings({ colorPreset: newPreset });
+  }, [updateSettings]);
+
+  const handleNavGroupVisibilityChange = useCallback((hiddenGroups: NavGroupKey[]) => {
+    updateSettings({ hiddenNavGroups: hiddenGroups });
+  }, [updateSettings]);
+
+  const handleNavItemVisibilityChange = useCallback((hiddenItems: string[]) => {
+    updateSettings({ hiddenNavItems: hiddenItems });
   }, [updateSettings]);
 
   return (
@@ -78,7 +89,7 @@ export const SettingsDialog: React.FC<SettingsDialogProps> = ({ open, onClose })
 
           {/* UI 密度設定 */}
           <Stack spacing={2}>
-            <DensityControl 
+            <DensityControl
               value={settings.density}
               onChange={handleDensityChange}
             />
@@ -123,6 +134,19 @@ export const SettingsDialog: React.FC<SettingsDialogProps> = ({ open, onClose })
           <Typography variant="caption" color="text.secondary" sx={{ pt: 2 }}>
             その他の表示設定（レイアウトプリセットなど）は今後実装予定です。
           </Typography>
+
+          <Divider sx={{ my: 2 }} />
+
+          {/* サイドメニュー表示設定 */}
+          <Stack spacing={2}>
+            <NavGroupVisibilityControl
+              hiddenGroups={settings.hiddenNavGroups}
+              hiddenItems={settings.hiddenNavItems}
+              allNavItems={navItems}
+              onGroupChange={handleNavGroupVisibilityChange}
+              onItemChange={handleNavItemVisibilityChange}
+            />
+          </Stack>
         </Stack>
       </DialogContent>
     </Dialog>

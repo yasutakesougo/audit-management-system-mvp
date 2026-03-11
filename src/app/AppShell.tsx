@@ -69,6 +69,7 @@ const AppShell: React.FC<{ children: React.ReactNode }> = ({ children }) => {
     drawerWidth,
     currentDrawerWidth,
     showDesktopSidebar,
+    navItems,
     filteredNavItems,
     groupedNavItems,
     isAdmin,
@@ -156,7 +157,7 @@ const AppShell: React.FC<{ children: React.ReactNode }> = ({ children }) => {
               <CloseFullscreenRoundedIcon fontSize="small" />
             </Fab>
           )}
-          <SettingsDialog open={settingsDialogOpen} onClose={() => setSettingsDialogOpen(false)} />
+          <SettingsDialog open={settingsDialogOpen} onClose={() => setSettingsDialogOpen(false)} navItems={navItems} />
           {LazySpDevPanel && (
             <React.Suspense fallback={null}>
               <LazySpDevPanel />
