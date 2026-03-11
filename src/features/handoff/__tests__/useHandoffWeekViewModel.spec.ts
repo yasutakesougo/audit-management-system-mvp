@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import type { HandoffRecord } from '../handoffTypes';
 import {
+  buildTopCategories,
   buildWeekBuckets,
   buildWeekSummary,
   groupHandoffsByDate,
@@ -142,6 +143,34 @@ describe('useHandoffWeekViewModel pure helpers', () => {
       const days = groupHandoffsByDate([], weekRange);
       expect(days).toHaveLength(7);
     });
+
+    it('カテゴリ別の上位2件が topCategories に入る', () => {
+      const items: HandoffRecord[] = [
+        makeRecord({ createdAt: '2026-03-10T09:00:00.000+09:00', category: '体調' }),
+        makeRecord({ createdAt: '2026-03-10T10:00:00.000+09:00', category: '体調' }),
+        makeRecord({ createdAt: '2026-03-10T11:00:00.000+09:00', category: '行動面' }),
+        makeRecord({ createdAt: '2026-03-10T12:00:00.000+09:00', category: '家族連絡' }),
+      ];
+
+      const days = groupHandoffsByDate(items, weekRange);
+      // 火曜 (3/10) の上位カテゴリ
+      expect(days[1].topCategories).toHaveLength(2);
+      expect(days[1].topCategories[0]).toEqual({ category: '体調', count: 2 });
+      // 行動面と家族連絡は同数→優先度が高い行動面が2番目
+      expect(days[1].topCategories[1]).toEqual({ category: '行動面', count: 1 });
+    });
+
+    it('事故・ヒヤリがある日は hasIncident=true', () => {
+      const items: HandoffRecord[] = [
+        makeRecord({ createdAt: '2026-03-11T09:00:00.000+09:00', category: '事故・ヒヤリ' }),
+        makeRecord({ createdAt: '2026-03-11T10:00:00.000+09:00', category: '体調' }),
+      ];
+
+      const days = groupHandoffsByDate(items, weekRange);
+      expect(days[2].hasIncident).toBe(true);
+      // 事故・ヒヤリがない日は false
+      expect(days[0].hasIncident).toBe(false);
+    });
   });
 
   // ── buildWeekSummary ──
@@ -171,6 +200,56 @@ describe('useHandoffWeekViewModel pure helpers', () => {
 
       expect(summary.totalCount).toBe(0);
       expect(summary.hasAnyItems).toBe(false);
+    });
+
+    it('週全体の topCategories が集計される', () => {
+      const items: HandoffRecord[] = [
+        makeRecord({ createdAt: '2026-03-09T09:00:00.000+09:00', category: '体調' }),
+        makeRecord({ createdAt: '2026-03-10T09:00:00.000+09:00', category: '体調' }),
+        makeRecord({ createdAt: '2026-03-10T10:00:00.000+09:00', category: '行動面' }),
+        makeRecord({ createdAt: '2026-03-11T09:00:00.000+09:00', category: '事故・ヒヤリ' }),
+      ];
+
+      const weekRange: [string, string] = ['2026-03-09', '2026-03-15'];
+      const days = groupHandoffsByDate(items, weekRange);
+      const summary = buildWeekSummary(days);
+
+      expect(summary.topCategories[0]).toEqual({ category: '体調', count: 2 });
+      expect(summary.hasIncident).toBe(true);
+    });
+  });
+
+  // ── buildTopCategories ──
+  describe('buildTopCategories', () => {
+    it('件数降順で上位N件を返す', () => {
+      const catMap = new Map<string, number>([
+        ['体調', 3],
+        ['行動面', 5],
+        ['家族連絡', 1],
+      ]);
+      const result = buildTopCategories(catMap, 2);
+      expect(result[0]).toEqual({ category: '行動面', count: 5 });
+      expect(result[1]).toEqual({ category: '体調', count: 3 });
+    });
+
+    it('同件数なら優先度が高いカテゴリが上', () => {
+      const catMap = new Map<string, number>([
+        ['その他', 2],
+        ['事故・ヒヤリ', 2],
+      ]);
+      const result = buildTopCategories(catMap, 2);
+      expect(result[0].category).toBe('事故・ヒヤリ');
+      expect(result[1].category).toBe('その他');
+    });
+
+    it('0件のカテゴリは除外', () => {
+      const catMap = new Map<string, number>([
+        ['体調', 0],
+        ['行動面', 1],
+      ]);
+      const result = buildTopCategories(catMap, 3);
+      expect(result).toHaveLength(1);
+      expect(result[0].category).toBe('行動面');
     });
   });
 });

@@ -11,13 +11,19 @@
  */
 
 import { useMemo } from 'react';
-import type { HandoffRecord, HandoffSeverity, HandoffStatus } from '../handoffTypes';
+import type { HandoffCategory, HandoffRecord, HandoffSeverity, HandoffStatus } from '../handoffTypes';
 import { useHandoffTimeline } from '../useHandoffTimeline';
 import { formatDateLocal, getWeekRange, parseDateString } from './useHandoffDateNav';
 
 // ────────────────────────────────────────────────────────────
 // Types
 // ────────────────────────────────────────────────────────────
+
+/** カテゴリ別件数 */
+export interface CategoryCount {
+  category: HandoffCategory;
+  count: number;
+}
 
 /** 1日分のサマリー */
 export interface WeekDaySummary {
@@ -33,6 +39,10 @@ export interface WeekDaySummary {
   criticalCount: number;
   /** status='未対応' の件数 */
   unhandledCount: number;
+  /** 上位カテゴリ (件数降順, 最大 MAX_TOP_CATEGORIES 件) */
+  topCategories: CategoryCount[];
+  /** 事故・ヒヤリが含まれるか */
+  hasIncident: boolean;
   /** 今日かどうか */
   isToday: boolean;
   /** 未来日かどうか (データなし想定) */
@@ -49,6 +59,10 @@ export interface WeekSummary {
   criticalCount: number;
   /** 週全体の未対応件数 */
   unhandledCount: number;
+  /** 週全体の上位カテゴリ (件数降順) */
+  topCategories: CategoryCount[];
+  /** 事故・ヒヤリが含まれる日があるか */
+  hasIncident: boolean;
   /** 1件以上の日が存在するか */
   hasAnyItems: boolean;
 }
@@ -66,10 +80,32 @@ export interface WeekViewModel {
 }
 
 // ────────────────────────────────────────────────────────────
-// Pure helpers
+// Constants
 // ────────────────────────────────────────────────────────────
 
 const WEEKDAY_SHORT = ['日', '月', '火', '水', '木', '金', '土'] as const;
+
+/** カードに表示する上位カテゴリの最大数 */
+const MAX_TOP_CATEGORIES = 2;
+
+/**
+ * カテゴリの優先度 (数値が大きいほど同件数時に上に来る)
+ * 事故・ヒヤリは特別扱いで最高優先度
+ */
+const CATEGORY_PRIORITY: Record<string, number> = {
+  '事故・ヒヤリ': 100,
+  '体調': 80,
+  '行動面': 60,
+  '家族連絡': 40,
+  '送迎': 30,
+  '支援の工夫': 20,
+  '良かったこと': 10,
+  'その他': 0,
+};
+
+// ────────────────────────────────────────────────────────────
+// Pure helpers
+// ────────────────────────────────────────────────────────────
 
 /**
  * 月曜〜日曜の7日分の空バケットを生成
@@ -96,6 +132,8 @@ export function buildWeekBuckets(startStr: string, endStr: string): WeekDaySumma
       count: 0,
       criticalCount: 0,
       unhandledCount: 0,
+      topCategories: [],
+      hasIncident: false,
       isToday: dateStr === today,
       isFuture: dateStr > today,
     });
@@ -117,8 +155,12 @@ export function groupHandoffsByDate(
 ): WeekDaySummary[] {
   const buckets = buildWeekBuckets(weekRange[0], weekRange[1]);
   const bucketMap = new Map<string, WeekDaySummary>();
+  // 日ごとのカテゴリ別カウンタ
+  const categoryCounters = new Map<string, Map<string, number>>();
+
   for (const b of buckets) {
     bucketMap.set(b.date, b);
+    categoryCounters.set(b.date, new Map());
   }
 
   for (const item of items) {
@@ -130,6 +172,19 @@ export function groupHandoffsByDate(
     bucket.count += 1;
     if (isCritical(item.severity)) bucket.criticalCount += 1;
     if (isUnhandled(item.status)) bucket.unhandledCount += 1;
+
+    // カテゴリ集計
+    const catMap = categoryCounters.get(dateStr)!;
+    catMap.set(item.category, (catMap.get(item.category) || 0) + 1);
+  }
+
+  // 各日のカテゴリ集計を確定
+  for (const bucket of buckets) {
+    const catMap = categoryCounters.get(bucket.date);
+    if (!catMap || catMap.size === 0) continue;
+
+    bucket.topCategories = buildTopCategories(catMap, MAX_TOP_CATEGORIES);
+    bucket.hasIncident = catMap.has('事故・ヒヤリ') && (catMap.get('事故・ヒヤリ')! > 0);
   }
 
   return buckets;
@@ -142,11 +197,18 @@ export function buildWeekSummary(days: WeekDaySummary[]): WeekSummary {
   let totalCount = 0;
   let criticalCount = 0;
   let unhandledCount = 0;
+  let hasIncident = false;
+  const weekCategoryMap = new Map<string, number>();
 
   for (const day of days) {
     totalCount += day.count;
     criticalCount += day.criticalCount;
     unhandledCount += day.unhandledCount;
+    if (day.hasIncident) hasIncident = true;
+
+    for (const cat of day.topCategories) {
+      weekCategoryMap.set(cat.category, (weekCategoryMap.get(cat.category) || 0) + cat.count);
+    }
   }
 
   return {
@@ -154,6 +216,8 @@ export function buildWeekSummary(days: WeekDaySummary[]): WeekSummary {
     totalCount,
     criticalCount,
     unhandledCount,
+    topCategories: buildTopCategories(weekCategoryMap, 3),
+    hasIncident,
     hasAnyItems: totalCount > 0,
   };
 }
@@ -180,6 +244,26 @@ function isCritical(severity: HandoffSeverity): boolean {
 
 function isUnhandled(status: HandoffStatus): boolean {
   return status === '未対応';
+}
+
+/**
+ * カテゴリカウントマップから上位N件を抽出する
+ * 同件数の場合は CATEGORY_PRIORITY が高い方を優先
+ */
+export function buildTopCategories(
+  catMap: Map<string, number>,
+  maxCount: number,
+): CategoryCount[] {
+  return Array.from(catMap.entries())
+    .filter(([, count]) => count > 0)
+    .sort((a, b) => {
+      // 件数降順
+      if (b[1] !== a[1]) return b[1] - a[1];
+      // 同件数なら優先度降順
+      return (CATEGORY_PRIORITY[b[0]] ?? 0) - (CATEGORY_PRIORITY[a[0]] ?? 0);
+    })
+    .slice(0, maxCount)
+    .map(([category, count]) => ({ category: category as HandoffCategory, count }));
 }
 
 // ────────────────────────────────────────────────────────────

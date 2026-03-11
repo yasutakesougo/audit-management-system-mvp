@@ -16,7 +16,23 @@ import {
   Typography,
 } from '@mui/material';
 import { alpha, useTheme } from '@mui/material/styles';
-import type { WeekDaySummary, WeekSummary } from '../hooks/useHandoffWeekViewModel';
+import type { HandoffCategory } from '../handoffTypes';
+import type { CategoryCount, WeekDaySummary, WeekSummary } from '../hooks/useHandoffWeekViewModel';
+
+// ────────────────────────────────────────────────────────────
+// Category chip color mapping
+// ────────────────────────────────────────────────────────────
+
+/** MUI Chip color に対応するカテゴリ色マッピング */
+const CATEGORY_CHIP_COLOR: Record<HandoffCategory, 'error' | 'warning' | 'info' | 'secondary' | 'success' | 'default'> = {
+  '事故・ヒヤリ': 'error',
+  '体調': 'error',
+  '行動面': 'warning',
+  '家族連絡': 'info',
+  '支援の工夫': 'secondary',
+  '良かったこと': 'success',
+  'その他': 'default',
+};
 
 // ────────────────────────────────────────────────────────────
 // Props
@@ -105,6 +121,21 @@ export function HandoffWeekView({
           <Typography variant="body2" color="text.secondary">
             この週の申し送りはありません
           </Typography>
+        )}
+        {/* 週全体のカテゴリチップ */}
+        {summary.topCategories.length > 0 && (
+          <Stack direction="row" spacing={0.5} sx={{ ml: 'auto' }}>
+            {summary.topCategories.map((cat) => (
+              <Chip
+                key={cat.category}
+                size="small"
+                label={`${cat.category} ${cat.count}`}
+                color={CATEGORY_CHIP_COLOR[cat.category] ?? 'default'}
+                variant="outlined"
+                sx={{ height: 22, fontSize: '0.7rem', '& .MuiChip-label': { px: 0.75 } }}
+              />
+            ))}
+          </Stack>
         )}
       </Box>
 
@@ -246,6 +277,21 @@ function DayCard({
           </Stack>
         )}
 
+        {/* カテゴリチップ */}
+        {!day.isFuture && day.topCategories.length > 0 && (
+          <Stack
+            direction="row"
+            spacing={0.3}
+            justifyContent="center"
+            flexWrap="wrap"
+            sx={{ mt: 0.5, gap: 0.3 }}
+          >
+            {day.topCategories.map((cat) => (
+              <CategoryChip key={cat.category} cat={cat} />
+            ))}
+          </Stack>
+        )}
+
         {/* 今日マーカー */}
         {day.isToday && (
           <Chip
@@ -263,4 +309,36 @@ function DayCard({
       </CardActionArea>
     </Card>
   );
+}
+
+// ────────────────────────────────────────────────────────────
+// CategoryChip (internal)
+// ────────────────────────────────────────────────────────────
+
+function CategoryChip({ cat }: { cat: CategoryCount }) {
+  const shortLabel = shortenCategory(cat.category);
+  return (
+    <Chip
+      size="small"
+      label={`${shortLabel}${cat.count}`}
+      color={CATEGORY_CHIP_COLOR[cat.category] ?? 'default'}
+      variant="outlined"
+      sx={{
+        height: 18,
+        fontSize: '0.6rem',
+        '& .MuiChip-label': { px: 0.5 },
+      }}
+    />
+  );
+}
+
+/** カード内で収まるよう、カテゴリ名を短縮する */
+function shortenCategory(category: HandoffCategory): string {
+  const SHORT: Partial<Record<HandoffCategory, string>> = {
+    '事故・ヒヤリ': 'ヒヤリ',
+    '家族連絡': '家族',
+    '支援の工夫': '工夫',
+    '良かったこと': '良い',
+  };
+  return SHORT[category] ?? category;
 }
