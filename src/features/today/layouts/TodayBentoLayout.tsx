@@ -51,8 +51,6 @@ import { UserCompactList, type UserRow } from '../widgets/UserCompactList';
 type HeroProps = {
   unfilledCount: number;
   approvalPendingCount: number;
-  /** 最優先ユーザー名 */
-  highestPriorityUserName?: string;
   onOpenUnfilled: () => void;
   onOpenApproval: () => void;
   onOpenMenu?: () => void;
@@ -72,8 +70,6 @@ export type TodayBentoProps = {
   transport: { pending: TransportUser[]; inProgress: TransportUser[]; onArrived: (id: string) => void };
   transportCard?: TransportStatusCardProps;
   users: { items: UserRow[]; onOpenQuickRecord: (id: string) => void; onOpenISP?: (id: string) => void; onEmptyAction?: () => void };
-  /** 出欠入力CTA */
-  onAttendanceAction?: () => void;
 };
 
 // ─── Compact Section Title ───────────────────────────────────
@@ -111,7 +107,6 @@ export const TodayBentoLayout: React.FC<TodayBentoProps> = ({
   nextActionEmptyAction,
   transportCard,
   users,
-  onAttendanceAction,
 }) => {
   return (
     <Box
@@ -125,7 +120,6 @@ export const TodayBentoLayout: React.FC<TodayBentoProps> = ({
       <HeroUnfinishedBanner
         unfilledCount={hero.unfilledCount}
         approvalPendingCount={hero.approvalPendingCount}
-        highestPriorityUserName={hero.highestPriorityUserName}
         onClickPrimary={hero.onOpenUnfilled}
         onClickSecondary={hero.onOpenMenu}
         sticky={true}
@@ -139,7 +133,7 @@ export const TodayBentoLayout: React.FC<TodayBentoProps> = ({
           testId="bento-attendance"
         >
           <SectionLabel emoji="📊" text="出席状況" />
-          <AttendanceSummaryCard {...attendance} onAction={onAttendanceAction} />
+          <AttendanceSummaryCard {...attendance} />
         </BentoCard>
 
         <BentoCard

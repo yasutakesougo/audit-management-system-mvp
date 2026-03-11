@@ -116,15 +116,6 @@ export const TodayOpsPage: React.FC = () => {
       hero: {
         unfilledCount,
         approvalPendingCount: isE2EEnv ? 1 : Math.max(0, summary?.dailyRecordStatus?.inProgress ?? 0),
-        highestPriorityUserName: (() => {
-          const firstPendingId = summary?.dailyRecordStatus?.pendingUserIds?.[0];
-          if (!firstPendingId) return undefined;
-          const match = (summary.users || []).find((u) => {
-            const uid = (u.UserID ?? '').trim() || `U${String(u.Id ?? 0).padStart(3, '0')}`;
-            return uid === firstPendingId;
-          });
-          return match?.FullName ?? undefined;
-        })(),
         onOpenUnfilled: () => {
           const firstUnfilledUserId = summary?.dailyRecordStatus?.pendingUserIds?.[0];
           quickRecord.openUnfilled(firstUnfilledUserId);
@@ -210,7 +201,7 @@ export const TodayOpsPage: React.FC = () => {
         onEmptyAction: () => navigate('/schedules'),
       },
       nextActionEmptyAction: () => navigate('/schedules'),
-      onAttendanceAction: () => navigate('/daily/attendance'),
+
     };
   }, [summary, nextAction, quickRecord.openUnfilled, quickRecord.openUser, approvalFlow.open, navigate]);
 
