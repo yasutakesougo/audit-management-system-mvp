@@ -1,11 +1,11 @@
-import * as React from 'react';
 import { Box, Typography } from '@mui/material';
+import * as React from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 
-import type { MeetingMinutesRepository } from '../sp/repository';
-import { useMeetingMinutesDetail, useUpdateMeetingMinutes } from '../hooks/useMeetingMinutes';
-import { MeetingMinutesForm } from '../components/MeetingMinutesForm';
 import type { MeetingMinutesDraft } from '../components/MeetingMinutesForm';
+import { MeetingMinutesForm } from '../components/MeetingMinutesForm';
+import { useMeetingMinutesDetail, useUpdateMeetingMinutes } from '../hooks/useMeetingMinutes';
+import type { MeetingMinutesRepository } from '../sp/repository';
 
 export function MeetingMinutesEditPage(props: { repo: MeetingMinutesRepository }) {
   const { repo } = props;
@@ -36,6 +36,8 @@ export function MeetingMinutesEditPage(props: { repo: MeetingMinutesRepository }
         isPublished: m.isPublished ?? true,
         created: m.created,
         modified: m.modified,
+        staffAttendance: m.staffAttendance ?? '',
+        userHealthNotes: m.userHealthNotes ?? '',
       });
     }
   }, [q.data, draft]);
