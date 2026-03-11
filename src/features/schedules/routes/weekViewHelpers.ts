@@ -4,7 +4,8 @@
  * Extracted to keep WeekView.tsx within the 600-line contract guard limit.
  * All functions are stateless and side-effect free.
  */
-import type { SchedItem } from '../data';
+import type { DateRange, SchedItem } from '../data';
+import { makeRange } from '../hooks/useSchedules';
 import { SERVICE_TYPE_META, type ServiceTypeKey } from '../serviceTypeMetadata';
 
 // ---------------------------------------------------------------------------
@@ -160,4 +161,17 @@ export const _getLocalTimeLabel = (iso: string): string => {
   const hours = String(d.getHours()).padStart(2, '0');
   const minutes = String(d.getMinutes()).padStart(2, '0');
   return `${hours}:${minutes}`;
+};
+
+// ---------------------------------------------------------------------------
+// Week range factory (moved from WeekView.tsx)
+// ---------------------------------------------------------------------------
+
+/**
+ * Returns a DateRange covering the current week (Mon – Sun).
+ * Used as the default range when no external range is provided to WeekViewWithData.
+ */
+export const defaultWeekRange = (): DateRange => {
+  const start = startOfWeek(new Date());
+  return makeRange(start, endOfWeek(start));
 };
