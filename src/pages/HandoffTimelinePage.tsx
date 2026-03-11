@@ -4,6 +4,7 @@ import {
   AccessTime as AccessTimeIcon,
   ArrowBack as ArrowBackIcon,
   CalendarMonth as CalendarIcon,
+  CalendarViewMonth as MonthIcon,
   CalendarViewWeek as WeekIcon,
   ChevronLeft as ChevronLeftIcon,
   ChevronRight as ChevronRightIcon,
@@ -34,11 +35,13 @@ import {
 import { useCallback, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import HandoffCategorySummaryCard from '../features/handoff/HandoffCategorySummaryCard';
+import { HandoffMonthView } from '../features/handoff/components/HandoffMonthView';
 import { HandoffUserGroupedView } from '../features/handoff/components/HandoffUserGroupedView';
 import { HandoffWeekView } from '../features/handoff/components/HandoffWeekView';
 import { HANDOFF_TIME_FILTER_LABELS } from '../features/handoff/handoffTypes';
 import { addDays, formatDateLocal, useHandoffDateNav } from '../features/handoff/hooks/useHandoffDateNav';
 import type { DateRange } from '../features/handoff/hooks/useHandoffDateNav';
+import { useHandoffMonthViewModel } from '../features/handoff/hooks/useHandoffMonthViewModel';
 import { useHandoffWeekViewModel } from '../features/handoff/hooks/useHandoffWeekViewModel';
 import { TodayHandoffTimelineList } from '../features/handoff/TodayHandoffTimelineList';
 import { useHandoffTimeline } from '../features/handoff/useHandoffTimeline';
@@ -110,8 +113,11 @@ export default function HandoffTimelinePage() {
   // 週ビュー ViewModel
   const weekVM = useHandoffWeekViewModel(dateNav.date);
 
-  // 日カードクリック → day ビューへ遷移
-  const handleWeekDayClick = useCallback(
+  // 月ビュー ViewModel
+  const monthVM = useHandoffMonthViewModel(dateNav.date);
+
+  // 日カードクリック → day ビューへ遷移 (週/月共通)
+  const handleDayClick = useCallback(
     (clickedDate: string) => {
       dateNav.goToDate(clickedDate);
     },
@@ -193,10 +199,16 @@ export default function HandoffTimelinePage() {
             flexWrap: 'wrap',
           }}
         >
-          {/* 前へ (day / week) */}
-          <Tooltip title={dateNav.range === 'week' ? '前週' : '前日'}>
+          {/* 前へ (day / week / month) */}
+          <Tooltip title={dateNav.range === 'month' ? '前月' : dateNav.range === 'week' ? '前週' : '前日'}>
             <IconButton
-              onClick={dateNav.range === 'week' ? dateNav.goToPreviousWeek : dateNav.goToPreviousDay}
+              onClick={
+                dateNav.range === 'month'
+                  ? dateNav.goToPreviousMonth
+                  : dateNav.range === 'week'
+                    ? dateNav.goToPreviousWeek
+                    : dateNav.goToPreviousDay
+              }
               size="small"
               data-testid="handoff-date-prev"
             >
@@ -219,11 +231,17 @@ export default function HandoffTimelinePage() {
             }}
           />
 
-          {/* 次へ (day / week) */}
-          <Tooltip title={dateNav.range === 'week' ? '翌週' : '翌日'}>
+          {/* 次へ (day / week / month) */}
+          <Tooltip title={dateNav.range === 'month' ? '翌月' : dateNav.range === 'week' ? '翌週' : '翌日'}>
             <span>
               <IconButton
-                onClick={dateNav.range === 'week' ? dateNav.goToNextWeek : dateNav.goToNextDay}
+                onClick={
+                  dateNav.range === 'month'
+                    ? dateNav.goToNextMonth
+                    : dateNav.range === 'week'
+                      ? dateNav.goToNextWeek
+                      : dateNav.goToNextDay
+                }
                 size="small"
                 disabled={dateNav.isToday}
                 data-testid="handoff-date-next"
@@ -246,7 +264,7 @@ export default function HandoffTimelinePage() {
             />
           )}
 
-          {/* range 切替: 日 / 週 */}
+          {/* range 切替: 日 / 週 / 月 */}
           <ToggleButtonGroup
             value={dateNav.range}
             exclusive
@@ -262,6 +280,10 @@ export default function HandoffTimelinePage() {
             <ToggleButton value="week" data-testid="handoff-range-week">
               <WeekIcon sx={{ mr: 0.5, fontSize: '1rem' }} />
               週
+            </ToggleButton>
+            <ToggleButton value="month" data-testid="handoff-range-month">
+              <MonthIcon sx={{ mr: 0.5, fontSize: '1rem' }} />
+              月
             </ToggleButton>
           </ToggleButtonGroup>
 
@@ -410,7 +432,20 @@ export default function HandoffTimelinePage() {
       <Divider sx={{ my: 2 }} />
 
       {/* ── メインコンテンツ ── */}
-      {dateNav.range === 'week' ? (
+      {dateNav.range === 'month' ? (
+        /* ── 月ビュー ── */
+        <Box>
+          <Typography variant="h5" component="h2" sx={{ mb: 2, fontWeight: 600 }}>
+            {dateNav.dateLabel}の申し送り
+          </Typography>
+          <HandoffMonthView
+            summary={monthVM.summary}
+            loading={monthVM.loading}
+            error={monthVM.error}
+            onDayClick={handleDayClick}
+          />
+        </Box>
+      ) : dateNav.range === 'week' ? (
         /* ── 週ビュー ── */
         <Box>
           <Typography variant="h5" component="h2" sx={{ mb: 2, fontWeight: 600 }}>
@@ -420,7 +455,7 @@ export default function HandoffTimelinePage() {
             summary={weekVM.summary}
             loading={weekVM.loading}
             error={weekVM.error}
-            onDayClick={handleWeekDayClick}
+            onDayClick={handleDayClick}
           />
         </Box>
       ) : (
