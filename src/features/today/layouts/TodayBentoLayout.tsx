@@ -67,6 +67,7 @@ export type TodayBentoProps = {
   sceneAction?: SceneNextActionViewModel;
   onSceneAction?: (target: string, userId?: string) => void;
   nextActionEmptyAction?: NextActionCardProps['onEmptyAction'];
+  scheduleDetailHref?: string;
   transport: { pending: TransportUser[]; inProgress: TransportUser[]; onArrived: (id: string) => void };
   transportCard?: TransportStatusCardProps;
   users: { items: UserRow[]; onOpenQuickRecord: (id: string) => void; onOpenISP?: (id: string) => void; onEmptyAction?: () => void };
@@ -105,6 +106,7 @@ export const TodayBentoLayout: React.FC<TodayBentoProps> = ({
   sceneAction,
   onSceneAction,
   nextActionEmptyAction,
+  scheduleDetailHref,
   transportCard,
   users,
 }) => {
@@ -147,6 +149,7 @@ export const TodayBentoLayout: React.FC<TodayBentoProps> = ({
             sceneAction={sceneAction}
             onSceneAction={onSceneAction}
             onEmptyAction={nextActionEmptyAction}
+            scheduleDetailHref={scheduleDetailHref}
           />
         </BentoCard>
 

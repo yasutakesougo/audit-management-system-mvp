@@ -27,6 +27,8 @@ export type NextActionCardProps = {
   onSceneAction?: (target: string, userId?: string) => void;
   /** 空状態CTAクリック時の導線（スケジュール確認等） */
   onEmptyAction?: () => void;
+  /** 予定表詳細への deep link（/schedules/week?date=...&tab=day&cat=...）*/
+  scheduleDetailHref?: string;
 };
 
 function formatMinutesUntil(minutes: number): string {
@@ -76,6 +78,7 @@ export const NextActionCard: React.FC<NextActionCardProps> = ({
   sceneAction,
   onSceneAction,
   onEmptyAction,
+  scheduleDetailHref,
 }) => {
   const { item, status, urgency, sceneState, elapsedMinutes, actions } = nextAction;
   const theme = useTheme();
@@ -362,6 +365,26 @@ export const NextActionCard: React.FC<NextActionCardProps> = ({
               />
             )}
           </Box>
+
+          {/* 予定表への補助導線 */}
+          {scheduleDetailHref && (
+            <Box sx={{ mt: 1, textAlign: 'right' }}>
+              <Typography
+                component="a"
+                href={scheduleDetailHref}
+                variant="caption"
+                data-testid="next-action-schedule-link"
+                sx={{
+                  color: 'text.secondary',
+                  textDecoration: 'none',
+                  '&:hover': { color: 'primary.main', textDecoration: 'underline' },
+                  cursor: 'pointer',
+                }}
+              >
+                📅 予定表で確認
+              </Typography>
+            </Box>
+          )}
         </>
       )}
     </Paper>

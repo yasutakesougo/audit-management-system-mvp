@@ -14,6 +14,8 @@
  * @see #852
  */
 import { OPS_FLOW_ORDER } from '@/features/dashboard/selectors/useScheduleLanes';
+import { toLocalDateISO } from '@/utils/getNow';
+import { useMemo } from 'react';
 import {
     deriveSceneState,
     nowMinutes,
@@ -22,6 +24,12 @@ import {
     type SceneEntryWithState,
     type SceneState,
 } from '../domain/deriveCurrentScene';
+import {
+    buildProgressKey,
+    buildStableEventId,
+    useNextActionProgress,
+    type NextActionProgress,
+} from './useNextActionProgress';
 
 /**
  * Structural lane item type — accepted by useNextAction.
@@ -35,14 +43,8 @@ type ScheduleItem = {
   owner?: string;
   opsStep?: string;
 };
-import { useMemo } from 'react';
-import { toLocalDateISO } from '@/utils/getNow';
-import {
-    buildProgressKey,
-    buildStableEventId,
-    useNextActionProgress,
-    type NextActionProgress,
-} from './useNextActionProgress';
+
+export type ScheduleLaneCategory = 'User' | 'Staff' | 'Org';
 
 export type NextActionItem = {
   id: string;
@@ -81,6 +83,8 @@ export type NextActionWithProgress = {
   /** Scene state from scene-based logic (#852) */
   sceneState: SceneState | null;
   elapsedMinutes: number | null;  // minutes since start (null if not started)
+  /** Which lane the selected item came from (for deep-link to /schedules) */
+  sourceLane: ScheduleLaneCategory | null;
   actions: {
     start: () => void;
     done: () => void;
@@ -171,17 +175,17 @@ export function useNextAction(
   const effectiveDateKey = dateKey ?? toLocalDateISO();
 
   // Build scene entries and select via scene-based logic (#852)
-  const sceneResult = useMemo<{ selected: SceneEntryWithState | null; minutesUntil: number }>(() => {
+  const sceneResult = useMemo<{ selected: SceneEntryWithState | null; minutesUntil: number; sourceLane: ScheduleLaneCategory | null }>(() => {
     const current = nowMinutes();
 
-    const allItems = [
-      ...lanes.userLane,
-      ...lanes.staffLane,
-      ...lanes.organizationLane,
+    const taggedItems: (ScheduleItem & { _lane: ScheduleLaneCategory })[] = [
+      ...lanes.userLane.map(i => ({ ...i, _lane: 'User' as const })),
+      ...lanes.staffLane.map(i => ({ ...i, _lane: 'Staff' as const })),
+      ...lanes.organizationLane.map(i => ({ ...i, _lane: 'Org' as const })),
     ];
 
     // Build scene entries with state for each item
-    const entries: SceneEntryWithState[] = allItems.map(item => {
+    const entries: (SceneEntryWithState & { _lane: ScheduleLaneCategory })[] = taggedItems.map(item => {
       const eventId = buildStableEventId(item.id, item.time, item.title);
       const key = buildProgressKey(effectiveDateKey, eventId);
       const scheduledMinutes = parseTimeToMinutes(item.time);
@@ -189,6 +193,7 @@ export function useNextAction(
 
       return {
         item,
+        _lane: item._lane,
         progressKey: key,
         progress,
         scheduledMinutes,
@@ -206,11 +211,14 @@ export function useNextAction(
     });
 
     const selected = selectNextScene(sortedEntries);
+    const selectedWithLane = selected
+      ? sortedEntries.find(e => e === selected) ?? null
+      : null;
     const minutesUntil = selected
       ? selected.scheduledMinutes - current
       : 0;
 
-    return { selected, minutesUntil };
+    return { selected, minutesUntil, sourceLane: selectedWithLane?._lane ?? null };
   }, [lanes, effectiveDateKey, progressStore]);
 
   // Extract the selected item
@@ -280,6 +288,7 @@ export function useNextAction(
     urgency,
     sceneState,
     elapsedMinutes,
+    sourceLane: sceneResult.sourceLane,
     actions,
   };
 }

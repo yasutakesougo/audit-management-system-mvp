@@ -93,6 +93,18 @@ export const TodayOpsPage: React.FC = () => {
   // 5. Approval Flow (#765)
   const approvalFlow = useApprovalFlow();
 
+  // 6. Schedule detail href (deep link from NextAction to /schedules)
+  const scheduleDetailHref = useMemo(() => {
+    const dateIso = toLocalDateISO();
+    const params = new URLSearchParams();
+    params.set('date', dateIso);
+    params.set('tab', 'day');
+    if (nextAction.sourceLane) {
+      params.set('cat', nextAction.sourceLane);
+    }
+    return `/schedules/week?${params.toString()}`;
+  }, [nextAction.sourceLane]);
+
   // End-of-queue completion notification (#631)
   const [showCompletionToast, setShowCompletionToast] = React.useState(false);
 
@@ -215,9 +227,10 @@ export const TodayOpsPage: React.FC = () => {
         onEmptyAction: () => navigate('/schedules'),
       },
       nextActionEmptyAction: () => navigate('/schedules'),
+      scheduleDetailHref,
 
     };
-  }, [summary, nextAction, quickRecord.openUnfilled, quickRecord.openUser, approvalFlow.open, navigate]);
+  }, [summary, nextAction, quickRecord.openUnfilled, quickRecord.openUser, approvalFlow.open, navigate, scheduleDetailHref]);
 
   const handleSaveSuccess = React.useCallback(() => {
     if (!quickRecord.autoNextEnabled) {
