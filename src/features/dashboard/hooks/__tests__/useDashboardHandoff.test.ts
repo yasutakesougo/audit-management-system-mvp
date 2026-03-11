@@ -22,6 +22,7 @@ let summaryReturnValue = {
   total: 5,
   byStatus: { pending: 2, resolved: 3 },
   criticalCount: 1,
+  byCategory: { '体調': 1, '行動面': 2, '家族連絡': 0, '支援の工夫': 1, '良かったこと': 0, '事故・ヒヤリ': 1, 'その他': 0 },
 };
 
 let timelineReturnValue = {
@@ -63,6 +64,7 @@ describe('useDashboardHandoff', () => {
       total: 5,
       byStatus: { pending: 2, resolved: 3 },
       criticalCount: 1,
+      byCategory: { '体調': 1, '行動面': 2, '家族連絡': 0, '支援の工夫': 1, '良かったこと': 0, '事故・ヒヤリ': 1, 'その他': 0 },
     };
     timelineReturnValue = {
       todayHandoffs: [
@@ -89,13 +91,18 @@ describe('useDashboardHandoff', () => {
     });
 
     it('total=0 のケースでも構造が維持される', async () => {
-      summaryReturnValue = { total: 0, byStatus: {}, criticalCount: 0 };
+      summaryReturnValue = {
+        total: 0,
+        byStatus: { pending: 0, resolved: 0 },
+        criticalCount: 0,
+        byCategory: { '体調': 0, '行動面': 0, '家族連絡': 0, '支援の工夫': 0, '良かったこと': 0, '事故・ヒヤリ': 0, 'その他': 0 },
+      };
       const useDashboardHandoff = await importSUT();
       const { result } = renderHook(() => useDashboardHandoff());
 
       expect(result.current.total).toBe(0);
       expect(result.current.critical).toBe(0);
-      expect(result.current.status).toEqual({});
+      expect(result.current.status).toEqual({ pending: 0, resolved: 0 });
     });
   });
 
@@ -159,6 +166,7 @@ describe('useDashboardHandoff', () => {
       expect(result.current).toHaveProperty('total');
       expect(result.current).toHaveProperty('critical');
       expect(result.current).toHaveProperty('status');
+      expect(result.current).toHaveProperty('byCategory');
       expect(result.current).toHaveProperty('timeline');
       expect(result.current.timeline).toHaveProperty('items');
       expect(result.current.timeline).toHaveProperty('loading');

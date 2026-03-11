@@ -111,13 +111,11 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ audience = 'staff' }) => 
               done: summary.dailyRecordStatus.completed,
               total: summary.dailyRecordStatus.total,
             }}
-            // 📡 Handoff Live Feed data
-            handoffTimelineItems={handoff.timeline.items}
-            handoffTimelineLoading={handoff.timeline.loading}
-            handoffTimelineError={handoff.timeline.error}
-            handoffTimelineUpdateStatus={handoff.timeline.updateStatus}
-            handoffTimelineReload={handoff.timeline.reload}
+            // 📊 Handoff Summary Card data
+            handoffTotal={handoff.total}
+            handoffByStatus={handoff.status}
             onOpenTimeline={nav.openTimeline}
+            handoffByCategory={handoff.byCategory}
           />
         </Stack>
       </Box>

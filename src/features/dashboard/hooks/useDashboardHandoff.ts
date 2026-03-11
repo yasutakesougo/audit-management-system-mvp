@@ -4,7 +4,7 @@
  * 自己完結型。外部依存なし。
  */
 
-import type { HandoffDayScope, HandoffRecord, HandoffStatus } from '@/features/handoff/handoffTypes';
+import type { HandoffCategory, HandoffDayScope, HandoffRecord, HandoffStatus } from '@/features/handoff/handoffTypes';
 import { useHandoffSummary } from '@/features/handoff/useHandoffSummary';
 import { useHandoffTimeline } from '@/features/handoff/useHandoffTimeline';
 
@@ -12,6 +12,7 @@ export interface DashboardHandoffGroup {
   total: number;
   critical: number;
   status: Record<string, number>;
+  byCategory: Record<HandoffCategory, number>;
   timeline: {
     items: HandoffRecord[];
     loading: boolean;
@@ -26,6 +27,7 @@ export function useDashboardHandoff(dayScope: HandoffDayScope = 'today'): Dashbo
     total,
     byStatus: status,
     criticalCount: critical,
+    byCategory,
   } = useHandoffSummary({ dayScope });
 
   const {
@@ -40,6 +42,7 @@ export function useDashboardHandoff(dayScope: HandoffDayScope = 'today'): Dashbo
     total,
     critical,
     status,
+    byCategory,
     timeline: { items, loading, error, updateStatus, reload },
   };
 }

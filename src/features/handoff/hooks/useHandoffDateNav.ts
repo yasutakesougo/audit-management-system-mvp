@@ -1,7 +1,7 @@
 /**
  * useHandoffDateNav — /handoff-timeline の日付ナビゲーション管理
  *
- * URL: ?range=day|week&date=YYYY-MM-DD
+ * URL: ?range=day|week|month&date=YYYY-MM-DD
  *
  * 解決ルール:
  *  1. URL の `date` パラメータがあればそれを使う
@@ -10,6 +10,7 @@
  *
  * P0: day ビュー
  * P1: week ビュー（月曜始まり）
+ * P2: month ビュー（カレンダーグリッド）
  */
 
 import { useCallback, useMemo } from 'react';
@@ -33,6 +34,8 @@ export interface HandoffDateNavState {
   fromToday: boolean;
   /** range=week のとき: 週の月〜日 [start, end] */
   weekRange: [string, string] | null;
+  /** range=month のとき: 月の [1日, 末日] */
+  monthRange: [string, string] | null;
 }
 
 export interface HandoffDateNavActions {
@@ -50,11 +53,17 @@ export interface HandoffDateNavActions {
   goToNextWeek: () => void;
   /** 指定日を含む週に移動 */
   goToWeekOf: (dateStr: string) => void;
+  /** 前月に移動 */
+  goToPreviousMonth: () => void;
+  /** 翌月に移動 (未来は今月まで) */
+  goToNextMonth: () => void;
+  /** 指定日を含む月に移動 */
+  goToMonthOf: (dateStr: string) => void;
   /** range を切り替え */
   setRange: (range: DateRange) => void;
   /** 今日かどうか */
   isToday: boolean;
-  /** 表示用ラベル (day: '今日', week: '3/10〜3/16') */
+  /** 表示用ラベル (day: '今日', week: '3/10〜3/16', month: '2026年3月') */
   dateLabel: string;
 }
 
@@ -172,6 +181,42 @@ export function formatWeekLabel(startStr: string, endStr: string): string {
   return `${sLabel}〜 ${eLabel}`;
 }
 
+// ── Month helpers ─────────────────────────────────────────────
+
+/**
+ * 指定日を含む月の [1日, 末日] を返す。
+ */
+export function getMonthRange(dateStr: string): [string, string] {
+  const d = parseDateString(dateStr);
+  if (!d) {
+    return getMonthRange(formatDateLocal());
+  }
+  const year = d.getFullYear();
+  const month = d.getMonth();
+  const firstDay = new Date(year, month, 1);
+  const lastDay = new Date(year, month + 1, 0); // 翌月0日 = 今月末日
+  return [formatDateLocal(firstDay), formatDateLocal(lastDay)];
+}
+
+/** 基準日を +/- n 月移動 (同日を維持。28→28, 31→末日clamp) */
+export function addMonths(dateStr: string, n: number): string {
+  const d = parseDateString(dateStr);
+  if (!d) return dateStr;
+  const targetMonth = d.getMonth() + n;
+  const targetYear = d.getFullYear() + Math.floor(targetMonth / 12);
+  const normalizedMonth = ((targetMonth % 12) + 12) % 12;
+  const maxDay = new Date(targetYear, normalizedMonth + 1, 0).getDate();
+  const day = Math.min(d.getDate(), maxDay);
+  return formatDateLocal(new Date(targetYear, normalizedMonth, day));
+}
+
+/** 月ラベル: "2026年3月" */
+export function formatMonthLabel(dateStr: string): string {
+  const d = parseDateString(dateStr);
+  if (!d) return dateStr;
+  return `${d.getFullYear()}年${d.getMonth() + 1}月`;
+}
+
 // ────────────────────────────────────────────────────────────
 // Hook
 // ────────────────────────────────────────────────────────────
@@ -214,6 +259,12 @@ export function useHandoffDateNav(): HandoffDateNavState & HandoffDateNavActions
   const weekRange = useMemo<[string, string] | null>(() => {
     if (range !== 'week') return null;
     return getWeekRange(resolvedDate);
+  }, [range, resolvedDate]);
+
+  // ── Month range ────────────────────────────────────────────
+  const monthRange = useMemo<[string, string] | null>(() => {
+    if (range !== 'month') return null;
+    return getMonthRange(resolvedDate);
   }, [range, resolvedDate]);
 
   // ── URL 更新共通 ───────────────────────────────────────────
@@ -279,6 +330,27 @@ export function useHandoffDateNav(): HandoffDateNavState & HandoffDateNavActions
     [updateParams],
   );
 
+  // ── Month アクション ───────────────────────────────────────
+  const goToPreviousMonth = useCallback(() => {
+    updateParams(addMonths(resolvedDate, -1), 'month');
+  }, [resolvedDate, updateParams]);
+
+  const goToNextMonth = useCallback(() => {
+    const nextDate = addMonths(resolvedDate, 1);
+    const [, nextEnd] = getMonthRange(nextDate);
+    if (nextEnd > todayStr) return;
+    updateParams(nextDate, 'month');
+  }, [resolvedDate, todayStr, updateParams]);
+
+  const goToMonthOf = useCallback(
+    (dateStr: string) => {
+      if (parseDateString(dateStr)) {
+        updateParams(dateStr, 'month');
+      }
+    },
+    [updateParams],
+  );
+
   // ── Range 切り替え ─────────────────────────────────────────
   const setRange = useCallback(
     (newRange: DateRange) => {
@@ -289,6 +361,9 @@ export function useHandoffDateNav(): HandoffDateNavState & HandoffDateNavActions
 
   // ── Label ──────────────────────────────────────────────────
   const dateLabel = useMemo(() => {
+    if (range === 'month') {
+      return formatMonthLabel(resolvedDate);
+    }
     if (range === 'week' && weekRange) {
       return formatWeekLabel(weekRange[0], weekRange[1]);
     }
@@ -302,6 +377,7 @@ export function useHandoffDateNav(): HandoffDateNavState & HandoffDateNavActions
     fromToday,
     isToday,
     weekRange,
+    monthRange,
     dateLabel,
     goToPreviousDay,
     goToNextDay,
@@ -310,6 +386,9 @@ export function useHandoffDateNav(): HandoffDateNavState & HandoffDateNavActions
     goToPreviousWeek,
     goToNextWeek,
     goToWeekOf,
+    goToPreviousMonth,
+    goToNextMonth,
+    goToMonthOf,
     setRange,
   };
 }
